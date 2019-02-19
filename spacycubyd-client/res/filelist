@@ -1,0 +1,17 @@
+mkd textures
+mkd textures/blocks
+f textures/blocks/grassblock.png
+f textures/blocks/stone.png
+f textures/blocks/undefined.png
+mkd shaders
+mkd shaders/default
+f shaders/default/fragment.fs
+f shaders/default/vertex.vs
+mkd fonts
+mkd fonts/opensans
+f fonts/opensans/OpenSans-Bold.ttf
+mkd models
+mkd models/entities
+f models/cube.obj
+f models/entities/uglyplayer.obj
+f models/entities/uglyplayer.mtl
