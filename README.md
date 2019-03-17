@@ -1,9 +1,9 @@
-# Cubyz, a voxel video game
-This is originally SpacyCubyd, a fork of Cubz, latest Cubz features merged to it and given Cubyz!
 [![Java](https://img.shields.io/badge/language-java-orange.svg?style=flat
 )](https://java.com)
 [![License](https://img.shields.io/badge/license-gpl3-blue.svg?style=flat
 )](https://github.com/PixelGuys/Cubz/blob/master/LICENSE)
+# Cubyz, a voxel video game
+This is originally SpacyCubyd, a fork of Cubz, latest Cubz features merged to it and given Cubyz!
 ## Requirements
 - Java 8 Or higher
 - A graphics card supporting OpenGL 3.0+
