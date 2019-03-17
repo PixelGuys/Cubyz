@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+import io.cubyz.api.IRegistryElement;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
@@ -195,7 +196,8 @@ public class LocalWorld extends World {
 	public void generate() {
 		Random r = new Random();
 		seed = r.nextInt();
-		for (Block b : ModLoader.block_registry.getRegisteredBlocks()) {
+		for (IRegistryElement ire : ModLoader.block_registry.registered()) {
+			Block b = (Block) ire;
 			visibleSpatials.put(b, new ArrayList<>());
 		}
 	}
