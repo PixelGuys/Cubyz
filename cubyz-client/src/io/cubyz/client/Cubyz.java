@@ -32,6 +32,7 @@ import org.reflections.Reflections;
 import io.cubyz.ClientOnly;
 import io.cubyz.Constants;
 import io.cubyz.CubzLogger;
+import io.cubyz.api.IRegistryElement;
 import io.cubyz.api.Mod;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
@@ -95,7 +96,7 @@ public class Cubyz implements IGameLogic {
 		game = g;
 		win = g.getWindow();
 		win.setSize(800, 600);
-		win.setTitle("Spacy Cubyd!");
+		win.setTitle("Cubyz " + Constants.GAME_VERSION);
 	}
 
 	@Override
@@ -104,7 +105,7 @@ public class Cubyz implements IGameLogic {
 		DiscordIntegration.closeRPC();
 	}
 
-	public static void load(World world) {
+	public static void loadWorld(World world) {
 		Cubyz.world = world;
 		int dx = 256;
 		int dz = 256;
@@ -202,8 +203,10 @@ public class Cubyz implements IGameLogic {
 		ClientOnly.createBlockSpatial = (bi) -> {
 			return new BlockSpatial(bi);
 		};
+		
 		// client-side init
-		for (Block b : ModLoader.block_registry.getRegisteredBlocks()) {
+		for (IRegistryElement ire : ModLoader.block_registry.registered()) {
+			Block b = (Block) ire;
 			b.setBlockPair(new ClientBlockPair());
 			ClientOnly.createBlockMesh.accept(b);
 		}

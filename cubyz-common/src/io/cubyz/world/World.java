@@ -31,7 +31,7 @@ public abstract class World {
 	public abstract Map<Block, ArrayList<BlockInstance>> visibleBlocks();
 	public abstract Entity[] getEntities();
 	
-	public abstract void entityGenerate(int x, int z);
+	public abstract void synchronousSeek(int x, int z);
 	public abstract Chunk getChunk(int x, int z);
 	public abstract BlockInstance getBlock(int x, int y, int z);
 	public BlockInstance getBlock(Vector3i vec) {
