@@ -1,9 +1,9 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>spacycubyd</groupId>
-  <artifactId>spacycubyd-client</artifactId>
-  <version>1.0-SNAPSHOT</version>
-  <name>SpacyCubyd: Client</name>
+  <groupId>io.pixelguys</groupId>
+  <artifactId>cubz</artifactId>
+  <version>0.3.0-ALPHA</version>
+  <name>Cubyz</name>
   <build>
     <sourceDirectory>src</sourceDirectory>
     <plugins>
@@ -24,12 +24,12 @@
 	    <name>jcenter-bintray</name>
 	</repository>
   </repositories>
+  <properties>
+  	<lwjgl.version>3.2.0</lwjgl.version>
+  	<lwjgl.natives>natives-windows</lwjgl.natives>
+  </properties>
   <dependencies>
-  	<dependency>
-	  <groupId>com.google.code.gson</groupId>
-	  <artifactId>gson</artifactId>
-	  <version>2.8.5</version>
-	</dependency>
+  	<!-- Cubyz dependencies -->
   	<dependency>
   		<groupId>club.minnced</groupId>
   		<artifactId>java-discord-rpc</artifactId>
@@ -45,5 +45,89 @@
 	    <artifactId>reflections</artifactId>
 	    <version>0.9.11</version>
 	</dependency>
+	
+	<!-- Jungle dependencies -->
+	<!-- LWJGL Natives -->
+  	<dependency>
+  		<groupId>org.lwjgl</groupId>
+  		<artifactId>lwjgl</artifactId>
+  		<version>${lwjgl.version}</version>
+  		<classifier>${lwjgl.natives}</classifier>
+  	</dependency>
+  	<dependency>
+  		<groupId>org.lwjgl</groupId>
+  		<artifactId>lwjgl-glfw</artifactId>
+  		<version>${lwjgl.version}</version>
+  		<classifier>${lwjgl.natives}</classifier>
+  	</dependency>
+  	<dependency>
+  		<groupId>org.lwjgl</groupId>
+  		<artifactId>lwjgl-openal</artifactId>
+  		<version>${lwjgl.version}</version>
+  		<classifier>${lwjgl.natives}</classifier>
+  	</dependency>
+  	<dependency>
+  		<groupId>org.lwjgl</groupId>
+  		<artifactId>lwjgl-opengl</artifactId>
+  		<version>${lwjgl.version}</version>
+  		<classifier>${lwjgl.natives}</classifier>
+  	</dependency>
+  	<dependency>
+  		<groupId>org.lwjgl</groupId>
+  		<artifactId>lwjgl-assimp</artifactId>
+  		<version>${lwjgl.version}</version>
+  		<classifier>${lwjgl.natives}</classifier>
+  	</dependency>
+  	<dependency>
+  		<groupId>org.lwjgl</groupId>
+  		<artifactId>lwjgl-nanovg</artifactId>
+  		<version>${lwjgl.version}</version>
+  		<classifier>${lwjgl.natives}</classifier>
+  	</dependency>
+  	
+  	<!-- LWJGL -->
+  	<dependency>
+  		<groupId>org.lwjgl</groupId>
+  		<artifactId>lwjgl</artifactId>
+  		<version>${lwjgl.version}</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>org.lwjgl</groupId>
+  		<artifactId>lwjgl-glfw</artifactId>
+  		<version>${lwjgl.version}</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>org.lwjgl</groupId>
+  		<artifactId>lwjgl-openal</artifactId>
+  		<version>${lwjgl.version}</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>org.lwjgl</groupId>
+  		<artifactId>lwjgl-opengl</artifactId>
+  		<version>${lwjgl.version}</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>org.lwjgl</groupId>
+  		<artifactId>lwjgl-assimp</artifactId>
+  		<version>${lwjgl.version}</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>org.lwjgl</groupId>
+  		<artifactId>lwjgl-nanovg</artifactId>
+  		<version>${lwjgl.version}</version>
+  	</dependency>
+  	
+  	<!-- Others -->
+  	
+  	<dependency>
+  		<groupId>org.joml</groupId>
+		<artifactId>joml</artifactId>
+		<version>1.9.9</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>org.l33tlabs.twl</groupId>
+  		<artifactId>pngdecoder</artifactId>
+  		<version>1.0</version>
+  	</dependency>
   </dependencies>
 </project>
