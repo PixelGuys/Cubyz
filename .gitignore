@@ -25,3 +25,5 @@ hs_err_pid*
 #Eclipse workspace/projects files
 .metadata/
 .recommenders/
+
+cubyz-client/logs/

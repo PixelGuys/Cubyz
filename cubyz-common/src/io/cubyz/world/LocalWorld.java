@@ -59,13 +59,23 @@ public class LocalWorld extends World {
 				if (!loadList.isEmpty()) {
 					ChunkAction popped = loadList.pop();
 					if (popped.type == ChunkActionType.GENERATE) {
-						//CubzLogger.instance.fine("Generating " + popped.chunk);
+						CubzLogger.instance.fine("Generating " + popped.chunk.getX() + "," + popped.chunk.getZ());
 						if (!popped.chunk.isGenerated()) {
 							synchronousGenerate(popped.chunk);
+						} else {
+							if (!popped.chunk.isLoaded()) {
+								
+							}
 						}
 					}
 					else if (popped.type == ChunkActionType.UNLOAD) {
-						//CubzLogger.instance.fine("Unloading " + popped.chunk);
+						CubzLogger.instance.fine("Unloading " + popped.chunk.getX() + "," + popped.chunk.getZ());
+						for (BlockInstance bi : popped.chunk.list()) {
+							Block b = bi.getBlock();
+							visibleSpatials.get(b).remove(bi);
+							spatials.remove(bi);
+						}
+						popped.chunk.setLoaded(false);
 					}
 				}
 				System.out.print("");
@@ -247,19 +257,18 @@ public class LocalWorld extends World {
 
 	@Override
 	public void seek(int x, int z) {
-		for (int x1 = x - 32; x1 < x + 32; x1++) {
-			for (int z1 = z - 32; z1 < z + 32; z1++) {
+		int renderDistance = 2-1;
+		int blockDistance = renderDistance*16;
+		for (int x1 = x - blockDistance-16; x1 < x + blockDistance+16; x1++) {
+			for (int z1 = z - blockDistance-16; z1 < z + blockDistance+16; z1++) {
 				Chunk ch = getChunk(x1/16,z1/16);
-				if (!ch.isGenerated()) {
-					queueChunk(new ChunkAction(ch, ChunkActionType.GENERATE));
-				}
-			}
-		}
-		for (int x1 = x - 48; x1 < x + 48; x1++) {
-			for (int z1 = z - 48; z1 < z + 48; z1++) {
-				if (x1 < x - 32 || x1 > x + 32) {
-					if (z1 < z - 32 || z1 > z + 32) {
-						//unload(x1 / 16, z1 / 16);
+				if (x1>x-blockDistance&&x1<x+blockDistance&&z1>z-blockDistance&&z1<z+blockDistance) {
+					if (!ch.isGenerated()) {
+						queueChunk(new ChunkAction(ch, ChunkActionType.GENERATE));
+					}
+				} else {
+					if (ch.isLoaded()) {
+						queueChunk(new ChunkAction(ch, ChunkActionType.UNLOAD));
 					}
 				}
 			}

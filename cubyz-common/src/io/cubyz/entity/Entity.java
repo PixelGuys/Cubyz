@@ -6,6 +6,7 @@ import org.joml.AABBf;
 import org.joml.Vector3f;
 
 import io.cubyz.IRenderablePair;
+import io.cubyz.blocks.BlockInstance;
 import io.cubyz.world.World;
 
 public abstract class Entity {
@@ -21,7 +22,7 @@ public abstract class Entity {
 	
 	protected IRenderablePair renderPair;
 	
-	protected int width = 1, height = 2;
+	protected int width = 1, height = 2, depth = 1;
 	
 	public float getSpeed() {
 		return entitySpeed;
@@ -63,6 +64,156 @@ public abstract class Entity {
 		return renderPair;
 	}
 	
+	// port of IntegratedQuantum's mathematical works for collision detection
+	// Thanks ;)
+	protected float _getX(float x) {
+		float wi = (float) width;
+		float he = (float) height;
+		int absX = (int) (position.x + 0.5F);
+		int absY = (int) (position.y + 0.5F);
+		int absZ = (int) (position.z + 0.5F);
+		float relX = position.x + 0.5F - absX;
+		float relZ = position.z + 0.5F - absZ;
+		if (x < 0) {
+			if (relX < 0.3F) {
+				relX++;
+				absX--;
+			}
+			
+			if (relX+x > 0.3F) {
+				return x;
+			}
+			
+			float maxX = 0.301F - relX;	// This small deviation from the desired value is to prevent imprecision in float calculation to create bugs.
+			if (relZ < 0.3) {
+				for (int i = 0; i < 3; i++) {
+					if (checkBlock(absX - 1, absY + i, absZ - 1)) {
+						return maxX;
+					}
+				}
+			}
+			if (relZ > 0.7) {
+				for (int i = 0; i < 3; i++) {
+					if (checkBlock(absX - 1, absY + i, absZ + 1)) {
+						return maxX;
+					}
+				}
+			}
+			for (int i = 0; i < 3; i++) {
+				if (checkBlock(absX - 1, absY + i, absZ)) {
+					return maxX;
+				}
+			}
+		}
+		else {
+			if (relX > 0.7F) {
+				relX--;
+				absX++;
+			}
+			
+			if (relX+x < 0.7F) {
+				return x;
+			}
+			
+			float maxX = 0.699F - relX;
+			if (relZ < 0.3) {
+				for (int i = 0; i < 3; i++) {
+					if (checkBlock(absX + 1, absY + i, absZ - 1)) {
+						return maxX;
+					}
+				}
+			}
+			if (relZ > 0.7) {
+				for (int i = 0; i < 3; i++) {
+					if( checkBlock(absX + 1, absY + i, absZ + 1)) {
+						return maxX;
+					}
+				}
+			}
+			for (int i = 0; i < 3; i++) {
+				if (checkBlock(absX + 1, absY + i, absZ)) {
+					return maxX;
+				}
+			}
+		}
+		return x;
+	}
+	
+	protected float _getZ(float z) {
+		int absX = (int) (position.x + 0.5F);
+		int absY = (int) (position.y + 0.5F);
+		int absZ = (int) (position.z + 0.5F);
+		float relX = position.x + 0.5F - absX;
+		float relZ = position.z + 0.5F - absZ;
+		if(z < 0) {
+			if(relZ < 0.3F) {
+				relZ++;
+				absZ--;
+			}
+			if(relZ + z > 0.3F) {
+				return z;
+			}
+			float maxZ = 0.301F - relZ;
+			if(relX < 0.3) {
+				for(int i = 0; i < 3; i++) {
+					if (checkBlock(absX - 1, absY + i, absZ - 1)) {
+						return maxZ;
+					}
+				}
+			}
+			if(relX > 0.7) {
+				for(int i = 0; i < 3; i++) {
+					if(checkBlock(absX+1, absY+i, absZ-1)) {
+						return maxZ;
+					}
+				}
+			}
+			for(int i = 0; i < 3; i++) {
+				if(checkBlock(absX, absY+i, absZ-1)) {
+					return maxZ;
+				}
+			}
+		}
+		else {
+			if(relZ > 0.7F) {
+				relZ--;
+				absZ++;
+			}
+			if(relZ+z < 0.7F) {
+				return z;
+			}
+			float maxZ = 0.699F - relZ;
+			if(relX < 0.3) {
+				for(int i = 0; i < 3; i++) {
+					if(checkBlock(absX-width, absY+i, absZ+depth)) {
+						return maxZ;
+					}
+				}
+			}
+			if(relX > 0.7) {
+				for(int i = 0; i < height; i++) {
+					if(checkBlock(absX+width, absY+i, absZ+depth)) {
+						return maxZ;
+					}
+				}
+			}
+			for(int i = 0; i < height; i++) {
+				if(checkBlock(absX, absY+i, absZ+depth)) {
+					return maxZ;
+				}
+			}
+		}
+		return z;
+	}
+	
+	public boolean checkBlock(int x, int y, int z) {
+		BlockInstance bi = world.getBlock(x, y, z);
+		if(bi != null && bi.getBlock().isSolid()) {
+			return true;
+		}
+		return false;
+	}
+	
 	public void update() {
 		aabb.minX = position.x();
 		aabb.maxX = position.x() + width;
@@ -70,8 +221,6 @@ public abstract class Entity {
 		aabb.maxY = position.y() + height;
 		aabb.minZ = position.z();
 		aabb.maxZ = position.z() + width;
-		//spatial.setPosition(position.x(), position.y(), position.z());
-		//spatial.setRotation(rotation.x(), rotation.y(), rotation.z());
 		
 		if (renderPair != null) {
 			Consumer<Entity> upd = (Consumer<Entity>) renderPair.get("renderPairUpdate");
