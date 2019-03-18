@@ -1,15 +1,14 @@
 package io.cubyz.ui.components;
 
 import org.jungle.Window;
+import org.jungle.hud.Font;
 
 import io.cubyz.ui.Component;
 import io.cubyz.ui.NGraphics;
-import io.cubyz.ui.UISystem;
 
 public class Label extends Component {
 
-	private String fontName = UISystem.OPENSANS;
-	private float fontSize = 12.f;
+	private Font font = new Font("OpenSans Bold", 12.f);
 	private String text = "";
 	
 	public String getText() {
@@ -20,25 +19,17 @@ public class Label extends Component {
 		this.text = text;
 	}
 
-	public String getFontName() {
-		return fontName;
+	public Font getFont() {
+		return font;
 	}
 	
-	public void setFontName(String fontName) {
-		this.fontName = fontName;
-	}
-	
-	public float getFontSize() {
-		return fontSize;
-	}
-	
-	public void setFontSize(float fontSize) {
-		this.fontSize = fontSize;
+	public void setFont(Font font) {
+		this.font = font;
 	}
 
 	@Override
 	public void render(long nvg, Window src) {
-		NGraphics.setFont(fontName, fontSize);
+		NGraphics.setFont(font);
 		NGraphics.drawText(x, y, text);
 	}
 	

@@ -1,6 +1,7 @@
 package io.cubyz.ui;
 
 import org.jungle.Window;
+import org.jungle.hud.Font;
 
 import io.cubyz.client.Cubyz;
 import io.cubyz.ui.components.Button;
@@ -23,7 +24,7 @@ public class MainMenuGUI extends MenuGUI {
 		exit.setSize(100, 27);
 		exit.setText("Exit");
 		titleLabel.setText("Cubyz");
-		titleLabel.setFontSize(72f);
+		titleLabel.setFont(new Font("OpenSans Bold", 72.f));
 		
 		spPlay.setOnAction(() -> {
 			LocalWorld world = new LocalWorld();

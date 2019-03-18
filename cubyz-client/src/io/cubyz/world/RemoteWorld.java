@@ -3,12 +3,10 @@ package io.cubyz.world;
 import java.util.ArrayList;
 import java.util.Map;
 
-import io.spacycubyd.blocks.Block;
-import io.spacycubyd.blocks.BlockInstance;
-import io.spacycubyd.entity.Entity;
-import io.spacycubyd.entity.Player;
-import io.spacycubyd.world.Chunk;
-import io.spacycubyd.world.World;
+import io.cubyz.blocks.Block;
+import io.cubyz.blocks.BlockInstance;
+import io.cubyz.entity.Entity;
+import io.cubyz.entity.Player;
 
 public class RemoteWorld extends World {
 
@@ -18,12 +16,12 @@ public class RemoteWorld extends World {
 	}
 
 	@Override
-	public void receivedEdited() {
+	public void unmarkEdit() {
 		
 	}
 
 	@Override
-	public void markEdited() {
+	public void markEdit() {
 		
 	}
 
@@ -58,9 +56,6 @@ public class RemoteWorld extends World {
 	}
 
 	@Override
-	public void entityGenerate(int x, int z) {}
-
-	@Override
 	public Chunk getChunk(int x, int z) {
 		return null;
 	}
@@ -74,8 +69,21 @@ public class RemoteWorld extends World {
 	public void removeBlock(int x, int y, int z) {}
 
 	@Override
-	public boolean isRemote() {
-		return true;
+	public void queueChunk(ChunkAction action) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void seek(int x, int z) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void synchronousSeek(int x, int z) {
+		// TODO Auto-generated method stub
+		
 	}
 
 }

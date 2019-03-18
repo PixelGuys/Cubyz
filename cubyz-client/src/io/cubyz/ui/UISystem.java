@@ -1,27 +1,18 @@
 package io.cubyz.ui;
 
-import org.lwjgl.nanovg.NVGColor;
-
-import io.cubyz.client.Cubyz;
-
 import static org.lwjgl.nanovg.NanoVG.*;
 import static org.lwjgl.nanovg.NanoVGGL3.*;
 import static org.lwjgl.system.MemoryUtil.*;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
 import org.jungle.Window;
+import org.jungle.hud.Font;
 import org.jungle.hud.Hud;
-import org.jungle.util.Utils;
 
 public class UISystem extends Hud {
 
 	private boolean inited = false;
-	
-	private ByteBuffer fontBuffer;
-
-	public static final String OPENSANS = "OpenSans";
 	
 	private MenuGUI gui;
 	private ArrayList<MenuGUI> overlays = new ArrayList<>();
@@ -61,25 +52,22 @@ public class UISystem extends Hud {
 
 	@Override
 	public void init(Window window) throws Exception {
-		this.nvg = window.getOptions().antialiasing ? nvgCreate(NVG_ANTIALIAS | NVG_STENCIL_STROKES) : nvgCreate(NVG_STENCIL_STROKES);
-	    if (this.nvg == NULL) {
+		nvg = window.getOptions().antialiasing ? nvgCreate(NVG_ANTIALIAS | NVG_STENCIL_STROKES) : nvgCreate(NVG_STENCIL_STROKES);
+	    if (nvg == NULL) {
 	        throw new Exception("Could not init nanovg");
 	    }
-		fontBuffer = Utils.ioResourceToByteBuffer("res/fonts/opensans/OpenSans-Bold.ttf", 1024); //NOTE: Normal > 1024
-		int font = nvgCreateFontMem(nvg, OPENSANS, fontBuffer, 0); //NOTE: Normal > 0
-		if (font == -1) { //NOTE: Normal > 1
-			throw new IllegalStateException("Could not add font");
-		}
-		inited = true;
+		Font.register("OpenSans Bold", "res/fonts/opensans/OpenSans-Bold.ttf", nvg);
 		NGraphics.setNanoID(nvg);
+		inited = true;
 	}
 
 	@Override
 	public void render(Window window) {
 		if (inited) {
 			super.render(window);
-			nvgBeginFrame(nvg, window.getWidth(), window.getHeight(), 1); //NOTE: Normal > 1
-			
+			nvgBeginFrame(nvg, window.getWidth(), window.getHeight(), 1);
+			NGraphics.setColor(0, 0, 0, 255);
+			NGraphics.setTextAlign(NVG_ALIGN_LEFT | NVG_ALIGN_TOP);
 			if (gui != null) {
 				gui.render(nvg, window);
 			}

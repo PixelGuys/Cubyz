@@ -104,6 +104,7 @@ public class Cubyz implements IGameLogic {
 	@Override
 	public void cleanup() {
 		renderer.cleanup();
+		CubzLogger.i.getHandlers()[0].close();
 		DiscordIntegration.closeRPC();
 	}
 
@@ -114,7 +115,7 @@ public class Cubyz implements IGameLogic {
 		int dz = 256;
 		world.synchronousSeek(dx, dz);
 		int highestY = world.getHighestBlock(dx, dz);
-		world.getLocalPlayer().setPosition(new Vector3f(dx, highestY/*+5*/, dz));
+		world.getLocalPlayer().setPosition(new Vector3f(dx, highestY+2, dz));
 		//Cubyz.instance.renderer.setDoRender(true);
 	}
 
@@ -165,13 +166,6 @@ public class Cubyz implements IGameLogic {
 		gameUI.setMenu(mmg);
 		gameUI.addOverlay(new DebugGUI());
 
-		CubzServer server = new CubzServer(58961);
-		server.start(true);
-		mpClient = new CubzClient();
-		requestJoin("127.0.0.1");
-		//DiscordIntegration.startRPC();
-		System.gc();
-
 		System.out.println("-=-=- Loading Mods -=-=-");
 		long start = System.currentTimeMillis();
 		Reflections reflections = new Reflections(""); // load all mods
@@ -188,10 +182,10 @@ public class Cubyz implements IGameLogic {
 		ClientOnly.createBlockMesh = (block) -> {
 			try {
 				if (block.isTextureConverted()) { // block.texConverted
-					block.getBlockPair().set("textureCache", new Texture("./res/textures/blocks/" + block.getTexture() + ".png"));
+					block.getBlockPair().set("textureCache", new Texture("res/textures/blocks/" + block.getTexture() + ".png"));
 				} else {
 					block.getBlockPair().set("textureCache", new Texture(TextureConverter.fromBufferedImage(
-							TextureConverter.convert(ImageIO.read(new File("./res/textures/blocks/" + block.getTexture() + ".png")),
+							TextureConverter.convert(ImageIO.read(new File("res/textures/blocks/" + block.getTexture() + ".png")),
 									block.getTexture()))));
 				}
 				// Assuming mesh too is empty
@@ -214,6 +208,12 @@ public class Cubyz implements IGameLogic {
 			b.setBlockPair(new ClientBlockPair());
 			ClientOnly.createBlockMesh.accept(b);
 		}
+		
+		//CubzServer server = new CubzServer(58961);
+		//server.start(true);
+		//mpClient = new CubzClient();
+		//requestJoin("127.0.0.1");
+		//System.gc();
 	}
 
 	@Override
@@ -267,7 +267,7 @@ public class Cubyz implements IGameLogic {
 				mouse.clearPos(window.getWidth() / 2, window.getHeight() / 2);
 				breakCooldown = 10;
 			}
-			//msd.selectSpatial(ctx.getSpatials(), ctx.getCamera());
+			msd.selectSpatial(ctx.getSpatials(), ctx.getCamera());
 		}
 		mouse.input(window);
 	}

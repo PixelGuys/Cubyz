@@ -10,7 +10,7 @@ import io.cubyz.command.ICommandSource;
 public class Player extends Entity implements ICommandSource {
 
 	private boolean local = false;
-	private boolean flying = true;
+	private boolean flying = false;
 	
 	public boolean isFlying() {
 		return flying;
@@ -32,7 +32,7 @@ public class Player extends Entity implements ICommandSource {
 //		}
 //		spatial = new Spatial(mesh);
 //		spatial.setScale(0.5F); //NOTE: Normal > 0.5F
-		setRegistryName("uglyplayer");
+		setRegistryName("cubz:player");
 	}
 	
 	public boolean isLocal() {
