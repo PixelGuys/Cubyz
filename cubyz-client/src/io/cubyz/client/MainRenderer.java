@@ -67,6 +67,10 @@ public class MainRenderer implements IRenderer {
 		System.gc();
 	}
 	
+	public void setDoRender(boolean doRender) {
+		this.doRender = doRender;
+	}
+	
 	public void loadShaders() throws Exception {
 		shaderProgram = new ShaderProgram();
 		shaderProgram.createVertexShader(Utils.loadResource(shaders + "/vertex.vs"));

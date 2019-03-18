@@ -1,11 +1,15 @@
 package io.cubyz.world;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+import io.cubyz.CubzLogger;
 import io.cubyz.api.IRegistryElement;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
@@ -16,16 +20,58 @@ import io.cubyz.modding.ModLoader;
 public class LocalWorld extends World {
 
 	private String name;
-	private int width, depth;
 	private ArrayList<Chunk> chunks;
 	private ArrayList<Entity> entities = new ArrayList<>();
 	
-	private ArrayList<BlockInstance> spatials = new ArrayList<>();
-	private Map<Block, ArrayList<BlockInstance>> visibleSpatials = new HashMap<>();
+	private List<BlockInstance> spatials = new ArrayList<>();
+	private Map<Block, ArrayList<BlockInstance>> visibleSpatials = Collections.synchronizedMap(new HashMap<>());
 	private boolean edited;
 	private Player player;
 	
 	private int seed;
+	
+	private ChunkGenerationThread thread;
+	
+	private class ChunkGenerationThread extends Thread {
+		Deque<ChunkAction> loadList = new ArrayDeque<>(); // FIFO order (First In, First Out)
+		
+		public void queue(ChunkAction ca) {
+			
+			if (!isQueued(ca.chunk)) {
+				//CubzLogger.instance.fine("Queued " + ca.type + " for chunk " + ca.chunk);
+				loadList.add(ca);
+			}
+		}
+		
+		public boolean isQueued(Chunk chunk) {
+			ChunkAction[] list = loadList.toArray(new ChunkAction[0]);
+			for (ChunkAction ch : list) {
+				if (ch != null) {
+					if (ch.chunk == chunk)
+						return true;
+				}
+			}
+			return false;
+		}
+		
+		public void run() {
+			while (true) {
+				if (!loadList.isEmpty()) {
+					ChunkAction popped = loadList.pop();
+					if (popped.type == ChunkActionType.GENERATE) {
+						//CubzLogger.instance.fine("Generating " + popped.chunk);
+						if (!popped.chunk.isGenerated()) {
+							synchronousGenerate(popped.chunk);
+						}
+					}
+					else if (popped.type == ChunkActionType.UNLOAD) {
+						//CubzLogger.instance.fine("Unloading " + popped.chunk);
+					}
+				}
+				System.out.print("");
+			}
+		}
+	}
 	
 	@Override
 	public boolean isEdited() {
@@ -33,21 +79,24 @@ public class LocalWorld extends World {
 	}
 	
 	@Override
-	public void receivedEdited() {
+	public void unmarkEdit() {
 		edited = false;
 	}
 	
 	@Override
-	public void markEdited() {
+	public void markEdit() {
 		edited = true;
 	}
 	
 	public LocalWorld() {
 		name = "World";
-		width = 64;
-		depth = 64;
-		chunks = new ArrayList<>(); // 1024x1024 map
+		chunks = new ArrayList<>();
 		entities.add(new Player(true));
+		
+		thread = new ChunkGenerationThread();
+		thread.setName("Local-Chunk-Thread");
+		thread.setDaemon(true);
+		thread.start();
 	}
 	
 	@Override
@@ -66,11 +115,17 @@ public class LocalWorld extends World {
 		return player;
 	}
 	
+	/**
+	 * Provided for compatibility.
+	 */
 	@Override
 	public int getWidth() {
 		return -1;
 	}
 	
+	/**
+	 * Providded for compatibility.
+	 */
 	@Override
 	public int getDepth() {
 		return -1;
@@ -82,7 +137,7 @@ public class LocalWorld extends World {
 	}
 	
 	@Override
-	public ArrayList<BlockInstance> blocks() {
+	public List<BlockInstance> blocks() {
 		return spatials;
 	}
 	
@@ -97,41 +152,24 @@ public class LocalWorld extends World {
 			for (BlockInstance bi : ch.list()) {
 				spatials.remove(bi);
 				visibleSpatials.get(bi.getBlock()).remove(bi);
-				//System.out.println("list = " + bi);
 			}
 			ch.setLoaded(false);
 		}
 	}
 	
 	@Override
-	public void entityGenerate(int x, int z) {
-		try {
-			for (int x1 = x - 32; x1 < x + 32; x1++) {
-				for (int z1 = z - 32; z1 < z + 32; z1++) {
-					Chunk ch = getChunk(x1 / 16, z1 / 16);
-					if (!ch.isGenerated()) {
-						ch.generateFrom(Noise.generateMapFragment(ch.getX() * 16, ch.getZ() * 16, 16, 16, 300, seed));
-						ch.setLoaded(true);
-						
-						// generated and loaded in memory
-					}
-					if (!ch.isLoaded()) {
-						
-					}
-				}
-			}
-			for (int x1 = x - 48; x1 < x + 48; x1++) {
-				for (int z1 = z - 48; z1 < z + 48; z1++) {
-					if (x1 < x - 32 || x1 > x + 32) {
-						if (z1 < z - 32 || z1 > z + 32) {
-							//unload(x1 / 16, z1 / 16);
-						}
-					}
-				}
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
+	public void synchronousSeek(int x, int z) {
+		Chunk ch = getChunk(x / 16, z / 16);
+		if (!ch.isGenerated()) {
+			synchronousGenerate(ch);
+			ch.setLoaded(true);
 		}
+	}
+	
+	public void synchronousGenerate(Chunk ch) {
+		int x = ch.getX() * 16; int y = ch.getZ() * 16;
+		float[][] heightMap = Noise.generateMapFragment(x, y, 16, 16, 300, seed);
+		ch.generateFrom(heightMap);
 	}
 	
 	@Override
@@ -203,8 +241,29 @@ public class LocalWorld extends World {
 	}
 
 	@Override
-	public boolean isRemote() {
-		return false;
+	public void queueChunk(ChunkAction action) {
+		thread.queue(action);
+	}
+
+	@Override
+	public void seek(int x, int z) {
+		for (int x1 = x - 32; x1 < x + 32; x1++) {
+			for (int z1 = z - 32; z1 < z + 32; z1++) {
+				Chunk ch = getChunk(x1/16,z1/16);
+				if (!ch.isGenerated()) {
+					queueChunk(new ChunkAction(ch, ChunkActionType.GENERATE));
+				}
+			}
+		}
+		for (int x1 = x - 48; x1 < x + 48; x1++) {
+			for (int z1 = z - 48; z1 < z + 48; z1++) {
+				if (x1 < x - 32 || x1 > x + 32) {
+					if (z1 < z - 32 || z1 > z + 32) {
+						//unload(x1 / 16, z1 / 16);
+					}
+				}
+			}
+		}
 	}
 	
 }

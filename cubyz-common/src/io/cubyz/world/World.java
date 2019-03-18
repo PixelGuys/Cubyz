@@ -11,27 +11,88 @@ import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 
+/**
+ * Base class for Cubz worlds.
+ * @author zenith391
+ *
+ */
 public abstract class World {
 
 	public static final int WORLD_HEIGHT = 255;
+	protected int seed;
 	
+	public static enum ChunkActionType {
+		/**
+		 * If not generated, generates the chunk, if not loaded, loads it.<br/>
+		 * There is <b>NO WAY</b> to specify if it should only load or only generate, 
+		 * because ungenerated chunks are not saved, and so cannot be loaded.
+		 */
+		GENERATE,
+		/**
+		 * Unloads the chunk
+		 */
+		UNLOAD;
+	}
+	
+	public static class ChunkAction {
+		public Chunk chunk;
+		public ChunkActionType type;
+		
+		public ChunkAction(Chunk chunk, ChunkActionType type) {
+			this.chunk = chunk;
+			this.type = type;
+		}
+	}
+	
+	/**
+	 * Used internally, allow the client to know whether or not it should update the visible blocks list.
+	 * Mostly unused since recently.
+	 */
 	public abstract boolean isEdited();
-	public abstract void receivedEdited();
-	public abstract void markEdited();
+	
+	/**
+	 * Used internally, allow the client to know whether or not it should update the visible blocks list.
+	 * Mostly unused since recently.
+	 */
+	public abstract void unmarkEdit();
+	
+	/**
+	 * Used internally, allow the client to know whether or not it should update the visible blocks list.
+	 * Mostly unused since recently.
+	 */
+	public abstract void markEdit();
 	
 	public abstract Player getLocalPlayer();
+	
+	@Deprecated
+	/**
+	 * Was used for limited size worlds.
+	 */
 	public abstract int getWidth();
+	
+	@Deprecated
+	/**
+	 * Was used for limited size worlds.
+	 */
 	public abstract int getDepth();
 	
 	public int getHeight() {
 		return WORLD_HEIGHT;
 	}
 	
-	public abstract ArrayList<BlockInstance> blocks();
+	public abstract List<BlockInstance> blocks();
 	public abstract Map<Block, ArrayList<BlockInstance>> visibleBlocks();
 	public abstract Entity[] getEntities();
 	
 	public abstract void synchronousSeek(int x, int z);
+	public abstract void seek(int x, int z);
+	
+	/**
+	 * 
+	 * @param action - Chunk action
+	 */
+	public abstract void queueChunk(ChunkAction action);
+	
 	public abstract Chunk getChunk(int x, int z);
 	public abstract BlockInstance getBlock(int x, int y, int z);
 	public BlockInstance getBlock(Vector3i vec) {
@@ -39,7 +100,7 @@ public abstract class World {
 	}
 	public abstract void removeBlock(int x, int y, int z);
 	
-	public int getHighestY(int x, int z) {
+	public int getHighestBlock(int x, int z) {
 		for (int y = 255; y > 0; y--) {
 			if (getBlock(x, y, z) != null) {
 				return y;
@@ -48,6 +109,23 @@ public abstract class World {
 		return -1; // not generated
 	}
 	
-	public abstract boolean isRemote();
+	public boolean isLocal() {
+		return this instanceof LocalWorld;
+	}
 	
+	public void setSeed(int seed) {
+		this.seed = seed;
+	}
+	
+	public int getSeed() {
+		return seed;
+	}
+	
+	public void setName(String name) {
+		throw new UnsupportedOperationException();
+	}
+	
+	public String getName() {
+		throw new UnsupportedOperationException();
+	}
 }

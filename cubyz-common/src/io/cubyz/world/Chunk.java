@@ -88,7 +88,7 @@ public class Chunk {
 						}
 					}
 				}
-				world.markEdited();
+				world.markEdit();
 			}
 		}
 		
@@ -147,7 +147,7 @@ public class Chunk {
 					}
 				}
 			}
-			world.markEdited();
+			world.markEdit();
 			inst[x][y][z] = null;
 		}
 	}

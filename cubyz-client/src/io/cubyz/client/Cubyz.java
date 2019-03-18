@@ -2,6 +2,7 @@ package io.cubyz.client;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -14,6 +15,7 @@ import org.joml.Vector3f;
 import org.joml.Vector4f;
 import org.jungle.Camera;
 import org.jungle.Jungle;
+import org.jungle.Keyboard;
 import org.jungle.Mesh;
 import org.jungle.MouseInput;
 import org.jungle.Texture;
@@ -106,12 +108,14 @@ public class Cubyz implements IGameLogic {
 	}
 
 	public static void loadWorld(World world) {
+		//Cubyz.instance.renderer.setDoRender(false);
 		Cubyz.world = world;
 		int dx = 256;
 		int dz = 256;
-		world.entityGenerate(dx, dz);
-		int highestY = world.getHighestY(dx, dz);
-		world.getLocalPlayer().setPosition(new Vector3f(dx, highestY, dz));
+		world.synchronousSeek(dx, dz);
+		int highestY = world.getHighestBlock(dx, dz);
+		world.getLocalPlayer().setPosition(new Vector3f(dx, highestY/*+5*/, dz));
+		//Cubyz.instance.renderer.setDoRender(true);
 	}
 
 	public static void requestJoin(String host) {
@@ -215,12 +219,12 @@ public class Cubyz implements IGameLogic {
 	@Override
 	public void input(Window window) {
 		if (window.isKeyPressed(GLFW.GLFW_KEY_F3)) {
-			try {
-				Thread.sleep(100);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
 			Cubyz.clientShowDebug = !Cubyz.clientShowDebug;
+			Keyboard.setKeyPressed(GLFW.GLFW_KEY_F3, false);
+		}
+		if (window.isKeyPressed(GLFW.GLFW_KEY_F11)) {
+			window.setFullscreen(!window.isFullscreen());
+			Keyboard.setKeyPressed(GLFW.GLFW_KEY_F11, false);
 		}
 		if (!gameUI.isGUIFullscreen()) {
 			if (window.isKeyPressed(GLFW.GLFW_KEY_W)) {
@@ -247,7 +251,7 @@ public class Cubyz implements IGameLogic {
 				}
 			}
 			if (window.isKeyPressed(GLFW.GLFW_KEY_LEFT_SHIFT)) {
-				playerInc.y = -1; //NOTE: Normal > 1
+				playerInc.y = -1;
 			}
 			if (window.isKeyPressed(GLFW.GLFW_KEY_RIGHT)) {
 				light.getDirection().x += 0.01F;
@@ -269,6 +273,7 @@ public class Cubyz implements IGameLogic {
 	}
 
 	public static final Map<Block, ArrayList<BlockInstance>> EMPTY_BLOCK_LIST = new HashMap<>();
+	static Map<Block, ArrayList<BlockInstance>> lastVisibleBlocks;
 	
 	@Override
 	public void render(Window window) {
@@ -284,17 +289,15 @@ public class Cubyz implements IGameLogic {
 				world.getLocalPlayer().vx = playerInc.x;
 			}
 			ctx.getCamera().setPosition(world.getLocalPlayer().getPosition().x, world.getLocalPlayer().getPosition().y + 1.76f, world.getLocalPlayer().getPosition().z);
+			
 			if (world.isEdited()) {
-				//				ctx.setSpatials(world.__visibleSpatials().toArray(new Spatial[world.__visibleSpatials().size()]));
-				//				//System.out.println("Cubes: " + world.__visibleSpatials().size());
-				world.receivedEdited();
-				//				for (Entity en : world.getEntities()) {
-				//					ctx.addSpatial(en.getSpatial());
-				//				}
+				lastVisibleBlocks = world.visibleBlocks();
 			}
 		}
 		if (world != null) {
-			renderer.render(window, ctx, new Vector3f(0.3F, 0.3F, 0.3F), light, world.visibleBlocks());
+			synchronized (world.visibleBlocks()) {
+				renderer.render(window, ctx, new Vector3f(0.3F, 0.3F, 0.3F), light, world.visibleBlocks());
+			}
 		} else {
 			renderer.render(window, ctx, new Vector3f(0.3F, 0.3F, 0.3F), light, EMPTY_BLOCK_LIST);
 		}
@@ -330,7 +333,7 @@ public class Cubyz implements IGameLogic {
 			}
 			//System.out.println(lp.getPosition());
 			//ctx.getCamera().setPosition(lp.getPosition().x, lp.getPosition().y, lp.getPosition().z);
-			world.entityGenerate((int) lp.getPosition().x, (int) lp.getPosition().z);
+			world.seek((int) lp.getPosition().x, (int) lp.getPosition().z);
 			if (ctx.getCamera().getRotation().x > 90.0F) { //NOTE: Normal > 90.0F
 				ctx.getCamera().setRotation(90.0F, ctx.getCamera().getRotation().y, ctx.getCamera().getRotation().z); //NOTE: Normal > 90.0F
 			}
