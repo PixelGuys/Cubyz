@@ -201,24 +201,21 @@ public class LocalWorld extends World {
 	
 	@Override
 	public BlockInstance getBlock(int x, int y, int z) {
-		Chunk ch = getChunk(x / 16, z / 16);
+		int cx = x;
+		if(cx < 0)
+			cx -= 15;
+		cx = cx / 16;
+		int cz = z;
+		if(cz < 0)
+			cz -= 15;
+		cz = cz / 16;
+		Chunk ch = getChunk(cx, cz);
 		if (y > World.WORLD_HEIGHT || y < 0)
 			return null;
 		
 		if (ch != null) {
-			int cx = 0;
-			int cz = 0;
-			if (x < 0) {
-				cx = ((x * -1) % 16);
-			} else {
-				cx = x % 16;
-			}
-			//System.out.println(cx);
-			if (z < 0) {
-				cz = ((z * -1) % 16);
-			} else {
-				cz = z % 16;
-			}
+			cx = x & 15;
+			cz = z & 15;
 			BlockInstance bi = ch.getBlockInstanceAt(cx, y, cz);
 			return bi;
 		} else {

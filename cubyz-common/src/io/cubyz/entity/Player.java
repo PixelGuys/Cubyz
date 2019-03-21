@@ -60,7 +60,7 @@ public class Player extends Entity implements ICommandSource {
 			vy -= 0.015F;
 		}
 		if (vy < 0) {
-			Vector3i bp = new Vector3i((int) Math.round(position.x), (int) position.y, (int) Math.round(position.z));
+			Vector3i bp = new Vector3i((int) Math.round(position.x), (int) Math.floor(position.y), (int) Math.round(position.z));
 			float relX = position.x + 0.5F - bp.x;
 			float relZ = position.z + 0.5F - bp.z;
 			if(checkBlock(bp.x, bp.y, bp.z)) {

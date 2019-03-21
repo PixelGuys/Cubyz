@@ -69,9 +69,9 @@ public abstract class Entity {
 	protected float _getX(float x) {
 		float wi = (float) width;
 		float he = (float) height;
-		int absX = (int) (position.x + 0.5F);
-		int absY = (int) (position.y + 0.5F);
-		int absZ = (int) (position.z + 0.5F);
+		int absX = (int) Math.floor(position.x + 0.5F);
+		int absY = (int) Math.floor(position.y + 0.5F);
+		int absZ = (int) Math.floor(position.z + 0.5F);
 		float relX = position.x + 0.5F - absX;
 		float relZ = position.z + 0.5F - absZ;
 		if (x < 0) {
@@ -140,9 +140,9 @@ public abstract class Entity {
 	}
 	
 	protected float _getZ(float z) {
-		int absX = (int) (position.x + 0.5F);
-		int absY = (int) (position.y + 0.5F);
-		int absZ = (int) (position.z + 0.5F);
+		int absX = (int) Math.floor(position.x + 0.5F);
+		int absY = (int) Math.floor(position.y + 0.5F);
+		int absZ = (int) Math.floor(position.z + 0.5F);
 		float relX = position.x + 0.5F - absX;
 		float relZ = position.z + 0.5F - absZ;
 		if(z < 0) {
