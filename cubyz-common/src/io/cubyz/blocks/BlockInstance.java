@@ -81,7 +81,7 @@ public class BlockInstance {
 		this.pos = pos;
 	}
 	
-	
+
 	
 	public BlockInstance[] getNeighbors() {
 		BlockInstance[] inst = new BlockInstance[6];
@@ -98,6 +98,30 @@ public class BlockInstance {
 		inst[1] = world.getBlock(pos.x + 1, pos.y, pos.z); //NOTE: Normal > 1
 		inst[0] = world.getBlock(pos.x + -1, pos.y, pos.z); //NOTE: Normal > 1
 		return inst;
+	}
+	
+	public BlockInstance getNeighbor(int i) {
+		// 0 = EAST  (x - 1)
+		// 1 = WEST  (x + 1)
+		// 2 = NORTH (z + 1)
+		// 3 = SOUTH (z - 1)
+		// 4 = DOWN
+		// 5 = UP
+		switch(i) {
+			case 5:
+				return world.getBlock(pos.x, pos.y + 1, pos.z); //NOTE: Normal > 1
+			case 4:
+				return world.getBlock(pos.x, pos.y + -1, pos.z); //NOTE: Normal > 1
+			case 3:
+				return world.getBlock(pos.x, pos.y, pos.z + -1); //NOTE: Normal > 1
+			case 2:
+				return world.getBlock(pos.x, pos.y, pos.z + 1); //NOTE: Normal > 1
+			case 1:
+				return world.getBlock(pos.x + 1, pos.y, pos.z); //NOTE: Normal > 1
+			case 0:
+				return world.getBlock(pos.x + -1, pos.y, pos.z); //NOTE: Normal > 1
+		}
+		return null;
 	}
 	
 	public IBlockSpatial getSpatial() {

@@ -68,7 +68,7 @@ public class LocalWorld extends World {
 							}
 						}
 					}
-					else if (popped.type == ChunkActionType.UNLOAD) {
+					/*else if (popped.type == ChunkActionType.UNLOAD) {
 						CubzLogger.instance.fine("Unloading " + popped.chunk.getX() + "," + popped.chunk.getZ());
 						for (BlockInstance bi : popped.chunk.list()) {
 							Block b = bi.getBlock();
@@ -76,7 +76,7 @@ public class LocalWorld extends World {
 							spatials.remove(bi);
 						}
 						popped.chunk.setLoaded(false);
-					}
+					}*/
 				}
 				System.out.print("");
 			}
@@ -179,7 +179,9 @@ public class LocalWorld extends World {
 	public void synchronousGenerate(Chunk ch) {
 		int x = ch.getX() * 16; int y = ch.getZ() * 16;
 		float[][] heightMap = Noise.generateMapFragment(x, y, 16, 16, 300, seed);
-		ch.generateFrom(heightMap);
+		float[][] vegetationMap = Noise.generateMapFragment(x, y, 16, 16, 300, seed + 3 * (seed & Integer.MAX_VALUE));
+		float[][] oreMap = Noise.generateMapFragment(x, y, 16, 16, 300, seed - 3 * (seed & Integer.MAX_VALUE));
+		ch.generateFrom(heightMap, vegetationMap, oreMap);
 	}
 	
 	@Override

@@ -6,6 +6,7 @@ import org.joml.Vector3i;
 
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
+import io.cubyz.blocks.Ore;
 import io.cubyz.modding.ModLoader;
 
 public class Chunk {
@@ -15,11 +16,29 @@ public class Chunk {
 	private int ox, oy;
 	private boolean generated;
 	private boolean loaded;
-	private static Block grassBlock = ModLoader.block_registry.getByID("cubz:grass");
-	private static Block dirtBlock = ModLoader.block_registry.getByID("cubz:dirt");
+	
+	// Normal:
+	private static Block grass = ModLoader.block_registry.getByID("cubz:grass");
+	private static Block sand = ModLoader.block_registry.getByID("cubz:sand");
+	private static Block dirt = ModLoader.block_registry.getByID("cubz:dirt");
+	private static Block stone = ModLoader.block_registry.getByID("cubz:stone");
+	private static Block bedrock = ModLoader.block_registry.getByID("cubz:bedrock");
+	
+	// Ores:
+	private static ArrayList<Ore> ores = new ArrayList<>();
+	static {
+		ores.add((Ore) ModLoader.block_registry.getByID("cubz:coal_ore"));
+		ores.add((Ore) ModLoader.block_registry.getByID("cubz:iron_ore"));
+		ores.add((Ore) ModLoader.block_registry.getByID("cubz:ruby_ore"));
+		ores.add((Ore) ModLoader.block_registry.getByID("cubz:gold_ore"));
+		ores.add((Ore) ModLoader.block_registry.getByID("cubz:diamond_ore"));
+		ores.add((Ore) ModLoader.block_registry.getByID("cubz:emerald_ore"));
+	}
+	
+	// Liquids:
 	private static Block water = ModLoader.block_registry.getByID("cubz:water");
 	
-	public static final int SEA_LEVEL = 67;
+	public static final int SEA_LEVEL = 100;
 	
 	private World world;
 	
@@ -49,50 +68,197 @@ public class Chunk {
 		return list;
 	}
 	
-	public void generateFrom(float[][] map) {
-		//System.out.println(dirtBlock);
-		inst = new BlockInstance[16][255][16];
+	/**
+	 * Add the <code>Block</code> b at relative space defined by X, Y, and Z, and if out of bounds, call this method from the other chunk (only work for 1 chunk radius)<br/>
+	 * Meaning that if x or z are out of bounds, this method will call the same method from other chunks to add it.
+	 * @param b
+	 * @param x
+	 * @param y
+	 * @param z
+	 */
+	public void addBlock(Block b, int x, int y, int z) {
+		int rx = x - (ox << 4);
+		if (rx < 0) {
+			// Determines if the block is part of another chunk.
+			world.getChunk(ox - 1, oy).addBlock(b, x, y, z);
+			return;
+		}
+		if (rx > 15) {
+			world.getChunk(ox + 1, oy).addBlock(b, x, y, z);
+			return;
+		}
+		int rz = z - (oy << 4);
+		if (rz < 0) {
+			world.getChunk(ox, oy - 1).addBlock(b, x, y, z);
+			return;
+		}
+		if (rz > 15) {
+			world.getChunk(ox, oy + 1).addBlock(b, x, y, z);
+			return;
+		}
+		if (world.getBlock(x, y, z) != null) {
+			return;
+		}
+		BlockInstance inst0 = new BlockInstance(b);
+		inst0.setPosition(new Vector3i(x, y, z));
+		inst0.setWorld(world);
+		world.blocks().add(inst0);
+		list.add(inst0);
+		try {
+			inst[rx][y][rz] = inst0;
+		} catch (NullPointerException e) {}
+		world.markEdit();
+		BlockInstance[] neighbors = inst0.getNeighbors();
+		for (int i = 0; i < neighbors.length; i++) {
+			if (neighbors[i] == null) {
+				world.visibleBlocks().get(inst0.getBlock()).add(inst0);
+				break;
+			}
+		}
+		for (int i = 0; i < neighbors.length; i++) {
+			if (neighbors[i] != null && world.visibleBlocks().get(neighbors[i].getBlock()).contains(neighbors[i])) {
+				BlockInstance[] neighbors1 = neighbors[i].getNeighbors();
+				boolean vis = true;
+				for (int j = 0; j < neighbors.length; j++) {
+					if (neighbors[j] == null) {
+						vis = false;
+						break;
+					}
+				}
+				if(vis) {
+					world.visibleBlocks().get(neighbors[i].getBlock()).remove(neighbors[i]);
+				}
+			}
+		}
+	}
+	
+	//TODO: Take in consideration caves.
+	//TODO: Ore Clusters
+	//TODO: Finish vegetation
+	//TODO: Clean this method
+	public void generateFrom(float[][] map, float[][] vegetation, float[][] oreMap) {
+		inst = new BlockInstance[16][World.WORLD_HEIGHT][16];
+		loaded = true;
+		int wx = ox << 4;
+		int wy = oy << 4;
+		
+		// heightmap pass
 		for (int px = 0; px < 16; px++) {
 			for (int py = 0; py < 16; py++) {
 				float value = map[px][py];
-				if (value < 0) {
-					value -= value;
-				}
 				int y = (int) (value * World.WORLD_HEIGHT);
-				if (y < SEA_LEVEL-1) {
-					y = SEA_LEVEL-1;
-				}
-				for (int j = y; j > -1; j--) {
-					if (j > SEA_LEVEL) {
-						if (j == y) {
-							inst[px][j][py] = new BlockInstance(grassBlock);
-						} else {
-							inst[px][j][py] = new BlockInstance(dirtBlock);
-						}
+				for (int j = y > SEA_LEVEL ? y : SEA_LEVEL; j >= 0; j--) {
+					BlockInstance bi = null;
+					if(j > y) {
+						bi = new BlockInstance(water);
+					}else if (y < SEA_LEVEL + 4 && j > y - 3) {
+						bi = new BlockInstance(sand);
+					} else if (j == y) {
+						bi = new BlockInstance(grass);
+					} else if (j > y - 3) {
+						bi = new BlockInstance(dirt);
+					} else if (j > 0) {
+						float rand = oreMap[px][py] * j * (256 - j) * (128 - j) * 6741;
+						rand = (((int) rand) & 8191) / 8191.0F;
+						bi = selectOre(rand, j);
 					} else {
-						inst[px][j][py] = new BlockInstance(water);
+						bi = new BlockInstance(bedrock);
 					}
-					BlockInstance bi = inst[px][j][py];
-					bi.setPosition(new Vector3i(ox * 16 + px, j, oy * 16 + py));
+					bi.setPosition(new Vector3i(wx + px, j, wy + py));
+					//bi.getSpatial().setPosition(new Vector3i(wx + px, j, wy + py));
+					//bi.getSpatial().setScale(0.5F);
 					bi.setWorld(world);
-					world.blocks().add(inst[px][j][py]);
-					list.add(inst[px][j][py]);
-					if (j < 255) {
-						BlockInstance is = inst[px][j+1][py];
-						if (is != null) {
-							if (is.getBlock().isTransparent()) {
-								world.visibleBlocks().get(bi.getBlock()).add(bi);
+					world.blocks().add(bi);
+					list.add(bi);
+					inst[px][j][py] = bi;
+					/*if (bi.getBlock() instanceof IBlockEntity) {
+						updatables.add(bi);
+					}*/
+				}
+				world.markEdit();
+			}
+		}
+		
+		// Vegetation pass
+		for (int px = 0; px < 16; px++) {
+			for (int py = 0; py < 16; py++) {
+				float value = vegetation[px][py];
+				int incx = px == 0 ? 1 : -1;
+				int incy = py == 0 ? 1 : -1;
+				if (map[px][py] * World.WORLD_HEIGHT >= SEA_LEVEL + 3 && value > 0.5f && ((int)((vegetation[px][py]-vegetation[px+incx][py+incy]) * 10000000) & 127) == 1) {	// "&127" is a faster way to do "%128"
+					Structures.generateTree(this, wx + px, (int) (map[px][py] * World.WORLD_HEIGHT) + 1, wy + py);
+				}
+			}
+		}
+		
+		// Visible blocks
+		boolean chx0 = world.getChunk(ox - 1, oy).isGenerated();
+		boolean chx1 = world.getChunk(ox + 1, oy).isGenerated();
+		boolean chy0 = world.getChunk(ox, oy - 1).isGenerated();
+		boolean chy1 = world.getChunk(ox, oy + 1).isGenerated();
+		for (int px = 0; px < 16; px++) {
+			for (int py = 0; py < 16; py++) {
+				float value = map[px][py];
+				int y = (int) (value * World.WORLD_HEIGHT);
+				if(y < SEA_LEVEL) {
+					y = SEA_LEVEL;
+				}
+				for (int j = y; j >= 0; j--) {
+					BlockInstance[] neighbors = inst[px][j][py].getNeighbors();
+					for (int i = 0; i < neighbors.length; i++) {
+						if (neighbors[i] == null 	&& (j != 0 || i != 4)
+													&& (px != 0 || i != 0 || chx0)
+													&& (px != 15 || i != 1 || chx1)
+													&& (py != 0 || i != 3 || chy0)
+													&& (py != 15 || i != 2 || chy1)) {
+							world.visibleBlocks().get(inst[px][j][py].getBlock()).add(inst[px][j][py]);
+							break;
+						}
+					}
+				}
+				// Checks if blocks from neighboring chunks are changed
+				int [] neighbor = {1, 0, 2, 3};
+				int [] dx = {-1, 16, px, px};
+				int [] dy = {py, py, -1, 16};
+				boolean [] toCheck = {
+						chx0 && px == 0,
+						chx1 && px == 15,
+						chy0 && py == 0,
+						chy1 && py == 15};
+				for(int k = 0; k < 4; k++) {
+					if (toCheck[k]) {
+						for (int j = y + 1; j <= World.WORLD_HEIGHT; j++) {
+							BlockInstance inst0 = world.getBlock(wx + dx[k], j, wy + dy[k]);
+							if(inst0 == null) {
+								break;
 							}
-						} else {
-							world.visibleBlocks().get(bi.getBlock()).add(bi);
+							if(world.visibleBlocks().get(inst0.getBlock()).contains(inst0)) {
+								continue;
+							}
+							if (inst0.getNeighbor(neighbor[k]) == null) {
+								world.visibleBlocks().get(inst0.getBlock()).add(inst0);
+								break;
+							}
 						}
 					}
 				}
 				world.markEdit();
 			}
 		}
-		
 		generated = true;
+	}
+	
+	// This function only allows a less than 50% of the underground to be ores.
+	public BlockInstance selectOre(float rand, int height) {
+		float chance1 = 0.0F;
+		float chance2 = 0.0F;
+		for (Ore ore : ores) {
+			chance2 += ore.getChance();
+			if(height < ore.getHeight() && rand > chance1 && rand < chance2)
+				return new BlockInstance(ore);
+			chance1 += ore.getChance();
+		}
+		return new BlockInstance(stone);
 	}
 	
 	public boolean isGenerated() {
