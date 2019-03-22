@@ -102,31 +102,33 @@ public class Chunk {
 		BlockInstance inst0 = new BlockInstance(b);
 		inst0.setPosition(new Vector3i(x, y, z));
 		inst0.setWorld(world);
-		world.blocks().add(inst0);
 		list.add(inst0);
-		try {
-			inst[rx][y][rz] = inst0;
-		} catch (NullPointerException e) {}
-		world.markEdit();
-		BlockInstance[] neighbors = inst0.getNeighbors();
-		for (int i = 0; i < neighbors.length; i++) {
-			if (neighbors[i] == null) {
-				world.visibleBlocks().get(inst0.getBlock()).add(inst0);
-				break;
-			}
+		if(inst == null) {
+			inst = new BlockInstance[16][World.WORLD_HEIGHT][16];
 		}
-		for (int i = 0; i < neighbors.length; i++) {
-			if (neighbors[i] != null && world.visibleBlocks().get(neighbors[i].getBlock()).contains(neighbors[i])) {
-				BlockInstance[] neighbors1 = neighbors[i].getNeighbors();
-				boolean vis = true;
-				for (int j = 0; j < neighbors.length; j++) {
-					if (neighbors[j] == null) {
-						vis = false;
-						break;
-					}
+		inst[rx][y][rz] = inst0;
+		world.markEdit();
+		if(loaded) {
+			BlockInstance[] neighbors = inst0.getNeighbors();
+			for (int i = 0; i < neighbors.length; i++) {
+				if (neighbors[i] == null) {
+					world.visibleBlocks().get(inst0.getBlock()).add(inst0);
+					break;
 				}
-				if(vis) {
-					world.visibleBlocks().get(neighbors[i].getBlock()).remove(neighbors[i]);
+			}
+			for (int i = 0; i < neighbors.length; i++) {
+				if (neighbors[i] != null && world.visibleBlocks().get(neighbors[i].getBlock()).contains(neighbors[i])) {
+					BlockInstance[] neighbors1 = neighbors[i].getNeighbors();
+					boolean vis = true;
+					for (int j = 0; j < neighbors.length; j++) {
+						if (neighbors[j] == null) {
+							vis = false;
+							break;
+						}
+					}
+					if(vis) {
+						world.visibleBlocks().get(neighbors[i].getBlock()).remove(neighbors[i]);
+					}
 				}
 			}
 		}
@@ -137,8 +139,9 @@ public class Chunk {
 	//TODO: Finish vegetation
 	//TODO: Clean this method
 	public void generateFrom(float[][] map, float[][] vegetation, float[][] oreMap) {
-		inst = new BlockInstance[16][World.WORLD_HEIGHT][16];
-		loaded = true;
+		if(inst == null) {
+			inst = new BlockInstance[16][World.WORLD_HEIGHT][16];
+		}
 		int wx = ox << 4;
 		int wy = oy << 4;
 		
@@ -168,7 +171,7 @@ public class Chunk {
 					//bi.getSpatial().setPosition(new Vector3i(wx + px, j, wy + py));
 					//bi.getSpatial().setScale(0.5F);
 					bi.setWorld(world);
-					world.blocks().add(bi);
+					//world.blocks().add(bi);
 					list.add(bi);
 					inst[px][j][py] = bi;
 					/*if (bi.getBlock() instanceof IBlockEntity) {
@@ -190,20 +193,24 @@ public class Chunk {
 				}
 			}
 		}
-		
-		// Visible blocks
+		generated = true;
+	}
+	
+	// Loads the chunk
+	public void load() {
+		loaded = true;
+		int wx = ox << 4;
+		int wy = oy << 4;
 		boolean chx0 = world.getChunk(ox - 1, oy).isGenerated();
 		boolean chx1 = world.getChunk(ox + 1, oy).isGenerated();
 		boolean chy0 = world.getChunk(ox, oy - 1).isGenerated();
 		boolean chy1 = world.getChunk(ox, oy + 1).isGenerated();
 		for (int px = 0; px < 16; px++) {
 			for (int py = 0; py < 16; py++) {
-				float value = map[px][py];
-				int y = (int) (value * World.WORLD_HEIGHT);
-				if(y < SEA_LEVEL) {
-					y = SEA_LEVEL;
-				}
-				for (int j = y; j >= 0; j--) {
+				for (int j = world.WORLD_HEIGHT - 1; j >= 0; j--) {
+					if (inst[px][j][py] == null) {
+						continue;
+					}
 					BlockInstance[] neighbors = inst[px][j][py].getNeighbors();
 					for (int i = 0; i < neighbors.length; i++) {
 						if (neighbors[i] == null 	&& (j != 0 || i != 4)
@@ -227,17 +234,17 @@ public class Chunk {
 						chy1 && py == 15};
 				for(int k = 0; k < 4; k++) {
 					if (toCheck[k]) {
-						for (int j = y + 1; j <= World.WORLD_HEIGHT; j++) {
+						for (int j = World.WORLD_HEIGHT - 1; j >= 0; j--) {
 							BlockInstance inst0 = world.getBlock(wx + dx[k], j, wy + dy[k]);
 							if(inst0 == null) {
-								break;
+								continue;
 							}
 							if(world.visibleBlocks().get(inst0.getBlock()).contains(inst0)) {
 								continue;
 							}
 							if (inst0.getNeighbor(neighbor[k]) == null) {
 								world.visibleBlocks().get(inst0.getBlock()).add(inst0);
-								break;
+								continue;
 							}
 						}
 					}
@@ -245,7 +252,6 @@ public class Chunk {
 				world.markEdit();
 			}
 		}
-		generated = true;
 	}
 	
 	// This function only allows a less than 50% of the underground to be ores.
@@ -275,7 +281,6 @@ public class Chunk {
 	
 	public void _removeBlockAt(int x, int y, int z) {
 		BlockInstance bi = getBlockInstanceAt(x, y, z);
-		world.blocks().remove(bi);
 		world.visibleBlocks().get(bi.getBlock()).remove(bi);
 		inst[x][y][z] = null;
 	}
@@ -294,7 +299,6 @@ public class Chunk {
 	public void removeBlockAt(int x, int y, int z) {
 		BlockInstance bi = getBlockInstanceAt(x, y, z);
 		if (bi != null) {
-			world.blocks().remove(bi);
 			world.visibleBlocks().get(bi.getBlock()).remove(bi);
 			inst[x][y][z] = null;
 			// 0 = EAST  (x - 1)

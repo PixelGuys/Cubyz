@@ -41,11 +41,6 @@ public class RemoteWorld extends World {
 	}
 
 	@Override
-	public ArrayList<BlockInstance> blocks() {
-		return null;
-	}
-
-	@Override
 	public Map<Block, ArrayList<BlockInstance>> visibleBlocks() {
 		return null;
 	}

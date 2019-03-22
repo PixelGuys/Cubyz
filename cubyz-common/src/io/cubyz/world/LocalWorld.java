@@ -23,7 +23,7 @@ public class LocalWorld extends World {
 	private ArrayList<Chunk> chunks;
 	private ArrayList<Entity> entities = new ArrayList<>();
 	
-	private List<BlockInstance> spatials = new ArrayList<>();
+	//private List<BlockInstance> spatials = new ArrayList<>();
 	private Map<Block, ArrayList<BlockInstance>> visibleSpatials = Collections.synchronizedMap(new HashMap<>());
 	private boolean edited;
 	private Player player;
@@ -37,18 +37,20 @@ public class LocalWorld extends World {
 		
 		public void queue(ChunkAction ca) {
 			
-			if (!isQueued(ca.chunk)) {
+			if (!isQueued(ca)) {
 				//CubzLogger.instance.fine("Queued " + ca.type + " for chunk " + ca.chunk);
 				loadList.add(ca);
 			}
 		}
 		
-		public boolean isQueued(Chunk chunk) {
+		public boolean isQueued(ChunkAction ca) {
 			ChunkAction[] list = loadList.toArray(new ChunkAction[0]);
 			for (ChunkAction ch : list) {
 				if (ch != null) {
-					if (ch.chunk == chunk)
+					if (ch.chunk == ca.chunk) {
+						ch.type = ca.type;
 						return true;
+					}
 				}
 			}
 			return false;
@@ -60,23 +62,22 @@ public class LocalWorld extends World {
 					ChunkAction popped = loadList.pop();
 					if (popped.type == ChunkActionType.GENERATE) {
 						CubzLogger.instance.fine("Generating " + popped.chunk.getX() + "," + popped.chunk.getZ());
-						if (!popped.chunk.isGenerated()) {
-							synchronousGenerate(popped.chunk);
-						} else {
-							if (!popped.chunk.isLoaded()) {
-								
-							}
+						synchronousGenerate(popped.chunk);
+						popped.chunk.load();
+					}
+					else if (popped.type == ChunkActionType.LOAD) {
+						if(!popped.chunk.isLoaded()) {
+							popped.chunk.load();
 						}
 					}
-					/*else if (popped.type == ChunkActionType.UNLOAD) {
+					else if (popped.type == ChunkActionType.UNLOAD) {
 						CubzLogger.instance.fine("Unloading " + popped.chunk.getX() + "," + popped.chunk.getZ());
 						for (BlockInstance bi : popped.chunk.list()) {
 							Block b = bi.getBlock();
 							visibleSpatials.get(b).remove(bi);
-							spatials.remove(bi);
 						}
 						popped.chunk.setLoaded(false);
-					}*/
+					}
 				}
 				System.out.print("");
 			}
@@ -147,11 +148,6 @@ public class LocalWorld extends World {
 	}
 	
 	@Override
-	public List<BlockInstance> blocks() {
-		return spatials;
-	}
-	
-	@Override
 	public Map<Block, ArrayList<BlockInstance>> visibleBlocks() {
 		return visibleSpatials;
 	}
@@ -160,7 +156,6 @@ public class LocalWorld extends World {
 		Chunk ch = getChunk(x, z);
 		if (ch.isLoaded()) {
 			for (BlockInstance bi : ch.list()) {
-				spatials.remove(bi);
 				visibleSpatials.get(bi.getBlock()).remove(bi);
 			}
 			ch.setLoaded(false);
@@ -179,25 +174,22 @@ public class LocalWorld extends World {
 	public void synchronousGenerate(Chunk ch) {
 		int x = ch.getX() * 16; int y = ch.getZ() * 16;
 		float[][] heightMap = Noise.generateMapFragment(x, y, 16, 16, 300, seed);
-		float[][] vegetationMap = Noise.generateMapFragment(x, y, 16, 16, 300, seed + 3 * (seed & Integer.MAX_VALUE));
-		float[][] oreMap = Noise.generateMapFragment(x, y, 16, 16, 300, seed - 3 * (seed & Integer.MAX_VALUE));
+		float[][] vegetationMap = Noise.generateMapFragment(x, y, 16, 16, 300, seed + 3 * (seed + 1 & Integer.MAX_VALUE));
+		float[][] oreMap = Noise.generateMapFragment(x, y, 16, 16, 300, seed - 3 * (seed - 1 & Integer.MAX_VALUE));
 		ch.generateFrom(heightMap, vegetationMap, oreMap);
 	}
 	
 	@Override
 	public Chunk getChunk(int x, int z) {
-		Chunk c = null;
-		for (Chunk ch : chunks) {
-			if (ch.getX() == x && ch.getZ() == z) {
-				c = ch;
+		for (int i = 0; i < chunks.size(); i++) {
+			if (chunks.get(i).getX() == x && chunks.get(i).getZ() == z) {
+				return chunks.get(i);
 			}
 		}
 		
-		if (c == null) {
-			c = new Chunk(x, z, this);
-			// not generated
-			chunks.add(c);
-		}
+		Chunk c = new Chunk(x, z, this);
+		// not generated
+		chunks.add(c);
 		return c;
 	}
 	
@@ -256,16 +248,19 @@ public class LocalWorld extends World {
 
 	@Override
 	public void seek(int x, int z) {
-		int renderDistance = 2-1;
+		int renderDistance/*minus 1*/ = 2;
 		int blockDistance = renderDistance*16;
-		for (int x1 = x - blockDistance-16; x1 < x + blockDistance+16; x1++) {
-			for (int z1 = z - blockDistance-16; z1 < z + blockDistance+16; z1++) {
+		for (int x1 = x - blockDistance-48; x1 < x + blockDistance+48; x1++) {
+			for (int z1 = z - blockDistance-48; z1 < z + blockDistance+48; z1++) {
 				Chunk ch = getChunk(x1/16,z1/16);
-				if (x1>x-blockDistance&&x1<x+blockDistance&&z1>z-blockDistance&&z1<z+blockDistance) {
+				if (x1>x-blockDistance&&x1<x+blockDistance&&z1>z-blockDistance&&z1<z+blockDistance && !ch.isLoaded()) {
 					if (!ch.isGenerated()) {
 						queueChunk(new ChunkAction(ch, ChunkActionType.GENERATE));
 					}
-				} else {
+					else {
+						queueChunk(new ChunkAction(ch, ChunkActionType.LOAD));
+					}
+				} else if (x1 < x-blockDistance - 16 || x1 > x + blockDistance + 16 || z1 < z - blockDistance - 16 || z1 > z + blockDistance +16) {
 					if (ch.isLoaded()) {
 						queueChunk(new ChunkAction(ch, ChunkActionType.UNLOAD));
 					}

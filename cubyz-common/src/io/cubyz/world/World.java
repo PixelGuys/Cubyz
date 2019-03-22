@@ -23,11 +23,13 @@ public abstract class World {
 	
 	public static enum ChunkActionType {
 		/**
-		 * If not generated, generates the chunk, if not loaded, loads it.<br/>
-		 * There is <b>NO WAY</b> to specify if it should only load or only generate, 
-		 * because ungenerated chunks are not saved, and so cannot be loaded.
+		 * generates the chunk
 		 */
 		GENERATE,
+		/**
+		 * loads the chunk
+		 */
+		LOAD,
 		/**
 		 * Unloads the chunk
 		 */
@@ -80,7 +82,6 @@ public abstract class World {
 		return WORLD_HEIGHT;
 	}
 	
-	public abstract List<BlockInstance> blocks();
 	public abstract Map<Block, ArrayList<BlockInstance>> visibleBlocks();
 	public abstract Entity[] getEntities();
 	

@@ -123,8 +123,9 @@ public class MainRenderer implements IRenderer {
 			HashMap<Mesh, List<Spatial>> m = new HashMap<>();
 			for (Block block : map.keySet()) {
 				ArrayList<Spatial> spatialList = new ArrayList<Spatial>();
-			    for (BlockInstance bi : map.get(block)) {
-			    	spatialList.add((Spatial) bi.getSpatial());
+				ArrayList<BlockInstance> blockList = map.get(block);
+			    for (int i = 0; i < blockList.size(); i++) {
+			    	spatialList.add((Spatial) blockList.get(i).getSpatial());
 			    }
 			    m.put((Mesh) block.getBlockPair().get("meshCache"), spatialList);
 			}
