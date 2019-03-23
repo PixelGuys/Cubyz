@@ -51,7 +51,7 @@ public class BaseMod {
 		System.out.println("Init!");
 	}
 	
-	@EventHandler(type = "blocks/register")
+	@EventHandler(type = "block/register")
 	public void registerBlocks(Registry<Block> reg) {
 		
 		// Normal
