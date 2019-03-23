@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import org.jungle.hud.Font;
 import org.jungle.hud.Hud;
 import org.lwjgl.nanovg.NVGColor;
+import org.lwjgl.nanovg.NVGPaint;
 import org.lwjgl.nanovg.NanoVG;
 
 import io.cubyz.CubzLogger;
@@ -16,6 +17,7 @@ public class NGraphics {
 
 	private static long nvg;
 	private static NVGColor color = NVGColor.create();
+	private static NVGPaint imagePaint = NVGPaint.create();
 	private static int textAlign = NVG_ALIGN_LEFT | NVG_ALIGN_TOP;
 	
 	private static final boolean LOG_OPERATIONS = false;
@@ -24,6 +26,20 @@ public class NGraphics {
 	
 	public static void setNanoID(long nvg) {
 		NGraphics.nvg = nvg;
+	}
+	
+	public static int loadImage(String path) {
+		if (LOG_OPERATIONS)
+			CubzLogger.instance.fine("[NGRAPHICS] Load Image " + path);
+		return nvgCreateImage(nvg, path, 0);
+	}
+	
+	public static void drawImage(int id, int x, int y, int width, int height) {
+		imagePaint = nvgImagePattern(nvg, x, y, width, height, 0, id, 1f, imagePaint);
+		nvgBeginPath(nvg);
+		nvgRect(nvg, x, y, width, height);
+		nvgFillPaint(nvg, imagePaint);
+		nvgFill(nvg);
 	}
 	
 	public static void fillCircle(int x, int y, int radius) {

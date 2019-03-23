@@ -26,8 +26,8 @@ public class TextureConverter {
 	}
 	
 	public static BufferedImage convert(BufferedImage in, String name) {
-		File cached = new File("res/cache/cached_tex_" + name + ".png");
-		File cacheDir = new File("res/cache");
+		File cached = new File("cache/" + name.replace('/', '.') + ".png");
+		File cacheDir = new File("cache");
 		if (!cacheDir.exists())
 			cacheDir.mkdirs();
 		if (cached.exists()) {

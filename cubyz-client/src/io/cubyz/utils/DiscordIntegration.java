@@ -20,7 +20,7 @@ public class DiscordIntegration {
 	
 	public static void startRPC() {
 		DiscordRPC lib = DiscordRPC.INSTANCE;
-		String appID = "527033701343952896"; //NOTE: Normal > 527033701343952896
+		String appID = "527033701343952896";
 		String steamID = "";
 		DiscordEventHandlers handlers = new DiscordEventHandlers();
 		handlers.ready = new OnReady() {
