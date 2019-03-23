@@ -154,7 +154,6 @@ public class Chunk {
 			for (int py = 0; py < 16; py++) {
 				float value = map[px][py];
 				int y = (int) (value * World.WORLD_HEIGHT);
-				y &= 255; // somehow it can go below it :/
 				for (int j = y > SEA_LEVEL ? y : SEA_LEVEL; j >= 0; j--) {
 					BlockInstance bi = null;
 					if(j > y) {
