@@ -81,6 +81,8 @@ public class Chunk {
 	 * @param z
 	 */
 	public void addBlock(Block b, int x, int y, int z) {
+		if(y >= World.WORLD_HEIGHT)
+			return;
 		int rx = x - (ox << 4);
 		if (rx < 0) {
 			// Determines if the block is part of another chunk.
@@ -154,6 +156,8 @@ public class Chunk {
 			for (int py = 0; py < 16; py++) {
 				float value = map[px][py];
 				int y = (int) (value * World.WORLD_HEIGHT);
+				if(y == World.WORLD_HEIGHT)
+					y--;
 				for (int j = y > SEA_LEVEL ? y : SEA_LEVEL; j >= 0; j--) {
 					BlockInstance bi = null;
 					if(j > y) {

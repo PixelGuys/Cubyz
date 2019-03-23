@@ -168,9 +168,9 @@ public class LocalWorld extends World {
 	
 	public void synchronousGenerate(Chunk ch) {
 		int x = ch.getX() * 16; int y = ch.getZ() * 16;
-		float[][] heightMap = Noise.generateMapFragment(x, y, 16, 16, 300, seed);
-		float[][] vegetationMap = Noise.generateMapFragment(x, y, 16, 16, 300, seed + 3 * (seed + 1 & Integer.MAX_VALUE));
-		float[][] oreMap = Noise.generateMapFragment(x, y, 16, 16, 300, seed - 3 * (seed - 1 & Integer.MAX_VALUE));
+		float[][] heightMap = Noise.generateMapFragment(x, y, 16, 16, 256, seed);
+		float[][] vegetationMap = Noise.generateMapFragment(x, y, 16, 16, 128, seed + 3 * (seed + 1 & Integer.MAX_VALUE));
+		float[][] oreMap = Noise.generateMapFragment(x, y, 16, 16, 128, seed - 3 * (seed - 1 & Integer.MAX_VALUE));
 		ch.generateFrom(heightMap, vegetationMap, oreMap);
 	}
 	
