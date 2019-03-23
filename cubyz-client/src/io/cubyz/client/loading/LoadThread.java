@@ -2,7 +2,6 @@ package io.cubyz.client.loading;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -10,7 +9,17 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Set;
 
+import javax.swing.text.Utilities;
+
 import org.reflections.Reflections;
+
+import io.cubyz.Constants;
+import io.cubyz.CubzLogger;
+import io.cubyz.api.CubzRegistries;
+import io.cubyz.api.Mod;
+import io.cubyz.blocks.Block;
+import io.cubyz.blocks.BlockInstance;
+import io.cubyz.modding.ModLoader;
 
 public class LoadThread extends Thread {
 
@@ -19,7 +28,7 @@ public class LoadThread extends Thread {
 	
 	public void run() {
 		LoadingGUI l = LoadingGUI.getInstance();
-		CubzLogger log = (CubzLogger) Cubz.log;
+		CubzLogger log = CubzLogger.instance;
 		l.setStep(1, 0, 0);
 		
 		// RPC temporaly disabled
@@ -39,7 +48,7 @@ public class LoadThread extends Thread {
 		ArrayList<Object> mods = new ArrayList<>();
 		ArrayList<File> modSearchPath = new ArrayList<>();
 		modSearchPath.add(new File("mods"));
-		modSearchPath.add(new File("mods/" + Utilities.BUILD_TYPE + "_" + Utilities.VERSION));
+		modSearchPath.add(new File("mods/" + Constants.GAME_BUILD_TYPE + "_" + Constants.GAME_VERSION));
 		ArrayList<URL> modUrl = new ArrayList<>();
 		
 		for (File sp : modSearchPath) {
@@ -61,12 +70,12 @@ public class LoadThread extends Thread {
 		URLClassLoader loader = new URLClassLoader(modUrl.toArray(new URL[modUrl.size()]), LoadThread.class.getClassLoader());
 		log.info("Seeking mods..");
 		try {
-			Enumeration<URL> urls = loader.findResources("CubeComputers");
-			System.out.println("URLs");
-			while (urls.hasMoreElements()) {
-				URL url = urls.nextElement();
-				System.out.println("URL - " + url);
-			}
+			//Enumeration<URL> urls = loader.findResources("CubeComputers");
+			//System.out.println("URLs");
+			//while (urls.hasMoreElements()) {
+			//	URL url = urls.nextElement();
+			//	System.out.println("URL - " + url);
+			//}
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
@@ -86,12 +95,13 @@ public class LoadThread extends Thread {
 		}
 		log.info("Mod list complete");
 		
+		// TODO re-add pre-init
 		l.setStep(2, 0, mods.size());
 		for (int i = 0; i < mods.size(); i++) {
 			l.setStep(2, i+1, mods.size());
 			Object mod = mods.get(i);
 			log.info("Pre-initiating " + mod);
-			ModLoader.preInit(mod);
+			//ModLoader.preInit(mod);
 		}
 		
 		// Between pre-init and init code
@@ -109,23 +119,23 @@ public class LoadThread extends Thread {
 		//Cubz.setProfile(new UserProfile(new UserSession("CubzPublicTest", "publictest@cubz.io", "@zka71a".toCharArray())));
 		//System.out.println("UserProfile Loaded: UserProfile Name = '" + Cubz.getProfile().getName() + "' , UserProfile UUID = '" + Cubz.getProfile().getUUID() + "'.");
 		
-		// Pre-loading meshes
+		// TODO Pre-loading meshes
 		run = new Runnable() {
 			public void run() {
 				i++;
-				Block b = (Block) ModLoader.block_registry.registered()[i];
-				System.out.println("Creating mesh of " + b.getFullID());
+				Block b = (Block) CubzRegistries.BLOCK_REGISTRY.registered()[i];
+				System.out.println("Creating mesh of " + b.getRegistryID());
 				BlockInstance bi = new BlockInstance(b);
 				bi.getMesh();
-				if (i < ModLoader.block_registry.registered().length-1) {
-					Cubz.renderDeque.add(run);
-					l.setStep(4, i+1, ModLoader.block_registry.registered().length);
+				if (i < CubzRegistries.BLOCK_REGISTRY.registered().length-1) {
+					//Cubz.renderDeque.add(run);
+					l.setStep(4, i+1, CubzRegistries.BLOCK_REGISTRY.registered().length);
 				} else {
 					l.finishLoading();
 				}
 			}
 		};
-		Cubz.renderDeque.add(run);
+		//Cubz.renderDeque.add(run);
 		System.gc();
 	}
 	

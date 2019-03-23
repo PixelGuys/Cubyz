@@ -8,6 +8,7 @@ import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 
+// TODO
 public class RemoteWorld extends World {
 
 	@Override
@@ -24,20 +25,10 @@ public class RemoteWorld extends World {
 	public void markEdit() {
 		
 	}
-
+	
 	@Override
 	public Player getLocalPlayer() {
 		return null;
-	}
-
-	@Override
-	public int getWidth() {
-		return 0; //NOTE: Normal > 0
-	}
-
-	@Override
-	public int getDepth() {
-		return 0; //NOTE: Normal > 0
 	}
 
 	@Override
@@ -65,19 +56,16 @@ public class RemoteWorld extends World {
 
 	@Override
 	public void queueChunk(ChunkAction action) {
-		// TODO Auto-generated method stub
-		
+		// LOAD would be loading from server, UNLOAD would be unloading from client, and GENERATE would do nothing
 	}
 
 	@Override
 	public void seek(int x, int z) {
-		// TODO Auto-generated method stub
 		
 	}
 
 	@Override
 	public void synchronousSeek(int x, int z) {
-		// TODO Auto-generated method stub
 		
 	}
 

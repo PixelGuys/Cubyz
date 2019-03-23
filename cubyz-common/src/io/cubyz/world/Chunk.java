@@ -4,6 +4,8 @@ import java.util.ArrayList;
 
 import org.joml.Vector3i;
 
+import io.cubyz.api.CubzRegistries;
+import io.cubyz.api.Registry;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.Ore;
@@ -17,26 +19,28 @@ public class Chunk {
 	private boolean generated;
 	private boolean loaded;
 	
+	private static Registry<Block> br =  CubzRegistries.BLOCK_REGISTRY; // shortcut to BLOCK_REGISTRY
+	
 	// Normal:
-	private static Block grass = ModLoader.block_registry.getByID("cubz:grass");
-	private static Block sand = ModLoader.block_registry.getByID("cubz:sand");
-	private static Block dirt = ModLoader.block_registry.getByID("cubz:dirt");
-	private static Block stone = ModLoader.block_registry.getByID("cubz:stone");
-	private static Block bedrock = ModLoader.block_registry.getByID("cubz:bedrock");
+	private static Block grass = br.getByID("cubyz:grass");
+	private static Block sand = br.getByID("cubyz:sand");
+	private static Block dirt = br.getByID("cubyz:dirt");
+	private static Block stone = br.getByID("cubyz:stone");
+	private static Block bedrock = br.getByID("cubyz:bedrock");
 	
 	// Ores:
 	private static ArrayList<Ore> ores = new ArrayList<>();
 	static {
-		ores.add((Ore) ModLoader.block_registry.getByID("cubz:coal_ore"));
-		ores.add((Ore) ModLoader.block_registry.getByID("cubz:iron_ore"));
-		ores.add((Ore) ModLoader.block_registry.getByID("cubz:ruby_ore"));
-		ores.add((Ore) ModLoader.block_registry.getByID("cubz:gold_ore"));
-		ores.add((Ore) ModLoader.block_registry.getByID("cubz:diamond_ore"));
-		ores.add((Ore) ModLoader.block_registry.getByID("cubz:emerald_ore"));
+		ores.add((Ore) br.getByID("cubyz:coal_ore"));
+		ores.add((Ore) br.getByID("cubyz:iron_ore"));
+		ores.add((Ore) br.getByID("cubyz:ruby_ore"));
+		ores.add((Ore) br.getByID("cubyz:gold_ore"));
+		ores.add((Ore) br.getByID("cubyz:diamond_ore"));
+		ores.add((Ore) br.getByID("cubyz:emerald_ore"));
 	}
 	
 	// Liquids:
-	private static Block water = ModLoader.block_registry.getByID("cubz:water");
+	private static Block water = br.getByID("cubyz:water");
 	
 	public static final int SEA_LEVEL = 100;
 	
@@ -150,6 +154,7 @@ public class Chunk {
 			for (int py = 0; py < 16; py++) {
 				float value = map[px][py];
 				int y = (int) (value * World.WORLD_HEIGHT);
+				y &= 255; // somehow it can go below it :/
 				for (int j = y > SEA_LEVEL ? y : SEA_LEVEL; j >= 0; j--) {
 					BlockInstance bi = null;
 					if(j > y) {

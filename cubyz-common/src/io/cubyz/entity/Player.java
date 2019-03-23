@@ -4,6 +4,7 @@ import org.joml.AABBf;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 
+import io.cubyz.api.CubzRegistries;
 import io.cubyz.command.ICommandSource;
 
 //NOTE: Player is 2 Blocks Tall (2 Meters)
@@ -21,6 +22,7 @@ public class Player extends Entity implements ICommandSource {
 	}
 	
 	public Player(boolean local) {
+		super(CubzRegistries.ENTITY_REGISTRY.getByID("cubyz:"));
 		this.local = local;
 //		try {
 //			mesh = loadMesh("uglyplayer");
@@ -32,7 +34,6 @@ public class Player extends Entity implements ICommandSource {
 //		}
 //		spatial = new Spatial(mesh);
 //		spatial.setScale(0.5F);
-		setRegistryName("cubz:player");
 	}
 	
 	public boolean isLocal() {

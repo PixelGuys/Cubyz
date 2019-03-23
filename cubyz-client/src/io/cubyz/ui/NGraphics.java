@@ -11,7 +11,7 @@ import org.lwjgl.nanovg.NVGColor;
 import org.lwjgl.nanovg.NVGPaint;
 import org.lwjgl.nanovg.NanoVG;
 
-import io.cubyz.CubzLogger;
+import io.cubyz.CubyzLogger;
 
 public class NGraphics {
 
@@ -20,7 +20,7 @@ public class NGraphics {
 	private static NVGPaint imagePaint = NVGPaint.create();
 	private static int textAlign = NVG_ALIGN_LEFT | NVG_ALIGN_TOP;
 	
-	private static final boolean LOG_OPERATIONS = false;
+	private static final boolean LOG_OPERATIONS = Boolean.parseBoolean(System.getProperty("nanovg.logOperations", "false"));
 	
 	private static Font font;
 	
@@ -30,7 +30,7 @@ public class NGraphics {
 	
 	public static int loadImage(String path) {
 		if (LOG_OPERATIONS)
-			CubzLogger.instance.fine("[NGRAPHICS] Load Image " + path);
+			CubyzLogger.instance.fine("[NGRAPHICS] Load Image " + path);
 		return nvgCreateImage(nvg, path, 0);
 	}
 	
@@ -44,7 +44,7 @@ public class NGraphics {
 	
 	public static void fillCircle(int x, int y, int radius) {
 		if (LOG_OPERATIONS)
-			CubzLogger.instance.fine("[NGRAPHICS] fill circle at " + x + ", " + y + " with radius " + radius);
+			CubyzLogger.instance.fine("[NGRAPHICS] fill circle at " + x + ", " + y + " with radius " + radius);
 		nvgBeginPath(nvg);
 		nvgCircle(nvg, x, y, radius);
 		nvgFillColor(nvg, color);
@@ -53,7 +53,7 @@ public class NGraphics {
 	
 	public static void drawRect(int x, int y, int width, int height) {
 		if (LOG_OPERATIONS)
-			CubzLogger.instance.fine("[NGRAPHICS] draw rect at " + x + ", " + y + " with size " + width + ", " + height);
+			CubyzLogger.instance.fine("[NGRAPHICS] draw rect at " + x + ", " + y + " with size " + width + ", " + height);
 		nvgBeginPath(nvg);
 		nvgRect(nvg, x, y, width, height);
 		nvgStrokeColor(nvg, color);
@@ -62,7 +62,7 @@ public class NGraphics {
 	
 	public static void fillRect(int x, int y, int width, int height) {
 		if (LOG_OPERATIONS)
-			CubzLogger.instance.fine("[NGRAPHICS] fill rect at " + x + ", " + y + " with size " + width + ", " + height);
+			CubyzLogger.instance.fine("[NGRAPHICS] fill rect at " + x + ", " + y + " with size " + width + ", " + height);
 		nvgBeginPath(nvg);
 		nvgRect(nvg, x, y, width, height);
 		nvgFillColor(nvg, color);
@@ -99,7 +99,7 @@ public class NGraphics {
 
 	public static void drawText(int x, int y, String text) {
 		if (LOG_OPERATIONS)
-			CubzLogger.instance.fine("[NGRAPHICS] draw text \"" + text + "\" at " + x + ", " + y);
+			CubyzLogger.instance.fine("[NGRAPHICS] draw text \"" + text + "\" at " + x + ", " + y);
 		nvgFontSize(nvg, font.getSize());
 		nvgFontFaceId(nvg, font.getNVGId());
 		nvgTextAlign(nvg, textAlign);

@@ -3,10 +3,12 @@ package io.cubyz.api;
 import java.util.HashMap;
 import java.util.List;
 
+import io.cubyz.CubyzLogger;
+
 public class Registry<T extends IRegistryElement> {
 
 	private HashMap<String, T> hashMap = new HashMap<>();
-	private boolean debug = Boolean.parseBoolean(System.getProperty("registry.debugEnabled", "true"));
+	private boolean debug = Boolean.parseBoolean(System.getProperty("registry.debugEnabled", "false"));
 	private boolean alwaysError = Boolean.parseBoolean(System.getProperty("registry.dumpAsError", "true"));
 	
 	public IRegistryElement[] registered() { // can be casted to T
@@ -35,7 +37,7 @@ public class Registry<T extends IRegistryElement> {
 		}
 		hashMap.put(element.getRegistryID().toString(), element);
 		if (debug) {
-			//Cubyz.log.info("Registered " + getType(element.getClass()) + " as " + element.getFullID());
+			CubyzLogger.instance.info("Registered " + getType(element.getClass()) + " as " + element.getRegistryID());
 		}
 	}
 	

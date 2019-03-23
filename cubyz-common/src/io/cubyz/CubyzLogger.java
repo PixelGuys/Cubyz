@@ -14,20 +14,20 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
-public class CubzLogger extends Logger {
+public class CubyzLogger extends Logger {
 
 	public static boolean useDefaultHandler = false;
 	/**
 	 * Same as <code>instance</code>
 	 */
-	public static CubzLogger i; // instance
-	public static CubzLogger instance;
+	public static CubyzLogger i; // instance
+	public static CubyzLogger instance;
 	
 	static {
-		new CubzLogger();
+		new CubyzLogger();
 	}
 	
-	protected CubzLogger() {
+	protected CubyzLogger() {
 		super("Cubz", null);
 		setUseParentHandlers(true);
 		this.setParent(Logger.getGlobal());

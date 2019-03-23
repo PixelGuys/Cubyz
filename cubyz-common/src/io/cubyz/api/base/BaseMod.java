@@ -77,6 +77,7 @@ public class BaseMod {
 		
 		// Register
 		reg.registerAll(bedrock, grass, dirt, oakLeaves, oakLog, sand, stone, coal, diamond, emerald, gold, iron, ruby, water);
+		System.out.println("Added all");
 	}
 	
 }

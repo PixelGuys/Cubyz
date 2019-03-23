@@ -9,7 +9,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 
-import io.cubyz.CubzLogger;
+import io.cubyz.CubyzLogger;
+import io.cubyz.api.CubzRegistries;
 import io.cubyz.api.IRegistryElement;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
@@ -37,11 +38,16 @@ public class LocalWorld extends World {
 	
 	private class ChunkGenerationThread extends Thread {
 		Deque<ChunkAction> loadList = new ArrayDeque<>(); // FIFO order (First In, First Out)
+		private static final int MAX_QUEUE_SIZE = 8;
 		
 		public void queue(ChunkAction ca) {
-			
 			if (!isQueued(ca)) {
-				//CubzLogger.instance.fine("Queued " + ca.type + " for chunk " + ca.chunk);
+				if (loadList.size() > MAX_QUEUE_SIZE) {
+					CubyzLogger.instance.info("Hang on, the Local-Chunk-Thread's queue is full, blocking!");
+					while (!loadList.isEmpty()) {
+						System.out.print(""); // again, used as replacement to Thread.onSpinWait(), also necessary due to some JVM oddities
+					}
+				}
 				loadList.add(ca);
 			}
 		}
@@ -64,7 +70,7 @@ public class LocalWorld extends World {
 				if (!loadList.isEmpty()) {
 					ChunkAction popped = loadList.pop();
 					if (popped.type == ChunkActionType.GENERATE) {
-						CubzLogger.instance.fine("Generating " + popped.chunk.getX() + "," + popped.chunk.getZ());
+						CubyzLogger.instance.fine("Generating " + popped.chunk.getX() + "," + popped.chunk.getZ());
 						synchronousGenerate(popped.chunk);
 						popped.chunk.load();
 					}
@@ -74,7 +80,7 @@ public class LocalWorld extends World {
 						}
 					}
 					else if (popped.type == ChunkActionType.UNLOAD) {
-						CubzLogger.instance.fine("Unloading " + popped.chunk.getX() + "," + popped.chunk.getZ());
+						CubyzLogger.instance.fine("Unloading " + popped.chunk.getX() + "," + popped.chunk.getZ());
 						for (BlockInstance bi : popped.chunk.list()) {
 							Block b = bi.getBlock();
 							visibleSpatials.get(b).remove(bi);
@@ -229,7 +235,7 @@ public class LocalWorld extends World {
 	public void generate() {
 		Random r = new Random();
 		seed = r.nextInt();
-		for (IRegistryElement ire : ModLoader.block_registry.registered()) {
+		for (IRegistryElement ire : CubzRegistries.BLOCK_REGISTRY.registered()) {
 			Block b = (Block) ire;
 			visibleSpatials.put(b, new ArrayList<>());
 		}

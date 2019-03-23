@@ -10,7 +10,7 @@ public class EntityIO {
 
 	public static void saveEntity(Entity ent, DataOutputStream out) throws IOException {
 		// written as double to prepare future conversion from floats to doubles (for very large worlds)
-		out.writeUTF(ent.getRegistryName());
+		out.writeUTF(ent.getType().getRegistryID().toString());
 		out.writeDouble(ent.getPosition().x);
 		out.writeDouble(ent.getPosition().y);
 		out.writeDouble(ent.getPosition().z);
@@ -23,7 +23,7 @@ public class EntityIO {
 	}
 	
 	public static Entity loadEntity(DataInputStream dis) throws IOException {
-		
+		return null;
 	}
 	
 }

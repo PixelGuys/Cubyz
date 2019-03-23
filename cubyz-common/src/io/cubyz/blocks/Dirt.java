@@ -4,7 +4,7 @@ public class Dirt extends Block {
 
 	public Dirt() {
 		setTexture("dirt");
-		setID("cubz:dirt");
+		setID("cubyz:dirt");
 	}
 	
 }

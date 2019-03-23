@@ -4,7 +4,7 @@ public class OakLeaves extends Block {
 
 	public OakLeaves() {
 		setTexture("oak_leaves");
-		setID("cubz:oak_leaves");
+		setID("cubyz:oak_leaves");
 	}
 	
 	public void update() {

@@ -1,5 +1,6 @@
 package io.cubyz.world;
 
+import io.cubyz.api.CubzRegistries;
 import io.cubyz.blocks.*;
 import io.cubyz.modding.ModLoader;
 import io.cubyz.world.*;
@@ -14,8 +15,8 @@ public class Structures {
 	
 	public static void generateTree(Chunk ch, int x, int y, int z) {
 		//Instances
-		Block wood = ModLoader.block_registry.getByID("cubz:oak_log");
-		Block leaves = ModLoader.block_registry.getByID("cubz:oak_leaves");
+		Block wood = CubzRegistries.BLOCK_REGISTRY.getByID("cubyz:oak_log");
+		Block leaves = CubzRegistries.BLOCK_REGISTRY.getByID("cubyz:oak_leaves");
 		
 		//Position of the first block of wood
 		int height = 7 + random.nextInt(5);

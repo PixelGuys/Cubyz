@@ -33,7 +33,8 @@ import org.reflections.Reflections;
 
 import io.cubyz.ClientOnly;
 import io.cubyz.Constants;
-import io.cubyz.CubzLogger;
+import io.cubyz.CubyzLogger;
+import io.cubyz.api.CubzRegistries;
 import io.cubyz.api.IRegistryElement;
 import io.cubyz.api.Mod;
 import io.cubyz.blocks.Block;
@@ -74,7 +75,7 @@ public class Cubyz implements IGameLogic {
 
 	private int breakCooldown = 10;
 
-	public static Logger log = CubzLogger.i;
+	public static Logger log = CubyzLogger.i;
 
 	public static String serverIP = "localhost";
 	public static int serverPort = 58961;
@@ -104,7 +105,7 @@ public class Cubyz implements IGameLogic {
 	@Override
 	public void cleanup() {
 		renderer.cleanup();
-		CubzLogger.i.getHandlers()[0].close();
+		log.getHandlers()[0].close();
 		DiscordIntegration.closeRPC();
 	}
 
@@ -203,7 +204,7 @@ public class Cubyz implements IGameLogic {
 		};
 		
 		// client-side init
-		for (IRegistryElement ire : ModLoader.block_registry.registered()) {
+		for (IRegistryElement ire : CubzRegistries.BLOCK_REGISTRY.registered()) {
 			Block b = (Block) ire;
 			b.setBlockPair(new ClientBlockPair());
 			ClientOnly.createBlockMesh.accept(b);

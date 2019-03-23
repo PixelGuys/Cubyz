@@ -4,7 +4,7 @@ public class Water extends Block {
 
 	public Water() {
 		setTexture("water");
-		setID("cubz:water");
+		setID("cubyz:water");
 	}
 	
 }

@@ -4,7 +4,7 @@ public class Sand extends Block {
 
 	public Sand() {
 		setTexture("sand");
-		setID("cubz:sand");
+		setID("cubyz:sand");
 	}
 	
 }

@@ -1,3 +1,4 @@
 {
-	"model": "base:models/3d/block.obj"
+	"model": "block.obj", // appended to "base:models/3d/"
+	"texture": ""
 }

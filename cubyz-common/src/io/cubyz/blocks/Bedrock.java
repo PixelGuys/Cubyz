@@ -4,7 +4,7 @@ public class Bedrock extends Block {
 
 	public Bedrock() {
 		setTexture("bedrock");
-		setID("cubz:bedrock");
+		setID("cubyz:bedrock");
 		setUnbreakable();
 	}
 	

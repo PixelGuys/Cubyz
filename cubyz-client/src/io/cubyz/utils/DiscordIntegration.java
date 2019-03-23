@@ -4,10 +4,12 @@ import java.util.Random;
 
 import club.minnced.discord.rpc.DiscordEventHandlers;
 import club.minnced.discord.rpc.DiscordEventHandlers.OnReady;
-import io.cubyz.client.Cubyz;
 import club.minnced.discord.rpc.DiscordRPC;
 import club.minnced.discord.rpc.DiscordRichPresence;
 import club.minnced.discord.rpc.DiscordUser;
+import io.cubyz.client.Cubyz;
+import io.cubyz.ui.ToastManager;
+import io.cubyz.ui.ToastManager.Toast;
 
 public class DiscordIntegration {
 
@@ -19,6 +21,7 @@ public class DiscordIntegration {
 	}
 	
 	public static void startRPC() {
+		
 		DiscordRPC lib = DiscordRPC.INSTANCE;
 		String appID = "527033701343952896";
 		String steamID = "";
@@ -26,20 +29,20 @@ public class DiscordIntegration {
 		handlers.ready = new OnReady() {
 
 			@Override
-			public void accept(DiscordUser arg0) {
-				System.out.println("Ready as user " + arg0.username);
+			public void accept(DiscordUser user) {
+				ToastManager.queuedToasts.push(new Toast("Discord Integration", user.username + " is linked to you!"));
 			}
 			
 		};
 		handlers.joinGame = (secret) -> {
-			String serverIP = secret.split(":")[0]; //NOTE: Normal > 0
+			String serverIP = secret.split(":")[0];
 			int serverPort = Integer.parseInt(secret.split(":")[1]);
 			System.out.println("Attempting to join server " + serverIP + " at port " + serverPort);
 			Cubyz.requestJoin(serverIP, serverPort);
 		};
 		
 		handlers.joinRequest = (user) -> {
-			System.out.println("Join request from " + user.toString() + ", " + user.username);
+			ToastManager.queuedToasts.push(new Toast("Discord Integration", "Join request from " + user.username));
 			if (Cubyz.serverOnline < Cubyz.serverCapacity) {
 				lib.Discord_Respond(user.userId, DiscordRPC.DISCORD_REPLY_YES);
 			} else {
@@ -66,7 +69,7 @@ public class DiscordIntegration {
 		
 		presence.partyId = generatePartyID();
 		
-		setStatus("No status.");
+		setStatus("Just started");
 		
 		lib.Discord_UpdatePresence(presence);
 		
@@ -74,7 +77,7 @@ public class DiscordIntegration {
             while (!Thread.currentThread().isInterrupted()) {
                 lib.Discord_RunCallbacks();
                 try {
-                    Thread.sleep(2000L); //NOTE: Normal > 2000L
+                    Thread.sleep(2000);
                 } catch (InterruptedException ignored) {
                 	break;
                 }
@@ -93,15 +96,15 @@ public class DiscordIntegration {
 		if (Cubyz.isIntegratedServer) {
 			presence.state = "Singleplayer";
 			//presence.joinSecret = null;
-			//presence.partySize = 0; //NOTE: Normal > 0
+			//presence.partySize = 0;
 		}
 		else {
 			if (Cubyz.isOnlineServerOpened) {
 				presence.state = "Join me ;)";
-				presence.partyMax = 50; // temporary || NOTE: Normal > 50
+				presence.partyMax = 50; // temporary
 			} else {
 				presence.state = "Multiplayer";
-				presence.partyMax = 50; // temporary || NOTE: Normal > 50
+				presence.partyMax = 50; // temporary
 			}
 		}
 		DiscordRPC.INSTANCE.Discord_UpdatePresence(presence);

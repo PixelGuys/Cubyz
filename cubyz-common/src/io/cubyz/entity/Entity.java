@@ -11,21 +11,24 @@ import io.cubyz.world.World;
 
 public abstract class Entity {
 
-	protected String registryName;
-	protected float entitySpeed;
 	protected World world;
 	
-	protected AABBf aabb = new AABBf();
 	protected Vector3f position = new Vector3f();
 	protected Vector3f rotation = new Vector3f();
 	public float vx, vy, vz;
 	
 	protected IRenderablePair renderPair;
 	
+	private EntityType type;
+	
 	protected int width = 1, height = 2, depth = 1;
 	
-	public float getSpeed() {
-		return entitySpeed;
+	public Entity(EntityType type) {
+		this.type = type;
+	}
+	
+	public EntityType getType() {
+		return type;
 	}
 	
 	public World getWorld() {
@@ -34,14 +37,6 @@ public abstract class Entity {
 
 	public void setWorld(World world) {
 		this.world = world;
-	}
-
-	public String getRegistryName() {
-		return registryName;
-	}
-	
-	public void setRegistryName(String registryName) {
-		this.registryName = registryName;
 	}
 	
 	public Vector3f getPosition() {
@@ -215,13 +210,6 @@ public abstract class Entity {
 	}
 	
 	public void update() {
-		aabb.minX = position.x();
-		aabb.maxX = position.x() + width;
-		aabb.minY = position.y();
-		aabb.maxY = position.y() + height;
-		aabb.minZ = position.z();
-		aabb.maxZ = position.z() + width;
-		
 		if (renderPair != null) {
 			Consumer<Entity> upd = (Consumer<Entity>) renderPair.get("renderPairUpdate");
 			upd.accept(this);
