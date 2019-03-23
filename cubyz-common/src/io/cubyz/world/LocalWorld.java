@@ -21,6 +21,7 @@ public class LocalWorld extends World {
 
 	private String name;
 	private ArrayList<Chunk> chunks;
+	private int lastChunk = -1;
 	private ArrayList<Entity> entities = new ArrayList<>();
 	
 	//private List<BlockInstance> spatials = new ArrayList<>();
@@ -181,8 +182,12 @@ public class LocalWorld extends World {
 	
 	@Override
 	public Chunk getChunk(int x, int z) {
+		if(lastChunk >= 0 && chunks.get(lastChunk).getX() == x && chunks.get(lastChunk).getZ() == z) {
+			return chunks.get(lastChunk);
+		}
 		for (int i = 0; i < chunks.size(); i++) {
 			if (chunks.get(i).getX() == x && chunks.get(i).getZ() == z) {
+				lastChunk = i;
 				return chunks.get(i);
 			}
 		}
@@ -190,6 +195,7 @@ public class LocalWorld extends World {
 		Chunk c = new Chunk(x, z, this);
 		// not generated
 		chunks.add(c);
+		lastChunk = chunks.size()-1;
 		return c;
 	}
 	
