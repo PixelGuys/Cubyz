@@ -1,11 +1,11 @@
 package io.cubyz.world;
 
+import java.io.File;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
@@ -16,6 +16,7 @@ import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.modding.ModLoader;
+import io.cubyz.save.WorldIO;
 
 public class LocalWorld extends World {
 
@@ -29,6 +30,7 @@ public class LocalWorld extends World {
 	private boolean edited;
 	private Player player;
 	
+	private WorldIO wio;
 	private int seed;
 	
 	private ChunkGenerationThread thread;
@@ -109,6 +111,8 @@ public class LocalWorld extends World {
 		thread.setName("Local-Chunk-Thread");
 		thread.setDaemon(true);
 		thread.start();
+		
+		wio = new WorldIO(this, new File("saves/" + name));
 	}
 	
 	@Override
@@ -125,22 +129,6 @@ public class LocalWorld extends World {
 			}
 		}
 		return player;
-	}
-	
-	/**
-	 * Provided for compatibility.
-	 */
-	@Override
-	public int getWidth() {
-		return -1;
-	}
-	
-	/**
-	 * Providded for compatibility.
-	 */
-	@Override
-	public int getDepth() {
-		return -1;
 	}
 	
 	@Override

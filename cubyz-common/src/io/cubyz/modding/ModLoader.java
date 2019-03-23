@@ -10,12 +10,15 @@ import io.cubyz.api.Registry;
 import io.cubyz.api.Side;
 import io.cubyz.api.SideOnly;
 import io.cubyz.blocks.Block;
+import io.cubyz.entity.EntityType;
 import io.cubyz.items.Item;
 
+// Most methods should ALWAYS be found as if it were on Side.SERVER
 public class ModLoader {
 
-	public static Registry<Block> block_registry = new Registry<Block>();
-	public static Registry<Item>  item_registry =  new Registry<Item>();
+	public static Registry<Block>      block_registry  = new Registry<Block>();
+	public static Registry<Item>       item_registry   = new Registry<Item>();
+	public static Registry<EntityType> entity_registry = new Registry<EntityType>();
 	
 	public static boolean isCorrectSide(Side currentSide, Method method) {
 		boolean haveAnnot = false;
@@ -34,18 +37,36 @@ public class ModLoader {
 		return false;
 	}
 	
-	public static void init(Object mod) {
-		registerBlocks(mod, block_registry);
+	public static Method eventHandlerMethodSided(Object mod, String eventType, Side side) {
 		Class<?> cl = mod.getClass();
 		for (Method m : cl.getMethods()) {
 			if (m.isAnnotationPresent(EventHandler.class)) {
-				if (isCorrectSide(Side.CLIENT, m)) {
+				if (isCorrectSide(side, m)) {
 					if (m.getAnnotation(EventHandler.class).type().equals("init")) {
-						safeMethodInvoke(true, m, mod);
+						return m;
 					}
 				}
 			}
 		}
+		return null;
+	}
+	
+	public static Method eventHandlerMethod(Object mod, String eventType) {
+		Class<?> cl = mod.getClass();
+		for (Method m : cl.getMethods()) {
+			if (m.isAnnotationPresent(EventHandler.class)) {
+				if (m.getAnnotation(EventHandler.class).type().equals("init")) {
+					return m;
+				}
+			}
+		}
+		return null;
+	}
+	
+	public static void init(Object mod) {
+		commonRegister(mod);
+		Class<?> cl = mod.getClass();
+		safeMethodInvoke(true, eventHandlerMethodSided(mod, "init", Side.SERVER), mod);
 	}
 	
 	static void safeMethodInvoke(boolean imp, Method m, Object o, Object... args) {
@@ -53,7 +74,7 @@ public class ModLoader {
 			m.invoke(o, args);
 		} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
 			if (e instanceof InvocationTargetException) {
-				CubzLogger.i.warning("Error while invoking method (" + m + "):");
+				CubzLogger.i.warning("Error while invoking mod method (" + m + "):");
 				e.getCause().printStackTrace();
 			} else {
 				e.printStackTrace();
@@ -67,13 +88,19 @@ public class ModLoader {
 		}
 	}
 	
-	public static void registerBlocks(Object mod, Registry<Block> reg) {
+	public static void commonRegister(Object mod) {
 		Class<?> cl = mod.getClass();
 		for (Method m : cl.getMethods()) {
 			if (m.isAnnotationPresent(EventHandler.class)) {
-				if (isCorrectSide(Side.CLIENT, m)) {
-					if (m.getAnnotation(EventHandler.class).type().equals("blocks/register")) {
-						safeMethodInvoke(true, m, mod, reg);
+				if (isCorrectSide(Side.SERVER, m)) {
+					if (m.getAnnotation(EventHandler.class).type().equals("block/register")) {
+						safeMethodInvoke(true, m, mod, block_registry);
+					}
+					if (m.getAnnotation(EventHandler.class).type().equals("item/register")) {
+						safeMethodInvoke(true, m, mod, item_registry);
+					}
+					if (m.getAnnotation(EventHandler.class).type().equals("entity/register")) {
+						safeMethodInvoke(true, m, mod, entity_registry);
 					}
 				}
 			}

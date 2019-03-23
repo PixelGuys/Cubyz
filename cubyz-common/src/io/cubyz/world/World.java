@@ -66,18 +66,6 @@ public abstract class World {
 	
 	public abstract Player getLocalPlayer();
 	
-	@Deprecated
-	/**
-	 * Was used for limited size worlds.
-	 */
-	public abstract int getWidth();
-	
-	@Deprecated
-	/**
-	 * Was used for limited size worlds.
-	 */
-	public abstract int getDepth();
-	
 	public int getHeight() {
 		return WORLD_HEIGHT;
 	}
