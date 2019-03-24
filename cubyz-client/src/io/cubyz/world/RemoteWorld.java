@@ -1,6 +1,9 @@
 package io.cubyz.world;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
@@ -68,8 +71,12 @@ public class RemoteWorld extends World {
 		return null;
 	}
 
-	@Override
 	public Block[] getBlocks() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public Map<Block, ArrayList<BlockInstance>> visibleBlocks() {
 		// TODO Auto-generated method stub
 		return null;
 	}

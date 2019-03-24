@@ -309,7 +309,11 @@ public class Cubyz implements IGameLogic {
 				if (breakCooldown == 0) {
 					breakCooldown = 10;
 					BlockInstance bi = msd.getSelectedBlockInstance();
-					world.removeBlock(bi.getX(), bi.getY(), bi.getZ());
+					if (bi.getBlock().getHardness() != -1f) {
+						world.removeBlock(bi.getX(), bi.getY(), bi.getZ());
+					} else {
+						return;
+					}
 				}
 			}
 			if (mouse.isGrabbed()) {
