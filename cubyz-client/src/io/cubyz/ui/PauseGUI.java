@@ -25,6 +25,11 @@ public class PauseGUI extends MenuGUI {
 			Cubyz.gameUI.setMenu(null);
 		});
 		
+		exit.setOnAction(() -> {
+			Cubyz.world = null;
+			Cubyz.gameUI.setMenu(new MainMenuGUI());
+		});
+		
 		exit.setSize(200, 50);
 		game.setSize(200, 50);
 	}

@@ -2,9 +2,9 @@ package io.cubyz.client;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -43,7 +43,6 @@ import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.modding.ModLoader;
 import io.cubyz.multiplayer.client.CubzClient;
-import io.cubyz.multiplayer.server.CubzServer;
 import io.cubyz.ui.DebugGUI;
 import io.cubyz.ui.MainMenuGUI;
 import io.cubyz.ui.PauseGUI;
@@ -111,14 +110,13 @@ public class Cubyz implements IGameLogic {
 	}
 
 	public static void loadWorld(World world) {
-		//Cubyz.instance.renderer.setDoRender(false);
 		Cubyz.world = world;
-		int dx = 256;
-		int dz = 256;
+		Random rnd = new Random();
+		int dx = rnd.nextInt(1024);
+		int dz = rnd.nextInt(1024);
 		world.synchronousSeek(dx, dz);
 		int highestY = world.getHighestBlock(dx, dz);
 		world.getLocalPlayer().setPosition(new Vector3f(dx, highestY+2, dz));
-		//Cubyz.instance.renderer.setDoRender(true);
 	}
 
 	public static void requestJoin(String host) {
@@ -312,7 +310,7 @@ public class Cubyz implements IGameLogic {
 
 	@Override
 	public void update(float interval) {
-		if (!gameUI.isGUIFullscreen()) {
+		if (!gameUI.isGUIFullscreen() && world != null) {
 			Player lp = world.getLocalPlayer();
 			lp.move(playerInc.mul(0.11F), ctx.getCamera().getRotation()); //NOTE: Normal > 0.11F
 			if (breakCooldown > 0) { //NOTE: Normal > 0
@@ -336,10 +334,8 @@ public class Cubyz implements IGameLogic {
 			for (Entity en : world.getEntities()) {
 				en.update();
 			}
-			//System.out.println(lp.getPosition());
-			//ctx.getCamera().setPosition(lp.getPosition().x, lp.getPosition().y, lp.getPosition().z);
 			world.seek((int) lp.getPosition().x, (int) lp.getPosition().z);
-			if (ctx.getCamera().getRotation().x > 90.0F) { //NOTE: Normal > 90.0F
+			if (ctx.getCamera().getRotation().x > 90.0F) {
 				ctx.getCamera().setRotation(90.0F, ctx.getCamera().getRotation().y, ctx.getCamera().getRotation().z); //NOTE: Normal > 90.0F
 			}
 			if (ctx.getCamera().getRotation().x < -90.0F) { //NOTE: Normal > 90.0F

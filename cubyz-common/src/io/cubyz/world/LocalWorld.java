@@ -32,13 +32,12 @@ public class LocalWorld extends World {
 	private Player player;
 	
 	private WorldIO wio;
-	private int seed;
 	
 	private ChunkGenerationThread thread;
 	
 	private class ChunkGenerationThread extends Thread {
 		Deque<ChunkAction> loadList = new ArrayDeque<>(); // FIFO order (First In, First Out)
-		private static final int MAX_QUEUE_SIZE = 8;
+		private static final int MAX_QUEUE_SIZE = 12;
 		
 		public void queue(ChunkAction ca) {
 			if (!isQueued(ca)) {
@@ -73,6 +72,7 @@ public class LocalWorld extends World {
 						CubyzLogger.instance.fine("Generating " + popped.chunk.getX() + "," + popped.chunk.getZ());
 						synchronousGenerate(popped.chunk);
 						popped.chunk.load();
+						//seed = (int) System.currentTimeMillis(); // enable it if you want fun (don't forget to disable before commit!!!)
 					}
 					else if (popped.type == ChunkActionType.LOAD) {
 						if(!popped.chunk.isLoaded()) {
