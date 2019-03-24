@@ -226,53 +226,47 @@ public class Chunk {
 		boolean chx1 = world.getChunk(ox + 1, oy).isGenerated();
 		boolean chy0 = world.getChunk(ox, oy - 1).isGenerated();
 		boolean chy1 = world.getChunk(ox, oy + 1).isGenerated();
-		for (int px = 0; px < 16; px++) {
-			for (int py = 0; py < 16; py++) {
-				for (int j = World.WORLD_HEIGHT - 1; j >= 0; j--) {
-					if (inst[px][j][py] == null) {
-						continue;
-					}
-					BlockInstance[] neighbors = inst[px][j][py].getNeighbors();
-					for (int i = 0; i < neighbors.length; i++) {
-						if (neighbors[i] == null 	&& (j != 0 || i != 4)
-													&& (px != 0 || i != 0 || chx0)
-													&& (px != 15 || i != 1 || chx1)
-													&& (py != 0 || i != 3 || chy0)
-													&& (py != 15 || i != 2 || chy1)) {
-							visibles.add(inst[px][j][py]);
-							break;
-						}
-					}
+		for(BlockInstance bi : list) {
+			BlockInstance[] neighbors = bi.getNeighbors();
+			int j = bi.getY();
+			int px = bi.getX()&15;
+			int py = bi.getZ()&15;
+			for (int i = 0; i < neighbors.length; i++) {
+				if (neighbors[i] == null 	&& (j != 0 || i != 4)
+											&& (px != 0 || i != 0 || chx0)
+											&& (px != 15 || i != 1 || chx1)
+											&& (py != 0 || i != 3 || chy0)
+											&& (py != 15 || i != 2 || chy1)) {
+					visibles.add(bi);
+					break;
 				}
-				// Checks if blocks from neighboring chunks are changed
-				int [] neighbor = {1, 0, 2, 3};
-				int [] dx = {-1, 16, px, px};
-				int [] dy = {py, py, -1, 16};
-				boolean [] toCheck = {
-						chx0 && px == 0,
-						chx1 && px == 15,
-						chy0 && py == 0,
-						chy1 && py == 15};
-				for(int k = 0; k < 4; k++) {
-					if (toCheck[k]) {
-						for (int j = World.WORLD_HEIGHT - 1; j >= 0; j--) {
-							BlockInstance inst0 = world.getBlock(wx + dx[k], j, wy + dy[k]);
-							if(inst0 == null) {
-								continue;
-							}
-							Chunk ch = getChunk(inst0.getX(), inst0.getZ());
-							if(ch.contains(inst0)) {
-								continue;
-							}
-							if (inst0.getNeighbor(neighbor[k]) == null) {
-								ch.revealBlock(inst0);
-								continue;
-							}
-						}
-					}
-				}
-				world.markEdit();
 			}
+		}
+		for (int i = 0; i < 16; i++) {
+			// Checks if blocks from neighboring chunks are changed
+			int [] neighbor = {1, 0, 2, 3};
+			int [] dx = {-1, 16, i, i};
+			int [] dy = {i, i, -1, 16};
+			boolean [] toCheck = {chx0, chx1, chy0, chy1};
+			for(int k = 0; k < 4; k++) {
+				if (toCheck[k]) {
+					for (int j = World.WORLD_HEIGHT - 1; j >= 0; j--) {
+						BlockInstance inst0 = world.getBlock(wx + dx[k], j, wy + dy[k]);
+						if(inst0 == null) {
+							continue;
+						}
+						Chunk ch = getChunk(inst0.getX(), inst0.getZ());
+						if(ch.contains(inst0)) {
+							continue;
+						}
+						if (inst0.getNeighbor(neighbor[k]) == null) {
+							ch.revealBlock(inst0);
+							continue;
+						}
+					}
+				}
+			}
+			world.markEdit();
 		}
 	}
 	
@@ -332,12 +326,13 @@ public class Chunk {
 	public void removeBlockAt(int x, int y, int z) {
 		BlockInstance bi = getBlockInstanceAt(x, y, z);
 		if (bi != null) {
+			list.remove(bi);
 			visibles.remove(bi);
 			inst[x][y][z] = null;
 			BlockInstance[] neighbors = bi.getNeighbors();
 			for (int i = 0; i < neighbors.length; i++) {
 				BlockInstance inst = neighbors[i];
-				if (inst != null) {
+				if (inst != null && inst != bi) {
 					Chunk ch = getChunk(inst.getX(), inst.getZ());
 					if (!ch.contains(inst)) {
 						ch.revealBlock(inst);
