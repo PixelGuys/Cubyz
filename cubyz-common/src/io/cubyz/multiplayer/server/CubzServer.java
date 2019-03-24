@@ -30,7 +30,7 @@ public class CubzServer {
 						public void initChannel(SocketChannel ch) throws Exception {
 							ch.pipeline().addLast(new ServerHandler());
 						}
-					}).option(ChannelOption.SO_BACKLOG, 128). //NOTE: Normal > 128
+					}).option(ChannelOption.SO_BACKLOG, 128).
 					childOption(ChannelOption.SO_KEEPALIVE, true);
 
 			// Bind and start to accept incoming connections.
