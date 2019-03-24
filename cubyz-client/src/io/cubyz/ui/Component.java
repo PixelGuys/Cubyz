@@ -63,4 +63,7 @@ public abstract class Component {
 	
 	public abstract void render(long nvg, Window src);
 	
+	public void init(long nvg, Window src) {}
+	public void dispose(long nvg, Window src) {}
+	
 }

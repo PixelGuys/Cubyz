@@ -46,6 +46,7 @@ import io.cubyz.multiplayer.client.CubzClient;
 import io.cubyz.multiplayer.server.CubzServer;
 import io.cubyz.ui.DebugGUI;
 import io.cubyz.ui.MainMenuGUI;
+import io.cubyz.ui.PauseGUI;
 import io.cubyz.ui.UISystem;
 import io.cubyz.utils.DiscordIntegration;
 import io.cubyz.utils.TextureConverter;
@@ -261,7 +262,10 @@ public class Cubyz implements IGameLogic {
 				}
 			}
 			if (window.isKeyPressed(GLFW.GLFW_KEY_ESCAPE) && mouse.isGrabbed()) {
-				mouse.setGrabbed(false);
+				if (gameUI.getMenuGUI() == null) {
+					Keyboard.setKeyPressed(GLFW.GLFW_KEY_ESCAPE, false);
+					gameUI.setMenu(new PauseGUI());
+				}
 			}
 			if (mouse.isLeftButtonPressed() && !mouse.isGrabbed()) {
 				mouse.setGrabbed(true);

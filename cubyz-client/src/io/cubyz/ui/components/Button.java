@@ -60,7 +60,6 @@ public class Button extends Component {
 		NGraphics.fillRect(x, y, width, height);
 		NGraphics.setColor(255, 255, 255);
 		NGraphics.setFont("OpenSans Bold", fontSize);
-		
 		NGraphics.drawText(x + (width / 2) - ((text.length() * 5) / 2), (int) (y + (height / 2) - fontSize / 2), text);
 		//int ascent = NGraphics.getAscent("ahh");
 	}
