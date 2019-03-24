@@ -2,6 +2,7 @@ package io.cubyz.ui;
 
 import org.jungle.Window;
 import org.jungle.hud.Font;
+import org.lwjgl.nanovg.NVGColor;
 
 import io.cubyz.client.Cubyz;
 import io.cubyz.ui.components.Button;

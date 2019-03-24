@@ -46,9 +46,7 @@ public class UISystem extends Hud {
 			return gui.isFullscreen();
 	}
 
-	public void updateUI() {
-		
-	}
+	public void updateUI() {}
 
 	@Override
 	public void init(Window window) throws Exception {

@@ -33,6 +33,4 @@ public class Label extends Component {
 		NGraphics.drawText(x, y, text);
 	}
 	
-	
-	
 }

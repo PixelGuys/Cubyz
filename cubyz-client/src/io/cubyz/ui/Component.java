@@ -1,9 +1,11 @@
 package io.cubyz.ui;
 
+import java.awt.Color;
 import java.awt.Rectangle;
 
 import org.joml.Vector2d;
 import org.jungle.Window;
+import org.lwjgl.nanovg.NVGColor;
 
 public abstract class Component {
 
