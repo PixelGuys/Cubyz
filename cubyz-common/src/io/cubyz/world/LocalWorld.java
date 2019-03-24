@@ -37,7 +37,7 @@ public class LocalWorld extends World {
 	
 	private class ChunkGenerationThread extends Thread {
 		Deque<ChunkAction> loadList = new ArrayDeque<>(); // FIFO order (First In, First Out)
-		private static final int MAX_QUEUE_SIZE = 12;
+		private static final int MAX_QUEUE_SIZE = 16;
 		
 		public void queue(ChunkAction ca) {
 			if (!isQueued(ca)) {

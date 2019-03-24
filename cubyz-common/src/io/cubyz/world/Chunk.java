@@ -182,8 +182,6 @@ public class Chunk {
 						bi = new BlockInstance(bedrock);
 					}
 					bi.setPosition(new Vector3i(wx + px, j, wy + py));
-					//bi.getSpatial().setPosition(new Vector3i(wx + px, j, wy + py));
-					//bi.getSpatial().setScale(0.5F);
 					bi.setWorld(world);
 					//world.blocks().add(bi);
 					list.add(bi);

@@ -25,7 +25,6 @@ import org.jungle.game.Game;
 import org.jungle.game.IGameLogic;
 import org.jungle.util.DirectionalLight;
 import org.jungle.util.Material;
-import org.jungle.util.MeshSelectionDetector;
 import org.jungle.util.OBJLoader;
 import org.lwjgl.Version;
 import org.lwjgl.glfw.GLFW;
@@ -66,12 +65,9 @@ public class Cubyz implements IGameLogic {
 	private Vector3f playerInc;
 	public static MouseInput mouse;
 	public static UISystem gameUI;
-	private static long lastFPSCheck = 0;
-	private static int currentFrames = 0;
-	private static int currentFPS = 0;
 	public static World world;
 
-	private MeshSelectionDetector msd;
+	private CubyzMeshSelectionDetector msd;
 
 	private int breakCooldown = 10;
 
@@ -158,7 +154,7 @@ public class Cubyz implements IGameLogic {
 			e.printStackTrace();
 			System.exit(1);
 		}
-		msd = new MeshSelectionDetector(renderer);
+		msd = new CubyzMeshSelectionDetector(renderer);
 		window.setClearColor(new Vector4f(0.1F, 0.7F, 0.7F, 1.0F)); //NOTE: Normal > 0.1F || 0.7F || 0.7F || 1.0F
 		log.info("Renderer: OK!");
 		
@@ -226,7 +222,7 @@ public class Cubyz implements IGameLogic {
 			window.setFullscreen(!window.isFullscreen());
 			Keyboard.setKeyPressed(GLFW.GLFW_KEY_F11, false);
 		}
-		if (!gameUI.isGUIFullscreen()) {
+		if (!gameUI.isGUIFullscreen() && world != null) {
 			if (window.isKeyPressed(GLFW.GLFW_KEY_W)) {
 				playerInc.z = -1;
 			}
@@ -270,7 +266,9 @@ public class Cubyz implements IGameLogic {
 				mouse.clearPos(window.getWidth() / 2, window.getHeight() / 2);
 				breakCooldown = 10;
 			}
-			msd.selectSpatial(ctx.getSpatials(), ctx.getCamera());
+			synchronized (world.visibleBlocks()) {
+				msd.selectSpatial(world.visibleBlocks(), ctx.getCamera());
+			}
 		}
 		mouse.input(window);
 	}
@@ -291,7 +289,7 @@ public class Cubyz implements IGameLogic {
 			if (playerInc.x != 0) {
 				world.getLocalPlayer().vx = playerInc.x;
 			}
-			ctx.getCamera().setPosition(world.getLocalPlayer().getPosition().x, world.getLocalPlayer().getPosition().y + 1.76f, world.getLocalPlayer().getPosition().z);
+			ctx.getCamera().setPosition(world.getLocalPlayer().getPosition().x, world.getLocalPlayer().getPosition().y + 1.5f, world.getLocalPlayer().getPosition().z);
 			
 			if (world.isEdited()) {
 				lastVisibleBlocks = world.visibleBlocks();
@@ -304,7 +302,6 @@ public class Cubyz implements IGameLogic {
 		} else {
 			renderer.render(window, ctx, new Vector3f(0.3F, 0.3F, 0.3F), light, EMPTY_BLOCK_LIST);
 		}
-		countFPS();
 		gameUI.updateUI();
 	}
 
@@ -312,25 +309,23 @@ public class Cubyz implements IGameLogic {
 	public void update(float interval) {
 		if (!gameUI.isGUIFullscreen() && world != null) {
 			Player lp = world.getLocalPlayer();
-			lp.move(playerInc.mul(0.11F), ctx.getCamera().getRotation()); //NOTE: Normal > 0.11F
-			if (breakCooldown > 0) { //NOTE: Normal > 0
+			lp.move(playerInc.mul(0.11F), ctx.getCamera().getRotation());
+			if (breakCooldown > 0) {
 				breakCooldown--;
 			}
 			if (mouse.isLeftButtonPressed() && mouse.isGrabbed()) {
 				//Breaking Blocks
 				if (breakCooldown == 0) {
 					breakCooldown = 10;
-					if (msd.getSelectedSpatial() instanceof BlockSpatial) {
-						BlockInstance bi = ((BlockSpatial) msd.getSelectedSpatial()).getBlock();
-						world.removeBlock(bi.getX(), bi.getY(), bi.getZ());
-					}
+					BlockInstance bi = msd.getSelectedBlockInstance();
+					world.removeBlock(bi.getX(), bi.getY(), bi.getZ());
 				}
 			}
 			if (mouse.isGrabbed()) {
 				ctx.getCamera().moveRotation(mouse.getDisplVec().x() * 0.51F, mouse.getDisplVec().y() * 0.51F, 0.0F);
 				mouse.clearPos(win.getWidth() / 2, win.getHeight() / 2);
 			}
-			playerInc.x = playerInc.y = playerInc.z = 0.0F; // Reset positions || NOTE: Normal > 0.0F
+			playerInc.x = playerInc.y = playerInc.z = 0.0F; // Reset positions
 			for (Entity en : world.getEntities()) {
 				en.update();
 			}
@@ -344,17 +339,8 @@ public class Cubyz implements IGameLogic {
 		}
 	}
 
-	private void countFPS() {
-		currentFrames++;
-		if (System.nanoTime() > lastFPSCheck + 1000000000) { //NOTE: Normal > 1B ( 1000000000 )
-			lastFPSCheck = System.nanoTime();
-			currentFPS = currentFrames;
-			currentFrames = 0; //NOTE: Normal > 0
-		}
-	}
-
 	public static int getFPS() {
-		return currentFPS;
+		return Cubyz.instance.game.getFPS();
 	}
 
 }
