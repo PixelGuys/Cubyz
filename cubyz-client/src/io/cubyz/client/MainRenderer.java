@@ -106,6 +106,7 @@ public class MainRenderer implements IRenderer {
 	}
 
 	
+	@SuppressWarnings("unchecked")
 	public void render(Window window, Context ctx, Vector3f ambientLight, DirectionalLight directionalLight, List<Chunk> chunks, Block [] blocks) {
 		if (window.isResized()) {
 			glViewport(0, 0, window.getWidth(), window.getHeight());
