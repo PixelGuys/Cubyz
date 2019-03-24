@@ -24,6 +24,7 @@ public class Chunk {
 	// Normal:
 	private static Block grass = br.getByID("cubyz:grass");
 	private static Block sand = br.getByID("cubyz:sand");
+	private static Block snow = br.getByID("cubyz:snow");
 	private static Block dirt = br.getByID("cubyz:dirt");
 	private static Block stone = br.getByID("cubyz:stone");
 	private static Block bedrock = br.getByID("cubyz:bedrock");
@@ -144,7 +145,7 @@ public class Chunk {
 	//TODO: Ore Clusters
 	//TODO: Finish vegetation
 	//TODO: Clean this method
-	public void generateFrom(float[][] map, float[][] vegetation, float[][] oreMap) {
+	public void generateFrom(float[][] map, float[][] vegetation, float[][] oreMap, float[][] heatMap) {
 		if(inst == null) {
 			inst = new BlockInstance[16][World.WORLD_HEIGHT][16];
 		}
@@ -158,14 +159,19 @@ public class Chunk {
 				int y = (int) (value * World.WORLD_HEIGHT);
 				if(y == World.WORLD_HEIGHT)
 					y--;
+				int temperature = (int)((2-value+SEA_LEVEL/(float)World.WORLD_HEIGHT)*heatMap[px][py]*120) - 100;
 				for (int j = y > SEA_LEVEL ? y : SEA_LEVEL; j >= 0; j--) {
 					BlockInstance bi = null;
 					if(j > y) {
 						bi = new BlockInstance(water);
-					}else if (y < SEA_LEVEL + 4 && j > y - 3) {
+					}else if ((y < SEA_LEVEL + 4 || temperature > 40) && j > y - 3) {
 						bi = new BlockInstance(sand);
 					} else if (j == y) {
-						bi = new BlockInstance(grass);
+						if(temperature > 0) {
+							bi = new BlockInstance(grass);
+						} else {
+							bi = new BlockInstance(snow);
+						}
 					} else if (j > y - 3) {
 						bi = new BlockInstance(dirt);
 					} else if (j > 0) {
@@ -196,7 +202,8 @@ public class Chunk {
 				float value = vegetation[px][py];
 				int incx = px == 0 ? 1 : -1;
 				int incy = py == 0 ? 1 : -1;
-				if (map[px][py] * World.WORLD_HEIGHT >= SEA_LEVEL + 3 && value > 0.5f && ((int)((vegetation[px][py]-vegetation[px+incx][py+incy]) * 10000000) & 127) == 1) {	// "&127" is a faster way to do "%128"
+				int temperature = (int)((2-map[px][py]+SEA_LEVEL/(float)World.WORLD_HEIGHT)*heatMap[px][py]*120) - 100;
+				if (temperature < 40 && map[px][py] * World.WORLD_HEIGHT >= SEA_LEVEL + 3 && value > 0.5f && ((int)((vegetation[px][py]-vegetation[px+incx][py+incy]) * 100000000) & 63) == 1) {	// "&(2^n - 1)" is a faster way to do "%(2^n)"
 					Structures.generateTree(this, wx + px, (int) (map[px][py] * World.WORLD_HEIGHT) + 1, wy + py);
 				}
 			}

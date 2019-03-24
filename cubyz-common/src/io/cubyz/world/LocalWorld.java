@@ -171,7 +171,8 @@ public class LocalWorld extends World {
 		float[][] heightMap = Noise.generateMapFragment(x, y, 16, 16, 256, seed);
 		float[][] vegetationMap = Noise.generateMapFragment(x, y, 16, 16, 128, seed + 3 * (seed + 1 & Integer.MAX_VALUE));
 		float[][] oreMap = Noise.generateMapFragment(x, y, 16, 16, 128, seed - 3 * (seed - 1 & Integer.MAX_VALUE));
-		ch.generateFrom(heightMap, vegetationMap, oreMap);
+		float[][] heatMap = Noise.generateMapFragment(x, y, 16, 16, 4096, seed ^ 123456789);
+		ch.generateFrom(heightMap, vegetationMap, oreMap, heatMap);
 	}
 	
 	@Override
@@ -248,10 +249,10 @@ public class LocalWorld extends World {
 
 	@Override
 	public void seek(int x, int z) {
-		int renderDistance/*minus 1*/ = 2;
+		int renderDistance/*minus 1*/ = 3;
 		int blockDistance = renderDistance*16;
-		for (int x1 = x - blockDistance-48; x1 < x + blockDistance+48; x1++) {
-			for (int z1 = z - blockDistance-48; z1 < z + blockDistance+48; z1++) {
+		for (int x1 = x - blockDistance-48; x1 <= x + blockDistance+48; x1 += 16) {
+			for (int z1 = z - blockDistance-48; z1 <= z + blockDistance+48; z1 += 16) {
 				Chunk ch = getChunk(x1/16,z1/16);
 				if (x1>x-blockDistance&&x1<x+blockDistance&&z1>z-blockDistance&&z1<z+blockDistance && !ch.isLoaded()) {
 					if (!ch.isGenerated()) {
