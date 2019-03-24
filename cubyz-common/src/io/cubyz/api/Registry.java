@@ -41,6 +41,7 @@ public class Registry<T extends IRegistryElement> {
 		}
 	}
 	
+	@SuppressWarnings("unchecked")
 	public void registerAll(T... elements) {
 		for (T elem : elements) {
 			register(elem);

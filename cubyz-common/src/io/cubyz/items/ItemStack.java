@@ -27,7 +27,7 @@ public class ItemStack {
 					item._textureCache = new Texture("./res/textures/" + item.fullTexturePath + ".png");
 				}
 				item._meshCache = OBJLoader.loadMesh("res/models/cube.obj");
-				Material material = new Material(item._textureCache, 1.0F); //NOTE: Normal > 1.0F
+				Material material = new Material(item._textureCache, 1.0F);
 				item._meshCache.setMaterial(material);
 			} catch (Exception e) {
 				e.printStackTrace();

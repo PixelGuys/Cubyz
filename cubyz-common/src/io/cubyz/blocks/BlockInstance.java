@@ -10,7 +10,6 @@ import org.joml.Vector3i;
 import io.cubyz.ClientOnly;
 import io.cubyz.world.World;
 
-@SuppressWarnings("deprecation")
 public class BlockInstance {
 
 	private Block block;
@@ -62,8 +61,8 @@ public class BlockInstance {
 //				}
 //				// Assuming mesh too is empty
 //				block._meshCache = OBJLoader.loadMesh("res/models/cube.obj");
-//				block._meshCache.setBoundingRadius(2.0F); //NOTE: Normal > 2.0F
-//				Material material = new Material(block._textureCache, 1.0F); //NOTE: Normal > 1.0F
+//				block._meshCache.setBoundingRadius(2.0F);
+//				Material material = new Material(block._textureCache, 1.0F);
 //				block._meshCache.setMaterial(material);
 //			} catch (Exception e) {
 //				e.printStackTrace();
@@ -91,12 +90,12 @@ public class BlockInstance {
 		// 3 = SOUTH (z - 1)
 		// 4 = DOWN
 		// 5 = UP
-		inst[5] = world.getBlock(pos.x, pos.y + 1, pos.z); //NOTE: Normal > 1
-		inst[4] = world.getBlock(pos.x, pos.y + -1, pos.z); //NOTE: Normal > 1
-		inst[3] = world.getBlock(pos.x, pos.y, pos.z + -1); //NOTE: Normal > 1
-		inst[2] = world.getBlock(pos.x, pos.y, pos.z + 1); //NOTE: Normal > 1
-		inst[1] = world.getBlock(pos.x + 1, pos.y, pos.z); //NOTE: Normal > 1
-		inst[0] = world.getBlock(pos.x + -1, pos.y, pos.z); //NOTE: Normal > 1
+		inst[5] = world.getBlock(pos.x, pos.y + 1, pos.z);
+		inst[4] = world.getBlock(pos.x, pos.y + -1, pos.z);
+		inst[3] = world.getBlock(pos.x, pos.y, pos.z + -1);
+		inst[2] = world.getBlock(pos.x, pos.y, pos.z + 1);
+		inst[1] = world.getBlock(pos.x + 1, pos.y, pos.z);
+		inst[0] = world.getBlock(pos.x + -1, pos.y, pos.z);
 		return inst;
 	}
 	
@@ -109,17 +108,17 @@ public class BlockInstance {
 		// 5 = UP
 		switch(i) {
 			case 5:
-				return world.getBlock(pos.x, pos.y + 1, pos.z); //NOTE: Normal > 1
+				return world.getBlock(pos.x, pos.y + 1, pos.z);
 			case 4:
-				return world.getBlock(pos.x, pos.y + -1, pos.z); //NOTE: Normal > 1
+				return world.getBlock(pos.x, pos.y + -1, pos.z);
 			case 3:
-				return world.getBlock(pos.x, pos.y, pos.z + -1); //NOTE: Normal > 1
+				return world.getBlock(pos.x, pos.y, pos.z + -1);
 			case 2:
-				return world.getBlock(pos.x, pos.y, pos.z + 1); //NOTE: Normal > 1
+				return world.getBlock(pos.x, pos.y, pos.z + 1);
 			case 1:
-				return world.getBlock(pos.x + 1, pos.y, pos.z); //NOTE: Normal > 1
+				return world.getBlock(pos.x + 1, pos.y, pos.z);
 			case 0:
-				return world.getBlock(pos.x + -1, pos.y, pos.z); //NOTE: Normal > 1
+				return world.getBlock(pos.x + -1, pos.y, pos.z);
 		}
 		return null;
 	}

@@ -7,7 +7,6 @@ import org.joml.Vector3i;
 import io.cubyz.api.CubzRegistries;
 import io.cubyz.command.ICommandSource;
 
-//NOTE: Player is 2 Blocks Tall (2 Meters)
 public class Player extends Entity implements ICommandSource {
 
 	private boolean local = false;

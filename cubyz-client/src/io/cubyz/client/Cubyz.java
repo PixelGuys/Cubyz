@@ -138,7 +138,7 @@ public class Cubyz implements IGameLogic {
 		renderer = new MainRenderer();
 		ctx = new Context(game, new Camera());
 		ctx.setHud(gameUI);
-		light = new DirectionalLight(new Vector3f(1.0F, 1.0F, 0.7F), new Vector3f(0.0F, 1.0F, 1.0F), 1.0F); //NOTE: Normal > 1.0F || 1.0F || 0.7F || 0.0F || 1.0F || 1.0F || 1.0F
+		light = new DirectionalLight(new Vector3f(1.0F, 1.0F, 0.7F), new Vector3f(0.0F, 1.0F, 1.0F), 1.0F);
 		mouse = new MouseInput();
 		mouse.init(window);
 		log.info("Version " + Constants.GAME_VERSION + " of brand " + Constants.GAME_BRAND);
@@ -155,7 +155,7 @@ public class Cubyz implements IGameLogic {
 			System.exit(1);
 		}
 		msd = new CubyzMeshSelectionDetector(renderer);
-		window.setClearColor(new Vector4f(0.1F, 0.7F, 0.7F, 1.0F)); //NOTE: Normal > 0.1F || 0.7F || 0.7F || 1.0F
+		window.setClearColor(new Vector4f(0.1F, 0.7F, 0.7F, 1.0F));
 		log.info("Renderer: OK!");
 		
 		MainMenuGUI mmg = new MainMenuGUI();
@@ -331,10 +331,10 @@ public class Cubyz implements IGameLogic {
 			}
 			world.seek((int) lp.getPosition().x, (int) lp.getPosition().z);
 			if (ctx.getCamera().getRotation().x > 90.0F) {
-				ctx.getCamera().setRotation(90.0F, ctx.getCamera().getRotation().y, ctx.getCamera().getRotation().z); //NOTE: Normal > 90.0F
+				ctx.getCamera().setRotation(90.0F, ctx.getCamera().getRotation().y, ctx.getCamera().getRotation().z);
 			}
-			if (ctx.getCamera().getRotation().x < -90.0F) { //NOTE: Normal > 90.0F
-				ctx.getCamera().setRotation(-90.0F, ctx.getCamera().getRotation().y, ctx.getCamera().getRotation().z); //NOTE: Normal > 90.0F
+			if (ctx.getCamera().getRotation().x < -90.0F) {
+				ctx.getCamera().setRotation(-90.0F, ctx.getCamera().getRotation().y, ctx.getCamera().getRotation().z);
 			}
 		}
 	}

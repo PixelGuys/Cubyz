@@ -14,6 +14,7 @@ public class GameLauncher extends Game {
 		instance.logic = new Cubyz();
 		GameOptionsPrompt prompt = new GameOptionsPrompt();
 		prompt.setLocationRelativeTo(null);
+		prompt.setTitle("Cubz Settings");
 		prompt.setVisible(true);
 		while (prompt.isVisible()) {
 			System.out.print(""); // Avoid bugs
@@ -29,7 +30,7 @@ public class GameLauncher extends Game {
 		
 		instance.start(opt);
 		Cubyz.log.info("Stopped!");
-		System.exit(0); //NOTE: Normal > 0
+		System.exit(0);
 	}
 	
 }

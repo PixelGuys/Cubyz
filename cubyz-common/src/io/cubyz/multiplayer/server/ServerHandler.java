@@ -18,7 +18,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 			System.out.println("[Integrated Server] packet type: " + packetType);
 		}
 		if (packetType == Packet.PACKET_GETVERSION) {
-			ByteBuf out = ctx.alloc().ioBuffer(128); // 128-length version including brand || NOTE: Normal > 128
+			ByteBuf out = ctx.alloc().ioBuffer(128); // 128-length version including brand
 			out.writeByte(Packet.PACKET_GETVERSION);
 			String seq = Constants.GAME_BRAND + ";" + Constants.GAME_VERSION;
 			out.writeByte(seq.length());
@@ -26,10 +26,10 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 			ctx.write(out);
 		}
 		if (packetType == Packet.PACKET_PINGDATA) {
-			ByteBuf out = ctx.alloc().ioBuffer(512); //NOTE: Normal > 512
+			ByteBuf out = ctx.alloc().ioBuffer(512);
 			out.writeByte(Packet.PACKET_PINGDATA);
 			String motd = "A Cubz Server.";
-			int online = 0; int max = 20; //NOTE: Normal > 0 || 20
+			int online = 0; int max = 20;
 			out.writeShort(motd.length());
 			out.writeCharSequence(motd, Charset.forName("UTF-8"));
 			out.writeInt(online);

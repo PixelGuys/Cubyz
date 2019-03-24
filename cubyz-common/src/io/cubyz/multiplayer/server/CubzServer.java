@@ -18,7 +18,6 @@ public class CubzServer {
 		this.port = port;
 	}
 
-	@SuppressWarnings("unused")
 	public void start(boolean internal) throws Exception {
 		CubzServer.internal = internal;
 		EventLoopGroup bossGroup = new NioEventLoopGroup();

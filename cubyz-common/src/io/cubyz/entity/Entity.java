@@ -209,6 +209,7 @@ public abstract class Entity {
 		return false;
 	}
 	
+	@SuppressWarnings("unchecked")
 	public void update() {
 		if (renderPair != null) {
 			Consumer<Entity> upd = (Consumer<Entity>) renderPair.get("renderPairUpdate");

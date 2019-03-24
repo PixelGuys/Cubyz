@@ -11,8 +11,7 @@ public class CubzClientHandler extends ChannelInboundHandlerAdapter {
 
 	private CubzClient cl;
 	private ChannelHandlerContext ctx;
-	
-	@SuppressWarnings("unused")
+
 	private boolean hasPinged;
 	
 	public CubzClientHandler(CubzClient cl, boolean doPing) {
@@ -20,7 +19,7 @@ public class CubzClientHandler extends ChannelInboundHandlerAdapter {
 	}
 	
 	public void ping() {
-		ByteBuf buf = ctx.alloc().buffer(1); //NOTE: Normal > 1
+		ByteBuf buf = ctx.alloc().buffer(1);
 		buf.writeByte(Packet.PACKET_PINGDATA);
 		ctx.writeAndFlush(buf);
 	}
@@ -42,8 +41,8 @@ public class CubzClientHandler extends ChannelInboundHandlerAdapter {
 		if (responseType == Packet.PACKET_GETVERSION) {
 			int length = buf.readUnsignedByte();
 			String raw = buf.readCharSequence(length, Charset.forName("UTF-8")).toString();
-			cl.getLocalServer().brand = raw.split(";")[0]; //NOTE: Normal > 0
-			cl.getLocalServer().version = raw.split(";")[1]; //NOTE: Normal > 1
+			cl.getLocalServer().brand = raw.split(";")[0];
+			cl.getLocalServer().version = raw.split(";")[1];
 			System.out.println("[CubzClientHandler] Raw version + brand: " + raw);
 		}
 		
@@ -52,7 +51,7 @@ public class CubzClientHandler extends ChannelInboundHandlerAdapter {
 		}
 		
 		if (responseType == Packet.PACKET_PINGPONG) {
-			ByteBuf b = ctx.alloc().buffer(5); //NOTE: Normal > 5
+			ByteBuf b = ctx.alloc().buffer(5);
 			b.writeByte(Packet.PACKET_PINGPONG);
 			b.writeInt(buf.readInt());
 		}
