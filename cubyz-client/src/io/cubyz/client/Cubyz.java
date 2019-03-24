@@ -2,8 +2,6 @@ package io.cubyz.client;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.logging.Level;
@@ -49,6 +47,7 @@ import io.cubyz.ui.UISystem;
 import io.cubyz.utils.DiscordIntegration;
 import io.cubyz.utils.TextureConverter;
 import io.cubyz.world.BlockSpatial;
+import io.cubyz.world.Chunk;
 import io.cubyz.world.World;
 
 /**
@@ -266,15 +265,13 @@ public class Cubyz implements IGameLogic {
 				mouse.clearPos(window.getWidth() / 2, window.getHeight() / 2);
 				breakCooldown = 10;
 			}
-			synchronized (world.visibleBlocks()) {
-				msd.selectSpatial(world.visibleBlocks(), ctx.getCamera());
-			}
+			msd.selectSpatial(world.getChunks(), ctx.getCamera());
 		}
 		mouse.input(window);
 	}
 
-	public static final Map<Block, ArrayList<BlockInstance>> EMPTY_BLOCK_LIST = new HashMap<>();
-	static Map<Block, ArrayList<BlockInstance>> lastVisibleBlocks;
+	public static final ArrayList<Chunk> EMPTY_CHUNK_LIST = new ArrayList<Chunk>();
+	public static final Block[] EMPTY_BLOCK_LIST = new Block[0];
 	
 	@Override
 	public void render(Window window) {
@@ -290,17 +287,11 @@ public class Cubyz implements IGameLogic {
 				world.getLocalPlayer().vx = playerInc.x;
 			}
 			ctx.getCamera().setPosition(world.getLocalPlayer().getPosition().x, world.getLocalPlayer().getPosition().y + 1.5f, world.getLocalPlayer().getPosition().z);
-			
-			if (world.isEdited()) {
-				lastVisibleBlocks = world.visibleBlocks();
-			}
 		}
 		if (world != null) {
-			synchronized (world.visibleBlocks()) {
-				renderer.render(window, ctx, new Vector3f(0.3F, 0.3F, 0.3F), light, world.visibleBlocks());
-			}
+			renderer.render(window, ctx, new Vector3f(0.3F, 0.3F, 0.3F), light, world.getChunks(), world.getBlocks());
 		} else {
-			renderer.render(window, ctx, new Vector3f(0.3F, 0.3F, 0.3F), light, EMPTY_BLOCK_LIST);
+			renderer.render(window, ctx, new Vector3f(0.3F, 0.3F, 0.3F), light, EMPTY_CHUNK_LIST, EMPTY_BLOCK_LIST);
 		}
 		gameUI.updateUI();
 	}

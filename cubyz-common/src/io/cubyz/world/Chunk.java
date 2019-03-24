@@ -9,12 +9,12 @@ import io.cubyz.api.Registry;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.Ore;
-import io.cubyz.modding.ModLoader;
 
 public class Chunk {
 
 	private BlockInstance[][][] inst;
 	private ArrayList<BlockInstance> list = new ArrayList<>();
+	private ArrayList<BlockInstance> visibles = new ArrayList<>();
 	private int ox, oy;
 	private boolean generated;
 	private boolean loaded;
@@ -73,6 +73,10 @@ public class Chunk {
 		return list;
 	}
 	
+	public ArrayList<BlockInstance> getVisibles() {
+		return visibles;
+	}
+	
 	/**
 	 * Add the <code>Block</code> b at relative space defined by X, Y, and Z, and if out of bounds, call this method from the other chunk (only work for 1 chunk radius)<br/>
 	 * Meaning that if x or z are out of bounds, this method will call the same method from other chunks to add it.
@@ -85,8 +89,8 @@ public class Chunk {
 		if(y >= World.WORLD_HEIGHT)
 			return;
 		int rx = x - (ox << 4);
+		// Determines if the block is part of another chunk.
 		if (rx < 0) {
-			// Determines if the block is part of another chunk.
 			world.getChunk(ox - 1, oy).addBlock(b, x, y, z);
 			return;
 		}
@@ -115,26 +119,29 @@ public class Chunk {
 		}
 		inst[rx][y][rz] = inst0;
 		world.markEdit();
-		if(loaded) {
+		if(generated) {
 			BlockInstance[] neighbors = inst0.getNeighbors();
 			for (int i = 0; i < neighbors.length; i++) {
 				if (neighbors[i] == null) {
-					world.visibleBlocks().get(inst0.getBlock()).add(inst0);
+					visibles.add(inst0);
 					break;
 				}
 			}
 			for (int i = 0; i < neighbors.length; i++) {
-				if (neighbors[i] != null && world.visibleBlocks().get(neighbors[i].getBlock()).contains(neighbors[i])) {
-					BlockInstance[] neighbors1 = neighbors[i].getNeighbors();
-					boolean vis = true;
-					for (int j = 0; j < neighbors.length; j++) {
-						if (neighbors[j] == null) {
-							vis = false;
-							break;
+				if(neighbors[i] != null) {
+					Chunk ch = getChunk(neighbors[i].getX(), neighbors[i].getZ());
+					if (ch.contains(neighbors[i])) {
+						BlockInstance[] neighbors1 = neighbors[i].getNeighbors();
+						boolean vis = true;
+						for (int j = 0; j < neighbors1.length; j++) {
+							if (neighbors1[j] == null) {
+								vis = false;
+								break;
+							}
 						}
-					}
-					if(vis) {
-						world.visibleBlocks().get(neighbors[i].getBlock()).remove(neighbors[i]);
+						if(vis) {
+							ch.hideBlock(neighbors[i]);
+						}
 					}
 				}
 			}
@@ -145,6 +152,7 @@ public class Chunk {
 	//TODO: Ore Clusters
 	//TODO: Finish vegetation
 	//TODO: Clean this method
+	//TODO: Add more diversity
 	public void generateFrom(float[][] map, float[][] vegetation, float[][] oreMap, float[][] heatMap) {
 		if(inst == null) {
 			inst = new BlockInstance[16][World.WORLD_HEIGHT][16];
@@ -220,7 +228,7 @@ public class Chunk {
 		boolean chy1 = world.getChunk(ox, oy + 1).isGenerated();
 		for (int px = 0; px < 16; px++) {
 			for (int py = 0; py < 16; py++) {
-				for (int j = world.WORLD_HEIGHT - 1; j >= 0; j--) {
+				for (int j = World.WORLD_HEIGHT - 1; j >= 0; j--) {
 					if (inst[px][j][py] == null) {
 						continue;
 					}
@@ -231,7 +239,7 @@ public class Chunk {
 													&& (px != 15 || i != 1 || chx1)
 													&& (py != 0 || i != 3 || chy0)
 													&& (py != 15 || i != 2 || chy1)) {
-							world.visibleBlocks().get(inst[px][j][py].getBlock()).add(inst[px][j][py]);
+							visibles.add(inst[px][j][py]);
 							break;
 						}
 					}
@@ -252,11 +260,12 @@ public class Chunk {
 							if(inst0 == null) {
 								continue;
 							}
-							if(world.visibleBlocks().get(inst0.getBlock()).contains(inst0)) {
+							Chunk ch = getChunk(inst0.getX(), inst0.getZ());
+							if(ch.contains(inst0)) {
 								continue;
 							}
 							if (inst0.getNeighbor(neighbor[k]) == null) {
-								world.visibleBlocks().get(inst0.getBlock()).add(inst0);
+								ch.revealBlock(inst0);
 								continue;
 							}
 						}
@@ -292,41 +301,46 @@ public class Chunk {
 		}
 	}
 	
-	public void _removeBlockAt(int x, int y, int z) {
-		BlockInstance bi = getBlockInstanceAt(x, y, z);
-		world.visibleBlocks().get(bi.getBlock()).remove(bi);
-		inst[x][y][z] = null;
+	// This function is here because it is mostly used by addBlock, where the neighbors to the added block usually are in the same chunk.
+	public Chunk getChunk(int x, int y) {
+
+		int cx = x;
+		if(cx < 0)
+			cx -= 15;
+		cx = cx / 16;
+		int cz = y;
+		if(cz < 0)
+			cz -= 15;
+		cz = cz / 16;
+		if(ox != cx || oy != cz)
+			return world.getChunk(cx, cz);
+		return this;
 	}
 	
-	public boolean _c(BlockInstance c) {
-		for (Block bs : world.visibleBlocks().keySet()) {
-			for (BlockInstance bi : world.visibleBlocks().get(bs)) {
-				if (bi == c) {
-					return true;
-				}
-			}
-		}
-		return false;
+	public void hideBlock(BlockInstance bi) {
+		visibles.remove(bi);
+	}
+	
+	public void revealBlock(BlockInstance bi) {
+		visibles.add(bi);
+	}
+	
+	public boolean contains(BlockInstance bi) {
+		return visibles.contains(bi);
 	}
 	
 	public void removeBlockAt(int x, int y, int z) {
 		BlockInstance bi = getBlockInstanceAt(x, y, z);
 		if (bi != null) {
-			world.visibleBlocks().get(bi.getBlock()).remove(bi);
+			visibles.remove(bi);
 			inst[x][y][z] = null;
-			// 0 = EAST  (x - 1)
-			// 1 = WEST  (x + 1)
-			// 2 = NORTH (z + 1)
-			// 3 = SOUTH (z - 1)
-			// 4 = DOWN
-			// 5 = UP
 			BlockInstance[] neighbors = bi.getNeighbors();
 			for (int i = 0; i < neighbors.length; i++) {
 				BlockInstance inst = neighbors[i];
-				//System.out.println(i + ": " + inst);
-				if (inst != null && inst != bi) {
-					if (!_c(inst)) {
-						world.visibleBlocks().get(inst.getBlock()).add(inst);
+				if (inst != null) {
+					Chunk ch = getChunk(inst.getX(), inst.getZ());
+					if (!ch.contains(inst)) {
+						ch.revealBlock(inst);
 					}
 				}
 			}

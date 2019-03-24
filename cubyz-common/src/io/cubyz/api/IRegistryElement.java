@@ -6,5 +6,6 @@ public interface IRegistryElement {
 
 	public String getID();
 	public Resource getRegistryID();
+	public void setID(int ID);
 	
 }

@@ -5,8 +5,6 @@ import static org.lwjgl.opengl.GL11.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
@@ -26,6 +24,7 @@ import org.jungle.util.Utils;
 
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
+import io.cubyz.world.Chunk;
 
 /**
  * 
@@ -107,7 +106,7 @@ public class MainRenderer implements IRenderer {
 	}
 
 	
-	public void render(Window window, Context ctx, Vector3f ambientLight, DirectionalLight directionalLight,  Map<Block, ArrayList<BlockInstance>> map) {
+	public void render(Window window, Context ctx, Vector3f ambientLight, DirectionalLight directionalLight, List<Chunk> chunks, Block [] blocks) {
 		if (window.isResized()) {
 			glViewport(0, 0, window.getWidth(), window.getHeight());
 			window.setResized(false);
@@ -118,24 +117,32 @@ public class MainRenderer implements IRenderer {
 			return;
 		clear();
 		ctx.getCamera().setViewMatrix(transformation.getViewMatrix(ctx.getCamera()));
+		List<Spatial> [] map;
+		map = (List<Spatial>[])new List[blocks.length];
+		for(int i = 0; i < map.length; i++) {
+			map[i] = new ArrayList<Spatial>();
+		}
+		for (Chunk ch : chunks) {
+			if(!ch.isLoaded())
+				continue;
+			List<BlockInstance> vis = ch.getVisibles();
+		    for (int i = 0; i < vis.size(); i++) {
+		    	map[vis.get(i).getID()].add((Spatial) vis.get(i).getSpatial());
+		    }
+		}
 		if (filter != null) {
 			filter.updateFrustum(window.getProjectionMatrix(), ctx.getCamera().getViewMatrix());
 			HashMap<Mesh, List<Spatial>> m = new HashMap<>();
-			for (Block block : map.keySet()) {
-				ArrayList<Spatial> spatialList = new ArrayList<Spatial>();
-				ArrayList<BlockInstance> blockList = map.get(block);
-			    for (int i = 0; i < blockList.size(); i++) {
-			    	spatialList.add((Spatial) blockList.get(i).getSpatial());
-			    }
-			    m.put((Mesh) block.getBlockPair().get("meshCache"), spatialList);
+			for (int i = 0; i < blocks.length; i++) {
+				m.put((Mesh) blocks[i].getBlockPair().get("meshCache"), map[i]);
 			}
 			filter.filter(m);
 		}
-		renderScene(ctx, ambientLight, null /* point light */, null /* spot light */, directionalLight, map);
+		renderScene(ctx, ambientLight, null /* point light */, null /* spot light */, directionalLight, map, blocks);
 		ctx.getHud().render(window);
 	}
 	
-	public void renderScene(Context ctx, Vector3f ambientLight, PointLight[] pointLightList, SpotLight[] spotLightList, DirectionalLight directionalLight, Map<Block, ArrayList<BlockInstance>> map) {
+	public void renderScene(Context ctx, Vector3f ambientLight, PointLight[] pointLightList, SpotLight[] spotLightList, DirectionalLight directionalLight, List<Spatial> [] map, Block [] blocks) {
 		shaderProgram.bind();
 
 		shaderProgram.setUniform("projectionMatrix", ctx.getWindow().getProjectionMatrix());
@@ -145,14 +152,10 @@ public class MainRenderer implements IRenderer {
 		
 		renderLights(viewMatrix, ambientLight, pointLightList, spotLightList, directionalLight);
 
-		for (Block block : map.keySet()) {
-			Mesh mesh = (Mesh) block.getBlockPair().get("meshCache");
+		for (int i = 0; i < blocks.length; i++) {
+			Mesh mesh = (Mesh) blocks[i].getBlockPair().get("meshCache");
 		    shaderProgram.setUniform("material", mesh.getMaterial());
-		    ArrayList<Spatial> spatialList = new ArrayList<Spatial>();
-		    for (BlockInstance bi : map.get(block)) {
-		    	spatialList.add((Spatial) bi.getSpatial());
-		    }
-		    mesh.renderList(spatialList, (Spatial gameItem) -> {
+		    mesh.renderList(map[i], (Spatial gameItem) -> {
 		    	if (gameItem.isInFrustum() || filter == null) {
 		    		Matrix4f modelViewMatrix = transformation.getModelViewMatrix(gameItem, viewMatrix);
 			        shaderProgram.setUniform("selected", gameItem.isSelected() ? 1f : 0f);

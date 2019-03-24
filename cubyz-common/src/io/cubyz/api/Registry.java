@@ -6,7 +6,8 @@ import java.util.List;
 import io.cubyz.CubyzLogger;
 
 public class Registry<T extends IRegistryElement> {
-
+	private int IDs = 0;
+	
 	private HashMap<String, T> hashMap = new HashMap<>();
 	private boolean debug = Boolean.parseBoolean(System.getProperty("registry.debugEnabled", "false"));
 	private boolean alwaysError = Boolean.parseBoolean(System.getProperty("registry.dumpAsError", "true"));
@@ -35,13 +36,14 @@ public class Registry<T extends IRegistryElement> {
 			System.err.flush();
 			return;
 		}
+		element.setID(IDs);
+		IDs++;
 		hashMap.put(element.getRegistryID().toString(), element);
 		if (debug) {
 			CubyzLogger.instance.info("Registered " + getType(element.getClass()) + " as " + element.getRegistryID());
 		}
 	}
 	
-	@SuppressWarnings("unchecked")
 	public void registerAll(T... elements) {
 		for (T elem : elements) {
 			register(elem);

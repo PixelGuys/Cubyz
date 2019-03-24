@@ -3,10 +3,8 @@ package io.cubyz.world;
 import java.io.File;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Deque;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 import java.util.Random;
 
 import io.cubyz.CubyzLogger;
@@ -16,18 +14,17 @@ import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
-import io.cubyz.modding.ModLoader;
 import io.cubyz.save.WorldIO;
 
 public class LocalWorld extends World {
 
 	private String name;
-	private ArrayList<Chunk> chunks;
+	private List<Chunk> chunks;
 	private int lastChunk = -1;
 	private ArrayList<Entity> entities = new ArrayList<>();
 	
 	//private List<BlockInstance> spatials = new ArrayList<>();
-	private Map<Block, ArrayList<BlockInstance>> visibleSpatials = Collections.synchronizedMap(new HashMap<>());
+	private Block [] blocks;
 	private boolean edited;
 	private Player player;
 	
@@ -75,16 +72,13 @@ public class LocalWorld extends World {
 						//seed = (int) System.currentTimeMillis(); // enable it if you want fun (don't forget to disable before commit!!!)
 					}
 					else if (popped.type == ChunkActionType.LOAD) {
+						CubyzLogger.instance.fine("\"Loading\" " + popped.chunk.getX() + "," + popped.chunk.getZ());
 						if(!popped.chunk.isLoaded()) {
-							popped.chunk.load();
+							popped.chunk.setLoaded(true);
 						}
 					}
 					else if (popped.type == ChunkActionType.UNLOAD) {
-						CubyzLogger.instance.fine("Unloading " + popped.chunk.getX() + "," + popped.chunk.getZ());
-						for (BlockInstance bi : popped.chunk.list()) {
-							Block b = bi.getBlock();
-							visibleSpatials.get(b).remove(bi);
-						}
+						CubyzLogger.instance.fine("\"Unloading\" " + popped.chunk.getX() + "," + popped.chunk.getZ());
 						popped.chunk.setLoaded(false);
 					}
 				}
@@ -136,23 +130,25 @@ public class LocalWorld extends World {
 		}
 		return player;
 	}
+
+	@Override
+	public List<Chunk> getChunks() {
+		return chunks;
+	}
+
+	@Override
+	public Block [] getBlocks() {
+		return blocks;
+	}
 	
 	@Override
 	public Entity[] getEntities() {
 		return entities.toArray(new Entity[entities.size()]);
 	}
 	
-	@Override
-	public Map<Block, ArrayList<BlockInstance>> visibleBlocks() {
-		return visibleSpatials;
-	}
-	
 	public void unload(int x, int z) {
 		Chunk ch = getChunk(x, z);
 		if (ch.isLoaded()) {
-			for (BlockInstance bi : ch.list()) {
-				visibleSpatials.get(bi.getBlock()).remove(bi);
-			}
 			ch.setLoaded(false);
 		}
 	}
@@ -226,19 +222,13 @@ public class LocalWorld extends World {
 		}
 	}
 	
-	public void _removeBlock(int x, int y, int z) {
-		Chunk ch = getChunk(x / 16, z / 16);
-		if (ch != null) {
-			ch._removeBlockAt(x % 16, y, z % 16);
-		}
-	}
-	
 	public void generate() {
 		Random r = new Random();
 		seed = r.nextInt();
+		blocks = new Block[CubzRegistries.BLOCK_REGISTRY.registered().length];
 		for (IRegistryElement ire : CubzRegistries.BLOCK_REGISTRY.registered()) {
 			Block b = (Block) ire;
-			visibleSpatials.put(b, new ArrayList<>());
+			blocks[b.ID] = b;
 		}
 	}
 
@@ -249,7 +239,7 @@ public class LocalWorld extends World {
 
 	@Override
 	public void seek(int x, int z) {
-		int renderDistance/*minus 1*/ = 3;
+		int renderDistance/*minus 1*/ = 4;
 		int blockDistance = renderDistance*16;
 		for (int x1 = x - blockDistance-48; x1 <= x + blockDistance+48; x1 += 16) {
 			for (int z1 = z - blockDistance-48; z1 <= z + blockDistance+48; z1 += 16) {
@@ -269,5 +259,4 @@ public class LocalWorld extends World {
 			}
 		}
 	}
-	
 }

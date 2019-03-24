@@ -1,8 +1,6 @@
 package io.cubyz.world;
 
-import java.util.ArrayList;
-import java.util.Map;
-
+import java.util.List;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
@@ -28,11 +26,6 @@ public class RemoteWorld extends World {
 	
 	@Override
 	public Player getLocalPlayer() {
-		return null;
-	}
-
-	@Override
-	public Map<Block, ArrayList<BlockInstance>> visibleBlocks() {
 		return null;
 	}
 
@@ -67,6 +60,18 @@ public class RemoteWorld extends World {
 	@Override
 	public void synchronousSeek(int x, int z) {
 		
+	}
+
+	@Override
+	public List<Chunk> getChunks() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Block[] getBlocks() {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 }

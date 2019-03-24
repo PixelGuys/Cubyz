@@ -1,9 +1,6 @@
 package io.cubyz.world;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-
 import org.joml.Vector3i;
 
 import io.cubyz.blocks.Block;
@@ -70,7 +67,8 @@ public abstract class World {
 		return WORLD_HEIGHT;
 	}
 	
-	public abstract Map<Block, ArrayList<BlockInstance>> visibleBlocks();
+	public abstract List<Chunk> getChunks();
+	public abstract Block [] getBlocks();
 	public abstract Entity[] getEntities();
 	
 	public abstract void synchronousSeek(int x, int z);

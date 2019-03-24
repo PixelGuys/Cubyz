@@ -1,19 +1,14 @@
 package io.cubyz.client;
 
-import java.util.ArrayList;
-import java.util.Map;
-
+import java.util.List;
 import org.joml.Intersectionf;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
 import org.jungle.Camera;
-import org.jungle.Spatial;
 import org.jungle.renderers.IRenderer;
-import org.jungle.renderers.jungle.JungleRender;
-
-import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.world.BlockSpatial;
+import io.cubyz.world.Chunk;
 
 public class CubyzMeshSelectionDetector {
 
@@ -35,15 +30,18 @@ public class CubyzMeshSelectionDetector {
 		return selectedSpatial;
 	}
 	
-	public void selectSpatial(Map<Block, ArrayList<BlockInstance>> blockList, Camera camera) {
+	public void selectSpatial(List<Chunk> chunks, Camera camera) {
 		dir = render.getTransformation().getViewMatrix(camera).positiveZ(dir).negate();
-	    selectSpatial(blockList, camera.getPosition(), dir);
+	    selectSpatial(chunks, camera.getPosition(), dir);
 	}
 	
-	public void selectSpatial(Map<Block, ArrayList<BlockInstance>> blockList, Vector3f position, Vector3f dir) {
+	public void selectSpatial(List<Chunk> chunks, Vector3f position, Vector3f dir) {
 	    float closestDistance = Float.POSITIVE_INFINITY;
-	    for (Block block : blockList.keySet()) {
-		    for (BlockInstance bi : blockList.get(block)) {
+	    for (Chunk ch : chunks) {
+	    	if(!ch.isLoaded())
+	    		continue;
+	    	try {
+		    for (BlockInstance bi : ch.getVisibles()) {
 		        ((BlockSpatial) bi.getSpatial()).setSelected(false);
 		        min.set(bi.getPosition());
 		        max.set(bi.getPosition());
@@ -54,6 +52,7 @@ public class CubyzMeshSelectionDetector {
 		            selectedSpatial = bi;
 		        }
 		    }
+	    	}catch(Exception e) {}
 	    }
 	    if (selectedSpatial != null) {
 	        ((BlockSpatial) selectedSpatial.getSpatial()).setSelected(true);

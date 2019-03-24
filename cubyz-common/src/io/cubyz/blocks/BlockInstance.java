@@ -1,10 +1,5 @@
 package io.cubyz.blocks;
 
-import java.io.File;
-import java.util.Objects;
-
-import javax.imageio.ImageIO;
-
 import org.joml.Vector3i;
 
 import io.cubyz.ClientOnly;
@@ -27,6 +22,10 @@ public class BlockInstance {
 	
 	public BlockInstance(Block block) {
 		this.block = block;
+	}
+	
+	public int getID() {
+		return block.ID;
 	}
 	
 	public void update() {
