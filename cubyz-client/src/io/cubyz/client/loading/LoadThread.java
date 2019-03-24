@@ -14,7 +14,7 @@ import javax.swing.text.Utilities;
 import org.reflections.Reflections;
 
 import io.cubyz.Constants;
-import io.cubyz.CubzLogger;
+import io.cubyz.CubyzLogger;
 import io.cubyz.api.CubzRegistries;
 import io.cubyz.api.Mod;
 import io.cubyz.blocks.Block;
@@ -28,7 +28,7 @@ public class LoadThread extends Thread {
 	
 	public void run() {
 		LoadingGUI l = LoadingGUI.getInstance();
-		CubzLogger log = CubzLogger.instance;
+		CubyzLogger log = CubyzLogger.instance;
 		l.setStep(1, 0, 0);
 		
 		// RPC temporaly disabled
