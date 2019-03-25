@@ -7,8 +7,4 @@ public class OakLeaves extends Block {
 		setID("cubyz:oak_leaves");
 	}
 	
-	public void update() {
-		
-	}
-	
 }

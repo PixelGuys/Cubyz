@@ -130,6 +130,13 @@ public class Cubyz implements IGameLogic {
 
 	@Override
 	public void init(Window window) throws Exception {
+		// Delete cache
+		File cache = new File("cache");
+		if (cache.exists()) {
+			for (File f : cache.listFiles()) {
+				f.delete();
+			}
+		}
 		//CubzLogger.useDefaultHandler = true;
 		gameUI = new UISystem();
 		gameUI.init(window);
@@ -273,6 +280,8 @@ public class Cubyz implements IGameLogic {
 	public static final ArrayList<Chunk> EMPTY_CHUNK_LIST = new ArrayList<Chunk>();
 	public static final Block[] EMPTY_BLOCK_LIST = new Block[0];
 	
+	float playerBobbing;
+	boolean bobbingUp;
 	@Override
 	public void render(Window window) {
 		if (window.shouldClose()) {
@@ -280,13 +289,29 @@ public class Cubyz implements IGameLogic {
 		}
 		
 		if (world != null) {
+			if (playerInc.x != 0 || playerInc.z != 0) { // while walking
+				if (bobbingUp) {
+					playerBobbing += 0.005f;
+					if (playerBobbing >= 0.05f) {
+						bobbingUp = false;
+					}
+				} else {
+					playerBobbing -= 0.005f;
+					if (playerBobbing <= -0.05f) {
+						bobbingUp = true;
+					}
+				}
+			} else {
+				//System.out.println("no bobbing");
+				//playerBobbing = 0;
+			}
 			if (playerInc.y != 0) {
 				world.getLocalPlayer().vy = playerInc.y;
 			}
 			if (playerInc.x != 0) {
 				world.getLocalPlayer().vx = playerInc.x;
 			}
-			ctx.getCamera().setPosition(world.getLocalPlayer().getPosition().x, world.getLocalPlayer().getPosition().y + 1.5f, world.getLocalPlayer().getPosition().z);
+			ctx.getCamera().setPosition(world.getLocalPlayer().getPosition().x, world.getLocalPlayer().getPosition().y + 1.5f + playerBobbing, world.getLocalPlayer().getPosition().z);
 		}
 		if (world != null) {
 			renderer.render(window, ctx, new Vector3f(0.3F, 0.3F, 0.3F), light, world.getChunks(), world.getBlocks());

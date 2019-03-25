@@ -27,3 +27,4 @@ hs_err_pid*
 .recommenders/
 
 cubyz-client/logs/
+cubyz-client/cache

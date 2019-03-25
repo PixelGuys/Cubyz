@@ -23,8 +23,8 @@ public class CubyzMeshSelectionDetector {
 	}
 	
 	/**
-	 * Return selected spatial
-	 * @return selected spatial, or null if none.
+	 * Return selected block instance
+	 * @return selected block instance, or null if none.
 	 */
 	public BlockInstance getSelectedBlockInstance() {
 		return selectedSpatial;
@@ -37,6 +37,7 @@ public class CubyzMeshSelectionDetector {
 	
 	public void selectSpatial(List<Chunk> chunks, Vector3f position, Vector3f dir) {
 	    float closestDistance = Float.POSITIVE_INFINITY;
+	    selectedSpatial = null;
 	    for (Chunk ch : chunks) {
 	    	if(!ch.isLoaded())
 	    		continue;
