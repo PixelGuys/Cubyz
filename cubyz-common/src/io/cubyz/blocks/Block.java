@@ -14,6 +14,8 @@ public class Block implements IRegistryElement {
 	private String texture;
 	private float hardness;
 	private boolean solid = true;
+	//NOTE FOR ZEN: This variable is mostly making the fluids non-selectable! Also i couln't find where you made the blocks selected. Please make if this is false, then the block isn't blue (selected)!!
+	private boolean selectable = true;
 	
 	public String getTexture() {
 		return texture;
@@ -34,6 +36,15 @@ public class Block implements IRegistryElement {
 	
 	public boolean isSolid() {
 		return solid;
+	}
+	
+	public Block setSelectable(boolean selectable) {
+		this.selectable = selectable;
+		return this;
+	}
+	
+	public boolean isSelectable() {
+		return selectable;
 	}
 	
 	public IRenderablePair getBlockPair() {

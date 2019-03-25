@@ -5,6 +5,7 @@ public class Water extends Block {
 	public Water() {
 		setTexture("water");
 		setID("cubyz:water");
+		setSelectable(false);
 	}
 	
 }
