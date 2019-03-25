@@ -6,6 +6,8 @@ public class Water extends Block {
 		setTexture("water");
 		setID("cubyz:water");
 		setSelectable(false);
+		setSolid(false);
+		transparent = true;
 	}
 	
 }

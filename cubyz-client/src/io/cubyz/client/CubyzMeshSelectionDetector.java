@@ -43,6 +43,8 @@ public class CubyzMeshSelectionDetector {
 	    		continue;
 	    	try {
 		    for (BlockInstance bi : ch.getVisibles()) {
+		    	if(!bi.getBlock().isSolid())
+		    		continue;
 		        ((BlockSpatial) bi.getSpatial()).setSelected(false);
 		        min.set(bi.getPosition());
 		        max.set(bi.getPosition());

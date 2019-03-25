@@ -122,7 +122,7 @@ public class Chunk {
 		if(generated) {
 			BlockInstance[] neighbors = inst0.getNeighbors();
 			for (int i = 0; i < neighbors.length; i++) {
-				if (neighbors[i] == null) {
+				if (blocksLight(neighbors[i], inst0.getBlock().isTransparent())) {
 					visibles.add(inst0);
 					break;
 				}
@@ -134,7 +134,7 @@ public class Chunk {
 						BlockInstance[] neighbors1 = neighbors[i].getNeighbors();
 						boolean vis = true;
 						for (int j = 0; j < neighbors1.length; j++) {
-							if (neighbors1[j] == null) {
+							if (blocksLight(neighbors1[j], neighbors[i].getBlock().isTransparent())) {
 								vis = false;
 								break;
 							}
@@ -232,7 +232,8 @@ public class Chunk {
 			int px = bi.getX()&15;
 			int py = bi.getZ()&15;
 			for (int i = 0; i < neighbors.length; i++) {
-				if (neighbors[i] == null 	&& (j != 0 || i != 4)
+				if (blocksLight(neighbors[i], bi.getBlock().isTransparent())
+											&& (j != 0 || i != 4)
 											&& (px != 0 || i != 0 || chx0)
 											&& (px != 15 || i != 1 || chx1)
 											&& (py != 0 || i != 3 || chy0)
@@ -259,7 +260,7 @@ public class Chunk {
 						if(ch.contains(inst0)) {
 							continue;
 						}
-						if (inst0.getNeighbor(neighbor[k]) == null) {
+						if (blocksLight(inst0.getNeighbor(neighbor[k]), inst0.getBlock().isTransparent())) {
 							ch.revealBlock(inst0);
 							continue;
 						}
@@ -268,6 +269,13 @@ public class Chunk {
 			}
 			world.markEdit();
 		}
+	}
+	
+	public boolean blocksLight(BlockInstance bi, boolean transparent) {
+		if(bi == null || (bi.getBlock().isTransparent() && !transparent)) {
+			return true;
+		}
+		return false;
 	}
 	
 	// This function only allows a less than 50% of the underground to be ores.
