@@ -54,7 +54,7 @@ public class UISystem extends Hud {
 	    if (nvg == NULL) {
 	        throw new Exception("Could not init nanovg");
 	    }
-		Font.register("OpenSans Bold", "res/fonts/opensans/OpenSans-Bold.ttf", nvg);
+		Font.register("OpenSans Bold", "assets/cubyz/fonts/opensans/OpenSans-Bold.ttf", nvg);
 		NGraphics.setNanoID(nvg);
 		inited = true;
 	}

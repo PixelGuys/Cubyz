@@ -1,4 +1,4 @@
-package io.cubyz.api.base;
+ package io.cubyz.api.base;
 
 import io.cubyz.api.EventHandler;
 import io.cubyz.api.Mod;
