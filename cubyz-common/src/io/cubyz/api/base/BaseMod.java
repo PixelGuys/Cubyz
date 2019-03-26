@@ -11,6 +11,7 @@ import io.cubyz.blocks.Dirt;
 import io.cubyz.blocks.EmeraldOre;
 import io.cubyz.blocks.GoldOre;
 import io.cubyz.blocks.Grass;
+import io.cubyz.blocks.Ice;
 import io.cubyz.blocks.IronOre;
 import io.cubyz.blocks.OakLeaves;
 import io.cubyz.blocks.OakLog;
@@ -31,6 +32,7 @@ public class BaseMod {
 	static Bedrock bedrock;
 	static Grass grass;
 	static Dirt dirt;
+	static Ice ice;
 	static OakLeaves oakLeaves;
 	static OakLog oakLog;
 	static Sand sand;
@@ -60,6 +62,7 @@ public class BaseMod {
 		bedrock = new Bedrock();
 		grass = new Grass();
 		dirt = new Dirt();
+		ice = new Ice();
 		oakLeaves = new OakLeaves();
 		oakLog = new OakLog();
 		sand = new Sand();
@@ -79,7 +82,7 @@ public class BaseMod {
 		water = new Water();
 		
 		// Register
-		reg.registerAll(bedrock, grass, dirt, oakLeaves, oakLog, sand, snow, stone, coal, diamond, emerald, gold, iron, ruby, water);
+		reg.registerAll(bedrock, grass, dirt, ice, oakLeaves, oakLog, sand, snow, stone, coal, diamond, emerald, gold, iron, ruby, water);
 	}
 	
 }
