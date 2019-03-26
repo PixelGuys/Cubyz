@@ -1,10 +1,11 @@
- package io.cubyz.api.base;
+package io.cubyz.api.base;
 
 import io.cubyz.api.EventHandler;
 import io.cubyz.api.Mod;
 import io.cubyz.api.Registry;
 import io.cubyz.blocks.Bedrock;
 import io.cubyz.blocks.Block;
+import io.cubyz.blocks.Cactus;
 import io.cubyz.blocks.CoalOre;
 import io.cubyz.blocks.DiamondOre;
 import io.cubyz.blocks.Dirt;
@@ -30,8 +31,9 @@ public class BaseMod {
 	
 	// Normal:
 	static Bedrock bedrock;
-	static Grass grass;
+	static Cactus cactus;
 	static Dirt dirt;
+	static Grass grass;
 	static Ice ice;
 	static OakLeaves oakLeaves;
 	static OakLog oakLog;
@@ -60,6 +62,7 @@ public class BaseMod {
 		
 		// Normal
 		bedrock = new Bedrock();
+		cactus = new Cactus();
 		grass = new Grass();
 		dirt = new Dirt();
 		ice = new Ice();
@@ -82,7 +85,7 @@ public class BaseMod {
 		water = new Water();
 		
 		// Register
-		reg.registerAll(bedrock, grass, dirt, ice, oakLeaves, oakLog, sand, snow, stone, coal, diamond, emerald, gold, iron, ruby, water);
+		reg.registerAll(bedrock, cactus, dirt, grass, ice, oakLeaves, oakLog, sand, snow, stone, coal, diamond, emerald, gold, iron, ruby, water);
 	}
 	
 }

@@ -212,8 +212,8 @@ public class Chunk {
 				int incx = px == 0 ? 1 : -1;
 				int incy = py == 0 ? 1 : -1;
 				int temperature = (int)((2-map[px][py]+SEA_LEVEL/(float)World.WORLD_HEIGHT)*heatMap[px][py]*120) - 100;
-				if (temperature < 40 && map[px][py] * World.WORLD_HEIGHT >= SEA_LEVEL + 3 && value > 0.5f && ((int)((vegetation[px][py]-vegetation[px+incx][py+incy]) * 100000000) & 63) == 1) {	// "&(2^n - 1)" is a faster way to do "%(2^n)"
-					Structures.generateTree(this, wx + px, (int) (map[px][py] * World.WORLD_HEIGHT) + 1, wy + py);
+				if (map[px][py] * World.WORLD_HEIGHT >= SEA_LEVEL + 4) {
+					Structures.generateVegetation(this, wx + px, (int) (map[px][py] * World.WORLD_HEIGHT) + 1, wy + py, value, temperature, (int)((vegetation[px][py]-vegetation[px+incx][py+incy]) * 100000000));
 				}
 			}
 		}
