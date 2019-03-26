@@ -6,6 +6,7 @@ public class OakLeaves extends Block {
 		setTexture("oak_leaves");
 		setID("cubyz:oak_leaves");
 		this.transparent = true;
+		this.degradable = true;
 	}
 	
 }

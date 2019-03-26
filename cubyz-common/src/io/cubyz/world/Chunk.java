@@ -108,16 +108,21 @@ public class Chunk {
 			world.getChunk(ox, oy + 1).addBlock(b, x, y, z);
 			return;
 		}
-		if (world.getBlock(x, y, z) != null) {
-			return;
+		if(inst == null) {
+			inst = new BlockInstance[16][World.WORLD_HEIGHT][16];
+		} else { // Checks if there is a block on that position and deposits it if degradable.
+			BlockInstance bi = inst[rx][y][rz];
+			if(bi != null) {
+				if(!bi.getBlock().isDegradable() || b.isDegradable()) {
+					return;
+				}
+				removeBlockAt(rx, y, rz);
+			}
 		}
 		BlockInstance inst0 = new BlockInstance(b);
 		inst0.setPosition(new Vector3i(x, y, z));
 		inst0.setWorld(world);
 		list.add(inst0);
-		if(inst == null) {
-			inst = new BlockInstance[16][World.WORLD_HEIGHT][16];
-		}
 		inst[rx][y][rz] = inst0;
 		if(generated) {
 			BlockInstance[] neighbors = inst0.getNeighbors();
