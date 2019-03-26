@@ -119,7 +119,6 @@ public class Chunk {
 			inst = new BlockInstance[16][World.WORLD_HEIGHT][16];
 		}
 		inst[rx][y][rz] = inst0;
-		world.markEdit();
 		if(generated) {
 			BlockInstance[] neighbors = inst0.getNeighbors();
 			for (int i = 0; i < neighbors.length; i++) {
@@ -203,7 +202,6 @@ public class Chunk {
 						updatables.add(bi);
 					}*/
 				}
-				world.markEdit();
 			}
 		}
 		
@@ -272,7 +270,6 @@ public class Chunk {
 					}
 				}
 			}
-			world.markEdit();
 		}
 	}
 	
@@ -352,7 +349,6 @@ public class Chunk {
 					}
 				}
 			}
-			world.markEdit();
 			inst[x][y][z] = null;
 		}
 	}

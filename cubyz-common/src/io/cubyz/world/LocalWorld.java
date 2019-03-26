@@ -25,7 +25,6 @@ public class LocalWorld extends World {
 	
 	//private List<BlockInstance> spatials = new ArrayList<>();
 	private Block [] blocks;
-	private boolean edited;
 	private Player player;
 	
 	private WorldIO wio;
@@ -87,21 +86,6 @@ public class LocalWorld extends World {
 		}
 	}
 	
-	@Override
-	public boolean isEdited() {
-		return edited;
-	}
-	
-	@Override
-	public void unmarkEdit() {
-		edited = false;
-	}
-	
-	@Override
-	public void markEdit() {
-		edited = true;
-	}
-	
 	public LocalWorld() {
 		name = "World";
 		chunks = new ArrayList<>();
@@ -158,7 +142,7 @@ public class LocalWorld extends World {
 		Chunk ch = getChunk(x / 16, z / 16);
 		if (!ch.isGenerated()) {
 			synchronousGenerate(ch);
-			ch.setLoaded(true);
+			ch.load();
 		}
 	}
 	
