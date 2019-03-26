@@ -12,6 +12,7 @@ public class GameLauncher extends Game {
 		
 		GameLauncher.instance = new GameLauncher();
 		instance.logic = new Cubyz();
+		
 		GameOptionsPrompt prompt = new GameOptionsPrompt();
 		prompt.setLocationRelativeTo(null);
 		prompt.setTitle("Cubz Settings");
@@ -21,12 +22,6 @@ public class GameLauncher extends Game {
 		}
 		
 		GameOptions opt = prompt.generateOptions();
-		
-//		GameOptions opt = new GameOptions();
-//		opt.antialiasing = false;
-//		opt.frustumCulling = true;
-//		opt.showTriangles = false;
-//		opt.cullFace = true;
 		
 		instance.start(opt);
 		Cubyz.log.info("Stopped!");
