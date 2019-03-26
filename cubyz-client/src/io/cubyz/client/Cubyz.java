@@ -31,6 +31,7 @@ import org.reflections.Reflections;
 import io.cubyz.ClientOnly;
 import io.cubyz.Constants;
 import io.cubyz.CubyzLogger;
+import io.cubyz.Utilities;
 import io.cubyz.api.CubzRegistries;
 import io.cubyz.api.IRegistryElement;
 import io.cubyz.api.Mod;
@@ -94,7 +95,7 @@ public class Cubyz implements IGameLogic {
 		game = g;
 		win = g.getWindow();
 		win.setSize(800, 600);
-		win.setTitle("Cubyz " + Constants.GAME_VERSION);
+		win.setTitle("Cubyz " + Utilities.capitalize(Constants.GAME_BUILD_TYPE) + " " + Constants.GAME_VERSION);
 	}
 
 	@Override
