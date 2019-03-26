@@ -224,11 +224,24 @@ public class LocalWorld extends World {
 	
 	public void generate() {
 		Random r = new Random();
+		int ID = 0;
 		seed = r.nextInt();
 		blocks = new Block[CubzRegistries.BLOCK_REGISTRY.registered().length];
 		for (IRegistryElement ire : CubzRegistries.BLOCK_REGISTRY.registered()) {
 			Block b = (Block) ire;
-			blocks[b.ID] = b;
+			if(!b.isTransparent()) {
+				blocks[ID] = b;
+				b.ID = ID;
+				ID++;
+			}
+		}
+		for (IRegistryElement ire : CubzRegistries.BLOCK_REGISTRY.registered()) {
+			Block b = (Block) ire;
+			if(b.isTransparent()) {
+				blocks[ID] = b;
+				b.ID = ID;
+				ID++;
+			}
 		}
 	}
 
