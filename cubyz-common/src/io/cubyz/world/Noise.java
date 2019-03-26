@@ -162,14 +162,27 @@ public class Noise {
 	
 	public static float[][] generateMapFragment(int x, int y, int width, int height, int scale, int seed) {
 		float[][] map = new float[width][height];
-		resolution = scale;
-		resolution2 = resolution-1;
-		Noise.seed = seed;
+		float factor = 0.45F;
+		float sum = 0;
+		for(; scale >= 16; scale >>= 1) {
+			resolution = scale;
+			resolution2 = resolution-1;
+			Noise.seed = seed;
+		
+			for (int x1 = x; x1 < width + x; x1++) {
+				for (int y1 = y; y1 < height + y; y1++) {
+					//map[x1 - x][y1 - y] = get2DPerlinNoiseValue(x1, y1, scale, seed);
+					map[x1 - x][y1 - y] += factor*perlin(x1, y1);
+				}
+			}
+			sum += factor;
+			factor *= 0.55F;
+		}
 		
 		for (int x1 = x; x1 < width + x; x1++) {
 			for (int y1 = y; y1 < height + y; y1++) {
 				//map[x1 - x][y1 - y] = get2DPerlinNoiseValue(x1, y1, scale, seed);
-				map[x1 - x][y1 - y] = perlin(x1, y1);
+				map[x1 - x][y1 - y] /= sum;
 			}
 		}
 		
