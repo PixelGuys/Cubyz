@@ -65,19 +65,19 @@ public class LocalWorld extends World {
 				if (!loadList.isEmpty()) {
 					ChunkAction popped = loadList.pop();
 					if (popped.type == ChunkActionType.GENERATE) {
-						CubyzLogger.instance.fine("Generating " + popped.chunk.getX() + "," + popped.chunk.getZ());
+//						CubyzLogger.instance.fine("Generating " + popped.chunk.getX() + "," + popped.chunk.getZ());
 						synchronousGenerate(popped.chunk);
 						popped.chunk.load();
 						//seed = (int) System.currentTimeMillis(); // enable it if you want fun (don't forget to disable before commit!!!)
 					}
 					else if (popped.type == ChunkActionType.LOAD) {
-						CubyzLogger.instance.fine("\"Loading\" " + popped.chunk.getX() + "," + popped.chunk.getZ());
+//						CubyzLogger.instance.fine("\"Loading\" " + popped.chunk.getX() + "," + popped.chunk.getZ());
 						if(!popped.chunk.isLoaded()) {
 							popped.chunk.setLoaded(true);
 						}
 					}
 					else if (popped.type == ChunkActionType.UNLOAD) {
-						CubyzLogger.instance.fine("\"Unloading\" " + popped.chunk.getX() + "," + popped.chunk.getZ());
+//						CubyzLogger.instance.fine("\"Unloading\" " + popped.chunk.getX() + "," + popped.chunk.getZ());
 						popped.chunk.setLoaded(false);
 					}
 				}
