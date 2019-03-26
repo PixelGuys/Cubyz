@@ -26,6 +26,7 @@ public class Chunk {
 	private static Block sand = br.getByID("cubyz:sand");
 	private static Block snow = br.getByID("cubyz:snow");
 	private static Block dirt = br.getByID("cubyz:dirt");
+	private static Block ice = br.getByID("cubyz:ice");
 	private static Block stone = br.getByID("cubyz:stone");
 	private static Block bedrock = br.getByID("cubyz:bedrock");
 	
@@ -171,8 +172,12 @@ public class Chunk {
 				for (int j = y > SEA_LEVEL ? y : SEA_LEVEL; j >= 0; j--) {
 					BlockInstance bi = null;
 					if(j > y) {
-						bi = new BlockInstance(water);
-					}else if ((y < SEA_LEVEL + 4 || temperature > 40) && j > y - 3) {
+						if (temperature <= 0 && j == SEA_LEVEL) {
+							bi = new BlockInstance(ice);
+						} else {
+							bi = new BlockInstance(water);
+						}
+					}else if (((y < SEA_LEVEL + 4 && temperature > 5) || temperature > 40 || y < SEA_LEVEL) && j > y - 3) {
 						bi = new BlockInstance(sand);
 					} else if (j == y) {
 						if(temperature > 0) {
