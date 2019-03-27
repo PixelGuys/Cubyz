@@ -40,6 +40,7 @@ import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
+import io.cubyz.items.Inventory;
 import io.cubyz.modding.ModLoader;
 import io.cubyz.multiplayer.client.CubzClient;
 import io.cubyz.ui.DebugGUI;
@@ -68,7 +69,8 @@ public class Cubyz implements IGameLogic {
 	public static UISystem gameUI;
 	public static World world;
 	
-	private int inventorySelection = 1; // Selected slot in inventory
+	private int inventorySelection = 0; // Selected slot in inventory
+	private static Inventory inventory;
 
 	private CubyzMeshSelectionDetector msd;
 
@@ -117,6 +119,7 @@ public class Cubyz implements IGameLogic {
 		world.synchronousSeek(dx, dz);
 		int highestY = world.getHighestBlock(dx, dz);
 		world.getLocalPlayer().setPosition(new Vector3f(dx, highestY+2, dz));
+		inventory = new Inventory();
 	}
 
 	public static void requestJoin(String host) {
@@ -373,8 +376,8 @@ public class Cubyz implements IGameLogic {
 					breakCooldown = 10;
 					BlockInstance bi = msd.getSelectedBlockInstance();
 					if (bi != null && bi.getBlock().getHardness() != -1f) {
-						inventorySelection = bi.getID();// To be able to build that block again
 						world.removeBlock(bi.getX(), bi.getY(), bi.getZ());
+						inventory.addBlock(bi.getBlock(), 1);
 					}
 				}
 			}
@@ -383,9 +386,10 @@ public class Cubyz implements IGameLogic {
 				if (buildCooldown == 0) {
 					buildCooldown = 10;
 					Vector3i pos = msd.getEmptyPlace(ctx.getCamera().getPosition());
-					Block b = world.getBlocks()[inventorySelection];	// TODO: add inventory
+					Block b = inventory.getBlock(inventorySelection);	// TODO: add inventory
 					if (b != null && pos != null) {
 						world.placeBlock(pos.x, pos.y, pos.z, b);
+						inventory.addBlock(b, -1);
 					}
 				}
 			}
