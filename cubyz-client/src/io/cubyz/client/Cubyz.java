@@ -10,6 +10,7 @@ import java.util.logging.Logger;
 import javax.imageio.ImageIO;
 
 import org.joml.Vector3f;
+import org.joml.Vector3i;
 import org.joml.Vector4f;
 import org.jungle.Camera;
 import org.jungle.Jungle;
@@ -66,10 +67,13 @@ public class Cubyz implements IGameLogic {
 	public static MouseInput mouse;
 	public static UISystem gameUI;
 	public static World world;
+	
+	private int inventorySelection = 1; // Selected slot in inventory
 
 	private CubyzMeshSelectionDetector msd;
 
 	private int breakCooldown = 10;
+	private int buildCooldown = 10;
 
 	public static Logger log = CubyzLogger.i;
 
@@ -273,6 +277,36 @@ public class Cubyz implements IGameLogic {
 				mouse.clearPos(window.getWidth() / 2, window.getHeight() / 2);
 				breakCooldown = 10;
 			}
+			if (mouse.isRightButtonPressed() && !mouse.isGrabbed()) {
+				mouse.setGrabbed(true);
+				mouse.clearPos(window.getWidth() / 2, window.getHeight() / 2);
+				buildCooldown = 10;
+			}
+			//inventorySelection = mouse.getMouseWheelPosition() & 7; TODO(@zenith391): Update Jungle Engine to handle mousewheel.
+			if (window.isKeyPressed(GLFW.GLFW_KEY_1)) {
+				inventorySelection = 0;
+			}
+			if (window.isKeyPressed(GLFW.GLFW_KEY_2)) {
+				inventorySelection = 1;
+			}
+			if (window.isKeyPressed(GLFW.GLFW_KEY_3)) {
+				inventorySelection = 2;
+			}
+			if (window.isKeyPressed(GLFW.GLFW_KEY_4)) {
+				inventorySelection = 3;
+			}
+			if (window.isKeyPressed(GLFW.GLFW_KEY_5)) {
+				inventorySelection = 4;
+			}
+			if (window.isKeyPressed(GLFW.GLFW_KEY_6)) {
+				inventorySelection = 5;
+			}
+			if (window.isKeyPressed(GLFW.GLFW_KEY_7)) {
+				inventorySelection = 6;
+			}
+			if (window.isKeyPressed(GLFW.GLFW_KEY_8)) {
+				inventorySelection = 7;
+			}
 			msd.selectSpatial(world.getChunks(), ctx.getCamera());
 		}
 		mouse.input(window);
@@ -330,15 +364,28 @@ public class Cubyz implements IGameLogic {
 			if (breakCooldown > 0) {
 				breakCooldown--;
 			}
+			if (buildCooldown > 0) {
+				buildCooldown--;
+			}
 			if (mouse.isLeftButtonPressed() && mouse.isGrabbed()) {
 				//Breaking Blocks
 				if (breakCooldown == 0) {
 					breakCooldown = 10;
 					BlockInstance bi = msd.getSelectedBlockInstance();
 					if (bi != null && bi.getBlock().getHardness() != -1f) {
+						inventorySelection = bi.getID();// To be able to build that block again
 						world.removeBlock(bi.getX(), bi.getY(), bi.getZ());
-					} else {
-						return;
+					}
+				}
+			}
+			if (mouse.isRightButtonPressed() && mouse.isGrabbed()) {
+				//Building Blocks
+				if (buildCooldown == 0) {
+					buildCooldown = 10;
+					Vector3i pos = msd.getEmptyPlace(ctx.getCamera().getPosition());
+					Block b = world.getBlocks()[inventorySelection];	// TODO: add inventory
+					if (b != null && pos != null) {
+						world.placeBlock(pos.x, pos.y, pos.z, b);
 					}
 				}
 			}

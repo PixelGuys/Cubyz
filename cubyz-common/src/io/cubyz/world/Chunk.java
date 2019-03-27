@@ -358,4 +358,42 @@ public class Chunk {
 		}
 	}
 	
+	public void addBlockAt(int x, int y, int z, Block b) {
+		int wx = ox << 4;
+		int wy = oy << 4;
+		if(y >= World.WORLD_HEIGHT)
+			return;
+		removeBlockAt(x, y, z);
+		BlockInstance inst0 = new BlockInstance(b);
+		inst0.setPosition(new Vector3i(x + wx, y, z + wy));
+		inst0.setWorld(world);
+		list.add(inst0);
+		inst[x][y][z] = inst0;
+		BlockInstance[] neighbors = inst0.getNeighbors();
+		for (int i = 0; i < neighbors.length; i++) {
+			if (blocksLight(neighbors[i], inst0.getBlock().isTransparent())) {
+				visibles.add(inst0);
+				break;
+			}
+		}
+		for (int i = 0; i < neighbors.length; i++) {
+			if(neighbors[i] != null) {
+				Chunk ch = getChunk(neighbors[i].getX(), neighbors[i].getZ());
+				if (ch.contains(neighbors[i])) {
+					BlockInstance[] neighbors1 = neighbors[i].getNeighbors();
+					boolean vis = true;
+					for (int j = 0; j < neighbors1.length; j++) {
+						if (blocksLight(neighbors1[j], neighbors[i].getBlock().isTransparent())) {
+							vis = false;
+							break;
+						}
+					}
+					if(vis) {
+						ch.hideBlock(neighbors[i]);
+					}
+				}
+			}
+		}
+	}
+	
 }

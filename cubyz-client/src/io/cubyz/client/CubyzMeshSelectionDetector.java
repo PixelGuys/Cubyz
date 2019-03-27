@@ -4,6 +4,7 @@ import java.util.List;
 import org.joml.Intersectionf;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
+import org.joml.Vector3i;
 import org.jungle.Camera;
 import org.jungle.renderers.IRenderer;
 import io.cubyz.blocks.BlockInstance;
@@ -60,6 +61,34 @@ public class CubyzMeshSelectionDetector {
 	    if (selectedSpatial != null) {
 	        ((BlockSpatial) selectedSpatial.getSpatial()).setSelected(true);
 	    }
+	}
+	
+	// Returns the free block right next to the currently selected block.
+	public Vector3i getEmptyPlace(Vector3f position) {
+		if(selectedSpatial != null) {
+			Vector3i pos = selectedSpatial.getPosition();
+			pos.add(-(int)Math.signum(dir.x), 0, 0);
+			min.set(pos);
+	        max.set(pos);
+	        min.add(-0.5f, -0.5f, -0.5f); // -scale, -scale, -scale
+	        max.add(0.5f, 0.5f, 0.5f); // scale, scale, scale
+	        if (Intersectionf.intersectRayAab(position, dir, min, max, nearFar)) {
+	        	return pos;
+	        }
+			pos.add((int)Math.signum(dir.x), 0, 0);
+			pos.add(0, -(int)Math.signum(dir.y), 0);
+			min.set(pos);
+	        max.set(pos);
+	        min.add(-0.5f, -0.5f, -0.5f); // -scale, -scale, -scale
+	        max.add(0.5f, 0.5f, 0.5f); // scale, scale, scale
+	        if (Intersectionf.intersectRayAab(position, dir, min, max, nearFar)) {
+	            return pos;
+	        }
+			pos.add(0, (int)Math.signum(dir.y), 0);
+			pos.add(0, 0, -(int)Math.signum(dir.z));
+	        return pos;
+		}
+		return null;
 	}
 	
 }

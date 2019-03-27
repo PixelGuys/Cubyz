@@ -206,6 +206,14 @@ public class LocalWorld extends World {
 		}
 	}
 	
+	@Override
+	public void placeBlock(int x, int y, int z, Block b) {
+		Chunk ch = getChunk(x / 16, z / 16);
+		if (ch != null) {
+			ch.addBlockAt(x % 16, y, z % 16, b);
+		}
+	}
+	
 	public void generate() {
 		Random r = new Random();
 		int ID = 0;

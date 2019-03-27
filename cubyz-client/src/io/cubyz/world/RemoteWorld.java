@@ -66,4 +66,10 @@ public class RemoteWorld extends World {
 		return null;
 	}
 
+	@Override
+	public void placeBlock(int x, int y, int z, Block b) {
+		// TODO Auto-generated method stub
+		
+	}
+
 }
