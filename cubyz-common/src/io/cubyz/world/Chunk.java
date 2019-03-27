@@ -108,18 +108,22 @@ public class Chunk {
 			world.getChunk(ox, oy + 1).addBlock(b, x, y, z);
 			return;
 		}
-		if (world.getBlock(x, y, z) != null) {
-			return;
+		if(inst == null) {
+			inst = new BlockInstance[16][World.WORLD_HEIGHT][16];
+		} else { // Checks if there is a block on that position and deposits it if degradable.
+			BlockInstance bi = inst[rx][y][rz];
+			if(bi != null) {
+				if(!bi.getBlock().isDegradable() || b.isDegradable()) {
+					return;
+				}
+				removeBlockAt(rx, y, rz);
+			}
 		}
 		BlockInstance inst0 = new BlockInstance(b);
 		inst0.setPosition(new Vector3i(x, y, z));
 		inst0.setWorld(world);
 		list.add(inst0);
-		if(inst == null) {
-			inst = new BlockInstance[16][World.WORLD_HEIGHT][16];
-		}
 		inst[rx][y][rz] = inst0;
-		world.markEdit();
 		if(generated) {
 			BlockInstance[] neighbors = inst0.getNeighbors();
 			for (int i = 0; i < neighbors.length; i++) {
@@ -203,7 +207,6 @@ public class Chunk {
 						updatables.add(bi);
 					}*/
 				}
-				world.markEdit();
 			}
 		}
 		
@@ -214,8 +217,8 @@ public class Chunk {
 				int incx = px == 0 ? 1 : -1;
 				int incy = py == 0 ? 1 : -1;
 				int temperature = (int)((2-map[px][py]+SEA_LEVEL/(float)World.WORLD_HEIGHT)*heatMap[px][py]*120) - 100;
-				if (temperature < 40 && map[px][py] * World.WORLD_HEIGHT >= SEA_LEVEL + 3 && value > 0.5f && ((int)((vegetation[px][py]-vegetation[px+incx][py+incy]) * 100000000) & 63) == 1) {	// "&(2^n - 1)" is a faster way to do "%(2^n)"
-					Structures.generateTree(this, wx + px, (int) (map[px][py] * World.WORLD_HEIGHT) + 1, wy + py);
+				if (map[px][py] * World.WORLD_HEIGHT >= SEA_LEVEL + 4) {
+					Structures.generateVegetation(this, wx + px, (int) (map[px][py] * World.WORLD_HEIGHT) + 1, wy + py, value, temperature, (int)((vegetation[px][py]-vegetation[px+incx][py+incy]) * 100000000 + incx + incy));
 				}
 			}
 		}
@@ -272,7 +275,6 @@ public class Chunk {
 					}
 				}
 			}
-			world.markEdit();
 		}
 	}
 	
@@ -352,7 +354,6 @@ public class Chunk {
 					}
 				}
 			}
-			world.markEdit();
 			inst[x][y][z] = null;
 		}
 	}

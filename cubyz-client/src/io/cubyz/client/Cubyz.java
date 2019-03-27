@@ -151,7 +151,7 @@ public class Cubyz implements IGameLogic {
 		log.info("Version " + Constants.GAME_VERSION + " of brand " + Constants.GAME_BRAND);
 		log.info("LWJGL Version: " + Version.VERSION_MAJOR + "." + Version.VERSION_MINOR + "." + Version.VERSION_REVISION);
 		log.info("Jungle Version: " + Jungle.getVersion());
-		renderer.setShaderFolder("res/shaders/default");
+		renderer.setShaderFolder("assets/cubyz/shaders/default");
 		try {
 			renderer.init(window);
 		} catch (Exception e) {
@@ -185,14 +185,14 @@ public class Cubyz implements IGameLogic {
 		ClientOnly.createBlockMesh = (block) -> {
 			try {
 				if (block.isTextureConverted()) { // block.texConverted
-					block.getBlockPair().set("textureCache", new Texture("res/textures/blocks/" + block.getTexture() + ".png"));
+					block.getBlockPair().set("textureCache", new Texture("assets/cubyz/textures/blocks/" + block.getTexture() + ".png"));
 				} else {
 					block.getBlockPair().set("textureCache", new Texture(TextureConverter.fromBufferedImage(
-							TextureConverter.convert(ImageIO.read(new File("res/textures/blocks/" + block.getTexture() + ".png")),
+							TextureConverter.convert(ImageIO.read(new File("assets/cubyz/textures/blocks/" + block.getTexture() + ".png")),
 									block.getTexture()))));
 				}
 				// Assuming mesh too is empty
-				block.getBlockPair().set("meshCache", OBJLoader.loadMesh("res/models/cube.obj"));
+				block.getBlockPair().set("meshCache", OBJLoader.loadMesh("assets/cubyz/models/cube.obj"));
 				((Mesh) block.getBlockPair().get("meshCache")).setBoundingRadius(2.0F);
 				Material material = new Material((Texture) block.getBlockPair().get("textureCache"), 1.0F);
 				((Mesh) block.getBlockPair().get("meshCache")).setMaterial(material);

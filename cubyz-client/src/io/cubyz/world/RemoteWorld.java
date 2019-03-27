@@ -11,21 +11,6 @@ import io.cubyz.entity.Player;
 
 // TODO
 public class RemoteWorld extends World {
-
-	@Override
-	public boolean isEdited() {
-		return false;
-	}
-
-	@Override
-	public void unmarkEdit() {
-		
-	}
-
-	@Override
-	public void markEdit() {
-		
-	}
 	
 	@Override
 	public Player getLocalPlayer() {

@@ -43,24 +43,6 @@ public abstract class World {
 		}
 	}
 	
-	/**
-	 * Used internally, allow the client to know whether or not it should update the visible blocks list.
-	 * Mostly unused since recently.
-	 */
-	public abstract boolean isEdited();
-	
-	/**
-	 * Used internally, allow the client to know whether or not it should update the visible blocks list.
-	 * Mostly unused since recently.
-	 */
-	public abstract void unmarkEdit();
-	
-	/**
-	 * Used internally, allow the client to know whether or not it should update the visible blocks list.
-	 * Mostly unused since recently.
-	 */
-	public abstract void markEdit();
-	
 	public abstract Player getLocalPlayer();
 	
 	public int getHeight() {

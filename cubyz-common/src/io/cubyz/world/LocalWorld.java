@@ -25,7 +25,6 @@ public class LocalWorld extends World {
 	
 	//private List<BlockInstance> spatials = new ArrayList<>();
 	private Block [] blocks;
-	private boolean edited;
 	private Player player;
 	
 	private WorldIO wio;
@@ -66,40 +65,25 @@ public class LocalWorld extends World {
 				if (!loadList.isEmpty()) {
 					ChunkAction popped = loadList.pop();
 					if (popped.type == ChunkActionType.GENERATE) {
-						CubyzLogger.instance.fine("Generating " + popped.chunk.getX() + "," + popped.chunk.getZ());
+//						CubyzLogger.instance.fine("Generating " + popped.chunk.getX() + "," + popped.chunk.getZ());
 						synchronousGenerate(popped.chunk);
 						popped.chunk.load();
 						//seed = (int) System.currentTimeMillis(); // enable it if you want fun (don't forget to disable before commit!!!)
 					}
 					else if (popped.type == ChunkActionType.LOAD) {
-						CubyzLogger.instance.fine("\"Loading\" " + popped.chunk.getX() + "," + popped.chunk.getZ());
+//						CubyzLogger.instance.fine("\"Loading\" " + popped.chunk.getX() + "," + popped.chunk.getZ());
 						if(!popped.chunk.isLoaded()) {
 							popped.chunk.setLoaded(true);
 						}
 					}
 					else if (popped.type == ChunkActionType.UNLOAD) {
-						CubyzLogger.instance.fine("\"Unloading\" " + popped.chunk.getX() + "," + popped.chunk.getZ());
+//						CubyzLogger.instance.fine("\"Unloading\" " + popped.chunk.getX() + "," + popped.chunk.getZ());
 						popped.chunk.setLoaded(false);
 					}
 				}
 				System.out.print("");
 			}
 		}
-	}
-	
-	@Override
-	public boolean isEdited() {
-		return edited;
-	}
-	
-	@Override
-	public void unmarkEdit() {
-		edited = false;
-	}
-	
-	@Override
-	public void markEdit() {
-		edited = true;
 	}
 	
 	public LocalWorld() {
@@ -158,7 +142,7 @@ public class LocalWorld extends World {
 		Chunk ch = getChunk(x / 16, z / 16);
 		if (!ch.isGenerated()) {
 			synchronousGenerate(ch);
-			ch.setLoaded(true);
+			ch.load();
 		}
 	}
 	
@@ -224,11 +208,24 @@ public class LocalWorld extends World {
 	
 	public void generate() {
 		Random r = new Random();
+		int ID = 0;
 		seed = r.nextInt();
 		blocks = new Block[CubzRegistries.BLOCK_REGISTRY.registered().length];
 		for (IRegistryElement ire : CubzRegistries.BLOCK_REGISTRY.registered()) {
 			Block b = (Block) ire;
-			blocks[b.ID] = b;
+			if(!b.isTransparent()) {
+				blocks[ID] = b;
+				b.ID = ID;
+				ID++;
+			}
+		}
+		for (IRegistryElement ire : CubzRegistries.BLOCK_REGISTRY.registered()) {
+			Block b = (Block) ire;
+			if(b.isTransparent()) {
+				blocks[ID] = b;
+				b.ID = ID;
+				ID++;
+			}
 		}
 	}
 

@@ -15,6 +15,7 @@ public class Block implements IRegistryElement {
 	private float hardness;
 	private boolean solid = true;
 	private boolean selectable = true;
+	protected boolean degradable = false; // Meaning undegradable parts of trees or other structures can grow through this block.
 	
 	public String getTexture() {
 		return texture;
@@ -22,6 +23,10 @@ public class Block implements IRegistryElement {
 	
 	protected void setTexture(String texture) {
 		this.texture = texture;
+	}
+	
+	public boolean isDegradable() {
+		return degradable;
 	}
 	
 	public boolean isTransparent() {
