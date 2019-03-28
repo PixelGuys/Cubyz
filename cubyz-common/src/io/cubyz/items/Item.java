@@ -5,8 +5,7 @@ import io.cubyz.api.Resource;
 
 public class Item implements IRegistryElement {
 
-	//Texture _textureCache;
-	//Mesh _meshCache;
+	private int image = -1;
 	
 	protected String texturePath;
 	protected String modelPath;
@@ -20,6 +19,14 @@ public class Item implements IRegistryElement {
 	
 	protected void setTexture(String texturePath) {
 		this.texturePath = "./res/textures/items/" + texturePath;
+	}
+	
+	public void setImage(int image) {
+		this.image = image;
+	}
+	
+	public int getImage() {
+		return image;
 	}
 	
 	/**

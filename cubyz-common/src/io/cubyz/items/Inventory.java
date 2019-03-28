@@ -57,4 +57,16 @@ public class Inventory {
 			return null;
 		return items[selection].getBlock();
 	}
+	
+	public Item getItem(int selection) {
+		if(items[selection] == null)
+			return null;
+		return items[selection].getItem();
+	}
+	
+	public int getAmount(int selection) {
+		if(items[selection] == null)
+			return 0;
+		return items[selection].number;
+	}
 }

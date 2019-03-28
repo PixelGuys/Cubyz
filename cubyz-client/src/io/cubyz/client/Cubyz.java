@@ -71,8 +71,8 @@ public class Cubyz implements IGameLogic {
 	public static UISystem gameUI;
 	public static World world;
 	
-	private int inventorySelection = 0; // Selected slot in inventory
-	private static Inventory inventory;
+	public static int inventorySelection = 0; // Selected slot in inventory
+	public static Inventory inventory;
 
 	private CubyzMeshSelectionDetector msd;
 
