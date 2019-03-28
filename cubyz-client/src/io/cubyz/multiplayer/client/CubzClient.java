@@ -48,9 +48,14 @@ public class CubzClient {
 		return ls;
 	}
 
-	public void ping() {
+	public PingResponse ping() {
+		ls.lastPingResponse = null;
 		checkConnection();
 		cch.ping();
+		while (ls.lastPingResponse == null) {
+			System.out.print(""); // TODO really find an alternative to it (for Java 8, not using Thread.onSpinWait() from Java 9)
+		}
+		return ls.lastPingResponse;
 	}
 
 	public void disconnect() {
@@ -63,7 +68,7 @@ public class CubzClient {
 			e.printStackTrace();
 		}
 	}
-
+	
 	/**
 	 * Disconnect from old server if the client was connected.
 	 * 
@@ -80,17 +85,23 @@ public class CubzClient {
 		try {
 			Bootstrap b = new Bootstrap();
 			ls = new LocalServer();
+			cch = new CubzClientHandler(CubzClient.this, false);
 			b.group(group).channel(NioSocketChannel.class)//.option(ChannelOption.TCP_NODELAY, true)
 					.handler(new ChannelInitializer<SocketChannel>() {
 						@Override
 						public void initChannel(SocketChannel ch) throws Exception {
 							ChannelPipeline p = ch.pipeline();
-							p.addLast(new CubzClientHandler(CubzClient.this, false));
-							p.addLast(new LoggingHandler(LogLevel.INFO)); // debugging info
+							p.addLast(cch);
+							//p.addLast(new LoggingHandler(LogLevel.INFO)); // debugging info
 						}
 					});
 			// Start the client.
 			future = b.connect(host, port);
+			
+			while (!cch.channelActive) {
+				System.out.print("");
+			}
+			
 			connected = true;
 			//ping();
 		} catch (Exception e) {

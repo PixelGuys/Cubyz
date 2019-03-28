@@ -10,8 +10,23 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 
 public class ServerHandler extends ChannelInboundHandlerAdapter {
 	
+	int online;
+	int max = 20;
+	boolean init;
+	CubzServer server;
+	
+	public ServerHandler(CubzServer server) {
+		this.server = server;
+	}
+	
 	@Override
     public void channelRead(ChannelHandlerContext ctx, Object omsg) {
+		
+		if (!init) {
+			init = true;
+			
+		}
+		
 		ByteBuf msg = (ByteBuf) omsg;
 		byte packetType = msg.readByte();
 		if (CubzServer.internal) {
@@ -29,7 +44,6 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 			ByteBuf out = ctx.alloc().ioBuffer(512);
 			out.writeByte(Packet.PACKET_PINGDATA);
 			String motd = "A Cubz Server.";
-			int online = 0; int max = 20;
 			out.writeShort(motd.length());
 			out.writeCharSequence(motd, Charset.forName("UTF-8"));
 			out.writeInt(online);

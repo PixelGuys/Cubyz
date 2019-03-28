@@ -43,6 +43,8 @@ import io.cubyz.entity.Player;
 import io.cubyz.items.Inventory;
 import io.cubyz.modding.ModLoader;
 import io.cubyz.multiplayer.client.CubzClient;
+import io.cubyz.multiplayer.client.PingResponse;
+import io.cubyz.multiplayer.server.CubzServer;
 import io.cubyz.ui.DebugGUI;
 import io.cubyz.ui.MainMenuGUI;
 import io.cubyz.ui.PauseGUI;
@@ -219,11 +221,15 @@ public class Cubyz implements IGameLogic {
 			ClientOnly.createBlockMesh.accept(b);
 		}
 		
-		//CubzServer server = new CubzServer(58961);
-		//server.start(true);
-		//mpClient = new CubzClient();
-		//requestJoin("127.0.0.1");
-		//System.gc();
+		CubzServer server = new CubzServer(58961);
+		server.start(true);
+		mpClient = new CubzClient();
+		requestJoin("127.0.0.1");
+		PingResponse resp = mpClient.ping();
+		System.out.println("Ping response:");
+		System.out.println("\tMOTD: " + resp.motd);
+		System.out.println("\tPlayers: " + resp.onlinePlayers + "/" + resp.maxPlayers);
+		System.gc();
 	}
 
 	@Override

@@ -2,6 +2,7 @@ package io.cubyz.multiplayer.client;
 
 import java.nio.charset.Charset;
 
+import io.cubyz.CubyzLogger;
 import io.cubyz.multiplayer.Packet;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
@@ -13,9 +14,13 @@ public class CubzClientHandler extends ChannelInboundHandlerAdapter {
 	private ChannelHandlerContext ctx;
 
 	private boolean hasPinged;
+	public boolean channelActive;
+	
+	
 	
 	public CubzClientHandler(CubzClient cl, boolean doPing) {
 		this.cl = cl;
+		
 	}
 	
 	public void ping() {
@@ -31,6 +36,7 @@ public class CubzClientHandler extends ChannelInboundHandlerAdapter {
 		buf.writeByte(Packet.PACKET_GETVERSION);
 		ctx.write(buf);
 		ctx.flush();
+		channelActive = true;
 	}
 
 	@Override
@@ -47,7 +53,11 @@ public class CubzClientHandler extends ChannelInboundHandlerAdapter {
 		}
 		
 		if (responseType == Packet.PACKET_PINGDATA) {
-			
+			PingResponse pr = new PingResponse();
+			pr.motd = buf.readCharSequence(buf.readShort(), Charset.forName("UTF-8")).toString();
+			pr.onlinePlayers = buf.readInt();
+			pr.maxPlayers = buf.readInt();
+			cl.getLocalServer().lastPingResponse = pr;
 		}
 		
 		if (responseType == Packet.PACKET_PINGPONG) {

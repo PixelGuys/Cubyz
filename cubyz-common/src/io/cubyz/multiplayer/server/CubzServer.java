@@ -12,7 +12,7 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 public class CubzServer {
 
 	private int port;
-	static boolean internal;
+	static boolean internal; // integrated
 
 	public CubzServer(int port) {
 		this.port = port;
@@ -28,7 +28,7 @@ public class CubzServer {
 					.childHandler(new ChannelInitializer<SocketChannel>() {
 						@Override
 						public void initChannel(SocketChannel ch) throws Exception {
-							ch.pipeline().addLast(new ServerHandler());
+							ch.pipeline().addLast(new ServerHandler(CubzServer.this));
 						}
 					}).option(ChannelOption.SO_BACKLOG, 128).
 					childOption(ChannelOption.SO_KEEPALIVE, true);
