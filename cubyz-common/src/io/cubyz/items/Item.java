@@ -1,15 +1,12 @@
 package io.cubyz.items;
 
-import org.jungle.Mesh;
-import org.jungle.Texture;
-
 import io.cubyz.api.IRegistryElement;
 import io.cubyz.api.Resource;
 
 public class Item implements IRegistryElement {
 
-	Texture _textureCache;
-	Mesh _meshCache;
+	//Texture _textureCache;
+	//Mesh _meshCache;
 	
 	protected String texturePath;
 	protected String modelPath;
