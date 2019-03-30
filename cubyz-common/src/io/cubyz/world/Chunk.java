@@ -31,14 +31,40 @@ public class Chunk {
 	private static Block bedrock = br.getByID("cubyz:bedrock");
 	
 	// Ores:
-	private static ArrayList<Ore> ores = new ArrayList<>();
+	private static Ore [] ores;
+	private static float [] oreChances;
+	private static int [] oreHeights;
 	static {
-		ores.add((Ore) br.getByID("cubyz:coal_ore"));
-		ores.add((Ore) br.getByID("cubyz:iron_ore"));
-		ores.add((Ore) br.getByID("cubyz:ruby_ore"));
-		ores.add((Ore) br.getByID("cubyz:gold_ore"));
-		ores.add((Ore) br.getByID("cubyz:diamond_ore"));
-		ores.add((Ore) br.getByID("cubyz:emerald_ore"));
+		ArrayList<Ore> oress = new ArrayList<>();
+		oress.add((Ore) br.getByID("cubyz:coal_ore"));
+		oress.add((Ore) br.getByID("cubyz:iron_ore"));
+		oress.add((Ore) br.getByID("cubyz:ruby_ore"));
+		oress.add((Ore) br.getByID("cubyz:gold_ore"));
+		oress.add((Ore) br.getByID("cubyz:diamond_ore"));
+		oress.add((Ore) br.getByID("cubyz:emerald_ore"));
+		ores = oress.toArray(new Ore[0]);
+		oreChances = new float[ores.length+1];
+		oreHeights = new int[ores.length];
+		for(int i = 0; i < ores.length; i++) {
+			oreHeights[i] = ores[i].getHeight();
+		}
+		// (Selection-)Sort the ores by height to accelerate selectOre
+		for(int i = 0; i < oreHeights.length; i++) {
+			int lowest = i;
+			for(int j = i+1; j < oreHeights.length; j++) {
+				if(oreHeights[j] < oreHeights[lowest])
+					lowest = j;
+			}
+			Ore ore = ores[lowest];
+			int height = oreHeights[lowest];
+			ores[lowest] = ores[i];
+			oreHeights[lowest] = oreHeights[i];
+			ores[i] = ore;
+			oreHeights[i] = height;
+		}
+		for(int i = 0; i < ores.length; i++) {
+			oreChances[i+1] = oreChances[i] + ores[i].getChance();
+		}
 	}
 	
 	// Liquids:
@@ -287,13 +313,13 @@ public class Chunk {
 	
 	// This function only allows a less than 50% of the underground to be ores.
 	public BlockInstance selectOre(float rand, int height) {
-		float chance1 = 0.0F;
-		float chance2 = 0.0F;
-		for (Ore ore : ores) {
-			chance2 += ore.getChance();
-			if(height < ore.getHeight() && rand > chance1 && rand < chance2)
-				return new BlockInstance(ore);
-			chance1 += ore.getChance();
+		if(rand >= oreChances[oreHeights.length])
+			return new BlockInstance(stone);
+		for (int i = oreChances.length - 2; i >= 0; i--) {
+			if(height > oreHeights[i])
+				break;
+			if(rand >= oreChances[i])
+				return new BlockInstance(ores[i]);
 		}
 		return new BlockInstance(stone);
 	}
