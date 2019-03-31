@@ -116,16 +116,9 @@ public class LocalWorld extends World {
 		return entities.toArray(new Entity[entities.size()]);
 	}
 	
-	public void unload(int x, int z) {
-		Chunk ch = getChunk(x, z);
-		if (ch.isLoaded()) {
-			ch.setLoaded(false);
-		}
-	}
-	
 	@Override
 	public void synchronousSeek(int x, int z) {
-		Chunk ch = getChunk(x / 16, z / 16);
+		Chunk ch = getChunk(x, z);
 		if (!ch.isGenerated()) {
 			synchronousGenerate(ch);
 			ch.load();
@@ -142,7 +135,20 @@ public class LocalWorld extends World {
 	}
 	
 	@Override
-	public Chunk getChunk(int x, int z) {
+	public Chunk getChunk(int x, int z) {	// World→Chunk coordinate system is a bit harder than just x/16. java seems to floor when bigger and to ceil when lower than 0.
+		int cx = x;
+		if(cx < 0)
+			cx -= 15;
+		cx = cx / 16;
+		int cz = z;
+		if(cz < 0)
+			cz -= 15;
+		cz = cz / 16;
+		return _getChunk(cx, cz);
+	}
+	
+	@Override
+	public Chunk _getChunk(int x, int z) {
 		if(lastChunk >= 0 && chunks.get(lastChunk).getX() == x && chunks.get(lastChunk).getZ() == z) {
 			return chunks.get(lastChunk);
 		}
@@ -162,21 +168,13 @@ public class LocalWorld extends World {
 	
 	@Override
 	public BlockInstance getBlock(int x, int y, int z) {
-		int cx = x;
-		if(cx < 0)
-			cx -= 15;
-		cx = cx / 16;
-		int cz = z;
-		if(cz < 0)
-			cz -= 15;
-		cz = cz / 16;
-		Chunk ch = getChunk(cx, cz);
+		Chunk ch = getChunk(x, z);
 		if (y > World.WORLD_HEIGHT || y < 0)
 			return null;
 		
 		if (ch != null) {
-			cx = x & 15;
-			cz = z & 15;
+			int cx = x & 15;
+			int cz = z & 15;
 			BlockInstance bi = ch.getBlockInstanceAt(cx, y, cz);
 			return bi;
 		} else {
@@ -186,17 +184,17 @@ public class LocalWorld extends World {
 	
 	@Override
 	public void removeBlock(int x, int y, int z) {
-		Chunk ch = getChunk(x / 16, z / 16);
+		Chunk ch = getChunk(x, z);
 		if (ch != null) {
-			ch.removeBlockAt(x % 16, y, z % 16);
+			ch.removeBlockAt(x & 15, y, z & 15);
 		}
 	}
 	
 	@Override
 	public void placeBlock(int x, int y, int z, Block b) {
-		Chunk ch = getChunk(x / 16, z / 16);
+		Chunk ch = getChunk(x, z);
 		if (ch != null) {
-			ch.addBlockAt(x % 16, y, z % 16, b);
+			ch.addBlockAt(x & 15, y, z & 15, b);
 		}
 	}
 	
@@ -244,7 +242,7 @@ public class LocalWorld extends World {
 		int maxZ = z+blockDistance;	// .
 		for (int x1 = minX-48; x1 <= maxX+48; x1 += 16) {
 			for (int z1 = minZ-48; z1 <= maxZ+48; z1 += 16) {
-				Chunk ch = getChunk(x1/16,z1/16);
+				Chunk ch = getChunk(x1, z1);
 				if (!ch.isLoaded() && x1 > minX && x1 < maxX && z1 > minZ && z1 < maxZ) {
 					if (!ch.isGenerated()) {
 						queueChunk(ch);

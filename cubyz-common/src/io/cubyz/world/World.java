@@ -18,21 +18,6 @@ public abstract class World {
 	public static final int WORLD_HEIGHT = 255;
 	protected int seed;
 	
-	public static enum ChunkActionType {
-		/**
-		 * generates the chunk
-		 */
-		GENERATE,
-		/**
-		 * loads the chunk
-		 */
-		LOAD,
-		/**
-		 * Unloads the chunk
-		 */
-		UNLOAD;
-	}
-	
 	public abstract Player getLocalPlayer();
 	
 	public int getHeight() {
@@ -51,8 +36,9 @@ public abstract class World {
 	 * @param action - Chunk action
 	 */
 	public abstract void queueChunk(Chunk ch);
-	
-	public abstract Chunk getChunk(int x, int z);
+
+	public abstract Chunk getChunk(int x, int z);	// Works with world coordinates
+	public abstract Chunk _getChunk(int x, int z);	// Works with chunk coordinates
 	public abstract BlockInstance getBlock(int x, int y, int z);
 	public BlockInstance getBlock(Vector3i vec) {
 		return getBlock(vec.x, vec.y, vec.z);

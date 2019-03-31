@@ -112,20 +112,20 @@ public class Chunk {
 		int rx = x - (ox << 4);
 		// Determines if the block is part of another chunk.
 		if (rx < 0) {
-			world.getChunk(ox - 1, oy).addBlock(b, x, y, z);
+			world._getChunk(ox - 1, oy).addBlock(b, x, y, z);
 			return;
 		}
 		if (rx > 15) {
-			world.getChunk(ox + 1, oy).addBlock(b, x, y, z);
+			world._getChunk(ox + 1, oy).addBlock(b, x, y, z);
 			return;
 		}
 		int rz = z - (oy << 4);
 		if (rz < 0) {
-			world.getChunk(ox, oy - 1).addBlock(b, x, y, z);
+			world._getChunk(ox, oy - 1).addBlock(b, x, y, z);
 			return;
 		}
 		if (rz > 15) {
-			world.getChunk(ox, oy + 1).addBlock(b, x, y, z);
+			world._getChunk(ox, oy + 1).addBlock(b, x, y, z);
 			return;
 		}
 		if(inst == null) {
@@ -195,6 +195,7 @@ public class Chunk {
 				int temperature = (int)((2-value+SEA_LEVEL/(float)World.WORLD_HEIGHT)*heatMap[px][py]*120) - 100;
 				for (int j = y > SEA_LEVEL ? y : SEA_LEVEL; j >= 0; j--) {
 					BlockInstance bi = null;
+					
 					if(j > y) {
 						if (temperature <= 0 && j == SEA_LEVEL) {
 							bi = new BlockInstance(ice);
@@ -250,10 +251,10 @@ public class Chunk {
 		loaded = true;
 		int wx = ox << 4;
 		int wy = oy << 4;
-		boolean chx0 = world.getChunk(ox - 1, oy).isGenerated();
-		boolean chx1 = world.getChunk(ox + 1, oy).isGenerated();
-		boolean chy0 = world.getChunk(ox, oy - 1).isGenerated();
-		boolean chy1 = world.getChunk(ox, oy + 1).isGenerated();
+		boolean chx0 = world._getChunk(ox - 1, oy).isGenerated();
+		boolean chx1 = world._getChunk(ox + 1, oy).isGenerated();
+		boolean chy0 = world._getChunk(ox, oy - 1).isGenerated();
+		boolean chy1 = world._getChunk(ox, oy + 1).isGenerated();
 		for(BlockInstance bi : list) {
 			BlockInstance[] neighbors = bi.getNeighbors();
 			int j = bi.getY();
@@ -342,7 +343,7 @@ public class Chunk {
 			cz -= 15;
 		cz = cz / 16;
 		if(ox != cx || oy != cz)
-			return world.getChunk(cx, cz);
+			return world._getChunk(cx, cz);
 		return this;
 	}
 	

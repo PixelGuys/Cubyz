@@ -28,6 +28,11 @@ public class RemoteWorld extends World {
 	}
 
 	@Override
+	public Chunk _getChunk(int x, int z) {
+		return null;
+	}
+
+	@Override
 	public BlockInstance getBlock(int x, int y, int z) {
 		return null;
 	}
