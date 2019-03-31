@@ -33,16 +33,6 @@ public abstract class World {
 		UNLOAD;
 	}
 	
-	public static class ChunkAction {
-		public Chunk chunk;
-		public ChunkActionType type;
-		
-		public ChunkAction(Chunk chunk, ChunkActionType type) {
-			this.chunk = chunk;
-			this.type = type;
-		}
-	}
-	
 	public abstract Player getLocalPlayer();
 	
 	public int getHeight() {
@@ -60,7 +50,7 @@ public abstract class World {
 	 * 
 	 * @param action - Chunk action
 	 */
-	public abstract void queueChunk(ChunkAction action);
+	public abstract void queueChunk(Chunk ch);
 	
 	public abstract Chunk getChunk(int x, int z);
 	public abstract BlockInstance getBlock(int x, int y, int z);

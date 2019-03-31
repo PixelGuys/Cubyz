@@ -36,7 +36,7 @@ public class RemoteWorld extends World {
 	public void removeBlock(int x, int y, int z) {}
 
 	@Override
-	public void queueChunk(ChunkAction action) {
+	public void queueChunk(Chunk ch) {
 		// LOAD would be loading from server, UNLOAD would be unloading from client, and GENERATE would do nothing
 	}
 

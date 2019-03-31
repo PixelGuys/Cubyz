@@ -32,29 +32,26 @@ public class LocalWorld extends World {
 	private ChunkGenerationThread thread;
 	
 	private class ChunkGenerationThread extends Thread {
-		Deque<ChunkAction> loadList = new ArrayDeque<>(); // FIFO order (First In, First Out)
 		private static final int MAX_QUEUE_SIZE = 16;
+		Deque<Chunk> loadList = new ArrayDeque<>(MAX_QUEUE_SIZE); // FIFO order (First In, First Out)
 		
-		public void queue(ChunkAction ca) {
-			if (!isQueued(ca)) {
-				if (loadList.size() > MAX_QUEUE_SIZE) {
+		public void queue(Chunk ch) {
+			if (!isQueued(ch)) {
+				if (loadList.size() == MAX_QUEUE_SIZE) {
 					CubyzLogger.instance.info("Hang on, the Local-Chunk-Thread's queue is full, blocking!");
 					while (!loadList.isEmpty()) {
 						System.out.print(""); // again, used as replacement to Thread.onSpinWait(), also necessary due to some JVM oddities
 					}
 				}
-				loadList.add(ca);
+				loadList.add(ch);
 			}
 		}
 		
-		public boolean isQueued(ChunkAction ca) {
-			ChunkAction[] list = loadList.toArray(new ChunkAction[0]);
-			for (ChunkAction ch : list) {
-				if (ch != null) {
-					if (ch.chunk == ca.chunk) {
-						ch.type = ca.type;
-						return true;
-					}
+		public boolean isQueued(Chunk ch) {
+			Chunk[] list = loadList.toArray(new Chunk[0]);
+			for (Chunk ch2 : list) {
+				if (ch2 == ch) {
+					return true;
 				}
 			}
 			return false;
@@ -63,23 +60,11 @@ public class LocalWorld extends World {
 		public void run() {
 			while (true) {
 				if (!loadList.isEmpty()) {
-					ChunkAction popped = loadList.pop();
-					if (popped.type == ChunkActionType.GENERATE) {
-//						CubyzLogger.instance.fine("Generating " + popped.chunk.getX() + "," + popped.chunk.getZ());
-						synchronousGenerate(popped.chunk);
-						popped.chunk.load();
-						//seed = (int) System.currentTimeMillis(); // enable it if you want fun (don't forget to disable before commit!!!)
-					}
-					else if (popped.type == ChunkActionType.LOAD) {
-//						CubyzLogger.instance.fine("\"Loading\" " + popped.chunk.getX() + "," + popped.chunk.getZ());
-						if(!popped.chunk.isLoaded()) {
-							popped.chunk.setLoaded(true);
-						}
-					}
-					else if (popped.type == ChunkActionType.UNLOAD) {
-//						CubyzLogger.instance.fine("\"Unloading\" " + popped.chunk.getX() + "," + popped.chunk.getZ());
-						popped.chunk.setLoaded(false);
-					}
+					Chunk popped = loadList.pop();
+//					CubyzLogger.instance.fine("Generating " + popped.chunk.getX() + "," + popped.chunk.getZ());
+					synchronousGenerate(popped);
+					popped.load();
+					//seed = (int) System.currentTimeMillis(); // enable it if you want fun (don't forget to disable before commit!!!)
 				}
 				System.out.print("");
 			}
@@ -238,28 +223,29 @@ public class LocalWorld extends World {
 	}
 
 	@Override
-	public void queueChunk(ChunkAction action) {
-		thread.queue(action);
+	public void queueChunk(Chunk ch) {
+		thread.queue(ch);
 	}
 
 	@Override
 	public void seek(int x, int z) {
-		int renderDistance/*minus 1*/ = 4;
-		int blockDistance = renderDistance*16;
-		for (int x1 = x - blockDistance-48; x1 <= x + blockDistance+48; x1 += 16) {
-			for (int z1 = z - blockDistance-48; z1 <= z + blockDistance+48; z1 += 16) {
+		int renderDistance = 5;
+		int blockDistance = renderDistance << 4;
+		int minX = x-blockDistance;	// Avoid
+		int maxX = x+blockDistance;	// recalculating
+		int minZ = z-blockDistance;	// them
+		int maxZ = z+blockDistance;	// .
+		for (int x1 = minX-48; x1 <= maxX+48; x1 += 16) {
+			for (int z1 = minZ-48; z1 <= maxZ+48; z1 += 16) {
 				Chunk ch = getChunk(x1/16,z1/16);
-				if (x1>x-blockDistance&&x1<x+blockDistance&&z1>z-blockDistance&&z1<z+blockDistance && !ch.isLoaded()) {
+				if (!ch.isLoaded() && x1 > minX && x1 < maxX && z1 > minZ && z1 < maxZ) {
 					if (!ch.isGenerated()) {
-						queueChunk(new ChunkAction(ch, ChunkActionType.GENERATE));
+						queueChunk(ch);
+					} else {
+						ch.setLoaded(true);
 					}
-					else {
-						queueChunk(new ChunkAction(ch, ChunkActionType.LOAD));
-					}
-				} else if (x1 < x-blockDistance - 16 || x1 > x + blockDistance + 16 || z1 < z - blockDistance - 16 || z1 > z + blockDistance +16) {
-					if (ch.isLoaded()) {
-						queueChunk(new ChunkAction(ch, ChunkActionType.UNLOAD));
-					}
+				} else if (ch.isLoaded() && (x1 < minX || x1 > maxX || z1 < minZ || z1 > maxZ)) {
+					ch.setLoaded(false);
 				}
 			}
 		}

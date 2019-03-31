@@ -392,7 +392,7 @@ public class Cubyz implements IGameLogic {
 				if (buildCooldown == 0) {
 					buildCooldown = 10;
 					Vector3i pos = msd.getEmptyPlace(ctx.getCamera().getPosition());
-					Block b = inventory.getBlock(inventorySelection);	// TODO: add inventory
+					Block b = inventory.getBlock(inventorySelection);
 					if (b != null && pos != null) {
 						world.placeBlock(pos.x, pos.y, pos.z, b);
 						inventory.addBlock(b, -1);
