@@ -1,5 +1,7 @@
 package io.cubyz.blocks;
 
+import io.cubyz.items.Item;
+
 public class DiamondOre extends Ore {
 
 	public DiamondOre() {
@@ -7,6 +9,9 @@ public class DiamondOre extends Ore {
 		setID("cubyz:diamond_ore");
 		setHeight(15);
 		setChance(0.002F);
+		Item bd = new Item();
+		bd.setTexture("materials/diamond.png");
+		setBlockDrop(bd);
 	}
 	
 }

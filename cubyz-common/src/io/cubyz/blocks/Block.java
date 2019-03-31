@@ -3,6 +3,7 @@ package io.cubyz.blocks;
 import io.cubyz.IRenderablePair;
 import io.cubyz.api.IRegistryElement;
 import io.cubyz.api.Resource;
+import io.cubyz.items.Item;
 
 public class Block implements IRegistryElement {
 
@@ -15,6 +16,7 @@ public class Block implements IRegistryElement {
 	private float hardness;
 	private boolean solid = true;
 	private boolean selectable = true;
+	private Item blockDrop;
 	protected boolean degradable = false; // Meaning undegradable parts of trees or other structures can grow through this block.
 	
 	public String getTexture() {
@@ -88,6 +90,14 @@ public class Block implements IRegistryElement {
 	public Block setID(Resource id) {
 		this.id = id;
 		return this;
+	}
+	
+	public void setBlockDrop(Item bd) {
+		blockDrop = bd;
+	}
+	
+	public Item getBlockDrop() {
+		return blockDrop;
 	}
 	
 	public float getHardness() {

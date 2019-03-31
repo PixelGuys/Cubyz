@@ -383,7 +383,7 @@ public class Cubyz implements IGameLogic {
 					BlockInstance bi = msd.getSelectedBlockInstance();
 					if (bi != null && bi.getBlock().getHardness() != -1f) {
 						world.removeBlock(bi.getX(), bi.getY(), bi.getZ());
-						inventory.addBlock(bi.getBlock(), 1);
+						inventory.addItem(bi.getBlock().getBlockDrop(), 1);
 					}
 				}
 			}
@@ -395,7 +395,7 @@ public class Cubyz implements IGameLogic {
 					Block b = inventory.getBlock(inventorySelection);
 					if (b != null && pos != null) {
 						world.placeBlock(pos.x, pos.y, pos.z, b);
-						inventory.addBlock(b, -1);
+						inventory.addItem(b.getBlockDrop(), -1);
 					}
 				}
 			}

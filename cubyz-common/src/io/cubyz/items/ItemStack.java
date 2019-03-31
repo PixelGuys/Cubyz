@@ -5,17 +5,10 @@ import io.cubyz.blocks.Block;
 public class ItemStack {
 
 	private Item item;
-	private Block block;
 	int number = 0;
 	
 	public ItemStack(Item item) {
 		this.item = item;
-	}
-	
-	public ItemStack(Block block) {
-		this.block = block;
-		item = new Item();
-		item.setTexture("blocks/"+block.getTexture()+".png");
 	}
 	
 	public void update() {}
@@ -46,7 +39,7 @@ public class ItemStack {
 	}
 	
 	public Block getBlock() {
-		return block;
+		return item.getBlock();
 	}
 	
 }

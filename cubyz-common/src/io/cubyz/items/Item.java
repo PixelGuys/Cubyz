@@ -2,6 +2,7 @@ package io.cubyz.items;
 
 import io.cubyz.api.IRegistryElement;
 import io.cubyz.api.Resource;
+import io.cubyz.blocks.Block;
 
 public class Item implements IRegistryElement {
 
@@ -12,12 +13,13 @@ public class Item implements IRegistryElement {
 	protected String fullTexturePath;
 	protected Resource id;
 	protected int stackSize = 64;
+	protected Block block = null;
 	
 	public String getTexture() {
 		return texturePath;
 	}
 	
-	protected void setTexture(String texturePath) {
+	public void setTexture(String texturePath) {
 		this.texturePath = "./res/textures/items/" + texturePath;
 	}
 	
@@ -58,6 +60,14 @@ public class Item implements IRegistryElement {
 	public Item setID(Resource res) {
 		id = res;
 		return this;
+	}
+	
+	public Block getBlock() {
+		return block;
+	}
+	
+	public void setBlock(Block b) {
+		block = b;
 	}
 
 	@Override

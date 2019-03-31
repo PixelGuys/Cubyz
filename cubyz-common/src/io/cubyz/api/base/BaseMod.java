@@ -7,6 +7,7 @@ import io.cubyz.blocks.Bedrock;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.Cactus;
 import io.cubyz.blocks.CoalOre;
+import io.cubyz.blocks.CobbleStone;
 import io.cubyz.blocks.DiamondOre;
 import io.cubyz.blocks.Dirt;
 import io.cubyz.blocks.EmeraldOre;
@@ -32,6 +33,7 @@ public class BaseMod {
 	// Normal:
 	static Bedrock bedrock;
 	static Cactus cactus;
+	static CobbleStone cobblestone;
 	static Dirt dirt;
 	static Grass grass;
 	static Ice ice;
@@ -63,8 +65,9 @@ public class BaseMod {
 		// Normal
 		bedrock = new Bedrock();
 		cactus = new Cactus();
-		grass = new Grass();
+		cobblestone = new CobbleStone();
 		dirt = new Dirt();
+		grass = new Grass();
 		ice = new Ice();
 		oakLeaves = new OakLeaves();
 		oakLog = new OakLog();
@@ -84,8 +87,13 @@ public class BaseMod {
 		// Fluids
 		water = new Water();
 		
+		// Make some special block drops that cannot be done within the constructor due to uncertainty
+		grass.setBlockDrop(dirt.getBlockDrop());
+		snow.setBlockDrop(dirt.getBlockDrop());
+		stone.setBlockDrop(cobblestone.getBlockDrop());
+		
 		// Register
-		reg.registerAll(bedrock, cactus, dirt, grass, ice, oakLeaves, oakLog, sand, snow, stone, coal, diamond, emerald, gold, iron, ruby, water);
+		reg.registerAll(bedrock, cactus, cobblestone, dirt, grass, ice, oakLeaves, oakLog, sand, snow, stone, coal, diamond, emerald, gold, iron, ruby, water);
 	}
 	
 }
