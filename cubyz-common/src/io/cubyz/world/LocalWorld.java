@@ -12,6 +12,7 @@ import io.cubyz.api.CubzRegistries;
 import io.cubyz.api.IRegistryElement;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
+import io.cubyz.blocks.Ore;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.save.WorldIO;
@@ -203,6 +204,7 @@ public class LocalWorld extends World {
 		Random r = new Random();
 		int ID = 0;
 		seed = r.nextInt();
+		ArrayList<Ore> ores = new ArrayList<Ore>();
 		blocks = new Block[CubzRegistries.BLOCK_REGISTRY.registered().length];
 		for (IRegistryElement ire : CubzRegistries.BLOCK_REGISTRY.registered()) {
 			Block b = (Block) ire;
@@ -219,7 +221,12 @@ public class LocalWorld extends World {
 				b.ID = ID;
 				ID++;
 			}
+			try {
+				ores.add((Ore)b);
+			}
+			catch(Exception e) {}
 		}
+		Chunk.init(ores.toArray(new Ore[ores.size()]));
 	}
 
 	@Override

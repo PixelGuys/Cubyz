@@ -34,15 +34,8 @@ public class Chunk {
 	private static Ore [] ores;
 	private static float [] oreChances;
 	private static int [] oreHeights;
-	static {
-		ArrayList<Ore> oress = new ArrayList<>();
-		oress.add((Ore) br.getByID("cubyz:coal_ore"));
-		oress.add((Ore) br.getByID("cubyz:iron_ore"));
-		oress.add((Ore) br.getByID("cubyz:ruby_ore"));
-		oress.add((Ore) br.getByID("cubyz:gold_ore"));
-		oress.add((Ore) br.getByID("cubyz:diamond_ore"));
-		oress.add((Ore) br.getByID("cubyz:emerald_ore"));
-		ores = oress.toArray(new Ore[0]);
+	
+	public static void init(Ore [] ores) {
 		oreChances = new float[ores.length+1];
 		oreHeights = new int[ores.length];
 		for(int i = 0; i < ores.length; i++) {
@@ -65,6 +58,7 @@ public class Chunk {
 		for(int i = 0; i < ores.length; i++) {
 			oreChances[i+1] = oreChances[i] + ores[i].getChance();
 		}
+		Chunk.ores = ores;
 	}
 	
 	// Liquids:
