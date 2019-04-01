@@ -9,19 +9,29 @@ public class GameLauncher extends Game {
 	public static GameLauncher instance;
 	
 	public static void main(String[] args) {
-		
+		boolean showPrompt = Boolean.parseBoolean(System.getProperty("cubyz.showStartPrompt", "true"));
 		GameLauncher.instance = new GameLauncher();
 		instance.logic = new Cubyz();
-		
-		GameOptionsPrompt prompt = new GameOptionsPrompt();
-		prompt.setLocationRelativeTo(null);
-		prompt.setTitle("Cubz Settings");
-		prompt.setVisible(true);
-		while (prompt.isVisible()) {
-			System.out.print(""); // Avoid bugs
+		GameOptions opt = null;
+		if (showPrompt) {
+			GameOptionsPrompt prompt = new GameOptionsPrompt();
+			prompt.setLocationRelativeTo(null);
+			prompt.setTitle("Cubz Settings");
+			prompt.setVisible(true);
+			while (prompt.isVisible()) {
+				System.out.print(""); // Avoid bugs
+			}
+			
+			opt = prompt.generateOptions();
+		} else {
+			opt = new GameOptions();
+			opt.blending = true;
+			opt.cullFace = true;
+			opt.frustumCulling = true;
+			opt.showTriangles = false;
+			opt.fullscreen = false;
+			opt.antialiasing = false;
 		}
-		
-		GameOptions opt = prompt.generateOptions();
 		
 		instance.start(opt);
 		Cubyz.log.info("Stopped!");

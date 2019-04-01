@@ -15,6 +15,8 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 	boolean init;
 	CubzServer server;
 	
+	String motd;
+	
 	public ServerHandler(CubzServer server) {
 		this.server = server;
 	}
@@ -23,8 +25,12 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
     public void channelRead(ChannelHandlerContext ctx, Object omsg) {
 		
 		if (!init) {
-			init = true;
+			motd = "A Cubyz server";
 			
+			if (motd.length() > 500) {
+				throw new IllegalArgumentException("MOTD cannot be more than 500 characters long");
+			}
+			init = true;
 		}
 		
 		ByteBuf msg = (ByteBuf) omsg;
@@ -42,12 +48,13 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 		}
 		if (packetType == Packet.PACKET_PINGDATA) {
 			ByteBuf out = ctx.alloc().ioBuffer(512);
-			out.writeByte(Packet.PACKET_PINGDATA);
-			String motd = "A Cubz Server.";
-			out.writeShort(motd.length());
+			out.writeByte(Packet.PACKET_PINGDATA); // 1 byte
+			out.writeShort(motd.length()); // 2 bytes
 			out.writeCharSequence(motd, Charset.forName("UTF-8"));
-			out.writeInt(online);
-			out.writeInt(max);
+			out.writeInt(online); // 4 bytes
+			out.writeInt(max); // 4 bytes
+			// 1+2+4+4=11 bytes of "same size" data
+			//512-11=501, so 501 characters max for motd
 			ctx.write(out);
 		}
         msg.release();

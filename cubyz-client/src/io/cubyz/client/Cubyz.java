@@ -36,6 +36,7 @@ import io.cubyz.Utilities;
 import io.cubyz.api.CubzRegistries;
 import io.cubyz.api.IRegistryElement;
 import io.cubyz.api.Mod;
+import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
@@ -50,6 +51,7 @@ import io.cubyz.ui.MainMenuGUI;
 import io.cubyz.ui.PauseGUI;
 import io.cubyz.ui.UISystem;
 import io.cubyz.utils.DiscordIntegration;
+import io.cubyz.utils.ResourceUtilities;
 import io.cubyz.utils.TextureConverter;
 import io.cubyz.world.BlockSpatial;
 import io.cubyz.world.Chunk;
@@ -137,6 +139,19 @@ public class Cubyz implements IGameLogic {
 			throw new IllegalStateException("Attempted to join a server while Cubz is not initialized.");
 		}
 	}
+	
+	public static PingResponse pingServer(String host) {
+		return pingServer(host, 58961);
+	}
+	
+	public static PingResponse pingServer(String host, int port) {
+		requestJoin(host, port);
+		PingResponse resp = mpClient.ping();
+		System.out.println("Ping response:");
+		System.out.println("\tMOTD: " + resp.motd);
+		System.out.println("\tPlayers: " + resp.onlinePlayers + "/" + resp.maxPlayers);
+		return resp;
+	}
 
 	@Override
 	public void init(Window window) throws Exception {
@@ -222,14 +237,17 @@ public class Cubyz implements IGameLogic {
 		}
 		
 		CubzServer server = new CubzServer(58961);
-		server.start(true);
+		//server.start(true);
 		mpClient = new CubzClient();
-		requestJoin("127.0.0.1");
-		PingResponse resp = mpClient.ping();
-		System.out.println("Ping response:");
-		System.out.println("\tMOTD: " + resp.motd);
-		System.out.println("\tPlayers: " + resp.onlinePlayers + "/" + resp.maxPlayers);
+		
+		//pingServer("127.0.0.1");
+		
 		System.gc();
+		
+		System.out.println("Resource 2.0 System Test:");
+		ResourceUtilities.BlockModel model = ResourceUtilities.loadModel(new Resource("cubyz:block"));
+		System.out.println("Default block texture :" + model.texture);
+		System.out.println("Default block model   :"   + model.model);
 	}
 
 	@Override
