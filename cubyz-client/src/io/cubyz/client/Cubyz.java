@@ -253,9 +253,9 @@ public class Cubyz implements IGameLogic {
 		System.gc();
 		
 		System.out.println("Resource 2.0 System Test:");
-		ResourceUtilities.BlockModel model = ResourceUtilities.loadModel(new Resource("cubyz:block"));
-		System.out.println("Default block texture : " + model.texture);
-		System.out.println("Default block model   : "   + model.model);
+		ResourceUtilities.BlockModel model = ResourceUtilities.loadModel(new Resource("cubyz:grass"));
+		System.out.println("Grass block texture : " + model.texture);
+		System.out.println("Grass block model   : "   + model.model);
 	}
 
 	@Override

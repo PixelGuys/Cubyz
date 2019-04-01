@@ -28,6 +28,9 @@ public class ResourceUtilities {
 		String path = ResourceManager.contextToLocal(ResourceContext.MODEL, block);
 		BlockModel model = GSON.fromJson(Utilities.readFile(new File(path)), BlockModel.class);
 		if (model.parent != null) {
+			if (model.parent.equals(block.toString())) {
+				throw new IOException("Cannot have itself as parent");
+			}
 			BlockModel parent = loadModel(new Resource(model.parent));
 			Utilities.copyIfNull(model, parent);
 		}
