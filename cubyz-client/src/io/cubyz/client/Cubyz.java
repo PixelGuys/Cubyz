@@ -54,6 +54,7 @@ import io.cubyz.utils.DiscordIntegration;
 import io.cubyz.utils.ResourceManager;
 import io.cubyz.utils.ResourcePack;
 import io.cubyz.utils.ResourceUtilities;
+import io.cubyz.utils.ResourceUtilities.BlockModel;
 import io.cubyz.utils.TextureConverter;
 import io.cubyz.world.BlockSpatial;
 import io.cubyz.world.Chunk;
@@ -215,7 +216,10 @@ public class Cubyz implements IGameLogic {
 		gameUI.addOverlay(new DebugGUI());
 		
 		ClientOnly.createBlockMesh = (block) -> {
+			Resource rsc = block.getRegistryID();
 			try {
+				BlockModel bm = null;
+				//bm = ResourceUtilities.loadModel(rsc);
 				if (block.isTextureConverted()) { // block.texConverted
 					block.getBlockPair().set("textureCache", new Texture("assets/cubyz/textures/blocks/" + block.getTexture() + ".png"));
 				} else {
@@ -224,7 +228,7 @@ public class Cubyz implements IGameLogic {
 									block.getTexture()))));
 				}
 				// Assuming mesh too is empty
-				block.getBlockPair().set("meshCache", OBJLoader.loadMesh("assets/cubyz/models/cube.obj"));
+				block.getBlockPair().set("meshCache", OBJLoader.loadMesh("assets/cubyz/models/3d/block.obj"));
 				((Mesh) block.getBlockPair().get("meshCache")).setBoundingRadius(2.0F);
 				Material material = new Material((Texture) block.getBlockPair().get("textureCache"), 1.0F);
 				((Mesh) block.getBlockPair().get("meshCache")).setMaterial(material);
