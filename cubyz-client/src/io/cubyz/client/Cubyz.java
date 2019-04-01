@@ -51,6 +51,8 @@ import io.cubyz.ui.MainMenuGUI;
 import io.cubyz.ui.PauseGUI;
 import io.cubyz.ui.UISystem;
 import io.cubyz.utils.DiscordIntegration;
+import io.cubyz.utils.ResourceManager;
+import io.cubyz.utils.ResourcePack;
 import io.cubyz.utils.ResourceUtilities;
 import io.cubyz.utils.TextureConverter;
 import io.cubyz.world.BlockSpatial;
@@ -189,10 +191,6 @@ public class Cubyz implements IGameLogic {
 		window.setClearColor(new Vector4f(0.1F, 0.7F, 0.7F, 1.0F));
 		log.info("Renderer: OK!");
 		
-		MainMenuGUI mmg = new MainMenuGUI();
-		gameUI.setMenu(mmg);
-		gameUI.addOverlay(new DebugGUI());
-
 		System.out.println("-=-=- Loading Mods -=-=-");
 		long start = System.currentTimeMillis();
 		Reflections reflections = new Reflections(""); // load all mods
@@ -205,6 +203,16 @@ public class Cubyz implements IGameLogic {
 			ModLoader.init(mod);
 		}
 		System.out.println("-=-=- Mods Loaded  -=-=-");
+		
+		// Cubyz resources
+		ResourcePack baserp = new ResourcePack();
+		baserp.path = new File("assets/cubyz");
+		baserp.name = "Cubyz";
+		ResourceManager.packs.add(baserp);
+		
+		MainMenuGUI mmg = new MainMenuGUI();
+		gameUI.setMenu(mmg);
+		gameUI.addOverlay(new DebugGUI());
 		
 		ClientOnly.createBlockMesh = (block) -> {
 			try {
@@ -246,8 +254,8 @@ public class Cubyz implements IGameLogic {
 		
 		System.out.println("Resource 2.0 System Test:");
 		ResourceUtilities.BlockModel model = ResourceUtilities.loadModel(new Resource("cubyz:block"));
-		System.out.println("Default block texture :" + model.texture);
-		System.out.println("Default block model   :"   + model.model);
+		System.out.println("Default block texture : " + model.texture);
+		System.out.println("Default block model   : "   + model.model);
 	}
 
 	@Override

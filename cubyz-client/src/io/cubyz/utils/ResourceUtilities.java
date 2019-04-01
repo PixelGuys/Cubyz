@@ -25,7 +25,7 @@ public class ResourceUtilities {
 	}
 	
 	public static BlockModel loadModel(Resource block) throws IOException {
-		String path = "assets/" + block.getMod() + "/models/" + block.getID() + ".json";
+		String path = ResourceManager.contextToLocal(ResourceContext.MODEL, block);
 		BlockModel model = GSON.fromJson(Utilities.readFile(new File(path)), BlockModel.class);
 		if (model.parent != null) {
 			BlockModel parent = loadModel(new Resource(model.parent));
