@@ -139,7 +139,7 @@ public class Cubyz implements IGameLogic {
 			serverIP = host;
 			serverPort = port;
 		} else {
-			throw new IllegalStateException("Attempted to join a server while Cubz is not initialized.");
+			throw new IllegalStateException("Attempted to join a server while Cubyz is not initialized.");
 		}
 	}
 	
@@ -153,6 +153,7 @@ public class Cubyz implements IGameLogic {
 		System.out.println("Ping response:");
 		System.out.println("\tMOTD: " + resp.motd);
 		System.out.println("\tPlayers: " + resp.onlinePlayers + "/" + resp.maxPlayers);
+		mpClient.disconnect();
 		return resp;
 	}
 
