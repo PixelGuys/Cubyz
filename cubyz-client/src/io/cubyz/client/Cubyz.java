@@ -229,7 +229,7 @@ public class Cubyz implements IGameLogic {
 									block.getTexture()))));
 				}
 				// Assuming mesh too is empty
-				block.getBlockPair().set("meshCache", OBJLoader.loadMesh("assets/cubyz/models/3d/block.obj"));
+				block.getBlockPair().set("meshCache", OBJLoader.loadMesh("assets/cubyz/models/cube.obj"));
 				((Mesh) block.getBlockPair().get("meshCache")).setBoundingRadius(2.0F);
 				Material material = new Material((Texture) block.getBlockPair().get("textureCache"), 1.0F);
 				((Mesh) block.getBlockPair().get("meshCache")).setMaterial(material);

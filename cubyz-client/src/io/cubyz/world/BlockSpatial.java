@@ -14,7 +14,7 @@ public class BlockSpatial extends Spatial implements IBlockSpatial {
 	public BlockSpatial(BlockInstance bi) {
 		super((Mesh) ((ClientBlockPair) bi.getBlock().getBlockPair()).get("meshCache"));
 		this.setPosition(bi.getX(), bi.getY(), bi.getZ());
-		this.setScale(0.5f);
+		//this.setScale(0.5f);
 		this.owner = bi;
 	}
 	
