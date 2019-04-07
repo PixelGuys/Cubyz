@@ -135,7 +135,7 @@ public class LocalWorld extends World {
 	}
 	
 	@Override
-	public Chunk getChunk(int x, int z) {	// World→Chunk coordinate system is a bit harder than just x/16. java seems to floor when bigger and to ceil when lower than 0.
+	public Chunk getChunk(int x, int z) {	// World -> Chunk coordinate system is a bit harder than just x/16. java seems to floor when bigger and to ceil when lower than 0.
 		int cx = x;
 		if(cx < 0)
 			cx -= 15;
@@ -234,7 +234,7 @@ public class LocalWorld extends World {
 
 	@Override
 	public void seek(int x, int z) {
-		int renderDistance = 5;
+		int renderDistance = 4;
 		int blockDistance = renderDistance << 4;
 		int minX = x-blockDistance;	// Avoid
 		int maxX = x+blockDistance;	// recalculating

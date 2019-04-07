@@ -107,7 +107,7 @@ public class Chunk {
 	 * @param z
 	 */
 	public void addBlock(Block b, int x, int y, int z) {
-		if(y >= World.WORLD_HEIGHT)
+		if(y >= world.getHeight())
 			return;
 		int rx = x - (ox << 4);
 		// Determines if the block is part of another chunk.
@@ -129,7 +129,7 @@ public class Chunk {
 			return;
 		}
 		if(inst == null) {
-			inst = new BlockInstance[16][World.WORLD_HEIGHT][16];
+			inst = new BlockInstance[16][world.getHeight()][16];
 		} else { // Checks if there is a block on that position and deposits it if degradable.
 			BlockInstance bi = inst[rx][y][rz];
 			if(bi != null) {
@@ -180,7 +180,7 @@ public class Chunk {
 	//TODO: Add more diversity
 	public void generateFrom(float[][] map, float[][] vegetation, float[][] oreMap, float[][] heatMap) {
 		if(inst == null) {
-			inst = new BlockInstance[16][World.WORLD_HEIGHT][16];
+			inst = new BlockInstance[16][world.getHeight()][16];
 		}
 		int wx = ox << 4;
 		int wy = oy << 4;
@@ -189,10 +189,10 @@ public class Chunk {
 		for (int px = 0; px < 16; px++) {
 			for (int py = 0; py < 16; py++) {
 				float value = map[px][py];
-				int y = (int) (value * World.WORLD_HEIGHT);
-				if(y == World.WORLD_HEIGHT)
+				int y = (int) (value * world.getHeight());
+				if(y == world.getHeight())
 					y--;
-				int temperature = (int)((2-value+SEA_LEVEL/(float)World.WORLD_HEIGHT)*heatMap[px][py]*120) - 100;
+				int temperature = (int)((2-value+SEA_LEVEL/(float)world.getHeight())*heatMap[px][py]*120) - 100;
 				for (int j = y > SEA_LEVEL ? y : SEA_LEVEL; j >= 0; j--) {
 					BlockInstance bi = null;
 					
@@ -237,9 +237,9 @@ public class Chunk {
 				float value = vegetation[px][py];
 				int incx = px == 0 ? 1 : -1;
 				int incy = py == 0 ? 1 : -1;
-				int temperature = (int)((2-map[px][py]+SEA_LEVEL/(float)World.WORLD_HEIGHT)*heatMap[px][py]*120) - 100;
-				if (map[px][py] * World.WORLD_HEIGHT >= SEA_LEVEL + 4) {
-					Structures.generateVegetation(this, wx + px, (int) (map[px][py] * World.WORLD_HEIGHT) + 1, wy + py, value, temperature, (int)((vegetation[px][py]-vegetation[px+incx][py+incy]) * 100000000 + incx + incy));
+				int temperature = (int)((2-map[px][py]+SEA_LEVEL/(float)world.getHeight())*heatMap[px][py]*120) - 100;
+				if (map[px][py] * world.getHeight() >= SEA_LEVEL + 4) {
+					Structures.generateVegetation(this, wx + px, (int) (map[px][py] * world.getHeight()) + 1, wy + py, value, temperature, (int)((vegetation[px][py]-vegetation[px+incx][py+incy]) * 100000000 + incx + incy));
 				}
 			}
 		}
@@ -280,7 +280,7 @@ public class Chunk {
 			boolean [] toCheck = {chx0, chx1, chy0, chy1};
 			for(int k = 0; k < 4; k++) {
 				if (toCheck[k]) {
-					for (int j = World.WORLD_HEIGHT - 1; j >= 0; j--) {
+					for (int j = world.getHeight() - 1; j >= 0; j--) {
 						BlockInstance inst0 = world.getBlock(wx + dx[k], j, wy + dy[k]);
 						if(inst0 == null) {
 							continue;
@@ -382,7 +382,7 @@ public class Chunk {
 	public void addBlockAt(int x, int y, int z, Block b) {
 		int wx = ox << 4;
 		int wy = oy << 4;
-		if(y >= World.WORLD_HEIGHT)
+		if(y >= world.getHeight())
 			return;
 		removeBlockAt(x, y, z);
 		BlockInstance inst0 = new BlockInstance(b);

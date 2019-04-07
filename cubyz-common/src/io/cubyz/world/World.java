@@ -9,19 +9,24 @@ import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 
 /**
- * Base class for Cubz worlds.
+ * Base class for Cubyz worlds.
  * @author zenith391
  *
  */
 public abstract class World {
 
 	public static final int WORLD_HEIGHT = 255;
+	protected int height = WORLD_HEIGHT;
 	protected int seed;
 	
 	public abstract Player getLocalPlayer();
 	
+	public void setHeight(int height) {
+		this.height = height;
+	}
+	
 	public int getHeight() {
-		return WORLD_HEIGHT;
+		return height;
 	}
 	
 	public abstract List<Chunk> getChunks();

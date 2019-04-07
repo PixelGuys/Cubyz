@@ -38,7 +38,7 @@ public class ResourceManager {
 		} else if (ctx == ResourceContext.MODEL3D) {
 			return "assets/" + local.getMod() + "/models/3d/" + local.getID() + ".json";
 		} else if (ctx == ResourceContext.TEXTURE) {
-			return "assets/" + local.getMod() + "/textures/" + local.getID() + ".json";
+			return "assets/" + local.getMod() + "/textures/" + local.getID() + ".png";
 		}
 		return null;
 	}
