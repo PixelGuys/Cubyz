@@ -3,8 +3,13 @@ package io.cubyz.save;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.Objects;
 
+import org.joml.Vector3f;
+
+import io.cubyz.api.CubzRegistries;
 import io.cubyz.entity.Entity;
+import io.cubyz.entity.EntityType;
 
 public class EntityIO {
 
@@ -23,7 +28,15 @@ public class EntityIO {
 	}
 	
 	public static Entity loadEntity(DataInputStream dis) throws IOException {
-		return null;
+		EntityType entityType = CubzRegistries.ENTITY_REGISTRY.getByID(dis.readUTF());
+		Objects.requireNonNull(entityType, "invalid entity type");
+		Entity ent = entityType.newEntity();
+		ent.setPosition(new Vector3f((float)dis.readDouble(), (float)dis.readDouble(), (float)dis.readDouble()));
+		ent.setRotation(new Vector3f((float)dis.readDouble(), (float)dis.readDouble(), (float)dis.readDouble()));
+		ent.vx = (float) dis.readDouble();
+		ent.vy = (float) dis.readDouble();
+		ent.vz = (float) dis.readDouble();
+		return ent;
 	}
 	
 }

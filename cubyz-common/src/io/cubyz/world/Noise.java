@@ -3,8 +3,8 @@ package io.cubyz.world;
 import java.util.Random;
 
 /**
- * Perlin Noise generator for Worlds
- * @author zenith391
+ * Perlin noise generator for worlds
+ * @author zenith391, IntegratedQuantum
  */
 public class Noise {
 	private static Random r = new Random();
