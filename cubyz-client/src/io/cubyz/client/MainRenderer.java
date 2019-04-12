@@ -107,7 +107,7 @@ public class MainRenderer implements IRenderer {
 
 	
 	@SuppressWarnings("unchecked")
-	public void render(Window window, Context ctx, Vector3f ambientLight, DirectionalLight directionalLight, List<Chunk> chunks, Block [] blocks) {
+	public void render(Window window, Context ctx, Vector3f ambientLight, DirectionalLight directionalLight, Chunk[] chunks, Block [] blocks) {
 		if (window.isResized()) {
 			glViewport(0, 0, window.getWidth(), window.getHeight());
 			window.setResized(false);
@@ -124,8 +124,6 @@ public class MainRenderer implements IRenderer {
 			map[i] = new ArrayList<Spatial>();
 		}
 		for (Chunk ch : chunks) {
-			if(!ch.isLoaded())
-				continue;
 			List<BlockInstance> vis = ch.getVisibles();
 		    for (int i = 0; i < vis.size(); i++) {
 		    	map[vis.get(i).getID()].add((Spatial) vis.get(i).getSpatial());

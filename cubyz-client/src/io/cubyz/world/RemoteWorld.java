@@ -77,4 +77,10 @@ public class RemoteWorld extends World {
 		
 	}
 
+	@Override
+	public Chunk[] getVisibleChunks() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
 }

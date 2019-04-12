@@ -21,8 +21,10 @@ public class LocalWorld extends World {
 
 	private String name;
 	private List<Chunk> chunks;
+	private Chunk [] visibleChunks;
 	private int lastChunk = -1;
 	private ArrayList<Entity> entities = new ArrayList<>();
+	private static int renderDistance = 5;
 	
 	//private List<BlockInstance> spatials = new ArrayList<>();
 	private Block [] blocks;
@@ -75,6 +77,7 @@ public class LocalWorld extends World {
 	public LocalWorld() {
 		name = "World";
 		chunks = new ArrayList<>();
+		visibleChunks = new Chunk[renderDistance * renderDistance << 2];
 		entities.add(new Player(true));
 		
 		thread = new ChunkGenerationThread();
@@ -104,6 +107,13 @@ public class LocalWorld extends World {
 	@Override
 	public List<Chunk> getChunks() {
 		return chunks;
+	}
+
+	@Override
+	public Chunk[] getVisibleChunks() {
+		if(visibleChunks[0] == null)
+			return new Chunk[0];
+		return visibleChunks;
 	}
 
 	@Override
@@ -232,27 +242,60 @@ public class LocalWorld extends World {
 		thread.queue(ch);
 	}
 
+	private int lastX = Integer.MAX_VALUE;
+	private int lastZ = Integer.MAX_VALUE;
 	@Override
 	public void seek(int x, int z) {
-		int renderDistance = 4;
-		int blockDistance = renderDistance << 4;
-		int minX = x-blockDistance;	// Avoid
-		int maxX = x+blockDistance;	// recalculating
-		int minZ = z-blockDistance;	// them
-		int maxZ = z+blockDistance;	// .
-		for (int x1 = minX-48; x1 <= maxX+48; x1 += 16) {
-			for (int z1 = minZ-48; z1 <= maxZ+48; z1 += 16) {
-				Chunk ch = getChunk(x1, z1);
-				if (!ch.isLoaded() && x1 > minX && x1 < maxX && z1 > minZ && z1 < maxZ) {
+		int local = x & 15;
+		x -= local;
+		x /= 16;
+		x += renderDistance;
+		if(local > 7)
+			x++;
+		local = z & 15;
+		z -= local;
+		z /= 16;
+		z += renderDistance;
+		if(local > 7)
+			z++;
+		if(x == lastX && z == lastZ)
+			return;
+		Chunk [] newVisibles = new Chunk[visibleChunks.length];
+		int doubleRD = renderDistance << 1;
+		int index = 0;
+		Chunk[] visCh = getVisibleChunks();
+		int minK = 0;
+		for(int i = x-doubleRD; i < x; i++) {
+			for(int j = z-doubleRD; j < z; j++) {
+				boolean notIn = true;
+				for(int k = minK; k < visCh.length; k++) {
+					if(visCh[k].getX() == i && visCh[k].getZ() == j) {
+						newVisibles[index] = visCh[k];
+						// Removes this chunk out of the list of chunks that will be considered in this function.
+						visCh[k] = visCh[minK];
+						visCh[minK] = newVisibles[index];
+						minK++;
+						notIn = false;
+						break;
+					}
+				}
+				if(notIn) {
+					Chunk ch = getChunk(i << 4, j << 4);
 					if (!ch.isGenerated()) {
 						queueChunk(ch);
 					} else {
 						ch.setLoaded(true);
 					}
-				} else if (ch.isLoaded() && (x1 < minX || x1 > maxX || z1 < minZ || z1 > maxZ)) {
-					ch.setLoaded(false);
+					newVisibles[index] = ch;
 				}
+				index++;
 			}
 		}
+		for(int k = minK; k < visCh.length; k++) {
+			visCh[k].setLoaded(false);
+		}
+		visibleChunks = newVisibles;
+		lastX = x;
+		lastZ = z;
 	}
 }

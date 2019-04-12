@@ -1,6 +1,5 @@
 package io.cubyz.client;
 
-import java.util.List;
 import org.joml.Intersectionf;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
@@ -31,18 +30,15 @@ public class CubyzMeshSelectionDetector {
 		return selectedSpatial;
 	}
 	
-	public void selectSpatial(List<Chunk> chunks, Camera camera) {
+	public void selectSpatial(Chunk[] chunks, Camera camera) {
 		dir = render.getTransformation().getViewMatrix(camera).positiveZ(dir).negate();
 	    selectSpatial(chunks, camera.getPosition(), dir);
 	}
 	
-	public void selectSpatial(List<Chunk> chunks, Vector3f position, Vector3f dir) {
+	public void selectSpatial(Chunk[] chunks, Vector3f position, Vector3f dir) {
 	    float closestDistance = Float.POSITIVE_INFINITY;
 	    selectedSpatial = null;
 	    for (Chunk ch : chunks) {
-	    	if(!ch.isLoaded())
-	    		continue;
-	    	try {
 		    for (BlockInstance bi : ch.getVisibles()) {
 		    	if(!bi.getBlock().isSolid())
 		    		continue;
@@ -56,7 +52,6 @@ public class CubyzMeshSelectionDetector {
 		            selectedSpatial = bi;
 		        }
 		    }
-	    	}catch(Exception e) {}
 	    }
 	    if (selectedSpatial != null) {
 	        ((BlockSpatial) selectedSpatial.getSpatial()).setSelected(true);

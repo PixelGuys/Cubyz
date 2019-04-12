@@ -28,8 +28,9 @@ public abstract class World {
 	public int getHeight() {
 		return height;
 	}
-	
+
 	public abstract List<Chunk> getChunks();
+	public abstract Chunk [] getVisibleChunks();
 	public abstract Block [] getBlocks();
 	public abstract Entity[] getEntities();
 	

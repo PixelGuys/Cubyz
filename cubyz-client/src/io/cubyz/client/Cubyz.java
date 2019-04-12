@@ -347,12 +347,12 @@ public class Cubyz implements IGameLogic {
 			if (window.isKeyPressed(GLFW.GLFW_KEY_8)) {
 				inventorySelection = 7;
 			}
-			msd.selectSpatial(world.getChunks(), ctx.getCamera());
+			msd.selectSpatial(world.getVisibleChunks(), ctx.getCamera());
 		}
 		mouse.input(window);
 	}
 
-	public static final ArrayList<Chunk> EMPTY_CHUNK_LIST = new ArrayList<Chunk>();
+	public static final Chunk[] EMPTY_CHUNK_LIST = new Chunk[0];
 	public static final Block[] EMPTY_BLOCK_LIST = new Block[0];
 	
 	float playerBobbing;
@@ -389,7 +389,7 @@ public class Cubyz implements IGameLogic {
 			ctx.getCamera().setPosition(world.getLocalPlayer().getPosition().x, world.getLocalPlayer().getPosition().y + 1.5f + playerBobbing, world.getLocalPlayer().getPosition().z);
 		}
 		if (world != null) {
-			renderer.render(window, ctx, new Vector3f(0.3F, 0.3F, 0.3F), light, world.getChunks(), world.getBlocks());
+			renderer.render(window, ctx, new Vector3f(0.3F, 0.3F, 0.3F), light, world.getVisibleChunks(), world.getBlocks());
 		} else {
 			renderer.render(window, ctx, new Vector3f(0.3F, 0.3F, 0.3F), light, EMPTY_CHUNK_LIST, EMPTY_BLOCK_LIST);
 		}
