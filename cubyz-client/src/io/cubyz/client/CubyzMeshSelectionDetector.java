@@ -39,19 +39,23 @@ public class CubyzMeshSelectionDetector {
 	    float closestDistance = Float.POSITIVE_INFINITY;
 	    selectedSpatial = null;
 	    for (Chunk ch : chunks) {
-		    for (BlockInstance bi : ch.getVisibles()) {
-		    	if(!bi.getBlock().isSolid())
-		    		continue;
-		        ((BlockSpatial) bi.getSpatial()).setSelected(false);
-		        min.set(bi.getPosition());
-		        max.set(bi.getPosition());
-		        min.add(-0.5f, -0.5f, -0.5f); // -scale, -scale, -scale
-		        max.add(0.5f, 0.5f, 0.5f); // scale, scale, scale
-		        if (Intersectionf.intersectRayAab(position, dir, min, max, nearFar) && nearFar.x < closestDistance) {
-		            closestDistance = nearFar.x;
-		            selectedSpatial = bi;
-		        }
-		    }
+	    	synchronized (ch) {
+	    		// using an array speeds up things and reduce Concurrent Modification Exceptions
+	    		BlockInstance[] array = ch.getVisibles().toArray(new BlockInstance[ch.getVisibles().size()]);
+			    for (BlockInstance bi : array) {
+			    	if(!bi.getBlock().isSolid())
+			    		   continue;
+			        ((BlockSpatial) bi.getSpatial()).setSelected(false);
+			        min.set(bi.getPosition());
+			        max.set(bi.getPosition());
+			        min.add(-0.5f, -0.5f, -0.5f); // -scale, -scale, -scale
+			        max.add(0.5f, 0.5f, 0.5f); // scale, scale, scale
+			        if (Intersectionf.intersectRayAab(position, dir, min, max, nearFar) && nearFar.x < closestDistance) {
+			            closestDistance = nearFar.x;
+			            selectedSpatial = bi;
+			        }
+			    }
+	    	}
 	    }
 	    if (selectedSpatial != null) {
 	        ((BlockSpatial) selectedSpatial.getSpatial()).setSelected(true);
