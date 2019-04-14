@@ -24,7 +24,7 @@ public class LocalWorld extends World {
 	private Chunk [] visibleChunks;
 	private int lastChunk = -1;
 	private ArrayList<Entity> entities = new ArrayList<>();
-	private static int renderDistance = 5;
+	private static final int renderDistance = 5;
 	
 	//private List<BlockInstance> spatials = new ArrayList<>();
 	private Block [] blocks;
@@ -35,7 +35,7 @@ public class LocalWorld extends World {
 	private ChunkGenerationThread thread;
 	
 	private class ChunkGenerationThread extends Thread {
-		private static final int MAX_QUEUE_SIZE = 16;
+		private static final int MAX_QUEUE_SIZE = renderDistance << 2;
 		Deque<Chunk> loadList = new ArrayDeque<>(MAX_QUEUE_SIZE); // FIFO order (First In, First Out)
 		
 		public void queue(Chunk ch) {
@@ -77,7 +77,7 @@ public class LocalWorld extends World {
 	public LocalWorld() {
 		name = "World";
 		chunks = new ArrayList<>();
-		visibleChunks = new Chunk[renderDistance * renderDistance << 2];
+		visibleChunks = new Chunk[0];
 		entities.add(new Player(true));
 		
 		thread = new ChunkGenerationThread();
@@ -111,8 +111,6 @@ public class LocalWorld extends World {
 
 	@Override
 	public Chunk[] getVisibleChunks() {
-		if(visibleChunks[0] == null)
-			return new Chunk[0];
 		return visibleChunks;
 	}
 
@@ -260,20 +258,19 @@ public class LocalWorld extends World {
 			z++;
 		if(x == lastX && z == lastZ)
 			return;
-		Chunk [] newVisibles = new Chunk[visibleChunks.length];
 		int doubleRD = renderDistance << 1;
+		Chunk [] newVisibles = new Chunk[doubleRD*doubleRD];
 		int index = 0;
-		Chunk[] visCh = getVisibleChunks();
 		int minK = 0;
 		for(int i = x-doubleRD; i < x; i++) {
 			for(int j = z-doubleRD; j < z; j++) {
 				boolean notIn = true;
-				for(int k = minK; k < visCh.length; k++) {
-					if(visCh[k].getX() == i && visCh[k].getZ() == j) {
-						newVisibles[index] = visCh[k];
+				for(int k = minK; k < visibleChunks.length; k++) {
+					if(visibleChunks[k].getX() == i && visibleChunks[k].getZ() == j) {
+						newVisibles[index] = visibleChunks[k];
 						// Removes this chunk out of the list of chunks that will be considered in this function.
-						visCh[k] = visCh[minK];
-						visCh[minK] = newVisibles[index];
+						visibleChunks[k] = visibleChunks[minK];
+						visibleChunks[minK] = newVisibles[index];
 						minK++;
 						notIn = false;
 						break;

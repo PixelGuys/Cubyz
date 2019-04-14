@@ -3,6 +3,7 @@ package io.cubyz.blocks;
 import org.joml.Vector3i;
 
 import io.cubyz.ClientOnly;
+import io.cubyz.world.Chunk;
 import io.cubyz.world.World;
 
 public class BlockInstance {
@@ -11,6 +12,7 @@ public class BlockInstance {
 	private IBlockSpatial spatial;
 	private Vector3i pos;
 	private World world;
+	private Chunk ch;
 	
 	public World getWorld() {
 		return world;
@@ -20,8 +22,9 @@ public class BlockInstance {
 		this.world = world;
 	}
 	
-	public BlockInstance(Block block) {
+	public BlockInstance(Block block, Chunk ch) {
 		this.block = block;
+		this.ch = ch;
 	}
 	
 	public int getID() {
@@ -89,12 +92,24 @@ public class BlockInstance {
 		// 3 = SOUTH (z - 1)
 		// 4 = DOWN
 		// 5 = UP
-		inst[5] = world.getBlock(pos.x, pos.y + 1, pos.z);
-		inst[4] = world.getBlock(pos.x, pos.y + -1, pos.z);
-		inst[3] = world.getBlock(pos.x, pos.y, pos.z + -1);
-		inst[2] = world.getBlock(pos.x, pos.y, pos.z + 1);
-		inst[1] = world.getBlock(pos.x + 1, pos.y, pos.z);
-		inst[0] = world.getBlock(pos.x + -1, pos.y, pos.z);
+		inst[5] = ch.getBlockInstanceAt(pos.x & 15, pos.y + 1, pos.z & 15);
+		inst[4] = ch.getBlockInstanceAt(pos.x & 15, pos.y - 1, pos.z & 15);
+		if((pos.z & 15) != 0)
+			inst[3] = ch.getBlockInstanceAt(pos.x & 15, pos.y, (pos.z - 1) & 15);
+		else
+			inst[3] = world.getBlock(pos.x, pos.y, pos.z - 1);
+		if((pos.z & 15) != 15)
+			inst[2] = ch.getBlockInstanceAt(pos.x & 15, pos.y, (pos.z + 1) & 15);
+		else
+			inst[2] = world.getBlock(pos.x, pos.y, pos.z + 1);
+		if((pos.x & 15) != 15)
+			inst[1] = ch.getBlockInstanceAt((pos.x + 1) & 15, pos.y, pos.z & 15);
+		else
+			inst[1] = world.getBlock(pos.x + 1, pos.y, pos.z);
+		if((pos.x & 15) != 0)
+			inst[0] = ch.getBlockInstanceAt((pos.x - 1) & 15, pos.y, pos.z & 15);
+		else
+			inst[0] = world.getBlock(pos.x - 1, pos.y, pos.z);
 		return inst;
 	}
 	
@@ -107,17 +122,25 @@ public class BlockInstance {
 		// 5 = UP
 		switch(i) {
 			case 5:
-				return world.getBlock(pos.x, pos.y + 1, pos.z);
+				return ch.getBlockInstanceAt(pos.x & 15, pos.y + 1, pos.z & 15);
 			case 4:
-				return world.getBlock(pos.x, pos.y + -1, pos.z);
+				return ch.getBlockInstanceAt(pos.x & 15, pos.y - 1, pos.z & 15);
 			case 3:
-				return world.getBlock(pos.x, pos.y, pos.z + -1);
+				if((pos.z & 15) != 0)
+					return ch.getBlockInstanceAt(pos.x & 15, pos.y, (pos.z - 1) & 15);
+				return world.getBlock(pos.x, pos.y, pos.z - 1);
 			case 2:
+				if((pos.z & 15) != 15)
+					return world.getBlock(pos.x & 15, pos.y, (pos.z - 1) & 15);
 				return world.getBlock(pos.x, pos.y, pos.z + 1);
 			case 1:
+				if((pos.x & 15) != 0)
+					return world.getBlock((pos.x + 1) & 15, pos.y, pos.z & 15);
 				return world.getBlock(pos.x + 1, pos.y, pos.z);
 			case 0:
-				return world.getBlock(pos.x + -1, pos.y, pos.z);
+				if((pos.x & 15) != 0)
+					return ch.getBlockInstanceAt((pos.x - 1) & 15, pos.y, pos.z & 15);
+				return world.getBlock(pos.x - 1, pos.y, pos.z);
 		}
 		return null;
 	}

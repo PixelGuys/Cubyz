@@ -139,7 +139,7 @@ public class Chunk {
 				removeBlockAt(rx, y, rz);
 			}
 		}
-		BlockInstance inst0 = new BlockInstance(b);
+		BlockInstance inst0 = new BlockInstance(b, this);
 		inst0.setPosition(new Vector3i(x, y, z));
 		inst0.setWorld(world);
 		list.add(inst0);
@@ -198,26 +198,26 @@ public class Chunk {
 					
 					if(j > y) {
 						if (temperature <= 0 && j == SEA_LEVEL) {
-							bi = new BlockInstance(ice);
+							bi = new BlockInstance(ice, this);
 						} else {
-							bi = new BlockInstance(water);
+							bi = new BlockInstance(water, this);
 						}
 					}else if (((y < SEA_LEVEL + 4 && temperature > 5) || temperature > 40 || y < SEA_LEVEL) && j > y - 3) {
-						bi = new BlockInstance(sand);
+						bi = new BlockInstance(sand, this);
 					} else if (j == y) {
 						if(temperature > 0) {
-							bi = new BlockInstance(grass);
+							bi = new BlockInstance(grass, this);
 						} else {
-							bi = new BlockInstance(snow);
+							bi = new BlockInstance(snow, this);
 						}
 					} else if (j > y - 3) {
-						bi = new BlockInstance(dirt);
+						bi = new BlockInstance(dirt, this);
 					} else if (j > 0) {
 						float rand = oreMap[px][py] * j * (256 - j) * (128 - j) * 6741;
 						rand = (((int) rand) & 8191) / 8191.0F;
 						bi = selectOre(rand, j);
 					} else {
-						bi = new BlockInstance(bedrock);
+						bi = new BlockInstance(bedrock, this);
 					}
 					bi.setPosition(new Vector3i(wx + px, j, wy + py));
 					bi.setWorld(world);
@@ -249,8 +249,6 @@ public class Chunk {
 	// Loads the chunk
 	public void load() {
 		loaded = true;
-		int wx = ox << 4;
-		int wy = oy << 4;
 		boolean chx0 = world._getChunk(ox - 1, oy).isGenerated();
 		boolean chx1 = world._getChunk(ox + 1, oy).isGenerated();
 		boolean chy0 = world._getChunk(ox, oy - 1).isGenerated();
@@ -274,22 +272,29 @@ public class Chunk {
 		}
 		for (int i = 0; i < 16; i++) {
 			// Checks if blocks from neighboring chunks are changed
-			int [] neighbor = {1, 0, 2, 3};
-			int [] dx = {-1, 16, i, i};
-			int [] dy = {i, i, -1, 16};
+			int [] dx = {15, 0, i, i};
+			int [] dy = {i, i, 15, 0};
+			int [] invdx = {0, 15, i, i};
+			int [] invdy = {i, i, 0, 15};
 			boolean [] toCheck = {chx0, chx1, chy0, chy1};
+			Chunk [] chunks = {
+					world._getChunk(ox-1, oy),
+					world._getChunk(ox+1, oy),
+					world._getChunk(ox, oy-1),
+					world._getChunk(ox, oy+1),
+					};
 			for(int k = 0; k < 4; k++) {
 				if (toCheck[k]) {
+					Chunk ch = chunks[k];
 					for (int j = world.getHeight() - 1; j >= 0; j--) {
-						BlockInstance inst0 = world.getBlock(wx + dx[k], j, wy + dy[k]);
+						BlockInstance inst0 = ch.getBlockInstanceAt(dx[k], j, dy[k]);
 						if(inst0 == null) {
 							continue;
 						}
-						Chunk ch = getChunk(inst0.getX(), inst0.getZ());
 						if(ch.contains(inst0)) {
 							continue;
 						}
-						if (blocksLight(inst0.getNeighbor(neighbor[k]), inst0.getBlock().isTransparent())) {
+						if (blocksLight(getBlockInstanceAt(invdx[k], j, invdy[k]), inst0.getBlock().isTransparent())) {
 							ch.revealBlock(inst0);
 							continue;
 						}
@@ -309,14 +314,14 @@ public class Chunk {
 	// This function only allows a less than 50% of the underground to be ores.
 	public BlockInstance selectOre(float rand, int height) {
 		if(rand >= oreChances[oreHeights.length])
-			return new BlockInstance(stone);
+			return new BlockInstance(stone, this);
 		for (int i = oreChances.length - 2; i >= 0; i--) {
 			if(height > oreHeights[i])
 				break;
 			if(rand >= oreChances[i])
-				return new BlockInstance(ores[i]);
+				return new BlockInstance(ores[i], this);
 		}
-		return new BlockInstance(stone);
+		return new BlockInstance(stone, this);
 	}
 	
 	public boolean isGenerated() {
@@ -385,7 +390,7 @@ public class Chunk {
 		if(y >= world.getHeight())
 			return;
 		removeBlockAt(x, y, z);
-		BlockInstance inst0 = new BlockInstance(b);
+		BlockInstance inst0 = new BlockInstance(b, this);
 		inst0.setPosition(new Vector3i(x + wx, y, z + wy));
 		inst0.setWorld(world);
 		list.add(inst0);
