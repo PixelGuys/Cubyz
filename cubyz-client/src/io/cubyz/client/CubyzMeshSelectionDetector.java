@@ -38,6 +38,7 @@ public class CubyzMeshSelectionDetector {
 	public void selectSpatial(Chunk[] chunks, Vector3f position, Vector3f dir) {
 	    float closestDistance = Float.POSITIVE_INFINITY;
 	    selectedSpatial = null;
+	    //position.x = position.z = 0;
 	    for (Chunk ch : chunks) {
 	    	synchronized (ch) {
 	    		// using an array speeds up things and reduce Concurrent Modification Exceptions
@@ -59,6 +60,7 @@ public class CubyzMeshSelectionDetector {
 	    }
 	    if (selectedSpatial != null) {
 	        ((BlockSpatial) selectedSpatial.getSpatial()).setSelected(true);
+	        //System.out.println(selectedSpatial.getPosition());
 	    }
 	}
 	

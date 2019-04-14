@@ -121,8 +121,8 @@ public class Cubyz implements IGameLogic {
 	public static void loadWorld(World world) {
 		Cubyz.world = world;
 		Random rnd = new Random();
-		int dx = rnd.nextInt(1024);
-		int dz = rnd.nextInt(1024);
+		int dx = rnd.nextInt(10);
+		int dz = rnd.nextInt(10);
 		world.synchronousSeek(dx, dz);
 		int highestY = world.getHighestBlock(dx, dz);
 		world.getLocalPlayer().setPosition(new Vector3f(dx, highestY+2, dz));
@@ -263,6 +263,8 @@ public class Cubyz implements IGameLogic {
 		System.out.println("Grass block model   : "   + model.model);
 	}
 
+	private Vector3f dir = new Vector3f();
+	
 	@Override
 	public void input(Window window) {
 		if (window.isKeyPressed(GLFW.GLFW_KEY_F3)) {
@@ -347,7 +349,7 @@ public class Cubyz implements IGameLogic {
 			if (window.isKeyPressed(GLFW.GLFW_KEY_8)) {
 				inventorySelection = 7;
 			}
-			msd.selectSpatial(world.getVisibleChunks(), ctx.getCamera());
+			msd.selectSpatial(world.getVisibleChunks(), world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate());
 		}
 		mouse.input(window);
 	}
@@ -386,12 +388,12 @@ public class Cubyz implements IGameLogic {
 			if (playerInc.x != 0) {
 				world.getLocalPlayer().vx = playerInc.x;
 			}
-			ctx.getCamera().setPosition(world.getLocalPlayer().getPosition().x, world.getLocalPlayer().getPosition().y + 1.5f + playerBobbing, world.getLocalPlayer().getPosition().z);
+			ctx.getCamera().setPosition(/*world.getLocalPlayer().getPosition().x*/0, world.getLocalPlayer().getPosition().y + 1.5f + playerBobbing, /*world.getLocalPlayer().getPosition().z*/0);
 		}
 		if (world != null) {
-			renderer.render(window, ctx, new Vector3f(0.3F, 0.3F, 0.3F), light, world.getVisibleChunks(), world.getBlocks());
+			renderer.render(window, ctx, new Vector3f(0.3F, 0.3F, 0.3F), light, world.getVisibleChunks(), world.getBlocks(), world.getLocalPlayer());
 		} else {
-			renderer.render(window, ctx, new Vector3f(0.3F, 0.3F, 0.3F), light, EMPTY_CHUNK_LIST, EMPTY_BLOCK_LIST);
+			renderer.render(window, ctx, new Vector3f(0.3F, 0.3F, 0.3F), light, EMPTY_CHUNK_LIST, EMPTY_BLOCK_LIST, null);
 		}
 		gameUI.updateUI();
 	}
