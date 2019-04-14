@@ -131,13 +131,13 @@ public class MainRenderer implements IRenderer {
 			map[i] = new ArrayList<Spatial>();
 		}
 		for (Chunk ch : chunks) {
-			List<BlockInstance> vis = ch.getVisibles();
-		    for (int i = 0; i < vis.size(); i++) {
-		    	BlockSpatial tmp = (BlockSpatial) vis.get(i).getSpatial();
-		    	tmp.setPosition(tmp.getBlockInstance().getX(), tmp.getBlockInstance().getY(), tmp.getBlockInstance().getZ());
-		    	tmp.setPosition(tmp.getPosition().x - localPlayer.getPosition().x, tmp.getPosition().y, tmp.getPosition().z - localPlayer.getPosition().z);
-		    	map[vis.get(i).getID()].add(tmp);
-		    }
+    		// using an array speeds up things
+    		BlockInstance[] vis = ch.getVisibles().toArray(new BlockInstance[ch.getVisibles().size()]);
+    		for (int i = 0; i < vis.length; i++) {
+    			BlockSpatial tmp = (BlockSpatial) vis[i].getSpatial();
+    			tmp.setPosition(vis[i].getX() - localPlayer.getPosition().x, vis[i].getY(), vis[i].getZ() - localPlayer.getPosition().z);
+    			map[vis[i].getID()].add(tmp);
+    		}
 		}
 		if (filter != null) {
 			filter.updateFrustum(window.getProjectionMatrix(), ctx.getCamera().getViewMatrix());
