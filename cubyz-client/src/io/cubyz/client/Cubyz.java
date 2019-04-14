@@ -49,7 +49,9 @@ import io.cubyz.multiplayer.server.CubzServer;
 import io.cubyz.ui.DebugGUI;
 import io.cubyz.ui.MainMenuGUI;
 import io.cubyz.ui.PauseGUI;
+import io.cubyz.ui.ToastManager;
 import io.cubyz.ui.UISystem;
+import io.cubyz.ui.ToastManager.Toast;
 import io.cubyz.utils.DiscordIntegration;
 import io.cubyz.utils.ResourceManager;
 import io.cubyz.utils.ResourcePack;
@@ -261,6 +263,9 @@ public class Cubyz implements IGameLogic {
 		ResourceUtilities.BlockModel model = ResourceUtilities.loadModel(new Resource("cubyz:grass"));
 		System.out.println("Grass block texture : " + model.texture);
 		System.out.println("Grass block model   : "   + model.model);
+		
+		ToastManager.queuedToasts.add(new Toast("Woohoo", "Welcome to 0.3.1, with brand new toasts!"));
+		System.out.println("Pushed toast");
 	}
 
 	private Vector3f dir = new Vector3f();

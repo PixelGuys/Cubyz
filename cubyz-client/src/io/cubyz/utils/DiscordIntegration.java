@@ -86,6 +86,8 @@ public class DiscordIntegration {
 		worker.setName("RPC-Callback-Handler");
 		worker.start();
 		Cubyz.log.info("Discord RPC integration opened!");
+		ToastManager.queuedToasts.add(new Toast("RPC", "Discord RPC on!"));
+		System.out.println("Pushed toast");
 	}
 	
 	public static boolean isEnabled() {

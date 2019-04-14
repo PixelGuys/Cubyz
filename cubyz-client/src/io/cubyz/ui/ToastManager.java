@@ -1,10 +1,11 @@
 package io.cubyz.ui;
 
+import java.util.ArrayDeque;
 import java.util.Deque;
 
-public class ToastManager  {
+public class ToastManager {
 
-	public static Deque<Toast> queuedToasts;
+	public static Deque<Toast> queuedToasts = new ArrayDeque<>();
 	
 	public static class Toast {
 		public String title;
