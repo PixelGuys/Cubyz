@@ -36,6 +36,7 @@ public class CubyzMeshSelectionDetector {
 	}
 	
 	public void selectSpatial(Chunk[] chunks, Vector3f position, Vector3f dir) {
+		position = new Vector3f(position.x, position.y+1.5F, position.z);
 	    float closestDistance = Float.POSITIVE_INFINITY;
 	    selectedSpatial = null;
 	    //position.x = position.z = 0;
@@ -66,6 +67,7 @@ public class CubyzMeshSelectionDetector {
 	
 	// Returns the free block right next to the currently selected block.
 	public Vector3i getEmptyPlace(Vector3f position) {
+		position = new Vector3f(position.x, position.y+1.5F, position.z);
 		if(selectedSpatial != null) {
 			Vector3i pos = selectedSpatial.getPosition();
 			pos.add(-(int)Math.signum(dir.x), 0, 0);
