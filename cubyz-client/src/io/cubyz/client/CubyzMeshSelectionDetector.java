@@ -7,6 +7,7 @@ import org.joml.Vector3i;
 import org.jungle.Camera;
 import org.jungle.renderers.IRenderer;
 import io.cubyz.blocks.BlockInstance;
+import io.cubyz.util.Vector3fi;
 import io.cubyz.world.BlockSpatial;
 import io.cubyz.world.Chunk;
 
@@ -30,13 +31,8 @@ public class CubyzMeshSelectionDetector {
 		return selectedSpatial;
 	}
 	
-	public void selectSpatial(Chunk[] chunks, Camera camera) {
-		dir = render.getTransformation().getViewMatrix(camera).positiveZ(dir).negate();
-	    selectSpatial(chunks, camera.getPosition(), dir);
-	}
-	
-	public void selectSpatial(Chunk[] chunks, Vector3f position, Vector3f dir) {
-		position = new Vector3f(position.x, position.y+1.5F, position.z);
+	public void selectSpatial(Chunk[] chunks, Vector3fi position, Vector3f dir) {
+		Vector3f transformedPosition = new Vector3f(position.relX, position.y+1.5F, position.relZ);
 	    float closestDistance = Float.POSITIVE_INFINITY;
 	    selectedSpatial = null;
 	    //position.x = position.z = 0;
@@ -46,13 +42,13 @@ public class CubyzMeshSelectionDetector {
 	    		BlockInstance[] array = ch.getVisibles().toArray(new BlockInstance[ch.getVisibles().size()]);
 			    for (BlockInstance bi : array) {
 			    	if(!bi.getBlock().isSolid())
-			    		   continue;
+			    		continue;
 			        ((BlockSpatial) bi.getSpatial()).setSelected(false);
-			        min.set(bi.getPosition());
-			        max.set(bi.getPosition());
+			        min.set(new Vector3f(bi.getX() - position.x, bi.getY(), bi.getZ() - position.z));
+			        max.set(min);
 			        min.add(-0.5f, -0.5f, -0.5f); // -scale, -scale, -scale
 			        max.add(0.5f, 0.5f, 0.5f); // scale, scale, scale
-			        if (Intersectionf.intersectRayAab(position, dir, min, max, nearFar) && nearFar.x < closestDistance) {
+			        if (Intersectionf.intersectRayAab(transformedPosition, dir, min, max, nearFar) && nearFar.x < closestDistance) {
 			            closestDistance = nearFar.x;
 			            selectedSpatial = bi;
 			        }

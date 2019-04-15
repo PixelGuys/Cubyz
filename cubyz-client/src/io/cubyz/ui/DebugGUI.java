@@ -34,9 +34,9 @@ public class DebugGUI extends MenuGUI {
 				NGraphics.drawText(0, win.getHeight() - 24, "World: (none)");
 			} else {
 				World world = Cubyz.world;
-				float x = world.getLocalPlayer().getPosition().x();
-				float y = world.getLocalPlayer().getPosition().y();
-				float z = world.getLocalPlayer().getPosition().z();
+				float x = world.getLocalPlayer().getPosition().x + world.getLocalPlayer().getPosition().relX;
+				float y = world.getLocalPlayer().getPosition().y;
+				float z = world.getLocalPlayer().getPosition().z + world.getLocalPlayer().getPosition().relZ;
 				
 				NGraphics.drawText(0, 12, "X: " + x);
 				NGraphics.drawText(0, 24, "Y: " + y);

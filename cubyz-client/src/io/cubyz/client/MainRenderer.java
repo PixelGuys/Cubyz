@@ -115,7 +115,6 @@ public class MainRenderer implements IRenderer {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	}
 
-	
 	@SuppressWarnings("unchecked")
 	public void render(Window window, Context ctx, Vector3f ambientLight, DirectionalLight directionalLight, Chunk[] chunks, Block [] blocks, Player localPlayer) {
 		if (window.isResized()) {
@@ -144,7 +143,7 @@ public class MainRenderer implements IRenderer {
     		BlockInstance[] vis = ch.getVisibles().toArray(new BlockInstance[ch.getVisibles().size()]);
     		for (int i = 0; i < vis.length; i++) {
     			BlockSpatial tmp = (BlockSpatial) vis[i].getSpatial();
-    			tmp.setPosition(vis[i].getX() - localPlayer.getPosition().x, vis[i].getY(), vis[i].getZ() - localPlayer.getPosition().z);
+    			tmp.setPosition((vis[i].getX() - localPlayer.getPosition().x) - localPlayer.getPosition().relX, vis[i].getY(), (vis[i].getZ() - localPlayer.getPosition().z) - localPlayer.getPosition().relZ);
     			map[vis[i].getID()].add(tmp);
     		}
 		}

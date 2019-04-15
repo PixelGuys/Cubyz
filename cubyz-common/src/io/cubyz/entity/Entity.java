@@ -4,16 +4,18 @@ import java.util.function.Consumer;
 
 import org.joml.AABBf;
 import org.joml.Vector3f;
+import org.joml.Vector3i;
 
 import io.cubyz.IRenderablePair;
 import io.cubyz.blocks.BlockInstance;
+import io.cubyz.util.Vector3fi;
 import io.cubyz.world.World;
 
 public abstract class Entity {
 
 	protected World world;
-	
-	protected Vector3f position = new Vector3f();
+
+	protected Vector3fi position = new Vector3fi();
 	protected Vector3f rotation = new Vector3f();
 	public float vx, vy, vz;
 	
@@ -39,11 +41,17 @@ public abstract class Entity {
 		this.world = world;
 	}
 	
-	public Vector3f getPosition() {
+	public Vector3fi getPosition() {
 		return position;
 	}
 	
-	public void setPosition(Vector3f position) {
+	public void setPosition(Vector3i position) {
+		this.position.x = position.x;
+		this.position.y = position.y;
+		this.position.z = position.z;
+	}
+	
+	public void setPosition(Vector3fi position) {
 		this.position = position;
 	}
 	
@@ -64,11 +72,11 @@ public abstract class Entity {
 	protected float _getX(float x) {
 		float wi = (float) width;
 		float he = (float) height;
-		int absX = (int) Math.floor(position.x + 0.5F);
+		int absX = position.x + (int) Math.round(position.relX);
 		int absY = (int) Math.floor(position.y + 0.5F);
-		int absZ = (int) Math.floor(position.z + 0.5F);
-		float relX = position.x + 0.5F - absX;
-		float relZ = position.z + 0.5F - absZ;
+		int absZ = position.z + (int) Math.round(position.relZ);
+		float relX = position.relX +0.5F - Math.round(position.relX);
+		float relZ = position.relZ + 0.5F- Math.round(position.relZ);
 		if (x < 0) {
 			if (relX < 0.3F) {
 				relX++;
@@ -135,11 +143,11 @@ public abstract class Entity {
 	}
 	
 	protected float _getZ(float z) {
-		int absX = (int) Math.floor(position.x + 0.5F);
+		int absX = position.x + (int) Math.floor(position.relX + 0.5F);
 		int absY = (int) Math.floor(position.y + 0.5F);
-		int absZ = (int) Math.floor(position.z + 0.5F);
-		float relX = position.x + 0.5F - absX;
-		float relZ = position.z + 0.5F - absZ;
+		int absZ = position.z + (int) Math.floor(position.relZ + 0.5F);
+		float relX = position.relX +0.5F - Math.round(position.relX);
+		float relZ = position.relZ + 0.5F- Math.round(position.relZ);
 		if(z < 0) {
 			if(relZ < 0.3F) {
 				relZ++;

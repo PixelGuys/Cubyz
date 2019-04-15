@@ -1,6 +1,5 @@
 package io.cubyz.entity;
 
-import org.joml.AABBf;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 
@@ -40,17 +39,20 @@ public class Player extends Entity implements ICommandSource {
 	}
 	
 	public void move(Vector3f inc, Vector3f rot) {
+		float deltaX = 0;
+		float deltaZ = 0;
 		if (inc.z != 0) {
-			position.x += _getX((float) Math.sin(Math.toRadians(rot.y)) * -1.0F * inc.z);
-			position.z += _getZ((float) Math.cos(Math.toRadians(rot.y)) * inc.z);
+			deltaX += _getX((float) Math.sin(Math.toRadians(rot.y)) * -1.0F * inc.z);
+			deltaZ += _getZ((float) Math.cos(Math.toRadians(rot.y)) * inc.z);
 		}
 		if (inc.x != 0) {
-			position.x += _getX((float) Math.sin(Math.toRadians(rot.y - 90)) * -1.0F * inc.x);
-			position.z += _getZ((float) Math.cos(Math.toRadians(rot.y - 90)) * inc.x);
+			deltaX += _getX((float) Math.sin(Math.toRadians(rot.y - 90)) * -1.0F * inc.x);
+			deltaZ += _getZ((float) Math.cos(Math.toRadians(rot.y - 90)) * inc.x);
 		}
 		if (inc.y != 0) {
 			vy = inc.y;
 		}
+		position.add(deltaX, 0, deltaZ);
 	}
 	
 	@Override
@@ -59,10 +61,14 @@ public class Player extends Entity implements ICommandSource {
 		if (!flying) {
 			vy -= 0.015F;
 		}
+		// if(flying) {
+		// vy = 0;
+		// position.y = 200;
+		//}
 		if (vy < 0) {
-			Vector3i bp = new Vector3i((int) Math.round(position.x), (int) Math.floor(position.y), (int) Math.round(position.z));
-			float relX = position.x + 0.5F - bp.x;
-			float relZ = position.z + 0.5F - bp.z;
+			Vector3i bp = new Vector3i(position.x + (int) Math.round(position.relX), (int) Math.floor(position.y), position.z + (int) Math.round(position.relZ));
+			float relX = position.relX +0.5F - Math.round(position.relX);
+			float relZ = position.relZ + 0.5F- Math.round(position.relZ);
 			if(checkBlock(bp.x, bp.y, bp.z)) {
 				vy = 0;
 			}

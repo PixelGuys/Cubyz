@@ -10,6 +10,7 @@ import org.joml.Vector3f;
 import io.cubyz.api.CubzRegistries;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.EntityType;
+import io.cubyz.util.Vector3fi;
 
 public class EntityIO {
 
@@ -19,6 +20,8 @@ public class EntityIO {
 		out.writeDouble(ent.getPosition().x);
 		out.writeDouble(ent.getPosition().y);
 		out.writeDouble(ent.getPosition().z);
+		out.writeDouble(ent.getPosition().relX);
+		out.writeDouble(ent.getPosition().relZ);
 		out.writeDouble(ent.getRotation().x);
 		out.writeDouble(ent.getRotation().y);
 		out.writeDouble(ent.getRotation().z);
@@ -31,7 +34,10 @@ public class EntityIO {
 		EntityType entityType = CubzRegistries.ENTITY_REGISTRY.getByID(dis.readUTF());
 		Objects.requireNonNull(entityType, "invalid entity type");
 		Entity ent = entityType.newEntity();
-		ent.setPosition(new Vector3f((float)dis.readDouble(), (float)dis.readDouble(), (float)dis.readDouble()));
+		Vector3fi entPos = new Vector3fi(dis.readInt(), (float)dis.readDouble(), dis.readInt());
+		entPos.relX = (float)dis.readDouble();
+		entPos.relZ = (float)dis.readDouble();
+		ent.setPosition(entPos);
 		ent.setRotation(new Vector3f((float)dis.readDouble(), (float)dis.readDouble(), (float)dis.readDouble()));
 		ent.vx = (float) dis.readDouble();
 		ent.vy = (float) dis.readDouble();

@@ -125,9 +125,10 @@ public class Cubyz implements IGameLogic {
 		Random rnd = new Random();
 		int dx = rnd.nextInt(10);
 		int dz = rnd.nextInt(10);
+		//dx = dz = Integer.MIN_VALUE+20000;
 		world.synchronousSeek(dx, dz);
 		int highestY = world.getHighestBlock(dx, dz);
-		world.getLocalPlayer().setPosition(new Vector3f(dx, highestY+2, dz));
+		world.getLocalPlayer().setPosition(new Vector3i(dx, highestY+2, dz));
 		inventory = new Inventory();
 	}
 
@@ -445,7 +446,7 @@ public class Cubyz implements IGameLogic {
 			for (Entity en : world.getEntities()) {
 				en.update();
 			}
-			world.seek((int) lp.getPosition().x, (int) lp.getPosition().z);
+			world.seek(lp.getPosition().x, lp.getPosition().z);
 			if (ctx.getCamera().getRotation().x > 90.0F) {
 				ctx.getCamera().setRotation(90.0F, ctx.getCamera().getRotation().y, ctx.getCamera().getRotation().z);
 			}
