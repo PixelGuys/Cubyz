@@ -2,6 +2,7 @@
 
 import java.util.ArrayList;
 
+import org.joml.Vector3f;
 import org.joml.Vector3i;
 
 import io.cubyz.api.CubzRegistries;
@@ -9,6 +10,7 @@ import io.cubyz.api.Registry;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.Ore;
+import io.cubyz.entity.Player;
 
 public class Chunk {
 
@@ -420,6 +422,14 @@ public class Chunk {
 				}
 			}
 		}
+	}
+	
+	public Vector3f getMin(Player localPlayer) {
+		return new Vector3f((ox << 4) - localPlayer.getPosition().x, 0, (oy << 4) - localPlayer.getPosition().z);
+	}
+	
+	public Vector3f getMax(Player localPlayer) {
+		return new Vector3f((ox << 4) - localPlayer.getPosition().x + 16, 255, (oy << 4) - localPlayer.getPosition().z + 16);
 	}
 	
 }

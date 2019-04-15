@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import org.joml.FrustumIntersection;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
@@ -49,6 +50,8 @@ public class MainRenderer implements IRenderer {
 	private Transformation transformation;
 	private String shaders = "res/shaders/default";
 	private FrustumCullingFilter filter;
+	private Matrix4f prjViewMatrix = new Matrix4f();
+	private FrustumIntersection frustumInt = new FrustumIntersection();
 
 	public static final int MAX_POINT_LIGHTS = 5;
 	public static final int MAX_SPOT_LIGHTS = 5;
@@ -130,7 +133,13 @@ public class MainRenderer implements IRenderer {
 		for(int i = 0; i < map.length; i++) {
 			map[i] = new ArrayList<Spatial>();
 		}
+		// Uses FrustumCulling on the chunks.
+		prjViewMatrix.set(window.getProjectionMatrix());
+	    prjViewMatrix.mul(ctx.getCamera().getViewMatrix());
+	    frustumInt.set(prjViewMatrix);
 		for (Chunk ch : chunks) {
+			if(!frustumInt.testAab(ch.getMin(localPlayer),ch.getMax(localPlayer)))
+				continue;
     		// using an array speeds up things
     		BlockInstance[] vis = ch.getVisibles().toArray(new BlockInstance[ch.getVisibles().size()]);
     		for (int i = 0; i < vis.length; i++) {
