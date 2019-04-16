@@ -288,6 +288,7 @@ public class LocalWorld extends World {
 				index++;
 			}
 		}
+		Chunk[] visCh = visibleChunks;
 		for(int k = minK; k < visCh.length; k++) {
 			visCh[k].setLoaded(false);
 		}
