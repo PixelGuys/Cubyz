@@ -42,16 +42,20 @@ public class Player extends Entity implements ICommandSource {
 		float deltaX = 0;
 		float deltaZ = 0;
 		if (inc.z != 0) {
-			deltaX += _getX((float) Math.sin(Math.toRadians(rot.y)) * -1.0F * inc.z);
-			deltaZ += _getZ((float) Math.cos(Math.toRadians(rot.y)) * inc.z);
+			deltaX += (float) Math.sin(Math.toRadians(rot.y)) * -1.0F * inc.z;
+			deltaZ += (float) Math.cos(Math.toRadians(rot.y)) * inc.z;
 		}
 		if (inc.x != 0) {
-			deltaX += _getX((float) Math.sin(Math.toRadians(rot.y - 90)) * -1.0F * inc.x);
-			deltaZ += _getZ((float) Math.cos(Math.toRadians(rot.y - 90)) * inc.x);
+			deltaX += (float) Math.sin(Math.toRadians(rot.y - 90)) * -1.0F * inc.x;
+			deltaZ += (float) Math.cos(Math.toRadians(rot.y - 90)) * inc.x;
 		}
 		if (inc.y != 0) {
 			vy = inc.y;
 		}
+		if(deltaX != 0)
+			deltaX = _getX(deltaX);
+		if(deltaZ != 0)
+			deltaZ = _getZ(deltaZ);
 		position.add(deltaX, 0, deltaZ);
 	}
 	

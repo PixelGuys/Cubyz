@@ -70,8 +70,6 @@ public abstract class Entity {
 	// port of IntegratedQuantum's mathematical works for collision detection
 	// Thanks ;)
 	protected float _getX(float x) {
-		float wi = (float) width;
-		float he = (float) height;
 		int absX = position.x + (int) Math.round(position.relX);
 		int absY = (int) Math.floor(position.y + 0.5F);
 		int absZ = position.z + (int) Math.round(position.relZ);
@@ -87,24 +85,23 @@ public abstract class Entity {
 				return x;
 			}
 			
-			float maxX = 0.301F - relX;	// This small deviation from the desired value is to prevent imprecision in float calculation to create bugs.
 			if (relZ < 0.3) {
 				for (int i = 0; i < 3; i++) {
 					if (checkBlock(absX - 1, absY + i, absZ - 1)) {
-						return maxX;
+						return 0.30001F - relX;
 					}
 				}
 			}
 			if (relZ > 0.7) {
 				for (int i = 0; i < 3; i++) {
 					if (checkBlock(absX - 1, absY + i, absZ + 1)) {
-						return maxX;
+						return 0.30001F - relX;
 					}
 				}
 			}
 			for (int i = 0; i < 3; i++) {
 				if (checkBlock(absX - 1, absY + i, absZ)) {
-					return maxX;
+					return 0.30001F - relX;
 				}
 			}
 		}
@@ -118,24 +115,23 @@ public abstract class Entity {
 				return x;
 			}
 			
-			float maxX = 0.699F - relX;
 			if (relZ < 0.3) {
 				for (int i = 0; i < 3; i++) {
 					if (checkBlock(absX + 1, absY + i, absZ - 1)) {
-						return maxX;
+						return 0.69999F - relX;
 					}
 				}
 			}
 			if (relZ > 0.7) {
 				for (int i = 0; i < 3; i++) {
 					if( checkBlock(absX + 1, absY + i, absZ + 1)) {
-						return maxX;
+						return 0.69999F - relX;
 					}
 				}
 			}
 			for (int i = 0; i < 3; i++) {
 				if (checkBlock(absX + 1, absY + i, absZ)) {
-					return maxX;
+					return 0.69999F - relX;
 				}
 			}
 		}
@@ -156,24 +152,23 @@ public abstract class Entity {
 			if(relZ + z > 0.3F) {
 				return z;
 			}
-			float maxZ = 0.301F - relZ;
 			if(relX < 0.3) {
 				for(int i = 0; i < 3; i++) {
 					if (checkBlock(absX - 1, absY + i, absZ - 1)) {
-						return maxZ;
+						return 0.30001F - relZ;
 					}
 				}
 			}
 			if(relX > 0.7) {
 				for(int i = 0; i < 3; i++) {
 					if(checkBlock(absX+1, absY+i, absZ-1)) {
-						return maxZ;
+						return 0.30001F - relZ;
 					}
 				}
 			}
 			for(int i = 0; i < 3; i++) {
 				if(checkBlock(absX, absY+i, absZ-1)) {
-					return maxZ;
+					return 0.30001F - relZ;
 				}
 			}
 		}
@@ -185,24 +180,23 @@ public abstract class Entity {
 			if(relZ+z < 0.7F) {
 				return z;
 			}
-			float maxZ = 0.699F - relZ;
 			if(relX < 0.3) {
 				for(int i = 0; i < 3; i++) {
-					if(checkBlock(absX-width, absY+i, absZ+depth)) {
-						return maxZ;
+					if(checkBlock(absX-1, absY+i, absZ+1)) {
+						return 0.69999F - relZ;
 					}
 				}
 			}
 			if(relX > 0.7) {
-				for(int i = 0; i < height; i++) {
-					if(checkBlock(absX+width, absY+i, absZ+depth)) {
-						return maxZ;
+				for(int i = 0; i < 3; i++) {
+					if(checkBlock(absX+1, absY+i, absZ+1)) {
+						return 0.69999F - relZ;
 					}
 				}
 			}
-			for(int i = 0; i < height; i++) {
-				if(checkBlock(absX, absY+i, absZ+depth)) {
-					return maxZ;
+			for(int i = 0; i < 3; i++) {
+				if(checkBlock(absX, absY+i, absZ+1)) {
+					return 0.69999F - relZ;
 				}
 			}
 		}
