@@ -114,9 +114,12 @@ public class MainRenderer implements IRenderer {
 	public void clear() {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	}
+	//long t = 0;
+	//int n = 0;
 
 	@SuppressWarnings("unchecked")
 	public void render(Window window, Context ctx, Vector3f ambientLight, DirectionalLight directionalLight, Chunk[] chunks, Block [] blocks, Player localPlayer) {
+		//long t1 = System.nanoTime();
 		if (window.isResized()) {
 			glViewport(0, 0, window.getWidth(), window.getHeight());
 			window.setResized(false);
@@ -128,6 +131,8 @@ public class MainRenderer implements IRenderer {
 		clear();
 		ctx.getCamera().setViewMatrix(transformation.getViewMatrix(ctx.getCamera()));
 		List<Spatial> [] map;
+		Spatial selected = null;
+		int selectedBlock = -1;
 		map = (List<Spatial>[])new List[blocks.length];
 		for(int i = 0; i < map.length; i++) {
 			map[i] = new ArrayList<Spatial>();
@@ -140,12 +145,19 @@ public class MainRenderer implements IRenderer {
 			if(!frustumInt.testAab(ch.getMin(localPlayer),ch.getMax(localPlayer)))
 				continue;
     		// using an array speeds up things
-    		BlockInstance[] vis = ch.getVisibles().toArray(new BlockInstance[ch.getVisibles().size()]);
-    		for (int i = 0; i < vis.length; i++) {
-    			BlockSpatial tmp = (BlockSpatial) vis[i].getSpatial();
-    			tmp.setPosition((vis[i].getX() - localPlayer.getPosition().x) - localPlayer.getPosition().relX, vis[i].getY(), (vis[i].getZ() - localPlayer.getPosition().z) - localPlayer.getPosition().relZ);
-    			map[vis[i].getID()].add(tmp);
-    		}
+			BlockInstance[] vis = ch.getVisibles().toArray(new BlockInstance[ch.getVisibles().size()]);
+			try {
+				for (int i = 0;; i++) { // The super fast try-for loop
+					BlockSpatial tmp = (BlockSpatial) vis[i].getSpatial();
+					tmp.setPosition((vis[i].getX() - localPlayer.getPosition().x) - localPlayer.getPosition().relX, vis[i].getY(), (vis[i].getZ() - localPlayer.getPosition().z) - localPlayer.getPosition().relZ);
+					if(tmp.isSelected()) {
+						selected = tmp;
+						selectedBlock = vis[i].getID();
+						continue;
+					}
+					map[vis[i].getID()].add(tmp);
+				}
+			} catch(Exception e) {}
 		}
 		if (filter != null) {
 			filter.updateFrustum(window.getProjectionMatrix(), ctx.getCamera().getViewMatrix());
@@ -155,11 +167,17 @@ public class MainRenderer implements IRenderer {
 			}
 			filter.filter(m);
 		}
-		renderScene(ctx, ambientLight, null /* point light */, null /* spot light */, directionalLight, map, blocks, localPlayer);
+		renderScene(ctx, ambientLight, null /* point light */, null /* spot light */, directionalLight, map, blocks, localPlayer, selected, selectedBlock);
 		ctx.getHud().render(window);
+		/*long t2 = System.nanoTime();
+		if(t2-t1 > 1000000) {
+			t += t2-t1;
+			n++;
+			System.out.println(t/n);
+		}*/
 	}
 	
-	public void renderScene(Context ctx, Vector3f ambientLight, PointLight[] pointLightList, SpotLight[] spotLightList, DirectionalLight directionalLight, List<Spatial> [] map, Block [] blocks, Player p) {
+	public void renderScene(Context ctx, Vector3f ambientLight, PointLight[] pointLightList, SpotLight[] spotLightList, DirectionalLight directionalLight, List<Spatial> [] map, Block [] blocks, Player p, Spatial selected, int selectedBlock) {
 		shaderProgram.bind();
 
 		shaderProgram.setUniform("projectionMatrix", ctx.getWindow().getProjectionMatrix());
@@ -170,17 +188,26 @@ public class MainRenderer implements IRenderer {
 		renderLights(viewMatrix, ambientLight, pointLightList, spotLightList, directionalLight);
 
 		for (int i = 0; i < blocks.length; i++) {
+			if(map[i] == null)
+				continue;
 			Mesh mesh = (Mesh) blocks[i].getBlockPair().get("meshCache");
 		    shaderProgram.setUniform("material", mesh.getMaterial());
+		    if(selectedBlock == i) {
+		    	map[i].add(selected);
+		    }
 		    mesh.renderList(map[i], (Spatial gameItem) -> {
 		    	if (gameItem.isInFrustum() || filter == null) {
 		    		Matrix4f modelViewMatrix = transformation.getModelViewMatrix(gameItem, viewMatrix);
-			        shaderProgram.setUniform("selected", gameItem.isSelected() ? 1f : 0f);
+		    		if(gameItem.isSelected())
+		    			shaderProgram.setUniform("selected", 1f);
 			        shaderProgram.setUniform("modelViewMatrix", modelViewMatrix);
 			        return true;
 		    	}
 		    	return false;
 		    });
+		    if(selectedBlock == i) {
+		    	shaderProgram.setUniform("selected", 0f);
+		    }
 		}
 		
 		shaderProgram.unbind();
