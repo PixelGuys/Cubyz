@@ -1,6 +1,6 @@
 [![Java](https://img.shields.io/badge/language-java-orange.svg?style=flat
 )](https://java.com)
-[![License](https://img.shields.io/badge/license-gpl3-blue.svg?style=flat
+[![License](https://img.shields.io/badge/license-bsd3-blue.svg?style=flat
 )](https://github.com/PixelGuys/Cubz/blob/master/LICENSE)
 # Cubyz, a voxel video game
 Cubyz is a voxel game, what is a voxel game you might say? Well it's a sandbox 3D game that just have cubes. Have fun!
