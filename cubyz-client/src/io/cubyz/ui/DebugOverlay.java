@@ -13,7 +13,7 @@ import io.cubyz.world.World;
  * @author zenith391
  *
  */
-public class DebugGUI extends MenuGUI {
+public class DebugOverlay extends MenuGUI {
 
 	String javaVersion = System.getProperty("java.version");
 	

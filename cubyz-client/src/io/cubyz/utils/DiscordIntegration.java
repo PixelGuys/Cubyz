@@ -21,10 +21,8 @@ public class DiscordIntegration {
 	}
 	
 	public static void startRPC() {
-		
 		DiscordRPC lib = DiscordRPC.INSTANCE;
 		String appID = "527033701343952896";
-		String steamID = "";
 		DiscordEventHandlers handlers = new DiscordEventHandlers();
 		handlers.ready = new OnReady() {
 
@@ -52,7 +50,7 @@ public class DiscordIntegration {
 		String userDir = System.getProperty("user.dir");
 		String javaExec = System.getProperty("java.home") + "/bin/java.exe";
 		String classpath = System.getProperty("java.class.path");
-		lib.Discord_Initialize(appID, handlers, false, steamID);
+		lib.Discord_Initialize(appID, handlers, false, "");
 		
 		String path = javaExec + " -cp " + classpath + " -jar " + userDir + "/cubz.jar";
 		Cubyz.log.fine("Registered launch path as " + path);

@@ -1,7 +1,8 @@
 package io.cubyz.client;
 
 import java.io.File;
-import java.util.ArrayList;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Random;
 import java.util.Set;
 import java.util.logging.Level;
@@ -39,6 +40,7 @@ import io.cubyz.api.Mod;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
+import io.cubyz.client.loading.LoadThread;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.items.Inventory;
@@ -46,12 +48,13 @@ import io.cubyz.modding.ModLoader;
 import io.cubyz.multiplayer.client.CubzClient;
 import io.cubyz.multiplayer.client.PingResponse;
 import io.cubyz.multiplayer.server.CubzServer;
-import io.cubyz.ui.DebugGUI;
+import io.cubyz.ui.DebugOverlay;
+import io.cubyz.ui.LoadingGUI;
 import io.cubyz.ui.MainMenuGUI;
 import io.cubyz.ui.PauseGUI;
 import io.cubyz.ui.ToastManager;
-import io.cubyz.ui.UISystem;
 import io.cubyz.ui.ToastManager.Toast;
+import io.cubyz.ui.UISystem;
 import io.cubyz.utils.DiscordIntegration;
 import io.cubyz.utils.ResourceManager;
 import io.cubyz.utils.ResourcePack;
@@ -100,6 +103,8 @@ public class Cubyz implements IGameLogic {
 	public static boolean clientShowDebug = true;
 
 	public static Cubyz instance;
+	
+	public static Deque<Runnable> renderDeque = new ArrayDeque<>();
 
 	public Cubyz() {
 		instance = this;
@@ -169,7 +174,6 @@ public class Cubyz implements IGameLogic {
 				f.delete();
 			}
 		}
-		//CubzLogger.useDefaultHandler = true;
 		gameUI = new UISystem();
 		gameUI.init(window);
 		playerInc = new Vector3f();
@@ -196,28 +200,15 @@ public class Cubyz implements IGameLogic {
 		window.setClearColor(new Vector4f(0.1F, 0.7F, 0.7F, 1.0F));
 		log.info("Renderer: OK!");
 		
-		System.out.println("-=-=- Loading Mods -=-=-");
-		long start = System.currentTimeMillis();
-		Reflections reflections = new Reflections(""); // load all mods
-		Set<Class<?>> allClasses = reflections.getTypesAnnotatedWith(Mod.class);
-		long end = System.currentTimeMillis();
-		log.info("[ModClassLoader] Took " + (end - start) + "ms for reflection");
-		for (Class<?> cl : allClasses) {
-			log.info("[ModClassLoader] Mod class present: " + cl.getName());
-			Object mod = cl.getConstructor().newInstance();
-			ModLoader.init(mod);
-		}
-		System.out.println("-=-=- Mods Loaded  -=-=-");
-		
 		// Cubyz resources
 		ResourcePack baserp = new ResourcePack();
 		baserp.path = new File("assets/cubyz");
 		baserp.name = "Cubyz";
-		ResourceManager.packs.add(baserp);
+		//ResourceManager.packs.add(baserp);
 		
 		MainMenuGUI mmg = new MainMenuGUI();
 		gameUI.setMenu(mmg);
-		gameUI.addOverlay(new DebugGUI());
+		gameUI.addOverlay(new DebugOverlay());
 		
 		ClientOnly.createBlockMesh = (block) -> {
 			Resource rsc = block.getRegistryID();
@@ -245,14 +236,11 @@ public class Cubyz implements IGameLogic {
 			return new BlockSpatial(bi);
 		};
 		
-		// client-side init
-		for (IRegistryElement ire : CubzRegistries.BLOCK_REGISTRY.registered()) {
-			Block b = (Block) ire;
-			b.setBlockPair(new ClientBlockPair());
-			ClientOnly.createBlockMesh.accept(b);
-		}
+		gameUI.setMenu(LoadingGUI.getInstance());
+		LoadThread lt = new LoadThread();
+		lt.start();
 		
-		CubzServer server = new CubzServer(58961);
+		CubzServer server = new CubzServer(serverPort);
 		//server.start(true);
 		mpClient = new CubzClient();
 		
@@ -396,6 +384,12 @@ public class Cubyz implements IGameLogic {
 			}
 			ctx.getCamera().setPosition(/*world.getLocalPlayer().getPosition().x*/0, world.getLocalPlayer().getPosition().y + 1.5f + playerBobbing, /*world.getLocalPlayer().getPosition().z*/0);
 		}
+		
+		if (!renderDeque.isEmpty()) {
+			Runnable run = renderDeque.pop();
+			run.run();
+		}
+		
 		if (world != null) {
 			renderer.render(window, ctx, new Vector3f(0.3F, 0.3F, 0.3F), light, world.getVisibleChunks(), world.getBlocks(), world.getLocalPlayer());
 		} else {

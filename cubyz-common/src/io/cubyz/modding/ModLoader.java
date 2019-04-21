@@ -65,6 +65,12 @@ public class ModLoader {
 		safeMethodInvoke(true, eventHandlerMethodSided(mod, "init", Side.SERVER), mod);
 	}
 	
+	public static void preInit(Object mod) {
+		Method m = eventHandlerMethodSided(mod, "preInit", Side.SERVER);
+		if (m != null)
+			safeMethodInvoke(true, m, mod);
+	}
+	
 	static void safeMethodInvoke(boolean imp /* is it important (e.g. at init) */, Method m, Object o, Object... args) {
 		try {
 			m.invoke(o, args);
@@ -75,7 +81,6 @@ public class ModLoader {
 			} else {
 				e.printStackTrace();
 			}
-			System.err.flush();
 			if (imp) {
 				System.exit(1);
 			}
