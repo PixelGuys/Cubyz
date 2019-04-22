@@ -12,7 +12,9 @@ import io.cubyz.api.CubzRegistries;
 import io.cubyz.api.IRegistryElement;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
+import io.cubyz.blocks.ITickeable;
 import io.cubyz.blocks.Ore;
+import io.cubyz.blocks.TileEntity;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.save.WorldIO;
@@ -203,6 +205,32 @@ public class LocalWorld extends World {
 		Chunk ch = getChunk(x, z);
 		if (ch != null) {
 			ch.addBlockAt(x & 15, y, z & 15, b);
+		}
+	}
+	
+	public void update() {
+		Random rnd = new Random();
+		
+		// Entities
+		for (Entity en : entities) {
+			en.update();
+		}
+		// Tile Entities
+		for (Chunk ch : chunks) { // will get slow, because chunks aren't removed due to no saving
+			if (ch.isLoaded()) {
+				TileEntity[] tileEntities = ch.tileEntities().toArray(new TileEntity[0]);
+				for (TileEntity te : tileEntities) {
+					if (te instanceof ITickeable) {
+						ITickeable tk = (ITickeable) te;
+						tk.tick(false);
+						if (tk.randomTicks()) {
+							if (rnd.nextInt(20) < 10) {
+								tk.tick(true);
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 	

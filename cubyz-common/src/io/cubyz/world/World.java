@@ -80,4 +80,6 @@ public abstract class World {
 	public String getName() {
 		throw new UnsupportedOperationException();
 	}
+	
+	public void update() {}
 }

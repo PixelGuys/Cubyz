@@ -118,6 +118,10 @@ public class Block implements IRegistryElement {
 		return this;
 	}
 	
+	public TileEntity createTileEntity(BlockInstance bi) {
+		return null;
+	}
+	
 	public boolean hasTileEntity() {
 		return false;
 	}

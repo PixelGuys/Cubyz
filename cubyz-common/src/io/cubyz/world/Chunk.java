@@ -10,6 +10,7 @@ import io.cubyz.api.Registry;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.Ore;
+import io.cubyz.blocks.TileEntity;
 import io.cubyz.entity.Player;
 
 public class Chunk {
@@ -20,6 +21,7 @@ public class Chunk {
 	private int ox, oy;
 	private boolean generated;
 	private boolean loaded;
+	private ArrayList<TileEntity> tileEntities = new ArrayList<>();
 	
 	private static Registry<Block> br =  CubzRegistries.BLOCK_REGISTRY; // shortcut to BLOCK_REGISTRY
 	
@@ -98,6 +100,10 @@ public class Chunk {
 	
 	public ArrayList<BlockInstance> getVisibles() {
 		return visibles;
+	}
+	
+	public ArrayList<TileEntity> tileEntities() {
+		return tileEntities;
 	}
 	
 	/**
@@ -225,6 +231,9 @@ public class Chunk {
 					bi.setWorld(world);
 					//world.blocks().add(bi);
 					list.add(bi);
+					if (bi.getBlock().hasTileEntity()) {
+						tileEntities.add(bi.getBlock().createTileEntity(bi));
+					}
 					inst[px][j][py] = bi;
 					/*if (bi.getBlock() instanceof IBlockEntity) {
 						updatables.add(bi);

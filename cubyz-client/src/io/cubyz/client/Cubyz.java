@@ -437,9 +437,7 @@ public class Cubyz implements IGameLogic {
 				mouse.clearPos(win.getWidth() / 2, win.getHeight() / 2);
 			}
 			playerInc.x = playerInc.y = playerInc.z = 0.0F; // Reset positions
-			for (Entity en : world.getEntities()) {
-				en.update();
-			}
+			world.update();
 			world.seek(lp.getPosition().x, lp.getPosition().z);
 			if (ctx.getCamera().getRotation().x > 90.0F) {
 				ctx.getCamera().setRotation(90.0F, ctx.getCamera().getRotation().y, ctx.getCamera().getRotation().z);
