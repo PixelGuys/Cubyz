@@ -213,7 +213,8 @@ public class LocalWorld extends World {
 			en.update();
 		}
 		// Tile Entities
-		for (Chunk ch : chunks) { // will get slow, because chunks aren't removed due to no saving
+		Chunk[] chks = chunks.toArray(new Chunk[chunks.size()]);
+		for (Chunk ch : chks) { // will get slow, because chunks aren't removed due to no saving
 			if (ch.isLoaded()) {
 				TileEntity[] tileEntities = ch.tileEntities().toArray(new TileEntity[0]);
 				for (TileEntity te : tileEntities) {
