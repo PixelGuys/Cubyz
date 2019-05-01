@@ -3,6 +3,7 @@ package io.cubyz.client;
 import java.io.File;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -49,6 +50,7 @@ import io.cubyz.ui.ToastManager;
 import io.cubyz.ui.ToastManager.Toast;
 import io.cubyz.ui.UISystem;
 import io.cubyz.utils.DiscordIntegration;
+import io.cubyz.utils.ResourceManager;
 import io.cubyz.utils.ResourcePack;
 import io.cubyz.utils.ResourceUtilities;
 import io.cubyz.utils.ResourceUtilities.BlockModel;
@@ -97,6 +99,7 @@ public class Cubyz implements IGameLogic {
 	public static Cubyz instance;
 	
 	public static Deque<Runnable> renderDeque = new ArrayDeque<>();
+	public static HashMap<String, Mesh> cachedDefaultModels = new HashMap<>();
 
 	public Cubyz() {
 		instance = this;
@@ -197,7 +200,7 @@ public class Cubyz implements IGameLogic {
 		ResourcePack baserp = new ResourcePack();
 		baserp.path = new File("assets/cubyz");
 		baserp.name = "Cubyz";
-		//ResourceManager.packs.add(baserp);
+		ResourceManager.packs.add(baserp);
 		
 		MainMenuGUI mmg = new MainMenuGUI();
 		gameUI.setMenu(mmg);
@@ -208,7 +211,18 @@ public class Cubyz implements IGameLogic {
 			Resource rsc = block.getRegistryID();
 			try {
 				BlockModel bm = null;
-				//bm = ResourceUtilities.loadModel(rsc);
+				bm = ResourceUtilities.loadModel(new Resource("cubyz:grass"));
+				Mesh defaultMesh = null;
+				for (String key : cachedDefaultModels.keySet()) {
+					if (key.equals(bm.model)) {
+						defaultMesh = cachedDefaultModels.get(key);
+					}
+				}
+				if (defaultMesh == null) {
+					defaultMesh = OBJLoader.loadMesh("assets/cubyz/models/cube.obj");
+					defaultMesh.setBoundingRadius(2.0f);
+					cachedDefaultModels.put(bm.model, defaultMesh);
+				}
 				if (block.isTextureConverted()) { // block.texConverted
 					block.getBlockPair().set("textureCache", new Texture("assets/cubyz/textures/blocks/" + block.getTexture() + ".png"));
 				} else {
@@ -216,10 +230,9 @@ public class Cubyz implements IGameLogic {
 							TextureConverter.convert(ImageIO.read(new File("assets/cubyz/textures/blocks/" + block.getTexture() + ".png")),
 									block.getTexture()))));
 				}
-				// Assuming mesh too is empty
-				block.getBlockPair().set("meshCache", OBJLoader.loadMesh("assets/cubyz/models/cube.obj"));
-				((Mesh) block.getBlockPair().get("meshCache")).setBoundingRadius(2.0F);
+				block.getBlockPair().set("meshCache", defaultMesh.cloneNoMaterial());
 				Material material = new Material((Texture) block.getBlockPair().get("textureCache"), 1.0F);
+				//material.setReflectance(1);
 				((Mesh) block.getBlockPair().get("meshCache")).setMaterial(material);
 			} catch (Exception e) {
 				e.printStackTrace();

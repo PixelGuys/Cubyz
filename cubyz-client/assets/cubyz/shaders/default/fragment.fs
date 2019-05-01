@@ -89,7 +89,7 @@ vec4 calcLightColour(vec3 light_colour, float light_intensity, vec3 position, ve
     // Specular Light
     vec3 camera_direction = normalize(-position);
     vec3 from_light_dir = -to_light_dir;
-    vec3 reflected_light = normalize(reflect(from_light_dir, normal));
+    vec3 reflected_light = normalize(reflect(from_light_dir , normal));
     float specularFactor = max( dot(camera_direction, reflected_light), 0.0);
     specularFactor = pow(specularFactor, specularPower);
     specColour = speculrC * light_intensity  * specularFactor * material.reflectance * vec4(light_colour, 0);
@@ -138,7 +138,7 @@ void main()
 
     vec4 diffuseSpecularComp = calcDirectionalLight(directionalLight, mvVertexPos, mvVertexNormal);
 
-    for (int i=0; i < MAX_POINT_LIGHTS; i++)
+    for (int i=0; i<MAX_POINT_LIGHTS; i++)
     {
         if ( pointLights[i].intensity > 0 )
         {
@@ -146,7 +146,7 @@ void main()
         }
     }
 
-    for (int i=0; i < MAX_SPOT_LIGHTS; i++)
+    for (int i=0; i<MAX_SPOT_LIGHTS; i++)
     {
         if ( spotLights[i].pl.intensity > 0 )
         {
