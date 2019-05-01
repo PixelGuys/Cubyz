@@ -1,6 +1,6 @@
 package io.cubyz.world;
 
-import io.cubyz.api.CubzRegistries;
+import io.cubyz.api.CubyzRegistries;
 import io.cubyz.blocks.*;
 
 public class Structures {
@@ -17,8 +17,8 @@ public class Structures {
 	
 	public static void generateTree(Chunk ch, int x, int y, int z, int height) {
 		//Instances
-		Block wood = CubzRegistries.BLOCK_REGISTRY.getByID("cubyz:oak_log");
-		Block leaves = CubzRegistries.BLOCK_REGISTRY.getByID("cubyz:oak_leaves");
+		Block wood = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:oak_log");
+		Block leaves = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:oak_leaves");
 		
 		//Position of the first block of wood
 		height += 7;
@@ -44,7 +44,7 @@ public class Structures {
 	
 	public static void generateCactus(Chunk ch, int x, int y, int z, int height) {
 		//Instances
-		Block cactus = CubzRegistries.BLOCK_REGISTRY.getByID("cubyz:cactus");
+		Block cactus = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:cactus");
 		
 		//Position of the first block of wood
 		height += 3;

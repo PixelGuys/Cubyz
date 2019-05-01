@@ -3,7 +3,7 @@ package io.cubyz.entity;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 
-import io.cubyz.api.CubzRegistries;
+import io.cubyz.api.CubyzRegistries;
 import io.cubyz.command.ICommandSource;
 
 public class Player extends Entity implements ICommandSource {
@@ -20,7 +20,7 @@ public class Player extends Entity implements ICommandSource {
 	}
 	
 	public Player(boolean local) {
-		super(CubzRegistries.ENTITY_REGISTRY.getByID("cubyz:"));
+		super(CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:"));
 		this.local = local;
 //		try {
 //			mesh = loadMesh("uglyplayer");

@@ -4,7 +4,6 @@ import java.io.File;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Random;
-import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -28,26 +27,20 @@ import org.jungle.util.Material;
 import org.jungle.util.OBJLoader;
 import org.lwjgl.Version;
 import org.lwjgl.glfw.GLFW;
-import org.reflections.Reflections;
 
 import io.cubyz.ClientOnly;
 import io.cubyz.Constants;
 import io.cubyz.CubyzLogger;
 import io.cubyz.Utilities;
-import io.cubyz.api.CubzRegistries;
-import io.cubyz.api.IRegistryElement;
-import io.cubyz.api.Mod;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.client.loading.LoadThread;
-import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.items.Inventory;
-import io.cubyz.modding.ModLoader;
-import io.cubyz.multiplayer.client.CubzClient;
+import io.cubyz.multiplayer.client.MPClient;
 import io.cubyz.multiplayer.client.PingResponse;
-import io.cubyz.multiplayer.server.CubzServer;
+import io.cubyz.multiplayer.server.CubyzServer;
 import io.cubyz.ui.DebugOverlay;
 import io.cubyz.ui.LoadingGUI;
 import io.cubyz.ui.MainMenuGUI;
@@ -56,7 +49,6 @@ import io.cubyz.ui.ToastManager;
 import io.cubyz.ui.ToastManager.Toast;
 import io.cubyz.ui.UISystem;
 import io.cubyz.utils.DiscordIntegration;
-import io.cubyz.utils.ResourceManager;
 import io.cubyz.utils.ResourcePack;
 import io.cubyz.utils.ResourceUtilities;
 import io.cubyz.utils.ResourceUtilities.BlockModel;
@@ -96,7 +88,7 @@ public class Cubyz implements IGameLogic {
 	public static int serverCapacity = 2;
 	public static int serverOnline = 1;
 
-	private static CubzClient mpClient;
+	private static MPClient mpClient;
 	public static boolean isIntegratedServer = true;
 	public static boolean isOnlineServerOpened = false;
 
@@ -240,10 +232,10 @@ public class Cubyz implements IGameLogic {
 		LoadThread lt = new LoadThread();
 		lt.start();
 		
-		CubzServer server = new CubzServer(serverPort);
-		//server.start(true);
-		mpClient = new CubzClient();
-		
+		CubyzServer server = new CubyzServer(serverPort);
+		server.start(true);
+		mpClient = new MPClient();
+		requestJoin("localhost");
 		//pingServer("127.0.0.1");
 		
 		System.gc();

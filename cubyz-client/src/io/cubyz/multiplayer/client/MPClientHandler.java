@@ -1,6 +1,7 @@
 package io.cubyz.multiplayer.client;
 
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 
 import io.cubyz.CubyzLogger;
 import io.cubyz.multiplayer.Packet;
@@ -8,19 +9,40 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 
-public class CubzClientHandler extends ChannelInboundHandlerAdapter {
+public class MPClientHandler extends ChannelInboundHandlerAdapter {
 
-	private CubzClient cl;
+	private MPClient cl;
 	private ChannelHandlerContext ctx;
+	private ChatHandler chHandler;
+	private ArrayList<String> messages;
 
 	private boolean hasPinged;
 	public boolean channelActive;
 	
+	public ChatHandler getChatHandler() {
+		if (chHandler == null) {
+			chHandler = new ChatHandler() {
+
+				@Override
+				public ArrayList<String> getAllMessages() {
+					return messages;
+				}
+
+				@Override
+				public void send(String msg) {
+					ByteBuf buf = ctx.alloc().buffer(1 + msg.length());
+					buf.writeByte(Packet.PACKET_CHATMSG);
+					buf.writeCharSequence(msg, Charset.forName("UTF-8")); // a message using UTF-16 or UTF-32 would crash the game!
+					ctx.writeAndFlush(buf);
+				}
+				
+			};
+		}
+		return chHandler;
+	}
 	
-	
-	public CubzClientHandler(CubzClient cl, boolean doPing) {
+	public MPClientHandler(MPClient cl, boolean doPing) {
 		this.cl = cl;
-		
 	}
 	
 	public void ping() {
@@ -32,6 +54,7 @@ public class CubzClientHandler extends ChannelInboundHandlerAdapter {
 	@Override
 	public void channelActive(ChannelHandlerContext ctx) {
 		this.ctx = ctx;
+		messages = new ArrayList<>();
 		ByteBuf buf = ctx.alloc().buffer(1);
 		buf.writeByte(Packet.PACKET_GETVERSION);
 		ctx.write(buf);
@@ -49,7 +72,7 @@ public class CubzClientHandler extends ChannelInboundHandlerAdapter {
 			String raw = buf.readCharSequence(length, Charset.forName("UTF-8")).toString();
 			cl.getLocalServer().brand = raw.split(";")[0];
 			cl.getLocalServer().version = raw.split(";")[1];
-			System.out.println("[CubzClientHandler] Raw version + brand: " + raw);
+			CubyzLogger.instance.fine("[MPClientHandler] Raw version + brand: " + raw);
 		}
 		
 		if (responseType == Packet.PACKET_PINGDATA) {

@@ -13,11 +13,11 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 	int online;
 	int max = 20;
 	boolean init;
-	CubzServer server;
+	CubyzServer server;
 	
 	String motd;
 	
-	public ServerHandler(CubzServer server) {
+	public ServerHandler(CubyzServer server) {
 		this.server = server;
 	}
 	
@@ -35,7 +35,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 		
 		ByteBuf msg = (ByteBuf) omsg;
 		byte packetType = msg.readByte();
-		if (CubzServer.internal) {
+		if (CubyzServer.internal) {
 			System.out.println("[Integrated Server] packet type: " + packetType);
 		}
 		if (packetType == Packet.PACKET_GETVERSION) {

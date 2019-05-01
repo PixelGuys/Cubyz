@@ -7,7 +7,7 @@ import java.util.Objects;
 
 import org.joml.Vector3f;
 
-import io.cubyz.api.CubzRegistries;
+import io.cubyz.api.CubyzRegistries;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.EntityType;
 import io.cubyz.util.Vector3fi;
@@ -31,7 +31,7 @@ public class EntityIO {
 	}
 	
 	public static Entity loadEntity(DataInputStream dis) throws IOException {
-		EntityType entityType = CubzRegistries.ENTITY_REGISTRY.getByID(dis.readUTF());
+		EntityType entityType = CubyzRegistries.ENTITY_REGISTRY.getByID(dis.readUTF());
 		Objects.requireNonNull(entityType, "invalid entity type");
 		Entity ent = entityType.newEntity();
 		Vector3fi entPos = new Vector3fi(dis.readInt(), (float)dis.readDouble(), dis.readInt());

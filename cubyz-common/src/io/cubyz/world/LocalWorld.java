@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Random;
 
 import io.cubyz.CubyzLogger;
-import io.cubyz.api.CubzRegistries;
+import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.IRegistryElement;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
@@ -239,8 +239,8 @@ public class LocalWorld extends World {
 		int ID = 0;
 		seed = r.nextInt();
 		ArrayList<Ore> ores = new ArrayList<Ore>();
-		blocks = new Block[CubzRegistries.BLOCK_REGISTRY.registered().length];
-		for (IRegistryElement ire : CubzRegistries.BLOCK_REGISTRY.registered()) {
+		blocks = new Block[CubyzRegistries.BLOCK_REGISTRY.registered().length];
+		for (IRegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
 			Block b = (Block) ire;
 			if(!b.isTransparent()) {
 				blocks[ID] = b;
@@ -248,7 +248,7 @@ public class LocalWorld extends World {
 				ID++;
 			}
 		}
-		for (IRegistryElement ire : CubzRegistries.BLOCK_REGISTRY.registered()) {
+		for (IRegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
 			Block b = (Block) ire;
 			if(b.isTransparent()) {
 				blocks[ID] = b;

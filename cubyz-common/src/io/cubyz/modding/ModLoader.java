@@ -5,7 +5,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import io.cubyz.CubyzLogger;
-import io.cubyz.api.CubzRegistries;
+import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.EventHandler;
 import io.cubyz.api.Registry;
 import io.cubyz.api.Side;
@@ -94,11 +94,11 @@ public class ModLoader {
 		
 		// invoke
 		if (block_method != null)
-			safeMethodInvoke(true, block_method, mod, CubzRegistries.BLOCK_REGISTRY);
+			safeMethodInvoke(true, block_method, mod, CubyzRegistries.BLOCK_REGISTRY);
 		if (item_method != null)
-			safeMethodInvoke(true, item_method, mod, CubzRegistries.ITEM_REGISTRY);
+			safeMethodInvoke(true, item_method, mod, CubyzRegistries.ITEM_REGISTRY);
 		if (entity_method != null)
-			safeMethodInvoke(true, entity_method, mod, CubzRegistries.ENTITY_REGISTRY);
+			safeMethodInvoke(true, entity_method, mod, CubyzRegistries.ENTITY_REGISTRY);
 	}
 	
 }

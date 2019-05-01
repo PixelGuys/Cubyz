@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 
-import io.cubyz.api.CubzRegistries;
+import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Registry;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
@@ -23,7 +23,7 @@ public class Chunk {
 	private boolean loaded;
 	private ArrayList<TileEntity> tileEntities = new ArrayList<>();
 	
-	private static Registry<Block> br =  CubzRegistries.BLOCK_REGISTRY; // shortcut to BLOCK_REGISTRY
+	private static Registry<Block> br =  CubyzRegistries.BLOCK_REGISTRY; // shortcut to BLOCK_REGISTRY
 	
 	// Normal:
 	private static Block grass = br.getByID("cubyz:grass");

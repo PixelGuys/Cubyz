@@ -5,6 +5,8 @@ import io.cubyz.api.Side;
 public class Constants {
 
 	public static final String GAME_BUILD_TYPE = "alpha";
+	
+	// WARNING! Both brand name and version cannot contain ';' inside!
 	public static final String GAME_VERSION = "0.3.1";
 	public static final String GAME_BRAND = "cubyz";
 	static Side currentSide = null;

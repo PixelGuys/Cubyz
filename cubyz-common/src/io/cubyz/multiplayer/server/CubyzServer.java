@@ -9,17 +9,17 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 
-public class CubzServer {
+public class CubyzServer {
 
 	private int port;
 	static boolean internal; // integrated
 
-	public CubzServer(int port) {
+	public CubyzServer(int port) {
 		this.port = port;
 	}
 
 	public void start(boolean internal) throws Exception {
-		CubzServer.internal = internal;
+		CubyzServer.internal = internal;
 		EventLoopGroup bossGroup = new NioEventLoopGroup();
 		EventLoopGroup workerGroup = new NioEventLoopGroup();
 		try {
@@ -28,7 +28,7 @@ public class CubzServer {
 					.childHandler(new ChannelInitializer<SocketChannel>() {
 						@Override
 						public void initChannel(SocketChannel ch) throws Exception {
-							ch.pipeline().addLast(new ServerHandler(CubzServer.this));
+							ch.pipeline().addLast(new ServerHandler(CubyzServer.this));
 						}
 					}).option(ChannelOption.SO_BACKLOG, 128).
 					childOption(ChannelOption.SO_KEEPALIVE, true);

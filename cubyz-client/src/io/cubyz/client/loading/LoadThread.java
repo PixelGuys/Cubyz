@@ -12,7 +12,7 @@ import org.reflections.Reflections;
 import io.cubyz.ClientOnly;
 import io.cubyz.Constants;
 import io.cubyz.CubyzLogger;
-import io.cubyz.api.CubzRegistries;
+import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Mod;
 import io.cubyz.blocks.Block;
 import io.cubyz.client.ClientBlockPair;
@@ -117,12 +117,12 @@ public class LoadThread extends Thread {
 		run = new Runnable() {
 			public void run() {
 				i++;
-				Block b = (Block) CubzRegistries.BLOCK_REGISTRY.registered()[i];
+				Block b = (Block) CubyzRegistries.BLOCK_REGISTRY.registered()[i];
 				b.setBlockPair(new ClientBlockPair());
 				ClientOnly.createBlockMesh.accept(b);
-				if (i < CubzRegistries.BLOCK_REGISTRY.registered().length-1) {
+				if (i < CubyzRegistries.BLOCK_REGISTRY.registered().length-1) {
 					Cubyz.renderDeque.add(run);
-					l.setStep(4, i+1, CubzRegistries.BLOCK_REGISTRY.registered().length);
+					l.setStep(4, i+1, CubyzRegistries.BLOCK_REGISTRY.registered().length);
 				} else {
 					l.finishLoading();
 				}

@@ -1,5 +1,7 @@
 package io.cubyz.multiplayer.client;
 
+import java.util.ArrayList;
+
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
@@ -11,13 +13,13 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 
-public class CubzClient {
+public class MPClient {
 
 	private ChannelFuture future;
 	private EventLoopGroup group;
 	private boolean connected;
 	private LocalServer ls;
-	private CubzClientHandler cch;
+	private MPClientHandler cch;
 
 	/**
 	 * Local server representation
@@ -42,6 +44,12 @@ public class CubzClient {
 	void checkConnection() {
 		if (!isConnected())
 			throw new IllegalStateException("Client is not connected");
+	}
+	
+	public ChatHandler getChat() {
+		if (cch == null)
+			throw new IllegalStateException();
+		return cch.getChatHandler();
 	}
 
 	public LocalServer getLocalServer() {
@@ -79,13 +87,13 @@ public class CubzClient {
 		if (isConnected()) {
 			disconnect();
 		}
-		cch = new CubzClientHandler(CubzClient.this, false);
+		cch = new MPClientHandler(MPClient.this, false);
 		group = new NioEventLoopGroup();
 
 		try {
 			Bootstrap b = new Bootstrap();
 			ls = new LocalServer();
-			cch = new CubzClientHandler(CubzClient.this, false);
+			cch = new MPClientHandler(MPClient.this, false);
 			b.group(group).channel(NioSocketChannel.class)//.option(ChannelOption.TCP_NODELAY, true)
 					.handler(new ChannelInitializer<SocketChannel>() {
 						@Override
