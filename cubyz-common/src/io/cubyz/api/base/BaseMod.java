@@ -22,15 +22,19 @@ import io.cubyz.blocks.Sand;
 import io.cubyz.blocks.SnowGrass;
 import io.cubyz.blocks.Stone;
 import io.cubyz.blocks.Water;
+import io.cubyz.entity.EntityType;
+import io.cubyz.entity.PlayerEntity;
 
 /**
- * Mod adding SpacyCubyd default content.
- * @author zenith391
+ * Mod adding Cubyz default content.
  */
 @Mod(id = "cubyz", name = "Cubyz")
 public class BaseMod {
 	
-	// Normal:
+	// Entities:
+	static PlayerEntity player;
+	
+	// Blocks:
 	static Bedrock bedrock;
 	static Cactus cactus;
 	static CobbleStone cobblestone;
@@ -57,6 +61,13 @@ public class BaseMod {
 	@EventHandler(type = "init")
 	public void init() {
 		System.out.println("Init!");
+	}
+	
+	@EventHandler(type = "entity/register")
+	public void registerEntities(Registry<EntityType> reg) {
+		player = new PlayerEntity();
+		
+		reg.register(player);
 	}
 	
 	@EventHandler(type = "block/register")

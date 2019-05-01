@@ -10,7 +10,7 @@ import org.joml.Vector3f;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.EntityType;
-import io.cubyz.util.Vector3fi;
+import io.cubyz.math.Vector3fi;
 
 public class EntityIO {
 

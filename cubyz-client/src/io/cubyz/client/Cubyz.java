@@ -203,6 +203,7 @@ public class Cubyz implements IGameLogic {
 		gameUI.addOverlay(new DebugOverlay());
 		
 		ClientOnly.createBlockMesh = (block) -> {
+			// TODO use new resource model
 			Resource rsc = block.getRegistryID();
 			try {
 				BlockModel bm = null;
