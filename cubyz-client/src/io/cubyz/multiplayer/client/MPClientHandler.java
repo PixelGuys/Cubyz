@@ -32,6 +32,7 @@ public class MPClientHandler extends ChannelInboundHandlerAdapter {
 				public void send(String msg) {
 					ByteBuf buf = ctx.alloc().buffer(1 + msg.length());
 					buf.writeByte(Packet.PACKET_CHATMSG);
+					buf.writeShort(msg.length());
 					buf.writeCharSequence(msg, Charset.forName("UTF-8")); // a message using UTF-16 or UTF-32 would crash the game!
 					ctx.writeAndFlush(buf);
 				}
@@ -48,6 +49,12 @@ public class MPClientHandler extends ChannelInboundHandlerAdapter {
 	public void ping() {
 		ByteBuf buf = ctx.alloc().buffer(1);
 		buf.writeByte(Packet.PACKET_PINGDATA);
+		ctx.writeAndFlush(buf);
+	}
+	
+	public void connect() {
+		ByteBuf buf = ctx.alloc().buffer(1);
+		buf.writeByte(Packet.PACKET_LISTEN);
 		ctx.writeAndFlush(buf);
 	}
 	
@@ -88,6 +95,12 @@ public class MPClientHandler extends ChannelInboundHandlerAdapter {
 			b.writeByte(Packet.PACKET_PINGPONG);
 			b.writeInt(buf.readInt());
 		}
+		
+		if (responseType == Packet.PACKET_CHATMSG) {
+			short len = buf.readShort();
+			String chat = buf.readCharSequence(len, Charset.forName("UTF-8")).toString();
+			messages.add(chat);
+		}
 	}
 
 	@Override
@@ -97,7 +110,6 @@ public class MPClientHandler extends ChannelInboundHandlerAdapter {
 
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-		// Close the connection when an exception is raised.
 		cause.printStackTrace();
 		ctx.close();
 	}

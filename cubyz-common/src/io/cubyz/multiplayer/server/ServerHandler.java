@@ -1,6 +1,7 @@
 package io.cubyz.multiplayer.server;
 
 import java.nio.charset.Charset;
+import java.util.HashMap;
 
 import io.cubyz.Constants;
 import io.cubyz.multiplayer.Packet;
@@ -17,6 +18,11 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 	
 	String motd;
 	
+	HashMap<String, Client> clients = new HashMap<>();
+	class Client {
+		public ChannelHandlerContext ctx;
+	}
+	
 	public ServerHandler(CubyzServer server) {
 		this.server = server;
 	}
@@ -26,7 +32,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 		
 		if (!init) {
 			motd = "A Cubyz server";
-			
+			// TODO load properties
 			if (motd.length() > 500) {
 				throw new IllegalArgumentException("MOTD cannot be more than 500 characters long");
 			}
@@ -36,7 +42,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 		ByteBuf msg = (ByteBuf) omsg;
 		byte packetType = msg.readByte();
 		if (CubyzServer.internal) {
-			System.out.println("[Integrated Server] packet type: " + packetType);
+			//System.out.println("[Integrated Server] packet type: " + packetType);
 		}
 		if (packetType == Packet.PACKET_GETVERSION) {
 			ByteBuf out = ctx.alloc().ioBuffer(128); // 128-length version including brand
@@ -45,6 +51,22 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 			out.writeByte(seq.length());
 			out.writeCharSequence(seq, Charset.forName("UTF-8"));
 			ctx.write(out);
+		}
+		if (packetType == Packet.PACKET_CHATMSG) {
+			short chatLen = msg.readShort();
+			String chat = msg.readCharSequence(chatLen, Charset.forName("UTF-8")).toString();
+			for (Client cl : clients.values()) {
+				ByteBuf buf = cl.ctx.alloc().buffer(1 + chatLen);
+				buf.writeShort(chatLen);
+				buf.writeCharSequence(chat, Charset.forName("UTF-8"));
+				cl.ctx.writeAndFlush(buf);
+			}
+			System.out.println("[Server | Chat] " + chat);
+		}
+		if (packetType == Packet.PACKET_LISTEN) {
+			Client cl = new Client();
+			cl.ctx = ctx;
+			clients.put("Player111", cl);
 		}
 		if (packetType == Packet.PACKET_PINGDATA) {
 			ByteBuf out = ctx.alloc().ioBuffer(512);

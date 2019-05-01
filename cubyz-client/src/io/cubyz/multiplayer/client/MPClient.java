@@ -77,6 +77,10 @@ public class MPClient {
 		}
 	}
 	
+	public void fullConnect() {
+		cch.connect();
+	}
+	
 	/**
 	 * Disconnect from old server if the client was connected.
 	 * 

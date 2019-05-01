@@ -136,6 +136,7 @@ public class Cubyz implements IGameLogic {
 	public static void requestJoin(String host, int port) {
 		if (mpClient != null) {
 			mpClient.connect(host, port);
+			mpClient.fullConnect();
 			serverIP = host;
 			serverPort = port;
 		} else {
@@ -237,6 +238,7 @@ public class Cubyz implements IGameLogic {
 		server.start(true);
 		mpClient = new MPClient();
 		requestJoin("localhost");
+		mpClient.getChat().send("lolplayer: Hello World");
 		//pingServer("127.0.0.1");
 		
 		System.gc();

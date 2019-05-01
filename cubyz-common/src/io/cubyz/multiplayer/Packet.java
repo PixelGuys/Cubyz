@@ -11,5 +11,6 @@ public class Packet {
 	public static final byte PACKET_SETBLOCK = 3;
 	public static final byte PACKET_MOVE = 4;
 	public static final byte PACKET_CHATMSG = 5;
+	public static final byte PACKET_LISTEN = 6; // listen for update packets
 	
 }
