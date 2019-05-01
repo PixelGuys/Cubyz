@@ -8,7 +8,7 @@ import org.joml.Vector3i;
 
 import io.cubyz.IRenderablePair;
 import io.cubyz.blocks.BlockInstance;
-import io.cubyz.util.Vector3fi;
+import io.cubyz.math.Vector3fi;
 import io.cubyz.world.World;
 
 public abstract class Entity {
@@ -86,20 +86,20 @@ public abstract class Entity {
 			}
 			
 			if (relZ < 0.3) {
-				for (int i = 0; i < 3; i++) {
+				for (int i = 0; i < height; i++) {
 					if (checkBlock(absX - 1, absY + i, absZ - 1)) {
 						return 0.30001F - relX;
 					}
 				}
 			}
 			if (relZ > 0.7) {
-				for (int i = 0; i < 3; i++) {
+				for (int i = 0; i < height; i++) {
 					if (checkBlock(absX - 1, absY + i, absZ + 1)) {
 						return 0.30001F - relX;
 					}
 				}
 			}
-			for (int i = 0; i < 3; i++) {
+			for (int i = 0; i < height; i++) {
 				if (checkBlock(absX - 1, absY + i, absZ)) {
 					return 0.30001F - relX;
 				}
@@ -116,20 +116,20 @@ public abstract class Entity {
 			}
 			
 			if (relZ < 0.3) {
-				for (int i = 0; i < 3; i++) {
+				for (int i = 0; i < height; i++) {
 					if (checkBlock(absX + 1, absY + i, absZ - 1)) {
 						return 0.69999F - relX;
 					}
 				}
 			}
 			if (relZ > 0.7) {
-				for (int i = 0; i < 3; i++) {
+				for (int i = 0; i < height; i++) {
 					if( checkBlock(absX + 1, absY + i, absZ + 1)) {
 						return 0.69999F - relX;
 					}
 				}
 			}
-			for (int i = 0; i < 3; i++) {
+			for (int i = 0; i < height; i++) {
 				if (checkBlock(absX + 1, absY + i, absZ)) {
 					return 0.69999F - relX;
 				}
@@ -153,20 +153,20 @@ public abstract class Entity {
 				return z;
 			}
 			if(relX < 0.3) {
-				for(int i = 0; i < 3; i++) {
+				for(int i = 0; i < height; i++) {
 					if (checkBlock(absX - 1, absY + i, absZ - 1)) {
 						return 0.30001F - relZ;
 					}
 				}
 			}
 			if(relX > 0.7) {
-				for(int i = 0; i < 3; i++) {
+				for(int i = 0; i < height; i++) {
 					if(checkBlock(absX+1, absY+i, absZ-1)) {
 						return 0.30001F - relZ;
 					}
 				}
 			}
-			for(int i = 0; i < 3; i++) {
+			for(int i = 0; i < height; i++) {
 				if(checkBlock(absX, absY+i, absZ-1)) {
 					return 0.30001F - relZ;
 				}
@@ -181,20 +181,20 @@ public abstract class Entity {
 				return z;
 			}
 			if(relX < 0.3) {
-				for(int i = 0; i < 3; i++) {
+				for(int i = 0; i < height; i++) {
 					if(checkBlock(absX-1, absY+i, absZ+1)) {
 						return 0.69999F - relZ;
 					}
 				}
 			}
 			if(relX > 0.7) {
-				for(int i = 0; i < 3; i++) {
+				for(int i = 0; i < height; i++) {
 					if(checkBlock(absX+1, absY+i, absZ+1)) {
 						return 0.69999F - relZ;
 					}
 				}
 			}
-			for(int i = 0; i < 3; i++) {
+			for(int i = 0; i < height; i++) {
 				if(checkBlock(absX, absY+i, absZ+1)) {
 					return 0.69999F - relZ;
 				}

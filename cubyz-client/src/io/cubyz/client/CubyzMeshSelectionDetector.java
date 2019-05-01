@@ -4,10 +4,9 @@ import org.joml.Intersectionf;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
-import org.jungle.Camera;
 import org.jungle.renderers.IRenderer;
 import io.cubyz.blocks.BlockInstance;
-import io.cubyz.util.Vector3fi;
+import io.cubyz.math.Vector3fi;
 import io.cubyz.world.BlockSpatial;
 import io.cubyz.world.Chunk;
 

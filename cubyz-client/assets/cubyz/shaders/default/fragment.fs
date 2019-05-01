@@ -84,7 +84,7 @@ vec4 calcLightColour(vec3 light_colour, float light_intensity, vec3 position, ve
 
     // Diffuse Light
     float diffuseFactor = max(dot(normal, to_light_dir), 0.0);
-    diffuseColour = diffuseC * vec4(light_colour, 1.0) * light_intensity * diffuseFactor;
+    diffuseColour = diffuseC * vec4(light_colour, 0) * light_intensity * diffuseFactor;
 
     // Specular Light
     vec3 camera_direction = normalize(-position);
@@ -92,7 +92,7 @@ vec4 calcLightColour(vec3 light_colour, float light_intensity, vec3 position, ve
     vec3 reflected_light = normalize(reflect(from_light_dir , normal));
     float specularFactor = max( dot(camera_direction, reflected_light), 0.0);
     specularFactor = pow(specularFactor, specularPower);
-    specColour = speculrC * light_intensity  * specularFactor * material.reflectance * vec4(light_colour, 1.0);
+    specColour = speculrC * light_intensity  * specularFactor * material.reflectance * vec4(light_colour, 0);
 
     return (diffuseColour + specColour);
 }
@@ -155,6 +155,6 @@ void main()
     }
     fragColor = ambientC * vec4(ambientLight, 1) + diffuseSpecularComp;
     if (outSelected > 0) {
-    	fragColor = vec4(fragColor.x, fragColor.y, 1, 1);
+    	fragColor = vec4(fragColor.x, fragColor.y, 0.8, fragColor.w);
     }
 }

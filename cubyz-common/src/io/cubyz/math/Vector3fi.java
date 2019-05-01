@@ -1,4 +1,4 @@
-package io.cubyz.util;
+package io.cubyz.math;
 
 public class Vector3fi {
 	public int x, z;
