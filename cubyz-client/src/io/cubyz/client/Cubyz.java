@@ -92,6 +92,7 @@ public class Cubyz implements IGameLogic {
 	public static int serverCapacity = 2;
 	public static int serverOnline = 1;
 
+	public static GameProfile profile;
 	private static MPClient mpClient;
 	public static boolean isIntegratedServer = true;
 	public static boolean isOnlineServerOpened = false;
@@ -254,7 +255,7 @@ public class Cubyz implements IGameLogic {
 		gameUI.setMenu(LoadingGUI.getInstance());
 		LoadThread lt = new LoadThread();
 		lt.start();
-		
+		profile = new GameProfile("zenith391");
 		CubyzServer server = new CubyzServer(serverPort);
 		server.start(true);
 		mpClient = new MPClient();
@@ -269,11 +270,8 @@ public class Cubyz implements IGameLogic {
 		System.out.println("Grass block texture : " + model.texture);
 		System.out.println("Grass block model   : "   + model.model);
 		
-		ToastManager.queuedToasts.add(new Toast("Woohoo", "Welcome to 0.3.1, with brand new toasts!"));
+		ToastManager.queuedToasts.add(new Toast("Woohoo", "Welcome to 0.4.0, with brand new toasts!"));
 		System.out.println("Pushed toast");
-		
-		GameProfile profile = new GameProfile("xX_DemoPlayer_Xx");
-		System.out.println(profile.getLoginUUID());
 	}
 
 	private Vector3f dir = new Vector3f();

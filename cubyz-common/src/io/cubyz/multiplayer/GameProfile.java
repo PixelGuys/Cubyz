@@ -12,6 +12,7 @@ import io.cubyz.Constants;
 public class GameProfile {
 
 	private UUID uuid;
+	private UUID loginUuid;
 	private boolean online;
 	
 	public static boolean isExpired(UUID loginId) {
@@ -44,6 +45,7 @@ public class GameProfile {
 	 */
 	public GameProfile(String username) {
 		online = false;
+		loginUuid = UUID.randomUUID();
 		uuid = UUID.nameUUIDFromBytes(username.getBytes(Constants.CHARSET_IMPL));
 	}
 	
@@ -52,6 +54,10 @@ public class GameProfile {
 	}
 	
 	public UUID getLoginUUID() {
+		return loginUuid;
+	}
+	
+	public UUID getUUID() {
 		return uuid;
 	}
 	

@@ -42,7 +42,7 @@ public class LocalWorld extends World {
 		
 		public void queue(Chunk ch) {
 			if (!isQueued(ch)) {
-				if (loadList.size() == MAX_QUEUE_SIZE) {
+				if (loadList.size() >= MAX_QUEUE_SIZE) {
 					CubyzLogger.instance.info("Hang on, the Local-Chunk-Thread's queue is full, blocking!");
 					while (!loadList.isEmpty()) {
 						System.out.print(""); // again, used as replacement to Thread.onSpinWait(), also necessary due to some JVM oddities
@@ -66,7 +66,7 @@ public class LocalWorld extends World {
 			while (true) {
 				if (!loadList.isEmpty()) {
 					Chunk popped = loadList.pop();
-//					CubyzLogger.instance.fine("Generating " + popped.chunk.getX() + "," + popped.chunk.getZ());
+					//CubyzLogger.instance.fine("Generating " + popped.getX() + "," + popped.getZ());
 					synchronousGenerate(popped);
 					popped.load();
 					//seed = (int) System.currentTimeMillis(); // enable it if you want fun (don't forget to disable before commit!!!)
@@ -213,8 +213,7 @@ public class LocalWorld extends World {
 			en.update();
 		}
 		// Tile Entities
-		Chunk[] chks = chunks.toArray(new Chunk[chunks.size()]);
-		for (Chunk ch : chks) { // will get slow, because chunks aren't removed due to no saving
+		for (Chunk ch : visibleChunks) { // will get slow, because chunks aren't removed due to no saving
 			if (ch.isLoaded()) {
 				TileEntity[] tileEntities = ch.tileEntities().toArray(new TileEntity[0]);
 				for (TileEntity te : tileEntities) {

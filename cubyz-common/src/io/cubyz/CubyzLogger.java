@@ -28,12 +28,11 @@ public class CubyzLogger extends Logger {
 	}
 	
 	protected CubyzLogger() {
-		super("Cubz", null);
+		super(Logger.GLOBAL_LOGGER_NAME, null);
 		setUseParentHandlers(true);
 		this.setParent(Logger.getGlobal());
 		this.setLevel(Level.ALL);
 		this.setFilter(null);
-		
 		File logs = new File("logs");
 		if (!logs.exists()) {
 			logs.mkdir();
