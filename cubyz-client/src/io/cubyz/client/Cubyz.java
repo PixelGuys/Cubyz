@@ -237,7 +237,7 @@ public class Cubyz implements IGameLogic {
 				}
 				
 				mesh = defaultMesh.cloneNoMaterial();
-				Material material = new Material((Texture) block.getBlockPair().get("textureCache"), 1.0F);
+				Material material = new Material(tex, 1.0F);
 				mesh.setMaterial(material);
 				
 				pair.set("textureCache", tex);
