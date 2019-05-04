@@ -38,8 +38,9 @@ public class CubyzMeshSelectionDetector {
 	    for (Chunk ch : chunks) {
 	    	synchronized (ch) {
 	    		// using an array speeds up things and reduce Concurrent Modification Exceptions
-	    		BlockInstance[] array = ch.getVisibles().toArray(new BlockInstance[ch.getVisibles().size()]);
+	    		BlockInstance[] array = ch.getVisibles().toArray(new BlockInstance[0]);
 			    for (BlockInstance bi : array) {
+			    	if (bi == null) return; // toArray seems to be buggy for changing objects and can put null values in the iterator.
 			    	if(!bi.getBlock().isSolid())
 			    		continue;
 			        ((BlockSpatial) bi.getSpatial()).setSelected(false);

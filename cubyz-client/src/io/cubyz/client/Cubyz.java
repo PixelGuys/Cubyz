@@ -32,6 +32,7 @@ import org.lwjgl.glfw.GLFW;
 import io.cubyz.ClientOnly;
 import io.cubyz.Constants;
 import io.cubyz.CubyzLogger;
+import io.cubyz.IRenderablePair;
 import io.cubyz.Utilities;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
@@ -39,6 +40,7 @@ import io.cubyz.blocks.BlockInstance;
 import io.cubyz.client.loading.LoadThread;
 import io.cubyz.entity.Player;
 import io.cubyz.items.Inventory;
+import io.cubyz.multiplayer.GameProfile;
 import io.cubyz.multiplayer.client.MPClient;
 import io.cubyz.multiplayer.client.PingResponse;
 import io.cubyz.multiplayer.server.CubyzServer;
@@ -210,6 +212,9 @@ public class Cubyz implements IGameLogic {
 			// TODO use new resource model
 			Resource rsc = block.getRegistryID();
 			try {
+				IRenderablePair pair = block.getBlockPair();
+				Texture tex = null;
+				Mesh mesh = null;
 				BlockModel bm = null;
 				bm = ResourceUtilities.loadModel(new Resource("cubyz:grass"));
 				Mesh defaultMesh = null;
@@ -224,16 +229,19 @@ public class Cubyz implements IGameLogic {
 					cachedDefaultModels.put(bm.model, defaultMesh);
 				}
 				if (block.isTextureConverted()) { // block.texConverted
-					block.getBlockPair().set("textureCache", new Texture("assets/cubyz/textures/blocks/" + block.getTexture() + ".png"));
+					tex = new Texture("assets/cubyz/textures/blocks/" + block.getTexture() + ".png");
 				} else {
-					block.getBlockPair().set("textureCache", new Texture(TextureConverter.fromBufferedImage(
+					tex = new Texture(TextureConverter.fromBufferedImage(
 							TextureConverter.convert(ImageIO.read(new File("assets/cubyz/textures/blocks/" + block.getTexture() + ".png")),
-									block.getTexture()))));
+									block.getTexture())));
 				}
-				block.getBlockPair().set("meshCache", defaultMesh.cloneNoMaterial());
+				
+				mesh = defaultMesh.cloneNoMaterial();
 				Material material = new Material((Texture) block.getBlockPair().get("textureCache"), 1.0F);
-				//material.setReflectance(1);
-				((Mesh) block.getBlockPair().get("meshCache")).setMaterial(material);
+				mesh.setMaterial(material);
+				
+				pair.set("textureCache", tex);
+				pair.set("meshCache", mesh);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -263,6 +271,9 @@ public class Cubyz implements IGameLogic {
 		
 		ToastManager.queuedToasts.add(new Toast("Woohoo", "Welcome to 0.3.1, with brand new toasts!"));
 		System.out.println("Pushed toast");
+		
+		GameProfile profile = new GameProfile("xX_DemoPlayer_Xx");
+		System.out.println(profile.getLoginUUID());
 	}
 
 	private Vector3f dir = new Vector3f();
