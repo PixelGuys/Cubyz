@@ -20,7 +20,7 @@ public class GameProfile {
 	}
 	
 	/**
-	 * Use a login UUID (last 24 hours) to retrieve the username and use it to be logged in as the profile.
+	 * Use a login UUID (last 1 hours) to retrieve the username and use it to be logged in as the profile.
 	 * @param loginId
 	 */
 	public GameProfile(UUID loginId) {
@@ -31,7 +31,7 @@ public class GameProfile {
 	}
 	
 	/**
-	 * Gets a GameProfile with a login UUID (last 24 hours) from the authentification servers with provided username and password.
+	 * Gets a GameProfile with a login UUID (last 1 hours) from the authentification servers with provided username and password.
 	 * @param username
 	 * @param password
 	 */

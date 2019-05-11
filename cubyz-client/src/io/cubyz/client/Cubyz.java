@@ -255,12 +255,12 @@ public class Cubyz implements IGameLogic {
 		gameUI.setMenu(LoadingGUI.getInstance());
 		LoadThread lt = new LoadThread();
 		lt.start();
-		profile = new GameProfile("zenith391");
+		profile = new GameProfile("ZCAFI");
 		CubyzServer server = new CubyzServer(serverPort);
 		server.start(true);
 		mpClient = new MPClient();
 		requestJoin("localhost");
-		mpClient.getChat().send("lolplayer: Hello World");
+		mpClient.getChat().send("Hello World");
 		//pingServer("127.0.0.1");
 		
 		System.gc();
@@ -278,48 +278,48 @@ public class Cubyz implements IGameLogic {
 	
 	@Override
 	public void input(Window window) {
-		if (window.isKeyPressed(GLFW.GLFW_KEY_F3)) {
+		if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_F3)) {
 			Cubyz.clientShowDebug = !Cubyz.clientShowDebug;
 			Keyboard.setKeyPressed(GLFW.GLFW_KEY_F3, false);
 		}
-		if (window.isKeyPressed(GLFW.GLFW_KEY_F11)) {
+		if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_F11)) {
 			window.setFullscreen(!window.isFullscreen());
 			Keyboard.setKeyPressed(GLFW.GLFW_KEY_F11, false);
 		}
 		if (!gameUI.isGUIFullscreen() && world != null) {
-			if (window.isKeyPressed(GLFW.GLFW_KEY_W)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_W)) {
 				playerInc.z = -1;
 			}
-			if (window.isKeyPressed(GLFW.GLFW_KEY_LEFT_CONTROL)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT_CONTROL)) {
 				playerInc.z = -2;
 			}
-			if (window.isKeyPressed(GLFW.GLFW_KEY_S)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_S)) {
 				playerInc.z = 1;
 			}
-			if (window.isKeyPressed(GLFW.GLFW_KEY_A)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_A)) {
 				playerInc.x = -1;
 			}
-			if (window.isKeyPressed(GLFW.GLFW_KEY_D)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_D)) {
 				playerInc.x = 1;
 			}
-			if (window.isKeyPressed(GLFW.GLFW_KEY_SPACE) && world.getLocalPlayer().vy == 0) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_SPACE) && world.getLocalPlayer().vy == 0) {
 				world.getLocalPlayer().vy = 0.25F;
 			}
-			if (window.isKeyPressed(GLFW.GLFW_KEY_LEFT_SHIFT)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT_SHIFT)) {
 				if (world.getLocalPlayer().isFlying()) {
 					world.getLocalPlayer().vy = -0.25F;
 				}
 			}
-			if (window.isKeyPressed(GLFW.GLFW_KEY_LEFT_SHIFT)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT_SHIFT)) {
 				playerInc.y = -1;
 			}
-			if (window.isKeyPressed(GLFW.GLFW_KEY_RIGHT)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_RIGHT)) {
 				light.getDirection().x += 0.01F;
 				if (light.getDirection().x > 1.0F) {
 					light.getDirection().x = 0.0F;
 				}
 			}
-			if (window.isKeyPressed(GLFW.GLFW_KEY_ESCAPE) && mouse.isGrabbed()) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_ESCAPE) && mouse.isGrabbed()) {
 				if (gameUI.getMenuGUI() == null) {
 					Keyboard.setKeyPressed(GLFW.GLFW_KEY_ESCAPE, false);
 					gameUI.setMenu(new PauseGUI());
@@ -336,28 +336,28 @@ public class Cubyz implements IGameLogic {
 				buildCooldown = 10;
 			}
 			//inventorySelection = mouse.getMouseWheelPosition() & 7; TODO(@zenith391): Update Jungle Engine to handle mousewheel.
-			if (window.isKeyPressed(GLFW.GLFW_KEY_1)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_1)) {
 				inventorySelection = 0;
 			}
-			if (window.isKeyPressed(GLFW.GLFW_KEY_2)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_2)) {
 				inventorySelection = 1;
 			}
-			if (window.isKeyPressed(GLFW.GLFW_KEY_3)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_3)) {
 				inventorySelection = 2;
 			}
-			if (window.isKeyPressed(GLFW.GLFW_KEY_4)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_4)) {
 				inventorySelection = 3;
 			}
-			if (window.isKeyPressed(GLFW.GLFW_KEY_5)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_5)) {
 				inventorySelection = 4;
 			}
-			if (window.isKeyPressed(GLFW.GLFW_KEY_6)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_6)) {
 				inventorySelection = 5;
 			}
-			if (window.isKeyPressed(GLFW.GLFW_KEY_7)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_7)) {
 				inventorySelection = 6;
 			}
-			if (window.isKeyPressed(GLFW.GLFW_KEY_8)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_8)) {
 				inventorySelection = 7;
 			}
 			msd.selectSpatial(world.getVisibleChunks(), world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate());

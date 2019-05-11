@@ -76,6 +76,14 @@ public class LocalWorld extends World {
 		}
 	}
 	
+	public String getName() {
+		return name;
+	}
+	
+	public void setName(String name) {
+		this.name = name;
+	}
+	
 	public LocalWorld() {
 		name = "World";
 		chunks = new ArrayList<>();
@@ -88,6 +96,11 @@ public class LocalWorld extends World {
 		thread.start();
 		
 		wio = new WorldIO(this, new File("saves/" + name));
+		if (wio.hasWorldData()) {
+			wio.loadWorldData();
+		} else {
+			wio.saveWorldData();
+		}
 	}
 	
 	@Override
@@ -139,6 +152,8 @@ public class LocalWorld extends World {
 		float[][] oreMap = Noise.generateMapFragment(x, y, 16, 16, 128, seed - 3 * (seed - 1 & Integer.MAX_VALUE));
 		float[][] heatMap = Noise.generateMapFragment(x, y, 16, 16, 4096, seed ^ 123456789);
 		ch.generateFrom(heightMap, vegetationMap, oreMap, heatMap);
+		
+		wio.saveChunk(ch, ch.getX(), ch.getZ());
 	}
 	
 	@Override
@@ -315,6 +330,10 @@ public class LocalWorld extends World {
 		}
 		for(int k = minK; k < visibleChunks.length; k++) {
 			visibleChunks[k].setLoaded(false);
+			wio.saveChunk(visibleChunks[k], visibleChunks[k].getX(), visibleChunks[k].getZ());
+		}
+		if (minK != visibleChunks.length) { // if atleast chunk got unloaded
+			wio.saveWorldData();
 		}
 		visibleChunks = newVisibles;
 		lastX = x;
