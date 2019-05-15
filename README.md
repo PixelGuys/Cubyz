@@ -17,3 +17,6 @@ Nah just kidding, while i said what a voxel game is, Cubyz have lot of features 
 
 - This game is under BSD-3-Clause license for more details please check the [LICENSE](https://github.com/PixelGuys/Cubz/blob/master/LICENSE) file.
 - We can discuss and speak about Cubyz on the [discord](https://discord.gg/XtqCRRG) server.
+
+### Donations
+If you'd like to donate, first thanks you, second, it will only serve for servers and some other things. And third, here if you really want, the [donation link](https://www.paypal.me/thxforthedonationbud)
