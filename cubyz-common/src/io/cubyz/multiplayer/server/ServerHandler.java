@@ -17,6 +17,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 	int playerPingTime = 5000; // Time between each ping packets
 	int playerTimeout  = 5000; // Maximum time a client can respond to ping packets.
 	boolean init;
+	boolean isInternal;
 	boolean onlineMode;
 	CubyzServer server;
 	
@@ -31,9 +32,13 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 		public long lastSendedPing = -1;
 	}
 	
-	public ServerHandler(CubyzServer server) {
+	public ServerHandler(CubyzServer server, ServerSettings settings) {
 		this.server = server;
-		
+		max = settings.maxPlayers;
+		playerPingTime = settings.playerPingTime;
+		playerTimeout = settings.playerTimeout;
+		onlineMode = settings.onlineMode;
+		isInternal = settings.internal;
 		Thread th = new Thread(() -> {
 			while (true) {
 				for (String uuid : clients.keySet()) {

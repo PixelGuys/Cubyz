@@ -255,7 +255,13 @@ public class Cubyz implements IGameLogic {
 		gameUI.setMenu(LoadingGUI.getInstance());
 		LoadThread lt = new LoadThread();
 		lt.start();
-		profile = new GameProfile("ZCAFI");
+		
+		if (System.getProperty("account.password") == null) {
+			profile = new GameProfile("xX_DemoGuy_Xx");
+		} else {
+			profile = new GameProfile(GameProfile.login(System.getProperty("account.username"), System.getProperty("account.password").toCharArray()));
+		}
+		
 		CubyzServer server = new CubyzServer(serverPort);
 		server.start(true);
 		mpClient = new MPClient();

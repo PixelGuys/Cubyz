@@ -20,6 +20,12 @@ public class CubyzServer {
 
 	public void start(boolean internal) throws Exception {
 		CubyzServer.internal = internal;
+		ServerSettings ss = new ServerSettings();
+		ss.maxPlayers = 20;
+		ss.playerTimeout = 5000;
+		ss.playerPingTime = 5000;
+		ss.internal = true;
+		
 		EventLoopGroup bossGroup = new NioEventLoopGroup();
 		EventLoopGroup workerGroup = new NioEventLoopGroup();
 		try {
@@ -28,7 +34,7 @@ public class CubyzServer {
 					.childHandler(new ChannelInitializer<SocketChannel>() {
 						@Override
 						public void initChannel(SocketChannel ch) throws Exception {
-							ch.pipeline().addLast(new ServerHandler(CubyzServer.this));
+							ch.pipeline().addLast(new ServerHandler(CubyzServer.this, ss));
 						}
 					}).option(ChannelOption.SO_BACKLOG, 128).
 					childOption(ChannelOption.SO_KEEPALIVE, true);

@@ -1,6 +1,14 @@
 package io.cubyz.multiplayer;
 
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.UUID;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 import io.cubyz.Constants;
 
@@ -13,30 +21,59 @@ public class GameProfile {
 
 	private UUID uuid;
 	private UUID loginUuid;
+	
 	private boolean online;
+	private static String apiURL = "https://gamexmc.000webhostapp.com/api/";
 	
-	public static boolean isExpired(UUID loginId) {
-		return true;
+	class LoginResponse {
+		public String login_uuid;
+		public String player_uuid;
+		public boolean error;
+		
+		public String error_message;
+	}
+	
+	public static LoginToken login(String username, char[] password) throws IOException {
+		try {
+			System.out.println("Login in..");
+			URL login = new URL(apiURL + "login.php?username=" + username);
+			HttpURLConnection con = (HttpURLConnection) login.openConnection();
+			con.setRequestMethod("GET");
+			con.connect();
+			Gson gson = new GsonBuilder().create();
+			LoginResponse resp = gson.fromJson(new InputStreamReader(con.getInputStream()), LoginResponse.class);
+			System.out.println("Logged in!");
+			if (resp.error) {
+				throw new IOException("Login Error: " + resp.error_message);
+			}
+			return new LoginToken(UUID.fromString(resp.login_uuid), UUID.fromString(resp.player_uuid), System.currentTimeMillis() + (3600000));
+		} catch (MalformedURLException e) {
+			throw new IOException(e);
+		}
+		//return null;
 	}
 	
 	/**
-	 * Use a login UUID (last 1 hours) to retrieve the username and use it to be logged in as the profile.
-	 * @param loginId
+	 * Use a login UUID (last 1 hour) to retrieve the username and use it to be logged in as the profile.
+	 * @param token
+	 * @throws IOException
 	 */
-	public GameProfile(UUID loginId) {
-		if (isExpired(loginId))
-			throw new IllegalArgumentException("loginId: expired");
+	public GameProfile(LoginToken token) {
+		if (token.isExpired())
+			throw new IllegalArgumentException("expired token");
 		online = true;
-		throw new UnsupportedOperationException("online mode unsupported");
+		loginUuid = token.getToken();
+		uuid = token.getUUID();
 	}
 	
 	/**
-	 * Gets a GameProfile with a login UUID (last 1 hours) from the authentification servers with provided username and password.
+	 * Gets a GameProfile with a login UUID (last 1 hour) from the authentification servers with provided username and password.
 	 * @param username
 	 * @param password
+	 * @throws IOException
 	 */
-	public GameProfile(String username, char[] password) {
-		online = true;
+	public GameProfile(String username, char[] password) throws IOException {
+		this(login(username, password));
 	}
 	
 	/**
