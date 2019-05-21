@@ -47,7 +47,7 @@ public class LoadThread extends Thread {
 		ArrayList<Object> mods = new ArrayList<>();
 		ArrayList<File> modSearchPath = new ArrayList<>();
 		modSearchPath.add(new File("mods"));
-		modSearchPath.add(new File("mods/" + Constants.GAME_BUILD_TYPE + "_" + Constants.GAME_VERSION));
+		modSearchPath.add(new File("mods/" + Constants.GAME_VERSION));
 		ArrayList<URL> modUrl = new ArrayList<>();
 		
 		for (File sp : modSearchPath) {

@@ -9,7 +9,7 @@ import io.cubyz.command.ICommandSource;
 
 public class PlayerEntity extends EntityType {
 
-	class PlayerImpl extends Player implements ICommandSource {
+	class PlayerImpl extends Player {
 		
 		private boolean flying = false;
 		

@@ -130,6 +130,12 @@ public class WorldIO {
 						dos.writeBoolean(false);
 					} else {
 						dos.writeBoolean(true);
+						for (BlockInstance bi : ck.list()) {
+							int lx = bi.getX() & 15;
+							int ly = bi.getY();
+							int lz = bi.getZ() & 15;
+							
+						}
 						for (int a = 0; a < 16; a++) {
 							for (int c = 0; c < 16; c++) {
 								for (int b = 0; b < world.getHeight(); b++) {
