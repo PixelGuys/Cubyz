@@ -37,9 +37,10 @@ public class CubyzMeshSelectionDetector {
 	    //position.x = position.z = 0;
 	    for (Chunk ch : chunks) {
 	    	synchronized (ch) {
-	    		// using an array speeds up things and reduce Concurrent Modification Exceptions
-	    		BlockInstance[] array = ch.getVisibles().toArray(new BlockInstance[ch.getVisibles().size()]);
+	    		BlockInstance[] array = ch.getVisibles();
 			    for (BlockInstance bi : array) {
+			    	if(bi == null)
+			    		break;
 			    	if(!bi.getBlock().isSolid())
 			    		continue;
 			        ((BlockSpatial) bi.getSpatial()).setSelected(false);
