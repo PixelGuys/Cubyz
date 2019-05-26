@@ -13,7 +13,6 @@ import io.cubyz.world.Chunk;
 public class CubyzMeshSelectionDetector {
 
 	protected IRenderer render;
-	protected Vector3f dir = new Vector3f();
 	protected Vector3f min = new Vector3f(), max = new Vector3f();
 	protected Vector2f nearFar = new Vector2f();
 	protected BlockInstance selectedSpatial;
@@ -31,6 +30,7 @@ public class CubyzMeshSelectionDetector {
 	}
 	
 	public void selectSpatial(Chunk[] chunks, Vector3fi position, Vector3f dir) {
+		//this.dir = dir;
 		Vector3f transformedPosition = new Vector3f(position.relX, position.y+1.5F, position.relZ);
 	    float closestDistance = Float.POSITIVE_INFINITY;
 	    selectedSpatial = null;
@@ -62,29 +62,28 @@ public class CubyzMeshSelectionDetector {
 	}
 	
 	// Returns the free block right next to the currently selected block.
-	public Vector3i getEmptyPlace(Vector3f position) {
-		position = new Vector3f(position.x, position.y+1.5F, position.z);
+	public Vector3i getEmptyPlace(Vector3fi position, Vector3f dir) {
+		//position = new Vector3f(position.x, position.y+1.5F, position.z);
+		Vector3f transformedPosition = new Vector3f(position.relX, position.y+1.5F, position.relZ);
 		if(selectedSpatial != null) {
-			Vector3i pos = selectedSpatial.getPosition();
+			Vector3i pos = new Vector3i(selectedSpatial.getPosition());
 			pos.add(-(int)Math.signum(dir.x), 0, 0);
-			min.set(pos);
-	        max.set(pos);
+	        min.set(new Vector3f(pos.x - position.x, pos.y, pos.z - position.z));
+	        max.set(min);
 	        min.add(-0.5f, -0.5f, -0.5f); // -scale, -scale, -scale
 	        max.add(0.5f, 0.5f, 0.5f); // scale, scale, scale
-	        if (Intersectionf.intersectRayAab(position, dir, min, max, nearFar)) {
+	        if (Intersectionf.intersectRayAab(transformedPosition, dir, min, max, nearFar)) {
 	        	return pos;
 	        }
-			pos.add((int)Math.signum(dir.x), 0, 0);
-			pos.add(0, -(int)Math.signum(dir.y), 0);
+			pos.add((int)Math.signum(dir.x), -(int)Math.signum(dir.y), 0);
 			min.set(pos);
 	        max.set(pos);
 	        min.add(-0.5f, -0.5f, -0.5f); // -scale, -scale, -scale
 	        max.add(0.5f, 0.5f, 0.5f); // scale, scale, scale
-	        if (Intersectionf.intersectRayAab(position, dir, min, max, nearFar)) {
+	        if (Intersectionf.intersectRayAab(transformedPosition, dir, min, max, nearFar)) {
 	            return pos;
 	        }
-			pos.add(0, (int)Math.signum(dir.y), 0);
-			pos.add(0, 0, -(int)Math.signum(dir.z));
+			pos.add(0, (int)Math.signum(dir.y), -(int)Math.signum(dir.z));
 	        return pos;
 		}
 		return null;
