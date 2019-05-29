@@ -17,6 +17,7 @@ import io.cubyz.blocks.Ore;
 import io.cubyz.blocks.TileEntity;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
+import io.cubyz.save.BlockChange;
 import io.cubyz.save.WorldIO;
 
 public class LocalWorld extends World {
@@ -26,6 +27,11 @@ public class LocalWorld extends World {
 	private Chunk [] visibleChunks;
 	private int lastChunk = -1;
 	private ArrayList<Entity> entities = new ArrayList<>();
+	
+	// Stores a reference to the lists of WorldIO.
+	public ArrayList<String> blockData;	
+	public ArrayList<int[]> chunkData;
+	
 	private static final int renderDistance = 5;
 	
 	//private List<BlockInstance> spatials = new ArrayList<>();
@@ -171,7 +177,7 @@ public class LocalWorld extends World {
 	
 	@Override
 	public Chunk _getChunk(int x, int z) {
-		if(lastChunk >= 0 && chunks.get(lastChunk).getX() == x && chunks.get(lastChunk).getZ() == z) {
+		if(lastChunk >= 0 && lastChunk < chunks.size() && chunks.get(lastChunk).getX() == x && chunks.get(lastChunk).getZ() == z) {
 			return chunks.get(lastChunk);
 		}
 		for (int i = 0; i < chunks.size(); i++) {
@@ -180,12 +186,35 @@ public class LocalWorld extends World {
 				return chunks.get(i);
 			}
 		}
-		
-		Chunk c = new Chunk(x, z, this);
+		Chunk c = new Chunk(x, z, this, transformData(getDataString(x, z)));
 		// not generated
 		chunks.add(c);
 		lastChunk = chunks.size()-1;
 		return c;
+	}
+	
+	public String getDataString(int x, int z) { // Gets the data String of a Chunk.
+		int index = -1;
+		for(int i = 0; i < chunkData.size(); i++) {
+			int [] arr = chunkData.get(i);
+			if(arr[0] == x && arr[1] == z) {
+				index = i;
+				break;
+			}
+		}
+		if(index == -1) {
+			return x+";"+z;
+		}
+		return blockData.get(index);
+	}
+	
+	public ArrayList<BlockChange> transformData(String data) {
+		String [] elements = data.split(":");
+		ArrayList<BlockChange> list = new ArrayList<>(elements.length);
+		for(int i = 1; i < elements.length; i++) {
+			list.add(new BlockChange(elements[i].split(";")));
+		}
+		return list;
 	}
 	
 	@Override
@@ -208,7 +237,7 @@ public class LocalWorld extends World {
 	public void removeBlock(int x, int y, int z) {
 		Chunk ch = getChunk(x, z);
 		if (ch != null) {
-			ch.removeBlockAt(x & 15, y, z & 15);
+			ch.removeBlockAt(x & 15, y, z & 15, true);
 		}
 	}
 	
@@ -216,7 +245,7 @@ public class LocalWorld extends World {
 	public void placeBlock(int x, int y, int z, Block b) {
 		Chunk ch = getChunk(x, z);
 		if (ch != null) {
-			ch.addBlockAt(x & 15, y, z & 15, b);
+			ch.addBlockAt(x & 15, y, z & 15, b, true);
 		}
 	}
 	
@@ -330,13 +359,14 @@ public class LocalWorld extends World {
 		}
 		for(int k = minK; k < visibleChunks.length; k++) {
 			visibleChunks[k].setLoaded(false);
+			chunks.remove(visibleChunks[k]);
 			wio.saveChunk(visibleChunks[k], visibleChunks[k].getX(), visibleChunks[k].getZ());
-		}
-		if (minK != visibleChunks.length) { // if atleast chunk got unloaded
-			wio.saveWorldData();
 		}
 		visibleChunks = newVisibles;
 		lastX = x;
 		lastZ = z;
+		if (minK != visibleChunks.length) { // if atleast one chunk got unloaded
+			wio.saveWorldData();
+		}
 	}
 }

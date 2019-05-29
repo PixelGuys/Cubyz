@@ -1,26 +1,32 @@
 package io.cubyz.save;
 
+import java.io.BufferedWriter;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
 import io.cubyz.world.Chunk;
+import io.cubyz.world.LocalWorld;
 import io.cubyz.world.World;
 
 public class WorldIO {
 
 	private File dir;
 	private World world;
+	private ArrayList<String> blockData = new ArrayList<>();
+	private ArrayList<int[]> chunkData = new ArrayList<>();
 	
-	// CHANGING FINAL VARIABLES WILL BREAK COMPATIBILITY WITH EXISTING SAVES!!
-	public static final int REGION_RADIUS = 8; // the chunk radius of a "region" file
+	// CHANGING FINAL VARIABLES WILL BREAK COMPATIBILITY WITH EXISTING SAVES!! WHAT FINAL VARIABLES???
+	/*public static final int REGION_RADIUS = 8; // the chunk radius of a "region" file
 	
 	private class RegionData {
 		
@@ -34,7 +40,7 @@ public class WorldIO {
 			chunks[x][z] = ch;
 		}
 		
-	}
+	}*/
 	
 	public WorldIO(World world, File directory) {
 		dir = directory;
@@ -42,6 +48,11 @@ public class WorldIO {
 			dir.mkdirs();
 		}
 		this.world = world;
+		
+		// TODO: make this more general to World rather than LocalWorld.
+		LocalWorld w = (LocalWorld) world;
+		w.blockData = blockData;
+		w.chunkData = chunkData;
 	}
 	
 	public boolean hasWorldData() {
@@ -68,16 +79,28 @@ public class WorldIO {
 	public void saveWorldData() {
 		try {
 			DataOutputStream out = new DataOutputStream(new FileOutputStream(new File(dir, "world.dat")));
-			File regions = new File(dir, "regions");
+			/*File regions = new File(dir, "regions");
 			if (!regions.exists()) {
 				regions.mkdir();
-			}
+			}*/
 			out.writeUTF(world.getName());
 			out.writeInt(world.getHeight());
 			out.writeInt(world.getSeed());
 			out.writeInt(world.getEntities().length);
 			for (Entity ent : world.getEntities()) {
 				EntityIO.saveEntity(ent, out);
+			}
+			out.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		try {
+			BufferedWriter out = new BufferedWriter(new FileWriter(new File(dir, "region.dat"), false));
+			for(String str : blockData) {
+				if(str.contains(":")) {
+					out.write(str);
+					out.newLine();
+				}
 			}
 			out.close();
 		} catch (IOException e) {
@@ -90,11 +113,30 @@ public class WorldIO {
 	}
 	
 	public void saveChunk(Chunk ch, int x, int z) {
-		int rx = (int) Math.floor((double) x / 16);
+		/*int rx = (int) Math.floor((double) x / 16);
 		int rz = (int) Math.floor((double) z / 16);
-		File rf = new File(dir, "regions/r." + rx + "." + rz + ".dat");
-		/*
-		try {
+		File rf = new File(dir, "regions/r." + rx + "." + rz + ".dat");*/
+		System.out.println("Storing…");
+		String str = ch.createTextLine();
+		int[] cd = ch.getData();
+		int index = -1;
+		for(int i = 0; i < blockData.size(); i++) {
+			int [] cd2 = chunkData.get(i);
+			if(cd[0] == cd2[0] && cd[1] == cd2[1]) {
+				index = i;
+				break;
+			}
+		}
+		if(index == -1) {
+			blockData.add(str);
+			chunkData.add(cd);
+		}
+		else {
+			blockData.set(index, str);
+			chunkData.set(index, cd);
+		}
+		
+		/*try {
 			System.out.println("Saving..");
 			RegionData data = new RegionData();
 			if (rf.exists()) {
@@ -130,12 +172,6 @@ public class WorldIO {
 						dos.writeBoolean(false);
 					} else {
 						dos.writeBoolean(true);
-						for (BlockInstance bi : ck.list()) {
-							int lx = bi.getX() & 15;
-							int ly = bi.getY();
-							int lz = bi.getZ() & 15;
-							
-						}
 						for (int a = 0; a < 16; a++) {
 							for (int c = 0; c < 16; c++) {
 								for (int b = 0; b < world.getHeight(); b++) {
@@ -155,11 +191,10 @@ public class WorldIO {
 			dos.close();
 		} catch (Exception e) {
 			e.printStackTrace();
-		}
-		*/ // temporaly disabled for being TOO SLOW
+		}*/ // forever disabled for being outdated and TOO slow.
 	}
 	
-	public void saveAround(int x, int z) {
+	/*public void saveAround(int x, int z) {
 		int cx = x / 16;
 		int cz = z / 16;
 		for (int i = cx - REGION_RADIUS / 2; i < cx + REGION_RADIUS / 2; i++) {
@@ -170,6 +205,6 @@ public class WorldIO {
 				}
 			}
 		}
-	}
+	}*/
 	
 }

@@ -12,11 +12,13 @@ import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.Ore;
 import io.cubyz.blocks.TileEntity;
 import io.cubyz.entity.Player;
+import io.cubyz.save.BlockChange;
 
 public class Chunk {
 
 	private BlockInstance[][][] inst;
 	private ArrayList<BlockInstance> list = new ArrayList<>();
+	private ArrayList<BlockChange> changes; // Reports block changes. Only those will be saved!s
 	//private ArrayList<BlockInstance> visibles = new ArrayList<>();
 	private BlockInstance[] visibles = new BlockInstance[10]; // Using an array here to speed up the renderer.
 	private int visiblesSize = 0;
@@ -74,10 +76,11 @@ public class Chunk {
 	
 	private World world;
 	
-	public Chunk(int ox, int oy, World world) {
+	public Chunk(int ox, int oy, World world, ArrayList<BlockChange> changes) {
 		this.ox = ox;
 		this.oy = oy;
 		this.world = world;
+		this.changes = changes;
 	}
 	
 	public void setLoaded(boolean loaded) {
@@ -146,7 +149,7 @@ public class Chunk {
 				if(!bi.getBlock().isDegradable() || b.isDegradable()) {
 					return;
 				}
-				removeBlockAt(rx, y, rz);
+				removeBlockAt(rx, y, rz, false);
 			}
 		}
 		BlockInstance inst0 = new BlockInstance(b, this);
@@ -260,7 +263,25 @@ public class Chunk {
 				}
 			}
 		}
+		
+		applyBlockChanges();
 		generated = true;
+	}
+	
+	// Apply Block Changes loaded from file/stored in WorldIO
+	public void applyBlockChanges() {
+		for(BlockChange bc : changes) {
+			if(bc.newType == -1) {
+				removeBlockAt(bc.x, bc.y, bc.z, false);
+				continue;
+			}
+			Block bl = (Block) CubyzRegistries.BLOCK_REGISTRY.registered()[bc.newType];
+			if(bc.oldType == -1) {
+				addBlockAt(bc.x, bc.y, bc.z, bl, false);
+				continue;
+			}
+			inst[bc.x][bc.y][bc.z].setBlock(bl);
+		}
 	}
 	
 	// Loads the chunk
@@ -407,35 +428,56 @@ public class Chunk {
 		return false;
 	}
 	
-	public void removeBlockAt(int x, int y, int z) {
+	public void removeBlockAt(int x, int y, int z, boolean registerBlockChange) {
 		BlockInstance bi = getBlockInstanceAt(x, y, z);
-		if (bi != null) {
-			hideBlock(bi);
-			list.remove(bi);
-			if (bi.getBlock().hasTileEntity()) {
-				// TODO find tile entity
-			}
-			inst[x][y][z] = null;
-			BlockInstance[] neighbors = bi.getNeighbors();
-			for (int i = 0; i < neighbors.length; i++) {
-				BlockInstance inst = neighbors[i];
-				if (inst != null && inst != bi) {
-					Chunk ch = getChunk(inst.getX(), inst.getZ());
-					if (!ch.contains(inst)) {
-						ch.revealBlock(inst);
-					}
+		if(bi == null)
+			return;
+		hideBlock(bi);
+		list.remove(bi);
+		if (bi.getBlock().hasTileEntity()) {
+			// TODO find tile entity
+		}
+		inst[x][y][z] = null;
+		BlockInstance[] neighbors = bi.getNeighbors();
+		for (int i = 0; i < neighbors.length; i++) {
+			BlockInstance inst = neighbors[i];
+			if (inst != null && inst != bi) {
+				Chunk ch = getChunk(inst.getX(), inst.getZ());
+				if (!ch.contains(inst)) {
+					ch.revealBlock(inst);
 				}
 			}
-			inst[x][y][z] = null;
+		}
+		inst[x][y][z] = null;
+
+		if(registerBlockChange) {
+			// Registers blockChange:
+			int index = -1; // Checks if it is already in the list
+			for(int i = 0; i < changes.size(); i++) {
+				BlockChange bc = changes.get(i);
+				if(bc.x == x && bc.x == x && bc.x == x) {
+					index = i;
+					break;
+				}
+			}
+			if(index == -1) { // Creates a new object if the block wasn't changed before
+				changes.add(new BlockChange(bi.getID(), -1, x, y, z));
+				return;
+			}
+			if(-1 == changes.get(index).oldType) { // Removes the object if the block reverted to it's original state.
+				changes.remove(index);
+				return;
+			}
+			changes.get(index).newType = -1;
 		}
 	}
 	
-	public void addBlockAt(int x, int y, int z, Block b) {
+	public void addBlockAt(int x, int y, int z, Block b, boolean registerBlockChange) {
 		int wx = ox << 4;
 		int wy = oy << 4;
 		if(y >= world.getHeight())
 			return;
-		removeBlockAt(x, y, z);
+		removeBlockAt(x, y, z, false);
 		BlockInstance inst0 = new BlockInstance(b, this);
 		inst0.setPosition(new Vector3i(x + wx, y, z + wy));
 		inst0.setWorld(world);
@@ -470,6 +512,27 @@ public class Chunk {
 				}
 			}
 		}
+
+		if(registerBlockChange) {
+			// Registers blockChange:
+			int index = -1; // Checks if it is already in the list
+			for(int i = 0; i < changes.size(); i++) {
+				BlockChange bc = changes.get(i);
+				if(bc.x == x && bc.x == x && bc.x == x) {
+					index = i;
+					break;
+				}
+			}
+			if(index == -1) { // Creates a new object if the block wasn't changed before
+				changes.add(new BlockChange(-1, b.ID, x, y, z));
+				return;
+			}
+			if(b.ID == changes.get(index).oldType) { // Removes the object if the block reverted to it's original state.
+				changes.remove(index);
+				return;
+			}
+			changes.get(index).newType = b.ID;
+		}
 	}
 	
 	public Vector3f getMin(Player localPlayer) {
@@ -480,4 +543,23 @@ public class Chunk {
 		return new Vector3f(((ox << 4) - localPlayer.getPosition().x + 16) - localPlayer.getPosition().relX, 255, ((oy << 4) - localPlayer.getPosition().z + 16) - localPlayer.getPosition().relZ);
 	}
 	
+	public String createTextLine() {
+		StringBuilder sb = new StringBuilder();
+		sb.append(ox);
+		sb.append(';');
+		sb.append(oy);
+		for(int i = 0; i < changes.size(); i++) {
+			sb.append(':');
+			changes.get(i).addToText(sb);
+		}
+		System.out.println(sb.toString());
+		return sb.toString();
+	}
+	
+	public int[] getData() {
+		int [] data = new int[2];
+		data[0] = ox;
+		data[1] = oy;
+		return data;
+	}
 }

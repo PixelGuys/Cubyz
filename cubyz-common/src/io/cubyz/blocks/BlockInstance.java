@@ -78,6 +78,10 @@ public class BlockInstance {
 		return block;
 	}
 	
+	public void setBlock(Block b) {
+		block = b;
+	}
+	
 	public void setPosition(Vector3i pos) {
 		this.pos = pos;
 	}
