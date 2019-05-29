@@ -53,7 +53,7 @@ public abstract class World {
 	public abstract void placeBlock(int x, int y, int z, Block b);
 	
 	public int getHighestBlock(int x, int z) {
-		for (int y = 255; y > 0; y--) {
+		for (int y = getHeight(); y > 0; y--) {
 			if (getBlock(x, y, z) != null) {
 				return y;
 			}

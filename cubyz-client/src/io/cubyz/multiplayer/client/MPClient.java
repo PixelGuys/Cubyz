@@ -2,6 +2,7 @@ package io.cubyz.multiplayer.client;
 
 import java.util.ArrayList;
 
+import io.cubyz.CubyzLogger;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
@@ -77,6 +78,10 @@ public class MPClient {
 		}
 	}
 	
+	public void fullConnect() {
+		cch.connect();
+	}
+	
 	/**
 	 * Disconnect from old server if the client was connected.
 	 * 
@@ -99,8 +104,8 @@ public class MPClient {
 						@Override
 						public void initChannel(SocketChannel ch) throws Exception {
 							ChannelPipeline p = ch.pipeline();
-							p.addLast(cch);
 							//p.addLast(new LoggingHandler(LogLevel.INFO)); // debugging info
+							p.addLast(cch);
 						}
 					});
 			// Start the client.

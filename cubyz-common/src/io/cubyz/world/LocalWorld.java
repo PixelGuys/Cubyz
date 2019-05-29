@@ -42,7 +42,7 @@ public class LocalWorld extends World {
 		
 		public void queue(Chunk ch) {
 			if (!isQueued(ch)) {
-				if (loadList.size() == MAX_QUEUE_SIZE) {
+				if (loadList.size() >= MAX_QUEUE_SIZE) {
 					CubyzLogger.instance.info("Hang on, the Local-Chunk-Thread's queue is full, blocking!");
 					while (!loadList.isEmpty()) {
 						System.out.print(""); // again, used as replacement to Thread.onSpinWait(), also necessary due to some JVM oddities
@@ -66,7 +66,7 @@ public class LocalWorld extends World {
 			while (true) {
 				if (!loadList.isEmpty()) {
 					Chunk popped = loadList.pop();
-//					CubyzLogger.instance.fine("Generating " + popped.chunk.getX() + "," + popped.chunk.getZ());
+					//CubyzLogger.instance.fine("Generating " + popped.getX() + "," + popped.getZ());
 					synchronousGenerate(popped);
 					popped.load();
 					//seed = (int) System.currentTimeMillis(); // enable it if you want fun (don't forget to disable before commit!!!)
@@ -74,6 +74,14 @@ public class LocalWorld extends World {
 				System.out.print("");
 			}
 		}
+	}
+	
+	public String getName() {
+		return name;
+	}
+	
+	public void setName(String name) {
+		this.name = name;
 	}
 	
 	public LocalWorld() {
@@ -88,6 +96,11 @@ public class LocalWorld extends World {
 		thread.start();
 		
 		wio = new WorldIO(this, new File("saves/" + name));
+		if (wio.hasWorldData()) {
+			wio.loadWorldData();
+		} else {
+			wio.saveWorldData();
+		}
 	}
 	
 	@Override
@@ -139,6 +152,8 @@ public class LocalWorld extends World {
 		float[][] oreMap = Noise.generateMapFragment(x, y, 16, 16, 128, seed - 3 * (seed - 1 & Integer.MAX_VALUE));
 		float[][] heatMap = Noise.generateMapFragment(x, y, 16, 16, 4096, seed ^ 123456789);
 		ch.generateFrom(heightMap, vegetationMap, oreMap, heatMap);
+		
+		wio.saveChunk(ch, ch.getX(), ch.getZ());
 	}
 	
 	@Override
@@ -213,8 +228,7 @@ public class LocalWorld extends World {
 			en.update();
 		}
 		// Tile Entities
-		Chunk[] chks = chunks.toArray(new Chunk[chunks.size()]);
-		for (Chunk ch : chks) { // will get slow, because chunks aren't removed due to no saving
+		for (Chunk ch : visibleChunks) { // will get slow, because chunks aren't removed due to no saving
 			if (ch.isLoaded()) {
 				TileEntity[] tileEntities = ch.tileEntities().toArray(new TileEntity[0]);
 				for (TileEntity te : tileEntities) {
@@ -316,6 +330,10 @@ public class LocalWorld extends World {
 		}
 		for(int k = minK; k < visibleChunks.length; k++) {
 			visibleChunks[k].setLoaded(false);
+			wio.saveChunk(visibleChunks[k], visibleChunks[k].getX(), visibleChunks[k].getZ());
+		}
+		if (minK != visibleChunks.length) { // if atleast chunk got unloaded
+			wio.saveWorldData();
 		}
 		visibleChunks = newVisibles;
 		lastX = x;

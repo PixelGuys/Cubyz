@@ -3,7 +3,9 @@ package io.cubyz.multiplayer.client;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 
+import io.cubyz.Constants;
 import io.cubyz.CubyzLogger;
+import io.cubyz.client.Cubyz;
 import io.cubyz.multiplayer.Packet;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
@@ -32,6 +34,7 @@ public class MPClientHandler extends ChannelInboundHandlerAdapter {
 				public void send(String msg) {
 					ByteBuf buf = ctx.alloc().buffer(1 + msg.length());
 					buf.writeByte(Packet.PACKET_CHATMSG);
+					buf.writeShort(msg.length());
 					buf.writeCharSequence(msg, Charset.forName("UTF-8")); // a message using UTF-16 or UTF-32 would crash the game!
 					ctx.writeAndFlush(buf);
 				}
@@ -51,14 +54,20 @@ public class MPClientHandler extends ChannelInboundHandlerAdapter {
 		ctx.writeAndFlush(buf);
 	}
 	
+	public void connect() {
+		ByteBuf buf = ctx.alloc().buffer(1);
+		buf.writeByte(Packet.PACKET_LISTEN);
+		buf.writeCharSequence(Cubyz.profile.getUUID().toString(), Constants.CHARSET_IMPL);
+		ctx.writeAndFlush(buf);
+	}
+	
 	@Override
 	public void channelActive(ChannelHandlerContext ctx) {
 		this.ctx = ctx;
 		messages = new ArrayList<>();
 		ByteBuf buf = ctx.alloc().buffer(1);
 		buf.writeByte(Packet.PACKET_GETVERSION);
-		ctx.write(buf);
-		ctx.flush();
+		ctx.writeAndFlush(buf);
 		channelActive = true;
 	}
 
@@ -69,7 +78,7 @@ public class MPClientHandler extends ChannelInboundHandlerAdapter {
 		
 		if (responseType == Packet.PACKET_GETVERSION) {
 			int length = buf.readUnsignedByte();
-			String raw = buf.readCharSequence(length, Charset.forName("UTF-8")).toString();
+			String raw = buf.readCharSequence(length, Constants.CHARSET_IMPL).toString();
 			cl.getLocalServer().brand = raw.split(";")[0];
 			cl.getLocalServer().version = raw.split(";")[1];
 			CubyzLogger.instance.fine("[MPClientHandler] Raw version + brand: " + raw);
@@ -77,17 +86,26 @@ public class MPClientHandler extends ChannelInboundHandlerAdapter {
 		
 		if (responseType == Packet.PACKET_PINGDATA) {
 			PingResponse pr = new PingResponse();
-			pr.motd = buf.readCharSequence(buf.readShort(), Charset.forName("UTF-8")).toString();
+			pr.motd = buf.readCharSequence(buf.readShort(), Constants.CHARSET_IMPL).toString();
 			pr.onlinePlayers = buf.readInt();
 			pr.maxPlayers = buf.readInt();
 			cl.getLocalServer().lastPingResponse = pr;
 		}
 		
 		if (responseType == Packet.PACKET_PINGPONG) {
-			ByteBuf b = ctx.alloc().buffer(5);
+			ByteBuf b = ctx.alloc().buffer(37);
 			b.writeByte(Packet.PACKET_PINGPONG);
-			b.writeInt(buf.readInt());
+			b.writeCharSequence(Cubyz.profile.getUUID().toString(), Constants.CHARSET_IMPL);
+			ctx.write(b);
 		}
+		
+		if (responseType == Packet.PACKET_CHATMSG) {
+			short len = buf.readShort();
+			String chat = buf.readCharSequence(len, Constants.CHARSET_IMPL).toString();
+			messages.add(chat);
+		}
+		
+		buf.release();
 	}
 
 	@Override
@@ -97,7 +115,6 @@ public class MPClientHandler extends ChannelInboundHandlerAdapter {
 
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-		// Close the connection when an exception is raised.
 		cause.printStackTrace();
 		ctx.close();
 	}

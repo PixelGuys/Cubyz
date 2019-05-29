@@ -152,6 +152,10 @@ public class Chunk {
 		BlockInstance inst0 = new BlockInstance(b, this);
 		inst0.setPosition(new Vector3i(x, y, z));
 		inst0.setWorld(world);
+		if (b.hasTileEntity()) {
+			TileEntity te = b.createTileEntity(inst0);
+			tileEntities.add(te);
+		}
 		list.add(inst0);
 		inst[rx][y][rz] = inst0;
 		if(generated) {
@@ -407,7 +411,9 @@ public class Chunk {
 		BlockInstance bi = getBlockInstanceAt(x, y, z);
 		if (bi != null) {
 			list.remove(bi);
-			hideBlock(bi);
+			if (bi.getBlock().hasTileEntity()) {
+				// TODO find tile entity
+			}
 			inst[x][y][z] = null;
 			BlockInstance[] neighbors = bi.getNeighbors();
 			for (int i = 0; i < neighbors.length; i++) {
@@ -432,6 +438,10 @@ public class Chunk {
 		BlockInstance inst0 = new BlockInstance(b, this);
 		inst0.setPosition(new Vector3i(x + wx, y, z + wy));
 		inst0.setWorld(world);
+		if (b.hasTileEntity()) {
+			TileEntity te = b.createTileEntity(inst0);
+			tileEntities.add(te);
+		}
 		list.add(inst0);
 		inst[x][y][z] = inst0;
 		BlockInstance[] neighbors = inst0.getNeighbors();

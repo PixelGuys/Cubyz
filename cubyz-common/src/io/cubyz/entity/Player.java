@@ -3,13 +3,14 @@ package io.cubyz.entity;
 import org.joml.Vector3f;
 
 import io.cubyz.api.CubyzRegistries;
+import io.cubyz.command.ICommandSource;
 
 /**
  * Base class for both implementation and MP version of Player.
  * @author zenith391
  *
  */
-public abstract class Player extends Entity {
+public abstract class Player extends Entity implements ICommandSource {
 
 	public Player() {
 		super(CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player"));

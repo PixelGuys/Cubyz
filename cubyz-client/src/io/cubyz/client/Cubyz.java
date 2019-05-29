@@ -3,6 +3,7 @@ package io.cubyz.client;
 import java.io.File;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -31,6 +32,7 @@ import org.lwjgl.glfw.GLFW;
 import io.cubyz.ClientOnly;
 import io.cubyz.Constants;
 import io.cubyz.CubyzLogger;
+import io.cubyz.IRenderablePair;
 import io.cubyz.Utilities;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
@@ -38,6 +40,7 @@ import io.cubyz.blocks.BlockInstance;
 import io.cubyz.client.loading.LoadThread;
 import io.cubyz.entity.Player;
 import io.cubyz.items.Inventory;
+import io.cubyz.multiplayer.GameProfile;
 import io.cubyz.multiplayer.client.MPClient;
 import io.cubyz.multiplayer.client.PingResponse;
 import io.cubyz.multiplayer.server.CubyzServer;
@@ -49,6 +52,7 @@ import io.cubyz.ui.ToastManager;
 import io.cubyz.ui.ToastManager.Toast;
 import io.cubyz.ui.UISystem;
 import io.cubyz.utils.DiscordIntegration;
+import io.cubyz.utils.ResourceManager;
 import io.cubyz.utils.ResourcePack;
 import io.cubyz.utils.ResourceUtilities;
 import io.cubyz.utils.ResourceUtilities.BlockModel;
@@ -88,6 +92,7 @@ public class Cubyz implements IGameLogic {
 	public static int serverCapacity = 2;
 	public static int serverOnline = 1;
 
+	public static GameProfile profile;
 	private static MPClient mpClient;
 	public static boolean isIntegratedServer = true;
 	public static boolean isOnlineServerOpened = false;
@@ -97,6 +102,7 @@ public class Cubyz implements IGameLogic {
 	public static Cubyz instance;
 	
 	public static Deque<Runnable> renderDeque = new ArrayDeque<>();
+	public static HashMap<String, Mesh> cachedDefaultModels = new HashMap<>();
 
 	public Cubyz() {
 		instance = this;
@@ -136,6 +142,7 @@ public class Cubyz implements IGameLogic {
 	public static void requestJoin(String host, int port) {
 		if (mpClient != null) {
 			mpClient.connect(host, port);
+			mpClient.fullConnect();
 			serverIP = host;
 			serverPort = port;
 		} else {
@@ -196,7 +203,7 @@ public class Cubyz implements IGameLogic {
 		ResourcePack baserp = new ResourcePack();
 		baserp.path = new File("assets/cubyz");
 		baserp.name = "Cubyz";
-		//ResourceManager.packs.add(baserp);
+		ResourceManager.packs.add(baserp);
 		
 		MainMenuGUI mmg = new MainMenuGUI();
 		gameUI.setMenu(mmg);
@@ -206,20 +213,36 @@ public class Cubyz implements IGameLogic {
 			// TODO use new resource model
 			Resource rsc = block.getRegistryID();
 			try {
+				IRenderablePair pair = block.getBlockPair();
+				Texture tex = null;
+				Mesh mesh = null;
 				BlockModel bm = null;
-				//bm = ResourceUtilities.loadModel(rsc);
-				if (block.isTextureConverted()) { // block.texConverted
-					block.getBlockPair().set("textureCache", new Texture("assets/cubyz/textures/blocks/" + block.getTexture() + ".png"));
-				} else {
-					block.getBlockPair().set("textureCache", new Texture(TextureConverter.fromBufferedImage(
-							TextureConverter.convert(ImageIO.read(new File("assets/cubyz/textures/blocks/" + block.getTexture() + ".png")),
-									block.getTexture()))));
+				bm = ResourceUtilities.loadModel(new Resource("cubyz:grass"));
+				Mesh defaultMesh = null;
+				for (String key : cachedDefaultModels.keySet()) {
+					if (key.equals(bm.model)) {
+						defaultMesh = cachedDefaultModels.get(key);
+					}
 				}
-				// Assuming mesh too is empty
-				block.getBlockPair().set("meshCache", OBJLoader.loadMesh("assets/cubyz/models/cube.obj"));
-				((Mesh) block.getBlockPair().get("meshCache")).setBoundingRadius(2.0F);
-				Material material = new Material((Texture) block.getBlockPair().get("textureCache"), 1.0F);
-				((Mesh) block.getBlockPair().get("meshCache")).setMaterial(material);
+				if (defaultMesh == null) {
+					defaultMesh = OBJLoader.loadMesh("assets/cubyz/models/cube.obj");
+					defaultMesh.setBoundingRadius(2.0f);
+					cachedDefaultModels.put(bm.model, defaultMesh);
+				}
+				if (block.isTextureConverted()) { // block.texConverted
+					tex = new Texture("assets/cubyz/textures/blocks/" + block.getTexture() + ".png");
+				} else {
+					tex = new Texture(TextureConverter.fromBufferedImage(
+							TextureConverter.convert(ImageIO.read(new File("assets/cubyz/textures/blocks/" + block.getTexture() + ".png")),
+									block.getTexture())));
+				}
+				
+				mesh = defaultMesh.cloneNoMaterial();
+				Material material = new Material(tex, 1.0F);
+				mesh.setMaterial(material);
+				
+				pair.set("textureCache", tex);
+				pair.set("meshCache", mesh);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -233,10 +256,17 @@ public class Cubyz implements IGameLogic {
 		LoadThread lt = new LoadThread();
 		lt.start();
 		
+		if (System.getProperty("account.password") == null) {
+			profile = new GameProfile("xX_DemoGuy_Xx");
+		} else {
+			profile = new GameProfile(GameProfile.login(System.getProperty("account.username"), System.getProperty("account.password").toCharArray()));
+		}
+		
 		CubyzServer server = new CubyzServer(serverPort);
 		server.start(true);
 		mpClient = new MPClient();
 		requestJoin("localhost");
+		mpClient.getChat().send("Hello World");
 		//pingServer("127.0.0.1");
 		
 		System.gc();
@@ -246,7 +276,7 @@ public class Cubyz implements IGameLogic {
 		System.out.println("Grass block texture : " + model.texture);
 		System.out.println("Grass block model   : "   + model.model);
 		
-		ToastManager.queuedToasts.add(new Toast("Woohoo", "Welcome to 0.3.1, with brand new toasts!"));
+		ToastManager.queuedToasts.add(new Toast("Woohoo", "Welcome to 0.4.0, with brand new toasts!"));
 		System.out.println("Pushed toast");
 	}
 
@@ -254,48 +284,48 @@ public class Cubyz implements IGameLogic {
 	
 	@Override
 	public void input(Window window) {
-		if (window.isKeyPressed(GLFW.GLFW_KEY_F3)) {
+		if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_F3)) {
 			Cubyz.clientShowDebug = !Cubyz.clientShowDebug;
 			Keyboard.setKeyPressed(GLFW.GLFW_KEY_F3, false);
 		}
-		if (window.isKeyPressed(GLFW.GLFW_KEY_F11)) {
+		if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_F11)) {
 			window.setFullscreen(!window.isFullscreen());
 			Keyboard.setKeyPressed(GLFW.GLFW_KEY_F11, false);
 		}
 		if (!gameUI.isGUIFullscreen() && world != null) {
-			if (window.isKeyPressed(GLFW.GLFW_KEY_W)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_W)) {
 				playerInc.z = -1;
 			}
-			if (window.isKeyPressed(GLFW.GLFW_KEY_LEFT_CONTROL)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT_CONTROL)) {
 				playerInc.z = -2;
 			}
-			if (window.isKeyPressed(GLFW.GLFW_KEY_S)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_S)) {
 				playerInc.z = 1;
 			}
-			if (window.isKeyPressed(GLFW.GLFW_KEY_A)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_A)) {
 				playerInc.x = -1;
 			}
-			if (window.isKeyPressed(GLFW.GLFW_KEY_D)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_D)) {
 				playerInc.x = 1;
 			}
-			if (window.isKeyPressed(GLFW.GLFW_KEY_SPACE) && world.getLocalPlayer().vy == 0) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_SPACE) && world.getLocalPlayer().vy == 0) {
 				world.getLocalPlayer().vy = 0.25F;
 			}
-			if (window.isKeyPressed(GLFW.GLFW_KEY_LEFT_SHIFT)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT_SHIFT)) {
 				if (world.getLocalPlayer().isFlying()) {
 					world.getLocalPlayer().vy = -0.25F;
 				}
 			}
-			if (window.isKeyPressed(GLFW.GLFW_KEY_LEFT_SHIFT)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT_SHIFT)) {
 				playerInc.y = -1;
 			}
-			if (window.isKeyPressed(GLFW.GLFW_KEY_RIGHT)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_RIGHT)) {
 				light.getDirection().x += 0.01F;
 				if (light.getDirection().x > 1.0F) {
 					light.getDirection().x = 0.0F;
 				}
 			}
-			if (window.isKeyPressed(GLFW.GLFW_KEY_ESCAPE) && mouse.isGrabbed()) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_ESCAPE) && mouse.isGrabbed()) {
 				if (gameUI.getMenuGUI() == null) {
 					Keyboard.setKeyPressed(GLFW.GLFW_KEY_ESCAPE, false);
 					gameUI.setMenu(new PauseGUI());
@@ -312,28 +342,28 @@ public class Cubyz implements IGameLogic {
 				buildCooldown = 10;
 			}
 			//inventorySelection = mouse.getMouseWheelPosition() & 7; TODO(@zenith391): Update Jungle Engine to handle mousewheel.
-			if (window.isKeyPressed(GLFW.GLFW_KEY_1)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_1)) {
 				inventorySelection = 0;
 			}
-			if (window.isKeyPressed(GLFW.GLFW_KEY_2)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_2)) {
 				inventorySelection = 1;
 			}
-			if (window.isKeyPressed(GLFW.GLFW_KEY_3)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_3)) {
 				inventorySelection = 2;
 			}
-			if (window.isKeyPressed(GLFW.GLFW_KEY_4)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_4)) {
 				inventorySelection = 3;
 			}
-			if (window.isKeyPressed(GLFW.GLFW_KEY_5)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_5)) {
 				inventorySelection = 4;
 			}
-			if (window.isKeyPressed(GLFW.GLFW_KEY_6)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_6)) {
 				inventorySelection = 5;
 			}
-			if (window.isKeyPressed(GLFW.GLFW_KEY_7)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_7)) {
 				inventorySelection = 6;
 			}
-			if (window.isKeyPressed(GLFW.GLFW_KEY_8)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_8)) {
 				inventorySelection = 7;
 			}
 			msd.selectSpatial(world.getVisibleChunks(), world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate());

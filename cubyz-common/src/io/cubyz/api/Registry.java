@@ -22,6 +22,17 @@ public class Registry<T extends IRegistryElement> {
 		}
 	}
 	
+	public int indexOf(T element) {
+		int i = 0;
+		for (String key : hashMap.keySet()) {
+			if (key.equals(element.getRegistryID().toString())) {
+				return i;
+			}
+			i++;
+		}
+		return -1;
+	}
+	
 	public void register(T element) {
 		if (hashMap.containsKey(element.getRegistryID().toString())) {
 			throw new IllegalStateException(getType(element.getClass()) + " with identifier \"" + element.getRegistryID() + "\" is already registered!");
