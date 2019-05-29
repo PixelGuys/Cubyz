@@ -144,8 +144,6 @@ public class MainRenderer implements IRenderer {
 		for (Chunk ch : chunks) {
 			if(!frustumInt.testAab(ch.getMin(localPlayer),ch.getMax(localPlayer)))
 				continue;
-    		// using an array speeds up things
-			BlockInstance[] vis = ch.getVisibles().toArray(new BlockInstance[0]);
 			try {
 				for (int i = 0;; i++) { // The super fast try-for loop
 					BlockSpatial tmp = (BlockSpatial) vis[i].getSpatial();

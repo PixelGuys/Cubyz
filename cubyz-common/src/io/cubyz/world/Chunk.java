@@ -17,7 +17,9 @@ public class Chunk {
 
 	private BlockInstance[][][] inst;
 	private ArrayList<BlockInstance> list = new ArrayList<>();
-	private ArrayList<BlockInstance> visibles = new ArrayList<>();
+	//private ArrayList<BlockInstance> visibles = new ArrayList<>();
+	private BlockInstance[] visibles = new BlockInstance[10]; // Using an array here to speed up the renderer.
+	private int visiblesSize = 0;
 	private int ox, oy;
 	private boolean generated;
 	private boolean loaded;
@@ -98,7 +100,7 @@ public class Chunk {
 		return list;
 	}
 	
-	public ArrayList<BlockInstance> getVisibles() {
+	public BlockInstance[] getVisibles() {
 		return visibles;
 	}
 	
@@ -160,7 +162,7 @@ public class Chunk {
 			BlockInstance[] neighbors = inst0.getNeighbors();
 			for (int i = 0; i < neighbors.length; i++) {
 				if (blocksLight(neighbors[i], inst0.getBlock().isTransparent())) {
-					visibles.add(inst0);
+					revealBlock(inst0);
 					break;
 				}
 			}
@@ -280,7 +282,7 @@ public class Chunk {
 											&& (px != 15 || i != 1 || chx1)
 											&& (py != 0 || i != 3 || chy0)
 											&& (py != 15 || i != 2 || chy1)) {
-					visibles.add(bi);
+					revealBlock(bi);
 					break;
 				}
 			}
@@ -368,22 +370,47 @@ public class Chunk {
 	}
 	
 	public void hideBlock(BlockInstance bi) {
-		visibles.remove(bi);
+		int index = -1;
+		for(int i = 0; i < visiblesSize; i++) {
+			if(visibles[i] == bi) {
+				index = i;
+				break;
+			}
+		}
+		if(index == -1)
+			return;
+		visiblesSize--;
+		System.arraycopy(visibles, index+1, visibles, index, visiblesSize-index);
+		visibles[visiblesSize] = null;
+		if(visiblesSize <= visibles.length >> 1) { // Decrease capacity if the array is less than 50% filled.
+			BlockInstance[] old = visibles;
+			visibles = new BlockInstance[old.length >> 1]; // Increase size by 1.5. Similar to `ArrayList`.
+			System.arraycopy(old, 0, visibles, 0, visiblesSize);
+		}
 	}
 	
 	public void revealBlock(BlockInstance bi) {
-		visibles.add(bi);
+		if(visiblesSize == visibles.length) {
+			BlockInstance[] old = visibles;
+			visibles = new BlockInstance[visiblesSize + (visiblesSize >> 1)]; // Increase size by 1.5. Similar to `ArrayList`.
+			System.arraycopy(old, 0, visibles, 0, visiblesSize);
+		}
+		visibles[visiblesSize] = bi;
+		visiblesSize++;
 	}
 	
 	public boolean contains(BlockInstance bi) {
-		return visibles.contains(bi);
+		for(int i = 0; i < visiblesSize; i++) {
+			if(visibles[i] == bi)
+				return true;
+		}
+		return false;
 	}
 	
 	public void removeBlockAt(int x, int y, int z) {
 		BlockInstance bi = getBlockInstanceAt(x, y, z);
 		if (bi != null) {
 			list.remove(bi);
-			visibles.remove(bi);
 			if (bi.getBlock().hasTileEntity()) {
 				// TODO find tile entity
 			}
@@ -420,7 +447,7 @@ public class Chunk {
 		BlockInstance[] neighbors = inst0.getNeighbors();
 		for (int i = 0; i < neighbors.length; i++) {
 			if (blocksLight(neighbors[i], inst0.getBlock().isTransparent())) {
-				visibles.add(inst0);
+				revealBlock(inst0);
 				break;
 			}
 		}
