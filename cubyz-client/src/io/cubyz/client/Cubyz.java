@@ -5,6 +5,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.Random;
+import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -119,7 +120,9 @@ public class Cubyz implements IGameLogic {
 	@Override
 	public void cleanup() {
 		renderer.cleanup();
-		log.getHandlers()[0].close();
+		for (Handler handler : log.getHandlers()) {
+			handler.close();
+		}
 		DiscordIntegration.closeRPC();
 	}
 

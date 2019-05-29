@@ -34,6 +34,13 @@ public class NGraphics {
 		return nvgCreateImage(nvg, path, 0);
 	}
 	
+	public static void drawLine(int x, int y, int x2, int y2) {
+		nvgBeginPath(nvg);
+			nvgMoveTo(nvg, x, y);
+			nvgLineTo(nvg, x2, y2);
+		nvgFill(nvg);
+	}
+	
 	public static void drawImage(int id, int x, int y, int width, int height) {
 		imagePaint = nvgImagePattern(nvg, x, y, width, height, 0, id, 1f, imagePaint);
 		nvgBeginPath(nvg);

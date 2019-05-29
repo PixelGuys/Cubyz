@@ -26,6 +26,6 @@ hs_err_pid*
 .metadata/
 .recommenders/
 
-cubyz-client/logs/
-cubyz-client/cache/
-cubyz-client/saves/
+cubyz-client/logs
+cubyz-client/cache
+cubyz-client/saves
