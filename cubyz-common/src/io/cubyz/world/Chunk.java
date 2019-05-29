@@ -410,6 +410,7 @@ public class Chunk {
 	public void removeBlockAt(int x, int y, int z) {
 		BlockInstance bi = getBlockInstanceAt(x, y, z);
 		if (bi != null) {
+			hideBlock(bi);
 			list.remove(bi);
 			if (bi.getBlock().hasTileEntity()) {
 				// TODO find tile entity

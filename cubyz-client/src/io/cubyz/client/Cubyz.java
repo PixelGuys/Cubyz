@@ -265,11 +265,11 @@ public class Cubyz implements IGameLogic {
 			profile = new GameProfile(GameProfile.login(System.getProperty("account.username"), System.getProperty("account.password").toCharArray()));
 		}
 		
-		CubyzServer server = new CubyzServer(serverPort);
-		server.start(true);
+		//CubyzServer server = new CubyzServer(serverPort);
+		//server.start(true);
 		mpClient = new MPClient();
-		requestJoin("localhost");
-		mpClient.getChat().send("Hello World");
+		//requestJoin("localhost");
+		//mpClient.getChat().send("Hello World");
 		//pingServer("127.0.0.1");
 		
 		System.gc();
@@ -319,9 +319,6 @@ public class Cubyz implements IGameLogic {
 					world.getLocalPlayer().vy = -0.25F;
 				}
 			}
-			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT_SHIFT)) {
-				playerInc.y = -1;
-			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_RIGHT)) {
 				light.getDirection().x += 0.01F;
 				if (light.getDirection().x > 1.0F) {
@@ -334,15 +331,10 @@ public class Cubyz implements IGameLogic {
 					gameUI.setMenu(new PauseGUI());
 				}
 			}
-			if (mouse.isLeftButtonPressed() && !mouse.isGrabbed()) {
+			if ((mouse.isLeftButtonPressed() || mouse.isRightButtonPressed()) && !mouse.isGrabbed()) {
 				mouse.setGrabbed(true);
 				mouse.clearPos(window.getWidth() / 2, window.getHeight() / 2);
 				breakCooldown = 10;
-			}
-			if (mouse.isRightButtonPressed() && !mouse.isGrabbed()) {
-				mouse.setGrabbed(true);
-				mouse.clearPos(window.getWidth() / 2, window.getHeight() / 2);
-				buildCooldown = 10;
 			}
 			//inventorySelection = mouse.getMouseWheelPosition() & 7; TODO(@zenith391): Update Jungle Engine to handle mousewheel.
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_1)) {
@@ -398,9 +390,6 @@ public class Cubyz implements IGameLogic {
 						bobbingUp = true;
 					}
 				}
-			} else {
-				//System.out.println("no bobbing");
-				//playerBobbing = 0;
 			}
 			if (playerInc.y != 0) {
 				world.getLocalPlayer().vy = playerInc.y;
@@ -408,7 +397,7 @@ public class Cubyz implements IGameLogic {
 			if (playerInc.x != 0) {
 				world.getLocalPlayer().vx = playerInc.x;
 			}
-			ctx.getCamera().setPosition(/*world.getLocalPlayer().getPosition().x*/0, world.getLocalPlayer().getPosition().y + 1.5f + playerBobbing, /*world.getLocalPlayer().getPosition().z*/0);
+			ctx.getCamera().setPosition(0, world.getLocalPlayer().getPosition().y + 1.5f + playerBobbing, 0);
 		}
 		
 		if (!renderDeque.isEmpty()) {

@@ -16,7 +16,7 @@ public class GameLauncher extends Game {
 		if (showPrompt) {
 			GameOptionsPrompt prompt = new GameOptionsPrompt();
 			prompt.setLocationRelativeTo(null);
-			prompt.setTitle("Cubz Settings");
+			prompt.setTitle("Cubyz Settings");
 			prompt.setVisible(true);
 			while (prompt.isVisible()) {
 				System.out.print(""); // Avoid bugs
