@@ -29,18 +29,12 @@ public class Texture {
         this.id = id;
     }
 
-    public void bind() {
-    	if (id == Integer.MIN_VALUE) {
-    		if (is != null) {
-    			try {
-					id = loadTexture(is);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-    		} else {
-    			throw new IllegalStateException("ID not set and file name not providen.");
-    		}
-    	}
+    private void bind() { // As this is only called from the constructors there is no need to check id and is.
+    	try {
+			id = loadTexture(is);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
         glBindTexture(GL_TEXTURE_2D, id);
     }
 
@@ -61,11 +55,11 @@ public class Texture {
         PNGDecoder decoder = new PNGDecoder(is);
 
         // Load texture contents into a byte buffer
-        ByteBuffer buf = ByteBuffer.allocateDirect(
-                4 * decoder.getWidth() * decoder.getHeight());
         width = decoder.getWidth();
         height = decoder.getHeight();
-        decoder.decode(buf, decoder.getWidth() * 4, Format.RGBA);
+        ByteBuffer buf = ByteBuffer.allocateDirect(
+        		width * height << 2);
+        decoder.decode(buf, decoder.getWidth() << 2, Format.RGBA);
         buf.flip();
 
         // Create a new OpenGL texture 

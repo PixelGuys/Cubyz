@@ -52,13 +52,13 @@ public class MouseInput {
 			throw new IllegalStateException("init() must be called before setGrabbed");
 		}
 		if (grabbed != grab) {
-			if (grab == false) {
+			if (!grab) {
 				glfwSetInputMode(win.getWindowHandle(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 			}
-			if (grab == true) {
+			else {
 				glfwSetInputMode(win.getWindowHandle(), GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 			}
-			this.grabbed = grab;
+			grabbed = grab;
 		}
 	}
 
@@ -85,25 +85,15 @@ public class MouseInput {
 		});
 		glfwSetMouseButtonCallback(window.getWindowHandle(), (windowHandle, button, action, mode) -> {
 
-			if (action == GLFW_PRESS) {
+			if (action == GLFW_PRESS || action == GLFW_RELEASE) {
 				if (button == GLFW_MOUSE_BUTTON_1) {
-					leftButtonPressed = true;
+					leftButtonPressed = action == GLFW_PRESS;
 				}
-				if (button == GLFW_MOUSE_BUTTON_2) {
-					rightButtonPressed = true;
+				else if (button == GLFW_MOUSE_BUTTON_2) {
+					rightButtonPressed = action == GLFW_PRESS;
 				}
-				if (button == GLFW_MOUSE_BUTTON_3) {
-					middleButtonPressed = true;
-				}
-			} else if (action == GLFW_RELEASE) {
-				if (button == GLFW_MOUSE_BUTTON_1) {
-					leftButtonPressed = false;
-				}
-				if (button == GLFW_MOUSE_BUTTON_2) {
-					rightButtonPressed = false;
-				}
-				if (button == GLFW_MOUSE_BUTTON_3) {
-					middleButtonPressed = false;
+				else if (button == GLFW_MOUSE_BUTTON_3) {
+					middleButtonPressed = action == GLFW_PRESS;
 				}
 			}
 		});
@@ -122,21 +112,19 @@ public class MouseInput {
 		if (inWindow) {
 			double deltax = currentPos.x - previousPos.x;
 			double deltay = currentPos.y - previousPos.y;
-			boolean rotateX = deltax != 0;
-			boolean rotateY = deltay != 0;
-			if (rotateX) {
+			if (deltax != 0) {
 				displVec.y = (float) deltax;
 			}
-			if (rotateY) {
+			if (deltay != 0) {
 				displVec.x = (float) deltay;
 			}
 		}
 		previousPos.x = currentPos.x;
 		previousPos.y = currentPos.y;
 		if (grabbed) {
-			glfwSetCursorPos(window.getWindowHandle(), window.getWidth() / 2, window.getHeight() / 2);
-			previousPos.x = window.getWidth() / 2;
-			previousPos.y = window.getHeight() / 2;
+			glfwSetCursorPos(window.getWindowHandle(), window.getWidth() >> 1, window.getHeight() >> 1);
+			previousPos.x = window.getWidth() >> 1;
+			previousPos.y = window.getHeight() >> 1;
 		}
 	}
 

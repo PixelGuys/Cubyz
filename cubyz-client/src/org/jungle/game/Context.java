@@ -29,16 +29,18 @@ public class Context {
 	
 	public void setSpatials(Spatial[] gameItems) {
 		meshMap.clear();
-	    int numGameItems = gameItems != null ? gameItems.length : 0;
-	    for (int i=0; i<numGameItems; i++) {
-	        Spatial gameItem = gameItems[i];
-	        for (Mesh mesh : gameItem.getMeshes()) {
-		        List<Spatial> list = meshMap.get(mesh);
-		        if ( list == null ) {
-		            list = new ArrayList<>();
-		            meshMap.put(mesh, list);
-		        }
-		        list.add(gameItem);
+		if(gameItems != null) {
+			int numGameItems = gameItems.length;
+			for (int i = 0; i < numGameItems; i++) {
+				Spatial gameItem = gameItems[i];
+				for (Mesh mesh : gameItem.getMeshes()) {
+					List<Spatial> list = meshMap.get(mesh);
+					if (list == null) {
+						list = new ArrayList<>();
+						meshMap.put(mesh, list);
+					}
+					list.add(gameItem);
+				}
 	        }
 	    }
 	}

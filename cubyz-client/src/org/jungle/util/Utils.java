@@ -55,7 +55,7 @@ public class Utils {
 						break;
 					}
 					if (buffer.remaining() == 0) {
-						buffer = resizeBuffer(buffer, buffer.capacity() * 2);
+						buffer = resizeBuffer(buffer, buffer.capacity() << 1);
 					}
 				}
 			}
@@ -77,16 +77,17 @@ public class Utils {
 		BufferedInputStream bis = new BufferedInputStream(new FileInputStream(path), 4096);
 		StringBuilder b = new StringBuilder();
 		while (bis.available() != 0) {
-			char c = (char) bis.read();
-			b.append(c);
+			b.append(bis.read());
 		}
-		b.append((char) '\0');
+		b.append('\0');
 		bis.close();
 		return b.toString();
 	}
 
 	public static float[] listToArray(List<Float> list) {
-		int size = list != null ? list.size() : 0;
+		if(list == null)
+			return new float[0];
+		int size = list.size();
 		float[] floatArr = new float[size];
 		for (int i = 0; i < size; i++) {
 			floatArr[i] = list.get(i);
@@ -95,7 +96,9 @@ public class Utils {
 	}
 	
 	public static int[] listIntToArray(List<Integer> list) {
-		int size = list != null ? list.size() : 0;
+		if(list == null)
+			return new int[0];
+		int size = list.size();
 		int[] intArr = new int[size];
 		for (int i = 0; i < size; i++) {
 			intArr[i] = list.get(i);

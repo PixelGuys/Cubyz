@@ -49,19 +49,17 @@ public class OBJLoader {
 					normals.add(vec3fNorm);
 					break;
 				case "f":
-					Face face = null;
 					if (tokens.length > 4) {
 						//face = new Face(tokens[1], tokens[2], tokens[3], tokens[4]);
-						Face f1 = new Face(tokens[1], tokens[2], tokens[3], null);
-						Face f2 = new Face(tokens[3], tokens[1], tokens[4], null);
+						Face f1 = new Face(tokens[1], tokens[2], tokens[3]);
+						Face f2 = new Face(tokens[3], tokens[1], tokens[4]);
 						faces.add(f1);
 						faces.add(f2);
 					}
 					else if (tokens.length > 3) {
-						face = new Face(tokens[1], tokens[2], tokens[3], null);
-					}
-					if (face != null)
+						Face face = new Face(tokens[1], tokens[2], tokens[3]);
 						faces.add(face);
+					}
 					break;
 				default:
 					// Ignore other lines
@@ -84,12 +82,12 @@ public class OBJLoader {
 		float[] posArr = new float[posList.size() * 3];
 		int i = 0;
 		for (Vector3f pos : posList) {
-			posArr[i * 3] = pos.x;
-			posArr[(i * 3) + 1] = pos.y;
-			posArr[(i * 3) + 2] = pos.z;
-			i++;
+			posArr[i] = pos.x;
+			posArr[i + 1] = pos.y;
+			posArr[i + 2] = pos.z;
+			i += 3;
 		}
-		float[] textCoordArr = new float[posList.size() * 2];
+		float[] textCoordArr = new float[posList.size() << 1];
 		float[] normArr = new float[posList.size() * 3];
 
 		for (Face face : facesList) {
@@ -151,18 +149,20 @@ public class OBJLoader {
 		private IdxGroup[] idxGroups;
 
 		public Face(String v1, String v2, String v3, String v4) {
-			if (v4 == null) {
-				idxGroups = new IdxGroup[3];
-			} else {
-				idxGroups = new IdxGroup[4];
-			}
+			idxGroups = new IdxGroup[4];
 			// Parse the lines
 			idxGroups[0] = parseLine(v1);
 			idxGroups[1] = parseLine(v2);
 			idxGroups[2] = parseLine(v3);
-			if (v4 != null) {
-				idxGroups[3] = parseLine(v4);
-			}
+			idxGroups[3] = parseLine(v4);
+		}
+
+		public Face(String v1, String v2, String v3) {
+			idxGroups = new IdxGroup[3];
+			// Parse the lines
+			idxGroups[0] = parseLine(v1);
+			idxGroups[1] = parseLine(v2);
+			idxGroups[2] = parseLine(v3);
 		}
 
 		private IdxGroup parseLine(String line) {

@@ -18,6 +18,9 @@ public class JungleTransformation extends Transformation {
     
     private final Matrix4f orthoMatrix;
 
+    private static final Vector3f xVec = new Vector3f(1, 0, 0); // There is no need to create  a new object every time this is needed.
+    private static final Vector3f yVec = new Vector3f(0, 1, 0);
+
     public JungleTransformation() {
         worldMatrix = new Matrix4f();
         projectionMatrix = new Matrix4f();
@@ -66,8 +69,8 @@ public class JungleTransformation extends Transformation {
 
         viewMatrix.identity();
         // First do the rotation so camera rotates over its position
-        viewMatrix.rotate((float)Math.toRadians(rotation.x), new Vector3f(1, 0, 0))
-            .rotate((float)Math.toRadians(rotation.y), new Vector3f(0, 1, 0));
+        viewMatrix.rotate((float)Math.toRadians(rotation.x), xVec)
+            .rotate((float)Math.toRadians(rotation.y), yVec);
         // Then do the translation
         viewMatrix.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z);
         return viewMatrix;

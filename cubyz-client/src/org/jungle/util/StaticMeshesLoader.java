@@ -88,17 +88,16 @@ public class StaticMeshesLoader {
     }
 
     private static Mesh processMesh(AIMesh aiMesh, List<Material> materials) {
-        List<Float> vertices = new ArrayList<>();
+        float [] vertices = processVertices(aiMesh);
         List<Float> textures = new ArrayList<>();
         List<Float> normals = new ArrayList<>();
         List<Integer> indices = new ArrayList<>();
-
-        processVertices(aiMesh, vertices);
+        
         processNormals(aiMesh, normals);
         processTextCoords(aiMesh, textures);
         processIndices(aiMesh, indices);
 
-        Mesh mesh = new Mesh(Utils.listToArray(vertices),
+        Mesh mesh = new Mesh(vertices,
                 Utils.listToArray(textures),
                 Utils.listToArray(normals),
                 Utils.listIntToArray(indices)
@@ -115,15 +114,18 @@ public class StaticMeshesLoader {
         return mesh;
     }
 
-    private static void processVertices(AIMesh aiMesh, List<Float> vertices) {
+    private static float [] processVertices(AIMesh aiMesh) {
         AIVector3D.Buffer aiVertices = aiMesh.mVertices();
+    	float[] vertices = new float[aiVertices.limit()*3];
         aiVertices.rewind();
         for (int i = 0; i < aiVertices.limit(); i++) {
             AIVector3D aiVertex = aiVertices.get();
-            vertices.add(aiVertex.x());
-            vertices.add(aiVertex.y());
-            vertices.add(aiVertex.z());
+            int j = i*3;
+            vertices[j] = aiVertex.x();
+            vertices[j+1] = aiVertex.y();
+            vertices[j+2] = aiVertex.z();
         }
+        return vertices;
     }
 
     private static void processNormals(AIMesh aiMesh, List<Float> normals) {

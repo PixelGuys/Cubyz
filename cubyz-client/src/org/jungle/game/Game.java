@@ -64,7 +64,7 @@ public class Game {
 
 	public void loop() {
 		double previous = getTime();
-		double previous2 = getTime();
+		double previous2 = previous;
 		double steps = 0.0;
 		int updates = 0;
 		int frames = 0;

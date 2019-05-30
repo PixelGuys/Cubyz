@@ -220,8 +220,7 @@ public class Mesh implements Cloneable {
 		
 		Spatial[] spatialArray = spatials.toArray(new Spatial[spatials.size()]);
 		for (int i = 0; i < spatialArray.length; i++) {
-			Spatial spatial = spatialArray[i];
-			boolean render = consumer.apply(spatial);
+			boolean render = consumer.apply(spatialArray[i]);
 			if (render) {
 				render();
 			}
