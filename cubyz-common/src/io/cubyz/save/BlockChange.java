@@ -1,9 +1,12 @@
 package io.cubyz.save;
 
+import io.cubyz.math.Bits;
+
 public class BlockChange {
 	// TODO: make it possible for the user to add/remove mods without completely shifting the auto-generated ids.
 	public int oldType, newType; // IDs of the blocks. -1 = air
 	public int x, y, z; // Coordinates relative to the respective chunk.
+	
 	public BlockChange(int ot, int nt, int x, int y, int z) {
 		oldType = ot;
 		newType = nt;
@@ -11,22 +14,25 @@ public class BlockChange {
 		this.y = y;
 		this.z = z;
 	}
-	public BlockChange(String[] data) {
-		x = Integer.parseInt(data[0]);
-		y = Integer.parseInt(data[1]);
-		z = Integer.parseInt(data[2]);
-		oldType = Integer.parseInt(data[3]);
-		newType = Integer.parseInt(data[4]);
+	public BlockChange(byte[] data, int off) {
+		x = Bits.getInt(data, off + 0);
+		y = Bits.getInt(data, off + 4);
+		z = Bits.getInt(data, off + 8);
+		oldType = Bits.getInt(data, off + 12);
+		newType = Bits.getInt(data, off + 16);
 	}
-	public void addToText(StringBuilder sb) { // appends the text to be printed in the document
-		sb.append(x);
-		sb.append(';');
-		sb.append(y);
-		sb.append(';');
-		sb.append(z);
-		sb.append(';');
-		sb.append(oldType);
-		sb.append(';');
-		sb.append(newType);
+	
+	/**
+	 * Save BlockChange to array data att offset off.
+	 * Data Length: 20 bytes
+	 * @param data
+	 * @param off
+	 */
+	public void save(byte[] data, int off) {
+		Bits.putInt(data, off, x);
+		Bits.putInt(data, off + 4, y);
+		Bits.putInt(data, off + 8, z);
+		Bits.putInt(data, off + 12, oldType);
+		Bits.putInt(data, off + 16, newType);
 	}
 }

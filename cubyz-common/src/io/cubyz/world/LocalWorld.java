@@ -17,6 +17,7 @@ import io.cubyz.blocks.Ore;
 import io.cubyz.blocks.TileEntity;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
+import io.cubyz.math.Bits;
 import io.cubyz.save.BlockChange;
 import io.cubyz.save.WorldIO;
 
@@ -29,12 +30,11 @@ public class LocalWorld extends World {
 	private ArrayList<Entity> entities = new ArrayList<>();
 	
 	// Stores a reference to the lists of WorldIO.
-	public ArrayList<String> blockData;	
+	public ArrayList<byte[]> blockData;	
 	public ArrayList<int[]> chunkData;
 	
 	private static final int renderDistance = 5;
 	
-	//private List<BlockInstance> spatials = new ArrayList<>();
 	private Block [] blocks;
 	private Player player;
 	
@@ -186,14 +186,14 @@ public class LocalWorld extends World {
 				return chunks.get(i);
 			}
 		}
-		Chunk c = new Chunk(x, z, this, transformData(getDataString(x, z)));
+		Chunk c = new Chunk(x, z, this, transformData(getChunkData(x, z)));
 		// not generated
 		chunks.add(c);
 		lastChunk = chunks.size()-1;
 		return c;
 	}
 	
-	public String getDataString(int x, int z) { // Gets the data String of a Chunk.
+	public byte[] getChunkData(int x, int z) { // Gets the data of a Chunk.
 		int index = -1;
 		for(int i = 0; i < chunkData.size(); i++) {
 			int [] arr = chunkData.get(i);
@@ -203,16 +203,20 @@ public class LocalWorld extends World {
 			}
 		}
 		if(index == -1) {
-			return x+";"+z;
+			byte[] dummy = new byte[12];
+			Bits.putInt(dummy, 0, x);
+			Bits.putInt(dummy, 4, z);
+			Bits.putInt(dummy, 8, 0);
+			return dummy;
 		}
 		return blockData.get(index);
 	}
 	
-	public ArrayList<BlockChange> transformData(String data) {
-		String [] elements = data.split(":");
-		ArrayList<BlockChange> list = new ArrayList<>(elements.length);
-		for(int i = 1; i < elements.length; i++) {
-			list.add(new BlockChange(elements[i].split(";")));
+	public ArrayList<BlockChange> transformData(byte[] data) {
+		int size = Bits.getInt(data, 8);
+		ArrayList<BlockChange> list = new ArrayList<BlockChange>();
+		for (int i = 0; i < size; i++) {
+			list.add(new BlockChange(data, 12 + i * 20));
 		}
 		return list;
 	}

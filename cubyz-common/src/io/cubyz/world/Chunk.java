@@ -12,6 +12,7 @@ import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.Ore;
 import io.cubyz.blocks.TileEntity;
 import io.cubyz.entity.Player;
+import io.cubyz.math.Bits;
 import io.cubyz.save.BlockChange;
 
 public class Chunk {
@@ -543,21 +544,19 @@ public class Chunk {
 		return new Vector3f(((ox << 4) - localPlayer.getPosition().x + 16) - localPlayer.getPosition().relX, 255, ((oy << 4) - localPlayer.getPosition().z + 16) - localPlayer.getPosition().relZ);
 	}
 	
-	public String createTextLine() {
-		StringBuilder sb = new StringBuilder();
-		sb.append(ox);
-		sb.append(';');
-		sb.append(oy);
+	public byte[] save() {
+		byte[] data = new byte[12 + changes.size() * 20];
+		Bits.putInt(data, 0, ox);
+		Bits.putInt(data, 4, oy);
+		Bits.putInt(data, 8, changes.size());
 		for(int i = 0; i < changes.size(); i++) {
-			sb.append(':');
-			changes.get(i).addToText(sb);
+			changes.get(i).save(data, 12 + i * 20);
 		}
-		System.out.println(sb.toString());
-		return sb.toString();
+		return data;
 	}
 	
 	public int[] getData() {
-		int [] data = new int[2];
+		int[] data = new int[2];
 		data[0] = ox;
 		data[1] = oy;
 		return data;
