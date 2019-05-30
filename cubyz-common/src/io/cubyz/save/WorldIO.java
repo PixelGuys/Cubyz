@@ -72,7 +72,8 @@ public class WorldIO {
 		try {
 			BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(new File(dir, "region.dat")));
 			for (byte[] data : blockData) {
-				out.write(data);
+				if(data.length > 12) // Only write data if there is any data except the chunk coordinates.
+					out.write(data);
 			}
 			out.close();
 		} catch (IOException e) {

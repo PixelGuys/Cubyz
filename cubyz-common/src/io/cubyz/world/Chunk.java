@@ -276,11 +276,13 @@ public class Chunk {
 				removeBlockAt(bc.x, bc.y, bc.z, false);
 				continue;
 			}
-			Block bl = (Block) CubyzRegistries.BLOCK_REGISTRY.registered()[bc.newType];
-			if(bc.oldType == -1) {
+			Block bl = world.getBlocks()[bc.newType];
+			if(inst[bc.x][bc.y][bc.z] == null) {
 				addBlockAt(bc.x, bc.y, bc.z, bl, false);
+				bc.oldType = -1;
 				continue;
 			}
+			bc.oldType = inst[bc.x][bc.y][bc.z].getID();
 			inst[bc.x][bc.y][bc.z].setBlock(bl);
 		}
 	}
@@ -545,12 +547,12 @@ public class Chunk {
 	}
 	
 	public byte[] save() {
-		byte[] data = new byte[12 + changes.size() * 20];
+		byte[] data = new byte[12 + (changes.size() << 4)];
 		Bits.putInt(data, 0, ox);
 		Bits.putInt(data, 4, oy);
 		Bits.putInt(data, 8, changes.size());
 		for(int i = 0; i < changes.size(); i++) {
-			changes.get(i).save(data, 12 + i * 20);
+			changes.get(i).save(data, 12 + (i << 4));
 		}
 		return data;
 	}

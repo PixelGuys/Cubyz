@@ -214,9 +214,9 @@ public class LocalWorld extends World {
 	
 	public ArrayList<BlockChange> transformData(byte[] data) {
 		int size = Bits.getInt(data, 8);
-		ArrayList<BlockChange> list = new ArrayList<BlockChange>();
+		ArrayList<BlockChange> list = new ArrayList<BlockChange>(size);
 		for (int i = 0; i < size; i++) {
-			list.add(new BlockChange(data, 12 + i * 20));
+			list.add(new BlockChange(data, 12 + (i << 4)));
 		}
 		return list;
 	}

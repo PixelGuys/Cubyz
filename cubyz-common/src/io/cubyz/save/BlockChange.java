@@ -18,13 +18,13 @@ public class BlockChange {
 		x = Bits.getInt(data, off + 0);
 		y = Bits.getInt(data, off + 4);
 		z = Bits.getInt(data, off + 8);
-		oldType = Bits.getInt(data, off + 12);
-		newType = Bits.getInt(data, off + 16);
+		newType = Bits.getInt(data, off + 12);
+		oldType = -2;
 	}
 	
 	/**
 	 * Save BlockChange to array data att offset off.
-	 * Data Length: 20 bytes
+	 * Data Length: 16 bytes
 	 * @param data
 	 * @param off
 	 */
@@ -32,7 +32,6 @@ public class BlockChange {
 		Bits.putInt(data, off, x);
 		Bits.putInt(data, off + 4, y);
 		Bits.putInt(data, off + 8, z);
-		Bits.putInt(data, off + 12, oldType);
-		Bits.putInt(data, off + 16, newType);
+		Bits.putInt(data, off + 12, newType);
 	}
 }
