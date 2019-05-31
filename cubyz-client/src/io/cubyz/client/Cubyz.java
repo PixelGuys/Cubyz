@@ -62,15 +62,11 @@ import io.cubyz.world.BlockSpatial;
 import io.cubyz.world.Chunk;
 import io.cubyz.world.World;
 
-/**
- * Main class for Cubyz game
- * @author zenith391
- */
 public class Cubyz implements IGameLogic {
 
 	public static Context ctx;
 	private Window win;
-	private MainRenderer renderer;
+	public static MainRenderer renderer;
 	private Game game;
 	private DirectionalLight light;
 	private Vector3f playerInc;
@@ -98,7 +94,7 @@ public class Cubyz implements IGameLogic {
 	public static boolean isIntegratedServer = true;
 	public static boolean isOnlineServerOpened = false;
 
-	public static boolean clientShowDebug = true;
+	public static boolean clientShowDebug = false;
 
 	public static Cubyz instance;
 	
@@ -336,7 +332,8 @@ public class Cubyz implements IGameLogic {
 				mouse.clearPos(window.getWidth() / 2, window.getHeight() / 2);
 				breakCooldown = 10;
 			}
-			//inventorySelection = mouse.getMouseWheelPosition() & 7; TODO(@zenith391): Update Jungle Engine to handle mousewheel.
+			inventorySelection = (inventorySelection + (int) mouse.getScrollOffset()) & 7;
+			mouse.clearScroll();
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_1)) {
 				inventorySelection = 0;
 			}

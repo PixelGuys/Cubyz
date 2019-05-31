@@ -20,10 +20,6 @@ import org.lwjgl.BufferUtils;
 
 public class Utils {
 
-	public Utils() {
-		// TODO Auto-generated constructor stub
-	}
-
 	public static boolean existsResourceFile(String fileName) {
 		boolean result;
 		try (InputStream is = Utils.class.getResourceAsStream(fileName)) {

@@ -71,9 +71,11 @@ public class WorldIO {
 		}
 		try {
 			BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(new File(dir, "region.dat")));
-			for (byte[] data : blockData) {
-				if(data.length > 12) // Only write data if there is any data except the chunk coordinates.
-					out.write(data);
+			synchronized (blockData) {
+				for (byte[] data : blockData) {
+					if(data.length > 12) // Only write data if there is any data except the chunk coordinates.
+						out.write(data);
+				}
 			}
 			out.close();
 		} catch (IOException e) {
@@ -86,28 +88,24 @@ public class WorldIO {
 	}
 
 	public void saveChunk(Chunk ch, int x, int z) {
-		/*
-		 * int rx = (int) Math.floor((double) x / 16); int rz = (int)
-		 * Math.floor((double) z / 16); File rf = new File(dir, "regions/r." + rx + "."
-		 * + rz + ".dat");
-		 */
-		//System.out.println("Storing chunk..");
 		byte[] cb = ch.save();
 		int[] cd = ch.getData();
 		int index = -1;
-		for (int i = 0; i < blockData.size(); i++) {
-			int[] cd2 = chunkData.get(i);
-			if (cd[0] == cd2[0] && cd[1] == cd2[1]) {
-				index = i;
-				break;
+		synchronized (blockData) {
+			for (int i = 0; i < blockData.size(); i++) {
+				int[] cd2 = chunkData.get(i);
+				if (cd[0] == cd2[0] && cd[1] == cd2[1]) {
+					index = i;
+					break;
+				}
 			}
-		}
-		if (index == -1) {
-			blockData.add(cb);
-			chunkData.add(cd);
-		} else {
-			blockData.set(index, cb);
-			chunkData.set(index, cd);
+			if (index == -1) {
+				blockData.add(cb);
+				chunkData.add(cd);
+			} else {
+				blockData.set(index, cb);
+				chunkData.set(index, cd);
+			}
 		}
 	}
 

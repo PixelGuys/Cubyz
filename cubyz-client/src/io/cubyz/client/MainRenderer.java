@@ -95,6 +95,7 @@ public class MainRenderer implements IRenderer {
 		shaderProgram.createPointLightListUniform("pointLights", MAX_POINT_LIGHTS);
 		shaderProgram.createSpotLightListUniform("spotLights", MAX_SPOT_LIGHTS);
 		shaderProgram.createDirectionalLightUniform("directionalLight");
+		System.gc();
 	}
 
 	@Override
@@ -208,7 +209,6 @@ public class MainRenderer implements IRenderer {
 		    	shaderProgram.setUniform("selected", 0f);
 		    }
 		}
-		
 		shaderProgram.unbind();
 	}
 

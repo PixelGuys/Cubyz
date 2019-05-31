@@ -64,7 +64,7 @@ public class Mesh implements Cloneable {
 		FloatBuffer textCoordsBuffer = null;
 		FloatBuffer vecNormalsBuffer = null;
 		IntBuffer indicesBuffer = null;
-		hasNormals = normals.length > 0;
+		hasNormals = normals.length > 0 || true;
 		try {
 			vertexCount = indices.length;
 			vboIdList = new ArrayList<>();
@@ -205,9 +205,9 @@ public class Mesh implements Cloneable {
 				glDisable(GL_CULL_FACE);
 			}
 		}
-
+		initRender();
 		glDrawElements(GL_TRIANGLES, getVertexCount(), GL_UNSIGNED_INT, 0);
-
+		endRender();
 		if (!cullFace && wasEnabled) {
 			glEnable(GL_CULL_FACE);
 		}
