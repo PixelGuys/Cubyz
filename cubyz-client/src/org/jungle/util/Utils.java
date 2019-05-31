@@ -77,7 +77,7 @@ public class Utils {
 		BufferedInputStream bis = new BufferedInputStream(new FileInputStream(path), 4096);
 		StringBuilder b = new StringBuilder();
 		while (bis.available() != 0) {
-			b.append(bis.read());
+			b.append((char) bis.read());
 		}
 		b.append('\0');
 		bis.close();

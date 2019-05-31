@@ -29,3 +29,4 @@ hs_err_pid*
 cubyz-client/logs/
 cubyz-client/saves/
 cubyz-client/cache/
+cubyz-client/saves/World/world.dat
