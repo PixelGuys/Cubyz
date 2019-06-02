@@ -27,14 +27,37 @@ public class NDTContainer extends NDTTag {
 		int addr = 2;
 		for (int i = 0; i < entries; i++) {
 			short len = Bits.getShort(content, addr);
+			short size = Bits.getShort(content, addr+2);
 			NDTString key = new NDTString();
-			key.setBytes(sub(addr+2, addr+len+2));
+			key.setBytes(sub(addr+4, addr+len+4));
 			addr += len + 2;
+			tags.put(key.getValue(), NDTTag.fromBytes(sub(addr, addr+size)));
+			addr += size;
 		}
 	}
 	
 	void save() {
+		int size = 2;
+		for (String key : tags.keySet()) {
+			size += 6;
+			size += tags.get(key).getData().length;
+			size += key.length() + 2;
+		}
+		content = new byte[size];
 		
+		Bits.putShort(content, 0, (short) tags.size());
+		int addr = 2;
+		for (String key : tags.keySet()) {
+			NDTTag tag = tags.get(key);
+			Bits.putShort(content, addr, (short) key.length());
+			Bits.putShort(content, addr+2, (short) tag.getData().length);
+			NDTString tagKey = new NDTString();
+			tagKey.setValue(key);
+			System.arraycopy(tagKey.getData(), 0, content, addr+4, tagKey.getData().length);
+			addr += tagKey.getData().length;
+			System.arraycopy(tag.getData(), 0, content, addr, tag.getData().length);
+			addr += tag.getData().length;
+		}
 	}
 	
 	public boolean hasKey(String key) {
