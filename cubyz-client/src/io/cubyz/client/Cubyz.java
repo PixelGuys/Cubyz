@@ -15,7 +15,6 @@ import org.joml.Vector3f;
 import org.joml.Vector3i;
 import org.joml.Vector4f;
 import org.jungle.Camera;
-import org.jungle.Jungle;
 import org.jungle.Keyboard;
 import org.jungle.Mesh;
 import org.jungle.MouseInput;
@@ -183,7 +182,7 @@ public class Cubyz implements IGameLogic {
 		mouse.init(window);
 		log.info("Version " + Constants.GAME_VERSION + " of brand " + Constants.GAME_BRAND);
 		log.info("LWJGL Version: " + Version.VERSION_MAJOR + "." + Version.VERSION_MINOR + "." + Version.VERSION_REVISION);
-		log.info("Jungle Version: " + Jungle.getVersion());
+		log.info("Jungle Version: " + Constants.GAME_VERSION + "-cubyz");
 		renderer.setShaderFolder("assets/cubyz/shaders/default");
 		try {
 			renderer.init(window);
