@@ -205,9 +205,9 @@ public class Mesh implements Cloneable {
 				glDisable(GL_CULL_FACE);
 			}
 		}
-		initRender();
+		//initRender();
 		glDrawElements(GL_TRIANGLES, getVertexCount(), GL_UNSIGNED_INT, 0);
-		endRender();
+		//endRender();
 		if (!cullFace && wasEnabled) {
 			glEnable(GL_CULL_FACE);
 		}
