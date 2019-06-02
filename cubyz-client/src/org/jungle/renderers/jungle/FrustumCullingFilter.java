@@ -28,17 +28,13 @@ public class FrustumCullingFilter {
         frustumInt.set(prjViewMatrix);
     }
     
-    public boolean insideFrustum(float x0, float y0, float z0, float boundingRadius) {
-        return frustumInt.testSphere(x0, y0, z0, boundingRadius);
-    }
-    
     public void filter(List<Spatial> gameItems, float meshBoundingRadius) {
         float boundingRadius;
         Vector3f pos;
         for (Spatial gameItem : gameItems) {
             boundingRadius = gameItem.getScale() * meshBoundingRadius;
             pos = gameItem.getPosition();
-            gameItem.setInFrustum(insideFrustum(pos.x, pos.y, pos.z, boundingRadius));
+            gameItem.setInFrustum(frustumInt.testSphere(pos.x, pos.y, pos.z, boundingRadius));
         }
     }
     

@@ -12,6 +12,8 @@ public class Camera {
 	private Matrix4f viewMatrix;
 	
 	private float fov;
+	
+	private static final float DEGTORAD = (float)(Math.PI/180); // Makes the results of toRadians slightly less accurate, but reduces the number of type conversions.
 
 	public Camera() {
 		position = new Vector3f(0, 0, 0);
@@ -52,12 +54,12 @@ public class Camera {
 
 	public void movePosition(float offsetX, float offsetY, float offsetZ) {
 		if (offsetZ != 0) {
-			position.x -= (float) Math.sin(Math.toRadians(rotation.y)) * offsetZ;
-			position.z += (float) Math.cos(Math.toRadians(rotation.y)) * offsetZ;
+			position.x -= (float) Math.sin(DEGTORAD*rotation.y) * offsetZ;
+			position.z += (float) Math.cos(DEGTORAD*rotation.y) * offsetZ;
 		}
 		if (offsetX != 0) {
-			position.x -= (float) Math.sin(Math.toRadians(rotation.y - 90)) * offsetX;
-			position.z += (float) Math.cos(Math.toRadians(rotation.y - 90)) * offsetX;
+			position.x -= (float) Math.sin(DEGTORAD*(rotation.y - 90)) * offsetX;
+			position.z += (float) Math.cos(DEGTORAD*(rotation.y - 90)) * offsetX;
 		}
 		position.y += offsetY;
 	}

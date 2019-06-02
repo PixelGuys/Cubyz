@@ -59,7 +59,7 @@ public class Texture {
         height = decoder.getHeight();
         ByteBuffer buf = ByteBuffer.allocateDirect(
         		width * height << 2);
-        decoder.decode(buf, decoder.getWidth() << 2, Format.RGBA);
+        decoder.decode(buf, width << 2, Format.RGBA);
         buf.flip();
 
         // Create a new OpenGL texture 

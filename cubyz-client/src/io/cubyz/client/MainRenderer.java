@@ -116,7 +116,7 @@ public class MainRenderer implements IRenderer {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	}
 	//long t = 0;
-	//int n = 0;
+	//int n = 1;
 
 	@SuppressWarnings("unchecked")
 	public void render(Window window, Context ctx, Vector3f ambientLight, DirectionalLight directionalLight, Chunk[] chunks, Block [] blocks, Player localPlayer) {
@@ -161,6 +161,8 @@ public class MainRenderer implements IRenderer {
 			filter.updateFrustum(window.getProjectionMatrix(), ctx.getCamera().getViewMatrix());
 			HashMap<Mesh, List<Spatial>> m = new HashMap<>();
 			for (int i = 0; i < blocks.length; i++) {
+				if(map[i].size() == 0)
+					continue;
 				m.put((Mesh) blocks[i].getBlockPair().get("meshCache"), map[i]);
 			}
 			filter.filter(m);

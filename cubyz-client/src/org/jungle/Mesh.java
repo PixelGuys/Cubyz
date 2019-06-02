@@ -141,7 +141,7 @@ public class Mesh implements Cloneable {
 	}
 
 	/**
-	 * Very usefull method for meshes with only material (mostly texture) being
+	 * Very useful method for meshes with only material (mostly texture) being
 	 * different
 	 */
 	public Mesh cloneNoMaterial() {
@@ -205,27 +205,26 @@ public class Mesh implements Cloneable {
 				glDisable(GL_CULL_FACE);
 			}
 		}
-		//initRender();
+
 		glDrawElements(GL_TRIANGLES, getVertexCount(), GL_UNSIGNED_INT, 0);
-		//endRender();
+
 		if (!cullFace && wasEnabled) {
 			glEnable(GL_CULL_FACE);
 		}
 	}
-
 	public void renderList(List<Spatial> spatials, Function<Spatial, Boolean> consumer) {
 		if (spatials.isEmpty())
 			return;
 		initRender();
-		
-		Spatial[] spatialArray = spatials.toArray(new Spatial[spatials.size()]);
-		for (int i = 0; i < spatialArray.length; i++) {
-			boolean render = consumer.apply(spatialArray[i]);
+
+		//Spatial[] spatialArray = spatials.toArray(new Spatial[spatials.size()]);
+		for (int i = 0; i < spatials.size(); i++) {
+			boolean render = consumer.apply(spatials.get(i));
 			if (render) {
 				render();
 			}
 		}
-
+		
 		endRender();
 	}
 

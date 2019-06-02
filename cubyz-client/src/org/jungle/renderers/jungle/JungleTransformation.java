@@ -17,6 +17,8 @@ public class JungleTransformation extends Transformation {
     private final Matrix4f modelViewMatrix;
     
     private final Matrix4f orthoMatrix;
+    
+    private static final float DEGTORAD = (float)(Math.PI/180); // Makes the results of toRadians slightly less accurate, but reduces the number of type conversions.
 
     private static final Vector3f xVec = new Vector3f(1, 0, 0); // There is no need to create  a new object every time this is needed.
     private static final Vector3f yVec = new Vector3f(0, 1, 0);
@@ -38,9 +40,9 @@ public class JungleTransformation extends Transformation {
 
     public Matrix4f getWorldMatrix(Vector3f offset, Vector3f rotation, float scale) {
         worldMatrix.identity().translate(offset).
-                rotateX((float)Math.toRadians(rotation.x)).
-                rotateY((float)Math.toRadians(rotation.y)).
-                rotateZ((float)Math.toRadians(rotation.z)).
+		        rotateX(DEGTORAD*rotation.x).
+		        rotateY(DEGTORAD*rotation.y).
+		        rotateZ(DEGTORAD*rotation.z).
                 scale(scale);
         return worldMatrix;
     }
@@ -54,9 +56,9 @@ public class JungleTransformation extends Transformation {
         Vector3f rotation = gameItem.getRotation();
         Matrix4f modelMatrix = new Matrix4f();
         modelMatrix.identity().translate(gameItem.getPosition()).
-                rotateX((float)Math.toRadians(-rotation.x)).
-                rotateY((float)Math.toRadians(-rotation.y)).
-                rotateZ((float)Math.toRadians(-rotation.z)).
+		        rotateX(-DEGTORAD*rotation.x).
+		        rotateY(-DEGTORAD*rotation.y).
+		        rotateZ(-DEGTORAD*rotation.z).
                 scale(gameItem.getScale());
         Matrix4f orthoMatrixCurr = new Matrix4f(orthoMatrix);
         orthoMatrixCurr.mul(modelMatrix);
@@ -69,8 +71,8 @@ public class JungleTransformation extends Transformation {
 
         viewMatrix.identity();
         // First do the rotation so camera rotates over its position
-        viewMatrix.rotate((float)Math.toRadians(rotation.x), xVec)
-            .rotate((float)Math.toRadians(rotation.y), yVec);
+        viewMatrix.rotate(DEGTORAD*rotation.x, xVec)
+            .rotate(DEGTORAD*rotation.y, yVec);
         // Then do the translation
         viewMatrix.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z);
         return viewMatrix;
@@ -79,9 +81,9 @@ public class JungleTransformation extends Transformation {
     public Matrix4f getModelViewMatrix(Spatial spatial, Matrix4f viewMatrix) {
         Vector3f rotation = spatial.getRotation();
         modelViewMatrix.identity().translate(spatial.getPosition()).
-            rotateX((float)Math.toRadians(-rotation.x)).
-            rotateY((float)Math.toRadians(-rotation.y)).
-            rotateZ((float)Math.toRadians(-rotation.z)).
+            rotateX(-DEGTORAD*rotation.x).
+            rotateY(-DEGTORAD*rotation.y).
+            rotateZ(-DEGTORAD*rotation.z).
             scale(spatial.getScale());
         Matrix4f viewCurr = new Matrix4f(viewMatrix);
         return viewCurr.mul(modelViewMatrix);
