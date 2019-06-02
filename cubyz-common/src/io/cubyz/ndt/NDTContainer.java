@@ -75,6 +75,29 @@ public class NDTContainer extends NDTTag {
 		save();
 	}
 	
+	// Primitive types save/load
+	public String getString(String key) {
+		NDTString tag = (NDTString) getTag(key);
+		return tag.getValue();
+	}
+	
+	public void setString(String key, String str) {
+		NDTString tag = new NDTString();
+		tag.setValue(str);
+		setTag(key, tag);
+	}
+	
+	public int getInteger(String key) {
+		NDTInteger tag = (NDTInteger) getTag(key);
+		return tag.getValue();
+	}
+	
+	public void setInteger(String key, int i) {
+		NDTInteger tag = new NDTInteger();
+		tag.setValue(i);
+		setTag(key, tag);
+	}
+	
 	public boolean validate() {
 		return true;
 	}

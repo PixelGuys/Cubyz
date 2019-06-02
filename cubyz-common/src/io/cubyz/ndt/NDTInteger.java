@@ -1,5 +1,7 @@
 package io.cubyz.ndt;
 
+import io.cubyz.math.Bits;
+
 public class NDTInteger extends NDTTag {
 
 	{
@@ -8,10 +10,11 @@ public class NDTInteger extends NDTTag {
 	}
 	
 	public int getValue() {
-		return ((content[3] & 0xFF)) +
-				((content[2] & 0xFF) << 8) +
-				((content[1] & 0xFF) << 16) +
-				((content[0]) << 24);
+		return Bits.getInt(content, 0);
+	}
+	
+	public void setValue(int i) {
+		Bits.putInt(content, 0, i);
 	}
 	
 }
