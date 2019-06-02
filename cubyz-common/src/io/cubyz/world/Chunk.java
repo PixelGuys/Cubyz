@@ -414,7 +414,7 @@ public class Chunk {
 	}
 	
 	public void revealBlock(BlockInstance bi) {
-		if(visiblesSize == visibles.length) {
+		if(visiblesSize + 1 >= visibles.length) { // Always leave a null at the end of the array to make it unnecessary to test for the length in the renderer.
 			BlockInstance[] old = visibles;
 			visibles = new BlockInstance[visiblesSize + (visiblesSize >> 1)]; // Increase size by 1.5. Similar to `ArrayList`.
 			System.arraycopy(old, 0, visibles, 0, visiblesSize);

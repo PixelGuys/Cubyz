@@ -146,18 +146,16 @@ public class MainRenderer implements IRenderer {
 			if(!frustumInt.testAab(ch.getMin(localPlayer),ch.getMax(localPlayer)))
 				continue;
 			BlockInstance[] vis = ch.getVisibles();
-			try {
-				for (int i = 0;; i++) { // The super fast try-for loop
-					BlockSpatial tmp = (BlockSpatial) vis[i].getSpatial();
-					tmp.setPosition((vis[i].getX() - localPlayer.getPosition().x) - localPlayer.getPosition().relX, vis[i].getY(), (vis[i].getZ() - localPlayer.getPosition().z) - localPlayer.getPosition().relZ);
-					if(tmp.isSelected()) {
-						selected = tmp;
-						selectedBlock = vis[i].getID();
-						continue;
-					}
-					map[vis[i].getID()].add(tmp);
+			for (int i = 0; vis[i] != null; i++) {
+				BlockSpatial tmp = (BlockSpatial) vis[i].getSpatial();
+				tmp.setPosition((vis[i].getX() - localPlayer.getPosition().x) - localPlayer.getPosition().relX, vis[i].getY(), (vis[i].getZ() - localPlayer.getPosition().z) - localPlayer.getPosition().relZ);
+				if(tmp.isSelected()) {
+					selected = tmp;
+					selectedBlock = vis[i].getID();
+					continue;
 				}
-			} catch(Exception e) {}
+				map[vis[i].getID()].add(tmp);
+			}
 		}
 		if (filter != null) {
 			filter.updateFrustum(window.getProjectionMatrix(), ctx.getCamera().getViewMatrix());
