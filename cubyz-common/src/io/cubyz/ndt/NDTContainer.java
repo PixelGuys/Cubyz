@@ -98,6 +98,14 @@ public class NDTContainer extends NDTTag {
 		setTag(key, tag);
 	}
 	
+	public NDTContainer getContainer(String key) {
+		return (NDTContainer) getTag(key);
+	}
+	
+	public void setContainer(String key, NDTContainer c) {
+		setTag(key, c);
+	}
+	
 	public boolean validate() {
 		return true;
 	}

@@ -1,9 +1,10 @@
 package io.cubyz.items;
 
 import io.cubyz.blocks.Block;
+import io.cubyz.ndt.NDTContainer;
 
 public class Inventory {
-	private ItemStack[] items = new ItemStack[32]; // First 8 item stacks are the hotbar
+	private ItemStack[] items; // First 8 item stacks are the hotbar
 	
 	public void addItem(Item i, int amount) {
 		if(i == null || amount == 0)
@@ -31,6 +32,14 @@ public class Inventory {
 		// TODO: Consider a full inventory
 	}
 	
+	public Inventory(int size) {
+		items = new ItemStack[size];
+	}
+	
+	public Inventory() {
+		this(0);
+	}
+	
 	public Block getBlock(int selection) {
 		if(items[selection] == null)
 			return null;
@@ -47,5 +56,19 @@ public class Inventory {
 		if(items[selection] == null)
 			return 0;
 		return items[selection].number;
+	}
+	
+	public void saveTo(NDTContainer container) {
+		container.setInteger("capacity", items.length);
+		for (int i = 0; i < items.length; i++) {
+			
+		}
+	}
+	
+	public void loadFrom(NDTContainer container) {
+		items = new ItemStack[container.getInteger("capacity")];
+		for (int i = 0; i < items.length; i++) {
+			
+		}
 	}
 }

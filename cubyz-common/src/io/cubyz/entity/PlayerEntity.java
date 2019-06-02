@@ -6,12 +6,14 @@ import org.joml.Vector3i;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Resource;
 import io.cubyz.command.ICommandSource;
+import io.cubyz.items.Inventory;
 
 public class PlayerEntity extends EntityType {
 
 	class PlayerImpl extends Player {
 		
 		private boolean flying = false;
+		private Inventory inv = new Inventory(32);
 		
 		@Override
 		public boolean isFlying() {
@@ -93,6 +95,11 @@ public class PlayerEntity extends EntityType {
 			if (flying) {
 				vy = 0;
 			}
+		}
+
+		@Override
+		public Inventory getInventory() {
+			return inv;
 		}
 	}
 

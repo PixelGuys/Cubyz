@@ -4,6 +4,7 @@ import org.joml.Vector3f;
 
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.command.ICommandSource;
+import io.cubyz.items.Inventory;
 
 /**
  * Base class for both implementation and MP version of Player.
@@ -16,6 +17,7 @@ public abstract class Player extends Entity implements ICommandSource {
 		super(CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player"));
 	}
 	
+	public abstract Inventory getInventory();
 	public abstract boolean isFlying();
 	public abstract void setFlying(boolean fly);
 	
