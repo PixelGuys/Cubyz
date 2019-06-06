@@ -260,6 +260,7 @@ public class Chunk {
 				int incy = py == 0 ? 1 : -1;
 				int temperature = (int)((2-map[px][py]+SEA_LEVEL/(float)world.getHeight())*heatMap[px][py]*120) - 100;
 				if (map[px][py] * world.getHeight() >= SEA_LEVEL + 4) {
+					//if (value < 0) value = 0;
 					Structures.generateVegetation(this, wx + px, (int) (map[px][py] * world.getHeight()) + 1, wy + py, value, temperature, (int)((vegetation[px][py]-vegetation[px+incx][py+incy]) * 100000000 + incx + incy));
 				}
 			}
