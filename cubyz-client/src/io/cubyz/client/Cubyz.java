@@ -127,7 +127,7 @@ public class Cubyz implements IGameLogic {
 		int dx = rnd.nextInt(10);
 		int dz = rnd.nextInt(10);
 		//dx = dz = Integer.MIN_VALUE+2048;
-		//world.synchronousSeek(dx/16, dz/16);
+		world.synchronousSeek(dx, dz);
 		int highestY = world.getHighestBlock(dx, dz);
 		world.getLocalPlayer().setPosition(new Vector3i(dx, highestY+2, dz));
 		inventory = new Inventory(32);

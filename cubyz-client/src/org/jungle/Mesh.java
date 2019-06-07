@@ -197,7 +197,7 @@ public class Mesh implements Cloneable {
 	}
 
 	public void render() {
-		boolean wasEnabled = true; // avoid having a GPU call (glIsEnabled) if useless later (not having
+		boolean wasEnabled = false; // avoid having a GPU call (glIsEnabled) if useless later (not having
 		// cull face is optional)
 		if (!cullFace) {
 			wasEnabled = glIsEnabled(GL_CULL_FACE);
@@ -208,7 +208,7 @@ public class Mesh implements Cloneable {
 
 		glDrawElements(GL_TRIANGLES, getVertexCount(), GL_UNSIGNED_INT, 0);
 
-		if (!cullFace && wasEnabled) {
+		if (wasEnabled) {
 			glEnable(GL_CULL_FACE);
 		}
 	}
