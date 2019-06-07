@@ -1,11 +1,9 @@
 package io.cubyz.ui;
 
 import org.jungle.Window;
-import org.lwjgl.nanovg.NanoVG;
 
 import io.cubyz.Constants;
 import io.cubyz.client.Cubyz;
-import io.cubyz.ui.ToastManager.Toast;
 import io.cubyz.world.World;
 
 /**
@@ -16,9 +14,6 @@ import io.cubyz.world.World;
 public class DebugOverlay extends MenuGUI {
 
 	String javaVersion = System.getProperty("java.version");
-	
-	long toastStartTimestamp;
-	Toast currentToast;
 	
 	int[] lastFps = new int[50];
 	long lastFpsCount = System.currentTimeMillis();
@@ -33,17 +28,14 @@ public class DebugOverlay extends MenuGUI {
 			NGraphics.drawText(0, 24, "Windowed (" + win.getWidth() + "x" + win.getHeight() + ")");
 			NGraphics.drawText(0, 36, "Java " + javaVersion);
 			
-			if (Cubyz.world == null) {
-				NGraphics.drawText(0, 48, "World: (none)");
-			} else {
+			if (Cubyz.world != null) {
 				World world = Cubyz.world;
 				float x = world.getLocalPlayer().getPosition().x + world.getLocalPlayer().getPosition().relX;
 				float y = world.getLocalPlayer().getPosition().y;
 				float z = world.getLocalPlayer().getPosition().z + world.getLocalPlayer().getPosition().relZ;
 				
-				NGraphics.drawText(0, 48, "X: " + x);
-				NGraphics.drawText(0, 60, "Y: " + y);
-				NGraphics.drawText(0, 72, "Z: " + z);
+				NGraphics.drawText(0, 48, "XYZ: " + x + ", " + y + ", " + z);
+				NGraphics.drawText(0, 60, "C: " + world.getVisibleChunks().length + "/" + world.getChunks().size());
 			}
 			
 			int h = win.getHeight();
@@ -69,28 +61,6 @@ public class DebugOverlay extends MenuGUI {
 				}
 				
 				lastFps[49] = Cubyz.getFPS(); // set new fps value
-			}
-		}
-		
-		// Toasts
-		if (!ToastManager.queuedToasts.isEmpty() && currentToast == null) {
-			currentToast = ToastManager.queuedToasts.pop();
-			toastStartTimestamp = System.currentTimeMillis();
-		}
-		
-		if (currentToast != null) {
-			// Draw toast
-			int defaultAlign = NGraphics.getTextAlign();
-			NGraphics.setTextAlign(NanoVG.NVG_ALIGN_RIGHT | NanoVG.NVG_ALIGN_TOP);
-			NGraphics.setColor(0, 0, 0, 127);
-			NGraphics.fillRect(win.getWidth() - 200, 0, 200, 50);
-			NGraphics.setFont("OpenSans Bold", 24f);
-			NGraphics.drawText(win.getWidth(), 0, currentToast.title);
-			NGraphics.setFont("OpenSans Bold", 12f);
-			NGraphics.drawText(win.getWidth(), 30, currentToast.text);
-			NGraphics.setTextAlign(defaultAlign);
-			if (toastStartTimestamp < System.currentTimeMillis() - 2500) {
-				currentToast = null;
 			}
 		}
 	}

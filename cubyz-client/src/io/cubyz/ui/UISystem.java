@@ -28,6 +28,10 @@ public class UISystem extends Hud {
 		return overlays.remove(over);
 	}
 	
+	public ArrayList<MenuGUI> getOverlays() {
+		return overlays;
+	}
+	
 	public void setMenu(MenuGUI gui) {
 		this.gui = gui;
 		if (gui != null) {

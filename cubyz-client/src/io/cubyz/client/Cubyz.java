@@ -39,14 +39,14 @@ import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.client.loading.LoadThread;
 import io.cubyz.entity.Player;
-import io.cubyz.items.Inventory;
 import io.cubyz.multiplayer.GameProfile;
 import io.cubyz.multiplayer.client.MPClient;
 import io.cubyz.multiplayer.client.PingResponse;
-import io.cubyz.multiplayer.server.CubyzServer;
 import io.cubyz.ui.DebugOverlay;
+import io.cubyz.ui.GameOverlay;
 import io.cubyz.ui.LoadingGUI;
 import io.cubyz.ui.MainMenuGUI;
+import io.cubyz.ui.MenuGUI;
 import io.cubyz.ui.PauseGUI;
 import io.cubyz.ui.ToastManager;
 import io.cubyz.ui.ToastManager.Toast;
@@ -74,7 +74,6 @@ public class Cubyz implements IGameLogic {
 	public static World world;
 	
 	public static int inventorySelection = 0; // Selected slot in inventory
-	public static Inventory inventory;
 
 	private CubyzMeshSelectionDetector msd;
 
@@ -120,8 +119,20 @@ public class Cubyz implements IGameLogic {
 		}
 		DiscordIntegration.closeRPC();
 	}
+	
+	public static void quitWorld() {
+		for (MenuGUI overlay : gameUI.getOverlays().toArray(new MenuGUI[0])) {
+			if (overlay instanceof GameOverlay) {
+				gameUI.removeOverlay(overlay);
+			}
+		}
+		Cubyz.world = null;
+	}
 
 	public static void loadWorld(World world) {
+		if (Cubyz.world != null) {
+			quitWorld();
+		}
 		Cubyz.world = world;
 		Random rnd = new Random();
 		int dx = rnd.nextInt(10);
@@ -130,7 +141,7 @@ public class Cubyz implements IGameLogic {
 		world.synchronousSeek(dx, dz);
 		int highestY = world.getHighestBlock(dx, dz);
 		world.getLocalPlayer().setPosition(new Vector3i(dx, highestY+2, dz));
-		inventory = new Inventory(32);
+		Cubyz.gameUI.addOverlay(new GameOverlay());
 	}
 
 	public static void requestJoin(String host) {
@@ -177,7 +188,7 @@ public class Cubyz implements IGameLogic {
 		renderer = new MainRenderer();
 		ctx = new Context(game, new Camera());
 		ctx.setHud(gameUI);
-		light = new DirectionalLight(new Vector3f(1.0F, 1.0F, 0.7F), new Vector3f(0.0F, 1.0F, 1.0F), 1.0F);
+		light = new DirectionalLight(new Vector3f(1.0F, 1.0F, 0.7F), new Vector3f(0.0F, 1.0F, 0.5F), 1.0F);
 		mouse = new MouseInput();
 		mouse.init(window);
 		log.info("Version " + Constants.GAME_VERSION + " of brand " + Constants.GAME_BRAND);
@@ -427,7 +438,7 @@ public class Cubyz implements IGameLogic {
 					BlockInstance bi = msd.getSelectedBlockInstance();
 					if (bi != null && bi.getBlock().getHardness() != -1f) {
 						world.removeBlock(bi.getX(), bi.getY(), bi.getZ());
-						inventory.addItem(bi.getBlock().getBlockDrop(), 1);
+						world.getLocalPlayer().getInventory().addItem(bi.getBlock().getBlockDrop(), 1);
 					}
 				}
 			}
@@ -436,10 +447,10 @@ public class Cubyz implements IGameLogic {
 				if (buildCooldown == 0) {
 					buildCooldown = 10;
 					Vector3i pos = msd.getEmptyPlace(world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate());
-					Block b = inventory.getBlock(inventorySelection);
+					Block b = world.getLocalPlayer().getInventory().getBlock(inventorySelection);
 					if (b != null && pos != null) {
 						world.placeBlock(pos.x, pos.y, pos.z, b);
-						inventory.addItem(b.getBlockDrop(), -1);
+						world.getLocalPlayer().getInventory().addItem(b.getBlockDrop(), -1);
 					}
 				}
 			}

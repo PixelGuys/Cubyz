@@ -32,8 +32,6 @@ public class MainMenuGUI extends MenuGUI {
 			world.generate();
 			Cubyz.gameUI.setMenu(null);
 			Cubyz.loadWorld(world);
-			Cubyz.gameUI.addOverlay(new GameOverlay());
-			Cubyz.log.info("World Generated!");
 		});
 		
 		exit.setOnAction(() -> {

@@ -19,6 +19,7 @@ import io.cubyz.client.ClientBlockPair;
 import io.cubyz.client.Cubyz;
 import io.cubyz.modding.ModLoader;
 import io.cubyz.ui.LoadingGUI;
+import io.cubyz.utils.DiscordIntegration;
 
 public class LoadThread extends Thread {
 
@@ -30,8 +31,7 @@ public class LoadThread extends Thread {
 		CubyzLogger log = CubyzLogger.instance;
 		l.setStep(1, 0, 0);
 		
-		// RPC temporaly disabled
-		//DiscordIntegration.startRPC();
+		DiscordIntegration.startRPC();
 		// Clean cache
 		File cacheDir = new File("cache");
 		if (cacheDir.exists()) {

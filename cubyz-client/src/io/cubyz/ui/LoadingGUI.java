@@ -20,6 +20,7 @@ public class LoadingGUI extends MenuGUI {
 		MainMenuGUI mmg = new MainMenuGUI();
 		Cubyz.gameUI.setMenu(mmg);
 		Cubyz.gameUI.addOverlay(new DebugOverlay());
+		Cubyz.gameUI.addOverlay(new GeneralOverlay());
 	}
 	
 	public void setStep(int step, int subStep, int subStepMax) {

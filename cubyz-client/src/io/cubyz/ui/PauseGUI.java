@@ -30,7 +30,7 @@ public class PauseGUI extends MenuGUI {
 		});
 		
 		exit.setOnAction(() -> {
-			Cubyz.world = null;
+			Cubyz.quitWorld();
 			Cubyz.gameUI.setMenu(new MainMenuGUI());
 		});
 		

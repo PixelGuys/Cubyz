@@ -32,7 +32,7 @@ public class GameOverlay extends MenuGUI {
 		NGraphics.drawImage(crosshair, win.getWidth() / 2 - 16, win.getHeight() / 2 - 16, 32, 32);
 		NGraphics.drawImage(hotBar, win.getWidth()/2 - 255, win.getHeight() - 64, 510, 64);
 		NGraphics.setColor(0, 0, 0);
-		Inventory inventory = Cubyz.inventory;
+		Inventory inventory = Cubyz.world.getLocalPlayer().getInventory();
 		for(int i = 0; i < 8; i++) {
 			Item item = inventory.getItem(i);
 			if(item != null) {
