@@ -372,5 +372,23 @@ public class LocalWorld extends World {
 		if (minK != visibleChunks.length) { // if atleast one chunk got unloaded
 			wio.saveWorldData();
 		}
+		
+		// Check if one of the never loaded chunks is outside of players range.
+		// Those chunks were never loaded and therefore don't need to get saved.
+		x -= renderDistance;
+		z -= renderDistance;
+		for(int i = 0; i < chunks.size(); i++) {
+			Chunk ch = chunks.get(i);
+			int delta = Math.abs(ch.getX()-x);
+			if(delta >= renderDistance+2) {
+				chunks.remove(ch);
+				continue;
+			}
+			delta = Math.abs(ch.getZ()-z);
+			if(delta >= renderDistance+2) {
+				chunks.remove(ch);
+			}
+		}
+		
 	}
 }
