@@ -153,7 +153,7 @@ public class Chunk {
 				removeBlockAt(rx, y, rz, false);
 			}
 		}
-		BlockInstance inst0 = new BlockInstance(b, this);
+		BlockInstance inst0 = new BlockInstance(b);
 		inst0.setPosition(new Vector3i(x, y, z));
 		inst0.setWorld(world);
 		if (b.hasTileEntity()) {
@@ -163,7 +163,7 @@ public class Chunk {
 		list.add(inst0);
 		inst[rx][y][rz] = inst0;
 		if(generated) {
-			BlockInstance[] neighbors = inst0.getNeighbors();
+			BlockInstance[] neighbors = inst0.getNeighbors(this);
 			for (int i = 0; i < neighbors.length; i++) {
 				if (blocksLight(neighbors[i], inst0.getBlock().isTransparent())) {
 					revealBlock(inst0);
@@ -174,7 +174,7 @@ public class Chunk {
 				if(neighbors[i] != null) {
 					Chunk ch = getChunk(neighbors[i].getX(), neighbors[i].getZ());
 					if (ch.contains(neighbors[i])) {
-						BlockInstance[] neighbors1 = neighbors[i].getNeighbors();
+						BlockInstance[] neighbors1 = neighbors[i].getNeighbors(ch);
 						boolean vis = true;
 						for (int j = 0; j < neighbors1.length; j++) {
 							if (blocksLight(neighbors1[j], neighbors[i].getBlock().isTransparent())) {
@@ -216,26 +216,26 @@ public class Chunk {
 					
 					if(j > y) {
 						if (temperature <= 0 && j == SEA_LEVEL) {
-							bi = new BlockInstance(ice, this);
+							bi = new BlockInstance(ice);
 						} else {
-							bi = new BlockInstance(water, this);
+							bi = new BlockInstance(water);
 						}
 					}else if (((y < SEA_LEVEL + 4 && temperature > 5) || temperature > 40 || y < SEA_LEVEL) && j > y - 3) {
-						bi = new BlockInstance(sand, this);
+						bi = new BlockInstance(sand);
 					} else if (j == y) {
 						if(temperature > 0) {
-							bi = new BlockInstance(grass, this);
+							bi = new BlockInstance(grass);
 						} else {
-							bi = new BlockInstance(snow, this);
+							bi = new BlockInstance(snow);
 						}
 					} else if (j > y - 3) {
-						bi = new BlockInstance(dirt, this);
+						bi = new BlockInstance(dirt);
 					} else if (j > 0) {
 						float rand = oreMap[px][py] * j * (256 - j) * (128 - j) * 6741;
 						rand = (((int) rand) & 8191) / 8191.0F;
 						bi = selectOre(rand, j);
 					} else {
-						bi = new BlockInstance(bedrock, this);
+						bi = new BlockInstance(bedrock);
 					}
 					bi.setPosition(new Vector3i(wx + px, j, wy + py));
 					bi.setWorld(world);
@@ -296,7 +296,7 @@ public class Chunk {
 		boolean chy0 = world._getChunk(ox, oy - 1).isGenerated();
 		boolean chy1 = world._getChunk(ox, oy + 1).isGenerated();
 		for(BlockInstance bi : list) {
-			BlockInstance[] neighbors = bi.getNeighbors();
+			BlockInstance[] neighbors = bi.getNeighbors(this);
 			int j = bi.getY();
 			int px = bi.getX()&15;
 			int py = bi.getZ()&15;
@@ -356,14 +356,14 @@ public class Chunk {
 	// This function only allows a less than 50% of the underground to be ores.
 	public BlockInstance selectOre(float rand, int height) {
 		if(rand >= oreChances[oreHeights.length])
-			return new BlockInstance(stone, this);
+			return new BlockInstance(stone);
 		for (int i = oreChances.length - 2; i >= 0; i--) {
 			if(height > oreHeights[i])
 				break;
 			if(rand >= oreChances[i])
-				return new BlockInstance(ores[i], this);
+				return new BlockInstance(ores[i]);
 		}
-		return new BlockInstance(stone, this);
+		return new BlockInstance(stone);
 	}
 	
 	public boolean isGenerated() {
@@ -442,7 +442,7 @@ public class Chunk {
 			// TODO find tile entity
 		}
 		inst[x][y][z] = null;
-		BlockInstance[] neighbors = bi.getNeighbors();
+		BlockInstance[] neighbors = bi.getNeighbors(this);
 		for (int i = 0; i < neighbors.length; i++) {
 			BlockInstance inst = neighbors[i];
 			if (inst != null && inst != bi) {
@@ -482,7 +482,7 @@ public class Chunk {
 		if(y >= world.getHeight())
 			return;
 		removeBlockAt(x, y, z, false);
-		BlockInstance inst0 = new BlockInstance(b, this);
+		BlockInstance inst0 = new BlockInstance(b);
 		inst0.setPosition(new Vector3i(x + wx, y, z + wy));
 		inst0.setWorld(world);
 		if (b.hasTileEntity()) {
@@ -491,7 +491,7 @@ public class Chunk {
 		}
 		list.add(inst0);
 		inst[x][y][z] = inst0;
-		BlockInstance[] neighbors = inst0.getNeighbors();
+		BlockInstance[] neighbors = inst0.getNeighbors(this);
 		for (int i = 0; i < neighbors.length; i++) {
 			if (blocksLight(neighbors[i], inst0.getBlock().isTransparent())) {
 				revealBlock(inst0);
@@ -502,7 +502,7 @@ public class Chunk {
 			if(neighbors[i] != null) {
 				Chunk ch = getChunk(neighbors[i].getX(), neighbors[i].getZ());
 				if (ch.contains(neighbors[i])) {
-					BlockInstance[] neighbors1 = neighbors[i].getNeighbors();
+					BlockInstance[] neighbors1 = neighbors[i].getNeighbors(ch);
 					boolean vis = true;
 					for (int j = 0; j < neighbors1.length; j++) {
 						if (blocksLight(neighbors1[j], neighbors[i].getBlock().isTransparent())) {

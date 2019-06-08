@@ -12,7 +12,6 @@ public class BlockInstance {
 	private IBlockSpatial spatial;
 	private Vector3i pos;
 	private World world;
-	private Chunk ch;
 	
 	public World getWorld() {
 		return world;
@@ -22,9 +21,8 @@ public class BlockInstance {
 		this.world = world;
 	}
 	
-	public BlockInstance(Block block, Chunk ch) {
+	public BlockInstance(Block block) {
 		this.block = block;
-		this.ch = ch;
 	}
 	
 	public int getID() {
@@ -88,7 +86,7 @@ public class BlockInstance {
 	
 
 	
-	public BlockInstance[] getNeighbors() {
+	public BlockInstance[] getNeighbors(Chunk ch) {
 		BlockInstance[] inst = new BlockInstance[6];
 		// 0 = EAST  (x - 1)
 		// 1 = WEST  (x + 1)
@@ -117,7 +115,7 @@ public class BlockInstance {
 		return inst;
 	}
 	
-	public BlockInstance getNeighbor(int i) {
+	public BlockInstance getNeighbor(int i, Chunk ch) {
 		// 0 = EAST  (x - 1)
 		// 1 = WEST  (x + 1)
 		// 2 = NORTH (z + 1)
