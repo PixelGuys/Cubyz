@@ -147,7 +147,7 @@ public class MainRenderer implements IRenderer {
 				continue;
 			BlockInstance[] vis = ch.getVisibles();
 			for (int i = 0; vis[i] != null; i++) {
-				BlockSpatial tmp = (BlockSpatial) vis[i].getSpatial();
+				Spatial tmp = (Spatial) vis[i].getSpatial();
 				tmp.setPosition((vis[i].getX() - localPlayer.getPosition().x) - localPlayer.getPosition().relX, vis[i].getY(), (vis[i].getZ() - localPlayer.getPosition().z) - localPlayer.getPosition().relZ);
 				if(tmp.isSelected()) {
 					selected = tmp;

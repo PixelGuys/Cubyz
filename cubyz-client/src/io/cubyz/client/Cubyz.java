@@ -409,9 +409,9 @@ public class Cubyz implements IGameLogic {
 		}
 		
 		if (world != null) {
-			renderer.render(window, ctx, new Vector3f(0.3F, 0.3F, 0.3F), light, world.getVisibleChunks(), world.getBlocks(), world.getLocalPlayer());
+			renderer.render(window, ctx, new Vector3f(0.8f, 0.8f, 0.8f), light, world.getVisibleChunks(), world.getBlocks(), world.getLocalPlayer());
 		} else {
-			renderer.render(window, ctx, new Vector3f(0.3F, 0.3F, 0.3F), light, EMPTY_CHUNK_LIST, EMPTY_BLOCK_LIST, null);
+			renderer.render(window, ctx, new Vector3f(0.8f, 0.8f, 0.8f), light, EMPTY_CHUNK_LIST, EMPTY_BLOCK_LIST, null);
 		}
 		gameUI.updateUI();
 	}

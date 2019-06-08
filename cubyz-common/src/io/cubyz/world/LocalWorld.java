@@ -22,6 +22,8 @@ import io.cubyz.save.BlockChange;
 import io.cubyz.save.WorldIO;
 
 public class LocalWorld extends World {
+	
+	private static Random rnd = new Random();
 
 	private String name;
 	private List<Chunk> chunks;
@@ -254,8 +256,6 @@ public class LocalWorld extends World {
 	}
 	
 	public void update() {
-		Random rnd = new Random();
-		
 		// Entities
 		for (Entity en : entities) {
 			en.update();
@@ -280,9 +280,8 @@ public class LocalWorld extends World {
 	}
 	
 	public void generate() {
-		Random r = new Random();
 		int ID = 0;
-		seed = r.nextInt();
+		seed = rnd.nextInt();
 		ArrayList<Ore> ores = new ArrayList<Ore>();
 		blocks = new Block[CubyzRegistries.BLOCK_REGISTRY.registered().length];
 		for (IRegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
