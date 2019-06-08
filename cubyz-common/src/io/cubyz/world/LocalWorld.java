@@ -7,6 +7,8 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Random;
 
+import org.joml.Vector3f;
+
 import io.cubyz.CubyzLogger;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.IRegistryElement;
@@ -43,6 +45,11 @@ public class LocalWorld extends World {
 	private WorldIO wio;
 	
 	private ChunkGenerationThread thread;
+	
+	private static int DAYCYCLE = 1200; // Length of one in-game day in seconds. Midnight is at DAYCYCLE/2. Sunrise and sunset each take about 1/16 of the day.
+	long gameTime = 0; // Time of the game in seconds.
+	long milliTime;
+	Vector3f ambientLight = new Vector3f(0, 0, 0);
 	
 	private class ChunkGenerationThread extends Thread {
 		private static final int MAX_QUEUE_SIZE = renderDistance << 2;
@@ -109,6 +116,7 @@ public class LocalWorld extends World {
 		} else {
 			wio.saveWorldData();
 		}
+		milliTime = System.currentTimeMillis();
 	}
 	
 	@Override
@@ -256,6 +264,34 @@ public class LocalWorld extends World {
 	}
 	
 	public void update() {
+		// Time
+		if(milliTime + 1000 < System.currentTimeMillis()) {
+			milliTime += 1000;
+			gameTime++; // gameTime is simply measured in seconds.
+		}
+		// Ambient light
+		{
+			int dayTime = Math.abs((int)(gameTime % DAYCYCLE) - (DAYCYCLE >> 1));
+			float lightLevel;
+			if(dayTime < (DAYCYCLE >> 2)-(DAYCYCLE >> 4))
+				lightLevel = 0.1f;
+			else if(dayTime > (DAYCYCLE >> 2)+(DAYCYCLE >> 4))
+				lightLevel = 0.7f;
+			else {
+				dayTime -= (DAYCYCLE >> 2);
+				dayTime <<= 3;
+				lightLevel = 0.4f + 0.3f*dayTime/(DAYCYCLE >> 1);
+			}
+			System.out.println(lightLevel);
+			ambientLight.x = lightLevel;
+			ambientLight.y = lightLevel;
+			ambientLight.z = lightLevel;
+			BlockInstance bi = getBlock(player.getPosition().x+Math.round(player.getPosition().relX), (int)(player.getPosition().y)+3, player.getPosition().z+Math.round(player.getPosition().relZ));
+			if(bi != null && bi.getBlock().getID().equals("water")) { // TODO: Make this more general for other block-types.
+				ambientLight.x *= 0.3f;
+				ambientLight.y *= 0.4f;
+			}
+		}
 		// Entities
 		for (Entity en : entities) {
 			en.update();
@@ -389,5 +425,9 @@ public class LocalWorld extends World {
 			}
 		}
 		
+	}
+	
+	public Vector3f getLighting() {
+		return ambientLight;
 	}
 }

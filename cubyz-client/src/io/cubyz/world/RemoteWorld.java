@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.joml.Vector3f;
+
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
@@ -79,6 +81,12 @@ public class RemoteWorld extends World {
 
 	@Override
 	public Chunk[] getVisibleChunks() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Vector3f getLighting() {
 		// TODO Auto-generated method stub
 		return null;
 	}

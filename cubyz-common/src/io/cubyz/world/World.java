@@ -1,6 +1,8 @@
 package io.cubyz.world;
 
 import java.util.List;
+
+import org.joml.Vector3f;
 import org.joml.Vector3i;
 
 import io.cubyz.blocks.Block;
@@ -51,6 +53,8 @@ public abstract class World {
 	}
 	public abstract void removeBlock(int x, int y, int z);
 	public abstract void placeBlock(int x, int y, int z, Block b);
+	
+	public abstract Vector3f getLighting();
 	
 	public int getHighestBlock(int x, int z) {
 		for (int y = getHeight(); y > 0; y--) {
