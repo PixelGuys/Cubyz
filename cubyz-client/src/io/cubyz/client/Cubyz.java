@@ -151,7 +151,7 @@ public class Cubyz implements IGameLogic {
 	public static void requestJoin(String host, int port) {
 		if (mpClient != null) {
 			mpClient.connect(host, port);
-			mpClient.fullConnect();
+			mpClient.join(profile);
 			serverIP = host;
 			serverPort = port;
 		} else {
@@ -214,10 +214,6 @@ public class Cubyz implements IGameLogic {
 		baserp.name = "Cubyz";
 		ResourceManager.packs.add(baserp);
 		
-		MainMenuGUI mmg = new MainMenuGUI();
-		gameUI.setMenu(mmg);
-		gameUI.addOverlay(new DebugOverlay());
-		
 		ClientOnly.createBlockMesh = (block) -> {
 			// TODO use new resource model
 			Resource rsc = block.getRegistryID();
@@ -227,6 +223,8 @@ public class Cubyz implements IGameLogic {
 				Mesh mesh = null;
 				BlockModel bm = null;
 				bm = ResourceUtilities.loadModel(new Resource("cubyz:grass"));
+				
+				// Cached meshes
 				Mesh defaultMesh = null;
 				for (String key : cachedDefaultModels.keySet()) {
 					if (key.equals(bm.model)) {
@@ -238,7 +236,8 @@ public class Cubyz implements IGameLogic {
 					defaultMesh.setBoundingRadius(2.0f);
 					cachedDefaultModels.put(bm.model, defaultMesh);
 				}
-				if (block.isTextureConverted()) { // block.texConverted
+				
+				if (block.isTextureConverted()) {
 					tex = new Texture("assets/cubyz/textures/blocks/" + block.getTexture() + ".png");
 				} else {
 					tex = new Texture(TextureConverter.fromBufferedImage(
@@ -284,9 +283,6 @@ public class Cubyz implements IGameLogic {
 		ResourceUtilities.BlockModel model = ResourceUtilities.loadModel(new Resource("cubyz:grass"));
 		System.out.println("Grass block texture : " + model.texture);
 		System.out.println("Grass block model   : "   + model.model);
-		
-		ToastManager.queuedToasts.add(new Toast("Woohoo", "Welcome to 0.4.0, with brand new toasts!"));
-		System.out.println("Pushed toast");
 	}
 
 	private Vector3f dir = new Vector3f();

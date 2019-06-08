@@ -3,9 +3,11 @@ package io.cubyz.multiplayer.client;
 import java.util.ArrayList;
 
 import io.cubyz.CubyzLogger;
+import io.cubyz.multiplayer.GameProfile;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -78,13 +80,13 @@ public class MPClient {
 		}
 	}
 	
-	public void fullConnect() {
+	public void join(GameProfile profile) {
 		cch.connect();
 	}
 	
 	/**
-	 * Disconnect from old server if the client was connected.
-	 * 
+	 * Disconnect from old server if the client was connected.<br/>
+	 * <b>This connection can be used to {@link MPClient#ping()} or {@link MPClient#join()}</b>
 	 * @param host
 	 * @param port
 	 */
@@ -99,12 +101,12 @@ public class MPClient {
 			Bootstrap b = new Bootstrap();
 			ls = new LocalServer();
 			cch = new MPClientHandler(MPClient.this, false);
-			b.group(group).channel(NioSocketChannel.class)//.option(ChannelOption.TCP_NODELAY, true)
+			b.group(group).channel(NioSocketChannel.class).option(ChannelOption.TCP_NODELAY, true)
 					.handler(new ChannelInitializer<SocketChannel>() {
 						@Override
 						public void initChannel(SocketChannel ch) throws Exception {
 							ChannelPipeline p = ch.pipeline();
-							//p.addLast(new LoggingHandler(LogLevel.INFO)); // debugging info
+							p.addLast(new LoggingHandler(LogLevel.INFO)); // debugging info
 							p.addLast(cch);
 						}
 					});

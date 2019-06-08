@@ -2,14 +2,10 @@ package io.cubyz.ui;
 
 import static org.lwjgl.nanovg.NanoVG.*;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-
 import org.jungle.hud.Font;
 import org.jungle.hud.Hud;
 import org.lwjgl.nanovg.NVGColor;
 import org.lwjgl.nanovg.NVGPaint;
-import org.lwjgl.nanovg.NanoVG;
 
 import io.cubyz.CubyzLogger;
 
@@ -42,6 +38,8 @@ public class NGraphics {
 	}
 	
 	public static void drawImage(int id, int x, int y, int width, int height) {
+		if (LOG_OPERATIONS)
+			CubyzLogger.instance.fine("[NGRAPHICS] draw image " + id + " at " + x + ", " + y + " with size " + width + ", " + height);
 		imagePaint = nvgImagePattern(nvg, x, y, width, height, 0, id, 1f, imagePaint);
 		nvgBeginPath(nvg);
 		nvgRect(nvg, x, y, width, height);

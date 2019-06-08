@@ -24,11 +24,20 @@ public class DiscordIntegration {
 		DiscordRPC lib = DiscordRPC.INSTANCE;
 		String appID = "527033701343952896";
 		DiscordEventHandlers handlers = new DiscordEventHandlers();
+		handlers.errored = handlers.disconnected = new DiscordEventHandlers.OnStatus() {
+
+			@Override
+			public void accept(int errorCode, String message) {
+				System.err.println(errorCode + ": " + message);
+			}
+			
+		};
 		handlers.ready = new OnReady() {
 
 			@Override
 			public void accept(DiscordUser user) {
 				ToastManager.queuedToasts.push(new Toast("Discord Integration", user.username + " is linked to you!"));
+				System.out.println("Linked!");
 			}
 			
 		};
@@ -50,9 +59,9 @@ public class DiscordIntegration {
 		String userDir = System.getProperty("user.dir");
 		String javaExec = System.getProperty("java.home") + "/bin/java.exe";
 		String classpath = System.getProperty("java.class.path");
-		lib.Discord_Initialize(appID, handlers, false, "");
+		lib.Discord_Initialize(appID, handlers, false, null);
 		
-		String path = javaExec + " -cp " + classpath + " -jar " + userDir + "/cubz.jar";
+		String path = javaExec + " -cp " + classpath + " io.cubyz.client.Cubyz";
 		Cubyz.log.fine("Registered launch path as " + path);
 		lib.Discord_Register(appID, path);
 		
@@ -84,8 +93,7 @@ public class DiscordIntegration {
 		worker.setName("RPC-Callback-Handler");
 		worker.start();
 		Cubyz.log.info("Discord RPC integration opened!");
-		ToastManager.queuedToasts.add(new Toast("RPC", "Discord RPC on!"));
-		System.out.println("Pushed toast");
+		ToastManager.queuedToasts.add(new Toast("Discord Integration", "Launching.."));
 	}
 	
 	public static boolean isEnabled() {
