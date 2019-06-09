@@ -372,6 +372,9 @@ public class Cubyz implements IGameLogic {
 	public static final Chunk[] EMPTY_CHUNK_LIST = new Chunk[0];
 	public static final Block[] EMPTY_BLOCK_LIST = new Block[0];
 	
+	private Vector3f ambient = new Vector3f();
+	private Vector4f clearColor = new Vector4f(0f, 0f, 0f, 1f);
+	
 	float playerBobbing;
 	boolean bobbingUp;
 	@Override
@@ -409,7 +412,16 @@ public class Cubyz implements IGameLogic {
 		}
 		
 		if (world != null) {
-			renderer.render(window, ctx, world.getLighting(), light, world.getVisibleChunks(), world.getBlocks(), world.getLocalPlayer());
+			ambient.x = ambient.y = ambient.z = world.getGlobalLighting();
+			clearColor.x = clearColor.y = clearColor.z = world.getGlobalLighting();
+			Player player = world.getLocalPlayer();
+			BlockInstance bi = world.getBlock(player.getPosition().x+Math.round(player.getPosition().relX), (int)(player.getPosition().y)+3, player.getPosition().z+Math.round(player.getPosition().relZ));
+			if(bi != null && bi.getBlock().getID().equals("water")) { // TODO: Make this more general for other block-types.
+				ambient.x *= 0.3f;
+				ambient.y *= 0.4f;
+			}
+			window.setClearColor(clearColor);
+			renderer.render(window, ctx, ambient, light, world.getVisibleChunks(), world.getBlocks(), world.getLocalPlayer());
 		} else {
 			renderer.render(window, ctx, new Vector3f(0.8f, 0.8f, 0.8f), light, EMPTY_CHUNK_LIST, EMPTY_BLOCK_LIST, null);
 		}
@@ -430,7 +442,7 @@ public class Cubyz implements IGameLogic {
 			if (mouse.isLeftButtonPressed() && mouse.isGrabbed()) {
 				//Breaking Blocks
 				if (breakCooldown == 0) {
-					breakCooldown = 10;
+					breakCooldown = 0;
 					BlockInstance bi = msd.getSelectedBlockInstance();
 					if (bi != null && bi.getBlock().getHardness() != -1f) {
 						world.removeBlock(bi.getX(), bi.getY(), bi.getZ());

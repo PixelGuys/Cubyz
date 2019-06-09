@@ -4,24 +4,27 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import org.joml.Vector3f;
-
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
+import io.cubyz.multiplayer.GameProfile;
 
 // TODO
 public class RemoteWorld extends World {
 	
+	private Player localPlayer;
+	private GameProfile localGameProfile;
+	private Entity[] loadedEntities;
+	
 	@Override
 	public Player getLocalPlayer() {
-		return null;
+		return localPlayer;
 	}
 
 	@Override
 	public Entity[] getEntities() {
-		return null;
+		return loadedEntities;
 	}
 
 	@Override
@@ -40,11 +43,13 @@ public class RemoteWorld extends World {
 	}
 
 	@Override
-	public void removeBlock(int x, int y, int z) {}
+	public void removeBlock(int x, int y, int z) {
+		
+	}
 
 	@Override
 	public void queueChunk(Chunk ch) {
-		// LOAD would be loading from server, UNLOAD would be unloading from client, and GENERATE would do nothing
+		// Only LOAD from server. It cannot GENERATE a remote chunk.
 	}
 
 	@Override
@@ -59,36 +64,40 @@ public class RemoteWorld extends World {
 
 	@Override
 	public List<Chunk> getChunks() {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
 	public Block[] getBlocks() {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
 	public Map<Block, ArrayList<BlockInstance>> visibleBlocks() {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
 	public void placeBlock(int x, int y, int z, Block b) {
-		// TODO Auto-generated method stub
 		
 	}
 
 	@Override
 	public Chunk[] getVisibleChunks() {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public Vector3f getLighting() {
-		// TODO Auto-generated method stub
-		return null;
+	public float getGlobalLighting() {
+		return 0.7f;
+	}
+
+	@Override
+	public long getGameTime() {
+		return 0;
+	}
+
+	@Override
+	public void setGameTime(long time) {
+		throw new UnsupportedOperationException("Cannot change remote game time");
 	}
 
 }

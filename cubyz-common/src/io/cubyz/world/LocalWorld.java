@@ -46,10 +46,10 @@ public class LocalWorld extends World {
 	
 	private ChunkGenerationThread thread;
 	
-	private static int DAYCYCLE = 1200; // Length of one in-game day in seconds. Midnight is at DAYCYCLE/2. Sunrise and sunset each take about 1/16 of the day.
+	private static final int DAYCYCLE = 10; // Length of one in-game day in seconds. Midnight is at DAYCYCLE/2. Sunrise and sunset each take about 1/16 of the day.
 	long gameTime = 0; // Time of the game in seconds.
 	long milliTime;
-	Vector3f ambientLight = new Vector3f(0, 0, 0);
+	float ambientLight = 0f;
 	
 	private class ChunkGenerationThread extends Thread {
 		private static final int MAX_QUEUE_SIZE = renderDistance << 2;
@@ -60,7 +60,8 @@ public class LocalWorld extends World {
 				if (loadList.size() >= MAX_QUEUE_SIZE) {
 					CubyzLogger.instance.info("Hang on, the Local-Chunk-Thread's queue is full, blocking!");
 					while (!loadList.isEmpty()) {
-						System.out.print(""); // again, used as replacement to Thread.onSpinWait(), also necessary due to some JVM oddities
+						//System.out.print(""); // again, used as replacement to Thread.onSpinWait(), also necessary due to some JVM oddities
+						Thread.yield();
 					}
 				}
 				loadList.add(ch);
@@ -84,7 +85,7 @@ public class LocalWorld extends World {
 					//CubyzLogger.instance.fine("Generating " + popped.getX() + "," + popped.getZ());
 					synchronousGenerate(popped);
 					popped.load();
-					//seed = (int) System.currentTimeMillis(); // enable it if you want fun (don't forget to disable before commit!!!)
+					seed = (int) System.currentTimeMillis(); // enable it if you want fun (don't forget to disable before commit!!!)
 				}
 				System.out.print("");
 			}
@@ -112,11 +113,16 @@ public class LocalWorld extends World {
 		
 		wio = new WorldIO(this, new File("saves/" + name));
 		if (wio.hasWorldData()) {
-			wio.loadWorldData();
+			//wio.loadWorldData();
 		} else {
 			wio.saveWorldData();
 		}
 		milliTime = System.currentTimeMillis();
+	}
+
+	
+	public void forceSave() {
+		wio.saveWorldData();
 	}
 	
 	@Override
@@ -272,24 +278,14 @@ public class LocalWorld extends World {
 		// Ambient light
 		{
 			int dayTime = Math.abs((int)(gameTime % DAYCYCLE) - (DAYCYCLE >> 1));
-			float lightLevel;
 			if(dayTime < (DAYCYCLE >> 2)-(DAYCYCLE >> 4))
-				lightLevel = 0.1f;
+				ambientLight = 0.1f;
 			else if(dayTime > (DAYCYCLE >> 2)+(DAYCYCLE >> 4))
-				lightLevel = 0.7f;
+				ambientLight = 0.7f;
 			else {
 				dayTime -= (DAYCYCLE >> 2);
 				dayTime <<= 3;
-				lightLevel = 0.4f + 0.3f*dayTime/(DAYCYCLE >> 1);
-			}
-			System.out.println(lightLevel);
-			ambientLight.x = lightLevel;
-			ambientLight.y = lightLevel;
-			ambientLight.z = lightLevel;
-			BlockInstance bi = getBlock(player.getPosition().x+Math.round(player.getPosition().relX), (int)(player.getPosition().y)+3, player.getPosition().z+Math.round(player.getPosition().relZ));
-			if(bi != null && bi.getBlock().getID().equals("water")) { // TODO: Make this more general for other block-types.
-				ambientLight.x *= 0.3f;
-				ambientLight.y *= 0.4f;
+				ambientLight = 0.4f + 0.3f*dayTime/(DAYCYCLE >> 1);
 			}
 		}
 		// Entities
@@ -406,6 +402,7 @@ public class LocalWorld extends World {
 		lastZ = z;
 		if (minK != visibleChunks.length) { // if atleast one chunk got unloaded
 			wio.saveWorldData();
+			System.gc();
 		}
 		
 		// Check if one of the never loaded chunks is outside of players range.
@@ -427,7 +424,17 @@ public class LocalWorld extends World {
 		
 	}
 	
-	public Vector3f getLighting() {
+	public float getGlobalLighting() {
 		return ambientLight;
+	}
+
+	@Override
+	public long getGameTime() {
+		return gameTime;
+	}
+
+	@Override
+	public void setGameTime(long time) {
+		gameTime = time;
 	}
 }

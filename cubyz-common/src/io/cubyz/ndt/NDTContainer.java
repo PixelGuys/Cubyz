@@ -6,11 +6,18 @@ import io.cubyz.math.Bits;
 
 public class NDTContainer extends NDTTag {
 
-	HashMap<String, NDTTag> tags;
+	HashMap<String, NDTTag> tags = new HashMap<>();
 	
-	{
-		this.expectedLength = -1;
-		this.type = NDTConstants.TYPE_CONTAINER;
+	public NDTContainer() {
+		expectedLength = -1;
+		type = NDTConstants.TYPE_CONTAINER;
+	}
+	
+	public NDTContainer(byte[] bytes) {
+		this();
+		content = bytes;
+		load();
+		System.out.println("Loaded!");
 	}
 	
 	byte[] sub(int s, int e) {
@@ -29,8 +36,9 @@ public class NDTContainer extends NDTTag {
 			short len = Bits.getShort(content, addr);
 			short size = Bits.getShort(content, addr+2);
 			NDTString key = new NDTString();
-			key.setBytes(sub(addr+4, addr+len+4));
-			addr += len + 2;
+			key.setBytes(sub(addr+4, addr+len+6));
+			addr += len + 6;
+			System.out.println("Load " + key.getValue());
 			tags.put(key.getValue(), NDTTag.fromBytes(sub(addr, addr+size)));
 			addr += size;
 		}
@@ -40,7 +48,7 @@ public class NDTContainer extends NDTTag {
 		int size = 2;
 		for (String key : tags.keySet()) {
 			size += 6;
-			size += tags.get(key).getData().length;
+			size += tags.get(key).getData().length+1;
 			size += key.length() + 2;
 		}
 		content = new byte[size];
@@ -53,15 +61,20 @@ public class NDTContainer extends NDTTag {
 			Bits.putShort(content, addr+2, (short) tag.getData().length);
 			NDTString tagKey = new NDTString();
 			tagKey.setValue(key);
+			//System.out.println("Key length: " + tagKey.getLength());
 			System.arraycopy(tagKey.getData(), 0, content, addr+4, tagKey.getData().length);
-			addr += tagKey.getData().length;
-			System.arraycopy(tag.getData(), 0, content, addr, tag.getData().length);
+			addr += tagKey.getData().length + 4;
+			
+			byte[] tagContent = new byte[tag.getData().length + 1];
+			tagContent[0] = tag.type;
+			System.arraycopy(tag.getData(), 0, tagContent, 1, tag.getData().length);
+			System.arraycopy(tagContent, 0, content, addr, tagContent.length);
 			addr += tag.getData().length;
 		}
 	}
 	
 	public boolean hasKey(String key) {
-		load();
+		//load();
 		return tags.containsKey(key);
 	}
 	
@@ -94,6 +107,17 @@ public class NDTContainer extends NDTTag {
 	
 	public void setInteger(String key, int i) {
 		NDTInteger tag = new NDTInteger();
+		tag.setValue(i);
+		setTag(key, tag);
+	}
+	
+	public long getLong(String key) {
+		NDTLong tag = (NDTLong) getTag(key);
+		return tag.getValue();
+	}
+	
+	public void setLong(String key, long i) {
+		NDTLong tag = new NDTLong();
 		tag.setValue(i);
 		setTag(key, tag);
 	}

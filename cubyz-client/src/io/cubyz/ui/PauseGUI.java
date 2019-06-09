@@ -6,6 +6,7 @@ import org.lwjgl.glfw.GLFW;
 
 import io.cubyz.client.Cubyz;
 import io.cubyz.ui.components.Button;
+import io.cubyz.world.LocalWorld;
 
 public class PauseGUI extends MenuGUI {
 
@@ -16,6 +17,12 @@ public class PauseGUI extends MenuGUI {
 	@Override
 	public void init(long nvg) {
 		Cubyz.mouse.setGrabbed(false);
+		if (Cubyz.world != null) {
+			if (Cubyz.world.isLocal()) {
+				LocalWorld world = (LocalWorld) Cubyz.world;
+				world.forceSave();
+			}
+		}
 		exit = new Button();
 		game = new Button();
 		reload = new Button();

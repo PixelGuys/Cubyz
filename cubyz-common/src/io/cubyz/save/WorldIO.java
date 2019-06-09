@@ -7,9 +7,11 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
 import io.cubyz.entity.Entity;
+import io.cubyz.ndt.NDTContainer;
 import io.cubyz.world.Chunk;
 import io.cubyz.world.LocalWorld;
 import io.cubyz.world.World;
@@ -40,14 +42,21 @@ public class WorldIO {
 
 	public void loadWorldData() {
 		try {
-			DataInputStream in = new DataInputStream(new FileInputStream(new File(dir, "world.dat")));
-			world.setName(in.readUTF());
-			world.setHeight(in.readInt());
-			world.setSeed(in.readInt());
-			Entity[] entities = new Entity[in.readInt()];
-			for (int i = 0; i < entities.length; i++) {
-				entities[i] = EntityIO.loadEntity(in);
-			}
+			FileInputStream in = new FileInputStream(new File(dir, "world.dat"));
+			
+			ByteBuffer dst = ByteBuffer.allocate((int) in.getChannel().size());
+			in.getChannel().read(dst);
+			dst.flip();
+			
+			NDTContainer ndt = new NDTContainer(dst.array());
+			world.setName(ndt.getString("name"));
+			world.setHeight(ndt.getInteger("height"));
+			world.setSeed(ndt.getInteger("seed"));
+			world.setGameTime(ndt.getLong("gameTime"));
+			//Entity[] entities = new Entity[in.readInt()];
+			//for (int i = 0; i < entities.length; i++) {
+			//	entities[i] = EntityIO.loadEntity(in);
+			//}
 			// TODO set entities
 			in.close();
 		} catch (IOException e) {
@@ -57,14 +66,18 @@ public class WorldIO {
 
 	public void saveWorldData() {
 		try {
-			DataOutputStream out = new DataOutputStream(new FileOutputStream(new File(dir, "world.dat")));
-			out.writeUTF(world.getName());
-			out.writeInt(world.getHeight());
-			out.writeInt(world.getSeed());
-			out.writeInt(world.getEntities().length);
-			for (Entity ent : world.getEntities()) {
-				EntityIO.saveEntity(ent, out);
-			}
+			FileOutputStream out = new FileOutputStream(new File(dir, "world.dat"));
+			NDTContainer ndt = new NDTContainer();
+			ndt.setInteger("version", 1);
+			ndt.setString("name", world.getName());
+			ndt.setInteger("height", world.getHeight());
+			ndt.setInteger("seed", world.getSeed());
+			ndt.setLong("gameTime", world.getGameTime());
+			out.write(ndt.getData());
+			//out.writeInt(world.getEntities().length);
+			//for (Entity ent : world.getEntities()) {
+			//	EntityIO.saveEntity(ent, out);
+			//}
 			out.close();
 		} catch (IOException e) {
 			e.printStackTrace();

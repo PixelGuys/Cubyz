@@ -14,6 +14,7 @@ public class NDTInteger extends NDTTag {
 	}
 	
 	public void setValue(int i) {
+		content = new byte[4];
 		Bits.putInt(content, 0, i);
 	}
 	

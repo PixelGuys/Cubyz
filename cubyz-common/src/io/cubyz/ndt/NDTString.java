@@ -9,8 +9,9 @@ public class NDTString extends NDTTag {
 		this.type = NDTConstants.TYPE_STRING;
 	}
 	
-	short getLength() {
-		return Bits.getShort(content, 0);
+	public short getLength() {
+		//return Bits.getShort(content, 0);
+		return (short) ((short) content.length-2);
 	}
 	
 	public String getValue() {
@@ -30,6 +31,6 @@ public class NDTString extends NDTTag {
 	}
 	
 	public boolean validate() {
-		return getLength() == content.length+2;
+		return getLength() == content.length-2;
 	}
 }

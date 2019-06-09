@@ -48,13 +48,17 @@ public abstract class World {
 	public abstract Chunk getChunk(int x, int z);	// Works with world coordinates
 	public abstract Chunk _getChunk(int x, int z);	// Works with chunk coordinates
 	public abstract BlockInstance getBlock(int x, int y, int z);
+	
 	public BlockInstance getBlock(Vector3i vec) {
 		return getBlock(vec.x, vec.y, vec.z);
 	}
+	
 	public abstract void removeBlock(int x, int y, int z);
 	public abstract void placeBlock(int x, int y, int z, Block b);
 	
-	public abstract Vector3f getLighting();
+	public abstract float getGlobalLighting();
+	public abstract long getGameTime();
+	public abstract void setGameTime(long time);
 	
 	public int getHighestBlock(int x, int z) {
 		for (int y = getHeight(); y > 0; y--) {

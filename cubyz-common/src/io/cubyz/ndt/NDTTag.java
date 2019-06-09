@@ -37,6 +37,11 @@ public class NDTTag {
 			ndt.setBytes(bytes);
 			return ndt;
 		}
+		if (bytes[0] == NDTConstants.TYPE_LONG) {
+			NDTLong ndt = new NDTLong();
+			ndt.setBytes(bytes);
+			return ndt;
+		}
 		if (bytes[0] == NDTConstants.TYPE_STRING) {
 			NDTString ndt = new NDTString();
 			ndt.setBytes(bytes);
