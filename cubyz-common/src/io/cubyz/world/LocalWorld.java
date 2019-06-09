@@ -85,9 +85,10 @@ public class LocalWorld extends World {
 					//CubyzLogger.instance.fine("Generating " + popped.getX() + "," + popped.getZ());
 					synchronousGenerate(popped);
 					popped.load();
-					seed = (int) System.currentTimeMillis(); // enable it if you want fun (don't forget to disable before commit!!!)
+					//seed = (int) System.currentTimeMillis(); // enable it if you want fun (don't forget to disable before commit!!!)
 				}
-				System.out.print("");
+				Thread.yield();
+				//System.out.print("");
 			}
 		}
 	}
