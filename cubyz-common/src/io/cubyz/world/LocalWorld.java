@@ -46,7 +46,7 @@ public class LocalWorld extends World {
 	
 	private ChunkGenerationThread thread;
 	
-	private static final int DAYCYCLE = 10; // Length of one in-game day in seconds. Midnight is at DAYCYCLE/2. Sunrise and sunset each take about 1/16 of the day.
+	private static final int DAYCYCLE = 1200; // Length of one in-game day in seconds. Midnight is at DAYCYCLE/2. Sunrise and sunset each take about 1/16 of the day.
 	long gameTime = 0; // Time of the game in seconds.
 	long milliTime;
 	float ambientLight = 0f;
