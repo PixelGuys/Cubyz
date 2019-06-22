@@ -61,7 +61,7 @@ public class DiscordIntegration {
 		String classpath = System.getProperty("java.class.path");
 		lib.Discord_Initialize(appID, handlers, false, null);
 		
-		String path = javaExec + " -cp " + classpath + " io.cubyz.client.Cubyz";
+		String path = javaExec + " -cp " + classpath + " io.cubyz.client.GameLauncher";
 		Cubyz.log.fine("Registered launch path as " + path);
 		lib.Discord_Register(appID, path);
 		
@@ -76,7 +76,7 @@ public class DiscordIntegration {
 		
 		presence.partyId = generatePartyID();
 		
-		setStatus("Just started");
+		setStatus("On Main Menu.");
 		
 		lib.Discord_UpdatePresence(presence);
 		
@@ -103,8 +103,6 @@ public class DiscordIntegration {
 	public static void updateState() {
 		if (Cubyz.isIntegratedServer) {
 			presence.state = "Singleplayer";
-			//presence.joinSecret = null;
-			//presence.partySize = 0;
 		}
 		else {
 			if (Cubyz.isOnlineServerOpened) {

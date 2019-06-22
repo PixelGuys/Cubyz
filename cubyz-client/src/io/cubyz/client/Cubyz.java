@@ -42,6 +42,8 @@ import io.cubyz.entity.Player;
 import io.cubyz.multiplayer.GameProfile;
 import io.cubyz.multiplayer.client.MPClient;
 import io.cubyz.multiplayer.client.PingResponse;
+import io.cubyz.translate.Language;
+import io.cubyz.translate.LanguageLoader;
 import io.cubyz.ui.DebugOverlay;
 import io.cubyz.ui.GameOverlay;
 import io.cubyz.ui.LoadingGUI;
@@ -72,6 +74,7 @@ public class Cubyz implements IGameLogic {
 	public static MouseInput mouse;
 	public static UISystem gameUI;
 	public static World world;
+	public static Language lang;
 	
 	public static int inventorySelection = 0; // Selected slot in inventory
 
@@ -194,25 +197,18 @@ public class Cubyz implements IGameLogic {
 		log.info("Version " + Constants.GAME_VERSION + " of brand " + Constants.GAME_BRAND);
 		log.info("LWJGL Version: " + Version.VERSION_MAJOR + "." + Version.VERSION_MINOR + "." + Version.VERSION_REVISION);
 		log.info("Jungle Version: " + Constants.GAME_VERSION + "-cubyz");
-		renderer.setShaderFolder("assets/cubyz/shaders/default");
-		try {
-			renderer.init(window);
-		} catch (Exception e) {
-			log.log(Level.SEVERE, e, () -> {
-				return "An unhandled exception occured while initiazing the renderer:";
-			});
-			e.printStackTrace();
-			System.exit(1);
-		}
 		msd = new CubyzMeshSelectionDetector(renderer);
 		window.setClearColor(new Vector4f(0.1F, 0.7F, 0.7F, 1.0F));
-		log.info("Renderer: OK!");
 		
 		// Cubyz resources
 		ResourcePack baserp = new ResourcePack();
-		baserp.path = new File("assets/cubyz");
+		baserp.path = new File("assets");
 		baserp.name = "Cubyz";
 		ResourceManager.packs.add(baserp);
+		
+		renderer.setShaderFolder(ResourceManager.lookupPath("cubyz/shaders/default"));
+		
+		lang = LanguageLoader.load("en_US");
 		
 		ClientOnly.createBlockMesh = (block) -> {
 			// TODO use new resource model
@@ -232,7 +228,7 @@ public class Cubyz implements IGameLogic {
 					}
 				}
 				if (defaultMesh == null) {
-					defaultMesh = OBJLoader.loadMesh("assets/cubyz/models/cube.obj");
+					defaultMesh = OBJLoader.loadMesh("assets/cubyz/models/cube.obj", false);
 					defaultMesh.setBoundingRadius(2.0f);
 					cachedDefaultModels.put(bm.model, defaultMesh);
 				}
@@ -259,6 +255,17 @@ public class Cubyz implements IGameLogic {
 		ClientOnly.createBlockSpatial = (bi) -> {
 			return new BlockSpatial(bi);
 		};
+		
+		try {
+			renderer.init(window);
+		} catch (Exception e) {
+			log.log(Level.SEVERE, e, () -> {
+				return "An unhandled exception occured while initiazing the renderer:";
+			});
+			e.printStackTrace();
+			System.exit(1);
+		}
+		log.info("Renderer: OK!");
 		
 		gameUI.setMenu(LoadingGUI.getInstance());
 		LoadThread lt = new LoadThread();
@@ -442,7 +449,7 @@ public class Cubyz implements IGameLogic {
 			if (mouse.isLeftButtonPressed() && mouse.isGrabbed()) {
 				//Breaking Blocks
 				if (breakCooldown == 0) {
-					breakCooldown = 0;
+					breakCooldown = 10;
 					BlockInstance bi = msd.getSelectedBlockInstance();
 					if (bi != null && bi.getBlock().getHardness() != -1f) {
 						world.removeBlock(bi.getX(), bi.getY(), bi.getZ());

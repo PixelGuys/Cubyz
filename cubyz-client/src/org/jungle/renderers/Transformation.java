@@ -12,4 +12,6 @@ public abstract class Transformation {
 	public abstract Matrix4f getOrtoProjModelMatrix(Spatial gameItem, Matrix4f orthoMatrix);
 	public abstract Matrix4f getViewMatrix(Camera camera);
 	public abstract Matrix4f getModelViewMatrix(Spatial spatial, Matrix4f viewMatrix);
+	public abstract Matrix4f getModelViewMatrix(Matrix4f modelMatrix, Matrix4f viewMatrix);
+	public abstract Matrix4f getModelMatrix(Spatial spatial);
 }

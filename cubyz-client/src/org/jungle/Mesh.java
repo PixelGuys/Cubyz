@@ -18,20 +18,20 @@ import org.lwjgl.system.MemoryUtil;
 
 public class Mesh implements Cloneable {
 
-	private final int vaoId;
+	protected final int vaoId;
 
-	private final List<Integer> vboIdList;
+	protected final List<Integer> vboIdList;
 
-	private final int vertexCount;
+	protected final int vertexCount;
 
-	private Material material;
+	protected Material material;
 
 	private float boundingRadius = 1.25f;
 
-	private boolean frustum = true;
-	private boolean cullFace = true;
+	protected boolean frustum = true;
+	protected boolean cullFace = true;
 
-	private boolean hasNormals;
+	protected boolean hasNormals;
 
 	public static final Vector4f DEFAULT_COLOR = new Vector4f(0.75f, 0.75f, 0.75f, 1.f);
 
@@ -57,6 +57,10 @@ public class Mesh implements Cloneable {
 
 	public void setBoundingRadius(float boundingRadius) {
 		this.boundingRadius = boundingRadius;
+	}
+	
+	public boolean isInstanced() {
+		return false;
 	}
 
 	public Mesh(float[] positions, float[] textCoords, float[] normals, int[] indices) {
@@ -168,7 +172,7 @@ public class Mesh implements Cloneable {
 		return vertexCount;
 	}
 
-	private void initRender() {
+	protected void initRender() {
 		Texture texture = material.getTexture();
 		if (texture != null) {
 			// Activate first texture bank
@@ -185,7 +189,7 @@ public class Mesh implements Cloneable {
 			glEnableVertexAttribArray(2);
 	}
 
-	private void endRender() {
+	protected void endRender() {
 		// Restore state
 		glDisableVertexAttribArray(0);
 		glDisableVertexAttribArray(1);

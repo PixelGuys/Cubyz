@@ -403,7 +403,7 @@ public class LocalWorld extends World {
 		lastZ = z;
 		if (minK != visibleChunks.length) { // if atleast one chunk got unloaded
 			wio.saveWorldData();
-			System.gc();
+			//System.gc();
 		}
 		
 		// Check if one of the never loaded chunks is outside of players range.

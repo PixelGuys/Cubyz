@@ -5,6 +5,7 @@ import org.jungle.hud.Font;
 import org.lwjgl.nanovg.NVGColor;
 
 import io.cubyz.client.Cubyz;
+import io.cubyz.translate.TextKey;
 import io.cubyz.ui.components.Button;
 import io.cubyz.ui.components.Label;
 import io.cubyz.world.LocalWorld;
@@ -18,12 +19,12 @@ public class MainMenuGUI extends MenuGUI {
 	
 	public MainMenuGUI() {
 		spPlay.setSize(250, 45);
-		spPlay.setText("Singleplayer");
+		spPlay.setText(new TextKey("gui.cubyz.mainmenu.singleplayer"));
 		spPlay.setFontSize(16f);
 		mpPlay.setSize(200, 40);
-		mpPlay.setText("Multiplayer");
+		mpPlay.setText(new TextKey("gui.cubyz.mainmenu.multiplayer"));
 		exit.setSize(100, 27);
-		exit.setText("Exit");
+		exit.setText(new TextKey("gui.cubyz.mainmenu.exit"));
 		titleLabel.setText("Cubyz");
 		titleLabel.setFont(new Font("OpenSans Bold", 72.f));
 		

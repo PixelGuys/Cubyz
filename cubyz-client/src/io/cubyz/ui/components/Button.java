@@ -4,6 +4,7 @@ import org.jungle.MouseInput;
 import org.jungle.Window;
 
 import io.cubyz.client.Cubyz;
+import io.cubyz.translate.TextKey;
 import io.cubyz.ui.Component;
 import io.cubyz.ui.NGraphics;
 import io.cubyz.ui.UISystem;
@@ -14,13 +15,17 @@ public class Button extends Component {
 	private boolean canRepress = true;
 	private Runnable run;
 	private float fontSize = 12f;
-	private String text = "";
+	private TextKey text;
 	
-	public String getText() {
+	public TextKey getText() {
 		return text;
 	}
 
 	public void setText(String text) {
+		this.text = new TextKey(text);
+	}
+	
+	public void setText(TextKey text) {
 		this.text = text;
 	}
 
@@ -60,7 +65,7 @@ public class Button extends Component {
 		NGraphics.fillRect(x, y, width, height);
 		NGraphics.setColor(255, 255, 255);
 		NGraphics.setFont("OpenSans Bold", fontSize);
-		NGraphics.drawText(x + (width / 2) - ((text.length() * 5) / 2), (int) (y + (height / 2) - fontSize / 2), text);
+		NGraphics.drawText(x + (width / 2) - ((text.getTranslation(Cubyz.lang).length() * 5) / 2), (int) (y + (height / 2) - fontSize / 2), text.getTranslation(Cubyz.lang));
 		//int ascent = NGraphics.getAscent("ahh");
 	}
 	

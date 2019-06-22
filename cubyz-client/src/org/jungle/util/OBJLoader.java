@@ -8,6 +8,7 @@ import java.util.Scanner;
 
 import org.joml.Vector2f;
 import org.joml.Vector3f;
+import org.jungle.InstancedMesh;
 import org.jungle.Mesh;
 
 public class OBJLoader {
@@ -16,7 +17,7 @@ public class OBJLoader {
 		// TODO Auto-generated constructor stub
 	}
 
-	public static Mesh loadMesh(String fileName) throws Exception {
+	public static Mesh loadMesh(String fileName, boolean instanced) throws Exception {
 
 		List<Vector3f> vertices = new ArrayList<>();
 		List<Vector2f> textures = new ArrayList<>();
@@ -71,7 +72,11 @@ public class OBJLoader {
 		}
 		
 		sc.close();
-		return reorderLists(vertices, textures, normals, faces);
+		if (instanced) {
+			return reorderListsInstanced(vertices, textures, normals, faces);
+		} else {
+			return reorderLists(vertices, textures, normals, faces);
+		}
 	}
 
 	private static Mesh reorderLists(List<Vector3f> posList, List<Vector2f> textCoordList, List<Vector3f> normList,
@@ -99,6 +104,34 @@ public class OBJLoader {
 		int[] indicesArr = new int[indices.size()];
 		indicesArr = indices.stream().mapToInt((Integer v) -> v).toArray();
 		Mesh mesh = new Mesh(posArr, textCoordArr, normArr, indicesArr);
+		return mesh;
+	}
+	
+	private static InstancedMesh reorderListsInstanced(List<Vector3f> posList, List<Vector2f> textCoordList, List<Vector3f> normList,
+			List<Face> facesList) {
+
+		List<Integer> indices = new ArrayList<>();
+		// Create position array in the order it has been declared
+		float[] posArr = new float[posList.size() * 3];
+		int i = 0;
+		for (Vector3f pos : posList) {
+			posArr[i] = pos.x;
+			posArr[i + 1] = pos.y;
+			posArr[i + 2] = pos.z;
+			i += 3;
+		}
+		float[] textCoordArr = new float[posList.size() << 1];
+		float[] normArr = new float[posList.size() * 3];
+
+		for (Face face : facesList) {
+			IdxGroup[] faceVertexIndices = face.getFaceVertexIndices();
+			for (IdxGroup indValue : faceVertexIndices) {
+				processFaceVertex(indValue, textCoordList, normList, indices, textCoordArr, normArr);
+			}
+		}
+		int[] indicesArr = new int[indices.size()];
+		indicesArr = indices.stream().mapToInt((Integer v) -> v).toArray();
+		InstancedMesh mesh = new InstancedMesh(posArr, textCoordArr, normArr, indicesArr, 0);
 		return mesh;
 	}
 

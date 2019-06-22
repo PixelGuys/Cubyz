@@ -14,6 +14,7 @@ import org.joml.FrustumIntersection;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
+import org.jungle.InstancedMesh;
 import org.jungle.Mesh;
 import org.jungle.Spatial;
 import org.jungle.Window;
@@ -42,13 +43,13 @@ import io.cubyz.world.Chunk;
 public class MainRenderer implements IRenderer {
 
 	private ShaderProgram shaderProgram;
-	
+
 	private static final float Z_NEAR = 0.01f;
 	private static final float Z_FAR = 1000.0f;
 	private boolean inited = false;
 	private boolean doRender = true;
 	private Transformation transformation;
-	private String shaders = "res/shaders/default";
+	private String shaders = "";
 	private FrustumCullingFilter filter;
 	private Matrix4f prjViewMatrix = new Matrix4f();
 	private FrustumIntersection frustumInt = new FrustumIntersection();
@@ -60,37 +61,39 @@ public class MainRenderer implements IRenderer {
 	public MainRenderer() {
 
 	}
-	
+
 	public Transformation getTransformation() {
 		return transformation;
 	}
-	
+
 	public void setShaderFolder(String shaders) {
 		this.shaders = shaders;
 	}
-	
+
 	public void unloadShaders() throws Exception {
 		shaderProgram.unbind();
 		shaderProgram.cleanup();
 		shaderProgram = null;
 		System.gc();
 	}
-	
+
 	public void setDoRender(boolean doRender) {
 		this.doRender = doRender;
 	}
-	
+
 	public void loadShaders() throws Exception {
 		shaderProgram = new ShaderProgram();
 		shaderProgram.createVertexShader(Utils.loadResource(shaders + "/vertex.vs"));
 		shaderProgram.createFragmentShader(Utils.loadResource(shaders + "/fragment.fs"));
 		shaderProgram.link();
 		shaderProgram.createUniform("projectionMatrix");
-		shaderProgram.createUniform("modelViewMatrix");
+		shaderProgram.createUniform("modelViewNonInstancedMatrix");
 		shaderProgram.createUniform("texture_sampler");
 		shaderProgram.createUniform("ambientLight");
-		shaderProgram.createUniform("selected");
+		//shaderProgram.createUniform("selectedInstanced");
+		shaderProgram.createUniform("selectedNonInstanced");
 		shaderProgram.createUniform("specularPower");
+		//shaderProgram.createUniform("isInstanced");
 		shaderProgram.createMaterialUniform("material");
 		shaderProgram.createPointLightListUniform("pointLights", MAX_POINT_LIGHTS);
 		shaderProgram.createSpotLightListUniform("spotLights", MAX_SPOT_LIGHTS);
@@ -101,55 +104,59 @@ public class MainRenderer implements IRenderer {
 	@Override
 	public void init(Window window) throws Exception {
 		transformation = new JungleTransformation();
-		window.setProjectionMatrix(transformation.getProjectionMatrix((float) Math.toRadians(70.0f), window.getWidth(), window.getHeight(), Z_NEAR,
-				Z_FAR));
+		window.setProjectionMatrix(transformation.getProjectionMatrix((float) Math.toRadians(70.0f), window.getWidth(),
+				window.getHeight(), Z_NEAR, Z_FAR));
 		loadShaders();
-		
+
 		if (window.getOptions().frustumCulling) {
 			filter = new FrustumCullingFilter();
 		}
-		
+
 		inited = true;
 	}
 
 	public void clear() {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	}
-	//long t = 0;
-	//int n = 1;
+	// long t = 0;
+	// int n = 1;
 
 	@SuppressWarnings("unchecked")
-	public void render(Window window, Context ctx, Vector3f ambientLight, DirectionalLight directionalLight, Chunk[] chunks, Block [] blocks, Player localPlayer) {
-		//long t1 = System.nanoTime();
+	public void render(Window window, Context ctx, Vector3f ambientLight, DirectionalLight directionalLight,
+			Chunk[] chunks, Block[] blocks, Player localPlayer) {
+		// long t1 = System.nanoTime();
 		if (window.isResized()) {
 			glViewport(0, 0, window.getWidth(), window.getHeight());
 			window.setResized(false);
-			window.setProjectionMatrix(transformation.getProjectionMatrix(ctx.getCamera().getFov(), window.getWidth(), window.getHeight(), Z_NEAR,
-					Z_FAR));
+			window.setProjectionMatrix(transformation.getProjectionMatrix(ctx.getCamera().getFov(), window.getWidth(),
+					window.getHeight(), Z_NEAR, Z_FAR));
 		}
 		if (!doRender)
 			return;
 		clear();
 		ctx.getCamera().setViewMatrix(transformation.getViewMatrix(ctx.getCamera()));
-		List<Spatial> [] map;
+		List<Spatial>[] map;
+		List<InstancedMesh> instancedMeshes;
+		
 		Spatial selected = null;
 		int selectedBlock = -1;
-		map = (List<Spatial>[])new List[blocks.length];
-		for(int i = 0; i < map.length; i++) {
+		map = (List<Spatial>[]) new List[blocks.length];
+		for (int i = 0; i < map.length; i++) {
 			map[i] = new ArrayList<Spatial>();
 		}
 		// Uses FrustumCulling on the chunks.
 		prjViewMatrix.set(window.getProjectionMatrix());
-	    prjViewMatrix.mul(ctx.getCamera().getViewMatrix());
-	    frustumInt.set(prjViewMatrix);
+		prjViewMatrix.mul(ctx.getCamera().getViewMatrix());
+		frustumInt.set(prjViewMatrix);
 		for (Chunk ch : chunks) {
-			if(!frustumInt.testAab(ch.getMin(localPlayer),ch.getMax(localPlayer)))
+			if (!frustumInt.testAab(ch.getMin(localPlayer), ch.getMax(localPlayer)))
 				continue;
 			BlockInstance[] vis = ch.getVisibles();
 			for (int i = 0; vis[i] != null; i++) {
 				Spatial tmp = (Spatial) vis[i].getSpatial();
-				tmp.setPosition((vis[i].getX() - localPlayer.getPosition().x) - localPlayer.getPosition().relX, vis[i].getY(), (vis[i].getZ() - localPlayer.getPosition().z) - localPlayer.getPosition().relZ);
-				if(tmp.isSelected()) {
+				tmp.setPosition((vis[i].getX() - localPlayer.getPosition().x) - localPlayer.getPosition().relX,
+						vis[i].getY(), (vis[i].getZ() - localPlayer.getPosition().z) - localPlayer.getPosition().relZ);
+				if (tmp.isSelected()) {
 					selected = tmp;
 					selectedBlock = vis[i].getID();
 					continue;
@@ -159,55 +166,74 @@ public class MainRenderer implements IRenderer {
 		}
 		if (filter != null) {
 			filter.updateFrustum(window.getProjectionMatrix(), ctx.getCamera().getViewMatrix());
+			instancedMeshes = new ArrayList<>();
 			HashMap<Mesh, List<Spatial>> m = new HashMap<>();
 			for (int i = 0; i < blocks.length; i++) {
-				if(map[i].size() == 0)
+				if (map[i].size() == 0)
 					continue;
 				m.put((Mesh) blocks[i].getBlockPair().get("meshCache"), map[i]);
 			}
+			for (Mesh mesh : m.keySet()) {
+				if (mesh instanceof InstancedMesh) {
+					instancedMeshes.add((InstancedMesh) mesh);
+				}
+			}
 			filter.filter(m);
 		}
-		renderScene(ctx, ambientLight, null /* point light */, null /* spot light */, directionalLight, map, blocks, localPlayer, selected, selectedBlock);
+		renderScene(ctx, ambientLight, null /* point light */, null /* spot light */, directionalLight, map, blocks,
+				localPlayer, selected, selectedBlock);
 		ctx.getHud().render(window);
-		/*long t2 = System.nanoTime();
-		if(t2-t1 > 1000000) {
-			t += t2-t1;
-			n++;
-			System.out.println(t/n);
-		}*/
+		/*
+		 * long t2 = System.nanoTime(); if(t2-t1 > 1000000) { t += t2-t1; n++;
+		 * System.out.println(t/n); }
+		 */
 	}
-	
-	public void renderScene(Context ctx, Vector3f ambientLight, PointLight[] pointLightList, SpotLight[] spotLightList, DirectionalLight directionalLight, List<Spatial> [] map, Block [] blocks, Player p, Spatial selected, int selectedBlock) {
+
+	public void renderElementsInstanced(List<Spatial>[] map, Block[] blocks, Player p, Spatial selected,
+			int selectedBlock) {
+		for (int i = 0; i < blocks.length; i++) {
+			if (map[i] == null)
+				continue;
+		}
+	}
+
+	public void renderScene(Context ctx, Vector3f ambientLight, PointLight[] pointLightList, SpotLight[] spotLightList,
+			DirectionalLight directionalLight, List<Spatial>[] map, Block[] blocks, Player p, Spatial selected,
+			int selectedBlock) {
 		shaderProgram.bind();
 
 		shaderProgram.setUniform("projectionMatrix", ctx.getWindow().getProjectionMatrix());
 		shaderProgram.setUniform("texture_sampler", 0);
-		//ctx.getCamera().setPosition(0, ctx.getCamera().getPosition().y, 0);
+		// ctx.getCamera().setPosition(0, ctx.getCamera().getPosition().y, 0);
 		Matrix4f viewMatrix = ctx.getCamera().getViewMatrix();
-		
+
 		renderLights(viewMatrix, ambientLight, pointLightList, spotLightList, directionalLight);
 
 		for (int i = 0; i < blocks.length; i++) {
-			if(map[i] == null)
+			if (map[i] == null)
 				continue;
 			Mesh mesh = (Mesh) blocks[i].getBlockPair().get("meshCache");
-		    shaderProgram.setUniform("material", mesh.getMaterial());
-		    if(selectedBlock == i) {
-		    	map[i].add(selected);
-		    }
-		    mesh.renderList(map[i], (Spatial gameItem) -> {
-		    	if (gameItem.isInFrustum() || filter == null) {
-		    		Matrix4f modelViewMatrix = transformation.getModelViewMatrix(gameItem, viewMatrix);
-		    		if(gameItem.isSelected())
-		    			shaderProgram.setUniform("selected", 1f);
-			        shaderProgram.setUniform("modelViewMatrix", modelViewMatrix);
-			        return true;
-		    	}
-		    	return false;
-		    });
-		    if(selectedBlock == i) {
-		    	shaderProgram.setUniform("selected", 0f);
-		    }
+			shaderProgram.setUniform("material", mesh.getMaterial());
+			if (selectedBlock == i) {
+				map[i].add(selected);
+			}
+			if (mesh.isInstanced()) {
+				
+			} else {
+				mesh.renderList(map[i], (Spatial gameItem) -> {
+					if (gameItem.isInFrustum() || filter == null) {
+						Matrix4f modelViewMatrix = transformation.getModelViewMatrix(gameItem, viewMatrix);
+						if (gameItem.isSelected())
+							shaderProgram.setUniform("selectedNonInstanced", 1f);
+						shaderProgram.setUniform("modelViewNonInstancedMatrix", modelViewMatrix);
+						return true;
+					}
+					return false;
+				});
+				if (selectedBlock == i) {
+					shaderProgram.setUniform("selectedNonInstanced", 0f);
+				}
+			}
 		}
 		shaderProgram.unbind();
 	}
@@ -257,7 +283,7 @@ public class MainRenderer implements IRenderer {
 		// coordinates
 		DirectionalLight currDirLight = new DirectionalLight(directionalLight);
 		Vector4f dir = new Vector4f(currDirLight.getDirection(), 0);
-		//dir.mul(viewMatrix);
+		// dir.mul(viewMatrix);
 		currDirLight.setDirection(new Vector3f(dir.x, dir.y, dir.z));
 		shaderProgram.setUniform("directionalLight", currDirLight);
 
