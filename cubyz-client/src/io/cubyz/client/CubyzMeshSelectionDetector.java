@@ -76,8 +76,8 @@ public class CubyzMeshSelectionDetector {
 	        	return pos;
 	        }
 			pos.add((int)Math.signum(dir.x), -(int)Math.signum(dir.y), 0);
-			min.set(pos);
-	        max.set(pos);
+			min.set(new Vector3f(pos.x - position.x, pos.y, pos.z - position.z));
+	        max.set(min);
 	        min.add(-0.5f, -0.5f, -0.5f); // -scale, -scale, -scale
 	        max.add(0.5f, 0.5f, 0.5f); // scale, scale, scale
 	        if (Intersectionf.intersectRayAab(transformedPosition, dir, min, max, nearFar)) {
