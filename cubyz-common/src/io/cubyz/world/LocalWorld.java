@@ -37,7 +37,8 @@ public class LocalWorld extends World {
 	public ArrayList<byte[]> blockData;	
 	public ArrayList<int[]> chunkData;
 	
-	private static final int renderDistance = 5;
+	private static int renderDistance = 5;
+	private static int MAX_QUEUE_SIZE = renderDistance << 2;
 	
 	private Block [] blocks;
 	private Player player;
@@ -52,7 +53,6 @@ public class LocalWorld extends World {
 	float ambientLight = 0f;
 	
 	private class ChunkGenerationThread extends Thread {
-		private static final int MAX_QUEUE_SIZE = renderDistance << 2;
 		Deque<Chunk> loadList = new ArrayDeque<>(MAX_QUEUE_SIZE); // FIFO order (First In, First Out)
 		
 		public void queue(Chunk ch) {
@@ -437,5 +437,16 @@ public class LocalWorld extends World {
 	@Override
 	public void setGameTime(long time) {
 		gameTime = time;
+	}
+
+	@Override
+	public void setRenderDistance(int RD) {
+		renderDistance = RD;
+		MAX_QUEUE_SIZE = renderDistance << 2;
+	}
+
+	@Override
+	public int getRenderDistance() {
+		return renderDistance;
 	}
 }

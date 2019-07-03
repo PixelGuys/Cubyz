@@ -100,4 +100,13 @@ public class RemoteWorld extends World {
 		throw new UnsupportedOperationException("Cannot change remote game time");
 	}
 
+	@Override
+	public int getRenderDistance() {
+		return 0;
+	}
+
+	@Override
+	public void setRenderDistance(int arg0) {
+	}
+
 }

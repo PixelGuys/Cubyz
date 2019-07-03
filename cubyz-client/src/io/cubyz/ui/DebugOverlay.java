@@ -36,6 +36,7 @@ public class DebugOverlay extends MenuGUI {
 				
 				NGraphics.drawText(0, 48, "XYZ: " + x + ", " + y + ", " + z);
 				NGraphics.drawText(0, 60, "C: " + world.getVisibleChunks().length + "/" + world.getChunks().size());
+				NGraphics.drawText(0, 72, "RD: " + world.getRenderDistance());
 			}
 			
 			int h = win.getHeight();

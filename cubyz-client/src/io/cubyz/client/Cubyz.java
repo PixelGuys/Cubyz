@@ -371,6 +371,15 @@ public class Cubyz implements IGameLogic {
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_8)) {
 				inventorySelection = 7;
 			}
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_MINUS)) {
+				if(world.getRenderDistance() >= 2)
+					world.setRenderDistance(world.getRenderDistance()-1);
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_MINUS, false);
+			}
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_EQUAL)) {
+				world.setRenderDistance(world.getRenderDistance()+1);
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_EQUAL, false);
+			}
 			msd.selectSpatial(world.getVisibleChunks(), world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate());
 		}
 		mouse.input(window);

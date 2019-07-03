@@ -89,5 +89,8 @@ public abstract class World {
 		throw new UnsupportedOperationException();
 	}
 	
+	public abstract void setRenderDistance(int RD);
+	public abstract int getRenderDistance();
+	
 	public void update() {}
 }
