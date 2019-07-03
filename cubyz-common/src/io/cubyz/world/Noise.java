@@ -24,6 +24,11 @@ public class Noise {
 	private static float lerp(float a0, float a1, float w) {
 	    return a0 + w*(a1 - a0);
 	}
+	
+	// s-curve
+	private static float s(float x) {
+		return 3*x*x-2*x*x*x;
+	}
 
 	// Computes the dot product of the distance and gradient vectors.
 	private static float dotGridGradient(int ix, int iy, int x, int y) {
@@ -58,8 +63,8 @@ public class Noise {
 
 	    // Determine interpolation weights
 	    // Could also use higher order polynomial/s-curve here
-	    float sx = (x&resolution2)/(float)resolution;
-	    float sy = (y&resolution2)/(float)resolution;
+	    float sx = s((x&resolution2)/(float)resolution);
+	    float sy = s((y&resolution2)/(float)resolution);
 
 	    // Interpolate between grid point gradients
 	    float n0, n1, ix0, ix1, value;

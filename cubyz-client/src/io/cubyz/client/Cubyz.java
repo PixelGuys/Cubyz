@@ -138,8 +138,8 @@ public class Cubyz implements IGameLogic {
 		}
 		Cubyz.world = world;
 		Random rnd = new Random();
-		int dx = rnd.nextInt(10);
-		int dz = rnd.nextInt(10);
+		int dx = rnd.nextInt(1000);
+		int dz = rnd.nextInt(1000);
 		//dx = dz = Integer.MIN_VALUE+2048;
 		world.synchronousSeek(dx, dz);
 		int highestY = world.getHighestBlock(dx, dz);
