@@ -9,6 +9,10 @@ public class ItemStack {
 	private Item item;
 	int number = 0;
 	
+	public ItemStack() {
+		item = null;
+	}
+	
 	public ItemStack(Item item) {
 		this.item = item;
 	}
@@ -33,7 +37,14 @@ public class ItemStack {
 			number = number-this.number;
 			this.number = 0;
 		}
+		if(empty()) {
+			clear();
+		}
 		return number;
+	}
+	
+	public void setItem(Item i) {
+		item = i;
 	}
 	
 	public Item getItem() {
@@ -41,7 +52,13 @@ public class ItemStack {
 	}
 	
 	public Block getBlock() {
+		if(item == null)
+			return null;
 		return item.getBlock();
+	}
+	
+	public int getAmount() {
+		return number;
 	}
 	
 	public void loadFrom(NDTContainer container) {
@@ -52,6 +69,11 @@ public class ItemStack {
 	public void saveTo(NDTContainer container) {
 		container.setString("id", item.getRegistryID().toString());
 		container.setInteger("size", number);
+	}
+	
+	public void clear() {
+		item = null;
+		number = 0;
 	}
 	
 }

@@ -10,19 +10,16 @@ public class Inventory {
 		if(i == null || amount == 0)
 			return;
 		for(int j = 0; j < items.length; j++) {
-			if(items[j] != null && items[j].getItem() == i && !items[j].filled()) {
+			if(!items[j].empty() && items[j].getItem() == i && !items[j].filled()) {
 				amount -= items[j].add(amount);
-				if(items[j].empty()) {
-					items[j] = null;
-				}
 				if(amount == 0) {
 					return;
 				}
 			}
 		}
 		for(int j = 0; j < items.length; j++) {
-			if(items[j] == null) {
-				items[j] = new ItemStack(i);
+			if(items[j].empty()) {
+				items[j].setItem(i);
 				amount -= items[j].add(amount);
 				if(amount == 0) {
 					return;
@@ -34,6 +31,9 @@ public class Inventory {
 	
 	public Inventory(int size) {
 		items = new ItemStack[size];
+		for(int i = 0; i < size; i++) {
+			items[i] = new ItemStack();
+		}
 	}
 	
 	public Inventory() {
@@ -41,21 +41,19 @@ public class Inventory {
 	}
 	
 	public Block getBlock(int selection) {
-		if(items[selection] == null)
-			return null;
 		return items[selection].getBlock();
 	}
 	
 	public Item getItem(int selection) {
-		if(items[selection] == null)
-			return null;
 		return items[selection].getItem();
 	}
 	
+	public ItemStack getStack(int selection) {
+		return items[selection];
+	}
+	
 	public int getAmount(int selection) {
-		if(items[selection] == null)
-			return 0;
-		return items[selection].number;
+		return items[selection].getAmount();
 	}
 	
 	public void saveTo(NDTContainer container) {
