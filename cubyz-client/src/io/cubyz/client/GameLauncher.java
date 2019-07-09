@@ -12,8 +12,11 @@ public class GameLauncher extends Game {
 		boolean showPrompt = Boolean.parseBoolean(System.getProperty("cubyz.showStartPrompt", "true"));
 		GameLauncher.instance = new GameLauncher();
 		instance.logic = new Cubyz();
+		String os = System.getProperty("os.name");
+		System.out.println("Running on OS: " + os);
 		GameOptions opt = null;
-		if (showPrompt) {
+		
+		if (showPrompt && !os.equalsIgnoreCase("linux")) {
 			GameOptionsPrompt prompt = new GameOptionsPrompt();
 			prompt.setLocationRelativeTo(null);
 			prompt.setTitle("Cubyz Settings");

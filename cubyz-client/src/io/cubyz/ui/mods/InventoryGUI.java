@@ -4,20 +4,18 @@ import org.jungle.Window;
 
 import io.cubyz.client.Cubyz;
 import io.cubyz.items.Inventory;
-import io.cubyz.ui.ModGUI;
+import io.cubyz.ui.MenuGUI;
 import io.cubyz.ui.NGraphics;
 import io.cubyz.ui.components.InventorySlot;
 
 // TODO: add possibility to capture and release stacks with the mouse.
 
-public class InventoryGUI extends ModGUI {
+public class InventoryGUI extends MenuGUI {
 
 	private InventorySlot inv [] = null;
 
-	@Override
 	public void close() {
 		Cubyz.mouse.setGrabbed(true);
-		
 		 // TODO: take care about what happens when the window is closed , but the mouse captured a stack.
 	}
 
@@ -51,7 +49,7 @@ public class InventoryGUI extends ModGUI {
 	}
 
 	@Override
-	public boolean isFullscreen() {
+	public boolean doesPauseGame() {
 		return false;
 	}
 

@@ -22,6 +22,8 @@ import io.cubyz.entity.Player;
 import io.cubyz.math.Bits;
 import io.cubyz.save.BlockChange;
 import io.cubyz.save.WorldIO;
+import io.cubyz.world.generator.LifelandGenerator;
+import io.cubyz.world.generator.WorldGenerator;
 
 public class LocalWorld extends World {
 	
@@ -42,6 +44,7 @@ public class LocalWorld extends World {
 	
 	private Block [] blocks;
 	private Player player;
+	private WorldGenerator generator;
 	
 	private WorldIO wio;
 	
@@ -52,6 +55,7 @@ public class LocalWorld extends World {
 	long milliTime;
 	float ambientLight = 0f;
 	
+	// TODO: Make 1 thread per core and use some function to queue Chunk to a free thread.
 	private class ChunkGenerationThread extends Thread {
 		Deque<Chunk> loadList = new ArrayDeque<>(MAX_QUEUE_SIZE); // FIFO order (First In, First Out)
 		
@@ -60,7 +64,6 @@ public class LocalWorld extends World {
 				if (loadList.size() >= MAX_QUEUE_SIZE) {
 					CubyzLogger.instance.info("Hang on, the Local-Chunk-Thread's queue is full, blocking!");
 					while (!loadList.isEmpty()) {
-						//System.out.print(""); // again, used as replacement to Thread.onSpinWait(), also necessary due to some JVM oddities
 						Thread.yield();
 					}
 				}
@@ -85,10 +88,8 @@ public class LocalWorld extends World {
 					//CubyzLogger.instance.fine("Generating " + popped.getX() + "," + popped.getZ());
 					synchronousGenerate(popped);
 					popped.load();
-					//seed = (int) System.currentTimeMillis(); // enable it if you want fun (don't forget to disable before commit!!!)
 				}
 				Thread.yield();
-				//System.out.print("");
 			}
 		}
 	}
@@ -112,6 +113,7 @@ public class LocalWorld extends World {
 		thread.setDaemon(true);
 		thread.start();
 		
+		generator = new LifelandGenerator();
 		wio = new WorldIO(this, new File("saves/" + name));
 		if (wio.hasWorldData()) {
 			//wio.loadWorldData();
@@ -169,13 +171,7 @@ public class LocalWorld extends World {
 	}
 	
 	public void synchronousGenerate(Chunk ch) {
-		int x = ch.getX() * 16; int y = ch.getZ() * 16;
-		float[][] heightMap = Noise.generateMapFragment(x, y, 16, 16, 256, seed);
-		float[][] vegetationMap = Noise.generateMapFragment(x, y, 16, 16, 128, seed + 3 * (seed + 1 & Integer.MAX_VALUE));
-		float[][] oreMap = Noise.generateMapFragment(x, y, 16, 16, 128, seed - 3 * (seed - 1 & Integer.MAX_VALUE));
-		float[][] heatMap = Noise.generateMapFragment(x, y, 16, 16, 4096, seed ^ 123456789);
-		ch.generateFrom(heightMap, vegetationMap, oreMap, heatMap);
-		
+		ch.generateFrom(generator);
 		wio.saveChunk(ch, ch.getX(), ch.getZ());
 	}
 	

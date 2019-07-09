@@ -39,7 +39,7 @@ public class GameOverlay extends MenuGUI {
 	}
 
 	@Override
-	public boolean isFullscreen() {
+	public boolean doesPauseGame() {
 		return false;
 	}
 

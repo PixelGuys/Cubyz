@@ -2,7 +2,6 @@ package io.cubyz.ui;
 
 import org.jungle.Window;
 import org.jungle.hud.Font;
-import org.lwjgl.nanovg.NVGColor;
 
 import io.cubyz.client.Cubyz;
 import io.cubyz.translate.TextKey;
@@ -21,14 +20,18 @@ public class MainMenuGUI extends MenuGUI {
 		spPlay.setSize(250, 45);
 		spPlay.setText(new TextKey("gui.cubyz.mainmenu.singleplayer"));
 		spPlay.setFontSize(16f);
-		mpPlay.setSize(200, 40);
+		
+		mpPlay.setSize(250, 45);
 		mpPlay.setText(new TextKey("gui.cubyz.mainmenu.multiplayer"));
+		mpPlay.setFontSize(16f);
+		
 		exit.setSize(100, 27);
 		exit.setText(new TextKey("gui.cubyz.mainmenu.exit"));
 		titleLabel.setText("Cubyz");
 		titleLabel.setFont(new Font("OpenSans Bold", 72.f));
 		
 		spPlay.setOnAction(() -> {
+			// TODO: Start local server and let Cubyz join it
 			LocalWorld world = new LocalWorld();
 			world.generate();
 			Cubyz.gameUI.setMenu(null);
@@ -36,18 +39,17 @@ public class MainMenuGUI extends MenuGUI {
 		});
 		
 		exit.setOnAction(() -> {
-			Cubyz.instance.cleanup();
-			Cubyz.log.info("Stopped!");
-			System.exit(0);
+			Cubyz.instance.game.exit();
 		});
 	}
 	
 	@Override
 	public void render(long nvg, Window win) {
 		spPlay.setPosition(win.getWidth() / 2 - 125, 300);
-		mpPlay.setPosition(win.getWidth() / 2 - 100, 375);
+		mpPlay.setPosition(win.getWidth() / 2 - 125, 375);
 		exit.setPosition(win.getWidth() - 120, win.getHeight() - 40);
 		titleLabel.setPosition(win.getWidth() / 2 - 80, 50);
+		
 		spPlay.render(nvg, win);
 		mpPlay.render(nvg, win);
 		exit.render(nvg, win);
@@ -55,7 +57,7 @@ public class MainMenuGUI extends MenuGUI {
 	}
 
 	@Override
-	public boolean isFullscreen() {
+	public boolean doesPauseGame() {
 		return true;
 	}
 

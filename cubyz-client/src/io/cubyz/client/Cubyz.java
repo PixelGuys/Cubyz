@@ -1,40 +1,21 @@
 package io.cubyz.client;
 
 import java.io.File;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.Map.Entry;
-import java.util.Random;
-import java.util.logging.Handler;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.*;
+import java.util.logging.*;
 
 import javax.imageio.ImageIO;
 
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 import org.joml.Vector4f;
-import org.jungle.Camera;
-import org.jungle.Keyboard;
-import org.jungle.Mesh;
-import org.jungle.MouseInput;
-import org.jungle.Texture;
-import org.jungle.Window;
-import org.jungle.game.Context;
-import org.jungle.game.Game;
-import org.jungle.game.IGameLogic;
-import org.jungle.util.DirectionalLight;
-import org.jungle.util.Material;
-import org.jungle.util.OBJLoader;
+import org.jungle.*;
+import org.jungle.game.*;
+import org.jungle.util.*;
 import org.lwjgl.Version;
 import org.lwjgl.glfw.GLFW;
 
-import io.cubyz.ClientOnly;
-import io.cubyz.Constants;
-import io.cubyz.CubyzLogger;
-import io.cubyz.IRenderablePair;
-import io.cubyz.Utilities;
+import io.cubyz.*;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
@@ -45,32 +26,17 @@ import io.cubyz.multiplayer.client.MPClient;
 import io.cubyz.multiplayer.client.PingResponse;
 import io.cubyz.translate.Language;
 import io.cubyz.translate.LanguageLoader;
-import io.cubyz.ui.DebugOverlay;
-import io.cubyz.ui.GameOverlay;
-import io.cubyz.ui.LoadingGUI;
-import io.cubyz.ui.MainMenuGUI;
-import io.cubyz.ui.MenuGUI;
-import io.cubyz.ui.ModGUI;
-import io.cubyz.ui.PauseGUI;
-import io.cubyz.ui.ToastManager;
-import io.cubyz.ui.ToastManager.Toast;
-import io.cubyz.ui.UISystem;
-import io.cubyz.utils.DiscordIntegration;
-import io.cubyz.utils.ResourceManager;
-import io.cubyz.utils.ResourcePack;
-import io.cubyz.utils.ResourceUtilities;
+import io.cubyz.ui.*;
+import io.cubyz.utils.*;
 import io.cubyz.utils.ResourceUtilities.BlockModel;
-import io.cubyz.utils.TextureConverter;
-import io.cubyz.world.BlockSpatial;
-import io.cubyz.world.Chunk;
-import io.cubyz.world.World;
+import io.cubyz.world.*;
 
 public class Cubyz implements IGameLogic {
 
 	public static Context ctx;
 	private Window win;
 	public static MainRenderer renderer;
-	private Game game;
+	public Game game;
 	private DirectionalLight light;
 	private Vector3f playerInc;
 	public static MouseInput mouse;
@@ -104,28 +70,10 @@ public class Cubyz implements IGameLogic {
 	public static Deque<Runnable> renderDeque = new ArrayDeque<>();
 	public static HashMap<String, Mesh> cachedDefaultModels = new HashMap<>();
 
-	public static HashMap<Integer, ModGUI> modGUIs = new HashMap<>(); // Lists guiOverlays that will appear if a certain key is pressed. Only one can appear at a time.
-	public static ModGUI activeModGUI = null;
 	public static int GUIKey = -1;
 
 	public Cubyz() {
 		instance = this;
-	}
-	
-	public void setActiveModGUI(ModGUI m, int key) {
-		if(activeModGUI != null) {
-			gameUI.removeOverlay(activeModGUI);
-			activeModGUI.close();
-		}
-		activeModGUI = m;
-		GUIKey = key;
-		if(m != null) {
-			gameUI.addOverlay(m);
-		}
-	}
-	
-	public static void addModGUI(ModGUI m, int key) {
-		modGUIs.put(key, m);
 	}
 
 	@Override
@@ -326,30 +274,28 @@ public class Cubyz implements IGameLogic {
 			window.setFullscreen(!window.isFullscreen());
 			Keyboard.setKeyPressed(GLFW.GLFW_KEY_F11, false);
 		}
-		if (!gameUI.isGUIFullscreen() && world != null) {
-			if(activeModGUI == null) {
-				if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_W)) {
-					playerInc.z = -1;
-				}
-				if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT_CONTROL)) {
-					playerInc.z = -2;
-				}
-				if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_S)) {
-					playerInc.z = 1;
-				}
-				if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_A)) {
-					playerInc.x = -1;
-				}
-				if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_D)) {
-					playerInc.x = 1;
-				}
-				if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_SPACE) && world.getLocalPlayer().vy == 0) {
-					world.getLocalPlayer().vy = 0.25F;
-				}
-				if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT_SHIFT)) {
-					if (world.getLocalPlayer().isFlying()) {
-						world.getLocalPlayer().vy = -0.25F;
-					}
+		if (!gameUI.doesGUIPauseGame() && world != null) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_W)) {
+				playerInc.z = -1;
+			}
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT_CONTROL)) {
+				playerInc.z = -2;
+			}
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_S)) {
+				playerInc.z = 1;
+			}
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_A)) {
+				playerInc.x = -1;
+			}
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_D)) {
+				playerInc.x = 1;
+			}
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_SPACE) && world.getLocalPlayer().vy == 0) {
+				world.getLocalPlayer().vy = 0.25F;
+			}
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT_SHIFT)) {
+				if (world.getLocalPlayer().isFlying()) {
+					world.getLocalPlayer().vy = -0.25F;
 				}
 			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_RIGHT)) {
@@ -359,15 +305,10 @@ public class Cubyz implements IGameLogic {
 				}
 			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_ESCAPE) && mouse.isGrabbed()) {
-				if(activeModGUI != null) {
-					Keyboard.setKeyPressed(GLFW.GLFW_KEY_ESCAPE, false);
-					setActiveModGUI(null, -1);
-				} else if (gameUI.getMenuGUI() == null) {
-					Keyboard.setKeyPressed(GLFW.GLFW_KEY_ESCAPE, false);
-					gameUI.setMenu(new PauseGUI());
-				}
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_ESCAPE, false);
+				gameUI.setMenu(new PauseGUI());
 			}
-			if ((mouse.isLeftButtonPressed() || mouse.isRightButtonPressed()) && !mouse.isGrabbed() && activeModGUI == null) {
+			if ((mouse.isLeftButtonPressed() || mouse.isRightButtonPressed()) && !mouse.isGrabbed()) {
 				mouse.setGrabbed(true);
 				mouse.clearPos(window.getWidth() / 2, window.getHeight() / 2);
 				breakCooldown = 10;
@@ -408,22 +349,6 @@ public class Cubyz implements IGameLogic {
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_EQUAL, false);
 			}
 			msd.selectSpatial(world.getVisibleChunks(), world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate());
-			
-			// modGUIs:
-			if(activeModGUI == null) { // only open a new gui when 
-				for(Entry<Integer, ModGUI> entry : modGUIs.entrySet()) {
-					if(Keyboard.isKeyPressed(entry.getKey())) {
-						Keyboard.setKeyPressed(entry.getKey(), false);
-						setActiveModGUI(entry.getValue(), entry.getKey());
-						break;
-					}
-				}
-			} else if(GUIKey != -1) {
-				if(Keyboard.isKeyPressed(GUIKey)) {
-					Keyboard.setKeyPressed(GUIKey, false);
-					setActiveModGUI(null, -1);
-				}
-			}
 		}
 		mouse.input(window);
 	}
@@ -484,12 +409,11 @@ public class Cubyz implements IGameLogic {
 		} else {
 			renderer.render(window, ctx, new Vector3f(0.8f, 0.8f, 0.8f), light, EMPTY_CHUNK_LIST, EMPTY_BLOCK_LIST, null);
 		}
-		gameUI.updateUI();
 	}
 
 	@Override
 	public void update(float interval) {
-		if (!gameUI.isGUIFullscreen() && world != null) {
+		if (!gameUI.doesGUIPauseGame() && world != null) {
 			Player lp = world.getLocalPlayer();
 			lp.move(playerInc.mul(0.11F), ctx.getCamera().getRotation());
 			if (breakCooldown > 0) {

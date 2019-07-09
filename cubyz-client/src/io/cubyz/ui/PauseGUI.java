@@ -77,7 +77,7 @@ public class PauseGUI extends MenuGUI {
 	}
 
 	@Override
-	public boolean isFullscreen() {
+	public boolean doesPauseGame() {
 		return true;
 	}
 

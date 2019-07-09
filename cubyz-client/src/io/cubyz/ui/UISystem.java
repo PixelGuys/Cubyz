@@ -43,20 +43,18 @@ public class UISystem extends Hud {
 		return gui;
 	}
 	
-	public boolean isGUIFullscreen() {
+	public boolean doesGUIPauseGame() {
 		if (gui == null)
 			return false;
 		else
-			return gui.isFullscreen();
+			return gui.doesPauseGame();
 	}
-
-	public void updateUI() {}
 
 	@Override
 	public void init(Window window) throws Exception {
 		nvg = window.getOptions().antialiasing ? nvgCreate(NVG_ANTIALIAS | NVG_STENCIL_STROKES) : nvgCreate(NVG_STENCIL_STROKES);
 	    if (nvg == NULL) {
-	        throw new Exception("Could not init nanovg");
+	        throw new Exception("Could not init NanoVG");
 	    }
 		Font.register("OpenSans Bold", "assets/cubyz/fonts/opensans/OpenSans-Bold.ttf", nvg);
 		NGraphics.setNanoID(nvg);
@@ -68,17 +66,13 @@ public class UISystem extends Hud {
 		if (inited) {
 			super.render(window);
 			nvgBeginFrame(nvg, window.getWidth(), window.getHeight(), 1);
-			NGraphics.setColor(0, 0, 0, 255);
-			NGraphics.setTextAlign(NVG_ALIGN_LEFT | NVG_ALIGN_TOP);
 			if (gui != null) {
 				gui.render(nvg, window);
 			}
 			for (MenuGUI overlay : overlays) {
 				overlay.render(nvg, window);
 			}
-			
 			nvgEndFrame(nvg);
-	
 			window.restoreState();
 		}
 	}

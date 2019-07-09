@@ -14,6 +14,7 @@ import io.cubyz.blocks.TileEntity;
 import io.cubyz.entity.Player;
 import io.cubyz.math.Bits;
 import io.cubyz.save.BlockChange;
+import io.cubyz.world.generator.WorldGenerator;
 
 public class Chunk {
 
@@ -28,21 +29,10 @@ public class Chunk {
 	private boolean loaded;
 	private ArrayList<TileEntity> tileEntities = new ArrayList<>();
 	
-	private static Registry<Block> br =  CubyzRegistries.BLOCK_REGISTRY; // shortcut to BLOCK_REGISTRY
-	
-	// Normal:
-	private static Block grass = br.getByID("cubyz:grass");
-	private static Block sand = br.getByID("cubyz:sand");
-	private static Block snow = br.getByID("cubyz:snow");
-	private static Block dirt = br.getByID("cubyz:dirt");
-	private static Block ice = br.getByID("cubyz:ice");
-	private static Block stone = br.getByID("cubyz:stone");
-	private static Block bedrock = br.getByID("cubyz:bedrock");
-	
-	// Ores:
-	private static Ore [] ores;
-	private static float [] oreChances;
-	private static int [] oreHeights;
+	// Ore Utilities
+	public static Ore [] ores;
+	public static float [] oreChances;
+	public static int [] oreHeights;
 	
 	public static void init(Ore [] ores) {
 		oreChances = new float[ores.length+1];
@@ -70,8 +60,18 @@ public class Chunk {
 		Chunk.ores = ores;
 	}
 	
-	// Liquids:
-	private static Block water = br.getByID("cubyz:water");
+	// This function only allows a less than 50% of the underground to be ores.
+	public static BlockInstance selectOre(float rand, int height, Block undergroundBlock) {
+		if(rand >= oreChances[oreHeights.length])
+			return new BlockInstance(undergroundBlock);
+		for (int i = oreChances.length - 2; i >= 0; i--) {
+			if(height > oreHeights[i])
+				break;
+		if(rand >= oreChances[i])
+			return new BlockInstance(ores[i]);
+		}
+		return new BlockInstance(undergroundBlock);
+	}
 	
 	public static final int SEA_LEVEL = 100;
 	
@@ -191,82 +191,11 @@ public class Chunk {
 		}
 	}
 	
-	//TODO: Take in consideration caves.
-	//TODO: Ore Clusters
-	//TODO: Finish vegetation
-	//TODO: Clean this method
-	//TODO: Add more diversity
-	public void generateFrom(float[][] map, float[][] vegetation, float[][] oreMap, float[][] heatMap) {
+	public void generateFrom(WorldGenerator gen) {
 		if(inst == null) {
 			inst = new BlockInstance[16][world.getHeight()][16];
 		}
-		int wx = ox << 4;
-		int wy = oy << 4;
-		
-		// heightmap pass
-		for (int px = 0; px < 16; px++) {
-			for (int py = 0; py < 16; py++) {
-				float value = map[px][py];
-				int y = (int) (value * world.getHeight());
-				if(y == world.getHeight())
-					y--;
-				int temperature = (int)((2-value+SEA_LEVEL/(float)world.getHeight())*heatMap[px][py]*120) - 100;
-				for (int j = y > SEA_LEVEL ? y : SEA_LEVEL; j >= 0; j--) {
-					BlockInstance bi = null;
-					
-					if(j > y) {
-						if (temperature <= 0 && j == SEA_LEVEL) {
-							bi = new BlockInstance(ice);
-						} else {
-							bi = new BlockInstance(water);
-						}
-					}else if (((y < SEA_LEVEL + 4 && temperature > 5) || temperature > 40 || y < SEA_LEVEL) && j > y - 3) {
-						bi = new BlockInstance(sand);
-					} else if (j == y) {
-						if(temperature > 0) {
-							bi = new BlockInstance(grass);
-						} else {
-							bi = new BlockInstance(snow);
-						}
-					} else if (j > y - 3) {
-						bi = new BlockInstance(dirt);
-					} else if (j > 0) {
-						float rand = oreMap[px][py] * j * (256 - j) * (128 - j) * 6741;
-						rand = (((int) rand) & 8191) / 8191.0F;
-						bi = selectOre(rand, j);
-					} else {
-						bi = new BlockInstance(bedrock);
-					}
-					bi.setPosition(new Vector3i(wx + px, j, wy + py));
-					bi.setWorld(world);
-					//world.blocks().add(bi);
-					list.add(bi);
-					if (bi.getBlock().hasTileEntity()) {
-						tileEntities.add(bi.getBlock().createTileEntity(bi));
-					}
-					inst[px][j][py] = bi;
-					/*if (bi.getBlock() instanceof IBlockEntity) {
-						updatables.add(bi);
-					}*/
-				}
-			}
-		}
-		
-		// Vegetation pass
-		for (int px = 0; px < 16; px++) {
-			for (int py = 0; py < 16; py++) {
-				float value = vegetation[px][py];
-				int incx = px == 0 ? 1 : -1;
-				int incy = py == 0 ? 1 : -1;
-				int temperature = (int)((2-map[px][py]+SEA_LEVEL/(float)world.getHeight())*heatMap[px][py]*120) - 100;
-				if (map[px][py] * world.getHeight() >= SEA_LEVEL + 4) {
-					//if (value < 0) value = 0;
-					Structures.generateVegetation(this, wx + px, (int) (map[px][py] * world.getHeight()) + 1, wy + py, value, temperature, (int)((vegetation[px][py]-vegetation[px+incx][py+incy]) * 100000000 + incx + incy));
-				}
-			}
-		}
-		
-		applyBlockChanges();
+		gen.generate(this, (LocalWorld) world);
 		generated = true;
 	}
 	
@@ -351,19 +280,6 @@ public class Chunk {
 			return true;
 		}
 		return false;
-	}
-	
-	// This function only allows a less than 50% of the underground to be ores.
-	public BlockInstance selectOre(float rand, int height) {
-		if(rand >= oreChances[oreHeights.length])
-			return new BlockInstance(stone);
-		for (int i = oreChances.length - 2; i >= 0; i--) {
-			if(height > oreHeights[i])
-				break;
-			if(rand >= oreChances[i])
-				return new BlockInstance(ores[i]);
-		}
-		return new BlockInstance(stone);
 	}
 	
 	public boolean isGenerated() {
@@ -483,6 +399,27 @@ public class Chunk {
 			return;
 		removeBlockAt(x, y, z, false);
 		BlockInstance inst0 = new BlockInstance(b);
+		addBlockAt(x, y, z, inst0, registerBlockChange);
+	}
+	
+	/**
+	 * Raw add block. Doesn't do any checks. To use with WorldGenerators
+	 * @param x
+	 * @param y
+	 * @param z
+	 */
+	public void rawAddBlock(int x, int y, int z, BlockInstance bi) {
+		list.add(bi);
+		inst[x][y][z] = bi;
+	}
+	
+	public void addBlockAt(int x, int y, int z, BlockInstance inst0, boolean registerBlockChange) {
+		int wx = ox << 4;
+		int wy = oy << 4;
+		if(y >= world.getHeight())
+			return;
+		removeBlockAt(x, y, z, false);
+		Block b = inst0.getBlock();
 		inst0.setPosition(new Vector3i(x + wx, y, z + wy));
 		inst0.setWorld(world);
 		if (b.hasTileEntity()) {
@@ -492,12 +429,14 @@ public class Chunk {
 		list.add(inst0);
 		inst[x][y][z] = inst0;
 		BlockInstance[] neighbors = inst0.getNeighbors(this);
+		
 		for (int i = 0; i < neighbors.length; i++) {
 			if (blocksLight(neighbors[i], inst0.getBlock().isTransparent())) {
 				revealBlock(inst0);
 				break;
 			}
 		}
+		
 		for (int i = 0; i < neighbors.length; i++) {
 			if(neighbors[i] != null) {
 				Chunk ch = getChunk(neighbors[i].getX(), neighbors[i].getZ());
