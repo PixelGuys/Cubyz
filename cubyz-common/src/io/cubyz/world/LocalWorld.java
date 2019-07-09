@@ -333,7 +333,7 @@ public class LocalWorld extends World {
 			}
 			catch(Exception e) {}
 		}
-		Chunk.init(ores.toArray(new Ore[ores.size()]));
+		LifelandGenerator.init(ores.toArray(new Ore[ores.size()]));
 	}
 
 	@Override

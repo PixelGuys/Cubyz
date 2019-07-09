@@ -29,52 +29,6 @@ public class Chunk {
 	private boolean loaded;
 	private ArrayList<TileEntity> tileEntities = new ArrayList<>();
 	
-	// Ore Utilities
-	public static Ore [] ores;
-	public static float [] oreChances;
-	public static int [] oreHeights;
-	
-	public static void init(Ore [] ores) {
-		oreChances = new float[ores.length+1];
-		oreHeights = new int[ores.length];
-		for(int i = 0; i < ores.length; i++) {
-			oreHeights[i] = ores[i].getHeight();
-		}
-		// (Selection-)Sort the ores by height to accelerate selectOre
-		for(int i = 0; i < oreHeights.length; i++) {
-			int lowest = i;
-			for(int j = i+1; j < oreHeights.length; j++) {
-				if(oreHeights[j] < oreHeights[lowest])
-					lowest = j;
-			}
-			Ore ore = ores[lowest];
-			int height = oreHeights[lowest];
-			ores[lowest] = ores[i];
-			oreHeights[lowest] = oreHeights[i];
-			ores[i] = ore;
-			oreHeights[i] = height;
-		}
-		for(int i = 0; i < ores.length; i++) {
-			oreChances[i+1] = oreChances[i] + ores[i].getChance();
-		}
-		Chunk.ores = ores;
-	}
-	
-	// This function only allows a less than 50% of the underground to be ores.
-	public static BlockInstance selectOre(float rand, int height, Block undergroundBlock) {
-		if(rand >= oreChances[oreHeights.length])
-			return new BlockInstance(undergroundBlock);
-		for (int i = oreChances.length - 2; i >= 0; i--) {
-			if(height > oreHeights[i])
-				break;
-		if(rand >= oreChances[i])
-			return new BlockInstance(ores[i]);
-		}
-		return new BlockInstance(undergroundBlock);
-	}
-	
-	public static final int SEA_LEVEL = 100;
-	
 	private World world;
 	
 	public Chunk(int ox, int oy, World world, ArrayList<BlockChange> changes) {
@@ -393,8 +347,6 @@ public class Chunk {
 	}
 	
 	public void addBlockAt(int x, int y, int z, Block b, boolean registerBlockChange) {
-		int wx = ox << 4;
-		int wy = oy << 4;
 		if(y >= world.getHeight())
 			return;
 		removeBlockAt(x, y, z, false);
@@ -409,6 +361,7 @@ public class Chunk {
 	 * @param z
 	 */
 	public void rawAddBlock(int x, int y, int z, BlockInstance bi) {
+		bi.setWorld(world);
 		list.add(bi);
 		inst[x][y][z] = bi;
 	}
