@@ -1,5 +1,8 @@
 package io.cubyz.api.base;
 
+import java.util.ArrayList;
+
+import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.EventHandler;
 import io.cubyz.api.Mod;
 import io.cubyz.api.Registry;
@@ -22,8 +25,10 @@ import io.cubyz.blocks.Sand;
 import io.cubyz.blocks.SnowGrass;
 import io.cubyz.blocks.Stone;
 import io.cubyz.blocks.Water;
+import io.cubyz.command.GiveCommand;
 import io.cubyz.entity.EntityType;
 import io.cubyz.entity.PlayerEntity;
+import io.cubyz.items.Item;
 
 /**
  * Mod adding Cubyz default content.
@@ -55,12 +60,15 @@ public class BaseMod {
 	static IronOre iron;
 	static RubyOre ruby;
 	
+	static ArrayList<Block> blockList = new ArrayList<>();
+	
 	// Fluid:
 	static Water water;
 	
 	@EventHandler(type = "init")
 	public void init() {
 		System.out.println("Init!");
+		CubyzRegistries.COMMAND_REGISTRY.register(new GiveCommand());
 	}
 	
 	@EventHandler(type = "entity/register")
@@ -68,6 +76,14 @@ public class BaseMod {
 		player = new PlayerEntity();
 		
 		reg.register(player);
+	}
+	
+	@EventHandler(type = "item/register")
+	public void registerItems(Registry<Item> reg) {
+		for (Block b : blockList) {
+			if (reg.indexOf(b.getBlockDrop()) == -1)
+				reg.register(b.getBlockDrop());
+		}
 	}
 	
 	@EventHandler(type = "block/register")
@@ -104,6 +120,23 @@ public class BaseMod {
 		stone.setBlockDrop(cobblestone.getBlockDrop());
 		
 		// Register
+		blockList.add(bedrock);
+		blockList.add(cactus);
+		blockList.add(cobblestone);
+		blockList.add(dirt);
+		blockList.add(grass);
+		blockList.add(ice);
+		blockList.add(oakLeaves);
+		blockList.add(oakLog);
+		blockList.add(sand);
+		blockList.add(snow);
+		blockList.add(stone);
+		blockList.add(coal);
+		blockList.add(diamond);
+		blockList.add(emerald);
+		blockList.add(gold);
+		blockList.add(iron);
+		blockList.add(ruby);
 		reg.registerAll(bedrock, cactus, cobblestone, dirt, grass, ice, oakLeaves, oakLog, sand, snow, stone, coal, diamond, emerald, gold, iron, ruby, water);
 	}
 	

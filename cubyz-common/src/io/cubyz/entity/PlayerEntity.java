@@ -101,6 +101,11 @@ public class PlayerEntity extends EntityType {
 		public Inventory getInventory() {
 			return inv;
 		}
+
+		@Override
+		public void feedback(String feedback) {
+			
+		}
 	}
 
 	@Override

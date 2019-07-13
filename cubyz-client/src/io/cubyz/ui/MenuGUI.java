@@ -9,7 +9,7 @@ public abstract class MenuGUI {
 	
 	public abstract boolean doesPauseGame();
 	
-	public boolean grabsMouse() {
+	public boolean ungrabsMouse() {
 		return false;
 	}
 	

@@ -3,6 +3,8 @@ package io.cubyz.command;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 
+import io.cubyz.api.Resource;
+
 public class CommandBuilder {
 
 	private String name;
@@ -25,7 +27,7 @@ public class CommandBuilder {
 		return this;
 	}
 	
-	public CommandBase build() {
+	public CommandBase build(Resource id) {
 		Objects.requireNonNull(name, "command name");
 		CommandBase base = new CommandBase() {
 
@@ -35,6 +37,18 @@ public class CommandBuilder {
 					executor.accept(source, args);
 				}
 			}
+
+			@Override
+			public String getID() {
+				return id.getID();
+			}
+
+			@Override
+			public Resource getRegistryID() {
+				return id;
+			}
+
+			@Override public void setID(int ID) {} // useless for commands
 			
 		};
 		base.name = name;

@@ -305,16 +305,26 @@ public class Cubyz implements IGameLogic {
 					light.getDirection().x = 0.0F;
 				}
 			}
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_C)) {
+				int mods = Keyboard.getKeyMods();
+				if ((mods & GLFW.GLFW_MOD_CONTROL) == GLFW.GLFW_MOD_CONTROL) {
+					if ((mods & GLFW.GLFW_MOD_SHIFT) == GLFW.GLFW_MOD_SHIFT) {
+						if (gameUI.getMenuGUI() == null) {
+							gameUI.setMenu(new ConsoleGUI());
+						}
+					}
+				}
+			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_I)) {
 				gameUI.setMenu(new InventoryGUI());
 			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_ESCAPE) && mouse.isGrabbed()) {
-				Keyboard.setKeyPressed(GLFW.GLFW_KEY_ESCAPE, false);
 				if (gameUI.getMenuGUI() != null) {
 					if (!gameUI.doesGUIPauseGame()) {
 						//gameUI.setMenu(null);
 					}
 				} else {
+					Keyboard.setKeyPressed(GLFW.GLFW_KEY_ESCAPE, false);
 					gameUI.setMenu(new PauseGUI());
 				}
 			}
@@ -423,6 +433,7 @@ public class Cubyz implements IGameLogic {
 		} else {
 			renderer.render(window, ctx, new Vector3f(0.8f, 0.8f, 0.8f), light, EMPTY_CHUNK_LIST, EMPTY_BLOCK_LIST, null);
 		}
+		Keyboard.releaseCodePoint();
 	}
 
 	@Override

@@ -1,0 +1,44 @@
+package io.cubyz.command;
+
+import io.cubyz.api.CubyzRegistries;
+import io.cubyz.api.Registry;
+import io.cubyz.api.Resource;
+import io.cubyz.entity.Player;
+import io.cubyz.items.Inventory;
+import io.cubyz.items.Item;
+
+public class GiveCommand extends CommandBase {
+
+	@Override
+	public String getID() {
+		return "give";
+	}
+
+	@Override
+	public Resource getRegistryID() {
+		return new Resource("cubyz", "give");
+	}
+
+	@Override public void setID(int ID) {}
+
+	@Override
+	public void commandExecute(ICommandSource source, String[] args) {
+		Registry<Item> items = CubyzRegistries.ITEM_REGISTRY;
+		if (args.length < 2) {
+			source.feedback("Usage: give <item id>");
+			return;
+		}
+		if (items.getByID(args[1]) == null) {
+			source.feedback("No such item: " + args[1]);
+			return;
+		}
+		if (source.getWorld() == null) {
+			source.feedback("'give' must be executed by a player");
+			return;
+		}
+		Player local = source.getWorld().getLocalPlayer();
+		Inventory inv = local.getInventory();
+		inv.addItem(items.getByID(args[1]), 1);
+	}
+	
+}
