@@ -183,7 +183,9 @@ public class Window {
 			glfwSetWindowPos(handle, (vidmode.width() - pWidth.get(0)) >> 1, (vidmode.height() - pHeight.get(0)) >> 1);
 		} // the stack frame is popped automatically
 
-		
+		glfwSetCharCallback(handle, (window, codePoint) -> {
+			Keyboard.pushCodePoint((char) codePoint);
+		});
 		
 		glfwSetKeyCallback(handle, (window, key, scancode, action, mods) -> {
 			if (action == GLFW_PRESS) {
@@ -192,6 +194,7 @@ public class Window {
 			if (action == GLFW_RELEASE) {
 				Keyboard.setKeyPressed(key, false);
 			}
+			Keyboard.setKeyMods(mods);
 		});
 		
 		glfwSetFramebufferSizeCallback(handle, (window, width, height) -> {
