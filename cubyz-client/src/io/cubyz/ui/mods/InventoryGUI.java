@@ -1,6 +1,8 @@
 package io.cubyz.ui.mods;
 
+import org.jungle.Keyboard;
 import org.jungle.Window;
+import org.lwjgl.glfw.GLFW;
 
 import io.cubyz.client.Cubyz;
 import io.cubyz.items.Inventory;
@@ -43,8 +45,14 @@ public class InventoryGUI extends MenuGUI {
 	@Override
 	public void render(long nvg, Window win) {
 		NGraphics.setColor(0, 0, 0);
+		NGraphics.fillRect(128, 100, 560, 384);
+		NGraphics.setColor(0, 0, 0);
 		for(int i = 0; i < inv.length; i++) {
 			inv[i].render(nvg, win);
+		}
+		if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_ESCAPE)) {
+			Cubyz.gameUI.setMenu(null);
+			Cubyz.mouse.setGrabbed(true);
 		}
 	}
 

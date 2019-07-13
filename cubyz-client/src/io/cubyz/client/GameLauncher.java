@@ -9,7 +9,7 @@ public class GameLauncher extends Game {
 	public static GameLauncher instance;
 	
 	public static void main(String[] args) {
-		boolean showPrompt = Boolean.parseBoolean(System.getProperty("cubyz.showStartPrompt", "true"));
+		boolean showPrompt = Boolean.parseBoolean(System.getProperty("cubyz.showStartPrompt", "false"));
 		GameLauncher.instance = new GameLauncher();
 		instance.logic = new Cubyz();
 		String os = System.getProperty("os.name");

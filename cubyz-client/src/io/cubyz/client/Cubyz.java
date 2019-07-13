@@ -27,6 +27,7 @@ import io.cubyz.multiplayer.client.PingResponse;
 import io.cubyz.translate.Language;
 import io.cubyz.translate.LanguageLoader;
 import io.cubyz.ui.*;
+import io.cubyz.ui.mods.InventoryGUI;
 import io.cubyz.utils.*;
 import io.cubyz.utils.ResourceUtilities.BlockModel;
 import io.cubyz.world.*;
@@ -304,15 +305,26 @@ public class Cubyz implements IGameLogic {
 					light.getDirection().x = 0.0F;
 				}
 			}
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_I)) {
+				gameUI.setMenu(new InventoryGUI());
+			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_ESCAPE) && mouse.isGrabbed()) {
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_ESCAPE, false);
-				gameUI.setMenu(new PauseGUI());
+				if (gameUI.getMenuGUI() != null) {
+					if (!gameUI.doesGUIPauseGame()) {
+						//gameUI.setMenu(null);
+					}
+				} else {
+					gameUI.setMenu(new PauseGUI());
+				}
 			}
 			if ((mouse.isLeftButtonPressed() || mouse.isRightButtonPressed()) && !mouse.isGrabbed()) {
 				mouse.setGrabbed(true);
 				mouse.clearPos(window.getWidth() / 2, window.getHeight() / 2);
 				breakCooldown = 10;
 			}
+			
+			// inventory related
 			inventorySelection = (inventorySelection + (int) mouse.getScrollOffset()) & 7;
 			mouse.clearScroll();
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_1)) {
@@ -339,6 +351,8 @@ public class Cubyz implements IGameLogic {
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_8)) {
 				inventorySelection = 7;
 			}
+			
+			// render distance
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_MINUS)) {
 				if(world.getRenderDistance() >= 2)
 					world.setRenderDistance(world.getRenderDistance()-1);
