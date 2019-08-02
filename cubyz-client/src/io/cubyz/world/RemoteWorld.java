@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.joml.Vector4f;
+
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
@@ -107,6 +109,12 @@ public class RemoteWorld extends World {
 
 	@Override
 	public void setRenderDistance(int arg0) {
+	}
+
+	@Override
+	public Vector4f getClearColor() {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 }

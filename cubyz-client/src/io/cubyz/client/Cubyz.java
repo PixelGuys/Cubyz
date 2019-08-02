@@ -421,7 +421,7 @@ public class Cubyz implements IGameLogic {
 		
 		if (world != null) {
 			ambient.x = ambient.y = ambient.z = world.getGlobalLighting();
-			clearColor.x = clearColor.y = clearColor.z = world.getGlobalLighting();
+			clearColor = world.getClearColor();
 			Player player = world.getLocalPlayer();
 			BlockInstance bi = world.getBlock(player.getPosition().x+Math.round(player.getPosition().relX), (int)(player.getPosition().y)+3, player.getPosition().z+Math.round(player.getPosition().relZ));
 			if(bi != null && bi.getBlock().getID().equals("water")) { // TODO: Make this more general for other block-types.

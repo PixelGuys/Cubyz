@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Random;
 
 import org.joml.Vector3f;
+import org.joml.Vector4f;
 
 import io.cubyz.CubyzLogger;
 import io.cubyz.api.CubyzRegistries;
@@ -50,10 +51,11 @@ public class LocalWorld extends World {
 	
 	private ChunkGenerationThread thread;
 	
-	private static final int DAYCYCLE = 1200; // Length of one in-game day in seconds. Midnight is at DAYCYCLE/2. Sunrise and sunset each take about 1/16 of the day.
-	long gameTime = 0; // Time of the game in seconds.
+	private static final int DAYCYCLE = 1200; // Length of one in-game day in 100ms. Midnight is at DAYCYCLE/2. Sunrise and sunset each take about 1/16 of the day.
+	long gameTime = 0; // Time of the game in 100ms.
 	long milliTime;
 	float ambientLight = 0f;
+	Vector4f clearColor = new Vector4f(0, 0, 0, 1.0f);
 	
 	// TODO: Make 1 thread per core and use some function to queue Chunk to a free thread.
 	private class ChunkGenerationThread extends Thread {
@@ -268,18 +270,42 @@ public class LocalWorld extends World {
 	
 	public void update() {
 		// Time
-		if(milliTime + 1000 < System.currentTimeMillis()) {
-			milliTime += 1000;
-			gameTime++; // gameTime is simply measured in seconds.
+		if(milliTime + 100 < System.currentTimeMillis()) {
+			milliTime += 100;
+			gameTime++; // gameTime is measured in 100ms.
 		}
 		// Ambient light
 		{
 			int dayTime = Math.abs((int)(gameTime % DAYCYCLE) - (DAYCYCLE >> 1));
-			if(dayTime < (DAYCYCLE >> 2)-(DAYCYCLE >> 4))
+			if(dayTime < (DAYCYCLE >> 2)-(DAYCYCLE >> 4)) {
 				ambientLight = 0.1f;
-			else if(dayTime > (DAYCYCLE >> 2)+(DAYCYCLE >> 4))
+				clearColor.x = clearColor.y = clearColor.z = 0;
+			} else if(dayTime > (DAYCYCLE >> 2)+(DAYCYCLE >> 4)) {
 				ambientLight = 0.7f;
-			else {
+				clearColor.x = clearColor.y = 0.8f;
+				clearColor.z = 1.0f;
+			} else {
+				//b:
+				if(dayTime > (DAYCYCLE >> 2)) {
+					clearColor.z = 1.0f*(dayTime-(DAYCYCLE >> 2))/(DAYCYCLE >> 4);
+				} else {
+					clearColor.z = 0.0f;
+				}
+				//g:
+				if(dayTime > (DAYCYCLE >> 2)+(DAYCYCLE >> 5)) {
+					clearColor.y = 0.8f;
+				} else if(dayTime > (DAYCYCLE >> 2)-(DAYCYCLE >> 5)) {
+					clearColor.y = 0.8f+0.8f*(dayTime-(DAYCYCLE >> 2)-(DAYCYCLE >> 5))/(DAYCYCLE >> 4);
+				} else {
+					clearColor.y = 0.0f;
+				}
+				//r:
+				if(dayTime > (DAYCYCLE >> 2)) {
+					clearColor.x = 0.8f;
+				}
+				else {
+					clearColor.x = 0.8f+0.8f*(dayTime-(DAYCYCLE >> 2))/(DAYCYCLE >> 4);
+				}
 				dayTime -= (DAYCYCLE >> 2);
 				dayTime <<= 3;
 				ambientLight = 0.4f + 0.3f*dayTime/(DAYCYCLE >> 1);
@@ -444,5 +470,10 @@ public class LocalWorld extends World {
 	@Override
 	public int getRenderDistance() {
 		return renderDistance;
+	}
+
+	@Override
+	public Vector4f getClearColor() {
+		return clearColor;
 	}
 }

@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.joml.Vector3f;
 import org.joml.Vector3i;
+import org.joml.Vector4f;
 
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
@@ -57,6 +58,7 @@ public abstract class World {
 	public abstract void placeBlock(int x, int y, int z, Block b);
 	
 	public abstract float getGlobalLighting();
+	public abstract Vector4f getClearColor();
 	public abstract long getGameTime();
 	public abstract void setGameTime(long time);
 	
