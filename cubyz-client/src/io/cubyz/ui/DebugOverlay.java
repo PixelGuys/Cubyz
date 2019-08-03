@@ -4,6 +4,7 @@ import org.jungle.Window;
 
 import io.cubyz.Constants;
 import io.cubyz.client.Cubyz;
+import io.cubyz.world.LocalWorld;
 import io.cubyz.world.World;
 
 /**
@@ -35,8 +36,11 @@ public class DebugOverlay extends MenuGUI {
 				float z = world.getLocalPlayer().getPosition().z + world.getLocalPlayer().getPosition().relZ;
 				
 				NGraphics.drawText(0, 48, "XYZ: " + x + ", " + y + ", " + z);
-				NGraphics.drawText(0, 60, "C: " + world.getVisibleChunks().length + "/" + world.getChunks().size());
-				NGraphics.drawText(0, 72, "RD: " + world.getRenderDistance());
+				NGraphics.drawText(0, 60, "Loaded Chunks: " + world.getVisibleChunks().length + "/" + world.getChunks().size());
+				NGraphics.drawText(0, 72, "Render Distance: " + world.getRenderDistance());
+				if (world instanceof LocalWorld) {
+					NGraphics.drawText(0, 84, "Chunk Queue Size: " + ((LocalWorld) world).getChunkQueueSize());
+				}
 			}
 			
 			int h = win.getHeight();

@@ -12,7 +12,7 @@ public class PlayerEntity extends EntityType {
 
 	class PlayerImpl extends Player {
 		
-		private boolean flying = false;
+		private boolean flying = true;
 		private Inventory inv = new Inventory(32);
 		
 		@Override
@@ -52,8 +52,6 @@ public class PlayerEntity extends EntityType {
 			super.update();
 			if (!flying) {
 				vy -= 0.015F;
-			} else {
-				vy = 0;
 			}
 			if (vy < 0) {
 				Vector3i bp = new Vector3i(position.x + (int) Math.round(position.relX), (int) Math.floor(position.y), position.z + (int) Math.round(position.relZ));

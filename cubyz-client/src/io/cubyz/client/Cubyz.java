@@ -276,20 +276,25 @@ public class Cubyz implements IGameLogic {
 			Keyboard.setKeyPressed(GLFW.GLFW_KEY_F11, false);
 		}
 		if (!gameUI.doesGUIPauseGame() && world != null) {
-			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_W)) {
-				playerInc.z = -1;
-			}
+			int inc = 1;
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT_CONTROL)) {
-				playerInc.z = -2;
+				if (world.getLocalPlayer().isFlying()) {
+					inc = 8;
+				} else {
+					inc = 2;
+				}
+			}
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_W)) {
+				playerInc.z = -inc;
 			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_S)) {
-				playerInc.z = 1;
+				playerInc.z = inc;
 			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_A)) {
-				playerInc.x = -1;
+				playerInc.x = -inc;
 			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_D)) {
-				playerInc.x = 1;
+				playerInc.x = inc;
 			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_SPACE) && world.getLocalPlayer().vy == 0) {
 				world.getLocalPlayer().vy = 0.25F;

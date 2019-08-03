@@ -81,8 +81,11 @@ public class BaseMod {
 	@EventHandler(type = "item/register")
 	public void registerItems(Registry<Item> reg) {
 		for (Block b : blockList) {
-			if (reg.indexOf(b.getBlockDrop()) == -1)
-				reg.register(b.getBlockDrop());
+			if (b.getBlockDrop() == null)
+				continue;
+			if (reg.indexOf(b.getBlockDrop()) == -1) {
+				//reg.register(b.getBlockDrop());
+			}
 		}
 	}
 	

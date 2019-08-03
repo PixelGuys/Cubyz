@@ -19,7 +19,7 @@ uniform mat4 modelViewNonInstancedMatrix;
 
 void main()
 {
-	vec4 initPos = vec4(position, 1.0);
+	vec4 initPos = vec4(position, 1);
 	vec4 initNormal = vec4(vertexNormal, 0.0);
 	mat4 modelViewMatrix;
 	//mat4 lightViewMatrix;
