@@ -9,6 +9,7 @@ import io.cubyz.client.Cubyz;
 import io.cubyz.items.Inventory;
 import io.cubyz.items.Item;
 import io.cubyz.items.ItemStack;
+import io.cubyz.items.Recipe;
 import io.cubyz.ui.MenuGUI;
 import io.cubyz.ui.NGraphics;
 import io.cubyz.ui.components.InventorySlot;
@@ -57,10 +58,10 @@ public class InventoryGUI extends MenuGUI {
 			for(int i = 0; i < 8; i++) {
 				inv[i+24] = new InventorySlot(inventory.getStack(i+24), i*64-256, 384);
 			}
-			inv[32] = new InventorySlot(inventory.getStack(32), 0, 480);
-			inv[33] = new InventorySlot(inventory.getStack(33), 0, 544);
-			inv[34] = new InventorySlot(inventory.getStack(34), 64, 480);
-			inv[35] = new InventorySlot(inventory.getStack(35), 64, 544);
+			inv[32] = new InventorySlot(inventory.getStack(32), 0, 544);
+			inv[33] = new InventorySlot(inventory.getStack(33), 64, 544);
+			inv[34] = new InventorySlot(inventory.getStack(34), 0, 480);
+			inv[35] = new InventorySlot(inventory.getStack(35), 64, 480);
 			inv[36] = new InventorySlot(inventory.getStack(36), 192, 512);
 		}
 	}
@@ -84,6 +85,9 @@ public class InventoryGUI extends MenuGUI {
 			if(newlyCarried != null) {
 				Cubyz.world.getLocalPlayer().getInventory().setSlot(carried, i);
 				carried = newlyCarried;
+				if(i >= 32) {
+					checkCrafting();
+				}
 			}
 		}
 		// Draw the stack carried by the mouse:
@@ -105,5 +109,26 @@ public class InventoryGUI extends MenuGUI {
 	public boolean doesPauseGame() {
 		return false;
 	}
-
+	
+	private void checkCrafting() {
+		// Find out how many items are there in the grid and put them in an array:
+		int num = 0;
+		Item[] ar = new Item[4];
+		for(int i = 0; i < 4; i++) {
+			ar[i] = inv[32+i].reference.getItem();
+			if(ar[i] != null)
+				num++;
+		}
+		// Get the recipes for the given number of items:
+		Recipe[] recipes = new Recipe[0];//TODO!
+		// Find a fitting recipe:
+		Item item = null;
+		for(int i = 0; i < recipes.length; i++) {
+			item = recipes[i].canCraft(ar, 4);
+			if(item != null) {
+				// TODO: add the recipes result to the appropiate slot.
+				break;
+			}
+		}
+	}
 }
