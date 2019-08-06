@@ -66,4 +66,8 @@ public class Inventory {
 			
 		}
 	}
+	
+	public void setSlot(ItemStack stack, int i) {
+		items[i] = stack;
+	}
 }

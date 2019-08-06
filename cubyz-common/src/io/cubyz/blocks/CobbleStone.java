@@ -8,6 +8,7 @@ public class CobbleStone extends Block {
 		setID("cubyz:cobblestone");
 		Item bd = new Item();
 		bd.setBlock(this);
+		bd.setID("cubyz_items:cobblestone");
 		bd.setTexture("blocks/"+getTexture()+".png");
 		setBlockDrop(bd);
 	}

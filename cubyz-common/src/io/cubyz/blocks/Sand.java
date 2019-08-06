@@ -9,6 +9,7 @@ public class Sand extends Block {
 		setID("cubyz:sand");
 		Item bd = new Item();
 		bd.setBlock(this);
+		bd.setID("cubyz_items:sand");
 		bd.setTexture("blocks/"+getTexture()+".png");
 		setBlockDrop(bd);
 	}

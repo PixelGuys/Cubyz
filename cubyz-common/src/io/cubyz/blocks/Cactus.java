@@ -9,6 +9,7 @@ public class Cactus extends Block {
 		setID("cubyz:cactus");
 		Item bd = new Item();
 		bd.setBlock(this);
+		bd.setID("cubyz_items:cactus");
 		bd.setTexture("blocks/"+getTexture()+".png");
 		setBlockDrop(bd);
 	}

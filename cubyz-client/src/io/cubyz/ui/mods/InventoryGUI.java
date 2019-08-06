@@ -2,28 +2,46 @@ package io.cubyz.ui.mods;
 
 import org.jungle.Keyboard;
 import org.jungle.Window;
+import org.jungle.hud.Font;
 import org.lwjgl.glfw.GLFW;
 
 import io.cubyz.client.Cubyz;
 import io.cubyz.items.Inventory;
+import io.cubyz.items.Item;
+import io.cubyz.items.ItemStack;
 import io.cubyz.ui.MenuGUI;
 import io.cubyz.ui.NGraphics;
 import io.cubyz.ui.components.InventorySlot;
+import io.cubyz.ui.components.Label;
 
 // TODO: add possibility to capture and release stacks with the mouse.
 
 public class InventoryGUI extends MenuGUI {
 
 	private InventorySlot inv [] = null;
+	
+	private ItemStack carried = new ItemStack(); // ItemStack currently carried by the mouse.
+	private Label num;
 
 	public void close() {
 		Cubyz.mouse.setGrabbed(true);
-		 // TODO: take care about what happens when the window is closed , but the mouse captured a stack.
+		 // Place the last stack carried by the mouse in an empty slot.
+		if(carried.getItem() != null) {
+			for(int i = 0; i < inv.length; i++) {
+				if(inv[i].reference.getItem() == null) {
+					Cubyz.world.getLocalPlayer().getInventory().setSlot(carried, i);
+					return;
+				}
+			}
+			//DropItemStack(carried); //TODO!
+		}
 	}
 
 	@Override
 	public void init(long nvg) {
 		Cubyz.mouse.setGrabbed(false);
+		num = new Label();
+		num.setFont(new Font("OpenSans Bold", 16.f));
 		if(inv == null) {
 			inv = new InventorySlot[32];
 			Inventory inventory = Cubyz.world.getLocalPlayer().getInventory();
@@ -53,6 +71,28 @@ public class InventoryGUI extends MenuGUI {
 		if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_ESCAPE)) {
 			Cubyz.gameUI.setMenu(null);
 			Cubyz.mouse.setGrabbed(true);
+		}
+		// Check if the mouse takes up a new ItemStack/sets one down.
+		ItemStack newlyCarried;
+		for(int i = 0; i < inv.length; i++) {
+			newlyCarried = inv[i].grabWithMouse(Cubyz.mouse, carried, win.getWidth()/2, win.getHeight());
+			if(newlyCarried != null) {
+				Cubyz.world.getLocalPlayer().getInventory().setSlot(carried, i);
+				carried = newlyCarried;
+			}
+		}
+		// Draw the stack carried by the mouse:
+		Item item = carried.getItem();
+		if(item != null) {
+			if(item.getImage() == -1) {
+				item.setImage(NGraphics.loadImage(item.getTexture()));
+			}
+			int x = (int)Cubyz.mouse.getCurrentPos().x;
+			int y = (int)Cubyz.mouse.getCurrentPos().y;
+			NGraphics.drawImage(item.getImage(), x - 32, y - 32, 64, 64);
+			num.setText("" + carried.getAmount());
+			num.setPosition(x + 50-32, y + 48-32);
+			num.render(nvg, win);
 		}
 	}
 

@@ -11,6 +11,7 @@ public class IronOre extends Ore {
 		setChance(0.03F);
 		Item bd = new Item();
 		bd.setBlock(this);
+		bd.setID("cubyz_items:iron_ore");
 		bd.setTexture("materials/iron_ore.png");
 		setBlockDrop(bd);
 	}

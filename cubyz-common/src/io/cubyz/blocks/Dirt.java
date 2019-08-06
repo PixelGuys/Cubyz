@@ -9,6 +9,7 @@ public class Dirt extends Block {
 		setID("cubyz:dirt");
 		Item bd = new Item();
 		bd.setBlock(this);
+		bd.setID("cubyz_items:dirt");
 		bd.setTexture("blocks/"+getTexture()+".png");
 		setBlockDrop(bd);
 	}

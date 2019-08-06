@@ -1,5 +1,9 @@
 package io.cubyz.ui.components;
 
+import java.awt.Rectangle;
+
+import org.joml.Vector2d;
+import org.jungle.MouseInput;
 import org.jungle.Window;
 import org.jungle.hud.Font;
 
@@ -12,10 +16,12 @@ import io.cubyz.ui.NGraphics;
 public class InventorySlot extends Component {
 	public static final int SLOTSIZE = 64;
 	public static final int SLOT = NGraphics.loadImage("assets/cubyz/guis/inventory/inventory_slot.png");
+
+	private boolean pressed = false;
 	
 	// WARNING: The y-axis for this element goes from bottom to top!
 	
-	ItemStack reference;
+	public ItemStack reference;
 	
 	private Label inv;
 	
@@ -26,6 +32,30 @@ public class InventorySlot extends Component {
 		this.x = x;
 		this.y = y;
 		width = height = SLOTSIZE;
+	}
+	
+	public boolean isInside(Vector2d vec, int width, int height) {
+		Rectangle hitbox = new Rectangle(width+this.x, height-this.y, this.width, this.height);
+		return hitbox.contains(vec.x, vec.y);
+	}
+	
+	public ItemStack grabWithMouse(MouseInput mouse, ItemStack carried, int width, int height) {
+		if(!isInside(mouse.getCurrentPos(), width, height))
+			return null;
+		if(mouse.isLeftButtonPressed()) {
+			pressed = true;
+			return null;
+		}
+		if(!pressed)
+			return null;
+		
+		// If the mouse button was just released inside after pressing:
+		// Remove the ItemStack from this slot and replace with the one carried by the mouse.
+		// Actual replacement in the inventory is done elsewhere.
+		pressed = false;
+		ItemStack ret = reference;
+		reference = carried;
+		return ret;
 	}
 
 	@Override

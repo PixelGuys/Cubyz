@@ -326,6 +326,7 @@ public class Cubyz implements IGameLogic {
 			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_I)) {
 				gameUI.setMenu(new InventoryGUI());
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_I, false);
 			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_ESCAPE) && mouse.isGrabbed()) {
 				if (gameUI.getMenuGUI() != null) {
@@ -337,7 +338,7 @@ public class Cubyz implements IGameLogic {
 					gameUI.setMenu(new PauseGUI());
 				}
 			}
-			if ((mouse.isLeftButtonPressed() || mouse.isRightButtonPressed()) && !mouse.isGrabbed()) {
+			if ((mouse.isLeftButtonPressed() || mouse.isRightButtonPressed()) && !mouse.isGrabbed() && gameUI.getMenuGUI() == null) {
 				mouse.setGrabbed(true);
 				mouse.clearPos(window.getWidth() / 2, window.getHeight() / 2);
 				breakCooldown = 10;
@@ -461,7 +462,7 @@ public class Cubyz implements IGameLogic {
 			if (mouse.isLeftButtonPressed() && mouse.isGrabbed()) {
 				//Breaking Blocks
 				if (breakCooldown == 0) {
-					breakCooldown = 10;
+					breakCooldown = 0;
 					BlockInstance bi = msd.getSelectedBlockInstance();
 					if (bi != null && bi.getBlock().getHardness() != -1f) {
 						world.removeBlock(bi.getX(), bi.getY(), bi.getZ());

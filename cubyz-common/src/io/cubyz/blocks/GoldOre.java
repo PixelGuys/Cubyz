@@ -10,6 +10,7 @@ public class GoldOre extends Ore {
 		setHeight(32);
 		setChance(0.005F);
 		Item bd = new Item();
+		bd.setID("cubyz_items:gold_ore");
 		bd.setTexture("materials/gold_ore.png");
 		setBlockDrop(bd);
 	}

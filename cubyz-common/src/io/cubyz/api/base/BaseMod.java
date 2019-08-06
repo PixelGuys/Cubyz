@@ -84,7 +84,7 @@ public class BaseMod {
 			if (b.getBlockDrop() == null)
 				continue;
 			if (reg.indexOf(b.getBlockDrop()) == -1) {
-				//reg.register(b.getBlockDrop());
+				reg.register(b.getBlockDrop());
 			}
 		}
 	}
