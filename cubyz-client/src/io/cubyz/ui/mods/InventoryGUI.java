@@ -43,7 +43,7 @@ public class InventoryGUI extends MenuGUI {
 		num = new Label();
 		num.setFont(new Font("OpenSans Bold", 16.f));
 		if(inv == null) {
-			inv = new InventorySlot[32];
+			inv = new InventorySlot[37];
 			Inventory inventory = Cubyz.world.getLocalPlayer().getInventory();
 			for(int i = 0; i < 8; i++) {
 				inv[i] = new InventorySlot(inventory.getStack(i), i*64-256, 64);
@@ -57,6 +57,11 @@ public class InventoryGUI extends MenuGUI {
 			for(int i = 0; i < 8; i++) {
 				inv[i+24] = new InventorySlot(inventory.getStack(i+24), i*64-256, 384);
 			}
+			inv[32] = new InventorySlot(inventory.getStack(32), 0, 480);
+			inv[33] = new InventorySlot(inventory.getStack(33), 0, 544);
+			inv[34] = new InventorySlot(inventory.getStack(34), 64, 480);
+			inv[35] = new InventorySlot(inventory.getStack(35), 64, 544);
+			inv[36] = new InventorySlot(inventory.getStack(36), 192, 512);
 		}
 	}
 
