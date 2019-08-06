@@ -67,8 +67,8 @@ public class InventoryGUI extends MenuGUI {
 
 	@Override
 	public void render(long nvg, Window win) {
-		NGraphics.setColor(0, 0, 0);
-		NGraphics.fillRect(128, 100, 560, 384);
+		NGraphics.setColor(191, 191, 191);
+		NGraphics.fillRect(win.getWidth()/2-288, win.getHeight()-576, 576, 576);
 		NGraphics.setColor(0, 0, 0);
 		for(int i = 0; i < inv.length; i++) {
 			inv[i].render(nvg, win);

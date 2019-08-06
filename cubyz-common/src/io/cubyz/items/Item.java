@@ -20,7 +20,7 @@ public class Item implements IRegistryElement {
 	}
 	
 	public void setTexture(String texturePath) {
-		this.texturePath = "../res/textures/items/" + texturePath;
+		this.texturePath = "./assets/cubyz/textures/items/" + texturePath;
 	}
 	
 	public void setImage(int image) {

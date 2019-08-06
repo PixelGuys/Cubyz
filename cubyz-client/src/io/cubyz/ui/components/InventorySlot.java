@@ -66,7 +66,7 @@ public class InventorySlot extends Component {
 			if(item.getImage() == -1) {
 				item.setImage(NGraphics.loadImage(item.getTexture()));
 			}
-			NGraphics.drawImage(item.getImage(), win.getWidth()/2 + x + 2, win.getHeight() - y + 2, width - 4, height - 4);
+			NGraphics.drawImage(item.getImage(), win.getWidth()/2 + x + 4, win.getHeight() - y + 4, width - 8, height - 8);
 			inv.setText("" + reference.getAmount());
 			inv.setPosition(win.getWidth()/2 + x + 50, win.getHeight() - y + 48);
 			inv.render(nvg, win);
