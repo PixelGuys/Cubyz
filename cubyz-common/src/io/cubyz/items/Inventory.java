@@ -6,14 +6,14 @@ import io.cubyz.ndt.NDTContainer;
 public class Inventory {
 	private ItemStack[] items; // First 8 item stacks are the hotbar
 	
-	public void addItem(Item i, int amount) {
+	public int addItem(Item i, int amount) {
 		if(i == null || amount == 0)
-			return;
+			return 0;
 		for(int j = 0; j < items.length; j++) {
 			if(!items[j].empty() && items[j].getItem() == i && !items[j].filled()) {
 				amount -= items[j].add(amount);
 				if(amount == 0) {
-					return;
+					return 0;
 				}
 			}
 		}
@@ -22,11 +22,12 @@ public class Inventory {
 				items[j].setItem(i);
 				amount -= items[j].add(amount);
 				if(amount == 0) {
-					return;
+					return 0;
 				}
 			}
 		}
-		// TODO: Consider a full inventory
+		// Return the amount of items that didn't fit in the inventory:
+		return amount;
 	}
 	
 	public Inventory(int size) {
@@ -34,10 +35,6 @@ public class Inventory {
 		for(int i = 0; i < size; i++) {
 			items[i] = new ItemStack();
 		}
-	}
-	
-	public Inventory() {
-		this(0);
 	}
 	
 	public Block getBlock(int selection) {

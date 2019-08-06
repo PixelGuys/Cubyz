@@ -1,11 +1,15 @@
 package io.cubyz.blocks;
 
+import org.joml.Vector3f;
+
 import io.cubyz.IRenderablePair;
 import io.cubyz.api.IRegistryElement;
 import io.cubyz.api.Resource;
 import io.cubyz.items.Item;
 
 public class Block implements IRegistryElement {
+	
+	private static Vector3f ONE = new Vector3f(1, 1, 1);
 
 	IRenderablePair pair;
 	boolean transparent;
@@ -128,6 +132,10 @@ public class Block implements IRegistryElement {
 	
 	public boolean hasTileEntity() {
 		return false;
+	}
+	
+	public Vector3f getLightAdjust() {
+		return ONE;
 	}
 	
 }

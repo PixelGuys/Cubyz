@@ -97,24 +97,20 @@ public class Noise {
 		l1 = r.nextLong();
 		l2 = r.nextLong();
 		l3 = r.nextLong();
-		int offset = 0; // Offset the individual noise maps to avoid those rifts in landscape(especially at coordinates like {0, 0})
 		for(; scale >= 16; scale >>= 1) {
 			resolution = scale;
 			resolution2 = resolution-1;		
 			for (int x1 = x; x1 < width + x; x1++) {
 				for (int y1 = y; y1 < height + y; y1++) {
-					//map[x1 - x][y1 - y] = get2DPerlinNoiseValue(x1, y1, scale, seed);
-					map[x1 - x][y1 - y] += factor*perlin(x1 + offset, y1 + offset);
+					map[x1 - x][y1 - y] += factor*perlin(x1, y1);
 				}
 			}
 			sum += factor;
 			factor *= 0.55F;
-			offset++;
 		}
 		
 		for (int x1 = x; x1 < width + x; x1++) {
 			for (int y1 = y; y1 < height + y; y1++) {
-				//map[x1 - x][y1 - y] = get2DPerlinNoiseValue(x1, y1, scale, seed);
 				map[x1 - x][y1 - y] /= sum;
 			}
 		}

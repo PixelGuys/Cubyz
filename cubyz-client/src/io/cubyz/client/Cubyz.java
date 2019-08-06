@@ -276,25 +276,25 @@ public class Cubyz implements IGameLogic {
 			Keyboard.setKeyPressed(GLFW.GLFW_KEY_F11, false);
 		}
 		if (!gameUI.doesGUIPauseGame() && world != null) {
-			int inc = 1;
-			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT_CONTROL)) {
-				if (world.getLocalPlayer().isFlying()) {
-					inc = 8;
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_W)) {
+				if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT_CONTROL)) {
+					if (world.getLocalPlayer().isFlying()) {
+						playerInc.z = -8;
+					} else {
+						playerInc.z = -2;
+					}
 				} else {
-					inc = 2;
+					playerInc.z = -1;
 				}
 			}
-			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_W)) {
-				playerInc.z = -inc;
-			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_S)) {
-				playerInc.z = inc;
+				playerInc.z = 1;
 			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_A)) {
-				playerInc.x = -inc;
+				playerInc.x = -1;
 			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_D)) {
-				playerInc.x = inc;
+				playerInc.x = 1;
 			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_SPACE) && world.getLocalPlayer().vy == 0) {
 				world.getLocalPlayer().vy = 0.25F;
@@ -303,6 +303,10 @@ public class Cubyz implements IGameLogic {
 				if (world.getLocalPlayer().isFlying()) {
 					world.getLocalPlayer().vy = -0.25F;
 				}
+			}
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_F)) {
+				world.getLocalPlayer().setFlying(!world.getLocalPlayer().isFlying());
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_F, false);
 			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_RIGHT)) {
 				light.getDirection().x += 0.01F;
@@ -429,9 +433,11 @@ public class Cubyz implements IGameLogic {
 			clearColor = world.getClearColor();
 			Player player = world.getLocalPlayer();
 			BlockInstance bi = world.getBlock(player.getPosition().x+Math.round(player.getPosition().relX), (int)(player.getPosition().y)+3, player.getPosition().z+Math.round(player.getPosition().relZ));
-			if(bi != null && bi.getBlock().getID().equals("water")) { // TODO: Make this more general for other block-types.
-				ambient.x *= 0.3f;
-				ambient.y *= 0.4f;
+			if(bi != null && !bi.getBlock().isSolid()) {
+				Vector3f lightingAdjust = bi.getBlock().getLightAdjust();
+				ambient.x *= lightingAdjust.x;
+				ambient.y *= lightingAdjust.y;
+				ambient.z *= lightingAdjust.z;
 			}
 			window.setClearColor(clearColor);
 			renderer.render(window, ctx, ambient, light, world.getVisibleChunks(), world.getBlocks(), world.getLocalPlayer());
@@ -459,7 +465,9 @@ public class Cubyz implements IGameLogic {
 					BlockInstance bi = msd.getSelectedBlockInstance();
 					if (bi != null && bi.getBlock().getHardness() != -1f) {
 						world.removeBlock(bi.getX(), bi.getY(), bi.getZ());
-						world.getLocalPlayer().getInventory().addItem(bi.getBlock().getBlockDrop(), 1);
+						if(world.getLocalPlayer().getInventory().addItem(bi.getBlock().getBlockDrop(), 1) != 0) {
+							//DropItemOnTheGround(); //TODO: Add this function.
+						}
 					}
 				}
 			}
