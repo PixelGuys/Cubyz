@@ -20,6 +20,7 @@ import io.cubyz.blocks.Ice;
 import io.cubyz.blocks.IronOre;
 import io.cubyz.blocks.OakLeaves;
 import io.cubyz.blocks.OakLog;
+import io.cubyz.blocks.OakPlanks;
 import io.cubyz.blocks.RubyOre;
 import io.cubyz.blocks.Sand;
 import io.cubyz.blocks.SnowGrass;
@@ -29,6 +30,7 @@ import io.cubyz.command.GiveCommand;
 import io.cubyz.entity.EntityType;
 import io.cubyz.entity.PlayerEntity;
 import io.cubyz.items.Item;
+import io.cubyz.items.Recipe;
 
 /**
  * Mod adding Cubyz default content.
@@ -48,6 +50,7 @@ public class BaseMod {
 	static Ice ice;
 	static OakLeaves oakLeaves;
 	static OakLog oakLog;
+	static OakPlanks oakPlanks;
 	static Sand sand;
 	static SnowGrass snow;
 	static Stone stone;
@@ -60,10 +63,29 @@ public class BaseMod {
 	static IronOre iron;
 	static RubyOre ruby;
 	
-	static ArrayList<Block> blockList = new ArrayList<>();
-	
 	// Fluid:
 	static Water water;
+	
+	// Block Drops:
+	static Item Icactus;
+	static Item Icoal;
+	static Item Icobblestone;
+	static Item Idiamond;
+	static Item Idirt;
+	static Item Iemerald;
+	static Item Igold;
+	static Item Iiron;
+	static Item IoakLog;
+	static Item IoakPlanks;
+	static Item Iruby;
+	static Item Isand;
+	
+	// Craftables:
+	static Item Istick;
+	
+	// Recipes:
+	static Recipe oakLogToPlanks;
+	static Recipe oakPlanksToStick;
 	
 	@EventHandler(type = "init")
 	public void init() {
@@ -80,13 +102,23 @@ public class BaseMod {
 	
 	@EventHandler(type = "item/register")
 	public void registerItems(Registry<Item> reg) {
-		for (Block b : blockList) {
-			if (b.getBlockDrop() == null)
-				continue;
-			if (reg.indexOf(b.getBlockDrop()) == -1) {
-				reg.register(b.getBlockDrop());
-			}
-		}
+		Icactus = cactus.getBlockDrop();
+		Icoal = coal.getBlockDrop();
+		Icobblestone = cobblestone.getBlockDrop();
+		Idiamond = diamond.getBlockDrop();
+		Idirt = dirt.getBlockDrop();
+		Iemerald = emerald.getBlockDrop();
+		Igold = gold.getBlockDrop();
+		Iiron = iron.getBlockDrop();
+		IoakLog = oakLog.getBlockDrop();
+		IoakPlanks = oakPlanks.getBlockDrop();
+		Iruby = ruby.getBlockDrop();
+		Isand = sand.getBlockDrop();
+		
+		Istick = new Item();
+		Istick.setID("cubyz_items:stick");
+		Istick.setTexture("materials/stick.png");
+		reg.registerAll(Icactus, Icoal, Icobblestone, Idiamond, Idirt, Iemerald, Igold, Iiron, IoakLog, IoakPlanks, Iruby, Isand, Istick);
 	}
 	
 	@EventHandler(type = "block/register")
@@ -101,6 +133,7 @@ public class BaseMod {
 		ice = new Ice();
 		oakLeaves = new OakLeaves();
 		oakLog = new OakLog();
+		oakPlanks = new OakPlanks();
 		sand = new Sand();
 		snow = new SnowGrass();
 		stone = new Stone();
@@ -123,24 +156,23 @@ public class BaseMod {
 		stone.setBlockDrop(cobblestone.getBlockDrop());
 		
 		// Register
-		blockList.add(bedrock);
-		blockList.add(cactus);
-		blockList.add(cobblestone);
-		blockList.add(dirt);
-		blockList.add(grass);
-		blockList.add(ice);
-		blockList.add(oakLeaves);
-		blockList.add(oakLog);
-		blockList.add(sand);
-		blockList.add(snow);
-		blockList.add(stone);
-		blockList.add(coal);
-		blockList.add(diamond);
-		blockList.add(emerald);
-		blockList.add(gold);
-		blockList.add(iron);
-		blockList.add(ruby);
-		reg.registerAll(bedrock, cactus, cobblestone, dirt, grass, ice, oakLeaves, oakLog, sand, snow, stone, coal, diamond, emerald, gold, iron, ruby, water);
+		reg.registerAll(bedrock, cactus, cobblestone, dirt, grass, ice, oakLeaves, oakLog, oakPlanks, sand, snow, stone, coal, diamond, emerald, gold, iron, ruby, water);
 	}
 	
+	@SuppressWarnings("rawtypes")
+	@EventHandler(type = "recipe/register")
+	public void registerRecipes (Registry reg) {
+		Item[] recipe;
+		
+		recipe = new Item[] {IoakLog};
+		oakLogToPlanks = new Recipe(recipe, IoakPlanks);
+		
+		recipe = new Item[] {
+				IoakPlanks,
+				IoakPlanks,
+		};
+		oakPlanksToStick = new Recipe(1, 2, recipe, Istick);
+		
+		//reg.registerAll(oakLogToPlanks, oakPlanksToStick); TODO!
+	}
 }
