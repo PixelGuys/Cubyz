@@ -12,7 +12,7 @@ public class PlayerEntity extends EntityType {
 
 	class PlayerImpl extends Player {
 		
-		private boolean flying = true;
+		private boolean flying = false;
 		private Inventory inv = new Inventory(37); // 4*8 normal inventory + 4 crafting slots + 1 crafting result slot.
 		
 		@Override
