@@ -1,15 +1,22 @@
 package io.cubyz.items;
 
-public class Recipe {
+import io.cubyz.api.IRegistryElement;
+import io.cubyz.api.Resource;
+
+public class Recipe implements IRegistryElement {
+	
 	private int x, y; // Size of the shaped figure. If zero: shapeless.
 	private Item [] pattern; // Pattern of all items in the recipe. An entry is null when no item should be placed there.
 	private Item result;
+	private Resource res;
 	private int num = 0; // Number of items needed. Used to faster search for recipes.
-	public Recipe(int x, int y, Item [] pattern, Item result) {
+	
+	public Recipe(int x, int y, Item[] pattern, Item result, Resource res) {
 		this.x = x;
 		this.y = y;
 		this.pattern = pattern;
 		this.result = result;
+		this.res = res;
 		if(pattern.length != x*y)
 			throw new IllegalArgumentException("Size and pattern don't fit.");
 		for(int i = 0; i < pattern.length; i++) {
@@ -18,10 +25,11 @@ public class Recipe {
 			}
 		}
 	}
-	public Recipe(Item[] pattern, Item result) {
+	public Recipe(Item[] pattern, Item result, Resource res) {
 		x = y = 0;
 		this.pattern = pattern;
 		this.result = result;
+		this.res = res;
 		num = pattern.length;
 	}
 	public int getNum() {
@@ -29,7 +37,7 @@ public class Recipe {
 	}
 	// Returns the item that can be crafted using this recipe, if it can be crafted.
 	// The input items need to be in an size×size sized array representing the crafting grid from left to right, top to bottom.
-	public Item canCraft(Item [] items, int size) {
+	public Item canCraft(Item[] items, int size) {
 		if(x == 0 || y == 0)
 			return shapelessCraft(items);
 		if(size < x || size < y)
@@ -86,22 +94,23 @@ public class Recipe {
 		}
 		for(int i = items.length-1; i >= 0; i -= size) {
 			boolean braek = false;
-			for(int j = size-1; j >= 0; j--) {
-				braek = items[i+j] != null;
-				if(braek)
-					break;
-				if(j == 0) {
+			//for(int j = size-1; j >= 0; j--) {
+				braek = items[i+0] != null;
+				//if(braek)
+				//	break;
+				//if(j == 0) {
 					yLen--;
-				}
-			}
+				//}
+			//}
 			if(braek)
 				break;
 		}
-		
+		System.out.println(xLen + " x " + yLen);
 		if(yLen < x)
 			return null;
 		
 		// Check the remaining structure for the needed shape:
+		System.out.println(xLen + " x " + yLen);
 		int index = 0;
 		for(int i = x0; i < xLen; i++) {
 			for(int j = y0; j < yLen; j++) {
@@ -114,7 +123,7 @@ public class Recipe {
 		return result;
 	}
 	
-	private Item shapelessCraft(Item [] items) {
+	private Item shapelessCraft(Item[] items) {
 		// put all items into a smaller array:
 		int index = 0;
 		Item[] items2 = new Item[num];
@@ -138,4 +147,11 @@ public class Recipe {
 		}
 		return result;
 	}
+	
+	@Override
+	public Resource getRegistryID() {
+		return res;
+	}
+	
+	public void setID(int ID) {}
 }

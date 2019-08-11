@@ -9,7 +9,7 @@ import io.cubyz.items.Item;
 
 public class Block implements IRegistryElement {
 	
-	private static Vector3f ONE = new Vector3f(1, 1, 1);
+	private static final Vector3f ONE = new Vector3f(1, 1, 1);
 
 	IRenderablePair pair;
 	boolean transparent;
@@ -74,10 +74,6 @@ public class Block implements IRegistryElement {
 	}
 	
 	public void init() {}
-	
-	public String getID() {
-		return id.getID();
-	}
 	
 	public Resource getRegistryID() {
 		return id;

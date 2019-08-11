@@ -10,11 +10,6 @@ import io.cubyz.items.Item;
 public class GiveCommand extends CommandBase {
 
 	@Override
-	public String getID() {
-		return "give";
-	}
-
-	@Override
 	public Resource getRegistryID() {
 		return new Resource("cubyz", "give");
 	}

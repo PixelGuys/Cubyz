@@ -107,11 +107,6 @@ public class PlayerEntity extends EntityType {
 	}
 
 	@Override
-	public String getID() {
-		return "cubyz:player";
-	}
-
-	@Override
 	public Resource getRegistryID() {
 		return new Resource("cubyz", "player");
 	}

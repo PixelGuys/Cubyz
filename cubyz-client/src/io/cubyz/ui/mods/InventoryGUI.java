@@ -5,6 +5,7 @@ import org.jungle.Window;
 import org.jungle.hud.Font;
 import org.lwjgl.glfw.GLFW;
 
+import io.cubyz.api.CubyzRegistries;
 import io.cubyz.client.Cubyz;
 import io.cubyz.items.Inventory;
 import io.cubyz.items.Item;
@@ -82,11 +83,14 @@ public class InventoryGUI extends MenuGUI {
 		ItemStack newlyCarried;
 		for(int i = 0; i < inv.length; i++) {
 			newlyCarried = inv[i].grabWithMouse(Cubyz.mouse, carried, win.getWidth()/2, win.getHeight());
-			if(newlyCarried != null) {
+			if(newlyCarried != null) { // TODO: not allow putting items inside slot 36
 				Cubyz.world.getLocalPlayer().getInventory().setSlot(carried, i);
 				carried = newlyCarried;
 				if(i >= 32) {
 					checkCrafting();
+					if (i == 36) {
+						// TODO: remove items in 32, 33, 34 and 35
+					}
 				}
 			}
 		}
@@ -120,13 +124,14 @@ public class InventoryGUI extends MenuGUI {
 				num++;
 		}
 		// Get the recipes for the given number of items:
-		Recipe[] recipes = new Recipe[0];//TODO!
+		Object[] recipes = CubyzRegistries.RECIPE_REGISTRY.registered();
 		// Find a fitting recipe:
 		Item item = null;
 		for(int i = 0; i < recipes.length; i++) {
-			item = recipes[i].canCraft(ar, 4);
+			item = ((Recipe) recipes[i]).canCraft(ar, 2);
 			if(item != null) {
-				// TODO: add the recipes result to the appropiate slot.
+				
+				Cubyz.world.getLocalPlayer().getInventory().setSlot(new ItemStack(item), 36);
 				break;
 			}
 		}

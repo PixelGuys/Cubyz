@@ -6,6 +6,7 @@ import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.EventHandler;
 import io.cubyz.api.Mod;
 import io.cubyz.api.Registry;
+import io.cubyz.api.Resource;
 import io.cubyz.blocks.Bedrock;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.Cactus;
@@ -90,6 +91,10 @@ public class BaseMod {
 	@EventHandler(type = "init")
 	public void init() {
 		System.out.println("Init!");
+		
+		// Both commands and recipes don't have any attributed EventHandler
+		// As they are independent to other (the correct order for others is block -> item (for item blocks and other items) -> entity)
+		registerRecipes(CubyzRegistries.RECIPE_REGISTRY);
 		CubyzRegistries.COMMAND_REGISTRY.register(new GiveCommand());
 	}
 	
@@ -159,20 +164,18 @@ public class BaseMod {
 		reg.registerAll(bedrock, cactus, cobblestone, dirt, grass, ice, oakLeaves, oakLog, oakPlanks, sand, snow, stone, coal, diamond, emerald, gold, iron, ruby, water);
 	}
 	
-	@SuppressWarnings("rawtypes")
-	@EventHandler(type = "recipe/register")
-	public void registerRecipes (Registry reg) {
+	public void registerRecipes(Registry<Recipe> reg) {
 		Item[] recipe;
 		
 		recipe = new Item[] {IoakLog};
-		oakLogToPlanks = new Recipe(recipe, IoakPlanks);
+		oakLogToPlanks = new Recipe(recipe, IoakPlanks, new Resource("cubyz", "logs_to_planks"));
 		
 		recipe = new Item[] {
 				IoakPlanks,
 				IoakPlanks,
 		};
-		oakPlanksToStick = new Recipe(1, 2, recipe, Istick);
+		oakPlanksToStick = new Recipe(1, 2, recipe, Istick, new Resource("cubyz", "planks_to_stick"));
 		
-		//reg.registerAll(oakLogToPlanks, oakPlanksToStick); TODO!
+		reg.registerAll(oakLogToPlanks, oakPlanksToStick);
 	}
 }

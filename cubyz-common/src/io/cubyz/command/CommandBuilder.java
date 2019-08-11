@@ -39,11 +39,6 @@ public class CommandBuilder {
 			}
 
 			@Override
-			public String getID() {
-				return id.getID();
-			}
-
-			@Override
 			public Resource getRegistryID() {
 				return id;
 			}

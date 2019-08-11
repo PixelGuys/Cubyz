@@ -71,19 +71,11 @@ public class Item implements IRegistryElement {
 	}
 
 	@Override
-	public String getID() {
-		return id.getID();
-	}
-
-	@Override
 	public Resource getRegistryID() {
 		return id;
 	}
 
 	@Override
-	public void setID(int ID) {
-		// TODO Auto-generated method stub
-		
-	}
+	public void setID(int ID) {}
 	
 }

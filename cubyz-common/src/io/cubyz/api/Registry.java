@@ -37,7 +37,7 @@ public class Registry<T extends IRegistryElement> {
 		if (hashMap.containsKey(element.getRegistryID().toString())) {
 			throw new IllegalStateException(getType(element.getClass()) + " with identifier \"" + element.getRegistryID() + "\" is already registered!");
 		}
-		if (element.getID() == null || element.getID().equals("empty")) {
+		if (element.getRegistryID() == null || element.getRegistryID().getID().equals("empty")) {
 			if (alwaysError) {
 				throw new IllegalArgumentException(element.getClass().getName() + " does not have any ID set!");
 			}
