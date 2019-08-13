@@ -3,3 +3,4 @@ gui.cubyz.mainmenu.multiplayer=Multijoueur
 gui.cubyz.mainmenu.exit=Quitter
 gui.cubyz.mainmenu.options=Options
 gui.cubyz.options.done=Confirmer
+gui.cubyz.options.language=Langue ({0})

@@ -20,13 +20,13 @@ public class Font {
 	private static ArrayList<ByteBuffer> buffers = new ArrayList<>(); // Used to avoid ByteBuffers to be garbage-collected
 	
 	public static void register(String name, String file, long nvg) throws IOException {
-		ByteBuffer fontBuffer = Utils.ioResourceToByteBuffer(file, 150 * 1024);
+		ByteBuffer fontBuffer = Utils.ioResourceToByteBuffer(file, 1024);
 		buffers.add(fontBuffer);
 	    int font = nvgCreateFontMem(nvg, file, fontBuffer, 0);
 	    if (font == -1) {
 	        throw new IllegalStateException("Could not create font");
 	    }
-	    System.out.println("Created font " + name + " with ID " + font);
+	    //System.out.println("Created font " + name + " with ID " + font);
 	    idRegister.put(name, font);
 	}
 	

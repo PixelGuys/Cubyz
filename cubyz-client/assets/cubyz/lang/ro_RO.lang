@@ -2,3 +2,6 @@ gui.cubyz.mainmenu.singleplayer=Singur
 gui.cubyz.mainmenu.multiplayer=Cu alti jucatori
 gui.cubyz.mainmenu.exit=Inchide Jocul
 gui.cubyz.mainmenu.options=Setari
+# To translate
+gui.cubyz.options.done=Done
+gui.cubyz.options.language=Language ({0})

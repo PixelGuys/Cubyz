@@ -22,7 +22,7 @@ public class ContextualTextKey extends TextKey {
 		if (lang.get(key) != null) {
 			String val = lang.get(key);
 			for (int i = 0; i < args.length; i++) {
-				val = val.replaceAll("{" + i + "}", args[i].toString());
+				val = val.replace("{" + i + "}", args[i].toString());
 			}
 			return val;
 		} else {
