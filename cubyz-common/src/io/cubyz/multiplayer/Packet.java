@@ -13,4 +13,10 @@ public class Packet {
 	public static final byte PACKET_CHATMSG = 5;
 	public static final byte PACKET_LISTEN = 6; // listen for update packets
 	
+	// world related
+	public static final byte PACKET_PLACE = 17;
+	public static final byte PACKET_DESTROY = 18;
+	public static final byte PACKET_CHUNK_RQ = 19;
+	public static final byte PACKET_CHUNK = 20;
+	
 }

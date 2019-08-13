@@ -7,11 +7,13 @@ public class LoginToken {
 	private UUID uuid;
 	private long expireTimestamp;
 	private UUID playerUuid;
+	private String username;
 	
-	public LoginToken(UUID token, UUID uuid, long expire) {
+	public LoginToken(UUID token, UUID uuid, String username, long expire) {
 		expireTimestamp = expire;
 		playerUuid = uuid;
-		uuid = token;
+		this.username = username;
+		this.uuid = token;
 	}
 	
 	public UUID getToken() {
@@ -24,6 +26,10 @@ public class LoginToken {
 	
 	public UUID getUUID() {
 		return playerUuid;
+	}
+	
+	public String getUsername() {
+		return username;
 	}
 	
 }

@@ -278,7 +278,7 @@ public class MainRenderer implements IRenderer {
 		// coordinates
 		DirectionalLight currDirLight = new DirectionalLight(directionalLight);
 		Vector4f dir = new Vector4f(currDirLight.getDirection(), 0);
-		// dir.mul(viewMatrix);
+		 dir.mul(viewMatrix);
 		currDirLight.setDirection(new Vector3f(dir.x, dir.y, dir.z));
 		shaderProgram.setUniform("directionalLight", currDirLight);
 

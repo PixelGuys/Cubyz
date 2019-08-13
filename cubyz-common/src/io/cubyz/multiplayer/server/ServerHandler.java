@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import io.cubyz.Constants;
 import io.cubyz.multiplayer.Packet;
+import io.cubyz.world.LocalWorld;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
@@ -20,6 +21,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 	boolean isInternal;
 	boolean onlineMode;
 	CubyzServer server;
+	LocalWorld world;
 	
 	String motd;
 	
@@ -39,6 +41,10 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 		playerTimeout = settings.playerTimeout;
 		onlineMode = settings.onlineMode;
 		isInternal = settings.internal;
+		
+		world = new LocalWorld();
+		world.generate();
+		
 		Thread th = new Thread(() -> {
 			while (true) {
 				for (String uuid : clients.keySet()) {
@@ -113,9 +119,10 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 		if (packetType == Packet.PACKET_LISTEN) {
 			UUID uuid = UUID.fromString(msg.readCharSequence(36, Constants.CHARSET_IMPL).toString());
 			Client cl = new Client();
+			int usernamelen = msg.readShort();
 			cl.ctx = ctx;
 			cl.uuid = uuid;
-			cl.username = "xX_DemoPlayer_Xx"; // TODO retrieve username
+			cl.username = msg.readCharSequence(usernamelen, Constants.CHARSET_IMPL).toString(); // TODO retrieve username
 			cl.lastPing = System.currentTimeMillis();
 			clients.put(uuid.toString(), cl);
 		}

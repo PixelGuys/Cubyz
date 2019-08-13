@@ -8,12 +8,14 @@ import io.cubyz.translate.TextKey;
 import io.cubyz.ui.components.Button;
 import io.cubyz.ui.components.Label;
 import io.cubyz.world.LocalWorld;
+import io.cubyz.world.RemoteWorld;
 
 public class MainMenuGUI extends MenuGUI {
 	
 	private Button spPlay = new Button();
 	private Button mpPlay = new Button();
 	private Button exit = new Button();
+	private Button options = new Button();
 	private Label titleLabel = new Label();
 	
 	public MainMenuGUI() {
@@ -22,8 +24,12 @@ public class MainMenuGUI extends MenuGUI {
 		spPlay.setFontSize(16f);
 		
 		mpPlay.setSize(250, 45);
-		mpPlay.setText(new TextKey("gui.cubyz.mainmenu.multiplayer"));
+		mpPlay.setText(new TextKey("gui.cubyz.mainmenu.options"));
 		mpPlay.setFontSize(16f);
+		
+		options.setSize(250, 45);
+		options.setText(new TextKey("gui.cubyz.mainmenu.multiplayer"));
+		options.setFontSize(16f);
 		
 		exit.setSize(100, 27);
 		exit.setText(new TextKey("gui.cubyz.mainmenu.exit"));
@@ -34,6 +40,7 @@ public class MainMenuGUI extends MenuGUI {
 			// TODO: Start local server and let Cubyz join it
 			LocalWorld world = new LocalWorld();
 			world.generate();
+			//RemoteWorld world = new RemoteWorld();
 			Cubyz.gameUI.setMenu(null);
 			Cubyz.loadWorld(world);
 		});
@@ -41,17 +48,23 @@ public class MainMenuGUI extends MenuGUI {
 		exit.setOnAction(() -> {
 			Cubyz.instance.game.exit();
 		});
+		
+		options.setOnAction(() -> {
+			
+		});
 	}
 	
 	@Override
 	public void render(long nvg, Window win) {
 		spPlay.setPosition(win.getWidth() / 2 - 125, 300);
 		mpPlay.setPosition(win.getWidth() / 2 - 125, 375);
+		options.setPosition(win.getWidth() / 2 - 125, 450);
 		exit.setPosition(win.getWidth() - 120, win.getHeight() - 40);
 		titleLabel.setPosition(win.getWidth() / 2 - 80, 50);
 		
 		spPlay.render(nvg, win);
 		mpPlay.render(nvg, win);
+		options.render(nvg, win);
 		exit.render(nvg, win);
 		titleLabel.render(nvg, win);
 	}

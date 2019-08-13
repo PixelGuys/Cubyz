@@ -1,6 +1,8 @@
  package io.cubyz.world;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.joml.Vector3f;
 import org.joml.Vector3i;
@@ -27,7 +29,7 @@ public class Chunk {
 	private int ox, oy;
 	private boolean generated;
 	private boolean loaded;
-	private ArrayList<TileEntity> tileEntities = new ArrayList<>();
+	private Map<BlockInstance, TileEntity> tileEntities = new HashMap<>();
 	
 	private World world;
 	
@@ -62,7 +64,7 @@ public class Chunk {
 		return visibles;
 	}
 	
-	public ArrayList<TileEntity> tileEntities() {
+	public Map<BlockInstance, TileEntity> tileEntities() {
 		return tileEntities;
 	}
 	
@@ -112,7 +114,7 @@ public class Chunk {
 		inst0.setWorld(world);
 		if (b.hasTileEntity()) {
 			TileEntity te = b.createTileEntity(inst0);
-			tileEntities.add(te);
+			tileEntities.put(inst0, te);
 		}
 		list.add(inst0);
 		inst[rx][y][rz] = inst0;
@@ -309,7 +311,7 @@ public class Chunk {
 		hideBlock(bi);
 		list.remove(bi);
 		if (bi.getBlock().hasTileEntity()) {
-			// TODO find tile entity
+			tileEntities.remove(bi);
 		}
 		inst[x][y][z] = null;
 		BlockInstance[] neighbors = bi.getNeighbors(this);
@@ -377,7 +379,7 @@ public class Chunk {
 		inst0.setWorld(world);
 		if (b.hasTileEntity()) {
 			TileEntity te = b.createTileEntity(inst0);
-			tileEntities.add(te);
+			tileEntities.put(inst0, te);
 		}
 		list.add(inst0);
 		inst[x][y][z] = inst0;

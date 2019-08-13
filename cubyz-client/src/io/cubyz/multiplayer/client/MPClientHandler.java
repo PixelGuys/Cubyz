@@ -58,6 +58,9 @@ public class MPClientHandler extends ChannelInboundHandlerAdapter {
 		ByteBuf buf = ctx.alloc().buffer(1);
 		buf.writeByte(Packet.PACKET_LISTEN);
 		buf.writeCharSequence(Cubyz.profile.getUUID().toString(), Constants.CHARSET_IMPL);
+		String username = Cubyz.profile.getUsername();
+		buf.writeShort(username.length());
+		buf.writeCharSequence(username, Constants.CHARSET_IMPL);
 		ctx.writeAndFlush(buf);
 	}
 	

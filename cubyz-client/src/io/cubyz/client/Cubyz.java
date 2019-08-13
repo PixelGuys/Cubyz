@@ -24,6 +24,7 @@ import io.cubyz.entity.Player;
 import io.cubyz.multiplayer.GameProfile;
 import io.cubyz.multiplayer.client.MPClient;
 import io.cubyz.multiplayer.client.PingResponse;
+import io.cubyz.multiplayer.server.CubyzServer;
 import io.cubyz.translate.Language;
 import io.cubyz.translate.LanguageLoader;
 import io.cubyz.ui.*;
@@ -248,12 +249,17 @@ public class Cubyz implements IGameLogic {
 			profile = new GameProfile(GameProfile.login(System.getProperty("account.username"), System.getProperty("account.password").toCharArray()));
 		}
 		
-		//CubyzServer server = new CubyzServer(serverPort);
-		//server.start(true);
-		mpClient = new MPClient();
-		//requestJoin("localhost");
-		//mpClient.getChat().send("Hello World");
-		//pingServer("127.0.0.1");
+		LoadThread.addOnLoadFinished(() -> {
+			try {
+				CubyzServer server = new CubyzServer(serverPort);
+				server.start(true);
+				mpClient = new MPClient();
+				requestJoin("localhost");
+				mpClient.getChat().send("Hello World");
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		});
 		
 		System.gc();
 		

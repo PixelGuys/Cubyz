@@ -261,6 +261,8 @@ public class LocalWorld extends World {
 		Chunk ch = getChunk(x, z);
 		if (ch != null) {
 			ch.removeBlockAt(x & 15, y, z & 15, true);
+			wio.saveChunk(ch, x/16, z/16);
+			wio.saveWorldData();
 		}
 	}
 	
@@ -269,6 +271,8 @@ public class LocalWorld extends World {
 		Chunk ch = getChunk(x, z);
 		if (ch != null) {
 			ch.addBlockAt(x & 15, y, z & 15, b, true);
+			wio.saveChunk(ch, x/16, z/16);
+			wio.saveWorldData();
 		}
 	}
 	
@@ -322,7 +326,7 @@ public class LocalWorld extends World {
 		// Tile Entities
 		for (Chunk ch : visibleChunks) {
 			if (ch.isLoaded()) {
-				TileEntity[] tileEntities = ch.tileEntities().toArray(new TileEntity[0]);
+				TileEntity[] tileEntities = ch.tileEntities().values().toArray(new TileEntity[0]);
 				for (TileEntity te : tileEntities) {
 					if (te instanceof ITickeable) {
 						ITickeable tk = (ITickeable) te;

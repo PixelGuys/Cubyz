@@ -65,6 +65,12 @@ public class ModLoader {
 		safeMethodInvoke(true, eventHandlerMethodSided(mod, "init", Side.SERVER), mod);
 	}
 	
+	public static void postInit(Object mod) {
+		Method m = eventHandlerMethodSided(mod, "postInit", Side.SERVER);
+		if (m != null)
+			safeMethodInvoke(true, m, mod);
+	}
+	
 	public static void preInit(Object mod) {
 		Method m = eventHandlerMethodSided(mod, "preInit", Side.SERVER);
 		if (m != null)

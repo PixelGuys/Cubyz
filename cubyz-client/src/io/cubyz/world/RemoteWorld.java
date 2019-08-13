@@ -1,11 +1,13 @@
 package io.cubyz.world;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.joml.Vector4f;
 
+import io.cubyz.api.CubyzRegistries;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
@@ -18,6 +20,18 @@ public class RemoteWorld extends World {
 	private Player localPlayer;
 	private GameProfile localGameProfile;
 	private Entity[] loadedEntities;
+	
+	private Chunk[] visibleChunks;
+	private HashMap<Block, ArrayList<BlockInstance>> visibleBlocks;
+	
+	public RemoteWorld() {
+		localPlayer = (Player) CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player").newEntity();
+		loadedEntities = new Entity[0];
+		visibleChunks = new Chunk[0];
+		visibleBlocks = new HashMap<>();
+		
+		
+	}
 	
 	@Override
 	public Player getLocalPlayer() {
@@ -66,15 +80,15 @@ public class RemoteWorld extends World {
 
 	@Override
 	public List<Chunk> getChunks() {
-		return null;
+		return new ArrayList<Chunk>();
 	}
 
 	public Block[] getBlocks() {
-		return null;
+		return new Block[0];
 	}
 
 	public Map<Block, ArrayList<BlockInstance>> visibleBlocks() {
-		return null;
+		return visibleBlocks;
 	}
 
 	@Override
@@ -84,7 +98,7 @@ public class RemoteWorld extends World {
 
 	@Override
 	public Chunk[] getVisibleChunks() {
-		return null;
+		return visibleChunks;
 	}
 
 	@Override
@@ -104,7 +118,7 @@ public class RemoteWorld extends World {
 
 	@Override
 	public int getRenderDistance() {
-		return 0;
+		return 4;
 	}
 
 	@Override
@@ -113,8 +127,7 @@ public class RemoteWorld extends World {
 
 	@Override
 	public Vector4f getClearColor() {
-		// TODO Auto-generated method stub
-		return null;
+		return new Vector4f(0.5f, 0.5f, 1f, 1f);
 	}
 
 }

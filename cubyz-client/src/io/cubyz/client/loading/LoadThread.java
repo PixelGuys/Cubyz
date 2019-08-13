@@ -25,6 +25,11 @@ public class LoadThread extends Thread {
 
 	static int i = -1;
 	static Runnable run;
+	static ArrayList<Runnable> runnables = new ArrayList<>();
+	
+	public static void addOnLoadFinished(Runnable run) {
+		runnables.add(run);
+	}
 	
 	public void run() {
 		LoadingGUI l = LoadingGUI.getInstance();
@@ -130,6 +135,9 @@ public class LoadThread extends Thread {
 		};
 		Cubyz.renderDeque.add(run);
 		System.gc();
+		for (Runnable r : runnables) {
+			r.run();
+		}
 	}
 	
 }

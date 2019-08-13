@@ -21,6 +21,7 @@ public class GameProfile {
 
 	private UUID uuid;
 	private UUID loginUuid;
+	private String username;
 	
 	private boolean online;
 	private static String apiURL = "https://gamexmc.000webhostapp.com/api/";
@@ -46,11 +47,10 @@ public class GameProfile {
 			if (resp.error) {
 				throw new IOException("Login Error: " + resp.error_message);
 			}
-			return new LoginToken(UUID.fromString(resp.login_uuid), UUID.fromString(resp.player_uuid), System.currentTimeMillis() + (3600000));
+			return new LoginToken(UUID.fromString(resp.login_uuid), UUID.fromString(resp.player_uuid), username, System.currentTimeMillis() + (3600000));
 		} catch (MalformedURLException e) {
 			throw new IOException(e);
 		}
-		//return null;
 	}
 	
 	/**
@@ -64,6 +64,7 @@ public class GameProfile {
 		online = true;
 		loginUuid = token.getToken();
 		uuid = token.getUUID();
+		username = token.getUsername();
 	}
 	
 	/**
@@ -84,6 +85,7 @@ public class GameProfile {
 		online = false;
 		loginUuid = UUID.randomUUID();
 		uuid = UUID.nameUUIDFromBytes(username.getBytes(Constants.CHARSET_IMPL));
+		this.username = username;
 	}
 	
 	public boolean isOnline() {
@@ -96,6 +98,10 @@ public class GameProfile {
 	
 	public UUID getUUID() {
 		return uuid;
+	}
+	
+	public String getUsername() {
+		return username;
 	}
 	
 }
