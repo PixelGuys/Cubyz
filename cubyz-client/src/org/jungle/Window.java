@@ -17,7 +17,10 @@ import org.lwjgl.PointerBuffer;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.opengl.GL;
+import org.lwjgl.opengl.GL11;
 import org.lwjgl.system.MemoryStack;
+
+import io.cubyz.CubyzLogger;
 
 public class Window {
 
@@ -171,6 +174,12 @@ public class Window {
 		if (handle == NULL) {
 			int err = glfwGetError(PointerBuffer.allocateDirect(1));
 			if (err == 65543) { // we want a too much recent version
+				CubyzLogger.instance.warning("A legacy version of OpenGL will be used as 3.3 is unavailable!");
+				glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+				glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+				glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_ANY_PROFILE);
+				glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_FALSE);
+				// so let's use the minimum version
 				handle = glfwCreateWindow(640, 480, "Cubyz", monitorID, NULL);
 				if (handle == NULL) {
 					throw new RuntimeException("Failed to create the GLFW window (code = " + err + ")");
@@ -218,6 +227,8 @@ public class Window {
 		if (clearColor == null) {
 			setClearColor(new Vector4f(0.f, 0.f, 0.f, 0.f));
 		}
+		
+		CubyzLogger.instance.fine("OpenGL Version: " + GL11.glGetString(GL11.GL_VERSION));
 		
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_STENCIL_TEST);

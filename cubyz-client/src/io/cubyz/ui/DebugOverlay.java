@@ -38,8 +38,9 @@ public class DebugOverlay extends MenuGUI {
 				NGraphics.drawText(0, 48, "XYZ: " + x + ", " + y + ", " + z);
 				NGraphics.drawText(0, 60, "Loaded Chunks: " + world.getVisibleChunks().length + "/" + world.getChunks().size());
 				NGraphics.drawText(0, 72, "Render Distance: " + world.getRenderDistance());
+				NGraphics.drawText(0, 84, "Game Time: " + world.getGameTime());
 				if (world instanceof LocalWorld) {
-					NGraphics.drawText(0, 84, "Chunk Queue Size: " + ((LocalWorld) world).getChunkQueueSize());
+					NGraphics.drawText(0, 96, "Chunk Queue Size: " + ((LocalWorld) world).getChunkQueueSize());
 				}
 			}
 			

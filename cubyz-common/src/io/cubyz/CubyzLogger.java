@@ -88,7 +88,11 @@ public class CubyzLogger extends Logger {
 					sb.append("[" + format.format(date) + " | " + log.getLevel() + "] ");
 					sb.append(log.getMessage() + "\n");
 					
-					System.out.print(sb.toString());
+					if (log.getLevel().intValue() >= Level.WARNING.intValue()) {
+						System.err.print(sb.toString());
+					} else {
+						System.out.print(sb.toString());
+					}
 					
 					if (latestLogOutput != null) {
 						try {
