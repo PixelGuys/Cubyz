@@ -13,6 +13,7 @@ import org.joml.Vector4f;
 import org.jungle.game.GameOptions;
 import org.jungle.viewport.FullViewportManager;
 import org.jungle.viewport.ViewportManager;
+import org.lwjgl.PointerBuffer;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.opengl.GL;
@@ -161,14 +162,23 @@ public class Window {
 		glfwDefaultWindowHints();
 		glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 		glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE); // the window will be resizable
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+	    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 7);
 	    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
 		handle = glfwCreateWindow(640, 480, "Cubyz", monitorID, NULL);
-		if (handle == NULL)
-			throw new RuntimeException("Failed to create the GLFW window");
+		if (handle == NULL) {
+			int err = glfwGetError(PointerBuffer.allocateDirect(1));
+			if (err == 65543) { // we want a too much recent version
+				handle = glfwCreateWindow(640, 480, "Cubyz", monitorID, NULL);
+				if (handle == NULL) {
+					throw new RuntimeException("Failed to create the GLFW window (code = " + err + ")");
+				}
+			} else {
+				throw new RuntimeException("Failed to create the GLFW window (code = " + err + ")");
+			}
+		}
 		try (MemoryStack stack = stackPush()) {
 			IntBuffer pWidth = stack.mallocInt(1); // int*
 			IntBuffer pHeight = stack.mallocInt(1); // int*

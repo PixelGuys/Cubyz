@@ -24,11 +24,11 @@ public class MainMenuGUI extends MenuGUI {
 		spPlay.setFontSize(16f);
 		
 		mpPlay.setSize(250, 45);
-		mpPlay.setText(new TextKey("gui.cubyz.mainmenu.options"));
+		mpPlay.setText(new TextKey("gui.cubyz.mainmenu.multiplayer"));
 		mpPlay.setFontSize(16f);
 		
 		options.setSize(250, 45);
-		options.setText(new TextKey("gui.cubyz.mainmenu.multiplayer"));
+		options.setText(new TextKey("gui.cubyz.mainmenu.options"));
 		options.setFontSize(16f);
 		
 		exit.setSize(100, 27);
@@ -50,15 +50,15 @@ public class MainMenuGUI extends MenuGUI {
 		});
 		
 		options.setOnAction(() -> {
-			
+			Cubyz.gameUI.setMenu(new OptionsGUI());
 		});
 	}
 	
 	@Override
 	public void render(long nvg, Window win) {
 		spPlay.setPosition(win.getWidth() / 2 - 125, 300);
-		mpPlay.setPosition(win.getWidth() / 2 - 125, 375);
-		options.setPosition(win.getWidth() / 2 - 125, 450);
+		mpPlay.setPosition(win.getWidth() / 2 - 125, 450);
+		options.setPosition(win.getWidth() / 2 - 125, 375);
 		exit.setPosition(win.getWidth() - 120, win.getHeight() - 40);
 		titleLabel.setPosition(win.getWidth() / 2 - 80, 50);
 		

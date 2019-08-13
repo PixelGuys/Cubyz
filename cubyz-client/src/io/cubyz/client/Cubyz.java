@@ -251,11 +251,11 @@ public class Cubyz implements IGameLogic {
 		
 		LoadThread.addOnLoadFinished(() -> {
 			try {
-				CubyzServer server = new CubyzServer(serverPort);
-				server.start(true);
+				//CubyzServer server = new CubyzServer(serverPort);
+				//server.start(true);
 				mpClient = new MPClient();
-				requestJoin("localhost");
-				mpClient.getChat().send("Hello World");
+				//requestJoin("localhost");
+				//mpClient.getChat().send("Hello World");
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
