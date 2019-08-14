@@ -4,12 +4,11 @@ import org.jungle.Window;
 import org.jungle.hud.Font;
 
 import io.cubyz.client.Cubyz;
-import io.cubyz.multiplayer.server.CubyzServer;
 import io.cubyz.translate.TextKey;
 import io.cubyz.ui.components.Button;
 import io.cubyz.ui.components.Label;
+import io.cubyz.utils.DiscordIntegration;
 import io.cubyz.world.LocalWorld;
-import io.cubyz.world.RemoteWorld;
 
 public class MainMenuGUI extends MenuGUI {
 	
@@ -20,6 +19,7 @@ public class MainMenuGUI extends MenuGUI {
 	private Label titleLabel = new Label();
 	
 	public MainMenuGUI() {
+		DiscordIntegration.setStatus("On Main Menu");
 		spPlay.setSize(250, 45);
 		spPlay.setText(new TextKey("gui.cubyz.mainmenu.singleplayer"));
 		spPlay.setFontSize(16f);

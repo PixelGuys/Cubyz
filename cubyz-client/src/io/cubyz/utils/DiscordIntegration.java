@@ -29,14 +29,14 @@ public class DiscordIntegration {
 			@Override
 			public void accept(int errorCode, String message) {
 				System.err.println(errorCode + ": " + message);
+				ToastManager.queuedToasts.push(new Toast("Discord Integration", "An error occured: " + message));
 			}
 			
 		};
 		handlers.ready = new OnReady() {
-
 			@Override
 			public void accept(DiscordUser user) {
-				ToastManager.queuedToasts.push(new Toast("Discord Integration", user.username + " is linked to you!"));
+				ToastManager.queuedToasts.push(new Toast("Discord Integration", "Hello " + user.username + " !"));
 				System.out.println("Linked!");
 			}
 			
@@ -56,7 +56,6 @@ public class DiscordIntegration {
 				lib.Discord_Respond(user.userId, DiscordRPC.DISCORD_REPLY_NO);
 			}
 		};
-		String userDir = System.getProperty("user.dir");
 		String javaExec = System.getProperty("java.home") + "/bin/java.exe";
 		String classpath = System.getProperty("java.class.path");
 		lib.Discord_Initialize(appID, handlers, false, null);
@@ -64,21 +63,18 @@ public class DiscordIntegration {
 		String path = javaExec + " -cp " + classpath + " io.cubyz.client.GameLauncher";
 		Cubyz.log.fine("Registered launch path as " + path);
 		lib.Discord_Register(appID, path);
+		lib.Discord_RunCallbacks();
 		
 		presence = new DiscordRichPresence();
 		presence.largeImageKey = "cubz_logo";
-		presence.state = "Multiplayer";
-		presence.largeImageText = Cubyz.serverIP;
+		//presence.largeImageText = Cubyz.serverIP;
 		
-		presence.joinSecret = Cubyz.serverIP + ":" + Cubyz.serverPort;
-		presence.partySize = Cubyz.serverOnline;
-		presence.partyMax = Cubyz.serverCapacity;
+		//presence.joinSecret = Cubyz.serverIP + ":" + Cubyz.serverPort;
+		//presence.partySize = Cubyz.serverOnline;
+		//presence.partyMax = Cubyz.serverCapacity;
 		
-		presence.partyId = generatePartyID();
+		//presence.partyId = generatePartyID();
 		
-		setStatus("On Main Menu.");
-		
-		lib.Discord_UpdatePresence(presence);
 		
 		worker = new Thread(() -> {
             while (!Thread.currentThread().isInterrupted()) {
@@ -93,11 +89,12 @@ public class DiscordIntegration {
 		worker.setName("RPC-Callback-Handler");
 		worker.start();
 		Cubyz.log.info("Discord RPC integration opened!");
-		ToastManager.queuedToasts.add(new Toast("Discord Integration", "Launching.."));
+		ToastManager.queuedToasts.add(new Toast("Discord Integration", "Linking.."));
+		setStatus("On Main Menu.");
 	}
 	
 	public static boolean isEnabled() {
-		return true;
+		return worker != null;
 	}
 	
 	public static void updateState() {
@@ -117,14 +114,17 @@ public class DiscordIntegration {
 	}
 	
 	public static void setStatus(String status) {
-		presence.details = status;
-		updateState();
+		if (isEnabled()) {
+			presence.details = status;
+			updateState();
+		}
 	}
 	
 	public static void closeRPC() {
 		DiscordRPC lib = DiscordRPC.INSTANCE;
 		if (worker != null)
 			worker.interrupt();
+		worker = null;
 		lib.Discord_Shutdown();
 	}
 	

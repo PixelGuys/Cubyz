@@ -57,7 +57,7 @@ public class Cubyz implements IGameLogic {
 
 	public static String serverIP = "localhost";
 	public static int serverPort = 58961;
-	public static int serverCapacity = 2;
+	public static int serverCapacity = 1;
 	public static int serverOnline = 1;
 
 	public static GameProfile profile;
@@ -119,6 +119,7 @@ public class Cubyz implements IGameLogic {
 		int highestY = world.getHighestBlock(dx, dz);
 		world.getLocalPlayer().setPosition(new Vector3i(dx, highestY+2, dz));
 		Cubyz.gameUI.addOverlay(new GameOverlay());
+		DiscordIntegration.setStatus("Playing");
 	}
 
 	public static void requestJoin(String host) {

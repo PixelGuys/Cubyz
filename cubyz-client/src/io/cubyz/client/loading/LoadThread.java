@@ -36,7 +36,6 @@ public class LoadThread extends Thread {
 		CubyzLogger log = CubyzLogger.instance;
 		l.setStep(1, 0, 0);
 		
-		DiscordIntegration.startRPC();
 		// Clean cache
 		File cacheDir = new File("cache");
 		if (cacheDir.exists()) {
