@@ -28,6 +28,8 @@ public class DebugOverlay extends MenuGUI {
 			NGraphics.drawText(0, 12, "Branded \"" + Constants.GAME_BRAND + "\", version " + Constants.GAME_VERSION);
 			NGraphics.drawText(0, 24, "Windowed (" + win.getWidth() + "x" + win.getHeight() + ")");
 			NGraphics.drawText(0, 36, "Java " + javaVersion);
+			NGraphics.drawText(0, 108, "Memory: " + (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory())/1024/1024
+					+ "/" + (Runtime.getRuntime().totalMemory()/1024/1024) + "MB (max " + (Runtime.getRuntime().maxMemory()/1024/1024) + "MB)");
 			
 			if (Cubyz.world != null) {
 				World world = Cubyz.world;

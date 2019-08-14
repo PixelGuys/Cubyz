@@ -90,7 +90,7 @@ public class DiscordIntegration {
 		worker.start();
 		Cubyz.log.info("Discord RPC integration opened!");
 		ToastManager.queuedToasts.add(new Toast("Discord Integration", "Linking.."));
-		setStatus("On Main Menu.");
+		setStatus("On Main Menu");
 	}
 	
 	public static boolean isEnabled() {
@@ -98,24 +98,28 @@ public class DiscordIntegration {
 	}
 	
 	public static void updateState() {
-		if (Cubyz.isIntegratedServer) {
-			presence.state = "Singleplayer";
-		}
-		else {
-			if (Cubyz.isOnlineServerOpened) {
-				presence.state = "Join me ;)";
-				presence.partyMax = 50; // temporary
-			} else {
-				presence.state = "Multiplayer";
-				presence.partyMax = 50; // temporary
+		if (Cubyz.world != null) {
+			if (Cubyz.isIntegratedServer) {
+				presence.details = "Singleplayer";
 			}
+			else {
+				if (Cubyz.isOnlineServerOpened) {
+					presence.details = "Join me ;)";
+					presence.partyMax = 50; // temporary
+				} else {
+					presence.details = "Multiplayer";
+					presence.partyMax = 50; // temporary
+				}
+			}
+		} else {
+			presence.details = null;
 		}
 		DiscordRPC.INSTANCE.Discord_UpdatePresence(presence);
 	}
 	
 	public static void setStatus(String status) {
 		if (isEnabled()) {
-			presence.details = status;
+			presence.state = status;
 			updateState();
 		}
 	}
