@@ -58,6 +58,10 @@ public class MPClient {
 	public LocalServer getLocalServer() {
 		return ls;
 	}
+	
+	public MPClientHandler getHandler() {
+		return cch;
+	}
 
 	public PingResponse ping() {
 		ls.lastPingResponse = null;

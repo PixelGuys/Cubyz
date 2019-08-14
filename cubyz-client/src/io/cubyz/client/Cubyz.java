@@ -101,7 +101,9 @@ public class Cubyz implements IGameLogic {
 				gameUI.removeOverlay(overlay);
 			}
 		}
+		Cubyz.world.cleanup();
 		Cubyz.world = null;
+		System.gc();
 	}
 
 	public static void loadWorld(World world) {
@@ -383,10 +385,12 @@ public class Cubyz implements IGameLogic {
 				if(world.getRenderDistance() >= 2)
 					world.setRenderDistance(world.getRenderDistance()-1);
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_MINUS, false);
+				System.gc();
 			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_EQUAL)) {
 				world.setRenderDistance(world.getRenderDistance()+1);
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_EQUAL, false);
+				System.gc();
 			}
 			msd.selectSpatial(world.getVisibleChunks(), world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate());
 		}

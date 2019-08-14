@@ -201,6 +201,12 @@ public class Mesh implements Cloneable {
 	}
 
 	public void render() {
+		glDrawElements(GL_TRIANGLES, getVertexCount(), GL_UNSIGNED_INT, 0);
+	}
+	public void renderList(List<Spatial> spatials, Function<Spatial, Boolean> consumer) {
+		if (spatials.isEmpty())
+			return;
+		initRender();
 		boolean wasEnabled = false; // avoid having a GPU call (glIsEnabled) if useless later (not having
 		// cull face is optional)
 		if (!cullFace) {
@@ -210,17 +216,6 @@ public class Mesh implements Cloneable {
 			}
 		}
 
-		glDrawElements(GL_TRIANGLES, getVertexCount(), GL_UNSIGNED_INT, 0);
-
-		if (wasEnabled) {
-			glEnable(GL_CULL_FACE);
-		}
-	}
-	public void renderList(List<Spatial> spatials, Function<Spatial, Boolean> consumer) {
-		if (spatials.isEmpty())
-			return;
-		initRender();
-
 		//Spatial[] spatialArray = spatials.toArray(new Spatial[spatials.size()]);
 		for (int i = 0; i < spatials.size(); i++) {
 			boolean render = consumer.apply(spatials.get(i));
@@ -229,6 +224,9 @@ public class Mesh implements Cloneable {
 			}
 		}
 		
+		if (wasEnabled) {
+			glEnable(GL_CULL_FACE);
+		}
 		endRender();
 	}
 

@@ -21,13 +21,13 @@ public class RemoteWorld extends World {
 	private GameProfile localGameProfile;
 	private Entity[] loadedEntities;
 	
-	private Chunk[] visibleChunks;
+	private ArrayList<Chunk> chunks;
 	private HashMap<Block, ArrayList<BlockInstance>> visibleBlocks;
 	
 	public RemoteWorld() {
 		localPlayer = (Player) CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player").newEntity();
 		loadedEntities = new Entity[0];
-		visibleChunks = new Chunk[0];
+		chunks = new ArrayList<>();
 		visibleBlocks = new HashMap<>();
 		
 		
@@ -98,7 +98,7 @@ public class RemoteWorld extends World {
 
 	@Override
 	public Chunk[] getVisibleChunks() {
-		return visibleChunks;
+		return chunks.toArray(new Chunk[0]);
 	}
 
 	@Override
@@ -128,6 +128,12 @@ public class RemoteWorld extends World {
 	@Override
 	public Vector4f getClearColor() {
 		return new Vector4f(0.5f, 0.5f, 1f, 1f);
+	}
+
+	@Override
+	public void cleanup() {
+		// TODO Auto-generated method stub
+		
 	}
 
 }

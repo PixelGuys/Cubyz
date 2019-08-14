@@ -32,6 +32,8 @@ public abstract class World {
 		return height;
 	}
 
+	public abstract void cleanup();
+	
 	public abstract List<Chunk> getChunks();
 	public abstract Chunk [] getVisibleChunks();
 	public abstract Block [] getBlocks();

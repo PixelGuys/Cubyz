@@ -4,6 +4,7 @@ import org.jungle.Window;
 import org.jungle.hud.Font;
 
 import io.cubyz.client.Cubyz;
+import io.cubyz.multiplayer.server.CubyzServer;
 import io.cubyz.translate.TextKey;
 import io.cubyz.ui.components.Button;
 import io.cubyz.ui.components.Label;
@@ -38,6 +39,15 @@ public class MainMenuGUI extends MenuGUI {
 		
 		spPlay.setOnAction(() -> {
 			// TODO: Start local server and let Cubyz join it
+			/*
+			CubyzServer server = new CubyzServer(Cubyz.serverPort);
+			try {
+				server.start(true);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			Cubyz.requestJoin("localhost");
+			*/
 			LocalWorld world = new LocalWorld();
 			world.generate();
 			//RemoteWorld world = new RemoteWorld();

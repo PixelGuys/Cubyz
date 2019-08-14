@@ -37,6 +37,7 @@ public class UISystem extends Hud {
 		if (gui != null) {
 			gui.init(nvg);
 		}
+		System.gc();
 	}
 	
 	public MenuGUI getMenuGUI() {

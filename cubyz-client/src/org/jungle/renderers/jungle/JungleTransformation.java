@@ -80,8 +80,9 @@ public class JungleTransformation extends Transformation {
 
 	@Override
 	public Matrix4f getModelViewMatrix(Matrix4f modelMatrix, Matrix4f viewMatrix) {
-		Matrix4f viewCurr = new Matrix4f(viewMatrix);
-		return viewCurr.mul(modelMatrix);
+		//Matrix4f viewCurr = new Matrix4f(viewMatrix);
+		//return viewCurr.mul(modelMatrix);
+		return modelMatrix.mulLocal(viewMatrix); // seems to work, and doesn't allocate a new Matrix4f
 	}
 
 	@Override

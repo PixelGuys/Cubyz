@@ -7,8 +7,19 @@ Cubyz is a voxel game, what is a voxel game you might say? Well it's a sandbox 3
 
 Nah just kidding, while i said what a voxel game is, Cubyz have lot of features and is mainly made for devs. Why you might said? Well because of it's **INTEGRATED** (woohoo) mod API! Nope, this isn't Minetest, this is.. well, Cubyz?
 ## Requirements
-- Java 8 Or higher
-- A graphics card supporting OpenGL 3.0+
+Windows:
+
+Type | Minimum | Recommended
+-----|---------|------------
+OS | Windows XP | Windows 7/10
+RAM | 3 GB | 4 GB or more
+GPU | Any OpenGL 3.0 compatible | OpenGL 3.3+
+
+Linux based / Mac:
+Type | Minimum | Recommended
+-----|---------|------------
+RAM | 2 GB | 4 GB or more
+GPU | Any OpenGL 3.0 compatible | OpenGL 3.3+
 
 ## About
 - [Cristea Andrei Flavian](https://github.com/CristeaAndreiFlavian), [zenith391](https://github.com/zenith391) and [IntegratedQuantum](https://github.com/IntegratedQuantum) who all contributed to the game and made everything possible!

@@ -7,6 +7,8 @@ import io.cubyz.Constants;
 import io.cubyz.CubyzLogger;
 import io.cubyz.client.Cubyz;
 import io.cubyz.multiplayer.Packet;
+import io.cubyz.world.Chunk;
+import io.cubyz.world.RemoteWorld;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
@@ -17,6 +19,9 @@ public class MPClientHandler extends ChannelInboundHandlerAdapter {
 	private ChannelHandlerContext ctx;
 	private ChatHandler chHandler;
 	private ArrayList<String> messages;
+	
+	private Chunk lastChunkReceived;
+	private RemoteWorld world;
 
 	private boolean hasPinged;
 	public boolean channelActive;
@@ -106,6 +111,11 @@ public class MPClientHandler extends ChannelInboundHandlerAdapter {
 			short len = buf.readShort();
 			String chat = buf.readCharSequence(len, Constants.CHARSET_IMPL).toString();
 			messages.add(chat);
+		}
+		
+		if (responseType == Packet.PACKET_CHUNK) {
+			Chunk ck = new Chunk(buf.readInt(), buf.readInt(), world, new ArrayList<>());
+			
 		}
 		
 		buf.release();

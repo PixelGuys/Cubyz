@@ -7,7 +7,6 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Random;
 
-import org.joml.Vector3f;
 import org.joml.Vector4f;
 
 import io.cubyz.CubyzLogger;
@@ -57,9 +56,10 @@ public class LocalWorld extends World {
 	float ambientLight = 0f;
 	Vector4f clearColor = new Vector4f(0, 0, 0, 1.0f);
 	
-	// TODO: Make 1 thread per core and use some function to queue Chunk to a free thread.
+	// TODO: Make world updates threaded, would save load from main thread
 	private class ChunkGenerationThread extends Thread {
 		Deque<Chunk> loadList = new ArrayDeque<>(MAX_QUEUE_SIZE); // FIFO order (First In, First Out)
+		boolean running;
 		
 		public void queue(Chunk ch) {
 			if (!isQueued(ch)) {
@@ -87,15 +87,26 @@ public class LocalWorld extends World {
 			return loadList.size();
 		}
 		
+		public void finish() {
+			running = false;
+			loadList = null;
+		}
+		
 		public void run() {
-			while (true) {
+			running = true;
+			while (running) {
 				if (!loadList.isEmpty()) {
 					Chunk popped = loadList.pop();
 					//CubyzLogger.instance.fine("Generating " + popped.getX() + "," + popped.getZ());
 					synchronousGenerate(popped);
 					popped.load();
+				} else {
+					try {
+						Thread.sleep(10); // avoid the thread fully using CPU while inactive
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
 				}
-				Thread.yield();
 			}
 		}
 	}
@@ -326,7 +337,7 @@ public class LocalWorld extends World {
 		// Tile Entities
 		for (Chunk ch : visibleChunks) {
 			if (ch.isLoaded()) {
-				TileEntity[] tileEntities = ch.tileEntities().values().toArray(new TileEntity[0]);
+				TileEntity[] tileEntities = ch.tileEntities().values().toArray(new TileEntity[ch.tileEntities().values().size()]);
 				for (TileEntity te : tileEntities) {
 					if (te instanceof ITickeable) {
 						ITickeable tk = (ITickeable) te;
@@ -487,5 +498,24 @@ public class LocalWorld extends World {
 	@Override
 	public Vector4f getClearColor() {
 		return clearColor;
+	}
+
+	@Override
+	public void cleanup() {
+		// Be sure to dereference and finalize the maximum of things
+		try {
+			forceSave();
+			
+			thread.finish();
+			thread.join();
+			thread = null;
+			
+			chunks = null;
+			visibleChunks = null;
+			chunkData = null;
+			blockData = null;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 }
