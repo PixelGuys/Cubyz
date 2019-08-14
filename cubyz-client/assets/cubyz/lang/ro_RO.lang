@@ -1,10 +1,9 @@
-gui.cubyz.mainmenu.singleplayer=Singur
+gui.cubyz.mainmenu.singleplayer=Singuratate
 gui.cubyz.mainmenu.multiplayer=Cu alti jucatori
 gui.cubyz.mainmenu.exit=Inchide Jocul
 gui.cubyz.mainmenu.options=Setari
-# To translate
-gui.cubyz.options.done=Done
-gui.cubyz.general.on=On
-gui.cubyz.general.off=Off
-gui.cubyz.options.language=Language: {0}
-gui.cubyz.options.discord=Discord Integration: {0}
+gui.cubyz.options.done=Gata
+gui.cubyz.general.on=Activat
+gui.cubyz.general.off=Dezactivat
+gui.cubyz.options.language=Limba: {0}
+gui.cubyz.options.discord=Integratie Discord: {0}
