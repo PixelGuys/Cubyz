@@ -16,6 +16,7 @@ RAM | 3 GB | 4 GB or more
 GPU | Any OpenGL 3.0 compatible | OpenGL 3.3+
 
 Linux based / Mac:
+
 Type | Minimum | Recommended
 -----|---------|------------
 RAM | 2 GB | 4 GB or more
