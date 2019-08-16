@@ -46,6 +46,7 @@ public class Server {
 		propertyDefault("ping-time", 5000);
 		propertyDefault("max-ping-time", 5000);
 		propertyDefault("port", 58961);
+		propertyDefault("online-mode", false);
 		
 		FileWriter writer = new FileWriter(f);
 		serverProperties.store(writer, null);
@@ -124,7 +125,7 @@ public class Server {
 		
 		loadGame();
 		
-		CubyzLogger.instance.info("Running server on port " + Integer.parseInt(serverProperties.getProperty("port")));
+		CubyzLogger.instance.info("Running server on port " + serverProperties.getProperty("port"));
 		
 		server = new CubyzServer(Integer.parseInt(serverProperties.getProperty("port")));
 		

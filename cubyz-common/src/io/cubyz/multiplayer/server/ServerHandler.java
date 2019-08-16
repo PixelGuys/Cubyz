@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import io.cubyz.Constants;
 import io.cubyz.multiplayer.Packet;
+import io.cubyz.world.Chunk;
 import io.cubyz.world.LocalWorld;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
@@ -23,6 +24,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 	CubyzServer server;
 	
 	public static LocalWorld world;
+	static Thread th;
 	
 	String motd;
 	
@@ -46,7 +48,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 		world = new LocalWorld();
 		world.generate();
 		
-		Thread th = new Thread(() -> {
+		th = new Thread(() -> {
 			while (true) {
 				for (String uuid : clients.keySet()) {
 					Client cl = clients.get(uuid);
@@ -64,14 +66,26 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 						cl.ctx.writeAndFlush(buf);
 					}
 				}
+				if (Thread.interrupted()) {
+					break;
+				}
 				try {
 					Thread.sleep(100);
 				} catch (InterruptedException e) {
-					e.printStackTrace();
+					
 				}
 			}
 		});
 		th.start();
+	}
+	
+	public ByteBuf sendChunk(ChannelHandlerContext ctx, int x, int z) {
+		ByteBuf out = ctx.alloc().buffer();
+		world.seek(x*16, z*16);
+		byte[] data = world.getChunkData(x, z);
+		out.writeInt(data.length);
+		out.writeBytes(data);
+		return out;
 	}
 	
 	@Override
@@ -126,6 +140,11 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 			cl.username = msg.readCharSequence(usernamelen, Constants.CHARSET_IMPL).toString(); // TODO retrieve username
 			cl.lastPing = System.currentTimeMillis();
 			clients.put(uuid.toString(), cl);
+			for (int x = 0; x < 4; x++) {
+				for (int y = 0; y < 4; y++) {
+					ctx.write(sendChunk(ctx, x, y));
+				}
+			}
 		}
 		if (packetType == Packet.PACKET_PINGDATA) {
 			ByteBuf out = ctx.alloc().ioBuffer(512);
@@ -137,6 +156,12 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 			// 1+2+4+4=11 bytes of "same size" data
 			//512-11=501, so 501 characters max for motd
 			ctx.write(out);
+		}
+		if (packetType == Packet.PACKET_MOVE) {
+			int x = msg.readInt();
+			int y = msg.readInt();
+			int z = msg.readInt();
+			
 		}
         msg.release();
     }

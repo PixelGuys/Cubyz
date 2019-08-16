@@ -19,6 +19,7 @@ public class CubyzServer {
 	static Channel ch;
 	static EventLoopGroup boss;
 	static EventLoopGroup worker;
+	static ServerHandler handler;
 	
 	static {
 		settings.maxPlayers = 20;
@@ -31,6 +32,9 @@ public class CubyzServer {
 	}
 	
 	public void stop() throws Exception {
+		ServerHandler.th.interrupt();
+		ServerHandler.world.cleanup();
+		
 		ch.close();
 		worker.shutdownGracefully();
 		boss.shutdownGracefully();
@@ -42,13 +46,15 @@ public class CubyzServer {
 		
 		boss = new NioEventLoopGroup();
 		worker = new NioEventLoopGroup();
+		handler = new ServerHandler(this, settings);
+		
 		try {
 			ServerBootstrap b = new ServerBootstrap();
 			b.group(boss, worker).channel(NioServerSocketChannel.class)
 					.childHandler(new ChannelInitializer<SocketChannel>() {
 						@Override
 						public void initChannel(SocketChannel ch) throws Exception {
-							ch.pipeline().addLast(new ServerHandler(CubyzServer.this, settings));
+							ch.pipeline().addLast(handler);
 						}
 					}).option(ChannelOption.SO_BACKLOG, 128).
 					childOption(ChannelOption.SO_KEEPALIVE, true);

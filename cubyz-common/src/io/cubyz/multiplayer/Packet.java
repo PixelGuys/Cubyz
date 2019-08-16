@@ -16,7 +16,6 @@ public class Packet {
 	// world related
 	public static final byte PACKET_PLACE = 17;
 	public static final byte PACKET_DESTROY = 18;
-	public static final byte PACKET_CHUNK_RQ = 19;
 	public static final byte PACKET_CHUNK = 20;
 	
 }
