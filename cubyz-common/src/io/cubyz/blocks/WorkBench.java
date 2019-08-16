@@ -12,11 +12,6 @@ public class WorkBench extends Block {
 		bd.setTexture("blocks/"+getTexture()+".png");
 		setBlockDrop(bd);
 		texConverted = true; // texture already in runtime format
-	}
-	
-	@Override
-	public boolean onClick() {
-		//open gui through some TODO event system.
-		return true;
+		clickable = true; // Right will lead to opening the gui.
 	}
 }

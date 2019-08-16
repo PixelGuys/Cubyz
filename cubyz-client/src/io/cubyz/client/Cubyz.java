@@ -484,11 +484,15 @@ public class Cubyz implements IGameLogic {
 				//Building Blocks
 				if (buildCooldown == 0) {
 					buildCooldown = 10;
-					Vector3i pos = msd.getEmptyPlace(world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate());
-					Block b = world.getLocalPlayer().getInventory().getBlock(inventorySelection);
-					if (b != null && pos != null) {
-						world.placeBlock(pos.x, pos.y, pos.z, b);
-						world.getLocalPlayer().getInventory().getStack(inventorySelection).add(-1);
+					if(msd.getSelectedBlockInstance().getBlock().isClickable()) {
+						// OpenGUIEvent(msd.getSelectedBlockInstance().getBlock().ID); // TODO. This is how it could look like.
+					} else {
+						Vector3i pos = msd.getEmptyPlace(world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate());
+						Block b = world.getLocalPlayer().getInventory().getBlock(inventorySelection);
+						if (b != null && pos != null) {
+							world.placeBlock(pos.x, pos.y, pos.z, b);
+							world.getLocalPlayer().getInventory().getStack(inventorySelection).add(-1);
+						}
 					}
 				}
 			}

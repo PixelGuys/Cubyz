@@ -25,6 +25,7 @@ public class Block implements IRegistryElement {
 	private boolean solid = true;
 	private boolean selectable = true;
 	private Item blockDrop;
+	protected boolean clickable = false; // Right click won't have any effect by default.
 	protected boolean degradable = false; // Meaning undegradable parts of trees or other structures can grow through this block.
 	
 	public String getTexture() {
@@ -134,9 +135,8 @@ public class Block implements IRegistryElement {
 		return ONE;
 	}
 	
-	// Called when the player right clicks on this block. When returned true, no blockplacing will be performed.
-	public boolean onClick() {
-		return false;
+	public boolean isClickable() {
+		return clickable;
 	}
 	
 }
