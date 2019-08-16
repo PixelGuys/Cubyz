@@ -134,4 +134,9 @@ public class Block implements IRegistryElement {
 		return ONE;
 	}
 	
+	// Called when the player right clicks on this block. When returned true, no blockplacing will be performed.
+	public boolean onClick() {
+		return false;
+	}
+	
 }

@@ -1,7 +1,5 @@
 package io.cubyz.api.base;
 
-import java.util.ArrayList;
-
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.EventHandler;
 import io.cubyz.api.Mod;
@@ -27,6 +25,7 @@ import io.cubyz.blocks.Sand;
 import io.cubyz.blocks.SnowGrass;
 import io.cubyz.blocks.Stone;
 import io.cubyz.blocks.Water;
+import io.cubyz.blocks.WorkBench;
 import io.cubyz.command.GiveCommand;
 import io.cubyz.entity.EntityType;
 import io.cubyz.entity.PlayerEntity;
@@ -55,6 +54,7 @@ public class BaseMod {
 	static Sand sand;
 	static SnowGrass snow;
 	static Stone stone;
+	static WorkBench workbench;
 	
 	// Ores:
 	static CoalOre coal;
@@ -80,6 +80,7 @@ public class BaseMod {
 	static Item IoakPlanks;
 	static Item Iruby;
 	static Item Isand;
+	static Item Iworkbench;
 	
 	// Craftables:
 	static Item Istick;
@@ -87,6 +88,7 @@ public class BaseMod {
 	// Recipes:
 	static Recipe oakLogToPlanks;
 	static Recipe oakPlanksToStick;
+	static Recipe oakToWorkbench;
 	
 	@EventHandler(type = "init")
 	public void init() {
@@ -107,6 +109,7 @@ public class BaseMod {
 	
 	@EventHandler(type = "item/register")
 	public void registerItems(Registry<Item> reg) {
+		// blockdrops
 		Icactus = cactus.getBlockDrop();
 		Icoal = coal.getBlockDrop();
 		Icobblestone = cobblestone.getBlockDrop();
@@ -119,11 +122,14 @@ public class BaseMod {
 		IoakPlanks = oakPlanks.getBlockDrop();
 		Iruby = ruby.getBlockDrop();
 		Isand = sand.getBlockDrop();
+		Iworkbench = workbench.getBlockDrop();
 		
+		// Other
 		Istick = new Item();
 		Istick.setID("cubyz_items:stick");
 		Istick.setTexture("materials/stick.png");
-		reg.registerAll(Icactus, Icoal, Icobblestone, Idiamond, Idirt, Iemerald, Igold, Iiron, IoakLog, IoakPlanks, Iruby, Isand, Istick);
+		
+		reg.registerAll(Icactus, Icoal, Icobblestone, Idiamond, Idirt, Iemerald, Igold, Iiron, IoakLog, IoakPlanks, Iruby, Isand, Iworkbench, Istick);
 	}
 	
 	@EventHandler(type = "block/register")
@@ -142,6 +148,7 @@ public class BaseMod {
 		sand = new Sand();
 		snow = new SnowGrass();
 		stone = new Stone();
+		workbench = new WorkBench();
 		
 		// Ores
 		coal = new CoalOre();
@@ -161,7 +168,7 @@ public class BaseMod {
 		stone.setBlockDrop(cobblestone.getBlockDrop());
 		
 		// Register
-		reg.registerAll(bedrock, cactus, cobblestone, dirt, grass, ice, oakLeaves, oakLog, oakPlanks, sand, snow, stone, coal, diamond, emerald, gold, iron, ruby, water);
+		reg.registerAll(bedrock, cactus, cobblestone, dirt, grass, ice, oakLeaves, oakLog, oakPlanks, sand, snow, stone, workbench, coal, diamond, emerald, gold, iron, ruby, water);
 	}
 	
 	public void registerRecipes(Registry<Recipe> reg) {
@@ -176,6 +183,13 @@ public class BaseMod {
 		};
 		oakPlanksToStick = new Recipe(1, 2, recipe, 4, Istick, new Resource("cubyz", "planks_to_stick"));
 		
-		reg.registerAll(oakLogToPlanks, oakPlanksToStick);
+		recipe = new Item[] { // Suggestion.
+				IoakPlanks, IoakPlanks, IoakPlanks,
+				IoakPlanks, IoakLog, 	IoakPlanks,
+				IoakPlanks, IoakPlanks, IoakPlanks,
+		};
+		oakToWorkbench = new Recipe(3, 3, recipe, 1, Iworkbench, new Resource("cubyz", "oak_to_workbench"));
+		
+		reg.registerAll(oakLogToPlanks, oakPlanksToStick, oakToWorkbench);
 	}
 }
