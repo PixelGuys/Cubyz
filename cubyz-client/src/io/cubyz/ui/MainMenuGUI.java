@@ -8,6 +8,7 @@ import io.cubyz.multiplayer.server.CubyzServer;
 import io.cubyz.translate.TextKey;
 import io.cubyz.ui.components.Button;
 import io.cubyz.ui.components.Label;
+import io.cubyz.ui.options.OptionsGUI;
 import io.cubyz.utils.DiscordIntegration;
 import io.cubyz.world.LocalWorld;
 import io.cubyz.world.RemoteWorld;
@@ -41,7 +42,7 @@ public class MainMenuGUI extends MenuGUI {
 		
 		spPlay.setOnAction(() -> {
 			// TODO: Start local server and let Cubyz join it
-			
+			/*
 			CubyzServer server = new CubyzServer(Cubyz.serverPort);
 			try {
 				server.start(true);
@@ -49,10 +50,10 @@ public class MainMenuGUI extends MenuGUI {
 				e.printStackTrace();
 			}
 			Cubyz.requestJoin("localhost");
-			
-			//LocalWorld world = new LocalWorld();
-			//world.generate();
-			RemoteWorld world = new RemoteWorld();
+			*/
+			LocalWorld world = new LocalWorld();
+			world.generate();
+			//RemoteWorld world = new RemoteWorld();
 			Cubyz.gameUI.setMenu(null);
 			Cubyz.loadWorld(world);
 		});

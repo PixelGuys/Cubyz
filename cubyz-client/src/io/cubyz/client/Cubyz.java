@@ -282,7 +282,7 @@ public class Cubyz implements IGameLogic {
 			Keyboard.setKeyPressed(GLFW.GLFW_KEY_F11, false);
 		}
 		if (!gameUI.doesGUIPauseGame() && world != null) {
-			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_W)) {
+			if (Keyboard.isKeyPressed(Keybindings.getKeyCode("forward"))) {
 				if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT_CONTROL)) {
 					if (world.getLocalPlayer().isFlying()) {
 						playerInc.z = -8;
@@ -293,13 +293,13 @@ public class Cubyz implements IGameLogic {
 					playerInc.z = -1;
 				}
 			}
-			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_S)) {
+			if (Keyboard.isKeyPressed(Keybindings.getKeyCode("backward"))) {
 				playerInc.z = 1;
 			}
-			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_A)) {
+			if (Keyboard.isKeyPressed(Keybindings.getKeyCode("left"))) {
 				playerInc.x = -1;
 			}
-			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_D)) {
+			if (Keyboard.isKeyPressed(Keybindings.getKeyCode("right"))) {
 				playerInc.x = 1;
 			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_SPACE) && world.getLocalPlayer().vy == 0) {

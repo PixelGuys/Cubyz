@@ -16,6 +16,8 @@ public class NGraphics {
 	private static NVGPaint imagePaint = NVGPaint.create();
 	private static int textAlign = NVG_ALIGN_LEFT | NVG_ALIGN_TOP;
 	
+	private static int cx, cy, cw, ch;
+	
 	private static final boolean LOG_OPERATIONS = Boolean.parseBoolean(System.getProperty("nanovg.logOperations", "false"));
 	
 	private static Font font;

@@ -72,7 +72,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 				try {
 					Thread.sleep(100);
 				} catch (InterruptedException e) {
-					
+					break;
 				}
 			}
 		});

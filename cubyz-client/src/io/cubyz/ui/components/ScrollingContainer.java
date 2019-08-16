@@ -19,14 +19,16 @@ public class ScrollingContainer extends Container {
 		MouseInput mouse = Cubyz.mouse;
 		maxY = 0;
 		for (Component child : childrens) {
-			maxY = Math.max(maxY, child.getY());
+			maxY = Math.max(maxY, child.getY()+child.getHeight());
 			child.setY(child.getY() - scrollY);
 			child.render(nvg, src);
 			child.setY(child.getY() + scrollY);
 		}
 		if (maxY > height) {
 			NGraphics.setColor(0, 0, 0);
-			NGraphics.fillRect(x + width - scrollBarWidth, y, scrollBarWidth, 10);
+			NGraphics.fillRect(x + width - scrollBarWidth, y, scrollBarWidth, height);
+			NGraphics.setColor(255, 255, 255);
+			NGraphics.fillRect(x + width - scrollBarWidth, (int) (y+(scrollY/((float) maxY / height))), scrollBarWidth, 10);
 			if (mPickY == -1) {
 				if (mouse.getX() > x + width - scrollBarWidth && mouse.getX() < x + width) {
 					if (mouse.getY() > y && mouse.getY() < height) {
@@ -37,7 +39,8 @@ public class ScrollingContainer extends Container {
 				}
 			} else {
 				if (mouse.isLeftButtonPressed()) {
-					scrollY = (int) Math.min(maxY, mouse.getY() - mPickY);
+					scrollY = (int) Math.min(maxY, mouse.getY()*(maxY/height) - mPickY);
+					if (scrollY < 0) scrollY = 0;
 				} else {
 					mPickY = -1;
 				}
