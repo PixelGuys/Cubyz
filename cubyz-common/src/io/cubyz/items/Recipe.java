@@ -118,8 +118,8 @@ public class Recipe implements IRegistryElement {
 		// Check the remaining structure for the needed shape:
 		System.out.println(xLen + " x " + yLen);
 		int index = 0;
-		for(int i = x0; i < xLen; i++) {
-			for(int j = y0; j < yLen; j++) {
+		for(int i = x0; i < x0+xLen; i++) {
+			for(int j = y0; j < y0+yLen; j++) {
 				if(items[i+j*size] != pattern[index])
 					return null;
 				index++;
@@ -147,7 +147,7 @@ public class Recipe implements IRegistryElement {
 					items2[i] = pattern[i];
 					break;
 				}
-				if(j == items.length-1)
+				if(j == items2.length-1)
 					return null;
 			}
 		}
