@@ -168,13 +168,13 @@ public class BaseMod {
 		Item[] recipe;
 		
 		recipe = new Item[] {IoakLog};
-		oakLogToPlanks = new Recipe(recipe, IoakPlanks, new Resource("cubyz", "logs_to_planks"));
+		oakLogToPlanks = new Recipe(recipe, 4, IoakPlanks, new Resource("cubyz", "logs_to_planks"));
 		
 		recipe = new Item[] {
 				IoakPlanks,
 				IoakPlanks,
 		};
-		oakPlanksToStick = new Recipe(1, 2, recipe, Istick, new Resource("cubyz", "planks_to_stick"));
+		oakPlanksToStick = new Recipe(1, 2, recipe, 4, Istick, new Resource("cubyz", "planks_to_stick"));
 		
 		reg.registerAll(oakLogToPlanks, oakPlanksToStick);
 	}

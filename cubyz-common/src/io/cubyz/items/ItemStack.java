@@ -29,13 +29,13 @@ public class ItemStack {
 	
 	public int add(int number) {
 		this.number += number;
-		if(this.number > item.stackSize) {
-			number = number-this.number+item.stackSize;
-			this.number = item.stackSize;
-		}
 		if(this.number < 0) {
 			number = number-this.number;
 			this.number = 0;
+		}
+		else if(this.number > item.stackSize) {
+			number = number-this.number+item.stackSize;
+			this.number = item.stackSize;
 		}
 		if(empty()) {
 			clear();

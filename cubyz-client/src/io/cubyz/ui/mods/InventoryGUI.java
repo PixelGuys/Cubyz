@@ -82,18 +82,21 @@ public class InventoryGUI extends MenuGUI {
 		// Check if the mouse takes up a new ItemStack/sets one down.
 		ItemStack newlyCarried;
 		for(int i = 0; i < inv.length; i++) {
-			if(i == 36 && carried.getItem() != null)
+			if(i == 36 && carried.getItem() != null && inv[i].reference.getItem() != null)
 				break;
 			newlyCarried = inv[i].grabWithMouse(Cubyz.mouse, carried, win.getWidth()/2, win.getHeight());
 			if(newlyCarried != null) {
 				Cubyz.world.getLocalPlayer().getInventory().setSlot(carried, i);
 				carried = newlyCarried;
-				if(i >= 32) {
-					checkCrafting();
-					if (i == 36) {
-						// TODO: remove items in 32, 33, 34 and 35
+				if (i == 36) {
+					// Remove items in the crafting grid.
+					for(int j = 32; j <= 35; j++) {
+						inv[j].reference.add(-1);
 					}
 				}
+			}
+			if(i >= 32) {
+				checkCrafting();
 			}
 		}
 		// Draw the stack carried by the mouse:
@@ -117,6 +120,8 @@ public class InventoryGUI extends MenuGUI {
 	}
 	
 	private void checkCrafting() {
+		// Clear everything in case there is no recipe available.
+		inv[36].reference.clear();
 		// Find out how many items are there in the grid and put them in an array:
 		int num = 0;
 		Item[] ar = new Item[4];
@@ -125,16 +130,20 @@ public class InventoryGUI extends MenuGUI {
 			if(ar[i] != null)
 				num++;
 		}
-		// Get the recipes for the given number of items:
+		// Get the recipes for the given number of items(TODO!):
 		Object[] recipes = CubyzRegistries.RECIPE_REGISTRY.registered();
 		// Find a fitting recipe:
 		Item item = null;
 		for(int i = 0; i < recipes.length; i++) {
-			item = ((Recipe) recipes[i]).canCraft(ar, 2);
+			Recipe rec = (Recipe) recipes[i];
+			if(rec.getNum() != num)
+				continue;
+			item = rec.canCraft(ar, 2);
 			if(item != null) {
 				
-				Cubyz.world.getLocalPlayer().getInventory().setSlot(new ItemStack(item), 36);
-				break;
+				inv[36].reference.setItem(item);
+				inv[36].reference.add(rec.getNumRet());
+				return;
 			}
 		}
 	}

@@ -10,11 +10,13 @@ public class Recipe implements IRegistryElement {
 	private Item result;
 	private Resource res;
 	private int num = 0; // Number of items needed. Used to faster search for recipes.
+	private int numRet = 0; // Number of items returned after applying this recipe.
 	
-	public Recipe(int x, int y, Item[] pattern, Item result, Resource res) {
+	public Recipe(int x, int y, Item[] pattern, int numRet, Item result, Resource res) {
 		this.x = x;
 		this.y = y;
 		this.pattern = pattern;
+		this.numRet = numRet;
 		this.result = result;
 		this.res = res;
 		if(pattern.length != x*y)
@@ -25,15 +27,19 @@ public class Recipe implements IRegistryElement {
 			}
 		}
 	}
-	public Recipe(Item[] pattern, Item result, Resource res) {
+	public Recipe(Item[] pattern, int numRet, Item result, Resource res) {
 		x = y = 0;
 		this.pattern = pattern;
+		this.numRet = numRet;
 		this.result = result;
 		this.res = res;
 		num = pattern.length;
 	}
 	public int getNum() {
 		return num;
+	}
+	public int getNumRet() {
+		return numRet;
 	}
 	// Returns the item that can be crafted using this recipe, if it can be crafted.
 	// The input items need to be in an size×size sized array representing the crafting grid from left to right, top to bottom.
