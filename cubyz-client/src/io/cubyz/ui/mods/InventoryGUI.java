@@ -82,8 +82,10 @@ public class InventoryGUI extends MenuGUI {
 		// Check if the mouse takes up a new ItemStack/sets one down.
 		ItemStack newlyCarried;
 		for(int i = 0; i < inv.length; i++) {
+			if(i == 36 && carried.getItem() != null)
+				break;
 			newlyCarried = inv[i].grabWithMouse(Cubyz.mouse, carried, win.getWidth()/2, win.getHeight());
-			if(newlyCarried != null) { // TODO: not allow putting items inside slot 36
+			if(newlyCarried != null) {
 				Cubyz.world.getLocalPlayer().getInventory().setSlot(carried, i);
 				carried = newlyCarried;
 				if(i >= 32) {
