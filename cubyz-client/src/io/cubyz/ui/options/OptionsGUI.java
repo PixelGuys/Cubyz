@@ -42,7 +42,7 @@ public class OptionsGUI extends MenuGUI {
 		});
 		
 		language.setSize(250, 45);
-		langKey.setArgument(0, Cubyz.lang.getLocale());
+		langKey.setArgument(0, Cubyz.lang.translate(new TextKey("lang.name")));
 		language.setText(langKey);
 		language.setFontSize(16f);
 		
@@ -57,7 +57,7 @@ public class OptionsGUI extends MenuGUI {
 			index++;
 			if (index >= languages.length) index = 0;
 			Cubyz.lang = LanguageLoader.load(languages[index]);
-			langKey.setArgument(0, languages[index]);
+			langKey.setArgument(0, Cubyz.lang.translate(new TextKey("lang.name")));
 		});
 		
 		rpc.setSize(250, 45);

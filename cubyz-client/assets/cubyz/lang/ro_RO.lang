@@ -7,3 +7,6 @@ gui.cubyz.general.on=Activat
 gui.cubyz.general.off=Dezactivat
 gui.cubyz.options.language=Limba: {0}
 gui.cubyz.options.discord=Integratie Discord: {0}
+# To translate
+gui.cubyz.options.keybindings=Key Bindings..
+lang.name=Romanian

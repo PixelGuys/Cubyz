@@ -25,11 +25,11 @@ public class TextureConverter {
 	}
 	
 	public static BufferedImage convert(BufferedImage in, String name) {
-		BufferedImage out = new BufferedImage(1024, 1024, BufferedImage.TYPE_INT_ARGB);
+		BufferedImage out = new BufferedImage(in.getWidth()*2, in.getHeight()*2, BufferedImage.TYPE_INT_ARGB);
 		Graphics2D g2d = out.createGraphics();
-		g2d.drawImage(in, 0, 0, 512, 512, null);
-		g2d.drawImage(in, 512, 0, 512, 512, null);
-		g2d.drawImage(in, 0, 512, 512, 512, null);
+		g2d.drawImage(in, 0, 0, null);
+		g2d.drawImage(in, in.getWidth(), 0, null);
+		g2d.drawImage(in, 0, in.getHeight(), null);
 		return out;
 	}
 	

@@ -7,6 +7,8 @@ public class Keyboard {
 	static ArrayList<Integer> pressedKeys;
 	static char currentCodePoint;
 	static boolean hasCodePoint;
+	static int currentKeyCode;
+	static boolean hasKeyCode;
 	static int keyMods;
 	
 	static {
@@ -22,6 +24,15 @@ public class Keyboard {
 	
 	public static boolean hasCodePoint() {
 		return hasCodePoint;
+	}
+	
+	public static void pushKeyCode(int keyCode) {
+		currentKeyCode = keyCode;
+		hasKeyCode = true;
+	}
+	
+	public static boolean hasKeyCode() {
+		return hasKeyCode;
 	}
 	
 	/**
@@ -41,6 +52,25 @@ public class Keyboard {
 		currentCodePoint = 0;
 		hasCodePoint = false;
 		return cp;
+	}
+	
+	/**
+	 * Reads key code, keeps it on buffer.
+	 * @return key code
+	 */
+	public static int getKeyCode() {
+		return currentKeyCode;
+	}
+	
+	/**
+	 * Reads key code, does not keep it on buffer.
+	 * @return key code
+	 */
+	public static int releaseKeyCode() {
+		int kc = currentKeyCode;
+		currentKeyCode = 0;
+		hasKeyCode = false;
+		return kc;
 	}
 	
 	public static boolean isKeyPressed(int key) {

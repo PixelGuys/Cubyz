@@ -209,11 +209,16 @@ public class Cubyz implements IGameLogic {
 					cachedDefaultModels.put(bm.model, defaultMesh);
 				}
 				
+				String texture = block.getTexture();
+				if (!new File("assets/cubyz/textures/blocks/" + texture + ".png").exists()) {
+					texture = "undefined";
+				}
+				
 				if (block.isTextureConverted()) {
-					tex = new Texture("assets/cubyz/textures/blocks/" + block.getTexture() + ".png");
+					tex = new Texture("assets/cubyz/textures/blocks/" + texture + ".png");
 				} else {
 					tex = new Texture(TextureConverter.fromBufferedImage(
-							TextureConverter.convert(ImageIO.read(new File("assets/cubyz/textures/blocks/" + block.getTexture() + ".png")),
+							TextureConverter.convert(ImageIO.read(new File("assets/cubyz/textures/blocks/" + texture + ".png")),
 									block.getTexture())));
 				}
 				
@@ -453,7 +458,9 @@ public class Cubyz implements IGameLogic {
 		} else {
 			renderer.render(window, ctx, new Vector3f(0.8f, 0.8f, 0.8f), light, EMPTY_CHUNK_LIST, EMPTY_BLOCK_LIST, null);
 		}
+		
 		Keyboard.releaseCodePoint();
+		Keyboard.releaseKeyCode();
 	}
 
 	@Override

@@ -214,6 +214,7 @@ public class Window {
 				Keyboard.setKeyPressed(key, false);
 			}
 			Keyboard.setKeyMods(mods);
+			Keyboard.pushKeyCode(key);
 		});
 		
 		glfwSetFramebufferSizeCallback(handle, (window, width, height) -> {

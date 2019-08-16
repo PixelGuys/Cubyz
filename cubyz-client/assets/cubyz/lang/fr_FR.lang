@@ -7,3 +7,5 @@ gui.cubyz.general.on=Allumé
 gui.cubyz.general.off=Eteint
 gui.cubyz.options.language=Langue: {0}
 gui.cubyz.options.discord=Intégration Discord: {0}
+gui.cubyz.options.keybindings=Contrôles..
+lang.name=Français

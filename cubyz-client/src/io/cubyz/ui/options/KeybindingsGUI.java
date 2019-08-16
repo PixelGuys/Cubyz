@@ -62,14 +62,14 @@ public class KeybindingsGUI extends MenuGUI {
 
 	@Override
 	public void render(long nvg, Window win) {
-		container.setSize(win.getWidth(), 45);
-		done.setPosition(win.getWidth()-270, win.getHeight()-65);
-		
-		if (listen != null && Keyboard.hasCodePoint()) {
-			System.out.println(Keyboard.getCodePoint());
-			Keybindings.setKeyCode(listen, Keyboard.releaseCodePoint());
+		if (listen != null && Keyboard.hasKeyCode()) {
+			Keybindings.setKeyCode(listen, Keyboard.getKeyCode());
 			initUI();
+			listen = null;
 		}
+		
+		container.setSize(win.getWidth(), win.getHeight()-70);
+		done.setPosition(win.getWidth()-270, win.getHeight()-65);
 		
 		container.render(nvg, win);
 		done.render(nvg, win);
