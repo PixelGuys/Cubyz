@@ -1,6 +1,7 @@
 package io.cubyz.multiplayer.server;
 
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
@@ -13,42 +14,52 @@ public class CubyzServer {
 
 	private int port;
 	static boolean internal; // integrated
+	static ServerSettings settings = new ServerSettings();
+	
+	static Channel ch;
+	static EventLoopGroup boss;
+	static EventLoopGroup worker;
+	
+	static {
+		settings.maxPlayers = 20;
+		settings.playerTimeout = 5000;
+		settings.playerPingTime = 5000;
+	}
 
 	public CubyzServer(int port) {
 		this.port = port;
 	}
+	
+	public void stop() throws Exception {
+		ch.close();
+		worker.shutdownGracefully();
+		boss.shutdownGracefully();
+	}
 
 	public void start(boolean internal) throws Exception {
 		CubyzServer.internal = internal;
-		ServerSettings ss = new ServerSettings();
-		ss.maxPlayers = 20;
-		ss.playerTimeout = 5000;
-		ss.playerPingTime = 5000;
-		ss.internal = true;
+		settings.internal = internal;
 		
-		EventLoopGroup bossGroup = new NioEventLoopGroup();
-		EventLoopGroup workerGroup = new NioEventLoopGroup();
+		boss = new NioEventLoopGroup();
+		worker = new NioEventLoopGroup();
 		try {
 			ServerBootstrap b = new ServerBootstrap();
-			b.group(bossGroup, workerGroup).channel(NioServerSocketChannel.class)
+			b.group(boss, worker).channel(NioServerSocketChannel.class)
 					.childHandler(new ChannelInitializer<SocketChannel>() {
 						@Override
 						public void initChannel(SocketChannel ch) throws Exception {
-							ch.pipeline().addLast(new ServerHandler(CubyzServer.this, ss));
+							ch.pipeline().addLast(new ServerHandler(CubyzServer.this, settings));
 						}
 					}).option(ChannelOption.SO_BACKLOG, 128).
 					childOption(ChannelOption.SO_KEEPALIVE, true);
-
-			// Bind and start to accept incoming connections.
+			
 			ChannelFuture f = b.bind(port);
-
-			// Wait until the server socket is closed.
-			// In this example, this does not happen, but you can do that to gracefully
-			// shut down your server.
-			//f.channel().closeFuture().sync();
+			ch = f.channel();
+			
+			ch.closeFuture().sync();
 		} finally {
-			//workerGroup.shutdownGracefully();
-			//bossGroup.shutdownGracefully();
+			worker.shutdownGracefully().sync();
+			boss.shutdownGracefully().sync();
 		}
 	}
 

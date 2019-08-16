@@ -21,7 +21,8 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 	boolean isInternal;
 	boolean onlineMode;
 	CubyzServer server;
-	LocalWorld world;
+	
+	public static LocalWorld world;
 	
 	String motd;
 	

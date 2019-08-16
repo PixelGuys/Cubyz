@@ -13,6 +13,16 @@ public class CommandExecutor {
 			return;
 		}
 		String name = split[0];
+		
+		if (name.equals("?")) {
+			source.feedback("Command list:");
+			for (IRegistryElement elem : commandRegistry.registered()) {
+				CommandBase base = (CommandBase) elem;
+				source.feedback(base.name);
+			}
+			return;
+		}
+		
 		for (IRegistryElement elem : commandRegistry.registered()) {
 			CommandBase base = (CommandBase) elem;
 			if (base.name.equals(name)) {

@@ -25,7 +25,7 @@ public class ResourceUtilities {
 	}
 	
 	public static BlockModel loadModel(Resource block) throws IOException {
-		String path = ResourceManager.contextToLocal(ResourceContext.MODEL, block);
+		String path = ResourceManager.contextToLocal(ResourceContext.MODEL_BLOCK, block);
 		BlockModel model = GSON.fromJson(Utilities.readFile(new File(path)), BlockModel.class);
 		if (model.parent != null) {
 			if (model.parent.equals(block.toString())) {

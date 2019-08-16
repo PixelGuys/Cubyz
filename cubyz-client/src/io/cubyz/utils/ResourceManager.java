@@ -61,8 +61,8 @@ public class ResourceManager {
 	}
 	
 	public static String contextToLocal(ResourceContext ctx, Resource local) {
-		if (ctx == ResourceContext.MODEL) {
-			return "assets/" + local.getMod() + "/models/" + local.getID() + ".json";
+		if (ctx == ResourceContext.MODEL_BLOCK) {
+			return "assets/" + local.getMod() + "/models/block/" + local.getID() + ".json";
 		} else if (ctx == ResourceContext.MODEL3D) {
 			return "assets/" + local.getMod() + "/models/3d/" + local.getID() + ".json";
 		} else if (ctx == ResourceContext.TEXTURE) {

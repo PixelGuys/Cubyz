@@ -203,7 +203,8 @@ public class Cubyz implements IGameLogic {
 					}
 				}
 				if (defaultMesh == null) {
-					defaultMesh = OBJLoader.loadMesh("assets/cubyz/models/cube.obj", false);
+					Resource rs = new Resource(bm.model);
+					defaultMesh = OBJLoader.loadMesh("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), false);
 					defaultMesh.setBoundingRadius(2.0f);
 					cachedDefaultModels.put(bm.model, defaultMesh);
 				}
@@ -254,11 +255,7 @@ public class Cubyz implements IGameLogic {
 		
 		LoadThread.addOnLoadFinished(() -> {
 			try {
-				//CubyzServer server = new CubyzServer(serverPort);
-				//server.start(true);
 				mpClient = new MPClient();
-				//requestJoin("localhost");
-				//mpClient.getChat().send("Hello World");
 			} catch (Exception e) {
 				e.printStackTrace();
 			}

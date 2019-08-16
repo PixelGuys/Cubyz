@@ -4,6 +4,7 @@ public enum ResourceContext {
 
 	TEXTURE,
 	MODEL3D,
-	MODEL;
+	MODEL_BLOCK,
+	MODEL_ITEM;
 	
 }
