@@ -98,21 +98,21 @@ public class Recipe implements IRegistryElement {
 			if(braek)
 				break;
 		}
-		for(int i = items.length-1; i >= 0; i -= size) {
+		for(int i = items.length-size; i >= 0; i -= size) {
 			boolean braek = false;
-			//for(int j = size-1; j >= 0; j--) {
-				braek = items[i+0] != null;
-				//if(braek)
-				//	break;
-				//if(j == 0) {
+			for(int j = size-1; j >= 0; j--) {
+				braek = items[i+j] != null;
+				if(braek)
+					break;
+				if(j == 0) {
 					yLen--;
-				//}
-			//}
+				}
+			}
 			if(braek)
 				break;
 		}
 		System.out.println(xLen + " x " + yLen);
-		if(yLen < x)
+		if(yLen < y)
 			return null;
 		
 		// Check the remaining structure for the needed shape:
