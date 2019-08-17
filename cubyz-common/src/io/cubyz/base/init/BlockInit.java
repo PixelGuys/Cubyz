@@ -5,23 +5,16 @@ import java.util.ArrayList;
 import io.cubyz.api.Registry;
 import io.cubyz.blocks.Bedrock;
 import io.cubyz.blocks.Block;
-import io.cubyz.blocks.Cactus;
 import io.cubyz.blocks.CoalOre;
-import io.cubyz.blocks.CobbleStone;
 import io.cubyz.blocks.DiamondOre;
-import io.cubyz.blocks.Dirt;
 import io.cubyz.blocks.EmeraldOre;
 import io.cubyz.blocks.GoldOre;
 import io.cubyz.blocks.Grass;
 import io.cubyz.blocks.Ice;
 import io.cubyz.blocks.IronOre;
 import io.cubyz.blocks.OakLeaves;
-import io.cubyz.blocks.OakLog;
-import io.cubyz.blocks.OakPlanks;
 import io.cubyz.blocks.RubyOre;
-import io.cubyz.blocks.Sand;
 import io.cubyz.blocks.SnowGrass;
-import io.cubyz.blocks.Stone;
 import io.cubyz.blocks.Water;
 import io.cubyz.blocks.WorkBench;
 
@@ -30,17 +23,17 @@ public class BlockInit {
 	public static final ArrayList<Block> BLOCKS = new ArrayList<>();
 	
 	public static Bedrock bedrock = new Bedrock();
-	public static Cactus cactus = new Cactus();
-	public static CobbleStone cobblestone = new CobbleStone();
-	public static Dirt dirt = new Dirt();
+	public static Block cactus = new Block("cubyz:cactus");
+	public static Block cobblestone = new Block("cubyz:cobblestone");
+	public static Block dirt = new Block("cubyz:dirt");
 	public static Grass grass = new Grass();
 	public static Ice ice = new Ice();
 	public static OakLeaves oakLeaves = new OakLeaves();
-	public static OakLog oakLog = new OakLog();
-	public static OakPlanks oakPlanks = new OakPlanks();
-	public static Sand sand = new Sand();
+	public static Block oakLog = new Block("cubyz:oak_log");
+	public static Block oakPlanks = new Block("cubyz:oak_planks");
+	public static Block sand = new Block("cubyz:sand");
 	public static SnowGrass snow = new SnowGrass();
-	public static Stone stone = new Stone();
+	public static Block stone = new Block("cubyz:stone");
 	public static WorkBench workbench = new WorkBench();
 	
 	public static CoalOre coal = new CoalOre();

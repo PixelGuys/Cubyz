@@ -26,8 +26,18 @@ public class Block implements IRegistryElement {
 	private boolean solid = true;
 	private boolean selectable = true;
 	private Item blockDrop;
-	private boolean blockDropInited;
 	protected boolean degradable = false; // Meaning undegradable parts of trees or other structures can grow through this block.
+	
+	public Block() {}
+	
+	public Block(String id) {
+		setID(id);
+		Item bd = new Item();
+		bd.setBlock(this);
+		bd.setID(id); // better to use actual block ID than a specific id!
+		bd.setTexture("blocks/"+this.id.getID()+".png");
+		setBlockDrop(bd);
+	}
 	
 	public boolean isDegradable() {
 		return degradable;
@@ -92,17 +102,9 @@ public class Block implements IRegistryElement {
 	
 	public void setBlockDrop(Item bd) {
 		blockDrop = bd;
-		blockDropInited = true;
 	}
 	
 	public Item getBlockDrop() {
-		if (!blockDropInited) {
-			Item bd = new Item();
-			bd.setBlock(this);
-			bd.setID(id); // better to use actual block ID than a specific id!
-			bd.setTexture("blocks/"+id.getID()+".png");
-			setBlockDrop(bd);
-		}
 		return blockDrop;
 	}
 	

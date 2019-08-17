@@ -4,7 +4,6 @@ public class Ice extends Block {
 	
 	public Ice() {
 		setID("cubyz:ice");
-		setBlockDrop(null);
 	}
 	
 }
