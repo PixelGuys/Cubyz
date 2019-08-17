@@ -22,6 +22,7 @@ import io.cubyz.entity.Player;
 import io.cubyz.math.Bits;
 import io.cubyz.save.BlockChange;
 import io.cubyz.save.WorldIO;
+import io.cubyz.world.generator.FlatlandGenerator;
 import io.cubyz.world.generator.LifelandGenerator;
 import io.cubyz.world.generator.WorldGenerator;
 
@@ -50,7 +51,7 @@ public class LocalWorld extends World {
 	
 	private ChunkGenerationThread thread;
 	
-	private static final int DAYCYCLE = 1200*100; // Length of one in-game day in 100ms. Midnight is at DAYCYCLE/2. Sunrise and sunset each take about 1/16 of the day.
+	private static final int DAYCYCLE = 120000; // Length of one in-game day in 100ms. Midnight is at DAYCYCLE/2. Sunrise and sunset each take about 1/16 of the day.
 	long gameTime = 0; // Time of the game in 100ms.
 	long milliTime;
 	float ambientLight = 0f;

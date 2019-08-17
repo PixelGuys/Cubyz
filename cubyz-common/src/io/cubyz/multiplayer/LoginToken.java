@@ -21,7 +21,7 @@ public class LoginToken {
 	}
 	
 	public boolean isExpired() {
-		return System.currentTimeMillis() > expireTimestamp;
+		return System.currentTimeMillis() >= expireTimestamp;
 	}
 	
 	public UUID getUUID() {

@@ -1,6 +1,7 @@
 package io.cubyz.client;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.*;
 import java.util.logging.*;
 
@@ -23,6 +24,7 @@ import io.cubyz.blocks.BlockInstance;
 import io.cubyz.client.loading.LoadThread;
 import io.cubyz.entity.Player;
 import io.cubyz.multiplayer.GameProfile;
+import io.cubyz.multiplayer.LoginToken;
 import io.cubyz.multiplayer.client.MPClient;
 import io.cubyz.multiplayer.client.PingResponse;
 import io.cubyz.multiplayer.server.CubyzServer;
@@ -197,7 +199,13 @@ public class Cubyz implements IGameLogic {
 				Texture tex = null;
 				Mesh mesh = null;
 				BlockModel bm = null;
-				bm = ResourceUtilities.loadModel(new Resource("cubyz:grass"));
+				try {
+					bm = ResourceUtilities.loadModel(rsc);
+				} catch (IOException e) {
+					CubyzLogger.i.warning(rsc + " model not found");
+					//e.printStackTrace();
+					bm = ResourceUtilities.loadModel(new Resource("cubyz:undefined"));
+				}
 				
 				// Cached meshes
 				Mesh defaultMesh = null;
@@ -275,8 +283,14 @@ public class Cubyz implements IGameLogic {
 		
 		if (System.getProperty("account.password") == null) {
 			profile = new GameProfile("xX_DemoGuy_Xx");
-		} else {
-			profile = new GameProfile(GameProfile.login(System.getProperty("account.username"), System.getProperty("account.password").toCharArray()));
+		} else if (System.getProperty("account.password") != null){
+			profile = new GameProfile(System.getProperty("account.username"), System.getProperty("account.password").toCharArray());
+		} else if (System.getProperty("login.token") != null) {
+			UUID player = UUID.fromString(System.getProperty("login.playerUUID"));
+			UUID tokenUUID = UUID.fromString(System.getProperty("login.token"));
+			String username = System.getProperty("login.username");
+			LoginToken token = new LoginToken(tokenUUID, player, username, Long.MAX_VALUE);
+			profile = new GameProfile(token);
 		}
 		
 		LoadThread.addOnLoadFinished(() -> {
@@ -498,7 +512,7 @@ public class Cubyz implements IGameLogic {
 			if (mouse.isLeftButtonPressed() && mouse.isGrabbed()) {
 				//Breaking Blocks
 				if (breakCooldown == 0) {
-					breakCooldown = 10;
+					breakCooldown = 7;
 					BlockInstance bi = msd.getSelectedBlockInstance();
 					if (bi != null && bi.getBlock().getHardness() != -1f) {
 						world.removeBlock(bi.getX(), bi.getY(), bi.getZ());
@@ -518,6 +532,9 @@ public class Cubyz implements IGameLogic {
 						Vector3i pos = msd.getEmptyPlace(world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate());
 						Block b = world.getLocalPlayer().getInventory().getBlock(inventorySelection);
 						if (b != null && pos != null) {
+							if (world.getBlock(pos) != null) {
+								pos.y++; // happens sometimes, for now the bug fix works perfectly
+							}
 							world.placeBlock(pos.x, pos.y, pos.z, b);
 							world.getLocalPlayer().getInventory().getStack(inventorySelection).add(-1);
 						}
