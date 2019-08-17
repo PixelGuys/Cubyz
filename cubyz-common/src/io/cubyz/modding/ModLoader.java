@@ -9,12 +9,8 @@ import io.cubyz.CubyzLogger;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.EventHandler;
 import io.cubyz.api.Proxy;
-import io.cubyz.api.Registry;
 import io.cubyz.api.Side;
 import io.cubyz.api.SideOnly;
-import io.cubyz.blocks.Block;
-import io.cubyz.entity.EntityType;
-import io.cubyz.items.Item;
 
 // Most methods should ALWAYS be found as if it were on Side.SERVER
 public class ModLoader {

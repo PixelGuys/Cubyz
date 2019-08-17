@@ -55,6 +55,7 @@ public class Server {
 	}
 	
 	public static void loadGame() {
+		Constants.setGameSide(Side.SERVER);
 		CubyzLogger.instance.info("Searching mods..");
 		ArrayList<Object> mods = new ArrayList<>();
 		ArrayList<File> modSearchPath = new ArrayList<>();

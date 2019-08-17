@@ -39,12 +39,15 @@ public class ScrollingContainer extends Container {
 				}
 			} else {
 				if (mouse.isLeftButtonPressed()) {
-					scrollY = (int) Math.min(maxY, mouse.getY()*(maxY/height) - mPickY);
-					if (scrollY < 0) scrollY = 0;
+					scrollY = (int) Math.min(maxY, mouse.getY()*(maxY/height) + mPickY);
 				} else {
 					mPickY = -1;
 				}
 			}
+			scrollY += -mouse.getScrollOffset() * 40;
+			if (scrollY < 0) scrollY = 0;
+		} else {
+			scrollY = 0;
 		}
 		scrollY = Math.min(maxY, scrollY);
 	}

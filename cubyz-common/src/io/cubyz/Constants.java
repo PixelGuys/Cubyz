@@ -12,15 +12,15 @@ public class Constants {
 	public static final String GAME_BUILD_TYPE = "alpha";
 	
 	// WARNING! Both brand name and version cannot contain ';' inside!
-	public static final String GAME_VERSION = "0.4.0";
+	public static final String GAME_VERSION = "0.5.0";
 	public static final String GAME_BRAND = "cubyz";
 	static Side currentSide = null;
 	
-	public Side getGameSide() {
+	public static Side getGameSide() {
 		return currentSide;
 	}
 	
-	public void setGameSide(Side side) {
+	public static void setGameSide(Side side) {
 		currentSide = side;
 	}
 	

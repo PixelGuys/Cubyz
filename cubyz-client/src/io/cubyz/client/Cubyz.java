@@ -17,6 +17,7 @@ import org.lwjgl.glfw.GLFW;
 
 import io.cubyz.*;
 import io.cubyz.api.Resource;
+import io.cubyz.api.Side;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.client.loading.LoadThread;
@@ -172,6 +173,7 @@ public class Cubyz implements IGameLogic {
 		log.info("Version " + Constants.GAME_VERSION + " of brand " + Constants.GAME_BRAND);
 		log.info("LWJGL Version: " + Version.VERSION_MAJOR + "." + Version.VERSION_MINOR + "." + Version.VERSION_REVISION);
 		log.info("Jungle Version: " + Constants.GAME_VERSION + "-cubyz");
+		Constants.setGameSide(Side.CLIENT);
 		msd = new CubyzMeshSelectionDetector(renderer);
 		window.setClearColor(new Vector4f(0.1F, 0.7F, 0.7F, 1.0F));
 		
@@ -307,10 +309,10 @@ public class Cubyz implements IGameLogic {
 			if (Keyboard.isKeyPressed(Keybindings.getKeyCode("right"))) {
 				playerInc.x = 1;
 			}
-			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_SPACE) && world.getLocalPlayer().vy == 0) {
+			if (Keyboard.isKeyPressed(Keybindings.getKeyCode("jump")) && world.getLocalPlayer().vy == 0) {
 				world.getLocalPlayer().vy = 0.25F;
 			}
-			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT_SHIFT)) {
+			if (Keyboard.isKeyPressed(Keybindings.getKeyCode("fall"))) {
 				if (world.getLocalPlayer().isFlying()) {
 					world.getLocalPlayer().vy = -0.25F;
 				}
@@ -335,17 +337,17 @@ public class Cubyz implements IGameLogic {
 					}
 				}
 			}
-			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_I)) {
+			if (Keyboard.isKeyPressed(Keybindings.getKeyCode("inventory"))) {
 				gameUI.setMenu(new InventoryGUI());
-				Keyboard.setKeyPressed(GLFW.GLFW_KEY_I, false);
+				Keyboard.setKeyPressed(Keybindings.getKeyCode("inventory"), false);
 			}
-			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_ESCAPE) && mouse.isGrabbed()) {
+			if (Keyboard.isKeyPressed(Keybindings.getKeyCode("menu")) && mouse.isGrabbed()) {
 				if (gameUI.getMenuGUI() != null) {
 					if (!gameUI.doesGUIPauseGame()) {
 						//gameUI.setMenu(null);
 					}
 				} else {
-					Keyboard.setKeyPressed(GLFW.GLFW_KEY_ESCAPE, false);
+					Keyboard.setKeyPressed(Keybindings.getKeyCode("menu"), false);
 					gameUI.setMenu(new PauseGUI());
 				}
 			}
@@ -357,29 +359,28 @@ public class Cubyz implements IGameLogic {
 			
 			// inventory related
 			inventorySelection = (inventorySelection + (int) mouse.getScrollOffset()) & 7;
-			mouse.clearScroll();
-			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_1)) {
+			if (Keyboard.isKeyPressed(Keybindings.getKeyCode("hotbar 1"))) {
 				inventorySelection = 0;
 			}
-			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_2)) {
+			if (Keyboard.isKeyPressed(Keybindings.getKeyCode("hotbar 2"))) {
 				inventorySelection = 1;
 			}
-			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_3)) {
+			if (Keyboard.isKeyPressed(Keybindings.getKeyCode("hotbar 3"))) {
 				inventorySelection = 2;
 			}
-			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_4)) {
+			if (Keyboard.isKeyPressed(Keybindings.getKeyCode("hotbar 4"))) {
 				inventorySelection = 3;
 			}
-			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_5)) {
+			if (Keyboard.isKeyPressed(Keybindings.getKeyCode("hotbar 5"))) {
 				inventorySelection = 4;
 			}
-			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_6)) {
+			if (Keyboard.isKeyPressed(Keybindings.getKeyCode("hotbar 6"))) {
 				inventorySelection = 5;
 			}
-			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_7)) {
+			if (Keyboard.isKeyPressed(Keybindings.getKeyCode("hotbar 7"))) {
 				inventorySelection = 6;
 			}
-			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_8)) {
+			if (Keyboard.isKeyPressed(Keybindings.getKeyCode("hotbar 8"))) {
 				inventorySelection = 7;
 			}
 			
@@ -461,6 +462,7 @@ public class Cubyz implements IGameLogic {
 		
 		Keyboard.releaseCodePoint();
 		Keyboard.releaseKeyCode();
+		mouse.clearScroll();
 	}
 
 	@Override

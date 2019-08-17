@@ -92,6 +92,7 @@ public class BaseMod {
 	static Recipe oakToWorkbench;
 	
 	// Client Proxy is defined in cubyz-client, a normal mod would define it in the same mod of course.
+	// Proxies are injected at runtime.
 	@Proxy(clientProxy = "io.cubyz.base.ClientProxy", serverProxy = "io.cubyz.base.CommonProxy")
 	static CommonProxy proxy;
 	

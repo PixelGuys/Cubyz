@@ -8,14 +8,38 @@ public class Keybindings {
 		"forward",
 		"backward",
 		"left",
-		"right"
+		"right",
+		"jump",
+		"fall",
+		"inventory",
+		"menu",
+		"hotbar 1",
+		"hotbar 2",
+		"hotbar 3",
+		"hotbar 4",
+		"hotbar 5",
+		"hotbar 6",
+		"hotbar 7",
+		"hotbar 8"
 	};
 	
 	public static int[] keyCodes = {
 			GLFW_KEY_W,
 			GLFW_KEY_S,
 			GLFW_KEY_A,
-			GLFW_KEY_D
+			GLFW_KEY_D,
+			GLFW_KEY_SPACE,
+			GLFW_KEY_LEFT_SHIFT,
+			GLFW_KEY_I,
+			GLFW_KEY_ESCAPE,
+			GLFW_KEY_1,
+			GLFW_KEY_2,
+			GLFW_KEY_3,
+			GLFW_KEY_4,
+			GLFW_KEY_5,
+			GLFW_KEY_6,
+			GLFW_KEY_7,
+			GLFW_KEY_8,
 	};
 	
 	public static void setKeyCode(String name, int key) {
