@@ -24,7 +24,7 @@ public class LoadingGUI extends MenuGUI {
 	}
 	
 	public void setStep(int step, int subStep, int subStepMax) {
-		this.step.setText(step + "/4");
+		this.step.setText(step + "/5");
 		pb1.setValue(step);
 		if (subStepMax != 0) {
 			hasStep2 = true;
@@ -38,7 +38,7 @@ public class LoadingGUI extends MenuGUI {
 	
 	@Override
 	public void init(long nvg) {
-		pb1.setMaxValue(4);
+		pb1.setMaxValue(5);
 	}
 
 	void setPosition(float x, float y, Component c, Window w) {

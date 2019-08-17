@@ -26,6 +26,7 @@ public class LoadThread extends Thread {
 	static int i = -1;
 	static Runnable run;
 	static ArrayList<Runnable> runnables = new ArrayList<>();
+	static boolean finishedMeshes;
 	
 	public static void addOnLoadFinished(Runnable run) {
 		runnables.add(run);
@@ -128,15 +129,34 @@ public class LoadThread extends Thread {
 					Cubyz.renderDeque.add(run);
 					l.setStep(4, i+1, CubyzRegistries.BLOCK_REGISTRY.registered().length);
 				} else {
-					l.finishLoading();
+					finishedMeshes = true;
 				}
 			}
 		};
 		Cubyz.renderDeque.add(run);
-		System.gc();
+		
+		while (!finishedMeshes) {
+			try {
+				Thread.sleep(10);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+		
+		l.setStep(5, 0, mods.size());
+		for (int i = 0; i < mods.size(); i++) {
+			l.setStep(5, i+1, mods.size());
+			Object mod = mods.get(i);
+			log.info("Post-initiating " + mod);
+			ModLoader.postInit(mod);
+		}
+		l.finishLoading();
+		
 		for (Runnable r : runnables) {
 			r.run();
 		}
+		
+		System.gc();
 	}
 	
 }
