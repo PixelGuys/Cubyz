@@ -23,10 +23,18 @@ public class Item implements IRegistryElement {
 		this.texturePath = "./assets/cubyz/textures/items/" + texturePath;
 	}
 	
+	/**
+	 * This is used for rendering only.
+	 * @param image image id
+	 */
 	public void setImage(int image) {
 		this.image = image;
 	}
 	
+	/**
+	 * This is used for rendering only.
+	 * @return image id
+	 */
 	public int getImage() {
 		return image;
 	}

@@ -4,6 +4,7 @@ public class ClientProxy extends CommonProxy {
 
 	public void init() {
 		System.out.println("Init from client");
+		// register gui here
 	}
 	
 }

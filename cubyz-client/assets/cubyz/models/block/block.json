@@ -1,4 +1,4 @@
 {
-	"model": "cubyz:block.obj", // appended to "cubyz:models/3d/"
-	"texture": "cubyz:blocks/undefined" // appended to "cubyz:textures/"
+	"model": "cubyz:block.obj",
+	"texture": "cubyz:blocks/undefined"
 }

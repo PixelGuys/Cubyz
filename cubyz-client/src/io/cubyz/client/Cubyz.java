@@ -220,18 +220,19 @@ public class Cubyz implements IGameLogic {
 					defaultMesh.setBoundingRadius(2.0f);
 					cachedDefaultModels.put(bm.model, defaultMesh);
 				}
-				
-				String texture = block.getTexture();
-				if (!new File("assets/cubyz/textures/blocks/" + texture + ".png").exists()) {
-					texture = "undefined";
+				Resource texResource = new Resource(bm.texture);
+				String texture = texResource.getID();
+				if (!new File("assets/" + texResource.getMod() + "/textures/" + texture + ".png").exists()) {
+					CubyzLogger.i.warning(texResource + " texture not found");
+					texture = "blocks/undefined";
 				}
 				
 				if (block.isTextureConverted()) {
-					tex = new Texture("assets/cubyz/textures/blocks/" + texture + ".png");
+					tex = new Texture("assets/" + texResource.getMod() + "/textures/" + texture + ".png");
 				} else {
 					tex = new Texture(TextureConverter.fromBufferedImage(
-							TextureConverter.convert(ImageIO.read(new File("assets/cubyz/textures/blocks/" + texture + ".png")),
-									block.getTexture())));
+							TextureConverter.convert(ImageIO.read(new File("assets/" + texResource.getMod() + "/textures/" + texture + ".png")),
+									block.getRegistryID().toString())));
 				}
 				
 				mesh = defaultMesh.cloneNoMaterial();
@@ -300,13 +301,6 @@ public class Cubyz implements IGameLogic {
 				e.printStackTrace();
 			}
 		});
-		
-		System.gc();
-		
-		System.out.println("Resource 2.0 System Test:");
-		ResourceUtilities.BlockModel model = ResourceUtilities.loadModel(new Resource("cubyz:grass"));
-		System.out.println("Grass block texture : " + model.texture);
-		System.out.println("Grass block model   : "   + model.model);
 	}
 
 	private Vector3f dir = new Vector3f();
@@ -526,8 +520,8 @@ public class Cubyz implements IGameLogic {
 				//Building Blocks
 				if (buildCooldown == 0) {
 					buildCooldown = 10;
-					if(msd.getSelectedBlockInstance().getBlock().isClickable()) {
-						// OpenGUIEvent(msd.getSelectedBlockInstance().getBlock().ID); // TODO. This is how it could look like.
+					if(msd.getSelectedBlockInstance().getBlock().onClick(world, msd.getSelectedBlockInstance().getPosition())) {
+						// potentially do a hand animation, in the future
 					} else {
 						Vector3i pos = msd.getEmptyPlace(world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate());
 						Block b = world.getLocalPlayer().getInventory().getBlock(inventorySelection);
