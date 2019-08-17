@@ -75,12 +75,11 @@ public class BaseMod {
 		oakPlanksToStick = new Recipe(1, 2, recipe, 4, ItemInit.stick, new Resource("cubyz", "planks_to_stick"));
 		Item P = BlockInit.oakPlanks.getBlockDrop();
 		Item L = BlockInit.oakLog.getBlockDrop();
-		recipe = new Item[] { // Suggestion.
-				P, P, P,
-				P, L, P,
-				P, P, P,
+		recipe = new Item[] { // Suggestion. // Shortened so it can atleast be craftable :)
+				P, L,
+				L, P
 		};
-		oakToWorkbench = new Recipe(3, 3, recipe, 1, BlockInit.workbench.getBlockDrop(), new Resource("cubyz", "oak_to_workbench"));
+		oakToWorkbench = new Recipe(2, 2, recipe, 1, BlockInit.workbench.getBlockDrop(), new Resource("cubyz", "oak_to_workbench"));
 		
 		reg.registerAll(oakLogToPlanks, oakPlanksToStick, oakToWorkbench);
 	}

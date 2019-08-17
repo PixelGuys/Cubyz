@@ -10,6 +10,8 @@ import org.jungle.Window;
 import org.jungle.hud.Font;
 import org.jungle.hud.Hud;
 
+import io.cubyz.client.Cubyz;
+
 public class UISystem extends Hud {
 
 	private boolean inited = false;
@@ -33,11 +35,19 @@ public class UISystem extends Hud {
 	}
 	
 	public void setMenu(MenuGUI gui) {
+		if (this.gui != null && this.gui.ungrabsMouse()) {
+			Cubyz.mouse.setGrabbed(true);
+		}
 		this.gui = gui;
+		if (gui != null && gui.ungrabsMouse()) {
+			Cubyz.mouse.setGrabbed(false);
+		}
 		if (gui != null) {
 			gui.init(nvg);
 		}
-		System.gc();
+		if (gui == null || gui.doesPauseGame()) {
+			System.gc();
+		}
 	}
 	
 	public MenuGUI getMenuGUI() {
@@ -57,7 +67,10 @@ public class UISystem extends Hud {
 	    if (nvg == NULL) {
 	        throw new Exception("Could not init NanoVG");
 	    }
-		Font.register("OpenSans Bold", "assets/cubyz/fonts/opensans/OpenSans-Bold.ttf", nvg);
+		Font.register("Default", "assets/cubyz/fonts/opensans/OpenSans-Bold.ttf", nvg);
+		Font.register("Title", "assets/cubyz/fonts/opensans/OpenSans-Bold.ttf", nvg);
+		Font.register("Bold", "assets/cubyz/fonts/opensans/OpenSans-Bold.ttf", nvg);
+		Font.register("Light", "assets/cubyz/fonts/opensans/OpenSans-Light.ttf", nvg);
 		NGraphics.setNanoID(nvg);
 		inited = true;
 	}

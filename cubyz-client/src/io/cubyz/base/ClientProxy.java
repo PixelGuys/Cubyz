@@ -1,10 +1,12 @@
 package io.cubyz.base;
 
+import io.cubyz.api.GameRegistry;
+
 public class ClientProxy extends CommonProxy {
 
 	public void init() {
-		System.out.println("Init from client");
-		// register gui here
+		super.init();
+		GameRegistry.registerGUI("cubyz:workbench", new WorkbenchGUI());
 	}
 	
 }

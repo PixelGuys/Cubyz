@@ -123,8 +123,8 @@ public class Cubyz implements IGameLogic {
 		world.synchronousSeek(dx, dz);
 		int highestY = world.getHighestBlock(dx, dz);
 		world.getLocalPlayer().setPosition(new Vector3i(dx, highestY+2, dz));
-		Cubyz.gameUI.addOverlay(new GameOverlay());
 		DiscordIntegration.setStatus("Playing");
+		Cubyz.gameUI.addOverlay(new GameOverlay());
 	}
 
 	public static void requestJoin(String host) {
@@ -368,11 +368,9 @@ public class Cubyz implements IGameLogic {
 				gameUI.setMenu(new InventoryGUI());
 				Keyboard.setKeyPressed(Keybindings.getKeyCode("inventory"), false);
 			}
-			if (Keyboard.isKeyPressed(Keybindings.getKeyCode("menu")) && mouse.isGrabbed()) {
+			if (Keyboard.isKeyPressed(Keybindings.getKeyCode("menu"))) {
 				if (gameUI.getMenuGUI() != null) {
-					if (!gameUI.doesGUIPauseGame()) {
-						//gameUI.setMenu(null);
-					}
+					gameUI.setMenu(null);
 				} else {
 					Keyboard.setKeyPressed(Keybindings.getKeyCode("menu"), false);
 					gameUI.setMenu(new PauseGUI());

@@ -103,7 +103,7 @@ public class KeybindingsGUI extends MenuGUI {
 				text = nonAlpha(Keybindings.getKeyCode(name));
 			}
 			button.setText(text);
-			label.setFont(new Font("OpenSans Bold", 24f));
+			label.setFont(new Font("Default", 24f));
 			label.setText(Utilities.capitalize(name));
 			
 			button.setPosition(120, y);

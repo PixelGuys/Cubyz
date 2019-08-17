@@ -28,7 +28,7 @@ public class InventorySlot extends Component {
 	public InventorySlot(ItemStack ref, int x, int y) {
 		reference = ref;
 		inv = new Label();
-		inv.setFont(new Font("OpenSans Bold", 16.f));
+		inv.setFont(new Font("Default", 16.f));
 		this.x = x;
 		this.y = y;
 		width = height = SLOTSIZE;

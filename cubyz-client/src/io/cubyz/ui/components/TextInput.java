@@ -10,7 +10,7 @@ import io.cubyz.ui.NGraphics;
 
 public class TextInput extends Component {
 
-	private Font font = new Font("OpenSans Bold", 12.f);
+	private Font font = new Font("Default", 12.f);
 	public String text = "";
 	
 	public String getText() {

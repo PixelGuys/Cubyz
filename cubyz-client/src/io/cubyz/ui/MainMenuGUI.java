@@ -38,7 +38,7 @@ public class MainMenuGUI extends MenuGUI {
 		exit.setSize(100, 27);
 		exit.setText(new TextKey("gui.cubyz.mainmenu.exit"));
 		titleLabel.setText("Cubyz");
-		titleLabel.setFont(new Font("OpenSans Bold", 72.f));
+		titleLabel.setFont(new Font("Title", 72.f));
 		
 		spPlay.setOnAction(() -> {
 			// TODO: Start local server and let Cubyz join it

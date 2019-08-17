@@ -92,7 +92,7 @@ public class Button extends Component {
 		}
 		drawTexture(pressed ? buttonPressed : button);
 		NGraphics.setColor(255, 255, 255);
-		NGraphics.setFont("OpenSans Bold", fontSize);
+		NGraphics.setFont("Default", fontSize);
 		NGraphics.drawText(x + (width / 2) - ((text.getTranslation(Cubyz.lang).length() * 5) / 2), (int) (y + (height / 2) - fontSize / 2), text.getTranslation(Cubyz.lang));
 		//int ascent = NGraphics.getAscent("ahh");
 	}

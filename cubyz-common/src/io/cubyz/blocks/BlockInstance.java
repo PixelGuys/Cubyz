@@ -29,44 +29,24 @@ public class BlockInstance {
 		return block.ID;
 	}
 	
-	public void update() {
-		
-	}
-	
 	public Vector3i getPosition() {
 		return pos;
 	}
 	
 	public int getX() {
-		return pos.x();
+		return pos.x;
 	}
 	
 	public int getY() {
-		return pos.y();
+		return pos.y;
 	}
 	
 	public int getZ() {
-		return pos.z();
+		return pos.z;
 	}
 	
 	public Object getMesh() {
 		if (block.getBlockPair().get("textureCache") == null) {
-//			try {
-//				if (block.texConverted) {
-//					block._textureCache = new Texture("./res/textures/blocks/" + block.getTexture() + ".png");
-//				} else {
-//					block._textureCache = new Texture(TextureConverter.fromBufferedImage(
-//							TextureConverter.convert(ImageIO.read(new File("./res/textures/blocks/" + block.getTexture() + ".png")),
-//									block.getTexture())));
-//				}
-//				// Assuming mesh too is empty
-//				block._meshCache = OBJLoader.loadMesh("res/models/cube.obj");
-//				block._meshCache.setBoundingRadius(2.0F);
-//				Material material = new Material(block._textureCache, 1.0F);
-//				block._meshCache.setMaterial(material);
-//			} catch (Exception e) {
-//				e.printStackTrace();
-//			}
 			ClientOnly.createBlockMesh.accept(this.getBlock());
 		}
 		return block.getBlockPair().get("meshCache");

@@ -43,7 +43,7 @@ public class InventoryGUI extends MenuGUI {
 	public void init(long nvg) {
 		Cubyz.mouse.setGrabbed(false);
 		num = new Label();
-		num.setFont(new Font("OpenSans Bold", 16.f));
+		num.setFont(new Font("Default", 16.f));
 		if(inv == null) {
 			inv = new InventorySlot[37];
 			Inventory inventory = Cubyz.world.getLocalPlayer().getInventory();

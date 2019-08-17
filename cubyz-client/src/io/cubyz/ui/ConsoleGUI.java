@@ -42,6 +42,7 @@ public class ConsoleGUI extends MenuGUI {
 				
 			});
 			input.setText("");
+			Keyboard.setKeyPressed(GLFW.GLFW_KEY_ENTER, false);
 		}
 		if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_ESCAPE)) {
 			Cubyz.mouse.setGrabbed(false);
