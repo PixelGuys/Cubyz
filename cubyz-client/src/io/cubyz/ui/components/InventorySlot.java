@@ -18,6 +18,7 @@ public class InventorySlot extends Component {
 	public static final int SLOT = NGraphics.loadImage("assets/cubyz/guis/inventory/inventory_slot.png");
 
 	private boolean pressed = false;
+	public boolean takeOnly;
 	
 	// WARNING: The y-axis for this element goes from bottom to top!
 	
@@ -25,13 +26,17 @@ public class InventorySlot extends Component {
 	
 	private Label inv;
 	
-	public InventorySlot(ItemStack ref, int x, int y) {
+	public InventorySlot(ItemStack ref, int x, int y, boolean takeOnly) {
 		reference = ref;
 		inv = new Label();
 		inv.setFont(new Font("Default", 16.f));
 		this.x = x;
 		this.y = y;
 		width = height = SLOTSIZE;
+		this.takeOnly = takeOnly;
+	}
+	public InventorySlot(ItemStack ref, int x, int y) {
+		this(ref, x, y, false);
 	}
 	
 	public boolean isInside(Vector2d vec, int width, int height) {
@@ -40,6 +45,8 @@ public class InventorySlot extends Component {
 	}
 	
 	public ItemStack grabWithMouse(MouseInput mouse, ItemStack carried, int width, int height) {
+		if(takeOnly && carried.getItem() != null && reference.getItem() != null)
+			return null;
 		if(!isInside(mouse.getCurrentPos(), width, height))
 			return null;
 		if(mouse.isLeftButtonPressed()) {

@@ -3,6 +3,7 @@ package io.cubyz.blocks;
 import org.joml.Vector3i;
 
 import io.cubyz.ClientOnly;
+import io.cubyz.items.Inventory;
 import io.cubyz.world.Chunk;
 import io.cubyz.world.World;
 
@@ -12,6 +13,7 @@ public class BlockInstance {
 	private IBlockSpatial spatial;
 	private Vector3i pos;
 	private World world;
+	private Inventory blockInventory = null;
 	
 	public World getWorld() {
 		return world;
@@ -23,6 +25,9 @@ public class BlockInstance {
 	
 	public BlockInstance(Block block) {
 		this.block = block;
+		if(block.inventorySize != 0) {
+			blockInventory = new Inventory(block.inventorySize);
+		}
 	}
 	
 	public int getID() {
@@ -58,10 +63,19 @@ public class BlockInstance {
 	
 	public void setBlock(Block b) {
 		block = b;
+		if(block.inventorySize != 0) {
+			blockInventory = new Inventory(block.inventorySize);
+		} else {
+			blockInventory = null;
+		}
 	}
 	
 	public void setPosition(Vector3i pos) {
 		this.pos = pos;
+	}
+	
+	public Inventory getInventory() {
+		return blockInventory;
 	}
 	
 

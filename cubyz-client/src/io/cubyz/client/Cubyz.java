@@ -260,11 +260,11 @@ public class Cubyz implements IGameLogic {
 			userGUIs.put(name, (MenuGUI) gui);
 		};
 		
-		ClientOnly.openGui = (name) -> {
+		ClientOnly.openGui = (name, inv) -> {
 			if (!userGUIs.containsKey(name)) {
 				throw new IllegalArgumentException("No such GUI registered: " + name);
 			}
-			gameUI.setMenu(userGUIs.get(name));
+			gameUI.setMenu(userGUIs.get(name).setInventory(inv));
 		};
 		
 		try {
@@ -518,7 +518,7 @@ public class Cubyz implements IGameLogic {
 				//Building Blocks
 				if (buildCooldown == 0) {
 					buildCooldown = 10;
-					if(msd.getSelectedBlockInstance().getBlock().onClick(world, msd.getSelectedBlockInstance().getPosition())) {
+					if(msd.getSelectedBlockInstance().getBlock().onClick(world, msd.getSelectedBlockInstance().getPosition(), msd.getSelectedBlockInstance())) {
 						// potentially do a hand animation, in the future
 					} else {
 						Vector3i pos = msd.getEmptyPlace(world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate());

@@ -111,12 +111,11 @@ public class Recipe implements IRegistryElement {
 			if(braek)
 				break;
 		}
-		System.out.println(xLen + " x " + yLen);
 		if(yLen < y)
 			return null;
 		
 		// Check the remaining structure for the needed shape:
-		System.out.println(xLen + " x " + yLen);
+		//System.out.println(xLen + " x " + yLen);
 		int index = 0;
 		for(int i = x0; i < x0+xLen; i++) {
 			for(int j = y0; j < y0+yLen; j++) {

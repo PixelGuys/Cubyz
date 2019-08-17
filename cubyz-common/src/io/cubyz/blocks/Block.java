@@ -26,6 +26,7 @@ public class Block implements IRegistryElement {
 	private boolean solid = true;
 	private boolean selectable = true;
 	private Item blockDrop;
+	protected int inventorySize = 0;
 	protected boolean degradable = false; // Meaning undegradable parts of trees or other structures can grow through this block.
 	
 	public Block() {}
@@ -138,7 +139,7 @@ public class Block implements IRegistryElement {
 		return ONE;
 	}
 	
-	public boolean onClick(World world, Vector3i pos) {
+	public boolean onClick(World world, Vector3i pos, BlockInstance bi) {
 		return false; // returns true if the block was did something while clicked
 	}
 	

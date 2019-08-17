@@ -7,13 +7,14 @@ import java.util.function.Function;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.IBlockSpatial;
+import io.cubyz.items.Inventory;
 
 public class ClientOnly {
 
 	public static Function<BlockInstance, IBlockSpatial> createBlockSpatial;
 	public static Consumer<Block> createBlockMesh;
 	public static BiConsumer<String, Object> registerGui;
-	public static Consumer<String> openGui;
+	public static BiConsumer<String, Inventory> openGui;
 	
 	static {
 		createBlockSpatial = (b) -> {

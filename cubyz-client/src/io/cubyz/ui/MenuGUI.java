@@ -2,6 +2,8 @@ package io.cubyz.ui;
 
 import org.jungle.Window;
 
+import io.cubyz.items.Inventory;
+
 public abstract class MenuGUI {
 	
 	public abstract void init(long nvg);
@@ -15,5 +17,10 @@ public abstract class MenuGUI {
 	
 	// Optional methods
 	public void dispose() {}
+	
+	// For those guis that count on a block inventory. Others can safely ignore this.
+	public MenuGUI setInventory(Inventory inv) {
+		return this;
+	}
 	
 }
