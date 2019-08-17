@@ -74,6 +74,8 @@ public class Cubyz implements IGameLogic {
 	public static HashMap<String, Mesh> cachedDefaultModels = new HashMap<>();
 
 	public static int GUIKey = -1;
+	
+	private static HashMap<String, MenuGUI> userGUIs = new HashMap<>();
 
 	public Cubyz() {
 		instance = this;
@@ -237,6 +239,23 @@ public class Cubyz implements IGameLogic {
 		
 		ClientOnly.createBlockSpatial = (bi) -> {
 			return new BlockSpatial(bi);
+		};
+		
+		ClientOnly.registerGui = (name, gui) -> {
+			if (userGUIs.containsKey(name)) {
+				throw new IllegalArgumentException("GUI already registered: " + name);
+			}
+			if (!(gui instanceof MenuGUI)) {
+				throw new IllegalArgumentException("GUI Object must be a MenuGUI");
+			}
+			userGUIs.put(name, (MenuGUI) gui);
+		};
+		
+		ClientOnly.openGui = (name) -> {
+			if (!userGUIs.containsKey(name)) {
+				throw new IllegalArgumentException("No such GUI registered: " + name);
+			}
+			gameUI.setMenu(userGUIs.get(name));
 		};
 		
 		try {
