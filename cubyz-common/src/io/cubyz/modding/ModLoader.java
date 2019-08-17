@@ -1,12 +1,14 @@
 package io.cubyz.modding;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import io.cubyz.CubyzLogger;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.EventHandler;
+import io.cubyz.api.Proxy;
 import io.cubyz.api.Registry;
 import io.cubyz.api.Side;
 import io.cubyz.api.SideOnly;
@@ -71,7 +73,31 @@ public class ModLoader {
 			safeMethodInvoke(true, m, mod);
 	}
 	
-	public static void preInit(Object mod) {
+	static void injectProxy(Object mod, Side side) {
+		Class<?> cl = mod.getClass();
+		for (Field field : cl.getDeclaredFields()) {
+			field.setAccessible(true);
+			if (field.isAnnotationPresent(Proxy.class)) {
+				Proxy a = field.getAnnotation(Proxy.class);
+				try {
+					if (side == Side.CLIENT) {
+						field.set(mod, Class.forName(a.clientProxy()).getConstructor().newInstance());
+					} else {
+						field.set(mod, Class.forName(a.serverProxy()).getConstructor().newInstance());
+					}
+				} catch (IllegalArgumentException | IllegalAccessException | InstantiationException
+						| InvocationTargetException | NoSuchMethodException | SecurityException
+						| ClassNotFoundException e) {
+					CubyzLogger.i.warning("Could not inject Proxy!");
+					e.printStackTrace();
+				}
+				break;
+			}
+		}
+	}
+	
+	public static void preInit(Object mod, Side side) {
+		injectProxy(mod, side);
 		Method m = eventHandlerMethodSided(mod, "preInit", Side.SERVER);
 		if (m != null)
 			safeMethodInvoke(true, m, mod);

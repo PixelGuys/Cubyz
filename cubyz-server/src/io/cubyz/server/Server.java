@@ -18,6 +18,7 @@ import org.reflections.Reflections;
 import io.cubyz.Constants;
 import io.cubyz.CubyzLogger;
 import io.cubyz.api.Mod;
+import io.cubyz.api.Side;
 import io.cubyz.command.CommandExecutor;
 import io.cubyz.command.ICommandSource;
 import io.cubyz.modding.ModLoader;
@@ -96,7 +97,7 @@ public class Server {
 			Object mod = mods.get(i);
 			Mod modA = mod.getClass().getAnnotation(Mod.class);
 			CubyzLogger.instance.info("Pre-initiating " + modA.name() + " (" + modA.id() + ")");
-			ModLoader.preInit(mod);
+			ModLoader.preInit(mod, Side.SERVER);
 		}
 		
 		for (int i = 0; i < mods.size(); i++) {

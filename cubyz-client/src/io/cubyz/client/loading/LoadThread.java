@@ -14,6 +14,7 @@ import io.cubyz.Constants;
 import io.cubyz.CubyzLogger;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Mod;
+import io.cubyz.api.Side;
 import io.cubyz.blocks.Block;
 import io.cubyz.client.ClientBlockPair;
 import io.cubyz.client.Cubyz;
@@ -105,7 +106,7 @@ public class LoadThread extends Thread {
 			l.setStep(2, i+1, mods.size());
 			Object mod = mods.get(i);
 			log.info("Pre-initiating " + mod);
-			ModLoader.preInit(mod);
+			ModLoader.preInit(mod, Side.CLIENT);
 		}
 		
 		// Between pre-init and init code

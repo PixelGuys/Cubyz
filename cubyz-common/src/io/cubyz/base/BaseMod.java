@@ -1,8 +1,9 @@
-package io.cubyz.api.base;
+package io.cubyz.base;
 
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.EventHandler;
 import io.cubyz.api.Mod;
+import io.cubyz.api.Proxy;
 import io.cubyz.api.Registry;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Bedrock;
@@ -90,14 +91,19 @@ public class BaseMod {
 	static Recipe oakPlanksToStick;
 	static Recipe oakToWorkbench;
 	
+	// Client Proxy is defined in cubyz-client, a normal mod would define it in the same mod of course.
+	@Proxy(clientProxy = "io.cubyz.base.ClientProxy", serverProxy = "io.cubyz.base.CommonProxy")
+	static CommonProxy proxy;
+	
 	@EventHandler(type = "init")
 	public void init() {
-		System.out.println("Init!");
-		
 		// Both commands and recipes don't have any attributed EventHandler
 		// As they are independent to other (the correct order for others is block -> item (for item blocks and other items) -> entity)
 		registerRecipes(CubyzRegistries.RECIPE_REGISTRY);
 		CubyzRegistries.COMMAND_REGISTRY.register(new GiveCommand());
+		
+		// Init proxy
+		proxy.init();
 	}
 	
 	@EventHandler(type = "entity/register")
