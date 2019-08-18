@@ -529,7 +529,7 @@ public class Cubyz implements IGameLogic {
 			}
 			if (mouse.isRightButtonPressed() && mouse.isGrabbed()) {
 				//Building Blocks
-				if (buildCooldown == 0) {
+				if (buildCooldown == 0 && msd.getSelectedBlockInstance() != null) {
 					buildCooldown = 10;
 					if(msd.getSelectedBlockInstance().getBlock().onClick(world, msd.getSelectedBlockInstance().getPosition(), msd.getSelectedBlockInstance())) {
 						// potentially do a hand animation, in the future
