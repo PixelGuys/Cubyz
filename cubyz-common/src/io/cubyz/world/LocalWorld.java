@@ -224,7 +224,7 @@ public class LocalWorld extends World {
 			return chunks.get(lastChunk);
 		}
 		for (int i = 0; i < chunks.size(); i++) {
-			if (chunks.get(i).getX() == x && chunks.get(i).getZ() == z) {
+			if (chunks.get(i).getX() == x && chunks.get(i).getZ() == z) { // Sometimes a nullptr-exception is thrown here!
 				lastChunk = i;
 				return chunks.get(i);
 			}

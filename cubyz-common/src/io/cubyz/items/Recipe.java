@@ -8,7 +8,7 @@ public class Recipe implements IRegistryElement {
 	private int x, y; // Size of the shaped figure. If zero: shapeless.
 	private Item [] pattern; // Pattern of all items in the recipe. An entry is null when no item should be placed there.
 	private Item result;
-	private Resource res;
+	private Resource res = Resource.EMPTY;
 	private int num = 0; // Number of items needed. Used to faster search for recipes.
 	private int numRet = 0; // Number of items returned after applying this recipe.
 	

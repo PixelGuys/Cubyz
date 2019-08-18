@@ -11,7 +11,7 @@ public class Item implements IRegistryElement {
 	protected String texturePath;
 	protected String modelPath;
 	protected String fullTexturePath;
-	protected Resource id;
+	protected Resource id = Resource.EMPTY;
 	protected int stackSize = 64;
 	protected Block block = null;
 	

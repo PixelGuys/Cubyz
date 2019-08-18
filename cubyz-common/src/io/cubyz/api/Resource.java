@@ -2,6 +2,7 @@ package io.cubyz.api;
 
 public class Resource {
 
+	public static final Resource EMPTY = new Resource("empty:empty");
 	private String mod;
 	private String identifier;
 	

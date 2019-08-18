@@ -8,12 +8,14 @@ import io.cubyz.api.Registry;
 import io.cubyz.api.Resource;
 import io.cubyz.base.init.BlockInit;
 import io.cubyz.base.init.ItemInit;
+import io.cubyz.base.init.MaterialInit;
 import io.cubyz.blocks.Block;
 import io.cubyz.command.GiveCommand;
 import io.cubyz.entity.EntityType;
 import io.cubyz.entity.PlayerEntity;
 import io.cubyz.items.Item;
 import io.cubyz.items.Recipe;
+import io.cubyz.tools.Material;
 
 /**
  * Mod adding Cubyz default content.
@@ -60,6 +62,11 @@ public class BaseMod {
 	@EventHandler(type = "block/register")
 	public void registerBlocks(Registry<Block> reg) {
 		BlockInit.registerAll(reg);
+	}
+	
+	@EventHandler(type = "material/register")
+	public void registerMaterials(Registry<Material> reg) {
+		MaterialInit.registerAll(reg);
 	}
 	
 	public void registerRecipes(Registry<Recipe> reg) {
