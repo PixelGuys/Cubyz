@@ -22,7 +22,7 @@ public class DebugOverlay extends MenuGUI {
 	@Override
 	public void render(long nvg, Window win) {
 		if (Cubyz.clientShowDebug) {
-			NGraphics.setFont("OpenSans Bold", 12.0F);
+			NGraphics.setFont("Default", 12.0F);
 			NGraphics.setColor(255, 255, 255);
 			NGraphics.drawText(0, 0, Cubyz.getFPS() + "/60 fps");
 			NGraphics.drawText(0, 12, "Branded \"" + Constants.GAME_BRAND + "\", version " + Constants.GAME_VERSION);

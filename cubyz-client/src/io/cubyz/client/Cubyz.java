@@ -227,7 +227,7 @@ public class Cubyz implements IGameLogic {
 					texture = "blocks/undefined";
 				}
 				
-				if (block.isTextureConverted()) {
+				if (bm.texture_converted == (Boolean) true) {
 					tex = new Texture("assets/" + texResource.getMod() + "/textures/" + texture + ".png");
 				} else {
 					tex = new Texture(TextureConverter.fromBufferedImage(
@@ -365,7 +365,7 @@ public class Cubyz implements IGameLogic {
 				}
 			}
 			if (Keyboard.isKeyPressed(Keybindings.getKeyCode("inventory"))) {
-				gameUI.setMenu(new InventoryGUI());
+				// gameUI.setMenu(new InventoryGUI()); // until GeneralInventory is added..
 				Keyboard.setKeyPressed(Keybindings.getKeyCode("inventory"), false);
 			}
 			if (Keyboard.isKeyPressed(Keybindings.getKeyCode("menu"))) {

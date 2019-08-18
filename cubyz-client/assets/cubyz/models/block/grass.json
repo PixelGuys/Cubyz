@@ -1,4 +1,5 @@
 {
 	"parent": "cubyz:sidetextured",
-	"texture": "cubyz:blocks/grass"
+	"texture": "cubyz:blocks/grass",
+	"texture_converted": true
 }

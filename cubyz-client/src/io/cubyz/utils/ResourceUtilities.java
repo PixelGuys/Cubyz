@@ -22,6 +22,7 @@ public class ResourceUtilities {
 		public String model;
 		public String texture;
 		public String parent;
+		public Object texture_converted;
 	}
 	
 	public static BlockModel loadModel(Resource block) throws IOException {
