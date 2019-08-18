@@ -6,7 +6,7 @@ public class ClientProxy extends CommonProxy {
 
 	public void init() {
 		super.init();
-		//GameRegistry.registerGUI("cubyz:workbench", new WorkbenchGUI()); // same, until GeneralInventory fixed
+		GameRegistry.registerGUI("cubyz:workbench", new WorkbenchGUI());
 	}
 	
 }
