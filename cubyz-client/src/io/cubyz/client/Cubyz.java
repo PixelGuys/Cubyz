@@ -377,7 +377,7 @@ public class Cubyz implements IGameLogic {
 				}
 			}
 			if (Keyboard.isKeyPressed(Keybindings.getKeyCode("inventory"))) {
-				// gameUI.setMenu(new InventoryGUI()); // until GeneralInventory is added..
+				gameUI.setMenu(new InventoryGUI()); // until GeneralInventory is added..
 				Keyboard.setKeyPressed(Keybindings.getKeyCode("inventory"), false);
 			}
 			if (Keyboard.isKeyPressed(Keybindings.getKeyCode("menu"))) {
