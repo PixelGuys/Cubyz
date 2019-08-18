@@ -124,7 +124,6 @@ public class LocalWorld extends World {
 		name = "World";
 		chunks = new ArrayList<>();
 		visibleChunks = new Chunk[0];
-		entities.add(CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player").newEntity());
 		
 		thread = new ChunkGenerationThread();
 		thread.setName("Local-Chunk-Thread");
@@ -149,12 +148,9 @@ public class LocalWorld extends World {
 	@Override
 	public Player getLocalPlayer() {
 		if (player == null) {
-			for (Entity en : entities) {
-				if (en instanceof Player) {
-					player = (Player) en;
-					player.setWorld(this);
-				}
-			}
+			player = (Player) CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player").newEntity();
+			entities.add(player);
+			player.setWorld(this);
 		}
 		return player;
 	}
@@ -177,6 +173,13 @@ public class LocalWorld extends World {
 	@Override
 	public Entity[] getEntities() {
 		return entities.toArray(new Entity[entities.size()]);
+	}
+	
+	public void setEntities(Entity[] arr) {
+		entities = new ArrayList<Entity>();
+		for (Entity e : arr) {
+			entities.add(e);
+		}
 	}
 	
 	@Override

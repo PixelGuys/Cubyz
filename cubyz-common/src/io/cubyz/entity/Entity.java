@@ -1,12 +1,11 @@
 package io.cubyz.entity;
 
-import java.util.function.Consumer;
-
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 
 import io.cubyz.IRenderablePair;
 import io.cubyz.blocks.BlockInstance;
+import io.cubyz.math.FloatingInteger;
 import io.cubyz.math.Vector3fi;
 import io.cubyz.ndt.NDTContainer;
 import io.cubyz.world.World;
@@ -211,20 +210,58 @@ public abstract class Entity {
 		return false;
 	}
 	
+	//@SuppressWarnings("unchecked")
+	public void update() {
+		if (renderPair != null) {
+			//Consumer<Entity> upd = (Consumer<Entity>) renderPair.get("renderPairUpdate");
+			//upd.accept(this);
+		}
+	}
+	
+	// NDT related
+	
+	private NDTContainer saveVector(Vector3fi vec) {
+		NDTContainer ndt = new NDTContainer();
+		ndt.setFloatingInteger("x", new FloatingInteger(vec.x, vec.relX));
+		ndt.setFloat("y", vec.y);
+		ndt.setFloatingInteger("z", new FloatingInteger(vec.z, vec.relZ));
+		return ndt;
+	}
+	
+	private Vector3fi loadVector3fi(NDTContainer ndt) {
+		FloatingInteger x = ndt.getFloatingInteger("x");
+		float y = ndt.getFloat("y");
+		FloatingInteger z = ndt.getFloatingInteger("z");
+		return new Vector3fi(x, y, z);
+	}
+	
+	private Vector3f loadVector3f(NDTContainer ndt) {
+		float x = ndt.getFloat("x");
+		float y = ndt.getFloat("y");
+		float z = ndt.getFloat("z");
+		return new Vector3f(x, y, z);
+	}
+	
+	private NDTContainer saveVector(Vector3f vec) {
+		NDTContainer ndt = new NDTContainer();
+		ndt.setFloat("x", vec.x);
+		ndt.setFloat("y", vec.y);
+		ndt.setFloat("x", vec.y);
+		return ndt;
+	}
+	
 	public NDTContainer saveTo(NDTContainer ndt) {
+		ndt.setContainer("position", saveVector(position));
+		ndt.setContainer("rotation", saveVector(rotation));
+		ndt.setContainer("velocity", saveVector(new Vector3f(vx, vy, vz)));
 		return ndt;
 	}
 	
 	public void loadFrom(NDTContainer ndt) {
-		
-	}
-	
-	@SuppressWarnings("unchecked")
-	public void update() {
-		if (renderPair != null) {
-			Consumer<Entity> upd = (Consumer<Entity>) renderPair.get("renderPairUpdate");
-			upd.accept(this);
-		}
+		position = loadVector3fi(ndt.getContainer("position"));
+		rotation = loadVector3f (ndt.getContainer("rotation"));
+		Vector3f velocity = loadVector3f(ndt.getContainer("velocity"));
+		vx = velocity.x; vy = velocity.y; vz = velocity.z;
 	}
 	
 }

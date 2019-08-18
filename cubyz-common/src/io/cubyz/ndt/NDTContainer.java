@@ -3,6 +3,7 @@ package io.cubyz.ndt;
 import java.util.HashMap;
 
 import io.cubyz.math.Bits;
+import io.cubyz.math.FloatingInteger;
 
 public class NDTContainer extends NDTTag {
 
@@ -126,12 +127,34 @@ public class NDTContainer extends NDTTag {
 		setTag(key, tag);
 	}
 	
+	public float getFloat(String key) {
+		NDTFloat tag = (NDTFloat) getTag(key);
+		return tag.getValue();
+	}
+	
+	public void setFloat(String key, float f) {
+		NDTFloat tag = new NDTFloat();
+		tag.setValue(f);
+		setTag(key, tag);
+	}
+	
 	public NDTContainer getContainer(String key) {
 		return (NDTContainer) getTag(key);
 	}
 	
 	public void setContainer(String key, NDTContainer c) {
 		setTag(key, c);
+	}
+	
+	public void setFloatingInteger(String key, FloatingInteger i) {
+		NDTFloatingInteger tag = new NDTFloatingInteger();
+		tag.setValue(i);
+		setTag(key, tag);
+	}
+	
+	public FloatingInteger getFloatingInteger(String key) {
+		NDTFloatingInteger tag = (NDTFloatingInteger) getTag(key);
+		return tag.getValue();
 	}
 	
 	public boolean validate() {

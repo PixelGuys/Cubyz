@@ -23,4 +23,8 @@ public class NDTFloatingInteger extends NDTTag {
 		Bits.putFloat(content, 4, rel);
 	}
 	
+	public void setValue(FloatingInteger i) {
+		setValue(i.getInteger(), i.getDecimal());
+	}
+	
 }

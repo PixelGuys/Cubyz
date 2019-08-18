@@ -1,8 +1,10 @@
 package io.cubyz.math;
 
 public class Vector3fi {
+	
 	public int x, z;
 	public float y, relX, relZ;
+	
 	public Vector3fi() {
 		x = 0;
 		y = 0;
@@ -25,6 +27,14 @@ public class Vector3fi {
 		this.z = (int)Math.floor(z);
 		relX = x-this.x;
 		relZ = z-this.z;
+	}
+	
+	public Vector3fi(FloatingInteger x, float y, FloatingInteger z) {
+		this.x = x.getInteger();
+		relX = x.getDecimal();
+		this.y = y;
+		this.z = z.getInteger();
+		relZ = z.getDecimal();
 	}
 	
 	public void add(float x, float y, float z) {

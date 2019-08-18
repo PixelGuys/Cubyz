@@ -19,7 +19,7 @@ import io.cubyz.world.World;
 public class WorldIO {
 
 	private File dir;
-	private World world;
+	private LocalWorld world;
 	private ArrayList<byte[]> blockData = new ArrayList<>();
 	private ArrayList<int[]> chunkData = new ArrayList<>();
 
@@ -28,9 +28,9 @@ public class WorldIO {
 		if (!dir.exists()) {
 			dir.mkdirs();
 		}
-		this.world = world;
+		this.world = (LocalWorld) world;
 
-		// TODO: make this more general to World rather than LocalWorld.
+		// RemoteWorld doesn't have to be saved and only blockData is used for remote world (which can be easily overwritten without WorldIO)
 		LocalWorld w = (LocalWorld) world;
 		w.blockData = blockData;
 		w.chunkData = chunkData;
@@ -53,11 +53,11 @@ public class WorldIO {
 			world.setHeight(ndt.getInteger("height"));
 			world.setSeed(ndt.getInteger("seed"));
 			world.setGameTime(ndt.getLong("gameTime"));
-			//Entity[] entities = new Entity[in.readInt()];
-			//for (int i = 0; i < entities.length; i++) {
-			//	entities[i] = EntityIO.loadEntity(in);
-			//}
-			// TODO set entities
+			Entity[] entities = new Entity[ndt.getInteger("entityNumber")];
+			for (int i = 0; i < entities.length; i++) {
+				entities[i] = EntityIO.loadEntity(in);
+			}
+			world.setEntities(entities);
 			in.close();
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -73,11 +73,11 @@ public class WorldIO {
 			ndt.setInteger("height", world.getHeight());
 			ndt.setInteger("seed", world.getSeed());
 			ndt.setLong("gameTime", world.getGameTime());
+			ndt.setInteger("entityNumber", world.getEntities().length);
 			out.write(ndt.getData());
-			//out.writeInt(world.getEntities().length);
-			//for (Entity ent : world.getEntities()) {
-			//	EntityIO.saveEntity(ent, out);
-			//}
+			for (Entity ent : world.getEntities()) {
+				EntityIO.saveEntity(ent, out);
+			}
 			out.close();
 		} catch (IOException e) {
 			e.printStackTrace();

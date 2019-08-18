@@ -27,7 +27,6 @@ import io.cubyz.multiplayer.GameProfile;
 import io.cubyz.multiplayer.LoginToken;
 import io.cubyz.multiplayer.client.MPClient;
 import io.cubyz.multiplayer.client.PingResponse;
-import io.cubyz.multiplayer.server.CubyzServer;
 import io.cubyz.translate.Language;
 import io.cubyz.translate.LanguageLoader;
 import io.cubyz.ui.*;
