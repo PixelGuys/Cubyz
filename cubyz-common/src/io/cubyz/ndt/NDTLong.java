@@ -18,4 +18,8 @@ public class NDTLong extends NDTTag {
 		Bits.putLong(content, 0, i);
 	}
 	
+	public String toString() {
+		return "NDTLong[value=" + getValue() + "]";
+	}
+	
 }

@@ -9,6 +9,7 @@ public class NDTConstants {
 	public static final int TYPE_LONG = 5;
 	public static final int TYPE_FLOAT = 6;
 	public static final int TYPE_DOUBLE = 7;
+	public static final int TYPE_FLOATINT = 8;
 	
 	// others
 	public static final int TYPE_CONTAINER = 2;

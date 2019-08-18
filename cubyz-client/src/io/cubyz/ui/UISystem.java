@@ -46,7 +46,7 @@ public class UISystem extends Hud {
 			gui.init(nvg);
 		}
 		if (gui == null || gui.doesPauseGame()) {
-			System.gc();
+			//System.gc();
 		}
 	}
 	

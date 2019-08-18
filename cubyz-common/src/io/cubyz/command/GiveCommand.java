@@ -24,7 +24,7 @@ public class GiveCommand extends CommandBase {
 	public void commandExecute(ICommandSource source, String[] args) {
 		Registry<Item> items = CubyzRegistries.ITEM_REGISTRY;
 		if (args.length < 2) {
-			source.feedback("Usage: give <item id>");
+			source.feedback("Usage: give <item id> [amount]");
 			return;
 		}
 		if (items.getByID(args[1]) == null) {
@@ -37,7 +37,16 @@ public class GiveCommand extends CommandBase {
 		}
 		Player local = source.getWorld().getLocalPlayer();
 		Inventory inv = local.getInventory();
-		inv.addItem(items.getByID(args[1]), 1);
+		int amount = 1;
+		if (args.length > 2) {
+			try {
+				amount = Integer.parseInt(args[2]);
+			} catch (NumberFormatException e) {
+				source.feedback("Error: invalid number " + args[2]);
+				return;
+			}
+		}
+		inv.addItem(items.getByID(args[1]), amount);
 	}
 	
 }

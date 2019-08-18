@@ -24,7 +24,7 @@ public class NDTString extends NDTTag {
 	
 	public void setValue(String str) {
 		content = new byte[2 + str.length()];
-		Bits.putInt(content, 0, str.length());
+		Bits.putShort(content, 0, (short) str.length());
 		for (int i = 0; i < str.length(); i++) {
 			content[i + 2] = (byte) str.charAt(i);
 		}
@@ -32,5 +32,9 @@ public class NDTString extends NDTTag {
 	
 	public boolean validate() {
 		return getLength() == content.length-2;
+	}
+	
+	public String toString() {
+		return "NDTString[value=" + getValue() + "]";
 	}
 }

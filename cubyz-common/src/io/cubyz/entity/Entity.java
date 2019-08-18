@@ -2,13 +2,13 @@ package io.cubyz.entity;
 
 import java.util.function.Consumer;
 
-import org.joml.AABBf;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 
 import io.cubyz.IRenderablePair;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.math.Vector3fi;
+import io.cubyz.ndt.NDTContainer;
 import io.cubyz.world.World;
 
 public abstract class Entity {
@@ -209,6 +209,14 @@ public abstract class Entity {
 			return true;
 		}
 		return false;
+	}
+	
+	public NDTContainer saveTo(NDTContainer ndt) {
+		return ndt;
+	}
+	
+	public void loadFrom(NDTContainer ndt) {
+		
 	}
 	
 	@SuppressWarnings("unchecked")

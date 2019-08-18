@@ -32,24 +32,30 @@ public class NDTTag {
 	}
 	
 	public static NDTTag fromBytes(byte[] bytes) {
+		byte[] tagBytes = NDTContainer.subArray(1, bytes.length, bytes);
 		if (bytes[0] == NDTConstants.TYPE_INT) {
 			NDTInteger ndt = new NDTInteger();
-			ndt.setBytes(bytes);
+			ndt.setBytes(tagBytes);
 			return ndt;
 		}
 		if (bytes[0] == NDTConstants.TYPE_LONG) {
 			NDTLong ndt = new NDTLong();
-			ndt.setBytes(bytes);
+			ndt.setBytes(tagBytes);
 			return ndt;
 		}
 		if (bytes[0] == NDTConstants.TYPE_STRING) {
 			NDTString ndt = new NDTString();
-			ndt.setBytes(bytes);
+			ndt.setBytes(tagBytes);
 			return ndt;
 		}
 		if (bytes[0] == NDTConstants.TYPE_CONTAINER) {
 			NDTContainer ndt = new NDTContainer();
-			ndt.setBytes(bytes);
+			ndt.setBytes(tagBytes);
+			return ndt;
+		}
+		if (bytes[0] == NDTConstants.TYPE_FLOATINT) {
+			NDTFloatingInteger ndt = new NDTFloatingInteger();
+			ndt.setBytes(tagBytes);
 			return ndt;
 		}
 		return null;

@@ -134,7 +134,7 @@ public class LocalWorld extends World {
 		generator = new LifelandGenerator();
 		wio = new WorldIO(this, new File("saves/" + name));
 		if (wio.hasWorldData()) {
-			//wio.loadWorldData();
+			wio.loadWorldData();
 		} else {
 			wio.saveWorldData();
 		}

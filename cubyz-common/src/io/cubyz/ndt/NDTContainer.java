@@ -20,6 +20,14 @@ public class NDTContainer extends NDTTag {
 		System.out.println("Loaded!");
 	}
 	
+	public static byte[] subArray(int s, int e, byte[] arr) {
+		byte[] n = new byte[e - s];
+		for (int i = 0; i < e - s; i++) {
+			n[i] = arr[s + i];
+		}
+		return n;
+	}
+	
 	byte[] sub(int s, int e) {
 		byte[] arr = new byte[e - s];
 		for (int i = 0; i < e - s; i++) {
@@ -36,11 +44,11 @@ public class NDTContainer extends NDTTag {
 			short len = Bits.getShort(content, addr);
 			short size = Bits.getShort(content, addr+2);
 			NDTString key = new NDTString();
-			key.setBytes(sub(addr+4, addr+len+6));
-			addr += len + 6;
-			System.out.println("Load " + key.getValue());
-			tags.put(key.getValue(), NDTTag.fromBytes(sub(addr, addr+size)));
-			addr += size;
+			key.setBytes(sub(addr+4, addr+len+4));
+			addr += len + 4;
+			NDTTag tag = NDTTag.fromBytes(sub(addr, addr+size+1));
+			tags.put(key.getValue(), tag);
+			addr += size+1;
 		}
 	}
 	
@@ -57,19 +65,15 @@ public class NDTContainer extends NDTTag {
 		int addr = 2;
 		for (String key : tags.keySet()) {
 			NDTTag tag = tags.get(key);
-			Bits.putShort(content, addr, (short) key.length());
-			Bits.putShort(content, addr+2, (short) tag.getData().length);
+			Bits.putShort(content, addr, (short) (key.length()+2));
+			Bits.putShort(content, addr+2, (short) (tag.getData().length));
 			NDTString tagKey = new NDTString();
 			tagKey.setValue(key);
-			//System.out.println("Key length: " + tagKey.getLength());
 			System.arraycopy(tagKey.getData(), 0, content, addr+4, tagKey.getData().length);
 			addr += tagKey.getData().length + 4;
-			
-			byte[] tagContent = new byte[tag.getData().length + 1];
-			tagContent[0] = tag.type;
-			System.arraycopy(tag.getData(), 0, tagContent, 1, tag.getData().length);
-			System.arraycopy(tagContent, 0, content, addr, tagContent.length);
-			addr += tag.getData().length;
+			content[addr] = tag.type;
+			System.arraycopy(tag.getData(), 0, content, addr+1, tag.getData().length);
+			addr += tag.getData().length + 1;
 		}
 	}
 	

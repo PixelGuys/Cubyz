@@ -18,4 +18,8 @@ public class NDTInteger extends NDTTag {
 		Bits.putInt(content, 0, i);
 	}
 	
+	public String toString() {
+		return "NDTInteger[value=" + getValue() + "]";
+	}
+	
 }
