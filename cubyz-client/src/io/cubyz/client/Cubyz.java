@@ -35,6 +35,7 @@ import io.cubyz.ui.mods.InventoryGUI;
 import io.cubyz.utils.*;
 import io.cubyz.utils.ResourceUtilities.BlockModel;
 import io.cubyz.world.*;
+import io.cubyz.world.generator.LifelandGenerator;
 
 public class Cubyz implements IGameLogic {
 
@@ -117,11 +118,22 @@ public class Cubyz implements IGameLogic {
 		}
 		Cubyz.world = world;
 		Random rnd = new Random();
-		int dx = rnd.nextInt(1000);
-		int dz = rnd.nextInt(1000);
-		//dx = dz = Integer.MIN_VALUE+2048;
-		world.synchronousSeek(dx, dz);
-		int highestY = world.getHighestBlock(dx, dz);
+		int dx = 0;
+		int dz = 0;
+		int highestY = 0;
+		CubyzLogger.i.info("Finding position..");
+		while (true) {
+			dx = rnd.nextInt(10000) - 5000;
+			dz = rnd.nextInt(10000) - 5000;
+			//dx = dz = Integer.MIN_VALUE+2048;
+			CubyzLogger.i.info("Trying " + dx + " ? " + dz);
+			world.synchronousSeek(dx, dz);
+			highestY = world.getHighestBlock(dx, dz);
+			if (highestY > LifelandGenerator.SEA_LEVEL) { // TODO: always true if generator isn't lifeland
+				break;
+			}
+		}
+		CubyzLogger.i.info("OK!");
 		world.getLocalPlayer().setPosition(new Vector3i(dx, highestY+2, dz));
 		DiscordIntegration.setStatus("Playing");
 		Cubyz.gameUI.addOverlay(new GameOverlay());
