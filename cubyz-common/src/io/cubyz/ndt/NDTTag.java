@@ -43,15 +43,18 @@ public class NDTTag {
 			ndt.setBytes(tagBytes);
 			return ndt;
 		}
+		if (bytes[0] == NDTConstants.TYPE_FLOAT) {
+			NDTFloat ndt = new NDTFloat();
+			ndt.setBytes(tagBytes);
+			return ndt;
+		}
 		if (bytes[0] == NDTConstants.TYPE_STRING) {
 			NDTString ndt = new NDTString();
 			ndt.setBytes(tagBytes);
 			return ndt;
 		}
 		if (bytes[0] == NDTConstants.TYPE_CONTAINER) {
-			NDTContainer ndt = new NDTContainer();
-			ndt.setBytes(tagBytes);
-			return ndt;
+			return new NDTContainer(tagBytes);
 		}
 		if (bytes[0] == NDTConstants.TYPE_FLOATINT) {
 			NDTFloatingInteger ndt = new NDTFloatingInteger();

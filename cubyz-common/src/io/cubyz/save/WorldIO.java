@@ -11,6 +11,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
 import io.cubyz.entity.Entity;
+import io.cubyz.math.Bits;
 import io.cubyz.ndt.NDTContainer;
 import io.cubyz.world.Chunk;
 import io.cubyz.world.LocalWorld;
@@ -43,8 +44,11 @@ public class WorldIO {
 	public void loadWorldData() {
 		try {
 			FileInputStream in = new FileInputStream(new File(dir, "world.dat"));
+			byte[] len = new byte[4];
+			in.read(len);
+			int l = Bits.getInt(len, 0);
 			
-			ByteBuffer dst = ByteBuffer.allocate((int) in.getChannel().size());
+			ByteBuffer dst = ByteBuffer.allocate(l);
 			in.getChannel().read(dst);
 			dst.flip();
 			
@@ -56,6 +60,7 @@ public class WorldIO {
 			Entity[] entities = new Entity[ndt.getInteger("entityNumber")];
 			for (int i = 0; i < entities.length; i++) {
 				entities[i] = EntityIO.loadEntity(in);
+				entities[i].setWorld(world);
 			}
 			world.setEntities(entities);
 			in.close();
@@ -74,6 +79,9 @@ public class WorldIO {
 			ndt.setInteger("seed", world.getSeed());
 			ndt.setLong("gameTime", world.getGameTime());
 			ndt.setInteger("entityNumber", world.getEntities().length);
+			byte[] len = new byte[4];
+			Bits.putInt(len, 0, ndt.getData().length);
+			out.write(len);
 			out.write(ndt.getData());
 			for (Entity ent : world.getEntities()) {
 				EntityIO.saveEntity(ent, out);

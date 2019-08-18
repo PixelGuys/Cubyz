@@ -28,8 +28,7 @@ public class EntityIO {
 		int len = Bits.getInt(lenBytes, 0);
 		byte[] buf = new byte[len];
 		in.read(buf);
-		NDTContainer ndt = new NDTContainer();
-		ndt.setBytes(buf);
+		NDTContainer ndt = new NDTContainer(buf);
 		
 		EntityType type = CubyzRegistries.ENTITY_REGISTRY.getByID(ndt.getString("id"));
 		if (type == null) {

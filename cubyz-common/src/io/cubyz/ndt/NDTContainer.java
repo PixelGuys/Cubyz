@@ -18,7 +18,6 @@ public class NDTContainer extends NDTTag {
 		this();
 		content = bytes;
 		load();
-		System.out.println("Loaded!");
 	}
 	
 	public static byte[] subArray(int s, int e, byte[] arr) {
@@ -56,7 +55,7 @@ public class NDTContainer extends NDTTag {
 	void save() {
 		int size = 2;
 		for (String key : tags.keySet()) {
-			size += 6;
+			size += 4;
 			size += tags.get(key).getData().length+1;
 			size += key.length() + 2;
 		}

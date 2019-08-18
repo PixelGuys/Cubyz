@@ -246,7 +246,7 @@ public abstract class Entity {
 		NDTContainer ndt = new NDTContainer();
 		ndt.setFloat("x", vec.x);
 		ndt.setFloat("y", vec.y);
-		ndt.setFloat("x", vec.y);
+		ndt.setFloat("z", vec.y);
 		return ndt;
 	}
 	
@@ -262,6 +262,7 @@ public abstract class Entity {
 		rotation = loadVector3f (ndt.getContainer("rotation"));
 		Vector3f velocity = loadVector3f(ndt.getContainer("velocity"));
 		vx = velocity.x; vy = velocity.y; vz = velocity.z;
+		System.out.println(position.x);
 	}
 	
 }

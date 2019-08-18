@@ -50,6 +50,7 @@ public class LocalWorld extends World {
 	private WorldIO wio;
 	
 	private ChunkGenerationThread thread;
+	private boolean generated;
 	
 	private static final int DAYCYCLE = 120000; // Length of one in-game day in 100ms. Midnight is at DAYCYCLE/2. Sunrise and sunset each take about 1/16 of the day.
 	long gameTime = 0; // Time of the game in 100ms.
@@ -134,6 +135,7 @@ public class LocalWorld extends World {
 		wio = new WorldIO(this, new File("saves/" + name));
 		if (wio.hasWorldData()) {
 			wio.loadWorldData();
+			generated = true;
 		} else {
 			wio.saveWorldData();
 		}
@@ -148,9 +150,16 @@ public class LocalWorld extends World {
 	@Override
 	public Player getLocalPlayer() {
 		if (player == null) {
-			player = (Player) CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player").newEntity();
-			entities.add(player);
-			player.setWorld(this);
+			for (Entity e : entities) {
+				if (e instanceof Player) {
+					player = (Player) e;
+				}
+			}
+			if (player == null) {
+				player = (Player) CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player").newEntity();
+				entities.add(player);
+				player.setWorld(this);
+			}
 		}
 		return player;
 	}
@@ -359,7 +368,7 @@ public class LocalWorld extends World {
 	
 	public void generate() {
 		int ID = 0;
-		seed = rnd.nextInt();
+		if (!generated) seed = rnd.nextInt();
 		ArrayList<Ore> ores = new ArrayList<Ore>();
 		blocks = new Block[CubyzRegistries.BLOCK_REGISTRY.registered().length];
 		for (IRegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
@@ -383,6 +392,7 @@ public class LocalWorld extends World {
 			catch(Exception e) {}
 		}
 		LifelandGenerator.init(ores.toArray(new Ore[ores.size()]));
+		generated = true;
 	}
 
 	@Override

@@ -133,7 +133,9 @@ public class Cubyz implements IGameLogic {
 			}
 		}
 		CubyzLogger.i.info("OK!");
-		world.getLocalPlayer().setPosition(new Vector3i(dx, highestY+2, dz));
+		if (world.getLocalPlayer().getPosition().x == 0 && world.getLocalPlayer().getPosition().z == 0) { // temporary solution to only TP on spawn
+			world.getLocalPlayer().setPosition(new Vector3i(dx, highestY+2, dz));
+		}
 		DiscordIntegration.setStatus("Playing");
 		Cubyz.gameUI.addOverlay(new GameOverlay());
 	}
