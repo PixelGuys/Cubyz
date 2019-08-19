@@ -29,9 +29,9 @@ public class GeneralOverlay extends MenuGUI {
 			NGraphics.setTextAlign(NanoVG.NVG_ALIGN_RIGHT | NanoVG.NVG_ALIGN_TOP);
 			NGraphics.setColor(0, 0, 0, 127);
 			NGraphics.fillRect(win.getWidth() - 200, 0, 200, 50);
-			NGraphics.setFont("OpenSans Bold", 24f);
+			NGraphics.setFont("Title", 24f);
 			NGraphics.drawText(win.getWidth(), 0, currentToast.title);
-			NGraphics.setFont("OpenSans Bold", 12f);
+			NGraphics.setFont("Default", 12f);
 			NGraphics.drawText(win.getWidth(), 30, currentToast.text);
 			NGraphics.setTextAlign(defaultAlign);
 			if (toastStartTimestamp < System.currentTimeMillis() - 2500) {
