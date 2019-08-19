@@ -1,4 +1,4 @@
-package io.cubyz.tools;
+package io.cubyz.items.tools;
 
 import java.util.ArrayList;
 import java.util.HashMap;

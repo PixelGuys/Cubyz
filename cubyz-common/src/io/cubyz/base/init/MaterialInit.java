@@ -3,9 +3,9 @@ package io.cubyz.base.init;
 import java.util.ArrayList;
 
 import io.cubyz.api.Registry;
-import io.cubyz.tools.FallingApart;
-import io.cubyz.tools.Material;
-import io.cubyz.tools.Regrowth;
+import io.cubyz.items.tools.Material;
+import io.cubyz.items.tools.modifiers.FallingApart;
+import io.cubyz.items.tools.modifiers.Regrowth;
 
 public class MaterialInit {
 	

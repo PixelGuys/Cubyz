@@ -15,7 +15,7 @@ import io.cubyz.entity.EntityType;
 import io.cubyz.entity.PlayerEntity;
 import io.cubyz.items.Item;
 import io.cubyz.items.Recipe;
-import io.cubyz.tools.Material;
+import io.cubyz.items.tools.Material;
 
 /**
  * Mod adding Cubyz default content.
@@ -41,6 +41,7 @@ public class BaseMod {
 		// Both commands and recipes don't have any attributed EventHandler
 		// As they are independent to other (the correct order for others is block -> item (for item blocks and other items) -> entity)
 		registerRecipes(CubyzRegistries.RECIPE_REGISTRY);
+		registerMaterials(CubyzRegistries.TOOL_MATERIAL_REGISTRY);
 		CubyzRegistries.COMMAND_REGISTRY.register(new GiveCommand());
 		
 		// Init proxy
@@ -64,7 +65,6 @@ public class BaseMod {
 		BlockInit.registerAll(reg);
 	}
 	
-	@EventHandler(type = "material/register")
 	public void registerMaterials(Registry<Material> reg) {
 		MaterialInit.registerAll(reg);
 	}

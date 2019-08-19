@@ -7,6 +7,7 @@ import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Resource;
 import io.cubyz.command.ICommandSource;
 import io.cubyz.items.Inventory;
+import io.cubyz.ndt.NDTContainer;
 
 public class PlayerEntity extends EntityType {
 
@@ -103,6 +104,21 @@ public class PlayerEntity extends EntityType {
 		@Override
 		public void feedback(String feedback) {
 			
+		}
+		
+		@Override
+		public void loadFrom(NDTContainer ndt) {
+			super.loadFrom(ndt);
+			if (ndt.hasKey("inventory")) {
+				inv.loadFrom(ndt.getContainer("inventory"));
+			}
+		}
+		
+		@Override
+		public NDTContainer saveTo(NDTContainer ndt) {
+			ndt = super.saveTo(ndt);
+			ndt.setContainer("inventory", inv.saveTo(new NDTContainer()));
+			return ndt;
 		}
 	}
 

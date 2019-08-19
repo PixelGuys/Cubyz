@@ -1,4 +1,4 @@
-package io.cubyz.tools;
+package io.cubyz.items.tools;
 
 // Modifier a certain material may have.
 public interface Modifier {

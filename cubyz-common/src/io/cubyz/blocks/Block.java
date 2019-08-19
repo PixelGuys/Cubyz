@@ -7,6 +7,7 @@ import io.cubyz.IRenderablePair;
 import io.cubyz.api.IRegistryElement;
 import io.cubyz.api.Resource;
 import io.cubyz.items.Item;
+import io.cubyz.items.ItemBlock;
 import io.cubyz.world.World;
 
 public class Block implements IRegistryElement {
@@ -33,9 +34,7 @@ public class Block implements IRegistryElement {
 	
 	public Block(String id) {
 		setID(id);
-		Item bd = new Item();
-		bd.setBlock(this);
-		bd.setID(id); // better to use actual block ID than a specific id!
+		ItemBlock bd = new ItemBlock(this);
 		bd.setTexture("blocks/"+this.id.getID()+".png");
 		setBlockDrop(bd);
 	}

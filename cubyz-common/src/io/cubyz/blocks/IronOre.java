@@ -1,6 +1,7 @@
 package io.cubyz.blocks;
 
 import io.cubyz.items.Item;
+import io.cubyz.items.ItemBlock;
 
 public class IronOre extends Ore {
 
@@ -8,8 +9,7 @@ public class IronOre extends Ore {
 		setID("cubyz:iron_ore");
 		setHeight(63);
 		setChance(0.03F);
-		Item bd = new Item();
-		bd.setBlock(this);
+		Item bd = new ItemBlock(this);
 		bd.setID("cubyz:iron_ore");
 		bd.setTexture("materials/iron_ore.png");
 		setBlockDrop(bd);

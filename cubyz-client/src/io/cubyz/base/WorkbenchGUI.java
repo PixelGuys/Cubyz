@@ -26,7 +26,7 @@ public class WorkbenchGUI extends GeneralInventory {
 			// TODO: Don't really swap the references. Just swap the contents of the references. That will make everything a lot easier.
 			newlyCarried = inv[i].grabWithMouse(mouse, carried, win.getWidth()/2, win.getHeight());
 			if(newlyCarried != null) {
-				Cubyz.world.getLocalPlayer().getInventory().setSlot(carried, i);
+				Cubyz.world.getLocalPlayer().getInventory().setStack(i, carried);
 				carried = newlyCarried;
 				if (i == 37) {
 					// Remove items in the crafting grid.

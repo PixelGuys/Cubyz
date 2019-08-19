@@ -26,7 +26,7 @@ public abstract class GeneralInventory extends MenuGUI {
 		if(carried.getItem() != null) {
 			for(int i = 0; i < inv.length; i++) {
 				if(inv[i].reference.getItem() == null && !inv[i].takeOnly) {
-					Cubyz.world.getLocalPlayer().getInventory().setSlot(carried, i);
+					Cubyz.world.getLocalPlayer().getInventory().setStack(i, carried);
 					return;
 				}
 			}

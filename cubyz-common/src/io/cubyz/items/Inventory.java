@@ -1,5 +1,6 @@
 package io.cubyz.items;
 
+import io.cubyz.api.CubyzRegistries;
 import io.cubyz.blocks.Block;
 import io.cubyz.ndt.NDTContainer;
 
@@ -37,37 +38,59 @@ public class Inventory {
 		}
 	}
 	
-	public Block getBlock(int selection) {
-		return items[selection].getBlock();
+	public Block getBlock(int slot) {
+		return items[slot].getBlock();
 	}
 	
-	public Item getItem(int selection) {
-		return items[selection].getItem();
+	public Item getItem(int slot) {
+		return items[slot].getItem();
 	}
 	
-	public ItemStack getStack(int selection) {
-		return items[selection];
+	public ItemStack getStack(int slot) {
+		return items[slot];
 	}
 	
-	public int getAmount(int selection) {
-		return items[selection].getAmount();
+	public boolean hasStack(int slot) {
+		return items[slot] != null;
 	}
 	
-	public void saveTo(NDTContainer container) {
+	public int getAmount(int slot) {
+		return items[slot].getAmount();
+	}
+	
+	public NDTContainer saveTo(NDTContainer container) {
 		container.setInteger("capacity", items.length);
 		for (int i = 0; i < items.length; i++) {
-			
+			NDTContainer ndt = new NDTContainer();
+			ItemStack stack = items[i];
+			if (stack.getItem() != null) {
+				ndt.setString("item", stack.getItem().getRegistryID().toString());
+				ndt.setInteger("amount", stack.getAmount());
+				container.setContainer("item_" + i, ndt);
+			}
 		}
+		return container;
 	}
 	
 	public void loadFrom(NDTContainer container) {
 		items = new ItemStack[container.getInteger("capacity")];
 		for (int i = 0; i < items.length; i++) {
-			
+			if (container.hasKey("item_" + i)) {
+				NDTContainer ndt = container.getContainer("item_" + i);
+				ItemStack stack = new ItemStack(CubyzRegistries.ITEM_REGISTRY.getByID(ndt.getString("item")));
+				stack.add(ndt.getInteger("amount"));
+				items[i] = stack;
+			} else {
+				items[i] = new ItemStack();
+			}
 		}
 	}
 	
-	public void setSlot(ItemStack stack, int i) {
-		items[i] = stack;
+	public int getCapacity() {
+		return items.length;
+	}
+	
+	public void setStack(int slot, ItemStack stack) {
+		items[slot] = stack;
 	}
 }

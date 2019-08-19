@@ -54,7 +54,10 @@ public class ItemStack {
 	public Block getBlock() {
 		if(item == null)
 			return null;
-		return item.getBlock();
+		if (item instanceof ItemBlock)
+			return ((ItemBlock) item).getBlock();
+		else
+			return null;
 	}
 	
 	public int getAmount() {

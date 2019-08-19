@@ -1,7 +1,12 @@
-package io.cubyz.tools;
+package io.cubyz.items.tools.modifiers;
+
+import io.cubyz.items.tools.Modifier;
+import io.cubyz.items.tools.Tool;
 
 public class FallingApart implements Modifier {
+	
 	float rate;
+	
 	public FallingApart(float rate) {
 		this.rate = rate;
 	}
@@ -17,12 +22,12 @@ public class FallingApart implements Modifier {
 
 	@Override
 	public void onUse(Tool tool) {
-		tool.speed *= rate;
-		tool.maxDurability = (int)Math.round(tool.maxDurability*rate); // Yes, even durability is affected
-		if(tool.durability > tool.maxDurability) {
-			tool.durability = tool.maxDurability;
+		tool.setSpeed(tool.getSpeed() * rate);
+		tool.setMaxDurability((int) Math.round(tool.getMaxDurability()*rate)); // Yes, even durability is affected
+		if(tool.getDurability() > tool.getMaxDurability()) {
+			tool.setDurability(tool.getMaxDurability());
 		}
-		tool.damage *= rate;
+		tool.setDamage(rate);
 	}
 
 	@Override
