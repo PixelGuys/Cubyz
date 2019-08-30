@@ -1,6 +1,6 @@
 package io.cubyz.math;
 
-public class Vector3fi {
+public class Vector3fi implements Cloneable {
 	
 	public int x, z;
 	public float y, relX, relZ;
@@ -51,5 +51,9 @@ public class Vector3fi {
 			this.z += floorZ;
 			relZ -= floorZ;
 		}
+	}
+	
+	public Vector3fi clone() {
+		return new Vector3fi(new FloatingInteger(x, relX), y, new FloatingInteger(z, relZ));
 	}
 }

@@ -10,6 +10,7 @@ import io.cubyz.base.init.BlockInit;
 import io.cubyz.base.init.ItemInit;
 import io.cubyz.base.init.MaterialInit;
 import io.cubyz.blocks.Block;
+import io.cubyz.command.ClearCommand;
 import io.cubyz.command.GiveCommand;
 import io.cubyz.entity.EntityType;
 import io.cubyz.entity.PlayerEntity;
@@ -42,7 +43,9 @@ public class BaseMod {
 		// As they are independent to other (the correct order for others is block -> item (for item blocks and other items) -> entity)
 		registerRecipes(CubyzRegistries.RECIPE_REGISTRY);
 		registerMaterials(CubyzRegistries.TOOL_MATERIAL_REGISTRY);
+		
 		CubyzRegistries.COMMAND_REGISTRY.register(new GiveCommand());
+		CubyzRegistries.COMMAND_REGISTRY.register(new ClearCommand());
 		
 		// Init proxy
 		proxy.init();

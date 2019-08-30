@@ -15,6 +15,7 @@ public abstract class Entity {
 	protected World world;
 
 	protected Vector3fi position = new Vector3fi();
+	protected Vector3fi renderPosition = new Vector3fi();
 	protected Vector3f rotation = new Vector3f();
 	public float vx, vy, vz;
 	
@@ -42,6 +43,10 @@ public abstract class Entity {
 	
 	public Vector3fi getPosition() {
 		return position;
+	}
+	
+	public Vector3fi getRenderPosition() {
+		return renderPosition;
 	}
 	
 	public void setPosition(Vector3i position) {
@@ -210,12 +215,8 @@ public abstract class Entity {
 		return false;
 	}
 	
-	//@SuppressWarnings("unchecked")
 	public void update() {
-		if (renderPair != null) {
-			//Consumer<Entity> upd = (Consumer<Entity>) renderPair.get("renderPairUpdate");
-			//upd.accept(this);
-		}
+		renderPosition = position;
 	}
 	
 	// NDT related

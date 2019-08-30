@@ -32,7 +32,8 @@ public class CubyzMeshSelectionDetector {
 	public void selectSpatial(Chunk[] chunks, Vector3fi position, Vector3f dir) {
 		//this.dir = dir;
 		Vector3f transformedPosition = new Vector3f(position.relX, position.y+1.5F, position.relZ);
-	    float closestDistance = Float.POSITIVE_INFINITY;
+	    //float closestDistance = Float.POSITIVE_INFINITY;
+		float closestDistance = 6f; // selection now limited
 	    selectedSpatial = null;
 	    //position.x = position.z = 0;
 	    for (Chunk ch : chunks) {

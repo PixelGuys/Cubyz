@@ -27,6 +27,7 @@ import org.jungle.util.Utils;
 
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
+import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.world.Chunk;
 
@@ -118,7 +119,7 @@ public class MainRenderer implements IRenderer {
 
 	@SuppressWarnings("unchecked")
 	public void render(Window window, Context ctx, Vector3f ambientLight, DirectionalLight directionalLight,
-			Chunk[] chunks, Block[] blocks, Player localPlayer) {
+			Chunk[] chunks, Block[] blocks, Entity[] entities, Player localPlayer) {
 		// long t1 = System.nanoTime();
 		if (window.isResized()) {
 			glViewport(0, 0, window.getWidth(), window.getHeight());
@@ -175,7 +176,7 @@ public class MainRenderer implements IRenderer {
 			}
 			filter.filter(m);
 		}
-		renderScene(ctx, ambientLight, null /* point light */, null /* spot light */, directionalLight, map, blocks,
+		renderScene(ctx, ambientLight, null /* point light */, null /* spot light */, directionalLight, map, blocks, entities,
 				localPlayer, selected, selectedBlock);
 		ctx.getHud().render(window);
 		/*
@@ -193,7 +194,7 @@ public class MainRenderer implements IRenderer {
 	}
 
 	public void renderScene(Context ctx, Vector3f ambientLight, PointLight[] pointLightList, SpotLight[] spotLightList,
-			DirectionalLight directionalLight, List<Spatial>[] map, Block[] blocks, Player p, Spatial selected,
+			DirectionalLight directionalLight, List<Spatial>[] map, Block[] blocks, Entity[] entities, Player p, Spatial selected,
 			int selectedBlock) {
 		shaderProgram.bind();
 
@@ -230,6 +231,14 @@ public class MainRenderer implements IRenderer {
 				}
 			}
 		}
+		
+		for (int i = 0; i < entities.length; i++) {
+			Entity ent = entities[i];
+			if (ent != null && ent != p) { // don't render local player
+				
+			}
+		}
+		
 		shaderProgram.unbind();
 	}
 

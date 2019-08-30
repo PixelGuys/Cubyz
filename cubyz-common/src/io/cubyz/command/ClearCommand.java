@@ -3,6 +3,7 @@ package io.cubyz.command;
 import io.cubyz.api.Resource;
 import io.cubyz.entity.Player;
 import io.cubyz.items.Inventory;
+import io.cubyz.items.ItemStack;
 
 public class ClearCommand extends CommandBase {
 
@@ -25,9 +26,9 @@ public class ClearCommand extends CommandBase {
 		}
 		Player local = source.getWorld().getLocalPlayer();
 		Inventory inv = local.getInventory();
-		for (int i = 0; i < 36; i++) {
-			if (inv.getAmount(i) != 0) {
-				// TODO remove item
+		for (int i = 0; i < inv.getCapacity(); i++) {
+			if (inv.hasStack(i)) {
+				inv.setStack(i, new ItemStack());
 			}
 		}
 	}

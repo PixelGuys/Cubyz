@@ -22,6 +22,7 @@ import io.cubyz.api.Side;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.client.loading.LoadThread;
+import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.multiplayer.GameProfile;
 import io.cubyz.multiplayer.LoginToken;
@@ -259,6 +260,60 @@ public class Cubyz implements IGameLogic {
 			}
 		};
 		
+		ClientOnly.createEntityMesh = (type) -> {
+			// TODO use new resource model
+			Resource rsc = type.getRegistryID();
+			try {
+				Texture tex = null;
+				Mesh mesh = null;
+				BlockModel bm = null;
+				try {
+					bm = ResourceUtilities.loadModel(rsc);
+				} catch (IOException e) {
+					CubyzLogger.i.warning(rsc + " model not found");
+					//e.printStackTrace();
+					bm = ResourceUtilities.loadModel(new Resource("cubyz:undefined"));
+				}
+				
+				// Cached meshes
+				Mesh defaultMesh = null;
+				for (String key : cachedDefaultModels.keySet()) {
+					if (key.equals(bm.model)) {
+						defaultMesh = cachedDefaultModels.get(key);
+					}
+				}
+				if (defaultMesh == null) {
+					Resource rs = new Resource(bm.model);
+					defaultMesh = OBJLoader.loadMesh("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), false);
+					defaultMesh.setBoundingRadius(2.0f);
+					cachedDefaultModels.put(bm.model, defaultMesh);
+				}
+				Resource texResource = new Resource(bm.texture);
+				String texture = texResource.getID();
+				if (!new File("assets/" + texResource.getMod() + "/textures/" + texture + ".png").exists()) {
+					CubyzLogger.i.warning(texResource + " texture not found");
+					texture = "blocks/undefined";
+				}
+				
+				if (bm.texture_converted == (Boolean) true) {
+					tex = new Texture("assets/" + texResource.getMod() + "/textures/" + texture + ".png");
+				} else {
+					tex = new Texture(TextureConverter.fromBufferedImage(
+							TextureConverter.convert(ImageIO.read(new File("assets/" + texResource.getMod() + "/textures/" + texture + ".png")),
+									type.getRegistryID().toString())));
+				}
+				
+				mesh = defaultMesh.cloneNoMaterial();
+				Material material = new Material(tex, 1.0F);
+				mesh.setMaterial(material);
+				
+				//pair.set("textureCache", tex);
+				//pair.set("meshCache", mesh);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		};
+		
 		ClientOnly.createBlockSpatial = (bi) -> {
 			return new BlockSpatial(bi);
 		};
@@ -441,6 +496,7 @@ public class Cubyz implements IGameLogic {
 
 	public static final Chunk[] EMPTY_CHUNK_LIST = new Chunk[0];
 	public static final Block[] EMPTY_BLOCK_LIST = new Block[0];
+	public static final Entity[] EMPTY_ENTITY_LIST = new Entity[0];
 	
 	private Vector3f ambient = new Vector3f();
 	private Vector4f clearColor = new Vector4f(0f, 0f, 0f, 1f);
@@ -493,9 +549,9 @@ public class Cubyz implements IGameLogic {
 				ambient.z *= lightingAdjust.z;
 			}
 			window.setClearColor(clearColor);
-			renderer.render(window, ctx, ambient, light, world.getVisibleChunks(), world.getBlocks(), world.getLocalPlayer());
+			renderer.render(window, ctx, ambient, light, world.getVisibleChunks(), world.getBlocks(), world.getEntities(), world.getLocalPlayer());
 		} else {
-			renderer.render(window, ctx, new Vector3f(0.8f, 0.8f, 0.8f), light, EMPTY_CHUNK_LIST, EMPTY_BLOCK_LIST, null);
+			renderer.render(window, ctx, new Vector3f(0.8f, 0.8f, 0.8f), light, EMPTY_CHUNK_LIST, EMPTY_BLOCK_LIST, EMPTY_ENTITY_LIST, null);
 		}
 		
 		Keyboard.releaseCodePoint();
