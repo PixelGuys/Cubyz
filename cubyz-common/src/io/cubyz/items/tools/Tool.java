@@ -1,8 +1,9 @@
 package io.cubyz.items.tools;
 
+import io.cubyz.blocks.Block;
 import io.cubyz.items.Item;
 
-public class Tool extends Item {
+public abstract class Tool extends Item {
 	
 	Material head, binding, handle;
 	int durability, maxDurability;
@@ -15,7 +16,11 @@ public class Tool extends Item {
 		this.handle = handle;
 		this.speed = speed;
 		this.damage = damage;
+		setTexture("Undefined.png"); // Remove when proper texture creation is added.
+		stackSize = 1;
 	}
+	
+	public abstract boolean canBreak(Block b);
 	
 	public Material getHeadMaterial() {
 		return head;

@@ -17,7 +17,8 @@ public class MaterialInit {
 		wood.setID("cubyz:wood");
 		wood.addModifier(new Regrowth());
 		wood.addModifier(new FallingApart(0.9f));
-		wood.addItem(ItemInit.stick, 50); // @zenith: how can I access other items without searching from here?
+		wood.addItem(ItemInit.stick, 5000); // @zenith: how can I access other items without searching from here? // Set to 5000 to make a tool craftable.
+		register(wood);
 	}
 	
 	public static void register(Material mat) {
