@@ -224,7 +224,7 @@ public class LocalWorld extends World {
 			return chunks.get(lastChunk);
 		}
 		for (int i = 0; i < chunks.size(); i++) {
-			if (chunks.get(i).getX() == x && chunks.get(i).getZ() == z) { // Sometimes a nullptr-exception is thrown here!
+			if (chunks.get(i).getX() == x && chunks.get(i).getZ() == z) { // Sometimes a nullptr-exception is thrown here! probably due to modification in parallel (world generation)
 				lastChunk = i;
 				return chunks.get(i);
 			}
@@ -367,31 +367,12 @@ public class LocalWorld extends World {
 	}
 	
 	public void generate() {
-		int ID = 0;
 		if (!generated) seed = rnd.nextInt();
-		ArrayList<Ore> ores = new ArrayList<Ore>();
 		blocks = new Block[CubyzRegistries.BLOCK_REGISTRY.registered().length];
 		for (IRegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
 			Block b = (Block) ire;
-			if(!b.isTransparent()) {
-				blocks[ID] = b;
-				b.ID = ID;
-				ID++;
-			}
+			blocks[b.ID] = b;
 		}
-		for (IRegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
-			Block b = (Block) ire;
-			if(b.isTransparent()) {
-				blocks[ID] = b;
-				b.ID = ID;
-				ID++;
-			}
-			try {
-				ores.add((Ore)b);
-			}
-			catch(Exception e) {}
-		}
-		LifelandGenerator.init(ores.toArray(new Ore[ores.size()]));
 		generated = true;
 	}
 

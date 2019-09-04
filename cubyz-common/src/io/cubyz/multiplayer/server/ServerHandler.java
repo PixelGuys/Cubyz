@@ -1,12 +1,10 @@
 package io.cubyz.multiplayer.server;
 
-import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.UUID;
 
 import io.cubyz.Constants;
 import io.cubyz.multiplayer.Packet;
-import io.cubyz.world.Chunk;
 import io.cubyz.world.LocalWorld;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
@@ -37,6 +35,15 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 		public long lastSendedPing = -1;
 	}
 	
+	public Client getClient(ChannelHandlerContext ctx) {
+		for (Client cl : clients.values()) {
+			if (cl.ctx.equals(ctx)) {
+				return cl;
+			}
+		}
+		return null;
+	}
+	
 	public ServerHandler(CubyzServer server, ServerSettings settings) {
 		this.server = server;
 		max = settings.maxPlayers;
@@ -44,10 +51,8 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 		playerTimeout = settings.playerTimeout;
 		onlineMode = settings.onlineMode;
 		isInternal = settings.internal;
-		
 		world = new LocalWorld();
 		world.generate();
-		
 		th = new Thread(() -> {
 			while (true) {
 				for (String uuid : clients.keySet()) {
@@ -81,8 +86,13 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 	
 	public ByteBuf sendChunk(ChannelHandlerContext ctx, int x, int z) {
 		ByteBuf out = ctx.alloc().buffer();
-		world.seek(x*16, z*16);
+		//world.seek(x*16, z*16);
+		world.seek(0, 0);
 		byte[] data = world.getChunkData(x, z);
+		out.writeByte(Packet.PACKET_CHUNK);
+		out.writeInt(x);
+		out.writeInt(z);
+		out.writeInt(world.getSeed());
 		out.writeInt(data.length);
 		out.writeBytes(data);
 		return out;
@@ -90,7 +100,6 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 	
 	@Override
     public void channelRead(ChannelHandlerContext ctx, Object omsg) {
-		
 		if (!init) {
 			motd = "A Cubyz server";
 			// TODO load properties
@@ -99,8 +108,8 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 			}
 			init = true;
 		}
-		
 		ByteBuf msg = (ByteBuf) omsg;
+		Client client = getClient(ctx);
 		byte packetType = msg.readByte();
 		if (CubyzServer.internal) {
 			//System.out.println("[Integrated Server] packet type: " + packetType);
@@ -142,7 +151,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 			clients.put(uuid.toString(), cl);
 			for (int x = 0; x < 4; x++) {
 				for (int y = 0; y < 4; y++) {
-					ctx.write(sendChunk(ctx, x, y));
+					ctx.writeAndFlush(sendChunk(ctx, x, y));
 				}
 			}
 		}

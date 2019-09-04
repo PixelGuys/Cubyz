@@ -157,7 +157,7 @@ public class Server {
 			}
 			
 		};
-		
+		System.gc();
 		while (true) {
 			String line = scan.nextLine();
 			String[] parts = line.split(" ");

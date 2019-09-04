@@ -11,6 +11,7 @@ import io.cubyz.world.Chunk;
 import io.cubyz.world.LocalWorld;
 import io.cubyz.world.Noise;
 import io.cubyz.world.Structures;
+import io.cubyz.world.World;
 
 //TODO: Add caves
 //TODO: Ore Clusters
@@ -83,7 +84,7 @@ public class LifelandGenerator extends WorldGenerator {
 	}
 	
 	@Override
-	public void generate(Chunk ch, LocalWorld world) {
+	public void generate(Chunk ch, World world) {
 		int ox = ch.getX();
 		int oy = ch.getZ();
 		int wx = ox << 4;

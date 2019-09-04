@@ -17,10 +17,13 @@ import org.lwjgl.Version;
 import org.lwjgl.glfw.GLFW;
 
 import io.cubyz.*;
+import io.cubyz.api.CubyzRegistries;
+import io.cubyz.api.IRegistryElement;
 import io.cubyz.api.Resource;
 import io.cubyz.api.Side;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
+import io.cubyz.blocks.Ore;
 import io.cubyz.client.loading.LoadThread;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
@@ -65,7 +68,7 @@ public class Cubyz implements IGameLogic {
 	public static int serverOnline = 1;
 
 	public static GameProfile profile;
-	private static MPClient mpClient;
+	public static MPClient mpClient;
 	public static boolean isIntegratedServer = true;
 	public static boolean isOnlineServerOpened = false;
 
@@ -117,26 +120,29 @@ public class Cubyz implements IGameLogic {
 			quitWorld();
 		}
 		Cubyz.world = world;
-		Random rnd = new Random();
-		int dx = 0;
-		int dz = 0;
-		int highestY = 0;
-		CubyzLogger.i.info("Finding position..");
-		while (true) {
-			dx = rnd.nextInt(10000) - 5000;
-			dz = rnd.nextInt(10000) - 5000;
-			//dx = dz = Integer.MIN_VALUE+2048;
-			CubyzLogger.i.info("Trying " + dx + " ? " + dz);
-			world.synchronousSeek(dx, dz);
-			highestY = world.getHighestBlock(dx, dz);
-			if (highestY > LifelandGenerator.SEA_LEVEL) { // TODO: always true if generator isn't lifeland
-				break;
+		if (world.isLocal()) {
+			Random rnd = new Random();
+			int dx = 0;
+			int dz = 0;
+			int highestY = 0;
+			CubyzLogger.i.info("Finding position..");
+			while (true) {
+				dx = rnd.nextInt(10000) - 5000;
+				dz = rnd.nextInt(10000) - 5000;
+				//dx = dz = Integer.MIN_VALUE+2048;
+				CubyzLogger.i.info("Trying " + dx + " ? " + dz);
+				world.synchronousSeek(dx, dz);
+				highestY = world.getHighestBlock(dx, dz);
+				if (highestY > LifelandGenerator.SEA_LEVEL) { // TODO: always true if generator isn't lifeland
+					break;
+				}
+			}
+			CubyzLogger.i.info("OK!");
+			if (world.getLocalPlayer().getPosition().x == 0 && world.getLocalPlayer().getPosition().z == 0) { // temporary solution to only TP on spawn
+				world.getLocalPlayer().setPosition(new Vector3i(dx, highestY+2, dz));
 			}
 		}
-		CubyzLogger.i.info("OK!");
-		if (world.getLocalPlayer().getPosition().x == 0 && world.getLocalPlayer().getPosition().z == 0) { // temporary solution to only TP on spawn
-			world.getLocalPlayer().setPosition(new Vector3i(dx, highestY+2, dz));
-		}
+		world.synchronousSeek(0, 0);
 		DiscordIntegration.setStatus("Playing");
 		Cubyz.gameUI.addOverlay(new GameOverlay());
 	}
@@ -362,12 +368,34 @@ public class Cubyz implements IGameLogic {
 			profile = new GameProfile(token);
 		}
 		
+		try {
+			mpClient = new MPClient();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
 		LoadThread.addOnLoadFinished(() -> {
-			try {
-				mpClient = new MPClient();
-			} catch (Exception e) {
-				e.printStackTrace();
+			int ID = 0;
+			ArrayList<Ore> ores = new ArrayList<Ore>();
+			for (IRegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
+				Block b = (Block) ire;
+				if(!b.isTransparent()) {
+					b.ID = ID;
+					ID++;
+				}
 			}
+			for (IRegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
+				Block b = (Block) ire;
+				if(b.isTransparent()) {
+					b.ID = ID;
+					ID++;
+				}
+				try {
+					ores.add((Ore)b);
+				}
+				catch(Exception e) {}
+			}
+			LifelandGenerator.init(ores.toArray(new Ore[ores.size()]));
 		});
 	}
 

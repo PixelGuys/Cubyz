@@ -62,10 +62,14 @@ public class CubyzServer {
 			ChannelFuture f = b.bind(port);
 			ch = f.channel();
 			
-			ch.closeFuture().sync();
+			if (!internal) {
+				ch.closeFuture().sync();
+			}
 		} finally {
-			worker.shutdownGracefully().sync();
-			boss.shutdownGracefully().sync();
+			if (!internal) {
+				worker.shutdownGracefully().sync();
+				boss.shutdownGracefully().sync();
+			}
 		}
 	}
 

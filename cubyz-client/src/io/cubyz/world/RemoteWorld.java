@@ -8,11 +8,15 @@ import java.util.Map;
 import org.joml.Vector4f;
 
 import io.cubyz.api.CubyzRegistries;
+import io.cubyz.api.IRegistryElement;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
+import io.cubyz.math.Bits;
 import io.cubyz.multiplayer.GameProfile;
+import io.cubyz.save.BlockChange;
+import io.cubyz.world.generator.LifelandGenerator;
 
 // TODO
 public class RemoteWorld extends World {
@@ -22,15 +26,32 @@ public class RemoteWorld extends World {
 	private Entity[] loadedEntities;
 	
 	private ArrayList<Chunk> chunks;
-	private HashMap<Block, ArrayList<BlockInstance>> visibleBlocks;
+	private Block[] blocks;
+	
+	private LifelandGenerator gen = new LifelandGenerator();
+	private long gameTime;
 	
 	public RemoteWorld() {
 		localPlayer = (Player) CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player").newEntity();
+		localPlayer.setWorld(this);
+		localPlayer.getPosition().add(10, 200, 10);
 		loadedEntities = new Entity[0];
 		chunks = new ArrayList<>();
-		visibleBlocks = new HashMap<>();
 		
-		
+		blocks = new Block[CubyzRegistries.BLOCK_REGISTRY.registered().length];
+		for (IRegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
+			Block b = (Block) ire;
+			blocks[b.ID] = b;
+		}
+	}
+	
+	public ArrayList<BlockChange> transformData(byte[] data) {
+		int size = Bits.getInt(data, 8);
+		ArrayList<BlockChange> list = new ArrayList<BlockChange>(size);
+		for (int i = 0; i < size; i++) {
+			list.add(new BlockChange(data, 12 + (i << 4)));
+		}
+		return list;
 	}
 	
 	@Override
@@ -45,17 +66,43 @@ public class RemoteWorld extends World {
 
 	@Override
 	public Chunk getChunk(int x, int z) {
-		return null;
+		int cx = x;
+		if(cx < 0)
+			cx -= 15;
+		cx = cx / 16;
+		int cz = z;
+		if(cz < 0)
+			cz -= 15;
+		cz = cz / 16;
+		return _getChunk(cx, cz);
 	}
 
 	@Override
 	public Chunk _getChunk(int x, int z) {
-		return null;
+		for (int i = 0; i < chunks.size(); i++) {
+			if (chunks.get(i).getX() == x && chunks.get(i).getZ() == z) {
+				return chunks.get(i);
+			}
+		}
+		Chunk ck = new Chunk(x, z, this, new ArrayList<BlockChange>());
+		chunks.add(ck);
+		return ck;
 	}
 
 	@Override
 	public BlockInstance getBlock(int x, int y, int z) {
-		return null;
+		Chunk ch = getChunk(x, z);
+		if (y > World.WORLD_HEIGHT || y < 0)
+			return null;
+		
+		if (ch != null) {
+			int cx = x & 15;
+			int cz = z & 15;
+			BlockInstance bi = ch.getBlockInstanceAt(cx, y, cz);
+			return bi;
+		} else {
+			return null;
+		}
 	}
 
 	@Override
@@ -75,20 +122,22 @@ public class RemoteWorld extends World {
 
 	@Override
 	public void synchronousSeek(int x, int z) {
-		
+		while (getChunk(x/16, z/16) == null) {
+			try {
+				Thread.sleep(10);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
 	}
 
 	@Override
 	public List<Chunk> getChunks() {
-		return new ArrayList<Chunk>();
+		return chunks;
 	}
 
 	public Block[] getBlocks() {
-		return new Block[0];
-	}
-
-	public Map<Block, ArrayList<BlockInstance>> visibleBlocks() {
-		return visibleBlocks;
+		return blocks;
 	}
 
 	@Override
@@ -108,12 +157,12 @@ public class RemoteWorld extends World {
 
 	@Override
 	public long getGameTime() {
-		return 0;
+		return gameTime;
 	}
 
 	@Override
 	public void setGameTime(long time) {
-		throw new UnsupportedOperationException("Cannot change remote game time");
+		this.gameTime = time;
 	}
 
 	@Override
@@ -122,7 +171,7 @@ public class RemoteWorld extends World {
 	}
 
 	@Override
-	public void setRenderDistance(int arg0) {
+	public void setRenderDistance(int rd) {
 	}
 
 	@Override
@@ -132,8 +181,21 @@ public class RemoteWorld extends World {
 
 	@Override
 	public void cleanup() {
-		// TODO Auto-generated method stub
 		
+	}
+	
+	public void worldData(int seed) {
+		this.setSeed(seed);
+	}
+	
+	public void submit(int x, int z, byte[] data) {
+		chunks.remove(getChunk(x, z)); // be sure there is no copies
+		Chunk ck = new Chunk(x, z, this, transformData(data));
+		chunks.add(ck);
+		ck.generateFrom(gen);
+		ck.load();
+		if (getHighestBlock(localPlayer.getPosition().x, localPlayer.getPosition().z) != -1)
+			localPlayer.getPosition().y = getHighestBlock(localPlayer.getPosition().x, localPlayer.getPosition().z);
 	}
 
 }

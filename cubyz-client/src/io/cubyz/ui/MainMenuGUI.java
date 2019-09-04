@@ -41,8 +41,13 @@ public class MainMenuGUI extends MenuGUI {
 		titleLabel.setFont(new Font("Title", 72.f));
 		
 		spPlay.setOnAction(() -> {
-			// TODO: Start local server and let Cubyz join it
-			/*
+			LocalWorld world = new LocalWorld();
+			world.generate();
+			Cubyz.gameUI.setMenu(null);
+			Cubyz.loadWorld(world);
+		});
+		
+		mpPlay.setOnAction(() -> {
 			CubyzServer server = new CubyzServer(Cubyz.serverPort);
 			try {
 				server.start(true);
@@ -50,12 +55,8 @@ public class MainMenuGUI extends MenuGUI {
 				e.printStackTrace();
 			}
 			Cubyz.requestJoin("localhost");
-			*/
-			LocalWorld world = new LocalWorld();
-			world.generate();
-			//RemoteWorld world = new RemoteWorld();
 			Cubyz.gameUI.setMenu(null);
-			Cubyz.loadWorld(world);
+			Cubyz.loadWorld(Cubyz.mpClient.getHandler().getWorld());
 		});
 		
 		exit.setOnAction(() -> {
@@ -70,8 +71,8 @@ public class MainMenuGUI extends MenuGUI {
 	@Override
 	public void render(long nvg, Window win) {
 		spPlay.setPosition(win.getWidth() / 2 - 125, 300);
-		mpPlay.setPosition(win.getWidth() / 2 - 125, 450);
-		options.setPosition(win.getWidth() / 2 - 125, 375);
+		mpPlay.setPosition(win.getWidth() / 2 - 125, 375);
+		options.setPosition(win.getWidth() / 2 - 125, 450);
 		exit.setPosition(win.getWidth() - 120, win.getHeight() - 40);
 		titleLabel.setPosition(win.getWidth() / 2 - 80, 50);
 		

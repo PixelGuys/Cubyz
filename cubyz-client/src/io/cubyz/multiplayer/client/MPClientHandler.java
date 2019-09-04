@@ -25,6 +25,7 @@ public class MPClientHandler extends ChannelInboundHandlerAdapter {
 
 	private boolean hasPinged;
 	public boolean channelActive;
+	private boolean worldInited;
 	
 	public ChatHandler getChatHandler() {
 		if (chHandler == null) {
@@ -67,6 +68,11 @@ public class MPClientHandler extends ChannelInboundHandlerAdapter {
 		buf.writeShort(username.length());
 		buf.writeCharSequence(username, Constants.CHARSET_IMPL);
 		ctx.writeAndFlush(buf);
+		world = new RemoteWorld();
+	}
+	
+	public RemoteWorld getWorld() {
+		return world;
 	}
 	
 	@Override
@@ -82,42 +88,53 @@ public class MPClientHandler extends ChannelInboundHandlerAdapter {
 	@Override
 	public void channelRead(ChannelHandlerContext ctx, Object msg) {
 		ByteBuf buf = (ByteBuf) msg;
-		byte responseType = buf.readByte();
-		
-		if (responseType == Packet.PACKET_GETVERSION) {
-			int length = buf.readUnsignedByte();
-			String raw = buf.readCharSequence(length, Constants.CHARSET_IMPL).toString();
-			cl.getLocalServer().brand = raw.split(";")[0];
-			cl.getLocalServer().version = raw.split(";")[1];
-			CubyzLogger.instance.fine("[MPClientHandler] Raw version + brand: " + raw);
-		}
-		
-		if (responseType == Packet.PACKET_PINGDATA) {
-			PingResponse pr = new PingResponse();
-			pr.motd = buf.readCharSequence(buf.readShort(), Constants.CHARSET_IMPL).toString();
-			pr.onlinePlayers = buf.readInt();
-			pr.maxPlayers = buf.readInt();
-			cl.getLocalServer().lastPingResponse = pr;
-		}
-		
-		if (responseType == Packet.PACKET_PINGPONG) {
-			ByteBuf b = ctx.alloc().buffer(37);
-			b.writeByte(Packet.PACKET_PINGPONG);
-			b.writeCharSequence(Cubyz.profile.getUUID().toString(), Constants.CHARSET_IMPL);
-			ctx.write(b);
-		}
-		
-		if (responseType == Packet.PACKET_CHATMSG) {
-			short len = buf.readShort();
-			String chat = buf.readCharSequence(len, Constants.CHARSET_IMPL).toString();
-			messages.add(chat);
-		}
-		
-		if (responseType == Packet.PACKET_CHUNK) {
-			Chunk ck = new Chunk(buf.readInt(), buf.readInt(), world, new ArrayList<>());
+		while (buf.isReadable()) {
+			byte responseType = buf.readByte();
 			
+			if (responseType == Packet.PACKET_GETVERSION) {
+				int length = buf.readUnsignedByte();
+				String raw = buf.readCharSequence(length, Constants.CHARSET_IMPL).toString();
+				cl.getLocalServer().brand = raw.split(";")[0];
+				cl.getLocalServer().version = raw.split(";")[1];
+				CubyzLogger.instance.fine("[MPClientHandler] Raw version + brand: " + raw);
+			}
+			
+			if (responseType == Packet.PACKET_PINGDATA) {
+				PingResponse pr = new PingResponse();
+				pr.motd = buf.readCharSequence(buf.readShort(), Constants.CHARSET_IMPL).toString();
+				pr.onlinePlayers = buf.readInt();
+				pr.maxPlayers = buf.readInt();
+				cl.getLocalServer().lastPingResponse = pr;
+			}
+			
+			if (responseType == Packet.PACKET_PINGPONG) {
+				ByteBuf b = ctx.alloc().buffer(37);
+				b.writeByte(Packet.PACKET_PINGPONG);
+				b.writeCharSequence(Cubyz.profile.getUUID().toString(), Constants.CHARSET_IMPL);
+				ctx.write(b);
+			}
+			
+			if (responseType == Packet.PACKET_CHATMSG) {
+				short len = buf.readShort();
+				String chat = buf.readCharSequence(len, Constants.CHARSET_IMPL).toString();
+				messages.add(chat);
+			}
+			
+			if (responseType == Packet.PACKET_CHUNK) {
+				int x = buf.readInt();
+				int z = buf.readInt();
+				int seed = buf.readInt();
+				int len = buf.readInt();
+				byte[] data = new byte[len];
+				buf.readBytes(data);
+				System.out.println("Got " + x + ", " + z);
+				if (!worldInited) {
+					world.worldData(seed);
+					worldInited = true;
+				}
+				world.submit(x, z, data);
+			}
 		}
-		
 		buf.release();
 	}
 

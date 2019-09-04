@@ -151,7 +151,7 @@ public class Chunk {
 		if(inst == null) {
 			inst = new BlockInstance[16][world.getHeight()][16];
 		}
-		gen.generate(this, (LocalWorld) world);
+		gen.generate(this, world);
 		generated = true;
 	}
 	

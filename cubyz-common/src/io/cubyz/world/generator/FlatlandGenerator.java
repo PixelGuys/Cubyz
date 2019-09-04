@@ -7,6 +7,7 @@ import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.world.Chunk;
 import io.cubyz.world.LocalWorld;
+import io.cubyz.world.World;
 
 /**
  * Simple generator that does flat worlds with 3 layers.
@@ -21,7 +22,7 @@ public class FlatlandGenerator extends WorldGenerator {
 	private static Block bedrock = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:bedrock");
 	
 	@Override
-	public void generate(Chunk chunk, LocalWorld world) {
+	public void generate(Chunk chunk, World world) {
 		for (int px = 0; px < 16; px++) {
 			for (int pz = 0; pz < 16; pz++) {
 				for (int y = 0; y < 3; y++) {

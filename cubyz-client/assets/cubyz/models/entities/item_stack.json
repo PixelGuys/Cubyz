@@ -1,4 +1,5 @@
 {
 	"parent": "cubyz:block",
+	"arguments": "texture",
 	"texture": "%1"
 }

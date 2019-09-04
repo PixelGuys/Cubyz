@@ -116,13 +116,12 @@ public class MPClient {
 					});
 			// Start the client.
 			future = b.connect(host, port);
-			
 			while (!cch.channelActive) {
 				System.out.print("");
 			}
 			
 			connected = true;
-			//ping();
+			ping();
 		} catch (Exception e) {
 			System.err.println("Multiplayer Error:");
 			e.printStackTrace();
