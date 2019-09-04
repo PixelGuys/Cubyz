@@ -44,25 +44,29 @@ public class InventorySlot extends Component {
 		return hitbox.contains(vec.x, vec.y);
 	}
 	
-	public ItemStack grabWithMouse(MouseInput mouse, ItemStack carried, int width, int height) {
+	public boolean grabWithMouse(MouseInput mouse, ItemStack carried, int width, int height) {
 		if(takeOnly && carried.getItem() != null && reference.getItem() != null)
-			return null;
+			return false;
 		if(!isInside(mouse.getCurrentPos(), width, height))
-			return null;
+			return false;
 		if(mouse.isLeftButtonPressed()) {
 			pressed = true;
-			return null;
+			return false;
 		}
 		if(!pressed)
-			return null;
+			return false;
 		
 		// If the mouse button was just released inside after pressing:
 		// Remove the ItemStack from this slot and replace with the one carried by the mouse.
 		// Actual replacement in the inventory is done elsewhere.
 		pressed = false;
-		ItemStack ret = reference;
-		reference = carried;
-		return ret;
+		Item buf = reference.getItem();
+		int bufInt = reference.getAmount();
+		reference.setItem(carried.getItem());
+		reference.setAmount(carried.getAmount());
+		carried.setItem(buf);
+		carried.setAmount(bufInt);
+		return true;
 	}
 
 	@Override

@@ -64,6 +64,10 @@ public class ItemStack {
 		return number;
 	}
 	
+	public void setAmount(int a) { // For use in special cases only!W
+		number = a;
+	}
+	
 	public void loadFrom(NDTContainer container) {
 		item = CubyzRegistries.ITEM_REGISTRY.getByID(container.getString("id"));
 		number = container.getInteger("size");

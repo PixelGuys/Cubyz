@@ -74,13 +74,9 @@ public class InventoryGUI extends GeneralInventory {
 
 	@Override
 	protected void mouseAction(MouseInput mouse, Window win) {
-		ItemStack newlyCarried;
 		for(int i = 0; i < inv.length; i++) {
-			newlyCarried = inv[i].grabWithMouse(mouse, carried, win.getWidth()/2, win.getHeight());
-			if(newlyCarried != null) {
-				Cubyz.world.getLocalPlayer().getInventory().setStack(i, carried);
-				carried = newlyCarried;
-				if (i == 36) {
+			if(inv[i].grabWithMouse(mouse, carried, win.getWidth()/2, win.getHeight())) {
+				if (i == 36 && inv[36].reference.getItem() != null) {
 					// Remove items in the crafting grid.
 					for(int j = 32; j <= 35; j++) {
 						inv[j].reference.add(-1);
