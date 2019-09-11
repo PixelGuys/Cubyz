@@ -290,7 +290,9 @@ public class Cubyz implements IGameLogic {
 				}
 				if (defaultMesh == null) {
 					Resource rs = new Resource(bm.model);
-					defaultMesh = OBJLoader.loadMesh("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), false);
+					//defaultMesh = OBJLoader.loadMesh("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), false);
+					defaultMesh = StaticMeshesLoader.load("assets/" + rs.getMod() + "/models/3d/" + rs.getID(),
+							"assets/" + rs.getMod() + "/models/3d/")[0];
 					defaultMesh.setBoundingRadius(2.0f);
 					cachedDefaultModels.put(bm.model, defaultMesh);
 				}

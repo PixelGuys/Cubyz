@@ -27,7 +27,7 @@ public class InstancedMesh extends Mesh {
 
 	private static final int INSTANCE_SIZE_FLOATS = MATRIX_SIZE_FLOATS * 2 + 2;
 
-	private final int numInstances;
+	private int numInstances;
 
 	private final int modelViewVBO;
 
@@ -48,6 +48,38 @@ public class InstancedMesh extends Mesh {
 		modelViewVBO = glGenBuffers();
 		vboIdList.add(modelViewVBO);
 		instanceDataBuffer = MemoryUtil.memAllocFloat(numInstances * INSTANCE_SIZE_FLOATS);
+		glBindBuffer(GL_ARRAY_BUFFER, modelViewVBO);
+		int start = 5;
+		int strideStart = 0;
+		for (int i = 0; i < 4; i++) {
+			glVertexAttribPointer(start, 4, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
+			glVertexAttribDivisor(start, 1);
+			start++;
+			strideStart += VECTOR4F_SIZE_BYTES;
+		}
+
+		// Light view matrix
+		for (int i = 0; i < 4; i++) {
+			glVertexAttribPointer(start, 4, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
+			glVertexAttribDivisor(start, 1);
+			start++;
+			strideStart += VECTOR4F_SIZE_BYTES;
+		}
+
+		// Texture offsets
+		glVertexAttribPointer(start, 2, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
+		glVertexAttribDivisor(start, 1);
+
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindVertexArray(0);
+	}
+	
+	public void setInstances(int numInst) {
+		// XXX: maybe find a way to expand the buffer instdead of recreating it.
+		// and shrink it if lowering down
+		this.numInstances = numInst;
+		glBindVertexArray(vaoId);
+		instanceDataBuffer = MemoryUtil.memRealloc(instanceDataBuffer, numInstances * INSTANCE_SIZE_FLOATS);
 		glBindBuffer(GL_ARRAY_BUFFER, modelViewVBO);
 		int start = 5;
 		int strideStart = 0;

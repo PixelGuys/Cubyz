@@ -23,7 +23,7 @@ public class RemoteWorld extends World {
 	
 	private Player localPlayer;
 	private GameProfile localGameProfile;
-	private Entity[] loadedEntities;
+	private ArrayList<Entity> entities;
 	
 	private ArrayList<Chunk> chunks;
 	private Block[] blocks;
@@ -35,7 +35,8 @@ public class RemoteWorld extends World {
 		localPlayer = (Player) CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player").newEntity();
 		localPlayer.setWorld(this);
 		localPlayer.getPosition().add(10, 200, 10);
-		loadedEntities = new Entity[0];
+		entities = new ArrayList<Entity>();
+		entities.add(localPlayer);
 		chunks = new ArrayList<>();
 		
 		blocks = new Block[CubyzRegistries.BLOCK_REGISTRY.registered().length];
@@ -61,7 +62,15 @@ public class RemoteWorld extends World {
 
 	@Override
 	public Entity[] getEntities() {
-		return loadedEntities;
+		return entities.toArray(new Entity[entities.size()]);
+	}
+	
+	@Override
+	public void update() {
+		Entity[] ent = getEntities();
+		for (Entity en : ent) {
+			en.update();
+		}
 	}
 
 	@Override
@@ -94,7 +103,6 @@ public class RemoteWorld extends World {
 		Chunk ch = getChunk(x, z);
 		if (y > World.WORLD_HEIGHT || y < 0)
 			return null;
-		
 		if (ch != null) {
 			int cx = x & 15;
 			int cz = z & 15;
@@ -196,6 +204,7 @@ public class RemoteWorld extends World {
 		ck.load();
 		if (getHighestBlock(localPlayer.getPosition().x, localPlayer.getPosition().z) != -1)
 			localPlayer.getPosition().y = getHighestBlock(localPlayer.getPosition().x, localPlayer.getPosition().z);
+		ck.applyBlockChanges();
 	}
 
 }

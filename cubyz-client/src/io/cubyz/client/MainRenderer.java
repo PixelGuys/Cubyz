@@ -104,9 +104,7 @@ public class MainRenderer implements IRenderer {
 				window.getHeight(), Z_NEAR, Z_FAR));
 		loadShaders();
 
-		if (window.getOptions().frustumCulling) {
-			filter = new FrustumCullingFilter();
-		}
+		filter = new FrustumCullingFilter();
 
 		inited = true;
 	}
@@ -160,22 +158,21 @@ public class MainRenderer implements IRenderer {
 				map[vis[i].getID()].add(tmp);
 			}
 		}
-		if (filter != null) {
-			filter.updateFrustum(window.getProjectionMatrix(), ctx.getCamera().getViewMatrix());
-			instancedMeshes = new ArrayList<>();
-			HashMap<Mesh, List<Spatial>> m = new HashMap<>();
-			for (int i = 0; i < blocks.length; i++) {
-				if (map[i].size() == 0)
-					continue;
-				m.put((Mesh) blocks[i].getBlockPair().get("meshCache"), map[i]);
-			}
-			for (Mesh mesh : m.keySet()) {
-				if (mesh instanceof InstancedMesh) {
-					instancedMeshes.add((InstancedMesh) mesh);
-				}
-			}
-			filter.filter(m);
+		filter.updateFrustum(window.getProjectionMatrix(), ctx.getCamera().getViewMatrix());
+		instancedMeshes = new ArrayList<>();
+		HashMap<Mesh, List<Spatial>> m = new HashMap<>();
+		for (int i = 0; i < blocks.length; i++) {
+			if (map[i].size() == 0)
+				continue;
+			m.put((Mesh) blocks[i].getBlockPair().get("meshCache"), map[i]);
 		}
+		for (Mesh mesh : m.keySet()) {
+			if (mesh instanceof InstancedMesh) {
+				instancedMeshes.add((InstancedMesh) mesh);
+			}
+		}
+		filter.filter(m);
+		
 		renderScene(ctx, ambientLight, null /* point light */, null /* spot light */, directionalLight, map, blocks, entities,
 				localPlayer, selected, selectedBlock);
 		ctx.getHud().render(window);
@@ -217,7 +214,7 @@ public class MainRenderer implements IRenderer {
 				
 			} else {
 				mesh.renderList(map[i], (Spatial gameItem) -> {
-					if (gameItem.isInFrustum() || filter == null) {
+					if (gameItem.isInFrustum()) {
 						Matrix4f modelViewMatrix = transformation.getModelViewMatrix(gameItem, viewMatrix);
 						if (gameItem.isSelected())
 							shaderProgram.setUniform("selectedNonInstanced", 1f);

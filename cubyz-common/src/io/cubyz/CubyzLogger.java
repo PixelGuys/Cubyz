@@ -3,7 +3,6 @@ package io.cubyz;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -24,7 +23,7 @@ public class CubyzLogger extends Logger {
 	public static CubyzLogger instance;
 	
 	static {
-		new CubyzLogger();
+		instance = i = new CubyzLogger();
 	}
 	
 	protected CubyzLogger() {
@@ -57,9 +56,9 @@ public class CubyzLogger extends Logger {
 				@Override
 				public void close() throws SecurityException {
 					try {
+						flush();
 						if (latestLogOutput != null)
 							latestLogOutput.close();
-						Files.copy(Paths.get("logs/latest.log"), Paths.get("logs/" + logFormat.format(Calendar.getInstance().getTime()) + ".log"));
 						latestLogOutput = null;
 					} catch (Exception e) {
 						System.err.println(e);
@@ -73,9 +72,10 @@ public class CubyzLogger extends Logger {
 					try {
 						if (latestLogOutput != null) {
 							latestLogOutput.flush();
+							Files.copy(Paths.get("logs/latest.log"), Paths.get("logs/" + logFormat.format(Calendar.getInstance().getTime()) + ".log"));
 						}
 					} catch (Exception e) {
-						throwing("CubzLogger", "flush", e);
+						throwing("CubyzLogger", "flush", e);
 					}
 				}
 	
@@ -105,8 +105,6 @@ public class CubyzLogger extends Logger {
 				
 			});
 		}
-		instance = this;
-		i = this;
 	}
 
 }

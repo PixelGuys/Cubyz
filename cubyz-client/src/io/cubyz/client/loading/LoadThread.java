@@ -38,15 +38,6 @@ public class LoadThread extends Thread {
 		CubyzLogger log = CubyzLogger.instance;
 		l.setStep(1, 0, 0);
 		
-		// Clean cache
-		File cacheDir = new File("cache");
-		if (cacheDir.exists()) {
-			for (File f : cacheDir.listFiles()) {
-				f.delete();
-			}
-			cacheDir.delete();
-		}
-		
 		l.setStep(2, 0, 0); // load mods
 		
 		// Load Mods (via reflection)

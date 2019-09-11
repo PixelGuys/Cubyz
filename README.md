@@ -29,6 +29,7 @@ GPU | Any OpenGL 3.0 compatible | OpenGL 3.3+
 
 - This game is under BSD-3-Clause license for more details please check the [LICENSE](https://github.com/PixelGuys/Cubz/blob/master/LICENSE) file.
 - We can discuss and speak about Cubyz on the [discord](https://discord.gg/XtqCRRG) server.
+<iframe src="https://discordapp.com/widget?id=443805812390100992&theme=dark" width="350" height="500" allowtransparency="true" frameborder="0"></iframe>
 
 ### Donations
 If you'd like to donate, first thanks you, second, it will only serve for servers and some other things. And third, here if you really want, the [donation link](https://www.paypal.me/thxforthedonationbud)

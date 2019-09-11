@@ -263,7 +263,6 @@ public abstract class Entity {
 		rotation = loadVector3f (ndt.getContainer("rotation"));
 		Vector3f velocity = loadVector3f(ndt.getContainer("velocity"));
 		vx = velocity.x; vy = velocity.y; vz = velocity.z;
-		System.out.println(position.x);
 	}
 	
 }
