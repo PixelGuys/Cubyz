@@ -279,9 +279,9 @@ public class Chunk {
 		visiblesSize--;
 		System.arraycopy(visibles, index+1, visibles, index, visiblesSize-index);
 		visibles[visiblesSize] = null;
-		if(visiblesSize <= visibles.length >> 1) { // Decrease capacity if the array is less than 50% filled.
+		if(visiblesSize < visibles.length >> 1) { // Decrease capacity if the array is less than 50% filled.
 			BlockInstance[] old = visibles;
-			visibles = new BlockInstance[old.length >> 1]; // Increase size by 1.5. Similar to `ArrayList`.
+			visibles = new BlockInstance[old.length >> 1];
 			System.arraycopy(old, 0, visibles, 0, visiblesSize);
 		}
 	}
