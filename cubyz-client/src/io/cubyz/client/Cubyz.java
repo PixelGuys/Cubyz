@@ -199,7 +199,6 @@ public class Cubyz implements IGameLogic {
 		log.info("Jungle Version: " + Constants.GAME_VERSION + "-cubyz");
 		Constants.setGameSide(Side.CLIENT);
 		msd = new CubyzMeshSelectionDetector(renderer);
-		window.setClearColor(new Vector4f(0.1F, 0.7F, 0.7F, 1.0F));
 		
 		// Cubyz resources
 		ResourcePack baserp = new ResourcePack();
@@ -212,7 +211,6 @@ public class Cubyz implements IGameLogic {
 		lang = LanguageLoader.load("en_US");
 		
 		ClientOnly.createBlockMesh = (block) -> {
-			// TODO use new resource model
 			Resource rsc = block.getRegistryID();
 			try {
 				IRenderablePair pair = block.getBlockPair();
@@ -267,7 +265,6 @@ public class Cubyz implements IGameLogic {
 		};
 		
 		ClientOnly.createEntityMesh = (type) -> {
-			// TODO use new resource model
 			Resource rsc = type.getRegistryID();
 			try {
 				Texture tex = null;
@@ -398,6 +395,8 @@ public class Cubyz implements IGameLogic {
 				catch(Exception e) {}
 			}
 			LifelandGenerator.init(ores.toArray(new Ore[ores.size()]));
+			
+			System.gc();
 		});
 	}
 
@@ -529,7 +528,8 @@ public class Cubyz implements IGameLogic {
 	public static final Entity[] EMPTY_ENTITY_LIST = new Entity[0];
 	
 	private Vector3f ambient = new Vector3f();
-	private Vector4f clearColor = new Vector4f(0f, 0f, 0f, 1f);
+	private Vector3f brightAmbient = new Vector3f(1, 1, 1);
+	private Vector4f clearColor = new Vector4f(0.1f, 0.7f, 0.7f, 1f);
 	
 	float playerBobbing;
 	boolean bobbingUp;
@@ -581,7 +581,11 @@ public class Cubyz implements IGameLogic {
 			window.setClearColor(clearColor);
 			renderer.render(window, ctx, ambient, light, world.getVisibleChunks(), world.getBlocks(), world.getEntities(), world.getLocalPlayer());
 		} else {
-			renderer.render(window, ctx, new Vector3f(0.8f, 0.8f, 0.8f), light, EMPTY_CHUNK_LIST, EMPTY_BLOCK_LIST, EMPTY_ENTITY_LIST, null);
+			clearColor.y = clearColor.z = 0.7f;
+			clearColor.x = 0.1f;
+			
+			window.setClearColor(clearColor);
+			renderer.render(window, ctx, brightAmbient, light, EMPTY_CHUNK_LIST, EMPTY_BLOCK_LIST, EMPTY_ENTITY_LIST, null);
 		}
 		
 		Keyboard.releaseCodePoint();
