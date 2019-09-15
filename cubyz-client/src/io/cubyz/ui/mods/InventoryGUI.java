@@ -74,9 +74,10 @@ public class InventoryGUI extends GeneralInventory {
 
 	@Override
 	protected void mouseAction(MouseInput mouse, Window win) {
+		boolean notNull = inv[36].reference.getItem() != null;
 		for(int i = 0; i < inv.length; i++) {
 			if(inv[i].grabWithMouse(mouse, carried, win.getWidth()/2, win.getHeight())) {
-				if (i == 36 && inv[36].reference.getItem() != null) {
+				if (i == 36 && notNull) {
 					// Remove items in the crafting grid.
 					for(int j = 32; j <= 35; j++) {
 						inv[j].reference.add(-1);

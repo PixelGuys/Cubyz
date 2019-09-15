@@ -18,6 +18,7 @@ public class InventorySlot extends Component {
 	public static final int SLOT = NGraphics.loadImage("assets/cubyz/guis/inventory/inventory_slot.png");
 
 	private boolean pressed = false;
+	private boolean pressedR = false;
 	public boolean takeOnly;
 	
 	// WARNING: The y-axis for this element goes from bottom to top!
@@ -53,13 +54,35 @@ public class InventorySlot extends Component {
 			pressed = true;
 			return false;
 		}
-		if(!pressed)
+		if(mouse.isRightButtonPressed()) {
+			pressedR = true;
 			return false;
-		
+		}
+		if(!pressed && !pressedR)
+			return false;
+		if(pressedR && carried.getItem() != null) {
+			if(reference.getItem() == carried.getItem()) {
+				if(reference.add(1) != 0)
+					carried.add(-1);
+			}
+			if(reference.getItem() == null) {
+				reference.setItem(carried.getItem());
+				reference.setAmount(1);
+				carried.add(-1);
+			}
+			pressedR = false;
+			return true;
+		}
+		pressedR = false;
 		// If the mouse button was just released inside after pressing:
 		// Remove the ItemStack from this slot and replace with the one carried by the mouse.
 		// Actual replacement in the inventory is done elsewhere.
 		pressed = false;
+		if(reference.getItem() == carried.getItem()) {
+			reference.setAmount(carried.getAmount() + reference.getAmount());
+			carried.clear();
+			return true;
+		}
 		Item buf = reference.getItem();
 		int bufInt = reference.getAmount();
 		reference.setItem(carried.getItem());
