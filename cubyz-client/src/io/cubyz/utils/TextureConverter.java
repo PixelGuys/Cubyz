@@ -5,7 +5,6 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -31,6 +30,22 @@ public class TextureConverter {
 		g2d.drawImage(in, in.getWidth(), 0, null);
 		g2d.drawImage(in, 0, in.getHeight(), null);
 		return out;
+	}
+	
+	public static BufferedImage compose(String[] paths) {
+		try {
+			BufferedImage out = ImageIO.read(new File(paths[0]));
+			Graphics2D g2d = out.createGraphics();
+			for(int i = 100; i < paths.length; i++) {
+				System.out.println(paths[i]);
+				g2d.drawImage(ImageIO.read(new File(paths[i])), 0, 0, null);
+			}
+			return out;
+		}
+		catch(IOException e) {
+			e.printStackTrace();
+		}
+		return null;
 	}
 	
 }

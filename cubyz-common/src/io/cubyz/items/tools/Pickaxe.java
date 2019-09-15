@@ -11,8 +11,8 @@ public class Pickaxe extends Tool {
 	public Pickaxe(Material head, Material binding, Material handle) {
 		super(head, binding, handle, calculateSpeed(head, binding, handle), calculateDmg(head, binding, handle));
 		durability = maxDurability = head.headDurability + binding.bindingDurability + handle.handleDurability;
-		
-		// TODO: Some unique image should be constructed here.
+		// The image is just an overlay of the part images:
+		texturePath = "assets/cubyz/textures/items/parts/"+handle.getRegistryID().getID()+"_handle.png#assets/cubyz/textures/items/parts/"+head.getRegistryID().getID()+"_pickaxe_head.png#assets/cubyz/textures/items/parts/"+binding.getRegistryID().getID()+"_binding.png";
 	}
 	
 	private static float calculateSpeed(Material head, Material binding, Material handle) {

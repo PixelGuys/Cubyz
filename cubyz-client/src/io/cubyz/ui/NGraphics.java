@@ -2,12 +2,14 @@ package io.cubyz.ui;
 
 import static org.lwjgl.nanovg.NanoVG.*;
 
+import org.jungle.Texture;
 import org.jungle.hud.Font;
 import org.jungle.hud.Hud;
 import org.lwjgl.nanovg.NVGColor;
 import org.lwjgl.nanovg.NVGPaint;
 
 import io.cubyz.CubyzLogger;
+import io.cubyz.utils.TextureConverter;
 
 public class NGraphics {
 
@@ -29,7 +31,11 @@ public class NGraphics {
 	public static int loadImage(String path) {
 		if (LOG_OPERATIONS)
 			CubyzLogger.instance.fine("[NGRAPHICS] Load Image " + path);
-		return nvgCreateImage(nvg, path, 0);
+		String [] paths = path.split("#");
+		if(paths.length == 1)
+			return nvgCreateImage(nvg, paths[0], 0);
+		Texture tex = new Texture(TextureConverter.fromBufferedImage(TextureConverter.compose(paths)));
+		return tex.getId();
 	}
 	
 	public static void drawLine(int x, int y, int x2, int y2) {
