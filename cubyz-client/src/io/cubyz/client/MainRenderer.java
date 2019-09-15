@@ -31,11 +31,6 @@ import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.world.Chunk;
 
-/**
- * 
- * @author zenith391
- *
- */
 public class MainRenderer implements IRenderer {
 
 	private ShaderProgram shaderProgram;
@@ -50,8 +45,8 @@ public class MainRenderer implements IRenderer {
 	private Matrix4f prjViewMatrix = new Matrix4f();
 	private FrustumIntersection frustumInt = new FrustumIntersection();
 
-	public static final int MAX_POINT_LIGHTS = 5;
-	public static final int MAX_SPOT_LIGHTS = 5;
+	public static final int MAX_POINT_LIGHTS = 0;
+	public static final int MAX_SPOT_LIGHTS = 0;
 	private float specularPower = 16f;
 
 	public MainRenderer() {
@@ -172,7 +167,6 @@ public class MainRenderer implements IRenderer {
 			}
 		}
 		filter.filter(m);
-		
 		renderScene(ctx, ambientLight, null /* point light */, null /* spot light */, directionalLight, map, blocks, entities,
 				localPlayer, selected, selectedBlock);
 		ctx.getHud().render(window);
@@ -197,7 +191,6 @@ public class MainRenderer implements IRenderer {
 
 		shaderProgram.setUniform("projectionMatrix", ctx.getWindow().getProjectionMatrix());
 		shaderProgram.setUniform("texture_sampler", 0);
-		// ctx.getCamera().setPosition(0, ctx.getCamera().getPosition().y, 0);
 		Matrix4f viewMatrix = ctx.getCamera().getViewMatrix();
 
 		renderLights(viewMatrix, ambientLight, pointLightList, spotLightList, directionalLight);
@@ -284,7 +277,7 @@ public class MainRenderer implements IRenderer {
 		// coordinates
 		DirectionalLight currDirLight = new DirectionalLight(directionalLight);
 		Vector4f dir = new Vector4f(currDirLight.getDirection(), 0);
-		 dir.mul(viewMatrix);
+		dir.mul(viewMatrix);
 		currDirLight.setDirection(new Vector3f(dir.x, dir.y, dir.z));
 		shaderProgram.setUniform("directionalLight", currDirLight);
 

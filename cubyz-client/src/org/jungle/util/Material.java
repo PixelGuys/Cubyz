@@ -5,7 +5,13 @@ import org.jungle.Texture;
 
 public class Material {
 
-    public static final Vector4f DEFAULT_COLOUR = new Vector4f(1.0f, 1.0f, 1.0f, 1.0f);
+    @Override
+	public String toString() {
+		return "Material [ambientColour=" + ambientColour + ", diffuseColour=" + diffuseColour + ", specularColour="
+				+ specularColour + ", reflectance=" + reflectance + ", texture=" + texture + "]";
+	}
+
+	public static final Vector4f DEFAULT_COLOUR = new Vector4f(1.0f, 1.0f, 1.0f, 1.0f);
 
     private Vector4f ambientColour;
 

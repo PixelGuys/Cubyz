@@ -129,7 +129,7 @@ vec4 calcSpotLight(SpotLight light, vec3 position, vec3 normal)
 
 vec4 calcDirectionalLight(DirectionalLight light, vec3 position, vec3 normal)
 {
-    return calcLightColour(light.colour, light.intensity, position, normalize(light.direction), normal);
+    return calcLightColour(light.colour, light.intensity, position, normalize(light.direction), normalize(light.direction).xyz);
 }
 
 void main()

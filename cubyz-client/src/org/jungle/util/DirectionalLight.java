@@ -4,7 +4,12 @@ import org.joml.Vector3f;
 
 public class DirectionalLight {
     
-    private Vector3f color;
+    @Override
+	public String toString() {
+		return "DirectionalLight [color=" + color + ", direction=" + direction + ", intensity=" + intensity + "]";
+	}
+
+	private Vector3f color;
 
     private Vector3f direction;
 

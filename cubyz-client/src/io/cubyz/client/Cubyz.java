@@ -6,6 +6,7 @@ import java.util.*;
 import java.util.logging.*;
 
 import javax.imageio.ImageIO;
+import javax.swing.JOptionPane;
 
 import org.joml.Vector3f;
 import org.joml.Vector3i;
@@ -178,20 +179,19 @@ public class Cubyz implements IGameLogic {
 
 	@Override
 	public void init(Window window) throws Exception {
-		// Delete cache
-		File cache = new File("cache");
-		if (cache.exists()) {
-			for (File f : cache.listFiles()) {
-				f.delete();
-			}
+		if (!new File("assets").exists()) {
+			log.severe("Assets not found.");
+			JOptionPane.showMessageDialog(null, "Cubyz could not detect its assets.\nDid you forgot to extract the game?", "Error", JOptionPane.ERROR_MESSAGE);
+			System.exit(1);
 		}
+		
 		gameUI = new UISystem();
 		gameUI.init(window);
 		playerInc = new Vector3f();
 		renderer = new MainRenderer();
 		ctx = new Context(game, new Camera());
 		ctx.setHud(gameUI);
-		light = new DirectionalLight(new Vector3f(1.0F, 1.0F, 0.7F), new Vector3f(0.0F, 1.0F, 0.5F), 1.0F);
+		light = new DirectionalLight(new Vector3f(1.0f, 1.0f, 1.0f), new Vector3f(0.0f, 1.0f, 0.0f), 0.4f);
 		mouse = new MouseInput();
 		mouse.init(window);
 		log.info("Version " + Constants.GAME_VERSION + " of brand " + Constants.GAME_BRAND);
@@ -254,7 +254,7 @@ public class Cubyz implements IGameLogic {
 				}
 				
 				mesh = defaultMesh.cloneNoMaterial();
-				Material material = new Material(tex, 1.0F);
+				Material material = new Material(tex, 0.6F);
 				mesh.setMaterial(material);
 				
 				pair.set("textureCache", tex);
@@ -578,6 +578,7 @@ public class Cubyz implements IGameLogic {
 				ambient.y *= lightingAdjust.y;
 				ambient.z *= lightingAdjust.z;
 			}
+			light.setColor(new Vector3f(clearColor.x, clearColor.y, clearColor.z)); // maybe not make instances every render
 			window.setClearColor(clearColor);
 			renderer.render(window, ctx, ambient, light, world.getVisibleChunks(), world.getBlocks(), world.getEntities(), world.getLocalPlayer());
 		} else {
