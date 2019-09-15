@@ -1,5 +1,8 @@
 package io.cubyz.base;
 
+import org.lwjgl.glfw.GLFW;
+
+import io.cubyz.Keybindings;
 import io.cubyz.api.GameRegistry;
 
 public class ClientProxy extends CommonProxy {

@@ -31,7 +31,7 @@ public class GiveCommand extends CommandBase {
 			source.feedback("No such item: " + args[1]);
 			return;
 		}
-		if (source.getWorld() == null) {
+		if (!(source instanceof Player)) {
 			source.feedback("'give' must be executed by a player");
 			return;
 		}
