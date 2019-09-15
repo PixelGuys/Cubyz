@@ -25,4 +25,12 @@ public class ItemInit {
 		reg.registerAll(ITEMS);
 	}
 	
+	public static Item search(String id) {
+		for(Item item : ITEMS) {
+			if(item.getRegistryID().getID().equals(id))
+				return item;
+		}
+		return null;
+	}
+	
 }

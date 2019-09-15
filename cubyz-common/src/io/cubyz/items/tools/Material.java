@@ -18,6 +18,7 @@ public class Material implements IRegistryElement {
 	public int handleDurability;
 	public float damage;
 	public float miningSpeed;
+	public int miningLevel = 0; // Standard for materials like dirt that can't be used for mining.
 	private Resource id = Resource.EMPTY;
 	public Material(int heDur, int bDur, int haDur, float dmg, float spd) {
 		headDurability = haDur;
@@ -66,4 +67,8 @@ public class Material implements IRegistryElement {
 	}
 	@Override
 	public void setID(int ID) {}
+	
+	public void setMiningLevel(int level) {
+		miningLevel = level;
+	}
 }
