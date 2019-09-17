@@ -18,6 +18,7 @@ import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.system.Library;
 import org.lwjgl.system.MemoryStack;
 
 import io.cubyz.CubyzLogger;
@@ -33,6 +34,16 @@ public class Window {
 	private ViewportManager manager = new FullViewportManager();
 	
 	private Vector4f clearColor;
+	
+	static {
+		try {
+			Library.initialize();
+		} catch (UnsatisfiedLinkError e) {
+			CubyzLogger.instance.severe("Missing LWJGL libraries for " + 
+					System.getProperty("os.name") + " for " + System.getProperty("os.arch"));
+			System.exit(1);
+		}
+	}
 	
 	public ViewportManager getViewportManager() {
 		return manager;
@@ -232,7 +243,7 @@ public class Window {
 		CubyzLogger.instance.fine("OpenGL Version: " + GL11.glGetString(GL11.GL_VERSION));
 		
 		glEnable(GL_DEPTH_TEST);
-		glEnable(GL_STENCIL_TEST);
+		//glEnable(GL_STENCIL_TEST);
 		setOptions(opt);
 	}
 	
@@ -242,7 +253,7 @@ public class Window {
 	
 	public void restoreState() {
         glEnable(GL_DEPTH_TEST);
-        glEnable(GL_STENCIL_TEST);
+        //glEnable(GL_STENCIL_TEST);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         if (opt.cullFace) {
             glEnable(GL_CULL_FACE);
