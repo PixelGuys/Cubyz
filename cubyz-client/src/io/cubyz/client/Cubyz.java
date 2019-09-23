@@ -12,6 +12,9 @@ import org.joml.Vector3f;
 import org.joml.Vector3i;
 import org.joml.Vector4f;
 import org.jungle.*;
+import org.jungle.audio.SoundBuffer;
+import org.jungle.audio.SoundManager;
+import org.jungle.audio.SoundSource;
 import org.jungle.game.*;
 import org.jungle.util.*;
 import org.lwjgl.Version;
@@ -53,6 +56,9 @@ public class Cubyz implements IGameLogic {
 	public static UISystem gameUI;
 	public static World world;
 	public static Language lang;
+	public static SoundManager sound;
+	private SoundBuffer music;
+	private SoundSource musicSource;
 	
 	public static int inventorySelection = 0; // Selected slot in inventory
 
@@ -120,6 +126,7 @@ public class Cubyz implements IGameLogic {
 		if (Cubyz.world != null) {
 			quitWorld();
 		}
+		Cubyz.instance.musicSource.play();
 		Cubyz.world = world;
 		if (world.isLocal()) {
 			Random rnd = new Random();
@@ -395,6 +402,22 @@ public class Cubyz implements IGameLogic {
 				catch(Exception e) {}
 			}
 			LifelandGenerator.init(ores.toArray(new Ore[ores.size()]));
+			
+			sound = new SoundManager();
+			try {
+				sound.init();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			
+			try {
+				music = new SoundBuffer("assets/cubyz/sound/KingBoard.ogg");
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			
+			musicSource = new SoundSource(true, true);
+			musicSource.setBuffer(music.getBufferId());
 			
 			System.gc();
 		});

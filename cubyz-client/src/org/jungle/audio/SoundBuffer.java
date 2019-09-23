@@ -2,24 +2,30 @@ package org.jungle.audio;
 
 // ... Some imports here
 import static org.lwjgl.openal.AL10.*;
+import static org.lwjgl.stb.STBVorbis.*;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
 
+import org.jungle.util.Utils;
 import org.lwjgl.stb.STBVorbis;
 import org.lwjgl.stb.STBVorbisAlloc;
 import org.lwjgl.stb.STBVorbisInfo;
+import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 
 public class SoundBuffer {
 
 	private final int bufferId;
 	private ShortBuffer pcm;
+	private ByteBuffer vorbis = null;
 
 	public SoundBuffer(String file) throws Exception {
 		this.bufferId = alGenBuffers();
 		try (STBVorbisInfo info = STBVorbisInfo.malloc()) {
-			pcm = readVorbis(file, info);
+			pcm = readVorbis(file, 32*1024, info);
 
 			// Copy to buffer
 			alBufferData(bufferId, info.channels() == 1 ? AL_FORMAT_MONO16 : AL_FORMAT_STEREO16, pcm, info.sample_rate());
@@ -36,19 +42,28 @@ public class SoundBuffer {
 		pcm = null;
 	}
 
-	public ShortBuffer readVorbis(String file, STBVorbisInfo info) {
-		STBVorbisAlloc alloc = STBVorbisAlloc.malloc();
-		int[] error = new int[1];
-		long handle = STBVorbis.stb_vorbis_open_filename(file, error, alloc);
-		if (error[0] != 0) {
-			System.err.println("Error opening STB Vorbis: " + error[0]);
-			System.exit(1);
-			return null;
-		}
-		STBVorbis.stb_vorbis_get_info(handle, info);
-		STBVorbis.stb_vorbis_close(handle);
-		
-		return STBVorbis.stb_vorbis_decode_filename(file, IntBuffer.wrap(new int[] {info.channels()}), IntBuffer.wrap(new int[] {info.sample_rate()}));
+	public ShortBuffer readVorbis(String file, int size, STBVorbisInfo info) throws IOException {
+		try (MemoryStack stack = MemoryStack.stackPush()) {
+            vorbis = Utils.ioResourceToByteBuffer(file, size);
+            IntBuffer error = stack.mallocInt(1);
+            long decoder = stb_vorbis_open_memory(vorbis, error, null);
+            if (decoder == MemoryUtil.NULL) {
+                throw new RuntimeException("Failed to open Ogg Vorbis file. Error: " + error.get(0));
+            }
+
+            stb_vorbis_get_info(decoder, info);
+
+            int channels = info.channels();
+
+            int lengthSamples = stb_vorbis_stream_length_in_samples(decoder);
+
+            pcm = MemoryUtil.memAllocShort(lengthSamples);
+
+            pcm.limit(stb_vorbis_get_samples_short_interleaved(decoder, channels, pcm) * channels);
+            stb_vorbis_close(decoder);
+
+            return pcm;
+        }
 	}
 	
 }
