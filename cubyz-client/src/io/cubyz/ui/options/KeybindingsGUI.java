@@ -80,6 +80,9 @@ public class KeybindingsGUI extends MenuGUI {
 			case GLFW.GLFW_KEY_LEFT_CONTROL: return "Ctrl";
 			case GLFW.GLFW_KEY_RIGHT_SHIFT: return "Right Shift";
 			case GLFW.GLFW_KEY_RIGHT_CONTROL: return "Right Ctrl";
+			case Keybindings.MOUSE_LEFT_CLICK: return "Left Click";
+			case Keybindings.MOUSE_MIDDLE_CLICK: return "Middle Click";
+			case Keybindings.MOUSE_RIGHT_CLICK: return "Right Click";
 			default: return "Unknown";
 		}
 	}
@@ -98,7 +101,10 @@ public class KeybindingsGUI extends MenuGUI {
 		for (String name : Keybindings.keyNames) {
 			Label label = new Label();
 			Button button = new Button();
-			String text = GLFW.glfwGetKeyName(Keybindings.getKeyCode(name), GLFW.glfwGetKeyScancode(Keybindings.getKeyCode(name)));
+			String text = null;
+			if (Keybindings.getKeyCode(name) < 1000) {
+				text = GLFW.glfwGetKeyName(Keybindings.getKeyCode(name), GLFW.glfwGetKeyScancode(Keybindings.getKeyCode(name)));
+			}
 			if (text == null) {
 				text = nonAlpha(Keybindings.getKeyCode(name));
 			}
@@ -125,10 +131,25 @@ public class KeybindingsGUI extends MenuGUI {
 
 	@Override
 	public void render(long nvg, Window win) {
-		if (listen != null && Keyboard.hasKeyCode()) {
-			Keybindings.setKeyCode(listen, Keyboard.getKeyCode());
-			initUI();
-			listen = null;
+		
+		if (listen != null) {
+			if (Keyboard.hasKeyCode()) {
+				Keybindings.setKeyCode(listen, Keyboard.getKeyCode());
+				initUI();
+				listen = null;
+			} else if (Cubyz.mouse.isLeftButtonPressed()) {
+				Keybindings.setKeyCode(listen, Keybindings.MOUSE_LEFT_CLICK);
+				initUI();
+				listen = null;
+			} else if (Cubyz.mouse.isMiddleButtonPressed()) {
+				Keybindings.setKeyCode(listen, Keybindings.MOUSE_MIDDLE_CLICK);
+				initUI();
+				listen = null;
+			} else if (Cubyz.mouse.isRightButtonPressed()) {
+				Keybindings.setKeyCode(listen, Keybindings.MOUSE_RIGHT_CLICK);
+				initUI();
+				listen = null;
+			}
 		}
 		
 		container.setSize(win.getWidth(), win.getHeight()-70);

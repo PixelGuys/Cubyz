@@ -2,9 +2,19 @@ package io.cubyz;
 
 import static org.lwjgl.glfw.GLFW.*;
 
+import org.jungle.Keyboard;
+
+import io.cubyz.client.Cubyz;
+
 public class Keybindings {
+	
+	public static final int MOUSE_LEFT_CLICK = 78945;
+	public static final int MOUSE_MIDDLE_CLICK = 78946;
+	public static final int MOUSE_RIGHT_CLICK = 78947;
 
 	public static String[] keyNames = {
+		"place",
+		"destroy",
 		"forward",
 		"backward",
 		"left",
@@ -24,6 +34,8 @@ public class Keybindings {
 	};
 	
 	public static int[] keyCodes = {
+			MOUSE_RIGHT_CLICK,
+			MOUSE_LEFT_CLICK,
 			GLFW_KEY_W,
 			GLFW_KEY_S,
 			GLFW_KEY_A,
@@ -80,6 +92,23 @@ public class Keybindings {
 		
 		keyNames = newKeyNames;
 		keyCodes = newKeyCodes;
+	}
+	
+	public static boolean isPressed(String name) {
+		return isPressed(getKeyCode(name));
+	}
+	
+	public static boolean isPressed(int id) {
+		switch (id) {
+			case MOUSE_LEFT_CLICK:
+				return Cubyz.mouse.isGrabbed() && Cubyz.mouse.isLeftButtonPressed();
+			case MOUSE_MIDDLE_CLICK:
+				return Cubyz.mouse.isGrabbed() && Cubyz.mouse.isMiddleButtonPressed();
+			case MOUSE_RIGHT_CLICK:
+				return Cubyz.mouse.isGrabbed() && Cubyz.mouse.isRightButtonPressed();
+			default:
+				return Keyboard.isKeyPressed(id);
+		}
 	}
 	
 }

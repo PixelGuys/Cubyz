@@ -200,8 +200,8 @@ public class Window {
 			}
 		}
 		try (MemoryStack stack = stackPush()) {
-			IntBuffer pWidth = stack.mallocInt(1); // int*
-			IntBuffer pHeight = stack.mallocInt(1); // int*
+			IntBuffer pWidth = stack.mallocInt(1);
+			IntBuffer pHeight = stack.mallocInt(1);
 
 			// Get the window size passed to glfwCreateWindow
 			glfwGetWindowSize(handle, pWidth, pHeight);
@@ -243,7 +243,7 @@ public class Window {
 		CubyzLogger.instance.fine("OpenGL Version: " + GL11.glGetString(GL11.GL_VERSION));
 		
 		glEnable(GL_DEPTH_TEST);
-		//glEnable(GL_STENCIL_TEST);
+		glEnable(GL_STENCIL_TEST);
 		setOptions(opt);
 	}
 	
@@ -253,7 +253,7 @@ public class Window {
 	
 	public void restoreState() {
         glEnable(GL_DEPTH_TEST);
-        //glEnable(GL_STENCIL_TEST);
+        glEnable(GL_STENCIL_TEST);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         if (opt.cullFace) {
             glEnable(GL_CULL_FACE);
