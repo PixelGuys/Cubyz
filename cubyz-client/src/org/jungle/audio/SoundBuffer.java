@@ -56,8 +56,7 @@ public class SoundBuffer {
             int channels = info.channels();
 
             int lengthSamples = stb_vorbis_stream_length_in_samples(decoder);
-
-            pcm = MemoryUtil.memAllocShort(lengthSamples);
+            pcm = MemoryUtil.memAllocShort(lengthSamples*channels);
 
             pcm.limit(stb_vorbis_get_samples_short_interleaved(decoder, channels, pcm) * channels);
             stb_vorbis_close(decoder);

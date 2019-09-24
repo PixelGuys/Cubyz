@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.LinkedBlockingDeque;
 
 import org.joml.Vector4f;
 
@@ -60,18 +62,15 @@ public class LocalWorld extends World {
 	
 	// TODO: Make world updates threaded, would save load from main thread
 	private class ChunkGenerationThread extends Thread {
-		Deque<Chunk> loadList = new ArrayDeque<>(MAX_QUEUE_SIZE); // FIFO order (First In, First Out)
-		boolean running;
+		BlockingDeque<Chunk> loadList = new LinkedBlockingDeque<>(MAX_QUEUE_SIZE); // FIFO order (First In, First Out)
 		
 		public void queue(Chunk ch) {
 			if (!isQueued(ch)) {
-				if (loadList.size() >= MAX_QUEUE_SIZE) {
-					CubyzLogger.instance.info("Hang on, the Local-Chunk-Thread's queue is full, blocking!");
-					while (!loadList.isEmpty()) {
-						Thread.yield();
-					}
+				try {
+					loadList.put(ch);
+				} catch (InterruptedException e) {
+					System.err.println("Interrupted while queuing chunk. This is unexpected.");
 				}
-				loadList.add(ch);
 			}
 		}
 		
@@ -89,25 +88,14 @@ public class LocalWorld extends World {
 			return loadList.size();
 		}
 		
-		public void finish() {
-			running = false;
-			loadList = null;
-		}
-		
 		public void run() {
-			running = true;
-			while (running) {
-				if (!loadList.isEmpty()) {
-					Chunk popped = loadList.pop();
-					//CubyzLogger.instance.fine("Generating " + popped.getX() + "," + popped.getZ());
+			while (true) {
+				try {
+					Chunk popped = loadList.take();
 					synchronousGenerate(popped);
 					popped.load();
-				} else {
-					try {
-						Thread.sleep(10); // avoid the thread fully using CPU while inactive
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
+				} catch (InterruptedException e) {
+					break;
 				}
 			}
 		}
@@ -501,7 +489,7 @@ public class LocalWorld extends World {
 		try {
 			forceSave();
 			
-			thread.finish();
+			thread.interrupt();
 			thread.join();
 			thread = null;
 			
