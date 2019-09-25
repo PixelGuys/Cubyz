@@ -109,6 +109,13 @@ public class Cubyz implements IGameLogic {
 			handler.close();
 		}
 		DiscordIntegration.closeRPC();
+		if (sound != null) {
+			try {
+				sound.dispose();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
 	}
 	
 	public static void quitWorld() {
@@ -119,6 +126,14 @@ public class Cubyz implements IGameLogic {
 		}
 		Cubyz.world.cleanup();
 		Cubyz.world = null;
+		
+		SoundSource ms = Cubyz.instance.musicSource;
+		if (ms != null) {
+			if (ms.isPlaying()) {
+				ms.stop();
+			}
+		}
+		
 		System.gc();
 	}
 
@@ -126,7 +141,7 @@ public class Cubyz implements IGameLogic {
 		if (Cubyz.world != null) {
 			quitWorld();
 		}
-		Cubyz.instance.musicSource.play();
+		
 		Cubyz.world = world;
 		if (world.isLocal()) {
 			Random rnd = new Random();
@@ -153,6 +168,13 @@ public class Cubyz implements IGameLogic {
 		world.synchronousSeek(0, 0);
 		DiscordIntegration.setStatus("Playing");
 		Cubyz.gameUI.addOverlay(new GameOverlay());
+		
+		SoundSource ms = Cubyz.instance.musicSource;
+		if (ms != null) {
+			if (!ms.isPlaying()) {
+				ms.play();
+			}
+		}
 	}
 
 	public static void requestJoin(String host) {
@@ -410,14 +432,17 @@ public class Cubyz implements IGameLogic {
 				e.printStackTrace();
 			}
 			
-			try {
-				music = new SoundBuffer("assets/cubyz/sound/KingBoard.ogg");
-			} catch (Exception e) {
-				e.printStackTrace();
+			if (ResourceManager.lookupPath("cubyz/sound") != null) {
+				try {
+					music = new SoundBuffer(ResourceManager.lookupPath("cubyz/sound/KingBoard.ogg"));
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+				musicSource = new SoundSource(true, true);
+				musicSource.setBuffer(music.getBufferId());
+			} else {
+				CubyzLogger.instance.info("Missing optional sound files. Sounds are disabled.");
 			}
-			
-			musicSource = new SoundSource(true, true);
-			musicSource.setBuffer(music.getBufferId());
 			
 			System.gc();
 		});

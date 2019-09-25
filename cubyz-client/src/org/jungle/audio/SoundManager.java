@@ -48,6 +48,10 @@ public class SoundManager {
 		alcMakeContextCurrent(context);
 		AL.createCapabilities(deviceCaps);
 	}
+	
+	public void dispose() throws Exception {
+		alcCloseDevice(device);
+	}
 
 	public SoundListener getListener() {
 		return listener;
