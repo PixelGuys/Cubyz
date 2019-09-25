@@ -77,6 +77,7 @@ public class Chunk {
 	 * @param z
 	 */
 	public void addBlock(Block b, int x, int y, int z) {
+		if (b == null) return;
 		if(y >= world.getHeight())
 			return;
 		int rx = x - (ox << 4);
@@ -363,8 +364,14 @@ public class Chunk {
 	 * @param z
 	 */
 	public void rawAddBlock(int x, int y, int z, BlockInstance bi) {
-		bi.setWorld(world);
-		list.add(bi);
+		if (bi != null && bi.getBlock() == null) {
+			inst[x][y][z] = null;
+			return;
+		}
+		if (bi != null) {
+			bi.setWorld(world);
+			list.add(bi);
+		}
 		inst[x][y][z] = bi;
 	}
 	

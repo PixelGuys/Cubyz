@@ -8,6 +8,8 @@ import static org.lwjgl.system.MemoryUtil.NULL;
 import java.nio.IntBuffer;
 import java.util.Objects;
 
+import javax.swing.JOptionPane;
+
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
 import org.jungle.game.GameOptions;
@@ -40,7 +42,9 @@ public class Window {
 			Library.initialize();
 		} catch (UnsatisfiedLinkError e) {
 			CubyzLogger.instance.severe("Missing LWJGL libraries for " + 
-					System.getProperty("os.name") + " for " + System.getProperty("os.arch"));
+					System.getProperty("os.name") + " on " + System.getProperty("os.arch"));
+			JOptionPane.showMessageDialog(null, "Missing LWJGL libraries for " + 
+					System.getProperty("os.name") + " on " + System.getProperty("os.arch"), "Error", JOptionPane.ERROR_MESSAGE);
 			System.exit(1);
 		}
 	}

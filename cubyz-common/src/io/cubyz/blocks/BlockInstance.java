@@ -25,7 +25,7 @@ public class BlockInstance {
 	
 	public BlockInstance(Block block) {
 		this.block = block;
-		if(block.inventorySize != 0) {
+		if(block != null && block.inventorySize != 0) {
 			blockInventory = new Inventory(block.inventorySize);
 		}
 	}
