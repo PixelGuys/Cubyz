@@ -22,6 +22,17 @@ Type | Minimum | Recommended
 RAM | 2 GB | 4 GB or more
 GPU | Any OpenGL 3.0 compatible | OpenGL 3.3+
 
+Those recommendations are system wide and required for Cubyz.
+
+The exception is RAM, as Cubyz RAM usage varies. When gave little memory (256MB or less), due to how the GC works it will
+get executed more often.
+Meaning Cubyz won't crash for Out of Memory, but will have slow down due to GC pauses (unlikely to be visible with some GCs).
+However with more memory the GC will make less pauses, and be trickier to free heap. Which will result in Cubyz having allocated
+~900/1024MB but actually using 400/1024MB when shown in the debug menu.
+
+Basically for the end user, this means Cubyz requires **minimum** around **128MB** of free RAM.
+And is best played (**recommended**) with around **512MB** of free RAM.
+
 ## About
 - [Cristea Andrei Flavian](https://github.com/CristeaAndreiFlavian), [zenith391](https://github.com/zenith391) and [IntegratedQuantum](https://github.com/IntegratedQuantum) who all contributed to the game and made everything possible!
 - The development started on August 22, 2018. Cubyz is already 1 year old!
