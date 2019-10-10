@@ -6,7 +6,6 @@ import org.jungle.Window;
 import io.cubyz.client.Cubyz;
 import io.cubyz.items.Inventory;
 import io.cubyz.items.Item;
-import io.cubyz.items.ItemStack;
 import io.cubyz.items.tools.Pickaxe;
 import io.cubyz.ui.GeneralInventory;
 import io.cubyz.ui.MenuGUI;

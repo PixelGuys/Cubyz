@@ -6,7 +6,6 @@ import io.cubyz.api.CubyzRegistries;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.world.Chunk;
-import io.cubyz.world.LocalWorld;
 import io.cubyz.world.World;
 
 /**

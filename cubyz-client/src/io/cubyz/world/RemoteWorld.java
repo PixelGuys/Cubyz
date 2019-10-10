@@ -1,9 +1,7 @@
 package io.cubyz.world;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.joml.Vector4f;
 
@@ -19,6 +17,7 @@ import io.cubyz.save.BlockChange;
 import io.cubyz.world.generator.LifelandGenerator;
 
 // TODO
+@SuppressWarnings("unused")
 public class RemoteWorld extends World {
 	
 	private Player localPlayer;

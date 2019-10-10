@@ -1,8 +1,5 @@
 package io.cubyz.multiplayer.client;
 
-import java.util.ArrayList;
-
-import io.cubyz.CubyzLogger;
 import io.cubyz.multiplayer.GameProfile;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelFuture;

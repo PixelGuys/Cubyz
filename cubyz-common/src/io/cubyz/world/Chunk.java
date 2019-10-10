@@ -7,11 +7,8 @@ import java.util.Map;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 
-import io.cubyz.api.CubyzRegistries;
-import io.cubyz.api.Registry;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
-import io.cubyz.blocks.Ore;
 import io.cubyz.blocks.TileEntity;
 import io.cubyz.entity.Player;
 import io.cubyz.math.Bits;

@@ -3,9 +3,7 @@ package io.cubyz.entity;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 
-import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Resource;
-import io.cubyz.command.ICommandSource;
 import io.cubyz.items.Inventory;
 import io.cubyz.ndt.NDTContainer;
 

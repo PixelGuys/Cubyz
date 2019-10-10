@@ -7,7 +7,6 @@ import io.cubyz.client.Cubyz;
 import io.cubyz.translate.TextKey;
 import io.cubyz.ui.Component;
 import io.cubyz.ui.NGraphics;
-import io.cubyz.ui.UISystem;
 
 public class Button extends Component {
 	

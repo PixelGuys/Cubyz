@@ -8,7 +8,6 @@ import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.Ore;
 import io.cubyz.world.Chunk;
-import io.cubyz.world.LocalWorld;
 import io.cubyz.world.Noise;
 import io.cubyz.world.Structures;
 import io.cubyz.world.World;

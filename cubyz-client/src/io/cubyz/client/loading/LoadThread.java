@@ -20,7 +20,6 @@ import io.cubyz.client.ClientBlockPair;
 import io.cubyz.client.Cubyz;
 import io.cubyz.modding.ModLoader;
 import io.cubyz.ui.LoadingGUI;
-import io.cubyz.utils.DiscordIntegration;
 
 public class LoadThread extends Thread {
 

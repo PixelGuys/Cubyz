@@ -10,6 +10,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 
+@SuppressWarnings("unused")
 public class ServerHandler extends ChannelInboundHandlerAdapter {
 	
 	int online;

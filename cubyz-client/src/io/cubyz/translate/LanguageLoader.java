@@ -3,7 +3,6 @@ package io.cubyz.translate;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.nio.charset.Charset;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.logging.Level;

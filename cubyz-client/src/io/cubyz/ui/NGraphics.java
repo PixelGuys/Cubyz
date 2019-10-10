@@ -11,6 +11,7 @@ import org.lwjgl.nanovg.NVGPaint;
 import io.cubyz.CubyzLogger;
 import io.cubyz.utils.TextureConverter;
 
+@SuppressWarnings("unused")
 public class NGraphics {
 
 	private static long nvg;

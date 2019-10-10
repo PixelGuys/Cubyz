@@ -22,6 +22,7 @@ import io.cubyz.items.tools.Material;
  * Mod adding Cubyz default content.
  */
 @Mod(id = "cubyz", name = "Cubyz")
+@SuppressWarnings("unused")
 public class BaseMod {
 	
 	// Entities:

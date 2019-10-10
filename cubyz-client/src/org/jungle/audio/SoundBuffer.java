@@ -10,8 +10,6 @@ import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
 
 import org.jungle.util.Utils;
-import org.lwjgl.stb.STBVorbis;
-import org.lwjgl.stb.STBVorbisAlloc;
 import org.lwjgl.stb.STBVorbisInfo;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;

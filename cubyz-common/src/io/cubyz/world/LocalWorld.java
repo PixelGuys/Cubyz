@@ -1,9 +1,7 @@
 package io.cubyz.world;
 
 import java.io.File;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.BlockingDeque;
@@ -11,20 +9,17 @@ import java.util.concurrent.LinkedBlockingDeque;
 
 import org.joml.Vector4f;
 
-import io.cubyz.CubyzLogger;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.IRegistryElement;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.ITickeable;
-import io.cubyz.blocks.Ore;
 import io.cubyz.blocks.TileEntity;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.math.Bits;
 import io.cubyz.save.BlockChange;
 import io.cubyz.save.WorldIO;
-import io.cubyz.world.generator.FlatlandGenerator;
 import io.cubyz.world.generator.LifelandGenerator;
 import io.cubyz.world.generator.WorldGenerator;
 

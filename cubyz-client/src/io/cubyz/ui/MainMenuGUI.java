@@ -11,7 +11,6 @@ import io.cubyz.ui.components.Label;
 import io.cubyz.ui.options.OptionsGUI;
 import io.cubyz.utils.DiscordIntegration;
 import io.cubyz.world.LocalWorld;
-import io.cubyz.world.RemoteWorld;
 
 public class MainMenuGUI extends MenuGUI {
 	

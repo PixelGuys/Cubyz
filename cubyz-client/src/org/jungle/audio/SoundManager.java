@@ -17,6 +17,7 @@ import org.lwjgl.openal.ALCCapabilities;
 
 // Imports here
 
+@SuppressWarnings("unused")
 public class SoundManager {
 
 	private long device;
