@@ -15,6 +15,7 @@ import io.cubyz.CubyzLogger;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Mod;
 import io.cubyz.api.Side;
+import io.cubyz.base.BaseMod;
 import io.cubyz.blocks.Block;
 import io.cubyz.client.ClientBlockPair;
 import io.cubyz.client.Cubyz;
@@ -79,6 +80,10 @@ public class LoadThread extends Thread {
 		Set<Class<?>> allClasses = reflections.getTypesAnnotatedWith(Mod.class);
 		long end = System.currentTimeMillis();
 		log.info("Took " + (end - start) + "ms for reflection");
+		if (!allClasses.contains(BaseMod.class)) {
+			allClasses.add(BaseMod.class);
+			log.info("Manually adding BaseMod (probably on distributed JAR)");
+		}
 		for (Class<?> cl : allClasses) {
 			log.info("Mod class present: " + cl.getName());
 			try {
