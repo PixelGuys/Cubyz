@@ -2,11 +2,15 @@ package io.cubyz.ui;
 
 import static org.lwjgl.nanovg.NanoVG.*;
 
+import java.nio.ByteBuffer;
+import java.util.HashMap;
+
 import org.jungle.Texture;
 import org.jungle.hud.Font;
 import org.jungle.hud.Hud;
 import org.lwjgl.nanovg.NVGColor;
 import org.lwjgl.nanovg.NVGPaint;
+import org.lwjgl.nanovg.NanoVG;
 
 import io.cubyz.CubyzLogger;
 import io.cubyz.utils.TextureConverter;
@@ -25,6 +29,10 @@ public class NGraphics {
 	
 	private static Font font;
 	
+	// necessary to avoid the bytebuffer getting GCed
+	private static HashMap<String, ByteBuffer> composedTextures = new HashMap<>();
+	private static HashMap<String, Integer> composedTexturesIds = new HashMap<>();
+	
 	public static void setNanoID(long nvg) {
 		NGraphics.nvg = nvg;
 	}
@@ -35,8 +43,14 @@ public class NGraphics {
 		String [] paths = path.split("#");
 		if(paths.length == 1)
 			return nvgCreateImage(nvg, paths[0], 0);
-		Texture tex = new Texture(TextureConverter.fromBufferedImage(TextureConverter.compose(paths)));
-		return tex.getId();
+		ByteBuffer buf = null;
+		if (!composedTexturesIds.containsKey(path)) {
+			buf = TextureConverter.byteBuffer(TextureConverter.compose(paths));
+			
+			composedTextures.put(path, buf);
+			composedTexturesIds.put(path, nvgCreateImageMem(nvg, 0, buf));
+		}
+		return composedTexturesIds.get(path);
 	}
 	
 	public static void drawLine(int x, int y, int x2, int y2) {
