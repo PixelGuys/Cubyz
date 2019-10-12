@@ -18,7 +18,7 @@ public class MaterialInit {
 		dirt.addModifier(new FallingApart(0.1f));
 		dirt.addItem(ItemInit.search("dirt"), 100);
 		
-		wood = new Material(-20, 50, 20, 0.01f/*being hit by a wood sword doesn't hurt*/, 1/*arbitrary at the moment*/);
+		wood = new Material(-20, 50, 20, 0.01f/*being hit by a wood sword doesn't hurt*/, 1);
 		wood.setMiningLevel(1);
 		wood.setID("cubyz:wood");
 		wood.addModifier(new Regrowth());

@@ -17,7 +17,7 @@ public class Material implements IRegistryElement {
 	public int bindingDurability;
 	public int handleDurability;
 	public float damage;
-	public float miningSpeed;
+	public float miningSpeed; // how many times this material is faster than punching the ground.
 	public int miningLevel = 0; // Standard for materials like dirt that can't be used for mining.
 	private Resource id = Resource.EMPTY;
 	public Material(int heDur, int bDur, int haDur, float dmg, float spd) {

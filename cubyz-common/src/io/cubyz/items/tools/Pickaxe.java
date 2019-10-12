@@ -7,6 +7,7 @@ import io.cubyz.items.ItemStack;
 
 public class Pickaxe extends Tool {
 	private static final int HEAD = 300, BINDING = 50, HANDLE = 50;
+	private static final float baseSpeed = 5.0f;
 
 	public Pickaxe(Material head, Material binding, Material handle) {
 		super(head, binding, handle, calculateSpeed(head, binding, handle), calculateDmg(head, binding, handle));
@@ -16,7 +17,7 @@ public class Pickaxe extends Tool {
 	}
 	
 	private static float calculateSpeed(Material head, Material binding, Material handle) {
-		return head.miningSpeed;
+		return head.miningSpeed * baseSpeed;
 	}
 	
 	private static float calculateDmg(Material head, Material binding, Material handle) {
@@ -47,5 +48,4 @@ public class Pickaxe extends Tool {
 	public boolean canBreak(Block b) {
 		return true; // true until blocks have been upgraded.
 	}
-
 }

@@ -6,6 +6,7 @@ import org.joml.Vector3i;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.items.Inventory;
+import io.cubyz.items.tools.Tool;
 import io.cubyz.ndt.NDTContainer;
 import io.cubyz.world.World;
 
@@ -125,14 +126,18 @@ public class PlayerEntity extends EntityType {
 		}
 		
 		private void calculateBreakTime(BlockInstance bi, int slot) {
-			if(bi == null) {
+			if(bi == null || bi.getBlock().getHardness() == -1) {
 				maxTime = -1;
 				return;
 			}
 			timeStarted = System.currentTimeMillis();
 			maxTime = (int)(Math.round(bi.getBlock().getHardness()*1000));
-			
-			
+			if(Tool.class.isInstance(inv.getItem(slot))) {
+				Tool tool = (Tool)inv.getItem(slot);
+				if(tool.canBreak(bi.getBlock())) {
+					maxTime = (int)(maxTime/tool.getSpeed());
+				}
+			}
 		}
 
 		@Override
