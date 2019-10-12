@@ -23,17 +23,17 @@ public class BlockInit {
 	public static final ArrayList<Block> BLOCKS = new ArrayList<>();
 	
 	public static Bedrock bedrock = new Bedrock();
-	public static Block cactus = new Block("cubyz:cactus");
-	public static Block cobblestone = new Block("cubyz:cobblestone");
-	public static Block dirt = new Block("cubyz:dirt");
+	public static Block cactus = new Block("cubyz:cactus", 4);
+	public static Block cobblestone = new Block("cubyz:cobblestone", 25);
+	public static Block dirt = new Block("cubyz:dirt", 5.5f);
 	public static Grass grass = new Grass();
 	public static Ice ice = new Ice();
 	public static OakLeaves oakLeaves = new OakLeaves();
-	public static Block oakLog = new Block("cubyz:oak_log");
-	public static Block oakPlanks = new Block("cubyz:oak_planks");
-	public static Block sand = new Block("cubyz:sand");
+	public static Block oakLog = new Block("cubyz:oak_log", 8);
+	public static Block oakPlanks = new Block("cubyz:oak_planks", 7);
+	public static Block sand = new Block("cubyz:sand", 5);
 	public static SnowGrass snow = new SnowGrass();
-	public static Block stone = new Block("cubyz:stone");
+	public static Block stone = new Block("cubyz:stone", 25);
 	public static WorkBench workbench = new WorkBench();
 	
 	public static CoalOre coal = new CoalOre();

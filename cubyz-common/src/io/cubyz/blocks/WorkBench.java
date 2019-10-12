@@ -8,7 +8,7 @@ import io.cubyz.world.World;
 public class WorkBench extends Block {
 	
 	public WorkBench() {
-		super("cubyz:workbench");
+		super("cubyz:workbench", 7.5f);
 		texConverted = true; // texture already in runtime format
 		inventorySize = 6;
 	}

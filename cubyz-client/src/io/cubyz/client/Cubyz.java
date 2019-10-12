@@ -655,15 +655,21 @@ public class Cubyz implements IGameLogic {
 			}
 			if (Keybindings.isPressed("destroy")) {
 				//Breaking Blocks
-				if (breakCooldown == 0) {
-					breakCooldown = 7;
-					BlockInstance bi = msd.getSelectedBlockInstance();
-					if (bi != null && bi.getBlock().getHardness() != -1f) {
-						world.removeBlock(bi.getX(), bi.getY(), bi.getZ());
-						if(world.getLocalPlayer().getInventory().addItem(bi.getBlock().getBlockDrop(), 1) != 0) {
-							//DropItemOnTheGround(); //TODO: Add this function.
+				if(world.getLocalPlayer().isFlying()) { // Ignore hardness when in flying.
+					if (breakCooldown == 0) {
+						breakCooldown = 7;
+						BlockInstance bi = msd.getSelectedBlockInstance();
+						if (bi != null && bi.getBlock().getHardness() != -1f) {
+							world.removeBlock(bi.getX(), bi.getY(), bi.getZ());
+							if(world.getLocalPlayer().getInventory().addItem(bi.getBlock().getBlockDrop(), 1) != 0) {
+								//DropItemOnTheGround(); //TODO: Add this function.
+							}
 						}
 					}
+				}
+				else {
+					BlockInstance bi = msd.getSelectedBlockInstance();
+					world.getLocalPlayer().breaking(bi, inventorySelection, world);
 				}
 			}
 			if (Keybindings.isPressed("place")) {

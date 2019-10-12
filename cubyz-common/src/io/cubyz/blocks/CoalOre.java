@@ -8,6 +8,7 @@ public class CoalOre extends Ore {
 		setID("cubyz:coal_ore");
 		setHeight(127);
 		setChance(0.02F);
+		setHardness(40);
 		Item bd = new Item();
 		bd.setID("cubyz:coal");
 		bd.setTexture("materials/coal.png");

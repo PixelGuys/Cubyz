@@ -147,5 +147,9 @@ public class BlockInstance {
 		}
 		return spatial;
 	}
+
+	public void setBreakingAnimation(float f) { // 0 <= f < 1
+		// TODO Overlay the block with the corresponding block break graphics.
+	}
 	
 }

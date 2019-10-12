@@ -8,6 +8,7 @@ public class DiamondOre extends Ore {
 		setID("cubyz:diamond_ore");
 		setHeight(15);
 		setChance(0.002F);
+		setHardness(80);
 		Item bd = new Item();
 		bd.setID("cubyz:diamond");
 		bd.setTexture("materials/diamond.png");

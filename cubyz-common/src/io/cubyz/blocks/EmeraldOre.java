@@ -8,6 +8,7 @@ public class EmeraldOre extends Ore {
 		setID("cubyz:emerald_ore");
 		setHeight(25);
 		setChance(0.001F);
+		setHardness(55);
 		Item bd = new Item();
 		bd.setID("cubyz:emerald");
 		bd.setTexture("materials/emerald.png");

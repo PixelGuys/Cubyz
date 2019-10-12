@@ -9,6 +9,7 @@ public class IronOre extends Ore {
 		setID("cubyz:iron_ore");
 		setHeight(63);
 		setChance(0.03F);
+		setHardness(60);
 		Item bd = new ItemBlock(this);
 		bd.setID("cubyz:iron_ore");
 		bd.setTexture("materials/iron_ore.png");

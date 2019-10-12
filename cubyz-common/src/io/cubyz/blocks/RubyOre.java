@@ -8,6 +8,7 @@ public class RubyOre extends Ore {
 		setID("cubyz:ruby_ore");
 		setHeight(8);
 		setChance(0.006F);
+		setHardness(50);
 		Item bd = new Item();
 		bd.setID("cubyz:ruby");
 		bd.setTexture("materials/ruby.png");
