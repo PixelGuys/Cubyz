@@ -9,6 +9,7 @@ public class Water extends Block {
 		setID("cubyz:water");
 		setSelectable(false);
 		setSolid(false);
+		bc = BlockClass.FLUID;
 		transparent = true;
 	}
 	

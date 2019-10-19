@@ -10,7 +10,12 @@ import io.cubyz.items.Item;
 import io.cubyz.items.ItemBlock;
 import io.cubyz.world.World;
 
+
 public class Block implements IRegistryElement {
+	
+	public static enum BlockClass {
+		WOOD, STONE, SAND, UNBREAKABLE, LEAF, FLUID
+	};
 	
 	private static final Vector3f ONE = new Vector3f(1, 1, 1);
 
@@ -29,11 +34,13 @@ public class Block implements IRegistryElement {
 	private Item blockDrop;
 	protected int inventorySize = 0;
 	protected boolean degradable = false; // Meaning undegradable parts of trees or other structures can grow through this block.
+	protected BlockClass bc;
 	
 	public Block() {}
 	
-	public Block(String id, float hardness) {
+	public Block(String id, float hardness, BlockClass bc) {
 		setID(id);
+		this.bc = bc;
 		ItemBlock bd = new ItemBlock(this);
 		bd.setTexture("blocks/"+this.id.getID()+".png");
 		setBlockDrop(bd);
@@ -118,21 +125,16 @@ public class Block implements IRegistryElement {
 		return this;
 	}
 	
-	public boolean isUnbreakable() {
-		return hardness == -1f;
-	}
-	
-	public Block setUnbreakable() {
-		hardness = -1f;
-		return this;
-	}
-	
 	public TileEntity createTileEntity(BlockInstance bi) {
 		return null;
 	}
 	
 	public boolean hasTileEntity() {
 		return false;
+	}
+	
+	public BlockClass getBlockClass() {
+		return bc;
 	}
 	
 	public Vector3f getLightAdjust() {

@@ -4,6 +4,7 @@ import org.joml.Vector3f;
 import org.joml.Vector3i;
 
 import io.cubyz.api.Resource;
+import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.items.Inventory;
 import io.cubyz.items.tools.Tool;
@@ -19,6 +20,7 @@ public class PlayerEntity extends EntityType {
 		private BlockInstance toBreak = null;
 		private long timeStarted = 0;
 		private int maxTime = -1;
+		private int breakingSlot = -1; // Slot used to break the block. Slot change results in restart of block breaking.
 		
 		@Override
 		public boolean isFlying() {
@@ -126,8 +128,7 @@ public class PlayerEntity extends EntityType {
 		}
 		
 		private void calculateBreakTime(BlockInstance bi, int slot) {
-			if(bi == null || bi.getBlock().getHardness() == -1) {
-				maxTime = -1;
+			if(bi == null || bi.getBlock().getBlockClass() == BlockClass.UNBREAKABLE) {
 				return;
 			}
 			timeStarted = System.currentTimeMillis();
@@ -142,11 +143,12 @@ public class PlayerEntity extends EntityType {
 
 		@Override
 		public void breaking(BlockInstance bi, int slot, World w) {
-			if(bi != toBreak) {
+			if(bi != toBreak || breakingSlot != slot) {
 				toBreak = bi;
+				breakingSlot = slot;
 				calculateBreakTime(bi, slot);
 			}
-			if(bi == null)
+			if(bi == null || bi.getBlock().getBlockClass() == BlockClass.UNBREAKABLE)
 				return;
 			long deltaTime = System.currentTimeMillis() - timeStarted;
 			if (deltaTime > maxTime) {
@@ -154,9 +156,6 @@ public class PlayerEntity extends EntityType {
 				if(w.getLocalPlayer().getInventory().addItem(bi.getBlock().getBlockDrop(), 1) != 0) {
 					//DropItemOnTheGround(); //TODO: Add this function.
 				}
-			}
-			if(maxTime != -1) {
-				bi.setBreakingAnimation((float)deltaTime/maxTime);
 			}
 		}
 	}

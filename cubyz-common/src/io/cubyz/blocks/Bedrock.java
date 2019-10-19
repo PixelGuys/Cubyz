@@ -4,7 +4,7 @@ public class Bedrock extends Block {
 
 	public Bedrock() {
 		setID("cubyz:bedrock");
-		setUnbreakable();
+		bc = BlockClass.UNBREAKABLE;
 	}
 	
 }

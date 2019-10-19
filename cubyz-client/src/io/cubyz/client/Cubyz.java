@@ -28,6 +28,7 @@ import io.cubyz.api.Side;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.Ore;
+import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.client.loading.LoadThread;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
@@ -659,7 +660,7 @@ public class Cubyz implements IGameLogic {
 					if (breakCooldown == 0) {
 						breakCooldown = 7;
 						BlockInstance bi = msd.getSelectedBlockInstance();
-						if (bi != null && bi.getBlock().getHardness() != -1f) {
+						if (bi != null && bi.getBlock().getBlockClass() != BlockClass.UNBREAKABLE) {
 							world.removeBlock(bi.getX(), bi.getY(), bi.getZ());
 							if(world.getLocalPlayer().getInventory().addItem(bi.getBlock().getBlockDrop(), 1) != 0) {
 								//DropItemOnTheGround(); //TODO: Add this function.

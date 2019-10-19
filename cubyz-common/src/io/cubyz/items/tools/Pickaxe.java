@@ -2,6 +2,7 @@ package io.cubyz.items.tools;
 
 import io.cubyz.base.init.MaterialInit;
 import io.cubyz.blocks.Block;
+import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.items.Item;
 import io.cubyz.items.ItemStack;
 
@@ -46,6 +47,6 @@ public class Pickaxe extends Tool {
 
 	@Override
 	public boolean canBreak(Block b) {
-		return true; // true until blocks have been upgraded.
+		return b.getBlockClass() == BlockClass.STONE;
 	}
 }
