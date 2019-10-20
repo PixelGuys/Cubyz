@@ -10,7 +10,7 @@ public class WorkBench extends Block {
 	public WorkBench() {
 		super("cubyz:workbench", 7.5f, BlockClass.WOOD);
 		texConverted = true; // texture already in runtime format
-		inventorySize = 6;
+		inventorySize = 10;
 	}
 	
 	public boolean onClick(World world, Vector3i pos, BlockInstance bi) {
