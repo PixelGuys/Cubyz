@@ -9,7 +9,6 @@ public class GoldOre extends Ore {
 		setHeight(32);
 		setChance(0.005F);
 		setHardness(45);
-		bc = BlockClass.STONE;
 		Item bd = new Item();
 		bd.setID("cubyz:gold_ore");
 		bd.setTexture("materials/gold_ore.png");

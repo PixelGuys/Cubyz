@@ -152,6 +152,11 @@ public class PlayerEntity extends EntityType {
 				return;
 			long deltaTime = System.currentTimeMillis() - timeStarted;
 			if (deltaTime > maxTime) {
+				if(Tool.class.isInstance(inv.getItem(slot))) {
+					if(((Tool)inv.getItem(slot)).used()) {
+						inv.getStack(slot).clear();
+					}
+				}
 				w.removeBlock(bi.getX(), bi.getY(), bi.getZ());
 				if(w.getLocalPlayer().getInventory().addItem(bi.getBlock().getBlockDrop(), 1) != 0) {
 					//DropItemOnTheGround(); //TODO: Add this function.

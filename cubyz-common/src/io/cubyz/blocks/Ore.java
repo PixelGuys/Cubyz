@@ -4,6 +4,10 @@ public class Ore extends Block {
 
 	private float chance;
 	private int height;
+	
+	public Ore() {
+		bc = BlockClass.STONE;
+	}
 
 	public float getChance() {
 		return chance;

@@ -9,6 +9,7 @@ import org.jungle.hud.Font;
 
 import io.cubyz.items.Item;
 import io.cubyz.items.ItemStack;
+import io.cubyz.items.tools.Tool;
 import io.cubyz.ui.Component;
 import io.cubyz.ui.NGraphics;
 
@@ -101,6 +102,13 @@ public class InventorySlot extends Component {
 				item.setImage(NGraphics.loadImage(item.getTexture()));
 			}
 			NGraphics.drawImage(item.getImage(), win.getWidth()/2 + x + 4, win.getHeight() - y + 4, width - 8, height - 8);
+			if(Tool.class.isInstance(item)) {
+				Tool tool = (Tool)item;
+				float durab = tool.durability();
+				NGraphics.setColor((int)((1.0f - durab)*255.0f), (int)(durab*255.0f), 0);
+				NGraphics.fillRect(win.getWidth()/2 + x + 8, win.getHeight() - y + 56, (int)(48.0f*durab), 4);
+				NGraphics.setColor(0, 0, 0);
+			}
 			inv.setText("" + reference.getAmount());
 			inv.setPosition(win.getWidth()/2 + x + 50, win.getHeight() - y + 48);
 			inv.render(nvg, win);

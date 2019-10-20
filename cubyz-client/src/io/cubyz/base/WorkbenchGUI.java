@@ -150,42 +150,22 @@ public class WorkbenchGUI extends GeneralInventory {
 	}
 	
 	private void checkCrafting() {
-		Item item;
+		Item item = null;
+		inv[inv.length-1].reference.clear();
 		switch(craftingMode) {
 			case AXE:
-				inv[35].reference.clear();
 				item = Axe.canCraft(inv[32].reference, inv[33].reference, inv[34].reference);
-				if(item != null) {
-					inv[35].reference.setItem(item);
-					inv[35].reference.add(1);
-				}
 				break;
 			case PICKAXE:
-				inv[35].reference.clear();
 				item = Pickaxe.canCraft(inv[32].reference, inv[33].reference, inv[34].reference);
-				if(item != null) {
-					inv[35].reference.setItem(item);
-					inv[35].reference.add(1);
-				}
 				break;
 			case SHOVEL:
-				inv[35].reference.clear();
 				item = Shovel.canCraft(inv[32].reference, inv[33].reference, inv[34].reference);
-				if(item != null) {
-					inv[35].reference.setItem(item);
-					inv[35].reference.add(1);
-				}
 				break;
 			case SWORD:
-				inv[35].reference.clear();
 				item = Sword.canCraft(inv[32].reference, inv[33].reference, inv[34].reference);
-				if(item != null) {
-					inv[35].reference.setItem(item);
-					inv[35].reference.add(1);
-				}
 				break;
 			case NORMAL:
-				inv[41].reference.clear();
 				// Find out how many items are there in the grid and put them in an array:
 				int num = 0;
 				Item[] ar = new Item[9];
@@ -197,20 +177,22 @@ public class WorkbenchGUI extends GeneralInventory {
 				// Get the recipes for the given number of items(TODO!):
 				Object[] recipes = CubyzRegistries.RECIPE_REGISTRY.registered();
 				// Find a fitting recipe:
-				item = null;
 				for(int i = 0; i < recipes.length; i++) {
 					Recipe rec = (Recipe) recipes[i];
 					if(rec.getNum() != num)
 						continue;
 					item = rec.canCraft(ar, 3);
 					if(item != null) {
-						
 						inv[41].reference.setItem(item);
 						inv[41].reference.add(rec.getNumRet());
 						return;
 					}
 				}
 				break;
+		}
+		if(item != null) {
+			inv[inv.length-1].reference.setItem(item);
+			inv[inv.length-1].reference.add(1);
 		}
 	}
 	

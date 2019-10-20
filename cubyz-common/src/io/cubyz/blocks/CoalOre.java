@@ -9,7 +9,6 @@ public class CoalOre extends Ore {
 		setHeight(127);
 		setChance(0.02F);
 		setHardness(40);
-		bc = BlockClass.STONE;
 		Item bd = new Item();
 		bd.setID("cubyz:coal");
 		bd.setTexture("materials/coal.png");
