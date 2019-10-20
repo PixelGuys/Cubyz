@@ -1,0 +1,51 @@
+package io.cubyz.items.tools;
+
+import io.cubyz.base.init.MaterialInit;
+import io.cubyz.blocks.Block;
+import io.cubyz.items.Item;
+import io.cubyz.items.ItemStack;
+
+public class Sword extends Tool {
+	private static final int HEAD = 200, BINDING = 50, HANDLE = 50;
+	private static final float baseSpeed = 1.0f;
+
+	public Sword(Material head, Material binding, Material handle) {
+		super(head, binding, handle, calculateSpeed(head, binding, handle), calculateDmg(head, binding, handle));
+		durability = maxDurability = head.headDurability + binding.bindingDurability + handle.handleDurability;
+		// The image is just an overlay of the part images:
+		texturePath = "assets/cubyz/textures/items/parts/sword/"+handle.getRegistryID().getID()+"_handle.png#assets/cubyz/textures/items/parts/sword/"+head.getRegistryID().getID()+"_sword_head.png#assets/cubyz/textures/items/parts/sword/"+binding.getRegistryID().getID()+"_binding.png";
+	}
+	
+	private static float calculateSpeed(Material head, Material binding, Material handle) {
+		return head.miningSpeed * baseSpeed;
+	}
+	
+	private static float calculateDmg(Material head, Material binding, Material handle) {
+		return head.damage+4;// A sword is best for combat.
+	}
+	
+	public static Item canCraft(ItemStack head, ItemStack binding, ItemStack handle) {
+		Material he = null, bi = null, ha = null;
+		if(head.getItem() != null)
+		for(Material ma : MaterialInit.MATERIALS) {
+			if(ma.getItems().containsKey(head.getItem()) && head.getAmount()*ma.getItems().get(head.getItem()) >= HEAD) {
+				he = ma;
+			}
+			if(ma.getItems().containsKey(binding.getItem()) && binding.getAmount()*ma.getItems().get(binding.getItem()) >= BINDING) {
+				bi = ma;
+			}
+			if(ma.getItems().containsKey(handle.getItem()) && handle.getAmount()*ma.getItems().get(handle.getItem()) >= HANDLE) {
+				ha = ma;
+			}
+		}
+		if(he == null || bi == null || ha == null)
+			return null;
+		return new Sword(he, bi, ha);
+			
+	}
+
+	@Override
+	public boolean canBreak(Block b) {
+		return false; // Swords are not made to break blocks (for now).
+	}
+}

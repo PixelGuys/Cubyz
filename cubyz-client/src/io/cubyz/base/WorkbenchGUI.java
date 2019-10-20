@@ -10,6 +10,8 @@ import io.cubyz.items.Item;
 import io.cubyz.items.Recipe;
 import io.cubyz.items.tools.Axe;
 import io.cubyz.items.tools.Pickaxe;
+import io.cubyz.items.tools.Shovel;
+import io.cubyz.items.tools.Sword;
 import io.cubyz.translate.TextKey;
 import io.cubyz.ui.GeneralInventory;
 import io.cubyz.ui.MenuGUI;
@@ -19,10 +21,10 @@ import io.cubyz.ui.components.InventorySlot;
 // TODO
 public class WorkbenchGUI extends GeneralInventory {
 	private static enum Mode {
-		AXE, PICKAXE, NORMAL
+		AXE, PICKAXE, SHOVEL, SWORD, NORMAL
 	};
 
-	Button axe, pickaxe, normal;
+	Button axe, pickaxe, shovel, sword, normal;
 	Mode craftingMode = Mode.NORMAL;
 	Inventory in;
 	
@@ -38,6 +40,12 @@ public class WorkbenchGUI extends GeneralInventory {
 		pickaxe = new Button();
 		pickaxe.setSize(64, 64);
 		pickaxe.setText(new TextKey("Pickaxe"));
+		shovel = new Button();
+		shovel.setSize(64, 64);
+		shovel.setText(new TextKey("Shovel"));
+		sword = new Button();
+		sword.setSize(64, 64);
+		sword.setText(new TextKey("Sword"));
 		activeGUI = this;
 		
 		normal.setOnAction(() -> {
@@ -49,6 +57,12 @@ public class WorkbenchGUI extends GeneralInventory {
 		pickaxe.setOnAction(() -> {
 			WorkbenchGUI.activeGUI.updateMode(Mode.PICKAXE);
 		});
+		shovel.setOnAction(() -> {
+			WorkbenchGUI.activeGUI.updateMode(Mode.SHOVEL);
+		});
+		sword.setOnAction(() -> {
+			WorkbenchGUI.activeGUI.updateMode(Mode.SWORD);
+		});
 	}
 	
 	public void updateMode(Mode mode) {
@@ -58,14 +72,9 @@ public class WorkbenchGUI extends GeneralInventory {
 		InventorySlot [] newInv;
 		switch(mode) {
 			case AXE:
-				newInv = new InventorySlot[36];
-				newInv[32] = new InventorySlot(in.getStack(0), -96, 552); // head
-				newInv[33] = new InventorySlot(in.getStack(1), -128, 480); // binding
-				newInv[34] = new InventorySlot(in.getStack(2), -96, 408); // handle
-				newInv[35] = new InventorySlot(in.getStack(3), 32, 480, true); // new tool
-				
-				break;
 			case PICKAXE:
+			case SHOVEL:
+			case SWORD:
 				newInv = new InventorySlot[36];
 				newInv[32] = new InventorySlot(in.getStack(0), -96, 552); // head
 				newInv[33] = new InventorySlot(in.getStack(1), -128, 480); // binding
@@ -159,6 +168,22 @@ public class WorkbenchGUI extends GeneralInventory {
 					inv[35].reference.add(1);
 				}
 				break;
+			case SHOVEL:
+				inv[35].reference.clear();
+				item = Shovel.canCraft(inv[32].reference, inv[33].reference, inv[34].reference);
+				if(item != null) {
+					inv[35].reference.setItem(item);
+					inv[35].reference.add(1);
+				}
+				break;
+			case SWORD:
+				inv[35].reference.clear();
+				item = Sword.canCraft(inv[32].reference, inv[33].reference, inv[34].reference);
+				if(item != null) {
+					inv[35].reference.setItem(item);
+					inv[35].reference.add(1);
+				}
+				break;
 			case NORMAL:
 				inv[41].reference.clear();
 				// Find out how many items are there in the grid and put them in an array:
@@ -195,10 +220,14 @@ public class WorkbenchGUI extends GeneralInventory {
 		normal.setPosition(win.getWidth() / 2 - 360, win.getHeight()-552);
 		axe.setPosition(win.getWidth() / 2 - 360, win.getHeight()-480);
 		pickaxe.setPosition(win.getWidth() / 2 - 360, win.getHeight()-408);
+		shovel.setPosition(win.getWidth() / 2 - 360, win.getHeight()-336);
+		sword.setPosition(win.getWidth() / 2 - 360, win.getHeight()-264);
 
 		normal.render(nvg, win);
 		axe.render(nvg, win);
 		pickaxe.render(nvg, win);
+		shovel.render(nvg, win);
+		sword.render(nvg, win);
 	}
 
 }
