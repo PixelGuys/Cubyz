@@ -42,7 +42,7 @@ public class MPClientHandler extends ChannelInboundHandlerAdapter {
 					ByteBuf buf = ctx.alloc().buffer(1 + msg.length());
 					buf.writeByte(Packet.PACKET_CHATMSG);
 					buf.writeShort(msg.length());
-					buf.writeCharSequence(msg, Charset.forName("UTF-8")); // a message using UTF-16 or UTF-32 would crash the game!
+					buf.writeCharSequence(msg, Charset.forName("UTF-8"));
 					ctx.writeAndFlush(buf);
 				}
 				

@@ -95,13 +95,12 @@ public class MPClient {
 		if (isConnected()) {
 			disconnect();
 		}
-		cch = new MPClientHandler(MPClient.this, false);
 		group = new NioEventLoopGroup();
 
 		try {
 			Bootstrap b = new Bootstrap();
 			ls = new LocalServer();
-			cch = new MPClientHandler(MPClient.this, false);
+			cch = new MPClientHandler(this, false);
 			b.group(group).channel(NioSocketChannel.class).option(ChannelOption.TCP_NODELAY, true)
 					.handler(new ChannelInitializer<SocketChannel>() {
 						@Override

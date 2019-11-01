@@ -92,6 +92,7 @@ public class RemoteWorld extends World {
 				return chunks.get(i);
 			}
 		}
+		System.out.println("create " + x + ", " + z);
 		Chunk ck = new Chunk(x, z, this, new ArrayList<BlockChange>());
 		chunks.add(ck);
 		return ck;
@@ -102,7 +103,7 @@ public class RemoteWorld extends World {
 		Chunk ch = getChunk(x, z);
 		if (y > World.WORLD_HEIGHT || y < 0)
 			return null;
-		if (ch != null) {
+		if (ch != null && ch.isGenerated() && ch.isLoaded()) {
 			int cx = x & 15;
 			int cz = z & 15;
 			BlockInstance bi = ch.getBlockInstanceAt(cx, y, cz);
@@ -196,13 +197,17 @@ public class RemoteWorld extends World {
 	}
 	
 	public void submit(int x, int z, byte[] data) {
-		chunks.remove(getChunk(x, z)); // be sure there is no copies
 		Chunk ck = new Chunk(x, z, this, transformData(data));
-		chunks.add(ck);
+		for (int i = 0; i < chunks.size(); i++) {
+			if (chunks.get(i).getX() == x && chunks.get(i).getZ() == z) {
+				chunks.remove(i);
+			}
+		}
+		chunks.add(0, ck);
 		ck.generateFrom(gen);
 		ck.load();
 		if (getHighestBlock(localPlayer.getPosition().x, localPlayer.getPosition().z) != -1)
-			localPlayer.getPosition().y = getHighestBlock(localPlayer.getPosition().x, localPlayer.getPosition().z);
+			localPlayer.getPosition().y = getHighestBlock(localPlayer.getPosition().x, localPlayer.getPosition().z)+1;
 		ck.applyBlockChanges();
 	}
 
