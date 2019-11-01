@@ -62,6 +62,22 @@ public class WorldIO {
 			}
 			world.setEntities(entities);
 			in.close();
+			in = new FileInputStream(new File(dir, "region.dat"));
+			// read block data
+			while (in.available() != 0) {
+				byte[] b = new byte[4];
+				in.read(b);
+				int ln = Bits.getInt(b, 0);
+				byte[] data = new byte[ln];
+				in.read(data);
+				blockData.add(data);
+				
+				int ox = Bits.getInt(data, 0);
+				int oz = Bits.getInt(data, 4);
+				int[] ckData = new int[] {ox, oz};
+				chunkData.add(ckData);
+			}
+			in.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -92,8 +108,12 @@ public class WorldIO {
 			BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(new File(dir, "region.dat")));
 			synchronized (blockData) {
 				for (byte[] data : blockData) {
-					if(data.length > 12) // Only write data if there is any data except the chunk coordinates.
+					if(data.length > 12) { // Only write data if there is any data except the chunk coordinates.
+						byte[] b = new byte[4];
+						Bits.putInt(b, 0, data.length);
+						out.write(b);
 						out.write(data);
+					}
 				}
 			}
 			out.close();
@@ -106,7 +126,7 @@ public class WorldIO {
 
 	}
 
-	public void saveChunk(Chunk ch, int x, int z) {
+	public void saveChunk(Chunk ch) {
 		byte[] cb = ch.save();
 		int[] cd = ch.getData();
 		int index = -1;

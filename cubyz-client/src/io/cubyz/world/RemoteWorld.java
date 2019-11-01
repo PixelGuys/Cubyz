@@ -92,7 +92,6 @@ public class RemoteWorld extends World {
 				return chunks.get(i);
 			}
 		}
-		System.out.println("create " + x + ", " + z);
 		Chunk ck = new Chunk(x, z, this, new ArrayList<BlockChange>());
 		chunks.add(ck);
 		return ck;

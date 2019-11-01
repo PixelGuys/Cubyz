@@ -185,7 +185,7 @@ public class LocalWorld extends World {
 	
 	public void synchronousGenerate(Chunk ch) {
 		ch.generateFrom(generator);
-		wio.saveChunk(ch, ch.getX(), ch.getZ());
+		wio.saveChunk(ch);
 	}
 	
 	@Override
@@ -268,7 +268,7 @@ public class LocalWorld extends World {
 		Chunk ch = getChunk(x, z);
 		if (ch != null) {
 			ch.removeBlockAt(x & 15, y, z & 15, true);
-			wio.saveChunk(ch, x/16, z/16);
+			wio.saveChunk(ch);
 			wio.saveWorldData();
 		}
 	}
@@ -278,7 +278,7 @@ public class LocalWorld extends World {
 		Chunk ch = getChunk(x, z);
 		if (ch != null) {
 			ch.addBlockAt(x & 15, y, z & 15, b, true);
-			wio.saveChunk(ch, x/16, z/16);
+			wio.saveChunk(ch);
 			wio.saveWorldData();
 		}
 	}
@@ -415,7 +415,7 @@ public class LocalWorld extends World {
 		for(int k = minK; k < visibleChunks.length; k++) {
 			visibleChunks[k].setLoaded(false);
 			chunks.remove(visibleChunks[k]);
-			wio.saveChunk(visibleChunks[k], visibleChunks[k].getX(), visibleChunks[k].getZ());
+			wio.saveChunk(visibleChunks[k]);
 		}
 		visibleChunks = newVisibles;
 		lastX = x;

@@ -23,7 +23,7 @@ public class BlockChange {
 	}
 	
 	/**
-	 * Save BlockChange to array data att offset off.
+	 * Save BlockChange to array data at offset off.
 	 * Data Length: 16 bytes
 	 * @param data
 	 * @param off

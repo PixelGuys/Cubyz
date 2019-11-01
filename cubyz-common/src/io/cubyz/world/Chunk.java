@@ -329,7 +329,7 @@ public class Chunk {
 			int index = -1; // Checks if it is already in the list
 			for(int i = 0; i < changes.size(); i++) {
 				BlockChange bc = changes.get(i);
-				if(bc.x == x && bc.x == x && bc.x == x) {
+				if(bc.x == x && bc.y == y && bc.z == z) {
 					index = i;
 					break;
 				}
@@ -420,7 +420,7 @@ public class Chunk {
 			int index = -1; // Checks if it is already in the list
 			for(int i = 0; i < changes.size(); i++) {
 				BlockChange bc = changes.get(i);
-				if(bc.x == x && bc.x == x && bc.x == x) {
+				if(bc.x == x && bc.y == y && bc.z == z) {
 					index = i;
 					break;
 				}
