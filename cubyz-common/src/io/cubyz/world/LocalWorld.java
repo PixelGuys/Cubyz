@@ -14,7 +14,7 @@ import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.IRegistryElement;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
-import io.cubyz.blocks.ITickeable;
+import io.cubyz.blocks.IUpdateable;
 import io.cubyz.blocks.BlockEntity;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
@@ -338,12 +338,12 @@ public class LocalWorld extends World {
 			if (ch.isLoaded() && ch.tileEntities().size() > 0) {
 				BlockEntity[] tileEntities = ch.tileEntities().values().toArray(new BlockEntity[ch.tileEntities().values().size()]);
 				for (BlockEntity te : tileEntities) {
-					if (te instanceof ITickeable) {
-						ITickeable tk = (ITickeable) te;
-						tk.tick(false);
-						if (tk.randomTicks()) {
+					if (te instanceof IUpdateable) {
+						IUpdateable tk = (IUpdateable) te;
+						tk.update(false);
+						if (tk.randomUpdates()) {
 							if (rnd.nextInt(5) <= 1) { // 1/5 chance
-								tk.tick(true);
+								tk.update(true);
 							}
 						}
 					}
