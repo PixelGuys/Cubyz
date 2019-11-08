@@ -7,6 +7,7 @@ import java.util.Random;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 
+import org.joml.Vector3i;
 import org.joml.Vector4f;
 
 import io.cubyz.api.CubyzRegistries;
@@ -14,7 +15,7 @@ import io.cubyz.api.IRegistryElement;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.ITickeable;
-import io.cubyz.blocks.TileEntity;
+import io.cubyz.blocks.BlockEntity;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.math.Bits;
@@ -283,10 +284,12 @@ public class LocalWorld extends World {
 		}
 	}
 	
+	boolean lqdUpdate;
 	public void update() {
 		// Time
 		if(milliTime + 100 < System.currentTimeMillis()) {
 			milliTime += 100;
+			lqdUpdate = true;
 			gameTime++; // gameTime is measured in 100ms.
 		}
 		// Ambient light
@@ -332,15 +335,53 @@ public class LocalWorld extends World {
 		}
 		// Tile Entities
 		for (Chunk ch : visibleChunks) {
-			if (ch.isLoaded()) {
-				TileEntity[] tileEntities = ch.tileEntities().values().toArray(new TileEntity[ch.tileEntities().values().size()]);
-				for (TileEntity te : tileEntities) {
+			if (ch.isLoaded() && ch.tileEntities().size() > 0) {
+				BlockEntity[] tileEntities = ch.tileEntities().values().toArray(new BlockEntity[ch.tileEntities().values().size()]);
+				for (BlockEntity te : tileEntities) {
 					if (te instanceof ITickeable) {
 						ITickeable tk = (ITickeable) te;
 						tk.tick(false);
 						if (tk.randomTicks()) {
-							if (rnd.nextInt(20) < 10) {
+							if (rnd.nextInt(5) <= 1) { // 1/5 chance
 								tk.tick(true);
+							}
+						}
+					}
+				}
+			}
+		}
+		
+		// Liquids
+		if (gameTime % 3 == 0 && lqdUpdate) {
+			lqdUpdate = false;
+			for (Chunk ch : visibleChunks) {
+				if (ch.isLoaded() && ch.liquids().size() > 0) {
+					BlockInstance[] liquids = ch.liquids().toArray(new BlockInstance[ch.liquids().size()]);
+					for (BlockInstance bi : liquids) {
+						BlockInstance[] neighbors = bi.getNeighbors(ch);
+						for (int i = 0; i < neighbors.length; i++) {
+							BlockInstance b = neighbors[i];
+							if (b == null) switch (i) {
+							case 0:
+								ch.addBlock(bi.getBlock(), bi.getX()-1, bi.getY(), bi.getZ());
+								break;
+							case 1:
+								ch.addBlock(bi.getBlock(), bi.getX()+1, bi.getY(), bi.getZ());
+								break;
+							case 2:
+								ch.addBlock(bi.getBlock(), bi.getX(), bi.getY(), bi.getZ()+1);
+								break;
+							case 3:
+								ch.addBlock(bi.getBlock(), bi.getX(), bi.getY(), bi.getZ()-1);
+								break;
+							case 4:
+								ch.addBlock(bi.getBlock(), bi.getX(), bi.getY()-1, bi.getZ());
+								break;
+							case 5: // not placing up!
+								break;
+							default:
+								System.err.println("(LocalWorld/Liquids) More than 6 nullable neighbors!");
+								break;
 							}
 						}
 					}

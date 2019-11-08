@@ -1,10 +1,10 @@
 package io.cubyz.blocks;
 
-public abstract class TileEntity {
+public abstract class BlockEntity {
 
 	private BlockInstance block;
 	
-	public TileEntity(BlockInstance bi) {
+	public BlockEntity(BlockInstance bi) {
 		block = bi;
 	}
 	

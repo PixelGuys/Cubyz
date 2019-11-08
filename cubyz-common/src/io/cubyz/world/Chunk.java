@@ -8,8 +8,9 @@ import org.joml.Vector3f;
 import org.joml.Vector3i;
 
 import io.cubyz.blocks.Block;
+import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.blocks.BlockInstance;
-import io.cubyz.blocks.TileEntity;
+import io.cubyz.blocks.BlockEntity;
 import io.cubyz.entity.Player;
 import io.cubyz.math.Bits;
 import io.cubyz.save.BlockChange;
@@ -19,6 +20,7 @@ public class Chunk {
 
 	private BlockInstance[][][] inst;
 	private ArrayList<BlockInstance> list = new ArrayList<>();
+	private ArrayList<BlockInstance> liquids = new ArrayList<>();
 	private ArrayList<BlockChange> changes; // Reports block changes. Only those will be saved!s
 	//private ArrayList<BlockInstance> visibles = new ArrayList<>();
 	private BlockInstance[] visibles = new BlockInstance[10]; // Using an array here to speed up the renderer.
@@ -26,7 +28,7 @@ public class Chunk {
 	private int ox, oy;
 	private boolean generated;
 	private boolean loaded;
-	private Map<BlockInstance, TileEntity> tileEntities = new HashMap<>();
+	private Map<BlockInstance, BlockEntity> tileEntities = new HashMap<>();
 	
 	private World world;
 	
@@ -57,11 +59,15 @@ public class Chunk {
 		return list;
 	}
 	
+	public ArrayList<BlockInstance> liquids() {
+		return liquids;
+	}
+	
 	public BlockInstance[] getVisibles() {
 		return visibles;
 	}
 	
-	public Map<BlockInstance, TileEntity> tileEntities() {
+	public Map<BlockInstance, BlockEntity> tileEntities() {
 		return tileEntities;
 	}
 	
@@ -111,8 +117,11 @@ public class Chunk {
 		inst0.setPosition(new Vector3i(x, y, z));
 		inst0.setWorld(world);
 		if (b.hasTileEntity()) {
-			TileEntity te = b.createTileEntity(inst0);
+			BlockEntity te = b.createTileEntity(inst0);
 			tileEntities.put(inst0, te);
+		}
+		if (b.getBlockClass() == BlockClass.FLUID) {
+			liquids.add(inst0);
 		}
 		list.add(inst0);
 		inst[rx][y][rz] = inst0;
@@ -307,6 +316,9 @@ public class Chunk {
 		if(bi == null)
 			return;
 		hideBlock(bi);
+		if (bi.getBlock().getBlockClass() == BlockClass.FLUID) {
+			liquids.remove(bi);
+		}
 		list.remove(bi);
 		if (bi.getBlock().hasTileEntity()) {
 			tileEntities.remove(bi);
@@ -368,6 +380,9 @@ public class Chunk {
 		if (bi != null) {
 			bi.setWorld(world);
 			list.add(bi);
+			if (bi.getBlock().getBlockClass() == BlockClass.FLUID) {
+				liquids.add(bi);
+			}
 		}
 		inst[x][y][z] = bi;
 	}
@@ -382,7 +397,7 @@ public class Chunk {
 		inst0.setPosition(new Vector3i(x + wx, y, z + wy));
 		inst0.setWorld(world);
 		if (b.hasTileEntity()) {
-			TileEntity te = b.createTileEntity(inst0);
+			BlockEntity te = b.createTileEntity(inst0);
 			tileEntities.put(inst0, te);
 		}
 		list.add(inst0);

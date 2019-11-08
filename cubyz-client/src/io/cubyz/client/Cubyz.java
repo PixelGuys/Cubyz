@@ -494,12 +494,6 @@ public class Cubyz implements IGameLogic {
 				world.getLocalPlayer().setFlying(!world.getLocalPlayer().isFlying());
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_F, false);
 			}
-			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_RIGHT)) {
-				light.getDirection().x += 0.01F;
-				if (light.getDirection().x > 1.0F) {
-					light.getDirection().x = 0.0F;
-				}
-			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_C)) {
 				int mods = Keyboard.getKeyMods();
 				if ((mods & GLFW.GLFW_MOD_CONTROL) == GLFW.GLFW_MOD_CONTROL) {
@@ -517,6 +511,8 @@ public class Cubyz implements IGameLogic {
 			if (Keybindings.isPressed("menu")) {
 				if (gameUI.getMenuGUI() != null) {
 					gameUI.setMenu(null);
+					mouse.setGrabbed(true);
+					Keyboard.setKeyPressed(Keybindings.getKeyCode("menu"), false);
 				} else {
 					Keyboard.setKeyPressed(Keybindings.getKeyCode("menu"), false);
 					gameUI.setMenu(new PauseGUI());

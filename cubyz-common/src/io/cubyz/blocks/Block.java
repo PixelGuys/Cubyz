@@ -125,7 +125,7 @@ public class Block implements IRegistryElement {
 		return this;
 	}
 	
-	public TileEntity createTileEntity(BlockInstance bi) {
+	public BlockEntity createTileEntity(BlockInstance bi) {
 		return null;
 	}
 	
