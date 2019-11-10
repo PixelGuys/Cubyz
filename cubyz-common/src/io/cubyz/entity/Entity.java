@@ -71,8 +71,9 @@ public abstract class Entity {
 		return renderPair;
 	}
 	
-	// port of IntegratedQuantum's mathematical works for collision detection
-	// Thanks ;)
+	/**
+	 * @author IntegratedQuantum
+	 */
 	protected float _getX(float x) {
 		int absX = position.x + (int) Math.round(position.relX);
 		int absY = (int) Math.floor(position.y + 0.5F);

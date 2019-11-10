@@ -1,12 +1,16 @@
 package io.cubyz.save;
 
 import java.io.BufferedOutputStream;
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.zip.DeflaterOutputStream;
+import java.util.zip.InflaterInputStream;
 
 import io.cubyz.entity.Entity;
 import io.cubyz.math.Bits;
@@ -41,16 +45,15 @@ public class WorldIO {
 
 	public void loadWorldData() {
 		try {
-			FileInputStream in = new FileInputStream(new File(dir, "world.dat"));
+			InputStream in = new InflaterInputStream(new FileInputStream(new File(dir, "world.dat")));
 			byte[] len = new byte[4];
 			in.read(len);
 			int l = Bits.getInt(len, 0);
 			
-			ByteBuffer dst = ByteBuffer.allocate(l);
-			in.getChannel().read(dst);
-			dst.flip();
+			byte[] dst = new byte[l];
+			in.read(dst);
 			
-			NDTContainer ndt = new NDTContainer(dst.array());
+			NDTContainer ndt = new NDTContainer(dst);
 			world.setName(ndt.getString("name"));
 			world.setHeight(ndt.getInteger("height"));
 			world.setSeed(ndt.getInteger("seed"));
@@ -62,7 +65,7 @@ public class WorldIO {
 			}
 			world.setEntities(entities);
 			in.close();
-			in = new FileInputStream(new File(dir, "region.dat"));
+			in = new InflaterInputStream(new BufferedInputStream(new FileInputStream(new File(dir, "region.dat"))));
 			// read block data
 			while (in.available() != 0) {
 				byte[] b = new byte[4];
@@ -85,7 +88,7 @@ public class WorldIO {
 
 	public void saveWorldData() {
 		try {
-			FileOutputStream out = new FileOutputStream(new File(dir, "world.dat"));
+			OutputStream out = new DeflaterOutputStream(new FileOutputStream(new File(dir, "world.dat")));
 			NDTContainer ndt = new NDTContainer();
 			ndt.setInteger("version", 1);
 			ndt.setString("name", world.getName());
@@ -105,7 +108,7 @@ public class WorldIO {
 			e.printStackTrace();
 		}
 		try {
-			BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(new File(dir, "region.dat")));
+			BufferedOutputStream out = new BufferedOutputStream(new DeflaterOutputStream(new FileOutputStream(new File(dir, "region.dat"))));
 			synchronized (blockData) {
 				for (byte[] data : blockData) {
 					if(data.length > 12) { // Only write data if there is any data except the chunk coordinates.
