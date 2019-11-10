@@ -36,9 +36,9 @@ public class DebugOverlay extends MenuGUI {
 			if (Cubyz.world != null) {
 				World world = Cubyz.world;
 				Player p = world.getLocalPlayer();
-				float x = p.getPosition().x + world.getLocalPlayer().getPosition().relX;
+				float x = p.getPosition().x + p.getPosition().relX;
 				float y = p.getPosition().y;
-				float z = p.getPosition().z + world.getLocalPlayer().getPosition().relZ;
+				float z = p.getPosition().z + p.getPosition().relZ;
 				
 				NGraphics.drawText(0, 48, "XYZ: " + x + ", " + y + ", " + z);
 				NGraphics.drawText(0, 60, "Loaded Chunks: " + world.getVisibleChunks().length + "/" + world.getChunks().size());
