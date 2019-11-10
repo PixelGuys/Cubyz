@@ -64,10 +64,10 @@ public class MPClientHandler extends ChannelInboundHandlerAdapter {
 	public void connect() {
 		ByteBuf buf = ctx.alloc().buffer(1);
 		buf.writeByte(Packet.PACKET_LISTEN);
-		buf.writeCharSequence(Cubyz.profile.getUUID().toString(), Constants.CHARSET_IMPL);
+		buf.writeCharSequence(Cubyz.profile.getUUID().toString(), Constants.CHARSET);
 		String username = Cubyz.profile.getUsername();
 		buf.writeShort(username.length());
-		buf.writeCharSequence(username, Constants.CHARSET_IMPL);
+		buf.writeCharSequence(username, Constants.CHARSET);
 		ctx.writeAndFlush(buf);
 		world = new RemoteWorld();
 	}
@@ -94,7 +94,7 @@ public class MPClientHandler extends ChannelInboundHandlerAdapter {
 			
 			if (responseType == Packet.PACKET_GETVERSION) {
 				int length = buf.readUnsignedByte();
-				String raw = buf.readCharSequence(length, Constants.CHARSET_IMPL).toString();
+				String raw = buf.readCharSequence(length, Constants.CHARSET).toString();
 				cl.getLocalServer().brand = raw.split(";")[0];
 				cl.getLocalServer().version = raw.split(";")[1];
 				CubyzLogger.instance.fine("[MPClientHandler] Raw version + brand: " + raw);
@@ -102,7 +102,7 @@ public class MPClientHandler extends ChannelInboundHandlerAdapter {
 			
 			if (responseType == Packet.PACKET_PINGDATA) {
 				PingResponse pr = new PingResponse();
-				pr.motd = buf.readCharSequence(buf.readShort(), Constants.CHARSET_IMPL).toString();
+				pr.motd = buf.readCharSequence(buf.readShort(), Constants.CHARSET).toString();
 				pr.onlinePlayers = buf.readInt();
 				pr.maxPlayers = buf.readInt();
 				cl.getLocalServer().lastPingResponse = pr;
@@ -111,13 +111,13 @@ public class MPClientHandler extends ChannelInboundHandlerAdapter {
 			if (responseType == Packet.PACKET_PINGPONG) {
 				ByteBuf b = ctx.alloc().buffer(37);
 				b.writeByte(Packet.PACKET_PINGPONG);
-				b.writeCharSequence(Cubyz.profile.getUUID().toString(), Constants.CHARSET_IMPL);
+				b.writeCharSequence(Cubyz.profile.getUUID().toString(), Constants.CHARSET);
 				ctx.write(b);
 			}
 			
 			if (responseType == Packet.PACKET_CHATMSG) {
 				short len = buf.readShort();
-				String chat = buf.readCharSequence(len, Constants.CHARSET_IMPL).toString();
+				String chat = buf.readCharSequence(len, Constants.CHARSET).toString();
 				messages.add(chat);
 			}
 			

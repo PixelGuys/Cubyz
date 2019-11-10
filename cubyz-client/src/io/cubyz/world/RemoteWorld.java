@@ -8,6 +8,7 @@ import org.joml.Vector4f;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.IRegistryElement;
 import io.cubyz.blocks.Block;
+import io.cubyz.blocks.BlockEntity;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
@@ -208,6 +209,18 @@ public class RemoteWorld extends World {
 		if (getHighestBlock(localPlayer.getPosition().x, localPlayer.getPosition().z) != -1)
 			localPlayer.getPosition().y = getHighestBlock(localPlayer.getPosition().x, localPlayer.getPosition().z)+1;
 		ck.applyBlockChanges();
+	}
+
+	@Override
+	public BlockEntity getBlockEntity(BlockInstance arg0) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public BlockEntity getBlockEntity(int arg0, int arg1, int arg2) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 }

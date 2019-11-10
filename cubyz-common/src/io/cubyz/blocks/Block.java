@@ -32,7 +32,6 @@ public class Block implements IRegistryElement {
 	private boolean solid = true;
 	private boolean selectable = true;
 	private Item blockDrop;
-	protected int inventorySize = 0;
 	protected boolean degradable = false; // Meaning undegradable parts of trees or other structures can grow through this block.
 	protected BlockClass bc;
 	
@@ -125,11 +124,11 @@ public class Block implements IRegistryElement {
 		return this;
 	}
 	
-	public BlockEntity createTileEntity(BlockInstance bi) {
+	public BlockEntity createBlockEntity(BlockInstance bi) {
 		return null;
 	}
 	
-	public boolean hasTileEntity() {
+	public boolean hasBlockEntity() {
 		return false;
 	}
 	

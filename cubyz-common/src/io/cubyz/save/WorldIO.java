@@ -65,9 +65,11 @@ public class WorldIO {
 			}
 			world.setEntities(entities);
 			in.close();
-			in = new InflaterInputStream(new BufferedInputStream(new FileInputStream(new File(dir, "region.dat"))));
+			in = new BufferedInputStream(new InflaterInputStream(new FileInputStream(new File(dir, "region.dat"))));
 			// read block data
-			while (in.available() != 0) {
+			in.read(len);
+			l = Bits.getInt(len, 0);
+			for (int i = 0; i < l; i++) {
 				byte[] b = new byte[4];
 				in.read(b);
 				int ln = Bits.getInt(b, 0);
@@ -110,12 +112,21 @@ public class WorldIO {
 		try {
 			BufferedOutputStream out = new BufferedOutputStream(new DeflaterOutputStream(new FileOutputStream(new File(dir, "region.dat"))));
 			synchronized (blockData) {
+				byte[] len = new byte[4];
+				int l = 0;
+				for (byte[] data : blockData)
+					if (data.length > 12)
+						l++;
+				Bits.putInt(len, 0, l);
+				out.write(len);
+				out.flush();
 				for (byte[] data : blockData) {
 					if(data.length > 12) { // Only write data if there is any data except the chunk coordinates.
 						byte[] b = new byte[4];
 						Bits.putInt(b, 0, data.length);
 						out.write(b);
 						out.write(data);
+						out.flush();
 					}
 				}
 			}

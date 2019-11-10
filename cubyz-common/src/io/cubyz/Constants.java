@@ -6,8 +6,8 @@ import io.cubyz.api.Side;
 
 public class Constants {
 
-	public static final String CHARSET = "UTF-8";
-	public static final Charset CHARSET_IMPL = Charset.forName(CHARSET);
+	public static final String CHARSET_NAME = "UTF-8";
+	public static final Charset CHARSET = Charset.forName(CHARSET_NAME);
 	
 	public static final String GAME_BUILD_TYPE = "alpha";
 	

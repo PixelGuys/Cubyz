@@ -4,6 +4,8 @@ import org.jungle.Window;
 
 import io.cubyz.Constants;
 import io.cubyz.client.Cubyz;
+import io.cubyz.entity.Player;
+import io.cubyz.entity.PlayerEntity.PlayerImpl;
 import io.cubyz.world.LocalWorld;
 import io.cubyz.world.World;
 
@@ -33,9 +35,10 @@ public class DebugOverlay extends MenuGUI {
 			
 			if (Cubyz.world != null) {
 				World world = Cubyz.world;
-				float x = world.getLocalPlayer().getPosition().x + world.getLocalPlayer().getPosition().relX;
-				float y = world.getLocalPlayer().getPosition().y;
-				float z = world.getLocalPlayer().getPosition().z + world.getLocalPlayer().getPosition().relZ;
+				Player p = world.getLocalPlayer();
+				float x = p.getPosition().x + world.getLocalPlayer().getPosition().relX;
+				float y = p.getPosition().y;
+				float z = p.getPosition().z + world.getLocalPlayer().getPosition().relZ;
 				
 				NGraphics.drawText(0, 48, "XYZ: " + x + ", " + y + ", " + z);
 				NGraphics.drawText(0, 60, "Loaded Chunks: " + world.getVisibleChunks().length + "/" + world.getChunks().size());
@@ -43,6 +46,13 @@ public class DebugOverlay extends MenuGUI {
 				NGraphics.drawText(0, 84, "Game Time: " + world.getGameTime());
 				if (world instanceof LocalWorld) {
 					NGraphics.drawText(0, 96, "Chunk Queue Size: " + ((LocalWorld) world).getChunkQueueSize());
+				}
+				
+				if (p instanceof PlayerImpl) { // player on local world
+					PlayerImpl pi = (PlayerImpl) p;
+					if (pi.getRemainingBreakTime() > 0) {
+						NGraphics.drawText(0, 120, "Remaining Breaking Time: " + pi.getRemainingBreakTime());
+					}
 				}
 			}
 			

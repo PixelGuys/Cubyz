@@ -6,6 +6,7 @@ import org.joml.Vector3i;
 import org.joml.Vector4f;
 
 import io.cubyz.blocks.Block;
+import io.cubyz.blocks.BlockEntity;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
@@ -50,6 +51,8 @@ public abstract class World {
 	public abstract Chunk getChunk(int x, int z);	// Works with world coordinates
 	public abstract Chunk _getChunk(int x, int z);	// Works with chunk coordinates
 	public abstract BlockInstance getBlock(int x, int y, int z);
+	public abstract BlockEntity getBlockEntity(int x, int y, int z);
+	public abstract BlockEntity getBlockEntity(BlockInstance bi);
 	
 	public BlockInstance getBlock(Vector3i vec) {
 		return getBlock(vec.x, vec.y, vec.z);

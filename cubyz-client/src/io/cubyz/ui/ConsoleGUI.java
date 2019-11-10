@@ -28,19 +28,7 @@ public class ConsoleGUI extends MenuGUI {
 		input.render(nvg, win);
 		if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_ENTER)) {
 			String text = input.getText();
-			CommandExecutor.execute(text, new ICommandSource() {
-
-				@Override
-				public void feedback(String feedback) {
-					System.out.println("Commad feeback: " + feedback);
-				}
-
-				@Override
-				public World getWorld() {
-					return Cubyz.world;
-				}
-				
-			});
+			CommandExecutor.execute(text, Cubyz.world.getLocalPlayer());
 			input.setText("");
 			Keyboard.setKeyPressed(GLFW.GLFW_KEY_ENTER, false);
 		}

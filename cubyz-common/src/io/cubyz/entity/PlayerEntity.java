@@ -13,7 +13,7 @@ import io.cubyz.world.World;
 
 public class PlayerEntity extends EntityType {
 
-	class PlayerImpl extends Player {
+	public static class PlayerImpl extends Player {
 		
 		private boolean flying = false;
 		private Inventory inv = new Inventory(37); // 4*8 normal inventory + 4 crafting slots + 1 crafting result slot.
@@ -30,6 +30,10 @@ public class PlayerEntity extends EntityType {
 		@Override
 		public void setFlying(boolean fly) {
 			flying = fly;
+		}
+		
+		public long getRemainingBreakTime() {
+			return (maxTime+timeStarted) - System.currentTimeMillis();
 		}
 		
 		@Override
@@ -132,7 +136,7 @@ public class PlayerEntity extends EntityType {
 				return;
 			}
 			timeStarted = System.currentTimeMillis();
-			maxTime = (int)(Math.round(bi.getBlock().getHardness()*1000));
+			maxTime = (int)(Math.round(bi.getBlock().getHardness()*200));
 			if(Tool.class.isInstance(inv.getItem(slot))) {
 				Tool tool = (Tool)inv.getItem(slot);
 				if(tool.canBreak(bi.getBlock())) {

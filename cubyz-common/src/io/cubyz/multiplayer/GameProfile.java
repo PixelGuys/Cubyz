@@ -84,7 +84,7 @@ public class GameProfile {
 	public GameProfile(String username) {
 		online = false;
 		loginUuid = UUID.randomUUID();
-		uuid = UUID.nameUUIDFromBytes(username.getBytes(Constants.CHARSET_IMPL));
+		uuid = UUID.nameUUIDFromBytes(username.getBytes(Constants.CHARSET));
 		this.username = username;
 	}
 	

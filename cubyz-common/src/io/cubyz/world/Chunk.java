@@ -28,7 +28,7 @@ public class Chunk {
 	private int ox, oy;
 	private boolean generated;
 	private boolean loaded;
-	private Map<BlockInstance, BlockEntity> tileEntities = new HashMap<>();
+	private Map<BlockInstance, BlockEntity> blockEntities = new HashMap<>();
 	
 	private World world;
 	
@@ -67,8 +67,8 @@ public class Chunk {
 		return visibles;
 	}
 	
-	public Map<BlockInstance, BlockEntity> tileEntities() {
-		return tileEntities;
+	public Map<BlockInstance, BlockEntity> blockEntities() {
+		return blockEntities;
 	}
 	
 	/**
@@ -116,9 +116,9 @@ public class Chunk {
 		BlockInstance inst0 = new BlockInstance(b);
 		inst0.setPosition(new Vector3i(x, y, z));
 		inst0.setWorld(world);
-		if (b.hasTileEntity()) {
-			BlockEntity te = b.createTileEntity(inst0);
-			tileEntities.put(inst0, te);
+		if (b.hasBlockEntity()) {
+			BlockEntity te = b.createBlockEntity(inst0);
+			blockEntities.put(inst0, te);
 		}
 		if (b.getBlockClass() == BlockClass.FLUID) {
 			liquids.add(inst0);
@@ -320,8 +320,8 @@ public class Chunk {
 			liquids.remove(bi);
 		}
 		list.remove(bi);
-		if (bi.getBlock().hasTileEntity()) {
-			tileEntities.remove(bi);
+		if (bi.getBlock().hasBlockEntity()) {
+			blockEntities.remove(bi);
 		}
 		inst[x][y][z] = null;
 		BlockInstance[] neighbors = bi.getNeighbors(this);
@@ -396,9 +396,9 @@ public class Chunk {
 		Block b = inst0.getBlock();
 		inst0.setPosition(new Vector3i(x + wx, y, z + wy));
 		inst0.setWorld(world);
-		if (b.hasTileEntity()) {
-			BlockEntity te = b.createTileEntity(inst0);
-			tileEntities.put(inst0, te);
+		if (b.hasBlockEntity()) {
+			BlockEntity te = b.createBlockEntity(inst0);
+			blockEntities.put(inst0, te);
 		}
 		list.add(inst0);
 		inst[x][y][z] = inst0;

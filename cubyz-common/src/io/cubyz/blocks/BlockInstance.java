@@ -13,7 +13,6 @@ public class BlockInstance {
 	private IBlockSpatial spatial;
 	private Vector3i pos;
 	private World world;
-	private Inventory blockInventory = null;
 	
 	public World getWorld() {
 		return world;
@@ -25,9 +24,6 @@ public class BlockInstance {
 	
 	public BlockInstance(Block block) {
 		this.block = block;
-		if(block != null && block.inventorySize != 0) {
-			blockInventory = new Inventory(block.inventorySize);
-		}
 	}
 	
 	public int getID() {
@@ -63,22 +59,11 @@ public class BlockInstance {
 	
 	public void setBlock(Block b) {
 		block = b;
-		if(block.inventorySize != 0) {
-			blockInventory = new Inventory(block.inventorySize);
-		} else {
-			blockInventory = null;
-		}
 	}
 	
 	public void setPosition(Vector3i pos) {
 		this.pos = pos;
 	}
-	
-	public Inventory getInventory() {
-		return blockInventory;
-	}
-	
-
 	
 	public BlockInstance[] getNeighbors(Chunk ch) {
 		BlockInstance[] inst = new BlockInstance[6];

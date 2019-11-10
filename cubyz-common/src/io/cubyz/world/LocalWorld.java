@@ -333,10 +333,10 @@ public class LocalWorld extends World {
 		for (Entity en : entities) {
 			en.update();
 		}
-		// Tile Entities
+		// Block Entities
 		for (Chunk ch : visibleChunks) {
-			if (ch.isLoaded() && ch.tileEntities().size() > 0) {
-				BlockEntity[] tileEntities = ch.tileEntities().values().toArray(new BlockEntity[ch.tileEntities().values().size()]);
+			if (ch.isLoaded() && ch.blockEntities().size() > 0) {
+				BlockEntity[] tileEntities = ch.blockEntities().values().toArray(new BlockEntity[ch.blockEntities().values().size()]);
 				for (BlockEntity te : tileEntities) {
 					if (te instanceof IUpdateable) {
 						IUpdateable tk = (IUpdateable) te;
@@ -536,5 +536,16 @@ public class LocalWorld extends World {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+	}
+
+	@Override
+	public BlockEntity getBlockEntity(int x, int y, int z) {
+		return getBlockEntity(getBlock(x, y, z));
+	}
+
+	@Override
+	public BlockEntity getBlockEntity(BlockInstance bi) {
+		Chunk ck = getChunk(bi.getX(), bi.getZ());
+		return ck.blockEntities().get(bi);
 	}
 }

@@ -120,34 +120,34 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 			out.writeByte(Packet.PACKET_GETVERSION);
 			String seq = Constants.GAME_BRAND + ";" + Constants.GAME_VERSION;
 			out.writeByte(seq.length());
-			out.writeCharSequence(seq, Constants.CHARSET_IMPL);
+			out.writeCharSequence(seq, Constants.CHARSET);
 			ctx.write(out);
 		}
 		if (packetType == Packet.PACKET_CHATMSG) {
 			short chatLen = msg.readShort();
-			String chat = msg.readCharSequence(chatLen, Constants.CHARSET_IMPL).toString();
+			String chat = msg.readCharSequence(chatLen, Constants.CHARSET).toString();
 			for (Client cl : clients.values()) {
 				ByteBuf buf = cl.ctx.alloc().buffer(1 + chatLen);
 				buf.writeByte(Packet.PACKET_CHATMSG);
 				buf.writeShort(chatLen);
-				buf.writeCharSequence(chat, Constants.CHARSET_IMPL);
+				buf.writeCharSequence(chat, Constants.CHARSET);
 				cl.ctx.write(buf);
 			}
 			System.out.println("[Server | Chat] " + chat);
 		}
 		if (packetType == Packet.PACKET_PINGPONG) {
-			UUID uuid = UUID.fromString(msg.readCharSequence(36, Constants.CHARSET_IMPL).toString());
+			UUID uuid = UUID.fromString(msg.readCharSequence(36, Constants.CHARSET).toString());
 			Client cl = clients.get(uuid.toString());
 			cl.lastPing = System.currentTimeMillis();
 			cl.lastSendedPing = -1;
 		}
 		if (packetType == Packet.PACKET_LISTEN) {
-			UUID uuid = UUID.fromString(msg.readCharSequence(36, Constants.CHARSET_IMPL).toString());
+			UUID uuid = UUID.fromString(msg.readCharSequence(36, Constants.CHARSET).toString());
 			Client cl = new Client();
 			int usernamelen = msg.readShort();
 			cl.ctx = ctx;
 			cl.uuid = uuid;
-			cl.username = msg.readCharSequence(usernamelen, Constants.CHARSET_IMPL).toString(); // TODO retrieve username
+			cl.username = msg.readCharSequence(usernamelen, Constants.CHARSET).toString(); // TODO retrieve username
 			cl.lastPing = System.currentTimeMillis();
 			clients.put(uuid.toString(), cl);
 			for (int x = 0; x < 4; x++) {
@@ -160,7 +160,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 			ByteBuf out = ctx.alloc().ioBuffer(512);
 			out.writeByte(Packet.PACKET_PINGDATA); // 1 byte
 			out.writeShort(motd.length()); // 2 bytes
-			out.writeCharSequence(motd, Constants.CHARSET_IMPL);
+			out.writeCharSequence(motd, Constants.CHARSET);
 			out.writeInt(online); // 4 bytes
 			out.writeInt(max); // 4 bytes
 			// 1+2+4+4=11 bytes of "same size" data
