@@ -401,6 +401,9 @@ public class Chunk {
 			blockEntities.put(inst0, te);
 		}
 		list.add(inst0);
+		if (b.getBlockClass() == BlockClass.FLUID) {
+			liquids.add(inst0);
+		}
 		inst[x][y][z] = inst0;
 		BlockInstance[] neighbors = inst0.getNeighbors(this);
 		

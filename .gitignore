@@ -30,3 +30,4 @@ cubyz-client/logs/
 cubyz-client/saves/
 cubyz-client/cache/
 cubyz-client/saves/World/world.dat
+cubyz-client/configuration.json

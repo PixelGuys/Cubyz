@@ -30,6 +30,8 @@ public class LanguageLoader {
 				} catch (IOException e) {
 					CubyzLogger.instance.log(Level.SEVERE, "Could not open language file " + locale + " for mod " + assetFolder.getName(), e);
 				}
+			} else if (assetFolder.getName().equals("cubyz")) {
+				CubyzLogger.instance.warning("Language \"" + locale + "\" not found");
 			}
 		}
 		return lang;

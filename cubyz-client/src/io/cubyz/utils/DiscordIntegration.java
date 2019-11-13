@@ -56,7 +56,7 @@ public class DiscordIntegration {
 				lib.Discord_Respond(user.userId, DiscordRPC.DISCORD_REPLY_NO);
 			}
 		};
-		String javaExec = System.getProperty("java.home") + "/bin/java.exe";
+		String javaExec = System.getProperty("java.home") + "/bin/java" + (System.getProperty("os.name").contains("windows") ? ".exe" : "");
 		String classpath = System.getProperty("java.class.path");
 		lib.Discord_Initialize(appID, handlers, false, null);
 		

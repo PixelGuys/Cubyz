@@ -1,7 +1,76 @@
 package io.cubyz;
 
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+
+import io.cubyz.client.Cubyz;
+import io.cubyz.translate.LanguageLoader;
+import io.cubyz.utils.DiscordIntegration;
+
 public class Configuration {
 
+	public static final Gson GSON =
+			new GsonBuilder()
+			.setPrettyPrinting()
+			.create();
 	
+	public static void save() {
+		JsonObject obj = new JsonObject();
+		JsonObject kb = new JsonObject();
+		
+		for (String name : Keybindings.keyNames) {
+			int keyCode = Keybindings.getKeyCode(name);
+			kb.addProperty(name, keyCode);
+		}
+		
+		obj.add("keybindings", kb);
+		obj.addProperty("language", Cubyz.lang.getLocale());
+		obj.addProperty("discordIntegration", DiscordIntegration.isEnabled());
+		
+		try {
+			FileWriter writer = new FileWriter("configuration.json");
+			GSON.toJson(obj, writer);
+			writer.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public static void load() {
+		if (!new File("configuration.json").exists())
+			return;
+		
+		JsonObject obj = null;
+		try {
+			FileReader reader = new FileReader("configuration.json");
+			obj = GSON.fromJson(reader, JsonObject.class);
+			reader.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+		if (obj.has("keybindings")) {
+			JsonObject kb = obj.getAsJsonObject("keybindings");
+			for (String name : kb.keySet()) {
+				Keybindings.setKeyCode(name, kb.get(name).getAsInt());
+			}
+		}
+		
+		if (!obj.has("language"))
+			obj.addProperty("language", "en_US");
+		Cubyz.lang = LanguageLoader.load(obj.get("language").getAsString());
+		
+		if (obj.has("discordIntegration")) {
+			if (obj.get("discordIntegration").getAsBoolean()) {
+				DiscordIntegration.startRPC();
+			}
+		}
+	}
 	
 }

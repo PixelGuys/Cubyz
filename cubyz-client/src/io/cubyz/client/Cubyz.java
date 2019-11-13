@@ -109,6 +109,7 @@ public class Cubyz implements IGameLogic {
 		for (Handler handler : log.getHandlers()) {
 			handler.close();
 		}
+		Configuration.save();
 		DiscordIntegration.closeRPC();
 		if (sound != null) {
 			try {
@@ -237,8 +238,6 @@ public class Cubyz implements IGameLogic {
 		ResourceManager.packs.add(baserp);
 		
 		renderer.setShaderFolder(ResourceManager.lookupPath("cubyz/shaders/default"));
-		
-		lang = LanguageLoader.load("en_US");
 		
 		ClientOnly.createBlockMesh = (block) -> {
 			Resource rsc = block.getRegistryID();

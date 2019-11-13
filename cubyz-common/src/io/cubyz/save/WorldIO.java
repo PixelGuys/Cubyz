@@ -87,7 +87,7 @@ public class WorldIO {
 			e.printStackTrace();
 		}
 	}
-
+	
 	public void saveWorldData() {
 		try {
 			OutputStream out = new DeflaterOutputStream(new FileOutputStream(new File(dir, "world.dat")));
@@ -119,14 +119,12 @@ public class WorldIO {
 						l++;
 				Bits.putInt(len, 0, l);
 				out.write(len);
-				out.flush();
 				for (byte[] data : blockData) {
 					if(data.length > 12) { // Only write data if there is any data except the chunk coordinates.
 						byte[] b = new byte[4];
 						Bits.putInt(b, 0, data.length);
 						out.write(b);
 						out.write(data);
-						out.flush();
 					}
 				}
 			}

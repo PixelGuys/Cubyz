@@ -10,6 +10,7 @@ import java.util.Set;
 import org.reflections.Reflections;
 
 import io.cubyz.ClientOnly;
+import io.cubyz.Configuration;
 import io.cubyz.Constants;
 import io.cubyz.CubyzLogger;
 import io.cubyz.api.CubyzRegistries;
@@ -34,6 +35,7 @@ public class LoadThread extends Thread {
 	}
 	
 	public void run() {
+		Configuration.load();
 		LoadingGUI l = LoadingGUI.getInstance();
 		CubyzLogger log = CubyzLogger.instance;
 		l.setStep(1, 0, 0);

@@ -5,6 +5,7 @@ import org.jungle.Window;
 import io.cubyz.client.Cubyz;
 import io.cubyz.ui.components.Label;
 import io.cubyz.ui.components.ProgressBar;
+import io.cubyz.utils.ResourceManager;
 
 public class LoadingGUI extends MenuGUI {
 
@@ -15,8 +16,18 @@ public class LoadingGUI extends MenuGUI {
 	private boolean hasStep2 = false;
 	private ProgressBar pb1 = new ProgressBar();
 	private ProgressBar pb2 = new ProgressBar();
+	private int alpha = 0;
+	boolean alphaDecrease = false;
+	int splashID = -1;
 	
 	public void finishLoading() {
+		while (alpha > 0 || !alphaDecrease) {
+			try {
+				Thread.sleep(10);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
 		MainMenuGUI mmg = new MainMenuGUI();
 		Cubyz.gameUI.setMenu(mmg);
 		Cubyz.gameUI.addOverlay(new DebugOverlay());
@@ -51,14 +62,32 @@ public class LoadingGUI extends MenuGUI {
 	
 	@Override
 	public void render(long nvg, Window win) {
-		NGraphics.setColor(255, 255, 255);
+		if (splashID == -1) {
+			splashID = NGraphics.loadImage(ResourceManager.lookupPath("cubyz/textures/splash.png"));
+		}
+		
+		NGraphics.setColor(0, 0, 0);
 		NGraphics.fillRect(0, 0, win.getWidth(), win.getHeight());
-		setPosition(0.25f, 0.35f, pb1, win);
-		setPosition(0.25f, 0.55f, pb2, win);
+		NGraphics.setColor(255, 255, 255, alpha);
+		NGraphics.fillRect(0, 0, win.getWidth(), win.getHeight());
+		NGraphics.drawImage(splashID, win.getWidth()/2-100, (int)(0.1f*win.getHeight()), 200, 200);
+		if (alphaDecrease) {
+			if (alpha > 0) {
+				alpha -= 4;
+			}
+		} else {
+			if (alpha < 255) {
+				alpha += 4;
+			} else {
+				alphaDecrease = true;
+			}
+		}
+		setPosition(0.25f, 0.55f, pb1, win);
+		setPosition(0.25f, 0.75f, pb2, win);
 		setSize(0.50f, 0.1f, pb1, win);
 		setSize(0.50f, 0.1f, pb2, win);
-		setPosition(0.5f, 0.4f, step, win);
-		setPosition(0.5f, 0.6f, step2, win);
+		setPosition(0.5f, 0.6f, step, win);
+		setPosition(0.5f, 0.8f, step2, win);
 		pb1.render(nvg, win);
 		if (hasStep2) {
 			pb2.render(nvg, win);
