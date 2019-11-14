@@ -257,24 +257,24 @@ public class Cubyz implements IGameLogic {
 				// Cached meshes
 				Mesh defaultMesh = null;
 				for (String key : cachedDefaultModels.keySet()) {
-					if (key.equals(bm.model)) {
+					if (key.equals(bm.subModels.get("default").model)) {
 						defaultMesh = cachedDefaultModels.get(key);
 					}
 				}
 				if (defaultMesh == null) {
-					Resource rs = new Resource(bm.model);
+					Resource rs = new Resource(bm.subModels.get("default").model);
 					defaultMesh = OBJLoader.loadMesh("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), false);
 					defaultMesh.setBoundingRadius(2.0f);
-					cachedDefaultModels.put(bm.model, defaultMesh);
+					cachedDefaultModels.put(bm.subModels.get("default").model, defaultMesh);
 				}
-				Resource texResource = new Resource(bm.texture);
+				Resource texResource = new Resource(bm.subModels.get("default").texture);
 				String texture = texResource.getID();
 				if (!new File("assets/" + texResource.getMod() + "/textures/" + texture + ".png").exists()) {
 					CubyzLogger.i.warning(texResource + " texture not found");
 					texture = "blocks/undefined";
 				}
 				
-				if (bm.texture_converted == (Boolean) true) {
+				if (bm.subModels.get("default").texture_converted == true) {
 					tex = new Texture("assets/" + texResource.getMod() + "/textures/" + texture + ".png");
 				} else {
 					tex = new Texture(TextureConverter.fromBufferedImage(
@@ -310,26 +310,26 @@ public class Cubyz implements IGameLogic {
 				// Cached meshes
 				Mesh defaultMesh = null;
 				for (String key : cachedDefaultModels.keySet()) {
-					if (key.equals(bm.model)) {
+					if (key.equals(bm.subModels.get("default").model)) {
 						defaultMesh = cachedDefaultModels.get(key);
 					}
 				}
 				if (defaultMesh == null) {
-					Resource rs = new Resource(bm.model);
+					Resource rs = new Resource(bm.subModels.get("default").model);
 					//defaultMesh = OBJLoader.loadMesh("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), false);
 					defaultMesh = StaticMeshesLoader.load("assets/" + rs.getMod() + "/models/3d/" + rs.getID(),
 							"assets/" + rs.getMod() + "/models/3d/")[0];
 					defaultMesh.setBoundingRadius(2.0f);
-					cachedDefaultModels.put(bm.model, defaultMesh);
+					cachedDefaultModels.put(bm.subModels.get("default").model, defaultMesh);
 				}
-				Resource texResource = new Resource(bm.texture);
+				Resource texResource = new Resource(bm.subModels.get("default").texture);
 				String texture = texResource.getID();
 				if (!new File("assets/" + texResource.getMod() + "/textures/" + texture + ".png").exists()) {
 					CubyzLogger.i.warning(texResource + " texture not found");
 					texture = "blocks/undefined";
 				}
 				
-				if (bm.texture_converted == (Boolean) true) {
+				if (bm.subModels.get("default").texture_converted == true) {
 					tex = new Texture("assets/" + texResource.getMod() + "/textures/" + texture + ".png");
 				} else {
 					tex = new Texture(TextureConverter.fromBufferedImage(

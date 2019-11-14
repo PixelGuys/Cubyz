@@ -1,4 +1,8 @@
 {
 	"parent": "cubyz:block",
-	"texture": "cubyz:blocks/cactus"
+	"models": {
+		"default": {
+			"texture": "cubyz:blocks/cactus"
+		}
+	}
 }

@@ -1,4 +1,8 @@
 {
 	"parent": "cubyz:block",
-	"texture": "cubyz:blocks/bedrock"
+	"models": {
+		"default": {
+			"texture": "cubyz:blocks/bedrock"
+		}
+	}
 }

@@ -1,5 +1,12 @@
 {
 	"parent": "cubyz:sidetextured",
-	"texture": "cubyz:blocks/grass",
-	"texture_converted": true
+	"dynaModelPurposes": ["seasons"],
+	"models": {
+		"default": {
+			"texture": "cubyz:blocks/grass"
+		},
+		"winter": {
+			"texture": "cubyz:blocks/snow"
+		}
+	}
 }

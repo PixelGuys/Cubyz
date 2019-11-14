@@ -1,4 +1,8 @@
 {
-	"model": "cubyz:block.obj",
-	"texture": "cubyz:blocks/undefined"
+	"models": {
+		"default": {
+			"model": "cubyz:block.obj",
+			"texture": "cubyz:blocks/undefined"
+		}
+	}
 }

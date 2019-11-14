@@ -1,4 +1,8 @@
 {
 	"parent": "cubyz:block",
-	"texture": "cubyz:blocks/ice"
+	"models": {
+		"default": {
+			"texture": "cubyz:blocks/ice"
+		}
+	}
 }

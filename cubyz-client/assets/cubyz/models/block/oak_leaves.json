@@ -1,4 +1,8 @@
 {
 	"parent": "cubyz:block",
-	"texture": "cubyz:blocks/oak_leaves"
+	"models": {
+		"default": {
+			"texture": "cubyz:blocks/oak_leaves"
+		}
+	}
 }

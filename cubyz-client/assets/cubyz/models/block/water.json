@@ -1,4 +1,8 @@
 {
 	"parent": "cubyz:block",
-	"texture": "cubyz:blocks/water"
+	"models": {
+		"default": {
+			"texture": "cubyz:blocks/water"
+		}
+	}
 }

@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.util.HashMap;
 
 public class Utilities {
 
@@ -42,8 +43,21 @@ public class Utilities {
 		try {
 			Class<?> cl = value.getClass();
 			for (Field field : cl.getFields()) {
-				if (field.get(dest) == null && field.get(value) != null) {
-					field.set(dest, field.get(value));
+				Class<?> fcl = field.getType();
+				if (fcl.equals(HashMap.class)) {
+					if (field.get(dest) != null && field.get(value) != null) {
+						HashMap dst = (HashMap) field.get(dest);
+						HashMap org = (HashMap) field.get(value);
+						for (Object key : org.keySet()) {
+							if (!dst.containsKey(key)) {
+								dst.put(key, org.get(key));
+							}
+						}
+					}
+				} else {
+					if (field.get(dest) == null && field.get(value) != null) {
+						field.set(dest, field.get(value));
+					}
 				}
 			}
 			return dest;

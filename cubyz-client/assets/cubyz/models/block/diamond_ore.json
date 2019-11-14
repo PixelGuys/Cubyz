@@ -1,4 +1,8 @@
 {
 	"parent": "cubyz:block",
-	"texture": "cubyz:blocks/diamond_ore"
+	"models": {
+		"default": {
+			"texture": "cubyz:blocks/diamond_ore"
+		}
+	}
 }

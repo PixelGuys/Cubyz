@@ -2,9 +2,12 @@ package io.cubyz.utils;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
 
 import io.cubyz.Utilities;
 import io.cubyz.api.Resource;
@@ -18,16 +21,30 @@ public class ResourceUtilities {
 				.create();
 	}
 	
-	public static class BlockModel {
+	public static class BlockSubModel {
 		public String model;
 		public String texture;
+		public boolean texture_converted;
+	}
+	
+	public static class BlockModel {
 		public String parent;
-		public Object texture_converted;
+		public HashMap<String, BlockSubModel> subModels = new HashMap<>(); // FuzeI1I
 	}
 	
 	public static BlockModel loadModel(Resource block) throws IOException {
 		String path = ResourceManager.contextToLocal(ResourceContext.MODEL_BLOCK, block);
-		BlockModel model = GSON.fromJson(Utilities.readFile(new File(path)), BlockModel.class);
+		String json = Utilities.readFile(new File(path));
+		
+		BlockModel model = new BlockModel();
+		JsonObject obj = GSON.fromJson(json, JsonObject.class);
+		System.out.println(block + ": " + obj);
+		if (obj.has("parent")) {
+			model.parent = obj.get("parent").getAsString();
+		}
+		if (!obj.has("models")) {
+			throw new IOException("Missing \"models\" entry from model " + block);
+		}
 		if (model.parent != null) {
 			if (model.parent.equals(block.toString())) {
 				throw new IOException("Cannot have itself as parent");
@@ -35,6 +52,30 @@ public class ResourceUtilities {
 			BlockModel parent = loadModel(new Resource(model.parent));
 			Utilities.copyIfNull(model, parent);
 		}
+		JsonObject subModels = obj.getAsJsonObject("models");
+		for (String key : subModels.keySet()) {
+			BlockSubModel subModel = new BlockSubModel();
+			JsonObject sm = subModels.getAsJsonObject(key);
+			if (sm.has("model"))
+				subModel.model = sm.get("model").getAsString();
+			if (sm.has("texture"))
+				subModel.texture = sm.get("texture").getAsString();
+			if (sm.has("texture_converted"))
+				subModel.texture_converted = sm.get("texture_converted").getAsBoolean();
+			if (model.subModels.containsKey(key)) {
+				Utilities.copyIfNull(subModel, model.subModels.get(key));
+			}
+			model.subModels.put(key, subModel);
+		}
+		
+		BlockSubModel subDefault = model.subModels.get("default");
+		for (String key : model.subModels.keySet()) {
+			BlockSubModel subModel = model.subModels.get(key);
+			if (subDefault != null) {
+				Utilities.copyIfNull(subModel, subDefault);
+			}
+		}
+		
 		return model;
 	}
 	
