@@ -51,6 +51,8 @@ public class Utilities {
 						for (Object key : org.keySet()) {
 							if (!dst.containsKey(key)) {
 								dst.put(key, org.get(key));
+							} else {
+								dst.put(key, Utilities.copyIfNull(dst.get(key), org.get(key)));
 							}
 						}
 					}
