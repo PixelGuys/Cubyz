@@ -11,6 +11,7 @@ import org.jungle.hud.Hud;
 import org.lwjgl.nanovg.NVGColor;
 import org.lwjgl.nanovg.NVGPaint;
 import org.lwjgl.nanovg.NanoVG;
+import org.lwjgl.nanovg.NanoVGGL2;
 
 import io.cubyz.CubyzLogger;
 import io.cubyz.utils.TextureConverter;
@@ -51,6 +52,10 @@ public class NGraphics {
 			composedTexturesIds.put(path, nvgCreateImageMem(nvg, 0, buf));
 		}
 		return composedTexturesIds.get(path);
+	}
+	
+	public static int nvgImageFrom(Texture tex) {
+		return NanoVGGL2.nvglCreateImageFromHandle(nvg, tex.getId(), tex.getWidth(), tex.getHeight(), 0);
 	}
 	
 	public static void drawLine(int x, int y, int x2, int y2) {

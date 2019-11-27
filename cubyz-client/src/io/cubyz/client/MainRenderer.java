@@ -24,6 +24,7 @@ import org.jungle.util.PointLight;
 import org.jungle.util.ShaderProgram;
 import org.jungle.util.SpotLight;
 import org.jungle.util.Utils;
+import org.lwjgl.opengl.GL20;
 
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
@@ -138,7 +139,7 @@ public class MainRenderer implements IRenderer {
 		prjViewMatrix.mul(ctx.getCamera().getViewMatrix());
 		frustumInt.set(prjViewMatrix);
 		for (Chunk ch : chunks) {
-			if (!frustumInt.testAab(ch.getMin(localPlayer), ch.getMax(localPlayer)))
+			if (!frustumInt.testAab(ch.getMin(localPlayer), ch.getMax(localPlayer)) && false)
 				continue;
 			BlockInstance[] vis = ch.getVisibles();
 			for (int i = 0; vis[i] != null; i++) {

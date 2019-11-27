@@ -34,6 +34,7 @@ public class Window {
 	private GameOptions opt;
 	private boolean fullscreen = false;
 	private ViewportManager manager = new FullViewportManager();
+	private FrameBuffer buffer;
 	
 	private Vector4f clearColor;
 	
@@ -253,6 +254,22 @@ public class Window {
 	
 	public void init(GameOptions opt) {
 		init(opt, NULL);
+	}
+	
+	/**
+	 * Alongside rendering to the screen, will also write to the buffer.
+	 * @param buffer
+	 */
+	public void setRenderTarget(FrameBuffer buffer) {
+		this.buffer = buffer;
+	}
+	
+	public FrameBuffer getRenderTarget() {
+		return buffer;
+	}
+	
+	public boolean hasRenderTarget() {
+		return buffer != null;
 	}
 	
 	public void restoreState() {

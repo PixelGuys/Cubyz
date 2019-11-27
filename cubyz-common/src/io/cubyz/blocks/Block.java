@@ -41,7 +41,6 @@ public class Block implements IRegistryElement {
 		setID(id);
 		this.bc = bc;
 		ItemBlock bd = new ItemBlock(this);
-		bd.setTexture("blocks/"+this.id.getID()+".png");
 		setBlockDrop(bd);
 		this.hardness = hardness;
 	}

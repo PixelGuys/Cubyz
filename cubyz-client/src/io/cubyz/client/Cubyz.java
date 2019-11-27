@@ -3,6 +3,7 @@ package io.cubyz.client;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.logging.*;
 
 import javax.imageio.ImageIO;
@@ -19,6 +20,7 @@ import org.jungle.game.*;
 import org.jungle.util.*;
 import org.lwjgl.Version;
 import org.lwjgl.glfw.GLFW;
+import org.lwjgl.opengl.GL11;
 
 import io.cubyz.*;
 import io.cubyz.api.CubyzRegistries;
@@ -32,10 +34,12 @@ import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.client.loading.LoadThread;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
+import io.cubyz.math.Vector3fi;
 import io.cubyz.multiplayer.GameProfile;
 import io.cubyz.multiplayer.LoginToken;
 import io.cubyz.multiplayer.client.MPClient;
 import io.cubyz.multiplayer.client.PingResponse;
+import io.cubyz.save.BlockChange;
 import io.cubyz.translate.Language;
 import io.cubyz.translate.LanguageLoader;
 import io.cubyz.ui.*;
@@ -90,6 +94,10 @@ public class Cubyz implements IGameLogic {
 	public static int GUIKey = -1;
 	
 	private static HashMap<String, MenuGUI> userGUIs = new HashMap<>();
+	
+	public boolean screenshot;
+	public Block blockOffRender;
+	public Consumer<Texture> blockOffRenderCallback;
 
 	public Cubyz() {
 		instance = this;
@@ -432,7 +440,7 @@ public class Cubyz implements IGameLogic {
 				e.printStackTrace();
 			}
 			
-			if (ResourceManager.lookupPath("cubyz/sound") != null) {
+			if (ResourceManager.lookupPath("cubyz/sound") != null && false) {
 				try {
 					music = new SoundBuffer(ResourceManager.lookupPath("cubyz/sound/KingBoard.ogg"));
 				} catch (Exception e) {
@@ -624,13 +632,57 @@ public class Cubyz implements IGameLogic {
 			}
 			light.setColor(new Vector3f(clearColor.x, clearColor.y, clearColor.z)); // maybe not make instances every render
 			window.setClearColor(clearColor);
-			renderer.render(window, ctx, ambient, light, world.getVisibleChunks(), world.getBlocks(), world.getEntities(), world.getLocalPlayer());
+			
+			if (blockOffRender != null&&false) { // wip feature, to be completed by @zenith391
+				Chunk ck = new Chunk(0, 0, null, new ArrayList<BlockChange>());
+				BlockInstance binst = new BlockInstance(blockOffRender);
+				binst.setPosition(new Vector3i(0, 0, 0));
+				ck.createBlocksForOverlay();
+				ck.rawAddBlock(0, 0, 0, binst);
+				ck.revealBlock(binst);
+				Vector3fi pos = world.getLocalPlayer().getPosition();
+				Vector3f rot = ctx.getCamera().getRotation();
+				world.getLocalPlayer().setPosition(new Vector3fi(1f, 0f, -1f));
+				ctx.getCamera().setRotation(50, 225, 0);
+				
+				FrameBuffer buf = new FrameBuffer();
+				buf.genColorTexture(128, 128);
+				buf.genRenderbuffer(128, 128);
+				window.setRenderTarget(buf);
+				buf.bind();
+				window.setClearColor(new Vector4f(0f, 0f, 0f, 0f));
+				GL11.glViewport(0, 0, 128, 128);
+				renderer.render(window, ctx, ambient, light, new Chunk[] {ck}, world.getBlocks(), EMPTY_ENTITY_LIST, world.getLocalPlayer());
+				GL11.glViewport(0, 0, window.getWidth(), window.getHeight());
+				buf.unbind();
+				blockOffRenderCallback.accept(buf.getColorTexture());
+				blockOffRender = null;
+				
+				world.getLocalPlayer().setPosition(pos);
+				ctx.getCamera().setRotation(rot.x, rot.y, rot.z);
+			} else {
+				renderer.render(window, ctx, ambient, light, world.getVisibleChunks(), world.getBlocks(), world.getEntities(), world.getLocalPlayer());
+			}
 		} else {
 			clearColor.y = clearColor.z = 0.7f;
 			clearColor.x = 0.1f;
 			
 			window.setClearColor(clearColor);
+			
+			if (screenshot) {
+				FrameBuffer buf = new FrameBuffer();
+				buf.genColorTexture(window.getWidth(), window.getHeight());
+				buf.genRenderbuffer(window.getWidth(), window.getHeight());
+				window.setRenderTarget(buf);
+				window.getRenderTarget().bind();
+			}
+			
 			renderer.render(window, ctx, brightAmbient, light, EMPTY_CHUNK_LIST, EMPTY_BLOCK_LIST, EMPTY_ENTITY_LIST, null);
+			
+			if (screenshot) {
+				window.getRenderTarget().unbind();
+				screenshot = false;
+			}
 		}
 		
 		Keyboard.releaseCodePoint();

@@ -39,6 +39,14 @@ public class Chunk {
 		this.changes = changes;
 	}
 	
+	/**
+	 * Internal "hack" method used for the overlay, DO NOT USE!
+	 */
+	@Deprecated
+	public void createBlocksForOverlay() {
+		inst = new BlockInstance[16][255][16];
+	}
+	
 	public void setLoaded(boolean loaded) {
 		this.loaded = loaded;
 	}

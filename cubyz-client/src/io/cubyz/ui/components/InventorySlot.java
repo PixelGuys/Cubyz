@@ -7,7 +7,10 @@ import org.jungle.MouseInput;
 import org.jungle.Window;
 import org.jungle.hud.Font;
 
+import io.cubyz.blocks.Block;
+import io.cubyz.client.Cubyz;
 import io.cubyz.items.Item;
+import io.cubyz.items.ItemBlock;
 import io.cubyz.items.ItemStack;
 import io.cubyz.items.tools.Tool;
 import io.cubyz.ui.Component;
@@ -99,7 +102,20 @@ public class InventorySlot extends Component {
 		Item item = reference.getItem();
 		if(item != null) {
 			if(item.getImage() == -1) {
-				item.setImage(NGraphics.loadImage(item.getTexture()));
+				if (item instanceof ItemBlock) {
+					ItemBlock ib = (ItemBlock) item;
+					Block b = ib.getBlock();
+					if (Cubyz.instance.blockOffRender == null) {
+						item.setImage(NGraphics.loadImage(item.getTexture()));
+						Cubyz.instance.blockOffRender = b;
+						Cubyz.instance.blockOffRenderCallback = (t) -> {
+							System.out.println(b.getRegistryID() + " " + t.getId());
+							item.setImage(NGraphics.nvgImageFrom(t));
+						};
+					}
+				} else {
+					item.setImage(NGraphics.loadImage(item.getTexture()));
+				}
 			}
 			NGraphics.drawImage(item.getImage(), win.getWidth()/2 + x + 4, win.getHeight() - y + 4, width - 8, height - 8);
 			if(Tool.class.isInstance(item)) {

@@ -21,7 +21,7 @@ public class ItemBlock extends Item {
 	public void setBlock(Block block) {
 		this.block = block;
 		setID(block.getRegistryID());
-		texturePath = "./assets/cubyz/textures/blocks/" + block.getRegistryID().getID() + ".png"; // not reliable
+		texturePath = "blocks/" + block.getRegistryID().getID() + ".png"; // not reliable
 	}
 	
 }
