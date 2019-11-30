@@ -4,7 +4,7 @@ import org.joml.Vector3f;
 import org.joml.Vector3i;
 
 import io.cubyz.IRenderablePair;
-import io.cubyz.blocks.BlockInstance;
+import io.cubyz.blocks.Block;
 import io.cubyz.math.FloatingInteger;
 import io.cubyz.math.Vector3fi;
 import io.cubyz.ndt.NDTContainer;
@@ -209,8 +209,8 @@ public abstract class Entity {
 	}
 	
 	public boolean checkBlock(int x, int y, int z) {
-		BlockInstance bi = world.getBlock(x, y, z);
-		if(bi != null && bi.getBlock().isSolid()) {
+		Block bi = world.getBlock(x, y, z);
+		if(bi != null && bi.isSolid()) {
 			return true;
 		}
 		return false;

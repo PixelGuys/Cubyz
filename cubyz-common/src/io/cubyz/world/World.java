@@ -50,11 +50,18 @@ public abstract class World {
 
 	public abstract Chunk getChunk(int x, int z);	// Works with world coordinates
 	public abstract Chunk _getChunk(int x, int z);	// Works with chunk coordinates
-	public abstract BlockInstance getBlock(int x, int y, int z);
+	public abstract Block getBlock(int x, int y, int z);
+	/**
+	 * ONLY USE IF NEEDED!
+	 * @param x
+	 * @param y
+	 * @param z
+	 * @return
+	 */
+	public abstract BlockInstance getBlockInstance(int x, int y, int z);
 	public abstract BlockEntity getBlockEntity(int x, int y, int z);
-	public abstract BlockEntity getBlockEntity(BlockInstance bi);
 	
-	public BlockInstance getBlock(Vector3i vec) {
+	public Block getBlock(Vector3i vec) {
 		return getBlock(vec.x, vec.y, vec.z);
 	}
 	

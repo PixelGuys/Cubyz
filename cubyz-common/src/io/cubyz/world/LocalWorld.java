@@ -248,8 +248,15 @@ public class LocalWorld extends World {
 		return list;
 	}
 	
+	public Block getBlock(int x, int y, int z) {
+		BlockInstance bi = getBlockInstance(x, y, z);
+		if (bi == null)
+			return null;
+		return bi.getBlock();
+	}
+	
 	@Override
-	public BlockInstance getBlock(int x, int y, int z) {
+	public BlockInstance getBlockInstance(int x, int y, int z) {
 		Chunk ch = getChunk(x, z);
 		if (y > World.WORLD_HEIGHT || y < 0)
 			return null;
@@ -540,12 +547,9 @@ public class LocalWorld extends World {
 
 	@Override
 	public BlockEntity getBlockEntity(int x, int y, int z) {
-		return getBlockEntity(getBlock(x, y, z));
-	}
-
-	@Override
-	public BlockEntity getBlockEntity(BlockInstance bi) {
+		BlockInstance bi = getBlockInstance(x, y, z);
 		Chunk ck = getChunk(bi.getX(), bi.getZ());
 		return ck.blockEntities().get(bi);
 	}
+	
 }

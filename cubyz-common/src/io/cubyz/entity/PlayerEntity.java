@@ -155,6 +155,7 @@ public class PlayerEntity extends EntityType {
 			if(bi == null || bi.getBlock().getBlockClass() == BlockClass.UNBREAKABLE)
 				return;
 			long deltaTime = System.currentTimeMillis() - timeStarted;
+			bi.setBreakingAnimation((float) deltaTime / (float) maxTime);
 			if (deltaTime > maxTime) {
 				if(Tool.class.isInstance(inv.getItem(slot))) {
 					if(((Tool)inv.getItem(slot)).used()) {

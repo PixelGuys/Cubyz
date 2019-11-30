@@ -125,7 +125,7 @@ public class Chunk {
 		inst0.setPosition(new Vector3i(x, y, z));
 		inst0.setWorld(world);
 		if (b.hasBlockEntity()) {
-			BlockEntity te = b.createBlockEntity(inst0);
+			BlockEntity te = b.createBlockEntity(inst0.getPosition());
 			blockEntities.put(inst0, te);
 		}
 		if (b.getBlockClass() == BlockClass.FLUID) {
@@ -405,7 +405,7 @@ public class Chunk {
 		inst0.setPosition(new Vector3i(x + wx, y, z + wy));
 		inst0.setWorld(world);
 		if (b.hasBlockEntity()) {
-			BlockEntity te = b.createBlockEntity(inst0);
+			BlockEntity te = b.createBlockEntity(inst0.getPosition());
 			blockEntities.put(inst0, te);
 		}
 		list.add(inst0);

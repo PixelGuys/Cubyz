@@ -41,7 +41,6 @@ import io.cubyz.multiplayer.client.MPClient;
 import io.cubyz.multiplayer.client.PingResponse;
 import io.cubyz.save.BlockChange;
 import io.cubyz.translate.Language;
-import io.cubyz.translate.LanguageLoader;
 import io.cubyz.ui.*;
 import io.cubyz.ui.mods.InventoryGUI;
 import io.cubyz.utils.*;
@@ -623,9 +622,9 @@ public class Cubyz implements IGameLogic {
 			ambient.x = ambient.y = ambient.z = world.getGlobalLighting();
 			clearColor = world.getClearColor();
 			Player player = world.getLocalPlayer();
-			BlockInstance bi = world.getBlock(player.getPosition().x+Math.round(player.getPosition().relX), (int)(player.getPosition().y)+3, player.getPosition().z+Math.round(player.getPosition().relZ));
-			if(bi != null && !bi.getBlock().isSolid()) {
-				Vector3f lightingAdjust = bi.getBlock().getLightAdjust();
+			Block bi = world.getBlock(player.getPosition().x+Math.round(player.getPosition().relX), (int)(player.getPosition().y)+3, player.getPosition().z+Math.round(player.getPosition().relZ));
+			if(bi != null && !bi.isSolid()) {
+				Vector3f lightingAdjust = bi.getLightAdjust();
 				ambient.x *= lightingAdjust.x;
 				ambient.y *= lightingAdjust.y;
 				ambient.z *= lightingAdjust.z;
@@ -724,7 +723,7 @@ public class Cubyz implements IGameLogic {
 				//Building Blocks
 				if (buildCooldown == 0 && msd.getSelectedBlockInstance() != null) {
 					buildCooldown = 10;
-					if(msd.getSelectedBlockInstance().getBlock().onClick(world, msd.getSelectedBlockInstance().getPosition(), msd.getSelectedBlockInstance())) {
+					if(msd.getSelectedBlockInstance().getBlock().onClick(world, msd.getSelectedBlockInstance().getPosition())) {
 						// potentially do a hand animation, in the future
 					} else {
 						Vector3i pos = msd.getEmptyPlace(world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate());

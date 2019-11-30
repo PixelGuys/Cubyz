@@ -97,9 +97,17 @@ public class RemoteWorld extends World {
 		chunks.add(ck);
 		return ck;
 	}
+	
+	@Override
+	public Block getBlock(int x, int y, int z) {
+		BlockInstance bi = getBlockInstance(x, y, z);
+		if (bi == null)
+			return null;
+		return bi.getBlock();
+	}
 
 	@Override
-	public BlockInstance getBlock(int x, int y, int z) {
+	public BlockInstance getBlockInstance(int x, int y, int z) {
 		Chunk ch = getChunk(x, z);
 		if (y > World.WORLD_HEIGHT || y < 0)
 			return null;
@@ -209,12 +217,6 @@ public class RemoteWorld extends World {
 		if (getHighestBlock(localPlayer.getPosition().x, localPlayer.getPosition().z) != -1)
 			localPlayer.getPosition().y = getHighestBlock(localPlayer.getPosition().x, localPlayer.getPosition().z)+1;
 		ck.applyBlockChanges();
-	}
-
-	@Override
-	public BlockEntity getBlockEntity(BlockInstance arg0) {
-		// TODO Auto-generated method stub
-		return null;
 	}
 
 	@Override

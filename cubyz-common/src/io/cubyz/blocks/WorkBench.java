@@ -32,8 +32,8 @@ public class WorkBench extends Block {
 		return new WorkBenchEntity(bi);
 	}
 	
-	public boolean onClick(World world, Vector3i pos, BlockInstance bi) {
-		BlockEntity ent = world.getBlockEntity(bi);
+	public boolean onClick(World world, Vector3i pos) {
+		BlockEntity ent = world.getBlockEntity(pos.x, pos.y, pos.z);
 		if (ent == null)
 			return false;
 		GameRegistry.openGUI("cubyz:workbench", ((WorkBenchEntity) ent).inv);

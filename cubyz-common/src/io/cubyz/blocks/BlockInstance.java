@@ -78,19 +78,19 @@ public class BlockInstance {
 		if((pos.z & 15) != 0)
 			inst[3] = ch.getBlockInstanceAt(pos.x & 15, pos.y, (pos.z - 1) & 15);
 		else
-			inst[3] = world.getBlock(pos.x, pos.y, pos.z - 1);
+			inst[3] = world.getBlockInstance(pos.x, pos.y, pos.z - 1);
 		if((pos.z & 15) != 15)
 			inst[2] = ch.getBlockInstanceAt(pos.x & 15, pos.y, (pos.z + 1) & 15);
 		else
-			inst[2] = world.getBlock(pos.x, pos.y, pos.z + 1);
+			inst[2] = world.getBlockInstance(pos.x, pos.y, pos.z + 1);
 		if((pos.x & 15) != 15)
 			inst[1] = ch.getBlockInstanceAt((pos.x + 1) & 15, pos.y, pos.z & 15);
 		else
-			inst[1] = world.getBlock(pos.x + 1, pos.y, pos.z);
+			inst[1] = world.getBlockInstance(pos.x + 1, pos.y, pos.z);
 		if((pos.x & 15) != 0)
 			inst[0] = ch.getBlockInstanceAt((pos.x - 1) & 15, pos.y, pos.z & 15);
 		else
-			inst[0] = world.getBlock(pos.x - 1, pos.y, pos.z);
+			inst[0] = world.getBlockInstance(pos.x - 1, pos.y, pos.z);
 		return inst;
 	}
 	
@@ -109,19 +109,19 @@ public class BlockInstance {
 			case 3:
 				if((pos.z & 15) != 0)
 					return ch.getBlockInstanceAt(pos.x & 15, pos.y, (pos.z - 1) & 15);
-				return world.getBlock(pos.x, pos.y, pos.z - 1);
+				return world.getBlockInstance(pos.x, pos.y, pos.z - 1);
 			case 2:
 				if((pos.z & 15) != 15)
-					return world.getBlock(pos.x & 15, pos.y, (pos.z - 1) & 15);
-				return world.getBlock(pos.x, pos.y, pos.z + 1);
+					return world.getBlockInstance(pos.x & 15, pos.y, (pos.z - 1) & 15);
+				return world.getBlockInstance(pos.x, pos.y, pos.z + 1);
 			case 1:
 				if((pos.x & 15) != 0)
-					return world.getBlock((pos.x + 1) & 15, pos.y, pos.z & 15);
-				return world.getBlock(pos.x + 1, pos.y, pos.z);
+					return world.getBlockInstance((pos.x + 1) & 15, pos.y, pos.z & 15);
+				return world.getBlockInstance(pos.x + 1, pos.y, pos.z);
 			case 0:
 				if((pos.x & 15) != 0)
 					return ch.getBlockInstanceAt((pos.x - 1) & 15, pos.y, pos.z & 15);
-				return world.getBlock(pos.x - 1, pos.y, pos.z);
+				return world.getBlockInstance(pos.x - 1, pos.y, pos.z);
 		}
 		return null;
 	}

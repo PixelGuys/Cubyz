@@ -131,7 +131,7 @@ public class LifelandGenerator extends WorldGenerator {
 						bi.setPosition(new Vector3i(wx + px, j, wy + py));
 						ch.rawAddBlock(px, j, py, bi);
 						if (bi.getBlock() != null && bi.getBlock().hasBlockEntity()) {
-							ch.blockEntities().put(bi, bi.getBlock().createBlockEntity(bi));
+							ch.blockEntities().put(bi, bi.getBlock().createBlockEntity(bi.getPosition()));
 						}
 					}
 				}

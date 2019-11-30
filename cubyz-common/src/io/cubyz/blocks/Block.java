@@ -123,7 +123,7 @@ public class Block implements IRegistryElement {
 		return this;
 	}
 	
-	public BlockEntity createBlockEntity(BlockInstance bi) {
+	public BlockEntity createBlockEntity(Vector3i pos) {
 		return null;
 	}
 	
@@ -139,7 +139,7 @@ public class Block implements IRegistryElement {
 		return ONE;
 	}
 	
-	public boolean onClick(World world, Vector3i pos, BlockInstance bi) {
+	public boolean onClick(World world, Vector3i pos) {
 		return false; // returns true if the block was did something while clicked
 	}
 	
