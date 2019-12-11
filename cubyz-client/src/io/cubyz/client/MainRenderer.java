@@ -171,7 +171,9 @@ public class MainRenderer implements IRenderer {
 		filter.filter(m);
 		renderScene(ctx, ambientLight, null /* point light */, null /* spot light */, directionalLight, map, blocks, entities,
 				localPlayer, selected, selectedBlock);
-		ctx.getHud().render(window);
+		if (ctx.getHud() != null) {
+			ctx.getHud().render(window);
+		}
 		/*
 		 * long t2 = System.nanoTime(); if(t2-t1 > 1000000) { t += t2-t1; n++;
 		 * System.out.println(t/n); }

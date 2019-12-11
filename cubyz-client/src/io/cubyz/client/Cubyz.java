@@ -95,8 +95,6 @@ public class Cubyz implements IGameLogic {
 	private static HashMap<String, MenuGUI> userGUIs = new HashMap<>();
 	
 	public boolean screenshot;
-	public Block blockOffRender;
-	public Consumer<Texture> blockOffRenderCallback;
 
 	public Cubyz() {
 		instance = this;
@@ -582,6 +580,40 @@ public class Cubyz implements IGameLogic {
 	private Vector3f brightAmbient = new Vector3f(1, 1, 1);
 	private Vector4f clearColor = new Vector4f(0.1f, 0.7f, 0.7f, 1f);
 	
+	public FrameBuffer blockPreview(Block b) {
+		Window window = game.getWindow();
+		Chunk ck = new Chunk(0, 0, null, new ArrayList<BlockChange>());
+		BlockInstance binst = new BlockInstance(b);
+		binst.setPosition(new Vector3i(0, 0, 0));
+		ck.createBlocksForOverlay();
+		ck.rawAddBlock(0, 0, 0, binst);
+		ck.revealBlock(binst);
+		Vector3fi pos = world.getLocalPlayer().getPosition();
+		Vector3f rot = ctx.getCamera().getRotation();
+		world.getLocalPlayer().setPosition(new Vector3fi(1f, 0f, -1f));
+		ctx.getCamera().setRotation(0, 225, 0);
+		
+		FrameBuffer buf = new FrameBuffer();
+		buf.genColorTexture(128, 128);
+		buf.genRenderbuffer(128, 128);
+		window.setRenderTarget(buf);
+		buf.bind();
+		window.setClearColor(new Vector4f(0f, 0f, 0f, 0f));
+		GL11.glViewport(0, 0, 128, 128);
+		
+		ctx.setHud(null);
+		renderer.render(window, ctx, new Vector3f(1, 1, 1), light, new Chunk[] {ck}, world.getBlocks(), EMPTY_ENTITY_LIST, world.getLocalPlayer());
+		ctx.setHud(gameUI);
+		
+		GL11.glViewport(0, 0, window.getWidth(), window.getHeight());
+		buf.unbind();
+		
+		world.getLocalPlayer().setPosition(pos);
+		ctx.getCamera().setRotation(rot.x, rot.y, rot.z);
+		
+		return buf;
+	}
+	
 	float playerBobbing;
 	boolean bobbingUp;
 	@Override
@@ -632,36 +664,7 @@ public class Cubyz implements IGameLogic {
 			light.setColor(new Vector3f(clearColor.x, clearColor.y, clearColor.z)); // maybe not make instances every render
 			window.setClearColor(clearColor);
 			
-			if (blockOffRender != null&&false) { // wip feature, to be completed by @zenith391
-				Chunk ck = new Chunk(0, 0, null, new ArrayList<BlockChange>());
-				BlockInstance binst = new BlockInstance(blockOffRender);
-				binst.setPosition(new Vector3i(0, 0, 0));
-				ck.createBlocksForOverlay();
-				ck.rawAddBlock(0, 0, 0, binst);
-				ck.revealBlock(binst);
-				Vector3fi pos = world.getLocalPlayer().getPosition();
-				Vector3f rot = ctx.getCamera().getRotation();
-				world.getLocalPlayer().setPosition(new Vector3fi(1f, 0f, -1f));
-				ctx.getCamera().setRotation(50, 225, 0);
-				
-				FrameBuffer buf = new FrameBuffer();
-				buf.genColorTexture(128, 128);
-				buf.genRenderbuffer(128, 128);
-				window.setRenderTarget(buf);
-				buf.bind();
-				window.setClearColor(new Vector4f(0f, 0f, 0f, 0f));
-				GL11.glViewport(0, 0, 128, 128);
-				renderer.render(window, ctx, ambient, light, new Chunk[] {ck}, world.getBlocks(), EMPTY_ENTITY_LIST, world.getLocalPlayer());
-				GL11.glViewport(0, 0, window.getWidth(), window.getHeight());
-				buf.unbind();
-				blockOffRenderCallback.accept(buf.getColorTexture());
-				blockOffRender = null;
-				
-				world.getLocalPlayer().setPosition(pos);
-				ctx.getCamera().setRotation(rot.x, rot.y, rot.z);
-			} else {
-				renderer.render(window, ctx, ambient, light, world.getVisibleChunks(), world.getBlocks(), world.getEntities(), world.getLocalPlayer());
-			}
+			renderer.render(window, ctx, ambient, light, world.getVisibleChunks(), world.getBlocks(), world.getEntities(), world.getLocalPlayer());
 		} else {
 			clearColor.y = clearColor.z = 0.7f;
 			clearColor.x = 0.1f;

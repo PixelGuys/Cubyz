@@ -105,13 +105,11 @@ public class InventorySlot extends Component {
 				if (item instanceof ItemBlock) {
 					ItemBlock ib = (ItemBlock) item;
 					Block b = ib.getBlock();
-					if (Cubyz.instance.blockOffRender == null) {
+					if (item.getTexture() != null) {
+						System.out.println(item.getTexture());
 						item.setImage(NGraphics.loadImage(item.getTexture()));
-						Cubyz.instance.blockOffRender = b;
-						Cubyz.instance.blockOffRenderCallback = (t) -> {
-							System.out.println(b.getRegistryID() + " " + t.getId());
-							item.setImage(NGraphics.nvgImageFrom(t));
-						};
+					} else {
+						item.setImage(NGraphics.nvgImageFrom(Cubyz.instance.blockPreview(b).getColorTexture()));
 					}
 				} else {
 					item.setImage(NGraphics.loadImage(item.getTexture()));
