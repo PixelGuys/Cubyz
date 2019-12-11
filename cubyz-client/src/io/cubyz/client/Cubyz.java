@@ -683,6 +683,8 @@ public class Cubyz implements IGameLogic {
 			
 			if (screenshot) {
 				window.getRenderTarget().unbind();
+				FrameBuffer buf = window.getRenderTarget();
+				
 				screenshot = false;
 			}
 		}
