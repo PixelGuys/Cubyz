@@ -43,8 +43,10 @@ public class Configuration {
 	}
 	
 	public static void load() {
-		if (!new File("configuration.json").exists())
+		if (!new File("configuration.json").exists()) {
+			Cubyz.lang = LanguageLoader.load("en_US");
 			return;
+		}
 		
 		JsonObject obj = null;
 		try {

@@ -1,5 +1,6 @@
 package io.cubyz.world;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.joml.Vector3i;
@@ -10,6 +11,9 @@ import io.cubyz.blocks.BlockEntity;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
+import io.cubyz.handler.Handler;
+import io.cubyz.handler.PlaceBlockHandler;
+import io.cubyz.handler.RemoveBlockHandler;
 
 /**
  * Base class for Cubyz worlds.
@@ -22,6 +26,9 @@ public abstract class World {
 	protected int height = WORLD_HEIGHT;
 	protected int seed;
 	
+	protected ArrayList<PlaceBlockHandler> placeBlockHandlers = new ArrayList<>();
+	protected ArrayList<RemoveBlockHandler> removeBlockHandlers = new ArrayList<>();
+	
 	public abstract Player getLocalPlayer();
 	
 	public void setHeight(int height) {
@@ -33,6 +40,16 @@ public abstract class World {
 	}
 
 	public abstract void cleanup();
+	
+	public void addHandler(Handler handler) {
+		if (handler instanceof PlaceBlockHandler) {
+			placeBlockHandlers.add((PlaceBlockHandler) handler);
+		} else if (handler instanceof RemoveBlockHandler) {
+			removeBlockHandlers.add((RemoveBlockHandler) handler);
+		} else {
+			throw new IllegalArgumentException("handler isn't accepted by World");
+		}
+	}
 	
 	public abstract List<Chunk> getChunks();
 	public abstract Chunk [] getVisibleChunks();

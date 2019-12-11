@@ -229,6 +229,7 @@ public class Cubyz implements IGameLogic {
 		renderer = new MainRenderer();
 		ctx = new Context(game, new Camera());
 		ctx.setHud(gameUI);
+		ctx.setFog(new Fog(true, new Vector3f(0.1f, 0.1f, 0.1f), 1.5f));
 		light = new DirectionalLight(new Vector3f(1.0f, 1.0f, 1.0f), new Vector3f(0.0f, 1.0f, 0.0f), 0.4f);
 		mouse = new MouseInput();
 		mouse.init(window);

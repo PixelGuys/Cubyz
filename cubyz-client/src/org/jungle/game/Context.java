@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.jungle.Camera;
+import org.jungle.Fog;
 import org.jungle.Mesh;
 import org.jungle.Spatial;
 import org.jungle.Window;
@@ -18,6 +19,7 @@ public class Context {
 	private Camera camera;
 	private Hud hud;
 	private Map<Mesh, List<Spatial>> meshMap;
+	private Fog fog;
 	
 	public Context(Game g, Camera c) {
 		camera = c;
@@ -27,6 +29,14 @@ public class Context {
 		hud = new Hud();
 	}
 	
+	public Fog getFog() {
+		return fog;
+	}
+
+	public void setFog(Fog fog) {
+		this.fog = fog;
+	}
+
 	public void setSpatials(Spatial[] gameItems) {
 		meshMap.clear();
 		if(gameItems != null) {

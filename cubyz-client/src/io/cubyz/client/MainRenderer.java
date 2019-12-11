@@ -90,6 +90,7 @@ public class MainRenderer implements IRenderer {
 		shaderProgram.createPointLightListUniform("pointLights", MAX_POINT_LIGHTS);
 		shaderProgram.createSpotLightListUniform("spotLights", MAX_SPOT_LIGHTS);
 		shaderProgram.createDirectionalLightUniform("directionalLight");
+		shaderProgram.createFogUniform("fog");
 		System.gc();
 	}
 
@@ -189,7 +190,8 @@ public class MainRenderer implements IRenderer {
 			DirectionalLight directionalLight, List<Spatial>[] map, Block[] blocks, Entity[] entities, Player p, Spatial selected,
 			int selectedBlock) {
 		shaderProgram.bind();
-
+		
+		shaderProgram.setUniform("fog", ctx.getFog());
 		shaderProgram.setUniform("projectionMatrix", ctx.getWindow().getProjectionMatrix());
 		shaderProgram.setUniform("texture_sampler", 0);
 		Matrix4f viewMatrix = ctx.getCamera().getViewMatrix();

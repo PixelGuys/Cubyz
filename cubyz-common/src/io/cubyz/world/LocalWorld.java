@@ -18,6 +18,8 @@ import io.cubyz.blocks.IUpdateable;
 import io.cubyz.blocks.BlockEntity;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
+import io.cubyz.handler.PlaceBlockHandler;
+import io.cubyz.handler.RemoveBlockHandler;
 import io.cubyz.math.Bits;
 import io.cubyz.save.BlockChange;
 import io.cubyz.save.WorldIO;
@@ -275,9 +277,13 @@ public class LocalWorld extends World {
 	public void removeBlock(int x, int y, int z) {
 		Chunk ch = getChunk(x, z);
 		if (ch != null) {
+			Block b = ch.getBlockInstanceAt(x&15, y, z&15).getBlock();
 			ch.removeBlockAt(x & 15, y, z & 15, true);
 			wio.saveChunk(ch);
 			wio.saveWorldData();
+			for (RemoveBlockHandler hand : removeBlockHandlers) {
+				hand.onBlockRemoved(b, x, y, z);
+			}
 		}
 	}
 	
@@ -288,6 +294,9 @@ public class LocalWorld extends World {
 			ch.addBlockAt(x & 15, y, z & 15, b, true);
 			wio.saveChunk(ch);
 			wio.saveWorldData();
+			for (PlaceBlockHandler hand : placeBlockHandlers) {
+				hand.onBlockPlaced(b, x, y, z);
+			}
 		}
 	}
 	

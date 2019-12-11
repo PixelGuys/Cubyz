@@ -6,6 +6,8 @@ import java.util.Map;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
+import org.jungle.Fog;
+
 import static org.lwjgl.opengl.GL20.*;
 import org.lwjgl.system.MemoryStack;
 
@@ -74,6 +76,18 @@ public class ShaderProgram {
 		createUniform(uniformName + ".specular");
 		createUniform(uniformName + ".hasTexture");
 		createUniform(uniformName + ".reflectance");
+	}
+	
+	public void createFogUniform(String uniformName) throws Exception {
+		createUniform(uniformName + ".active");
+		createUniform(uniformName + ".colour");
+		createUniform(uniformName + ".density");
+	}
+	
+	public void setUniform(String uniformName, Fog fog) {
+		setUniform(uniformName + ".active", fog.isActive() ? 1 : 0);
+		setUniform(uniformName + ".density", fog.getDensity());
+		setUniform(uniformName + ".colour", fog.getColor());
 	}
 
 	public void setUniform(String uniformName, Matrix4f value) {

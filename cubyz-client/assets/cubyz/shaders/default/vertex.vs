@@ -3,7 +3,7 @@
 layout (location=0) in vec3 position;
 layout (location=1) in vec2 texCoord;
 layout (location=2) in vec3 vertexNormal;
-//layout (location=5) in mat4 modelViewInstancedMatrix;
+layout (location=5) in mat4 modelViewInstancedMatrix;
 //layout (location=9) in mat4 modelLightViewInstancedMatrix;
 
 out vec2 outTexCoord;
