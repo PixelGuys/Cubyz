@@ -190,6 +190,10 @@ public class Chunk {
 	
 	// Loads the chunk
 	public void load() {
+		// Empty the list, so blocks won't get added twice. This will also be important, when there is a manual chunk reloading.
+		visibles = new BlockInstance[10];
+		visiblesSize = 0;
+		
 		loaded = true;
 		boolean chx0 = world._getChunk(ox - 1, oy).isGenerated();
 		boolean chx1 = world._getChunk(ox + 1, oy).isGenerated();
