@@ -131,6 +131,7 @@ vec4 calcSpotLight(SpotLight light, vec3 position, vec3 normal)
         colour = calcPointLight(light.pl, position, normal);
         colour *= (1.0 - (1.0 - spot_alfa)/(1.0 - light.cutoff));
     }
+    colour.w = 0;
     return colour;    
 }
 

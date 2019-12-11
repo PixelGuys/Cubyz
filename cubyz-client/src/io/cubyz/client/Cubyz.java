@@ -281,8 +281,7 @@ public class Cubyz implements IGameLogic {
 					CubyzLogger.i.warning(texResource + " texture not found");
 					texture = "blocks/undefined";
 				}
-				
-				if (bm.subModels.get("default").texture_converted == true) {
+				if (bm.subModels.get("default").texture_converted == (Boolean) true) {
 					tex = new Texture("assets/" + texResource.getMod() + "/textures/" + texture + ".png");
 				} else {
 					tex = new Texture(TextureConverter.fromBufferedImage(

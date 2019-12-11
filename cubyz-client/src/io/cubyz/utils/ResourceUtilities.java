@@ -24,7 +24,7 @@ public class ResourceUtilities {
 	public static class BlockSubModel {
 		public String model;
 		public String texture;
-		public boolean texture_converted;
+		public Boolean texture_converted;
 	}
 	
 	public static class BlockModel {
@@ -38,19 +38,11 @@ public class ResourceUtilities {
 		
 		BlockModel model = new BlockModel();
 		JsonObject obj = GSON.fromJson(json, JsonObject.class);
-		System.out.println(block + ": " + obj);
 		if (obj.has("parent")) {
 			model.parent = obj.get("parent").getAsString();
 		}
 		if (!obj.has("models")) {
 			throw new IOException("Missing \"models\" entry from model " + block);
-		}
-		if (model.parent != null) {
-			if (model.parent.equals(block.toString())) {
-				throw new IOException("Cannot have itself as parent");
-			}
-			BlockModel parent = loadModel(new Resource(model.parent));
-			Utilities.copyIfNull(model, parent);
 		}
 		JsonObject subModels = obj.getAsJsonObject("models");
 		for (String key : subModels.keySet()) {
@@ -66,6 +58,14 @@ public class ResourceUtilities {
 				Utilities.copyIfNull(subModel, model.subModels.get(key));
 			}
 			model.subModels.put(key, subModel);
+		}
+		
+		if (model.parent != null) {
+			if (model.parent.equals(block.toString())) {
+				throw new IOException("Cannot have itself as parent");
+			}
+			BlockModel parent = loadModel(new Resource(model.parent));
+			Utilities.copyIfNull(model, parent);
 		}
 		
 		BlockSubModel subDefault = model.subModels.get("default");
