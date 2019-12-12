@@ -15,10 +15,9 @@ import org.jungle.Mesh;
 import org.jungle.Spatial;
 import org.jungle.Window;
 import org.jungle.game.Context;
+import org.jungle.renderers.FrustumCullingFilter;
 import org.jungle.renderers.IRenderer;
 import org.jungle.renderers.Transformation;
-import org.jungle.renderers.jungle.FrustumCullingFilter;
-import org.jungle.renderers.jungle.JungleTransformation;
 import org.jungle.util.DirectionalLight;
 import org.jungle.util.PointLight;
 import org.jungle.util.ShaderProgram;
@@ -40,6 +39,7 @@ public class MainRenderer implements IRenderer {
 	private static final float Z_FAR = 1000.0f;
 	private boolean inited = false;
 	private boolean doRender = true;
+	public boolean orthogonal;
 	private Transformation transformation;
 	private String shaders = "";
 	private FrustumCullingFilter filter;
@@ -96,7 +96,7 @@ public class MainRenderer implements IRenderer {
 
 	@Override
 	public void init(Window window) throws Exception {
-		transformation = new JungleTransformation();
+		transformation = new Transformation();
 		window.setProjectionMatrix(transformation.getProjectionMatrix((float) Math.toRadians(70.0f), window.getWidth(),
 				window.getHeight(), Z_NEAR, Z_FAR));
 		loadShaders();
@@ -119,8 +119,13 @@ public class MainRenderer implements IRenderer {
 		if (window.isResized()) {
 			glViewport(0, 0, window.getWidth(), window.getHeight());
 			window.setResized(false);
-			window.setProjectionMatrix(transformation.getProjectionMatrix(ctx.getCamera().getFov(), window.getWidth(),
-					window.getHeight(), Z_NEAR, Z_FAR));
+			
+			if (orthogonal) {
+				window.setProjectionMatrix(transformation.getOrthoProjectionMatrix(1f, -1f, -1f, 1f, Z_NEAR, Z_FAR));
+			} else {
+				window.setProjectionMatrix(transformation.getProjectionMatrix(ctx.getCamera().getFov(), window.getWidth(),
+						window.getHeight(), Z_NEAR, Z_FAR));
+			}
 		}
 		if (!doRender)
 			return;
@@ -214,6 +219,9 @@ public class MainRenderer implements IRenderer {
 				mesh.renderList(map[i], (Spatial gameItem) -> {
 					if (gameItem.isInFrustum()) {
 						Matrix4f modelViewMatrix = transformation.getModelViewMatrix(gameItem, viewMatrix);
+						if (orthogonal) {
+							modelViewMatrix = transformation.getOrtoProjModelMatrix(gameItem, viewMatrix);
+						}
 						if (gameItem.isSelected())
 							shaderProgram.setUniform("selectedNonInstanced", 1f);
 						shaderProgram.setUniform("modelViewNonInstancedMatrix", modelViewMatrix);
