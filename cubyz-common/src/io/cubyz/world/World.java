@@ -25,6 +25,7 @@ public abstract class World {
 	public static final int WORLD_HEIGHT = 255;
 	protected int height = WORLD_HEIGHT;
 	protected int seed;
+	protected int season; // 0=Spring, 1=Summer, 2=Autumn, 3=Winter
 	
 	protected ArrayList<PlaceBlockHandler> placeBlockHandlers = new ArrayList<>();
 	protected ArrayList<RemoveBlockHandler> removeBlockHandlers = new ArrayList<>();
@@ -109,6 +110,10 @@ public abstract class World {
 	
 	public int getSeed() {
 		return seed;
+	}
+	
+	public int getSeason() {
+		return season;
 	}
 	
 	public void setName(String name) {

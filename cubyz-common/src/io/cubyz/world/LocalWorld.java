@@ -7,9 +7,9 @@ import java.util.Random;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 
-import org.joml.Vector3i;
 import org.joml.Vector4f;
 
+import io.cubyz.CubyzLogger;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.IRegistryElement;
 import io.cubyz.blocks.Block;
@@ -53,6 +53,7 @@ public class LocalWorld extends World {
 	private boolean generated;
 	
 	private static final int DAYCYCLE = 120000; // Length of one in-game day in 100ms. Midnight is at DAYCYCLE/2. Sunrise and sunset each take about 1/16 of the day.
+	private static final int SEASONCYCLE = DAYCYCLE * 7; // Length of one in-game season in 100ms. Equals to 7 days per season
 	long gameTime = 0; // Time of the game in 100ms.
 	long milliTime;
 	float ambientLight = 0f;
@@ -301,12 +302,22 @@ public class LocalWorld extends World {
 	}
 	
 	boolean lqdUpdate;
+	boolean loggedUpdSkip;
 	public void update() {
 		// Time
 		if(milliTime + 100 < System.currentTimeMillis()) {
 			milliTime += 100;
 			lqdUpdate = true;
 			gameTime++; // gameTime is measured in 100ms.
+			if ((milliTime + 100) < System.currentTimeMillis()) { // we skipped updates
+				if (!loggedUpdSkip) {
+					CubyzLogger.i.warning(((System.currentTimeMillis() - milliTime) / 100) + " updates skipped!");
+					loggedUpdSkip = true;
+				}
+				update();
+			} else {
+				loggedUpdSkip = false;
+			}
 		}
 		// Ambient light
 		{
@@ -345,6 +356,7 @@ public class LocalWorld extends World {
 				ambientLight = 0.4f + 0.3f*dayTime/(DAYCYCLE >> 1);
 			}
 		}
+		season = (int) ((gameTime/SEASONCYCLE) % 4);
 		// Entities
 		for (Entity en : entities) {
 			en.update();
@@ -479,7 +491,6 @@ public class LocalWorld extends World {
 		lastZ = z;
 		if (minK != visibleChunks.length) { // if atleast one chunk got unloaded
 			wio.saveWorldData();
-			//System.gc();
 		}
 		
 		// Check if one of the never loaded chunks is outside of players range.

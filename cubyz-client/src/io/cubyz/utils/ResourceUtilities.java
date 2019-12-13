@@ -2,11 +2,14 @@ package io.cubyz.utils;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 import io.cubyz.Utilities;
@@ -29,6 +32,7 @@ public class ResourceUtilities {
 	
 	public static class BlockModel {
 		public String parent;
+		public ArrayList<String> dynaModelPurposes = new ArrayList<>();
 		public HashMap<String, BlockSubModel> subModels = new HashMap<>(); // FuzeI1I
 	}
 	
@@ -58,6 +62,13 @@ public class ResourceUtilities {
 				Utilities.copyIfNull(subModel, model.subModels.get(key));
 			}
 			model.subModels.put(key, subModel);
+		}
+		
+		if (obj.has("dynaModelPurposes")) {
+			JsonArray array = obj.getAsJsonArray("dynaModelPurposes");
+			for (JsonElement elem : array) {
+				model.dynaModelPurposes.add(elem.getAsString());
+			}
 		}
 		
 		if (model.parent != null) {

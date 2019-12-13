@@ -45,6 +45,7 @@ import io.cubyz.ui.*;
 import io.cubyz.ui.mods.InventoryGUI;
 import io.cubyz.utils.*;
 import io.cubyz.utils.ResourceUtilities.BlockModel;
+import io.cubyz.utils.ResourceUtilities.BlockSubModel;
 import io.cubyz.world.*;
 import io.cubyz.world.generator.LifelandGenerator;
 
@@ -63,6 +64,7 @@ public class Cubyz implements IGameLogic {
 	public static SoundManager sound;
 	private SoundBuffer music;
 	private SoundSource musicSource;
+	private int worldSeason = 0;
 	
 	public static int inventorySelection = 0; // Selected slot in inventory
 
@@ -618,6 +620,87 @@ public class Cubyz implements IGameLogic {
 		return buf;
 	}
 	
+	public void seasonUpdateDynamodels() {
+		
+		String season = null;
+		switch (worldSeason) {
+		case 0:
+			season = "spring";
+			break;
+		case 1:
+			season = "summer";
+			break;
+		case 2:
+			season = "autumn";
+			break;
+		case 3:
+			season = "winter";
+			break;
+		default:
+			return;
+		}
+		
+		for (IRegistryElement elem : CubyzRegistries.BLOCK_REGISTRY.registered()) {
+			Block block = (Block) elem;
+			Resource rsc = block.getRegistryID();
+			try {
+				IRenderablePair pair = block.getBlockPair();
+				Texture tex = null;
+				Mesh mesh = null;
+				BlockModel bm = null;
+				try {
+					bm = ResourceUtilities.loadModel(rsc);
+				} catch (IOException e) {
+					CubyzLogger.i.warning(rsc + " model not found");
+					//e.printStackTrace();
+					bm = ResourceUtilities.loadModel(new Resource("cubyz:undefined"));
+				}
+				
+				// Cached meshes
+				Mesh defaultMesh = null;
+				for (String key : cachedDefaultModels.keySet()) {
+					if (key.equals(bm.subModels.get("default").model)) {
+						defaultMesh = cachedDefaultModels.get(key);
+					}
+				}
+				BlockSubModel subModel = bm.subModels.get("default");
+				if (bm.dynaModelPurposes.contains("seasons")) {
+					if (bm.subModels.containsKey(season)) {
+						subModel = bm.subModels.get(season);
+					}
+				}
+				if (defaultMesh == null) {
+					Resource rs = new Resource(subModel.model);
+					defaultMesh = OBJLoader.loadMesh("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), false);
+					defaultMesh.setBoundingRadius(2.0f);
+					cachedDefaultModels.put(subModel.model, defaultMesh);
+				}
+				Resource texResource = new Resource(subModel.texture);
+				String texture = texResource.getID();
+				if (!new File("assets/" + texResource.getMod() + "/textures/" + texture + ".png").exists()) {
+					CubyzLogger.i.warning(texResource + " texture not found");
+					texture = "blocks/undefined";
+				}
+				if (bm.subModels.get("default").texture_converted == (Boolean) true) {
+					tex = new Texture("assets/" + texResource.getMod() + "/textures/" + texture + ".png");
+				} else {
+					tex = new Texture(TextureConverter.fromBufferedImage(
+							TextureConverter.convert(ImageIO.read(new File("assets/" + texResource.getMod() + "/textures/" + texture + ".png")),
+									block.getRegistryID().toString())));
+				}
+				
+				mesh = defaultMesh.cloneNoMaterial();
+				Material material = new Material(tex, 0.6F);
+				mesh.setMaterial(material);
+				
+				pair.set("textureCache", tex);
+				pair.set("meshCache", mesh);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+	}
+	
 	float playerBobbing;
 	boolean bobbingUp;
 	@Override
@@ -655,6 +738,11 @@ public class Cubyz implements IGameLogic {
 		}
 		
 		if (world != null) {
+			if (worldSeason != world.getSeason()) {
+				worldSeason = world.getSeason();
+				seasonUpdateDynamodels();
+				CubyzLogger.i.info("Updated season to ID " + worldSeason);
+			}
 			ambient.x = ambient.y = ambient.z = world.getGlobalLighting();
 			clearColor = world.getClearColor();
 			Player player = world.getLocalPlayer();
@@ -697,7 +785,7 @@ public class Cubyz implements IGameLogic {
 		Keyboard.releaseKeyCode();
 		mouse.clearScroll();
 	}
-
+	
 	@Override
 	public void update(float interval) {
 		if (!gameUI.doesGUIPauseGame() && world != null) {
