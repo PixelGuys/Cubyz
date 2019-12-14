@@ -271,15 +271,10 @@ public class Chunk {
 	
 	// This function is here because it is mostly used by addBlock, where the neighbors to the added block usually are in the same chunk.
 	public Chunk getChunk(int x, int y) {
-
 		int cx = x;
-		if(cx < 0)
-			cx -= 15;
-		cx = cx / 16;
+		cx >>= 4;
 		int cz = y;
-		if(cz < 0)
-			cz -= 15;
-		cz = cz / 16;
+		cz >>= 4;
 		if(ox != cx || oy != cz)
 			return world._getChunk(cx, cz);
 		return this;

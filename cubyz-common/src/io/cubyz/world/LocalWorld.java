@@ -33,6 +33,8 @@ public class LocalWorld extends World {
 	private String name;
 	private List<Chunk> chunks;
 	private Chunk [] visibleChunks;
+	private int lastX = Integer.MAX_VALUE, lastZ = Integer.MAX_VALUE; // Chunk coordinates of the last chunk update.
+	private int doubleRD; // Corresponds to the doubled value of the last used render distance.
 	private int lastChunk = -1;
 	private ArrayList<Entity> entities = new ArrayList<>();
 	
@@ -192,30 +194,46 @@ public class LocalWorld extends World {
 		wio.saveChunk(ch);
 	}
 	
+	long total = 0;
+	long t = System.currentTimeMillis();
 	@Override
 	public Chunk getChunk(int x, int z) {	// World -> Chunk coordinate system is a bit harder than just x/16. java seems to floor when bigger and to ceil when lower than 0.
 		int cx = x;
-		if(cx < 0)
-			cx -= 15;
-		cx = cx / 16;
+		cx = cx >> 4;
 		int cz = z;
-		if(cz < 0)
-			cz -= 15;
-		cz = cz / 16;
+		cz = cz >> 4;
 		return _getChunk(cx, cz);
 	}
 	
 	@Override
 	public Chunk _getChunk(int x, int z) {
-		if(lastChunk >= 0 && lastChunk < chunks.size() && chunks.get(lastChunk).getX() == x && chunks.get(lastChunk).getZ() == z) {
-			return chunks.get(lastChunk);
-		}
-		for (int i = 0; i < chunks.size(); i++) {
-			if (chunks.get(i).getX() == x && chunks.get(i).getZ() == z) { // Sometimes a nullptr-exception is thrown here! probably due to modification in parallel (world generation)
-				lastChunk = i;
-				return chunks.get(i);
+		// First test if the chunk can be found in the list of visible chunks:
+		if(x < lastX && x >= lastX-doubleRD && z < lastZ && z >= lastZ-doubleRD) {
+			// Sometimes errors happen when resizing the renderDistance. If they happen just go on to iterating through the whole long list.
+			// Any seemingly useless checks in here are important!
+			int index = (x-(lastX-doubleRD))*doubleRD + (z-(lastZ-doubleRD));
+			if(index < visibleChunks.length && index >= 0) {
+				Chunk ret = visibleChunks[index];
+				if(x == ret.getX() && z == ret.getZ() && ret.isLoaded())
+					return ret;
 			}
 		}
+		try {
+			if(lastChunk >= 0 && lastChunk < chunks.size() && chunks.get(lastChunk).getX() == x && chunks.get(lastChunk).getZ() == z) {
+				return chunks.get(lastChunk);
+			}
+			for (int i = 0; i < chunks.size(); i++) {
+				if (chunks.get(i).getX() == x && chunks.get(i).getZ() == z) {
+					lastChunk = i;
+					return chunks.get(i);
+				}
+			}
+		} catch(NullPointerException e) {
+			System.out.println("Catched NullPointerException:");
+			e.printStackTrace();
+			chunks.remove(null); // Remove the corruption.
+			return _getChunk(x, z); // Just try it again…
+		} // Wherever the NullPointerException comes from, it doesn't seem to be a big deal. If another error occurs elsewhere, this might be the source.
 		Chunk c = new Chunk(x, z, this, transformData(getChunkData(x, z)));
 		// not generated
 		chunks.add(c);
@@ -433,19 +451,15 @@ public class LocalWorld extends World {
 		thread.queue(ch);
 	}
 
-	private int lastX = Integer.MAX_VALUE;
-	private int lastZ = Integer.MAX_VALUE;
 	@Override
 	public void seek(int x, int z) {
 		int local = x & 15;
-		x -= local;
-		x /= 16;
+		x >>= 4;
 		x += renderDistance;
 		if(local > 7)
 			x++;
 		local = z & 15;
-		z -= local;
-		z /= 16;
+		z >>= 4;
 		z += renderDistance;
 		if(local > 7)
 			z++;
@@ -489,7 +503,8 @@ public class LocalWorld extends World {
 		visibleChunks = newVisibles;
 		lastX = x;
 		lastZ = z;
-		if (minK != visibleChunks.length) { // if atleast one chunk got unloaded
+		this.doubleRD = doubleRD;
+		if (minK != visibleChunks.length) { // if at least one chunk got unloaded
 			wio.saveWorldData();
 		}
 		
