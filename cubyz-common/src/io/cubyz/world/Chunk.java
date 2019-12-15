@@ -199,7 +199,8 @@ public class Chunk {
 		boolean chx1 = world._getChunk(ox + 1, oy).isGenerated();
 		boolean chy0 = world._getChunk(ox, oy - 1).isGenerated();
 		boolean chy1 = world._getChunk(ox, oy + 1).isGenerated();
-		for(BlockInstance bi : list) {
+		for(int k = 0; k < list.size(); k++) {
+			BlockInstance bi = list.get(k);
 			BlockInstance[] neighbors = bi.getNeighbors(this);
 			int j = bi.getY();
 			int px = bi.getX()&15;

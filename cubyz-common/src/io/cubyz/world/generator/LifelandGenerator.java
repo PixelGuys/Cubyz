@@ -95,7 +95,7 @@ public class LifelandGenerator extends WorldGenerator {
 		float[][] vegetationMap = Noise.generateMapFragment(wx, wy, 16, 16, 128, seed + 3 * (seed + 1 & Integer.MAX_VALUE));
 		float[][] oreMap = Noise.generateMapFragment(wx, wy, 16, 16, 128, seed - 3 * (seed - 1 & Integer.MAX_VALUE));
 		float[][] heatMap = Noise.generateMapFragment(wx, wy, 16, 16, 4096, seed ^ 123456789);
-		boolean[][][] caves = generateCaves(ch, ox, oy, seed); 
+		boolean[][][] caves = generateCaves(ch, ox, oy, seed);
 		
 		for (int px = 0; px < 16; px++) {
 			for (int py = 0; py < 16; py++) {
@@ -169,7 +169,7 @@ public class LifelandGenerator extends WorldGenerator {
 		float[][] mapx1 = Noise.generateMapFragment((cy << 4), 0, 16, 256, 64, seed + (cx+1)*987654321);
 		Random r = new Random(seed+cx*573923+cy*29104);
 		float chance = 0.34f;
-		// generate a random map of automata filled with 50% empty spaces:
+		// generate a random map of automata filled with approximately 50% empty spaces:
 		boolean[][][] automata = new boolean[16][16][256]; // x, y, h
 		for(int x = 0; x < 16; x++) {
 			for(int y = 0; y < 16; y++) {
@@ -200,14 +200,12 @@ public class LifelandGenerator extends WorldGenerator {
 			}
 		}
 		chance = 1-chance;
-		
+
 		// Iterate through the automata a couple of times.
+		boolean[][][] toggleMap = new boolean[16][16][256]; // x, y, h
 		for(int i = 0; i < 7; i++) {
-			boolean[][][] toggleMap = new boolean[16][16][256]; // x, y, h
-			int min = ((i & 1) == 1) ? 0 : 1;
-			int max = 16-min;
-			for(int x = min; x < max; x++) {
-				for(int y = min; y < max; y++) {
+			for(int x = 1; x < 15; x++) {
+				for(int y = 1; y < 15; y++) {
 					for(int h = 1; h < 255; h++) {
 						int walls = 0; // How many walls are neighboring this block.
 						if(automata[x][y][h-1]) // down
@@ -215,189 +213,61 @@ public class LifelandGenerator extends WorldGenerator {
 						if(automata[x][y][h+1]) // up
 							walls += 2; // Direct neighbors have more impact.
 						// x-1:
-						if(x > 0) {
-							if(automata[x-1][y][h]) // same h
-								walls += 2; // Direct neighbors have more impact.
-							if(automata[x-1][y][h-1]) // down
-								walls++;
-							if(automata[x-1][y][h+1]) // up
-								walls++;
-						} else { // at the chunk borders use the noise map:
-							if(mapx0[y][h] < chance) // same h
-								walls += 2; // Direct neighbors have more impact.
-							if(mapx0[y][h-1] < chance) // down
-								walls++;
-							if(mapx0[y][h+1] < chance) // up
-								walls++;
-						}
+						if(automata[x-1][y][h]) // same h
+							walls += 2; // Direct neighbors have more impact.
+						if(automata[x-1][y][h-1]) // down
+							walls++;
+						if(automata[x-1][y][h+1]) // up
+							walls++;
 						// x+1
-						if(x < 15) {
-							if(automata[x+1][y][h]) // same h
-								walls += 2; // Direct neighbors have more impact.
-							if(automata[x+1][y][h-1]) // down
-								walls++;
-							if(automata[x+1][y][h+1]) // up
-								walls++;
-						} else { // at the chunk borders use the noise map:
-							if(mapx1[y][h] < chance) // same h
-								walls += 2; // Direct neighbors have more impact.
-							if(mapx1[y][h-1] < chance) // down
-								walls++;
-							if(mapx1[y][h+1] < chance) // up
-								walls++;
-						}
+						if(automata[x+1][y][h]) // same h
+							walls += 2; // Direct neighbors have more impact.
+						if(automata[x+1][y][h-1]) // down
+							walls++;
+						if(automata[x+1][y][h+1]) // up
+							walls++;
 						// y-1
-						if(y > 0) {
-							if(automata[x][y-1][h]) // same h
-								walls += 2; // Direct neighbors have more impact.
-							if(automata[x][y-1][h-1]) // down
-								walls++;
-							if(automata[x][y-1][h+1]) // up
-								walls++;
-						} else { // at the chunk borders use the noise map:
-							if(mapy0[x][h] < chance) // same h
-								walls += 2; // Direct neighbors have more impact.
-							if(mapy0[x][h-1] < chance) // down
-								walls++;
-							if(mapy0[x][h+1] < chance) // up
-								walls++;
-						}
+						if(automata[x][y-1][h]) // same h
+							walls += 2; // Direct neighbors have more impact.
+						if(automata[x][y-1][h-1]) // down
+							walls++;
+						if(automata[x][y-1][h+1]) // up
+							walls++;
 						// y+1
-						if(y < 15) {
-							if(automata[x][y+1][h]) // same h
-								walls += 2; // Direct neighbors have more impact.
-							if(automata[x][y+1][h-1]) // down
-								walls++;
-							if(automata[x][y+1][h+1]) // up
-								walls++;
-						} else { // at the chunk borders use the noise map:
-							if(mapy1[x][h] < chance) // same h
-								walls += 2; // Direct neighbors have more impact.
-							if(mapy1[x][h-1] < chance) // down
-								walls++;
-							if(mapy1[x][h+1] < chance) // up
-								walls++;
-						}
+						if(automata[x][y+1][h]) // same h
+							walls += 2; // Direct neighbors have more impact.
+						if(automata[x][y+1][h-1]) // down
+							walls++;
+						if(automata[x][y+1][h+1]) // up
+							walls++;
 						// x-1, y-1
-						if(x > 0 && y > 0) {
-							if(automata[x-1][y-1][h]) // same h
-								walls++;
-							if(automata[x-1][y-1][h-1]) // down
-								walls++;
-							if(automata[x-1][y-1][h+1]) // up
-								walls++;
-						} else if(y > 0) { // at the chunk borders use the noise map:
-							if(mapx0[y-1][h] < chance) // same h
-								walls++;
-							if(mapx0[y-1][h-1] < chance) // down
-								walls++;
-							if(mapx0[y-1][h+1] < chance) // up
-								walls++;
-						} else if(x > 0) { // at the chunk borders use the noise map:
-							if(mapy0[x-1][h] < chance) // same h
-								walls++;
-							if(mapy0[x-1][h-1] < chance) // down
-								walls++;
-							if(mapy0[x-1][h+1] < chance) // up
-								walls++;
-						} else { // at the chunk edges use an interpolation between the noise maps:
-							if((mapx0[y][h]+mapy0[x][h])/2 < chance) // same h
-								walls++;
-							if((mapx0[y][h-1]+mapy0[x][h-1])/2 < chance) // down
-								walls++;
-							if((mapx0[y][h+1]+mapy0[x][h+1])/2 < chance) // up
-								walls++;
-						}
+						if(automata[x-1][y-1][h]) // same h
+							walls++;
+						if(automata[x-1][y-1][h-1]) // down
+							walls++;
+						if(automata[x-1][y-1][h+1]) // up
+							walls++;
 						// x-1, y+1
-						if(x > 0 && y < 15) {
-							if(automata[x-1][y+1][h]) // same h
-								walls++;
-							if(automata[x-1][y+1][h-1]) // down
-								walls++;
-							if(automata[x-1][y+1][h+1]) // up
-								walls++;
-						} else if(y < 15) { // at the chunk borders use the noise map:
-							if(mapx0[y+1][h] < chance) // same h
-								walls++;
-							if(mapx0[y+1][h-1] < chance) // down
-								walls++;
-							if(mapx0[y+1][h+1] < chance) // up
-								walls++;
-						} else if(x > 0) { // at the chunk borders use the noise map:
-							if(mapy1[x-1][h] < chance) // same h
-								walls++;
-							if(mapy1[x-1][h-1] < chance) // down
-								walls++;
-							if(mapy1[x-1][h+1] < chance) // up
-								walls++;
-						} else { // at the chunk edges use an interpolation between the noise maps:
-							if((mapx0[y][h]+mapy1[x][h])/2 < chance) // same h
-								walls++;
-							if((mapx0[y][h-1]+mapy1[x][h-1])/2 < chance) // down
-								walls++;
-							if((mapx0[y][h+1]+mapy1[x][h+1])/2 < chance) // up
-								walls++;
-						}
+						if(automata[x-1][y+1][h]) // same h
+							walls++;
+						if(automata[x-1][y+1][h-1]) // down
+							walls++;
+						if(automata[x-1][y+1][h+1]) // up
+							walls++;
 						// x+1, y-1
-						if(x < 15 && y > 0) {
-							if(automata[x+1][y-1][h]) // same h
-								walls++;
-							if(automata[x+1][y-1][h-1]) // down
-								walls++;
-							if(automata[x+1][y-1][h+1]) // up
-								walls++;
-						} else if(y > 0) { // at the chunk borders use the noise map:
-							if(mapx1[y-1][h] < chance) // same h
-								walls++;
-							if(mapx1[y-1][h-1] < chance) // down
-								walls++;
-							if(mapx1[y-1][h+1] < chance) // up
-								walls++;
-						} else if(x < 15) { // at the chunk borders use the noise map:
-							if(mapy0[x+1][h] < chance) // same h
-								walls++;
-							if(mapy0[x+1][h-1] < chance) // down
-								walls++;
-							if(mapy0[x+1][h+1] < chance) // up
-								walls++;
-						} else { // at the chunk edges use an interpolation between the noise maps:
-							if((mapx1[y][h]+mapy0[x][h])/2 < chance) // same h
-								walls++;
-							if((mapx1[y][h-1]+mapy0[x][h-1])/2 < chance) // down
-								walls++;
-							if((mapx1[y][h+1]+mapy0[x][h+1])/2 < chance) // up
-								walls++;
-						}
+						if(automata[x+1][y-1][h]) // same h
+							walls++;
+						if(automata[x+1][y-1][h-1]) // down
+							walls++;
+						if(automata[x+1][y-1][h+1]) // up
+							walls++;
 						// x+1, y+1
-						if(x < 15 && y < 15) {
-							if(automata[x+1][y+1][h]) // same h
-								walls++;
-							if(automata[x+1][y+1][h-1]) // down
-								walls++;
-							if(automata[x+1][y+1][h+1]) // up
-								walls++;
-						} else if(y < 15) { // at the chunk borders use the noise map:
-							if(mapx1[y+1][h] < chance) // same h
-								walls++;
-							if(mapx1[y+1][h-1] < chance) // down
-								walls++;
-							if(mapx1[y+1][h+1] < chance) // up
-								walls++;
-						} else if(x < 15) { // at the chunk borders use the noise map:
-							if(mapy1[x+1][h] < chance) // same h
-								walls++;
-							if(mapy1[x+1][h-1] < chance) // down
-								walls++;
-							if(mapy1[x+1][h+1] < chance) // up
-								walls++;
-						} else { // at the chunk edges use an interpolation between the noise maps:
-							if((mapx1[y][h]+mapy1[x][h])/2 < chance) // same h
-								walls++;
-							if((mapx1[y][h-1]+mapy1[x][h-1])/2 < chance) // down
-								walls++;
-							if((mapx1[y][h+1]+mapy1[x][h+1])/2 < chance) // up
-								walls++;
-						}
+						if(automata[x+1][y+1][h]) // same h
+							walls++;
+						if(automata[x+1][y+1][h-1]) // down
+							walls++;
+						if(automata[x+1][y+1][h+1]) // up
+							walls++;
 						if(i < 6)
 							toggleMap[x][y][h] = (walls > 17 || (walls > 12 && automata[x][y][h]))^automata[x][y][h];
 						else // Clean sharp edges in the last run:
@@ -406,6 +276,411 @@ public class LifelandGenerator extends WorldGenerator {
 					}
 				}
 			}
+			int min = ((i & 1) == 1) ? 0 : 1;
+			int max = 16-min;
+			// Do the x/y border-line cases seperately to avoid those huge if/else's above:
+			if(min == 0) {
+				// x = 0:
+				for(int y = 0; y < 16; y++) {
+					for(int h = 1; h < 255; h++) {
+						int walls = 0; // How many walls are neighboring this block.
+						if(automata[0][y][h-1]) // down
+							walls += 2; // Direct neighbors have more impact.
+						if(automata[0][y][h+1]) // up
+							walls += 2; // Direct neighbors have more impact.
+						// x-1:
+						// at the chunk borders use the noise map:
+						if(mapx0[y][h] < chance) // same h
+							walls += 2; // Direct neighbors have more impact.
+						if(mapx0[y][h-1] < chance) // down
+							walls++;
+						if(mapx0[y][h+1] < chance) // up
+							walls++;
+						// x+1
+						if(automata[1][y][h]) // same h
+							walls += 2; // Direct neighbors have more impact.
+						if(automata[1][y][h-1]) // down
+							walls++;
+						if(automata[1][y][h+1]) // up
+							walls++;
+						// y-1
+						if(y > 0) {
+							if(automata[0][y-1][h]) // same h
+								walls += 2; // Direct neighbors have more impact.
+							if(automata[0][y-1][h-1]) // down
+								walls++;
+							if(automata[0][y-1][h+1]) // up
+								walls++;
+						} else { // at the chunk borders use the noise map:
+							if(mapy0[0][h] < chance) // same h
+								walls += 2; // Direct neighbors have more impact.
+							if(mapy0[0][h-1] < chance) // down
+								walls++;
+							if(mapy0[0][h+1] < chance) // up
+								walls++;
+						}
+						// y+1
+						if(y < 15) {
+							if(automata[0][y+1][h]) // same h
+								walls += 2; // Direct neighbors have more impact.
+							if(automata[0][y+1][h-1]) // down
+								walls++;
+							if(automata[0][y+1][h+1]) // up
+								walls++;
+						} else { // at the chunk borders use the noise map:
+							if(mapy1[0][h] < chance) // same h
+								walls += 2; // Direct neighbors have more impact.
+							if(mapy1[0][h-1] < chance) // down
+								walls++;
+							if(mapy1[0][h+1] < chance) // up
+								walls++;
+						}
+						// x-1, y-1
+						if(y > 0) { // at the chunk borders use the noise map:
+							if(mapx0[y-1][h] < chance) // same h
+								walls++;
+							if(mapx0[y-1][h-1] < chance) // down
+								walls++;
+							if(mapx0[y-1][h+1] < chance) // up
+								walls++;
+						} else { // at the chunk edges use an interpolation between the noise maps:
+							if((mapx0[y][h]+mapy0[0][h])/2 < chance) // same h
+								walls++;
+							if((mapx0[y][h-1]+mapy0[0][h-1])/2 < chance) // down
+								walls++;
+							if((mapx0[y][h+1]+mapy0[0][h+1])/2 < chance) // up
+								walls++;
+						}
+						// x-1, y+1
+						if(y < 15) { // at the chunk borders use the noise map:
+							if(mapx0[y+1][h] < chance) // same h
+								walls++;
+							if(mapx0[y+1][h-1] < chance) // down
+								walls++;
+							if(mapx0[y+1][h+1] < chance) // up
+								walls++;
+						} else { // at the chunk edges use an interpolation between the noise maps:
+							if((mapx0[y][h]+mapy1[0][h])/2 < chance) // same h
+								walls++;
+							if((mapx0[y][h-1]+mapy1[0][h-1])/2 < chance) // down
+								walls++;
+							if((mapx0[y][h+1]+mapy1[0][h+1])/2 < chance) // up
+								walls++;
+						}
+						// x+1, y-1
+						if(y > 0) {
+							if(automata[1][y-1][h]) // same h
+								walls++;
+							if(automata[1][y-1][h-1]) // down
+								walls++;
+							if(automata[1][y-1][h+1]) // up
+								walls++;
+						} else { // at the chunk borders use the noise map:
+							if(mapy0[1][h] < chance) // same h
+								walls++;
+							if(mapy0[1][h-1] < chance) // down
+								walls++;
+							if(mapy0[1][h+1] < chance) // up
+								walls++;
+						}
+						// x+1, y+1
+						if(y < 15) {
+							if(automata[1][y+1][h]) // same h
+								walls++;
+							if(automata[1][y+1][h-1]) // down
+								walls++;
+							if(automata[1][y+1][h+1]) // up
+								walls++;
+						} else { // at the chunk borders use the noise map:
+							if(mapy1[1][h] < chance) // same h
+								walls++;
+							if(mapy1[1][h-1] < chance) // down
+								walls++;
+							if(mapy1[1][h+1] < chance) // up
+								walls++;
+						}
+						if(i < 6)
+							toggleMap[0][y][h] = (walls > 17 || (walls > 12 && automata[0][y][h]))^automata[0][y][h];
+						else // Clean sharp edges in the last run:
+							toggleMap[0][y][h] = (walls > 28 || (walls > 5 && automata[0][y][h]))^automata[0][y][h];
+					}
+				}
+				// x = 15:
+				for(int y = 0; y < 16; y++) {
+					for(int h = 1; h < 255; h++) {
+						int walls = 0; // How many walls are neighboring this block.
+						if(automata[15][y][h-1]) // down
+							walls += 2; // Direct neighbors have more impact.
+						if(automata[15][y][h+1]) // up
+							walls += 2; // Direct neighbors have more impact.
+						// x-1:
+						if(automata[14][y][h]) // same h
+							walls += 2; // Direct neighbors have more impact.
+						if(automata[14][y][h-1]) // down
+							walls++;
+						if(automata[14][y][h+1]) // up
+							walls++;
+						// x+1
+						// at the chunk borders use the noise map:
+						if(mapx1[y][h] < chance) // same h
+							walls += 2; // Direct neighbors have more impact.
+						if(mapx1[y][h-1] < chance) // down
+							walls++;
+						if(mapx1[y][h+1] < chance) // up
+							walls++;
+						// y-1
+						if(y > 0) {
+							if(automata[15][y-1][h]) // same h
+								walls += 2; // Direct neighbors have more impact.
+							if(automata[15][y-1][h-1]) // down
+								walls++;
+							if(automata[15][y-1][h+1]) // up
+								walls++;
+						} else { // at the chunk borders use the noise map:
+							if(mapy0[15][h] < chance) // same h
+								walls += 2; // Direct neighbors have more impact.
+							if(mapy0[15][h-1] < chance) // down
+								walls++;
+							if(mapy0[15][h+1] < chance) // up
+								walls++;
+						}
+						// y+1
+						if(y < 15) {
+							if(automata[15][y+1][h]) // same h
+								walls += 2; // Direct neighbors have more impact.
+							if(automata[15][y+1][h-1]) // down
+								walls++;
+							if(automata[15][y+1][h+1]) // up
+								walls++;
+						} else { // at the chunk borders use the noise map:
+							if(mapy1[15][h] < chance) // same h
+								walls += 2; // Direct neighbors have more impact.
+							if(mapy1[15][h-1] < chance) // down
+								walls++;
+							if(mapy1[15][h+1] < chance) // up
+								walls++;
+						}
+						// x-1, y-1
+						if(y > 0) {
+							if(automata[14][y-1][h]) // same h
+								walls++;
+							if(automata[14][y-1][h-1]) // down
+								walls++;
+							if(automata[14][y-1][h+1]) // up
+								walls++;
+						} else { // at the chunk borders use the noise map:
+							if(mapy0[14][h] < chance) // same h
+								walls++;
+							if(mapy0[14][h-1] < chance) // down
+								walls++;
+							if(mapy0[14][h+1] < chance) // up
+								walls++;
+						}
+						// x-1, y+1
+						if(y < 15) {
+							if(automata[14][y+1][h]) // same h
+								walls++;
+							if(automata[14][y+1][h-1]) // down
+								walls++;
+							if(automata[14][y+1][h+1]) // up
+								walls++;
+						} else { // at the chunk borders use the noise map:
+							if(mapy1[14][h] < chance) // same h
+								walls++;
+							if(mapy1[14][h-1] < chance) // down
+								walls++;
+							if(mapy1[14][h+1] < chance) // up
+								walls++;
+						}
+						// x+1, y-1
+						if(y > 0) { // at the chunk borders use the noise map:
+							if(mapx1[y-1][h] < chance) // same h
+								walls++;
+							if(mapx1[y-1][h-1] < chance) // down
+								walls++;
+							if(mapx1[y-1][h+1] < chance) // up
+								walls++;
+						} else { // at the chunk edges use an interpolation between the noise maps:
+							if((mapx1[y][h]+mapy0[15][h])/2 < chance) // same h
+								walls++;
+							if((mapx1[y][h-1]+mapy0[15][h-1])/2 < chance) // down
+								walls++;
+							if((mapx1[y][h+1]+mapy0[15][h+1])/2 < chance) // up
+								walls++;
+						}
+						// x+1, y+1
+						if(y < 15) { // at the chunk borders use the noise map:
+							if(mapx1[y+1][h] < chance) // same h
+								walls++;
+							if(mapx1[y+1][h-1] < chance) // down
+								walls++;
+							if(mapx1[y+1][h+1] < chance) // up
+								walls++;
+						} else { // at the chunk edges use an interpolation between the noise maps:
+							if((mapx1[y][h]+mapy1[15][h])/2 < chance) // same h
+								walls++;
+							if((mapx1[y][h-1]+mapy1[15][h-1])/2 < chance) // down
+								walls++;
+							if((mapx1[y][h+1]+mapy1[15][h+1])/2 < chance) // up
+								walls++;
+						}
+						if(i < 6)
+							toggleMap[15][y][h] = (walls > 17 || (walls > 12 && automata[15][y][h]))^automata[15][y][h];
+						else // Clean sharp edges in the last run:
+							toggleMap[15][y][h] = (walls > 28 || (walls > 5 && automata[15][y][h]))^automata[15][y][h];
+					}
+				}
+				// y = 0, 0 < x < 15:
+				for(int x = 1; x < 15; x++) {
+					for(int h = 1; h < 255; h++) {
+						int walls = 0; // How many walls are neighboring this block.
+						if(automata[x][0][h-1]) // down
+							walls += 2; // Direct neighbors have more impact.
+						if(automata[x][0][h+1]) // up
+							walls += 2; // Direct neighbors have more impact.
+						// x-1:
+						if(automata[x-1][0][h]) // same h
+							walls += 2; // Direct neighbors have more impact.
+						if(automata[x-1][0][h-1]) // down
+							walls++;
+						if(automata[x-1][0][h+1]) // up
+							walls++;
+						// x+1
+						if(automata[x+1][0][h]) // same h
+							walls += 2; // Direct neighbors have more impact.
+						if(automata[x+1][0][h-1]) // down
+							walls++;
+						if(automata[x+1][0][h+1]) // up
+							walls++;
+						// y-1
+						// at the chunk borders use the noise map:
+						if(mapy0[x][h] < chance) // same h
+							walls += 2; // Direct neighbors have more impact.
+						if(mapy0[x][h-1] < chance) // down
+							walls++;
+						if(mapy0[x][h+1] < chance) // up
+							walls++;
+						// y+1
+						if(automata[x][1][h]) // same h
+							walls += 2; // Direct neighbors have more impact.
+						if(automata[x][1][h-1]) // down
+							walls++;
+						if(automata[x][1][h+1]) // up
+							walls++;
+						// x-1, y-1
+						// at the chunk borders use the noise map:
+						if(mapy0[x-1][h] < chance) // same h
+							walls++;
+						if(mapy0[x-1][h-1] < chance) // down
+							walls++;
+						if(mapy0[x-1][h+1] < chance) // up
+							walls++;
+						// x-1, y+1
+						if(automata[x-1][1][h]) // same h
+							walls++;
+						if(automata[x-1][1][h-1]) // down
+							walls++;
+						if(automata[x-1][1][h+1]) // up
+							walls++;
+						// x+1, y-1
+						if(x < 15) { // at the chunk borders use the noise map:
+							if(mapy0[x+1][h] < chance) // same h
+								walls++;
+							if(mapy0[x+1][h-1] < chance) // down
+								walls++;
+							if(mapy0[x+1][h+1] < chance) // up
+								walls++;
+						}
+						// x+1, y+1
+						if(automata[x+1][1][h]) // same h
+							walls++;
+						if(automata[x+1][1][h-1]) // down
+							walls++;
+						if(automata[x+1][1][h+1]) // up
+							walls++;
+						if(i < 6)
+							toggleMap[x][0][h] = (walls > 17 || (walls > 12 && automata[x][0][h]))^automata[x][0][h];
+						else // Clean sharp edges in the last run:
+							toggleMap[x][0][h] = (walls > 28 || (walls > 5 && automata[x][0][h]))^automata[x][0][h];
+					}
+				}
+				// y = 15, 0 < x < 15:
+				for(int x = 1; x < 15; x++) {
+					for(int h = 1; h < 255; h++) {
+						int walls = 0; // How many walls are neighboring this block.
+						if(automata[x][15][h-1]) // down
+							walls += 2; // Direct neighbors have more impact.
+						if(automata[x][15][h+1]) // up
+							walls += 2; // Direct neighbors have more impact.
+						// x-1:
+						if(automata[x-1][15][h]) // same h
+							walls += 2; // Direct neighbors have more impact.
+						if(automata[x-1][15][h-1]) // down
+							walls++;
+						if(automata[x-1][15][h+1]) // up
+							walls++;
+						// x+1
+						if(automata[x+1][15][h]) // same h
+							walls += 2; // Direct neighbors have more impact.
+						if(automata[x+1][15][h-1]) // down
+							walls++;
+						if(automata[x+1][15][h+1]) // up
+							walls++;
+						// y-1
+						if(automata[x][14][h]) // same h
+							walls += 2; // Direct neighbors have more impact.
+						if(automata[x][14][h-1]) // down
+							walls++;
+						if(automata[x][14][h+1]) // up
+							walls++;
+						// y+1
+						// at the chunk borders use the noise map:
+						if(mapy1[x][h] < chance) // same h
+							walls += 2; // Direct neighbors have more impact.
+						if(mapy1[x][h-1] < chance) // down
+							walls++;
+						if(mapy1[x][h+1] < chance) // up
+							walls++;
+						// x-1, y-1
+						if(automata[x-1][14][h]) // same h
+							walls++;
+						if(automata[x-1][14][h-1]) // down
+							walls++;
+						if(automata[x-1][14][h+1]) // up
+							walls++;
+						// x-1, y+1
+						// at the chunk borders use the noise map:
+						if(mapy1[x-1][h] < chance) // same h
+							walls++;
+						if(mapy1[x-1][h-1] < chance) // down
+							walls++;
+						if(mapy1[x-1][h+1] < chance) // up
+							walls++;
+						// x+1, y-1
+						if(automata[x+1][14][h]) // same h
+							walls++;
+						if(automata[x+1][14][h-1]) // down
+							walls++;
+						if(automata[x+1][14][h+1]) // up
+							walls++;
+						// x+1, y+1
+						// at the chunk borders use the noise map:
+						if(mapy1[x+1][h] < chance) // same h
+							walls++;
+						if(mapy1[x+1][h-1] < chance) // down
+							walls++;
+						if(mapy1[x+1][h+1] < chance) // up
+							walls++;
+
+						if(i < 6)
+							toggleMap[x][15][h] = (walls > 17 || (walls > 12 && automata[x][15][h]))^automata[x][15][h];
+						else // Clean sharp edges in the last run:
+							toggleMap[x][15][h] = (walls > 28 || (walls > 5 && automata[x][15][h]))^automata[x][15][h];
+							
+					}
+				}
+			}
+			
 			for(int x = min; x < max; x++) {
 				for(int y = min; y < max; y++) {
 					for(int h = 1; h < 255; h++) {
