@@ -1,3 +1,4 @@
+
 package io.cubyz.entity;
 
 import org.joml.Vector3f;
@@ -97,6 +98,12 @@ public class PlayerEntity extends EntityType {
 					vy = 0;
 				}
 				else if (relZ > 0.7 && checkBlock(bp.x, bp.y, bp.z + 1)) {
+					vy = 0;
+				}
+				
+				// I'm really annoyed by falling into the void and needing ages to get back up.
+				if(bp.y < -100) {
+					position.y = -100;
 					vy = 0;
 				}
 			}

@@ -12,7 +12,6 @@ public class Noise {
 
 	private static float[][][] xGridPoints; // [scale][x][y]
 	private static float[][][] yGridPoints; // [scale][x][y]
-	private static int x0, y0;
 
 	private static int resolution;
 	private static int resolution2;
@@ -125,8 +124,8 @@ public class Noise {
 			resolution = scale;
 			resolution2 = resolution-1;
 		    // Determine grid cell coordinates of all cells that points can be in:
-			float[][] xGrid = new float[width/scale + 2][height/scale + 2]; // Simply assume the absolute maximum number of grid points are generated.
-			float[][] yGrid = new float[width/scale + 2][height/scale + 2]; // Simply assume the absolute maximum number of grid points are generated.
+			float[][] xGrid = new float[width/scale + 3][height/scale + 3]; // Simply assume the absolute maximum number of grid points are generated.
+			float[][] yGrid = new float[width/scale + 3][height/scale + 3]; // Simply assume the absolute maximum number of grid points are generated.
 			int numX = 0, numY = 0;
 			int x0 = 0;
 			for(int ix = x; ix < x+width; ix += scale) {
@@ -165,11 +164,11 @@ public class Noise {
 			numY++;
 			numX++;
 			// Copy the values into smaller arrays and put them into the array containing all grid points:
-			float[][] xGridR = new float[numX][numY];
-			float[][] yGridR = new float[numX][numY];
-			for(int ix = 0; ix < numX; ix++) {
-				System.arraycopy(xGrid, 0, xGridR, 0, numY);
-				System.arraycopy(yGrid, 0, yGridR, 0, numY);
+			float[][] xGridR = new float[numX+1][numY+1];
+			float[][] yGridR = new float[numX+1][numY+1];
+			for(int ix = 0; ix < numX+1; ix++) {
+				System.arraycopy(xGrid[ix], 0, xGridR[ix], 0, numY+1);
+				System.arraycopy(yGrid[ix], 0, yGridR[ix], 0, numY+1);
 				for(int iy = 0; iy < numY; iy++) {
 					if(xGridR[ix][iy] < -1)
 						System.out.println(ix+" "+ iy);
