@@ -18,8 +18,7 @@ public class Block implements IRegistryElement {
 	};
 	
 	private static final Vector3f ONE = new Vector3f(1, 1, 1);
-
-	IRenderablePair pair;
+	
 	boolean transparent;
 	boolean texConverted;
 	/**
@@ -69,14 +68,6 @@ public class Block implements IRegistryElement {
 	
 	public boolean isSelectable() {
 		return selectable;
-	}
-	
-	public IRenderablePair getBlockPair() {
-		return pair;
-	}
-	
-	public void setBlockPair(IRenderablePair pair) {
-		this.pair = pair;
 	}
 	
 	public boolean isTextureConverted() {

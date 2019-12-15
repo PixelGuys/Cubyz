@@ -225,4 +225,10 @@ public class RemoteWorld extends World {
 		return null;
 	}
 
+	@Override
+	public void addEntity(Entity arg0) {
+		// TODO Auto-generated method stub
+		
+	}
+
 }

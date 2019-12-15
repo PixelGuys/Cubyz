@@ -25,6 +25,7 @@ import org.jungle.util.SpotLight;
 import org.jungle.util.Utils;
 import org.lwjgl.opengl.GL20;
 
+import io.cubyz.IRenderablePair;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
@@ -166,7 +167,7 @@ public class MainRenderer implements IRenderer {
 		for (int i = 0; i < blocks.length; i++) {
 			if (map[i].size() == 0)
 				continue;
-			m.put((Mesh) blocks[i].getBlockPair().get("meshCache"), map[i]);
+			m.put(Meshes.blockMeshes.get(blocks[i]), map[i]);
 		}
 		for (Mesh mesh : m.keySet()) {
 			if (mesh instanceof InstancedMesh) {
@@ -208,7 +209,7 @@ public class MainRenderer implements IRenderer {
 		for (int i = 0; i < blocks.length; i++) {
 			if (map[i] == null)
 				continue;
-			Mesh mesh = (Mesh) blocks[i].getBlockPair().get("meshCache");
+			Mesh mesh = Meshes.blockMeshes.get(blocks[i]);
 			shaderProgram.setUniform("material", mesh.getMaterial());
 			if (selectedBlock == i) {
 				map[i].add(selected);
@@ -238,7 +239,19 @@ public class MainRenderer implements IRenderer {
 		for (int i = 0; i < entities.length; i++) {
 			Entity ent = entities[i];
 			if (ent != null && ent != p) { // don't render local player
-				
+				Mesh mesh = (Mesh) ent.getRenderablePair().get("meshCache");
+				shaderProgram.setUniform("material", mesh.getMaterial());
+				mesh.renderList(map[i], (Spatial gameItem) -> {
+					if (gameItem.isInFrustum()) {
+						Matrix4f modelViewMatrix = transformation.getModelViewMatrix(gameItem, viewMatrix);
+						if (orthogonal) {
+							modelViewMatrix = transformation.getOrtoProjModelMatrix(gameItem, viewMatrix);
+						}
+						shaderProgram.setUniform("modelViewNonInstancedMatrix", modelViewMatrix);
+						return true;
+					}
+					return false;
+				});
 			}
 		}
 		

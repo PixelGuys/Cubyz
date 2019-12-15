@@ -18,7 +18,6 @@ import io.cubyz.api.Mod;
 import io.cubyz.api.Side;
 import io.cubyz.base.BaseMod;
 import io.cubyz.blocks.Block;
-import io.cubyz.client.ClientBlockPair;
 import io.cubyz.client.Cubyz;
 import io.cubyz.modding.ModLoader;
 import io.cubyz.ui.LoadingGUI;
@@ -27,6 +26,7 @@ public class LoadThread extends Thread {
 
 	static int i = -1;
 	static Runnable run;
+	static Runnable run2;
 	static ArrayList<Runnable> runnables = new ArrayList<>();
 	static boolean finishedMeshes;
 	
@@ -121,7 +121,6 @@ public class LoadThread extends Thread {
 			public void run() {
 				i++;
 				Block b = (Block) CubyzRegistries.BLOCK_REGISTRY.registered()[i];
-				b.setBlockPair(new ClientBlockPair());
 				ClientOnly.createBlockMesh.accept(b);
 				if (i < CubyzRegistries.BLOCK_REGISTRY.registered().length-1) {
 					Cubyz.renderDeque.add(run);

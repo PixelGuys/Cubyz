@@ -173,6 +173,10 @@ public class LocalWorld extends World {
 		return entities.toArray(new Entity[entities.size()]);
 	}
 	
+	public void addEntity(Entity ent) {
+		entities.add(ent);
+	}
+	
 	public void setEntities(Entity[] arr) {
 		entities = new ArrayList<Entity>();
 		for (Entity e : arr) {

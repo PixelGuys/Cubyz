@@ -250,7 +250,6 @@ public class Cubyz implements IGameLogic {
 		ClientOnly.createBlockMesh = (block) -> {
 			Resource rsc = block.getRegistryID();
 			try {
-				IRenderablePair pair = block.getBlockPair();
 				Texture tex = null;
 				Mesh mesh = null;
 				BlockModel bm = null;
@@ -293,8 +292,7 @@ public class Cubyz implements IGameLogic {
 				Material material = new Material(tex, 0.6F);
 				mesh.setMaterial(material);
 				
-				pair.set("textureCache", tex);
-				pair.set("meshCache", mesh);
+				Meshes.blockMeshes.put(block, mesh);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -644,7 +642,6 @@ public class Cubyz implements IGameLogic {
 			Block block = (Block) elem;
 			Resource rsc = block.getRegistryID();
 			try {
-				IRenderablePair pair = block.getBlockPair();
 				Texture tex = null;
 				Mesh mesh = null;
 				BlockModel bm = null;
@@ -693,8 +690,7 @@ public class Cubyz implements IGameLogic {
 				Material material = new Material(tex, 0.6F);
 				mesh.setMaterial(material);
 				
-				pair.set("textureCache", tex);
-				pair.set("meshCache", mesh);
+				Meshes.blockMeshes.put(block, mesh);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}

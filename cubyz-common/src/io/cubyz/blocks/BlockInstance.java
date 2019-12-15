@@ -46,13 +46,6 @@ public class BlockInstance {
 		return pos.z;
 	}
 	
-	public Object getMesh() {
-		if (block.getBlockPair().get("textureCache") == null) {
-			ClientOnly.createBlockMesh.accept(this.getBlock());
-		}
-		return block.getBlockPair().get("meshCache");
-	}
-	
 	public Block getBlock() {
 		return block;
 	}

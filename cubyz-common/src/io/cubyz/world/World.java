@@ -56,6 +56,7 @@ public abstract class World {
 	public abstract Chunk [] getVisibleChunks();
 	public abstract Block [] getBlocks();
 	public abstract Entity[] getEntities();
+	public abstract void addEntity(Entity en);
 	
 	public abstract void synchronousSeek(int x, int z);
 	public abstract void seek(int x, int z);
