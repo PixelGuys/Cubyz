@@ -12,6 +12,7 @@ import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.BlockEntity;
 import io.cubyz.entity.Player;
+import io.cubyz.handler.BlockVisibilityChangeHandler;
 import io.cubyz.math.Bits;
 import io.cubyz.save.BlockChange;
 import io.cubyz.world.generator.WorldGenerator;
@@ -299,6 +300,9 @@ public class Chunk {
 			visibles = new BlockInstance[old.length >> 1];
 			System.arraycopy(old, 0, visibles, 0, visiblesSize);
 		}
+		if (world != null) for (BlockVisibilityChangeHandler handler : world.visibHandlers) {
+			if (bi != null) handler.onBlockHide(bi.getBlock(), bi.getX(), bi.getY(), bi.getZ());
+		}
 	}
 	
 	public void revealBlock(BlockInstance bi) {
@@ -309,6 +313,9 @@ public class Chunk {
 		}
 		visibles[visiblesSize] = bi;
 		visiblesSize++;
+		if (world != null) for (BlockVisibilityChangeHandler handler : world.visibHandlers) {
+			if (bi != null) handler.onBlockAppear(bi.getBlock(), bi.getX(), bi.getY(), bi.getZ());
+		}
 	}
 	
 	public boolean contains(BlockInstance bi) {

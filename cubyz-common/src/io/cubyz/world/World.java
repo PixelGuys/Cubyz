@@ -11,6 +11,7 @@ import io.cubyz.blocks.BlockEntity;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
+import io.cubyz.handler.BlockVisibilityChangeHandler;
 import io.cubyz.handler.Handler;
 import io.cubyz.handler.PlaceBlockHandler;
 import io.cubyz.handler.RemoveBlockHandler;
@@ -29,6 +30,7 @@ public abstract class World {
 	
 	protected ArrayList<PlaceBlockHandler> placeBlockHandlers = new ArrayList<>();
 	protected ArrayList<RemoveBlockHandler> removeBlockHandlers = new ArrayList<>();
+	public ArrayList<BlockVisibilityChangeHandler> visibHandlers = new ArrayList<>();
 	
 	public abstract Player getLocalPlayer();
 	
@@ -47,6 +49,8 @@ public abstract class World {
 			placeBlockHandlers.add((PlaceBlockHandler) handler);
 		} else if (handler instanceof RemoveBlockHandler) {
 			removeBlockHandlers.add((RemoveBlockHandler) handler);
+		} else if (handler instanceof BlockVisibilityChangeHandler) {
+			visibHandlers.add((BlockVisibilityChangeHandler) handler);
 		} else {
 			throw new IllegalArgumentException("handler isn't accepted by World");
 		}

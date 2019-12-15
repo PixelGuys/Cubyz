@@ -18,6 +18,7 @@ import io.cubyz.blocks.IUpdateable;
 import io.cubyz.blocks.BlockEntity;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
+import io.cubyz.handler.BlockVisibilityChangeHandler;
 import io.cubyz.handler.PlaceBlockHandler;
 import io.cubyz.handler.RemoveBlockHandler;
 import io.cubyz.math.Bits;
@@ -325,6 +326,10 @@ public class LocalWorld extends World {
 	
 	boolean lqdUpdate;
 	boolean loggedUpdSkip;
+	
+	BlockEntity[] blockEntities = new BlockEntity[0];
+	BlockInstance[] liquids = new BlockInstance[0];
+	
 	public void update() {
 		// Time
 		if(milliTime + 100 < System.currentTimeMillis()) {
@@ -386,10 +391,11 @@ public class LocalWorld extends World {
 		// Block Entities
 		for (Chunk ch : visibleChunks) {
 			if (ch.isLoaded() && ch.blockEntities().size() > 0) {
-				BlockEntity[] tileEntities = ch.blockEntities().values().toArray(new BlockEntity[ch.blockEntities().values().size()]);
-				for (BlockEntity te : tileEntities) {
-					if (te instanceof IUpdateable) {
-						IUpdateable tk = (IUpdateable) te;
+				blockEntities = ch.blockEntities().values().toArray(blockEntities);
+				for (BlockEntity be : blockEntities) {
+					if (be == null) continue;
+					if (be instanceof IUpdateable) {
+						IUpdateable tk = (IUpdateable) be;
 						tk.update(false);
 						if (tk.randomUpdates()) {
 							if (rnd.nextInt(5) <= 1) { // 1/5 chance
@@ -406,8 +412,9 @@ public class LocalWorld extends World {
 			lqdUpdate = false;
 			for (Chunk ch : visibleChunks) {
 				if (ch.isLoaded() && ch.liquids().size() > 0) {
-					BlockInstance[] liquids = ch.liquids().toArray(new BlockInstance[ch.liquids().size()]);
+					liquids = ch.liquids().toArray(liquids);
 					for (BlockInstance bi : liquids) {
+						if (bi == null) continue;
 						BlockInstance[] neighbors = bi.getNeighbors(ch);
 						for (int i = 0; i < neighbors.length; i++) {
 							BlockInstance b = neighbors[i];

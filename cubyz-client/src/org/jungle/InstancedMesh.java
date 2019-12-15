@@ -23,9 +23,9 @@ public class InstancedMesh extends Mesh {
 
 	private static final int MATRIX_SIZE_BYTES = MATRIX_SIZE_FLOATS * FLOAT_SIZE_BYTES;
 
-	private static final int INSTANCE_SIZE_BYTES = MATRIX_SIZE_BYTES * 2 + FLOAT_SIZE_BYTES * 2;
+	private static final int INSTANCE_SIZE_BYTES = MATRIX_SIZE_BYTES + FLOAT_SIZE_BYTES;
 
-	private static final int INSTANCE_SIZE_FLOATS = MATRIX_SIZE_FLOATS * 2 + 2;
+	private static final int INSTANCE_SIZE_FLOATS = MATRIX_SIZE_FLOATS + 1;
 
 	private int numInstances;
 
@@ -35,21 +35,23 @@ public class InstancedMesh extends Mesh {
 
 	public boolean isInstanced() {
 		return true;
+		// XXX
+		//return false;
 	}
 	
-	public InstancedMesh(float[] positions, float[] textCoords, float[] normals, int[] indices, int numInstances) {
-		super(positions, textCoords, normals, indices);
-
-		this.numInstances = numInstances;
-
+	public InstancedMesh(int vao, int count, List<Integer> vaoIds, int numInstances) {
+		super(vao, count, vaoIds);
 		glBindVertexArray(vaoId);
-
-		// Model View Matrix
 		modelViewVBO = glGenBuffers();
+		initInstances(numInstances);
+	}
+	
+	protected void initInstances(int numInstances) {
+		this.numInstances = numInstances;
 		vboIdList.add(modelViewVBO);
 		instanceDataBuffer = MemoryUtil.memAllocFloat(numInstances * INSTANCE_SIZE_FLOATS);
 		glBindBuffer(GL_ARRAY_BUFFER, modelViewVBO);
-		int start = 5;
+		int start = 3;
 		int strideStart = 0;
 		for (int i = 0; i < 4; i++) {
 			glVertexAttribPointer(start, 4, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
@@ -57,31 +59,49 @@ public class InstancedMesh extends Mesh {
 			start++;
 			strideStart += VECTOR4F_SIZE_BYTES;
 		}
+		glVertexAttribPointer(start, 1, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
+		glVertexAttribDivisor(start, 1);
+		start++;
+		strideStart += FLOAT_SIZE_BYTES;
 
 		// Light view matrix
+		/*
 		for (int i = 0; i < 4; i++) {
 			glVertexAttribPointer(start, 4, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
 			glVertexAttribDivisor(start, 1);
 			start++;
 			strideStart += VECTOR4F_SIZE_BYTES;
 		}
-
-		// Texture offsets
-		glVertexAttribPointer(start, 2, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
-		glVertexAttribDivisor(start, 1);
+		*/
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindVertexArray(0);
 	}
 	
+	private float[] positions, textCoords, normals;
+	private int[] indices;
+	
+	public InstancedMesh(float[] positions, float[] textCoords, float[] normals, int[] indices, int numInstances) {
+		super(positions, textCoords, normals, indices);
+		this.positions = positions;
+		this.textCoords = textCoords;
+		this.normals = normals;
+		this.indices = indices;
+		glBindVertexArray(vaoId);
+		modelViewVBO = glGenBuffers();
+		initInstances(numInstances);
+	}
+	
+	public int getInstances() {
+		return numInstances;
+	}
+	
 	public void setInstances(int numInst) {
-		// XXX: maybe find a way to expand the buffer instdead of recreating it.
-		// and shrink it if lowering down
 		this.numInstances = numInst;
 		glBindVertexArray(vaoId);
 		instanceDataBuffer = MemoryUtil.memRealloc(instanceDataBuffer, numInstances * INSTANCE_SIZE_FLOATS);
 		glBindBuffer(GL_ARRAY_BUFFER, modelViewVBO);
-		int start = 5;
+		int start = 3;
 		int strideStart = 0;
 		for (int i = 0; i < 4; i++) {
 			glVertexAttribPointer(start, 4, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
@@ -89,23 +109,32 @@ public class InstancedMesh extends Mesh {
 			start++;
 			strideStart += VECTOR4F_SIZE_BYTES;
 		}
+		glVertexAttribPointer(start, 1, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
+		glVertexAttribDivisor(start, 1);
+		start++;
+		strideStart += FLOAT_SIZE_BYTES;
 
 		// Light view matrix
+		/*
 		for (int i = 0; i < 4; i++) {
 			glVertexAttribPointer(start, 4, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
 			glVertexAttribDivisor(start, 1);
 			start++;
 			strideStart += VECTOR4F_SIZE_BYTES;
-		}
-
-		// Texture offsets
-		glVertexAttribPointer(start, 2, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
-		glVertexAttribDivisor(start, 1);
+		}*/
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindVertexArray(0);
 	}
 
+	public Mesh cloneNoMaterial() {
+		Mesh clone = new InstancedMesh(positions, textCoords, normals, indices, 0);
+		clone.boundingRadius = boundingRadius;
+		clone.cullFace = cullFace;
+		clone.frustum = frustum;
+		return clone;
+	}
+	
 	@Override
 	public void cleanUp() {
 		super.cleanUp();
@@ -118,8 +147,8 @@ public class InstancedMesh extends Mesh {
 	@Override
 	protected void initRender() {
 		super.initRender();
-		int start = 5;
-		int numElements = 4 * 2;
+		int start = 3;
+		int numElements = 4 + 1;
 		for (int i = 0; i < numElements; i++) {
 			glEnableVertexAttribArray(start + i);
 		}
@@ -127,21 +156,22 @@ public class InstancedMesh extends Mesh {
 
 	@Override
 	protected void endRender() {
-		int start = 5;
-		int numElements = 4 * 2;
+		int start = 3;
+		int numElements = 4 + 1;
 		for (int i = 0; i < numElements; i++) {
 			glDisableVertexAttribArray(start + i);
 		}
 		super.endRender();
 	}
 
-	public void renderListInstanced(List<Spatial> gameItems, Transformation transformation, Matrix4f viewMatrix,
-			Matrix4f lightViewMatrix) {
-		renderListInstanced(gameItems, false, transformation, viewMatrix, lightViewMatrix);
+	public void renderListInstanced(List<Spatial> gameItems, Transformation transformation, Matrix4f viewMatrix) {
+		renderListInstanced(gameItems, false, transformation, viewMatrix);
 	}
 
 	public void renderListInstanced(List<Spatial> gameItems, boolean billBoard, Transformation transformation,
-			Matrix4f viewMatrix, Matrix4f lightViewMatrix) {
+			Matrix4f viewMatrix) {
+		if (numInstances == 0)
+			return;
 		initRender();
 
 		int chunkSize = numInstances;
@@ -149,54 +179,37 @@ public class InstancedMesh extends Mesh {
 		for (int i = 0; i < length; i += chunkSize) {
 			int end = Math.min(length, i + chunkSize);
 			List<Spatial> subList = gameItems.subList(i, end);
-			renderChunkInstanced(subList, billBoard, transformation, viewMatrix, lightViewMatrix);
+			renderChunkInstanced(subList, billBoard, transformation, viewMatrix);
 		}
 
 		endRender();
 	}
-
-	private void renderChunkInstanced(List<Spatial> gameItems, boolean billBoard, Transformation transformation,
-			Matrix4f viewMatrix, Matrix4f lightViewMatrix) {
+	
+	public void uploadData(List<Spatial> gameItems, Transformation transformation, Matrix4f viewMatrix) {
 		this.instanceDataBuffer.clear();
 
 		int i = 0;
-
-		Texture text = getMaterial().getTexture();
+		
 		for (Spatial gameItem : gameItems) {
 			Matrix4f modelMatrix = transformation.getModelMatrix(gameItem);
 			if (viewMatrix != null) {
-				if (billBoard) {
-					viewMatrix.transpose3x3(modelMatrix);
-				}
 				Matrix4f modelViewMatrix = transformation.getModelViewMatrix(modelMatrix, viewMatrix);
-				if (billBoard) {
-					modelViewMatrix.scale(gameItem.getScale());
-				}
 				modelViewMatrix.get(INSTANCE_SIZE_FLOATS * i, instanceDataBuffer);
+				instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 16, gameItem.isSelected() ? 1 : 0);
+				//instanceDataBuffer.put(0);
 			}
-			if (lightViewMatrix != null) {
-				// Matrix4f modelLightViewMatrix =
-				// transformation.buildModelLightViewMatrix(modelMatrix, lightViewMatrix);
-				// modelLightViewMatrix.get(INSTANCE_SIZE_FLOATS * i + MATRIX_SIZE_FLOATS,
-				// this.instanceDataBuffer);
-			}
-			if (text != null) {
-				/*
-				 * int col = gameItem.getTextPos() % text.getNumCols(); int row =
-				 * gameItem.getTextPos() / text.getNumCols(); float textXOffset = (float) col /
-				 * text.getNumCols(); float textYOffset = (float) row / text.getNumRows(); int
-				 * buffPos = INSTANCE_SIZE_FLOATS * i + MATRIX_SIZE_FLOATS * 2;
-				 * this.instanceDataBuffer.put(buffPos, textXOffset);
-				 * this.instanceDataBuffer.put(buffPos + 1, textYOffset);
-				 */
-			}
-
 			i++;
 		}
-
+		
 		glBindBuffer(GL_ARRAY_BUFFER, modelViewVBO);
 		glBufferData(GL_ARRAY_BUFFER, instanceDataBuffer, GL_DYNAMIC_DRAW);
-
+	}
+	
+	private void renderChunkInstanced(List<Spatial> gameItems, boolean billBoard, Transformation transformation,
+			Matrix4f viewMatrix) {
+		
+		glBindBuffer(GL_ARRAY_BUFFER, modelViewVBO);
+		uploadData(gameItems, transformation, viewMatrix);
 		glDrawElementsInstanced(GL_TRIANGLES, getVertexCount(), GL_UNSIGNED_INT, 0, gameItems.size());
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);

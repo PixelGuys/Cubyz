@@ -86,7 +86,7 @@ public class MainRenderer implements IRenderer {
 		//shaderProgram.createUniform("selectedInstanced");
 		shaderProgram.createUniform("selectedNonInstanced");
 		shaderProgram.createUniform("specularPower");
-		//shaderProgram.createUniform("isInstanced");
+		shaderProgram.createUniform("isInstanced");
 		shaderProgram.createMaterialUniform("material");
 		shaderProgram.createPointLightListUniform("pointLights", MAX_POINT_LIGHTS);
 		shaderProgram.createSpotLightListUniform("spotLights", MAX_SPOT_LIGHTS);
@@ -205,7 +205,6 @@ public class MainRenderer implements IRenderer {
 		Matrix4f viewMatrix = ctx.getCamera().getViewMatrix();
 
 		renderLights(viewMatrix, ambientLight, pointLightList, spotLightList, directionalLight);
-
 		for (int i = 0; i < blocks.length; i++) {
 			if (map[i] == null)
 				continue;
@@ -215,7 +214,10 @@ public class MainRenderer implements IRenderer {
 				map[i].add(selected);
 			}
 			if (mesh.isInstanced()) {
-				
+				InstancedMesh ins = (InstancedMesh) mesh;
+				shaderProgram.setUniform("isInstanced", 1);
+				ins.renderListInstanced(map[i], false, transformation, viewMatrix);
+				shaderProgram.setUniform("isInstanced", 0);
 			} else {
 				mesh.renderList(map[i], (Spatial gameItem) -> {
 					if (gameItem.isInFrustum()) {
@@ -235,7 +237,6 @@ public class MainRenderer implements IRenderer {
 				}
 			}
 		}
-		
 		for (int i = 0; i < entities.length; i++) {
 			Entity ent = entities[i];
 			if (ent != null && ent != p) { // don't render local player

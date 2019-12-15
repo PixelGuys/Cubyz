@@ -34,6 +34,7 @@ import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.client.loading.LoadThread;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
+import io.cubyz.handler.BlockVisibilityChangeHandler;
 import io.cubyz.math.Vector3fi;
 import io.cubyz.multiplayer.GameProfile;
 import io.cubyz.multiplayer.LoginToken;
@@ -146,6 +147,7 @@ public class Cubyz implements IGameLogic {
 		System.gc();
 	}
 
+	private static HashMap<InstancedMesh, Integer> targetInstances = new HashMap<>();
 	public static void loadWorld(World world) {
 		if (Cubyz.world != null) {
 			quitWorld();
@@ -175,6 +177,33 @@ public class Cubyz implements IGameLogic {
 			}
 		}
 		world.synchronousSeek(0, 0);
+		
+		world.addHandler(new BlockVisibilityChangeHandler() {
+
+			@Override
+			public void onBlockAppear(Block b, int x, int y, int z) {
+				InstancedMesh mesh = (InstancedMesh) Meshes.blockMeshes.get(b);
+				synchronized (targetInstances) {
+					if (!targetInstances.containsKey(mesh)) {
+						targetInstances.put(mesh, mesh.getInstances());
+					}
+					targetInstances.put(mesh, targetInstances.get(mesh) + 1);
+				}
+			}
+
+			@Override
+			public void onBlockHide(Block b, int x, int y, int z) {
+				InstancedMesh mesh = (InstancedMesh) Meshes.blockMeshes.get(b);
+				synchronized (targetInstances) {
+					if (!targetInstances.containsKey(mesh)) {
+						targetInstances.put(mesh, mesh.getInstances());
+					}
+					targetInstances.put(mesh, targetInstances.get(mesh) - 1);
+				}
+			}
+			
+		});
+		
 		DiscordIntegration.setStatus("Playing");
 		Cubyz.gameUI.addOverlay(new GameOverlay());
 		
@@ -270,7 +299,7 @@ public class Cubyz implements IGameLogic {
 				}
 				if (defaultMesh == null) {
 					Resource rs = new Resource(bm.subModels.get("default").model);
-					defaultMesh = OBJLoader.loadMesh("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), false);
+					defaultMesh = OBJLoader.loadMesh("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), true);
 					defaultMesh.setBoundingRadius(2.0f);
 					cachedDefaultModels.put(bm.subModels.get("default").model, defaultMesh);
 				}
@@ -346,8 +375,7 @@ public class Cubyz implements IGameLogic {
 				Material material = new Material(tex, 1.0F);
 				mesh.setMaterial(material);
 				
-				//pair.set("textureCache", tex);
-				//pair.set("meshCache", mesh);
+				Meshes.entityMeshes.put(type, mesh);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -387,7 +415,6 @@ public class Cubyz implements IGameLogic {
 		
 		gameUI.setMenu(LoadingGUI.getInstance());
 		LoadThread lt = new LoadThread();
-		lt.start();
 		
 		if (System.getProperty("account.password") == null) {
 			profile = new GameProfile("xX_DemoGuy_Xx");
@@ -451,6 +478,7 @@ public class Cubyz implements IGameLogic {
 			
 			System.gc();
 		});
+		lt.start();
 	}
 
 	private Vector3f dir = new Vector3f();
@@ -699,6 +727,8 @@ public class Cubyz implements IGameLogic {
 	
 	float playerBobbing;
 	boolean bobbingUp;
+	InstancedMesh[] meshes = new InstancedMesh[0];
+	
 	@Override
 	public void render(Window window) {
 		if (window.shouldClose()) {
@@ -726,13 +756,22 @@ public class Cubyz implements IGameLogic {
 				world.getLocalPlayer().vx = playerInc.x;
 			}
 			ctx.getCamera().setPosition(0, world.getLocalPlayer().getPosition().y + 1.5f + playerBobbing, 0);
+			synchronized (targetInstances) {
+				meshes = targetInstances.keySet().toArray(meshes);
+				for (InstancedMesh mesh : meshes) {
+					if (mesh != null && targetInstances.containsKey(mesh)) {
+						int target = targetInstances.get(mesh);
+						mesh.setInstances(target);
+						targetInstances.remove(mesh);
+					}
+				}
+			}
 		}
 		
 		if (!renderDeque.isEmpty()) {
 			Runnable run = renderDeque.pop();
 			run.run();
 		}
-		
 		if (world != null) {
 			if (worldSeason != world.getSeason()) {
 				worldSeason = world.getSeason();

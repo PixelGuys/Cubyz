@@ -26,7 +26,7 @@ public class Mesh implements Cloneable {
 
 	protected Material material;
 
-	private float boundingRadius = 1.25f;
+	protected float boundingRadius = 1.25f;
 
 	protected boolean frustum = true;
 	protected boolean cullFace = true;
@@ -129,17 +129,14 @@ public class Mesh implements Cloneable {
 		}
 	}
 
-	private Mesh(int vao, int count, List<Integer> vboId) {
+	protected Mesh(int vao, int count, List<Integer> vboId) {
 		vertexCount = count;
 		vaoId = vao;
 		vboIdList = vboId;
 	}
 
 	public Mesh clone() {
-		Mesh clone = new Mesh(vaoId, vertexCount, vboIdList);
-		clone.boundingRadius = boundingRadius;
-		clone.cullFace = cullFace;
-		clone.frustum = frustum;
+		Mesh clone = cloneNoMaterial();
 		clone.material = material;
 		return clone;
 	}

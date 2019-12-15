@@ -171,11 +171,11 @@ void main()
     }
     fragColor = ambientC * vec4(ambientLight, 1) + diffuseSpecularComp;
     
-    if (outSelected > 0) {
-    	fragColor = vec4(fragColor.x, fragColor.y, 0.8, fragColor.w);
-    }
-    
     if (fog.active == 1) {
         fragColor = calcFog(mvVertexPos, fragColor, fog);
+    }
+    
+    if (outSelected > 0) {
+    	fragColor = vec4(fragColor.x, fragColor.y, 0.8, fragColor.w);
     }
 }
