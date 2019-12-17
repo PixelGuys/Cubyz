@@ -5,7 +5,6 @@ layout (location=1) in vec2 texCoord;
 layout (location=2) in vec3 vertexNormal;
 layout (location=3) in mat4 modelViewInstancedMatrix;
 layout (location=7) in float selectedInstanced;
-//layout (location=9) in mat4 modelLightViewInstancedMatrix;
 
 out vec2 outTexCoord;
 out vec3 mvVertexNormal;
@@ -16,16 +15,15 @@ uniform mat4 projectionMatrix;
 uniform int isInstanced;
 uniform float selectedNonInstanced;
 uniform mat4 modelViewNonInstancedMatrix;
+uniform mat4 viewMatrixInstanced;
 
 void main()
 {
 	vec4 initPos = vec4(position, 1);
 	vec4 initNormal = vec4(vertexNormal, 0.0);
 	mat4 modelViewMatrix;
-	//mat4 lightViewMatrix;
 	if (isInstanced == 1) {
-		modelViewMatrix = modelViewInstancedMatrix;
-		//lightViewMatrix = modelLightViewInstancedMatrix;
+		modelViewMatrix = viewMatrixInstanced * modelViewInstancedMatrix;
 		outSelected = selectedInstanced;
 	} else {
 		outSelected = selectedNonInstanced;

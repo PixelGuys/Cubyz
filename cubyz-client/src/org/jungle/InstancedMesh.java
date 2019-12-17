@@ -164,54 +164,69 @@ public class InstancedMesh extends Mesh {
 		super.endRender();
 	}
 
-	public void renderListInstanced(List<Spatial> gameItems, Transformation transformation, Matrix4f viewMatrix) {
-		renderListInstanced(gameItems, false, transformation, viewMatrix);
+	int oldSize = 0;
+	
+	/**
+	 * Render list instanced in a non-chunked way
+	 * @param spatials
+	 * @param transformation
+	 * @param viewMatrix
+	 */
+	public boolean renderListInstancedNC(List<Spatial> spatials, Transformation transformation) {
+		if (numInstances == 0)
+			return false;
+		initRender();
+		boolean bool = false;
+		int curSize = spatials.size();
+		if (curSize != oldSize) {
+			oldSize = curSize;
+			if (numInstances < curSize) {
+				setInstances(curSize);
+			}
+			uploadData(spatials, transformation);
+			bool = true;
+		}
+		renderChunkInstanced(spatials, transformation);
+		
+		endRender();
+		return bool;
 	}
-
-	public void renderListInstanced(List<Spatial> gameItems, boolean billBoard, Transformation transformation,
-			Matrix4f viewMatrix) {
+	
+	public void renderListInstanced(List<Spatial> spatials, Transformation transformation) {
 		if (numInstances == 0)
 			return;
 		initRender();
 
 		int chunkSize = numInstances;
-		int length = gameItems.size();
+		int length = spatials.size();
 		for (int i = 0; i < length; i += chunkSize) {
 			int end = Math.min(length, i + chunkSize);
-			List<Spatial> subList = gameItems.subList(i, end);
-			renderChunkInstanced(subList, billBoard, transformation, viewMatrix);
+			List<Spatial> subList = spatials.subList(i, end);
+			uploadData(subList, transformation);
+			renderChunkInstanced(subList, transformation);
 		}
 
 		endRender();
 	}
 	
-	public void uploadData(List<Spatial> gameItems, Transformation transformation, Matrix4f viewMatrix) {
+	public void uploadData(List<Spatial> gameItems, Transformation transformation) {
 		this.instanceDataBuffer.clear();
-
 		int i = 0;
-		
 		for (Spatial gameItem : gameItems) {
 			Matrix4f modelMatrix = transformation.getModelMatrix(gameItem);
-			if (viewMatrix != null) {
-				Matrix4f modelViewMatrix = transformation.getModelViewMatrix(modelMatrix, viewMatrix);
-				modelViewMatrix.get(INSTANCE_SIZE_FLOATS * i, instanceDataBuffer);
-				instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 16, gameItem.isSelected() ? 1 : 0);
-				//instanceDataBuffer.put(0);
-			}
+			modelMatrix.get(INSTANCE_SIZE_FLOATS * i, instanceDataBuffer);
+			instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 16, gameItem.isSelected() ? 1 : 0);
 			i++;
 		}
 		
 		glBindBuffer(GL_ARRAY_BUFFER, modelViewVBO);
 		glBufferData(GL_ARRAY_BUFFER, instanceDataBuffer, GL_DYNAMIC_DRAW);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
 	
-	private void renderChunkInstanced(List<Spatial> gameItems, boolean billBoard, Transformation transformation,
-			Matrix4f viewMatrix) {
-		
+	private void renderChunkInstanced(List<Spatial> spatials, Transformation transformation) {
 		glBindBuffer(GL_ARRAY_BUFFER, modelViewVBO);
-		uploadData(gameItems, transformation, viewMatrix);
-		glDrawElementsInstanced(GL_TRIANGLES, getVertexCount(), GL_UNSIGNED_INT, 0, gameItems.size());
-
+		glDrawElementsInstanced(GL_TRIANGLES, getVertexCount(), GL_UNSIGNED_INT, 0, spatials.size());
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
 }

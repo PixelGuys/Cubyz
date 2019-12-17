@@ -177,7 +177,7 @@ public class Cubyz implements IGameLogic {
 			}
 		}
 		world.synchronousSeek(0, 0);
-		
+		/*
 		world.addHandler(new BlockVisibilityChangeHandler() {
 
 			@Override
@@ -203,7 +203,7 @@ public class Cubyz implements IGameLogic {
 			}
 			
 		});
-		
+		*/
 		DiscordIntegration.setStatus("Playing");
 		Cubyz.gameUI.addOverlay(new GameOverlay());
 		
@@ -318,6 +318,9 @@ public class Cubyz implements IGameLogic {
 				}
 				
 				mesh = defaultMesh.cloneNoMaterial();
+				if (mesh instanceof InstancedMesh) {
+					((InstancedMesh) mesh).setInstances(256);
+				}
 				Material material = new Material(tex, 0.6F);
 				mesh.setMaterial(material);
 				
@@ -761,7 +764,8 @@ public class Cubyz implements IGameLogic {
 				for (InstancedMesh mesh : meshes) {
 					if (mesh != null && targetInstances.containsKey(mesh)) {
 						int target = targetInstances.get(mesh);
-						mesh.setInstances(target);
+						//mesh.setInstances(target);
+						mesh.setInstances(256);
 						targetInstances.remove(mesh);
 					}
 				}

@@ -30,6 +30,7 @@ import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
+import io.cubyz.math.Vector3fi;
 import io.cubyz.world.Chunk;
 
 public class MainRenderer implements IRenderer {
@@ -81,6 +82,7 @@ public class MainRenderer implements IRenderer {
 		shaderProgram.link();
 		shaderProgram.createUniform("projectionMatrix");
 		shaderProgram.createUniform("modelViewNonInstancedMatrix");
+		shaderProgram.createUniform("viewMatrixInstanced");
 		shaderProgram.createUniform("texture_sampler");
 		shaderProgram.createUniform("ambientLight");
 		//shaderProgram.createUniform("selectedInstanced");
@@ -113,6 +115,7 @@ public class MainRenderer implements IRenderer {
 	// long t = 0;
 	// int n = 1;
 
+	Vector3f lastInstancedPosition = new Vector3f();
 	@SuppressWarnings("unchecked")
 	public void render(Window window, Context ctx, Vector3f ambientLight, DirectionalLight directionalLight,
 			Chunk[] chunks, Block[] blocks, Entity[] entities, Player localPlayer) {
@@ -193,7 +196,7 @@ public class MainRenderer implements IRenderer {
 				continue;
 		}
 	}
-
+	
 	public void renderScene(Context ctx, Vector3f ambientLight, PointLight[] pointLightList, SpotLight[] spotLightList,
 			DirectionalLight directionalLight, List<Spatial>[] map, Block[] blocks, Entity[] entities, Player p, Spatial selected,
 			int selectedBlock) {
@@ -203,7 +206,16 @@ public class MainRenderer implements IRenderer {
 		shaderProgram.setUniform("projectionMatrix", ctx.getWindow().getProjectionMatrix());
 		shaderProgram.setUniform("texture_sampler", 0);
 		Matrix4f viewMatrix = ctx.getCamera().getViewMatrix();
-
+		if (p != null) {
+			// for non-chunked instanced rendering
+			//Vector3fi pp = p.getPosition();
+			//Vector3f l = lastInstancedPosition;
+			//shaderProgram.setUniform("viewMatrixInstanced", viewMatrix.translate(-(pp.x()-l.x), 0, -(pp.z()-l.z)));
+			
+			// for chunked
+			shaderProgram.setUniform("viewMatrixInstanced", viewMatrix);
+		}
+		
 		renderLights(viewMatrix, ambientLight, pointLightList, spotLightList, directionalLight);
 		for (int i = 0; i < blocks.length; i++) {
 			if (map[i] == null)
@@ -216,7 +228,12 @@ public class MainRenderer implements IRenderer {
 			if (mesh.isInstanced()) {
 				InstancedMesh ins = (InstancedMesh) mesh;
 				shaderProgram.setUniform("isInstanced", 1);
-				ins.renderListInstanced(map[i], false, transformation, viewMatrix);
+				/*
+				if (ins.renderListInstancedNC(map[i], transformation)) {
+					lastInstancedPosition = p.getPosition().toVector3f();
+				}
+				*/
+				ins.renderListInstanced(map[i], transformation);
 				shaderProgram.setUniform("isInstanced", 0);
 			} else {
 				mesh.renderList(map[i], (Spatial gameItem) -> {
