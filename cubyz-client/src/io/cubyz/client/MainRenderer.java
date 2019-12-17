@@ -149,7 +149,7 @@ public class MainRenderer implements IRenderer {
 		prjViewMatrix.mul(ctx.getCamera().getViewMatrix());
 		frustumInt.set(prjViewMatrix);
 		for (Chunk ch : chunks) {
-			if (!frustumInt.testAab(ch.getMin(localPlayer), ch.getMax(localPlayer)) && false)
+			if (!frustumInt.testAab(ch.getMin(localPlayer), ch.getMax(localPlayer)))
 				continue;
 			BlockInstance[] vis = ch.getVisibles();
 			for (int i = 0; vis[i] != null; i++) {
