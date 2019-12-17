@@ -24,7 +24,7 @@ public class Chunk {
 	private ArrayList<BlockInstance> liquids = new ArrayList<>();
 	private ArrayList<BlockChange> changes; // Reports block changes. Only those will be saved!s
 	//private ArrayList<BlockInstance> visibles = new ArrayList<>();
-	private BlockInstance[] visibles = new BlockInstance[10]; // Using an array here to speed up the renderer.
+	private BlockInstance[] visibles = new BlockInstance[50]; // Using an array here to speed up the renderer.
 	private int visiblesSize = 0;
 	private int ox, oy;
 	private boolean generated;

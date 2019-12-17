@@ -461,7 +461,7 @@ public class LocalWorld extends World {
 	public void queueChunk(Chunk ch) {
 		thread.queue(ch);
 	}
-
+	
 	@Override
 	public void seek(int x, int z) {
 		int local = x & 15;

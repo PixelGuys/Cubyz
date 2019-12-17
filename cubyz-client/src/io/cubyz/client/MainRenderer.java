@@ -31,8 +31,10 @@ import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.math.Vector3fi;
+import io.cubyz.utils.Profiler;
 import io.cubyz.world.Chunk;
 
+@SuppressWarnings("unchecked")
 public class MainRenderer implements IRenderer {
 
 	private ShaderProgram shaderProgram;
@@ -116,7 +118,7 @@ public class MainRenderer implements IRenderer {
 	// int n = 1;
 
 	Vector3f lastInstancedPosition = new Vector3f();
-	@SuppressWarnings("unchecked")
+	List<Spatial>[] map = (List<Spatial>[]) new List[0];
 	public void render(Window window, Context ctx, Vector3f ambientLight, DirectionalLight directionalLight,
 			Chunk[] chunks, Block[] blocks, Entity[] entities, Player localPlayer) {
 		// long t1 = System.nanoTime();
@@ -135,14 +137,20 @@ public class MainRenderer implements IRenderer {
 			return;
 		clear();
 		ctx.getCamera().setViewMatrix(transformation.getViewMatrix(ctx.getCamera()));
-		List<Spatial>[] map;
 		List<InstancedMesh> instancedMeshes;
 		
 		Spatial selected = null;
 		int selectedBlock = -1;
-		map = (List<Spatial>[]) new List[blocks.length];
+		if (blocks.length != map.length) {
+			map = (List<Spatial>[]) new List[blocks.length];
+		}
+		
 		for (int i = 0; i < map.length; i++) {
-			map[i] = new ArrayList<Spatial>();
+			if (map[i] == null) {
+				map[i] = new ArrayList<Spatial>();
+			} else {
+				map[i] = new ArrayList<Spatial>();
+			}
 		}
 		// Uses FrustumCulling on the chunks.
 		prjViewMatrix.set(window.getProjectionMatrix());
@@ -187,14 +195,6 @@ public class MainRenderer implements IRenderer {
 		 * long t2 = System.nanoTime(); if(t2-t1 > 1000000) { t += t2-t1; n++;
 		 * System.out.println(t/n); }
 		 */
-	}
-
-	public void renderElementsInstanced(List<Spatial>[] map, Block[] blocks, Player p, Spatial selected,
-			int selectedBlock) {
-		for (int i = 0; i < blocks.length; i++) {
-			if (map[i] == null)
-				continue;
-		}
 	}
 	
 	public void renderScene(Context ctx, Vector3f ambientLight, PointLight[] pointLightList, SpotLight[] spotLightList,
