@@ -23,15 +23,11 @@ import org.jungle.util.PointLight;
 import org.jungle.util.ShaderProgram;
 import org.jungle.util.SpotLight;
 import org.jungle.util.Utils;
-import org.lwjgl.opengl.GL20;
 
-import io.cubyz.IRenderablePair;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
-import io.cubyz.math.Vector3fi;
-import io.cubyz.utils.Profiler;
 import io.cubyz.world.Chunk;
 
 @SuppressWarnings("unchecked")
@@ -114,14 +110,14 @@ public class MainRenderer implements IRenderer {
 	public void clear() {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	}
-	// long t = 0;
-	// int n = 1;
+	//long t = 0;
+	//int n = 1;
 
 	Vector3f lastInstancedPosition = new Vector3f();
 	List<Spatial>[] map = (List<Spatial>[]) new List[0];
 	public void render(Window window, Context ctx, Vector3f ambientLight, DirectionalLight directionalLight,
 			Chunk[] chunks, Block[] blocks, Entity[] entities, Player localPlayer) {
-		// long t1 = System.nanoTime();
+		//long t1 = System.nanoTime();
 		if (window.isResized()) {
 			glViewport(0, 0, window.getWidth(), window.getHeight());
 			window.setResized(false);
@@ -156,23 +152,30 @@ public class MainRenderer implements IRenderer {
 		prjViewMatrix.set(window.getProjectionMatrix());
 		prjViewMatrix.mul(ctx.getCamera().getViewMatrix());
 		frustumInt.set(prjViewMatrix);
+		float blockMeshBoundingRadius = 2.0f; // Is always the same for all blocks.
 		for (Chunk ch : chunks) {
 			if (!frustumInt.testAab(ch.getMin(localPlayer), ch.getMax(localPlayer)))
 				continue;
 			BlockInstance[] vis = ch.getVisibles();
 			for (int i = 0; vis[i] != null; i++) {
 				Spatial tmp = (Spatial) vis[i].getSpatial();
-				tmp.setPosition((vis[i].getX() - localPlayer.getPosition().x) - localPlayer.getPosition().relX,
-						vis[i].getY(), (vis[i].getZ() - localPlayer.getPosition().z) - localPlayer.getPosition().relZ);
-				if (tmp.isSelected()) {
-					selected = tmp;
-					selectedBlock = vis[i].getID();
-					continue;
-				}
-				map[vis[i].getID()].add(tmp);
+	            float boundingRadius = tmp.getScale() * blockMeshBoundingRadius;
+	            float x = (vis[i].getX() - localPlayer.getPosition().x) - localPlayer.getPosition().relX;
+	            float y = vis[i].getY();
+	            float z = (vis[i].getZ() - localPlayer.getPosition().z) - localPlayer.getPosition().relZ;
+	            // Do the frustum culling directly here instead of looping 3 times through the data which in the end isn't drawn.
+		        if(frustumInt.testSphere(x, y, z, boundingRadius)) {
+					tmp.setPosition(x, y, z);
+					if (tmp.isSelected()) {
+						selected = tmp;
+						selectedBlock = vis[i].getID();
+						continue;
+					}
+					map[vis[i].getID()].add(tmp);
+		        }
 			}
 		}
-		filter.updateFrustum(window.getProjectionMatrix(), ctx.getCamera().getViewMatrix());
+		//filter.updateFrustum(window.getProjectionMatrix(), ctx.getCamera().getViewMatrix());
 		instancedMeshes = new ArrayList<>();
 		HashMap<Mesh, List<Spatial>> m = new HashMap<>();
 		for (int i = 0; i < blocks.length; i++) {
@@ -185,16 +188,16 @@ public class MainRenderer implements IRenderer {
 				instancedMeshes.add((InstancedMesh) mesh);
 			}
 		}
-		filter.filter(m);
+		//filter.filter(m);
 		renderScene(ctx, ambientLight, null /* point light */, null /* spot light */, directionalLight, map, blocks, entities,
 				localPlayer, selected, selectedBlock);
 		if (ctx.getHud() != null) {
 			ctx.getHud().render(window);
 		}
-		/*
-		 * long t2 = System.nanoTime(); if(t2-t1 > 1000000) { t += t2-t1; n++;
-		 * System.out.println(t/n); }
-		 */
+		
+		//long t2 = System.nanoTime(); if(t2-t1 > 1000000) { t += t2-t1; n++;
+		//System.out.println(t/n); }
+		 
 	}
 	
 	public void renderScene(Context ctx, Vector3f ambientLight, PointLight[] pointLightList, SpotLight[] spotLightList,
@@ -237,17 +240,14 @@ public class MainRenderer implements IRenderer {
 				shaderProgram.setUniform("isInstanced", 0);
 			} else {
 				mesh.renderList(map[i], (Spatial gameItem) -> {
-					if (gameItem.isInFrustum()) {
-						Matrix4f modelViewMatrix = transformation.getModelViewMatrix(gameItem, viewMatrix);
-						if (orthogonal) {
-							modelViewMatrix = transformation.getOrtoProjModelMatrix(gameItem, viewMatrix);
-						}
-						if (gameItem.isSelected())
-							shaderProgram.setUniform("selectedNonInstanced", 1f);
-						shaderProgram.setUniform("modelViewNonInstancedMatrix", modelViewMatrix);
-						return true;
+					Matrix4f modelViewMatrix = transformation.getModelViewMatrix(gameItem, viewMatrix);
+					if (orthogonal) {
+						modelViewMatrix = transformation.getOrtoProjModelMatrix(gameItem, viewMatrix);
 					}
-					return false;
+					if (gameItem.isSelected())
+						shaderProgram.setUniform("selectedNonInstanced", 1f);
+					shaderProgram.setUniform("modelViewNonInstancedMatrix", modelViewMatrix);
+					return true;
 				});
 				if (selectedBlock == i) {
 					shaderProgram.setUniform("selectedNonInstanced", 0f);
