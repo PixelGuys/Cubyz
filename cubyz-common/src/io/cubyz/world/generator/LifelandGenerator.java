@@ -106,14 +106,14 @@ public class LifelandGenerator extends WorldGenerator {
 						- 100;
 				for(int j = y > SEA_LEVEL ? y : SEA_LEVEL; j >= 0; j--) {
 					BlockInstance bi = null;
-					if(caves[px][py][j]) {
-						// Don't add anything if in a cave.
-					} else if(j > y) {
+					if(j > y) {
 						if(temperature <= 0 && j == SEA_LEVEL) {
 							bi = new BlockInstance(ice);
 						} else {
-							//bi = new BlockInstance(water);
+							bi = new BlockInstance(water);
 						}
+					} else if(caves[px][py][j]) {
+						// Don't add anything besides water if in a cave.
 					} else if(((y < SEA_LEVEL + 4 && temperature > 5) || temperature > 40 || y < SEA_LEVEL)
 							&& j > y - 3) {
 						bi = new BlockInstance(sand);
