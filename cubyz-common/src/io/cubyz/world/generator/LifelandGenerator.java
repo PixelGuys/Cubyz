@@ -41,46 +41,127 @@ public class LifelandGenerator extends WorldGenerator {
 
 	// Ore Utilities
 	public static Ore[] ores;
-	public static float[] oreChances;
-	public static int[] oreHeights;
 
 	public static void init(Ore[] ores) {
-		oreChances = new float[ores.length + 1];
-		oreHeights = new int[ores.length];
-		for(int i = 0; i < ores.length; i++) {
-			oreHeights[i] = ores[i].getHeight();
-		}
-		// (Selection-)Sort the ores by height to accelerate selectOre
-		for(int i = 0; i < oreHeights.length; i++) {
-			int lowest = i;
-			for(int j = i + 1; j < oreHeights.length; j++) {
-				if(oreHeights[j] < oreHeights[lowest])
-					lowest = j;
-			}
-			Ore ore = ores[lowest];
-			int height = oreHeights[lowest];
-			ores[lowest] = ores[i];
-			oreHeights[lowest] = oreHeights[i];
-			ores[i] = ore;
-			oreHeights[i] = height;
-		}
-		for(int i = 0; i < ores.length; i++) {
-			oreChances[i + 1] = oreChances[i] + ores[i].getChance();
-		}
 		LifelandGenerator.ores = ores;
 	}
 
-	// This function only allows less than 50% of the underground to be ores.
-	public static BlockInstance selectOre(float rand, int height, Block undergroundBlock) {
-		if(rand >= oreChances[oreHeights.length])
-			return new BlockInstance(undergroundBlock);
-		for(int i = oreChances.length - 2; i >= 0; i--) {
-			if(height > oreHeights[i])
-				break;
-			if(rand >= oreChances[i])
-				return new BlockInstance(ores[i]);
+	// Works basically similar to cave generation, but considers a lot less chunks and has a few other differences.
+	private Block[][][] generateOres(int seed, int cx, int cy) {
+		Block[][][] oreMap = new Block[16][16][256];
+		Random rand = new Random(seed);
+		long rand1 = rand.nextLong();
+		long rand2 = rand.nextLong();
+		// Generate caves from all close by chunks(±1):
+		for(int x = cx - 1; x <= cx + 1; ++x) {
+			for(int y = cy - 1; y <= cy + 1; ++y) {
+				long randX = (long)x*rand1;
+				long randY = (long)y*rand2;
+				considerCoordinates(x, y, cx, cy, oreMap, randX ^ randY ^ seed);
+			}
 		}
-		return new BlockInstance(undergroundBlock);
+		return oreMap;
+	}
+	private void considerCoordinates(int x, int y, int cx, int cy, Block[][][] oreMap, long seed) {
+		Random rand = new Random();
+		for(int i = 0; i < ores.length; i++) {
+			// Compose the seeds from some random stats of the ore. They generally shouldn't be the same for two different ores.
+			rand.setSeed(seed^(ores[i].getHeight())^(Float.floatToIntBits(ores[i].getMaxSize()))^ores[i].getRegistryID().getID().charAt(0)^Float.floatToIntBits(ores[i].getHardness()));
+			// Determine how many veins of this type start in this chunk. The number depends on parameters set for the specific ore:
+			int oreSpawns = (int)Math.round((rand.nextFloat()-0.5F)*(rand.nextFloat()-0.5F)*4*ores[i].getSpawns());
+			for(int j = 0; j < oreSpawns; ++j) {
+				// Choose some in world coordinates to start generating:
+				double worldX = (double)((x << 4) + rand.nextInt(16));
+				double worldH = (double)rand.nextInt(ores[i].getHeight());
+				double worldY = (double)((y << 4) + rand.nextInt(16));
+				float direction = rand.nextFloat()*(float)Math.PI*2.0F;
+				float slope = (rand.nextFloat() - 0.5F)/4.0F;
+				float size = rand.nextFloat()*ores[i].getMaxSize()/2; // Half it to get the radius!
+				int length = (int)Math.round(rand.nextFloat()*(ores[i].getMaxLength()));
+				if(length == 0)
+					continue;
+				size = size*length/ores[i].getMaxLength(); // Scale it so that shorter veins don't end up being balls.
+				generateVein(rand.nextLong(), cx, cy, oreMap, worldX, worldH, worldY, size, direction, slope, length, ores[i]);
+			}
+		}
+	}
+	private void generateVein(long random, int cx, int cy, Block[][][] oreMap, double worldX, double worldH, double worldY, float size, float direction, float slope, int veinLength, Block ore) {
+		double cwx = (double) (cx*16 + 8);
+		double cwy = (double) (cy*16 + 8);
+		float directionModifier = 0.0F;
+		float slopeModifier = 0.0F;
+		Random localRand = new Random(random);
+		for(int curStep = 0; curStep < veinLength; ++curStep) {
+			double scale = 1+Math.sin(curStep*Math.PI/veinLength)*size;
+			// Move vein center point one unit into a direction given by slope and direction:
+			float xzunit = (float)Math.cos(slope);
+			float hunit = (float)Math.sin(slope);
+			worldX += Math.cos(direction) * xzunit;
+			worldH += hunit;
+			worldY += Math.sin(direction)*xzunit;
+			slope += slopeModifier * 0.1F;
+			direction += directionModifier * 0.1F;
+			slopeModifier *= 0.9F;
+			directionModifier *= 0.75F;
+			slopeModifier += (localRand.nextFloat() - localRand.nextFloat())*localRand.nextFloat()*2;
+			directionModifier += (localRand.nextFloat() - localRand.nextFloat())*localRand.nextFloat()*4;
+
+			// Add a small chance to ignore one point of the vein to make the walls look more rough.
+			if(localRand.nextInt(4) != 0) {
+				double deltaX = worldX - cwx;
+				double deltaY = worldY - cwy;
+				double stepsLeft = (double)(veinLength - curStep);
+				double maxLength = (double)(size + 18);
+				// Abort if the cave is getting to long:
+				if(deltaX*deltaX + deltaY*deltaY - stepsLeft*stepsLeft > maxLength*maxLength) {
+					return;
+				}
+
+				// Only care about it if it is inside the current chunk:
+				if(worldX >= cwx - 16 - scale*2 && worldY >= cwy - 16 - scale*2 && worldX <= cwx + 16 + scale*2 && worldY <= cwy + 16 + scale*2) {
+					// Determine min and max of the current vein segment in all directions.
+					int xmin = (int)(worldX - scale) - cx*16 - 1;
+					int xmax = (int)(worldX + scale) - cx*16 + 1;
+					int hmin = (int)(worldH - scale) - 1;
+					int hmax = (int)(worldH + scale) + 1;
+					int ymin = (int)(worldY - scale) - cy*16 - 1;
+					int ymax = (int)(worldY + scale) - cy*16 + 1;
+					if (xmin < 0)
+						xmin = 0;
+					if (xmax > 16)
+						xmax = 16;
+					if (hmin < 1)
+						hmin = 1; // Don't make veins expand to the bedrock layer.
+					if (hmax > 248)
+						hmax = 248;
+					if (ymin < 0)
+						ymin = 0;
+					if (ymax > 16)
+						ymax = 16;
+
+					// Go through all blocks within range of the vein center and change them if they
+					// are within range of the center.
+					for(int curX = xmin; curX < xmax; ++curX) {
+						double distToCenterX = ((double) (curX + cx*16) + 0.5 - worldX) / scale;
+						
+						for(int curY = ymin; curY < ymax; ++curY) {
+							double distToCenterY = ((double) (curY + cy*16) + 0.5 - worldY) / scale;
+							int curHeightIndex = hmax;
+							if(distToCenterX * distToCenterX + distToCenterY * distToCenterY < 1.0) {
+								for(int curH = hmax - 1; curH >= hmin; --curH) {
+									double distToCenterH = ((double) curH + 0.5 - worldH) / scale;
+									// The first ore that gets into a position will be placed:
+									if(oreMap[curX][curY][curHeightIndex] == null && distToCenterX*distToCenterX + distToCenterH*distToCenterH + distToCenterY*distToCenterY < 1.0) {
+										oreMap[curX][curY][curHeightIndex] = ore;
+									}
+									--curHeightIndex;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 
 	@Override
@@ -92,9 +173,9 @@ public class LifelandGenerator extends WorldGenerator {
 		int seed = world.getSeed();
 		float[][] heightMap = Noise.generateMapFragment(wx, wy, 16, 16, 256, seed);
 		float[][] vegetationMap = Noise.generateMapFragment(wx, wy, 16, 16, 128, seed + 3*(seed + 1 & Integer.MAX_VALUE));
-		float[][] oreMap = Noise.generateMapFragment(wx, wy, 16, 16, 128, seed - 3*(seed - 1 & Integer.MAX_VALUE));
 		float[][] heatMap = Noise.generateMapFragment(wx, wy, 16, 16, 4096, seed ^ 123456789);
 		boolean[][][] caves = generate(seed, ox, oy);
+		Block[][][] ores = generateOres(seed+1, ox, oy);
 
 		for(int px = 0; px < 16; px++) {
 			for(int py = 0; py < 16; py++) {
@@ -102,8 +183,7 @@ public class LifelandGenerator extends WorldGenerator {
 				int y = (int)(value*world.getHeight());
 				if (y == world.getHeight())
 					y--;
-				int temperature = (int)((2 - value + SEA_LEVEL/(float)world.getHeight())*heatMap[px][py]*120)
-						- 100;
+				int temperature = (int)((2 - value + SEA_LEVEL/(float)world.getHeight())*heatMap[px][py]*120) - 100;
 				for(int j = y > SEA_LEVEL ? y : SEA_LEVEL; j >= 0; j--) {
 					BlockInstance bi = null;
 					if(j > y) {
@@ -126,9 +206,10 @@ public class LifelandGenerator extends WorldGenerator {
 					} else if(j > y - 3) {
 						bi = new BlockInstance(dirt);
 					} else if(j > 0) {
-						float rand = oreMap[px][py]*j*(256 - j)*(128 - j)*6741;
-						rand = (((int) rand) & 8191)/8191.0F;
-						bi = selectOre(rand, j, stone);
+						if(ores[px][py][j] == null)
+							bi = new BlockInstance(stone);
+						else
+							bi = new BlockInstance(ores[px][py][j]);
 					} else {
 						bi = new BlockInstance(bedrock);
 					}

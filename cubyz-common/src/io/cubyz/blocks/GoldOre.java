@@ -6,8 +6,10 @@ public class GoldOre extends Ore {
 
 	public GoldOre() {
 		setID("cubyz:gold_ore");
-		setHeight(32);
-		setChance(0.005F);
+		height = 32;
+		spawns = 2;
+		maxLength = 3;
+		maxSize = 2.0F;
 		setHardness(45);
 		Item bd = new Item();
 		bd.setID("cubyz:gold_ore");

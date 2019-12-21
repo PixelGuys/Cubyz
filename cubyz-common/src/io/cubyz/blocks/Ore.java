@@ -2,27 +2,29 @@ package io.cubyz.blocks;
 
 public class Ore extends Block {
 
-	private float chance;
-	private int height;
+	protected float maxSize;
+	protected float spawns; // average spawns per chunk. Will seem to be less if the length gets close to 0.
+	protected float maxLength;
+	protected int height;
 	
 	public Ore() {
 		bc = BlockClass.STONE;
 	}
+	
+	public float getMaxSize() {
+		return maxSize;
+	}
 
-	public float getChance() {
-		return chance;
+	public float getSpawns() {
+		return spawns;
+	}
+
+	public float getMaxLength() {
+		return maxLength;
 	}
 
 	public int getHeight() {
 		return height;
-	}
-
-	public void setChance(float chance) {
-		this.chance = chance;
-	}
-
-	public void setHeight(int height) {
-		this.height = height;
 	}
 	
 }

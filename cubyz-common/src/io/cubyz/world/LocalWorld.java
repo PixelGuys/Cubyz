@@ -233,7 +233,7 @@ public class LocalWorld extends World {
 					return chunks.get(i);
 				}
 			}
-		} catch(NullPointerException e) {
+		} catch(Exception e) {
 			System.out.println("Catched NullPointerException:");
 			e.printStackTrace();
 			chunks.remove(null); // Remove the corruption.

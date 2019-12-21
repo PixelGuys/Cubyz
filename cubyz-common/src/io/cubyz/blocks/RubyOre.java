@@ -6,8 +6,10 @@ public class RubyOre extends Ore {
 
 	public RubyOre() {
 		setID("cubyz:ruby_ore");
-		setHeight(8);
-		setChance(0.006F);
+		height = 8;
+		spawns = 1;
+		maxLength = 4;
+		maxSize = 1.0F;
 		setHardness(50);
 		Item bd = new Item();
 		bd.setID("cubyz:ruby");

@@ -6,8 +6,10 @@ public class DiamondOre extends Ore {
 
 	public DiamondOre() {
 		setID("cubyz:diamond_ore");
-		setHeight(15);
-		setChance(0.002F);
+		height = 16;
+		spawns = 1;
+		maxLength = 2;
+		maxSize = 0.5F;
 		setHardness(80);
 		Item bd = new Item();
 		bd.setID("cubyz:diamond");
