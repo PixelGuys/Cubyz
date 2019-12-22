@@ -174,7 +174,7 @@ public class LifelandGenerator extends WorldGenerator {
 		float[][] heightMap = Noise.generateMapFragment(wx, wy, 16, 16, 256, seed);
 		float[][] vegetationMap = Noise.generateMapFragment(wx, wy, 16, 16, 128, seed + 3*(seed + 1 & Integer.MAX_VALUE));
 		float[][] heatMap = Noise.generateMapFragment(wx, wy, 16, 16, 4096, seed ^ 123456789);
-		boolean[][][] caves = generate(seed, ox, oy);
+		boolean[][][] caves = generateCaves(seed, ox, oy);
 		Block[][][] ores = generateOres(seed+1, ox, oy);
 
 		for(int px = 0; px < 16; px++) {
@@ -231,7 +231,7 @@ public class LifelandGenerator extends WorldGenerator {
 				int incx = px == 0 ? 1 : -1;
 				int incy = py == 0 ? 1 : -1;
 				int temperature = (int)((2 - heightMap[px][py] + SEA_LEVEL/(float)world.getHeight())*heatMap[px][py]*120) - 100;
-				if(heightMap[px][py]*world.getHeight() >= SEA_LEVEL + 4) {
+				if(heightMap[px][py]*world.getHeight() >= SEA_LEVEL + 4 && ch.getBlockInstanceAt(px, (int)(heightMap[px][py]*world.getHeight()), py) != null) {
 					// if (value < 0) value = 0;
 					Structures.generateVegetation(ch, wx + px, (int) (heightMap[px][py] * world.getHeight()) + 1, wy + py, value, temperature, (int)((vegetationMap[px][py] - vegetationMap[px + incx][py + incy])*100000000 + incx + incy));
 				}
@@ -244,7 +244,7 @@ public class LifelandGenerator extends WorldGenerator {
 	private static final int range = 8;
 	private Random rand;
 
-	private boolean[][][] generate(int seed, int cx, int cy) {
+	private boolean[][][] generateCaves(int seed, int cx, int cy) {
 		boolean[][][] caveMap = new boolean[16][16][256];
 		rand = new Random(seed);
 		long rand1 = rand.nextLong();
