@@ -118,6 +118,9 @@ public class Noise {
 	// Calculate all grid points that will be needed to prevent double calculating them.
 	private static void calculateGridPoints(int x, int y, int width, int height, int scale) {
 		int bits = numOfBits(scale)-numOfBits(16)+1;
+		// Create one gridpoint more, just in case...
+		width += scale;
+		height += scale;
 		xGridPoints = new float[bits][][];
 		yGridPoints = new float[bits][][];
 		for(int i = 0; scale >= 16; scale >>= 1, ++i) {
@@ -179,7 +182,7 @@ public class Noise {
 		}
 	}
 	
-	public static float[][] generateMapFragment(int x, int y, int width, int height, int scale, int seed) {
+	public static float[][] generateMapFragment(int x, int y, int width, int height, int scale, long seed) {
 		float[][] map = new float[width][height];
 		float factor = 0.45F;
 		float sum = 0;

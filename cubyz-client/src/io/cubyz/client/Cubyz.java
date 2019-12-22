@@ -48,6 +48,7 @@ import io.cubyz.utils.*;
 import io.cubyz.utils.ResourceUtilities.BlockModel;
 import io.cubyz.utils.ResourceUtilities.BlockSubModel;
 import io.cubyz.world.*;
+import io.cubyz.world.cubyzgenerators.TerrainGenerator;
 import io.cubyz.world.generator.LifelandGenerator;
 
 public class Cubyz implements IGameLogic {
@@ -167,7 +168,7 @@ public class Cubyz implements IGameLogic {
 				CubyzLogger.i.info("Trying " + dx + " ? " + dz);
 				world.synchronousSeek(dx, dz);
 				highestY = world.getHighestBlock(dx, dz);
-				if (highestY > LifelandGenerator.SEA_LEVEL) { // TODO: always true if generator isn't lifeland
+				if (highestY > TerrainGenerator.SEA_LEVEL) { // TODO: always true if generator doesn't use standard TerrainGenerator.
 					break;
 				}
 			}
