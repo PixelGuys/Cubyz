@@ -13,6 +13,7 @@ import io.cubyz.world.World;
 import io.cubyz.world.cubyzgenerators.CaveGenerator;
 import io.cubyz.world.cubyzgenerators.FancyGenerator;
 import io.cubyz.world.cubyzgenerators.Generator;
+import io.cubyz.world.cubyzgenerators.GrassGenerator;
 import io.cubyz.world.cubyzgenerators.OreGenerator;
 import io.cubyz.world.cubyzgenerators.TerrainGenerator;
 import io.cubyz.world.cubyzgenerators.VegetationGenerator;
@@ -35,6 +36,7 @@ public class LifelandGenerator extends WorldGenerator {
 	Generator g2 = new OreGenerator(ores);
 	Generator g3 = new CaveGenerator();
 	FancyGenerator g4 = new VegetationGenerator();
+	FancyGenerator g5 = new GrassGenerator();
 	@Override
 	public void generate(Chunk ch, World world) {
 		int ox = ch.getX();
@@ -64,6 +66,7 @@ public class LifelandGenerator extends WorldGenerator {
 		g2.generate(r.nextLong(), ox, oy, chunk);
 		g3.generate(r.nextLong(), ox, oy, chunk);
 		g4.generate(r.nextLong(), ox, oy, chunk, heatMap, realHeight);
+		g5.generate(r.nextLong(), ox, oy, chunk, heatMap, realHeight);
 
 		// Place the blocks in the chunk:
 		for(int px = 0; px < 16; px++) {
