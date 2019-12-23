@@ -20,7 +20,7 @@ public class VegetationGenerator implements FancyGenerator {
 		
 		float[][] vegetationMap = Noise.generateMapFragment(wx-8, wy-8, 32, 32, 128, seed + 3*(seed + 1 & Integer.MAX_VALUE));
 		// Go through all positions in this and ±½ chunks to determine if there is a tree and if yes generate it.
-		Random rand = new Random();
+		Random rand = new Random(seed);
 		long l1 = rand.nextLong();
 		long l2 = rand.nextLong();
 		for(int px = 0; px < 32; px++) {
@@ -57,7 +57,10 @@ public class VegetationGenerator implements FancyGenerator {
 		if(x >= 0 && x < 16 && y >= 0 && y < 16) {
 			for (int i = 0; i < height; i++) {
 				if (y + i < World.WORLD_HEIGHT) {
-					ch[x][y][h + i] = wood;
+					if(ch[x][y][h+i] != null && (!ch[x][y][h+i].isDegradable() || wood.isDegradable())) {
+						continue;
+					}
+					ch[x][y][h+i] = wood;
 				}
 			}
 		}
@@ -69,6 +72,9 @@ public class VegetationGenerator implements FancyGenerator {
 			for (int k = 1 - j; k < j; k++) {
 				for (int l = 1 - j; l < j; l++) {
 					if (y + i < World.WORLD_HEIGHT && x+k >= 0 && x+k < 16 && y+l >= 0 && y+l < 16) {
+						if(ch[x+k][y+l][h+i] != null && (!ch[x+k][y+l][h+i].isDegradable() || leaves.isDegradable())) {
+							continue;
+						}
 						ch[x+k][y+l][h+i] = leaves;
 					}
 				}
@@ -84,6 +90,9 @@ public class VegetationGenerator implements FancyGenerator {
 		if(x >= 0 && x < 15 && y >= 0 && y < 15) {
 			for (int i = 0; i < height; i++) {
 				if (y + i < World.WORLD_HEIGHT) {
+					if(ch[x][y][h+i] != null && (!ch[x][y][h+i].isDegradable() || cactus.isDegradable())) {
+						continue;
+					}
 					ch[x][y][h + i] = cactus;
 				}
 			}
