@@ -1,8 +1,5 @@
 package io.cubyz.ui.options;
 
-import org.jungle.Keyboard;
-import org.jungle.Window;
-import org.jungle.hud.Font;
 import org.lwjgl.glfw.GLFW;
 
 import io.cubyz.Keybindings;
@@ -13,6 +10,9 @@ import io.cubyz.ui.MenuGUI;
 import io.cubyz.ui.components.Button;
 import io.cubyz.ui.components.Label;
 import io.cubyz.ui.components.ScrollingContainer;
+import io.jungle.Keyboard;
+import io.jungle.Window;
+import io.jungle.hud.Font;
 
 public class KeybindingsGUI extends MenuGUI {
 

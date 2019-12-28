@@ -1,10 +1,9 @@
 package io.cubyz.ui;
 
-import org.jungle.Window;
-
 import io.cubyz.client.Cubyz;
 import io.cubyz.items.Inventory;
 import io.cubyz.ui.components.InventorySlot;
+import io.jungle.Window;
 
 public class GameOverlay extends MenuGUI {
 

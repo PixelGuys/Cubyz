@@ -1,13 +1,12 @@
 package io.cubyz.ui;
 
-import org.jungle.Window;
-
 import io.cubyz.Constants;
 import io.cubyz.client.Cubyz;
 import io.cubyz.entity.Player;
 import io.cubyz.entity.PlayerEntity.PlayerImpl;
 import io.cubyz.world.LocalWorld;
 import io.cubyz.world.World;
+import io.jungle.Window;
 
 /**
  * Note: This is the F3 debug menu

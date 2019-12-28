@@ -2,9 +2,8 @@ package io.cubyz;
 
 import static org.lwjgl.glfw.GLFW.*;
 
-import org.jungle.Keyboard;
-
 import io.cubyz.client.Cubyz;
+import io.jungle.Keyboard;
 
 public class Keybindings {
 	

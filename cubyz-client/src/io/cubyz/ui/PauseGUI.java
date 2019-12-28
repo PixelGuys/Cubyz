@@ -1,13 +1,13 @@
 package io.cubyz.ui;
 
-import org.jungle.Keyboard;
-import org.jungle.Window;
 import org.lwjgl.glfw.GLFW;
 
 import io.cubyz.Keybindings;
 import io.cubyz.client.Cubyz;
 import io.cubyz.ui.components.Button;
 import io.cubyz.world.LocalWorld;
+import io.jungle.Keyboard;
+import io.jungle.Window;
 
 public class PauseGUI extends MenuGUI {
 

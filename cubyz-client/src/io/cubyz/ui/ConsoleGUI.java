@@ -1,7 +1,5 @@
 package io.cubyz.ui;
 
-import org.jungle.Keyboard;
-import org.jungle.Window;
 import org.lwjgl.glfw.GLFW;
 
 import io.cubyz.client.Cubyz;
@@ -9,6 +7,8 @@ import io.cubyz.command.CommandExecutor;
 import io.cubyz.command.ICommandSource;
 import io.cubyz.ui.components.TextInput;
 import io.cubyz.world.World;
+import io.jungle.Keyboard;
+import io.jungle.Window;
 
 // (the console GUI is different from chat GUI)
 public class ConsoleGUI extends MenuGUI {

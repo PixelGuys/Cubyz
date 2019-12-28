@@ -1,8 +1,8 @@
 package io.cubyz.client;
 
-import org.jungle.game.Game;
-import org.jungle.game.GameOptions;
-import org.jungle.game.GameOptionsPrompt;
+import io.jungle.game.Game;
+import io.jungle.game.GameOptions;
+import io.jungle.game.GameOptionsPrompt;
 
 public class GameLauncher extends Game {
 

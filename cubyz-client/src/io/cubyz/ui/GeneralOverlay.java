@@ -1,9 +1,9 @@
 package io.cubyz.ui;
 
-import org.jungle.Window;
 import org.lwjgl.nanovg.NanoVG;
 
 import io.cubyz.ui.ToastManager.Toast;
+import io.jungle.Window;
 
 public class GeneralOverlay extends MenuGUI {
 

@@ -3,9 +3,6 @@ package io.cubyz.ui.components;
 import java.awt.Rectangle;
 
 import org.joml.Vector2d;
-import org.jungle.MouseInput;
-import org.jungle.Window;
-import org.jungle.hud.Font;
 
 import io.cubyz.blocks.Block;
 import io.cubyz.client.Cubyz;
@@ -15,6 +12,9 @@ import io.cubyz.items.ItemStack;
 import io.cubyz.items.tools.Tool;
 import io.cubyz.ui.Component;
 import io.cubyz.ui.NGraphics;
+import io.jungle.MouseInput;
+import io.jungle.Window;
+import io.jungle.hud.Font;
 
 // GUI for an inventory slot referencing an ItemStack somewhere else.
 public class InventorySlot extends Component {

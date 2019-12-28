@@ -1,10 +1,9 @@
 package io.cubyz.world;
 
-import org.jungle.Spatial;
-
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.IBlockSpatial;
 import io.cubyz.client.Meshes;
+import io.jungle.Spatial;
 
 public class BlockSpatial extends Spatial implements IBlockSpatial {
 

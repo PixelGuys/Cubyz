@@ -1,8 +1,7 @@
 package io.cubyz.ui;
 
-import org.jungle.Window;
-
 import io.cubyz.items.Inventory;
+import io.jungle.Window;
 
 public abstract class MenuGUI {
 	

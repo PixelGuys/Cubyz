@@ -12,12 +12,6 @@ import javax.swing.JOptionPane;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 import org.joml.Vector4f;
-import org.jungle.*;
-import org.jungle.audio.SoundBuffer;
-import org.jungle.audio.SoundManager;
-import org.jungle.audio.SoundSource;
-import org.jungle.game.*;
-import org.jungle.util.*;
 import org.lwjgl.Version;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL11;
@@ -50,6 +44,12 @@ import io.cubyz.utils.ResourceUtilities.BlockSubModel;
 import io.cubyz.world.*;
 import io.cubyz.world.cubyzgenerators.TerrainGenerator;
 import io.cubyz.world.generator.LifelandGenerator;
+import io.jungle.*;
+import io.jungle.audio.SoundBuffer;
+import io.jungle.audio.SoundManager;
+import io.jungle.audio.SoundSource;
+import io.jungle.game.*;
+import io.jungle.util.*;
 
 public class Cubyz implements IGameLogic {
 

@@ -1,8 +1,5 @@
 package io.cubyz.ui.mods;
 
-import org.jungle.MouseInput;
-import org.jungle.Window;
-
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.client.Cubyz;
 import io.cubyz.items.Inventory;
@@ -10,6 +7,8 @@ import io.cubyz.items.Item;
 import io.cubyz.items.Recipe;
 import io.cubyz.ui.GeneralInventory;
 import io.cubyz.ui.components.InventorySlot;
+import io.jungle.MouseInput;
+import io.jungle.Window;
 
 // TODO: add possibility to capture and release stacks with the mouse.
 

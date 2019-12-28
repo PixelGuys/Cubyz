@@ -1,8 +1,5 @@
 package io.cubyz.base;
 
-import org.jungle.MouseInput;
-import org.jungle.Window;
-
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.client.Cubyz;
 import io.cubyz.items.Inventory;
@@ -17,6 +14,8 @@ import io.cubyz.ui.GeneralInventory;
 import io.cubyz.ui.MenuGUI;
 import io.cubyz.ui.components.Button;
 import io.cubyz.ui.components.InventorySlot;
+import io.jungle.MouseInput;
+import io.jungle.Window;
 
 // TODO
 public class WorkbenchGUI extends GeneralInventory {

@@ -1,11 +1,10 @@
 package io.cubyz.ui;
 
-import org.jungle.Window;
-
 import io.cubyz.client.Cubyz;
 import io.cubyz.ui.components.Label;
 import io.cubyz.ui.components.ProgressBar;
 import io.cubyz.utils.ResourceManager;
+import io.jungle.Window;
 
 public class LoadingGUI extends MenuGUI {
 

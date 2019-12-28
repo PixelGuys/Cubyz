@@ -6,11 +6,10 @@ import static org.lwjgl.system.MemoryUtil.*;
 
 import java.util.ArrayList;
 
-import org.jungle.Window;
-import org.jungle.hud.Font;
-import org.jungle.hud.Hud;
-
 import io.cubyz.client.Cubyz;
+import io.jungle.Window;
+import io.jungle.hud.Font;
+import io.jungle.hud.Hud;
 
 public class UISystem extends Hud {
 

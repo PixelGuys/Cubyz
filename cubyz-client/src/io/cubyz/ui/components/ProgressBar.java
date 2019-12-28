@@ -1,9 +1,8 @@
 package io.cubyz.ui.components;
 
-import org.jungle.Window;
-
 import io.cubyz.ui.Component;
 import io.cubyz.ui.NGraphics;
+import io.jungle.Window;
 
 public class ProgressBar extends Component {
 

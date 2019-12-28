@@ -1,12 +1,12 @@
 package io.cubyz.ui.components;
 
-import org.jungle.Keyboard;
-import org.jungle.Window;
-import org.jungle.hud.Font;
 import org.lwjgl.glfw.GLFW;
 
 import io.cubyz.ui.Component;
 import io.cubyz.ui.NGraphics;
+import io.jungle.Keyboard;
+import io.jungle.Window;
+import io.jungle.hud.Font;
 
 public class TextInput extends Component {
 

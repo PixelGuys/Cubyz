@@ -1,9 +1,5 @@
 package io.cubyz.ui;
 
-import org.jungle.Keyboard;
-import org.jungle.MouseInput;
-import org.jungle.Window;
-import org.jungle.hud.Font;
 import org.lwjgl.glfw.GLFW;
 
 import io.cubyz.client.Cubyz;
@@ -11,6 +7,10 @@ import io.cubyz.items.Item;
 import io.cubyz.items.ItemStack;
 import io.cubyz.ui.components.InventorySlot;
 import io.cubyz.ui.components.Label;
+import io.jungle.Keyboard;
+import io.jungle.MouseInput;
+import io.jungle.Window;
+import io.jungle.hud.Font;
 
 public abstract class GeneralInventory extends MenuGUI {
 	protected InventorySlot inv [] = null;

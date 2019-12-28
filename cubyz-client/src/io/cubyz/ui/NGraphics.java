@@ -7,9 +7,6 @@ import java.util.HashMap;
 
 import javax.swing.UIManager;
 
-import org.jungle.Texture;
-import org.jungle.hud.Font;
-import org.jungle.hud.Hud;
 import org.lwjgl.nanovg.NVGColor;
 import org.lwjgl.nanovg.NVGPaint;
 import org.lwjgl.nanovg.NanoVG;
@@ -17,6 +14,9 @@ import org.lwjgl.nanovg.NanoVGGL3;
 
 import io.cubyz.CubyzLogger;
 import io.cubyz.utils.TextureConverter;
+import io.jungle.Texture;
+import io.jungle.hud.Font;
+import io.jungle.hud.Hud;
 
 /**
  * Graphics system wrapping NanoVG.

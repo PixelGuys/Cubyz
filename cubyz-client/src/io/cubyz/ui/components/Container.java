@@ -2,9 +2,8 @@ package io.cubyz.ui.components;
 
 import java.util.ArrayList;
 
-import org.jungle.Window;
-
 import io.cubyz.ui.Component;
+import io.jungle.Window;
 
 public class Container extends Component {
 

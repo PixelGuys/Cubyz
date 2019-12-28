@@ -2,16 +2,16 @@
 )](https://java.com)
 [![License](https://img.shields.io/badge/license-bsd3-blue.svg?style=flat
 )](https://github.com/PixelGuys/Cubz/blob/master/LICENSE)
-# Cubyz, a voxel video game
-Cubyz is a voxel game, what is a voxel game you might say? Well it's a sandbox 3D game that just have cubes. Have fun!
+# Cubyz
+Cubyz is a sandbox 3D voxel video game. It offers a native mod API and is currently half experiment to train with LWJGL 3 and Java, half video game with potential.
 
-Nah just kidding, while i said what a voxel game is, Cubyz have lot of features and is mainly made for devs. Why you might said? Well because of it's **INTEGRATED** (woohoo) mod API! Nope, this isn't Minetest, this is.. well, Cubyz?
+Cubyz can easily be forked to create a new game with 3D sandbox aspect.
 ## Requirements
 Windows:
 
 Type | Minimum | Recommended
 -----|---------|------------
-OS | Windows XP | Windows 7/10
+OS | Windows XP | Windows 7 or later
 RAM | 3 GB | 4 GB or more
 GPU | Any OpenGL 3.0 compatible | OpenGL 3.3+
 

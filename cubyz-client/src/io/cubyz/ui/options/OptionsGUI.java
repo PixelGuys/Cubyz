@@ -1,7 +1,5 @@
 package io.cubyz.ui.options;
 
-import org.jungle.Window;
-
 import io.cubyz.client.Cubyz;
 import io.cubyz.translate.ContextualTextKey;
 import io.cubyz.translate.LanguageLoader;
@@ -10,6 +8,7 @@ import io.cubyz.ui.MainMenuGUI;
 import io.cubyz.ui.MenuGUI;
 import io.cubyz.ui.components.Button;
 import io.cubyz.utils.DiscordIntegration;
+import io.jungle.Window;
 
 public class OptionsGUI extends MenuGUI {
 

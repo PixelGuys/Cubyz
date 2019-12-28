@@ -3,7 +3,8 @@ package io.cubyz.ui;
 import java.awt.Rectangle;
 
 import org.joml.Vector2d;
-import org.jungle.Window;
+
+import io.jungle.Window;
 
 public abstract class Component {
 

@@ -1,12 +1,11 @@
 package io.cubyz.ui.components;
 
-import org.jungle.MouseInput;
-import org.jungle.Window;
-
 import io.cubyz.client.Cubyz;
 import io.cubyz.translate.TextKey;
 import io.cubyz.ui.Component;
 import io.cubyz.ui.NGraphics;
+import io.jungle.MouseInput;
+import io.jungle.Window;
 
 public class Button extends Component {
 	
