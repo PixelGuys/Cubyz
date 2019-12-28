@@ -172,10 +172,10 @@ public class Cubyz implements IGameLogic {
 					break;
 				}
 			}
-			CubyzLogger.i.info("OK!");
 			if (world.getLocalPlayer().getPosition().x == 0 && world.getLocalPlayer().getPosition().z == 0) { // temporary solution to only TP on spawn
 				world.getLocalPlayer().setPosition(new Vector3i(dx, highestY+2, dz));
 			}
+			CubyzLogger.i.info("OK!");
 		}
 		world.synchronousSeek(0, 0);
 		DiscordIntegration.setStatus("Playing");
@@ -232,7 +232,7 @@ public class Cubyz implements IGameLogic {
 		renderer = new MainRenderer();
 		ctx = new Context(game, new Camera());
 		ctx.setHud(gameUI);
-		ctx.setFog(new Fog(true, new Vector3f(0.1f, 0.1f, 0.1f), 1.5f));
+		ctx.setFog(new Fog(true, new Vector3f(0.5f, 0.5f, 0.5f), 0.025f));
 		light = new DirectionalLight(new Vector3f(1.0f, 1.0f, 1.0f), new Vector3f(0.0f, 1.0f, 0.0f), 0.4f);
 		mouse = new MouseInput();
 		mouse.init(window);
@@ -747,8 +747,7 @@ public class Cubyz implements IGameLogic {
 		}
 		
 		if (!renderDeque.isEmpty()) {
-			Runnable run = renderDeque.pop();
-			run.run();
+			renderDeque.pop().run();
 		}
 		if (world != null) {
 			if (worldSeason != world.getSeason()) {
@@ -758,6 +757,8 @@ public class Cubyz implements IGameLogic {
 			}
 			ambient.x = ambient.y = ambient.z = world.getGlobalLighting();
 			clearColor = world.getClearColor();
+			ctx.getFog().setColor(clearColor);
+			ctx.getFog().setDensity(1 / (world.getRenderDistance()*8f));
 			Player player = world.getLocalPlayer();
 			Block bi = world.getBlock(player.getPosition().x+Math.round(player.getPosition().relX), (int)(player.getPosition().y)+3, player.getPosition().z+Math.round(player.getPosition().relZ));
 			if(bi != null && !bi.isSolid()) {
@@ -766,7 +767,7 @@ public class Cubyz implements IGameLogic {
 				ambient.y *= lightingAdjust.y;
 				ambient.z *= lightingAdjust.z;
 			}
-			light.setColor(new Vector3f(clearColor.x, clearColor.y, clearColor.z)); // maybe not make instances every render
+			light.setColor(clearColor);
 			window.setClearColor(clearColor);
 			
 			renderer.render(window, ctx, ambient, light, world.getVisibleChunks(), world.getBlocks(), world.getEntities(), world.getLocalPlayer());

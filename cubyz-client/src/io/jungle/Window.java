@@ -121,18 +121,18 @@ public class Window {
 		if (fullscreen != this.fullscreen) {
 			this.fullscreen = fullscreen;
 			if (fullscreen) {
-				MemoryStack stack = stackPush();
-				IntBuffer x = stack.mallocInt(1);
-				IntBuffer y = stack.mallocInt(1);
-				IntBuffer width = stack.mallocInt(1);
-				IntBuffer height = stack.mallocInt(1);
-				glfwGetWindowPos(handle, x, y);
-				glfwGetWindowSize(handle, width, height);
-				oldX = x.get(0);
-				oldY = y.get(0);
-				oldW = width.get(0);
-				oldH = height.get(0);
-				stack.close();
+				try (MemoryStack stack = stackPush()) {
+					IntBuffer x = stack.mallocInt(1);
+					IntBuffer y = stack.mallocInt(1);
+					IntBuffer width = stack.mallocInt(1);
+					IntBuffer height = stack.mallocInt(1);
+					glfwGetWindowPos(handle, x, y);
+					glfwGetWindowSize(handle, width, height);
+					oldX = x.get(0);
+					oldY = y.get(0);
+					oldW = width.get(0);
+					oldH = height.get(0);
+				}
 				glfwSetWindowMonitor(handle, glfwGetPrimaryMonitor(), 0, 0, 1920, 1080, GLFW_DONT_CARE);
 			} else {
 				glfwSetWindowMonitor(handle, NULL, oldX, oldY, oldW, oldH, GLFW_DONT_CARE);
@@ -182,14 +182,14 @@ public class Window {
 		glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 		glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE); // the window will be resizable
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
 	    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
 		handle = glfwCreateWindow(640, 480, "Cubyz", monitorID, NULL);
 		if (handle == NULL) {
 			int err = glfwGetError(PointerBuffer.allocateDirect(1));
-			if (err == 65543) { // we want a too much recent version
+			if (err == 65543 || err == 65540) { // we want a too much recent version
 				CubyzLogger.instance.warning("A legacy version of OpenGL will be used as 3.3 is unavailable!");
 				glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 				glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
@@ -248,7 +248,7 @@ public class Window {
 		CubyzLogger.instance.fine("OpenGL Version: " + GL11.glGetString(GL11.GL_VERSION));
 		
 		glEnable(GL_DEPTH_TEST);
-		glEnable(GL_STENCIL_TEST);
+		//glEnable(GL_STENCIL_TEST);
 		setOptions(opt);
 	}
 	
@@ -274,8 +274,7 @@ public class Window {
 	
 	public void restoreState() {
         glEnable(GL_DEPTH_TEST);
-        glEnable(GL_STENCIL_TEST);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        //glEnable(GL_STENCIL_TEST);
         if (opt.cullFace) {
             glEnable(GL_CULL_FACE);
             glCullFace(GL_BACK);

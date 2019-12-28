@@ -1,6 +1,7 @@
 package io.jungle.util;
 
 import org.joml.Vector3f;
+import org.joml.Vector4f;
 
 public class DirectionalLight {
     
@@ -31,6 +32,12 @@ public class DirectionalLight {
 
     public void setColor(Vector3f color) {
         this.color = color;
+    }
+    
+    public void setColor(Vector4f color) {
+    	this.color.x = color.x;
+		this.color.y = color.y;
+		this.color.z = color.z;
     }
 
     public Vector3f getDirection() {

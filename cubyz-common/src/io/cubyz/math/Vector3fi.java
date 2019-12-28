@@ -5,7 +5,7 @@ import org.joml.Vector3f;
 public class Vector3fi implements Cloneable {
 	
 	public int x, z;
-	public float y, relX, relZ;
+	public volatile float y, relX, relZ;
 	
 	public Vector3fi() {
 		x = 0;

@@ -4,11 +4,12 @@ import io.jungle.Window;
 
 public class Game {
 
-	protected boolean running;
+	protected volatile boolean running;
 	protected Window win;
 	protected IGameLogic logic;
 	private GameOptions opt;
-	double secsPerUpdate = 1.d / 30d;
+	private Thread updateThread;
+	double secsPerUpdate = 1.d / 45d; // always was supposed to be 30/s but somehow for that the value needs to be 1 / 50d
 	private int targetFps = 60;
 	
 	private int fps;
@@ -37,6 +38,27 @@ public class Game {
 	public Window getWindow() {
 		return win;
 	}
+	
+	public void updateLoop() {
+		double steps = 0.0;
+		double previous = getTime() + 1;
+		double loopStartTime = getTime();
+		int updates = 0;
+		while (running) {
+			loopStartTime = getTime();
+			while (steps >= secsPerUpdate) {
+				update();
+				steps -= secsPerUpdate;
+				updates++;
+			}
+			if (getTime() > previous) {
+				previous = getTime() + 1;
+				ups = updates;
+				updates = 0;
+			}
+			steps += getTime() - loopStartTime;
+		}
+	}
 
 	public void start(GameOptions opt) {
 		this.opt = opt;
@@ -50,6 +72,11 @@ public class Game {
 			e.printStackTrace();
 		}
 		win.show();
+		updateThread = new Thread(() -> {
+			updateLoop();
+		});
+		updateThread.setName("Game-Update-Thread");
+		updateThread.start();
 		loop();
 		logic.cleanup();
 	}
@@ -65,32 +92,21 @@ public class Game {
 	public void loop() {
 		double previous = getTime();
 		double previous2 = previous;
-		double steps = 0.0;
-		int updates = 0;
+		double loopStartTime = getTime();
+		double elapsed = 0;
 		int frames = 0;
 		while (running) {
-			double loopStartTime = getTime();
-			double elapsed = loopStartTime - previous;
+			loopStartTime = getTime();
+			elapsed = loopStartTime - previous;
 
 			if (previous2 < getTime() - 1) {
 				previous2 = getTime();
 				fps = frames;
-				ups = updates;
 				frames = 0;
-				updates = 0;
 			}
 			
 			previous = loopStartTime;
-			steps += elapsed;
-
 			handleInput();
-
-			while (steps >= secsPerUpdate) {
-				update();
-				updates++;
-				steps -= secsPerUpdate;
-			}
-
 			render();
 			frames++;
 			sync(loopStartTime);
@@ -98,9 +114,9 @@ public class Game {
 	}
 
 	private void sync(double loopStartTime) {
-		float loopSlot = 1f / 90;
+		float loopSlot = 1f / 60;
 		double endTime = loopStartTime + loopSlot;
-		while (System.currentTimeMillis() < endTime) {
+		while (getTime() < endTime) {
 			try {
 				Thread.sleep(1);
 			} catch (InterruptedException ie) {

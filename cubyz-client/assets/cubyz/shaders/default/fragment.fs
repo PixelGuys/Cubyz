@@ -52,7 +52,7 @@ struct Material
 struct Fog {
 	int active;
 	vec3 colour;
-	int density;
+	float density;
 };
 
 uniform sampler2D texture_sampler;

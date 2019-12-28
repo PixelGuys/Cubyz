@@ -85,7 +85,7 @@ public class CubyzLogger extends Logger {
 					
 					StringBuilder sb = new StringBuilder();
 					
-					sb.append("[" + format.format(date) + " | " + log.getLevel() + "] ");
+					sb.append("[" + format.format(date) + " | " + log.getLevel() + " | " + Thread.currentThread().getName() + "] ");
 					sb.append(log.getMessage() + "\n");
 					
 					if (log.getLevel().intValue() >= Level.WARNING.intValue()) {

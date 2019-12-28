@@ -35,6 +35,7 @@ public class LoadThread extends Thread {
 	}
 	
 	public void run() {
+		setName("Load-Thread");
 		Configuration.load();
 		LoadingGUI l = LoadingGUI.getInstance();
 		CubyzLogger log = CubyzLogger.instance;

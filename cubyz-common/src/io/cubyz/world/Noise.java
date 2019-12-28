@@ -182,7 +182,7 @@ public class Noise {
 		}
 	}
 	
-	public static float[][] generateMapFragment(int x, int y, int width, int height, int scale, long seed) {
+	public static synchronized float[][] generateMapFragment(int x, int y, int width, int height, int scale, long seed) {
 		float[][] map = new float[width][height];
 		float factor = 0.45F;
 		float sum = 0;
