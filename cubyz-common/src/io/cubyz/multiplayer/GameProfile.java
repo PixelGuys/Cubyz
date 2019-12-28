@@ -13,9 +13,7 @@ import com.google.gson.GsonBuilder;
 import io.cubyz.Constants;
 
 /**
- * TODO make database for accounts and make login methods usable with it in online mode.
- * @author zenith391
- *
+ * Represents a remote game account.
  */
 public class GameProfile {
 

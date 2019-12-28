@@ -29,7 +29,12 @@ public class NGraphics {
 	private static NVGPaint imagePaint = NVGPaint.create();
 	private static int textAlign = NVG_ALIGN_LEFT | NVG_ALIGN_TOP;
 	
-	private static int cx, cy, cw, ch, eWidth, eHeight;
+	private static int cx, cy, cw, ch;
+	
+	/**
+	 * Effective size.
+	 */
+	private static int eWidth, eHeight;
 	
 	private static final boolean LOG_OPERATIONS = Boolean.parseBoolean(System.getProperty("nanovg.logOperations", "false"));
 	

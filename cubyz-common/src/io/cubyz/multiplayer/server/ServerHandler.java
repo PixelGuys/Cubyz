@@ -104,8 +104,8 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 		if (!init) {
 			motd = "A Cubyz server";
 			// TODO load properties
-			if (motd.length() > 500) {
-				throw new IllegalArgumentException("MOTD cannot be more than 500 characters long");
+			if (motd.length() > 501) {
+				throw new IllegalArgumentException("MOTD cannot be more than 501 characters long");
 			}
 			init = true;
 		}
