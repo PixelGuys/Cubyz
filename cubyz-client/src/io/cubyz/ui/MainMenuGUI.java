@@ -21,7 +21,7 @@ public class MainMenuGUI extends MenuGUI {
 	private Label titleLabel = new Label();
 	
 	public MainMenuGUI() {
-		DiscordIntegration.setStatus("On Main Menu");
+		DiscordIntegration.setStatus("Main Menu");
 		spPlay.setSize(250, 45);
 		spPlay.setText(new TextKey("gui.cubyz.mainmenu.singleplayer"));
 		spPlay.setFontSize(16f);

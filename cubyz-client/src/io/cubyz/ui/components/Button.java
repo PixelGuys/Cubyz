@@ -32,6 +32,16 @@ public class Button extends Component {
 	private float fontSize = 12f;
 	private TextKey text;
 	
+	public Button() {}
+	
+	public Button(TextKey key) {
+		setText(key);
+	}
+	
+	public Button(String text) {
+		setText(text);
+	}
+	
 	public TextKey getText() {
 		return text;
 	}

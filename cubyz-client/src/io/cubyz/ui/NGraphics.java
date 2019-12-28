@@ -5,17 +5,22 @@ import static org.lwjgl.nanovg.NanoVG.*;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 
+import javax.swing.UIManager;
+
 import org.jungle.Texture;
 import org.jungle.hud.Font;
 import org.jungle.hud.Hud;
 import org.lwjgl.nanovg.NVGColor;
 import org.lwjgl.nanovg.NVGPaint;
 import org.lwjgl.nanovg.NanoVG;
-import org.lwjgl.nanovg.NanoVGGL2;
+import org.lwjgl.nanovg.NanoVGGL3;
 
 import io.cubyz.CubyzLogger;
 import io.cubyz.utils.TextureConverter;
 
+/**
+ * Graphics system wrapping NanoVG.
+ */
 @SuppressWarnings("unused")
 public class NGraphics {
 
@@ -24,13 +29,13 @@ public class NGraphics {
 	private static NVGPaint imagePaint = NVGPaint.create();
 	private static int textAlign = NVG_ALIGN_LEFT | NVG_ALIGN_TOP;
 	
-	private static int cx, cy, cw, ch;
+	private static int cx, cy, cw, ch, eWidth, eHeight;
 	
 	private static final boolean LOG_OPERATIONS = Boolean.parseBoolean(System.getProperty("nanovg.logOperations", "false"));
 	
 	private static Font font;
 	
-	// necessary to avoid the bytebuffer getting GCed
+	// necessary to avoid the bytebuffer getting freed by the GC
 	private static HashMap<String, ByteBuffer> composedTextures = new HashMap<>();
 	private static HashMap<String, Integer> composedTexturesIds = new HashMap<>();
 	
@@ -55,7 +60,7 @@ public class NGraphics {
 	}
 	
 	public static int nvgImageFrom(Texture tex) {
-		return NanoVGGL2.nvglCreateImageFromHandle(nvg, tex.getId(), tex.getWidth(), tex.getHeight(), 0);
+		return NanoVGGL3.nvglCreateImageFromHandle(nvg, tex.getId(), tex.getWidth(), tex.getHeight(), 0);
 	}
 	
 	public static void drawLine(int x, int y, int x2, int y2) {
@@ -68,9 +73,11 @@ public class NGraphics {
 	public static void drawImage(int id, int x, int y, int width, int height) {
 		if (LOG_OPERATIONS)
 			CubyzLogger.instance.fine("[NGRAPHICS] draw image " + id + " at " + x + ", " + y + " with size " + width + ", " + height);
-		imagePaint = nvgImagePattern(nvg, x, y, width, height, 0, id, 1f, imagePaint);
+		eWidth = (int) (width * UISystem.guiScale);
+		eHeight = (int) (height * UISystem.guiScale);
+		imagePaint = nvgImagePattern(nvg, x-((eWidth-width)/2), y-((eHeight-height)/2), eWidth, eHeight, 0, id, 1f, imagePaint);
 		nvgBeginPath(nvg);
-		nvgRect(nvg, x, y, width, height);
+			nvgRect(nvg, x-((eWidth-width)/2), y-((eHeight-height)/2), eWidth, eHeight);
 		nvgFillPaint(nvg, imagePaint);
 		nvgFill(nvg);
 	}
@@ -79,7 +86,7 @@ public class NGraphics {
 		if (LOG_OPERATIONS)
 			CubyzLogger.instance.fine("[NGRAPHICS] fill circle at " + x + ", " + y + " with radius " + radius);
 		nvgBeginPath(nvg);
-		nvgCircle(nvg, x, y, radius);
+			nvgCircle(nvg, x*UISystem.guiScale, y*UISystem.guiScale, radius*UISystem.guiScale);
 		nvgFillColor(nvg, color);
 		nvgFill(nvg);
 	}
@@ -87,8 +94,10 @@ public class NGraphics {
 	public static void drawRect(int x, int y, int width, int height) {
 		if (LOG_OPERATIONS)
 			CubyzLogger.instance.fine("[NGRAPHICS] draw rect at " + x + ", " + y + " with size " + width + ", " + height);
+		eWidth = (int) (width * UISystem.guiScale);
+		eHeight = (int) (height * UISystem.guiScale);
 		nvgBeginPath(nvg);
-		nvgRect(nvg, x, y, width, height);
+			nvgRect(nvg, x-((eWidth-width)/2), y-((eHeight-height)/2), eWidth, eHeight);
 		nvgStrokeColor(nvg, color);
 		nvgStroke(nvg);
 	}
@@ -96,8 +105,10 @@ public class NGraphics {
 	public static void fillRect(int x, int y, int width, int height) {
 		if (LOG_OPERATIONS)
 			CubyzLogger.instance.fine("[NGRAPHICS] fill rect at " + x + ", " + y + " with size " + width + ", " + height);
+		eWidth = (int) (width * UISystem.guiScale);
+		eHeight = (int) (height * UISystem.guiScale);
 		nvgBeginPath(nvg);
-		nvgRect(nvg, x, y, width, height);
+			nvgRect(nvg, x-((eWidth-width)/2), y-((eHeight-height)/2), eWidth, eHeight);
 		nvgFillColor(nvg, color);
 		nvgFill(nvg);
 	}
@@ -133,7 +144,7 @@ public class NGraphics {
 	public static void drawText(int x, int y, String text) {
 		if (LOG_OPERATIONS)
 			CubyzLogger.instance.fine("[NGRAPHICS] draw text \"" + text + "\" at " + x + ", " + y);
-		nvgFontSize(nvg, font.getSize());
+		nvgFontSize(nvg, font.getSize()*UISystem.guiScale);
 		nvgFontFaceId(nvg, font.getNVGId());
 		nvgTextAlign(nvg, textAlign);
 		nvgFillColor(nvg, color);

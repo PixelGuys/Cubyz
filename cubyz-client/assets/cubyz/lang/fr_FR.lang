@@ -8,4 +8,7 @@ gui.cubyz.general.off=Eteint
 gui.cubyz.options.language=Langue: {0}
 gui.cubyz.options.discord=Intégration Discord: {0}
 gui.cubyz.options.keybindings=Contrôles..
+gui.cubyz.pause.exit=Quitter vers le menu
+gui.cubyz.pause.resume=Resumer
+gui.cubyz.debug.reload=Recharger
 lang.name=Français

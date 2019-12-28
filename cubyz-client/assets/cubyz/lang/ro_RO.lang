@@ -9,4 +9,7 @@ gui.cubyz.options.language=Limba: {0}
 gui.cubyz.options.discord=Integratie Discord: {0}
 # To translate
 gui.cubyz.options.keybindings=Key Bindings..
+gui.cubyz.pause.exit=Exit to main menu
+gui.cubyz.pause.resume=Resume
+gui.cubyz.debug.reload=Reload
 lang.name=Romanian

@@ -178,33 +178,6 @@ public class Cubyz implements IGameLogic {
 			}
 		}
 		world.synchronousSeek(0, 0);
-		/*
-		world.addHandler(new BlockVisibilityChangeHandler() {
-
-			@Override
-			public void onBlockAppear(Block b, int x, int y, int z) {
-				InstancedMesh mesh = (InstancedMesh) Meshes.blockMeshes.get(b);
-				synchronized (targetInstances) {
-					if (!targetInstances.containsKey(mesh)) {
-						targetInstances.put(mesh, mesh.getInstances());
-					}
-					targetInstances.put(mesh, targetInstances.get(mesh) + 1);
-				}
-			}
-
-			@Override
-			public void onBlockHide(Block b, int x, int y, int z) {
-				InstancedMesh mesh = (InstancedMesh) Meshes.blockMeshes.get(b);
-				synchronized (targetInstances) {
-					if (!targetInstances.containsKey(mesh)) {
-						targetInstances.put(mesh, mesh.getInstances());
-					}
-					targetInstances.put(mesh, targetInstances.get(mesh) - 1);
-				}
-			}
-			
-		});
-		*/
 		DiscordIntegration.setStatus("Playing");
 		Cubyz.gameUI.addOverlay(new GameOverlay());
 		
@@ -468,7 +441,7 @@ public class Cubyz implements IGameLogic {
 				e.printStackTrace();
 			}
 			
-			if (ResourceManager.lookupPath("cubyz/sound") != null && false) {
+			if (ResourceManager.lookupPath("cubyz/sound") != null) {
 				try {
 					music = new SoundBuffer(ResourceManager.lookupPath("cubyz/sound/KingBoard.ogg"));
 				} catch (Exception e) {

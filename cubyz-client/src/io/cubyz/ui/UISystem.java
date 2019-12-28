@@ -18,6 +18,8 @@ public class UISystem extends Hud {
 	
 	private MenuGUI gui;
 	private ArrayList<MenuGUI> overlays = new ArrayList<>();
+	
+	public static float guiScale = 1f;
 
 	public UISystem() {}
 	
