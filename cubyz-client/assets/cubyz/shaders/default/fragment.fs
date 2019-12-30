@@ -50,7 +50,7 @@ struct Material
 };
 
 struct Fog {
-	int active;
+	int activ;
 	vec3 colour;
 	float density;
 };
@@ -171,7 +171,7 @@ void main()
     }
     fragColor = ambientC * vec4(ambientLight, 1) + diffuseSpecularComp;
     
-    if (fog.active == 1) {
+    if (fog.activ == 1) {
         fragColor = calcFog(mvVertexPos, fragColor, fog);
     }
     
