@@ -46,6 +46,7 @@ public class Game {
 		int updates = 0;
 		while (running) {
 			loopStartTime = getTime();
+			handleInput();
 			while (steps >= secsPerUpdate) {
 				update();
 				steps -= secsPerUpdate;
@@ -106,7 +107,6 @@ public class Game {
 			}
 			
 			previous = loopStartTime;
-			handleInput();
 			render();
 			frames++;
 			sync(loopStartTime);
