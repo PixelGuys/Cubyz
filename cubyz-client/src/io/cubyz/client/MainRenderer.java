@@ -15,6 +15,7 @@ import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
+import io.cubyz.math.Vector3fi;
 import io.cubyz.world.Chunk;
 import io.jungle.InstancedMesh;
 import io.jungle.Mesh;
@@ -153,26 +154,34 @@ public class MainRenderer implements IRenderer {
 		prjViewMatrix.mul(ctx.getCamera().getViewMatrix());
 		frustumInt.set(prjViewMatrix);
 		float blockMeshBoundingRadius = 2.0f; // Is always the same for all blocks.
-		for (Chunk ch : chunks) {
-			if (!frustumInt.testAab(ch.getMin(localPlayer), ch.getMax(localPlayer)))
-				continue;
-			BlockInstance[] vis = ch.getVisibles();
-			for (int i = 0; vis[i] != null; i++) {
-				Spatial tmp = (Spatial) vis[i].getSpatial();
-	            float boundingRadius = tmp.getScale() * blockMeshBoundingRadius;
-	            float x = (vis[i].getX() - localPlayer.getPosition().x) - localPlayer.getPosition().relX;
-	            float y = vis[i].getY();
-	            float z = (vis[i].getZ() - localPlayer.getPosition().z) - localPlayer.getPosition().relZ;
-	            // Do the frustum culling directly here instead of looping 3 times through the data which in the end isn't drawn.
-		        if(frustumInt.testSphere(x, y, z, boundingRadius)) {
-					tmp.setPosition(x, y, z);
-					if (tmp.isSelected()) {
-						selected = tmp;
-						selectedBlock = vis[i].getID();
-						continue;
+		if(localPlayer != null) {
+			// Store the position locally to prevent glitches when the updateThread changes the position.
+			Vector3fi pos = localPlayer.getPosition();
+			int x0 = pos.x;
+			float relX = pos.relX;
+			int z0 = pos.z;
+			float relZ = pos.relZ;
+			for (Chunk ch : chunks) {
+				if (!frustumInt.testAab(ch.getMin(localPlayer), ch.getMax(localPlayer)))
+					continue;
+				BlockInstance[] vis = ch.getVisibles();
+				for (int i = 0; vis[i] != null; i++) {
+					Spatial tmp = (Spatial) vis[i].getSpatial();
+					float boundingRadius = tmp.getScale() * blockMeshBoundingRadius;
+					float x = (vis[i].getX() - x0) - relX;
+					float y = vis[i].getY();
+					float z = (vis[i].getZ() - z0) - relZ;
+					// Do the frustum culling directly here instead of looping 3 times through the data which in the end isn't drawn.
+					if(frustumInt.testSphere(x, y, z, boundingRadius)) {
+						tmp.setPosition(x, y, z);
+						if (tmp.isSelected()) {
+							selected = tmp;
+							selectedBlock = vis[i].getID();
+							continue;
+						}
+						map[vis[i].getID()].add(tmp);
 					}
-					map[vis[i].getID()].add(tmp);
-		        }
+				}
 			}
 		}
 		//filter.updateFrustum(window.getProjectionMatrix(), ctx.getCamera().getViewMatrix());
