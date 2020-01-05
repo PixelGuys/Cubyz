@@ -29,7 +29,7 @@ public class MPClient {
 	public static class LocalServer {
 		public String brand;
 		public String version;
-		public PingResponse lastPingResponse;
+		public volatile PingResponse lastPingResponse;
 	}
 
 	/**
@@ -65,7 +65,11 @@ public class MPClient {
 		checkConnection();
 		cch.ping();
 		while (ls.lastPingResponse == null) {
-			System.out.print(""); // TODO really find an alternative to it (for Java 8, not using Thread.onSpinWait() from Java 9)
+			try {
+				Thread.sleep(1);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
 		}
 		return ls.lastPingResponse;
 	}
