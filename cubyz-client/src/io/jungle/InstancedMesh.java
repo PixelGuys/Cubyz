@@ -153,6 +153,7 @@ public class InstancedMesh extends Mesh {
 		for (int i = 0; i < numElements; i++) {
 			glEnableVertexAttribArray(start + i);
 		}
+		glBindBuffer(GL_ARRAY_BUFFER, modelViewVBO);
 	}
 
 	@Override
@@ -162,6 +163,7 @@ public class InstancedMesh extends Mesh {
 		for (int i = 0; i < numElements; i++) {
 			glDisableVertexAttribArray(start + i);
 		}
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		super.endRender();
 	}
 
@@ -220,14 +222,10 @@ public class InstancedMesh extends Mesh {
 			i++;
 		}
 		
-		glBindBuffer(GL_ARRAY_BUFFER, modelViewVBO);
 		glBufferData(GL_ARRAY_BUFFER, instanceDataBuffer, GL_DYNAMIC_DRAW);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
 	
 	private void renderChunkInstanced(List<Spatial> spatials, Transformation transformation) {
-		glBindBuffer(GL_ARRAY_BUFFER, modelViewVBO);
 		glDrawElementsInstanced(GL_TRIANGLES, getVertexCount(), GL_UNSIGNED_INT, 0, spatials.size());
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
 }
