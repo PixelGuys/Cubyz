@@ -116,7 +116,7 @@ public class MainRenderer implements IRenderer {
 
 	Vector3f lastInstancedPosition = new Vector3f();
 	List<Spatial>[] map = (List<Spatial>[]) new List[0];
-	public void render(Window window, Context ctx, Vector3f ambientLight, DirectionalLight directionalLight,
+	public synchronized void render(Window window, Context ctx, Vector3f ambientLight, DirectionalLight directionalLight,
 			Chunk[] chunks, Block[] blocks, Entity[] entities, Player localPlayer) {
 		//long t1 = System.nanoTime();
 		if (window.isResized()) {
