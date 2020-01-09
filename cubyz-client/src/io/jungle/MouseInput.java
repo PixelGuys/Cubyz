@@ -30,9 +30,9 @@ public class MouseInput {
 	}
 
 	public void clearPos(int x, int y) {
-		currentPos.set(x, y);
-		displVec.set(0, 0);
-		previousPos.set(x, y);
+		//currentPos.set(x, y);
+		//displVec.set(0, 0);
+		//previousPos.set(x, y);
 	}
 	
 	public void clearScroll() {
@@ -107,24 +107,21 @@ public class MouseInput {
 	}
 
 	public void input(Window window) {
-		displVec.x = 0;
-		displVec.y = 0;
 		if (inWindow) {
 			double deltax = currentPos.x - previousPos.x;
 			double deltay = currentPos.y - previousPos.y;
-			if (deltax != 0) {
-				displVec.y = (float) deltax;
-			}
-			if (deltay != 0) {
-				displVec.x = (float) deltay;
+			displVec.y = (float) deltax;
+			displVec.x = (float) deltay;
+			if (deltax != 0 || deltay != 0) {
+				//System.out.println(previousPos.x + "-" + previousPos.y() + "; " + currentPos.x() + "-" + currentPos.y());
 			}
 		}
 		previousPos.x = currentPos.x;
 		previousPos.y = currentPos.y;
 		if (grabbed) {
-			glfwSetCursorPos(window.getWindowHandle(), window.getWidth() >> 1, window.getHeight() >> 1);
-			previousPos.x = window.getWidth() >> 1;
-			previousPos.y = window.getHeight() >> 1;
+			//glfwSetCursorPos(window.getWindowHandle(), window.getWidth() >> 1, window.getHeight() >> 1);
+			//previousPos.x = window.getWidth() >> 1;
+			//previousPos.y = window.getHeight() >> 1;
 		}
 	}
 

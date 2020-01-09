@@ -41,7 +41,7 @@ public class MainMenuGUI extends MenuGUI {
 		spPlay.setOnAction(() -> {
 			LocalWorld world = new LocalWorld();
 			world.generate();
-			Cubyz.gameUI.setMenu(null);
+			Cubyz.gameUI.setMenu(null, false); // hide main menu from UISystem.back()
 			Cubyz.loadWorld(world);
 		});
 		
@@ -53,7 +53,7 @@ public class MainMenuGUI extends MenuGUI {
 				e.printStackTrace();
 			}
 			Cubyz.requestJoin("localhost");
-			Cubyz.gameUI.setMenu(null);
+			Cubyz.gameUI.setMenu(null, false);
 			Cubyz.loadWorld(Cubyz.mpClient.getHandler().getWorld());
 		});
 		
@@ -79,6 +79,11 @@ public class MainMenuGUI extends MenuGUI {
 		options.render(nvg, win);
 		exit.render(nvg, win);
 		titleLabel.render(nvg, win);
+	}
+	
+	@Override
+	public boolean ungrabsMouse() {
+		return true;
 	}
 
 	@Override

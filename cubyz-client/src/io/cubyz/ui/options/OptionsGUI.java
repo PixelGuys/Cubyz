@@ -29,7 +29,7 @@ public class OptionsGUI extends MenuGUI {
 		done.setFontSize(16f);
 		
 		done.setOnAction(() -> {
-			Cubyz.gameUI.setMenu(new MainMenuGUI());
+			Cubyz.gameUI.back();
 		});
 		
 		bindings.setSize(250, 45);
@@ -85,6 +85,11 @@ public class OptionsGUI extends MenuGUI {
 		language.render(nvg, win);
 		rpc.render(nvg, win);
 		bindings.render(nvg, win);
+	}
+	
+	@Override
+	public boolean ungrabsMouse() {
+		return true;
 	}
 
 	@Override

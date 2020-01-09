@@ -28,6 +28,7 @@ public class Label extends Component {
 
 	@Override
 	public void render(long nvg, Window src) {
+		NGraphics.setColor(255, 255, 255);
 		NGraphics.setFont(font);
 		NGraphics.drawText(x, y, text);
 	}

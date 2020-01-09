@@ -850,7 +850,7 @@ public class Cubyz implements IGameLogic {
 				}
 			}
 			if (mouse.isGrabbed()) {
-				ctx.getCamera().moveRotation(mouse.getDisplVec().x() * 0.51F, mouse.getDisplVec().y() * 0.51F, 0.0F);
+				ctx.getCamera().moveRotation(mouse.getDisplVec().x * 0.51F, mouse.getDisplVec().y * 0.51F, 5F);
 				mouse.clearPos(win.getWidth() / 2, win.getHeight() / 2);
 			}
 			playerInc.x = playerInc.y = playerInc.z = 0.0F; // Reset positions

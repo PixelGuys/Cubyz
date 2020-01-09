@@ -94,7 +94,7 @@ public class KeybindingsGUI extends MenuGUI {
 		done.setText(new TextKey("gui.cubyz.options.done"));
 		done.setSize(250, 45);
 		done.setOnAction(() -> {
-			Cubyz.gameUI.setMenu(new OptionsGUI());
+			Cubyz.gameUI.back();
 		});
 		
 		int y = 30;
@@ -117,7 +117,7 @@ public class KeybindingsGUI extends MenuGUI {
 			button.setOnAction(() -> {
 				if (listen == null) {
 					listen = name;
-					button.setText("Press any key");
+					button.setText("Click or press any key");
 				}
 			});
 			label.setPosition(20, y);
@@ -157,6 +157,11 @@ public class KeybindingsGUI extends MenuGUI {
 		
 		container.render(nvg, win);
 		done.render(nvg, win);
+	}
+	
+	@Override
+	public boolean ungrabsMouse() {
+		return true;
 	}
 
 	@Override

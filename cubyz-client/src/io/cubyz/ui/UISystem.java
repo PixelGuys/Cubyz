@@ -4,6 +4,7 @@ import static org.lwjgl.nanovg.NanoVG.*;
 import static org.lwjgl.nanovg.NanoVGGL3.*;
 import static org.lwjgl.system.MemoryUtil.*;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 
 import io.cubyz.client.Cubyz;
@@ -17,6 +18,7 @@ public class UISystem extends Hud {
 	
 	private MenuGUI gui;
 	private ArrayList<MenuGUI> overlays = new ArrayList<>();
+	private ArrayDeque<MenuGUI> menuQueue = new ArrayDeque<>();
 	
 	public static float guiScale = 1f;
 
@@ -35,7 +37,18 @@ public class UISystem extends Hud {
 		return overlays;
 	}
 	
+	public void back() {
+		setMenu(menuQueue.pollLast(), false);
+	}
+	
 	public void setMenu(MenuGUI gui) {
+		setMenu(gui, true);
+	}
+	
+	public void setMenu(MenuGUI gui, boolean addQueue) {
+		if (this.gui != null && addQueue) {
+			menuQueue.add(this.gui);
+		}
 		if (this.gui != null && this.gui.ungrabsMouse()) {
 			Cubyz.mouse.setGrabbed(true);
 		}

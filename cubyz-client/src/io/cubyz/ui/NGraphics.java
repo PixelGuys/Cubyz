@@ -157,7 +157,7 @@ public class NGraphics {
 	}
 	
 	public static void setColor(int r, int g, int b, int a) {
-		color = Hud.rgba(r, g, b, a, color);
+		color = UISystem.rgba(r, g, b, a, color);
 	}
 	
 	public static void setColor(int r, int g, int b) {
