@@ -261,6 +261,11 @@ public class Window {
 	 * @param buffer
 	 */
 	public void setRenderTarget(FrameBuffer buffer) {
+		if (buffer == null) {
+			this.buffer.unbind();
+		} else {
+			buffer.bind();
+		}
 		this.buffer = buffer;
 	}
 	

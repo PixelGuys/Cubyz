@@ -27,6 +27,7 @@ import io.cubyz.blocks.Ore;
 import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.client.loading.LoadThread;
 import io.cubyz.entity.Entity;
+import io.cubyz.entity.EntityType;
 import io.cubyz.entity.Player;
 import io.cubyz.handler.BlockVisibilityChangeHandler;
 import io.cubyz.math.Vector3fi;
@@ -503,10 +504,21 @@ public class Cubyz implements IGameLogic {
 				world.getLocalPlayer().setFlying(!world.getLocalPlayer().isFlying());
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_F, false);
 			}
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_P)) {
+				// debug: spawn a pig
+				Vector3fi pos = world.getLocalPlayer().getPosition().clone();
+				pos.y += 2f;
+				EntityType pigType = CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:pig");
+				if (pigType == null) return;
+				Entity pig = pigType.newEntity();
+				pig.setPosition(pos);
+				pig.setWorld(world);
+				world.addEntity(pig);
+			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_C)) {
 				int mods = Keyboard.getKeyMods();
 				if ((mods & GLFW.GLFW_MOD_CONTROL) == GLFW.GLFW_MOD_CONTROL) {
-					if ((mods & GLFW.GLFW_MOD_SHIFT) == GLFW.GLFW_MOD_SHIFT) {
+					if ((mods & GLFW.GLFW_MOD_SHIFT) == GLFW.GLFW_MOD_SHIFT) { // Control + Shift + C
 						if (gameUI.getMenuGUI() == null) {
 							gameUI.setMenu(new ConsoleGUI());
 						}
@@ -585,6 +597,7 @@ public class Cubyz implements IGameLogic {
 	private Vector3f brightAmbient = new Vector3f(1, 1, 1);
 	private Vector4f clearColor = new Vector4f(0.1f, 0.7f, 0.7f, 1f);
 	
+	@SuppressWarnings("deprecation")
 	public FrameBuffer blockPreview(Block b) {
 		Window window = game.getWindow();
 		Chunk ck = new Chunk(0, 0, null, new ArrayList<BlockChange>());
@@ -602,7 +615,6 @@ public class Cubyz implements IGameLogic {
 		buf.genColorTexture(128, 128);
 		buf.genRenderbuffer(128, 128);
 		window.setRenderTarget(buf);
-		buf.bind();
 		window.setClearColor(new Vector4f(0f, 0f, 0f, 0f));
 		GL11.glViewport(0, 0, 128, 128);
 		
@@ -615,7 +627,7 @@ public class Cubyz implements IGameLogic {
 		ctx.setHud(gameUI);
 		
 		GL11.glViewport(0, 0, window.getWidth(), window.getHeight());
-		buf.unbind();
+		window.setRenderTarget(null);
 		
 		world.getLocalPlayer().setPosition(pos);
 		ctx.getCamera().setRotation(rot.x, rot.y, rot.z);
@@ -733,17 +745,6 @@ public class Cubyz implements IGameLogic {
 				world.getLocalPlayer().vx = playerInc.x;
 			}
 			ctx.getCamera().setPosition(0, world.getLocalPlayer().getPosition().y + 1.5f + playerBobbing, 0);
-			synchronized (targetInstances) {
-				meshes = targetInstances.keySet().toArray(meshes);
-				for (InstancedMesh mesh : meshes) {
-					if (mesh != null && targetInstances.containsKey(mesh)) {
-						int target = targetInstances.get(mesh);
-						//mesh.setInstances(target);
-						mesh.setInstances(256);
-						targetInstances.remove(mesh);
-					}
-				}
-			}
 		}
 		
 		if (!renderDeque.isEmpty()) {
@@ -782,15 +783,13 @@ public class Cubyz implements IGameLogic {
 				buf.genColorTexture(window.getWidth(), window.getHeight());
 				buf.genRenderbuffer(window.getWidth(), window.getHeight());
 				window.setRenderTarget(buf);
-				window.getRenderTarget().bind();
 			}
 			
 			renderer.render(window, ctx, brightAmbient, light, EMPTY_CHUNK_LIST, EMPTY_BLOCK_LIST, EMPTY_ENTITY_LIST, null);
 			
 			if (screenshot) {
-				window.getRenderTarget().unbind();
 				FrameBuffer buf = window.getRenderTarget();
-				
+				window.setRenderTarget(null);
 				screenshot = false;
 			}
 		}

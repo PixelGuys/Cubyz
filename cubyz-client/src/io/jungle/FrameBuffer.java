@@ -8,6 +8,7 @@ public class FrameBuffer {
 	
 	protected int id;
 	protected Texture texture;
+	protected Texture depthTexture;
 	protected int renderBuffer = -1;
 	
 	public FrameBuffer() {
@@ -24,6 +25,19 @@ public class FrameBuffer {
 		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
 		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT,
 				GL_RENDERBUFFER, renderBuffer);
+	}
+	
+	public void genDepthTexture(int width, int height) {
+		glBindFramebuffer(GL_FRAMEBUFFER, id);
+		if (depthTexture != null) {
+			depthTexture.cleanup();
+		}
+		depthTexture = new Texture(width, height, GL_DEPTH_COMPONENT);
+		
+		// disable color buffer
+		glDrawBuffer(GL_NONE);
+		glReadBuffer(GL_NONE);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthTexture.getId(), 0);
 	}
 	
 	public void genColorTexture(int width, int height) {
@@ -46,18 +60,26 @@ public class FrameBuffer {
 		return texture;
 	}
 	
+	public Texture getDepthTexture() {
+		return texture;
+	}
+	
 	public void create() {
 		id = glGenFramebuffers();
 		glBindFramebuffer(GL_FRAMEBUFFER, id);
 	}
 	
-	public void bind() {
+	public void validate() throws FrameBufferException {
 		glBindFramebuffer(GL_FRAMEBUFFER, id);
 		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-			System.err.println("Incomplete framebuffer! " + glCheckFramebufferStatus(GL_FRAMEBUFFER));
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
-			return;
+			throw new FrameBufferException("Frame Buffer Object error: " + glCheckFramebufferStatus(GL_FRAMEBUFFER));
 		}
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	}
+	
+	public void bind() {
+		glBindFramebuffer(GL_FRAMEBUFFER, id);
 	}
 	
 	public void unbind() {
@@ -69,4 +91,11 @@ public class FrameBuffer {
 		id = -1;
 	}
 
+	public static class FrameBufferException extends Exception {
+		private static final long serialVersionUID = 1L;
+
+		public FrameBufferException(String s) { super(s); }
+		
+	}
+	
 }

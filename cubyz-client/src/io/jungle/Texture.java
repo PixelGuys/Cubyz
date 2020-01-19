@@ -6,12 +6,15 @@ import de.matthiasmann.twl.utils.PNGDecoder.Format;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-import static org.lwjgl.opengl.GL11.*;
+
+import static org.lwjgl.opengl.GL12.*;
 
 public class Texture {
 
 	protected int id = Integer.MIN_VALUE;
 	protected int width, height;
+	protected int pixelFormat;
+	protected int internalFormat;
 	protected InputStream is;
 
 	public Texture(String fileName) throws Exception {
@@ -21,11 +24,24 @@ public class Texture {
 	public Texture(InputStream is) {
 		this.is = is;
 		create();
-		bind();
 	}
 
 	public Texture(int id) {
 		this.id = id;
+	}
+	
+	
+	// depth texture
+	public Texture(int width, int height, int pixelFormat) {
+		this.id = glGenTextures();
+		this.width = width;
+		this.height = height;
+		glBindTexture(GL_TEXTURE_2D, id);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, pixelFormat, GL_FLOAT, (ByteBuffer) null);
 	}
 	
 	public void create() {
@@ -82,8 +98,9 @@ public class Texture {
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, decoder.getWidth(), decoder.getHeight(), 0, GL_RGBA, GL_UNSIGNED_BYTE,
 				buf);
 
-		// glGenerateMipmap(GL_TEXTURE_2D); // not used, and using it makes the game
-		// look ugly. So disabled for now to not use useless memory
+		//glGenerateMipmap(GL_TEXTURE_2D);
+		/* not used, and using it makes the game
+		 look ugly. So disabled for now to not use useless memory */
 		return textureId;
 	}
 
