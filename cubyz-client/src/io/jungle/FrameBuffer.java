@@ -61,7 +61,7 @@ public class FrameBuffer {
 	}
 	
 	public Texture getDepthTexture() {
-		return texture;
+		return depthTexture;
 	}
 	
 	public void create() {

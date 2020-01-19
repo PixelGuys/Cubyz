@@ -77,16 +77,19 @@ public class Transformation {
 			.scale(spatial.getScale());
 		return modelViewMatrix;
 	}
-
+	
 	public Matrix4f getViewMatrix(Camera camera) {
 		Vector3f cameraPos = camera.getPosition();
 		Vector3f rotation = camera.getRotation();
-
+		return getViewMatrix(cameraPos, rotation);
+	}
+	
+	public Matrix4f getViewMatrix(Vector3f position, Vector3f rotation) {
 		viewMatrix.identity();
 		// First do the rotation so camera rotates over its position
 		viewMatrix.rotate(DEGTORAD * rotation.x, xVec).rotate(DEGTORAD * rotation.y, yVec);
 		// Then do the translation
-		viewMatrix.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z);
+		viewMatrix.translate(-position.x, -position.y, -position.z);
 		return viewMatrix;
 	}
 

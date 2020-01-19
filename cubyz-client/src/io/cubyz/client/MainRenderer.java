@@ -17,9 +17,12 @@ import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.math.Vector3fi;
 import io.cubyz.world.Chunk;
+import io.jungle.FrameBuffer;
 import io.jungle.InstancedMesh;
 import io.jungle.Mesh;
+import io.jungle.ShadowMap;
 import io.jungle.Spatial;
+import io.jungle.Texture;
 import io.jungle.Window;
 import io.jungle.game.Context;
 import io.jungle.renderers.FrustumCullingFilter;
@@ -35,6 +38,7 @@ import io.jungle.util.Utils;
 public class MainRenderer implements IRenderer {
 
 	private ShaderProgram shaderProgram;
+	private ShaderProgram depthShaderProgram;
 
 	private static final float Z_NEAR = 0.01f;
 	private static final float Z_FAR = 1000.0f;
@@ -46,6 +50,7 @@ public class MainRenderer implements IRenderer {
 	private FrustumCullingFilter filter;
 	private Matrix4f prjViewMatrix = new Matrix4f();
 	private FrustumIntersection frustumInt = new FrustumIntersection();
+	private ShadowMap shadowMap;
 
 	public static final int MAX_POINT_LIGHTS = 0;
 	public static final int MAX_SPOT_LIGHTS = 0;
@@ -84,7 +89,6 @@ public class MainRenderer implements IRenderer {
 		shaderProgram.createUniform("viewMatrixInstanced");
 		shaderProgram.createUniform("texture_sampler");
 		shaderProgram.createUniform("ambientLight");
-		//shaderProgram.createUniform("selectedInstanced");
 		shaderProgram.createUniform("selectedNonInstanced");
 		shaderProgram.createUniform("specularPower");
 		shaderProgram.createUniform("isInstanced");
@@ -93,6 +97,18 @@ public class MainRenderer implements IRenderer {
 		shaderProgram.createSpotLightListUniform("spotLights", MAX_SPOT_LIGHTS);
 		shaderProgram.createDirectionalLightUniform("directionalLight");
 		shaderProgram.createFogUniform("fog");
+		
+		depthShaderProgram = new ShaderProgram();
+		depthShaderProgram.createVertexShader(Utils.loadResource(shaders + "/depth_vertex.vs"));
+		depthShaderProgram.createFragmentShader(Utils.loadResource(shaders + "/depth_fragment.fs"));
+		depthShaderProgram.link();
+		depthShaderProgram.createUniform("viewMatrixInstanced");
+		depthShaderProgram.createUniform("modelLightViewNonInstancedMatrix");
+		depthShaderProgram.createUniform("projectionMatrix");
+		depthShaderProgram.createUniform("isInstanced");
+		
+		shadowMap = new ShadowMap(1024, 1024);
+		
 		System.gc();
 	}
 
@@ -198,6 +214,16 @@ public class MainRenderer implements IRenderer {
 			}
 		}
 		//filter.filter(m);
+		if (shadowMap != null) { // remember it will be disableable
+			//renderDepthMap(directionalLight, blocks, selected, selectedBlock);
+			glViewport(0, 0, window.getWidth(), window.getHeight()); // reset viewport
+			if (orthogonal) {
+				window.setProjectionMatrix(transformation.getOrthoProjectionMatrix(1f, -1f, -1f, 1f, Z_NEAR, Z_FAR));
+			} else {
+				window.setProjectionMatrix(transformation.getProjectionMatrix(ctx.getCamera().getFov(), window.getWidth(),
+						window.getHeight(), Z_NEAR, Z_FAR));
+			}
+		}
 		renderScene(ctx, ambientLight, null /* point light */, null /* spot light */, directionalLight, map, blocks, entities,
 				localPlayer, selected, selectedBlock);
 		if (ctx.getHud() != null) {
@@ -209,6 +235,58 @@ public class MainRenderer implements IRenderer {
 		 
 	}
 	
+	// for shadow map
+	public void renderDepthMap(DirectionalLight light, Block[] blocks, Spatial selected, int selectedBlock) {
+		FrameBuffer fbo = shadowMap.getDepthMapFBO();
+		fbo.bind();
+		Texture depthTexture = fbo.getDepthTexture();
+		glViewport(0, 0, depthTexture.getWidth(), depthTexture.getHeight());
+		glClear(GL_DEPTH_BUFFER_BIT);
+		//depthShaderProgram.bind();
+		
+		float lightAngleX = (float) Math.toDegrees(Math.acos(light.getDirection().z));
+		float lightAngleY = (float) Math.toDegrees(Math.asin(light.getDirection().x));
+		float lightAngleZ = 0f;
+		Matrix4f lightViewMatrix = transformation.getViewMatrix(
+				new Vector3f(light.getDirection()).mul(1000f),
+				new Vector3f(lightAngleX, lightAngleY, lightAngleZ));
+		// TODO: only create new vector if changed
+		Matrix4f orthoProjMatrix = transformation.getOrthoProjectionMatrix(1f, -1f, -1f, 1f, Z_NEAR, Z_FAR);
+		depthShaderProgram.setUniform("projectionMatrix", orthoProjMatrix);
+		
+		for (int i = 0; i < blocks.length; i++) {
+			if (map[i] == null)
+				continue;
+			Mesh mesh = Meshes.blockMeshes.get(blocks[i]);
+			if (selectedBlock == i) {
+				map[i].add(selected);
+			}
+			if (mesh.isInstanced()) {
+				InstancedMesh ins = (InstancedMesh) mesh;
+				depthShaderProgram.setUniform("isInstanced", 1);
+				ins.renderListInstanced(map[i], transformation);
+			} else {
+				depthShaderProgram.setUniform("isInstanced", 0);
+				mesh.renderList(map[i], (Spatial gameItem) -> {
+					Matrix4f modelViewMatrix = transformation.getModelViewMatrix(gameItem, lightViewMatrix);
+					if (orthogonal) {
+						modelViewMatrix = transformation.getOrtoProjModelMatrix(gameItem, lightViewMatrix);
+					}
+					if (gameItem.isSelected())
+						depthShaderProgram.setUniform("selectedNonInstanced", 1f);
+					depthShaderProgram.setUniform("modelViewNonInstancedMatrix", modelViewMatrix);
+					return true;
+				});
+				if (selectedBlock == i) {
+					depthShaderProgram.setUniform("selectedNonInstanced", 0f);
+				}
+			}
+		}
+		// TODO: render entities
+		depthShaderProgram.unbind();
+		fbo.unbind();
+	}
+	
 	public void renderScene(Context ctx, Vector3f ambientLight, PointLight[] pointLightList, SpotLight[] spotLightList,
 			DirectionalLight directionalLight, List<Spatial>[] map, Block[] blocks, Entity[] entities, Player p, Spatial selected,
 			int selectedBlock) {
@@ -218,15 +296,7 @@ public class MainRenderer implements IRenderer {
 		shaderProgram.setUniform("projectionMatrix", ctx.getWindow().getProjectionMatrix());
 		shaderProgram.setUniform("texture_sampler", 0);
 		Matrix4f viewMatrix = ctx.getCamera().getViewMatrix();
-		if (p != null) {
-			// for non-chunked instanced rendering
-			//Vector3fi pp = p.getPosition();
-			//Vector3f l = lastInstancedPosition;
-			//shaderProgram.setUniform("viewMatrixInstanced", viewMatrix.translate(-(pp.x()-l.x), 0, -(pp.z()-l.z)));
-			
-			// for chunked
-			shaderProgram.setUniform("viewMatrixInstanced", viewMatrix);
-		}
+		shaderProgram.setUniform("viewMatrixInstanced", viewMatrix);
 		
 		renderLights(viewMatrix, ambientLight, pointLightList, spotLightList, directionalLight);
 		for (int i = 0; i < blocks.length; i++) {
@@ -240,14 +310,9 @@ public class MainRenderer implements IRenderer {
 			if (mesh.isInstanced()) {
 				InstancedMesh ins = (InstancedMesh) mesh;
 				shaderProgram.setUniform("isInstanced", 1);
-				/*
-				if (ins.renderListInstancedNC(map[i], transformation)) {
-					lastInstancedPosition = p.getPosition().toVector3f();
-				}
-				*/
 				ins.renderListInstanced(map[i], transformation);
-				shaderProgram.setUniform("isInstanced", 0);
 			} else {
+				shaderProgram.setUniform("isInstanced", 0);
 				mesh.renderList(map[i], (Spatial gameItem) -> {
 					Matrix4f modelViewMatrix = transformation.getModelViewMatrix(gameItem, viewMatrix);
 					if (orthogonal) {
