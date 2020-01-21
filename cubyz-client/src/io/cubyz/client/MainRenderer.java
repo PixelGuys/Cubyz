@@ -1,6 +1,8 @@
 package io.cubyz.client;
 
 import static org.lwjgl.opengl.GL11.*;
+import static org.lwjgl.opengl.GL13.GL_TEXTURE0;
+import static org.lwjgl.opengl.GL13.glActiveTexture;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -10,6 +12,7 @@ import org.joml.FrustumIntersection;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
+import org.lwjgl.opengl.GL13C;
 
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
@@ -85,6 +88,7 @@ public class MainRenderer implements IRenderer {
 		shaderProgram.createFragmentShader(Utils.loadResource(shaders + "/fragment.fs"));
 		shaderProgram.link();
 		shaderProgram.createUniform("projectionMatrix");
+		shaderProgram.createUniform("orthoProjectionMatrix");
 		shaderProgram.createUniform("modelViewNonInstancedMatrix");
 		shaderProgram.createUniform("viewMatrixInstanced");
 		shaderProgram.createUniform("texture_sampler");
@@ -97,6 +101,7 @@ public class MainRenderer implements IRenderer {
 		shaderProgram.createSpotLightListUniform("spotLights", MAX_SPOT_LIGHTS);
 		shaderProgram.createDirectionalLightUniform("directionalLight");
 		shaderProgram.createFogUniform("fog");
+		shaderProgram.createUniform("shadowMap");
 		
 		depthShaderProgram = new ShaderProgram();
 		depthShaderProgram.createVertexShader(Utils.loadResource(shaders + "/depth_vertex.vs"));
@@ -215,7 +220,7 @@ public class MainRenderer implements IRenderer {
 		}
 		//filter.filter(m);
 		if (shadowMap != null) { // remember it will be disableable
-			//renderDepthMap(directionalLight, blocks, selected, selectedBlock);
+			renderDepthMap(directionalLight, blocks, selected, selectedBlock);
 			glViewport(0, 0, window.getWidth(), window.getHeight()); // reset viewport
 			if (orthogonal) {
 				window.setProjectionMatrix(transformation.getOrthoProjectionMatrix(1f, -1f, -1f, 1f, Z_NEAR, Z_FAR));
@@ -223,6 +228,7 @@ public class MainRenderer implements IRenderer {
 				window.setProjectionMatrix(transformation.getProjectionMatrix(ctx.getCamera().getFov(), window.getWidth(),
 						window.getHeight(), Z_NEAR, Z_FAR));
 			}
+			ctx.getCamera().setViewMatrix(transformation.getViewMatrix(ctx.getCamera()));
 		}
 		renderScene(ctx, ambientLight, null /* point light */, null /* spot light */, directionalLight, map, blocks, entities,
 				localPlayer, selected, selectedBlock);
@@ -242,17 +248,18 @@ public class MainRenderer implements IRenderer {
 		Texture depthTexture = fbo.getDepthTexture();
 		glViewport(0, 0, depthTexture.getWidth(), depthTexture.getHeight());
 		glClear(GL_DEPTH_BUFFER_BIT);
-		//depthShaderProgram.bind();
+		depthShaderProgram.bind();
 		
 		float lightAngleX = (float) Math.toDegrees(Math.acos(light.getDirection().z));
 		float lightAngleY = (float) Math.toDegrees(Math.asin(light.getDirection().x));
 		float lightAngleZ = 0f;
-		Matrix4f lightViewMatrix = transformation.getViewMatrix(
-				new Vector3f(light.getDirection()).mul(1000f),
+		Matrix4f lightViewMatrix = transformation.getLightViewMatrix(
+				new Vector3f(light.getDirection()).mul(500f),
 				new Vector3f(lightAngleX, lightAngleY, lightAngleZ));
 		// TODO: only create new vector if changed
-		Matrix4f orthoProjMatrix = transformation.getOrthoProjectionMatrix(1f, -1f, -1f, 1f, Z_NEAR, Z_FAR);
+		Matrix4f orthoProjMatrix = transformation.getOrthoProjectionMatrix(-10f, 10f, -10f, 10f, Z_NEAR, Z_FAR);
 		depthShaderProgram.setUniform("projectionMatrix", orthoProjMatrix);
+		depthShaderProgram.setUniform("viewMatrixInstanced", lightViewMatrix);
 		
 		for (int i = 0; i < blocks.length; i++) {
 			if (map[i] == null)
@@ -264,7 +271,7 @@ public class MainRenderer implements IRenderer {
 			if (mesh.isInstanced()) {
 				InstancedMesh ins = (InstancedMesh) mesh;
 				depthShaderProgram.setUniform("isInstanced", 1);
-				ins.renderListInstanced(map[i], transformation);
+				ins.renderListInstanced(map[i], transformation, lightViewMatrix);
 			} else {
 				depthShaderProgram.setUniform("isInstanced", 0);
 				mesh.renderList(map[i], (Spatial gameItem) -> {
@@ -294,11 +301,22 @@ public class MainRenderer implements IRenderer {
 		
 		shaderProgram.setUniform("fog", ctx.getFog());
 		shaderProgram.setUniform("projectionMatrix", ctx.getWindow().getProjectionMatrix());
+		Matrix4f orthoProjMatrix = transformation.getOrthoProjectionMatrix(-10f, 10f, -10f, 10f, Z_NEAR, Z_FAR);
+		shaderProgram.setUniform("orthoProjectionMatrix", orthoProjMatrix);
 		shaderProgram.setUniform("texture_sampler", 0);
+		shaderProgram.setUniform("shadowMap", 1);
+		
 		Matrix4f viewMatrix = ctx.getCamera().getViewMatrix();
 		shaderProgram.setUniform("viewMatrixInstanced", viewMatrix);
 		
 		renderLights(viewMatrix, ambientLight, pointLightList, spotLightList, directionalLight);
+		float lightAngleX = (float) Math.toDegrees(Math.acos(directionalLight.getDirection().z));
+		float lightAngleY = (float) Math.toDegrees(Math.asin(directionalLight.getDirection().x));
+		float lightAngleZ = 0f;
+		
+		Matrix4f lightViewMatrix = transformation.getLightViewMatrix(
+				new Vector3f(directionalLight.getDirection()).mul(500f),
+				new Vector3f(lightAngleX, lightAngleY, lightAngleZ));
 		for (int i = 0; i < blocks.length; i++) {
 			if (map[i] == null)
 				continue;
@@ -308,9 +326,11 @@ public class MainRenderer implements IRenderer {
 				map[i].add(selected);
 			}
 			if (mesh.isInstanced()) {
+				glActiveTexture(GL13C.GL_TEXTURE1);
+				glBindTexture(GL_TEXTURE_2D, shadowMap.getDepthMapFBO().getDepthTexture().getId());
 				InstancedMesh ins = (InstancedMesh) mesh;
 				shaderProgram.setUniform("isInstanced", 1);
-				ins.renderListInstanced(map[i], transformation);
+				ins.renderListInstanced(map[i], transformation, lightViewMatrix);
 			} else {
 				shaderProgram.setUniform("isInstanced", 0);
 				mesh.renderList(map[i], (Spatial gameItem) -> {

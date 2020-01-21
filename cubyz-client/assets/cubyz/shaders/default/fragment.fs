@@ -7,6 +7,7 @@ in vec2 outTexCoord;
 in vec3 mvVertexNormal;
 in vec3 mvVertexPos;
 in float outSelected;
+in vec4 mlightviewVertexPos;
 
 out vec4 fragColor;
 
@@ -56,6 +57,7 @@ struct Fog {
 };
 
 uniform sampler2D texture_sampler;
+uniform sampler2D shadowMap;
 uniform vec3 ambientLight;
 uniform float specularPower;
 uniform Material material;
@@ -148,6 +150,17 @@ vec4 calcFog(vec3 pos, vec4 colour, Fog fog) {
 	return vec4(resultColour.xyz, colour.w);
 }
 
+float calcShadow(vec4 position) {
+	float factor = 1;
+	vec3 projCoords = position.xyz;
+	projCoords = projCoords * 0.5 + 0.5;
+	float bias = 0.05;
+	if (projCoords.z - bias < texture(shadowMap, projCoords.xy).r) {
+		factor = 0;
+	}
+	return 1 - factor;
+}
+
 void main()
 {
     setupColours(material, outTexCoord);
@@ -169,7 +182,10 @@ void main()
             diffuseSpecularComp += calcSpotLight(spotLights[i], mvVertexPos, mvVertexNormal);
         }
     }
-    fragColor = ambientC * vec4(ambientLight, 1) + diffuseSpecularComp;
+    //fragColor = ambientC * vec4(ambientLight, 1) + diffuseSpecularComp;
+    
+    float shadow = calcShadow(mlightviewVertexPos);
+    fragColor = clamp(ambientC * vec4(ambientLight, 1) + diffuseSpecularComp * shadow, 0, 1);
     
     if (fog.activ == 1) {
         fragColor = calcFog(mvVertexPos, fragColor, fog);

@@ -3,6 +3,7 @@ package io.jungle;
 import java.nio.FloatBuffer;
 import java.util.List;
 import org.joml.Matrix4f;
+import org.joml.Vector3f;
 
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL15.*;
@@ -24,9 +25,9 @@ public class InstancedMesh extends Mesh {
 
 	private static final int MATRIX_SIZE_BYTES = MATRIX_SIZE_FLOATS * FLOAT_SIZE_BYTES;
 
-	private static final int INSTANCE_SIZE_BYTES = MATRIX_SIZE_BYTES + FLOAT_SIZE_BYTES;
+	private static final int INSTANCE_SIZE_BYTES = MATRIX_SIZE_BYTES*2 + FLOAT_SIZE_BYTES;
 
-	private static final int INSTANCE_SIZE_FLOATS = MATRIX_SIZE_FLOATS + 1;
+	private static final int INSTANCE_SIZE_FLOATS = MATRIX_SIZE_FLOATS*2 + 1;
 
 	private int numInstances;
 
@@ -54,26 +55,23 @@ public class InstancedMesh extends Mesh {
 		glBindBuffer(GL_ARRAY_BUFFER, modelViewVBO);
 		int start = 3;
 		int strideStart = 0;
-		for (int i = 0; i < 4; i++) {
+		for (int i = 0; i < 4; i++) { // modelViewMatrix
 			glVertexAttribPointer(start, 4, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
 			glVertexAttribDivisor(start, 1);
 			start++;
 			strideStart += VECTOR4F_SIZE_BYTES;
 		}
-		glVertexAttribPointer(start, 1, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
+		glVertexAttribPointer(start, 1, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart); // "selected" float
 		glVertexAttribDivisor(start, 1);
 		start++;
 		strideStart += FLOAT_SIZE_BYTES;
-
-		// Light view matrix
-		/*
-		for (int i = 0; i < 4; i++) {
+		
+		for (int i = 0; i < 4; i++) { // modelLightViewMatrix
 			glVertexAttribPointer(start, 4, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
 			glVertexAttribDivisor(start, 1);
 			start++;
 			strideStart += VECTOR4F_SIZE_BYTES;
 		}
-		*/
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindVertexArray(0);
@@ -116,13 +114,13 @@ public class InstancedMesh extends Mesh {
 		strideStart += FLOAT_SIZE_BYTES;
 
 		// Light view matrix
-		/*
+		
 		for (int i = 0; i < 4; i++) {
 			glVertexAttribPointer(start, 4, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
 			glVertexAttribDivisor(start, 1);
 			start++;
 			strideStart += VECTOR4F_SIZE_BYTES;
-		}*/
+		}
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindVertexArray(0);
@@ -186,7 +184,7 @@ public class InstancedMesh extends Mesh {
 			if (numInstances < curSize) {
 				setInstances(curSize);
 			}
-			uploadData(spatials, transformation);
+			//uploadData(spatials, transformation);
 			bool = true;
 		}
 		renderChunkInstanced(spatials, transformation);
@@ -195,7 +193,7 @@ public class InstancedMesh extends Mesh {
 		return bool;
 	}
 	
-	public void renderListInstanced(List<Spatial> spatials, Transformation transformation) {
+	public void renderListInstanced(List<Spatial> spatials, Transformation transformation, Matrix4f lightViewMatrix) {
 		if (numInstances == 0)
 			return;
 		initRender();
@@ -205,20 +203,24 @@ public class InstancedMesh extends Mesh {
 		for (int i = 0; i < length; i += chunkSize) {
 			int end = Math.min(length, i + chunkSize);
 			List<Spatial> subList = spatials.subList(i, end);
-			uploadData(subList, transformation);
+			uploadData(subList, transformation, lightViewMatrix);
 			renderChunkInstanced(subList, transformation);
 		}
 
 		endRender();
 	}
 	
-	public void uploadData(List<Spatial> gameItems, Transformation transformation) {
+	public void uploadData(List<Spatial> gameItems, Transformation transformation, Matrix4f lightViewMatrix) {
 		this.instanceDataBuffer.clear();
 		int i = 0;
 		for (Spatial gameItem : gameItems) {
 			Matrix4f modelMatrix = transformation.getModelMatrix(gameItem);
 			modelMatrix.get(INSTANCE_SIZE_FLOATS * i, instanceDataBuffer);
 			instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 16, gameItem.isSelected() ? 1 : 0);
+			
+			// shadow map related
+			Matrix4f modelLightMatrix = transformation.getModelViewMatrix(modelMatrix, lightViewMatrix);
+			modelLightMatrix.get(INSTANCE_SIZE_FLOATS * i + 17, instanceDataBuffer);
 			i++;
 		}
 		

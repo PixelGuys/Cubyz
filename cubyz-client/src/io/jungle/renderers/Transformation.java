@@ -13,6 +13,7 @@ public class Transformation {
 	private final Matrix4f worldMatrix;
 
 	private final Matrix4f viewMatrix;
+	private final Matrix4f lightViewMatrix;
 
 	private final Matrix4f modelViewMatrix;
 
@@ -32,6 +33,7 @@ public class Transformation {
 		viewMatrix = new Matrix4f();
 		modelViewMatrix = new Matrix4f();
 		orthoMatrix = new Matrix4f();
+		lightViewMatrix = new Matrix4f();
 	}
 
 	public final Matrix4f getProjectionMatrix(float fov, float width, float height, float zNear, float zFar) {
@@ -67,6 +69,10 @@ public class Transformation {
 		return orthoMatrixCurr;
 	}
 	
+	public Matrix4f getOrtoProjModelMatrix(Spatial gameItem) {
+		return getOrtoProjModelMatrix(gameItem, orthoMatrix);
+	}
+	
 	public Matrix4f getModelMatrix(Spatial spatial) {
 		Vector3f rotation = spatial.getRotation();
 		modelViewMatrix.identity()
@@ -91,6 +97,15 @@ public class Transformation {
 		// Then do the translation
 		viewMatrix.translate(-position.x, -position.y, -position.z);
 		return viewMatrix;
+	}
+	
+	public Matrix4f getLightViewMatrix(Vector3f position, Vector3f rotation) {
+		lightViewMatrix.identity();
+		// First do the rotation so camera rotates over its position
+		lightViewMatrix.rotate(DEGTORAD * rotation.x, xVec).rotate(DEGTORAD * rotation.y, yVec);
+		// Then do the translation
+		lightViewMatrix.translate(-position.x, -position.y, -position.z);
+		return lightViewMatrix;
 	}
 
 	public Matrix4f getModelViewMatrix(Spatial spatial, Matrix4f viewMatrix) {

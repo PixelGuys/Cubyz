@@ -584,6 +584,8 @@ public class Cubyz implements IGameLogic {
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_EQUAL, false);
 				System.gc();
 			}
+			light.getDirection().x+=0.1f;
+			if (light.getDirection().x == 100) light.getDirection().x = 0;
 			msd.selectSpatial(world.getVisibleChunks(), world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate());
 		}
 		mouse.input(window);
@@ -756,7 +758,8 @@ public class Cubyz implements IGameLogic {
 				seasonUpdateDynamodels();
 				CubyzLogger.i.info("Updated season to ID " + worldSeason);
 			}
-			ambient.x = ambient.y = ambient.z = world.getGlobalLighting();
+			//ambient.x = ambient.y = ambient.z = world.getGlobalLighting();
+			light.setIntensity(world.getGlobalLighting());
 			clearColor = world.getClearColor();
 			ctx.getFog().setColor(clearColor);
 			ctx.getFog().setDensity(1 / (world.getRenderDistance()*8f));
