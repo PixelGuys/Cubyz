@@ -3,9 +3,9 @@
 [![License](https://img.shields.io/badge/license-bsd3-blue.svg?style=flat
 )](https://github.com/PixelGuys/Cubz/blob/master/LICENSE)
 # Cubyz
-Cubyz is a sandbox 3D voxel video game. It offers a native mod API and is currently half experiment to train with LWJGL 3 and Java, half video game with potential.
+Cubyz is a sandbox 3D voxel video game. It offers a native mod API and is currently just a project on training with LWJGL 3 and Java and isn't much original.
 
-Cubyz can easily be forked to create a new game with 3D sandbox aspect.
+However, Cubyz can easily be forked to create a new game with 3D sandbox aspect.
 ## Requirements
 Windows:
 
