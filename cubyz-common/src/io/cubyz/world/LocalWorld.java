@@ -52,7 +52,7 @@ public class LocalWorld extends World {
 	
 	private WorldIO wio;
 	
-	private ChunkGenerationThread thread;
+	private List<ChunkGenerationThread> threads = new ArrayList<>();
 	private boolean generated;
 	
 	private static final int DAYCYCLE = 120000; // Length of one in-game day in 100ms. Midnight is at DAYCYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
@@ -62,33 +62,29 @@ public class LocalWorld extends World {
 	float ambientLight = 0f;
 	Vector4f clearColor = new Vector4f(0, 0, 0, 1.0f);
 	
-	// TODO: Make world updates threaded, would save load from main thread
+	private void queue(Chunk ch) {
+		if (!isQueued(ch)) {
+			try {
+				loadList.put(ch);
+			} catch (InterruptedException e) {
+				System.err.println("Interrupted while queuing chunk. This is unexpected.");
+			}
+		}
+	}
+	
+	private boolean isQueued(Chunk ch) {
+		Chunk[] list = loadList.toArray(new Chunk[0]);
+		for (Chunk ch2 : list) {
+			if (ch2 == ch) {
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	// synchronized common list for chunk generation
+	private volatile BlockingDeque<Chunk> loadList = new LinkedBlockingDeque<>(MAX_QUEUE_SIZE);
 	private class ChunkGenerationThread extends Thread {
-		BlockingDeque<Chunk> loadList = new LinkedBlockingDeque<>(MAX_QUEUE_SIZE); // FIFO order (First In, First Out)
-		
-		public void queue(Chunk ch) {
-			if (!isQueued(ch)) {
-				try {
-					loadList.put(ch);
-				} catch (InterruptedException e) {
-					System.err.println("Interrupted while queuing chunk. This is unexpected.");
-				}
-			}
-		}
-		
-		public boolean isQueued(Chunk ch) {
-			Chunk[] list = loadList.toArray(new Chunk[0]);
-			for (Chunk ch2 : list) {
-				if (ch2 == ch) {
-					return true;
-				}
-			}
-			return false;
-		}
-		
-		public int getQueueSize() {
-			return loadList.size();
-		}
 		
 		public void run() {
 			while (true) {
@@ -116,10 +112,13 @@ public class LocalWorld extends World {
 		chunks = new ArrayList<>();
 		visibleChunks = new Chunk[0];
 		
-		thread = new ChunkGenerationThread();
-		thread.setName("Local-Chunk-Thread");
-		thread.setDaemon(true);
-		thread.start();
+		for (int i = 0; i < 4; i++) {
+			ChunkGenerationThread thread = new ChunkGenerationThread();
+			thread.setName("Local-Chunk-Thread-" + i);
+			thread.setDaemon(true);
+			thread.start();
+			threads.add(thread);
+		}
 		
 		generator = new LifelandGenerator();
 		wio = new WorldIO(this, new File("saves/" + name));
@@ -459,7 +458,7 @@ public class LocalWorld extends World {
 
 	@Override
 	public void queueChunk(Chunk ch) {
-		thread.queue(ch);
+		queue(ch);
 	}
 	
 	@Override
@@ -559,7 +558,7 @@ public class LocalWorld extends World {
 	}
 	
 	public int getChunkQueueSize() {
-		return thread.getQueueSize();
+		return MAX_QUEUE_SIZE;
 	}
 
 	@Override
@@ -578,9 +577,11 @@ public class LocalWorld extends World {
 		try {
 			forceSave();
 			
-			thread.interrupt();
-			thread.join();
-			thread = null;
+			for (Thread thread : threads) {
+				thread.interrupt();
+				thread.join();
+			}
+			threads = new ArrayList<>();
 			
 			chunks = null;
 			visibleChunks = null;

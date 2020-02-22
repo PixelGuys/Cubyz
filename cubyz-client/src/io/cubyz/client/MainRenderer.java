@@ -112,7 +112,7 @@ public class MainRenderer implements IRenderer {
 		depthShaderProgram.createUniform("projectionMatrix");
 		depthShaderProgram.createUniform("isInstanced");
 		
-		shadowMap = new ShadowMap(1024, 1024);
+		shadowMap = new ShadowMap(2048, 2048);
 		
 		System.gc();
 	}
@@ -425,6 +425,12 @@ public class MainRenderer implements IRenderer {
 	public void cleanup() {
 		if (shaderProgram != null) {
 			shaderProgram.cleanup();
+		}
+		if (depthShaderProgram != null) {
+			depthShaderProgram.cleanup();
+		}
+		if (shadowMap != null) {
+			shadowMap.getDepthMapFBO().cleanup();
 		}
 	}
 
