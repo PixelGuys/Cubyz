@@ -165,7 +165,7 @@ public class Cubyz implements IGameLogic {
 			while (true) {
 				dx = rnd.nextInt(10000) - 5000;
 				dz = rnd.nextInt(10000) - 5000;
-				//dx = dz = Integer.MIN_VALUE+2048;
+				//dx = dz = Integer.MIN_VALUE+512;
 				CubyzLogger.i.info("Trying " + dx + " ? " + dz);
 				world.synchronousSeek(dx, dz);
 				highestY = world.getHighestBlock(dx, dz);

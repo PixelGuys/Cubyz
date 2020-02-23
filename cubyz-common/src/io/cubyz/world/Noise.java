@@ -24,12 +24,20 @@ public class Noise {
 	
 	private static float getGradientX(int x, int y) {
 		int index = xGridPoints.length-numOfBits(resolution)+numOfBits(16)-1;
-		return xGridPoints[index][x][y];
+		try {
+			return xGridPoints[index][x][y];
+		} catch (ArrayIndexOutOfBoundsException e) { // quick and dirty fix
+			return 0;
+		}
 	}
 	
 	private static float getGradientY(int x, int y) {
 		int index = yGridPoints.length-numOfBits(resolution)+numOfBits(16)-1;
-		return yGridPoints[index][x][y];
+		try {
+			return yGridPoints[index][x][y];
+		} catch (ArrayIndexOutOfBoundsException e) {
+			return 0;
+		}
 	}
 	/* Function to linearly interpolate between a0 and a1
 	 * Weight w should be in the range [0.0, 1.0]
@@ -174,7 +182,7 @@ public class Noise {
 				System.arraycopy(yGrid[ix], 0, yGridR[ix], 0, numY+1);
 				for(int iy = 0; iy < numY; iy++) {
 					if(xGridR[ix][iy] < -1)
-						System.out.println(ix+" "+ iy);
+						System.out.println("problematic value at " + ix+" "+ iy);
 				}
 			}
 			xGridPoints[i] = xGridR;
