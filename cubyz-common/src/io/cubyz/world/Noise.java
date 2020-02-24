@@ -54,11 +54,11 @@ public class Noise {
 	}
 
 	// Computes the dot product of the distance and gradient vectors.
-	private static float dotGridGradient(int ix, int iy, int x, int y) {
+	private static float dotGridGradient(int ix, int iy, float x, float y) {
 
 	    // Compute the distance vector
-		float dx = x/(float)resolution - ix;
-		float dy = y/(float)resolution - iy;
+		float dx = x/resolution - ix;
+		float dy = y/resolution - iy;
 
 	    // Compute the dot-product
 		float gx = getGradientX(ix, iy);
@@ -70,23 +70,13 @@ public class Noise {
 	}
 
 	// Compute Perlin noise at coordinates x, y
-	private static float perlin(int x, int y, int x00, int y00) {
+	private static float perlin(int x, int y) {
 
 	    // Determine grid cell coordinates
 	    int x0 = x/resolution;
-	    if(x < 0) {
-	    	x0 = (x-resolution2)/resolution;
-	    }
-	    x0 -= x00;
 	    int x1 = x0 + 1;
 	    int y0 = y/resolution;
-	    if(y < 0) {
-	    	y0 = (y-resolution2)/resolution;
-	    }
-	    y0 -= y00;
 	    int y1 = y0 + 1;
-	    x -= x00*resolution;
-	    y -= y00*resolution;
 
 	    // Determine interpolation weights
 	    // Could also use higher order polynomial/s-curve here
@@ -104,15 +94,10 @@ public class Noise {
 	    n1 = dotGridGradient(x1, y1, x, y);
 	    ix1 = lerp(n0, n1, sx);
 
-	    value = lerp(ix0, ix1, sy);
-	    value = 0.5F * value + 0.5F;
+	    value = 0.5F*lerp(ix0, ix1, sy) + 0.5F;
 	    if(value > 1)
 	    	value = 1;
 	    return value;
-	}
-	
-	public static float[][] generateMap(int width, int height, int scale, int seed) {
-		return generateMapFragment(0, 0, width, height, scale, seed);
 	}
 	
 	// Returns how many bits a number is long:
@@ -144,15 +129,9 @@ public class Noise {
 			for(int ix = x; ix < x+width; ix += scale) {
 				numY = 0;
 				x0 = ix/resolution;
-			    if(x < 0) {
-			    	x0 = (ix-resolution2)/resolution;
-			    }
 				int y0 = 0;
 				for(int iy = y; iy < y+height; iy += scale) {
 				    y0 = iy/resolution;
-				    if(y < 0) {
-				    	y0 = (iy-resolution2)/resolution;
-				    }
 					xGrid[numX][numY] = generateGradient(x0, y0, 0);
 					yGrid[numX][numY] = generateGradient(x0, y0, 1);
 					numY++;
@@ -165,13 +144,11 @@ public class Noise {
 			int y0 = 0;
 			for(int iy = y; iy < y+height; iy += scale) {
 			    y0 = iy/resolution;
-			    if(y < 0) {
-			    	y0 = (iy-resolution2)/resolution;
-			    }
 				xGrid[numX][numY] = generateGradient(x0+1, y0, 0);
 				yGrid[numX][numY] = generateGradient(x0+1, y0, 1);
 				numY++;
 			}
+			//System.out.println((x0*resolution)+" "+(y0*resolution)+" "+x+" "+y);
 			xGrid[numX][numY] = generateGradient(x0+1, y0+1, 0);
 			yGrid[numX][numY] = generateGradient(x0+1, y0+1, 1);
 			numY++;
@@ -203,19 +180,13 @@ public class Noise {
 		calculateGridPoints(x, y, width, height, scale);
 		for(; scale >= 16; scale >>= 1) {
 			resolution = scale;
-			resolution2 = resolution-1;	
-		    int x0 = x/resolution;
-		    if(x < 0) {
-		    	x0 = (x-resolution2)/resolution;
-		    }
-		    int y0 = y/resolution;
-		    if(y < 0) {
-		    	y0 = (y-resolution2)/resolution;
-		    }	
+			resolution2 = resolution-1;
+		    int x0 = x & ~resolution2;
+		    int y0 = y & ~resolution2;
 			
 			for (int x1 = x; x1 < width + x; x1++) {
 				for (int y1 = y; y1 < height + y; y1++) {
-					map[x1 - x][y1 - y] += factor*perlin(x1, y1, x0, y0);
+					map[x1 - x][y1 - y] += factor*perlin(x1-x0, y1-y0);
 				}
 			}
 			sum += factor;
