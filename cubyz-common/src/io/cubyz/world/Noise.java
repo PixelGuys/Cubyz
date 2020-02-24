@@ -27,6 +27,7 @@ public class Noise {
 		try {
 			return xGridPoints[index][x][y];
 		} catch (ArrayIndexOutOfBoundsException e) { // quick and dirty fix
+			e.printStackTrace();
 			return 0;
 		}
 	}
@@ -36,6 +37,7 @@ public class Noise {
 		try {
 			return yGridPoints[index][x][y];
 		} catch (ArrayIndexOutOfBoundsException e) {
+			e.printStackTrace();
 			return 0;
 		}
 	}
