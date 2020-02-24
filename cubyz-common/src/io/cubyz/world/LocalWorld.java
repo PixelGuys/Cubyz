@@ -112,7 +112,7 @@ public class LocalWorld extends World {
 		chunks = new ArrayList<>();
 		visibleChunks = new Chunk[0];
 		
-		for (int i = 0; i < 4; i++) {
+		for (int i = 0; i < Runtime.getRuntime().availableProcessors()*2; i++) {
 			ChunkGenerationThread thread = new ChunkGenerationThread();
 			thread.setName("Local-Chunk-Thread-" + i);
 			thread.setDaemon(true);
@@ -325,6 +325,7 @@ public class LocalWorld extends World {
 	
 	boolean lqdUpdate;
 	boolean loggedUpdSkip;
+	final static boolean DO_LATE_UPDATES = false;
 	
 	BlockEntity[] blockEntities = new BlockEntity[0];
 	BlockInstance[] liquids = new BlockInstance[0];
@@ -337,10 +338,18 @@ public class LocalWorld extends World {
 			gameTime++; // gameTime is measured in 100ms.
 			if ((milliTime + 100) < System.currentTimeMillis()) { // we skipped updates
 				if (!loggedUpdSkip) {
-					CubyzLogger.i.warning(((System.currentTimeMillis() - milliTime) / 100) + " updates skipped!");
+					if (DO_LATE_UPDATES) {
+						CubyzLogger.i.warning(((System.currentTimeMillis() - milliTime) / 100) + " updates late! Doing them.");
+					} else {
+						CubyzLogger.i.warning(((System.currentTimeMillis() - milliTime) / 100) + " updates skipped!");
+					}
 					loggedUpdSkip = true;
 				}
-				update();
+				if (DO_LATE_UPDATES) {
+					update();
+				} else {
+					milliTime = System.currentTimeMillis();
+				}
 			} else {
 				loggedUpdSkip = false;
 			}
