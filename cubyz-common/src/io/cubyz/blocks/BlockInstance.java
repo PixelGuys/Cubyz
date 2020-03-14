@@ -13,6 +13,7 @@ public class BlockInstance {
 	private IBlockSpatial spatial;
 	private Vector3i pos;
 	private World world;
+	public boolean neighborUp, neighborDown, neighborEast, neighborWest, neighborNorth, neighborSouth;
 	
 	public World getWorld() {
 		return world;

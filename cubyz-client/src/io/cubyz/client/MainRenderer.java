@@ -189,6 +189,7 @@ public class MainRenderer implements IRenderer {
 			float relX = pos.relX;
 			int z0 = pos.z;
 			float relZ = pos.relZ;
+			float y0 = pos.y+1.5f;
 			for (Chunk ch : chunks) {
 				if (!frustumInt.testAab(ch.getMin(localPlayer), ch.getMax(localPlayer)))
 					continue;
@@ -198,17 +199,27 @@ public class MainRenderer implements IRenderer {
 					//float boundingRadius = tmp.getScale() * blockMeshBoundingRadius;
 					// Blocks are never scaled
 					float x = (vis[i].getX() - x0) - relX;
-					float y = vis[i].getY();
+					float y = vis[i].getY() - y0;
 					float z = (vis[i].getZ() - z0) - relZ;
 					// Do the frustum culling directly here instead of looping 3 times through the data which in the end isn't drawn.
 					if(frustumInt.testSphere(x, y, z, blockMeshBoundingRadius)) {
-						tmp.setPosition(x, y, z);
-						if (tmp.isSelected()) {
-							selected = tmp;
-							selectedBlock = vis[i].getID();
-							continue;
+						// Only draw blocks that have at least one face facing the player.
+						if(vis[i].getBlock().isTransparent() || // Ignore transparent blocks in the process, so the surface of water can still be seen from below.
+								(x > 0.5f && !vis[i].neighborEast) ||
+								(x < -0.5f && !vis[i].neighborWest) ||
+								(y > 0.5f && !vis[i].neighborDown) ||
+								(y < -0.5f && !vis[i].neighborUp) ||
+								(z > 0.5f && !vis[i].neighborSouth) ||
+								(z < -0.5f && !vis[i].neighborNorth)) {
+							
+							tmp.setPosition(x, y, z);
+							if (tmp.isSelected()) {
+								selected = tmp;
+								selectedBlock = vis[i].getID();
+								continue;
+							}
+							map[vis[i].getID()].add(tmp);
 						}
-						map[vis[i].getID()].add(tmp);
 					}
 				}
 			}

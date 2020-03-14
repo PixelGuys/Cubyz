@@ -142,6 +142,12 @@ public class Chunk {
 					break;
 				}
 			}
+			if(neighbors[0] != null) neighbors[0].neighborWest = getsBlocked(neighbors[0], inst0.getBlock().isTransparent());
+			if(neighbors[1] != null) neighbors[1].neighborEast = getsBlocked(neighbors[1], inst0.getBlock().isTransparent());
+			if(neighbors[2] != null) neighbors[2].neighborSouth = getsBlocked(neighbors[2], inst0.getBlock().isTransparent());
+			if(neighbors[3] != null) neighbors[3].neighborNorth = getsBlocked(neighbors[3], inst0.getBlock().isTransparent());
+			if(neighbors[4] != null) neighbors[4].neighborUp = getsBlocked(neighbors[4], inst0.getBlock().isTransparent());
+			if(neighbors[5] != null) neighbors[5].neighborDown = getsBlocked(neighbors[5], inst0.getBlock().isTransparent());
 			for (int i = 0; i < neighbors.length; i++) {
 				if(neighbors[i] != null) {
 					Chunk ch = getChunk(neighbors[i].getX(), neighbors[i].getZ());
@@ -203,6 +209,12 @@ public class Chunk {
 		for(int k = 0; k < list.size(); k++) {
 			BlockInstance bi = list.get(k);
 			BlockInstance[] neighbors = bi.getNeighbors(this);
+			if(neighbors[0] != null) neighbors[0].neighborWest = getsBlocked(neighbors[0], bi.getBlock().isTransparent());
+			if(neighbors[1] != null) neighbors[1].neighborEast = getsBlocked(neighbors[1], bi.getBlock().isTransparent());
+			if(neighbors[2] != null) neighbors[2].neighborSouth = getsBlocked(neighbors[2], bi.getBlock().isTransparent());
+			if(neighbors[3] != null) neighbors[3].neighborNorth = getsBlocked(neighbors[3], bi.getBlock().isTransparent());
+			if(neighbors[4] != null) neighbors[4].neighborUp = getsBlocked(neighbors[4], bi.getBlock().isTransparent());
+			if(neighbors[5] != null) neighbors[5].neighborDown = getsBlocked(neighbors[5], bi.getBlock().isTransparent());
 			int j = bi.getY();
 			int px = bi.getX()&15;
 			int py = bi.getZ()&15;
@@ -257,6 +269,10 @@ public class Chunk {
 			return true;
 		}
 		return false;
+	}
+	
+	public boolean getsBlocked(BlockInstance bi, boolean transparent) {
+		return !(!bi.getBlock().isTransparent() && transparent);
 	}
 	
 	public boolean isGenerated() {
@@ -340,6 +356,12 @@ public class Chunk {
 		}
 		inst[x][y][z] = null;
 		BlockInstance[] neighbors = bi.getNeighbors(this);
+		if(neighbors[0] != null) neighbors[0].neighborWest = !getsBlocked(neighbors[0], bi.getBlock().isTransparent());
+		if(neighbors[1] != null) neighbors[1].neighborEast = !getsBlocked(neighbors[1], bi.getBlock().isTransparent());
+		if(neighbors[2] != null) neighbors[2].neighborSouth = !getsBlocked(neighbors[2], bi.getBlock().isTransparent());
+		if(neighbors[3] != null) neighbors[3].neighborNorth = !getsBlocked(neighbors[3], bi.getBlock().isTransparent());
+		if(neighbors[4] != null) neighbors[4].neighborUp = !getsBlocked(neighbors[4], bi.getBlock().isTransparent());
+		if(neighbors[5] != null) neighbors[5].neighborDown = !getsBlocked(neighbors[5], bi.getBlock().isTransparent());
 		for (int i = 0; i < neighbors.length; i++) {
 			BlockInstance inst = neighbors[i];
 			if (inst != null && inst != bi) {
@@ -421,6 +443,12 @@ public class Chunk {
 		}
 		inst[x][y][z] = inst0;
 		BlockInstance[] neighbors = inst0.getNeighbors(this);
+		if(neighbors[0] != null) neighbors[0].neighborWest = getsBlocked(neighbors[0], inst0.getBlock().isTransparent());
+		if(neighbors[1] != null) neighbors[1].neighborEast = getsBlocked(neighbors[1], inst0.getBlock().isTransparent());
+		if(neighbors[2] != null) neighbors[2].neighborSouth = getsBlocked(neighbors[2], inst0.getBlock().isTransparent());
+		if(neighbors[3] != null) neighbors[3].neighborNorth = getsBlocked(neighbors[3], inst0.getBlock().isTransparent());
+		if(neighbors[4] != null) neighbors[4].neighborUp = getsBlocked(neighbors[4], inst0.getBlock().isTransparent());
+		if(neighbors[5] != null) neighbors[5].neighborDown = getsBlocked(neighbors[5], inst0.getBlock().isTransparent());
 		
 		for (int i = 0; i < neighbors.length; i++) {
 			if (blocksLight(neighbors[i], inst0.getBlock().isTransparent())) {
