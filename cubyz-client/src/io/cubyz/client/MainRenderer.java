@@ -9,7 +9,10 @@ import java.util.HashMap;
 import java.util.List;
 
 import org.joml.FrustumIntersection;
+import org.joml.FrustumRayBuilder;
 import org.joml.Matrix4f;
+import org.joml.RayAabIntersection;
+import org.joml.Rayf;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 import org.lwjgl.opengl.GL13C;
@@ -53,10 +56,12 @@ public class MainRenderer implements IRenderer {
 	private FrustumCullingFilter filter;
 	private Matrix4f prjViewMatrix = new Matrix4f();
 	private FrustumIntersection frustumInt = new FrustumIntersection();
+	private FrustumRayBuilder rayBuilder = new FrustumRayBuilder();
 	private ShadowMap shadowMap;
 
 	public static final int MAX_POINT_LIGHTS = 0;
 	public static final int MAX_SPOT_LIGHTS = 0;
+	public static final Vector3f VECTOR3F_ZERO = new Vector3f(0, 0, 0);
 	private float specularPower = 16f;
 
 	public MainRenderer() {
@@ -173,6 +178,8 @@ public class MainRenderer implements IRenderer {
 		// Uses FrustumCulling on the chunks.
 		prjViewMatrix.set(window.getProjectionMatrix());
 		prjViewMatrix.mul(ctx.getCamera().getViewMatrix());
+		// TODO: RayAabIntersection
+		
 		frustumInt.set(prjViewMatrix);
 		float blockMeshBoundingRadius = 2.0f; // Is always the same for all blocks.
 		if(localPlayer != null) {
@@ -188,12 +195,13 @@ public class MainRenderer implements IRenderer {
 				BlockInstance[] vis = ch.getVisibles();
 				for (int i = 0; vis[i] != null; i++) {
 					Spatial tmp = (Spatial) vis[i].getSpatial();
-					float boundingRadius = tmp.getScale() * blockMeshBoundingRadius;
+					//float boundingRadius = tmp.getScale() * blockMeshBoundingRadius;
+					// Blocks are never scaled
 					float x = (vis[i].getX() - x0) - relX;
 					float y = vis[i].getY();
 					float z = (vis[i].getZ() - z0) - relZ;
 					// Do the frustum culling directly here instead of looping 3 times through the data which in the end isn't drawn.
-					if(frustumInt.testSphere(x, y, z, boundingRadius)) {
+					if(frustumInt.testSphere(x, y, z, blockMeshBoundingRadius)) {
 						tmp.setPosition(x, y, z);
 						if (tmp.isSelected()) {
 							selected = tmp;
@@ -205,6 +213,38 @@ public class MainRenderer implements IRenderer {
 				}
 			}
 		}
+		
+		// raycast
+		
+		/*
+		rayBuilder.set(prjViewMatrix);
+		Vector3f dir = new Vector3f();
+		RayAabIntersection aab = new RayAabIntersection();
+		for (float x = 0f; x < 1f; x += 0.1f) {
+			for (float y = 0f; y < 1f; y += 0.1f) {
+				Rayf ray = new Rayf(VECTOR3F_ZERO, rayBuilder.dir(x, y, dir));
+				aab.set(0, 0, 0, ray.dX, ray.dY, ray.dZ);
+				ArrayList<Spatial> bls = new ArrayList<Spatial>();
+				for (int id = 0; id < map.length; id++) {
+					for (Spatial spatial : map[id]) {
+						if (aab.test((float)(spatial.getPosition().x-0.5), (float)(spatial.getPosition().y-0.5), (float)(spatial.getPosition().z-0.5),
+								(float)(spatial.getPosition().x+0.5), (float)(spatial.getPosition().x+0.5), (float)(spatial.getPosition().x+0.5))) {
+							bls.add(spatial);
+						}
+					}
+				}
+				if (bls.size() > 0) {
+					Spatial closest = bls.get(0);
+					for (Spatial spatial : bls) {
+						if (spatial.getPosition().length() < closest.getPosition().length()) {
+							closest = spatial;
+						}
+					}
+					
+				}
+			}
+		}*/
+		
 		//filter.updateFrustum(window.getProjectionMatrix(), ctx.getCamera().getViewMatrix());
 		instancedMeshes = new ArrayList<>();
 		HashMap<Mesh, List<Spatial>> m = new HashMap<>();
@@ -214,9 +254,9 @@ public class MainRenderer implements IRenderer {
 			m.put(Meshes.blockMeshes.get(blocks[i]), map[i]);
 		}
 		for (Mesh mesh : m.keySet()) {
-			if (mesh instanceof InstancedMesh) {
+			//if (mesh instanceof InstancedMesh) { // always instance of instancedmesh
 				instancedMeshes.add((InstancedMesh) mesh);
-			}
+			//}
 		}
 		//filter.filter(m);
 		if (shadowMap != null) { // remember it will be disableable
