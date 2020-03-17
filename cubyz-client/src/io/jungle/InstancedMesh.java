@@ -173,7 +173,7 @@ public class InstancedMesh extends Mesh {
 	 * @param transformation
 	 * @param viewMatrix
 	 */
-	public boolean renderListInstancedNC(List<Spatial> spatials, Transformation transformation) {
+	public boolean renderListInstancedNC(List<Spatial> spatials, Transformation transformation, Matrix4f lightViewMatrix) {
 		if (numInstances == 0)
 			return false;
 		initRender();
@@ -184,7 +184,7 @@ public class InstancedMesh extends Mesh {
 			if (numInstances < curSize) {
 				setInstances(curSize);
 			}
-			//uploadData(spatials, transformation);
+			uploadData(spatials, transformation, lightViewMatrix);
 			bool = true;
 		}
 		renderChunkInstanced(spatials, transformation);

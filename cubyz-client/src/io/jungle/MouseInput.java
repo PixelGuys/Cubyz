@@ -56,7 +56,7 @@ public class MouseInput {
 				glfwSetInputMode(win.getWindowHandle(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 			}
 			else {
-				glfwSetInputMode(win.getWindowHandle(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+				glfwSetInputMode(win.getWindowHandle(), GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 			}
 			grabbed = grab;
 		}

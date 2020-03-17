@@ -202,7 +202,7 @@ public class MainRenderer implements IRenderer {
 					float y = vis[i].getY() - y0;
 					float z = (vis[i].getZ() - z0) - relZ;
 					// Do the frustum culling directly here instead of looping 3 times through the data which in the end isn't drawn.
-					if(frustumInt.testSphere(x, y, z, blockMeshBoundingRadius)) {
+					if(frustumInt.testSphere(x, y, z, 2f)) {
 						// Only draw blocks that have at least one face facing the player.
 						if(vis[i].getBlock().isTransparent() || // Ignore transparent blocks in the process, so the surface of water can still be seen from below.
 								(x > 0.5f && !vis[i].neighborEast) ||
@@ -381,7 +381,7 @@ public class MainRenderer implements IRenderer {
 				glBindTexture(GL_TEXTURE_2D, shadowMap.getDepthMapFBO().getDepthTexture().getId());
 				InstancedMesh ins = (InstancedMesh) mesh;
 				shaderProgram.setUniform("isInstanced", 1);
-				ins.renderListInstanced(map[i], transformation, lightViewMatrix);
+				ins.renderListInstancedNC(map[i], transformation, lightViewMatrix);
 			} else {
 				shaderProgram.setUniform("isInstanced", 0);
 				mesh.renderList(map[i], (Spatial gameItem) -> {
