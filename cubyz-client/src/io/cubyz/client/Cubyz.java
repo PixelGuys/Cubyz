@@ -842,9 +842,6 @@ public class Cubyz implements IGameLogic {
 						Vector3i pos = msd.getEmptyPlace(world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate());
 						Block b = world.getLocalPlayer().getInventory().getBlock(inventorySelection);
 						if (b != null && pos != null) {
-							if (world.getBlock(pos) != null) {
-								pos.y++; // happens sometimes, for now the bug fix works perfectly
-							}
 							world.placeBlock(pos.x, pos.y, pos.z, b);
 							world.getLocalPlayer().getInventory().getStack(inventorySelection).add(-1);
 						}
