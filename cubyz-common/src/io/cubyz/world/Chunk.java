@@ -499,11 +499,11 @@ public class Chunk {
 	}
 	
 	public Vector3f getMin(Player localPlayer) {
-		return new Vector3f(((ox << 4) - localPlayer.getPosition().x) - localPlayer.getPosition().relX, 0, ((oy << 4) - localPlayer.getPosition().z) - localPlayer.getPosition().relZ);
+		return new Vector3f(((ox << 4) - localPlayer.getPosition().x) - localPlayer.getPosition().relX, -localPlayer.getPosition().y, ((oy << 4) - localPlayer.getPosition().z) - localPlayer.getPosition().relZ);
 	}
 	
 	public Vector3f getMax(Player localPlayer) {
-		return new Vector3f(((ox << 4) - localPlayer.getPosition().x + 16) - localPlayer.getPosition().relX, 255, ((oy << 4) - localPlayer.getPosition().z + 16) - localPlayer.getPosition().relZ);
+		return new Vector3f(((ox << 4) - localPlayer.getPosition().x + 16) - localPlayer.getPosition().relX, 255-localPlayer.getPosition().y, ((oy << 4) - localPlayer.getPosition().z + 16) - localPlayer.getPosition().relZ);
 	}
 	
 	public byte[] save() {
