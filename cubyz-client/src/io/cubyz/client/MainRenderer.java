@@ -381,7 +381,7 @@ public class MainRenderer implements IRenderer {
 				glBindTexture(GL_TEXTURE_2D, shadowMap.getDepthMapFBO().getDepthTexture().getId());
 				InstancedMesh ins = (InstancedMesh) mesh;
 				shaderProgram.setUniform("isInstanced", 1);
-				ins.renderListInstancedNC(map[i], transformation, lightViewMatrix);
+				ins.renderListInstanced(map[i], transformation, lightViewMatrix);
 			} else {
 				shaderProgram.setUniform("isInstanced", 0);
 				mesh.renderList(map[i], (Spatial gameItem) -> {
