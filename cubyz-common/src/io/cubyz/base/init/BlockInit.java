@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import io.cubyz.api.Registry;
 import io.cubyz.blocks.Bedrock;
 import io.cubyz.blocks.Block;
+import io.cubyz.blocks.BlockGrass;
 import io.cubyz.blocks.CoalOre;
 import io.cubyz.blocks.DiamondOre;
 import io.cubyz.blocks.EmeraldOre;
@@ -35,6 +36,7 @@ public class BlockInit {
 	public static Block oakPlanks = new Block("cubyz:oak_planks", 7, WOOD);
 	public static Block sand = new Block("cubyz:sand", 5, SAND);
 	public static SnowGrass snow = new SnowGrass();
+	public static BlockGrass grassVegetation = new BlockGrass();
 	public static Block stone = new Block("cubyz:stone", 25, STONE);
 	public static WorkBench workbench = new WorkBench();
 	
@@ -81,6 +83,8 @@ public class BlockInit {
 		register(ruby);
 		
 		register(water);
+		
+		register(grassVegetation);
 		
 		reg.registerAll(BLOCKS);
 	}

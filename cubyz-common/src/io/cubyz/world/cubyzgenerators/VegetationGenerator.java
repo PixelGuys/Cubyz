@@ -41,9 +41,14 @@ public class VegetationGenerator implements FancyGenerator {
 	private static int [] vegMap = {8192, 4096, 2048, 1024, 512, 256, 142, 122, 104, 88, 74, 62, 52, 44, 38, 34, 32};
 	
 	private static void generateVegetation(Block[][][] ch, int x, int y, int h, float vegetation, float temperature, Random rand) {
-		if(temperature < 30 && vegetation > 0.4F && rand.nextInt(vegMap[(int)(vegetation*5)+6]) == 0) {
+		if (temperature < 30 && vegetation > 0.4F && rand.nextInt(vegMap[(int)(vegetation*5)+6]) == 0) {
 			generateTree(ch, x, y, h, rand.nextInt(3)+7);
-		} else if(temperature > 40 && rand.nextInt(vegMap[(int)(vegetation*10)]) == 0) {
+		} else if (temperature < 25 && vegetation > 0.2f && rand.nextInt(vegMap[(int)(vegetation*3)+13]) == 0) {
+			Block grass = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:grass_vegetation");
+			if(x >= 0 && x < 16 && y >= 0 && y < 16) {
+				ch[x][y][h] = grass;
+			}
+		} else if (temperature > 40 && rand.nextInt(vegMap[(int)(vegetation*10)]) == 0) {
 			generateCactus(ch, x, y, h, rand.nextInt(3)+3);
 		}
 	}

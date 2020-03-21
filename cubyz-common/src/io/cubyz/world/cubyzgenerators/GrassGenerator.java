@@ -13,7 +13,6 @@ public class GrassGenerator implements FancyGenerator {
 	private static Block dirt = br.getByID("cubyz:dirt");
 	@Override
 	public int getPriority() {
-		// TODO Auto-generated method stub
 		return 262144; // Comes somewhere after almost everything.
 	}
 

@@ -1,5 +1,8 @@
 package io.cubyz.world.generator;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Random;
 
 import org.joml.Vector3i;
@@ -20,23 +23,36 @@ import io.cubyz.world.cubyzgenerators.VegetationGenerator;
 
 //TODO: Add more diversity
 //TODO: Mod Access(Getting close!)
-
-/**
- * Yep, Cubyz's world is called Lifeland
- */
 public class LifelandGenerator extends WorldGenerator {
 	// Ore Utilities
 	public static Ore[] ores;
+	
 	public static void init(Ore[] ores) {
 		LifelandGenerator.ores = ores;
 	}
 	
-
-	FancyGenerator g1 = new TerrainGenerator();
-	Generator g2 = new OreGenerator(ores);
-	Generator g3 = new CaveGenerator();
-	FancyGenerator g4 = new VegetationGenerator();
-	FancyGenerator g5 = new GrassGenerator();
+	List<Generator> generators = new ArrayList<>();
+	
+	public LifelandGenerator() {
+		generators.add(new TerrainGenerator());
+		generators.add(new OreGenerator(ores));
+		generators.add(new CaveGenerator());
+		generators.add(new VegetationGenerator());
+		generators.add(new GrassGenerator());
+		generators.sort(new Comparator<Generator>() {
+			@Override
+			public int compare(Generator a, Generator b) {
+				if (a.getPriority() > b.getPriority()) {
+					return 1;
+				} else if (a.getPriority() < b.getPriority()) {
+					return -1;
+				} else {
+					return 0;
+				}
+			}
+		});
+	}
+	
 	@Override
 	public void generate(Chunk ch, World world) {
 		int ox = ch.getX();
@@ -59,14 +75,16 @@ public class LifelandGenerator extends WorldGenerator {
 			}
 		}
 		
-		// Go through all generators(TODO: make more general)
 		Random r = new Random(seed);
 		Block[][][] chunk = new Block[16][16][world.getHeight()];
-		g1.generate(r.nextLong(), ox, oy, chunk, heatMap, realHeight);
-		g2.generate(r.nextLong(), ox, oy, chunk);
-		g3.generate(r.nextLong(), ox, oy, chunk);
-		g4.generate(r.nextLong(), ox, oy, chunk, heatMap, realHeight);
-		g5.generate(r.nextLong(), ox, oy, chunk, heatMap, realHeight);
+		
+		for (Generator g : generators) {
+			if (g instanceof FancyGenerator) {
+				((FancyGenerator) g).generate(r.nextLong(), ox, oy, chunk, heatMap, realHeight);
+			} else {
+				g.generate(r.nextLong(), ox, oy, chunk);
+			}
+		}
 
 		// Place the blocks in the chunk:
 		for(int px = 0; px < 16; px++) {
