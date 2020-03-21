@@ -492,8 +492,13 @@ public class Cubyz implements IGameLogic {
 			if (Keybindings.isPressed("right")) {
 				playerInc.x = 1;
 			}
-			if (Keybindings.isPressed("jump") && world.getLocalPlayer().isOnGround()) {
-				world.getLocalPlayer().vy = 0.25F;
+			if (Keybindings.isPressed("jump")) {
+				Player localPlayer = world.getLocalPlayer();
+				if (localPlayer.isFlying()) {
+					world.getLocalPlayer().vy = 0.25F;
+				} else if (world.getLocalPlayer().isOnGround()) {
+					world.getLocalPlayer().vy = 0.25F;
+				}
 			}
 			if (Keybindings.isPressed("fall")) {
 				if (world.getLocalPlayer().isFlying()) {
