@@ -216,6 +216,11 @@ public abstract class Entity {
 		return false;
 	}
 	
+	public boolean isOnGround() {
+		Vector3i bp = new Vector3i(position.x + (int) Math.round(position.relX), (int) Math.floor(position.y), position.z + (int) Math.round(position.relZ));
+		return checkBlock(bp.x, bp.y, bp.z);
+	}
+	
 	public void update() {
 		renderPosition = position;
 	}

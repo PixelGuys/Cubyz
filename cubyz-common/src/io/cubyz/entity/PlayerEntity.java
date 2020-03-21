@@ -69,7 +69,7 @@ public class PlayerEntity extends EntityType {
 				Vector3i bp = new Vector3i(position.x + (int) Math.round(position.relX), (int) Math.floor(position.y), position.z + (int) Math.round(position.relZ));
 				float relX = position.relX +0.5F - Math.round(position.relX);
 				float relZ = position.relZ + 0.5F- Math.round(position.relZ);
-				if(checkBlock(bp.x, bp.y, bp.z)) {
+				if(isOnGround()) {
 					vy = 0;
 				}
 				else if (relX < 0.3) {
@@ -104,6 +104,11 @@ public class PlayerEntity extends EntityType {
 				// I'm really annoyed by falling into the void and needing ages to get back up.
 				if(bp.y < -100) {
 					position.y = -100;
+					vy = 0;
+				}
+			} else if (vy > 0) {
+				Vector3i bp = new Vector3i(position.x + (int) Math.round(position.relX), (int) Math.floor(position.y), position.z + (int) Math.round(position.relZ));
+				if(checkBlock(bp.x, bp.y+3, bp.z)) {
 					vy = 0;
 				}
 			}
