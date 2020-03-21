@@ -26,7 +26,7 @@ public class MouseInput {
 	public MouseInput() {
 		previousPos = new Vector2d(0, 0);
 		currentPos = new Vector2d(0, 0);
-		displVec = new Vector2f();
+		displVec = new Vector2f(0, 0);
 	}
 
 	public void clearPos(int x, int y) {

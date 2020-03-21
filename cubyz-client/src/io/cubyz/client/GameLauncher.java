@@ -2,37 +2,21 @@ package io.cubyz.client;
 
 import io.jungle.game.Game;
 import io.jungle.game.GameOptions;
-import io.jungle.game.GameOptionsPrompt;
 
 public class GameLauncher extends Game {
 
 	public static GameLauncher instance;
 	
 	public static void main(String[] args) {
-		boolean showPrompt = Boolean.parseBoolean(System.getProperty("cubyz.showStartPrompt", "false"));
 		GameLauncher.instance = new GameLauncher();
 		instance.logic = new Cubyz();
-		GameOptions opt = null;
-		
-		if (showPrompt) {
-			GameOptionsPrompt prompt = new GameOptionsPrompt();
-			prompt.setLocationRelativeTo(null);
-			prompt.setTitle("Cubyz Settings");
-			prompt.setVisible(true);
-			while (prompt.isVisible()) {
-				System.out.print(""); // Avoid bugs
-			}
-			
-			opt = prompt.generateOptions();
-		} else {
-			opt = new GameOptions();
-			opt.blending = true;
-			opt.cullFace = true;
-			opt.frustumCulling = true;
-			opt.showTriangles = false;
-			opt.fullscreen = false;
-			opt.antialiasing = false;
-		}
+		GameOptions opt = new GameOptions();
+		opt.blending = true;
+		opt.cullFace = true;
+		opt.frustumCulling = true;
+		opt.showTriangles = false;
+		opt.fullscreen = false;
+		opt.antialiasing = false;
 		
 		instance.start(opt);
 		Cubyz.log.info("Stopped!");
