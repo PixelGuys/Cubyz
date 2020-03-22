@@ -120,7 +120,10 @@ public class LocalWorld extends World {
 			threads.add(thread);
 		}
 		
-		generator = new LifelandGenerator();
+		generator = CubyzRegistries.WORLD_GENERATOR_REGISTRY.getByID("cubyz:lifeland");
+		if (generator instanceof LifelandGenerator) {
+			((LifelandGenerator) generator).sortGenerators();
+		}
 		wio = new WorldIO(this, new File("saves/" + name));
 		if (wio.hasWorldData()) {
 			wio.loadWorldData();

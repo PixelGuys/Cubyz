@@ -3,11 +3,18 @@ package io.cubyz.world.cubyzgenerators;
 import java.util.Random;
 
 import io.cubyz.api.CubyzRegistries;
+import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.world.Noise;
 import io.cubyz.world.World;
 
 public class VegetationGenerator implements FancyGenerator {
+	
+	@Override
+	public Resource getRegistryID() {
+		return new Resource("cubyz", "lifeland_vegetation");
+	}
+	
 	@Override
 	public int getPriority() {
 		return 131072; // Comes somewhere after cave generation.

@@ -3,6 +3,7 @@ package io.cubyz.world.generator;
 import org.joml.Vector3i;
 
 import io.cubyz.api.CubyzRegistries;
+import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.world.Chunk;
@@ -40,6 +41,12 @@ public class FlatlandGenerator extends WorldGenerator {
 				}
 			}
 		}
+		chunk.applyBlockChanges();
+	}
+
+	@Override
+	public Resource getRegistryID() {
+		return new Resource("cubyz", "flatland");
 	}
 
 }

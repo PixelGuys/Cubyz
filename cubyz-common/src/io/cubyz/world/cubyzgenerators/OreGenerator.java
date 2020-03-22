@@ -3,10 +3,17 @@ package io.cubyz.world.cubyzgenerators;
 import java.util.Random;
 
 import io.cubyz.api.CubyzRegistries;
+import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.Ore;
 
-public class OreGenerator implements Generator {	
+public class OreGenerator implements Generator {
+	
+	@Override
+	public Resource getRegistryID() {
+		return new Resource("cubyz", "lifeland_ore");
+	}
+	
 	@Override
 	public int getPriority() {
 		return 32768; // Somewhere before cave generation.

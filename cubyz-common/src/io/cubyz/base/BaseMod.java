@@ -17,6 +17,7 @@ import io.cubyz.entity.PlayerEntity;
 import io.cubyz.items.Item;
 import io.cubyz.items.Recipe;
 import io.cubyz.items.tools.Material;
+import io.cubyz.world.generator.*;
 
 /**
  * Mod adding Cubyz default content.
@@ -44,6 +45,7 @@ public class BaseMod {
 		// As they are independent to other (the correct order for others is block -> item (for item blocks and other items) -> entity)
 		registerRecipes(CubyzRegistries.RECIPE_REGISTRY);
 		registerMaterials(CubyzRegistries.TOOL_MATERIAL_REGISTRY);
+		registerWorldGenerators(CubyzRegistries.WORLD_GENERATOR_REGISTRY);
 		
 		CubyzRegistries.COMMAND_REGISTRY.register(new GiveCommand());
 		CubyzRegistries.COMMAND_REGISTRY.register(new ClearCommand());
@@ -67,6 +69,10 @@ public class BaseMod {
 	@EventHandler(type = "block/register")
 	public void registerBlocks(Registry<Block> reg) {
 		BlockInit.registerAll(reg);
+	}
+	
+	public void registerWorldGenerators(Registry<WorldGenerator> reg) {
+		reg.registerAll(new LifelandGenerator(), new FlatlandGenerator());
 	}
 	
 	public void registerMaterials(Registry<Material> reg) {

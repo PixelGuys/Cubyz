@@ -2,44 +2,42 @@ package io.cubyz.world.generator;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.List;
 import java.util.Random;
 
 import org.joml.Vector3i;
 
+import io.cubyz.api.IRegistryElement;
+import io.cubyz.api.Registry;
+import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.Ore;
 import io.cubyz.world.Chunk;
 import io.cubyz.world.Noise;
 import io.cubyz.world.World;
-import io.cubyz.world.cubyzgenerators.CaveGenerator;
-import io.cubyz.world.cubyzgenerators.FancyGenerator;
-import io.cubyz.world.cubyzgenerators.Generator;
-import io.cubyz.world.cubyzgenerators.GrassGenerator;
-import io.cubyz.world.cubyzgenerators.OreGenerator;
-import io.cubyz.world.cubyzgenerators.TerrainGenerator;
-import io.cubyz.world.cubyzgenerators.VegetationGenerator;
+import io.cubyz.world.cubyzgenerators.*;
 
 //TODO: Add more diversity
-//TODO: Mod Access(Getting close!)
 public class LifelandGenerator extends WorldGenerator {
 	// Ore Utilities
 	public static Ore[] ores;
 	
+	
 	public static void init(Ore[] ores) {
 		LifelandGenerator.ores = ores;
+		GENERATORS.registerAll(new TerrainGenerator(), new OreGenerator(ores), new CaveGenerator(), new VegetationGenerator(), new GrassGenerator());
 	}
 	
-	List<Generator> generators = new ArrayList<>();
+	public static final Registry<Generator> GENERATORS = new Registry<>();
+	ArrayList<Generator> sortedGenerators = new ArrayList<>();
 	
-	public LifelandGenerator() {
-		generators.add(new TerrainGenerator());
-		generators.add(new OreGenerator(ores));
-		generators.add(new CaveGenerator());
-		generators.add(new VegetationGenerator());
-		generators.add(new GrassGenerator());
-		generators.sort(new Comparator<Generator>() {
+	public void sortGenerators() {
+		sortedGenerators.clear();
+		for (IRegistryElement elem : GENERATORS.registered()) {
+			Generator g = (Generator) elem;
+			sortedGenerators.add(g);
+		}
+		sortedGenerators.sort(new Comparator<Generator>() {
 			@Override
 			public int compare(Generator a, Generator b) {
 				if (a.getPriority() > b.getPriority()) {
@@ -78,7 +76,7 @@ public class LifelandGenerator extends WorldGenerator {
 		Random r = new Random(seed);
 		Block[][][] chunk = new Block[16][16][world.getHeight()];
 		
-		for (Generator g : generators) {
+		for (Generator g : sortedGenerators) {
 			if (g instanceof FancyGenerator) {
 				((FancyGenerator) g).generate(r.nextLong(), ox, oy, chunk, heatMap, realHeight);
 			} else {
@@ -104,5 +102,10 @@ public class LifelandGenerator extends WorldGenerator {
 		}
 
 		ch.applyBlockChanges();
+	}
+
+	@Override
+	public Resource getRegistryID() {
+		return new Resource("cubyz", "lifeland");
 	}
 }

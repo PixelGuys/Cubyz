@@ -2,9 +2,16 @@ package io.cubyz.world.cubyzgenerators;
 
 import java.util.Random;
 
+import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 
 public class CaveGenerator implements Generator {
+	
+	@Override
+	public Resource getRegistryID() {
+		return new Resource("cubyz", "lifeland_cave");
+	}
+	
 	@Override
 	public int getPriority() {
 		return 65536;

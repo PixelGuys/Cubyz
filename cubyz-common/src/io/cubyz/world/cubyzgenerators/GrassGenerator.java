@@ -2,6 +2,7 @@ package io.cubyz.world.cubyzgenerators;
 
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Registry;
+import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 
 // Just a simple Generator to make sure there is grass/snow on top of every dirt block, even in a cave.
@@ -11,6 +12,12 @@ public class GrassGenerator implements FancyGenerator {
 	private static Block grass = br.getByID("cubyz:grass");
 	private static Block snow = br.getByID("cubyz:snow");
 	private static Block dirt = br.getByID("cubyz:dirt");
+	
+	@Override
+	public Resource getRegistryID() {
+		return new Resource("cubyz", "lifeland_grass");
+	}
+	
 	@Override
 	public int getPriority() {
 		return 262144; // Comes somewhere after almost everything.

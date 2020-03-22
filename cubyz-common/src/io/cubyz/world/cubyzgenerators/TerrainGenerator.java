@@ -2,13 +2,21 @@ package io.cubyz.world.cubyzgenerators;
 
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Registry;
+import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 
 public class TerrainGenerator implements FancyGenerator {
+	
 	@Override
 	public int getPriority() {
 		return 1024; // Within Cubyz the first to be executed, but mods might want to come before that for whatever reason.
 	}
+	
+	@Override
+	public Resource getRegistryID() {
+		return new Resource("cubyz", "lifeland_terrain");
+	}
+	
 	private static Registry<Block> br = CubyzRegistries.BLOCK_REGISTRY; // shortcut to BLOCK_REGISTRY
 	private static Block grass = br.getByID("cubyz:grass");
 	private static Block sand = br.getByID("cubyz:sand");
@@ -50,10 +58,7 @@ public class TerrainGenerator implements FancyGenerator {
 					} else if(j > y - 3) {
 						b = dirt;
 					} else if(j > 0) {
-						//if(ores[px][py][j] == null)
-							b = stone;
-						//else
-						//	bi = new BlockInstance(ores[px][py][j]);
+						b = stone;
 					} else {
 						b = bedrock;
 					}
