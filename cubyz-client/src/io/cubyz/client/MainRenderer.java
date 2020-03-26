@@ -168,12 +168,12 @@ public class MainRenderer implements IRenderer {
 			map = (List<Spatial>[]) new List[blocks.length];
 		}
 		
+		int arrayListCapacity = 10; // some (very) approximate of the size ArrayList would use, this is used to reduce re-allocations
+		if (map.length != 0) {
+			arrayListCapacity = blocks.length / map.length;
+		}
 		for (int i = 0; i < map.length; i++) {
-			if (map[i] == null) {
-				map[i] = new ArrayList<Spatial>();
-			} else {
-				map[i] = new ArrayList<Spatial>();
-			}
+			map[i] = new ArrayList<Spatial>(arrayListCapacity);
 		}
 		// Uses FrustumCulling on the chunks.
 		prjViewMatrix.set(window.getProjectionMatrix());
@@ -181,7 +181,6 @@ public class MainRenderer implements IRenderer {
 		// TODO: RayAabIntersection
 		
 		frustumInt.set(prjViewMatrix);
-		float blockMeshBoundingRadius = 2.0f; // Is always the same for all blocks.
 		if(localPlayer != null) {
 			// Store the position locally to prevent glitches when the updateThread changes the position.
 			Vector3fi pos = localPlayer.getPosition();
@@ -196,8 +195,6 @@ public class MainRenderer implements IRenderer {
 				BlockInstance[] vis = ch.getVisibles();
 				for (int i = 0; vis[i] != null; i++) {
 					Spatial tmp = (Spatial) vis[i].getSpatial();
-					//float boundingRadius = tmp.getScale() * blockMeshBoundingRadius;
-					// Blocks are never scaled
 					float x = (vis[i].getX() - x0) - relX;
 					float y = vis[i].getY() - y0;
 					float z = (vis[i].getZ() - z0) - relZ;
@@ -225,39 +222,7 @@ public class MainRenderer implements IRenderer {
 			}
 		}
 		
-		// raycast
-		
-		/*
-		rayBuilder.set(prjViewMatrix);
-		Vector3f dir = new Vector3f();
-		RayAabIntersection aab = new RayAabIntersection();
-		for (float x = 0f; x < 1f; x += 0.1f) {
-			for (float y = 0f; y < 1f; y += 0.1f) {
-				Rayf ray = new Rayf(VECTOR3F_ZERO, rayBuilder.dir(x, y, dir));
-				aab.set(0, 0, 0, ray.dX, ray.dY, ray.dZ);
-				ArrayList<Spatial> bls = new ArrayList<Spatial>();
-				for (int id = 0; id < map.length; id++) {
-					for (Spatial spatial : map[id]) {
-						if (aab.test((float)(spatial.getPosition().x-0.5), (float)(spatial.getPosition().y-0.5), (float)(spatial.getPosition().z-0.5),
-								(float)(spatial.getPosition().x+0.5), (float)(spatial.getPosition().x+0.5), (float)(spatial.getPosition().x+0.5))) {
-							bls.add(spatial);
-						}
-					}
-				}
-				if (bls.size() > 0) {
-					Spatial closest = bls.get(0);
-					for (Spatial spatial : bls) {
-						if (spatial.getPosition().length() < closest.getPosition().length()) {
-							closest = spatial;
-						}
-					}
-					
-				}
-			}
-		}*/
-		
-		//filter.updateFrustum(window.getProjectionMatrix(), ctx.getCamera().getViewMatrix());
-		instancedMeshes = new ArrayList<>();
+		instancedMeshes = new ArrayList<>(); // TODO: use an array because we already know the size of the list.
 		HashMap<Mesh, List<Spatial>> m = new HashMap<>();
 		for (int i = 0; i < blocks.length; i++) {
 			if (map[i].size() == 0)
