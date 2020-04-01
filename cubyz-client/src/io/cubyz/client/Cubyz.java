@@ -207,9 +207,6 @@ public class Cubyz implements IGameLogic {
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-				float red = (ore.getColor() & 0xFF0000) / 255f;
-				float blue = (ore.getColor() & 0x00FF00) / 255f;
-				float green = (ore.getColor() & 0x0000FF) / 255f;
 				Material material = new Material(tex, 0.6F); // temporaly not using texture
 				mesh.setMaterial(material);
 				Meshes.blockMeshes.put(ore, mesh);
