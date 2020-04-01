@@ -1,17 +1,21 @@
 package io.cubyz.ndt;
 
+import java.util.AbstractList;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 
 import io.cubyz.math.Bits;
 import io.cubyz.math.FloatingInteger;
 
-public class NDTContainer extends NDTTag {
+public class NDTContainer extends NDTTag implements Iterable<NDTTag> {
 
 	HashMap<String, NDTTag> tags = new HashMap<>();
 	
 	public NDTContainer() {
 		expectedLength = -1;
 		type = NDTConstants.TYPE_CONTAINER;
+		save();
 	}
 	
 	public NDTContainer(byte[] bytes) {
@@ -158,6 +162,54 @@ public class NDTContainer extends NDTTag {
 	
 	public boolean validate() {
 		return true;
+	}
+	
+	public List<NDTTag> asList() {
+		return new AbstractList<NDTTag>() {
+
+			@Override
+			public NDTTag set(int index, NDTTag tag) {
+				setTag(String.valueOf(index), tag);
+				return tag;
+			}
+			
+			@Override
+			public NDTTag get(int index) {
+				return getTag(String.valueOf(index));
+			}
+
+			@Override
+			public int size() {
+				int size = 0;
+				for (int i = 0; i < Integer.MAX_VALUE; i++) {
+					if (hasKey(String.valueOf(i))) {
+						size++;
+					} else {
+						break;
+					}
+				}
+				return size;
+			}
+			
+		};
+	}
+
+	@Override
+	public Iterator<NDTTag> iterator() {
+		return new Iterator<NDTTag>() {
+			int i = -1;
+
+			@Override
+			public boolean hasNext() {
+				return hasKey(String.valueOf(i+1));
+			}
+
+			@Override
+			public NDTTag next() {
+				return getTag(String.valueOf(i++));
+			}
+			
+		};
 	}
 	
 }

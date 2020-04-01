@@ -45,7 +45,7 @@ public class WorldIO {
 
 	public void loadWorldData() {
 		try {
-			InputStream in = new InflaterInputStream(new FileInputStream(new File(dir, "world.dat")));
+			InputStream in = new FileInputStream(new File(dir, "world.dat"));
 			byte[] len = new byte[4];
 			in.read(len);
 			int l = Bits.getInt(len, 0);
@@ -58,7 +58,7 @@ public class WorldIO {
 			world.setHeight(ndt.getInteger("height"));
 			world.setSeed(ndt.getInteger("seed"));
 			world.setGameTime(ndt.getLong("gameTime"));
-			Entity[] entities = new Entity[ndt.getInteger("entityNumber")];
+			Entity[] entities = new Entity[ndt.getInteger("entityCount")];
 			for (int i = 0; i < entities.length; i++) {
 				entities[i] = EntityIO.loadEntity(in);
 				entities[i].setWorld(world);
@@ -90,13 +90,15 @@ public class WorldIO {
 	
 	public void saveWorldData() {
 		try {
-			OutputStream out = new DeflaterOutputStream(new FileOutputStream(new File(dir, "world.dat")));
+			OutputStream out = new FileOutputStream(new File(dir, "world.dat"));
 			NDTContainer ndt = new NDTContainer();
 			ndt.setInteger("version", 1);
 			ndt.setString("name", world.getName());
 			ndt.setInteger("height", world.getHeight());
 			ndt.setInteger("seed", world.getSeed());
 			ndt.setLong("gameTime", world.getGameTime());
+			//NDTContainer customOres = new NDTContainer();
+			//ndt.setContainer("customOres", customOres);
 			ndt.setInteger("entityNumber", world.getEntities().length);
 			byte[] len = new byte[4];
 			Bits.putInt(len, 0, ndt.getData().length);
@@ -132,10 +134,6 @@ public class WorldIO {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-	}
-
-	public void loadAround(int x, int z) {
-
 	}
 
 	public void saveChunk(Chunk ch) {
