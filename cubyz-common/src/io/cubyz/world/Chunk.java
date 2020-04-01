@@ -356,12 +356,12 @@ public class Chunk {
 		}
 		inst[x][y][z] = null;
 		BlockInstance[] neighbors = bi.getNeighbors(this);
-		if(neighbors[0] != null) neighbors[0].neighborWest = !getsBlocked(neighbors[0], bi.getBlock().isTransparent());
-		if(neighbors[1] != null) neighbors[1].neighborEast = !getsBlocked(neighbors[1], bi.getBlock().isTransparent());
-		if(neighbors[2] != null) neighbors[2].neighborSouth = !getsBlocked(neighbors[2], bi.getBlock().isTransparent());
-		if(neighbors[3] != null) neighbors[3].neighborNorth = !getsBlocked(neighbors[3], bi.getBlock().isTransparent());
-		if(neighbors[4] != null) neighbors[4].neighborUp = !getsBlocked(neighbors[4], bi.getBlock().isTransparent());
-		if(neighbors[5] != null) neighbors[5].neighborDown = !getsBlocked(neighbors[5], bi.getBlock().isTransparent());
+		if(neighbors[0] != null) neighbors[0].neighborWest = false;
+		if(neighbors[1] != null) neighbors[1].neighborEast = false;
+		if(neighbors[2] != null) neighbors[2].neighborSouth = false;
+		if(neighbors[3] != null) neighbors[3].neighborNorth = false;
+		if(neighbors[4] != null) neighbors[4].neighborUp = false;
+		if(neighbors[5] != null) neighbors[5].neighborDown = false;
 		for (int i = 0; i < neighbors.length; i++) {
 			BlockInstance inst = neighbors[i];
 			if (inst != null && inst != bi) {
