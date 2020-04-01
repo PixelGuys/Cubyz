@@ -2,6 +2,7 @@ package io.cubyz.blocks;
 
 import java.util.Random;
 
+import io.cubyz.items.Item;
 import io.cubyz.ndt.NDTContainer;
 
 public class CustomOre extends Ore {
@@ -11,9 +12,14 @@ public class CustomOre extends Ore {
 	
 	public static String[] phons = new String[] {"ay", "de", "pi", "er", "op", "ha", "do", "po", "na", "ye", "si", "re"};
 	
+	public int getColor() {
+		return color;
+	}
+	
 	public static String randomName(Random rand) {
 		StringBuilder sb = new StringBuilder();
-		for (int i = 0; i < rand.nextInt(3)+1; i++) {
+		int length = rand.nextInt(3) + 1;
+		for (int i = 0; i < length; i++) {
 			sb.append(phons[rand.nextInt(phons.length)]);
 		}
 		return sb.toString();
@@ -27,8 +33,9 @@ public class CustomOre extends Ore {
 		ore.maxLength = rand.nextFloat()*10;
 		ore.maxSize = rand.nextFloat()*5;
 		ore.name = randomName(rand);
+		ore.setHardness(rand.nextInt()*30);
 		ore.setID("cubyz:custom_ore_" + index);
-		// TODO: Add texture generation.
+		ore.makeBlockDrop();
 		return ore;
 	}
 	
@@ -40,9 +47,17 @@ public class CustomOre extends Ore {
 		ore.maxLength = ndt.getFloat("maxLength");
 		ore.maxSize = ndt.getFloat("maxSize");
 		ore.name = ndt.getString("name");
+		ore.setHardness(ndt.getFloat("hardness"));
 		ore.setID(ndt.getString("id"));
-		// TODO: regenerate texture from data
+		ore.makeBlockDrop();
 		return ore;
+	}
+	
+	private void makeBlockDrop() {
+		Item bd = new Item();
+		bd.setID(getRegistryID());
+		bd.setTexture("materials/ruby.png"); // TODO: generate a proper texture
+		setBlockDrop(bd);
 	}
 	
 	public NDTContainer toNDT() {
@@ -53,6 +68,7 @@ public class CustomOre extends Ore {
 		ndt.setFloat("maxLength", maxLength);
 		ndt.setFloat("maxSize", maxSize);
 		ndt.setString("name", name);
+		ndt.setFloat("hardness", getHardness());
 		ndt.setString("id", getRegistryID().getID());
 		return ndt;
 	}

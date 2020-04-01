@@ -460,6 +460,12 @@ public class LocalWorld extends World {
 		}
 	}
 	
+	private ArrayList<CustomOre> customOres = new ArrayList<>();
+	
+	public ArrayList<CustomOre> getCustomOres() {
+		return customOres;
+	}
+	
 	// Returns the blocks, so their meshes can be created and stored.
 	public Block[] generate() {
 		if (!generated) seed = rnd.nextInt();
@@ -480,6 +486,7 @@ public class LocalWorld extends World {
 		// Generate random ores:
 		for(int i = 0; i < randomAmount; i++) {
 			blocks[ID] = CustomOre.random(i, rand);
+			customOres.add((CustomOre) blocks[ID]);
 			ores.add((Ore)blocks[ID]);
 			blocks[ID].ID = ID;
 			ID++;

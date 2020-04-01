@@ -1,5 +1,10 @@
 package io.cubyz.client;
 
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
@@ -23,6 +28,7 @@ import io.cubyz.api.Resource;
 import io.cubyz.api.Side;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
+import io.cubyz.blocks.CustomOre;
 import io.cubyz.blocks.Ore;
 import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.client.loading.LoadThread;
@@ -145,7 +151,7 @@ public class Cubyz implements IGameLogic {
 				ms.stop();
 			}
 		}
-		
+		// TODO: unload custom ore models
 		System.gc();
 	}
 
@@ -181,6 +187,38 @@ public class Cubyz implements IGameLogic {
 		world.synchronousSeek(0, 0);
 		DiscordIntegration.setStatus("Playing");
 		Cubyz.gameUI.addOverlay(new GameOverlay());
+		
+		if (world instanceof LocalWorld) { // custom ores on multiplayer later, maybe?
+			LocalWorld lw = (LocalWorld) world;
+			ArrayList<CustomOre> customOres = lw.getCustomOres();
+			for (CustomOre ore : customOres) {
+				Mesh template = cachedDefaultModels.get("cubyz:block.obj");
+				Mesh mesh = template.cloneNoMaterial();
+				BufferedImage canvas = new BufferedImage(16, 16, BufferedImage.TYPE_INT_RGB);
+				Graphics2D g2d = canvas.createGraphics();
+				g2d.setColor(new Color(ore.getColor()));
+				g2d.fillRect(0, 0, 16, 16);
+				g2d.dispose();
+				Texture tex = null;
+				try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
+					ImageIO.write(canvas, "png", os);
+					os.flush();
+					byte[] array = os.toByteArray();
+					try (ByteArrayInputStream is = new ByteArrayInputStream(array)) {
+						tex = new Texture(is);
+					}
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				float red = (ore.getColor() & 0xFF0000) / 255f;
+				float blue = (ore.getColor() & 0x00FF00) / 255f;
+				float green = (ore.getColor() & 0x0000FF) / 255f;
+				Material material = new Material(new Vector4f(red, blue, green, 1f), 0.6F); // temporaly not using texture
+				mesh.setMaterial(material);
+				System.out.println(mesh);
+				Meshes.blockMeshes.put(ore, mesh);
+			}
+		}
 		
 		SoundSource ms = Cubyz.instance.musicSource;
 		if (ms != null) {
