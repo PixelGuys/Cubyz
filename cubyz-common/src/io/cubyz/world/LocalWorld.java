@@ -14,6 +14,7 @@ import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.IRegistryElement;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
+import io.cubyz.blocks.CustomOre;
 import io.cubyz.blocks.IUpdateable;
 import io.cubyz.blocks.Ore;
 import io.cubyz.blocks.BlockEntity;
@@ -459,11 +460,12 @@ public class LocalWorld extends World {
 		}
 	}
 	
-	public void generate() {
+	// Returns the blocks, so their meshes can be created and stored.
+	public Block[] generate() {
 		if (!generated) seed = rnd.nextInt();
-		// Generate random ores:
-		//Random rand = new Random(seed);
-		//int randomAmount = 9 + (int)(Math.random()*3); // Generate 9-12 random ores.
+		Random rand = new Random(seed);
+		int randomAmount = 9 + (int)(Math.random()*3); // Generate 9-12 random ores.
+		blocks = new Block[CubyzRegistries.BLOCK_REGISTRY.registered().length+randomAmount];
 		// Set the IDs again every time a new world is loaded. This is necessary, because the random block creation would otherwise mess with it.
 		int ID = 0;
 		ArrayList<Ore> ores = new ArrayList<Ore>();
@@ -471,13 +473,22 @@ public class LocalWorld extends World {
 			Block b = (Block) ire;
 			if(!b.isTransparent()) {
 				b.ID = ID;
+				blocks[ID] = b;
 				ID++;
 			}
+		}
+		// Generate random ores:
+		for(int i = 0; i < randomAmount; i++) {
+			blocks[ID] = CustomOre.random(rand);
+			ores.add((Ore)blocks[ID]);
+			blocks[ID].ID = ID;
+			ID++;
 		}
 		for (IRegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
 			Block b = (Block) ire;
 			if(b.isTransparent()) {
 				b.ID = ID;
+				blocks[ID] = b;
 				ID++;
 			}
 			try {
@@ -486,12 +497,8 @@ public class LocalWorld extends World {
 			catch(Exception e) {}
 		}
 		LifelandGenerator.initOres(ores.toArray(new Ore[ores.size()]));
-		blocks = new Block[CubyzRegistries.BLOCK_REGISTRY.registered().length];
-		for (IRegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
-			Block b = (Block) ire;
-			blocks[b.ID] = b;
-		}
 		generated = true;
+		return blocks;
 	}
 
 	@Override

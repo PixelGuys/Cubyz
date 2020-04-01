@@ -1,5 +1,7 @@
 package io.cubyz.ui;
 
+import io.cubyz.ClientOnly;
+import io.cubyz.blocks.Block;
 import io.cubyz.client.Cubyz;
 import io.cubyz.multiplayer.server.CubyzServer;
 import io.cubyz.translate.TextKey;
@@ -40,7 +42,11 @@ public class MainMenuGUI extends MenuGUI {
 		
 		spPlay.setOnAction(() -> {
 			LocalWorld world = new LocalWorld();
-			world.generate();
+			Block[] blocks = world.generate();
+			// Generate the Block meshes:
+			for(Block b : blocks) {
+				ClientOnly.createBlockMesh.accept(b);
+			}
 			Cubyz.gameUI.setMenu(null, false); // hide main menu from UISystem.back()
 			Cubyz.loadWorld(world);
 		});

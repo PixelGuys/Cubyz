@@ -6,14 +6,14 @@ public class CustomOre extends Ore {
 
 	private int color;
 	
-	public static CustomOre random(long seed) {
-		Random rnd = new Random(seed);
+	public static CustomOre random(Random rand) {
 		CustomOre ore = new CustomOre();
-		ore.color = rnd.nextInt(0xFFFFFF);
-		ore.height = rnd.nextInt(160);
-		ore.spawns = rnd.nextInt(10);
-		ore.maxLength = rnd.nextInt(10);
-		ore.maxSize = rnd.nextInt(5);
+		ore.color = rand.nextInt(0xFFFFFF);
+		ore.height = rand.nextInt(160);
+		ore.spawns = rand.nextInt(20);
+		ore.maxLength = rand.nextInt(10);
+		ore.maxSize = rand.nextInt(5);
+		// TODO: Add texture generation.
 		return ore;
 	}
 	
