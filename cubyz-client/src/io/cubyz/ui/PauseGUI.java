@@ -1,7 +1,5 @@
 package io.cubyz.ui;
 
-import org.lwjgl.glfw.GLFW;
-
 import io.cubyz.Keybindings;
 import io.cubyz.client.Cubyz;
 import io.cubyz.ui.components.Button;
@@ -71,6 +69,7 @@ public class PauseGUI extends MenuGUI {
 			Cubyz.mouse.setGrabbed(true);
 			Cubyz.gameUI.setMenu(null);
 		}
+		if(resume == null) init(nvg); // Prevents a bug that sometimes occurs.
 		resume.setPosition(win.getWidth() / 2 - 100, 100);
 		exit.setPosition(win.getWidth() / 2 - 100, win.getHeight() - 200);
 		reload.setPosition(win.getWidth() / 2 - 100, win.getHeight() - 300);
