@@ -3,7 +3,9 @@ package io.cubyz.multiplayer.server;
 import java.util.HashMap;
 import java.util.UUID;
 
+import io.cubyz.ClientOnly;
 import io.cubyz.Constants;
+import io.cubyz.blocks.Block;
 import io.cubyz.multiplayer.Packet;
 import io.cubyz.world.LocalWorld;
 import io.netty.buffer.ByteBuf;
@@ -53,7 +55,11 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 		onlineMode = settings.onlineMode;
 		isInternal = settings.internal;
 		world = new LocalWorld();
-		world.generate();
+		Block[] blocks = world.generate();
+		// Generate the Block meshes:
+		for(Block b : blocks) {
+			ClientOnly.createBlockMesh.accept(b);
+		}
 		th = new Thread(() -> {
 			while (true) {
 				for (String uuid : clients.keySet()) {
