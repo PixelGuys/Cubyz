@@ -21,10 +21,8 @@ public class OreGenerator implements Generator {
 	
 	private static Block stone = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:stone");
 
-	public Ore[] ores;
-	public OreGenerator(Ore[] o) {
-		ores = o;
-	}
+	public static Ore[] ores;
+	public OreGenerator() {}
 
 
 	// Works basically similar to cave generation, but considers a lot less chunks and has a few other differences.

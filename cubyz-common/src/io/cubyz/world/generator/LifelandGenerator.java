@@ -19,13 +19,13 @@ import io.cubyz.world.cubyzgenerators.*;
 
 //TODO: Add more diversity
 public class LifelandGenerator extends WorldGenerator {
-	// Ore Utilities
-	public static Ore[] ores;
 	
+	public static void init() {
+		GENERATORS.registerAll(new TerrainGenerator(), new OreGenerator(), new CaveGenerator(), new VegetationGenerator(), new GrassGenerator());
+	}
 	
-	public static void init(Ore[] ores) {
-		LifelandGenerator.ores = ores;
-		GENERATORS.registerAll(new TerrainGenerator(), new OreGenerator(ores), new CaveGenerator(), new VegetationGenerator(), new GrassGenerator());
+	public static void initOres(Ore[] ores) {
+		OreGenerator.ores = ores;
 	}
 	
 	public static final Registry<Generator> GENERATORS = new Registry<>();

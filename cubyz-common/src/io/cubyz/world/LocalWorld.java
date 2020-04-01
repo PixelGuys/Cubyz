@@ -15,6 +15,7 @@ import io.cubyz.api.IRegistryElement;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.IUpdateable;
+import io.cubyz.blocks.Ore;
 import io.cubyz.blocks.BlockEntity;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
@@ -460,6 +461,31 @@ public class LocalWorld extends World {
 	
 	public void generate() {
 		if (!generated) seed = rnd.nextInt();
+		// Generate random ores:
+		//Random rand = new Random(seed);
+		//int randomAmount = 9 + (int)(Math.random()*3); // Generate 9-12 random ores.
+		// Set the IDs again every time a new world is loaded. This is necessary, because the random block creation would otherwise mess with it.
+		int ID = 0;
+		ArrayList<Ore> ores = new ArrayList<Ore>();
+		for (IRegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
+			Block b = (Block) ire;
+			if(!b.isTransparent()) {
+				b.ID = ID;
+				ID++;
+			}
+		}
+		for (IRegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
+			Block b = (Block) ire;
+			if(b.isTransparent()) {
+				b.ID = ID;
+				ID++;
+			}
+			try {
+				ores.add((Ore)b);
+			}
+			catch(Exception e) {}
+		}
+		LifelandGenerator.initOres(ores.toArray(new Ore[ores.size()]));
 		blocks = new Block[CubyzRegistries.BLOCK_REGISTRY.registered().length];
 		for (IRegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
 			Block b = (Block) ire;

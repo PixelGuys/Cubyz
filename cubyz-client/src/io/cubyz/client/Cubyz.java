@@ -413,27 +413,7 @@ public class Cubyz implements IGameLogic {
 		}
 		
 		LoadThread.addOnLoadFinished(() -> {
-			int ID = 0;
-			ArrayList<Ore> ores = new ArrayList<Ore>();
-			for (IRegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
-				Block b = (Block) ire;
-				if(!b.isTransparent()) {
-					b.ID = ID;
-					ID++;
-				}
-			}
-			for (IRegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
-				Block b = (Block) ire;
-				if(b.isTransparent()) {
-					b.ID = ID;
-					ID++;
-				}
-				try {
-					ores.add((Ore)b);
-				}
-				catch(Exception e) {}
-			}
-			LifelandGenerator.init(ores.toArray(new Ore[ores.size()]));
+			LifelandGenerator.init();
 			
 			sound = new SoundManager();
 			try {
