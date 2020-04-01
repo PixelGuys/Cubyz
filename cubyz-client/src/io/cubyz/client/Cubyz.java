@@ -7,6 +7,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.logging.*;
@@ -199,23 +200,18 @@ public class Cubyz implements IGameLogic {
 				g2d.setColor(new Color(ore.getColor()));
 				g2d.fillRect(0, 0, 16, 16);
 				g2d.dispose();
-				Texture tex = null;
-				try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
-					ImageIO.write(canvas, "png", os);
-					os.flush();
-					byte[] array = os.toByteArray();
-					try (ByteArrayInputStream is = new ByteArrayInputStream(array)) {
-						tex = new Texture(is);
-					}
+				InputStream is = TextureConverter.fromBufferedImage(canvas);
+				Texture tex = new Texture(is);
+				try {
+					is.close();
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
 				float red = (ore.getColor() & 0xFF0000) / 255f;
 				float blue = (ore.getColor() & 0x00FF00) / 255f;
 				float green = (ore.getColor() & 0x0000FF) / 255f;
-				Material material = new Material(new Vector4f(red, blue, green, 1f), 0.6F); // temporaly not using texture
+				Material material = new Material(tex, 0.6F); // temporaly not using texture
 				mesh.setMaterial(material);
-				System.out.println(mesh);
 				Meshes.blockMeshes.put(ore, mesh);
 			}
 		}
