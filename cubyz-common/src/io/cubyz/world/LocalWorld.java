@@ -479,7 +479,7 @@ public class LocalWorld extends World {
 		}
 		// Generate random ores:
 		for(int i = 0; i < randomAmount; i++) {
-			blocks[ID] = CustomOre.random(rand);
+			blocks[ID] = CustomOre.random(i, rand);
 			ores.add((Ore)blocks[ID]);
 			blocks[ID].ID = ID;
 			ID++;
