@@ -65,8 +65,18 @@
 			</properties>
 		</profile>
 	</profiles>
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.lwjgl</groupId>
+				<artifactId>lwjgl-bom</artifactId>
+				<version>${lwjgl.version}</version>
+				<scope>import</scope>
+				<type>pom</type>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 	<dependencies>
-		<!-- Cubyz dependencies -->
 		<dependency>
 			<groupId>club.minnced</groupId>
 			<artifactId>java-discord-rpc</artifactId>
@@ -82,49 +92,41 @@
 			<artifactId>reflections</artifactId>
 			<version>0.9.11</version>
 		</dependency>
-
-		<!-- Jungle dependencies -->
+		
 		<!-- LWJGL Natives -->
 		<dependency>
 			<groupId>org.lwjgl</groupId>
 			<artifactId>lwjgl</artifactId>
-			<version>${lwjgl.version}</version>
 			<classifier>${lwjgl.natives}</classifier>
 		</dependency>
 		<dependency>
 			<groupId>org.lwjgl</groupId>
 			<artifactId>lwjgl-glfw</artifactId>
-			<version>${lwjgl.version}</version>
 			<classifier>${lwjgl.natives}</classifier>
 		</dependency>
 		<dependency>
 			<groupId>org.lwjgl</groupId>
 			<artifactId>lwjgl-stb</artifactId>
-			<version>${lwjgl.version}</version>
 			<classifier>${lwjgl.natives}</classifier>
 		</dependency>
 		<dependency>
 			<groupId>org.lwjgl</groupId>
 			<artifactId>lwjgl-openal</artifactId>
-			<version>${lwjgl.version}</version>
 			<classifier>${lwjgl.natives}</classifier>
 		</dependency>
 		<dependency>
 			<groupId>org.lwjgl</groupId>
 			<artifactId>lwjgl-opengl</artifactId>
-			<version>${lwjgl.version}</version>
 			<classifier>${lwjgl.natives}</classifier>
 		</dependency>
 		<dependency>
 			<groupId>org.lwjgl</groupId>
 			<artifactId>lwjgl-assimp</artifactId>
-			<version>${lwjgl.version}</version>
 			<classifier>${lwjgl.natives}</classifier>
 		</dependency>
 		<dependency>
 			<groupId>org.lwjgl</groupId>
 			<artifactId>lwjgl-nanovg</artifactId>
-			<version>${lwjgl.version}</version>
 			<classifier>${lwjgl.natives}</classifier>
 		</dependency>
 
@@ -132,37 +134,30 @@
 		<dependency>
 			<groupId>org.lwjgl</groupId>
 			<artifactId>lwjgl</artifactId>
-			<version>${lwjgl.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.lwjgl</groupId>
 			<artifactId>lwjgl-glfw</artifactId>
-			<version>${lwjgl.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.lwjgl</groupId>
 			<artifactId>lwjgl-openal</artifactId>
-			<version>${lwjgl.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.lwjgl</groupId>
 			<artifactId>lwjgl-opengl</artifactId>
-			<version>${lwjgl.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.lwjgl</groupId>
 			<artifactId>lwjgl-assimp</artifactId>
-			<version>${lwjgl.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.lwjgl</groupId>
 			<artifactId>lwjgl-stb</artifactId>
-			<version>${lwjgl.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.lwjgl</groupId>
 			<artifactId>lwjgl-nanovg</artifactId>
-			<version>${lwjgl.version}</version>
 		</dependency>
 
 		<!-- Others -->
