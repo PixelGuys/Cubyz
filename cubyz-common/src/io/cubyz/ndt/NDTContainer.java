@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
+import io.cubyz.Constants;
 import io.cubyz.math.Bits;
 import io.cubyz.math.FloatingInteger;
 
@@ -32,6 +33,7 @@ public class NDTContainer extends NDTTag implements Iterable<NDTTag> {
 		return n;
 	}
 	
+	/** Subarray from s (inclusive) to e (exclusive) **/
 	byte[] sub(int s, int e) {
 		byte[] arr = new byte[e - s];
 		for (int i = 0; i < e - s; i++) {
@@ -42,14 +44,14 @@ public class NDTContainer extends NDTTag implements Iterable<NDTTag> {
 	
 	void load() {
 		tags = new HashMap<>();
-		short entries = Bits.getShort(content, 0);
-		int addr = 2;
-		for (int i = 0; i < entries; i++) {
-			short len = Bits.getShort(content, addr);
-			short size = Bits.getShort(content, addr+2);
+		int count = Bits.getInt(content, 0);
+		int addr = 4;
+		for (int i = 0; i < count; i++) {
+			int len = Bits.getInt(content, addr);
+			int size = Bits.getInt(content, addr+4);
 			NDTString key = new NDTString();
-			key.setBytes(sub(addr+4, addr+len+4));
-			addr += len + 4;
+			key.setBytes(sub(addr+8, addr+len+8));
+			addr += len + 8;
 			NDTTag tag = NDTTag.fromBytes(sub(addr, addr+size+1));
 			tags.put(key.getValue(), tag);
 			addr += size+1;
@@ -57,24 +59,24 @@ public class NDTContainer extends NDTTag implements Iterable<NDTTag> {
 	}
 	
 	void save() {
-		int size = 2;
+		int size = 4;
 		for (String key : tags.keySet()) {
-			size += 4;
-			size += tags.get(key).getData().length+1;
-			size += key.length() + 2;
+			size += 8; // key length and object length
+			size += key.getBytes(Constants.CHARSET).length; // the key itself
+			size += 1 + tags.get(key).getData().length; // tag type + object data
 		}
 		content = new byte[size];
 		
-		Bits.putShort(content, 0, (short) tags.size());
-		int addr = 2;
+		Bits.putInt(content, 0, tags.size());
+		int addr = 4;
 		for (String key : tags.keySet()) {
 			NDTTag tag = tags.get(key);
-			Bits.putShort(content, addr, (short) (key.length()+2));
-			Bits.putShort(content, addr+2, (short) (tag.getData().length));
-			NDTString tagKey = new NDTString();
-			tagKey.setValue(key);
-			System.arraycopy(tagKey.getData(), 0, content, addr+4, tagKey.getData().length);
-			addr += tagKey.getData().length + 4;
+			NDTString keyTag = new NDTString();
+			keyTag.setValue(key);
+			Bits.putInt(content, addr, keyTag.getData().length);
+			Bits.putInt(content, addr+4, tag.getData().length);
+			System.arraycopy(keyTag.getData(), 0, content, addr+8, keyTag.getData().length);
+			addr += keyTag.getData().length + 8;
 			content[addr] = tag.type;
 			System.arraycopy(tag.getData(), 0, content, addr+1, tag.getData().length);
 			addr += tag.getData().length + 1;

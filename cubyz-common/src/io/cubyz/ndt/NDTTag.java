@@ -1,5 +1,7 @@
 package io.cubyz.ndt;
 
+import io.cubyz.CubyzLogger;
+
 /**
  * NDT (Named Data Tag)
  * @author zenith391
@@ -61,6 +63,7 @@ public class NDTTag {
 			ndt.setBytes(tagBytes);
 			return ndt;
 		}
+		CubyzLogger.instance.warning("Unknown NDT tag type: " + bytes[0]);
 		return null;
 	}
 	

@@ -20,11 +20,15 @@ public class NDTString extends NDTTag {
 	}
 	
 	public void setValue(String str) {
-		content = Constants.CHARSET.encode(str).array();
+		ByteBuffer b = Constants.CHARSET.encode(str);
+		content = new byte[b.limit()];
+		for (int i = 0; i < b.limit(); i++) {
+			content[i] = b.get(i);
+		}
 	}
 	
 	public boolean validate() {
-		return getLength() == content.length-2;
+		return true;
 	}
 	
 	public String toString() {

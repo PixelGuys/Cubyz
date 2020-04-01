@@ -9,7 +9,7 @@ public class Game {
 	protected IGameLogic logic;
 	private GameOptions opt;
 	private Thread updateThread;
-	double secsPerUpdate = 1d / 40d; // TODO: fix; always was supposed to be 30/s but somehow for that the value needs to be 1 / 40d
+	double secsPerUpdate = 1d / 30d;
 	private int targetFps = 60;
 	
 	private int fps;
@@ -40,24 +40,20 @@ public class Game {
 	}
 	
 	public void updateLoop() {
-		double steps = 0.0;
 		double previous = getTime() + 1;
 		double loopStartTime = getTime();
 		int updates = 0;
 		while (running) {
 			loopStartTime = getTime();
-			while (steps >= secsPerUpdate) {
-				handleInput();
-				update();
-				steps -= secsPerUpdate;
-				updates++;
-			}
+			handleInput();
+			update();
+			updates++;
 			if (getTime() > previous) {
 				previous = getTime() + 1;
 				ups = updates;
 				updates = 0;
 			}
-			steps += getTime() - loopStartTime;
+			sync(loopStartTime, secsPerUpdate);
 		}
 	}
 
@@ -105,12 +101,11 @@ public class Game {
 			
 			render();
 			++frames;
-			sync(loopStartTime);
+			sync(loopStartTime, 1 / 60);
 		}
 	}
 
-	private void sync(double loopStartTime) {
-		float loopSlot = 1f / 60;
+	private void sync(double loopStartTime, double loopSlot) {
 		double endTime = loopStartTime + loopSlot;
 		while (getTime() < endTime) {
 			try {

@@ -49,7 +49,7 @@ public class WorldIO {
 			byte[] len = new byte[4];
 			in.read(len);
 			int l = Bits.getInt(len, 0);
-			
+			System.out.println(l);
 			byte[] dst = new byte[l];
 			in.read(dst);
 			
@@ -99,7 +99,7 @@ public class WorldIO {
 			ndt.setLong("gameTime", world.getGameTime());
 			//NDTContainer customOres = new NDTContainer();
 			//ndt.setContainer("customOres", customOres);
-			ndt.setInteger("entityNumber", world.getEntities().length);
+			ndt.setInteger("entityCount", world.getEntities().length);
 			byte[] len = new byte[4];
 			Bits.putInt(len, 0, ndt.getData().length);
 			out.write(len);
