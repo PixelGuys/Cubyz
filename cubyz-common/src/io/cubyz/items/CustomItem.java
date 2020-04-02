@@ -4,7 +4,7 @@ import io.cubyz.blocks.CustomOre;
 import io.cubyz.translate.TextKey;
 
 public class CustomItem extends Item {
-	private static final int GEM = 0, METAL = 1;// More to come.
+	private static final int GEM = 0, METAL = 1, CRYSTAL = 2;// More to come.
 	private int color;
 	int type;
 	public int getColor() {
@@ -15,11 +15,17 @@ public class CustomItem extends Item {
 		return type == GEM;
 	}
 	
+	public boolean isCrystal() {
+		return type == CRYSTAL;
+	}
+	
 	public static CustomItem fromOre(CustomOre ore) {
 		CustomItem item = new CustomItem();
 		item.color = ore.getColor();
 		if(ore.getName().endsWith("um")) {
 			item.type = METAL;
+		} else if(ore.getName().endsWith("ite")) {
+				item.type = CRYSTAL;
 		} else {
 			item.type = GEM;
 		}

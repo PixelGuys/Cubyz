@@ -224,7 +224,11 @@ public class Cubyz implements IGameLogic {
 			}
 			ArrayList<CustomItem> customItems = lw.getCustomItems();
 			for (CustomItem item : customItems) {
-				BufferedImage canvas = getImage("assets/cubyz/textures/items/materials/templates/"+"gem1"+".png"); // TODO: More gem types.
+				BufferedImage canvas;
+				if(item.isGem())
+					canvas = getImage("assets/cubyz/textures/items/materials/templates/"+"gem1"+".png"); // TODO: More gem types.
+				else
+					canvas = getImage("assets/cubyz/textures/items/materials/templates/"+"crystal1"+".png"); // TODO: More crystal types.
 				for(int x = 0; x < 16; x++) {
 					for(int y = 0; y < 16; y++) {
 						int color = item.getColor() | 0x1f1f1f;
