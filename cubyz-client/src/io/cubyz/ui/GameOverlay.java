@@ -28,11 +28,13 @@ public class GameOverlay extends MenuGUI {
 	public void render(long nvg, Window win) {
 		NGraphics.drawImage(crosshair, win.getWidth() / 2 - 16, win.getHeight() / 2 - 16, 32, 32);
 		NGraphics.setColor(0, 0, 0);
-		for(int i = 0; i < 8; i++) {
-			inv[i].reference = Cubyz.world.getLocalPlayer().getInventory().getStack(i); // without it, if moved in inventory, stack won't refresh
-			inv[i].render(nvg, win);
+		if(!(Cubyz.gameUI.getMenuGUI() instanceof GeneralInventory)) {
+			NGraphics.drawImage(selection, win.getWidth()/2 - 254 + Cubyz.inventorySelection*64, win.getHeight() - 62, 60, 60);
+			for(int i = 0; i < 8; i++) {
+				inv[i].reference = Cubyz.world.getLocalPlayer().getInventory().getStack(i); // without it, if moved in inventory, stack won't refresh
+				inv[i].render(nvg, win);
+			}
 		}
-		NGraphics.drawImage(selection, win.getWidth()/2 - 254 + Cubyz.inventorySelection*64, win.getHeight() - 62, 60, 60);
 	}
 
 	@Override
