@@ -303,12 +303,15 @@ public class Cubyz implements IGameLogic {
 				Texture tex = null;
 				Mesh mesh = null;
 				BlockModel bm = null;
-				try {
-					bm = ResourceUtilities.loadModel(rsc);
-				} catch (IOException e) {
-					CubyzLogger.i.warning(rsc + " model not found");
-					//e.printStackTrace();
+				if (block.generatesModelAtRuntime()) {
 					bm = ResourceUtilities.loadModel(new Resource("cubyz:undefined"));
+				} else {
+					try {
+						bm = ResourceUtilities.loadModel(rsc);
+					} catch (IOException e) {
+						CubyzLogger.i.warning(rsc + " model not found");
+						bm = ResourceUtilities.loadModel(new Resource("cubyz:undefined"));
+					}
 				}
 				
 				// Cached meshes

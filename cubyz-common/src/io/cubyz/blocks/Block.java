@@ -74,6 +74,10 @@ public class Block implements IRegistryElement {
 		return texConverted;
 	}
 	
+	public boolean generatesModelAtRuntime() {
+		return false;
+	}
+	
 	public void init() {}
 	
 	public Resource getRegistryID() {

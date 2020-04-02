@@ -7,6 +7,7 @@ import io.cubyz.blocks.Block;
 import io.cubyz.client.Cubyz;
 import io.cubyz.save.WorldIO;
 import io.cubyz.ui.components.Button;
+import io.cubyz.world.CustomObject;
 import io.cubyz.world.LocalWorld;
 import io.jungle.Window;
 
@@ -28,7 +29,9 @@ public class SaveSelectorGUI extends MenuGUI {
 				LocalWorld world = new LocalWorld(name);
 				Block[] blocks = world.generate();
 				for(Block bl : blocks) {
-					ClientOnly.createBlockMesh.accept(bl);
+					if (bl instanceof CustomObject) {
+						ClientOnly.createBlockMesh.accept(bl);
+					}
 				}
 				Cubyz.gameUI.setMenu(null, false); // hide from UISystem.back()
 				Cubyz.loadWorld(world);

@@ -4,8 +4,9 @@ import java.util.Random;
 
 import io.cubyz.items.Item;
 import io.cubyz.ndt.NDTContainer;
+import io.cubyz.world.CustomObject;
 
-public class CustomOre extends Ore {
+public class CustomOre extends Ore implements CustomObject {
 
 	private int color;
 	private String name;
@@ -152,6 +153,10 @@ public class CustomOre extends Ore {
 		ndt.setFloat("hardness", getHardness());
 		ndt.setString("id", getRegistryID().getID());
 		return ndt;
+	}
+	
+	public boolean generatesModelAtRuntime() {
+		return true;
 	}
 	
 }
