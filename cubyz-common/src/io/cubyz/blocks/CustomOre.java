@@ -9,6 +9,7 @@ public class CustomOre extends Ore {
 
 	private int color;
 	private String name;
+	public int template;
 
 	public static String[] prefixes = new String[] {"Al", "An", "Ar", "Be", "Bo", "Bro", "Ca", "Chlor", "Co", "Fer", "Fluo", "Gr", "Ha", "Hydro", "Ind", "Ka", "Kr", "Lith", "Magne", "Meta", "Natr", "Ni", "Osm", "Phos", "Pyr", "Rho", "Sider", "Str", "Tellur", "Thor", "Uran", "Vana", "Xanth", "Yttr", "Zinc", "Zirc"};
 	public static String[] phons = new String[] {"ay", "de", "pi", "er", "op", "ha", "do", "po", "na", "ye", "si", "re"};
@@ -109,7 +110,8 @@ public class CustomOre extends Ore {
 		ore.spawns = rand.nextFloat()*20;
 		ore.maxLength = rand.nextFloat()*10;
 		ore.maxSize = rand.nextFloat()*5;
-		ore.name = randomName(rand);
+		ore.name = randomName(new Random(rand.nextLong())); // Use a new random, so an update in the name generator won't change all other facts about custom ores.
+		ore.template = rand.nextInt(5)+1; // UPDATE THIS WHEN YOU ADD MORE TEMPLATES!
 		ore.setHardness(rand.nextInt()*30);
 		ore.setID("cubyz:custom_ore_" + index);
 		ore.makeBlockDrop();
@@ -124,6 +126,7 @@ public class CustomOre extends Ore {
 		ore.maxLength = ndt.getFloat("maxLength");
 		ore.maxSize = ndt.getFloat("maxSize");
 		ore.name = ndt.getString("name");
+		ore.template = ndt.getInteger("template");
 		ore.setHardness(ndt.getFloat("hardness"));
 		ore.setID(ndt.getString("id"));
 		ore.makeBlockDrop();
@@ -141,6 +144,7 @@ public class CustomOre extends Ore {
 		NDTContainer ndt = new NDTContainer();
 		ndt.setInteger("color", color);
 		ndt.setInteger("height", height);
+		ndt.setInteger("template", template);
 		ndt.setFloat("spawnRate", spawns);
 		ndt.setFloat("maxLength", maxLength);
 		ndt.setFloat("maxSize", maxSize);

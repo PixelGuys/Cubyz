@@ -195,12 +195,13 @@ public class Cubyz implements IGameLogic {
 			for (CustomOre ore : customOres) {
 				Mesh template = cachedDefaultModels.get("cubyz:block.obj");
 				Mesh mesh = template.cloneNoMaterial();
-				BufferedImage canvas = getImage("assets/cubyz/textures/blocks/stone.png");
+				BufferedImage canvas = new BufferedImage(32, 32, BufferedImage.TYPE_INT_RGB);
+				BufferedImage stone = getImage("assets/cubyz/textures/blocks/stone.png");
 				BufferedImage templateImg = getImage("assets/cubyz/textures/blocks/ore_templates/template"+ore.template+".png");
-				for(int x = 0; x < canvas.getWidth(); x++) {
-					for(int y = 0; y < canvas.getHeight(); y++) {
-						int color = canvas.getRGB(x, y);
-						int a = templateImg.getRGB(x, y) >>> 24;
+				for(int x = 0; x < 32; x++) {
+					for(int y = 0; y < 32; y++) {
+						int color = stone.getRGB(x%16, y%16);
+						int a = templateImg.getRGB(x%16, y%16) >>> 24;
 						int rBG = (color >>> 16) & 255;
 						int gBG = (color >>> 8) & 255;
 						int bBG = color & 255;
@@ -222,7 +223,8 @@ public class Cubyz implements IGameLogic {
 				}
 				Material material = new Material(tex, 0.6F); // temporaly not using texture
 				mesh.setMaterial(material);
-				Meshes.blockMeshes.put(ore, mesh);
+				Meshes.blockMeshes.get(ore).setMaterial(material); // Use a small workaround for the block visibility bug. Don't create a new mesh, but use the default mesh, that was previously generated.
+				//Meshes.blockMeshes.put(ore, mesh);
 			}
 		}
 		
