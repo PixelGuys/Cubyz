@@ -41,14 +41,7 @@ public class MainMenuGUI extends MenuGUI {
 		titleLabel.setFont(new Font("Title", 72.f));
 		
 		spPlay.setOnAction(() -> {
-			LocalWorld world = new LocalWorld();
-			Block[] blocks = world.generate();
-			// Generate the Block meshes:
-			for(Block b : blocks) {
-				ClientOnly.createBlockMesh.accept(b);
-			}
-			Cubyz.gameUI.setMenu(null, false); // hide main menu from UISystem.back()
-			Cubyz.loadWorld(world);
+			Cubyz.gameUI.setMenu(new SaveSelectorGUI());
 		});
 		
 		mpPlay.setOnAction(() -> {

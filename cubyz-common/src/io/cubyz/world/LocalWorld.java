@@ -110,11 +110,15 @@ public class LocalWorld extends World {
 	}
 	
 	public LocalWorld() {
-		name = "World";
+		this("World");
+	}
+	
+	public LocalWorld(String name) {
+		this.name = name;
 		chunks = new ArrayList<>();
 		visibleChunks = new Chunk[0];
 		
-		for (int i = 0; i < Runtime.getRuntime().availableProcessors()*2; i++) {
+		for (int i = 0; i < Runtime.getRuntime().availableProcessors(); i++) {
 			ChunkGenerationThread thread = new ChunkGenerationThread();
 			thread.setName("Local-Chunk-Thread-" + i);
 			thread.setDaemon(true);
