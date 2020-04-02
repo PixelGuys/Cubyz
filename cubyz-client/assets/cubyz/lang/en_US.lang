@@ -12,3 +12,7 @@ gui.cubyz.pause.exit=Exit to main menu
 gui.cubyz.pause.resume=Resume
 gui.cubyz.debug.reload=Reload
 lang.name=English
+
+# Blocks
+block.cubyz.dirt.name=Dirt
+block.cubyz.cobblestone.name=Cobblestone

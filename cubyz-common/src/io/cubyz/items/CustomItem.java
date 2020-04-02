@@ -1,9 +1,10 @@
 package io.cubyz.items;
 
 import io.cubyz.blocks.CustomOre;
+import io.cubyz.translate.TextKey;
 
 public class CustomItem extends Item {
-	private static int GEM = 0, METAL = 1;// More to come.
+	private static final int GEM = 0, METAL = 1;// More to come.
 	private int color;
 	int type;
 	public int getColor() {
@@ -23,6 +24,7 @@ public class CustomItem extends Item {
 			item.type = GEM;
 		}
 		item.setID(ore.getRegistryID());
+		item.setName(new TextKey(ore.getName()));
 		return item;
 	}
 }

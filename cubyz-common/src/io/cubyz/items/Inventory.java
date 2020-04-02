@@ -66,7 +66,7 @@ public class Inventory {
 			if (stack.getItem() != null) {
 				ndt.setString("item", stack.getItem().getRegistryID().toString());
 				ndt.setInteger("amount", stack.getAmount());
-				container.setContainer("item_" + i, ndt);
+				container.setContainer(String.valueOf(i), ndt);
 			}
 		}
 		return container;

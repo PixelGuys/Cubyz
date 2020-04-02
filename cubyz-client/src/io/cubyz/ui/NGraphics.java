@@ -36,8 +36,6 @@ public class NGraphics {
 	 */
 	private static int eWidth, eHeight;
 	
-	private static final boolean LOG_OPERATIONS = Boolean.parseBoolean(System.getProperty("nanovg.logOperations", "false"));
-	
 	private static Font font;
 	
 	// necessary to avoid the bytebuffer getting freed by the GC
@@ -49,8 +47,6 @@ public class NGraphics {
 	}
 	
 	public static int loadImage(String path) {
-		if (LOG_OPERATIONS)
-			CubyzLogger.instance.fine("[NGRAPHICS] Load Image " + path);
 		String [] paths = path.split("#");
 		if(paths.length == 1)
 			return nvgCreateImage(nvg, paths[0], 0);
@@ -59,7 +55,7 @@ public class NGraphics {
 			buf = TextureConverter.byteBuffer(TextureConverter.compose(paths));
 			
 			composedTextures.put(path, buf);
-			composedTexturesIds.put(path, nvgCreateImageMem(nvg, 0, buf));
+			composedTexturesIds.put(path, nvgCreateImageMem(nvg, NVG_IMAGE_NEAREST, buf));
 		}
 		return composedTexturesIds.get(path);
 	}
@@ -76,8 +72,6 @@ public class NGraphics {
 	}
 	
 	public static void drawImage(int id, int x, int y, int width, int height) {
-		if (LOG_OPERATIONS)
-			CubyzLogger.instance.fine("[NGRAPHICS] draw image " + id + " at " + x + ", " + y + " with size " + width + ", " + height);
 		eWidth = (int) (width * UISystem.guiScale);
 		eHeight = (int) (height * UISystem.guiScale);
 		imagePaint = nvgImagePattern(nvg, x-((eWidth-width)/2), y-((eHeight-height)/2), eWidth, eHeight, 0, id, 1f, imagePaint);
@@ -88,17 +82,13 @@ public class NGraphics {
 	}
 	
 	public static void fillCircle(int x, int y, int radius) {
-		if (LOG_OPERATIONS)
-			CubyzLogger.instance.fine("[NGRAPHICS] fill circle at " + x + ", " + y + " with radius " + radius);
 		nvgBeginPath(nvg);
 			nvgCircle(nvg, x*UISystem.guiScale, y*UISystem.guiScale, radius*UISystem.guiScale);
 		nvgFillColor(nvg, color);
 		nvgFill(nvg);
 	}
 	
-	public static void drawRect(int x, int y, int width, int height) {
-		if (LOG_OPERATIONS)
-			CubyzLogger.instance.fine("[NGRAPHICS] draw rect at " + x + ", " + y + " with size " + width + ", " + height);
+	public static void drawRect(float x, float y, float width, float height) {
 		eWidth = (int) (width * UISystem.guiScale);
 		eHeight = (int) (height * UISystem.guiScale);
 		nvgBeginPath(nvg);
@@ -107,9 +97,7 @@ public class NGraphics {
 		nvgStroke(nvg);
 	}
 	
-	public static void fillRect(int x, int y, int width, int height) {
-		if (LOG_OPERATIONS)
-			CubyzLogger.instance.fine("[NGRAPHICS] fill rect at " + x + ", " + y + " with size " + width + ", " + height);
+	public static void fillRect(float x, float y, float width, float height) {
 		eWidth = (int) (width * UISystem.guiScale);
 		eHeight = (int) (height * UISystem.guiScale);
 		nvgBeginPath(nvg);
@@ -134,8 +122,23 @@ public class NGraphics {
 		NGraphics.color = color;
 	}
 	
-	public static int getAscent(String text) {
-		return 0;
+	public static float getTextWidth(String text) {
+		return getTextSize(text)[0];
+	}
+	
+	public static float getTextAscent(String text) {
+		return getTextSize(text)[1];
+	}
+	
+	public static float[] getTextSize(String text) {
+		float[] bounds = new float[4];
+		nvgFontSize(nvg, font.getSize()*UISystem.guiScale);
+		nvgFontFaceId(nvg, font.getNVGId());
+		nvgTextBounds(nvg, 0, 0, text, bounds);
+		float[] size = new float[2]; // xmin and ymin aren't helpful anyways
+		size[0] = bounds[2];
+		size[1] = bounds[3];
+		return size;
 	}
 	
 	public static int getTextAlign() {
@@ -147,8 +150,6 @@ public class NGraphics {
 	}
 
 	public static void drawText(int x, int y, String text) {
-		if (LOG_OPERATIONS)
-			CubyzLogger.instance.fine("[NGRAPHICS] draw text \"" + text + "\" at " + x + ", " + y);
 		nvgFontSize(nvg, font.getSize()*UISystem.guiScale);
 		nvgFontFaceId(nvg, font.getNVGId());
 		nvgTextAlign(nvg, textAlign);

@@ -12,3 +12,7 @@ gui.cubyz.pause.exit=Quitter vers le menu
 gui.cubyz.pause.resume=Resumer
 gui.cubyz.debug.reload=Recharger
 lang.name=Français
+
+# Blocs
+block.cubyz.dirt.name=Terre
+block.cubyz.cobblestone.name=Pierre

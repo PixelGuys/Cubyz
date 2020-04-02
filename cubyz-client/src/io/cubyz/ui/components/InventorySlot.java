@@ -49,6 +49,24 @@ public class InventorySlot extends Component {
 		return hitbox.contains(vec.x, vec.y);
 	}
 	
+	public void drawTooltip(MouseInput mouse, int width, int height) {
+		Item item = reference.getItem();
+		if (item != null) {
+			if (isInside(mouse.getCurrentPos(), width, height)) {
+				double x = mouse.getX() + 10;
+				double y = mouse.getY() + 10;
+				String tooltip = item.getName() == null ? "error: name must be added" : item.getName().getTranslation(Cubyz.lang);
+				float[] bounds = NGraphics.getTextSize(tooltip);
+				NGraphics.setColor(20, 20, 20);
+				NGraphics.fillRect((float) x, (float) y, bounds[0], bounds[1]);
+				NGraphics.setColor(127, 127, 127);
+				NGraphics.drawRect((float) x, (float) y, bounds[0], bounds[1]);
+				NGraphics.setColor(255, 255, 255);
+				NGraphics.drawText((int) x, (int) y, tooltip);
+			}
+		}
+	}
+	
 	public boolean grabWithMouse(MouseInput mouse, ItemStack carried, int width, int height) {
 		if(takeOnly && carried.getItem() != null && reference.getItem() != null)
 			return false;

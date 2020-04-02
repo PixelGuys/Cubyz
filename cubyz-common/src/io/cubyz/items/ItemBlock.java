@@ -1,6 +1,7 @@
 package io.cubyz.items;
 
 import io.cubyz.blocks.Block;
+import io.cubyz.translate.TextKey;
 
 public class ItemBlock extends Item {
 
@@ -21,7 +22,7 @@ public class ItemBlock extends Item {
 	public void setBlock(Block block) {
 		this.block = block;
 		setID(block.getRegistryID());
-		//texturePath = "blocks/" + block.getRegistryID().getID() + ".png"; // not reliable
+		this.setName(new TextKey("block." + block.getRegistryID().getMod() + "." + block.getRegistryID().getID() + ".name"));
 	}
 	
 }

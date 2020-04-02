@@ -22,6 +22,9 @@ public class SaveSelectorGUI extends MenuGUI {
 		int y = 0;
 		// Find all save folders that currently exist:
 		File folder = new File("saves");
+		if (!folder.exists()) {
+			folder.mkdir();
+		}
 		File[] listOfFiles = folder.listFiles();
 		saveButtons = new Button[listOfFiles.length];
 		deleteButtons = new Button[listOfFiles.length];

@@ -2,6 +2,7 @@ package io.cubyz.items;
 
 import io.cubyz.api.IRegistryElement;
 import io.cubyz.api.Resource;
+import io.cubyz.translate.TextKey;
 
 public class Item implements IRegistryElement {
 
@@ -11,10 +12,19 @@ public class Item implements IRegistryElement {
 	protected String modelPath;
 	protected String fullTexturePath;
 	protected Resource id = Resource.EMPTY;
+	private TextKey name;
 	protected int stackSize = 64;
 	
 	public String getTexture() {
 		return texturePath;
+	}
+	
+	public TextKey getName() {
+		return name;
+	}
+	
+	public void setName(TextKey key) {
+		this.name = key;
 	}
 	
 	public void setTexture(String texturePath) {
