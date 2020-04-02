@@ -37,6 +37,7 @@ import io.cubyz.entity.Entity;
 import io.cubyz.entity.EntityType;
 import io.cubyz.entity.Player;
 import io.cubyz.handler.BlockVisibilityChangeHandler;
+import io.cubyz.items.CustomItem;
 import io.cubyz.math.Vector3fi;
 import io.cubyz.multiplayer.GameProfile;
 import io.cubyz.multiplayer.LoginToken;
@@ -220,6 +221,40 @@ public class Cubyz implements IGameLogic {
 				}
 				Material material = new Material(tex, 0.6F);
 				Meshes.blockMeshes.get(ore).setMaterial(material);
+			}
+			ArrayList<CustomItem> customItems = lw.getCustomItems();
+			for (CustomItem item : customItems) {
+				BufferedImage canvas = getImage("assets/cubyz/textures/items/materials/templates/"+"gem1"+".png"); // TODO: More gem types.
+				for(int x = 0; x < 16; x++) {
+					for(int y = 0; y < 16; y++) {
+						int color = item.getColor() | 0x1f1f1f;
+						int hsvItem = getHSV(color);
+						int hsvTemp = canvas.getRGB(x, y);
+						int a = hsvTemp >>> 24;
+						int h1 =  (hsvItem >>> 16) & 255;
+						int s1 = (hsvItem >>> 8) & 255;
+						int v1 = (hsvItem >>> 0) & 255;
+						int h2 =  (hsvTemp >>> 16) & 255;
+						int s2 = (hsvTemp >>> 8) & 255;
+						int v2 = (hsvTemp >>> 0) & 255;
+						h2 += h1;
+						s2 += s1;
+						v2 += v1;
+						h2 &= 255;
+						s2 &= 255;
+						v2 &= 255;
+						int resHSV = (h2 << 16) | (s2 << 8) | v2;
+						canvas.setRGB(x, y, getRGB(resHSV) | (a << 24));
+					}
+				}
+				InputStream is = TextureConverter.fromBufferedImage(canvas);
+				Texture tex = new Texture(is);
+				try {
+					is.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				item.setImage(NGraphics.nvgImageFrom(tex));
 			}
 		}
 		
@@ -970,6 +1005,130 @@ public class Cubyz implements IGameLogic {
 				ImageIO.write(ore, "png", outputfile);
 			} catch (IOException e) {}
 		}
+	}//*/
+	
+	// Some useful color conversions:
+	static int getHSV(int rgb) {
+		double r = ((rgb >>> 16) & 255)/255.0;
+		double g = ((rgb >>> 8) & 255)/255.0;
+		double b = ((rgb >>> 0) & 255)/255.0;
+		double min = Math.min(r, Math.min(g, b));
+		double max = Math.max(r, Math.max(g, b));
+		double delta = max-min;
+		double h, s, v;
+		v = max;
+		s = delta/max;
+		if( r >= max )                           // > is bogus, just keeps compilor happy
+	        h = (g - b) / delta;        // between yellow & magenta
+	    else
+	    if( g >= max )
+	        h = 2.0 + (b - r) / delta;  // between cyan & yellow
+	    else
+	        h = 4.0 + (r - g) / delta;  // between magenta & cyan
+		
+		h *= 60.0;                              // degrees
+
+	    if(h < 0.0)
+	        h += 360.0;
+	    h /= 360;
+		if(h > 1) h = 1;
+		if(h < 0) h = 0;
+		if(s > 1) s = 1;
+		if(s < 0) s = 0;
+		if(v > 1) v = 1;
+		if(v < 0) v = 0;
+	    int output = ((int)(h*255) << 16) | ((int)(s*255) << 8) | (int)(v*255);
+	    return output;
+	}
+	
+	static int getRGB(int hsv) {
+		double h = ((hsv >>> 16) & 255)/255.0;
+		double s = ((hsv >>> 8) & 255)/255.0;
+		double v = ((hsv >>> 0) & 255)/255.0;
+		double hh = h*360;
+		hh /= 60;
+		int i = (int)hh;
+		double ff = hh-i;
+		double p = v*(1-s);
+		double q = v*(1-s*ff);
+		double t = v*(1-s*(1-ff));
+		double r, g, b;
+		switch(i) {
+	    case 0:
+	        r = v;
+	        g = t;
+	        b = p;
+	        break;
+	    case 1:
+	        r = q;
+	        g = v;
+	        b = p;
+	        break;
+	    case 2:
+	        r = p;
+	        g = v;
+	        b = t;
+	        break;
+
+	    case 3:
+	        r = p;
+	        g = q;
+	        b = v;
+	        break;
+	    case 4:
+	        r = t;
+	        g = p;
+	        b = v;
+	        break;
+	    case 5:
+	    default:
+	        r = v;
+	        g = p;
+	        b = q;
+	        break;
+	    }
+		if(r > 1) r = 1;
+		if(r < 0) r = 0;
+		if(g > 1) g = 1;
+		if(g < 0) g = 0;
+		if(b > 1) b = 1;
+		if(b < 0) b = 0;
+	    // Store every value at highest possible precision(10 bit each). h gets the extra 2 bit:
+	    int output = ((int)(r*255) << 16) | ((int)(g*255) << 8) | (int)(b*255);
+	    return output;
+	}
+	
+	/*static { // Algorithm for automatically generating an item templates from the material image. Uses the reverse-engineered color erase algorithm from gimp. Uncomment to automatically generate it on game startup.
+		BufferedImage ore = (BufferedImage)getImage("assets/cubyz/textures/items/materials/diamond.png");
+		for(int i = 0; i < 16; i++) {
+			for(int j = 0; j < 16; j++) {
+				int color = 0x90ffff;
+				int hsv = getHSV(color);
+				int colorOre = ore.getRGB(i, j);
+				int hsvOre = getHSV(colorOre);
+				int a = colorOre >>> 24;
+				int h1 = (hsv >>> 16) & 255;
+				int s1 = (hsv >>> 8) & 255;
+				int v1 = (hsv >>> 0) & 255;
+				int h2 = (hsvOre >>> 16) & 255;
+				int s2 = (hsvOre >>> 8) & 255;
+				int v2 = (hsvOre >>> 0) & 255;
+				h2 -= h1;
+				s2 -= s1;
+				v2 -= v1;
+				h2 &= 255;
+				s2 &= 255;
+				v2 &= 255;
+				int res = (a << 24) | (h2 << 16) | (s2 << 8) | v2;
+				
+				ore.setRGB(i, j, res);
+			}
+		}
+		
+		File outputfile = new File("assets/cubyz/textures/items/materials/diamond_template.png");
+		try {
+			ImageIO.write(ore, "png", outputfile);
+		} catch (IOException e) {}
 	}//*/
 	public static BufferedImage getImage(String fileName) {
 		try {

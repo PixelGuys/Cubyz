@@ -1,7 +1,9 @@
 package io.cubyz.blocks;
 
+import java.util.List;
 import java.util.Random;
 
+import io.cubyz.items.CustomItem;
 import io.cubyz.items.Item;
 import io.cubyz.ndt.NDTContainer;
 import io.cubyz.world.CustomObject;
@@ -15,6 +17,9 @@ public class CustomOre extends Ore implements CustomObject {
 	public static String[] prefixes = new String[] {"Al", "An", "Ar", "Be", "Bo", "Bro", "Ca", "Chlor", "Co", "Fer", "Fluo", "Gr", "Ha", "Hydro", "Ind", "Ka", "Kr", "Lith", "Magne", "Meta", "Natr", "Ni", "Osm", "Phos", "Pyr", "Rho", "Sider", "Str", "Tellur", "Thor", "Uran", "Vana", "Xanth", "Yttr", "Zinc", "Zirc"};
 	public static String[] phons = new String[] {"ay", "de", "pi", "er", "op", "ha", "do", "po", "na", "ye", "si", "re"};
 	
+	public String getName() {
+		return name;
+	}
 	public int getColor() {
 		return color;
 	}
@@ -104,7 +109,7 @@ public class CustomOre extends Ore implements CustomObject {
 		return sb.toString();
 	}
 	
-	public static CustomOre random(int index, Random rand) {
+	public static CustomOre random(int index, Random rand, List<CustomItem> customItems) {
 		CustomOre ore = new CustomOre();
 		ore.color = rand.nextInt(0xFFFFFF);
 		ore.height = 8+rand.nextInt(160);
@@ -115,11 +120,11 @@ public class CustomOre extends Ore implements CustomObject {
 		ore.template = rand.nextInt(5)+1; // UPDATE THIS WHEN YOU ADD MORE TEMPLATES!
 		ore.setHardness(rand.nextInt()*30);
 		ore.setID("cubyz:custom_ore_" + index);
-		ore.makeBlockDrop();
+		ore.makeBlockDrop(customItems);
 		return ore;
 	}
 	
-	public static CustomOre fromNDT(NDTContainer ndt) {
+	/*public static CustomOre fromNDT(NDTContainer ndt) {
 		CustomOre ore = new CustomOre();
 		ore.color = ndt.getInteger("color");
 		ore.height = ndt.getInteger("height");
@@ -132,12 +137,12 @@ public class CustomOre extends Ore implements CustomObject {
 		ore.setID(ndt.getString("id"));
 		ore.makeBlockDrop();
 		return ore;
-	}
+	}*/
 	
-	private void makeBlockDrop() {
-		Item bd = new Item();
+	private void makeBlockDrop(List<CustomItem> customItems) {
+		CustomItem bd = CustomItem.fromOre(this);
+		customItems.add(bd);
 		bd.setID(getRegistryID());
-		bd.setTexture("materials/ruby.png"); // TODO: generate a proper texture
 		setBlockDrop(bd);
 	}
 	

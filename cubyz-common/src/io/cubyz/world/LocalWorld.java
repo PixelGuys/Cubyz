@@ -23,6 +23,7 @@ import io.cubyz.entity.Player;
 import io.cubyz.handler.BlockVisibilityChangeHandler;
 import io.cubyz.handler.PlaceBlockHandler;
 import io.cubyz.handler.RemoveBlockHandler;
+import io.cubyz.items.CustomItem;
 import io.cubyz.math.Bits;
 import io.cubyz.save.BlockChange;
 import io.cubyz.save.WorldIO;
@@ -463,11 +464,16 @@ public class LocalWorld extends World {
 			}
 		}
 	}
-	
+
 	private ArrayList<CustomOre> customOres = new ArrayList<>();
+	private ArrayList<CustomItem> customItems = new ArrayList<>();
 	
 	public ArrayList<CustomOre> getCustomOres() {
 		return customOres;
+	}
+	
+	public ArrayList<CustomItem> getCustomItems() {
+		return customItems;
 	}
 	
 	// Returns the blocks, so their meshes can be created and stored.
@@ -489,7 +495,7 @@ public class LocalWorld extends World {
 		}
 		// Generate random ores:
 		for(int i = 0; i < randomAmount; i++) {
-			blocks[ID] = CustomOre.random(i, rand);
+			blocks[ID] = CustomOre.random(i, rand, customItems);
 			customOres.add((CustomOre) blocks[ID]);
 			ores.add((Ore)blocks[ID]);
 			blocks[ID].ID = ID;
