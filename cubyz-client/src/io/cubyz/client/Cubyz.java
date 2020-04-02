@@ -1103,10 +1103,10 @@ public class Cubyz implements IGameLogic {
 	}
 	
 	/*static { // Algorithm for automatically generating an item templates from the material image. Uses the reverse-engineered color erase algorithm from gimp. Uncomment to automatically generate it on game startup.
-		BufferedImage ore = (BufferedImage)getImage("assets/cubyz/textures/items/materials/diamond.png");
+		BufferedImage ore = (BufferedImage)getImage("assets/cubyz/textures/items/parts/sword/stone_sword_head.png");
 		for(int i = 0; i < 16; i++) {
 			for(int j = 0; j < 16; j++) {
-				int color = 0x90ffff;
+				int color = 0x767676;
 				int hsv = getHSV(color);
 				int colorOre = ore.getRGB(i, j);
 				int hsvOre = getHSV(colorOre);
@@ -1129,7 +1129,7 @@ public class Cubyz implements IGameLogic {
 			}
 		}
 		
-		File outputfile = new File("assets/cubyz/textures/items/materials/diamond_template.png");
+		File outputfile = new File("assets/cubyz/textures/items/parts/template.png");
 		try {
 			ImageIO.write(ore, "png", outputfile);
 		} catch (IOException e) {}
