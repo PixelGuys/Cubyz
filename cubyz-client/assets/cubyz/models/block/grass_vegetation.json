@@ -2,6 +2,7 @@
 	"parent": "cubyz:block",
 	"models": {
 		"default": {
+			"model": "cubyz:grass_herb.obj",
 			"texture": "cubyz:blocks/grass_herb"
 		}
 	}

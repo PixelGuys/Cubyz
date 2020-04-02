@@ -55,6 +55,11 @@ public class StaticMeshesLoader {
 
 		return meshes;
 	}
+	
+	public static InstancedMesh[] loadInstanced(String resourcePath, String texturesDir) throws Exception {
+		return loadInstanced(resourcePath, texturesDir,
+				aiProcess_JoinIdenticalVertices | aiProcess_Triangulate | aiProcess_FixInfacingNormals);
+	}
 
 	public static InstancedMesh[] loadInstanced(String resourcePath, String texturesDir, int flags) throws Exception {
 		AIScene aiScene = aiImportFile(resourcePath, flags);
