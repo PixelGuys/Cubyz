@@ -4,6 +4,7 @@ import io.cubyz.base.init.MaterialInit;
 import io.cubyz.blocks.Block;
 import io.cubyz.items.Item;
 import io.cubyz.items.ItemStack;
+import io.cubyz.translate.TextKey;
 
 public class Sword extends Tool {
 	private static final int HEAD = 200, BINDING = 50, HANDLE = 50;
@@ -15,14 +16,15 @@ public class Sword extends Tool {
 		texturePath =	 "assets/cubyz/textures/items/parts/sword/"+handle.getName()+"_handle.png#"
 						+"assets/cubyz/textures/items/parts/sword/"+head.getName()+"_sword_head.png#"
 						+"assets/cubyz/textures/items/parts/sword/"+binding.getName()+"_binding.png";
+		setName(new TextKey(head.getRegistryID().getID()+" Sword"));
 	}
 	
 	private static float calculateSpeed(Material head, Material binding, Material handle) {
-		return head.miningSpeed * baseSpeed;
+		return head.miningSpeed*baseSpeed;
 	}
 	
 	private static float calculateDmg(Material head, Material binding, Material handle) {
-		return head.damage+baseDamage;
+		return head.damage + baseDamage;
 	}
 	
 	public static Item canCraft(ItemStack head, ItemStack binding, ItemStack handle) {

@@ -5,6 +5,7 @@ import io.cubyz.blocks.Block;
 import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.items.Item;
 import io.cubyz.items.ItemStack;
+import io.cubyz.translate.TextKey;
 
 public class Shovel extends Tool {
 	private static final int HEAD = 100, BINDING = 50, HANDLE = 50;
@@ -16,10 +17,11 @@ public class Shovel extends Tool {
 		texturePath = 	 "assets/cubyz/textures/items/parts/"+handle.getName()+"_handle.png#"
 						+"assets/cubyz/textures/items/parts/"+head.getName()+"_shovel_head.png#"
 						+"assets/cubyz/textures/items/parts/"+binding.getName()+"_binding.png";
+		setName(new TextKey(head.getRegistryID().getID()+" Shovel"));
 	}
 	
 	private static float calculateSpeed(Material head, Material binding, Material handle) {
-		return head.miningSpeed * baseSpeed;
+		return head.miningSpeed*baseSpeed;
 	}
 	
 	private static float calculateDmg(Material head, Material binding, Material handle) {

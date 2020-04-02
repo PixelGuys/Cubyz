@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.Random;
 
 import io.cubyz.items.CustomItem;
-import io.cubyz.items.Item;
 import io.cubyz.items.tools.CustomMaterial;
 import io.cubyz.ndt.NDTContainer;
 import io.cubyz.world.CustomObject;
@@ -120,7 +119,7 @@ public class CustomOre extends Ore implements CustomObject {
 		ore.name = randomName(new Random(rand.nextLong())); // Use a new random, so an update in the name generator won't change all other facts about custom ores.
 		ore.template = rand.nextInt(5)+1; // UPDATE THIS WHEN YOU ADD MORE TEMPLATES!
 		ore.setHardness(rand.nextInt()*30);
-		ore.setID("cubyz:custom_ore_" + index);
+		ore.setID("cubyz:" + ore.name + " Ore");
 		ore.makeBlockDrop(customItems);
 		boolean addTools = true; // For now.
 		if(addTools) {
@@ -148,7 +147,7 @@ public class CustomOre extends Ore implements CustomObject {
 	private void makeBlockDrop(List<CustomItem> customItems) {
 		CustomItem bd = CustomItem.fromOre(this);
 		customItems.add(bd);
-		bd.setID(getRegistryID());
+		bd.setID("cubyz:"+getName());
 		setBlockDrop(bd);
 	}
 	

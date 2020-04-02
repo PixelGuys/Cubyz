@@ -10,6 +10,7 @@ public class CustomMaterial extends Material {
 		this.color = color;
 		addItem(item, value);
 		MaterialInit.registerCustom(this);
+		setID(item.getRegistryID());
 	}
 	public int getColor() {
 		return color;
