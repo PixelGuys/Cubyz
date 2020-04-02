@@ -157,7 +157,6 @@ public class StaticMeshesLoader {
 		processNormals(aiMesh, normals);
 		processTextCoords(aiMesh, textures);
 		processIndices(aiMesh, indices);
-
 		InstancedMesh mesh = new InstancedMesh(vertices, Utils.listToArray(textures), Utils.listToArray(normals),
 				Utils.listIntToArray(indices), 0);
 		Material material;

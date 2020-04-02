@@ -26,7 +26,7 @@ public class DebugOverlay extends MenuGUI {
 			NGraphics.setFont("Default", 12.0F);
 			NGraphics.setColor(255, 255, 255);
 			NGraphics.drawText(0, 0, Cubyz.getFPS() + " fps (vsync)");
-			NGraphics.drawText(0, 0, Cubyz.instance.game.getUPS() + " ups");
+			NGraphics.drawText(100, 0, Cubyz.instance.game.getUPS() + " ups");
 			NGraphics.drawText(0, 12, "Branded \"" + Constants.GAME_BRAND + "\", version " + Constants.GAME_VERSION);
 			NGraphics.drawText(0, 24, "Windowed (" + win.getWidth() + "x" + win.getHeight() + ")");
 			NGraphics.drawText(0, 36, "Java " + javaVersion);
