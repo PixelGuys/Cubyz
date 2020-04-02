@@ -13,9 +13,9 @@ public class Shovel extends Tool {
 	public Shovel(Material head, Material binding, Material handle) {
 		super(head, binding, handle, calculateSpeed(head, binding, handle), calculateDmg(head, binding, handle));
 		// The image is just an overlay of the part images:
-		texturePath = 	 "assets/cubyz/textures/items/parts/"+handle.getRegistryID().getID()+"_handle.png#"
-						+"assets/cubyz/textures/items/parts/"+head.getRegistryID().getID()+"_shovel_head.png#"
-						+"assets/cubyz/textures/items/parts/"+binding.getRegistryID().getID()+"_binding.png";
+		texturePath = 	 "assets/cubyz/textures/items/parts/"+handle.getName()+"_handle.png#"
+						+"assets/cubyz/textures/items/parts/"+head.getName()+"_shovel_head.png#"
+						+"assets/cubyz/textures/items/parts/"+binding.getName()+"_binding.png";
 	}
 	
 	private static float calculateSpeed(Material head, Material binding, Material handle) {

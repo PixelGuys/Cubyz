@@ -3,13 +3,15 @@ package io.cubyz.base.init;
 import java.util.ArrayList;
 
 import io.cubyz.api.Registry;
+import io.cubyz.items.tools.CustomMaterial;
 import io.cubyz.items.tools.Material;
 import io.cubyz.items.tools.modifiers.FallingApart;
 import io.cubyz.items.tools.modifiers.Regrowth;
 
 public class MaterialInit {
-	
+
 	public static final ArrayList<Material> MATERIALS = new ArrayList<>();
+	public static final ArrayList<CustomMaterial> CUSTOM_MATERIALS = new ArrayList<>();
 	public static Material dirt, wood, stone, iron, cactus, diamond; // Incomplete and WIP
 	
 	static {
@@ -44,6 +46,18 @@ public class MaterialInit {
 	
 	public static void register(Material mat) {
 		MATERIALS.add(mat);
+	}
+	
+	public static void registerCustom(CustomMaterial mat) {
+		register(mat);
+		CUSTOM_MATERIALS.add(mat); // Keep track of the custom materials to prevent spamming the whole list with custom materials upon rejoin.
+	}
+	
+	public static void resetCustom() {
+		for(Material mat : CUSTOM_MATERIALS) {
+			MATERIALS.remove(mat);
+		}
+		CUSTOM_MATERIALS.clear();
 	}
 	
 	public static void registerAll(Registry<Material> reg) {

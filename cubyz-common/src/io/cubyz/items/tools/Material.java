@@ -19,7 +19,7 @@ public class Material implements IRegistryElement {
 	public float damage;
 	public float miningSpeed; // how many times this material is faster than punching the ground.
 	public int miningLevel = 0; // Standard for materials like dirt that can't be used for mining.
-	private Resource id = Resource.EMPTY;
+	protected Resource id = Resource.EMPTY;
 	public Material(int heDur, int bDur, int haDur, float dmg, float spd) {
 		headDurability = haDur;
 		bindingDurability = bDur;
@@ -39,6 +39,9 @@ public class Material implements IRegistryElement {
 		damage = dmg;
 		miningSpeed = spd;
 		headModifiers = new ArrayList<>();
+	}
+	public String getName() {
+		return id.getID();
 	}
 	public void addModifier(Modifier modifier) {
 		specialModifiers.add(modifier);

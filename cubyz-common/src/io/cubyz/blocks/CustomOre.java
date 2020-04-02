@@ -5,6 +5,7 @@ import java.util.Random;
 
 import io.cubyz.items.CustomItem;
 import io.cubyz.items.Item;
+import io.cubyz.items.tools.CustomMaterial;
 import io.cubyz.ndt.NDTContainer;
 import io.cubyz.world.CustomObject;
 
@@ -113,14 +114,19 @@ public class CustomOre extends Ore implements CustomObject {
 		CustomOre ore = new CustomOre();
 		ore.color = rand.nextInt(0xFFFFFF);
 		ore.height = 8+rand.nextInt(160);
-		ore.spawns = rand.nextFloat()*20;
-		ore.maxLength = rand.nextFloat()*10;
-		ore.maxSize = rand.nextFloat()*5;
+		ore.spawns = 1+rand.nextFloat()*20;
+		ore.maxLength = 1+rand.nextFloat()*10;
+		ore.maxSize = 1+rand.nextFloat()*5;
 		ore.name = randomName(new Random(rand.nextLong())); // Use a new random, so an update in the name generator won't change all other facts about custom ores.
 		ore.template = rand.nextInt(5)+1; // UPDATE THIS WHEN YOU ADD MORE TEMPLATES!
 		ore.setHardness(rand.nextInt()*30);
 		ore.setID("cubyz:custom_ore_" + index);
 		ore.makeBlockDrop(customItems);
+		boolean addTools = true; // For now.
+		if(addTools) {
+			int rareness = (int)(ore.spawns*ore.maxSize*ore.maxLength);
+			new CustomMaterial(rand.nextInt(1000000/rareness), rand.nextInt(1000000/rareness), rand.nextInt(1000000/rareness), rand.nextFloat()*10, rand.nextFloat()*10000/rareness, ore.getColor(), ore.getBlockDrop(), 100);
+		}
 		return ore;
 	}
 	

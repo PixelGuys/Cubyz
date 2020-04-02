@@ -12,9 +12,9 @@ public class Sword extends Tool {
 	public Sword(Material head, Material binding, Material handle) {
 		super(head, binding, handle, calculateSpeed(head, binding, handle), calculateDmg(head, binding, handle));
 		// The image is just an overlay of the part images:
-		texturePath =	 "assets/cubyz/textures/items/parts/sword/"+handle.getRegistryID().getID()+"_handle.png#"
-						+"assets/cubyz/textures/items/parts/sword/"+head.getRegistryID().getID()+"_sword_head.png#"
-						+"assets/cubyz/textures/items/parts/sword/"+binding.getRegistryID().getID()+"_binding.png";
+		texturePath =	 "assets/cubyz/textures/items/parts/sword/"+handle.getName()+"_handle.png#"
+						+"assets/cubyz/textures/items/parts/sword/"+head.getName()+"_sword_head.png#"
+						+"assets/cubyz/textures/items/parts/sword/"+binding.getName()+"_binding.png";
 	}
 	
 	private static float calculateSpeed(Material head, Material binding, Material handle) {

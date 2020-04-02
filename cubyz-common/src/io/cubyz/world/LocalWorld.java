@@ -12,6 +12,7 @@ import org.joml.Vector4f;
 import io.cubyz.CubyzLogger;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.IRegistryElement;
+import io.cubyz.base.init.MaterialInit;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.CustomOre;
@@ -115,6 +116,7 @@ public class LocalWorld extends World {
 	}
 	
 	public LocalWorld(String name) {
+		MaterialInit.resetCustom();
 		this.name = name;
 		chunks = new ArrayList<>();
 		visibleChunks = new Chunk[0];
