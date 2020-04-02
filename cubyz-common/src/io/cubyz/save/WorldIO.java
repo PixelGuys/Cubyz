@@ -49,7 +49,6 @@ public class WorldIO {
 			byte[] len = new byte[4];
 			in.read(len);
 			int l = Bits.getInt(len, 0);
-			System.out.println(l);
 			byte[] dst = new byte[l];
 			in.read(dst);
 			

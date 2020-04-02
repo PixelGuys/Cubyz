@@ -1,8 +1,11 @@
 package io.cubyz.ui;
 
+import java.io.File;
+
 import io.cubyz.ClientOnly;
 import io.cubyz.blocks.Block;
 import io.cubyz.client.Cubyz;
+import io.cubyz.save.WorldIO;
 import io.cubyz.ui.components.Button;
 import io.cubyz.world.LocalWorld;
 import io.jungle.Window;
@@ -16,11 +19,13 @@ public class SaveSelectorGUI extends MenuGUI {
 		int y = 0;
 		saveButtons = new Button[3];
 		for (int i = 0; i < saveButtons.length; i++) {
-			Button b = new Button("Save " + (i+1));
+			String name = "Save " + (i+1);
+			boolean exists = new File("saves/"+name).exists();
+			Button b = new Button((exists ? "" : "Create ") + name);
 			b.setSize(100, 40);
 			b.setPosition(10, y);
 			b.setOnAction(() -> {
-				LocalWorld world = new LocalWorld(b.getText().getTranslateKey());
+				LocalWorld world = new LocalWorld(name);
 				Block[] blocks = world.generate();
 				for(Block bl : blocks) {
 					ClientOnly.createBlockMesh.accept(bl);
