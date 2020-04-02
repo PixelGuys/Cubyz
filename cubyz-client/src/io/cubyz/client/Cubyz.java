@@ -195,11 +195,24 @@ public class Cubyz implements IGameLogic {
 			for (CustomOre ore : customOres) {
 				Mesh template = cachedDefaultModels.get("cubyz:block.obj");
 				Mesh mesh = template.cloneNoMaterial();
-				BufferedImage canvas = new BufferedImage(16, 16, BufferedImage.TYPE_INT_RGB);
-				Graphics2D g2d = canvas.createGraphics();
-				g2d.setColor(new Color(ore.getColor()));
-				g2d.fillRect(0, 0, 16, 16);
-				g2d.dispose();
+				BufferedImage canvas = getImage("assets/cubyz/textures/blocks/stone.png");
+				BufferedImage templateImg = getImage("assets/cubyz/textures/blocks/ore_templates/template"+ore.template+".png");
+				for(int x = 0; x < canvas.getWidth(); x++) {
+					for(int y = 0; y < canvas.getHeight(); y++) {
+						int color = canvas.getRGB(x, y);
+						int a = templateImg.getRGB(x, y) >>> 24;
+						int rBG = (color >>> 16) & 255;
+						int gBG = (color >>> 8) & 255;
+						int bBG = color & 255;
+						int r = (ore.getColor() >>> 16) & 255;
+						int g = (ore.getColor() >>> 8) & 255;
+						int b = ore.getColor() & 255;
+						r = (a*r+(255-a)*rBG)/255;
+						g = (a*g+(255-a)*gBG)/255;
+						b = (a*b+(255-a)*bBG)/255;
+						canvas.setRGB(x, y, new Color(r, g, b).getRGB());
+					}
+				}
 				InputStream is = TextureConverter.fromBufferedImage(canvas);
 				Texture tex = new Texture(is);
 				try {
@@ -957,11 +970,11 @@ public class Cubyz implements IGameLogic {
 				ImageIO.write(ore, "png", outputfile);
 			} catch (IOException e) {}
 		}
-	}
-	public static Image getImage(String fileName) {
+	}//*/
+	public static BufferedImage getImage(String fileName) {
 		try {
 			return ImageIO.read(new File(fileName));
 		} catch(Exception e) {}//e.printStackTrace();}
 		return null;
-	}//*/
+	}
 }
