@@ -27,6 +27,7 @@ import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.IRegistryElement;
 import io.cubyz.api.Resource;
 import io.cubyz.api.Side;
+import io.cubyz.base.init.ItemInit;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.CustomOre;
@@ -222,7 +223,7 @@ public class Cubyz implements IGameLogic {
 				Material material = new Material(tex, 0.6F);
 				Meshes.blockMeshes.get(ore).setMaterial(material);
 			}
-			ArrayList<CustomItem> customItems = lw.getCustomItems();
+			ArrayList<CustomItem> customItems = ItemInit.CUSTOM_ITEMS;
 			for (CustomItem item : customItems) {
 				BufferedImage canvas;
 				if(item.isGem())

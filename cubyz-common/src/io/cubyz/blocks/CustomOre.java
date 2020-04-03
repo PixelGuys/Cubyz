@@ -1,8 +1,8 @@
 package io.cubyz.blocks;
 
-import java.util.List;
 import java.util.Random;
 
+import io.cubyz.base.init.ItemInit;
 import io.cubyz.items.CustomItem;
 import io.cubyz.items.tools.CustomMaterial;
 import io.cubyz.ndt.NDTContainer;
@@ -109,7 +109,7 @@ public class CustomOre extends Ore implements CustomObject {
 		return sb.toString();
 	}
 	
-	public static CustomOre random(int index, Random rand, List<CustomItem> customItems) {
+	public static CustomOre random(int index, Random rand) {
 		CustomOre ore = new CustomOre();
 		ore.color = rand.nextInt(0xFFFFFF);
 		ore.height = 8+rand.nextInt(160);
@@ -120,7 +120,7 @@ public class CustomOre extends Ore implements CustomObject {
 		ore.template = rand.nextInt(5)+1; // UPDATE THIS WHEN YOU ADD MORE TEMPLATES!
 		ore.setHardness(rand.nextInt()*30);
 		ore.setID("cubyz:" + ore.name + " Ore");
-		ore.makeBlockDrop(customItems);
+		ore.makeBlockDrop();
 		boolean addTools = true; // For now.
 		if(addTools) {
 			int rareness = (int)(ore.spawns*ore.maxSize*ore.maxLength);
@@ -144,9 +144,9 @@ public class CustomOre extends Ore implements CustomObject {
 		return ore;
 	}*/
 	
-	private void makeBlockDrop(List<CustomItem> customItems) {
+	private void makeBlockDrop() {
 		CustomItem bd = CustomItem.fromOre(this);
-		customItems.add(bd);
+		ItemInit.registerCustom(bd);
 		bd.setID("cubyz:"+getName());
 		setBlockDrop(bd);
 	}

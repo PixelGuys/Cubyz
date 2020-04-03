@@ -43,6 +43,23 @@ public class WorldIO {
 		return new File(dir, "world.dat").exists();
 	}
 
+	// Load the seed, which is needed before custom item and ore generation.
+	public void loadWorldSeed() {
+		try {
+			InputStream in = new FileInputStream(new File(dir, "world.dat"));
+			byte[] len = new byte[4];
+			in.read(len);
+			int l = Bits.getInt(len, 0);
+			byte[] dst = new byte[l];
+			in.read(dst);
+			NDTContainer ndt = new NDTContainer(dst);
+			world.setSeed(ndt.getInteger("seed"));
+			in.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
 	public void loadWorldData() {
 		try {
 			InputStream in = new FileInputStream(new File(dir, "world.dat"));
@@ -55,7 +72,6 @@ public class WorldIO {
 			NDTContainer ndt = new NDTContainer(dst);
 			world.setName(ndt.getString("name"));
 			world.setHeight(ndt.getInteger("height"));
-			world.setSeed(ndt.getInteger("seed"));
 			world.setGameTime(ndt.getLong("gameTime"));
 			Entity[] entities = new Entity[ndt.getInteger("entityCount")];
 			for (int i = 0; i < entities.length; i++) {

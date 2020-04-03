@@ -12,6 +12,7 @@ import org.joml.Vector4f;
 import io.cubyz.CubyzLogger;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.IRegistryElement;
+import io.cubyz.base.init.ItemInit;
 import io.cubyz.base.init.MaterialInit;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
@@ -21,10 +22,8 @@ import io.cubyz.blocks.Ore;
 import io.cubyz.blocks.BlockEntity;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
-import io.cubyz.handler.BlockVisibilityChangeHandler;
 import io.cubyz.handler.PlaceBlockHandler;
 import io.cubyz.handler.RemoveBlockHandler;
-import io.cubyz.items.CustomItem;
 import io.cubyz.math.Bits;
 import io.cubyz.save.BlockChange;
 import io.cubyz.save.WorldIO;
@@ -117,6 +116,7 @@ public class LocalWorld extends World {
 	
 	public LocalWorld(String name) {
 		MaterialInit.resetCustom();
+		ItemInit.resetCustom();
 		this.name = name;
 		chunks = new ArrayList<>();
 		visibleChunks = new Chunk[0];
@@ -135,7 +135,7 @@ public class LocalWorld extends World {
 		}
 		wio = new WorldIO(this, new File("saves/" + name));
 		if (wio.hasWorldData()) {
-			wio.loadWorldData();
+			wio.loadWorldSeed(); // Load the rest in generate(), so custom items can be taken care of correctly.
 			generated = true;
 		} else {
 			wio.saveWorldData();
@@ -468,14 +468,9 @@ public class LocalWorld extends World {
 	}
 
 	private ArrayList<CustomOre> customOres = new ArrayList<>();
-	private ArrayList<CustomItem> customItems = new ArrayList<>();
 	
 	public ArrayList<CustomOre> getCustomOres() {
 		return customOres;
-	}
-	
-	public ArrayList<CustomItem> getCustomItems() {
-		return customItems;
 	}
 	
 	// Returns the blocks, so their meshes can be created and stored.
@@ -497,7 +492,7 @@ public class LocalWorld extends World {
 		}
 		// Generate random ores:
 		for(int i = 0; i < randomAmount; i++) {
-			blocks[ID] = CustomOre.random(i, rand, customItems);
+			blocks[ID] = CustomOre.random(i, rand);
 			customOres.add((CustomOre) blocks[ID]);
 			ores.add((Ore)blocks[ID]);
 			blocks[ID].ID = ID;
@@ -516,6 +511,9 @@ public class LocalWorld extends World {
 			catch(Exception e) {}
 		}
 		LifelandGenerator.initOres(ores.toArray(new Ore[ores.size()]));
+		if(generated) {
+			wio.loadWorldData();
+		}
 		generated = true;
 		return blocks;
 	}
