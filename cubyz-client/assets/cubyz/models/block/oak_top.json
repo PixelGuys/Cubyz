@@ -2,7 +2,7 @@
 	"parent": "cubyz:sidetextured",
 	"models": {
 		"default": {
-			"texture": "cubyz:blocks/oak_log"
+			"texture": "cubyz:blocks/oak_top"
 		}
 	}
 }

@@ -33,6 +33,7 @@ public class BlockInit {
 	public static Ice ice = new Ice();
 	public static OakLeaves oakLeaves = new OakLeaves();
 	public static Block oakLog = new Block("cubyz:oak_log", 8, WOOD);
+	public static Block oakTop = new Block("cubyz:oak_top", 8, WOOD);
 	public static Block oakPlanks = new Block("cubyz:oak_planks", 7, WOOD);
 	public static Block sand = new Block("cubyz:sand", 5, SAND);
 	public static SnowGrass snow = new SnowGrass();
@@ -70,6 +71,7 @@ public class BlockInit {
 		register(oakLeaves);
 		register(oakLog);
 		register(oakPlanks);
+		register(oakTop);
 		register(sand);
 		register(snow);
 		register(stone);

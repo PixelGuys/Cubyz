@@ -63,6 +63,7 @@ public class VegetationGenerator implements FancyGenerator {
 	private static void generateTree(Block[][][] ch, int x, int y, int h, int height) {
 		//Instances
 		Block wood = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:oak_log");
+		Block woodTop = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:oak_top");
 		Block leaves = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:oak_leaves");
 		
 		//Position of the first block of wood
@@ -72,7 +73,7 @@ public class VegetationGenerator implements FancyGenerator {
 					if(ch[x][y][h+i] != null && (!ch[x][y][h+i].isDegradable() || wood.isDegradable())) {
 						continue;
 					}
-					ch[x][y][h+i] = wood;
+					ch[x][y][h+i] = (i == height-1) ? woodTop : wood;
 				}
 			}
 		}
