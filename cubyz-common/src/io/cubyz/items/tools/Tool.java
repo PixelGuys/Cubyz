@@ -6,7 +6,6 @@ import java.util.List;
 import io.cubyz.base.init.MaterialInit;
 import io.cubyz.blocks.Block;
 import io.cubyz.items.Item;
-import io.cubyz.items.ItemStack;
 import io.cubyz.ndt.NDTContainer;
 
 public abstract class Tool extends Item {

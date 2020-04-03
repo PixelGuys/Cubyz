@@ -1,6 +1,7 @@
 package io.cubyz.base;
 
 import io.cubyz.api.CubyzRegistries;
+import io.cubyz.base.init.MaterialInit;
 import io.cubyz.client.Cubyz;
 import io.cubyz.items.Inventory;
 import io.cubyz.items.Item;
@@ -113,10 +114,37 @@ public class WorkbenchGUI extends GeneralInventory {
 		for(int i = 0; i < inv.length; i++) {
 			// TODO: Don't really swap the references. Just swap the contents of the references. That will make everything a lot easier.
 			if(inv[i].grabWithMouse(mouse, carried, win.getWidth()/2, win.getHeight())) {
-				if (i == inv.length-1 && inv[inv.length-1].reference.getItem() != null) {
-					// Remove items in the crafting grid.
-					for(int j = 32; j < inv.length-1; j++) {
-						inv[j].reference.clear(); // TODO: Perform a proper material management.
+				if(craftingMode == Mode.NORMAL) {
+					if (i == inv.length-1 && carried.getItem() != null) {
+						// Remove one of each of the items in the crafting grid.
+						for(int j = 32; j < inv.length-1; j++) {
+							inv[j].reference.add(-1);
+						}
+					}
+				} else {
+					if (i == inv.length-1 && carried.getItem() != null) {
+						// Remove items in the crafting grid.
+						int[] items;
+						switch(craftingMode) {
+							case AXE:
+								items = Axe.craftingAmount(inv[32].reference, inv[33].reference, inv[34].reference);
+								break;
+							case PICKAXE:
+								items = Pickaxe.craftingAmount(inv[32].reference, inv[33].reference, inv[34].reference);
+								break;
+							case SHOVEL:
+								items = Shovel.craftingAmount(inv[32].reference, inv[33].reference, inv[34].reference);
+								break;
+							case SWORD:
+								items = Sword.craftingAmount(inv[32].reference, inv[33].reference, inv[34].reference);
+								break;
+							default:
+								return;
+						}
+						
+						for(int j = 32; j < inv.length-1; j++) {
+							inv[j].reference.add(-items[j-32]);
+						}
 					}
 				}
 			}

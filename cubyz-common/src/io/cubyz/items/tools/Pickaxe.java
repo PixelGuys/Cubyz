@@ -47,6 +47,23 @@ public class Pickaxe extends Tool {
 		return new Pickaxe(he, bi, ha);
 			
 	}
+	
+	public static int[] craftingAmount(ItemStack head, ItemStack binding, ItemStack handle) {
+		int[] amount = new int[3];
+		if(head.getItem() != null)
+		for(Material ma : MaterialInit.MATERIALS) {
+			if(ma.getItems().containsKey(head.getItem()) && head.getAmount()*ma.getItems().get(head.getItem()) >= HEAD) {
+				amount[0] = (HEAD + ma.getItems().get(head.getItem()) - 1)/ma.getItems().get(head.getItem());
+			}
+			if(ma.getItems().containsKey(binding.getItem()) && binding.getAmount()*ma.getItems().get(binding.getItem()) >= BINDING) {
+				amount[1] = (BINDING + ma.getItems().get(binding.getItem()) - 1)/ma.getItems().get(binding.getItem());
+			}
+			if(ma.getItems().containsKey(handle.getItem()) && handle.getAmount()*ma.getItems().get(handle.getItem()) >= HANDLE) {
+				amount[2] = (HANDLE + ma.getItems().get(handle.getItem()) - 1)/ma.getItems().get(handle.getItem());
+			}
+		}
+		return amount;
+	}
 
 	@Override
 	public boolean canBreak(Block b) {

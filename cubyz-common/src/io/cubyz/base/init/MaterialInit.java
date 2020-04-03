@@ -3,7 +3,6 @@ package io.cubyz.base.init;
 import java.util.ArrayList;
 
 import io.cubyz.api.Registry;
-import io.cubyz.items.Item;
 import io.cubyz.items.tools.CustomMaterial;
 import io.cubyz.items.tools.Material;
 import io.cubyz.items.tools.modifiers.FallingApart;
