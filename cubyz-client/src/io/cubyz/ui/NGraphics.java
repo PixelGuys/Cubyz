@@ -132,12 +132,16 @@ public class NGraphics {
 	
 	public static float[] getTextSize(String text) {
 		float[] bounds = new float[4];
-		nvgFontSize(nvg, font.getSize()*UISystem.guiScale);
-		nvgFontFaceId(nvg, font.getNVGId());
-		nvgTextBounds(nvg, 0, 0, text, bounds);
 		float[] size = new float[2]; // xmin and ymin aren't helpful anyways
-		size[0] = bounds[2];
-		size[1] = bounds[3];
+		String[] lines = text.split("\n");
+		for(String str : lines) {
+			nvgFontSize(nvg, font.getSize()*UISystem.guiScale);
+			nvgFontFaceId(nvg, font.getNVGId());
+			nvgTextBounds(nvg, 0, 0, str, bounds);
+			if(bounds[2] > size[0])
+				size[0] = bounds[2];
+			size[1] += bounds[3];
+		}
 		return size;
 	}
 	
@@ -150,11 +154,14 @@ public class NGraphics {
 	}
 
 	public static void drawText(int x, int y, String text) {
-		nvgFontSize(nvg, font.getSize()*UISystem.guiScale);
-		nvgFontFaceId(nvg, font.getNVGId());
-		nvgTextAlign(nvg, textAlign);
-		nvgFillColor(nvg, color);
-		nvgText(nvg, x, y, text);
+		for(String str : text.split("\n")) {
+			nvgFontSize(nvg, font.getSize()*UISystem.guiScale);
+			nvgFontFaceId(nvg, font.getNVGId());
+			nvgTextAlign(nvg, textAlign);
+			nvgFillColor(nvg, color);
+			nvgText(nvg, x, y, str);
+			y += getTextAscent(str);
+		}
 	}
 	
 	public static void setColor(int r, int g, int b, int a) {

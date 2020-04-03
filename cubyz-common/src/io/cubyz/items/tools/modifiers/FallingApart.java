@@ -17,7 +17,7 @@ public class FallingApart implements Modifier {
 
 	@Override
 	public String getDescription() {
-		return "Every time you use this tool, small parts of it will fall off thus worsening the stats of this tool. You can only replenish it by repairing it in the Workbench, other healing tricks like regrowth won't help.";
+		return "Every time you use this tool, small parts of it will fall off.\nThat leads to a slow and steady decay of this tools stats.\nYou can only replenish it by repairing it in the Workbench.";
 	}
 
 	@Override

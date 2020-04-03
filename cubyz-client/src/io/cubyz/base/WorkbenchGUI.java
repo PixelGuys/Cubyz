@@ -1,7 +1,6 @@
 package io.cubyz.base;
 
 import io.cubyz.api.CubyzRegistries;
-import io.cubyz.base.init.MaterialInit;
 import io.cubyz.client.Cubyz;
 import io.cubyz.items.Inventory;
 import io.cubyz.items.Item;

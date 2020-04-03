@@ -9,6 +9,7 @@ import io.cubyz.client.Cubyz;
 import io.cubyz.items.Item;
 import io.cubyz.items.ItemBlock;
 import io.cubyz.items.ItemStack;
+import io.cubyz.items.tools.Modifier;
 import io.cubyz.items.tools.Tool;
 import io.cubyz.ui.Component;
 import io.cubyz.ui.NGraphics;
@@ -55,7 +56,15 @@ public class InventorySlot extends Component {
 			if (isInside(mouse.getCurrentPos(), width, height)) {
 				double x = mouse.getX() + 10;
 				double y = mouse.getY() + 10;
-				String tooltip = item.getName() == null ? "error: name must be added" : item.getName().getTranslation(Cubyz.lang);
+				String tooltip;
+				if(item instanceof Tool) {
+					tooltip = item.getName() == null ? "???" : item.getName().getTranslation(Cubyz.lang);
+					for(Modifier m : ((Tool)item).getModifiers()) {
+						tooltip += "\n"+m.getName()+"\n"+m.getDescription()+"\n";
+					}
+				} else {
+					tooltip = item.getName() == null ? "???" : item.getName().getTranslation(Cubyz.lang);
+				}
 				float[] bounds = NGraphics.getTextSize(tooltip);
 				NGraphics.setColor(20, 20, 20);
 				NGraphics.fillRect((float) x, (float) y, bounds[0], bounds[1]);

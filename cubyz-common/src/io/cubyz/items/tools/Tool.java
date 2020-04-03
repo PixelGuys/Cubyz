@@ -88,6 +88,10 @@ public abstract class Tool extends Item {
 		return maxDurability;
 	}
 	
+	public List<Modifier> getModifiers() {
+		return modifiers;
+	}
+	
 	public NDTContainer saveTo(NDTContainer container) {
 		if(this instanceof Axe)
 			container.setString("type", "Axe");
