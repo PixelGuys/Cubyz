@@ -69,14 +69,6 @@ public class InventoryGUI extends GeneralInventory {
 		width = 576;
 		height = 576;
 	}
-	
-	@Override
-	public void render(long nvg, Window win) {
-		super.render(nvg, win);
-		for(int i = 0; i < inv.length; i++) { // tooltips
-			inv[i].drawTooltip(Cubyz.mouse, win.getWidth() / 2, win.getHeight());
-		}
-	}
 
 	@Override
 	protected void mouseAction(MouseInput mouse, Window win) {
