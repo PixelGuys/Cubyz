@@ -631,6 +631,7 @@ public class Cubyz implements IGameLogic {
 				msd.selectSpatial(world.getVisibleChunks(), world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate());
 			}
 		}
+		mouse.clearScroll();
 	}
 
 	public static final Chunk[] EMPTY_CHUNK_LIST = new Chunk[0];

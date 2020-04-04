@@ -21,7 +21,7 @@ public class MouseInput {
 	private boolean grabbed = false;
 	private Window win;
 	
-	int lastScroll = 0, curScroll = 0;
+	int lastScroll = 0, curScroll = 0, scrollOffset = 0;
 
 	public MouseInput() {
 		previousPos = new Vector2d(0, 0);
@@ -36,9 +36,14 @@ public class MouseInput {
 	}
 	
 	public double getScrollOffset() {
+		return scrollOffset;
+	}
+	
+	public void clearScroll() {
 		int last = lastScroll;
 		lastScroll = curScroll;
-		return lastScroll-last;
+		scrollOffset = lastScroll-last;
+		
 	}
 
 	public boolean isGrabbed() {
