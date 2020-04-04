@@ -21,7 +21,7 @@ public class MouseInput {
 	private boolean grabbed = false;
 	private Window win;
 	
-	private double scrollOffset;
+	int lastScroll = 0, curScroll = 0;
 
 	public MouseInput() {
 		previousPos = new Vector2d(0, 0);
@@ -35,14 +35,10 @@ public class MouseInput {
 		previousPos.set(x, y);
 	}
 	
-	public synchronized void clearScroll() {
-		if (scrollOffset != 0) {
-			scrollOffset = 0;
-		}
-	}
-	
 	public double getScrollOffset() {
-		return scrollOffset;
+		int last = lastScroll;
+		lastScroll = curScroll;
+		return lastScroll-last;
 	}
 
 	public boolean isGrabbed() {
@@ -99,7 +95,7 @@ public class MouseInput {
 			}
 		});
 		glfwSetScrollCallback(window.getWindowHandle(), (windowHandle, xoffset, yoffset) -> {
-			scrollOffset = yoffset;
+			curScroll += yoffset;
 		});
 	}
 
