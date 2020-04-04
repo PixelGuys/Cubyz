@@ -168,6 +168,67 @@ public class Noise {
 			yGridPoints[i] = yGridR;
 		}
 	}
+	static int offsetX, offsetY;
+	static long seed;
+	static long getSeed(int x, int y) {
+		return (((long)(offsetX+x)) << 16)^seed^(((long)(offsetY+y)) << 32);
+	}
+	public static synchronized float[][] generateFractalTerrain(int x, int y, int width, int height, int scale, long seed) {
+		Noise.seed = seed;
+		float[][] map = new float[width][height];
+		int max =scale+1;
+		int and = scale-1;
+		float[][] bigMap = new float[max][max];
+		offsetX = x&(~and);
+		offsetY = y&(~and);
+		Random rand = new Random();
+		rand.setSeed(getSeed(0, 0));
+		bigMap[0][0] = rand.nextFloat()-0.5f;
+		rand.setSeed(getSeed(0, scale));
+		bigMap[0][scale] = rand.nextFloat()-0.5f;
+		rand.setSeed(getSeed(scale, 0));
+		bigMap[scale][0] = rand.nextFloat()-0.5f;
+		rand.setSeed(getSeed(scale, scale));
+		bigMap[scale][scale] = rand.nextFloat()-0.5f;
+		for(int res = scale*2; res > 0; res >>>= 1) {
+			// x coordinate on the grid:
+			for(int px = 0; px < max; px += res<<1) {
+				for(int py = res; py+res < max; py += res<<1) {
+					if(px == 0 || px == scale) rand.setSeed(getSeed(px, py));
+					bigMap[px][py] = (bigMap[px][py-res]+bigMap[px][py+res])/2 + (rand.nextFloat()-0.5f)*res/scale;
+				}
+			}
+			// y coordinate on the grid:
+			for(int px = res; px+res < max; px += res<<1) {
+				for(int py = 0; py < max; py += res<<1) {
+					if(py == 0 || py == scale) rand.setSeed(getSeed(px, py));
+					bigMap[px][py] = (bigMap[px-res][py]+bigMap[px+res][py])/2 + (rand.nextFloat()-0.5f)*res/scale;
+				}
+			}
+			// No coordinate on the grid:
+			for(int px = res; px+res < max; px += res<<1) {
+				for(int py = res; py+res < max; py += res<<1) {
+					bigMap[px][py] = (bigMap[px-res][py-res]+bigMap[px+res][py-res]+bigMap[px-res][py+res]+bigMap[px+res][py+res])/4 + (rand.nextFloat()-0.5f)*res/scale;
+				}
+			}
+		}
+		for(int px = 0; px < width; px++) {
+			for(int py = 0; py < height; py++) {
+				try {
+					map[px][py] = bigMap[(x&and)+px][(y&and)+py];
+					map[px][py] = map[px][py]*0.5f + 0.5f;
+					map[px][py] = special(map[px][py]);
+				} catch(Exception e) {
+					map[px][py] = 0;
+				}
+			}
+		}
+		return map;
+	}
+	static float special(float x) {
+		x = (float) (0.943396*(0.128 + 2*Math.pow(x - 0.4, 3) + 0.5*x));
+		return x;
+	}
 	
 	public static synchronized float[][] generateMapFragment(int x, int y, int width, int height, int scale, long seed) {
 		float[][] map = new float[width][height];

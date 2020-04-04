@@ -13,7 +13,7 @@ import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.Ore;
 import io.cubyz.world.Chunk;
-import io.cubyz.world.Noise;
+import io.cubyz.world.LocalWorld;
 import io.cubyz.world.World;
 import io.cubyz.world.cubyzgenerators.*;
 
@@ -59,8 +59,8 @@ public class LifelandGenerator extends WorldGenerator {
 		int wy = oy << 4;
 		int seed = world.getSeed();
 		// Generate some maps:
-		float[][] heightMap = Noise.generateMapFragment(wx-8, wy-8, 32, 32, 256, seed);
-		float[][] heatMap = Noise.generateMapFragment(wx-8, wy-8, 32, 32, 4096, seed ^ 123456789);
+		float[][] heightMap = ((LocalWorld)world).getHeightMapData(wx-8, wy-8, 32, 32);
+		float[][] heatMap = ((LocalWorld)world).getHeatMapData(wx-8, wy-8, 32, 32);
 		int[][] realHeight = new int[32][32];
 		for(int px = 0; px < 32; px++) {
 			for(int py = 0; py < 32; py++) {

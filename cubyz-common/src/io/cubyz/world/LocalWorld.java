@@ -36,6 +36,7 @@ public class LocalWorld extends World {
 
 	private String name;
 	private List<Chunk> chunks;
+	private List<MetaChunk> maps;
 	private Chunk [] visibleChunks;
 	private int lastX = Integer.MAX_VALUE, lastZ = Integer.MAX_VALUE; // Chunk coordinates of the last chunk update.
 	private int doubleRD; // Corresponds to the doubled value of the last used render distance.
@@ -119,6 +120,7 @@ public class LocalWorld extends World {
 		ItemInit.resetCustom();
 		this.name = name;
 		chunks = new ArrayList<>();
+		maps = new ArrayList<>();
 		visibleChunks = new Chunk[0];
 		
 		for (int i = 0; i < Runtime.getRuntime().availableProcessors(); i++) {
@@ -255,6 +257,72 @@ public class LocalWorld extends World {
 		chunks.add(c);
 		lastChunk = chunks.size()-1;
 		return c;
+	}
+	
+	synchronized MetaChunk getMetaChunk(int wx, int wy) {
+		for(MetaChunk ch : maps) {
+			if(ch.x == wx && ch.y == wy) {
+				return ch;
+			}
+		}
+		// Every time a new MetaChunk is created, go through the list and if the length is at the limit(determined by the renderdistance) remove those that are farthest from the player:
+		while(maps.size() > (doubleRD/16 + 2)*(doubleRD/16 + 2)) {
+			int max = 0;
+			int index = 0;
+			for(int i = 0; i < maps.size(); i++) {
+				int dist = (maps.get(i).x-player.getPosition().x)*(maps.get(i).x-player.getPosition().x) + (maps.get(i).y-player.getPosition().z)*(maps.get(i).y-player.getPosition().z);
+				if(dist > max) {
+					max = dist;
+					index = i;
+				}
+			}
+			maps.remove(index);
+		}
+		MetaChunk ch = new MetaChunk(wx, wy, seed);
+		maps.add(ch);
+		return ch;
+	}
+	
+	public float[][] getHeightMapData(int x, int y, int width, int height) {
+		int x0 = x&(~255);
+		int y0 = y&(~255);
+		float[][] map = new float[width][height];
+		for(int px = x0; px < x+width; px += 256) {
+			for(int py = y0; py < y+height; py += 256) {
+				MetaChunk ch = getMetaChunk(px ,py);
+				int xS = Math.max(px, x);
+				int yS = Math.max(py, y);
+				int xE = Math.min(px+256, x+width);
+				int yE = Math.min(py+256, y+height);
+				for(int cx = xS; cx < xE; cx++) {
+					for(int cy = yS; cy < yE; cy++) {
+						map[cx-x][cy-y] = ch.heightMap[cx&255][cy&255];
+					}
+				}
+			}
+		}
+		return map;
+	}
+	
+	public float[][] getHeatMapData(int x, int y, int width, int height) {
+		int x0 = x&(~255);
+		int y0 = y&(~255);
+		float[][] map = new float[width][height];
+		for(int px = x0; px < x+width; px += 256) {
+			for(int py = y0; py < y+height; py += 256) {
+				MetaChunk ch = getMetaChunk(px ,py);
+				int xS = Math.max(px, x);
+				int yS = Math.max(py, y);
+				int xE = Math.min(px+256, x+width);
+				int yE = Math.min(py+256, y+height);
+				for(int cx = xS; cx < xE; cx++) {
+					for(int cy = yS; cy < yE; cy++) {
+						map[cx-x][cy-y] = ch.heatMap[cx&255][cy&255];
+					}
+				}
+			}
+		}
+		return map;
 	}
 	
 	public byte[] getChunkData(int x, int z) { // Gets the data of a Chunk.
