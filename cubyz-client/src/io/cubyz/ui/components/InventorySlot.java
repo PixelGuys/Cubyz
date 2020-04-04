@@ -133,7 +133,6 @@ public class InventorySlot extends Component {
 					ItemBlock ib = (ItemBlock) item;
 					Block b = ib.getBlock();
 					if (item.getTexture() != null) {
-						System.out.println(item.getTexture());
 						item.setImage(NGraphics.loadImage(item.getTexture()));
 					} else {
 						item.setImage(NGraphics.nvgImageFrom(Cubyz.instance.blockPreview(b).getColorTexture()));
