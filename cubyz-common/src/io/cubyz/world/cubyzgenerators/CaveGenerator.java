@@ -18,20 +18,22 @@ public class CaveGenerator implements Generator {
 	}
 	
 	private static final int range = 8;
-	private Random rand;
+	private static Random rand = new Random();
 	
 	@Override
 	public void generate(long seed, int cx, int cy, Block[][][] chunk) {
-		rand = new Random(seed);
-		long rand1 = rand.nextLong();
-		long rand2 = rand.nextLong();
-		// Generate caves from all nearby chunks:
-		for(int x = cx - range; x <= cx + range; ++x) {
-			for(int y = cy - range; y <= cy + range; ++y) {
-				long randX = (long)x*rand1;
-				long randY = (long)y*rand2;
-				rand.setSeed(randX ^ randY ^ seed);
-				considerCoordinates(x, y, cx, cy, chunk);
+		synchronized(rand) {
+			rand.setSeed(seed);
+			long rand1 = rand.nextLong();
+			long rand2 = rand.nextLong();
+			// Generate caves from all nearby chunks:
+			for(int x = cx - range; x <= cx + range; ++x) {
+				for(int y = cy - range; y <= cy + range; ++y) {
+					long randX = (long)x*rand1;
+					long randY = (long)y*rand2;
+					rand.setSeed(randX ^ randY ^ seed);
+					considerCoordinates(x, y, cx, cy, chunk);
+				}
 			}
 		}
 	}
