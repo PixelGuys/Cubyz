@@ -12,7 +12,7 @@ public class Constants {
 	public static final String GAME_BUILD_TYPE = "alpha";
 	
 	// WARNING! Both brand name and version cannot contain ';' inside!
-	public static final String GAME_VERSION = "0.5.0";
+	public static final String GAME_VERSION = "0.6.0";
 	public static final String GAME_BRAND = "cubyz";
 	static Side currentSide = null;
 	

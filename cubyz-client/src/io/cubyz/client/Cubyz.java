@@ -1,15 +1,11 @@
 package io.cubyz.client;
 
 import java.awt.Color;
-import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
-import java.util.function.Consumer;
 import java.util.logging.*;
 
 import javax.imageio.ImageIO;
@@ -31,13 +27,11 @@ import io.cubyz.base.init.ItemInit;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.CustomOre;
-import io.cubyz.blocks.Ore;
 import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.client.loading.LoadThread;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.EntityType;
 import io.cubyz.entity.Player;
-import io.cubyz.handler.BlockVisibilityChangeHandler;
 import io.cubyz.items.CustomItem;
 import io.cubyz.math.Vector3fi;
 import io.cubyz.multiplayer.GameProfile;
@@ -103,8 +97,6 @@ public class Cubyz implements IGameLogic {
 	
 	public static Deque<Runnable> renderDeque = new ArrayDeque<>();
 	public static HashMap<String, Mesh> cachedDefaultModels = new HashMap<>();
-
-	public static int GUIKey = -1;
 	
 	private static HashMap<String, MenuGUI> userGUIs = new HashMap<>();
 	
@@ -173,7 +165,6 @@ public class Cubyz implements IGameLogic {
 			while (true) {
 				dx = rnd.nextInt(10000) - 5000;
 				dz = rnd.nextInt(10000) - 5000;
-				//dx = dz = Integer.MIN_VALUE+512;
 				CubyzLogger.i.info("Trying " + dx + " ? " + dz);
 				world.synchronousSeek(dx, dz);
 				highestY = world.getHighestBlock(dx, dz);
