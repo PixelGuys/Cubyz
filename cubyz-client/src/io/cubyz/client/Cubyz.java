@@ -821,7 +821,6 @@ public class Cubyz implements IGameLogic {
 			}
 			light.setColor(clearColor);
 			window.setClearColor(clearColor);
-			System.out.println(ctx.getCamera().getRotation());
 			renderer.render(window, ctx, ambient, light, world.getVisibleChunks(), world.getBlocks(), world.getEntities(), world.getLocalPlayer());
 		} else {
 			clearColor.y = clearColor.z = 0.7f;

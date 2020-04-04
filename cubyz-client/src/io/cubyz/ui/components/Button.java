@@ -24,8 +24,17 @@ public class Button extends Component {
 		156, 165, 191, // bottom
 		150, 159, 184, // left
 	};
+	
+	private static final int[] buttonHovered = {
+		156, 166, 221, // center
+		166, 176, 234, // top
+		160, 170, 226, // right
+		145, 154, 209, // bottom
+		151, 161, 216, // left
+	};
 
 	private boolean pressed;
+	private boolean hovered;
 	private boolean canRepress = true;
 	private Runnable run;
 	private float fontSize = 12f;
@@ -88,6 +97,10 @@ public class Button extends Component {
 		if (mouse.isLeftButtonPressed() && canRepress && isInside(mouse.getCurrentPos())) {
 			pressed = true;
 			canRepress = false;
+		} else if (isInside(mouse.getCurrentPos())) {
+			hovered = true;
+		} else {
+			hovered = false;
 		}
 		if (!canRepress && !mouse.isLeftButtonPressed()) {
 			pressed = false;
@@ -98,7 +111,15 @@ public class Button extends Component {
 				}
 			}
 		}
-		drawTexture(pressed ? buttonPressed : button);
+		if (pressed) {
+			drawTexture(buttonPressed);
+		} else {
+			if (hovered) {
+				drawTexture(buttonHovered);
+			} else {
+				drawTexture(button);
+			}
+		}
 		NGraphics.setColor(255, 255, 255);
 		NGraphics.setFont("Default", fontSize);
 		NGraphics.drawText(x + (width / 2) - ((text.getTranslation(Cubyz.lang).length() * 5) / 2), (int) (y + (height / 2) - fontSize / 2), text.getTranslation(Cubyz.lang));
