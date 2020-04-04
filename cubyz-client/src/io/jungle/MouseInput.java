@@ -35,8 +35,10 @@ public class MouseInput {
 		previousPos.set(x, y);
 	}
 	
-	public void clearScroll() {
-		scrollOffset = 0;
+	public synchronized void clearScroll() {
+		if (scrollOffset != 0) {
+			scrollOffset = 0;
+		}
 	}
 	
 	public double getScrollOffset() {
@@ -84,7 +86,6 @@ public class MouseInput {
 			inWindow = entered;
 		});
 		glfwSetMouseButtonCallback(window.getWindowHandle(), (windowHandle, button, action, mode) -> {
-
 			if (action == GLFW_PRESS || action == GLFW_RELEASE) {
 				if (button == GLFW_MOUSE_BUTTON_1) {
 					leftButtonPressed = action == GLFW_PRESS;

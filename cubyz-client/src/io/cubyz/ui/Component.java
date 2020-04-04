@@ -4,6 +4,7 @@ import java.awt.Rectangle;
 
 import org.joml.Vector2d;
 
+import io.jungle.MouseInput;
 import io.jungle.Window;
 
 public abstract class Component {
@@ -66,5 +67,6 @@ public abstract class Component {
 	
 	public void init(long nvg, Window src) {}
 	public void dispose(long nvg, Window src) {}
+	public void input(MouseInput mouse) {} // TODO: use in ScrollingContainer
 	
 }
