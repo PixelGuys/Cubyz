@@ -110,7 +110,7 @@ public class MainRenderer implements IRenderer {
 		depthShaderProgram.createUniform("projectionMatrix");
 		depthShaderProgram.createUniform("isInstanced");
 		
-		shadowMap = new ShadowMap(2048, 2048);
+		shadowMap = new ShadowMap(1024, 1024);
 		
 		System.gc();
 	}
@@ -131,7 +131,7 @@ public class MainRenderer implements IRenderer {
 	//long t = 0;
 	//int n = 1;
 
-	ArrayList<Spatial>[] map = (ArrayList<Spatial>[]) new ArrayList[0];
+	RenderList<Spatial>[] map = (RenderList<Spatial>[]) new RenderList[0];
 	public synchronized void render(Window window, Context ctx, Vector3f ambientLight, DirectionalLight directionalLight,
 			Chunk[] chunks, Block[] blocks, Entity[] entities, Player localPlayer) {
 		//long t1 = System.nanoTime();
@@ -155,10 +155,10 @@ public class MainRenderer implements IRenderer {
 		Spatial selected = null;
 		int selectedBlock = -1;
 		if (blocks.length != map.length) {
-			map = (ArrayList<Spatial>[]) new ArrayList[blocks.length];
+			map = (RenderList<Spatial>[]) new RenderList[blocks.length];
 			int arrayListCapacity = 10;
 			for (int i = 0; i < map.length; i++) {
-				map[i] = new ArrayList<Spatial>(arrayListCapacity);
+				map[i] = new RenderList<Spatial>(arrayListCapacity);
 			}
 		}
 		// Don't create a new ArrayList every time to reduce re-allocations:
@@ -223,9 +223,7 @@ public class MainRenderer implements IRenderer {
 			m.put(Meshes.blockMeshes.get(blocks[i]), map[i]);
 		}
 		for (Mesh mesh : m.keySet()) {
-			//if (mesh instanceof InstancedMesh) { // always instance of instancedmesh
-				instancedMeshes.add((InstancedMesh) mesh);
-			//}
+			instancedMeshes.add((InstancedMesh) mesh);
 		}
 		
 		if (shadowMap != null) { // remember it will be disableable

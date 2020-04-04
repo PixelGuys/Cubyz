@@ -502,7 +502,7 @@ public class LocalWorld extends World {
 				if (ch.isLoaded() && ch.liquids().size() > 0) {
 					liquids = ch.liquids().toArray(liquids);
 					for (BlockInstance bi : liquids) {
-						if (bi == null) continue;
+						if (bi == null) break;
 						BlockInstance[] neighbors = bi.getNeighbors(ch);
 						for (int i = 0; i < neighbors.length; i++) {
 							BlockInstance b = neighbors[i];
