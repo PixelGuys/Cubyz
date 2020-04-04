@@ -1,7 +1,6 @@
 package io.cubyz.client;
 
 import static org.lwjgl.opengl.GL11.*;
-import static org.lwjgl.opengl.GL13.GL_TEXTURE0;
 import static org.lwjgl.opengl.GL13.glActiveTexture;
 
 import java.util.ArrayList;
@@ -9,10 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 
 import org.joml.FrustumIntersection;
-import org.joml.FrustumRayBuilder;
 import org.joml.Matrix4f;
-import org.joml.RayAabIntersection;
-import org.joml.Rayf;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 import org.lwjgl.opengl.GL13C;
@@ -31,7 +27,6 @@ import io.jungle.Spatial;
 import io.jungle.Texture;
 import io.jungle.Window;
 import io.jungle.game.Context;
-import io.jungle.renderers.FrustumCullingFilter;
 import io.jungle.renderers.IRenderer;
 import io.jungle.renderers.Transformation;
 import io.jungle.util.DirectionalLight;
@@ -53,10 +48,8 @@ public class MainRenderer implements IRenderer {
 	public boolean orthogonal;
 	private Transformation transformation;
 	private String shaders = "";
-	private FrustumCullingFilter filter;
 	private Matrix4f prjViewMatrix = new Matrix4f();
 	private FrustumIntersection frustumInt = new FrustumIntersection();
-	private FrustumRayBuilder rayBuilder = new FrustumRayBuilder();
 	private ShadowMap shadowMap;
 
 	public static final int MAX_POINT_LIGHTS = 0;
@@ -129,8 +122,6 @@ public class MainRenderer implements IRenderer {
 				window.getHeight(), Z_NEAR, Z_FAR));
 		loadShaders();
 
-		filter = new FrustumCullingFilter();
-
 		inited = true;
 	}
 
@@ -140,8 +131,7 @@ public class MainRenderer implements IRenderer {
 	//long t = 0;
 	//int n = 1;
 
-	Vector3f lastInstancedPosition = new Vector3f();
-	List<Spatial>[] map = (List<Spatial>[]) new List[0];
+	ArrayList<Spatial>[] map = (ArrayList<Spatial>[]) new ArrayList[0];
 	public synchronized void render(Window window, Context ctx, Vector3f ambientLight, DirectionalLight directionalLight,
 			Chunk[] chunks, Block[] blocks, Entity[] entities, Player localPlayer) {
 		//long t1 = System.nanoTime();
@@ -165,16 +155,18 @@ public class MainRenderer implements IRenderer {
 		Spatial selected = null;
 		int selectedBlock = -1;
 		if (blocks.length != map.length) {
-			map = (List<Spatial>[]) new List[blocks.length];
+			map = (ArrayList<Spatial>[]) new ArrayList[blocks.length];
+			int arrayListCapacity = 10;
+			for (int i = 0; i < map.length; i++) {
+				map[i] = new ArrayList<Spatial>(arrayListCapacity);
+			}
+		}
+		// Don't create a new ArrayList every time to reduce re-allocations:
+		for (int i = 0; i < map.length; i++) {
+			map[i].clear();
 		}
 		
-		int arrayListCapacity = 10; // some (very) approximate of the size ArrayList would use, this is used to reduce re-allocations
-		if (map.length != 0) {
-			arrayListCapacity = blocks.length / map.length;
-		}
-		for (int i = 0; i < map.length; i++) {
-			map[i] = new ArrayList<Spatial>(arrayListCapacity);
-		}
+		
 		// Uses FrustumCulling on the chunks.
 		prjViewMatrix.set(window.getProjectionMatrix());
 		prjViewMatrix.mul(ctx.getCamera().getViewMatrix());
@@ -194,28 +186,29 @@ public class MainRenderer implements IRenderer {
 					continue;
 				BlockInstance[] vis = ch.getVisibles();
 				for (int i = 0; vis[i] != null; i++) {
-					Spatial tmp = (Spatial) vis[i].getSpatial();
-					float x = (vis[i].getX() - x0) - relX;
-					float y = vis[i].getY() - y0;
-					float z = (vis[i].getZ() - z0) - relZ;
-					// Do the frustum culling directly here instead of looping 3 times through the data which in the end isn't drawn.
-					if(frustumInt.testSphere(x, y, z, 2f)) {
+					BlockInstance bi = vis[i];
+					Spatial tmp = (Spatial) bi.getSpatial();
+					float x = (bi.getX() - x0) - relX;
+					float y = bi.getY() - y0;
+					float z = (bi.getZ() - z0) - relZ;
+					// Do the frustum culling directly here.
+					if(frustumInt.testSphere(x, y, z, 0.707107f)) {
 						// Only draw blocks that have at least one face facing the player.
-						if(vis[i].getBlock().isTransparent() || // Ignore transparent blocks in the process, so the surface of water can still be seen from below.
-								(x > 0.5f && !vis[i].neighborEast) ||
-								(x < -0.5f && !vis[i].neighborWest) ||
-								(y > 0.5f && !vis[i].neighborDown) ||
-								(y < -0.5f && !vis[i].neighborUp) ||
-								(z > 0.5f && !vis[i].neighborSouth) ||
-								(z < -0.5f && !vis[i].neighborNorth)) {
+						if(bi.getBlock().isTransparent() || // Ignore transparent blocks in the process, so the surface of water can still be seen from below.
+								(x > 0.5f && !bi.neighborEast) ||
+								(x < -0.5f && !bi.neighborWest) ||
+								(y > 0.5f && !bi.neighborDown) ||
+								(y < -0.5f && !bi.neighborUp) ||
+								(z > 0.5f && !bi.neighborSouth) ||
+								(z < -0.5f && !bi.neighborNorth)) {
 							
 							tmp.setPosition(x, y, z);
 							if (tmp.isSelected()) {
 								selected = tmp;
-								selectedBlock = vis[i].getID();
+								selectedBlock = bi.getID();
 								continue;
 							}
-							map[vis[i].getID()].add(tmp);
+							map[bi.getID()].add(tmp);
 						}
 					}
 				}
@@ -234,7 +227,7 @@ public class MainRenderer implements IRenderer {
 				instancedMeshes.add((InstancedMesh) mesh);
 			//}
 		}
-		//filter.filter(m);
+		
 		if (shadowMap != null) { // remember it will be disableable
 			renderDepthMap(directionalLight, blocks, selected, selectedBlock);
 			glViewport(0, 0, window.getWidth(), window.getHeight()); // reset viewport
