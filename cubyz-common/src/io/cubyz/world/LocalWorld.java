@@ -279,9 +279,17 @@ public class LocalWorld extends World {
 			}
 			maps.remove(index);
 		}
-		MetaChunk ch = new MetaChunk(wx, wy, seed);
+		MetaChunk ch = new MetaChunk(wx, wy, seed, this);
 		maps.add(ch);
 		return ch;
+	}
+	MetaChunk getNoGenerateMetaChunk(int wx, int wy) {
+		for(MetaChunk ch : maps) {
+			if(ch.x == wx && ch.y == wy) {
+				return ch;
+			}
+		}
+		return null;
 	}
 	
 	public float[][] getHeightMapData(int x, int y, int width, int height) {

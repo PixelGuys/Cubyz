@@ -183,19 +183,21 @@ public class Noise {
 		offsetY = y&(~and);
 		Random rand = new Random();
 		rand.setSeed(getSeed(0, 0));
-		bigMap[0][0] = rand.nextFloat()-0.5f;
+		bigMap[0][0] = rand.nextFloat();
 		rand.setSeed(getSeed(0, scale));
-		bigMap[0][scale] = rand.nextFloat()-0.5f;
+		bigMap[0][scale] = rand.nextFloat();
 		rand.setSeed(getSeed(scale, 0));
-		bigMap[scale][0] = rand.nextFloat()-0.5f;
+		bigMap[scale][0] = rand.nextFloat();
 		rand.setSeed(getSeed(scale, scale));
-		bigMap[scale][scale] = rand.nextFloat()-0.5f;
+		bigMap[scale][scale] = rand.nextFloat();
 		for(int res = scale*2; res > 0; res >>>= 1) {
 			// x coordinate on the grid:
 			for(int px = 0; px < max; px += res<<1) {
 				for(int py = res; py+res < max; py += res<<1) {
 					if(px == 0 || px == scale) rand.setSeed(getSeed(px, py));
 					bigMap[px][py] = (bigMap[px][py-res]+bigMap[px][py+res])/2 + (rand.nextFloat()-0.5f)*res/scale;
+					if(bigMap[px][py] > 1.0f) bigMap[px][py] = 1.0f;
+					if(bigMap[px][py] < 0.0f) bigMap[px][py] = 0.0f;
 				}
 			}
 			// y coordinate on the grid:
@@ -203,12 +205,16 @@ public class Noise {
 				for(int py = 0; py < max; py += res<<1) {
 					if(py == 0 || py == scale) rand.setSeed(getSeed(px, py));
 					bigMap[px][py] = (bigMap[px-res][py]+bigMap[px+res][py])/2 + (rand.nextFloat()-0.5f)*res/scale;
+					if(bigMap[px][py] > 1.0f) bigMap[px][py] = 1.0f;
+					if(bigMap[px][py] < 0.0f) bigMap[px][py] = 0.0f;
 				}
 			}
 			// No coordinate on the grid:
 			for(int px = res; px+res < max; px += res<<1) {
 				for(int py = res; py+res < max; py += res<<1) {
 					bigMap[px][py] = (bigMap[px-res][py-res]+bigMap[px+res][py-res]+bigMap[px-res][py+res]+bigMap[px+res][py+res])/4 + (rand.nextFloat()-0.5f)*res/scale;
+					if(bigMap[px][py] > 1.0f) bigMap[px][py] = 1.0f;
+					if(bigMap[px][py] < 0.0f) bigMap[px][py] = 0.0f;
 				}
 			}
 		}
@@ -216,18 +222,14 @@ public class Noise {
 			for(int py = 0; py < height; py++) {
 				try {
 					map[px][py] = bigMap[(x&and)+px][(y&and)+py];
-					map[px][py] = map[px][py]*0.5f + 0.5f;
-					map[px][py] = special(map[px][py]);
+					if(map[px][py] >= 1.0f)
+						map[px][py] = 0.9999f;
 				} catch(Exception e) {
 					map[px][py] = 0;
 				}
 			}
 		}
 		return map;
-	}
-	static float special(float x) {
-		x = (float) (0.943396*(0.128 + 2*Math.pow(x - 0.4, 3) + 0.5*x));
-		return x;
 	}
 	
 	public static float[][] generateMapFragment(int x, int y, int width, int height, int scale, long seed) {
