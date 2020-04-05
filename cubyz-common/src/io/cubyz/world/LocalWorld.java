@@ -10,6 +10,7 @@ import java.util.concurrent.LinkedBlockingDeque;
 import org.joml.Vector4f;
 
 import io.cubyz.CubyzLogger;
+import io.cubyz.Profiler;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.IRegistryElement;
 import io.cubyz.base.init.ItemInit;
@@ -498,9 +499,11 @@ public class LocalWorld extends World {
 		// Liquids
 		if (gameTime % 3 == 0 && lqdUpdate) {
 			lqdUpdate = false;
+			//Profiler.startProfiling();
 			for (Chunk ch : visibleChunks) {
 				if (ch.isLoaded() && ch.liquids().size() > 0) {
-					liquids = ch.liquids().toArray(liquids);
+					liquids = ch.updatingLiquids().toArray(liquids);
+					ch.updatingLiquids().clear();
 					for (BlockInstance bi : liquids) {
 						if (bi == null) break;
 						BlockInstance[] neighbors = bi.getNeighbors(ch);
@@ -532,6 +535,7 @@ public class LocalWorld extends World {
 					}
 				}
 			}
+			//Profiler.printProfileTime("liquid-update");
 		}
 	}
 
@@ -688,7 +692,7 @@ public class LocalWorld extends World {
 	}
 	
 	public int getChunkQueueSize() {
-		return MAX_QUEUE_SIZE;
+		return loadList.size();
 	}
 
 	@Override

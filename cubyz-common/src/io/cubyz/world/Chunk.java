@@ -23,7 +23,8 @@ public class Chunk {
 	private BlockInstance[] inst;
 	private ArrayList<BlockInstance> list = new ArrayList<>();
 	private ArrayList<BlockInstance> liquids = new ArrayList<>();
-	private ArrayList<BlockChange> changes; // Reports block changes. Only those will be saved!s
+	private ArrayList<BlockInstance> updatingLiquids = new ArrayList<>(); // liquids that should be updated at next frame
+	private ArrayList<BlockChange> changes; // Reports block changes. Only those will be saved!
 	//private ArrayList<BlockInstance> visibles = new ArrayList<>();
 	private BlockInstance[] visibles = new BlockInstance[50]; // Using an array here to speed up the renderer.
 	private int visiblesSize = 0;
@@ -79,6 +80,10 @@ public class Chunk {
 	
 	public ArrayList<BlockInstance> liquids() {
 		return liquids;
+	}
+	
+	public ArrayList<BlockInstance> updatingLiquids() {
+		return updatingLiquids;
 	}
 	
 	public BlockInstance[] getVisibles() {
@@ -140,6 +145,7 @@ public class Chunk {
 		}
 		if (b.getBlockClass() == BlockClass.FLUID) {
 			liquids.add(inst0);
+			updatingLiquids.add(inst0);
 		}
 		list.add(inst0);
 		setInst(rx, y, rz, inst0);
@@ -378,6 +384,10 @@ public class Chunk {
 				if (!ch.contains(inst)) {
 					ch.revealBlock(inst);
 				}
+				if (inst.getBlock().getBlockClass() == BlockClass.FLUID) {
+					if (!updatingLiquids.contains(inst))
+						updatingLiquids.add(inst);
+				}
 			}
 		}
 		setInst(x, y, z, null);
@@ -449,6 +459,7 @@ public class Chunk {
 		list.add(inst0);
 		if (b.getBlockClass() == BlockClass.FLUID) {
 			liquids.add(inst0);
+			updatingLiquids.add(inst0);
 		}
 		setInst(x, y, z, inst0);
 		BlockInstance[] neighbors = inst0.getNeighbors(this);
@@ -481,6 +492,10 @@ public class Chunk {
 					if(vis) {
 						ch.hideBlock(neighbors[i]);
 					}
+				}
+				if (neighbors[i].getBlock().getBlockClass() == BlockClass.FLUID) {
+					if (!updatingLiquids.contains(neighbors[i]))
+						updatingLiquids.add(neighbors[i]);
 				}
 			}
 		}

@@ -10,6 +10,7 @@ import io.cubyz.api.IRegistryElement;
 import io.cubyz.api.Registry;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
+import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.Ore;
 import io.cubyz.world.Chunk;
@@ -93,8 +94,11 @@ public class LifelandGenerator extends WorldGenerator {
 						BlockInstance bi = new BlockInstance(b);
 						bi.setPosition(new Vector3i(wx + px, h, wy + py));
 						ch.rawAddBlock(px, h, py, bi);
-						if(bi.getBlock() != null && bi.getBlock().hasBlockEntity()) {
-							ch.blockEntities().put(bi, bi.getBlock().createBlockEntity(bi.getPosition()));
+						if(bi.getBlock() != null) {
+							if (bi.getBlock().hasBlockEntity())
+								ch.blockEntities().put(bi, bi.getBlock().createBlockEntity(bi.getPosition()));
+							if (bi.getBlock().getBlockClass() == BlockClass.FLUID)
+								ch.updatingLiquids().add(bi);
 						}
 					}
 				}

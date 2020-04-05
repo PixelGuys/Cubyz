@@ -1,4 +1,4 @@
-package io.cubyz.utils;
+package io.cubyz;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -21,15 +21,15 @@ public class Profiler {
 	private static int i;
 	
 	public static void printProfileTime(String name) {
-		//CubyzLogger.i.info("Profile \"" + name + "\" took " + getProfileTime() + "ns (" + getProfileTime()/1000 + "ms)");
+		CubyzLogger.i.info("Profile \"" + name + "\" took " + getProfileTime() + "ns (" + getProfileTime()/1000000 + "ms)");
 		if (!profileAverages.containsKey(name)) {
 			profileAverages.put(name, getProfileTime());
 		}
 		i++;
 		profileAverages.put(name, (profileAverages.get(name) + getProfileTime()) / 2);
-		//if (i % 100 == 0) {
-			CubyzLogger.i.info("Average (" + name + "): " + profileAverages.get(name) + "ns");
-		//}
+		if (i % 10 == 0) {
+			CubyzLogger.i.info("Average (" + name + "): " + profileAverages.get(name) + "ns (" + profileAverages.get(name)/1000000 + "ms)");
+		}
 	}
 	
 }

@@ -54,9 +54,7 @@ public class RenderList<T> {
 	}
 	
 	/**
-	 * Clears the content of the array.<br/>
-	 * <b>Implementation note:</b> This implementation doesn't actually clear it or zero it out for performance issues, hence
-	 * {@link RenderList#trimToSize()} should be called in order to free memory.
+	 * Sets the size to 0, meaning {@link RenderList#trimToSize()} should be called in order to free memory.
 	 */
 	public void clear() {
 		size = 0;
