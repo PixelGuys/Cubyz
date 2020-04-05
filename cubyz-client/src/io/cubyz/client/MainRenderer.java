@@ -132,7 +132,7 @@ public class MainRenderer implements IRenderer {
 	//int n = 1;
 
 	RenderList<Spatial>[] map = (RenderList<Spatial>[]) new RenderList[0];
-	public synchronized void render(Window window, Context ctx, Vector3f ambientLight, DirectionalLight directionalLight,
+	public void render(Window window, Context ctx, Vector3f ambientLight, DirectionalLight directionalLight,
 			Chunk[] chunks, Block[] blocks, Entity[] entities, Player localPlayer) {
 		//long t1 = System.nanoTime();
 		if (window.isResized()) {
@@ -227,7 +227,7 @@ public class MainRenderer implements IRenderer {
 		}
 		
 		if (shadowMap != null) { // remember it will be disableable
-			renderDepthMap(directionalLight, blocks, selected, selectedBlock);
+			//renderDepthMap(directionalLight, blocks, selected, selectedBlock);
 			glViewport(0, 0, window.getWidth(), window.getHeight()); // reset viewport
 			if (orthogonal) {
 				window.setProjectionMatrix(transformation.getOrthoProjectionMatrix(1f, -1f, -1f, 1f, Z_NEAR, Z_FAR));

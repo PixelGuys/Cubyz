@@ -508,128 +508,129 @@ public class Cubyz implements IGameLogic {
 			Keyboard.setKeyPressed(GLFW.GLFW_KEY_F11, false);
 		}
 		if (!gameUI.doesGUIPauseGame() && world != null) {
-			synchronized (mouse) {
-				if (Keybindings.isPressed("forward")) {
-					if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT_CONTROL)) {
-						if (world.getLocalPlayer().isFlying()) {
-							playerInc.z = -8;
-						} else {
-							playerInc.z = -2;
-						}
-					} else {
-						playerInc.z = -1;
-					}
-				}
-				if (Keybindings.isPressed("backward")) {
-					playerInc.z = 1;
-				}
-				if (Keybindings.isPressed("left")) {
-					playerInc.x = -1;
-				}
-				if (Keybindings.isPressed("right")) {
-					playerInc.x = 1;
-				}
-				if (Keybindings.isPressed("jump")) {
-					Player localPlayer = world.getLocalPlayer();
-					if (localPlayer.isFlying()) {
-						world.getLocalPlayer().vy = 0.25F;
-					} else if (world.getLocalPlayer().isOnGround()) {
-						world.getLocalPlayer().vy = 0.25F;
-					}
-				}
-				if (Keybindings.isPressed("fall")) {
+			if (Keybindings.isPressed("forward")) {
+				if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT_CONTROL)) {
 					if (world.getLocalPlayer().isFlying()) {
-						world.getLocalPlayer().vy = -0.25F;
+						playerInc.z = -8;
+					} else {
+						playerInc.z = -2;
 					}
+				} else {
+					playerInc.z = -1;
 				}
-				if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_F)) {
-					world.getLocalPlayer().setFlying(!world.getLocalPlayer().isFlying());
-					Keyboard.setKeyPressed(GLFW.GLFW_KEY_F, false);
+			}
+			if (Keybindings.isPressed("backward")) {
+				playerInc.z = 1;
+			}
+			if (Keybindings.isPressed("left")) {
+				playerInc.x = -1;
+			}
+			if (Keybindings.isPressed("right")) {
+				playerInc.x = 1;
+			}
+			if (Keybindings.isPressed("jump")) {
+				Player localPlayer = world.getLocalPlayer();
+				if (localPlayer.isFlying()) {
+					world.getLocalPlayer().vy = 0.25F;
+				} else if (world.getLocalPlayer().isOnGround()) {
+					world.getLocalPlayer().vy = 0.25F;
 				}
-				if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_P)) {
-					// debug: spawn a pig
-					Vector3fi pos = world.getLocalPlayer().getPosition().clone();
-					pos.y += 2f;
-					EntityType pigType = CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:pig");
-					if (pigType == null) return;
-					Entity pig = pigType.newEntity();
-					pig.setPosition(pos);
-					pig.setWorld(world);
-					world.addEntity(pig);
+			}
+			if (Keybindings.isPressed("fall")) {
+				if (world.getLocalPlayer().isFlying()) {
+					world.getLocalPlayer().vy = -0.25F;
 				}
-				if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_C)) {
-					int mods = Keyboard.getKeyMods();
-					if ((mods & GLFW.GLFW_MOD_CONTROL) == GLFW.GLFW_MOD_CONTROL) {
-						if ((mods & GLFW.GLFW_MOD_SHIFT) == GLFW.GLFW_MOD_SHIFT) { // Control + Shift + C
-							if (gameUI.getMenuGUI() == null) {
-								gameUI.setMenu(new ConsoleGUI());
-							}
+			}
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_F)) {
+				world.getLocalPlayer().setFlying(!world.getLocalPlayer().isFlying());
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_F, false);
+			}
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_P)) {
+				// debug: spawn a pig
+				Vector3fi pos = world.getLocalPlayer().getPosition().clone();
+				pos.y += 2f;
+				EntityType pigType = CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:pig");
+				if (pigType == null) return;
+				Entity pig = pigType.newEntity();
+				pig.setPosition(pos);
+				pig.setWorld(world);
+				world.addEntity(pig);
+			}
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_C)) {
+				int mods = Keyboard.getKeyMods();
+				if ((mods & GLFW.GLFW_MOD_CONTROL) == GLFW.GLFW_MOD_CONTROL) {
+					if ((mods & GLFW.GLFW_MOD_SHIFT) == GLFW.GLFW_MOD_SHIFT) { // Control + Shift + C
+						if (gameUI.getMenuGUI() == null) {
+							gameUI.setMenu(new ConsoleGUI());
 						}
 					}
 				}
-				if (Keybindings.isPressed("inventory")) {
-					gameUI.setMenu(new InventoryGUI());
-					Keyboard.setKeyPressed(Keybindings.getKeyCode("inventory"), false);
-				}
-				if (Keybindings.isPressed("menu")) {
-					if (gameUI.getMenuGUI() != null) {
-						gameUI.setMenu(null);
-						mouse.setGrabbed(true);
-						Keyboard.setKeyPressed(Keybindings.getKeyCode("menu"), false);
-					} else {
-						Keyboard.setKeyPressed(Keybindings.getKeyCode("menu"), false);
-						gameUI.setMenu(new PauseGUI());
-					}
-				}
-				if ((mouse.isLeftButtonPressed() || mouse.isRightButtonPressed()) && !mouse.isGrabbed() && gameUI.getMenuGUI() == null) {
-					mouse.setGrabbed(true);
-					mouse.clearPos(window.getWidth() / 2, window.getHeight() / 2);
-					breakCooldown = 10;
-				}
-				
-				// inventory related
-				inventorySelection = (inventorySelection + (int) mouse.getScrollOffset()) & 7;
-				if (Keybindings.isPressed("hotbar 1")) {
-					inventorySelection = 0;
-				}
-				if (Keybindings.isPressed("hotbar 2")) {
-					inventorySelection = 1;
-				}
-				if (Keybindings.isPressed("hotbar 3")) {
-					inventorySelection = 2;
-				}
-				if (Keybindings.isPressed("hotbar 4")) {
-					inventorySelection = 3;
-				}
-				if (Keybindings.isPressed("hotbar 5")) {
-					inventorySelection = 4;
-				}
-				if (Keybindings.isPressed("hotbar 6")) {
-					inventorySelection = 5;
-				}
-				if (Keybindings.isPressed("hotbar 7")) {
-					inventorySelection = 6;
-				}
-				if (Keybindings.isPressed("hotbar 8")) {
-					inventorySelection = 7;
-				}
-				
-				// render distance
-				if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_MINUS)) {
-					if(world.getRenderDistance() >= 2)
-						world.setRenderDistance(world.getRenderDistance()-1);
-					Keyboard.setKeyPressed(GLFW.GLFW_KEY_MINUS, false);
-					System.gc();
-				}
-				if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_EQUAL)) {
-					world.setRenderDistance(world.getRenderDistance()+1);
-					Keyboard.setKeyPressed(GLFW.GLFW_KEY_EQUAL, false);
-					System.gc();
-				}
-				light.getDirection().x+=0.1f;
-				if (light.getDirection().x == 100) light.getDirection().x = 0;
-				msd.selectSpatial(world.getVisibleChunks(), world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate());
 			}
+			if (Keybindings.isPressed("inventory")) {
+				gameUI.setMenu(new InventoryGUI());
+				Keyboard.setKeyPressed(Keybindings.getKeyCode("inventory"), false);
+			}
+			if (Keybindings.isPressed("menu")) {
+				if (gameUI.getMenuGUI() != null) {
+					gameUI.setMenu(null);
+					mouse.setGrabbed(true);
+					Keyboard.setKeyPressed(Keybindings.getKeyCode("menu"), false);
+				} else {
+					Keyboard.setKeyPressed(Keybindings.getKeyCode("menu"), false);
+					gameUI.setMenu(new PauseGUI());
+				}
+			}
+			if ((mouse.isLeftButtonPressed() || mouse.isRightButtonPressed()) && !mouse.isGrabbed() && gameUI.getMenuGUI() == null) {
+				mouse.setGrabbed(true);
+				mouse.clearPos(window.getWidth() / 2, window.getHeight() / 2);
+				breakCooldown = 10;
+			}
+			
+			if (mouse.isGrabbed()) {
+				ctx.getCamera().moveRotation(mouse.getDisplVec().x * 0.51F, mouse.getDisplVec().y * 0.51F, 5F);
+				mouse.clearPos(win.getWidth() / 2, win.getHeight() / 2);
+			}
+			
+			// inventory related
+			inventorySelection = (inventorySelection + (int) mouse.getScrollOffset()) & 7;
+			if (Keybindings.isPressed("hotbar 1")) {
+				inventorySelection = 0;
+			}
+			if (Keybindings.isPressed("hotbar 2")) {
+				inventorySelection = 1;
+			}
+			if (Keybindings.isPressed("hotbar 3")) {
+				inventorySelection = 2;
+			}
+			if (Keybindings.isPressed("hotbar 4")) {
+				inventorySelection = 3;
+			}
+			if (Keybindings.isPressed("hotbar 5")) {
+				inventorySelection = 4;
+			}
+			if (Keybindings.isPressed("hotbar 6")) {
+				inventorySelection = 5;
+			}
+			if (Keybindings.isPressed("hotbar 7")) {
+				inventorySelection = 6;
+			}
+			if (Keybindings.isPressed("hotbar 8")) {
+				inventorySelection = 7;
+			}
+			
+			// render distance
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_MINUS)) {
+				if(world.getRenderDistance() >= 2)
+					world.setRenderDistance(world.getRenderDistance()-1);
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_MINUS, false);
+				System.gc();
+			}
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_EQUAL)) {
+				world.setRenderDistance(world.getRenderDistance()+1);
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_EQUAL, false);
+				System.gc();
+			}
+			msd.selectSpatial(world.getVisibleChunks(), world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate());
 		}
 		mouse.clearScroll();
 	}
@@ -760,7 +761,6 @@ public class Cubyz implements IGameLogic {
 	
 	float playerBobbing;
 	boolean bobbingUp;
-	InstancedMesh[] meshes = new InstancedMesh[0];
 	
 	@Override
 	public void render(Window window) {
@@ -887,10 +887,6 @@ public class Cubyz implements IGameLogic {
 						}
 					}
 				}
-			}
-			if (mouse.isGrabbed()) {
-				ctx.getCamera().moveRotation(mouse.getDisplVec().x * 0.51F, mouse.getDisplVec().y * 0.51F, 5F);
-				mouse.clearPos(win.getWidth() / 2, win.getHeight() / 2);
 			}
 			playerInc.x = playerInc.y = playerInc.z = 0.0F; // Reset positions
 			world.update();
