@@ -25,30 +25,7 @@ public class MetaChunk {
 		// Do internal heightMap updates based on biome. Interpolate between the four direct neighbors(if inside this metachunk):
 		for(int i = 0; i < 256; i++) {
 			for(int j = 0; j < 256; j++) {
-				int n = 5;
-				float res = 0;
-				res += biomeMap[i][j].evaluatePolynomial(heightMap[i][j]);
-				if(i == 0) {
-					n--;
-				} else {
-					res += biomeMap[i-1][j].evaluatePolynomial(heightMap[i][j]);
-				}
-				if(i == 255) {
-					n--;
-				} else {
-					res += biomeMap[i+1][j].evaluatePolynomial(heightMap[i][j]);
-				}
-				if(j == 0) {
-					n--;
-				} else {
-					res += biomeMap[i][j-1].evaluatePolynomial(heightMap[i][j]);
-				}
-				if(j == 255) {
-					n--;
-				} else {
-					res += biomeMap[i][j+1].evaluatePolynomial(heightMap[i][j]);
-				}
-				heightMap[i][j] = res/n;
+				heightMap[i][j] = Biome.evaluatePolynomial(heightMap[i][j], heatMap[i][j], heightMap[i][j]);
 			}
 		}
 	}

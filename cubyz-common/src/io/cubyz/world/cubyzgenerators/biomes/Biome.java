@@ -1,7 +1,5 @@
 package io.cubyz.world.cubyzgenerators.biomes;
 
-import java.util.ArrayList;
-
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.IRegistryElement;
 import io.cubyz.api.Resource;
@@ -47,6 +45,20 @@ public class Biome implements IRegistryElement {
 			}
 		}
 		return c;
+	}
+	
+	public static float evaluatePolynomial(float height, float heat, float x) {
+		// Creates a much smoother terrain by interpolating between the biomes based on their distance in the height-heat space.
+		float res = 0;
+		float weight = 0;
+		for(IRegistryElement o : CubyzRegistries.BIOME_REGISTRY.registered()) {
+			Biome b = (Biome)o;
+			float dist = 2*(b.heat-heat)*(b.heat-heat) + (b.height-height)*(b.height-height);
+			dist = (float)Math.pow(dist, -8);
+			res += b.evaluatePolynomial(x)*dist;
+			weight += dist;
+		}
+		return res/weight;
 	}
 	
 	@Override
