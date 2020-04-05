@@ -3,22 +3,25 @@ package io.cubyz.world.cubyzgenerators.biomes;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.IRegistryElement;
 import io.cubyz.api.Resource;
+import io.cubyz.blocks.Block;
 
 public class Biome implements IRegistryElement {
 	float[] terrainPolynomial; // Use a polynomial function to add some terrain changes. At biome borders this polynomial will be interpolated between the two.
 	float heat;
 	float height;
 	protected Resource identifier;
+	public BlockStructure struct;
 	
 	// The coefficients are represented like this: a[0] + a[1]*x + a[2]*x^2 + … + a[n-1]*x^(n-1)
 	// TODO: Vegetation models.
-	public Biome(Resource id, float[] polynomial, float heat, float height) {
+	public Biome(Resource id, float[] polynomial, float heat, float height, BlockStructure str) {
 		identifier = id;
 		terrainPolynomial = polynomial;
 		// TODO: Make sure there are no range problems.
 
 		this.heat = heat;
 		this.height = height;
+		struct = str;
 	}
 	public float evaluatePolynomial(float x) {
 		float res = terrainPolynomial[0];

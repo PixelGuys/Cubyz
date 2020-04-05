@@ -7,6 +7,7 @@ import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.world.Noise;
 import io.cubyz.world.World;
+import io.cubyz.world.cubyzgenerators.biomes.Biome;
 
 public class VegetationGenerator implements FancyGenerator {
 	
@@ -21,7 +22,7 @@ public class VegetationGenerator implements FancyGenerator {
 	}
 
 	@Override
-	public void generate(long seed, int cx, int cy, Block[][][] chunk, float[][] heatMap, int[][] heightMap) {
+	public void generate(long seed, int cx, int cy, Block[][][] chunk, float[][] heatMap, int[][] heightMap, Biome[][] biomeMap) {
 		int wx = cx << 4;
 		int wy = cy << 4;
 		

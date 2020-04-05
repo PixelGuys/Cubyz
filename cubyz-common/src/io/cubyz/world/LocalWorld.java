@@ -28,6 +28,7 @@ import io.cubyz.handler.RemoveBlockHandler;
 import io.cubyz.math.Bits;
 import io.cubyz.save.BlockChange;
 import io.cubyz.save.WorldIO;
+import io.cubyz.world.cubyzgenerators.biomes.Biome;
 import io.cubyz.world.generator.LifelandGenerator;
 import io.cubyz.world.generator.WorldGenerator;
 
@@ -327,6 +328,27 @@ public class LocalWorld extends World {
 				for(int cx = xS; cx < xE; cx++) {
 					for(int cy = yS; cy < yE; cy++) {
 						map[cx-x][cy-y] = ch.heatMap[cx&255][cy&255];
+					}
+				}
+			}
+		}
+		return map;
+	}
+	
+	public Biome[][] getBiomeMapData(int x, int y, int width, int height) {
+		int x0 = x&(~255);
+		int y0 = y&(~255);
+		Biome[][] map = new Biome[width][height];
+		for(int px = x0; px < x+width; px += 256) {
+			for(int py = y0; py < y+height; py += 256) {
+				MetaChunk ch = getMetaChunk(px ,py);
+				int xS = Math.max(px, x);
+				int yS = Math.max(py, y);
+				int xE = Math.min(px+256, x+width);
+				int yE = Math.min(py+256, y+height);
+				for(int cx = xS; cx < xE; cx++) {
+					for(int cy = yS; cy < yE; cy++) {
+						map[cx-x][cy-y] = ch.biomeMap[cx&255][cy&255];
 					}
 				}
 			}

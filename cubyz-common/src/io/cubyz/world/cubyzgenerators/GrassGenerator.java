@@ -5,6 +5,7 @@ import io.cubyz.api.Registry;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.world.World;
+import io.cubyz.world.cubyzgenerators.biomes.Biome;
 
 // Just a simple Generator to make sure there is grass/snow on top of every dirt block, even in a cave.
 
@@ -25,7 +26,7 @@ public class GrassGenerator implements FancyGenerator {
 	}
 
 	@Override
-	public void generate(long seed, int cx, int cy, Block[][][] chunk, float[][] heatMap, int[][] heightMap) {
+	public void generate(long seed, int cx, int cy, Block[][][] chunk, float[][] heatMap, int[][] heightMap, Biome[][] biomeMap) {
 		for(int px = 0; px < 16; px++) {
 			for(int py = 0; py < 16; py++) {
 				int height = heightMap[px+8][py+8];

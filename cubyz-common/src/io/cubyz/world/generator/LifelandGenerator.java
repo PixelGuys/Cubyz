@@ -17,6 +17,7 @@ import io.cubyz.world.Chunk;
 import io.cubyz.world.LocalWorld;
 import io.cubyz.world.World;
 import io.cubyz.world.cubyzgenerators.*;
+import io.cubyz.world.cubyzgenerators.biomes.Biome;
 
 //TODO: Add more diversity
 public class LifelandGenerator extends WorldGenerator {
@@ -62,6 +63,7 @@ public class LifelandGenerator extends WorldGenerator {
 		// Generate some maps:
 		float[][] heightMap = ((LocalWorld)world).getHeightMapData(wx-8, wy-8, 32, 32);
 		float[][] heatMap = ((LocalWorld)world).getHeatMapData(wx-8, wy-8, 32, 32);
+		Biome[][] biomeMap = ((LocalWorld)world).getBiomeMapData(wx-8, wy-8, 32, 32);
 		int[][] realHeight = new int[32][32];
 		for(int px = 0; px < 32; px++) {
 			for(int py = 0; py < 32; py++) {
@@ -79,7 +81,7 @@ public class LifelandGenerator extends WorldGenerator {
 		
 		for (Generator g : sortedGenerators) {
 			if (g instanceof FancyGenerator) {
-				((FancyGenerator) g).generate(r.nextLong(), ox, oy, chunk, heatMap, realHeight);
+				((FancyGenerator) g).generate(r.nextLong(), ox, oy, chunk, heatMap, realHeight, biomeMap);
 			} else {
 				g.generate(r.nextLong(), ox, oy, chunk);
 			}
