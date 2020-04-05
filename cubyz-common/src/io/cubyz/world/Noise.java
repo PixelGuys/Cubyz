@@ -220,13 +220,9 @@ public class Noise {
 		}
 		for(int px = 0; px < width; px++) {
 			for(int py = 0; py < height; py++) {
-				try {
-					map[px][py] = bigMap[(x&and)+px][(y&and)+py];
-					if(map[px][py] >= 1.0f)
-						map[px][py] = 0.9999f;
-				} catch(Exception e) {
-					map[px][py] = 0;
-				}
+				map[px][py] = bigMap[(x&and)+px][(y&and)+py];
+				if(map[px][py] >= 1.0f)
+					map[px][py] = 0.9999f;
 			}
 		}
 		return map;
