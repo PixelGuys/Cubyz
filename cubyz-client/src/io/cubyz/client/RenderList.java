@@ -1,12 +1,10 @@
 package io.cubyz.client;
 
-import java.util.AbstractList;
+public class RenderList<T> {
 
-public class RenderList<T> extends AbstractList<T> {
-
-	private Object[] array;
-	private int size = 0;
-	private int arrayIncrease = 10; // this allow to use less array re-allocations
+	protected Object[] array;
+	protected int size = 0;
+	protected int arrayIncrease = 10; // this allow to use less array re-allocations
 
 	public RenderList(int initialCapacity) {
 		super();
@@ -29,61 +27,34 @@ public class RenderList<T> extends AbstractList<T> {
 		array = newArray;
 	}
 	
-	@Override
-	public T set(int index, T obj) {
-		if (index < 0 || index >= size) {
-			throw new IndexOutOfBoundsException(Integer.toString(index));
-		}
+	public void set(int index, T obj) {
 		array[index] = obj;
-		modCount++;
-		return obj;
 	}
-
-	@Override
-	public void add(int index, T obj) {
-		if (index < 0 || index >= size) {
-			throw new IndexOutOfBoundsException(Integer.toString(index));
-		}
-		if (size + 1 > array.length)
-			increaseSize(arrayIncrease);
-		System.arraycopy(array, index, array, index+1, array.length-index-1);
-		array[index] = obj;
-		modCount++;
-		size++;
-	}
-
-	@Override
-	public boolean add(T obj) {
+	
+	public void add(T obj) {
 		if (size + 1 > array.length)
 			increaseSize(arrayIncrease);
 		array[size] = obj;
 		size++;
-		return true;
 	}
-
-	@Override
+	
 	public T remove(int index) {
-		if (index < 0 || index > size) {
-			throw new IndexOutOfBoundsException(Integer.toString(index));
-		}
 		Object old = array[index];
 		System.arraycopy(array, index, array, index-1, array.length-index-1);
-		modCount++;
 		size--;
 		return (T) old;
 	}
-
-	@Override
+	
 	public T get(int index) {
-		if (index < 0 || index > size) {
-			throw new IndexOutOfBoundsException(Integer.toString(index));
-		}
 		return (T) array[index];
 	}
-
-	@Override
+	
 	public int size() {
 		return size;
+	}
+	
+	public boolean isEmpty() {
+		return size == 0;
 	}
 	
 	/**
@@ -91,9 +62,24 @@ public class RenderList<T> extends AbstractList<T> {
 	 * <b>Implementation note:</b> This implementation doesn't actually clear it or zero it out for performance issues, hence
 	 * {@link RenderList#trimToSize()} should be called in order to free memory.
 	 */
-	@Override
 	public void clear() {
 		size = 0;
+	}
+	
+	public RenderSubList<T> subList(int start, int end) {
+		return new RenderSubList<T>(this, start, end);
+	}
+	
+	/**
+	 * Sub list of a RenderList. Note that editing sublist content will not affect the parent list's content!
+	 * @param <E>
+	 */
+	class RenderSubList<E> extends RenderList<E> {
+		public RenderSubList(RenderList<E> parent, int start, int end) {
+			size = end - start;
+			array = new Object[size];
+			System.arraycopy(parent.array, start, array, 0, size);
+		}
 	}
 
 }

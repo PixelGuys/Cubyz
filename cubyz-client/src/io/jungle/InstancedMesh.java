@@ -13,6 +13,7 @@ import static org.lwjgl.opengl.GL31.*;
 import static org.lwjgl.opengl.GL33.*;
 import org.lwjgl.system.MemoryUtil;
 
+import io.cubyz.client.RenderList;
 import io.jungle.renderers.Transformation;
 
 public class InstancedMesh extends Mesh {
@@ -173,7 +174,7 @@ public class InstancedMesh extends Mesh {
 	 * @param transformation
 	 * @param viewMatrix
 	 */
-	public boolean renderListInstancedNC(List<Spatial> spatials, Transformation transformation, Matrix4f lightViewMatrix) {
+	public boolean renderListInstancedNC(RenderList<Spatial> spatials, Transformation transformation, Matrix4f lightViewMatrix) {
 		if (numInstances == 0)
 			return false;
 		initRender();
@@ -193,7 +194,7 @@ public class InstancedMesh extends Mesh {
 		return bool;
 	}
 	
-	public void renderListInstanced(List<Spatial> spatials, Transformation transformation, Matrix4f lightViewMatrix) {
+	public void renderListInstanced(RenderList<Spatial> spatials, Transformation transformation, Matrix4f lightViewMatrix) {
 		if (numInstances == 0)
 			return;
 		initRender();
@@ -202,7 +203,7 @@ public class InstancedMesh extends Mesh {
 		int length = spatials.size();
 		for (int i = 0; i < length; i += chunkSize) {
 			int end = Math.min(length, i + chunkSize);
-			List<Spatial> subList = spatials.subList(i, end);
+			RenderList<Spatial> subList = spatials.subList(i, end);
 			uploadData(subList, transformation, lightViewMatrix);
 			renderChunkInstanced(subList, transformation);
 		}
@@ -210,24 +211,25 @@ public class InstancedMesh extends Mesh {
 		endRender();
 	}
 	
-	public void uploadData(List<Spatial> gameItems, Transformation transformation, Matrix4f lightViewMatrix) {
+	public void uploadData(RenderList<Spatial> spatials, Transformation transformation, Matrix4f lightViewMatrix) {
 		this.instanceDataBuffer.clear();
-		int i = 0;
-		for (Spatial gameItem : gameItems) {
-			Matrix4f modelMatrix = transformation.getModelMatrix(gameItem);
+		
+		int size = spatials.size();
+		for (int i = 0; i < size; i++) {
+			Spatial spatial = spatials.get(i);
+			Matrix4f modelMatrix = transformation.getModelMatrix(spatial);
 			modelMatrix.get(INSTANCE_SIZE_FLOATS * i, instanceDataBuffer);
-			instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 16, gameItem.isSelected() ? 1 : 0);
+			instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 16, spatial.isSelected() ? 1 : 0);
 			
 			// shadow map related
 			//Matrix4f modelLightMatrix = transformation.getModelViewMatrix(modelMatrix, lightViewMatrix);
 			//modelLightMatrix.get(INSTANCE_SIZE_FLOATS * i + 17, instanceDataBuffer);
-			i++;
 		}
 		
 		glBufferData(GL_ARRAY_BUFFER, instanceDataBuffer, GL_DYNAMIC_DRAW);
 	}
 	
-	private void renderChunkInstanced(List<Spatial> spatials, Transformation transformation) {
+	private void renderChunkInstanced(RenderList<Spatial> spatials, Transformation transformation) {
 		glDrawElementsInstanced(GL_TRIANGLES, getVertexCount(), GL_UNSIGNED_INT, 0, spatials.size());
 	}
 }

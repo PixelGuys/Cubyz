@@ -15,6 +15,7 @@ import static org.lwjgl.opengl.GL30.*;
 import org.joml.Vector4f;
 import org.lwjgl.system.MemoryUtil;
 
+import io.cubyz.client.RenderList;
 import io.jungle.util.Material;
 
 public class Mesh implements Cloneable {
@@ -201,7 +202,8 @@ public class Mesh implements Cloneable {
 	public void render() {
 		glDrawElements(GL_TRIANGLES, getVertexCount(), GL_UNSIGNED_INT, 0);
 	}
-	public void renderList(List<Spatial> spatials, Function<Spatial, Boolean> consumer) {
+	
+	public void renderList(RenderList<Spatial> spatials, Function<Spatial, Boolean> consumer) {
 		if (spatials.isEmpty())
 			return;
 		initRender();
@@ -213,8 +215,7 @@ public class Mesh implements Cloneable {
 				glDisable(GL_CULL_FACE);
 			}
 		}
-
-		//Spatial[] spatialArray = spatials.toArray(new Spatial[spatials.size()]);
+		
 		for (int i = 0; i < spatials.size(); i++) {
 			boolean render = consumer.apply(spatials.get(i));
 			if (render) {

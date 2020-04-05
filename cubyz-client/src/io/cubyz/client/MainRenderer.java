@@ -216,7 +216,7 @@ public class MainRenderer implements IRenderer {
 		}
 		
 		instancedMeshes = new ArrayList<>(); // TODO: use an array because we already know the size of the list.
-		HashMap<Mesh, List<Spatial>> m = new HashMap<>();
+		HashMap<Mesh, RenderList<Spatial>> m = new HashMap<>();
 		for (int i = 0; i < blocks.length; i++) {
 			if (map[i].size() == 0)
 				continue;
@@ -302,7 +302,7 @@ public class MainRenderer implements IRenderer {
 	}
 	
 	public void renderScene(Context ctx, Vector3f ambientLight, PointLight[] pointLightList, SpotLight[] spotLightList,
-			DirectionalLight directionalLight, List<Spatial>[] map, Block[] blocks, Entity[] entities, Player p, Spatial selected,
+			DirectionalLight directionalLight, RenderList<Spatial>[] map, Block[] blocks, Entity[] entities, Player p, Spatial selected,
 			int selectedBlock) {
 		shaderProgram.bind();
 		
