@@ -52,7 +52,7 @@ public class VegetationGenerator implements FancyGenerator {
 			generateTree(ch, x, y, h, rand.nextInt(3)+7);
 		} else if (temperature < 25 && vegetation > 0.2f && rand.nextInt(vegMap[(int)(vegetation*3)+13]) == 0) {
 			Block grass = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:grass_vegetation");
-			if(x >= 0 && x < 16 && y >= 0 && y < 16 && ch[x][y][h-1] != null) {
+			if(h < World.WORLD_HEIGHT && h-1 < World.WORLD_HEIGHT && x >= 0 && x < 16 && y >= 0 && y < 16 && ch[x][y][h-1] != null) {
 				ch[x][y][h] = grass;
 			}
 		} else if (temperature > 40 && rand.nextInt(vegMap[(int)(vegetation*10)]) == 0) {
@@ -69,7 +69,7 @@ public class VegetationGenerator implements FancyGenerator {
 		//Position of the first block of wood
 		if(x >= 0 && x < 16 && y >= 0 && y < 16) {
 			for (int i = 0; i < height; i++) {
-				if (y + i < World.WORLD_HEIGHT) {
+				if (h + i < World.WORLD_HEIGHT) {
 					if(ch[x][y][h+i] != null && (!ch[x][y][h+i].isDegradable() || wood.isDegradable())) {
 						continue;
 					}
@@ -84,7 +84,7 @@ public class VegetationGenerator implements FancyGenerator {
 			int j = (height - i) >> 1;
 			for (int k = 1 - j; k < j; k++) {
 				for (int l = 1 - j; l < j; l++) {
-					if (y + i < World.WORLD_HEIGHT && x+k >= 0 && x+k < 16 && y+l >= 0 && y+l < 16) {
+					if (h + i < World.WORLD_HEIGHT && x+k >= 0 && x+k < 16 && y+l >= 0 && y+l < 16) {
 						if(ch[x+k][y+l][h+i] != null && (!ch[x+k][y+l][h+i].isDegradable() || leaves.isDegradable())) {
 							continue;
 						}

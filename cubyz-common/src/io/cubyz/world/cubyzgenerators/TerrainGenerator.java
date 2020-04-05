@@ -4,6 +4,7 @@ import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Registry;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
+import io.cubyz.world.World;
 
 public class TerrainGenerator implements FancyGenerator {
 	
@@ -38,7 +39,7 @@ public class TerrainGenerator implements FancyGenerator {
 			for(int py = 0; py < 16; py++) {
 				int y = heightMap[px+8][py+8];
 				float temperature = heatMap[px+8][py+8];
-				for(int j = y > SEA_LEVEL ? y : SEA_LEVEL; j >= 0; j--) {
+				for(int j = y > SEA_LEVEL ? Math.min(y, World.WORLD_HEIGHT-1) : SEA_LEVEL; j >= 0; j--) {
 					Block b = null;
 					if(j > y) {
 						if(temperature <= 0 && j == SEA_LEVEL) {

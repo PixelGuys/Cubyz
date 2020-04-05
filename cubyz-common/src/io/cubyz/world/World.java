@@ -23,8 +23,7 @@ import io.cubyz.handler.RemoveBlockHandler;
  */
 public abstract class World {
 
-	public static final int WORLD_HEIGHT = 255;
-	protected int height = WORLD_HEIGHT;
+	public static final int WORLD_HEIGHT = 256;
 	protected int seed;
 	protected int season; // 0=Spring, 1=Summer, 2=Autumn, 3=Winter
 	
@@ -33,14 +32,6 @@ public abstract class World {
 	public ArrayList<BlockVisibilityChangeHandler> visibHandlers = new ArrayList<>();
 	
 	public abstract Player getLocalPlayer();
-	
-	public void setHeight(int height) {
-		this.height = height;
-	}
-	
-	public int getHeight() {
-		return height;
-	}
 
 	public abstract void cleanup();
 	
@@ -97,7 +88,7 @@ public abstract class World {
 	public abstract void setGameTime(long time);
 	
 	public int getHighestBlock(int x, int z) {
-		for (int y = getHeight(); y > 0; y--) {
+		for (int y = WORLD_HEIGHT; y > 0; y--) {
 			if (getBlock(x, y, z) != null) {
 				return y;
 			}

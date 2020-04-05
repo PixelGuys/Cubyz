@@ -104,7 +104,7 @@ public class Chunk {
 	 */
 	public void addBlock(Block b, int x, int y, int z) {
 		if (b == null) return;
-		if(y >= world.getHeight())
+		if(y >= World.WORLD_HEIGHT)
 			return;
 		int rx = x - (ox << 4);
 		// Determines if the block is part of another chunk.
@@ -126,7 +126,7 @@ public class Chunk {
 			return;
 		}
 		if(inst == null) {
-			inst = new BlockInstance[16*world.getHeight()*16];
+			inst = new BlockInstance[16*World.WORLD_HEIGHT*16];
 		} else { // Checks if there is a block on that position and deposits it if degradable.
 			BlockInstance bi = getInst(rx, y, rz);
 			if(bi != null) {
@@ -186,7 +186,7 @@ public class Chunk {
 	
 	public void generateFrom(WorldGenerator gen) {
 		if(inst == null) {
-			inst = new BlockInstance[16*world.getHeight()*16];
+			inst = new BlockInstance[16*World.WORLD_HEIGHT*16];
 		}
 		gen.generate(this, world);
 		generated = true;
@@ -261,7 +261,7 @@ public class Chunk {
 			for(int k = 0; k < 4; k++) {
 				if (toCheck[k]) {
 					Chunk ch = chunks[k];
-					for (int j = world.getHeight() - 1; j >= 0; j--) {
+					for (int j = World.WORLD_HEIGHT - 1; j >= 0; j--) {
 						BlockInstance inst0 = ch.getBlockInstanceAt(dx[k], j, dy[k]);
 						if(inst0 == null) {
 							continue;
@@ -336,7 +336,7 @@ public class Chunk {
 		}
 	}
 	
-	public void revealBlock(BlockInstance bi) {
+	public synchronized void revealBlock(BlockInstance bi) {
 		if(visiblesSize + 1 >= visibles.length) { // Always leave a null at the end of the array to make it unnecessary to test for the length in the renderer.
 			BlockInstance[] old = visibles;
 			visibles = new BlockInstance[visibles.length + (visibles.length >> 1)]; // Increase size by 1.5. Similar to `ArrayList`.
@@ -415,7 +415,7 @@ public class Chunk {
 	}
 	
 	public void addBlockAt(int x, int y, int z, Block b, boolean registerBlockChange) {
-		if(y >= world.getHeight())
+		if(y >= World.WORLD_HEIGHT)
 			return;
 		removeBlockAt(x, y, z, false);
 		BlockInstance inst0 = new BlockInstance(b);
@@ -446,7 +446,7 @@ public class Chunk {
 	public void addBlockAt(int x, int y, int z, BlockInstance inst0, boolean registerBlockChange) {
 		int wx = ox << 4;
 		int wy = oy << 4;
-		if(y >= world.getHeight())
+		if(y >= World.WORLD_HEIGHT)
 			return;
 		removeBlockAt(x, y, z, false);
 		Block b = inst0.getBlock();

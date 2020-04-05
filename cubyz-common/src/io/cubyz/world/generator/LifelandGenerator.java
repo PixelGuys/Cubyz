@@ -53,7 +53,7 @@ public class LifelandGenerator extends WorldGenerator {
 	}
 	
 	@Override
-	public synchronized void generate(Chunk ch, World world) {
+	public void generate(Chunk ch, World world) {
 		int ox = ch.getX();
 		int oy = ch.getZ();
 		int wx = ox << 4;
@@ -65,17 +65,17 @@ public class LifelandGenerator extends WorldGenerator {
 		int[][] realHeight = new int[32][32];
 		for(int px = 0; px < 32; px++) {
 			for(int py = 0; py < 32; py++) {
-				int h = (int)(heightMap[px][py]*world.getHeight());
-				if(h > world.getHeight())
-					h = world.getHeight();
+				int h = (int)(heightMap[px][py]*World.WORLD_HEIGHT);
+				if(h > World.WORLD_HEIGHT)
+					h = World.WORLD_HEIGHT;
 				realHeight[px][py] = h;
 				
-				heatMap[px][py] = ((2 - heightMap[px][py] + TerrainGenerator.SEA_LEVEL/(float)world.getHeight())*heatMap[px][py]*120) - 100;
+				heatMap[px][py] = ((2 - heightMap[px][py] + TerrainGenerator.SEA_LEVEL/(float)World.WORLD_HEIGHT)*heatMap[px][py]*120) - 100;
 			}
 		}
 		
 		Random r = new Random(seed);
-		Block[][][] chunk = new Block[16][16][world.getHeight()];
+		Block[][][] chunk = new Block[16][16][World.WORLD_HEIGHT];
 		
 		for (Generator g : sortedGenerators) {
 			if (g instanceof FancyGenerator) {
@@ -88,7 +88,7 @@ public class LifelandGenerator extends WorldGenerator {
 		// Place the blocks in the chunk:
 		for(int px = 0; px < 16; px++) {
 			for(int py = 0; py < 16; py++) {
-				for(int h = 0; h < world.getHeight(); h++) {
+				for(int h = 0; h < World.WORLD_HEIGHT; h++) {
 					Block b = chunk[px][py][h];
 					if(b != null) {
 						BlockInstance bi = new BlockInstance(b);

@@ -71,7 +71,6 @@ public class WorldIO {
 			
 			NDTContainer ndt = new NDTContainer(dst);
 			world.setName(ndt.getString("name"));
-			world.setHeight(ndt.getInteger("height"));
 			world.setGameTime(ndt.getLong("gameTime"));
 			Entity[] entities = new Entity[ndt.getInteger("entityCount")];
 			for (int i = 0; i < entities.length; i++) {
@@ -109,7 +108,6 @@ public class WorldIO {
 			NDTContainer ndt = new NDTContainer();
 			ndt.setInteger("version", 1);
 			ndt.setString("name", world.getName());
-			ndt.setInteger("height", world.getHeight());
 			ndt.setInteger("seed", world.getSeed());
 			ndt.setLong("gameTime", world.getGameTime());
 			//NDTContainer customOres = new NDTContainer();
