@@ -19,7 +19,8 @@ import io.cubyz.world.generator.WorldGenerator;
 
 public class Chunk {
 
-	private BlockInstance[][][] inst;
+	// Due to having powers of 2 as dimensions it is more efficient to use a one-dimensional array.
+	private BlockInstance[] inst;
 	private ArrayList<BlockInstance> list = new ArrayList<>();
 	private ArrayList<BlockInstance> liquids = new ArrayList<>();
 	private ArrayList<BlockChange> changes; // Reports block changes. Only those will be saved!s
@@ -40,12 +41,20 @@ public class Chunk {
 		this.changes = changes;
 	}
 	
+	// Functions calls are faster than two pointer references, which would happen when using a 3D-array, and functions can additionally be inlined by the VM.
+	private void setInst(int x, int y, int z, BlockInstance bi) {
+		inst[(x << 4) | (y << 8) | z] = bi;
+	}
+	private BlockInstance getInst(int x, int y, int z) {
+		return inst[(x << 4) | (y << 8) | z];
+	}
+	
 	/**
 	 * Internal "hack" method used for the overlay, DO NOT USE!
 	 */
 	@Deprecated
 	public void createBlocksForOverlay() {
-		inst = new BlockInstance[16][255][16];
+		inst = new BlockInstance[16*256*16];
 	}
 	
 	public void setLoaded(boolean loaded) {
@@ -112,9 +121,9 @@ public class Chunk {
 			return;
 		}
 		if(inst == null) {
-			inst = new BlockInstance[16][world.getHeight()][16];
+			inst = new BlockInstance[16*world.getHeight()*16];
 		} else { // Checks if there is a block on that position and deposits it if degradable.
-			BlockInstance bi = inst[rx][y][rz];
+			BlockInstance bi = getInst(rx, y, rz);
 			if(bi != null) {
 				if(!bi.getBlock().isDegradable() || b.isDegradable()) {
 					return;
@@ -133,7 +142,7 @@ public class Chunk {
 			liquids.add(inst0);
 		}
 		list.add(inst0);
-		inst[rx][y][rz] = inst0;
+		setInst(rx, y, rz, inst0);
 		if(generated) {
 			BlockInstance[] neighbors = inst0.getNeighbors(this);
 			for (int i = 0; i < neighbors.length; i++) {
@@ -171,7 +180,7 @@ public class Chunk {
 	
 	public void generateFrom(WorldGenerator gen) {
 		if(inst == null) {
-			inst = new BlockInstance[16][world.getHeight()][16];
+			inst = new BlockInstance[16*world.getHeight()*16];
 		}
 		gen.generate(this, world);
 		generated = true;
@@ -185,13 +194,13 @@ public class Chunk {
 				continue;
 			}
 			Block bl = world.getBlocks()[bc.newType];
-			if(inst[bc.x][bc.y][bc.z] == null) {
+			if(getInst(bc.x, bc.y, bc.z) == null) {
 				addBlockAt(bc.x, bc.y, bc.z, bl, false);
 				bc.oldType = -1;
 				continue;
 			}
-			bc.oldType = inst[bc.x][bc.y][bc.z].getID();
-			inst[bc.x][bc.y][bc.z].setBlock(bl);
+			bc.oldType = getInst(bc.x, bc.y, bc.z).getID();
+			getInst(bc.x, bc.y, bc.z).setBlock(bl);
 		}
 	}
 	
@@ -281,7 +290,7 @@ public class Chunk {
 	
 	public BlockInstance getBlockInstanceAt(int x, int y, int z) {
 		try {
-			return inst[x][y][z];
+			return getInst(x, y, z);
 		} catch (Exception e) {
 			return null;
 		}
@@ -354,7 +363,7 @@ public class Chunk {
 		if (bi.getBlock().hasBlockEntity()) {
 			blockEntities.remove(bi);
 		}
-		inst[x][y][z] = null;
+		setInst(x, y, z, null);
 		BlockInstance[] neighbors = bi.getNeighbors(this);
 		if(neighbors[0] != null) neighbors[0].neighborWest = false;
 		if(neighbors[1] != null) neighbors[1].neighborEast = false;
@@ -371,7 +380,7 @@ public class Chunk {
 				}
 			}
 		}
-		inst[x][y][z] = null;
+		setInst(x, y, z, null);
 
 		if(registerBlockChange) {
 			// Registers blockChange:
@@ -411,7 +420,7 @@ public class Chunk {
 	 */
 	public void rawAddBlock(int x, int y, int z, BlockInstance bi) {
 		if (bi != null && bi.getBlock() == null) {
-			inst[x][y][z] = null;
+			setInst(x, y, z, null);
 			return;
 		}
 		if (bi != null) {
@@ -421,7 +430,7 @@ public class Chunk {
 				liquids.add(bi);
 			}
 		}
-		inst[x][y][z] = bi;
+		setInst(x, y, z, bi);
 	}
 	
 	public void addBlockAt(int x, int y, int z, BlockInstance inst0, boolean registerBlockChange) {
@@ -441,7 +450,7 @@ public class Chunk {
 		if (b.getBlockClass() == BlockClass.FLUID) {
 			liquids.add(inst0);
 		}
-		inst[x][y][z] = inst0;
+		setInst(x, y, z, inst0);
 		BlockInstance[] neighbors = inst0.getNeighbors(this);
 		if(neighbors[0] != null) neighbors[0].neighborWest = getsBlocked(neighbors[0], inst0.getBlock().isTransparent());
 		if(neighbors[1] != null) neighbors[1].neighborEast = getsBlocked(neighbors[1], inst0.getBlock().isTransparent());
