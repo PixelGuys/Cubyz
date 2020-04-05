@@ -2,6 +2,7 @@ package io.cubyz.world.cubyzgenerators;
 
 import java.util.Random;
 
+import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 
@@ -19,6 +20,8 @@ public class CaveGenerator implements Generator {
 	
 	private static final int range = 8;
 	private static Random rand = new Random();
+	private static Block water = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:water");
+	private static Block ice = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:ice");
 	
 	@Override
 	public void generate(long seed, int cx, int cy, Block[][][] chunk) {
@@ -84,7 +87,7 @@ public class CaveGenerator implements Generator {
 							double distToCenter = distToCenterX*distToCenterX + distToCenterH*distToCenterH + distToCenterY*distToCenterY;
 							if(distToCenter < 1.0) {
 								// Add a small roughness parameter to make walls look a bit rough by filling only 5/6 of the blocks at the walls with air:
-								if(distToCenter <= 0.9 || localRand.nextInt(6) != 0)
+								if((distToCenter <= 0.9 || localRand.nextInt(6) != 0) && !water.equals(chunk[curX][curY][curHeightIndex]) && !ice.equals(chunk[curX][curY][curHeightIndex]))
 									chunk[curX][curY][curHeightIndex] = null;
 							}
 							--curHeightIndex;
@@ -182,7 +185,7 @@ public class CaveGenerator implements Generator {
 							if(distToCenterX * distToCenterX + distToCenterY * distToCenterY < 1.0) {
 								for(int curH = hmax - 1; curH >= hmin; --curH) {
 									double distToCenterH = ((double) curH + 0.5 - worldH) / hscale;
-									if(distToCenterX*distToCenterX + distToCenterH*distToCenterH + distToCenterY*distToCenterY < 1.0) {
+									if(distToCenterX*distToCenterX + distToCenterH*distToCenterH + distToCenterY*distToCenterY < 1.0 && !water.equals(chunk[curX][curY][curHeightIndex]) && !ice.equals(chunk[curX][curY][curHeightIndex])) {
 										chunk[curX][curY][curHeightIndex] = null;
 									}
 									--curHeightIndex;
