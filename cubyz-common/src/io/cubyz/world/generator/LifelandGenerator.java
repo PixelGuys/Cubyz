@@ -53,7 +53,7 @@ public class LifelandGenerator extends WorldGenerator {
 	}
 	
 	@Override
-	public void generate(Chunk ch, World world) {
+	public synchronized void generate(Chunk ch, World world) {
 		int ox = ch.getX();
 		int oy = ch.getZ();
 		int wx = ox << 4;
