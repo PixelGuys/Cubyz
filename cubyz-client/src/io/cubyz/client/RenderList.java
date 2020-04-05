@@ -59,21 +59,5 @@ public class RenderList<T> {
 	public void clear() {
 		size = 0;
 	}
-	
-	public RenderSubList<T> subList(int start, int end) {
-		return new RenderSubList<T>(this, start, end);
-	}
-	
-	/**
-	 * Sub list of a RenderList. Note that editing sublist content will not affect the parent list's content!
-	 * @param <E>
-	 */
-	class RenderSubList<E> extends RenderList<E> {
-		public RenderSubList(RenderList<E> parent, int start, int end) {
-			size = end - start;
-			array = new Object[size];
-			System.arraycopy(parent.array, start, array, 0, size);
-		}
-	}
 
 }

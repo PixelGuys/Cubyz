@@ -185,10 +185,10 @@ public class InstancedMesh extends Mesh {
 			if (numInstances < curSize) {
 				setInstances(curSize);
 			}
-			uploadData(spatials, transformation, lightViewMatrix);
+			uploadData(spatials.array, 0, spatials.size(), transformation, lightViewMatrix);
 			bool = true;
 		}
-		renderChunkInstanced(spatials, transformation);
+		renderChunkInstanced(spatials.size(), transformation);
 		
 		endRender();
 		return bool;
@@ -203,20 +203,19 @@ public class InstancedMesh extends Mesh {
 		int length = spatials.size();
 		for (int i = 0; i < length; i += chunkSize) {
 			int end = Math.min(length, i + chunkSize);
-			RenderList<Spatial> subList = spatials.subList(i, end);
-			uploadData(subList, transformation, lightViewMatrix);
-			renderChunkInstanced(subList, transformation);
+			uploadData(spatials.array, i, end, transformation, lightViewMatrix);
+			renderChunkInstanced(end-i, transformation);
 		}
 
 		endRender();
 	}
 	
-	public void uploadData(RenderList<Spatial> spatials, Transformation transformation, Matrix4f lightViewMatrix) {
+	public void uploadData(Object[] spatials, int startIndex, int endIndex, Transformation transformation, Matrix4f lightViewMatrix) {
 		this.instanceDataBuffer.clear();
 		
-		int size = spatials.size();
+		int size = endIndex-startIndex;
 		for (int i = 0; i < size; i++) {
-			Spatial spatial = (Spatial) spatials.array[i];
+			Spatial spatial = (Spatial)spatials[i+startIndex];
 			Matrix4f modelMatrix = transformation.getModelMatrix(spatial);
 			modelMatrix.get(INSTANCE_SIZE_FLOATS * i, instanceDataBuffer);
 			instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 16, spatial.isSelected() ? 1 : 0);
@@ -229,7 +228,7 @@ public class InstancedMesh extends Mesh {
 		glBufferData(GL_ARRAY_BUFFER, instanceDataBuffer, GL_DYNAMIC_DRAW);
 	}
 	
-	private void renderChunkInstanced(RenderList<Spatial> spatials, Transformation transformation) {
-		glDrawElementsInstanced(GL_TRIANGLES, getVertexCount(), GL_UNSIGNED_INT, 0, spatials.size());
+	private void renderChunkInstanced(int size, Transformation transformation) {
+		glDrawElementsInstanced(GL_TRIANGLES, getVertexCount(), GL_UNSIGNED_INT, 0, size);
 	}
 }
