@@ -289,7 +289,6 @@ public class MainRenderer implements IRenderer {
 					if (gameItem.isSelected())
 						depthShaderProgram.setUniform("selectedNonInstanced", 1f);
 					depthShaderProgram.setUniform("modelViewNonInstancedMatrix", modelViewMatrix);
-					return true;
 				});
 				if (selectedBlock == i) {
 					depthShaderProgram.setUniform("selectedNonInstanced", 0f);
@@ -348,7 +347,6 @@ public class MainRenderer implements IRenderer {
 					if (gameItem.isSelected())
 						shaderProgram.setUniform("selectedNonInstanced", 1f);
 					shaderProgram.setUniform("modelViewNonInstancedMatrix", modelViewMatrix);
-					return true;
 				});
 				if (selectedBlock == i) {
 					shaderProgram.setUniform("selectedNonInstanced", 0f);
@@ -361,15 +359,11 @@ public class MainRenderer implements IRenderer {
 				Mesh mesh = (Mesh) ent.getRenderablePair().get("meshCache");
 				shaderProgram.setUniform("material", mesh.getMaterial());
 				mesh.renderList(map[i], (Spatial gameItem) -> {
-					if (gameItem.isInFrustum()) {
-						Matrix4f modelViewMatrix = transformation.getModelViewMatrix(gameItem, viewMatrix);
-						if (orthogonal) {
-							modelViewMatrix = transformation.getOrtoProjModelMatrix(gameItem, viewMatrix);
-						}
-						shaderProgram.setUniform("modelViewNonInstancedMatrix", modelViewMatrix);
-						return true;
+					Matrix4f modelViewMatrix = transformation.getModelViewMatrix(gameItem, viewMatrix);
+					if (orthogonal) {
+						modelViewMatrix = transformation.getOrtoProjModelMatrix(gameItem, viewMatrix);
 					}
-					return false;
+					shaderProgram.setUniform("modelViewNonInstancedMatrix", modelViewMatrix);
 				});
 			}
 		}

@@ -4,6 +4,7 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static org.lwjgl.opengl.GL11.*;
@@ -203,7 +204,7 @@ public class Mesh implements Cloneable {
 		glDrawElements(GL_TRIANGLES, getVertexCount(), GL_UNSIGNED_INT, 0);
 	}
 	
-	public void renderList(RenderList<Spatial> spatials, Function<Spatial, Boolean> consumer) {
+	public void renderList(RenderList<Spatial> spatials, Consumer<Spatial> consumer) {
 		if (spatials.isEmpty())
 			return;
 		initRender();
@@ -217,10 +218,8 @@ public class Mesh implements Cloneable {
 		}
 		
 		for (int i = 0; i < spatials.size(); i++) {
-			boolean render = consumer.apply((Spatial) spatials.array[i]);
-			if (render) {
-				render();
-			}
+			consumer.accept((Spatial) spatials.array[i]);
+			render();
 		}
 		
 		if (wasEnabled) {
