@@ -217,7 +217,7 @@ public class Mesh implements Cloneable {
 		}
 		
 		for (int i = 0; i < spatials.size(); i++) {
-			boolean render = consumer.apply(spatials.get(i));
+			boolean render = consumer.apply((Spatial) spatials.array[i]);
 			if (render) {
 				render();
 			}

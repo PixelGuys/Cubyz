@@ -216,7 +216,7 @@ public class InstancedMesh extends Mesh {
 		
 		int size = spatials.size();
 		for (int i = 0; i < size; i++) {
-			Spatial spatial = spatials.get(i);
+			Spatial spatial = (Spatial) spatials.array[i];
 			Matrix4f modelMatrix = transformation.getModelMatrix(spatial);
 			modelMatrix.get(INSTANCE_SIZE_FLOATS * i, instanceDataBuffer);
 			instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 16, spatial.isSelected() ? 1 : 0);

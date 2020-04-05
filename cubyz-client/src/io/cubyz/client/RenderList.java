@@ -2,7 +2,7 @@ package io.cubyz.client;
 
 public class RenderList<T> {
 
-	protected Object[] array;
+	public Object[] array;
 	protected int size = 0;
 	protected int arrayIncrease = 10; // this allow to use less array re-allocations
 
@@ -43,10 +43,6 @@ public class RenderList<T> {
 		System.arraycopy(array, index, array, index-1, array.length-index-1);
 		size--;
 		return (T) old;
-	}
-	
-	public T get(int index) {
-		return (T) array[index];
 	}
 	
 	public int size() {
