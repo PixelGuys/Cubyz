@@ -5,12 +5,17 @@ gui.cubyz.mainmenu.options=Options
 gui.cubyz.options.done=Done
 gui.cubyz.general.on=On
 gui.cubyz.general.off=Off
+gui.cubyz.general.back=Back
+gui.cubyz.general.cancel=Cancel
 gui.cubyz.options.language=Language: {0}
 gui.cubyz.options.discord=Discord Integration: {0}
 gui.cubyz.options.keybindings=Key Bindings..
 gui.cubyz.pause.exit=Exit to main menu
 gui.cubyz.pause.resume=Resume
 gui.cubyz.debug.reload=Reload
+gui.cubyz.saves.play=Play {0}
+gui.cubyz.saves.delete=Delete
+gui.cubyz.saves.create=Create a new game!
 lang.name=English
 
 # Blocks

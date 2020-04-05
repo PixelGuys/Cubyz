@@ -5,12 +5,17 @@ gui.cubyz.mainmenu.options=Options
 gui.cubyz.options.done=Confirmer
 gui.cubyz.general.on=Allumé
 gui.cubyz.general.off=Eteint
+gui.cubyz.general.back=Retour
+gui.cubyz.general.cancel=Annuler
 gui.cubyz.options.language=Langue: {0}
 gui.cubyz.options.discord=Intégration Discord: {0}
 gui.cubyz.options.keybindings=Contrôles..
 gui.cubyz.pause.exit=Quitter vers le menu
 gui.cubyz.pause.resume=Resumer
 gui.cubyz.debug.reload=Recharger
+gui.cubyz.saves.play=Jouer à {0}
+gui.cubyz.saves.delete=Supprimer
+gui.cubyz.saves.create=Créer une nouvelle partie!
 lang.name=Français
 
 # Blocs

@@ -64,7 +64,7 @@ public class NGraphics {
 		return NanoVGGL3.nvglCreateImageFromHandle(nvg, tex.getId(), tex.getWidth(), tex.getHeight(), 0);
 	}
 	
-	public static void drawLine(int x, int y, int x2, int y2) {
+	public static void drawLine(float x, float y, float x2, float y2) {
 		nvgBeginPath(nvg);
 			nvgMoveTo(nvg, x, y);
 			nvgLineTo(nvg, x2, y2);
@@ -81,7 +81,7 @@ public class NGraphics {
 		nvgFill(nvg);
 	}
 	
-	public static void fillCircle(int x, int y, int radius) {
+	public static void fillCircle(float x, float y, int radius) {
 		nvgBeginPath(nvg);
 			nvgCircle(nvg, x*UISystem.guiScale, y*UISystem.guiScale, radius*UISystem.guiScale);
 		nvgFillColor(nvg, color);
@@ -153,7 +153,7 @@ public class NGraphics {
 		NGraphics.textAlign = textAlign;
 	}
 
-	public static void drawText(int x, int y, String text) {
+	public static void drawText(float x, float y, String text) {
 		for(String str : text.split("\n")) {
 			nvgFontSize(nvg, font.getSize()*UISystem.guiScale);
 			nvgFontFaceId(nvg, font.getNVGId());

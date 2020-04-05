@@ -1,7 +1,11 @@
 package io.cubyz.ui.components;
 
+import static org.lwjgl.nanovg.NanoVG.NVG_ALIGN_LEFT;
+import static org.lwjgl.nanovg.NanoVG.NVG_ALIGN_TOP;
+
 import org.lwjgl.glfw.GLFW;
 
+import io.cubyz.client.Cubyz;
 import io.cubyz.ui.Component;
 import io.cubyz.ui.NGraphics;
 import io.jungle.Keyboard;
@@ -12,6 +16,7 @@ public class TextInput extends Component {
 
 	private Font font = new Font("Default", 12.f);
 	public String text = "";
+	private boolean focused;
 	
 	public String getText() {
 		return text;
@@ -28,22 +33,63 @@ public class TextInput extends Component {
 	public void setFont(Font font) {
 		this.font = font;
 	}
+	
+	private boolean hasPressed;
+	private boolean cursorVisible;
+	private int cursorCounter;
 
 	@Override
 	public void render(long nvg, Window src) {
-		NGraphics.setColor(255, 255, 255);
+		NGraphics.setColor(127, 127, 127);
+		NGraphics.fillRect(x-3, y-3, width+6, height+6);
+		
+		if (focused)
+			NGraphics.setColor(200, 200, 200);
+		else
+			NGraphics.setColor(255, 255, 255);
 		NGraphics.fillRect(x, y, width, height);
 		NGraphics.setColor(0, 0, 0);
 		NGraphics.setFont(font);
-		NGraphics.drawText(x, y, text);
-		if (Keyboard.hasCodePoint()) {
-			text = text + Keyboard.getCodePoint();
-		}
-		if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_BACKSPACE)) {
-			if (text.length() > 0) {
-				text = text.substring(0, text.length()-1);
+		float textWidth = NGraphics.getTextWidth(text);
+		float textHeight = NGraphics.getTextAscent(text);
+		NGraphics.drawText(x+2, y+height/2 - textHeight, text);
+		
+		if (Cubyz.mouse.isLeftButtonPressed() && !hasPressed) {
+			hasPressed = true;
+		} else if (!Cubyz.mouse.isLeftButtonPressed()) {
+			if (hasPressed) { // just released left button
+				if (isInside(Cubyz.mouse.getCurrentPos())) {
+					focused = true;
+				} else {
+					focused = false;
+				}
 			}
-			Keyboard.setKeyPressed(GLFW.GLFW_KEY_BACKSPACE, false);
+			hasPressed = false;
+		}
+		
+		if (focused) {
+			if (Keyboard.hasCodePoint()) {
+				text = text + Keyboard.getCodePoint();
+				cursorVisible = true;
+			}
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_BACKSPACE)) {
+				if (text.length() > 0) {
+					text = text.substring(0, text.length()-1);
+				}
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_BACKSPACE, false);
+				cursorVisible = true;
+			}
+			
+			if (cursorVisible) {
+				NGraphics.setColor(0, 0, 0);
+				NGraphics.drawText(x+2+textWidth, y+height/2 - textHeight, "_");
+			}
+			
+			if (cursorCounter >= 30) {
+				cursorVisible = !cursorVisible;
+				cursorCounter = 0;
+			}
+			cursorCounter++;
 		}
 	}
 	
