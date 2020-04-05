@@ -6,6 +6,7 @@ import io.cubyz.entity.EntityType;
 import io.cubyz.items.Item;
 import io.cubyz.items.Recipe;
 import io.cubyz.items.tools.Material;
+import io.cubyz.world.cubyzgenerators.biomes.Biome;
 import io.cubyz.world.generator.WorldGenerator;
 
 public class CubyzRegistries {
@@ -16,6 +17,7 @@ public class CubyzRegistries {
 	public static final Registry<EntityType>  ENTITY_REGISTRY        = new Registry<EntityType>();
 	public static final Registry<CommandBase> COMMAND_REGISTRY       = new Registry<CommandBase>();
 	public static final Registry<Material>    TOOL_MATERIAL_REGISTRY = new Registry<Material>();
+	public static final Registry<Biome>       BIOME_REGISTRY         = new Registry<Biome>();
 	
 	// world generation
 	public static final Registry<WorldGenerator> WORLD_GENERATOR_REGISTRY = new Registry<WorldGenerator>();
