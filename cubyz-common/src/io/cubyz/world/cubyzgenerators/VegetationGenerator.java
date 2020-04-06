@@ -22,7 +22,7 @@ public class VegetationGenerator implements FancyGenerator {
 	}
 
 	@Override
-	public void generate(long seed, int cx, int cy, Block[][][] chunk, float[][] heatMap, int[][] heightMap, Biome[][] biomeMap) {
+	public void generate(long seed, int cx, int cy, Block[][][] chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, int[][] heightMap, Biome[][] biomeMap) {
 		int wx = cx << 4;
 		int wy = cy << 4;
 		
@@ -35,7 +35,7 @@ public class VegetationGenerator implements FancyGenerator {
 			for(int py = 0; py < 32; py++) {
 				float value = vegetationMap[px][py];
 				float temperature = heatMap[px][py];
-				if(heightMap[px][py] >= TerrainGenerator.SEA_LEVEL + 4) {
+				if(heightMap[px][py] >= TerrainGenerator.SEA_LEVEL + 4 && !vegetationIgnoreMap[px][py]) {
 					// if (value < 0) value = 0;
 					rand.setSeed(seed^l1*(px+wx-8)^l2*(py+wy-8));
 					generateVegetation(chunk, px - 8, py - 8, heightMap[px][py] + 1, value, temperature, rand);

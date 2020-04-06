@@ -29,7 +29,7 @@ public class TerrainGenerator implements FancyGenerator {
 	private static Block water = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:water");
 
 	@Override
-	public void generate(long seed, int cx, int cy, Block[][][] chunk, float[][] heatMap, int[][] heightMap, Biome[][] biomeMap) {
+	public void generate(long seed, int cx, int cy, Block[][][] chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, int[][] heightMap, Biome[][] biomeMap) {
 		for(int px = 0; px < 16; px++) {
 			for(int py = 0; py < 16; py++) {
 				int y = heightMap[px+8][py+8];

@@ -89,27 +89,27 @@ public class BaseMod {
 
 		// Beach
 		pol = new float[] {0.0f, 1.5003947420951773f, -1.7562874281379752f, 1.255892686042798f};
-		CubyzRegistries.BIOME_REGISTRY.register(new Biome(new Resource("cubyz:beach"), pol, 135.0f/360.0f, 102.0f/256.0f, new BlockStructure(sand, sand, sand)));
+		CubyzRegistries.BIOME_REGISTRY.register(new Biome(new Resource("cubyz:beach"), pol, 135.0f/360.0f, 102.0f/256.0f, new BlockStructure(sand, sand, sand), false));
 		
 		// Dessert
 		pol = new float[] {0.0f, 1.5003947420951773f, -1.7562874281379752f, 1.255892686042798f};
-		CubyzRegistries.BIOME_REGISTRY.register(new Biome(new Resource("cubyz:dessert"), pol, 300.0f/360.0f, 110.0f/256.0f, new BlockStructure(sand, sand, sand, sand)));
+		CubyzRegistries.BIOME_REGISTRY.register(new Biome(new Resource("cubyz:dessert"), pol, 300.0f/360.0f, 110.0f/256.0f, new BlockStructure(sand, sand, sand, sand), false));
 		
 		// Plateau
 		pol = new float[] {0.35f, 0.3f};
-		CubyzRegistries.BIOME_REGISTRY.register(new Biome(new Resource("cubyz:plateau"), pol, 120.0f/360.0f, 128.0f/256.0f, new BlockStructure(grass, dirt, dirt, dirt)));
+		CubyzRegistries.BIOME_REGISTRY.register(new Biome(new Resource("cubyz:plateau"), pol, 120.0f/360.0f, 128.0f/256.0f, new BlockStructure(grass, dirt, dirt, dirt), false));
 		
 		// Normal lands
 		pol = new float[] {0.0f, 1.136290302965442f, -0.44234572015099627f, 0.3060554171855542f};
-		CubyzRegistries.BIOME_REGISTRY.register(new Biome(new Resource("cubyz:normal_lands"), pol, 135.0f/360.0f, 114.0f/256.0f, new BlockStructure(grass, dirt, dirt, dirt)));
+		CubyzRegistries.BIOME_REGISTRY.register(new Biome(new Resource("cubyz:normal_lands"), pol, 135.0f/360.0f, 114.0f/256.0f, new BlockStructure(grass, dirt, dirt, dirt), false));
 		
 		// Mountains
 		pol = new float[] {0.0f, 5.310967705272164f, -21.14717562082649f, 33.47195695260881f, -16.854499037054477f};
-		CubyzRegistries.BIOME_REGISTRY.register(new Biome(new Resource("cubyz:mountains"), pol, 115.0f/360.0f, 140.0f/256.0f, new BlockStructure(grass, dirt)));
+		CubyzRegistries.BIOME_REGISTRY.register(new Biome(new Resource("cubyz:mountains"), pol, 115.0f/360.0f, 140.0f/256.0f, new BlockStructure(grass, dirt), true));
 		
 		// Extreme mountains
 		pol = new float[] {0.0f, 3.1151893301104367f, -13.738832774207244f, 25.171171602902316f, -13.766278158805507f};
-		CubyzRegistries.BIOME_REGISTRY.register(new Biome(new Resource("cubyz:extreme_mountains"), pol, 115.0f/360.0f, 160.0f/256.0f, new BlockStructure(snow)));
+		CubyzRegistries.BIOME_REGISTRY.register(new Biome(new Resource("cubyz:extreme_mountains"), pol, 115.0f/360.0f, 160.0f/256.0f, new BlockStructure(snow), true));
 	}
 	
 	public void registerMaterials(Registry<Material> reg) {

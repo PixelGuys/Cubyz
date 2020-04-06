@@ -26,11 +26,11 @@ public class GrassGenerator implements FancyGenerator {
 	}
 
 	@Override
-	public void generate(long seed, int cx, int cy, Block[][][] chunk, float[][] heatMap, int[][] heightMap, Biome[][] biomeMap) {
+	public void generate(long seed, int cx, int cy, Block[][][] chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, int[][] heightMap, Biome[][] biomeMap) {
 		for(int px = 0; px < 16; px++) {
 			for(int py = 0; py < 16; py++) {
 				int height = heightMap[px+8][py+8];
-				if(height < World.WORLD_HEIGHT && chunk[px][py][height] == null) {
+				if(height < World.WORLD_HEIGHT && chunk[px][py][height] == null && !vegetationIgnoreMap[px][py]) {
 					// Find the lowest non-empty terrain block:
 					for(;height >= 0 && chunk[px][py][height] == null; height--) {}
 					if(chunk[px][py][height] == dirt) {

@@ -23,7 +23,7 @@ import io.cubyz.world.cubyzgenerators.biomes.Biome;
 public class LifelandGenerator extends WorldGenerator {
 	
 	public static void init() {
-		GENERATORS.registerAll(new TerrainGenerator(), new OreGenerator(), new CaveGenerator(), new VegetationGenerator(), new GrassGenerator());
+		GENERATORS.registerAll(new TerrainGenerator(), new RiverGenerator(), new OreGenerator(), new CaveGenerator(), new VegetationGenerator(), new GrassGenerator());
 	}
 	
 	public static void initOres(Ore[] ores) {
@@ -64,6 +64,7 @@ public class LifelandGenerator extends WorldGenerator {
 		float[][] heightMap = ((LocalWorld)world).getHeightMapData(wx-8, wy-8, 32, 32);
 		float[][] heatMap = ((LocalWorld)world).getHeatMapData(wx-8, wy-8, 32, 32);
 		Biome[][] biomeMap = ((LocalWorld)world).getBiomeMapData(wx-8, wy-8, 32, 32);
+		boolean[][] vegetationIgnoreMap = new boolean[32][32]; // Stores places where vegetation should not grow, like caves and rivers.
 		int[][] realHeight = new int[32][32];
 		for(int px = 0; px < 32; px++) {
 			for(int py = 0; py < 32; py++) {
@@ -81,9 +82,11 @@ public class LifelandGenerator extends WorldGenerator {
 		
 		for (Generator g : sortedGenerators) {
 			if (g instanceof FancyGenerator) {
-				((FancyGenerator) g).generate(r.nextLong(), ox, oy, chunk, heatMap, realHeight, biomeMap);
+				((FancyGenerator) g).generate(r.nextLong(), ox, oy, chunk, vegetationIgnoreMap, heatMap, realHeight, biomeMap);
+			} else if (g instanceof BigGenerator) {
+					((BigGenerator) g).generate(r.nextLong(), ox*16, oy*16, chunk, vegetationIgnoreMap, (LocalWorld)world);
 			} else {
-				g.generate(r.nextLong(), ox, oy, chunk);
+				g.generate(r.nextLong(), ox, oy, chunk, vegetationIgnoreMap);
 			}
 		}
 

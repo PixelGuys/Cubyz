@@ -27,7 +27,7 @@ public class OreGenerator implements Generator {
 
 	// Works basically similar to cave generation, but considers a lot less chunks and has a few other differences.
 	@Override
-	public void generate(long seed, int cx, int cy, Block[][][] chunk) {
+	public void generate(long seed, int cx, int cy, Block[][][] chunk, boolean[][] vegetationIgnoreMap) {
 		Random rand = new Random(seed);
 		long rand1 = rand.nextLong();
 		long rand2 = rand.nextLong();

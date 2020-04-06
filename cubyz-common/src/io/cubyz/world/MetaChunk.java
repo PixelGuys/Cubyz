@@ -5,10 +5,10 @@ import io.cubyz.world.cubyzgenerators.biomes.Biome;
 // A metaChunk stores map data for a much bigger area of the world.
 
 public class MetaChunk {
-	float[][] heightMap, heatMap;
-	Biome[][] biomeMap;
+	public float[][] heightMap, heatMap;
+	public Biome[][] biomeMap;
 	LocalWorld world;
-	int x, y;
+	public int x, y;
 	
 	public MetaChunk(int x, int y, long seed, LocalWorld world) {
 		this.x = x;

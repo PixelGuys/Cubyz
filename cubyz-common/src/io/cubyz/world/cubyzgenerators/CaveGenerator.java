@@ -24,7 +24,7 @@ public class CaveGenerator implements Generator {
 	private static Block ice = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:ice");
 	
 	@Override
-	public void generate(long seed, int cx, int cy, Block[][][] chunk) {
+	public void generate(long seed, int cx, int cy, Block[][][] chunk, boolean[][] vegetationIgnoreMap) {
 		synchronized(rand) {
 			rand.setSeed(seed);
 			long rand1 = rand.nextLong();

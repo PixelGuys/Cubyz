@@ -8,7 +8,7 @@ import io.cubyz.blocks.Block;
 public interface Generator extends IRegistryElement {
 	
 	abstract int getPriority(); // Used to prioritize certain generators(like map generation) over others(like vegetation generation).
-	abstract void generate(long seed, int cx, int cy, Block[][][] chunk);
+	abstract void generate(long seed, int cx, int cy, Block[][][] chunk, boolean[][] vegetationIgnoreMap);
 	
 	@Override
 	public default void setID(int id) {

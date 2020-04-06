@@ -261,14 +261,14 @@ public class LocalWorld extends World {
 		return c;
 	}
 	
-	synchronized MetaChunk getMetaChunk(int wx, int wy) {
+	public synchronized MetaChunk getMetaChunk(int wx, int wy) {
 		for(MetaChunk ch : maps) {
 			if(ch.x == wx && ch.y == wy) {
 				return ch;
 			}
 		}
 		// Every time a new MetaChunk is created, go through the list and if the length is at the limit(determined by the renderdistance) remove those that are farthest from the player:
-		while(maps.size() > (doubleRD/16 + 2)*(doubleRD/16 + 2)) {
+		while(maps.size() > (doubleRD/16 + 4)*(doubleRD/16 + 4)) {
 			int max = 0;
 			int index = 0;
 			for(int i = 0; i < maps.size(); i++) {
@@ -284,7 +284,7 @@ public class LocalWorld extends World {
 		maps.add(ch);
 		return ch;
 	}
-	MetaChunk getNoGenerateMetaChunk(int wx, int wy) {
+	public MetaChunk getNoGenerateMetaChunk(int wx, int wy) {
 		for(MetaChunk ch : maps) {
 			if(ch.x == wx && ch.y == wy) {
 				return ch;
