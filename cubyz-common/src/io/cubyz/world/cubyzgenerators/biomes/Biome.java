@@ -3,7 +3,6 @@ package io.cubyz.world.cubyzgenerators.biomes;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.IRegistryElement;
 import io.cubyz.api.Resource;
-import io.cubyz.blocks.Block;
 
 public class Biome implements IRegistryElement {
 	float[] terrainPolynomial; // Use a polynomial function to add some terrain changes. At biome borders this polynomial will be interpolated between the two.
@@ -12,10 +11,11 @@ public class Biome implements IRegistryElement {
 	protected Resource identifier;
 	public BlockStructure struct;
 	private boolean supportsRivers; // Wether the starting point of a river can be in this biome. If false rivers will be able to flow through this biome anyways.
+	private VegetationModel[] vegetationModels; // The first members in this array will get prioritized.
 	
 	// The coefficients are represented like this: a[0] + a[1]*x + a[2]*x^2 + … + a[n-1]*x^(n-1)
 	// TODO: Vegetation models.
-	public Biome(Resource id, float[] polynomial, float heat, float height, BlockStructure str, boolean rivers) {
+	public Biome(Resource id, float[] polynomial, float heat, float height, BlockStructure str, boolean rivers, VegetationModel ... models) {
 		identifier = id;
 		terrainPolynomial = polynomial;
 		// TODO: Make sure there are no range problems.
@@ -24,6 +24,7 @@ public class Biome implements IRegistryElement {
 		this.height = height;
 		struct = str;
 		supportsRivers = rivers;
+		vegetationModels = models;
 	}
 	public boolean supportsRivers() {
 		return supportsRivers;
@@ -36,6 +37,10 @@ public class Biome implements IRegistryElement {
 			res += x2*terrainPolynomial[i];
 		}
 		return res;
+	}
+	
+	public VegetationModel[] vegetationModels() {
+		return vegetationModels;
 	}
 
 	

@@ -261,5 +261,20 @@ public class Noise {
 		return map;
 	}
 	
+	// Just some normal noise.	
+	public static float[][] generateRandomMap(int x, int y, int width, int height, long seed) {
+		float[][] map = new float[width][height];
+		Random r = new Random(seed);
+		long l1 = r.nextLong();
+		long l2 = r.nextLong();
+		for (int x1 = x; x1 < width + x; x1++) {
+			for (int y1 = y; y1 < height + y; y1++) {
+				r.setSeed(x1*l1^y1*l2^seed);
+				map[x1 - x][y1 - y] = r.nextFloat();
+			}
+		}
+		return map;
+	}
+	
 	
 }
