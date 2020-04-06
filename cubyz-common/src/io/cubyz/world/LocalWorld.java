@@ -537,29 +537,33 @@ public class LocalWorld extends World {
 					for (BlockInstance bi : liquids) {
 						if (bi == null) break;
 						BlockInstance[] neighbors = bi.getNeighbors(ch);
-						for (int i = 0; i < neighbors.length; i++) {
+						for (int i = 0; i < 5; i++) {
 							BlockInstance b = neighbors[i];
-							if (b == null) switch (i) {
-							case 0:
-								ch.addBlock(bi.getBlock(), bi.getX()-1, bi.getY(), bi.getZ());
-								break;
-							case 1:
-								ch.addBlock(bi.getBlock(), bi.getX()+1, bi.getY(), bi.getZ());
-								break;
-							case 2:
-								ch.addBlock(bi.getBlock(), bi.getX(), bi.getY(), bi.getZ()+1);
-								break;
-							case 3:
-								ch.addBlock(bi.getBlock(), bi.getX(), bi.getY(), bi.getZ()-1);
-								break;
-							case 4:
-								ch.addBlock(bi.getBlock(), bi.getX(), bi.getY()-1, bi.getZ());
-								break;
-							case 5: // not placing up!
-								break;
-							default:
-								System.err.println("(LocalWorld/Liquids) More than 6 nullable neighbors!");
-								break;
+							if (b == null) {
+								int dx = 0, dy = 0, dz = 0;
+								switch (i) {
+									case 0:
+										dx = -1;
+									break;
+									case 1:
+										dx = 1;
+										break;
+									case 2:
+										dz = 1;
+										break;
+									case 3:
+										dz = -1;
+										break;
+									case 4:
+										dy = -1;
+										break;
+									default:
+										System.err.println("(LocalWorld/Liquids) More than 6 nullable neighbors!");
+										break;
+								}
+								if(dy == -1 || (neighbors[4] != null && neighbors[4].getBlock().getBlockClass() != Block.BlockClass.FLUID)) {
+									ch.addBlock(bi.getBlock(), bi.getX()+dx, bi.getY()+dy, bi.getZ()+dz);
+								}
 							}
 						}
 					}
