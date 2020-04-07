@@ -8,6 +8,7 @@ public class Biome implements IRegistryElement {
 	float[] terrainPolynomial; // Use a polynomial function to add some terrain changes. At biome borders this polynomial will be interpolated between the two.
 	float heat;
 	float height;
+	float minHeight, maxHeight;
 	protected Resource identifier;
 	public BlockStructure struct;
 	private boolean supportsRivers; // Wether the starting point of a river can be in this biome. If false rivers will be able to flow through this biome anyways.
@@ -15,13 +16,15 @@ public class Biome implements IRegistryElement {
 	
 	// The coefficients are represented like this: a[0] + a[1]*x + a[2]*x^2 + … + a[n-1]*x^(n-1)
 	// TODO: Vegetation models.
-	public Biome(Resource id, float[] polynomial, float heat, float height, BlockStructure str, boolean rivers, VegetationModel ... models) {
+	public Biome(Resource id, float[] polynomial, float heat, float height, float min, float max, BlockStructure str, boolean rivers, VegetationModel ... models) {
 		identifier = id;
 		terrainPolynomial = polynomial;
 		// TODO: Make sure there are no range problems.
 
 		this.heat = heat;
 		this.height = height;
+		minHeight = min;
+		maxHeight = max;
 		struct = str;
 		supportsRivers = rivers;
 		vegetationModels = models;
@@ -50,11 +53,19 @@ public class Biome implements IRegistryElement {
 		Biome c = null;
 		for(IRegistryElement o : CubyzRegistries.BIOME_REGISTRY.registered()) {
 			Biome b = (Biome) o;
-			// Heat is more important than height and therefor scaled by 2:
-			float dist = 2*(b.heat-heat)*(b.heat-heat) + (b.height-height)*(b.height-height);
-			if(dist < closest) {
-				c = b;
-				closest = dist;
+			if(b.minHeight <= height && b.maxHeight >= height) {
+				// Heat is more important than height and therefor scaled by 2:
+				float heightFactor;
+				if(height >= b.height) {
+					heightFactor = (height-b.height)/(b.maxHeight-b.height);
+				} else {
+					heightFactor = (height-b.height)/(b.minHeight-b.height);
+				}
+				float dist = 2*(b.heat-heat)*(b.heat-heat) + heightFactor*heightFactor;
+				if(dist < closest) {
+					c = b;
+					closest = dist;
+				}
 			}
 		}
 		return c;

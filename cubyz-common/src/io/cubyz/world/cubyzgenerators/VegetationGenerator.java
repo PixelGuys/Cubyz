@@ -29,7 +29,7 @@ public class VegetationGenerator implements FancyGenerator {
 			for(int py = 0; py < 32; py++) {
 				if(!vegetationIgnoreMap[px][py]) {
 					for(VegetationModel model : biomeMap[px][py].vegetationModels()) {
-						if(model.considerCoordinates(px-8, py-8, heightMap[px][py], chunk, vegetationMap[px][py])) {
+						if(model.considerCoordinates(px-8, py-8, heightMap[px][py]+1, chunk, vegetationMap[px][py])) {
 							break;
 						}
 					}

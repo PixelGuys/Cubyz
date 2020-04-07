@@ -24,7 +24,6 @@ public class RiverGenerator implements BigGenerator {
 
 	@Override
 	public void generate(long seed, int wx, int wy, Block[][][] chunk, boolean[][] vegetationIgnoreMap, LocalWorld world) {
-		if(false) return;
 		// Gets the four surrounding MetaChunks and switch to a relative coordinate system.
 		int lx, ly;
 		MetaChunk nn, np, pn, pp;
@@ -137,6 +136,7 @@ public class RiverGenerator implements BigGenerator {
 		dir[0] = (dir[0]+2*oldDir[0])/3;
 		dir[1] = (dir[1]+2*oldDir[1])/3;
 		float nextHeight = Math.min(curHeight, getHeight(x0, y0, nn, np, pn, pp)-0.004f);
+		if(nextHeight <= 102.0f/256.0f) return; // No need to get any lower than sea level.
 		if(maxLength <= 5) {
 			nextHeight -= 0.004f; // Let the river slowly disappear underground.
 		}
