@@ -21,6 +21,7 @@ public class ResourceUtilities {
 	
 	static {
 		GSON = new GsonBuilder()
+				.setLenient()
 				.create();
 	}
 	
@@ -34,6 +35,17 @@ public class ResourceUtilities {
 		public String parent;
 		public ArrayList<String> dynaModelPurposes = new ArrayList<>();
 		public HashMap<String, BlockSubModel> subModels = new HashMap<>(); // FuzeI1I
+	}
+	
+	public static class EntityModelAnimation {
+		// TODO
+	}
+	
+	public static class EntityModel {
+		public String parent;
+		public String model;
+		public String texture;
+		public HashMap<String, EntityModelAnimation> animations = new HashMap<>();
 	}
 	
 	public static BlockModel loadModel(Resource block) throws IOException {
@@ -85,6 +97,33 @@ public class ResourceUtilities {
 			if (subDefault != null) {
 				Utilities.copyIfNull(subModel, subDefault);
 			}
+		}
+		
+		return model;
+	}
+	
+	public static EntityModel loadEntityModel(Resource entity) throws IOException {
+		String path = ResourceManager.contextToLocal(ResourceContext.MODEL_ENTITY, entity);
+		String json = Utilities.readFile(new File(path));
+		
+		EntityModel model = new EntityModel();
+		JsonObject obj = GSON.fromJson(json, JsonObject.class);
+		if (obj.has("parent")) {
+			model.parent = obj.get("parent").getAsString();
+		}
+		if (!obj.has("model")) {
+			throw new IOException("Missing \"model\" entry from model " + entity);
+		}
+		JsonObject jsonModel = obj.getAsJsonObject("model");
+		model.model = jsonModel.get("path").getAsString();
+		model.texture = jsonModel.get("texture").getAsString();
+		
+		if (model.parent != null) {
+			if (model.parent.equals(entity.toString())) {
+				throw new IOException("Cannot have itself as parent");
+			}
+			EntityModel parent = loadEntityModel(new Resource(model.parent));
+			Utilities.copyIfNull(model, parent);
 		}
 		
 		return model;

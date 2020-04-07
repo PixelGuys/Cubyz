@@ -21,3 +21,8 @@ lang.name=Français
 # Blocs
 block.cubyz.dirt.name=Terre
 block.cubyz.cobblestone.name=Pierre
+block.cubyz.oak_log.name=Bûche
+block.cubyz.oak_planks.name=Planches de bois
+
+# Items
+item.cubyz.stick.name=Bâton

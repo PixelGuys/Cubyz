@@ -67,6 +67,8 @@ public class ResourceManager {
 			return "assets/" + local.getMod() + "/models/3d/" + local.getID() + ".json";
 		} else if (ctx == ResourceContext.TEXTURE) {
 			return "assets/" + local.getMod() + "/textures/" + local.getID() + ".png";
+		} else if (ctx == ResourceContext.MODEL_ENTITY) {
+			return "assets/" + local.getMod() + "/models/entity/" + local.getID() + ".json";
 		}
 		return null;
 	}

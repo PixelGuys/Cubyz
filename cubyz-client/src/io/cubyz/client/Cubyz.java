@@ -45,6 +45,7 @@ import io.cubyz.ui.mods.InventoryGUI;
 import io.cubyz.utils.*;
 import io.cubyz.utils.ResourceUtilities.BlockModel;
 import io.cubyz.utils.ResourceUtilities.BlockSubModel;
+import io.cubyz.utils.ResourceUtilities.EntityModel;
 import io.cubyz.world.*;
 import io.cubyz.world.cubyzgenerators.TerrainGenerator;
 import io.cubyz.world.generator.LifelandGenerator;
@@ -314,7 +315,7 @@ public class Cubyz implements IGameLogic {
 					try {
 						bm = ResourceUtilities.loadModel(rsc);
 					} catch (IOException e) {
-						CubyzLogger.i.warning(rsc + " model not found");
+						CubyzLogger.i.warning(rsc + " block model not found");
 						bm = ResourceUtilities.loadModel(new Resource("cubyz:undefined"));
 					}
 				}
@@ -363,48 +364,30 @@ public class Cubyz implements IGameLogic {
 		ClientOnly.createEntityMesh = (type) -> {
 			Resource rsc = type.getRegistryID();
 			try {
-				Texture tex = null;
-				Mesh mesh = null;
-				BlockModel bm = null;
+				EntityModel model = null;
 				try {
-					bm = ResourceUtilities.loadModel(rsc);
+					model = ResourceUtilities.loadEntityModel(rsc);
 				} catch (IOException e) {
-					CubyzLogger.i.warning(rsc + " model not found");
+					CubyzLogger.i.warning(rsc + " entity model not found");
 					//e.printStackTrace();
-					bm = ResourceUtilities.loadModel(new Resource("cubyz:undefined"));
+					//model = ResourceUtilities.loadEntityModel(new Resource("cubyz:undefined")); // TODO: load a simple cube with the undefined texture
+					return;
 				}
 				
 				// Cached meshes
-				Mesh defaultMesh = null;
-				for (String key : cachedDefaultModels.keySet()) {
-					if (key.equals(bm.subModels.get("default").model)) {
-						defaultMesh = cachedDefaultModels.get(key);
-					}
-				}
-				if (defaultMesh == null) {
-					Resource rs = new Resource(bm.subModels.get("default").model);
-					//defaultMesh = OBJLoader.loadMesh("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), false);
-					defaultMesh = StaticMeshesLoader.load("assets/" + rs.getMod() + "/models/3d/" + rs.getID(),
-							"assets/" + rs.getMod() + "/models/3d/")[0];
-					defaultMesh.setBoundingRadius(2.0f);
-					cachedDefaultModels.put(bm.subModels.get("default").model, defaultMesh);
-				}
-				Resource texResource = new Resource(bm.subModels.get("default").texture);
+				Resource rs = new Resource(model.model);
+				Mesh mesh = StaticMeshesLoader.load("assets/" + rs.getMod() + "/models/3d/" + rs.getID(),
+						"assets/" + rs.getMod() + "/models/3d/")[0];
+				mesh.setBoundingRadius(2.0f); // TODO: define custom bounding radius
+				Resource texResource = new Resource(model.texture);
 				String texture = texResource.getID();
 				if (!new File("assets/" + texResource.getMod() + "/textures/" + texture + ".png").exists()) {
 					CubyzLogger.i.warning(texResource + " texture not found");
 					texture = "blocks/undefined";
 				}
 				
-				if (bm.subModels.get("default").texture_converted == true) {
-					tex = new Texture("assets/" + texResource.getMod() + "/textures/" + texture + ".png");
-				} else {
-					tex = new Texture(TextureConverter.fromBufferedImage(
-							TextureConverter.convert(ImageIO.read(new File("assets/" + texResource.getMod() + "/textures/" + texture + ".png")),
-									type.getRegistryID().toString())));
-				}
+				Texture tex = new Texture("assets/" + texResource.getMod() + "/textures/" + texture + ".png");
 				
-				mesh = defaultMesh.cloneNoMaterial();
 				Material material = new Material(tex, 1.0F);
 				mesh.setMaterial(material);
 				
