@@ -21,3 +21,8 @@ lang.name=English
 # Blocks
 block.cubyz.dirt.name=Dirt
 block.cubyz.cobblestone.name=Cobblestone
+block.cubyz.oak_log.name=Oak Log
+block.cubyz.oak_planks.name=Oak Planks
+
+# Items
+item.cubyz.stick.name=Stick
