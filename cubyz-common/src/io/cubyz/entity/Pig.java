@@ -31,8 +31,8 @@ public class Pig extends EntityType implements EntityAI {
 		
 		if (ndt.getLong("directionTimer") <= System.currentTimeMillis()) {
 			ndt.setLong("directionTimer", System.currentTimeMillis() + directionRandom.nextInt(5000));
-			ent.vx = directionRandom.nextFloat() * 0.1f;
-			ent.vz = directionRandom.nextFloat() * 0.1f;
+			ent.vx = directionRandom.nextFloat() * 0.2f - 0.1f;
+			ent.vz = directionRandom.nextFloat() * 0.2f - 0.1f;
 		}
 		
 		if (ent._getX(ent.vx) != ent.vx || ent._getZ(ent.vz) != ent.vz) {
