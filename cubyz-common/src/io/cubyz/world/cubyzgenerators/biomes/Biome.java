@@ -32,9 +32,9 @@ public class Biome implements IRegistryElement {
 	public boolean supportsRivers() {
 		return supportsRivers;
 	}
-	public float evaluatePolynomial(float x) {
-		float res = terrainPolynomial[0];
-		float x2 = 1;
+	public double evaluatePolynomial(double x) {
+		double res = terrainPolynomial[0];
+		double x2 = 1;
 		for(int i = 1; i < terrainPolynomial.length; i++) {
 			x2 *= x;
 			res += x2*terrainPolynomial[i];
@@ -71,18 +71,18 @@ public class Biome implements IRegistryElement {
 		return c;
 	}
 	
-	public static float evaluatePolynomial(float height, float heat, float x) {
+	public static float evaluatePolynomial(double height, double heat, double x) {
 		// Creates a much smoother terrain by interpolating between the biomes based on their distance in the height-heat space.
-		float res = 0;
-		float weight = 0;
+		double res = 0;
+		double weight = 0;
 		for(IRegistryElement o : CubyzRegistries.BIOME_REGISTRY.registered()) {
 			Biome b = (Biome)o;
-			float dist = 2*(b.heat-heat)*(b.heat-heat) + (b.height-height)*(b.height-height);
-			dist = (float)Math.pow(dist, -8);
+			double dist = 2*(b.heat-heat)*(b.heat-heat) + (b.height-height)*(b.height-height);
+			dist = Math.pow(dist, -8);
 			res += b.evaluatePolynomial(x)*dist;
 			weight += dist;
 		}
-		return res/weight;
+		return (float)(res/weight);
 	}
 	
 	@Override
