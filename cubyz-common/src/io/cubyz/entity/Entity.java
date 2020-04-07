@@ -73,6 +73,59 @@ public class Entity {
 	}
 	
 	/**
+	 * check and update vertical velocity for collision.
+	 */
+	protected void updateVY() {
+		if (vy < 0) {
+			Vector3i bp = new Vector3i(position.x + (int) Math.round(position.relX), (int) Math.floor(position.y), position.z + (int) Math.round(position.relZ));
+			float relX = position.relX +0.5F - Math.round(position.relX);
+			float relZ = position.relZ + 0.5F- Math.round(position.relZ);
+			if(isOnGround()) {
+				vy = 0;
+			}
+			else if (relX < 0.3) {
+				if (checkBlock(bp.x - 1, bp.y, bp.z)) {
+					vy = 0;
+				}
+				else if (relZ < 0.3 && checkBlock(bp.x - 1, bp.y, bp.z - 1)) {
+					vy = 0;
+				}
+				else if (relZ > 0.7 && checkBlock(bp.x - 1, bp.y, bp.z + 1)) {
+					vy = 0;
+				}
+			}
+			else if (relX > 0.7) {
+				if (checkBlock(bp.x + 1, bp.y, bp.z)) {
+					vy = 0;
+				}
+				else if (relZ < 0.3 && checkBlock(bp.x + 1, bp.y, bp.z - 1)) {
+					vy = 0;
+				}
+				else if (relZ > 0.7 && checkBlock(bp.x + 1, bp.y, bp.z + 1)) {
+					vy = 0;
+				}
+			}
+			if (relZ < 0.3 && checkBlock(bp.x, bp.y, bp.z - 1)) {
+				vy = 0;
+			}
+			else if (relZ > 0.7 && checkBlock(bp.x, bp.y, bp.z + 1)) {
+				vy = 0;
+			}
+			
+			// I'm really annoyed by falling into the void and needing ages to get back up.
+			if(bp.y < -100) {
+				position.y = -100;
+				vy = 0;
+			}
+		} else if (vy > 0) {
+			Vector3i bp = new Vector3i(position.x + (int) Math.round(position.relX), (int) Math.floor(position.y), position.z + (int) Math.round(position.relZ));
+			if(checkBlock(bp.x, bp.y + height, bp.z)) {
+				vy = 0;
+			}
+		}
+	}
+	
+	/**
 	 * @author IntegratedQuantum
 	 */
 	protected float _getX(float x) {
@@ -225,6 +278,12 @@ public class Entity {
 	public void update() {
 		if(ai != null)
 			ai.update(this);
+		updatePosition();
+	}
+	
+	protected void updatePosition() {
+		updateVY();
+		position.add(_getX(vx), vy, _getZ(vz));
 	}
 	
 	// NDT related
@@ -235,6 +294,27 @@ public class Entity {
 		ndt.setFloat("y", vec.y);
 		ndt.setFloatingInteger("z", new FloatingInteger(vec.z, vec.relZ));
 		return ndt;
+	}
+	
+	private NDTContainer runtimeNDT;
+	
+	/**
+	 * NDT tag to store runtime data that will not persist through world save or loading.
+	 */
+	public NDTContainer getRuntimeNDT() {
+		if (runtimeNDT == null) {
+			runtimeNDT = new NDTContainer();
+			runtimeNDT.setContainer("ai", new NDTContainer());
+		}
+		return runtimeNDT;
+	}
+	
+	/**
+	 * NDT tag reserved for AI use, it is stored in runtime using the runtime NDT.
+	 * @see #getRuntimeNDT()
+	 */
+	public NDTContainer getAINDT() {
+		return getRuntimeNDT().getContainer("ai");
 	}
 	
 	private Vector3fi loadVector3fi(NDTContainer ndt) {

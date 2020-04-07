@@ -162,21 +162,21 @@ public class Cubyz implements IGameLogic {
 			int dx = 0;
 			int dz = 0;
 			int highestY = 0;
-			CubyzLogger.i.info("Finding position..");
-			while (true) {
-				dx = rnd.nextInt(10000) - 5000;
-				dz = rnd.nextInt(10000) - 5000;
-				CubyzLogger.i.info("Trying " + dx + " ? " + dz);
-				world.synchronousSeek(dx, dz);
-				highestY = world.getHighestBlock(dx, dz);
-				if (highestY > TerrainGenerator.SEA_LEVEL) { // TODO: always true if generator doesn't use standard TerrainGenerator.
-					break;
+			if (world.getLocalPlayer().getPosition().x == 0 && world.getLocalPlayer().getPosition().z == 0) {
+				CubyzLogger.i.info("Finding position..");
+				while (true) {
+					dx = rnd.nextInt(10000) - 5000;
+					dz = rnd.nextInt(10000) - 5000;
+					CubyzLogger.i.info("Trying " + dx + " ? " + dz);
+					world.synchronousSeek(dx, dz);
+					highestY = world.getHighestBlock(dx, dz);
+					if (highestY > TerrainGenerator.SEA_LEVEL) { // TODO: always true if generator doesn't use standard TerrainGenerator.
+						break;
+					}
 				}
-			}
-			if (world.getLocalPlayer().getPosition().x == 0 && world.getLocalPlayer().getPosition().z == 0) { // temporary solution to only TP on spawn
 				world.getLocalPlayer().setPosition(new Vector3i(dx, highestY+2, dz));
+				CubyzLogger.i.info("OK!");
 			}
-			CubyzLogger.i.info("OK!");
 		}
 		world.synchronousSeek(0, 0);
 		DiscordIntegration.setStatus("Playing");
@@ -537,6 +537,7 @@ public class Cubyz implements IGameLogic {
 				pig.setPosition(pos);
 				pig.setWorld(world);
 				world.addEntity(pig);
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_P, false);
 			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_C)) {
 				int mods = Keyboard.getKeyMods();

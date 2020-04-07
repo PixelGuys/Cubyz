@@ -65,58 +65,12 @@ public class PlayerEntity extends EntityType {
 		
 		@Override
 		public void update() {
-			super.update();
 			if (!flying) {
 				vy -= 0.015F;
 			}
-			if (vy < 0) {
-				Vector3i bp = new Vector3i(position.x + (int) Math.round(position.relX), (int) Math.floor(position.y), position.z + (int) Math.round(position.relZ));
-				float relX = position.relX +0.5F - Math.round(position.relX);
-				float relZ = position.relZ + 0.5F- Math.round(position.relZ);
-				if(isOnGround()) {
-					vy = 0;
-				}
-				else if (relX < 0.3) {
-					if (checkBlock(bp.x - 1, bp.y, bp.z)) {
-						vy = 0;
-					}
-					else if (relZ < 0.3 && checkBlock(bp.x - 1, bp.y, bp.z - 1)) {
-						vy = 0;
-					}
-					else if (relZ > 0.7 && checkBlock(bp.x - 1, bp.y, bp.z + 1)) {
-						vy = 0;
-					}
-				}
-				else if (relX > 0.7) {
-					if (checkBlock(bp.x + 1, bp.y, bp.z)) {
-						vy = 0;
-					}
-					else if (relZ < 0.3 && checkBlock(bp.x + 1, bp.y, bp.z - 1)) {
-						vy = 0;
-					}
-					else if (relZ > 0.7 && checkBlock(bp.x + 1, bp.y, bp.z + 1)) {
-						vy = 0;
-					}
-				}
-				if (relZ < 0.3 && checkBlock(bp.x, bp.y, bp.z - 1)) {
-					vy = 0;
-				}
-				else if (relZ > 0.7 && checkBlock(bp.x, bp.y, bp.z + 1)) {
-					vy = 0;
-				}
-				
-				// I'm really annoyed by falling into the void and needing ages to get back up.
-				if(bp.y < -100) {
-					position.y = -100;
-					vy = 0;
-				}
-			} else if (vy > 0) {
-				Vector3i bp = new Vector3i(position.x + (int) Math.round(position.relX), (int) Math.floor(position.y), position.z + (int) Math.round(position.relZ));
-				if(checkBlock(bp.x, bp.y+3, bp.z)) {
-					vy = 0;
-				}
-			}
-			position.add(0, vy, 0);
+			vx = 0;
+			vz = 0;
+			updatePosition();
 			if (flying) {
 				vy = 0;
 			}
