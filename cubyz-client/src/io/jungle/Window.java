@@ -174,6 +174,7 @@ public class Window {
 	private void init(GameOptions opt, long monitorID) {
 		if (!inited) {
 			GLFWErrorCallback.createPrint(System.err).set();
+			
 			if (!glfwInit())
 				throw new IllegalStateException("Unable to initialize GLFW");
 			inited = true;
@@ -249,6 +250,7 @@ public class Window {
 		
 		glEnable(GL_DEPTH_TEST);
 		//glEnable(GL_STENCIL_TEST);
+		
 		setOptions(opt);
 	}
 	

@@ -531,7 +531,6 @@ public class Cubyz implements IGameLogic {
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_P)) {
 				// debug: spawn a pig
 				Vector3fi pos = world.getLocalPlayer().getPosition().clone();
-				pos.y += 2f;
 				EntityType pigType = CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:pig");
 				if (pigType == null) return;
 				Entity pig = pigType.newEntity();

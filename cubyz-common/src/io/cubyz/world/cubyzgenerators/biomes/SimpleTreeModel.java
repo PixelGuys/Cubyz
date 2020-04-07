@@ -23,7 +23,7 @@ public class SimpleTreeModel implements VegetationModel {
 	public boolean considerCoordinates(int x, int y, int h, Block[][][] chunk, float random) {
 		if(random < chance && h > 0) {
 			int height = height0 + new Random(Float.floatToRawIntBits(random)).nextInt(deltaHeight);
-			if(h+height >= World.WORLD_HEIGHT)
+			if(h+height+1 >= World.WORLD_HEIGHT) // the max array index is 255 but world height is 256 (for array **length**)
 				return false;
 			
 			if(x >= 0 && x < 16 && y >= 0 && y < 16) {

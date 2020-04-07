@@ -227,6 +227,26 @@ public class Mesh implements Cloneable {
 		}
 		endRender();
 	}
+	
+	public void renderOne(Runnable run) {
+		initRender();
+		boolean wasEnabled = false; // avoid having a GPU call (glIsEnabled) if useless later (not having
+		// cull face is optional)
+		if (!cullFace) {
+			wasEnabled = glIsEnabled(GL_CULL_FACE);
+			if (wasEnabled) {
+				glDisable(GL_CULL_FACE);
+			}
+		}
+		
+		run.run();
+		render();
+		
+		if (wasEnabled) {
+			glEnable(GL_CULL_FACE);
+		}
+		endRender();
+	}
 
 	public void cleanUp() {
 		glDisableVertexAttribArray(0);

@@ -2,16 +2,15 @@ package io.jungle;
 
 import org.joml.Vector3f;
 
+import io.cubyz.math.Vector3fi;
+
 public class Spatial {
 
     private Mesh[] meshes;
-
     private final Vector3f position;
-
-    private float scale;
-
     private final Vector3f rotation;
     
+    private float scale;
     private boolean selected;
 
     public Spatial(Mesh mesh) {
@@ -49,6 +48,16 @@ public class Spatial {
         this.position.y = y;
         this.position.z = z;
     }
+	
+	public void setPosition(Vector3f position) {
+		this.position.set(position);
+	}
+	
+	public void setPosition(Vector3fi position) {
+		this.position.x = position.x();
+		this.position.y = position.y();
+		this.position.z = position.z();
+	}
 
     public float getScale() {
         return scale;
@@ -57,8 +66,6 @@ public class Spatial {
     protected void setMeshes(Mesh[] mesh) {
     	this.meshes = mesh;
     }
-    
-    
 
     public void setScale(float scale) {
         this.scale = scale;
@@ -81,4 +88,5 @@ public class Spatial {
     public Mesh[] getMeshes() {
     	return meshes;
     }
+    
 }

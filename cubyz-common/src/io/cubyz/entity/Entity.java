@@ -3,7 +3,6 @@ package io.cubyz.entity;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 
-import io.cubyz.IRenderablePair;
 import io.cubyz.blocks.Block;
 import io.cubyz.math.FloatingInteger;
 import io.cubyz.math.Vector3fi;
@@ -15,12 +14,9 @@ public class Entity {
 	protected World world;
 
 	protected Vector3fi position = new Vector3fi();
-	protected Vector3fi renderPosition = new Vector3fi();
 	protected Vector3f rotation = new Vector3f();
 	private EntityAI ai;
 	public float vx, vy, vz;
-	
-	protected IRenderablePair renderPair;
 	
 	private EntityType type;
 	
@@ -51,8 +47,11 @@ public class Entity {
 		return position;
 	}
 	
-	public Vector3fi getRenderPosition() {
-		return renderPosition;
+	protected Vector3f oldRenderPos;
+	public Vector3f getRenderPosition() { // default method for render pos
+		if (oldRenderPos == null || !oldRenderPos.equals(position.x(), position.y, position.z()))
+			oldRenderPos = position.toVector3f();
+		return oldRenderPos;
 	}
 	
 	public void setPosition(Vector3i position) {
@@ -71,10 +70,6 @@ public class Entity {
 	
 	public void setRotation(Vector3f rotation) {
 		this.rotation = rotation;
-	}
-	
-	public IRenderablePair getRenderablePair() {
-		return renderPair;
 	}
 	
 	/**
@@ -230,7 +225,6 @@ public class Entity {
 	public void update() {
 		if(ai != null)
 			ai.update(this);
-		renderPosition = position;
 	}
 	
 	// NDT related

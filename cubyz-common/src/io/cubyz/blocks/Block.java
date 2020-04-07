@@ -3,7 +3,6 @@ package io.cubyz.blocks;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 
-import io.cubyz.IRenderablePair;
 import io.cubyz.api.IRegistryElement;
 import io.cubyz.api.Resource;
 import io.cubyz.items.Item;

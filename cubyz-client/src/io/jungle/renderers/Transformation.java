@@ -84,6 +84,15 @@ public class Transformation {
 		return modelViewMatrix;
 	}
 	
+	public Matrix4f getModelMatrix(Vector3f position, Vector3f rotation) {
+		modelViewMatrix.identity()
+			.translate(position)
+			.rotateX(-DEGTORAD * rotation.x)
+			.rotateY(-DEGTORAD * rotation.y)
+			.rotateZ(-DEGTORAD * rotation.z);
+		return modelViewMatrix;
+	}
+	
 	public Matrix4f getViewMatrix(Camera camera) {
 		Vector3f cameraPos = camera.getPosition();
 		Vector3f rotation = camera.getRotation();

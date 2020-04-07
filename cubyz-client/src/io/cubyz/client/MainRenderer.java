@@ -3,6 +3,7 @@ package io.cubyz.client;
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL13.glActiveTexture;
 
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -353,16 +354,19 @@ public class MainRenderer implements IRenderer {
 				}
 			}
 		}
+		
+		Vector3f playerPos = p == null ? VECTOR3F_ZERO : p.getPosition().toVector3f();
 		for (int i = 0; i < entities.length; i++) {
 			Entity ent = entities[i];
 			if (ent != null && ent != p) { // don't render local player
-				Mesh mesh = (Mesh) ent.getRenderablePair().get("meshCache");
+				Mesh mesh = Meshes.entityMeshes.get(ent.getType());
 				shaderProgram.setUniform("material", mesh.getMaterial());
-				mesh.renderList(map[i], (Spatial gameItem) -> {
-					Matrix4f modelViewMatrix = transformation.getModelViewMatrix(gameItem, viewMatrix);
-					if (orthogonal) {
-						modelViewMatrix = transformation.getOrtoProjModelMatrix(gameItem, viewMatrix);
-					}
+				
+				mesh.renderOne(() -> {
+					Vector3f position = ent.getRenderPosition().sub(playerPos);
+					Matrix4f modelViewMatrix = transformation.getModelViewMatrix(transformation.getModelMatrix(position, ent.getRotation()), viewMatrix);
+					shaderProgram.setUniform("isInstanced", 0);
+					shaderProgram.setUniform("selectedNonInstanced", 0f);
 					shaderProgram.setUniform("modelViewNonInstancedMatrix", modelViewMatrix);
 				});
 			}

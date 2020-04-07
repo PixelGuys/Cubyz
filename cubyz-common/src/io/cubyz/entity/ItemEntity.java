@@ -18,11 +18,5 @@ public class ItemEntity extends Entity {
 			
 		});
 	}
-	
-	public Vector3fi getRenderPosition() {
-		Vector3fi render = renderPosition.clone();
-		renderPosition.add(translation.x, translation.y, translation.z);
-		return render;
-	}
 
 }
