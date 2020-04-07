@@ -10,16 +10,7 @@ public class ItemEntity extends Entity {
 	private Vector3f translation;
 	
 	public ItemEntity() {
-		super(new EntityType() {
-
-			@Override
-			public Resource getRegistryID() {
-				return new Resource("cubyz:item_stack");
-			}
-
-			@Override
-			public void setID(int ID) {}
-
+		super(new EntityType(new Resource("cubyz:item_stack")) {
 			@Override
 			public Entity newEntity() {
 				return new ItemEntity();

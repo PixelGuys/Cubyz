@@ -10,13 +10,14 @@ import io.cubyz.math.Vector3fi;
 import io.cubyz.ndt.NDTContainer;
 import io.cubyz.world.World;
 
-public abstract class Entity {
+public class Entity {
 
 	protected World world;
 
 	protected Vector3fi position = new Vector3fi();
 	protected Vector3fi renderPosition = new Vector3fi();
 	protected Vector3f rotation = new Vector3f();
+	private EntityAI ai;
 	public float vx, vy, vz;
 	
 	protected IRenderablePair renderPair;
@@ -27,6 +28,11 @@ public abstract class Entity {
 	
 	public Entity(EntityType type) {
 		this.type = type;
+	}
+	
+	public Entity(EntityType type, EntityAI ai) {
+		this.type = type;
+		this.ai = ai;
 	}
 	
 	public EntityType getType() {
@@ -78,7 +84,7 @@ public abstract class Entity {
 		int absX = position.x + (int) Math.round(position.relX);
 		int absY = (int) Math.floor(position.y + 0.5F);
 		int absZ = position.z + (int) Math.round(position.relZ);
-		float relX = position.relX +0.5F - Math.round(position.relX);
+		float relX = position.relX + 0.5F - Math.round(position.relX);
 		float relZ = position.relZ + 0.5F- Math.round(position.relZ);
 		if (x < 0) {
 			if (relX < 0.3F) {
@@ -222,6 +228,8 @@ public abstract class Entity {
 	}
 	
 	public void update() {
+		if(ai != null)
+			ai.update(this);
 		renderPosition = position;
 	}
 	

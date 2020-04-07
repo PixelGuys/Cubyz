@@ -14,6 +14,10 @@ import io.cubyz.world.World;
 
 public class PlayerEntity extends EntityType {
 
+	public PlayerEntity() {
+		super(new Resource("cubyz:player"));
+	}
+
 	public static class PlayerImpl extends Player {
 		
 		private boolean flying = false;
@@ -181,14 +185,6 @@ public class PlayerEntity extends EntityType {
 			}
 		}
 	}
-
-	@Override
-	public Resource getRegistryID() {
-		return new Resource("cubyz", "player");
-	}
-
-	@Override
-	public void setID(int ID) {}
 
 	@Override
 	public Entity newEntity() {

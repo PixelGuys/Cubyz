@@ -13,6 +13,7 @@ import io.cubyz.blocks.Block;
 import io.cubyz.command.ClearCommand;
 import io.cubyz.command.GiveCommand;
 import io.cubyz.entity.EntityType;
+import io.cubyz.entity.Pig;
 import io.cubyz.entity.PlayerEntity;
 import io.cubyz.items.Item;
 import io.cubyz.items.Recipe;
@@ -61,9 +62,8 @@ public class BaseMod {
 	
 	@EventHandler(type = "entity/register")
 	public void registerEntities(Registry<EntityType> reg) {
-		player = new PlayerEntity();
-		
-		reg.register(player);
+		reg.register(new Pig());
+		reg.register(new PlayerEntity());
 	}
 	
 	@EventHandler(type = "item/register")

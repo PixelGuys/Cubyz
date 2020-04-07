@@ -19,6 +19,7 @@ import io.cubyz.api.Side;
 import io.cubyz.base.BaseMod;
 import io.cubyz.blocks.Block;
 import io.cubyz.client.Cubyz;
+import io.cubyz.entity.EntityType;
 import io.cubyz.modding.ModLoader;
 import io.cubyz.ui.LoadingGUI;
 
@@ -121,11 +122,21 @@ public class LoadThread extends Thread {
 		run = new Runnable() {
 			public void run() {
 				i++;
-				Block b = (Block) CubyzRegistries.BLOCK_REGISTRY.registered()[i];
-				ClientOnly.createBlockMesh.accept(b);
-				if (i < CubyzRegistries.BLOCK_REGISTRY.registered().length-1) {
-					Cubyz.renderDeque.add(run);
-					l.setStep(4, i+1, CubyzRegistries.BLOCK_REGISTRY.registered().length);
+				if (i < CubyzRegistries.BLOCK_REGISTRY.registered().length || i < CubyzRegistries.ENTITY_REGISTRY.registered().length) {
+					if(i < CubyzRegistries.BLOCK_REGISTRY.registered().length) {
+						Block b = (Block) CubyzRegistries.BLOCK_REGISTRY.registered()[i];
+						ClientOnly.createBlockMesh.accept(b);
+					}
+					if(i < CubyzRegistries.ENTITY_REGISTRY.registered().length) {
+						EntityType e = (EntityType) CubyzRegistries.ENTITY_REGISTRY.registered()[i];
+						ClientOnly.createEntityMesh.accept(e);
+					}
+					if(i < CubyzRegistries.BLOCK_REGISTRY.registered().length-1 || i < CubyzRegistries.ENTITY_REGISTRY.registered().length-1) {
+						Cubyz.renderDeque.add(run);
+						l.setStep(4, i+1, CubyzRegistries.BLOCK_REGISTRY.registered().length);
+					} else {
+						finishedMeshes = true;
+					}
 				} else {
 					finishedMeshes = true;
 				}
