@@ -49,7 +49,7 @@ public class Entity {
 	
 	protected Vector3f oldRenderPos;
 	public Vector3f getRenderPosition() { // default method for render pos
-		if (oldRenderPos == null || !oldRenderPos.equals(position.x(), position.y, position.z()))
+		if (oldRenderPos == null || oldRenderPos.x != position.x || oldRenderPos.y != position.y || oldRenderPos.z != position.z)
 			oldRenderPos = position.toVector3f();
 		return oldRenderPos;
 	}
