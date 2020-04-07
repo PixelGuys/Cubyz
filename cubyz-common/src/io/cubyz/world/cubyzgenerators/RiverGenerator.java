@@ -78,7 +78,7 @@ public class RiverGenerator implements BigGenerator {
 				if(m == pp || m == np) {
 					y += 256;
 				}
-				makeRiver(x, y, lx, ly, chunk, nn, np, pn, pp, rand.nextFloat()+2, 128, new float[2], getHeight(x, y, nn, np, pn, pp), vegetationIgnoreMap);
+				makeRiver(x, y, lx, ly, chunk, nn, np, pn, pp, rand.nextFloat()+1.5f, x, y, new float[2], getHeight(x, y, nn, np, pn, pp), vegetationIgnoreMap, 256);
 			}
 		}
 	}
@@ -92,9 +92,9 @@ public class RiverGenerator implements BigGenerator {
 			}
 		} else {
 			if(y < 256) {
-				return nn.heightMap[x-256][y];
+				return pn.heightMap[x-256][y];
 			} else {
-				return np.heightMap[x-256][y-256];
+				return pp.heightMap[x-256][y-256];
 			}
 		}
 	}
@@ -119,8 +119,9 @@ public class RiverGenerator implements BigGenerator {
 		return res;
 	}
 	
-	private void makeRiver(float x, float y, int lx, int ly, Block[][][] chunk, MetaChunk nn, MetaChunk np, MetaChunk pn, MetaChunk pp, float width, int maxLength, float[] oldDir, float curHeight, boolean[][] vegetationIgnoreMap) {
-		if(maxLength == 0) return; // An abrupt ending. Maybe add some kind of disappearing to the underground?
+	private void makeRiver(float x, float y, int lx, int ly, Block[][][] chunk, MetaChunk nn, MetaChunk np, MetaChunk pn, MetaChunk pp, float width, int x00, int y00, float[] oldDir, float curHeight, boolean[][] vegetationIgnoreMap, int maxLength) {
+		float dist = (float)Math.sqrt((x-x00)*(x-x00) + (y-y00)*(y-y00));
+		if(128-dist-2*width <= 0 || maxLength == 0) return;
 		// Get the gradient of the surrounding positions in the heightMap:
 		int x0 = (int)x;
 		int y0 = (int)y;
@@ -135,12 +136,13 @@ public class RiverGenerator implements BigGenerator {
 		float[] dir = getNormalizedGradient(x%1, y%1, grad00, grad01, grad10, grad11);
 		dir[0] = (dir[0]+2*oldDir[0])/3;
 		dir[1] = (dir[1]+2*oldDir[1])/3;
-		float nextHeight = Math.min(curHeight, getHeight(x0, y0, nn, np, pn, pp)-0.004f);
+		float nextHeight = Math.min(curHeight, getHeight(x0, y0, nn, np, pn, pp));
 		if(nextHeight <= 102.0f/256.0f) return; // No need to get any lower than sea level.
-		if(maxLength <= 5) {
+		if(128-dist-2*width <= 5) {
+			if(maxLength > 5) maxLength = 5;
 			nextHeight -= 0.004f; // Let the river slowly disappear underground.
 		}
-		makeRiver(x+dir[0], y+dir[1], lx, ly, chunk, nn, np, pn, pp, width, maxLength-1, dir, nextHeight, vegetationIgnoreMap);
+		makeRiver(x+dir[0], y+dir[1], lx, ly, chunk, nn, np, pn, pp, width, x00, y00, dir, nextHeight, vegetationIgnoreMap, maxLength-1);
 		// If the river touches the generated area adjust the blocks to river style:
 		if(x+width >= lx-8 && x-width < lx+24 && y+width >= ly-8 && y-width < ly+24) {
 			int xMin = Math.max((int)Math.ceil(x-width), lx-8);
@@ -156,6 +158,7 @@ public class RiverGenerator implements BigGenerator {
 							int height0 = (int)(getHeight(px, py, nn, np, pn, pp)*World.WORLD_HEIGHT);
 							int height1 = (int)(curHeight*World.WORLD_HEIGHT);
 							int height2 = (int)(nextHeight*World.WORLD_HEIGHT);
+							if(height0-height1 < 0) height1 = height0;
 							if(height1-height2 < 1) height2 = height1-2;
 							if(maxLength > 5) {
 								for(int h = height1; h <= height0; h++) {
