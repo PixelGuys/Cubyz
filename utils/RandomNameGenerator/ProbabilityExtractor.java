@@ -19,70 +19,64 @@ public class ProbabilityExtractor {
 		return '0';
 	}
 	public static void main(String[] args) throws IOException {
-		int[] number = new int[27*27*27];
+		int[] number = new int[27*27*27*27];
 		try (BufferedReader br = new BufferedReader(new FileReader("./minerals.txt"))) {
 			String line;
 			while ((line = br.readLine()) != null) {
-				char c1 = ' ', c2 = ' ', c3 = ' ';
+				char c1 = ' ', c2 = ' ', c3 = ' ', c4 = ' ';
 				for(char c : line.toCharArray()) {
 					c1 = c2;
 					c2 = c3;
-					c3 = c;
-					number[getIndex(c1)*27*27+getIndex(c2)*27+getIndex(c3)]++;
+					c3 = c4;
+					c4 = c;
+					number[getIndex(c1)*27*27*27 + getIndex(c2)*27*27 + getIndex(c3)*27 + getIndex(c4)]++;
 				}
-				number[getIndex(c2)*27*27+getIndex(c3)*27]++;
-				number[getIndex(c3)*27*27]++;
+				number[getIndex(c2)*27*27*27 + getIndex(c3)*27*27 + getIndex(c4)*27]++;
+				number[getIndex(c3)*27*27*27 + getIndex(c4)*27*27]++;
+				number[getIndex(c4)*27*27*27]++;
 			}
 		} catch(Exception e) {}
 		DataOutputStream os = new DataOutputStream(new BufferedOutputStream(new FileOutputStream("./custom_ore_names.dat")));
-		//System.out.print("	public static char[][] chars = {");
 		for(int i = 0; i < 27; i++) {
 			for(int j = 0; j < 27; j++) {
-				//System.out.print("{");
-				int n = 0;
-				String str = "";
 				for(int k = 0; k < 27; k++) {
-					if(number[i*27*27 + j*27 + k] != 0) {
-						//if(n != 0) System.out.print(",");
-						//System.out.print("\'"+getChar(k)+"\'");
-						str += getChar(k);
-						n++;
+					byte n = 0;
+					for(int l = 0; l < 27; l++) { // pre-loop to get the length
+						if(number[i*27*27*27 + j*27*27 + k*27 + l] != 0) {
+							n++;
+						}
+					}
+					os.writeByte(n);
+					for(byte l = 0; l < 27; l++) {
+						if(number[i*27*27*27 + j*27*27 + k*27 + l] != 0) {
+							os.writeByte(l);
+						}
 					}
 				}
-				//System.out.print("},");
-				os.writeUTF(str);
 			}
 		}
-		//System.out.println("};");
-		//System.out.print("	public static float[][] probabilities = {");
 		for(int i = 0; i < 27; i++) {
 			for(int j = 0; j < 27; j++) {
-				//System.out.print("{");
-				int total = 0;
 				for(int k = 0; k < 27; k++) {
-					total += number[i*27*27 + j*27 + k];
-				}
-				int n = 0;
-				for(int k = 0; k < 27; k++) { // pre-loop to get the length
-					if(number[i*27*27 + j*27 + k] != 0) {
-						//if(n != 0) System.out.print(",");
-						n++;
+					int total = 0;
+					for(int l = 0; l < 27; l++) {
+						total += number[i*27*27*27 + j*27*27 + k*27 + l];
+					}
+					byte n = 0;
+					for(int l = 0; l < 27; l++) { // pre-loop to get the length
+						if(number[i*27*27*27 + j*27*27 + k*27 + l] != 0) {
+							n++;
+						}
+					}
+					os.writeByte(n);
+					for(int l = 0; l < 27; l++) {
+						if(number[i*27*27*27 + j*27*27 + k*27 + l] != 0) {
+							os.writeFloat(number[i*27*27*27 + j*27*27 + k*27 + l]/(float)total);
+						}
 					}
 				}
-				os.writeInt(n);
-				n = 0;
-				for(int k = 0; k < 27; k++) {
-					if(number[i*27*27 + j*27 + k] != 0) {
-						//if(n != 0) System.out.print(",");
-						//System.out.print((number[i*27*27 + j*27 + k]/(float)total)+"f");
-						os.writeFloat(number[i*27*27 + j*27 + k]/(float)total);
-						n++;
-					}
-				}
-				//System.out.print("},");
 			}
 		}
-		//System.out.println("};");
 		os.close();
 	}
 }

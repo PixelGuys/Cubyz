@@ -9,7 +9,6 @@ import io.cubyz.base.init.ItemInit;
 import io.cubyz.items.CustomItem;
 import io.cubyz.items.tools.CustomMaterial;
 import io.cubyz.ndt.NDTContainer;
-import io.cubyz.storage.ThingsZenithWantsInAnExtraFile;
 import io.cubyz.world.CustomObject;
 
 public class CustomOre extends Ore implements CustomObject {
@@ -18,12 +17,19 @@ public class CustomOre extends Ore implements CustomObject {
 		if('a' <= c && c <= 'z') return 1+c-'a';
 		return -1;
 	}
+	static char getChar(int i) {
+		if(i == 0) return ' ';
+		if(i <= 26) return (char)('a'+i-1);
+		System.err.println("Unknown "+i);
+		System.exit(1);
+		return '0';
+	}
 	
 	private int color;
 	private String name;
 	public int template;
 	
-	private static char[][] chars;
+	private static byte[][] chars;
 	private static float[][] probabilities;
 	
 	static {
@@ -33,13 +39,17 @@ public class CustomOre extends Ore implements CustomObject {
 	private static void readOreData() {
 		try {
 			DataInputStream is = new DataInputStream(new BufferedInputStream(CustomOre.class.getClassLoader().getResourceAsStream("io/cubyz/storage/custom_ore_names.dat")));
-			chars = new char[27*27][0];
-			for (int i = 0; i < 27*27; i++) {
-				chars[i] = is.readUTF().toCharArray();
+			chars = new byte[27*27*27][0];
+			for (int i = 0; i < 27*27*27; i++) {
+				byte len = is.readByte();
+				chars[i] = new byte[len];
+				for(int j = 0; j < len; j++) {
+					chars[i][j] = is.readByte();
+				}
 			}
-			probabilities = new float[27*27][0];
-			for (int i = 0; i < 27*27; i++) {
-				int length = is.readInt();
+			probabilities = new float[27*27*27][0];
+			for (int i = 0; i < 27*27*27; i++) {
+				byte length = is.readByte();
 				float[] array = new float[length];
 				for (int j = 0; j < length; j++) {
 					array[j] = is.readFloat();
@@ -59,21 +69,22 @@ public class CustomOre extends Ore implements CustomObject {
 		return color;
 	}
 	
-	private static char choose(char c1, char c2, float rand, int length) {
+	private static char choose(char c1, char c2, char c3, float rand, int length) {
 		try {
 			int i1 = getIndex(c1);
 			int i2 = getIndex(c2);
-			int i3 = 0;
-			if(length >= 20 && ThingsZenithWantsInAnExtraFile.chars[i1*27 + i2][i3] == ' ') { // Make sure the word ends.
+			int i3 = getIndex(c3);
+			int i4 = 0;
+			if(length >= 20 && chars[i1*27*27 + i2*27 + i3][i4] == 0) { // Make sure the word ends.
 				return ' ';
 			}
-			for(;;i3++) {
-				rand -= ThingsZenithWantsInAnExtraFile.probabilities[i1*27 + i2][i3];
-				if(rand <= 0 && (length >= 5 || ThingsZenithWantsInAnExtraFile.chars[i1*27 + i2][i3] != ' ')) {
+			for(;;i4++) {
+				rand -= probabilities[i1*27*27 + i2*27 + i3][i4];
+				if(rand <= 0) {
 					break;
 				}
 			}
-			return ThingsZenithWantsInAnExtraFile.chars[i1*27 + i2][i3];
+			return getChar(chars[i1*27*27 + i2*27 + i3][i4]);
 		} catch(ArrayIndexOutOfBoundsException e) {
 			return ' ';
 		}
@@ -82,24 +93,28 @@ public class CustomOre extends Ore implements CustomObject {
 	private static String randomName(Random rand) {
 		StringBuilder sb = new StringBuilder();
 		
-		char c1 = ' ', c2 = ' ', c3 = choose(c1, c2, rand.nextFloat(), 0);
-		sb.append((char)(c3+'A'-'a'));
+		char c1 = ' ', c2 = ' ', c3 = ' ', c4 = choose(c1, c2, c3, rand.nextFloat(), 0);
+		sb.append((char)(c4+'A'-'a'));
 		int i = 0;
 		while(true) {
-			char c4 = choose(c2, c3, rand.nextFloat(), ++i);
-			if(c3 == ' ') {
-				if(c4 == ' ') {
+			char c5 = choose(c2, c3, c4, rand.nextFloat(), ++i);
+			if(c4 == ' ') {
+				if(c5 == ' ') {
 					break;
 				}
-				sb.append(c3);
+				sb.append(c4);
 			}
 			c1 = c2;
 			c2 = c3;
 			c3 = c4;
-			if(c4 != ' ')
-				sb.append(c4);
+			c4 = c5;
+			if(c5 != ' ')
+				sb.append(c5);
 		}
-		return sb.toString();
+		if(sb.length() <= 15)
+			return sb.toString();
+		else
+			return randomName(rand); // Repeat until a long enought name is generated.
 	}
 	
 	public static CustomOre random(int index, Random rand) {
