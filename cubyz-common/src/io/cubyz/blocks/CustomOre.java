@@ -1,5 +1,8 @@
 package io.cubyz.blocks;
 
+import java.io.BufferedInputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.util.Random;
 
 import io.cubyz.base.init.ItemInit;
@@ -19,6 +22,35 @@ public class CustomOre extends Ore implements CustomObject {
 	private int color;
 	private String name;
 	public int template;
+	
+	private static char[][] chars;
+	private static float[][] probabilities;
+	
+	static {
+		readOreData();
+	}
+	
+	private static void readOreData() {
+		try {
+			DataInputStream is = new DataInputStream(new BufferedInputStream(CustomOre.class.getClassLoader().getResourceAsStream("io/cubyz/storage/custom_ore_names.dat")));
+			chars = new char[27*27][0];
+			for (int i = 0; i < 27*27; i++) {
+				chars[i] = is.readUTF().toCharArray();
+			}
+			probabilities = new float[27*27][0];
+			for (int i = 0; i < 27*27; i++) {
+				int length = is.readInt();
+				float[] array = new float[length];
+				for (int j = 0; j < length; j++) {
+					array[j] = is.readFloat();
+				}
+				probabilities[i] = array;
+			}
+			is.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
 	
 	public String getName() {
 		return name;

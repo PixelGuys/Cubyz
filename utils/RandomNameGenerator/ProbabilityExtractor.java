@@ -1,5 +1,4 @@
-import java.io.FileReader;
-import java.io.BufferedReader;
+import java.io.*;
 
 // Searches through the mineral names and generates a table of probabilities for every 3 char combination.
 
@@ -19,7 +18,7 @@ public class ProbabilityExtractor {
 		System.exit(1);
 		return '0';
 	}
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		int[] number = new int[27*27*27];
 		try (BufferedReader br = new BufferedReader(new FileReader("./minerals.txt"))) {
 			String line;
@@ -31,45 +30,59 @@ public class ProbabilityExtractor {
 					c3 = c;
 					number[getIndex(c1)*27*27+getIndex(c2)*27+getIndex(c3)]++;
 				}
-					number[getIndex(c2)*27*27+getIndex(c3)*27]++;
-					number[getIndex(c3)*27*27]++;
+				number[getIndex(c2)*27*27+getIndex(c3)*27]++;
+				number[getIndex(c3)*27*27]++;
 			}
 		} catch(Exception e) {}
-		System.out.print("	public static char[][] chars = {");
+		DataOutputStream os = new DataOutputStream(new BufferedOutputStream(new FileOutputStream("./custom_ore_names.dat")));
+		//System.out.print("	public static char[][] chars = {");
 		for(int i = 0; i < 27; i++) {
 			for(int j = 0; j < 27; j++) {
-				System.out.print("{");
+				//System.out.print("{");
 				int n = 0;
+				String str = "";
 				for(int k = 0; k < 27; k++) {
 					if(number[i*27*27 + j*27 + k] != 0) {
-						if(n != 0) System.out.print(",");
-						System.out.print("\'"+getChar(k)+"\'");
+						//if(n != 0) System.out.print(",");
+						//System.out.print("\'"+getChar(k)+"\'");
+						str += getChar(k);
 						n++;
 					}
 				}
-				System.out.print("},");
+				//System.out.print("},");
+				os.writeUTF(str);
 			}
 		}
-		System.out.println("};");
-		System.out.print("	public static float[][] probabilities = {");
+		//System.out.println("};");
+		//System.out.print("	public static float[][] probabilities = {");
 		for(int i = 0; i < 27; i++) {
 			for(int j = 0; j < 27; j++) {
-				System.out.print("{");
+				//System.out.print("{");
 				int total = 0;
 				for(int k = 0; k < 27; k++) {
 					total += number[i*27*27 + j*27 + k];
 				}
 				int n = 0;
-				for(int k = 0; k < 27; k++) {
+				for(int k = 0; k < 27; k++) { // pre-loop to get the length
 					if(number[i*27*27 + j*27 + k] != 0) {
-						if(n != 0) System.out.print(",");
-						System.out.print((number[i*27*27 + j*27 + k]/(float)total)+"f");
+						//if(n != 0) System.out.print(",");
 						n++;
 					}
 				}
-				System.out.print("},");
+				os.writeInt(n);
+				n = 0;
+				for(int k = 0; k < 27; k++) {
+					if(number[i*27*27 + j*27 + k] != 0) {
+						//if(n != 0) System.out.print(",");
+						//System.out.print((number[i*27*27 + j*27 + k]/(float)total)+"f");
+						os.writeFloat(number[i*27*27 + j*27 + k]/(float)total);
+						n++;
+					}
+				}
+				//System.out.print("},");
 			}
 		}
-		System.out.println("};");
+		//System.out.println("};");
+		os.close();
 	}
 }
