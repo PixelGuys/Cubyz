@@ -67,7 +67,7 @@ public class RiverGenerator implements BigGenerator {
 	
 	private void considerMetaChunk(MetaChunk m, int lx, int ly, Block[][][] chunk, MetaChunk nn, MetaChunk np, MetaChunk pn, MetaChunk pp, long seed, boolean[][] vegetationIgnoreMap) {
 		Random rand = new Random(seed^((long)m.x*Float.floatToRawIntBits(m.heightMap[255][0]))^((long)m.y*Float.floatToRawIntBits(m.heightMap[0][255])));
-		int num = rand.nextInt(16);
+		int num = 2 + rand.nextInt(4);
 		for(int i = 0; i < num; i++) {
 			int x = rand.nextInt(256);
 			int y = rand.nextInt(256);
@@ -105,7 +105,7 @@ public class RiverGenerator implements BigGenerator {
 		res[1] = -(getHeight(x, y+1, nn, np, pn, pp) - getHeight(x, y-1, nn, np, pn, pp));
 		return res;
 	}
-	private float[] getNormalizedGradient(float dx, float dy, float[] grad00, float[] grad01, float[] grad10, float[] grad11) {
+	private float[] getGradient(float dx, float dy, float[] grad00, float[] grad01, float[] grad10, float[] grad11) {
 		float[] res = new float[2];
 		for(int i = 0; i < 2; i++) {
 			res[i] += dx*dy*grad11[i];
@@ -113,9 +113,6 @@ public class RiverGenerator implements BigGenerator {
 			res[i] += (1-dx)*dy*grad01[i];
 			res[i] += (1-dx)*(1-dy)*grad00[i];
 		}
-		float val = (float)Math.sqrt(res[0]*res[0] + res[1]*res[1]);
-		res[0] /= val;
-		res[1] /= val;
 		return res;
 	}
 	
@@ -133,9 +130,14 @@ public class RiverGenerator implements BigGenerator {
 		float[] grad10 = getGradient(x1, y0, nn, np, pn, pp);
 		float[] grad11 = getGradient(x1, y1, nn, np, pn, pp);
 		// Get an estimation of the gradient at the float position and normalize it so the river movement is 1:
-		float[] dir = getNormalizedGradient(x%1, y%1, grad00, grad01, grad10, grad11);
-		dir[0] = (dir[0]+2*oldDir[0])/3;
-		dir[1] = (dir[1]+2*oldDir[1])/3;
+		float[] dir = getGradient(x%1, y%1, grad00, grad01, grad10, grad11);
+		if(oldDir[0] != 0 || oldDir[1] != 0) {
+			dir[0] += oldDir[0]/16;
+			dir[1] += oldDir[1]/16;
+		}
+		float val = (float)Math.sqrt(dir[0]*dir[0] + dir[1]*dir[1]);
+		dir[0] /= val;
+		dir[1] /= val;
 		float nextHeight = Math.min(curHeight, getHeight(x0, y0, nn, np, pn, pp));
 		if(nextHeight <= 102.0f/256.0f) return; // No need to get any lower than sea level.
 		if(128-dist-2*width <= 5) {
