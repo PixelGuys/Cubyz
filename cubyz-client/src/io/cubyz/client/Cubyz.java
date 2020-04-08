@@ -73,6 +73,10 @@ public class Cubyz implements IGameLogic {
 	private SoundSource musicSource;
 	private int worldSeason = 0;
 	
+	public static Mesh skyBodyMesh;
+	private static Spatial skySun;
+	private static Spatial skyMoon;
+	
 	public static int inventorySelection = 0; // Selected slot in inventory
 
 	private CubyzMeshSelectionDetector msd;
@@ -155,7 +159,14 @@ public class Cubyz implements IGameLogic {
 		if (Cubyz.world != null) {
 			quitWorld();
 		}
-		
+		if (skySun == null || skyMoon == null) {
+			Mesh sunMesh = skyBodyMesh.cloneNoMaterial();
+			sunMesh.setMaterial(new Material(new Vector4f(0.9f, 0.9f, 0.9f, 1f), 1f)); // TODO: use textures for sun and moon
+			skySun = new Spatial(sunMesh);
+			Mesh moonMesh = skyBodyMesh.cloneNoMaterial();
+			moonMesh.setMaterial(new Material(new Vector4f(0.3f, 0.3f, 0.3f, 1f), 0.9f));
+			skyMoon = new Spatial(moonMesh);
+		}
 		Cubyz.world = world;
 		if (world.isLocal()) {
 			Random rnd = new Random();

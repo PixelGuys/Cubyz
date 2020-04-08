@@ -50,7 +50,11 @@ public class ResourceUtilities {
 	
 	public static BlockModel loadModel(Resource block) throws IOException {
 		String path = ResourceManager.contextToLocal(ResourceContext.MODEL_BLOCK, block);
-		String json = Utilities.readFile(new File(path));
+		File file = ResourceManager.lookup(path);
+		if (file == null) {
+			throw new IOException();
+		}
+		String json = Utilities.readFile(file);
 		
 		BlockModel model = new BlockModel();
 		JsonObject obj = GSON.fromJson(json, JsonObject.class);
@@ -104,7 +108,11 @@ public class ResourceUtilities {
 	
 	public static EntityModel loadEntityModel(Resource entity) throws IOException {
 		String path = ResourceManager.contextToLocal(ResourceContext.MODEL_ENTITY, entity);
-		String json = Utilities.readFile(new File(path));
+		File file = ResourceManager.lookup(path);
+		if (file == null) {
+			throw new IOException();
+		}
+		String json = Utilities.readFile(file);
 		
 		EntityModel model = new EntityModel();
 		JsonObject obj = GSON.fromJson(json, JsonObject.class);

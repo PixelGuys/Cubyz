@@ -56,19 +56,21 @@ public class ResourceManager {
 		return files.toArray(new File[files.size()]);
 	}
 	
-	public static String contextToLocal(ResourceContext ctx, String local) {
-		return contextToLocal(ctx, new Resource(local));
-	}
-	
+	/**
+	 * Return the absolute <b>resource pack path</b>, which means it is not a path in the file system and must be looked up with {@link #lookup(String)} before any filesystem operation.
+	 * @param ctx used to transform local into a resource pack path
+	 * @param local the local path (resource id) that will be transformed into resource pack path
+	 * @return resource pack path
+	 */
 	public static String contextToLocal(ResourceContext ctx, Resource local) {
 		if (ctx == ResourceContext.MODEL_BLOCK) {
-			return "assets/" + local.getMod() + "/models/block/" + local.getID() + ".json";
+			return local.getMod() + "/models/block/" + local.getID() + ".json";
 		} else if (ctx == ResourceContext.MODEL3D) {
-			return "assets/" + local.getMod() + "/models/3d/" + local.getID() + ".json";
+			return local.getMod() + "/models/3d/" + local.getID();
 		} else if (ctx == ResourceContext.TEXTURE) {
-			return "assets/" + local.getMod() + "/textures/" + local.getID() + ".png";
+			return local.getMod() + "/textures/" + local.getID() + ".png";
 		} else if (ctx == ResourceContext.MODEL_ENTITY) {
-			return "assets/" + local.getMod() + "/models/entity/" + local.getID() + ".json";
+			return local.getMod() + "/models/entity/" + local.getID() + ".json";
 		}
 		return null;
 	}
