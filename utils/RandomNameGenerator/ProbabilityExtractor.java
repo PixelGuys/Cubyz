@@ -8,7 +8,7 @@ public class ProbabilityExtractor {
 		if(c == ' ') return 0;
 		if('a' <= c && c <= 'z') return 1+c-'a';
 		if('A' <= c && c <= 'Z') return 1+c-'A';
-		System.err.println("Unknown "+c);
+		System.err.println("Unknown \'"+c+"\'"+" "+(int)c);
 		System.exit(1);
 		return 0;
 	}
