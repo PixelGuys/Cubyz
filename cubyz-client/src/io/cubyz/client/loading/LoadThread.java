@@ -146,12 +146,14 @@ public class LoadThread extends Thread {
 					}
 				} else {
 					finishedMeshes = true;
-					lock.notifyAll();
+					synchronized (lock) {
+						lock.notifyAll();
+					}
 				}
 				if (finishedMeshes) {
 					try {
 						Cubyz.skyBodyMesh = StaticMeshesLoader.load(
-								ResourceManager.lookupPath(ResourceManager.contextToLocal(ResourceContext.MODEL3D, new Resource("cubyz:sky_body.obj"))),
+								ResourceManager.lookupPath(ResourceManager.contextToLocal(ResourceContext.MODEL3D, new Resource("cubyz:block.obj"))),
 								ResourceManager.lookupPath("cubyz/models/3d/"))[0];
 					} catch (Exception e) {
 						e.printStackTrace();

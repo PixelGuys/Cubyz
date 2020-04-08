@@ -84,12 +84,13 @@ public class Transformation {
 		return modelViewMatrix;
 	}
 	
-	public Matrix4f getModelMatrix(Vector3f position, Vector3f rotation) {
+	public Matrix4f getModelMatrix(Vector3f position, Vector3f rotation, float scale) {
 		modelViewMatrix.identity()
 			.translate(position)
 			.rotateX(-DEGTORAD * rotation.x)
 			.rotateY(-DEGTORAD * rotation.y)
-			.rotateZ(-DEGTORAD * rotation.z);
+			.rotateZ(-DEGTORAD * rotation.z)
+			.scale(scale);
 		return modelViewMatrix;
 	}
 	

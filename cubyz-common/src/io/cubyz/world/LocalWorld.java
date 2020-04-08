@@ -61,8 +61,8 @@ public class LocalWorld extends World {
 	private List<ChunkGenerationThread> threads = new ArrayList<>();
 	private boolean generated;
 	
-	private static final int DAYCYCLE = 120000; // Length of one in-game day in 100ms. Midnight is at DAYCYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
-	private static final int SEASONCYCLE = DAYCYCLE * 7; // Length of one in-game season in 100ms. Equals to 7 days per season
+	public static final int DAYCYCLE = 120000; // Length of one in-game day in 100ms. Midnight is at DAYCYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
+	public static final int SEASONCYCLE = DAYCYCLE * 7; // Length of one in-game season in 100ms. Equals to 7 days per season
 	long gameTime = 0; // Time of the game in 100ms.
 	long milliTime;
 	float ambientLight = 0f;

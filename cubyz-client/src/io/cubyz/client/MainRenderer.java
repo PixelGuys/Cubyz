@@ -133,9 +133,21 @@ public class MainRenderer implements IRenderer {
 	//int n = 1;
 
 	RenderList<Spatial>[] map = (RenderList<Spatial>[]) new RenderList[0];
+	
+	/**
+	 * Renders a Cubyz world.
+	 * @param window the window to render in
+	 * @param ctx the Context object (will soon be replaced)
+	 * @param ambientLight the ambient light to use
+	 * @param directionalLight the directional light to use
+	 * @param chunks the chunks being displayed
+	 * @param blocks the type of blocks used (or availble) in the displayed chunks
+	 * @param entities the entities to render
+	 * @param spatials the special objects to render (that are neither entity, neither blocks, like sun and moon, or rain)
+	 * @param localPlayer The world's local player
+	 */
 	public void render(Window window, Context ctx, Vector3f ambientLight, DirectionalLight directionalLight,
-			Chunk[] chunks, Block[] blocks, Entity[] entities, Player localPlayer) {
-		//long t1 = System.nanoTime();
+			Chunk[] chunks, Block[] blocks, Entity[] entities, Spatial[] spatials, Player localPlayer) {
 		if (window.isResized()) {
 			glViewport(0, 0, window.getWidth(), window.getHeight());
 			window.setResized(false);
@@ -238,15 +250,11 @@ public class MainRenderer implements IRenderer {
 			}
 			ctx.getCamera().setViewMatrix(transformation.getViewMatrix(ctx.getCamera()));
 		}
-		renderScene(ctx, ambientLight, null /* point light */, null /* spot light */, directionalLight, map, blocks, entities,
+		renderScene(ctx, ambientLight, null /* point light */, null /* spot light */, directionalLight, map, blocks, entities, spatials,
 				localPlayer, selected, selectedBlock);
 		if (ctx.getHud() != null) {
 			ctx.getHud().render(window);
 		}
-		
-		//long t2 = System.nanoTime(); if(t2-t1 > 1000000) { t += t2-t1; n++;
-		//System.out.println(t/n); }
-		 
 	}
 	
 	// for shadow map
@@ -302,7 +310,7 @@ public class MainRenderer implements IRenderer {
 	}
 	
 	public void renderScene(Context ctx, Vector3f ambientLight, PointLight[] pointLightList, SpotLight[] spotLightList,
-			DirectionalLight directionalLight, RenderList<Spatial>[] map, Block[] blocks, Entity[] entities, Player p, Spatial selected,
+			DirectionalLight directionalLight, RenderList<Spatial>[] map, Block[] blocks, Entity[] entities, Spatial[] spatials, Player p, Spatial selected,
 			int selectedBlock) {
 		shaderProgram.bind();
 		
@@ -364,12 +372,27 @@ public class MainRenderer implements IRenderer {
 				
 				mesh.renderOne(() -> {
 					Vector3f position = ent.getRenderPosition().sub(playerPos);
-					Matrix4f modelViewMatrix = transformation.getModelViewMatrix(transformation.getModelMatrix(position, ent.getRotation()), viewMatrix);
+					Matrix4f modelViewMatrix = transformation.getModelViewMatrix(transformation.getModelMatrix(position, ent.getRotation(), 1f), viewMatrix);
 					shaderProgram.setUniform("isInstanced", 0);
 					shaderProgram.setUniform("selectedNonInstanced", 0f);
 					shaderProgram.setUniform("modelViewNonInstancedMatrix", modelViewMatrix);
 				});
 			}
+		}
+		
+		shaderProgram.setUniform("fog.activ", 0); // manually disable the fog
+		
+		for (int i = 0; i < spatials.length; i++) {
+			Spatial spatial = spatials[i];
+			Mesh mesh = spatial.getMesh();
+			mesh.renderOne(() -> {
+				Matrix4f modelViewMatrix = transformation.getModelViewMatrix(
+						transformation.getModelMatrix(spatial.getPosition(), spatial.getRotation(), spatial.getScale()),
+						viewMatrix);
+				shaderProgram.setUniform("isInstanced", 0);
+				shaderProgram.setUniform("selectedNonInstanced", 0f);
+				shaderProgram.setUniform("modelViewNonInstancedMatrix", modelViewMatrix);
+			});
 		}
 		
 		shaderProgram.unbind();

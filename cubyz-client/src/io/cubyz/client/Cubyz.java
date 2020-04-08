@@ -161,11 +161,16 @@ public class Cubyz implements IGameLogic {
 		}
 		if (skySun == null || skyMoon == null) {
 			Mesh sunMesh = skyBodyMesh.cloneNoMaterial();
-			sunMesh.setMaterial(new Material(new Vector4f(0.9f, 0.9f, 0.9f, 1f), 1f)); // TODO: use textures for sun and moon
+			sunMesh.setMaterial(new Material(new Vector4f(0.5f, 0.5f, 0.5f, 1f), 0.8f)); // TODO: use textures for sun and moon
 			skySun = new Spatial(sunMesh);
+			skySun.setScale(50f);
+			skySun.setPosition(new Vector3f(-100, 1, 0));
 			Mesh moonMesh = skyBodyMesh.cloneNoMaterial();
 			moonMesh.setMaterial(new Material(new Vector4f(0.3f, 0.3f, 0.3f, 1f), 0.9f));
 			skyMoon = new Spatial(moonMesh);
+			skyMoon.setScale(50f);
+			skyMoon.setPosition(new Vector3f(100, 1, 0));
+			worldSpatialList = new Spatial[] {skySun/*, skyMoon*/};
 		}
 		Cubyz.world = world;
 		if (world.isLocal()) {
@@ -632,6 +637,7 @@ public class Cubyz implements IGameLogic {
 	public static final Chunk[] EMPTY_CHUNK_LIST = new Chunk[0];
 	public static final Block[] EMPTY_BLOCK_LIST = new Block[0];
 	public static final Entity[] EMPTY_ENTITY_LIST = new Entity[0];
+	public static final Spatial[] EMPTY_SPATIAL_LIST = new Spatial[0];
 	
 	private Vector3f ambient = new Vector3f();
 	private Vector3f brightAmbient = new Vector3f(1, 1, 1);
@@ -661,7 +667,7 @@ public class Cubyz implements IGameLogic {
 		ctx.setHud(null);
 		//renderer.orthogonal = true;
 		window.setResized(true); // update projection matrix
-		renderer.render(window, ctx, new Vector3f(1, 1, 1), light, new Chunk[] {ck}, world.getBlocks(), EMPTY_ENTITY_LIST, world.getLocalPlayer());
+		renderer.render(window, ctx, new Vector3f(1, 1, 1), light, new Chunk[] {ck}, world.getBlocks(), EMPTY_ENTITY_LIST, EMPTY_SPATIAL_LIST, world.getLocalPlayer());
 		//renderer.orthogonal = false;
 		window.setResized(true); // update projection matrix for next render
 		ctx.setHud(gameUI);
@@ -755,6 +761,7 @@ public class Cubyz implements IGameLogic {
 	
 	float playerBobbing;
 	boolean bobbingUp;
+	static Spatial[] worldSpatialList;
 	
 	@Override
 	public void render(Window window) {
@@ -798,7 +805,7 @@ public class Cubyz implements IGameLogic {
 			light.setIntensity(world.getGlobalLighting());
 			clearColor = world.getClearColor();
 			ctx.getFog().setColor(clearColor);
-			ctx.getFog().setDensity(1 / (world.getRenderDistance()*8f));
+			ctx.getFog().setDensity(1 / (world.getRenderDistance()*10f));
 			Player player = world.getLocalPlayer();
 			Block bi = world.getBlock(player.getPosition().x+Math.round(player.getPosition().relX), (int)(player.getPosition().y)+3, player.getPosition().z+Math.round(player.getPosition().relZ));
 			if(bi != null && !bi.isSolid()) {
@@ -808,8 +815,11 @@ public class Cubyz implements IGameLogic {
 				ambient.z *= lightingAdjust.z;
 			}
 			light.setColor(clearColor);
+			float lightY = (((float)world.getGameTime() % LocalWorld.DAYCYCLE) / (float) (LocalWorld.DAYCYCLE/2)) - 1f; // TODO: work on it more
+			float lightX = (((float)world.getGameTime() % LocalWorld.DAYCYCLE) / (float) (LocalWorld.DAYCYCLE/2)) - 1f;
+			light.getDirection().set(lightY, 0, lightX);
 			window.setClearColor(clearColor);
-			renderer.render(window, ctx, ambient, light, world.getVisibleChunks(), world.getBlocks(), world.getEntities(), world.getLocalPlayer());
+			renderer.render(window, ctx, ambient, light, world.getVisibleChunks(), world.getBlocks(), world.getEntities(), worldSpatialList, world.getLocalPlayer());
 		} else {
 			clearColor.y = clearColor.z = 0.7f;
 			clearColor.x = 0.1f;
@@ -823,7 +833,7 @@ public class Cubyz implements IGameLogic {
 				window.setRenderTarget(buf);
 			}
 			
-			renderer.render(window, ctx, brightAmbient, light, EMPTY_CHUNK_LIST, EMPTY_BLOCK_LIST, EMPTY_ENTITY_LIST, null);
+			renderer.render(window, ctx, brightAmbient, light, EMPTY_CHUNK_LIST, EMPTY_BLOCK_LIST, EMPTY_ENTITY_LIST, EMPTY_SPATIAL_LIST, null);
 			
 			if (screenshot) {
 				FrameBuffer buf = window.getRenderTarget();
@@ -885,6 +895,10 @@ public class Cubyz implements IGameLogic {
 			playerInc.x = playerInc.y = playerInc.z = 0.0F; // Reset positions
 			world.update();
 			world.seek(lp.getPosition().x, lp.getPosition().z);
+			float lightAngleY = (float) Math.toDegrees(Math.asin(light.getDirection().x));
+			float lightAngleX = (float) Math.toDegrees(Math.acos(light.getDirection().z));
+			skySun.setPosition((float)-(Math.sin(lightAngleX)*500), (float)Math.sin(lightAngleY)*500, 0);
+			skySun.setRotation(light.getDirection().x, light.getDirection().z, light.getDirection().z);
 			if (ctx.getCamera().getRotation().x > 90.0F) {
 				ctx.getCamera().setRotation(90.0F, ctx.getCamera().getRotation().y, ctx.getCamera().getRotation().z);
 			}
@@ -897,11 +911,8 @@ public class Cubyz implements IGameLogic {
 	public static int getFPS() {
 		return Cubyz.instance.game.getFPS();
 	}
-
-
-
-
 	
+	// TODO: remove the following:
 	/*static { // Algorithm for automatically generating an ore template from the ore image. Uses the reverse-engineered color erase algorithm from gimp. Uncomment to automatically generate it on game startup.
 		int averageT = 2000; // average temperature of the star in the image. Needs to be determined seperately.
 		for(int deltaT = 0; deltaT <= 10000-averageT; deltaT += 200) {
