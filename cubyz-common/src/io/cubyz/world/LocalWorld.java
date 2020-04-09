@@ -261,28 +261,36 @@ public class LocalWorld extends World {
 		return c;
 	}
 	
-	public synchronized MetaChunk getMetaChunk(int wx, int wy) {
+	public MetaChunk getMetaChunk(int wx, int wy) {
 		for(MetaChunk ch : maps) {
 			if(ch.x == wx && ch.y == wy) {
 				return ch;
 			}
 		}
-		// Every time a new MetaChunk is created, go through the list and if the length is at the limit(determined by the renderdistance) remove those that are farthest from the player:
-		while(maps.size() > (doubleRD/16 + 4)*(doubleRD/16 + 4)) {
-			int max = 0;
-			int index = 0;
-			for(int i = 0; i < maps.size(); i++) {
-				int dist = (maps.get(i).x-player.getPosition().x)*(maps.get(i).x-player.getPosition().x) + (maps.get(i).y-player.getPosition().z)*(maps.get(i).y-player.getPosition().z);
-				if(dist > max) {
-					max = dist;
-					index = i;
+		synchronized(maps) {
+			// Now that the thread got access to this part the list might already contain the searched MetaChunk:
+			for(MetaChunk ch : maps) {
+				if(ch.x == wx && ch.y == wy) {
+					return ch;
 				}
 			}
-			maps.remove(index);
+			// Every time a new MetaChunk is created, go through the list and if the length is at the limit(determined by the renderdistance) remove those that are farthest from the player:
+			while(maps.size() > (doubleRD/16 + 4)*(doubleRD/16 + 4)) {
+				int max = 0;
+				int index = 0;
+				for(int i = 0; i < maps.size(); i++) {
+					int dist = (maps.get(i).x-player.getPosition().x)*(maps.get(i).x-player.getPosition().x) + (maps.get(i).y-player.getPosition().z)*(maps.get(i).y-player.getPosition().z);
+					if(dist > max) {
+						max = dist;
+						index = i;
+					}
+				}
+				maps.remove(index);
+			}
+			MetaChunk ch = new MetaChunk(wx, wy, seed, this);
+			maps.add(ch);
+			return ch;
 		}
-		MetaChunk ch = new MetaChunk(wx, wy, seed, this);
-		maps.add(ch);
-		return ch;
 	}
 	public MetaChunk getNoGenerateMetaChunk(int wx, int wy) {
 		for(MetaChunk ch : maps) {
