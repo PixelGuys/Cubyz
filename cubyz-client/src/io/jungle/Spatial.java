@@ -52,12 +52,6 @@ public class Spatial {
 	public void setPosition(Vector3f position) {
 		this.position.set(position);
 	}
-	
-	public void setPosition(Vector3fi position) {
-		this.position.x = position.x();
-		this.position.y = position.y();
-		this.position.z = position.z();
-	}
 
     public float getScale() {
         return scale;

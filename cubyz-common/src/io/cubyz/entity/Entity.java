@@ -47,11 +47,8 @@ public class Entity {
 		return position;
 	}
 	
-	protected Vector3f oldRenderPos;
-	public Vector3f getRenderPosition() { // default method for render pos
-		if (oldRenderPos == null || oldRenderPos.x != position.x || oldRenderPos.y != position.y || oldRenderPos.z != position.z)
-			oldRenderPos = position.toVector3f();
-		return oldRenderPos;
+	public Vector3f getRenderPosition(Vector3fi playerPos) { // default method for render pos
+		return new Vector3f((position.x-playerPos.x)+position.relX-playerPos.relX, position.y-playerPos.y, (position.z-playerPos.z)+position.relZ-playerPos.relZ);
 	}
 	
 	public void setPosition(Vector3i position) {

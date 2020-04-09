@@ -161,7 +161,6 @@ public class MainRenderer implements IRenderer {
 			return;
 		clear();
 		ctx.getCamera().setViewMatrix(transformation.getViewMatrix(ctx.getCamera()));
-		List<InstancedMesh> instancedMeshes;
 		
 		Spatial selected = null;
 		int selectedBlock = -1;
@@ -350,7 +349,6 @@ public class MainRenderer implements IRenderer {
 			}
 		}
 		
-		Vector3f playerPos = p == null ? VECTOR3F_ZERO : p.getPosition().toVector3f();
 		for (int i = 0; i < entities.length; i++) {
 			Entity ent = entities[i];
 			if (ent != null && ent != p) { // don't render local player
@@ -358,7 +356,7 @@ public class MainRenderer implements IRenderer {
 				shaderProgram.setUniform("material", mesh.getMaterial());
 				
 				mesh.renderOne(() -> {
-					Vector3f position = ent.getRenderPosition().sub(playerPos);
+					Vector3f position = ent.getRenderPosition(p.getPosition());
 					Matrix4f modelViewMatrix = transformation.getModelViewMatrix(transformation.getModelMatrix(position, ent.getRotation(), 1f), viewMatrix);
 					shaderProgram.setUniform("isInstanced", 0);
 					shaderProgram.setUniform("selectedNonInstanced", 0f);

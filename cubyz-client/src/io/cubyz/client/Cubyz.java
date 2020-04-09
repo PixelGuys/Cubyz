@@ -654,7 +654,7 @@ public class Cubyz implements IGameLogic {
 		ck.revealBlock(binst);
 		Vector3fi pos = world.getLocalPlayer().getPosition();
 		Vector3f rot = ctx.getCamera().getRotation();
-		world.getLocalPlayer().setPosition(new Vector3fi(0f, -1f, 1f));
+		world.getLocalPlayer().setPosition(new Vector3fi(0, -1, 1));
 		ctx.getCamera().setRotation(0, 0, 0);
 		
 		FrameBuffer buf = new FrameBuffer();

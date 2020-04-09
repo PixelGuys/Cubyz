@@ -1,7 +1,5 @@
 package io.cubyz.math;
 
-import org.joml.Vector3f;
-
 public class Vector3fi implements Cloneable {
 	
 	public int x, z;
@@ -23,36 +21,12 @@ public class Vector3fi implements Cloneable {
 		relZ = 0;
 	}
 	
-	public Vector3fi(float x, float y, float z) {
-		this.x = (int)Math.floor(x);
-		this.y = y;
-		this.z = (int)Math.floor(z);
-		relX = x-this.x;
-		relZ = z-this.z;
-	}
-	
 	public Vector3fi(FloatingInteger x, float y, FloatingInteger z) {
 		this.x = x.getInteger();
 		relX = x.getDecimal();
 		this.y = y;
 		this.z = z.getInteger();
 		relZ = z.getDecimal();
-	}
-	
-	public float x() {
-		return x + relX;
-	}
-	
-	public float y() {
-		return y;
-	}
-	
-	public float z() {
-		return z + relZ;
-	}
-	
-	public Vector3f toVector3f() {
-		return new Vector3f(x+relX, y, z+relZ);
 	}
 	
 	public void add(float x, float y, float z) {
