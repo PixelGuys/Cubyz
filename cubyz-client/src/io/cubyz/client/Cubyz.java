@@ -586,7 +586,7 @@ public class Cubyz implements IGameLogic {
 			}
 			
 			if (mouse.isGrabbed()) {
-				ctx.getCamera().moveRotation(mouse.getDisplVec().x * 0.51F, mouse.getDisplVec().y * 0.51F, 5F);
+				ctx.getCamera().moveRotation(mouse.getDisplVec().x * 0.0089F, mouse.getDisplVec().y * 0.0089F, 5F);
 				mouse.clearPos(win.getWidth() / 2, win.getHeight() / 2);
 			}
 			
@@ -899,11 +899,11 @@ public class Cubyz implements IGameLogic {
 			float lightAngleX = (float) Math.toDegrees(Math.acos(light.getDirection().z));
 			skySun.setPosition((float)-(Math.sin(lightAngleX)*500), (float)Math.sin(lightAngleY)*500, 0);
 			skySun.setRotation(light.getDirection().x, light.getDirection().z, light.getDirection().z);
-			if (ctx.getCamera().getRotation().x > 90.0F) {
-				ctx.getCamera().setRotation(90.0F, ctx.getCamera().getRotation().y, ctx.getCamera().getRotation().z);
+			if (ctx.getCamera().getRotation().x > Camera.piHalf) {
+				ctx.getCamera().setRotation(Camera.piHalf, ctx.getCamera().getRotation().y, ctx.getCamera().getRotation().z);
 			}
-			if (ctx.getCamera().getRotation().x < -90.0F) {
-				ctx.getCamera().setRotation(-90.0F, ctx.getCamera().getRotation().y, ctx.getCamera().getRotation().z);
+			if (ctx.getCamera().getRotation().x < -Camera.piHalf) {
+				ctx.getCamera().setRotation(-Camera.piHalf, ctx.getCamera().getRotation().y, ctx.getCamera().getRotation().z);
 			}
 		}
 	}

@@ -19,10 +19,6 @@ public class Transformation {
 
 	private final Matrix4f orthoMatrix;
 
-	private static final float DEGTORAD = (float) (Math.PI / 180); // Makes the results of toRadians slightly less
-																	// accurate, but reduces the number of type
-																	// conversions.
-
 	private static final Vector3f xVec = new Vector3f(1, 0, 0); // There is no need to create a new object every time
 																// this is needed.
 	private static final Vector3f yVec = new Vector3f(0, 1, 0);
@@ -44,8 +40,8 @@ public class Transformation {
 	}
 
 	public Matrix4f getWorldMatrix(Vector3f offset, Vector3f rotation, float scale) {
-		worldMatrix.identity().translate(offset).rotateX(DEGTORAD * rotation.x).rotateY(DEGTORAD * rotation.y)
-				.rotateZ(DEGTORAD * rotation.z).scale(scale);
+		worldMatrix.identity().translate(offset).rotateX(rotation.x).rotateY(rotation.y)
+				.rotateZ(rotation.z).scale(scale);
 		return worldMatrix;
 	}
 
@@ -60,9 +56,9 @@ public class Transformation {
 		Matrix4f modelMatrix = new Matrix4f();
 		modelMatrix.identity()
 			.translate(gameItem.getPosition())
-			.rotateX(-DEGTORAD * rotation.x)
-			.rotateY(-DEGTORAD * rotation.y)
-			.rotateZ(-DEGTORAD * rotation.z)
+			.rotateX(-rotation.x)
+			.rotateY(-rotation.y)
+			.rotateZ(-rotation.z)
 			.scale(gameItem.getScale());
 		Matrix4f orthoMatrixCurr = new Matrix4f(orthoMatrix);
 		orthoMatrixCurr.mul(modelMatrix);
@@ -74,7 +70,7 @@ public class Transformation {
 	}
 	
 	public Matrix4f getModelMatrix(Spatial spatial) {
-		Vector3f rotation = spatial.getRotation();
+		//Vector3f rotation = spatial.getRotation();
 		modelViewMatrix.identity()
 			.translate(spatial.getPosition())
 			/*.rotateX(-DEGTORAD * rotation.x)
@@ -87,9 +83,9 @@ public class Transformation {
 	public Matrix4f getModelMatrix(Vector3f position, Vector3f rotation, float scale) {
 		modelViewMatrix.identity()
 			.translate(position)
-			.rotateX(-DEGTORAD * rotation.x)
-			.rotateY(-DEGTORAD * rotation.y)
-			.rotateZ(-DEGTORAD * rotation.z)
+			.rotateX(-rotation.x)
+			.rotateY(-rotation.y)
+			.rotateZ(-rotation.z)
 			.scale(scale);
 		return modelViewMatrix;
 	}
@@ -103,7 +99,7 @@ public class Transformation {
 	public Matrix4f getViewMatrix(Vector3f position, Vector3f rotation) {
 		viewMatrix.identity();
 		// First do the rotation so camera rotates over its position
-		viewMatrix.rotate(DEGTORAD * rotation.x, xVec).rotate(DEGTORAD * rotation.y, yVec);
+		viewMatrix.rotate(rotation.x, xVec).rotate(rotation.y, yVec);
 		// Then do the translation
 		viewMatrix.translate(-position.x, -position.y, -position.z);
 		return viewMatrix;
@@ -112,7 +108,7 @@ public class Transformation {
 	public Matrix4f getLightViewMatrix(Vector3f position, Vector3f rotation) {
 		lightViewMatrix.identity();
 		// First do the rotation so camera rotates over its position
-		lightViewMatrix.rotate(DEGTORAD * rotation.x, xVec).rotate(DEGTORAD * rotation.y, yVec);
+		lightViewMatrix.rotate(rotation.x, xVec).rotate(rotation.y, yVec);
 		// Then do the translation
 		lightViewMatrix.translate(-position.x, -position.y, -position.z);
 		return lightViewMatrix;

@@ -46,12 +46,12 @@ public class PlayerEntity extends EntityType {
 			float deltaX = 0;
 			float deltaZ = 0;
 			if (inc.z != 0) {
-				deltaX += (float) Math.sin(Math.toRadians(rot.y)) * -1.0F * inc.z;
-				deltaZ += (float) Math.cos(Math.toRadians(rot.y)) * inc.z;
+				deltaX += (float) Math.sin(rot.y) * -1.0F * inc.z;
+				deltaZ += (float) Math.cos(rot.y) * inc.z;
 			}
 			if (inc.x != 0) {
-				deltaX += (float) Math.sin(Math.toRadians(rot.y - 90)) * -1.0F * inc.x;
-				deltaZ += (float) Math.cos(Math.toRadians(rot.y - 90)) * inc.x;
+				deltaX += (float) Math.sin(rot.y - Math.PI/2) * -1.0F * inc.x;
+				deltaZ += (float) Math.cos(rot.y - Math.PI/2) * inc.x;
 			}
 			if (inc.y != 0) {
 				vy = inc.y;

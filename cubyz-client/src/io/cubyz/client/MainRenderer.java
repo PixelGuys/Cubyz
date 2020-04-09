@@ -129,8 +129,6 @@ public class MainRenderer implements IRenderer {
 	public void clear() {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	}
-	//long t = 0;
-	//int n = 1;
 
 	RenderList<Spatial>[] map = (RenderList<Spatial>[]) new RenderList[0];
 	
@@ -228,17 +226,6 @@ public class MainRenderer implements IRenderer {
 			}
 		}
 		
-		instancedMeshes = new ArrayList<>(); // TODO: use an array because we already know the size of the list.
-		HashMap<Mesh, RenderList<Spatial>> m = new HashMap<>();
-		for (int i = 0; i < blocks.length; i++) {
-			if (map[i].size() == 0)
-				continue;
-			m.put(Meshes.blockMeshes.get(blocks[i]), map[i]);
-		}
-		for (Mesh mesh : m.keySet()) {
-			instancedMeshes.add((InstancedMesh) mesh);
-		}
-		
 		if (shadowMap != null) { // remember it will be disableable
 			//renderDepthMap(directionalLight, blocks, selected, selectedBlock);
 			glViewport(0, 0, window.getWidth(), window.getHeight()); // reset viewport
@@ -266,8 +253,8 @@ public class MainRenderer implements IRenderer {
 		glClear(GL_DEPTH_BUFFER_BIT);
 		depthShaderProgram.bind();
 		
-		float lightAngleX = (float) Math.toDegrees(Math.acos(light.getDirection().z));
-		float lightAngleY = (float) Math.toDegrees(Math.asin(light.getDirection().x));
+		float lightAngleX = (float) Math.acos(light.getDirection().z);
+		float lightAngleY = (float) Math.asin(light.getDirection().x);
 		float lightAngleZ = 0f;
 		Matrix4f lightViewMatrix = transformation.getLightViewMatrix(
 				new Vector3f(light.getDirection()).mul(500f),
@@ -325,8 +312,8 @@ public class MainRenderer implements IRenderer {
 		shaderProgram.setUniform("viewMatrixInstanced", viewMatrix);
 		
 		renderLights(viewMatrix, ambientLight, pointLightList, spotLightList, directionalLight);
-		float lightAngleX = (float) Math.toDegrees(Math.acos(directionalLight.getDirection().z));
-		float lightAngleY = (float) Math.toDegrees(Math.asin(directionalLight.getDirection().x));
+		float lightAngleX = (float) Math.acos(directionalLight.getDirection().z);
+		float lightAngleY = (float) Math.asin(directionalLight.getDirection().x);
 		float lightAngleZ = 0f;
 		
 		Matrix4f lightViewMatrix = transformation.getLightViewMatrix(

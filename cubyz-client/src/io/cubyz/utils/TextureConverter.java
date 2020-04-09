@@ -123,7 +123,7 @@ public class TextureConverter {
 		double h, s, v;
 		v = max;
 		s = delta/max;
-		if( r >= max )                           // > is bogus, just keeps compilor happy
+		if( r >= max )
 	        h = (g - b) / delta;        // between yellow & magenta
 	    else
 	    if( g >= max )
