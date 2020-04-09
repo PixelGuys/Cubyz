@@ -202,15 +202,15 @@ public class MainRenderer implements IRenderer {
 					float y = bi.getY() - y0;
 					float z = (bi.getZ() - z0) - relZ;
 					// Do the frustum culling directly here.
-					if(frustumInt.testSphere(x, y, z, 0.707107f)) {
+					if(frustumInt.testSphere(x, y, z, 0.866025f)) {
 						// Only draw blocks that have at least one face facing the player.
 						if(bi.getBlock().isTransparent() || // Ignore transparent blocks in the process, so the surface of water can still be seen from below.
-								(x > 0.5f && !bi.neighborEast) ||
-								(x < -0.5f && !bi.neighborWest) ||
-								(y > 0.5f && !bi.neighborDown) ||
-								(y < -0.5f && !bi.neighborUp) ||
-								(z > 0.5f && !bi.neighborSouth) ||
-								(z < -0.5f && !bi.neighborNorth)) {
+								(x > 0.5001f && !bi.neighborEast) ||
+								(x < -0.5001f && !bi.neighborWest) ||
+								(y > 0.5001f && !bi.neighborDown) ||
+								(y < -0.5001f && !bi.neighborUp) ||
+								(z > 0.5001f && !bi.neighborSouth) ||
+								(z < -0.5001f && !bi.neighborNorth)) {
 							
 							tmp.setPosition(x, y, z);
 							if (tmp.isSelected()) {
