@@ -37,12 +37,97 @@ public class ProbabilityExtractor {
 			}
 		} catch(Exception e) {}
 		DataOutputStream os = new DataOutputStream(new BufferedOutputStream(new FileOutputStream("./custom_ore_names.dat")));
-		for(int i = 0; i < 27; i++) {
-			for(int j = 0; j < 27; j++) {
-				for(int k = 0; k < 27; k++) {
-					byte n = 0;
-					for(int l = 0; l < 27; l++) { // pre-loop to get the length
+		boolean used;
+		// pre-loop to get the length:
+		byte n = 0;
+		os.writeByte(0);
+		outer:
+		for(byte i = 0; i < 27; i++) {
+			for(byte j = 0; j < 27; j++) {
+				for(byte k = 0; k < 27; k++) {
+					for(byte l = 0; l < 27; l++) { // pre-loop to get the length
 						if(number[i*27*27*27 + j*27*27 + k*27 + l] != 0) {
+							n++;
+							continue outer;
+						}
+					}
+				}
+			}
+		}
+		os.writeByte(n);
+		for(byte i = 0; i < 27; i++) {
+			// pre-loop to see if it is actually used:
+			used = false;
+			outer2:
+			for(byte j = 0; j < 27; j++) {
+				for(byte k = 0; k < 27; k++) {
+					for(byte l = 0; l < 27; l++) { // pre-loop to get the length
+						if(number[i*27*27*27 + j*27*27 + k*27 + l] != 0) {
+							used = true;
+							break outer2;
+						}
+					}
+				}
+			}
+			if(!used) continue;
+			os.writeByte(i);
+			// pre-loop to get the length:
+			n = 0;
+			outer3:
+			for(byte j = 0; j < 27; j++) {
+				for(byte k = 0; k < 27; k++) {
+					for(byte l = 0; l < 27; l++) { // pre-loop to get the length
+						if(number[i*27*27*27 + j*27*27 + k*27 + l] != 0) {
+							n++;
+							continue outer3;
+						}
+					}
+				}
+			}
+			os.writeByte(n);
+			for(byte j = 0; j < 27; j++) {
+				// pre-loop to see if it is actually used:
+				used = false;
+				outer4:
+				for(byte k = 0; k < 27; k++) {
+					for(byte l = 0; l < 27; l++) { // pre-loop to get the length
+						if(number[i*27*27*27 + j*27*27 + k*27 + l] != 0) {
+							used = true;
+							break outer4;
+						}
+					}
+				}
+				if(!used) continue;
+				os.writeByte(j);
+				// pre-loop to get the length:
+				n = 0;
+				outer5:
+				for(byte k = 0; k < 27; k++) {
+					for(byte l = 0; l < 27; l++) { // pre-loop to get the length
+						if(number[i*27*27*27 + j*27*27 + k*27 + l] != 0) {
+							n++;
+							continue outer5;
+						}
+					}
+				}
+				os.writeByte(n);
+				for(byte k = 0; k < 27; k++) {
+					// pre-loop to see if it is actually used:
+					used = false;
+					for(byte l = 0; l < 27; l++) { // pre-loop to get the length
+						if(number[i*27*27*27 + j*27*27 + k*27 + l] != 0) {
+							used = true;
+							break;
+						}
+					}
+					if(!used) continue;
+					os.writeByte(k);
+					// pre-loop to get the length:
+					n = 0;
+					int total = 0;
+					for(byte l = 0; l < 27; l++) { // pre-loop to get the length
+						if(number[i*27*27*27 + j*27*27 + k*27 + l] != 0) {
+							total += number[i*27*27*27 + j*27*27 + k*27 + l];
 							n++;
 						}
 					}
@@ -50,27 +135,6 @@ public class ProbabilityExtractor {
 					for(byte l = 0; l < 27; l++) {
 						if(number[i*27*27*27 + j*27*27 + k*27 + l] != 0) {
 							os.writeByte(l);
-						}
-					}
-				}
-			}
-		}
-		for(int i = 0; i < 27; i++) {
-			for(int j = 0; j < 27; j++) {
-				for(int k = 0; k < 27; k++) {
-					int total = 0;
-					for(int l = 0; l < 27; l++) {
-						total += number[i*27*27*27 + j*27*27 + k*27 + l];
-					}
-					byte n = 0;
-					for(int l = 0; l < 27; l++) { // pre-loop to get the length
-						if(number[i*27*27*27 + j*27*27 + k*27 + l] != 0) {
-							n++;
-						}
-					}
-					os.writeByte(n);
-					for(int l = 0; l < 27; l++) {
-						if(number[i*27*27*27 + j*27*27 + k*27 + l] != 0) {
 							os.writeFloat(number[i*27*27*27 + j*27*27 + k*27 + l]/(float)total);
 						}
 					}

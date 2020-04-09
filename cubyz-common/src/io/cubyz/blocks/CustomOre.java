@@ -12,6 +12,38 @@ import io.cubyz.ndt.NDTContainer;
 import io.cubyz.world.CustomObject;
 
 public class CustomOre extends Ore implements CustomObject {
+	// Nodes and leaf to generate tree structure for random ore name generator.
+	private static class Node {
+		byte value;
+		Node[] next;
+		public Node(DataInputStream is, int depth) throws IOException {
+			value = is.readByte();
+			next = new Node[is.readByte()];
+			for(int i = 0; i < next.length; i++) {
+				if(depth == 0) {
+					next[i] = new EndNode(is);
+				} else {
+					next[i] = new Node(is, depth-1);
+				}
+			}
+		}
+		Node get(byte b) {
+			for(Node n: next) {
+				if(n.value == b) {
+					return n;
+				}
+			}
+			return null;
+		}
+		public Node() {}
+	}
+	private static class EndNode extends Node {
+		float valuef;
+		public EndNode(DataInputStream is) throws IOException {
+			value = is.readByte();
+			valuef = is.readFloat();
+		}
+	}
 	static int getIndex(char c) {
 		if(c == ' ') return 0;
 		if('a' <= c && c <= 'z') return 1+c-'a';
@@ -29,8 +61,7 @@ public class CustomOre extends Ore implements CustomObject {
 	private String name;
 	public int template;
 	
-	private static byte[][] chars;
-	private static float[][] probabilities;
+	private static Node tree;
 	
 	static {
 		readOreData();
@@ -39,23 +70,7 @@ public class CustomOre extends Ore implements CustomObject {
 	private static void readOreData() {
 		try {
 			DataInputStream is = new DataInputStream(new BufferedInputStream(CustomOre.class.getClassLoader().getResourceAsStream("io/cubyz/storage/custom_ore_names.dat")));
-			chars = new byte[27*27*27][0];
-			for (int i = 0; i < 27*27*27; i++) {
-				byte len = is.readByte();
-				chars[i] = new byte[len];
-				for(int j = 0; j < len; j++) {
-					chars[i][j] = is.readByte();
-				}
-			}
-			probabilities = new float[27*27*27][0];
-			for (int i = 0; i < 27*27*27; i++) {
-				byte length = is.readByte();
-				float[] array = new float[length];
-				for (int j = 0; j < length; j++) {
-					array[j] = is.readFloat();
-				}
-				probabilities[i] = array;
-			}
+			tree = new Node(is, 3);
 			is.close();
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -75,16 +90,17 @@ public class CustomOre extends Ore implements CustomObject {
 			int i2 = getIndex(c2);
 			int i3 = getIndex(c3);
 			int i4 = 0;
-			if(length >= 20 && chars[i1*27*27 + i2*27 + i3][i4] == 0) { // Make sure the word ends.
+			Node[] list = tree.get((byte)i1).get((byte)i2).get((byte)i3).next;
+			if(length >= 10 && list[0].value == 0) { // Make sure the word ends.
 				return ' ';
 			}
 			for(;;i4++) {
-				rand -= probabilities[i1*27*27 + i2*27 + i3][i4];
+				rand -= ((EndNode)list[i4]).valuef;
 				if(rand <= 0) {
 					break;
 				}
 			}
-			return getChar(chars[i1*27*27 + i2*27 + i3][i4]);
+			return getChar(list[i4].value);
 		} catch(ArrayIndexOutOfBoundsException e) {
 			return ' ';
 		}
@@ -111,7 +127,7 @@ public class CustomOre extends Ore implements CustomObject {
 			if(c5 != ' ')
 				sb.append(c5);
 		}
-		if(sb.length() <= 15)
+		if(sb.length() <= 15 && sb.length() >= 5)
 			return sb.toString();
 		else
 			return randomName(rand); // Repeat until a long enought name is generated.
