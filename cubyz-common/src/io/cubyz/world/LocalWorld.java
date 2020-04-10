@@ -265,7 +265,11 @@ public class LocalWorld extends World {
 		return c;
 	}
 	public MetaChunk getMetaChunk(int wx, int wy) {
-		for(MetaChunk ch : maps) {
+		for(MetaChunk ch : maps.toArray(new MetaChunk[0])) {
+			if(ch == null) {
+				maps.remove(null);
+				continue;
+			}
 			if(ch.x == wx && ch.y == wy) {
 				return ch;
 			}
