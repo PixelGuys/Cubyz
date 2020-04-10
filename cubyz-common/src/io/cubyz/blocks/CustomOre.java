@@ -3,6 +3,7 @@ package io.cubyz.blocks;
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Random;
 
 import io.cubyz.base.init.ItemInit;
@@ -69,7 +70,9 @@ public class CustomOre extends Ore implements CustomObject {
 	
 	private static void readOreData() {
 		try {
-			DataInputStream is = new DataInputStream(new BufferedInputStream(CustomOre.class.getClassLoader().getResourceAsStream("io/cubyz/storage/custom_ore_names.dat")));
+			InputStream ois = CustomOre.class.getClassLoader().getResourceAsStream("io/cubyz/storage/custom_ore_names.dat");
+			ois = CustomOre.class.getClassLoader().getResourceAsStream("classes/io/cubyz/storage/custom_ore_names.dat");
+			DataInputStream is = new DataInputStream(new BufferedInputStream(ois));
 			tree = new Node(is, 3);
 			is.close();
 		} catch (IOException e) {
