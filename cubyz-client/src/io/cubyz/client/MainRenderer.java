@@ -351,7 +351,7 @@ public class MainRenderer implements IRenderer {
 		
 		for (int i = 0; i < entities.length; i++) {
 			Entity ent = entities[i];
-			if (ent != null && ent != p) { // don't render local player
+			if (ent != null && ent != p && Meshes.entityMeshes.get(ent.getType()) != null) { // don't render local player
 				Mesh mesh = Meshes.entityMeshes.get(ent.getType());
 				shaderProgram.setUniform("material", mesh.getMaterial());
 				

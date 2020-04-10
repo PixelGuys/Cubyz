@@ -36,6 +36,8 @@ public class Chunk {
 	private World world;
 	
 	public Chunk(int ox, int oy, World world, ArrayList<BlockChange> changes) {
+		ox &= -1 >>> 4;
+		oy &= -1 >>> 4;
 		this.ox = ox;
 		this.oy = oy;
 		this.world = world;

@@ -43,6 +43,7 @@ public class LocalWorld extends World {
 	private int lastX = Integer.MAX_VALUE, lastZ = Integer.MAX_VALUE; // Chunk coordinates of the last chunk update.
 	private int doubleRD; // Corresponds to the doubled value of the last used render distance.
 	private int lastChunk = -1;
+	private int worldSize = 65536;
 	private ArrayList<Entity> entities = new ArrayList<>();
 	
 	// Stores a reference to the lists of WorldIO.
@@ -227,6 +228,8 @@ public class LocalWorld extends World {
 	
 	@Override
 	public Chunk _getChunk(int x, int z) {
+		x &= -1 >>> 4;
+		z &= -1 >>> 4;
 		// First test if the chunk can be found in the list of visible chunks:
 		if(x < lastX && x >= lastX-doubleRD && z < lastZ && z >= lastZ-doubleRD) {
 			// Sometimes errors happen when resizing the renderDistance. If they happen just go on to iterating through the whole long list.
@@ -260,7 +263,6 @@ public class LocalWorld extends World {
 		lastChunk = chunks.size()-1;
 		return c;
 	}
-	
 	public MetaChunk getMetaChunk(int wx, int wy) {
 		for(MetaChunk ch : maps) {
 			if(ch.x == wx && ch.y == wy) {
@@ -305,15 +307,15 @@ public class LocalWorld extends World {
 		int x0 = x&(~255);
 		int y0 = y&(~255);
 		float[][] map = new float[width][height];
-		for(int px = x0; px < x+width; px += 256) {
-			for(int py = y0; py < y+height; py += 256) {
+		for(int px = x0; px-x < width; px += 256) {
+			for(int py = y0; py-y < height; py += 256) {
 				MetaChunk ch = getMetaChunk(px ,py);
-				int xS = Math.max(px, x);
-				int yS = Math.max(py, y);
-				int xE = Math.min(px+256, x+width);
-				int yE = Math.min(py+256, y+height);
-				for(int cx = xS; cx < xE; cx++) {
-					for(int cy = yS; cy < yE; cy++) {
+				int xS = Math.max(px-x, 0);
+				int yS = Math.max(py-y, 0);
+				int xE = Math.min(px+256-x, width);
+				int yE = Math.min(py+256-y, height);
+				for(int cx = x+xS; cx-x < xE; cx++) {
+					for(int cy = y+yS; cy-y < yE; cy++) {
 						map[cx-x][cy-y] = ch.heightMap[cx&255][cy&255];
 					}
 				}
@@ -326,15 +328,15 @@ public class LocalWorld extends World {
 		int x0 = x&(~255);
 		int y0 = y&(~255);
 		float[][] map = new float[width][height];
-		for(int px = x0; px < x+width; px += 256) {
-			for(int py = y0; py < y+height; py += 256) {
+		for(int px = x0; px-x < width; px += 256) {
+			for(int py = y0; py-y < height; py += 256) {
 				MetaChunk ch = getMetaChunk(px ,py);
-				int xS = Math.max(px, x);
-				int yS = Math.max(py, y);
-				int xE = Math.min(px+256, x+width);
-				int yE = Math.min(py+256, y+height);
-				for(int cx = xS; cx < xE; cx++) {
-					for(int cy = yS; cy < yE; cy++) {
+				int xS = Math.max(px-x, 0);
+				int yS = Math.max(py-y, 0);
+				int xE = Math.min(px+256-x, width);
+				int yE = Math.min(py+256-y, height);
+				for(int cx = x+xS; cx-x < xE; cx++) {
+					for(int cy = y+yS; cy-y < yE; cy++) {
 						map[cx-x][cy-y] = ch.heatMap[cx&255][cy&255];
 					}
 				}
@@ -347,15 +349,15 @@ public class LocalWorld extends World {
 		int x0 = x&(~255);
 		int y0 = y&(~255);
 		Biome[][] map = new Biome[width][height];
-		for(int px = x0; px < x+width; px += 256) {
-			for(int py = y0; py < y+height; py += 256) {
+		for(int px = x0; px-x < width; px += 256) {
+			for(int py = y0; py-y < height; py += 256) {
 				MetaChunk ch = getMetaChunk(px ,py);
-				int xS = Math.max(px, x);
-				int yS = Math.max(py, y);
-				int xE = Math.min(px+256, x+width);
-				int yE = Math.min(py+256, y+height);
-				for(int cx = xS; cx < xE; cx++) {
-					for(int cy = yS; cy < yE; cy++) {
+				int xS = Math.max(px-x, 0);
+				int yS = Math.max(py-y, 0);
+				int xE = Math.min(px+256-x, width);
+				int yE = Math.min(py+256-y, height);
+				for(int cx = x+xS; cx-x < xE; cx++) {
+					for(int cy = y+yS; cy-y < yE; cy++) {
 						map[cx-x][cy-y] = ch.biomeMap[cx&255][cy&255];
 					}
 				}

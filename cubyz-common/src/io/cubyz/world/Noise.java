@@ -267,8 +267,8 @@ public class Noise {
 		Random r = new Random(seed);
 		long l1 = r.nextLong();
 		long l2 = r.nextLong();
-		for (int x1 = x; x1 < width + x; x1++) {
-			for (int y1 = y; y1 < height + y; y1++) {
+		for (int x1 = x; x1-x < width; x1++) {
+			for (int y1 = y; y1-y < height; y1++) {
 				r.setSeed(x1*l1^y1*l2^seed);
 				map[x1 - x][y1 - y] = r.nextFloat();
 			}
