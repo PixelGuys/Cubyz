@@ -258,10 +258,10 @@ public class MainRenderer implements IRenderer {
 		float lightAngleY = (float) Math.asin(light.getDirection().x);
 		float lightAngleZ = 0f;
 		Matrix4f lightViewMatrix = transformation.getLightViewMatrix(
-				new Vector3f(light.getDirection()).mul(500f),
+				new Vector3f(light.getDirection()).mul(5f),
 				new Vector3f(lightAngleX, lightAngleY, lightAngleZ));
 		// TODO: only create new vector if changed
-		Matrix4f orthoProjMatrix = transformation.getOrthoProjectionMatrix(-10f, 10f, -10f, 10f, Z_NEAR, Z_FAR);
+		Matrix4f orthoProjMatrix = transformation.getOrthoProjectionMatrix(-1f, 1f, -1f, 1f, Z_NEAR, Z_FAR);
 		depthShaderProgram.setUniform("projectionMatrix", orthoProjMatrix);
 		depthShaderProgram.setUniform("viewMatrixInstanced", lightViewMatrix);
 		

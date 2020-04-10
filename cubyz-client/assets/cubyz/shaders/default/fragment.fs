@@ -154,7 +154,7 @@ float calcShadow(vec4 position) {
 	float factor = 1;
 	vec3 projCoords = position.xyz;
 	projCoords = projCoords * 0.5 + 0.5;
-	float bias = 0.05;
+	float bias = 0.1;
 	if (projCoords.z - bias < texture(shadowMap, projCoords.xy).r) {
 		factor = 0;
 	}

@@ -113,7 +113,7 @@ public class MouseInput {
 		int[] pos = window.getPosition();
 		currentPos.x = MouseInfo.getPointerInfo().getLocation().getX() - pos[0];
 		currentPos.y = MouseInfo.getPointerInfo().getLocation().getY() - pos[1];
-		if(grabbed) {
+		if(grabbed && window.isFocused()) {
 			displVec.y += currentPos.x - (window.getWidth() >> 1);
 			displVec.x += currentPos.y - (window.getHeight() >> 1);
 			r.mouseMove(pos[0] + (window.getWidth() >> 1), pos[1] + (window.getHeight() >> 1));

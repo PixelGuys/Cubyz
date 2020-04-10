@@ -282,6 +282,10 @@ public class Window {
 		this.buffer = buffer;
 	}
 	
+	public boolean isFocused() {
+		return glfwGetWindowAttrib(handle, GLFW_FOCUSED) == GLFW_TRUE;
+	}
+	
 	public FrameBuffer getRenderTarget() {
 		return buffer;
 	}

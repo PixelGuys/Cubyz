@@ -221,8 +221,8 @@ public class InstancedMesh extends Mesh {
 			instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 16, spatial.isSelected() ? 1 : 0);
 			
 			// shadow map related
-			//Matrix4f modelLightMatrix = transformation.getModelViewMatrix(modelMatrix, lightViewMatrix);
-			//modelLightMatrix.get(INSTANCE_SIZE_FLOATS * i + 17, instanceDataBuffer);
+			Matrix4f modelLightMatrix = transformation.getModelViewMatrix(modelMatrix, lightViewMatrix);
+			modelLightMatrix.get(INSTANCE_SIZE_FLOATS * i + 17, instanceDataBuffer);
 		}
 		
 		glBufferData(GL_ARRAY_BUFFER, instanceDataBuffer, GL_DYNAMIC_DRAW);
