@@ -895,8 +895,8 @@ public class Cubyz implements IGameLogic {
 			playerInc.x = playerInc.y = playerInc.z = 0.0F; // Reset positions
 			world.update();
 			world.seek(lp.getPosition().x, lp.getPosition().z);
-			float lightAngleY = (float) Math.toDegrees(Math.asin(light.getDirection().x));
-			float lightAngleX = (float) Math.toDegrees(Math.acos(light.getDirection().z));
+			float lightAngleY = (float) Math.asin(light.getDirection().x);
+			float lightAngleX = (float) Math.acos(light.getDirection().z);
 			skySun.setPosition((float)-(Math.sin(lightAngleX)*500), (float)Math.sin(lightAngleY)*500, 0);
 			skySun.setRotation(light.getDirection().x, light.getDirection().z, light.getDirection().z);
 			if (ctx.getCamera().getRotation().x > Camera.piHalf) {
