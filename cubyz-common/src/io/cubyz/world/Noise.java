@@ -168,34 +168,30 @@ public class Noise {
 			yGridPoints[i] = yGridR;
 		}
 	}
-	static int offsetX, offsetY, worldAnd;
-	static long seed;
-	static long getSeed(int x, int y) {
+	static long getSeed(int x, int y, int offsetX, int offsetY, int worldAnd, long seed) {
 		return (((long)((offsetX+x) & worldAnd)) << 16)^seed^(((long)((offsetY+y) & worldAnd)) << 32);
 	}
-	public static synchronized float[][] generateFractalTerrain(int x, int y, int width, int height, int scale, long seed, int worldAnd) {
-		Noise.seed = seed;
-		Noise.worldAnd = worldAnd;
+	public static float[][] generateFractalTerrain(int x, int y, int width, int height, int scale, long seed, int worldAnd) {
 		float[][] map = new float[width][height];
 		int max =scale+1;
 		int and = scale-1;
 		float[][] bigMap = new float[max][max];
-		offsetX = x&(~and);
-		offsetY = y&(~and);
+		int offsetX = x&(~and);
+		int offsetY = y&(~and);
 		Random rand = new Random();
-		rand.setSeed(getSeed(0, 0));
+		rand.setSeed(getSeed(0, 0, offsetX, offsetY, worldAnd, seed));
 		bigMap[0][0] = rand.nextFloat();
-		rand.setSeed(getSeed(0, scale));
+		rand.setSeed(getSeed(0, scale, offsetX, offsetY, worldAnd, seed));
 		bigMap[0][scale] = rand.nextFloat();
-		rand.setSeed(getSeed(scale, 0));
+		rand.setSeed(getSeed(scale, 0, offsetX, offsetY, worldAnd, seed));
 		bigMap[scale][0] = rand.nextFloat();
-		rand.setSeed(getSeed(scale, scale));
+		rand.setSeed(getSeed(scale, scale, offsetX, offsetY, worldAnd, seed));
 		bigMap[scale][scale] = rand.nextFloat();
 		for(int res = scale*2; res > 0; res >>>= 1) {
 			// x coordinate on the grid:
 			for(int px = 0; px < max; px += res<<1) {
 				for(int py = res; py+res < max; py += res<<1) {
-					if(px == 0 || px == scale) rand.setSeed(getSeed(px, py));
+					if(px == 0 || px == scale) rand.setSeed(getSeed(px, py, offsetX, offsetY, worldAnd, seed));
 					bigMap[px][py] = (bigMap[px][py-res]+bigMap[px][py+res])/2 + (rand.nextFloat()-0.5f)*res/scale;
 					if(bigMap[px][py] > 1.0f) bigMap[px][py] = 1.0f;
 					if(bigMap[px][py] < 0.0f) bigMap[px][py] = 0.0f;
@@ -204,7 +200,7 @@ public class Noise {
 			// y coordinate on the grid:
 			for(int px = res; px+res < max; px += res<<1) {
 				for(int py = 0; py < max; py += res<<1) {
-					if(py == 0 || py == scale) rand.setSeed(getSeed(px, py));
+					if(py == 0 || py == scale) rand.setSeed(getSeed(px, py, offsetX, offsetY, worldAnd, seed));
 					bigMap[px][py] = (bigMap[px-res][py]+bigMap[px+res][py])/2 + (rand.nextFloat()-0.5f)*res/scale;
 					if(bigMap[px][py] > 1.0f) bigMap[px][py] = 1.0f;
 					if(bigMap[px][py] < 0.0f) bigMap[px][py] = 0.0f;
