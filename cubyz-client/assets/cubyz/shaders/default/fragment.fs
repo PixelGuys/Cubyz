@@ -65,6 +65,7 @@ uniform PointLight pointLights[MAX_POINT_LIGHTS];
 uniform SpotLight spotLights[MAX_SPOT_LIGHTS];
 uniform DirectionalLight directionalLight;
 uniform Fog fog;
+uniform int shadowEnabled;
 
 vec4 ambientC;
 vec4 diffuseC;
@@ -151,14 +152,18 @@ vec4 calcFog(vec3 pos, vec4 colour, Fog fog) {
 }
 
 float calcShadow(vec4 position) {
-	float factor = 1;
+	float shadowFactor = 0.0;
+	float bias = 0.05;
+	vec2 inc = 1.0 / textureSize(shadowMap, 0);
 	vec3 projCoords = position.xyz;
 	projCoords = projCoords * 0.5 + 0.5;
-	float bias = 0.1;
-	if (projCoords.z - bias < texture(shadowMap, projCoords.xy).r) {
-		factor = 0;
+	for (int row = -1; row <= 1; ++row) {
+		for (int col = -1; col <= 1; ++col) {
+			float texDepth = texture(shadowMap, projCoords.xy + vec2(row, col)).r;
+			shadowFactor += projCoords.z - bias > texDepth ? 1.0 : 0.0;
+		}
 	}
-	return 1 - factor;
+	return 1 - (shadowFactor / 9.0);
 }
 
 void main()
@@ -182,10 +187,13 @@ void main()
             diffuseSpecularComp += calcSpotLight(spotLights[i], mvVertexPos, mvVertexNormal);
         }
     }
-    //fragColor = ambientC * vec4(ambientLight, 1) + diffuseSpecularComp;
     
-    float shadow = calcShadow(mlightviewVertexPos);
-    fragColor = clamp(ambientC * vec4(ambientLight, 1) + diffuseSpecularComp * shadow, 0, 1);
+    if (shadowEnabled == 0) {
+    	fragColor = ambientC * vec4(ambientLight, 1) + diffuseSpecularComp;
+    } else {
+	    float shadow = calcShadow(mlightviewVertexPos);
+	    fragColor = clamp(ambientC * vec4(ambientLight, 1) + diffuseSpecularComp * shadow, 0, 1);
+    }
     
     if (fog.activ == 1) {
         fragColor = calcFog(mvVertexPos, fragColor, fog);

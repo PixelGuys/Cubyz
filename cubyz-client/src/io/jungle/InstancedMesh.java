@@ -13,6 +13,7 @@ import static org.lwjgl.opengl.GL31.*;
 import static org.lwjgl.opengl.GL33.*;
 import org.lwjgl.system.MemoryUtil;
 
+import io.cubyz.client.MainRenderer;
 import io.cubyz.client.RenderList;
 import io.jungle.renderers.Transformation;
 
@@ -214,15 +215,17 @@ public class InstancedMesh extends Mesh {
 		this.instanceDataBuffer.clear();
 		
 		int size = endIndex-startIndex;
+		boolean doShadow = MainRenderer.shadowMap != null;
 		for (int i = 0; i < size; i++) {
 			Spatial spatial = (Spatial)spatials[i+startIndex];
 			Matrix4f modelMatrix = transformation.getModelMatrix(spatial);
 			modelMatrix.get(INSTANCE_SIZE_FLOATS * i, instanceDataBuffer);
 			instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 16, spatial.isSelected() ? 1 : 0);
 			
-			// shadow map related
-			Matrix4f modelLightMatrix = transformation.getModelViewMatrix(modelMatrix, lightViewMatrix);
-			modelLightMatrix.get(INSTANCE_SIZE_FLOATS * i + 17, instanceDataBuffer);
+			if (doShadow) {
+				Matrix4f modelLightMatrix = transformation.getModelViewMatrix(modelMatrix, lightViewMatrix);
+				modelLightMatrix.get(INSTANCE_SIZE_FLOATS * i + 17, instanceDataBuffer);
+			}
 		}
 		
 		glBufferData(GL_ARRAY_BUFFER, instanceDataBuffer, GL_DYNAMIC_DRAW);

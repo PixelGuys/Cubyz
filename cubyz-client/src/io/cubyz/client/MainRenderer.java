@@ -52,7 +52,7 @@ public class MainRenderer implements IRenderer {
 	private String shaders = "";
 	private Matrix4f prjViewMatrix = new Matrix4f();
 	private FrustumIntersection frustumInt = new FrustumIntersection();
-	private ShadowMap shadowMap;
+	public static ShadowMap shadowMap;
 
 	public static final int MAX_POINT_LIGHTS = 0;
 	public static final int MAX_SPOT_LIGHTS = 0;
@@ -96,6 +96,7 @@ public class MainRenderer implements IRenderer {
 		shaderProgram.createUniform("selectedNonInstanced");
 		shaderProgram.createUniform("specularPower");
 		shaderProgram.createUniform("isInstanced");
+		shaderProgram.createUniform("shadowEnabled");
 		shaderProgram.createMaterialUniform("material");
 		shaderProgram.createPointLightListUniform("pointLights", MAX_POINT_LIGHTS);
 		shaderProgram.createSpotLightListUniform("spotLights", MAX_SPOT_LIGHTS);
@@ -112,7 +113,7 @@ public class MainRenderer implements IRenderer {
 		depthShaderProgram.createUniform("projectionMatrix");
 		depthShaderProgram.createUniform("isInstanced");
 		
-		shadowMap = new ShadowMap(1024, 1024);
+		//shadowMap = new ShadowMap(1024, 1024);
 		
 		System.gc();
 	}
@@ -261,7 +262,7 @@ public class MainRenderer implements IRenderer {
 				new Vector3f(light.getDirection()).mul(5f),
 				new Vector3f(lightAngleX, lightAngleY, lightAngleZ));
 		// TODO: only create new vector if changed
-		Matrix4f orthoProjMatrix = transformation.getOrthoProjectionMatrix(-1f, 1f, -1f, 1f, Z_NEAR, Z_FAR);
+		Matrix4f orthoProjMatrix = transformation.getOrthoProjectionMatrix(-10f, 10f, -10f, 10f, -1f, 20f);
 		depthShaderProgram.setUniform("projectionMatrix", orthoProjMatrix);
 		depthShaderProgram.setUniform("viewMatrixInstanced", lightViewMatrix);
 		
@@ -304,10 +305,15 @@ public class MainRenderer implements IRenderer {
 		
 		shaderProgram.setUniform("fog", ctx.getFog());
 		shaderProgram.setUniform("projectionMatrix", ctx.getWindow().getProjectionMatrix());
-		Matrix4f orthoProjMatrix = transformation.getOrthoProjectionMatrix(-10f, 10f, -10f, 10f, Z_NEAR, Z_FAR);
-		shaderProgram.setUniform("orthoProjectionMatrix", orthoProjMatrix);
 		shaderProgram.setUniform("texture_sampler", 0);
-		shaderProgram.setUniform("shadowMap", 1);
+		if (shadowMap != null) {
+			Matrix4f orthoProjMatrix = transformation.getOrthoProjectionMatrix(-10f, 10f, -10f, 10f, -1f, 20f);
+			shaderProgram.setUniform("orthoProjectionMatrix", orthoProjMatrix);
+			shaderProgram.setUniform("shadowMap", 1);
+			shaderProgram.setUniform("shadowEnabled", true);
+		} else {
+			shaderProgram.setUniform("shadowEnabled", false);
+		}
 		
 		Matrix4f viewMatrix = ctx.getCamera().getViewMatrix();
 		shaderProgram.setUniform("viewMatrixInstanced", viewMatrix);
@@ -330,7 +336,9 @@ public class MainRenderer implements IRenderer {
 			}
 			if (mesh.isInstanced()) {
 				glActiveTexture(GL13C.GL_TEXTURE1);
-				glBindTexture(GL_TEXTURE_2D, shadowMap.getDepthMapFBO().getDepthTexture().getId());
+				if (shadowMap != null) {
+					glBindTexture(GL_TEXTURE_2D, shadowMap.getDepthMapFBO().getDepthTexture().getId());
+				}
 				InstancedMesh ins = (InstancedMesh) mesh;
 				shaderProgram.setUniform("isInstanced", 1);
 				ins.renderListInstanced(map[i], transformation, lightViewMatrix);
