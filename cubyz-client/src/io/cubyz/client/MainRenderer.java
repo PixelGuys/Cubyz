@@ -228,7 +228,7 @@ public class MainRenderer implements IRenderer {
 		}
 		
 		if (shadowMap != null) { // remember it will be disableable
-			//renderDepthMap(directionalLight, blocks, selected, selectedBlock);
+			renderDepthMap(directionalLight, blocks, selected, selectedBlock);
 			glViewport(0, 0, window.getWidth(), window.getHeight()); // reset viewport
 			if (orthogonal) {
 				window.setProjectionMatrix(transformation.getOrthoProjectionMatrix(1f, -1f, -1f, 1f, Z_NEAR, Z_FAR));

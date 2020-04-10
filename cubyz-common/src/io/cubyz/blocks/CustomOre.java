@@ -71,7 +71,8 @@ public class CustomOre extends Ore implements CustomObject {
 	private static void readOreData() {
 		try {
 			InputStream ois = CustomOre.class.getClassLoader().getResourceAsStream("io/cubyz/storage/custom_ore_names.dat");
-			ois = CustomOre.class.getClassLoader().getResourceAsStream("classes/io/cubyz/storage/custom_ore_names.dat");
+			if (ois == null)
+				ois = CustomOre.class.getClassLoader().getResourceAsStream("classes/io/cubyz/storage/custom_ore_names.dat");
 			DataInputStream is = new DataInputStream(new BufferedInputStream(ois));
 			tree = new Node(is, 3);
 			is.close();
