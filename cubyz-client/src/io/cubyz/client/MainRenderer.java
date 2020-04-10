@@ -18,6 +18,7 @@ import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
+import io.cubyz.math.CubyzMath;
 import io.cubyz.math.Vector3fi;
 import io.cubyz.world.Chunk;
 import io.jungle.FrameBuffer;
@@ -132,6 +133,7 @@ public class MainRenderer implements IRenderer {
 
 	RenderList<Spatial>[] map = (RenderList<Spatial>[]) new RenderList[0];
 	
+	
 	/**
 	 * Renders a Cubyz world.
 	 * @param window the window to render in
@@ -145,7 +147,7 @@ public class MainRenderer implements IRenderer {
 	 * @param localPlayer The world's local player
 	 */
 	public void render(Window window, Context ctx, Vector3f ambientLight, DirectionalLight directionalLight,
-			Chunk[] chunks, Block[] blocks, Entity[] entities, Spatial[] spatials, Player localPlayer) {
+			Chunk[] chunks, Block[] blocks, Entity[] entities, Spatial[] spatials, Player localPlayer, int worldAnd) {
 		if (window.isResized()) {
 			glViewport(0, 0, window.getWidth(), window.getHeight());
 			window.setResized(false);
@@ -192,15 +194,15 @@ public class MainRenderer implements IRenderer {
 			float relZ = pos.relZ;
 			float y0 = pos.y+1.5f;
 			for (Chunk ch : chunks) {
-				if (!frustumInt.testAab(ch.getMin(localPlayer), ch.getMax(localPlayer)))
+				if (!frustumInt.testAab(ch.getMin(localPlayer, worldAnd), ch.getMax(localPlayer, worldAnd)))
 					continue;
 				BlockInstance[] vis = ch.getVisibles();
 				for (int i = 0; vis[i] != null; i++) {
 					BlockInstance bi = vis[i];
 					Spatial tmp = (Spatial) bi.getSpatial();
-					float x = (bi.getX() - x0) - relX;
+					float x = CubyzMath.matchSign((bi.getX() - x0) & worldAnd, worldAnd) - relX;
 					float y = bi.getY() - y0;
-					float z = (bi.getZ() - z0) - relZ;
+					float z = CubyzMath.matchSign((bi.getZ() - z0) & worldAnd, worldAnd) - relZ;
 					// Do the frustum culling directly here.
 					if(frustumInt.testSphere(x, y, z, 0.866025f)) {
 						// Only draw blocks that have at least one face facing the player.

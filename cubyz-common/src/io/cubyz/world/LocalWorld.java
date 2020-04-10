@@ -26,6 +26,7 @@ import io.cubyz.entity.Player;
 import io.cubyz.handler.PlaceBlockHandler;
 import io.cubyz.handler.RemoveBlockHandler;
 import io.cubyz.math.Bits;
+import io.cubyz.math.CubyzMath;
 import io.cubyz.save.BlockChange;
 import io.cubyz.save.WorldIO;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
@@ -43,7 +44,7 @@ public class LocalWorld extends World {
 	private int lastX = Integer.MAX_VALUE, lastZ = Integer.MAX_VALUE; // Chunk coordinates of the last chunk update.
 	private int doubleRD; // Corresponds to the doubled value of the last used render distance.
 	private int lastChunk = -1;
-	private int worldSize = 65536;
+	private int worldAnd = 65535; // worldSize-1. Used for bitwise and to better work with coordinates.
 	private ArrayList<Entity> entities = new ArrayList<>();
 	
 	// Stores a reference to the lists of WorldIO.
@@ -228,8 +229,8 @@ public class LocalWorld extends World {
 	
 	@Override
 	public Chunk _getChunk(int x, int z) {
-		x &= -1 >>> 4;
-		z &= -1 >>> 4;
+		x &= worldAnd >>> 4;
+		z &= worldAnd >>> 4;
 		// First test if the chunk can be found in the list of visible chunks:
 		if(x < lastX && x >= lastX-doubleRD && z < lastZ && z >= lastZ-doubleRD) {
 			// Sometimes errors happen when resizing the renderDistance. If they happen just go on to iterating through the whole long list.
@@ -281,7 +282,7 @@ public class LocalWorld extends World {
 				int max = 0;
 				int index = 0;
 				for(int i = 0; i < maps.size(); i++) {
-					int dist = (maps.get(i).x-player.getPosition().x)*(maps.get(i).x-player.getPosition().x) + (maps.get(i).y-player.getPosition().z)*(maps.get(i).y-player.getPosition().z);
+					int dist = CubyzMath.matchSign(maps.get(i).x-player.getPosition().x, worldAnd)*CubyzMath.matchSign(maps.get(i).x-player.getPosition().x, worldAnd) + CubyzMath.matchSign(maps.get(i).y-player.getPosition().z, worldAnd)*CubyzMath.matchSign(maps.get(i).y-player.getPosition().z, worldAnd);
 					if(dist > max) {
 						max = dist;
 						index = i;
@@ -307,16 +308,16 @@ public class LocalWorld extends World {
 		int x0 = x&(~255);
 		int y0 = y&(~255);
 		float[][] map = new float[width][height];
-		for(int px = x0; px-x < width; px += 256) {
-			for(int py = y0; py-y < height; py += 256) {
-				MetaChunk ch = getMetaChunk(px ,py);
+		for(int px = x0; CubyzMath.matchSign((px-x) & worldAnd, worldAnd) < width; px += 256) {
+			for(int py = y0; CubyzMath.matchSign((py-y) & worldAnd, worldAnd) < height; py += 256) {
+				MetaChunk ch = getMetaChunk(px&worldAnd ,py&worldAnd);
 				int xS = Math.max(px-x, 0);
 				int yS = Math.max(py-y, 0);
 				int xE = Math.min(px+256-x, width);
 				int yE = Math.min(py+256-y, height);
-				for(int cx = x+xS; cx-x < xE; cx++) {
-					for(int cy = y+yS; cy-y < yE; cy++) {
-						map[cx-x][cy-y] = ch.heightMap[cx&255][cy&255];
+				for(int cx = xS; cx < xE; cx++) {
+					for(int cy = yS; cy < yE; cy++) {
+						map[cx][cy] = ch.heightMap[(cx+x)&255][(cy+y)&255];
 					}
 				}
 			}
@@ -328,16 +329,16 @@ public class LocalWorld extends World {
 		int x0 = x&(~255);
 		int y0 = y&(~255);
 		float[][] map = new float[width][height];
-		for(int px = x0; px-x < width; px += 256) {
-			for(int py = y0; py-y < height; py += 256) {
-				MetaChunk ch = getMetaChunk(px ,py);
+		for(int px = x0; CubyzMath.matchSign((px-x) & worldAnd, worldAnd) < width; px += 256) {
+			for(int py = y0; CubyzMath.matchSign((py-y) & worldAnd, worldAnd) < height; py += 256) {
+				MetaChunk ch = getMetaChunk(px&worldAnd ,py&worldAnd);
 				int xS = Math.max(px-x, 0);
 				int yS = Math.max(py-y, 0);
 				int xE = Math.min(px+256-x, width);
 				int yE = Math.min(py+256-y, height);
-				for(int cx = x+xS; cx-x < xE; cx++) {
-					for(int cy = y+yS; cy-y < yE; cy++) {
-						map[cx-x][cy-y] = ch.heatMap[cx&255][cy&255];
+				for(int cx = xS; cx < xE; cx++) {
+					for(int cy = yS; cy < yE; cy++) {
+						map[cx][cy] = ch.heatMap[(cx+x)&255][(cy+y)&255];
 					}
 				}
 			}
@@ -349,16 +350,16 @@ public class LocalWorld extends World {
 		int x0 = x&(~255);
 		int y0 = y&(~255);
 		Biome[][] map = new Biome[width][height];
-		for(int px = x0; px-x < width; px += 256) {
-			for(int py = y0; py-y < height; py += 256) {
-				MetaChunk ch = getMetaChunk(px ,py);
+		for(int px = x0; CubyzMath.matchSign((px-x) & worldAnd, worldAnd) < width; px += 256) {
+			for(int py = y0; CubyzMath.matchSign((py-y) & worldAnd, worldAnd) < height; py += 256) {
+				MetaChunk ch = getMetaChunk(px&worldAnd ,py&worldAnd);
 				int xS = Math.max(px-x, 0);
 				int yS = Math.max(py-y, 0);
 				int xE = Math.min(px+256-x, width);
 				int yE = Math.min(py+256-y, height);
-				for(int cx = x+xS; cx-x < xE; cx++) {
-					for(int cy = y+yS; cy-y < yE; cy++) {
-						map[cx-x][cy-y] = ch.biomeMap[cx&255][cy&255];
+				for(int cx = xS; cx < xE; cx++) {
+					for(int cy = yS; cy < yE; cy++) {
+						map[cx][cy] = ch.biomeMap[(cx+x)&255][(cy+y)&255];
 					}
 				}
 			}
@@ -572,7 +573,7 @@ public class LocalWorld extends World {
 										break;
 								}
 								if(dy == -1 || (neighbors[4] != null && neighbors[4].getBlock().getBlockClass() != Block.BlockClass.FLUID)) {
-									ch.addBlock(bi.getBlock(), bi.getX()+dx, bi.getY()+dy, bi.getZ()+dz);
+									ch.addBlock(bi.getBlock(), (bi.getX()+dx) & worldAnd, bi.getY()+dy, (bi.getZ()+dz) & worldAnd);
 								}
 							}
 						}
@@ -775,6 +776,11 @@ public class LocalWorld extends World {
 		BlockInstance bi = getBlockInstance(x, y, z);
 		Chunk ck = getChunk(bi.getX(), bi.getZ());
 		return ck.blockEntities().get(bi);
+	}
+
+	@Override
+	public int getWorldAnd() {
+		return worldAnd;
 	}
 	
 }

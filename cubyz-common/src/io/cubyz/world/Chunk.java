@@ -14,6 +14,7 @@ import io.cubyz.blocks.BlockEntity;
 import io.cubyz.entity.Player;
 import io.cubyz.handler.BlockVisibilityChangeHandler;
 import io.cubyz.math.Bits;
+import io.cubyz.math.CubyzMath;
 import io.cubyz.save.BlockChange;
 import io.cubyz.world.generator.WorldGenerator;
 
@@ -36,8 +37,10 @@ public class Chunk {
 	private World world;
 	
 	public Chunk(int ox, int oy, World world, ArrayList<BlockChange> changes) {
-		ox &= -1 >>> 4;
-		oy &= -1 >>> 4;
+		if(world != null) {
+			ox &= world.getWorldAnd() >>> 4;
+			oy &= world.getWorldAnd() >>> 4;
+		}
 		this.ox = ox;
 		this.oy = oy;
 		this.world = world;
@@ -524,12 +527,12 @@ public class Chunk {
 		}
 	}
 	
-	public Vector3f getMin(Player localPlayer) {
-		return new Vector3f(((ox << 4) - localPlayer.getPosition().x) - localPlayer.getPosition().relX, -localPlayer.getPosition().y, ((oy << 4) - localPlayer.getPosition().z) - localPlayer.getPosition().relZ);
+	public Vector3f getMin(Player localPlayer, int worldAnd) {
+		return new Vector3f(CubyzMath.matchSign(((ox << 4) - localPlayer.getPosition().x) & worldAnd, worldAnd) - localPlayer.getPosition().relX, -localPlayer.getPosition().y, CubyzMath.matchSign(((oy << 4) - localPlayer.getPosition().z) & worldAnd, worldAnd) - localPlayer.getPosition().relZ);
 	}
 	
-	public Vector3f getMax(Player localPlayer) {
-		return new Vector3f(((ox << 4) - localPlayer.getPosition().x + 16) - localPlayer.getPosition().relX, 255-localPlayer.getPosition().y, ((oy << 4) - localPlayer.getPosition().z + 16) - localPlayer.getPosition().relZ);
+	public Vector3f getMax(Player localPlayer, int worldAnd) {
+		return new Vector3f(CubyzMath.matchSign(((ox << 4) - localPlayer.getPosition().x + 16) & worldAnd, worldAnd) - localPlayer.getPosition().relX, 255-localPlayer.getPosition().y, CubyzMath.matchSign(((oy << 4) - localPlayer.getPosition().z + 16) & worldAnd, worldAnd) - localPlayer.getPosition().relZ);
 	}
 	
 	public byte[] save() {

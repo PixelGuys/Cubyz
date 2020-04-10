@@ -168,13 +168,14 @@ public class Noise {
 			yGridPoints[i] = yGridR;
 		}
 	}
-	static int offsetX, offsetY;
+	static int offsetX, offsetY, worldAnd;
 	static long seed;
 	static long getSeed(int x, int y) {
-		return (((long)(offsetX+x)) << 16)^seed^(((long)(offsetY+y)) << 32);
+		return (((long)((offsetX+x) & worldAnd)) << 16)^seed^(((long)((offsetY+y) & worldAnd)) << 32);
 	}
-	public static synchronized float[][] generateFractalTerrain(int x, int y, int width, int height, int scale, long seed) {
+	public static synchronized float[][] generateFractalTerrain(int x, int y, int width, int height, int scale, long seed, int worldAnd) {
 		Noise.seed = seed;
+		Noise.worldAnd = worldAnd;
 		float[][] map = new float[width][height];
 		int max =scale+1;
 		int and = scale-1;

@@ -181,8 +181,8 @@ public class Cubyz implements IGameLogic {
 			if (world.getLocalPlayer().getPosition().x == 0 && world.getLocalPlayer().getPosition().z == 0) {
 				CubyzLogger.i.info("Finding position..");
 				while (true) {
-					dx = rnd.nextInt(10000) - 5000;
-					dz = rnd.nextInt(10000) - 5000;
+					dx = rnd.nextInt(world.getWorldAnd()+1);
+					dz = rnd.nextInt(world.getWorldAnd()+1);
 					CubyzLogger.i.info("Trying " + dx + " ? " + dz);
 					world.synchronousSeek(dx, dz);
 					highestY = world.getHighestBlock(dx, dz);
@@ -667,7 +667,7 @@ public class Cubyz implements IGameLogic {
 		ctx.setHud(null);
 		//renderer.orthogonal = true;
 		window.setResized(true); // update projection matrix
-		renderer.render(window, ctx, new Vector3f(1, 1, 1), light, new Chunk[] {ck}, world.getBlocks(), EMPTY_ENTITY_LIST, EMPTY_SPATIAL_LIST, world.getLocalPlayer());
+		renderer.render(window, ctx, new Vector3f(1, 1, 1), light, new Chunk[] {ck}, world.getBlocks(), EMPTY_ENTITY_LIST, EMPTY_SPATIAL_LIST, world.getLocalPlayer(), world.getWorldAnd());
 		//renderer.orthogonal = false;
 		window.setResized(true); // update projection matrix for next render
 		ctx.setHud(gameUI);
@@ -819,7 +819,7 @@ public class Cubyz implements IGameLogic {
 			float lightX = (((float)world.getGameTime() % LocalWorld.DAYCYCLE) / (float) (LocalWorld.DAYCYCLE/2)) - 1f;
 			light.getDirection().set(lightY, 0, lightX);
 			window.setClearColor(clearColor);
-			renderer.render(window, ctx, ambient, light, world.getVisibleChunks(), world.getBlocks(), world.getEntities(), worldSpatialList, world.getLocalPlayer());
+			renderer.render(window, ctx, ambient, light, world.getVisibleChunks(), world.getBlocks(), world.getEntities(), worldSpatialList, world.getLocalPlayer(), world.getWorldAnd());
 		} else {
 			clearColor.y = clearColor.z = 0.7f;
 			clearColor.x = 0.1f;
@@ -833,7 +833,7 @@ public class Cubyz implements IGameLogic {
 				window.setRenderTarget(buf);
 			}
 			
-			renderer.render(window, ctx, brightAmbient, light, EMPTY_CHUNK_LIST, EMPTY_BLOCK_LIST, EMPTY_ENTITY_LIST, EMPTY_SPATIAL_LIST, null);
+			renderer.render(window, ctx, brightAmbient, light, EMPTY_CHUNK_LIST, EMPTY_BLOCK_LIST, EMPTY_ENTITY_LIST, EMPTY_SPATIAL_LIST, null, -1);
 			
 			if (screenshot) {
 				FrameBuffer buf = window.getRenderTarget();
@@ -850,7 +850,7 @@ public class Cubyz implements IGameLogic {
 	public void update(float interval) {
 		if (!gameUI.doesGUIPauseGame() && world != null) {
 			Player lp = world.getLocalPlayer();
-			lp.move(playerInc.mul(0.11F), ctx.getCamera().getRotation());
+			lp.move(playerInc.mul(0.11F), ctx.getCamera().getRotation(), world.getWorldAnd());
 			if (breakCooldown > 0) {
 				breakCooldown--;
 			}

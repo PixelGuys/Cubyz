@@ -86,6 +86,10 @@ public abstract class World {
 	public abstract Vector4f getClearColor();
 	public abstract long getGameTime();
 	public abstract void setGameTime(long time);
+
+	public int getWorldAnd() {
+		return -1; // WorldAnd of maximum supported world size.
+	}
 	
 	public int getHighestBlock(int x, int z) {
 		for (int y = WORLD_HEIGHT; y > 0; y--) {

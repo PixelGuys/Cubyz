@@ -29,6 +29,6 @@ public abstract class Player extends Entity implements ICommandSource {
 	 * @param inc
 	 * @param rot
 	 */
-	public abstract void move(Vector3f inc, Vector3f rot);
+	public abstract void move(Vector3f inc, Vector3f rot, int worldAnd);
 	
 }

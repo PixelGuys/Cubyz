@@ -42,7 +42,7 @@ public class PlayerEntity extends EntityType {
 		}
 		
 		@Override
-		public void move(Vector3f inc, Vector3f rot) {
+		public void move(Vector3f inc, Vector3f rot, int worldAnd) {
 			float deltaX = 0;
 			float deltaZ = 0;
 			if (inc.z != 0) {
@@ -61,6 +61,8 @@ public class PlayerEntity extends EntityType {
 			if(deltaZ != 0)
 				deltaZ = _getZ(deltaZ);
 			position.add(deltaX, 0, deltaZ);
+			position.x &= worldAnd;
+			position.z &= worldAnd;
 		}
 		
 		@Override
