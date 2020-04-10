@@ -141,6 +141,17 @@ public class Window {
 		}
 	}
 	
+	public int[] getPosition() {
+		int[] pos = new int[2];try (MemoryStack stack = stackPush()) {
+			IntBuffer x = stack.mallocInt(1);
+			IntBuffer y = stack.mallocInt(1);
+			glfwGetWindowPos(handle, x, y);
+			pos[0] = x.get(0);
+			pos[1] = y.get(0);
+		}
+		return pos;
+	}
+	
 	public void setOptions(GameOptions opt) {
 		this.opt = opt;
 		glfwMakeContextCurrent(handle);

@@ -4,9 +4,10 @@ import org.joml.Vector2d;
 import org.joml.Vector2f;
 import static org.lwjgl.glfw.GLFW.*;
 
-public class MouseInput {
+import java.awt.MouseInfo;
+import java.awt.Robot;
 
-	private final Vector2d previousPos;
+public class MouseInput {
 
 	private final Vector2d currentPos;
 
@@ -20,19 +21,23 @@ public class MouseInput {
 
 	private boolean grabbed = false;
 	private Window win;
+	private Robot r;
 	
 	int lastScroll = 0, curScroll = 0, scrollOffset = 0;
 
 	public MouseInput() {
-		previousPos = new Vector2d(0, 0);
 		currentPos = new Vector2d(0, 0);
 		displVec = new Vector2f(0, 0);
+		try {
+			r = new Robot();
+		} catch(Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 	public void clearPos(int x, int y) {
 		currentPos.set(x, y);
 		displVec.set(0, 0);
-		previousPos.set(x, y);
 	}
 	
 	public double getScrollOffset() {
@@ -79,10 +84,6 @@ public class MouseInput {
 
 	public void init(Window window) {
 		win = window;
-		glfwSetCursorPosCallback(window.getWindowHandle(), (windowHandle, xpos, ypos) -> {
-			currentPos.x = xpos;
-			currentPos.y = ypos;
-		});
 		glfwSetCursorEnterCallback(window.getWindowHandle(), (windowHandle, entered) -> {
 			inWindow = entered;
 		});
@@ -109,21 +110,13 @@ public class MouseInput {
 	}
 
 	public void input(Window window) {
-		if (inWindow) {
-			double deltax = currentPos.x - previousPos.x;
-			double deltay = currentPos.y - previousPos.y;
-			displVec.y = (float) deltax;
-			displVec.x = (float) deltay;
-			if (deltax != 0 || deltay != 0) {
-				//System.out.println(previousPos.x + "-" + previousPos.y() + "; " + currentPos.x() + "-" + currentPos.y());
-			}
-		}
-		previousPos.x = currentPos.x;
-		previousPos.y = currentPos.y;
-		if (grabbed) {
-			glfwSetCursorPos(window.getWindowHandle(), window.getWidth() >> 1, window.getHeight() >> 1);
-			previousPos.x = window.getWidth() >> 1;
-			previousPos.y = window.getHeight() >> 1;
+		int[] pos = window.getPosition();
+		currentPos.x = MouseInfo.getPointerInfo().getLocation().getX() - pos[0];
+		currentPos.y = MouseInfo.getPointerInfo().getLocation().getY() - pos[1];
+		if(grabbed) {
+			displVec.y += currentPos.x - (window.getWidth() >> 1);
+			displVec.x += currentPos.y - (window.getHeight() >> 1);
+			r.mouseMove(pos[0] + (window.getWidth() >> 1), pos[1] + (window.getHeight() >> 1));
 		}
 	}
 
