@@ -184,7 +184,7 @@ public class InstancedMesh extends Mesh {
 	 * @param transformation
 	 * @param viewMatrix
 	 */
-	public boolean renderListInstancedNC(RenderList<Spatial> spatials, Transformation transformation, Matrix4f lightViewMatrix) {
+	public boolean renderListInstancedNC(RenderList<Spatial> spatials, Transformation transformation) {
 		if (numInstances == 0)
 			return false;
 		initRender();
@@ -195,7 +195,7 @@ public class InstancedMesh extends Mesh {
 			if (numInstances < curSize) {
 				setInstances(curSize);
 			}
-			uploadData(spatials.array, 0, spatials.size(), transformation, lightViewMatrix);
+			uploadData(spatials.array, 0, spatials.size(), transformation);
 			bool = true;
 		}
 		renderChunkInstanced(spatials.size(), transformation);
@@ -204,7 +204,7 @@ public class InstancedMesh extends Mesh {
 		return bool;
 	}
 	
-	public void renderListInstanced(RenderList<Spatial> spatials, Transformation transformation, Matrix4f lightViewMatrix) {
+	public void renderListInstanced(RenderList<Spatial> spatials, Transformation transformation) {
 		if (numInstances == 0)
 			return;
 		initRender();
@@ -213,14 +213,14 @@ public class InstancedMesh extends Mesh {
 		int length = spatials.size();
 		for (int i = 0; i < length; i += chunkSize) {
 			int end = Math.min(length, i + chunkSize);
-			uploadData(spatials.array, i, end, transformation, lightViewMatrix);
+			uploadData(spatials.array, i, end, transformation);
 			renderChunkInstanced(end-i, transformation);
 		}
 
 		endRender();
 	}
 	
-	public void uploadData(Object[] spatials, int startIndex, int endIndex, Transformation transformation, Matrix4f lightViewMatrix) {
+	public void uploadData(Object[] spatials, int startIndex, int endIndex, Transformation transformation) {
 		this.instanceDataBuffer.clear();
 		
 		int size = endIndex-startIndex;
@@ -232,8 +232,7 @@ public class InstancedMesh extends Mesh {
 			instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 16, spatial.isSelected() ? 1 : 0);
 			
 			if (doShadow) {
-				Matrix4f modelLightMatrix = transformation.getModelViewMatrix(modelMatrix, lightViewMatrix);
-				modelLightMatrix.get(INSTANCE_SIZE_FLOATS * i + 17, instanceDataBuffer);
+				modelMatrix.get(INSTANCE_SIZE_FLOATS * i + 17, instanceDataBuffer);
 			}
 			
 			if (Chunk.easyLighting) {

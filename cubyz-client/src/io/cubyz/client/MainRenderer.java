@@ -91,6 +91,7 @@ public class MainRenderer implements IRenderer {
 		shaderProgram.createUniform("orthoProjectionMatrix");
 		shaderProgram.createUniform("modelViewNonInstancedMatrix");
 		shaderProgram.createUniform("viewMatrixInstanced");
+		shaderProgram.createUniform("lightViewMatrixInstanced");
 		shaderProgram.createUniform("texture_sampler");
 		shaderProgram.createUniform("ambientLight");
 		shaderProgram.createUniform("selectedNonInstanced");
@@ -114,7 +115,7 @@ public class MainRenderer implements IRenderer {
 		depthShaderProgram.createUniform("projectionMatrix");
 		depthShaderProgram.createUniform("isInstanced");
 		
-		//shadowMap = new ShadowMap(1024, 1024);
+		shadowMap = new ShadowMap(1024, 1024);
 		
 		System.gc();
 	}
@@ -248,6 +249,19 @@ public class MainRenderer implements IRenderer {
 		}
 	}
 	
+	public Matrix4f getLightViewMatrix(DirectionalLight light) {
+		float lightAngleX = (float) Math.acos(light.getDirection().z);
+		float lightAngleY = (float) Math.asin(light.getDirection().x);
+		float lightAngleZ = 0f;
+		return transformation.getLightViewMatrix(
+				new Vector3f(light.getDirection()).mul(5f),
+				new Vector3f(lightAngleX, lightAngleY, lightAngleZ));
+	}
+	
+	public Matrix4f getShadowProjectionMatrix() {
+		return transformation.getOrthoProjectionMatrix(-10f, 10f, -10f, 10f, 1f, 50f);
+	}
+	
 	// for shadow map
 	public void renderDepthMap(DirectionalLight light, Block[] blocks, Spatial selected, int selectedBlock) {
 		FrameBuffer fbo = shadowMap.getDepthMapFBO();
@@ -260,12 +274,9 @@ public class MainRenderer implements IRenderer {
 		float lightAngleX = (float) Math.acos(light.getDirection().z);
 		float lightAngleY = (float) Math.asin(light.getDirection().x);
 		float lightAngleZ = 0f;
-		Matrix4f lightViewMatrix = transformation.getLightViewMatrix(
-				new Vector3f(light.getDirection()).mul(5f),
-				new Vector3f(lightAngleX, lightAngleY, lightAngleZ));
+		Matrix4f lightViewMatrix = getLightViewMatrix(light);
 		// TODO: only create new vector if changed
-		Matrix4f orthoProjMatrix = transformation.getOrthoProjectionMatrix(-10f, 10f, -10f, 10f, -1f, 20f);
-		depthShaderProgram.setUniform("projectionMatrix", orthoProjMatrix);
+		depthShaderProgram.setUniform("projectionMatrix", getShadowProjectionMatrix());
 		depthShaderProgram.setUniform("viewMatrixInstanced", lightViewMatrix);
 		
 		for (int i = 0; i < blocks.length; i++) {
@@ -278,13 +289,13 @@ public class MainRenderer implements IRenderer {
 			if (mesh.isInstanced()) {
 				InstancedMesh ins = (InstancedMesh) mesh;
 				depthShaderProgram.setUniform("isInstanced", 1);
-				ins.renderListInstanced(map[i], transformation, lightViewMatrix);
+				ins.renderListInstanced(map[i], transformation);
 			} else {
 				depthShaderProgram.setUniform("isInstanced", 0);
 				mesh.renderList(map[i], (Spatial gameItem) -> {
 					Matrix4f modelViewMatrix = transformation.getModelViewMatrix(gameItem, lightViewMatrix);
 					if (orthogonal) {
-						modelViewMatrix = transformation.getOrtoProjModelMatrix(gameItem, lightViewMatrix);
+						modelViewMatrix = transformation.getOrtoProjModelMatrix(gameItem);
 					}
 					if (gameItem.isSelected())
 						depthShaderProgram.setUniform("selectedNonInstanced", 1f);
@@ -309,8 +320,8 @@ public class MainRenderer implements IRenderer {
 		shaderProgram.setUniform("projectionMatrix", ctx.getWindow().getProjectionMatrix());
 		shaderProgram.setUniform("texture_sampler", 0);
 		if (shadowMap != null) {
-			Matrix4f orthoProjMatrix = transformation.getOrthoProjectionMatrix(-10f, 10f, -10f, 10f, -1f, 20f);
-			shaderProgram.setUniform("orthoProjectionMatrix", orthoProjMatrix);
+			shaderProgram.setUniform("orthoProjectionMatrix", getShadowProjectionMatrix());
+			shaderProgram.setUniform("lightViewMatrixInstanced", getLightViewMatrix(directionalLight));
 			shaderProgram.setUniform("shadowMap", 1);
 			shaderProgram.setUniform("shadowEnabled", true);
 		} else {
@@ -324,13 +335,7 @@ public class MainRenderer implements IRenderer {
 		shaderProgram.setUniform("viewMatrixInstanced", viewMatrix);
 		
 		renderLights(viewMatrix, ambientLight, pointLightList, spotLightList, directionalLight);
-		float lightAngleX = (float) Math.acos(directionalLight.getDirection().z);
-		float lightAngleY = (float) Math.asin(directionalLight.getDirection().x);
-		float lightAngleZ = 0f;
 		
-		Matrix4f lightViewMatrix = transformation.getLightViewMatrix(
-				new Vector3f(directionalLight.getDirection()).mul(500f),
-				new Vector3f(lightAngleX, lightAngleY, lightAngleZ));
 		for (int i = 0; i < blocks.length; i++) {
 			if (map[i] == null)
 				continue;
@@ -346,7 +351,7 @@ public class MainRenderer implements IRenderer {
 				}
 				InstancedMesh ins = (InstancedMesh) mesh;
 				shaderProgram.setUniform("isInstanced", 1);
-				ins.renderListInstanced(map[i], transformation, lightViewMatrix);
+				ins.renderListInstanced(map[i], transformation);
 			} else {
 				shaderProgram.setUniform("isInstanced", 0);
 				mesh.renderList(map[i], (Spatial gameItem) -> {

@@ -23,6 +23,7 @@ uniform int cheapLightning;
 uniform float selectedNonInstanced;
 uniform mat4 modelViewNonInstancedMatrix;
 uniform mat4 viewMatrixInstanced;
+uniform mat4 lightViewMatrixInstanced;
 
 void main()
 {
@@ -45,5 +46,5 @@ void main()
     outTexCoord = texCoord;
    	mvVertexNormal = normalize(modelViewMatrix * initNormal).xyz;
     mvVertexPos = mvPos.xyz;
-    mlightviewVertexPos = orthoProjectionMatrix * modelLightViewMatrix * vec4(position, 1.0);
+    mlightviewVertexPos = orthoProjectionMatrix * lightViewMatrixInstanced * modelLightViewMatrix * initPos;
 }

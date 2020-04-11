@@ -161,7 +161,7 @@ float calcShadow(vec4 position) {
 	projCoords = projCoords * 0.5 + 0.5;
 	for (int row = -1; row <= 1; ++row) {
 		for (int col = -1; col <= 1; ++col) {
-			float texDepth = texture(shadowMap, projCoords.xy + vec2(row, col)).r;
+			float texDepth = texture(shadowMap, projCoords.xy + vec2(row, col) * inc).r;
 			shadowFactor += projCoords.z - bias > texDepth ? 1.0 : 0.0;
 		}
 	}

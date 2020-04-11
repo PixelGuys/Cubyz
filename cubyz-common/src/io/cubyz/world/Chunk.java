@@ -19,7 +19,7 @@ import io.cubyz.save.BlockChange;
 import io.cubyz.world.generator.WorldGenerator;
 
 public class Chunk {
-	public static boolean easyLighting = true; // Enables the easy-lighting system.
+	public static boolean easyLighting = false; // Enables the easy-lighting system.
 	// Due to having powers of 2 as dimensions it is more efficient to use a one-dimensional array.
 	private BlockInstance[] inst;
 	private byte[] light;
