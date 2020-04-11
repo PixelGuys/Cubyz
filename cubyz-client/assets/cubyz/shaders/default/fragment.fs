@@ -4,6 +4,8 @@ const int MAX_POINT_LIGHTS = 5;
 const int MAX_SPOT_LIGHTS = 5;
 
 in vec2 outTexCoord;
+in vec3 outEasyLight;
+in float easyLightEnabled;
 in vec3 mvVertexNormal;
 in vec3 mvVertexPos;
 in float outSelected;
@@ -190,6 +192,9 @@ void main()
     
     if (shadowEnabled == 0) {
     	fragColor = ambientC * vec4(ambientLight, 1) + diffuseSpecularComp;
+    	if (easyLightEnabled == 1.0) {
+    		fragColor = ambientC * vec4(outEasyLight, 1) + diffuseSpecularComp;
+    	}
     } else {
 	    float shadow = calcShadow(mlightviewVertexPos);
 	    fragColor = clamp(ambientC * vec4(ambientLight, 1) + diffuseSpecularComp * shadow, 0, 1);

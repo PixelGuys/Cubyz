@@ -231,4 +231,10 @@ public class RemoteWorld extends World {
 		
 	}
 
+	@Override
+	public Chunk _getNoGenerateChunk(int arg0, int arg1) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
 }

@@ -103,6 +103,7 @@ public class MainRenderer implements IRenderer {
 		shaderProgram.createDirectionalLightUniform("directionalLight");
 		shaderProgram.createFogUniform("fog");
 		shaderProgram.createUniform("shadowMap");
+		shaderProgram.createUniform("cheapLightning");
 		
 		depthShaderProgram = new ShaderProgram();
 		depthShaderProgram.createVertexShader(Utils.loadResource(shaders + "/depth_vertex.vs"));
@@ -277,7 +278,7 @@ public class MainRenderer implements IRenderer {
 			if (mesh.isInstanced()) {
 				InstancedMesh ins = (InstancedMesh) mesh;
 				depthShaderProgram.setUniform("isInstanced", 1);
-				ins.renderListInstanced(map[i], transformation, lightViewMatrix, shaderProgram);
+				ins.renderListInstanced(map[i], transformation, lightViewMatrix);
 			} else {
 				depthShaderProgram.setUniform("isInstanced", 0);
 				mesh.renderList(map[i], (Spatial gameItem) -> {
@@ -314,6 +315,9 @@ public class MainRenderer implements IRenderer {
 			shaderProgram.setUniform("shadowEnabled", true);
 		} else {
 			shaderProgram.setUniform("shadowEnabled", false);
+			if (Chunk.easyLighting) {
+				shaderProgram.setUniform("cheapLightning", true);
+			}
 		}
 		
 		Matrix4f viewMatrix = ctx.getCamera().getViewMatrix();
@@ -342,7 +346,7 @@ public class MainRenderer implements IRenderer {
 				}
 				InstancedMesh ins = (InstancedMesh) mesh;
 				shaderProgram.setUniform("isInstanced", 1);
-				ins.renderListInstanced(map[i], transformation, lightViewMatrix, shaderProgram);
+				ins.renderListInstanced(map[i], transformation, lightViewMatrix);
 			} else {
 				shaderProgram.setUniform("isInstanced", 0);
 				mesh.renderList(map[i], (Spatial gameItem) -> {
@@ -435,16 +439,14 @@ public class MainRenderer implements IRenderer {
 	
 				shaderProgram.setUniform("spotLights", currSpotLight, i);
 			}
-	
-			// Get a copy of the directional light object and transform its position to view
-			// coordinates
-			DirectionalLight currDirLight = new DirectionalLight(directionalLight);
-			Vector4f dir = new Vector4f(currDirLight.getDirection(), 0);
-			dir.mul(viewMatrix);
-			currDirLight.setDirection(new Vector3f(dir.x, dir.y, dir.z));
-			shaderProgram.setUniform("directionalLight", currDirLight);
 		}
-
+		// Get a copy of the directional light object and transform its position to view
+		// coordinates
+		DirectionalLight currDirLight = new DirectionalLight(directionalLight);
+		Vector4f dir = new Vector4f(currDirLight.getDirection(), 0);
+		dir.mul(viewMatrix);
+		currDirLight.setDirection(new Vector3f(dir.x, dir.y, dir.z));
+		shaderProgram.setUniform("directionalLight", currDirLight);
 	}
 
 	@Override

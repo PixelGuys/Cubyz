@@ -24,14 +24,16 @@ public class InstancedMesh extends Mesh {
 	private static final int FLOAT_SIZE_BYTES = 4;
 
 	private static final int VECTOR4F_SIZE_BYTES = 4 * FLOAT_SIZE_BYTES;
+	
+	private static final int VECTOR3F_SIZE_FLOATS = 3;
+	private static final int VECTOR3F_SIZE_BYTES = VECTOR3F_SIZE_FLOATS * FLOAT_SIZE_BYTES;
 
 	private static final int MATRIX_SIZE_FLOATS = 4 * 4;
-
 	private static final int MATRIX_SIZE_BYTES = MATRIX_SIZE_FLOATS * FLOAT_SIZE_BYTES;
 
-	private static final int INSTANCE_SIZE_BYTES = MATRIX_SIZE_BYTES*2 + FLOAT_SIZE_BYTES;
+	private static final int INSTANCE_SIZE_BYTES = MATRIX_SIZE_BYTES*2 + FLOAT_SIZE_BYTES + VECTOR3F_SIZE_BYTES;
 
-	private static final int INSTANCE_SIZE_FLOATS = MATRIX_SIZE_FLOATS*2 + 1;
+	private static final int INSTANCE_SIZE_FLOATS = MATRIX_SIZE_FLOATS*2 + 1 + VECTOR3F_SIZE_FLOATS;
 
 	private int numInstances;
 
@@ -76,6 +78,11 @@ public class InstancedMesh extends Mesh {
 			start++;
 			strideStart += VECTOR4F_SIZE_BYTES;
 		}
+		
+		glVertexAttribPointer(start, 3, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
+		glVertexAttribDivisor(start, 1);
+		start++;
+		strideStart += VECTOR3F_SIZE_BYTES;
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindVertexArray(0);
@@ -177,7 +184,7 @@ public class InstancedMesh extends Mesh {
 	 * @param transformation
 	 * @param viewMatrix
 	 */
-	public boolean renderListInstancedNC(RenderList<Spatial> spatials, Transformation transformation, Matrix4f lightViewMatrix, ShaderProgram shaderProgram) {
+	public boolean renderListInstancedNC(RenderList<Spatial> spatials, Transformation transformation, Matrix4f lightViewMatrix) {
 		if (numInstances == 0)
 			return false;
 		initRender();
@@ -188,7 +195,7 @@ public class InstancedMesh extends Mesh {
 			if (numInstances < curSize) {
 				setInstances(curSize);
 			}
-			uploadData(spatials.array, 0, spatials.size(), transformation, lightViewMatrix, shaderProgram);
+			uploadData(spatials.array, 0, spatials.size(), transformation, lightViewMatrix);
 			bool = true;
 		}
 		renderChunkInstanced(spatials.size(), transformation);
@@ -197,34 +204,29 @@ public class InstancedMesh extends Mesh {
 		return bool;
 	}
 	
-	public void renderListInstanced(RenderList<Spatial> spatials, Transformation transformation, Matrix4f lightViewMatrix, ShaderProgram shaderProgram) {
+	public void renderListInstanced(RenderList<Spatial> spatials, Transformation transformation, Matrix4f lightViewMatrix) {
 		if (numInstances == 0)
 			return;
 		initRender();
 
 		int chunkSize = numInstances;
-		if(Chunk.easyLighting)
-			chunkSize = 1;
 		int length = spatials.size();
 		for (int i = 0; i < length; i += chunkSize) {
 			int end = Math.min(length, i + chunkSize);
-			uploadData(spatials.array, i, end, transformation, lightViewMatrix, shaderProgram);
+			uploadData(spatials.array, i, end, transformation, lightViewMatrix);
 			renderChunkInstanced(end-i, transformation);
 		}
 
 		endRender();
 	}
 	
-	public void uploadData(Object[] spatials, int startIndex, int endIndex, Transformation transformation, Matrix4f lightViewMatrix, ShaderProgram shaderProgram) {
+	public void uploadData(Object[] spatials, int startIndex, int endIndex, Transformation transformation, Matrix4f lightViewMatrix) {
 		this.instanceDataBuffer.clear();
 		
 		int size = endIndex-startIndex;
 		boolean doShadow = MainRenderer.shadowMap != null;
 		for (int i = 0; i < size; i++) {
 			Spatial spatial = (Spatial)spatials[i+startIndex];
-			if(Chunk.easyLighting) {
-				shaderProgram.setUniform("ambientLight", spatial.light);
-			}
 			Matrix4f modelMatrix = transformation.getModelMatrix(spatial);
 			modelMatrix.get(INSTANCE_SIZE_FLOATS * i, instanceDataBuffer);
 			instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 16, spatial.isSelected() ? 1 : 0);
@@ -232,6 +234,10 @@ public class InstancedMesh extends Mesh {
 			if (doShadow) {
 				Matrix4f modelLightMatrix = transformation.getModelViewMatrix(modelMatrix, lightViewMatrix);
 				modelLightMatrix.get(INSTANCE_SIZE_FLOATS * i + 17, instanceDataBuffer);
+			}
+			
+			if (Chunk.easyLighting) {
+				spatial.light.get(INSTANCE_SIZE_FLOATS * i + 33, instanceDataBuffer);
 			}
 		}
 		
