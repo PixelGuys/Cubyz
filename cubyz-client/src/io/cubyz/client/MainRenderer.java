@@ -104,7 +104,7 @@ public class MainRenderer implements IRenderer {
 		shaderProgram.createDirectionalLightUniform("directionalLight");
 		shaderProgram.createFogUniform("fog");
 		shaderProgram.createUniform("shadowMap");
-		shaderProgram.createUniform("cheapLightning");
+		shaderProgram.createUniform("cheapLighting");
 		
 		depthShaderProgram = new ShaderProgram();
 		depthShaderProgram.createVertexShader(Utils.loadResource(shaders + "/depth_vertex.vs"));
@@ -115,7 +115,7 @@ public class MainRenderer implements IRenderer {
 		depthShaderProgram.createUniform("projectionMatrix");
 		depthShaderProgram.createUniform("isInstanced");
 		
-		shadowMap = new ShadowMap(1024, 1024);
+		//shadowMap = new ShadowMap(1024, 1024);
 		
 		System.gc();
 	}
@@ -218,7 +218,9 @@ public class MainRenderer implements IRenderer {
 								(z < -0.5001f && !bi.neighborNorth)) {
 							
 							tmp.setPosition(x, y, z);
-							tmp.light = new Vector3f(bi.light/24f, bi.light/24f, bi.light/24f);
+							tmp.light.x = bi.light/24f;
+							tmp.light.y = bi.light/24f;
+							tmp.light.z = bi.light/24f;
 							if (tmp.isSelected()) {
 								selected = tmp;
 								selectedBlock = bi.getID();
@@ -444,14 +446,14 @@ public class MainRenderer implements IRenderer {
 	
 				shaderProgram.setUniform("spotLights", currSpotLight, i);
 			}
+			// Get a copy of the directional light object and transform its position to view
+			// coordinates
+			DirectionalLight currDirLight = new DirectionalLight(directionalLight);
+			Vector4f dir = new Vector4f(currDirLight.getDirection(), 0);
+			dir.mul(viewMatrix);
+			currDirLight.setDirection(new Vector3f(dir.x, dir.y, dir.z));
+			shaderProgram.setUniform("directionalLight", currDirLight);
 		}
-		// Get a copy of the directional light object and transform its position to view
-		// coordinates
-		DirectionalLight currDirLight = new DirectionalLight(directionalLight);
-		Vector4f dir = new Vector4f(currDirLight.getDirection(), 0);
-		dir.mul(viewMatrix);
-		currDirLight.setDirection(new Vector3f(dir.x, dir.y, dir.z));
-		shaderProgram.setUniform("directionalLight", currDirLight);
 	}
 
 	@Override

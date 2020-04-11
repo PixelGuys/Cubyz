@@ -191,10 +191,7 @@ void main()
     }
     
     if (shadowEnabled == 0) {
-    	fragColor = ambientC * vec4(ambientLight, 1) + diffuseSpecularComp;
-    	if (easyLightEnabled == 1.0) {
-    		fragColor = ambientC * vec4(outEasyLight, 1) + diffuseSpecularComp;
-    	}
+    	fragColor = (1 - easyLightEnabled) * ambientC * vec4(ambientLight, 1) + easyLightEnabled * ambientC * vec4(outEasyLight, 1) + diffuseSpecularComp;
     } else {
 	    float shadow = calcShadow(mlightviewVertexPos);
 	    fragColor = clamp(ambientC * vec4(ambientLight, 1) + diffuseSpecularComp * shadow, 0, 1);

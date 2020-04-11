@@ -13,7 +13,7 @@ public class Spatial {
     private float scale;
     private boolean selected;
     
-    public Vector3f light;
+    public final Vector3f light;
 
     public Spatial(Mesh mesh) {
         this.meshes = new Mesh[] {mesh};
@@ -28,6 +28,7 @@ public class Spatial {
     	position = new Vector3f(0, 0, 0);
     	scale = 1;
     	rotation = new Vector3f(0, 0, 0);
+        light = new Vector3f(0, 0, 0);
     }
     
     public Spatial() {

@@ -17,7 +17,6 @@ import io.cubyz.client.MainRenderer;
 import io.cubyz.client.RenderList;
 import io.cubyz.world.Chunk;
 import io.jungle.renderers.Transformation;
-import io.jungle.util.ShaderProgram;
 
 public class InstancedMesh extends Mesh {
 
@@ -119,6 +118,10 @@ public class InstancedMesh extends Mesh {
 			start++;
 			strideStart += VECTOR4F_SIZE_BYTES;
 		}
+		glVertexAttribPointer(start, 3, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
+		glVertexAttribDivisor(start, 1);
+		start++;
+		strideStart += 3*FLOAT_SIZE_BYTES;
 		glVertexAttribPointer(start, 1, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
 		glVertexAttribDivisor(start, 1);
 		start++;
@@ -132,6 +135,11 @@ public class InstancedMesh extends Mesh {
 			start++;
 			strideStart += VECTOR4F_SIZE_BYTES;
 		}
+		
+		glVertexAttribPointer(start, 3, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
+		glVertexAttribDivisor(start, 1);
+		strideStart += VECTOR3F_SIZE_BYTES;
+		start++;
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindVertexArray(0);
@@ -229,14 +237,14 @@ public class InstancedMesh extends Mesh {
 			Spatial spatial = (Spatial)spatials[i+startIndex];
 			Matrix4f modelMatrix = transformation.getModelMatrix(spatial);
 			modelMatrix.get(INSTANCE_SIZE_FLOATS * i, instanceDataBuffer);
-			instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 16, spatial.isSelected() ? 1 : 0);
+			instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 19, spatial.isSelected() ? 1 : 0);
 			
 			if (doShadow) {
-				modelMatrix.get(INSTANCE_SIZE_FLOATS * i + 17, instanceDataBuffer);
+				//modelMatrix.get(INSTANCE_SIZE_FLOATS * i + 17, instanceDataBuffer);
 			}
 			
 			if (Chunk.easyLighting) {
-				spatial.light.get(INSTANCE_SIZE_FLOATS * i + 33, instanceDataBuffer);
+				spatial.light.get(INSTANCE_SIZE_FLOATS * i + 16, instanceDataBuffer);
 			}
 		}
 		
