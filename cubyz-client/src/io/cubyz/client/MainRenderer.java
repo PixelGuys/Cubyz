@@ -218,9 +218,13 @@ public class MainRenderer implements IRenderer {
 								(z < -0.5001f && !bi.neighborNorth)) {
 							
 							tmp.setPosition(x, y, z);
-							tmp.light.x = bi.light/24f;
-							tmp.light.y = bi.light/24f;
-							tmp.light.z = bi.light/24f;
+							int sun = (bi.light >>> 24) & 255;
+							int r = Math.max((bi.light >>> 16) & 255, sun);
+							int g = Math.max((bi.light >>> 8) & 255, sun);
+							int b = Math.max((bi.light >>> 0) & 255, sun);
+							tmp.light.x = r/256f;
+							tmp.light.y = g/256f;
+							tmp.light.z = b/256f;
 							if (tmp.isSelected()) {
 								selected = tmp;
 								selectedBlock = bi.getID();
@@ -329,7 +333,7 @@ public class MainRenderer implements IRenderer {
 		} else {
 			shaderProgram.setUniform("shadowEnabled", false);
 			if (Chunk.easyLighting) {
-				shaderProgram.setUniform("cheapLightning", true);
+				shaderProgram.setUniform("cheapLighting", true);
 			}
 		}
 		

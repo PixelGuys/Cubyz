@@ -6,7 +6,4 @@ public class CubyzMath {
 			return num;
 		return num | ~worldAnd; // Fill the frontal region with ones.
 	}
-	public static byte max(byte a, byte b) {
-		return a > b ? a : b;
-	}
 }
