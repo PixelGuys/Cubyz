@@ -64,6 +64,7 @@ public abstract class World {
 
 	public abstract Chunk getChunk(int x, int z);	// Works with world coordinates
 	public abstract Chunk _getChunk(int x, int z);	// Works with chunk coordinates
+	public abstract Chunk _getNoGenerateChunk(int x, int z);
 	public abstract Block getBlock(int x, int y, int z);
 	/**
 	 * ONLY USE IF NEEDED!
@@ -128,4 +129,5 @@ public abstract class World {
 	public abstract int getRenderDistance();
 	
 	public void update() {}
+
 }

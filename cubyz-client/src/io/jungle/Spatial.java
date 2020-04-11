@@ -12,6 +12,8 @@ public class Spatial {
     
     private float scale;
     private boolean selected;
+    
+    public Vector3f light;
 
     public Spatial(Mesh mesh) {
         this.meshes = new Mesh[] {mesh};

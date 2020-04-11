@@ -15,7 +15,9 @@ import org.lwjgl.system.MemoryUtil;
 
 import io.cubyz.client.MainRenderer;
 import io.cubyz.client.RenderList;
+import io.cubyz.world.Chunk;
 import io.jungle.renderers.Transformation;
+import io.jungle.util.ShaderProgram;
 
 public class InstancedMesh extends Mesh {
 
@@ -175,7 +177,7 @@ public class InstancedMesh extends Mesh {
 	 * @param transformation
 	 * @param viewMatrix
 	 */
-	public boolean renderListInstancedNC(RenderList<Spatial> spatials, Transformation transformation, Matrix4f lightViewMatrix) {
+	public boolean renderListInstancedNC(RenderList<Spatial> spatials, Transformation transformation, Matrix4f lightViewMatrix, ShaderProgram shaderProgram) {
 		if (numInstances == 0)
 			return false;
 		initRender();
@@ -186,7 +188,7 @@ public class InstancedMesh extends Mesh {
 			if (numInstances < curSize) {
 				setInstances(curSize);
 			}
-			uploadData(spatials.array, 0, spatials.size(), transformation, lightViewMatrix);
+			uploadData(spatials.array, 0, spatials.size(), transformation, lightViewMatrix, shaderProgram);
 			bool = true;
 		}
 		renderChunkInstanced(spatials.size(), transformation);
@@ -195,29 +197,34 @@ public class InstancedMesh extends Mesh {
 		return bool;
 	}
 	
-	public void renderListInstanced(RenderList<Spatial> spatials, Transformation transformation, Matrix4f lightViewMatrix) {
+	public void renderListInstanced(RenderList<Spatial> spatials, Transformation transformation, Matrix4f lightViewMatrix, ShaderProgram shaderProgram) {
 		if (numInstances == 0)
 			return;
 		initRender();
 
 		int chunkSize = numInstances;
+		if(Chunk.easyLighting)
+			chunkSize = 1;
 		int length = spatials.size();
 		for (int i = 0; i < length; i += chunkSize) {
 			int end = Math.min(length, i + chunkSize);
-			uploadData(spatials.array, i, end, transformation, lightViewMatrix);
+			uploadData(spatials.array, i, end, transformation, lightViewMatrix, shaderProgram);
 			renderChunkInstanced(end-i, transformation);
 		}
 
 		endRender();
 	}
 	
-	public void uploadData(Object[] spatials, int startIndex, int endIndex, Transformation transformation, Matrix4f lightViewMatrix) {
+	public void uploadData(Object[] spatials, int startIndex, int endIndex, Transformation transformation, Matrix4f lightViewMatrix, ShaderProgram shaderProgram) {
 		this.instanceDataBuffer.clear();
 		
 		int size = endIndex-startIndex;
 		boolean doShadow = MainRenderer.shadowMap != null;
 		for (int i = 0; i < size; i++) {
 			Spatial spatial = (Spatial)spatials[i+startIndex];
+			if(Chunk.easyLighting) {
+				shaderProgram.setUniform("ambientLight", spatial.light);
+			}
 			Matrix4f modelMatrix = transformation.getModelMatrix(spatial);
 			modelMatrix.get(INSTANCE_SIZE_FLOATS * i, instanceDataBuffer);
 			instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 16, spatial.isSelected() ? 1 : 0);

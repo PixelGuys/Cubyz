@@ -14,6 +14,7 @@ public class BlockInstance {
 	private Vector3i pos;
 	private World world;
 	public boolean neighborUp, neighborDown, neighborEast, neighborWest, neighborNorth, neighborSouth;
+	public byte light;
 	
 	public World getWorld() {
 		return world;

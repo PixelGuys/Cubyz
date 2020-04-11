@@ -226,9 +226,21 @@ public class LocalWorld extends World {
 		cz = cz >> 4;
 		return _getChunk(cx, cz);
 	}
-	
+
 	@Override
 	public Chunk _getChunk(int x, int z) {
+		x &= worldAnd >>> 4;
+		z &= worldAnd >>> 4;
+		Chunk c = _getNoGenerateChunk(x, z);
+		if(c != null) return c;
+		c = new Chunk(x, z, this, transformData(getChunkData(x, z)));
+		// not generated
+		chunks.add(c);
+		lastChunk = chunks.size()-1;
+		return c;
+	}
+	@Override
+	public Chunk _getNoGenerateChunk(int x, int z) {
 		x &= worldAnd >>> 4;
 		z &= worldAnd >>> 4;
 		// First test if the chunk can be found in the list of visible chunks:
@@ -252,17 +264,13 @@ public class LocalWorld extends World {
 					return chunks.get(i);
 				}
 			}
-		} catch(Exception e) {
+		} catch(NullPointerException e) {
 			System.out.println("Catched NullPointerException:");
-			e.printStackTrace();
+			//e.printStackTrace();
 			chunks.remove(null); // Remove the corruption.
-			return _getChunk(x, z); // Just try it again…
+			return _getNoGenerateChunk(x, z); // Just try it again…
 		} // Wherever the NullPointerException comes from, it doesn't seem to be a big deal. If another error occurs elsewhere, this might be the source.
-		Chunk c = new Chunk(x, z, this, transformData(getChunkData(x, z)));
-		// not generated
-		chunks.add(c);
-		lastChunk = chunks.size()-1;
-		return c;
+		return null;
 	}
 	public MetaChunk getMetaChunk(int wx, int wy) {
 		for(MetaChunk ch : maps.toArray(new MetaChunk[0])) {

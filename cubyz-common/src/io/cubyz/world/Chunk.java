@@ -19,9 +19,10 @@ import io.cubyz.save.BlockChange;
 import io.cubyz.world.generator.WorldGenerator;
 
 public class Chunk {
-
+	public static boolean easyLighting = false; // Enables the easy-lighting system.
 	// Due to having powers of 2 as dimensions it is more efficient to use a one-dimensional array.
 	private BlockInstance[] inst;
+	private byte[] light;
 	private ArrayList<BlockInstance> list = new ArrayList<>();
 	private ArrayList<BlockInstance> liquids = new ArrayList<>();
 	private ArrayList<BlockInstance> updatingLiquids = new ArrayList<>(); // liquids that should be updated at next frame
@@ -41,6 +42,9 @@ public class Chunk {
 			ox &= world.getWorldAnd() >>> 4;
 			oy &= world.getWorldAnd() >>> 4;
 		}
+		if(easyLighting) {
+			light = new byte[16*World.WORLD_HEIGHT*16];
+		}
 		this.ox = ox;
 		this.oy = oy;
 		this.world = world;
@@ -53,6 +57,12 @@ public class Chunk {
 	}
 	private BlockInstance getInst(int x, int y, int z) {
 		return inst[(x << 4) | (y << 8) | z];
+	}
+	private void setLight(int x, int y, int z, byte li) {
+		light[(x << 4) | (y << 8) | z] = li;
+	}
+	private byte getLight(int x, int y, int z) {
+		return light[(x << 4) | (y << 8) | z];
 	}
 	
 	/**
@@ -97,6 +107,163 @@ public class Chunk {
 	
 	public Map<BlockInstance, BlockEntity> blockEntities() {
 		return blockEntities;
+	}
+	
+	public void lightUpdate(byte x, int y, byte z) {
+		// Make some bound checks:
+		if(!easyLighting || y < 0 || y >= World.WORLD_HEIGHT || !generated) return;
+		if(x < 0) {
+			Chunk chunk = world._getNoGenerateChunk(ox-1, oy);
+			if(chunk != null) chunk.lightUpdate((byte)(x+16), y, z);
+			return;
+		}
+		if(x > 15) {
+			Chunk chunk = world._getNoGenerateChunk(ox+1, oy);
+			if(chunk != null) chunk.lightUpdate((byte)(x-16), y, z);
+			return;
+		}
+		if(z < 0) {
+			Chunk chunk = world._getNoGenerateChunk(ox, oy-1);
+			if(chunk != null) chunk.lightUpdate(x, y, (byte)(z+16));
+			return;
+		}
+		if(z > 15) {
+			Chunk chunk = world._getNoGenerateChunk(ox, oy+1);
+			if(chunk != null) chunk.lightUpdate(x, y, (byte)(z-16));
+			return;
+		}
+		
+		BlockInstance bi = getInst(x, y, z);
+		byte maxLight = 1; // Make sure the light of a block never gets below 0.
+		if(x != 0) {
+			if(getInst(x-1, y, z) == null)
+				maxLight = CubyzMath.max(maxLight, getLight(x-1, y, z));
+		} else {
+			Chunk chunk = world._getNoGenerateChunk(ox-1, oy);
+			if(chunk != null && chunk.isLoaded()) {
+				if(chunk.getInst(15, y, z) == null)
+					maxLight = CubyzMath.max(maxLight, chunk.getLight(15, y, z));
+			}
+		}
+		if(x != 15) {
+			if(getInst(x+1, y, z) == null)
+				maxLight = CubyzMath.max(maxLight, getLight(x+1, y, z));
+		} else {
+			Chunk chunk = world._getNoGenerateChunk(ox+1, oy);
+			if(chunk != null && chunk.isLoaded()) {
+				if(chunk.getInst(0, y, z) == null)
+					maxLight = CubyzMath.max(maxLight, chunk.getLight(0, y, z));
+			}
+		}
+		if(z != 0) {
+			if(getInst(x, y, z-1) == null)
+				maxLight = CubyzMath.max(maxLight, getLight(x, y, z-1));
+		} else {
+			Chunk chunk = world._getNoGenerateChunk(ox, oy-1);
+			if(chunk != null && chunk.isLoaded()) {
+				if(chunk.getInst(x, y, 15) == null)
+					maxLight = CubyzMath.max(maxLight, chunk.getLight(x, y, 15));
+			}
+		}
+		if(z != 15) {
+			if(getInst(x, y, z+1) == null)
+				maxLight = CubyzMath.max(maxLight, getLight(x, y, z+1));
+		} else {
+			Chunk chunk = world._getNoGenerateChunk(ox, oy+1);
+			if(chunk != null && chunk.isLoaded()) {
+				if(chunk.getInst(x, y, 0) == null)
+					maxLight = CubyzMath.max(maxLight, chunk.getLight(x, y, 0));
+			}
+		}
+		if(y != 0)
+			maxLight = CubyzMath.max(maxLight, getLight(x, y-1, z));
+		if(y != 255) {
+			byte light = getLight(x, y+1, z);
+			if(light == 24)
+				light++; // Make sure daylight travels all the way down.
+			maxLight = CubyzMath.max(maxLight, light);
+		} else {
+			maxLight = CubyzMath.max(maxLight, (byte)25);
+		}
+		--maxLight;
+		if(bi != null) {
+			maxLight--;// Make it easier to update block changes correctly.
+			bi.light = maxLight;
+			setLight(x, y, z, maxLight);
+		} else {
+			byte curLight = light[(x << 4) | (y << 8) | z];
+			if(curLight != maxLight) {
+				light[(x << 4) | (y << 8) | z] = maxLight;
+				lightUpdate((byte)(x-1), y, z);
+				lightUpdate((byte)(x+1), y, z);
+				lightUpdate(x, y-1, z);
+				lightUpdate(x, y+1, z);
+				lightUpdate(x, y, (byte)(z-1));
+				lightUpdate(x, y, (byte)(z+1));
+			}
+		}
+	}
+	
+	// Used for first time loading. For later update also negative changes have to be taken into account making the system more complex.
+	public void constructiveLightUpdate(byte x, int y, byte z, byte maxLight) {
+		// Make some bound checks:
+		if(!easyLighting || y < 0 || y >= World.WORLD_HEIGHT || !generated) return;
+		if(x < 0) {
+			Chunk chunk = world._getNoGenerateChunk(ox-1, oy);
+			if(chunk != null) chunk.constructiveLightUpdate((byte)(x+16), y, z, maxLight);
+			return;
+		}
+		if(x > 15) {
+			Chunk chunk = world._getNoGenerateChunk(ox+1, oy);
+			if(chunk != null) chunk.constructiveLightUpdate((byte)(x-16), y, z, maxLight);
+			return;
+		}
+		if(z < 0) {
+			Chunk chunk = world._getNoGenerateChunk(ox, oy-1);
+			if(chunk != null) chunk.constructiveLightUpdate(x, y, (byte)(z+16), maxLight);
+			return;
+		}
+		if(z > 15) {
+			Chunk chunk = world._getNoGenerateChunk(ox, oy+1);
+			if(chunk != null) chunk.constructiveLightUpdate(x, y, (byte)(z-16), maxLight);
+			return;
+		}
+		
+		BlockInstance bi = getInst(x, y, z);
+		if(bi != null) {
+			byte curLight = light[(x << 4) | (y << 8) | z];
+			if(bi.getBlock().isTransparent()) {
+				if(curLight < maxLight) {
+					bi.light = maxLight;
+					setLight(x, y, z, maxLight);
+					maxLight--;
+					constructiveLightUpdate((byte)(x-1), y, z, maxLight);
+					constructiveLightUpdate((byte)(x+1), y, z, maxLight);
+					constructiveLightUpdate(x, y-1, z, (byte)(maxLight+(maxLight == 23 ? 1 : 0)));
+					constructiveLightUpdate(x, y+1, z, maxLight);
+					constructiveLightUpdate(x, y, (byte)(z-1), maxLight);
+					constructiveLightUpdate(x, y, (byte)(z+1), maxLight);
+				}
+			} else {
+				maxLight--;
+				if(curLight < maxLight) {
+					bi.light = maxLight;
+					setLight(x, y, z, maxLight);
+				}
+			}
+		} else {
+			byte curLight = light[(x << 4) | (y << 8) | z];
+			if(curLight < maxLight) {
+				light[(x << 4) | (y << 8) | z] = maxLight;
+				maxLight--;
+				constructiveLightUpdate((byte)(x-1), y, z, maxLight);
+				constructiveLightUpdate((byte)(x+1), y, z, maxLight);
+				constructiveLightUpdate(x, y-1, z, (byte)(maxLight+(maxLight == 23 ? 1 : 0)));
+				constructiveLightUpdate(x, y+1, z, maxLight);
+				constructiveLightUpdate(x, y, (byte)(z-1), maxLight);
+				constructiveLightUpdate(x, y, (byte)(z+1), maxLight);
+			}
+		}
 	}
 	
 	/**
@@ -187,6 +354,7 @@ public class Chunk {
 				}
 			}
 		}
+		lightUpdate((byte)rx, y, (byte)rz);
 	}
 	
 	public void generateFrom(WorldGenerator gen) {
@@ -279,6 +447,14 @@ public class Chunk {
 							continue;
 						}
 					}
+				}
+			}
+		}
+		// Do some light updates.
+		if(easyLighting) {
+			for(byte x = 0; x < 16; x++) {
+				for(byte z = 0; z < 16; z++) {
+					constructiveLightUpdate(x, 255, z, (byte)24);
 				}
 			}
 		}
@@ -375,6 +551,7 @@ public class Chunk {
 			blockEntities.remove(bi);
 		}
 		setInst(x, y, z, null);
+		lightUpdate((byte)x, y, (byte)z);
 		BlockInstance[] neighbors = bi.getNeighbors(this);
 		if(neighbors[0] != null) neighbors[0].neighborWest = false;
 		if(neighbors[1] != null) neighbors[1].neighborEast = false;
@@ -525,6 +702,7 @@ public class Chunk {
 			}
 			changes.get(index).newType = b.ID;
 		}
+		lightUpdate((byte)x, y, (byte)z);
 	}
 	
 	public Vector3f getMin(Player localPlayer, int worldAnd) {
