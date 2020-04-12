@@ -102,135 +102,35 @@ public class Chunk {
 	public Map<BlockInstance, BlockEntity> blockEntities() {
 		return blockEntities;
 	}
-	
-	// The shift and mask gives information about the color channel that is used for this lighting update. The mask is inverted!
-	public void lightUpdate(byte x, int y, byte z, int shift, int mask) {
-		// Make some bound checks:
-		if(!easyLighting || y < 0 || y >= World.WORLD_HEIGHT || !generated) return;
-		if(x < 0) {
-			Chunk chunk = world._getNoGenerateChunk(ox-1, oy);
-			if(chunk != null) chunk.lightUpdate((byte)(x+16), y, z, shift, mask);
-			return;
-		}
-		if(x > 15) {
-			Chunk chunk = world._getNoGenerateChunk(ox+1, oy);
-			if(chunk != null) chunk.lightUpdate((byte)(x-16), y, z, shift, mask);
-			return;
-		}
-		if(z < 0) {
-			Chunk chunk = world._getNoGenerateChunk(ox, oy-1);
-			if(chunk != null) chunk.lightUpdate(x, y, (byte)(z+16), shift, mask);
-			return;
-		}
-		if(z > 15) {
-			Chunk chunk = world._getNoGenerateChunk(ox, oy+1);
-			if(chunk != null) chunk.lightUpdate(x, y, (byte)(z-16), shift, mask);
-			return;
-		}
-		int index = (x << 4) | (y << 8) | z; // Works close to the datastructure. Allows for some optimizations.
-		
-		BlockInstance bi = inst[index];
-		int maxLight = 1; // Make sure the light of a block never gets below 0.
-		if(x != 0) {
-			if(inst[index-16] == null) {
-				maxLight = Math.max(maxLight, (light[index-16] >>> shift) & 255);
-			}
-		} else {
-			Chunk chunk = world._getNoGenerateChunk(ox-1, oy);
-			if(chunk != null && chunk.isLoaded()) {
-				if(chunk.getInst(15, y, z) == null)
-					maxLight = Math.max(maxLight, (chunk.light[index | 0xf0] >>> shift) & 255);
-			}
-		}
-		if(x != 15) {
-			if(inst[index+16] == null) {
-				maxLight = Math.max(maxLight, (light[index+16] >>> shift) & 255);
-			}
-		} else {
-			Chunk chunk = world._getNoGenerateChunk(ox+1, oy);
-			if(chunk != null && chunk.isLoaded()) {
-				if(chunk.getInst(0, y, z) == null)
-					maxLight = Math.max(maxLight, (chunk.light[index & ~0xf0] >>> shift) & 255);
-			}
-		}
-		if(z != 0) {
-			if(inst[index-1] == null) {
-				maxLight = Math.max(maxLight, (light[index-1] >>> shift) & 255);
-			}
-		} else {
-			Chunk chunk = world._getNoGenerateChunk(ox, oy-1);
-			if(chunk != null && chunk.isLoaded()) {
-				if(chunk.getInst(x, y, 15) == null)
-					maxLight = Math.max(maxLight, (chunk.light[index | 0xf] >>> shift) & 255);
-			}
-		}
-		if(z != 15) {
-			if(inst[index+1] == null) {
-				maxLight = Math.max(maxLight, (light[index+1] >>> shift) & 255);
-			}
-		} else {
-			Chunk chunk = world._getNoGenerateChunk(ox, oy+1);
-			if(chunk != null && chunk.isLoaded()) {
-				if(chunk.getInst(x, y, 0) == null)
-					maxLight = Math.max(maxLight, (chunk.light[index & ~0xf0] >>> shift) & 255);
-			}
-		}
-		if(y != 0) {
-			if(inst[index-256] != null) {
-				maxLight = Math.max(maxLight, (light[index-256] >>> shift) & 255);
-			}
-		}
-		if(y != 255) {
-			if(inst[index+256] != null) {
-				int local = (light[index+256] >>> shift) & 255;
-				if(shift == 24) // Sun channel
-					local += 8;
-				maxLight = Math.max(maxLight, local);
-			}
-		} else if(shift == 24) {
-			maxLight = 263;
-		}
-		maxLight -= 8;
-		if(bi != null) {
-			if(maxLight == (maxLight & 255)) {
-				light[index] = (light[index] & mask) | (maxLight << shift);
-				bi.light = light[index];
-			}
-		} else {
-			int curLight = (light[index] >>> shift) & 255;
-			if(curLight != maxLight && maxLight == (maxLight & 255)) {
-				light[index] = (light[index] & mask) | (maxLight << shift);
-				lightUpdate((byte)(x-1), y, z, shift, mask);
-				lightUpdate((byte)(x+1), y, z, shift, mask);
-				lightUpdate(x, y-1, z, shift, mask);
-				lightUpdate(x, y+1, z, shift, mask);
-				lightUpdate(x, y, (byte)(z-1), shift, mask);
-				lightUpdate(x, y, (byte)(z+1), shift, mask);
-			}
-		}
+	private void lightUpdate(int x, int y, int z, int shift, int mask) {
+		int newLight = localLightUpdate(x, y, z, shift, mask);
+		int[] arr = {x, y, z, newLight};
+		ArrayList<int[]> updates = new ArrayList<>();
+		updates.add(arr);
+		lightUpdate(updates, shift, mask);
 	}
-	private int lightUpdate(int x, int y, int z, int shift, int mask) {
+	private int localLightUpdate(int x, int y, int z, int shift, int mask) {
 		// Make some bound checks:
 		if(!easyLighting || y < 0 || y >= World.WORLD_HEIGHT || !generated) return 0;
 		// Check if it's inside this chunk:
 		if(x < 0) {
 			Chunk chunk = world._getNoGenerateChunk(ox-1, oy);
-			if(chunk != null) return chunk.lightUpdate(x+16, y, z, shift, mask);
+			if(chunk != null) return chunk.localLightUpdate(x+16, y, z, shift, mask);
 			return 0;
 		}
 		if(x > 15) {
 			Chunk chunk = world._getNoGenerateChunk(ox+1, oy);
-			if(chunk != null) return chunk.lightUpdate(x-16, y, z, shift, mask);
+			if(chunk != null) return chunk.localLightUpdate(x-16, y, z, shift, mask);
 			return 0;
 		}
 		if(z < 0) {
 			Chunk chunk = world._getNoGenerateChunk(ox, oy-1);
-			if(chunk != null) return chunk.lightUpdate(x, y, z+16, shift, mask);
+			if(chunk != null) return chunk.localLightUpdate(x, y, z+16, shift, mask);
 			return 0;
 		}
 		if(z > 15) {
 			Chunk chunk = world._getNoGenerateChunk(ox, oy+1);
-			if(chunk != null) return chunk.lightUpdate(x, y, z-16, shift, mask);
+			if(chunk != null) return chunk.localLightUpdate(x, y, z-16, shift, mask);
 			return 0;
 		}
 		// Check all neighbors and find their highest lighting in the specified channel:
@@ -308,7 +208,7 @@ public class Chunk {
 		return 0;
 	}
 	// Used for first time loading. For later update also negative changes have to be taken into account making the system more complex.
-	public void constructiveLightUpdate(ArrayList<int[]> lightUpdates, int shift, int mask) {
+	public void lightUpdate(ArrayList<int[]> lightUpdates, int shift, int mask) {
 		while(lightUpdates.size() != 0) {
 			// Find the block with the highest light level from the list:
 			int[][] updates = lightUpdates.toArray(new int[0][]);
@@ -330,7 +230,7 @@ public class Chunk {
 				int y = max[1]+dy[n];
 				int z = max[2]+dz[n];
 				int light;
-				if((light = lightUpdate(x, y, z, shift, mask)) > 0) {
+				if((light = localLightUpdate(x, y, z, shift, mask)) > 0) {
 					for(int i = 0;; i++) {
 						if(i == updates.length) {
 							lightUpdates.add(new int[]{x, y, z, light});
@@ -431,11 +331,10 @@ public class Chunk {
 							ch.hideBlock(neighbors[i]);
 						}
 					}
-					lightUpdate((byte)(neighbors[i].getX() & 15), neighbors[i].getY(), (byte)(neighbors[i].getZ() & 15), 24, 0x00ffffff);
 				}
 			}
 		}
-		lightUpdate((byte)rx, y, (byte)rz, 24, 0x00ffffff);
+		lightUpdate(rx, y, rz, 24, 0x00ffffff);
 	}
 	
 	public void generateFrom(WorldGenerator gen) {
@@ -533,7 +432,6 @@ public class Chunk {
 		}
 		// Do some light updates.
 		if(easyLighting) {
-			long t1 = System.nanoTime();
 			ArrayList<int[]> lightUpdates = new ArrayList<>();
 			// First of all update the top air blocks on which the sun is constant:
 			int y = World.WORLD_HEIGHT;
@@ -555,8 +453,7 @@ public class Chunk {
 						lightUpdates.add(new int[] {x, y, z, 255});
 				}
 			}
-			constructiveLightUpdate(lightUpdates, 24, 0x00ffffff);
-			long t2 = System.nanoTime();
+			lightUpdate(lightUpdates, 24, 0x00ffffff);
 		}
 	}
 	
@@ -658,10 +555,10 @@ public class Chunk {
 		if(neighbors[3] != null) neighbors[3].neighborNorth = false;
 		if(neighbors[4] != null) neighbors[4].neighborUp = false;
 		if(neighbors[5] != null) neighbors[5].neighborDown = false;
+		lightUpdate(x, y, z, 24, 0x00ffffff);
 		for (int i = 0; i < neighbors.length; i++) {
 			BlockInstance inst = neighbors[i];
 			if (inst != null && inst != bi) {
-				lightUpdate((byte)(neighbors[i].getX() & 15), neighbors[i].getY(), (byte)(neighbors[i].getZ() & 15), 24, 0x00ffffff);
 				Chunk ch = getChunk(inst.getX(), inst.getZ());
 				if (!ch.contains(inst)) {
 					ch.revealBlock(inst);
@@ -802,7 +699,7 @@ public class Chunk {
 			}
 			changes.get(index).newType = b.ID;
 		}
-		lightUpdate((byte)x, y, (byte)z, 24, 0x00ffffff);
+		lightUpdate(x, y, z, 24, 0x00ffffff);
 	}
 	
 	public Vector3f getMin(Player localPlayer, int worldAnd) {
