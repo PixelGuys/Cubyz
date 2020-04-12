@@ -179,7 +179,7 @@ public class Chunk {
 			Chunk chunk = world._getNoGenerateChunk(ox, oy+1);
 			if(chunk != null && chunk.isLoaded()) {
 				if(chunk.getInst(x, y, 0) == null)
-					maxLight = Math.max(maxLight, (chunk.light[index & ~0xf0] >>> shift) & 255);
+					maxLight = Math.max(maxLight, (chunk.light[index & ~0xf] >>> shift) & 255);
 			}
 		}
 		if(y != 0) {
@@ -434,14 +434,14 @@ public class Chunk {
 		if(easyLighting) {
 			ArrayList<int[]> lightUpdates = new ArrayList<>();
 			// First of all update the top air blocks on which the sun is constant:
-			int y = World.WORLD_HEIGHT;
+			int y0 = World.WORLD_HEIGHT;
 			boolean stopped = false;
 			while(!stopped) {
-				--y;
+				--y0;
 				for(int xz = 0; xz < 256; xz++) {
-					light[(y << 8) | xz] |= 0xff000000;
-					if(inst[(y << 8) | xz] != null) {
-						inst[(y << 8) | xz].light |= 0xff000000;
+					light[(y0 << 8) | xz] |= 0xff000000;
+					if(inst[(y0 << 8) | xz] != null) {
+						inst[(y0 << 8) | xz].light |= 0xff000000;
 						stopped = true;
 					}
 				}
@@ -449,11 +449,72 @@ public class Chunk {
 			// Add the lowest layer to the updates list:
 			for(int x = 0; x < 16; x++) {
 				for(int z = 0; z < 16; z++) {
-					if(getInst(x, y, z) == null)
-						lightUpdates.add(new int[] {x, y, z, 255});
+					if(getInst(x, y0, z) == null)
+						lightUpdates.add(new int[] {x, y0, z, 255});
 				}
 			}
 			lightUpdate(lightUpdates, 24, 0x00ffffff);
+			// Look at the neighboring chunks:
+			boolean no = world._getNoGenerateChunk(ox-1, oy) != null;
+			boolean po = world._getNoGenerateChunk(ox+1, oy) != null;
+			boolean on = world._getNoGenerateChunk(ox, oy-1) != null;
+			boolean op = world._getNoGenerateChunk(ox, oy+1) != null;
+			if(no || on) {
+				int x = 0, z = 0;
+				for(int y = 0; y < y0; y++) {
+					lightUpdate(x, y, z, 24, 0x00ffffff);
+				}
+			}
+			if(no || op) {
+				int x = 0, z = 15;
+				for(int y = 0; y < y0; y++) {
+					lightUpdate(x, y, z, 24, 0x00ffffff);
+				}
+			}
+			if(po || on) {
+				int x = 15, z = 0;
+				for(int y = 0; y < y0; y++) {
+					lightUpdate(x, y, z, 24, 0x00ffffff);
+				}
+			}
+			if(po || op) {
+				int x = 15, z = 15;
+				for(int y = 0; y < y0; y++) {
+					lightUpdate(x, y, z, 24, 0x00ffffff);
+				}
+			}
+			if(no) {
+				int x = 0;
+				for(int z = 1; z < 15; z++) {
+					for(int y = 0; y < y0; y++) {
+						lightUpdate(x, y, z, 24, 0x00ffffff);
+					}
+				}
+			}
+			if(po) {
+				int x = 15;
+				for(int z = 1; z < 15; z++) {
+					for(int y = 0; y < y0; y++) {
+						lightUpdate(x, y, z, 24, 0x00ffffff);
+					}
+				}
+			}
+			if(on) {
+				int z = 0;
+				for(int x = 1; x < 15; x++) {
+					for(int y = 0; y < y0; y++) {
+						lightUpdate(x, y, z, 24, 0x00ffffff);
+					}
+				}
+			}
+			if(op) {
+				int z = 15;
+				for(int x = 1; x < 15; x++) {
+					for(int y = 0; y < y0; y++) {
+						lightUpdate(x, y, z, 24, 0x00ffffff);
+					}
+				}
+			}
 		}
 	}
 	
