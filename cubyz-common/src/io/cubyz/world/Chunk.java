@@ -102,12 +102,25 @@ public class Chunk {
 	public Map<BlockInstance, BlockEntity> blockEntities() {
 		return blockEntities;
 	}
-	private void lightUpdate(int x, int y, int z, int shift, int mask) {
-		int newLight = localLightUpdate(x, y, z, shift, mask);
-		int[] arr = {x, y, z, newLight};
+	// Performs a light update in all channels on this block.
+	private void lightUpdate(int x, int y, int z) {
 		ArrayList<int[]> updates = new ArrayList<>();
+		int newLight = localLightUpdate(x, y, z, 24, 0x00ffffff); // Sun
+		int[] arr = new int[]{x, y, z, newLight};
 		updates.add(arr);
-		lightUpdate(updates, shift, mask);
+		lightUpdate(updates, 24, 0x00ffffff);
+		newLight = localLightUpdate(x, y, z, 16, 0xff00ffff); // Red
+		arr = new int[]{x, y, z, newLight};
+		updates.add(arr);
+		lightUpdate(updates, 16, 0xff00ffff);
+		newLight = localLightUpdate(x, y, z, 8, 0xffff00ff); // Green
+		arr = new int[]{x, y, z, newLight};
+		updates.add(arr);
+		lightUpdate(updates, 8, 0xffff00ff);
+		newLight = localLightUpdate(x, y, z, 0, 0xffffff00); // Blue
+		arr = new int[]{x, y, z, newLight};
+		updates.add(arr);
+		lightUpdate(updates, 0, 0xffffff00);
 	}
 	private int localLightUpdate(int x, int y, int z, int shift, int mask) {
 		// Make some bound checks:
@@ -196,9 +209,12 @@ public class Chunk {
 		// Update the light and return.
 		int curLight = (light[index] >>> shift) & 255;
 		maxLight -= 8;
+		BlockInstance bi = inst[index];
+		if(bi != null) {
+			maxLight = Math.max(maxLight, (bi.getBlock().getLight() >>> shift) & 255);
+		}
 		if(curLight != maxLight) {
 			light[index] = (light[index] & mask) | (maxLight << shift);
-			BlockInstance bi = inst[index];
 			if(bi != null) {
 				bi.light = light[index];
 				return bi.getBlock().isTransparent() ? maxLight : 0; // Only do light updates through transparent blocks.
@@ -334,7 +350,7 @@ public class Chunk {
 				}
 			}
 		}
-		lightUpdate(rx, y, rz, 24, 0x00ffffff);
+		lightUpdate(rx, y, rz);
 	}
 	
 	public void generateFrom(WorldGenerator gen) {
@@ -462,32 +478,32 @@ public class Chunk {
 			if(no || on) {
 				int x = 0, z = 0;
 				for(int y = 0; y < y0; y++) {
-					lightUpdate(x, y, z, 24, 0x00ffffff);
+					lightUpdate(x, y, z);
 				}
 			}
 			if(no || op) {
 				int x = 0, z = 15;
 				for(int y = 0; y < y0; y++) {
-					lightUpdate(x, y, z, 24, 0x00ffffff);
+					lightUpdate(x, y, z);
 				}
 			}
 			if(po || on) {
 				int x = 15, z = 0;
 				for(int y = 0; y < y0; y++) {
-					lightUpdate(x, y, z, 24, 0x00ffffff);
+					lightUpdate(x, y, z);
 				}
 			}
 			if(po || op) {
 				int x = 15, z = 15;
 				for(int y = 0; y < y0; y++) {
-					lightUpdate(x, y, z, 24, 0x00ffffff);
+					lightUpdate(x, y, z);
 				}
 			}
 			if(no) {
 				int x = 0;
 				for(int z = 1; z < 15; z++) {
 					for(int y = 0; y < y0; y++) {
-						lightUpdate(x, y, z, 24, 0x00ffffff);
+						lightUpdate(x, y, z);
 					}
 				}
 			}
@@ -495,7 +511,7 @@ public class Chunk {
 				int x = 15;
 				for(int z = 1; z < 15; z++) {
 					for(int y = 0; y < y0; y++) {
-						lightUpdate(x, y, z, 24, 0x00ffffff);
+						lightUpdate(x, y, z);
 					}
 				}
 			}
@@ -503,7 +519,7 @@ public class Chunk {
 				int z = 0;
 				for(int x = 1; x < 15; x++) {
 					for(int y = 0; y < y0; y++) {
-						lightUpdate(x, y, z, 24, 0x00ffffff);
+						lightUpdate(x, y, z);
 					}
 				}
 			}
@@ -511,8 +527,14 @@ public class Chunk {
 				int z = 15;
 				for(int x = 1; x < 15; x++) {
 					for(int y = 0; y < y0; y++) {
-						lightUpdate(x, y, z, 24, 0x00ffffff);
+						lightUpdate(x, y, z);
 					}
+				}
+			}
+			// Take care about light sources:
+			for(BlockInstance bi: list) {
+				if(bi.getBlock().getLight() != 0) {
+					lightUpdate(bi.getX(), bi.getY(), bi.getZ());
 				}
 			}
 		}
@@ -616,7 +638,7 @@ public class Chunk {
 		if(neighbors[3] != null) neighbors[3].neighborNorth = false;
 		if(neighbors[4] != null) neighbors[4].neighborUp = false;
 		if(neighbors[5] != null) neighbors[5].neighborDown = false;
-		lightUpdate(x, y, z, 24, 0x00ffffff);
+		lightUpdate(x, y, z);
 		for (int i = 0; i < neighbors.length; i++) {
 			BlockInstance inst = neighbors[i];
 			if (inst != null && inst != bi) {
@@ -760,7 +782,7 @@ public class Chunk {
 			}
 			changes.get(index).newType = b.ID;
 		}
-		lightUpdate(x, y, z, 24, 0x00ffffff);
+		lightUpdate(x, y, z);
 	}
 	
 	public Vector3f getMin(Player localPlayer, int worldAnd) {

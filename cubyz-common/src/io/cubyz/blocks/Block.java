@@ -32,6 +32,7 @@ public class Block implements IRegistryElement {
 	private Item blockDrop;
 	protected boolean degradable = false; // Meaning undegradable parts of trees or other structures can grow through this block.
 	protected BlockClass bc;
+	private int light = 0;
 	
 	public Block() {}
 	
@@ -115,6 +116,14 @@ public class Block implements IRegistryElement {
 	public Block setHardness(float hardness) {
 		this.hardness = hardness;
 		return this;
+	}
+	
+	public int getLight() {
+		return light;
+	}
+	
+	public void setLight(int light) {
+		this.light = light;
 	}
 	
 	public BlockEntity createBlockEntity(Vector3i pos) {

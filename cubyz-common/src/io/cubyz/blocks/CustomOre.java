@@ -88,6 +88,18 @@ public class CustomOre extends Ore implements CustomObject {
 		return color;
 	}
 	
+	private void makeGlow() {
+		// Make the ore glow at 25% of its color:
+		int r = color >>> 16;
+		int g = (color >>> 8) & 255;
+		int b = color & 255;
+		r /= 4;
+		g /= 4;
+		b /= 4;
+		int light = (r << 16) | (g << 8) | b;
+		setLight(light);
+	}
+	
 	private static char choose(char c1, char c2, char c3, float rand, int length) {
 		try {
 			int i1 = getIndex(c1);
@@ -148,6 +160,9 @@ public class CustomOre extends Ore implements CustomObject {
 		ore.template = rand.nextInt(5)+1; // UPDATE THIS WHEN YOU ADD MORE TEMPLATES!
 		ore.setHardness(rand.nextInt()*30);
 		ore.setID("cubyz:" + ore.name + " Ore");
+		if(rand.nextInt(4) == 0) { // Make some ores glow.
+			ore.makeGlow();
+		}
 		ore.makeBlockDrop();
 		boolean addTools = true; // For now.
 		if(addTools) {
