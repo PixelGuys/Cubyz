@@ -26,6 +26,7 @@ public class BlockInstance {
 	
 	public BlockInstance(Block block) {
 		this.block = block;
+		this.light = block.getLight();
 	}
 	
 	public int getID() {

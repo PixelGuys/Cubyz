@@ -801,7 +801,10 @@ public class Cubyz implements IGameLogic {
 				seasonUpdateDynamodels();
 				CubyzLogger.i.info("Updated season to ID " + worldSeason);
 			}
-			//ambient.x = ambient.y = ambient.z = world.getGlobalLighting();
+			ambient.x = ambient.y = ambient.z = world.getGlobalLighting();
+			if(ambient.x < 0.1f) ambient.x = 0.1f;
+			if(ambient.y < 0.1f) ambient.y = 0.1f;
+			if(ambient.z < 0.1f) ambient.z = 0.1f;
 			light.setIntensity(world.getGlobalLighting());
 			clearColor = world.getClearColor();
 			ctx.getFog().setColor(clearColor);
