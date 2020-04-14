@@ -26,6 +26,8 @@ public abstract class StellarTorus {
 	protected ArrayList<PlaceBlockHandler> placeBlockHandlers = new ArrayList<>();
 	protected ArrayList<RemoveBlockHandler> removeBlockHandlers = new ArrayList<>();
 	public ArrayList<BlockVisibilityChangeHandler> visibHandlers = new ArrayList<>();
+	
+	public int DAYCYCLE;
 
 	public abstract void cleanup();
 	
@@ -79,8 +81,10 @@ public abstract class StellarTorus {
 	
 	public abstract float getGlobalLighting();
 	public abstract Vector4f getClearColor();
+	
+	public abstract long getLocalSeed();
 
-	public int getSize() {
+	public int getAnd() {
 		return -1; // WorldAnd of maximum supported world size.
 	}
 	

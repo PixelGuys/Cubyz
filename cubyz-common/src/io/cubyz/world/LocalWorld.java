@@ -20,7 +20,7 @@ public class LocalWorld extends World {
 	protected Random rnd;
 	
 	private ArrayList<StellarTorus> toruses = new ArrayList<>();
-	private StellarTorus homeTorus;
+	private StellarTorus currentTorus;
 	
 	@Override
 	public Player getLocalPlayer() {
@@ -58,8 +58,8 @@ public class LocalWorld extends World {
 	}
 
 	@Override
-	public StellarTorus getHomeTorus() {
-		return homeTorus;
+	public StellarTorus getCurrentTorus() {
+		return currentTorus;
 	}
 	
 	// Returns the blocks, so their meshes can be created and stored.
@@ -96,9 +96,8 @@ public class LocalWorld extends World {
 			wio.loadWorldData(); // TODO: fix
 		}
 		generated = true;
-		
-		homeTorus = new LocalStellarTorus(this);
-		toruses.add(homeTorus);
+		currentTorus = new LocalStellarTorus(this);
+		toruses.add(currentTorus);
 		return blocks;
 	}
 	

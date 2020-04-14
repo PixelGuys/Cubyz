@@ -60,7 +60,7 @@ public class LifelandGenerator extends StellarTorusGenerator {
 		int oy = ch.getZ();
 		int wx = ox << 4;
 		int wy = oy << 4;
-		int seed = torus.getWorld().getSeed();
+		long seed = torus.getLocalSeed();
 		// Generate some maps:
 		float[][] heightMap = ((LocalStellarTorus)torus).getHeightMapData(wx-8, wy-8, 32, 32);
 		float[][] heatMap = ((LocalStellarTorus)torus).getHeatMapData(wx-8, wy-8, 32, 32);

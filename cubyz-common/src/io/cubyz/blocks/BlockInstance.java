@@ -5,6 +5,7 @@ import org.joml.Vector3i;
 import io.cubyz.ClientOnly;
 import io.cubyz.items.Inventory;
 import io.cubyz.world.Chunk;
+import io.cubyz.world.StellarTorus;
 import io.cubyz.world.World;
 
 public class BlockInstance {
@@ -12,16 +13,16 @@ public class BlockInstance {
 	private Block block;
 	private IBlockSpatial spatial;
 	private Vector3i pos;
-	private World world;
+	private StellarTorus stellarTorus;
 	public boolean neighborUp, neighborDown, neighborEast, neighborWest, neighborNorth, neighborSouth;
 	public int light;
 	
-	public World getWorld() {
-		return world;
+	public StellarTorus getStellarTorus() {
+		return stellarTorus;
 	}
 	
-	public void setWorld(World world) {
-		this.world = world;
+	public void setStellarTorus(StellarTorus world) {
+		this.stellarTorus = world;
 	}
 	
 	public BlockInstance(Block block) {
@@ -74,19 +75,19 @@ public class BlockInstance {
 		if((pos.z & 15) != 0)
 			inst[3] = ch.getBlockInstanceAt(pos.x & 15, pos.y, (pos.z - 1) & 15);
 		else
-			inst[3] = world.getBlockInstance(pos.x, pos.y, pos.z - 1);
+			inst[3] = stellarTorus.getBlockInstance(pos.x, pos.y, pos.z - 1);
 		if((pos.z & 15) != 15)
 			inst[2] = ch.getBlockInstanceAt(pos.x & 15, pos.y, (pos.z + 1) & 15);
 		else
-			inst[2] = world.getBlockInstance(pos.x, pos.y, pos.z + 1);
+			inst[2] = stellarTorus.getBlockInstance(pos.x, pos.y, pos.z + 1);
 		if((pos.x & 15) != 15)
 			inst[1] = ch.getBlockInstanceAt((pos.x + 1) & 15, pos.y, pos.z & 15);
 		else
-			inst[1] = world.getBlockInstance(pos.x + 1, pos.y, pos.z);
+			inst[1] = stellarTorus.getBlockInstance(pos.x + 1, pos.y, pos.z);
 		if((pos.x & 15) != 0)
 			inst[0] = ch.getBlockInstanceAt((pos.x - 1) & 15, pos.y, pos.z & 15);
 		else
-			inst[0] = world.getBlockInstance(pos.x - 1, pos.y, pos.z);
+			inst[0] = stellarTorus.getBlockInstance(pos.x - 1, pos.y, pos.z);
 		return inst;
 	}
 	
@@ -105,19 +106,19 @@ public class BlockInstance {
 			case 3:
 				if((pos.z & 15) != 0)
 					return ch.getBlockInstanceAt(pos.x & 15, pos.y, (pos.z - 1) & 15);
-				return world.getBlockInstance(pos.x, pos.y, pos.z - 1);
+				return stellarTorus.getBlockInstance(pos.x, pos.y, pos.z - 1);
 			case 2:
 				if((pos.z & 15) != 15)
-					return world.getBlockInstance(pos.x & 15, pos.y, (pos.z - 1) & 15);
-				return world.getBlockInstance(pos.x, pos.y, pos.z + 1);
+					return stellarTorus.getBlockInstance(pos.x & 15, pos.y, (pos.z - 1) & 15);
+				return stellarTorus.getBlockInstance(pos.x, pos.y, pos.z + 1);
 			case 1:
 				if((pos.x & 15) != 0)
-					return world.getBlockInstance((pos.x + 1) & 15, pos.y, pos.z & 15);
-				return world.getBlockInstance(pos.x + 1, pos.y, pos.z);
+					return stellarTorus.getBlockInstance((pos.x + 1) & 15, pos.y, pos.z & 15);
+				return stellarTorus.getBlockInstance(pos.x + 1, pos.y, pos.z);
 			case 0:
 				if((pos.x & 15) != 0)
 					return ch.getBlockInstanceAt((pos.x - 1) & 15, pos.y, pos.z & 15);
-				return world.getBlockInstance(pos.x - 1, pos.y, pos.z);
+				return stellarTorus.getBlockInstance(pos.x - 1, pos.y, pos.z);
 		}
 		return null;
 	}

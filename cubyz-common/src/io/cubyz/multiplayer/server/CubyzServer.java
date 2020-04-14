@@ -33,7 +33,7 @@ public class CubyzServer {
 	
 	public void stop() throws Exception {
 		ServerHandler.th.interrupt();
-		ServerHandler.world.cleanup();
+		ServerHandler.stellarTorus.cleanup();
 		
 		ch.close();
 		worker.shutdownGracefully();

@@ -182,11 +182,11 @@ public class Cubyz implements IGameLogic {
 			if (world.getLocalPlayer().getPosition().x == 0 && world.getLocalPlayer().getPosition().z == 0) {
 				CubyzLogger.i.info("Finding position..");
 				while (true) {
-					dx = rnd.nextInt(world.getWorldAnd()+1);
-					dz = rnd.nextInt(world.getWorldAnd()+1);
+					dx = rnd.nextInt(world.getCurrentTorus().getAnd()+1);
+					dz = rnd.nextInt(world.getCurrentTorus().getAnd()+1);
 					CubyzLogger.i.info("Trying " + dx + " ? " + dz);
-					world.synchronousSeek(dx, dz);
-					highestY = world.getHighestBlock(dx, dz);
+					world.getCurrentTorus().synchronousSeek(dx, dz);
+					highestY = world.getCurrentTorus().getHighestBlock(dx, dz);
 					if (highestY > TerrainGenerator.SEA_LEVEL) { // TODO: always true if generator doesn't use standard TerrainGenerator.
 						break;
 					}
@@ -195,7 +195,7 @@ public class Cubyz implements IGameLogic {
 				CubyzLogger.i.info("OK!");
 			}
 		}
-		world.synchronousSeek(0, 0);
+		world.getCurrentTorus().synchronousSeek(0, 0);
 		DiscordIntegration.setStatus("Playing");
 		Cubyz.gameUI.addOverlay(new GameOverlay());
 		
@@ -552,8 +552,8 @@ public class Cubyz implements IGameLogic {
 				if (pigType == null) return;
 				Entity pig = pigType.newEntity();
 				pig.setPosition(pos);
-				pig.setStellarTorus(world.getHomeTorus());
-				world.getHomeTorus().addEntity(pig);
+				pig.setStellarTorus(world.getCurrentTorus());
+				world.getCurrentTorus().addEntity(pig);
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_P, false);
 			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_C)) {
@@ -630,7 +630,7 @@ public class Cubyz implements IGameLogic {
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_EQUAL, false);
 				System.gc();
 			}
-			msd.selectSpatial(world.getVisibleChunks(), world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate());
+			msd.selectSpatial(world.getCurrentTorus().getVisibleChunks(), world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate());
 		}
 		mouse.clearScroll();
 	}
@@ -668,7 +668,7 @@ public class Cubyz implements IGameLogic {
 		ctx.setHud(null);
 		//renderer.orthogonal = true;
 		window.setResized(true); // update projection matrix
-		renderer.render(window, ctx, new Vector3f(1, 1, 1), light, new Chunk[] {ck}, world.getBlocks(), EMPTY_ENTITY_LIST, EMPTY_SPATIAL_LIST, world.getLocalPlayer(), world.getWorldAnd());
+		renderer.render(window, ctx, new Vector3f(1, 1, 1), light, new Chunk[] {ck}, world.getBlocks(), EMPTY_ENTITY_LIST, EMPTY_SPATIAL_LIST, world.getLocalPlayer(), world.getCurrentTorus().getAnd());
 		//renderer.orthogonal = false;
 		window.setResized(true); // update projection matrix for next render
 		ctx.setHud(gameUI);
@@ -797,21 +797,21 @@ public class Cubyz implements IGameLogic {
 			renderDeque.pop().run();
 		}
 		if (world != null) {
-			if (worldSeason != world.getSeason()) {
-				worldSeason = world.getSeason();
+			if (worldSeason != world.getCurrentTorus().getSeason()) {
+				worldSeason = world.getCurrentTorus().getSeason();
 				seasonUpdateDynamodels();
 				CubyzLogger.i.info("Updated season to ID " + worldSeason);
 			}
-			ambient.x = ambient.y = ambient.z = world.getGlobalLighting();
+			ambient.x = ambient.y = ambient.z = world.getCurrentTorus().getGlobalLighting();
 			if(ambient.x < 0.1f) ambient.x = 0.1f;
 			if(ambient.y < 0.1f) ambient.y = 0.1f;
 			if(ambient.z < 0.1f) ambient.z = 0.1f;
-			light.setIntensity(world.getGlobalLighting());
-			clearColor = world.getClearColor();
+			light.setIntensity(world.getCurrentTorus().getGlobalLighting());
+			clearColor = world.getCurrentTorus().getClearColor();
 			ctx.getFog().setColor(clearColor);
 			ctx.getFog().setDensity(1 / (world.getRenderDistance()*10f));
 			Player player = world.getLocalPlayer();
-			Block bi = world.getBlock(player.getPosition().x+Math.round(player.getPosition().relX), (int)(player.getPosition().y)+3, player.getPosition().z+Math.round(player.getPosition().relZ));
+			Block bi = world.getCurrentTorus().getBlock(player.getPosition().x+Math.round(player.getPosition().relX), (int)(player.getPosition().y)+3, player.getPosition().z+Math.round(player.getPosition().relZ));
 			if(bi != null && !bi.isSolid()) {
 				Vector3f lightingAdjust = bi.getLightAdjust();
 				ambient.x *= lightingAdjust.x;
@@ -819,11 +819,11 @@ public class Cubyz implements IGameLogic {
 				ambient.z *= lightingAdjust.z;
 			}
 			light.setColor(clearColor);
-			float lightY = (((float)world.getGameTime() % LocalWorld.DAYCYCLE) / (float) (LocalWorld.DAYCYCLE/2)) - 1f; // TODO: work on it more
-			float lightX = (((float)world.getGameTime() % LocalWorld.DAYCYCLE) / (float) (LocalWorld.DAYCYCLE/2)) - 1f;
+			float lightY = (((float)world.getGameTime() % world.getCurrentTorus().DAYCYCLE) / (float) (world.getCurrentTorus().DAYCYCLE/2)) - 1f; // TODO: work on it more
+			float lightX = (((float)world.getGameTime() % world.getCurrentTorus().DAYCYCLE) / (float) (world.getCurrentTorus().DAYCYCLE/2)) - 1f;
 			light.getDirection().set(lightY, 0, lightX);
 			window.setClearColor(clearColor);
-			renderer.render(window, ctx, ambient, light, world.getVisibleChunks(), world.getBlocks(), world.getEntities(), worldSpatialList, world.getLocalPlayer(), world.getWorldAnd());
+			renderer.render(window, ctx, ambient, light, world.getCurrentTorus().getVisibleChunks(), world.getBlocks(), world.getCurrentTorus().getEntities(), worldSpatialList, world.getLocalPlayer(), world.getCurrentTorus().getAnd());
 		} else {
 			clearColor.y = clearColor.z = 0.7f;
 			clearColor.x = 0.1f;
@@ -854,7 +854,7 @@ public class Cubyz implements IGameLogic {
 	public void update(float interval) {
 		if (!gameUI.doesGUIPauseGame() && world != null) {
 			Player lp = world.getLocalPlayer();
-			lp.move(playerInc.mul(0.11F), ctx.getCamera().getRotation(), world.getWorldAnd());
+			lp.move(playerInc.mul(0.11F), ctx.getCamera().getRotation(), world.getCurrentTorus().getAnd());
 			if (breakCooldown > 0) {
 				breakCooldown--;
 			}
@@ -868,7 +868,7 @@ public class Cubyz implements IGameLogic {
 						breakCooldown = 7;
 						BlockInstance bi = msd.getSelectedBlockInstance();
 						if (bi != null && bi.getBlock().getBlockClass() != BlockClass.UNBREAKABLE) {
-							world.removeBlock(bi.getX(), bi.getY(), bi.getZ());
+							world.getCurrentTorus().removeBlock(bi.getX(), bi.getY(), bi.getZ());
 							if(world.getLocalPlayer().getInventory().addItem(bi.getBlock().getBlockDrop(), 1) != 0) {
 								//DropItemOnTheGround(); //TODO: Add this function.
 							}
@@ -877,7 +877,7 @@ public class Cubyz implements IGameLogic {
 				}
 				else {
 					BlockInstance bi = msd.getSelectedBlockInstance();
-					world.getLocalPlayer().breaking(bi, inventorySelection, world);
+					world.getLocalPlayer().breaking(bi, inventorySelection, world.getCurrentTorus());
 				}
 			}
 			if (Keybindings.isPressed("place")) {
@@ -890,7 +890,7 @@ public class Cubyz implements IGameLogic {
 						Vector3i pos = msd.getEmptyPlace(world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate());
 						Block b = world.getLocalPlayer().getInventory().getBlock(inventorySelection);
 						if (b != null && pos != null) {
-							world.placeBlock(pos.x, pos.y, pos.z, b);
+							world.getCurrentTorus().placeBlock(pos.x, pos.y, pos.z, b);
 							world.getLocalPlayer().getInventory().getStack(inventorySelection).add(-1);
 						}
 					}
@@ -898,7 +898,7 @@ public class Cubyz implements IGameLogic {
 			}
 			playerInc.x = playerInc.y = playerInc.z = 0.0F; // Reset positions
 			world.update();
-			world.seek(lp.getPosition().x, lp.getPosition().z);
+			world.getCurrentTorus().seek(lp.getPosition().x, lp.getPosition().z);
 			float lightAngleY = (float) Math.asin(light.getDirection().x);
 			float lightAngleX = (float) Math.acos(light.getDirection().z);
 			skySun.setPosition((float)-(Math.sin(lightAngleX)*500), (float)Math.sin(lightAngleY)*500, 0);

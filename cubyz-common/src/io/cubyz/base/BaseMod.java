@@ -50,7 +50,7 @@ public class BaseMod {
 		// As they are independent to other (the correct order for others is block -> item (for item blocks and other items) -> entity)
 		registerRecipes(CubyzRegistries.RECIPE_REGISTRY);
 		registerMaterials(CubyzRegistries.TOOL_MATERIAL_REGISTRY);
-		registerWorldGenerators(CubyzRegistries.WORLD_GENERATOR_REGISTRY);
+		registerWorldGenerators(CubyzRegistries.STELLAR_TORUS_GENERATOR_REGISTRY);
 		registerBiomes(CubyzRegistries.BIOME_REGISTRY);
 		
 		CubyzRegistries.COMMAND_REGISTRY.register(new GiveCommand());
@@ -76,7 +76,7 @@ public class BaseMod {
 		BlockInit.registerAll(reg);
 	}
 	
-	public void registerWorldGenerators(Registry<WorldGenerator> reg) {
+	public void registerWorldGenerators(Registry<StellarTorusGenerator> reg) {
 		reg.registerAll(new LifelandGenerator(), new FlatlandGenerator());
 	}
 	

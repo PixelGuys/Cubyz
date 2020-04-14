@@ -4,6 +4,7 @@ import io.cubyz.Constants;
 import io.cubyz.client.Cubyz;
 import io.cubyz.entity.Player;
 import io.cubyz.entity.PlayerEntity.PlayerImpl;
+import io.cubyz.world.LocalStellarTorus;
 import io.cubyz.world.LocalWorld;
 import io.cubyz.world.World;
 import io.jungle.Window;
@@ -41,11 +42,11 @@ public class DebugOverlay extends MenuGUI {
 				float z = p.getPosition().z + p.getPosition().relZ;
 				
 				NGraphics.drawText(0, 48, "XYZ: " + x + ", " + y + ", " + z);
-				NGraphics.drawText(0, 60, "Loaded Chunks: " + world.getVisibleChunks().length + "/" + world.getChunks().size());
+				NGraphics.drawText(0, 60, "Loaded Chunks: " + world.getCurrentTorus().getVisibleChunks().length + "/" + world.getCurrentTorus().getChunks().size());
 				NGraphics.drawText(0, 72, "Render Distance: " + world.getRenderDistance());
 				NGraphics.drawText(0, 84, "Game Time: " + world.getGameTime());
 				if (world instanceof LocalWorld) {
-					NGraphics.drawText(0, 96, "Chunk Queue Size: " + ((LocalWorld) world).getChunkQueueSize());
+					NGraphics.drawText(0, 96, "Chunk Queue Size: " + ((LocalStellarTorus) world.getCurrentTorus()).getChunkQueueSize());
 				}
 				
 				if (p instanceof PlayerImpl) { // player on local world

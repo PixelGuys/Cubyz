@@ -47,7 +47,7 @@ public class LocalStellarTorus extends StellarTorus {
 	private int worldAnd = 65535; // worldSize-1. Used for bitwise and to better work with coordinates.
 	private ArrayList<Entity> entities = new ArrayList<>();
 	
-	private Block[] planetBlocks;
+	private Block[] torusBlocks;
 	
 	// Stores a reference to the lists of WorldIO.
 	public ArrayList<byte[]> blockData;	
@@ -69,6 +69,8 @@ public class LocalStellarTorus extends StellarTorus {
 	long milliTime;
 	float ambientLight = 0f;
 	Vector4f clearColor = new Vector4f(0, 0, 0, 1.0f);
+	
+	long localSeed; // Each torus has a different seed for world generation. All those seeds are generated using the main world seed.
 	
 	private void queue(Chunk ch) {
 		if (!isQueued(ch)) {
@@ -115,11 +117,12 @@ public class LocalStellarTorus extends StellarTorus {
 		this.name = name;
 	}
 	
-	public LocalStellarTorus(World world) {
-		this(world, "P.K. Kusuo Saiki");
+	public LocalStellarTorus(World world, long seed) {
+		this(world, "P.K. Kusuo Saiki", seed);
 	}
 	
-	public LocalStellarTorus(World world, String name) {
+	public LocalStellarTorus(World world, String name, long seed) {
+		localSeed = seed;
 		this.world = world;
 		MaterialInit.resetCustom();
 		ItemInit.resetCustom();
@@ -141,7 +144,7 @@ public class LocalStellarTorus extends StellarTorus {
 		}
 		wio = new WorldIO(this, new File("saves/" + name));
 		if (wio.hasWorldData()) {
-			wio.loadWorldSeed(); // Load the rest in generate(), so custom items can be taken care of correctly.
+			wio.loadSeed(); // Load the rest in generate(), so custom items can be taken care of correctly.
 			generated = true;
 		} else {
 			wio.saveWorldData();
@@ -166,7 +169,7 @@ public class LocalStellarTorus extends StellarTorus {
 
 	@Override
 	public Block[] getPlanetBlocks() {
-		return planetBlocks;
+		return torusBlocks;
 	}
 	
 	@Override
@@ -286,7 +289,7 @@ public class LocalStellarTorus extends StellarTorus {
 				}
 				maps.remove(index);
 			}
-			MetaChunk ch = new MetaChunk(wx, wy, world.getSeed(), this);
+			MetaChunk ch = new MetaChunk(wx, wy, localSeed, this);
 			maps.add(ch);
 			return ch;
 		}
@@ -589,16 +592,16 @@ public class LocalStellarTorus extends StellarTorus {
 	// Returns the blocks, so their meshes can be created and stored.
 	public Block[] generate() {
 		int randomAmount = 8; // TODO
-		planetBlocks = new Block[randomAmount];
-		Random rnd = new Random(world.getSeed());
+		torusBlocks = new Block[randomAmount];
+		Random rand = new Random(localSeed);
 		for(int i = 0; i < randomAmount; i++) {
-			planetBlocks[i] = CustomOre.random(i, rand); // TODO
-			customOres.add((CustomOre) planetBlocks[i]);
-			ores.add((Ore)planetBlocks[i]); // TODO
-			planetBlocks[i].ID = i;
+			torusBlocks[i] = CustomOre.random(i, rand); // TODO
+			customOres.add((CustomOre) torusBlocks[i]);
+			ores.add((Ore)torusBlocks[i]); // TODO
+			torusBlocks[i].ID = i;
 		}
 		
-		// TODO: manager *per-planet* custom ores
+		// TODO: manager *per-torus* custom ores
 		for (IRegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
 			try {
 				ores.add((Ore)b);
@@ -610,7 +613,7 @@ public class LocalStellarTorus extends StellarTorus {
 			wio.loadWorldData();
 		}
 		generated = true;
-		return planetBlocks;
+		return torusBlocks;
 	}
 
 	@Override
@@ -736,8 +739,13 @@ public class LocalStellarTorus extends StellarTorus {
 	}
 	
 	@Override
-	public int getSize() {
+	public int getAnd() {
 		return worldAnd;
+	}
+
+	@Override
+	public long getLocalSeed() {
+		return localSeed;
 	}
 	
 }

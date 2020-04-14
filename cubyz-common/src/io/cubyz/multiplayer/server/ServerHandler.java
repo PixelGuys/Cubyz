@@ -7,7 +7,7 @@ import io.cubyz.ClientOnly;
 import io.cubyz.Constants;
 import io.cubyz.blocks.Block;
 import io.cubyz.multiplayer.Packet;
-import io.cubyz.world.LocalPlanet;
+import io.cubyz.world.LocalStellarTorus;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
@@ -24,7 +24,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 	boolean onlineMode;
 	CubyzServer server;
 	
-	public static LocalPlanet world;
+	public static LocalStellarTorus stellarTorus;
 	static Thread th;
 	
 	String motd;
@@ -54,8 +54,8 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 		playerTimeout = settings.playerTimeout;
 		onlineMode = settings.onlineMode;
 		isInternal = settings.internal;
-		world = new LocalPlanet();
-		Block[] blocks = world.generate();
+		stellarTorus = new LocalStellarTorus();
+		Block[] blocks = stellarTorus.generate();
 		// Generate the Block meshes:
 		for(Block b : blocks) {
 			ClientOnly.createBlockMesh.accept(b);
@@ -94,12 +94,12 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 	public ByteBuf sendChunk(ChannelHandlerContext ctx, int x, int z) {
 		ByteBuf out = ctx.alloc().buffer();
 		//world.seek(x*16, z*16);
-		world.seek(0, 0);
-		byte[] data = world.getChunkData(x, z);
+		stellarTorus.seek(0, 0);
+		byte[] data = stellarTorus.getChunkData(x, z);
 		out.writeByte(Packet.PACKET_CHUNK);
 		out.writeInt(x);
 		out.writeInt(z);
-		out.writeInt(world.getSeed());
+		out.writeInt(stellarTorus.getLocalSeed());
 		out.writeInt(data.length);
 		out.writeBytes(data);
 		return out;

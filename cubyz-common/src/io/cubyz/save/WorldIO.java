@@ -23,7 +23,7 @@ import io.cubyz.world.World;
 public class WorldIO {
 
 	private File dir;
-	private LocalPlanet world;
+	private LocalStellarTorus world;
 	private ArrayList<byte[]> blockData = new ArrayList<>();
 	private ArrayList<int[]> chunkData = new ArrayList<>();
 
@@ -32,10 +32,10 @@ public class WorldIO {
 		if (!dir.exists()) {
 			dir.mkdirs();
 		}
-		this.world = (LocalPlanet) world;
+		this.world = (LocalStellarTorus) world;
 
 		// RemoteWorld doesn't have to be saved and only blockData is used for remote world (which can be easily overwritten without WorldIO)
-		LocalPlanet w = (LocalPlanet) world;
+		LocalStellarTorus w = (LocalStellarTorus) world;
 		w.blockData = blockData;
 		w.chunkData = chunkData;
 	}
@@ -76,7 +76,7 @@ public class WorldIO {
 			Entity[] entities = new Entity[ndt.getInteger("entityCount")];
 			for (int i = 0; i < entities.length; i++) {
 				entities[i] = EntityIO.loadEntity(in);
-				entities[i].setWorld(world);
+				entities[i].setStellarTorus(world);
 			}
 			world.setEntities(entities);
 			in.close();

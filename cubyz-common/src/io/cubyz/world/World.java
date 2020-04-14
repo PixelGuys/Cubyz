@@ -1,20 +1,9 @@
 package io.cubyz.world;
 
-import java.util.ArrayList;
 import java.util.List;
 
-import org.joml.Vector3i;
-import org.joml.Vector4f;
-
 import io.cubyz.blocks.Block;
-import io.cubyz.blocks.BlockEntity;
-import io.cubyz.blocks.BlockInstance;
-import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
-import io.cubyz.handler.BlockVisibilityChangeHandler;
-import io.cubyz.handler.Handler;
-import io.cubyz.handler.PlaceBlockHandler;
-import io.cubyz.handler.RemoveBlockHandler;
 
 /**
  * Base class for Cubyz worlds.
@@ -57,7 +46,7 @@ public abstract class World {
 	public abstract int getRenderDistance();
 	
 	public abstract List<StellarTorus> getToruses();
-	public abstract StellarTorus getHomeTorus();
+	public abstract StellarTorus getCurrentTorus();
 	
 	public void update() {}
 

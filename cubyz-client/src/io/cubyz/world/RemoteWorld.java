@@ -33,7 +33,7 @@ public class RemoteWorld extends World {
 	
 	public RemoteWorld() {
 		localPlayer = (Player) CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player").newEntity();
-		localPlayer.setWorld(this);
+		localPlayer.setStellarTorus(this.getCurrentTorus());
 		localPlayer.getPosition().add(10, 200, 10);
 		entities = new ArrayList<Entity>();
 		entities.add(localPlayer);
@@ -59,116 +59,17 @@ public class RemoteWorld extends World {
 	public Player getLocalPlayer() {
 		return localPlayer;
 	}
-
-	@Override
-	public Entity[] getEntities() {
-		return entities.toArray(new Entity[entities.size()]);
-	}
 	
 	@Override
 	public void update() {
-		Entity[] ent = getEntities();
+		Entity[] ent = getCurrentTorus().getEntities();
 		for (Entity en : ent) {
 			en.update();
 		}
 	}
 
-	@Override
-	public Chunk getChunk(int x, int z) {
-		int cx = x;
-		if(cx < 0)
-			cx -= 15;
-		cx = cx / 16;
-		int cz = z;
-		if(cz < 0)
-			cz -= 15;
-		cz = cz / 16;
-		return _getChunk(cx, cz);
-	}
-
-	@Override
-	public Chunk _getChunk(int x, int z) {
-		for (int i = 0; i < chunks.size(); i++) {
-			if (chunks.get(i).getX() == x && chunks.get(i).getZ() == z) {
-				return chunks.get(i);
-			}
-		}
-		Chunk ck = new Chunk(x, z, this, new ArrayList<BlockChange>());
-		chunks.add(ck);
-		return ck;
-	}
-	
-	@Override
-	public Block getBlock(int x, int y, int z) {
-		BlockInstance bi = getBlockInstance(x, y, z);
-		if (bi == null)
-			return null;
-		return bi.getBlock();
-	}
-
-	@Override
-	public BlockInstance getBlockInstance(int x, int y, int z) {
-		Chunk ch = getChunk(x, z);
-		if (y > World.WORLD_HEIGHT || y < 0)
-			return null;
-		if (ch != null && ch.isGenerated() && ch.isLoaded()) {
-			int cx = x & 15;
-			int cz = z & 15;
-			BlockInstance bi = ch.getBlockInstanceAt(cx, y, cz);
-			return bi;
-		} else {
-			return null;
-		}
-	}
-
-	@Override
-	public void removeBlock(int x, int y, int z) {
-		
-	}
-
-	@Override
-	public void queueChunk(Chunk ch) {
-		// Only LOAD from server. It cannot GENERATE a remote chunk.
-	}
-
-	@Override
-	public void seek(int x, int z) {
-		
-	}
-
-	@Override
-	public void synchronousSeek(int x, int z) {
-		while (getChunk(x/16, z/16) == null) {
-			try {
-				Thread.sleep(10);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
-	}
-
-	@Override
-	public List<Chunk> getChunks() {
-		return chunks;
-	}
-
 	public Block[] getBlocks() {
 		return blocks;
-	}
-
-	@Override
-	public void placeBlock(int x, int y, int z, Block b) {
-		
-	}
-
-	@Override
-	public Chunk[] getVisibleChunks() {
-		return chunks.toArray(new Chunk[0]);
-	}
-
-	@Override
-	public float getGlobalLighting() {
-		return 0.7f;
 	}
 
 	@Override
@@ -191,11 +92,6 @@ public class RemoteWorld extends World {
 	}
 
 	@Override
-	public Vector4f getClearColor() {
-		return new Vector4f(0.5f, 0.5f, 1f, 1f);
-	}
-
-	@Override
 	public void cleanup() {
 		
 	}
@@ -214,27 +110,19 @@ public class RemoteWorld extends World {
 		chunks.add(0, ck);
 		ck.generateFrom(gen);
 		ck.load();
-		if (getHighestBlock(localPlayer.getPosition().x, localPlayer.getPosition().z) != -1)
-			localPlayer.getPosition().y = getHighestBlock(localPlayer.getPosition().x, localPlayer.getPosition().z)+1;
+		if (getCurrentTorus().getHighestBlock(localPlayer.getPosition().x, localPlayer.getPosition().z) != -1)
+			localPlayer.getPosition().y = getCurrentTorus().getHighestBlock(localPlayer.getPosition().x, localPlayer.getPosition().z)+1;
 		ck.applyBlockChanges();
 	}
 
 	@Override
-	public BlockEntity getBlockEntity(int arg0, int arg1, int arg2) {
+	public StellarTorus getCurrentTorus() {
 		// TODO Auto-generated method stub
-		return null;
 	}
 
 	@Override
-	public void addEntity(Entity arg0) {
+	public List<StellarTorus> getToruses() {
 		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public Chunk _getNoGenerateChunk(int arg0, int arg1) {
-		// TODO Auto-generated method stub
-		return null;
 	}
 
 }
