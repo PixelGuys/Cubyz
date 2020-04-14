@@ -35,6 +35,7 @@ public class Window {
 	private boolean fullscreen = false;
 	private ViewportManager manager = new FullViewportManager();
 	private FrameBuffer buffer;
+	private boolean focused = false;
 	
 	private Vector4f clearColor;
 	
@@ -251,6 +252,10 @@ public class Window {
 		    Window.this.setResized(true);
 		});
 		
+		glfwSetWindowFocusCallback(handle, (window, focused) -> {
+			Window.this.focused = focused;
+		});
+		
 		glfwMakeContextCurrent(handle);
 		GL.createCapabilities();
 		if (clearColor == null) {
@@ -283,8 +288,7 @@ public class Window {
 	}
 	
 	public boolean isFocused() {
-		System.out.println(glfwGetWindowAttrib(handle, GLFW_FOCUSED));
-		return glfwGetWindowAttrib(handle, GLFW_FOCUSED) == GLFW_TRUE;
+		return focused;
 	}
 	
 	public FrameBuffer getRenderTarget() {
