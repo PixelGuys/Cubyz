@@ -65,6 +65,7 @@ public class SaveSelectorGUI extends MenuGUI {
 				// Remove the buttons:
 				saveButtons[index] = null;
 				deleteButtons[index] = null;
+				init(nvg); // re-init to re-order
 			});
 			y += 60;
 			deleteButtons[i] = b;
