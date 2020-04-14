@@ -5,7 +5,7 @@ import java.util.Random;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
-import io.cubyz.world.LocalWorld;
+import io.cubyz.world.LocalStellarTorus;
 import io.cubyz.world.MetaChunk;
 import io.cubyz.world.World;
 
@@ -23,7 +23,7 @@ public class RiverGenerator implements BigGenerator {
 	private static Block water = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:water");
 
 	@Override
-	public void generate(long seed, int wx, int wy, Block[][][] chunk, boolean[][] vegetationIgnoreMap, LocalWorld world) {
+	public void generate(long seed, int wx, int wy, Block[][][] chunk, boolean[][] vegetationIgnoreMap, LocalStellarTorus world) {
 		// Gets the four surrounding MetaChunks and switch to a relative coordinate system.
 		int lx, ly;
 		MetaChunk nn, np, pn, pp;

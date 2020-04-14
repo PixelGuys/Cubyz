@@ -7,7 +7,7 @@ import io.cubyz.ClientOnly;
 import io.cubyz.Constants;
 import io.cubyz.blocks.Block;
 import io.cubyz.multiplayer.Packet;
-import io.cubyz.world.LocalWorld;
+import io.cubyz.world.LocalPlanet;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
@@ -24,7 +24,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 	boolean onlineMode;
 	CubyzServer server;
 	
-	public static LocalWorld world;
+	public static LocalPlanet world;
 	static Thread th;
 	
 	String motd;
@@ -54,7 +54,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 		playerTimeout = settings.playerTimeout;
 		onlineMode = settings.onlineMode;
 		isInternal = settings.internal;
-		world = new LocalWorld();
+		world = new LocalPlanet();
 		Block[] blocks = world.generate();
 		// Generate the Block meshes:
 		for(Block b : blocks) {

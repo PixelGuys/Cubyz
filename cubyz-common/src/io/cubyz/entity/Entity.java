@@ -7,11 +7,12 @@ import io.cubyz.blocks.Block;
 import io.cubyz.math.FloatingInteger;
 import io.cubyz.math.Vector3fi;
 import io.cubyz.ndt.NDTContainer;
+import io.cubyz.world.StellarTorus;
 import io.cubyz.world.World;
 
 public class Entity {
 
-	protected World world;
+	protected StellarTorus stellarTorus;
 
 	protected Vector3fi position = new Vector3fi();
 	protected Vector3f rotation = new Vector3f();
@@ -35,12 +36,12 @@ public class Entity {
 		return type;
 	}
 	
-	public World getWorld() {
-		return world;
+	public StellarTorus getStellarTorus() {
+		return stellarTorus;
 	}
 
-	public void setWorld(World world) {
-		this.world = world;
+	public void setStellarTorus(StellarTorus world) {
+		this.stellarTorus = world;
 	}
 	
 	public Vector3fi getPosition() {
@@ -260,7 +261,7 @@ public class Entity {
 	}
 	
 	public boolean checkBlock(int x, int y, int z) {
-		Block bi = world.getBlock(x, y, z);
+		Block bi = stellarTorus.getBlock(x, y, z);
 		if(bi != null && bi.isSolid()) {
 			return true;
 		}

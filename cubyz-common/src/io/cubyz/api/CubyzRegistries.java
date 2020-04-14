@@ -7,7 +7,7 @@ import io.cubyz.items.Item;
 import io.cubyz.items.Recipe;
 import io.cubyz.items.tools.Material;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
-import io.cubyz.world.generator.WorldGenerator;
+import io.cubyz.world.generator.StellarTorusGenerator;
 
 public class CubyzRegistries {
 
@@ -20,6 +20,6 @@ public class CubyzRegistries {
 	public static final Registry<Biome>       BIOME_REGISTRY         = new Registry<Biome>();
 	
 	// world generation
-	public static final Registry<WorldGenerator> WORLD_GENERATOR_REGISTRY = new Registry<WorldGenerator>();
+	public static final Registry<StellarTorusGenerator> STELLAR_TORUS_GENERATOR_REGISTRY = new Registry<StellarTorusGenerator>();
 	
 }

@@ -10,6 +10,7 @@ import io.cubyz.blocks.BlockInstance;
 import io.cubyz.items.Inventory;
 import io.cubyz.items.tools.Tool;
 import io.cubyz.ndt.NDTContainer;
+import io.cubyz.world.StellarTorus;
 import io.cubyz.world.World;
 
 public class PlayerEntity extends EntityType {
@@ -84,9 +85,7 @@ public class PlayerEntity extends EntityType {
 		}
 
 		@Override
-		public void feedback(String feedback) {
-			
-		}
+		public void feedback(String feedback) {}
 		
 		@Override
 		public void loadFrom(NDTContainer ndt) {
@@ -118,7 +117,7 @@ public class PlayerEntity extends EntityType {
 		}
 
 		@Override
-		public void breaking(BlockInstance bi, int slot, World w) {
+		public void breaking(BlockInstance bi, int slot, StellarTorus w) {
 			if(bi != toBreak || breakingSlot != slot) {
 				toBreak = bi;
 				breakingSlot = slot;
@@ -135,10 +134,15 @@ public class PlayerEntity extends EntityType {
 					}
 				}
 				w.removeBlock(bi.getX(), bi.getY(), bi.getZ());
-				if(w.getLocalPlayer().getInventory().addItem(bi.getBlock().getBlockDrop(), 1) != 0) {
+				if(w.getWorld().getLocalPlayer().getInventory().addItem(bi.getBlock().getBlockDrop(), 1) != 0) { // XXX: isn't w.getWorld().getLocalPlayer() supposed to be this in the present case?
 					//DropItemOnTheGround(); //TODO: Add this function.
 				}
 			}
+		}
+
+		@Override
+		public World getWorld() {
+			return stellarTorus.getWorld();
 		}
 	}
 

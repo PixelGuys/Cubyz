@@ -16,13 +16,14 @@ import io.cubyz.entity.Entity;
 import io.cubyz.math.Bits;
 import io.cubyz.ndt.NDTContainer;
 import io.cubyz.world.Chunk;
-import io.cubyz.world.LocalWorld;
+import io.cubyz.world.LocalPlanet;
 import io.cubyz.world.World;
 
+// TODO: TorusIO
 public class WorldIO {
 
 	private File dir;
-	private LocalWorld world;
+	private LocalPlanet world;
 	private ArrayList<byte[]> blockData = new ArrayList<>();
 	private ArrayList<int[]> chunkData = new ArrayList<>();
 
@@ -31,10 +32,10 @@ public class WorldIO {
 		if (!dir.exists()) {
 			dir.mkdirs();
 		}
-		this.world = (LocalWorld) world;
+		this.world = (LocalPlanet) world;
 
 		// RemoteWorld doesn't have to be saved and only blockData is used for remote world (which can be easily overwritten without WorldIO)
-		LocalWorld w = (LocalWorld) world;
+		LocalPlanet w = (LocalPlanet) world;
 		w.blockData = blockData;
 		w.chunkData = chunkData;
 	}

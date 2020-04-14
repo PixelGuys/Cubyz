@@ -56,6 +56,7 @@ import io.jungle.audio.SoundSource;
 import io.jungle.game.*;
 import io.jungle.util.*;
 
+// TODO: fix *EVERYTHING*
 public class Cubyz implements IGameLogic {
 
 	public static Context ctx;
@@ -551,8 +552,8 @@ public class Cubyz implements IGameLogic {
 				if (pigType == null) return;
 				Entity pig = pigType.newEntity();
 				pig.setPosition(pos);
-				pig.setWorld(world);
-				world.addEntity(pig);
+				pig.setStellarTorus(world.getHomeTorus());
+				world.getHomeTorus().addEntity(pig);
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_P, false);
 			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_C)) {

@@ -7,10 +7,10 @@ import io.cubyz.world.cubyzgenerators.biomes.Biome;
 public class MetaChunk {
 	public float[][] heightMap, heatMap;
 	public Biome[][] biomeMap;
-	LocalWorld world;
+	LocalPlanet world;
 	public int x, y;
 	
-	public MetaChunk(int x, int y, long seed, LocalWorld world) {
+	public MetaChunk(int x, int y, long seed, LocalPlanet world) {
 		this.x = x;
 		this.y = y;
 		this.world = world;
