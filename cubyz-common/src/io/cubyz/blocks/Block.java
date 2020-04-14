@@ -33,6 +33,7 @@ public class Block implements IRegistryElement {
 	protected boolean degradable = false; // Meaning undegradable parts of trees or other structures can grow through this block.
 	protected BlockClass bc;
 	private int light = 0;
+	int absorption = 0; // How much light this block absorbs if it is transparent.
 	
 	public Block() {}
 	
@@ -146,4 +147,7 @@ public class Block implements IRegistryElement {
 		return false; // returns true if the block was did something while clicked
 	}
 	
+	public int getAbsorption() {
+		return absorption;
+	}
 }

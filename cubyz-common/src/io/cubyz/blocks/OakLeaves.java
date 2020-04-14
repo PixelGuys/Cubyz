@@ -8,6 +8,7 @@ public class OakLeaves extends Block {
 		bc = BlockClass.LEAF;
 		this.transparent = true;
 		this.degradable = true;
+		absorption = 0x0f100010; // Absorbs red and blue light.
 	}
 	
 }

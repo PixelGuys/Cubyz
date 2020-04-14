@@ -151,68 +151,132 @@ public class Chunk {
 		int index = (x << 4) | (y << 8) | z; // Works close to the datastructure. Allows for some optimizations.
 		
 		int maxLight = 8; // Make sure the light of a block never gets below 0.
+		int neighbors = 0; // Count the neighbors for later.
 		if(x != 0) {
-			if(inst[index-16] == null) {
+			BlockInstance bi = inst[index-16];
+			if(bi == null || bi.getBlock().isTransparent()) {
 				maxLight = Math.max(maxLight, (light[index-16] >>> shift) & 255);
+			} else if(bi.getBlock().getLight() != 0) { // Take care of emmissions:
+				maxLight = Math.max(maxLight, (bi.getBlock().getLight() >>> shift) & 255);
+			} else {
+				neighbors++;
 			}
 		} else {
 			Chunk chunk = world._getNoGenerateChunk(ox-1, oy);
 			if(chunk != null && chunk.isLoaded()) {
-				if(chunk.getInst(15, y, z) == null)
+				BlockInstance bi = chunk.getInst(15, y, z);
+				if(bi == null || bi.getBlock().isTransparent()) {
 					maxLight = Math.max(maxLight, (chunk.light[index | 0xf0] >>> shift) & 255);
+				} else if(bi.getBlock().getLight() != 0) { // Take care of emmissions:
+					maxLight = Math.max(maxLight, (bi.getBlock().getLight() >>> shift) & 255);
+				} else {
+						neighbors++;
+				}
 			}
 		}
 		if(x != 15) {
-			if(inst[index+16] == null) {
+			BlockInstance bi = inst[index+16];
+			if(bi == null || bi.getBlock().isTransparent()) {
 				maxLight = Math.max(maxLight, (light[index+16] >>> shift) & 255);
+			} else if(bi.getBlock().getLight() != 0) { // Take care of emmissions:
+				maxLight = Math.max(maxLight, (bi.getBlock().getLight() >>> shift) & 255);
+			} else {
+				neighbors++;
 			}
 		} else {
 			Chunk chunk = world._getNoGenerateChunk(ox+1, oy);
 			if(chunk != null && chunk.isLoaded()) {
-				if(chunk.getInst(0, y, z) == null)
+				BlockInstance bi = chunk.getInst(0, y, z);
+				if(bi == null || bi.getBlock().isTransparent()) {
 					maxLight = Math.max(maxLight, (chunk.light[index & ~0xf0] >>> shift) & 255);
+				} else if(bi.getBlock().getLight() != 0) { // Take care of emmissions:
+					maxLight = Math.max(maxLight, (bi.getBlock().getLight() >>> shift) & 255);
+				} else {
+					neighbors++;
+				}
 			}
 		}
 		if(z != 0) {
-			if(inst[index-1] == null) {
+			BlockInstance bi = inst[index-1];
+			if(bi == null || bi.getBlock().isTransparent()) {
 				maxLight = Math.max(maxLight, (light[index-1] >>> shift) & 255);
+			} else if(bi.getBlock().getLight() != 0) { // Take care of emmissions:
+				maxLight = Math.max(maxLight, (bi.getBlock().getLight() >>> shift) & 255);
+			} else {
+				neighbors++;
 			}
 		} else {
 			Chunk chunk = world._getNoGenerateChunk(ox, oy-1);
 			if(chunk != null && chunk.isLoaded()) {
-				if(chunk.getInst(x, y, 15) == null)
+				BlockInstance bi = chunk.getInst(x, y, 15);
+				if(bi == null || bi.getBlock().isTransparent()) {
 					maxLight = Math.max(maxLight, (chunk.light[index | 0xf] >>> shift) & 255);
+				} else if(bi.getBlock().getLight() != 0) { // Take care of emmissions:
+					maxLight = Math.max(maxLight, (bi.getBlock().getLight() >>> shift) & 255);
+				} else {
+					neighbors++;
+				}
 			}
 		}
 		if(z != 15) {
-			if(inst[index+1] == null) {
+			BlockInstance bi = inst[index+1];
+			if(bi == null || bi.getBlock().isTransparent()) {
 				maxLight = Math.max(maxLight, (light[index+1] >>> shift) & 255);
+			} else if(bi.getBlock().getLight() != 0) { // Take care of emmissions:
+				maxLight = Math.max(maxLight, (bi.getBlock().getLight() >>> shift) & 255);
+			} else {
+				neighbors++;
 			}
 		} else {
 			Chunk chunk = world._getNoGenerateChunk(ox, oy+1);
 			if(chunk != null && chunk.isLoaded()) {
-				if(chunk.getInst(x, y, 0) == null)
+				BlockInstance bi = chunk.getInst(x, y, 0);
+				if(bi == null || bi.getBlock().isTransparent()) {
 					maxLight = Math.max(maxLight, (chunk.light[index & ~0xf] >>> shift) & 255);
+				} else if(bi.getBlock().getLight() != 0) { // Take care of emmissions:
+					maxLight = Math.max(maxLight, (bi.getBlock().getLight() >>> shift) & 255);
+				} else {
+					neighbors++;
+				}
 			}
 		}
 		if(y != 0) {
-			maxLight = Math.max(maxLight, (light[index-256] >>> shift) & 255);
+			BlockInstance bi = inst[index-256];
+			if(bi == null || bi.getBlock().isTransparent()) {
+				maxLight = Math.max(maxLight, (light[index-256] >>> shift) & 255);
+			} else if(bi.getBlock().getLight() != 0) { // Take care of emmissions:
+				maxLight = Math.max(maxLight, (bi.getBlock().getLight() >>> shift) & 255);
+			} else {
+				neighbors++;
+			}
 		}
 		if(y != 255) {
-			int local = (light[index+256] >>> shift) & 255;
-			if(shift == 24) // Sunlight can freely go down. Even after being weakened by glass(TODO: Add glass) or other things.
-				local += 8;
-			maxLight = Math.max(maxLight, local);
+			BlockInstance bi = inst[index+256];
+			if(bi == null || bi.getBlock().isTransparent()) {
+				int local = (light[index+256] >>> shift) & 255;
+				if(shift == 24) // Sunlight can freely go down. Even after being weakened by glass(TODO: Add glass) or other things.
+					local += 8;
+				maxLight = Math.max(maxLight, local);
+			} else if(bi.getBlock().getLight() != 0) { // Take care of emmissions:
+				maxLight = Math.max(maxLight, (bi.getBlock().getLight() >>> shift) & 255);
+			} else {
+				neighbors++;
+			}
 		} else if(shift == 24) {
 			maxLight = 263; // The top block gets always maximum lighting.
 		}
 		// Update the light and return.
 		int curLight = (light[index] >>> shift) & 255;
 		maxLight -= 8;
+		maxLight -= neighbors; // Account for light getting absorbed by neighboring blocks.
 		BlockInstance bi = inst[index];
 		if(bi != null) {
 			maxLight = Math.max(maxLight, (bi.getBlock().getLight() >>> shift) & 255);
+			if(bi.getBlock().isTransparent()) {
+				maxLight -= (bi.getBlock().getAbsorption() >>> shift) & 255; // Most transparent blocks will absorb a siquinificant portion of light.
+			}
 		}
+		if(maxLight < 0) maxLight = 0;
 		if(curLight != maxLight) {
 			light[index] = (light[index] & mask) | (maxLight << shift);
 			if(bi != null) {
