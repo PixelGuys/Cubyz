@@ -810,4 +810,64 @@ public class Chunk {
 		data[1] = oy;
 		return data;
 	}
+	
+	public int getLight(int x, int y, int z) {
+		if(y < 0 || y >= World.WORLD_HEIGHT) return 0;
+		if(x < 0) {
+			Chunk chunk = world._getNoGenerateChunk(ox-1, oy);
+			if(chunk != null) return chunk.getLight(x+16, y, z);
+			return 0;
+		}
+		if(x > 15) {
+			Chunk chunk = world._getNoGenerateChunk(ox+1, oy);
+			if(chunk != null) return chunk.getLight(x-16, y, z);
+			return 0;
+		}
+		if(z < 0) {
+			Chunk chunk = world._getNoGenerateChunk(ox, oy-1);
+			if(chunk != null) return chunk.getLight(x, y, z+16);
+			return 0;
+		}
+		if(z > 15) {
+			Chunk chunk = world._getNoGenerateChunk(ox, oy+1);
+			if(chunk != null) return chunk.getLight(x, y, z-16);
+			return 0;
+		}
+		return light[(x << 4) | (y << 8) | z];
+	}
+	public int averaging(Vector3f sunLight, int ...col) {
+		int rAvg = 0, gAvg = 0, bAvg = 0;
+		for(int i = 0; i < 8; i++) {
+			int light = col[i];
+			int sun = (light >>> 24) & 255;
+			rAvg += Math.max((light >>> 16) & 255, (int)(sun*sunLight.x));
+			gAvg += Math.max((light >>> 8) & 255, (int)(sun*sunLight.y));
+			bAvg += Math.max((light >>> 0) & 255, (int)(sun*sunLight.z));
+		}
+		rAvg >>>= 3;
+		gAvg >>>= 3;
+		bAvg >>>= 3;
+		return (rAvg << 16) | (gAvg << 8) | bAvg;
+	}
+	
+	public int[] getCornerLight(BlockInstance bi, Vector3f sunLight) {
+		// Get the light level of all 26 surrounding blocks:
+		int[][][] light = new int[3][3][3];
+		for(int dx = -1; dx <= 1; dx++) {
+			for(int dy = -1; dy <= 1; dy++) {
+				for(int dz = -1; dz <= 1; dz++) {
+					light[dx+1][dy+1][dz+1] = getLight((bi.getX() & 15)+dx, bi.getY()+dy, (bi.getZ() & 15)+dz);
+				}
+			}
+		}
+		int[] res = new int[8];
+		for(int dx = 0; dx <= 1; dx++) {
+			for(int dy = 0; dy <= 1; dy++) {
+				for(int dz = 0; dz <= 1; dz++) {
+					res[(dx << 2) | (dy << 1) | dz] = averaging(sunLight, light[dx][dy][dz], light[dx][dy][dz+1], light[dx][dy+1][dz], light[dx][dy+1][dz+1], light[dx+1][dy][dz], light[dx+1][dy][dz+1], light[dx+1][dy+1][dz], light[dx+1][dy+1][dz+1]);
+				}
+			}
+		}
+		return res;
+	}
 }

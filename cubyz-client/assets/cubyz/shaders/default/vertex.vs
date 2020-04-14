@@ -4,9 +4,9 @@ layout (location=0)  in vec3 position;
 layout (location=1)  in vec2 texCoord;
 layout (location=2)  in vec3 vertexNormal;
 layout (location=3)  in mat4 modelViewInstancedMatrix;
-layout (location=7) in vec3 easyLight;
-layout (location=8)  in float selectedInstanced;
-layout (location=9)  in mat4 modelLightViewMatrix;
+layout (location=15)  in float selectedInstanced;
+layout (location=7)  in int easyLight[8];
+layout (location=10)  in mat4 modelLightViewMatrix;
 
 out vec2 outTexCoord;
 out vec3 mvVertexNormal;
@@ -38,7 +38,24 @@ void main()
 		modelViewMatrix = modelViewNonInstancedMatrix;
 	}
 	if (cheapLighting == 1) {
-		outEasyLight = easyLight;
+		outEasyLight = 0.003890625*(
+							(0.5-position.x)*(
+								(0.5-position.y)*(
+									(0.5-position.z)*vec3((easyLight[0] >> 16) & 255, (easyLight[0] >> 8) & 255, (easyLight[0] >> 0) & 255)
+									+(0.5+position.z)*vec3((easyLight[1] >> 16) & 255, (easyLight[1] >> 8) & 255, (easyLight[1] >> 0) & 255)
+								) + (0.5+position.y)*(
+									(0.5-position.z)*vec3((easyLight[2] >> 16) & 255, (easyLight[2] >> 8) & 255, (easyLight[2] >> 0) & 255)
+									+(0.5+position.z)*vec3((easyLight[3] >> 16) & 255, (easyLight[3] >> 8) & 255, (easyLight[3] >> 0) & 255)
+								)
+							) + (0.5+position.x)*(
+								(0.5-position.y)*(
+									(0.5-position.z)*vec3((easyLight[4] >> 16) & 255, (easyLight[4] >> 8) & 255, (easyLight[4] >> 0) & 255)
+									+(0.5+position.z)*vec3((easyLight[5] >> 16) & 255, (easyLight[5] >> 8) & 255, (easyLight[5] >> 0) & 255)
+								) + (0.5+position.y)*(
+									(0.5-position.z)*vec3((easyLight[6] >> 16) & 255, (easyLight[6] >> 8) & 255, (easyLight[6] >> 0) & 255)
+									+(0.5+position.z)*vec3((easyLight[7] >> 16) & 255, (easyLight[7] >> 8) & 255, (easyLight[7] >> 0) & 255)
+								)
+							));
 		easyLightEnabled = 1.0;
 	}
 	vec4 mvPos = modelViewMatrix * initPos;

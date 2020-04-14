@@ -30,9 +30,9 @@ public class InstancedMesh extends Mesh {
 	private static final int MATRIX_SIZE_FLOATS = 4 * 4;
 	private static final int MATRIX_SIZE_BYTES = MATRIX_SIZE_FLOATS * FLOAT_SIZE_BYTES;
 
-	private static final int INSTANCE_SIZE_BYTES = MATRIX_SIZE_BYTES*2 + FLOAT_SIZE_BYTES + VECTOR3F_SIZE_BYTES;
+	private static final int INSTANCE_SIZE_BYTES = MATRIX_SIZE_BYTES*2 + FLOAT_SIZE_BYTES + 8*FLOAT_SIZE_BYTES;
 
-	private static final int INSTANCE_SIZE_FLOATS = MATRIX_SIZE_FLOATS*2 + 1 + VECTOR3F_SIZE_FLOATS;
+	private static final int INSTANCE_SIZE_FLOATS = MATRIX_SIZE_FLOATS*2 + 1 + 8;
 
 	private int numInstances;
 
@@ -68,10 +68,12 @@ public class InstancedMesh extends Mesh {
 			strideStart += VECTOR4F_SIZE_BYTES;
 		}
 		// Light Color:
-		glVertexAttribPointer(start, 3, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
-		glVertexAttribDivisor(start, 1);
-		start++;
-		strideStart += 3*FLOAT_SIZE_BYTES;
+		for(int i = 0; i < 8; i++) {
+			glVertexAttribPointer(start, 1, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
+			glVertexAttribDivisor(start, 1);
+			start++;
+			strideStart += FLOAT_SIZE_BYTES;
+		}
 		// Selection:
 		glVertexAttribPointer(start, 1, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
 		glVertexAttribDivisor(start, 1);
@@ -124,10 +126,12 @@ public class InstancedMesh extends Mesh {
 			strideStart += VECTOR4F_SIZE_BYTES;
 		}
 		// Light Color:
-		glVertexAttribPointer(start, 3, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
-		glVertexAttribDivisor(start, 1);
-		start++;
-		strideStart += 3*FLOAT_SIZE_BYTES;
+		for(int i = 0; i < 8; i++) {
+			glVertexAttribPointer(start, 1, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
+			glVertexAttribDivisor(start, 1);
+			start++;
+			strideStart += FLOAT_SIZE_BYTES;
+		}
 		// Selection:
 		glVertexAttribPointer(start, 1, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
 		glVertexAttribDivisor(start, 1);
@@ -168,7 +172,7 @@ public class InstancedMesh extends Mesh {
 	protected void initRender() {
 		super.initRender();
 		int start = 3;
-		int numElements = 4 + 1;
+		int numElements = 4 + 8 + 1;
 		for (int i = 0; i < numElements; i++) {
 			glEnableVertexAttribArray(start + i);
 		}
@@ -178,7 +182,7 @@ public class InstancedMesh extends Mesh {
 	@Override
 	protected void endRender() {
 		int start = 3;
-		int numElements = 4 + 1;
+		int numElements = 4 + 8 + 1;
 		for (int i = 0; i < numElements; i++) {
 			glDisableVertexAttribArray(start + i);
 		}
@@ -239,17 +243,18 @@ public class InstancedMesh extends Mesh {
 			Spatial spatial = (Spatial)spatials[i+startIndex];
 			Matrix4f modelMatrix = transformation.getModelMatrix(spatial);
 			modelMatrix.get(INSTANCE_SIZE_FLOATS * i, instanceDataBuffer);
-			instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 19, spatial.isSelected() ? 1 : 0);
+			if (Chunk.easyLighting) {
+				for(int j = 0; j < 8; j++) {
+					instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 16 + j, Float.intBitsToFloat(spatial.light[j]));
+				}
+			}
+			instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 24, spatial.isSelected() ? 1 : 0);
 			
 			if (doShadow) {
-				modelMatrix.get(INSTANCE_SIZE_FLOATS * i + 20, instanceDataBuffer);
-			}
-			
-			if (Chunk.easyLighting) {
-				spatial.light.get(INSTANCE_SIZE_FLOATS * i + 16, instanceDataBuffer);
+				modelMatrix.get(INSTANCE_SIZE_FLOATS * i + 25, instanceDataBuffer);
 			}
 		}
-		
+
 		glBufferData(GL_ARRAY_BUFFER, instanceDataBuffer, GL_DYNAMIC_DRAW);
 	}
 	
