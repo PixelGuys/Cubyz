@@ -1,23 +1,26 @@
-gui.cubyz.mainmenu.singleplayer=Singuratate
-gui.cubyz.mainmenu.multiplayer=Cu alti jucatori
+# Translated: 
+
+gui.cubyz.mainmenu.singleplayer=Singurătate
+gui.cubyz.mainmenu.multiplayer=Cu alți jucători
 gui.cubyz.mainmenu.exit=Inchide Jocul
-gui.cubyz.mainmenu.options=Setari
+gui.cubyz.mainmenu.options=Setări
 gui.cubyz.options.done=Gata
 gui.cubyz.general.on=Activat
 gui.cubyz.general.off=Dezactivat
-gui.cubyz.options.language=Limba: {0}
-gui.cubyz.options.discord=Integratie Discord: {0}
-# To translate
-gui.cubyz.options.keybindings=Key Bindings..
-gui.cubyz.pause.exit=Exit to main menu
-gui.cubyz.pause.resume=Resume
-gui.cubyz.debug.reload=Reload
-gui.cubyz.saves.play=Play {0}
-gui.cubyz.saves.delete=Delete
-gui.cubyz.saves.create=Create a new game!
-block.cubyz.dirt.name=Dirt
-block.cubyz.cobblestone.name=Cobblestone
-block.cubyz.oak_log.name=Oak Log
-block.cubyz.oak_planks.name=Oak Planks
-item.cubyz.stick.name=Stick
-lang.name=Romanian
+gui.cubyz.options.language=Limbă: {0}
+gui.cubyz.options.discord=Integrație Discord: {0}
+gui.cubyz.options.keybindings=Controale de butoane
+gui.cubyz.pause.exit=Ieși la meniul principal
+gui.cubyz.pause.resume=Reia
+gui.cubyz.debug.reload=Reîncarcă
+gui.cubyz.saves.play=Joacă {0}
+gui.cubyz.saves.delete=Șterge
+gui.cubyz.saves.create=Creeaza un joc nou!
+block.cubyz.dirt.name=Pămant
+block.cubyz.cobblestone.name=Piatră Crăpată
+block.cubyz.oak_log.name=Buștean de Stejar
+block.cubyz.oak_planks.name=Scânduri de Stejar
+item.cubyz.stick.name=Băț
+lang.name=Română
+
+# Not translated:
