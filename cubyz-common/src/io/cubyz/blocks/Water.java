@@ -12,6 +12,7 @@ public class Water extends Block {
 		setSolid(false);
 		bc = BlockClass.FLUID;
 		transparent = true;
+		absorption = 0x17171700; // Absorbs red and green light.
 	}
 	
 	@Override

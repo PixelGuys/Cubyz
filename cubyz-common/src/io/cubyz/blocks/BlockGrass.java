@@ -11,6 +11,7 @@ public class BlockGrass extends Block {
 		setSolid(false);
 		bc = BlockClass.LEAF;
 		transparent = true;
+		absorption = 0x06080008; // Absorbs red and blue light.
 	}
 	
 }
