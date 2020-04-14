@@ -283,6 +283,7 @@ public class Window {
 	}
 	
 	public boolean isFocused() {
+		System.out.println(glfwGetWindowAttrib(handle, GLFW_FOCUSED));
 		return glfwGetWindowAttrib(handle, GLFW_FOCUSED) == GLFW_TRUE;
 	}
 	
