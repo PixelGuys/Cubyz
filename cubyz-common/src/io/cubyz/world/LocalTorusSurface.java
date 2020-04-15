@@ -52,8 +52,7 @@ public class LocalTorusSurface extends TorusSurface {
 	public ArrayList<byte[]> blockData;	
 	public ArrayList<int[]> chunkData;
 	
-	private static int renderDistance = 5;
-	private static int MAX_QUEUE_SIZE = renderDistance << 2;
+	private static int MAX_QUEUE_SIZE;
 	
 	private StellarTorusGenerator generator;
 	
@@ -64,8 +63,6 @@ public class LocalTorusSurface extends TorusSurface {
 	
 	public static final int DAYCYCLE = 120000; // Length of one in-game day in 100ms. Midnight is at DAYCYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
 	public static final int SEASONCYCLE = DAYCYCLE * 7; // Length of one in-game season in 100ms. Equals to 7 days per season
-	long gameTime = 0; // Time of the game in 100ms.
-	long milliTime;
 	float ambientLight = 0f;
 	Vector4f clearColor = new Vector4f(0, 0, 0, 1.0f);
 	
@@ -139,7 +136,7 @@ public class LocalTorusSurface extends TorusSurface {
 		} else {
 			wio.saveWorldData();
 		}
-		milliTime = System.currentTimeMillis();
+		MAX_QUEUE_SIZE = torus.world.getRenderDistance() << 2;
 	}
 
 	
@@ -443,29 +440,7 @@ public class LocalTorusSurface extends TorusSurface {
 	BlockInstance[] liquids = new BlockInstance[0];
 	
 	public void update() {
-		// Time
-		if(milliTime + 100 < System.currentTimeMillis()) {
-			milliTime += 100;
-			lqdUpdate = true;
-			gameTime++; // gameTime is measured in 100ms.
-			if ((milliTime + 100) < System.currentTimeMillis()) { // we skipped updates
-				if (!loggedUpdSkip) {
-					if (DO_LATE_UPDATES) {
-						CubyzLogger.i.warning(((System.currentTimeMillis() - milliTime) / 100) + " updates late! Doing them.");
-					} else {
-						CubyzLogger.i.warning(((System.currentTimeMillis() - milliTime) / 100) + " updates skipped!");
-					}
-					loggedUpdSkip = true;
-				}
-				if (DO_LATE_UPDATES) {
-					update();
-				} else {
-					milliTime = System.currentTimeMillis();
-				}
-			} else {
-				loggedUpdSkip = false;
-			}
-		}
+		long gameTime = torus.world.getGameTime();
 		// Ambient light
 		{
 			int dayTime = Math.abs((int)(gameTime % DAYCYCLE) - (DAYCYCLE >> 1));
@@ -503,7 +478,6 @@ public class LocalTorusSurface extends TorusSurface {
 				ambientLight = 0.4f + 0.3f*dayTime/(DAYCYCLE >> 1);
 			}
 		}
-		season = (int) ((gameTime/SEASONCYCLE) % 4);
 		// Entities
 		for (Entity en : entities) {
 			en.update();

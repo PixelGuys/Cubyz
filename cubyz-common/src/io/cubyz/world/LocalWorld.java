@@ -4,11 +4,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+import io.cubyz.CubyzLogger;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.IRegistryElement;
 import io.cubyz.blocks.Block;
+import io.cubyz.blocks.BlockEntity;
+import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.CustomOre;
+import io.cubyz.blocks.IUpdateable;
 import io.cubyz.blocks.Ore;
+import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.world.generator.LifelandGenerator;
 
@@ -21,10 +26,14 @@ public class LocalWorld extends World {
 	
 	private ArrayList<StellarTorus> toruses = new ArrayList<>();
 	private StellarTorus currentTorus;
+	private long milliTime;
+	private long gameTime;
+	public boolean inLqdUpdate;
+	private int renderDistance = 5;
 	
 	@Override
 	public Player getLocalPlayer() {
-		return null;
+		return player;
 	}
 
 	@Override
@@ -34,22 +43,22 @@ public class LocalWorld extends World {
 
 	@Override
 	public long getGameTime() {
-		return 0;
+		return gameTime;
 	}
 
 	@Override
 	public void setGameTime(long time) {
-		
+		this.gameTime = time;
 	}
 
 	@Override
 	public void setRenderDistance(int RD) {
-		
+		renderDistance = RD;
 	}
 
 	@Override
 	public int getRenderDistance() {
-		return 0;
+		return renderDistance;
 	}
 
 	@Override
@@ -96,7 +105,7 @@ public class LocalWorld extends World {
 			wio.loadWorldData(); // TODO: fix
 		}
 		generated = true;
-		currentTorus = new LocalStellarTorus(this);
+		currentTorus = new LocalStellarTorus(this, rand.nextLong());
 		toruses.add(currentTorus);
 		return blocks;
 	}
@@ -104,6 +113,36 @@ public class LocalWorld extends World {
 	@Override
 	public void cleanup() {
 		
+	}
+	
+	boolean loggedUpdSkip = false;
+	boolean DO_LATE_UPDATES = false;
+	public void update() {
+		// Time
+		if(milliTime + 100 < System.currentTimeMillis()) {
+			milliTime += 100;
+			inLqdUpdate = true;
+			gameTime++; // gameTime is measured in 100ms.
+			if ((milliTime + 100) < System.currentTimeMillis()) { // we skipped updates
+				if (!loggedUpdSkip) {
+					if (DO_LATE_UPDATES) {
+						CubyzLogger.i.warning(((System.currentTimeMillis() - milliTime) / 100) + " updates late! Doing them.");
+					} else {
+						CubyzLogger.i.warning(((System.currentTimeMillis() - milliTime) / 100) + " updates skipped!");
+					}
+					loggedUpdSkip = true;
+				}
+				if (DO_LATE_UPDATES) {
+					update();
+				} else {
+					milliTime = System.currentTimeMillis();
+				}
+			} else {
+				loggedUpdSkip = false;
+			}
+		}
+		
+		currentTorus.update();
 	}
 
 }

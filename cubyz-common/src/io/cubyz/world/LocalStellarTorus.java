@@ -2,6 +2,13 @@ package io.cubyz.world;
 
 import org.joml.Vector4f;
 
+import io.cubyz.CubyzLogger;
+import io.cubyz.blocks.Block;
+import io.cubyz.blocks.BlockEntity;
+import io.cubyz.blocks.BlockInstance;
+import io.cubyz.blocks.IUpdateable;
+import io.cubyz.entity.Entity;
+
 public class LocalStellarTorus extends StellarTorus {
 
 	private TorusSurface surface;
@@ -44,6 +51,15 @@ public class LocalStellarTorus extends StellarTorus {
 	
 	public TorusSurface getSurface() {
 		return surface;
+	}
+	
+	public void update() {
+		long gameTime = world.getGameTime();
+		season = (int) ((gameTime/SEASONCYCLE) % 4);
+		
+		if (surface != null) {
+			surface.update();
+		}
 	}
 
 }
