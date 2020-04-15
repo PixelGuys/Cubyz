@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.joml.Vector3i;
+import org.joml.Vector4f;
 
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockEntity;
@@ -64,6 +65,8 @@ public abstract class TorusSurface {
 	 * @param action - Chunk action
 	 */
 	public abstract void queueChunk(Chunk ch);
+	
+	public abstract float getGlobalLighting();
 
 	public abstract Chunk getChunk(int x, int z);	// Works with world coordinates
 	public abstract Chunk _getChunk(int x, int z);	// Works with chunk coordinates
@@ -81,6 +84,12 @@ public abstract class TorusSurface {
 	
 	public abstract void cleanup();
 	public abstract void update();
+	
+	public abstract Vector4f getClearColor();
+	
+	public int getAnd() {
+		return -1;
+	}
 	
 	public StellarTorus getTorus() {
 		return torus;

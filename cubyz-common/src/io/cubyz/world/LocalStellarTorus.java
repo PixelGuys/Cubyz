@@ -6,6 +6,9 @@ public class LocalStellarTorus extends StellarTorus {
 
 	private TorusSurface surface;
 	private long localSeed;
+	private Vector4f atmosphereColor = new Vector4f(1f, 1f, 1f, 1f);
+	public int dayCycle = 120000; // Length of one in-game day in 100ms. Midnight is at DAYCYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
+	public int seasonCycle = DAYCYCLE * 7; // Length of one in-game season in 100ms. Equals to 7 days per season
 	
 	public LocalStellarTorus(World world, long seed) {
 		this(world, "P.K. Kusuo Saiki", seed);
@@ -23,13 +26,8 @@ public class LocalStellarTorus extends StellarTorus {
 	}
 
 	@Override
-	public float getGlobalLighting() {
-		return 0;
-	}
-
-	@Override
 	public Vector4f getAtmosphereColor() {
-		return null;
+		return atmosphereColor;
 	}
 
 	@Override
@@ -44,6 +42,30 @@ public class LocalStellarTorus extends StellarTorus {
 	
 	public TorusSurface getSurface() {
 		return surface;
+	}
+	
+	public void update() {
+		long gameTime = world.getGameTime();
+		season = (int) ((gameTime/seasonCycle) % 4);
+		
+		if (surface != null) {
+			surface.update();
+		}
+	}
+
+	@Override
+	public int getDayCycle() {
+		return dayCycle;
+	}
+
+	@Override
+	public int getSeasonCycle() {
+		return seasonCycle;
+	}
+
+	@Override
+	public void setLocalSeed(long localSeed) {
+		this.localSeed = localSeed;
 	}
 
 }

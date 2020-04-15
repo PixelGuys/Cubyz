@@ -52,8 +52,7 @@ public class LocalTorusSurface extends TorusSurface {
 	public ArrayList<byte[]> blockData;	
 	public ArrayList<int[]> chunkData;
 	
-	private static int renderDistance = 5;
-	private static int MAX_QUEUE_SIZE = renderDistance << 2;
+	private static int MAX_QUEUE_SIZE;
 	
 	private StellarTorusGenerator generator;
 	
@@ -62,10 +61,6 @@ public class LocalTorusSurface extends TorusSurface {
 	private List<ChunkGenerationThread> threads = new ArrayList<>();
 	private boolean generated;
 	
-	public static final int DAYCYCLE = 120000; // Length of one in-game day in 100ms. Midnight is at DAYCYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
-	public static final int SEASONCYCLE = DAYCYCLE * 7; // Length of one in-game season in 100ms. Equals to 7 days per season
-	long gameTime = 0; // Time of the game in 100ms.
-	long milliTime;
 	float ambientLight = 0f;
 	Vector4f clearColor = new Vector4f(0, 0, 0, 1.0f);
 	
@@ -139,7 +134,7 @@ public class LocalTorusSurface extends TorusSurface {
 		} else {
 			wio.saveWorldData();
 		}
-		milliTime = System.currentTimeMillis();
+		MAX_QUEUE_SIZE = torus.world.getRenderDistance() << 2;
 	}
 
 	
@@ -342,7 +337,7 @@ public class LocalTorusSurface extends TorusSurface {
 		Biome[][] map = new Biome[width][height];
 		for(int px = x0; CubyzMath.matchSign((px-x) & worldAnd, worldAnd) < width; px += 256) {
 			for(int py = y0; CubyzMath.matchSign((py-y) & worldAnd, worldAnd) < height; py += 256) {
-				MetaChunk ch = getMetaChunk(px&worldAnd ,py&worldAnd);
+				MetaChunk ch = getMetaChunk(px&worldAnd, py&worldAnd);
 				int xS = Math.max(px-x, 0);
 				int yS = Math.max(py-y, 0);
 				int xE = Math.min(px+256-x, width);
@@ -443,67 +438,44 @@ public class LocalTorusSurface extends TorusSurface {
 	BlockInstance[] liquids = new BlockInstance[0];
 	
 	public void update() {
-		// Time
-		if(milliTime + 100 < System.currentTimeMillis()) {
-			milliTime += 100;
-			lqdUpdate = true;
-			gameTime++; // gameTime is measured in 100ms.
-			if ((milliTime + 100) < System.currentTimeMillis()) { // we skipped updates
-				if (!loggedUpdSkip) {
-					if (DO_LATE_UPDATES) {
-						CubyzLogger.i.warning(((System.currentTimeMillis() - milliTime) / 100) + " updates late! Doing them.");
-					} else {
-						CubyzLogger.i.warning(((System.currentTimeMillis() - milliTime) / 100) + " updates skipped!");
-					}
-					loggedUpdSkip = true;
-				}
-				if (DO_LATE_UPDATES) {
-					update();
-				} else {
-					milliTime = System.currentTimeMillis();
-				}
-			} else {
-				loggedUpdSkip = false;
-			}
-		}
+		long gameTime = torus.world.getGameTime();
+		int dayCycle = torus.getDayCycle();
 		// Ambient light
 		{
-			int dayTime = Math.abs((int)(gameTime % DAYCYCLE) - (DAYCYCLE >> 1));
-			if(dayTime < (DAYCYCLE >> 2)-(DAYCYCLE >> 4)) {
+			int dayTime = Math.abs((int)(gameTime % dayCycle) - (dayCycle >> 1));
+			if(dayTime < (dayCycle >> 2)-(dayCycle >> 4)) {
 				ambientLight = 0.1f;
 				clearColor.x = clearColor.y = clearColor.z = 0;
-			} else if(dayTime > (DAYCYCLE >> 2)+(DAYCYCLE >> 4)) {
+			} else if(dayTime > (dayCycle >> 2)+(dayCycle >> 4)) {
 				ambientLight = 0.7f;
 				clearColor.x = clearColor.y = 0.8f;
 				clearColor.z = 1.0f;
 			} else {
 				//b:
-				if(dayTime > (DAYCYCLE >> 2)) {
-					clearColor.z = 1.0f*(dayTime-(DAYCYCLE >> 2))/(DAYCYCLE >> 4);
+				if(dayTime > (dayCycle >> 2)) {
+					clearColor.z = 1.0f*(dayTime-(dayCycle >> 2))/(dayCycle >> 4);
 				} else {
 					clearColor.z = 0.0f;
 				}
 				//g:
-				if(dayTime > (DAYCYCLE >> 2)+(DAYCYCLE >> 5)) {
+				if(dayTime > (dayCycle >> 2)+(dayCycle >> 5)) {
 					clearColor.y = 0.8f;
-				} else if(dayTime > (DAYCYCLE >> 2)-(DAYCYCLE >> 5)) {
-					clearColor.y = 0.8f+0.8f*(dayTime-(DAYCYCLE >> 2)-(DAYCYCLE >> 5))/(DAYCYCLE >> 4);
+				} else if(dayTime > (dayCycle >> 2)-(dayCycle >> 5)) {
+					clearColor.y = 0.8f+0.8f*(dayTime-(dayCycle >> 2)-(dayCycle >> 5))/(dayCycle >> 4);
 				} else {
 					clearColor.y = 0.0f;
 				}
 				//r:
-				if(dayTime > (DAYCYCLE >> 2)) {
+				if(dayTime > (dayCycle >> 2)) {
 					clearColor.x = 0.8f;
+				} else {
+					clearColor.x = 0.8f+0.8f*(dayTime-(dayCycle >> 2))/(dayCycle >> 4);
 				}
-				else {
-					clearColor.x = 0.8f+0.8f*(dayTime-(DAYCYCLE >> 2))/(DAYCYCLE >> 4);
-				}
-				dayTime -= (DAYCYCLE >> 2);
+				dayTime -= (dayCycle >> 2);
 				dayTime <<= 3;
-				ambientLight = 0.4f + 0.3f*dayTime/(DAYCYCLE >> 1);
+				ambientLight = 0.4f + 0.3f*dayTime/(dayCycle >> 1);
 			}
 		}
-		season = (int) ((gameTime/SEASONCYCLE) % 4);
 		// Entities
 		for (Entity en : entities) {
 			en.update();
@@ -582,6 +554,7 @@ public class LocalTorusSurface extends TorusSurface {
 	
 	// Returns the blocks, so their meshes can be created and stored.
 	public Block[] generate() {
+		ArrayList<Ore> ores = new ArrayList<>();
 		int randomAmount = 8; // TODO
 		torusBlocks = new Block[randomAmount];
 		Random rand = new Random(localSeed);
@@ -592,10 +565,10 @@ public class LocalTorusSurface extends TorusSurface {
 			torusBlocks[i].ID = i;
 		}
 		
-		// TODO: manager *per-torus* custom ores
+		// TODO: properly manage *per-torus* custom ores
 		for (IRegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
 			try {
-				ores.add((Ore)b);
+				ores.add((Ore)ire);
 			}
 			catch(Exception e) {}
 		}
@@ -614,6 +587,7 @@ public class LocalTorusSurface extends TorusSurface {
 	
 	@Override
 	public void seek(int x, int z) {
+		int renderDistance = torus.world.getRenderDistance();
 		int local = x & 15;
 		x >>= 4;
 		x += renderDistance;
@@ -732,11 +706,6 @@ public class LocalTorusSurface extends TorusSurface {
 	@Override
 	public int getAnd() {
 		return worldAnd;
-	}
-
-	@Override
-	public long getLocalSeed() {
-		return localSeed;
 	}
 	
 }

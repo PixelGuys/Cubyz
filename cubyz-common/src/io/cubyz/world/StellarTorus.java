@@ -18,10 +18,10 @@ public abstract class StellarTorus {
 
 	public abstract void cleanup();
 	
-	public abstract float getGlobalLighting();
 	public abstract Vector4f getAtmosphereColor(); // = clear color in practice
 	
 	public abstract long getLocalSeed();
+	public abstract void setLocalSeed(long localSeed);
 	
 	public TorusSurface getSurface() {
 		return null;
@@ -32,14 +32,13 @@ public abstract class StellarTorus {
 	}
 	
 	public abstract boolean hasSurface();
-
-	public int getAnd() {
-		return -1; // WorldAnd of maximum supported world size.
-	}
 	
 	public int getSeason() {
 		return season;
 	}
+	
+	public abstract int getDayCycle();
+	public abstract int getSeasonCycle();
 	
 	public void setName(String name) {
 		this.name = name;
