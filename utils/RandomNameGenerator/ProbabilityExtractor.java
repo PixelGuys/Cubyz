@@ -20,9 +20,10 @@ public class ProbabilityExtractor {
 	}
 	public static void main(String[] args) throws IOException {
 		int[] number = new int[27*27*27*27];
-		try (BufferedReader br = new BufferedReader(new FileReader("./minerals.txt"))) {
+		try (BufferedReader br = new BufferedReader(new FileReader("./"+args[0]+".txt"))) {
 			String line;
 			while ((line = br.readLine()) != null) {
+				if(line.charAt(0) == '#') continue; // Comments:
 				char c1 = ' ', c2 = ' ', c3 = ' ', c4 = ' ';
 				for(char c : line.toCharArray()) {
 					c1 = c2;
@@ -36,7 +37,7 @@ public class ProbabilityExtractor {
 				number[getIndex(c4)*27*27*27]++;
 			}
 		} catch(Exception e) {}
-		DataOutputStream os = new DataOutputStream(new BufferedOutputStream(new FileOutputStream("./custom_ore_names.dat")));
+		DataOutputStream os = new DataOutputStream(new BufferedOutputStream(new FileOutputStream("./"+args[0]+".dat")));
 		boolean used;
 		// pre-loop to get the length:
 		byte n = 0;
