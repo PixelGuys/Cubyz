@@ -16,43 +16,46 @@ import io.cubyz.entity.Entity;
 import io.cubyz.math.Bits;
 import io.cubyz.ndt.NDTContainer;
 import io.cubyz.world.Chunk;
-import io.cubyz.world.LocalWorld;
-import io.cubyz.world.World;
+import io.cubyz.world.LocalStellarTorus;
+import io.cubyz.world.LocalTorusSurface;
 
-// TODO: TorusIO
-public class WorldIO {
+public class TorusIO {
 
 	private File dir;
-	private LocalWorld world;
+	private LocalStellarTorus torus;
+	private LocalTorusSurface surface;
 	private ArrayList<byte[]> blockData = new ArrayList<>();
 	private ArrayList<int[]> chunkData = new ArrayList<>();
 
-	public WorldIO(LocalWorld world, File directory) {
+	public TorusIO(LocalStellarTorus torus, File directory) {
 		dir = directory;
 		if (!dir.exists()) {
 			dir.mkdirs();
 		}
-		this.world = world;
+		this.torus = torus;
 		
-		//world.blockData = blockData;
-		//world.chunkData = chunkData;
+		if (torus.hasSurface()) {
+			surface = (LocalTorusSurface) torus.getSurface();
+			surface.blockData = blockData;
+			surface.chunkData = chunkData;
+		}
 	}
 
 	public boolean hasWorldData() {
-		return new File(dir, "world.dat").exists();
+		return new File(dir, "torus.dat").exists();
 	}
 
 	// Load the seed, which is needed before custom item and ore generation.
 	public void loadWorldSeed() {
 		try {
-			InputStream in = new FileInputStream(new File(dir, "world.dat"));
+			InputStream in = new FileInputStream(new File(dir, "torus.dat"));
 			byte[] len = new byte[4];
 			in.read(len);
 			int l = Bits.getInt(len, 0);
 			byte[] dst = new byte[l];
 			in.read(dst);
 			NDTContainer ndt = new NDTContainer(dst);
-			world.setSeed(ndt.getInteger("seed"));
+			torus.setLocalSeed(ndt.getInteger("seed"));
 			in.close();
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -61,7 +64,7 @@ public class WorldIO {
 
 	public void loadWorldData() {
 		try {
-			InputStream in = new FileInputStream(new File(dir, "world.dat"));
+			InputStream in = new FileInputStream(new File(dir, "torus.dat"));
 			byte[] len = new byte[4];
 			in.read(len);
 			int l = Bits.getInt(len, 0);
@@ -69,14 +72,15 @@ public class WorldIO {
 			in.read(dst);
 			
 			NDTContainer ndt = new NDTContainer(dst);
-			world.setName(ndt.getString("name"));
-			world.setGameTime(ndt.getLong("gameTime"));
+			torus.setName(ndt.getString("name"));
 			Entity[] entities = new Entity[ndt.getInteger("entityCount")];
 			for (int i = 0; i < entities.length; i++) {
 				entities[i] = EntityIO.loadEntity(in);
-				entities[i].setStellarTorus(world);
+				entities[i].setStellarTorus(torus);
 			}
-			world.setEntities(entities);
+			if (surface != null) {
+				surface.setEntities(entities);
+			}
 			in.close();
 			in = new BufferedInputStream(new InflaterInputStream(new FileInputStream(new File(dir, "region.dat"))));
 			// read block data
@@ -106,18 +110,19 @@ public class WorldIO {
 			OutputStream out = new FileOutputStream(new File(dir, "world.dat"));
 			NDTContainer ndt = new NDTContainer();
 			ndt.setInteger("version", 1);
-			ndt.setString("name", world.getName());
-			ndt.setInteger("seed", world.getSeed());
-			ndt.setLong("gameTime", world.getGameTime());
-			//NDTContainer customOres = new NDTContainer();
-			//ndt.setContainer("customOres", customOres);
-			ndt.setInteger("entityCount", world.getEntities().length);
-			byte[] len = new byte[4];
-			Bits.putInt(len, 0, ndt.getData().length);
-			out.write(len);
-			out.write(ndt.getData());
-			for (Entity ent : world.getEntities()) {
-				EntityIO.saveEntity(ent, out);
+			ndt.setString("name", torus.getName());
+			ndt.setLong("seed", torus.getLocalSeed());
+			if (surface != null) {
+				ndt.setInteger("entityCount", surface.getEntities().length);
+				byte[] len = new byte[4];
+				Bits.putInt(len, 0, ndt.getData().length);
+				out.write(len);
+				out.write(ndt.getData());
+				for (Entity ent : surface.getEntities()) {
+					EntityIO.saveEntity(ent, out);
+				}
+			} else {
+				ndt.setInteger("entityCount", 0);
 			}
 			out.close();
 		} catch (IOException e) {

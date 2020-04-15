@@ -8,13 +8,9 @@ import io.cubyz.CubyzLogger;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.IRegistryElement;
 import io.cubyz.blocks.Block;
-import io.cubyz.blocks.BlockEntity;
-import io.cubyz.blocks.BlockInstance;
-import io.cubyz.blocks.CustomOre;
-import io.cubyz.blocks.IUpdateable;
 import io.cubyz.blocks.Ore;
-import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
+import io.cubyz.save.WorldIO;
 import io.cubyz.world.generator.LifelandGenerator;
 
 public class LocalWorld extends World {
@@ -23,6 +19,7 @@ public class LocalWorld extends World {
 	private Player player;
 	protected boolean generated;
 	protected Random rnd;
+	protected String name;
 	
 	private ArrayList<StellarTorus> toruses = new ArrayList<>();
 	private StellarTorus currentTorus;
@@ -30,6 +27,20 @@ public class LocalWorld extends World {
 	private long gameTime;
 	public boolean inLqdUpdate;
 	private int renderDistance = 5;
+	private WorldIO wio;
+	
+	public LocalWorld(String name) {
+		this.name = name;
+		
+	}
+	
+	public String getName() {
+		return name;
+	}
+	
+	public void setName(String name) {
+		this.name = name;
+	}
 	
 	@Override
 	public Player getLocalPlayer() {
