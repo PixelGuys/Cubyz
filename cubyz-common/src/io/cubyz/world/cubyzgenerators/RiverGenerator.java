@@ -6,6 +6,7 @@ import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.world.LocalStellarTorus;
+import io.cubyz.world.LocalTorusSurface;
 import io.cubyz.world.MetaChunk;
 import io.cubyz.world.World;
 
@@ -23,7 +24,7 @@ public class RiverGenerator implements BigGenerator {
 	private static Block water = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:water");
 
 	@Override
-	public void generate(long seed, int wx, int wy, Block[][][] chunk, boolean[][] vegetationIgnoreMap, LocalStellarTorus world) {
+	public void generate(long seed, int wx, int wy, Block[][][] chunk, boolean[][] vegetationIgnoreMap, LocalTorusSurface surface) {
 		// Gets the four surrounding MetaChunks and switch to a relative coordinate system.
 		int lx, ly;
 		MetaChunk nn, np, pn, pp;
@@ -31,31 +32,31 @@ public class RiverGenerator implements BigGenerator {
 			lx = (wx & 255) + 256;
 			if((wy & 255) < 128) {
 				ly = (wy & 255) + 256;
-				nn = world.getMetaChunk((wx & (~255)) - 256, (wy & (~255)) - 256);
-				np = world.getMetaChunk((wx & (~255)) - 256, (wy & (~255)));
-				pn = world.getMetaChunk((wx & (~255)), (wy & (~255)) - 256);
-				pp = world.getMetaChunk((wx & (~255)), (wy & (~255)));
+				nn = surface.getMetaChunk((wx & (~255)) - 256, (wy & (~255)) - 256);
+				np = surface.getMetaChunk((wx & (~255)) - 256, (wy & (~255)));
+				pn = surface.getMetaChunk((wx & (~255)), (wy & (~255)) - 256);
+				pp = surface.getMetaChunk((wx & (~255)), (wy & (~255)));
 			} else {
 				ly = (wy & 255);
-				nn = world.getMetaChunk((wx & (~255)) - 256, (wy & (~255)));
-				np = world.getMetaChunk((wx & (~255)) - 256, (wy & (~255)) + 256);
-				pn = world.getMetaChunk((wx & (~255)), (wy & (~255)));
-				pp = world.getMetaChunk((wx & (~255)), (wy & (~255)) + 256);
+				nn = surface.getMetaChunk((wx & (~255)) - 256, (wy & (~255)));
+				np = surface.getMetaChunk((wx & (~255)) - 256, (wy & (~255)) + 256);
+				pn = surface.getMetaChunk((wx & (~255)), (wy & (~255)));
+				pp = surface.getMetaChunk((wx & (~255)), (wy & (~255)) + 256);
 			}
 		} else {
 			lx = (wx & 255);
 			if((wy & 255) < 128) {
 				ly = (wy & 255) + 256;
-				nn = world.getMetaChunk((wx & (~255)), (wy & (~255)) - 256);
-				np = world.getMetaChunk((wx & (~255)), (wy & (~255)));
-				pn = world.getMetaChunk((wx & (~255)) + 256, (wy & (~255)) - 256);
-				pp = world.getMetaChunk((wx & (~255)) + 256, (wy & (~255)));
+				nn = surface.getMetaChunk((wx & (~255)), (wy & (~255)) - 256);
+				np = surface.getMetaChunk((wx & (~255)), (wy & (~255)));
+				pn = surface.getMetaChunk((wx & (~255)) + 256, (wy & (~255)) - 256);
+				pp = surface.getMetaChunk((wx & (~255)) + 256, (wy & (~255)));
 			} else {
 				ly = (wy & 255);
-				nn = world.getMetaChunk((wx & (~255)), (wy & (~255)));
-				np = world.getMetaChunk((wx & (~255)), (wy & (~255)) + 256);
-				pn = world.getMetaChunk((wx & (~255)) + 256, (wy & (~255)));
-				pp = world.getMetaChunk((wx & (~255)) + 256, (wy & (~255)) + 256);
+				nn = surface.getMetaChunk((wx & (~255)), (wy & (~255)));
+				np = surface.getMetaChunk((wx & (~255)), (wy & (~255)) + 256);
+				pn = surface.getMetaChunk((wx & (~255)) + 256, (wy & (~255)));
+				pp = surface.getMetaChunk((wx & (~255)) + 256, (wy & (~255)) + 256);
 			}
 		}
 		// Consider coordinates in each MetaChunk.

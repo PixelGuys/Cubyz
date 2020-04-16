@@ -8,6 +8,7 @@ import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.world.Chunk;
 import io.cubyz.world.StellarTorus;
+import io.cubyz.world.TorusSurface;
 
 /**
  * Simple generator that does flat worlds with 3 layers.
@@ -22,7 +23,7 @@ public class FlatlandGenerator extends StellarTorusGenerator {
 	private static Block bedrock = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:bedrock");
 	
 	@Override
-	public void generate(Chunk chunk, StellarTorus torus) {
+	public void generate(Chunk chunk, TorusSurface surface) {
 		for (int px = 0; px < 16; px++) {
 			for (int pz = 0; pz < 16; pz++) {
 				for (int y = 0; y < 3; y++) {

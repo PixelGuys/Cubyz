@@ -261,7 +261,7 @@ public class Entity {
 	}
 	
 	public boolean checkBlock(int x, int y, int z) {
-		Block bi = stellarTorus.getBlock(x, y, z);
+		Block bi = stellarTorus.getWorld().getCurrentTorus().getBlock(x, y, z);
 		if(bi != null && bi.isSolid()) {
 			return true;
 		}

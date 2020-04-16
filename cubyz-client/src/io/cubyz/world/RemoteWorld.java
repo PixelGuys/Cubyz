@@ -116,7 +116,7 @@ public class RemoteWorld extends World {
 	}
 
 	@Override
-	public StellarTorus getCurrentTorus() {
+	public TorusSurface getCurrentTorus() {
 		// TODO Auto-generated method stub
 	}
 

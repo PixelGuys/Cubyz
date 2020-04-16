@@ -22,7 +22,7 @@ public class LocalWorld extends World {
 	protected String name;
 	
 	private ArrayList<StellarTorus> toruses = new ArrayList<>();
-	private StellarTorus currentTorus;
+	private TorusSurface currentTorus;
 	private long milliTime;
 	private long gameTime;
 	public boolean inLqdUpdate;
@@ -78,7 +78,7 @@ public class LocalWorld extends World {
 	}
 
 	@Override
-	public StellarTorus getCurrentTorus() {
+	public TorusSurface getCurrentTorus() {
 		return currentTorus;
 	}
 	
@@ -116,7 +116,7 @@ public class LocalWorld extends World {
 			wio.loadWorldData(); // TODO: fix
 		}
 		generated = true;
-		currentTorus = new LocalStellarTorus(this, rand.nextLong());
+		currentTorus = new LocalTorusSurface(this, rand.nextLong());
 		toruses.add(currentTorus);
 		return blocks;
 	}

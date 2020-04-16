@@ -36,19 +36,19 @@ public class Chunk {
 	private boolean loaded;
 	private Map<BlockInstance, BlockEntity> blockEntities = new HashMap<>();
 	
-	private StellarTorus torus;
+	private TorusSurface surface;
 	
-	public Chunk(int ox, int oy, StellarTorus torus, ArrayList<BlockChange> changes) {
-		if(torus != null) {
-			ox &= torus.getAnd() >>> 4;
-			oy &= torus.getAnd() >>> 4;
+	public Chunk(int ox, int oy, TorusSurface surface, ArrayList<BlockChange> changes) {
+		if(surface != null) {
+			ox &= surface.getAnd() >>> 4;
+			oy &= surface.getAnd() >>> 4;
 		}
 		if(easyLighting) {
 			light = new int[16*World.WORLD_HEIGHT*16];
 		}
 		this.ox = ox;
 		this.oy = oy;
-		this.torus = torus;
+		this.surface = surface;
 		this.changes = changes;
 	}
 	
@@ -128,22 +128,22 @@ public class Chunk {
 		if(!easyLighting || y < 0 || y >= World.WORLD_HEIGHT || !generated) return 0;
 		// Check if it's inside this chunk:
 		if(x < 0) {
-			Chunk chunk = torus._getNoGenerateChunk(ox-1, oy);
+			Chunk chunk = surface._getNoGenerateChunk(ox-1, oy);
 			if(chunk != null) return chunk.localLightUpdate(x+16, y, z, shift, mask);
 			return 0;
 		}
 		if(x > 15) {
-			Chunk chunk = torus._getNoGenerateChunk(ox+1, oy);
+			Chunk chunk = surface._getNoGenerateChunk(ox+1, oy);
 			if(chunk != null) return chunk.localLightUpdate(x-16, y, z, shift, mask);
 			return 0;
 		}
 		if(z < 0) {
-			Chunk chunk = torus._getNoGenerateChunk(ox, oy-1);
+			Chunk chunk = surface._getNoGenerateChunk(ox, oy-1);
 			if(chunk != null) return chunk.localLightUpdate(x, y, z+16, shift, mask);
 			return 0;
 		}
 		if(z > 15) {
-			Chunk chunk = torus._getNoGenerateChunk(ox, oy+1);
+			Chunk chunk = surface._getNoGenerateChunk(ox, oy+1);
 			if(chunk != null) return chunk.localLightUpdate(x, y, z-16, shift, mask);
 			return 0;
 		}
@@ -163,7 +163,7 @@ public class Chunk {
 				neighbors++;
 			}
 		} else {
-			Chunk chunk = torus._getNoGenerateChunk(ox-1, oy);
+			Chunk chunk = surface._getNoGenerateChunk(ox-1, oy);
 			if(chunk != null && chunk.isLoaded()) {
 				BlockInstance bi = chunk.getInst(15, y, z);
 				if(bi == null || bi.getBlock().isTransparent()) {
@@ -185,7 +185,7 @@ public class Chunk {
 				neighbors++;
 			}
 		} else {
-			Chunk chunk = torus._getNoGenerateChunk(ox+1, oy);
+			Chunk chunk = surface._getNoGenerateChunk(ox+1, oy);
 			if(chunk != null && chunk.isLoaded()) {
 				BlockInstance bi = chunk.getInst(0, y, z);
 				if(bi == null || bi.getBlock().isTransparent()) {
@@ -207,7 +207,7 @@ public class Chunk {
 				neighbors++;
 			}
 		} else {
-			Chunk chunk = torus._getNoGenerateChunk(ox, oy-1);
+			Chunk chunk = surface._getNoGenerateChunk(ox, oy-1);
 			if(chunk != null && chunk.isLoaded()) {
 				BlockInstance bi = chunk.getInst(x, y, 15);
 				if(bi == null || bi.getBlock().isTransparent()) {
@@ -229,7 +229,7 @@ public class Chunk {
 				neighbors++;
 			}
 		} else {
-			Chunk chunk = torus._getNoGenerateChunk(ox, oy+1);
+			Chunk chunk = surface._getNoGenerateChunk(ox, oy+1);
 			if(chunk != null && chunk.isLoaded()) {
 				BlockInstance bi = chunk.getInst(x, y, 0);
 				if(bi == null || bi.getBlock().isTransparent()) {
@@ -342,20 +342,20 @@ public class Chunk {
 		int rx = x - (ox << 4);
 		// Determines if the block is part of another chunk.
 		if (rx < 0) {
-			torus._getChunk(ox - 1, oy).addBlock(b, x, y, z);
+			surface._getChunk(ox - 1, oy).addBlock(b, x, y, z);
 			return;
 		}
 		if (rx > 15) {
-			torus._getChunk(ox + 1, oy).addBlock(b, x, y, z);
+			surface._getChunk(ox + 1, oy).addBlock(b, x, y, z);
 			return;
 		}
 		int rz = z - (oy << 4);
 		if (rz < 0) {
-			torus._getChunk(ox, oy - 1).addBlock(b, x, y, z);
+			surface._getChunk(ox, oy - 1).addBlock(b, x, y, z);
 			return;
 		}
 		if (rz > 15) {
-			torus._getChunk(ox, oy + 1).addBlock(b, x, y, z);
+			surface._getChunk(ox, oy + 1).addBlock(b, x, y, z);
 			return;
 		}
 		if(inst == null) {
@@ -371,7 +371,7 @@ public class Chunk {
 		}
 		BlockInstance inst0 = new BlockInstance(b);
 		inst0.setPosition(new Vector3i(x, y, z));
-		inst0.setStellarTorus(torus);
+		inst0.setStellarTorus(surface);
 		if (b.hasBlockEntity()) {
 			BlockEntity te = b.createBlockEntity(inst0.getPosition());
 			blockEntities.put(inst0, te);
@@ -422,7 +422,7 @@ public class Chunk {
 		if(inst == null) {
 			inst = new BlockInstance[16*World.WORLD_HEIGHT*16];
 		}
-		gen.generate(this, torus);
+		gen.generate(this, surface);
 		generated = true;
 	}
 	
@@ -433,7 +433,7 @@ public class Chunk {
 				removeBlockAt(bc.x, bc.y, bc.z, false);
 				continue;
 			}
-			Block bl = torus.getPlanetBlocks()[bc.newType];
+			Block bl = surface.getPlanetBlocks()[bc.newType];
 			if(getInst(bc.x, bc.y, bc.z) == null) {
 				addBlockAt(bc.x, bc.y, bc.z, bl, false);
 				bc.oldType = -1;
@@ -451,10 +451,10 @@ public class Chunk {
 		visiblesSize = 0;
 		
 		loaded = true;
-		boolean chx0 = torus._getChunk(ox - 1, oy).isGenerated();
-		boolean chx1 = torus._getChunk(ox + 1, oy).isGenerated();
-		boolean chy0 = torus._getChunk(ox, oy - 1).isGenerated();
-		boolean chy1 = torus._getChunk(ox, oy + 1).isGenerated();
+		boolean chx0 = surface._getChunk(ox - 1, oy).isGenerated();
+		boolean chx1 = surface._getChunk(ox + 1, oy).isGenerated();
+		boolean chy0 = surface._getChunk(ox, oy - 1).isGenerated();
+		boolean chy1 = surface._getChunk(ox, oy + 1).isGenerated();
 		for(int k = 0; k < list.size(); k++) {
 			BlockInstance bi = list.get(k);
 			BlockInstance[] neighbors = bi.getNeighbors(this);
@@ -487,10 +487,10 @@ public class Chunk {
 			int [] invdy = {i, i, 0, 15};
 			boolean [] toCheck = {chx0, chx1, chy0, chy1};
 			Chunk [] chunks = {
-					torus._getChunk(ox-1, oy),
-					torus._getChunk(ox+1, oy),
-					torus._getChunk(ox, oy-1),
-					torus._getChunk(ox, oy+1),
+					surface._getChunk(ox-1, oy),
+					surface._getChunk(ox+1, oy),
+					surface._getChunk(ox, oy-1),
+					surface._getChunk(ox, oy+1),
 					};
 			for(int k = 0; k < 4; k++) {
 				if (toCheck[k]) {
@@ -536,10 +536,10 @@ public class Chunk {
 			}
 			lightUpdate(lightUpdates, 24, 0x00ffffff);
 			// Look at the neighboring chunks:
-			boolean no = torus._getNoGenerateChunk(ox-1, oy) != null;
-			boolean po = torus._getNoGenerateChunk(ox+1, oy) != null;
-			boolean on = torus._getNoGenerateChunk(ox, oy-1) != null;
-			boolean op = torus._getNoGenerateChunk(ox, oy+1) != null;
+			boolean no = surface._getNoGenerateChunk(ox-1, oy) != null;
+			boolean po = surface._getNoGenerateChunk(ox+1, oy) != null;
+			boolean on = surface._getNoGenerateChunk(ox, oy-1) != null;
+			boolean op = surface._getNoGenerateChunk(ox, oy+1) != null;
 			if(no || on) {
 				int x = 0, z = 0;
 				for(int y = 0; y < y0; y++) {
@@ -635,7 +635,7 @@ public class Chunk {
 		int cz = y;
 		cz >>= 4;
 		if(ox != cx || oy != cz)
-			return torus._getChunk(cx, cz);
+			return surface._getChunk(cx, cz);
 		return this;
 	}
 	
@@ -657,7 +657,7 @@ public class Chunk {
 			visibles = new BlockInstance[old.length >> 1];
 			System.arraycopy(old, 0, visibles, 0, visiblesSize);
 		}
-		if (torus != null) for (BlockVisibilityChangeHandler handler : torus.visibHandlers) {
+		if (surface != null) for (BlockVisibilityChangeHandler handler : surface.visibHandlers) {
 			if (bi != null) handler.onBlockHide(bi.getBlock(), bi.getX(), bi.getY(), bi.getZ());
 		}
 	}
@@ -670,7 +670,7 @@ public class Chunk {
 		}
 		visibles[visiblesSize] = bi;
 		visiblesSize++;
-		if (torus != null) for (BlockVisibilityChangeHandler handler : torus.visibHandlers) {
+		if (surface != null) for (BlockVisibilityChangeHandler handler : surface.visibHandlers) {
 			if (bi != null) handler.onBlockAppear(bi.getBlock(), bi.getX(), bi.getY(), bi.getZ());
 		}
 	}
@@ -761,7 +761,7 @@ public class Chunk {
 			return;
 		}
 		if (bi != null) {
-			bi.setStellarTorus(torus);
+			bi.setStellarTorus(surface);
 			list.add(bi);
 			if (bi.getBlock().getBlockClass() == BlockClass.FLUID) {
 				liquids.add(bi);
@@ -778,7 +778,7 @@ public class Chunk {
 		removeBlockAt(x, y, z, false);
 		Block b = inst0.getBlock();
 		inst0.setPosition(new Vector3i(x + wx, y, z + wy));
-		inst0.setStellarTorus(torus);
+		inst0.setStellarTorus(surface);
 		if (b.hasBlockEntity()) {
 			BlockEntity te = b.createBlockEntity(inst0.getPosition());
 			blockEntities.put(inst0, te);
@@ -879,22 +879,22 @@ public class Chunk {
 	public int getLight(int x, int y, int z) {
 		if(y < 0 || y >= World.WORLD_HEIGHT) return 0;
 		if(x < 0) {
-			Chunk chunk = torus._getNoGenerateChunk(ox-1, oy);
+			Chunk chunk = surface._getNoGenerateChunk(ox-1, oy);
 			if(chunk != null) return chunk.getLight(x+16, y, z);
 			return 0;
 		}
 		if(x > 15) {
-			Chunk chunk = torus._getNoGenerateChunk(ox+1, oy);
+			Chunk chunk = surface._getNoGenerateChunk(ox+1, oy);
 			if(chunk != null) return chunk.getLight(x-16, y, z);
 			return 0;
 		}
 		if(z < 0) {
-			Chunk chunk = torus._getNoGenerateChunk(ox, oy-1);
+			Chunk chunk = surface._getNoGenerateChunk(ox, oy-1);
 			if(chunk != null) return chunk.getLight(x, y, z+16);
 			return 0;
 		}
 		if(z > 15) {
-			Chunk chunk = torus._getNoGenerateChunk(ox, oy+1);
+			Chunk chunk = surface._getNoGenerateChunk(ox, oy+1);
 			if(chunk != null) return chunk.getLight(x, y, z-16);
 			return 0;
 		}

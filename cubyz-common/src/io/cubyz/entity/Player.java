@@ -6,8 +6,7 @@ import io.cubyz.api.CubyzRegistries;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.command.ICommandSource;
 import io.cubyz.items.Inventory;
-import io.cubyz.world.StellarTorus;
-import io.cubyz.world.World;
+import io.cubyz.world.TorusSurface;
 
 /**
  * Base class for both implementation and MP version of Player.
@@ -21,7 +20,7 @@ public abstract class Player extends Entity implements ICommandSource {
 	}
 	
 	public abstract Inventory getInventory();
-	public abstract void breaking(BlockInstance bi, int slot, StellarTorus w);
+	public abstract void breaking(BlockInstance bi, int slot, TorusSurface w);
 	public abstract boolean isFlying();
 	public abstract void setFlying(boolean fly);
 	

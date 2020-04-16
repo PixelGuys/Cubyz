@@ -11,6 +11,7 @@ import io.cubyz.items.Inventory;
 import io.cubyz.items.tools.Tool;
 import io.cubyz.ndt.NDTContainer;
 import io.cubyz.world.StellarTorus;
+import io.cubyz.world.TorusSurface;
 import io.cubyz.world.World;
 
 public class PlayerEntity extends EntityType {
@@ -117,7 +118,7 @@ public class PlayerEntity extends EntityType {
 		}
 
 		@Override
-		public void breaking(BlockInstance bi, int slot, StellarTorus w) {
+		public void breaking(BlockInstance bi, int slot, TorusSurface w) {
 			if(bi != toBreak || breakingSlot != slot) {
 				toBreak = bi;
 				breakingSlot = slot;
@@ -134,7 +135,7 @@ public class PlayerEntity extends EntityType {
 					}
 				}
 				w.removeBlock(bi.getX(), bi.getY(), bi.getZ());
-				if(w.getWorld().getLocalPlayer().getInventory().addItem(bi.getBlock().getBlockDrop(), 1) != 0) { // XXX: isn't w.getWorld().getLocalPlayer() supposed to be this in the present case?
+				if(inv.addItem(bi.getBlock().getBlockDrop(), 1) != 0) {
 					//DropItemOnTheGround(); //TODO: Add this function.
 				}
 			}

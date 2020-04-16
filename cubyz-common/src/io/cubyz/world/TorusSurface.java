@@ -91,7 +91,7 @@ public abstract class TorusSurface {
 		return -1;
 	}
 	
-	public StellarTorus getTorus() {
+	public StellarTorus getStellarTorus() {
 		return torus;
 	}
 	

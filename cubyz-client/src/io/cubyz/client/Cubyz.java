@@ -552,7 +552,7 @@ public class Cubyz implements IGameLogic {
 				if (pigType == null) return;
 				Entity pig = pigType.newEntity();
 				pig.setPosition(pos);
-				pig.setStellarTorus(world.getCurrentTorus());
+				pig.setStellarTorus(world.getCurrentTorus().getStellarTorus());
 				world.getCurrentTorus().addEntity(pig);
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_P, false);
 			}
@@ -819,8 +819,8 @@ public class Cubyz implements IGameLogic {
 				ambient.z *= lightingAdjust.z;
 			}
 			light.setColor(clearColor);
-			float lightY = (((float)world.getGameTime() % world.getCurrentTorus().DAYCYCLE) / (float) (world.getCurrentTorus().DAYCYCLE/2)) - 1f; // TODO: work on it more
-			float lightX = (((float)world.getGameTime() % world.getCurrentTorus().DAYCYCLE) / (float) (world.getCurrentTorus().DAYCYCLE/2)) - 1f;
+			float lightY = (((float)world.getGameTime() % world.getCurrentTorus().getStellarTorus().DAYCYCLE) / (float) (world.getCurrentTorus().getStellarTorus().DAYCYCLE/2)) - 1f; // TODO: work on it more
+			float lightX = (((float)world.getGameTime() % world.getCurrentTorus().getStellarTorus().DAYCYCLE) / (float) (world.getCurrentTorus().getStellarTorus().DAYCYCLE/2)) - 1f;
 			light.getDirection().set(lightY, 0, lightX);
 			window.setClearColor(clearColor);
 			renderer.render(window, ctx, ambient, light, world.getCurrentTorus().getVisibleChunks(), world.getBlocks(), world.getCurrentTorus().getEntities(), worldSpatialList, world.getLocalPlayer(), world.getCurrentTorus().getAnd());
