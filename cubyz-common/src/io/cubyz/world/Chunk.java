@@ -175,6 +175,30 @@ public class Chunk {
 		}
 		lightUpdate(updates, 0, 0xffffff00);
 	}
+	// Update only 1 corner:
+	private void singleLightUpdate(int x, int y, int z) {
+		ArrayList<int[]> updates = new ArrayList<>();
+		// Sun:
+		int newLight = localLightUpdate(x, y, z, 24, 0x00ffffff);
+		int[] arr = new int[]{x, y, z, newLight};
+		updates.add(arr);
+		lightUpdate(updates, 24, 0x00ffffff);
+		// Red:
+		newLight = localLightUpdate(x, y, z, 16, 0xff00ffff);
+		arr = new int[]{x, y, z, newLight};
+		updates.add(arr);
+		lightUpdate(updates, 16, 0xff00ffff);
+		// Green:
+		newLight = localLightUpdate(x, y, z, 8, 0xffff00ff);
+		arr = new int[]{x, y, z, newLight};
+		updates.add(arr);
+		lightUpdate(updates, 8, 0xffff00ff);
+		// Blue:
+		newLight = localLightUpdate(x, y, z, 0, 0xffffff00);
+		arr = new int[]{x, y, z, newLight};
+		updates.add(arr);
+		lightUpdate(updates, 0, 0xffffff00);
+	}
 	private int applyNeighbors(int light, int shift, BlockInstance n1, BlockInstance n2, BlockInstance n3, BlockInstance n4) {
 		light = (light >>> shift) & 255;
 		light <<= 2; // make sure small absorptions don't get ignored while dividing by 4.
@@ -317,19 +341,11 @@ public class Chunk {
 		int curLight = (light[index] >>> shift) & 255;
 		if(maxLight < 0) maxLight = 0;
 		if(curLight != maxLight) {
-			n++;
-			if(n >= 1000000) {
-				System.out.print(curLight+" "+maxLight+" ");
-			}
 			light[index] = (light[index] & mask) | (maxLight << shift);
-			if(n >= 1000000) {
-				System.out.println(((light[index] >>> shift) & 255)+" "+x+" "+y+" "+z);
-			}
 			return maxLight;
 		}
 		return -1;
 	}
-	static int n = 0;
 	// Used for first time loading. For later update also negative changes have to be taken into account making the system more complex.
 	public void lightUpdate(ArrayList<int[]> lightUpdates, int shift, int mask) {
 		while(lightUpdates.size() != 0) {
@@ -577,7 +593,7 @@ public class Chunk {
 				}
 			}
 			lightUpdate(lightUpdates, 24, 0x00ffffff);
-			// Look at the neighboring chunks:
+			// Look at the neighboring chunks. Update only the outer corners:
 			boolean no = surface._getNoGenerateChunk(ox-1, oy) != null;
 			boolean po = surface._getNoGenerateChunk(ox+1, oy) != null;
 			boolean on = surface._getNoGenerateChunk(ox, oy-1) != null;
@@ -585,32 +601,32 @@ public class Chunk {
 			if(no || on) {
 				int x = 0, z = 0;
 				for(int y = 0; y < y0; y++) {
-					lightUpdate(x, y, z);
+					singleLightUpdate(x, y, z);
 				}
 			}
 			if(no || op) {
 				int x = 0, z = 15;
 				for(int y = 0; y < y0; y++) {
-					lightUpdate(x, y, z);
+					singleLightUpdate(x, y, z);
 				}
 			}
 			if(po || on) {
 				int x = 15, z = 0;
 				for(int y = 0; y < y0; y++) {
-					lightUpdate(x, y, z);
+					singleLightUpdate(x, y, z);
 				}
 			}
 			if(po || op) {
 				int x = 15, z = 15;
 				for(int y = 0; y < y0; y++) {
-					lightUpdate(x, y, z);
+					singleLightUpdate(x, y, z);
 				}
 			}
 			if(no) {
 				int x = 0;
 				for(int z = 1; z < 15; z++) {
 					for(int y = 0; y < y0; y++) {
-						lightUpdate(x, y, z);
+						singleLightUpdate(x, y, z);
 					}
 				}
 			}
@@ -618,7 +634,7 @@ public class Chunk {
 				int x = 15;
 				for(int z = 1; z < 15; z++) {
 					for(int y = 0; y < y0; y++) {
-						lightUpdate(x, y, z);
+						singleLightUpdate(x, y, z);
 					}
 				}
 			}
@@ -626,7 +642,7 @@ public class Chunk {
 				int z = 0;
 				for(int x = 1; x < 15; x++) {
 					for(int y = 0; y < y0; y++) {
-						lightUpdate(x, y, z);
+						singleLightUpdate(x, y, z);
 					}
 				}
 			}
@@ -634,7 +650,7 @@ public class Chunk {
 				int z = 15;
 				for(int x = 1; x < 15; x++) {
 					for(int y = 0; y < y0; y++) {
-						lightUpdate(x, y, z);
+						singleLightUpdate(x, y, z);
 					}
 				}
 			}
