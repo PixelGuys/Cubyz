@@ -132,16 +132,20 @@ public class RiverGenerator implements BigGenerator {
 		float[] grad11 = getGradient(x1, y1, nn, np, pn, pp);
 		// Get an estimation of the gradient at the float position and normalize it so the river movement is 1:
 		float[] dir = getGradient(x%1, y%1, grad00, grad01, grad10, grad11);
+		float val = (float)Math.sqrt(dir[0]*dir[0] + dir[1]*dir[1]);
+		if(dir[0]*oldDir[0]+dir[1]*oldDir[1] <= -0.9*val && maxLength > 5) {
+			maxLength = 5; // The river has to end if the direction of flow and the mountain slope are too far apart.
+		}
 		if(oldDir[0] != 0 || oldDir[1] != 0) {
 			dir[0] += oldDir[0]/16;
 			dir[1] += oldDir[1]/16;
 		}
-		float val = (float)Math.sqrt(dir[0]*dir[0] + dir[1]*dir[1]);
+		val = (float)Math.sqrt(dir[0]*dir[0] + dir[1]*dir[1]);
 		dir[0] /= val;
 		dir[1] /= val;
 		float nextHeight = Math.min(curHeight, getHeight(x0, y0, nn, np, pn, pp));
 		if(nextHeight <= 102.0f/256.0f) return; // No need to get any lower than sea level.
-		if(128-dist-2*width <= 5) {
+		if(128-dist-2*width <= 5 || maxLength <= 5) {
 			if(maxLength > 5) maxLength = 5;
 			nextHeight -= 0.004f; // Let the river slowly disappear underground.
 		}
