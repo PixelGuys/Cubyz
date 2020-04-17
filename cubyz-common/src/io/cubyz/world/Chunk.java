@@ -877,7 +877,8 @@ public class Chunk {
 	}
 	
 	public int getLight(int x, int y, int z) {
-		if(y < 0 || y >= World.WORLD_HEIGHT) return 0;
+		if(y < 0) return 0;
+		if(y >= World.WORLD_HEIGHT) return 0xff000000;
 		if(x < 0) {
 			Chunk chunk = surface._getNoGenerateChunk(ox-1, oy);
 			if(chunk != null) return chunk.getLight(x+16, y, z);
