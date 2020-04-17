@@ -1,5 +1,6 @@
 package io.cubyz.world;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -9,6 +10,7 @@ import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.IRegistryElement;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.Ore;
+import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.save.WorldIO;
 import io.cubyz.world.generator.LifelandGenerator;
@@ -22,7 +24,7 @@ public class LocalWorld extends World {
 	protected String name;
 	
 	private ArrayList<StellarTorus> toruses = new ArrayList<>();
-	private TorusSurface currentTorus;
+	private LocalTorusSurface currentTorus;
 	private long milliTime;
 	private long gameTime;
 	public boolean inLqdUpdate;
@@ -31,7 +33,20 @@ public class LocalWorld extends World {
 	
 	public LocalWorld(String name) {
 		this.name = name;
-		
+		wio = new WorldIO(this, new File("saves/" + name));
+		if (wio.hasWorldData()) {
+			wio.loadWorldSeed();
+			wio.loadWorldData();
+			generated = true;
+		} else {
+			this.seed = new Random().nextInt();
+			wio.saveWorldData();
+		}
+		rnd = new Random(seed);
+	}
+	
+	public void forceSave() {
+		wio.saveWorldData();
 	}
 	
 	public String getName() {
@@ -78,13 +93,22 @@ public class LocalWorld extends World {
 	}
 
 	@Override
-	public TorusSurface getCurrentTorus() {
+	public LocalTorusSurface getCurrentTorus() {
 		return currentTorus;
+	}
+	
+	public void setCurrentTorusID(long seed) {
+		LocalStellarTorus torus = new LocalStellarTorus(this, seed);
+		torus.createSurface();
+		currentTorus = (LocalTorusSurface) torus.getSurface();
+		toruses.add(torus);
 	}
 	
 	// Returns the blocks, so their meshes can be created and stored.
 	public Block[] generate() {
-		if (!generated) seed = rnd.nextInt();
+		if (!generated) {
+			seed = rnd.nextInt();
+		}
 		Random rand = new Random(seed);
 		int randomAmount = 9 + (int)(Math.random()*3); // Generate 9-12 random ores.
 		blocks = new Block[CubyzRegistries.BLOCK_REGISTRY.registered().length+randomAmount];
@@ -112,12 +136,25 @@ public class LocalWorld extends World {
 			catch(Exception e) {}
 		}
 		LifelandGenerator.initOres(ores.toArray(new Ore[ores.size()]));
-		if(generated) {
-			wio.loadWorldData(); // TODO: fix
-		}
 		generated = true;
-		currentTorus = new LocalTorusSurface(this, rand.nextLong());
-		toruses.add(currentTorus);
+		if (currentTorus == null) {
+			LocalStellarTorus torus = new LocalStellarTorus(this, rand.nextLong());
+			torus.createSurface();
+			currentTorus = (LocalTorusSurface) torus.getSurface();
+			toruses.add(torus);
+		}
+		for (Entity ent : currentTorus.getEntities()) {
+			System.out.println(ent);
+			if (ent instanceof Player) {
+				player = (Player) ent;
+			}
+		}
+		if (player == null) {
+			player = (Player) CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player").newEntity();
+			player.setStellarTorus(currentTorus.getStellarTorus());
+			currentTorus.addEntity(player);
+		}
+		wio.saveWorldData();
 		return blocks;
 	}
 	

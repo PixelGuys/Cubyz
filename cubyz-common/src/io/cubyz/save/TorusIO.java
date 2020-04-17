@@ -33,36 +33,19 @@ public class TorusIO {
 			dir.mkdirs();
 		}
 		this.torus = torus;
-		
-		if (torus.hasSurface()) {
-			surface = (LocalTorusSurface) torus.getSurface();
-			surface.blockData = blockData;
-			surface.chunkData = chunkData;
-		}
+	}
+	
+	public void link() {
+		surface = (LocalTorusSurface) torus.getSurface();
+		surface.blockData = blockData;
+		surface.chunkData = chunkData;
 	}
 
-	public boolean hasWorldData() {
+	public boolean hasTorusData() {
 		return new File(dir, "torus.dat").exists();
 	}
 
-	// Load the seed, which is needed before custom item and ore generation.
-	public void loadWorldSeed() {
-		try {
-			InputStream in = new FileInputStream(new File(dir, "torus.dat"));
-			byte[] len = new byte[4];
-			in.read(len);
-			int l = Bits.getInt(len, 0);
-			byte[] dst = new byte[l];
-			in.read(dst);
-			NDTContainer ndt = new NDTContainer(dst);
-			torus.setLocalSeed(ndt.getInteger("seed"));
-			in.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-
-	public void loadWorldData() {
+	public void loadTorusData() {
 		try {
 			InputStream in = new FileInputStream(new File(dir, "torus.dat"));
 			byte[] len = new byte[4];
@@ -105,24 +88,21 @@ public class TorusIO {
 		}
 	}
 	
-	public void saveWorldData() {
+	public void saveTorusData() {
 		try {
-			OutputStream out = new FileOutputStream(new File(dir, "world.dat"));
+			OutputStream out = new FileOutputStream(new File(dir, "torus.dat"));
 			NDTContainer ndt = new NDTContainer();
 			ndt.setInteger("version", 1);
 			ndt.setString("name", torus.getName());
-			ndt.setLong("seed", torus.getLocalSeed());
+			ndt.setInteger("entityCount", surface == null ? 0 : surface.getEntities().length);
+			byte[] len = new byte[4];
+			Bits.putInt(len, 0, ndt.getData().length);
+			out.write(len);
+			out.write(ndt.getData());
 			if (surface != null) {
-				ndt.setInteger("entityCount", surface.getEntities().length);
-				byte[] len = new byte[4];
-				Bits.putInt(len, 0, ndt.getData().length);
-				out.write(len);
-				out.write(ndt.getData());
 				for (Entity ent : surface.getEntities()) {
 					EntityIO.saveEntity(ent, out);
 				}
-			} else {
-				ndt.setInteger("entityCount", 0);
 			}
 			out.close();
 		} catch (IOException e) {

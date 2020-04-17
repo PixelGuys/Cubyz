@@ -47,7 +47,7 @@ public class SaveSelectorGUI extends MenuGUI {
 					}
 				}
 				Cubyz.gameUI.setMenu(null, false); // hide from UISystem.back()
-				Cubyz.loadWorld(world);
+				Cubyz.loadWorld(world.getCurrentTorus());
 			});
 			saveButtons[i] = b;
 			b = new Button(new TextKey("gui.cubyz.saves.delete"));

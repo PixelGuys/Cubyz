@@ -272,9 +272,6 @@ public class MainRenderer implements IRenderer {
 		glClear(GL_DEPTH_BUFFER_BIT);
 		depthShaderProgram.bind();
 		
-		float lightAngleX = (float) Math.acos(light.getDirection().z);
-		float lightAngleY = (float) Math.asin(light.getDirection().x);
-		float lightAngleZ = 0f;
 		Matrix4f lightViewMatrix = getLightViewMatrix(light);
 		// TODO: only create new vector if changed
 		depthShaderProgram.setUniform("projectionMatrix", getShadowProjectionMatrix());
@@ -341,13 +338,16 @@ public class MainRenderer implements IRenderer {
 			if (map[i] == null)
 				continue;
 			Mesh mesh = Meshes.blockMeshes.get(blocks[i]);
+			if (mesh == null) { // TODO: remove, prob related to custom ores
+				return;
+			}
 			shaderProgram.setUniform("material", mesh.getMaterial());
 			if (selectedBlock == i) {
 				map[i].add(selected);
 			}
 			if (mesh.isInstanced()) {
-				glActiveTexture(GL13C.GL_TEXTURE1);
 				if (shadowMap != null) {
+					glActiveTexture(GL13C.GL_TEXTURE1);
 					glBindTexture(GL_TEXTURE_2D, shadowMap.getDepthMapFBO().getDepthTexture().getId());
 				}
 				InstancedMesh ins = (InstancedMesh) mesh;

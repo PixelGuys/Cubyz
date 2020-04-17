@@ -45,7 +45,7 @@ public class SaveCreationGUI extends MenuGUI {
 				}
 			}
 			Cubyz.gameUI.setMenu(null, false); // hide from UISystem.back()
-			Cubyz.loadWorld(world);
+			Cubyz.loadWorld(world.getCurrentTorus());
 		});
 		
 		cancel.setSize(100, 50);

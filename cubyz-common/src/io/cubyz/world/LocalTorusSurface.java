@@ -9,8 +9,6 @@ import java.util.concurrent.LinkedBlockingDeque;
 
 import org.joml.Vector4f;
 
-import io.cubyz.CubyzLogger;
-import io.cubyz.Profiler;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.IRegistryElement;
 import io.cubyz.base.init.ItemInit;
@@ -28,7 +26,7 @@ import io.cubyz.handler.RemoveBlockHandler;
 import io.cubyz.math.Bits;
 import io.cubyz.math.CubyzMath;
 import io.cubyz.save.BlockChange;
-import io.cubyz.save.WorldIO;
+import io.cubyz.save.TorusIO;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 import io.cubyz.world.generator.LifelandGenerator;
 import io.cubyz.world.generator.StellarTorusGenerator;
@@ -52,11 +50,11 @@ public class LocalTorusSurface extends TorusSurface {
 	public ArrayList<byte[]> blockData;	
 	public ArrayList<int[]> chunkData;
 	
-	private static int MAX_QUEUE_SIZE;
+	private static int MAX_QUEUE_SIZE = 40;
 	
 	private StellarTorusGenerator generator;
 	
-	private WorldIO wio;
+	private TorusIO wio;
 	
 	private List<ChunkGenerationThread> threads = new ArrayList<>();
 	private boolean generated;
@@ -107,6 +105,24 @@ public class LocalTorusSurface extends TorusSurface {
 		this(torus, "P.K. Kusuo Saiki", seed);
 	}
 	
+	public long getSeed() {
+		return localSeed;
+	}
+	
+	public void link() {
+		wio.link();
+		wio.loadTorusData(); // reload data in order for entities to also be loaded.
+	}
+	
+	public void setChunkQueueSize(int size) {
+		synchronized (loadList) {
+			loadList.clear();
+			MAX_QUEUE_SIZE = size;
+			loadList = new LinkedBlockingDeque<>(size);
+		}
+		System.out.println("max queue size is now " + size);
+	}
+	
 	public LocalTorusSurface(LocalStellarTorus torus, String name, long seed) {
 		localSeed = seed;
 		this.torus = torus;
@@ -127,19 +143,20 @@ public class LocalTorusSurface extends TorusSurface {
 		if (generator instanceof LifelandGenerator) {
 			((LifelandGenerator) generator).sortGenerators();
 		}
-		wio = new WorldIO(torus, new File("saves/" + torus.getName() + "/" + seed)); // use seed in path
-		if (wio.hasWorldData()) {
-			wio.loadSeed(); // Load the rest in generate(), so custom items can be taken care of correctly.
+		wio = new TorusIO(torus, new File("saves/" + torus.getWorld().getName() + "/" + seed)); // use seed in path
+		if (wio.hasTorusData()) {
 			generated = true;
+			wio.loadTorusData();
 		} else {
-			wio.saveWorldData();
+			wio.saveTorusData();
 		}
-		MAX_QUEUE_SIZE = torus.world.getRenderDistance() << 2;
+		//setChunkQueueSize(torus.world.getRenderDistance() << 2);
 	}
 
 	
 	public void forceSave() {
-		wio.saveWorldData();
+		wio.saveTorusData();
+		((LocalWorld) ((LocalStellarTorus) torus).getWorld()).forceSave();
 	}
 
 	@Override
@@ -410,7 +427,7 @@ public class LocalTorusSurface extends TorusSurface {
 			Block b = ch.getBlockInstanceAt(x&15, y, z&15).getBlock();
 			ch.removeBlockAt(x & 15, y, z & 15, true);
 			wio.saveChunk(ch);
-			wio.saveWorldData();
+			wio.saveTorusData();
 			for (RemoveBlockHandler hand : removeBlockHandlers) {
 				hand.onBlockRemoved(b, x, y, z);
 			}
@@ -423,7 +440,7 @@ public class LocalTorusSurface extends TorusSurface {
 		if (ch != null) {
 			ch.addBlockAt(x & 15, y, z & 15, b, true);
 			wio.saveChunk(ch);
-			wio.saveWorldData();
+			wio.saveTorusData();
 			for (PlaceBlockHandler hand : placeBlockHandlers) {
 				hand.onBlockPlaced(b, x, y, z);
 			}
@@ -574,7 +591,7 @@ public class LocalTorusSurface extends TorusSurface {
 		}
 		LifelandGenerator.initOres(ores.toArray(new Ore[ores.size()]));
 		if(generated) {
-			wio.loadWorldData();
+			wio.saveTorusData();
 		}
 		generated = true;
 		return torusBlocks;
@@ -640,7 +657,7 @@ public class LocalTorusSurface extends TorusSurface {
 		lastZ = z;
 		this.doubleRD = doubleRD;
 		if (minK != visibleChunks.length) { // if at least one chunk got unloaded
-			wio.saveWorldData();
+			wio.saveTorusData();
 		}
 		
 		// Check if one of the never loaded chunks is outside of players range.

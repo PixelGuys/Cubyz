@@ -53,7 +53,7 @@ public class MainMenuGUI extends MenuGUI {
 			}
 			Cubyz.requestJoin("localhost");
 			Cubyz.gameUI.setMenu(null, false);
-			Cubyz.loadWorld(Cubyz.mpClient.getHandler().getWorld());
+			Cubyz.loadWorld(Cubyz.mpClient.getHandler().getWorld().getCurrentTorus());
 		});
 		
 		exit.setOnAction(() -> {

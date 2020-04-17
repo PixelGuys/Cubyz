@@ -56,7 +56,6 @@ import io.jungle.audio.SoundSource;
 import io.jungle.game.*;
 import io.jungle.util.*;
 
-// TODO: fix *EVERYTHING*
 public class Cubyz implements IGameLogic {
 
 	public static Context ctx;
@@ -68,6 +67,7 @@ public class Cubyz implements IGameLogic {
 	public static MouseInput mouse;
 	public static UISystem gameUI;
 	public static World world;
+	public static TorusSurface surface;
 	public static Language lang;
 	public static SoundManager sound;
 	private SoundBuffer music;
@@ -156,7 +156,7 @@ public class Cubyz implements IGameLogic {
 		System.gc();
 	}
 	
-	public static void loadWorld(World world) {
+	public static void loadWorld(TorusSurface surface) {
 		if (Cubyz.world != null) {
 			quitWorld();
 		}
@@ -173,7 +173,8 @@ public class Cubyz implements IGameLogic {
 			skyMoon.setPosition(new Vector3f(100, 1, 0));
 			worldSpatialList = new Spatial[] {skySun/*, skyMoon*/};
 		}
-		Cubyz.world = world;
+		Cubyz.surface = surface;
+		Cubyz.world = surface.getStellarTorus().getWorld();
 		if (world.isLocal()) {
 			Random rnd = new Random();
 			int dx = 0;
@@ -182,8 +183,8 @@ public class Cubyz implements IGameLogic {
 			if (world.getLocalPlayer().getPosition().x == 0 && world.getLocalPlayer().getPosition().z == 0) {
 				CubyzLogger.i.info("Finding position..");
 				while (true) {
-					dx = rnd.nextInt(world.getCurrentTorus().getAnd()+1);
-					dz = rnd.nextInt(world.getCurrentTorus().getAnd()+1);
+					dx = rnd.nextInt(surface.getAnd()+1);
+					dz = rnd.nextInt(surface.getAnd()+1);
 					CubyzLogger.i.info("Trying " + dx + " ? " + dz);
 					world.getCurrentTorus().synchronousSeek(dx, dz);
 					highestY = world.getCurrentTorus().getHighestBlock(dx, dz);
@@ -192,6 +193,7 @@ public class Cubyz implements IGameLogic {
 					}
 				}
 				world.getLocalPlayer().setPosition(new Vector3i(dx, highestY+2, dz));
+				world.getLocalPlayer().setStellarTorus(surface.getStellarTorus());
 				CubyzLogger.i.info("OK!");
 			}
 		}
@@ -200,8 +202,8 @@ public class Cubyz implements IGameLogic {
 		Cubyz.gameUI.addOverlay(new GameOverlay());
 		
 		if (world instanceof LocalWorld) { // custom ores on multiplayer later, maybe?
-			LocalWorld lw = (LocalWorld) world;
-			ArrayList<CustomOre> customOres = lw.getCustomOres();
+			LocalTorusSurface ts = (LocalTorusSurface) surface;
+			ArrayList<CustomOre> customOres = ts.getCustomOres();
 			for (CustomOre ore : customOres) {
 				BufferedImage canvas = new BufferedImage(32, 32, BufferedImage.TYPE_INT_RGB);
 				BufferedImage stone = getImage("assets/cubyz/textures/blocks/stone.png");
@@ -797,8 +799,8 @@ public class Cubyz implements IGameLogic {
 			renderDeque.pop().run();
 		}
 		if (world != null) {
-			if (worldSeason != world.getCurrentTorus().getSeason()) {
-				worldSeason = world.getCurrentTorus().getSeason();
+			if (worldSeason != world.getCurrentTorus().getStellarTorus().getSeason()) {
+				worldSeason = world.getCurrentTorus().getStellarTorus().getSeason();
 				seasonUpdateDynamodels();
 				CubyzLogger.i.info("Updated season to ID " + worldSeason);
 			}
@@ -840,9 +842,9 @@ public class Cubyz implements IGameLogic {
 			renderer.render(window, ctx, brightAmbient, light, EMPTY_CHUNK_LIST, EMPTY_BLOCK_LIST, EMPTY_ENTITY_LIST, EMPTY_SPATIAL_LIST, null, -1);
 			
 			if (screenshot) {
-				FrameBuffer buf = window.getRenderTarget();
+				/*FrameBuffer buf = window.getRenderTarget();
 				window.setRenderTarget(null);
-				screenshot = false;
+				screenshot = false;*/
 			}
 		}
 		
