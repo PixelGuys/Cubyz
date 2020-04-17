@@ -175,17 +175,33 @@ public class Chunk {
 		}
 		lightUpdate(updates, 0, 0xffffff00);
 	}
-	private int applyNeighbors(int light, int shift, BlockInstance... bis) {
+	private int applyNeighbors(int light, int shift, BlockInstance n1, BlockInstance n2, BlockInstance n3, BlockInstance n4) {
 		light = (light >>> shift) & 255;
 		light <<= 2; // make sure small absorptions don't get ignored while dividing by 4.
 		int solidNeighbors = 0;
-		for(int i = 0; i < 4; i++) {
-			if(bis[i] != null) {
-				if(bis[i].getBlock().isTransparent()) {
-					light -= (bis[i].getBlock().getAbsorption() >>> shift) & 255;
-				} else
-					solidNeighbors++;
-			}
+		if(n1 != null) {
+			if(n1.getBlock().isTransparent()) {
+				light -= (n1.getBlock().getAbsorption() >>> shift) & 255;
+			} else
+				solidNeighbors++;
+		}
+		if(n2 != null) {
+			if(n2.getBlock().isTransparent()) {
+				light -= (n2.getBlock().getAbsorption() >>> shift) & 255;
+			} else
+				solidNeighbors++;
+		}
+		if(n3 != null) {
+			if(n3.getBlock().isTransparent()) {
+				light -= (n3.getBlock().getAbsorption() >>> shift) & 255;
+			} else
+				solidNeighbors++;
+		}
+		if(n4 != null) {
+			if(n4.getBlock().isTransparent()) {
+				light -= (n4.getBlock().getAbsorption() >>> shift) & 255;
+			} else
+				solidNeighbors++;
 		}
 		light >>= 2; // Divide by 4.
 		switch(solidNeighbors) {
@@ -201,10 +217,17 @@ public class Chunk {
 				light -= 8;
 		}
 		// Check if one of the blocks is glowing bright enough to support more light:
-		for(int i = 0; i < 4; i++) {
-			if(bis[i] != null) {
-				light = Math.max(light, (bis[i].getBlock().getAbsorption() >>> shift) & 255);
-			}
+		if(n1 != null) {
+			light = Math.max(light, (n1.getBlock().getAbsorption() >>> shift) & 255);
+		}
+		if(n2 != null) {
+			light = Math.max(light, (n2.getBlock().getAbsorption() >>> shift) & 255);
+		}
+		if(n3 != null) {
+			light = Math.max(light, (n3.getBlock().getAbsorption() >>> shift) & 255);
+		}
+		if(n4 != null) {
+			light = Math.max(light, (n4.getBlock().getAbsorption() >>> shift) & 255);
 		}
 		return light;
 	}
