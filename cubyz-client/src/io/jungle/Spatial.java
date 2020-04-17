@@ -20,6 +20,7 @@ public class Spatial {
         position = new Vector3f(0, 0, 0);
         scale = 1;
         rotation = new Vector3f(0, 0, 0);
+        light = new int[8];
     }
     
     public Spatial(Mesh[] meshes) {
@@ -27,6 +28,7 @@ public class Spatial {
     	position = new Vector3f(0, 0, 0);
     	scale = 1;
     	rotation = new Vector3f(0, 0, 0);
+        light = new int[8];
     }
     
     public Spatial() {

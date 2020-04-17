@@ -218,8 +218,7 @@ public class MainRenderer implements IRenderer {
 								(z < -0.5001f && !bi.neighborNorth)) {
 							
 							tmp.setPosition(x, y, z);
-							int[] light = ch.getCornerLight(bi, ambientLight);
-							tmp.light = light;
+							ch.getCornerLight(bi.getX() & 15, bi.getY(), bi.getZ() & 15, ambientLight, tmp.light);
 							if (tmp.isSelected()) {
 								selected = tmp;
 								selectedBlock = bi.getID();

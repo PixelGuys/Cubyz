@@ -59,6 +59,30 @@ public class Chunk {
 	private BlockInstance getInst(int x, int y, int z) {
 		return inst[(x << 4) | (y << 8) | z];
 	}
+	private BlockInstance getInstUnbound(int x, int y, int z) {
+		if(y < 0 || y >= World.WORLD_HEIGHT || !generated) return null;
+		if(x < 0) {
+			Chunk chunk = surface._getNoGenerateChunk(ox-1, oy);
+			if(chunk != null) return chunk.getInstUnbound(x+16, y, z);
+			return null;
+		}
+		if(x > 15) {
+			Chunk chunk = surface._getNoGenerateChunk(ox+1, oy);
+			if(chunk != null) return chunk.getInstUnbound(x-16, y, z);
+			return null;
+		}
+		if(z < 0) {
+			Chunk chunk = surface._getNoGenerateChunk(ox, oy-1);
+			if(chunk != null) return chunk.getInstUnbound(x, y, z+16);
+			return null;
+		}
+		if(z > 15) {
+			Chunk chunk = surface._getNoGenerateChunk(ox, oy+1);
+			if(chunk != null) return chunk.getInstUnbound(x, y, z-16);
+			return null;
+		}
+		return inst[(x << 4) | (y << 8) | z];
+	}
 	
 	/**
 	 * Internal "hack" method used for the overlay, DO NOT USE!
@@ -106,188 +130,183 @@ public class Chunk {
 	// Performs a light update in all channels on this block.
 	private void lightUpdate(int x, int y, int z) {
 		ArrayList<int[]> updates = new ArrayList<>();
-		int newLight = localLightUpdate(x, y, z, 24, 0x00ffffff); // Sun
-		int[] arr = new int[]{x, y, z, newLight};
-		updates.add(arr);
+		// Sun:
+		for(int dx = 0; dx <= 1; dx++) {
+			for(int dy = 0; dy <= 1; dy++) {
+				for(int dz = 0; dz <= 1; dz++) {
+					int newLight = localLightUpdate(x+dx, y+dy, z+dz, 24, 0x00ffffff);
+					int[] arr = new int[]{x, y, z, newLight};
+					updates.add(arr);
+				}
+			}
+		}
 		lightUpdate(updates, 24, 0x00ffffff);
-		newLight = localLightUpdate(x, y, z, 16, 0xff00ffff); // Red
-		arr = new int[]{x, y, z, newLight};
-		updates.add(arr);
+		// Red:
+		for(int dx = 0; dx <= 1; dx++) {
+			for(int dy = 0; dy <= 1; dy++) {
+				for(int dz = 0; dz <= 1; dz++) {
+					int newLight = localLightUpdate(x+dx, y+dy, z+dz, 16, 0xff00ffff);
+					int[] arr = new int[]{x, y, z, newLight};
+					updates.add(arr);
+				}
+			}
+		}
 		lightUpdate(updates, 16, 0xff00ffff);
-		newLight = localLightUpdate(x, y, z, 8, 0xffff00ff); // Green
-		arr = new int[]{x, y, z, newLight};
-		updates.add(arr);
+		// Green:
+		for(int dx = 0; dx <= 1; dx++) {
+			for(int dy = 0; dy <= 1; dy++) {
+				for(int dz = 0; dz <= 1; dz++) {
+					int newLight = localLightUpdate(x+dx, y+dy, z+dz, 8, 0xffff00ff);
+					int[] arr = new int[]{x, y, z, newLight};
+					updates.add(arr);
+				}
+			}
+		}
 		lightUpdate(updates, 8, 0xffff00ff);
-		newLight = localLightUpdate(x, y, z, 0, 0xffffff00); // Blue
-		arr = new int[]{x, y, z, newLight};
-		updates.add(arr);
+		// Blue:
+		for(int dx = 0; dx <= 1; dx++) {
+			for(int dy = 0; dy <= 1; dy++) {
+				for(int dz = 0; dz <= 1; dz++) {
+					int newLight = localLightUpdate(x+dx, y+dy, z+dz, 0, 0xffffff00);
+					int[] arr = new int[]{x, y, z, newLight};
+					updates.add(arr);
+				}
+			}
+		}
 		lightUpdate(updates, 0, 0xffffff00);
+	}
+	private int applyNeighbors(int light, int shift, BlockInstance... bis) {
+		light = (light >>> shift) & 255;
+		light <<= 2; // make sure small absorptions don't get ignored while dividing by 4.
+		int solidNeighbors = 0;
+		for(int i = 0; i < 4; i++) {
+			if(bis[i] != null) {
+				if(bis[i].getBlock().isTransparent()) {
+					light -= (bis[i].getBlock().getAbsorption() >>> shift) & 255;
+				} else
+					solidNeighbors++;
+			}
+		}
+		light >>= 2; // Divide by 4.
+		switch(solidNeighbors) {
+			case 4:
+				return 0;
+			case 3:
+				light -= 64; // ⅜ of all light is absorbed if there is a corner. That is exactly the same value as with the first attempt at a lighting system.
+			case 2:
+				light -= 16;
+			case 1:
+				light -= 8;
+			case 0:
+				light -= 8;
+		}
+		// Check if one of the blocks is glowing bright enough to support more light:
+		for(int i = 0; i < 4; i++) {
+			if(bis[i] != null) {
+				light = Math.max(light, (bis[i].getBlock().getAbsorption() >>> shift) & 255);
+			}
+		}
+		return light;
 	}
 	private int localLightUpdate(int x, int y, int z, int shift, int mask) {
 		// Make some bound checks:
-		if(!easyLighting || y < 0 || y >= World.WORLD_HEIGHT || !generated) return 0;
+		if(!easyLighting || y < 0 || y >= World.WORLD_HEIGHT || !generated) return -1;
 		// Check if it's inside this chunk:
 		if(x < 0) {
 			Chunk chunk = surface._getNoGenerateChunk(ox-1, oy);
 			if(chunk != null) return chunk.localLightUpdate(x+16, y, z, shift, mask);
-			return 0;
+			return -1;
 		}
 		if(x > 15) {
 			Chunk chunk = surface._getNoGenerateChunk(ox+1, oy);
 			if(chunk != null) return chunk.localLightUpdate(x-16, y, z, shift, mask);
-			return 0;
+			return -1;
 		}
 		if(z < 0) {
 			Chunk chunk = surface._getNoGenerateChunk(ox, oy-1);
 			if(chunk != null) return chunk.localLightUpdate(x, y, z+16, shift, mask);
-			return 0;
+			return -1;
 		}
 		if(z > 15) {
 			Chunk chunk = surface._getNoGenerateChunk(ox, oy+1);
 			if(chunk != null) return chunk.localLightUpdate(x, y, z-16, shift, mask);
-			return 0;
+			return -1;
 		}
-		// Check all neighbors and find their highest lighting in the specified channel:
+		// Get all eight neighbors of this lighting node:
+		BlockInstance[] neighbors = new BlockInstance[8];
+		for(int dx = -1; dx <= 0; dx++) {
+			for(int dy = -1; dy <= 0; dy++) {
+				for(int dz = -1; dz <= 0; dz++) {
+					neighbors[7 + (dx << 2) + (dy << 1) + dz] = getInstUnbound(x+dx, y+dy, z+dz);
+				}
+			}
+		}
+		
+		// Check all neighbors and find their highest lighting in the specified channel after applying block-specific effects to it:
 
 		int index = (x << 4) | (y << 8) | z; // Works close to the datastructure. Allows for some optimizations.
 		
-		int maxLight = 8; // Make sure the light of a block never gets below 0.
-		int neighbors = 0; // Count the neighbors for later.
+		int maxLight = 0;
 		if(x != 0) {
-			BlockInstance bi = inst[index-16];
-			if(bi == null || bi.getBlock().isTransparent()) {
-				maxLight = Math.max(maxLight, (light[index-16] >>> shift) & 255);
-			} else if(bi.getBlock().getLight() != 0) { // Take care of emmissions:
-				maxLight = Math.max(maxLight, (bi.getBlock().getLight() >>> shift) & 255);
-			} else {
-				neighbors++;
-			}
+			maxLight = Math.max(maxLight, applyNeighbors(light[index-16], shift, neighbors[0], neighbors[1], neighbors[2], neighbors[3]));
 		} else {
 			Chunk chunk = surface._getNoGenerateChunk(ox-1, oy);
 			if(chunk != null && chunk.isLoaded()) {
-				BlockInstance bi = chunk.getInst(15, y, z);
-				if(bi == null || bi.getBlock().isTransparent()) {
-					maxLight = Math.max(maxLight, (chunk.light[index | 0xf0] >>> shift) & 255);
-				} else if(bi.getBlock().getLight() != 0) { // Take care of emmissions:
-					maxLight = Math.max(maxLight, (bi.getBlock().getLight() >>> shift) & 255);
-				} else {
-						neighbors++;
-				}
+				maxLight = Math.max(maxLight, applyNeighbors(chunk.light[index | 0xf0], shift, neighbors[0], neighbors[1], neighbors[2], neighbors[3]));
 			}
 		}
 		if(x != 15) {
-			BlockInstance bi = inst[index+16];
-			if(bi == null || bi.getBlock().isTransparent()) {
-				maxLight = Math.max(maxLight, (light[index+16] >>> shift) & 255);
-			} else if(bi.getBlock().getLight() != 0) { // Take care of emmissions:
-				maxLight = Math.max(maxLight, (bi.getBlock().getLight() >>> shift) & 255);
-			} else {
-				neighbors++;
-			}
+			maxLight = Math.max(maxLight, applyNeighbors(light[index+16], shift, neighbors[4], neighbors[5], neighbors[6], neighbors[7]));
 		} else {
 			Chunk chunk = surface._getNoGenerateChunk(ox+1, oy);
 			if(chunk != null && chunk.isLoaded()) {
-				BlockInstance bi = chunk.getInst(0, y, z);
-				if(bi == null || bi.getBlock().isTransparent()) {
-					maxLight = Math.max(maxLight, (chunk.light[index & ~0xf0] >>> shift) & 255);
-				} else if(bi.getBlock().getLight() != 0) { // Take care of emmissions:
-					maxLight = Math.max(maxLight, (bi.getBlock().getLight() >>> shift) & 255);
-				} else {
-					neighbors++;
-				}
+				maxLight = Math.max(maxLight, applyNeighbors(light[index & ~0xf0], shift, neighbors[4], neighbors[5], neighbors[6], neighbors[7]));
 			}
 		}
 		if(z != 0) {
-			BlockInstance bi = inst[index-1];
-			if(bi == null || bi.getBlock().isTransparent()) {
-				maxLight = Math.max(maxLight, (light[index-1] >>> shift) & 255);
-			} else if(bi.getBlock().getLight() != 0) { // Take care of emmissions:
-				maxLight = Math.max(maxLight, (bi.getBlock().getLight() >>> shift) & 255);
-			} else {
-				neighbors++;
-			}
+			maxLight = Math.max(maxLight, applyNeighbors(light[index-1], shift, neighbors[0], neighbors[2], neighbors[4], neighbors[6]));
 		} else {
 			Chunk chunk = surface._getNoGenerateChunk(ox, oy-1);
 			if(chunk != null && chunk.isLoaded()) {
-				BlockInstance bi = chunk.getInst(x, y, 15);
-				if(bi == null || bi.getBlock().isTransparent()) {
-					maxLight = Math.max(maxLight, (chunk.light[index | 0xf] >>> shift) & 255);
-				} else if(bi.getBlock().getLight() != 0) { // Take care of emmissions:
-					maxLight = Math.max(maxLight, (bi.getBlock().getLight() >>> shift) & 255);
-				} else {
-					neighbors++;
-				}
+				maxLight = Math.max(maxLight, applyNeighbors(light[index | 0xf], shift, neighbors[0], neighbors[2], neighbors[4], neighbors[6]));
 			}
 		}
 		if(z != 15) {
-			BlockInstance bi = inst[index+1];
-			if(bi == null || bi.getBlock().isTransparent()) {
-				maxLight = Math.max(maxLight, (light[index+1] >>> shift) & 255);
-			} else if(bi.getBlock().getLight() != 0) { // Take care of emmissions:
-				maxLight = Math.max(maxLight, (bi.getBlock().getLight() >>> shift) & 255);
-			} else {
-				neighbors++;
-			}
+			maxLight = Math.max(maxLight, applyNeighbors(light[index+1], shift, neighbors[1], neighbors[3], neighbors[5], neighbors[7]));
 		} else {
 			Chunk chunk = surface._getNoGenerateChunk(ox, oy+1);
 			if(chunk != null && chunk.isLoaded()) {
-				BlockInstance bi = chunk.getInst(x, y, 0);
-				if(bi == null || bi.getBlock().isTransparent()) {
-					maxLight = Math.max(maxLight, (chunk.light[index & ~0xf] >>> shift) & 255);
-				} else if(bi.getBlock().getLight() != 0) { // Take care of emmissions:
-					maxLight = Math.max(maxLight, (bi.getBlock().getLight() >>> shift) & 255);
-				} else {
-					neighbors++;
-				}
+				maxLight = Math.max(maxLight, applyNeighbors(light[index & ~0xf], shift, neighbors[1], neighbors[3], neighbors[5], neighbors[7]));
 			}
 		}
 		if(y != 0) {
-			BlockInstance bi = inst[index-256];
-			if(bi == null || bi.getBlock().isTransparent()) {
-				maxLight = Math.max(maxLight, (light[index-256] >>> shift) & 255);
-			} else if(bi.getBlock().getLight() != 0) { // Take care of emmissions:
-				maxLight = Math.max(maxLight, (bi.getBlock().getLight() >>> shift) & 255);
-			} else {
-				neighbors++;
-			}
+			maxLight = Math.max(maxLight, applyNeighbors(light[index-256], shift, neighbors[0], neighbors[1], neighbors[4], neighbors[5]));
 		}
 		if(y != 255) {
-			BlockInstance bi = inst[index+256];
-			if(bi == null || bi.getBlock().isTransparent()) {
-				int local = (light[index+256] >>> shift) & 255;
-				if(shift == 24) // Sunlight can freely go down. Even after being weakened by glass(TODO: Add glass) or other things.
-					local += 8;
-				maxLight = Math.max(maxLight, local);
-			} else if(bi.getBlock().getLight() != 0) { // Take care of emmissions:
-				maxLight = Math.max(maxLight, (bi.getBlock().getLight() >>> shift) & 255);
-			} else {
-				neighbors++;
-			}
+			int local = applyNeighbors(light[index+256], shift, neighbors[2], neighbors[3], neighbors[6], neighbors[7]);
+			if(shift == 24 && local != 0)
+				local += 8;
+			maxLight = Math.max(maxLight, local);
 		} else if(shift == 24) {
-			maxLight = 263; // The top block gets always maximum lighting.
+			maxLight = 255; // The top block gets always maximum sunlight.
 		}
 		// Update the light and return.
 		int curLight = (light[index] >>> shift) & 255;
-		maxLight -= 8;
-		maxLight -= neighbors; // Account for light getting absorbed by neighboring blocks.
-		BlockInstance bi = inst[index];
-		if(bi != null) {
-			maxLight = Math.max(maxLight, (bi.getBlock().getLight() >>> shift) & 255);
-			if(bi.getBlock().isTransparent()) {
-				maxLight -= (bi.getBlock().getAbsorption() >>> shift) & 255; // Most transparent blocks will absorb a siquinificant portion of light.
-			}
-		}
 		if(maxLight < 0) maxLight = 0;
 		if(curLight != maxLight) {
+			n++;
+			if(n >= 1000000) {
+				System.out.print(curLight+" "+maxLight+" ");
+			}
 			light[index] = (light[index] & mask) | (maxLight << shift);
-			if(bi != null) {
-				bi.light = light[index];
-				return bi.getBlock().isTransparent() ? maxLight : 0; // Only do light updates through transparent blocks.
+			if(n >= 1000000) {
+				System.out.println(((light[index] >>> shift) & 255)+" "+x+" "+y+" "+z);
 			}
 			return maxLight;
 		}
-		return 0;
+		return -1;
 	}
+	static int n = 0;
 	// Used for first time loading. For later update also negative changes have to be taken into account making the system more complex.
 	public void lightUpdate(ArrayList<int[]> lightUpdates, int shift, int mask) {
 		while(lightUpdates.size() != 0) {
@@ -311,7 +330,7 @@ public class Chunk {
 				int y = max[1]+dy[n];
 				int z = max[2]+dz[n];
 				int light;
-				if((light = localLightUpdate(x, y, z, shift, mask)) > 0) {
+				if((light = localLightUpdate(x, y, z, shift, mask)) >= 0) {
 					for(int i = 0;; i++) {
 						if(i == updates.length) {
 							lightUpdates.add(new int[]{x, y, z, light});
@@ -876,30 +895,37 @@ public class Chunk {
 		return data;
 	}
 	
-	public int getLight(int x, int y, int z) {
+	public int getLight(int x, int y, int z, Vector3f sunLight) {
 		if(y < 0) return 0;
 		if(y >= World.WORLD_HEIGHT) return 0xff000000;
 		if(x < 0) {
 			Chunk chunk = surface._getNoGenerateChunk(ox-1, oy);
-			if(chunk != null) return chunk.getLight(x+16, y, z);
+			if(chunk != null) return chunk.getLight(x+16, y, z, sunLight);
 			return 0;
 		}
 		if(x > 15) {
 			Chunk chunk = surface._getNoGenerateChunk(ox+1, oy);
-			if(chunk != null) return chunk.getLight(x-16, y, z);
+			if(chunk != null) return chunk.getLight(x-16, y, z, sunLight);
 			return 0;
 		}
 		if(z < 0) {
 			Chunk chunk = surface._getNoGenerateChunk(ox, oy-1);
-			if(chunk != null) return chunk.getLight(x, y, z+16);
+			if(chunk != null) return chunk.getLight(x, y, z+16, sunLight);
 			return 0;
 		}
 		if(z > 15) {
 			Chunk chunk = surface._getNoGenerateChunk(ox, oy+1);
-			if(chunk != null) return chunk.getLight(x, y, z-16);
+			if(chunk != null) return chunk.getLight(x, y, z-16, sunLight);
 			return 0;
 		}
-		return light[(x << 4) | (y << 8) | z];
+		int ret = light[(x << 4) | (y << 8) | z];
+		int sun = (ret >>> 24) & 255;
+		int r = Math.max((ret >>> 16) & 255, (int)(sun*sunLight.x));
+		int g = Math.max((ret >>> 8) & 255, (int)(sun*sunLight.y));
+		int b = Math.max((ret >>> 0) & 255, (int)(sun*sunLight.z));
+		ret = (r << 16) | (g << 8) | b;
+		return ret;
+		
 	}
 	public int averaging(Vector3f sunLight, int ...col) {
 		int rAvg = 0, gAvg = 0, bAvg = 0;
@@ -916,24 +942,13 @@ public class Chunk {
 		return (rAvg << 16) | (gAvg << 8) | bAvg;
 	}
 	
-	public int[] getCornerLight(BlockInstance bi, Vector3f sunLight) {
-		// Get the light level of all 26 surrounding blocks:
-		int[][][] light = new int[3][3][3];
-		for(int dx = -1; dx <= 1; dx++) {
-			for(int dy = -1; dy <= 1; dy++) {
-				for(int dz = -1; dz <= 1; dz++) {
-					light[dx+1][dy+1][dz+1] = getLight((bi.getX() & 15)+dx, bi.getY()+dy, (bi.getZ() & 15)+dz);
-				}
-			}
-		}
-		int[] res = new int[8];
+	public void getCornerLight(int x, int y, int z, Vector3f sunLight, int[] arr) {
 		for(int dx = 0; dx <= 1; dx++) {
 			for(int dy = 0; dy <= 1; dy++) {
 				for(int dz = 0; dz <= 1; dz++) {
-					res[(dx << 2) | (dy << 1) | dz] = averaging(sunLight, light[dx][dy][dz], light[dx][dy][dz+1], light[dx][dy+1][dz], light[dx][dy+1][dz+1], light[dx+1][dy][dz], light[dx+1][dy][dz+1], light[dx+1][dy+1][dz], light[dx+1][dy+1][dz+1]);
+					arr[(dx << 2) | (dy << 1) | dz] = getLight(x+dx, y+dy, z+dz, sunLight);
 				}
 			}
 		}
-		return res;
 	}
 }
