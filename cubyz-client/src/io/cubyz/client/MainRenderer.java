@@ -202,7 +202,6 @@ public class MainRenderer implements IRenderer {
 				BlockInstance[] vis = ch.getVisibles();
 				for (int i = 0; vis[i] != null; i++) {
 					BlockInstance bi = vis[i];
-					Spatial tmp = (Spatial) bi.getSpatial();
 					float x = CubyzMath.matchSign((bi.getX() - x0) & worldAnd, worldAnd) - relX;
 					float y = bi.getY() - y0;
 					float z = CubyzMath.matchSign((bi.getZ() - z0) & worldAnd, worldAnd) - relZ;
@@ -216,7 +215,7 @@ public class MainRenderer implements IRenderer {
 								(y < -0.5001f && !bi.neighborUp) ||
 								(z > 0.5001f && !bi.neighborSouth) ||
 								(z < -0.5001f && !bi.neighborNorth)) {
-							
+							Spatial tmp = (Spatial) bi.getSpatial();
 							tmp.setPosition(x, y, z);
 							ch.getCornerLight(bi.getX() & 15, bi.getY(), bi.getZ() & 15, ambientLight, tmp.light);
 							if (tmp.isSelected()) {
@@ -228,6 +227,28 @@ public class MainRenderer implements IRenderer {
 						}
 					}
 				}
+			}
+		}
+		
+		// sort distances for correct render of transparent blocks
+		Vector3f tmpa = new Vector3f();
+		Vector3f tmpb = new Vector3f();
+		for (int i = 0; i < blocks.length; i++) {
+			Block b = blocks[i];
+			if (b != null && b.isTransparent()) {
+				map[b.ID].sort((sa, sb) -> {
+					ctx.getCamera().getPosition().sub(sa.getPosition(), tmpa);
+					ctx.getCamera().getPosition().sub(sb.getPosition(), tmpb);
+					float lenA = tmpa.lengthSquared();
+					float lenB = tmpb.lengthSquared();
+					if (lenA > lenB) {
+						return 1;
+					} else if (lenA == lenB) {
+						return 0;
+					} else {
+						return -1;
+					}
+				});
 			}
 		}
 		

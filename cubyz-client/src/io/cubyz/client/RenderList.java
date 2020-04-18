@@ -1,10 +1,12 @@
 package io.cubyz.client;
 
+import java.util.Comparator;
+
 public class RenderList<T> {
 
 	public Object[] array;
 	protected int size = 0;
-	protected int arrayIncrease = 10; // this allow to use less array re-allocations
+	protected int arrayIncrease = 20; // this allow to use less array re-allocations
 
 	public RenderList(int initialCapacity) {
 		super();
@@ -51,6 +53,56 @@ public class RenderList<T> {
 	
 	public boolean isEmpty() {
 		return size == 0;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public void sort(Comparator<T> comp) {
+		/*
+		// TODO: use more efficient than bubble sort
+		for (int i = size-1; i > 0; i--) {
+			for (int j = 0; j < i; j++) {
+				if (comp.compare((T) array[j], (T) array[j + 1]) > 0) {
+					Object temp = array[j];
+					array[j] = array[j+1];
+					array[j+1] = temp;
+				}
+			}
+		}
+		*/
+		if (size > 0) {
+			sort(comp, 0, size-1);
+		}
+	}
+	
+	@SuppressWarnings("unchecked")
+	private void sort(Comparator<T> comp, int l, int r) {
+		int i = l, j = r;
+		
+		T x = (T) array[(l+r)/2];
+		while (true) {
+			while (comp.compare((T) array[i], x) < 0) {
+				i++;
+			}
+			while (comp.compare(x, (T) array[j]) < 0) {
+				j--;
+			}
+			if (i <= j) {
+				Object temp = array[i];
+				array[i] = array[j];
+				array[j] = temp;
+				i++;
+				j--;
+			}
+			if (i > j) {
+				break;
+			}
+		}
+		if (l < j) {
+			sort(comp, l, j);
+		}
+		if (i < r) {
+			sort(comp, i, r);
+		}
 	}
 	
 	/**
