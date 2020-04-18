@@ -101,30 +101,12 @@ public class LocalTorusSurface extends TorusSurface {
 		}
 	}
 	
-	public LocalTorusSurface(LocalStellarTorus torus, long seed) {
-		this(torus, "P.K. Kusuo Saiki", seed);
+	public LocalTorusSurface(LocalStellarTorus torus) {
+		this(torus, "P.K. Kusuo Saiki");
 	}
 	
-	public long getSeed() {
-		return localSeed;
-	}
-	
-	public void link() {
-		wio.link();
-		wio.loadTorusData(); // reload data in order for entities to also be loaded.
-	}
-	
-	public void setChunkQueueSize(int size) {
-		synchronized (loadList) {
-			loadList.clear();
-			MAX_QUEUE_SIZE = size;
-			loadList = new LinkedBlockingDeque<>(size);
-		}
-		System.out.println("max queue size is now " + size);
-	}
-	
-	public LocalTorusSurface(LocalStellarTorus torus, String name, long seed) {
-		localSeed = seed;
+	public LocalTorusSurface(LocalStellarTorus torus, String name) {
+		localSeed = torus.getLocalSeed();
 		this.torus = torus;
 		MaterialInit.resetCustom();
 		ItemInit.resetCustom();
@@ -143,19 +125,37 @@ public class LocalTorusSurface extends TorusSurface {
 		if (generator instanceof LifelandGenerator) {
 			((LifelandGenerator) generator).sortGenerators();
 		}
-		wio = new TorusIO(torus, new File("saves/" + torus.getWorld().getName() + "/" + seed)); // use seed in path
+		wio = new TorusIO(torus, new File("saves/" + torus.getWorld().getName() + "/" + localSeed)); // use seed in path
 		if (wio.hasTorusData()) {
 			generated = true;
-			wio.loadTorusData();
+			wio.loadTorusData(this);
 		} else {
-			wio.saveTorusData();
+			wio.saveTorusData(this);
 		}
 		//setChunkQueueSize(torus.world.getRenderDistance() << 2);
+	}
+	
+	public long getSeed() {
+		return localSeed;
+	}
+	
+	public void link() {
+		wio.link(this);
+		wio.loadTorusData(this); // reload data in order for entities to also be loaded.
+	}
+	
+	public void setChunkQueueSize(int size) {
+		synchronized (loadList) {
+			loadList.clear();
+			MAX_QUEUE_SIZE = size;
+			loadList = new LinkedBlockingDeque<>(size);
+		}
+		System.out.println("max queue size is now " + size);
 	}
 
 	
 	public void forceSave() {
-		wio.saveTorusData();
+		wio.saveTorusData(this);
 		((LocalWorld) ((LocalStellarTorus) torus).getWorld()).forceSave();
 	}
 
@@ -427,7 +427,7 @@ public class LocalTorusSurface extends TorusSurface {
 			Block b = ch.getBlockInstanceAt(x&15, y, z&15).getBlock();
 			ch.removeBlockAt(x & 15, y, z & 15, true);
 			wio.saveChunk(ch);
-			wio.saveTorusData();
+			wio.saveTorusData(this);
 			for (RemoveBlockHandler hand : removeBlockHandlers) {
 				hand.onBlockRemoved(b, x, y, z);
 			}
@@ -440,7 +440,7 @@ public class LocalTorusSurface extends TorusSurface {
 		if (ch != null) {
 			ch.addBlockAt(x & 15, y, z & 15, b, true);
 			wio.saveChunk(ch);
-			wio.saveTorusData();
+			wio.saveTorusData(this);
 			for (PlaceBlockHandler hand : placeBlockHandlers) {
 				hand.onBlockPlaced(b, x, y, z);
 			}
@@ -591,7 +591,7 @@ public class LocalTorusSurface extends TorusSurface {
 		}
 		LifelandGenerator.initOres(ores.toArray(new Ore[ores.size()]));
 		if(generated) {
-			wio.saveTorusData();
+			wio.saveTorusData(this);
 		}
 		generated = true;
 		return torusBlocks;
@@ -657,7 +657,7 @@ public class LocalTorusSurface extends TorusSurface {
 		lastZ = z;
 		this.doubleRD = doubleRD;
 		if (minK != visibleChunks.length) { // if at least one chunk got unloaded
-			wio.saveTorusData();
+			wio.saveTorusData(this);
 		}
 		
 		// Check if one of the never loaded chunks is outside of players range.

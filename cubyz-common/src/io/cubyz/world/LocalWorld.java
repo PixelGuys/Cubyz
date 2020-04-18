@@ -99,8 +99,8 @@ public class LocalWorld extends World {
 	
 	public void setCurrentTorusID(long seed) {
 		LocalStellarTorus torus = new LocalStellarTorus(this, seed);
-		torus.createSurface();
-		currentTorus = (LocalTorusSurface) torus.getSurface();
+		currentTorus = new LocalTorusSurface(torus);
+		currentTorus.link();
 		toruses.add(torus);
 	}
 	
@@ -139,8 +139,8 @@ public class LocalWorld extends World {
 		generated = true;
 		if (currentTorus == null) {
 			LocalStellarTorus torus = new LocalStellarTorus(this, rand.nextLong());
-			torus.createSurface();
-			currentTorus = (LocalTorusSurface) torus.getSurface();
+			currentTorus = new LocalTorusSurface(torus);
+			currentTorus.link();
 			toruses.add(torus);
 		}
 		for (Entity ent : currentTorus.getEntities()) {

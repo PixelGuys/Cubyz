@@ -23,10 +23,6 @@ public abstract class StellarTorus {
 	public abstract long getLocalSeed();
 	public abstract void setLocalSeed(long localSeed);
 	
-	public TorusSurface getSurface() {
-		return null;
-	}
-	
 	public StellarTorus getOrbitalParent() {
 		return orbitalParent;
 	}

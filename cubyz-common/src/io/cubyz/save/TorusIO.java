@@ -23,7 +23,6 @@ public class TorusIO {
 
 	private File dir;
 	private LocalStellarTorus torus;
-	private LocalTorusSurface surface;
 	private ArrayList<byte[]> blockData = new ArrayList<>();
 	private ArrayList<int[]> chunkData = new ArrayList<>();
 
@@ -35,8 +34,7 @@ public class TorusIO {
 		this.torus = torus;
 	}
 	
-	public void link() {
-		surface = (LocalTorusSurface) torus.getSurface();
+	public void link(LocalTorusSurface surface) {
 		surface.blockData = blockData;
 		surface.chunkData = chunkData;
 	}
@@ -45,7 +43,7 @@ public class TorusIO {
 		return new File(dir, "torus.dat").exists();
 	}
 
-	public void loadTorusData() {
+	public void loadTorusData(LocalTorusSurface surface) {
 		try {
 			InputStream in = new FileInputStream(new File(dir, "torus.dat"));
 			byte[] len = new byte[4];
@@ -88,7 +86,7 @@ public class TorusIO {
 		}
 	}
 	
-	public void saveTorusData() {
+	public void saveTorusData(LocalTorusSurface surface) {
 		try {
 			OutputStream out = new FileOutputStream(new File(dir, "torus.dat"));
 			NDTContainer ndt = new NDTContainer();

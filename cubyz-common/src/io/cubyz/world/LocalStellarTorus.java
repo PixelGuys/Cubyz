@@ -4,7 +4,6 @@ import org.joml.Vector4f;
 
 public class LocalStellarTorus extends StellarTorus {
 
-	private LocalTorusSurface surface;
 	private long localSeed;
 	private Vector4f atmosphereColor = new Vector4f(1f, 1f, 1f, 1f);
 	public int dayCycle = 120000; // Length of one in-game day in 100ms. Midnight is at DAYCYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
@@ -18,11 +17,6 @@ public class LocalStellarTorus extends StellarTorus {
 		this.name = name;
 		this.world = world;
 		localSeed = seed;
-	}
-	
-	public void createSurface() {
-		surface = new LocalTorusSurface(this, localSeed);
-		surface.link();
 	}
 	
 	@Override
@@ -42,20 +36,7 @@ public class LocalStellarTorus extends StellarTorus {
 
 	@Override
 	public boolean hasSurface() {
-		return surface != null;
-	}
-	
-	public LocalTorusSurface getSurface() {
-		return surface;
-	}
-	
-	public void update() {
-		long gameTime = world.getGameTime();
-		season = (int) ((gameTime/seasonCycle) % 4);
-		
-		if (surface != null) {
-			surface.update();
-		}
+		return orbitalParent != null; // For now any torus except for the suns is landable.
 	}
 
 	@Override
