@@ -5,6 +5,7 @@ import org.joml.Vector3i;
 import io.cubyz.ClientOnly;
 import io.cubyz.world.Chunk;
 import io.cubyz.world.TorusSurface;
+import io.cubyz.world.World;
 
 public class BlockInstance {
 
@@ -68,8 +69,10 @@ public class BlockInstance {
 		// 3 = SOUTH (z - 1)
 		// 4 = DOWN
 		// 5 = UP
-		inst[5] = ch.getBlockInstanceAt(pos.x & 15, pos.y + 1, pos.z & 15);
-		inst[4] = ch.getBlockInstanceAt(pos.x & 15, pos.y - 1, pos.z & 15);
+		if(pos.y+1 < World.WORLD_HEIGHT)
+			inst[5] = ch.getBlockInstanceAt(pos.x & 15, pos.y + 1, pos.z & 15);
+		if(pos.y > 0)
+			inst[4] = ch.getBlockInstanceAt(pos.x & 15, pos.y - 1, pos.z & 15);
 		if((pos.z & 15) != 0)
 			inst[3] = ch.getBlockInstanceAt(pos.x & 15, pos.y, (pos.z - 1) & 15);
 		else
@@ -98,9 +101,13 @@ public class BlockInstance {
 		// 5 = UP
 		switch(i) {
 			case 5:
-				return ch.getBlockInstanceAt(pos.x & 15, pos.y + 1, pos.z & 15);
+				if(pos.y+1 < World.WORLD_HEIGHT)
+					return ch.getBlockInstanceAt(pos.x & 15, pos.y + 1, pos.z & 15);
+				return null;
 			case 4:
-				return ch.getBlockInstanceAt(pos.x & 15, pos.y - 1, pos.z & 15);
+				if(pos.y > 0)
+					return ch.getBlockInstanceAt(pos.x & 15, pos.y - 1, pos.z & 15);
+				return null;
 			case 3:
 				if((pos.z & 15) != 0)
 					return ch.getBlockInstanceAt(pos.x & 15, pos.y, (pos.z - 1) & 15);
