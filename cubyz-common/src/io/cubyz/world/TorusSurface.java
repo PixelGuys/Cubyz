@@ -35,7 +35,7 @@ public abstract class TorusSurface {
 	}
 
 	public int getHighestBlock(int x, int z) {
-		for (int y = World.WORLD_HEIGHT; y > 0; y--) {
+		for (int y = World.WORLD_HEIGHT-1; y > 0; y--) {
 			if (getBlock(x, y, z) != null) {
 				return y;
 			}
