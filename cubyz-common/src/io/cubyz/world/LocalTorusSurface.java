@@ -10,7 +10,6 @@ import java.util.concurrent.LinkedBlockingDeque;
 import org.joml.Vector4f;
 
 import io.cubyz.api.CubyzRegistries;
-import io.cubyz.api.IRegistryElement;
 import io.cubyz.base.init.ItemInit;
 import io.cubyz.base.init.MaterialInit;
 import io.cubyz.blocks.Block;
@@ -204,15 +203,9 @@ public class LocalTorusSurface extends TorusSurface {
 		wio.saveChunk(ch);
 	}
 	
-	long total = 0;
-	long t = System.currentTimeMillis();
 	@Override
 	public Chunk getChunk(int x, int z) {	// World -> Chunk coordinate system is a bit harder than just x/16. java seems to floor when bigger and to ceil when lower than 0.
-		int cx = x;
-		cx = cx >> 4;
-		int cz = z;
-		cz = cz >> 4;
-		return _getChunk(cx, cz);
+		return _getChunk(x >> 4, z >> 4);
 	}
 
 	@Override
@@ -406,14 +399,12 @@ public class LocalTorusSurface extends TorusSurface {
 	
 	@Override
 	public BlockInstance getBlockInstance(int x, int y, int z) {
-		Chunk ch = getChunk(x, z);
 		if (y > World.WORLD_HEIGHT || y < 0)
 			return null;
-		
-		if (ch != null) {
-			int cx = x & 15;
-			int cz = z & 15;
-			BlockInstance bi = ch.getBlockInstanceAt(cx, y, cz);
+
+		Chunk ch = _getNoGenerateChunk(x >> 4, z >> 4);
+		if (ch != null && ch.isGenerated()) {
+			BlockInstance bi = ch.getBlockInstanceAt(x & 15, y, z & 15);
 			return bi;
 		} else {
 			return null;
@@ -424,7 +415,7 @@ public class LocalTorusSurface extends TorusSurface {
 	public void removeBlock(int x, int y, int z) {
 		Chunk ch = getChunk(x, z);
 		if (ch != null) {
-			Block b = ch.getBlockInstanceAt(x&15, y, z&15).getBlock();
+			Block b = ch.getBlockInstanceAt(x & 15, y, z & 15).getBlock();
 			ch.removeBlockAt(x & 15, y, z & 15, true);
 			wio.saveChunk(ch);
 			wio.saveTorusData(this);

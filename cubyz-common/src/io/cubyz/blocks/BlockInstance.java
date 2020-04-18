@@ -3,11 +3,8 @@ package io.cubyz.blocks;
 import org.joml.Vector3i;
 
 import io.cubyz.ClientOnly;
-import io.cubyz.items.Inventory;
 import io.cubyz.world.Chunk;
-import io.cubyz.world.StellarTorus;
 import io.cubyz.world.TorusSurface;
-import io.cubyz.world.World;
 
 public class BlockInstance {
 

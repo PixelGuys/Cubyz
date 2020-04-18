@@ -56,7 +56,7 @@ public class Chunk {
 	private void setInst(int x, int y, int z, BlockInstance bi) {
 		inst[(x << 4) | (y << 8) | z] = bi;
 	}
-	private BlockInstance getInst(int x, int y, int z) {
+	public BlockInstance getBlockInstanceAt(int x, int y, int z) {
 		return inst[(x << 4) | (y << 8) | z];
 	}
 	private BlockInstance getInstUnbound(int x, int y, int z) {
@@ -419,7 +419,7 @@ public class Chunk {
 		if(inst == null) {
 			inst = new BlockInstance[16*World.WORLD_HEIGHT*16];
 		} else { // Checks if there is a block on that position and deposits it if degradable.
-			BlockInstance bi = getInst(rx, y, rz);
+			BlockInstance bi = getBlockInstanceAt(rx, y, rz);
 			if(bi != null) {
 				if(!bi.getBlock().isDegradable() || b.isDegradable()) {
 					return;
@@ -473,7 +473,8 @@ public class Chunk {
 				}
 			}
 		}
-		lightUpdate(rx, y, rz);
+		if(loaded)
+			lightUpdate(rx, y, rz);
 	}
 	
 	public void generateFrom(StellarTorusGenerator gen) {
@@ -492,13 +493,13 @@ public class Chunk {
 				continue;
 			}
 			Block bl = surface.getPlanetBlocks()[bc.newType];
-			if(getInst(bc.x, bc.y, bc.z) == null) {
+			if(getBlockInstanceAt(bc.x, bc.y, bc.z) == null) {
 				addBlockAt(bc.x, bc.y, bc.z, bl, false);
 				bc.oldType = -1;
 				continue;
 			}
-			bc.oldType = getInst(bc.x, bc.y, bc.z).getID();
-			getInst(bc.x, bc.y, bc.z).setBlock(bl);
+			bc.oldType = getBlockInstanceAt(bc.x, bc.y, bc.z).getID();
+			getBlockInstanceAt(bc.x, bc.y, bc.z).setBlock(bl);
 		}
 	}
 	
@@ -588,7 +589,7 @@ public class Chunk {
 			// Add the lowest layer to the updates list:
 			for(int x = 0; x < 16; x++) {
 				for(int z = 0; z < 16; z++) {
-					if(getInst(x, y0, z) == null)
+					if(getBlockInstanceAt(x, y0, z) == null)
 						lightUpdates.add(new int[] {x, y0, z, 255});
 				}
 			}
@@ -678,14 +679,6 @@ public class Chunk {
 		return generated;
 	}
 	
-	public BlockInstance getBlockInstanceAt(int x, int y, int z) {
-		try {
-			return getInst(x, y, z);
-		} catch (Exception e) {
-			return null;
-		}
-	}
-	
 	// This function is here because it is mostly used by addBlock, where the neighbors to the added block usually are in the same chunk.
 	public Chunk getChunk(int x, int y) {
 		int cx = x;
@@ -761,7 +754,8 @@ public class Chunk {
 		if(neighbors[3] != null) neighbors[3].neighborNorth = false;
 		if(neighbors[4] != null) neighbors[4].neighborUp = false;
 		if(neighbors[5] != null) neighbors[5].neighborDown = false;
-		lightUpdate(x, y, z);
+		if(loaded)
+			lightUpdate(x, y, z);
 		for (int i = 0; i < neighbors.length; i++) {
 			BlockInstance inst = neighbors[i];
 			if (inst != null && inst != bi) {
@@ -905,7 +899,8 @@ public class Chunk {
 			}
 			changes.get(index).newType = b.ID;
 		}
-		lightUpdate(x, y, z);
+		if(loaded)
+			lightUpdate(x, y, z);
 	}
 	
 	public Vector3f getMin(Player localPlayer, int worldAnd) {
