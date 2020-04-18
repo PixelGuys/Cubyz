@@ -56,8 +56,10 @@ void main()
 									+(0.5+position.z)*vec3((easyLight[7] >> 16) & 255, (easyLight[7] >> 8) & 255, (easyLight[7] >> 0) & 255)
 								)
 							));
-		easyLightEnabled = 1.0;
+	} else {
+		outEasyLight = vec3(0, 0, 0);
 	}
+	easyLightEnabled = cheapLighting;
 	vec4 mvPos = modelViewMatrix * initPos;
 	gl_Position = projectionMatrix * mvPos;
     outTexCoord = texCoord;

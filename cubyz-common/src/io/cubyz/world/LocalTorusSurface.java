@@ -127,7 +127,6 @@ public class LocalTorusSurface extends TorusSurface {
 		wio = new TorusIO(torus, new File("saves/" + torus.getWorld().getName() + "/" + localSeed)); // use seed in path
 		if (wio.hasTorusData()) {
 			generated = true;
-			wio.loadTorusData(this);
 		} else {
 			wio.saveTorusData(this);
 		}
@@ -140,7 +139,7 @@ public class LocalTorusSurface extends TorusSurface {
 	
 	public void link() {
 		wio.link(this);
-		wio.loadTorusData(this); // reload data in order for entities to also be loaded.
+		wio.loadTorusData(this); // load data here in order for entities to also be loaded.
 	}
 	
 	public void setChunkQueueSize(int size) {

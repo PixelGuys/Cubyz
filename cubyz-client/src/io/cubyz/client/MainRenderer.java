@@ -217,7 +217,8 @@ public class MainRenderer implements IRenderer {
 								(z < -0.5001f && !bi.neighborNorth)) {
 							Spatial tmp = (Spatial) bi.getSpatial();
 							tmp.setPosition(x, y, z);
-							ch.getCornerLight(bi.getX() & 15, bi.getY(), bi.getZ() & 15, ambientLight, tmp.light);
+							if(Chunk.easyLighting)
+								ch.getCornerLight(bi.getX() & 15, bi.getY(), bi.getZ() & 15, ambientLight, tmp.light);
 							if (tmp.isSelected()) {
 								selected = tmp;
 								selectedBlock = bi.getID();
