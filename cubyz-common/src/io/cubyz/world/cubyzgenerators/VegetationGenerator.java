@@ -29,8 +29,11 @@ public class VegetationGenerator implements FancyGenerator {
 			for(int py = 0; py < 32; py++) {
 				if(!vegetationIgnoreMap[px][py]) {
 					for(VegetationModel model : biomeMap[px][py].vegetationModels()) {
-						if(model.considerCoordinates(px-8, py-8, heightMap[px][py]+1, chunk, vegetationMap[px][py])) {
+						if(model.getChance() > vegetationMap[px][py]) {
+							model.generate(px-8, py-8, heightMap[px][py]+1, chunk, vegetationMap[px][py]);
 							break;
+						} else {
+							vegetationMap[px][py] = (vegetationMap[px][py] - model.getChance())/(1 - model.getChance()); // Make sure that after the first one was considered all others get the correct chances.
 						}
 					}
 				}

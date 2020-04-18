@@ -5,26 +5,25 @@ import java.util.Random;
 import io.cubyz.blocks.Block;
 import io.cubyz.world.World;
 
-public class SimpleTreeModel implements VegetationModel {
+public class SimpleTreeModel extends VegetationModel {
 	Block leaves, wood, topWood;
-	float chance;
 	int height0, deltaHeight;
 	
 	public SimpleTreeModel(Block leaves, Block wood, Block topWood, float chance, int h0, int dh) {
+		super(chance);
 		this.leaves = leaves;
 		this.wood = wood;
 		this.topWood = topWood;
-		this.chance = chance;
 		height0 = h0;
 		deltaHeight = dh;
 	}
 
 	@Override
-	public boolean considerCoordinates(int x, int y, int h, Block[][][] chunk, float random) {
-		if(random < chance && h > 0) {
+	public void generate(int x, int y, int h, Block[][][] chunk, float random) {
+		if(h > 0) {
 			int height = height0 + new Random(Float.floatToRawIntBits(random)).nextInt(deltaHeight);
 			if(h+height+1 >= World.WORLD_HEIGHT) // the max array index is 255 but world height is 256 (for array **length**)
-				return false;
+				return;
 			
 			if(x >= 0 && x < 16 && y >= 0 && y < 16) {
 				for (int i = 0; i < height; i++) {
@@ -50,8 +49,6 @@ public class SimpleTreeModel implements VegetationModel {
 					}
 				}
 			}
-			return true;
 		}
-		return false;
 	}
 }
