@@ -307,7 +307,7 @@ public class Chunk {
 		} else {
 			Chunk chunk = surface._getNoGenerateChunk(ox+1, oy);
 			if(chunk != null && chunk.isLoaded()) {
-				maxLight = Math.max(maxLight, applyNeighbors(light[index & ~0xf0], shift, neighbors[4], neighbors[5], neighbors[6], neighbors[7]));
+				maxLight = Math.max(maxLight, applyNeighbors(chunk.light[index & ~0xf0], shift, neighbors[4], neighbors[5], neighbors[6], neighbors[7]));
 			}
 		}
 		if(z != 0) {
@@ -315,7 +315,7 @@ public class Chunk {
 		} else {
 			Chunk chunk = surface._getNoGenerateChunk(ox, oy-1);
 			if(chunk != null && chunk.isLoaded()) {
-				maxLight = Math.max(maxLight, applyNeighbors(light[index | 0xf], shift, neighbors[0], neighbors[2], neighbors[4], neighbors[6]));
+				maxLight = Math.max(maxLight, applyNeighbors(chunk.light[index | 0xf], shift, neighbors[0], neighbors[2], neighbors[4], neighbors[6]));
 			}
 		}
 		if(z != 15) {
@@ -323,7 +323,7 @@ public class Chunk {
 		} else {
 			Chunk chunk = surface._getNoGenerateChunk(ox, oy+1);
 			if(chunk != null && chunk.isLoaded()) {
-				maxLight = Math.max(maxLight, applyNeighbors(light[index & ~0xf], shift, neighbors[1], neighbors[3], neighbors[5], neighbors[7]));
+				maxLight = Math.max(maxLight, applyNeighbors(chunk.light[index & ~0xf], shift, neighbors[1], neighbors[3], neighbors[5], neighbors[7]));
 			}
 		}
 		if(y != 0) {
