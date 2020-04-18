@@ -4,8 +4,7 @@ const int MAX_POINT_LIGHTS = 5;
 const int MAX_SPOT_LIGHTS = 5;
 
 in vec2 outTexCoord;
-in vec3 outEasyLight;
-in float easyLightEnabled;
+in vec3 outColor;
 in vec3 mvVertexNormal;
 in vec3 mvVertexPos;
 in float outSelected;
@@ -60,7 +59,6 @@ struct Fog {
 
 uniform sampler2D texture_sampler;
 uniform sampler2D shadowMap;
-uniform vec3 ambientLight;
 uniform float specularPower;
 uniform Material material;
 uniform PointLight pointLights[MAX_POINT_LIGHTS];
@@ -191,10 +189,10 @@ void main()
     }
     
     if (shadowEnabled == 0) {
-    	fragColor = (1 - easyLightEnabled) * ambientC * vec4(ambientLight, 1) + easyLightEnabled * ambientC * vec4(outEasyLight, 1) + diffuseSpecularComp;
+    	fragColor = ambientC * vec4(outColor, 1) + diffuseSpecularComp;
     } else {
 	    float shadow = calcShadow(mlightviewVertexPos);
-	    fragColor = clamp(ambientC * vec4(ambientLight, 1) + diffuseSpecularComp * shadow, 0, 1);
+	    fragColor = clamp(ambientC * vec4(outColor, 1) + diffuseSpecularComp * shadow, 0, 1);
     }
     
     if (fog.activ == 1) {

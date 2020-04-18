@@ -12,15 +12,15 @@ out vec2 outTexCoord;
 out vec3 mvVertexNormal;
 out vec3 mvVertexPos;
 out float outSelected;
-out float easyLightEnabled;
 out vec4 mlightviewVertexPos;
-out vec3 outEasyLight;
+out vec3 outColor;
 
 uniform mat4 projectionMatrix;
 uniform mat4 orthoProjectionMatrix;
 uniform int isInstanced;
 uniform int cheapLighting;
 uniform float selectedNonInstanced;
+uniform vec3 ambientLight;
 uniform mat4 modelViewNonInstancedMatrix;
 uniform mat4 viewMatrixInstanced;
 uniform mat4 lightViewMatrixInstanced;
@@ -38,7 +38,7 @@ void main()
 		modelViewMatrix = modelViewNonInstancedMatrix;
 	}
 	if (cheapLighting == 1) {
-		outEasyLight = 0.003890625*(
+		outColor = 0.003890625*(
 							(0.5-position.x)*(
 								(0.5-position.y)*(
 									(0.5-position.z)*vec3((easyLight[0] >> 16) & 255, (easyLight[0] >> 8) & 255, (easyLight[0] >> 0) & 255)
@@ -57,9 +57,8 @@ void main()
 								)
 							));
 	} else {
-		outEasyLight = vec3(0, 0, 0);
+		outColor = ambientLight;
 	}
-	easyLightEnabled = cheapLighting;
 	vec4 mvPos = modelViewMatrix * initPos;
 	gl_Position = projectionMatrix * mvPos;
     outTexCoord = texCoord;
