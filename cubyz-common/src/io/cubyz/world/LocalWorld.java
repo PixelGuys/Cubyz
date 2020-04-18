@@ -110,8 +110,13 @@ public class LocalWorld extends World {
 			seed = rnd.nextInt();
 		}
 		Random rand = new Random(seed);
-		int randomAmount = 9 + (int)(Math.random()*3); // Generate 9-12 random ores.
-		blocks = new Block[CubyzRegistries.BLOCK_REGISTRY.registered().length+randomAmount];
+		if (currentTorus == null) {
+			LocalStellarTorus torus = new LocalStellarTorus(this, rand.nextLong());
+			currentTorus = new LocalTorusSurface(torus);
+			currentTorus.link();
+			toruses.add(torus);
+		}
+		ArrayList<Block> blockList = new ArrayList<>();
 		// Set the IDs again every time a new world is loaded. This is necessary, because the random block creation would otherwise mess with it.
 		int ID = 0;
 		ArrayList<Ore> ores = new ArrayList<Ore>();
@@ -119,15 +124,20 @@ public class LocalWorld extends World {
 			Block b = (Block) ire;
 			if(!b.isTransparent()) {
 				b.ID = ID;
-				blocks[ID] = b;
+				blockList.add(b);
 				ID++;
 			}
 		}
+		// Generate the ores of the current torus:
+		if(currentTorus != null && currentTorus instanceof LocalTorusSurface) {
+			ID = currentTorus.generate(blockList, ores, ID);
+		}
+		
 		for (IRegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
 			Block b = (Block) ire;
 			if(b.isTransparent()) {
 				b.ID = ID;
-				blocks[ID] = b;
+				blockList.add(b);
 				ID++;
 			}
 			try {
@@ -137,12 +147,6 @@ public class LocalWorld extends World {
 		}
 		LifelandGenerator.initOres(ores.toArray(new Ore[ores.size()]));
 		generated = true;
-		if (currentTorus == null) {
-			LocalStellarTorus torus = new LocalStellarTorus(this, rand.nextLong());
-			currentTorus = new LocalTorusSurface(torus);
-			currentTorus.link();
-			toruses.add(torus);
-		}
 		for (Entity ent : currentTorus.getEntities()) {
 			System.out.println(ent);
 			if (ent instanceof Player) {
@@ -155,6 +159,7 @@ public class LocalWorld extends World {
 			currentTorus.addEntity(player);
 		}
 		wio.saveWorldData();
+		blocks = blockList.toArray(new Block[0]);
 		return blocks;
 	}
 	

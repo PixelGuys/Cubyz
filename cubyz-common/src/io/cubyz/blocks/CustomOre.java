@@ -149,7 +149,7 @@ public class CustomOre extends Ore implements CustomObject {
 			return randomName(rand); // Repeat until a long enought name is generated.
 	}
 	
-	public static CustomOre random(int index, Random rand) {
+	public static CustomOre random(Random rand) {
 		CustomOre ore = new CustomOre();
 		ore.color = rand.nextInt(0xFFFFFF);
 		ore.height = 8+rand.nextInt(160);

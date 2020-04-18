@@ -570,31 +570,22 @@ public class LocalTorusSurface extends TorusSurface {
 	}
 	
 	// Returns the blocks, so their meshes can be created and stored.
-	public Block[] generate() {
-		ArrayList<Ore> ores = new ArrayList<>();
-		int randomAmount = 8; // TODO
-		torusBlocks = new Block[randomAmount];
+	public int generate(ArrayList<Block> blockList, ArrayList<Ore> ores, int ID) {
 		Random rand = new Random(localSeed);
+		int randomAmount = 9 + rand.nextInt(3); // TODO
+		torusBlocks = new Block[randomAmount];
 		for(int i = 0; i < randomAmount; i++) {
-			torusBlocks[i] = CustomOre.random(i, rand); // TODO
-			customOres.add((CustomOre) torusBlocks[i]);
-			ores.add((Ore)torusBlocks[i]); // TODO
-			torusBlocks[i].ID = i;
+			torusBlocks[i] = CustomOre.random(rand);
+			customOres.add((CustomOre)torusBlocks[i]);
+			ores.add((Ore)torusBlocks[i]);
+			blockList.add(torusBlocks[i]);
+			torusBlocks[i].ID = ID++;
 		}
-		
-		// TODO: properly manage *per-torus* custom ores
-		for (IRegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
-			try {
-				ores.add((Ore)ire);
-			}
-			catch(Exception e) {}
-		}
-		LifelandGenerator.initOres(ores.toArray(new Ore[ores.size()]));
 		if(generated) {
 			wio.saveTorusData(this);
 		}
 		generated = true;
-		return torusBlocks;
+		return ID;
 	}
 
 	@Override
