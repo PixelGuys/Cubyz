@@ -13,8 +13,6 @@ public abstract class StellarTorus {
 	protected float distance, angle; // the relative angle and distance to the orbital parent.
 	// if this torus doesn't have an orbital parent, use the following variables:
 	protected float absX, absY; // absolute positions if the above condition is true
-	
-	public int DAYCYCLE;
 
 	public abstract void cleanup();
 	
