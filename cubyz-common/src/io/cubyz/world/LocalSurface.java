@@ -542,7 +542,7 @@ public class LocalSurface extends Surface {
 										break;
 								}
 								if(dy == -1 || (neighbors[4] != null && neighbors[4].getBlock().getBlockClass() != Block.BlockClass.FLUID)) {
-									ch.addBlock(bi.getBlock(), (bi.getX()+dx) & worldAnd, bi.getY()+dy, (bi.getZ()+dz) & worldAnd);
+									ch.addBlockPossiblyOutside(bi.getBlock(), (bi.getX()+dx) & worldAnd, bi.getY()+dy, (bi.getZ()+dz) & worldAnd);
 								}
 							}
 						}

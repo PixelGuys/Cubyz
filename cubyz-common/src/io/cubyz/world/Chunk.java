@@ -362,30 +362,35 @@ public class Chunk {
 	 * @param y
 	 * @param z
 	 */
-	public void addBlock(Block b, int x, int y, int z) {
+	public void addBlockPossiblyOutside(Block b, int x, int y, int z) {
+		// Make the boundary checks:
 		if (b == null) return;
 		if(y >= World.WORLD_HEIGHT)
 			return;
 		int rx = x - (ox << 4);
 		int rz = z - (oy << 4);
-		// Determines if the block is part of another chunk.
 		if(rx < 0 || rx > 15 || rz < 0 || rz > 15) {
-			surface._getChunk(ox + ((rx & ~15) >> 4), oy + ((rz & ~15) >> 4)).addBlock(b, x, y, z);
+			surface._getChunk(ox + ((rx & ~15) >> 4), oy + ((rz & ~15) >> 4)).addBlock(b, x & 15, y, z & 15);
 			return;
+		} else {
+			addBlock(b, x & 15, y, z & 15);
 		}
+	}
+	
+	public void addBlock(Block b, int x, int y, int z) {
 		if(inst == null) {
 			inst = new BlockInstance[16*World.WORLD_HEIGHT*16];
 		} else { // Checks if there is a block on that position and deposits it if degradable.
-			BlockInstance bi = getBlockInstanceAt(rx, y, rz);
+			BlockInstance bi = getBlockInstanceAt(x, y, z);
 			if(bi != null) {
 				if(!bi.getBlock().isDegradable() || b.isDegradable()) {
 					return;
 				}
-				removeBlockAt(rx, y, rz, false);
+				removeBlockAt(x, y, z, false);
 			}
 		}
 		BlockInstance inst0 = new BlockInstance(b);
-		inst0.setPosition(new Vector3i(x, y, z));
+		inst0.setPosition(new Vector3i(x + (ox << 4), y, z + (oy << 4)));
 		inst0.setStellarTorus(surface);
 		if (b.hasBlockEntity()) {
 			BlockEntity te = b.createBlockEntity(inst0.getPosition());
@@ -396,7 +401,7 @@ public class Chunk {
 			updatingLiquids.add(inst0);
 		}
 		list.add(inst0);
-		setInst(rx, y, rz, inst0);
+		setInst(x, y, z, inst0);
 		if(generated) {
 			BlockInstance[] neighbors = inst0.getNeighbors(this);
 			for (int i = 0; i < neighbors.length; i++) {
@@ -431,7 +436,7 @@ public class Chunk {
 			}
 		}
 		if(loaded)
-			lightUpdate(rx, y, rz);
+			lightUpdate(x, y, z);
 	}
 	
 	public void generateFrom(SurfaceGenerator gen) {
