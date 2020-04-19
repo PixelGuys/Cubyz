@@ -164,7 +164,7 @@ public class Cubyz implements IGameLogic {
 			Mesh sunMesh = skyBodyMesh.cloneNoMaterial();
 			sunMesh.setMaterial(new Material(new Vector4f(0.5f, 0.5f, 0.5f, 1f), 0.8f)); // TODO: use textures for sun and moon
 			skySun = new Spatial(sunMesh);
-			skySun.setScale(50f);
+			skySun.setScale(50f); // TODO: Make the scale dependent on the actual distance to that star.
 			skySun.setPosition(new Vector3f(-100, 1, 0));
 			Mesh moonMesh = skyBodyMesh.cloneNoMaterial();
 			moonMesh.setMaterial(new Material(new Vector4f(0.3f, 0.3f, 0.3f, 1f), 0.9f));
@@ -821,8 +821,8 @@ public class Cubyz implements IGameLogic {
 				ambient.z *= lightingAdjust.z;
 			}
 			light.setColor(clearColor);
-			float lightY = (((float)world.getGameTime() % world.getCurrentTorus().getStellarTorus().DAYCYCLE) / (float) (world.getCurrentTorus().getStellarTorus().DAYCYCLE/2)) - 1f; // TODO: work on it more
-			float lightX = (((float)world.getGameTime() % world.getCurrentTorus().getStellarTorus().DAYCYCLE) / (float) (world.getCurrentTorus().getStellarTorus().DAYCYCLE/2)) - 1f;
+			float lightY = (((float)world.getGameTime() % world.getCurrentTorus().getStellarTorus().getDayCycle()) / (float) (world.getCurrentTorus().getStellarTorus().getDayCycle()/2)) - 1f; // TODO: work on it more
+			float lightX = (((float)world.getGameTime() % world.getCurrentTorus().getStellarTorus().getDayCycle()) / (float) (world.getCurrentTorus().getStellarTorus().getDayCycle()/2)) - 1f;
 			light.getDirection().set(lightY, 0, lightX);
 			window.setClearColor(clearColor);
 			renderer.render(window, ctx, ambient, light, world.getCurrentTorus().getVisibleChunks(), world.getBlocks(), world.getCurrentTorus().getEntities(), worldSpatialList, world.getLocalPlayer(), world.getCurrentTorus().getAnd());
@@ -901,10 +901,9 @@ public class Cubyz implements IGameLogic {
 			playerInc.x = playerInc.y = playerInc.z = 0.0F; // Reset positions
 			world.update();
 			world.getCurrentTorus().seek(lp.getPosition().x, lp.getPosition().z);
-			float lightAngleY = (float) Math.asin(light.getDirection().x);
-			float lightAngleX = (float) Math.acos(light.getDirection().z);
-			skySun.setPosition((float)-(Math.sin(lightAngleX)*500), (float)Math.sin(lightAngleY)*500, 0);
-			skySun.setRotation(light.getDirection().x, light.getDirection().z, light.getDirection().z);
+			float lightAngle = (float)Math.PI/2 + (float)Math.PI*(((float)world.getGameTime() % world.getCurrentTorus().getStellarTorus().getDayCycle())/(world.getCurrentTorus().getStellarTorus().getDayCycle()/2));
+			skySun.setPosition((float)Math.cos(lightAngle)*500, (float)Math.sin(lightAngle)*500, 0);
+			skySun.setRotation(0, 0, -lightAngle);
 			if (ctx.getCamera().getRotation().x > Camera.piHalf) {
 				ctx.getCamera().setRotation(Camera.piHalf, ctx.getCamera().getRotation().y, ctx.getCamera().getRotation().z);
 			}
@@ -918,111 +917,6 @@ public class Cubyz implements IGameLogic {
 		return Cubyz.instance.game.getFPS();
 	}
 	
-	// TODO: remove the following:
-	/*static { // Algorithm for automatically generating an ore template from the ore image. Uses the reverse-engineered color erase algorithm from gimp. Uncomment to automatically generate it on game startup.
-		int averageT = 2000; // average temperature of the star in the image. Needs to be determined seperately.
-		for(int deltaT = 0; deltaT <= 10000-averageT; deltaT += 200) {
-			BufferedImage stone = (BufferedImage)getImage("assets/cubyz/textures/blocks/stone.png");
-			BufferedImage ore = (BufferedImage)getImage("assets/cubyz/textures/blocks/ruby_ore.png");
-			for(int i = 0; i < 16; i++) {
-				for(int j = 0; j < 16; j++) {
-					int colorStone = stone.getRGB(i, j);
-					int bS = colorStone & 255;
-					int gS = (colorStone >> 8) & 255;
-					int rS = (colorStone >> 16) & 255;
-					int colorOre = ore.getRGB(i, j);
-					int bO = colorOre & 255;
-					int gO = (colorOre >> 8) & 255;
-					int rO = (colorOre >> 16) & 255;
-
-					// Color erase algorithm:
-					// O = a*I+(1-a)*S → a*(I-S) = O-S → a = (O-S)/(I-S)
-					int ar, ag, ab;
-					if(rO == rS) {
-						ar = 0;
-					} else if(rO < rS) {
-						ar = -255*(rO-rS)/rS;
-					} else {
-						ar = 255*(rO-rS)/(255-rS);
-					}
-					if(gO == gS) {
-						ag = 0;
-					} else if(gO < gS) {
-						ag = -255*(gO-gS)/gS;
-					} else {
-						ag = 255*(gO-gS)/(255-gS);
-					}
-					if(bO == bS) {
-						ab = 0;
-					} else if(bO < bS) {
-						ab = -255*(bO-bS)/bS;
-					} else {
-						ab = 255*(bO-bS)/(255-bS);
-					}
-					// O = a*I+(1-a)*S → a*I = O+(a-1)*S → I = O/a+S-S/a
-					int a = Math.max(ar, Math.max(ag,  ab)); // Erase as much color as possible.
-					if(a >= 255) a = 255;
-					if(a < 0) a = 0;
-					System.out.println(a);
-					int rI, gI, bI;
-					if(a == 0) {
-						rI = gI = bI = 0;
-					} else {
-						rI = 255*rO/a+rS-255*rS/a;
-						gI = 255*gO/a+gS-255*gS/a;
-						bI = 255*bO/a+bS-255*bS/a;
-						if(rI < 0) rI = 0;
-						if(rI > 255) rI = 255;
-						if(gI < 0) gI = 0;
-						if(gI > 255) gI = 255;
-						if(bI < 0) bI = 0;
-						if(bI > 255) bI = 255;
-					}
-					
-					ore.setRGB(i, j, new Color(rI, gI, bI, a).getRGB());
-				}
-			}
-			
-			File outputfile = new File("assets/cubyz/textures/blocks/ruby_ore_template.png");
-			try {
-				ImageIO.write(ore, "png", outputfile);
-			} catch (IOException e) {}
-		}
-	}//*/
-	
-	
-	/*static { // Algorithm for automatically generating an item templates from the material image. Uses the reverse-engineered color erase algorithm from gimp. Uncomment to automatically generate it on game startup.
-		BufferedImage ore = (BufferedImage)getImage("assets/cubyz/textures/items/parts/sword/stone_sword_head.png");
-		for(int i = 0; i < 16; i++) {
-			for(int j = 0; j < 16; j++) {
-				int color = 0x767676;
-				int hsv = TextureConverter.getHSV(color);
-				int colorOre = ore.getRGB(i, j);
-				int hsvOre = TextureConverter.getHSV(colorOre);
-				int a = colorOre >>> 24;
-				int h1 = (hsv >>> 16) & 255;
-				int s1 = (hsv >>> 8) & 255;
-				int v1 = (hsv >>> 0) & 255;
-				int h2 = (hsvOre >>> 16) & 255;
-				int s2 = (hsvOre >>> 8) & 255;
-				int v2 = (hsvOre >>> 0) & 255;
-				h2 -= h1;
-				s2 -= s1;
-				v2 -= v1;
-				h2 &= 255;
-				s2 &= 255;
-				v2 &= 255;
-				int res = (a << 24) | (h2 << 16) | (s2 << 8) | v2;
-				
-				ore.setRGB(i, j, res);
-			}
-		}
-		
-		File outputfile = new File("assets/cubyz/textures/items/parts/template.png");
-		try {
-			ImageIO.write(ore, "png", outputfile);
-		} catch (IOException e) {}
-	}//*/
 	public static BufferedImage getImage(String fileName) {
 		try {
 			return ImageIO.read(new File(fileName));

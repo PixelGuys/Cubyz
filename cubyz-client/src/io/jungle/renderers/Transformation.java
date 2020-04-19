@@ -73,9 +73,9 @@ public class Transformation {
 		//Vector3f rotation = spatial.getRotation();
 		modelViewMatrix.identity()
 			.translate(spatial.getPosition())
-			/*.rotateX(-DEGTORAD * rotation.x)
-			.rotateY(-DEGTORAD * rotation.y)
-			.rotateZ(-DEGTORAD * rotation.z)*/
+			.rotateX(-spatial.getRotation().x)
+			.rotateY(-spatial.getRotation().y)
+			.rotateZ(-spatial.getRotation().z)
 			.scale(spatial.getScale());
 		return modelViewMatrix;
 	}
