@@ -370,7 +370,7 @@ public class Chunk {
 		int rx = x - (ox << 4);
 		int rz = z - (oy << 4);
 		if(rx < 0 || rx > 15 || rz < 0 || rz > 15) {
-			surface._getChunk(ox + ((rx & ~15) >> 4), oy + ((rz & ~15) >> 4)).addBlock(b, x & 15, y, z & 15);
+			surface._getNoGenerateChunk(ox + ((rx & ~15) >> 4), oy + ((rz & ~15) >> 4)).addBlock(b, x & 15, y, z & 15);
 			return;
 		} else {
 			addBlock(b, x & 15, y, z & 15);
@@ -472,10 +472,19 @@ public class Chunk {
 		visiblesSize = 0;
 		
 		loaded = true;
-		boolean chx0 = surface._getChunk(ox - 1, oy).isGenerated();
-		boolean chx1 = surface._getChunk(ox + 1, oy).isGenerated();
-		boolean chy0 = surface._getChunk(ox, oy - 1).isGenerated();
-		boolean chy1 = surface._getChunk(ox, oy + 1).isGenerated();
+		Chunk [] chunks = new Chunk[4];
+		Chunk ch = surface._getNoGenerateChunk(ox - 1, oy);
+		chunks[0] = ch;
+		boolean chx0 = ch != null && ch.isGenerated();
+		ch = surface._getNoGenerateChunk(ox + 1, oy);
+		chunks[1] = ch;
+		boolean chx1 = ch != null && ch.isGenerated();
+		ch = surface._getNoGenerateChunk(ox, oy - 1);
+		chunks[2] = ch;
+		boolean chy0 = ch != null && ch.isGenerated();
+		ch = surface._getNoGenerateChunk(ox, oy + 1);
+		boolean chy1 = ch != null && ch.isGenerated();
+		chunks[3] = ch;
 		for(int k = 0; k < list.size(); k++) {
 			BlockInstance bi = list.get(k);
 			BlockInstance[] neighbors = bi.getNeighbors(this);
@@ -500,22 +509,16 @@ public class Chunk {
 				}
 			}
 		}
+		boolean [] toCheck = {chx0, chx1, chy0, chy1};
 		for (int i = 0; i < 16; i++) {
 			// Checks if blocks from neighboring chunks are changed
 			int [] dx = {15, 0, i, i};
 			int [] dy = {i, i, 15, 0};
 			int [] invdx = {0, 15, i, i};
 			int [] invdy = {i, i, 0, 15};
-			boolean [] toCheck = {chx0, chx1, chy0, chy1};
-			Chunk [] chunks = {
-					surface._getChunk(ox-1, oy),
-					surface._getChunk(ox+1, oy),
-					surface._getChunk(ox, oy-1),
-					surface._getChunk(ox, oy+1),
-					};
 			for(int k = 0; k < 4; k++) {
 				if (toCheck[k]) {
-					Chunk ch = chunks[k];
+					ch = chunks[k];
 					for (int j = World.WORLD_HEIGHT - 1; j >= 0; j--) {
 						BlockInstance inst0 = ch.getBlockInstanceAt(dx[k], j, dy[k]);
 						if(inst0 == null) {
@@ -648,7 +651,7 @@ public class Chunk {
 		int cz = y;
 		cz >>= 4;
 		if(ox != cx || oy != cz)
-			return surface._getChunk(cx, cz);
+			return surface._getNoGenerateChunk(cx, cz);
 		return this;
 	}
 	

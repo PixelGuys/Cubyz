@@ -39,7 +39,6 @@ public class LocalSurface extends Surface {
 	private Chunk [] visibleChunks;
 	private int lastX = Integer.MAX_VALUE, lastZ = Integer.MAX_VALUE; // Chunk coordinates of the last chunk update.
 	private int doubleRD; // Corresponds to the doubled value of the last used render distance.
-	private int lastChunk = -1;
 	private int worldAnd = 65535; // worldSize-1. Used for bitwise and to better work with coordinates.
 	private ArrayList<Entity> entities = new ArrayList<>();
 	
@@ -190,7 +189,13 @@ public class LocalSurface extends Surface {
 	
 	@Override
 	public void synchronousSeek(int x, int z) {
-		Chunk ch = getChunk(x, z);
+		// Transform to chunk coordinates:
+		x >>= 4;
+		z >>= 4;
+		Chunk ch = _getNoGenerateChunk(x, z);
+		if(ch == null) {
+			ch = new Chunk(x, z, this, transformData(getChunkData(x, z)));
+		}
 		if (!ch.isGenerated()) {
 			synchronousGenerate(ch);
 			ch.load();
@@ -200,24 +205,6 @@ public class LocalSurface extends Surface {
 	public void synchronousGenerate(Chunk ch) {
 		ch.generateFrom(generator);
 		wio.saveChunk(ch);
-	}
-	
-	@Override
-	public Chunk getChunk(int x, int z) {	// World -> Chunk coordinate system is a bit harder than just x/16. java seems to floor when bigger and to ceil when lower than 0.
-		return _getChunk(x >> 4, z >> 4);
-	}
-
-	@Override
-	public Chunk _getChunk(int x, int z) {
-		x &= worldAnd >>> 4;
-		z &= worldAnd >>> 4;
-		Chunk c = _getNoGenerateChunk(x, z);
-		if(c != null) return c;
-		c = new Chunk(x, z, this, transformData(getChunkData(x, z)));
-		// not generated
-		chunks.add(c);
-		lastChunk = chunks.size()-1;
-		return c;
 	}
 	@Override
 	public Chunk _getNoGenerateChunk(int x, int z) {
@@ -234,22 +221,6 @@ public class LocalSurface extends Surface {
 					return ret;
 			}
 		}
-		try {
-			if(lastChunk >= 0 && lastChunk < chunks.size() && chunks.get(lastChunk).getX() == x && chunks.get(lastChunk).getZ() == z) {
-				return chunks.get(lastChunk);
-			}
-			for (int i = 0; i < chunks.size(); i++) {
-				if (chunks.get(i).getX() == x && chunks.get(i).getZ() == z) {
-					lastChunk = i;
-					return chunks.get(i);
-				}
-			}
-		} catch(NullPointerException e) {
-			System.out.println("Catched NullPointerException");
-			//e.printStackTrace();
-			chunks.remove(null); // Remove the corruption.
-			return _getNoGenerateChunk(x, z); // Just try it again…
-		} // Wherever the NullPointerException comes from, it doesn't seem to be a big deal. If another error occurs elsewhere, this might be the source.
 		return null;
 	}
 	
@@ -412,7 +383,7 @@ public class LocalSurface extends Surface {
 	
 	@Override
 	public void removeBlock(int x, int y, int z) {
-		Chunk ch = getChunk(x, z);
+		Chunk ch = _getNoGenerateChunk(x >> 4, z >> 4);
 		if (ch != null) {
 			Block b = ch.getBlockInstanceAt(x & 15, y, z & 15).getBlock();
 			ch.removeBlockAt(x & 15, y, z & 15, true);
@@ -426,7 +397,7 @@ public class LocalSurface extends Surface {
 	
 	@Override
 	public void placeBlock(int x, int y, int z, Block b) {
-		Chunk ch = getChunk(x, z);
+		Chunk ch = _getNoGenerateChunk(x >> 4, z >> 4);
 		if (ch != null) {
 			ch.addBlockAt(x & 15, y, z & 15, b, true);
 			wio.saveChunk(ch);
@@ -617,7 +588,10 @@ public class LocalSurface extends Surface {
 					}
 				}
 				if(notIn) {
-					Chunk ch = getChunk(i << 4, j << 4);
+					Chunk ch = _getNoGenerateChunk(i, j);
+					if(ch == null) {
+						ch = new Chunk(i, j, this, transformData(getChunkData(i, j)));
+					}
 					if (!ch.isGenerated()) {
 						queueChunk(ch);
 					} else {
@@ -697,7 +671,7 @@ public class LocalSurface extends Surface {
 	@Override
 	public BlockEntity getBlockEntity(int x, int y, int z) {
 		BlockInstance bi = getBlockInstance(x, y, z);
-		Chunk ck = getChunk(bi.getX(), bi.getZ());
+		Chunk ck = _getNoGenerateChunk(bi.getX() >> 4, bi.getZ() >> 4);
 		return ck.blockEntities().get(bi);
 	}
 	

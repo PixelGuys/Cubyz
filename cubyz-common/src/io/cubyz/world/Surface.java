@@ -63,8 +63,6 @@ public abstract class Surface {
 	
 	public abstract float getGlobalLighting();
 
-	public abstract Chunk getChunk(int x, int z);	// Works with world coordinates
-	public abstract Chunk _getChunk(int x, int z);	// Works with chunk coordinates
 	public abstract Chunk _getNoGenerateChunk(int x, int z);
 	public abstract Block getBlock(int x, int y, int z);
 	
