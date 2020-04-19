@@ -34,9 +34,8 @@ public class LocalSurface extends Surface {
 	
 	private static Random rnd = new Random();
 	
-	private List<Chunk> chunks;
 	private List<MetaChunk> maps;
-	private Chunk [] visibleChunks;
+	private Chunk [] chunks;
 	private int lastX = Integer.MAX_VALUE, lastZ = Integer.MAX_VALUE; // Chunk coordinates of the last chunk update.
 	private int doubleRD; // Corresponds to the doubled value of the last used render distance.
 	private int worldAnd = 65535; // worldSize-1. Used for bitwise and to better work with coordinates.
@@ -108,9 +107,8 @@ public class LocalSurface extends Surface {
 		this.torus = torus;
 		MaterialInit.resetCustom();
 		ItemInit.resetCustom();
-		chunks = new ArrayList<>();
 		maps = new ArrayList<>();
-		visibleChunks = new Chunk[0];
+		chunks = new Chunk[0];
 		
 		for (int i = 0; i < Runtime.getRuntime().availableProcessors(); i++) {
 			ChunkGenerationThread thread = new ChunkGenerationThread();
@@ -153,17 +151,12 @@ public class LocalSurface extends Surface {
 	
 	public void forceSave() {
 		wio.saveTorusData(this);
-		((LocalWorld) ((LocalStellarTorus) torus).getWorld()).forceSave();
+		((LocalWorld) torus.getWorld()).forceSave();
 	}
 
 	@Override
-	public List<Chunk> getChunks() {
+	public Chunk[] getChunks() {
 		return chunks;
-	}
-
-	@Override
-	public Chunk[] getVisibleChunks() {
-		return visibleChunks;
 	}
 
 	@Override
@@ -215,8 +208,8 @@ public class LocalSurface extends Surface {
 			// Sometimes errors happen when resizing the renderDistance. If they happen just go on to iterating through the whole long list.
 			// Any seemingly useless checks in here are important!
 			int index = (x-(lastX-doubleRD))*doubleRD + (z-(lastZ-doubleRD));
-			if(index < visibleChunks.length && index >= 0) {
-				Chunk ret = visibleChunks[index];
+			if(index < chunks.length && index >= 0) {
+				Chunk ret = chunks[index];
 				if(x == ret.getX() && z == ret.getZ() && ret.isLoaded())
 					return ret;
 			}
@@ -459,7 +452,7 @@ public class LocalSurface extends Surface {
 			en.update();
 		}
 		// Block Entities
-		for (Chunk ch : visibleChunks) {
+		for (Chunk ch : chunks) {
 			if (ch.isLoaded() && ch.blockEntities().size() > 0) {
 				blockEntities = ch.blockEntities().values().toArray(blockEntities);
 				for (BlockEntity be : blockEntities) {
@@ -481,7 +474,7 @@ public class LocalSurface extends Surface {
 		if (gameTime % 3 == 0 && lqdUpdate) {
 			lqdUpdate = false;
 			//Profiler.startProfiling();
-			for (Chunk ch : visibleChunks) {
+			for (Chunk ch : chunks) {
 				if (ch.isLoaded() && ch.liquids().size() > 0) {
 					liquids = ch.updatingLiquids().toArray(liquids);
 					ch.updatingLiquids().clear();
@@ -576,12 +569,12 @@ public class LocalSurface extends Surface {
 		for(int i = x-doubleRD; i < x; i++) {
 			for(int j = z-doubleRD; j < z; j++) {
 				boolean notIn = true;
-				for(int k = minK; k < visibleChunks.length; k++) {
-					if(visibleChunks[k].getX() == i && visibleChunks[k].getZ() == j) {
-						newVisibles[index] = visibleChunks[k];
+				for(int k = minK; k < chunks.length; k++) {
+					if(chunks[k].getX() == i && chunks[k].getZ() == j) {
+						newVisibles[index] = chunks[k];
 						// Removes this chunk out of the list of chunks that will be considered in this function.
-						visibleChunks[k] = visibleChunks[minK];
-						visibleChunks[minK] = newVisibles[index];
+						chunks[k] = chunks[minK];
+						chunks[minK] = newVisibles[index];
 						minK++;
 						notIn = false;
 						break;
@@ -602,36 +595,17 @@ public class LocalSurface extends Surface {
 				index++;
 			}
 		}
-		for(int k = minK; k < visibleChunks.length; k++) {
-			visibleChunks[k].setLoaded(false);
-			chunks.remove(visibleChunks[k]);
-			wio.saveChunk(visibleChunks[k]);
+		for(int k = minK; k < chunks.length; k++) {
+			chunks[k].setLoaded(false);
+			wio.saveChunk(chunks[k]);
 		}
-		visibleChunks = newVisibles;
+		chunks = newVisibles;
 		lastX = x;
 		lastZ = z;
 		this.doubleRD = doubleRD;
-		if (minK != visibleChunks.length) { // if at least one chunk got unloaded
+		if (minK != chunks.length) { // if at least one chunk got unloaded
 			wio.saveTorusData(this);
 		}
-		
-		// Check if one of the never loaded chunks is outside of players range.
-		// Those chunks were never loaded and therefore don't need to get saved.
-		x -= renderDistance;
-		z -= renderDistance;
-		for(int i = 0; i < chunks.size(); i++) {
-			Chunk ch = chunks.get(i);
-			int delta = Math.abs(ch.getX()-x);
-			if(delta >= renderDistance+2) {
-				chunks.remove(ch);
-				continue;
-			}
-			delta = Math.abs(ch.getZ()-z);
-			if(delta >= renderDistance+2) {
-				chunks.remove(ch);
-			}
-		}
-		
 	}
 	
 	public float getGlobalLighting() {
@@ -660,7 +634,6 @@ public class LocalSurface extends Surface {
 			threads = new ArrayList<>();
 			
 			chunks = null;
-			visibleChunks = null;
 			chunkData = null;
 			blockData = null;
 		} catch (Exception e) {

@@ -66,9 +66,8 @@ public abstract class Surface {
 	public abstract Chunk _getNoGenerateChunk(int x, int z);
 	public abstract Block getBlock(int x, int y, int z);
 	
-	public abstract List<Chunk> getChunks();
-	public abstract Chunk [] getVisibleChunks();
-	public abstract Block [] getPlanetBlocks();
+	public abstract Chunk[] getChunks();
+	public abstract Block[] getPlanetBlocks();
 	public abstract Entity[] getEntities();
 	public abstract void addEntity(Entity en);
 	
