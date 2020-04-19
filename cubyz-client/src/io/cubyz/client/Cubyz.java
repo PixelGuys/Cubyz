@@ -47,7 +47,6 @@ import io.cubyz.utils.ResourceUtilities.BlockModel;
 import io.cubyz.utils.ResourceUtilities.BlockSubModel;
 import io.cubyz.utils.ResourceUtilities.EntityModel;
 import io.cubyz.world.*;
-import io.cubyz.world.cubyzgenerators.TerrainGenerator;
 import io.cubyz.world.generator.LifelandGenerator;
 import io.jungle.*;
 import io.jungle.audio.SoundBuffer;
@@ -179,20 +178,19 @@ public class Cubyz implements IGameLogic {
 			Random rnd = new Random();
 			int dx = 0;
 			int dz = 0;
-			int highestY = 0;
 			if (world.getLocalPlayer().getPosition().x == 0 && world.getLocalPlayer().getPosition().z == 0) {
+				BlockInstance highest;
 				CubyzLogger.i.info("Finding position..");
 				while (true) {
 					dx = rnd.nextInt(surface.getAnd()+1);
 					dz = rnd.nextInt(surface.getAnd()+1);
 					CubyzLogger.i.info("Trying " + dx + " ? " + dz);
 					world.getCurrentTorus().synchronousSeek(dx, dz);
-					highestY = world.getCurrentTorus().getHighestBlock(dx, dz);
-					if (highestY > TerrainGenerator.SEA_LEVEL) { // TODO: always true if generator doesn't use standard TerrainGenerator.
+					highest = world.getCurrentTorus().getHighestBlock(dx, dz);
+					if(highest != null && highest.getBlock().isSolid()) // Make sure the player starts on a solid block.
 						break;
-					}
 				}
-				world.getLocalPlayer().setPosition(new Vector3i(dx, highestY+2, dz));
+				world.getLocalPlayer().setPosition(new Vector3i(dx, highest.getY()+2, dz));
 				world.getLocalPlayer().setStellarTorus(surface.getStellarTorus());
 				CubyzLogger.i.info("OK!");
 			}

@@ -3,7 +3,6 @@ package io.cubyz.world;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.joml.Vector3i;
 import org.joml.Vector4f;
 
 import io.cubyz.blocks.Block;
@@ -34,13 +33,13 @@ public abstract class TorusSurface {
 		}
 	}
 
-	public int getHighestBlock(int x, int z) {
+	public BlockInstance getHighestBlock(int x, int z) {
 		for (int y = World.WORLD_HEIGHT-1; y > 0; y--) {
-			if (getBlock(x, y, z) != null) {
-				return y;
+			if (getBlockInstance(x, y, z) != null) {
+				return getBlockInstance(x, y, z);
 			}
 		}
-		return -1; // not generated
+		return null; // not generated or void
 	}
 	
 	public abstract void removeBlock(int x, int y, int z);
@@ -55,10 +54,6 @@ public abstract class TorusSurface {
 	 */
 	public abstract BlockInstance getBlockInstance(int x, int y, int z);
 	public abstract BlockEntity getBlockEntity(int x, int y, int z);
-	
-	public Block getBlock(Vector3i vec) {
-		return getBlock(vec.x, vec.y, vec.z);
-	}
 	
 	/**
 	 * 
