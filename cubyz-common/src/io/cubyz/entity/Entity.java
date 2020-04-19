@@ -8,7 +8,6 @@ import io.cubyz.math.FloatingInteger;
 import io.cubyz.math.Vector3fi;
 import io.cubyz.ndt.NDTContainer;
 import io.cubyz.world.StellarTorus;
-import io.cubyz.world.World;
 
 public class Entity {
 

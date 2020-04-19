@@ -1,7 +1,5 @@
 package io.cubyz.ui;
 
-import io.cubyz.ClientOnly;
-import io.cubyz.blocks.Block;
 import io.cubyz.client.Cubyz;
 import io.cubyz.multiplayer.server.CubyzServer;
 import io.cubyz.translate.TextKey;
@@ -9,7 +7,6 @@ import io.cubyz.ui.components.Button;
 import io.cubyz.ui.components.Label;
 import io.cubyz.ui.options.OptionsGUI;
 import io.cubyz.utils.DiscordIntegration;
-import io.cubyz.world.LocalWorld;
 import io.jungle.Window;
 import io.jungle.hud.Font;
 

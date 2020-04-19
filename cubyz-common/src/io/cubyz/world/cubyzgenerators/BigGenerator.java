@@ -1,7 +1,6 @@
 package io.cubyz.world.cubyzgenerators;
 
 import io.cubyz.blocks.Block;
-import io.cubyz.world.LocalStellarTorus;
 import io.cubyz.world.LocalTorusSurface;
 
 // A generate that needs access to the MetaChunks directly. Useful for generating big structures like rivers.

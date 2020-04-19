@@ -33,7 +33,7 @@ public class RemoteWorld extends World {
 	
 	public RemoteWorld() {
 		localPlayer = (Player) CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player").newEntity();
-		localPlayer.setStellarTorus(this.getCurrentTorus());
+		//localPlayer.setStellarTorus(this.getCurrentTorus()); TODO!
 		localPlayer.getPosition().add(10, 200, 10);
 		entities = new ArrayList<Entity>();
 		entities.add(localPlayer);
@@ -101,7 +101,7 @@ public class RemoteWorld extends World {
 	}
 	
 	public void submit(int x, int z, byte[] data) {
-		Chunk ck = new Chunk(x, z, this, transformData(data));
+		/*Chunk ck = new Chunk(x, z, this, transformData(data)); TODO!
 		for (int i = 0; i < chunks.size(); i++) {
 			if (chunks.get(i).getX() == x && chunks.get(i).getZ() == z) {
 				chunks.remove(i);
@@ -112,17 +112,19 @@ public class RemoteWorld extends World {
 		ck.load();
 		if (getCurrentTorus().getHighestBlock(localPlayer.getPosition().x, localPlayer.getPosition().z) != -1)
 			localPlayer.getPosition().y = getCurrentTorus().getHighestBlock(localPlayer.getPosition().x, localPlayer.getPosition().z)+1;
-		ck.applyBlockChanges();
+		ck.applyBlockChanges();*/
 	}
 
 	@Override
 	public TorusSurface getCurrentTorus() {
 		// TODO Auto-generated method stub
+		return null;
 	}
 
 	@Override
 	public List<StellarTorus> getToruses() {
 		// TODO Auto-generated method stub
+		return null;
 	}
 
 }

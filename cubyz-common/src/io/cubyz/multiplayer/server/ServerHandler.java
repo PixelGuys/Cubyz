@@ -54,12 +54,12 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 		playerTimeout = settings.playerTimeout;
 		onlineMode = settings.onlineMode;
 		isInternal = settings.internal;
-		stellarTorus = new LocalStellarTorus();
-		Block[] blocks = stellarTorus.generate();
+		//stellarTorus = new LocalStellarTorus(); TODO!
+		//Block[] blocks = stellarTorus.generate(); TODO!
 		// Generate the Block meshes:
-		for(Block b : blocks) {
+		/*for(Block b : blocks) { TODO!
 			ClientOnly.createBlockMesh.accept(b);
-		}
+		}*/
 		th = new Thread(() -> {
 			while (true) {
 				for (String uuid : clients.keySet()) {
@@ -94,14 +94,14 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 	public ByteBuf sendChunk(ChannelHandlerContext ctx, int x, int z) {
 		ByteBuf out = ctx.alloc().buffer();
 		//world.seek(x*16, z*16);
-		stellarTorus.seek(0, 0);
+		/*stellarTorus.seek(0, 0); TODO!
 		byte[] data = stellarTorus.getChunkData(x, z);
 		out.writeByte(Packet.PACKET_CHUNK);
 		out.writeInt(x);
 		out.writeInt(z);
 		out.writeInt(stellarTorus.getLocalSeed());
 		out.writeInt(data.length);
-		out.writeBytes(data);
+		out.writeBytes(data);*/
 		return out;
 	}
 	

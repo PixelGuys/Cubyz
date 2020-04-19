@@ -23,7 +23,6 @@ import io.cubyz.command.CommandExecutor;
 import io.cubyz.command.ICommandSource;
 import io.cubyz.modding.ModLoader;
 import io.cubyz.multiplayer.server.CubyzServer;
-import io.cubyz.multiplayer.server.ServerHandler;
 import io.cubyz.world.World;
 
 public class Server {
@@ -153,7 +152,7 @@ public class Server {
 
 			@Override
 			public World getWorld() {
-				return ServerHandler.world;
+				return null;//ServerHandler.world; TODO!
 			}
 			
 		};

@@ -9,7 +9,6 @@ import java.io.OutputStream;
 
 import io.cubyz.math.Bits;
 import io.cubyz.ndt.NDTContainer;
-import io.cubyz.world.LocalTorusSurface;
 import io.cubyz.world.LocalWorld;
 
 public class WorldIO {
@@ -40,6 +39,7 @@ public class WorldIO {
 			in.read(src);
 			NDTContainer ndt = new NDTContainer(src);
 			if (ndt.getInteger("version") != 2) {
+				in.close();
 				throw new IOException("Cannot read version " + ndt.getInteger("version"));
 			}
 			world.setSeed(ndt.getInteger("seed"));

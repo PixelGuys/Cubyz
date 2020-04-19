@@ -1,8 +1,5 @@
 package io.cubyz.ui.components;
 
-import static org.lwjgl.nanovg.NanoVG.NVG_ALIGN_LEFT;
-import static org.lwjgl.nanovg.NanoVG.NVG_ALIGN_TOP;
-
 import org.lwjgl.glfw.GLFW;
 
 import io.cubyz.client.Cubyz;

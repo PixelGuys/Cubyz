@@ -4,9 +4,7 @@ import org.lwjgl.glfw.GLFW;
 
 import io.cubyz.client.Cubyz;
 import io.cubyz.command.CommandExecutor;
-import io.cubyz.command.ICommandSource;
 import io.cubyz.ui.components.TextInput;
-import io.cubyz.world.World;
 import io.jungle.Keyboard;
 import io.jungle.Window;
 

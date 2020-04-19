@@ -5,7 +5,6 @@ import java.io.File;
 import io.cubyz.ClientOnly;
 import io.cubyz.blocks.Block;
 import io.cubyz.client.Cubyz;
-import io.cubyz.save.WorldIO;
 import io.cubyz.translate.ContextualTextKey;
 import io.cubyz.translate.TextKey;
 import io.cubyz.ui.components.Button;

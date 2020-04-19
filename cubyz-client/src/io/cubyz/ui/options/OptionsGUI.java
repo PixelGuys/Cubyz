@@ -4,7 +4,6 @@ import io.cubyz.client.Cubyz;
 import io.cubyz.translate.ContextualTextKey;
 import io.cubyz.translate.LanguageLoader;
 import io.cubyz.translate.TextKey;
-import io.cubyz.ui.MainMenuGUI;
 import io.cubyz.ui.MenuGUI;
 import io.cubyz.ui.components.Button;
 import io.cubyz.utils.DiscordIntegration;

@@ -15,7 +15,6 @@ public class Biome implements IRegistryElement {
 	private VegetationModel[] vegetationModels; // The first members in this array will get prioritized.
 	
 	// The coefficients are represented like this: a[0] + a[1]*x + a[2]*x^2 + … + a[n-1]*x^(n-1)
-	// TODO: Vegetation models.
 	public Biome(Resource id, float[] polynomial, float heat, float height, float min, float max, BlockStructure str, boolean rivers, VegetationModel ... models) {
 		identifier = id;
 		terrainPolynomial = polynomial;

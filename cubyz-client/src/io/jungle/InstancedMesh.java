@@ -3,7 +3,6 @@ package io.jungle;
 import java.nio.FloatBuffer;
 import java.util.List;
 import org.joml.Matrix4f;
-import org.joml.Vector3f;
 
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL15.*;
@@ -23,9 +22,6 @@ public class InstancedMesh extends Mesh {
 	private static final int FLOAT_SIZE_BYTES = 4;
 
 	private static final int VECTOR4F_SIZE_BYTES = 4 * FLOAT_SIZE_BYTES;
-	
-	private static final int VECTOR3F_SIZE_FLOATS = 3;
-	private static final int VECTOR3F_SIZE_BYTES = VECTOR3F_SIZE_FLOATS * FLOAT_SIZE_BYTES;
 
 	private static final int MATRIX_SIZE_FLOATS = 4 * 4;
 	private static final int MATRIX_SIZE_BYTES = MATRIX_SIZE_FLOATS * FLOAT_SIZE_BYTES;

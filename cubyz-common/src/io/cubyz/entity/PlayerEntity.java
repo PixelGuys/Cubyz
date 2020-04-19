@@ -2,7 +2,6 @@
 package io.cubyz.entity;
 
 import org.joml.Vector3f;
-import org.joml.Vector3i;
 
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block.BlockClass;
@@ -10,7 +9,6 @@ import io.cubyz.blocks.BlockInstance;
 import io.cubyz.items.Inventory;
 import io.cubyz.items.tools.Tool;
 import io.cubyz.ndt.NDTContainer;
-import io.cubyz.world.StellarTorus;
 import io.cubyz.world.TorusSurface;
 import io.cubyz.world.World;
 

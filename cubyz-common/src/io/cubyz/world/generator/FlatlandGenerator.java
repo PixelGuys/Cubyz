@@ -7,7 +7,6 @@ import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.world.Chunk;
-import io.cubyz.world.StellarTorus;
 import io.cubyz.world.TorusSurface;
 
 /**

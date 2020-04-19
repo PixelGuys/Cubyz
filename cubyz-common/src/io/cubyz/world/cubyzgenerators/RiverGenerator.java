@@ -5,7 +5,6 @@ import java.util.Random;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
-import io.cubyz.world.LocalStellarTorus;
 import io.cubyz.world.LocalTorusSurface;
 import io.cubyz.world.MetaChunk;
 import io.cubyz.world.World;

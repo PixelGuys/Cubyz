@@ -1,6 +1,5 @@
 package io.cubyz.items;
 
-import io.cubyz.CubyzLogger;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.base.init.ItemInit;
 import io.cubyz.blocks.Block;

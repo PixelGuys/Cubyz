@@ -2,8 +2,6 @@ package io.jungle;
 
 import org.joml.Vector3f;
 
-import io.cubyz.math.Vector3fi;
-
 public class Spatial {
 
     private Mesh[] meshes;
