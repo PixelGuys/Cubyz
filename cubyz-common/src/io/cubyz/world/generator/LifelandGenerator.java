@@ -57,24 +57,24 @@ public class LifelandGenerator extends SurfaceGenerator {
 	@Override
 	public void generate(Chunk ch, Surface surface) {
 		int ox = ch.getX();
-		int oy = ch.getZ();
+		int oz = ch.getZ();
 		int wx = ox << 4;
-		int wy = oy << 4;
+		int wz = oz << 4;
 		long seed = surface.getStellarTorus().getLocalSeed();
 		// Generate some maps:
-		float[][] heightMap = ((LocalSurface)surface).getHeightMapData(wx-8, wy-8, 32, 32);
-		float[][] heatMap = ((LocalSurface)surface).getHeatMapData(wx-8, wy-8, 32, 32);
-		Biome[][] biomeMap = ((LocalSurface)surface).getBiomeMapData(wx-8, wy-8, 32, 32);
+		float[][] heightMap = ((LocalSurface)surface).getHeightMapData(wx-8, wz-8, 32, 32);
+		float[][] heatMap = ((LocalSurface)surface).getHeatMapData(wx-8, wz-8, 32, 32);
+		Biome[][] biomeMap = ((LocalSurface)surface).getBiomeMapData(wx-8, wz-8, 32, 32);
 		boolean[][] vegetationIgnoreMap = new boolean[32][32]; // Stores places where vegetation should not grow, like caves and rivers.
 		int[][] realHeight = new int[32][32];
 		for(int px = 0; px < 32; px++) {
-			for(int py = 0; py < 32; py++) {
-				int h = (int)(heightMap[px][py]*World.WORLD_HEIGHT);
+			for(int pz = 0; pz < 32; pz++) {
+				int h = (int)(heightMap[px][pz]*World.WORLD_HEIGHT);
 				if(h > World.WORLD_HEIGHT)
 					h = World.WORLD_HEIGHT;
-				realHeight[px][py] = h;
+				realHeight[px][pz] = h;
 				
-				heatMap[px][py] = ((2 - heightMap[px][py] + TerrainGenerator.SEA_LEVEL/(float)World.WORLD_HEIGHT)*heatMap[px][py]*120) - 100;
+				heatMap[px][pz] = ((2 - heightMap[px][pz] + TerrainGenerator.SEA_LEVEL/(float)World.WORLD_HEIGHT)*heatMap[px][pz]*120) - 100;
 			}
 		}
 		
@@ -83,23 +83,23 @@ public class LifelandGenerator extends SurfaceGenerator {
 		
 		for (Generator g : sortedGenerators) {
 			if (g instanceof FancyGenerator) {
-				((FancyGenerator) g).generate(r.nextLong(), ox, oy, chunk, vegetationIgnoreMap, heatMap, realHeight, biomeMap);
+				((FancyGenerator) g).generate(r.nextLong(), ox, oz, chunk, vegetationIgnoreMap, heatMap, realHeight, biomeMap);
 			} else if (g instanceof BigGenerator) {
-				((BigGenerator) g).generate(r.nextLong(), ox*16, oy*16, chunk, vegetationIgnoreMap, (LocalSurface)surface);
+				((BigGenerator) g).generate(r.nextLong(), ox*16, oz*16, chunk, vegetationIgnoreMap, (LocalSurface)surface);
 			} else {
-				g.generate(r.nextLong(), ox, oy, chunk, vegetationIgnoreMap);
+				g.generate(r.nextLong(), ox, oz, chunk, vegetationIgnoreMap);
 			}
 		}
 
 		// Place the blocks in the chunk:
 		for(int px = 0; px < 16; px++) {
-			for(int py = 0; py < 16; py++) {
-				for(int h = 0; h < World.WORLD_HEIGHT; h++) {
-					Block b = chunk[px][py][h];
+			for(int pz = 0; pz < 16; pz++) {
+				for(int py = 0; py < World.WORLD_HEIGHT; py++) {
+					Block b = chunk[px][pz][py];
 					if(b != null) {
 						BlockInstance bi = new BlockInstance(b);
-						bi.setPosition(new Vector3i(wx + px, h, wy + py));
-						ch.rawAddBlock(px, h, py, bi);
+						bi.setPosition(new Vector3i(wx + px, py, wz + pz));
+						ch.rawAddBlock(px, py, pz, bi);
 						if(bi.getBlock() != null) {
 							if (bi.getBlock().hasBlockEntity())
 								ch.blockEntities().put(bi, bi.getBlock().createBlockEntity(bi.getPosition()));

@@ -7,6 +7,6 @@ import io.cubyz.world.LocalSurface;
 
 public interface BigGenerator extends Generator {
 	abstract int getPriority(); // Used to prioritize certain generators(like map generation) over others(like vegetation generation).
-	abstract void generate(long seed, int wx, int wy, Block[][][] chunk, boolean[][] vegetationIgnoreMap, LocalSurface world); // Needs world coordinates!
-	default void generate(long seed, int cx, int cy, Block[][][] chunk, boolean[][] vegetationIgnoreMap) {}
+	abstract void generate(long seed, int wx, int wz, Block[][][] chunk, boolean[][] vegetationIgnoreMap, LocalSurface world); // Needs world coordinates!
+	default void generate(long seed, int cx, int cz, Block[][][] chunk, boolean[][] vegetationIgnoreMap) {}
 }

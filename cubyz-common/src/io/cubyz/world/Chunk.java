@@ -29,23 +29,23 @@ public class Chunk {
 	private ArrayList<BlockInstance> updatingLiquids = new ArrayList<>(); // liquids that should be updated at next frame
 	private ArrayList<BlockChange> changes; // Reports block changes. Only those will be saved!
 	private FastList<BlockInstance> visibles = new FastList<BlockInstance>(50, BlockInstance.class);
-	private int ox, oy;
+	private int ox, oz;
 	private boolean generated;
 	private boolean loaded;
 	private Map<BlockInstance, BlockEntity> blockEntities = new HashMap<>();
 	
 	private Surface surface;
 	
-	public Chunk(int ox, int oy, Surface surface, ArrayList<BlockChange> changes) {
+	public Chunk(int ox, int oz, Surface surface, ArrayList<BlockChange> changes) {
 		if(surface != null) {
 			ox &= surface.getAnd() >>> 4;
-			oy &= surface.getAnd() >>> 4;
+			oz &= surface.getAnd() >>> 4;
 		}
 		if(easyLighting) {
 			light = new int[16*World.WORLD_HEIGHT*16];
 		}
 		this.ox = ox;
-		this.oy = oy;
+		this.oz = oz;
 		this.surface = surface;
 		this.changes = changes;
 	}
@@ -60,7 +60,7 @@ public class Chunk {
 	private BlockInstance getInstUnbound(int x, int y, int z) {
 		if(y < 0 || y >= World.WORLD_HEIGHT || !generated) return null;
 		if(x < 0 || x > 15 || z < 0 || z > 15) {
-			Chunk chunk = surface._getNoGenerateChunk(ox + ((x & ~15) >> 4), oy + ((y & ~15) >> 4));
+			Chunk chunk = surface._getNoGenerateChunk(ox + ((x & ~15) >> 4), oz + ((y & ~15) >> 4));
 			if(chunk != null) return chunk.getInstUnbound(x & 15, y, z & 15);
 			return null;
 		}
@@ -88,7 +88,7 @@ public class Chunk {
 	}
 	
 	public int getZ() {
-		return oy;
+		return oz;
 	}
 	
 	public ArrayList<BlockInstance> list() {
@@ -243,7 +243,7 @@ public class Chunk {
 		if(!easyLighting || y < 0 || y >= World.WORLD_HEIGHT || !generated) return -1;
 		// Check if it's inside this chunk:
 		if(x < 0 || x > 15 || z < 0 || z > 15) {
-			Chunk chunk = surface._getNoGenerateChunk(ox + ((x & ~15) >> 4), oy + ((y & ~15) >> 4));
+			Chunk chunk = surface._getNoGenerateChunk(ox + ((x & ~15) >> 4), oz + ((y & ~15) >> 4));
 			if(chunk != null) return chunk.localLightUpdate(x & 15, y, z & 15, shift, mask);
 			return -1;
 		}
@@ -265,7 +265,7 @@ public class Chunk {
 		if(x != 0) {
 			maxLight = Math.max(maxLight, applyNeighbors(light[index-16], shift, neighbors[0], neighbors[1], neighbors[2], neighbors[3]));
 		} else {
-			Chunk chunk = surface._getNoGenerateChunk(ox-1, oy);
+			Chunk chunk = surface._getNoGenerateChunk(ox-1, oz);
 			if(chunk != null && chunk.isLoaded()) {
 				maxLight = Math.max(maxLight, applyNeighbors(chunk.light[index | 0xf0], shift, neighbors[0], neighbors[1], neighbors[2], neighbors[3]));
 			}
@@ -273,7 +273,7 @@ public class Chunk {
 		if(x != 15) {
 			maxLight = Math.max(maxLight, applyNeighbors(light[index+16], shift, neighbors[4], neighbors[5], neighbors[6], neighbors[7]));
 		} else {
-			Chunk chunk = surface._getNoGenerateChunk(ox+1, oy);
+			Chunk chunk = surface._getNoGenerateChunk(ox+1, oz);
 			if(chunk != null && chunk.isLoaded()) {
 				maxLight = Math.max(maxLight, applyNeighbors(chunk.light[index & ~0xf0], shift, neighbors[4], neighbors[5], neighbors[6], neighbors[7]));
 			}
@@ -281,7 +281,7 @@ public class Chunk {
 		if(z != 0) {
 			maxLight = Math.max(maxLight, applyNeighbors(light[index-1], shift, neighbors[0], neighbors[2], neighbors[4], neighbors[6]));
 		} else {
-			Chunk chunk = surface._getNoGenerateChunk(ox, oy-1);
+			Chunk chunk = surface._getNoGenerateChunk(ox, oz-1);
 			if(chunk != null && chunk.isLoaded()) {
 				maxLight = Math.max(maxLight, applyNeighbors(chunk.light[index | 0xf], shift, neighbors[0], neighbors[2], neighbors[4], neighbors[6]));
 			}
@@ -289,7 +289,7 @@ public class Chunk {
 		if(z != 15) {
 			maxLight = Math.max(maxLight, applyNeighbors(light[index+1], shift, neighbors[1], neighbors[3], neighbors[5], neighbors[7]));
 		} else {
-			Chunk chunk = surface._getNoGenerateChunk(ox, oy+1);
+			Chunk chunk = surface._getNoGenerateChunk(ox, oz+1);
 			if(chunk != null && chunk.isLoaded()) {
 				maxLight = Math.max(maxLight, applyNeighbors(chunk.light[index & ~0xf], shift, neighbors[1], neighbors[3], neighbors[5], neighbors[7]));
 			}
@@ -367,9 +367,9 @@ public class Chunk {
 		if(y >= World.WORLD_HEIGHT)
 			return;
 		int rx = x - (ox << 4);
-		int rz = z - (oy << 4);
+		int rz = z - (oz << 4);
 		if(rx < 0 || rx > 15 || rz < 0 || rz > 15) {
-			surface._getNoGenerateChunk(ox + ((rx & ~15) >> 4), oy + ((rz & ~15) >> 4)).addBlock(b, x & 15, y, z & 15);
+			surface._getNoGenerateChunk(ox + ((rx & ~15) >> 4), oz + ((rz & ~15) >> 4)).addBlock(b, x & 15, y, z & 15);
 			return;
 		} else {
 			addBlock(b, x & 15, y, z & 15);
@@ -389,7 +389,7 @@ public class Chunk {
 			}
 		}
 		BlockInstance inst0 = new BlockInstance(b);
-		inst0.setPosition(new Vector3i(x + (ox << 4), y, z + (oy << 4)));
+		inst0.setPosition(new Vector3i(x + (ox << 4), y, z + (oz << 4)));
 		inst0.setStellarTorus(surface);
 		if (b.hasBlockEntity()) {
 			BlockEntity te = b.createBlockEntity(inst0.getPosition());
@@ -471,16 +471,16 @@ public class Chunk {
 		
 		loaded = true;
 		Chunk [] chunks = new Chunk[4];
-		Chunk ch = surface._getNoGenerateChunk(ox - 1, oy);
+		Chunk ch = surface._getNoGenerateChunk(ox - 1, oz);
 		chunks[0] = ch;
 		boolean chx0 = ch != null && ch.isGenerated();
-		ch = surface._getNoGenerateChunk(ox + 1, oy);
+		ch = surface._getNoGenerateChunk(ox + 1, oz);
 		chunks[1] = ch;
 		boolean chx1 = ch != null && ch.isGenerated();
-		ch = surface._getNoGenerateChunk(ox, oy - 1);
+		ch = surface._getNoGenerateChunk(ox, oz - 1);
 		chunks[2] = ch;
 		boolean chy0 = ch != null && ch.isGenerated();
-		ch = surface._getNoGenerateChunk(ox, oy + 1);
+		ch = surface._getNoGenerateChunk(ox, oz + 1);
 		boolean chy1 = ch != null && ch.isGenerated();
 		chunks[3] = ch;
 		for(int k = 0; k < list.size(); k++) {
@@ -558,10 +558,10 @@ public class Chunk {
 			}
 			lightUpdate(lightUpdates, 24, 0x00ffffff);
 			// Look at the neighboring chunks. Update only the outer corners:
-			boolean no = surface._getNoGenerateChunk(ox-1, oy) != null;
-			boolean po = surface._getNoGenerateChunk(ox+1, oy) != null;
-			boolean on = surface._getNoGenerateChunk(ox, oy-1) != null;
-			boolean op = surface._getNoGenerateChunk(ox, oy+1) != null;
+			boolean no = surface._getNoGenerateChunk(ox-1, oz) != null;
+			boolean po = surface._getNoGenerateChunk(ox+1, oz) != null;
+			boolean on = surface._getNoGenerateChunk(ox, oz-1) != null;
+			boolean op = surface._getNoGenerateChunk(ox, oz+1) != null;
 			if(no || on) {
 				int x = 0, z = 0;
 				for(int y = 0; y < y0; y++) {
@@ -643,12 +643,12 @@ public class Chunk {
 	}
 	
 	// This function is here because it is mostly used by addBlock, where the neighbors to the added block usually are in the same chunk.
-	public Chunk getChunk(int x, int y) {
+	public Chunk getChunk(int x, int z) {
 		int cx = x;
 		cx >>= 4;
-		int cz = y;
+		int cz = z;
 		cz >>= 4;
-		if(ox != cx || oy != cz)
+		if(ox != cx || oz != cz)
 			return surface._getNoGenerateChunk(cx, cz);
 		return this;
 	}
@@ -763,12 +763,12 @@ public class Chunk {
 	
 	public void addBlockAt(int x, int y, int z, BlockInstance inst0, boolean registerBlockChange) {
 		int wx = ox << 4;
-		int wy = oy << 4;
+		int wz = oz << 4;
 		if(y >= World.WORLD_HEIGHT)
 			return;
 		removeBlockAt(x, y, z, false);
 		Block b = inst0.getBlock();
-		inst0.setPosition(new Vector3i(x + wx, y, z + wy));
+		inst0.setPosition(new Vector3i(x + wx, y, z + wz));
 		inst0.setStellarTorus(surface);
 		if (b.hasBlockEntity()) {
 			BlockEntity te = b.createBlockEntity(inst0.getPosition());
@@ -843,17 +843,17 @@ public class Chunk {
 	}
 	
 	public Vector3f getMin(Player localPlayer, int worldAnd) {
-		return new Vector3f(CubyzMath.matchSign(((ox << 4) - localPlayer.getPosition().x) & worldAnd, worldAnd) - localPlayer.getPosition().relX, -localPlayer.getPosition().y, CubyzMath.matchSign(((oy << 4) - localPlayer.getPosition().z) & worldAnd, worldAnd) - localPlayer.getPosition().relZ);
+		return new Vector3f(CubyzMath.matchSign(((ox << 4) - localPlayer.getPosition().x) & worldAnd, worldAnd) - localPlayer.getPosition().relX, -localPlayer.getPosition().y, CubyzMath.matchSign(((oz << 4) - localPlayer.getPosition().z) & worldAnd, worldAnd) - localPlayer.getPosition().relZ);
 	}
 	
 	public Vector3f getMax(Player localPlayer, int worldAnd) {
-		return new Vector3f(CubyzMath.matchSign(((ox << 4) - localPlayer.getPosition().x + 16) & worldAnd, worldAnd) - localPlayer.getPosition().relX, 255-localPlayer.getPosition().y, CubyzMath.matchSign(((oy << 4) - localPlayer.getPosition().z + 16) & worldAnd, worldAnd) - localPlayer.getPosition().relZ);
+		return new Vector3f(CubyzMath.matchSign(((ox << 4) - localPlayer.getPosition().x + 16) & worldAnd, worldAnd) - localPlayer.getPosition().relX, 255-localPlayer.getPosition().y, CubyzMath.matchSign(((oz << 4) - localPlayer.getPosition().z + 16) & worldAnd, worldAnd) - localPlayer.getPosition().relZ);
 	}
 	
 	public byte[] save() {
 		byte[] data = new byte[12 + (changes.size() << 4)];
 		Bits.putInt(data, 0, ox);
-		Bits.putInt(data, 4, oy);
+		Bits.putInt(data, 4, oz);
 		Bits.putInt(data, 8, changes.size());
 		for(int i = 0; i < changes.size(); i++) {
 			changes.get(i).save(data, 12 + (i << 4));
@@ -864,7 +864,7 @@ public class Chunk {
 	public int[] getData() {
 		int[] data = new int[2];
 		data[0] = ox;
-		data[1] = oy;
+		data[1] = oz;
 		return data;
 	}
 	
@@ -872,7 +872,7 @@ public class Chunk {
 		if(y < 0) return 0;
 		if(y >= World.WORLD_HEIGHT) return 0xff000000;
 		if(x < 0 || x > 15 || y < 0 || y > 15) {
-			Chunk chunk = surface._getNoGenerateChunk(ox + ((x & ~15) >> 4), oy + ((y & ~15) >> 4));
+			Chunk chunk = surface._getNoGenerateChunk(ox + ((x & ~15) >> 4), oz + ((y & ~15) >> 4));
 			if(chunk != null) return chunk.getLight(x & 15, y, z & 15, sunLight);
 			return -1;
 		}

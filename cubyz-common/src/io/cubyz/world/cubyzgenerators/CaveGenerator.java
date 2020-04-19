@@ -25,43 +25,43 @@ public class CaveGenerator implements FancyGenerator {
 	private static Block ice = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:ice");
 	
 	@Override
-	public void generate(long seed, int cx, int cy, Block[][][] chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, int[][] heightMap, Biome[][] biomeMap) {
+	public void generate(long seed, int cx, int cz, Block[][][] chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, int[][] heightMap, Biome[][] biomeMap) {
 		synchronized(rand) {
 			rand.setSeed(seed);
 			long rand1 = rand.nextLong();
 			long rand2 = rand.nextLong();
 			// Generate caves from all nearby chunks:
 			for(int x = cx - range; x <= cx + range; ++x) {
-				for(int y = cy - range; y <= cy + range; ++y) {
+				for(int z = cz - range; z <= cz + range; ++z) {
 					long randX = (long)x*rand1;
-					long randY = (long)y*rand2;
+					long randY = (long)z*rand2;
 					rand.setSeed(randX ^ randY ^ seed);
-					considerCoordinates(x, y, cx, cy, chunk, vegetationIgnoreMap, heightMap);
+					considerCoordinates(x, z, cx, cz, chunk, vegetationIgnoreMap, heightMap);
 				}
 			}
 		}
 	}
 
-	private void createJunctionRoom(long localSeed, int cx, int cy, Block[][][] chunk, double worldX, double worldH, double worldY, boolean[][] vegetationIgnoreMap, int[][] heightMap) {
+	private void createJunctionRoom(long localSeed, int cx, int cz, Block[][][] chunk, double worldX, double worldY, double worldZ, boolean[][] vegetationIgnoreMap, int[][] heightMap) {
 		// The junction room is just one single room roughly twice as wide as high.
 		float size = 1 + rand.nextFloat()*6;
 		double cwx = cx*16 + 8;
-		double cwy = cy*16 + 8;
+		double cwz = cz*16 + 8;
 		
 		// Determine width and height:
-		double xyscale = 1.5 + size;
+		double xzscale = 1.5 + size;
 		// Vary the height/width ratio within 04 and 0.6 to add more variety:
-		double hscale = xyscale*(rand.nextFloat()*0.2f + 0.4f);
+		double yscale = xzscale*(rand.nextFloat()*0.2f + 0.4f);
 		// Only care about it if it is inside the current chunk:
-		if(worldX >= cwx - 16 - xyscale*2 && worldY >= cwy - 16 - xyscale*2 && worldX <= cwx + 16 + xyscale*2 && worldY <= cwy + 16 + xyscale*2) {
+		if(worldX >= cwx - 16 - xzscale*2 && worldZ >= cwz - 16 - xzscale*2 && worldX <= cwx + 16 + xzscale*2 && worldZ <= cwz + 16 + xzscale*2) {
 			Random localRand = new Random(localSeed);
 			// Determine min and max of the current cave segment in all directions.
-			int xmin = (int)(worldX - xyscale) - cx*16 - 1;
-			int xmax = (int)(worldX + xyscale) - cx*16 + 1;
-			int hmin = (int)(worldH - 0.7*hscale - 0.5); // Make also sure the ground of the cave is kind of flat, so the player can easily walk through.
-			int hmax = (int)(worldH + hscale) + 1;
-			int ymin = (int)(worldY - xyscale) - cy*16 - 1;
-			int ymax = (int)(worldY + xyscale) - cy*16 + 1;
+			int xmin = (int)(worldX - xzscale) - cx*16 - 1;
+			int xmax = (int)(worldX + xzscale) - cx*16 + 1;
+			int hmin = (int)(worldY - 0.7*yscale - 0.5); // Make also sure the ground of the cave is kind of flat, so the player can easily walk through.
+			int hmax = (int)(worldY + yscale) + 1;
+			int zmin = (int)(worldZ - xzscale) - cz*16 - 1;
+			int zmax = (int)(worldZ + xzscale) - cz*16 + 1;
 			if (xmin < 0)
 				xmin = 0;
 			if (xmax > 16)
@@ -70,28 +70,28 @@ public class CaveGenerator implements FancyGenerator {
 				hmin = 1; // Don't make caves expand to the bedrock layer.
 			if (hmax > 248)
 				hmax = 248;
-			if (ymin < 0)
-				ymin = 0;
-			if (ymax > 16)
-				ymax = 16;
+			if (zmin < 0)
+				zmin = 0;
+			if (zmax > 16)
+				zmax = 16;
 			// Go through all blocks within range of the cave center and remove them if they
 			// are within range of the center.
 			for(int curX = xmin; curX < xmax; ++curX) {
-				double distToCenterX = ((double) (curX + cx*16) + 0.5 - worldX) / xyscale;
+				double distToCenterX = ((double) (curX + cx*16) + 0.5 - worldX) / xzscale;
 				
-				for(int curY = ymin; curY < ymax; ++curY) {
-					double distToCenterY = ((double) (curY + cy*16) + 0.5 - worldY) / xyscale;
+				for(int curZ = zmin; curZ < zmax; ++curZ) {
+					double distToCenterZ = ((double) (curZ + cz*16) + 0.5 - worldZ) / xzscale;
 					int curHeightIndex = hmax;
-					if(distToCenterX * distToCenterX + distToCenterY * distToCenterY < 1.0) {
-						for(int curH = hmax - 1; curH >= hmin; --curH) {
-							double distToCenterH = ((double) curH + 0.5 - worldH) / hscale;
-							double distToCenter = distToCenterX*distToCenterX + distToCenterH*distToCenterH + distToCenterY*distToCenterY;
+					if(distToCenterX * distToCenterX + distToCenterZ * distToCenterZ < 1.0) {
+						for(int curY = hmax - 1; curY >= hmin; --curY) {
+							double distToCenterY = ((double) curY + 0.5 - worldY) / yscale;
+							double distToCenter = distToCenterX*distToCenterX + distToCenterY*distToCenterY + distToCenterZ*distToCenterZ;
 							if(distToCenter < 1.0) {
 								// Add a small roughness parameter to make walls look a bit rough by filling only 5/6 of the blocks at the walls with air:
-								if((distToCenter <= 0.9 || localRand.nextInt(6) != 0) && !water.equals(chunk[curX][curY][curHeightIndex]) && !ice.equals(chunk[curX][curY][curHeightIndex])) {
-									chunk[curX][curY][curHeightIndex] = null;
-									if(heightMap[curX][curY] == curHeightIndex)
-										vegetationIgnoreMap[curX][curY] = true;
+								if((distToCenter <= 0.9 || localRand.nextInt(6) != 0) && !water.equals(chunk[curX][curZ][curHeightIndex]) && !ice.equals(chunk[curX][curZ][curHeightIndex])) {
+									chunk[curX][curZ][curHeightIndex] = null;
+									if(heightMap[curX][curZ] == curHeightIndex)
+										vegetationIgnoreMap[curX][curZ] = true;
 								}
 							}
 							--curHeightIndex;

@@ -26,19 +26,19 @@ public class GrassGenerator implements FancyGenerator {
 	}
 
 	@Override
-	public void generate(long seed, int cx, int cy, Block[][][] chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, int[][] heightMap, Biome[][] biomeMap) {
+	public void generate(long seed, int cx, int cz, Block[][][] chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, int[][] heightMap, Biome[][] biomeMap) {
 		for(int px = 0; px < 16; px++) {
-			for(int py = 0; py < 16; py++) {
-				int height = heightMap[px+8][py+8];
-				if(height < World.WORLD_HEIGHT && chunk[px][py][height] == null && !vegetationIgnoreMap[px][py]) {
+			for(int pz = 0; pz < 16; pz++) {
+				int height = heightMap[px+8][pz+8];
+				if(height < World.WORLD_HEIGHT && chunk[px][pz][height] == null && !vegetationIgnoreMap[px][pz]) {
 					// Find the lowest non-empty terrain block:
-					for(;height >= 0 && chunk[px][py][height] == null; height--) {}
-					if(chunk[px][py][height] == dirt) {
-						float temperature = heatMap[px+8][py+8];
+					for(;height >= 0 && chunk[px][pz][height] == null; height--) {}
+					if(chunk[px][pz][height] == dirt) {
+						float temperature = heatMap[px+8][pz+8];
 						if(temperature > 0) {
-							chunk[px][py][height] = grass;
+							chunk[px][pz][height] = grass;
 						} else {
-							chunk[px][py][height] = snow;
+							chunk[px][pz][height] = snow;
 						}
 					}
 				}

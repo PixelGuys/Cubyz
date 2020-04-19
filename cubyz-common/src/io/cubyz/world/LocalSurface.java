@@ -217,20 +217,20 @@ public class LocalSurface extends Surface {
 		return null;
 	}
 	
-	public MetaChunk getMetaChunk(int wx, int wy) {
+	public MetaChunk getMetaChunk(int wx, int wz) {
 		for(MetaChunk ch : maps.toArray(new MetaChunk[0])) {
 			if(ch == null) {
 				maps.remove(null);
 				continue;
 			}
-			if(ch.x == wx && ch.y == wy) {
+			if(ch.x == wx && ch.z == wz) {
 				return ch;
 			}
 		}
 		synchronized(maps) {
 			// Now that the thread got access to this part the list might already contain the searched MetaChunk:
 			for(MetaChunk ch : maps) {
-				if(ch.x == wx && ch.y == wy) {
+				if(ch.x == wx && ch.z == wz) {
 					return ch;
 				}
 			}
@@ -240,7 +240,7 @@ public class LocalSurface extends Surface {
 				int index = 0;
 				for(int i = 0; i < maps.size(); i++) {
 					Player player = torus.world.getLocalPlayer();
-					int dist = CubyzMath.matchSign(maps.get(i).x-player.getPosition().x, worldAnd)*CubyzMath.matchSign(maps.get(i).x-player.getPosition().x, worldAnd) + CubyzMath.matchSign(maps.get(i).y-player.getPosition().z, worldAnd)*CubyzMath.matchSign(maps.get(i).y-player.getPosition().z, worldAnd);
+					int dist = CubyzMath.matchSign(maps.get(i).x-player.getPosition().x, worldAnd)*CubyzMath.matchSign(maps.get(i).x-player.getPosition().x, worldAnd) + CubyzMath.matchSign(maps.get(i).z-player.getPosition().z, worldAnd)*CubyzMath.matchSign(maps.get(i).z-player.getPosition().z, worldAnd);
 					if(dist > max) {
 						max = dist;
 						index = i;
@@ -248,14 +248,14 @@ public class LocalSurface extends Surface {
 				}
 				maps.remove(index);
 			}
-			MetaChunk ch = new MetaChunk(wx, wy, localSeed, this);
+			MetaChunk ch = new MetaChunk(wx, wz, localSeed, this);
 			maps.add(ch);
 			return ch;
 		}
 	}
 	public MetaChunk getNoGenerateMetaChunk(int wx, int wy) {
 		for(MetaChunk ch : maps) {
-			if(ch.x == wx && ch.y == wy) {
+			if(ch.x == wx && ch.z == wy) {
 				return ch;
 			}
 		}

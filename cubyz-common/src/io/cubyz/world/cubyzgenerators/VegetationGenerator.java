@@ -19,21 +19,21 @@ public class VegetationGenerator implements FancyGenerator {
 	}
 
 	@Override
-	public void generate(long seed, int cx, int cy, Block[][][] chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, int[][] heightMap, Biome[][] biomeMap) {
+	public void generate(long seed, int cx, int cz, Block[][][] chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, int[][] heightMap, Biome[][] biomeMap) {
 		int wx = cx << 4;
-		int wy = cy << 4;
+		int wz = cz << 4;
 		
-		float[][] vegetationMap = Noise.generateRandomMap(wx-8, wy-8, 32, 32, seed + 3*(seed + 1 & Integer.MAX_VALUE));
+		float[][] vegetationMap = Noise.generateRandomMap(wx-8, wz-8, 32, 32, seed + 3*(seed + 1 & Integer.MAX_VALUE));
 		// Go through all positions in this and ±½ chunks to determine if there is a tree and if yes generate it.
 		for(int px = 0; px < 32; px++) {
-			for(int py = 0; py < 32; py++) {
-				if(!vegetationIgnoreMap[px][py]) {
-					for(VegetationModel model : biomeMap[px][py].vegetationModels()) {
-						if(model.getChance() > vegetationMap[px][py]) {
-							model.generate(px-8, py-8, heightMap[px][py]+1, chunk, vegetationMap[px][py]);
+			for(int pz = 0; pz < 32; pz++) {
+				if(!vegetationIgnoreMap[px][pz]) {
+					for(VegetationModel model : biomeMap[px][pz].vegetationModels()) {
+						if(model.getChance() > vegetationMap[px][pz]) {
+							model.generate(px-8, pz-8, heightMap[px][pz]+1, chunk, vegetationMap[px][pz]);
 							break;
 						} else {
-							vegetationMap[px][py] = (vegetationMap[px][py] - model.getChance())/(1 - model.getChance()); // Make sure that after the first one was considered all others get the correct chances.
+							vegetationMap[px][pz] = (vegetationMap[px][pz] - model.getChance())/(1 - model.getChance()); // Make sure that after the first one was considered all others get the correct chances.
 						}
 					}
 				}

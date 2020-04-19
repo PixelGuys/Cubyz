@@ -29,11 +29,11 @@ public class TerrainGenerator implements FancyGenerator {
 	private static Block water = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:water");
 
 	@Override
-	public void generate(long seed, int cx, int cy, Block[][][] chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, int[][] heightMap, Biome[][] biomeMap) {
+	public void generate(long seed, int cx, int cz, Block[][][] chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, int[][] heightMap, Biome[][] biomeMap) {
 		for(int px = 0; px < 16; px++) {
-			for(int py = 0; py < 16; py++) {
-				int y = heightMap[px+8][py+8];
-				float temperature = heatMap[px+8][py+8];
+			for(int pz = 0; pz < 16; pz++) {
+				int y = heightMap[px+8][pz+8];
+				float temperature = heatMap[px+8][pz+8];
 				for(int j = y > SEA_LEVEL ? Math.min(y, World.WORLD_HEIGHT-1) : SEA_LEVEL; j >= 0; j--) {
 					int depth = y-j;
 					Block b = null;
@@ -47,7 +47,7 @@ public class TerrainGenerator implements FancyGenerator {
 						if(j == 0) {
 							b = bedrock;
 						} else {
-							b = biomeMap[px+8][py+8].struct.getSubterranian(depth, px, py);
+							b = biomeMap[px+8][pz+8].struct.getSubterranian(depth, px, pz);
 							if(b == null) {
 								b = stone;
 							}
@@ -56,7 +56,7 @@ public class TerrainGenerator implements FancyGenerator {
 							}
 						}
 					}
-					chunk[px][py][j] = b;
+					chunk[px][pz][j] = b;
 				}
 			}
 		}
