@@ -68,6 +68,11 @@ public class Camera {
 	}
 
 	public void setRotation(float x, float y, float z) {
+		if (x > piHalf) {
+			x = piHalf;
+		} else if (x < -piHalf) {
+			x = -piHalf;
+		}
 		rotation.x = x;
 		rotation.y = y;
 		rotation.z = z;
@@ -75,6 +80,11 @@ public class Camera {
 
 	public void moveRotation(float offsetX, float offsetY, float offsetZ) {
 		rotation.x += offsetX;
+		if (rotation.x > piHalf) {
+			rotation.x = piHalf;
+		} else if (rotation.x < -piHalf) {
+			rotation.x = -piHalf;
+		}
 		rotation.y += offsetY;
 		rotation.z += offsetZ;
 	}

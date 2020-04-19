@@ -14,14 +14,14 @@ import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.Ore;
 import io.cubyz.world.Chunk;
-import io.cubyz.world.LocalTorusSurface;
-import io.cubyz.world.TorusSurface;
+import io.cubyz.world.LocalSurface;
+import io.cubyz.world.Surface;
 import io.cubyz.world.World;
 import io.cubyz.world.cubyzgenerators.*;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 
 //TODO: Add more diversity
-public class LifelandGenerator extends StellarTorusGenerator {
+public class LifelandGenerator extends SurfaceGenerator {
 	
 	public static void init() {
 		GENERATORS.registerAll(new TerrainGenerator(), new RiverGenerator(), new OreGenerator(), new CaveGenerator(), new VegetationGenerator(), new GrassGenerator());
@@ -55,16 +55,16 @@ public class LifelandGenerator extends StellarTorusGenerator {
 	}
 	
 	@Override
-	public void generate(Chunk ch, TorusSurface surface) {
+	public void generate(Chunk ch, Surface surface) {
 		int ox = ch.getX();
 		int oy = ch.getZ();
 		int wx = ox << 4;
 		int wy = oy << 4;
 		long seed = surface.getStellarTorus().getLocalSeed();
 		// Generate some maps:
-		float[][] heightMap = ((LocalTorusSurface)surface).getHeightMapData(wx-8, wy-8, 32, 32);
-		float[][] heatMap = ((LocalTorusSurface)surface).getHeatMapData(wx-8, wy-8, 32, 32);
-		Biome[][] biomeMap = ((LocalTorusSurface)surface).getBiomeMapData(wx-8, wy-8, 32, 32);
+		float[][] heightMap = ((LocalSurface)surface).getHeightMapData(wx-8, wy-8, 32, 32);
+		float[][] heatMap = ((LocalSurface)surface).getHeatMapData(wx-8, wy-8, 32, 32);
+		Biome[][] biomeMap = ((LocalSurface)surface).getBiomeMapData(wx-8, wy-8, 32, 32);
 		boolean[][] vegetationIgnoreMap = new boolean[32][32]; // Stores places where vegetation should not grow, like caves and rivers.
 		int[][] realHeight = new int[32][32];
 		for(int px = 0; px < 32; px++) {
@@ -85,7 +85,7 @@ public class LifelandGenerator extends StellarTorusGenerator {
 			if (g instanceof FancyGenerator) {
 				((FancyGenerator) g).generate(r.nextLong(), ox, oy, chunk, vegetationIgnoreMap, heatMap, realHeight, biomeMap);
 			} else if (g instanceof BigGenerator) {
-				((BigGenerator) g).generate(r.nextLong(), ox*16, oy*16, chunk, vegetationIgnoreMap, (LocalTorusSurface)surface);
+				((BigGenerator) g).generate(r.nextLong(), ox*16, oy*16, chunk, vegetationIgnoreMap, (LocalSurface)surface);
 			} else {
 				g.generate(r.nextLong(), ox, oy, chunk, vegetationIgnoreMap);
 			}

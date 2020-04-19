@@ -2,11 +2,11 @@ package io.cubyz.world.generator;
 
 import io.cubyz.api.IRegistryElement;
 import io.cubyz.world.Chunk;
-import io.cubyz.world.TorusSurface;
+import io.cubyz.world.Surface;
 
-public abstract class StellarTorusGenerator implements IRegistryElement {
+public abstract class SurfaceGenerator implements IRegistryElement {
 
-	public abstract void generate(Chunk chunk, TorusSurface surface);
+	public abstract void generate(Chunk chunk, Surface surface);
 	
 	@Override
 	public void setID(int id) {

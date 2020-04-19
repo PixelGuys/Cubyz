@@ -9,7 +9,7 @@ import io.cubyz.blocks.BlockInstance;
 import io.cubyz.items.Inventory;
 import io.cubyz.items.tools.Tool;
 import io.cubyz.ndt.NDTContainer;
-import io.cubyz.world.TorusSurface;
+import io.cubyz.world.Surface;
 import io.cubyz.world.World;
 
 public class PlayerEntity extends EntityType {
@@ -116,7 +116,7 @@ public class PlayerEntity extends EntityType {
 		}
 
 		@Override
-		public void breaking(BlockInstance bi, int slot, TorusSurface w) {
+		public void breaking(BlockInstance bi, int slot, Surface w) {
 			if(bi != toBreak || breakingSlot != slot) {
 				toBreak = bi;
 				breakingSlot = slot;

@@ -16,7 +16,7 @@ import io.cubyz.handler.BlockVisibilityChangeHandler;
 import io.cubyz.math.Bits;
 import io.cubyz.math.CubyzMath;
 import io.cubyz.save.BlockChange;
-import io.cubyz.world.generator.StellarTorusGenerator;
+import io.cubyz.world.generator.SurfaceGenerator;
 
 public class Chunk {
 	public static boolean easyLighting = true; // Enables the easy-lighting system.
@@ -35,9 +35,9 @@ public class Chunk {
 	private boolean loaded;
 	private Map<BlockInstance, BlockEntity> blockEntities = new HashMap<>();
 	
-	private TorusSurface surface;
+	private Surface surface;
 	
-	public Chunk(int ox, int oy, TorusSurface surface, ArrayList<BlockChange> changes) {
+	public Chunk(int ox, int oy, Surface surface, ArrayList<BlockChange> changes) {
 		if(surface != null) {
 			ox &= surface.getAnd() >>> 4;
 			oy &= surface.getAnd() >>> 4;
@@ -60,24 +60,9 @@ public class Chunk {
 	}
 	private BlockInstance getInstUnbound(int x, int y, int z) {
 		if(y < 0 || y >= World.WORLD_HEIGHT || !generated) return null;
-		if(x < 0) {
-			Chunk chunk = surface._getNoGenerateChunk(ox-1, oy);
-			if(chunk != null) return chunk.getInstUnbound(x+16, y, z);
-			return null;
-		}
-		if(x > 15) {
-			Chunk chunk = surface._getNoGenerateChunk(ox+1, oy);
-			if(chunk != null) return chunk.getInstUnbound(x-16, y, z);
-			return null;
-		}
-		if(z < 0) {
-			Chunk chunk = surface._getNoGenerateChunk(ox, oy-1);
-			if(chunk != null) return chunk.getInstUnbound(x, y, z+16);
-			return null;
-		}
-		if(z > 15) {
-			Chunk chunk = surface._getNoGenerateChunk(ox, oy+1);
-			if(chunk != null) return chunk.getInstUnbound(x, y, z-16);
+		if(x < 0 || x > 15 || z < 0 || z > 15) {
+			Chunk chunk = surface._getNoGenerateChunk(ox + ((x & ~15) >> 4), oy + ((y & ~15) >> 4));
+			if(chunk != null) return chunk.getInstUnbound(x & 15, y, z & 15);
 			return null;
 		}
 		return inst[(x << 4) | (y << 8) | z];
@@ -258,24 +243,9 @@ public class Chunk {
 		// Make some bound checks:
 		if(!easyLighting || y < 0 || y >= World.WORLD_HEIGHT || !generated) return -1;
 		// Check if it's inside this chunk:
-		if(x < 0) {
-			Chunk chunk = surface._getNoGenerateChunk(ox-1, oy);
-			if(chunk != null) return chunk.localLightUpdate(x+16, y, z, shift, mask);
-			return -1;
-		}
-		if(x > 15) {
-			Chunk chunk = surface._getNoGenerateChunk(ox+1, oy);
-			if(chunk != null) return chunk.localLightUpdate(x-16, y, z, shift, mask);
-			return -1;
-		}
-		if(z < 0) {
-			Chunk chunk = surface._getNoGenerateChunk(ox, oy-1);
-			if(chunk != null) return chunk.localLightUpdate(x, y, z+16, shift, mask);
-			return -1;
-		}
-		if(z > 15) {
-			Chunk chunk = surface._getNoGenerateChunk(ox, oy+1);
-			if(chunk != null) return chunk.localLightUpdate(x, y, z-16, shift, mask);
+		if(x < 0 || x > 15 || z < 0 || z > 15) {
+			Chunk chunk = surface._getNoGenerateChunk(ox + ((x & ~15) >> 4), oy + ((y & ~15) >> 4));
+			if(chunk != null) return chunk.localLightUpdate(x & 15, y, z & 15, shift, mask);
 			return -1;
 		}
 		// Get all eight neighbors of this lighting node:
@@ -397,22 +367,10 @@ public class Chunk {
 		if(y >= World.WORLD_HEIGHT)
 			return;
 		int rx = x - (ox << 4);
-		// Determines if the block is part of another chunk.
-		if (rx < 0) {
-			surface._getChunk(ox - 1, oy).addBlock(b, x, y, z);
-			return;
-		}
-		if (rx > 15) {
-			surface._getChunk(ox + 1, oy).addBlock(b, x, y, z);
-			return;
-		}
 		int rz = z - (oy << 4);
-		if (rz < 0) {
-			surface._getChunk(ox, oy - 1).addBlock(b, x, y, z);
-			return;
-		}
-		if (rz > 15) {
-			surface._getChunk(ox, oy + 1).addBlock(b, x, y, z);
+		// Determines if the block is part of another chunk.
+		if(rx < 0 || rx > 15 || rz < 0 || rz > 15) {
+			surface._getChunk(ox + ((rx & ~15) >> 4), oy + ((rz & ~15) >> 4)).addBlock(b, x, y, z);
 			return;
 		}
 		if(inst == null) {
@@ -476,7 +434,7 @@ public class Chunk {
 			lightUpdate(rx, y, rz);
 	}
 	
-	public void generateFrom(StellarTorusGenerator gen) {
+	public void generateFrom(SurfaceGenerator gen) {
 		if(inst == null) {
 			inst = new BlockInstance[16*World.WORLD_HEIGHT*16];
 		}
@@ -931,25 +889,10 @@ public class Chunk {
 	public int getLight(int x, int y, int z, Vector3f sunLight) {
 		if(y < 0) return 0;
 		if(y >= World.WORLD_HEIGHT) return 0xff000000;
-		if(x < 0) {
-			Chunk chunk = surface._getNoGenerateChunk(ox-1, oy);
-			if(chunk != null) return chunk.getLight(x+16, y, z, sunLight);
-			return 0;
-		}
-		if(x > 15) {
-			Chunk chunk = surface._getNoGenerateChunk(ox+1, oy);
-			if(chunk != null) return chunk.getLight(x-16, y, z, sunLight);
-			return 0;
-		}
-		if(z < 0) {
-			Chunk chunk = surface._getNoGenerateChunk(ox, oy-1);
-			if(chunk != null) return chunk.getLight(x, y, z+16, sunLight);
-			return 0;
-		}
-		if(z > 15) {
-			Chunk chunk = surface._getNoGenerateChunk(ox, oy+1);
-			if(chunk != null) return chunk.getLight(x, y, z-16, sunLight);
-			return 0;
+		if(x < 0 || x > 15 || y < 0 || y > 15) {
+			Chunk chunk = surface._getNoGenerateChunk(ox + ((x & ~15) >> 4), oy + ((y & ~15) >> 4));
+			if(chunk != null) return chunk.getLight(x & 15, y, z & 15, sunLight);
+			return -1;
 		}
 		int ret = light[(x << 4) | (y << 8) | z];
 		int sun = (ret >>> 24) & 255;

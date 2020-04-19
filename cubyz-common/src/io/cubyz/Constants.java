@@ -9,7 +9,7 @@ public class Constants {
 	public static final String CHARSET_NAME = "UTF-8";
 	public static final Charset CHARSET = Charset.forName(CHARSET_NAME);
 	
-	public static final String GAME_BUILD_TYPE = "alpha";
+	public static final String GAME_BUILD_TYPE = "ALPHA";
 	
 	// WARNING! Both brand name and version cannot contain ';' inside!
 	public static final String GAME_VERSION = "0.6.0";

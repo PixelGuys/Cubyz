@@ -7,7 +7,7 @@ import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.world.Chunk;
-import io.cubyz.world.TorusSurface;
+import io.cubyz.world.Surface;
 
 /**
  * Simple generator that does flat worlds with 3 layers.
@@ -15,14 +15,14 @@ import io.cubyz.world.TorusSurface;
  * 2. Dirt
  * 3. Bedrock
  */
-public class FlatlandGenerator extends StellarTorusGenerator {
+public class FlatlandGenerator extends SurfaceGenerator {
 
 	private static Block grass = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:grass");
 	private static Block dirt = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:dirt");
 	private static Block bedrock = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:bedrock");
 	
 	@Override
-	public void generate(Chunk chunk, TorusSurface surface) {
+	public void generate(Chunk chunk, Surface surface) {
 		for (int px = 0; px < 16; px++) {
 			for (int pz = 0; pz < 16; pz++) {
 				for (int y = 0; y < 3; y++) {

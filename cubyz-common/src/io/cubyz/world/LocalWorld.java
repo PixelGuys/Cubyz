@@ -24,7 +24,7 @@ public class LocalWorld extends World {
 	protected String name;
 	
 	private ArrayList<StellarTorus> toruses = new ArrayList<>();
-	private LocalTorusSurface currentTorus;
+	private LocalSurface currentTorus;
 	private long milliTime;
 	private long gameTime;
 	public boolean inLqdUpdate;
@@ -93,13 +93,13 @@ public class LocalWorld extends World {
 	}
 
 	@Override
-	public LocalTorusSurface getCurrentTorus() {
+	public LocalSurface getCurrentTorus() {
 		return currentTorus;
 	}
 	
 	public void setCurrentTorusID(long seed) {
 		LocalStellarTorus torus = new LocalStellarTorus(this, seed);
-		currentTorus = new LocalTorusSurface(torus);
+		currentTorus = new LocalSurface(torus);
 		currentTorus.link();
 		toruses.add(torus);
 	}
@@ -112,7 +112,7 @@ public class LocalWorld extends World {
 		Random rand = new Random(seed);
 		if (currentTorus == null) {
 			LocalStellarTorus torus = new LocalStellarTorus(this, rand.nextLong());
-			currentTorus = new LocalTorusSurface(torus);
+			currentTorus = new LocalSurface(torus);
 			currentTorus.link();
 			toruses.add(torus);
 		}
@@ -129,7 +129,7 @@ public class LocalWorld extends World {
 			}
 		}
 		// Generate the ores of the current torus:
-		if(currentTorus != null && currentTorus instanceof LocalTorusSurface) {
+		if(currentTorus != null && currentTorus instanceof LocalSurface) {
 			ID = currentTorus.generate(blockList, ores, ID);
 		}
 		

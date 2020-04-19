@@ -4,7 +4,7 @@ import org.joml.Vector3i;
 
 import io.cubyz.ClientOnly;
 import io.cubyz.world.Chunk;
-import io.cubyz.world.TorusSurface;
+import io.cubyz.world.Surface;
 import io.cubyz.world.World;
 
 public class BlockInstance {
@@ -12,15 +12,15 @@ public class BlockInstance {
 	private Block block;
 	private IBlockSpatial spatial;
 	private Vector3i pos;
-	private TorusSurface surface;
+	private Surface surface;
 	public boolean neighborUp, neighborDown, neighborEast, neighborWest, neighborNorth, neighborSouth;
 	public int light;
 	
-	public TorusSurface getStellarTorus() {
+	public Surface getStellarTorus() {
 		return surface;
 	}
 	
-	public void setStellarTorus(TorusSurface world) {
+	public void setStellarTorus(Surface world) {
 		this.surface = world;
 	}
 	

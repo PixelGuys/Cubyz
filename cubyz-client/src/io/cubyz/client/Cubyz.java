@@ -66,7 +66,7 @@ public class Cubyz implements IGameLogic {
 	public static MouseInput mouse;
 	public static UISystem gameUI;
 	public static World world;
-	public static TorusSurface surface;
+	public static Surface surface;
 	public static Language lang;
 	public static SoundManager sound;
 	private SoundBuffer music;
@@ -116,7 +116,7 @@ public class Cubyz implements IGameLogic {
 		game = g;
 		win = g.getWindow();
 		win.setSize(800, 600);
-		win.setTitle("Cubyz " + Utilities.capitalize(Constants.GAME_BUILD_TYPE) + " " + Constants.GAME_VERSION);
+		win.setTitle("Cubyz " + Constants.GAME_BUILD_TYPE + " " + Constants.GAME_VERSION);
 	}
 
 	@Override
@@ -155,7 +155,7 @@ public class Cubyz implements IGameLogic {
 		System.gc();
 	}
 	
-	public static void loadWorld(TorusSurface surface) {
+	public static void loadWorld(Surface surface) {
 		if (Cubyz.world != null) {
 			quitWorld();
 		}
@@ -200,7 +200,7 @@ public class Cubyz implements IGameLogic {
 		Cubyz.gameUI.addOverlay(new GameOverlay());
 		
 		if (world instanceof LocalWorld) { // custom ores on multiplayer later, maybe?
-			LocalTorusSurface ts = (LocalTorusSurface) surface;
+			LocalSurface ts = (LocalSurface) surface;
 			ArrayList<CustomOre> customOres = ts.getCustomOres();
 			for (CustomOre ore : customOres) {
 				BufferedImage canvas = new BufferedImage(32, 32, BufferedImage.TYPE_INT_RGB);
@@ -902,12 +902,6 @@ public class Cubyz implements IGameLogic {
 			float lightAngle = (float)Math.PI/2 + (float)Math.PI*(((float)world.getGameTime() % world.getCurrentTorus().getStellarTorus().getDayCycle())/(world.getCurrentTorus().getStellarTorus().getDayCycle()/2));
 			skySun.setPosition((float)Math.cos(lightAngle)*500, (float)Math.sin(lightAngle)*500, 0);
 			skySun.setRotation(0, 0, -lightAngle);
-			if (ctx.getCamera().getRotation().x > Camera.piHalf) {
-				ctx.getCamera().setRotation(Camera.piHalf, ctx.getCamera().getRotation().y, ctx.getCamera().getRotation().z);
-			}
-			if (ctx.getCamera().getRotation().x < -Camera.piHalf) {
-				ctx.getCamera().setRotation(-Camera.piHalf, ctx.getCamera().getRotation().y, ctx.getCamera().getRotation().z);
-			}
 		}
 	}
 

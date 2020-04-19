@@ -9,7 +9,6 @@ import io.cubyz.world.World;
 public class WorkBench extends Block {
 	public WorkBench() {
 		super("cubyz:workbench", 7.5f, BlockClass.WOOD);
-		texConverted = true; // texture already in runtime format
 	}
 	
 	public boolean onClick(World world, Vector3i pos) {

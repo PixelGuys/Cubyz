@@ -19,7 +19,6 @@ public class Block implements IRegistryElement {
 	private static final Vector3f ONE = new Vector3f(1, 1, 1);
 	
 	boolean transparent;
-	boolean texConverted;
 	/**
 	 * Used for rendering optimization.<br/>
 	 * Do not edit or rely on, as it is not an ID to actually describe the block on a persistent state.
@@ -69,10 +68,6 @@ public class Block implements IRegistryElement {
 	
 	public boolean isSelectable() {
 		return selectable;
-	}
-	
-	public boolean isTextureConverted() {
-		return texConverted;
 	}
 	
 	public boolean generatesModelAtRuntime() {

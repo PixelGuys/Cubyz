@@ -4,7 +4,7 @@ import io.cubyz.Keybindings;
 import io.cubyz.client.Cubyz;
 import io.cubyz.ui.components.Button;
 import io.cubyz.ui.options.OptionsGUI;
-import io.cubyz.world.LocalTorusSurface;
+import io.cubyz.world.LocalSurface;
 import io.jungle.Keyboard;
 import io.jungle.Window;
 
@@ -20,7 +20,7 @@ public class PauseGUI extends MenuGUI {
 		Cubyz.mouse.setGrabbed(false);
 		if (Cubyz.world != null) {
 			if (Cubyz.world.isLocal()) {
-				LocalTorusSurface surface = (LocalTorusSurface) Cubyz.surface;
+				LocalSurface surface = (LocalSurface) Cubyz.surface;
 				surface.forceSave();
 			}
 		}

@@ -14,7 +14,7 @@ import io.cubyz.handler.Handler;
 import io.cubyz.handler.PlaceBlockHandler;
 import io.cubyz.handler.RemoveBlockHandler;
 
-public abstract class TorusSurface {
+public abstract class Surface {
 	
 	protected StellarTorus torus;
 	protected ArrayList<PlaceBlockHandler> placeBlockHandlers = new ArrayList<>();

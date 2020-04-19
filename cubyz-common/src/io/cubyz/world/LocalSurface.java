@@ -28,9 +28,9 @@ import io.cubyz.save.BlockChange;
 import io.cubyz.save.TorusIO;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 import io.cubyz.world.generator.LifelandGenerator;
-import io.cubyz.world.generator.StellarTorusGenerator;
+import io.cubyz.world.generator.SurfaceGenerator;
 
-public class LocalTorusSurface extends TorusSurface {
+public class LocalSurface extends Surface {
 	
 	private static Random rnd = new Random();
 	
@@ -51,7 +51,7 @@ public class LocalTorusSurface extends TorusSurface {
 	
 	private static int MAX_QUEUE_SIZE = 40;
 	
-	private StellarTorusGenerator generator;
+	private SurfaceGenerator generator;
 	
 	private TorusIO wio;
 	
@@ -100,11 +100,11 @@ public class LocalTorusSurface extends TorusSurface {
 		}
 	}
 	
-	public LocalTorusSurface(LocalStellarTorus torus) {
+	public LocalSurface(LocalStellarTorus torus) {
 		this(torus, "P.K. Kusuo Saiki");
 	}
 	
-	public LocalTorusSurface(LocalStellarTorus torus, String name) {
+	public LocalSurface(LocalStellarTorus torus, String name) {
 		localSeed = torus.getLocalSeed();
 		this.torus = torus;
 		MaterialInit.resetCustom();

@@ -76,7 +76,7 @@ public class BaseMod {
 		BlockInit.registerAll(reg);
 	}
 	
-	public void registerWorldGenerators(Registry<StellarTorusGenerator> reg) {
+	public void registerWorldGenerators(Registry<SurfaceGenerator> reg) {
 		reg.registerAll(new LifelandGenerator(), new FlatlandGenerator());
 	}
 	

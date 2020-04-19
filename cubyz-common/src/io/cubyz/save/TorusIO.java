@@ -17,7 +17,7 @@ import io.cubyz.math.Bits;
 import io.cubyz.ndt.NDTContainer;
 import io.cubyz.world.Chunk;
 import io.cubyz.world.LocalStellarTorus;
-import io.cubyz.world.LocalTorusSurface;
+import io.cubyz.world.LocalSurface;
 
 public class TorusIO {
 
@@ -34,7 +34,7 @@ public class TorusIO {
 		this.torus = torus;
 	}
 	
-	public void link(LocalTorusSurface surface) {
+	public void link(LocalSurface surface) {
 		surface.blockData = blockData;
 		surface.chunkData = chunkData;
 	}
@@ -43,7 +43,7 @@ public class TorusIO {
 		return new File(dir, "torus.dat").exists();
 	}
 
-	public void loadTorusData(LocalTorusSurface surface) {
+	public void loadTorusData(LocalSurface surface) {
 		try {
 			InputStream in = new FileInputStream(new File(dir, "torus.dat"));
 			byte[] len = new byte[4];
@@ -86,7 +86,7 @@ public class TorusIO {
 		}
 	}
 	
-	public void saveTorusData(LocalTorusSurface surface) {
+	public void saveTorusData(LocalSurface surface) {
 		try {
 			OutputStream out = new FileOutputStream(new File(dir, "torus.dat"));
 			NDTContainer ndt = new NDTContainer();

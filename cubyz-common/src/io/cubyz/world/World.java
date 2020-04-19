@@ -46,7 +46,7 @@ public abstract class World {
 	public abstract int getRenderDistance();
 	
 	public abstract List<StellarTorus> getToruses();
-	public abstract TorusSurface getCurrentTorus();
+	public abstract Surface getCurrentTorus();
 	
 	public void update() {}
 

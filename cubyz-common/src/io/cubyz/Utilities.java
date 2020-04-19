@@ -9,24 +9,13 @@ import java.util.HashMap;
 public class Utilities {
 
 	public static String capitalize(String str) {
-		String[] split = str.split(" ");
-		StringBuilder sb = new StringBuilder();
-		for (int i = 0; i < split.length; i++) {
-			String a = split[i];
-			char[] ca = a.toCharArray();
-			if (ca.length > 0) {
-				char c = ca[0];
-				c = Character.toUpperCase(c);
-				ca[0] = c;
-				a = new String(ca);
-			}
-			
-			sb.append(a);
-			if (i < split.length-1) {
-				sb.append(" ");
+		char[] chars = str.toCharArray();
+		for (int i = 0; i < chars.length; i++) {
+			if(chars[i] >= 'a' && chars[i] <= 'z') {
+				chars[i] += 'A'-'a';
 			}
 		}
-		return sb.toString();
+		return new String(chars);
 	}
 	
 	public static String readFile(File file) throws IOException {

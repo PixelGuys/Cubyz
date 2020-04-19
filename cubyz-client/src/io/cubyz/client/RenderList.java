@@ -9,7 +9,6 @@ public class RenderList<T> {
 	protected int arrayIncrease = 20; // this allow to use less array re-allocations
 
 	public RenderList(int initialCapacity) {
-		super();
 		array = new Object[initialCapacity];
 	}
 
@@ -34,7 +33,7 @@ public class RenderList<T> {
 	}
 	
 	public void add(T obj) {
-		if (size + 1 > array.length)
+		if (size == array.length)
 			increaseSize(arrayIncrease);
 		array[size] = obj;
 		size++;
@@ -55,7 +54,6 @@ public class RenderList<T> {
 		return size == 0;
 	}
 	
-	@SuppressWarnings("unchecked")
 	public void sort(Comparator<T> comp) {
 		/*
 		// TODO: use more efficient than bubble sort
