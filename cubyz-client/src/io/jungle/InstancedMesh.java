@@ -13,7 +13,7 @@ import static org.lwjgl.opengl.GL33.*;
 import org.lwjgl.system.MemoryUtil;
 
 import io.cubyz.client.MainRenderer;
-import io.cubyz.client.RenderList;
+import io.cubyz.util.FastList;
 import io.cubyz.world.Chunk;
 import io.jungle.renderers.Transformation;
 
@@ -194,33 +194,33 @@ public class InstancedMesh extends Mesh {
 	 * @param transformation
 	 * @param viewMatrix
 	 */
-	public boolean renderListInstancedNC(RenderList<Spatial> spatials, Transformation transformation) {
+	public boolean renderListInstancedNC(FastList<Spatial> spatials, Transformation transformation) {
 		if (numInstances == 0)
 			return false;
 		initRender();
 		boolean bool = false;
-		int curSize = spatials.size();
+		int curSize = spatials.size;
 		if (curSize != oldSize) {
 			oldSize = curSize;
 			if (numInstances < curSize) {
 				setInstances(curSize);
 			}
-			uploadData(spatials.array, 0, spatials.size(), transformation);
+			uploadData(spatials.array, 0, spatials.size, transformation);
 			bool = true;
 		}
-		renderChunkInstanced(spatials.size(), transformation);
+		renderChunkInstanced(spatials.size, transformation);
 		
 		endRender();
 		return bool;
 	}
 	
-	public void renderListInstanced(RenderList<Spatial> spatials, Transformation transformation) {
+	public void renderListInstanced(FastList<Spatial> spatials, Transformation transformation) {
 		if (numInstances == 0)
 			return;
 		initRender();
 
 		int chunkSize = numInstances;
-		int length = spatials.size();
+		int length = spatials.size;
 		for (int i = 0; i < length; i += chunkSize) {
 			int end = Math.min(length, i + chunkSize);
 			uploadData(spatials.array, i, end, transformation);
@@ -230,13 +230,13 @@ public class InstancedMesh extends Mesh {
 		endRender();
 	}
 	
-	public void uploadData(Object[] spatials, int startIndex, int endIndex, Transformation transformation) {
+	public void uploadData(Spatial[] spatials, int startIndex, int endIndex, Transformation transformation) {
 		this.instanceDataBuffer.clear();
 		
 		int size = endIndex-startIndex;
 		boolean doShadow = MainRenderer.shadowMap != null;
 		for (int i = 0; i < size; i++) {
-			Spatial spatial = (Spatial)spatials[i+startIndex];
+			Spatial spatial = spatials[i+startIndex];
 			Matrix4f modelMatrix = transformation.getModelMatrix(spatial);
 			modelMatrix.get(INSTANCE_SIZE_FLOATS * i, instanceDataBuffer);
 			if (Chunk.easyLighting) {

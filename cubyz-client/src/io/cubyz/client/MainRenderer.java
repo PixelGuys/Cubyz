@@ -15,6 +15,7 @@ import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.math.CubyzMath;
 import io.cubyz.math.Vector3fi;
+import io.cubyz.util.FastList;
 import io.cubyz.world.Chunk;
 import io.jungle.FrameBuffer;
 import io.jungle.InstancedMesh;
@@ -129,7 +130,7 @@ public class MainRenderer implements IRenderer {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	}
 
-	RenderList<Spatial>[] map = (RenderList<Spatial>[]) new RenderList[0];
+	FastList<Spatial>[] map = (FastList<Spatial>[]) new FastList[0];
 	
 	
 	/**
@@ -165,10 +166,10 @@ public class MainRenderer implements IRenderer {
 		Spatial selected = null;
 		int selectedBlock = -1;
 		if (blocks.length != map.length) {
-			map = (RenderList<Spatial>[]) new RenderList[blocks.length];
+			map = (FastList<Spatial>[]) new FastList[blocks.length];
 			int arrayListCapacity = 10;
 			for (int i = 0; i < map.length; i++) {
-				map[i] = new RenderList<Spatial>(arrayListCapacity);
+				map[i] = new FastList<Spatial>(arrayListCapacity, Spatial.class);
 			}
 		}
 		// Don't create a new ArrayList every time to reduce re-allocations:
@@ -194,8 +195,9 @@ public class MainRenderer implements IRenderer {
 			for (Chunk ch : chunks) {
 				if (!frustumInt.testAab(ch.getMin(localPlayer, worldAnd), ch.getMax(localPlayer, worldAnd)))
 					continue;
-				BlockInstance[] vis = ch.getVisibles();
-				for (int i = 0; vis[i] != null; i++) {
+				BlockInstance[] vis = ch.getVisibles().array;
+				int length = ch.getVisibles().size;
+				for (int i = 0; i < length; i++) {
 					BlockInstance bi = vis[i];
 					float x = CubyzMath.matchSign((bi.getX() - x0) & worldAnd, worldAnd) - relX;
 					float y = bi.getY() - y0;
@@ -326,7 +328,7 @@ public class MainRenderer implements IRenderer {
 	}
 	
 	public void renderScene(Context ctx, Vector3f ambientLight, PointLight[] pointLightList, SpotLight[] spotLightList,
-			DirectionalLight directionalLight, RenderList<Spatial>[] map, Block[] blocks, Entity[] entities, Spatial[] spatials, Player p, Spatial selected,
+			DirectionalLight directionalLight, FastList<Spatial>[] map, Block[] blocks, Entity[] entities, Spatial[] spatials, Player p, Spatial selected,
 			int selectedBlock) {
 		shaderProgram.bind();
 		

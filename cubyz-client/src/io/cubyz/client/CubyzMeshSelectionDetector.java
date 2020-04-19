@@ -39,8 +39,9 @@ public class CubyzMeshSelectionDetector {
 		//position.x = position.z = 0;
 		for (Chunk ch : chunks) {
 			synchronized (ch) {
-				BlockInstance[] array = ch.getVisibles();
-				for (BlockInstance bi : array) {
+				BlockInstance[] array = ch.getVisibles().array;
+				for (int i = 0; i < ch.getVisibles().size; i++) {
+					BlockInstance bi = array[i];
 					if(bi == null)
 						break;
 					if(!bi.getBlock().isSolid())

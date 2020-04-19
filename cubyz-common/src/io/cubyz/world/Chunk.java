@@ -16,6 +16,7 @@ import io.cubyz.handler.BlockVisibilityChangeHandler;
 import io.cubyz.math.Bits;
 import io.cubyz.math.CubyzMath;
 import io.cubyz.save.BlockChange;
+import io.cubyz.util.FastList;
 import io.cubyz.world.generator.SurfaceGenerator;
 
 public class Chunk {
@@ -27,9 +28,7 @@ public class Chunk {
 	private ArrayList<BlockInstance> liquids = new ArrayList<>();
 	private ArrayList<BlockInstance> updatingLiquids = new ArrayList<>(); // liquids that should be updated at next frame
 	private ArrayList<BlockChange> changes; // Reports block changes. Only those will be saved!
-	//private ArrayList<BlockInstance> visibles = new ArrayList<>();
-	private BlockInstance[] visibles = new BlockInstance[50]; // Using an array here to speed up the renderer.
-	private int visiblesSize = 0;
+	private FastList<BlockInstance> visibles = new FastList<BlockInstance>(50, BlockInstance.class);
 	private int ox, oy;
 	private boolean generated;
 	private boolean loaded;
@@ -104,7 +103,7 @@ public class Chunk {
 		return updatingLiquids;
 	}
 	
-	public BlockInstance[] getVisibles() {
+	public FastList<BlockInstance> getVisibles() {
 		return visibles;
 	}
 	
@@ -468,8 +467,7 @@ public class Chunk {
 	// Loads the chunk
 	public void load() {
 		// Empty the list, so blocks won't get added twice. This will also be important, when there is a manual chunk reloading.
-		visibles = new BlockInstance[10];
-		visiblesSize = 0;
+		visibles.clear();
 		
 		loaded = true;
 		Chunk [] chunks = new Chunk[4];
@@ -656,47 +654,23 @@ public class Chunk {
 	}
 	
 	public void hideBlock(BlockInstance bi) {
-		int index = -1;
-		for(int i = 0; i < visiblesSize; i++) {
-			if(visibles[i] == bi) {
-				index = i;
-				break;
+		visibles.remove(bi);
+		if (surface != null) {
+			for (BlockVisibilityChangeHandler handler : surface.visibHandlers) {
+				if (bi != null) handler.onBlockHide(bi.getBlock(), bi.getX(), bi.getY(), bi.getZ());
 			}
-		}
-		if(index == -1)
-			return;
-		visiblesSize--;
-		System.arraycopy(visibles, index+1, visibles, index, visiblesSize-index);
-		visibles[visiblesSize] = null;
-		if(visiblesSize < visibles.length >> 1) { // Decrease capacity if the array is less than 50% filled.
-			BlockInstance[] old = visibles;
-			visibles = new BlockInstance[old.length >> 1];
-			System.arraycopy(old, 0, visibles, 0, visiblesSize);
-		}
-		if (surface != null) for (BlockVisibilityChangeHandler handler : surface.visibHandlers) {
-			if (bi != null) handler.onBlockHide(bi.getBlock(), bi.getX(), bi.getY(), bi.getZ());
 		}
 	}
 	
 	public synchronized void revealBlock(BlockInstance bi) {
-		if(visiblesSize + 1 >= visibles.length) { // Always leave a null at the end of the array to make it unnecessary to test for the length in the renderer.
-			BlockInstance[] old = visibles;
-			visibles = new BlockInstance[visibles.length + (visibles.length >> 1)]; // Increase size by 1.5. Similar to `ArrayList`.
-			System.arraycopy(old, 0, visibles, 0, visiblesSize);
-		}
-		visibles[visiblesSize] = bi;
-		visiblesSize++;
+		visibles.add(bi);
 		if (surface != null) for (BlockVisibilityChangeHandler handler : surface.visibHandlers) {
 			if (bi != null) handler.onBlockAppear(bi.getBlock(), bi.getX(), bi.getY(), bi.getZ());
 		}
 	}
 	
 	public boolean contains(BlockInstance bi) {
-		for(int i = 0; i < visiblesSize; i++) {
-			if(visibles[i] == bi)
-				return true;
-		}
-		return false;
+		return visibles.contains(bi);
 	}
 	
 	public void removeBlockAt(int x, int y, int z, boolean registerBlockChange) {

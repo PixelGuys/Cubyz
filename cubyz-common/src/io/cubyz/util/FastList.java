@@ -1,29 +1,35 @@
-package io.cubyz.client;
+package io.cubyz.util;
 
+import java.lang.reflect.Array;
 import java.util.Comparator;
 
-public class RenderList<T> {
+// A faster list implementation. Velocity is reached by sacrificing bound checks, by keeping some additional memory(When removing elements they are not necessarily cleared from the array) and through direct data access.
 
-	public Object[] array;
-	protected int size = 0;
-	protected int arrayIncrease = 20; // this allow to use less array re-allocations
+public class FastList<T> {
 
-	public RenderList(int initialCapacity) {
-		array = new Object[initialCapacity];
+	public T[] array;
+	public int size = 0;
+	private static final int arrayIncrease = 20; // this allow to use less array re-allocations
+
+	@SuppressWarnings("unchecked")
+	public FastList(int initialCapacity, Class<T> type) {
+		array = (T[])Array.newInstance(type, initialCapacity);
 	}
 
-	public RenderList() {
-		this(10);
+	public FastList(Class<T> type) {
+		this(10, type);
 	}
 
-	protected void increaseSize(int increment) {
-		Object[] newArray = new Object[array.length + increment];
+	@SuppressWarnings("unchecked")
+	public void increaseSize(int increment) {
+		T[] newArray = (T[])Array.newInstance(array.getClass().getComponentType(), array.length + increment);
 		System.arraycopy(array, 0, newArray, 0, array.length);
 		array = newArray;
 	}
 
+	@SuppressWarnings("unchecked")
 	public void trimToSize() {
-		Object[] newArray = new Object[size];
+		T[] newArray = (T[])Array.newInstance(array.getClass().getComponentType(), size);
 		System.arraycopy(array, 0, newArray, 0, size);
 		array = newArray;
 	}
@@ -39,15 +45,24 @@ public class RenderList<T> {
 		size++;
 	}
 	
-	public T remove(int index) {
-		Object old = array[index];
+	public void remove(int index) {
 		System.arraycopy(array, index, array, index-1, array.length-index-1);
 		size--;
-		return (T) old;
 	}
 	
-	public int size() {
-		return size;
+	public void remove(T t) {
+		for(int i = size-1; i >= 0; i--) {
+			if(array[i] == t)
+				remove(i); // Don't break here in case of multiple occurrence.
+		}
+	}
+	
+	public boolean contains(T t) {
+		for(int i = size-1; i >= 0; i--) {
+			if(array[i] == t)
+				return true;
+		}
+		return false;
 	}
 	
 	public boolean isEmpty() {
@@ -72,11 +87,10 @@ public class RenderList<T> {
 		}
 	}
 	
-	@SuppressWarnings("unchecked")
 	private void sort(Comparator<T> comp, int l, int r) {
 		int i = l, j = r;
 		
-		T x = (T) array[(l+r)/2];
+		T x = array[(l+r)/2];
 		while (true) {
 			while (comp.compare((T) array[i], x) < 0) {
 				i++;
@@ -85,7 +99,7 @@ public class RenderList<T> {
 				j--;
 			}
 			if (i <= j) {
-				Object temp = array[i];
+				T temp = array[i];
 				array[i] = array[j];
 				array[j] = temp;
 				i++;
