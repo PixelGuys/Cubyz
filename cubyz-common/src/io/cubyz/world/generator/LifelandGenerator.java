@@ -97,15 +97,11 @@ public class LifelandGenerator extends SurfaceGenerator {
 				for(int py = 0; py < World.WORLD_HEIGHT; py++) {
 					Block b = chunk[px][pz][py];
 					if(b != null) {
-						BlockInstance bi = new BlockInstance(b);
-						bi.setPosition(new Vector3i(wx + px, py, wz + pz));
-						ch.rawAddBlock(px, py, pz, bi);
-						if(bi.getBlock() != null) {
-							if (bi.getBlock().hasBlockEntity())
-								ch.blockEntities().put(bi, bi.getBlock().createBlockEntity(bi.getPosition()));
-							if (bi.getBlock().getBlockClass() == BlockClass.FLUID)
-								ch.updatingLiquids().add(bi);
-						}
+						ch.rawAddBlock(px, py, pz, b);
+						//if (b.hasBlockEntity()) TODO: Block entities!
+						//	ch.blockEntities().put(bi, b.createBlockEntity(bi.getPosition()));
+						if (b.getBlockClass() == BlockClass.FLUID)
+							ch.updatingLiquids().add((px << 4) | (py << 8) | pz);
 					}
 				}
 			}

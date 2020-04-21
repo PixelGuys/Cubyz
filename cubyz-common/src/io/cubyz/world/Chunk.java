@@ -20,13 +20,16 @@ import io.cubyz.util.FastList;
 import io.cubyz.world.generator.SurfaceGenerator;
 
 public class Chunk {
+	// used for easy for-loop access of neighbors and their relative direction:
+	private static final int[] ndx = {-1, 1, 0, 0, 0, 0};
+	private static final int[] ndy = {0, 0, -1, 1, 0, 0};
+	private static final int[] ndz = {0, 0, 0, 0, -1, 1};
 	public static boolean easyLighting = true; // Enables the easy-lighting system.
 	// Due to having powers of 2 as dimensions it is more efficient to use a one-dimensional array.
-	private BlockInstance[] inst;
+	private Block[] inst;
 	private int[] light; // Stores sun r g b channels of each light channel in one integer. This makes it easier to store and to access.
-	private ArrayList<BlockInstance> list = new ArrayList<>();
-	private ArrayList<BlockInstance> liquids = new ArrayList<>();
-	private ArrayList<BlockInstance> updatingLiquids = new ArrayList<>(); // liquids that should be updated at next frame
+	private ArrayList<Integer> liquids = new ArrayList<>(); // Stores the local index of the block.
+	private ArrayList<Integer> updatingLiquids = new ArrayList<>(); // liquids that should be updated at next frame. Stores the local index of the block.
 	private ArrayList<BlockChange> changes; // Reports block changes. Only those will be saved!
 	private FastList<BlockInstance> visibles = new FastList<BlockInstance>(50, BlockInstance.class);
 	private int ox, oz;
@@ -51,20 +54,35 @@ public class Chunk {
 	}
 	
 	// Functions calls are faster than two pointer references, which would happen when using a 3D-array, and functions can additionally be inlined by the VM.
-	private void setInst(int x, int y, int z, BlockInstance bi) {
-		inst[(x << 4) | (y << 8) | z] = bi;
+	private void setInst(int x, int y, int z, Block b) {
+		inst[(x << 4) | (y << 8) | z] = b;
 	}
-	public BlockInstance getBlockInstanceAt(int x, int y, int z) {
+	public Block getBlockAt(int x, int y, int z) {
 		return inst[(x << 4) | (y << 8) | z];
 	}
-	private BlockInstance getInstUnbound(int x, int y, int z) {
+	private Block getBlockUnbound(int x, int y, int z) {
 		if(y < 0 || y >= World.WORLD_HEIGHT || !generated) return null;
 		if(x < 0 || x > 15 || z < 0 || z > 15) {
 			Chunk chunk = surface._getNoGenerateChunk(ox + ((x & ~15) >> 4), oz + ((y & ~15) >> 4));
-			if(chunk != null) return chunk.getInstUnbound(x & 15, y, z & 15);
+			if(chunk != null) return chunk.getBlockUnbound(x & 15, y, z & 15);
 			return null;
 		}
 		return inst[(x << 4) | (y << 8) | z];
+	}
+	private BlockInstance getVisibleAbsoluteUnbound(int x, int y, int z) {
+		if(y < 0 || y >= World.WORLD_HEIGHT || !generated) return null;
+		int rx = x - ox << 4;
+		int rz = z - oz << 4;
+		if(rx < 0 || rx > 15 || rz < 0 || rz > 15) {
+			Chunk chunk = surface._getNoGenerateChunk((x & ~15) >> 4, (y & ~15) >> 4);
+			if(chunk != null) return chunk.getVisibleAbsoluteUnbound(x & 15, y, z & 15);
+			return null;
+		}
+		for(int i = 0; i < visibles.size; i++) {
+			if(visibles.array[i].getX() == x && visibles.array[i].getY() == y && visibles.array[i].getZ() == z)
+				return visibles.array[i];
+		}
+		return null;
 	}
 	
 	/**
@@ -72,7 +90,7 @@ public class Chunk {
 	 */
 	@Deprecated
 	public void createBlocksForOverlay() {
-		inst = new BlockInstance[16*256*16];
+		inst = new Block[16*256*16];
 	}
 	
 	public void setLoaded(boolean loaded) {
@@ -91,15 +109,11 @@ public class Chunk {
 		return oz;
 	}
 	
-	public ArrayList<BlockInstance> list() {
-		return list;
-	}
-	
-	public ArrayList<BlockInstance> liquids() {
+	public ArrayList<Integer> liquids() {
 		return liquids;
 	}
 	
-	public ArrayList<BlockInstance> updatingLiquids() {
+	public ArrayList<Integer> updatingLiquids() {
 		return updatingLiquids;
 	}
 	
@@ -182,31 +196,31 @@ public class Chunk {
 		updates.add(arr);
 		lightUpdate(updates, 0, 0xffffff00);
 	}
-	private int applyNeighbors(int light, int shift, BlockInstance n1, BlockInstance n2, BlockInstance n3, BlockInstance n4) {
+	private int applyNeighbors(int light, int shift, Block n1, Block n2, Block n3, Block n4) {
 		light = (light >>> shift) & 255;
 		light <<= 2; // make sure small absorptions don't get ignored while dividing by 4.
 		int solidNeighbors = 0;
 		if(n1 != null) {
-			if(n1.getBlock().isTransparent()) {
-				light -= (n1.getBlock().getAbsorption() >>> shift) & 255;
+			if(n1.isTransparent()) {
+				light -= (n1.getAbsorption() >>> shift) & 255;
 			} else
 				solidNeighbors++;
 		}
 		if(n2 != null) {
-			if(n2.getBlock().isTransparent()) {
-				light -= (n2.getBlock().getAbsorption() >>> shift) & 255;
+			if(n2.isTransparent()) {
+				light -= (n2.getAbsorption() >>> shift) & 255;
 			} else
 				solidNeighbors++;
 		}
 		if(n3 != null) {
-			if(n3.getBlock().isTransparent()) {
-				light -= (n3.getBlock().getAbsorption() >>> shift) & 255;
+			if(n3.isTransparent()) {
+				light -= (n3.getAbsorption() >>> shift) & 255;
 			} else
 				solidNeighbors++;
 		}
 		if(n4 != null) {
-			if(n4.getBlock().isTransparent()) {
-				light -= (n4.getBlock().getAbsorption() >>> shift) & 255;
+			if(n4.isTransparent()) {
+				light -= (n4.getAbsorption() >>> shift) & 255;
 			} else
 				solidNeighbors++;
 		}
@@ -225,16 +239,16 @@ public class Chunk {
 		}
 		// Check if one of the blocks is glowing bright enough to support more light:
 		if(n1 != null) {
-			light = Math.max(light, (n1.getBlock().getAbsorption() >>> shift) & 255);
+			light = Math.max(light, (n1.getAbsorption() >>> shift) & 255);
 		}
 		if(n2 != null) {
-			light = Math.max(light, (n2.getBlock().getAbsorption() >>> shift) & 255);
+			light = Math.max(light, (n2.getAbsorption() >>> shift) & 255);
 		}
 		if(n3 != null) {
-			light = Math.max(light, (n3.getBlock().getAbsorption() >>> shift) & 255);
+			light = Math.max(light, (n3.getAbsorption() >>> shift) & 255);
 		}
 		if(n4 != null) {
-			light = Math.max(light, (n4.getBlock().getAbsorption() >>> shift) & 255);
+			light = Math.max(light, (n4.getAbsorption() >>> shift) & 255);
 		}
 		return light;
 	}
@@ -248,11 +262,11 @@ public class Chunk {
 			return -1;
 		}
 		// Get all eight neighbors of this lighting node:
-		BlockInstance[] neighbors = new BlockInstance[8];
+		Block[] neighbors = new Block[8];
 		for(int dx = -1; dx <= 0; dx++) {
 			for(int dy = -1; dy <= 0; dy++) {
 				for(int dz = -1; dz <= 0; dz++) {
-					neighbors[7 + (dx << 2) + (dy << 1) + dz] = getInstUnbound(x+dx, y+dy, z+dz);
+					neighbors[7 + (dx << 2) + (dy << 1) + dz] = getBlockUnbound(x+dx, y+dy, z+dz);
 				}
 			}
 		}
@@ -378,57 +392,62 @@ public class Chunk {
 	
 	public void addBlock(Block b, int x, int y, int z) {
 		if(inst == null) {
-			inst = new BlockInstance[16*World.WORLD_HEIGHT*16];
+			inst = new Block[16*World.WORLD_HEIGHT*16];
 		} else { // Checks if there is a block on that position and deposits it if degradable.
-			BlockInstance bi = getBlockInstanceAt(x, y, z);
-			if(bi != null) {
-				if(!bi.getBlock().isDegradable() || b.isDegradable()) {
+			Block b2 = getBlockAt(x, y, z);
+			if(b2 != null) {
+				if(!b2.isDegradable() || b.isDegradable()) {
 					return;
 				}
 				removeBlockAt(x, y, z, false);
 			}
 		}
-		BlockInstance inst0 = new BlockInstance(b);
-		inst0.setPosition(new Vector3i(x + (ox << 4), y, z + (oz << 4)));
-		inst0.setStellarTorus(surface);
-		if (b.hasBlockEntity()) {
-			BlockEntity te = b.createBlockEntity(inst0.getPosition());
-			blockEntities.put(inst0, te);
+		if(b.hasBlockEntity() || b.getBlockClass() == BlockClass.FLUID) {
+			BlockInstance inst0 = new BlockInstance(b);
+			inst0.setPosition(new Vector3i(x + (ox << 4), y, z + (oz << 4)));
+			inst0.setStellarTorus(surface);
+			if (b.hasBlockEntity()) {
+				BlockEntity te = b.createBlockEntity(inst0.getPosition());
+				blockEntities.put(inst0, te);
+			}
+			if (b.getBlockClass() == BlockClass.FLUID) {
+				liquids.add((x << 4) | (y << 8) | z);
+				updatingLiquids.add((x << 4) | (y << 8) | z);
+			}
 		}
-		if (b.getBlockClass() == BlockClass.FLUID) {
-			liquids.add(inst0);
-			updatingLiquids.add(inst0);
-		}
-		list.add(inst0);
-		setInst(x, y, z, inst0);
+		setInst(x, y, z, b);
 		if(generated) {
-			BlockInstance[] neighbors = inst0.getNeighbors(this);
+			Block[] neighbors = getNeighbors(x, y, z);
 			for (int i = 0; i < neighbors.length; i++) {
-				if (blocksLight(neighbors[i], inst0.getBlock().isTransparent())) {
-					revealBlock(inst0);
+				if (blocksLight(neighbors[i], b.isTransparent())) {
+					revealBlock(x&15, y, z&15);
 					break;
 				}
 			}
-			if(neighbors[0] != null) neighbors[0].neighborWest = getsBlocked(neighbors[0], inst0.getBlock().isTransparent());
-			if(neighbors[1] != null) neighbors[1].neighborEast = getsBlocked(neighbors[1], inst0.getBlock().isTransparent());
-			if(neighbors[2] != null) neighbors[2].neighborSouth = getsBlocked(neighbors[2], inst0.getBlock().isTransparent());
-			if(neighbors[3] != null) neighbors[3].neighborNorth = getsBlocked(neighbors[3], inst0.getBlock().isTransparent());
-			if(neighbors[4] != null) neighbors[4].neighborUp = getsBlocked(neighbors[4], inst0.getBlock().isTransparent());
-			if(neighbors[5] != null) neighbors[5].neighborDown = getsBlocked(neighbors[5], inst0.getBlock().isTransparent());
+			BlockInstance[] visibleNeighbors = getVisibleNeighbors(x, y, z);
+			if(visibleNeighbors[0] != null) visibleNeighbors[0].neighborWest = getsBlocked(neighbors[0], b.isTransparent());
+			if(visibleNeighbors[1] != null) visibleNeighbors[1].neighborEast = getsBlocked(neighbors[1], b.isTransparent());
+			if(visibleNeighbors[2] != null) visibleNeighbors[2].neighborSouth = getsBlocked(neighbors[2], b.isTransparent());
+			if(visibleNeighbors[3] != null) visibleNeighbors[3].neighborNorth = getsBlocked(neighbors[3], b.isTransparent());
+			if(visibleNeighbors[4] != null) visibleNeighbors[4].neighborUp = getsBlocked(neighbors[4], b.isTransparent());
+			if(visibleNeighbors[5] != null) visibleNeighbors[5].neighborDown = getsBlocked(neighbors[5], b.isTransparent());
 			for (int i = 0; i < neighbors.length; i++) {
 				if(neighbors[i] != null) {
-					Chunk ch = getChunk(neighbors[i].getX(), neighbors[i].getZ());
-					if (ch.contains(neighbors[i])) {
-						BlockInstance[] neighbors1 = neighbors[i].getNeighbors(ch);
+					int x2 = x+ndx[i];
+					int y2 = y+ndy[i];
+					int z2 = z+ndz[i];
+					Chunk ch = getChunk(x2, z2);
+					if (ch.contains(x2, y2, z2)) {
+						Block[] neighbors1 = ch.getNeighbors(x2, y2, z2);
 						boolean vis = true;
 						for (int j = 0; j < neighbors1.length; j++) {
-							if (blocksLight(neighbors1[j], neighbors[i].getBlock().isTransparent())) {
+							if (blocksLight(neighbors1[j], neighbors[i].isTransparent())) {
 								vis = false;
 								break;
 							}
 						}
 						if(vis) {
-							ch.hideBlock(neighbors[i]);
+							ch.hideBlock(x2 & 15, y2, z2 & 15);
 						}
 					}
 				}
@@ -440,7 +459,7 @@ public class Chunk {
 	
 	public void generateFrom(SurfaceGenerator gen) {
 		if(inst == null) {
-			inst = new BlockInstance[16*World.WORLD_HEIGHT*16];
+			inst = new Block[16*World.WORLD_HEIGHT*16];
 		}
 		gen.generate(this, surface);
 		generated = true;
@@ -454,13 +473,13 @@ public class Chunk {
 				continue;
 			}
 			Block bl = surface.getPlanetBlocks()[bc.newType];
-			if(getBlockInstanceAt(bc.x, bc.y, bc.z) == null) {
+			if(getBlockAt(bc.x, bc.y, bc.z) == null) {
 				addBlockAt(bc.x, bc.y, bc.z, bl, false);
 				bc.oldType = -1;
 				continue;
 			}
-			bc.oldType = getBlockInstanceAt(bc.x, bc.y, bc.z).getID();
-			getBlockInstanceAt(bc.x, bc.y, bc.z).setBlock(bl);
+			bc.oldType = getBlockAt(bc.x, bc.y, bc.z).ID;
+			setInst(bc.x, bc.y, bc.z, bl);
 		}
 	}
 	
@@ -483,27 +502,32 @@ public class Chunk {
 		ch = surface._getNoGenerateChunk(ox, oz + 1);
 		boolean chy1 = ch != null && ch.isGenerated();
 		chunks[3] = ch;
-		for(int k = 0; k < list.size(); k++) {
-			BlockInstance bi = list.get(k);
-			BlockInstance[] neighbors = bi.getNeighbors(this);
-			if(neighbors[0] != null) neighbors[0].neighborWest = getsBlocked(neighbors[0], bi.getBlock().isTransparent());
-			if(neighbors[1] != null) neighbors[1].neighborEast = getsBlocked(neighbors[1], bi.getBlock().isTransparent());
-			if(neighbors[2] != null) neighbors[2].neighborSouth = getsBlocked(neighbors[2], bi.getBlock().isTransparent());
-			if(neighbors[3] != null) neighbors[3].neighborNorth = getsBlocked(neighbors[3], bi.getBlock().isTransparent());
-			if(neighbors[4] != null) neighbors[4].neighborUp = getsBlocked(neighbors[4], bi.getBlock().isTransparent());
-			if(neighbors[5] != null) neighbors[5].neighborDown = getsBlocked(neighbors[5], bi.getBlock().isTransparent());
-			int j = bi.getY();
-			int px = bi.getX()&15;
-			int py = bi.getZ()&15;
-			for (int i = 0; i < neighbors.length; i++) {
-				if (blocksLight(neighbors[i], bi.getBlock().isTransparent())
-											&& (j != 0 || i != 4)
-											&& (px != 0 || i != 0 || chx0)
-											&& (px != 15 || i != 1 || chx1)
-											&& (py != 0 || i != 3 || chy0)
-											&& (py != 15 || i != 2 || chy1)) {
-					revealBlock(bi);
-					break;
+		// Sadly the new system doesn't allow for easy access on the BlockInstances through a list, so we have to go through all blocks(which probably is even more efficient because about half of the blocks are non-air).
+		for(int x = 0; x < 16; x++) {
+			for(int y = 0; y < 256; y++) {
+				for(int  z = 0; z < 16; z++) {
+					Block b = getBlockAt(x, y, z);
+					if(b != null) {
+						Block[] neighbors = getNeighbors(x, y, z);
+						BlockInstance[] visibleNeighbors = getVisibleNeighbors(x, y, z);
+						if(visibleNeighbors[0] != null) visibleNeighbors[0].neighborWest = getsBlocked(neighbors[0], b.isTransparent());
+						if(visibleNeighbors[1] != null) visibleNeighbors[1].neighborEast = getsBlocked(neighbors[1], b.isTransparent());
+						if(visibleNeighbors[2] != null) visibleNeighbors[2].neighborSouth = getsBlocked(neighbors[2], b.isTransparent());
+						if(visibleNeighbors[3] != null) visibleNeighbors[3].neighborNorth = getsBlocked(neighbors[3], b.isTransparent());
+						if(visibleNeighbors[4] != null) visibleNeighbors[4].neighborUp = getsBlocked(neighbors[4], b.isTransparent());
+						if(visibleNeighbors[5] != null) visibleNeighbors[5].neighborDown = getsBlocked(neighbors[5], b.isTransparent());
+						for (int i = 0; i < neighbors.length; i++) {
+							if (blocksLight(neighbors[i], b.isTransparent())
+														&& (y != 0 || i != 4)
+														&& (x != 0 || i != 0 || chx0)
+														&& (x != 15 || i != 1 || chx1)
+														&& (y != 0 || i != 3 || chy0)
+														&& (y != 15 || i != 2 || chy1)) {
+								revealBlock(x, y, z);
+								break;
+							}
+						}
+					}
 				}
 			}
 		}
@@ -518,15 +542,15 @@ public class Chunk {
 				if (toCheck[k]) {
 					ch = chunks[k];
 					for (int j = World.WORLD_HEIGHT - 1; j >= 0; j--) {
-						BlockInstance inst0 = ch.getBlockInstanceAt(dx[k], j, dy[k]);
+						Block inst0 = ch.getBlockAt(dx[k], j, dy[k]);
 						if(inst0 == null) {
 							continue;
 						}
-						if(ch.contains(inst0)) {
+						if(ch.contains(dx[k] + (ch.ox << 4), j, dy[k] + (ch.oz << 4))) {
 							continue;
 						}
-						if (blocksLight(getBlockInstanceAt(invdx[k], j, invdy[k]), inst0.getBlock().isTransparent())) {
-							ch.revealBlock(inst0);
+						if (blocksLight(getBlockAt(invdx[k], j, invdy[k]), inst0.isTransparent())) {
+							ch.revealBlock(dx[k], j, dy[k]);
 							continue;
 						}
 					}
@@ -544,7 +568,6 @@ public class Chunk {
 				for(int xz = 0; xz < 256; xz++) {
 					light[(y0 << 8) | xz] |= 0xff000000;
 					if(inst[(y0 << 8) | xz] != null) {
-						inst[(y0 << 8) | xz].light |= 0xff000000;
 						stopped = true;
 					}
 				}
@@ -552,7 +575,7 @@ public class Chunk {
 			// Add the lowest layer to the updates list:
 			for(int x = 0; x < 16; x++) {
 				for(int z = 0; z < 16; z++) {
-					if(getBlockInstanceAt(x, y0, z) == null)
+					if(getBlockAt(x, y0, z) == null)
 						lightUpdates.add(new int[] {x, y0, z, 255});
 				}
 			}
@@ -619,23 +642,23 @@ public class Chunk {
 				}
 			}
 			// Take care about light sources:
-			for(BlockInstance bi: list) {
+			/*for(BlockInstance bi: list) { TODO: Integrate this into the new system which has no block list.
 				if(bi.getBlock().getLight() != 0) {
 					lightUpdate(bi.getX(), bi.getY(), bi.getZ());
 				}
-			}
+			}*/
 		}
 	}
 	
-	public boolean blocksLight(BlockInstance bi, boolean transparent) {
-		if(bi == null || (bi.getBlock().isTransparent() && !transparent)) {
+	public boolean blocksLight(Block b, boolean transparent) {
+		if(b == null || (b.isTransparent() && !transparent)) {
 			return true;
 		}
 		return false;
 	}
 	
-	public boolean getsBlocked(BlockInstance bi, boolean transparent) {
-		return !(!bi.getBlock().isTransparent() && transparent);
+	public boolean getsBlocked(Block b, boolean transparent) {
+		return b == null || !(!b.isTransparent() && transparent);
 	}
 	
 	public boolean isGenerated() {
@@ -653,58 +676,84 @@ public class Chunk {
 		return this;
 	}
 	
-	public void hideBlock(BlockInstance bi) {
-		visibles.remove(bi);
+	public void hideBlock(int x, int y, int z) {
+		// Search for the BlockInstance in visibles:
+		BlockInstance res = null;
+		for(int i = 0; i < visibles.size; i++) {
+			if((visibles.array[i].getX() & 15) == x && visibles.array[i].getY() == y && (visibles.array[i].getZ() & 15) == z) {
+				res = visibles.array[i];
+				break;
+			}
+		}
+		if(res == null) return;
+		visibles.remove(res);
 		if (surface != null) {
 			for (BlockVisibilityChangeHandler handler : surface.visibHandlers) {
-				if (bi != null) handler.onBlockHide(bi.getBlock(), bi.getX(), bi.getY(), bi.getZ());
+				if (res != null) handler.onBlockHide(res.getBlock(), res.getX(), res.getY(), res.getZ());
 			}
 		}
 	}
 	
-	public synchronized void revealBlock(BlockInstance bi) {
+	public synchronized void revealBlock(int x, int y, int z) {
+		// Make some sanity check for y coordinate:
+		if(y < 0 || y >= World.WORLD_HEIGHT) return;
+		BlockInstance bi = new BlockInstance(getBlockAt(x, y, z));
+		Block[] neighbors = getNeighbors(x, y ,z);
+		if(neighbors[0] != null) bi.neighborEast = true;
+		if(neighbors[1] != null) bi.neighborWest = true;
+		if(neighbors[2] != null) bi.neighborNorth = true;
+		if(neighbors[3] != null) bi.neighborSouth = true;
+		if(neighbors[4] != null) bi.neighborDown = true;
+		if(neighbors[5] != null) bi.neighborUp = true;
+		bi.setPosition(new Vector3i(x + (ox << 4), y, z + (oz << 4)));
+		bi.setStellarTorus(surface);
 		visibles.add(bi);
 		if (surface != null) for (BlockVisibilityChangeHandler handler : surface.visibHandlers) {
 			if (bi != null) handler.onBlockAppear(bi.getBlock(), bi.getX(), bi.getY(), bi.getZ());
 		}
 	}
 	
-	public boolean contains(BlockInstance bi) {
-		return visibles.contains(bi);
+	public boolean contains(int x, int y, int z) {
+		for(int i = 0; i < visibles.size; i++) {
+			if(visibles.array[i].getX() == x && visibles.array[i].getY() == y && visibles.array[i].getZ() == z)
+				return true;
+		}
+		return false;
 	}
 	
 	public void removeBlockAt(int x, int y, int z, boolean registerBlockChange) {
-		BlockInstance bi = getBlockInstanceAt(x, y, z);
+		Block bi = getBlockAt(x, y, z);
 		if(bi == null)
 			return;
-		hideBlock(bi);
-		if (bi.getBlock().getBlockClass() == BlockClass.FLUID) {
+		hideBlock(x & 15, y, z & 15);
+		if (bi.getBlockClass() == BlockClass.FLUID) {
 			liquids.remove(bi);
 		}
-		list.remove(bi);
-		if (bi.getBlock().hasBlockEntity()) {
+		if (bi.hasBlockEntity()) {
 			blockEntities.remove(bi);
 		}
 		setInst(x, y, z, null);
-		BlockInstance[] neighbors = bi.getNeighbors(this);
-		if(neighbors[0] != null) neighbors[0].neighborWest = false;
-		if(neighbors[1] != null) neighbors[1].neighborEast = false;
-		if(neighbors[2] != null) neighbors[2].neighborSouth = false;
-		if(neighbors[3] != null) neighbors[3].neighborNorth = false;
-		if(neighbors[4] != null) neighbors[4].neighborUp = false;
-		if(neighbors[5] != null) neighbors[5].neighborDown = false;
+		BlockInstance[] visibleNeighbors = getVisibleNeighbors(x, y, z);
+		if(visibleNeighbors[0] != null) visibleNeighbors[0].neighborWest = false;
+		if(visibleNeighbors[1] != null) visibleNeighbors[1].neighborEast = false;
+		if(visibleNeighbors[2] != null) visibleNeighbors[2].neighborSouth = false;
+		if(visibleNeighbors[3] != null) visibleNeighbors[3].neighborNorth = false;
+		if(visibleNeighbors[4] != null) visibleNeighbors[4].neighborUp = false;
+		if(visibleNeighbors[5] != null) visibleNeighbors[5].neighborDown = false;
 		if(loaded)
 			lightUpdate(x, y, z);
+		Block[] neighbors = getNeighbors(x, y, z);
 		for (int i = 0; i < neighbors.length; i++) {
-			BlockInstance inst = neighbors[i];
-			if (inst != null && inst != bi) {
-				Chunk ch = getChunk(inst.getX(), inst.getZ());
-				if (!ch.contains(inst)) {
-					ch.revealBlock(inst);
+			Block inst = neighbors[i];
+			if (inst != null) {
+				Chunk ch = getChunk(x+ndx[i], z+ndz[i]);
+				if (!ch.contains(x+ndx[i]+(ox << 4), y+ndy[i], z+ndz[i]+(oz << 4))) {
+					ch.revealBlock((x+ndx[i]) & 15, y+ndy[i], (z+ndz[i]) & 15);
 				}
-				if (inst.getBlock().getBlockClass() == BlockClass.FLUID) {
-					if (!updatingLiquids.contains(inst))
-						updatingLiquids.add(inst);
+				if (inst.getBlockClass() == BlockClass.FLUID) {
+					int index = (((x+ndx[i]) & 15) << 4) | ((y+ndy[i]) << 8) | ((z+ndz[i]) & 15);
+					if (!updatingLiquids.contains(index))
+						updatingLiquids.add(index);
 				}
 			}
 		}
@@ -721,7 +770,7 @@ public class Chunk {
 				}
 			}
 			if(index == -1) { // Creates a new object if the block wasn't changed before
-				changes.add(new BlockChange(bi.getID(), -1, x, y, z));
+				changes.add(new BlockChange(bi.ID, -1, x, y, z));
 				return;
 			}
 			if(-1 == changes.get(index).oldType) { // Removes the object if the block reverted to it's original state.
@@ -732,88 +781,79 @@ public class Chunk {
 		}
 	}
 	
-	public void addBlockAt(int x, int y, int z, Block b, boolean registerBlockChange) {
-		if(y >= World.WORLD_HEIGHT)
-			return;
-		removeBlockAt(x, y, z, false);
-		BlockInstance inst0 = new BlockInstance(b);
-		addBlockAt(x, y, z, inst0, registerBlockChange);
-	}
-	
 	/**
 	 * Raw add block. Doesn't do any checks. To use with WorldGenerators
 	 * @param x
 	 * @param y
 	 * @param z
 	 */
-	public void rawAddBlock(int x, int y, int z, BlockInstance bi) {
-		if (bi != null && bi.getBlock() == null) {
+	public void rawAddBlock(int x, int y, int z, Block bi) {
+		if (bi  == null) {
 			setInst(x, y, z, null);
 			return;
 		}
 		if (bi != null) {
-			bi.setStellarTorus(surface);
-			list.add(bi);
-			if (bi.getBlock().getBlockClass() == BlockClass.FLUID) {
-				liquids.add(bi);
+			if (bi.getBlockClass() == BlockClass.FLUID) {
+				liquids.add((x << 4) | (y << 8) | z);
 			}
 		}
 		setInst(x, y, z, bi);
 	}
 	
-	public void addBlockAt(int x, int y, int z, BlockInstance inst0, boolean registerBlockChange) {
+	public void addBlockAt(int x, int y, int z, Block b, boolean registerBlockChange) {
 		int wx = ox << 4;
 		int wz = oz << 4;
 		if(y >= World.WORLD_HEIGHT)
 			return;
 		removeBlockAt(x, y, z, false);
-		Block b = inst0.getBlock();
-		inst0.setPosition(new Vector3i(x + wx, y, z + wz));
-		inst0.setStellarTorus(surface);
-		if (b.hasBlockEntity()) {
-			BlockEntity te = b.createBlockEntity(inst0.getPosition());
-			blockEntities.put(inst0, te);
-		}
-		list.add(inst0);
+		//if (b.hasBlockEntity()) { TODO: Block entities.
+		//	BlockEntity te = b.createBlockEntity(inst0.getPosition());
+		//	blockEntities.put(inst0, te);
+		//}
 		if (b.getBlockClass() == BlockClass.FLUID) {
-			liquids.add(inst0);
-			updatingLiquids.add(inst0);
+			liquids.add((x << 4) | (y << 8) | z);
+			updatingLiquids.add((x << 4) | (y << 8) | z);
 		}
-		setInst(x, y, z, inst0);
-		BlockInstance[] neighbors = inst0.getNeighbors(this);
-		if(neighbors[0] != null) neighbors[0].neighborWest = getsBlocked(neighbors[0], inst0.getBlock().isTransparent());
-		if(neighbors[1] != null) neighbors[1].neighborEast = getsBlocked(neighbors[1], inst0.getBlock().isTransparent());
-		if(neighbors[2] != null) neighbors[2].neighborSouth = getsBlocked(neighbors[2], inst0.getBlock().isTransparent());
-		if(neighbors[3] != null) neighbors[3].neighborNorth = getsBlocked(neighbors[3], inst0.getBlock().isTransparent());
-		if(neighbors[4] != null) neighbors[4].neighborUp = getsBlocked(neighbors[4], inst0.getBlock().isTransparent());
-		if(neighbors[5] != null) neighbors[5].neighborDown = getsBlocked(neighbors[5], inst0.getBlock().isTransparent());
+		setInst(x, y, z, b);
+		Block[] neighbors = getNeighbors(x+wx, y, z+wz);
+		BlockInstance[] visibleNeighbors = getVisibleNeighbors(x+wx, y, z+wz);
+		if(visibleNeighbors[0] != null) visibleNeighbors[0].neighborWest = getsBlocked(neighbors[0], b.isTransparent());
+		if(visibleNeighbors[1] != null) visibleNeighbors[1].neighborEast = getsBlocked(neighbors[1], b.isTransparent());
+		if(visibleNeighbors[2] != null) visibleNeighbors[2].neighborSouth = getsBlocked(neighbors[2], b.isTransparent());
+		if(visibleNeighbors[3] != null) visibleNeighbors[3].neighborNorth = getsBlocked(neighbors[3], b.isTransparent());
+		if(visibleNeighbors[4] != null) visibleNeighbors[4].neighborUp = getsBlocked(neighbors[4], b.isTransparent());
+		if(visibleNeighbors[5] != null) visibleNeighbors[5].neighborDown = getsBlocked(neighbors[5], b.isTransparent());
 		
 		for (int i = 0; i < neighbors.length; i++) {
-			if (blocksLight(neighbors[i], inst0.getBlock().isTransparent())) {
-				revealBlock(inst0);
+			if (blocksLight(neighbors[i], b.isTransparent())) {
+				revealBlock(x, y, z);
 				break;
 			}
 		}
 		
 		for (int i = 0; i < neighbors.length; i++) {
+			int rx = x+ndx[i];
+			int ry = y+ndy[i];
+			int rz = z+ndz[i];
 			if(neighbors[i] != null) {
-				Chunk ch = getChunk(neighbors[i].getX(), neighbors[i].getZ());
-				if (ch.contains(neighbors[i])) {
-					BlockInstance[] neighbors1 = neighbors[i].getNeighbors(ch);
+				Chunk ch = getChunk(rx+wx, rz+wz);
+				if (ch.contains(rx+wx, ry, rz+wz)) {
+					Block[] neighbors1 = getNeighbors(rx, ry, rz);
 					boolean vis = true;
 					for (int j = 0; j < neighbors1.length; j++) {
-						if (blocksLight(neighbors1[j], neighbors[i].getBlock().isTransparent())) {
+						if (blocksLight(neighbors1[j], neighbors[i].isTransparent())) {
 							vis = false;
 							break;
 						}
 					}
 					if(vis) {
-						ch.hideBlock(neighbors[i]);
+						ch.hideBlock(rx & 15, ry, rz & 15);
 					}
 				}
-				if (neighbors[i].getBlock().getBlockClass() == BlockClass.FLUID) {
-					if (!updatingLiquids.contains(neighbors[i]))
-						updatingLiquids.add(neighbors[i]);
+				if (neighbors[i].getBlockClass() == BlockClass.FLUID) {
+					int index = ((rx & 15) << 4) | (ry << 8) | (rz & 15);
+					if (!updatingLiquids.contains(index))
+						updatingLiquids.add(index);
 				}
 			}
 		}
@@ -908,5 +948,82 @@ public class Chunk {
 				}
 			}
 		}
+	}
+	
+	public Block[] getNeighbors(int x, int y, int z) {
+		Block[] inst = new Block[6];
+		x &= 15;
+		z &= 15;
+		// 0 = EAST  (x - 1)
+		// 1 = WEST  (x + 1)
+		// 2 = NORTH (z + 1)
+		// 3 = SOUTH (z - 1)
+		// 4 = DOWN
+		// 5 = UP
+		if(y+1 < World.WORLD_HEIGHT)
+			inst[5] = getBlockAt(x, y + 1, z);
+		if(y > 0)
+			inst[4] = getBlockAt(x, y - 1, z);
+		if((z & 15) != 0)
+			inst[3] = getBlockAt(x, y, (z - 1));
+		else
+			inst[3] = surface.getBlock(x + (ox << 4), y, z - 1 + (oz << 4));
+		if((z & 15) != 15)
+			inst[2] = getBlockAt(x, y, (z + 1));
+		else
+			inst[2] = surface.getBlock(x + (ox << 4), y, z + 1 + (oz << 4));
+		if((x & 15) != 15)
+			inst[1] = getBlockAt((x + 1), y, z);
+		else
+			inst[1] = surface.getBlock(x + 1 + (ox << 4), y, z + (oz << 4));
+		if((x & 15) != 0)
+			inst[0] = getBlockAt((x - 1), y, z);
+		else
+			inst[0] = surface.getBlock(x - 1 + (ox << 4), y, z + (oz << 4));
+		return inst;
+	}
+	
+	public BlockInstance[] getVisibleNeighbors(int x, int y, int z) { // returns the corresponding BlockInstance for all visible neighbors of this block.
+		BlockInstance[] inst = new BlockInstance[6];
+		for(int i = 0; i < 6; i++) {
+			inst[i] = getVisibleAbsoluteUnbound(x+ndx[i], y+ndy[i], z+ndz[i]);
+		}
+		return inst;
+	}
+	
+	public Block getNeighbor(int i, int x, int y, int z) {
+		// 0 = EAST  (x - 1)
+		// 1 = WEST  (x + 1)
+		// 2 = NORTH (z + 1)
+		// 3 = SOUTH (z - 1)
+		// 4 = DOWN
+		// 5 = UP
+		switch(i) {
+			case 5:
+				if(y+1 < World.WORLD_HEIGHT)
+					return getBlockAt(x & 15, y + 1, z & 15);
+				return null;
+			case 4:
+				if(y > 0)
+					return getBlockAt(x & 15, y - 1, z & 15);
+				return null;
+			case 3:
+				if((z & 15) != 0)
+					return getBlockAt(x & 15, y, (z - 1) & 15);
+				return surface.getBlock(x, y, z - 1);
+			case 2:
+				if((z & 15) != 15)
+					return getBlockAt(x & 15, y, (z - 1) & 15);
+				return surface.getBlock(x, y, z + 1);
+			case 1:
+				if((x & 15) != 0)
+					return getBlockAt((x + 1) & 15, y, z & 15);
+				return surface.getBlock(x + 1, y, z);
+			case 0:
+				if((x & 15) != 0)
+					return getBlockAt((x - 1) & 15, y, z & 15);
+				return surface.getBlock(x - 1, y, z);
+		}
+		return null;
 	}
 }

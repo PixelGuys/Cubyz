@@ -353,22 +353,15 @@ public class LocalSurface extends Surface {
 		return list;
 	}
 	
-	public Block getBlock(int x, int y, int z) {
-		BlockInstance bi = getBlockInstance(x, y, z);
-		if (bi == null)
-			return null;
-		return bi.getBlock();
-	}
-	
 	@Override
-	public BlockInstance getBlockInstance(int x, int y, int z) {
+	public Block getBlock(int x, int y, int z) {
 		if (y > World.WORLD_HEIGHT || y < 0)
 			return null;
 
 		Chunk ch = _getNoGenerateChunk(x >> 4, z >> 4);
 		if (ch != null && ch.isGenerated()) {
-			BlockInstance bi = ch.getBlockInstanceAt(x & 15, y, z & 15);
-			return bi;
+			Block b = ch.getBlockAt(x & 15, y, z & 15);
+			return b;
 		} else {
 			return null;
 		}
@@ -378,7 +371,7 @@ public class LocalSurface extends Surface {
 	public void removeBlock(int x, int y, int z) {
 		Chunk ch = _getNoGenerateChunk(x >> 4, z >> 4);
 		if (ch != null) {
-			Block b = ch.getBlockInstanceAt(x & 15, y, z & 15).getBlock();
+			Block b = ch.getBlockAt(x & 15, y, z & 15);
 			ch.removeBlockAt(x & 15, y, z & 15, true);
 			wio.saveChunk(ch);
 			wio.saveTorusData(this);
@@ -480,9 +473,9 @@ public class LocalSurface extends Surface {
 					ch.updatingLiquids().clear();
 					for (BlockInstance bi : liquids) {
 						if (bi == null) break;
-						BlockInstance[] neighbors = bi.getNeighbors(ch);
+						Block[] neighbors = ch.getNeighbors(bi.getX() & 15, bi.getY(), bi.getZ() & 15);
 						for (int i = 0; i < 5; i++) {
-							BlockInstance b = neighbors[i];
+							Block b = neighbors[i];
 							if (b == null) {
 								int dx = 0, dy = 0, dz = 0;
 								switch (i) {
@@ -505,7 +498,7 @@ public class LocalSurface extends Surface {
 										System.err.println("(LocalWorld/Liquids) More than 6 nullable neighbors!");
 										break;
 								}
-								if(dy == -1 || (neighbors[4] != null && neighbors[4].getBlock().getBlockClass() != Block.BlockClass.FLUID)) {
+								if(dy == -1 || (neighbors[4] != null && neighbors[4].getBlockClass() != Block.BlockClass.FLUID)) {
 									ch.addBlockPossiblyOutside(bi.getBlock(), (bi.getX()+dx) & worldAnd, bi.getY()+dy, (bi.getZ()+dz) & worldAnd);
 								}
 							}
@@ -643,9 +636,10 @@ public class LocalSurface extends Surface {
 
 	@Override
 	public BlockEntity getBlockEntity(int x, int y, int z) {
-		BlockInstance bi = getBlockInstance(x, y, z);
+		/*BlockInstance bi = getBlockInstance(x, y, z);
 		Chunk ck = _getNoGenerateChunk(bi.getX() >> 4, bi.getZ() >> 4);
-		return ck.blockEntities().get(bi);
+		return ck.blockEntities().get(bi);*/
+		return null; // TODO: Work on BlockEntities!
 	}
 	
 	@Override

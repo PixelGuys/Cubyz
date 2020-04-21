@@ -32,13 +32,13 @@ public abstract class Surface {
 		}
 	}
 
-	public BlockInstance getHighestBlock(int x, int z) {
+	public int getHighestY(int x, int z) {
 		for (int y = World.WORLD_HEIGHT-1; y > 0; y--) {
-			if (getBlockInstance(x, y, z) != null) {
-				return getBlockInstance(x, y, z);
+			if (getBlock(x, y, z) != null && getBlock(x, y, z).isSolid()) {
+				return y;
 			}
 		}
-		return null; // not generated or void
+		return -1; // not generated or void
 	}
 	
 	public abstract void removeBlock(int x, int y, int z);
@@ -51,7 +51,7 @@ public abstract class Surface {
 	 * @param z
 	 * @return
 	 */
-	public abstract BlockInstance getBlockInstance(int x, int y, int z);
+	public abstract Block getBlock(int x, int y, int z);
 	public abstract BlockEntity getBlockEntity(int x, int y, int z);
 	
 	/**
@@ -63,7 +63,6 @@ public abstract class Surface {
 	public abstract float getGlobalLighting();
 
 	public abstract Chunk _getNoGenerateChunk(int x, int z);
-	public abstract Block getBlock(int x, int y, int z);
 	
 	public abstract Chunk[] getChunks();
 	public abstract Block[] getPlanetBlocks();

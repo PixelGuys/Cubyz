@@ -1,11 +1,8 @@
 package io.cubyz.world.generator;
 
-import org.joml.Vector3i;
-
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
-import io.cubyz.blocks.BlockInstance;
 import io.cubyz.world.Chunk;
 import io.cubyz.world.Surface;
 
@@ -26,18 +23,17 @@ public class FlatlandGenerator extends SurfaceGenerator {
 		for (int px = 0; px < 16; px++) {
 			for (int pz = 0; pz < 16; pz++) {
 				for (int y = 0; y < 3; y++) {
-					BlockInstance bi = null;
+					Block b = null;
 					if (y == 2) {
-						bi = new BlockInstance(grass);
+						b = grass;
 					}
 					if (y == 1) {
-						bi = new BlockInstance(dirt);
+						b = dirt;
 					}
 					if (y == 0) {
-						bi = new BlockInstance(bedrock);
+						b = bedrock;
 					}
-					bi.setPosition(new Vector3i(chunk.getX() * 16 + px, y, chunk.getZ() * 16 + pz));
-					chunk.rawAddBlock(px, y, pz, bi);
+					chunk.rawAddBlock(px, y, pz, b);
 				}
 			}
 		}

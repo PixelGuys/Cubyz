@@ -181,18 +181,18 @@ public class Cubyz implements IGameLogic {
 			int dx = 0;
 			int dz = 0;
 			if (world.getLocalPlayer().getPosition().x == 0 && world.getLocalPlayer().getPosition().z == 0) {
-				BlockInstance highest;
+				int highestY;
 				CubyzLogger.i.info("Finding position..");
 				while (true) {
 					dx = rnd.nextInt(surface.getAnd()+1);
 					dz = rnd.nextInt(surface.getAnd()+1);
 					CubyzLogger.i.info("Trying " + dx + " ? " + dz);
 					world.getCurrentTorus().synchronousSeek(dx, dz);
-					highest = world.getCurrentTorus().getHighestBlock(dx, dz);
-					if(highest != null && highest.getBlock().isSolid()) // Make sure the player starts on a solid block.
+					highestY = world.getCurrentTorus().getHighestY(dx, dz);
+					if(highestY >= 0) // Make sure the player starts on a solid block.
 						break;
 				}
-				world.getLocalPlayer().setPosition(new Vector3i(dx, highest.getY()+2, dz));
+				world.getLocalPlayer().setPosition(new Vector3i(dx, highestY+2, dz));
 				world.getLocalPlayer().setStellarTorus(surface.getStellarTorus());
 				CubyzLogger.i.info("OK!");
 			}
@@ -653,8 +653,9 @@ public class Cubyz implements IGameLogic {
 		BlockInstance binst = new BlockInstance(b);
 		binst.setPosition(new Vector3i(0, 0, 0));
 		ck.createBlocksForOverlay();
-		ck.rawAddBlock(0, 0, 0, binst);
-		ck.revealBlock(binst);
+		 // TODO: make this block previews work(in general and especially with new chunk and blockinstance system)!
+		//ck.rawAddBlock(0, 0, 0, binst);
+		//ck.revealBlock(binst);
 		Vector3fi pos = world.getLocalPlayer().getPosition();
 		Vector3f rot = ctx.getCamera().getRotation();
 		world.getLocalPlayer().setPosition(new Vector3fi(0, -1, 1));
