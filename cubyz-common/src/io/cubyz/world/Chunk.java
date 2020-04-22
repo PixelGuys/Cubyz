@@ -257,7 +257,7 @@ public class Chunk {
 		if(!easyLighting || y < 0 || y >= World.WORLD_HEIGHT || !generated) return -1;
 		// Check if it's inside this chunk:
 		if(x < 0 || x > 15 || z < 0 || z > 15) {
-			Chunk chunk = surface._getNoGenerateChunk(ox + ((x & ~15) >> 4), oz + ((y & ~15) >> 4));
+			Chunk chunk = surface._getNoGenerateChunk(ox + ((x & ~15) >> 4), oz + ((z & ~15) >> 4));
 			if(chunk != null) return chunk.localLightUpdate(x & 15, y, z & 15, shift, mask);
 			return -1;
 		}
@@ -915,8 +915,8 @@ public class Chunk {
 	public int getLight(int x, int y, int z, Vector3f sunLight) {
 		if(y < 0) return 0;
 		if(y >= World.WORLD_HEIGHT) return 0xff000000;
-		if(x < 0 || x > 15 || y < 0 || y > 15) {
-			Chunk chunk = surface._getNoGenerateChunk(ox + ((x & ~15) >> 4), oz + ((y & ~15) >> 4));
+		if(x < 0 || x > 15 || z < 0 || z > 15) {
+			Chunk chunk = surface._getNoGenerateChunk(ox + (x >> 4), oz + (z >> 4));
 			if(chunk != null) return chunk.getLight(x & 15, y, z & 15, sunLight);
 			return -1;
 		}
@@ -929,20 +929,6 @@ public class Chunk {
 		return ret;
 		
 	}
-	public int averaging(Vector3f sunLight, int ...col) {
-		int rAvg = 0, gAvg = 0, bAvg = 0;
-		for(int i = 0; i < 8; i++) {
-			int light = col[i];
-			int sun = (light >>> 24) & 255;
-			rAvg += Math.max((light >>> 16) & 255, (int)(sun*sunLight.x));
-			gAvg += Math.max((light >>> 8) & 255, (int)(sun*sunLight.y));
-			bAvg += Math.max((light >>> 0) & 255, (int)(sun*sunLight.z));
-		}
-		rAvg >>>= 3;
-		gAvg >>>= 3;
-		bAvg >>>= 3;
-		return (rAvg << 16) | (gAvg << 8) | bAvg;
-	}
 	
 	public void getCornerLight(int x, int y, int z, Vector3f sunLight, int[] arr) {
 		for(int dx = 0; dx <= 1; dx++) {
@@ -950,6 +936,14 @@ public class Chunk {
 				for(int dz = 0; dz <= 1; dz++) {
 					arr[(dx << 2) | (dy << 1) | dz] = getLight(x+dx, y+dy, z+dz, sunLight);
 				}
+			}
+		}
+		for(int i = 0; i < 8; i++) {
+			if(arr[i] == -1) {
+				if(i == 0)
+					arr[i] = arr[7];
+				else
+					arr[i] = arr[i-1];
 			}
 		}
 	}

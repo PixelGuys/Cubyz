@@ -140,7 +140,7 @@ public class MainRenderer implements IRenderer {
 	 * @param ambientLight the ambient light to use
 	 * @param directionalLight the directional light to use
 	 * @param chunks the chunks being displayed
-	 * @param blocks the type of blocks used (or availble) in the displayed chunks
+	 * @param blocks the type of blocks used (or available) in the displayed chunks
 	 * @param entities the entities to render
 	 * @param spatials the special objects to render (that are neither entity, neither blocks, like sun and moon, or rain)
 	 * @param localPlayer The world's local player
@@ -427,7 +427,6 @@ public class MainRenderer implements IRenderer {
 
 		shaderProgram.setUniform("ambientLight", ambientLight);
 		shaderProgram.setUniform("specularPower", specularPower);
-
 		if(!Chunk.easyLighting) {
 			// Process Point Lights
 			int numLights = pointLightList != null ? pointLightList.length : 0;
