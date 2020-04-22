@@ -26,7 +26,8 @@ public class Chunk {
 	private static final int[] ndz = {0, 0, 0, 0, -1, 1};
 	public static boolean easyLighting = true; // Enables the easy-lighting system.
 	// Due to having powers of 2 as dimensions it is more efficient to use a one-dimensional array.
-	private Block[] inst;
+	private Block[] blocks;
+	private BlockInstance[] inst; // Stores all visible BlockInstances. Can be faster accessed using coordinates.
 	private int[] light; // Stores sun r g b channels of each light channel in one integer. This makes it easier to store and to access.
 	private ArrayList<Integer> liquids = new ArrayList<>(); // Stores the local index of the block.
 	private ArrayList<Integer> updatingLiquids = new ArrayList<>(); // liquids that should be updated at next frame. Stores the local index of the block.
@@ -55,10 +56,10 @@ public class Chunk {
 	
 	// Functions calls are faster than two pointer references, which would happen when using a 3D-array, and functions can additionally be inlined by the VM.
 	private void setInst(int x, int y, int z, Block b) {
-		inst[(x << 4) | (y << 8) | z] = b;
+		blocks[(x << 4) | (y << 8) | z] = b;
 	}
 	public Block getBlockAt(int x, int y, int z) {
-		return inst[(x << 4) | (y << 8) | z];
+		return blocks[(x << 4) | (y << 8) | z];
 	}
 	private Block getBlockUnbound(int x, int y, int z) {
 		if(y < 0 || y >= World.WORLD_HEIGHT || !generated) return null;
@@ -67,7 +68,7 @@ public class Chunk {
 			if(chunk != null) return chunk.getBlockUnbound(x & 15, y, z & 15);
 			return null;
 		}
-		return inst[(x << 4) | (y << 8) | z];
+		return blocks[(x << 4) | (y << 8) | z];
 	}
 	private BlockInstance getVisibleAbsoluteUnbound(int x, int y, int z) {
 		if(y < 0 || y >= World.WORLD_HEIGHT || !generated) return null;
@@ -78,11 +79,7 @@ public class Chunk {
 			if(chunk != null) return chunk.getVisibleAbsoluteUnbound(x & 15, y, z & 15);
 			return null;
 		}
-		for(int i = 0; i < visibles.size; i++) {
-			if(visibles.array[i].getX() == x && visibles.array[i].getY() == y && visibles.array[i].getZ() == z)
-				return visibles.array[i];
-		}
-		return null;
+		return inst[(x << 4) | (y << 8) | z];
 	}
 	
 	/**
@@ -90,7 +87,7 @@ public class Chunk {
 	 */
 	@Deprecated
 	public void createBlocksForOverlay() {
-		inst = new Block[16*256*16];
+		blocks = new Block[16*256*16];
 	}
 	
 	public void setLoaded(boolean loaded) {
@@ -391,8 +388,8 @@ public class Chunk {
 	}
 	
 	public void addBlock(Block b, int x, int y, int z) {
-		if(inst == null) {
-			inst = new Block[16*World.WORLD_HEIGHT*16];
+		if(blocks == null) {
+			blocks = new Block[16*World.WORLD_HEIGHT*16];
 		} else { // Checks if there is a block on that position and deposits it if degradable.
 			Block b2 = getBlockAt(x, y, z);
 			if(b2 != null) {
@@ -458,8 +455,8 @@ public class Chunk {
 	}
 	
 	public void generateFrom(SurfaceGenerator gen) {
-		if(inst == null) {
-			inst = new Block[16*World.WORLD_HEIGHT*16];
+		if(blocks == null) {
+			blocks = new Block[16*World.WORLD_HEIGHT*16];
 		}
 		gen.generate(this, surface);
 		generated = true;
@@ -483,10 +480,15 @@ public class Chunk {
 		}
 	}
 	
+	public void clear() { // Clears the data structures which are used for visible blocks.
+		visibles.clear();
+		inst = new BlockInstance[16*256*16]; // TODO: Fill it with nulls instead of reallocating it.
+	}
+	
 	// Loads the chunk
 	public void load() {
 		// Empty the list, so blocks won't get added twice. This will also be important, when there is a manual chunk reloading.
-		visibles.clear();
+		clear();
 		
 		loaded = true;
 		Chunk [] chunks = new Chunk[4];
@@ -567,7 +569,7 @@ public class Chunk {
 				--y0;
 				for(int xz = 0; xz < 256; xz++) {
 					light[(y0 << 8) | xz] |= 0xff000000;
-					if(inst[(y0 << 8) | xz] != null) {
+					if(blocks[(y0 << 8) | xz] != null) {
 						stopped = true;
 					}
 				}
@@ -682,15 +684,10 @@ public class Chunk {
 	
 	public void hideBlock(int x, int y, int z) {
 		// Search for the BlockInstance in visibles:
-		BlockInstance res = null;
-		for(int i = 0; i < visibles.size; i++) {
-			if((visibles.array[i].getX() & 15) == x && visibles.array[i].getY() == y && (visibles.array[i].getZ() & 15) == z) {
-				res = visibles.array[i];
-				break;
-			}
-		}
+		BlockInstance res = inst[(x << 4) | (y << 8) | z];
 		if(res == null) return;
 		visibles.remove(res);
+		inst[(x << 4) | (y << 8) | z] = null;
 		if (surface != null) {
 			for (BlockVisibilityChangeHandler handler : surface.visibHandlers) {
 				if (res != null) handler.onBlockHide(res.getBlock(), res.getX(), res.getY(), res.getZ());
@@ -712,17 +709,14 @@ public class Chunk {
 		bi.setPosition(new Vector3i(x + (ox << 4), y, z + (oz << 4)));
 		bi.setStellarTorus(surface);
 		visibles.add(bi);
+		inst[(x << 4) | (y << 8) | z] = bi;
 		if (surface != null) for (BlockVisibilityChangeHandler handler : surface.visibHandlers) {
 			if (bi != null) handler.onBlockAppear(bi.getBlock(), bi.getX(), bi.getY(), bi.getZ());
 		}
 	}
 	
 	public boolean contains(int x, int y, int z) {
-		for(int i = 0; i < visibles.size; i++) {
-			if(visibles.array[i].getX() == x && visibles.array[i].getY() == y && visibles.array[i].getZ() == z)
-				return true;
-		}
-		return false;
+		return inst[((x & 15) << 4) | (y << 8) | (z & 15)] != null;
 	}
 	
 	public void removeBlockAt(int x, int y, int z, boolean registerBlockChange) {
