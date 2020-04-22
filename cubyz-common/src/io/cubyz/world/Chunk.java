@@ -436,9 +436,9 @@ public class Chunk {
 					int x2 = x+ndx[i];
 					int y2 = y+ndy[i];
 					int z2 = z+ndz[i];
-					Chunk ch = getChunk(x2, z2);
-					if (ch.contains(x2, y2, z2)) {
-						Block[] neighbors1 = ch.getNeighbors(x2, y2, z2);
+					Chunk ch = getChunk(x2 + (ox << 4), z2 + (oz << 4));
+					if (ch.contains(x2 & 15, y2, z2 & 15)) {
+						Block[] neighbors1 = ch.getNeighbors(x2 & 15, y2, z2 & 15);
 						boolean vis = true;
 						for (int j = 0; j < neighbors1.length; j++) {
 							if (blocksLight(neighbors1[j], neighbors[i].isTransparent())) {
@@ -521,8 +521,8 @@ public class Chunk {
 														&& (y != 0 || i != 4)
 														&& (x != 0 || i != 0 || chx0)
 														&& (x != 15 || i != 1 || chx1)
-														&& (y != 0 || i != 3 || chy0)
-														&& (y != 15 || i != 2 || chy1)) {
+														&& (z != 0 || i != 3 || chy0)
+														&& (z != 15 || i != 2 || chy1)) {
 								revealBlock(x, y, z);
 								break;
 							}
@@ -661,6 +661,10 @@ public class Chunk {
 		return b == null || !(!b.isTransparent() && transparent);
 	}
 	
+	public boolean getsBlocked(Block b, Block a) {
+		return a != null && !(b == null || (b.isTransparent() && b != a));
+	}
+	
 	public boolean isGenerated() {
 		return generated;
 	}
@@ -699,12 +703,12 @@ public class Chunk {
 		if(y < 0 || y >= World.WORLD_HEIGHT) return;
 		BlockInstance bi = new BlockInstance(getBlockAt(x, y, z));
 		Block[] neighbors = getNeighbors(x, y ,z);
-		if(neighbors[0] != null) bi.neighborEast = true;
-		if(neighbors[1] != null) bi.neighborWest = true;
-		if(neighbors[2] != null) bi.neighborNorth = true;
-		if(neighbors[3] != null) bi.neighborSouth = true;
-		if(neighbors[4] != null) bi.neighborDown = true;
-		if(neighbors[5] != null) bi.neighborUp = true;
+		if(neighbors[0] != null) bi.neighborEast = getsBlocked(neighbors[0], bi.getBlock());
+		if(neighbors[1] != null) bi.neighborWest = getsBlocked(neighbors[1], bi.getBlock());
+		if(neighbors[2] != null) bi.neighborNorth = getsBlocked(neighbors[2], bi.getBlock());
+		if(neighbors[3] != null) bi.neighborSouth = getsBlocked(neighbors[3], bi.getBlock());
+		if(neighbors[4] != null) bi.neighborDown = getsBlocked(neighbors[4], bi.getBlock());
+		if(neighbors[5] != null) bi.neighborUp = getsBlocked(neighbors[5], bi.getBlock());
 		bi.setPosition(new Vector3i(x + (ox << 4), y, z + (oz << 4)));
 		bi.setStellarTorus(surface);
 		visibles.add(bi);
