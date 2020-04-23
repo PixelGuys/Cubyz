@@ -25,6 +25,18 @@ uniform mat4 modelViewNonInstancedMatrix;
 uniform mat4 viewMatrixInstanced;
 uniform mat4 lightViewMatrixInstanced;
 
+vec3 calcLight(int srgb)
+{
+    float s = (srgb >> 24) & 255;
+    float r = (srgb >> 16) & 255;
+    float g = (srgb >> 8) & 255;
+    float b = (srgb >> 0) & 255;
+    r = max(s*ambientLight.x, r);
+    g = max(s*ambientLight.y, g);
+    b = max(s*ambientLight.z, b);
+    return vec3(r, g, b);
+}
+
 void main()
 {
 	vec4 initPos = vec4(position, 1);
@@ -41,19 +53,19 @@ void main()
 		outColor = 0.003890625*(
 							(0.5-position.x)*(
 								(0.5-position.y)*(
-									(0.5-position.z)*vec3((easyLight[0] >> 16) & 255, (easyLight[0] >> 8) & 255, (easyLight[0] >> 0) & 255)
-									+(0.5+position.z)*vec3((easyLight[1] >> 16) & 255, (easyLight[1] >> 8) & 255, (easyLight[1] >> 0) & 255)
+									(0.5-position.z)*calcLight(easyLight[0])
+									+(0.5+position.z)*calcLight(easyLight[1])
 								) + (0.5+position.y)*(
-									(0.5-position.z)*vec3((easyLight[2] >> 16) & 255, (easyLight[2] >> 8) & 255, (easyLight[2] >> 0) & 255)
-									+(0.5+position.z)*vec3((easyLight[3] >> 16) & 255, (easyLight[3] >> 8) & 255, (easyLight[3] >> 0) & 255)
+									(0.5-position.z)*calcLight(easyLight[2])
+									+(0.5+position.z)*calcLight(easyLight[3])
 								)
 							) + (0.5+position.x)*(
 								(0.5-position.y)*(
-									(0.5-position.z)*vec3((easyLight[4] >> 16) & 255, (easyLight[4] >> 8) & 255, (easyLight[4] >> 0) & 255)
-									+(0.5+position.z)*vec3((easyLight[5] >> 16) & 255, (easyLight[5] >> 8) & 255, (easyLight[5] >> 0) & 255)
+									(0.5-position.z)*calcLight(easyLight[4])
+									+(0.5+position.z)*calcLight(easyLight[5])
 								) + (0.5+position.y)*(
-									(0.5-position.z)*vec3((easyLight[6] >> 16) & 255, (easyLight[6] >> 8) & 255, (easyLight[6] >> 0) & 255)
-									+(0.5+position.z)*vec3((easyLight[7] >> 16) & 255, (easyLight[7] >> 8) & 255, (easyLight[7] >> 0) & 255)
+									(0.5-position.z)*calcLight(easyLight[6])
+									+(0.5+position.z)*calcLight(easyLight[7])
 								)
 							));
 	} else {

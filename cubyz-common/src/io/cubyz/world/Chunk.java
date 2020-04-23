@@ -72,11 +72,11 @@ public class Chunk {
 	}
 	private BlockInstance getVisibleAbsoluteUnbound(int x, int y, int z) {
 		if(y < 0 || y >= World.WORLD_HEIGHT || !generated) return null;
-		int rx = x - ox << 4;
-		int rz = z - oz << 4;
+		int rx = x - (ox << 4);
+		int rz = z - (oz << 4);
 		if(rx < 0 || rx > 15 || rz < 0 || rz > 15) {
-			Chunk chunk = surface._getNoGenerateChunk((x & ~15) >> 4, (y & ~15) >> 4);
-			if(chunk != null) return chunk.getVisibleAbsoluteUnbound(x & 15, y, z & 15);
+			Chunk chunk = surface._getNoGenerateChunk((x & ~15) >> 4, (z & ~15) >> 4);
+			if(chunk != null) return chunk.getVisibleAbsoluteUnbound(x, y, z);
 			return null;
 		}
 		return inst[(x << 4) | (y << 8) | z];
@@ -914,13 +914,7 @@ public class Chunk {
 			if(chunk != null) return chunk.getLight(x & 15, y, z & 15, sunLight);
 			return -1;
 		}
-		int ret = light[(x << 4) | (y << 8) | z];
-		int sun = (ret >>> 24) & 255;
-		int r = Math.max((ret >>> 16) & 255, (int)(sun*sunLight.x));
-		int g = Math.max((ret >>> 8) & 255, (int)(sun*sunLight.y));
-		int b = Math.max((ret >>> 0) & 255, (int)(sun*sunLight.z));
-		ret = (r << 16) | (g << 8) | b;
-		return ret;
+		return light[(x << 4) | (y << 8) | z];
 		
 	}
 	
