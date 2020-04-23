@@ -187,8 +187,7 @@ public class Cubyz implements IGameLogic {
 					dx = rnd.nextInt(surface.getAnd()+1);
 					dz = rnd.nextInt(surface.getAnd()+1);
 					CubyzLogger.i.info("Trying " + dx + " ? " + dz);
-					world.getCurrentTorus().synchronousSeek(dx, dz);
-					highestY = world.getCurrentTorus().getHighestY(dx, dz);
+					highestY = world.getCurrentTorus().getHeight(dx, dz);
 					if(highestY >= 0) // Make sure the player starts on a solid block.
 						break;
 				}

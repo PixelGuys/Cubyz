@@ -31,15 +31,6 @@ public abstract class Surface {
 			throw new IllegalArgumentException("Handler isn't accepted by surface");
 		}
 	}
-
-	public int getHighestY(int x, int z) {
-		for (int y = World.WORLD_HEIGHT-1; y > 0; y--) {
-			if (getBlock(x, y, z) != null && getBlock(x, y, z).isSolid()) {
-				return y;
-			}
-		}
-		return -1; // not generated or void
-	}
 	
 	public abstract void removeBlock(int x, int y, int z);
 	public abstract void placeBlock(int x, int y, int z, Block b);
@@ -70,6 +61,7 @@ public abstract class Surface {
 	public abstract void addEntity(Entity en);
 	
 	public abstract void synchronousSeek(int x, int z);
+	public abstract int getHeight(int x, int z);
 	public abstract void seek(int x, int z);
 	
 	public abstract void cleanup();
