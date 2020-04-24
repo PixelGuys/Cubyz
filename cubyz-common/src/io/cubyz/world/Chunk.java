@@ -7,6 +7,7 @@ import java.util.Map;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 
+import io.cubyz.base.init.BlockInit;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.blocks.BlockInstance;
@@ -66,7 +67,7 @@ public class Chunk {
 		if(x < 0 || x > 15 || z < 0 || z > 15) {
 			Chunk chunk = surface._getNoGenerateChunk(ox + ((x & ~15) >> 4), oz + ((z & ~15) >> 4));
 			if(chunk != null) return chunk.getBlockUnbound(x & 15, y, z & 15);
-			return null;
+			return BlockInit.dirt; // Let the lighting engine think this region is blocked.
 		}
 		return blocks[(x << 4) | (y << 8) | z];
 	}
