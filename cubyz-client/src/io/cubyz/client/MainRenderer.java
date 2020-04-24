@@ -9,6 +9,7 @@ import org.joml.Vector3f;
 import org.joml.Vector4f;
 import org.lwjgl.opengl.GL13C;
 
+import io.cubyz.Settings;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
@@ -214,7 +215,7 @@ public class MainRenderer implements IRenderer {
 								(z < -0.5001f && !bi.neighborNorth)) {
 							Spatial tmp = (Spatial) bi.getSpatial();
 							tmp.setPosition(x, y, z);
-							if(Chunk.easyLighting)
+							if(Settings.easyLighting)
 								ch.getCornerLight(bi.getX() & 15, bi.getY(), bi.getZ() & 15, ambientLight, tmp.light);
 							if (tmp.isSelected()) {
 								selected = tmp;
@@ -342,7 +343,7 @@ public class MainRenderer implements IRenderer {
 			shaderProgram.setUniform("shadowEnabled", true);
 		} else {
 			shaderProgram.setUniform("shadowEnabled", false);
-			if (Chunk.easyLighting) {
+			if (Settings.easyLighting) {
 				shaderProgram.setUniform("cheapLighting", true);
 			}
 		}
@@ -427,7 +428,7 @@ public class MainRenderer implements IRenderer {
 
 		shaderProgram.setUniform("ambientLight", ambientLight);
 		shaderProgram.setUniform("specularPower", specularPower);
-		if(!Chunk.easyLighting) {
+		if(!Settings.easyLighting) {
 			// Process Point Lights
 			int numLights = pointLightList != null ? pointLightList.length : 0;
 			for (int i = 0; i < numLights; i++) {

@@ -28,7 +28,6 @@ public class LocalWorld extends World {
 	private long milliTime;
 	private long gameTime;
 	public boolean inLqdUpdate;
-	private int renderDistance = 5;
 	private WorldIO wio;
 	
 	public LocalWorld(String name) {
@@ -75,16 +74,6 @@ public class LocalWorld extends World {
 	@Override
 	public void setGameTime(long time) {
 		this.gameTime = time;
-	}
-
-	@Override
-	public void setRenderDistance(int RD) {
-		renderDistance = RD;
-	}
-
-	@Override
-	public int getRenderDistance() {
-		return renderDistance;
 	}
 
 	@Override

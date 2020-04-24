@@ -1,6 +1,7 @@
 package io.cubyz.ui;
 
 import io.cubyz.Constants;
+import io.cubyz.Settings;
 import io.cubyz.client.Cubyz;
 import io.cubyz.entity.Player;
 import io.cubyz.entity.PlayerEntity.PlayerImpl;
@@ -43,7 +44,7 @@ public class DebugOverlay extends MenuGUI {
 				
 				NGraphics.drawText(0, 48, "XYZ: " + x + ", " + y + ", " + z);
 				NGraphics.drawText(0, 60, "Loaded Chunks: " + world.getCurrentTorus().getChunks().length);
-				NGraphics.drawText(0, 72, "Render Distance: " + world.getRenderDistance());
+				NGraphics.drawText(0, 72, "Render Distance: " + Settings.renderDistance);
 				NGraphics.drawText(0, 84, "Game Time: " + world.getGameTime());
 				if (world instanceof LocalWorld) {
 					NGraphics.drawText(0, 96, "Chunk Queue Size: " + ((LocalSurface) world.getCurrentTorus()).getChunkQueueSize());

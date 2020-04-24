@@ -9,6 +9,7 @@ import java.util.concurrent.LinkedBlockingDeque;
 
 import org.joml.Vector4f;
 
+import io.cubyz.Settings;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.base.init.ItemInit;
 import io.cubyz.base.init.MaterialInit;
@@ -546,7 +547,7 @@ public class LocalSurface extends Surface {
 	
 	@Override
 	public void seek(int x, int z) {
-		int renderDistance = torus.world.getRenderDistance();
+		int renderDistance = Settings.renderDistance;
 		int local = x & 15;
 		x >>= 4;
 		x += renderDistance;

@@ -12,6 +12,7 @@ import static org.lwjgl.opengl.GL31.*;
 import static org.lwjgl.opengl.GL33.*;
 import org.lwjgl.system.MemoryUtil;
 
+import io.cubyz.Settings;
 import io.cubyz.client.MainRenderer;
 import io.cubyz.util.FastList;
 import io.cubyz.world.Chunk;
@@ -239,7 +240,7 @@ public class InstancedMesh extends Mesh {
 			Spatial spatial = spatials[i+startIndex];
 			Matrix4f modelMatrix = transformation.getModelMatrix(spatial);
 			modelMatrix.get(INSTANCE_SIZE_FLOATS * i, instanceDataBuffer);
-			if (Chunk.easyLighting) {
+			if (Settings.easyLighting) {
 				for(int j = 0; j < 8; j++) {
 					instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 16 + j, Float.intBitsToFloat(spatial.light[j]));
 				}

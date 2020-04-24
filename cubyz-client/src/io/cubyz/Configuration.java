@@ -32,7 +32,7 @@ public class Configuration {
 		obj.add("keybindings", kb);
 		obj.addProperty("language", Cubyz.lang.getLocale());
 		obj.addProperty("discordIntegration", DiscordIntegration.isEnabled());
-		obj.addProperty("fogCoefficient", Cubyz.fogCoefficient);
+		obj.addProperty("fogCoefficient", Settings.fogCoefficient);
 		
 		try {
 			FileWriter writer = new FileWriter("configuration.json");
@@ -76,7 +76,7 @@ public class Configuration {
 		}
 		
 		if (obj.has("fogCoefficient")) {
-			Cubyz.fogCoefficient = obj.get("fogCoefficient").getAsFloat();
+			Settings.fogCoefficient = obj.get("fogCoefficient").getAsFloat();
 		}
 	}
 	

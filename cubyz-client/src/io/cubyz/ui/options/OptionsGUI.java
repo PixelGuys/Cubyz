@@ -12,10 +12,10 @@ import io.jungle.Window;
 public class OptionsGUI extends MenuGUI {
 
 	private Button done = new Button();
+	private Button graphics = new Button();
 	private Button language = new Button();
 	private Button rpc = new Button();
 	private Button bindings = new Button();
-	private Button fog = new Button();
 	
 	private ContextualTextKey langKey = new ContextualTextKey("gui.cubyz.options.language", 1);
 	private ContextualTextKey rpcKey = new ContextualTextKey("gui.cubyz.options.discord", 1);
@@ -30,6 +30,14 @@ public class OptionsGUI extends MenuGUI {
 		
 		done.setOnAction(() -> {
 			Cubyz.gameUI.back();
+		});
+		
+		graphics.setSize(250, 45);
+		graphics.setText(new TextKey("gui.cubyz.options.graphics"));
+		graphics.setFontSize(16f);
+		
+		graphics.setOnAction(() -> {
+			Cubyz.gameUI.setMenu(new GraphicsGUI());
 		});
 		
 		bindings.setSize(250, 45);
@@ -72,49 +80,22 @@ public class OptionsGUI extends MenuGUI {
 			}
 		});
 		
-		if (Cubyz.fogCoefficient == 0f) {
-			fog.setText(new TextKey("gui.cubyz.options.fog.off"));
-		} else if (Cubyz.fogCoefficient <= 5f) {
-			fog.setText(new TextKey("gui.cubyz.options.fog.near"));
-		} if (Cubyz.fogCoefficient > 5f && Cubyz.fogCoefficient < 15f) {
-			fog.setText(new TextKey("gui.cubyz.options.fog.med"));
-		} else {
-			fog.setText(new TextKey("gui.cubyz.options.fog.far"));
-		}
-		fog.setOnAction(() -> {
-			if (Cubyz.fogCoefficient == 0f) { // off
-				Cubyz.fogCoefficient = 5f;
-				fog.setText(new TextKey("gui.cubyz.options.fog.near"));
-			} else if (Cubyz.fogCoefficient <= 5f) { // near
-				Cubyz.fogCoefficient = 10f;
-				fog.setText(new TextKey("gui.cubyz.options.fog.med"));
-			} else if (Cubyz.fogCoefficient > 5f && Cubyz.fogCoefficient < 15f) { // medium
-				Cubyz.fogCoefficient = 15f;
-				fog.setText(new TextKey("gui.cubyz.options.fog.far"));
-			} else { // far
-				Cubyz.fogCoefficient = 0f;
-				fog.setText(new TextKey("gui.cubyz.options.fog.off"));
-			}
-		});
-		fog.setSize(250, 45);
-		fog.setFontSize(16f);
-		
 	}
 
 	@Override
 	public void render(long nvg, Window win) {
 		done.setPosition(win.getWidth() / 2 - 125, win.getHeight() - 75);
-		language.setPosition(win.getWidth() / 2 - 125, 75);
-		rpc.setPosition(win.getWidth() / 2 - 125, 150);
-		bindings.setPosition(win.getWidth() / 2 - 125, 215);
-		fog.setPosition(win.getWidth() / 2 - 125, 280);
+		graphics.setPosition(win.getWidth() / 2 - 125, 75);
+		language.setPosition(win.getWidth() / 2 - 125, 150);
+		rpc.setPosition(win.getWidth() / 2 - 125, 225);
+		bindings.setPosition(win.getWidth() / 2 - 125, 300);
 		rpcKey.setArgument(0, DiscordIntegration.isEnabled() ? Cubyz.lang.translate(new TextKey("gui.cubyz.general.on")) : Cubyz.lang.translate(new TextKey("gui.cubyz.general.off")));
-		
+
 		done.render(nvg, win);
+		graphics.render(nvg, win);
 		language.render(nvg, win);
 		rpc.render(nvg, win);
 		bindings.render(nvg, win);
-		fog.render(nvg, win);
 	}
 	
 	@Override

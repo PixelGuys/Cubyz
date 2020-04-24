@@ -83,15 +83,6 @@ public class RemoteWorld extends World {
 	}
 
 	@Override
-	public int getRenderDistance() {
-		return 4;
-	}
-
-	@Override
-	public void setRenderDistance(int rd) {
-	}
-
-	@Override
 	public void cleanup() {
 		
 	}

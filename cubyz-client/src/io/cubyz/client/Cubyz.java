@@ -97,8 +97,6 @@ public class Cubyz implements IGameLogic {
 	public static boolean isOnlineServerOpened = false;
 
 	public static boolean clientShowDebug = false;
-	
-	public static float fogCoefficient = 10f;
 
 	public static Cubyz instance;
 	
@@ -621,13 +619,13 @@ public class Cubyz implements IGameLogic {
 			
 			// render distance
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_MINUS)) {
-				if(world.getRenderDistance() >= 2)
-					world.setRenderDistance(world.getRenderDistance()-1);
+				if(Settings.renderDistance >= 2)
+					Settings.renderDistance--;
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_MINUS, false);
 				System.gc();
 			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_EQUAL)) {
-				world.setRenderDistance(world.getRenderDistance()+1);
+				Settings.renderDistance++;
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_EQUAL, false);
 				System.gc();
 			}
@@ -811,12 +809,12 @@ public class Cubyz implements IGameLogic {
 			light.setIntensity(world.getCurrentTorus().getGlobalLighting());
 			clearColor = world.getCurrentTorus().getClearColor();
 			ctx.getFog().setColor(clearColor);
-			if (fogCoefficient == 0) {
+			if (Settings.fogCoefficient == 0) {
 				ctx.getFog().setActive(false);
 			} else {
 				ctx.getFog().setActive(true);
 			}
-			ctx.getFog().setDensity(1 / (world.getRenderDistance()*fogCoefficient));
+			ctx.getFog().setDensity(1 / (Settings.renderDistance*Settings.fogCoefficient));
 			Player player = world.getLocalPlayer();
 			Block bi = world.getCurrentTorus().getBlock(player.getPosition().x+Math.round(player.getPosition().relX), (int)(player.getPosition().y)+3, player.getPosition().z+Math.round(player.getPosition().relZ));
 			if(bi != null && !bi.isSolid()) {

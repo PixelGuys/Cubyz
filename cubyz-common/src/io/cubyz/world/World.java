@@ -42,9 +42,6 @@ public abstract class World {
 		throw new UnsupportedOperationException();
 	}
 	
-	public abstract void setRenderDistance(int RD);
-	public abstract int getRenderDistance();
-	
 	public abstract List<StellarTorus> getToruses();
 	public abstract Surface getCurrentTorus();
 	

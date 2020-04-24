@@ -7,6 +7,7 @@ import java.util.Map;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 
+import io.cubyz.Settings;
 import io.cubyz.base.init.BlockInit;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.Block.BlockClass;
@@ -25,7 +26,6 @@ public class Chunk {
 	private static final int[] ndx = {-1, 1, 0, 0, 0, 0};
 	private static final int[] ndy = {0, 0, -1, 1, 0, 0};
 	private static final int[] ndz = {0, 0, 0, 0, -1, 1};
-	public static boolean easyLighting = true; // Enables the easy-lighting system.
 	// Due to having powers of 2 as dimensions it is more efficient to use a one-dimensional array.
 	private Block[] blocks;
 	private BlockInstance[] inst; // Stores all visible BlockInstances. Can be faster accessed using coordinates.
@@ -46,7 +46,7 @@ public class Chunk {
 			ox &= surface.getAnd() >>> 4;
 			oz &= surface.getAnd() >>> 4;
 		}
-		if(easyLighting) {
+		if(Settings.easyLighting) {
 			light = new int[16*World.WORLD_HEIGHT*16];
 		}
 		this.ox = ox;
@@ -252,7 +252,7 @@ public class Chunk {
 	}
 	private int localLightUpdate(int x, int y, int z, int shift, int mask) {
 		// Make some bound checks:
-		if(!easyLighting || y < 0 || y >= World.WORLD_HEIGHT || !generated) return -1;
+		if(!Settings.easyLighting || y < 0 || y >= World.WORLD_HEIGHT || !generated) return -1;
 		// Check if it's inside this chunk:
 		if(x < 0 || x > 15 || z < 0 || z > 15) {
 			Chunk chunk = surface._getNoGenerateChunk(ox + ((x & ~15) >> 4), oz + ((z & ~15) >> 4));
@@ -561,7 +561,7 @@ public class Chunk {
 			}
 		}
 		// Do some light updates.
-		if(easyLighting) {
+		if(Settings.easyLighting) {
 			ArrayList<int[]> lightUpdates = new ArrayList<>();
 			// First of all update the top air blocks on which the sun is constant:
 			int y0 = World.WORLD_HEIGHT;
