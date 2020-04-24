@@ -698,7 +698,9 @@ public class Chunk {
 	public synchronized void revealBlock(int x, int y, int z) {
 		// Make some sanity check for y coordinate:
 		if(y < 0 || y >= World.WORLD_HEIGHT) return;
-		BlockInstance bi = new BlockInstance(getBlockAt(x, y, z));
+		Block b = getBlockAt(x, y, z);
+		if(b == null) return; // TODO: Don't know why this happens(it shouldn't happen!), but it happens.
+		BlockInstance bi = new BlockInstance(b);
 		Block[] neighbors = getNeighbors(x, y ,z);
 		if(neighbors[0] != null) bi.neighborEast = getsBlocked(neighbors[0], bi.getBlock());
 		if(neighbors[1] != null) bi.neighborWest = getsBlocked(neighbors[1], bi.getBlock());
@@ -744,7 +746,7 @@ public class Chunk {
 		for (int i = 0; i < neighbors.length; i++) {
 			Block inst = neighbors[i];
 			if (inst != null) {
-				Chunk ch = getChunk(x+ndx[i], z+ndz[i]);
+				Chunk ch = getChunk(x+ndx[i]+(ox << 4), z+ndz[i]+(oz << 4));
 				if (!ch.contains(x+ndx[i]+(ox << 4), y+ndy[i], z+ndz[i]+(oz << 4))) {
 					ch.revealBlock((x+ndx[i]) & 15, y+ndy[i], (z+ndz[i]) & 15);
 				}

@@ -46,7 +46,7 @@ public class FastList<T> {
 	}
 	
 	public void remove(int index) {
-		System.arraycopy(array, index, array, index-1, array.length-index-1);
+		System.arraycopy(array, index+1, array, index, array.length-index-1);
 		size--;
 	}
 	
