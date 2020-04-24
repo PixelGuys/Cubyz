@@ -64,7 +64,7 @@ public class Chunk {
 	private Block getBlockUnbound(int x, int y, int z) {
 		if(y < 0 || y >= World.WORLD_HEIGHT || !generated) return null;
 		if(x < 0 || x > 15 || z < 0 || z > 15) {
-			Chunk chunk = surface._getNoGenerateChunk(ox + ((x & ~15) >> 4), oz + ((y & ~15) >> 4));
+			Chunk chunk = surface._getNoGenerateChunk(ox + ((x & ~15) >> 4), oz + ((z & ~15) >> 4));
 			if(chunk != null) return chunk.getBlockUnbound(x & 15, y, z & 15);
 			return null;
 		}
