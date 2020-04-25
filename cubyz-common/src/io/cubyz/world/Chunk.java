@@ -49,6 +49,8 @@ public class Chunk {
 		if(Settings.easyLighting) {
 			light = new int[16*World.WORLD_HEIGHT*16];
 		}
+		inst = new BlockInstance[16*World.WORLD_HEIGHT*16];
+		blocks = new Block[16*World.WORLD_HEIGHT*16];
 		this.ox = ox;
 		this.oz = oz;
 		this.surface = surface;
@@ -389,16 +391,13 @@ public class Chunk {
 	}
 	
 	public void addBlock(Block b, int x, int y, int z) {
-		if(blocks == null) {
-			blocks = new Block[16*World.WORLD_HEIGHT*16];
-		} else { // Checks if there is a block on that position and deposits it if degradable.
-			Block b2 = getBlockAt(x, y, z);
-			if(b2 != null) {
-				if(!b2.isDegradable() || b.isDegradable()) {
-					return;
-				}
-				removeBlockAt(x, y, z, false);
+		// Checks if there is a block on that position and deposits it if degradable.
+		Block b2 = getBlockAt(x, y, z);
+		if(b2 != null) {
+			if(!b2.isDegradable() || b.isDegradable()) {
+				return;
 			}
+			removeBlockAt(x, y, z, false);
 		}
 		if(b.hasBlockEntity() || b.getBlockClass() == BlockClass.FLUID) {
 			BlockInstance inst0 = new BlockInstance(b);
@@ -456,9 +455,6 @@ public class Chunk {
 	}
 	
 	public void generateFrom(SurfaceGenerator gen) {
-		if(blocks == null) {
-			blocks = new Block[16*World.WORLD_HEIGHT*16];
-		}
 		gen.generate(this, surface);
 		generated = true;
 	}
@@ -728,7 +724,7 @@ public class Chunk {
 			return;
 		hideBlock(x & 15, y, z & 15);
 		if (bi.getBlockClass() == BlockClass.FLUID) {
-			liquids.remove(bi);
+			liquids.remove(((x & 15) << 4) | (y << 8) | (z & 15));
 		}
 		if (bi.hasBlockEntity()) {
 			blockEntities.remove(bi);
