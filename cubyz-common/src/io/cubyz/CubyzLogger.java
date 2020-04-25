@@ -2,6 +2,8 @@ package io.cubyz;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.DateFormat;
@@ -16,14 +18,24 @@ import java.util.logging.Logger;
 public class CubyzLogger extends Logger {
 
 	public static boolean useDefaultHandler = false;
+	
 	/**
-	 * Same as <code>instance</code>
+	 * Shortcut for {@link CubyzLogger#instance}
 	 */
-	public static CubyzLogger i; // instance
+	public static CubyzLogger i;
+	
 	public static CubyzLogger instance;
 	
 	static {
 		instance = i = new CubyzLogger();
+	}
+	
+	public void throwable(Throwable t) {
+		StringWriter w = new StringWriter();
+		PrintWriter pw = new PrintWriter(w);
+		t.printStackTrace(pw);
+		pw.close();
+		log(Level.SEVERE, w.toString());
 	}
 	
 	protected CubyzLogger() {

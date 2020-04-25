@@ -39,6 +39,7 @@ public class Button extends Component {
 	private Runnable run;
 	private float fontSize = 12f;
 	private TextKey text;
+	private Object userObject;
 	
 	public Button() {}
 	
@@ -52,6 +53,14 @@ public class Button extends Component {
 	
 	public TextKey getText() {
 		return text;
+	}
+	
+	public Object getUserObject() {
+		return userObject;
+	}
+	
+	public void setUserObject(Object obj) {
+		userObject = obj;
 	}
 
 	public void setText(String text) {

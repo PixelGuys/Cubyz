@@ -1,8 +1,15 @@
 package io.cubyz.ui;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.FileVisitResult;
+import java.nio.file.FileVisitor;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
 
 import io.cubyz.ClientOnly;
+import io.cubyz.CubyzLogger;
 import io.cubyz.blocks.Block;
 import io.cubyz.client.Cubyz;
 import io.cubyz.translate.ContextualTextKey;
@@ -53,18 +60,45 @@ public class SaveSelectorGUI extends MenuGUI {
 			b.setSize(100, 40);
 			b.setPosition(220, y);
 			int index = i;
-			b.setOnAction(() -> {
-				// Delete the folder
-				String[] entries = listOfFiles[index].list();
-				for(String s: entries){
-				    File currentFile = new File(listOfFiles[index].getPath(),s);
-				    currentFile.delete();
+			Path path = listOfFiles[i].toPath();
+			b.setOnAction(new Runnable() {
+				public void run() {
+					// Delete the folder
+					try {
+						Files.walkFileTree(path, new FileVisitor<Path>() {
+	
+							@Override
+							public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+								return FileVisitResult.CONTINUE;
+							}
+	
+							@Override
+							public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+								Files.delete(file);
+								return FileVisitResult.CONTINUE;
+							}
+	
+							@Override
+							public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+								CubyzLogger.i.throwable(exc);
+								return FileVisitResult.TERMINATE;
+							}
+	
+							@Override
+							public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+								Files.delete(dir);
+								return FileVisitResult.CONTINUE;
+							}
+							
+						});
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+					// Remove the buttons:
+					saveButtons[index] = null;
+					deleteButtons[index] = null;
+					init(nvg); // re-init to re-order
 				}
-				listOfFiles[index].delete();
-				// Remove the buttons:
-				saveButtons[index] = null;
-				deleteButtons[index] = null;
-				init(nvg); // re-init to re-order
 			});
 			y += 60;
 			deleteButtons[i] = b;

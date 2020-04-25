@@ -3,11 +3,13 @@ package io.jungle;
 import de.matthiasmann.twl.utils.PNGDecoder;
 import de.matthiasmann.twl.utils.PNGDecoder.Format;
 
+import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 
-import static org.lwjgl.opengl.GL12.*;
+import static org.lwjgl.opengl.GL30.*;
 
 public class Texture {
 
@@ -17,8 +19,12 @@ public class Texture {
 	protected int internalFormat;
 	protected InputStream is;
 
-	public Texture(String fileName) throws Exception {
+	public Texture(String fileName) throws IOException {
 		this(new FileInputStream(fileName));
+	}
+	
+	public Texture(File file) throws IOException {
+		this(new FileInputStream(file));
 	}
 
 	public Texture(InputStream is) {

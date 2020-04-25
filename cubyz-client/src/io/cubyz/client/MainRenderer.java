@@ -1,13 +1,11 @@
 package io.cubyz.client;
 
-import static org.lwjgl.opengl.GL11.*;
-import static org.lwjgl.opengl.GL13.glActiveTexture;
+import static org.lwjgl.opengl.GL13C.*;
 
 import org.joml.FrustumIntersection;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
-import org.lwjgl.opengl.GL13C;
 
 import io.cubyz.Settings;
 import io.cubyz.blocks.Block;
@@ -90,6 +88,8 @@ public class MainRenderer implements IRenderer {
 		shaderProgram.createUniform("viewMatrixInstanced");
 		shaderProgram.createUniform("lightViewMatrixInstanced");
 		shaderProgram.createUniform("texture_sampler");
+		shaderProgram.createUniform("shadowMap");
+		shaderProgram.createUniform("break_sampler");
 		shaderProgram.createUniform("ambientLight");
 		shaderProgram.createUniform("selectedNonInstanced");
 		shaderProgram.createUniform("specularPower");
@@ -100,7 +100,6 @@ public class MainRenderer implements IRenderer {
 		shaderProgram.createSpotLightListUniform("spotLights", MAX_SPOT_LIGHTS);
 		shaderProgram.createDirectionalLightUniform("directionalLight");
 		shaderProgram.createFogUniform("fog");
-		shaderProgram.createUniform("shadowMap");
 		shaderProgram.createUniform("cheapLighting");
 		
 		depthShaderProgram = new ShaderProgram();
@@ -166,6 +165,7 @@ public class MainRenderer implements IRenderer {
 		
 		Spatial selected = null;
 		int selectedBlock = -1;
+		float breakAnim = 0f;
 		if (blocks.length != map.length) {
 			map = (FastList<Spatial>[]) new FastList[blocks.length];
 			int arrayListCapacity = 10;
@@ -220,6 +220,7 @@ public class MainRenderer implements IRenderer {
 							if (tmp.isSelected()) {
 								selected = tmp;
 								selectedBlock = bi.getID();
+								breakAnim = bi.getBreakingAnim();
 								continue;
 							}
 							map[bi.getID()].add(tmp);
@@ -238,15 +239,7 @@ public class MainRenderer implements IRenderer {
 				map[b.ID].sort((sa, sb) -> {
 					ctx.getCamera().getPosition().sub(sa.getPosition(), tmpa);
 					ctx.getCamera().getPosition().sub(sb.getPosition(), tmpb);
-					float lenA = tmpa.lengthSquared();
-					float lenB = tmpb.lengthSquared();
-					if (lenA > lenB) {
-						return 1;
-					} else if (lenA == lenB) {
-						return 0;
-					} else {
-						return -1;
-					}
+					return (int) (tmpa.lengthSquared() - tmpb.lengthSquared());
 				});
 			}
 		}
@@ -263,7 +256,7 @@ public class MainRenderer implements IRenderer {
 			ctx.getCamera().setViewMatrix(transformation.getViewMatrix(ctx.getCamera()));
 		}
 		renderScene(ctx, ambientLight, null /* point light */, null /* spot light */, directionalLight, map, blocks, entities, spatials,
-				localPlayer, selected, selectedBlock);
+				localPlayer, selected, selectedBlock, breakAnim);
 		if (ctx.getHud() != null) {
 			ctx.getHud().render(window);
 		}
@@ -330,12 +323,13 @@ public class MainRenderer implements IRenderer {
 	
 	public void renderScene(Context ctx, Vector3f ambientLight, PointLight[] pointLightList, SpotLight[] spotLightList,
 			DirectionalLight directionalLight, FastList<Spatial>[] map, Block[] blocks, Entity[] entities, Spatial[] spatials, Player p, Spatial selected,
-			int selectedBlock) {
+			int selectedBlock, float breakAnim) {
 		shaderProgram.bind();
 		
 		shaderProgram.setUniform("fog", ctx.getFog());
 		shaderProgram.setUniform("projectionMatrix", ctx.getWindow().getProjectionMatrix());
 		shaderProgram.setUniform("texture_sampler", 0);
+		shaderProgram.setUniform("break_sampler", 2);
 		if (shadowMap != null) {
 			shaderProgram.setUniform("orthoProjectionMatrix", getShadowProjectionMatrix());
 			shaderProgram.setUniform("lightViewMatrixInstanced", getLightViewMatrix(directionalLight));
@@ -360,14 +354,33 @@ public class MainRenderer implements IRenderer {
 			if (mesh == null) { // TODO: remove, prob related to custom ores
 				return;
 			}
+			mesh.getMaterial().setTexture(Meshes.blockTextures.get(blocks[i]));
 			shaderProgram.setUniform("material", mesh.getMaterial());
 			if (selectedBlock == i) {
 				map[i].add(selected);
 			}
 			if (mesh.isInstanced()) {
 				if (shadowMap != null) {
-					glActiveTexture(GL13C.GL_TEXTURE1);
+					glActiveTexture(GL_TEXTURE1);
 					glBindTexture(GL_TEXTURE_2D, shadowMap.getDepthMapFBO().getDepthTexture().getId());
+				}
+				if (breakAnim > 0f && breakAnim < 1f) {
+					float step = 1f / Cubyz.breakAnimations.length;
+					int breakStep = 0;
+					for (float idx = step; i < 1f; i += step) {
+						if (breakAnim < idx) {
+							break;
+						}
+						breakStep++;
+					}
+					if (breakStep >= Cubyz.breakAnimations.length) {
+						breakStep = Cubyz.breakAnimations.length-1;
+					}
+					if (breakStep > 0) {
+						breakStep = 0;
+					}
+					glActiveTexture(GL_TEXTURE2);
+					glBindTexture(GL_TEXTURE_2D, Cubyz.breakAnimations[breakStep].getId());
 				}
 				InstancedMesh ins = (InstancedMesh) mesh;
 				shaderProgram.setUniform("isInstanced", 1);

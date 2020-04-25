@@ -3,8 +3,11 @@ package io.cubyz.util;
 import java.lang.reflect.Array;
 import java.util.Comparator;
 
-// A faster list implementation. Velocity is reached by sacrificing bound checks, by keeping some additional memory(When removing elements they are not necessarily cleared from the array) and through direct data access.
-
+/** 
+ * A faster list implementation.
+ * Velocity is reached by sacrificing bound checks, by keeping some additional memory
+ * (When removing elements they are not necessarily cleared from the array) and through direct data access.
+**/
 public class FastList<T> {
 
 	public T[] array;
@@ -69,24 +72,17 @@ public class FastList<T> {
 		return size == 0;
 	}
 	
+	/**
+	 * Sort using Quick Sort algorithm.
+	 * @param comp comparator
+	 */
 	public void sort(Comparator<T> comp) {
-		/*
-		// TODO: use more efficient than bubble sort
-		for (int i = size-1; i > 0; i--) {
-			for (int j = 0; j < i; j++) {
-				if (comp.compare((T) array[j], (T) array[j + 1]) > 0) {
-					Object temp = array[j];
-					array[j] = array[j+1];
-					array[j+1] = temp;
-				}
-			}
-		}
-		*/
 		if (size > 0) {
 			sort(comp, 0, size-1);
 		}
 	}
 	
+	// quick sort algorithm
 	private void sort(Comparator<T> comp, int l, int r) {
 		int i = l, j = r;
 		

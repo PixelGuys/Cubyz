@@ -59,6 +59,7 @@ struct Fog {
 
 uniform sampler2D texture_sampler;
 uniform sampler2D shadowMap;
+uniform sampler2D break_sampler;
 uniform float specularPower;
 uniform Material material;
 uniform PointLight pointLights[MAX_POINT_LIGHTS];
@@ -76,6 +77,10 @@ void setupColours(Material material, vec2 textCoord)
     if (material.hasTexture == 1)
     {
         ambientC = texture(texture_sampler, textCoord);
+        vec4 data = texture(break_sampler, textCoord);
+        if (outSelected > 0 && outSelected < 1) { // selected value (being a float) is re-used for breaking animation
+        	ambientC += data;
+        }
         diffuseC = ambientC;
         speculrC = ambientC;
     }
@@ -201,5 +206,6 @@ void main()
     
     if (outSelected > 0) {
     	fragColor = vec4(fragColor.x, fragColor.y, 0.8, fragColor.w);
+    	
     }
 }

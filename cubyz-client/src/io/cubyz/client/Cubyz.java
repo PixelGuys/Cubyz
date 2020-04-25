@@ -73,6 +73,8 @@ public class Cubyz implements IGameLogic {
 	private SoundSource musicSource;
 	private int worldSeason = 0;
 	
+	public static Texture[] breakAnimations;
+	
 	public static Mesh skyBodyMesh;
 	private static Spatial skySun;
 	private static Spatial skyMoon;
@@ -84,7 +86,7 @@ public class Cubyz implements IGameLogic {
 	private int breakCooldown = 10;
 	private int buildCooldown = 10;
 
-	public static Logger log = CubyzLogger.i;
+	public static CubyzLogger log = CubyzLogger.i;
 
 	public static String serverIP = "localhost";
 	public static int serverPort = 58961;
@@ -168,7 +170,7 @@ public class Cubyz implements IGameLogic {
 			Mesh moonMesh = skyBodyMesh.cloneNoMaterial();
 			moonMesh.setMaterial(new Material(new Vector4f(0.3f, 0.3f, 0.3f, 1f), 0.9f));
 			skyMoon = new Spatial(moonMesh);
-			skyMoon.setScale(50f);
+			skyMoon.setScale(100f);
 			skyMoon.setPosition(new Vector3f(100, 1, 0));
 			worldSpatialList = new Spatial[] {skySun/*, skyMoon*/};
 		}
@@ -323,7 +325,6 @@ public class Cubyz implements IGameLogic {
 			Resource rsc = block.getRegistryID();
 			try {
 				Texture tex = null;
-				Mesh mesh = null;
 				BlockModel bm = null;
 				if (block.generatesModelAtRuntime()) {
 					bm = ResourceUtilities.loadModel(new Resource("cubyz:undefined"));
@@ -337,18 +338,21 @@ public class Cubyz implements IGameLogic {
 				}
 				
 				// Cached meshes
-				Mesh defaultMesh = null;
+				Mesh mesh = null;
 				for (String key : cachedDefaultModels.keySet()) {
 					if (key.equals(bm.subModels.get("default").model)) {
-						defaultMesh = cachedDefaultModels.get(key);
+						mesh = cachedDefaultModels.get(key);
 					}
 				}
-				if (defaultMesh == null) {
+				if (mesh == null) {
 					Resource rs = new Resource(bm.subModels.get("default").model);
-					defaultMesh = OBJLoader.loadMesh("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), true);
+					mesh = OBJLoader.loadMesh("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), true);
 					//defaultMesh = StaticMeshesLoader.loadInstanced("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), "assets/" + rs.getMod() + "/models/3d/")[0];
-					defaultMesh.setBoundingRadius(2.0f);
-					cachedDefaultModels.put(bm.subModels.get("default").model, defaultMesh);
+					((InstancedMesh) mesh).setInstances(512);
+					mesh.setBoundingRadius(2.0f);
+					Material material = new Material(tex, 0.6F);
+					mesh.setMaterial(material);
+					cachedDefaultModels.put(bm.subModels.get("default").model, mesh);
 				}
 				Resource texResource = new Resource(bm.subModels.get("default").texture);
 				String texture = texResource.getID();
@@ -364,14 +368,8 @@ public class Cubyz implements IGameLogic {
 									block.getRegistryID().toString())));
 				}
 				
-				mesh = defaultMesh.cloneNoMaterial();
-				if (mesh instanceof InstancedMesh) {
-					((InstancedMesh) mesh).setInstances(256);
-				}
-				Material material = new Material(tex, 0.6F);
-				mesh.setMaterial(material);
-				
 				Meshes.blockMeshes.put(block, mesh);
+				Meshes.blockTextures.put(block, tex);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -488,7 +486,19 @@ public class Cubyz implements IGameLogic {
 				CubyzLogger.instance.info("Missing optional sound files. Sounds are disabled.");
 			}
 			
-			System.gc();
+			renderDeque.add(() -> {
+				File[] list = new File("assets/cubyz/textures/breaking").listFiles();
+				ArrayList<Texture> breakingAnims = new ArrayList<>();
+				for (File file : list) {
+					try {
+						breakingAnims.add(new Texture(file));
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
+				breakAnimations = breakingAnims.toArray(new Texture[breakingAnims.size()]);
+				System.gc();
+			});
 		});
 		lt.start();
 	}

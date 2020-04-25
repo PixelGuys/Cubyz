@@ -13,9 +13,10 @@ import static org.lwjgl.opengl.GL33.*;
 import org.lwjgl.system.MemoryUtil;
 
 import io.cubyz.Settings;
+import io.cubyz.blocks.BlockInstance;
 import io.cubyz.client.MainRenderer;
 import io.cubyz.util.FastList;
-import io.cubyz.world.Chunk;
+import io.cubyz.world.BlockSpatial;
 import io.jungle.renderers.Transformation;
 
 public class InstancedMesh extends Mesh {
@@ -39,8 +40,6 @@ public class InstancedMesh extends Mesh {
 
 	public boolean isInstanced() {
 		return true;
-		// XXX
-		//return false;
 	}
 	
 	public InstancedMesh(int vao, int count, List<Integer> vaoIds, int numInstances) {
@@ -71,7 +70,7 @@ public class InstancedMesh extends Mesh {
 			start++;
 			strideStart += FLOAT_SIZE_BYTES;
 		}
-		// Selection:
+		// Selection/Breaking: 0 = not selected
 		glVertexAttribPointer(start, 1, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
 		glVertexAttribDivisor(start, 1);
 		start++;
@@ -245,7 +244,12 @@ public class InstancedMesh extends Mesh {
 					instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 16 + j, Float.intBitsToFloat(spatial.light[j]));
 				}
 			}
-			instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 24, spatial.isSelected() ? 1 : 0);
+			BlockInstance bi = ((BlockSpatial) spatial).getBlockInstance();
+			if (bi.getBreakingAnim() == 0f) {
+				instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 24, spatial.isSelected() ? 1 : 0);
+			} else {
+				instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 24, bi.getBreakingAnim());
+			}
 			
 			if (doShadow) {
 				modelMatrix.get(INSTANCE_SIZE_FLOATS * i + 25, instanceDataBuffer);

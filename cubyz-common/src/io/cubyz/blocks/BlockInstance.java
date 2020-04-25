@@ -68,8 +68,13 @@ public class BlockInstance {
 		return spatial;
 	}
 
+	float breakAnim = 0f;
 	public void setBreakingAnimation(float f) { // 0 <= f < 1
-		// TODO Overlay the block with the corresponding block break graphics.
+		breakAnim = f;
+	}
+	
+	public float getBreakingAnim() {
+		return breakAnim;
 	}
 	
 }
