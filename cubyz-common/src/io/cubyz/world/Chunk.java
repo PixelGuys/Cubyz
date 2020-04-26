@@ -24,8 +24,8 @@ import io.cubyz.world.generator.SurfaceGenerator;
 public class Chunk {
 	// used for easy for-loop access of neighbors and their relative direction:
 	private static final int[] ndx = {-1, 1, 0, 0, 0, 0};
-	private static final int[] ndy = {0, 0, -1, 1, 0, 0};
-	private static final int[] ndz = {0, 0, 0, 0, -1, 1};
+	private static final int[] ndy = {0, 0, 0, 0, -1, 1};
+	private static final int[] ndz = {0, 0, -1, 1, 0, 0};
 	// Due to having powers of 2 as dimensions it is more efficient to use a one-dimensional array.
 	private Block[] blocks;
 	private BlockInstance[] inst; // Stores all visible BlockInstances. Can be faster accessed using coordinates.
@@ -523,8 +523,8 @@ public class Chunk {
 														&& (y != 0 || i != 4)
 														&& (x != 0 || i != 0 || chx0)
 														&& (x != 15 || i != 1 || chx1)
-														&& (z != 0 || i != 3 || chy0)
-														&& (z != 15 || i != 2 || chy1)) {
+														&& (z != 0 || i != 2 || chy0)
+														&& (z != 15 || i != 3 || chy1)) {
 								revealBlock(x, y, z);
 								break;
 							}
@@ -944,30 +944,22 @@ public class Chunk {
 		z &= 15;
 		// 0 = EAST  (x - 1)
 		// 1 = WEST  (x + 1)
-		// 2 = NORTH (z + 1)
-		// 3 = SOUTH (z - 1)
+		// 2 = SOUTH (z - 1)
+		// 3 = NORTH (z + 1)
 		// 4 = DOWN
 		// 5 = UP
-		if(y+1 < World.WORLD_HEIGHT)
-			inst[5] = getBlockAt(x, y + 1, z);
-		if(y > 0)
-			inst[4] = getBlockAt(x, y - 1, z);
-		if((z & 15) != 0)
-			inst[3] = getBlockAt(x, y, (z - 1));
-		else
-			inst[3] = surface.getBlock(x + (ox << 4), y, z - 1 + (oz << 4));
-		if((z & 15) != 15)
-			inst[2] = getBlockAt(x, y, (z + 1));
-		else
-			inst[2] = surface.getBlock(x + (ox << 4), y, z + 1 + (oz << 4));
-		if((x & 15) != 15)
-			inst[1] = getBlockAt((x + 1), y, z);
-		else
-			inst[1] = surface.getBlock(x + 1 + (ox << 4), y, z + (oz << 4));
-		if((x & 15) != 0)
-			inst[0] = getBlockAt((x - 1), y, z);
-		else
-			inst[0] = surface.getBlock(x - 1 + (ox << 4), y, z + (oz << 4));
+		for(int i = 0; i < 6; i++) {
+			int xi = x+ndx[i];
+			int yi = y+ndy[i];
+			int zi = z+ndz[i];
+			if(yi == (yi&255)) { // Simple double-bound test for y.
+				if(xi == (xi & 15) && zi == (zi & 15)) { // Simple double-bound test for x and z.
+					inst[i] = getBlockAt(xi, yi, zi);
+				} else {
+					inst[i] = surface.getBlock(xi + (ox << 4), yi, zi + (oz << 4));
+				}
+			}
+		}
 		return inst;
 	}
 	
@@ -980,37 +972,15 @@ public class Chunk {
 	}
 	
 	public Block getNeighbor(int i, int x, int y, int z) {
-		// 0 = EAST  (x - 1)
-		// 1 = WEST  (x + 1)
-		// 2 = NORTH (z + 1)
-		// 3 = SOUTH (z - 1)
-		// 4 = DOWN
-		// 5 = UP
-		switch(i) {
-			case 5:
-				if(y+1 < World.WORLD_HEIGHT)
-					return getBlockAt(x & 15, y + 1, z & 15);
-				return null;
-			case 4:
-				if(y > 0)
-					return getBlockAt(x & 15, y - 1, z & 15);
-				return null;
-			case 3:
-				if((z & 15) != 0)
-					return getBlockAt(x & 15, y, (z - 1) & 15);
-				return surface.getBlock(x, y, z - 1);
-			case 2:
-				if((z & 15) != 15)
-					return getBlockAt(x & 15, y, (z - 1) & 15);
-				return surface.getBlock(x, y, z + 1);
-			case 1:
-				if((x & 15) != 0)
-					return getBlockAt((x + 1) & 15, y, z & 15);
-				return surface.getBlock(x + 1, y, z);
-			case 0:
-				if((x & 15) != 0)
-					return getBlockAt((x - 1) & 15, y, z & 15);
-				return surface.getBlock(x - 1, y, z);
+		int xi = x+ndx[i];
+		int yi = y+ndy[i];
+		int zi = z+ndz[i];
+		if(yi == (yi&255)) { // Simple double-bound test for y.
+			if(xi == (xi & 15) && zi == (zi & 15)) { // Simple double-bound test for x and z.
+				return getBlockAt(xi, yi, zi);
+			} else {
+				return surface.getBlock(xi + (ox << 4), yi, zi + (oz << 4));
+			}
 		}
 		return null;
 	}
