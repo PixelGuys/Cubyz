@@ -2,6 +2,7 @@ package io.jungle;
 
 import de.matthiasmann.twl.utils.PNGDecoder;
 import de.matthiasmann.twl.utils.PNGDecoder.Format;
+import io.cubyz.Settings;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -104,7 +105,9 @@ public class Texture {
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, decoder.getWidth(), decoder.getHeight(), 0, GL_RGBA, GL_UNSIGNED_BYTE,
 				buf);
 
-		//glGenerateMipmap(GL_TEXTURE_2D);
+		if (Settings.mipmapping) {
+			glGenerateMipmap(GL_TEXTURE_2D);
+		}
 		/* not used, and using it makes the game
 		 look ugly. So disabled for now to not use useless memory */
 		return textureId;

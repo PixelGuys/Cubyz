@@ -33,6 +33,7 @@ public class Configuration {
 		obj.addProperty("language", Cubyz.lang.getLocale());
 		obj.addProperty("discordIntegration", DiscordIntegration.isEnabled());
 		obj.addProperty("fogCoefficient", Settings.fogCoefficient);
+		obj.addProperty("useMipmaps", Settings.mipmapping);
 		
 		try {
 			FileWriter writer = new FileWriter("configuration.json");
@@ -77,6 +78,10 @@ public class Configuration {
 		
 		if (obj.has("fogCoefficient")) {
 			Settings.fogCoefficient = obj.get("fogCoefficient").getAsFloat();
+		}
+		
+		if (obj.has("useMipmaps")) {
+			Settings.mipmapping = obj.get("useMipmaps").getAsBoolean();
 		}
 	}
 	
