@@ -239,7 +239,7 @@ public class MainRenderer implements IRenderer {
 				map[b.ID].sort((sa, sb) -> {
 					ctx.getCamera().getPosition().sub(sa.getPosition(), tmpa);
 					ctx.getCamera().getPosition().sub(sb.getPosition(), tmpb);
-					return (int) (tmpa.lengthSquared() - tmpb.lengthSquared());
+					return (int) Math.signum(tmpa.lengthSquared() - tmpb.lengthSquared());
 				});
 			}
 		}

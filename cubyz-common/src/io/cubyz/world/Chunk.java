@@ -62,6 +62,9 @@ public class Chunk {
 		blocks[(x << 4) | (y << 8) | z] = b;
 	}
 	public Block getBlockAt(int x, int y, int z) {
+		if (y > World.WORLD_HEIGHT-1) {
+			y = World.WORLD_HEIGHT-1;
+		}
 		return blocks[(x << 4) | (y << 8) | z];
 	}
 	private Block getBlockUnbound(int x, int y, int z) {
