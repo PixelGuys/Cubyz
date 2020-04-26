@@ -85,7 +85,7 @@ public class Chunk {
 			if(chunk != null) return chunk.getVisibleAbsoluteUnbound(x, y, z);
 			return null;
 		}
-		return inst[(x << 4) | (y << 8) | z];
+		return inst[(rx << 4) | (y << 8) | rz];
 	}
 	
 	/**
