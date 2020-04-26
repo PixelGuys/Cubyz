@@ -17,6 +17,7 @@ import org.joml.Vector4f;
 import org.lwjgl.Version;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
 
 import io.cubyz.*;
 import io.cubyz.api.CubyzRegistries;
@@ -491,7 +492,9 @@ public class Cubyz implements IGameLogic {
 				ArrayList<Texture> breakingAnims = new ArrayList<>();
 				for (File file : list) {
 					try {
-						breakingAnims.add(new Texture(file));
+						Texture tex = new Texture(file);
+						tex.setWrapMode(GL12.GL_REPEAT);
+						breakingAnims.add(tex);
 					} catch (IOException e) {
 						e.printStackTrace();
 					}

@@ -367,7 +367,7 @@ public class MainRenderer implements IRenderer {
 				if (breakAnim > 0f && breakAnim < 1f) {
 					float step = 1f / Cubyz.breakAnimations.length;
 					int breakStep = 0;
-					for (float idx = step; i < 1f; i += step) {
+					for (float idx = step; idx < 1f; idx += step) {
 						if (breakAnim < idx) {
 							break;
 						}
@@ -376,11 +376,11 @@ public class MainRenderer implements IRenderer {
 					if (breakStep >= Cubyz.breakAnimations.length) {
 						breakStep = Cubyz.breakAnimations.length-1;
 					}
-					if (breakStep > 0) {
-						breakStep = 0;
-					}
 					glActiveTexture(GL_TEXTURE2);
 					glBindTexture(GL_TEXTURE_2D, Cubyz.breakAnimations[breakStep].getId());
+				} else {
+					glActiveTexture(GL_TEXTURE2);
+					glBindTexture(GL_TEXTURE_2D, 0);
 				}
 				InstancedMesh ins = (InstancedMesh) mesh;
 				shaderProgram.setUniform("isInstanced", 1);

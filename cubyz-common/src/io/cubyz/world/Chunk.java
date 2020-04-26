@@ -744,7 +744,7 @@ public class Chunk {
 			Block inst = neighbors[i];
 			if (inst != null) {
 				Chunk ch = getChunk(x+ndx[i]+(ox << 4), z+ndz[i]+(oz << 4));
-				if (!ch.contains(x+ndx[i]+(ox << 4), y+ndy[i], z+ndz[i]+(oz << 4))) {
+				if (!ch.contains(x+ndx[i]+(ox << 4), y+ndy[i], z+ndz[i]+(oz << 4))) { // TODO @IntegratedQuantum maybe we should take into account that getChunk CAN return null
 					ch.revealBlock((x+ndx[i]) & 15, y+ndy[i], (z+ndz[i]) & 15);
 				}
 				if (inst.getBlockClass() == BlockClass.FLUID) {
