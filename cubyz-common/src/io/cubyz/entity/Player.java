@@ -21,6 +21,7 @@ public abstract class Player extends Entity implements ICommandSource {
 	
 	public abstract Inventory getInventory();
 	public abstract void breaking(BlockInstance bi, int slot, Surface w);
+	public abstract void resetBlockBreaking();
 	public abstract boolean isFlying();
 	public abstract void setFlying(boolean fly);
 	

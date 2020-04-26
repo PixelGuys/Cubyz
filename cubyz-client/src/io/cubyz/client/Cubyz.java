@@ -894,6 +894,8 @@ public class Cubyz implements IGameLogic {
 					BlockInstance bi = msd.getSelectedBlockInstance();
 					world.getLocalPlayer().breaking(bi, inventorySelection, world.getCurrentTorus());
 				}
+			} else {
+				world.getLocalPlayer().resetBlockBreaking();
 			}
 			if (Keybindings.isPressed("place")) {
 				//Building Blocks

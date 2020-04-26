@@ -118,6 +118,7 @@ public class PlayerEntity extends EntityType {
 		@Override
 		public void breaking(BlockInstance bi, int slot, Surface w) {
 			if(bi != toBreak || breakingSlot != slot) {
+				resetBlockBreaking(); // Make sure block breaking animation is reset.
 				toBreak = bi;
 				breakingSlot = slot;
 				calculateBreakTime(bi, slot);
@@ -136,6 +137,14 @@ public class PlayerEntity extends EntityType {
 				if(inv.addItem(bi.getBlock().getBlockDrop(), 1) != 0) {
 					//DropItemOnTheGround(); //TODO: Add this function.
 				}
+			}
+		}
+
+		@Override
+		public void resetBlockBreaking() {
+			if(toBreak != null) {
+				toBreak.setBreakingAnimation(0);
+				toBreak = null;
 			}
 		}
 
