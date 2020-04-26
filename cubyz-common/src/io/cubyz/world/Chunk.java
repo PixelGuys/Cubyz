@@ -264,21 +264,24 @@ public class Chunk {
 			if(chunk != null) return chunk.localLightUpdate(x & 15, y, z & 15, shift, mask);
 			return -1;
 		}
+		int maxLight = 0;
+		
 		// Get all eight neighbors of this lighting node:
 		Block[] neighbors = new Block[8];
 		for(int dx = -1; dx <= 0; dx++) {
 			for(int dy = -1; dy <= 0; dy++) {
 				for(int dz = -1; dz <= 0; dz++) {
 					neighbors[7 + (dx << 2) + (dy << 1) + dz] = getBlockUnbound(x+dx, y+dy, z+dz);
+					// Take care about the case that this block is a light source:
+					if(neighbors[7 + (dx << 2) + (dy << 1) + dz] != null)
+						maxLight = Math.max(maxLight, (neighbors[7 + (dx << 2) + (dy << 1) + dz].getLight() >>> shift) & 255);
 				}
 			}
 		}
 		
 		// Check all neighbors and find their highest lighting in the specified channel after applying block-specific effects to it:
-
 		int index = (x << 4) | (y << 8) | z; // Works close to the datastructure. Allows for some optimizations.
 		
-		int maxLight = 0;
 		if(x != 0) {
 			maxLight = Math.max(maxLight, applyNeighbors(light[index-16], shift, neighbors[0], neighbors[1], neighbors[2], neighbors[3]));
 		} else {
