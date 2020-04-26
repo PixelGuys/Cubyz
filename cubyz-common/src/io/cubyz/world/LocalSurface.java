@@ -200,10 +200,25 @@ public class LocalSurface extends Surface {
 		Chunk ch = _getNoGenerateChunk(x, z);
 		if(ch == null) {
 			ch = new Chunk(x, z, this, transformData(getChunkData(x, z)));
+			Chunk[] newList = new Chunk[chunks.length+1];
+			newList[chunks.length] = ch;
+			chunks = newList;
 		}
-		if (!ch.isGenerated()) {
+		if (!ch.isGenerated()) { // TODO actually fix synchronousSeek so we can access blocks generated through it
 			synchronousGenerate(ch);
 			ch.load();
+			int renderDistance = Settings.renderDistance;
+			int local = x & 15;
+			x += renderDistance;
+			if(local > 7)
+				x++;
+			local = z & 15;
+			z += renderDistance;
+			if(local > 7)
+				z++;
+			lastX = x;
+			lastZ = z;
+			doubleRD = renderDistance << 1;
 		}
 	}
 	
@@ -371,6 +386,7 @@ public class LocalSurface extends Surface {
 			return null;
 
 		Chunk ch = _getNoGenerateChunk(x >> 4, z >> 4);
+		//System.out.println(ch.isGenerated());
 		if (ch != null && ch.isGenerated()) {
 			Block b = ch.getBlockAt(x & 15, y, z & 15);
 			return b;

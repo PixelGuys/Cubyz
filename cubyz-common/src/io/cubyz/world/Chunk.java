@@ -503,7 +503,7 @@ public class Chunk {
 		chunks[3] = ch;
 		// Sadly the new system doesn't allow for easy access on the BlockInstances through a list, so we have to go through all blocks(which probably is even more efficient because about half of the blocks are non-air).
 		for(int x = 0; x < 16; x++) {
-			for(int y = 0; y < 256; y++) {
+			for(int y = 0; y < 256; y++) { // TODO: possible optimization: calculate maximum height, could save a lot of loops
 				for(int  z = 0; z < 16; z++) {
 					Block b = getBlockAt(x, y, z);
 					if(b != null) {

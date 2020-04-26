@@ -188,8 +188,10 @@ public class Cubyz implements IGameLogic {
 					dx = rnd.nextInt(surface.getAnd()+1);
 					dz = rnd.nextInt(surface.getAnd()+1);
 					CubyzLogger.i.info("Trying " + dx + " ? " + dz);
+					world.getCurrentTorus().synchronousSeek(dx, dz);
 					highestY = world.getCurrentTorus().getHeight(dx, dz);
-					if(highestY >= 0) // Make sure the player starts on a solid block.
+					Block b = world.getCurrentTorus().getBlock(dx, highestY-1, dz);
+					if(true /*b != null && b.getBlockClass() != BlockClass.FLUID && b.getBlockClass() != BlockClass.LEAF*/) // Make sure the player starts on a solid block.
 						break;
 				}
 				world.getLocalPlayer().setPosition(new Vector3i(dx, highestY+2, dz));
@@ -197,7 +199,6 @@ public class Cubyz implements IGameLogic {
 				CubyzLogger.i.info("OK!");
 			}
 		}
-		world.getCurrentTorus().synchronousSeek(0, 0);
 		DiscordIntegration.setStatus("Playing");
 		Cubyz.gameUI.addOverlay(new GameOverlay());
 		

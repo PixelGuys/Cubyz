@@ -9,6 +9,7 @@ public class Game {
 	protected IGameLogic logic;
 	private GameOptions opt;
 	private Thread updateThread;
+	private Thread renderThread;
 	double secsPerUpdate = 1d / 30d;
 	private int targetFps = 60;
 	
@@ -23,6 +24,14 @@ public class Game {
 		return ups;
 	}
 	
+	public Thread getUpdateThread() {
+		return updateThread;
+	}
+
+	public Thread getRenderThread() {
+		return renderThread;
+	}
+
 	public void setTargetFps(int target) {
 		targetFps = target;
 	}
@@ -74,6 +83,7 @@ public class Game {
 		});
 		updateThread.setName("Game-Update-Thread");
 		updateThread.start();
+		renderThread = Thread.currentThread();
 		loop();
 		logic.cleanup();
 	}

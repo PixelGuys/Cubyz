@@ -2,6 +2,9 @@ package io.jungle;
 
 import org.joml.Vector2d;
 import org.joml.Vector2f;
+
+import io.cubyz.client.Cubyz;
+
 import static org.lwjgl.glfw.GLFW.*;
 
 import java.awt.MouseInfo;
@@ -118,7 +121,9 @@ public class MouseInput {
 		if(grabbed && window.isFocused()) {
 			displVec.y += currentPos.x - (window.getWidth() >> 1);
 			displVec.x += currentPos.y - (window.getHeight() >> 1);
-			r.mouseMove(pos[0] + (window.getWidth() >> 1), pos[1] + (window.getHeight() >> 1));
+			if (Cubyz.instance.game.getRenderThread().isAlive() && Cubyz.instance.game.getUpdateThread().isAlive()) {
+				r.mouseMove(pos[0] + (window.getWidth() >> 1), pos[1] + (window.getHeight() >> 1));
+			}
 		}
 	}
 
