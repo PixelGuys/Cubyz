@@ -427,8 +427,8 @@ public class Chunk {
 			BlockInstance[] visibleNeighbors = getVisibleNeighbors(x, y, z);
 			if(visibleNeighbors[0] != null) visibleNeighbors[0].neighborWest = getsBlocked(neighbors[0], b.isTransparent());
 			if(visibleNeighbors[1] != null) visibleNeighbors[1].neighborEast = getsBlocked(neighbors[1], b.isTransparent());
-			if(visibleNeighbors[2] != null) visibleNeighbors[2].neighborSouth = getsBlocked(neighbors[2], b.isTransparent());
-			if(visibleNeighbors[3] != null) visibleNeighbors[3].neighborNorth = getsBlocked(neighbors[3], b.isTransparent());
+			if(visibleNeighbors[2] != null) visibleNeighbors[2].neighborNorth = getsBlocked(neighbors[2], b.isTransparent());
+			if(visibleNeighbors[3] != null) visibleNeighbors[3].neighborSouth = getsBlocked(neighbors[3], b.isTransparent());
 			if(visibleNeighbors[4] != null) visibleNeighbors[4].neighborUp = getsBlocked(neighbors[4], b.isTransparent());
 			if(visibleNeighbors[5] != null) visibleNeighbors[5].neighborDown = getsBlocked(neighbors[5], b.isTransparent());
 			for (int i = 0; i < neighbors.length; i++) {
@@ -534,8 +534,8 @@ public class Chunk {
 						BlockInstance[] visibleNeighbors = getVisibleNeighbors(x, y, z);
 						if(visibleNeighbors[0] != null) visibleNeighbors[0].neighborWest = getsBlocked(neighbors[0], b.isTransparent());
 						if(visibleNeighbors[1] != null) visibleNeighbors[1].neighborEast = getsBlocked(neighbors[1], b.isTransparent());
-						if(visibleNeighbors[2] != null) visibleNeighbors[2].neighborSouth = getsBlocked(neighbors[2], b.isTransparent());
-						if(visibleNeighbors[3] != null) visibleNeighbors[3].neighborNorth = getsBlocked(neighbors[3], b.isTransparent());
+						if(visibleNeighbors[2] != null) visibleNeighbors[2].neighborNorth = getsBlocked(neighbors[2], b.isTransparent());
+						if(visibleNeighbors[3] != null) visibleNeighbors[3].neighborSouth = getsBlocked(neighbors[3], b.isTransparent());
 						if(visibleNeighbors[4] != null) visibleNeighbors[4].neighborUp = getsBlocked(neighbors[4], b.isTransparent());
 						if(visibleNeighbors[5] != null) visibleNeighbors[5].neighborDown = getsBlocked(neighbors[5], b.isTransparent());
 						for (int i = 0; i < neighbors.length; i++) {
@@ -711,8 +711,8 @@ public class Chunk {
 		Block[] neighbors = getNeighbors(x, y ,z);
 		if(neighbors[0] != null) bi.neighborEast = getsBlocked(neighbors[0], bi.getBlock());
 		if(neighbors[1] != null) bi.neighborWest = getsBlocked(neighbors[1], bi.getBlock());
-		if(neighbors[2] != null) bi.neighborNorth = getsBlocked(neighbors[2], bi.getBlock());
-		if(neighbors[3] != null) bi.neighborSouth = getsBlocked(neighbors[3], bi.getBlock());
+		if(neighbors[2] != null) bi.neighborSouth = getsBlocked(neighbors[2], bi.getBlock());
+		if(neighbors[3] != null) bi.neighborNorth = getsBlocked(neighbors[3], bi.getBlock());
 		if(neighbors[4] != null) bi.neighborDown = getsBlocked(neighbors[4], bi.getBlock());
 		if(neighbors[5] != null) bi.neighborUp = getsBlocked(neighbors[5], bi.getBlock());
 		bi.setPosition(new Vector3i(x + (ox << 4), y, z + (oz << 4)));
@@ -743,8 +743,8 @@ public class Chunk {
 		BlockInstance[] visibleNeighbors = getVisibleNeighbors(x, y, z);
 		if(visibleNeighbors[0] != null) visibleNeighbors[0].neighborWest = false;
 		if(visibleNeighbors[1] != null) visibleNeighbors[1].neighborEast = false;
-		if(visibleNeighbors[2] != null) visibleNeighbors[2].neighborSouth = false;
-		if(visibleNeighbors[3] != null) visibleNeighbors[3].neighborNorth = false;
+		if(visibleNeighbors[2] != null) visibleNeighbors[2].neighborNorth = false;
+		if(visibleNeighbors[3] != null) visibleNeighbors[3].neighborSouth = false;
 		if(visibleNeighbors[4] != null) visibleNeighbors[4].neighborUp = false;
 		if(visibleNeighbors[5] != null) visibleNeighbors[5].neighborDown = false;
 		if(loaded)
@@ -826,8 +826,8 @@ public class Chunk {
 		BlockInstance[] visibleNeighbors = getVisibleNeighbors(x+wx, y, z+wz);
 		if(visibleNeighbors[0] != null) visibleNeighbors[0].neighborWest = getsBlocked(neighbors[0], b.isTransparent());
 		if(visibleNeighbors[1] != null) visibleNeighbors[1].neighborEast = getsBlocked(neighbors[1], b.isTransparent());
-		if(visibleNeighbors[2] != null) visibleNeighbors[2].neighborSouth = getsBlocked(neighbors[2], b.isTransparent());
-		if(visibleNeighbors[3] != null) visibleNeighbors[3].neighborNorth = getsBlocked(neighbors[3], b.isTransparent());
+		if(visibleNeighbors[2] != null) visibleNeighbors[2].neighborNorth = getsBlocked(neighbors[2], b.isTransparent());
+		if(visibleNeighbors[3] != null) visibleNeighbors[3].neighborSouth = getsBlocked(neighbors[3], b.isTransparent());
 		if(visibleNeighbors[4] != null) visibleNeighbors[4].neighborUp = getsBlocked(neighbors[4], b.isTransparent());
 		if(visibleNeighbors[5] != null) visibleNeighbors[5].neighborDown = getsBlocked(neighbors[5], b.isTransparent());
 		
