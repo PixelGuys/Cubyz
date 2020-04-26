@@ -14,7 +14,6 @@ public class BlockInstance {
 	private Vector3i pos;
 	private Surface surface;
 	public boolean neighborUp, neighborDown, neighborEast, neighborWest, neighborNorth, neighborSouth;
-	public int light;
 	
 	public Surface getStellarTorus() {
 		return surface;
@@ -26,7 +25,6 @@ public class BlockInstance {
 	
 	public BlockInstance(Block block) {
 		this.block = block;
-		this.light = block.getLight();
 	}
 	
 	public int getID() {

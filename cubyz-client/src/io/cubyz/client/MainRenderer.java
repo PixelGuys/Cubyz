@@ -200,30 +200,32 @@ public class MainRenderer implements IRenderer {
 				int length = ch.getVisibles().size;
 				for (int i = 0; i < length; i++) {
 					BlockInstance bi = vis[i];
-					float x = CubyzMath.matchSign((bi.getX() - x0) & worldAnd, worldAnd) - relX;
-					float y = bi.getY() - y0;
-					float z = CubyzMath.matchSign((bi.getZ() - z0) & worldAnd, worldAnd) - relZ;
-					// Do the frustum culling directly here.
-					if(frustumInt.testSphere(x, y, z, 0.866025f)) {
-						// Only draw blocks that have at least one face facing the player.
-						if(bi.getBlock().isTransparent() || // Ignore transparent blocks in the process, so the surface of water can still be seen from below.
-								(x > 0.5001f && !bi.neighborEast) ||
-								(x < -0.5001f && !bi.neighborWest) ||
-								(y > 0.5001f && !bi.neighborDown) ||
-								(y < -0.5001f && !bi.neighborUp) ||
-								(z > 0.5001f && !bi.neighborSouth) ||
-								(z < -0.5001f && !bi.neighborNorth)) {
-							Spatial tmp = (Spatial) bi.getSpatial();
-							tmp.setPosition(x, y, z);
-							if(Settings.easyLighting)
-								ch.getCornerLight(bi.getX() & 15, bi.getY(), bi.getZ() & 15, ambientLight, tmp.light);
-							if (tmp.isSelected()) {
-								selected = tmp;
-								selectedBlock = bi.getID();
-								breakAnim = bi.getBreakingAnim();
-								continue;
+					if(bi != null) { // Sometimes block changes happen while rendering.
+						float x = CubyzMath.matchSign((bi.getX() - x0) & worldAnd, worldAnd) - relX;
+						float y = bi.getY() - y0;
+						float z = CubyzMath.matchSign((bi.getZ() - z0) & worldAnd, worldAnd) - relZ;
+						// Do the frustum culling directly here.
+						if(frustumInt.testSphere(x, y, z, 0.866025f)) {
+							// Only draw blocks that have at least one face facing the player.
+							if(bi.getBlock().isTransparent() || // Ignore transparent blocks in the process, so the surface of water can still be seen from below.
+									(x > 0.5001f && !bi.neighborEast) ||
+									(x < -0.5001f && !bi.neighborWest) ||
+									(y > 0.5001f && !bi.neighborDown) ||
+									(y < -0.5001f && !bi.neighborUp) ||
+									(z > 0.5001f && !bi.neighborSouth) ||
+									(z < -0.5001f && !bi.neighborNorth)) {
+								Spatial tmp = (Spatial) bi.getSpatial();
+								tmp.setPosition(x, y, z);
+								if(Settings.easyLighting)
+									ch.getCornerLight(bi.getX() & 15, bi.getY(), bi.getZ() & 15, ambientLight, tmp.light);
+								if (tmp.isSelected()) {
+									selected = tmp;
+									selectedBlock = bi.getID();
+									breakAnim = bi.getBreakingAnim();
+									continue;
+								}
+								map[bi.getID()].add(tmp);
 							}
-							map[bi.getID()].add(tmp);
 						}
 					}
 				}

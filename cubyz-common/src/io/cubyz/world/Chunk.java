@@ -507,15 +507,17 @@ public class Chunk {
 		int maxHeight = 255; // The biggest height that supports blocks.
 		// Use lighting calculations that are done anyways if easylighting is enabled to determine the maximum height inside this chunk.
 		ArrayList<int[]> lightUpdates = null;
+		ArrayList<Integer> lightSources = null;
 		if(Settings.easyLighting) {
 			lightUpdates = new ArrayList<>();
+			lightSources = new ArrayList<>();
 			// First of all update the top air blocks on which the sun is constant:
-			maxHeight = World.WORLD_HEIGHT;
+			maxHeight = World.WORLD_HEIGHT-1;
 			boolean stopped = false;
 			while(!stopped) {
 				--maxHeight;
 				for(int xz = 0; xz < 256; xz++) {
-					light[(maxHeight << 8) | xz] |= 0xff000000;
+					light[((maxHeight+1) << 8) | xz] |= 0xff000000;
 					if(blocks[(maxHeight << 8) | xz] != null) {
 						stopped = true;
 					}
@@ -548,6 +550,9 @@ public class Chunk {
 								revealBlock(x, y, z);
 								break;
 							}
+						}
+						if(Settings.easyLighting && b.getLight() != 0) { // Process light sources
+							lightSources.add((x << 4) | (y << 8) | z);
 						}
 					}
 				}
@@ -651,11 +656,9 @@ public class Chunk {
 				}
 			}
 			// Take care about light sources:
-			/*for(BlockInstance bi: list) { TODO: Integrate this into the new system which has no block list.
-				if(bi.getBlock().getLight() != 0) {
-					lightUpdate(bi.getX(), bi.getY(), bi.getZ());
-				}
-			}*/
+			for(int index : lightSources) {
+				lightUpdate((index >>> 4) & 15, (index >>> 8) & 255, index & 15);
+			}
 		}
 	}
 	
