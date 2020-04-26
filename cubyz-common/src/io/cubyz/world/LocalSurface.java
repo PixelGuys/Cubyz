@@ -9,6 +9,7 @@ import java.util.concurrent.LinkedBlockingDeque;
 
 import org.joml.Vector4f;
 
+import io.cubyz.CubyzLogger;
 import io.cubyz.Settings;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.base.init.ItemInit;
@@ -88,12 +89,18 @@ public class LocalSurface extends Surface {
 		
 		public void run() {
 			while (true) {
+				Chunk popped = null;
 				try {
-					Chunk popped = loadList.take();
-					synchronousGenerate(popped);
-					popped.load();
+					popped = loadList.take();
 				} catch (InterruptedException e) {
 					break;
+				}
+				try {
+					synchronousGenerate(popped);
+					popped.load();
+				} catch (Exception e) {
+					CubyzLogger.instance.severe("Could not generate chunk " + popped.getX() + ", " + popped.getZ() + " !");
+					CubyzLogger.instance.throwable(e);
 				}
 			}
 		}
