@@ -131,7 +131,8 @@ public class CrystalCavernGenerator implements FancyGenerator {
 				}
 			}
 			// Consider a good amount of crystal spawns in the region.
-			for(int i = 0; i < 20; i++) {
+			int amount = (int)(1+30*xzScale*yScale/size/size);
+			for(int i = 0; i < amount; i++) {
 				// Choose a random point on the surface of the surrounding spheroid to generate a crystal there:
 				double theta = 2*Math.PI*rand.nextDouble();
 		        double phi = Math.acos(1 - 2*rand.nextDouble());
@@ -141,7 +142,6 @@ public class CrystalCavernGenerator implements FancyGenerator {
 		        // Check if the crystal touches the wall:
 		        if(Math.abs(dx*x+yUnit*y+dz*z) < 0.05) {
 			        crystalSpawns[index[0]++] = new int[] {(int)(worldX + x*xzScale), (int)(worldY + y*yScale), (int)(worldZ + z*xzScale)};
-			        break; // Generate at most one crystal per cave slice.
 		        }
 			}
 		}

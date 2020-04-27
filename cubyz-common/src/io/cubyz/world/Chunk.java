@@ -508,7 +508,7 @@ public class Chunk {
 		boolean chy1 = ch != null && ch.isGenerated();
 		chunks[3] = ch;
 		int maxHeight = 255; // The biggest height that supports blocks.
-		// Use lighting calculations that are done anyways if easylighting is enabled to determine the maximum height inside this chunk.
+		// Use lighting calculations that are done anyways if easyLighting is enabled to determine the maximum height inside this chunk.
 		ArrayList<int[]> lightUpdates = null;
 		ArrayList<Integer> lightSources = null;
 		if(Settings.easyLighting) {
@@ -526,7 +526,7 @@ public class Chunk {
 					}
 				}
 			}
-		} else { // TODO: Find a similar optimization for easylighting disabled.
+		} else { // TODO: Find a similar optimization for easyLighting disabled.
 			
 		}
 		// Sadly the new system doesn't allow for easy access on the BlockInstances through a list, so we have to go through all blocks(which probably is even more efficient because about half of the blocks are non-air).
@@ -969,7 +969,9 @@ public class Chunk {
 				if(xi == (xi & 15) && zi == (zi & 15)) { // Simple double-bound test for x and z.
 					inst[i] = getBlockAt(xi, yi, zi);
 				} else {
-					inst[i] = surface.getBlock(xi + (ox << 4), yi, zi + (oz << 4));
+					Chunk ch = surface._getNoGenerateChunk((xi >> 4) + ox, (zi >> 4) +oz);
+					if(ch != null)
+						inst[i] = ch.getBlockAt(xi & 15, yi, zi & 15);
 				}
 			}
 		}
