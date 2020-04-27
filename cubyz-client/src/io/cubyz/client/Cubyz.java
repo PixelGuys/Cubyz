@@ -232,8 +232,7 @@ public class Cubyz implements IGameLogic {
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-				Material material = new Material(tex, 0.6F);
-				Meshes.blockMeshes.get(ore).setMaterial(material);
+				Meshes.blockTextures.put(ore, tex);
 			}
 			ArrayList<CustomItem> customItems = ItemInit.CUSTOM_ITEMS;
 			for (CustomItem item : customItems) {
