@@ -13,10 +13,7 @@ import java.awt.Robot;
 public class MouseInput {
 
 	private final Vector2d currentPos;
-
 	private final Vector2f displVec;
-
-	private boolean inWindow = false;
 
 	private boolean leftButtonPressed = false;
 	private boolean middleButtonPressed = false;
@@ -29,11 +26,11 @@ public class MouseInput {
 	int lastScroll = 0, curScroll = 0, scrollOffset = 0;
 
 	public MouseInput() {
-		currentPos = new Vector2d(0, 0);
-		displVec = new Vector2f(0, 0);
+		currentPos = new Vector2d();
+		displVec = new Vector2f();
 		try {
 			r = new Robot();
-		} catch(Exception e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
@@ -51,7 +48,6 @@ public class MouseInput {
 		int last = lastScroll;
 		lastScroll = curScroll;
 		scrollOffset = lastScroll-last;
-		
 	}
 
 	public boolean isGrabbed() {
@@ -65,9 +61,10 @@ public class MouseInput {
 		if (grabbed != grab) {
 			if (!grab) {
 				glfwSetInputMode(win.getWindowHandle(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-			}
-			else {
+			} else {
 				glfwSetInputMode(win.getWindowHandle(), GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+				int[] pos = win.getPosition();
+				r.mouseMove(pos[0] + win.getWidth() * 2, pos[1] + win.getHeight() * 2);
 			}
 			grabbed = grab;
 		}
@@ -87,9 +84,6 @@ public class MouseInput {
 
 	public void init(Window window) {
 		win = window;
-		glfwSetCursorEnterCallback(window.getWindowHandle(), (windowHandle, entered) -> {
-			inWindow = entered;
-		});
 		glfwSetMouseButtonCallback(window.getWindowHandle(), (windowHandle, button, action, mode) -> {
 			if (action == GLFW_PRESS || action == GLFW_RELEASE) {
 				if (button == GLFW_MOUSE_BUTTON_1) {
@@ -114,11 +108,9 @@ public class MouseInput {
 
 	public void input(Window window) {
 		int[] pos = window.getPosition();
-//		System.out.println("Focused: " + window.isFocused());
-//		System.out.println("Grabbed: " + grabbed);
 		currentPos.x = MouseInfo.getPointerInfo().getLocation().getX() - pos[0];
 		currentPos.y = MouseInfo.getPointerInfo().getLocation().getY() - pos[1];
-		if(grabbed && window.isFocused()) {
+		if (grabbed && window.isFocused()) {
 			displVec.y += currentPos.x - (window.getWidth() >> 1);
 			displVec.x += currentPos.y - (window.getHeight() >> 1);
 			if (Cubyz.instance.game.getRenderThread().isAlive() && Cubyz.instance.game.getUpdateThread().isAlive()) {
