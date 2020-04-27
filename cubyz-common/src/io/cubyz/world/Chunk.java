@@ -565,22 +565,22 @@ public class Chunk {
 		for (int i = 0; i < 16; i++) {
 			// Checks if blocks from neighboring chunks are changed
 			int [] dx = {15, 0, i, i};
-			int [] dy = {i, i, 15, 0};
+			int [] dz = {i, i, 15, 0};
 			int [] invdx = {0, 15, i, i};
-			int [] invdy = {i, i, 0, 15};
+			int [] invdz = {i, i, 0, 15};
 			for(int k = 0; k < 4; k++) {
 				if (toCheck[k]) {
 					ch = chunks[k];
 					for (int j = World.WORLD_HEIGHT - 1; j >= 0; j--) {
-						Block inst0 = ch.getBlockAt(dx[k], j, dy[k]);
+						Block inst0 = ch.getBlockAt(dx[k], j, dz[k]);
 						if(inst0 == null) {
 							continue;
 						}
-						if(ch.contains(dx[k] + (ch.ox << 4), j, dy[k] + (ch.oz << 4))) {
+						if(ch.contains(dx[k] + (ch.ox << 4), j, dz[k] + (ch.oz << 4))) {
 							continue;
 						}
-						if (blocksLight(getBlockAt(invdx[k], j, invdy[k]), inst0.isTransparent())) {
-							ch.revealBlock(dx[k], j, dy[k]);
+						if (blocksLight(getBlockAt(invdx[k], j, invdz[k]), inst0.isTransparent())) {
+							ch.revealBlock(dx[k], j, dz[k]);
 							continue;
 						}
 					}
