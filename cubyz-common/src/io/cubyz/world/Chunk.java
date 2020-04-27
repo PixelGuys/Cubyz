@@ -62,9 +62,8 @@ public class Chunk {
 		blocks[(x << 4) | (y << 8) | z] = b;
 	}
 	public Block getBlockAt(int x, int y, int z) {
-		if (y > World.WORLD_HEIGHT-1) {
-			y = World.WORLD_HEIGHT-1;
-		}
+		if (y > World.WORLD_HEIGHT-1)
+			return null;
 		return blocks[(x << 4) | (y << 8) | z];
 	}
 	private Block getBlockUnbound(int x, int y, int z) {
@@ -427,7 +426,7 @@ public class Chunk {
 					break;
 				}
 			}
-			BlockInstance[] visibleNeighbors = getVisibleNeighbors(x, y, z);
+			BlockInstance[] visibleNeighbors = getVisibleNeighbors(x + (ox << 4), y, z + (oz << 4));
 			if(visibleNeighbors[0] != null) visibleNeighbors[0].neighborWest = getsBlocked(neighbors[0], b.isTransparent());
 			if(visibleNeighbors[1] != null) visibleNeighbors[1].neighborEast = getsBlocked(neighbors[1], b.isTransparent());
 			if(visibleNeighbors[2] != null) visibleNeighbors[2].neighborNorth = getsBlocked(neighbors[2], b.isTransparent());
@@ -503,9 +502,9 @@ public class Chunk {
 		boolean chx1 = ch != null && ch.isGenerated();
 		ch = surface._getNoGenerateChunk(ox, oz - 1);
 		chunks[2] = ch;
-		boolean chy0 = ch != null && ch.isGenerated();
+		boolean chz0 = ch != null && ch.isGenerated();
 		ch = surface._getNoGenerateChunk(ox, oz + 1);
-		boolean chy1 = ch != null && ch.isGenerated();
+		boolean chz1 = ch != null && ch.isGenerated();
 		chunks[3] = ch;
 		int maxHeight = 255; // The biggest height that supports blocks.
 		// Use lighting calculations that are done anyways if easyLighting is enabled to determine the maximum height inside this chunk.
@@ -536,7 +535,7 @@ public class Chunk {
 					Block b = getBlockAt(x, y, z);
 					if(b != null) {
 						Block[] neighbors = getNeighbors(x, y, z);
-						BlockInstance[] visibleNeighbors = getVisibleNeighbors(x, y, z);
+						BlockInstance[] visibleNeighbors = getVisibleNeighbors(x + (ox << 4), y, z + (oz << 4));
 						if(visibleNeighbors[0] != null) visibleNeighbors[0].neighborWest = getsBlocked(neighbors[0], b.isTransparent());
 						if(visibleNeighbors[1] != null) visibleNeighbors[1].neighborEast = getsBlocked(neighbors[1], b.isTransparent());
 						if(visibleNeighbors[2] != null) visibleNeighbors[2].neighborNorth = getsBlocked(neighbors[2], b.isTransparent());
@@ -548,8 +547,8 @@ public class Chunk {
 														&& (y != 0 || i != 4)
 														&& (x != 0 || i != 0 || chx0)
 														&& (x != 15 || i != 1 || chx1)
-														&& (z != 0 || i != 2 || chy0)
-														&& (z != 15 || i != 3 || chy1)) {
+														&& (z != 0 || i != 2 || chz0)
+														&& (z != 15 || i != 3 || chz1)) {
 								revealBlock(x, y, z);
 								break;
 							}
@@ -561,7 +560,7 @@ public class Chunk {
 				}
 			}
 		}
-		boolean [] toCheck = {chx0, chx1, chy0, chy1};
+		boolean [] toCheck = {chx0, chx1, chz0, chz1};
 		for (int i = 0; i < 16; i++) {
 			// Checks if blocks from neighboring chunks are changed
 			int [] dx = {15, 0, i, i};
@@ -712,7 +711,6 @@ public class Chunk {
 		// Make some sanity check for y coordinate:
 		if(y < 0 || y >= World.WORLD_HEIGHT) return;
 		Block b = getBlockAt(x, y, z);
-		if(b == null) return; // TODO: Don't know why this happens(it shouldn't happen!), but it happens.
 		BlockInstance bi = new BlockInstance(b);
 		Block[] neighbors = getNeighbors(x, y ,z);
 		if(neighbors[0] != null) bi.neighborEast = getsBlocked(neighbors[0], bi.getBlock());
@@ -725,8 +723,10 @@ public class Chunk {
 		bi.setStellarTorus(surface);
 		visibles.add(bi);
 		inst[(x << 4) | (y << 8) | z] = bi;
-		if (surface != null) for (BlockVisibilityChangeHandler handler : surface.visibHandlers) {
-			if (bi != null) handler.onBlockAppear(bi.getBlock(), bi.getX(), bi.getY(), bi.getZ());
+		if (surface != null) {
+			for (BlockVisibilityChangeHandler handler : surface.visibHandlers) {
+				if (bi != null) handler.onBlockAppear(bi.getBlock(), bi.getX(), bi.getY(), bi.getZ());
+			}
 		}
 	}
 	

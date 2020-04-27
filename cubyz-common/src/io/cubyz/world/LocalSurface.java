@@ -237,7 +237,7 @@ public class LocalSurface extends Surface {
 			int index = (x-(lastX-doubleRD))*doubleRD + (z-(lastZ-doubleRD));
 			if(index < chunks.length && index >= 0) {
 				Chunk ret = chunks[index];
-				if(x == ret.getX() && z == ret.getZ() && ret.isLoaded())
+				if(x == ret.getX() && z == ret.getZ())
 					return ret;
 			}
 		}
