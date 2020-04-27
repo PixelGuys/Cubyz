@@ -68,7 +68,7 @@ public class PlayerEntity extends EntityType {
 		@Override
 		public void update() {
 			if (!flying) {
-				vy -= 0.015F;
+				vy -= 0.022F;
 			}
 			vx = 0;
 			vz = 0;
