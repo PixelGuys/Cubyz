@@ -24,7 +24,7 @@ import io.cubyz.world.cubyzgenerators.biomes.Biome;
 public class LifelandGenerator extends SurfaceGenerator {
 	
 	public static void init() {
-		GENERATORS.registerAll(new TerrainGenerator(), new RiverGenerator(), new OreGenerator(), new CaveGenerator(), new VegetationGenerator(), new GrassGenerator());
+		GENERATORS.registerAll(new TerrainGenerator(), new RiverGenerator(), new OreGenerator(), new CaveGenerator(), new CrystalCavernGenerator(), new VegetationGenerator(), new GrassGenerator());
 	}
 	
 	public static void initOres(Ore[] ores) {

@@ -9,6 +9,7 @@ import io.cubyz.blocks.BlockGrass;
 import io.cubyz.blocks.CoalOre;
 import io.cubyz.blocks.DiamondOre;
 import io.cubyz.blocks.EmeraldOre;
+import io.cubyz.blocks.GlowCrystal;
 import io.cubyz.blocks.GoldOre;
 import io.cubyz.blocks.Ice;
 import io.cubyz.blocks.IronOre;
@@ -46,6 +47,8 @@ public class BlockInit {
 	public static IronOre iron = new IronOre();
 	public static RubyOre ruby = new RubyOre();
 	
+	public static GlowCrystal glowCrystal = new GlowCrystal();
+	
 	static Water water = new Water();
 	
 	public static void register(Block block) {
@@ -81,6 +84,8 @@ public class BlockInit {
 		register(gold);
 		register(iron);
 		register(ruby);
+		
+		register(glowCrystal);
 		
 		register(water);
 		
