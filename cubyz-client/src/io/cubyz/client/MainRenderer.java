@@ -196,8 +196,8 @@ public class MainRenderer implements IRenderer {
 			for (Chunk ch : chunks) {
 				if (!frustumInt.testAab(ch.getMin(localPlayer, worldAnd), ch.getMax(localPlayer, worldAnd)))
 					continue;
-				BlockInstance[] vis = ch.getVisibles().array;
 				int length = ch.getVisibles().size;
+				BlockInstance[] vis = ch.getVisibles().array;
 				for (int i = 0; i < length; i++) {
 					BlockInstance bi = vis[i];
 					if(bi != null) { // Sometimes block changes happen while rendering.
