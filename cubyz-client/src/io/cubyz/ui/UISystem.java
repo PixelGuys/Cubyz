@@ -49,11 +49,11 @@ public class UISystem extends Hud {
 		if (this.gui != null && addQueue) {
 			menuQueue.add(this.gui);
 		}
-		if (this.gui != null && this.gui.ungrabsMouse()) {
+		if (this.gui != null && this.gui.ungrabsMouse() && (gui == null ? true : !gui.ungrabsMouse())) {
 			Cubyz.mouse.setGrabbed(true);
 		}
 		this.gui = gui;
-		if (gui != null && gui.ungrabsMouse()) {
+		if (gui != null && gui.ungrabsMouse() && (this.gui == null ? true : !this.gui.ungrabsMouse())) {
 			Cubyz.mouse.setGrabbed(false);
 		}
 		if (gui != null) {

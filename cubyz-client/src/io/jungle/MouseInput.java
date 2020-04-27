@@ -62,9 +62,9 @@ public class MouseInput {
 			if (!grab) {
 				glfwSetInputMode(win.getWindowHandle(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 			} else {
-				glfwSetInputMode(win.getWindowHandle(), GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 				int[] pos = win.getPosition();
-				r.mouseMove(pos[0] + win.getWidth() * 2, pos[1] + win.getHeight() * 2);
+				r.mouseMove(pos[0] + win.getWidth() / 2, pos[1] + win.getHeight() / 2);
+				glfwSetInputMode(win.getWindowHandle(), GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 			}
 			grabbed = grab;
 		}
