@@ -24,7 +24,7 @@ public class Pig extends EntityType implements EntityAI {
 	
 	@Override
 	public void update(Entity ent) {
-		ent.vy -= 0.015F;
+		ent.vy -= 0.022F;
 		NDTContainer ndt = ent.getAINDT();
 		if (!ndt.hasKey("directionTimer")) {
 			ndt.setLong("directionTimer", 0);
