@@ -151,7 +151,7 @@ public class CrystalCavernGenerator implements FancyGenerator {
 		return x*x+y*y+z*z;
 	}
 	
-	private void considerCrystal(int wx, int wz, int[] xyz, Block[][][] chunk, long seed) {
+	private void considerCrystal(int wx, int wz, int[] xyz, Block[][][] chunk, long seed, boolean useNeedles) {
 		if(xyz[0] >= wx-32 && xyz[0] <= wx+48 && xyz[2] >= wz-32 && xyz[2] <= wz+48) {
 			int x = xyz[0]-wx;
 			int y = xyz[1];
@@ -159,6 +159,7 @@ public class CrystalCavernGenerator implements FancyGenerator {
 			Random rand = new Random(seed);
 			// Make some crystal spikes in random directions:
 			int spikes = rand.nextInt(4) + 4;
+			if(useNeedles) spikes += 2;
 			for(int i = 0; i < spikes; i++) {
 				int length = rand.nextInt(16)+16;
 				// Choose a random direction:
@@ -167,11 +168,15 @@ public class CrystalCavernGenerator implements FancyGenerator {
 		        double dx = Math.sin(phi)*Math.cos(theta);
 		        double dy = Math.sin(phi)*Math.sin(theta);
 		        double dz = Math.cos(phi);
-		        for(int j = 0; j < length; j++) {
+		        for(double j = 0; j < length;) {
 		        	double x2 = x+dx*j;
 		        	double y2 = y+dy*j;
 		        	double z2 = z+dz*j;
-		        	double size = 12*(length-j)/length/spikes;
+		        	double size;
+		        	if(useNeedles)
+		        		size = 0.7;
+		        	else
+		        		size = 12*(length-j)/length/spikes;
 		        	int xMin = (int)(x2-size);
 		        	int xMax = (int)(x2+size);
 		        	int yMin = (int)(y2-size);
@@ -192,6 +197,9 @@ public class CrystalCavernGenerator implements FancyGenerator {
 				        	}
 			        	}
 		        	}
+		        	if(size > 2) size = 2;
+		        	j += size/2; // Make sure there are no crystal bits floating in the air.
+		        	if(size < 0.5) break; // Also preventing floating crystal bits.
 		        }
 			}
 		}
@@ -211,11 +219,12 @@ public class CrystalCavernGenerator implements FancyGenerator {
 		long rand1 = rand.nextLong();
 		long rand2 = rand.nextLong();
 		long rand3 = rand.nextLong();
+		boolean useNeedles = rand.nextBoolean(); // Different crystal type.
 		generateCave(rand.nextLong(), cx, cz, chunk, worldX, worldY, worldZ, size, direction, slope, 0, 0.75, vegetationIgnoreMap, heightMap, crystalSpawns, index);
 
 		// Generate the crystals:
 		for(int i = 0; i < index[0]; i++) {
-			considerCrystal(cx << 4, cz << 4, crystalSpawns[i], chunk, crystalSpawns[i][0]*rand1 + crystalSpawns[i][1]*rand2 + crystalSpawns[i][2]*rand3);
+			considerCrystal(cx << 4, cz << 4, crystalSpawns[i], chunk, crystalSpawns[i][0]*rand1 + crystalSpawns[i][1]*rand2 + crystalSpawns[i][2]*rand3, useNeedles);
 		}
 	}
 }
