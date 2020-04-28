@@ -226,6 +226,7 @@ public class LocalSurface extends Surface {
 		ch.generateFrom(generator);
 		wio.saveChunk(ch);
 	}
+	
 	@Override
 	public Chunk _getNoGenerateChunk(int x, int z) {
 		x &= worldAnd >>> 4;
@@ -606,11 +607,6 @@ public class LocalSurface extends Surface {
 					if(ch == null) {
 						ch = new Chunk(i, j, this, transformData(getChunkData(i, j)));
 					}
-					if (!ch.isGenerated()) {
-						queueChunk(ch);
-					} else {
-						ch.setLoaded(true);
-					}
 					newVisibles[index] = ch;
 				}
 				index++;
@@ -624,6 +620,14 @@ public class LocalSurface extends Surface {
 		lastX = x;
 		lastZ = z;
 		this.doubleRD = doubleRD;
+		// Generate the chunks after they can get access to their neighbors:
+		for(Chunk ch : newVisibles) {
+			if (!ch.isGenerated()) {
+				queueChunk(ch);
+			} else {
+				ch.setLoaded(true);
+			}
+		}
 		if (minK != chunks.length) { // if at least one chunk got unloaded
 			wio.saveTorusData(this);
 		}
