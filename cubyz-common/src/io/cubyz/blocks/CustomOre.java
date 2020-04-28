@@ -88,7 +88,7 @@ public class CustomOre extends Ore implements CustomObject {
 		return color;
 	}
 	
-	private void makeGlow() {
+	public void makeGlow() {
 		// Make the ore glow at 25% of its color:
 		int r = color >>> 16;
 		int g = (color >>> 8) & 255;
@@ -157,16 +157,16 @@ public class CustomOre extends Ore implements CustomObject {
 		ore.maxLength = 1+rand.nextFloat()*10;
 		ore.maxSize = 1+rand.nextFloat()*5;
 		ore.name = randomName(new Random(rand.nextLong())); // Use a new random, so an update in the name generator won't change all other facts about custom ores.
-		ore.template = rand.nextInt(5)+1; // UPDATE THIS WHEN YOU ADD MORE TEMPLATES!
+		ore.template = rand.nextInt(5)+1; // UPDATE THIS WHEN YOU ADD MORE TEMPLATES! Template 0 is reserved for coal ore template, all negative templates are reserved for other stuff.
 		ore.setHardness(rand.nextInt()*30);
 		ore.setID("cubyz:" + ore.name + " Ore");
 		if(rand.nextInt(4) == 0) { // Make some ores glow.
 			ore.makeGlow();
 		}
 		ore.makeBlockDrop();
-		boolean addTools = true; // For now.
+		boolean addTools = true; // TODO
 		if(addTools) {
-			int rareness = (int)(ore.spawns*ore.maxSize*ore.maxLength);
+			int rareness = (int)(ore.spawns*ore.maxSize*ore.maxLength); // TODO: Balance material stats!
 			new CustomMaterial(rand.nextInt(1000000/rareness), rand.nextInt(1000000/rareness), rand.nextInt(1000000/rareness), rand.nextFloat()*10, rand.nextFloat()*10000/rareness, ore.getColor(), ore.getBlockDrop(), 100);
 		}
 		return ore;
@@ -212,4 +212,7 @@ public class CustomOre extends Ore implements CustomObject {
 		return true;
 	}
 	
+	public void setColor(int color) {
+		this.color = color;
+	}
 }

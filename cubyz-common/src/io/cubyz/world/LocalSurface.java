@@ -15,6 +15,7 @@ import io.cubyz.api.CubyzRegistries;
 import io.cubyz.base.init.ItemInit;
 import io.cubyz.base.init.MaterialInit;
 import io.cubyz.blocks.Block;
+import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.CustomOre;
 import io.cubyz.blocks.IUpdateable;
@@ -28,6 +29,7 @@ import io.cubyz.math.Bits;
 import io.cubyz.math.CubyzMath;
 import io.cubyz.save.BlockChange;
 import io.cubyz.save.TorusIO;
+import io.cubyz.world.cubyzgenerators.CrystalCavernGenerator;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 import io.cubyz.world.generator.LifelandGenerator;
 import io.cubyz.world.generator.SurfaceGenerator;
@@ -549,14 +551,42 @@ public class LocalSurface extends Surface {
 	public int generate(ArrayList<Block> blockList, ArrayList<Ore> ores, int ID) {
 		Random rand = new Random(localSeed);
 		int randomAmount = 9 + rand.nextInt(3); // TODO
-		torusBlocks = new Block[randomAmount];
-		for(int i = 0; i < randomAmount; i++) {
+		torusBlocks = new Block[randomAmount+2];
+		int i = 0;
+		for(i = 0; i < randomAmount; i++) {
 			torusBlocks[i] = CustomOre.random(rand);
 			customOres.add((CustomOre)torusBlocks[i]);
 			ores.add((Ore)torusBlocks[i]);
 			blockList.add(torusBlocks[i]);
 			torusBlocks[i].ID = ID++;
 		}
+		
+		// Create the crystal ore for the CrystalCaverns:
+		CustomOre glowCrystalOre = CustomOre.random(rand);
+		torusBlocks[i] = glowCrystalOre;
+		glowCrystalOre.makeGlow(); // Make sure it glows.
+		customOres.add(glowCrystalOre);
+		ores.add((Ore)torusBlocks[i]);
+		blockList.add(torusBlocks[i]);
+		torusBlocks[i].ID = ID++;
+		i++;
+		// Create the crystal block for the CrystalCaverns:
+		CustomOre crystalBlock = new CustomOre(); // TODO: Add a CustomBlock type or interface because this is no ore.
+		crystalBlock.setID(glowCrystalOre.getRegistryID().toString()+"_glow_crystal");
+		crystalBlock.setHardness(40);
+		crystalBlock.setBlockDrop(glowCrystalOre.getBlockDrop());
+		crystalBlock.setLight(glowCrystalOre.getColor());
+		crystalBlock.setColor(glowCrystalOre.getColor());
+		crystalBlock.template = -1;
+		torusBlocks[i] = crystalBlock;
+		customOres.add((CustomOre)torusBlocks[i]);
+		ores.add((Ore)torusBlocks[i]);
+		blockList.add(torusBlocks[i]);
+		torusBlocks[i].ID = ID++;
+		i++;
+		// Init crystal caverns with those two blocks:
+		CrystalCavernGenerator.init(crystalBlock, glowCrystalOre);
+		
 		if(generated) {
 			wio.saveTorusData(this);
 		}

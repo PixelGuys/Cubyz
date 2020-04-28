@@ -8,13 +8,13 @@ public class GenerateOreTemplate {
 	public static BufferedImage getImage(String fileName) {
 		try {
 			return ImageIO.read(new File(fileName));
-		} catch(Exception e) {}//e.printStackTrace();}
+		} catch(Exception e) {e.printStackTrace();}
 		return null;
 	}
 	public static void main(String[] args) {
 		// Algorithm for automatically generating an ore template from the ore image. Uses the reverse-engineered color erase algorithm from gimp.
-		BufferedImage stone = getImage("stone.png");
-		BufferedImage ore = getImage("ruby_ore.png");
+		BufferedImage stone = getImage(args[2]);
+		BufferedImage ore = getImage(args[0]);
 		for(int i = 0; i < 16; i++) {
 			for(int j = 0; j < 16; j++) {
 				int colorStone = stone.getRGB(i, j);
@@ -54,7 +54,6 @@ public class GenerateOreTemplate {
 				int a = Math.max(ar, Math.max(ag,  ab)); // Erase as much color as possible.
 				if(a >= 255) a = 255;
 				if(a < 0) a = 0;
-				System.out.println(a);
 				int rI, gI, bI;
 				if(a == 0) {
 					rI = gI = bI = 0;
@@ -72,7 +71,7 @@ public class GenerateOreTemplate {
 				
 				ore.setRGB(i, j, new Color(rI, gI, bI, a).getRGB());
 			}
-			File outputfile = new File("ruby_ore_template.png");
+			File outputfile = new File(args[1]);
 			try {
 				ImageIO.write(ore, "png", outputfile);
 			} catch (IOException e) {}

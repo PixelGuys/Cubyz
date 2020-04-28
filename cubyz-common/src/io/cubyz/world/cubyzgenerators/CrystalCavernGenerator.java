@@ -10,6 +10,14 @@ import io.cubyz.world.cubyzgenerators.biomes.Biome;
 
 public class CrystalCavernGenerator implements FancyGenerator {
 	
+	private static Block glowCrystal, crystalOre;
+	
+	public static void init(Block crystal, Block ore) {
+		glowCrystal = crystal;
+		crystalOre = ore;
+	}
+	
+	
 	@Override
 	public Resource getRegistryID() {
 		return new Resource("cubyz", "lifeland_crystal_cavern");
@@ -190,7 +198,9 @@ public class CrystalCavernGenerator implements FancyGenerator {
 				        		if(dist <= size*size) {
 						        	if(x3 >= 0 && x3 < 16 && y3 >= 0 && y3 < 256 && z3 >= 0 && z3 < 16) {
 						        		if(chunk[(int)x3][(int)z3][(int)y3] == null) {
-						        			chunk[(int)x3][(int)z3][(int)y3] = BlockInit.glowCrystal;
+						        			chunk[(int)x3][(int)z3][(int)y3] = glowCrystal;
+						        		} else if(chunk[(int)x3][(int)z3][(int)y3] == BlockInit.stone) {
+						        			chunk[(int)x3][(int)z3][(int)y3] = crystalOre; // When the crystal goes through stone, generate the corresponding ore at that position.
 						        		}
 						        	}
 				        		}
