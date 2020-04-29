@@ -53,7 +53,7 @@ public abstract class Surface {
 	
 	public abstract float getGlobalLighting();
 
-	public abstract Chunk _getNoGenerateChunk(int x, int z);
+	public abstract Chunk getChunk(int x, int z);
 	
 	public abstract Chunk[] getChunks();
 	public abstract Block[] getPlanetBlocks();

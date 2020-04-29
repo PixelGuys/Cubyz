@@ -15,7 +15,6 @@ import io.cubyz.api.CubyzRegistries;
 import io.cubyz.base.init.ItemInit;
 import io.cubyz.base.init.MaterialInit;
 import io.cubyz.blocks.Block;
-import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.CustomOre;
 import io.cubyz.blocks.IUpdateable;
@@ -35,10 +34,9 @@ import io.cubyz.world.generator.LifelandGenerator;
 import io.cubyz.world.generator.SurfaceGenerator;
 
 public class LocalSurface extends Surface {
-	
 	private static Random rnd = new Random();
 	
-	private List<MetaChunk> maps;
+	private List<MetaChunk> metaChunks;
 	private Chunk [] chunks;
 	private int lastX = Integer.MAX_VALUE, lastZ = Integer.MAX_VALUE; // Chunk coordinates of the last chunk update.
 	private int doubleRD; // Corresponds to the doubled value of the last used render distance.
@@ -55,7 +53,7 @@ public class LocalSurface extends Surface {
 	
 	private SurfaceGenerator generator;
 	
-	private TorusIO wio;
+	private TorusIO tio;
 	
 	private List<ChunkGenerationThread> threads = new ArrayList<>();
 	private boolean generated;
@@ -64,6 +62,16 @@ public class LocalSurface extends Surface {
 	Vector4f clearColor = new Vector4f(0, 0, 0, 1.0f);
 	
 	long localSeed; // Each torus has a different seed for world generation. All those seeds are generated using the main world seed.
+	
+	// synchronized common list for chunk generation
+	private volatile BlockingDeque<Chunk> loadList = new LinkedBlockingDeque<>(MAX_QUEUE_SIZE);
+	
+	boolean liquidUpdate;
+	
+	BlockEntity[] blockEntities = new BlockEntity[0];
+	BlockInstance[] liquids = new BlockInstance[0];
+
+	private ArrayList<CustomOre> customOres = new ArrayList<>();
 	
 	private void queue(Chunk ch) {
 		if (!isQueued(ch)) {
@@ -85,10 +93,7 @@ public class LocalSurface extends Surface {
 		return false;
 	}
 	
-	// synchronized common list for chunk generation
-	private volatile BlockingDeque<Chunk> loadList = new LinkedBlockingDeque<>(MAX_QUEUE_SIZE);
 	private class ChunkGenerationThread extends Thread {
-		
 		public void run() {
 			while (true) {
 				Chunk popped = null;
@@ -109,15 +114,11 @@ public class LocalSurface extends Surface {
 	}
 	
 	public LocalSurface(LocalStellarTorus torus) {
-		this(torus, "P.K. Kusuo Saiki");
-	}
-	
-	public LocalSurface(LocalStellarTorus torus, String name) {
 		localSeed = torus.getLocalSeed();
 		this.torus = torus;
 		MaterialInit.resetCustom();
 		ItemInit.resetCustom();
-		maps = new ArrayList<>();
+		metaChunks = new ArrayList<>();
 		chunks = new Chunk[0];
 		
 		for (int i = 0; i < Runtime.getRuntime().availableProcessors(); i++) {
@@ -131,22 +132,65 @@ public class LocalSurface extends Surface {
 		if (generator instanceof LifelandGenerator) {
 			((LifelandGenerator) generator).sortGenerators();
 		}
-		wio = new TorusIO(torus, new File("saves/" + torus.getWorld().getName() + "/" + localSeed)); // use seed in path
-		if (wio.hasTorusData()) {
+		tio = new TorusIO(torus, new File("saves/" + torus.getWorld().getName() + "/" + localSeed)); // use seed in path
+		if (tio.hasTorusData()) {
 			generated = true;
 		} else {
-			wio.saveTorusData(this);
+			tio.saveTorusData(this);
 		}
 		//setChunkQueueSize(torus.world.getRenderDistance() << 2);
 	}
 	
-	public long getSeed() {
-		return localSeed;
+	public void link() {
+		tio.link(this);
+		tio.loadTorusData(this); // load data here in order for entities to also be loaded.
 	}
 	
-	public void link() {
-		wio.link(this);
-		wio.loadTorusData(this); // load data here in order for entities to also be loaded.
+	// Returns the blocks, so their meshes can be created and stored.
+	public int generate(ArrayList<Block> blockList, ArrayList<Ore> ores, int ID) {
+		Random rand = new Random(localSeed);
+		int randomAmount = 9 + rand.nextInt(3); // TODO
+		torusBlocks = new Block[randomAmount+2];
+		int i = 0;
+		for(i = 0; i < randomAmount; i++) {
+			torusBlocks[i] = CustomOre.random(rand);
+			customOres.add((CustomOre)torusBlocks[i]);
+			ores.add((Ore)torusBlocks[i]);
+			blockList.add(torusBlocks[i]);
+			torusBlocks[i].ID = ID++;
+		}
+		
+		// Create the crystal ore for the CrystalCaverns:
+		CustomOre glowCrystalOre = CustomOre.random(rand);
+		torusBlocks[i] = glowCrystalOre;
+		glowCrystalOre.makeGlow(); // Make sure it glows.
+		customOres.add(glowCrystalOre);
+		ores.add((Ore)torusBlocks[i]);
+		blockList.add(torusBlocks[i]);
+		torusBlocks[i].ID = ID++;
+		i++;
+		// Create the crystal block for the CrystalCaverns:
+		CustomOre crystalBlock = new CustomOre(); // TODO: Add a CustomBlock type or interface because this is no ore.
+		crystalBlock.setID(glowCrystalOre.getRegistryID().toString()+"_glow_crystal");
+		crystalBlock.setHardness(40);
+		crystalBlock.setBlockDrop(glowCrystalOre.getBlockDrop());
+		crystalBlock.setLight(glowCrystalOre.getColor());
+		crystalBlock.setColor(glowCrystalOre.getColor());
+		crystalBlock.template = -1;
+		torusBlocks[i] = crystalBlock;
+		customOres.add((CustomOre)torusBlocks[i]);
+		ores.add((Ore)torusBlocks[i]);
+		blockList.add(torusBlocks[i]);
+		torusBlocks[i].ID = ID++;
+		i++;
+		// Init crystal caverns with those two blocks:
+		CrystalCavernGenerator.init(crystalBlock, glowCrystalOre);
+		
+		if(generated) {
+			tio.saveTorusData(this);
+		}
+		generated = true;
+		return ID;
 	}
 	
 	public void setChunkQueueSize(int size) {
@@ -160,23 +204,8 @@ public class LocalSurface extends Surface {
 
 	
 	public void forceSave() {
-		wio.saveTorusData(this);
+		tio.saveTorusData(this);
 		((LocalWorld) torus.getWorld()).forceSave();
-	}
-
-	@Override
-	public Chunk[] getChunks() {
-		return chunks;
-	}
-
-	@Override
-	public Block[] getPlanetBlocks() {
-		return torusBlocks;
-	}
-	
-	@Override
-	public Entity[] getEntities() {
-		return entities.toArray(new Entity[entities.size()]);
 	}
 	
 	public void addEntity(Entity ent) {
@@ -184,14 +213,10 @@ public class LocalSurface extends Surface {
 	}
 	
 	public void setEntities(Entity[] arr) {
-		entities = new ArrayList<Entity>();
+		entities = new ArrayList<>(arr.length);
 		for (Entity e : arr) {
 			entities.add(e);
 		}
-	}
-	
-	public int getHeight(int x, int z) {
-		return (int)(getMetaChunk(x & ~255, z & ~255).heightMap[x & 255][z & 255]*256);
 	}
 	
 	@Override
@@ -199,7 +224,7 @@ public class LocalSurface extends Surface {
 		// Transform to chunk coordinates:
 		x >>= 4;
 		z >>= 4;
-		Chunk ch = _getNoGenerateChunk(x, z);
+		Chunk ch = getChunk(x, z);
 		if(ch == null) {
 			ch = new Chunk(x, z, this, transformData(getChunkData(x, z)));
 			Chunk[] newList = new Chunk[chunks.length+1];
@@ -226,110 +251,7 @@ public class LocalSurface extends Surface {
 	
 	public void synchronousGenerate(Chunk ch) {
 		ch.generateFrom(generator);
-		wio.saveChunk(ch);
-	}
-	
-	@Override
-	public Chunk _getNoGenerateChunk(int x, int z) {
-		x &= worldAnd >>> 4;
-		z &= worldAnd >>> 4;
-		// First test if the chunk can be found in the list of visible chunks:
-		if(x < lastX && x >= lastX-doubleRD && z < lastZ && z >= lastZ-doubleRD) {
-			// Sometimes errors happen when resizing the renderDistance. If they happen just go on to iterating through the whole long list.
-			// Any seemingly useless checks in here are important!
-			int index = (x-(lastX-doubleRD))*doubleRD + (z-(lastZ-doubleRD));
-			if(index < chunks.length && index >= 0) {
-				Chunk ret = chunks[index];
-				if(x == ret.getX() && z == ret.getZ())
-					return ret;
-			}
-		}
-		return null;
-	}
-	
-	public MetaChunk getMetaChunk(int wx, int wz) {
-		for(MetaChunk ch : maps.toArray(new MetaChunk[0])) {
-			if(ch == null) {
-				maps.remove(null);
-				continue;
-			}
-			if(ch.x == wx && ch.z == wz) {
-				return ch;
-			}
-		}
-		synchronized(maps) {
-			// Now that the thread got access to this part the list might already contain the searched MetaChunk:
-			for(MetaChunk ch : maps) {
-				if(ch.x == wx && ch.z == wz) {
-					return ch;
-				}
-			}
-			// Every time a new MetaChunk is created, go through the list and if the length is at the limit(determined by the renderdistance) remove those that are farthest from the player:
-			while(maps.size() > (doubleRD/16 + 4)*(doubleRD/16 + 4)) {
-				int max = 0;
-				int index = 0;
-				for(int i = 0; i < maps.size(); i++) {
-					Player player = torus.world.getLocalPlayer();
-					int dist = CubyzMath.matchSign(maps.get(i).x-player.getPosition().x, worldAnd)*CubyzMath.matchSign(maps.get(i).x-player.getPosition().x, worldAnd) + CubyzMath.matchSign(maps.get(i).z-player.getPosition().z, worldAnd)*CubyzMath.matchSign(maps.get(i).z-player.getPosition().z, worldAnd);
-					if(dist > max) {
-						max = dist;
-						index = i;
-					}
-				}
-				maps.remove(index);
-			}
-			MetaChunk ch = new MetaChunk(wx, wz, localSeed, this);
-			maps.add(ch);
-			return ch;
-		}
-	}
-	public MetaChunk getNoGenerateMetaChunk(int wx, int wy) {
-		for(MetaChunk ch : maps) {
-			if(ch.x == wx && ch.z == wy) {
-				return ch;
-			}
-		}
-		return null;
-	}
-	
-	public void getMapData(int x, int y, int width, int height, float [][] heightMap, float[][] heatMap, Biome[][] biomeMap) {
-		int x0 = x&(~255);
-		int y0 = y&(~255);
-		for(int px = x0; CubyzMath.matchSign((px-x) & worldAnd, worldAnd) < width; px += 256) {
-			for(int py = y0; CubyzMath.matchSign((py-y) & worldAnd, worldAnd) < height; py += 256) {
-				MetaChunk ch = getMetaChunk(px&worldAnd ,py&worldAnd);
-				int xS = Math.max(px-x, 0);
-				int yS = Math.max(py-y, 0);
-				int xE = Math.min(px+256-x, width);
-				int yE = Math.min(py+256-y, height);
-				for(int cx = xS; cx < xE; cx++) {
-					for(int cy = yS; cy < yE; cy++) {
-						heightMap[cx][cy] = ch.heightMap[(cx+x)&255][(cy+y)&255];
-						heatMap[cx][cy] = ch.heatMap[(cx+x)&255][(cy+y)&255];
-						biomeMap[cx][cy] = ch.biomeMap[(cx+x)&255][(cy+y)&255];
-					}
-				}
-			}
-		}
-	}
-	
-	public byte[] getChunkData(int x, int z) { // Gets the data of a Chunk.
-		int index = -1;
-		for(int i = 0; i < chunkData.size(); i++) {
-			int [] arr = chunkData.get(i);
-			if(arr[0] == x && arr[1] == z) {
-				index = i;
-				break;
-			}
-		}
-		if(index == -1) {
-			byte[] dummy = new byte[12];
-			Bits.putInt(dummy, 0, x);
-			Bits.putInt(dummy, 4, z);
-			Bits.putInt(dummy, 8, 0);
-			return dummy;
-		}
-		return blockData.get(index);
+		tio.saveChunk(ch);
 	}
 	
 	public ArrayList<BlockChange> transformData(byte[] data) {
@@ -342,28 +264,13 @@ public class LocalSurface extends Surface {
 	}
 	
 	@Override
-	public Block getBlock(int x, int y, int z) {
-		if (y > World.WORLD_HEIGHT || y < 0)
-			return null;
-
-		Chunk ch = _getNoGenerateChunk(x >> 4, z >> 4);
-		//System.out.println(ch.isGenerated());
-		if (ch != null && ch.isGenerated()) {
-			Block b = ch.getBlockAt(x & 15, y, z & 15);
-			return b;
-		} else {
-			return null;
-		}
-	}
-	
-	@Override
 	public void removeBlock(int x, int y, int z) {
-		Chunk ch = _getNoGenerateChunk(x >> 4, z >> 4);
+		Chunk ch = getChunk(x >> 4, z >> 4);
 		if (ch != null) {
 			Block b = ch.getBlockAt(x & 15, y, z & 15);
 			ch.removeBlockAt(x & 15, y, z & 15, true);
-			wio.saveChunk(ch);
-			wio.saveTorusData(this);
+			tio.saveChunk(ch); // TODO: Don't save it every time.
+			tio.saveTorusData(this);
 			for (RemoveBlockHandler hand : removeBlockHandlers) {
 				hand.onBlockRemoved(b, x, y, z);
 			}
@@ -372,23 +279,16 @@ public class LocalSurface extends Surface {
 	
 	@Override
 	public void placeBlock(int x, int y, int z, Block b) {
-		Chunk ch = _getNoGenerateChunk(x >> 4, z >> 4);
+		Chunk ch = getChunk(x >> 4, z >> 4);
 		if (ch != null) {
 			ch.addBlockAt(x & 15, y, z & 15, b, true);
-			wio.saveChunk(ch);
-			wio.saveTorusData(this);
+			tio.saveChunk(ch); // TODO: Don't save it every time.
+			tio.saveTorusData(this);
 			for (PlaceBlockHandler hand : placeBlockHandlers) {
 				hand.onBlockPlaced(b, x, y, z);
 			}
 		}
 	}
-	
-	boolean lqdUpdate;
-	boolean loggedUpdSkip;
-	final static boolean DO_LATE_UPDATES = false;
-	
-	BlockEntity[] blockEntities = new BlockEntity[0];
-	BlockInstance[] liquids = new BlockInstance[0];
 	
 	public void update() {
 		long gameTime = torus.world.getGameTime();
@@ -453,8 +353,8 @@ public class LocalSurface extends Surface {
 		}
 		
 		// Liquids
-		if (gameTime % 3 == 0 && lqdUpdate) {
-			lqdUpdate = false;
+		if (gameTime % 3 == 0 && liquidUpdate) {
+			liquidUpdate = false;
 			//Profiler.startProfiling();
 			for (Chunk ch : chunks) {
 				if (ch.isLoaded() && ch.liquids().size() > 0) {
@@ -499,59 +399,6 @@ public class LocalSurface extends Surface {
 		}
 	}
 
-	private ArrayList<CustomOre> customOres = new ArrayList<>();
-	
-	public ArrayList<CustomOre> getCustomOres() {
-		return customOres;
-	}
-	
-	// Returns the blocks, so their meshes can be created and stored.
-	public int generate(ArrayList<Block> blockList, ArrayList<Ore> ores, int ID) {
-		Random rand = new Random(localSeed);
-		int randomAmount = 9 + rand.nextInt(3); // TODO
-		torusBlocks = new Block[randomAmount+2];
-		int i = 0;
-		for(i = 0; i < randomAmount; i++) {
-			torusBlocks[i] = CustomOre.random(rand);
-			customOres.add((CustomOre)torusBlocks[i]);
-			ores.add((Ore)torusBlocks[i]);
-			blockList.add(torusBlocks[i]);
-			torusBlocks[i].ID = ID++;
-		}
-		
-		// Create the crystal ore for the CrystalCaverns:
-		CustomOre glowCrystalOre = CustomOre.random(rand);
-		torusBlocks[i] = glowCrystalOre;
-		glowCrystalOre.makeGlow(); // Make sure it glows.
-		customOres.add(glowCrystalOre);
-		ores.add((Ore)torusBlocks[i]);
-		blockList.add(torusBlocks[i]);
-		torusBlocks[i].ID = ID++;
-		i++;
-		// Create the crystal block for the CrystalCaverns:
-		CustomOre crystalBlock = new CustomOre(); // TODO: Add a CustomBlock type or interface because this is no ore.
-		crystalBlock.setID(glowCrystalOre.getRegistryID().toString()+"_glow_crystal");
-		crystalBlock.setHardness(40);
-		crystalBlock.setBlockDrop(glowCrystalOre.getBlockDrop());
-		crystalBlock.setLight(glowCrystalOre.getColor());
-		crystalBlock.setColor(glowCrystalOre.getColor());
-		crystalBlock.template = -1;
-		torusBlocks[i] = crystalBlock;
-		customOres.add((CustomOre)torusBlocks[i]);
-		ores.add((Ore)torusBlocks[i]);
-		blockList.add(torusBlocks[i]);
-		torusBlocks[i].ID = ID++;
-		i++;
-		// Init crystal caverns with those two blocks:
-		CrystalCavernGenerator.init(crystalBlock, glowCrystalOre);
-		
-		if(generated) {
-			wio.saveTorusData(this);
-		}
-		generated = true;
-		return ID;
-	}
-
 	@Override
 	public void queueChunk(Chunk ch) {
 		queue(ch);
@@ -591,7 +438,7 @@ public class LocalSurface extends Surface {
 					}
 				}
 				if(notIn) {
-					Chunk ch = _getNoGenerateChunk(i, j);
+					Chunk ch = getChunk(i, j);
 					if(ch == null) {
 						ch = new Chunk(i, j, this, transformData(getChunkData(i, j)));
 					}
@@ -602,7 +449,7 @@ public class LocalSurface extends Surface {
 		}
 		for(int k = minK; k < chunks.length; k++) {
 			chunks[k].setLoaded(false);
-			wio.saveChunk(chunks[k]);
+			tio.saveChunk(chunks[k]);
 		}
 		chunks = newVisibles;
 		lastX = x;
@@ -617,8 +464,126 @@ public class LocalSurface extends Surface {
 			}
 		}
 		if (minK != chunks.length) { // if at least one chunk got unloaded
-			wio.saveTorusData(this);
+			tio.saveTorusData(this);
 		}
+	}
+	
+	public void getMapData(int x, int y, int width, int height, float [][] heightMap, float[][] heatMap, Biome[][] biomeMap) {
+		int x0 = x&(~255);
+		int y0 = y&(~255);
+		for(int px = x0; CubyzMath.matchSign((px-x) & worldAnd, worldAnd) < width; px += 256) {
+			for(int py = y0; CubyzMath.matchSign((py-y) & worldAnd, worldAnd) < height; py += 256) {
+				MetaChunk ch = getMetaChunk(px&worldAnd ,py&worldAnd);
+				int xS = Math.max(px-x, 0);
+				int yS = Math.max(py-y, 0);
+				int xE = Math.min(px+256-x, width);
+				int yE = Math.min(py+256-y, height);
+				for(int cx = xS; cx < xE; cx++) {
+					for(int cy = yS; cy < yE; cy++) {
+						heightMap[cx][cy] = ch.heightMap[(cx+x)&255][(cy+y)&255];
+						heatMap[cx][cy] = ch.heatMap[(cx+x)&255][(cy+y)&255];
+						biomeMap[cx][cy] = ch.biomeMap[(cx+x)&255][(cy+y)&255];
+					}
+				}
+			}
+		}
+	}
+	
+	public MetaChunk getMetaChunk(int wx, int wz) {
+		for(MetaChunk ch : metaChunks.toArray(new MetaChunk[0])) {
+			if(ch.x == wx && ch.z == wz) {
+				return ch;
+			}
+		}
+		synchronized(metaChunks) {
+			// Now that the thread got access to this part the list might already contain the searched MetaChunk:
+			for(MetaChunk ch : metaChunks) {
+				if(ch.x == wx && ch.z == wz) {
+					return ch;
+				}
+			}
+			// Every time a new MetaChunk is created, go through the list and if the length is at the limit(determined by the renderdistance) remove those that are farthest from the player:
+			while(metaChunks.size() > (doubleRD/16 + 4)*(doubleRD/16 + 4)) {
+				int max = 0;
+				int index = 0;
+				for(int i = 0; i < metaChunks.size(); i++) {
+					Player player = torus.world.getLocalPlayer();
+					int dist = CubyzMath.matchSign(metaChunks.get(i).x-player.getPosition().x, worldAnd)*CubyzMath.matchSign(metaChunks.get(i).x-player.getPosition().x, worldAnd) + CubyzMath.matchSign(metaChunks.get(i).z-player.getPosition().z, worldAnd)*CubyzMath.matchSign(metaChunks.get(i).z-player.getPosition().z, worldAnd);
+					if(dist > max) {
+						max = dist;
+						index = i;
+					}
+				}
+				metaChunks.remove(index);
+			}
+			MetaChunk ch = new MetaChunk(wx, wz, localSeed, this);
+			metaChunks.add(ch);
+			return ch;
+		}
+	}
+	
+	public MetaChunk getNoGenerateMetaChunk(int wx, int wy) {
+		for(MetaChunk ch : metaChunks) {
+			if(ch.x == wx && ch.z == wy) {
+				return ch;
+			}
+		}
+		return null;
+	}
+	
+	@Override
+	public Chunk getChunk(int x, int z) {
+		x &= worldAnd >>> 4;
+		z &= worldAnd >>> 4;
+		// First test if the chunk can be found in the list of visible chunks:
+		if(x < lastX && x >= lastX-doubleRD && z < lastZ && z >= lastZ-doubleRD) {
+			// Sometimes errors happen when resizing the renderDistance. If they happen just go on to iterating through the whole long list.
+			// Any seemingly useless checks in here are important!
+			int index = (x-(lastX-doubleRD))*doubleRD + (z-(lastZ-doubleRD));
+			if(index < chunks.length && index >= 0) {
+				Chunk ret = chunks[index];
+				if(x == ret.getX() && z == ret.getZ())
+					return ret;
+			}
+		}
+		return null;
+	}
+	
+	@Override
+	public Block getBlock(int x, int y, int z) {
+		if (y > World.WORLD_HEIGHT || y < 0)
+			return null;
+
+		Chunk ch = getChunk(x >> 4, z >> 4);
+		if (ch != null && ch.isGenerated()) {
+			Block b = ch.getBlockAt(x & 15, y, z & 15);
+			return b;
+		} else {
+			return null;
+		}
+	}
+	
+	public byte[] getChunkData(int x, int z) { // Gets the data of a Chunk.
+		int index = -1;
+		for(int i = 0; i < chunkData.size(); i++) {
+			int [] arr = chunkData.get(i);
+			if(arr[0] == x && arr[1] == z) {
+				index = i;
+				break;
+			}
+		}
+		if(index == -1) {
+			byte[] dummy = new byte[12];
+			Bits.putInt(dummy, 0, x);
+			Bits.putInt(dummy, 4, z);
+			Bits.putInt(dummy, 8, 0);
+			return dummy;
+		}
+		return blockData.get(index);
+	}
+	
+	public long getSeed() {
+		return localSeed;
 	}
 	
 	public float getGlobalLighting() {
@@ -632,6 +597,42 @@ public class LocalSurface extends Surface {
 	@Override
 	public Vector4f getClearColor() {
 		return clearColor;
+	}
+
+	@Override
+	public BlockEntity getBlockEntity(int x, int y, int z) {
+		/*BlockInstance bi = getBlockInstance(x, y, z);
+		Chunk ck = _getNoGenerateChunk(bi.getX() >> 4, bi.getZ() >> 4);
+		return ck.blockEntities().get(bi);*/
+		return null; // TODO: Work on BlockEntities!
+	}
+	
+	@Override
+	public int getAnd() {
+		return worldAnd;
+	}
+	
+	public ArrayList<CustomOre> getCustomOres() {
+		return customOres;
+	}
+
+	@Override
+	public Chunk[] getChunks() {
+		return chunks;
+	}
+
+	@Override
+	public Block[] getPlanetBlocks() {
+		return torusBlocks;
+	}
+	
+	@Override
+	public Entity[] getEntities() {
+		return entities.toArray(new Entity[entities.size()]);
+	}
+	
+	public int getHeight(int x, int z) {
+		return (int)(getMetaChunk(x & ~255, z & ~255).heightMap[x & 255][z & 255]*256);
 	}
 
 	@Override
@@ -653,18 +654,4 @@ public class LocalSurface extends Surface {
 			e.printStackTrace();
 		}
 	}
-
-	@Override
-	public BlockEntity getBlockEntity(int x, int y, int z) {
-		/*BlockInstance bi = getBlockInstance(x, y, z);
-		Chunk ck = _getNoGenerateChunk(bi.getX() >> 4, bi.getZ() >> 4);
-		return ck.blockEntities().get(bi);*/
-		return null; // TODO: Work on BlockEntities!
-	}
-	
-	@Override
-	public int getAnd() {
-		return worldAnd;
-	}
-	
 }
