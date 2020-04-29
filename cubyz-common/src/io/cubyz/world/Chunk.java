@@ -34,7 +34,7 @@ public class Chunk {
 	private ArrayList<Integer> updatingLiquids = new ArrayList<>(); // liquids that should be updated at next frame. Stores the local index of the block.
 	private ArrayList<BlockChange> changes; // Reports block changes. Only those will be saved!
 	private FastList<BlockInstance> visibles = new FastList<BlockInstance>(50, BlockInstance.class);
-	private int ox, oz;
+	private int cx, cz;
 	private int wx, wz;
 	private boolean generated;
 	private boolean loaded;
@@ -52,8 +52,8 @@ public class Chunk {
 		}
 		inst = new BlockInstance[16*World.WORLD_HEIGHT*16];
 		blocks = new Block[16*World.WORLD_HEIGHT*16];
-		this.ox = ox;
-		this.oz = oz;
+		this.cx = ox;
+		this.cz = oz;
 		wx = ox << 4;
 		wz = oz << 4;
 		this.surface = surface;
@@ -72,7 +72,7 @@ public class Chunk {
 	private Block getBlockUnbound(int x, int y, int z) {
 		if(y < 0 || y >= World.WORLD_HEIGHT || !generated) return null;
 		if(x < 0 || x > 15 || z < 0 || z > 15) {
-			Chunk chunk = surface._getNoGenerateChunk(ox + ((x & ~15) >> 4), oz + ((z & ~15) >> 4));
+			Chunk chunk = surface._getNoGenerateChunk(cx + ((x & ~15) >> 4), cz + ((z & ~15) >> 4));
 			if(chunk != null) return chunk.getBlockUnbound(x & 15, y, z & 15);
 			return BlockInit.dirt; // Let the lighting engine think this region is blocked.
 		}
@@ -107,11 +107,11 @@ public class Chunk {
 	}
 	
 	public int getX() {
-		return ox;
+		return cx;
 	}
 	
 	public int getZ() {
-		return oz;
+		return cz;
 	}
 	
 	public ArrayList<Integer> liquids() {
@@ -262,7 +262,7 @@ public class Chunk {
 		if(!Settings.easyLighting || y < 0 || y >= World.WORLD_HEIGHT || !generated) return -1;
 		// Check if it's inside this chunk:
 		if(x < 0 || x > 15 || z < 0 || z > 15) {
-			Chunk chunk = surface._getNoGenerateChunk(ox + ((x & ~15) >> 4), oz + ((z & ~15) >> 4));
+			Chunk chunk = surface._getNoGenerateChunk(cx + ((x & ~15) >> 4), cz + ((z & ~15) >> 4));
 			if(chunk != null) return chunk.localLightUpdate(x & 15, y, z & 15, shift, mask);
 			return -1;
 		}
@@ -287,7 +287,7 @@ public class Chunk {
 		if(x != 0) {
 			maxLight = Math.max(maxLight, applyNeighbors(light[index-16], shift, neighbors[0], neighbors[1], neighbors[2], neighbors[3]));
 		} else {
-			Chunk chunk = surface._getNoGenerateChunk(ox-1, oz);
+			Chunk chunk = surface._getNoGenerateChunk(cx-1, cz);
 			if(chunk != null && chunk.isLoaded()) {
 				maxLight = Math.max(maxLight, applyNeighbors(chunk.light[index | 0xf0], shift, neighbors[0], neighbors[1], neighbors[2], neighbors[3]));
 			}
@@ -295,7 +295,7 @@ public class Chunk {
 		if(x != 15) {
 			maxLight = Math.max(maxLight, applyNeighbors(light[index+16], shift, neighbors[4], neighbors[5], neighbors[6], neighbors[7]));
 		} else {
-			Chunk chunk = surface._getNoGenerateChunk(ox+1, oz);
+			Chunk chunk = surface._getNoGenerateChunk(cx+1, cz);
 			if(chunk != null && chunk.isLoaded()) {
 				maxLight = Math.max(maxLight, applyNeighbors(chunk.light[index & ~0xf0], shift, neighbors[4], neighbors[5], neighbors[6], neighbors[7]));
 			}
@@ -303,7 +303,7 @@ public class Chunk {
 		if(z != 0) {
 			maxLight = Math.max(maxLight, applyNeighbors(light[index-1], shift, neighbors[0], neighbors[2], neighbors[4], neighbors[6]));
 		} else {
-			Chunk chunk = surface._getNoGenerateChunk(ox, oz-1);
+			Chunk chunk = surface._getNoGenerateChunk(cx, cz-1);
 			if(chunk != null && chunk.isLoaded()) {
 				maxLight = Math.max(maxLight, applyNeighbors(chunk.light[index | 0xf], shift, neighbors[0], neighbors[2], neighbors[4], neighbors[6]));
 			}
@@ -311,7 +311,7 @@ public class Chunk {
 		if(z != 15) {
 			maxLight = Math.max(maxLight, applyNeighbors(light[index+1], shift, neighbors[1], neighbors[3], neighbors[5], neighbors[7]));
 		} else {
-			Chunk chunk = surface._getNoGenerateChunk(ox, oz+1);
+			Chunk chunk = surface._getNoGenerateChunk(cx, cz+1);
 			if(chunk != null && chunk.isLoaded()) {
 				maxLight = Math.max(maxLight, applyNeighbors(chunk.light[index & ~0xf], shift, neighbors[1], neighbors[3], neighbors[5], neighbors[7]));
 			}
@@ -391,7 +391,7 @@ public class Chunk {
 		int rx = x - wx;
 		int rz = z - wz;
 		if(rx < 0 || rx > 15 || rz < 0 || rz > 15) {
-			surface._getNoGenerateChunk(ox + ((rx & ~15) >> 4), oz + ((rz & ~15) >> 4)).addBlock(b, x & 15, y, z & 15);
+			surface._getNoGenerateChunk(cx + ((rx & ~15) >> 4), cz + ((rz & ~15) >> 4)).addBlock(b, x & 15, y, z & 15);
 			return;
 		} else {
 			addBlock(b, x & 15, y, z & 15);
@@ -497,16 +497,16 @@ public class Chunk {
 		
 		loaded = true;
 		Chunk [] chunks = new Chunk[4];
-		Chunk ch = surface._getNoGenerateChunk(ox - 1, oz);
+		Chunk ch = surface._getNoGenerateChunk(cx - 1, cz);
 		chunks[0] = ch;
 		boolean chx0 = ch != null && ch.isGenerated();
-		ch = surface._getNoGenerateChunk(ox + 1, oz);
+		ch = surface._getNoGenerateChunk(cx + 1, cz);
 		chunks[1] = ch;
 		boolean chx1 = ch != null && ch.isGenerated();
-		ch = surface._getNoGenerateChunk(ox, oz - 1);
+		ch = surface._getNoGenerateChunk(cx, cz - 1);
 		chunks[2] = ch;
 		boolean chz0 = ch != null && ch.isGenerated();
-		ch = surface._getNoGenerateChunk(ox, oz + 1);
+		ch = surface._getNoGenerateChunk(cx, cz + 1);
 		boolean chz1 = ch != null && ch.isGenerated();
 		chunks[3] = ch;
 		int maxHeight = 255; // The biggest height that supports blocks.
@@ -600,10 +600,10 @@ public class Chunk {
 			}
 			lightUpdate(lightUpdates, 24, 0x00ffffff);
 			// Look at the neighboring chunks. Update only the outer corners:
-			boolean no = surface._getNoGenerateChunk(ox-1, oz) != null;
-			boolean po = surface._getNoGenerateChunk(ox+1, oz) != null;
-			boolean on = surface._getNoGenerateChunk(ox, oz-1) != null;
-			boolean op = surface._getNoGenerateChunk(ox, oz+1) != null;
+			boolean no = surface._getNoGenerateChunk(cx-1, cz) != null;
+			boolean po = surface._getNoGenerateChunk(cx+1, cz) != null;
+			boolean on = surface._getNoGenerateChunk(cx, cz-1) != null;
+			boolean op = surface._getNoGenerateChunk(cx, cz+1) != null;
 			if(no || on) {
 				int x = 0, z = 0;
 				for(int y = 0; y < maxHeight; y++) {
@@ -688,12 +688,10 @@ public class Chunk {
 	
 	// This function is here because it is mostly used by addBlock, where the neighbors to the added block usually are in the same chunk.
 	public Chunk getChunk(int x, int z) {
-		int cx = x;
-		cx >>= 4;
-		int cz = z;
-		cz >>= 4;
-		if(ox != cx || oz != cz)
-			return surface._getNoGenerateChunk(cx, cz);
+		x >>= 4;
+		z >>= 4;
+		if(cx != x || cz != z)
+			return surface._getNoGenerateChunk(x, z);
 		return this;
 	}
 	
@@ -906,8 +904,8 @@ public class Chunk {
 	
 	public byte[] save() {
 		byte[] data = new byte[12 + (changes.size() << 4)];
-		Bits.putInt(data, 0, ox);
-		Bits.putInt(data, 4, oz);
+		Bits.putInt(data, 0, cx);
+		Bits.putInt(data, 4, cz);
 		Bits.putInt(data, 8, changes.size());
 		for(int i = 0; i < changes.size(); i++) {
 			changes.get(i).save(data, 12 + (i << 4));
@@ -917,8 +915,8 @@ public class Chunk {
 	
 	public int[] getData() {
 		int[] data = new int[2];
-		data[0] = ox;
-		data[1] = oz;
+		data[0] = cx;
+		data[1] = cz;
 		return data;
 	}
 	
@@ -926,7 +924,7 @@ public class Chunk {
 		if(y < 0) return 0;
 		if(y >= World.WORLD_HEIGHT) return 0xff000000;
 		if(x < 0 || x > 15 || z < 0 || z > 15) {
-			Chunk chunk = surface._getNoGenerateChunk(ox + (x >> 4), oz + (z >> 4));
+			Chunk chunk = surface._getNoGenerateChunk(cx + (x >> 4), cz + (z >> 4));
 			if(chunk != null) return chunk.getLight(x & 15, y, z & 15, sunLight);
 			return -1;
 		}
@@ -970,7 +968,7 @@ public class Chunk {
 				if(xi == (xi & 15) && zi == (zi & 15)) { // Simple double-bound test for x and z.
 					inst[i] = getBlockAt(xi, yi, zi);
 				} else {
-					Chunk ch = surface._getNoGenerateChunk((xi >> 4) + ox, (zi >> 4) +oz);
+					Chunk ch = surface._getNoGenerateChunk((xi >> 4) + cx, (zi >> 4) +cz);
 					if(ch != null)
 						inst[i] = ch.getBlockAt(xi & 15, yi, zi & 15);
 				}

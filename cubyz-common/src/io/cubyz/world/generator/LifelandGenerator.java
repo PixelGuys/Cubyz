@@ -56,10 +56,10 @@ public class LifelandGenerator extends SurfaceGenerator {
 	
 	@Override
 	public void generate(Chunk ch, Surface surface) {
-		int ox = ch.getX();
-		int oz = ch.getZ();
-		int wx = ox << 4;
-		int wz = oz << 4;
+		int cx = ch.getX();
+		int cz = ch.getZ();
+		int wx = cx << 4;
+		int wz = cz << 4;
 		long seed = surface.getStellarTorus().getLocalSeed();
 		// Generate some maps:
 		float[][] heightMap = new float[32][32];
@@ -84,11 +84,11 @@ public class LifelandGenerator extends SurfaceGenerator {
 		
 		for (Generator g : sortedGenerators) {
 			if (g instanceof FancyGenerator) {
-				((FancyGenerator) g).generate(r.nextLong(), ox, oz, chunk, vegetationIgnoreMap, heatMap, realHeight, biomeMap);
+				((FancyGenerator) g).generate(r.nextLong(), cx, cz, chunk, vegetationIgnoreMap, heatMap, realHeight, biomeMap);
 			} else if (g instanceof BigGenerator) {
-				((BigGenerator) g).generate(r.nextLong(), ox*16, oz*16, chunk, vegetationIgnoreMap, (LocalSurface)surface);
+				((BigGenerator) g).generate(r.nextLong(), cx*16, cz*16, chunk, vegetationIgnoreMap, (LocalSurface)surface);
 			} else {
-				g.generate(r.nextLong(), ox, oz, chunk, vegetationIgnoreMap);
+				g.generate(r.nextLong(), cx, cz, chunk, vegetationIgnoreMap);
 			}
 		}
 
