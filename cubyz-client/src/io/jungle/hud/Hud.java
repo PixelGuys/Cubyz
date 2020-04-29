@@ -12,7 +12,7 @@ public class Hud {
 	public long nvg;
 	
 	public void init(Window window) throws Exception {
-	    this.nvg = window.getOptions().antialiasing ? nvgCreate(NVG_ANTIALIAS | NVG_STENCIL_STROKES) : nvgCreate(NVG_STENCIL_STROKES);
+	    this.nvg = nvgCreate(0);
 	    if (this.nvg == NULL) {
 	        throw new Exception("Could not init NanoVG");
 	    }

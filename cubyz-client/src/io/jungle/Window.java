@@ -6,7 +6,6 @@ import static org.lwjgl.system.MemoryStack.stackPush;
 import static org.lwjgl.system.MemoryUtil.NULL;
 
 import java.nio.IntBuffer;
-import java.util.Objects;
 
 import javax.swing.JOptionPane;
 
@@ -21,9 +20,6 @@ import org.lwjgl.system.Library;
 import org.lwjgl.system.MemoryStack;
 
 import io.cubyz.CubyzLogger;
-import io.jungle.game.GameOptions;
-import io.jungle.viewport.FullViewportManager;
-import io.jungle.viewport.ViewportManager;
 
 public class Window {
 
@@ -31,17 +27,16 @@ public class Window {
 	private int width, height;
 	private boolean resized;
 	private Matrix4f projectionMatrix;
-	private GameOptions opt;
 	private boolean fullscreen = false;
-	private ViewportManager manager = new FullViewportManager();
 	private FrameBuffer buffer;
 	private boolean focused = false;
+	private int antiAlias = 0;
 	
 	private Vector4f clearColor;
 	
 	static {
 		try {
-			Library.initialize();
+			Library.initialize(); // initialize LWJGL libraries to be able to catch any potential errors (like missing library)
 		} catch (UnsatisfiedLinkError e) {
 			CubyzLogger.instance.severe("Missing LWJGL libraries for " + 
 					System.getProperty("os.name") + " on " + System.getProperty("os.arch"));
@@ -49,15 +44,6 @@ public class Window {
 					System.getProperty("os.name") + " on " + System.getProperty("os.arch"), "Error", JOptionPane.ERROR_MESSAGE);
 			System.exit(1);
 		}
-	}
-	
-	public ViewportManager getViewportManager() {
-		return manager;
-	}
-	
-	public void setViewportManager(ViewportManager viewport) {
-		Objects.requireNonNull(viewport, "viewport manager");
-		manager = viewport;
 	}
 	
 	public Vector4f getClearColor() {
@@ -75,10 +61,6 @@ public class Window {
 	public void setClearColor(Vector4f clearColor) {
 		this.clearColor = clearColor;
 		glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
-	}
-	
-	public GameOptions getOptions() {
-		return opt;
 	}
 
 	public boolean isResized() {
@@ -134,7 +116,7 @@ public class Window {
 					oldW = width.get(0);
 					oldH = height.get(0);
 				}
-				glfwSetWindowMonitor(handle, glfwGetPrimaryMonitor(), 0, 0, 1920, 1080, GLFW_DONT_CARE);
+				glfwSetWindowMonitor(handle, glfwGetPrimaryMonitor(), 0, 0, 1920, 1080, GLFW_DONT_CARE); // TODO: resolutions other than 1920x1080
 			} else {
 				glfwSetWindowMonitor(handle, NULL, oldX, oldY, oldW, oldH, GLFW_DONT_CARE);
 				glfwSetWindowAttrib(handle, GLFW_DECORATED, GLFW_TRUE);
@@ -143,7 +125,8 @@ public class Window {
 	}
 	
 	public int[] getPosition() {
-		int[] pos = new int[2];try (MemoryStack stack = stackPush()) {
+		int[] pos = new int[2];
+		try (MemoryStack stack = stackPush()) {
 			IntBuffer x = stack.mallocInt(1);
 			IntBuffer y = stack.mallocInt(1);
 			glfwGetWindowPos(handle, x, y);
@@ -153,38 +136,9 @@ public class Window {
 		return pos;
 	}
 	
-	public void setOptions(GameOptions opt) {
-		this.opt = opt;
-		glfwMakeContextCurrent(handle);
-		if (opt.showTriangles) {
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-		} else {
-			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-		}
-		if (opt.antialiasing) {
-		    glfwWindowHint(GLFW_SAMPLES, 2);
-		} else {
-			glfwWindowHint(GLFW_SAMPLES, 0);
-		}
-		if (opt.cullFace) {
-			glEnable(GL_CULL_FACE);
-			glCullFace(GL_BACK);
-		} else {
-			glDisable(GL_CULL_FACE);
-		}
-		if (opt.blending) {
-			glEnable(GL_BLEND);
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-			//glBlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_DST_ALPHA);
-		} else {
-			glDisable(GL_BLEND);
-		}
-		setFullscreen(opt.fullscreen);
-	}
-	
 	private static boolean inited;
 
-	private void init(GameOptions opt, long monitorID) {
+	private void init(long monitorID) {
 		if (!inited) {
 			GLFWErrorCallback.createPrint(System.err).set();
 			
@@ -198,7 +152,8 @@ public class Window {
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
 	    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-	    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+	    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // allow to use newer versions (if available) at the price of having deprecated features possibly removed
+	    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
 
 		handle = glfwCreateWindow(640, 480, "Cubyz", monitorID, NULL);
 		if (handle == NULL) {
@@ -265,14 +220,11 @@ public class Window {
 		
 		CubyzLogger.instance.fine("OpenGL Version: " + GL11.glGetString(GL11.GL_VERSION));
 		
-		glEnable(GL_DEPTH_TEST);
-		//glEnable(GL_STENCIL_TEST);
-		
-		setOptions(opt);
+		restoreState();
 	}
 	
-	public void init(GameOptions opt) {
-		init(opt, NULL);
+	public void init() {
+		init(NULL);
 	}
 	
 	/**
@@ -288,6 +240,14 @@ public class Window {
 		this.buffer = buffer;
 	}
 	
+	public int getAntialiasSamples() {
+		return antiAlias;
+	}
+	
+	public boolean isAntialiasEnabled() {
+		return antiAlias != 0;
+	}
+	
 	public boolean isFocused() {
 		return focused;
 	}
@@ -300,25 +260,18 @@ public class Window {
 		return buffer != null;
 	}
 	
+	// Used to restore state, as NanoVG can touch some OpenGL parameters
 	public void restoreState() {
         glEnable(GL_DEPTH_TEST);
-        //glEnable(GL_STENCIL_TEST);
-        if (opt.cullFace) {
-            glEnable(GL_CULL_FACE);
-            glCullFace(GL_BACK);
-        }
-        if (opt.blending) {
-			glEnable(GL_BLEND);
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        }
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		// TODO use OpenGL multisampling: https://www.khronos.org/opengl/wiki/Multisampling or GLFW_SAMPLES
 	}
 	
 	public void show() {
 		glfwShowWindow(handle);
-	}
-	
-	public void update() {
-		
 	}
 	
 	public void render() {

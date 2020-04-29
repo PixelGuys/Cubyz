@@ -516,7 +516,9 @@ public class Cubyz implements IGameLogic {
 			Keyboard.setKeyPressed(GLFW.GLFW_KEY_F3, false);
 		}
 		if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_F11)) {
-			window.setFullscreen(!window.isFullscreen());
+			renderDeque.push(() -> {
+				window.setFullscreen(!window.isFullscreen());
+			});
 			Keyboard.setKeyPressed(GLFW.GLFW_KEY_F11, false);
 		}
 		if (!gameUI.doesGUIPauseGame() && world != null) {

@@ -77,7 +77,7 @@ public class UISystem extends Hud {
 
 	@Override
 	public void init(Window window) throws Exception {
-		nvg = window.getOptions().antialiasing ? nvgCreate(NVG_ANTIALIAS) : nvgCreate(0);
+		nvg = nvgCreate(0);
 	    if (nvg == NULL) {
 	        throw new Exception("Could not init NanoVG");
 	    }

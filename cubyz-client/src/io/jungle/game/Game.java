@@ -7,7 +7,6 @@ public class Game {
 	protected volatile boolean running;
 	protected Window win;
 	protected IGameLogic logic;
-	private GameOptions opt;
 	private Thread updateThread;
 	private Thread renderThread;
 	double secsPerUpdate = 1d / 30d;
@@ -66,11 +65,10 @@ public class Game {
 		}
 	}
 
-	public void start(GameOptions opt) {
-		this.opt = opt;
+	public void start() {
 		running = true;
 		win = new Window();
-		win.init(this.opt);
+		win.init();
 		logic.bind(this);
 		try {
 			logic.init(win);
@@ -114,7 +112,8 @@ public class Game {
 			sync(loopStartTime, 1 / 60);
 		}
 	}
-
+	
+	// not very precise, we should only rely on this when v-sync is disabled
 	private void sync(double loopStartTime, double loopSlot) {
 		double endTime = loopStartTime + loopSlot;
 		while (getTime() < endTime) {
@@ -130,7 +129,6 @@ public class Game {
 	}
 
 	public void update() {
-		win.update();
 		logic.update(1.0f);
 	}
 
