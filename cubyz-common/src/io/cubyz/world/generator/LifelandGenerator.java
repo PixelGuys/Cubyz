@@ -62,9 +62,10 @@ public class LifelandGenerator extends SurfaceGenerator {
 		int wz = oz << 4;
 		long seed = surface.getStellarTorus().getLocalSeed();
 		// Generate some maps:
-		float[][] heightMap = ((LocalSurface)surface).getHeightMapData(wx-8, wz-8, 32, 32);
-		float[][] heatMap = ((LocalSurface)surface).getHeatMapData(wx-8, wz-8, 32, 32);
-		Biome[][] biomeMap = ((LocalSurface)surface).getBiomeMapData(wx-8, wz-8, 32, 32);
+		float[][] heightMap = new float[32][32];
+		float[][] heatMap = new float[32][32];
+		Biome[][] biomeMap = new Biome[32][32];
+		((LocalSurface)surface).getMapData(wx-8, wz-8, 32, 32, heightMap, heatMap, biomeMap);
 		boolean[][] vegetationIgnoreMap = new boolean[32][32]; // Stores places where vegetation should not grow, like caves and rivers.
 		int[][] realHeight = new int[32][32];
 		for(int px = 0; px < 32; px++) {

@@ -292,10 +292,9 @@ public class LocalSurface extends Surface {
 		return null;
 	}
 	
-	public float[][] getHeightMapData(int x, int y, int width, int height) {
+	public void getMapData(int x, int y, int width, int height, float [][] heightMap, float[][] heatMap, Biome[][] biomeMap) {
 		int x0 = x&(~255);
 		int y0 = y&(~255);
-		float[][] map = new float[width][height];
 		for(int px = x0; CubyzMath.matchSign((px-x) & worldAnd, worldAnd) < width; px += 256) {
 			for(int py = y0; CubyzMath.matchSign((py-y) & worldAnd, worldAnd) < height; py += 256) {
 				MetaChunk ch = getMetaChunk(px&worldAnd ,py&worldAnd);
@@ -305,54 +304,13 @@ public class LocalSurface extends Surface {
 				int yE = Math.min(py+256-y, height);
 				for(int cx = xS; cx < xE; cx++) {
 					for(int cy = yS; cy < yE; cy++) {
-						map[cx][cy] = ch.heightMap[(cx+x)&255][(cy+y)&255];
+						heightMap[cx][cy] = ch.heightMap[(cx+x)&255][(cy+y)&255];
+						heatMap[cx][cy] = ch.heatMap[(cx+x)&255][(cy+y)&255];
+						biomeMap[cx][cy] = ch.biomeMap[(cx+x)&255][(cy+y)&255];
 					}
 				}
 			}
 		}
-		return map;
-	}
-	
-	public float[][] getHeatMapData(int x, int y, int width, int height) {
-		int x0 = x&(~255);
-		int y0 = y&(~255);
-		float[][] map = new float[width][height];
-		for(int px = x0; CubyzMath.matchSign((px-x) & worldAnd, worldAnd) < width; px += 256) {
-			for(int py = y0; CubyzMath.matchSign((py-y) & worldAnd, worldAnd) < height; py += 256) {
-				MetaChunk ch = getMetaChunk(px&worldAnd ,py&worldAnd);
-				int xS = Math.max(px-x, 0);
-				int yS = Math.max(py-y, 0);
-				int xE = Math.min(px+256-x, width);
-				int yE = Math.min(py+256-y, height);
-				for(int cx = xS; cx < xE; cx++) {
-					for(int cy = yS; cy < yE; cy++) {
-						map[cx][cy] = ch.heatMap[(cx+x)&255][(cy+y)&255];
-					}
-				}
-			}
-		}
-		return map;
-	}
-	
-	public Biome[][] getBiomeMapData(int x, int y, int width, int height) {
-		int x0 = x&(~255);
-		int y0 = y&(~255);
-		Biome[][] map = new Biome[width][height];
-		for(int px = x0; CubyzMath.matchSign((px-x) & worldAnd, worldAnd) < width; px += 256) {
-			for(int py = y0; CubyzMath.matchSign((py-y) & worldAnd, worldAnd) < height; py += 256) {
-				MetaChunk ch = getMetaChunk(px&worldAnd, py&worldAnd);
-				int xS = Math.max(px-x, 0);
-				int yS = Math.max(py-y, 0);
-				int xE = Math.min(px+256-x, width);
-				int yE = Math.min(py+256-y, height);
-				for(int cx = xS; cx < xE; cx++) {
-					for(int cy = yS; cy < yE; cy++) {
-						map[cx][cy] = ch.biomeMap[(cx+x)&255][(cy+y)&255];
-					}
-				}
-			}
-		}
-		return map;
 	}
 	
 	public byte[] getChunkData(int x, int z) { // Gets the data of a Chunk.
