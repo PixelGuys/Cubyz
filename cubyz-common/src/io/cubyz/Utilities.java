@@ -57,5 +57,22 @@ public class Utilities {
 		}
 		return null;
 	}
+
+	// Doesn't do any range checks. Do not give it empty arrays!
+	public static void fillArray(Object[] array, Object value) {
+		int len = array.length;
+		array[0] = value;
+		for (int i = 1; i < len; i <<= 1) {
+			System.arraycopy(array, 0, array, i, ((len - i) < i) ? (len - i) : i);
+		}
+	}
+	// Doesn't do any range checks. Do not give it empty arrays!
+	public static void fillArray(int[] array, int value) {
+		int len = array.length;
+		array[0] = value;
+		for (int i = 1; i < len; i <<= 1) {
+			System.arraycopy(array, 0, array, i, ((len - i) < i) ? (len - i) : i);
+		}
+	}
 	
 }

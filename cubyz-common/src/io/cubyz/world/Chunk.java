@@ -8,6 +8,7 @@ import org.joml.Vector3f;
 import org.joml.Vector3i;
 
 import io.cubyz.Settings;
+import io.cubyz.Utilities;
 import io.cubyz.base.init.BlockInit;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.Block.BlockClass;
@@ -42,52 +43,216 @@ public class Chunk {
 	
 	private Surface surface;
 	
-	public Chunk(int ox, int oz, Surface surface, ArrayList<BlockChange> changes) {
+	public Chunk(int cx, int cz, Surface surface, ArrayList<BlockChange> changes) {
 		if(surface != null) {
-			ox &= surface.getAnd() >>> 4;
-			oz &= surface.getAnd() >>> 4;
+			cx &= surface.getAnd() >>> 4;
+			cz &= surface.getAnd() >>> 4;
 		}
 		if(Settings.easyLighting) {
 			light = new int[16*World.WORLD_HEIGHT*16];
 		}
 		inst = new BlockInstance[16*World.WORLD_HEIGHT*16];
 		blocks = new Block[16*World.WORLD_HEIGHT*16];
-		this.cx = ox;
-		this.cz = oz;
-		wx = ox << 4;
-		wz = oz << 4;
+		this.cx = cx;
+		this.cz = cz;
+		wx = cx << 4;
+		wz = cz << 4;
 		this.surface = surface;
 		this.changes = changes;
 	}
 	
-	// Functions calls are faster than two pointer references, which would happen when using a 3D-array, and functions can additionally be inlined by the VM.
+	public void generateFrom(SurfaceGenerator gen) {
+		gen.generate(this, surface);
+		generated = true;
+	}
+	// Clears the data structures which are used for visible blocks.
+	public void clear() {
+		visibles.clear();
+		Utilities.fillArray(inst, null);
+		Utilities.fillArray(light, 0);
+	}
+	// Loads the chunk
+	public void load() {
+		if(loaded) {
+			// Empty the list, so blocks won't get added twice. This will also be important, when there is a manual chunk reloading.
+			clear();
+		}
+		
+		loaded = true;
+		Chunk [] chunks = new Chunk[4];
+		Chunk ch = surface.getChunk(cx - 1, cz);
+		chunks[0] = ch;
+		boolean chx0 = ch != null && ch.isGenerated();
+		ch = surface.getChunk(cx + 1, cz);
+		chunks[1] = ch;
+		boolean chx1 = ch != null && ch.isGenerated();
+		ch = surface.getChunk(cx, cz - 1);
+		chunks[2] = ch;
+		boolean chz0 = ch != null && ch.isGenerated();
+		ch = surface.getChunk(cx, cz + 1);
+		boolean chz1 = ch != null && ch.isGenerated();
+		chunks[3] = ch;
+		int maxHeight = 255; // The biggest height that supports blocks.
+		// Use lighting calculations that are done anyways if easyLighting is enabled to determine the maximum height inside this chunk.
+		ArrayList<int[]> lightUpdates = null;
+		ArrayList<Integer> lightSources = null;
+		if(Settings.easyLighting) {
+			lightUpdates = new ArrayList<>();
+			lightSources = new ArrayList<>();
+			// First of all update the top air blocks on which the sun is constant:
+			maxHeight = World.WORLD_HEIGHT-1;
+			boolean stopped = false;
+			while(!stopped) {
+				--maxHeight;
+				for(int xz = 0; xz < 256; xz++) {
+					light[((maxHeight+1) << 8) | xz] |= 0xff000000;
+					if(blocks[(maxHeight << 8) | xz] != null) {
+						stopped = true;
+					}
+				}
+			}
+		} else { // TODO: Find a similar optimization for easyLighting disabled.
+			
+		}
+		// Sadly the new system doesn't allow for easy access on the BlockInstances through a list, so we have to go through all blocks(which probably is even more efficient because about half of the blocks are non-air).
+		for(int x = 0; x < 16; x++) {
+			for(int y = 0; y <= maxHeight; y++) {
+				for(int  z = 0; z < 16; z++) {
+					Block b = getBlockAt(x, y, z);
+					if(b != null) {
+						Block[] neighbors = getNeighbors(x, y, z);
+						BlockInstance[] visibleNeighbors = getVisibleNeighbors(x + wx, y, z + wz);
+						if(visibleNeighbors[0] != null) visibleNeighbors[0].neighborWest = getsBlocked(neighbors[0], b.isTransparent());
+						if(visibleNeighbors[1] != null) visibleNeighbors[1].neighborEast = getsBlocked(neighbors[1], b.isTransparent());
+						if(visibleNeighbors[2] != null) visibleNeighbors[2].neighborNorth = getsBlocked(neighbors[2], b.isTransparent());
+						if(visibleNeighbors[3] != null) visibleNeighbors[3].neighborSouth = getsBlocked(neighbors[3], b.isTransparent());
+						if(visibleNeighbors[4] != null) visibleNeighbors[4].neighborUp = getsBlocked(neighbors[4], b.isTransparent());
+						if(visibleNeighbors[5] != null) visibleNeighbors[5].neighborDown = getsBlocked(neighbors[5], b.isTransparent());
+						for (int i = 0; i < neighbors.length; i++) {
+							if (blocksLight(neighbors[i], b.isTransparent())
+														&& (y != 0 || i != 4)
+														&& (x != 0 || i != 0 || chx0)
+														&& (x != 15 || i != 1 || chx1)
+														&& (z != 0 || i != 2 || chz0)
+														&& (z != 15 || i != 3 || chz1)) {
+								revealBlock(x, y, z);
+								break;
+							}
+						}
+						if(Settings.easyLighting && b.getLight() != 0) { // Process light sources
+							lightSources.add((x << 4) | (y << 8) | z);
+						}
+					}
+				}
+			}
+		}
+		boolean [] toCheck = {chx0, chx1, chz0, chz1};
+		for (int i = 0; i < 16; i++) {
+			// Checks if blocks from neighboring chunks are changed
+			int [] dx = {15, 0, i, i};
+			int [] dz = {i, i, 15, 0};
+			int [] invdx = {0, 15, i, i};
+			int [] invdz = {i, i, 0, 15};
+			for(int k = 0; k < 4; k++) {
+				if (toCheck[k]) {
+					ch = chunks[k];
+					for (int j = World.WORLD_HEIGHT - 1; j >= 0; j--) {
+						Block inst0 = ch.getBlockAt(dx[k], j, dz[k]);
+						if(inst0 == null) {
+							continue;
+						}
+						if(ch.contains(dx[k] + wx, j, dz[k] + wz)) {
+							continue;
+						}
+						if (blocksLight(getBlockAt(invdx[k], j, invdz[k]), inst0.isTransparent())) {
+							ch.revealBlock(dx[k], j, dz[k]);
+							continue;
+						}
+					}
+				}
+			}
+		}
+		// Do some light updates.
+		if(Settings.easyLighting) {
+			// Add the lowest layer to the updates list:
+			for(int x = 0; x < 16; x++) {
+				for(int z = 0; z < 16; z++) {
+					if(getBlockAt(x, maxHeight, z) == null)
+						lightUpdates.add(new int[] {x, maxHeight, z, 255});
+				}
+			}
+			lightUpdate(lightUpdates, 24, 0x00ffffff);
+			// Look at the neighboring chunks. Update only the outer corners:
+			boolean no = surface.getChunk(cx-1, cz) != null;
+			boolean po = surface.getChunk(cx+1, cz) != null;
+			boolean on = surface.getChunk(cx, cz-1) != null;
+			boolean op = surface.getChunk(cx, cz+1) != null;
+			if(no || on) {
+				int x = 0, z = 0;
+				for(int y = 0; y < maxHeight; y++) {
+					singleLightUpdate(x, y, z);
+				}
+			}
+			if(no || op) {
+				int x = 0, z = 15;
+				for(int y = 0; y < maxHeight; y++) {
+					singleLightUpdate(x, y, z);
+				}
+			}
+			if(po || on) {
+				int x = 15, z = 0;
+				for(int y = 0; y < maxHeight; y++) {
+					singleLightUpdate(x, y, z);
+				}
+			}
+			if(po || op) {
+				int x = 15, z = 15;
+				for(int y = 0; y < maxHeight; y++) {
+					singleLightUpdate(x, y, z);
+				}
+			}
+			if(no) {
+				int x = 0;
+				for(int z = 1; z < 15; z++) {
+					for(int y = 0; y < maxHeight; y++) {
+						singleLightUpdate(x, y, z);
+					}
+				}
+			}
+			if(po) {
+				int x = 15;
+				for(int z = 1; z < 15; z++) {
+					for(int y = 0; y < maxHeight; y++) {
+						singleLightUpdate(x, y, z);
+					}
+				}
+			}
+			if(on) {
+				int z = 0;
+				for(int x = 1; x < 15; x++) {
+					for(int y = 0; y < maxHeight; y++) {
+						singleLightUpdate(x, y, z);
+					}
+				}
+			}
+			if(op) {
+				int z = 15;
+				for(int x = 1; x < 15; x++) {
+					for(int y = 0; y < maxHeight; y++) {
+						singleLightUpdate(x, y, z);
+					}
+				}
+			}
+			// Take care about light sources:
+			for(int index : lightSources) {
+				lightUpdate((index >>> 4) & 15, (index >>> 8) & 255, index & 15);
+			}
+		}
+	}
+	
+	// Function calls are faster than two pointer references, which would happen when using a 3D-array, and functions can additionally be inlined by the VM.
 	private void setInst(int x, int y, int z, Block b) {
 		blocks[(x << 4) | (y << 8) | z] = b;
-	}
-	public Block getBlockAt(int x, int y, int z) {
-		if (y > World.WORLD_HEIGHT-1)
-			return null;
-		return blocks[(x << 4) | (y << 8) | z];
-	}
-	private Block getBlockUnbound(int x, int y, int z) {
-		if(y < 0 || y >= World.WORLD_HEIGHT || !generated) return null;
-		if(x < 0 || x > 15 || z < 0 || z > 15) {
-			Chunk chunk = surface.getChunk(cx + ((x & ~15) >> 4), cz + ((z & ~15) >> 4));
-			if(chunk != null) return chunk.getBlockUnbound(x & 15, y, z & 15);
-			return BlockInit.dirt; // Let the lighting engine think this region is blocked.
-		}
-		return blocks[(x << 4) | (y << 8) | z];
-	}
-	private BlockInstance getVisibleAbsoluteUnbound(int x, int y, int z) {
-		if(y < 0 || y >= World.WORLD_HEIGHT || !generated) return null;
-		int rx = x - wx;
-		int rz = z - wz;
-		if(rx < 0 || rx > 15 || rz < 0 || rz > 15) {
-			Chunk chunk = surface.getChunk((x & ~15) >> 4, (z & ~15) >> 4);
-			if(chunk != null) return chunk.getVisibleAbsoluteUnbound(x, y, z);
-			return null;
-		}
-		return inst[(rx << 4) | (y << 8) | rz];
 	}
 	
 	/**
@@ -96,38 +261,6 @@ public class Chunk {
 	@Deprecated
 	public void createBlocksForOverlay() {
 		blocks = new Block[16*256*16];
-	}
-	
-	public void setLoaded(boolean loaded) {
-		this.loaded = loaded;
-	}
-	
-	public boolean isLoaded() {
-		return loaded;
-	}
-	
-	public int getX() {
-		return cx;
-	}
-	
-	public int getZ() {
-		return cz;
-	}
-	
-	public ArrayList<Integer> liquids() {
-		return liquids;
-	}
-	
-	public ArrayList<Integer> updatingLiquids() {
-		return updatingLiquids;
-	}
-	
-	public FastList<BlockInstance> getVisibles() {
-		return visibles;
-	}
-	
-	public Map<BlockInstance, BlockEntity> blockEntities() {
-		return blockEntities;
 	}
 	// Performs a light update in all channels on this block.
 	private void lightUpdate(int x, int y, int z) {
@@ -257,6 +390,7 @@ public class Chunk {
 		}
 		return light;
 	}
+	
 	private int localLightUpdate(int x, int y, int z, int shift, int mask) {
 		// Make some bound checks:
 		if(!Settings.easyLighting || y < 0 || y >= World.WORLD_HEIGHT || !generated) return -1;
@@ -462,11 +596,6 @@ public class Chunk {
 			lightUpdate(x, y, z);
 	}
 	
-	public void generateFrom(SurfaceGenerator gen) {
-		gen.generate(this, surface);
-		generated = true;
-	}
-	
 	// Apply Block Changes loaded from file/stored in WorldIO
 	public void applyBlockChanges() {
 		for(BlockChange bc : changes) {
@@ -485,188 +614,6 @@ public class Chunk {
 		}
 	}
 	
-	public void clear() { // Clears the data structures which are used for visible blocks.
-		visibles.clear();
-		inst = new BlockInstance[16*256*16]; // TODO: Fill it with nulls instead of reallocating it.
-	}
-	
-	// Loads the chunk
-	public void load() {
-		// Empty the list, so blocks won't get added twice. This will also be important, when there is a manual chunk reloading.
-		clear();
-		
-		loaded = true;
-		Chunk [] chunks = new Chunk[4];
-		Chunk ch = surface.getChunk(cx - 1, cz);
-		chunks[0] = ch;
-		boolean chx0 = ch != null && ch.isGenerated();
-		ch = surface.getChunk(cx + 1, cz);
-		chunks[1] = ch;
-		boolean chx1 = ch != null && ch.isGenerated();
-		ch = surface.getChunk(cx, cz - 1);
-		chunks[2] = ch;
-		boolean chz0 = ch != null && ch.isGenerated();
-		ch = surface.getChunk(cx, cz + 1);
-		boolean chz1 = ch != null && ch.isGenerated();
-		chunks[3] = ch;
-		int maxHeight = 255; // The biggest height that supports blocks.
-		// Use lighting calculations that are done anyways if easyLighting is enabled to determine the maximum height inside this chunk.
-		ArrayList<int[]> lightUpdates = null;
-		ArrayList<Integer> lightSources = null;
-		if(Settings.easyLighting) {
-			lightUpdates = new ArrayList<>();
-			lightSources = new ArrayList<>();
-			// First of all update the top air blocks on which the sun is constant:
-			maxHeight = World.WORLD_HEIGHT-1;
-			boolean stopped = false;
-			while(!stopped) {
-				--maxHeight;
-				for(int xz = 0; xz < 256; xz++) {
-					light[((maxHeight+1) << 8) | xz] |= 0xff000000;
-					if(blocks[(maxHeight << 8) | xz] != null) {
-						stopped = true;
-					}
-				}
-			}
-		} else { // TODO: Find a similar optimization for easyLighting disabled.
-			
-		}
-		// Sadly the new system doesn't allow for easy access on the BlockInstances through a list, so we have to go through all blocks(which probably is even more efficient because about half of the blocks are non-air).
-		for(int x = 0; x < 16; x++) {
-			for(int y = 0; y <= maxHeight; y++) {
-				for(int  z = 0; z < 16; z++) {
-					Block b = getBlockAt(x, y, z);
-					if(b != null) {
-						Block[] neighbors = getNeighbors(x, y, z);
-						BlockInstance[] visibleNeighbors = getVisibleNeighbors(x + wx, y, z + wz);
-						if(visibleNeighbors[0] != null) visibleNeighbors[0].neighborWest = getsBlocked(neighbors[0], b.isTransparent());
-						if(visibleNeighbors[1] != null) visibleNeighbors[1].neighborEast = getsBlocked(neighbors[1], b.isTransparent());
-						if(visibleNeighbors[2] != null) visibleNeighbors[2].neighborNorth = getsBlocked(neighbors[2], b.isTransparent());
-						if(visibleNeighbors[3] != null) visibleNeighbors[3].neighborSouth = getsBlocked(neighbors[3], b.isTransparent());
-						if(visibleNeighbors[4] != null) visibleNeighbors[4].neighborUp = getsBlocked(neighbors[4], b.isTransparent());
-						if(visibleNeighbors[5] != null) visibleNeighbors[5].neighborDown = getsBlocked(neighbors[5], b.isTransparent());
-						for (int i = 0; i < neighbors.length; i++) {
-							if (blocksLight(neighbors[i], b.isTransparent())
-														&& (y != 0 || i != 4)
-														&& (x != 0 || i != 0 || chx0)
-														&& (x != 15 || i != 1 || chx1)
-														&& (z != 0 || i != 2 || chz0)
-														&& (z != 15 || i != 3 || chz1)) {
-								revealBlock(x, y, z);
-								break;
-							}
-						}
-						if(Settings.easyLighting && b.getLight() != 0) { // Process light sources
-							lightSources.add((x << 4) | (y << 8) | z);
-						}
-					}
-				}
-			}
-		}
-		boolean [] toCheck = {chx0, chx1, chz0, chz1};
-		for (int i = 0; i < 16; i++) {
-			// Checks if blocks from neighboring chunks are changed
-			int [] dx = {15, 0, i, i};
-			int [] dz = {i, i, 15, 0};
-			int [] invdx = {0, 15, i, i};
-			int [] invdz = {i, i, 0, 15};
-			for(int k = 0; k < 4; k++) {
-				if (toCheck[k]) {
-					ch = chunks[k];
-					for (int j = World.WORLD_HEIGHT - 1; j >= 0; j--) {
-						Block inst0 = ch.getBlockAt(dx[k], j, dz[k]);
-						if(inst0 == null) {
-							continue;
-						}
-						if(ch.contains(dx[k] + wx, j, dz[k] + wz)) {
-							continue;
-						}
-						if (blocksLight(getBlockAt(invdx[k], j, invdz[k]), inst0.isTransparent())) {
-							ch.revealBlock(dx[k], j, dz[k]);
-							continue;
-						}
-					}
-				}
-			}
-		}
-		// Do some light updates.
-		if(Settings.easyLighting) {
-			// Add the lowest layer to the updates list:
-			for(int x = 0; x < 16; x++) {
-				for(int z = 0; z < 16; z++) {
-					if(getBlockAt(x, maxHeight, z) == null)
-						lightUpdates.add(new int[] {x, maxHeight, z, 255});
-				}
-			}
-			lightUpdate(lightUpdates, 24, 0x00ffffff);
-			// Look at the neighboring chunks. Update only the outer corners:
-			boolean no = surface.getChunk(cx-1, cz) != null;
-			boolean po = surface.getChunk(cx+1, cz) != null;
-			boolean on = surface.getChunk(cx, cz-1) != null;
-			boolean op = surface.getChunk(cx, cz+1) != null;
-			if(no || on) {
-				int x = 0, z = 0;
-				for(int y = 0; y < maxHeight; y++) {
-					singleLightUpdate(x, y, z);
-				}
-			}
-			if(no || op) {
-				int x = 0, z = 15;
-				for(int y = 0; y < maxHeight; y++) {
-					singleLightUpdate(x, y, z);
-				}
-			}
-			if(po || on) {
-				int x = 15, z = 0;
-				for(int y = 0; y < maxHeight; y++) {
-					singleLightUpdate(x, y, z);
-				}
-			}
-			if(po || op) {
-				int x = 15, z = 15;
-				for(int y = 0; y < maxHeight; y++) {
-					singleLightUpdate(x, y, z);
-				}
-			}
-			if(no) {
-				int x = 0;
-				for(int z = 1; z < 15; z++) {
-					for(int y = 0; y < maxHeight; y++) {
-						singleLightUpdate(x, y, z);
-					}
-				}
-			}
-			if(po) {
-				int x = 15;
-				for(int z = 1; z < 15; z++) {
-					for(int y = 0; y < maxHeight; y++) {
-						singleLightUpdate(x, y, z);
-					}
-				}
-			}
-			if(on) {
-				int z = 0;
-				for(int x = 1; x < 15; x++) {
-					for(int y = 0; y < maxHeight; y++) {
-						singleLightUpdate(x, y, z);
-					}
-				}
-			}
-			if(op) {
-				int z = 15;
-				for(int x = 1; x < 15; x++) {
-					for(int y = 0; y < maxHeight; y++) {
-						singleLightUpdate(x, y, z);
-					}
-				}
-			}
-			// Take care about light sources:
-			for(int index : lightSources) {
-				lightUpdate((index >>> 4) & 15, (index >>> 8) & 255, index & 15);
-			}
-		}
-	}
-	
 	public boolean blocksLight(Block b, boolean transparent) {
 		if(b == null || (b.isTransparent() && !transparent)) {
 			return true;
@@ -680,19 +627,6 @@ public class Chunk {
 	
 	public boolean getsBlocked(Block b, Block a) {
 		return a != null && !(b == null || (b.isTransparent() && b != a));
-	}
-	
-	public boolean isGenerated() {
-		return generated;
-	}
-	
-	// This function is here because it is mostly used by addBlock, where the neighbors to the added block usually are in the same chunk.
-	public Chunk getChunk(int x, int z) {
-		x >>= 4;
-		z >>= 4;
-		if(cx != x || cz != z)
-			return surface.getChunk(x, z);
-		return this;
 	}
 	
 	public void hideBlock(int x, int y, int z) {
@@ -729,10 +663,6 @@ public class Chunk {
 				if (bi != null) handler.onBlockAppear(bi.getBlock(), bi.getX(), bi.getY(), bi.getZ());
 			}
 		}
-	}
-	
-	public boolean contains(int x, int y, int z) {
-		return inst[((x & 15) << 4) | (y << 8) | (z & 15)] != null;
 	}
 	
 	public void removeBlockAt(int x, int y, int z, boolean registerBlockChange) {
@@ -894,12 +824,8 @@ public class Chunk {
 			lightUpdate(x, y, z);
 	}
 	
-	public Vector3f getMin(Player localPlayer, int worldAnd) {
-		return new Vector3f(CubyzMath.matchSign((wx - localPlayer.getPosition().x) & worldAnd, worldAnd) - localPlayer.getPosition().relX, -localPlayer.getPosition().y, CubyzMath.matchSign((wz - localPlayer.getPosition().z) & worldAnd, worldAnd) - localPlayer.getPosition().relZ);
-	}
-	
-	public Vector3f getMax(Player localPlayer, int worldAnd) {
-		return new Vector3f(CubyzMath.matchSign((wx - localPlayer.getPosition().x + 16) & worldAnd, worldAnd) - localPlayer.getPosition().relX, 255-localPlayer.getPosition().y, CubyzMath.matchSign((wz - localPlayer.getPosition().z + 16) & worldAnd, worldAnd) - localPlayer.getPosition().relZ);
+	public boolean contains(int x, int y, int z) {
+		return inst[((x & 15) << 4) | (y << 8) | (z & 15)] != null;
 	}
 	
 	public byte[] save() {
@@ -918,6 +844,14 @@ public class Chunk {
 		data[0] = cx;
 		data[1] = cz;
 		return data;
+	}
+	// This function is here because it is mostly used by addBlock, where the neighbors to the added block usually are in the same chunk.
+	public Chunk getChunk(int x, int z) {
+		x >>= 4;
+		z >>= 4;
+		if(cx != x || cz != z)
+			return surface.getChunk(x, z);
+		return this;
 	}
 	
 	public int getLight(int x, int y, int z, Vector3f sunLight) {
@@ -951,30 +885,24 @@ public class Chunk {
 	}
 	
 	public Block[] getNeighbors(int x, int y, int z) {
-		Block[] inst = new Block[6];
+		Block[] neighbors = new Block[6];
 		x &= 15;
 		z &= 15;
-		// 0 = EAST  (x - 1)
-		// 1 = WEST  (x + 1)
-		// 2 = SOUTH (z - 1)
-		// 3 = NORTH (z + 1)
-		// 4 = DOWN
-		// 5 = UP
 		for(int i = 0; i < 6; i++) {
 			int xi = x+neighborRelativeX[i];
 			int yi = y+neighborRelativeY[i];
 			int zi = z+neighborRelativeZ[i];
 			if(yi == (yi&255)) { // Simple double-bound test for y.
 				if(xi == (xi & 15) && zi == (zi & 15)) { // Simple double-bound test for x and z.
-					inst[i] = getBlockAt(xi, yi, zi);
+					neighbors[i] = getBlockAt(xi, yi, zi);
 				} else {
 					Chunk ch = surface.getChunk((xi >> 4) + cx, (zi >> 4) +cz);
 					if(ch != null)
-						inst[i] = ch.getBlockAt(xi & 15, yi, zi & 15);
+						neighbors[i] = ch.getBlockAt(xi & 15, yi, zi & 15);
 				}
 			}
 		}
-		return inst;
+		return neighbors;
 	}
 	
 	public BlockInstance[] getVisibleNeighbors(int x, int y, int z) { // returns the corresponding BlockInstance for all visible neighbors of this block.
@@ -997,5 +925,72 @@ public class Chunk {
 			}
 		}
 		return null;
+	}
+	
+	public Block getBlockAt(int x, int y, int z) {
+		if (y > World.WORLD_HEIGHT-1)
+			return null;
+		return blocks[(x << 4) | (y << 8) | z];
+	}
+	
+	private Block getBlockUnbound(int x, int y, int z) {
+		if(y < 0 || y >= World.WORLD_HEIGHT || !generated) return null;
+		if(x < 0 || x > 15 || z < 0 || z > 15) {
+			Chunk chunk = surface.getChunk(cx + ((x & ~15) >> 4), cz + ((z & ~15) >> 4));
+			if(chunk != null) return chunk.getBlockUnbound(x & 15, y, z & 15);
+			return BlockInit.dirt; // Let the lighting engine think this region is blocked.
+		}
+		return blocks[(x << 4) | (y << 8) | z];
+	}
+	private BlockInstance getVisibleAbsoluteUnbound(int x, int y, int z) {
+		if(y < 0 || y >= World.WORLD_HEIGHT || !generated) return null;
+		int rx = x - wx;
+		int rz = z - wz;
+		if(rx < 0 || rx > 15 || rz < 0 || rz > 15) {
+			Chunk chunk = surface.getChunk((x & ~15) >> 4, (z & ~15) >> 4);
+			if(chunk != null) return chunk.getVisibleAbsoluteUnbound(x, y, z);
+			return null;
+		}
+		return inst[(rx << 4) | (y << 8) | rz];
+	}
+	
+	public Vector3f getMin(Player localPlayer, int worldAnd) {
+		return new Vector3f(CubyzMath.matchSign((wx - localPlayer.getPosition().x) & worldAnd, worldAnd) - localPlayer.getPosition().relX, -localPlayer.getPosition().y, CubyzMath.matchSign((wz - localPlayer.getPosition().z) & worldAnd, worldAnd) - localPlayer.getPosition().relZ);
+	}
+	
+	public Vector3f getMax(Player localPlayer, int worldAnd) {
+		return new Vector3f(CubyzMath.matchSign((wx - localPlayer.getPosition().x + 16) & worldAnd, worldAnd) - localPlayer.getPosition().relX, 255-localPlayer.getPosition().y, CubyzMath.matchSign((wz - localPlayer.getPosition().z + 16) & worldAnd, worldAnd) - localPlayer.getPosition().relZ);
+	}
+	
+	public int getX() {
+		return cx;
+	}
+	
+	public int getZ() {
+		return cz;
+	}
+	
+	public ArrayList<Integer> getLiquids() {
+		return liquids;
+	}
+	
+	public ArrayList<Integer> getUpdatingLiquids() {
+		return updatingLiquids;
+	}
+	
+	public FastList<BlockInstance> getVisibles() {
+		return visibles;
+	}
+	
+	public Map<BlockInstance, BlockEntity> getBlockEntities() {
+		return blockEntities;
+	}
+	
+	public boolean isGenerated() {
+		return generated;
+	}
+	
+	public boolean isLoaded() {
+		return loaded;
 	}
 }

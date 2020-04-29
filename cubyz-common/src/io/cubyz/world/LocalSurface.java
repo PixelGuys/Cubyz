@@ -103,6 +103,9 @@ public class LocalSurface extends Surface {
 					break;
 				}
 				try {
+					if(popped.isLoaded()) {
+						throw new Exception("OOPS. This ChunkGenerationThread tried to load a chunk twice. @zenith please fix this.");
+					}
 					synchronousGenerate(popped);
 					popped.load();
 				} catch (Exception e) {
@@ -335,8 +338,8 @@ public class LocalSurface extends Surface {
 		}
 		// Block Entities
 		for (Chunk ch : chunks) {
-			if (ch.isLoaded() && ch.blockEntities().size() > 0) {
-				blockEntities = ch.blockEntities().values().toArray(blockEntities);
+			if (ch.isLoaded() && ch.getBlockEntities().size() > 0) {
+				blockEntities = ch.getBlockEntities().values().toArray(blockEntities);
 				for (BlockEntity be : blockEntities) {
 					if (be == null) continue;
 					if (be instanceof IUpdateable) {
@@ -357,9 +360,9 @@ public class LocalSurface extends Surface {
 			liquidUpdate = false;
 			//Profiler.startProfiling();
 			for (Chunk ch : chunks) {
-				if (ch.isLoaded() && ch.liquids().size() > 0) {
-					liquids = ch.updatingLiquids().toArray(liquids);
-					ch.updatingLiquids().clear();
+				if (ch.isLoaded() && ch.getLiquids().size() > 0) {
+					liquids = ch.getUpdatingLiquids().toArray(liquids);
+					ch.getUpdatingLiquids().clear();
 					for (BlockInstance bi : liquids) {
 						if (bi == null) break;
 						Block[] neighbors = ch.getNeighbors(bi.getX() & 15, bi.getY(), bi.getZ() & 15);
@@ -448,7 +451,6 @@ public class LocalSurface extends Surface {
 			}
 		}
 		for(int k = minK; k < chunks.length; k++) {
-			chunks[k].setLoaded(false);
 			tio.saveChunk(chunks[k]);
 		}
 		chunks = newVisibles;
@@ -459,8 +461,6 @@ public class LocalSurface extends Surface {
 		for(Chunk ch : newVisibles) {
 			if (!ch.isGenerated()) {
 				queueChunk(ch);
-			} else {
-				ch.setLoaded(true);
 			}
 		}
 		if (minK != chunks.length) { // if at least one chunk got unloaded

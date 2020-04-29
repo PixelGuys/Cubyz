@@ -102,7 +102,7 @@ public class LifelandGenerator extends SurfaceGenerator {
 						//if (b.hasBlockEntity()) TODO: Block entities!
 						//	ch.blockEntities().put(bi, b.createBlockEntity(bi.getPosition()));
 						if (b.getBlockClass() == BlockClass.FLUID)
-							ch.updatingLiquids().add((px << 4) | (py << 8) | pz);
+							ch.getUpdatingLiquids().add((px << 4) | (py << 8) | pz);
 					}
 				}
 			}
