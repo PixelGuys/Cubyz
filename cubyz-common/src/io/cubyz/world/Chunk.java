@@ -35,6 +35,7 @@ public class Chunk {
 	private ArrayList<BlockChange> changes; // Reports block changes. Only those will be saved!
 	private FastList<BlockInstance> visibles = new FastList<BlockInstance>(50, BlockInstance.class);
 	private int ox, oz;
+	private int wx, wz;
 	private boolean generated;
 	private boolean loaded;
 	private Map<BlockInstance, BlockEntity> blockEntities = new HashMap<>();
@@ -53,6 +54,8 @@ public class Chunk {
 		blocks = new Block[16*World.WORLD_HEIGHT*16];
 		this.ox = ox;
 		this.oz = oz;
+		wx = ox << 4;
+		wz = oz << 4;
 		this.surface = surface;
 		this.changes = changes;
 	}
@@ -77,8 +80,8 @@ public class Chunk {
 	}
 	private BlockInstance getVisibleAbsoluteUnbound(int x, int y, int z) {
 		if(y < 0 || y >= World.WORLD_HEIGHT || !generated) return null;
-		int rx = x - (ox << 4);
-		int rz = z - (oz << 4);
+		int rx = x - wx;
+		int rz = z - wz;
 		if(rx < 0 || rx > 15 || rz < 0 || rz > 15) {
 			Chunk chunk = surface._getNoGenerateChunk((x & ~15) >> 4, (z & ~15) >> 4);
 			if(chunk != null) return chunk.getVisibleAbsoluteUnbound(x, y, z);
@@ -385,8 +388,8 @@ public class Chunk {
 		if (b == null) return;
 		if(y >= World.WORLD_HEIGHT)
 			return;
-		int rx = x - (ox << 4);
-		int rz = z - (oz << 4);
+		int rx = x - wx;
+		int rz = z - wz;
 		if(rx < 0 || rx > 15 || rz < 0 || rz > 15) {
 			surface._getNoGenerateChunk(ox + ((rx & ~15) >> 4), oz + ((rz & ~15) >> 4)).addBlock(b, x & 15, y, z & 15);
 			return;
@@ -406,7 +409,7 @@ public class Chunk {
 		}
 		if(b.hasBlockEntity() || b.getBlockClass() == BlockClass.FLUID) {
 			BlockInstance inst0 = new BlockInstance(b);
-			inst0.setPosition(new Vector3i(x + (ox << 4), y, z + (oz << 4)));
+			inst0.setPosition(new Vector3i(x + wx, y, z + wz));
 			inst0.setStellarTorus(surface);
 			if (b.hasBlockEntity()) {
 				BlockEntity te = b.createBlockEntity(inst0.getPosition());
@@ -426,7 +429,7 @@ public class Chunk {
 					break;
 				}
 			}
-			BlockInstance[] visibleNeighbors = getVisibleNeighbors(x + (ox << 4), y, z + (oz << 4));
+			BlockInstance[] visibleNeighbors = getVisibleNeighbors(x + wx, y, z + wz);
 			if(visibleNeighbors[0] != null) visibleNeighbors[0].neighborWest = getsBlocked(neighbors[0], b.isTransparent());
 			if(visibleNeighbors[1] != null) visibleNeighbors[1].neighborEast = getsBlocked(neighbors[1], b.isTransparent());
 			if(visibleNeighbors[2] != null) visibleNeighbors[2].neighborNorth = getsBlocked(neighbors[2], b.isTransparent());
@@ -438,7 +441,7 @@ public class Chunk {
 					int x2 = x+ndx[i];
 					int y2 = y+ndy[i];
 					int z2 = z+ndz[i];
-					Chunk ch = getChunk(x2 + (ox << 4), z2 + (oz << 4));
+					Chunk ch = getChunk(x2 + wx, z2 + wz);
 					if (ch.contains(x2 & 15, y2, z2 & 15)) {
 						Block[] neighbors1 = ch.getNeighbors(x2 & 15, y2, z2 & 15);
 						boolean vis = true;
@@ -535,7 +538,7 @@ public class Chunk {
 					Block b = getBlockAt(x, y, z);
 					if(b != null) {
 						Block[] neighbors = getNeighbors(x, y, z);
-						BlockInstance[] visibleNeighbors = getVisibleNeighbors(x + (ox << 4), y, z + (oz << 4));
+						BlockInstance[] visibleNeighbors = getVisibleNeighbors(x + wx, y, z + wz);
 						if(visibleNeighbors[0] != null) visibleNeighbors[0].neighborWest = getsBlocked(neighbors[0], b.isTransparent());
 						if(visibleNeighbors[1] != null) visibleNeighbors[1].neighborEast = getsBlocked(neighbors[1], b.isTransparent());
 						if(visibleNeighbors[2] != null) visibleNeighbors[2].neighborNorth = getsBlocked(neighbors[2], b.isTransparent());
@@ -575,7 +578,7 @@ public class Chunk {
 						if(inst0 == null) {
 							continue;
 						}
-						if(ch.contains(dx[k] + (ch.ox << 4), j, dz[k] + (ch.oz << 4))) {
+						if(ch.contains(dx[k] + wx, j, dz[k] + wz)) {
 							continue;
 						}
 						if (blocksLight(getBlockAt(invdx[k], j, invdz[k]), inst0.isTransparent())) {
@@ -719,7 +722,7 @@ public class Chunk {
 		if(neighbors[3] != null) bi.neighborNorth = getsBlocked(neighbors[3], bi.getBlock());
 		if(neighbors[4] != null) bi.neighborDown = getsBlocked(neighbors[4], bi.getBlock());
 		if(neighbors[5] != null) bi.neighborUp = getsBlocked(neighbors[5], bi.getBlock());
-		bi.setPosition(new Vector3i(x + (ox << 4), y, z + (oz << 4)));
+		bi.setPosition(new Vector3i(x + wx, y, z + wz));
 		bi.setStellarTorus(surface);
 		visibles.add(bi);
 		inst[(x << 4) | (y << 8) | z] = bi;
@@ -759,8 +762,8 @@ public class Chunk {
 		for (int i = 0; i < neighbors.length; i++) {
 			Block inst = neighbors[i];
 			if (inst != null) {
-				Chunk ch = getChunk(x+ndx[i]+(ox << 4), z+ndz[i]+(oz << 4));
-				if (!ch.contains(x+ndx[i]+(ox << 4), y+ndy[i], z+ndz[i]+(oz << 4))) { // TODO @IntegratedQuantum maybe we should take into account that getChunk CAN return null
+				Chunk ch = getChunk(x+ndx[i]+wx, z+ndz[i]+wz);
+				if (!ch.contains(x+ndx[i]+wx, y+ndy[i], z+ndz[i]+wz)) {
 					ch.revealBlock((x+ndx[i]) & 15, y+ndy[i], (z+ndz[i]) & 15);
 				}
 				if (inst.getBlockClass() == BlockClass.FLUID) {
@@ -814,8 +817,6 @@ public class Chunk {
 	}
 	
 	public void addBlockAt(int x, int y, int z, Block b, boolean registerBlockChange) {
-		int wx = ox << 4;
-		int wz = oz << 4;
 		if(y >= World.WORLD_HEIGHT)
 			return;
 		removeBlockAt(x, y, z, false);
@@ -896,11 +897,11 @@ public class Chunk {
 	}
 	
 	public Vector3f getMin(Player localPlayer, int worldAnd) {
-		return new Vector3f(CubyzMath.matchSign(((ox << 4) - localPlayer.getPosition().x) & worldAnd, worldAnd) - localPlayer.getPosition().relX, -localPlayer.getPosition().y, CubyzMath.matchSign(((oz << 4) - localPlayer.getPosition().z) & worldAnd, worldAnd) - localPlayer.getPosition().relZ);
+		return new Vector3f(CubyzMath.matchSign((wx - localPlayer.getPosition().x) & worldAnd, worldAnd) - localPlayer.getPosition().relX, -localPlayer.getPosition().y, CubyzMath.matchSign((wz - localPlayer.getPosition().z) & worldAnd, worldAnd) - localPlayer.getPosition().relZ);
 	}
 	
 	public Vector3f getMax(Player localPlayer, int worldAnd) {
-		return new Vector3f(CubyzMath.matchSign(((ox << 4) - localPlayer.getPosition().x + 16) & worldAnd, worldAnd) - localPlayer.getPosition().relX, 255-localPlayer.getPosition().y, CubyzMath.matchSign(((oz << 4) - localPlayer.getPosition().z + 16) & worldAnd, worldAnd) - localPlayer.getPosition().relZ);
+		return new Vector3f(CubyzMath.matchSign((wx - localPlayer.getPosition().x + 16) & worldAnd, worldAnd) - localPlayer.getPosition().relX, 255-localPlayer.getPosition().y, CubyzMath.matchSign((wz - localPlayer.getPosition().z + 16) & worldAnd, worldAnd) - localPlayer.getPosition().relZ);
 	}
 	
 	public byte[] save() {
@@ -994,7 +995,7 @@ public class Chunk {
 			if(xi == (xi & 15) && zi == (zi & 15)) { // Simple double-bound test for x and z.
 				return getBlockAt(xi, yi, zi);
 			} else {
-				return surface.getBlock(xi + (ox << 4), yi, zi + (oz << 4));
+				return surface.getBlock(xi + wx, yi, zi + wz);
 			}
 		}
 		return null;
