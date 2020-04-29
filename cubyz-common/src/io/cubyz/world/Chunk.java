@@ -23,9 +23,9 @@ import io.cubyz.world.generator.SurfaceGenerator;
 
 public class Chunk {
 	// used for easy for-loop access of neighbors and their relative direction:
-	private static final int[] ndx = {-1, 1, 0, 0, 0, 0};
-	private static final int[] ndy = {0, 0, 0, 0, -1, 1};
-	private static final int[] ndz = {0, 0, -1, 1, 0, 0};
+	private static final int[] neighborRelativeX = {-1, 1, 0, 0, 0, 0};
+	private static final int[] neighborRelativeY = {0, 0, 0, 0, -1, 1};
+	private static final int[] neighborRelativeZ = {0, 0, -1, 1, 0, 0};
 	// Due to having powers of 2 as dimensions it is more efficient to use a one-dimensional array.
 	private Block[] blocks;
 	private BlockInstance[] inst; // Stores all visible BlockInstances. Can be faster accessed using coordinates.
@@ -438,9 +438,9 @@ public class Chunk {
 			if(visibleNeighbors[5] != null) visibleNeighbors[5].neighborDown = getsBlocked(neighbors[5], b.isTransparent());
 			for (int i = 0; i < neighbors.length; i++) {
 				if(neighbors[i] != null) {
-					int x2 = x+ndx[i];
-					int y2 = y+ndy[i];
-					int z2 = z+ndz[i];
+					int x2 = x+neighborRelativeX[i];
+					int y2 = y+neighborRelativeY[i];
+					int z2 = z+neighborRelativeZ[i];
 					Chunk ch = getChunk(x2 + wx, z2 + wz);
 					if (ch.contains(x2 & 15, y2, z2 & 15)) {
 						Block[] neighbors1 = ch.getNeighbors(x2 & 15, y2, z2 & 15);
@@ -762,12 +762,12 @@ public class Chunk {
 		for (int i = 0; i < neighbors.length; i++) {
 			Block inst = neighbors[i];
 			if (inst != null) {
-				Chunk ch = getChunk(x+ndx[i]+wx, z+ndz[i]+wz);
-				if (!ch.contains(x+ndx[i]+wx, y+ndy[i], z+ndz[i]+wz)) {
-					ch.revealBlock((x+ndx[i]) & 15, y+ndy[i], (z+ndz[i]) & 15);
+				Chunk ch = getChunk(x+neighborRelativeX[i]+wx, z+neighborRelativeZ[i]+wz);
+				if (!ch.contains(x+neighborRelativeX[i]+wx, y+neighborRelativeY[i], z+neighborRelativeZ[i]+wz)) {
+					ch.revealBlock((x+neighborRelativeX[i]) & 15, y+neighborRelativeY[i], (z+neighborRelativeZ[i]) & 15);
 				}
 				if (inst.getBlockClass() == BlockClass.FLUID) {
-					int index = (((x+ndx[i]) & 15) << 4) | ((y+ndy[i]) << 8) | ((z+ndz[i]) & 15);
+					int index = (((x+neighborRelativeX[i]) & 15) << 4) | ((y+neighborRelativeY[i]) << 8) | ((z+neighborRelativeZ[i]) & 15);
 					if (!updatingLiquids.contains(index))
 						updatingLiquids.add(index);
 				}
@@ -846,9 +846,9 @@ public class Chunk {
 		}
 		
 		for (int i = 0; i < neighbors.length; i++) {
-			int rx = x+ndx[i];
-			int ry = y+ndy[i];
-			int rz = z+ndz[i];
+			int rx = x+neighborRelativeX[i];
+			int ry = y+neighborRelativeY[i];
+			int rz = z+neighborRelativeZ[i];
 			if(neighbors[i] != null) {
 				Chunk ch = getChunk(rx+wx, rz+wz);
 				if (ch.contains(rx+wx, ry, rz+wz)) {
@@ -963,9 +963,9 @@ public class Chunk {
 		// 4 = DOWN
 		// 5 = UP
 		for(int i = 0; i < 6; i++) {
-			int xi = x+ndx[i];
-			int yi = y+ndy[i];
-			int zi = z+ndz[i];
+			int xi = x+neighborRelativeX[i];
+			int yi = y+neighborRelativeY[i];
+			int zi = z+neighborRelativeZ[i];
 			if(yi == (yi&255)) { // Simple double-bound test for y.
 				if(xi == (xi & 15) && zi == (zi & 15)) { // Simple double-bound test for x and z.
 					inst[i] = getBlockAt(xi, yi, zi);
@@ -982,15 +982,15 @@ public class Chunk {
 	public BlockInstance[] getVisibleNeighbors(int x, int y, int z) { // returns the corresponding BlockInstance for all visible neighbors of this block.
 		BlockInstance[] inst = new BlockInstance[6];
 		for(int i = 0; i < 6; i++) {
-			inst[i] = getVisibleAbsoluteUnbound(x+ndx[i], y+ndy[i], z+ndz[i]);
+			inst[i] = getVisibleAbsoluteUnbound(x+neighborRelativeX[i], y+neighborRelativeY[i], z+neighborRelativeZ[i]);
 		}
 		return inst;
 	}
 	
 	public Block getNeighbor(int i, int x, int y, int z) {
-		int xi = x+ndx[i];
-		int yi = y+ndy[i];
-		int zi = z+ndz[i];
+		int xi = x+neighborRelativeX[i];
+		int yi = y+neighborRelativeY[i];
+		int zi = z+neighborRelativeZ[i];
 		if(yi == (yi&255)) { // Simple double-bound test for y.
 			if(xi == (xi & 15) && zi == (zi & 15)) { // Simple double-bound test for x and z.
 				return getBlockAt(xi, yi, zi);

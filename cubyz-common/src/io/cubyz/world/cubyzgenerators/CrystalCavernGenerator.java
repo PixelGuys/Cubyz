@@ -67,9 +67,9 @@ public class CrystalCavernGenerator implements FancyGenerator {
 			// Move cave center point one unit into a direction given by slope and direction:
 			float xzUnit = (float)Math.cos(slope);
 			float yUnit = (float)Math.sin(slope);
-			double dx = Math.cos(direction) * xzUnit;
-			double dz = Math.sin(direction) * xzUnit;
-			worldX += dx;
+			double delX = Math.cos(direction) * xzUnit;
+			double delZ = Math.sin(direction) * xzUnit;
+			worldX += delX;
 			worldY += yUnit;
 			worldZ += Math.sin(direction)*xzUnit;
 
@@ -148,7 +148,7 @@ public class CrystalCavernGenerator implements FancyGenerator {
 		        double y = Math.sin(phi)*Math.sin(theta);
 		        double z = Math.cos(phi);
 		        // Check if the crystal touches the wall:
-		        if(Math.abs(dx*x+yUnit*y+dz*z) < 0.05) {
+		        if(Math.abs(delX*x+yUnit*y+delZ*z) < 0.05) {
 			        crystalSpawns[index[0]++] = new int[] {(int)(worldX + x*xzScale), (int)(worldY + y*yScale), (int)(worldZ + z*xzScale)};
 		        }
 			}
@@ -173,13 +173,13 @@ public class CrystalCavernGenerator implements FancyGenerator {
 				// Choose a random direction:
 				double theta = 2*Math.PI*rand.nextDouble();
 		        double phi = Math.acos(1 - 2*rand.nextDouble());
-		        double dx = Math.sin(phi)*Math.cos(theta);
-		        double dy = Math.sin(phi)*Math.sin(theta);
-		        double dz = Math.cos(phi);
+		        double delX = Math.sin(phi)*Math.cos(theta);
+		        double delY = Math.sin(phi)*Math.sin(theta);
+		        double delZ = Math.cos(phi);
 		        for(double j = 0; j < length;) {
-		        	double x2 = x+dx*j;
-		        	double y2 = y+dy*j;
-		        	double z2 = z+dz*j;
+		        	double x2 = x + delX*j;
+		        	double y2 = y + delY*j;
+		        	double z2 = z + delZ*j;
 		        	double size;
 		        	if(useNeedles)
 		        		size = 0.7;
