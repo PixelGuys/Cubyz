@@ -25,7 +25,7 @@ public class Window {
 
 	private long handle;
 	private int width, height;
-	private boolean resized;
+	private boolean resized = true;
 	private Matrix4f projectionMatrix;
 	private boolean fullscreen = false;
 	private FrameBuffer buffer;
