@@ -908,7 +908,7 @@ public class Chunk {
 	public BlockInstance[] getVisibleNeighbors(int x, int y, int z) { // returns the corresponding BlockInstance for all visible neighbors of this block.
 		BlockInstance[] inst = new BlockInstance[6];
 		for(int i = 0; i < 6; i++) {
-			inst[i] = getVisibleAbsoluteUnbound(x+neighborRelativeX[i], y+neighborRelativeY[i], z+neighborRelativeZ[i]);
+			inst[i] = getVisibleUnbound(x+neighborRelativeX[i], y+neighborRelativeY[i], z+neighborRelativeZ[i]);
 		}
 		return inst;
 	}
@@ -942,16 +942,14 @@ public class Chunk {
 		}
 		return blocks[(x << 4) | (y << 8) | z];
 	}
-	private BlockInstance getVisibleAbsoluteUnbound(int x, int y, int z) {
+	private BlockInstance getVisibleUnbound(int x, int y, int z) {
 		if(y < 0 || y >= World.WORLD_HEIGHT || !generated) return null;
-		int rx = x - wx;
-		int rz = z - wz;
-		if(rx < 0 || rx > 15 || rz < 0 || rz > 15) {
-			Chunk chunk = surface.getChunk((x & ~15) >> 4, (z & ~15) >> 4);
-			if(chunk != null) return chunk.getVisibleAbsoluteUnbound(x, y, z);
+		if(x < 0 || x > 15 || z < 0 || z > 15) {
+			Chunk chunk = surface.getChunk(cx + ((x & ~15) >> 4), cz + ((z & ~15) >> 4));
+			if(chunk != null) return chunk.getVisibleUnbound(x & 15, y, z & 15);
 			return null;
 		}
-		return inst[(rx << 4) | (y << 8) | rz];
+		return inst[(x << 4) | (y << 8) | z];
 	}
 	
 	public Vector3f getMin(Player localPlayer, int worldAnd) {
