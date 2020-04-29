@@ -67,6 +67,8 @@ public class Registry<T extends IRegistryElement> {
 	public T getByID(String id) {
 		return hashMap.get(id);
 	}
-
 	
+	public int getLength() {
+		return hashMap.size();
+	}
 }

@@ -1,17 +1,14 @@
 package io.cubyz.world.generator;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Random;
-
-import org.joml.Vector3i;
 
 import io.cubyz.api.IRegistryElement;
 import io.cubyz.api.Registry;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.Block.BlockClass;
-import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.Ore;
 import io.cubyz.world.Chunk;
 import io.cubyz.world.LocalSurface;
@@ -20,7 +17,6 @@ import io.cubyz.world.World;
 import io.cubyz.world.cubyzgenerators.*;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 
-//TODO: Add more diversity
 public class LifelandGenerator extends SurfaceGenerator {
 	
 	public static void init() {
@@ -32,15 +28,15 @@ public class LifelandGenerator extends SurfaceGenerator {
 	}
 	
 	public static final Registry<Generator> GENERATORS = new Registry<>();
-	ArrayList<Generator> sortedGenerators = new ArrayList<>();
+	Generator[] sortedGenerators;
 	
 	public void sortGenerators() {
-		sortedGenerators.clear();
-		for (IRegistryElement elem : GENERATORS.registered()) {
-			Generator g = (Generator) elem;
-			sortedGenerators.add(g);
+		IRegistryElement[] unsorted = GENERATORS.registered();
+		sortedGenerators = new Generator[unsorted.length];
+		for (int i = 0; i < unsorted.length; i++) {
+			sortedGenerators[i] = (Generator)unsorted[i];
 		}
-		sortedGenerators.sort(new Comparator<Generator>() {
+		Arrays.sort(sortedGenerators, new Comparator<Generator>() {
 			@Override
 			public int compare(Generator a, Generator b) {
 				if (a.getPriority() > b.getPriority()) {
