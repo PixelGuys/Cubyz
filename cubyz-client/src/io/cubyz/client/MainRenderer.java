@@ -339,10 +339,8 @@ public class MainRenderer implements IRenderer {
 			shaderProgram.setUniform("shadowEnabled", true);
 		} else {
 			shaderProgram.setUniform("shadowEnabled", false);
-			if (Settings.easyLighting) {
-				shaderProgram.setUniform("cheapLighting", true);
-			}
 		}
+		shaderProgram.setUniform("cheapLighting", Settings.easyLighting);
 		
 		Matrix4f viewMatrix = ctx.getCamera().getViewMatrix();
 		shaderProgram.setUniform("viewMatrixInstanced", viewMatrix);
