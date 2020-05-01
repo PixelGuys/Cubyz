@@ -632,7 +632,7 @@ public class LocalSurface extends Surface {
 	}
 	
 	public int getHeight(int x, int z) {
-		return (int)(getMetaChunk(x & ~255, z & ~255).heightMap[x & 255][z & 255]*256);
+		return (int)(getMetaChunk(x & ~255, z & ~255).heightMap[x & 255][z & 255]*World.WORLD_HEIGHT);
 	}
 
 	@Override
