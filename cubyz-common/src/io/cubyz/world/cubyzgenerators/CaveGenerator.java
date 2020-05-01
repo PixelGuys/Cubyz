@@ -20,29 +20,26 @@ public class CaveGenerator implements FancyGenerator {
 	}
 	
 	private static final int range = 8;
-	private static Random rand = new Random();
 	private static Block water = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:water");
 	private static Block ice = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:ice");
 	
 	@Override
 	public void generate(long seed, int cx, int cz, Block[][][] chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, int[][] heightMap, Biome[][] biomeMap) {
-		synchronized(rand) {
-			rand.setSeed(seed);
-			long rand1 = rand.nextLong();
-			long rand2 = rand.nextLong();
-			// Generate caves from all nearby chunks:
-			for(int x = cx - range; x <= cx + range; ++x) {
-				for(int z = cz - range; z <= cz + range; ++z) {
-					long randX = (long)x*rand1;
-					long randZ = (long)z*rand2;
-					rand.setSeed(randX ^ randZ ^ seed);
-					considerCoordinates(x, z, cx, cz, chunk, vegetationIgnoreMap, heightMap);
-				}
+		Random rand = new Random(seed);
+		long rand1 = rand.nextLong();
+		long rand2 = rand.nextLong();
+		// Generate caves from all nearby chunks:
+		for(int x = cx - range; x <= cx + range; ++x) {
+			for(int z = cz - range; z <= cz + range; ++z) {
+				long randX = (long)x*rand1;
+				long randZ = (long)z*rand2;
+				rand.setSeed(randX ^ randZ ^ seed);
+				considerCoordinates(x, z, cx, cz, chunk, vegetationIgnoreMap, heightMap, rand);
 			}
 		}
 	}
 
-	private void createJunctionRoom(long localSeed, int cx, int cz, Block[][][] chunk, double worldX, double worldY, double worldZ, boolean[][] vegetationIgnoreMap, int[][] heightMap) {
+	private void createJunctionRoom(long localSeed, int cx, int cz, Block[][][] chunk, double worldX, double worldY, double worldZ, boolean[][] vegetationIgnoreMap, int[][] heightMap, Random rand) {
 		// The junction room is just one single room roughly twice as wide as high.
 		float size = 1 + rand.nextFloat()*6;
 		double cwx = cx*16 + 8;
@@ -150,14 +147,14 @@ public class CaveGenerator implements FancyGenerator {
 				double deltaX = worldX - cwx;
 				double deltaZ = worldZ - cwz;
 				double stepsLeft = (double)(caveLength - curStep);
-				double maxLength = (double)(size + 18);
-				// Abort if the cave is getting to long:
+				double maxLength = (double)(size + 8);
+				// Abort if the cave is getting to far away from this chunk:
 				if(deltaX*deltaX + deltaZ*deltaZ - stepsLeft*stepsLeft > maxLength*maxLength) {
 					return;
 				}
 
 				// Only care about it if it is inside the current chunk:
-				if(worldX >= cwx - 16 - xzScale*2 && worldZ >= cwz - 16 - xzScale*2 && worldX <= cwx + 16 + xzScale*2 && worldZ <= cwz + 16 + xzScale*2) {
+				if(worldX >= cwx - 8 - xzScale && worldZ >= cwz - 8 - xzScale && worldX <= cwx + 8 + xzScale && worldZ <= cwz + 8 + xzScale) {
 					// Determine min and max of the current cave segment in all directions.
 					int xMin = (int)(worldX - xzScale) - cx*16 - 1;
 					int xMax = (int)(worldX + xzScale) - cx*16 + 1;
@@ -204,7 +201,7 @@ public class CaveGenerator implements FancyGenerator {
 		}
 	}
 
-	private void considerCoordinates(int x, int z, int cx, int cz, Block[][][] chunk, boolean[][] vegetationIgnoreMap, int[][] heightMap) {
+	private void considerCoordinates(int x, int z, int cx, int cz, Block[][][] chunk, boolean[][] vegetationIgnoreMap, int[][] heightMap, Random rand) {
 		// Determine how many caves start in this chunk. Make sure the number is usually close to one, but can also rarely reach higher values.
 		int caveSpawns = rand.nextInt(rand.nextInt(rand.nextInt(12) + 1) + 1);
 
@@ -221,7 +218,7 @@ public class CaveGenerator implements FancyGenerator {
 			// Randomly pick how many caves origin from this location and add a junction room if there are more than 2:
 			int starters = 1+rand.nextInt(4);
 			if(starters > 1) {
-				createJunctionRoom(rand.nextLong(), cx, cz, chunk, worldX, worldY, worldZ, vegetationIgnoreMap, heightMap);
+				createJunctionRoom(rand.nextLong(), cx, cz, chunk, worldX, worldY, worldZ, vegetationIgnoreMap, heightMap, rand);
 			}
 
 			for(int i = 0; i < starters; ++i) {

@@ -89,14 +89,14 @@ public class OreGenerator implements Generator {
 				double deltaX = worldX - cwx;
 				double deltaZ = worldZ - cwz;
 				double stepsLeft = (double)(veinLength - curStep);
-				double maxLength = (double)(size + 18);
-				// Abort if the vein is getting to long:
+				double maxLength = (double)(size + 8);
+				// Abort if the vein is getting to far away from this chunk:
 				if(deltaX*deltaX + deltaZ*deltaZ - stepsLeft*stepsLeft > maxLength*maxLength) {
 					return;
 				}
 
 				// Only care about it if it is inside the current chunk:
-				if(worldX >= cwx - 16 - scale*2 && worldZ >= cwz - 16 - scale*2 && worldX <= cwx + 16 + scale*2 && worldZ <= cwz + 16 + scale*2) {
+				if(worldX >= cwx - 8 - scale && worldZ >= cwz - 8 - scale && worldX <= cwx + 8 + scale && worldZ <= cwz + 8 + scale) {
 					// Determine min and max of the current vein segment in all directions.
 					int xmin = (int)(worldX - scale) - cx*16 - 1;
 					int xmax = (int)(worldX + scale) - cx*16 + 1;
