@@ -146,7 +146,7 @@ public class CustomOre extends Ore implements CustomObject {
 		if(sb.length() <= 15 && sb.length() >= 5)
 			return sb.toString();
 		else
-			return randomName(rand); // Repeat until a long enought name is generated.
+			return randomName(rand); // Repeat until a long enough name is generated.
 	}
 	
 	public static CustomOre random(Random rand) {

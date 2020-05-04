@@ -9,7 +9,9 @@ Achavalite
 Actinium
 Actinolite
 Acuminite
+Adamantine
 Adamantine spar
+Adamantium
 Adamite
 Adamsite
 Adelite
@@ -138,6 +140,7 @@ Arseniosiderite
 Arsenoclasite
 Arsenolite
 Arsenopyrite
+Arsonium
 Arthurite
 Artinite
 Artroeite
@@ -149,6 +152,7 @@ Astrophyllite
 Atacamite
 Athabascaite
 Atheneite
+Atium
 Aubertite
 Auerlite
 Augelite
@@ -183,6 +187,7 @@ Bassanite
 Bastnaesite
 Baumhauerite
 Bauxite
+Bavarium
 Bayldonite
 Bayleyite
 Bazzite
@@ -313,6 +318,7 @@ Celadonite
 Celestine
 Celsian
 Cementite
+Ceratanium
 Cerite
 Cerium
 Cerussite
@@ -446,6 +452,7 @@ Diamond
 Diaspore
 Dickite
 Digenite
+Dilithium
 Dimorphite
 Diopside
 Dioptase
@@ -461,6 +468,7 @@ Dubnium
 Duftite
 Dumortierite
 Dundasite
+Duranium
 Dypingite
 Dyscrasite
 Dysprosium
@@ -563,6 +571,7 @@ Gagarinite
 Gahnite
 Galaxite
 Galena
+Galine
 Galkhaite
 Gallium
 Gananite
@@ -648,6 +657,7 @@ Hazenite
 Heazlewoodite
 Hectorite
 Hedenbergite
+Hedonium
 Heliodor
 Heliotrope
 Hellyerite
@@ -711,6 +721,8 @@ Ilvaite
 Imogolite
 Indite
 Indium
+Inerton
+Inoson
 Inyoite
 Iodargyrite
 Iolite
@@ -759,6 +771,7 @@ Kanoite
 Kaolinite
 Karlite
 Kassite
+Katchin
 Kegelite
 Keilhauite
 Keilite
@@ -791,6 +804,7 @@ Kroehnkite
 Krotite
 Krutaite
 Krutovite
+Kryptonite
 Kukharenkoite
 Kunzite
 Kuratite
@@ -825,6 +839,7 @@ Leifite
 Leightonite
 Lepidocrocite
 Lepidolite
+Lerasium
 Letovicite
 Leucite
 Leucophanite
@@ -960,6 +975,7 @@ Mundite
 Murdochite
 Muscovite
 Musgravite
+Mythril
 Nabalamprophyllite
 Nabesite
 Nacrite
@@ -1003,6 +1019,7 @@ Nsutite
 Nuragheite
 Nyerereite
 Obsidian
+Octiron
 Okenite
 Oldhamite
 Olgite
@@ -1017,6 +1034,7 @@ Opal
 Oppenheimerite
 Ordonezite
 Oregonite
+Orichalcum
 Orpiment
 Orthochrysotile
 Orthoclase
@@ -1150,6 +1168,7 @@ Raspite
 Rastsvetaevite
 Realgar
 Reederite
+Regalite
 Reidite
 Reinerite
 Renierite
@@ -1206,6 +1225,7 @@ Samuelsonite
 Sanbornite
 Saneroite
 Sanidine
+Sanite
 Santabarbaraite
 Santite
 Saponite
@@ -1214,6 +1234,7 @@ Sapphirine
 Sarabauite
 Sard
 Sarkinite
+Saronite
 Sassolite
 Satinspar
 Satterlyite
@@ -1357,6 +1378,7 @@ Taranakite
 Tarapacaite
 Tarbuttite
 Tausonite
+Taydenite
 Teallite
 Technetium
 Tellurite
@@ -1411,6 +1433,7 @@ Triphylite
 Triplite
 Triploidite
 Tripuhyite
+Tritanium
 Troilite
 Trona
 Tsavorite
@@ -1445,6 +1468,7 @@ Uranophane
 Uranopilite
 Urea
 Uricite
+Uridium
 Urusovite
 Ussingite
 Utahite
@@ -1464,11 +1488,13 @@ Vauquelinite
 Vauxite
 Veatchite
 Vermiculite
+Verterium cortenide
 Vesuvianite
 Villiaumite
 Violarite
 Vishnevite
 Vivianite
+Vizorium
 Vladimirite
 Vlasovite
 Volborthite
@@ -1515,6 +1541,8 @@ Xifengite
 Xilingolite
 Ximengite
 Xingzhongite
+Xirdalium
+Xithricite
 Xitieshanite
 Xocolatlite
 Xocomecatlite
