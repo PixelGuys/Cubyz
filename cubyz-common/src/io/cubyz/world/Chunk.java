@@ -174,14 +174,12 @@ public class Chunk {
 		}
 		// Do some light updates.
 		if(Settings.easyLighting) {
-			// Add the lowest layer to the updates list:
+			// Update the highest layer that is not just air:
 			for(int x = 0; x < 16; x++) {
 				for(int z = 0; z < 16; z++) {
-					if(getBlockAt(x, maxHeight, z) == null)
-						lightUpdates.add(new int[] {x, maxHeight, z, 255});
+					localLightUpdate(x, maxHeight, z, 24, 0x00ffffff);
 				}
 			}
-			lightUpdate(lightUpdates, 24, 0x00ffffff);
 			// Look at the neighboring chunks. Update only the outer corners:
 			boolean no = surface.getChunk(cx-1, cz) != null;
 			boolean po = surface.getChunk(cx+1, cz) != null;
