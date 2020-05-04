@@ -313,15 +313,17 @@ public class Chunk {
 	// Update only 1 corner. Since this is always done during loading, only constructive updates are needed:
 	private void singleLightUpdate(int x, int y, int z) {
 		// Sun:
-		constructiveLightUpdate(x, y, z, 24, 0x00ffffff, ((light[(x << 4) | (y << 8) | z] >>> 24) & 255), true, true, true, true, true, true);
+		localLightUpdate(x, y, z, 24, 0x00ffffff);
 		// Red:
-		constructiveLightUpdate(x, y, z, 16, 0xff00ffff, ((light[(x << 4) | (y << 8) | z] >>> 16) & 255), true, true, true, true, true, true);
+		localLightUpdate(x, y, z, 16, 0xff00ffff);
 		// Green:
-		constructiveLightUpdate(x, y, z, 8, 0xffff00ff, ((light[(x << 4) | (y << 8) | z] >>> 8) & 255), true, true, true, true, true, true);
+		localLightUpdate(x, y, z, 8, 0xffff00ff);
 		// Blue:
-		constructiveLightUpdate(x, y, z, 0, 0xffffff00, ((light[(x << 4) | (y << 8) | z] >>> 0) & 255), true, true, true, true, true, true);
+		localLightUpdate(x, y, z, 0, 0xffffff00);
 	}
 	private void constructiveLightUpdate(int x, int y, int z, int shift, int mask, int value, boolean nx, boolean px, boolean ny, boolean py, boolean nz, boolean pz) {
+		// Make some bound checks:
+		if(y < 0 || y >= World.WORLD_HEIGHT || !generated) return;
 		// Check if it's inside this chunk:
 		if(x < 0 || x > 15 || z < 0 || z > 15) {
 			Chunk chunk = surface.getChunk(cx + ((x & ~15) >> 4), cz + ((z & ~15) >> 4));
@@ -347,35 +349,50 @@ public class Chunk {
 		}
 		// Update all neighbors that should be updated:
 		if(nx) {
-			int light = applyNeighbors(value, shift, neighbors[0], neighbors[1], neighbors[2], neighbors[3]);
+			int light = applyNeighborsConstructive(value, shift, neighbors[0], neighbors[1], neighbors[2], neighbors[3]);
 			constructiveLightUpdate(x-1, y, z, shift, mask, light, true, false, true, true, true, true);
 		}
 		if(px) {
-			int light = applyNeighbors(value, shift, neighbors[4], neighbors[5], neighbors[6], neighbors[7]);
+			int light = applyNeighborsConstructive(value, shift, neighbors[4], neighbors[5], neighbors[6], neighbors[7]);
 			constructiveLightUpdate(x+1, y, z, shift, mask, light, false, true, true, true, true, true);
 		}
 		if(nz) {
-			int light = applyNeighbors(value, shift, neighbors[0], neighbors[2], neighbors[4], neighbors[6]);
+			int light = applyNeighborsConstructive(value, shift, neighbors[0], neighbors[2], neighbors[4], neighbors[6]);
 			constructiveLightUpdate(x, y, z-1, shift, mask, light, true, true, true, true, true, false);
 		}
 		if(pz) {
-			int light = applyNeighbors(value, shift, neighbors[1], neighbors[3], neighbors[5], neighbors[7]);
+			int light = applyNeighborsConstructive(value, shift, neighbors[1], neighbors[3], neighbors[5], neighbors[7]);
 			constructiveLightUpdate(x, y, z+1, shift, mask, light, true, true, true, true, false, true);
 		}
 		if(ny) {
-			int light = applyNeighbors(value, shift, neighbors[0], neighbors[1], neighbors[4], neighbors[5]);
+			int light = applyNeighborsConstructive(value, shift, neighbors[0], neighbors[1], neighbors[4], neighbors[5]);
+			if(shift == 24 && light != 0)
+				light += 8;
 			constructiveLightUpdate(x, y-1, z, shift, mask, light, true, true, true, false, true, true);
 		}
 		if(py) {
-			int light = applyNeighbors(value, shift, neighbors[2], neighbors[3], neighbors[6], neighbors[7]);
-			if(shift == 24 && light != 0)
-				light += 8;
+			int light = applyNeighborsConstructive(value, shift, neighbors[2], neighbors[3], neighbors[6], neighbors[7]);
 			constructiveLightUpdate(x, y+1, z, shift, mask, light, true, true, false, true, true, true);
 		}
-		
 	}
 	private int applyNeighbors(int light, int shift, Block n1, Block n2, Block n3, Block n4) {
-		light = (light >>> shift) & 255;
+		light = applyNeighborsConstructive((light >>> shift) & 255, shift, n1, n2, n3, n4);
+		// Check if one of the blocks is glowing bright enough to support more light:
+		if(n1 != null) {
+			light = Math.max(light, (n1.getAbsorption() >>> shift) & 255);
+		}
+		if(n2 != null) {
+			light = Math.max(light, (n2.getAbsorption() >>> shift) & 255);
+		}
+		if(n3 != null) {
+			light = Math.max(light, (n3.getAbsorption() >>> shift) & 255);
+		}
+		if(n4 != null) {
+			light = Math.max(light, (n4.getAbsorption() >>> shift) & 255);
+		}
+		return light;
+	}
+	private int applyNeighborsConstructive(int light, int shift, Block n1, Block n2, Block n3, Block n4) {
 		light <<= 2; // make sure small absorptions don't get ignored while dividing by 4.
 		int solidNeighbors = 0;
 		if(n1 != null) {
@@ -415,19 +432,7 @@ public class Chunk {
 			case 0:
 				light -= 8;
 		}
-		// Check if one of the blocks is glowing bright enough to support more light:
-		if(n1 != null) {
-			light = Math.max(light, (n1.getAbsorption() >>> shift) & 255);
-		}
-		if(n2 != null) {
-			light = Math.max(light, (n2.getAbsorption() >>> shift) & 255);
-		}
-		if(n3 != null) {
-			light = Math.max(light, (n3.getAbsorption() >>> shift) & 255);
-		}
-		if(n4 != null) {
-			light = Math.max(light, (n4.getAbsorption() >>> shift) & 255);
-		}
+		if(light < 0) return 0;
 		return light;
 	}
 	
@@ -504,6 +509,11 @@ public class Chunk {
 		// Update the light and return.
 		int curLight = (light[index] >>> shift) & 255;
 		if(maxLight < 0) maxLight = 0;
+		if(curLight < maxLight) {
+			// Do a constructive light update(which is faster) and then return -1 to signal other lightUpdate functions that no further update is needed.
+			constructiveLightUpdate(x, y, z, shift, mask, maxLight, true, true, true, true, true, true);
+			return -1;
+		}
 		if(curLight != maxLight) {
 			light[index] = (light[index] & mask) | (maxLight << shift);
 			return maxLight;
