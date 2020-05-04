@@ -379,16 +379,16 @@ public class Chunk {
 		light = applyNeighborsConstructive((light >>> shift) & 255, shift, n1, n2, n3, n4);
 		// Check if one of the blocks is glowing bright enough to support more light:
 		if(n1 != null) {
-			light = Math.max(light, (n1.getAbsorption() >>> shift) & 255);
+			light = Math.max(light, (n1.getLight() >>> shift) & 255);
 		}
 		if(n2 != null) {
-			light = Math.max(light, (n2.getAbsorption() >>> shift) & 255);
+			light = Math.max(light, (n2.getLight() >>> shift) & 255);
 		}
 		if(n3 != null) {
-			light = Math.max(light, (n3.getAbsorption() >>> shift) & 255);
+			light = Math.max(light, (n3.getLight() >>> shift) & 255);
 		}
 		if(n4 != null) {
-			light = Math.max(light, (n4.getAbsorption() >>> shift) & 255);
+			light = Math.max(light, (n4.getLight() >>> shift) & 255);
 		}
 		return light;
 	}
