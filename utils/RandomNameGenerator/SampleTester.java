@@ -13,6 +13,7 @@ public class SampleTester {
 			for(int i = 0; i < next.length; i++) {
 				if(depth == 0) {
 					next[i] = new EndNode(is);
+					((EndNode)next[i]).valuef = 1.0f/next.length;
 				} else {
 					next[i] = new Node(is, depth-1);
 				}
