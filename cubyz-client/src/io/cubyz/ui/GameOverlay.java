@@ -9,7 +9,7 @@ public class GameOverlay extends MenuGUI {
 
 	int crosshair;
 	int selection;
-	int heart, halfHeart;
+	int[] healthBar;
 
 	private InventorySlot inv [] = new InventorySlot[8];
 	
@@ -17,8 +17,14 @@ public class GameOverlay extends MenuGUI {
 	public void init(long nvg) {
 		crosshair = NGraphics.loadImage("assets/cubyz/textures/crosshair.png");
 		selection = NGraphics.loadImage("assets/cubyz/guis/inventory/selected_slot.png");
-		heart = NGraphics.loadImage("assets/cubyz/textures/heart.png");
-		halfHeart = NGraphics.loadImage("assets/cubyz/textures/half_heart.png");
+		healthBar = new int[7];
+		healthBar[0] = NGraphics.loadImage("assets/cubyz/textures/health_bar_beg_empty.png");
+		healthBar[1] = NGraphics.loadImage("assets/cubyz/textures/health_bar_beg_full.png");
+		healthBar[2] = NGraphics.loadImage("assets/cubyz/textures/health_bar_end_empty.png");
+		healthBar[3] = NGraphics.loadImage("assets/cubyz/textures/health_bar_end_full.png");
+		healthBar[4] = NGraphics.loadImage("assets/cubyz/textures/health_bar_mid_empty.png");
+		healthBar[5] = NGraphics.loadImage("assets/cubyz/textures/health_bar_mid_half.png");
+		healthBar[6] = NGraphics.loadImage("assets/cubyz/textures/health_bar_mid_full.png");
 		Inventory inventory = Cubyz.world.getLocalPlayer().getInventory();
 		for(int i = 0; i < 8; i++) {
 			inv[i] = new InventorySlot(inventory.getStack(i), i*64-256, 64);
@@ -37,13 +43,21 @@ public class GameOverlay extends MenuGUI {
 			}
 		}
 		// Draw the health bar:#
+		int maxHealth = Cubyz.world.getLocalPlayer().maxHealth;
 		int health = Cubyz.world.getLocalPlayer().health;
-		for(int i = 0; i < health; i += 2) {
-			if(i+1 == health) {	// Draw half a heart.
-				NGraphics.drawImage(halfHeart, win.getWidth()/2 - 254 + i*8, win.getHeight() - 88, 16, 16);
-			} else { // Draw a full heart.
-				NGraphics.drawImage(heart, win.getWidth()/2 - 254 + i*8, win.getHeight() - 88, 16, 16);
+		for(int i = 0; i < maxHealth; i += 2) {
+			boolean half = i+1 == health;
+			boolean empty = i >= health;
+			
+			int idx = 0;
+			if (i == 0) { // beggining
+				idx = empty ? 0 : 1;
+			} else if (i == maxHealth-2) {
+				idx = empty ? 2 : 3;
+			} else {
+				idx = empty ? 4 : (half ? 5 : 6); // if empty = 4, half = 5, full = 6
 			}
+			NGraphics.drawImage(healthBar[idx], i*12 + (win.getWidth()-maxHealth*12-4), 6, 24, 24);
 		}
 	}
 

@@ -280,6 +280,12 @@ public class Entity {
 		if(ai != null)
 			ai.update(this);
 		updatePosition();
+		
+		// clamp health between 0 and maxHealth
+		if (health < 0)
+			health = 0;
+		if (health > maxHealth)
+			health = maxHealth;
 	}
 	
 	protected void updatePosition() {
@@ -344,6 +350,7 @@ public class Entity {
 		ndt.setContainer("position", saveVector(position));
 		ndt.setContainer("rotation", saveVector(rotation));
 		ndt.setContainer("velocity", saveVector(new Vector3f(vx, vy, vz)));
+		ndt.setInteger("health", health);
 		return ndt;
 	}
 	
@@ -352,6 +359,7 @@ public class Entity {
 		rotation = loadVector3f (ndt.getContainer("rotation"));
 		Vector3f velocity = loadVector3f(ndt.getContainer("velocity"));
 		vx = velocity.x; vy = velocity.y; vz = velocity.z;
+		health = ndt.getInteger("health");
 	}
 	
 	public EntityType getType() {
