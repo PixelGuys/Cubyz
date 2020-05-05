@@ -79,9 +79,38 @@ public class Entity {
 				stopVY();
 			}
 		} else if (vy > 0) {
-			Vector3i bp = new Vector3i(position.x + (int) Math.round(position.relX), (int) Math.floor(position.y), position.z + (int) Math.round(position.relZ));
-			if(checkBlock(bp.x, bp.y + height, bp.z)) {
+			Vector3i bp = new Vector3i(position.x + (int) Math.round(position.relX), (int) Math.floor(position.y) + height, position.z + (int) Math.round(position.relZ));
+			float relX = position.relX +0.5F - Math.round(position.relX);
+			float relZ = position.relZ + 0.5F- Math.round(position.relZ);
+			if(checkBlock(bp.x, bp.y, bp.z)) {
 				vy = 0;
+			} else if (relX < 0.3) {
+				if (checkBlock(bp.x - 1, bp.y, bp.z)) {
+					stopVY();
+				}
+				else if (relZ < 0.3 && checkBlock(bp.x - 1, bp.y, bp.z - 1)) {
+					stopVY();
+				}
+				else if (relZ > 0.7 && checkBlock(bp.x - 1, bp.y, bp.z + 1)) {
+					stopVY();
+				}
+			}
+			else if (relX > 0.7) {
+				if (checkBlock(bp.x + 1, bp.y, bp.z)) {
+					stopVY();
+				}
+				else if (relZ < 0.3 && checkBlock(bp.x + 1, bp.y, bp.z - 1)) {
+					stopVY();
+				}
+				else if (relZ > 0.7 && checkBlock(bp.x + 1, bp.y, bp.z + 1)) {
+					stopVY();
+				}
+			}
+			if (relZ < 0.3 && checkBlock(bp.x, bp.y, bp.z - 1)) {
+				stopVY();
+			}
+			else if (relZ > 0.7 && checkBlock(bp.x, bp.y, bp.z + 1)) {
+				stopVY();
 			}
 		}
 	}
