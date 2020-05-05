@@ -20,7 +20,7 @@ public class GameOverlay extends MenuGUI {
 	public void init(long nvg) {
 		crosshair = NGraphics.loadImage("assets/cubyz/textures/crosshair.png");
 		selection = NGraphics.loadImage("assets/cubyz/guis/inventory/selected_slot.png");
-		healthBar = new int[7];
+		healthBar = new int[8];
 		healthBar[0] = NGraphics.loadImage("assets/cubyz/textures/health_bar_beg_empty.png");
 		healthBar[1] = NGraphics.loadImage("assets/cubyz/textures/health_bar_beg_full.png");
 		healthBar[2] = NGraphics.loadImage("assets/cubyz/textures/health_bar_end_empty.png");
@@ -28,6 +28,7 @@ public class GameOverlay extends MenuGUI {
 		healthBar[4] = NGraphics.loadImage("assets/cubyz/textures/health_bar_mid_empty.png");
 		healthBar[5] = NGraphics.loadImage("assets/cubyz/textures/health_bar_mid_half.png");
 		healthBar[6] = NGraphics.loadImage("assets/cubyz/textures/health_bar_mid_full.png");
+		healthBar[7] = NGraphics.loadImage("assets/cubyz/textures/health_bar_icon.png");
 		Inventory inventory = Cubyz.world.getLocalPlayer().getInventory();
 		for(int i = 0; i < 8; i++) {
 			inv[i] = new InventorySlot(inventory.getStack(i), i*64-256, 64);
@@ -58,6 +59,10 @@ public class GameOverlay extends MenuGUI {
 			NGraphics.setColor(255, 50, 50, (int) (255-(System.currentTimeMillis()-lastPlayerHurtMs))/2);
 			NGraphics.fillRect(0, 0, win.getWidth(), win.getHeight());
 		}
+		String s = health + "/" + maxHealth + " HP";
+		float width = NGraphics.getTextWidth(s);
+		NGraphics.drawImage(healthBar[7], win.getWidth()-maxHealth*12 - 40 - (int) width, 6, 24, 24);
+		NGraphics.drawText(win.getWidth()-maxHealth*12 - 10 - width, 9, s);
 		for(int i = 0; i < maxHealth; i += 2) {
 			boolean half = i+1 == health;
 			boolean empty = i >= health;
@@ -65,8 +70,8 @@ public class GameOverlay extends MenuGUI {
 			int idx = 0;
 			if (i == 0) { // beggining
 				idx = empty ? 0 : 1;
-			} else if (i == maxHealth-2) {
-				idx = empty ? 2 : 3;
+			} else if (i == maxHealth-2) { // end
+				idx = i+1 >= health ? 2 : 3;
 			} else {
 				idx = empty ? 4 : (half ? 5 : 6); // if empty = 4, half = 5, full = 6
 			}
