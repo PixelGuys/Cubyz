@@ -361,14 +361,18 @@ public class LocalSurface extends Surface {
 			world.inLqdUpdate = false;
 			//Profiler.startProfiling();
 			for (Chunk ch : chunks) {
+				int wx = ch.getX() << 4;
+				int wz = ch.getZ() << 4;
 				if (ch.isLoaded() && ch.getLiquids().size() > 0) {
 					liquids = ch.getUpdatingLiquids().toArray(liquids);
 					int size = ch.getUpdatingLiquids().size();
 					ch.getUpdatingLiquids().clear();
 					for (int j = 0; j < size; j++) {
-						BlockInstance bi = ch.getBlockInstanceAt(liquids[j]);
-						if (bi == null) break;
-						Block[] neighbors = ch.getNeighbors(bi.getX() & 15, bi.getY(), bi.getZ() & 15);
+						Block block = ch.getBlockAtIndex(liquids[j]);
+						int bx = (liquids[j] >> 4) & 15;
+						int by = liquids[j] >> 8;
+						int bz = liquids[j] & 15;
+						Block[] neighbors = ch.getNeighbors(bx, by, bz);
 						for (int i = 0; i < 5; i++) {
 							Block b = neighbors[i];
 							if (b == null) {
@@ -394,7 +398,7 @@ public class LocalSurface extends Surface {
 										break;
 								}
 								if(dy == -1 || (neighbors[4] != null && neighbors[4].getBlockClass() != Block.BlockClass.FLUID)) {
-									ch.addBlockPossiblyOutside(bi.getBlock(), (bi.getX()+dx) & worldAnd, bi.getY()+dy, (bi.getZ()+dz) & worldAnd);
+									ch.addBlockPossiblyOutside(block, (wx+bx+dx) & worldAnd, by+dy, (wz+bz+dz) & worldAnd);
 								}
 							}
 						}

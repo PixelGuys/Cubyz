@@ -593,6 +593,8 @@ public class Chunk {
 		int rx = x - wx;
 		int rz = z - wz;
 		if(rx < 0 || rx > 15 || rz < 0 || rz > 15) {
+			if (surface.getChunk(cx + ((rx & ~15) >> 4), cz + ((rz & ~15) >> 4)) == null)
+				return;
 			surface.getChunk(cx + ((rx & ~15) >> 4), cz + ((rz & ~15) >> 4)).addBlock(b, x & 15, y, z & 15);
 			return;
 		} else {
@@ -739,7 +741,7 @@ public class Chunk {
 			return;
 		hideBlock(x & 15, y, z & 15);
 		if (bi.getBlockClass() == BlockClass.FLUID) {
-			liquids.remove(((x & 15) << 4) | (y << 8) | (z & 15));
+			liquids.remove((Object) (((x & 15) << 4) | (y << 8) | (z & 15)));
 		}
 		if (bi.hasBlockEntity()) {
 			blockEntities.remove(bi);
@@ -999,6 +1001,10 @@ public class Chunk {
 		if (y > World.WORLD_HEIGHT-1)
 			return null;
 		return blocks[(x << 4) | (y << 8) | z];
+	}
+	
+	public Block getBlockAtIndex(int pos) {
+		return blocks[pos];
 	}
 	
 	public BlockInstance getBlockInstanceAt(int pos) {
