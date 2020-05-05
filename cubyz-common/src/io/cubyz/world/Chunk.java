@@ -43,6 +43,8 @@ public class Chunk {
 	
 	private Surface surface;
 	
+	private int maxHeight; // Max height of the terrain after loading. Used to prevent bugs at chunk borders.
+	
 	public Chunk(int cx, int cz, Surface surface, ArrayList<BlockChange> changes) {
 		if(surface != null) {
 			cx &= surface.getAnd() >>> 4;
@@ -92,12 +94,10 @@ public class Chunk {
 		ch = surface.getChunk(cx, cz + 1);
 		boolean chz1 = ch != null && ch.isGenerated();
 		chunks[3] = ch;
-		int maxHeight = 255; // The biggest height that supports blocks.
+		maxHeight = 255; // The biggest height that supports blocks.
 		// Use lighting calculations that are done anyways if easyLighting is enabled to determine the maximum height inside this chunk.
-		ArrayList<int[]> lightUpdates = null;
 		ArrayList<Integer> lightSources = null;
 		if(Settings.easyLighting) {
-			lightUpdates = new ArrayList<>();
 			lightSources = new ArrayList<>();
 			// First of all update the top air blocks on which the sun is constant:
 			maxHeight = World.WORLD_HEIGHT-1;
@@ -181,64 +181,84 @@ public class Chunk {
 				}
 			}
 			// Look at the neighboring chunks. Update only the outer corners:
-			boolean no = surface.getChunk(cx-1, cz) != null;
-			boolean po = surface.getChunk(cx+1, cz) != null;
-			boolean on = surface.getChunk(cx, cz-1) != null;
-			boolean op = surface.getChunk(cx, cz+1) != null;
-			if(no || on) {
+			Chunk no = surface.getChunk(cx-1, cz);
+			Chunk po = surface.getChunk(cx+1, cz);
+			Chunk on = surface.getChunk(cx, cz-1);
+			Chunk op = surface.getChunk(cx, cz+1);
+			if(no != null || on != null) {
 				int x = 0, z = 0;
 				for(int y = 0; y < maxHeight; y++) {
 					singleLightUpdate(x, y, z);
 				}
 			}
-			if(no || op) {
+			if(no != null || op != null) {
 				int x = 0, z = 15;
 				for(int y = 0; y < maxHeight; y++) {
 					singleLightUpdate(x, y, z);
 				}
 			}
-			if(po || on) {
+			if(po != null || on != null) {
 				int x = 15, z = 0;
 				for(int y = 0; y < maxHeight; y++) {
 					singleLightUpdate(x, y, z);
 				}
 			}
-			if(po || op) {
+			if(po != null || op != null) {
 				int x = 15, z = 15;
 				for(int y = 0; y < maxHeight; y++) {
 					singleLightUpdate(x, y, z);
 				}
 			}
-			if(no) {
+			if(no != null) {
 				int x = 0;
 				for(int z = 1; z < 15; z++) {
 					for(int y = 0; y < maxHeight; y++) {
 						singleLightUpdate(x, y, z);
 					}
 				}
+				x = 15;
+				for(int z = 0; z < 16; z++) {
+					int y = no.maxHeight;
+					no.singleLightUpdate(x, y, z);
+				}
 			}
-			if(po) {
+			if(po != null) {
 				int x = 15;
 				for(int z = 1; z < 15; z++) {
 					for(int y = 0; y < maxHeight; y++) {
 						singleLightUpdate(x, y, z);
 					}
 				}
+				x = 0;
+				for(int z = 0; z < 16; z++) {
+					int y = po.maxHeight;
+					po.singleLightUpdate(x, y, z);
+				}
 			}
-			if(on) {
+			if(on != null) {
 				int z = 0;
 				for(int x = 1; x < 15; x++) {
 					for(int y = 0; y < maxHeight; y++) {
 						singleLightUpdate(x, y, z);
 					}
 				}
+				z = 15;
+				for(int x = 0; x < 16; x++) {
+					int y = on.maxHeight;
+					on.singleLightUpdate(x, y, z);
+				}
 			}
-			if(op) {
+			if(op != null) {
 				int z = 15;
 				for(int x = 1; x < 15; x++) {
 					for(int y = 0; y < maxHeight; y++) {
 						singleLightUpdate(x, y, z);
 					}
+				}
+				z = 0;
+				for(int x = 0; x < 16; x++) {
+					int y = op.maxHeight;
+					op.singleLightUpdate(x, y, z);
 				}
 			}
 			// Take care about light sources:
