@@ -8,16 +8,17 @@ import io.jungle.Window;
 public class GameOverlay extends MenuGUI {
 
 	int crosshair;
-	int hotBar;
 	int selection;
+	int heart, halfHeart;
 
 	private InventorySlot inv [] = new InventorySlot[8];
 	
 	@Override
 	public void init(long nvg) {
 		crosshair = NGraphics.loadImage("assets/cubyz/textures/crosshair.png");
-		hotBar = NGraphics.loadImage("assets/cubyz/guis/inventory/inventory_bar.png");
 		selection = NGraphics.loadImage("assets/cubyz/guis/inventory/selected_slot.png");
+		heart = NGraphics.loadImage("assets/cubyz/textures/heart.png");
+		halfHeart = NGraphics.loadImage("assets/cubyz/textures/half_heart.png");
 		Inventory inventory = Cubyz.world.getLocalPlayer().getInventory();
 		for(int i = 0; i < 8; i++) {
 			inv[i] = new InventorySlot(inventory.getStack(i), i*64-256, 64);
@@ -33,6 +34,15 @@ public class GameOverlay extends MenuGUI {
 			for(int i = 0; i < 8; i++) {
 				inv[i].reference = Cubyz.world.getLocalPlayer().getInventory().getStack(i); // without it, if moved in inventory, stack won't refresh
 				inv[i].render(nvg, win);
+			}
+		}
+		// Draw the health bar:#
+		int health = Cubyz.world.getLocalPlayer().health;
+		for(int i = 0; i < health; i += 2) {
+			if(i+1 == health) {	// Draw half a heart.
+				NGraphics.drawImage(halfHeart, win.getWidth()/2 - 254 + i*8, win.getHeight() - 88, 16, 16);
+			} else { // Draw a full heart.
+				NGraphics.drawImage(heart, win.getWidth()/2 - 254 + i*8, win.getHeight() - 88, 16, 16);
 			}
 		}
 	}

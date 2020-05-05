@@ -20,6 +20,8 @@ public class Entity {
 	
 	private EntityType type;
 	
+	public int health, hunger, maxHealth, maxHunger;
+	
 	protected int width = 1, height = 2, depth = 1;
 	
 	public Entity(EntityType type) {
@@ -31,44 +33,6 @@ public class Entity {
 		this.ai = ai;
 	}
 	
-	public EntityType getType() {
-		return type;
-	}
-	
-	public StellarTorus getStellarTorus() {
-		return stellarTorus;
-	}
-
-	public void setStellarTorus(StellarTorus world) {
-		this.stellarTorus = world;
-	}
-	
-	public Vector3fi getPosition() {
-		return position;
-	}
-	
-	public Vector3f getRenderPosition(Vector3fi playerPos) { // default method for render pos
-		return new Vector3f((position.x-playerPos.x)+position.relX-playerPos.relX, position.y-playerPos.y, (position.z-playerPos.z)+position.relZ-playerPos.relZ);
-	}
-	
-	public void setPosition(Vector3i position) {
-		this.position.x = position.x;
-		this.position.y = position.y;
-		this.position.z = position.z;
-	}
-	
-	public void setPosition(Vector3fi position) {
-		this.position = position;
-	}
-	
-	public Vector3f getRotation() {
-		return rotation;
-	}
-	
-	public void setRotation(Vector3f rotation) {
-		this.rotation = rotation;
-	}
-	
 	/**
 	 * check and update vertical velocity for collision.
 	 */
@@ -78,41 +42,41 @@ public class Entity {
 			float relX = position.relX +0.5F - Math.round(position.relX);
 			float relZ = position.relZ + 0.5F- Math.round(position.relZ);
 			if(isOnGround()) {
-				vy = 0;
+				stopVY();
 			}
 			else if (relX < 0.3) {
 				if (checkBlock(bp.x - 1, bp.y, bp.z)) {
-					vy = 0;
+					stopVY();
 				}
 				else if (relZ < 0.3 && checkBlock(bp.x - 1, bp.y, bp.z - 1)) {
-					vy = 0;
+					stopVY();
 				}
 				else if (relZ > 0.7 && checkBlock(bp.x - 1, bp.y, bp.z + 1)) {
-					vy = 0;
+					stopVY();
 				}
 			}
 			else if (relX > 0.7) {
 				if (checkBlock(bp.x + 1, bp.y, bp.z)) {
-					vy = 0;
+					stopVY();
 				}
 				else if (relZ < 0.3 && checkBlock(bp.x + 1, bp.y, bp.z - 1)) {
-					vy = 0;
+					stopVY();
 				}
 				else if (relZ > 0.7 && checkBlock(bp.x + 1, bp.y, bp.z + 1)) {
-					vy = 0;
+					stopVY();
 				}
 			}
 			if (relZ < 0.3 && checkBlock(bp.x, bp.y, bp.z - 1)) {
-				vy = 0;
+				stopVY();
 			}
 			else if (relZ > 0.7 && checkBlock(bp.x, bp.y, bp.z + 1)) {
-				vy = 0;
+				stopVY();
 			}
 			
 			// I'm really annoyed by falling into the void and needing ages to get back up.
 			if(bp.y < -100) {
 				position.y = -100;
-				vy = 0;
+				stopVY();
 			}
 		} else if (vy > 0) {
 			Vector3i bp = new Vector3i(position.x + (int) Math.round(position.relX), (int) Math.floor(position.y), position.z + (int) Math.round(position.relZ));
@@ -120,6 +84,17 @@ public class Entity {
 				vy = 0;
 			}
 		}
+	}
+	
+	public void stopVY() {
+		health += calculateFallDamage();
+		vy = 0;
+	}
+	
+	public int calculateFallDamage() {
+		if(vy < 0)
+			return -(int)(8*vy*vy);
+		return 0;
 	}
 	
 	/**
@@ -348,6 +323,44 @@ public class Entity {
 		rotation = loadVector3f (ndt.getContainer("rotation"));
 		Vector3f velocity = loadVector3f(ndt.getContainer("velocity"));
 		vx = velocity.x; vy = velocity.y; vz = velocity.z;
+	}
+	
+	public EntityType getType() {
+		return type;
+	}
+	
+	public StellarTorus getStellarTorus() {
+		return stellarTorus;
+	}
+
+	public void setStellarTorus(StellarTorus world) {
+		this.stellarTorus = world;
+	}
+	
+	public Vector3fi getPosition() {
+		return position;
+	}
+	
+	public Vector3f getRenderPosition(Vector3fi playerPos) { // default method for render pos
+		return new Vector3f((position.x-playerPos.x)+position.relX-playerPos.relX, position.y-playerPos.y, (position.z-playerPos.z)+position.relZ-playerPos.relZ);
+	}
+	
+	public void setPosition(Vector3i position) {
+		this.position.x = position.x;
+		this.position.y = position.y;
+		this.position.z = position.z;
+	}
+	
+	public void setPosition(Vector3fi position) {
+		this.position = position;
+	}
+	
+	public Vector3f getRotation() {
+		return rotation;
+	}
+	
+	public void setRotation(Vector3f rotation) {
+		this.rotation = rotation;
 	}
 	
 }

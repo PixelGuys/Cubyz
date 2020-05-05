@@ -17,6 +17,9 @@ public abstract class Player extends Entity implements ICommandSource {
 
 	public Player() {
 		super(CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player"));
+		// TODO: Take care of data files.
+		health = maxHealth = 16;
+		hunger = maxHunger = 16;
 	}
 	
 	public abstract Inventory getInventory();
