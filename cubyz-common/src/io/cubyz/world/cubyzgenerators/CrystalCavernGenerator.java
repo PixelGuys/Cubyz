@@ -56,11 +56,11 @@ public class CrystalCavernGenerator implements FancyGenerator {
 		float slopeModifier = 0.0F;
 		Random localRand = new Random(random);
 		// Choose a random cave length if not specified:
-		int local = range*16 - 2*(int)size;
+		int local = range*16 - 16;
 		int caveLength = local - localRand.nextInt(local / 4);
 
 		for(boolean highSlope = localRand.nextInt(6) == 0; curStep < caveLength; ++curStep) {
-			double xzScale = 1.5 + Math.sin(curStep*Math.PI/caveLength)*size;
+			double xzScale = 6.0 + Math.sin(curStep*Math.PI/caveLength)*size;
 			double yScale = xzScale*caveHeightModifier;
 			// Move cave center point one unit into a direction given by slope and direction:
 			float xzUnit = (float)Math.cos(slope);
@@ -141,7 +141,7 @@ public class CrystalCavernGenerator implements FancyGenerator {
 			if(worldX >= cwx - 40 && worldZ >= cwz - 40 && worldX <= cwx + 40 && worldZ <= cwz + 40) {
 				// Consider a good amount of crystal spawns in the region.
 				Random rand = new Random(seed);
-				int amount = (int)(1+30*xzScale*yScale/size/size);
+				int amount = (int)(1+20*xzScale*yScale/size/size);
 				for(int i = 0; i < amount; i++) {
 					// Choose a random point on the surface of the surrounding spheroid to generate a crystal there:
 					double theta = 2*Math.PI*rand.nextDouble();
@@ -169,10 +169,11 @@ public class CrystalCavernGenerator implements FancyGenerator {
 			int z = xyz[2]-wz;
 			Random rand = new Random(seed);
 			// Make some crystal spikes in random directions:
-			int spikes = rand.nextInt(4) + 4;
-			if(useNeedles) spikes += 2;
+			int spikes = 4;
+			if(useNeedles) spikes++;
+			spikes += rand.nextInt(spikes); // Use somewhat between spikes and 2*spikes spikes.
 			for(int i = 0; i < spikes; i++) {
-				int length = rand.nextInt(16)+16;
+				int length = rand.nextInt(24)+8;
 				// Choose a random direction:
 				double theta = 2*Math.PI*rand.nextDouble();
 		        double phi = Math.acos(1 - 2*rand.nextDouble());
@@ -219,15 +220,15 @@ public class CrystalCavernGenerator implements FancyGenerator {
 	}
 
 	private void considerCoordinates(int x, int z, int cx, int cz, Block[][][] chunk, boolean[][] vegetationIgnoreMap, int[][] heightMap, Random rand) {
-		if(rand.nextInt(1024) != 0) return; // This should be pretty rare(mostly because it is so huge).
+		if(rand.nextInt(2048) != 0) return; // This should be pretty rare(mostly because it is so huge).
 		// Choose some in world coordinates to start generating:
 		double worldX = (double)((x << 4) + rand.nextInt(16));
-		double worldY = 50; // TODO: More varied.
 		double worldZ = (double)((z << 4) + rand.nextInt(16));
 		float direction = rand.nextFloat()*(float)Math.PI*2.0F;
 		float slope = (rand.nextFloat() - 0.5F)/4.0F;
-		float size = rand.nextFloat()*2.0F + rand.nextFloat()+40.0f;
-		int[][] crystalSpawns = new int[1024][3];
+		float size = rand.nextFloat()*20 + 20;
+		double worldY = size + rand.nextFloat()*10;
+		int[][] crystalSpawns = new int[1024][3]; // TODO: Properly evaluate the maximum number of crystal spawns per crystal cavern.
 		int[] index = {0};
 		long rand1 = rand.nextLong();
 		long rand2 = rand.nextLong();
