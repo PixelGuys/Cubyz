@@ -18,8 +18,6 @@ public class GiveCommand extends CommandBase {
 		return new Resource("cubyz", "give");
 	}
 
-	@Override public void setID(int ID) {}
-
 	@Override
 	public void commandExecute(ICommandSource source, String[] args) {
 		Registry<Item> items = CubyzRegistries.ITEM_REGISTRY;

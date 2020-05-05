@@ -16,12 +16,10 @@ public class ClearCommand extends CommandBase {
 		return new Resource("cubyz", "clear");
 	}
 
-	@Override public void setID(int ID) {}
-
 	@Override
 	public void commandExecute(ICommandSource source, String[] args) {
 		if (source.getWorld() == null) {
-			source.feedback("'give' must be executed by a player");
+			source.feedback("'clear' must be executed by a player");
 			return;
 		}
 		Player local = source.getWorld().getLocalPlayer();

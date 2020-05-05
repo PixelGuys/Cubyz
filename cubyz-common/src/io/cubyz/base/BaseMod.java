@@ -11,7 +11,9 @@ import io.cubyz.base.init.ItemInit;
 import io.cubyz.base.init.MaterialInit;
 import io.cubyz.blocks.Block;
 import io.cubyz.command.ClearCommand;
+import io.cubyz.command.CureCommand;
 import io.cubyz.command.GiveCommand;
+import io.cubyz.command.TimeCommand;
 import io.cubyz.entity.EntityType;
 import io.cubyz.entity.Pig;
 import io.cubyz.entity.PlayerEntity;
@@ -55,6 +57,8 @@ public class BaseMod {
 		
 		CubyzRegistries.COMMAND_REGISTRY.register(new GiveCommand());
 		CubyzRegistries.COMMAND_REGISTRY.register(new ClearCommand());
+		CubyzRegistries.COMMAND_REGISTRY.register(new CureCommand());
+		CubyzRegistries.COMMAND_REGISTRY.register(new TimeCommand());
 		
 		// Init proxy
 		proxy.init();

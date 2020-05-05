@@ -10,6 +10,9 @@ public class GameOverlay extends MenuGUI {
 	int crosshair;
 	int selection;
 	int[] healthBar;
+	
+	long lastPlayerHurtMs; // stored here and not in Player for easier multiplayer integration
+	int lastPlayerHealth;
 
 	private InventorySlot inv [] = new InventorySlot[8];
 	
@@ -45,6 +48,16 @@ public class GameOverlay extends MenuGUI {
 		// Draw the health bar:#
 		int maxHealth = Cubyz.world.getLocalPlayer().maxHealth;
 		int health = Cubyz.world.getLocalPlayer().health;
+		if (lastPlayerHealth != health) {
+			if (lastPlayerHealth > health) {
+				lastPlayerHurtMs = System.currentTimeMillis();
+			}
+			lastPlayerHealth = health;
+		}
+		if (System.currentTimeMillis() < lastPlayerHurtMs+510) {
+			NGraphics.setColor(255, 50, 50, (int) (255-(System.currentTimeMillis()-lastPlayerHurtMs))/2);
+			NGraphics.fillRect(0, 0, win.getWidth(), win.getHeight());
+		}
 		for(int i = 0; i < maxHealth; i += 2) {
 			boolean half = i+1 == health;
 			boolean empty = i >= health;

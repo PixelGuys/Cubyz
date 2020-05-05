@@ -16,6 +16,11 @@ public abstract class CommandBase implements IRegistryElement {
 	
 	public abstract void commandExecute(ICommandSource source, String[] args);
 	
+	@Override
+	public void setID(int ID) {
+		throw new UnsupportedOperationException();
+	}
+	
 	/**
 	 * Returns the name of the Command
 	 * @return command name
