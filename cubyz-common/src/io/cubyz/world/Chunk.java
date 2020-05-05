@@ -1001,6 +1001,10 @@ public class Chunk {
 		return blocks[(x << 4) | (y << 8) | z];
 	}
 	
+	public BlockInstance getBlockInstanceAt(int pos) {
+		return inst[pos];
+	}
+	
 	private Block getBlockUnbound(int x, int y, int z) {
 		if(y < 0 || y >= World.WORLD_HEIGHT || !generated) return null;
 		if(x < 0 || x > 15 || z < 0 || z > 15) {

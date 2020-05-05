@@ -69,7 +69,7 @@ public class LocalSurface extends Surface {
 	boolean liquidUpdate;
 	
 	BlockEntity[] blockEntities = new BlockEntity[0];
-	BlockInstance[] liquids = new BlockInstance[0];
+	Integer[] liquids = new Integer[0];
 
 	private ArrayList<CustomOre> customOres = new ArrayList<>();
 	
@@ -296,6 +296,7 @@ public class LocalSurface extends Surface {
 	public void update() {
 		long gameTime = torus.world.getGameTime();
 		int dayCycle = torus.getDayCycle();
+		LocalWorld world = (LocalWorld) torus.getWorld();
 		// Ambient light
 		{
 			int dayTime = Math.abs((int)(gameTime % dayCycle) - (dayCycle >> 1));
@@ -356,14 +357,16 @@ public class LocalSurface extends Surface {
 		}
 		
 		// Liquids
-		if (gameTime % 3 == 0 && liquidUpdate) {
-			liquidUpdate = false;
+		if (gameTime % 3 == 0 && world.inLqdUpdate) {
+			world.inLqdUpdate = false;
 			//Profiler.startProfiling();
 			for (Chunk ch : chunks) {
 				if (ch.isLoaded() && ch.getLiquids().size() > 0) {
 					liquids = ch.getUpdatingLiquids().toArray(liquids);
+					int size = ch.getUpdatingLiquids().size();
 					ch.getUpdatingLiquids().clear();
-					for (BlockInstance bi : liquids) {
+					for (int j = 0; j < size; j++) {
+						BlockInstance bi = ch.getBlockInstanceAt(liquids[j]);
 						if (bi == null) break;
 						Block[] neighbors = ch.getNeighbors(bi.getX() & 15, bi.getY(), bi.getZ() & 15);
 						for (int i = 0; i < 5; i++) {
