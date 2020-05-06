@@ -48,6 +48,29 @@ public class AddonsMod {
 	
 	@EventHandler(type = "item/register")
 	public void registerItems(Registry<Item> registry) {
+		for (File addon : addons) {
+			File items = new File(addon, "items");
+			if (items.exists()) {
+				for (File descriptor : items.listFiles()) {
+					Properties props = new Properties();
+					try {
+						FileReader reader = new FileReader(descriptor);
+						props.load(reader);
+						reader.close();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+					
+					Item item = new Item();
+					String id = descriptor.getName();
+					if(id.contains("."))
+						id = id.substring(0, id.indexOf('.'));
+					item.setID(new Resource(addon.getName(), id));
+					item.setTexture(props.getProperty("texture", "default.png"));
+					registry.register(item);
+				}
+			}
+		}
 		registry.registerAll(items);
 	}
 	
@@ -85,5 +108,4 @@ public class AddonsMod {
 			}
 		}
 	}
-	
 }

@@ -130,6 +130,7 @@ public class BaseMod {
 	public void registerRecipes(Registry<Recipe> reg) {
 		Item[] recipe;
 		Block oakLog = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:oak_log");
+		Item stick = CubyzRegistries.ITEM_REGISTRY.getByID("cubyz:stick");
 		recipe = new Item[] {oakLog.getBlockDrop()};
 		oakLogToPlanks = new Recipe(recipe, 4, BlockInit.oakPlanks.getBlockDrop(), new Resource("cubyz", "logs_to_planks"));
 		
@@ -137,7 +138,7 @@ public class BaseMod {
 				BlockInit.oakPlanks.getBlockDrop(),
 				BlockInit.oakPlanks.getBlockDrop(),
 		};
-		oakPlanksToStick = new Recipe(1, 2, recipe, 4, ItemInit.stick, new Resource("cubyz", "planks_to_stick"));
+		oakPlanksToStick = new Recipe(1, 2, recipe, 4, stick, new Resource("cubyz", "planks_to_stick"));
 		Item P = BlockInit.oakPlanks.getBlockDrop();
 		Item L = oakLog.getBlockDrop();
 		recipe = new Item[] { // Suggestion. // Shortened so it can atleast be craftable :) // Further simplified so it is craftable in our current inventory without farming 67 wood :D

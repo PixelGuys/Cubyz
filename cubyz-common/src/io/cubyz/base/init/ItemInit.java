@@ -10,13 +10,6 @@ public class ItemInit {
 
 	public static final ArrayList<Item> ITEMS = new ArrayList<>();
 	public static final ArrayList<CustomItem> CUSTOM_ITEMS = new ArrayList<>();
-	public static Item stick;
-	
-	static {
-		stick = new Item();
-		stick.setID("cubyz:stick");
-		stick.setTexture("materials/stick.png");
-	}
 	
 	public static void register(Item item) {
 		ITEMS.add(item);
@@ -37,14 +30,6 @@ public class ItemInit {
 			ITEMS.remove(item);
 		}
 		CUSTOM_ITEMS.clear();
-	}
-	
-	public static Item search(String id) {
-		for(Item item : ITEMS) {
-			if(item.getRegistryID().toString().equals(id))
-				return item;
-		}
-		return null;
 	}
 	
 }

@@ -90,7 +90,7 @@ public class Inventory {
 						item = Tool.loadFrom(ndt.getContainer("tool"));
 					} else {
 						// Search the ItemInit which contains also custom items:
-						item = ItemInit.search(ndt.getString("item"));
+						item = CubyzRegistries.ITEM_REGISTRY.getByID(ndt.getString("item"));
 						if(item == null) {
 							// item not existant in this version of the game. Can't do much so ignore it.
 							items[i] = new ItemStack();
