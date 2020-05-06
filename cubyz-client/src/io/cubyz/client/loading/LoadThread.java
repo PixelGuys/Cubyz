@@ -17,6 +17,7 @@ import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Mod;
 import io.cubyz.api.Resource;
 import io.cubyz.api.Side;
+import io.cubyz.base.AddonsMod;
 import io.cubyz.base.BaseMod;
 import io.cubyz.blocks.Block;
 import io.cubyz.client.Cubyz;
@@ -72,16 +73,6 @@ public class LoadThread extends Thread {
 		
 		URLClassLoader loader = new URLClassLoader(modUrl.toArray(new URL[modUrl.size()]), LoadThread.class.getClassLoader());
 		log.info("Seeking mods..");
-		//try {
-			//Enumeration<URL> urls = loader.findResources("CubeComputers");
-			//System.out.println("URLs");
-			//while (urls.hasMoreElements()) {
-			//	URL url = urls.nextElement();
-			//	System.out.println("URL - " + url);
-			//}
-		//} catch (IOException e1) {
-		//	e1.printStackTrace();
-		//}
 		long start = System.currentTimeMillis();
 		Reflections reflections = new Reflections("", loader); // load all mods
 		Set<Class<?>> allClasses = reflections.getTypesAnnotatedWith(Mod.class);
@@ -89,6 +80,7 @@ public class LoadThread extends Thread {
 		log.info("Took " + (end - start) + "ms for reflection");
 		if (!allClasses.contains(BaseMod.class)) {
 			allClasses.add(BaseMod.class);
+			allClasses.add(AddonsMod.class);
 			log.info("Manually adding BaseMod (probably on distributed JAR)");
 		}
 		for (Class<?> cl : allClasses) {

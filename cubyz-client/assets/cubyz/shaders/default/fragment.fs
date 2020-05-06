@@ -1,7 +1,7 @@
 #version 330
 
-const int MAX_POINT_LIGHTS = 5;
-const int MAX_SPOT_LIGHTS = 5;
+const int MAX_POINT_LIGHTS = 1;
+const int MAX_SPOT_LIGHTS = 1;
 
 in vec2 outTexCoord;
 in vec3 outColor;
@@ -205,7 +205,6 @@ void main()
     }
     
     if (outSelected > 0) {
-    	fragColor = vec4(fragColor.x, fragColor.y, 0.8, fragColor.w);
-    	
+    	fragColor.z += 0.4;
     }
 }

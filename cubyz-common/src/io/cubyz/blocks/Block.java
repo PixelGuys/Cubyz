@@ -67,6 +67,18 @@ public class Block implements IRegistryElement {
 		return this;
 	}
 	
+	public void setTransparent(boolean transparent) {
+		this.transparent = transparent;
+	}
+
+	public void setBlockClass(BlockClass bc) {
+		this.bc = bc;
+	}
+
+	public void setAbsorption(int absorption) {
+		this.absorption = absorption;
+	}
+
 	public boolean isSelectable() {
 		return selectable;
 	}

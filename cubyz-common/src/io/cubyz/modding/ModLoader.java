@@ -60,7 +60,9 @@ public class ModLoader {
 	
 	public static void init(Object mod) {
 		commonRegister(mod);
-		safeMethodInvoke(true, eventHandlerMethodSided(mod, "init", Side.SERVER), mod);
+		Method m = eventHandlerMethodSided(mod, "init", Side.SERVER);
+		if (m != null)
+			safeMethodInvoke(true, m, mod);
 	}
 	
 	public static void postInit(Object mod) {
