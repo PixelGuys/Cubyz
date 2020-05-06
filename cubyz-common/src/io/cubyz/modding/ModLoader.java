@@ -4,10 +4,15 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.List;
 
 import io.cubyz.CubyzLogger;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.EventHandler;
+import io.cubyz.api.LoadOrder;
+import io.cubyz.api.Mod;
+import io.cubyz.api.Order;
 import io.cubyz.api.Proxy;
 import io.cubyz.api.Side;
 import io.cubyz.api.SideOnly;
@@ -56,6 +61,25 @@ public class ModLoader {
 			}
 		}
 		return null;
+	}
+	
+	public static void sortMods(List<Object> mods) {
+		HashMap<String, Object> modIds = new HashMap<>();
+		for (Object mod : mods) {
+			Mod annot = mod.getClass().getAnnotation(Mod.class);
+			modIds.put(annot.id(), mod);
+		}
+		for (int i = 0; i < mods.size(); i++) {
+			Object mod = mods.get(i);
+			Class<?> cl = mod.getClass();
+			LoadOrder[] orders = cl.getAnnotationsByType(LoadOrder.class);
+			for (LoadOrder order : orders) {
+				if (order.order() == Order.AFTER) {
+					mods.remove(i);
+					mods.add(mods.indexOf(modIds.get(order.id()))+1, mod);
+				}
+			}
+		}
 	}
 	
 	public static void init(Object mod) {

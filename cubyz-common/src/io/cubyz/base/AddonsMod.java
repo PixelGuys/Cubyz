@@ -7,7 +7,9 @@ import java.util.ArrayList;
 import java.util.Properties;
 
 import io.cubyz.api.EventHandler;
+import io.cubyz.api.LoadOrder;
 import io.cubyz.api.Mod;
+import io.cubyz.api.Order;
 import io.cubyz.api.Proxy;
 import io.cubyz.api.Registry;
 import io.cubyz.api.Resource;
@@ -20,6 +22,7 @@ import io.cubyz.items.ItemBlock;
  * Mod used to support add-ons: simple mods without any sort of coding required
  */
 @Mod(id = "addons-loader", name = "Addons Loader")
+@LoadOrder(order = Order.AFTER, id = "cubyz")
 public class AddonsMod {
 	
 	@Proxy(clientProxy = "io.cubyz.base.AddonsClientProxy", serverProxy = "io.cubyz.base.AddonsCommonProxy")

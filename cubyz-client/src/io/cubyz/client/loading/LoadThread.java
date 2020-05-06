@@ -93,6 +93,7 @@ public class LoadThread extends Thread {
 			}
 		}
 		log.info("Mod list complete");
+		ModLoader.sortMods(mods);
 		
 		// TODO re-add pre-init
 		l.setStep(2, 0, mods.size());
