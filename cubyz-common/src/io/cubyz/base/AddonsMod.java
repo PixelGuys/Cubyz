@@ -68,7 +68,8 @@ public class AddonsMod {
 					
 					Block block = new Block();
 					String id = descriptor.getName();
-					id = id.substring(0, id.indexOf('.'));
+					if(id.contains("."))
+						id = id.substring(0, id.indexOf('.'));
 					block.setID(new Resource(addon.getName(), id));
 					block.setHardness(Float.parseFloat(props.getProperty("hardness", "1")));
 					block.setBlockClass(BlockClass.valueOf(props.getProperty("class", "STONE").toUpperCase()));

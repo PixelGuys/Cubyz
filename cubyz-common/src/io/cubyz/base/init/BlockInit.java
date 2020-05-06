@@ -3,14 +3,12 @@ package io.cubyz.base.init;
 import java.util.ArrayList;
 
 import io.cubyz.api.Registry;
-import io.cubyz.blocks.Bedrock;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockGrass;
 import io.cubyz.blocks.CoalOre;
 import io.cubyz.blocks.DiamondOre;
 import io.cubyz.blocks.EmeraldOre;
 import io.cubyz.blocks.GoldOre;
-import io.cubyz.blocks.Ice;
 import io.cubyz.blocks.IronOre;
 import io.cubyz.blocks.OakLeaves;
 import io.cubyz.blocks.RubyOre;
@@ -23,17 +21,13 @@ public class BlockInit {
 	
 	public static final ArrayList<Block> BLOCKS = new ArrayList<>();
 	
-	public static Bedrock bedrock = new Bedrock();
-	public static Block cactus = new Block("cubyz:cactus", 4, LEAF);
 	public static Block cobblestone = new Block("cubyz:cobblestone", 25, STONE);
 	public static Block dirt = new Block("cubyz:dirt", 5.5f, SAND);
 	public static Block grass = new Block("cubyz:grass", 6.0f, SAND);
-	public static Ice ice = new Ice();
 	public static OakLeaves oakLeaves = new OakLeaves();
 	public static Block oakLog = new Block("cubyz:oak_log", 8, WOOD);
 	public static Block oakTop = new Block("cubyz:oak_top", 8, WOOD);
 	public static Block oakPlanks = new Block("cubyz:oak_planks", 7, WOOD);
-	public static Block sand = new Block("cubyz:sand", 5, SAND);
 	public static Block snow = new Block("cubyz:snow", 6.5f, SAND);
 	public static BlockGrass grassVegetation = new BlockGrass();
 	public static Block stone = new Block("cubyz:stone", 25, STONE);
@@ -60,17 +54,13 @@ public class BlockInit {
 		snow.setBlockDrop(dirt.getBlockDrop());
 		stone.setBlockDrop(cobblestone.getBlockDrop());
 		
-		register(bedrock);
-		register(cactus);
 		register(cobblestone);
 		register(dirt);
 		register(grass);
-		register(ice);
 		register(oakLeaves);
 		register(oakLog);
 		register(oakPlanks);
 		register(oakTop);
-		register(sand);
 		register(snow);
 		register(stone);
 		register(workbench);
