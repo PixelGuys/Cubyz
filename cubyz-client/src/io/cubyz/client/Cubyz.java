@@ -477,7 +477,7 @@ public class Cubyz implements IGameLogic {
 			
 			if (ResourceManager.lookupPath("cubyz/sound") != null) {
 				try {
-					music = new SoundBuffer(ResourceManager.lookupPath("cubyz/sound/KingBoard.ogg"));
+					music = new SoundBuffer(ResourceManager.lookupPath("cubyz/sound/Sincerely.ogg"));
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
