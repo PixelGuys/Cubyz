@@ -937,4 +937,85 @@ public class Cubyz implements IGameLogic {
 		} catch(Exception e) {}//e.printStackTrace();}
 		return null;
 	}
+	
+	static { // Just playing around with some ore textures. Don't mind the code and the random image appearing in the project path.
+		int n = 10;
+		BufferedImage stone = getImage("./assets/cubyz/textures/blocks/stone.png");
+		BufferedImage canvas = new BufferedImage(16*n, 16*n, BufferedImage.TYPE_INT_RGB);
+		for(int ix = 0; ix < n; ix++) {
+			for(int iy = 0; iy < n; iy++) {
+				for(int px = 0; px < 16; px++) {
+					for(int py = 0; py < 16; py++) {
+						canvas.setRGB(px+ix*16, py+iy*16, stone.getRGB(px, py));
+					}
+				}
+				int color = (int)(Math.random()*0xffffff);
+				double size = 1.0 + Math.random()*2.5;
+				double variation = 0.5*size*Math.random();
+				double rotation0 = Math.random()*2*Math.PI;
+				double rotationVar = Math.random()*2*Math.PI;
+				int spawns = (int)(Math.random()*6)+8+(int)(20.0/Math.pow(size-variation/2, 4));
+				boolean isCrystal = Math.random() < 0.0;//0.5;
+				
+				for(int i = 0; i < spawns; i++) {
+					double x0 = Math.random()*16;
+					double y0 = Math.random()*16;
+					double actualSize = size - (Math.random())*variation;
+					double actualSizeSmall = actualSize*(0.5+0.5*Math.random());
+					if(!isCrystal) { // Just some weird oval shape.
+						// Rotate the oval by a random angle:
+						double angle = rotation0+Math.random()*rotationVar;
+						double xMain = Math.sin(angle)/actualSize;
+						double yMain = Math.cos(angle)/actualSize;
+						double xSecn = Math.cos(angle)/actualSizeSmall;
+						double ySecn = -Math.sin(angle)/actualSizeSmall;
+						for(int dx = -1; dx <= 1; dx++) {
+							for(int dy = -1; dy <= 1; dy++) {
+								double x = x0+16*dx;
+								double y = y0+16*dy;
+								int xMin = (int)(x-actualSize);
+								int xMax = (int)(x+actualSize+1);
+								int yMin = (int)(y-actualSize);
+								int yMax = (int)(y+actualSize+1);
+								if(xMin < 0) xMin = 0;
+								if(xMax > 15) xMax = 15;
+								if(yMin < 0) yMin = 0;
+								if(yMax > 15) yMax = 15;
+								for(int px = xMin; px <= xMax; px++) {
+									for(int py = yMin; py <= yMax; py++) {
+										double deltaX = px-x;
+										double deltaY = py-y;
+										double distMain = deltaX*xMain+deltaY*yMain;
+										double distSecn = deltaX*xSecn+deltaY*ySecn;
+										if(distMain*distMain+distSecn*distSecn < 1) {
+											int alpha = (int)((1-distMain*distMain-distSecn*distSecn)*128*Math.min(size/1.5, 1));
+											int colorBG = stone.getRGB(px, py);
+											int rBG = (colorBG >>> 16) & 255;
+											int gBG = (colorBG >>> 8) & 255;
+											int bBG = (colorBG >>> 0) & 255;
+											int r = (color >>> 16) & 255;
+											int g = (color >>> 8) & 255;
+											int b = (color >>> 0) & 255;
+											r = (r*alpha + (255-alpha)*rBG)/255;
+											g = (g*alpha + (255-alpha)*gBG)/255;
+											b = (b*alpha + (255-alpha)*bBG)/255;
+											canvas.setRGB(px+ix*16, py+iy*16, 0xff000000 | (r << 16) | (g << 8) | (b << 0));
+										}
+									}
+								}
+							}
+						}
+					} else { // TODO
+						
+					}
+				}
+			}
+		}
+		try {
+			ImageIO.write(canvas, "png", new File("test.png"));
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
 }
