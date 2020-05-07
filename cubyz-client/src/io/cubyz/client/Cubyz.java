@@ -944,27 +944,30 @@ public class Cubyz implements IGameLogic {
 		BufferedImage canvas = new BufferedImage(16*n, 16*n, BufferedImage.TYPE_INT_RGB);
 		for(int ix = 0; ix < n; ix++) {
 			for(int iy = 0; iy < n; iy++) {
+				Random rand = new Random(4378256*ix ^ 574690546*iy);
 				for(int px = 0; px < 16; px++) {
 					for(int py = 0; py < 16; py++) {
 						canvas.setRGB(px+ix*16, py+iy*16, stone.getRGB(px, py));
 					}
 				}
-				int color = (int)(Math.random()*0xffffff);
-				double size = 1.0 + Math.random()*2.5;
-				double variation = 0.5*size*Math.random();
-				double rotation0 = Math.random()*2*Math.PI;
-				double rotationVar = Math.random()*2*Math.PI;
-				int spawns = (int)(Math.random()*6)+8+(int)(20.0/Math.pow(size-variation/2, 4));
-				boolean isCrystal = Math.random() < 0.0;//0.5;
+				int color = (int)(rand.nextDouble()*0xffffff);
+				double size = 1.0 + rand.nextDouble()*2.5;
+				double variation = 0.5*size*rand.nextDouble();
+				double standard2 = size/3.5*0.7*rand.nextDouble();
+				double variation2 = (1-standard2)*0.5*rand.nextDouble();
+				double rotation0 = rand.nextDouble()*2*Math.PI;
+				double rotationVar = rand.nextDouble()*2*Math.PI;
+				int spawns = (int)(rand.nextDouble()*4)+8+(int)(30.0/Math.pow(size-variation/2, 4));
+				boolean isCrystal = rand.nextDouble() < 0.0;//0.5;
 				
 				for(int i = 0; i < spawns; i++) {
-					double x0 = Math.random()*16;
-					double y0 = Math.random()*16;
-					double actualSize = size - (Math.random())*variation;
-					double actualSizeSmall = actualSize*(0.5+0.5*Math.random());
+					double x0 = rand.nextDouble()*16;
+					double y0 = rand.nextDouble()*16;
+					double actualSize = size - rand.nextDouble()*variation;
+					double actualSizeSmall = actualSize*(1-(standard2+variation2*(rand.nextDouble()-0.5)));
 					if(!isCrystal) { // Just some weird oval shape.
 						// Rotate the oval by a random angle:
-						double angle = rotation0+Math.random()*rotationVar;
+						double angle = rotation0 + rand.nextDouble()*rotationVar;
 						double xMain = Math.sin(angle)/actualSize;
 						double yMain = Math.cos(angle)/actualSize;
 						double xSecn = Math.cos(angle)/actualSizeSmall;
@@ -988,6 +991,8 @@ public class Cubyz implements IGameLogic {
 										double distMain = deltaX*xMain+deltaY*yMain;
 										double distSecn = deltaX*xSecn+deltaY*ySecn;
 										if(distMain*distMain+distSecn*distSecn < 1) {
+											double light = -deltaX*Math.sqrt(0.5)-deltaY*Math.sqrt(0.5);
+											int lightScaled = (int)(light*40/actualSizeSmall);
 											int alpha = (int)((1-distMain*distMain-distSecn*distSecn)*128*Math.min(size/1.5, 1));
 											int colorBG = stone.getRGB(px, py);
 											int rBG = (colorBG >>> 16) & 255;
@@ -996,9 +1001,18 @@ public class Cubyz implements IGameLogic {
 											int r = (color >>> 16) & 255;
 											int g = (color >>> 8) & 255;
 											int b = (color >>> 0) & 255;
+											r += lightScaled;
+											g += lightScaled;
+											b += lightScaled;
 											r = (r*alpha + (255-alpha)*rBG)/255;
 											g = (g*alpha + (255-alpha)*gBG)/255;
 											b = (b*alpha + (255-alpha)*bBG)/255;
+											if(r > 255) r = 255;
+											if(r < 0) r = 0;
+											if(g > 255) g = 255;
+											if(g < 0) g = 0;
+											if(b > 255) b = 255;
+											if(b < 0) b = 0;
 											canvas.setRGB(px+ix*16, py+iy*16, 0xff000000 | (r << 16) | (g << 8) | (b << 0));
 										}
 									}
