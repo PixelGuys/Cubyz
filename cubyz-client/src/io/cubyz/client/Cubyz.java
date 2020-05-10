@@ -483,6 +483,7 @@ public class Cubyz implements IGameLogic {
 				}
 				musicSource = new SoundSource(true, true);
 				musicSource.setBuffer(music.getBufferId());
+				musicSource.setGain(0.3f);
 			} else {
 				CubyzLogger.instance.info("Missing optional sound files. Sounds are disabled.");
 			}
