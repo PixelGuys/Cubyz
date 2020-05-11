@@ -108,6 +108,23 @@ public class LoadThread extends Thread {
 		l.setStep(3, 0, mods.size());
 		
 		for (int i = 0; i < mods.size(); i++) {
+			Object mod = mods.get(i);
+			ModLoader.registerEntries(mod, "block");
+		}
+		for (int i = 0; i < mods.size(); i++) {
+			Object mod = mods.get(i);
+			ModLoader.registerEntries(mod, "item");
+		}
+		for (int i = 0; i < mods.size(); i++) {
+			Object mod = mods.get(i);
+			ModLoader.registerEntries(mod, "entity");
+		}
+		for (int i = 0; i < mods.size(); i++) {
+			Object mod = mods.get(i);
+			ModLoader.registerEntries(mod, "biome");
+		}
+		
+		for (int i = 0; i < mods.size(); i++) {
 			l.setStep(3, i+1, mods.size());
 			Object mod = mods.get(i);
 			log.info("Initiating " + mod);

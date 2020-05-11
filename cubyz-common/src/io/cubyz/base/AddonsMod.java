@@ -49,7 +49,7 @@ public class AddonsMod {
 		}
 	}
 	
-	@EventHandler(type = "item/register")
+	@EventHandler(type = "register:item")
 	public void registerItems(Registry<Item> registry) {
 		for (File addon : addons) {
 			File items = new File(addon, "items");
@@ -77,7 +77,7 @@ public class AddonsMod {
 		registry.registerAll(items);
 	}
 	
-	@EventHandler(type = "block/register")
+	@EventHandler(type = "register:block")
 	public void registerBlocks(Registry<Block> registry) {
 		for (File addon : addons) {
 			File blocks = new File(addon, "blocks");

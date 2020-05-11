@@ -53,7 +53,6 @@ public class BaseMod {
 		registerRecipes(CubyzRegistries.RECIPE_REGISTRY);
 		registerMaterials(CubyzRegistries.TOOL_MATERIAL_REGISTRY);
 		registerWorldGenerators(CubyzRegistries.STELLAR_TORUS_GENERATOR_REGISTRY);
-		registerBiomes(CubyzRegistries.BIOME_REGISTRY);
 		
 		CubyzRegistries.COMMAND_REGISTRY.register(new GiveCommand());
 		CubyzRegistries.COMMAND_REGISTRY.register(new ClearCommand());
@@ -64,18 +63,18 @@ public class BaseMod {
 		proxy.init();
 	}
 	
-	@EventHandler(type = "entity/register")
+	@EventHandler(type = "register:entity")
 	public void registerEntities(Registry<EntityType> reg) {
 		reg.register(new Pig());
 		reg.register(new PlayerEntity());
 	}
 	
-	@EventHandler(type = "item/register")
+	@EventHandler(type = "register:item")
 	public void registerItems(Registry<Item> reg) {
 		ItemInit.registerAll(reg);
 	}
 	
-	@EventHandler(type = "block/register")
+	@EventHandler(type = "register:block")
 	public void registerBlocks(Registry<Block> reg) {
 		BlockInit.registerAll(reg);
 	}
@@ -84,6 +83,7 @@ public class BaseMod {
 		reg.registerAll(new LifelandGenerator(), new FlatlandGenerator());
 	}
 	
+	@EventHandler(type = "register:biome")
 	public void registerBiomes(Registry<Biome> reg) {
 		Block grass = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:grass");
 		Block sand = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:sand");

@@ -38,7 +38,7 @@ public class ConsoleGUI extends MenuGUI {
 
 	@Override
 	public boolean doesPauseGame() {
-		return true;
+		return false;
 	}
 	
 	@Override

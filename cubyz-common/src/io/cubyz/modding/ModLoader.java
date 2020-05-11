@@ -14,6 +14,7 @@ import io.cubyz.api.LoadOrder;
 import io.cubyz.api.Mod;
 import io.cubyz.api.Order;
 import io.cubyz.api.Proxy;
+import io.cubyz.api.Registry;
 import io.cubyz.api.Side;
 import io.cubyz.api.SideOnly;
 
@@ -82,11 +83,39 @@ public class ModLoader {
 		}
 	}
 	
+	public static void preInit(Object mod, Side side) {
+		injectProxy(mod, side);
+		Method m = eventHandlerMethodSided(mod, "preInit", Side.SERVER);
+		if (m != null)
+			safeMethodInvoke(true, m, mod);
+	}
+	
 	public static void init(Object mod) {
-		commonRegister(mod);
 		Method m = eventHandlerMethodSided(mod, "init", Side.SERVER);
 		if (m != null)
 			safeMethodInvoke(true, m, mod);
+	}
+	
+	public static void registerEntries(Object mod, String type) {
+		Method method = eventHandlerMethod(mod, "register:" + type);
+		if (method != null) {
+			Registry<?> reg = null;
+			switch (type) {
+			case "block":
+				reg = CubyzRegistries.BLOCK_REGISTRY;
+				break;
+			case "item":
+				reg = CubyzRegistries.ITEM_REGISTRY;
+				break;
+			case "entity":
+				reg = CubyzRegistries.ENTITY_REGISTRY;
+				break;
+			case "biome":
+				reg = CubyzRegistries.BIOME_REGISTRY;
+				break;
+			}
+			safeMethodInvoke(true, method, mod, reg);
+		}
 	}
 	
 	public static void postInit(Object mod) {
@@ -118,13 +147,6 @@ public class ModLoader {
 		}
 	}
 	
-	public static void preInit(Object mod, Side side) {
-		injectProxy(mod, side);
-		Method m = eventHandlerMethodSided(mod, "preInit", Side.SERVER);
-		if (m != null)
-			safeMethodInvoke(true, m, mod);
-	}
-	
 	static void safeMethodInvoke(boolean imp /* is it important (e.g. at init) */, Method m, Object o, Object... args) {
 		try {
 			m.invoke(o, args);
@@ -139,20 +161,6 @@ public class ModLoader {
 				System.exit(1);
 			}
 		}
-	}
-	
-	public static void commonRegister(Object mod) {
-		Method block_method = eventHandlerMethod(mod, "block/register");
-		Method item_method = eventHandlerMethod(mod, "item/register");
-		Method entity_method = eventHandlerMethod(mod, "entity/register");
-		
-		// invoke
-		if (block_method != null)
-			safeMethodInvoke(true, block_method, mod, CubyzRegistries.BLOCK_REGISTRY);
-		if (item_method != null)
-			safeMethodInvoke(true, item_method, mod, CubyzRegistries.ITEM_REGISTRY);
-		if (entity_method != null)
-			safeMethodInvoke(true, entity_method, mod, CubyzRegistries.ENTITY_REGISTRY);
 	}
 	
 }

@@ -52,12 +52,12 @@ public class UISystem extends Hud {
 		if (this.gui != null && this.gui.ungrabsMouse() && (gui == null ? true : !gui.ungrabsMouse())) {
 			Cubyz.mouse.setGrabbed(true);
 		}
+		if (gui != null) {
+			gui.init(nvg);
+		}
 		this.gui = gui;
 		if (gui != null && gui.ungrabsMouse() && (this.gui == null ? true : !this.gui.ungrabsMouse())) {
 			Cubyz.mouse.setGrabbed(false);
-		}
-		if (gui != null) {
-			gui.init(nvg);
 		}
 		if (gui == null || gui.doesPauseGame()) {
 			//System.gc();
@@ -68,11 +68,11 @@ public class UISystem extends Hud {
 		return gui;
 	}
 	
-	public boolean doesGUIPauseGame() {
+	public boolean doesGUIBlockInput() {
 		if (gui == null)
 			return false;
 		else
-			return gui.doesPauseGame();
+			return gui.doesPauseGame() || gui.ungrabsMouse();
 	}
 
 	@Override
