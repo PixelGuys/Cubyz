@@ -5,12 +5,14 @@ import io.cubyz.client.Cubyz;
 import io.cubyz.translate.TextKey;
 import io.cubyz.ui.MenuGUI;
 import io.cubyz.ui.components.Button;
+import io.cubyz.ui.components.CheckBox;
 import io.jungle.Window;
 
 public class GraphicsGUI extends MenuGUI {
 	private Button done = new Button();
 	private Button fog = new Button();
 	private Button easyLighting = new Button();
+	private CheckBox vsync = new CheckBox();
 
 	@Override
 	public void init(long nvg) {
@@ -26,7 +28,7 @@ public class GraphicsGUI extends MenuGUI {
 			fog.setText(new TextKey("gui.cubyz.options.fog.off"));
 		} else if (Settings.fogCoefficient <= 5f) {
 			fog.setText(new TextKey("gui.cubyz.options.fog.near"));
-		} if (Settings.fogCoefficient > 5f && Settings.fogCoefficient < 15f) {
+		} else if (Settings.fogCoefficient > 5f && Settings.fogCoefficient < 15f) {
 			fog.setText(new TextKey("gui.cubyz.options.fog.med"));
 		} else {
 			fog.setText(new TextKey("gui.cubyz.options.fog.far"));
@@ -65,6 +67,13 @@ public class GraphicsGUI extends MenuGUI {
 		easyLighting.setSize(250, 45);
 		easyLighting.setFontSize(16f);
 		
+		Window win = Cubyz.ctx.getWindow();
+		vsync.setLabel(new TextKey("gui.cubyz.options.vsync"));
+		vsync.setSelected(win.isVSyncEnabled());
+		vsync.setOnAction(() -> {
+			win.setVSyncEnabled(vsync.isSelected());
+		});
+		
 		// TODO: slider for RenderDistance.
 	}
 
@@ -73,10 +82,12 @@ public class GraphicsGUI extends MenuGUI {
 		done.setPosition(win.getWidth() / 2 - 125, win.getHeight() - 75);
 		fog.setPosition(win.getWidth() / 2 - 125, 75);
 		easyLighting.setPosition(win.getWidth() / 2 - 125, 150);
+		vsync.setPosition(win.getWidth() / 2 - 125, 225);
 
 		done.render(nvg, win);
 		fog.render(nvg, win);
 		easyLighting.render(nvg, win);
+		vsync.render(nvg, win);
 	}
 	
 	@Override

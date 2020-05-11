@@ -41,7 +41,7 @@ public class LoadThread extends Thread {
 	
 	public void run() {
 		setName("Load-Thread");
-		Configuration.load();
+		Cubyz.renderDeque.add(Configuration::load); // run in render thread due to some graphical reasons
 		LoadingGUI l = LoadingGUI.getInstance();
 		CubyzLogger log = CubyzLogger.instance;
 		l.setStep(1, 0, 0);

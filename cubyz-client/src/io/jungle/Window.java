@@ -30,6 +30,7 @@ public class Window {
 	private boolean fullscreen = false;
 	private FrameBuffer buffer;
 	private boolean focused = false;
+	private boolean vsync = false;
 	private int antiAlias = 0;
 	
 	private Vector4f clearColor;
@@ -151,7 +152,7 @@ public class Window {
 		glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE); // the window will be resizable
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
-	    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_ANY_PROFILE);
 	    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // allow to use newer versions (if available) at the price of having deprecated features possibly removed
 	    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
 
@@ -219,8 +220,18 @@ public class Window {
 		}
 		
 		CubyzLogger.instance.fine("OpenGL Version: " + GL11.glGetString(GL11.GL_VERSION));
-		
+		show();
 		restoreState();
+	}
+	
+	public void setVSyncEnabled(boolean vsync) {
+		glfwMakeContextCurrent(handle);
+		glfwSwapInterval(vsync ? 1 : 0);
+		this.vsync = vsync;
+	}
+	
+	public boolean isVSyncEnabled() {
+		return vsync;
 	}
 	
 	public void init() {

@@ -49,9 +49,9 @@ public abstract class Component {
 		height = h;
 	}
 	
-	public void setPosition(int w, int h) {
-		x = w;
-		y = h;
+	public void setPosition(int x, int y) {
+		this.x = x;
+		this.y = y;
 	}
 	
 	public boolean isInside(int x, int y) {
