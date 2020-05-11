@@ -41,6 +41,10 @@ public class Label extends Component {
 	public void setFont(Font font) {
 		this.font = font;
 	}
+	
+	public void setFontSize(float size) {
+		font = new Font("Default", size);
+	}
 
 	@Override
 	public void render(long nvg, Window src) {

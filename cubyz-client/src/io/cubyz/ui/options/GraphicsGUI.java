@@ -1,5 +1,6 @@
 package io.cubyz.ui.options;
 
+import io.cubyz.ClientSettings;
 import io.cubyz.Settings;
 import io.cubyz.client.Cubyz;
 import io.cubyz.translate.TextKey;
@@ -11,7 +12,7 @@ import io.jungle.Window;
 public class GraphicsGUI extends MenuGUI {
 	private Button done = new Button();
 	private Button fog = new Button();
-	private Button easyLighting = new Button();
+	private CheckBox easyLighting = new CheckBox();
 	private CheckBox vsync = new CheckBox();
 
 	@Override
@@ -24,48 +25,39 @@ public class GraphicsGUI extends MenuGUI {
 			Cubyz.gameUI.back();
 		});
 
-		if (Settings.fogCoefficient == 0f) {
+		if (ClientSettings.fogCoefficient == 0f) {
 			fog.setText(new TextKey("gui.cubyz.options.fog.off"));
-		} else if (Settings.fogCoefficient <= 5f) {
+		} else if (ClientSettings.fogCoefficient <= 5f) {
 			fog.setText(new TextKey("gui.cubyz.options.fog.near"));
-		} else if (Settings.fogCoefficient > 5f && Settings.fogCoefficient < 15f) {
+		} else if (ClientSettings.fogCoefficient > 5f && ClientSettings.fogCoefficient < 15f) {
 			fog.setText(new TextKey("gui.cubyz.options.fog.med"));
 		} else {
 			fog.setText(new TextKey("gui.cubyz.options.fog.far"));
 		}
 		fog.setOnAction(() -> {
-			if (Settings.fogCoefficient == 0f) { // off
-				Settings.fogCoefficient = 5f;
+			if (ClientSettings.fogCoefficient == 0f) { // off
+				ClientSettings.fogCoefficient = 5f;
 				fog.setText(new TextKey("gui.cubyz.options.fog.near"));
-			} else if (Settings.fogCoefficient <= 5f) { // near
-				Settings.fogCoefficient = 10f;
+			} else if (ClientSettings.fogCoefficient <= 5f) { // near
+				ClientSettings.fogCoefficient = 10f;
 				fog.setText(new TextKey("gui.cubyz.options.fog.med"));
-			} else if (Settings.fogCoefficient > 5f && Settings.fogCoefficient < 15f) { // medium
-				Settings.fogCoefficient = 15f;
+			} else if (ClientSettings.fogCoefficient > 5f && ClientSettings.fogCoefficient < 15f) { // medium
+				ClientSettings.fogCoefficient = 15f;
 				fog.setText(new TextKey("gui.cubyz.options.fog.far"));
 			} else { // far
-				Settings.fogCoefficient = 0f;
+				ClientSettings.fogCoefficient = 0f;
 				fog.setText(new TextKey("gui.cubyz.options.fog.off"));
 			}
 		});
 		fog.setSize(250, 45);
 		fog.setFontSize(16f);
 		
-		if (Settings.easyLighting) {
-			easyLighting.setText(new TextKey("gui.cubyz.options.easylighting.on"));
-		} else {
-			easyLighting.setText(new TextKey("gui.cubyz.options.easylighting.off"));
-		}
+		easyLighting.setLabel(new TextKey("gui.cubyz.options.easylighting"));
+		easyLighting.setSelected(Settings.easyLighting);
 		easyLighting.setOnAction(() -> {
-			Settings.easyLighting = !Settings.easyLighting;
-			if (Settings.easyLighting) {
-				easyLighting.setText(new TextKey("gui.cubyz.options.easylighting.on"));
-			} else {
-				easyLighting.setText(new TextKey("gui.cubyz.options.easylighting.off"));
-			}
+			Settings.easyLighting = easyLighting.isSelected();
 		});
-		easyLighting.setSize(250, 45);
-		easyLighting.setFontSize(16f);
+		easyLighting.getLabel().setFontSize(16f);
 		
 		Window win = Cubyz.ctx.getWindow();
 		vsync.setLabel(new TextKey("gui.cubyz.options.vsync"));

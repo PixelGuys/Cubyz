@@ -32,8 +32,8 @@ public class Configuration {
 		obj.add("keybindings", kb);
 		obj.addProperty("language", Cubyz.lang.getLocale());
 		obj.addProperty("discordIntegration", DiscordIntegration.isEnabled());
-		obj.addProperty("fogCoefficient", Settings.fogCoefficient);
-		obj.addProperty("useMipmaps", Settings.mipmapping);
+		obj.addProperty("fogCoefficient", ClientSettings.fogCoefficient);
+		obj.addProperty("useMipmaps", ClientSettings.mipmapping);
 		obj.addProperty("vsync", Cubyz.ctx.getWindow().isVSyncEnabled());
 		obj.addProperty("antiAliasSamples", Cubyz.ctx.getWindow().getAntialiasSamples());
 		
@@ -79,11 +79,11 @@ public class Configuration {
 		}
 		
 		if (obj.has("fogCoefficient")) {
-			Settings.fogCoefficient = obj.get("fogCoefficient").getAsFloat(); // TODO: this shouldn't be in Settings, it's a client-only value
+			ClientSettings.fogCoefficient = obj.get("fogCoefficient").getAsFloat(); // TODO: this shouldn't be in Settings, it's a client-only value
 		}
 		
 		if (obj.has("useMipmaps")) {
-			Settings.mipmapping = obj.get("useMipmaps").getAsBoolean();
+			ClientSettings.mipmapping = obj.get("useMipmaps").getAsBoolean();
 		}
 		if (obj.has("vsync")) {
 			Cubyz.ctx.getWindow().setVSyncEnabled(obj.get("vsync").getAsBoolean());

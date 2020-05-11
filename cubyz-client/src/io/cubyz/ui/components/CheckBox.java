@@ -36,6 +36,10 @@ public class CheckBox extends Component {
 		this.label = new Label(label);
 	}
 	
+	public Label getLabel() {
+		return label;
+	}
+	
 	public void setOnAction(Runnable onAction) {
 		this.onAction = onAction;
 	}

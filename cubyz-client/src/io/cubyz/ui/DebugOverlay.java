@@ -1,5 +1,6 @@
 package io.cubyz.ui;
 
+import io.cubyz.ClientSettings;
 import io.cubyz.Constants;
 import io.cubyz.Settings;
 import io.cubyz.client.Cubyz;
@@ -27,7 +28,7 @@ public class DebugOverlay extends MenuGUI {
 		if (Cubyz.clientShowDebug) {
 			NGraphics.setFont("Default", 12.0F);
 			NGraphics.setColor(255, 255, 255);
-			NGraphics.drawText(0, 0, Cubyz.getFPS() + " fps (vsync)");
+			NGraphics.drawText(0, 0, Cubyz.getFPS() + " fps" + (win.isVSyncEnabled() ? " (vsync)" : ""));
 			NGraphics.drawText(100, 0, Cubyz.instance.game.getUPS() + " ups");
 			NGraphics.drawText(0, 12, "Branded \"" + Constants.GAME_BRAND + "\", version " + Constants.GAME_VERSION);
 			NGraphics.drawText(0, 24, "Windowed (" + win.getWidth() + "x" + win.getHeight() + ")");
@@ -44,7 +45,7 @@ public class DebugOverlay extends MenuGUI {
 				
 				NGraphics.drawText(0, 48, "XYZ: " + x + ", " + y + ", " + z);
 				NGraphics.drawText(0, 60, "Loaded Chunks: " + world.getCurrentTorus().getChunks().length);
-				NGraphics.drawText(0, 72, "Render Distance: " + Settings.renderDistance);
+				NGraphics.drawText(0, 72, "Render Distance: " + ClientSettings.renderDistance);
 				NGraphics.drawText(0, 84, "Game Time: " + world.getGameTime());
 				if (world instanceof LocalWorld) {
 					NGraphics.drawText(0, 96, "Chunk Queue Size: " + ((LocalSurface) world.getCurrentTorus()).getChunkQueueSize());
