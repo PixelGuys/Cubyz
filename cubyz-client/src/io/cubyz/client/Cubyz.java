@@ -635,13 +635,13 @@ public class Cubyz implements IGameLogic {
 			
 			// render distance
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_MINUS)) {
-				if(Settings.renderDistance >= 2)
-					Settings.renderDistance--;
+				if(ClientSettings.renderDistance >= 2)
+					ClientSettings.renderDistance--;
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_MINUS, false);
 				System.gc();
 			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_EQUAL)) {
-				Settings.renderDistance++;
+				ClientSettings.renderDistance++;
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_EQUAL, false);
 				System.gc();
 			}
@@ -825,12 +825,12 @@ public class Cubyz implements IGameLogic {
 			light.setIntensity(world.getCurrentTorus().getGlobalLighting());
 			clearColor = world.getCurrentTorus().getClearColor();
 			ctx.getFog().setColor(clearColor);
-			if (Settings.fogCoefficient == 0) {
+			if (ClientSettings.fogCoefficient == 0) {
 				ctx.getFog().setActive(false);
 			} else {
 				ctx.getFog().setActive(true);
 			}
-			ctx.getFog().setDensity(1 / (Settings.renderDistance*Settings.fogCoefficient));
+			ctx.getFog().setDensity(1 / (ClientSettings.renderDistance*ClientSettings.fogCoefficient));
 			Player player = world.getLocalPlayer();
 			Block bi = world.getCurrentTorus().getBlock(player.getPosition().x+Math.round(player.getPosition().relX), (int)(player.getPosition().y)+3, player.getPosition().z+Math.round(player.getPosition().relZ));
 			if(bi != null && !bi.isSolid()) {
