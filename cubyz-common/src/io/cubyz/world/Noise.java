@@ -84,6 +84,41 @@ public class Noise {
 		}
 		return map;
 	}
+	static float dist(float x, float y, float z) {
+		return x*x + y*y + z*z;
+	}
+	// Use Fractal terrain generation as a base and use the intersection of the fractally generated terrain with a 3d worley noise map to get an interesting map.
+	// A little slower than pure fractal terrain, but a lot more detail-rich.
+	public static float[][] generateFractalWorleyNoise(int wx, int wy, int width, int height, int scale, long seed, int worldAnd) {
+		float [][] map = generateFractalTerrain(wx, wy, width, height, scale, seed, worldAnd);
+		int num = 1;
+		float[] pointsX = new float[num*25], pointsY = new float[num*25], pointsZ = new float[num*25];
+		int index = 0;
+		float fac = 2048;
+		for(int x = -2; x <= 2; x++) {
+			for(int y = -2; y <= 2; y++) {
+				Random r = new Random(getSeed(wx, wy, x*width, y*height, worldAnd, seed));
+				for(int i = 0; i < num; i++) {
+					pointsX[index] = x*width+r.nextFloat()*width;
+					pointsY[index] = y*width+r.nextFloat()*height;
+					pointsZ[index] = r.nextFloat()*fac;
+					index++;
+				}
+			}
+		}
+		for(int x = 0; x < width; x++) {
+			for(int y = 0; y < height; y++) {
+				float closest = Float.MAX_VALUE;
+				for(int i = 0; i < index; i++) {
+					float dist = dist(x-pointsX[i], y-pointsY[i], map[x][y]*fac-pointsZ[i]);
+					if(dist < closest) closest = dist;
+				}
+				map[x][y] = 1.0f-(float)Math.pow(closest/500000.0f, 0.4);
+				if(map[x][y] < 0.1f) map[x][y] = 0.1f;
+			}
+		}
+		return map;
+	}
 	
 	// Just some normal noise.	
 	public static float[][] generateRandomMap(int x, int y, int width, int height, long seed) {

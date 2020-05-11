@@ -14,7 +14,7 @@ public class MetaChunk {
 		this.x = x;
 		this.z = z;
 		this.world = world;
-		heightMap = Noise.generateFractalTerrain(x, z, 256, 256, 512, seed, world.getAnd());
+		heightMap = Noise.generateFractalWorleyNoise(x, z, 256, 256, 512, seed, world.getAnd());
 		heatMap = Noise.generateFractalTerrain(x, z, 256, 256, 512, seed ^ 123456789, world.getAnd()); // Somehow only a scale of 256 works. Other scales leave visible edges in the world. Not a huge issue, but I would rather use 512.
 		biomeMap = new Biome[256][256];
 		for(int i = 0; i < 256; i++) {
