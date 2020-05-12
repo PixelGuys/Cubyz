@@ -137,7 +137,6 @@ public class LocalWorld extends World {
 		LifelandGenerator.initOres(ores.toArray(new Ore[ores.size()]));
 		generated = true;
 		for (Entity ent : currentTorus.getEntities()) {
-			System.out.println(ent);
 			if (ent instanceof Player) {
 				player = (Player) ent;
 			}

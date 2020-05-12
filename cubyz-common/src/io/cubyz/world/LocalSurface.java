@@ -10,6 +10,7 @@ import java.util.concurrent.LinkedBlockingDeque;
 import org.joml.Vector4f;
 
 import io.cubyz.CubyzLogger;
+import io.cubyz.Profiler;
 import io.cubyz.Settings;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.base.init.ItemInit;
@@ -377,19 +378,19 @@ public class LocalSurface extends Surface {
 							if (b == null) {
 								int dx = 0, dy = 0, dz = 0;
 								switch (i) {
-									case 0:
+									case 0: // at x -1
 										dx = -1;
 									break;
-									case 1:
+									case 1: // at x +1
 										dx = 1;
 										break;
-									case 2:
-										dz = 1;
-										break;
-									case 3:
+									case 2:  // at z -1
 										dz = -1;
 										break;
-									case 4:
+									case 3: // at z +1
+										dz = 1;
+										break;
+									case 4: // at y -1
 										dy = -1;
 										break;
 									default:
