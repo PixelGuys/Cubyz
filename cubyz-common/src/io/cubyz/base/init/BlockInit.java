@@ -5,13 +5,7 @@ import java.util.ArrayList;
 import io.cubyz.api.Registry;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockGrass;
-import io.cubyz.blocks.CoalOre;
-import io.cubyz.blocks.DiamondOre;
-import io.cubyz.blocks.EmeraldOre;
-import io.cubyz.blocks.GoldOre;
-import io.cubyz.blocks.IronOre;
 import io.cubyz.blocks.OakLeaves;
-import io.cubyz.blocks.RubyOre;
 import io.cubyz.blocks.Water;
 import io.cubyz.blocks.WorkBench;
 
@@ -28,13 +22,6 @@ public class BlockInit {
 	public static BlockGrass grassVegetation = new BlockGrass();
 	public static WorkBench workbench = new WorkBench();
 	
-	public static CoalOre coal = new CoalOre();
-	public static DiamondOre diamond = new DiamondOre();
-	public static EmeraldOre emerald = new EmeraldOre();
-	public static GoldOre gold = new GoldOre();
-	public static IronOre iron = new IronOre();
-	public static RubyOre ruby = new RubyOre();
-	
 	static Water water = new Water();
 	
 	public static void register(Block block) {
@@ -50,13 +37,6 @@ public class BlockInit {
 		register(oakPlanks);
 		register(oakTop);
 		register(workbench);
-		
-		register(coal);
-		register(diamond);
-		register(emerald);
-		register(gold);
-		register(iron);
-		register(ruby);
 		
 		register(water);
 		

@@ -1,0 +1,7 @@
+class ore
+hardness 80
+spawns 1
+height 16
+maxLength 2
+maxSize 0.5
+drop cubyz:diamond

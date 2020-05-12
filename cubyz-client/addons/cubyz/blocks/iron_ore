@@ -1,0 +1,7 @@
+class ore
+hardness 60
+spawns 20
+height 64
+maxLength 3.5
+maxSize 2
+drop auto

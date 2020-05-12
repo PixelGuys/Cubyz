@@ -18,6 +18,7 @@ import io.cubyz.api.Registry;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.Block.BlockClass;
+import io.cubyz.blocks.Ore;
 import io.cubyz.items.Item;
 import io.cubyz.items.ItemBlock;
 
@@ -97,13 +98,25 @@ public class AddonsMod {
 						e.printStackTrace();
 					}
 					
-					Block block = new Block();
+					Block block;
 					String id = descriptor.getName();
 					if(id.contains("."))
 						id = id.substring(0, id.indexOf('.'));
+					String blockClass = props.getProperty("class", "STONE").toUpperCase();
+					if(blockClass.equals("ORE")) { // Ores:
+						Ore ore = new Ore();
+						ore.spawns = Integer.parseUnsignedInt(props.getProperty("spawns", "0"));
+						ore.maxSize = Integer.parseUnsignedInt(props.getProperty("MaxSize", "0"));
+						ore.maxLength = Integer.parseUnsignedInt(props.getProperty("maxLength", "0"));
+						ore.height = Integer.parseUnsignedInt(props.getProperty("height", "0"));
+						block = ore;
+						blockClass = "STONE";
+					} else {
+						block = new Block();
+					}
 					block.setID(new Resource(addon.getName(), id));
 					block.setHardness(Float.parseFloat(props.getProperty("hardness", "1")));
-					block.setBlockClass(BlockClass.valueOf(props.getProperty("class", "STONE").toUpperCase()));
+					block.setBlockClass(BlockClass.valueOf(blockClass));
 					block.setLight(Integer.parseUnsignedInt(props.getProperty("emittedLight", "0")));
 					block.setAbsorption(Integer.parseUnsignedInt(props.getProperty("absorbedLight", "0")));
 					block.setTransparent(props.getProperty("transparent", "no").equalsIgnoreCase("yes"));
