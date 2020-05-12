@@ -113,10 +113,10 @@ public class AddonsMod {
 						ItemBlock itemBlock = new ItemBlock(block);
 						block.setBlockDrop(itemBlock);
 						items.add(itemBlock);
-						registry.register(block);
 					} else if(!blockDrop.equals("none")) {
 						missingBlockDrops.put(block, blockDrop);
 					}
+					registry.register(block);
 				}
 			}
 		}

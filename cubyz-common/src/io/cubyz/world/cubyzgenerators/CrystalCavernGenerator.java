@@ -30,8 +30,9 @@ public class CrystalCavernGenerator implements FancyGenerator {
 	}
 	
 	private static final int range = 32;
-	private static Block water = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:water");
-	private static Block ice = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:ice");
+	private Block water = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:water");
+	private Block ice = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:ice");
+	private Block stone = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:stone");
 
 	@Override
 	public void generate(long seed, int cx, int cz, Block[][][] chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, int[][] heightMap, Biome[][] biomeMap) {
@@ -203,7 +204,7 @@ public class CrystalCavernGenerator implements FancyGenerator {
 						        	if(x3 >= 0 && x3 < 16 && y3 >= 0 && y3 < 256 && z3 >= 0 && z3 < 16) {
 						        		if(chunk[(int)x3][(int)z3][(int)y3] == null || chunk[(int)x3][(int)z3][(int)y3].isDegradable() || chunk[(int)x3][(int)z3][(int)y3].getBlockClass() == BlockClass.FLUID) {
 						        			chunk[(int)x3][(int)z3][(int)y3] = glowCrystal;
-						        		} else if(chunk[(int)x3][(int)z3][(int)y3] == BlockInit.stone) {
+						        		} else if(chunk[(int)x3][(int)z3][(int)y3] == stone) {
 						        			chunk[(int)x3][(int)z3][(int)y3] = crystalOre; // When the crystal goes through stone, generate the corresponding ore at that position.
 						        		}
 						        	}

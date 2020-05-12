@@ -32,7 +32,7 @@ public class GrassGenerator implements FancyGenerator {
 				int height = heightMap[px+8][pz+8];
 				if(height < World.WORLD_HEIGHT && chunk[px][pz][height] == null && !vegetationIgnoreMap[px][pz]) {
 					// Find the lowest non-empty terrain block:
-					for(;height >= 0 && chunk[px][pz][height] == null; height--) {}
+					for(;height > 0 && chunk[px][pz][height] == null; height--) {}
 					if(chunk[px][pz][height] == dirt) {
 						float temperature = heatMap[px+8][pz+8];
 						if(temperature > 0) {

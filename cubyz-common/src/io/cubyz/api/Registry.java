@@ -2,6 +2,7 @@ package io.cubyz.api;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map.Entry;
 
 import io.cubyz.CubyzLogger;
 
@@ -70,5 +71,15 @@ public class Registry<T extends IRegistryElement> {
 	
 	public int getLength() {
 		return hashMap.size();
+	}
+	
+	// Print all registered objects.
+	@Override
+	public String toString() {
+		String res = "";
+		for(Entry<String, T> entry : hashMap.entrySet().toArray(new Entry[0])) {
+			res += entry.getKey()+"\n";
+		}
+		return res;
 	}
 }
