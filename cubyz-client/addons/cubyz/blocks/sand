@@ -1,2 +1,2 @@
-class sand
-hardness 5
+class=sand
+hardness=5

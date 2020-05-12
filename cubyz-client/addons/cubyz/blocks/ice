@@ -1,2 +1,2 @@
-class stone
-hardness 10
+class=stone
+hardness=10
