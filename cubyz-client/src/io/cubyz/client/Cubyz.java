@@ -189,7 +189,7 @@ public class Cubyz implements IGameLogic {
 					dx = rnd.nextInt(surface.getAnd()+1);
 					dz = rnd.nextInt(surface.getAnd()+1);
 					CubyzLogger.i.info("Trying " + dx + " ? " + dz);
-					world.getCurrentTorus().synchronousSeek(dx, dz);
+					world.getCurrentTorus().synchronousSeek(dx, dz, ClientSettings.renderDistance);
 					highestY = world.getCurrentTorus().getHeight(dx, dz);
 					if(highestY >= TerrainGenerator.SEA_LEVEL) // TODO: Take care about other SurfaceGenerators.
 						break;
@@ -921,7 +921,7 @@ public class Cubyz implements IGameLogic {
 			}
 			playerInc.x = playerInc.y = playerInc.z = 0.0F; // Reset positions
 			world.update();
-			world.getCurrentTorus().seek(lp.getPosition().x, lp.getPosition().z);
+			world.getCurrentTorus().seek(lp.getPosition().x, lp.getPosition().z, ClientSettings.renderDistance);
 			float lightAngle = (float)Math.PI/2 + (float)Math.PI*(((float)world.getGameTime() % world.getCurrentTorus().getStellarTorus().getDayCycle())/(world.getCurrentTorus().getStellarTorus().getDayCycle()/2));
 			skySun.setPosition((float)Math.cos(lightAngle)*500, (float)Math.sin(lightAngle)*500, 0);
 			skySun.setRotation(0, 0, -lightAngle);

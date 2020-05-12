@@ -223,7 +223,7 @@ public class LocalSurface extends Surface {
 	}
 	
 	@Override
-	public void synchronousSeek(int x, int z) {
+	public void synchronousSeek(int x, int z, int renderDistance) {
 		// Transform to chunk coordinates:
 		x >>= 4;
 		z >>= 4;
@@ -237,7 +237,6 @@ public class LocalSurface extends Surface {
 		if (!ch.isGenerated()) { // TODO actually fix synchronousSeek so we can access blocks generated through it
 			synchronousGenerate(ch);
 			ch.load();
-			int renderDistance = Settings.renderDistance;
 			int local = x & 15;
 			x += renderDistance;
 			if(local > 7)
@@ -415,8 +414,7 @@ public class LocalSurface extends Surface {
 	}
 	
 	@Override
-	public void seek(int x, int z) {
-		int renderDistance = Settings.renderDistance;
+	public void seek(int x, int z, int renderDistance) {
 		int local = x & 15;
 		x >>= 4;
 		x += renderDistance;
