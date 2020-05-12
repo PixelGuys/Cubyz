@@ -5,3 +5,5 @@ height 16
 maxLength 2
 maxSize 0.5
 drop cubyz:diamond
+model cubyz:block.obj
+texture cubyz:blocks/diamond_ore

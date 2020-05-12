@@ -4,7 +4,6 @@ import java.util.Random;
 
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Resource;
-import io.cubyz.base.init.BlockInit;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;

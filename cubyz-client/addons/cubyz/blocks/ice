@@ -1,3 +1,5 @@
 class stone
 hardness 10
 drop auto
+model cubyz:block.obj
+texture cubyz:blocks/ice

@@ -1,8 +1,0 @@
-{
-	"parent": "cubyz:block",
-	"models": {
-		"default": {
-			"texture": "cubyz:blocks/ruby_ore"
-		}
-	}
-}

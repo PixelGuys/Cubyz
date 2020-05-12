@@ -1,9 +1,11 @@
 package io.cubyz.utils;
 
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Properties;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -47,7 +49,35 @@ public class ResourceUtilities {
 		public HashMap<String, EntityModelAnimation> animations = new HashMap<>();
 	}
 	
+	// For loading stuff that is written in the addon files instead of a json.
+	public static BlockModel tryLoadingFromTextFile(Resource block) {
+		String path = "addons/"+block.getMod()+"/blocks/" + block.getID();
+		File file = new File(path);
+		if(!file.exists()) return null;
+		Properties props = new Properties();
+		try {
+			FileReader reader = new FileReader(file);
+			props.load(reader);
+			reader.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+			return null;
+		}
+		String model3d = props.getProperty("model", null);
+		String texture = props.getProperty("texture", null);
+		if(model3d == null || texture == null) return null;
+		BlockModel model = new BlockModel();
+		model.parent = model3d;
+		BlockSubModel subModel = new BlockSubModel();
+		subModel.model = model3d;
+		subModel.texture = texture;
+		model.subModels.put("default", subModel);
+		return model;
+	}
+	
 	public static BlockModel loadModel(Resource block) throws IOException {
+		BlockModel model = tryLoadingFromTextFile(block);
+		if(model != null) return model;
 		String path = ResourceManager.contextToLocal(ResourceContext.MODEL_BLOCK, block);
 		File file = ResourceManager.lookup(path);
 		if (file == null) {
@@ -55,7 +85,7 @@ public class ResourceUtilities {
 		}
 		String json = Utilities.readFile(file);
 		
-		BlockModel model = new BlockModel();
+		model = new BlockModel();
 		JsonObject obj = GSON.fromJson(json, JsonObject.class);
 		if (obj.has("parent")) {
 			model.parent = obj.get("parent").getAsString();

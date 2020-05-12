@@ -5,3 +5,5 @@ height 64
 maxLength 3.5
 maxSize 2
 drop auto
+model cubyz:block.obj
+texture cubyz:blocks/iron_ore
