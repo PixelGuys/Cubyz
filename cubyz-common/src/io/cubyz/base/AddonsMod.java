@@ -4,8 +4,11 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map.Entry;
 import java.util.Properties;
 
+import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.EventHandler;
 import io.cubyz.api.LoadOrder;
 import io.cubyz.api.Mod;
@@ -30,10 +33,12 @@ public class AddonsMod {
 	
 	public ArrayList<File> addons = new ArrayList<>();
 	private ArrayList<Item> items = new ArrayList<>();
+	private HashMap<Block, String> missingBlockDrops = new HashMap<Block, String>();
 	
 	@EventHandler(type = "init")
 	public void init() {
 		proxy.init(this);
+		registerBlockDrops();
 	}
 	
 	@EventHandler(type = "preInit")
@@ -103,12 +108,24 @@ public class AddonsMod {
 					block.setAbsorption(Integer.parseUnsignedInt(props.getProperty("absorbedLight", "0")));
 					block.setTransparent(props.getProperty("transparent", "no").equalsIgnoreCase("yes"));
 					block.setSolid(props.getProperty("solid", "yes").equalsIgnoreCase("yes"));
-					ItemBlock itemBlock = new ItemBlock(block);
-					block.setBlockDrop(itemBlock);
-					items.add(itemBlock);
-					registry.register(block);
+					String blockDrop = props.getProperty("drop", "none").toLowerCase();
+					if(blockDrop.equals("auto")) {
+						ItemBlock itemBlock = new ItemBlock(block);
+						block.setBlockDrop(itemBlock);
+						items.add(itemBlock);
+						registry.register(block);
+					} else if(!blockDrop.equals("none")) {
+						missingBlockDrops.put(block, blockDrop);
+					}
 				}
 			}
 		}
+	}
+	
+	public void registerBlockDrops() {
+		for(Entry<Block, String> entry : missingBlockDrops.entrySet().toArray(new Entry[0])) {
+			entry.getKey().setBlockDrop(CubyzRegistries.ITEM_REGISTRY.getByID(entry.getValue()));
+		}
+		missingBlockDrops.clear();
 	}
 }

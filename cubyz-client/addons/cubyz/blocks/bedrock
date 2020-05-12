@@ -1,2 +1,2 @@
 # Unbreakable stone that fills the bottom layer of the world.
-class=unbreakable
+class unbreakable

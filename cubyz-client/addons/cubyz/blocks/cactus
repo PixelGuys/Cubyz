@@ -1,2 +1,3 @@
-class=leaf
-hardness=4
+class leaf
+hardness 4
+drop auto
