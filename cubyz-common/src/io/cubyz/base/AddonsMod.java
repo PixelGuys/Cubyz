@@ -106,8 +106,8 @@ public class AddonsMod {
 					if(blockClass.equals("ORE")) { // Ores:
 						Ore ore = new Ore();
 						ore.spawns = Integer.parseUnsignedInt(props.getProperty("spawns", "0"));
-						ore.maxSize = Integer.parseUnsignedInt(props.getProperty("MaxSize", "0"));
-						ore.maxLength = Integer.parseUnsignedInt(props.getProperty("maxLength", "0"));
+						ore.maxSize = Float.parseFloat(props.getProperty("MaxSize", "0"));
+						ore.maxLength = Float.parseFloat(props.getProperty("maxLength", "0"));
 						ore.height = Integer.parseUnsignedInt(props.getProperty("height", "0"));
 						block = ore;
 						blockClass = "STONE";
@@ -118,9 +118,12 @@ public class AddonsMod {
 					block.setHardness(Float.parseFloat(props.getProperty("hardness", "1")));
 					block.setBlockClass(BlockClass.valueOf(blockClass));
 					block.setLight(Integer.parseUnsignedInt(props.getProperty("emittedLight", "0")));
-					block.setAbsorption(Integer.parseUnsignedInt(props.getProperty("absorbedLight", "0")));
+					block.setAbsorption(Integer.decode(props.getProperty("absorbedLight", "0")));
 					block.setTransparent(props.getProperty("transparent", "no").equalsIgnoreCase("yes"));
+					block.setDegradable(props.getProperty("degradable", "no").equalsIgnoreCase("yes"));
+					block.setSelectable(props.getProperty("selectable", "yes").equalsIgnoreCase("yes"));
 					block.setSolid(props.getProperty("solid", "yes").equalsIgnoreCase("yes"));
+					block.setGUI(props.getProperty("GUI", null));
 					String blockDrop = props.getProperty("drop", "none").toLowerCase();
 					if(blockDrop.equals("auto")) {
 						ItemBlock itemBlock = new ItemBlock(block);

@@ -6,7 +6,6 @@ import io.cubyz.api.Mod;
 import io.cubyz.api.Proxy;
 import io.cubyz.api.Registry;
 import io.cubyz.api.Resource;
-import io.cubyz.base.init.BlockInit;
 import io.cubyz.base.init.ItemInit;
 import io.cubyz.base.init.MaterialInit;
 import io.cubyz.blocks.Block;
@@ -74,11 +73,6 @@ public class BaseMod {
 		ItemInit.registerAll(reg);
 	}
 	
-	@EventHandler(type = "register:block")
-	public void registerBlocks(Registry<Block> reg) {
-		BlockInit.registerAll(reg);
-	}
-	
 	public void registerWorldGenerators(Registry<SurfaceGenerator> reg) {
 		reg.registerAll(new LifelandGenerator(), new FlatlandGenerator());
 	}
@@ -130,22 +124,24 @@ public class BaseMod {
 	public void registerRecipes(Registry<Recipe> reg) {
 		Item[] recipe;
 		Block oakLog = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:oak_log");
+		Block oakPlanks = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:oak_planks");
+		Block workbench = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:workbench");
 		Item stick = CubyzRegistries.ITEM_REGISTRY.getByID("cubyz:stick");
 		recipe = new Item[] {oakLog.getBlockDrop()};
-		oakLogToPlanks = new Recipe(recipe, 4, BlockInit.oakPlanks.getBlockDrop(), new Resource("cubyz", "logs_to_planks"));
+		oakLogToPlanks = new Recipe(recipe, 4, oakPlanks.getBlockDrop(), new Resource("cubyz", "logs_to_planks"));
 		
 		recipe = new Item[] {
-				BlockInit.oakPlanks.getBlockDrop(),
-				BlockInit.oakPlanks.getBlockDrop(),
+				oakPlanks.getBlockDrop(),
+				oakPlanks.getBlockDrop(),
 		};
 		oakPlanksToStick = new Recipe(1, 2, recipe, 4, stick, new Resource("cubyz", "planks_to_stick"));
-		Item P = BlockInit.oakPlanks.getBlockDrop();
+		Item P = oakPlanks.getBlockDrop();
 		Item L = oakLog.getBlockDrop();
 		recipe = new Item[] { // Suggestion. // Shortened so it can atleast be craftable :) // Further simplified so it is craftable in our current inventory without farming 67 wood :D
 				P, P,
 				P, P,
 		};
-		oakToWorkbench = new Recipe(2, 2, recipe, 1, BlockInit.workbench.getBlockDrop(), new Resource("cubyz", "oak_to_workbench"));
+		oakToWorkbench = new Recipe(2, 2, recipe, 1, workbench.getBlockDrop(), new Resource("cubyz", "oak_to_workbench"));
 		
 		reg.registerAll(oakLogToPlanks, oakPlanksToStick, oakToWorkbench);
 	}

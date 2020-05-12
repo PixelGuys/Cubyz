@@ -834,10 +834,10 @@ public class Cubyz implements IGameLogic {
 			Player player = world.getLocalPlayer();
 			Block bi = world.getCurrentTorus().getBlock(player.getPosition().x+Math.round(player.getPosition().relX), (int)(player.getPosition().y)+3, player.getPosition().z+Math.round(player.getPosition().relZ));
 			if(bi != null && !bi.isSolid()) {
-				Vector3f lightingAdjust = bi.getLightAdjust();
-				ambient.x *= lightingAdjust.x;
-				ambient.y *= lightingAdjust.y;
-				ambient.z *= lightingAdjust.z;
+				int absorption = bi.getAbsorption();
+				ambient.x *= 1.0f - Math.pow(((absorption >>> 16) & 255)/255.0f, 0.25);
+				ambient.y *= 1.0f - Math.pow(((absorption >>> 8) & 255)/255.0f, 0.25);
+				ambient.z *= 1.0f - Math.pow(((absorption >>> 0) & 255)/255.0f, 0.25);
 			}
 			light.setColor(clearColor);
 			float lightY = (((float)world.getGameTime() % world.getCurrentTorus().getStellarTorus().getDayCycle()) / (float) (world.getCurrentTorus().getStellarTorus().getDayCycle()/2)) - 1f; // TODO: work on it more

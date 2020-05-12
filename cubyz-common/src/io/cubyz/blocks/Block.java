@@ -1,10 +1,11 @@
 package io.cubyz.blocks;
 
-import org.joml.Vector3f;
 import org.joml.Vector3i;
 
+import io.cubyz.api.GameRegistry;
 import io.cubyz.api.IRegistryElement;
 import io.cubyz.api.Resource;
+import io.cubyz.items.Inventory;
 import io.cubyz.items.Item;
 import io.cubyz.items.ItemBlock;
 import io.cubyz.world.World;
@@ -15,8 +16,6 @@ public class Block implements IRegistryElement {
 	public static enum BlockClass {
 		WOOD, STONE, SAND, UNBREAKABLE, LEAF, FLUID
 	};
-	
-	private static final Vector3f ONE = new Vector3f(1, 1, 1);
 	
 	boolean transparent;
 	/**
@@ -34,6 +33,7 @@ public class Block implements IRegistryElement {
 	protected BlockClass bc;
 	private int light = 0;
 	int absorption = 0; // How much light this block absorbs if it is transparent.
+	String gui; // GUI that is opened onClick.
 	
 	public Block() {}
 	
@@ -43,6 +43,10 @@ public class Block implements IRegistryElement {
 		ItemBlock bd = new ItemBlock(this);
 		setBlockDrop(bd);
 		this.hardness = hardness;
+	}
+	
+	public void setDegradable(Boolean deg) {
+		degradable = deg;
 	}
 	
 	public boolean isDegradable() {
@@ -62,9 +66,8 @@ public class Block implements IRegistryElement {
 		return solid;
 	}
 	
-	public Block setSelectable(boolean selectable) {
+	public void setSelectable(boolean selectable) {
 		this.selectable = selectable;
-		return this;
 	}
 	
 	public void setTransparent(boolean transparent) {
@@ -101,13 +104,12 @@ public class Block implements IRegistryElement {
 	 * The ID can only be changed <b>BEFORE</b> registering the block.
 	 * @param id
 	 */
-	public Block setID(String id) {
-		return setID(new Resource(id));
+	public void setID(String id) {
+		setID(new Resource(id));
 	}
 	
-	public Block setID(Resource id) {
+	public void setID(Resource id) {
 		this.id = id;
-		return this;
 	}
 	
 	public void setBlockDrop(Item bd) {
@@ -122,9 +124,8 @@ public class Block implements IRegistryElement {
 		return hardness;
 	}
 	
-	public Block setHardness(float hardness) {
+	public void setHardness(float hardness) {
 		this.hardness = hardness;
-		return this;
 	}
 	
 	public int getLight() {
@@ -147,12 +148,17 @@ public class Block implements IRegistryElement {
 		return bc;
 	}
 	
-	public Vector3f getLightAdjust() {
-		return ONE;
+	public void setGUI(String id) {
+		gui = id;
 	}
 	
+	 // returns true if the block did something on click.
 	public boolean onClick(World world, Vector3i pos) {
-		return false; // returns true if the block was did something while clicked
+		if(gui != null) {
+			GameRegistry.openGUI("cubyz:workbench", new Inventory(10)); // TODO: Care about the inventory.
+			return true;
+		}
+		return false;
 	}
 	
 	public int getAbsorption() {

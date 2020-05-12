@@ -9,8 +9,6 @@ import org.joml.Vector3i;
 
 import io.cubyz.Settings;
 import io.cubyz.Utilities;
-import io.cubyz.api.CubyzRegistries;
-import io.cubyz.base.init.BlockInit;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.blocks.BlockInstance;
@@ -43,6 +41,8 @@ public class Chunk {
 	private Map<BlockInstance, BlockEntity> blockEntities = new HashMap<>();
 	
 	private Surface surface;
+	
+	Block noLight = new Block(); // A random block used as a replacement for blocks from yet unloaded chunks.
 	
 	private int maxHeight; // Max height of the terrain after loading. Used to prevent bugs at chunk borders.
 	
@@ -1017,7 +1017,7 @@ public class Chunk {
 		if(x < 0 || x > 15 || z < 0 || z > 15) {
 			Chunk chunk = surface.getChunk(cx + ((x & ~15) >> 4), cz + ((z & ~15) >> 4));
 			if(chunk != null) return chunk.getBlockUnbound(x & 15, y, z & 15);
-			return BlockInit.oakLog; // Let the lighting engine think this region is blocked.
+			return noLight; // Let the lighting engine think this region is blocked.
 		}
 		return blocks[(x << 4) | (y << 8) | z];
 	}
