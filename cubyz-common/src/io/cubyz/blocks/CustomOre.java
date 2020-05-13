@@ -60,7 +60,7 @@ public class CustomOre extends Ore implements CustomObject {
 	
 	private int color;
 	private String name;
-	public int template;
+	public long seed; // The seed used to generate the texture.
 	
 	private static Node tree;
 	
@@ -157,7 +157,7 @@ public class CustomOre extends Ore implements CustomObject {
 		ore.maxLength = 1+rand.nextFloat()*10;
 		ore.maxSize = 1+rand.nextFloat()*5;
 		ore.name = randomName(new Random(rand.nextLong())); // Use a new random, so an update in the name generator won't change all other facts about custom ores.
-		ore.template = rand.nextInt(5)+1; // UPDATE THIS WHEN YOU ADD MORE TEMPLATES! Template 0 is reserved for coal ore template, all negative templates are reserved for other stuff.
+		ore.seed = rand.nextLong();
 		ore.setHardness(rand.nextInt()*30);
 		ore.setID("cubyz:" + ore.name + " Ore");
 		if(rand.nextInt(4) == 0) { // Make some ores glow.
@@ -198,7 +198,7 @@ public class CustomOre extends Ore implements CustomObject {
 		NDTContainer ndt = new NDTContainer();
 		ndt.setInteger("color", color);
 		ndt.setInteger("height", height);
-		ndt.setInteger("template", template);
+		ndt.setLong("seed", seed);
 		ndt.setFloat("spawnRate", spawns);
 		ndt.setFloat("maxLength", maxLength);
 		ndt.setFloat("maxSize", maxSize);
