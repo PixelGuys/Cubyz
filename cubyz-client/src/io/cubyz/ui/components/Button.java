@@ -88,16 +88,16 @@ public class Button extends Component {
 		NGraphics.fillRect(x+5, y+5, width-10, height-10);
 		NGraphics.setColor(texture[3], texture[4], texture[5]);
 		for(int i = 0; i < 5; i++)
-			NGraphics.drawRect(x+i+1, y+i, width-2*i-1, 1);
+			NGraphics.fillRect(x+i+1, y+i, width-2*i-1, 1);
 		NGraphics.setColor(texture[6], texture[7], texture[8]);
 		for(int i = 0; i < 5; i++)
-			NGraphics.drawRect(x+width-i-1, y+i+1, 1, height-2*i-1);
+			NGraphics.fillRect(x+width-i-1, y+i+1, 1, height-2*i-1);
 		NGraphics.setColor(texture[9], texture[10], texture[11]);
 		for(int i = 0; i < 5; i++)
-			NGraphics.drawRect(x+i, y+height-i-1, width-2*i-1, 1);
+			NGraphics.fillRect(x+i, y+height-i-1, width-2*i-1, 1);
 		NGraphics.setColor(texture[12], texture[13], texture[14]);
 		for(int i = 0; i < 5; i++)
-			NGraphics.drawRect(x+i, y+i, 1, height-2*i-1);
+			NGraphics.fillRect(x+i, y+i, 1, height-2*i-1);
 	}
 
 	@Override
