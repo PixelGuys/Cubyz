@@ -174,7 +174,7 @@ public class LocalSurface extends Surface {
 		torusBlocks[i].ID = ID++;
 		i++;
 		// Create the crystal block for the CrystalCaverns:
-		CustomOre crystalBlock = new CustomOre(); // TODO: Add a CustomBlock type or interface because this is no ore.
+		CustomOre crystalBlock = new CustomOre(0, 0, 0); // TODO: Add a CustomBlock type or interface because this is no ore.
 		crystalBlock.setID(glowCrystalOre.getRegistryID().toString()+"_glow_crystal");
 		crystalBlock.setHardness(40);
 		crystalBlock.setBlockDrop(glowCrystalOre.getBlockDrop());

@@ -213,6 +213,10 @@ public class CustomOre extends Ore implements CustomObject {
 			e.printStackTrace();
 		}
 	}
+
+	public CustomOre(int maxHeight, float veins, float size) {
+		super(maxHeight, veins, size);
+	}
 	
 	public String getName() {
 		return name;
@@ -283,12 +287,8 @@ public class CustomOre extends Ore implements CustomObject {
 	}
 	
 	public static CustomOre random(Random rand) {
-		CustomOre ore = new CustomOre();
+		CustomOre ore = new CustomOre(8+rand.nextInt(200), 1+rand.nextFloat()*15, 1+rand.nextFloat()*9);
 		ore.color = rand.nextInt(0xFFFFFF);
-		ore.height = 8+rand.nextInt(160);
-		ore.spawns = 1+rand.nextFloat()*20;
-		ore.maxLength = 1+rand.nextFloat()*10;
-		ore.maxSize = 1+rand.nextFloat()*5;
 		ore.name = randomName(new Random(rand.nextLong())); // Use a new random, so an update in the name generator won't change all other facts about custom ores.
 		ore.seed = rand.nextLong();
 		ore.setHardness(rand.nextInt()*30);
@@ -299,7 +299,7 @@ public class CustomOre extends Ore implements CustomObject {
 		ore.makeBlockDrop();
 		boolean addTools = true; // TODO
 		if(addTools) {
-			int rareness = (int)(ore.spawns*ore.maxSize*ore.maxLength); // TODO: Balance material stats!
+			int rareness = (int)(ore.size*ore.veins); // TODO: Balance material stats!
 			new CustomMaterial(rand.nextInt(1000000/rareness), rand.nextInt(1000000/rareness), rand.nextInt(1000000/rareness), rand.nextFloat()*10, rand.nextFloat()*10000/rareness, ore.getColor(), ore.getBlockDrop(), 100);
 		}
 		return ore;
@@ -330,11 +330,10 @@ public class CustomOre extends Ore implements CustomObject {
 	public NDTContainer toNDT() {
 		NDTContainer ndt = new NDTContainer();
 		ndt.setInteger("color", color);
-		ndt.setInteger("height", height);
+		ndt.setInteger("maxHeight", maxHeight);
 		ndt.setLong("seed", seed);
-		ndt.setFloat("spawnRate", spawns);
-		ndt.setFloat("maxLength", maxLength);
-		ndt.setFloat("maxSize", maxSize);
+		ndt.setFloat("veins", veins);
+		ndt.setFloat("size", size);
 		ndt.setString("name", name);
 		ndt.setFloat("hardness", getHardness());
 		ndt.setString("id", getRegistryID().getID());

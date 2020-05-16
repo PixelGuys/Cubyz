@@ -44,33 +44,37 @@ public class OreGenerator implements Generator {
 		Random rand = new Random();
 		for(int i = 0; i < ores.length; i++) {
 			// Compose the seeds from some random stats of the ore. They generally shouldn't be the same for two different ores.
-			rand.setSeed(seed^(ores[i].getHeight())^(Float.floatToIntBits(ores[i].getMaxSize()))^ores[i].getRegistryID().getID().charAt(0)^Float.floatToIntBits(ores[i].getHardness()));
+			rand.setSeed(seed^(ores[i].maxHeight)^(Float.floatToIntBits(ores[i].size))^ores[i].getRegistryID().getID().charAt(0)^Float.floatToIntBits(ores[i].getHardness()));
 			// Determine how many veins of this type start in this chunk. The number depends on parameters set for the specific ore:
-			int oreSpawns = (int)Math.round((rand.nextFloat()-0.5F)*(rand.nextFloat()-0.5F)*4*ores[i].getSpawns());
-			for(int j = 0; j < oreSpawns; ++j) {
+			int veins = (int)Math.round(2*ores[i].veins*rand.nextFloat());
+			for(int j = 0; j < veins; ++j) {
 				// Choose some in world coordinates to start generating:
 				double worldX = (double)((x << 4) + rand.nextInt(16));
-				double worldH = (double)rand.nextInt(ores[i].getHeight());
-				double worldY = (double)((z << 4) + rand.nextInt(16));
+				double worldY = (double)rand.nextInt(ores[i].maxHeight);
+				double worldZ = (double)((z << 4) + rand.nextInt(16));
 				float direction = rand.nextFloat()*(float)Math.PI*2.0F;
 				float slope = (rand.nextFloat() - 0.5F)/4.0F;
-				float size = rand.nextFloat()*ores[i].getMaxSize()/2; // Half it to get the radius!
-				int length = (int)Math.round(rand.nextFloat()*(ores[i].getMaxLength()));
-				if(length == 0)
-					continue;
-				size = size*length/ores[i].getMaxLength(); // Scale it so that shorter veins don't end up being balls.
-				generateVein(rand.nextLong(), cx, cz, chunk, worldX, worldH, worldY, size, direction, slope, length, ores[i]);
+				int size = (int)Math.round(2*ores[i].size*rand.nextFloat()); // Desired number of ore blocks in this vein. Might not get reached depending on the underground conditions. For example the last ore placed has a lower chance of getting placed all blocks.
+				// Using V = π/2 *length*radius² which is the volume formula for the non-direction changing shape of the ore vein.
+				// Since the actual volume is smaller because the vein changes direction, I'll use the approximation V = 1.5*length*radius²
+				// Start with some arbitrary length that isn't too big( < 6, so the size is also accounted for):
+				int length = 1 + rand.nextInt(5);
+				float radius = (float)Math.sqrt(size/(float)length/1.5);
+				if(2*radius + length > 8) { // Make sure the vein isn't too big:
+					radius = 4 - length/2.0f;
+				}
+				generateVein(rand.nextLong(), cx, cz, chunk, worldX, worldY, worldZ, radius, direction, slope, length, ores[i]);
 			}
 		}
 	}
-	private void generateVein(long random, int cx, int cz, Block[][][] chunk, double worldX, double worldY, double worldZ, float size, float direction, float slope, int veinLength, Block ore) {
+	private void generateVein(long random, int cx, int cz, Block[][][] chunk, double worldX, double worldY, double worldZ, float radius, float direction, float slope, int veinLength, Block ore) {
 		double cwx = (double) (cx*16 + 8);
 		double cwz = (double) (cz*16 + 8);
 		float directionModifier = 0.0F;
 		float slopeModifier = 0.0F;
 		Random localRand = new Random(random);
-		for(int curStep = 0; curStep < veinLength; ++curStep) {
-			double scale = 1+Math.sin(curStep*Math.PI/veinLength)*size;
+		for(int curStep = 1; curStep < veinLength; ++curStep) {
+			double scale = Math.sin(curStep*Math.PI/veinLength)*radius;
 			// Move vein center point one unit into a direction given by slope and direction:
 			float xzunit = (float)Math.cos(slope);
 			float hunit = (float)Math.sin(slope);
@@ -89,7 +93,7 @@ public class OreGenerator implements Generator {
 				double deltaX = worldX - cwx;
 				double deltaZ = worldZ - cwz;
 				double stepsLeft = (double)(veinLength - curStep);
-				double maxLength = (double)(size + 8);
+				double maxLength = (double)(radius + 8);
 				// Abort if the vein is getting to far away from this chunk:
 				if(deltaX*deltaX + deltaZ*deltaZ - stepsLeft*stepsLeft > maxLength*maxLength) {
 					return;

@@ -104,11 +104,10 @@ public class AddonsMod {
 						id = id.substring(0, id.indexOf('.'));
 					String blockClass = props.getProperty("class", "STONE").toUpperCase();
 					if(blockClass.equals("ORE")) { // Ores:
-						Ore ore = new Ore();
-						ore.spawns = Integer.parseUnsignedInt(props.getProperty("spawns", "0"));
-						ore.maxSize = Float.parseFloat(props.getProperty("MaxSize", "0"));
-						ore.maxLength = Float.parseFloat(props.getProperty("maxLength", "0"));
-						ore.height = Integer.parseUnsignedInt(props.getProperty("height", "0"));
+						float veins = Float.parseFloat(props.getProperty("veins", "0"));
+						float size = Float.parseFloat(props.getProperty("size", "0"));
+						int height = Integer.parseUnsignedInt(props.getProperty("height", "0"));
+						Ore ore = new Ore(height, veins, size);
 						block = ore;
 						blockClass = "STONE";
 					} else {
