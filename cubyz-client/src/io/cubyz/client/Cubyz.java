@@ -587,7 +587,7 @@ public class Cubyz implements IGameLogic {
 					Keyboard.setKeyPressed(Keybindings.getKeyCode("menu"), false);
 				} else {
 					Keyboard.setKeyPressed(Keybindings.getKeyCode("menu"), false);
-					gameUI.setMenu(new PauseGUI());
+					gameUI.setMenu(new PauseGUI(), TransitionStyle.NONE);
 				}
 			}
 			if ((mouse.isLeftButtonPressed() || mouse.isRightButtonPressed()) && !mouse.isGrabbed() && gameUI.getMenuGUI() == null) {

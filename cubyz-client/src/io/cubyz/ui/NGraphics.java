@@ -28,6 +28,7 @@ public class NGraphics {
 	private static NVGColor color = NVGColor.create();
 	private static NVGPaint imagePaint = NVGPaint.create();
 	private static int textAlign = NVG_ALIGN_LEFT | NVG_ALIGN_TOP;
+	private static float globalAlphaMultiplier;
 	
 	private static int cx, cy, cw, ch;
 	
@@ -44,6 +45,10 @@ public class NGraphics {
 	
 	public static void setNanoID(long nvg) {
 		NGraphics.nvg = nvg;
+	}
+	
+	public static void setGlobalAlphaMultiplier(float multiplier) {
+		globalAlphaMultiplier = multiplier;
 	}
 	
 	public static int loadImage(String path) {
@@ -165,11 +170,14 @@ public class NGraphics {
 	}
 	
 	public static void setColor(int r, int g, int b, int a) {
-		color = UISystem.rgba(r, g, b, a, color);
+		color.a((float) a*globalAlphaMultiplier/255f);
+		color.r(r/255f);
+		color.g(g/255f);
+		color.b(b/255f);
 	}
 	
 	public static void setColor(int r, int g, int b) {
-		setColor(r, g, b, 0xFF);
+		setColor(r, g, b, 255);
 	}
 	
 }

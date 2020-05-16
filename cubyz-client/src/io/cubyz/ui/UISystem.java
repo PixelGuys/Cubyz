@@ -17,10 +17,15 @@ public class UISystem extends Hud {
 	private boolean inited = false;
 	
 	private MenuGUI gui;
+	/** keeped only for transition effect */
+	private MenuGUI oldGui;
 	private ArrayList<MenuGUI> overlays = new ArrayList<>();
 	private ArrayDeque<MenuGUI> menuQueue = new ArrayDeque<>();
 	
 	public static float guiScale = 1f;
+	private TransitionStyle curTransition;
+	private long lastAnimMs = System.currentTimeMillis();
+	private long transitionDur;
 
 	public UISystem() {}
 	
@@ -38,14 +43,27 @@ public class UISystem extends Hud {
 	}
 	
 	public void back() {
-		setMenu(menuQueue.pollLast(), false);
+		setMenu(menuQueue.pollLast(), false, TransitionStyle.FADE_OUT_IN);
 	}
 	
 	public void setMenu(MenuGUI gui) {
-		setMenu(gui, true);
+		setMenu(gui, true, TransitionStyle.FADE_OUT_IN);
 	}
 	
 	public void setMenu(MenuGUI gui, boolean addQueue) {
+		setMenu(gui, addQueue, TransitionStyle.FADE_OUT_IN);
+	}
+	
+	public void setMenu(MenuGUI gui, TransitionStyle style) {
+		setMenu(gui, true, style);
+	}
+	
+	public void setMenu(MenuGUI gui, boolean addQueue, TransitionStyle style) {
+		this.curTransition = style;
+		transitionDur = 0;
+		if (style != TransitionStyle.NONE) {
+			oldGui = this.gui;
+		}
 		if (this.gui != null && addQueue) {
 			menuQueue.add(this.gui);
 		}
@@ -93,10 +111,35 @@ public class UISystem extends Hud {
 	public void render(Window window) {
 		if (inited) {
 			super.render(window);
+			transitionDur += System.currentTimeMillis() - lastAnimMs;
+			lastAnimMs = System.currentTimeMillis();
 			nvgBeginFrame(nvg, window.getWidth(), window.getHeight(), 1);
-			if (gui != null) {
-				gui.render(nvg, window);
+			NGraphics.setGlobalAlphaMultiplier(1f);
+			NGraphics.setColor(0, 0, 0);
+			if (curTransition == TransitionStyle.FADE_OUT_IN) {
+				// those values are meant to be tweaked and will be available for fine tuning from setMenu later
+				float fadeSpeed = 500f;
+				float fadeSpeedHalf = fadeSpeed / 2f;
+				if (transitionDur >= fadeSpeed) {
+					curTransition = null;
+					oldGui = null;
+				}
+				float alpha1 = Math.min(Math.max(((float) transitionDur-fadeSpeedHalf)/fadeSpeedHalf, 0f), 1f);
+				float alpha2 = Math.min(Math.max(1f - (float) transitionDur/fadeSpeedHalf, 0f), 1f);
+				if (gui != null) {
+					NGraphics.setGlobalAlphaMultiplier(alpha1);
+					gui.render(nvg, window);
+				}
+				if (oldGui != null) {
+					NGraphics.setGlobalAlphaMultiplier(alpha2);
+					oldGui.render(nvg, window);
+				}
+			} else {
+				if (gui != null) {
+					gui.render(nvg, window);
+				}
 			}
+			NGraphics.setGlobalAlphaMultiplier(1f);
 			for (MenuGUI overlay : overlays) {
 				overlay.render(nvg, window);
 			}

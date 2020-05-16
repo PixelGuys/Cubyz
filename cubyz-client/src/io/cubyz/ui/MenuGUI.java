@@ -5,6 +5,8 @@ import io.jungle.Window;
 
 public abstract class MenuGUI {
 	
+	protected float alphaMultiplier;
+	
 	public abstract void init(long nvg);
 	public abstract void render(long nvg, Window win); 
 	
