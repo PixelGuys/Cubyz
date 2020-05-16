@@ -2,29 +2,14 @@ package io.cubyz.blocks;
 
 public class Ore extends Block {
 
-	public float maxSize;
-	public float spawns; // average spawns per chunk. Will seem to be less if the length gets close to 0.
-	public float maxLength;
-	public int height;
+	public final float size; // average size of a vein in blocks.
+	public final float veins; // average veins per chunk.
+	public final int maxHeight;
 	
-	public Ore() {
+	public Ore(int maxHeight, float veins, float size) {
+		this.maxHeight = maxHeight;
+		this.veins = veins;
+		this.size = size;
 		bc = BlockClass.STONE;
 	}
-	
-	public float getMaxSize() {
-		return maxSize;
-	}
-
-	public float getSpawns() {
-		return spawns;
-	}
-
-	public float getMaxLength() {
-		return maxLength;
-	}
-
-	public int getHeight() {
-		return height;
-	}
-	
 }
