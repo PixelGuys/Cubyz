@@ -1,24 +1,19 @@
 package io.cubyz.items;
 
-import io.cubyz.api.IRegistryElement;
-import io.cubyz.api.Resource;
-
-public class Recipe implements IRegistryElement {
+public class Recipe {
 	
 	private int x, y; // Size of the shaped figure. If zero: shapeless.
 	private Item [] pattern; // Pattern of all items in the recipe. An entry is null when no item should be placed there.
 	private Item result;
-	private Resource res = Resource.EMPTY;
 	private int num = 0; // Number of items needed. Used to faster search for recipes.
 	private int numRet = 0; // Number of items returned after applying this recipe.
 	
-	public Recipe(int x, int y, Item[] pattern, int numRet, Item result, Resource res) {
+	public Recipe(int x, int y, Item[] pattern, int numRet, Item result) {
 		this.x = x;
 		this.y = y;
 		this.pattern = pattern;
 		this.numRet = numRet;
 		this.result = result;
-		this.res = res;
 		if(pattern.length != x*y)
 			throw new IllegalArgumentException("Size and pattern don't fit.");
 		for(int i = 0; i < pattern.length; i++) {
@@ -27,12 +22,11 @@ public class Recipe implements IRegistryElement {
 			}
 		}
 	}
-	public Recipe(Item[] pattern, int numRet, Item result, Resource res) {
+	public Recipe(Item[] pattern, int numRet, Item result) {
 		x = y = 0;
 		this.pattern = pattern;
 		this.numRet = numRet;
 		this.result = result;
-		this.res = res;
 		num = pattern.length;
 	}
 	public int getNum() {
@@ -154,9 +148,33 @@ public class Recipe implements IRegistryElement {
 	}
 	
 	@Override
-	public Resource getRegistryID() {
+	public String toString() {
+		String res = "Recipe:";
+		if(x == 0 || y == 0) {
+			res += "\n|";
+			for(int i = 0; i < pattern.length; i++) {
+				res += pattern[i].getRegistryID()+"|";
+			}
+		} else {
+			for(int i = 0; i < y; i++) {
+				res += "\n|";
+				for(int j = 0; j < x; j++) {
+					res += pattern[i*x+j].getRegistryID()+"|";
+				}
+			}
+		}
+		res += "\n	|\n	v\n"+result.getRegistryID();
 		return res;
 	}
-	
-	public void setID(int ID) {}
+
+	@Override
+	public boolean equals(Object other) {
+		if(!(other instanceof Recipe)) return false;
+		Recipe rec = (Recipe)other;
+		if(x != rec.x || y != rec.y || pattern.length != rec.pattern.length) return false;
+		for(int i = 0; i < pattern.length; i++) {
+			if(pattern[i] != rec.pattern[i]) return false;
+		}
+		return true;
+	}
 }

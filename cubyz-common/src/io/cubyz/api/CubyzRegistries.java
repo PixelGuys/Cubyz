@@ -13,7 +13,7 @@ public class CubyzRegistries {
 
 	public static final Registry<Block>       BLOCK_REGISTRY         = new Registry<Block>();
 	public static final Registry<Item>        ITEM_REGISTRY          = new Registry<Item>();
-	public static final Registry<Recipe>      RECIPE_REGISTRY        = new Registry<Recipe>();
+	public static final NoIDRegistry<Recipe>      RECIPE_REGISTRY    = new NoIDRegistry<Recipe>();
 	public static final Registry<EntityType>  ENTITY_REGISTRY        = new Registry<EntityType>();
 	public static final Registry<CommandBase> COMMAND_REGISTRY       = new Registry<CommandBase>();
 	public static final Registry<Material>    TOOL_MATERIAL_REGISTRY = new Registry<Material>();

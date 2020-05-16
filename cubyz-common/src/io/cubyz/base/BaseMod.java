@@ -3,6 +3,7 @@ package io.cubyz.base;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.EventHandler;
 import io.cubyz.api.Mod;
+import io.cubyz.api.NoIDRegistry;
 import io.cubyz.api.Proxy;
 import io.cubyz.api.Registry;
 import io.cubyz.api.Resource;
@@ -121,27 +122,27 @@ public class BaseMod {
 		MaterialInit.registerAll(reg);
 	}
 	
-	public void registerRecipes(Registry<Recipe> reg) {
+	public void registerRecipes(NoIDRegistry<Recipe> reg) {
 		Item[] recipe;
 		Block oakLog = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:oak_log");
 		Block oakPlanks = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:oak_planks");
 		Block workbench = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:workbench");
 		Item stick = CubyzRegistries.ITEM_REGISTRY.getByID("cubyz:stick");
 		recipe = new Item[] {oakLog.getBlockDrop()};
-		oakLogToPlanks = new Recipe(recipe, 4, oakPlanks.getBlockDrop(), new Resource("cubyz", "logs_to_planks"));
+		oakLogToPlanks = new Recipe(recipe, 4, oakPlanks.getBlockDrop());
 		
 		recipe = new Item[] {
 				oakPlanks.getBlockDrop(),
 				oakPlanks.getBlockDrop(),
 		};
-		oakPlanksToStick = new Recipe(1, 2, recipe, 4, stick, new Resource("cubyz", "planks_to_stick"));
+		oakPlanksToStick = new Recipe(1, 2, recipe, 4, stick);
 		Item P = oakPlanks.getBlockDrop();
 		Item L = oakLog.getBlockDrop();
 		recipe = new Item[] { // Suggestion. // Shortened so it can atleast be craftable :) // Further simplified so it is craftable in our current inventory without farming 67 wood :D
 				P, P,
 				P, P,
 		};
-		oakToWorkbench = new Recipe(2, 2, recipe, 1, workbench.getBlockDrop(), new Resource("cubyz", "oak_to_workbench"));
+		oakToWorkbench = new Recipe(2, 2, recipe, 1, workbench.getBlockDrop());
 		
 		reg.registerAll(oakLogToPlanks, oakPlanksToStick, oakToWorkbench);
 	}
