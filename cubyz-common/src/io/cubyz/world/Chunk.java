@@ -667,21 +667,12 @@ public class Chunk {
 			lightUpdate(x, y, z);
 	}
 	
-	// Apply Block Changes loaded from file/stored in WorldIO
+	// Apply Block Changes loaded from file/stored in WorldIO. Must be called before loading.
 	public void applyBlockChanges() {
 		for(BlockChange bc : changes) {
-			if(bc.newType == -1) {
-				removeBlockAt(bc.x, bc.y, bc.z, false);
-				continue;
-			}
-			Block bl = surface.getPlanetBlocks()[bc.newType];
-			if(getBlockAt(bc.x, bc.y, bc.z) == null) {
-				addBlockAt(bc.x, bc.y, bc.z, bl, false);
-				bc.oldType = -1;
-				continue;
-			}
-			bc.oldType = getBlockAt(bc.x, bc.y, bc.z).ID;
-			setInst(bc.x, bc.y, bc.z, bl);
+			int index = (bc.x << 4) | (bc.y << 8) | bc.z;
+			bc.oldType = blocks[index] == null ? -1 : blocks[index].ID;
+			blocks[index] = bc.newType == -1 ? null : surface.getPlanetBlocks()[bc.newType];
 		}
 	}
 	
