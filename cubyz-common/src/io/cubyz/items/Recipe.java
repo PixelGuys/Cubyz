@@ -153,7 +153,8 @@ public class Recipe {
 		if(x == 0 || y == 0) {
 			res += "\n|";
 			for(int i = 0; i < pattern.length; i++) {
-				res += pattern[i].getRegistryID()+"|";
+				if(pattern[i] == null) res += "null|";
+				else res += pattern[i].getRegistryID()+"|";
 			}
 		} else {
 			for(int i = 0; i < y; i++) {
@@ -163,7 +164,7 @@ public class Recipe {
 				}
 			}
 		}
-		res += "\n	|\n	v\n"+result.getRegistryID();
+		res += "\n	|\n	v\n"+numRet+"*"+result.getRegistryID();
 		return res;
 	}
 

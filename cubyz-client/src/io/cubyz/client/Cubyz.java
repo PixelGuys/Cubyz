@@ -1,6 +1,5 @@
 package io.cubyz.client;
 
-import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -39,7 +38,6 @@ import io.cubyz.multiplayer.GameProfile;
 import io.cubyz.multiplayer.LoginToken;
 import io.cubyz.multiplayer.client.MPClient;
 import io.cubyz.multiplayer.client.PingResponse;
-import io.cubyz.save.BlockChange;
 import io.cubyz.translate.Language;
 import io.cubyz.ui.*;
 import io.cubyz.ui.mods.InventoryGUI;
@@ -676,7 +674,7 @@ public class Cubyz implements IGameLogic {
 		spatial.setPosition(0, 0.5f, -2f);
 		spatial.setScale(0.5f);
 		Spatial[] spatials = new Spatial[] {spatial};
-		//renderer.render(window, ctx, new Vector3f(1, 1, 1), light, EMPTY_CHUNK_LIST, EMPTY_BLOCK_LIST, EMPTY_ENTITY_LIST, spatials, world.getLocalPlayer(), world.getCurrentTorus().getAnd()); TODO: Make this work without crashing.
+		//renderer.render(window, ctx, new Vector3f(1, 1, 1), light, EMPTY_CHUNK_LIST, EMPTY_BLOCK_LIST, EMPTY_ENTITY_LIST, spatials, world.getLocalPlayer(), world.getCurrentTorus().getAnd()); //TODO: Make this work without crashing.
 		renderer.orthogonal = false;
 		window.setResized(true); // update projection matrix for next render
 		ctx.setHud(gameUI);

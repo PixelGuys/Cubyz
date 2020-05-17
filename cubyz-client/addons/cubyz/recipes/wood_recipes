@@ -1,0 +1,16 @@
+L = cubyz:oak_log
+P = cubyz:oak_planks
+
+shapeless
+L
+result 4*P
+
+shaped
+P P
+P P
+result cubyz:workbench
+
+shaped
+P
+P
+result 4*cubyz:stick

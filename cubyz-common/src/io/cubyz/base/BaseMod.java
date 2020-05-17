@@ -50,7 +50,6 @@ public class BaseMod {
 	public void init() {
 		// Both commands and recipes don't have any attributed EventHandler
 		// As they are independent to other (the correct order for others is block -> item (for item blocks and other items) -> entity)
-		registerRecipes(CubyzRegistries.RECIPE_REGISTRY);
 		registerMaterials(CubyzRegistries.TOOL_MATERIAL_REGISTRY);
 		registerWorldGenerators(CubyzRegistries.STELLAR_TORUS_GENERATOR_REGISTRY);
 		
@@ -120,30 +119,5 @@ public class BaseMod {
 	
 	public void registerMaterials(Registry<Material> reg) {
 		MaterialInit.registerAll(reg);
-	}
-	
-	public void registerRecipes(NoIDRegistry<Recipe> reg) {
-		Item[] recipe;
-		Block oakLog = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:oak_log");
-		Block oakPlanks = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:oak_planks");
-		Block workbench = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:workbench");
-		Item stick = CubyzRegistries.ITEM_REGISTRY.getByID("cubyz:stick");
-		recipe = new Item[] {oakLog.getBlockDrop()};
-		oakLogToPlanks = new Recipe(recipe, 4, oakPlanks.getBlockDrop());
-		
-		recipe = new Item[] {
-				oakPlanks.getBlockDrop(),
-				oakPlanks.getBlockDrop(),
-		};
-		oakPlanksToStick = new Recipe(1, 2, recipe, 4, stick);
-		Item P = oakPlanks.getBlockDrop();
-		Item L = oakLog.getBlockDrop();
-		recipe = new Item[] { // Suggestion. // Shortened so it can atleast be craftable :) // Further simplified so it is craftable in our current inventory without farming 67 wood :D
-				P, P,
-				P, P,
-		};
-		oakToWorkbench = new Recipe(2, 2, recipe, 1, workbench.getBlockDrop());
-		
-		reg.registerAll(oakLogToPlanks, oakPlanksToStick, oakToWorkbench);
 	}
 }
