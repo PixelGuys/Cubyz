@@ -68,8 +68,7 @@ public class Material implements IRegistryElement {
 	public Resource getRegistryID() {
 		return id;
 	}
-	@Override
-	public void setID(int ID) {}
+	
 	
 	public void setMiningLevel(int level) {
 		miningLevel = level;

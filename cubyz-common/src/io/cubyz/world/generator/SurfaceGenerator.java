@@ -8,9 +8,4 @@ public abstract class SurfaceGenerator implements IRegistryElement {
 
 	public abstract void generate(Chunk chunk, Surface surface);
 	
-	@Override
-	public void setID(int id) {
-		throw new UnsupportedOperationException();
-	}
-	
 }

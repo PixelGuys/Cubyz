@@ -82,8 +82,5 @@ public class Item implements IRegistryElement {
 	public Resource getRegistryID() {
 		return id;
 	}
-
-	@Override
-	public void setID(int ID) {}
 	
 }

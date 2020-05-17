@@ -50,10 +50,10 @@ public abstract class GeneralInventory extends MenuGUI {
 		for(int i = 0; i < inv.length; i++) {
 			inv[i].render(nvg, win);
 		}
-		if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_ESCAPE)) {
+		/*if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_ESCAPE)) {
 			Cubyz.gameUI.setMenu(null);
 			Cubyz.mouse.setGrabbed(true);
-		}
+		}*/
 		// Check if the mouse takes up a new ItemStack/sets one down.
 		mouseAction(Cubyz.mouse, win);
 		

@@ -42,9 +42,6 @@ public class CommandBuilder {
 			public Resource getRegistryID() {
 				return id;
 			}
-
-			@Override public void setID(int ID) {} // useless for commands
-			
 		};
 		base.name = name;
 		return base;

@@ -88,9 +88,4 @@ public class Biome implements IRegistryElement {
 	public Resource getRegistryID() {
 		return identifier;
 	}
-	
-	@Override
-	public void setID(int ID) {
-		throw new UnsupportedOperationException();
-	}
 }

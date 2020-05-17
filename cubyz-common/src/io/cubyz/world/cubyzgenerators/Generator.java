@@ -10,9 +10,4 @@ public interface Generator extends IRegistryElement {
 	abstract int getPriority(); // Used to prioritize certain generators(like map generation) over others(like vegetation generation).
 	abstract void generate(long seed, int cx, int cz, Block[][][] chunk, boolean[][] vegetationIgnoreMap);
 	
-	@Override
-	public default void setID(int id) {
-		throw new UnsupportedOperationException();
-	}
-	
 }

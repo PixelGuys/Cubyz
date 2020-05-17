@@ -7,6 +7,7 @@ import static org.lwjgl.system.MemoryUtil.*;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 
+import io.cubyz.CubyzLogger;
 import io.cubyz.client.Cubyz;
 import io.jungle.Window;
 import io.jungle.hud.Font;
@@ -59,6 +60,12 @@ public class UISystem extends Hud {
 	}
 	
 	public void setMenu(MenuGUI gui, boolean addQueue, TransitionStyle style) {
+		/*CubyzLogger.instance.fine("Set UI GUI to " + gui); // used to debug UI menu sets
+		try {
+			throw new Error();
+		} catch (Error e) {
+			e.printStackTrace(System.out);
+		}*/
 		this.curTransition = style;
 		transitionDur = 0;
 		if (style != TransitionStyle.NONE) {
@@ -91,6 +98,10 @@ public class UISystem extends Hud {
 			return false;
 		else
 			return gui.doesPauseGame() || gui.ungrabsMouse();
+	}
+	
+	public boolean doesGUIPauseGame() {
+		return gui == null ? false : gui.doesPauseGame();
 	}
 
 	@Override

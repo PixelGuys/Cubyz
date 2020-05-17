@@ -580,16 +580,6 @@ public class Cubyz implements IGameLogic {
 				gameUI.setMenu(new InventoryGUI());
 				Keyboard.setKeyPressed(Keybindings.getKeyCode("inventory"), false);
 			}
-			if (Keybindings.isPressed("menu")) {
-				if (gameUI.getMenuGUI() != null) {
-					gameUI.setMenu(null);
-					mouse.setGrabbed(true);
-					Keyboard.setKeyPressed(Keybindings.getKeyCode("menu"), false);
-				} else {
-					Keyboard.setKeyPressed(Keybindings.getKeyCode("menu"), false);
-					gameUI.setMenu(new PauseGUI(), TransitionStyle.NONE);
-				}
-			}
 			if ((mouse.isLeftButtonPressed() || mouse.isRightButtonPressed()) && !mouse.isGrabbed() && gameUI.getMenuGUI() == null) {
 				mouse.setGrabbed(true);
 				mouse.clearPos(window.getWidth() / 2, window.getHeight() / 2);
@@ -641,6 +631,18 @@ public class Cubyz implements IGameLogic {
 				System.gc();
 			}
 			msd.selectSpatial(world.getCurrentTorus().getChunks(), world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate());
+		}
+		if (world != null) {
+			if (Keybindings.isPressed("menu")) {
+				if (gameUI.getMenuGUI() != null) {
+					gameUI.setMenu(null);
+					mouse.setGrabbed(true);
+					Keyboard.setKeyPressed(Keybindings.getKeyCode("menu"), false);
+				} else {
+					Keyboard.setKeyPressed(Keybindings.getKeyCode("menu"), false);
+					gameUI.setMenu(new PauseGUI(), TransitionStyle.NONE);
+				}
+			}
 		}
 		mouse.clearScroll();
 	}
@@ -868,48 +870,50 @@ public class Cubyz implements IGameLogic {
 	
 	@Override
 	public void update(float interval) {
-		if (!gameUI.doesGUIBlockInput() && world != null) {
+		if (!gameUI.doesGUIPauseGame() && world != null) {
 			Player lp = world.getLocalPlayer();
-			lp.move(playerInc.mul(0.11F), ctx.getCamera().getRotation(), world.getCurrentTorus().getAnd());
-			if (breakCooldown > 0) {
-				breakCooldown--;
-			}
-			if (buildCooldown > 0) {
-				buildCooldown--;
-			}
-			if (Keybindings.isPressed("destroy")) {
-				//Breaking Blocks
-				if(world.getLocalPlayer().isFlying()) { // Ignore hardness when in flying.
-					if (breakCooldown == 0) {
-						breakCooldown = 7;
-						BlockInstance bi = msd.getSelectedBlockInstance();
-						if (bi != null && bi.getBlock().getBlockClass() != BlockClass.UNBREAKABLE) {
-							world.getCurrentTorus().removeBlock(bi.getX(), bi.getY(), bi.getZ());
-							if(world.getLocalPlayer().getInventory().addItem(bi.getBlock().getBlockDrop(), 1) != 0) {
-								//DropItemOnTheGround(); //TODO: Add this function.
+			if (!gameUI.doesGUIBlockInput()) {
+				lp.move(playerInc.mul(0.11F), ctx.getCamera().getRotation(), world.getCurrentTorus().getAnd());
+				if (breakCooldown > 0) {
+					breakCooldown--;
+				}
+				if (buildCooldown > 0) {
+					buildCooldown--;
+				}
+				if (Keybindings.isPressed("destroy")) {
+					//Breaking Blocks
+					if(world.getLocalPlayer().isFlying()) { // Ignore hardness when in flying.
+						if (breakCooldown == 0) {
+							breakCooldown = 7;
+							BlockInstance bi = msd.getSelectedBlockInstance();
+							if (bi != null && bi.getBlock().getBlockClass() != BlockClass.UNBREAKABLE) {
+								world.getCurrentTorus().removeBlock(bi.getX(), bi.getY(), bi.getZ());
+								if(world.getLocalPlayer().getInventory().addItem(bi.getBlock().getBlockDrop(), 1) != 0) {
+									//DropItemOnTheGround(); //TODO: Add this function.
+								}
 							}
 						}
 					}
+					else {
+						BlockInstance bi = msd.getSelectedBlockInstance();
+						world.getLocalPlayer().breaking(bi, inventorySelection, world.getCurrentTorus());
+					}
+				} else {
+					world.getLocalPlayer().resetBlockBreaking();
 				}
-				else {
-					BlockInstance bi = msd.getSelectedBlockInstance();
-					world.getLocalPlayer().breaking(bi, inventorySelection, world.getCurrentTorus());
-				}
-			} else {
-				world.getLocalPlayer().resetBlockBreaking();
-			}
-			if (Keybindings.isPressed("place")) {
-				//Building Blocks
-				if (buildCooldown == 0 && msd.getSelectedBlockInstance() != null) {
-					buildCooldown = 10;
-					if(msd.getSelectedBlockInstance().getBlock().onClick(world, msd.getSelectedBlockInstance().getPosition())) {
-						// potentially do a hand animation, in the future
-					} else {
-						Vector3i pos = msd.getEmptyPlace(world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate());
-						Block b = world.getLocalPlayer().getInventory().getBlock(inventorySelection);
-						if (b != null && pos != null) {
-							world.getCurrentTorus().placeBlock(pos.x, pos.y, pos.z, b);
-							world.getLocalPlayer().getInventory().getStack(inventorySelection).add(-1);
+				if (Keybindings.isPressed("place")) {
+					//Building Blocks
+					if (buildCooldown == 0 && msd.getSelectedBlockInstance() != null) {
+						buildCooldown = 10;
+						if(msd.getSelectedBlockInstance().getBlock().onClick(world, msd.getSelectedBlockInstance().getPosition())) {
+							// potentially do a hand animation, in the future
+						} else {
+							Vector3i pos = msd.getEmptyPlace(world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate());
+							Block b = world.getLocalPlayer().getInventory().getBlock(inventorySelection);
+							if (b != null && pos != null) {
+								world.getCurrentTorus().placeBlock(pos.x, pos.y, pos.z, b);
+								world.getLocalPlayer().getInventory().getStack(inventorySelection).add(-1);
+							}
 						}
 					}
 				}
