@@ -1,4 +1,4 @@
-# Translated: 
+# GUI
 
 gui.cubyz.mainmenu.singleplayer=Singurătate
 gui.cubyz.mainmenu.multiplayer=Cu alți jucători
@@ -16,11 +16,15 @@ gui.cubyz.debug.reload=Reîncarcă
 gui.cubyz.saves.play=Joacă {0}
 gui.cubyz.saves.delete=Șterge
 gui.cubyz.saves.create=Creeaza un joc nou!
+
+# Blocks
 block.cubyz.dirt.name=Pămant
 block.cubyz.cobblestone.name=Piatră Crăpată
 block.cubyz.oak_log.name=Buștean de Stejar
 block.cubyz.oak_planks.name=Scânduri de Stejar
-item.cubyz.stick.name=Băț
-lang.name=Română
 
-# Not translated:
+# Items
+item.cubyz.stick.name=Băț
+
+# Name
+lang.name=Română
