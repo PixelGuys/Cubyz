@@ -419,10 +419,11 @@ public class MainRenderer implements IRenderer {
 		}
 		
 		shaderProgram.setUniform("fog.activ", 0); // manually disable the fog
-		
+		shaderProgram.setUniform("cheapLighting", false);
 		for (int i = 0; i < spatials.length; i++) {
 			Spatial spatial = spatials[i];
 			Mesh mesh = spatial.getMesh();
+			shaderProgram.setUniform("material", mesh.getMaterial());
 			mesh.renderOne(() -> {
 				Matrix4f modelViewMatrix = transformation.getModelViewMatrix(
 						transformation.getModelMatrix(spatial.getPosition(), spatial.getRotation(), spatial.getScale()),

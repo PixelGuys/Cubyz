@@ -165,7 +165,7 @@ public class Cubyz implements IGameLogic {
 		}
 		if (skySun == null || skyMoon == null) {
 			Mesh sunMesh = skyBodyMesh.cloneNoMaterial();
-			sunMesh.setMaterial(new Material(new Vector4f(0.5f, 0.5f, 0.5f, 1f), 0.8f)); // TODO: use textures for sun and moon
+			sunMesh.setMaterial(new Material(new Vector4f(1f, 1f, 0f, 1f), 1f)); // TODO: use textures for sun and moon
 			skySun = new Spatial(sunMesh);
 			skySun.setScale(50f); // TODO: Make the scale dependent on the actual distance to that star.
 			skySun.setPosition(new Vector3f(-100, 1, 0));
@@ -656,40 +656,34 @@ public class Cubyz implements IGameLogic {
 	private Vector3f brightAmbient = new Vector3f(1, 1, 1);
 	private Vector4f clearColor = new Vector4f(0.1f, 0.7f, 0.7f, 1f);
 	
-	@SuppressWarnings("deprecation")
 	public FrameBuffer blockPreview(Block b) {
 		Window window = game.getWindow();
-		Chunk ck = new Chunk(0, 0, null, new ArrayList<BlockChange>());
-		BlockInstance binst = new BlockInstance(b);
-		binst.setPosition(new Vector3i(0, 0, 0));
-		ck.createBlocksForOverlay();
-		 // TODO: make this block previews work(in general and especially with new chunk and blockinstance system)!
-		//ck.rawAddBlock(0, 0, 0, binst);
-		//ck.revealBlock(binst);
-		Vector3fi pos = world.getLocalPlayer().getPosition();
 		Vector3f rot = ctx.getCamera().getRotation();
-		world.getLocalPlayer().setPosition(new Vector3fi(0, -1, 1));
 		ctx.getCamera().setRotation(0, 0, 0);
 		
 		FrameBuffer buf = new FrameBuffer();
 		buf.genColorTexture(128, 128);
 		buf.genRenderbuffer(128, 128);
 		window.setRenderTarget(buf);
-		window.setClearColor(new Vector4f(0f, 0f, 0f, 0.1f));
+		window.setClearColor(new Vector4f(0f, 0f, 0f, 0.2f));
 		GL11.glViewport(0, 0, 128, 128);
 		
 		ctx.setHud(null);
-		//renderer.orthogonal = true;
+		renderer.orthogonal = true;
 		window.setResized(true); // update projection matrix
-		renderer.render(window, ctx, new Vector3f(1, 1, 1), light, new Chunk[] {ck}, world.getBlocks(), EMPTY_ENTITY_LIST, EMPTY_SPATIAL_LIST, world.getLocalPlayer(), world.getCurrentTorus().getAnd());
-		//renderer.orthogonal = false;
+		Spatial spatial = new Spatial(Meshes.blockMeshes.get(b));
+		spatial.getMesh().getMaterial().setTexture(Meshes.blockTextures.get(b));
+		spatial.setPosition(0, 0.5f, -2f);
+		spatial.setScale(0.5f);
+		Spatial[] spatials = new Spatial[] {spatial};
+		renderer.render(window, ctx, new Vector3f(1, 1, 1), light, EMPTY_CHUNK_LIST, EMPTY_BLOCK_LIST, EMPTY_ENTITY_LIST, spatials, world.getLocalPlayer(), world.getCurrentTorus().getAnd());
+		renderer.orthogonal = false;
 		window.setResized(true); // update projection matrix for next render
 		ctx.setHud(gameUI);
 		
 		GL11.glViewport(0, 0, window.getWidth(), window.getHeight());
 		window.setRenderTarget(null);
 		
-		world.getLocalPlayer().setPosition(pos);
 		ctx.getCamera().setRotation(rot.x, rot.y, rot.z);
 		return buf;
 	}
