@@ -1007,7 +1007,7 @@ public class Chunk {
 		if(y < 0 || y >= World.WORLD_HEIGHT || !generated) return null;
 		if(x < 0 || x > 15 || z < 0 || z > 15) {
 			Chunk chunk = surface.getChunk(cx + ((x & ~15) >> 4), cz + ((z & ~15) >> 4));
-			if(chunk != null) return chunk.getBlockUnbound(x & 15, y, z & 15);
+			if(chunk != null && chunk.isGenerated()) return chunk.getBlockUnbound(x & 15, y, z & 15);
 			return noLight; // Let the lighting engine think this region is blocked.
 		}
 		return blocks[(x << 4) | (y << 8) | z];
