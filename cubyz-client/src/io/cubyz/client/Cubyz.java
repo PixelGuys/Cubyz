@@ -206,7 +206,7 @@ public class Cubyz implements IGameLogic {
 			for (CustomOre ore : customOres) {
 				BufferedImage canvas = new BufferedImage(32, 32, BufferedImage.TYPE_INT_RGB);
 				BufferedImage stone = getImage("assets/cubyz/textures/blocks/stone.png");
-				BufferedImage img = CustomOre.generateOreTexture(stone, ore.seed, ore.getColor());
+				BufferedImage img = CustomOre.generateOreTexture(stone, ore.seed, ore.color, ore.shinyness);
 				
 				// Copy the image to fill the entire 32×32:
 				for(int ix = 0; ix < 32; ix += 16) {

@@ -21,7 +21,7 @@ public class CustomItem extends Item {
 	
 	public static CustomItem fromOre(CustomOre ore) {
 		CustomItem item = new CustomItem();
-		item.color = ore.getColor();
+		item.color = ore.color;
 		if(ore.getName().endsWith("um")) {
 			item.type = METAL;
 		} else if(ore.getName().endsWith("ite")) {

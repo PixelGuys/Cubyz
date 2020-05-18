@@ -178,8 +178,8 @@ public class LocalSurface extends Surface {
 		crystalBlock.setID(glowCrystalOre.getRegistryID().toString()+"_glow_crystal");
 		crystalBlock.setHardness(40);
 		crystalBlock.setBlockDrop(glowCrystalOre.getBlockDrop());
-		crystalBlock.setLight(glowCrystalOre.getColor());
-		crystalBlock.setColor(glowCrystalOre.getColor());
+		crystalBlock.setLight(glowCrystalOre.color);
+		crystalBlock.color = glowCrystalOre.color;
 		crystalBlock.seed = -1; // TODO: Fix crystal block within the new ore texture generation system.
 		torusBlocks[i] = crystalBlock;
 		customOres.add((CustomOre)torusBlocks[i]);
