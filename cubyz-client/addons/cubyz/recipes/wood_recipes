@@ -1,9 +1,14 @@
 L = cubyz:oak_log
+T = cubyz:oak_top
 P = cubyz:oak_planks
 
 shapeless
 L
 result 4*P
+
+shapeless
+T
+result 3*P
 
 shaped
 P P

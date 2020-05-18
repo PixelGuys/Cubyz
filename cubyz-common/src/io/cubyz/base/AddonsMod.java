@@ -26,7 +26,6 @@ import io.cubyz.items.Item;
 import io.cubyz.items.ItemBlock;
 import io.cubyz.items.Recipe;
 import io.cubyz.math.CubyzMath;
-import jdk.jfr.internal.Logger;
 
 /**
  * Mod used to support add-ons: simple mods without any sort of coding required
@@ -164,12 +163,19 @@ public class AddonsMod {
 					try {
 						BufferedReader buf = new BufferedReader(new FileReader(file));
 						String line;
+						int lineNumber = 0;
 						while((line = buf.readLine())!= null) {
+							lineNumber++;
 							line = line.trim(); // Remove whitespaces before and after the word starts.
 							if(line.length() == 0) continue;
 							if(line.contains("=")) {
 								String[] parts = line.split("=");
-								shortCuts.put(parts[0].replaceAll("\\s",""), CubyzRegistries.ITEM_REGISTRY.getByID(parts[1].replaceAll("\\s",""))); // Remove all whitespaces, wherever they might be. Not necessarily the most robust way, but it should work.
+								Item item = CubyzRegistries.ITEM_REGISTRY.getByID(parts[1].replaceAll("\\s",""));
+								if(item == null) {
+									CubyzLogger.instance.warning("Skipping unknown item \"" + parts[1].replaceAll("\\s","") + "\" in line " + lineNumber + " in \"" + file.getPath()+"\".");
+								} else {
+									shortCuts.put(parts[0].replaceAll("\\s",""), CubyzRegistries.ITEM_REGISTRY.getByID(parts[1].replaceAll("\\s",""))); // Remove all whitespaces, wherever they might be. Not necessarily the most robust way, but it should work.
+								}
 							} else if(line.startsWith("shaped")) {
 								shaped = true;
 								startedRecipe = true;
@@ -196,32 +202,39 @@ public class AddonsMod {
 									item = CubyzRegistries.ITEM_REGISTRY.getByID(result);
 								}
 								if(item == null) {
-									CubyzLogger.instance.info("Cannot find result item \""+result+"\" in "+file.getPath());
-								}
-								if(shaped) {
-									int x = CubyzMath.max(itemsPerRow);
-									int y = itemsPerRow.size();
-									Item[] array = new Item[x*y];
-									int index = 0;
-									for(int iy = 0; iy < itemsPerRow.size(); iy++) {
-										for(int ix = 0; ix < itemsPerRow.get(iy); ix++) {
-											array[iy*x + ix] = items.get(index);
-											index++;
-										}
-									}
-									recipeRegistry.register(new Recipe(x, y, array, number, item));
+									CubyzLogger.instance.warning("Skipping recipe with unknown item \"" + result + "\" in line " + lineNumber + " in \"" + file.getPath()+"\".");
 								} else {
-									recipeRegistry.register(new Recipe(items.toArray(new Item[0]), number, item));
+									if(shaped) {
+										int x = CubyzMath.max(itemsPerRow);
+										int y = itemsPerRow.size();
+										Item[] array = new Item[x*y];
+										int index = 0;
+										for(int iy = 0; iy < itemsPerRow.size(); iy++) {
+											for(int ix = 0; ix < itemsPerRow.get(iy); ix++) {
+												array[iy*x + ix] = items.get(index);
+												index++;
+											}
+										}
+										recipeRegistry.register(new Recipe(x, y, array, number, item));
+									} else {
+										recipeRegistry.register(new Recipe(items.toArray(new Item[0]), number, item));
+									}
 								}
 							} else if(startedRecipe) {
 								String[] words = line.split("\\s+"); // Split into sections that are divided by any number of whitespace characters.
 								itemsPerRow.add(words.length);
 								for(int i = 0; i < words.length; i++) {
 									Item item;
-									if(shortCuts.containsKey(words[i])) {
+									if(words[i].equals("0")) {
+										item = null;
+									} else if(shortCuts.containsKey(words[i])) {
 										item = shortCuts.get(words[i]);
 									} else {
 										item = CubyzRegistries.ITEM_REGISTRY.getByID(words[i]);
+										if(item == null) {
+											startedRecipe = false; // Skip unknown recipes.
+											CubyzLogger.instance.warning("Skipping recipe with unknown item \"" + words[i] + "\" in line " + lineNumber + " in \"" + file.getPath()+"\".");
+										}
 									}
 									items.add(item);
 								}

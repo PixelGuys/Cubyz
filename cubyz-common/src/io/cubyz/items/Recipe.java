@@ -160,7 +160,8 @@ public class Recipe {
 			for(int i = 0; i < y; i++) {
 				res += "\n|";
 				for(int j = 0; j < x; j++) {
-					res += pattern[i*x+j].getRegistryID()+"|";
+					if(pattern[i*x+j] == null) res += "null|";
+					else res += pattern[i*x+j].getRegistryID()+"|";
 				}
 			}
 		}
