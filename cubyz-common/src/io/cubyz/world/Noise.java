@@ -85,7 +85,7 @@ public class Noise {
 		return map;
 	}
 	static float dist(float x, float y, float z) {
-		return x*x + y*y + z*z;
+		return (float)Math.sqrt(x*x + y*y + z*z);
 	}
 	// Use Fractal terrain generation as a base and use the intersection of the fractally generated terrain with a 3d worley noise map to get an interesting map.
 	// A little slower than pure fractal terrain, but a lot more detail-rich.
@@ -113,7 +113,7 @@ public class Noise {
 					float dist = dist(x-pointsX[i], y-pointsY[i], map[x][y]*fac-pointsZ[i]);
 					if(dist < closest) closest = dist;
 				}
-				map[x][y] = 1.0f-(float)Math.pow(closest/500000.0f, 0.4);
+				map[x][y] = 1.0f-(float)Math.pow(closest/400.0f, 1);
 				if(map[x][y] < 0.1f) map[x][y] = 0.1f;
 			}
 		}

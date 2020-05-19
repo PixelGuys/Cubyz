@@ -45,6 +45,17 @@ public class Biome implements IRegistryElement {
 		return vegetationModels;
 	}
 
+	public float dist(float h, float t) {
+		float heightFactor;
+		if(h >= height) {
+			heightFactor = (h-height)/(maxHeight-height);
+		} else {
+			heightFactor = (h-height)/(minHeight-height);
+		}
+		// Heat is more important than height and therefor scaled by 2:
+		float dist = 2*(heat-t)*(heat-t) + heightFactor*heightFactor;
+		return dist;
+	}
 	
 	public static Biome getBiome(float height, float heat) {
 		// Just take the closest one. TODO: Better system.
@@ -53,31 +64,25 @@ public class Biome implements IRegistryElement {
 		for(IRegistryElement o : CubyzRegistries.BIOME_REGISTRY.registered()) {
 			Biome b = (Biome) o;
 			if(b.minHeight <= height && b.maxHeight >= height) {
-				// Heat is more important than height and therefor scaled by 2:
-				float heightFactor;
-				if(height >= b.height) {
-					heightFactor = (height-b.height)/(b.maxHeight-b.height);
-				} else {
-					heightFactor = (height-b.height)/(b.minHeight-b.height);
-				}
-				float dist = 2*(b.heat-heat)*(b.heat-heat) + heightFactor*heightFactor;
+				float dist = b.dist(height, heat);
 				if(dist < closest) {
 					c = b;
 					closest = dist;
 				}
 			}
 		}
+		if(c == null) System.out.println(height+" "+heat);
 		return c;
 	}
 	
-	public static float evaluatePolynomial(double height, double heat, double x) {
+	public static float evaluatePolynomial(float height, float heat, float x) {
 		// Creates a much smoother terrain by interpolating between the biomes based on their distance in the height-heat space.
 		double res = 0;
 		double weight = 0;
 		for(IRegistryElement o : CubyzRegistries.BIOME_REGISTRY.registered()) {
 			Biome b = (Biome)o;
-			double dist = 2*(b.heat-heat)*(b.heat-heat) + (b.height-height)*(b.height-height);
-			dist = Math.pow(dist, -8);
+			double dist = b.dist(height, heat);
+			dist = Math.pow(dist, -0.1);
 			res += b.evaluatePolynomial(x)*dist;
 			weight += dist;
 		}
