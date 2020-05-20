@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map.Entry;
 import java.util.Properties;
@@ -26,6 +27,11 @@ import io.cubyz.items.Item;
 import io.cubyz.items.ItemBlock;
 import io.cubyz.items.Recipe;
 import io.cubyz.math.CubyzMath;
+import io.cubyz.world.cubyzgenerators.biomes.Biome;
+import io.cubyz.world.cubyzgenerators.biomes.BlockStructure;
+import io.cubyz.world.cubyzgenerators.biomes.SimpleTreeModel;
+import io.cubyz.world.cubyzgenerators.biomes.SimpleVegetation;
+import io.cubyz.world.cubyzgenerators.biomes.VegetationModel;
 
 /**
  * Mod used to support add-ons: simple mods without any sort of coding required
@@ -138,6 +144,101 @@ public class AddonsMod {
 						missingBlockDrops.put(block, blockDrop);
 					}
 					registry.register(block);
+				}
+			}
+		}
+	}
+	@EventHandler(type = "register:biome")
+	public void registerBiomes(Registry<Biome> reg) {
+		for (File addon : addons) {
+			File biomes = new File(addon, "biomes");
+			if (biomes.exists()) {
+				for (File file : biomes.listFiles()) {
+					String id = file.getName();
+					if(id.contains("."))
+						id = id.substring(0, id.indexOf('.'));
+					Resource res = new Resource(addon.getName(), id);
+
+					ArrayList<Block> underground = new ArrayList<>();
+					ArrayList<VegetationModel> vegetation = new ArrayList<>();
+					
+					float slope = 1;
+					float minHeight = 0, height = 0.5f, maxHeight = 1;
+					float temperature = 0.5f;
+					boolean supportsRivers = false;
+					
+					boolean startedStructures = false;
+					try {
+						BufferedReader buf = new BufferedReader(new FileReader(file));
+						String line;
+						int lineNumber = 0;
+						while((line = buf.readLine()) != null) {
+							lineNumber++;
+							line = line.trim(); // Remove whitespaces before and after the word starts.
+							if(startedStructures) {
+								// TODO: Proper registry of vegetational and other structures.
+								if(line.startsWith("cubyz:simple_vegetation")) {
+									String [] arguments = line.substring("cubyz:simple_vegetation".length()).trim().split("\\s+");
+									vegetation.add(new SimpleVegetation(CubyzRegistries.BLOCK_REGISTRY.getByID(arguments[0]), Float.parseFloat(arguments[1]), Integer.parseInt(arguments[2]), Integer.parseInt(arguments[3])));
+								} else if(line.startsWith("cubyz:simple_tree")) {
+									String [] arguments = line.substring("cubyz:simple_tree".length()).trim().split("\\s+");
+									vegetation.add(new SimpleTreeModel(CubyzRegistries.BLOCK_REGISTRY.getByID(arguments[0]), CubyzRegistries.BLOCK_REGISTRY.getByID(arguments[1]), CubyzRegistries.BLOCK_REGISTRY.getByID(arguments[2]), Float.parseFloat(arguments[3]), Integer.parseInt(arguments[4]), Integer.parseInt(arguments[5])));
+								}
+							} else {
+								if(line.startsWith("slope")) {
+									slope = Float.parseFloat(line.substring(5));
+								} else if(line.startsWith("height")) {
+									String[] heightArguments = line.substring(6).split("-");
+									minHeight = Float.parseFloat(heightArguments[0])/256.0f;
+									height    = Float.parseFloat(heightArguments[1])/256.0f;
+									maxHeight = Float.parseFloat(heightArguments[2])/256.0f;
+								} else if(line.startsWith("temperature")) {
+									temperature = Float.parseFloat(line.substring(11))/360.0f;
+								} else if(line.startsWith("rivers")) {
+									supportsRivers = true;
+								} else if(line.startsWith("ground_structure")) {
+									String[] blocks = line.substring(16).split(",");
+									for(int i = 0; i < blocks.length; i++) {
+										String[] parts = blocks[i].trim().split("\\s+");
+										int min = 1;
+										int max = 1;
+										String blockString = parts[0];
+										if(parts.length == 2) {
+											min = max = Integer.parseInt(parts[0]);
+											blockString = parts[1];
+										} else if(parts.length == 4 && parts[1].equalsIgnoreCase("to")) {
+											min = Integer.parseInt(parts[0]);
+											max = Integer.parseInt(parts[2]);
+											blockString = parts[3];
+										}
+										Block block = CubyzRegistries.BLOCK_REGISTRY.getByID(blockString);
+										if(block != null) {
+											for(int j = 0; j < max; j++) // TODO: implement random structures.
+												underground.add(block);
+										}
+									}
+								} else if(line.startsWith("structures:")) {
+									startedStructures = true;
+								}
+							}
+						}
+						// TODO!
+						// generate a polynomial p(x) := ax³+bx²+cx+d based on the specified slope. The polynomial satisfies the following conditions:
+						// p(0) = 0, p(1) = 1, p(height) = height, dp(height)/dx = slope.
+						// This leads to the following set of equations:
+						// d = 0, a = (slope-1)/(height²-height), b = -a(height+1), c = 1-a-b
+						float[] pol = new float[4];
+						pol[0] = 0;
+						pol[3] = (slope-1)/(height*height - height);
+						pol[2] = -pol[3]*(height+1);
+						pol[1] = 1-pol[3]-pol[2];
+						System.out.println(Arrays.toString(pol));
+						
+						Biome biome = new Biome(res, pol, temperature, height, minHeight, maxHeight, new BlockStructure(underground.toArray(new Block[0])), supportsRivers, vegetation.toArray(new VegetationModel[0]));
+						reg.register(biome);
+					} catch(IOException e) {
+						e.printStackTrace();
+					}
 				}
 			}
 		}

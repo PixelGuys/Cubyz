@@ -189,7 +189,8 @@ public class PerlinNoise {
 		
 		for (int x1 = x; x1 < width + x; x1++) {
 			for (int y1 = y; y1 < height + y; y1++) {
-				map[x1 - x][y1 - y] /= sum;
+				map[x1 - x][y1 - y] = map[x1 - x][y1 - y]/sum/1.5f;
+				if(map[x1 - x][y1 - y] < 0) map[x1 - x][y1 - y] = - map[x1 - x][y1 - y];
 			}
 		}
 		

@@ -82,7 +82,7 @@ public class Biome implements IRegistryElement {
 		for(IRegistryElement o : CubyzRegistries.BIOME_REGISTRY.registered()) {
 			Biome b = (Biome)o;
 			double dist = b.dist(height, heat);
-			dist = Math.pow(dist, -0.1);
+			dist = Math.pow(dist, -1);
 			res += b.evaluatePolynomial(x)*dist;
 			weight += dist;
 		}

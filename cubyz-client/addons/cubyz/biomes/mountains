@@ -1,0 +1,8 @@
+temperature 115
+height 120-140-256
+ground_structure cubyz:snow, 1 to 2 cubyz:dirt
+slope 1
+
+structures:
+	cubyz:simple_tree cubyz:oak_leaves cubyz:oak_log cubyz:oak_top 0.05 4 3
+	cubyz:simple_vegetation cubyz:grass_vegetation 0.01 1 0
