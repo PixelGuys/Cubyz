@@ -1,4 +1,5 @@
 temperature 115
-height 102-128-140
+humidity 0.3
+height 160-180-256
 ground_structure cubyz:snow
 roughness 1

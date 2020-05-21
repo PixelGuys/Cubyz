@@ -10,8 +10,7 @@ public class Noise {
 	static long getSeed(int x, int y, int offsetX, int offsetY, int worldAnd, long seed) {
 		return (((long)((offsetX+x) & worldAnd)) << 16)^seed^(((long)((offsetY+y) & worldAnd)) << 32);
 	}
-	public static float[][] generateFractalTerrain(int wx, int wy, int width, int height, int scale, long seed, int worldAnd) {
-		float[][] map = new float[width][height];
+	private static void generateFractalTerrain(int wx, int wy, int x0, int y0, int width, int height, int scale, long seed, int worldAnd, float[][] map) {
 		int max =scale+1;
 		int and = scale-1;
 		float[][] bigMap = new float[max][max];
@@ -77,9 +76,17 @@ public class Noise {
 		}
 		for(int px = 0; px < width; px++) {
 			for(int py = 0; py < height; py++) {
-				map[px][py] = bigMap[(wx&and)+px][(wy&and)+py];
-				if(map[px][py] >= 1.0f)
-					map[px][py] = 0.9999f;
+				map[x0 + px][y0 + py] = bigMap[(wx&and)+px][(wy&and)+py];
+				if(map[x0 + px][y0 + py] >= 1.0f)
+					map[x0 + px][y0 + py] = 0.9999f;
+			}
+		}
+	}
+	public static float[][] generateFractalTerrain(int wx, int wy, int width, int height, int scale, long seed, int worldAnd) {
+		float[][] map = new float[width][height];
+		for(int x0 = 0; x0 < width; x0 += scale) {
+			for(int y0 = 0; y0 < height; y0 += scale) {
+				generateFractalTerrain(wx + x0, wy + y0, x0, y0, Math.min(width-x0, scale), Math.min(height-y0, scale), scale, seed, worldAnd, map);
 			}
 		}
 		return map;

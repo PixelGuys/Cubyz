@@ -1,7 +1,10 @@
 temperature 115
+humidity 0.4
 height 120-140-256
-ground_structure cubyz:snow, 1 to 2 cubyz:dirt
-roughness 0.7
+ground_structure cubyz:grass, 1 to 2 cubyz:dirt
+roughness 0.8
+
+rivers
 
 structures:
 	cubyz:simple_tree cubyz:oak_leaves cubyz:oak_log cubyz:oak_top 0.05 4 3

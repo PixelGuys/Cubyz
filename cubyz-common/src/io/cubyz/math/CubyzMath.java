@@ -17,4 +17,10 @@ public class CubyzMath {
 		}
 		return max;
 	}
+	
+	public static float floorMod(float input, float modulo) {
+		float result = input % modulo;
+		if(result < 0) result += modulo;
+		return result;
+	}
 }

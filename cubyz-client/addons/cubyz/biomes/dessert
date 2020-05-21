@@ -1,7 +1,8 @@
 temperature 300
+humidity 0
 height 102-110-140
 ground_structure 3 to 4 cubyz:sand
-roughness 0.3
+roughness 0.1
 
 structures:
 	cubyz:simple_vegetation cubyz:cactus 0.01 2 3

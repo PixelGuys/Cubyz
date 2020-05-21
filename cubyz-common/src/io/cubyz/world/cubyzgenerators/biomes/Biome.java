@@ -4,7 +4,8 @@ import io.cubyz.api.RegistryElement;
 import io.cubyz.api.Resource;
 
 public class Biome implements RegistryElement {
-	float heat;
+	float temperature;
+	float humidity;
 	float height;
 	public float minHeight, maxHeight;
 	float roughness;
@@ -14,11 +15,12 @@ public class Biome implements RegistryElement {
 	private VegetationModel[] vegetationModels; // The first members in this array will get prioritized.
 	
 	// The coefficients are represented like this: a[0] + a[1]*x + a[2]*x^2 + … + a[n-1]*x^(n-1)
-	public Biome(Resource id, float heat, float height, float min, float max, float roughness, BlockStructure str, boolean rivers, VegetationModel ... models) {
+	public Biome(Resource id, float humidity, float temperature, float height, float min, float max, float roughness, BlockStructure str, boolean rivers, VegetationModel ... models) {
 		identifier = id;
-		this.heat = heat;
-		this.height = height;
 		this.roughness = roughness;
+		this.temperature = temperature;
+		this.humidity = humidity;
+		this.height = height;
 		minHeight = min;
 		maxHeight = max;
 		struct = str;
@@ -33,7 +35,7 @@ public class Biome implements RegistryElement {
 		return vegetationModels;
 	}
 
-	public float dist(float h, float t) {
+	public float dist(float h, float t, float hum) {
 		if(h >= maxHeight || h <= minHeight) return Float.MAX_VALUE;
 		float heightFactor;
 		if(h >= height) {
@@ -44,8 +46,8 @@ public class Biome implements RegistryElement {
 		// Make sure heightFactor goes to ∞ when it gets to the borders, which are thanks to the code piece above at ±1.
 		// This is done using the function 1/(1-x²) - 1 which also has the advantage of being close to x²(matching normal distance calculation) for small x.
 		heightFactor = 1/(1-heightFactor*heightFactor) - 1;
-		// Heat is more important than height and therefor scaled by 2:
-		float dist = 2*(heat-t)*(heat-t) + heightFactor;
+		// Heat and humidity are more important than height and therefor scaled by 10:
+		float dist = 10*(temperature-t)*(temperature-t) + 10*(humidity - hum)*(humidity - hum) + heightFactor;
 		return dist;
 	}
 	
@@ -54,6 +56,6 @@ public class Biome implements RegistryElement {
 		return identifier;
 	}
 	public float getRoughness(float h) {
-		return Math.min(h-minHeight, maxHeight-h);
+		return roughness*Math.min(maxHeight - h, h - minHeight)/(maxHeight - minHeight);
 	}
 }
