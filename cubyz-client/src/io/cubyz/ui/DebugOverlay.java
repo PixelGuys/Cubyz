@@ -2,13 +2,13 @@ package io.cubyz.ui;
 
 import io.cubyz.ClientSettings;
 import io.cubyz.Constants;
-import io.cubyz.Settings;
 import io.cubyz.client.Cubyz;
 import io.cubyz.entity.Player;
 import io.cubyz.entity.PlayerEntity.PlayerImpl;
 import io.cubyz.world.LocalSurface;
 import io.cubyz.world.LocalWorld;
 import io.cubyz.world.World;
+import io.cubyz.world.cubyzgenerators.biomes.Biome;
 import io.jungle.Window;
 
 /**
@@ -49,12 +49,14 @@ public class DebugOverlay extends MenuGUI {
 				NGraphics.drawText(0, 84, "Game Time: " + world.getGameTime());
 				if (world instanceof LocalWorld) {
 					NGraphics.drawText(0, 96, "Chunk Queue Size: " + ((LocalSurface) world.getCurrentTorus()).getChunkQueueSize());
+					Biome biome = ((LocalSurface)world.getCurrentTorus()).getMetaChunk(p.getPosition().x & ~255, p.getPosition().z & ~255).biomeMap[p.getPosition().x & 255][p.getPosition().z & 255];
+					NGraphics.drawText(0, 118, "Biome: " + biome.getRegistryID());
 				}
 				
 				if (p instanceof PlayerImpl) { // player on local world
 					PlayerImpl pi = (PlayerImpl) p;
 					if (pi.getRemainingBreakTime() > 0) {
-						NGraphics.drawText(0, 120, "Remaining Breaking Time: " + pi.getRemainingBreakTime());
+						NGraphics.drawText(0, 132, "Remaining Breaking Time: " + pi.getRemainingBreakTime());
 					}
 				}
 			}

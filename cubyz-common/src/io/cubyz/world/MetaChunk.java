@@ -17,11 +17,12 @@ public class MetaChunk {
 		this.x = x;
 		this.z = z;
 		this.world = world;
+		
 		heightMap = PerlinNoise.generateTwoOctaveMapFragment(x, z, 256, 256, 1024, seed, world.getAnd());
-		humidityMap = PerlinNoise.generateTwoOctaveMapFragment(x, z, 256, 256, 1024, seed ^ 6587946239L, world.getAnd());
-		heatMap = Noise.generateFractalTerrain(x, z, 256, 256, 512, seed ^ 123456789, world.getAnd()); // Somehow only a scale of 256 works. Other scales leave visible edges in the world. Not a huge issue, but I would rather use 512.
-		biomeMap = new Biome[256][256];
 		heatMap = PerlinNoise.generateTwoOctaveMapFragment(x, z, 256, 256, 1024, seed ^ 6587946239L, world.getAnd());
+		humidityMap = PerlinNoise.generateTwoOctaveMapFragment(x, z, 256, 256, 1024, seed ^ 6587946239L, world.getAnd());
+		
+		biomeMap = new Biome[256][256];
 		advancedHeightMapGeneration(seed);
 	}
 	
@@ -31,6 +32,7 @@ public class MetaChunk {
 			for(int j = 0; j < 256; j++) {
 				Biome closest = null;
 				float closestDist = Float.MAX_VALUE;
+				// Make a weighted average between all biomes to determine the true height:
 				float height = 0;
 				float weight = 0;
 				for(RegistryElement reg : CubyzRegistries.BIOME_REGISTRY.registered()) {

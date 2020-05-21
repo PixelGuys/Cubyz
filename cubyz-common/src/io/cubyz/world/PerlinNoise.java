@@ -163,40 +163,6 @@ public class PerlinNoise {
 		}
 	}
 	
-	public static float[][] generateMapFragment(int x, int y, int width, int height, int scale, long seed, int worldAnd) {
-		float[][] map = new float[width][height];
-		float factor = 0.5F;
-		float sum = 0;
-		Random r = new Random(seed);
-		long l1 = r.nextLong();
-		long l2 = r.nextLong();
-		long l3 = r.nextLong();
-		calculateGridPoints(x, y, width, height, scale, l1, l2, l3, worldAnd);
-		for(; scale >= 16; scale >>= 2) {
-			int resolution = scale;
-			int resolution2 = resolution-1;
-		    int x0 = x & ~resolution2;
-		    int y0 = y & ~resolution2;
-			
-			for (int x1 = x; x1 < width + x; x1++) {
-				for (int y1 = y; y1 < height + y; y1++) {
-					map[x1 - x][y1 - y] += factor*perlin(x1-x0, y1-y0, resolution, resolution2, scale >= 256);
-				}
-			}
-			sum += factor;
-			factor *= 0.25F;
-		}
-		
-		for (int x1 = x; x1 < width + x; x1++) {
-			for (int y1 = y; y1 < height + y; y1++) {
-				map[x1 - x][y1 - y] = map[x1 - x][y1 - y]/sum/1.5f;
-				if(map[x1 - x][y1 - y] < 0) map[x1 - x][y1 - y] = - map[x1 - x][y1 - y];
-			}
-		}
-		
-		return map;
-	}
-	
 	public static float[][] generateTwoOctaveMapFragment(int x, int y, int width, int height, int scale, long seed, int worldAnd) {
 		float[][] map = new float[width][height];
 		Random r = new Random(seed);
