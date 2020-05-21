@@ -1,5 +1,5 @@
 temperature 135
-humidity 0.3
-height 96-102-108
+humidity 1
+height 0-50-100
 ground_structure 3 to 4 cubyz:sand
-roughness 0
+roughness 0.2

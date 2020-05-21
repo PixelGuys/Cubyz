@@ -2,7 +2,7 @@ temperature 115
 humidity 0.4
 height 120-140-256
 ground_structure cubyz:grass, 1 to 2 cubyz:dirt
-roughness 0.8
+roughness 1.5
 
 rivers
 

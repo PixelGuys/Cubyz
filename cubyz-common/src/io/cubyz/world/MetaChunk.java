@@ -18,9 +18,9 @@ public class MetaChunk {
 		this.z = z;
 		this.world = world;
 		
-		heightMap = PerlinNoise.generateTwoOctaveMapFragment(x, z, 256, 256, 1024, seed, world.getAnd());
-		heatMap = PerlinNoise.generateTwoOctaveMapFragment(x, z, 256, 256, 1024, seed ^ 6587946239L, world.getAnd());
-		humidityMap = PerlinNoise.generateTwoOctaveMapFragment(x, z, 256, 256, 1024, seed ^ 6587946239L, world.getAnd());
+		heightMap = PerlinNoise.generateTwoOctaveMapFragment(x, z, 256, 256, 2048, seed, world.getAnd());
+		heatMap = PerlinNoise.generateTwoOctaveMapFragment(x, z, 256, 256, 2048, seed ^ 6587946239L, world.getAnd());
+		humidityMap = PerlinNoise.generateTwoOctaveMapFragment(x, z, 256, 256, 2048, seed ^ 6587946239L, world.getAnd());
 		
 		biomeMap = new Biome[256][256];
 		advancedHeightMapGeneration(seed);
@@ -37,7 +37,7 @@ public class MetaChunk {
 				float weight = 0;
 				for(RegistryElement reg : CubyzRegistries.BIOME_REGISTRY.registered()) {
 					Biome biome = (Biome)reg;
-					float dist = biome.dist(heightMap[i][j], heatMap[i][j], humidityMap[i][j]);
+					float dist = (float)Math.pow(biome.dist(heightMap[i][j], heatMap[i][j], humidityMap[i][j]), 2);
 					float localHeight = 2*(rougherMap[i][j]-0.5f)*biome.getRoughness(heightMap[i][j]);
 					// A roughness factor of > 1 or < -1 should also be possible. In that case the terrain should "mirror" at the(averaged) height limit(minHeight, maxHeight) of the biomes:
 					localHeight += heightMap[i][j];
