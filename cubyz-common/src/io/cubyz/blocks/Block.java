@@ -3,7 +3,7 @@ package io.cubyz.blocks;
 import org.joml.Vector3i;
 
 import io.cubyz.api.GameRegistry;
-import io.cubyz.api.IRegistryElement;
+import io.cubyz.api.RegistryElement;
 import io.cubyz.api.Resource;
 import io.cubyz.items.Inventory;
 import io.cubyz.items.Item;
@@ -11,7 +11,7 @@ import io.cubyz.items.ItemBlock;
 import io.cubyz.world.World;
 
 
-public class Block implements IRegistryElement {
+public class Block implements RegistryElement {
 	
 	public static enum BlockClass {
 		WOOD, STONE, SAND, UNBREAKABLE, LEAF, FLUID

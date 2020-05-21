@@ -1,4 +1,4 @@
 temperature 115
 height 102-128-140
 ground_structure cubyz:snow
-slope 1
+roughness 1

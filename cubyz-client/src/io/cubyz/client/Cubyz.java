@@ -20,7 +20,7 @@ import org.lwjgl.opengl.GL12;
 
 import io.cubyz.*;
 import io.cubyz.api.CubyzRegistries;
-import io.cubyz.api.IRegistryElement;
+import io.cubyz.api.RegistryElement;
 import io.cubyz.api.Resource;
 import io.cubyz.api.Side;
 import io.cubyz.base.init.ItemInit;
@@ -706,7 +706,7 @@ public class Cubyz implements IGameLogic {
 			return;
 		}
 		
-		for (IRegistryElement elem : CubyzRegistries.BLOCK_REGISTRY.registered()) {
+		for (RegistryElement elem : CubyzRegistries.BLOCK_REGISTRY.registered()) {
 			Block block = (Block) elem;
 			Resource rsc = block.getRegistryID();
 			try {

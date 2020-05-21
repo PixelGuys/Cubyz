@@ -7,7 +7,7 @@ import java.util.Random;
 
 import io.cubyz.CubyzLogger;
 import io.cubyz.api.CubyzRegistries;
-import io.cubyz.api.IRegistryElement;
+import io.cubyz.api.RegistryElement;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.Ore;
 import io.cubyz.entity.Entity;
@@ -109,7 +109,7 @@ public class LocalWorld extends World {
 		// Set the IDs again every time a new world is loaded. This is necessary, because the random block creation would otherwise mess with it.
 		int ID = 0;
 		ArrayList<Ore> ores = new ArrayList<Ore>();
-		for (IRegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
+		for (RegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
 			Block b = (Block) ire;
 			if(!b.isTransparent()) {
 				b.ID = ID;
@@ -122,7 +122,7 @@ public class LocalWorld extends World {
 			ID = currentTorus.generate(blockList, ores, ID);
 		}
 		
-		for (IRegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
+		for (RegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
 			Block b = (Block) ire;
 			if(b.isTransparent()) {
 				b.ID = ID;

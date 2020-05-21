@@ -1,7 +1,7 @@
 temperature 120
 height 102-128-140
 ground_structure cubyz:grass, 2 to 3 cubyz:dirt
-slope 1
+roughness 0
 
 structures:
 	cubyz:simple_tree cubyz:oak_leaves cubyz:oak_log cubyz:oak_top 0.001 7 3

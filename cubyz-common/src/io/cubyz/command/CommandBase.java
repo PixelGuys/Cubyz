@@ -3,13 +3,13 @@ package io.cubyz.command;
 import java.util.ArrayList;
 import java.util.List;
 
-import io.cubyz.api.IRegistryElement;
+import io.cubyz.api.RegistryElement;
 
 /**
  * Abstract class for all game commands.
  * @author zenith391
  */
-public abstract class CommandBase implements IRegistryElement {
+public abstract class CommandBase implements RegistryElement {
 
 	protected String name;
 	protected List<Permission> perms = new ArrayList<>();

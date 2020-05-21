@@ -86,9 +86,9 @@ public class PerlinNoise {
 	    n1 = dotGridGradient(x1, y1, x, y, resolution);
 	    ix1 = lerp(n0, n1, sx);
 	    if(ridged)
-	    	value = 1 - (float)Math.sqrt(Math.abs(lerp(ix0, ix1, sy)));
+	    	value = 1 - Math.abs(lerp(ix0, ix1, sy))*(float)Math.sqrt(2);
 	    else
-	    	value = lerp(ix0, ix1, sy)*0.5f + 0.5f;
+	    	value = lerp(ix0, ix1, sy)*0.5f*(float)Math.sqrt(2) + 0.5f;
 	    if(value > 1)
 	    	value = 1;
 	    return value;
@@ -191,6 +191,27 @@ public class PerlinNoise {
 			for (int y1 = y; y1 < height + y; y1++) {
 				map[x1 - x][y1 - y] = map[x1 - x][y1 - y]/sum/1.5f;
 				if(map[x1 - x][y1 - y] < 0) map[x1 - x][y1 - y] = - map[x1 - x][y1 - y];
+			}
+		}
+		
+		return map;
+	}
+	
+	public static float[][] generateOneOctaveMapFragment(int x, int y, int width, int height, int scale, long seed, int worldAnd) {
+		float[][] map = new float[width][height];
+		Random r = new Random(seed);
+		long l1 = r.nextLong();
+		long l2 = r.nextLong();
+		long l3 = r.nextLong();
+		calculateGridPoints(x, y, width, height, scale, l1, l2, l3, worldAnd);
+		int resolution = scale;
+		int resolution2 = resolution-1;
+		int x0 = x & ~resolution2;
+		int y0 = y & ~resolution2;
+			
+		for (int x1 = x; x1 < width + x; x1++) {
+			for (int y1 = y; y1 < height + y; y1++) {
+				map[x1 - x][y1 - y] = perlin(x1-x0, y1-y0, resolution, resolution2, false);
 			}
 		}
 		

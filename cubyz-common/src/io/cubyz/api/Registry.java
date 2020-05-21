@@ -6,13 +6,13 @@ import java.util.Map.Entry;
 
 import io.cubyz.CubyzLogger;
 
-public class Registry<T extends IRegistryElement> {
+public class Registry<T extends RegistryElement> {
 	private HashMap<String, T> hashMap = new HashMap<>();
 	private boolean debug = Boolean.parseBoolean(System.getProperty("registry.debugEnabled", "false"));
 	private boolean alwaysError = Boolean.parseBoolean(System.getProperty("registry.dumpAsError", "true"));
 	
-	public IRegistryElement[] registered() { // can be casted to T
-		return hashMap.values().toArray(new IRegistryElement[0]);
+	public RegistryElement[] registered() { // can be casted to T
+		return hashMap.values().toArray(new RegistryElement[0]);
 	}
 	
 	protected String getType(Class<?> cl) {

@@ -4,7 +4,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Random;
 
-import io.cubyz.api.IRegistryElement;
+import io.cubyz.api.RegistryElement;
 import io.cubyz.api.Registry;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
@@ -31,7 +31,7 @@ public class LifelandGenerator extends SurfaceGenerator {
 	Generator[] sortedGenerators;
 	
 	public void sortGenerators() {
-		IRegistryElement[] unsorted = GENERATORS.registered();
+		RegistryElement[] unsorted = GENERATORS.registered();
 		sortedGenerators = new Generator[unsorted.length];
 		for (int i = 0; i < unsorted.length; i++) {
 			sortedGenerators[i] = (Generator)unsorted[i];

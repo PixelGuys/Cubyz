@@ -185,8 +185,8 @@ public class AddonsMod {
 									vegetation.add(new SimpleTreeModel(CubyzRegistries.BLOCK_REGISTRY.getByID(arguments[0]), CubyzRegistries.BLOCK_REGISTRY.getByID(arguments[1]), CubyzRegistries.BLOCK_REGISTRY.getByID(arguments[2]), Float.parseFloat(arguments[3]), Integer.parseInt(arguments[4]), Integer.parseInt(arguments[5])));
 								}
 							} else {
-								if(line.startsWith("slope")) {
-									slope = Float.parseFloat(line.substring(5));
+								if(line.startsWith("roughness")) {
+									slope = Float.parseFloat(line.substring(9));
 								} else if(line.startsWith("height")) {
 									String[] heightArguments = line.substring(6).split("-");
 									minHeight = Float.parseFloat(heightArguments[0])/256.0f;
@@ -213,7 +213,7 @@ public class AddonsMod {
 										}
 										Block block = CubyzRegistries.BLOCK_REGISTRY.getByID(blockString);
 										if(block != null) {
-											for(int j = 0; j < max; j++) // TODO: implement random structures.
+											for(int j = 0; j < max; j++) // TODO: implement random ground structures.
 												underground.add(block);
 										}
 									}
@@ -222,19 +222,8 @@ public class AddonsMod {
 								}
 							}
 						}
-						// TODO!
-						// generate a polynomial p(x) := ax³+bx²+cx+d based on the specified slope. The polynomial satisfies the following conditions:
-						// p(0) = 0, p(1) = 1, p(height) = height, dp(height)/dx = slope.
-						// This leads to the following set of equations:
-						// d = 0, a = (slope-1)/(height²-height), b = -a(height+1), c = 1-a-b
-						float[] pol = new float[4];
-						pol[0] = 0;
-						pol[3] = (slope-1)/(height*height - height);
-						pol[2] = -pol[3]*(height+1);
-						pol[1] = 1-pol[3]-pol[2];
-						System.out.println(Arrays.toString(pol));
 						
-						Biome biome = new Biome(res, pol, temperature, height, minHeight, maxHeight, new BlockStructure(underground.toArray(new Block[0])), supportsRivers, vegetation.toArray(new VegetationModel[0]));
+						Biome biome = new Biome(res, temperature, height, minHeight, maxHeight, slope, new BlockStructure(underground.toArray(new Block[0])), supportsRivers, vegetation.toArray(new VegetationModel[0]));
 						reg.register(biome);
 					} catch(IOException e) {
 						e.printStackTrace();

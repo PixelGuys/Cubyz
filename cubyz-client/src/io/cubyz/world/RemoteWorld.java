@@ -6,7 +6,7 @@ import java.util.List;
 import org.joml.Vector4f;
 
 import io.cubyz.api.CubyzRegistries;
-import io.cubyz.api.IRegistryElement;
+import io.cubyz.api.RegistryElement;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockEntity;
 import io.cubyz.blocks.BlockInstance;
@@ -40,7 +40,7 @@ public class RemoteWorld extends World {
 		chunks = new ArrayList<>();
 		
 		blocks = new Block[CubyzRegistries.BLOCK_REGISTRY.registered().length];
-		for (IRegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
+		for (RegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
 			Block b = (Block) ire;
 			blocks[b.ID] = b;
 		}

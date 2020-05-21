@@ -1,7 +1,7 @@
 package io.cubyz.command;
 
 import io.cubyz.api.CubyzRegistries;
-import io.cubyz.api.IRegistryElement;
+import io.cubyz.api.RegistryElement;
 import io.cubyz.api.Registry;
 
 public class CommandExecutor {
@@ -16,14 +16,14 @@ public class CommandExecutor {
 		
 		if (name.equals("?")) {
 			source.feedback("Command list:");
-			for (IRegistryElement elem : commandRegistry.registered()) {
+			for (RegistryElement elem : commandRegistry.registered()) {
 				CommandBase base = (CommandBase) elem;
 				source.feedback(base.name);
 			}
 			return;
 		}
 		
-		for (IRegistryElement elem : commandRegistry.registered()) {
+		for (RegistryElement elem : commandRegistry.registered()) {
 			CommandBase base = (CommandBase) elem;
 			if (base.name.equals(name)) {
 				base.commandExecute(source, split);

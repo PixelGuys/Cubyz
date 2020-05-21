@@ -4,11 +4,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import io.cubyz.api.IRegistryElement;
+import io.cubyz.api.RegistryElement;
 import io.cubyz.api.Resource;
 import io.cubyz.items.Item;
 
-public class Material implements IRegistryElement {
+public class Material implements RegistryElement {
 	List<Modifier> specialModifiers;
 	List<Modifier> headModifiers;
 	HashMap<Item, Integer> items; 		// Items that can be used in a workbench to create a tool with those materials. The integer stores who many units of material that item contains.

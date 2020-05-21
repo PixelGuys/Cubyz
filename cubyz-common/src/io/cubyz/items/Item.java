@@ -1,10 +1,10 @@
 package io.cubyz.items;
 
-import io.cubyz.api.IRegistryElement;
+import io.cubyz.api.RegistryElement;
 import io.cubyz.api.Resource;
 import io.cubyz.translate.TextKey;
 
-public class Item implements IRegistryElement {
+public class Item implements RegistryElement {
 
 	private int image = -1;
 	
