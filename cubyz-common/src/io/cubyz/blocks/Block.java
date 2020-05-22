@@ -1,5 +1,7 @@
 package io.cubyz.blocks;
 
+import java.util.Properties;
+
 import org.joml.Vector3i;
 
 import io.cubyz.api.GameRegistry;
@@ -30,7 +32,7 @@ public class Block implements RegistryElement {
 	private boolean selectable = true;
 	private Item blockDrop;
 	protected boolean degradable = false; // Meaning undegradable parts of trees or other structures can grow through this block.
-	protected BlockClass bc;
+	protected BlockClass blockClass;
 	private int light = 0;
 	int absorption = 0; // How much light this block absorbs if it is transparent.
 	String gui; // GUI that is opened onClick.
@@ -39,10 +41,23 @@ public class Block implements RegistryElement {
 	
 	public Block(String id, float hardness, BlockClass bc) {
 		setID(id);
-		this.bc = bc;
+		blockClass = bc;
 		ItemBlock bd = new ItemBlock(this);
 		setBlockDrop(bd);
 		this.hardness = hardness;
+	}
+	
+	public Block(Resource id, Properties props, String bc) {
+		this.id = id;
+		hardness = Float.parseFloat(props.getProperty("hardness", "1"));
+		blockClass = BlockClass.valueOf(bc);
+		light = Integer.parseUnsignedInt(props.getProperty("emittedLight", "0"));
+		absorption = Integer.decode(props.getProperty("absorbedLight", "0"));
+		transparent = props.getProperty("transparent", "no").equalsIgnoreCase("yes");
+		degradable = props.getProperty("degradable", "no").equalsIgnoreCase("yes");
+		selectable = props.getProperty("selectable", "yes").equalsIgnoreCase("yes");
+		solid = props.getProperty("solid", "yes").equalsIgnoreCase("yes");
+		gui = props.getProperty("GUI", null);
 	}
 	
 	public void setDegradable(Boolean deg) {
@@ -75,7 +90,7 @@ public class Block implements RegistryElement {
 	}
 
 	public void setBlockClass(BlockClass bc) {
-		this.bc = bc;
+		blockClass = bc;
 	}
 
 	public void setAbsorption(int absorption) {
@@ -145,7 +160,7 @@ public class Block implements RegistryElement {
 	}
 	
 	public BlockClass getBlockClass() {
-		return bc;
+		return blockClass;
 	}
 	
 	public void setGUI(String id) {

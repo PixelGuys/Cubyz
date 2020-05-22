@@ -55,7 +55,7 @@ import io.jungle.audio.SoundSource;
 import io.jungle.game.*;
 import io.jungle.util.*;
 
-public class Cubyz implements IGameLogic {
+public class Cubyz implements GameLogic {
 
 	public static Context ctx;
 	private Window win;
@@ -669,12 +669,12 @@ public class Cubyz implements IGameLogic {
 		ctx.setHud(null);
 		renderer.orthogonal = true;
 		window.setResized(true); // update projection matrix
-		Spatial spatial = new Spatial(Meshes.blockMeshes.get(b));
+		Spatial spatial = new Spatial(skyBodyMesh);//Meshes.blockMeshes.get(b)); // TODO: Make blockMeshes work here without crashing!
 		spatial.getMesh().getMaterial().setTexture(Meshes.blockTextures.get(b));
 		spatial.setPosition(0, 0.5f, -2f);
 		spatial.setScale(0.5f);
 		Spatial[] spatials = new Spatial[] {spatial};
-		//renderer.render(window, ctx, new Vector3f(1, 1, 1), light, EMPTY_CHUNK_LIST, EMPTY_BLOCK_LIST, EMPTY_ENTITY_LIST, spatials, world.getLocalPlayer(), world.getCurrentTorus().getAnd()); //TODO: Make this work without crashing.
+		renderer.render(window, ctx, new Vector3f(1, 1, 1), light, EMPTY_CHUNK_LIST, EMPTY_BLOCK_LIST, EMPTY_ENTITY_LIST, spatials, world.getLocalPlayer(), world.getCurrentTorus().getAnd());
 		renderer.orthogonal = false;
 		window.setResized(true); // update projection matrix for next render
 		ctx.setHud(gameUI);

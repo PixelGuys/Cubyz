@@ -18,7 +18,7 @@ import io.cubyz.base.init.MaterialInit;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.CustomOre;
-import io.cubyz.blocks.IUpdateable;
+import io.cubyz.blocks.Updateable;
 import io.cubyz.blocks.Ore;
 import io.cubyz.blocks.BlockEntity;
 import io.cubyz.entity.Entity;
@@ -343,8 +343,8 @@ public class LocalSurface extends Surface {
 				blockEntities = ch.getBlockEntities().values().toArray(blockEntities);
 				for (BlockEntity be : blockEntities) {
 					if (be == null) continue;
-					if (be instanceof IUpdateable) {
-						IUpdateable tk = (IUpdateable) be;
+					if (be instanceof Updateable) {
+						Updateable tk = (Updateable) be;
 						tk.update(false);
 						if (tk.randomUpdates()) {
 							if (rnd.nextInt(5) <= 1) { // 1/5 chance

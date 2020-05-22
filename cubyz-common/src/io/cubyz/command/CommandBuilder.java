@@ -8,7 +8,7 @@ import io.cubyz.api.Resource;
 public class CommandBuilder {
 
 	private String name;
-	private BiConsumer<ICommandSource, String[]> executor;
+	private BiConsumer<CommandSource, String[]> executor;
 	
 	public static CommandBuilder newBuilder() {
 		return new CommandBuilder();
@@ -22,7 +22,7 @@ public class CommandBuilder {
 		return this;
 	}
 	
-	public CommandBuilder setExecutor(BiConsumer<ICommandSource, String[]> executor) {
+	public CommandBuilder setExecutor(BiConsumer<CommandSource, String[]> executor) {
 		this.executor = executor;
 		return this;
 	}
@@ -32,7 +32,7 @@ public class CommandBuilder {
 		CommandBase base = new CommandBase() {
 
 			@Override
-			public void commandExecute(ICommandSource source, String[] args) {
+			public void commandExecute(CommandSource source, String[] args) {
 				if (executor != null) {
 					executor.accept(source, args);
 				}

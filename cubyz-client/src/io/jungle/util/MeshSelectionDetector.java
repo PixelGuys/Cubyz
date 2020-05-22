@@ -6,17 +6,17 @@ import org.joml.Vector3f;
 
 import io.jungle.Camera;
 import io.jungle.Spatial;
-import io.jungle.renderers.IRenderer;
+import io.jungle.renderers.Renderer;
 
 public class MeshSelectionDetector {
 
-	protected IRenderer render;
+	protected Renderer render;
 	protected Vector3f dir = new Vector3f();
 	protected Vector3f min = new Vector3f(), max = new Vector3f();
 	protected Vector2f nearFar = new Vector2f();
 	protected Spatial selectedSpatial;
 	
-	public MeshSelectionDetector(IRenderer render) {
+	public MeshSelectionDetector(Renderer render) {
 		this.render = render;
 	}
 	

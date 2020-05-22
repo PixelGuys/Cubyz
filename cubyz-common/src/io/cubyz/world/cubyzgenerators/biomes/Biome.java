@@ -12,10 +12,10 @@ public class Biome implements RegistryElement {
 	protected Resource identifier;
 	public BlockStructure struct;
 	private boolean supportsRivers; // Wether the starting point of a river can be in this biome. If false rivers will be able to flow through this biome anyways.
-	private VegetationModel[] vegetationModels; // The first members in this array will get prioritized.
+	private StructureModel[] vegetationModels; // The first members in this array will get prioritized.
 	
 	// The coefficients are represented like this: a[0] + a[1]*x + a[2]*x^2 + … + a[n-1]*x^(n-1)
-	public Biome(Resource id, float humidity, float temperature, float height, float min, float max, float roughness, BlockStructure str, boolean rivers, VegetationModel ... models) {
+	public Biome(Resource id, float humidity, float temperature, float height, float min, float max, float roughness, BlockStructure str, boolean rivers, StructureModel ... models) {
 		identifier = id;
 		this.roughness = roughness;
 		this.temperature = temperature;
@@ -31,7 +31,7 @@ public class Biome implements RegistryElement {
 		return supportsRivers;
 	}
 	
-	public VegetationModel[] vegetationModels() {
+	public StructureModel[] vegetationModels() {
 		return vegetationModels;
 	}
 

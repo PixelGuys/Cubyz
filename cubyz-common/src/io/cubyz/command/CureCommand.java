@@ -17,7 +17,7 @@ public class CureCommand extends CommandBase {
 	}
 
 	@Override
-	public void commandExecute(ICommandSource source, String[] args) {
+	public void commandExecute(CommandSource source, String[] args) {
 		if (source.getWorld() == null) {
 			source.feedback("'cure' must be executed by a player");
 			return;

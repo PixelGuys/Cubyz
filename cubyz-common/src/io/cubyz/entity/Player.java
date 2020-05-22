@@ -4,7 +4,7 @@ import org.joml.Vector3f;
 
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.blocks.BlockInstance;
-import io.cubyz.command.ICommandSource;
+import io.cubyz.command.CommandSource;
 import io.cubyz.items.Inventory;
 import io.cubyz.world.Surface;
 
@@ -13,7 +13,7 @@ import io.cubyz.world.Surface;
  * @author zenith391
  *
  */
-public abstract class Player extends Entity implements ICommandSource {
+public abstract class Player extends Entity implements CommandSource {
 
 	public Player() {
 		super(CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player"));

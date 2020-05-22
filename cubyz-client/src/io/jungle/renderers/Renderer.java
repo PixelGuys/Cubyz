@@ -8,7 +8,7 @@ import io.jungle.util.DirectionalLight;
 import io.jungle.util.PointLight;
 import io.jungle.util.SpotLight;
 
-public interface IRenderer {
+public interface Renderer {
 
 	public abstract void init(Window win) throws Exception;
 	public abstract void render(Window win, Context ctx, Vector3f ambientLight,

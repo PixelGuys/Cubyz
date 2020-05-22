@@ -19,7 +19,7 @@ public class GiveCommand extends CommandBase {
 	}
 
 	@Override
-	public void commandExecute(ICommandSource source, String[] args) {
+	public void commandExecute(CommandSource source, String[] args) {
 		Registry<Item> items = CubyzRegistries.ITEM_REGISTRY;
 		if (args.length < 2) {
 			source.feedback("Usage: give <item id> [amount]");

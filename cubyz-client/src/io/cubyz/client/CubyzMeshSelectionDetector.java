@@ -9,16 +9,16 @@ import io.cubyz.blocks.BlockInstance;
 import io.cubyz.math.Vector3fi;
 import io.cubyz.world.BlockSpatial;
 import io.cubyz.world.Chunk;
-import io.jungle.renderers.IRenderer;
+import io.jungle.renderers.Renderer;
 
 public class CubyzMeshSelectionDetector {
 
-	protected IRenderer render;
+	protected Renderer render;
 	protected Vector3f min = new Vector3f(), max = new Vector3f();
 	protected Vector2f nearFar = new Vector2f();
 	protected BlockInstance selectedSpatial;
 	
-	public CubyzMeshSelectionDetector(IRenderer render) {
+	public CubyzMeshSelectionDetector(Renderer render) {
 		this.render = render;
 	}
 	

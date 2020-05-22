@@ -7,7 +7,7 @@ import io.cubyz.world.World;
 
 // One position vegetation, like grass or cactus.
 
-public class SimpleVegetation extends VegetationModel {
+public class SimpleVegetation extends StructureModel {
 	Block block;
 	int height0, deltaHeight;
 	public SimpleVegetation(Block block, float chance, int h0, int dh) {

@@ -7,7 +7,7 @@ import io.cubyz.world.World;
  * @author zenith391
  *
  */
-public interface ICommandSource {
+public interface CommandSource {
 	
 	public void feedback(String feedback);
 	public World getWorld();

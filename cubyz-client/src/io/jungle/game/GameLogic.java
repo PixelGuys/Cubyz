@@ -2,7 +2,7 @@ package io.jungle.game;
 
 import io.jungle.Window;
 
-public interface IGameLogic {
+public interface GameLogic {
 
     void init(Window window) throws Exception;
     

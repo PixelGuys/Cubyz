@@ -5,7 +5,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map.Entry;
 import java.util.Properties;
@@ -21,7 +20,6 @@ import io.cubyz.api.Proxy;
 import io.cubyz.api.Registry;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
-import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.blocks.Ore;
 import io.cubyz.items.Item;
 import io.cubyz.items.ItemBlock;
@@ -31,7 +29,7 @@ import io.cubyz.world.cubyzgenerators.biomes.Biome;
 import io.cubyz.world.cubyzgenerators.biomes.BlockStructure;
 import io.cubyz.world.cubyzgenerators.biomes.SimpleTreeModel;
 import io.cubyz.world.cubyzgenerators.biomes.SimpleVegetation;
-import io.cubyz.world.cubyzgenerators.biomes.VegetationModel;
+import io.cubyz.world.cubyzgenerators.biomes.StructureModel;
 
 /**
  * Mod used to support add-ons: simple mods without any sort of coding required
@@ -119,22 +117,12 @@ public class AddonsMod {
 						float veins = Float.parseFloat(props.getProperty("veins", "0"));
 						float size = Float.parseFloat(props.getProperty("size", "0"));
 						int height = Integer.parseUnsignedInt(props.getProperty("height", "0"));
-						Ore ore = new Ore(height, veins, size);
+						Ore ore = new Ore(new Resource(addon.getName(), id), props, height, veins, size);
 						block = ore;
 						blockClass = "STONE";
 					} else {
-						block = new Block();
+						block = new Block(new Resource(addon.getName(), id), props, blockClass);
 					}
-					block.setID(new Resource(addon.getName(), id));
-					block.setHardness(Float.parseFloat(props.getProperty("hardness", "1")));
-					block.setBlockClass(BlockClass.valueOf(blockClass));
-					block.setLight(Integer.parseUnsignedInt(props.getProperty("emittedLight", "0")));
-					block.setAbsorption(Integer.decode(props.getProperty("absorbedLight", "0")));
-					block.setTransparent(props.getProperty("transparent", "no").equalsIgnoreCase("yes"));
-					block.setDegradable(props.getProperty("degradable", "no").equalsIgnoreCase("yes"));
-					block.setSelectable(props.getProperty("selectable", "yes").equalsIgnoreCase("yes"));
-					block.setSolid(props.getProperty("solid", "yes").equalsIgnoreCase("yes"));
-					block.setGUI(props.getProperty("GUI", null));
 					String blockDrop = props.getProperty("drop", "none").toLowerCase();
 					if(blockDrop.equals("auto")) {
 						ItemBlock itemBlock = new ItemBlock(block);
@@ -158,9 +146,8 @@ public class AddonsMod {
 					if(id.contains("."))
 						id = id.substring(0, id.indexOf('.'));
 					Resource res = new Resource(addon.getName(), id);
-
 					ArrayList<BlockStructure.BlockStack> underground = new ArrayList<>();
-					ArrayList<VegetationModel> vegetation = new ArrayList<>();
+					ArrayList<StructureModel> vegetation = new ArrayList<>();
 					
 					float roughness = 1;
 					float minHeight = 0, height = 0.5f, maxHeight = 1;
@@ -230,7 +217,7 @@ public class AddonsMod {
 							}
 						}
 						
-						Biome biome = new Biome(res, humidity, temperature, height, minHeight, maxHeight, roughness, new BlockStructure(underground.toArray(new BlockStructure.BlockStack[0])), supportsRivers, vegetation.toArray(new VegetationModel[0]));
+						Biome biome = new Biome(res, humidity, temperature, height, minHeight, maxHeight, roughness, new BlockStructure(underground.toArray(new BlockStructure.BlockStack[0])), supportsRivers, vegetation.toArray(new StructureModel[0]));
 						reg.register(biome);
 						
 						buf.close();

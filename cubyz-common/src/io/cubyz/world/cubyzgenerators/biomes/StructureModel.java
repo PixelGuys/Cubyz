@@ -2,11 +2,11 @@ package io.cubyz.world.cubyzgenerators.biomes;
 
 import io.cubyz.blocks.Block;
 
-// A simple model that describes how vegetation should be generated.
+// A simple model that describes how smaller structures like vegetation should be generated.
 
-public abstract class VegetationModel {
+public abstract class StructureModel {
 	float chance;
-	public VegetationModel(float chance) {
+	public StructureModel(float chance) {
 		this.chance = chance;
 	}
 	public abstract void generate(int x, int y, int h, Block[][][] chunk, float random);

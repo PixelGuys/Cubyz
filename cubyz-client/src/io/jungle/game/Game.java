@@ -6,7 +6,7 @@ public class Game {
 
 	protected volatile boolean running;
 	protected Window win;
-	protected IGameLogic logic;
+	protected GameLogic logic;
 	private Thread updateThread;
 	private Thread renderThread;
 	double secsPerUpdate = 1d / 30d;

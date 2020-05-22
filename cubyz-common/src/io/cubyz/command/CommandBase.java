@@ -14,7 +14,7 @@ public abstract class CommandBase implements RegistryElement {
 	protected String name;
 	protected List<Permission> perms = new ArrayList<>();
 	
-	public abstract void commandExecute(ICommandSource source, String[] args);
+	public abstract void commandExecute(CommandSource source, String[] args);
 	
 	/**
 	 * Returns the name of the Command

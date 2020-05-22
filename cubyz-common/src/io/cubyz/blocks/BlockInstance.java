@@ -10,7 +10,7 @@ import io.cubyz.world.World;
 public class BlockInstance {
 
 	private Block block;
-	private IBlockSpatial spatial;
+	private Object spatial;
 	private Vector3i pos;
 	private Surface surface;
 	public boolean neighborUp, neighborDown, neighborEast, neighborWest, neighborNorth, neighborSouth;
@@ -59,7 +59,7 @@ public class BlockInstance {
 		this.pos = pos;
 	}
 	
-	public IBlockSpatial getSpatial() {
+	public Object getSpatial() {
 		if (spatial == null) {
 			spatial = ClientOnly.createBlockSpatial.apply(this);
 		}

@@ -4,9 +4,9 @@ import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.world.Noise;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
-import io.cubyz.world.cubyzgenerators.biomes.VegetationModel;
+import io.cubyz.world.cubyzgenerators.biomes.StructureModel;
 
-public class VegetationGenerator implements FancyGenerator {
+public class StructureGenerator implements FancyGenerator {
 	
 	@Override
 	public Resource getRegistryID() {
@@ -28,7 +28,7 @@ public class VegetationGenerator implements FancyGenerator {
 		for(int px = 0; px < 32; px++) {
 			for(int pz = 0; pz < 32; pz++) {
 				if(!vegetationIgnoreMap[px][pz]) {
-					for(VegetationModel model : biomeMap[px][pz].vegetationModels()) {
+					for(StructureModel model : biomeMap[px][pz].vegetationModels()) {
 						if(model.getChance() > vegetationMap[px][pz]) {
 							model.generate(px-8, pz-8, heightMap[px][pz]+1, chunk, vegetationMap[px][pz]);
 							break;

@@ -1,3 +1,0 @@
-# Id is automatically assigned from the addons directory name ("test") and the block name ("test.block") minus the extension, so the total is "test:test"
-class=Wood
-hardness=7

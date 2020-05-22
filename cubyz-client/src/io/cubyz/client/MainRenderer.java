@@ -24,7 +24,7 @@ import io.jungle.Spatial;
 import io.jungle.Texture;
 import io.jungle.Window;
 import io.jungle.game.Context;
-import io.jungle.renderers.IRenderer;
+import io.jungle.renderers.Renderer;
 import io.jungle.renderers.Transformation;
 import io.jungle.util.DirectionalLight;
 import io.jungle.util.PointLight;
@@ -33,7 +33,7 @@ import io.jungle.util.SpotLight;
 import io.jungle.util.Utils;
 
 @SuppressWarnings("unchecked")
-public class MainRenderer implements IRenderer {
+public class MainRenderer implements Renderer {
 
 	private ShaderProgram shaderProgram;
 	private ShaderProgram depthShaderProgram;
@@ -351,9 +351,6 @@ public class MainRenderer implements IRenderer {
 			if (map[i] == null)
 				continue;
 			Mesh mesh = Meshes.blockMeshes.get(blocks[i]);
-			if (mesh == null) { // TODO: remove, prob related to custom ores
-				return;
-			}
 			mesh.getMaterial().setTexture(Meshes.blockTextures.get(blocks[i]));
 			shaderProgram.setUniform("material", mesh.getMaterial());
 			if (selectedBlock == i) {

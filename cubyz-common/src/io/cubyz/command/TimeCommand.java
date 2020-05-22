@@ -14,7 +14,7 @@ public class TimeCommand extends CommandBase {
 	}
 
 	@Override
-	public void commandExecute(ICommandSource source, String[] args) {
+	public void commandExecute(CommandSource source, String[] args) {
 		if (args.length == 1) {
 			source.feedback(String.valueOf(source.getWorld().getGameTime()));
 		} else {

@@ -5,7 +5,7 @@ import java.util.Random;
 import io.cubyz.blocks.Block;
 import io.cubyz.world.World;
 
-public class SimpleTreeModel extends VegetationModel {
+public class SimpleTreeModel extends StructureModel {
 	Block leaves, wood, topWood;
 	int height0, deltaHeight;
 	

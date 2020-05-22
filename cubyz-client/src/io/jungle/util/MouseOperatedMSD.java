@@ -8,7 +8,7 @@ import org.joml.Vector4f;
 import io.jungle.Camera;
 import io.jungle.Spatial;
 import io.jungle.Window;
-import io.jungle.renderers.IRenderer;
+import io.jungle.renderers.Renderer;
 
 public class MouseOperatedMSD extends MeshSelectionDetector {
 
@@ -17,7 +17,7 @@ public class MouseOperatedMSD extends MeshSelectionDetector {
 	private Matrix4f invViewMatrix;
 	private Vector3f mouseDir;
 	
-	public MouseOperatedMSD(IRenderer render) {
+	public MouseOperatedMSD(Renderer render) {
 		super(render);
 		invProjectionMatrix = new Matrix4f();
 		invViewMatrix = new Matrix4f();

@@ -6,7 +6,7 @@ import io.cubyz.api.Registry;
 
 public class CommandExecutor {
 
-	public static void execute(String cmd, ICommandSource source) {
+	public static void execute(String cmd, CommandSource source) {
 		Registry<CommandBase> commandRegistry = CubyzRegistries.COMMAND_REGISTRY;
 		String[] split = cmd.split(" ");
 		if (split.length < 1) {
