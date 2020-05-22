@@ -159,10 +159,10 @@ public class AddonsMod {
 						id = id.substring(0, id.indexOf('.'));
 					Resource res = new Resource(addon.getName(), id);
 
-					ArrayList<Block> underground = new ArrayList<>();
+					ArrayList<BlockStructure.BlockStack> underground = new ArrayList<>();
 					ArrayList<VegetationModel> vegetation = new ArrayList<>();
 					
-					float slope = 1;
+					float roughness = 1;
 					float minHeight = 0, height = 0.5f, maxHeight = 1;
 					float temperature = 0.5f;
 					float humidity = 0.5f;
@@ -176,6 +176,7 @@ public class AddonsMod {
 						while((line = buf.readLine()) != null) {
 							lineNumber++;
 							line = line.trim(); // Remove whitespaces before and after the word starts.
+							if(line.length() == 0) continue;
 							if(startedStructures) {
 								// TODO: Proper registry of vegetational and other structures.
 								if(line.startsWith("cubyz:simple_vegetation")) {
@@ -184,10 +185,12 @@ public class AddonsMod {
 								} else if(line.startsWith("cubyz:simple_tree")) {
 									String [] arguments = line.substring("cubyz:simple_tree".length()).trim().split("\\s+");
 									vegetation.add(new SimpleTreeModel(CubyzRegistries.BLOCK_REGISTRY.getByID(arguments[0]), CubyzRegistries.BLOCK_REGISTRY.getByID(arguments[1]), CubyzRegistries.BLOCK_REGISTRY.getByID(arguments[2]), Float.parseFloat(arguments[3]), Integer.parseInt(arguments[4]), Integer.parseInt(arguments[5])));
+								} else {
+									CubyzLogger.instance.warning("Could not find structure \"" + line.split("\\s+")[0] + "\" specified in line " + lineNumber + " in file " + file.getPath());
 								}
 							} else {
 								if(line.startsWith("roughness")) {
-									slope = Float.parseFloat(line.substring(9));
+									roughness = Float.parseFloat(line.substring(9));
 								} else if(line.startsWith("height")) {
 									String[] heightArguments = line.substring(6).split("-");
 									minHeight = Float.parseFloat(heightArguments[0])/256.0f;
@@ -216,18 +219,21 @@ public class AddonsMod {
 										}
 										Block block = CubyzRegistries.BLOCK_REGISTRY.getByID(blockString);
 										if(block != null) {
-											for(int j = 0; j < max; j++) // TODO: implement random ground structures.
-												underground.add(block);
+											underground.add(new BlockStructure.BlockStack(block, min, max));
 										}
 									}
 								} else if(line.startsWith("structures:")) {
 									startedStructures = true;
+								} else {
+									CubyzLogger.instance.warning("Could not find argument \"" + line.split("\\s+")[0] + "\" specified in line " + lineNumber + " in file " + file.getPath());
 								}
 							}
 						}
 						
-						Biome biome = new Biome(res, humidity, temperature, height, minHeight, maxHeight, slope, new BlockStructure(underground.toArray(new Block[0])), supportsRivers, vegetation.toArray(new VegetationModel[0]));
+						Biome biome = new Biome(res, humidity, temperature, height, minHeight, maxHeight, roughness, new BlockStructure(underground.toArray(new BlockStructure.BlockStack[0])), supportsRivers, vegetation.toArray(new VegetationModel[0]));
 						reg.register(biome);
+						
+						buf.close();
 					} catch(IOException e) {
 						e.printStackTrace();
 					}

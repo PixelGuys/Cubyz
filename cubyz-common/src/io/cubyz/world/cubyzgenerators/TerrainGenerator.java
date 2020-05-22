@@ -1,5 +1,7 @@
 package io.cubyz.world.cubyzgenerators;
 
+import java.util.Random;
+
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
@@ -30,12 +32,14 @@ public class TerrainGenerator implements FancyGenerator {
 
 	@Override
 	public void generate(long seed, int cx, int cz, Block[][][] chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, int[][] heightMap, Biome[][] biomeMap) {
+		Random rand = new Random(seed);
+		long seedX = rand.nextLong();
+		long seedZ = rand.nextLong();
 		for(int px = 0; px < 16; px++) {
 			for(int pz = 0; pz < 16; pz++) {
 				int y = heightMap[px+8][pz+8];
 				float temperature = heatMap[px+8][pz+8];
 				for(int j = y > SEA_LEVEL ? Math.min(y, World.WORLD_HEIGHT-1) : SEA_LEVEL; j >= 0; j--) {
-					int depth = y-j;
 					Block b = null;
 					if(j > y) {
 						if(temperature <= 0 && j == SEA_LEVEL) {
@@ -46,14 +50,12 @@ public class TerrainGenerator implements FancyGenerator {
 					} else {
 						if(j == 0) {
 							b = bedrock;
+						} else if(j == y) {
+							rand.setSeed(seedX*((cx << 4) + px) ^ seedZ*((cz << 4) + pz));
+							j = biomeMap[px+8][pz+8].struct.addSubTerranian(chunk, j, px, pz, rand);
+							continue;
 						} else {
-							b = biomeMap[px+8][pz+8].struct.getSubterranian(depth, px, pz);
-							if(b == null) {
-								b = stone;
-							}
-							if(temperature < 0 && b == grass) {
-								b = snow;
-							}
+							b = stone;
 						}
 					}
 					chunk[px][pz][j] = b;
