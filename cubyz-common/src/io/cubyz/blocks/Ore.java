@@ -11,7 +11,7 @@ public class Ore extends Block {
 	public final int maxHeight;
 
 	public Ore(Resource id, Properties props, int maxHeight, float veins, float size) {
-		super(id, props, "stone");
+		super(id, props, "STONE");
 		this.maxHeight = maxHeight;
 		this.veins = veins;
 		this.size = size;
