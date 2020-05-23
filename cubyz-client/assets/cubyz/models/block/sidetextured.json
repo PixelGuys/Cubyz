@@ -2,8 +2,7 @@
 	"parent": "cubyz:block",
 	"models": {
 		"default": {
-			"model": "cubyz:persidetexture.obj",
-			"texture_converted": true
+			"model": "cubyz:persidetexture.obj"
 		}
 	}
 }

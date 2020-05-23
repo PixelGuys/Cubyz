@@ -29,7 +29,6 @@ public class ResourceUtilities {
 	public static class BlockSubModel {
 		public String model;
 		public String texture;
-		public Boolean texture_converted;
 	}
 	
 	public static class BlockModel {
@@ -101,8 +100,6 @@ public class ResourceUtilities {
 				subModel.model = sm.get("model").getAsString();
 			if (sm.has("texture"))
 				subModel.texture = sm.get("texture").getAsString();
-			if (sm.has("texture_converted"))
-				subModel.texture_converted = sm.get("texture_converted").getAsBoolean();
 			if (model.subModels.containsKey(key)) {
 				Utilities.copyIfNull(subModel, model.subModels.get(key));
 			}

@@ -4,5 +4,6 @@ veins 1.5
 size 4
 height 16
 drop cubyz:diamond
+
 model cubyz:block.obj
 texture cubyz:diamond_ore

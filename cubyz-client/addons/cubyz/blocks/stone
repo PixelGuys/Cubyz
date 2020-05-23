@@ -1,5 +1,6 @@
 class stone
 hardness 25
 drop cubyz:cobblestone
+
 model cubyz:block.obj
 texture cubyz:stone

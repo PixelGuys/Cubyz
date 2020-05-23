@@ -1,3 +1,6 @@
 class wood
 hardness 8
 drop auto
+
+model cubyz:persidetexture.obj
+texture cubyz:oak_top

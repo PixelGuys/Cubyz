@@ -1,5 +1,6 @@
 class sand
 hardness 5.5
 drop auto
+
 model cubyz:block.obj
 texture cubyz:dirt

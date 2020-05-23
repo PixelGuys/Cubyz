@@ -29,7 +29,6 @@ public class Item implements RegistryElement {
 	
 	public void setTexture(String texturePath, String addon) {
 		this.texturePath = "addons/" + addon + "/items/textures/" + texturePath;
-		System.out.println(this.texturePath);
 	}
 	
 	/**

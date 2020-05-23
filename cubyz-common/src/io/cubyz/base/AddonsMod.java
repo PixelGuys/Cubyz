@@ -337,6 +337,5 @@ public class AddonsMod {
 				}
 			}
 		}
-		System.out.println(recipeRegistry);
 	}
 }

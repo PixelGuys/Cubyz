@@ -204,21 +204,9 @@ public class Cubyz implements GameLogic {
 			LocalSurface ts = (LocalSurface) surface;
 			ArrayList<CustomOre> customOres = ts.getCustomOres();
 			for (CustomOre ore : customOres) {
-				BufferedImage canvas = new BufferedImage(32, 32, BufferedImage.TYPE_INT_RGB);
 				BufferedImage stone = getImage("addons/cubyz/blocks/textures/stone.png");
 				BufferedImage img = CustomOre.generateOreTexture(stone, ore.seed, ore.color, ore.shinyness);
-				
-				// Copy the image to fill the entire 32×32:
-				for(int ix = 0; ix < 32; ix += 16) {
-					for(int iy = 0; iy < 32; iy += 16) {
-						for(int x = 0; x < 16; x++) {
-							for(int y = 0; y < 16; y++) {
-								canvas.setRGB(x + ix, y + iy, img.getRGB(x, y));
-							}
-						}
-					}
-				}
-				InputStream is = TextureConverter.fromBufferedImage(canvas);
+				InputStream is = TextureConverter.fromBufferedImage(img);
 				Texture tex = new Texture(is);
 				try {
 					is.close();
@@ -354,13 +342,7 @@ public class Cubyz implements GameLogic {
 					CubyzLogger.i.warning(texResource + " texture not found");
 					texture = "undefined";
 				}
-				if (bm.subModels.get("default").texture_converted == (Boolean) true) {
-					tex = new Texture("addons/" + texResource.getMod() + "/blocks/textures/" + texture + ".png");
-				} else {
-					tex = new Texture(TextureConverter.fromBufferedImage(
-							TextureConverter.convert(ImageIO.read(new File("addons/" + texResource.getMod() + "/blocks/textures/" + texture + ".png")),
-									block.getRegistryID().toString())));
-				}
+				tex = new Texture("addons/" + texResource.getMod() + "/blocks/textures/" + texture + ".png");
 				
 				Meshes.blockMeshes.put(block, mesh);
 				Meshes.blockTextures.put(block, tex);
@@ -746,13 +728,7 @@ public class Cubyz implements GameLogic {
 					CubyzLogger.i.warning(texResource + " texture not found");
 					texture = "blocks/undefined";
 				}
-				if (bm.subModels.get("default").texture_converted == (Boolean) true) {
-					tex = new Texture("assets/" + texResource.getMod() + "/textures/" + texture + ".png");
-				} else {
-					tex = new Texture(TextureConverter.fromBufferedImage(
-							TextureConverter.convert(ImageIO.read(new File("assets/" + texResource.getMod() + "/textures/" + texture + ".png")),
-									block.getRegistryID().toString())));
-				}
+				tex = new Texture("assets/" + texResource.getMod() + "/textures/" + texture + ".png");
 				
 				mesh = defaultMesh.cloneNoMaterial();
 				Material material = new Material(tex, 0.6F);

@@ -4,5 +4,6 @@ veins 8
 size 10
 height 64
 drop auto
+
 model cubyz:block.obj
 texture cubyz:iron_ore

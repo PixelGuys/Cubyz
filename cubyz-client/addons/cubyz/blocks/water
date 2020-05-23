@@ -3,5 +3,6 @@ selectable no
 solid no
 transparent yes
 absorbedLight 0x17171100
+
 model cubyz:block.obj
 texture cubyz:water

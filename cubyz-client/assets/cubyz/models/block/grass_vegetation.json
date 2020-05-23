@@ -1,9 +1,0 @@
-{
-	"parent": "cubyz:block",
-	"models": {
-		"default": {
-			"model": "cubyz:grass_herb.obj",
-			"texture": "cubyz:grass_herb"
-		}
-	}
-}

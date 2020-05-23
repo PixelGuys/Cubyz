@@ -41,16 +41,6 @@ public class TextureConverter {
 		return new ByteArrayInputStream(array);
 	}
 	
-	public static BufferedImage convert(BufferedImage in, String name) {
-		BufferedImage out = new BufferedImage(in.getWidth()*2, in.getHeight()*2, BufferedImage.TYPE_INT_ARGB);
-		Graphics2D g2d = out.createGraphics();
-		g2d.drawImage(in, 0, 0, null);
-		g2d.drawImage(in, in.getWidth(), 0, null);
-		g2d.drawImage(in, 0, in.getHeight(), null);
-		g2d.dispose();
-		return out;
-	}
-	
 	public static BufferedImage compose(String[] paths) {
 		try {
 			BufferedImage out;
@@ -78,7 +68,6 @@ public class TextureConverter {
 	
 	public static BufferedImage convertTemplate(String path) throws IOException {
 		String [] parts = path.split("\\|");
-		System.out.println(parts[0]+"|"+parts[1]+"|"+parts[2]);
 		BufferedImage template = ImageIO.read(new File(parts[0]+parts[2]));
 		int color = Integer.parseInt(parts[1]);
 		convertTemplate(template, color);

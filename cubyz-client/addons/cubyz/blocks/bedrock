@@ -1,4 +1,5 @@
 # Unbreakable stone that fills the bottom layer of the world.
 class unbreakable
+
 model cubyz:block.obj
 texture cubyz:bedrock

@@ -142,7 +142,7 @@ public class PerlinNoise {
 				yGrid[numX][numY] = generateGradient((x0+1) & localAnd, y0, 1, l1, l2, l3, resolution);
 				numY++;
 			}
-			//System.out.println((x0*resolution)+" "+(y0*resolution)+" "+x+" "+y);
+			
 			xGrid[numX][numY] = generateGradient((x0+1) & localAnd, (y0+1) & localAnd, 0, l1, l2, l3, resolution);
 			yGrid[numX][numY] = generateGradient((x0+1) & localAnd, (y0+1) & localAnd, 1, l1, l2, l3, resolution);
 			numY++;
@@ -153,10 +153,6 @@ public class PerlinNoise {
 			for(int ix = 0; ix < numX+1; ix++) {
 				System.arraycopy(xGrid[ix], 0, xGridR[ix], 0, numY+1);
 				System.arraycopy(yGrid[ix], 0, yGridR[ix], 0, numY+1);
-				for(int iy = 0; iy < numY; iy++) {
-					if(xGridR[ix][iy] < -1)
-						System.out.println("problematic value at " + ix+" "+ iy);
-				}
 			}
 			xGridPoints[i] = xGridR;
 			yGridPoints[i] = yGridR;
