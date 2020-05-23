@@ -205,7 +205,7 @@ public class Cubyz implements GameLogic {
 			ArrayList<CustomOre> customOres = ts.getCustomOres();
 			for (CustomOre ore : customOres) {
 				BufferedImage canvas = new BufferedImage(32, 32, BufferedImage.TYPE_INT_RGB);
-				BufferedImage stone = getImage("assets/cubyz/textures/blocks/stone.png");
+				BufferedImage stone = getImage("addons/cubyz/blocks/textures/stone.png");
 				BufferedImage img = CustomOre.generateOreTexture(stone, ore.seed, ore.color, ore.shinyness);
 				
 				// Copy the image to fill the entire 32×32:
@@ -231,9 +231,9 @@ public class Cubyz implements GameLogic {
 			for (CustomItem item : customItems) {
 				BufferedImage canvas;
 				if(item.isGem())
-					canvas = getImage("assets/cubyz/textures/items/materials/templates/"+"gem1"+".png"); // TODO: More gem types.
+					canvas = getImage("addons/cubyz/items/textures/materials/templates/"+"gem1"+".png"); // TODO: More gem types.
 				else
-					canvas = getImage("assets/cubyz/textures/items/materials/templates/"+"crystal1"+".png"); // TODO: More crystal types.
+					canvas = getImage("addons/cubyz/items/textures/materials/templates/"+"crystal1"+".png"); // TODO: More crystal types.
 				TextureConverter.convertTemplate(canvas, item.getColor());
 				InputStream is = TextureConverter.fromBufferedImage(canvas);
 				Texture tex = new Texture(is);
@@ -350,15 +350,15 @@ public class Cubyz implements GameLogic {
 				}
 				Resource texResource = new Resource(bm.subModels.get("default").texture);
 				String texture = texResource.getID();
-				if (!new File("assets/" + texResource.getMod() + "/textures/" + texture + ".png").exists()) {
+				if (!new File("addons/" + texResource.getMod() + "/blocks/textures/" + texture + ".png").exists()) {
 					CubyzLogger.i.warning(texResource + " texture not found");
-					texture = "blocks/undefined";
+					texture = "undefined";
 				}
 				if (bm.subModels.get("default").texture_converted == (Boolean) true) {
-					tex = new Texture("assets/" + texResource.getMod() + "/textures/" + texture + ".png");
+					tex = new Texture("addons/" + texResource.getMod() + "/blocks/textures/" + texture + ".png");
 				} else {
 					tex = new Texture(TextureConverter.fromBufferedImage(
-							TextureConverter.convert(ImageIO.read(new File("assets/" + texResource.getMod() + "/textures/" + texture + ".png")),
+							TextureConverter.convert(ImageIO.read(new File("addons/" + texResource.getMod() + "/blocks/textures/" + texture + ".png")),
 									block.getRegistryID().toString())));
 				}
 				
@@ -389,12 +389,12 @@ public class Cubyz implements GameLogic {
 				mesh.setBoundingRadius(2.0f); // TODO: define custom bounding radius
 				Resource texResource = new Resource(model.texture);
 				String texture = texResource.getID();
-				if (!new File("assets/" + texResource.getMod() + "/textures/" + texture + ".png").exists()) {
+				if (!new File("assets/" + texResource.getMod() + "/textures/entities/" + texture + ".png").exists()) {
 					CubyzLogger.i.warning(texResource + " texture not found");
 					texture = "blocks/undefined";
 				}
 				
-				Texture tex = new Texture("assets/" + texResource.getMod() + "/textures/" + texture + ".png");
+				Texture tex = new Texture("assets/" + texResource.getMod() + "/textures/entities/" + texture + ".png");
 				
 				Material material = new Material(tex, 1.0F);
 				mesh.setMaterial(material);

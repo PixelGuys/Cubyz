@@ -2,7 +2,7 @@
 	"parent": "cubyz:sidetextured",
 	"models": {
 		"default": {
-			"texture": "cubyz:blocks/oak_top"
+			"texture": "cubyz:oak_top"
 		}
 	}
 }

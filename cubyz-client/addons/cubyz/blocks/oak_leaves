@@ -5,4 +5,4 @@ transparent yes
 absorbedLight 0x0f100010
 drop auto
 model cubyz:block.obj
-texture cubyz:blocks/oak_leaves
+texture cubyz:oak_leaves

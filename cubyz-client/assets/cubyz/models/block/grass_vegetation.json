@@ -3,7 +3,7 @@
 	"models": {
 		"default": {
 			"model": "cubyz:grass_herb.obj",
-			"texture": "cubyz:blocks/grass_herb"
+			"texture": "cubyz:grass_herb"
 		}
 	}
 }

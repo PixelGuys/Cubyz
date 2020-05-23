@@ -5,4 +5,4 @@ size 4
 height 16
 drop cubyz:diamond
 model cubyz:block.obj
-texture cubyz:blocks/diamond_ore
+texture cubyz:diamond_ore

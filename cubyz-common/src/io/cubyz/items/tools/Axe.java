@@ -14,9 +14,9 @@ public class Axe extends Tool {
 	public Axe(Material head, Material binding, Material handle) {
 		super(head, binding, handle, calculateSpeed(head, binding, handle), calculateDmg(head, binding, handle));
 		// The image is just an overlay of the part images:
-		texturePath = 	 "assets/cubyz/textures/items/parts/"+handle.getName()+"_handle.png#"
-						+"assets/cubyz/textures/items/parts/"+head.getName()+"_axe_head.png#"
-						+"assets/cubyz/textures/items/parts/"+binding.getName()+"_binding.png";
+		texturePath = 	 "addons/" + handle.id.getMod() + "/items/textures/parts/"+handle.getName()+"_handle.png#"
+						+"addons/" + head.id.getMod() + "/items/textures/parts/"+head.getName()+"_axe_head.png#"
+						+"addons/" + binding.id.getMod() + "/items/textures/parts/"+binding.getName()+"_binding.png";
 		setName(new TextKey(head.getRegistryID().getID()+" Axe"));
 	}
 	

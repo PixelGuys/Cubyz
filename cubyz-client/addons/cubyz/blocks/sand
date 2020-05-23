@@ -2,4 +2,4 @@ class sand
 hardness 5
 drop auto
 model cubyz:block.obj
-texture cubyz:blocks/sand
+texture cubyz:sand

@@ -2,7 +2,7 @@
 	"parent": "cubyz:sidetextured",
 	"models": {
 		"default": {
-			"texture": "cubyz:blocks/snow"
+			"texture": "cubyz:snow"
 		}
 	}
 }

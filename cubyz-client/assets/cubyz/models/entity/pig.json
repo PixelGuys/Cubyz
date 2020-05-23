@@ -1,6 +1,6 @@
 {
 	"model": { // TODO: use its own model
 		"path": "cubyz:block.obj",
-		"texture": "cubyz:blocks/bedrock"
+		"texture": "cubyz:/pig"
 	}
 }

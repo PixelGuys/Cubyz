@@ -3,10 +3,10 @@
 	"dynaModelPurposes": ["seasons"],
 	"models": {
 		"default": {
-			"texture": "cubyz:blocks/grass"
+			"texture": "cubyz:grass"
 		},
 		"winter": {
-			"texture": "cubyz:blocks/snow"
+			"texture": "cubyz:snow"
 		}
 	}
 }

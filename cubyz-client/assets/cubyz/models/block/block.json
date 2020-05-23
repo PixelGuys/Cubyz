@@ -2,7 +2,7 @@
 	"models": {
 		"default": {
 			"model": "cubyz:block.obj",
-			"texture": "cubyz:blocks/undefined"
+			"texture": "cubyz:undefined"
 		}
 	}
 }

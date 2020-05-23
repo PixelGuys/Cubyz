@@ -5,4 +5,4 @@ size 10
 height 64
 drop auto
 model cubyz:block.obj
-texture cubyz:blocks/iron_ore
+texture cubyz:iron_ore

@@ -70,10 +70,11 @@ public class AddonsMod {
 		for (File addon : addons) {
 			File items = new File(addon, "items");
 			if (items.exists()) {
-				for (File descriptor : items.listFiles()) {
+				for (File file : items.listFiles()) {
+					if(file.isDirectory()) continue;
 					Properties props = new Properties();
 					try {
-						FileReader reader = new FileReader(descriptor);
+						FileReader reader = new FileReader(file);
 						props.load(reader);
 						reader.close();
 					} catch (IOException e) {
@@ -81,11 +82,11 @@ public class AddonsMod {
 					}
 					
 					Item item = new Item();
-					String id = descriptor.getName();
+					String id = file.getName();
 					if(id.contains("."))
 						id = id.substring(0, id.indexOf('.'));
 					item.setID(new Resource(addon.getName(), id));
-					item.setTexture(props.getProperty("texture", "default.png"));
+					item.setTexture(props.getProperty("texture", "default.png"), addon.getName());
 					registry.register(item);
 				}
 			}
@@ -98,10 +99,11 @@ public class AddonsMod {
 		for (File addon : addons) {
 			File blocks = new File(addon, "blocks");
 			if (blocks.exists()) {
-				for (File descriptor : blocks.listFiles()) {
+				for (File file : blocks.listFiles()) {
+					if(file.isDirectory()) continue;
 					Properties props = new Properties();
 					try {
-						FileReader reader = new FileReader(descriptor);
+						FileReader reader = new FileReader(file);
 						props.load(reader);
 						reader.close();
 					} catch (IOException e) {
@@ -109,7 +111,7 @@ public class AddonsMod {
 					}
 					
 					Block block;
-					String id = descriptor.getName();
+					String id = file.getName();
 					if(id.contains("."))
 						id = id.substring(0, id.indexOf('.'));
 					String blockClass = props.getProperty("class", "STONE").toUpperCase();
@@ -142,6 +144,7 @@ public class AddonsMod {
 			File biomes = new File(addon, "biomes");
 			if (biomes.exists()) {
 				for (File file : biomes.listFiles()) {
+					if(file.isDirectory()) continue;
 					String id = file.getName();
 					if(id.contains("."))
 						id = id.substring(0, id.indexOf('.'));
@@ -241,6 +244,7 @@ public class AddonsMod {
 			File recipes = new File(addon, "recipes");
 			if (recipes.exists()) {
 				for (File file : recipes.listFiles()) {
+					if(file.isDirectory()) continue;
 					HashMap<String, Item> shortCuts = new HashMap<String, Item>();
 					ArrayList<Item> items = new ArrayList<>();
 					ArrayList<Integer> itemsPerRow = new ArrayList<>();

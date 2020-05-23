@@ -5,4 +5,4 @@ size 15
 height 128
 drop cubyz:coal
 model cubyz:block.obj
-texture cubyz:blocks/coal_ore
+texture cubyz:coal_ore

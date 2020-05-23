@@ -27,8 +27,9 @@ public class Item implements RegistryElement {
 		this.name = key;
 	}
 	
-	public void setTexture(String texturePath) {
-		this.texturePath = "./assets/cubyz/textures/items/" + texturePath;
+	public void setTexture(String texturePath, String addon) {
+		this.texturePath = "addons/" + addon + "/items/textures/" + texturePath;
+		System.out.println(this.texturePath);
 	}
 	
 	/**
