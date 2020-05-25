@@ -115,8 +115,6 @@ public class Texture {
 		if (ClientSettings.mipmapping) {
 			glGenerateMipmap(GL_TEXTURE_2D);
 		}
-		/* not used, and using it makes the game
-		 look ugly. So disabled for now to not use useless memory */
 		return textureId;
 	}
 
