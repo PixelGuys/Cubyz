@@ -269,7 +269,7 @@ public class MainRenderer implements Renderer {
 		float lightAngleY = (float) Math.asin(light.getDirection().x);
 		float lightAngleZ = 0f;
 		return transformation.getLightViewMatrix(
-				new Vector3f(light.getDirection()).mul(5f),
+				new Vector3f(light.getDirection()).mul(30f),
 				new Vector3f(lightAngleX, lightAngleY, lightAngleZ));
 	}
 	
