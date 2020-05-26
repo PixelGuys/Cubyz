@@ -1,0 +1,9 @@
+class wood
+hardness 0.3
+solid no
+transparent yes
+emittedLight 0x00a09080
+drop auto
+
+model cubyz:torch.obj
+texture cubyz:torch

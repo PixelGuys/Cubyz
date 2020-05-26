@@ -51,7 +51,7 @@ public class Block implements RegistryElement {
 		this.id = id;
 		hardness = Float.parseFloat(props.getProperty("hardness", "1"));
 		blockClass = BlockClass.valueOf(bc);
-		light = Integer.parseUnsignedInt(props.getProperty("emittedLight", "0"));
+		light = Integer.decode(props.getProperty("emittedLight", "0"));
 		absorption = Integer.decode(props.getProperty("absorbedLight", "0"));
 		transparent = props.getProperty("transparent", "no").equalsIgnoreCase("yes");
 		degradable = props.getProperty("degradable", "no").equalsIgnoreCase("yes");

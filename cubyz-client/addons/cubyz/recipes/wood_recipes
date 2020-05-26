@@ -1,6 +1,8 @@
 L = cubyz:oak_log
 T = cubyz:oak_top
 P = cubyz:oak_planks
+S = cubyz:stick
+C = cubyz:coal
 
 shapeless
 L
@@ -18,4 +20,9 @@ result cubyz:workbench
 shaped
 P
 P
-result 4*cubyz:stick
+result 4*S
+
+shaped
+C
+S
+result 8*cubyz:torch
