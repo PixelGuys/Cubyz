@@ -289,8 +289,10 @@ public class Chunk {
 			for(int dy = 0; dy <= 1; dy++) {
 				for(int dz = 0; dz <= 1; dz++) {
 					int newLight = localLightUpdate(x+dx, y+dy, z+dz, 24, 0x00ffffff);
-					int[] arr = new int[]{x, y, z, newLight};
-					updates.add(arr);
+					if(newLight != -1) {
+						int[] arr = new int[]{x, y, z, newLight};
+						updates.add(arr);
+					}
 				}
 			}
 		}
@@ -300,8 +302,10 @@ public class Chunk {
 			for(int dy = 0; dy <= 1; dy++) {
 				for(int dz = 0; dz <= 1; dz++) {
 					int newLight = localLightUpdate(x+dx, y+dy, z+dz, 16, 0xff00ffff);
-					int[] arr = new int[]{x, y, z, newLight};
-					updates.add(arr);
+					if(newLight != -1) {
+						int[] arr = new int[]{x, y, z, newLight};
+						updates.add(arr);
+					}
 				}
 			}
 		}
@@ -311,8 +315,10 @@ public class Chunk {
 			for(int dy = 0; dy <= 1; dy++) {
 				for(int dz = 0; dz <= 1; dz++) {
 					int newLight = localLightUpdate(x+dx, y+dy, z+dz, 8, 0xffff00ff);
-					int[] arr = new int[]{x, y, z, newLight};
-					updates.add(arr);
+					if(newLight != -1) {
+						int[] arr = new int[]{x, y, z, newLight};
+						updates.add(arr);
+					}
 				}
 			}
 		}
@@ -322,8 +328,10 @@ public class Chunk {
 			for(int dy = 0; dy <= 1; dy++) {
 				for(int dz = 0; dz <= 1; dz++) {
 					int newLight = localLightUpdate(x+dx, y+dy, z+dz, 0, 0xffffff00);
-					int[] arr = new int[]{x, y, z, newLight};
-					updates.add(arr);
+					if(newLight != -1) {
+						int[] arr = new int[]{x, y, z, newLight};
+						updates.add(arr);
+					}
 				}
 			}
 		}
@@ -361,7 +369,7 @@ public class Chunk {
 				for(int dz = -1; dz <= 0; dz++) {
 					neighbors[7 + (dx << 2) + (dy << 1) + dz] = getBlockUnbound(x+dx, y+dy, z+dz);
 					// Take care about the case that this block is a light source, that is brighter than the current light level:
-					if(neighbors[7 + (dx << 2) + (dy << 1) + dz] != null && ((neighbors[7 + (dx << 2) + (dy << 1) + dz].getLight() >>> shift) & 255) >= value)
+					if(neighbors[7 + (dx << 2) + (dy << 1) + dz] != null && ((neighbors[7 + (dx << 2) + (dy << 1) + dz].getLight() >>> shift) & 255) > value)
 						return;
 				}
 			}
@@ -874,13 +882,11 @@ public class Chunk {
 			}
 			if(index == -1) { // Creates a new object if the block wasn't changed before
 				changes.add(new BlockChange(-1, b.ID, x, y, z));
-				return;
-			}
-			if(b.ID == changes.get(index).oldType) { // Removes the object if the block reverted to it's original state.
+			} else if(b.ID == changes.get(index).oldType) { // Removes the object if the block reverted to it's original state.
 				changes.remove(index);
-				return;
+			} else {
+				changes.get(index).newType = b.ID;
 			}
-			changes.get(index).newType = b.ID;
 		}
 		if(loaded)
 			lightUpdate(x, y, z);
