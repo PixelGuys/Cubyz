@@ -142,12 +142,12 @@ public class LocalWorld extends World {
 			}
 		}
 		if (player == null) {
-			player = (Player) CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player").newEntity();
-			player.setStellarTorus(currentTorus.getStellarTorus());
+			player = (Player) CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player").newEntity(currentTorus);
 			currentTorus.addEntity(player);
 		}
 		wio.saveWorldData();
 		blocks = blockList.toArray(new Block[0]);
+		currentTorus.setBlocks(blocks);
 		return blocks;
 	}
 	

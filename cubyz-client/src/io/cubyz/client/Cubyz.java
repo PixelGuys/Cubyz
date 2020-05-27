@@ -23,7 +23,6 @@ import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.RegistryElement;
 import io.cubyz.api.Resource;
 import io.cubyz.api.Side;
-import io.cubyz.base.init.ItemInit;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.CustomOre;
@@ -193,7 +192,6 @@ public class Cubyz implements GameLogic {
 						break;
 				}
 				world.getLocalPlayer().setPosition(new Vector3i(dx, highestY+2, dz));
-				world.getLocalPlayer().setStellarTorus(surface.getStellarTorus());
 				CubyzLogger.i.info("OK!");
 			}
 		}
@@ -215,8 +213,9 @@ public class Cubyz implements GameLogic {
 				}
 				Meshes.blockTextures.put(ore, tex);
 			}
-			ArrayList<CustomItem> customItems = ItemInit.CUSTOM_ITEMS;
-			for (CustomItem item : customItems) {
+			for (RegistryElement reg : ts.getCurrentRegistries().itemRegistry.registered()) {
+				if(!(reg instanceof CustomItem)) continue;
+				CustomItem item = (CustomItem)reg;
 				BufferedImage canvas;
 				if(item.isGem())
 					canvas = getImage("addons/cubyz/items/textures/materials/templates/"+"gem1"+".png"); // TODO: More gem types.
@@ -540,9 +539,8 @@ public class Cubyz implements GameLogic {
 				Vector3fi pos = world.getLocalPlayer().getPosition().clone();
 				EntityType pigType = CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:pig");
 				if (pigType == null) return;
-				Entity pig = pigType.newEntity();
+				Entity pig = pigType.newEntity(world.getCurrentTorus());
 				pig.setPosition(pos);
-				pig.setStellarTorus(world.getCurrentTorus().getStellarTorus());
 				world.getCurrentTorus().addEntity(pig);
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_P, false);
 			}

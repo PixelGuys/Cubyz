@@ -8,10 +8,11 @@ import io.cubyz.math.FloatingInteger;
 import io.cubyz.math.Vector3fi;
 import io.cubyz.ndt.NDTContainer;
 import io.cubyz.world.StellarTorus;
+import io.cubyz.world.Surface;
 
 public class Entity {
 
-	protected StellarTorus stellarTorus;
+	protected Surface surface;
 
 	protected Vector3fi position = new Vector3fi();
 	protected Vector3f rotation = new Vector3f();
@@ -24,12 +25,14 @@ public class Entity {
 	
 	protected int width = 1, height = 2, depth = 1;
 	
-	public Entity(EntityType type) {
+	public Entity(EntityType type, Surface surface) {
 		this.type = type;
+		this.surface = surface;
 	}
 	
-	public Entity(EntityType type, EntityAI ai) {
+	public Entity(EntityType type, Surface surface, EntityAI ai) {
 		this.type = type;
+		this.surface = surface;
 		this.ai = ai;
 	}
 	
@@ -264,7 +267,7 @@ public class Entity {
 	}
 	
 	public boolean checkBlock(int x, int y, int z) {
-		Block bi = stellarTorus.getWorld().getCurrentTorus().getBlock(x, y, z);
+		Block bi = surface.getBlock(x, y, z);
 		if(bi != null && bi.isSolid()) {
 			return true;
 		}
@@ -367,11 +370,7 @@ public class Entity {
 	}
 	
 	public StellarTorus getStellarTorus() {
-		return stellarTorus;
-	}
-
-	public void setStellarTorus(StellarTorus world) {
-		this.stellarTorus = world;
+		return surface.getStellarTorus();
 	}
 	
 	public Vector3fi getPosition() {

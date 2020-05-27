@@ -1,6 +1,6 @@
 package io.cubyz.items;
 
-import io.cubyz.api.CubyzRegistries;
+import io.cubyz.api.CurrentSurfaceRegistries;
 import io.cubyz.blocks.Block;
 import io.cubyz.ndt.NDTContainer;
 
@@ -68,8 +68,8 @@ public class ItemStack {
 		number = a;
 	}
 	
-	public void loadFrom(NDTContainer container) {
-		item = CubyzRegistries.ITEM_REGISTRY.getByID(container.getString("id"));
+	public void loadFrom(NDTContainer container, CurrentSurfaceRegistries registries) {
+		item = registries.itemRegistry.getByID(container.getString("id"));
 		number = container.getInteger("size");
 	}
 	

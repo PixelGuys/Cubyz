@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.InflaterInputStream;
 
+import io.cubyz.api.CurrentSurfaceRegistries;
 import io.cubyz.entity.Entity;
 import io.cubyz.math.Bits;
 import io.cubyz.ndt.NDTContainer;
@@ -56,8 +57,8 @@ public class TorusIO {
 			torus.setName(ndt.getString("name"));
 			Entity[] entities = new Entity[ndt.getInteger("entityCount")];
 			for (int i = 0; i < entities.length; i++) {
-				entities[i] = EntityIO.loadEntity(in);
-				entities[i].setStellarTorus(torus);
+				// TODO: Only load entities that are in loaded chunks.
+				entities[i] = EntityIO.loadEntity(in, surface);
 			}
 			if (surface != null) {
 				surface.setEntities(entities);

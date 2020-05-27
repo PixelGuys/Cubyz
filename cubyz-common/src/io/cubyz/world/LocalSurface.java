@@ -10,13 +10,9 @@ import java.util.concurrent.LinkedBlockingDeque;
 import org.joml.Vector4f;
 
 import io.cubyz.CubyzLogger;
-import io.cubyz.Profiler;
-import io.cubyz.Settings;
-import io.cubyz.api.CubyzRegistries;
-import io.cubyz.base.init.ItemInit;
+import io.cubyz.api.CurrentSurfaceRegistries;
 import io.cubyz.base.init.MaterialInit;
 import io.cubyz.blocks.Block;
-import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.CustomOre;
 import io.cubyz.blocks.Updateable;
 import io.cubyz.blocks.Ore;
@@ -71,6 +67,8 @@ public class LocalSurface extends Surface {
 	
 	BlockEntity[] blockEntities = new BlockEntity[0];
 	Integer[] liquids = new Integer[0];
+	
+	public CurrentSurfaceRegistries registries;
 
 	private ArrayList<CustomOre> customOres = new ArrayList<>();
 	
@@ -118,10 +116,10 @@ public class LocalSurface extends Surface {
 	}
 	
 	public LocalSurface(LocalStellarTorus torus) {
+		registries = new CurrentSurfaceRegistries();
 		localSeed = torus.getLocalSeed();
 		this.torus = torus;
 		MaterialInit.resetCustom();
-		ItemInit.resetCustom();
 		metaChunks = new ArrayList<>();
 		chunks = new Chunk[0];
 		
@@ -132,7 +130,7 @@ public class LocalSurface extends Surface {
 			thread.start();
 			threads.add(thread);
 		}
-		generator = CubyzRegistries.STELLAR_TORUS_GENERATOR_REGISTRY.getByID("cubyz:lifeland");
+		generator = registries.worldGeneratorRegistry.getByID("cubyz:lifeland");
 		if (generator instanceof LifelandGenerator) {
 			((LifelandGenerator) generator).sortGenerators();
 		}
@@ -150,28 +148,27 @@ public class LocalSurface extends Surface {
 		tio.loadTorusData(this); // load data here in order for entities to also be loaded.
 	}
 	
-	// Returns the blocks, so their meshes can be created and stored.
 	public int generate(ArrayList<Block> blockList, ArrayList<Ore> ores, int ID) {
 		Random rand = new Random(localSeed);
 		int randomAmount = 9 + rand.nextInt(3); // TODO
-		torusBlocks = new Block[randomAmount+2];
 		int i = 0;
 		for(i = 0; i < randomAmount; i++) {
-			torusBlocks[i] = CustomOre.random(rand);
-			customOres.add((CustomOre)torusBlocks[i]);
-			ores.add((Ore)torusBlocks[i]);
-			blockList.add(torusBlocks[i]);
-			torusBlocks[i].ID = ID++;
+			CustomOre block = CustomOre.random(rand, registries);
+			customOres.add(block);
+			ores.add(block);
+			blockList.add(block);
+			block.ID = ID++;
+			registries.blockRegistry.register(block);
 		}
 		
 		// Create the crystal ore for the CrystalCaverns:
-		CustomOre glowCrystalOre = CustomOre.random(rand);
-		torusBlocks[i] = glowCrystalOre;
+		CustomOre glowCrystalOre = CustomOre.random(rand, registries);
 		glowCrystalOre.makeGlow(); // Make sure it glows.
 		customOres.add(glowCrystalOre);
-		ores.add((Ore)torusBlocks[i]);
-		blockList.add(torusBlocks[i]);
-		torusBlocks[i].ID = ID++;
+		ores.add(glowCrystalOre);
+		blockList.add(glowCrystalOre);
+		glowCrystalOre.ID = ID++;
+		registries.blockRegistry.register(glowCrystalOre);
 		i++;
 		// Create the crystal block for the CrystalCaverns:
 		CustomOre crystalBlock = new CustomOre(0, 0, 0); // TODO: Add a CustomBlock type or interface because this is no ore.
@@ -181,11 +178,11 @@ public class LocalSurface extends Surface {
 		crystalBlock.setLight(glowCrystalOre.color);
 		crystalBlock.color = glowCrystalOre.color;
 		crystalBlock.seed = -1; // TODO: Fix crystal block within the new ore texture generation system.
-		torusBlocks[i] = crystalBlock;
-		customOres.add((CustomOre)torusBlocks[i]);
-		ores.add((Ore)torusBlocks[i]);
-		blockList.add(torusBlocks[i]);
-		torusBlocks[i].ID = ID++;
+		customOres.add(crystalBlock);
+		ores.add(crystalBlock);
+		blockList.add(crystalBlock);
+		crystalBlock.ID = ID++;
+		registries.blockRegistry.register(crystalBlock);
 		i++;
 		// Init crystal caverns with those two blocks:
 		CrystalCavernGenerator.init(crystalBlock, glowCrystalOre);
@@ -194,6 +191,7 @@ public class LocalSurface extends Surface {
 			tio.saveTorusData(this);
 		}
 		generated = true;
+		torusBlocks = blockList.toArray(new Block[0]);
 		return ID;
 	}
 	
@@ -474,6 +472,10 @@ public class LocalSurface extends Surface {
 		}
 	}
 	
+	public void setBlocks(Block[] blocks) {
+		torusBlocks = blocks;
+	}
+	
 	public void getMapData(int x, int y, int width, int height, float [][] heightMap, float[][] heatMap, Biome[][] biomeMap) {
 		int x0 = x&(~255);
 		int y0 = y&(~255);
@@ -522,7 +524,7 @@ public class LocalSurface extends Surface {
 				}
 				metaChunks.remove(index);
 			}
-			MetaChunk ch = new MetaChunk(wx, wz, localSeed, this);
+			MetaChunk ch = new MetaChunk(wx, wz, localSeed, this, registries);
 			metaChunks.add(ch);
 			return ch;
 		}
@@ -659,5 +661,10 @@ public class LocalSurface extends Surface {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+	}
+
+	@Override
+	public CurrentSurfaceRegistries getCurrentRegistries() {
+		return registries;
 	}
 }

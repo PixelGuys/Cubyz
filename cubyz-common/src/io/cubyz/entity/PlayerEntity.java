@@ -19,13 +19,17 @@ public class PlayerEntity extends EntityType {
 	}
 
 	public static class PlayerImpl extends Player {
-		
+
 		private boolean flying = false;
 		private Inventory inv = new Inventory(37); // 4*8 normal inventory + 4 crafting slots + 1 crafting result slot.
 		private BlockInstance toBreak = null;
 		private long timeStarted = 0;
 		private int maxTime = -1;
 		private int breakingSlot = -1; // Slot used to break the block. Slot change results in restart of block breaking.
+
+		public PlayerImpl(Surface surface) {
+			super(surface);
+		}
 		
 		@Override
 		public boolean isFlying() {
@@ -94,7 +98,7 @@ public class PlayerEntity extends EntityType {
 		public void loadFrom(NDTContainer ndt) {
 			super.loadFrom(ndt);
 			if (ndt.hasKey("inventory")) {
-				inv.loadFrom(ndt.getContainer("inventory"));
+				inv.loadFrom(ndt.getContainer("inventory"), surface.getCurrentRegistries());
 			}
 		}
 		
@@ -154,13 +158,13 @@ public class PlayerEntity extends EntityType {
 
 		@Override
 		public World getWorld() {
-			return stellarTorus.getWorld();
+			return surface.getStellarTorus().getWorld();
 		}
 	}
 
 	@Override
-	public Entity newEntity() {
-		return new PlayerImpl();
+	public Entity newEntity(Surface surface) {
+		return new PlayerImpl(surface);
 	}
 	
 }

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 
 import org.joml.Vector4f;
 
+import io.cubyz.api.CurrentSurfaceRegistries;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockEntity;
 import io.cubyz.blocks.BlockInstance;
@@ -68,6 +69,8 @@ public abstract class Surface {
 	public abstract void update();
 	
 	public abstract Vector4f getClearColor();
+	
+	public abstract CurrentSurfaceRegistries getCurrentRegistries();
 	
 	public int getAnd() {
 		return -1;

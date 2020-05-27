@@ -7,7 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Random;
 
-import io.cubyz.base.init.ItemInit;
+import io.cubyz.api.CurrentSurfaceRegistries;
 import io.cubyz.items.CustomItem;
 import io.cubyz.items.tools.CustomMaterial;
 import io.cubyz.ndt.NDTContainer;
@@ -287,7 +287,7 @@ public class CustomOre extends Ore implements CustomObject {
 			return randomName(rand); // Repeat until a long enough name is generated.
 	}
 	
-	public static CustomOre random(Random rand) {
+	public static CustomOre random(Random rand, CurrentSurfaceRegistries registries) {
 		CustomOre ore = new CustomOre(8+rand.nextInt(200), 1+rand.nextFloat()*15, 1+rand.nextFloat()*9);
 		ore.color = rand.nextInt(0xFFFFFF);
 		ore.name = randomName(new Random(rand.nextLong())); // Use a new random, so an update in the name generator won't change all other facts about custom ores.
@@ -297,7 +297,7 @@ public class CustomOre extends Ore implements CustomObject {
 		if(rand.nextInt(4) == 0) { // Make some ores glow.
 			ore.makeGlow();
 		}
-		ore.makeBlockDrop();
+		ore.makeBlockDrop(registries);
 		boolean addTools = true; // TODO
 		if(addTools) {
 			int rareness = (int)(ore.size*ore.veins); // TODO: Balance material stats!
@@ -321,9 +321,9 @@ public class CustomOre extends Ore implements CustomObject {
 		return ore;
 	}*/
 	
-	private void makeBlockDrop() {
+	private void makeBlockDrop(CurrentSurfaceRegistries registries) {
 		CustomItem bd = CustomItem.fromOre(this);
-		ItemInit.registerCustom(bd);
+		registries.itemRegistry.register(bd);
 		bd.setID("cubyz:"+getName());
 		setBlockDrop(bd);
 	}

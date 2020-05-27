@@ -7,9 +7,17 @@ import java.util.Map.Entry;
 import io.cubyz.CubyzLogger;
 
 public class Registry<T extends RegistryElement> {
-	private HashMap<String, T> hashMap = new HashMap<>();
+	private HashMap<String, T> hashMap;
 	private boolean debug = Boolean.parseBoolean(System.getProperty("registry.debugEnabled", "false"));
 	private boolean alwaysError = Boolean.parseBoolean(System.getProperty("registry.dumpAsError", "true"));
+	
+	public Registry() {
+		hashMap = new HashMap<>();
+	}
+	
+	public Registry(Registry<T> other) {
+		hashMap = new HashMap<String, T>(other.hashMap);
+	}
 	
 	public RegistryElement[] registered() { // can be casted to T
 		return hashMap.values().toArray(new RegistryElement[0]);

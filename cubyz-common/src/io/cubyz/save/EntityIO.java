@@ -5,10 +5,12 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 import io.cubyz.api.CubyzRegistries;
+import io.cubyz.api.CurrentSurfaceRegistries;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.EntityType;
 import io.cubyz.math.Bits;
 import io.cubyz.ndt.NDTContainer;
+import io.cubyz.world.Surface;
 
 public class EntityIO {
 
@@ -22,7 +24,7 @@ public class EntityIO {
 		out.write(data);
 	}
 	
-	public static Entity loadEntity(InputStream in) throws IOException {
+	public static Entity loadEntity(InputStream in, Surface surface) throws IOException {
 		byte[] lenBytes = new byte[4];
 		in.read(lenBytes);
 		int len = Bits.getInt(lenBytes, 0);
@@ -30,11 +32,11 @@ public class EntityIO {
 		in.read(buf);
 		NDTContainer ndt = new NDTContainer(buf);
 		
-		EntityType type = CubyzRegistries.ENTITY_REGISTRY.getByID(ndt.getString("id"));
+		EntityType type = surface.getCurrentRegistries().entityRegistry.getByID(ndt.getString("id"));
 		if (type == null) {
 			return null;
 		}
-		Entity ent = type.newEntity();
+		Entity ent = type.newEntity(surface);
 		ent.loadFrom(ndt);
 		
 		return ent;

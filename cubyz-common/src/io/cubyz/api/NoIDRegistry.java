@@ -6,8 +6,16 @@ import java.util.List;
 import io.cubyz.CubyzLogger;
 
 public class NoIDRegistry<T> {
-	private ArrayList<T> registered = new ArrayList<>();
+	private ArrayList<T> registered;
 	private boolean debug = Boolean.parseBoolean(System.getProperty("registry.debugEnabled", "false"));
+	
+	public NoIDRegistry() {
+		registered = new ArrayList<>();
+	}
+	
+	public NoIDRegistry(NoIDRegistry<T> other) {
+		registered = new ArrayList<T>(other.registered);
+	}
 	
 	public Object[] registered() { // can be casted to T
 		return registered.toArray();

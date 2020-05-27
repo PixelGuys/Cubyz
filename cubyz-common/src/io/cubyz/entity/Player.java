@@ -15,8 +15,8 @@ import io.cubyz.world.Surface;
  */
 public abstract class Player extends Entity implements CommandSource {
 
-	public Player() {
-		super(CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player"));
+	public Player(Surface surface) {
+		super(CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player"), surface);
 		// TODO: Take care of data files.
 		health = maxHealth = 16;
 		hunger = maxHunger = 16;

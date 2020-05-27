@@ -6,6 +6,7 @@ import org.joml.Vector3f;
 
 import io.cubyz.api.Resource;
 import io.cubyz.ndt.NDTContainer;
+import io.cubyz.world.Surface;
 
 public class Pig extends EntityType implements EntityAI {
 
@@ -14,8 +15,8 @@ public class Pig extends EntityType implements EntityAI {
 	}
 
 	@Override
-	public Entity newEntity() {
-		Entity ent = new Entity(this, this);
+	public Entity newEntity(Surface surface) {
+		Entity ent = new Entity(this, surface, this);
 		ent.height = 1;
 		return ent;
 	}

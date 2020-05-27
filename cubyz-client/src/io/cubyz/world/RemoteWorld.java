@@ -32,7 +32,7 @@ public class RemoteWorld extends World {
 	private long gameTime;
 	
 	public RemoteWorld() {
-		localPlayer = (Player) CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player").newEntity();
+		//localPlayer = (Player) CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player").newEntity(surface); // TODO!
 		//localPlayer.setStellarTorus(this.getCurrentTorus()); TODO!
 		localPlayer.getPosition().add(10, 200, 10);
 		entities = new ArrayList<Entity>();

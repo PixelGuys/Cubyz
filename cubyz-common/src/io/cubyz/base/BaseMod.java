@@ -7,7 +7,6 @@ import io.cubyz.api.NoIDRegistry;
 import io.cubyz.api.Proxy;
 import io.cubyz.api.Registry;
 import io.cubyz.api.Resource;
-import io.cubyz.base.init.ItemInit;
 import io.cubyz.base.init.MaterialInit;
 import io.cubyz.blocks.Block;
 import io.cubyz.command.ClearCommand;
@@ -66,11 +65,6 @@ public class BaseMod {
 	public void registerEntities(Registry<EntityType> reg) {
 		reg.register(new Pig());
 		reg.register(new PlayerEntity());
-	}
-	
-	@EventHandler(type = "register:item")
-	public void registerItems(Registry<Item> reg) {
-		ItemInit.registerAll(reg);
 	}
 	
 	public void registerWorldGenerators(Registry<SurfaceGenerator> reg) {

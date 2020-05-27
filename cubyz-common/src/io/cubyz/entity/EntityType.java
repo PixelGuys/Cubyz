@@ -2,6 +2,7 @@ package io.cubyz.entity;
 
 import io.cubyz.api.RegistryElement;
 import io.cubyz.api.Resource;
+import io.cubyz.world.Surface;
 
 public abstract class EntityType implements RegistryElement {
 	
@@ -15,6 +16,6 @@ public abstract class EntityType implements RegistryElement {
 		return id;
 	}
 	
-	public abstract Entity newEntity();
+	public abstract Entity newEntity(Surface surface);
 	
 }

@@ -1,6 +1,7 @@
 package io.cubyz.world;
 
 import io.cubyz.api.CubyzRegistries;
+import io.cubyz.api.CurrentSurfaceRegistries;
 import io.cubyz.api.RegistryElement;
 import io.cubyz.math.CubyzMath;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
@@ -13,7 +14,7 @@ public class MetaChunk {
 	Surface world;
 	public int x, z;
 	
-	public MetaChunk(int x, int z, long seed, Surface world) {
+	public MetaChunk(int x, int z, long seed, Surface world, CurrentSurfaceRegistries registries) {
 		this.x = x;
 		this.z = z;
 		this.world = world;
@@ -23,10 +24,10 @@ public class MetaChunk {
 		humidityMap = PerlinNoise.generateTwoOctaveMapFragment(x, z, 256, 256, 2048, seed ^ 6587946239L, world.getAnd());
 		
 		biomeMap = new Biome[256][256];
-		advancedHeightMapGeneration(seed);
+		advancedHeightMapGeneration(seed, registries);
 	}
 	
-	public void advancedHeightMapGeneration(long seed) {
+	public void advancedHeightMapGeneration(long seed, CurrentSurfaceRegistries registries) {
 		float[][] rougherMap = Noise.generateFractalTerrain(x, z, 256, 256, 128, seed ^ -658936678493L, world.getAnd()); // Map used to add terrain roughness.
 		for(int ix = 0; ix < 256; ix++) {
 			for(int iy = 0; iy < 256; iy++) {
@@ -38,7 +39,7 @@ public class MetaChunk {
 				}
 				// Sort the biomes by their distance in height-heat-humidity space:
 				Biome[] closeBiomes = new Biome[numberOfBiomes];
-				for(RegistryElement reg : CubyzRegistries.BIOME_REGISTRY.registered()) {
+				for(RegistryElement reg : registries.biomeRegistry.registered()) {
 					Biome biome = (Biome)reg;
 					float dist = biome.dist(heightMap[ix][iy], heatMap[ix][iy], humidityMap[ix][iy]);
 					int position = numberOfBiomes+1;

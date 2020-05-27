@@ -1,7 +1,7 @@
 package io.cubyz.items;
 
 import io.cubyz.api.CubyzRegistries;
-import io.cubyz.base.init.ItemInit;
+import io.cubyz.api.CurrentSurfaceRegistries;
 import io.cubyz.blocks.Block;
 import io.cubyz.items.tools.Tool;
 import io.cubyz.ndt.NDTContainer;
@@ -78,24 +78,20 @@ public class Inventory {
 		return container;
 	}
 	
-	public void loadFrom(NDTContainer container) {
+	public void loadFrom(NDTContainer container, CurrentSurfaceRegistries registries) {
 		items = new ItemStack[container.getInteger("capacity")];
 		for (int i = 0; i < items.length; i++) {
 			if (container.hasKey(String.valueOf(i))) {
 				NDTContainer ndt = container.getContainer(String.valueOf(i));
-				Item item = CubyzRegistries.ITEM_REGISTRY.getByID(ndt.getString("item"));
+				Item item = registries.itemRegistry.getByID(ndt.getString("item"));
 				if (item == null) {
 					// Check if it is a tool:
 					if(ndt.hasKey("tool")) {
 						item = Tool.loadFrom(ndt.getContainer("tool"));
 					} else {
-						// Search the ItemInit which contains also custom items:
-						item = CubyzRegistries.ITEM_REGISTRY.getByID(ndt.getString("item"));
-						if(item == null) {
-							// item not existant in this version of the game. Can't do much so ignore it.
-							items[i] = new ItemStack();
-							continue;
-						}
+						// item not existant in this version of the game. Can't do much so ignore it.
+						items[i] = new ItemStack();
+						continue;
 					}
 				}
 				ItemStack stack = new ItemStack(item);
