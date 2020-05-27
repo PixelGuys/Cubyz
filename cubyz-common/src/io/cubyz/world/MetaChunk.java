@@ -28,34 +28,67 @@ public class MetaChunk {
 	
 	public void advancedHeightMapGeneration(long seed) {
 		float[][] rougherMap = Noise.generateFractalTerrain(x, z, 256, 256, 128, seed ^ -658936678493L, world.getAnd()); // Map used to add terrain roughness.
-		for(int i = 0; i < 256; i++) {
-			for(int j = 0; j < 256; j++) {
-				Biome closest = null;
-				float closestDist = Float.MAX_VALUE;
-				// Make a weighted average between all biomes to determine the true height:
-				float height = 0;
-				float weight = 0;
+		for(int ix = 0; ix < 256; ix++) {
+			for(int iy = 0; iy < 256; iy++) {
+				// How many of the first biomes are used in the interpolation. This is limited to prevent long-range effects of biomes.
+				final int numberOfBiomes = 3;
+				float[] distance = new float[numberOfBiomes + 1];
+				for(int i = 0; i <= numberOfBiomes; i++) {
+					distance[i] = Float.MAX_VALUE;
+				}
+				// Sort the biomes by their distance in height-heat-humidity space:
+				Biome[] closeBiomes = new Biome[numberOfBiomes];
 				for(RegistryElement reg : CubyzRegistries.BIOME_REGISTRY.registered()) {
 					Biome biome = (Biome)reg;
-					float dist = (float)Math.pow(biome.dist(heightMap[i][j], heatMap[i][j], humidityMap[i][j]), 2);
-					float localHeight = 2*(rougherMap[i][j]-0.5f)*biome.getRoughness(heightMap[i][j]);
+					float dist = biome.dist(heightMap[ix][iy], heatMap[ix][iy], humidityMap[ix][iy]);
+					int position = numberOfBiomes+1;
+					for(int i = numberOfBiomes; i >= 0; i--) {
+						if(dist < distance[i]) {
+							position = i;
+							if(i < numberOfBiomes - 1) {
+								distance[i+1] = distance[i];
+								closeBiomes[i+1] = closeBiomes[i];
+							} else if(i == numberOfBiomes - 1) {
+								distance[i+1] = distance[i];
+							}
+						}
+					}
+					if(position < numberOfBiomes) {
+						distance[position] = dist;
+						closeBiomes[position] = biome;
+					} else if(position == numberOfBiomes) {
+						distance[position] = dist;
+					}
+				}
+				for(int i = 0; i < numberOfBiomes; i++) {
+					if(closeBiomes[i] == null) {
+						closeBiomes[i] = closeBiomes[i-1];
+						distance[i] = distance[i-1];
+					}
+				}
+				// Interpolate between the closest biomes:
+				float offset = 1/distance[numberOfBiomes];
+				
+				float height = 0;
+				float weight = 0;
+				
+				for(int i = 0; i < numberOfBiomes; i++) {
+					Biome biome = closeBiomes[i];
+					float dist = distance[i];
+					float localHeight = (rougherMap[ix][iy]-0.5f)*biome.getRoughness();
 					// A roughness factor of > 1 or < -1 should also be possible. In that case the terrain should "mirror" at the(averaged) height limit(minHeight, maxHeight) of the biomes:
-					localHeight += heightMap[i][j];
+					localHeight += heightMap[ix][iy];
 					localHeight -= biome.minHeight;
 					localHeight = CubyzMath.floorMod(localHeight, 2*(biome.maxHeight - biome.minHeight));
 					if(localHeight > (biome.maxHeight - biome.minHeight)) localHeight = 2*(biome.maxHeight - biome.minHeight) - localHeight;
 					localHeight += biome.minHeight;
-					
-					height += localHeight/dist;
-					weight += 1/dist;
-					if(dist < closestDist) {
-						closest = biome;
-						closestDist = dist;
-					}
+					float localWeight = 1/dist - offset;
+					height += localHeight*localWeight;
+					weight += localWeight;
 				}
 				height = height/weight;
-				heightMap[i][j] = height;
-				biomeMap[i][j] = closest;
+				heightMap[ix][iy] = height;
+				biomeMap[ix][iy] = closeBiomes[0];
 			}
 		}
 	}

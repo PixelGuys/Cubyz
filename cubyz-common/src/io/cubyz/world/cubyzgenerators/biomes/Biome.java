@@ -55,7 +55,7 @@ public class Biome implements RegistryElement {
 	public Resource getRegistryID() {
 		return identifier;
 	}
-	public float getRoughness(float h) {
-		return roughness*Math.min(maxHeight - h, h - minHeight)/(maxHeight - minHeight);
+	public float getRoughness() {
+		return roughness*Math.min(maxHeight - height, height - minHeight)/(maxHeight - minHeight);
 	}
 }
