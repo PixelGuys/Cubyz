@@ -3,7 +3,8 @@ package io.cubyz.items.tools;
 import java.util.ArrayList;
 import java.util.List;
 
-import io.cubyz.base.init.MaterialInit;
+import io.cubyz.api.CurrentSurfaceRegistries;
+import io.cubyz.api.Registry;
 import io.cubyz.blocks.Block;
 import io.cubyz.items.Item;
 import io.cubyz.ndt.NDTContainer;
@@ -112,17 +113,18 @@ public abstract class Tool extends Item {
 		return container;
 	}
 	
-	public static Tool loadFrom(NDTContainer container) {
+	public static Tool loadFrom(NDTContainer container, CurrentSurfaceRegistries registries) {
 		String type = container.getString("type");
 		Tool tool = null;
+		Registry<Material> matReg = registries.materialRegistry;
 		if(type.equals("Axe")) {
-			tool = new Axe(MaterialInit.search(container.getString("head")), MaterialInit.search(container.getString("binding")), MaterialInit.search(container.getString("handle")));
+			tool = new Axe(matReg.getByID(container.getString("head")), matReg.getByID(container.getString("binding")), matReg.getByID(container.getString("handle")));
 		} else if(type.equals("Pickaxe")) {
-			tool = new Pickaxe(MaterialInit.search(container.getString("head")), MaterialInit.search(container.getString("binding")), MaterialInit.search(container.getString("handle")));
+			tool = new Pickaxe(matReg.getByID(container.getString("head")), matReg.getByID(container.getString("binding")), matReg.getByID(container.getString("handle")));
 		} else if(type.equals("Shovel")) {
-			tool = new Shovel(MaterialInit.search(container.getString("head")), MaterialInit.search(container.getString("binding")), MaterialInit.search(container.getString("handle")));
+			tool = new Shovel(matReg.getByID(container.getString("head")), matReg.getByID(container.getString("binding")), matReg.getByID(container.getString("handle")));
 		} else if(type.equals("Sword")) {
-			tool = new Sword(MaterialInit.search(container.getString("head")), MaterialInit.search(container.getString("binding")), MaterialInit.search(container.getString("handle")));
+			tool = new Sword(matReg.getByID(container.getString("head")), matReg.getByID(container.getString("binding")), matReg.getByID(container.getString("handle")));
 		}
 		tool.durability = container.getInteger("durability");
 		tool.maxDurability = container.getInteger("maxDurability");

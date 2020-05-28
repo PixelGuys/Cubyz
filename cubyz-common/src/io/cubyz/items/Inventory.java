@@ -87,7 +87,7 @@ public class Inventory {
 				if (item == null) {
 					// Check if it is a tool:
 					if(ndt.hasKey("tool")) {
-						item = Tool.loadFrom(ndt.getContainer("tool"));
+						item = Tool.loadFrom(ndt.getContainer("tool"), registries);
 					} else {
 						// item not existant in this version of the game. Can't do much so ignore it.
 						items[i] = new ItemStack();

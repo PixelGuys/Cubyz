@@ -7,7 +7,6 @@ import io.cubyz.api.NoIDRegistry;
 import io.cubyz.api.Proxy;
 import io.cubyz.api.Registry;
 import io.cubyz.api.Resource;
-import io.cubyz.base.init.MaterialInit;
 import io.cubyz.blocks.Block;
 import io.cubyz.command.ClearCommand;
 import io.cubyz.command.CureCommand;
@@ -19,6 +18,8 @@ import io.cubyz.entity.PlayerEntity;
 import io.cubyz.items.Item;
 import io.cubyz.items.Recipe;
 import io.cubyz.items.tools.Material;
+import io.cubyz.items.tools.modifiers.FallingApart;
+import io.cubyz.items.tools.modifiers.Regrowth;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 import io.cubyz.world.cubyzgenerators.biomes.BlockStructure;
 import io.cubyz.world.cubyzgenerators.biomes.SimpleTreeModel;
@@ -72,6 +73,34 @@ public class BaseMod {
 	}
 	
 	public void registerMaterials(Registry<Material> reg) {
-		MaterialInit.registerAll(reg);
+		Item stick = CubyzRegistries.ITEM_REGISTRY.getByID("cubyz:stick");
+		Material dirt = new Material(-50, 5, 0, 0.0f, 0.1f);
+		dirt.setID("cubyz:dirt");
+		dirt.addModifier(new FallingApart(0.1f));
+		dirt.addItem(CubyzRegistries.ITEM_REGISTRY.getByID("cubyz:dirt"), 100);
+		reg.register(dirt);
+		
+		Material wood = new Material(-20, 50, 20, 0.01f/*being hit by a wood sword doesn't hurt*/, 1);
+		wood.setMiningLevel(1);
+		wood.setID("cubyz:wood");
+		wood.addModifier(new Regrowth());
+		wood.addModifier(new FallingApart(0.9f));
+		wood.addItem(stick, 50);
+		wood.addItem(CubyzRegistries.ITEM_REGISTRY.getByID("cubyz:oak_planks"), 100);
+		wood.addItem(CubyzRegistries.ITEM_REGISTRY.getByID("cubyz:oak_log"), 150); // Working with oak logs in the table is inefficient.
+		reg.register(wood);
+		
+		Material stone = new Material(10, 30, 20, 0.1f, 1.5f);
+		stone.setMiningLevel(2);
+		stone.setID("cubyz:stone");
+		// TODO: Modifiers
+		stone.addItem(CubyzRegistries.ITEM_REGISTRY.getByID("cubyz:cobblestone"), 100);
+		reg.register(stone);
+		
+		Material cactus = new Material(-30, 75, 10, 0.2f, 0.7f);
+		cactus.setID("cubyz:cactus");
+		// TODO: Modifiers
+		cactus.addItem(CubyzRegistries.ITEM_REGISTRY.getByID("cubyz:cactus"), 100);
+		reg.register(cactus);
 	}
 }

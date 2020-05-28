@@ -11,7 +11,6 @@ import org.joml.Vector4f;
 
 import io.cubyz.CubyzLogger;
 import io.cubyz.api.CurrentSurfaceRegistries;
-import io.cubyz.base.init.MaterialInit;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.CustomOre;
 import io.cubyz.blocks.Updateable;
@@ -119,7 +118,6 @@ public class LocalSurface extends Surface {
 		registries = new CurrentSurfaceRegistries();
 		localSeed = torus.getLocalSeed();
 		this.torus = torus;
-		MaterialInit.resetCustom();
 		metaChunks = new ArrayList<>();
 		chunks = new Chunk[0];
 		

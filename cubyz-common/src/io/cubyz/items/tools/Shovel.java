@@ -1,6 +1,7 @@
 package io.cubyz.items.tools;
 
-import io.cubyz.base.init.MaterialInit;
+import io.cubyz.api.CurrentSurfaceRegistries;
+import io.cubyz.api.RegistryElement;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.items.Item;
@@ -28,10 +29,10 @@ public class Shovel extends Tool {
 		return head.damage;
 	}
 	
-	public static Item canCraft(ItemStack head, ItemStack binding, ItemStack handle) {
+	public static Item canCraft(ItemStack head, ItemStack binding, ItemStack handle, CurrentSurfaceRegistries registries) {
 		Material he = null, bi = null, ha = null;
-		if(head.getItem() != null)
-		for(Material ma : MaterialInit.MATERIALS) {
+		for(RegistryElement reg : registries.materialRegistry.registered()) {
+			Material ma = (Material)reg;
 			if(ma.getItems().containsKey(head.getItem()) && head.getAmount()*ma.getItems().get(head.getItem()) >= HEAD) {
 				he = ma;
 			}
@@ -48,10 +49,10 @@ public class Shovel extends Tool {
 			
 	}
 	
-	public static int[] craftingAmount(ItemStack head, ItemStack binding, ItemStack handle) {
+	public static int[] craftingAmount(ItemStack head, ItemStack binding, ItemStack handle, CurrentSurfaceRegistries registries) {
 		int[] amount = new int[3];
-		if(head.getItem() != null)
-		for(Material ma : MaterialInit.MATERIALS) {
+		for(RegistryElement reg : registries.materialRegistry.registered()) {
+			Material ma = (Material)reg;
 			if(ma.getItems().containsKey(head.getItem()) && head.getAmount()*ma.getItems().get(head.getItem()) >= HEAD) {
 				amount[0] = (HEAD + ma.getItems().get(head.getItem()) - 1)/ma.getItems().get(head.getItem());
 			}

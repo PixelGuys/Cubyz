@@ -301,7 +301,7 @@ public class CustomOre extends Ore implements CustomObject {
 		boolean addTools = true; // TODO
 		if(addTools) {
 			int rareness = (int)(ore.size*ore.veins); // TODO: Balance material stats!
-			new CustomMaterial(rand.nextInt(1000000/rareness), rand.nextInt(1000000/rareness), rand.nextInt(1000000/rareness), rand.nextFloat()*10, rand.nextFloat()*10000/rareness, ore.color, ore.getBlockDrop(), 100);
+			new CustomMaterial(rand.nextInt(1000000/rareness), rand.nextInt(1000000/rareness), rand.nextInt(1000000/rareness), rand.nextFloat()*10, rand.nextFloat()*10000/rareness, ore.color, ore.getBlockDrop(), 100, registries);
 		}
 		return ore;
 	}

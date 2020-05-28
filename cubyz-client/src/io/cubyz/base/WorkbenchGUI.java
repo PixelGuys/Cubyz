@@ -126,16 +126,16 @@ public class WorkbenchGUI extends GeneralInventory {
 						int[] items;
 						switch(craftingMode) {
 							case AXE:
-								items = Axe.craftingAmount(inv[32].reference, inv[33].reference, inv[34].reference);
+								items = Axe.craftingAmount(inv[32].reference, inv[33].reference, inv[34].reference, Cubyz.surface.getCurrentRegistries());
 								break;
 							case PICKAXE:
-								items = Pickaxe.craftingAmount(inv[32].reference, inv[33].reference, inv[34].reference);
+								items = Pickaxe.craftingAmount(inv[32].reference, inv[33].reference, inv[34].reference, Cubyz.surface.getCurrentRegistries());
 								break;
 							case SHOVEL:
-								items = Shovel.craftingAmount(inv[32].reference, inv[33].reference, inv[34].reference);
+								items = Shovel.craftingAmount(inv[32].reference, inv[33].reference, inv[34].reference, Cubyz.surface.getCurrentRegistries());
 								break;
 							case SWORD:
-								items = Sword.craftingAmount(inv[32].reference, inv[33].reference, inv[34].reference);
+								items = Sword.craftingAmount(inv[32].reference, inv[33].reference, inv[34].reference, Cubyz.surface.getCurrentRegistries());
 								break;
 							default:
 								return;
@@ -180,16 +180,16 @@ public class WorkbenchGUI extends GeneralInventory {
 		inv[inv.length-1].reference.clear();
 		switch(craftingMode) {
 			case AXE:
-				item = Axe.canCraft(inv[32].reference, inv[33].reference, inv[34].reference);
+				item = Axe.canCraft(inv[32].reference, inv[33].reference, inv[34].reference, Cubyz.surface.getCurrentRegistries());
 				break;
 			case PICKAXE:
-				item = Pickaxe.canCraft(inv[32].reference, inv[33].reference, inv[34].reference);
+				item = Pickaxe.canCraft(inv[32].reference, inv[33].reference, inv[34].reference, Cubyz.surface.getCurrentRegistries());
 				break;
 			case SHOVEL:
-				item = Shovel.canCraft(inv[32].reference, inv[33].reference, inv[34].reference);
+				item = Shovel.canCraft(inv[32].reference, inv[33].reference, inv[34].reference, Cubyz.surface.getCurrentRegistries());
 				break;
 			case SWORD:
-				item = Sword.canCraft(inv[32].reference, inv[33].reference, inv[34].reference);
+				item = Sword.canCraft(inv[32].reference, inv[33].reference, inv[34].reference, Cubyz.surface.getCurrentRegistries());
 				break;
 			case NORMAL:
 				// Find out how many items are there in the grid and put them in an array:
