@@ -57,6 +57,20 @@ public class Utilities {
 		}
 		return null;
 	}
+	
+	// A simple hash function. I don't want to use String.hashCode() because it could create compatibility issues with future versions of java.
+	// Uses jenkins hash function.
+	public static long hash(String input) {
+		long hash = input.length();
+		for(int i = 0; i < input.length(); i++) {
+			hash += input.charAt(i);
+			hash += hash << 10;
+			hash ^= hash >> 6;
+		}
+		hash += hash << 3;
+		hash ^= hash >> 11;
+		return hash + (hash << 15);
+	}
 
 	// Doesn't do any range checks. Do not give it empty arrays!
 	public static void fillArray(Object[] array, Object value) {

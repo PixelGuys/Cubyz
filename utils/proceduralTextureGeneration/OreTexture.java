@@ -8,7 +8,7 @@ public class OreTexture {
 	public static BufferedImage getImage(String fileName) {
 		try {
 			return ImageIO.read(new File(fileName));
-		} catch(Exception e) {}//e.printStackTrace();}
+		} catch(Exception e) {e.printStackTrace();}
 		return null;
 	}
 	
@@ -148,7 +148,7 @@ public class OreTexture {
 
 	public static void main(String[] args) { // Just playing around with some ore textures. Don't mind the code and the random image appearing in the project path.
 		int n = 100;
-		BufferedImage stone = getImage("../../cubyz-client/assets/cubyz/textures/blocks/stone.png");
+		BufferedImage stone = getImage("../../cubyz-client/addons/cubyz/blocks/textures/stone.png");
 		BufferedImage canvas = new BufferedImage(16*n, 16*n, BufferedImage.TYPE_INT_RGB);
 		for(int ix = 0; ix < n; ix++) {
 			for(int iy = 0; iy < n; iy++) {

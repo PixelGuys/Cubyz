@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Random;
 
+import io.cubyz.Utilities;
 import io.cubyz.api.CurrentSurfaceRegistries;
 import io.cubyz.items.CustomItem;
 import io.cubyz.items.tools.CustomMaterial;
@@ -288,9 +289,13 @@ public class CustomOre extends Ore implements CustomObject {
 	}
 	
 	public static CustomOre random(Random rand, CurrentSurfaceRegistries registries) {
+		String name = randomName(rand);
+		// Use a seed based on the name, so if the same ore gets generated twice in the giant world, it will have the same properties.
+		// This fact could also allow an interactive wiki which displays an ores property with knowledge of only the name(TODO).
+		rand = new Random(Utilities.hash(name));
 		CustomOre ore = new CustomOre(8+rand.nextInt(200), 1+rand.nextFloat()*15, 1+rand.nextFloat()*9);
+		ore.name = name;
 		ore.color = rand.nextInt(0xFFFFFF);
-		ore.name = randomName(new Random(rand.nextLong())); // Use a new random, so an update in the name generator won't change all other facts about custom ores.
 		ore.seed = rand.nextLong();
 		ore.setHardness(rand.nextInt()*30);
 		ore.setID("cubyz:" + ore.name + " Ore");
