@@ -18,6 +18,7 @@ import io.cubyz.entity.PlayerEntity;
 import io.cubyz.items.Item;
 import io.cubyz.items.Recipe;
 import io.cubyz.items.tools.Material;
+import io.cubyz.items.tools.Modifier;
 import io.cubyz.items.tools.modifiers.FallingApart;
 import io.cubyz.items.tools.modifiers.Regrowth;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
@@ -72,19 +73,31 @@ public class BaseMod {
 		reg.registerAll(new LifelandGenerator(), new FlatlandGenerator());
 	}
 	
+	public void registerModifiers(Registry<Modifier> reg) {
+		reg.register(new FallingApart());
+		reg.register(new Regrowth());
+	}
+	
 	public void registerMaterials(Registry<Material> reg) {
+		
 		Item stick = CubyzRegistries.ITEM_REGISTRY.getByID("cubyz:stick");
+		
 		Material dirt = new Material(-50, 5, 0, 0.0f, 0.1f);
+		
+		Modifier fallingApart = CubyzRegistries.TOOL_MODIFIER_REGISTRY.getByID("cubyz:falling_apart");
+		
+		Modifier regrowth = CubyzRegistries.TOOL_MODIFIER_REGISTRY.getByID("cubyz:regrowth");
+		
 		dirt.setID("cubyz:dirt");
-		dirt.addModifier(new FallingApart(0.1f));
+		dirt.addModifier(fallingApart.createInstance(100));
 		dirt.addItem(CubyzRegistries.ITEM_REGISTRY.getByID("cubyz:dirt"), 100);
 		reg.register(dirt);
 		
 		Material wood = new Material(-20, 50, 20, 0.01f/*being hit by a wood sword doesn't hurt*/, 1);
 		wood.setMiningLevel(1);
 		wood.setID("cubyz:wood");
-		wood.addModifier(new Regrowth());
-		wood.addModifier(new FallingApart(0.9f));
+		wood.addModifier(regrowth.createInstance(1));
+		dirt.addModifier(fallingApart.createInstance(5));
 		wood.addItem(stick, 50);
 		wood.addItem(CubyzRegistries.ITEM_REGISTRY.getByID("cubyz:oak_planks"), 100);
 		wood.addItem(CubyzRegistries.ITEM_REGISTRY.getByID("cubyz:oak_log"), 150); // Working with oak logs in the table is inefficient.

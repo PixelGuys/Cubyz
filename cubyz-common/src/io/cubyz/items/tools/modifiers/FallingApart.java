@@ -3,34 +3,32 @@ package io.cubyz.items.tools.modifiers;
 import io.cubyz.items.tools.Modifier;
 import io.cubyz.items.tools.Tool;
 
-public class FallingApart implements Modifier {
+public class FallingApart extends Modifier {
+	public static final float DECAY_RATE = 0.001f;
 	
-	float rate;
+	public FallingApart() {
+		super("cubyz", "falling_apart", "Falling Apart", "Every time you use this tool, small parts of it will fall off.\\nThat leads to a slow and steady decay of this tools stats.\\nYou can only replenish it by repairing it in the Workbench.", 0);
+	}
 	
-	public FallingApart(float rate) {
-		this.rate = rate;
-	}
-	@Override
-	public String getName() {
-		return "Falling Apart";
-	}
-
-	@Override
-	public String getDescription() {
-		return "Every time you use this tool, small parts of it will fall off.\nThat leads to a slow and steady decay of this tools stats.\nYou can only replenish it by repairing it in the Workbench.";
+	public FallingApart(int strength) {
+		super("cubyz", "falling_apart", "Falling Apart", "Every time you use this tool, small parts of it will fall off.\\nThat leads to a slow and steady decay of this tools stats.\\nYou can only replenish it by repairing it in the Workbench.", strength);
 	}
 
 	@Override
 	public void onUse(Tool tool) {
-		tool.setSpeed(tool.getSpeed() * rate);
-		tool.setMaxDurability((int) Math.round(tool.getMaxDurability()*rate)); // Yes, even durability is affected
+		tool.setSpeed(tool.getSpeed()*(1 - DECAY_RATE)*strength);
+		tool.setMaxDurability((int) Math.round(tool.getMaxDurability()*(1 - DECAY_RATE)*strength)); // Yes, even durability is affected
 		if(tool.getDurability() > tool.getMaxDurability()) {
 			tool.setDurability(tool.getMaxDurability());
 		}
-		tool.setDamage(rate);
+		tool.setDamage(tool.getDamage()*(1 - DECAY_RATE)*strength);
 	}
 
 	@Override
 	public void onTick(Tool tool) {}
 
+	@Override
+	public Modifier createInstance(int strength) {
+		return new FallingApart(strength);
+	}
 }
