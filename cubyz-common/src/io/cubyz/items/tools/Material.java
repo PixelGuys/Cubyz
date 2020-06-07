@@ -10,7 +10,6 @@ import io.cubyz.items.Item;
 
 public class Material implements RegistryElement {
 	List<Modifier> specialModifiers;
-	List<Modifier> headModifiers;
 	HashMap<Item, Integer> items; 		// Items that can be used in a workbench to create a tool with those materials. The integer stores who many units of material that item contains.
 										// Needed material values for base tools are 50 for handle, 50 for binding and 100 for shovelhead/400 for pickaxehead/300 for axehead.
 	public int headDurability;
@@ -26,11 +25,11 @@ public class Material implements RegistryElement {
 		handleDurability = haDur;
 		damage = dmg;
 		miningSpeed = spd;
-		headModifiers = new ArrayList<>();
 		specialModifiers = new ArrayList<>();
 		items = new HashMap<>();
 	}
-	public Material(List<Modifier> modifiers, HashMap<Item, Integer> items, int heDur, int bDur, int haDur, float dmg, float spd) {
+	public Material(Resource id, List<Modifier> modifiers, HashMap<Item, Integer> items, int heDur, int bDur, int haDur, float dmg, float spd, int lvl) {
+		this.id = id;
 		specialModifiers = modifiers;
 		this.items = items;
 		headDurability = haDur;
@@ -38,7 +37,7 @@ public class Material implements RegistryElement {
 		handleDurability = haDur;
 		damage = dmg;
 		miningSpeed = spd;
-		headModifiers = new ArrayList<>();
+		miningLevel = lvl;
 	}
 	public String getName() {
 		return id.getID();

@@ -1,0 +1,15 @@
+head -20
+binding 50
+handle 20
+
+damage 0.1
+speed 1
+level 1
+
+modifier cubyz:regrowth 1
+modifier cubyz:falling_apart 5
+
+cubyz:stick 50
+cubyz:oak_planks 100
+cubyz:oak_log 150
+cubyz:oak_top 150

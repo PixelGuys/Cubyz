@@ -25,7 +25,6 @@ public abstract class Tool extends Item {
 		this.damage = damage;
 		durability = maxDurability = head.headDurability + binding.bindingDurability + handle.handleDurability;
 		stackSize = 1;
-		modifiers.addAll(head.headModifiers);
 		modifiers.addAll(head.specialModifiers);
 		modifiers.addAll(binding.specialModifiers);
 		modifiers.addAll(handle.specialModifiers);

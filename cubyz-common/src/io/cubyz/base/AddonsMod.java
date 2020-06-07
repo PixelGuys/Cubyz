@@ -24,6 +24,8 @@ import io.cubyz.blocks.Ore;
 import io.cubyz.items.Item;
 import io.cubyz.items.ItemBlock;
 import io.cubyz.items.Recipe;
+import io.cubyz.items.tools.Material;
+import io.cubyz.items.tools.Modifier;
 import io.cubyz.math.CubyzMath;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 import io.cubyz.world.cubyzgenerators.biomes.BlockStructure;
@@ -48,6 +50,7 @@ public class AddonsMod {
 	@EventHandler(type = "init")
 	public void init() {
 		proxy.init(this);
+		registerMaterials(CubyzRegistries.TOOL_MATERIAL_REGISTRY);
 		registerBlockDrops();
 		registerRecipes(CubyzRegistries.RECIPE_REGISTRY);
 	}
@@ -165,6 +168,7 @@ public class AddonsMod {
 						int lineNumber = 0;
 						while((line = buf.readLine()) != null) {
 							lineNumber++;
+							line = line.replaceAll("//.*", ""); // Ignore comments with "//".
 							line = line.trim(); // Remove whitespaces before and after the word starts.
 							if(line.length() == 0) continue;
 							if(startedStructures) {
@@ -256,6 +260,7 @@ public class AddonsMod {
 						int lineNumber = 0;
 						while((line = buf.readLine())!= null) {
 							lineNumber++;
+							line = line.replaceAll("//.*", ""); // Ignore comments with "//".
 							line = line.trim(); // Remove whitespaces before and after the word starts.
 							if(line.length() == 0) continue;
 							if(line.contains("=")) {
@@ -330,6 +335,71 @@ public class AddonsMod {
 								}
 							}
 						}
+						buf.close();
+					} catch(IOException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+		}
+	}
+	
+	public void registerMaterials(Registry<Material> reg) {
+		for (File addon : addons) {
+			File biomes = new File(addon, "materials");
+			if (biomes.exists()) {
+				for (File file : biomes.listFiles()) {
+					if(file.isDirectory()) continue;
+					String id = file.getName();
+					if(id.contains("."))
+						id = id.substring(0, id.indexOf('.'));
+					Resource res = new Resource(addon.getName(), id);
+					ArrayList<Modifier> modifiers = new ArrayList<>();
+					HashMap<Item, Integer> items = new HashMap<>();
+					
+					int headDurability = 0, bindingDurability = 0, handleDurability = 0;
+					float damage = 0, miningSpeed = 0;
+					int miningLevel = 0;
+					
+					try {
+						BufferedReader buf = new BufferedReader(new FileReader(file));
+						String line;
+						int lineNumber = 0;
+						while((line = buf.readLine()) != null) {
+							lineNumber++;
+							line = line.replaceAll("//.*", ""); // Ignore comments with "//".
+							line = line.trim(); // Remove whitespaces before and after the word starts.
+							String[] parts = line.split("\\s+");
+							if(line.length() == 0) continue;
+							if(parts[0].equals("modifier")) {
+								modifiers.add(CubyzRegistries.TOOL_MODIFIER_REGISTRY.getByID(parts[1]).createInstance(Integer.parseInt(parts[2])));
+							} else if(parts[0].equals("head")) {
+								headDurability = Integer.parseInt(line.substring(4).replaceAll("\\s",""));
+							} else if(parts[0].equals("binding")) {
+								bindingDurability = Integer.parseInt(line.substring(7).replaceAll("\\s",""));
+							} else if(parts[0].equals("handle")) {
+								handleDurability = Integer.parseInt(line.substring(6).replaceAll("\\s",""));
+							} else if(parts[0].equals("damage")) {
+								damage = Float.parseFloat(line.substring(6).replaceAll("\\s",""));
+							} else if(parts[0].equals("speed")) {
+								miningSpeed = Float.parseFloat(line.substring(5).replaceAll("\\s",""));
+							} else if(parts[0].equals("level")) {
+								miningLevel = Integer.parseInt(line.substring(5).replaceAll("\\s",""));
+							} else {
+								Item item = CubyzRegistries.ITEM_REGISTRY.getByID(parts[0]);
+								if(item == null) {
+									CubyzLogger.instance.warning("Could not find argument or item \"" + parts[0] + "\" specified in line " + lineNumber + " in file " + file.getPath());
+								} else {
+									int amount = Integer.parseInt(parts[1]);
+									items.put(item, amount);
+								}
+							}
+						}
+						
+						Material mat = new Material(res, modifiers, items, headDurability, bindingDurability, handleDurability, damage, miningSpeed, miningLevel);
+						
+						reg.register(mat);
+						
 						buf.close();
 					} catch(IOException e) {
 						e.printStackTrace();

@@ -16,7 +16,7 @@ public class Pickaxe extends Tool {
 		super(head, binding, handle, calculateSpeed(head, binding, handle), calculateDmg(head, binding, handle));
 		// The image is just an overlay of the part images:
 		texturePath = 	 "addons/" + handle.id.getMod() + "/items/textures/parts/"+handle.getName()+"_handle.png#"
-						+"addons/" + head.id.getMod() + "/items/textures/parts/"+head.getName()+"_pickaxe_axe_head.png#"
+						+"addons/" + head.id.getMod() + "/items/textures/parts/"+head.getName()+"_pickaxe_head.png#"
 						+"addons/" + binding.id.getMod() + "/items/textures/parts/"+binding.getName()+"_binding.png";
 		setName(new TextKey(head.getRegistryID().getID()+" Pickaxe"));
 	}

@@ -24,7 +24,7 @@ public class Regrowth extends Modifier {
 	@Override
 	public void onTick(Tool tool) {
 		ticks += strength;
-		if(ticks >= TICKS_TO_HEAL) { // should be nerfed, like only doing it when player have X experience, or food, or health
+		if(ticks >= TICKS_TO_HEAL) { // TODO: should be nerfed, like only doing it when player have X experience, or food, or health
 			ticks -= TICKS_TO_HEAL;
 			tool.setDurability(tool.getDurability() + 1);
 			if (tool.getDurability() > tool.getMaxDurability()) {

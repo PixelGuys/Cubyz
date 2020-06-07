@@ -1,5 +1,7 @@
 package io.cubyz.base;
 
+import java.io.File;
+
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.EventHandler;
 import io.cubyz.api.Mod;
@@ -51,7 +53,6 @@ public class BaseMod {
 	public void init() {
 		// Both commands and recipes don't have any attributed EventHandler
 		// As they are independent to other (the correct order for others is block -> item (for item blocks and other items) -> entity)
-		registerMaterials(CubyzRegistries.TOOL_MATERIAL_REGISTRY);
 		registerWorldGenerators(CubyzRegistries.STELLAR_TORUS_GENERATOR_REGISTRY);
 		
 		CubyzRegistries.COMMAND_REGISTRY.register(new GiveCommand());
@@ -61,6 +62,11 @@ public class BaseMod {
 		
 		// Init proxy
 		proxy.init();
+	}
+
+	@EventHandler(type = "preInit")
+	public void preInit() {
+		registerModifiers(CubyzRegistries.TOOL_MODIFIER_REGISTRY);
 	}
 	
 	@EventHandler(type = "register:entity")
@@ -76,44 +82,5 @@ public class BaseMod {
 	public void registerModifiers(Registry<Modifier> reg) {
 		reg.register(new FallingApart());
 		reg.register(new Regrowth());
-	}
-	
-	public void registerMaterials(Registry<Material> reg) {
-		
-		Item stick = CubyzRegistries.ITEM_REGISTRY.getByID("cubyz:stick");
-		
-		Material dirt = new Material(-50, 5, 0, 0.0f, 0.1f);
-		
-		Modifier fallingApart = CubyzRegistries.TOOL_MODIFIER_REGISTRY.getByID("cubyz:falling_apart");
-		
-		Modifier regrowth = CubyzRegistries.TOOL_MODIFIER_REGISTRY.getByID("cubyz:regrowth");
-		
-		dirt.setID("cubyz:dirt");
-		dirt.addModifier(fallingApart.createInstance(100));
-		dirt.addItem(CubyzRegistries.ITEM_REGISTRY.getByID("cubyz:dirt"), 100);
-		reg.register(dirt);
-		
-		Material wood = new Material(-20, 50, 20, 0.01f/*being hit by a wood sword doesn't hurt*/, 1);
-		wood.setMiningLevel(1);
-		wood.setID("cubyz:wood");
-		wood.addModifier(regrowth.createInstance(1));
-		dirt.addModifier(fallingApart.createInstance(5));
-		wood.addItem(stick, 50);
-		wood.addItem(CubyzRegistries.ITEM_REGISTRY.getByID("cubyz:oak_planks"), 100);
-		wood.addItem(CubyzRegistries.ITEM_REGISTRY.getByID("cubyz:oak_log"), 150); // Working with oak logs in the table is inefficient.
-		reg.register(wood);
-		
-		Material stone = new Material(10, 30, 20, 0.1f, 1.5f);
-		stone.setMiningLevel(2);
-		stone.setID("cubyz:stone");
-		// TODO: Modifiers
-		stone.addItem(CubyzRegistries.ITEM_REGISTRY.getByID("cubyz:cobblestone"), 100);
-		reg.register(stone);
-		
-		Material cactus = new Material(-30, 75, 10, 0.2f, 0.7f);
-		cactus.setID("cubyz:cactus");
-		// TODO: Modifiers
-		cactus.addItem(CubyzRegistries.ITEM_REGISTRY.getByID("cubyz:cactus"), 100);
-		reg.register(cactus);
 	}
 }
