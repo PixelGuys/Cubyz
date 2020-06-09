@@ -9,6 +9,7 @@ import org.joml.Vector3i;
 
 import io.cubyz.Settings;
 import io.cubyz.Utilities;
+import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.blocks.BlockInstance;
@@ -896,13 +897,18 @@ public class Chunk {
 		return inst[((x & 15) << 4) | (y << 8) | (z & 15)] != null;
 	}
 	
-	public byte[] save() {
+	/**
+	 * Feed an empty block palette and it will be filled with all block types. 
+	 * @param blockPalette
+	 * @return chunk data as byte[]
+	 */
+	public byte[] save(Map<Resource, Integer> blockPalette) {
 		byte[] data = new byte[12 + (changes.size() << 4)];
 		Bits.putInt(data, 0, cx);
 		Bits.putInt(data, 4, cz);
 		Bits.putInt(data, 8, changes.size());
 		for(int i = 0; i < changes.size(); i++) {
-			changes.get(i).save(data, 12 + (i << 4));
+			changes.get(i).save(data, 12 + (i << 4), blockPalette);
 		}
 		return data;
 	}

@@ -50,7 +50,7 @@ public class RemoteWorld extends World {
 		int size = Bits.getInt(data, 8);
 		ArrayList<BlockChange> list = new ArrayList<BlockChange>(size);
 		for (int i = 0; i < size; i++) {
-			list.add(new BlockChange(data, 12 + (i << 4)));
+			list.add(new BlockChange(data, 12 + (i << 4), null)); // TODO
 		}
 		return list;
 	}

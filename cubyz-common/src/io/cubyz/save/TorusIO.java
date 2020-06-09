@@ -9,10 +9,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.InflaterInputStream;
 
 import io.cubyz.api.CurrentSurfaceRegistries;
+import io.cubyz.api.Resource;
 import io.cubyz.entity.Entity;
 import io.cubyz.math.Bits;
 import io.cubyz.ndt.NDTContainer;
@@ -26,6 +28,7 @@ public class TorusIO {
 	private LocalStellarTorus torus;
 	private ArrayList<byte[]> blockData = new ArrayList<>();
 	private ArrayList<int[]> chunkData = new ArrayList<>();
+	public HashMap<Resource, Integer> blockPalette = new HashMap<>();
 
 	public TorusIO(LocalStellarTorus torus, File directory) {
 		dir = directory;
@@ -54,7 +57,15 @@ public class TorusIO {
 			in.read(dst);
 			
 			NDTContainer ndt = new NDTContainer(dst);
+			if (ndt.getInteger("version") < 2) {
+				throw new RuntimeException("World is out-of-date");
+			}
 			torus.setName(ndt.getString("name"));
+			NDTContainer blockPaletteNdt = ndt.getContainer("blockPalette");
+			for (String key : blockPaletteNdt.keys()) {
+				Resource id = new Resource(key);
+				blockPalette.put(id, blockPaletteNdt.getInteger(key));
+			}
 			Entity[] entities = new Entity[ndt.getInteger("entityCount")];
 			for (int i = 0; i < entities.length; i++) {
 				// TODO: Only load entities that are in loaded chunks.
@@ -91,9 +102,14 @@ public class TorusIO {
 		try {
 			OutputStream out = new FileOutputStream(new File(dir, "torus.dat"));
 			NDTContainer ndt = new NDTContainer();
-			ndt.setInteger("version", 1);
+			ndt.setInteger("version", 2);
 			ndt.setString("name", torus.getName());
 			ndt.setInteger("entityCount", surface == null ? 0 : surface.getEntities().length);
+			NDTContainer blockPaletteNdt = new NDTContainer();
+			for (Resource key : blockPalette.keySet()) {
+				blockPaletteNdt.setInteger(key.toString(), blockPalette.get(key));
+			}
+			ndt.setContainer("blockPalette", blockPaletteNdt);
 			byte[] len = new byte[4];
 			Bits.putInt(len, 0, ndt.getData().length);
 			out.write(len);
@@ -118,7 +134,7 @@ public class TorusIO {
 				Bits.putInt(len, 0, l);
 				out.write(len);
 				for (byte[] data : blockData) {
-					if(data.length > 12) { // Only write data if there is any data except the chunk coordinates.
+					if(data.length > 12) { // Only write data if there is any data other than the chunk coordinates.
 						byte[] b = new byte[4];
 						Bits.putInt(b, 0, data.length);
 						out.write(b);
@@ -133,7 +149,7 @@ public class TorusIO {
 	}
 
 	public void saveChunk(Chunk ch) {
-		byte[] cb = ch.save();
+		byte[] cb = ch.save(blockPalette);
 		int[] cd = ch.getData();
 		int index = -1;
 		synchronized (blockData) {

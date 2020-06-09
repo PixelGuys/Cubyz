@@ -3,6 +3,7 @@ package io.cubyz.world;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -11,6 +12,7 @@ import org.joml.Vector4f;
 
 import io.cubyz.CubyzLogger;
 import io.cubyz.api.CurrentSurfaceRegistries;
+import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.CustomOre;
 import io.cubyz.blocks.Updateable;
@@ -226,7 +228,7 @@ public class LocalSurface extends Surface {
 		z >>= 4;
 		Chunk ch = getChunk(x, z);
 		if(ch == null) {
-			ch = new Chunk(x, z, this, transformData(getChunkData(x, z)));
+			ch = new Chunk(x, z, this, transformData(getChunkData(x, z), tio.blockPalette));
 			Chunk[] newList = new Chunk[chunks.length+1];
 			newList[chunks.length] = ch;
 			chunks = newList;
@@ -253,11 +255,11 @@ public class LocalSurface extends Surface {
 		tio.saveChunk(ch);
 	}
 	
-	public ArrayList<BlockChange> transformData(byte[] data) {
+	public ArrayList<BlockChange> transformData(byte[] data, Map<Resource, Integer> blockPalette) {
 		int size = Bits.getInt(data, 8);
 		ArrayList<BlockChange> list = new ArrayList<BlockChange>(size);
 		for (int i = 0; i < size; i++) {
-			list.add(new BlockChange(data, 12 + (i << 4)));
+			list.add(new BlockChange(data, 12 + (i << 4), blockPalette));
 		}
 		return list;
 	}
@@ -445,14 +447,14 @@ public class LocalSurface extends Surface {
 				if(notIn) {
 					Chunk ch = getChunk(i, j);
 					if(ch == null) {
-						ch = new Chunk(i, j, this, transformData(getChunkData(i, j)));
+						ch = new Chunk(i, j, this, transformData(getChunkData(i, j), tio.blockPalette));
 					}
 					newVisibles[index] = ch;
 				}
 				index++;
 			}
 		}
-		for(int k = minK; k < chunks.length; k++) {
+		for (int k = minK; k < chunks.length; k++) {
 			tio.saveChunk(chunks[k]);
 		}
 		chunks = newVisibles;

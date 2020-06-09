@@ -4,6 +4,7 @@ import java.util.AbstractList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 import io.cubyz.Constants;
 import io.cubyz.math.Bits;
@@ -164,6 +165,10 @@ public class NDTContainer extends NDTTag implements Iterable<NDTTag> {
 	
 	public boolean validate() {
 		return true;
+	}
+	
+	public Set<String> keys() {
+		return tags.keySet();
 	}
 	
 	public List<NDTTag> asList() {
