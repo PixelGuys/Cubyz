@@ -159,7 +159,7 @@ public class PerlinNoise {
 		}
 	}
 	
-	public static float[][] generateTwoOctaveMapFragment(int x, int y, int width, int height, int scale, long seed, int worldAnd) {
+	public static float[][] generateThreeOctaveMapFragment(int x, int y, int width, int height, int scale, long seed, int worldAnd) {
 		float[][] map = new float[width][height];
 		Random r = new Random(seed);
 		long l1 = r.nextLong();
@@ -184,7 +184,26 @@ public class PerlinNoise {
 			
 		for (int x1 = x; x1 < width + x; x1++) {
 			for (int y1 = y; y1 < height + y; y1++) {
-				map[x1 - x][y1 - y] += perlin(x1-x0, y1-y0, resolution, resolution2, false)*0.4f;
+				map[x1 - x][y1 - y] += perlin(x1-x0, y1-y0, resolution, resolution2, false)*0.3f;
+			}
+		}
+		scale >>= 2;
+		resolution = scale;
+		resolution2 = resolution-1;
+		x0 = x & ~resolution2;
+		y0 = y & ~resolution2;
+		for (int x1 = x; x1 < width + x; x1++) {
+			for (int y1 = y; y1 < height + y; y1++) {
+				map[x1 - x][y1 - y] += perlin(x1-x0, y1-y0, resolution, resolution2, false)*0.1f;
+
+				// Do some rescaling, so the output has an almost uniform distribution:
+				map[x1 - x][y1 - y] -= 0.5f;
+				map[x1 - x][y1 - y] *= 4f;
+				map[x1 - x][y1 - y] += 0.5f;
+				map[x1 - x][y1 - y] = (map[x1 - x][y1 - y]) % 2;
+				if(map[x1 - x][y1 - y] < 0) map[x1 - x][y1 - y] += 2;
+				if(map[x1 - x][y1 - y] >= 1) map[x1 - x][y1 - y] = 2-map[x1 - x][y1 - y];
+				if(map[x1 - x][y1 - y] >= 0.999f) map[x1 - x][y1 - y] = 0.999f;
 			}
 		}
 		

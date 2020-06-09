@@ -20,8 +20,6 @@ public class TerrainGenerator implements FancyGenerator {
 		return new Resource("cubyz", "lifeland_terrain");
 	}
 	
-	private static Block grass = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:grass");
-	private static Block snow = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:snow");
 	private static Block ice = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:ice");
 	private static Block stone = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:stone");
 	private static Block bedrock = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:bedrock");

@@ -1,6 +1,5 @@
 package io.cubyz.world;
 
-import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.CurrentSurfaceRegistries;
 import io.cubyz.api.RegistryElement;
 import io.cubyz.math.CubyzMath;
@@ -19,9 +18,9 @@ public class MetaChunk {
 		this.z = z;
 		this.world = world;
 		
-		heightMap = PerlinNoise.generateTwoOctaveMapFragment(x, z, 256, 256, 2048, seed, world.getAnd());
-		heatMap = PerlinNoise.generateTwoOctaveMapFragment(x, z, 256, 256, 2048, seed ^ 6587946239L, world.getAnd());
-		humidityMap = PerlinNoise.generateTwoOctaveMapFragment(x, z, 256, 256, 2048, seed ^ 6587946239L, world.getAnd());
+		heightMap = PerlinNoise.generateThreeOctaveMapFragment(x, z, 256, 256, 4096, seed, world.getAnd());
+		heatMap = PerlinNoise.generateThreeOctaveMapFragment(x, z, 256, 256, 4096, seed ^ 6587946239L, world.getAnd());
+		humidityMap = PerlinNoise.generateThreeOctaveMapFragment(x, z, 256, 256, 4096, seed ^ 6587946239L, world.getAnd());
 		
 		biomeMap = new Biome[256][256];
 		advancedHeightMapGeneration(seed, registries);
@@ -41,6 +40,7 @@ public class MetaChunk {
 				Biome[] closeBiomes = new Biome[numberOfBiomes];
 				for(RegistryElement reg : registries.biomeRegistry.registered()) {
 					Biome biome = (Biome)reg;
+					if(closeBiomes[0] == null) closeBiomes[0] = biome;
 					float dist = biome.dist(heightMap[ix][iy], heatMap[ix][iy], humidityMap[ix][iy]);
 					int position = numberOfBiomes+1;
 					for(int i = numberOfBiomes; i >= 0; i--) {
@@ -61,7 +61,7 @@ public class MetaChunk {
 						distance[position] = dist;
 					}
 				}
-				for(int i = 0; i < numberOfBiomes; i++) {
+				for(int i = 1; i < numberOfBiomes; i++) {
 					if(closeBiomes[i] == null) {
 						closeBiomes[i] = closeBiomes[i-1];
 						distance[i] = distance[i-1];
