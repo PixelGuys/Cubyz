@@ -13,6 +13,7 @@ import io.cubyz.handler.BlockVisibilityChangeHandler;
 import io.cubyz.handler.Handler;
 import io.cubyz.handler.PlaceBlockHandler;
 import io.cubyz.handler.RemoveBlockHandler;
+import io.cubyz.world.cubyzgenerators.biomes.Biome;
 
 public abstract class Surface {
 	
@@ -55,6 +56,7 @@ public abstract class Surface {
 	public abstract float getGlobalLighting();
 
 	public abstract Chunk getChunk(int x, int z);
+	public abstract Biome getBiome(int x, int z);
 	
 	public abstract Chunk[] getChunks();
 	public abstract Block[] getPlanetBlocks();

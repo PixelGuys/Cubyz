@@ -49,8 +49,7 @@ public class DebugOverlay extends MenuGUI {
 				NGraphics.drawText(0, 84, "Game Time: " + world.getGameTime());
 				if (world instanceof LocalWorld) {
 					NGraphics.drawText(0, 96, "Chunk Queue Size: " + ((LocalSurface) world.getCurrentTorus()).getChunkQueueSize());
-					Biome biome = ((LocalSurface)world.getCurrentTorus()).getMetaChunk(p.getPosition().x & ~255, p.getPosition().z & ~255).biomeMap[p.getPosition().x & 255][p.getPosition().z & 255];
-					NGraphics.drawText(0, 118, "Biome: " + biome.getRegistryID());
+					NGraphics.drawText(0, 118, "Biome: " + world.getCurrentTorus().getBiome((int) x, (int) y).getRegistryID());
 				}
 				
 				if (p instanceof PlayerImpl) { // player on local world

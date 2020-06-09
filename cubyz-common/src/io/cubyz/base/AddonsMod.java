@@ -27,6 +27,7 @@ import io.cubyz.items.Recipe;
 import io.cubyz.items.tools.Material;
 import io.cubyz.items.tools.Modifier;
 import io.cubyz.math.CubyzMath;
+import io.cubyz.translate.TextKey;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 import io.cubyz.world.cubyzgenerators.biomes.BlockStructure;
 import io.cubyz.world.cubyzgenerators.biomes.SimpleTreeModel;
@@ -89,6 +90,8 @@ public class AddonsMod {
 					if(id.contains("."))
 						id = id.substring(0, id.indexOf('.'));
 					item.setID(new Resource(addon.getName(), id));
+					if (props.containsKey("translationId"))
+						item.setName(new TextKey(props.getProperty("translationId")));
 					item.setTexture(props.getProperty("texture", "default.png"), addon.getName());
 					registry.register(item);
 				}

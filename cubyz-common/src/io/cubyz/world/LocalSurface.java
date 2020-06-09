@@ -665,4 +665,10 @@ public class LocalSurface extends Surface {
 	public CurrentSurfaceRegistries getCurrentRegistries() {
 		return registries;
 	}
+
+	@Override
+	public Biome getBiome(int x, int z) {
+		MetaChunk mc = getMetaChunk(x & ~0xFF, z & ~0xFF);
+		return mc.biomeMap[x & 0xFF][z & 0xFF];
+	}
 }
