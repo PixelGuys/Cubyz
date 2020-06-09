@@ -902,7 +902,7 @@ public class Chunk {
 	 * @param blockPalette
 	 * @return chunk data as byte[]
 	 */
-	public byte[] save(Map<Resource, Integer> blockPalette) {
+	public byte[] save(Map<Block, Integer> blockPalette) {
 		byte[] data = new byte[12 + (changes.size() << 4)];
 		Bits.putInt(data, 0, cx);
 		Bits.putInt(data, 4, cz);

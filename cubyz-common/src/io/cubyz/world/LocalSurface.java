@@ -256,7 +256,7 @@ public class LocalSurface extends Surface {
 		tio.saveChunk(ch);
 	}
 	
-	public ArrayList<BlockChange> transformData(byte[] data, Map<Resource, Integer> blockPalette) {
+	public ArrayList<BlockChange> transformData(byte[] data, Map<Block, Integer> blockPalette) {
 		int size = Bits.getInt(data, 8);
 		ArrayList<BlockChange> list = new ArrayList<BlockChange>(size);
 		for (int i = 0; i < size; i++) {
@@ -264,7 +264,6 @@ public class LocalSurface extends Surface {
 				list.add(new BlockChange(data, 12 + (i << 4), blockPalette));
 			} catch (MissingBlockException e) {
 				// If the block is missing, we replace it by nothing
-				CubyzLogger.instance.warning("Block with ID " + e.getMessage() + " is used in world but is not available.");
 				int off = 12 + (i << 4);
 				int x = Bits.getInt(data, off + 0);
 				int y = Bits.getInt(data, off + 4);

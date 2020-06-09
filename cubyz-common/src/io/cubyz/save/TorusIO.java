@@ -13,8 +13,11 @@ import java.util.HashMap;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.InflaterInputStream;
 
+import io.cubyz.CubyzLogger;
+import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.CurrentSurfaceRegistries;
 import io.cubyz.api.Resource;
+import io.cubyz.blocks.Block;
 import io.cubyz.entity.Entity;
 import io.cubyz.math.Bits;
 import io.cubyz.ndt.NDTContainer;
@@ -28,7 +31,7 @@ public class TorusIO {
 	private LocalStellarTorus torus;
 	private ArrayList<byte[]> blockData = new ArrayList<>();
 	private ArrayList<int[]> chunkData = new ArrayList<>();
-	public HashMap<Resource, Integer> blockPalette = new HashMap<>();
+	public HashMap<Block, Integer> blockPalette = new HashMap<>();
 
 	public TorusIO(LocalStellarTorus torus, File directory) {
 		dir = directory;
@@ -63,8 +66,12 @@ public class TorusIO {
 			torus.setName(ndt.getString("name"));
 			NDTContainer blockPaletteNdt = ndt.getContainer("blockPalette");
 			for (String key : blockPaletteNdt.keys()) {
-				Resource id = new Resource(key);
-				blockPalette.put(id, blockPaletteNdt.getInteger(key));
+				Block b = CubyzRegistries.BLOCK_REGISTRY.getByID(key);
+				if (b != null) {
+					blockPalette.put(b, blockPaletteNdt.getInteger(key));
+				} else {
+					CubyzLogger.instance.warning("A block with ID " + key + " is used in world but isn't available.");
+				}
 			}
 			Entity[] entities = new Entity[ndt.getInteger("entityCount")];
 			for (int i = 0; i < entities.length; i++) {
@@ -106,8 +113,8 @@ public class TorusIO {
 			ndt.setString("name", torus.getName());
 			ndt.setInteger("entityCount", surface == null ? 0 : surface.getEntities().length);
 			NDTContainer blockPaletteNdt = new NDTContainer();
-			for (Resource key : blockPalette.keySet()) {
-				blockPaletteNdt.setInteger(key.toString(), blockPalette.get(key));
+			for (Block b : blockPalette.keySet()) {
+				blockPaletteNdt.setInteger(b.getRegistryID().toString(), blockPalette.get(b));
 			}
 			ndt.setContainer("blockPalette", blockPaletteNdt);
 			byte[] len = new byte[4];

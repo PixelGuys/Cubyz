@@ -21,7 +21,7 @@ public class BlockChange {
 		this.z = z;
 	}
 	
-	public BlockChange(byte[] data, int off, Map<Resource, Integer> blockPalette) {
+	public BlockChange(byte[] data, int off, Map<Block, Integer> blockPalette) {
 		x = Bits.getInt(data, off + 0);
 		y = Bits.getInt(data, off + 4);
 		z = Bits.getInt(data, off + 8);
@@ -30,16 +30,15 @@ public class BlockChange {
 		int palId = Bits.getInt(data, off + 12);
 		int runtimeId = -1;
 		if (palId != -1) {
-			for (Resource id : blockPalette.keySet()) {
-				Integer i = blockPalette.get(id);
+			for (Block b : blockPalette.keySet()) {
+				Integer i = blockPalette.get(b);
 				if (i == palId) {
-					Block b = (Block) CubyzRegistries.BLOCK_REGISTRY.getByID(id.toString());
-					if (b == null) {
-						throw new MissingBlockException(id);
-					} else {
-						runtimeId = b.ID;
-					}
+					runtimeId = b.ID;
+					break;
 				}
+			}
+			if (runtimeId == -1) {
+				throw new MissingBlockException();
 			}
 		}
 		newType = runtimeId;
@@ -52,27 +51,27 @@ public class BlockChange {
 	 * @param data
 	 * @param off
 	 */
-	public void save(byte[] data, int off, Map<Resource, Integer> blockPalette) {
+	public void save(byte[] data, int off, Map<Block, Integer> blockPalette) {
 		Bits.putInt(data, off, x);
 		Bits.putInt(data, off + 4, y);
 		Bits.putInt(data, off + 8, z);
 		if (newType == -1) {
 			Bits.putInt(data, off + 12, -1);
 		} else {
-			Resource id = null;
+			Block b = null;
 			for (RegistryElement elem : CubyzRegistries.BLOCK_REGISTRY.registered()) {
-				Block b = (Block) elem;
+				b = (Block) elem;
 				if (b.ID == newType) {
-					id = b.getRegistryID();
+					break;
 				}
 			}
-			if (id == null) {
+			if (b == null) {
 				throw new RuntimeException("newType is invalid: " + newType);
 			}
-			if (!blockPalette.containsKey(id)) {
-				blockPalette.put(id, blockPalette.size());
+			if (!blockPalette.containsKey(b)) {
+				blockPalette.put(b, blockPalette.size());
 			}
-			Bits.putInt(data, off + 12, blockPalette.get(id));
+			Bits.putInt(data, off + 12, blockPalette.get(b));
 		}
 	}
 }

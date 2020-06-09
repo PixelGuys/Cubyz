@@ -6,8 +6,8 @@ public class MissingBlockException extends RuntimeException {
 
 	private static final long serialVersionUID = 1L;
 
-	public MissingBlockException(Resource id) {
-		super("No such block : " + id.toString());
+	public MissingBlockException() {
+		super();
 	}
 	
 }
