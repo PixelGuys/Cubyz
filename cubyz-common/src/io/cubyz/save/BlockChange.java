@@ -20,6 +20,7 @@ public class BlockChange {
 		this.y = y;
 		this.z = z;
 	}
+	
 	public BlockChange(byte[] data, int off, Map<Resource, Integer> blockPalette) {
 		x = Bits.getInt(data, off + 0);
 		y = Bits.getInt(data, off + 4);
@@ -34,7 +35,7 @@ public class BlockChange {
 				if (i == palId) {
 					Block b = (Block) CubyzRegistries.BLOCK_REGISTRY.getByID(id.toString());
 					if (b == null) {
-						throw new RuntimeException("no such block: " + id);
+						throw new MissingBlockException(id);
 					} else {
 						runtimeId = b.ID;
 					}

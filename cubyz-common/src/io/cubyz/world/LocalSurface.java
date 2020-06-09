@@ -25,6 +25,7 @@ import io.cubyz.handler.RemoveBlockHandler;
 import io.cubyz.math.Bits;
 import io.cubyz.math.CubyzMath;
 import io.cubyz.save.BlockChange;
+import io.cubyz.save.MissingBlockException;
 import io.cubyz.save.TorusIO;
 import io.cubyz.world.cubyzgenerators.CrystalCavernGenerator;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
@@ -259,7 +260,17 @@ public class LocalSurface extends Surface {
 		int size = Bits.getInt(data, 8);
 		ArrayList<BlockChange> list = new ArrayList<BlockChange>(size);
 		for (int i = 0; i < size; i++) {
-			list.add(new BlockChange(data, 12 + (i << 4), blockPalette));
+			try {
+				list.add(new BlockChange(data, 12 + (i << 4), blockPalette));
+			} catch (MissingBlockException e) {
+				// If the block is missing, we replace it by nothing
+				CubyzLogger.instance.warning("Block with ID " + e.getMessage() + " is used in world but is not available.");
+				int off = 12 + (i << 4);
+				int x = Bits.getInt(data, off + 0);
+				int y = Bits.getInt(data, off + 4);
+				int z = Bits.getInt(data, off + 8);
+				list.add(new BlockChange(-2, -1, x, y, z));
+			}
 		}
 		return list;
 	}
