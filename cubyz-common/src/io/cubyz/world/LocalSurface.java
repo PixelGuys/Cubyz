@@ -668,7 +668,7 @@ public class LocalSurface extends Surface {
 
 	@Override
 	public Biome getBiome(int x, int z) {
-		MetaChunk mc = getMetaChunk(x & ~0xFF, z & ~0xFF);
-		return mc.biomeMap[x & 0xFF][z & 0xFF];
+		MetaChunk mc = getMetaChunk(x & ~255, z & ~255);
+		return mc.biomeMap[x & 255][z & 255];
 	}
 }

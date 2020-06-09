@@ -77,7 +77,7 @@ public class FastList<T> {
 	 * @param comp comparator
 	 */
 	public void sort(Comparator<T> comp) {
-		if (size > 0) {
+		if (size > 1) {
 			sort(comp, 0, size-1);
 		}
 	}
