@@ -176,7 +176,7 @@ public class PerlinNoise {
 				map[x1 - x][y1 - y] = perlin(x1-x0, y1-y0, resolution, resolution2, false)*0.6f;
 			}
 		}
-		scale >>= 2;
+		scale >>= 1;
 		resolution = scale;
 		resolution2 = resolution-1;
 		x0 = x & ~resolution2;
