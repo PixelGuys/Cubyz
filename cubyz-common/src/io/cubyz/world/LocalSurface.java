@@ -12,7 +12,6 @@ import org.joml.Vector4f;
 
 import io.cubyz.CubyzLogger;
 import io.cubyz.api.CurrentSurfaceRegistries;
-import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.CustomOre;
 import io.cubyz.blocks.Updateable;

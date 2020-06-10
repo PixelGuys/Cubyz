@@ -17,14 +17,14 @@ public class SimpleVegetation extends StructureModel {
 		deltaHeight = dh;
 	}
 	@Override
-	public void generate(int x, int y, int h, Block[][][] chunk, float random) {
-		if(h > 0 && x >= 0 && x < 16 && y >= 0 && y < 16) {
+	public void generate(int x, int z, int h, Block[][][] chunk, Random rand) {
+		if(h > 0 && x >= 0 && x < 16 && z >= 0 && z < 16) {
 			int height = height0;
 			if(h+height < World.WORLD_HEIGHT) {
 				if(deltaHeight != 0)
-					height += + new Random((long)(x*random*549264290 + y*(1-random)*57285843)).nextInt(deltaHeight);
+					height += rand.nextInt(deltaHeight);
 				for(int dh = 0; dh < height; dh++)
-					chunk[x][y][h+dh] = block;
+					chunk[x][z][h+dh] = block;
 			}
 		}
 	}

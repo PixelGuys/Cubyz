@@ -5,5 +5,5 @@ ground_structure cubyz:grass, 2 to 3 cubyz:dirt
 roughness 0
 
 structures:
-	cubyz:simple_tree cubyz:oak_leaves cubyz:oak_log cubyz:oak_top 0.001 7 3
+	cubyz:simple_tree cubyz:oak_leaves cubyz:oak_log cubyz:oak_top 0.001 6 3
 	cubyz:simple_vegetation cubyz:grass_vegetation 0.9 1 0

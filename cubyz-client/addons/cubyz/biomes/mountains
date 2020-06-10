@@ -7,5 +7,5 @@ roughness 1.5
 rivers
 
 structures:
-	cubyz:simple_tree cubyz:oak_leaves cubyz:oak_log cubyz:oak_top 0.05 4 3
+	cubyz:simple_tree cubyz:oak_leaves cubyz:oak_log cubyz:oak_top 0.05 3 3
 	cubyz:simple_vegetation cubyz:grass_vegetation 0.01 1 0
