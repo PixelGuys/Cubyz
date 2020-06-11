@@ -329,7 +329,7 @@ public class Cubyz implements GameLogic {
 					Resource rs = new Resource(bm.subModels.get("default").model);
 					mesh = OBJLoader.loadMesh("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), true);
 					//defaultMesh = StaticMeshesLoader.loadInstanced("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), "assets/" + rs.getMod() + "/models/3d/")[0];
-					((InstancedMesh) mesh).setInstances(512);
+					((InstancedMesh) mesh).setInstances(512, ZenithsRenderer.shadowMap != null);
 					mesh.setBoundingRadius(2.0f);
 					Material material = new Material(tex, 0.6F);
 					mesh.setMaterial(material);

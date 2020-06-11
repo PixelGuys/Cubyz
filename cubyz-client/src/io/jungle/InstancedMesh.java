@@ -15,6 +15,7 @@ import org.lwjgl.system.MemoryUtil;
 import io.cubyz.Settings;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.client.MainRenderer;
+import io.cubyz.client.ZenithsRenderer;
 import io.cubyz.util.FastList;
 import io.cubyz.world.BlockSpatial;
 import io.jungle.renderers.Transformation;
@@ -28,9 +29,13 @@ public class InstancedMesh extends Mesh {
 	private static final int MATRIX_SIZE_FLOATS = 4 * 4;
 	private static final int MATRIX_SIZE_BYTES = MATRIX_SIZE_FLOATS * FLOAT_SIZE_BYTES;
 
-	private static final int INSTANCE_SIZE_BYTES = MATRIX_SIZE_BYTES*2 + FLOAT_SIZE_BYTES + 8*FLOAT_SIZE_BYTES;
+	private static final int SHADOW_INSTANCE_SIZE_BYTES = MATRIX_SIZE_BYTES*2 + FLOAT_SIZE_BYTES;
 
-	private static final int INSTANCE_SIZE_FLOATS = MATRIX_SIZE_FLOATS*2 + 1 + 8;
+	private static final int SHADOW_INSTANCE_SIZE_FLOATS = MATRIX_SIZE_FLOATS*2 + 1;
+
+	private static final int INSTANCE_SIZE_BYTES = MATRIX_SIZE_BYTES + FLOAT_SIZE_BYTES + 8*FLOAT_SIZE_BYTES;
+
+	private static final int INSTANCE_SIZE_FLOATS = MATRIX_SIZE_FLOATS + 1 + 8;
 
 	private int numInstances;
 
@@ -107,44 +112,69 @@ public class InstancedMesh extends Mesh {
 		return numInstances;
 	}
 	
-	public void setInstances(int numInst) {
-		this.numInstances = numInst;
-		glBindVertexArray(vaoId);
-		instanceDataBuffer = MemoryUtil.memRealloc(instanceDataBuffer, numInstances * INSTANCE_SIZE_FLOATS);
-		glBindBuffer(GL_ARRAY_BUFFER, modelViewVBO);
-		int start = 3;
-		int strideStart = 0;
-		// Model matrix:
-		for (int i = 0; i < 4; i++) {
-			glVertexAttribPointer(start, 4, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
+	public void setInstances(int numInst, boolean useShadowMap) {
+		if(useShadowMap) {
+			this.numInstances = numInst;
+			glBindVertexArray(vaoId);
+			instanceDataBuffer = MemoryUtil.memRealloc(instanceDataBuffer, numInstances * SHADOW_INSTANCE_SIZE_FLOATS);
+			glBindBuffer(GL_ARRAY_BUFFER, modelViewVBO);
+			int start = 3;
+			int strideStart = 0;
+			// Model matrix:
+			for (int i = 0; i < 4; i++) {
+				glVertexAttribPointer(start, 4, GL_FLOAT, false, SHADOW_INSTANCE_SIZE_BYTES, strideStart);
+				glVertexAttribDivisor(start, 1);
+				start++;
+				strideStart += VECTOR4F_SIZE_BYTES;
+			}
+			// Selection:
+			glVertexAttribPointer(start, 1, GL_FLOAT, false, SHADOW_INSTANCE_SIZE_BYTES, strideStart);
 			glVertexAttribDivisor(start, 1);
 			start++;
-			strideStart += VECTOR4F_SIZE_BYTES;
-		}
-		// Light Color:
-		for(int i = 0; i < 8; i++) {
+			strideStart += FLOAT_SIZE_BYTES;
+
+			// Light view matrix
+			
+			for (int i = 0; i < 4; i++) {
+				glVertexAttribPointer(start, 4, GL_FLOAT, false, SHADOW_INSTANCE_SIZE_BYTES, strideStart);
+				glVertexAttribDivisor(start, 1);
+				start++;
+				strideStart += VECTOR4F_SIZE_BYTES;
+			}
+
+			glBindBuffer(GL_ARRAY_BUFFER, 0);
+			glBindVertexArray(0);
+		} else {
+			this.numInstances = numInst;
+			glBindVertexArray(vaoId);
+			instanceDataBuffer = MemoryUtil.memRealloc(instanceDataBuffer, numInstances * INSTANCE_SIZE_FLOATS);
+			glBindBuffer(GL_ARRAY_BUFFER, modelViewVBO);
+			int start = 3;
+			int strideStart = 0;
+			// Model matrix:
+			for (int i = 0; i < 4; i++) {
+				glVertexAttribPointer(start, 4, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
+				glVertexAttribDivisor(start, 1);
+				start++;
+				strideStart += VECTOR4F_SIZE_BYTES;
+			}
+			// Light Color:
+			for(int i = 0; i < 8; i++) {
+				glVertexAttribPointer(start, 1, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
+				glVertexAttribDivisor(start, 1);
+				start++;
+				strideStart += FLOAT_SIZE_BYTES;
+			}
+			// Selection:
 			glVertexAttribPointer(start, 1, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
 			glVertexAttribDivisor(start, 1);
 			start++;
 			strideStart += FLOAT_SIZE_BYTES;
-		}
-		// Selection:
-		glVertexAttribPointer(start, 1, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
-		glVertexAttribDivisor(start, 1);
-		start++;
-		strideStart += FLOAT_SIZE_BYTES;
 
-		// Light view matrix
+			glBindBuffer(GL_ARRAY_BUFFER, 0);
+			glBindVertexArray(0);
+		}
 		
-		for (int i = 0; i < 4; i++) {
-			glVertexAttribPointer(start, 4, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
-			glVertexAttribDivisor(start, 1);
-			start++;
-			strideStart += VECTOR4F_SIZE_BYTES;
-		}
-
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		glBindVertexArray(0);
 	}
 
 	public Mesh cloneNoMaterial() {
@@ -203,7 +233,7 @@ public class InstancedMesh extends Mesh {
 		if (curSize != oldSize) {
 			oldSize = curSize;
 			if (numInstances < curSize) {
-				setInstances(curSize);
+				setInstances(curSize, ZenithsRenderer.shadowMap != null);
 			}
 			uploadData(spatials.array, 0, spatials.size, transformation);
 			bool = true;
@@ -234,25 +264,40 @@ public class InstancedMesh extends Mesh {
 		this.instanceDataBuffer.clear();
 		
 		int size = endIndex-startIndex;
-		boolean doShadow = MainRenderer.shadowMap != null;
-		for (int i = 0; i < size; i++) {
-			Spatial spatial = spatials[i+startIndex];
-			Matrix4f modelMatrix = transformation.getModelMatrix(spatial);
-			modelMatrix.get(INSTANCE_SIZE_FLOATS * i, instanceDataBuffer);
-			if (Settings.easyLighting) {
-				for(int j = 0; j < 8; j++) {
-					instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 16 + j, Float.intBitsToFloat(spatial.light[j]));
+		boolean doShadow = ZenithsRenderer.shadowMap != null;
+		if(doShadow) {
+			for (int i = 0; i < size; i++) {
+				Spatial spatial = spatials[i+startIndex];
+				Matrix4f modelMatrix = transformation.getModelMatrix(spatial);
+				modelMatrix.get(SHADOW_INSTANCE_SIZE_FLOATS * i, instanceDataBuffer);
+				BlockInstance bi = ((BlockSpatial) spatial).getBlockInstance();
+				if (bi.getBreakingAnim() == 0f) {
+					instanceDataBuffer.put(SHADOW_INSTANCE_SIZE_FLOATS * i + 24, spatial.isSelected() ? 1 : 0);
+				} else {
+					instanceDataBuffer.put(SHADOW_INSTANCE_SIZE_FLOATS * i + 24, bi.getBreakingAnim());
 				}
+				modelMatrix.get(SHADOW_INSTANCE_SIZE_FLOATS * i + 25, instanceDataBuffer);
 			}
-			BlockInstance bi = ((BlockSpatial) spatial).getBlockInstance();
-			if (bi.getBreakingAnim() == 0f) {
-				instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 24, spatial.isSelected() ? 1 : 0);
-			} else {
-				instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 24, bi.getBreakingAnim());
-			}
-			
-			if (doShadow) {
-				modelMatrix.get(INSTANCE_SIZE_FLOATS * i + 25, instanceDataBuffer);
+		} else {
+			for (int i = 0; i < size; i++) {
+				Spatial spatial = spatials[i+startIndex];
+				Matrix4f modelMatrix = transformation.getModelMatrix(spatial);
+				modelMatrix.get(INSTANCE_SIZE_FLOATS * i, instanceDataBuffer);
+				BlockInstance bi = ((BlockSpatial) spatial).getBlockInstance();
+				if (bi.getBreakingAnim() == 0f) {
+					instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 24, spatial.isSelected() ? 1 : 0);
+				} else {
+					instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 24, bi.getBreakingAnim());
+				}
+				if (Settings.easyLighting) {
+					for(int j = 0; j < 8; j++) {
+						instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 16 + j, Float.intBitsToFloat(spatial.light[j]));
+					}
+				} else {
+					for(int j = 0; j < 8; j++) {
+						instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 16 + j, Float.intBitsToFloat(0x00ffffff));
+					}
+				}
 			}
 		}
 
