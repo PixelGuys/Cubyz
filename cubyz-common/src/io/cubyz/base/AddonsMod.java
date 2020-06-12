@@ -194,7 +194,7 @@ public class AddonsMod {
 									height    = Float.parseFloat(heightArguments[1])/256.0f;
 									maxHeight = Float.parseFloat(heightArguments[2])/256.0f;
 								} else if(line.startsWith("temperature")) {
-									temperature = 0.5f + Float.parseFloat(line.substring(11))/120.0f;
+									temperature = (Float.parseFloat(line.substring(11))+30.0f)/90.0f;
 								} else if(line.startsWith("humidity")) {
 									humidity = Float.parseFloat(line.substring(8));
 								} else if(line.startsWith("rivers")) {

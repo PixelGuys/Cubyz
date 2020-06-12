@@ -14,7 +14,6 @@ import org.lwjgl.system.MemoryUtil;
 
 import io.cubyz.Settings;
 import io.cubyz.blocks.BlockInstance;
-import io.cubyz.client.MainRenderer;
 import io.cubyz.client.ZenithsRenderer;
 import io.cubyz.util.FastList;
 import io.cubyz.world.BlockSpatial;

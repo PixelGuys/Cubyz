@@ -18,20 +18,20 @@ public class MetaChunk {
 		this.z = z;
 		this.world = world;
 		
-		heightMap = PerlinNoise.generateThreeOctaveMapFragment(x, z, 256, 256, 4096, seed, world.getAnd());
-		heatMap = PerlinNoise.generateThreeOctaveMapFragment(x, z, 256, 256, 4096, seed ^ 6587946239L, world.getAnd());
-		humidityMap = PerlinNoise.generateThreeOctaveMapFragment(x, z, 256, 256, 4096, seed ^ 6587946239L, world.getAnd());
+		heightMap = PerlinNoise.generateThreeOctaveMapFragment(x, z, 256, 256, 2048, seed, world.getAnd());
+		heatMap = PerlinNoise.generateThreeOctaveMapFragment(x, z, 256, 256, 2048, seed ^ 6587946239L, world.getAnd());
+		humidityMap = PerlinNoise.generateThreeOctaveMapFragment(x, z, 256, 256, 2048, seed ^ -1324585483391L, world.getAnd());
 		
 		biomeMap = new Biome[256][256];
 		advancedHeightMapGeneration(seed, registries);
 	}
 	
 	public void advancedHeightMapGeneration(long seed, CurrentSurfaceRegistries registries) {
-		float[][] rougherMap = Noise.generateFractalTerrain(x, z, 256, 256, 128, seed ^ -658936678493L, world.getAnd()); // Map used to add terrain roughness.
+		float[][] rougherMap = Noise.generateFractalTerrain(x, z, 256, 256, 128, seed ^ -954936678493L, world.getAnd()); // Map used to add terrain roughness.
 		for(int ix = 0; ix < 256; ix++) {
 			for(int iy = 0; iy < 256; iy++) {
 				// How many of the first biomes are used in the interpolation. This is limited to prevent long-range effects of biomes.
-				final int numberOfBiomes = 3;
+				final int numberOfBiomes = 4;
 				float[] distance = new float[numberOfBiomes + 1];
 				for(int i = 0; i <= numberOfBiomes; i++) {
 					distance[i] = Float.MAX_VALUE;
@@ -78,7 +78,7 @@ public class MetaChunk {
 					float dist = distance[i];
 					float localHeight = (rougherMap[ix][iy]-0.5f)*biome.getRoughness();
 					// A roughness factor of > 1 or < -1 should also be possible. In that case the terrain should "mirror" at the(averaged) height limit(minHeight, maxHeight) of the biomes:
-					localHeight += heightMap[ix][iy];
+					localHeight += biome.height;
 					localHeight -= biome.minHeight;
 					localHeight = CubyzMath.floorMod(localHeight, 2*(biome.maxHeight - biome.minHeight));
 					if(localHeight > (biome.maxHeight - biome.minHeight)) localHeight = 2*(biome.maxHeight - biome.minHeight) - localHeight;
@@ -89,7 +89,18 @@ public class MetaChunk {
 				}
 				height = height/weight;
 				heightMap[ix][iy] = height;
-				biomeMap[ix][iy] = closeBiomes[0];
+				for(int i = 0; i < numberOfBiomes; i++) {
+					if(closeBiomes[i].minHeight <= height && closeBiomes[i].maxHeight >= height) {
+						biomeMap[ix][iy] = closeBiomes[i];
+						break;
+					}
+				}
+				if(biomeMap[ix][iy] == null) {
+					// A rare event that is really unlikely and if it occures mostly harmless.
+					// In some rare cases it might create unexpected things(like trees under water or similar).
+					// Those things are not supposed to happen, but due to their rareness they are considered a feature rather than a bug.
+					biomeMap[ix][iy] = closeBiomes[0];
+				}
 			}
 		}
 	}

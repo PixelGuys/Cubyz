@@ -6,7 +6,7 @@ import io.cubyz.api.Resource;
 public class Biome implements RegistryElement {
 	float temperature;
 	float humidity;
-	float height;
+	public float height;
 	public float minHeight, maxHeight;
 	float roughness;
 	protected Resource identifier;
@@ -36,19 +36,8 @@ public class Biome implements RegistryElement {
 	}
 
 	public float dist(float h, float t, float hum) {
-		if(h >= maxHeight || h <= minHeight) return Float.MAX_VALUE;
-		float heightFactor;
-		if(h >= height) {
-			heightFactor = (h-height)/(maxHeight-height);
-		} else {
-			heightFactor = (h-height)/(minHeight-height);
-		}
-		// Make sure heightFactor goes to ∞ when it gets to the borders, which are thanks to the code piece above at ±1.
-		// This is done using the function 1/(1-x²) - 1 which also has the advantage of being close to x²(matching normal distance calculation) for small x.
-		heightFactor = 1/(1-heightFactor*heightFactor) - 1;
-		// Heat and humidity don't strictly have to stay within bounds, as the user has no way to measure them, so they are just measured as distance squared.
-		float dist = 10*(temperature-t)*(temperature-t) + 2*(humidity - hum)*(humidity - hum) + heightFactor;
-		return dist;
+		// Simple euclidean distance.
+		return (temperature-t)*(temperature-t) + (humidity - hum)*(humidity - hum) + (height - h)*(height - h);
 	}
 	
 	@Override
