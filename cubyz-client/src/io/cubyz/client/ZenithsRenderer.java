@@ -195,7 +195,7 @@ public class ZenithsRenderer implements Renderer {
 			float relZ = pos.relZ;
 			float y0 = pos.y+1.5f;
 			for (Chunk ch : chunks) {
-				if (!frustumInt.testAab(ch.getMin(localPlayer, worldAnd), ch.getMax(localPlayer, worldAnd)))
+				if (!frustumInt.testAab(ch.getMin(pos, worldAnd), ch.getMax(pos, worldAnd)))
 					continue;
 				int length = ch.getVisibles().size;
 				BlockInstance[] vis = ch.getVisibles().array;

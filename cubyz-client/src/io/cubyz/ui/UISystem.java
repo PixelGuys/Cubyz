@@ -7,7 +7,6 @@ import static org.lwjgl.system.MemoryUtil.*;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 
-import io.cubyz.CubyzLogger;
 import io.cubyz.client.Cubyz;
 import io.jungle.Window;
 import io.jungle.hud.Font;
@@ -18,7 +17,7 @@ public class UISystem extends Hud {
 	private boolean inited = false;
 	
 	private MenuGUI gui;
-	/** keeped only for transition effect */
+	/** kept only for transition effect */
 	private MenuGUI oldGui;
 	private ArrayList<MenuGUI> overlays = new ArrayList<>();
 	private ArrayDeque<MenuGUI> menuQueue = new ArrayDeque<>();

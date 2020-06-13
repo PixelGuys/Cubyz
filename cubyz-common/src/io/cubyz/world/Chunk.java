@@ -18,6 +18,7 @@ import io.cubyz.entity.Player;
 import io.cubyz.handler.BlockVisibilityChangeHandler;
 import io.cubyz.math.Bits;
 import io.cubyz.math.CubyzMath;
+import io.cubyz.math.Vector3fi;
 import io.cubyz.save.BlockChange;
 import io.cubyz.util.FastList;
 import io.cubyz.world.generator.SurfaceGenerator;
@@ -1034,12 +1035,12 @@ public class Chunk {
 		return inst[(x << 4) | (y << 8) | z];
 	}
 	
-	public Vector3f getMin(Player localPlayer, int worldAnd) {
-		return new Vector3f(CubyzMath.matchSign((wx - localPlayer.getPosition().x) & worldAnd, worldAnd) - localPlayer.getPosition().relX, -localPlayer.getPosition().y, CubyzMath.matchSign((wz - localPlayer.getPosition().z) & worldAnd, worldAnd) - localPlayer.getPosition().relZ);
+	public Vector3f getMin(Vector3fi position, int worldAnd) {
+		return new Vector3f(CubyzMath.matchSign((wx - position.x) & worldAnd, worldAnd) - position.relX, -position.y, CubyzMath.matchSign((wz - position.z) & worldAnd, worldAnd) - position.relZ);
 	}
 	
-	public Vector3f getMax(Player localPlayer, int worldAnd) {
-		return new Vector3f(CubyzMath.matchSign((wx - localPlayer.getPosition().x + 16) & worldAnd, worldAnd) - localPlayer.getPosition().relX, 255-localPlayer.getPosition().y, CubyzMath.matchSign((wz - localPlayer.getPosition().z + 16) & worldAnd, worldAnd) - localPlayer.getPosition().relZ);
+	public Vector3f getMax(Vector3fi position, int worldAnd) {
+		return new Vector3f(CubyzMath.matchSign((wx - position.x + 16) & worldAnd, worldAnd) - position.relX, 255-position.y, CubyzMath.matchSign((wz - position.z + 16) & worldAnd, worldAnd) - position.relZ);
 	}
 	
 	public int getX() {

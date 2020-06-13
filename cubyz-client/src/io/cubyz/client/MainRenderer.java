@@ -168,7 +168,7 @@ public class MainRenderer implements Renderer {
 			float relZ = pos.relZ;
 			float y0 = pos.y+1.5f;
 			for (Chunk ch : chunks) {
-				if (!frustumInt.testAab(ch.getMin(localPlayer, worldAnd), ch.getMax(localPlayer, worldAnd)))
+				if (!frustumInt.testAab(ch.getMin(pos, worldAnd), ch.getMax(pos, worldAnd)))
 					continue;
 				int length = ch.getVisibles().size;
 				BlockInstance[] vis = ch.getVisibles().array;
@@ -224,19 +224,6 @@ public class MainRenderer implements Renderer {
 		if (ctx.getHud() != null) {
 			ctx.getHud().render(window);
 		}
-	}
-	
-	public Matrix4f getLightViewMatrix(DirectionalLight light) {
-		float lightAngleX = (float) Math.acos(light.getDirection().z);
-		float lightAngleY = (float) Math.asin(light.getDirection().x);
-		float lightAngleZ = 0f;
-		return transformation.getLightViewMatrix(
-				new Vector3f(light.getDirection()).mul(30f),
-				new Vector3f(lightAngleX, lightAngleY, lightAngleZ));
-	}
-	
-	public Matrix4f getShadowProjectionMatrix() {
-		return transformation.getOrthoProjectionMatrix(-10f, 10f, -10f, 10f, 1f, 50f);
 	}
 	
 	public void renderScene(Context ctx, Vector3f ambientLight, PointLight[] pointLightList, SpotLight[] spotLightList,

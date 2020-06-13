@@ -30,7 +30,7 @@ public class CubyzMeshSelectionDetector {
 		return selectedSpatial;
 	}
 	
-	public void selectSpatial(Chunk[] chunks, Vector3fi position, Vector3f dir) {
+	public void selectSpatial(Chunk[] chunks, Vector3fi position, Vector3f dir, int worldAnd) {
 		//this.dir = dir;
 		Vector3f transformedPosition = new Vector3f(position.relX, position.y+1.5F, position.relZ);
 		//float closestDistance = Float.POSITIVE_INFINITY;
@@ -38,6 +38,11 @@ public class CubyzMeshSelectionDetector {
 		BlockInstance newSpatial = null;
 		//position.x = position.z = 0;
 		for (Chunk ch : chunks) {
+			min.set(ch.getMin(position, worldAnd));
+			max.set(ch.getMax(position, worldAnd));
+			// Check if the chunk is in view:
+			if (!Intersectionf.intersectRayAab(transformedPosition, dir, min, max, nearFar))
+				continue;
 			synchronized (ch) {
 				BlockInstance[] array = ch.getVisibles().array;
 				for (int i = 0; i < ch.getVisibles().size; i++) {
