@@ -1,5 +1,7 @@
 package io.jungle;
 
+import java.util.Arrays;
+
 import org.joml.Vector3f;
 
 public class Spatial {
@@ -26,6 +28,14 @@ public class Spatial {
     	position = new Vector3f(0, 0, 0);
     	scale = 1;
     	rotation = new Vector3f(0, 0, 0);
+        light = new int[8];
+    }
+    
+    public Spatial(Spatial toCopy) {
+        this.meshes = Arrays.copyOf(toCopy.meshes, toCopy.meshes.length);
+        this.position = new Vector3f(toCopy.position);
+        this.rotation = new Vector3f(toCopy.rotation);
+        scale = 1;
         light = new int[8];
     }
     

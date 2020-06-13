@@ -78,31 +78,30 @@ public class CubyzMeshSelectionDetector {
 	}
 	
 	// Returns the free block right next to the currently selected block.
-	public Vector3i getEmptyPlace(Vector3fi position, Vector3f dir) {
+	public void getEmptyPlace(Vector3fi position, Vector3f direction, Vector3i pos, Vector3i dir) {
 		//position = new Vector3f(position.x, position.y+1.5F, position.z);
 		Vector3f transformedPosition = new Vector3f(position.relX, position.y+1.5F, position.relZ);
 		if(selectedSpatial != null) {
-			Vector3i pos = new Vector3i(selectedSpatial.getPosition());
-			pos.add(-(int)Math.signum(dir.x), 0, 0);
+			pos.set(selectedSpatial.getPosition());
+			pos.add(-(int)Math.signum(direction.x), 0, 0);
+			dir.add((int)Math.signum(direction.x), 0, 0);
 			min.set(new Vector3f(pos.x - position.x, pos.y, pos.z - position.z));
 			max.set(min);
 			min.add(-0.5f, -0.5f, -0.5f); // -scale, -scale, -scale
 			max.add(0.5f, 0.5f, 0.5f); // scale, scale, scale
-			if (Intersectionf.intersectRayAab(transformedPosition, dir, min, max, nearFar)) {
-				return pos;
+			if (!Intersectionf.intersectRayAab(transformedPosition, direction, min, max, nearFar)) {
+				pos.add((int)Math.signum(direction.x), -(int)Math.signum(direction.y), 0);
+				dir.add(-(int)Math.signum(direction.x), (int)Math.signum(direction.y), 0);
+				min.set(new Vector3f(pos.x - position.x, pos.y, pos.z - position.z));
+				max.set(min);
+				min.add(-0.5f, -0.5f, -0.5f); // -scale, -scale, -scale
+				max.add(0.5f, 0.5f, 0.5f); // scale, scale, scale
+				if (!Intersectionf.intersectRayAab(transformedPosition, direction, min, max, nearFar)) {
+					pos.add(0, (int)Math.signum(direction.y), -(int)Math.signum(direction.z));
+					dir.add(0, -(int)Math.signum(direction.y), (int)Math.signum(direction.z));
+				}
 			}
-			pos.add((int)Math.signum(dir.x), -(int)Math.signum(dir.y), 0);
-			min.set(new Vector3f(pos.x - position.x, pos.y, pos.z - position.z));
-			max.set(min);
-			min.add(-0.5f, -0.5f, -0.5f); // -scale, -scale, -scale
-			max.add(0.5f, 0.5f, 0.5f); // scale, scale, scale
-			if (Intersectionf.intersectRayAab(transformedPosition, dir, min, max, nearFar)) {
-				return pos;
-			}
-			pos.add(0, (int)Math.signum(dir.y), -(int)Math.signum(dir.z));
-			return pos;
 		}
-		return null;
 	}
 	
 }

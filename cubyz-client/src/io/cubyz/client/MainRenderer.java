@@ -6,6 +6,7 @@ import org.joml.FrustumIntersection;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
+import io.cubyz.CubyzLogger;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
@@ -13,6 +14,7 @@ import io.cubyz.entity.Player;
 import io.cubyz.math.CubyzMath;
 import io.cubyz.math.Vector3fi;
 import io.cubyz.util.FastList;
+import io.cubyz.world.BlockSpatial;
 import io.cubyz.world.Chunk;
 import io.jungle.InstancedMesh;
 import io.jungle.Mesh;
@@ -188,16 +190,86 @@ public class MainRenderer implements Renderer {
 									(y < -0.5001f && !bi.neighborUp) ||
 									(z > 0.5001f && !bi.neighborSouth) ||
 									(z < -0.5001f && !bi.neighborNorth)) {
-								Spatial tmp = (Spatial) bi.getSpatial();
-								tmp.setPosition(x, y, z);
-								ch.getCornerLight(bi.getX() & 15, bi.getY(), bi.getZ() & 15, ambientLight, tmp.light);
-								if (tmp.isSelected()) {
-									selected = tmp;
-									selectedBlock = bi.getID();
-									breakAnim = bi.getBreakingAnim();
-									continue;
+								if(bi.getBlock().mode == null) {
+									Spatial tmp = (Spatial) bi.getSpatial();
+									tmp.setPosition(x, y, z);
+									ch.getCornerLight(bi.getX() & 15, bi.getY(), bi.getZ() & 15, ambientLight, tmp.light);
+									if (tmp.isSelected()) {
+										selected = tmp;
+										selectedBlock = bi.getID();
+										breakAnim = bi.getBreakingAnim();
+										continue;
+									}
+									map[bi.getID()].add(tmp);
+								} else if(bi.getBlock().mode == Block.RotationMode.TORCH) {
+									byte data = bi.blockData;
+									if((data & 0b1) != 0) {
+										Spatial tmp = new BlockSpatial((BlockSpatial) bi.getSpatial());
+										tmp.setPosition(x + 0.4f, y + 0.2f, z);
+										ch.getCornerLight(bi.getX() & 15, bi.getY(), bi.getZ() & 15, ambientLight, tmp.light);
+										tmp.setRotation(0, 0, -0.3f);
+										if (tmp.isSelected()) {
+											selected = tmp;
+											selectedBlock = bi.getID();
+											breakAnim = bi.getBreakingAnim();
+											continue;
+										}
+										map[bi.getID()].add(tmp);
+									}
+									if((data & 0b10) != 0) {
+										Spatial tmp = new BlockSpatial((BlockSpatial) bi.getSpatial());
+										tmp.setPosition(x - 0.4f, y + 0.2f, z);
+										ch.getCornerLight(bi.getX() & 15, bi.getY(), bi.getZ() & 15, ambientLight, tmp.light);
+										tmp.setRotation(0, 0, 0.3f);
+										if (tmp.isSelected()) {
+											selected = tmp;
+											selectedBlock = bi.getID();
+											breakAnim = bi.getBreakingAnim();
+											continue;
+										}
+										map[bi.getID()].add(tmp);
+									}
+									if((data & 0b100) != 0) {
+										Spatial tmp = new BlockSpatial((BlockSpatial) bi.getSpatial());
+										tmp.setPosition(x, y + 0.2f, z + 0.4f);
+										ch.getCornerLight(bi.getX() & 15, bi.getY(), bi.getZ() & 15, ambientLight, tmp.light);
+										tmp.setRotation(0.3f, 0, 0);
+										if (tmp.isSelected()) {
+											selected = tmp;
+											selectedBlock = bi.getID();
+											breakAnim = bi.getBreakingAnim();
+											continue;
+										}
+										map[bi.getID()].add(tmp);
+									}
+									if((data & 0b1000) != 0) {
+										Spatial tmp = new BlockSpatial((BlockSpatial) bi.getSpatial());
+										tmp.setPosition(x, y + 0.2f, z - 0.4f);
+										ch.getCornerLight(bi.getX() & 15, bi.getY(), bi.getZ() & 15, ambientLight, tmp.light);
+										tmp.setRotation(-0.3f, 0, 0);
+										if (tmp.isSelected()) {
+											selected = tmp;
+											selectedBlock = bi.getID();
+											breakAnim = bi.getBreakingAnim();
+											continue;
+										}
+										map[bi.getID()].add(tmp);
+									}
+									if((data & 0b10000) != 0) {
+										Spatial tmp = (Spatial) bi.getSpatial();
+										tmp.setPosition(x, y, z);
+										ch.getCornerLight(bi.getX() & 15, bi.getY(), bi.getZ() & 15, ambientLight, tmp.light);
+										if (tmp.isSelected()) {
+											selected = tmp;
+											selectedBlock = bi.getID();
+											breakAnim = bi.getBreakingAnim();
+											continue;
+										}
+										map[bi.getID()].add(tmp);
+									}
+								} else {
+									CubyzLogger.instance.warning("You are stupid! You added a new rotation mode and forgot to update the renderer!");
 								}
-								map[bi.getID()].add(tmp);
 							}
 						}
 					}

@@ -3,9 +3,7 @@ package io.cubyz.blocks;
 import org.joml.Vector3i;
 
 import io.cubyz.ClientOnly;
-import io.cubyz.world.Chunk;
 import io.cubyz.world.Surface;
-import io.cubyz.world.World;
 
 public class BlockInstance {
 
@@ -14,6 +12,12 @@ public class BlockInstance {
 	private Vector3i pos;
 	private Surface surface;
 	public boolean neighborUp, neighborDown, neighborEast, neighborWest, neighborNorth, neighborSouth;
+	public byte blockData;
+	
+	public BlockInstance(Block block, byte data) {
+		this.block = block;
+		blockData = data;
+	}
 	
 	public Surface getStellarTorus() {
 		return surface;
@@ -21,10 +25,6 @@ public class BlockInstance {
 	
 	public void setStellarTorus(Surface world) {
 		this.surface = world;
-	}
-	
-	public BlockInstance(Block block) {
-		this.block = block;
 	}
 	
 	public int getID() {

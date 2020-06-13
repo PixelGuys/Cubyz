@@ -14,6 +14,11 @@ public class BlockSpatial extends Spatial {
 		this.owner = bi;
 	}
 	
+	public BlockSpatial(BlockSpatial toCopy) {
+		super(toCopy);
+		owner = toCopy.owner;
+	}
+	
 	public BlockInstance getBlock() {
 		return owner;
 	}

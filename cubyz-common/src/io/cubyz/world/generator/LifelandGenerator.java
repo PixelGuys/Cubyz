@@ -94,7 +94,7 @@ public class LifelandGenerator extends SurfaceGenerator {
 				for(int py = 0; py < World.WORLD_HEIGHT; py++) {
 					Block b = chunk[px][pz][py];
 					if(b != null) {
-						ch.rawAddBlock(px, py, pz, b);
+						ch.rawAddBlock(px, py, pz, b, (byte)0);
 						//if (b.hasBlockEntity()) TODO: Block entities!
 						//	ch.blockEntities().put(bi, b.createBlockEntity(bi.getPosition()));
 						if (b.getBlockClass() == BlockClass.FLUID)

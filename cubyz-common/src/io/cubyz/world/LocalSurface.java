@@ -260,14 +260,14 @@ public class LocalSurface extends Surface {
 		ArrayList<BlockChange> list = new ArrayList<BlockChange>(size);
 		for (int i = 0; i < size; i++) {
 			try {
-				list.add(new BlockChange(data, 12 + (i << 4), blockPalette));
+				list.add(new BlockChange(data, 12 + i*17, blockPalette));
 			} catch (MissingBlockException e) {
 				// If the block is missing, we replace it by nothing
-				int off = 12 + (i << 4);
+				int off = 12 + i*17;
 				int x = Bits.getInt(data, off + 0);
 				int y = Bits.getInt(data, off + 4);
 				int z = Bits.getInt(data, off + 8);
-				list.add(new BlockChange(-2, -1, x, y, z));
+				list.add(new BlockChange(-2, -1, x, y, z, (byte)0, (byte)0));
 			}
 		}
 		return list;
@@ -288,15 +288,25 @@ public class LocalSurface extends Surface {
 	}
 	
 	@Override
-	public void placeBlock(int x, int y, int z, Block b) {
+	public void placeBlock(int x, int y, int z, Block b, byte data) {
 		Chunk ch = getChunk(x >> 4, z >> 4);
 		if (ch != null) {
-			ch.addBlockAt(x & 15, y, z & 15, b, true);
+			ch.addBlockAt(x & 15, y, z & 15, b, data, true);
 			tio.saveChunk(ch); // TODO: Don't save it every time.
 			tio.saveTorusData(this);
 			for (PlaceBlockHandler hand : placeBlockHandlers) {
 				hand.onBlockPlaced(b, x, y, z);
 			}
+		}
+	}
+	
+	@Override
+	public void updateBlockData(int x, int y, int z, byte data) {
+		Chunk ch = getChunk(x >> 4, z >> 4);
+		if (ch != null) {
+			ch.setBlockData(x & 15, y, z & 15, data);
+			tio.saveChunk(ch); // TODO: Don't save it every time.
+			tio.saveTorusData(this);
 		}
 	}
 	
@@ -405,7 +415,7 @@ public class LocalSurface extends Surface {
 										break;
 								}
 								if(dy == -1 || (neighbors[4] != null && neighbors[4].getBlockClass() != Block.BlockClass.FLUID)) {
-									ch.addBlockPossiblyOutside(block, (wx+bx+dx) & worldAnd, by+dy, (wz+bz+dz) & worldAnd);
+									ch.addBlockPossiblyOutside(block, (byte)0, (wx+bx+dx) & worldAnd, by+dy, (wz+bz+dz) & worldAnd);
 								}
 							}
 						}
@@ -577,6 +587,19 @@ public class LocalSurface extends Surface {
 			return b;
 		} else {
 			return null;
+		}
+	}
+	
+	@Override
+	public byte getBlockData(int x, int y, int z) {
+		if (y > World.WORLD_HEIGHT || y < 0)
+			return 0;
+
+		Chunk ch = getChunk(x >> 4, z >> 4);
+		if (ch != null && ch.isGenerated()) {
+			return ch.getBlockData(x & 15, y, z & 15);
+		} else {
+			return 0;
 		}
 	}
 	

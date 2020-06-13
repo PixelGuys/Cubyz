@@ -874,10 +874,26 @@ public class Cubyz implements GameLogic {
 						if(msd.getSelectedBlockInstance().getBlock().onClick(world, msd.getSelectedBlockInstance().getPosition())) {
 							// potentially do a hand animation, in the future
 						} else {
-							Vector3i pos = msd.getEmptyPlace(world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate());
+							Vector3i pos = new Vector3i(0, 0, 0);
+							Vector3i dir = new Vector3i(0, 0, 0);
+							msd.getEmptyPlace(world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(this.dir).negate(), pos, dir);
 							Block b = world.getLocalPlayer().getInventory().getBlock(inventorySelection);
 							if (b != null && pos != null) {
-								world.getCurrentTorus().placeBlock(pos.x, pos.y, pos.z, b);
+								if(b.mode == null) {
+									world.getCurrentTorus().placeBlock(pos.x, pos.y, pos.z, b, (byte)0);
+								} else if(b.mode == Block.RotationMode.TORCH && dir.y != 1) {
+									byte data = (byte)0;
+									if(dir.x == 1) data = (byte)0b1;
+									if(dir.x == -1) data = (byte)0b10;
+									if(dir.y == -1) data = (byte)0b10000;
+									if(dir.z == 1) data = (byte)0b100;
+									if(dir.z == -1) data = (byte)0b1000;
+									if(world.getCurrentTorus().getBlock(pos.x, pos.y, pos.z) == b) {
+										world.getCurrentTorus().updateBlockData(pos.x, pos.y, pos.z, (byte)(data | world.getCurrentTorus().getBlockData(pos.x, pos.y, pos.z)));
+									} else {
+										world.getCurrentTorus().placeBlock(pos.x, pos.y, pos.z, b, data);
+									}
+								}
 								world.getLocalPlayer().getInventory().getStack(inventorySelection).add(-1);
 							}
 						}

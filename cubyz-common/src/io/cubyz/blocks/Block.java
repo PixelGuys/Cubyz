@@ -18,6 +18,9 @@ public class Block implements RegistryElement {
 	public static enum BlockClass {
 		WOOD, STONE, SAND, UNBREAKABLE, LEAF, FLUID
 	};
+	public static enum RotationMode {
+		TORCH
+	};
 	
 	boolean transparent;
 	/**
@@ -36,6 +39,7 @@ public class Block implements RegistryElement {
 	private int light = 0;
 	int absorption = 0; // How much light this block absorbs if it is transparent.
 	String gui; // GUI that is opened onClick.
+	public RotationMode mode = null;
 	
 	public Block() {}
 	
@@ -58,6 +62,9 @@ public class Block implements RegistryElement {
 		selectable = props.getProperty("selectable", "yes").equalsIgnoreCase("yes");
 		solid = props.getProperty("solid", "yes").equalsIgnoreCase("yes");
 		gui = props.getProperty("GUI", null);
+		String modeString = props.getProperty("rotation", null);
+		if(modeString != null)
+			mode = RotationMode.valueOf(modeString.toUpperCase());
 	}
 	
 	public void setDegradable(Boolean deg) {

@@ -9,12 +9,10 @@ import org.joml.Vector3i;
 
 import io.cubyz.Settings;
 import io.cubyz.Utilities;
-import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.BlockEntity;
-import io.cubyz.entity.Player;
 import io.cubyz.handler.BlockVisibilityChangeHandler;
 import io.cubyz.math.Bits;
 import io.cubyz.math.CubyzMath;
@@ -30,6 +28,7 @@ public class Chunk {
 	private static final int[] neighborRelativeZ = {0, 0, -1, 1, 0, 0};
 	// Due to having powers of 2 as dimensions it is more efficient to use a one-dimensional array.
 	private Block[] blocks;
+	private byte[] blockData; // Important data used to store rotation. Will be used later for water levels and stuff like that.
 	private BlockInstance[] inst; // Stores all visible BlockInstances. Can be faster accessed using coordinates.
 	private int[] light; // Stores sun r g b channels of each light channel in one integer. This makes it easier to store and to access.
 	private ArrayList<Integer> liquids = new ArrayList<>(); // Stores the local index of the block.
@@ -58,6 +57,7 @@ public class Chunk {
 		}
 		inst = new BlockInstance[16*World.WORLD_HEIGHT*16];
 		blocks = new Block[16*World.WORLD_HEIGHT*16];
+		blockData = new byte[16*World.WORLD_HEIGHT*16];
 		this.cx = cx;
 		this.cz = cz;
 		wx = cx << 4;
@@ -272,8 +272,41 @@ public class Chunk {
 	}
 	
 	// Function calls are faster than two pointer references, which would happen when using a 3D-array, and functions can additionally be inlined by the VM.
-	private void setInst(int x, int y, int z, Block b) {
-		blocks[(x << 4) | (y << 8) | z] = b;
+	private void setBlock(int x, int y, int z, Block b, byte data) {
+		int index = (x << 4) | (y << 8) | z;
+		blocks[index] = b;
+		blockData[index] = data;
+	}
+	
+	public void setBlockData(int x, int y, int z, byte data) {
+		int index = (x << 4) | (y << 8) | z;
+		if(blockData[index] != data) {
+			// Registers blockChange:
+			int bcIndex = -1; // Checks if it is already in the list
+			for(int i = 0; i < changes.size(); i++) {
+				BlockChange bc = changes.get(i);
+				if(bc.x == x && bc.y == y && bc.z == z) {
+					bcIndex = i;
+					break;
+				}
+			}
+			if(index == -1) { // Creates a new object if the block wasn't changed before
+				changes.add(new BlockChange(-1, blocks[index].ID, x, y, z, blockData[index], data));
+			} else if(blocks[index].ID == changes.get(bcIndex).oldType && data == changes.get(bcIndex).oldData) { // Removes the object if the block reverted to it's original state.
+				changes.remove(bcIndex);
+			} else {
+				changes.get(bcIndex).newData = data;
+			}
+			blockData[index] = data;
+			// Update the instance:
+			if(inst[index] != null)
+				inst[index].blockData = data;
+		}
+	}
+	
+	public byte getBlockData(int x, int y, int z) {
+		int index = (x << 4) | (y << 8) | z;
+		return blockData[index];
 	}
 	
 	/**
@@ -282,6 +315,7 @@ public class Chunk {
 	@Deprecated
 	public void createBlocksForOverlay() {
 		blocks = new Block[16*256*16];
+		blockData = new byte[65536];
 	}
 	// Performs a light update in all channels on this block.
 	private void lightUpdate(int x, int y, int z) {
@@ -596,7 +630,7 @@ public class Chunk {
 	 * @param y
 	 * @param z
 	 */
-	public void addBlockPossiblyOutside(Block b, int x, int y, int z) {
+	public void addBlockPossiblyOutside(Block b, byte data, int x, int y, int z) {
 		// Make the boundary checks:
 		if (b == null) return;
 		if(y >= World.WORLD_HEIGHT)
@@ -606,14 +640,14 @@ public class Chunk {
 		if(rx < 0 || rx > 15 || rz < 0 || rz > 15) {
 			if (surface.getChunk(cx + ((rx & ~15) >> 4), cz + ((rz & ~15) >> 4)) == null)
 				return;
-			surface.getChunk(cx + ((rx & ~15) >> 4), cz + ((rz & ~15) >> 4)).addBlock(b, x & 15, y, z & 15);
+			surface.getChunk(cx + ((rx & ~15) >> 4), cz + ((rz & ~15) >> 4)).addBlock(b, data, x & 15, y, z & 15);
 			return;
 		} else {
-			addBlock(b, x & 15, y, z & 15);
+			addBlock(b, data, x & 15, y, z & 15);
 		}
 	}
 	
-	public void addBlock(Block b, int x, int y, int z) {
+	public void addBlock(Block b, byte data, int x, int y, int z) {
 		// Checks if there is a block on that position and deposits it if degradable.
 		Block b2 = getBlockAt(x, y, z);
 		if(b2 != null) {
@@ -623,7 +657,7 @@ public class Chunk {
 			removeBlockAt(x, y, z, false);
 		}
 		if(b.hasBlockEntity() || b.getBlockClass() == BlockClass.FLUID) {
-			BlockInstance inst0 = new BlockInstance(b);
+			BlockInstance inst0 = new BlockInstance(b, data);
 			inst0.setPosition(new Vector3i(x + wx, y, z + wz));
 			inst0.setStellarTorus(surface);
 			if (b.hasBlockEntity()) {
@@ -635,7 +669,7 @@ public class Chunk {
 				updatingLiquids.add((x << 4) | (y << 8) | z);
 			}
 		}
-		setInst(x, y, z, b);
+		setBlock(x, y, z, b, data);
 		if(generated) {
 			Block[] neighbors = getNeighbors(x, y, z);
 			for (int i = 0; i < neighbors.length; i++) {
@@ -682,7 +716,9 @@ public class Chunk {
 		for(BlockChange bc : changes) {
 			int index = (bc.x << 4) | (bc.y << 8) | bc.z;
 			bc.oldType = blocks[index] == null ? -1 : blocks[index].ID;
+			bc.oldData = blockData[index];
 			blocks[index] = bc.newType == -1 ? null : surface.getPlanetBlocks()[bc.newType];
+			blockData[index] = bc.newData;
 		}
 	}
 	
@@ -717,8 +753,9 @@ public class Chunk {
 	public synchronized void revealBlock(int x, int y, int z) {
 		// Make some sanity check for y coordinate:
 		if(y < 0 || y >= World.WORLD_HEIGHT) return;
-		Block b = getBlockAt(x, y, z);
-		BlockInstance bi = new BlockInstance(b);
+		int index = (x << 4) | (y << 8) | z;
+		Block b = blocks[index];
+		BlockInstance bi = new BlockInstance(b, blockData[index]);
 		Block[] neighbors = getNeighbors(x, y ,z);
 		if(neighbors[0] != null) bi.neighborEast = getsBlocked(neighbors[0], bi.getBlock());
 		if(neighbors[1] != null) bi.neighborWest = getsBlocked(neighbors[1], bi.getBlock());
@@ -748,7 +785,7 @@ public class Chunk {
 		if (bi.hasBlockEntity()) {
 			blockEntities.remove(bi);
 		}
-		setInst(x, y, z, null);
+		setBlock(x, y, z, null, (byte)0);
 		BlockInstance[] visibleNeighbors = getVisibleNeighbors(x, y, z);
 		if(visibleNeighbors[0] != null) visibleNeighbors[0].neighborWest = false;
 		if(visibleNeighbors[1] != null) visibleNeighbors[1].neighborEast = false;
@@ -773,7 +810,8 @@ public class Chunk {
 				}
 			}
 		}
-		setInst(x, y, z, null);
+		byte oldData = getBlockData(x, y, z);
+		setBlock(x, y, z, null, (byte)0); // TODO: Investigate why this is called twice.
 
 		if(registerBlockChange) {
 			// Registers blockChange:
@@ -786,7 +824,7 @@ public class Chunk {
 				}
 			}
 			if(index == -1) { // Creates a new object if the block wasn't changed before
-				changes.add(new BlockChange(bi.ID, -1, x, y, z));
+				changes.add(new BlockChange(bi.ID, -1, x, y, z, oldData, (byte)0));
 				return;
 			}
 			if(changes.get(index).oldType == -1) { // Removes the object if the block reverted to it's original state(air).
@@ -803,9 +841,9 @@ public class Chunk {
 	 * @param y
 	 * @param z
 	 */
-	public void rawAddBlock(int x, int y, int z, Block bi) {
+	public void rawAddBlock(int x, int y, int z, Block bi, byte data) {
 		if (bi  == null) {
-			setInst(x, y, z, null);
+			setBlock(x, y, z, null, data);
 			return;
 		}
 		if (bi != null) {
@@ -813,10 +851,10 @@ public class Chunk {
 				liquids.add((x << 4) | (y << 8) | z);
 			}
 		}
-		setInst(x, y, z, bi);
+		setBlock(x, y, z, bi, data);
 	}
 	
-	public void addBlockAt(int x, int y, int z, Block b, boolean registerBlockChange) {
+	public void addBlockAt(int x, int y, int z, Block b, byte data, boolean registerBlockChange) {
 		if(y >= World.WORLD_HEIGHT)
 			return;
 		removeBlockAt(x, y, z, false);
@@ -828,7 +866,7 @@ public class Chunk {
 			liquids.add((x << 4) | (y << 8) | z);
 			updatingLiquids.add((x << 4) | (y << 8) | z);
 		}
-		setInst(x, y, z, b);
+		setBlock(x, y, z, b, data);
 		Block[] neighbors = getNeighbors(x+wx, y, z+wz);
 		BlockInstance[] visibleNeighbors = getVisibleNeighbors(x+wx, y, z+wz);
 		if(visibleNeighbors[0] != null) visibleNeighbors[0].neighborWest = getsBlocked(neighbors[0], b.isTransparent());
@@ -883,11 +921,12 @@ public class Chunk {
 				}
 			}
 			if(index == -1) { // Creates a new object if the block wasn't changed before
-				changes.add(new BlockChange(-1, b.ID, x, y, z));
-			} else if(b.ID == changes.get(index).oldType) { // Removes the object if the block reverted to it's original state.
+				changes.add(new BlockChange(-1, b.ID, x, y, z, (byte)0, data));
+			} else if(b.ID == changes.get(index).oldType && data == changes.get(index).oldData) { // Removes the object if the block reverted to it's original state.
 				changes.remove(index);
 			} else {
 				changes.get(index).newType = b.ID;
+				changes.get(index).newData = data;
 			}
 		}
 		if(loaded)
@@ -904,12 +943,12 @@ public class Chunk {
 	 * @return chunk data as byte[]
 	 */
 	public byte[] save(Map<Block, Integer> blockPalette) {
-		byte[] data = new byte[12 + (changes.size() << 4)];
+		byte[] data = new byte[12 + (changes.size()*17)];
 		Bits.putInt(data, 0, cx);
 		Bits.putInt(data, 4, cz);
 		Bits.putInt(data, 8, changes.size());
 		for(int i = 0; i < changes.size(); i++) {
-			changes.get(i).save(data, 12 + (i << 4), blockPalette);
+			changes.get(i).save(data, 12 + i*17, blockPalette);
 		}
 		return data;
 	}
