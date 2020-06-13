@@ -876,7 +876,7 @@ public class Cubyz implements GameLogic {
 						} else {
 							Vector3i pos = new Vector3i(0, 0, 0);
 							Vector3i dir = new Vector3i(0, 0, 0);
-							msd.getEmptyPlace(world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(this.dir).negate(), pos, dir);
+							msd.getEmptyPlace(pos, dir);
 							Block b = world.getLocalPlayer().getInventory().getBlock(inventorySelection);
 							if (b != null && pos != null) {
 								if(b.mode == null) {
