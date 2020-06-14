@@ -13,6 +13,7 @@ public abstract class StellarTorus {
 	protected float distance, angle; // the relative angle and distance to the orbital parent.
 	// if this torus doesn't have an orbital parent, use the following variables:
 	protected float absX, absY; // absolute positions if the above condition is true
+	protected float gravity = 0.022f;
 
 	public abstract void cleanup();
 	
@@ -20,6 +21,14 @@ public abstract class StellarTorus {
 	
 	public abstract long getLocalSeed();
 	public abstract void setLocalSeed(long localSeed);
+	
+	public void setGravity(float gravity) {
+		this.gravity = gravity;
+	}
+	
+	public float getGravity() {
+		return gravity;
+	}
 	
 	public StellarTorus getOrbitalParent() {
 		return orbitalParent;

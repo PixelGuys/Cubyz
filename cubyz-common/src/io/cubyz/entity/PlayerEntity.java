@@ -76,7 +76,7 @@ public class PlayerEntity extends EntityType {
 			if (health > maxHealth)
 				health = maxHealth;
 			if (!flying) {
-				vy -= 0.022F;
+				vy -= surface.getStellarTorus().getGravity();
 			}
 			vx = 0;
 			vz = 0;
