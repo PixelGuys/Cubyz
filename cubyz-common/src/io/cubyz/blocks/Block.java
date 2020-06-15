@@ -19,7 +19,7 @@ public class Block implements RegistryElement {
 		WOOD, STONE, SAND, UNBREAKABLE, LEAF, FLUID
 	};
 	public static enum RotationMode {
-		TORCH
+		TORCH, LOG
 	};
 	
 	boolean transparent;

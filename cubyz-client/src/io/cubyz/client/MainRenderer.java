@@ -50,6 +50,9 @@ public class MainRenderer implements Renderer {
 	public static final int MAX_SPOT_LIGHTS = 0;
 	public static final Vector3f VECTOR3F_ZERO = new Vector3f(0, 0, 0);
 
+	private static final float PI = (float)Math.PI;
+	private static final float PI_HALF = PI/2;
+
 	public MainRenderer() {
 
 	}
@@ -267,6 +270,37 @@ public class MainRenderer implements Renderer {
 										}
 										map[bi.getID()].add(tmp);
 									}
+								} else if(bi.getBlock().mode == Block.RotationMode.LOG) {
+									byte data = bi.blockData;
+									Spatial tmp = (Spatial)bi.getSpatial();
+									tmp.setPosition(x, y, z);
+									ch.getCornerLight(bi.getX() & 15, bi.getY(), bi.getZ() & 15, ambientLight, tmp.light);
+									switch(data) {
+										default:
+											break;
+										case 1:
+											tmp.setRotation(PI, 0, 0);
+											break;
+										case 2:
+											tmp.setRotation(0, 0, -PI_HALF);
+											break;
+										case 3:
+											tmp.setRotation(0, 0, PI_HALF);
+											break;
+										case 4:
+											tmp.setRotation(PI_HALF, 0, 0);
+											break;
+										case 5:
+											tmp.setRotation(-PI_HALF, 0, 0);
+											break;
+									}
+									if (tmp.isSelected()) {
+										selected = tmp;
+										selectedBlock = bi.getID();
+										breakAnim = bi.getBreakingAnim();
+										continue;
+									}
+									map[bi.getID()].add(tmp);
 								} else {
 									CubyzLogger.instance.warning("You are stupid! You added a new rotation mode and forgot to update the renderer!");
 								}

@@ -893,6 +893,15 @@ public class Cubyz implements GameLogic {
 									} else {
 										world.getCurrentTorus().placeBlock(pos.x, pos.y, pos.z, b, data);
 									}
+								} else if(b.mode== Block.RotationMode.LOG) {
+									byte data = (byte)0;
+									if(dir.x == 1) data = (byte)0b10;
+									if(dir.x == -1) data = (byte)0b11;
+									if(dir.y == -1) data = (byte)0b0;
+									if(dir.y == 1) data = (byte)0b1;
+									if(dir.z == 1) data = (byte)0b100;
+									if(dir.z == -1) data = (byte)0b101;
+									world.getCurrentTorus().placeBlock(pos.x, pos.y, pos.z, b, data);
 								}
 								world.getLocalPlayer().getInventory().getStack(inventorySelection).add(-1);
 							}
