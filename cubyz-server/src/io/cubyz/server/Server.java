@@ -20,7 +20,7 @@ import io.cubyz.CubyzLogger;
 import io.cubyz.api.Mod;
 import io.cubyz.api.Side;
 import io.cubyz.command.CommandExecutor;
-import io.cubyz.command.ICommandSource;
+import io.cubyz.command.CommandSource;
 import io.cubyz.modding.ModLoader;
 import io.cubyz.multiplayer.server.CubyzServer;
 import io.cubyz.world.World;
@@ -143,7 +143,7 @@ public class Server {
 		
 		Scanner scan = new Scanner(System.in);
 		
-		ICommandSource console = new ICommandSource() {
+		CommandSource console = new CommandSource() {
 
 			@Override
 			public void feedback(String info) {

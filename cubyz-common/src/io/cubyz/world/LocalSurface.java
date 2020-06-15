@@ -8,6 +8,7 @@ import java.util.Random;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 
+import org.joml.Vector3i;
 import org.joml.Vector4f;
 
 import io.cubyz.CubyzLogger;
@@ -18,9 +19,11 @@ import io.cubyz.blocks.Updateable;
 import io.cubyz.blocks.Ore;
 import io.cubyz.blocks.BlockEntity;
 import io.cubyz.entity.Entity;
+import io.cubyz.entity.ItemEntity;
 import io.cubyz.entity.Player;
 import io.cubyz.handler.PlaceBlockHandler;
 import io.cubyz.handler.RemoveBlockHandler;
+import io.cubyz.items.ItemStack;
 import io.cubyz.math.Bits;
 import io.cubyz.math.CubyzMath;
 import io.cubyz.save.BlockChange;
@@ -284,6 +287,9 @@ public class LocalSurface extends Surface {
 			for (RemoveBlockHandler hand : removeBlockHandlers) {
 				hand.onBlockRemoved(b, x, y, z);
 			}
+			/*ItemEntity drop = new ItemEntity(this, new ItemStack(b.getBlockDrop(), 1));
+			drop.setPosition(new Vector3i(x, y, z));
+			entities.add(drop);*/
 		}
 	}
 	

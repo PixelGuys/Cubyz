@@ -21,6 +21,14 @@ public class Vector3fi implements Cloneable {
 		relZ = 0;
 	}
 	
+	public Vector3fi(int x, float y, int z, float relX, float relZ) {
+		this.x = x;
+		this.y = y;
+		this.z = z;
+		this.relX = relX;
+		this.relZ = relZ;
+	}
+	
 	public Vector3fi(FloatingInteger x, float y, FloatingInteger z) {
 		this.x = x.getInteger();
 		relX = x.getDecimal();

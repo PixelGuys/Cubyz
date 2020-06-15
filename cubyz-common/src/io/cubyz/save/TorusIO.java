@@ -15,8 +15,6 @@ import java.util.zip.InflaterInputStream;
 
 import io.cubyz.CubyzLogger;
 import io.cubyz.api.CubyzRegistries;
-import io.cubyz.api.CurrentSurfaceRegistries;
-import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.entity.Entity;
 import io.cubyz.math.Bits;
@@ -123,7 +121,8 @@ public class TorusIO {
 			out.write(ndt.getData());
 			if (surface != null) {
 				for (Entity ent : surface.getEntities()) {
-					EntityIO.saveEntity(ent, out);
+					if(ent != null)
+						EntityIO.saveEntity(ent, out);
 				}
 			}
 			out.close();

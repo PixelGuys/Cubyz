@@ -17,6 +17,11 @@ public class ItemStack {
 		this.item = item;
 	}
 	
+	public ItemStack(Item item, int amount) {
+		this.item = item;
+		number = amount;
+	}
+	
 	public void update() {}
 	
 	public boolean filled() {

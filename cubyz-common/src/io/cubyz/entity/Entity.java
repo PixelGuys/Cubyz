@@ -23,7 +23,7 @@ public class Entity {
 	
 	public int health, hunger, maxHealth, maxHunger;
 	
-	protected int width = 1, height = 2, depth = 1;
+	protected float width = 1, height = 2, depth = 1;
 	
 	public Entity(EntityType type, Surface surface) {
 		this.type = type;
@@ -82,7 +82,7 @@ public class Entity {
 				stopVY();
 			}
 		} else if (vy > 0) {
-			Vector3i bp = new Vector3i(position.x + (int) Math.round(position.relX), (int) Math.floor(position.y) + height, position.z + (int) Math.round(position.relZ));
+			Vector3i bp = new Vector3i(position.x + (int) Math.round(position.relX), (int) Math.floor(position.y + height), position.z + (int) Math.round(position.relZ));
 			float relX = position.relX +0.5F - Math.round(position.relX);
 			float relZ = position.relZ + 0.5F- Math.round(position.relZ);
 			if(checkBlock(bp.x, bp.y, bp.z)) {

@@ -10,7 +10,9 @@ import io.cubyz.CubyzLogger;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
+import io.cubyz.entity.ItemEntity;
 import io.cubyz.entity.Player;
+import io.cubyz.items.ItemBlock;
 import io.cubyz.math.CubyzMath;
 import io.cubyz.math.Vector3fi;
 import io.cubyz.util.FastList;
@@ -397,7 +399,27 @@ public class MainRenderer implements Renderer {
 		
 		for (int i = 0; i < entities.length; i++) {
 			Entity ent = entities[i];
-			if (ent != null && ent != p && Meshes.entityMeshes.get(ent.getType()) != null) { // don't render local player
+			if(ent instanceof ItemEntity) {
+				ItemEntity itemEnt = (ItemEntity)ent;
+				Mesh mesh = null;
+				if(itemEnt.items.getItem() instanceof ItemBlock) {
+					mesh = Meshes.blockMeshes.get(((ItemBlock)itemEnt.items.getItem()).getBlock());
+					mesh.getMaterial().setTexture(Meshes.blockTextures.get(blocks[i]));
+				} else {
+					// TODO
+				}
+				if(mesh != null) {
+					shaderProgram.setUniform("materialHasTexture", mesh.getMaterial().isTextured());
+					
+					mesh.renderOne(() -> {
+						Vector3f position = ent.getRenderPosition(p.getPosition());
+						Matrix4f modelViewMatrix = transformation.getModelViewMatrix(transformation.getModelMatrix(position, ent.getRotation(), 0.1f), viewMatrix);
+						shaderProgram.setUniform("isInstanced", 0);
+						shaderProgram.setUniform("selectedNonInstanced", 0f);
+						shaderProgram.setUniform("modelViewNonInstancedMatrix", modelViewMatrix);
+					});
+				}
+			} else if (ent != null && ent != p && Meshes.entityMeshes.get(ent.getType()) != null) { // don't render local player
 				Mesh mesh = Meshes.entityMeshes.get(ent.getType());
 				shaderProgram.setUniform("material", mesh.getMaterial());
 				

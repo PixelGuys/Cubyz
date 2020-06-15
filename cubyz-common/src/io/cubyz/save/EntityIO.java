@@ -4,11 +4,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import io.cubyz.api.CubyzRegistries;
-import io.cubyz.api.CurrentSurfaceRegistries;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.EntityType;
+import io.cubyz.entity.ItemEntity;
+import io.cubyz.items.Item;
+import io.cubyz.items.ItemStack;
 import io.cubyz.math.Bits;
+import io.cubyz.math.Vector3fi;
 import io.cubyz.ndt.NDTContainer;
 import io.cubyz.world.Surface;
 
@@ -17,6 +19,17 @@ public class EntityIO {
 	public static void saveEntity(Entity ent, OutputStream out) throws IOException {
 		NDTContainer ndt = ent.saveTo(new NDTContainer());
 		ndt.setString("id", ent.getType().getRegistryID().toString());
+		// Store position:
+		ndt.setInteger("x", ent.getPosition().x);
+		ndt.setFloat("y", ent.getPosition().y);
+		ndt.setInteger("z", ent.getPosition().z);
+		ndt.setFloat("relX", ent.getPosition().relX);
+		ndt.setFloat("relZ", ent.getPosition().relZ);
+		if(ent instanceof ItemEntity) {
+			ItemEntity itemEnt = (ItemEntity)ent;
+			ndt.setString("item", itemEnt.items.getItem().getRegistryID().toString());
+			ndt.setInteger("amount", itemEnt.items.getAmount());
+		}
 		byte[] data = ndt.getData();
 		byte[] lenBytes = new byte[4];
 		Bits.putInt(lenBytes, 0, data.length);
@@ -31,14 +44,28 @@ public class EntityIO {
 		byte[] buf = new byte[len];
 		in.read(buf);
 		NDTContainer ndt = new NDTContainer(buf);
-		
-		EntityType type = surface.getCurrentRegistries().entityRegistry.getByID(ndt.getString("id"));
-		if (type == null) {
-			return null;
+		String id = ndt.getString("id");
+		Entity ent;
+		if(id.equals("cubyz:item_stack")) {
+			Item item = surface.getCurrentRegistries().itemRegistry.getByID(ndt.getString("item"));
+			int amount = (int)ndt.getInteger("amount");
+			ent = new ItemEntity(surface, new ItemStack(item, amount));
+		} else {
+			EntityType type = surface.getCurrentRegistries().entityRegistry.getByID(id);
+			if (type == null) {
+				return null;
+			}
+			ent = type.newEntity(surface);
+			ent.loadFrom(ndt);
+			
 		}
-		Entity ent = type.newEntity(surface);
-		ent.loadFrom(ndt);
-		
+		// Load position:
+		int x = ndt.getInteger("x");
+		float y = ndt.getFloat("y");
+		int z = ndt.getInteger("z");
+		float relX = ndt.getFloat("relX");
+		float relZ = ndt.getFloat("relZ");
+		ent.setPosition(new Vector3fi(x, y, z, relX, relZ));
 		return ent;
 	}
 	
