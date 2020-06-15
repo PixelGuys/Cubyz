@@ -356,8 +356,28 @@ public class LocalSurface extends Surface {
 			}
 		}
 		// Entities
-		for (Entity en : entities) {
+		for (int i = 0; i < entities.size(); i++) {
+			Entity en = entities.get(i);
 			en.update();
+			if(en instanceof ItemEntity) {
+				ItemEntity itemEn = (ItemEntity)en;
+				// Check if a player or other entity is nearby that can pickup this item:
+				for (int j = 0; j < entities.size(); j++) {
+					Entity en2 = entities.get(j);
+					// Every entity with and inventory can pick up stuff.
+					if(en2.getInventory() != null) {
+						if(en.getPosition().getDistance(en2.getPosition()) <= en2.pickupRange) {
+							int newAmount = en2.getInventory().addItem(itemEn.items.getItem(), itemEn.items.getAmount());
+							if(newAmount != 0) {
+								itemEn.items.setAmount(newAmount);
+							} else {
+								entities.remove(en);
+								break;
+							}
+						}
+					}
+				}
+			}
 		}
 		// Block Entities
 		for (Chunk ch : chunks) {

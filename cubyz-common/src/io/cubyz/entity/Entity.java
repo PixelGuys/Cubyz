@@ -4,6 +4,7 @@ import org.joml.Vector3f;
 import org.joml.Vector3i;
 
 import io.cubyz.blocks.Block;
+import io.cubyz.items.Inventory;
 import io.cubyz.math.FloatingInteger;
 import io.cubyz.math.Vector3fi;
 import io.cubyz.ndt.NDTContainer;
@@ -26,6 +27,8 @@ public class Entity {
 	protected float width = 1, height = 2, depth = 1;
 	
 	protected float minBlock = 0.3f, maxBlock = 0.7f;
+	
+	public float pickupRange = 2; // Important if this entity can pickup items.
 	
 	public Entity(EntityType type, Surface surface) {
 		this.type = type;
@@ -399,6 +402,10 @@ public class Entity {
 	
 	public void setRotation(Vector3f rotation) {
 		this.rotation = rotation;
+	}
+	
+	public Inventory getInventory() {
+		return null;
 	}
 	
 }

@@ -1,6 +1,5 @@
 package io.cubyz.items;
 
-import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.CurrentSurfaceRegistries;
 import io.cubyz.blocks.Block;
 import io.cubyz.items.tools.Tool;

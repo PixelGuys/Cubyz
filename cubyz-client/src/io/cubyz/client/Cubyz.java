@@ -854,9 +854,6 @@ public class Cubyz implements GameLogic {
 							BlockInstance bi = msd.getSelectedBlockInstance();
 							if (bi != null && bi.getBlock().getBlockClass() != BlockClass.UNBREAKABLE) {
 								world.getCurrentTorus().removeBlock(bi.getX(), bi.getY(), bi.getZ());
-								if(world.getLocalPlayer().getInventory().addItem(bi.getBlock().getBlockDrop(), 1) != 0) {
-									//DropItemOnTheGround(); //TODO: Add this function.
-								}
 							}
 						}
 					}

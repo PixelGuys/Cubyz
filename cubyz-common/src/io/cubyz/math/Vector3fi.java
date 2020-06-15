@@ -56,4 +56,11 @@ public class Vector3fi implements Cloneable {
 	public Vector3fi clone() {
 		return new Vector3fi(new FloatingInteger(x, relX), y, new FloatingInteger(z, relZ));
 	}
+	
+	public float getDistance(Vector3fi other) {
+		float deltaX = (x - other.x) + relX - other.relX;
+		float deltaY = (y - other.y);
+		float deltaZ = (z - other.z) + relZ - other.relZ;
+		return (float)Math.sqrt(deltaX*deltaX + deltaY*deltaY + deltaZ*deltaZ);
+	}
 }

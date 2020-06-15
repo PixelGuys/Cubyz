@@ -22,6 +22,7 @@ public abstract class Player extends Entity implements CommandSource {
 		hunger = maxHunger = 16;
 	}
 	
+	@Override
 	public abstract Inventory getInventory();
 	public abstract void breaking(BlockInstance bi, int slot, Surface w);
 	public abstract void resetBlockBreaking();
