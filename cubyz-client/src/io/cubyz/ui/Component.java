@@ -44,9 +44,9 @@ public abstract class Component {
 		this.height = height;
 	}
 	
-	public void setSize(int w, int h) {
-		width = w;
-		height = h;
+	public void setSize(int width, int height) {
+		this.width = width;
+		this.height = height;
 	}
 	
 	public void setPosition(int x, int y) {

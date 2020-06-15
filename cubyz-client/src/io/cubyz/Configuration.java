@@ -36,6 +36,8 @@ public class Configuration {
 		obj.addProperty("useMipmaps", ClientSettings.mipmapping);
 		obj.addProperty("vsync", Cubyz.ctx.getWindow().isVSyncEnabled());
 		obj.addProperty("antiAliasSamples", Cubyz.ctx.getWindow().getAntialiasSamples());
+		obj.addProperty("easyLighting", Settings.easyLighting);
+		obj.addProperty("renderDistance", ClientSettings.renderDistance);
 		
 		try {
 			FileWriter writer = new FileWriter("configuration.json");
@@ -79,7 +81,7 @@ public class Configuration {
 		}
 		
 		if (obj.has("fogCoefficient")) {
-			ClientSettings.fogCoefficient = obj.get("fogCoefficient").getAsFloat(); // TODO: this shouldn't be in Settings, it's a client-only value
+			ClientSettings.fogCoefficient = obj.get("fogCoefficient").getAsFloat();
 		}
 		
 		if (obj.has("useMipmaps")) {
@@ -89,6 +91,13 @@ public class Configuration {
 			Cubyz.ctx.getWindow().setVSyncEnabled(obj.get("vsync").getAsBoolean());
 		} else { // V-Sync enabled by default
 			Cubyz.ctx.getWindow().setVSyncEnabled(true);
+		}
+
+		if (obj.has("easyLighting")) {
+			Settings.easyLighting = obj.get("easyLighting").getAsBoolean();
+		}
+		if (obj.has("renderDistance")) {
+			ClientSettings.renderDistance = obj.get("renderDistance").getAsInt();
 		}
 	}
 	
