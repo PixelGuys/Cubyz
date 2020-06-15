@@ -25,6 +25,8 @@ public class Entity {
 	
 	protected float width = 1, height = 2, depth = 1;
 	
+	protected float minBlock = 0.3f, maxBlock = 0.7f;
+	
 	public Entity(EntityType type, Surface surface) {
 		this.type = type;
 		this.surface = surface;
@@ -41,38 +43,38 @@ public class Entity {
 	 */
 	protected void updateVY() {
 		if (vy < 0) {
-			Vector3i bp = new Vector3i(position.x + (int) Math.round(position.relX), (int) Math.floor(position.y), position.z + (int) Math.round(position.relZ));
-			float relX = position.relX +0.5F - Math.round(position.relX);
-			float relZ = position.relZ + 0.5F- Math.round(position.relZ);
+			Vector3i bp = new Vector3i(position.x + (int) Math.round(position.relX), (int) Math.round(position.y), position.z + (int) Math.round(position.relZ));
+			float relX = position.relX + width/2 - Math.round(position.relX);
+			float relZ = position.relZ + depth/2 - Math.round(position.relZ);
 			if(isOnGround()) {
 				stopVY();
 			}
-			else if (relX < 0.3) {
+			else if (relX < minBlock) {
 				if (checkBlock(bp.x - 1, bp.y, bp.z)) {
 					stopVY();
 				}
-				else if (relZ < 0.3 && checkBlock(bp.x - 1, bp.y, bp.z - 1)) {
+				else if (relZ < minBlock && checkBlock(bp.x - 1, bp.y, bp.z - 1)) {
 					stopVY();
 				}
-				else if (relZ > 0.7 && checkBlock(bp.x - 1, bp.y, bp.z + 1)) {
+				else if (relZ > maxBlock && checkBlock(bp.x - 1, bp.y, bp.z + 1)) {
 					stopVY();
 				}
 			}
-			else if (relX > 0.7) {
+			else if (relX > maxBlock) {
 				if (checkBlock(bp.x + 1, bp.y, bp.z)) {
 					stopVY();
 				}
-				else if (relZ < 0.3 && checkBlock(bp.x + 1, bp.y, bp.z - 1)) {
+				else if (relZ < minBlock && checkBlock(bp.x + 1, bp.y, bp.z - 1)) {
 					stopVY();
 				}
-				else if (relZ > 0.7 && checkBlock(bp.x + 1, bp.y, bp.z + 1)) {
+				else if (relZ > maxBlock && checkBlock(bp.x + 1, bp.y, bp.z + 1)) {
 					stopVY();
 				}
 			}
-			if (relZ < 0.3 && checkBlock(bp.x, bp.y, bp.z - 1)) {
+			if (relZ < minBlock && checkBlock(bp.x, bp.y, bp.z - 1)) {
 				stopVY();
 			}
-			else if (relZ > 0.7 && checkBlock(bp.x, bp.y, bp.z + 1)) {
+			else if (relZ > maxBlock && checkBlock(bp.x, bp.y, bp.z + 1)) {
 				stopVY();
 			}
 			
@@ -83,36 +85,36 @@ public class Entity {
 			}
 		} else if (vy > 0) {
 			Vector3i bp = new Vector3i(position.x + (int) Math.round(position.relX), (int) Math.floor(position.y + height), position.z + (int) Math.round(position.relZ));
-			float relX = position.relX +0.5F - Math.round(position.relX);
-			float relZ = position.relZ + 0.5F- Math.round(position.relZ);
+			float relX = position.relX + width/2 - Math.round(position.relX);
+			float relZ = position.relZ + depth/2 - Math.round(position.relZ);
 			if(checkBlock(bp.x, bp.y, bp.z)) {
 				vy = 0;
-			} else if (relX < 0.3) {
+			} else if (relX < minBlock) {
 				if (checkBlock(bp.x - 1, bp.y, bp.z)) {
 					stopVY();
 				}
-				else if (relZ < 0.3 && checkBlock(bp.x - 1, bp.y, bp.z - 1)) {
+				else if (relZ < minBlock && checkBlock(bp.x - 1, bp.y, bp.z - 1)) {
 					stopVY();
 				}
-				else if (relZ > 0.7 && checkBlock(bp.x - 1, bp.y, bp.z + 1)) {
+				else if (relZ > maxBlock && checkBlock(bp.x - 1, bp.y, bp.z + 1)) {
 					stopVY();
 				}
 			}
-			else if (relX > 0.7) {
+			else if (relX > maxBlock) {
 				if (checkBlock(bp.x + 1, bp.y, bp.z)) {
 					stopVY();
 				}
-				else if (relZ < 0.3 && checkBlock(bp.x + 1, bp.y, bp.z - 1)) {
+				else if (relZ < minBlock && checkBlock(bp.x + 1, bp.y, bp.z - 1)) {
 					stopVY();
 				}
-				else if (relZ > 0.7 && checkBlock(bp.x + 1, bp.y, bp.z + 1)) {
+				else if (relZ > maxBlock && checkBlock(bp.x + 1, bp.y, bp.z + 1)) {
 					stopVY();
 				}
 			}
-			if (relZ < 0.3 && checkBlock(bp.x, bp.y, bp.z - 1)) {
+			if (relZ < minBlock && checkBlock(bp.x, bp.y, bp.z - 1)) {
 				stopVY();
 			}
-			else if (relZ > 0.7 && checkBlock(bp.x, bp.y, bp.z + 1)) {
+			else if (relZ > maxBlock && checkBlock(bp.x, bp.y, bp.z + 1)) {
 				stopVY();
 			}
 		}
@@ -134,67 +136,67 @@ public class Entity {
 	 */
 	protected float _getX(float x) {
 		int absX = position.x + (int) Math.round(position.relX);
-		int absY = (int) Math.floor(position.y + 0.5F);
+		int absY = (int) Math.round(position.y + 0.5f);
 		int absZ = position.z + (int) Math.round(position.relZ);
 		float relX = position.relX + 0.5F - Math.round(position.relX);
 		float relZ = position.relZ + 0.5F- Math.round(position.relZ);
 		if (x < 0) {
-			if (relX < 0.3F) {
+			if (relX < minBlock) {
 				relX++;
 				absX--;
 			}
 			
-			if (relX+x > 0.3F) {
+			if (relX+x > minBlock) {
 				return x;
 			}
 			
-			if (relZ < 0.3) {
+			if (relZ < minBlock) {
 				for (int i = 0; i < height; i++) {
 					if (checkBlock(absX - 1, absY + i, absZ - 1)) {
-						return 0.30001F - relX;
+						return minBlock + 0.0001F - relX;
 					}
 				}
 			}
-			if (relZ > 0.7) {
+			if (relZ > maxBlock) {
 				for (int i = 0; i < height; i++) {
 					if (checkBlock(absX - 1, absY + i, absZ + 1)) {
-						return 0.30001F - relX;
+						return minBlock + 0.0001F - relX;
 					}
 				}
 			}
 			for (int i = 0; i < height; i++) {
 				if (checkBlock(absX - 1, absY + i, absZ)) {
-					return 0.30001F - relX;
+					return minBlock + 0.0001F - relX;
 				}
 			}
 		}
 		else {
-			if (relX > 0.7F) {
+			if (relX > maxBlock) {
 				relX--;
 				absX++;
 			}
 			
-			if (relX+x < 0.7F) {
+			if (relX+x < maxBlock) {
 				return x;
 			}
 			
-			if (relZ < 0.3) {
+			if (relZ < minBlock) {
 				for (int i = 0; i < height; i++) {
 					if (checkBlock(absX + 1, absY + i, absZ - 1)) {
-						return 0.69999F - relX;
+						return maxBlock - 0.0001f - relX;
 					}
 				}
 			}
-			if (relZ > 0.7) {
+			if (relZ > maxBlock) {
 				for (int i = 0; i < height; i++) {
 					if( checkBlock(absX + 1, absY + i, absZ + 1)) {
-						return 0.69999F - relX;
+						return maxBlock - 0.0001f - relX;
 					}
 				}
 			}
 			for (int i = 0; i < height; i++) {
 				if (checkBlock(absX + 1, absY + i, absZ)) {
-					return 0.69999F - relX;
+					return maxBlock - 0.0001f - relX;
 				}
 			}
 		}
@@ -203,63 +205,63 @@ public class Entity {
 	
 	protected float _getZ(float z) {
 		int absX = position.x + (int) Math.floor(position.relX + 0.5F);
-		int absY = (int) Math.floor(position.y + 0.5F);
+		int absY = (int) Math.round(position.y + 0.5f);
 		int absZ = position.z + (int) Math.floor(position.relZ + 0.5F);
 		float relX = position.relX +0.5F - Math.round(position.relX);
 		float relZ = position.relZ + 0.5F- Math.round(position.relZ);
 		if(z < 0) {
-			if(relZ < 0.3F) {
+			if(relZ < minBlock) {
 				relZ++;
 				absZ--;
 			}
-			if(relZ + z > 0.3F) {
+			if(relZ + z > minBlock) {
 				return z;
 			}
-			if(relX < 0.3) {
+			if(relX < minBlock) {
 				for(int i = 0; i < height; i++) {
 					if (checkBlock(absX - 1, absY + i, absZ - 1)) {
-						return 0.30001F - relZ;
+						return minBlock + 0.0001F - relZ;
 					}
 				}
 			}
-			if(relX > 0.7) {
+			if(relX > maxBlock) {
 				for(int i = 0; i < height; i++) {
 					if(checkBlock(absX+1, absY+i, absZ-1)) {
-						return 0.30001F - relZ;
+						return minBlock + 0.0001F - relZ;
 					}
 				}
 			}
 			for(int i = 0; i < height; i++) {
 				if(checkBlock(absX, absY+i, absZ-1)) {
-					return 0.30001F - relZ;
+					return minBlock + 0.0001F - relZ;
 				}
 			}
 		}
 		else {
-			if(relZ > 0.7F) {
+			if(relZ > maxBlock) {
 				relZ--;
 				absZ++;
 			}
-			if(relZ+z < 0.7F) {
+			if(relZ+z < maxBlock) {
 				return z;
 			}
-			if(relX < 0.3) {
+			if(relX < minBlock) {
 				for(int i = 0; i < height; i++) {
 					if(checkBlock(absX-1, absY+i, absZ+1)) {
-						return 0.69999F - relZ;
+						return maxBlock - 0.0001f - relZ;
 					}
 				}
 			}
-			if(relX > 0.7) {
+			if(relX > maxBlock) {
 				for(int i = 0; i < height; i++) {
 					if(checkBlock(absX+1, absY+i, absZ+1)) {
-						return 0.69999F - relZ;
+						return maxBlock - 0.0001f - relZ;
 					}
 				}
 			}
 			for(int i = 0; i < height; i++) {
 				if(checkBlock(absX, absY+i, absZ+1)) {
-					return 0.69999F - relZ;
+					return maxBlock - 0.0001f - relZ;
 				}
 			}
 		}
@@ -275,7 +277,7 @@ public class Entity {
 	}
 	
 	public boolean isOnGround() {
-		Vector3i bp = new Vector3i(position.x + (int) Math.round(position.relX), (int) Math.floor(position.y), position.z + (int) Math.round(position.relZ));
+		Vector3i bp = new Vector3i(position.x + (int) Math.round(position.relX), (int) Math.round(position.y), position.z + (int) Math.round(position.relZ));
 		return checkBlock(bp.x, bp.y, bp.z);
 	}
 	
@@ -378,7 +380,7 @@ public class Entity {
 	}
 	
 	public Vector3f getRenderPosition(Vector3fi playerPos) { // default method for render pos
-		return new Vector3f((position.x-playerPos.x)+position.relX-playerPos.relX, position.y-playerPos.y, (position.z-playerPos.z)+position.relZ-playerPos.relZ);
+		return new Vector3f((position.x-playerPos.x)+position.relX-playerPos.relX, position.y + height/2 - playerPos.y - Player.cameraHeight, (position.z-playerPos.z)+position.relZ-playerPos.relZ);
 	}
 	
 	public void setPosition(Vector3i position) {

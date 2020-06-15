@@ -10,7 +10,6 @@ import io.cubyz.entity.ItemEntity;
 import io.cubyz.items.Item;
 import io.cubyz.items.ItemStack;
 import io.cubyz.math.Bits;
-import io.cubyz.math.Vector3fi;
 import io.cubyz.ndt.NDTContainer;
 import io.cubyz.world.Surface;
 
@@ -19,12 +18,6 @@ public class EntityIO {
 	public static void saveEntity(Entity ent, OutputStream out) throws IOException {
 		NDTContainer ndt = ent.saveTo(new NDTContainer());
 		ndt.setString("id", ent.getType().getRegistryID().toString());
-		// Store position:
-		ndt.setInteger("x", ent.getPosition().x);
-		ndt.setFloat("y", ent.getPosition().y);
-		ndt.setInteger("z", ent.getPosition().z);
-		ndt.setFloat("relX", ent.getPosition().relX);
-		ndt.setFloat("relZ", ent.getPosition().relZ);
 		if(ent instanceof ItemEntity) {
 			ItemEntity itemEnt = (ItemEntity)ent;
 			ndt.setString("item", itemEnt.items.getItem().getRegistryID().toString());
@@ -56,16 +49,8 @@ public class EntityIO {
 				return null;
 			}
 			ent = type.newEntity(surface);
-			ent.loadFrom(ndt);
-			
 		}
-		// Load position:
-		int x = ndt.getInteger("x");
-		float y = ndt.getFloat("y");
-		int z = ndt.getInteger("z");
-		float relX = ndt.getFloat("relX");
-		float relZ = ndt.getFloat("relZ");
-		ent.setPosition(new Vector3fi(x, y, z, relX, relZ));
+		ent.loadFrom(ndt);
 		return ent;
 	}
 	

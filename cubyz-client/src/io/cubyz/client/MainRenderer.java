@@ -173,7 +173,7 @@ public class MainRenderer implements Renderer {
 			float relX = pos.relX;
 			int z0 = pos.z;
 			float relZ = pos.relZ;
-			float y0 = pos.y+1.5f;
+			float y0 = pos.y + Player.cameraHeight;
 			for (Chunk ch : chunks) {
 				if (!frustumInt.testAab(ch.getMin(pos, worldAnd), ch.getMax(pos, worldAnd)))
 					continue;
@@ -404,7 +404,7 @@ public class MainRenderer implements Renderer {
 				Mesh mesh = null;
 				if(itemEnt.items.getItem() instanceof ItemBlock) {
 					mesh = Meshes.blockMeshes.get(((ItemBlock)itemEnt.items.getItem()).getBlock());
-					mesh.getMaterial().setTexture(Meshes.blockTextures.get(blocks[i]));
+					mesh.getMaterial().setTexture(Meshes.blockTextures.get(((ItemBlock)itemEnt.items.getItem()).getBlock()));
 				} else {
 					// TODO
 				}
@@ -413,7 +413,7 @@ public class MainRenderer implements Renderer {
 					
 					mesh.renderOne(() -> {
 						Vector3f position = ent.getRenderPosition(p.getPosition());
-						Matrix4f modelViewMatrix = transformation.getModelViewMatrix(transformation.getModelMatrix(position, ent.getRotation(), 0.1f), viewMatrix);
+						Matrix4f modelViewMatrix = transformation.getModelViewMatrix(transformation.getModelMatrix(position, ent.getRotation(), 0.2f), viewMatrix);
 						shaderProgram.setUniform("isInstanced", 0);
 						shaderProgram.setUniform("selectedNonInstanced", 0f);
 						shaderProgram.setUniform("modelViewNonInstancedMatrix", modelViewMatrix);

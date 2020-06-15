@@ -5,6 +5,7 @@ import org.joml.Vector3f;
 import org.joml.Vector3i;
 
 import io.cubyz.blocks.BlockInstance;
+import io.cubyz.entity.Player;
 import io.cubyz.math.Vector3fi;
 import io.cubyz.world.BlockSpatial;
 import io.cubyz.world.Chunk;
@@ -31,7 +32,7 @@ public class CubyzMeshSelectionDetector {
 	}
 	
 	public void selectSpatial(Chunk[] chunks, Vector3fi position, Vector3f dir, int worldAnd) {
-		Vector3f transformedPosition = new Vector3f(position.relX, position.y+1.5F, position.relZ);
+		Vector3f transformedPosition = new Vector3f(position.relX, position.y + Player.cameraHeight, position.relZ);
 		x = position.x;
 		z = position.z;
 		dirX = (int)Math.signum(dir.x);

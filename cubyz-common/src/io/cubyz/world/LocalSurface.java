@@ -287,9 +287,8 @@ public class LocalSurface extends Surface {
 			for (RemoveBlockHandler hand : removeBlockHandlers) {
 				hand.onBlockRemoved(b, x, y, z);
 			}
-			/*ItemEntity drop = new ItemEntity(this, new ItemStack(b.getBlockDrop(), 1));
-			drop.setPosition(new Vector3i(x, y, z));
-			entities.add(drop);*/
+			ItemEntity drop = new ItemEntity(this, new ItemStack(b.getBlockDrop(), 1), new Vector3i(x, y, z));
+			entities.add(drop);
 		}
 	}
 	
