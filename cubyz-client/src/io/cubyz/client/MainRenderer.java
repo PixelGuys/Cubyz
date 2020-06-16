@@ -11,9 +11,7 @@ import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.CustomMeshProvider;
 import io.cubyz.entity.CustomMeshProvider.MeshType;
 import io.cubyz.entity.Entity;
-import io.cubyz.entity.ItemEntity;
 import io.cubyz.entity.Player;
-import io.cubyz.items.ItemBlock;
 import io.cubyz.math.CubyzMath;
 import io.cubyz.math.Vector3fi;
 import io.cubyz.util.FastList;
@@ -292,7 +290,6 @@ public class MainRenderer implements Renderer {
 				if (ent instanceof CustomMeshProvider) {
 					CustomMeshProvider provider = (CustomMeshProvider) ent;
 					MeshType type = provider.getMeshType();
-					System.out.println(type);
 					if (type == MeshType.BLOCK) {
 						Block b = (Block) provider.getMeshId();
 						mesh = Meshes.blockMeshes.get(b);
