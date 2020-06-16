@@ -968,23 +968,23 @@ public class Chunk {
 		return this;
 	}
 	
-	public int getLight(int x, int y, int z, Vector3f sunLight) {
+	public int getLight(int x, int y, int z) {
 		if(y < 0) return 0;
 		if(y >= World.WORLD_HEIGHT) return 0xff000000;
 		if(x < 0 || x > 15 || z < 0 || z > 15) {
 			Chunk chunk = surface.getChunk(cx + (x >> 4), cz + (z >> 4));
-			if(chunk != null) return chunk.getLight(x & 15, y, z & 15, sunLight);
+			if(chunk != null) return chunk.getLight(x & 15, y, z & 15);
 			return -1;
 		}
 		return light[(x << 4) | (y << 8) | z];
 		
 	}
 	
-	public void getCornerLight(int x, int y, int z, Vector3f sunLight, int[] arr) {
+	public void getCornerLight(int x, int y, int z, int[] arr) {
 		for(int dx = 0; dx <= 1; dx++) {
 			for(int dy = 0; dy <= 1; dy++) {
 				for(int dz = 0; dz <= 1; dz++) {
-					arr[(dx << 2) | (dy << 1) | dz] = getLight(x+dx, y+dy, z+dz, sunLight);
+					arr[(dx << 2) | (dy << 1) | dz] = getLight(x+dx, y+dy, z+dz);
 				}
 			}
 		}

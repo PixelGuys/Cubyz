@@ -35,7 +35,8 @@ import io.jungle.util.Utils;
 @SuppressWarnings("unchecked")
 public class MainRenderer implements Renderer {
 
-	private ShaderProgram shaderProgram;
+	private ShaderProgram blockShader;
+	private ShaderProgram entityShader; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 
 	private static final float Z_NEAR = 0.01f;
 	private static final float Z_FAR = 1000.0f;
@@ -64,9 +65,12 @@ public class MainRenderer implements Renderer {
 	}
 
 	public void unloadShaders() throws Exception {
-		shaderProgram.unbind();
-		shaderProgram.cleanup();
-		shaderProgram = null;
+		blockShader.unbind();
+		blockShader.cleanup();
+		blockShader = null;
+		entityShader.unbind();
+		entityShader.cleanup();
+		entityShader = null;
 		System.gc();
 	}
 
@@ -75,20 +79,31 @@ public class MainRenderer implements Renderer {
 	}
 
 	public void loadShaders() throws Exception {
-		shaderProgram = new ShaderProgram();
-		shaderProgram.createVertexShader(Utils.loadResource(shaders + "/vertex.vs"));
-		shaderProgram.createFragmentShader(Utils.loadResource(shaders + "/fragment.fs"));
-		shaderProgram.link();
-		shaderProgram.createUniform("projectionMatrix");
-		shaderProgram.createUniform("modelViewNonInstancedMatrix");
-		shaderProgram.createUniform("viewMatrixInstanced");
-		shaderProgram.createUniform("texture_sampler");
-		shaderProgram.createUniform("break_sampler");
-		shaderProgram.createUniform("ambientLight");
-		shaderProgram.createUniform("selectedNonInstanced");
-		shaderProgram.createUniform("isInstanced");
-		shaderProgram.createUniform("materialHasTexture");
-		shaderProgram.createFogUniform("fog");
+		blockShader = new ShaderProgram();
+		blockShader.createVertexShader(Utils.loadResource(shaders + "/vertex.vs"));
+		blockShader.createFragmentShader(Utils.loadResource(shaders + "/fragment.fs"));
+		blockShader.link();
+		blockShader.createUniform("projectionMatrix");
+		blockShader.createUniform("modelViewNonInstancedMatrix");
+		blockShader.createUniform("viewMatrixInstanced");
+		blockShader.createUniform("texture_sampler");
+		blockShader.createUniform("break_sampler");
+		blockShader.createUniform("ambientLight");
+		blockShader.createUniform("selectedNonInstanced");
+		blockShader.createUniform("isInstanced");
+		blockShader.createUniform("materialHasTexture");
+		blockShader.createFogUniform("fog");
+		
+		entityShader = new ShaderProgram();
+		entityShader.createVertexShader(Utils.loadResource(shaders + "/entity_vertex.vs"));
+		entityShader.createFragmentShader(Utils.loadResource(shaders + "/entity_fragment.fs"));
+		entityShader.link();
+		entityShader.createUniform("projectionMatrix");
+		entityShader.createUniform("modelViewMatrix");
+		entityShader.createUniform("texture_sampler");
+		entityShader.createUniform("materialHasTexture");
+		entityShader.createFogUniform("fog");
+		entityShader.createUniform("light");
 		
 		System.gc();
 	}
@@ -194,7 +209,7 @@ public class MainRenderer implements Renderer {
 
 								BlockSpatial[] spatial = (BlockSpatial[]) bi.getSpatials();
 								if(spatial != null) {
-									ch.getCornerLight(bi.getX() & 15, bi.getY(), bi.getZ() & 15, ambientLight, bi.light);
+									ch.getCornerLight(bi.getX() & 15, bi.getY(), bi.getZ() & 15, bi.light);
 									for(BlockSpatial tmp : spatial) {
 										tmp.setPosition(x, y, z);
 										if (tmp.isSelected()) {
@@ -237,15 +252,15 @@ public class MainRenderer implements Renderer {
 	public void renderScene(Context ctx, Vector3f ambientLight, PointLight[] pointLightList, SpotLight[] spotLightList,
 			DirectionalLight directionalLight, FastList<Spatial>[] map, Block[] blocks, Entity[] entities, Spatial[] spatials, Player p, Spatial selected,
 			int selectedBlock, float breakAnim) {
-		shaderProgram.bind();
+		blockShader.bind();
 		
-		shaderProgram.setUniform("fog", ctx.getFog());
-		shaderProgram.setUniform("projectionMatrix", ctx.getWindow().getProjectionMatrix());
-		shaderProgram.setUniform("texture_sampler", 0);
-		shaderProgram.setUniform("break_sampler", 2);
+		blockShader.setUniform("fog", ctx.getFog());
+		blockShader.setUniform("projectionMatrix", ctx.getWindow().getProjectionMatrix());
+		blockShader.setUniform("texture_sampler", 0);
+		blockShader.setUniform("break_sampler", 2);
 		
 		Matrix4f viewMatrix = ctx.getCamera().getViewMatrix();
-		shaderProgram.setUniform("viewMatrixInstanced", viewMatrix);
+		blockShader.setUniform("viewMatrixInstanced", viewMatrix);
 		
 		renderLights(viewMatrix, ambientLight, pointLightList, spotLightList, directionalLight);
 		
@@ -254,7 +269,7 @@ public class MainRenderer implements Renderer {
 				continue;
 			Mesh mesh = Meshes.blockMeshes.get(blocks[i]);
 			mesh.getMaterial().setTexture(Meshes.blockTextures.get(blocks[i]));
-			shaderProgram.setUniform("materialHasTexture", mesh.getMaterial().isTextured());
+			blockShader.setUniform("materialHasTexture", mesh.getMaterial().isTextured());
 			if (selectedBlock == i) {
 				map[i].add(selected);
 			}
@@ -278,27 +293,34 @@ public class MainRenderer implements Renderer {
 					glBindTexture(GL_TEXTURE_2D, 0);
 				}
 				InstancedMesh ins = (InstancedMesh) mesh;
-				shaderProgram.setUniform("isInstanced", 1);
+				blockShader.setUniform("isInstanced", 1);
 				ins.renderListInstanced(map[i], transformation);
 			} else {
-				shaderProgram.setUniform("isInstanced", 0);
+				blockShader.setUniform("isInstanced", 0);
 				mesh.renderList(map[i], (Spatial gameItem) -> {
 					Matrix4f modelViewMatrix = transformation.getModelViewMatrix(gameItem, viewMatrix);
 					if (orthogonal) {
 						modelViewMatrix = transformation.getOrtoProjModelMatrix(gameItem, viewMatrix);
 					}
 					if (gameItem.isSelected())
-						shaderProgram.setUniform("selectedNonInstanced", 1f);
-					shaderProgram.setUniform("modelViewNonInstancedMatrix", modelViewMatrix);
+						blockShader.setUniform("selectedNonInstanced", 1f);
+					blockShader.setUniform("modelViewNonInstancedMatrix", modelViewMatrix);
 				});
 				if (selectedBlock == i) {
-					shaderProgram.setUniform("selectedNonInstanced", 0f);
+					blockShader.setUniform("selectedNonInstanced", 0f);
 				}
 			}
 		}
-		
+		blockShader.unbind();
+		entityShader.bind();
+		entityShader.setUniform("fog", ctx.getFog());
+		entityShader.setUniform("projectionMatrix", ctx.getWindow().getProjectionMatrix());
+		entityShader.setUniform("texture_sampler", 0);
 		for (int i = 0; i < entities.length; i++) {
 			Entity ent = entities[i];
+			int x = ent.getPosition().x + (int)(ent.getPosition().relX + 1.0f);
+			int y = (int)(ent.getPosition().y + 1.0f);
+			int z = ent.getPosition().z + (int)(ent.getPosition().relZ + 1.0f);
 			if(ent instanceof ItemEntity) {
 				ItemEntity itemEnt = (ItemEntity)ent;
 				Mesh mesh = null;
@@ -309,58 +331,58 @@ public class MainRenderer implements Renderer {
 					// TODO
 				}
 				if(mesh != null) {
-					shaderProgram.setUniform("materialHasTexture", mesh.getMaterial().isTextured());
+					entityShader.setUniform("materialHasTexture", mesh.getMaterial().isTextured());
+					entityShader.setUniform("light", ent.getStellarTorus().getWorld().getCurrentTorus().getLight(x, y, z, ambientLight));
 					
 					mesh.renderOne(() -> {
 						Vector3f position = ent.getRenderPosition(p.getPosition());
 						Matrix4f modelViewMatrix = transformation.getModelViewMatrix(transformation.getModelMatrix(position, ent.getRotation(), 0.2f), viewMatrix);
-						shaderProgram.setUniform("isInstanced", 0);
-						shaderProgram.setUniform("selectedNonInstanced", 0f);
-						shaderProgram.setUniform("modelViewNonInstancedMatrix", modelViewMatrix);
+						entityShader.setUniform("modelViewMatrix", modelViewMatrix);
 					});
 				}
 			} else if (ent != null && ent != p && Meshes.entityMeshes.get(ent.getType()) != null) { // don't render local player
 				Mesh mesh = Meshes.entityMeshes.get(ent.getType());
-				shaderProgram.setUniform("material", mesh.getMaterial());
+				entityShader.setUniform("materialHasTexture", mesh.getMaterial().isTextured());
+				entityShader.setUniform("light", ent.getStellarTorus().getWorld().getCurrentTorus().getLight(x, y, z, ambientLight));
 				
 				mesh.renderOne(() -> {
 					Vector3f position = ent.getRenderPosition(p.getPosition());
 					Matrix4f modelViewMatrix = transformation.getModelViewMatrix(transformation.getModelMatrix(position, ent.getRotation(), 1f), viewMatrix);
-					shaderProgram.setUniform("isInstanced", 0);
-					shaderProgram.setUniform("selectedNonInstanced", 0f);
-					shaderProgram.setUniform("modelViewNonInstancedMatrix", modelViewMatrix);
+					entityShader.setUniform("modelViewMatrix", modelViewMatrix);
 				});
 			}
 		}
 		
-		shaderProgram.setUniform("fog.activ", 0); // manually disable the fog
+		entityShader.setUniform("fog.activ", 0); // manually disable the fog
 		for (int i = 0; i < spatials.length; i++) {
 			Spatial spatial = spatials[i];
 			Mesh mesh = spatial.getMesh();
-			shaderProgram.setUniform("materialHasTexture", mesh.getMaterial().isTextured());
+			entityShader.setUniform("light", new Vector3f(1, 1, 1));
+			entityShader.setUniform("materialHasTexture", mesh.getMaterial().isTextured());
 			mesh.renderOne(() -> {
 				Matrix4f modelViewMatrix = transformation.getModelViewMatrix(
 						transformation.getModelMatrix(spatial.getPosition(), spatial.getRotation(), spatial.getScale()),
 						viewMatrix);
-				shaderProgram.setUniform("isInstanced", 0);
-				shaderProgram.setUniform("selectedNonInstanced", 0f);
-				shaderProgram.setUniform("modelViewNonInstancedMatrix", modelViewMatrix);
+				entityShader.setUniform("modelViewMatrix", modelViewMatrix);
 			});
 		}
 		
-		shaderProgram.unbind();
+		entityShader.unbind();
 	}
 
 	private void renderLights(Matrix4f viewMatrix, Vector3f ambientLight, PointLight[] pointLightList,
 			SpotLight[] spotLightList, DirectionalLight directionalLight) {
 
-		shaderProgram.setUniform("ambientLight", ambientLight);
+		blockShader.setUniform("ambientLight", ambientLight);
 	}
 
 	@Override
 	public void cleanup() {
-		if (shaderProgram != null) {
-			shaderProgram.cleanup();
+		if (blockShader != null) {
+			blockShader.cleanup();
+		}
+		if (entityShader != null) {
+			entityShader.cleanup();
 		}
 	}
 

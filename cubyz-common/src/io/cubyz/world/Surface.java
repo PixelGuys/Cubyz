@@ -2,12 +2,12 @@ package io.cubyz.world;
 
 import java.util.ArrayList;
 
+import org.joml.Vector3f;
 import org.joml.Vector4f;
 
 import io.cubyz.api.CurrentSurfaceRegistries;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockEntity;
-import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
 import io.cubyz.handler.BlockVisibilityChangeHandler;
 import io.cubyz.handler.Handler;
@@ -56,6 +56,8 @@ public abstract class Surface {
 	public abstract void queueChunk(Chunk ch);
 	
 	public abstract float getGlobalLighting();
+	
+	public abstract Vector3f getLight(int x, int y, int z, Vector3f sunLight);
 
 	public abstract Chunk getChunk(int x, int z);
 	public abstract Biome getBiome(int x, int z);

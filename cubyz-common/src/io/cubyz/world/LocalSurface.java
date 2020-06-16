@@ -8,10 +8,12 @@ import java.util.Random;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 
+import org.joml.Vector3f;
 import org.joml.Vector3i;
 import org.joml.Vector4f;
 
 import io.cubyz.CubyzLogger;
+import io.cubyz.Settings;
 import io.cubyz.api.CurrentSurfaceRegistries;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.CustomOre;
@@ -729,5 +731,21 @@ public class LocalSurface extends Surface {
 	public Biome getBiome(int x, int z) {
 		MetaChunk mc = getMetaChunk(x & ~255, z & ~255);
 		return mc.biomeMap[x & 255][z & 255];
+	}
+
+	@Override
+	public Vector3f getLight(int x, int y, int z, Vector3f sunLight) {
+		Chunk ch = getChunk(x >> 4, z >> 4);
+		if(ch == null || !ch.isLoaded() || !Settings.easyLighting)
+			return new Vector3f(1, 1, 1);
+		int light = ch.getLight(x & 15, y, z & 15);
+		int sun = (light >>> 24) & 255;
+		int r = (light >>> 16) & 255;
+		int g = (light >>> 8) & 255;
+		int b = (light >>> 0) & 255;
+		if(sun*sunLight.x > r) r = (int)(sun*sunLight.x);
+		if(sun*sunLight.y > g) g = (int)(sun*sunLight.y);
+		if(sun*sunLight.z > b) b = (int)(sun*sunLight.z);
+		return new Vector3f(r/255.0f, g/255.0f, b/255.0f);
 	}
 }
