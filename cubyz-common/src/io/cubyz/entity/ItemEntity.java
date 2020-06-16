@@ -23,8 +23,8 @@ public class ItemEntity extends Entity implements CustomMeshProvider {
 		
 		this.items = items;
 		super.height = super.width = super.depth = 0.2f;
-		super.minBlock = 0.1f;
-		super.maxBlock = 0.9f;
+		super.minBlock = 0.0f;
+		super.maxBlock = 1.0f;
 		scale = 0.2f;
 		super.rotation = new Vector3f((float)(2*Math.random()*Math.PI), (float)(2*Math.random()*Math.PI), (float)(2*Math.random()*Math.PI)); // Not uniform, but should be good enough.
 	}
