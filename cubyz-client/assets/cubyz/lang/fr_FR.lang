@@ -27,7 +27,7 @@ gui.cubyz.saves.create=Créer une nouvelle partie!
 lang.name=Français
 
 # Blocs
-block.cubyz.dirt.name=Terre
+block.cubyz.soil.name=Terre
 block.cubyz.cobblestone.name=Pierre
 block.cubyz.oak_log.name=Bûche
 block.cubyz.oak_planks.name=Planches de bois

@@ -18,7 +18,7 @@ gui.cubyz.saves.delete=Șterge
 gui.cubyz.saves.create=Creeaza un joc nou!
 
 # Blocks
-block.cubyz.dirt.name=Pămant
+block.cubyz.soil.name=Pămant
 block.cubyz.cobblestone.name=Piatră Crăpată
 block.cubyz.oak_log.name=Buștean de Stejar
 block.cubyz.oak_planks.name=Scânduri de Stejar

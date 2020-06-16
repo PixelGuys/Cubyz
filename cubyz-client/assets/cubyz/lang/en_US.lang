@@ -26,7 +26,7 @@ gui.cubyz.saves.create=Create a new game!
 lang.name=English
 
 # Blocks
-block.cubyz.dirt.name=Dirt
+block.cubyz.soil.name=Soil
 block.cubyz.cobblestone.name=Cobblestone
 block.cubyz.oak_log.name=Oak Log
 block.cubyz.oak_planks.name=Oak Planks
