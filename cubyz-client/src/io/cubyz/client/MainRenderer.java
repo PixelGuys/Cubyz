@@ -84,13 +84,10 @@ public class MainRenderer implements Renderer {
 		blockShader.createFragmentShader(Utils.loadResource(shaders + "/block_fragment.fs"));
 		blockShader.link();
 		blockShader.createUniform("projectionMatrix");
-		blockShader.createUniform("modelViewNonInstancedMatrix");
-		blockShader.createUniform("viewMatrixInstanced");
+		blockShader.createUniform("viewMatrix");
 		blockShader.createUniform("texture_sampler");
 		blockShader.createUniform("break_sampler");
 		blockShader.createUniform("ambientLight");
-		blockShader.createUniform("selectedNonInstanced");
-		blockShader.createUniform("isInstanced");
 		blockShader.createUniform("materialHasTexture");
 		blockShader.createFogUniform("fog");
 		
@@ -155,8 +152,6 @@ public class MainRenderer implements Renderer {
 		clear();
 		ctx.getCamera().setViewMatrix(transformation.getViewMatrix(ctx.getCamera()));
 		
-		Spatial selected = null;
-		int selectedBlock = -1;
 		float breakAnim = 0f;
 		if (blocks.length != map.length) {
 			map = (FastList<Spatial>[]) new FastList[blocks.length];
@@ -215,10 +210,7 @@ public class MainRenderer implements Renderer {
 									for(BlockSpatial tmp : spatial) {
 										tmp.setPosition(x, y, z);
 										if (tmp.isSelected()) {
-											selected = tmp;
-											selectedBlock = bi.getID();
 											breakAnim = bi.getBreakingAnim();
-											continue;
 										}
 										map[bi.getID()].add(tmp);
 									}
@@ -244,16 +236,15 @@ public class MainRenderer implements Renderer {
 			}
 		}
 		
-		renderScene(ctx, ambientLight, null /* point light */, null /* spot light */, directionalLight, map, blocks, entities, spatials,
-				playerPosition, localPlayer, selected, selectedBlock, breakAnim);
+		renderScene(ctx, ambientLight, map, blocks, entities, spatials,
+				playerPosition, localPlayer, breakAnim);
 		if (ctx.getHud() != null) {
 			ctx.getHud().render(window);
 		}
 	}
 	
-	public void renderScene(Context ctx, Vector3f ambientLight, PointLight[] pointLightList, SpotLight[] spotLightList,
-			DirectionalLight directionalLight, FastList<Spatial>[] map, Block[] blocks, Entity[] entities, Spatial[] spatials, Vector3fi playerPosition, Player p, Spatial selected,
-			int selectedBlock, float breakAnim) {
+	public void renderScene(Context ctx, Vector3f ambientLight,
+			FastList<Spatial>[] map, Block[] blocks, Entity[] entities, Spatial[] spatials, Vector3fi playerPosition, Player p, float breakAnim) {
 		blockShader.bind();
 		
 		blockShader.setUniform("fog", ctx.getFog());
@@ -262,58 +253,29 @@ public class MainRenderer implements Renderer {
 		blockShader.setUniform("break_sampler", 2);
 		
 		Matrix4f viewMatrix = ctx.getCamera().getViewMatrix();
-		blockShader.setUniform("viewMatrixInstanced", viewMatrix);
-		
-		renderLights(viewMatrix, ambientLight, pointLightList, spotLightList, directionalLight);
-		
+		blockShader.setUniform("viewMatrix", viewMatrix);
+
+		blockShader.setUniform("ambientLight", ambientLight);
+
+		if (breakAnim > 0f && breakAnim < 1f) {
+			int breakStep = (int)(breakAnim*Cubyz.breakAnimations.length);
+			glActiveTexture(GL_TEXTURE2);
+			glBindTexture(GL_TEXTURE_2D, Cubyz.breakAnimations[breakStep].getId());
+		} else {
+			glActiveTexture(GL_TEXTURE2);
+			glBindTexture(GL_TEXTURE_2D, 0);
+		}
 		for (int i = 0; i < blocks.length; i++) {
 			if (map[i] == null)
 				continue;
 			Mesh mesh = Meshes.blockMeshes.get(blocks[i]);
 			mesh.getMaterial().setTexture(Meshes.blockTextures.get(blocks[i]));
 			blockShader.setUniform("materialHasTexture", mesh.getMaterial().isTextured());
-			if (selectedBlock == i) {
-				map[i].add(selected);
-			}
-			if (mesh.isInstanced()) {
-				if (breakAnim > 0f && breakAnim < 1f) {
-					float step = 1f / Cubyz.breakAnimations.length;
-					int breakStep = 0;
-					for (float idx = step; idx < 1f; idx += step) {
-						if (breakAnim < idx) {
-							break;
-						}
-						breakStep++;
-					}
-					if (breakStep >= Cubyz.breakAnimations.length) {
-						breakStep = Cubyz.breakAnimations.length-1;
-					}
-					glActiveTexture(GL_TEXTURE2);
-					glBindTexture(GL_TEXTURE_2D, Cubyz.breakAnimations[breakStep].getId());
-				} else {
-					glActiveTexture(GL_TEXTURE2);
-					glBindTexture(GL_TEXTURE_2D, 0);
-				}
-				InstancedMesh ins = (InstancedMesh) mesh;
-				blockShader.setUniform("isInstanced", 1);
-				ins.renderListInstanced(map[i], transformation);
-			} else {
-				blockShader.setUniform("isInstanced", 0);
-				mesh.renderList(map[i], (Spatial gameItem) -> {
-					Matrix4f modelViewMatrix = transformation.getModelViewMatrix(gameItem, viewMatrix);
-					if (orthogonal) {
-						modelViewMatrix = transformation.getOrtoProjModelMatrix(gameItem, viewMatrix);
-					}
-					if (gameItem.isSelected())
-						blockShader.setUniform("selectedNonInstanced", 1f);
-					blockShader.setUniform("modelViewNonInstancedMatrix", modelViewMatrix);
-				});
-				if (selectedBlock == i) {
-					blockShader.setUniform("selectedNonInstanced", 0f);
-				}
-			}
+			InstancedMesh ins = (InstancedMesh) mesh; // Blocks are always instanced.
+			ins.renderListInstanced(map[i], transformation);
 		}
 		blockShader.unbind();
+		
 		entityShader.bind();
 		entityShader.setUniform("fog", ctx.getFog());
 		entityShader.setUniform("projectionMatrix", ctx.getWindow().getProjectionMatrix());
@@ -370,12 +332,6 @@ public class MainRenderer implements Renderer {
 		}
 		
 		entityShader.unbind();
-	}
-
-	private void renderLights(Matrix4f viewMatrix, Vector3f ambientLight, PointLight[] pointLightList,
-			SpotLight[] spotLightList, DirectionalLight directionalLight) {
-
-		blockShader.setUniform("ambientLight", ambientLight);
 	}
 
 	@Override
