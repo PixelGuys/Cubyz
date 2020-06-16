@@ -3,7 +3,6 @@ package io.cubyz.base.rotation;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 
-import io.cubyz.ClientOnly;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.RotationMode;
@@ -37,31 +36,31 @@ public class TorchRotation implements RotationMode {
 		BlockSpatial[] spatials = new BlockSpatial[5];
 		int index = 0;
 		if((data & 0b1) != 0) {
-			BlockSpatial tmp = (BlockSpatial)ClientOnly.createBlockSpatial.apply(bi);
+			BlockSpatial tmp = new BlockSpatial(bi);
 			tmp.setOffset(POS_X);
 			tmp.setRotation(0, 0, -0.3f);
 			spatials[index++] = tmp;
 		}
 		if((data & 0b10) != 0) {
-			BlockSpatial tmp = (BlockSpatial)ClientOnly.createBlockSpatial.apply(bi);
+			BlockSpatial tmp = new BlockSpatial(bi);
 			tmp.setOffset(NEG_X);
 			tmp.setRotation(0, 0, 0.3f);
 			spatials[index++] = tmp;
 		}
 		if((data & 0b100) != 0) {
-			BlockSpatial tmp = (BlockSpatial)ClientOnly.createBlockSpatial.apply(bi);
+			BlockSpatial tmp = new BlockSpatial(bi);
 			tmp.setOffset(POS_Z);
 			tmp.setRotation(0.3f, 0, 0);
 			spatials[index++] = tmp;
 		}
 		if((data & 0b1000) != 0) {
-			BlockSpatial tmp = (BlockSpatial)ClientOnly.createBlockSpatial.apply(bi);
+			BlockSpatial tmp = new BlockSpatial(bi);
 			tmp.setOffset(NEG_Z);
 			tmp.setRotation(-0.3f, 0, 0);
 			spatials[index++] = tmp;
 		}
 		if((data & 0b10000) != 0) {
-			BlockSpatial tmp = (BlockSpatial)ClientOnly.createBlockSpatial.apply(bi);
+			BlockSpatial tmp = new BlockSpatial(bi);
 			spatials[index++] = tmp;
 		}
 		if(index == spatials.length) {

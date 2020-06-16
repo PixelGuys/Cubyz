@@ -386,10 +386,6 @@ public class Cubyz implements GameLogic {
 			}
 		};
 		
-		ClientOnly.createBlockSpatial = (bi) -> {
-			return new BlockSpatial(bi);
-		};
-		
 		ClientOnly.registerGui = (name, gui) -> {
 			if (userGUIs.containsKey(name)) {
 				throw new IllegalArgumentException("GUI already registered: " + name);

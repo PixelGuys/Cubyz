@@ -12,7 +12,7 @@ public class BlockSpatial extends Spatial {
 	private Vector3f offset = ZERO; // Offset from the block center.
 	
 	public BlockSpatial(BlockInstance bi) {
-		super(Meshes.blockMeshes.get(bi.getBlock()));
+		super(Meshes.blockMeshes.get(bi.getBlock()), bi.light);
 		this.owner = bi;
 	}
 	

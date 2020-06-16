@@ -2,6 +2,7 @@ package io.cubyz.blocks;
 
 import org.joml.Vector3i;
 
+import io.cubyz.Settings;
 import io.cubyz.world.Surface;
 
 public class BlockInstance {
@@ -12,10 +13,15 @@ public class BlockInstance {
 	private Surface surface;
 	public boolean neighborUp, neighborDown, neighborEast, neighborWest, neighborNorth, neighborSouth;
 	private byte blockData;
+	public final int[] light;
 	
 	public BlockInstance(Block block, byte data) {
 		this.block = block;
 		blockData = data;
+		if(Settings.easyLighting)
+			light = new int[8];
+		else
+			light = null;
 		if(block.mode != null) {
 			spatial = block.mode.generateSpatials(this, blockData);
 		}

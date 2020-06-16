@@ -2,7 +2,6 @@ package io.cubyz.base.rotation;
 
 import org.joml.Vector3i;
 
-import io.cubyz.ClientOnly;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.RotationMode;
@@ -22,7 +21,7 @@ public class NoRotation implements RotationMode {
 
 	@Override
 	public Object[] generateSpatials(BlockInstance bi, byte data) {
-		return new BlockSpatial[] {(BlockSpatial)ClientOnly.createBlockSpatial.apply(bi)};
+		return new BlockSpatial[] {new BlockSpatial(bi)};
 	}
 
 }

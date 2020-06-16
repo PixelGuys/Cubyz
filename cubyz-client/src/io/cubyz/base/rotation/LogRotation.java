@@ -2,7 +2,6 @@ package io.cubyz.base.rotation;
 
 import org.joml.Vector3i;
 
-import io.cubyz.ClientOnly;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.RotationMode;
@@ -33,7 +32,7 @@ public class LogRotation implements RotationMode {
 	@Override
 	public Object[] generateSpatials(BlockInstance bi, byte data) {
 		BlockSpatial[] spatials = new BlockSpatial[1];
-		BlockSpatial tmp = (BlockSpatial)ClientOnly.createBlockSpatial.apply(bi);
+		BlockSpatial tmp = new BlockSpatial(bi);
 		switch(data) {
 			default:
 				break;

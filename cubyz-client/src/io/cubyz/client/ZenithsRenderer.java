@@ -217,9 +217,9 @@ public class ZenithsRenderer implements Renderer {
 									(z < -0.5001f && !bi.neighborNorth)) {
 								BlockSpatial[] spatial = (BlockSpatial[]) bi.getSpatials();
 								if(spatial != null) {
+									ch.getCornerLight(bi.getX() & 15, bi.getY(), bi.getZ() & 15, ambientLight, bi.light);
 									for(BlockSpatial tmp : spatial) {
 										tmp.setPosition(x, y, z);
-										ch.getCornerLight(bi.getX() & 15, bi.getY(), bi.getZ() & 15, ambientLight, tmp.light);
 										if (tmp.isSelected()) {
 											selected = tmp;
 											selectedBlock = bi.getID();
