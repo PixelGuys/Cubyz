@@ -876,28 +876,11 @@ public class Cubyz implements GameLogic {
 							msd.getEmptyPlace(pos, dir);
 							Block b = world.getLocalPlayer().getInventory().getBlock(inventorySelection);
 							if (b != null && pos != null) {
-								if(b.mode == null) {
-									world.getCurrentTorus().placeBlock(pos.x, pos.y, pos.z, b, (byte)0);
-								} else if(b.mode == Block.RotationMode.TORCH && dir.y != 1) {
-									byte data = (byte)0;
-									if(dir.x == 1) data = (byte)0b1;
-									if(dir.x == -1) data = (byte)0b10;
-									if(dir.y == -1) data = (byte)0b10000;
-									if(dir.z == 1) data = (byte)0b100;
-									if(dir.z == -1) data = (byte)0b1000;
-									if(world.getCurrentTorus().getBlock(pos.x, pos.y, pos.z) == b) {
-										world.getCurrentTorus().updateBlockData(pos.x, pos.y, pos.z, (byte)(data | world.getCurrentTorus().getBlockData(pos.x, pos.y, pos.z)));
-									} else {
-										world.getCurrentTorus().placeBlock(pos.x, pos.y, pos.z, b, data);
-									}
-								} else if(b.mode== Block.RotationMode.LOG) {
-									byte data = (byte)0;
-									if(dir.x == 1) data = (byte)0b10;
-									if(dir.x == -1) data = (byte)0b11;
-									if(dir.y == -1) data = (byte)0b0;
-									if(dir.y == 1) data = (byte)0b1;
-									if(dir.z == 1) data = (byte)0b100;
-									if(dir.z == -1) data = (byte)0b101;
+								boolean dataOnlyUpdate = world.getCurrentTorus().getBlock(pos.x, pos.y, pos.z) == b;
+								byte data = b.mode.generateData(dir, dataOnlyUpdate ? world.getCurrentTorus().getBlockData(pos.x, pos.y, pos.z) : 0);
+								if(dataOnlyUpdate) {
+									world.getCurrentTorus().updateBlockData(pos.x, pos.y, pos.z, data);
+								} else {
 									world.getCurrentTorus().placeBlock(pos.x, pos.y, pos.z, b, data);
 								}
 								world.getLocalPlayer().getInventory().getStack(inventorySelection).add(-1);

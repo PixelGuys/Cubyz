@@ -1,6 +1,7 @@
 package io.cubyz.api;
 
 import io.cubyz.blocks.Block;
+import io.cubyz.blocks.RotationMode;
 import io.cubyz.command.CommandBase;
 import io.cubyz.entity.EntityType;
 import io.cubyz.items.Item;
@@ -20,6 +21,7 @@ public class CubyzRegistries {
 	public static final Registry<Material>    TOOL_MATERIAL_REGISTRY = new Registry<Material>();
 	public static final Registry<Modifier>    TOOL_MODIFIER_REGISTRY = new Registry<Modifier>();
 	public static final Registry<Biome>       BIOME_REGISTRY         = new Registry<Biome>();
+	public static final Registry<RotationMode>ROTATION_MODE_REGISTRY = new Registry<RotationMode>();
 	
 	// world generation
 	public static final Registry<SurfaceGenerator> STELLAR_TORUS_GENERATOR_REGISTRY = new Registry<SurfaceGenerator>();

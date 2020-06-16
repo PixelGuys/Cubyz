@@ -4,6 +4,7 @@ import java.util.Properties;
 
 import org.joml.Vector3i;
 
+import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.GameRegistry;
 import io.cubyz.api.RegistryElement;
 import io.cubyz.api.Resource;
@@ -17,9 +18,6 @@ public class Block implements RegistryElement {
 	
 	public static enum BlockClass {
 		WOOD, STONE, SAND, UNBREAKABLE, LEAF, FLUID
-	};
-	public static enum RotationMode {
-		TORCH, LOG
 	};
 	
 	boolean transparent;
@@ -62,9 +60,7 @@ public class Block implements RegistryElement {
 		selectable = props.getProperty("selectable", "yes").equalsIgnoreCase("yes");
 		solid = props.getProperty("solid", "yes").equalsIgnoreCase("yes");
 		gui = props.getProperty("GUI", null);
-		String modeString = props.getProperty("rotation", null);
-		if(modeString != null)
-			mode = RotationMode.valueOf(modeString.toUpperCase());
+		mode = CubyzRegistries.ROTATION_MODE_REGISTRY.getByID(props.getProperty("rotation", "cubyz:no_rotation"));
 	}
 	
 	public void setDegradable(Boolean deg) {

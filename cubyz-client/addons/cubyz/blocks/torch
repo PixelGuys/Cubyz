@@ -4,7 +4,7 @@ solid no
 transparent yes
 emittedLight 0x00a09080
 drop auto
-rotation torch
+rotation cubyz:torch
 
 model cubyz:torch.obj
 texture cubyz:torch

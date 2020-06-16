@@ -6,7 +6,6 @@ import org.joml.FrustumIntersection;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
-import io.cubyz.CubyzLogger;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
@@ -51,9 +50,6 @@ public class MainRenderer implements Renderer {
 	public static final int MAX_POINT_LIGHTS = 0;
 	public static final int MAX_SPOT_LIGHTS = 0;
 	public static final Vector3f VECTOR3F_ZERO = new Vector3f(0, 0, 0);
-
-	private static final float PI = (float)Math.PI;
-	private static final float PI_HALF = PI/2;
 
 	public MainRenderer() {
 
@@ -195,73 +191,10 @@ public class MainRenderer implements Renderer {
 									(y < -0.5001f && !bi.neighborUp) ||
 									(z > 0.5001f && !bi.neighborSouth) ||
 									(z < -0.5001f && !bi.neighborNorth)) {
-								if(bi.getBlock().mode == null) {
-									Spatial tmp = (Spatial) bi.getSpatial();
-									tmp.setPosition(x, y, z);
-									ch.getCornerLight(bi.getX() & 15, bi.getY(), bi.getZ() & 15, ambientLight, tmp.light);
-									if (tmp.isSelected()) {
-										selected = tmp;
-										selectedBlock = bi.getID();
-										breakAnim = bi.getBreakingAnim();
-										continue;
-									}
-									map[bi.getID()].add(tmp);
-								} else if(bi.getBlock().mode == Block.RotationMode.TORCH) {
-									byte data = bi.blockData;
-									if((data & 0b1) != 0) {
-										Spatial tmp = new BlockSpatial((BlockSpatial) bi.getSpatial());
-										tmp.setPosition(x + 0.4f, y + 0.2f, z);
-										ch.getCornerLight(bi.getX() & 15, bi.getY(), bi.getZ() & 15, ambientLight, tmp.light);
-										tmp.setRotation(0, 0, -0.3f);
-										if (tmp.isSelected()) {
-											selected = tmp;
-											selectedBlock = bi.getID();
-											breakAnim = bi.getBreakingAnim();
-											continue;
-										}
-										map[bi.getID()].add(tmp);
-									}
-									if((data & 0b10) != 0) {
-										Spatial tmp = new BlockSpatial((BlockSpatial) bi.getSpatial());
-										tmp.setPosition(x - 0.4f, y + 0.2f, z);
-										ch.getCornerLight(bi.getX() & 15, bi.getY(), bi.getZ() & 15, ambientLight, tmp.light);
-										tmp.setRotation(0, 0, 0.3f);
-										if (tmp.isSelected()) {
-											selected = tmp;
-											selectedBlock = bi.getID();
-											breakAnim = bi.getBreakingAnim();
-											continue;
-										}
-										map[bi.getID()].add(tmp);
-									}
-									if((data & 0b100) != 0) {
-										Spatial tmp = new BlockSpatial((BlockSpatial) bi.getSpatial());
-										tmp.setPosition(x, y + 0.2f, z + 0.4f);
-										ch.getCornerLight(bi.getX() & 15, bi.getY(), bi.getZ() & 15, ambientLight, tmp.light);
-										tmp.setRotation(0.3f, 0, 0);
-										if (tmp.isSelected()) {
-											selected = tmp;
-											selectedBlock = bi.getID();
-											breakAnim = bi.getBreakingAnim();
-											continue;
-										}
-										map[bi.getID()].add(tmp);
-									}
-									if((data & 0b1000) != 0) {
-										Spatial tmp = new BlockSpatial((BlockSpatial) bi.getSpatial());
-										tmp.setPosition(x, y + 0.2f, z - 0.4f);
-										ch.getCornerLight(bi.getX() & 15, bi.getY(), bi.getZ() & 15, ambientLight, tmp.light);
-										tmp.setRotation(-0.3f, 0, 0);
-										if (tmp.isSelected()) {
-											selected = tmp;
-											selectedBlock = bi.getID();
-											breakAnim = bi.getBreakingAnim();
-											continue;
-										}
-										map[bi.getID()].add(tmp);
-									}
-									if((data & 0b10000) != 0) {
-										Spatial tmp = (Spatial) bi.getSpatial();
+
+								BlockSpatial[] spatial = (BlockSpatial[]) bi.getSpatials();
+								if(spatial != null) {
+									for(BlockSpatial tmp : spatial) {
 										tmp.setPosition(x, y, z);
 										ch.getCornerLight(bi.getX() & 15, bi.getY(), bi.getZ() & 15, ambientLight, tmp.light);
 										if (tmp.isSelected()) {
@@ -272,39 +205,6 @@ public class MainRenderer implements Renderer {
 										}
 										map[bi.getID()].add(tmp);
 									}
-								} else if(bi.getBlock().mode == Block.RotationMode.LOG) {
-									byte data = bi.blockData;
-									Spatial tmp = (Spatial)bi.getSpatial();
-									tmp.setPosition(x, y, z);
-									ch.getCornerLight(bi.getX() & 15, bi.getY(), bi.getZ() & 15, ambientLight, tmp.light);
-									switch(data) {
-										default:
-											break;
-										case 1:
-											tmp.setRotation(PI, 0, 0);
-											break;
-										case 2:
-											tmp.setRotation(0, 0, -PI_HALF);
-											break;
-										case 3:
-											tmp.setRotation(0, 0, PI_HALF);
-											break;
-										case 4:
-											tmp.setRotation(PI_HALF, 0, 0);
-											break;
-										case 5:
-											tmp.setRotation(-PI_HALF, 0, 0);
-											break;
-									}
-									if (tmp.isSelected()) {
-										selected = tmp;
-										selectedBlock = bi.getID();
-										breakAnim = bi.getBreakingAnim();
-										continue;
-									}
-									map[bi.getID()].add(tmp);
-								} else {
-									CubyzLogger.instance.warning("You are stupid! You added a new rotation mode and forgot to update the renderer!");
 								}
 							}
 						}

@@ -2,21 +2,23 @@ package io.cubyz.blocks;
 
 import org.joml.Vector3i;
 
-import io.cubyz.ClientOnly;
 import io.cubyz.world.Surface;
 
 public class BlockInstance {
 
 	private Block block;
-	private Object spatial;
+	private Object[] spatial;
 	private Vector3i pos;
 	private Surface surface;
 	public boolean neighborUp, neighborDown, neighborEast, neighborWest, neighborNorth, neighborSouth;
-	public byte blockData;
+	private byte blockData;
 	
 	public BlockInstance(Block block, byte data) {
 		this.block = block;
 		blockData = data;
+		if(block.mode != null) {
+			spatial = block.mode.generateSpatials(this, blockData);
+		}
 	}
 	
 	public Surface getStellarTorus() {
@@ -55,14 +57,16 @@ public class BlockInstance {
 		block = b;
 	}
 	
+	public void setData(byte data) {
+		blockData = data;
+		spatial = block.mode.generateSpatials(this, blockData);
+	}
+	
 	public void setPosition(Vector3i pos) {
 		this.pos = pos;
 	}
 	
-	public Object getSpatial() {
-		if (spatial == null) {
-			spatial = ClientOnly.createBlockSpatial.apply(this);
-		}
+	public Object[] getSpatials() {
 		return spatial;
 	}
 

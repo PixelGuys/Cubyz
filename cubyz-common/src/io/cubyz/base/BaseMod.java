@@ -10,6 +10,7 @@ import io.cubyz.api.Proxy;
 import io.cubyz.api.Registry;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
+import io.cubyz.blocks.RotationMode;
 import io.cubyz.command.ClearCommand;
 import io.cubyz.command.CureCommand;
 import io.cubyz.command.GiveCommand;
@@ -67,6 +68,9 @@ public class BaseMod {
 	@EventHandler(type = "preInit")
 	public void preInit() {
 		registerModifiers(CubyzRegistries.TOOL_MODIFIER_REGISTRY);
+		
+		// Pre-Init proxy
+		proxy.preInit();
 	}
 	
 	@EventHandler(type = "register:entity")

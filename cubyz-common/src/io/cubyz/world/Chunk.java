@@ -300,7 +300,7 @@ public class Chunk {
 			blockData[index] = data;
 			// Update the instance:
 			if(inst[index] != null)
-				inst[index].blockData = data;
+				inst[index].setData(data);
 		}
 	}
 	

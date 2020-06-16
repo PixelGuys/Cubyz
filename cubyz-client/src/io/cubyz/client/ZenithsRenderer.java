@@ -7,7 +7,6 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
-import io.cubyz.Settings;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
@@ -15,6 +14,7 @@ import io.cubyz.entity.Player;
 import io.cubyz.math.CubyzMath;
 import io.cubyz.math.Vector3fi;
 import io.cubyz.util.FastList;
+import io.cubyz.world.BlockSpatial;
 import io.cubyz.world.Chunk;
 import io.jungle.FrameBuffer;
 import io.jungle.InstancedMesh;
@@ -215,15 +215,20 @@ public class ZenithsRenderer implements Renderer {
 									(y < -0.5001f && !bi.neighborUp) ||
 									(z > 0.5001f && !bi.neighborSouth) ||
 									(z < -0.5001f && !bi.neighborNorth)) {
-								Spatial tmp = (Spatial) bi.getSpatial();
-								tmp.setPosition(x, y, z);
-								if (tmp.isSelected()) {
-									selected = tmp;
-									selectedBlock = bi.getID();
-									breakAnim = bi.getBreakingAnim();
-									continue;
+								BlockSpatial[] spatial = (BlockSpatial[]) bi.getSpatials();
+								if(spatial != null) {
+									for(BlockSpatial tmp : spatial) {
+										tmp.setPosition(x, y, z);
+										ch.getCornerLight(bi.getX() & 15, bi.getY(), bi.getZ() & 15, ambientLight, tmp.light);
+										if (tmp.isSelected()) {
+											selected = tmp;
+											selectedBlock = bi.getID();
+											breakAnim = bi.getBreakingAnim();
+											continue;
+										}
+										map[bi.getID()].add(tmp);
+									}
 								}
-								map[bi.getID()].add(tmp);
 							}
 						}
 					}

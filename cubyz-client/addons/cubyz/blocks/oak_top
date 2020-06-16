@@ -2,7 +2,7 @@ class wood
 hardness 8
 drop auto
 
-rotation log
+rotation cubyz:log
 
 model cubyz:persidetexture.obj
 texture cubyz:oak_top
