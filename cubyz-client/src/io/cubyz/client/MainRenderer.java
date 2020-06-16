@@ -8,6 +8,8 @@ import org.joml.Vector3f;
 
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
+import io.cubyz.entity.CustomMeshProvider;
+import io.cubyz.entity.CustomMeshProvider.MeshType;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.ItemEntity;
 import io.cubyz.entity.Player;
@@ -285,35 +287,34 @@ public class MainRenderer implements Renderer {
 			int x = ent.getPosition().x + (int)(ent.getPosition().relX + 1.0f);
 			int y = (int)(ent.getPosition().y + 1.0f);
 			int z = ent.getPosition().z + (int)(ent.getPosition().relZ + 1.0f);
-			if(ent instanceof ItemEntity) {
-				ItemEntity itemEnt = (ItemEntity)ent;
+			if (ent != null && ent != p) { // don't render local player
 				Mesh mesh = null;
-				if(itemEnt.items.getItem() instanceof ItemBlock) {
-					mesh = Meshes.blockMeshes.get(((ItemBlock)itemEnt.items.getItem()).getBlock());
-					mesh.getMaterial().setTexture(Meshes.blockTextures.get(((ItemBlock)itemEnt.items.getItem()).getBlock()));
+				if (ent instanceof CustomMeshProvider) {
+					CustomMeshProvider provider = (CustomMeshProvider) ent;
+					MeshType type = provider.getMeshType();
+					System.out.println(type);
+					if (type == MeshType.BLOCK) {
+						Block b = (Block) provider.getMeshId();
+						mesh = Meshes.blockMeshes.get(b);
+						mesh.getMaterial().setTexture(Meshes.blockTextures.get(b));
+					} else if (type == MeshType.ENTITY) {
+						Entity e = (Entity) provider.getMeshId();
+						mesh = Meshes.entityMeshes.get(e);
+					}
 				} else {
-					// TODO
+					mesh = Meshes.entityMeshes.get(ent.getType());
 				}
-				if(mesh != null) {
+				
+				if (mesh != null) {
 					entityShader.setUniform("materialHasTexture", mesh.getMaterial().isTextured());
 					entityShader.setUniform("light", ent.getStellarTorus().getWorld().getCurrentTorus().getLight(x, y, z, ambientLight));
 					
 					mesh.renderOne(() -> {
 						Vector3f position = ent.getRenderPosition(playerPosition);
-						Matrix4f modelViewMatrix = transformation.getModelViewMatrix(transformation.getModelMatrix(position, ent.getRotation(), 0.2f), viewMatrix);
+						Matrix4f modelViewMatrix = transformation.getModelViewMatrix(transformation.getModelMatrix(position, ent.getRotation(), ent.getScale()), viewMatrix);
 						entityShader.setUniform("modelViewMatrix", modelViewMatrix);
 					});
 				}
-			} else if (ent != null && ent != p && Meshes.entityMeshes.get(ent.getType()) != null) { // don't render local player
-				Mesh mesh = Meshes.entityMeshes.get(ent.getType());
-				entityShader.setUniform("materialHasTexture", mesh.getMaterial().isTextured());
-				entityShader.setUniform("light", ent.getStellarTorus().getWorld().getCurrentTorus().getLight(x, y, z, ambientLight));
-				
-				mesh.renderOne(() -> {
-					Vector3f position = ent.getRenderPosition(playerPosition);
-					Matrix4f modelViewMatrix = transformation.getModelViewMatrix(transformation.getModelMatrix(position, ent.getRotation(), 1f), viewMatrix);
-					entityShader.setUniform("modelViewMatrix", modelViewMatrix);
-				});
 			}
 		}
 		

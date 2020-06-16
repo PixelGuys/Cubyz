@@ -19,6 +19,7 @@ public class Entity {
 	protected Vector3f rotation = new Vector3f();
 	private EntityAI ai;
 	public float vx, vy, vz;
+	protected float scale = 1f;
 	
 	private EntityType type;
 	
@@ -33,6 +34,10 @@ public class Entity {
 	public Entity(EntityType type, Surface surface) {
 		this.type = type;
 		this.surface = surface;
+	}
+	
+	public float getScale() {
+		return scale;
 	}
 	
 	public Entity(EntityType type, Surface surface, EntityAI ai) {

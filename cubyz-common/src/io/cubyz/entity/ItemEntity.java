@@ -4,11 +4,14 @@ import org.joml.Vector3f;
 import org.joml.Vector3i;
 
 import io.cubyz.api.Resource;
+import io.cubyz.items.ItemBlock;
 import io.cubyz.items.ItemStack;
 import io.cubyz.world.Surface;
 
-public class ItemEntity extends Entity {
+public class ItemEntity extends Entity implements CustomMeshProvider {
+	
 	public ItemStack items;
+	
 	public ItemEntity(Surface surface, ItemStack items) {
 		super(new EntityType(new Resource("cubyz:item_stack")) {
 			@Override
@@ -17,12 +20,15 @@ public class ItemEntity extends Entity {
 			}
 			
 		}, surface);
+		
 		this.items = items;
 		super.height = super.width = super.depth = 0.2f;
 		super.minBlock = 0.1f;
 		super.maxBlock = 0.9f;
+		scale = 0.2f;
 		super.rotation = new Vector3f((float)(2*Math.random()*Math.PI), (float)(2*Math.random()*Math.PI), (float)(2*Math.random()*Math.PI)); // Not uniform, but should be good enough.
 	}
+	
 	public ItemEntity(Surface surface, ItemStack items, Vector3i position) {
 		super(new EntityType(new Resource("cubyz:item_stack")) {
 			@Override
@@ -32,9 +38,9 @@ public class ItemEntity extends Entity {
 			
 		}, surface);
 		this.items = items;
-		super.height = super.width = super.depth = 0.2f;
-		super.minBlock = 0.1f;
-		super.maxBlock = 0.9f;
+		height = super.width = super.depth = 0.2f;
+		minBlock = 0.1f;
+		maxBlock = 0.9f;
 		super.position.x = position.x;
 		super.position.y = position.y;
 		super.position.z = position.z;
@@ -48,13 +54,33 @@ public class ItemEntity extends Entity {
 			super.position.relZ += 1;
 			super.position.z -= 1;
 		}
+		scale = 0.2f;
 		super.position.y += (float)Math.random() - 0.5f;
-		super.rotation = new Vector3f((float)(2*Math.random()*Math.PI), (float)(2*Math.random()*Math.PI), (float)(2*Math.random()*Math.PI)); // Not uniform, but should be good enough.
+		rotation = new Vector3f(
+				(float)(2*Math.random()*Math.PI),
+				(float)(2*Math.random()*Math.PI),
+				(float)(2*Math.random()*Math.PI)); // Not uniform, but should be good enough.
 	}
 	
 	@Override
 	public void update() {
 		vy -= surface.getStellarTorus().getGravity();
 		super.update();
+	}
+	
+	@Override
+	public Object getMeshId() {
+		if (items.getItem() instanceof ItemBlock) {
+			return items.getBlock();
+		}
+		return null;
+	}
+	
+	@Override
+	public MeshType getMeshType() {
+		if (items.getItem() instanceof ItemBlock) {
+			return MeshType.BLOCK;
+		}
+		return null;
 	}
 }
