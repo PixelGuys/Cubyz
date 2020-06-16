@@ -300,7 +300,7 @@ public class Cubyz implements GameLogic {
 		baserp.name = "Cubyz";
 		ResourceManager.packs.add(baserp);
 		
-		renderer.setShaderFolder(ResourceManager.lookupPath("cubyz/shaders/default"));
+		renderer.setShaderFolder(ResourceManager.lookupPath("cubyz/shaders/easyLighting"));
 		
 		ClientOnly.createBlockMesh = (block) -> {
 			Resource rsc = block.getRegistryID();

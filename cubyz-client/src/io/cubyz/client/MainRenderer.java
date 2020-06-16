@@ -80,8 +80,8 @@ public class MainRenderer implements Renderer {
 
 	public void loadShaders() throws Exception {
 		blockShader = new ShaderProgram();
-		blockShader.createVertexShader(Utils.loadResource(shaders + "/vertex.vs"));
-		blockShader.createFragmentShader(Utils.loadResource(shaders + "/fragment.fs"));
+		blockShader.createVertexShader(Utils.loadResource(shaders + "/block_vertex.vs"));
+		blockShader.createFragmentShader(Utils.loadResource(shaders + "/block_fragment.fs"));
 		blockShader.link();
 		blockShader.createUniform("projectionMatrix");
 		blockShader.createUniform("modelViewNonInstancedMatrix");
@@ -177,16 +177,18 @@ public class MainRenderer implements Renderer {
 		// TODO: RayAabIntersection
 		
 		frustumInt.set(prjViewMatrix);
+		Vector3fi playerPosition = null;
 		if(localPlayer != null) {
-			// Store the position locally to prevent glitches when the updateThread changes the position.
-			Vector3fi pos = localPlayer.getPosition();
-			int x0 = pos.x;
-			float relX = pos.relX;
-			int z0 = pos.z;
-			float relZ = pos.relZ;
-			float y0 = pos.y + Player.cameraHeight;
+			playerPosition = localPlayer.getPosition().clone(); // Use a constant copy of the player position for the whole rendering to prevent graphics bugs on player movement.
+		}
+		if(playerPosition != null) {
+			int x0 = playerPosition.x;
+			float relX = playerPosition.relX;
+			int z0 = playerPosition.z;
+			float relZ = playerPosition.relZ;
+			float y0 = playerPosition.y + Player.cameraHeight;
 			for (Chunk ch : chunks) {
-				if (!frustumInt.testAab(ch.getMin(pos, worldAnd), ch.getMax(pos, worldAnd)))
+				if (!frustumInt.testAab(ch.getMin(playerPosition, worldAnd), ch.getMax(playerPosition, worldAnd)))
 					continue;
 				int length = ch.getVisibles().size;
 				BlockInstance[] vis = ch.getVisibles().array;
@@ -243,14 +245,14 @@ public class MainRenderer implements Renderer {
 		}
 		
 		renderScene(ctx, ambientLight, null /* point light */, null /* spot light */, directionalLight, map, blocks, entities, spatials,
-				localPlayer, selected, selectedBlock, breakAnim);
+				playerPosition, localPlayer, selected, selectedBlock, breakAnim);
 		if (ctx.getHud() != null) {
 			ctx.getHud().render(window);
 		}
 	}
 	
 	public void renderScene(Context ctx, Vector3f ambientLight, PointLight[] pointLightList, SpotLight[] spotLightList,
-			DirectionalLight directionalLight, FastList<Spatial>[] map, Block[] blocks, Entity[] entities, Spatial[] spatials, Player p, Spatial selected,
+			DirectionalLight directionalLight, FastList<Spatial>[] map, Block[] blocks, Entity[] entities, Spatial[] spatials, Vector3fi playerPosition, Player p, Spatial selected,
 			int selectedBlock, float breakAnim) {
 		blockShader.bind();
 		
@@ -335,7 +337,7 @@ public class MainRenderer implements Renderer {
 					entityShader.setUniform("light", ent.getStellarTorus().getWorld().getCurrentTorus().getLight(x, y, z, ambientLight));
 					
 					mesh.renderOne(() -> {
-						Vector3f position = ent.getRenderPosition(p.getPosition());
+						Vector3f position = ent.getRenderPosition(playerPosition);
 						Matrix4f modelViewMatrix = transformation.getModelViewMatrix(transformation.getModelMatrix(position, ent.getRotation(), 0.2f), viewMatrix);
 						entityShader.setUniform("modelViewMatrix", modelViewMatrix);
 					});
@@ -346,7 +348,7 @@ public class MainRenderer implements Renderer {
 				entityShader.setUniform("light", ent.getStellarTorus().getWorld().getCurrentTorus().getLight(x, y, z, ambientLight));
 				
 				mesh.renderOne(() -> {
-					Vector3f position = ent.getRenderPosition(p.getPosition());
+					Vector3f position = ent.getRenderPosition(playerPosition);
 					Matrix4f modelViewMatrix = transformation.getModelViewMatrix(transformation.getModelMatrix(position, ent.getRotation(), 1f), viewMatrix);
 					entityShader.setUniform("modelViewMatrix", modelViewMatrix);
 				});
