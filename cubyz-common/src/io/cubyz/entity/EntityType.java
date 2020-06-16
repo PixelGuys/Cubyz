@@ -7,6 +7,7 @@ import io.cubyz.world.Surface;
 public abstract class EntityType implements RegistryElement {
 	
 	Resource id;
+	
 	public EntityType(Resource id) {
 		this.id = id;
 	}
@@ -17,5 +18,9 @@ public abstract class EntityType implements RegistryElement {
 	}
 	
 	public abstract Entity newEntity(Surface surface);
+	
+	public boolean useDynamicEntityModel() {
+		return false;
+	}
 	
 }

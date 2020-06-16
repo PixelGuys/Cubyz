@@ -143,7 +143,9 @@ public class LoadThread extends Thread {
 					}
 					if(i < CubyzRegistries.ENTITY_REGISTRY.registered().length) {
 						EntityType e = (EntityType) CubyzRegistries.ENTITY_REGISTRY.registered()[i];
-						ClientOnly.createEntityMesh.accept(e);
+						if (!e.useDynamicEntityModel()) {
+							ClientOnly.createEntityMesh.accept(e);
+						}
 					}
 					if(i < CubyzRegistries.BLOCK_REGISTRY.registered().length-1 || i < CubyzRegistries.ENTITY_REGISTRY.registered().length-1) {
 						Cubyz.renderDeque.add(run);

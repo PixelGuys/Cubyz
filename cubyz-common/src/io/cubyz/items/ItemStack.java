@@ -69,13 +69,16 @@ public class ItemStack {
 		return number;
 	}
 	
-	public void setAmount(int a) { // For use in special cases only!W
+	public void setAmount(int a) { // For use in special cases only!
 		number = a;
 	}
 	
 	public void loadFrom(NDTContainer container, CurrentSurfaceRegistries registries) {
 		item = registries.itemRegistry.getByID(container.getString("id"));
-		number = container.getInteger("size");
+		if (container.hasKey("size"))
+			number = container.getInteger("size");
+		else
+			number = 1;
 	}
 	
 	public void saveTo(NDTContainer container) {

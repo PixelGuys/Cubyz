@@ -16,6 +16,7 @@ import io.cubyz.command.CureCommand;
 import io.cubyz.command.GiveCommand;
 import io.cubyz.command.TimeCommand;
 import io.cubyz.entity.EntityType;
+import io.cubyz.entity.ItemEntity;
 import io.cubyz.entity.Pig;
 import io.cubyz.entity.PlayerEntity;
 import io.cubyz.items.Item;
@@ -77,6 +78,7 @@ public class BaseMod {
 	public void registerEntities(Registry<EntityType> reg) {
 		reg.register(new Pig());
 		reg.register(new PlayerEntity());
+		reg.register(new ItemEntity.ItemEntityType());
 	}
 	
 	public void registerWorldGenerators(Registry<SurfaceGenerator> reg) {

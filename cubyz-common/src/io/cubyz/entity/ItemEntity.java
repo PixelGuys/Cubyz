@@ -3,23 +3,35 @@ package io.cubyz.entity;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 
+import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Resource;
 import io.cubyz.items.ItemBlock;
 import io.cubyz.items.ItemStack;
+import io.cubyz.ndt.NDTContainer;
 import io.cubyz.world.Surface;
 
 public class ItemEntity extends Entity implements CustomMeshProvider {
 	
+	public static class ItemEntityType extends EntityType {
+
+		public ItemEntityType() {
+			super(new Resource("cubyz:item_stack"));
+		}
+		
+		public Entity newEntity(Surface surface) {
+			return new ItemEntity(this, surface, null);
+		}
+		
+		public boolean useDynamicEntityModel() {
+			return true;
+		}
+		
+	}
+	
 	public ItemStack items;
 	
-	public ItemEntity(Surface surface, ItemStack items) {
-		super(new EntityType(new Resource("cubyz:item_stack")) {
-			@Override
-			public Entity newEntity(Surface surface) {
-				return null;
-			}
-			
-		}, surface);
+	public ItemEntity(EntityType t, Surface surface, ItemStack items) {
+		super(CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:item_stack"), surface);
 		
 		this.items = items;
 		super.height = super.width = super.depth = 0.2f;
@@ -29,7 +41,7 @@ public class ItemEntity extends Entity implements CustomMeshProvider {
 		super.rotation = new Vector3f((float)(2*Math.random()*Math.PI), (float)(2*Math.random()*Math.PI), (float)(2*Math.random()*Math.PI)); // Not uniform, but should be good enough.
 	}
 	
-	public ItemEntity(Surface surface, ItemStack items, Vector3i position) {
+	public ItemEntity(EntityType t, Surface surface, ItemStack items, Vector3i position) {
 		super(new EntityType(new Resource("cubyz:item_stack")) {
 			@Override
 			public Entity newEntity(Surface surface) {
@@ -66,6 +78,18 @@ public class ItemEntity extends Entity implements CustomMeshProvider {
 	public void update() {
 		vy -= surface.getStellarTorus().getGravity();
 		super.update();
+	}
+	
+	public NDTContainer saveTo(NDTContainer ndt) {
+		ndt = super.saveTo(ndt);
+		items.saveTo(ndt);
+		return ndt;
+	}
+	
+	public void loadFrom(NDTContainer ndt) {
+		super.loadFrom(ndt);
+		items = new ItemStack();
+		items.loadFrom(ndt, surface.getCurrentRegistries());
 	}
 	
 	@Override

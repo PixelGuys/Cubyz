@@ -14,6 +14,7 @@ import org.joml.Vector4f;
 
 import io.cubyz.CubyzLogger;
 import io.cubyz.Settings;
+import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.CurrentSurfaceRegistries;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.CustomOre;
@@ -21,6 +22,7 @@ import io.cubyz.blocks.Updateable;
 import io.cubyz.blocks.Ore;
 import io.cubyz.blocks.BlockEntity;
 import io.cubyz.entity.Entity;
+import io.cubyz.entity.EntityType;
 import io.cubyz.entity.ItemEntity;
 import io.cubyz.entity.Player;
 import io.cubyz.handler.PlaceBlockHandler;
@@ -278,6 +280,8 @@ public class LocalSurface extends Surface {
 		return list;
 	}
 	
+	private EntityType itemEntityType = CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:item_stack");
+	
 	@Override
 	public void removeBlock(int x, int y, int z) {
 		Chunk ch = getChunk(x >> 4, z >> 4);
@@ -289,7 +293,7 @@ public class LocalSurface extends Surface {
 			for (RemoveBlockHandler hand : removeBlockHandlers) {
 				hand.onBlockRemoved(b, x, y, z);
 			}
-			ItemEntity drop = new ItemEntity(this, new ItemStack(b.getBlockDrop(), 1), new Vector3i(x, y, z));
+			ItemEntity drop = new ItemEntity(itemEntityType, this, new ItemStack(b.getBlockDrop(), 1), new Vector3i(x, y, z));
 			entities.add(drop);
 		}
 	}
