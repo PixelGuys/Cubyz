@@ -37,7 +37,7 @@ public class Block implements RegistryElement {
 	private int light = 0;
 	int absorption = 0; // How much light this block absorbs if it is transparent.
 	String gui; // GUI that is opened onClick.
-	public RotationMode mode = null;
+	public RotationMode mode = CubyzRegistries.ROTATION_MODE_REGISTRY.getByID("cubyz:no_rotation");
 	
 	public Block() {}
 	
