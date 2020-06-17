@@ -51,7 +51,7 @@ public class LocalSurface extends Surface {
 	private Block[] torusBlocks;
 	
 	// Stores a reference to the lists of WorldIO.
-	public ArrayList<byte[]> blockData;	
+	public ArrayList<byte[]> blockData;
 	public ArrayList<int[]> chunkData;
 	
 	private static int MAX_QUEUE_SIZE = 40;
@@ -110,9 +110,6 @@ public class LocalSurface extends Surface {
 					break;
 				}
 				try {
-					if(popped.isLoaded()) {
-						throw new Exception("OOPS. This ChunkGenerationThread tried to load a chunk twice. @zenith please fix this.");
-					}
 					synchronousGenerate(popped);
 					popped.load();
 				} catch (Exception e) {
@@ -460,6 +457,11 @@ public class LocalSurface extends Surface {
 		queue(ch);
 	}
 	
+
+	public void unQueueChunk(Chunk ch) {
+		loadList.remove(ch);
+	}
+	
 	@Override
 	public void seek(int x, int z, int renderDistance) {
 		int local = x & 15;
@@ -478,9 +480,10 @@ public class LocalSurface extends Surface {
 		Chunk [] newVisibles = new Chunk[doubleRD*doubleRD];
 		int index = 0;
 		int minK = 0;
+		ArrayList<Chunk> chunksToQueue = new ArrayList<>();
 		for(int i = x-doubleRD; i < x; i++) {
+			loop:
 			for(int j = z-doubleRD; j < z; j++) {
-				boolean notIn = true;
 				for(int k = minK; k < chunks.length; k++) {
 					if(chunks[k].getX() == i && chunks[k].getZ() == j) {
 						newVisibles[index] = chunks[k];
@@ -488,32 +491,29 @@ public class LocalSurface extends Surface {
 						chunks[k] = chunks[minK];
 						chunks[minK] = newVisibles[index];
 						minK++;
-						notIn = false;
-						break;
+						index++;
+						continue loop;
 					}
 				}
-				if(notIn) {
-					Chunk ch = getChunk(i, j);
-					if(ch == null) {
-						ch = new Chunk(i, j, this, transformData(getChunkData(i, j), tio.blockPalette));
-					}
-					newVisibles[index] = ch;
-				}
+				Chunk ch = new Chunk(i, j, this, transformData(getChunkData(i, j), tio.blockPalette));
+				chunksToQueue.add(ch);
+				newVisibles[index] = ch;
 				index++;
 			}
 		}
 		for (int k = minK; k < chunks.length; k++) {
-			tio.saveChunk(chunks[k]);
+			if(chunks[k].isGenerated())
+				tio.saveChunk(chunks[k]); // Only needs to be stored if it was ever generated.
+			else
+				unQueueChunk(chunks[k]);
 		}
 		chunks = newVisibles;
 		lastX = x;
 		lastZ = z;
 		this.doubleRD = doubleRD;
-		// Generate the chunks after they can get access to their neighbors:
-		for(Chunk ch : newVisibles) {
-			if (!ch.isGenerated()) {
-				queueChunk(ch);
-			}
+		// Load chunks after they have access to their neighbors:
+		for(Chunk ch : chunksToQueue) {
+			queueChunk(ch);
 		}
 		if (minK != chunks.length) { // if at least one chunk got unloaded
 			tio.saveTorusData(this);

@@ -5,8 +5,8 @@ import java.util.Random;
 public class PerlinNoise {
 	private static Random r = new Random();
 
-	private static float[][][] xGridPoints; // [scale][x][y]
-	private static float[][][] yGridPoints; // [scale][x][y]
+	private static float[][] xGridPoints; // [x][y]
+	private static float[][] yGridPoints; // [x][y]
 	// Calculate the gradient instead of storing it.
 	// This is inefficient(since it is called every time), but allows infinite chunk generation.
 	private static float generateGradient(int x, int y, int i, long l1, long l2, long l3, int resolution) {
@@ -14,20 +14,18 @@ public class PerlinNoise {
     	return 2 * r.nextFloat() - 1;
     }
 	
-	private static float getGradientX(int x, int y, int resolution) {
-		int index = xGridPoints.length-numOfBits(resolution)+numOfBits(16)-1;
+	private static float getGradientX(int x, int y) {
 		try {
-			return xGridPoints[index][x][y];
+			return xGridPoints[x][y];
 		} catch (ArrayIndexOutOfBoundsException e) { // quick and dirty fix
 			e.printStackTrace();
 			return 0;
 		}
 	}
 	
-	private static float getGradientY(int x, int y, int resolution) {
-		int index = yGridPoints.length-numOfBits(resolution)+numOfBits(16)-1;
+	private static float getGradientY(int x, int y) {
 		try {
-			return yGridPoints[index][x][y];
+			return yGridPoints[x][y];
 		} catch (ArrayIndexOutOfBoundsException e) {
 			e.printStackTrace();
 			return 0;
@@ -53,8 +51,8 @@ public class PerlinNoise {
 		float dy = y/resolution - iy;
 
 	    // Compute the dot-product
-		float gx = getGradientX(ix, iy, resolution);
-		float gy = getGradientY(ix, iy, resolution);
+		float gx = getGradientX(ix, iy);
+		float gy = getGradientY(ix, iy);
 		float gr = (float)Math.sqrt((gx*gx+gy*gy));
 		gx /= gr;
 		gy /= gr;
@@ -94,69 +92,54 @@ public class PerlinNoise {
 	    return value;
 	}
 	
-	// Returns how many bits a number is long:
-	private static int numOfBits(int num) {
-		int log = 0;
-	    if( ( num & 0xffff0000 ) != 0 ) { num >>>= 16; log = 16; }
-	    if( num >= 256 ) { num >>>= 8; log += 8; }
-	    if( num >= 16  ) { num >>>= 4; log += 4; }
-	    if( num >= 4   ) { num >>>= 2; log += 2; }
-	    return log + ( num >>> 1 );
-	}
-	
 	// Calculate all grid points that will be needed to prevent double calculating them.
 	private static void calculateGridPoints(int x, int y, int width, int height, int scale, long l1, long l2, long l3, int worldAnd) {
-		int bits = numOfBits(scale)-numOfBits(16)+1;
 		// Create one gridpoint more, just in case...
 		width += scale;
 		height += scale;
-		xGridPoints = new float[bits][][];
-		yGridPoints = new float[bits][][];
-		for(int i = 0; scale >= 16; scale >>= 1, ++i) {
-			int resolution = scale;
-			int localAnd = worldAnd/resolution;
-		    // Determine grid cell coordinates of all cells that points can be in:
-			float[][] xGrid = new float[width/scale + 3][height/scale + 3]; // Simply assume the absolute maximum number of grid points are generated.
-			float[][] yGrid = new float[width/scale + 3][height/scale + 3]; // Simply assume the absolute maximum number of grid points are generated.
-			int numX = 0, numY = 0;
-			int x0 = 0;
-			for(int ix = x; ix < x+width; ix += scale) {
-				numY = 0;
-				x0 = ix/resolution & localAnd;
-				int y0 = 0;
-				for(int iy = y; iy < y+height; iy += scale) {
-				    y0 = iy/resolution & localAnd;
-					xGrid[numX][numY] = generateGradient(x0, y0, 0, l1, l2, l3, resolution);
-					yGrid[numX][numY] = generateGradient(x0, y0, 1, l1, l2, l3, resolution);
-					numY++;
-				}
-				xGrid[numX][numY] = generateGradient(x0, (y0+1) & localAnd, 0, l1, l2, l3, resolution);
-				yGrid[numX][numY] = generateGradient(x0, (y0+1) & localAnd, 1, l1, l2, l3, resolution);
-				numX++;
-			}
+		int resolution = scale;
+		int localAnd = worldAnd/resolution;
+		// Determine grid cell coordinates of all cells that points can be in:
+		float[][] xGrid = new float[width/scale + 3][height/scale + 3]; // Simply assume the absolute maximum number of grid points are generated.
+		float[][] yGrid = new float[width/scale + 3][height/scale + 3]; // Simply assume the absolute maximum number of grid points are generated.
+		int numX = 0, numY = 0;
+		int x0 = 0;
+		for(int ix = x; ix < x+width; ix += scale) {
 			numY = 0;
+			x0 = ix/resolution & localAnd;
 			int y0 = 0;
 			for(int iy = y; iy < y+height; iy += scale) {
 			    y0 = iy/resolution & localAnd;
-				xGrid[numX][numY] = generateGradient((x0+1) & localAnd, y0, 0, l1, l2, l3, resolution);
-				yGrid[numX][numY] = generateGradient((x0+1) & localAnd, y0, 1, l1, l2, l3, resolution);
+				xGrid[numX][numY] = generateGradient(x0, y0, 0, l1, l2, l3, resolution);
+				yGrid[numX][numY] = generateGradient(x0, y0, 1, l1, l2, l3, resolution);
 				numY++;
 			}
-			
-			xGrid[numX][numY] = generateGradient((x0+1) & localAnd, (y0+1) & localAnd, 0, l1, l2, l3, resolution);
-			yGrid[numX][numY] = generateGradient((x0+1) & localAnd, (y0+1) & localAnd, 1, l1, l2, l3, resolution);
-			numY++;
+			xGrid[numX][numY] = generateGradient(x0, (y0+1) & localAnd, 0, l1, l2, l3, resolution);
+			yGrid[numX][numY] = generateGradient(x0, (y0+1) & localAnd, 1, l1, l2, l3, resolution);
 			numX++;
-			// Copy the values into smaller arrays and put them into the array containing all grid points:
-			float[][] xGridR = new float[numX+1][numY+1];
-			float[][] yGridR = new float[numX+1][numY+1];
-			for(int ix = 0; ix < numX+1; ix++) {
-				System.arraycopy(xGrid[ix], 0, xGridR[ix], 0, numY+1);
-				System.arraycopy(yGrid[ix], 0, yGridR[ix], 0, numY+1);
-			}
-			xGridPoints[i] = xGridR;
-			yGridPoints[i] = yGridR;
 		}
+		numY = 0;
+		int y0 = 0;
+		for(int iy = y; iy < y+height; iy += scale) {
+		    y0 = iy/resolution & localAnd;
+			xGrid[numX][numY] = generateGradient((x0+1) & localAnd, y0, 0, l1, l2, l3, resolution);
+			yGrid[numX][numY] = generateGradient((x0+1) & localAnd, y0, 1, l1, l2, l3, resolution);
+			numY++;
+		}
+		
+		xGrid[numX][numY] = generateGradient((x0+1) & localAnd, (y0+1) & localAnd, 0, l1, l2, l3, resolution);
+		yGrid[numX][numY] = generateGradient((x0+1) & localAnd, (y0+1) & localAnd, 1, l1, l2, l3, resolution);
+		numY++;
+		numX++;
+		// Copy the values into smaller arrays and put them into the array containing all grid points:
+		float[][] xGridR = new float[numX+1][numY+1];
+		float[][] yGridR = new float[numX+1][numY+1];
+		for(int ix = 0; ix < numX+1; ix++) {
+			System.arraycopy(xGrid[ix], 0, xGridR[ix], 0, numY+1);
+			System.arraycopy(yGrid[ix], 0, yGridR[ix], 0, numY+1);
+		}
+		xGridPoints = xGridR;
+		yGridPoints = yGridR;
 	}
 	
 	public static float[][] generateThreeOctaveMapFragment(int x, int y, int width, int height, int scale, long seed, int worldAnd) {
@@ -177,6 +160,7 @@ public class PerlinNoise {
 			}
 		}
 		scale >>= 1;
+		calculateGridPoints(x, y, width, height, scale, l1, l2, l3, worldAnd);
 		resolution = scale;
 		resolution2 = resolution-1;
 		x0 = x & ~resolution2;
@@ -188,6 +172,7 @@ public class PerlinNoise {
 			}
 		}
 		scale >>= 2;
+		calculateGridPoints(x, y, width, height, scale, l1, l2, l3, worldAnd);
 		resolution = scale;
 		resolution2 = resolution-1;
 		x0 = x & ~resolution2;
