@@ -72,14 +72,14 @@ public class CubyzMeshSelectionDetector {
 		}
 		if(newSpatial == selectedSpatial)
 			return;
-		if(selectedSpatial != null) {
-			synchronized(selectedSpatial) {
+		synchronized(selectedSpatial) {
+			if(selectedSpatial != null) {
 				(((BlockSpatial[]) selectedSpatial.getSpatials())[0]).setSelected(false);
 			}
 		}
 		selectedSpatial = newSpatial;
-		if(selectedSpatial != null) {
-			synchronized(selectedSpatial) {
+		synchronized(selectedSpatial) {
+			if(selectedSpatial != null) {
 				(((BlockSpatial[]) selectedSpatial.getSpatials())[0]).setSelected(true);
 			}
 		}
