@@ -72,15 +72,19 @@ public class CubyzMeshSelectionDetector {
 		}
 		if(newSpatial == selectedSpatial)
 			return;
-		synchronized(selectedSpatial) {
-			if(selectedSpatial != null) {
-				(((BlockSpatial[]) selectedSpatial.getSpatials())[0]).setSelected(false);
+		if(selectedSpatial != null) {
+			synchronized(selectedSpatial) {
+				if(selectedSpatial != null) {
+					(((BlockSpatial[]) selectedSpatial.getSpatials())[0]).setSelected(false);
+				}
 			}
 		}
 		selectedSpatial = newSpatial;
-		synchronized(selectedSpatial) {
-			if(selectedSpatial != null) {
-				(((BlockSpatial[]) selectedSpatial.getSpatials())[0]).setSelected(true);
+		if(selectedSpatial != null) {
+			synchronized(selectedSpatial) {
+				if(selectedSpatial != null) {
+					(((BlockSpatial[]) selectedSpatial.getSpatials())[0]).setSelected(true);
+				}
 			}
 		}
 	}
