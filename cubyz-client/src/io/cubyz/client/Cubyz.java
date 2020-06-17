@@ -886,7 +886,10 @@ public class Cubyz implements GameLogic {
 				}
 			}
 			playerInc.x = playerInc.y = playerInc.z = 0.0F; // Reset positions
-			world.update();
+			Chunk ch = world.getCurrentTorus().getChunk(lp.getPosition().x >> 4, lp.getPosition().z >> 4);
+			if (ch != null && ch.isLoaded()) {
+				world.update();
+			}
 			world.getCurrentTorus().seek(lp.getPosition().x, lp.getPosition().z, ClientSettings.renderDistance);
 			float lightAngle = (float)Math.PI/2 + (float)Math.PI*(((float)world.getGameTime() % world.getCurrentTorus().getStellarTorus().getDayCycle())/(world.getCurrentTorus().getStellarTorus().getDayCycle()/2));
 			skySun.setPosition((float)Math.cos(lightAngle)*500, (float)Math.sin(lightAngle)*500, 0);

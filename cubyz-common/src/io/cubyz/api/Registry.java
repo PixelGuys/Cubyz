@@ -8,6 +8,11 @@ import io.cubyz.CubyzLogger;
 
 public class Registry<T extends RegistryElement> {
 	private HashMap<String, T> hashMap;
+	
+	// cache values to avoid useless memory allocation (toArray allocates a new array at each call)
+	private RegistryElement[] values;
+	private boolean dirty = true;
+	
 	private boolean debug = Boolean.parseBoolean(System.getProperty("registry.debugEnabled", "false"));
 	private boolean alwaysError = Boolean.parseBoolean(System.getProperty("registry.dumpAsError", "true"));
 	
@@ -20,7 +25,11 @@ public class Registry<T extends RegistryElement> {
 	}
 	
 	public RegistryElement[] registered() { // can be casted to T
-		return hashMap.values().toArray(new RegistryElement[0]);
+		if (dirty) {
+			values = hashMap.values().toArray(new RegistryElement[0]);
+			dirty = false;
+		}
+		return values;
 	}
 	
 	protected String getType(Class<?> cl) {
@@ -58,6 +67,7 @@ public class Registry<T extends RegistryElement> {
 		if (debug) {
 			CubyzLogger.instance.info("Registered " + getType(element.getClass()) + " as " + element.getRegistryID());
 		}
+		dirty = true;
 	}
 	
 	@SuppressWarnings("unchecked")

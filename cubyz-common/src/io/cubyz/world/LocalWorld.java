@@ -42,6 +42,7 @@ public class LocalWorld extends World {
 			wio.saveWorldData();
 		}
 		rnd = new Random(seed);
+		milliTime = System.currentTimeMillis();
 	}
 	
 	public void forceSave() {

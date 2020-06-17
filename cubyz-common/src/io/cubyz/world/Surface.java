@@ -38,13 +38,6 @@ public abstract class Surface {
 	public abstract void placeBlock(int x, int y, int z, Block b, byte data);
 	public abstract void updateBlockData(int x, int y, int z, byte data);
 	
-	/**
-	 * ONLY USE IF NEEDED!
-	 * @param x
-	 * @param y
-	 * @param z
-	 * @return
-	 */
 	public abstract Block getBlock(int x, int y, int z);
 	public abstract byte getBlockData(int x, int y, int z);
 	public abstract BlockEntity getBlockEntity(int x, int y, int z);

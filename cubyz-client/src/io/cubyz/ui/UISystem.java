@@ -128,7 +128,7 @@ public class UISystem extends Hud {
 			NGraphics.setColor(0, 0, 0);
 			if (curTransition == TransitionStyle.FADE_OUT_IN) {
 				// those values are meant to be tweaked and will be available for fine tuning from setMenu later
-				float fadeSpeed = 500f;
+				float fadeSpeed = 250f;
 				float fadeSpeedHalf = fadeSpeed / 2f;
 				if (transitionDur >= fadeSpeed) {
 					curTransition = null;
