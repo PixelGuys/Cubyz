@@ -297,16 +297,75 @@ public class CustomOre extends Ore implements CustomObject {
 		ore.name = name;
 		ore.color = rand.nextInt(0xFFFFFF);
 		ore.seed = rand.nextLong();
-		ore.setHardness(rand.nextInt()*30);
 		ore.setID("cubyz:" + ore.name + " Ore");
 		if(rand.nextInt(4) == 0) { // Make some ores glow.
 			ore.makeGlow();
 		}
 		ore.makeBlockDrop(registries);
 		boolean addTools = true; // TODO
+		/* 	A little reasoning behind the choice of material properties:
+			There are some important concepts when looking at the hardness of a material:
+			1. mohs-hardness scale which determines how easy it is to scratch a material.
+				On this scale diamond is the hardest with a 10.
+				And glass(5.5) is on this scale harder than iron/steel(4)
+				
+				mohs-hardness influences both durability and mining speed.
+				It is a lot easier to cut through a material if the tool you use can scratch it more easily.
+				And when the tool can be scratched easier, it will take more damage and break sooner. This is only important for the head, because scratches on binding or handle don't really matter.
+				A higher mohs-hardness also allows the sword to be sharper, so it should deal more damage.
+				TODO mohs-hardness should also influence the mining level because if tool cannot scratch the material, it cannot break it easily.
+			2. elasticity which basically just says how hard it is to permanently deform or break the material.
+				Here glass and diamond are much worse than iron/steel. It takes a lot of energy to deform iron, while it is super easy to break glass or diamond.
+				For further consideration I'll only focus on material break rather than other plastic deformations.
+				
+				It is quite obvious that elasticity greatly influences durability, but does not significantly influence mining speed
+				(only if the deformation absorbs a lot of energy, which I will ignore here for simplicity).
+				Elasticity also should influence material hardness, because breaking a block is easier if it is less elastic.
+			3. density: how heavy the tool will be assuming the volume will always be the same.
+				A heavier tool will be slower.
+				So it will take more time to break stuff.
+				It will also deal less damage because it requires less force to stop it(because the collision time is longer).
+				A heavier ore is harder to mine, because it takes more energy to move heavier pieces.
+				TODO
+				A heavier tool has more knockback because of the higher momentum.
+				A heavier armor will make you move slower.
+				ODOT
+			
+			TODO
+			4. Modifiers can a make a material powerful or just bad. Because of that every modifier has a usefulness factor and the loverall material usefulness is:
+				mohs-hardness + elasticity + Σ modifier-usefulness
+			ODOT
+				
+			Based on the considerations above, a good formula for usefulness would be:
+				usefulness = mohs-hardness + elasticity - density
+			
+			For general purpose of progression it is important that more useful ores are less rare, so I will simply use:
+				usefulness ~ 1/(1 + rareness)
+			*/
+		// For now mohs-hardness is limited to 10 and elasticity and density have a similar magnitude, so the total usefulness will be limited to 20, so the rareness needs to be mapped to 0-20:
+		float usefulness = 20.0f/(ore.size*ore.veins + 1);
+		float mohsHardness = rand.nextFloat()*10;
+		usefulness -= mohsHardness;
+		// Density should be bigger than 1. Anything else would be strange.
+		float density = 1;
+		float elasticity = 0;
+		usefulness -= 1;
+		if(usefulness < 0) {
+			density -= usefulness;
+		} else {
+			elasticity += usefulness;
+		}
+		usefulness = 0;
+		// Now elasticity and density can be changed by a random factor:
+		float factor = rand.nextFloat()*10;
+		elasticity += factor;
+		density += factor;
+
+		ore.setHardness(elasticity*density);
+		
 		if(addTools) {
-			int rareness = (int)(ore.size*ore.veins); // TODO: Balance material stats!
-			new CustomMaterial(rand.nextInt(1000000/rareness), rand.nextInt(1000000/rareness), rand.nextInt(1000000/rareness), rand.nextFloat()*10, rand.nextFloat()*10000/rareness, ore.color, ore.getBlockDrop(), 100, registries);
+
+			new CustomMaterial((int)(mohsHardness*10 + elasticity*20), (int)(elasticity*30), (int)(elasticity*50), mohsHardness*2.0f/density, mohsHardness*3.0f/density, ore.color, ore.getBlockDrop(), 100, registries);
 		}
 		return ore;
 	}
