@@ -75,6 +75,9 @@ public class ItemStack {
 	
 	public void loadFrom(NDTContainer container, CurrentSurfaceRegistries registries) {
 		item = registries.itemRegistry.getByID(container.getString("id"));
+		if (item == null) {
+			throw new IllegalStateException("item " + container.getString("id") + " is not in registry.");
+		}
 		if (container.hasKey("size"))
 			number = container.getInteger("size");
 		else
@@ -82,6 +85,9 @@ public class ItemStack {
 	}
 	
 	public void saveTo(NDTContainer container) {
+		if (item == null) {
+			throw new IllegalStateException("item is null");
+		}
 		container.setString("id", item.getRegistryID().toString());
 		container.setInteger("size", number);
 	}

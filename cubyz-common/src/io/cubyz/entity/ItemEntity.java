@@ -82,14 +82,16 @@ public class ItemEntity extends Entity implements CustomMeshProvider {
 	
 	public NDTContainer saveTo(NDTContainer ndt) {
 		ndt = super.saveTo(ndt);
-		items.saveTo(ndt);
+		NDTContainer stack = new NDTContainer();
+		items.saveTo(stack);
+		ndt.setContainer("stack", stack);
 		return ndt;
 	}
 	
 	public void loadFrom(NDTContainer ndt) {
 		super.loadFrom(ndt);
 		items = new ItemStack();
-		items.loadFrom(ndt, surface.getCurrentRegistries());
+		items.loadFrom(ndt.getContainer("stack"), surface.getCurrentRegistries());
 	}
 	
 	@Override
