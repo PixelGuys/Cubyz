@@ -66,7 +66,7 @@ public class LocalSurface extends Surface {
 	float ambientLight = 0f;
 	Vector4f clearColor = new Vector4f(0, 0, 0, 1.0f);
 	
-	long localSeed; // Each torus has a different seed for world generation. All those seeds are generated using the main world seed.
+	private final long localSeed; // Each torus has a different seed for world generation. All those seeds are generated using the main world seed.
 	
 	// synchronized common list for chunk generation
 	private volatile BlockingDeque<Chunk> loadList = new LinkedBlockingDeque<>(MAX_QUEUE_SIZE);
@@ -150,11 +150,6 @@ public class LocalSurface extends Surface {
 		//setChunkQueueSize(torus.world.getRenderDistance() << 2);
 	}
 	
-	public void link() {
-		tio.link(this);
-		tio.loadTorusData(this); // load data here in order for entities to also be loaded.
-	}
-	
 	public int generate(ArrayList<Block> blockList, ArrayList<Ore> ores, int ID) {
 		Random rand = new Random(localSeed);
 		int randomAmount = 9 + rand.nextInt(3); // TODO
@@ -193,6 +188,9 @@ public class LocalSurface extends Surface {
 		i++;
 		// Init crystal caverns with those two blocks:
 		CrystalCavernGenerator.init(crystalBlock, glowCrystalOre);
+
+		tio.link(this);
+		tio.loadTorusData(this); // load data here in order for entities to also be loaded.
 		
 		if(generated) {
 			tio.saveTorusData(this);

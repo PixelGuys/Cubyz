@@ -115,7 +115,7 @@ public class PlayerEntity extends EntityType {
 			}
 			timeStarted = System.currentTimeMillis();
 			maxTime = (int)(Math.round(bi.getBlock().getHardness()*200));
-			if(Tool.class.isInstance(inv.getItem(slot))) {
+			if(inv.getItem(slot) instanceof Tool) {
 				Tool tool = (Tool)inv.getItem(slot);
 				if(tool.canBreak(bi.getBlock())) {
 					maxTime = (int)(maxTime/tool.getSpeed());

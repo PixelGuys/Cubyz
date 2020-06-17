@@ -221,6 +221,7 @@ public class CustomOre extends Ore implements CustomObject {
 
 	public CustomOre(int maxHeight, float veins, float size) {
 		super(maxHeight, veins, size);
+		super.blockClass = BlockClass.STONE;
 	}
 	
 	public String getName() {
@@ -297,7 +298,7 @@ public class CustomOre extends Ore implements CustomObject {
 		ore.name = name;
 		ore.color = rand.nextInt(0xFFFFFF);
 		ore.seed = rand.nextLong();
-		ore.setID("cubyz:" + ore.name + " Ore");
+		ore.setID("cubyz:" + ore.name.toLowerCase() + "_ore");
 		if(rand.nextInt(4) == 0) { // Make some ores glow.
 			ore.makeGlow();
 		}
@@ -342,9 +343,9 @@ public class CustomOre extends Ore implements CustomObject {
 			For general purpose of progression it is important that more useful ores are less rare, so I will simply use:
 				usefulness ~ 1/(1 + rareness)
 			*/
-		// For now mohs-hardness is limited to 10 and elasticity and density have a similar magnitude, so the total usefulness will be limited to 20, so the rareness needs to be mapped to 0-20:
-		float usefulness = 20.0f/(ore.size*ore.veins + 1);
-		float mohsHardness = rand.nextFloat()*10;
+		// For now mohs-hardness is limited to 2-10 and elasticity and density have a similar magnitude, so the total usefulness will be limited to 20, so the rareness needs to be mapped to 0-20:
+		float usefulness = 20.0f/(ore.size*ore.veins/32 + 1);
+		float mohsHardness = 2 + rand.nextFloat()*8;
 		usefulness -= mohsHardness;
 		// Density should be bigger than 1. Anything else would be strange.
 		float density = 1;
@@ -364,8 +365,7 @@ public class CustomOre extends Ore implements CustomObject {
 		ore.setHardness(elasticity*density);
 		
 		if(addTools) {
-
-			new CustomMaterial((int)(mohsHardness*10 + elasticity*20), (int)(elasticity*30), (int)(elasticity*50), mohsHardness*2.0f/density, mohsHardness*3.0f/density, ore.color, ore.getBlockDrop(), 100, registries);
+			new CustomMaterial((int)(mohsHardness*10 + elasticity*20), (int)(elasticity*30), (int)(elasticity*50), mohsHardness*4.0f/density, mohsHardness*3.0f/density, ore.color, ore.getBlockDrop(), 100, registries);
 		}
 		return ore;
 	}
@@ -388,7 +388,7 @@ public class CustomOre extends Ore implements CustomObject {
 	private void makeBlockDrop(CurrentSurfaceRegistries registries) {
 		CustomItem bd = CustomItem.fromOre(this);
 		registries.itemRegistry.register(bd);
-		bd.setID("cubyz:"+getName());
+		bd.setID(getRegistryID());
 		setBlockDrop(bd);
 	}
 	

@@ -14,9 +14,9 @@ public class CurrentSurfaceRegistries {
 
 	public final Registry<Block>       blockRegistry         = new Registry<Block>(CubyzRegistries.BLOCK_REGISTRY);
 	public final Registry<Item>        itemRegistry          = new Registry<Item>(CubyzRegistries.ITEM_REGISTRY);
-	public final NoIDRegistry<Recipe>      recipeRegistry    = new NoIDRegistry<Recipe>(CubyzRegistries.RECIPE_REGISTRY);
+	public final NoIDRegistry<Recipe>  recipeRegistry        = new NoIDRegistry<Recipe>(CubyzRegistries.RECIPE_REGISTRY);
 	public final Registry<EntityType>  entityRegistry        = new Registry<EntityType>(CubyzRegistries.ENTITY_REGISTRY);
-	public final Registry<Material>    materialRegistry = new Registry<Material>(CubyzRegistries.TOOL_MATERIAL_REGISTRY);
+	public final Registry<Material>    materialRegistry		 = new Registry<Material>(CubyzRegistries.TOOL_MATERIAL_REGISTRY);
 	public final Registry<Biome>       biomeRegistry         = new Registry<Biome>(CubyzRegistries.BIOME_REGISTRY);
 	
 	// world generation

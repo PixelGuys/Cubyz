@@ -90,7 +90,6 @@ public class LocalWorld extends World {
 	public void setCurrentTorusID(long seed) {
 		LocalStellarTorus torus = new LocalStellarTorus(this, seed);
 		currentTorus = new LocalSurface(torus);
-		currentTorus.link();
 		toruses.add(torus);
 	}
 	
@@ -103,7 +102,6 @@ public class LocalWorld extends World {
 		if (currentTorus == null) {
 			LocalStellarTorus torus = new LocalStellarTorus(this, rand.nextLong());
 			currentTorus = new LocalSurface(torus);
-			currentTorus.link();
 			toruses.add(torus);
 		}
 		ArrayList<Block> blockList = new ArrayList<>();
