@@ -5,7 +5,6 @@ import java.util.Random;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
-import io.cubyz.world.LocalSurface;
 import io.cubyz.world.MetaChunk;
 import io.cubyz.world.World;
 
@@ -23,41 +22,7 @@ public class RiverGenerator implements BigGenerator {
 	private static Block water = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:water");
 
 	@Override
-	public void generate(long seed, int wx, int wz, Block[][][] chunk, boolean[][] vegetationIgnoreMap, LocalSurface surface) {
-		// Gets the four surrounding MetaChunks and switch to a relative coordinate system.
-		int lx, lz;
-		MetaChunk nn, np, pn, pp;
-		if((wx & 255) < 128) {
-			lx = (wx & 255) + 256;
-			if((wz & 255) < 128) {
-				lz = (wz & 255) + 256;
-				nn = surface.getMetaChunk((wx & (~255)) - 256, (wz & (~255)) - 256);
-				np = surface.getMetaChunk((wx & (~255)) - 256, (wz & (~255)));
-				pn = surface.getMetaChunk((wx & (~255)), (wz & (~255)) - 256);
-				pp = surface.getMetaChunk((wx & (~255)), (wz & (~255)));
-			} else {
-				lz = (wz & 255);
-				nn = surface.getMetaChunk((wx & (~255)) - 256, (wz & (~255)));
-				np = surface.getMetaChunk((wx & (~255)) - 256, (wz & (~255)) + 256);
-				pn = surface.getMetaChunk((wx & (~255)), (wz & (~255)));
-				pp = surface.getMetaChunk((wx & (~255)), (wz & (~255)) + 256);
-			}
-		} else {
-			lx = (wx & 255);
-			if((wz & 255) < 128) {
-				lz = (wz & 255) + 256;
-				nn = surface.getMetaChunk((wx & (~255)), (wz & (~255)) - 256);
-				np = surface.getMetaChunk((wx & (~255)), (wz & (~255)));
-				pn = surface.getMetaChunk((wx & (~255)) + 256, (wz & (~255)) - 256);
-				pp = surface.getMetaChunk((wx & (~255)) + 256, (wz & (~255)));
-			} else {
-				lz = (wz & 255);
-				nn = surface.getMetaChunk((wx & (~255)), (wz & (~255)));
-				np = surface.getMetaChunk((wx & (~255)), (wz & (~255)) + 256);
-				pn = surface.getMetaChunk((wx & (~255)) + 256, (wz & (~255)));
-				pp = surface.getMetaChunk((wx & (~255)) + 256, (wz & (~255)) + 256);
-			}
-		}
+	public void generate(long seed, int lx, int lz, Block[][][] chunk, boolean[][] vegetationIgnoreMap, MetaChunk nn, MetaChunk np, MetaChunk pn, MetaChunk pp) {
 		// Consider coordinates in each MetaChunk.
 		considerMetaChunk(nn, lx, lz, chunk, nn, np, pn, pp, seed, vegetationIgnoreMap);
 		considerMetaChunk(np, lx, lz, chunk, nn, np, pn, pp, seed, vegetationIgnoreMap);

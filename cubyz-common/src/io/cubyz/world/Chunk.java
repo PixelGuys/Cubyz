@@ -841,17 +841,13 @@ public class Chunk {
 	 * @param y
 	 * @param z
 	 */
-	public void rawAddBlock(int x, int y, int z, Block bi, byte data) {
-		if (bi  == null) {
-			setBlock(x, y, z, null, data);
-			return;
-		}
-		if (bi != null) {
-			if (bi.getBlockClass() == BlockClass.FLUID) {
+	public void rawAddBlock(int x, int y, int z, Block b, byte data) {
+		if (b != null) {
+			if (b.getBlockClass() == BlockClass.FLUID) {
 				liquids.add((x << 4) | (y << 8) | z);
 			}
 		}
-		setBlock(x, y, z, bi, data);
+		setBlock(x, y, z, b, data);
 	}
 	
 	public void addBlockAt(int x, int y, int z, Block b, byte data, boolean registerBlockChange) {

@@ -4,7 +4,7 @@ import io.cubyz.api.RegistryElement;
 import io.cubyz.api.Resource;
 
 public class Biome implements RegistryElement {
-	float temperature;
+	public float temperature;
 	float humidity;
 	public float height;
 	public float minHeight, maxHeight;

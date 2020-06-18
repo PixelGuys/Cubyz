@@ -53,6 +53,7 @@ public abstract class Surface {
 	public abstract Vector3f getLight(int x, int y, int z, Vector3f sunLight);
 
 	public abstract Chunk getChunk(int x, int z);
+	public abstract MetaChunk getMetaChunk(int wx, int wz);
 	public abstract Biome getBiome(int x, int z);
 	
 	public abstract Chunk[] getChunks();
@@ -78,5 +79,8 @@ public abstract class Surface {
 	public StellarTorus getStellarTorus() {
 		return torus;
 	}
+
+	public abstract void getMapData(int x, int z, int width, int height, float[][] heightMap, float[][] heatMap, Biome[][] biomeMap);
+
 	
 }

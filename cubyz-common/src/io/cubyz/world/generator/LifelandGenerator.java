@@ -11,7 +11,7 @@ import io.cubyz.blocks.Block;
 import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.blocks.Ore;
 import io.cubyz.world.Chunk;
-import io.cubyz.world.LocalSurface;
+import io.cubyz.world.MetaChunk;
 import io.cubyz.world.Surface;
 import io.cubyz.world.World;
 import io.cubyz.world.cubyzgenerators.*;
@@ -20,7 +20,7 @@ import io.cubyz.world.cubyzgenerators.biomes.Biome;
 public class LifelandGenerator extends SurfaceGenerator {
 	
 	public static void init() {
-		GENERATORS.registerAll(new TerrainGenerator(), new RiverGenerator(), new OreGenerator(), new CaveGenerator(), new CrystalCavernGenerator(), new StructureGenerator(), new GrassGenerator());
+		GENERATORS.registerAll(new TerrainGenerator(), new RiverGenerator(), new OreGenerator(), new CaveGenerator(), new CrystalCavernGenerator(), new StructureGenerator());
 	}
 	
 	public static void initOres(Ore[] ores) {
@@ -61,7 +61,7 @@ public class LifelandGenerator extends SurfaceGenerator {
 		float[][] heightMap = new float[32][32];
 		float[][] heatMap = new float[32][32];
 		Biome[][] biomeMap = new Biome[32][32];
-		((LocalSurface)surface).getMapData(wx-8, wz-8, 32, 32, heightMap, heatMap, biomeMap);
+		surface.getMapData(wx-8, wz-8, 32, 32, heightMap, heatMap, biomeMap);
 		boolean[][] vegetationIgnoreMap = new boolean[32][32]; // Stores places where vegetation should not grow, like caves and rivers.
 		int[][] realHeight = new int[32][32];
 		for(int px = 0; px < 32; px++) {
@@ -70,19 +70,52 @@ public class LifelandGenerator extends SurfaceGenerator {
 				if(h > World.WORLD_HEIGHT)
 					h = World.WORLD_HEIGHT;
 				realHeight[px][pz] = h;
-				
-				heatMap[px][pz] = ((2 - heightMap[px][pz] + TerrainGenerator.SEA_LEVEL/(float)World.WORLD_HEIGHT)*heatMap[px][pz]*120) - 100;
 			}
 		}
 		
 		Random r = new Random(seed);
 		Block[][][] chunk = new Block[16][16][World.WORLD_HEIGHT];
 		
+		// Get the MetaChunks used by the BigGenerator.:
+		int lx, lz;
+		MetaChunk nn, np, pn, pp;
+		if((wx & 255) < 128) {
+			lx = (wx & 255) + 256;
+			if((wz & 255) < 128) {
+				lz = (wz & 255) + 256;
+				nn = surface.getMetaChunk((wx & (~255)) - 256, (wz & (~255)) - 256);
+				np = surface.getMetaChunk((wx & (~255)) - 256, (wz & (~255)));
+				pn = surface.getMetaChunk((wx & (~255)), (wz & (~255)) - 256);
+				pp = surface.getMetaChunk((wx & (~255)), (wz & (~255)));
+			} else {
+				lz = (wz & 255);
+				nn = surface.getMetaChunk((wx & (~255)) - 256, (wz & (~255)));
+				np = surface.getMetaChunk((wx & (~255)) - 256, (wz & (~255)) + 256);
+				pn = surface.getMetaChunk((wx & (~255)), (wz & (~255)));
+				pp = surface.getMetaChunk((wx & (~255)), (wz & (~255)) + 256);
+			}
+		} else {
+			lx = (wx & 255);
+			if((wz & 255) < 128) {
+				lz = (wz & 255) + 256;
+				nn = surface.getMetaChunk((wx & (~255)), (wz & (~255)) - 256);
+				np = surface.getMetaChunk((wx & (~255)), (wz & (~255)));
+				pn = surface.getMetaChunk((wx & (~255)) + 256, (wz & (~255)) - 256);
+				pp = surface.getMetaChunk((wx & (~255)) + 256, (wz & (~255)));
+			} else {
+				lz = (wz & 255);
+				nn = surface.getMetaChunk((wx & (~255)), (wz & (~255)));
+				np = surface.getMetaChunk((wx & (~255)), (wz & (~255)) + 256);
+				pn = surface.getMetaChunk((wx & (~255)) + 256, (wz & (~255)));
+				pp = surface.getMetaChunk((wx & (~255)) + 256, (wz & (~255)) + 256);
+			}
+		}
+		
 		for (Generator g : sortedGenerators) {
 			if (g instanceof FancyGenerator) {
 				((FancyGenerator) g).generate(r.nextLong(), cx, cz, chunk, vegetationIgnoreMap, heatMap, realHeight, biomeMap);
 			} else if (g instanceof BigGenerator) {
-				((BigGenerator) g).generate(r.nextLong(), cx*16, cz*16, chunk, vegetationIgnoreMap, (LocalSurface)surface);
+				((BigGenerator) g).generate(r.nextLong(), lx, lz, chunk, vegetationIgnoreMap, nn, np, pn, pp);
 			} else {
 				g.generate(r.nextLong(), cx, cz, chunk, vegetationIgnoreMap);
 			}
