@@ -13,6 +13,7 @@ public class BlockStructure {
 		structure = blocks;
 	}
 	public int addSubTerranian(Block[][][] chunk, int depth, int x, int z, Random rand) {
+		int startingDepth = depth;
 		for(int i = 0; i < structure.length; i++) {
 			for(int j = 0; j < structure[i].min; j++) {
 				chunk[x][z][depth--] = structure[i].block;
@@ -24,6 +25,7 @@ public class BlockStructure {
 				if(depth <= 0) return depth;
 			}
 		}
+		if(depth == startingDepth) return depth;
 		return depth + 1;
 	}
 	

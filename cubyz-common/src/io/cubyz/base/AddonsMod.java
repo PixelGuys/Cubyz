@@ -181,7 +181,7 @@ public class AddonsMod {
 									vegetation.add(new SimpleVegetation(CubyzRegistries.BLOCK_REGISTRY.getByID(arguments[0]), Float.parseFloat(arguments[1]), Integer.parseInt(arguments[2]), Integer.parseInt(arguments[3])));
 								} else if(line.startsWith("cubyz:simple_tree")) {
 									String [] arguments = line.substring("cubyz:simple_tree".length()).trim().split("\\s+");
-									vegetation.add(new SimpleTreeModel(CubyzRegistries.BLOCK_REGISTRY.getByID(arguments[0]), CubyzRegistries.BLOCK_REGISTRY.getByID(arguments[1]), CubyzRegistries.BLOCK_REGISTRY.getByID(arguments[2]), Float.parseFloat(arguments[3]), Integer.parseInt(arguments[4]), Integer.parseInt(arguments[5])));
+									vegetation.add(new SimpleTreeModel(CubyzRegistries.BLOCK_REGISTRY.getByID(arguments[0]), CubyzRegistries.BLOCK_REGISTRY.getByID(arguments[1]), CubyzRegistries.BLOCK_REGISTRY.getByID(arguments[2]), Float.parseFloat(arguments[3]), Integer.parseInt(arguments[4]), Integer.parseInt(arguments[5]), arguments[6].toUpperCase()));
 								} else {
 									CubyzLogger.instance.warning("Could not find structure \"" + line.split("\\s+")[0] + "\" specified in line " + lineNumber + " in file " + file.getPath());
 								}

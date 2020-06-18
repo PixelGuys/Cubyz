@@ -1,0 +1,10 @@
+temperature 15
+humidity 0.3
+height 120-140-160
+ground_structure 0 to 1 cubyz:grass, 2 cubyz:soil
+roughness 0.2
+
+rivers
+
+structures:
+	cubyz:simple_tree cubyz:oak_leaves cubyz:oak_log cubyz:oak_top 0.01 4 6 bush

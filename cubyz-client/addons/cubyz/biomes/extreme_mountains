@@ -2,4 +2,4 @@ temperature -20
 humidity 0.3
 height 160-180-256
 ground_structure cubyz:snow
-roughness 1
+roughness 2
