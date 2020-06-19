@@ -797,16 +797,30 @@ public class Chunk {
 			lightUpdate(x, y, z);
 		Block[] neighbors = getNeighbors(x, y, z);
 		for (int i = 0; i < neighbors.length; i++) {
-			Block inst = neighbors[i];
-			if (inst != null) {
-				Chunk ch = getChunk(x+neighborRelativeX[i]+wx, z+neighborRelativeZ[i]+wz);
-				if (!ch.contains(x+neighborRelativeX[i]+wx, y+neighborRelativeY[i], z+neighborRelativeZ[i]+wz)) {
-					ch.revealBlock((x+neighborRelativeX[i]) & 15, y+neighborRelativeY[i], (z+neighborRelativeZ[i]) & 15);
-				}
-				if (inst.getBlockClass() == BlockClass.FLUID) {
-					int index = (((x+neighborRelativeX[i]) & 15) << 4) | ((y+neighborRelativeY[i]) << 8) | ((z+neighborRelativeZ[i]) & 15);
-					if (!updatingLiquids.contains(index))
-						updatingLiquids.add(index);
+			Block block = neighbors[i];
+			if (block != null) {
+				int nx = x+neighborRelativeX[i]+wx;
+				int ny = y+neighborRelativeY[i];
+				int nz = z+neighborRelativeZ[i]+wz;
+				Chunk ch = getChunk(nx, nz);
+				// Check if the block is structurally depending on the removed block:
+				if(block.mode.dependsOnNeightbors()) {
+					byte oldData = ch.getBlockData(nx & 15, ny, nz & 15);
+					Byte newData = block.mode.updateData(oldData, i ^ 1);
+					if(newData == null) surface.removeBlock(nx, ny, nz);
+					else if(newData.byteValue() != oldData) {
+						surface.updateBlockData(nx, ny, nz, newData);
+						// TODO: Eventual item drops.
+					}
+				} else {
+					if (!ch.contains(nx, ny, nz)) {
+						ch.revealBlock((x+neighborRelativeX[i]) & 15, y+neighborRelativeY[i], (z+neighborRelativeZ[i]) & 15);
+					}
+					if (block.getBlockClass() == BlockClass.FLUID) {
+						int index = (((x+neighborRelativeX[i]) & 15) << 4) | ((y+neighborRelativeY[i]) << 8) | ((z+neighborRelativeZ[i]) & 15);
+						if (!updatingLiquids.contains(index))
+							updatingLiquids.add(index);
+					}
 				}
 			}
 		}

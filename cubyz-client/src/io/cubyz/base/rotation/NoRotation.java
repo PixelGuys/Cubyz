@@ -24,4 +24,14 @@ public class NoRotation implements RotationMode {
 		return new BlockSpatial[] {new BlockSpatial(bi)};
 	}
 
+	@Override
+	public boolean dependsOnNeightbors() {
+		return false;
+	}
+
+	@Override
+	public Byte updateData(byte data, int dir) {
+		return 0;
+	}
+
 }

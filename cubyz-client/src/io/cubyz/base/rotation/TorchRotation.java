@@ -70,4 +70,41 @@ public class TorchRotation implements RotationMode {
 		System.arraycopy(spatials, 0, trimmedArray, 0, index);
 		return trimmedArray;
 	}
+
+	@Override
+	public boolean dependsOnNeightbors() {
+		return true;
+	}
+
+	@Override
+	public Byte updateData(byte data, int dir) {
+		switch(dir) {
+			case 0: {
+				data &= ~0b10;
+				break;
+			}
+			case 1: {
+				data &= ~0b1;
+				break;
+			}
+			case 2: {
+				data &= ~0b1000;
+				break;
+			}
+			case 3: {
+				data &= ~0b100;
+				break;
+			}
+			case 4: {
+				data &= ~0b10000;
+				break;
+			}
+			default: {
+				break;
+			}
+		}
+		// Torches are removed when they have no contact to another block.
+		if(data == 0) return null;
+		return data;
+	}
 }

@@ -55,4 +55,14 @@ public class LogRotation implements RotationMode {
 		spatials[0] = tmp;
 		return spatials;
 	}
+
+	@Override
+	public boolean dependsOnNeightbors() {
+		return false;
+	}
+
+	@Override
+	public Byte updateData(byte data, int dir) {
+		return 0;
+	}
 }
