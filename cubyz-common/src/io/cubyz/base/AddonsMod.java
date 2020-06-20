@@ -30,6 +30,7 @@ import io.cubyz.math.CubyzMath;
 import io.cubyz.translate.TextKey;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 import io.cubyz.world.cubyzgenerators.biomes.BlockStructure;
+import io.cubyz.world.cubyzgenerators.biomes.GroundPatch;
 import io.cubyz.world.cubyzgenerators.biomes.SimpleTreeModel;
 import io.cubyz.world.cubyzgenerators.biomes.SimpleVegetation;
 import io.cubyz.world.cubyzgenerators.biomes.StructureModel;
@@ -182,6 +183,9 @@ public class AddonsMod {
 								} else if(line.startsWith("cubyz:simple_tree")) {
 									String [] arguments = line.substring("cubyz:simple_tree".length()).trim().split("\\s+");
 									vegetation.add(new SimpleTreeModel(CubyzRegistries.BLOCK_REGISTRY.getByID(arguments[0]), CubyzRegistries.BLOCK_REGISTRY.getByID(arguments[1]), CubyzRegistries.BLOCK_REGISTRY.getByID(arguments[2]), Float.parseFloat(arguments[3]), Integer.parseInt(arguments[4]), Integer.parseInt(arguments[5]), arguments[6].toUpperCase()));
+								} else if(line.startsWith("cubyz:ground_patch")) {
+									String [] arguments = line.substring("cubyz:ground_patch".length()).trim().split("\\s+");
+									vegetation.add(new GroundPatch(CubyzRegistries.BLOCK_REGISTRY.getByID(arguments[0]), Float.parseFloat(arguments[1]), Float.parseFloat(arguments[2]), Float.parseFloat(arguments[3]), Float.parseFloat(arguments[4]), Float.parseFloat(arguments[5])));
 								} else {
 									CubyzLogger.instance.warning("Could not find structure \"" + line.split("\\s+")[0] + "\" specified in line " + lineNumber + " in file " + file.getPath());
 								}

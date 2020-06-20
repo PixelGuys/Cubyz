@@ -17,7 +17,7 @@ public class SimpleVegetation extends StructureModel {
 		deltaHeight = dh;
 	}
 	@Override
-	public void generate(int x, int z, int h, Block[][][] chunk, Random rand) {
+	public void generate(int x, int z, int h, Block[][][] chunk, int[][] heightMap, Random rand) {
 		if(h > 0 && x >= 0 && x < 16 && z >= 0 && z < 16) {
 			int height = height0;
 			if(h+height < World.WORLD_HEIGHT) {
