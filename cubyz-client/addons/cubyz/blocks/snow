@@ -1,6 +1,6 @@
 class sand
 hardness 6.5
-drop cubyz:soil
+drop auto
 
-model cubyz:persidetexture.obj
+model cubyz:block.obj
 texture cubyz:snow

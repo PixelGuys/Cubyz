@@ -1,0 +1,5 @@
+temperature -20
+humidity 0.8
+height 160-180-256
+ground_structure 3 to 5 cubyz:snow, 2 to 3 cubyz:ice, 0 to 1 cubyz:gravel, 0 to 1 cubyz:cobblestone
+roughness 1

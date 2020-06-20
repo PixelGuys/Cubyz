@@ -3,4 +3,4 @@ humidity 0.2
 height 220-230-256
 roughness 4
 
-ground_structure 0 to 1 cubyz:cobblestone
+ground_structure 1 to 2 cubyz:snow, 0 to 1 cubyz:ice, 0 to 2 cubyz:cobblestone

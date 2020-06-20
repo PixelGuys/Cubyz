@@ -8,3 +8,5 @@ rivers
 
 structures:
 	cubyz:simple_tree cubyz:oak_leaves cubyz:oak_log cubyz:oak_top 0.01 2 2 bush
+	cubyz:ground_patch cubyz:gravel 0.003 6 2 3 0.8
+	cubyz:ground_patch cubyz:snow 0.002 6 2 3 0.8
