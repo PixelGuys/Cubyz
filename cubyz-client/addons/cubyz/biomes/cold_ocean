@@ -1,0 +1,9 @@
+temperature 5
+humidity 1
+height 0-50-100
+ground_structure 1 to 2 cubyz:cobblestone
+roughness 0.3
+
+structures:
+	cubyz:ground_patch cubyz:mossy_cobblestone 0.004 6 2 2 0.2
+	cubyz:ground_patch cubyz:gravel 0.002 6 2 2 0.2

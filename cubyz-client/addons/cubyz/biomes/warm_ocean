@@ -1,0 +1,8 @@
+temperature 25
+humidity 1
+height 0-50-100
+ground_structure 2 to 4 cubyz:sand
+roughness 0.2
+
+structures:
+	cubyz:ground_patch cubyz:gravel 0.002 6 2 2 0.2
