@@ -12,7 +12,6 @@ import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.math.CubyzMath;
-import io.cubyz.math.Vector3fi;
 import io.cubyz.util.FastList;
 import io.cubyz.world.BlockSpatial;
 import io.cubyz.world.Chunk;
@@ -147,7 +146,7 @@ public class ZenithsRenderer implements Renderer {
 	 * @param localPlayer The world's local player
 	 */
 	public void render(Window window, Context ctx, Vector3f ambientLight, DirectionalLight directionalLight,
-			Chunk[] chunks, Block[] blocks, Entity[] entities, Spatial[] spatials, Player localPlayer, int worldAnd) {
+			Chunk[] chunks, Block[] blocks, Entity[] entities, Spatial[] spatials, Player localPlayer, int worldSize) {
 		if (window.isResized()) {
 			glViewport(0, 0, window.getWidth(), window.getHeight());
 			window.setResized(false);
@@ -188,23 +187,21 @@ public class ZenithsRenderer implements Renderer {
 		frustumInt.set(prjViewMatrix);
 		if(localPlayer != null) {
 			// Store the position locally to prevent glitches when the updateThread changes the position.
-			Vector3fi pos = localPlayer.getPosition();
-			int x0 = pos.x;
-			float relX = pos.relX;
-			int z0 = pos.z;
-			float relZ = pos.relZ;
+			Vector3f pos = localPlayer.getPosition();
+			float x0 = pos.x;
+			float z0 = pos.z;
 			float y0 = pos.y+1.5f;
 			for (Chunk ch : chunks) {
-				if (!frustumInt.testAab(ch.getMin(pos, worldAnd), ch.getMax(pos, worldAnd)))
+				if (!frustumInt.testAab(ch.getMin(pos, worldSize), ch.getMax(pos, worldSize)))
 					continue;
 				int length = ch.getVisibles().size;
 				BlockInstance[] vis = ch.getVisibles().array;
 				for (int i = 0; i < length; i++) {
 					BlockInstance bi = vis[i];
 					if(bi != null) { // Sometimes block changes happen while rendering.
-						float x = CubyzMath.matchSign((bi.getX() - x0) & worldAnd, worldAnd) - relX;
+						float x = CubyzMath.matchSign(CubyzMath.worldModulo(bi.getX() - x0, worldSize), worldSize);
 						float y = bi.getY() - y0;
-						float z = CubyzMath.matchSign((bi.getZ() - z0) & worldAnd, worldAnd) - relZ;
+						float z = CubyzMath.matchSign(CubyzMath.worldModulo(bi.getZ() - z0, worldSize), worldSize);
 						// Do the frustum culling directly here.
 						if(frustumInt.testSphere(x, y, z, 0.866025f)) {
 							// Only draw blocks that have at least one face facing the player.

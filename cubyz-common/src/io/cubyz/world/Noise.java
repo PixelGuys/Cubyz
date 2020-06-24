@@ -2,15 +2,17 @@ package io.cubyz.world;
 
 import java.util.Random;
 
+import io.cubyz.math.CubyzMath;
+
 /**
  * Fractal Noise Generator for world generation.
  * @author IntegratedQuantum
  */
 public class Noise {
-	static long getSeed(int x, int y, int offsetX, int offsetY, int worldAnd, long seed) {
-		return (((long)((offsetX+x) & worldAnd)) << 16)^seed^(((long)((offsetY+y) & worldAnd)) << 32);
+	static long getSeed(int x, int y, int offsetX, int offsetY, int worldSize, long seed) {
+		return (((long)(CubyzMath.worldModulo(offsetX + x, worldSize))) << 16) ^ seed ^ (((long)(CubyzMath.worldModulo(offsetY + y, worldSize))) << 32);
 	}
-	private static void generateFractalTerrain(int wx, int wy, int x0, int y0, int width, int height, int scale, long seed, int worldAnd, float[][] map) {
+	private static void generateFractalTerrain(int wx, int wy, int x0, int y0, int width, int height, int scale, long seed, int worldSize, float[][] map) {
 		int max =scale+1;
 		int and = scale-1;
 		float[][] bigMap = new float[max][max];
@@ -18,13 +20,13 @@ public class Noise {
 		int offsetY = wy&(~and);
 		Random rand = new Random();
 		// Generate the 4 corner points of this map using a coordinate-depending seed:
-		rand.setSeed(getSeed(0, 0, offsetX, offsetY, worldAnd, seed));
+		rand.setSeed(getSeed(0, 0, offsetX, offsetY, worldSize, seed));
 		bigMap[0][0] = rand.nextFloat();
-		rand.setSeed(getSeed(0, scale, offsetX, offsetY, worldAnd, seed));
+		rand.setSeed(getSeed(0, scale, offsetX, offsetY, worldSize, seed));
 		bigMap[0][scale] = rand.nextFloat();
-		rand.setSeed(getSeed(scale, 0, offsetX, offsetY, worldAnd, seed));
+		rand.setSeed(getSeed(scale, 0, offsetX, offsetY, worldSize, seed));
 		bigMap[scale][0] = rand.nextFloat();
-		rand.setSeed(getSeed(scale, scale, offsetX, offsetY, worldAnd, seed));
+		rand.setSeed(getSeed(scale, scale, offsetX, offsetY, worldSize, seed));
 		bigMap[scale][scale] = rand.nextFloat();
 		// Increase the "grid" of points with already known heights in each round by a factor of 2×2, like so(# marks the gridpoints of the first grid, * the points of the second grid and + the points of the third grid(and so on…)):
 		/*
@@ -50,7 +52,7 @@ public class Noise {
 			// x coordinate on the grid:
 			for(int x = 0; x < max; x += res<<1) {
 				for(int y = res; y+res < max; y += res<<1) {
-					if(x == 0 || x == scale) rand.setSeed(getSeed(x, y, offsetX, offsetY, worldAnd, seed)); // If the point touches another region, the seed has to be coordinate dependent.
+					if(x == 0 || x == scale) rand.setSeed(getSeed(x, y, offsetX, offsetY, worldSize, seed)); // If the point touches another region, the seed has to be coordinate dependent.
 					bigMap[x][y] = (bigMap[x][y-res]+bigMap[x][y+res])/2 + (rand.nextFloat()-0.5f)*res/scale;
 					if(bigMap[x][y] > 1.0f) bigMap[x][y] = 1.0f;
 					if(bigMap[x][y] < 0.0f) bigMap[x][y] = 0.0f;
@@ -59,7 +61,7 @@ public class Noise {
 			// y coordinate on the grid:
 			for(int x = res; x+res < max; x += res<<1) {
 				for(int y = 0; y < max; y += res<<1) {
-					if(y == 0 || y == scale) rand.setSeed(getSeed(x, y, offsetX, offsetY, worldAnd, seed)); // If the point touches another region, the seed has to be coordinate dependent.
+					if(y == 0 || y == scale) rand.setSeed(getSeed(x, y, offsetX, offsetY, worldSize, seed)); // If the point touches another region, the seed has to be coordinate dependent.
 					bigMap[x][y] = (bigMap[x-res][y]+bigMap[x+res][y])/2 + (rand.nextFloat()-0.5f)*res/scale;
 					if(bigMap[x][y] > 1.0f) bigMap[x][y] = 1.0f;
 					if(bigMap[x][y] < 0.0f) bigMap[x][y] = 0.0f;
@@ -82,11 +84,11 @@ public class Noise {
 			}
 		}
 	}
-	public static float[][] generateFractalTerrain(int wx, int wy, int width, int height, int scale, long seed, int worldAnd) {
+	public static float[][] generateFractalTerrain(int wx, int wy, int width, int height, int scale, long seed, int worldSize) {
 		float[][] map = new float[width][height];
 		for(int x0 = 0; x0 < width; x0 += scale) {
 			for(int y0 = 0; y0 < height; y0 += scale) {
-				generateFractalTerrain(wx + x0, wy + y0, x0, y0, Math.min(width-x0, scale), Math.min(height-y0, scale), scale, seed, worldAnd, map);
+				generateFractalTerrain(wx + x0, wy + y0, x0, y0, Math.min(width-x0, scale), Math.min(height-y0, scale), scale, seed, worldSize, map);
 			}
 		}
 		return map;

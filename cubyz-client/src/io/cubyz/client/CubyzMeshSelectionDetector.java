@@ -6,7 +6,6 @@ import org.joml.Vector3i;
 
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Player;
-import io.cubyz.math.Vector3fi;
 import io.cubyz.world.BlockSpatial;
 import io.cubyz.world.Chunk;
 import io.jungle.renderers.Renderer;
@@ -15,7 +14,8 @@ public class CubyzMeshSelectionDetector {
 
 	protected Renderer render;
 	protected Vector3f min = new Vector3f(), max = new Vector3f();
-	protected int x, z, dirX, dirY, dirZ; // Used to prevent a block placement bug caused by asynchronous player position when selectSpatial and when getEmptyPlace are called.
+	protected int dirX, dirY, dirZ; // Used to prevent a block placement bug caused by asynchronous player position when selectSpatial and when getEmptyPlace are called.
+	protected float x, z;
 	protected BlockInstance selectedSpatial;
 	RayAabIntersection intersection = new RayAabIntersection();
 	
@@ -31,8 +31,8 @@ public class CubyzMeshSelectionDetector {
 		return selectedSpatial;
 	}
 	
-	public void selectSpatial(Chunk[] chunks, Vector3fi position, Vector3f dir, int worldAnd) {
-		Vector3f transformedPosition = new Vector3f(position.relX, position.y + Player.cameraHeight, position.relZ);
+	public void selectSpatial(Chunk[] chunks, Vector3f position, Vector3f dir, int worldSize) {
+		Vector3f transformedPosition = new Vector3f(0, position.y + Player.cameraHeight, 0);
 		x = position.x;
 		z = position.z;
 		dirX = (int)Math.signum(dir.x);
@@ -42,8 +42,8 @@ public class CubyzMeshSelectionDetector {
 		BlockInstance newSpatial = null;
 		intersection.set(transformedPosition.x, transformedPosition.y, transformedPosition.z, dir.x, dir.y, dir.z);
 		for (Chunk ch : chunks) {
-			min.set(ch.getMin(position, worldAnd));
-			max.set(ch.getMax(position, worldAnd));
+			min.set(ch.getMin(position, worldSize));
+			max.set(ch.getMax(position, worldSize));
 			// Check if the chunk is in view:
 			if (!intersection.test(min.x-1, -1, min.z-1, max.x+1, 256, max.z+1)) // 1 is added/subtracted because chunk min-max don't align with the block min max.
 				continue;

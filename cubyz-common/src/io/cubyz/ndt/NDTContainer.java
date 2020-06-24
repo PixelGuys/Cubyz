@@ -8,7 +8,6 @@ import java.util.Set;
 
 import io.cubyz.Constants;
 import io.cubyz.math.Bits;
-import io.cubyz.math.FloatingInteger;
 
 public class NDTContainer extends NDTTag implements Iterable<NDTTag> {
 
@@ -150,17 +149,6 @@ public class NDTContainer extends NDTTag implements Iterable<NDTTag> {
 	
 	public void setContainer(String key, NDTContainer c) {
 		setTag(key, c);
-	}
-	
-	public void setFloatingInteger(String key, FloatingInteger i) {
-		NDTFloatingInteger tag = new NDTFloatingInteger();
-		tag.setValue(i);
-		setTag(key, tag);
-	}
-	
-	public FloatingInteger getFloatingInteger(String key) {
-		NDTFloatingInteger tag = (NDTFloatingInteger) getTag(key);
-		return tag.getValue();
 	}
 	
 	public boolean validate() {

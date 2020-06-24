@@ -32,7 +32,6 @@ import io.cubyz.entity.Entity;
 import io.cubyz.entity.EntityType;
 import io.cubyz.entity.Player;
 import io.cubyz.items.CustomItem;
-import io.cubyz.math.Vector3fi;
 import io.cubyz.multiplayer.GameProfile;
 import io.cubyz.multiplayer.LoginToken;
 import io.cubyz.multiplayer.client.MPClient;
@@ -183,8 +182,8 @@ public class Cubyz implements GameLogic {
 				int highestY;
 				CubyzLogger.i.info("Finding position..");
 				while (true) {
-					dx = rnd.nextInt(surface.getAnd()+1);
-					dz = rnd.nextInt(surface.getAnd()+1);
+					dx = rnd.nextInt(surface.getSize());
+					dz = rnd.nextInt(surface.getSize());
 					CubyzLogger.i.info("Trying " + dx + " ? " + dz);
 					world.getCurrentTorus().synchronousSeek(dx, dz, ClientSettings.renderDistance);
 					highestY = world.getCurrentTorus().getHeight(dx, dz);
@@ -532,7 +531,7 @@ public class Cubyz implements GameLogic {
 			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_P)) {
 				// debug: spawn a pig
-				Vector3fi pos = world.getLocalPlayer().getPosition().clone();
+				Vector3f pos = new Vector3f(world.getLocalPlayer().getPosition());
 				EntityType pigType = CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:pig");
 				if (pigType == null) return;
 				Entity pig = pigType.newEntity(world.getCurrentTorus());
@@ -604,7 +603,7 @@ public class Cubyz implements GameLogic {
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_EQUAL, false);
 				System.gc();
 			}
-			msd.selectSpatial(world.getCurrentTorus().getChunks(), world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate(), surface.getAnd());
+			msd.selectSpatial(world.getCurrentTorus().getChunks(), world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate(), surface.getSize());
 		}
 		if (world != null) {
 			if (Keybindings.isPressed("menu")) {
@@ -650,7 +649,7 @@ public class Cubyz implements GameLogic {
 		spatial.setPosition(0, 0.5f, -2f);
 		spatial.setScale(0.5f);
 		Spatial[] spatials = new Spatial[] {spatial};
-		renderer.render(window, ctx, new Vector3f(1, 1, 1), light, EMPTY_CHUNK_LIST, EMPTY_BLOCK_LIST, EMPTY_ENTITY_LIST, spatials, world.getLocalPlayer(), world.getCurrentTorus().getAnd());
+		renderer.render(window, ctx, new Vector3f(1, 1, 1), light, EMPTY_CHUNK_LIST, EMPTY_BLOCK_LIST, EMPTY_ENTITY_LIST, spatials, world.getLocalPlayer(), world.getCurrentTorus().getSize());
 		renderer.orthogonal = false;
 		window.setResized(true); // update projection matrix for next render
 		ctx.setHud(gameUI);
@@ -791,7 +790,7 @@ public class Cubyz implements GameLogic {
 			}
 			ctx.getFog().setDensity(1 / (ClientSettings.renderDistance*ClientSettings.fogCoefficient));
 			Player player = world.getLocalPlayer();
-			Block bi = world.getCurrentTorus().getBlock(player.getPosition().x+Math.round(player.getPosition().relX), (int)(player.getPosition().y)+3, player.getPosition().z+Math.round(player.getPosition().relZ));
+			Block bi = world.getCurrentTorus().getBlock(Math.round(player.getPosition().x), (int)(player.getPosition().y)+3, Math.round(player.getPosition().z));
 			if(bi != null && !bi.isSolid()) {
 				int absorption = bi.getAbsorption();
 				ambient.x *= 1.0f - Math.pow(((absorption >>> 16) & 255)/255.0f, 0.25);
@@ -803,7 +802,7 @@ public class Cubyz implements GameLogic {
 			float lightX = (((float)world.getGameTime() % world.getCurrentTorus().getStellarTorus().getDayCycle()) / (float) (world.getCurrentTorus().getStellarTorus().getDayCycle()/2)) - 1f;
 			light.getDirection().set(lightY, 0, lightX);
 			window.setClearColor(clearColor);
-			renderer.render(window, ctx, ambient, light, world.getCurrentTorus().getChunks(), world.getBlocks(), world.getCurrentTorus().getEntities(), worldSpatialList, world.getLocalPlayer(), world.getCurrentTorus().getAnd());
+			renderer.render(window, ctx, ambient, light, world.getCurrentTorus().getChunks(), world.getBlocks(), world.getCurrentTorus().getEntities(), worldSpatialList, world.getLocalPlayer(), world.getCurrentTorus().getSize());
 		} else {
 			clearColor.y = clearColor.z = 0.7f;
 			clearColor.x = 0.1f;
@@ -835,7 +834,7 @@ public class Cubyz implements GameLogic {
 		if (!gameUI.doesGUIPauseGame() && world != null) {
 			Player lp = world.getLocalPlayer();
 			if (!gameUI.doesGUIBlockInput()) {
-				lp.move(playerInc.mul(0.11F), ctx.getCamera().getRotation(), world.getCurrentTorus().getAnd());
+				lp.move(playerInc.mul(0.11F), ctx.getCamera().getRotation(), world.getCurrentTorus().getSize());
 				if (breakCooldown > 0) {
 					breakCooldown--;
 				}
@@ -886,11 +885,11 @@ public class Cubyz implements GameLogic {
 				}
 			}
 			playerInc.x = playerInc.y = playerInc.z = 0.0F; // Reset positions
-			Chunk ch = world.getCurrentTorus().getChunk(lp.getPosition().x >> 4, lp.getPosition().z >> 4);
+			Chunk ch = world.getCurrentTorus().getChunk((int)lp.getPosition().x >> 4, (int)lp.getPosition().z >> 4);
 			if (ch != null && ch.isLoaded()) {
 				world.update();
 			}
-			world.getCurrentTorus().seek(lp.getPosition().x, lp.getPosition().z, ClientSettings.renderDistance);
+			world.getCurrentTorus().seek((int)lp.getPosition().x, (int)lp.getPosition().z, ClientSettings.renderDistance);
 			float lightAngle = (float)Math.PI/2 + (float)Math.PI*(((float)world.getGameTime() % world.getCurrentTorus().getStellarTorus().getDayCycle())/(world.getCurrentTorus().getStellarTorus().getDayCycle()/2));
 			skySun.setPosition((float)Math.cos(lightAngle)*500, (float)Math.sin(lightAngle)*500, 0);
 			skySun.setRotation(0, 0, -lightAngle);

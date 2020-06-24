@@ -16,7 +16,6 @@ import io.cubyz.blocks.BlockEntity;
 import io.cubyz.handler.BlockVisibilityChangeHandler;
 import io.cubyz.math.Bits;
 import io.cubyz.math.CubyzMath;
-import io.cubyz.math.Vector3fi;
 import io.cubyz.save.BlockChange;
 import io.cubyz.util.FastList;
 import io.cubyz.world.generator.SurfaceGenerator;
@@ -49,8 +48,8 @@ public class Chunk {
 	
 	public Chunk(int cx, int cz, Surface surface, ArrayList<BlockChange> changes) {
 		if(surface != null) {
-			cx &= surface.getAnd() >>> 4;
-			cz &= surface.getAnd() >>> 4;
+			cx = CubyzMath.worldModulo(cx, surface.getSize() >>> 4);
+			cz = CubyzMath.worldModulo(cz, surface.getSize() >>> 4);
 		}
 		if(Settings.easyLighting) {
 			light = new int[16*World.WORLD_HEIGHT*16];
@@ -1084,12 +1083,12 @@ public class Chunk {
 		return inst[(x << 4) | (y << 8) | z];
 	}
 	
-	public Vector3f getMin(Vector3fi position, int worldAnd) {
-		return new Vector3f(CubyzMath.matchSign((wx - position.x) & worldAnd, worldAnd) - position.relX, -position.y, CubyzMath.matchSign((wz - position.z) & worldAnd, worldAnd) - position.relZ);
+	public Vector3f getMin(Vector3f position, int worldSize) {
+		return new Vector3f(CubyzMath.matchSign(CubyzMath.worldModulo(wx - position.x, worldSize), worldSize), -position.y, CubyzMath.matchSign(CubyzMath.worldModulo(wz - position.z, worldSize), worldSize));
 	}
 	
-	public Vector3f getMax(Vector3fi position, int worldAnd) {
-		return new Vector3f(CubyzMath.matchSign((wx - position.x + 16) & worldAnd, worldAnd) - position.relX, 255-position.y, CubyzMath.matchSign((wz - position.z + 16) & worldAnd, worldAnd) - position.relZ);
+	public Vector3f getMax(Vector3f position, int worldSize) {
+		return new Vector3f(CubyzMath.matchSign(CubyzMath.worldModulo(wx - position.x + 16, worldSize), worldSize), 255 - position.y, CubyzMath.matchSign(CubyzMath.worldModulo(wz - position.z + 16, worldSize), worldSize));
 	}
 	
 	public int getX() {

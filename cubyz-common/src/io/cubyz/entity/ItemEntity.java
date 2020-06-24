@@ -56,16 +56,8 @@ public class ItemEntity extends Entity implements CustomMeshProvider {
 		super.position.x = position.x;
 		super.position.y = position.y;
 		super.position.z = position.z;
-		super.position.relX = (float)Math.random() - 0.5f;
-		if(super.position.relX < 0) {
-			super.position.relX += 1;
-			super.position.x -= 1;
-		}
-		super.position.relZ = (float)Math.random() - 0.5f;
-		if(super.position.relZ < 0) {
-			super.position.relZ += 1;
-			super.position.z -= 1;
-		}
+		super.position.x += (float)Math.random() - 0.5f;
+		super.position.z += (float)Math.random() - 0.5f;
 		scale = 0.2f;
 		super.position.y += (float)Math.random() - 0.5f;
 		rotation = new Vector3f(

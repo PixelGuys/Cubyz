@@ -58,11 +58,6 @@ public class NDTTag {
 		if (bytes[0] == NDTConstants.TYPE_CONTAINER) {
 			return new NDTContainer(tagBytes);
 		}
-		if (bytes[0] == NDTConstants.TYPE_FLOATINT) {
-			NDTFloatingInteger ndt = new NDTFloatingInteger();
-			ndt.setBytes(tagBytes);
-			return ndt;
-		}
 		CubyzLogger.instance.warning("Unknown NDT tag type: " + bytes[0]);
 		return null;
 	}

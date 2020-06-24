@@ -72,8 +72,8 @@ public abstract class Surface {
 	
 	public abstract CurrentSurfaceRegistries getCurrentRegistries();
 	
-	public int getAnd() {
-		return -1;
+	public int getSize() {
+		return Integer.MIN_VALUE;
 	}
 	
 	public StellarTorus getStellarTorus() {

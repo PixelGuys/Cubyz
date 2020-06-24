@@ -5,8 +5,6 @@ import org.joml.Vector3i;
 
 import io.cubyz.blocks.Block;
 import io.cubyz.items.Inventory;
-import io.cubyz.math.FloatingInteger;
-import io.cubyz.math.Vector3fi;
 import io.cubyz.ndt.NDTContainer;
 import io.cubyz.world.StellarTorus;
 import io.cubyz.world.Surface;
@@ -15,7 +13,7 @@ public class Entity {
 
 	protected Surface surface;
 
-	protected Vector3fi position = new Vector3fi();
+	protected Vector3f position = new Vector3f();
 	protected Vector3f rotation = new Vector3f();
 	private EntityAI ai;
 	public float vx, vy, vz;
@@ -50,79 +48,78 @@ public class Entity {
 	 * check and update vertical velocity for collision.
 	 */
 	protected void updateVY() {
+		int absX = Math.round(position.x);
+		int absY = Math.round(position.y);
+		int absZ = Math.round(position.z);
+		float relX = position.x + 0.5f - absX;
+		float relZ = position.z + 0.5f - absZ;
 		if (vy < 0) {
-			Vector3i bp = new Vector3i(position.x + (int) Math.round(position.relX), (int) Math.round(position.y), position.z + (int) Math.round(position.relZ));
-			float relX = position.relX + 0.5f - Math.round(position.relX);
-			float relZ = position.relZ + 0.5f - Math.round(position.relZ);
 			if(isOnGround()) {
 				stopVY();
 			}
 			else if (relX < minBlock) {
-				if (checkBlock(bp.x - 1, bp.y, bp.z)) {
+				if (checkBlock(absX - 1, absY, absZ)) {
 					stopVY();
 				}
-				else if (relZ < minBlock && checkBlock(bp.x - 1, bp.y, bp.z - 1)) {
+				else if (relZ < minBlock && checkBlock(absX - 1, absY, absZ - 1)) {
 					stopVY();
 				}
-				else if (relZ > maxBlock && checkBlock(bp.x - 1, bp.y, bp.z + 1)) {
+				else if (relZ > maxBlock && checkBlock(absX - 1, absY, absZ + 1)) {
 					stopVY();
 				}
 			}
 			else if (relX > maxBlock) {
-				if (checkBlock(bp.x + 1, bp.y, bp.z)) {
+				if (checkBlock(absX + 1, absY, absZ)) {
 					stopVY();
 				}
-				else if (relZ < minBlock && checkBlock(bp.x + 1, bp.y, bp.z - 1)) {
+				else if (relZ < minBlock && checkBlock(absX + 1, absY, absZ - 1)) {
 					stopVY();
 				}
-				else if (relZ > maxBlock && checkBlock(bp.x + 1, bp.y, bp.z + 1)) {
+				else if (relZ > maxBlock && checkBlock(absX + 1, absY, absZ + 1)) {
 					stopVY();
 				}
 			}
-			if (relZ < minBlock && checkBlock(bp.x, bp.y, bp.z - 1)) {
+			if (relZ < minBlock && checkBlock(absX, absY, absZ - 1)) {
 				stopVY();
 			}
-			else if (relZ > maxBlock && checkBlock(bp.x, bp.y, bp.z + 1)) {
+			else if (relZ > maxBlock && checkBlock(absX, absY, absZ + 1)) {
 				stopVY();
 			}
 			
 			// I'm really annoyed by falling into the void and needing ages to get back up.
-			if(bp.y < -100) {
+			if(absY < -100) {
 				position.y = -100;
 				stopVY();
 			}
 		} else if (vy > 0) {
-			Vector3i bp = new Vector3i(position.x + (int) Math.round(position.relX), (int) Math.floor(position.y + height), position.z + (int) Math.round(position.relZ));
-			float relX = position.relX + 0.5f - Math.round(position.relX);
-			float relZ = position.relZ + 0.5f - Math.round(position.relZ);
-			if(checkBlock(bp.x, bp.y, bp.z)) {
+			if(checkBlock(absX, absY, absZ)) {
 				vy = 0;
 			} else if (relX < minBlock) {
-				if (checkBlock(bp.x - 1, bp.y, bp.z)) {
+				if (checkBlock(absX - 1, absY, absZ)) {
 					stopVY();
 				}
-				else if (relZ < minBlock && checkBlock(bp.x - 1, bp.y, bp.z - 1)) {
+				else if (relZ < minBlock && checkBlock(absX - 1, absY, absZ - 1)) {
 					stopVY();
 				}
-				else if (relZ > maxBlock && checkBlock(bp.x - 1, bp.y, bp.z + 1)) {
+				else if (relZ > maxBlock && checkBlock(absX - 1, absY, absZ + 1)) {
 					stopVY();
 				}
 			}
 			else if (relX > maxBlock) {
-				if (checkBlock(bp.x + 1, bp.y, bp.z)) {
+				if (checkBlock(absX + 1, absY, absZ)) {
 					stopVY();
 				}
-				else if (relZ < minBlock && checkBlock(bp.x + 1, bp.y, bp.z - 1)) {
+				else if (relZ < minBlock && checkBlock(absX + 1, absY, absZ - 1)) {
 					stopVY();
 				}
-				else if (relZ > maxBlock && checkBlock(bp.x + 1, bp.y, bp.z + 1)) {
+				else if (relZ > maxBlock && checkBlock(absX + 1, absY, absZ + 1)) {
 					stopVY();
 				}
 			}
-			if (relZ < minBlock && checkBlock(bp.x, bp.y, bp.z - 1)) {
+			if (relZ < minBlock && checkBlock(absX, absY, absZ - 1)) {
 				stopVY();
 			}
-			else if (relZ > maxBlock && checkBlock(bp.x, bp.y, bp.z + 1)) {
+			else if (relZ > maxBlock && checkBlock(absX, absY, absZ + 1)) {
 				stopVY();
 			}
 		}
@@ -143,11 +140,11 @@ public class Entity {
 	 * @author IntegratedQuantum
 	 */
 	protected float _getX(float x) {
-		int absX = position.x + (int) Math.round(position.relX);
-		int absY = (int) Math.round(position.y + 0.5f);
-		int absZ = position.z + (int) Math.round(position.relZ);
-		float relX = position.relX + 0.5F - Math.round(position.relX);
-		float relZ = position.relZ + 0.5F - Math.round(position.relZ);
+		int absX = Math.round(position.x);
+		int absY = Math.round(position.y + 0.5f);
+		int absZ = Math.round(position.z);
+		float relX = position.x + 0.5f - absX;
+		float relZ = position.z + 0.5f - absZ;
 		if (x < 0) {
 			if (relX < minBlock) {
 				relX++;
@@ -212,11 +209,11 @@ public class Entity {
 	}
 	
 	protected float _getZ(float z) {
-		int absX = position.x + (int) Math.floor(position.relX + 0.5F);
-		int absY = (int) Math.round(position.y + 0.5f);
-		int absZ = position.z + (int) Math.floor(position.relZ + 0.5F);
-		float relX = position.relX + 0.5F - Math.round(position.relX);
-		float relZ = position.relZ + 0.5F - Math.round(position.relZ);
+		int absX = Math.round(position.x);
+		int absY = Math.round(position.y + 0.5f);
+		int absZ = Math.round(position.z);
+		float relX = position.x + 0.5f - absX;
+		float relZ = position.z + 0.5f - absZ;
 		if(z < 0) {
 			if(relZ < minBlock) {
 				relZ++;
@@ -285,8 +282,7 @@ public class Entity {
 	}
 	
 	public boolean isOnGround() {
-		Vector3i bp = new Vector3i(position.x + (int) Math.round(position.relX), (int) Math.round(position.y), position.z + (int) Math.round(position.relZ));
-		return checkBlock(bp.x, bp.y, bp.z);
+		return checkBlock(Math.round(position.x), Math.round(position.y), Math.round(position.z));
 	}
 	
 	public void update() {
@@ -308,14 +304,6 @@ public class Entity {
 	
 	// NDT related
 	
-	private NDTContainer saveVector(Vector3fi vec) {
-		NDTContainer ndt = new NDTContainer();
-		ndt.setFloatingInteger("x", new FloatingInteger(vec.x, vec.relX));
-		ndt.setFloat("y", vec.y);
-		ndt.setFloatingInteger("z", new FloatingInteger(vec.z, vec.relZ));
-		return ndt;
-	}
-	
 	private NDTContainer runtimeNDT;
 	
 	/**
@@ -335,13 +323,6 @@ public class Entity {
 	 */
 	public NDTContainer getAINDT() {
 		return getRuntimeNDT().getContainer("ai");
-	}
-	
-	private Vector3fi loadVector3fi(NDTContainer ndt) {
-		FloatingInteger x = ndt.getFloatingInteger("x");
-		float y = ndt.getFloat("y");
-		FloatingInteger z = ndt.getFloatingInteger("z");
-		return new Vector3fi(x, y, z);
 	}
 	
 	private Vector3f loadVector3f(NDTContainer ndt) {
@@ -368,7 +349,7 @@ public class Entity {
 	}
 	
 	public void loadFrom(NDTContainer ndt) {
-		position = loadVector3fi(ndt.getContainer("position"));
+		position = loadVector3f(ndt.getContainer("position"));
 		rotation = loadVector3f (ndt.getContainer("rotation"));
 		Vector3f velocity = loadVector3f(ndt.getContainer("velocity"));
 		vx = velocity.x; vy = velocity.y; vz = velocity.z;
@@ -383,12 +364,12 @@ public class Entity {
 		return surface.getStellarTorus();
 	}
 	
-	public Vector3fi getPosition() {
+	public Vector3f getPosition() {
 		return position;
 	}
 	
-	public Vector3f getRenderPosition(Vector3fi playerPos) { // default method for render pos
-		return new Vector3f((position.x - playerPos.x) + position.relX - playerPos.relX, position.y + height/2 - playerPos.y - Player.cameraHeight, (position.z - playerPos.z) + position.relZ - playerPos.relZ);
+	public Vector3f getRenderPosition(Vector3f playerPos) { // default method for render pos
+		return new Vector3f(position.x - playerPos.x, position.y + height/2 - playerPos.y - Player.cameraHeight, position.z - playerPos.z);
 	}
 	
 	public void setPosition(Vector3i position) {
@@ -397,7 +378,7 @@ public class Entity {
 		this.position.z = position.z;
 	}
 	
-	public void setPosition(Vector3fi position) {
+	public void setPosition(Vector3f position) {
 		this.position = position;
 	}
 	

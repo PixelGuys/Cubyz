@@ -45,7 +45,7 @@ public class LocalSurface extends Surface {
 	private Chunk [] chunks;
 	private int lastX = Integer.MAX_VALUE, lastZ = Integer.MAX_VALUE; // Chunk coordinates of the last chunk update.
 	private int doubleRD; // Corresponds to the doubled value of the last used render distance.
-	private int worldAnd = 65535; // worldSize-1. Used for bitwise and to better work with coordinates.
+	private int worldSize = 65536; // worldSize-1. Used for bitwise and to better work with coordinates.
 	private ArrayList<Entity> entities = new ArrayList<>();
 	
 	private Block[] torusBlocks;
@@ -367,7 +367,7 @@ public class LocalSurface extends Surface {
 					Entity en2 = entities.get(j);
 					// Every entity with and inventory can pick up stuff.
 					if(en2.getInventory() != null) {
-						if(en.getPosition().getDistance(en2.getPosition()) <= en2.pickupRange) {
+						if(en.getPosition().distance(en2.getPosition()) <= en2.pickupRange) {
 							int newAmount = en2.getInventory().addItem(itemEn.items.getItem(), itemEn.items.getAmount());
 							if(newAmount != 0) {
 								itemEn.items.setAmount(newAmount);
@@ -441,7 +441,7 @@ public class LocalSurface extends Surface {
 										break;
 								}
 								if(dy == -1 || (neighbors[4] != null && neighbors[4].getBlockClass() != Block.BlockClass.FLUID)) {
-									ch.addBlockPossiblyOutside(block, (byte)0, (wx+bx+dx) & worldAnd, by+dy, (wz+bz+dz) & worldAnd);
+									ch.addBlockPossiblyOutside(block, (byte)0, CubyzMath.worldModulo(wx+bx+dx, worldSize), by+dy, CubyzMath.worldModulo(wz+bz+dz, worldSize));
 								}
 							}
 						}
@@ -524,21 +524,21 @@ public class LocalSurface extends Surface {
 		torusBlocks = blocks;
 	}
 	
-	public void getMapData(int x, int y, int width, int height, float [][] heightMap, float[][] heatMap, Biome[][] biomeMap) {
+	public void getMapData(int x, int z, int width, int height, float [][] heightMap, float[][] heatMap, Biome[][] biomeMap) {
 		int x0 = x&(~255);
-		int y0 = y&(~255);
-		for(int px = x0; CubyzMath.matchSign((px-x) & worldAnd, worldAnd) < width; px += 256) {
-			for(int py = y0; CubyzMath.matchSign((py-y) & worldAnd, worldAnd) < height; py += 256) {
-				MetaChunk ch = getMetaChunk(px&worldAnd ,py&worldAnd);
+		int z0 = z&(~255);
+		for(int px = x0; CubyzMath.matchSign(CubyzMath.worldModulo(px - x, worldSize), worldSize) < width; px += 256) {
+			for(int pz = z0; CubyzMath.matchSign(CubyzMath.worldModulo(pz-z, worldSize), worldSize) < height; pz += 256) {
+				MetaChunk ch = getMetaChunk(CubyzMath.worldModulo(px, worldSize), CubyzMath.worldModulo(pz, worldSize));
 				int xS = Math.max(px-x, 0);
-				int yS = Math.max(py-y, 0);
-				int xE = Math.min(px+256-x, width);
-				int yE = Math.min(py+256-y, height);
+				int zS = Math.max(pz-z, 0);
+				int xE = Math.min(px + 256 - x, width);
+				int zE = Math.min(pz + 256 - z, height);
 				for(int cx = xS; cx < xE; cx++) {
-					for(int cy = yS; cy < yE; cy++) {
-						heightMap[cx][cy] = ch.heightMap[(cx+x)&255][(cy+y)&255];
-						heatMap[cx][cy] = ch.heatMap[(cx+x)&255][(cy+y)&255];
-						biomeMap[cx][cy] = ch.biomeMap[(cx+x)&255][(cy+y)&255];
+					for(int cz = zS; cz < zE; cz++) {
+						heightMap[cx][cz] = ch.heightMap[(cx + x) & 255][(cz + z) & 255];
+						heatMap[cx][cz] = ch.heatMap[(cx + x) & 255][(cz + z) & 255];
+						biomeMap[cx][cz] = ch.biomeMap[(cx + x) & 255][(cz + z) & 255];
 					}
 				}
 			}
@@ -564,7 +564,7 @@ public class LocalSurface extends Surface {
 				int index = 0;
 				for(int i = 0; i < metaChunks.size(); i++) {
 					Player player = torus.world.getLocalPlayer();
-					int dist = CubyzMath.matchSign(metaChunks.get(i).x-player.getPosition().x, worldAnd)*CubyzMath.matchSign(metaChunks.get(i).x-player.getPosition().x, worldAnd) + CubyzMath.matchSign(metaChunks.get(i).z-player.getPosition().z, worldAnd)*CubyzMath.matchSign(metaChunks.get(i).z-player.getPosition().z, worldAnd);
+					int dist = CubyzMath.matchSign(metaChunks.get(i).x-(int)player.getPosition().x, worldSize)*CubyzMath.matchSign(metaChunks.get(i).x-(int)player.getPosition().x, worldSize) + CubyzMath.matchSign(metaChunks.get(i).z-(int)player.getPosition().z, worldSize)*CubyzMath.matchSign(metaChunks.get(i).z-(int)player.getPosition().z, worldSize);
 					if(dist > max) {
 						max = dist;
 						index = i;
@@ -589,8 +589,8 @@ public class LocalSurface extends Surface {
 	
 	@Override
 	public Chunk getChunk(int x, int z) {
-		x &= worldAnd >>> 4;
-		z &= worldAnd >>> 4;
+		x = CubyzMath.worldModulo(x, worldSize >>> 4);
+		z = CubyzMath.worldModulo(z, worldSize >>> 4);
 		// First test if the chunk can be found in the list of visible chunks:
 		if(x < lastX && x >= lastX-doubleRD && z < lastZ && z >= lastZ-doubleRD) {
 			// Sometimes errors happen when resizing the renderDistance. If they happen just go on to iterating through the whole long list.
@@ -604,7 +604,7 @@ public class LocalSurface extends Surface {
 		}
 		return null;
 	}
-	
+
 	@Override
 	public Block getBlock(int x, int y, int z) {
 		if (y > World.WORLD_HEIGHT || y < 0)
@@ -677,8 +677,8 @@ public class LocalSurface extends Surface {
 	}
 	
 	@Override
-	public int getAnd() {
-		return worldAnd;
+	public int getSize() {
+		return worldSize;
 	}
 	
 	public ArrayList<CustomOre> getCustomOres() {

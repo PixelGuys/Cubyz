@@ -8,6 +8,7 @@ import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.items.Inventory;
 import io.cubyz.items.tools.Tool;
+import io.cubyz.math.CubyzMath;
 import io.cubyz.ndt.NDTContainer;
 import io.cubyz.world.Surface;
 import io.cubyz.world.World;
@@ -46,7 +47,7 @@ public class PlayerEntity extends EntityType {
 		}
 		
 		@Override
-		public void move(Vector3f inc, Vector3f rot, int worldAnd) {
+		public void move(Vector3f inc, Vector3f rot, int worldSize) {
 			float deltaX = 0;
 			float deltaZ = 0;
 			if (inc.z != 0) {
@@ -65,8 +66,8 @@ public class PlayerEntity extends EntityType {
 			if(deltaZ != 0)
 				deltaZ = _getZ(deltaZ);
 			position.add(deltaX, 0, deltaZ);
-			position.x &= worldAnd;
-			position.z &= worldAnd;
+			position.x = CubyzMath.worldModulo(position.x, worldSize);
+			position.z = CubyzMath.worldModulo(position.z, worldSize);
 		}
 		
 		@Override

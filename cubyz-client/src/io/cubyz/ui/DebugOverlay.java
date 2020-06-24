@@ -8,7 +8,6 @@ import io.cubyz.entity.PlayerEntity.PlayerImpl;
 import io.cubyz.world.LocalSurface;
 import io.cubyz.world.LocalWorld;
 import io.cubyz.world.World;
-import io.cubyz.world.cubyzgenerators.biomes.Biome;
 import io.jungle.Window;
 
 /**
@@ -39,9 +38,9 @@ public class DebugOverlay extends MenuGUI {
 			if (Cubyz.world != null) {
 				World world = Cubyz.world;
 				Player p = world.getLocalPlayer();
-				float x = p.getPosition().x + p.getPosition().relX;
+				float x = p.getPosition().x;
 				float y = p.getPosition().y;
-				float z = p.getPosition().z + p.getPosition().relZ;
+				float z = p.getPosition().z;
 				
 				NGraphics.drawText(0, 48, "XYZ: " + x + ", " + y + ", " + z);
 				NGraphics.drawText(0, 60, "Loaded Chunks: " + world.getCurrentTorus().getChunks().length);
@@ -49,7 +48,7 @@ public class DebugOverlay extends MenuGUI {
 				NGraphics.drawText(0, 84, "Game Time: " + world.getGameTime());
 				if (world instanceof LocalWorld) {
 					NGraphics.drawText(0, 96, "Chunk Queue Size: " + ((LocalSurface) world.getCurrentTorus()).getChunkQueueSize());
-					NGraphics.drawText(0, 118, "Biome: " + world.getCurrentTorus().getBiome(p.getPosition().x, p.getPosition().z).getRegistryID());
+					NGraphics.drawText(0, 118, "Biome: " + world.getCurrentTorus().getBiome((int)p.getPosition().x, (int)p.getPosition().z).getRegistryID());
 				}
 				
 				if (p instanceof PlayerImpl) { // player on local world

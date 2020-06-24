@@ -3,10 +3,24 @@ package io.cubyz.math;
 import java.util.ArrayList;
 
 public class CubyzMath {
-	public static int matchSign(int num, int worldAnd) { // The world coordinates are given as two's complement in the bitregion of the worldAnd.
-		if(num-(worldAnd>>>1) < 0)
+	// Transform coordinates into the looping coordinate system.
+	public static float worldModulo(float value, int worldSize) {
+		if(value < 0) return value + worldSize;
+		return value%worldSize;
+	}
+	public static int worldModulo(int value, int worldSize) {
+		if(value < 0) return value + worldSize;
+		return value%worldSize;
+	}
+	public static float matchSign(float num, int worldSize) { // The world coordinates are given as two's complement in the bitregion of the worldAnd.
+		if(num-(worldSize >> 1) < 0)
 			return num;
-		return num | ~worldAnd; // Fill the frontal region with ones.
+		return num - worldSize;
+	}
+	public static int matchSign(int num, int worldSize) { // The world coordinates are given as two's complement in the bitregion of the worldAnd.
+		if(num-(worldSize >> 1) < 0)
+			return num;
+		return num - worldSize;
 	}
 	
 	public static int max(ArrayList<Integer> numbers) {

@@ -68,7 +68,6 @@ public class Transformation {
 	public Matrix4f getOrtoProjModelMatrix(Spatial gameItem) {
 		return getOrtoProjModelMatrix(gameItem, orthoMatrix);
 	}
-	
 	public Matrix4f getModelMatrix(Spatial spatial) {
 		//Vector3f rotation = spatial.getRotation();
 		modelViewMatrix.identity()

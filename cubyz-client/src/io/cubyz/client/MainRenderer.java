@@ -13,7 +13,6 @@ import io.cubyz.entity.CustomMeshProvider.MeshType;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.math.CubyzMath;
-import io.cubyz.math.Vector3fi;
 import io.cubyz.util.FastList;
 import io.cubyz.world.BlockSpatial;
 import io.cubyz.world.Chunk;
@@ -135,7 +134,7 @@ public class MainRenderer implements Renderer {
 	 * @param localPlayer The world's local player
 	 */
 	public void render(Window window, Context ctx, Vector3f ambientLight, DirectionalLight directionalLight,
-			Chunk[] chunks, Block[] blocks, Entity[] entities, Spatial[] spatials, Player localPlayer, int worldAnd) {
+			Chunk[] chunks, Block[] blocks, Entity[] entities, Spatial[] spatials, Player localPlayer, int worldSize) {
 		if (window.isResized()) {
 			glViewport(0, 0, window.getWidth(), window.getHeight());
 			window.setResized(false);
@@ -172,27 +171,25 @@ public class MainRenderer implements Renderer {
 		// TODO: RayAabIntersection
 		
 		frustumInt.set(prjViewMatrix);
-		Vector3fi playerPosition = null;
+		Vector3f playerPosition = null;
 		if(localPlayer != null) {
-			playerPosition = localPlayer.getPosition().clone(); // Use a constant copy of the player position for the whole rendering to prevent graphics bugs on player movement.
+			playerPosition = new Vector3f(localPlayer.getPosition()); // Use a constant copy of the player position for the whole rendering to prevent graphics bugs on player movement.
 		}
 		if(playerPosition != null) {
-			int x0 = playerPosition.x;
-			float relX = playerPosition.relX;
-			int z0 = playerPosition.z;
-			float relZ = playerPosition.relZ;
+			float x0 = playerPosition.x;
+			float z0 = playerPosition.z;
 			float y0 = playerPosition.y + Player.cameraHeight;
 			for (Chunk ch : chunks) {
-				if (!frustumInt.testAab(ch.getMin(playerPosition, worldAnd), ch.getMax(playerPosition, worldAnd)))
+				if (!frustumInt.testAab(ch.getMin(playerPosition, worldSize), ch.getMax(playerPosition, worldSize)))
 					continue;
 				int length = ch.getVisibles().size;
 				BlockInstance[] vis = ch.getVisibles().array;
 				for (int i = 0; i < length; i++) {
 					BlockInstance bi = vis[i];
 					if(bi != null) { // Sometimes block changes happen while rendering.
-						float x = CubyzMath.matchSign((bi.getX() - x0) & worldAnd, worldAnd) - relX;
+						float x = CubyzMath.matchSign(CubyzMath.worldModulo(bi.getX() - x0, worldSize), worldSize);
 						float y = bi.getY() - y0;
-						float z = CubyzMath.matchSign((bi.getZ() - z0) & worldAnd, worldAnd) - relZ;
+						float z = CubyzMath.matchSign(CubyzMath.worldModulo(bi.getZ() - z0, worldSize), worldSize);
 						// Do the frustum culling directly here.
 						if(frustumInt.testSphere(x, y, z, 0.866025f)) {
 							// Only draw blocks that have at least one face facing the player.
@@ -244,7 +241,7 @@ public class MainRenderer implements Renderer {
 	}
 	
 	public void renderScene(Context ctx, Vector3f ambientLight,
-			FastList<Spatial>[] map, Block[] blocks, Entity[] entities, Spatial[] spatials, Vector3fi playerPosition, Player p, float breakAnim) {
+			FastList<Spatial>[] map, Block[] blocks, Entity[] entities, Spatial[] spatials, Vector3f playerPosition, Player p, float breakAnim) {
 		blockShader.bind();
 		
 		blockShader.setUniform("fog", ctx.getFog());
@@ -282,9 +279,9 @@ public class MainRenderer implements Renderer {
 		entityShader.setUniform("texture_sampler", 0);
 		for (int i = 0; i < entities.length; i++) {
 			Entity ent = entities[i];
-			int x = ent.getPosition().x + (int)(ent.getPosition().relX + 1.0f);
+			int x = (int)(ent.getPosition().x + 1.0f);
 			int y = (int)(ent.getPosition().y + 1.0f);
-			int z = ent.getPosition().z + (int)(ent.getPosition().relZ + 1.0f);
+			int z = (int)(ent.getPosition().z + 1.0f);
 			if (ent != null && ent != p) { // don't render local player
 				Mesh mesh = null;
 				if (ent instanceof CustomMeshProvider) {
