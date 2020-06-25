@@ -49,11 +49,11 @@ public class Entity {
 	 */
 	protected void updateVY() {
 		int absX = Math.round(position.x);
-		int absY = Math.round(position.y);
 		int absZ = Math.round(position.z);
 		float relX = position.x + 0.5f - absX;
 		float relZ = position.z + 0.5f - absZ;
 		if (vy < 0) {
+			int absY = Math.round(position.y);
 			if(isOnGround()) {
 				stopVY();
 			}
@@ -92,6 +92,7 @@ public class Entity {
 				stopVY();
 			}
 		} else if (vy > 0) {
+			int absY = (int) Math.floor(position.y + height);
 			if(checkBlock(absX, absY, absZ)) {
 				vy = 0;
 			} else if (relX < minBlock) {

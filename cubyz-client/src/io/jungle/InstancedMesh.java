@@ -267,7 +267,7 @@ public class InstancedMesh extends Mesh {
 		if(doShadow) {
 			for (int i = 0; i < size; i++) {
 				Spatial spatial = spatials[i+startIndex];
-				Matrix4f modelMatrix = transformation.getModelMatrix(spatial);
+				Matrix4f modelMatrix = spatial.modelViewMatrix;
 				modelMatrix.get(SHADOW_INSTANCE_SIZE_FLOATS * i, instanceDataBuffer);
 				BlockInstance bi = ((BlockSpatial) spatial).getBlockInstance();
 				if (bi.getBreakingAnim() == 0f) {
@@ -280,7 +280,7 @@ public class InstancedMesh extends Mesh {
 		} else {
 			for (int i = 0; i < size; i++) {
 				Spatial spatial = spatials[i+startIndex];
-				Matrix4f modelMatrix = transformation.getModelMatrix(spatial);
+				Matrix4f modelMatrix = spatial.modelViewMatrix;
 				modelMatrix.get(INSTANCE_SIZE_FLOATS * i, instanceDataBuffer);
 				BlockInstance bi = ((BlockSpatial) spatial).getBlockInstance();
 				if (bi.getBreakingAnim() == 0f) {
