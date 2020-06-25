@@ -764,7 +764,7 @@ public class Cubyz implements GameLogic {
 			if (playerInc.x != 0) {
 				world.getLocalPlayer().vx = playerInc.x;
 			}
-			ctx.getCamera().setPosition(0, playerBobbing, 0);
+			ctx.getCamera().setPosition(world.getLocalPlayer().getPosition().x, world.getLocalPlayer().getPosition().y + Player.cameraHeight + playerBobbing, world.getLocalPlayer().getPosition().z);
 		}
 		
 		if (!renderDeque.isEmpty()) {

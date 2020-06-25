@@ -656,8 +656,7 @@ public class Chunk {
 			removeBlockAt(x, y, z, false);
 		}
 		if(b.hasBlockEntity() || b.getBlockClass() == BlockClass.FLUID) {
-			BlockInstance inst0 = new BlockInstance(b, data);
-			inst0.setPosition(new Vector3i(x + wx, y, z + wz));
+			BlockInstance inst0 = new BlockInstance(b, data, new Vector3i(x + wx, y, z + wz));
 			inst0.setStellarTorus(surface);
 			if (b.hasBlockEntity()) {
 				BlockEntity te = b.createBlockEntity(inst0.getPosition());
@@ -754,7 +753,7 @@ public class Chunk {
 		if(y < 0 || y >= World.WORLD_HEIGHT) return;
 		int index = (x << 4) | (y << 8) | z;
 		Block b = blocks[index];
-		BlockInstance bi = new BlockInstance(b, blockData[index]);
+		BlockInstance bi = new BlockInstance(b, blockData[index], new Vector3i(x + wx, y, z + wz));
 		Block[] neighbors = getNeighbors(x, y ,z);
 		if(neighbors[0] != null) bi.neighborEast = getsBlocked(neighbors[0], bi.getBlock());
 		if(neighbors[1] != null) bi.neighborWest = getsBlocked(neighbors[1], bi.getBlock());
@@ -762,7 +761,6 @@ public class Chunk {
 		if(neighbors[3] != null) bi.neighborNorth = getsBlocked(neighbors[3], bi.getBlock());
 		if(neighbors[4] != null) bi.neighborDown = getsBlocked(neighbors[4], bi.getBlock());
 		if(neighbors[5] != null) bi.neighborUp = getsBlocked(neighbors[5], bi.getBlock());
-		bi.setPosition(new Vector3i(x + wx, y, z + wz));
 		bi.setStellarTorus(surface);
 		visibles.add(bi);
 		inst[(x << 4) | (y << 8) | z] = bi;
@@ -1083,12 +1081,12 @@ public class Chunk {
 		return inst[(x << 4) | (y << 8) | z];
 	}
 	
-	public Vector3f getMin(Vector3f position, int worldSize) {
-		return new Vector3f(CubyzMath.matchSign(CubyzMath.worldModulo(wx - position.x, worldSize), worldSize), -position.y, CubyzMath.matchSign(CubyzMath.worldModulo(wz - position.z, worldSize), worldSize));
+	public Vector3f getMin() {
+		return new Vector3f(wx, 0, wz);
 	}
 	
-	public Vector3f getMax(Vector3f position, int worldSize) {
-		return new Vector3f(CubyzMath.matchSign(CubyzMath.worldModulo(wx - position.x + 16, worldSize), worldSize), 255 - position.y, CubyzMath.matchSign(CubyzMath.worldModulo(wz - position.z + 16, worldSize), worldSize));
+	public Vector3f getMax() {
+		return new Vector3f(wx + 16, 256, wz + 16);
 	}
 	
 	public int getX() {

@@ -527,8 +527,8 @@ public class LocalSurface extends Surface {
 	public void getMapData(int x, int z, int width, int height, float [][] heightMap, float[][] heatMap, Biome[][] biomeMap) {
 		int x0 = x&(~255);
 		int z0 = z&(~255);
-		for(int px = x0; CubyzMath.matchSign(CubyzMath.worldModulo(px - x, worldSize), worldSize) < width; px += 256) {
-			for(int pz = z0; CubyzMath.matchSign(CubyzMath.worldModulo(pz-z, worldSize), worldSize) < height; pz += 256) {
+		for(int px = x0; CubyzMath.moduloMatchSign(px - x, worldSize) < width; px += 256) {
+			for(int pz = z0; CubyzMath.moduloMatchSign(pz-z, worldSize) < height; pz += 256) {
 				MetaChunk ch = getMetaChunk(CubyzMath.worldModulo(px, worldSize), CubyzMath.worldModulo(pz, worldSize));
 				int xS = Math.max(px-x, 0);
 				int zS = Math.max(pz-z, 0);
@@ -564,7 +564,7 @@ public class LocalSurface extends Surface {
 				int index = 0;
 				for(int i = 0; i < metaChunks.size(); i++) {
 					Player player = torus.world.getLocalPlayer();
-					int dist = CubyzMath.matchSign(metaChunks.get(i).x-(int)player.getPosition().x, worldSize)*CubyzMath.matchSign(metaChunks.get(i).x-(int)player.getPosition().x, worldSize) + CubyzMath.matchSign(metaChunks.get(i).z-(int)player.getPosition().z, worldSize)*CubyzMath.matchSign(metaChunks.get(i).z-(int)player.getPosition().z, worldSize);
+					int dist = CubyzMath.moduloMatchSign(metaChunks.get(i).x-(int)player.getPosition().x, worldSize)*CubyzMath.moduloMatchSign(metaChunks.get(i).x-(int)player.getPosition().x, worldSize) + CubyzMath.moduloMatchSign(metaChunks.get(i).z-(int)player.getPosition().z, worldSize)*CubyzMath.moduloMatchSign(metaChunks.get(i).z-(int)player.getPosition().z, worldSize);
 					if(dist > max) {
 						max = dist;
 						index = i;

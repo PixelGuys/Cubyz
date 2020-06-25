@@ -9,14 +9,15 @@ public class BlockInstance {
 
 	private Block block;
 	private Object[] spatial;
-	private Vector3i pos;
+	private final Vector3i position;
 	private Surface surface;
 	public boolean neighborUp, neighborDown, neighborEast, neighborWest, neighborNorth, neighborSouth;
 	private byte blockData;
 	public final int[] light;
 	
-	public BlockInstance(Block block, byte data) {
+	public BlockInstance(Block block, byte data, Vector3i position) {
 		this.block = block;
+		this.position = position;
 		blockData = data;
 		if(Settings.easyLighting)
 			light = new int[8];
@@ -40,19 +41,19 @@ public class BlockInstance {
 	}
 	
 	public Vector3i getPosition() {
-		return pos;
+		return position;
 	}
 	
 	public int getX() {
-		return pos.x;
+		return position.x;
 	}
 	
 	public int getY() {
-		return pos.y;
+		return position.y;
 	}
 	
 	public int getZ() {
-		return pos.z;
+		return position.z;
 	}
 	
 	public Block getBlock() {
@@ -66,10 +67,6 @@ public class BlockInstance {
 	public void setData(byte data) {
 		blockData = data;
 		spatial = block.mode.generateSpatials(this, blockData);
-	}
-	
-	public void setPosition(Vector3i pos) {
-		this.pos = pos;
 	}
 	
 	public Object[] getSpatials() {

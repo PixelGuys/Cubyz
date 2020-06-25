@@ -5,22 +5,26 @@ import java.util.ArrayList;
 public class CubyzMath {
 	// Transform coordinates into the looping coordinate system.
 	public static float worldModulo(float value, int worldSize) {
-		if(value < 0) return value + worldSize;
+		if(value < 0) return value%worldSize + worldSize;
 		return value%worldSize;
 	}
 	public static int worldModulo(int value, int worldSize) {
-		if(value < 0) return value + worldSize;
+		if(value < 0) return value%worldSize + worldSize;
 		return value%worldSize;
 	}
-	public static float matchSign(float num, int worldSize) { // The world coordinates are given as two's complement in the bitregion of the worldAnd.
-		if(num-(worldSize >> 1) < 0)
-			return num;
-		return num - worldSize;
+	public static float moduloMatchSign(float num, int worldSize) { // The world coordinates are given as two's complement in the bitregion of the worldAnd.
+		if(num > (worldSize >> 1))
+			return num - worldSize;
+		if(num < -(worldSize >> 1))
+			return num + worldSize;
+		return num;
 	}
-	public static int matchSign(int num, int worldSize) { // The world coordinates are given as two's complement in the bitregion of the worldAnd.
-		if(num-(worldSize >> 1) < 0)
-			return num;
-		return num - worldSize;
+	public static int moduloMatchSign(int num, int worldSize) { // The world coordinates are given as two's complement in the bitregion of the worldAnd.
+		if(num > (worldSize >> 1))
+			return num - worldSize;
+		if(num < -(worldSize >> 1))
+			return num + worldSize;
+		return num;
 	}
 	
 	public static int max(ArrayList<Integer> numbers) {
