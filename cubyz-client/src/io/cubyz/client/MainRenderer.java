@@ -187,13 +187,12 @@ public class MainRenderer implements Renderer {
 				for (int i = 0; i < length; i++) {
 					BlockInstance bi = vis[i];
 					if(bi != null) { // Sometimes block changes happen while rendering.
-						float x = CubyzMath.moduloMatchSign(bi.getX() - x0, worldSize);
-						float y = bi.getY() - y0;
-						float z = CubyzMath.moduloMatchSign(bi.getZ() - z0, worldSize);
-						// Do the frustum culling directly here.
 						if(frustumInt.testSphere(bi.getX(), bi.getY(), bi.getZ(), 0.866025f)) {
+							float x = CubyzMath.moduloMatchSign(bi.getX() - x0, worldSize);
+							float y = bi.getY() - y0;
+							float z = CubyzMath.moduloMatchSign(bi.getZ() - z0, worldSize);
 							// Only draw blocks that have at least one face facing the player.
-							if(bi.getBlock().isTransparent() || // Ignore transparent blocks in the process, so the surface of water can still be seen from below.
+							if(bi.getBlock().getBlockClass() == Block.BlockClass.FLUID || // Ignore fluid blocks in the process, so their surface can still be seen from below.
 									(x > 0.5001f && !bi.neighborEast) ||
 									(x < -0.5001f && !bi.neighborWest) ||
 									(y > 0.5001f && !bi.neighborDown) ||
