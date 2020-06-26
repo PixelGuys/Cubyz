@@ -136,7 +136,6 @@ public class ProbabilityExtractor {
 					for(byte l = 0; l < 27; l++) {
 						if(number[i*27*27*27 + j*27*27 + k*27 + l] != 0) {
 							os.writeByte(l);
-							os.writeFloat(number[i*27*27*27 + j*27*27 + k*27 + l]/(float)total);
 						}
 					}
 				}

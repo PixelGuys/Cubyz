@@ -1,6 +1,5 @@
 Abelsonite
 Abenakite
-Abernathyite
 Abhurite
 Abramovite
 Acanthite
@@ -27,8 +26,6 @@ Agate
 Agrellite
 Agrinierite
 Aguilarite
-Aheylite
-Ahlfeldite
 Aikinite
 Ajoite
 Akaganeite
@@ -301,6 +298,7 @@ Cementite
 Ceratanium
 Cerite
 Cerium
+Certus Quartz
 Cerussite
 Cervandonite
 Cervantite
@@ -374,7 +372,6 @@ Columbite
 Combeite
 Conichalcite
 Connellite
-Cooperite
 Copernicium
 Copiapite
 Copper
@@ -440,7 +437,7 @@ Donnayite
 Drysdallite
 Dubnium
 Duftite
-Dumortierite
+Dumorite
 Dundasite
 Duranium
 Dypingite
@@ -468,7 +465,7 @@ Erionite
 Erythrite
 Eskolaite
 Esperite
-Ettringite
+Etringite
 Euchroite
 Euclase
 Eucryptite
@@ -500,7 +497,6 @@ Ferronigerite
 Ferropericlase
 Ferroselite
 Ferrotantalite
-Fettelite
 Fletcherite
 Fluckite
 Fluellite
@@ -556,7 +552,6 @@ Gembone
 Geocronite
 Georgerobinsonite
 Germanite
-Gersdorffite
 Getchellite
 Gibbsite
 Gilalite
@@ -591,7 +586,7 @@ Grunerite
 Guettardite
 Gugiaite
 Guilleminite
-Gunningite
+Guningite
 Guyanaite
 Gwihabaite
 Gypsum
@@ -733,14 +728,12 @@ Kermesite
 Kernite
 Kerolite
 Kesterite
-Kieserite
 Kinoite
 Kleinite
 Knebelite
 Knorringite
 Kobellite
 Kochite
-Koettigite
 Kogarkoite
 Kolbeckite
 Kornerupine
@@ -749,7 +742,6 @@ Kostovite
 Krantzite
 Kremersite
 Krennerite
-Krieselite
 Kroehnkite
 Krotite
 Krutaite
@@ -837,7 +829,6 @@ Magnetite
 Majorite
 Malachite
 Malacolite
-Malayaite
 Manganese
 Manganite
 Manganocolumbite
@@ -863,7 +854,6 @@ Meitnerium
 Melanite
 Melanophlogite
 Melanterite
-Melilite
 Mellite
 Melonite
 Mendelevium
@@ -943,7 +933,7 @@ Nickeline
 Nidermayrite
 Niningerite
 Niobite
-Niobitetantalite
+Niobitantalite
 Niobium
 Nissonite
 Niter
@@ -1110,7 +1100,6 @@ Rock crystal
 Rodalquilarite
 Romanechite
 Romeite
-Rosasite
 Roscoelite
 Rose quartz
 Roselite
@@ -1186,7 +1175,7 @@ Serpierite
 Sewardite
 Shandite
 Shattuckite
-Shigaite
+Shigate
 Shortite
 Shungite
 Siderite
@@ -1348,7 +1337,6 @@ Tusionite
 Tyrolite
 Tyrrellite
 Tyuyamunite
-Uchucchacuaite
 Uklonskovite
 Ulexite
 Ulrichite
@@ -1446,7 +1434,6 @@ Yttrium
 Yttrocerite
 Yttrocolumbite
 Yttropyrochlore
-Zaherite
 Zairite
 Zakharovite
 Zanazzite
@@ -1456,7 +1443,6 @@ Zemanite
 Zeolite
 Zeunerite
 Zhanghengite
-Zhemchuzhnikovite
 Ziesite
 Zimbabweite
 Zinc

@@ -37,25 +37,25 @@ public class TorchRotation implements RotationMode {
 		int index = 0;
 		if((data & 0b1) != 0) {
 			BlockSpatial tmp = new BlockSpatial(bi);
-			tmp.setPosition(bi.getX() - POS_X.x, bi.getY() - POS_X.y, bi.getZ() - POS_X.z);
+			tmp.setPosition(bi.getX() + POS_X.x, bi.getY() + POS_X.y, bi.getZ() + POS_X.z);
 			tmp.setRotation(0, 0, -0.3f);
 			spatials[index++] = tmp;
 		}
 		if((data & 0b10) != 0) {
 			BlockSpatial tmp = new BlockSpatial(bi);
-			tmp.setPosition(bi.getX() - NEG_X.x, bi.getY() - NEG_X.y, bi.getZ() - NEG_X.z);
+			tmp.setPosition(bi.getX() + NEG_X.x, bi.getY() + NEG_X.y, bi.getZ() + NEG_X.z);
 			tmp.setRotation(0, 0, 0.3f);
 			spatials[index++] = tmp;
 		}
 		if((data & 0b100) != 0) {
 			BlockSpatial tmp = new BlockSpatial(bi);
-			tmp.setPosition(bi.getX() - POS_Z.x, bi.getY() - POS_Z.y, bi.getZ() - POS_Z.z);
+			tmp.setPosition(bi.getX() + POS_Z.x, bi.getY() + POS_Z.y, bi.getZ() + POS_Z.z);
 			tmp.setRotation(0.3f, 0, 0);
 			spatials[index++] = tmp;
 		}
 		if((data & 0b1000) != 0) {
 			BlockSpatial tmp = new BlockSpatial(bi);
-			tmp.setPosition(bi.getX() - NEG_Z.x, bi.getY() - NEG_Z.y, bi.getZ() - NEG_Z.z);
+			tmp.setPosition(bi.getX() + NEG_Z.x, bi.getY() + NEG_Z.y, bi.getZ() + NEG_Z.z);
 			tmp.setRotation(-0.3f, 0, 0);
 			spatials[index++] = tmp;
 		}

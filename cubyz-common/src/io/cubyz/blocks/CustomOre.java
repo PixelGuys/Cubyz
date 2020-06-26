@@ -156,13 +156,10 @@ public class CustomOre extends Ore implements CustomObject {
 		Node[] next;
 		public Node(DataInputStream is, int depth) throws IOException {
 			value = is.readByte();
+			if(depth == 0) return;
 			next = new Node[is.readByte()];
 			for(int i = 0; i < next.length; i++) {
-				if(depth == 0) {
-					next[i] = new EndNode(is);
-				} else {
-					next[i] = new Node(is, depth-1);
-				}
+				next[i] = new Node(is, depth-1);
 			}
 		}
 		Node get(byte b) {
@@ -172,14 +169,6 @@ public class CustomOre extends Ore implements CustomObject {
 				}
 			}
 			return null;
-		}
-		public Node() {}
-	}
-	private static class EndNode extends Node {
-		float valuef;
-		public EndNode(DataInputStream is) throws IOException {
-			value = is.readByte();
-			valuef = is.readFloat();
 		}
 	}
 	static int getIndex(char c) {
@@ -212,7 +201,7 @@ public class CustomOre extends Ore implements CustomObject {
 			if (ois == null)
 				ois = CustomOre.class.getClassLoader().getResourceAsStream("classes/io/cubyz/storage/custom_ore_names.dat");
 			DataInputStream is = new DataInputStream(new BufferedInputStream(ois));
-			tree = new Node(is, 3);
+			tree = new Node(is, 4);
 			is.close();
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -240,22 +229,13 @@ public class CustomOre extends Ore implements CustomObject {
 		setLight(light);
 	}
 	
-	private static char choose(char c1, char c2, char c3, float rand, int length) {
+	private static char choose(char c1, char c2, char c3, Random rand, int length) {
 		try {
 			int i1 = getIndex(c1);
 			int i2 = getIndex(c2);
 			int i3 = getIndex(c3);
-			int i4 = 0;
 			Node[] list = tree.get((byte)i1).get((byte)i2).get((byte)i3).next;
-			if(length >= 10 && list[0].value == 0) { // Make sure the word ends.
-				return ' ';
-			}
-			for(;;i4++) {
-				rand -= ((EndNode)list[i4]).valuef;
-				if(rand <= 0) {
-					break;
-				}
-			}
+			int i4 = rand.nextInt(list.length);
 			return getChar(list[i4].value);
 		} catch(ArrayIndexOutOfBoundsException e) {
 			return ' ';
@@ -265,11 +245,11 @@ public class CustomOre extends Ore implements CustomObject {
 	private static String randomName(Random rand) {
 		StringBuilder sb = new StringBuilder();
 		
-		char c1 = ' ', c2 = ' ', c3 = ' ', c4 = choose(c1, c2, c3, rand.nextFloat(), 0);
+		char c1 = ' ', c2 = ' ', c3 = ' ', c4 = choose(c1, c2, c3, rand, 0);
 		sb.append((char)(c4+'A'-'a'));
 		int i = 0;
 		while(true) {
-			char c5 = choose(c2, c3, c4, rand.nextFloat(), ++i);
+			char c5 = choose(c2, c3, c4, rand, ++i);
 			if(c4 == ' ') {
 				if(c5 == ' ') {
 					break;
@@ -283,10 +263,19 @@ public class CustomOre extends Ore implements CustomObject {
 			if(c5 != ' ')
 				sb.append(c5);
 		}
-		if(sb.length() <= 15 && sb.length() >= 5)
-			return sb.toString();
-		else
+		String[] words = sb.toString().split(" ");
+		boolean wrongSize = false;
+		for(i = 0; i < words.length; i++) {
+			if(words[i].length() > 10)
+				wrongSize = true;
+			// The first word should not be to small.
+			if(words[i].length() < 5 && i == 0)
+				wrongSize = true;
+		}
+		if(wrongSize)
 			return randomName(rand); // Repeat until a long enough name is generated.
+		else
+			return sb.toString();
 	}
 	
 	public static CustomOre random(Random rand, CurrentSurfaceRegistries registries) {
