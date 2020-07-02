@@ -370,7 +370,7 @@ public class Entity {
 	}
 	
 	public Vector3f getRenderPosition(Vector3f playerPos) { // default method for render pos
-		return new Vector3f(position.x - playerPos.x, position.y + height/2 - playerPos.y - Player.cameraHeight, position.z - playerPos.z);
+		return new Vector3f(position.x, position.y + height/2, position.z);
 	}
 	
 	public void setPosition(Vector3i position) {
