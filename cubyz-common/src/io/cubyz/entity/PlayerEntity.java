@@ -3,6 +3,7 @@ package io.cubyz.entity;
 
 import org.joml.Vector3f;
 
+import io.cubyz.ClientOnly;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.blocks.BlockInstance;
@@ -66,8 +67,14 @@ public class PlayerEntity extends EntityType {
 			if(deltaZ != 0)
 				deltaZ = _getZ(deltaZ);
 			position.add(deltaX, 0, deltaZ);
-			position.x = CubyzMath.worldModulo(position.x, worldSize);
-			position.z = CubyzMath.worldModulo(position.z, worldSize);
+			float newX = CubyzMath.worldModulo(position.x, worldSize);
+			float newZ = CubyzMath.worldModulo(position.z, worldSize);
+			boolean crossedBorder = newX != position.x || newZ != position.z;
+			position.x = newX;
+			position.z = newZ;
+			if(crossedBorder) {
+				ClientOnly.onBorderCrossing.accept(this);
+			}
 		}
 		
 		@Override

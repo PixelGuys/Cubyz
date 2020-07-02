@@ -5,6 +5,7 @@ import org.joml.Vector3i;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.RotationMode;
+import io.cubyz.entity.Player;
 import io.cubyz.world.BlockSpatial;
 
 public class NoRotation implements RotationMode {
@@ -20,8 +21,8 @@ public class NoRotation implements RotationMode {
 	}
 
 	@Override
-	public Object[] generateSpatials(BlockInstance bi, byte data) {
-		return new BlockSpatial[] {new BlockSpatial(bi)};
+	public Object[] generateSpatials(BlockInstance bi, byte data, Player player, int worldSize) {
+		return new BlockSpatial[] {new BlockSpatial(bi, player, worldSize)};
 	}
 
 	@Override

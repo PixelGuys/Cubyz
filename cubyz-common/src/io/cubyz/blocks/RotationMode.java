@@ -3,9 +3,10 @@ package io.cubyz.blocks;
 import org.joml.Vector3i;
 
 import io.cubyz.api.RegistryElement;
+import io.cubyz.entity.Player;
 
 public interface RotationMode extends RegistryElement {
-	public Object[] generateSpatials(BlockInstance bi, byte data);
+	public Object[] generateSpatials(BlockInstance bi, byte data, Player player, int worldSize);
 	// currentData will be 0 if the blockTypes don't match.
 	public byte generateData(Vector3i placementPosition, byte currentData);
 

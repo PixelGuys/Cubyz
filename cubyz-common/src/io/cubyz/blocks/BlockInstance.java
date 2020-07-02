@@ -3,6 +3,7 @@ package io.cubyz.blocks;
 import org.joml.Vector3i;
 
 import io.cubyz.Settings;
+import io.cubyz.entity.Player;
 import io.cubyz.world.Surface;
 
 public class BlockInstance {
@@ -15,7 +16,7 @@ public class BlockInstance {
 	private byte blockData;
 	public final int[] light;
 	
-	public BlockInstance(Block block, byte data, Vector3i position) {
+	public BlockInstance(Block block, byte data, Vector3i position, Player player, int worldSize) {
 		this.block = block;
 		this.position = position;
 		blockData = data;
@@ -24,7 +25,7 @@ public class BlockInstance {
 		else
 			light = null;
 		if(block.mode != null) {
-			spatial = block.mode.generateSpatials(this, blockData);
+			spatial = block.mode.generateSpatials(this, blockData, player, worldSize);
 		}
 	}
 	
@@ -64,9 +65,13 @@ public class BlockInstance {
 		block = b;
 	}
 	
-	public void setData(byte data) {
+	public byte getData() {
+		return blockData;
+	}
+	
+	public void setData(byte data, Player player, int worldSize) {
 		blockData = data;
-		spatial = block.mode.generateSpatials(this, blockData);
+		spatial = block.mode.generateSpatials(this, blockData, player, worldSize);
 	}
 	
 	public Object[] getSpatials() {

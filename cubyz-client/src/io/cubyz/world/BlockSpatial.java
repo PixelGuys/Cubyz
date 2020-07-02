@@ -1,29 +1,18 @@
 package io.cubyz.world;
 
-import org.joml.Vector3f;
-
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.client.Meshes;
+import io.cubyz.entity.Player;
 import io.jungle.Spatial;
 
 public class BlockSpatial extends Spatial {
 	private BlockInstance owner;
 	
-	public BlockSpatial(BlockInstance bi) {
+	public BlockSpatial(BlockInstance bi, Player p, int worldSize) {
 		super(Meshes.blockMeshes.get(bi.getBlock()), bi.light);
-		setPosition(bi.getX(), bi.getY(), bi.getZ());
+		setPosition(bi.getX(), bi.getY(), bi.getZ(), p, worldSize);
 		this.owner = bi;
 	}
-	
-	@Override
-	public void setPosition(Vector3f position) {
-		super.setPosition(position);
-	}
-
-	@Override
-	public void setPosition(float x, float y, float z) {
-        super.setPosition(x, y, z);
-    }
 
 	public BlockInstance getBlockInstance() {
 		return owner;

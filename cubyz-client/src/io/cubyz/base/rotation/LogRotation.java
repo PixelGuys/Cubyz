@@ -5,6 +5,7 @@ import org.joml.Vector3i;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.RotationMode;
+import io.cubyz.entity.Player;
 import io.cubyz.world.BlockSpatial;
 
 public class LogRotation implements RotationMode {
@@ -30,9 +31,9 @@ public class LogRotation implements RotationMode {
 	}
 
 	@Override
-	public Object[] generateSpatials(BlockInstance bi, byte data) {
+	public Object[] generateSpatials(BlockInstance bi, byte data, Player player, int worldSize) {
 		BlockSpatial[] spatials = new BlockSpatial[1];
-		BlockSpatial tmp = new BlockSpatial(bi);
+		BlockSpatial tmp = new BlockSpatial(bi, player, worldSize);
 		switch(data) {
 			default:
 				break;

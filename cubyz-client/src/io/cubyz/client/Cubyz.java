@@ -164,12 +164,12 @@ public class Cubyz implements GameLogic {
 			sunMesh.setMaterial(new Material(new Vector4f(1f, 1f, 0f, 1f), 1f)); // TODO: use textures for sun and moon
 			skySun = new Spatial(sunMesh);
 			skySun.setScale(50f); // TODO: Make the scale dependent on the actual distance to that star.
-			skySun.setPosition(new Vector3f(-100, 1, 0));
+			skySun.setPositionRaw(-100, 1, 0);
 			Mesh moonMesh = skyBodyMesh.cloneNoMaterial();
 			moonMesh.setMaterial(new Material(new Vector4f(0.3f, 0.3f, 0.3f, 1f), 0.9f));
 			skyMoon = new Spatial(moonMesh);
 			skyMoon.setScale(100f);
-			skyMoon.setPosition(new Vector3f(100, 1, 0));
+			skyMoon.setPositionRaw(100, 1, 0);
 			worldSpatialList = new Spatial[] {skySun/*, skyMoon*/};
 		}
 		Cubyz.surface = surface;
@@ -400,6 +400,16 @@ public class Cubyz implements GameLogic {
 				throw new IllegalArgumentException("No such GUI registered: " + name);
 			}
 			gameUI.setMenu(userGUIs.get(name).setInventory(inv));
+		};
+		ClientOnly.onBorderCrossing = (p) -> {
+			// Simply remake all the spatial data of this surface. Not the most efficient way, but the event of border crossing can be considered rare.
+			Chunk[] chunks = Cubyz.surface.getChunks();
+			for(Chunk ch : chunks) {
+				for(int i = 0; i < ch.getVisibles().size; i++) {
+					BlockInstance bi = ch.getVisibles().array[i];
+					bi.setData(bi.getData(), world.getLocalPlayer(), surface.getSize());
+				}
+			}
 		};
 		
 		try {
@@ -646,7 +656,7 @@ public class Cubyz implements GameLogic {
 		window.setResized(true); // update projection matrix
 		Spatial spatial = new Spatial(skyBodyMesh);//Meshes.blockMeshes.get(b)); // TODO: Make blockMeshes work here without crashing!
 		spatial.getMesh().getMaterial().setTexture(Meshes.blockTextures.get(b));
-		spatial.setPosition(0, 0.5f, -2f);
+		spatial.setPositionRaw(0, 0.5f, -2f);
 		spatial.setScale(0.5f);
 		Spatial[] spatials = new Spatial[] {spatial};
 		renderer.render(window, ctx, new Vector3f(1, 1, 1), light, EMPTY_CHUNK_LIST, EMPTY_BLOCK_LIST, EMPTY_ENTITY_LIST, spatials, world.getLocalPlayer(), world.getCurrentTorus().getSize());
@@ -891,7 +901,7 @@ public class Cubyz implements GameLogic {
 			}
 			world.getCurrentTorus().seek((int)lp.getPosition().x, (int)lp.getPosition().z, ClientSettings.renderDistance);
 			float lightAngle = (float)Math.PI/2 + (float)Math.PI*(((float)world.getGameTime() % world.getCurrentTorus().getStellarTorus().getDayCycle())/(world.getCurrentTorus().getStellarTorus().getDayCycle()/2));
-			skySun.setPosition((float)Math.cos(lightAngle)*500, (float)Math.sin(lightAngle)*500, 0);
+			skySun.setPositionRaw((float)Math.cos(lightAngle)*500, (float)Math.sin(lightAngle)*500, 0);
 			skySun.setRotation(0, 0, -lightAngle);
 		}
 	}

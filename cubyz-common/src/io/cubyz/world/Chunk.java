@@ -299,7 +299,7 @@ public class Chunk {
 			blockData[index] = data;
 			// Update the instance:
 			if(inst[index] != null)
-				inst[index].setData(data);
+				inst[index].setData(data, surface.getStellarTorus().getWorld().getLocalPlayer(), surface.getSize());
 		}
 	}
 	
@@ -656,7 +656,7 @@ public class Chunk {
 			removeBlockAt(x, y, z, false);
 		}
 		if(b.hasBlockEntity() || b.getBlockClass() == BlockClass.FLUID) {
-			BlockInstance inst0 = new BlockInstance(b, data, new Vector3i(x + wx, y, z + wz));
+			BlockInstance inst0 = new BlockInstance(b, data, new Vector3i(x + wx, y, z + wz), surface.getStellarTorus().getWorld().getLocalPlayer(), surface.getSize());
 			inst0.setStellarTorus(surface);
 			if (b.hasBlockEntity()) {
 				BlockEntity te = b.createBlockEntity(inst0.getPosition());
@@ -753,7 +753,7 @@ public class Chunk {
 		if(y < 0 || y >= World.WORLD_HEIGHT) return;
 		int index = (x << 4) | (y << 8) | z;
 		Block b = blocks[index];
-		BlockInstance bi = new BlockInstance(b, blockData[index], new Vector3i(x + wx, y, z + wz));
+		BlockInstance bi = new BlockInstance(b, blockData[index], new Vector3i(x + wx, y, z + wz), surface.getStellarTorus().getWorld().getLocalPlayer(), surface.getSize());
 		Block[] neighbors = getNeighbors(x, y ,z);
 		if(neighbors[0] != null) bi.neighborEast = getsBlocked(neighbors[0], bi.getBlock());
 		if(neighbors[1] != null) bi.neighborWest = getsBlocked(neighbors[1], bi.getBlock());
@@ -1081,12 +1081,12 @@ public class Chunk {
 		return inst[(x << 4) | (y << 8) | z];
 	}
 	
-	public Vector3f getMin() {
-		return new Vector3f(wx, 0, wz);
+	public Vector3f getMin(float x0, float z0, int worldSize) {
+		return new Vector3f(CubyzMath.match(wx, x0, worldSize), 0, CubyzMath.match(wz, z0, worldSize));
 	}
 	
-	public Vector3f getMax() {
-		return new Vector3f(wx + 16, 256, wz + 16);
+	public Vector3f getMax(float x0, float z0, int worldSize) {
+		return new Vector3f(CubyzMath.match(wx, x0, worldSize) + 16, 256, CubyzMath.match(wz, z0, worldSize) + 16);
 	}
 	
 	public int getX() {

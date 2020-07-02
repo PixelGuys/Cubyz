@@ -194,20 +194,21 @@ public class ZenithsRenderer implements Renderer {
 			float z0 = playerPosition.z;
 			float y0 = playerPosition.y + Player.cameraHeight;
 			for (Chunk ch : chunks) {
-				if (!frustumInt.testAab(ch.getMin(), ch.getMax()))
+				if (!frustumInt.testAab(ch.getMin(x0, z0, worldSize), ch.getMax(x0, z0, worldSize)))
 					continue;
 				int length = ch.getVisibles().size;
 				BlockInstance[] vis = ch.getVisibles().array;
 				for (int i = 0; i < length; i++) {
 					BlockInstance bi = vis[i];
 					if(bi != null) { // Sometimes block changes happen while rendering.
-						float x = CubyzMath.moduloMatchSign(bi.getX() - x0, worldSize);
-						float y = bi.getY() - y0;
-						float z = CubyzMath.moduloMatchSign(bi.getZ() - z0, worldSize);
-						// Do the frustum culling directly here.
-						if(frustumInt.testSphere(bi.getX(), bi.getY(), bi.getZ(), 0.866025f)) {
+						float x = CubyzMath.match(bi.getX(), x0, worldSize);
+						float z = CubyzMath.match(bi.getZ(), z0, worldSize);
+						if(frustumInt.testSphere(x, bi.getY(), z, 0.866025f)) {
+							x = x - x0;
+							float y = bi.getY() - y0;
+							z = z - z0;
 							// Only draw blocks that have at least one face facing the player.
-							if(bi.getBlock().isTransparent() || // Ignore transparent blocks in the process, so the surface of water can still be seen from below.
+							if(bi.getBlock().getBlockClass() == Block.BlockClass.FLUID || // Ignore fluid blocks in the process, so their surface can still be seen from below.
 									(x > 0.5001f && !bi.neighborEast) ||
 									(x < -0.5001f && !bi.neighborWest) ||
 									(y > 0.5001f && !bi.neighborDown) ||

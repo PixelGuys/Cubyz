@@ -39,8 +39,8 @@ public class CubyzMeshSelectionDetector {
 		BlockInstance newSpatial = null;
 		intersection.set(transformedPosition.x, transformedPosition.y, transformedPosition.z, dir.x, dir.y, dir.z);
 		for (Chunk ch : chunks) {
-			min.set(ch.getMin());
-			max.set(ch.getMax());
+			min.set(ch.getMin(position.x, position.z, worldSize));
+			max.set(ch.getMax(position.x, position.z, worldSize));
 			// Check if the chunk is in view:
 			if (!intersection.test(min.x-1, -1, min.z-1, max.x+1, 256, max.z+1)) // 1 is added/subtracted because chunk min-max don't align with the block min max.
 				continue;

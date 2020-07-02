@@ -26,6 +26,15 @@ public class CubyzMath {
 			return num + worldSize;
 		return num;
 	}
+	public static float match(float x, float playerX, int worldSize) {
+		if(playerX < worldSize/4 && x > 3*worldSize/4) {
+	        return x - worldSize;
+		} else if(playerX > 3*worldSize/4 && x < worldSize/4) {
+	        return x + worldSize;
+		} else {
+			return x;
+		}
+	}
 	
 	public static int max(ArrayList<Integer> numbers) {
 		if(numbers.size() == 0) return 0;
