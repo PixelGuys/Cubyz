@@ -5,10 +5,9 @@ import java.util.Random;
 import org.joml.Vector3f;
 
 import io.cubyz.api.Resource;
-import io.cubyz.ndt.NDTContainer;
 import io.cubyz.world.Surface;
 
-public class Pig extends EntityType implements EntityAI {
+public class Pig extends EntityType {
 
 	public Pig() {
 		super(new Resource("cubyz:pig"));
@@ -16,40 +15,41 @@ public class Pig extends EntityType implements EntityAI {
 
 	@Override
 	public Entity newEntity(Surface surface) {
-		Entity ent = new Entity(this, surface, this);
+		Entity ent = new Entity(this, surface, new PigAI());
 		ent.height = 1;
 		return ent;
 	}
 	
-	private Random directionRandom = new Random();
 	
-	@Override
-	public void update(Entity ent) {
-		ent.vy -= ent.getStellarTorus().getGravity();
-		NDTContainer ndt = ent.getAINDT();
-		if (!ndt.hasKey("directionTimer")) {
-			ndt.setLong("directionTimer", 0);
-			ndt.setLong("nerfTimer", 0);
-		}
-		
-		if (ndt.getLong("directionTimer") <= System.currentTimeMillis()) {
-			ndt.setLong("directionTimer", System.currentTimeMillis() + directionRandom.nextInt(5000));
-			ent.vx = directionRandom.nextFloat() * 0.2f - 0.1f;
-			ent.vz = directionRandom.nextFloat() * 0.2f - 0.1f;
-			ent.setRotation(new Vector3f(0, (float) Math.sin(ent.vx)*360, (float) Math.cos(ent.vz)*360));
-		}
-		
-		if (ent._getX(ent.vx) != ent.vx || ent._getZ(ent.vz) != ent.vz) {
-			// jump
-			if (ent.isOnGround()) {
-				ent.vy = 0.2f;
+	public static class PigAI implements EntityAI {
+		private static final Random directionRandom = new Random();
+		long directionTimer = 0;
+		long nerfTimer = 0;
+		@Override
+		public void update(Entity ent) {
+			ent.vy -= ent.getStellarTorus().getGravity();
+			
+			if (directionTimer <= System.currentTimeMillis()) {
+				directionTimer = System.currentTimeMillis() + directionRandom.nextInt(5000);
+				ent.vx = directionRandom.nextFloat() * 0.2f - 0.1f;
+				ent.vz = directionRandom.nextFloat() * 0.2f - 0.1f;
+				double xzAngle = Math.atan(ent.vz/ent.vx);
+				if(ent.vx < 0) xzAngle += Math.PI;
+				ent.setRotation(new Vector3f(0, (float)xzAngle, 0));
 			}
-			if (ndt.getLong("nerfTimer") == 0) {
-				ndt.setLong("nerfTimer", System.currentTimeMillis() + 2000);
-			} else {
-				if (System.currentTimeMillis() >= ndt.getLong("nerfTimer")) {
-					ndt.setLong("directionTimer", 0);
-					ndt.setLong("nerfTimer", 0);
+			
+			if (ent._getX(ent.vx) != ent.vx || ent._getZ(ent.vz) != ent.vz) {
+				// jump
+				if (ent.isOnGround()) {
+					ent.vy = 0.2f;
+				}
+				if (nerfTimer == 0) {
+					nerfTimer = System.currentTimeMillis() + 2000;
+				} else {
+					if (System.currentTimeMillis() >= nerfTimer) {
+						directionTimer = 0;
+						nerfTimer = 0;
+					}
 				}
 			}
 		}

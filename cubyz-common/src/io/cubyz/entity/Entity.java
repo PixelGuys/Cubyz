@@ -305,27 +305,6 @@ public class Entity {
 	
 	// NDT related
 	
-	private NDTContainer runtimeNDT;
-	
-	/**
-	 * NDT tag to store runtime data that will not persist through world save or loading.
-	 */
-	public NDTContainer getRuntimeNDT() {
-		if (runtimeNDT == null) {
-			runtimeNDT = new NDTContainer();
-			runtimeNDT.setContainer("ai", new NDTContainer());
-		}
-		return runtimeNDT;
-	}
-	
-	/**
-	 * NDT tag reserved for AI use, it is stored in runtime using the runtime NDT.
-	 * @see #getRuntimeNDT()
-	 */
-	public NDTContainer getAINDT() {
-		return getRuntimeNDT().getContainer("ai");
-	}
-	
 	private Vector3f loadVector3f(NDTContainer ndt) {
 		float x = ndt.getFloat("x");
 		float y = ndt.getFloat("y");
