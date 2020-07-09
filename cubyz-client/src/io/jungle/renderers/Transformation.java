@@ -15,7 +15,7 @@ public class Transformation {
 	private final Matrix4f viewMatrix;
 	private final Matrix4f lightViewMatrix;
 
-	private final Matrix4f modelViewMatrix;
+	private static final Matrix4f modelViewMatrix = new Matrix4f();
 
 	private final Matrix4f orthoMatrix;
 
@@ -27,7 +27,6 @@ public class Transformation {
 		worldMatrix = new Matrix4f();
 		projectionMatrix = new Matrix4f();
 		viewMatrix = new Matrix4f();
-		modelViewMatrix = new Matrix4f();
 		orthoMatrix = new Matrix4f();
 		lightViewMatrix = new Matrix4f();
 	}
@@ -69,7 +68,7 @@ public class Transformation {
 		return getOrtoProjModelMatrix(gameItem, orthoMatrix);
 	}
 	
-	public Matrix4f getModelMatrix(Vector3f position, Vector3f rotation, float scale) {
+	public static Matrix4f getModelMatrix(Vector3f position, Vector3f rotation, float scale) {
 		modelViewMatrix.identity()
 			.translate(position)
 			.rotateX(-rotation.x)
@@ -103,11 +102,11 @@ public class Transformation {
 		return lightViewMatrix;
 	}
 
-	public Matrix4f getModelViewMatrix(Spatial spatial, Matrix4f viewMatrix) {
+	public static Matrix4f getModelViewMatrix(Spatial spatial, Matrix4f viewMatrix) {
 		return getModelViewMatrix(spatial.modelViewMatrix, viewMatrix);
 	}
 	
-	public Matrix4f getModelViewMatrix(Matrix4f modelMatrix, Matrix4f viewMatrix) {
+	public static Matrix4f getModelViewMatrix(Matrix4f modelMatrix, Matrix4f viewMatrix) {
 		//Matrix4f viewCurr = new Matrix4f(viewMatrix);
 		//return viewCurr.mul(modelMatrix);
 		return modelMatrix.mulLocal(viewMatrix); // seems to work, and doesn't allocate a new Matrix4f

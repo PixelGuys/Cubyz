@@ -14,10 +14,6 @@ import io.jungle.Mesh;
 
 public class OBJLoader {
 
-	public OBJLoader() {
-		// TODO Auto-generated constructor stub
-	}
-
 	public static Mesh loadMesh(String fileName, boolean instanced) throws Exception {
 
 		List<Vector3f> vertices = new ArrayList<>();

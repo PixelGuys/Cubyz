@@ -406,8 +406,8 @@ public class ZenithsRenderer implements Renderer {
 				shaderProgram.setUniform("material", mesh.getMaterial());
 				
 				mesh.renderOne(() -> {
-					Vector3f position = ent.getRenderPosition(p.getPosition());
-					Matrix4f modelViewMatrix = transformation.getModelViewMatrix(transformation.getModelMatrix(position, ent.getRotation(), 1f), viewMatrix);
+					Vector3f position = ent.getRenderPosition();
+					Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(position, ent.getRotation(), 1f), viewMatrix);
 					shaderProgram.setUniform("isInstanced", 0);
 					shaderProgram.setUniform("selectedNonInstanced", 0f);
 					shaderProgram.setUniform("modelViewNonInstancedMatrix", modelViewMatrix);
@@ -421,8 +421,8 @@ public class ZenithsRenderer implements Renderer {
 			Mesh mesh = spatial.getMesh();
 			shaderProgram.setUniform("material", mesh.getMaterial());
 			mesh.renderOne(() -> {
-				Matrix4f modelViewMatrix = transformation.getModelViewMatrix(
-						transformation.getModelMatrix(spatial.getPosition(), spatial.getRotation(), spatial.getScale()),
+				Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(
+						Transformation.getModelMatrix(spatial.getPosition(), spatial.getRotation(), spatial.getScale()),
 						viewMatrix);
 				shaderProgram.setUniform("isInstanced", 0);
 				shaderProgram.setUniform("selectedNonInstanced", 0f);

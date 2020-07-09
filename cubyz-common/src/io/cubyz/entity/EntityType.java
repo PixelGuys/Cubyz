@@ -7,6 +7,7 @@ import io.cubyz.world.Surface;
 public abstract class EntityType implements RegistryElement {
 	
 	Resource id;
+	public EntityModel model;
 	
 	public EntityType(Resource id) {
 		this.id = id;

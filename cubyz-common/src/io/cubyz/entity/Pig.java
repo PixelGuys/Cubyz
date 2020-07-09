@@ -4,13 +4,14 @@ import java.util.Random;
 
 import org.joml.Vector3f;
 
+import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Resource;
 import io.cubyz.world.Surface;
 
 public class Pig extends EntityType {
-
 	public Pig() {
 		super(new Resource("cubyz:pig"));
+		super.model = CubyzRegistries.ENTITY_MODEL_REGISTRY.getByID("cuybz:quadruped").createInstance(new int[] {8, 20, 6, 8, 4, 100, -2}, this);
 	}
 
 	@Override

@@ -284,6 +284,12 @@ public class MainRenderer implements Renderer {
 			int z = (int)(ent.getPosition().z + 1.0f);
 			if (ent != null && ent != p) { // don't render local player
 				Mesh mesh = null;
+				if(ent.getType().model != null) {
+					entityShader.setUniform("materialHasTexture", true);
+					entityShader.setUniform("light", ent.getStellarTorus().getWorld().getCurrentTorus().getLight(x, y, z, ambientLight));
+					ent.getType().model.render(viewMatrix, entityShader, ent);
+					continue;
+				}
 				if (ent instanceof CustomMeshProvider) {
 					CustomMeshProvider provider = (CustomMeshProvider) ent;
 					MeshType type = provider.getMeshType();
@@ -304,8 +310,8 @@ public class MainRenderer implements Renderer {
 					entityShader.setUniform("light", ent.getStellarTorus().getWorld().getCurrentTorus().getLight(x, y, z, ambientLight));
 					
 					mesh.renderOne(() -> {
-						Vector3f position = ent.getRenderPosition(playerPosition);
-						Matrix4f modelViewMatrix = transformation.getModelViewMatrix(transformation.getModelMatrix(position, ent.getRotation(), ent.getScale()), viewMatrix);
+						Vector3f position = ent.getRenderPosition();
+						Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(position, ent.getRotation(), ent.getScale()), viewMatrix);
 						entityShader.setUniform("modelViewMatrix", modelViewMatrix);
 					});
 				}
@@ -319,8 +325,8 @@ public class MainRenderer implements Renderer {
 			entityShader.setUniform("light", new Vector3f(1, 1, 1));
 			entityShader.setUniform("materialHasTexture", mesh.getMaterial().isTextured());
 			mesh.renderOne(() -> {
-				Matrix4f modelViewMatrix = transformation.getModelViewMatrix(
-						transformation.getModelMatrix(spatial.getPosition(), spatial.getRotation(), spatial.getScale()),
+				Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(
+						Transformation.getModelMatrix(spatial.getPosition(), spatial.getRotation(), spatial.getScale()),
 						viewMatrix);
 				entityShader.setUniform("modelViewMatrix", modelViewMatrix);
 			});
