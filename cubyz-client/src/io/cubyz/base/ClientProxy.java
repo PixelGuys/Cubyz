@@ -3,7 +3,7 @@ package io.cubyz.base;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.GameRegistry;
 import io.cubyz.api.Registry;
-import io.cubyz.base.entityModels.Quadruped;
+import io.cubyz.base.entity_models.Quadruped;
 import io.cubyz.base.rotation.LogRotation;
 import io.cubyz.base.rotation.NoRotation;
 import io.cubyz.base.rotation.TorchRotation;

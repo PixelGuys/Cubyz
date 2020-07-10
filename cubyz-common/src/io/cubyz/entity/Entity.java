@@ -18,6 +18,7 @@ public class Entity {
 	private EntityAI ai;
 	public float vx, vy, vz;
 	protected float scale = 1f;
+	public float movementAnimation = 0; // Only used by mobs that actually move.
 	
 	private EntityType type;
 	

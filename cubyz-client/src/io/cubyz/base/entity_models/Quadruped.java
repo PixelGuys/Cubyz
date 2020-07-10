@@ -1,8 +1,9 @@
-package io.cubyz.base.entityModels;
+package io.cubyz.base.entity_models;
 
 import java.io.IOException;
 
 import org.joml.Matrix4f;
+import org.joml.Vector3f;
 
 import io.cubyz.CubyzLogger;
 import io.cubyz.api.Resource;
@@ -36,16 +37,16 @@ public class Quadruped implements EntityModel {
 	
 	// Actual model stuff:
 	private Mesh leg, body, head;
-	int bodyWidth, bodyLength, bodyHeight, legHeight, legWidth, headHeight, headWidth;
+	float bodyWidth, bodyLength, bodyHeight, legHeight, legWidth, headHeight, headWidth;
 	
 	public Quadruped(int bodyWidth, int bodyLength, int bodyHeight, int legHeight, int legWidth, int headHeight, int headWidth, EntityType source) {
-		this.bodyWidth = bodyWidth;
-		this.bodyLength = bodyLength;
-		this.bodyHeight = bodyHeight;
-		this.legHeight = legHeight;
-		this.legWidth = legWidth;
-		this.headHeight = headHeight;
-		this.headWidth = headWidth;
+		this.bodyWidth = bodyWidth/16.0f;
+		this.bodyLength = bodyLength/16.0f;
+		this.bodyHeight = bodyHeight/16.0f;
+		this.legHeight = legHeight/16.0f;
+		this.legWidth = legWidth/16.0f;
+		this.headHeight = headHeight/16.0f;
+		this.headWidth = headWidth/16.0f;
 		float textureWidth = 4*legWidth + bodyLength + bodyHeight;
 		float textureHeight = Math.max(2*bodyWidth + 2*bodyHeight, legHeight + legWidth);
 		// leg obj:
@@ -129,49 +130,49 @@ public class Quadruped implements EntityModel {
 		int[] legIndices = new int[] {
 				// Bottom:
 				8, 14, 17,
-				8, 11, 17,
+				11, 8, 17,
 				// -x:
 				0, 9, 12,
-				0, 2, 12,
+				2, 0, 12,
 				// +x:
-				4, 15, 18,
+				15, 4, 18,
 				4, 6, 18,
 				// -z:
-				1, 10, 16,
+				10, 1, 16,
 				1, 5, 16,
 				// +z:
 				3, 13, 19,
-				3, 7, 19,
+				7, 3, 19,
 		};
 		// body obj:
 		float[] bodyPositions = new float[] {
 				// Top(each vertex two times(the top face is not rendered)):
-				-bodyWidth/32.0f,	bodyHeight/32.0f,		-bodyLength/32.0f,		//0
-				-bodyWidth/32.0f,	bodyHeight/32.0f,		-bodyLength/32.0f,		//1
-				-bodyWidth/32.0f,	bodyHeight/32.0f,		bodyLength/32.0f,		//2
-				-bodyWidth/32.0f,	bodyHeight/32.0f,		bodyLength/32.0f,		//3
-				bodyWidth/32.0f,	bodyHeight/32.0f,		-bodyLength/32.0f,		//4
-				bodyWidth/32.0f,	bodyHeight/32.0f,		-bodyLength/32.0f,		//5
-				bodyWidth/32.0f,	bodyHeight/32.0f,		bodyLength/32.0f,		//6
-				bodyWidth/32.0f,	bodyHeight/32.0f,		bodyLength/32.0f,		//7
+				-bodyLength/32.0f,	bodyHeight/32.0f,		-bodyWidth/32.0f,		//0
+				-bodyLength/32.0f,	bodyHeight/32.0f,		-bodyWidth/32.0f,		//1
+				-bodyLength/32.0f,	bodyHeight/32.0f,		bodyWidth/32.0f,		//2
+				-bodyLength/32.0f,	bodyHeight/32.0f,		bodyWidth/32.0f,		//3
+				bodyLength/32.0f,	bodyHeight/32.0f,		-bodyWidth/32.0f,		//4
+				bodyLength/32.0f,	bodyHeight/32.0f,		-bodyWidth/32.0f,		//5
+				bodyLength/32.0f,	bodyHeight/32.0f,		bodyWidth/32.0f,		//6
+				bodyLength/32.0f,	bodyHeight/32.0f,		bodyWidth/32.0f,		//7
 				// Bottom(each vertex three times):
-				-bodyWidth/32.0f,	-legHeight/32.0f,		-bodyLength/32.0f,		//8
-				-bodyWidth/32.0f,	-legHeight/32.0f,		-bodyLength/32.0f,		//9
-				-bodyWidth/32.0f,	-legHeight/32.0f,		-bodyLength/32.0f,		//10
-				-bodyWidth/32.0f,	-legHeight/32.0f,		bodyLength/32.0f,		//11
-				-bodyWidth/32.0f,	-legHeight/32.0f,		bodyLength/32.0f,		//12
-				-bodyWidth/32.0f,	-legHeight/32.0f,		bodyLength/32.0f,		//13
-				bodyWidth/32.0f,	-legHeight/32.0f,		-bodyLength/32.0f,		//14
-				bodyWidth/32.0f,	-legHeight/32.0f,		-bodyLength/32.0f,		//15
-				bodyWidth/32.0f,	-legHeight/32.0f,		-bodyLength/32.0f,		//16
-				bodyWidth/32.0f,	-legHeight/32.0f,		bodyLength/32.0f,		//17
-				bodyWidth/32.0f,	-legHeight/32.0f,		bodyLength/32.0f,		//18
-				bodyWidth/32.0f,	-legHeight/32.0f,		bodyLength/32.0f,		//19
+				-bodyLength/32.0f,	-bodyHeight/32.0f,		-bodyWidth/32.0f,		//8
+				-bodyLength/32.0f,	-bodyHeight/32.0f,		-bodyWidth/32.0f,		//9
+				-bodyLength/32.0f,	-bodyHeight/32.0f,		-bodyWidth/32.0f,		//10
+				-bodyLength/32.0f,	-bodyHeight/32.0f,		bodyWidth/32.0f,		//11
+				-bodyLength/32.0f,	-bodyHeight/32.0f,		bodyWidth/32.0f,		//12
+				-bodyLength/32.0f,	-bodyHeight/32.0f,		bodyWidth/32.0f,		//13
+				bodyLength/32.0f,	-bodyHeight/32.0f,		-bodyWidth/32.0f,		//14
+				bodyLength/32.0f,	-bodyHeight/32.0f,		-bodyWidth/32.0f,		//15
+				bodyLength/32.0f,	-bodyHeight/32.0f,		-bodyWidth/32.0f,		//16
+				bodyLength/32.0f,	-bodyHeight/32.0f,		bodyWidth/32.0f,		//17
+				bodyLength/32.0f,	-bodyHeight/32.0f,		bodyWidth/32.0f,		//18
+				bodyLength/32.0f,	-bodyHeight/32.0f,		bodyWidth/32.0f,		//19
 				// Top face:
-				-bodyWidth/32.0f,	bodyHeight/32.0f,		-bodyLength/32.0f,		//20
-				-bodyWidth/32.0f,	bodyHeight/32.0f,		bodyLength/32.0f,		//21
-				bodyWidth/32.0f,	bodyHeight/32.0f,		-bodyLength/32.0f,		//22
-				bodyWidth/32.0f,	bodyHeight/32.0f,		bodyLength/32.0f,		//23
+				-bodyLength/32.0f,	bodyHeight/32.0f,		-bodyWidth/32.0f,		//20
+				-bodyLength/32.0f,	bodyHeight/32.0f,		bodyWidth/32.0f,		//21
+				bodyLength/32.0f,	bodyHeight/32.0f,		-bodyWidth/32.0f,		//22
+				bodyLength/32.0f,	bodyHeight/32.0f,		bodyWidth/32.0f,		//23
 		};
 		float[] bodyTextCoords = new float[] {
 				// Top:
@@ -187,29 +188,29 @@ public class Quadruped implements EntityModel {
 				(bodyLength)/textureWidth, (2*bodyWidth+bodyHeight)/textureHeight,	//+x
 				(bodyLength)/textureWidth, (2*bodyWidth+bodyHeight)/textureHeight,	//+z
 				// Bottom:
-				0, (bodyWidth + bodyHeight)/textureHeight,	//B
+				(bodyLength)/textureWidth, (bodyWidth + bodyHeight)/textureHeight,	//B
 				(bodyLength + bodyHeight)/textureWidth, (bodyWidth)/textureHeight,		//-x
 				(bodyLength)/textureWidth, (bodyWidth + bodyHeight)/textureHeight,		//-z
-				
-				(bodyLength)/textureWidth, (bodyWidth + bodyHeight)/textureHeight,	//B
+
+				(bodyLength)/textureWidth, (2*bodyWidth + bodyHeight)/textureHeight,	//B
 				(bodyLength + bodyHeight)/textureWidth, 0,					//-x
 				0, (2*bodyWidth + 2*bodyHeight)/textureHeight,	//+z
-				
-				0, (2*bodyWidth + bodyHeight)/textureHeight,	//B
+
+				0, (bodyWidth + bodyHeight)/textureHeight,	//B
 				(bodyLength + bodyHeight)/textureWidth, (bodyWidth+bodyHeight)/textureHeight,	//+x
 				0, (bodyWidth + bodyHeight)/textureHeight,	//-z
-				
-				(bodyLength)/textureWidth, (2*bodyWidth + bodyHeight)/textureHeight,	//B
+
+				0, (2*bodyWidth + bodyHeight)/textureHeight,	//B
 				(bodyLength + bodyHeight)/textureWidth, (2*bodyWidth+bodyHeight)/textureHeight,	//+x
 				(bodyLength)/textureWidth, (2*bodyWidth+2*bodyHeight)/textureHeight,	//+z
 				// Top only:
-				0, 0,	//T
+				(bodyLength)/textureWidth, (bodyWidth)/textureHeight,	//T
 				
 				(bodyLength)/textureWidth, 0,	//T
 				
 				0, (bodyWidth)/textureHeight,	//T
 				
-				(bodyLength)/textureWidth, (bodyWidth)/textureHeight,	//T
+				0, 0,	//T
 		};
 		float[] bodyNormals = new float[] {
 				// Top:
@@ -238,21 +239,21 @@ public class Quadruped implements EntityModel {
 		int[] bodyIndices = new int[] {
 				// Bottom:
 				8, 14, 17,
-				8, 11, 17,
+				11, 8, 17,
 				// -x:
 				0, 9, 12,
-				0, 2, 12,
+				2, 0, 12,
 				// +x:
-				4, 15, 18,
+				15, 4, 18,
 				4, 6, 18,
 				// -z:
-				1, 10, 16,
+				10, 1, 16,
 				1, 5, 16,
 				// +z:
 				3, 13, 19,
-				3, 7, 19,
+				7, 3, 19,
 				// Top:
-				20, 22, 23,
+				22, 20, 23,
 				20, 21, 23,
 		};
 		Cubyz.renderDeque.add(new Runnable() { // TODO: Why is this so complex?
@@ -275,11 +276,66 @@ public class Quadruped implements EntityModel {
 
 	@Override
 	public void render(Matrix4f viewMatrix, Object entityShader, Entity ent) {
+		Vector3f pos = new Vector3f(ent.getRenderPosition());
+		Vector3f rotation =  new Vector3f(ent.getRotation());
+		pos.y += legHeight/2; // Adjust the body position by the height of the legs.
 		body.renderOne(() -> {
-			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(ent.getPosition(), ent.getRotation(), 1), viewMatrix);
+			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(pos, rotation, 1), viewMatrix);
+			((ShaderProgram)entityShader).setUniform("modelViewMatrix", modelViewMatrix);
+		});
+		float xNorm = ent.vx/(float)Math.sqrt(ent.vx*ent.vx + ent.vz*ent.vz);
+		float zNorm = ent.vz/(float)Math.sqrt(ent.vx*ent.vx + ent.vz*ent.vz);
+		pos.y -= bodyHeight/2 - legWidth/2;
+		float length = bodyLength - legWidth - 0.01f;
+		float width = bodyWidth - legWidth - 0.01f;
+		float legAngle1 = ent.movementAnimation;
+		float legAngle2 = legAngle1 - legHeight;
+		if(legAngle1 >= legHeight) {
+			legAngle1 = 2*legHeight - legAngle1;
+		} else {
+			legAngle2 = -legAngle2;
+		}
+		legAngle1 -= legHeight/2;
+		legAngle2 -= legHeight/2;
+		// Front side1:
+		pos.x += xNorm*length/2 - zNorm*width/2;
+		pos.z += zNorm*length/2 + xNorm*width/2;
+		rotation.z = legAngle1;
+		leg.renderOne(() -> {
+			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(pos, rotation, 1), viewMatrix);
+			((ShaderProgram)entityShader).setUniform("modelViewMatrix", modelViewMatrix);
+		});
+		// Front side2:
+		pos.x += zNorm*width;
+		pos.z += -xNorm*width;
+		rotation.z = legAngle2;
+		leg.renderOne(() -> {
+			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(pos, rotation, 1), viewMatrix);
+			((ShaderProgram)entityShader).setUniform("modelViewMatrix", modelViewMatrix);
+		});
+		// Back side2:
+		pos.x += -xNorm*length;
+		pos.z += -zNorm*length;
+		rotation.z = legAngle1;
+		leg.renderOne(() -> {
+			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(pos, rotation, 1), viewMatrix);
+			((ShaderProgram)entityShader).setUniform("modelViewMatrix", modelViewMatrix);
+		});
+		// Back side1:
+		pos.x += -zNorm*width;
+		pos.z += xNorm*width;
+		rotation.z = legAngle2;
+		leg.renderOne(() -> {
+			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(pos, rotation, 1), viewMatrix);
 			((ShaderProgram)entityShader).setUniform("modelViewMatrix", modelViewMatrix);
 		});
 		
+	}
+	@Override
+	public void update(Entity ent) {
+		float v = (float)Math.sqrt(ent.vx*ent.vx + ent.vz*ent.vz);
+		ent.movementAnimation += v;
+		ent.movementAnimation %= 2*legHeight;
 	}
 	
 }

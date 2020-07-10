@@ -9,4 +9,5 @@ import io.cubyz.api.RegistryElement;
 public interface EntityModel extends RegistryElement {
 	public void render(Matrix4f viewMatrix, Object shaderProgram, Entity ent);
 	public EntityModel createInstance(int[] data, EntityType source);
+	public void update(Entity ent);
 }
