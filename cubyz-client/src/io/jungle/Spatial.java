@@ -7,7 +7,7 @@ import io.cubyz.entity.Player;
 
 public class Spatial {
 
-    private Mesh[] meshes;
+    private Mesh mesh;
     private final Vector3f position;
     private final Vector3f rotation;
     public Matrix4f modelViewMatrix;
@@ -18,7 +18,7 @@ public class Spatial {
     public int[] light;
 
     public Spatial(Mesh mesh) {
-        this.meshes = new Mesh[] {mesh};
+        this.mesh = mesh;
         position = new Vector3f(0, 0, 0);
         scale = 1;
         rotation = new Vector3f(0, 0, 0);
@@ -27,25 +27,12 @@ public class Spatial {
     }
 
     public Spatial(Mesh mesh, int[] light) {
-        this.meshes = new Mesh[] {mesh};
+        this.mesh = mesh;
         position = new Vector3f(0, 0, 0);
         scale = 1;
         rotation = new Vector3f(0, 0, 0);
         this.light = light;
         generateMatrix();
-    }
-    
-    public Spatial(Mesh[] meshes) {
-    	this.meshes = meshes;
-    	position = new Vector3f(0, 0, 0);
-    	scale = 1;
-    	rotation = new Vector3f(0, 0, 0);
-        light = new int[8];
-        generateMatrix();
-    }
-    
-    public Spatial() {
-    	this((Mesh) null);
     }
 
     public Vector3f getPosition() {
@@ -96,8 +83,8 @@ public class Spatial {
         return scale;
     }
     
-    protected void setMeshes(Mesh[] mesh) {
-    	this.meshes = mesh;
+    protected void setMesh(Mesh mesh) {
+    	this.mesh = mesh;
     }
 
     public void setScale(float scale) {
@@ -117,11 +104,7 @@ public class Spatial {
     }
 
     public Mesh getMesh() {
-        return meshes[0];
-    }
-    
-    public Mesh[] getMeshes() {
-    	return meshes;
+        return mesh;
     }
     
     private void generateMatrix() {
