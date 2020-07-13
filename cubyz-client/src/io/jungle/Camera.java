@@ -4,20 +4,17 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
 public class Camera {
-	public static final float piHalf = (float)(Math.PI/2);
+	private static final float PI_HALF = (float)(Math.PI/2);
 
 	private final Vector3f position;
 
 	private final Vector3f rotation;
 	
 	private Matrix4f viewMatrix;
-	
-	private float fov;
 
 	public Camera() {
 		position = new Vector3f(0, 0, 0);
 		rotation = new Vector3f(0, 0, 0);
-		fov = (float) Math.toRadians(70.0f);
 	}
 
 	public Matrix4f getViewMatrix() {
@@ -28,14 +25,6 @@ public class Camera {
 		this.viewMatrix = viewMatrix;
 	}
 	
-	public float getFov() {
-		return fov;
-	}
-	
-	public void setFov(float fov) {
-		this.fov = fov;
-	}
-
 	public Camera(Vector3f position, Vector3f rotation) {
 		this.position = position;
 		this.rotation = rotation;
@@ -57,8 +46,8 @@ public class Camera {
 			position.z += (float) Math.cos(rotation.y) * offsetZ;
 		}
 		if (offsetX != 0) {
-			position.x -= (float) Math.sin(rotation.y - piHalf) * offsetX;
-			position.z += (float) Math.cos(rotation.y - piHalf) * offsetX;
+			position.x -= (float) Math.sin(rotation.y - PI_HALF) * offsetX;
+			position.z += (float) Math.cos(rotation.y - PI_HALF) * offsetX;
 		}
 		position.y += offsetY;
 	}
@@ -68,10 +57,10 @@ public class Camera {
 	}
 
 	public void setRotation(float x, float y, float z) {
-		if (x > piHalf) {
-			x = piHalf;
-		} else if (x < -piHalf) {
-			x = -piHalf;
+		if (x > PI_HALF) {
+			x = PI_HALF;
+		} else if (x < -PI_HALF) {
+			x = -PI_HALF;
 		}
 		rotation.x = x;
 		rotation.y = y;
@@ -80,10 +69,10 @@ public class Camera {
 
 	public void moveRotation(float offsetX, float offsetY, float offsetZ) {
 		rotation.x += offsetX;
-		if (rotation.x > piHalf) {
-			rotation.x = piHalf;
-		} else if (rotation.x < -piHalf) {
-			rotation.x = -piHalf;
+		if (rotation.x > PI_HALF) {
+			rotation.x = PI_HALF;
+		} else if (rotation.x < -PI_HALF) {
+			rotation.x = -PI_HALF;
 		}
 		rotation.y += offsetY;
 		rotation.z += offsetZ;

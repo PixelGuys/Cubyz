@@ -7,8 +7,9 @@ import java.util.Objects;
 import java.util.Properties;
 import java.util.logging.Level;
 
-import io.cubyz.CubyzLogger;
 import io.cubyz.utils.ResourceManager;
+
+import static io.cubyz.CubyzLogger.logger;
 
 public class LanguageLoader {
 
@@ -28,10 +29,10 @@ public class LanguageLoader {
 					}
 					reader.close();
 				} catch (IOException e) {
-					CubyzLogger.instance.log(Level.SEVERE, "Could not open language file " + locale + " for mod " + assetFolder.getName(), e);
+					logger.log(Level.SEVERE, "Could not open language file " + locale + " for mod " + assetFolder.getName(), e);
 				}
 			} else if (assetFolder.getName().equals("cubyz")) {
-				CubyzLogger.instance.warning("Language \"" + locale + "\" not found");
+				logger.warning("Language \"" + locale + "\" not found");
 			}
 		}
 		return lang;

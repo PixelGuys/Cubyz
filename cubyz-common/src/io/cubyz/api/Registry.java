@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
 
-import io.cubyz.CubyzLogger;
+import static io.cubyz.CubyzLogger.logger;
 
 public class Registry<T extends RegistryElement> {
 	private HashMap<String, T> hashMap;
@@ -65,7 +65,7 @@ public class Registry<T extends RegistryElement> {
 		}
 		hashMap.put(element.getRegistryID().toString(), element);
 		if (debug) {
-			CubyzLogger.instance.info("Registered " + getType(element.getClass()) + " as " + element.getRegistryID());
+			logger.info("Registered " + getType(element.getClass()) + " as " + element.getRegistryID());
 		}
 		dirty = true;
 	}

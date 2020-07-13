@@ -16,7 +16,6 @@ import java.util.Set;
 import org.reflections.Reflections;
 
 import io.cubyz.Constants;
-import io.cubyz.CubyzLogger;
 import io.cubyz.api.Mod;
 import io.cubyz.api.Side;
 import io.cubyz.command.CommandExecutor;
@@ -24,6 +23,8 @@ import io.cubyz.command.CommandSource;
 import io.cubyz.modding.ModLoader;
 import io.cubyz.multiplayer.server.CubyzServer;
 import io.cubyz.world.World;
+
+import static io.cubyz.CubyzLogger.logger;
 
 public class Server {
 
@@ -55,7 +56,7 @@ public class Server {
 	
 	public static void loadGame() {
 		Constants.setGameSide(Side.SERVER);
-		CubyzLogger.instance.info("Searching mods..");
+		logger.info("Searching mods..");
 		ArrayList<Object> mods = new ArrayList<>();
 		ArrayList<File> modSearchPath = new ArrayList<>();
 		modSearchPath.add(new File("mods"));
@@ -80,7 +81,7 @@ public class Server {
 		
 		URLClassLoader loader = new URLClassLoader(modUrl.toArray(new URL[modUrl.size()]), Server.class.getClassLoader());
 		
-		CubyzLogger.instance.info("Searching Java classes..");
+		logger.info("Searching Java classes..");
 		Reflections reflections = new Reflections("", loader); // load all mods
 		Set<Class<?>> allClasses = reflections.getTypesAnnotatedWith(Mod.class);
 		
@@ -96,37 +97,37 @@ public class Server {
 		for (int i = 0; i < mods.size(); i++) {
 			Object mod = mods.get(i);
 			Mod modA = mod.getClass().getAnnotation(Mod.class);
-			CubyzLogger.instance.info("Pre-initiating " + modA.name() + " (" + modA.id() + ")");
+			logger.info("Pre-initiating " + modA.name() + " (" + modA.id() + ")");
 			ModLoader.preInit(mod, Side.SERVER);
 		}
 		
 		for (int i = 0; i < mods.size(); i++) {
 			Object mod = mods.get(i);
 			Mod modA = mod.getClass().getAnnotation(Mod.class);
-			CubyzLogger.instance.info("Initiating " + modA.name() + " (" + modA.id() + ")");
+			logger.info("Initiating " + modA.name() + " (" + modA.id() + ")");
 			ModLoader.init(mod);
 		}
 		
 		for (int i = 0; i < mods.size(); i++) {
 			Object mod = mods.get(i);
 			Mod modA = mod.getClass().getAnnotation(Mod.class);
-			CubyzLogger.instance.info("Post-initiating " + modA.name() + " (" + modA.id() + ")");
+			logger.info("Post-initiating " + modA.name() + " (" + modA.id() + ")");
 			ModLoader.postInit(mod);
 		}
 	}
 	
 	public static void main(String[] args) {
-		CubyzLogger.instance.info("Loading configuration..");
+		logger.info("Loading configuration..");
 		try {
 			loadProperties();
 		} catch (IOException e) {
-			CubyzLogger.instance.severe("Error while loading configuration");
+			logger.severe("Error while loading configuration");
 			e.printStackTrace();
 		}
 		
 		loadGame();
 		
-		CubyzLogger.instance.info("Running server on port " + serverProperties.getProperty("port"));
+		logger.info("Running server on port " + serverProperties.getProperty("port"));
 		
 		server = new CubyzServer(Integer.parseInt(serverProperties.getProperty("port")));
 		
@@ -134,10 +135,10 @@ public class Server {
 			try {
 				server.start(false);
 			} catch (Exception e) {
-				CubyzLogger.instance.severe("Error while starting the server");
+				logger.severe("Error while starting the server");
 				e.printStackTrace();
 			}
-			CubyzLogger.instance.info("Server stopped");
+			logger.info("Server stopped");
 		});
 		th.start();
 		
@@ -147,7 +148,7 @@ public class Server {
 
 			@Override
 			public void feedback(String info) {
-				CubyzLogger.instance.info(info);
+				logger.info(info);
 			}
 
 			@Override
@@ -163,10 +164,10 @@ public class Server {
 			
 			if (parts[0].equals("stop")) {
 				try {
-					CubyzLogger.instance.info("Server stopping..");
+					logger.info("Server stopping..");
 					server.stop();
 				} catch (Exception e) {
-					CubyzLogger.instance.severe("Error while stopping the server");
+					logger.severe("Error while stopping the server");
 					e.printStackTrace();
 				}
 				break;

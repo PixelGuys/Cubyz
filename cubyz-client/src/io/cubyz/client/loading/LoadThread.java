@@ -12,7 +12,6 @@ import org.reflections.Reflections;
 import io.cubyz.ClientOnly;
 import io.cubyz.Configuration;
 import io.cubyz.Constants;
-import io.cubyz.CubyzLogger;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Mod;
 import io.cubyz.api.Resource;
@@ -28,11 +27,12 @@ import io.cubyz.utils.ResourceContext;
 import io.cubyz.utils.ResourceManager;
 import io.jungle.util.StaticMeshesLoader;
 
+import static io.cubyz.CubyzLogger.logger;
+
 public class LoadThread extends Thread {
 
 	static int i = -1;
 	static Runnable run;
-	static Runnable run2;
 	static ArrayList<Runnable> runnables = new ArrayList<>();
 	
 	public static void addOnLoadFinished(Runnable run) {
@@ -43,7 +43,6 @@ public class LoadThread extends Thread {
 		setName("Load-Thread");
 		Cubyz.renderDeque.add(Configuration::load); // run in render thread due to some graphical reasons
 		LoadingGUI l = LoadingGUI.getInstance();
-		CubyzLogger log = CubyzLogger.instance;
 		l.setStep(1, 0, 0);
 		
 		l.setStep(2, 0, 0); // load mods
@@ -72,27 +71,27 @@ public class LoadThread extends Thread {
 		}
 		
 		URLClassLoader loader = new URLClassLoader(modUrl.toArray(new URL[modUrl.size()]), LoadThread.class.getClassLoader());
-		log.info("Seeking mods..");
+		logger.info("Seeking mods..");
 		long start = System.currentTimeMillis();
 		Reflections reflections = new Reflections("", loader); // load all mods
 		Set<Class<?>> allClasses = reflections.getTypesAnnotatedWith(Mod.class);
 		long end = System.currentTimeMillis();
-		log.info("Took " + (end - start) + "ms for reflection");
+		logger.info("Took " + (end - start) + "ms for reflection");
 		if (!allClasses.contains(BaseMod.class)) {
 			allClasses.add(BaseMod.class);
 			allClasses.add(AddonsMod.class);
-			log.info("Manually adding BaseMod (probably on distributed JAR)");
+			logger.info("Manually adding BaseMod (probably on distributed JAR)");
 		}
 		for (Class<?> cl : allClasses) {
-			log.info("Mod class present: " + cl.getName());
+			logger.info("Mod class present: " + cl.getName());
 			try {
 				mods.add(cl.getConstructor().newInstance());
 			} catch (Exception e) {
-				log.warning("Error while loading mod:");
+				logger.warning("Error while loading mod:");
 				e.printStackTrace();
 			}
 		}
-		log.info("Mod list complete");
+		logger.info("Mod list complete");
 		ModLoader.sortMods(mods);
 		
 		// TODO re-add pre-init
@@ -100,7 +99,7 @@ public class LoadThread extends Thread {
 		for (int i = 0; i < mods.size(); i++) {
 			l.setStep(2, i+1, mods.size());
 			Object mod = mods.get(i);
-			log.info("Pre-initiating " + mod);
+			logger.info("Pre-initiating " + mod);
 			ModLoader.preInit(mod, Side.CLIENT);
 		}
 		
@@ -127,7 +126,7 @@ public class LoadThread extends Thread {
 		for (int i = 0; i < mods.size(); i++) {
 			l.setStep(3, i+1, mods.size());
 			Object mod = mods.get(i);
-			log.info("Initiating " + mod);
+			logger.info("Initiating " + mod);
 			ModLoader.init(mod);
 		}
 		
@@ -186,7 +185,7 @@ public class LoadThread extends Thread {
 		for (int i = 0; i < mods.size(); i++) {
 			l.setStep(5, i+1, mods.size());
 			Object mod = mods.get(i);
-			log.info("Post-initiating " + mod);
+			logger.info("Post-initiating " + mod);
 			ModLoader.postInit(mod);
 		}
 		l.finishLoading();

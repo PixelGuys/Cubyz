@@ -2,6 +2,8 @@ package io.cubyz.client;
 
 import io.jungle.game.Game;
 
+import static io.cubyz.CubyzLogger.logger;
+
 public class GameLauncher extends Game {
 
 	public static GameLauncher instance;
@@ -10,7 +12,7 @@ public class GameLauncher extends Game {
 		GameLauncher.instance = new GameLauncher();
 		instance.logic = new Cubyz();
 		instance.start();
-		Cubyz.log.info("Stopped!");
+		logger.info("Stopped!");
 		System.exit(0);
 	}
 	

@@ -4,15 +4,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import io.cubyz.CubyzLogger;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.EntityType;
-import io.cubyz.entity.ItemEntity;
-import io.cubyz.items.Item;
-import io.cubyz.items.ItemStack;
 import io.cubyz.math.Bits;
 import io.cubyz.ndt.NDTContainer;
 import io.cubyz.world.Surface;
+
+import static io.cubyz.CubyzLogger.logger;
 
 public class EntityIO {
 
@@ -37,7 +35,7 @@ public class EntityIO {
 		Entity ent;
 		EntityType type = surface.getCurrentRegistries().entityRegistry.getByID(id);
 		if (type == null) {
-			CubyzLogger.i.warning("Could not load entity with id " + id.toString());
+			logger.warning("Could not load entity with id " + id.toString());
 			return null;
 		}
 		ent = type.newEntity(surface);

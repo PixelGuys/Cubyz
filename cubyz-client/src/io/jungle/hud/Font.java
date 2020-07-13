@@ -31,7 +31,7 @@ public class Font {
 	}
 	
 	/**
-	 * Get fonts arleady registered with <code>Font.register(name, file, nvg)</code>
+	 * Get fonts already registered with <code>Font.register(name, file, nvg)</code>
 	 * @return fonts
 	 */
 	public static String[] getRegisteredFonts() {
@@ -39,7 +39,7 @@ public class Font {
 	}
 	
 	/**
-	 * Create a new font from a arleady registered font name.
+	 * Create a new font from a already registered font name.
 	 * @param name
 	 */
 	public Font(String name, float size) {

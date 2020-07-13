@@ -49,10 +49,6 @@ public class Mesh implements Cloneable {
 		frustum = bool;
 	}
 
-	public boolean supportsCullFace() {
-		return cullFace;
-	}
-
 	public void setSupportsCullFace(boolean bool) {
 		cullFace = bool;
 	}
@@ -163,14 +159,6 @@ public class Mesh implements Cloneable {
 		this.material = material;
 	}
 
-	public int getVaoId() {
-		return vaoId;
-	}
-
-	public int getVertexCount() {
-		return vertexCount;
-	}
-
 	protected void initRender() {
 		Texture texture = material.getTexture();
 		if (texture != null) {
@@ -181,7 +169,7 @@ public class Mesh implements Cloneable {
 		}
 
 		// Draw the mesh
-		glBindVertexArray(getVaoId());
+		glBindVertexArray(vaoId);
 		glEnableVertexAttribArray(0);
 		glEnableVertexAttribArray(1);
 		if (hasNormals)
@@ -200,7 +188,7 @@ public class Mesh implements Cloneable {
 	}
 
 	public void render() {
-		glDrawElements(GL_TRIANGLES, getVertexCount(), GL_UNSIGNED_INT, 0);
+		glDrawElements(GL_TRIANGLES, vertexCount, GL_UNSIGNED_INT, 0);
 	}
 	
 	public void renderList(FastList<Spatial> spatials, Consumer<Spatial> consumer) {

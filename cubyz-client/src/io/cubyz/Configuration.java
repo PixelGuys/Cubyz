@@ -32,12 +32,12 @@ public class Configuration {
 		obj.add("keybindings", kb);
 		obj.addProperty("language", Cubyz.lang.getLocale());
 		obj.addProperty("discordIntegration", DiscordIntegration.isEnabled());
-		obj.addProperty("fogCoefficient", ClientSettings.fogCoefficient);
-		obj.addProperty("useMipmaps", ClientSettings.mipmapping);
+		obj.addProperty("fogCoefficient", ClientSettings.FOG_COEFFICIENT);
+		obj.addProperty("useMipmaps", ClientSettings.MIPMAPPING);
 		obj.addProperty("vsync", Cubyz.ctx.getWindow().isVSyncEnabled());
 		obj.addProperty("antiAliasSamples", Cubyz.ctx.getWindow().getAntialiasSamples());
 		obj.addProperty("easyLighting", Settings.easyLighting);
-		obj.addProperty("renderDistance", ClientSettings.renderDistance);
+		obj.addProperty("renderDistance", ClientSettings.RENDER_DISTANCE);
 		
 		try {
 			FileWriter writer = new FileWriter("configuration.json");
@@ -81,11 +81,11 @@ public class Configuration {
 		}
 		
 		if (obj.has("fogCoefficient")) {
-			ClientSettings.fogCoefficient = obj.get("fogCoefficient").getAsFloat();
+			ClientSettings.FOG_COEFFICIENT = obj.get("fogCoefficient").getAsFloat();
 		}
 		
 		if (obj.has("useMipmaps")) {
-			ClientSettings.mipmapping = obj.get("useMipmaps").getAsBoolean();
+			ClientSettings.MIPMAPPING = obj.get("useMipmaps").getAsBoolean();
 		}
 		if (obj.has("vsync")) {
 			Cubyz.ctx.getWindow().setVSyncEnabled(obj.get("vsync").getAsBoolean());
@@ -97,7 +97,7 @@ public class Configuration {
 			Settings.easyLighting = obj.get("easyLighting").getAsBoolean();
 		}
 		if (obj.has("renderDistance")) {
-			ClientSettings.renderDistance = obj.get("renderDistance").getAsInt();
+			ClientSettings.RENDER_DISTANCE = obj.get("renderDistance").getAsInt();
 		}
 	}
 	

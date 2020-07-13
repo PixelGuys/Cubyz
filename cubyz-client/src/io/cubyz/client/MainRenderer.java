@@ -6,6 +6,7 @@ import org.joml.FrustumIntersection;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
+import io.cubyz.ClientSettings;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.CustomMeshProvider;
@@ -46,10 +47,6 @@ public class MainRenderer implements Renderer {
 	private String shaders = "";
 	private Matrix4f prjViewMatrix = new Matrix4f();
 	private FrustumIntersection frustumInt = new FrustumIntersection();
-
-	public static final int MAX_POINT_LIGHTS = 0;
-	public static final int MAX_SPOT_LIGHTS = 0;
-	public static final Vector3f VECTOR3F_ZERO = new Vector3f(0, 0, 0);
 
 	public MainRenderer() {
 
@@ -142,7 +139,7 @@ public class MainRenderer implements Renderer {
 			if (orthogonal) {
 				window.setProjectionMatrix(transformation.getOrthoProjectionMatrix(1f, -1f, -1f, 1f, Z_NEAR, Z_FAR));
 			} else {
-				window.setProjectionMatrix(transformation.getProjectionMatrix(ctx.getCamera().getFov(), window.getWidth(),
+				window.setProjectionMatrix(transformation.getProjectionMatrix(ClientSettings.FOV, window.getWidth(),
 						window.getHeight(), Z_NEAR, Z_FAR));
 			}
 		}
@@ -339,9 +336,11 @@ public class MainRenderer implements Renderer {
 	public void cleanup() {
 		if (blockShader != null) {
 			blockShader.cleanup();
+			blockShader = null;
 		}
 		if (entityShader != null) {
 			entityShader.cleanup();
+			entityShader = null;
 		}
 	}
 

@@ -8,19 +8,12 @@ import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Player;
 import io.cubyz.world.BlockSpatial;
 import io.cubyz.world.Chunk;
-import io.jungle.renderers.Renderer;
 
 public class CubyzMeshSelectionDetector {
-
-	protected Renderer render;
 	protected Vector3f min = new Vector3f(), max = new Vector3f();
 	private int dirX, dirY, dirZ; // Used to prevent a block placement bug caused by asynchronous player position when selectSpatial and when getEmptyPlace are called.
 	protected BlockInstance selectedSpatial;
 	RayAabIntersection intersection = new RayAabIntersection();
-	
-	public CubyzMeshSelectionDetector(Renderer render) {
-		this.render = render;
-	}
 	
 	/**
 	 * Return selected block instance

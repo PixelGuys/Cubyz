@@ -4,8 +4,6 @@ import org.joml.Vector3f;
 import org.joml.Vector4f;
 
 public class Fog {
-
-	public static final Fog NO_FOG = new Fog();
 	
 	private boolean active;
 	private Vector3f color;
@@ -15,10 +13,6 @@ public class Fog {
 		this.color = color;
 		this.active = active;
 		this.density = density;
-	}
-	
-	public Fog() {
-		this(false, new Vector3f(0, 0, 0), 0);
 	}
 
 	public boolean isActive() {

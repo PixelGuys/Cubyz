@@ -22,12 +22,10 @@ public class CubyzLogger extends Logger {
 	/**
 	 * Shortcut for {@link CubyzLogger#instance}
 	 */
-	public static CubyzLogger i;
-	
-	public static CubyzLogger instance;
+	public static CubyzLogger logger;
 	
 	static {
-		instance = i = new CubyzLogger();
+		logger = new CubyzLogger();
 	}
 	
 	public void throwable(Throwable t) {

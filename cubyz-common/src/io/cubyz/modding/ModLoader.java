@@ -7,7 +7,6 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 
-import io.cubyz.CubyzLogger;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.EventHandler;
 import io.cubyz.api.LoadOrder;
@@ -17,6 +16,8 @@ import io.cubyz.api.Proxy;
 import io.cubyz.api.Registry;
 import io.cubyz.api.Side;
 import io.cubyz.api.SideOnly;
+
+import static io.cubyz.CubyzLogger.logger;
 
 // Most methods should ALWAYS be found as if it were on Side.SERVER
 public class ModLoader {
@@ -139,7 +140,7 @@ public class ModLoader {
 				} catch (IllegalArgumentException | IllegalAccessException | InstantiationException
 						| InvocationTargetException | NoSuchMethodException | SecurityException
 						| ClassNotFoundException e) {
-					CubyzLogger.i.warning("Could not inject Proxy!");
+					logger.warning("Could not inject Proxy!");
 					e.printStackTrace();
 				}
 				break;
@@ -152,7 +153,7 @@ public class ModLoader {
 			m.invoke(o, args);
 		} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
 			if (e instanceof InvocationTargetException) {
-				CubyzLogger.i.warning("Error while invoking mod method (" + m + "):");
+				logger.warning("Error while invoking mod method (" + m + "):");
 				e.getCause().printStackTrace();
 			} else {
 				e.printStackTrace();

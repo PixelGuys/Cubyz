@@ -2,10 +2,12 @@ package io.cubyz;
 
 public class ClientSettings {
 
-	public static float fogCoefficient = 10f;
+	public static float FOG_COEFFICIENT = 10f;
 	
-	public static boolean mipmapping = false;
+	public static boolean MIPMAPPING = false;
 	
-	public static int renderDistance = 6;
+	public static int RENDER_DISTANCE = 6;
+	
+	public static float FOV = 70.0f; // TODO: Integrate into settings.
 	
 }

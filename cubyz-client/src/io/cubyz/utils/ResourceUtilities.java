@@ -18,13 +18,7 @@ import io.cubyz.api.Resource;
 
 public class ResourceUtilities {
 
-	public static final Gson GSON;
-	
-	static {
-		GSON = new GsonBuilder()
-				.setLenient()
-				.create();
-	}
+	public static final Gson GSON = new GsonBuilder().setLenient().create();
 	
 	public static class BlockSubModel {
 		public String model;

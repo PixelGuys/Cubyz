@@ -12,7 +12,6 @@ import org.joml.Vector3f;
 import org.joml.Vector3i;
 import org.joml.Vector4f;
 
-import io.cubyz.CubyzLogger;
 import io.cubyz.Settings;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.CurrentSurfaceRegistries;
@@ -37,6 +36,8 @@ import io.cubyz.world.cubyzgenerators.CrystalCavernGenerator;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 import io.cubyz.world.generator.LifelandGenerator;
 import io.cubyz.world.generator.SurfaceGenerator;
+
+import static io.cubyz.CubyzLogger.logger;
 
 public class LocalSurface extends Surface {
 	private static Random rnd = new Random();
@@ -113,8 +114,8 @@ public class LocalSurface extends Surface {
 					synchronousGenerate(popped);
 					popped.load();
 				} catch (Exception e) {
-					CubyzLogger.instance.severe("Could not generate chunk " + popped.getX() + ", " + popped.getZ() + " !");
-					CubyzLogger.instance.throwable(e);
+					logger.severe("Could not generate chunk " + popped.getX() + ", " + popped.getZ() + " !");
+					logger.throwable(e);
 				}
 			}
 		}

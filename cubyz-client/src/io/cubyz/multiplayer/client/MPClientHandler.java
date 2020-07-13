@@ -13,6 +13,8 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 
+import static io.cubyz.CubyzLogger.logger;
+
 @SuppressWarnings("unused")
 public class MPClientHandler extends ChannelInboundHandlerAdapter {
 
@@ -97,7 +99,7 @@ public class MPClientHandler extends ChannelInboundHandlerAdapter {
 				String raw = buf.readCharSequence(length, Constants.CHARSET).toString();
 				cl.getLocalServer().brand = raw.split(";")[0];
 				cl.getLocalServer().version = raw.split(";")[1];
-				CubyzLogger.instance.fine("[MPClientHandler] Raw version + brand: " + raw);
+				logger.fine("[MPClientHandler] Raw version + brand: " + raw);
 			}
 			
 			if (responseType == Packet.PACKET_PINGDATA) {

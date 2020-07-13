@@ -53,6 +53,8 @@ import io.jungle.audio.SoundSource;
 import io.jungle.game.*;
 import io.jungle.util.*;
 
+import static io.cubyz.CubyzLogger.logger;
+
 public class Cubyz implements GameLogic {
 
 	public static Context ctx;
@@ -83,8 +85,6 @@ public class Cubyz implements GameLogic {
 
 	private int breakCooldown = 10;
 	private int buildCooldown = 10;
-
-	public static CubyzLogger log = CubyzLogger.i;
 
 	public static String serverIP = "localhost";
 	public static int serverPort = 58961;
@@ -122,7 +122,7 @@ public class Cubyz implements GameLogic {
 	@Override
 	public void cleanup() {
 		renderer.cleanup();
-		for (Handler handler : log.getHandlers()) {
+		for (Handler handler : logger.getHandlers()) {
 			handler.close();
 		}
 		Configuration.save();
@@ -180,18 +180,18 @@ public class Cubyz implements GameLogic {
 			int dz = 0;
 			if (world.getLocalPlayer().getPosition().x == 0 && world.getLocalPlayer().getPosition().z == 0) {
 				int highestY;
-				CubyzLogger.i.info("Finding position..");
+				logger.info("Finding position..");
 				while (true) {
 					dx = rnd.nextInt(surface.getSize());
 					dz = rnd.nextInt(surface.getSize());
-					CubyzLogger.i.info("Trying " + dx + " ? " + dz);
-					world.getCurrentTorus().synchronousSeek(dx, dz, ClientSettings.renderDistance);
+					logger.info("Trying " + dx + " ? " + dz);
+					world.getCurrentTorus().synchronousSeek(dx, dz, ClientSettings.RENDER_DISTANCE);
 					highestY = world.getCurrentTorus().getHeight(dx, dz);
 					if(highestY >= TerrainGenerator.SEA_LEVEL) // TODO: Take care about other SurfaceGenerators.
 						break;
 				}
 				world.getLocalPlayer().setPosition(new Vector3i(dx, highestY+2, dz));
-				CubyzLogger.i.info("OK!");
+				logger.info("OK!");
 			}
 		}
 		DiscordIntegration.setStatus("Playing");
@@ -272,7 +272,7 @@ public class Cubyz implements GameLogic {
 	@Override
 	public void init(Window window) throws Exception {
 		if (!new File("assets").exists()) {
-			log.severe("Assets not found.");
+			logger.severe("Assets not found.");
 			JOptionPane.showMessageDialog(null, "Cubyz could not detect its assets.\nDid you forgot to extract the game?", "Error", JOptionPane.ERROR_MESSAGE);
 			System.exit(1);
 		}
@@ -287,11 +287,11 @@ public class Cubyz implements GameLogic {
 		light = new DirectionalLight(new Vector3f(1.0f, 1.0f, 1.0f), new Vector3f(0.0f, 1.0f, 0.0f), 0.4f);
 		mouse = new MouseInput();
 		mouse.init(window);
-		log.info("Version " + Constants.GAME_VERSION + " of brand " + Constants.GAME_BRAND);
-		log.info("LWJGL Version: " + Version.VERSION_MAJOR + "." + Version.VERSION_MINOR + "." + Version.VERSION_REVISION);
-		log.info("Jungle Version: " + Constants.GAME_VERSION + "-cubyz");
+		logger.info("Version " + Constants.GAME_VERSION + " of brand " + Constants.GAME_BRAND);
+		logger.info("LWJGL Version: " + Version.VERSION_MAJOR + "." + Version.VERSION_MINOR + "." + Version.VERSION_REVISION);
+		logger.info("Jungle Version: " + Constants.GAME_VERSION + "-cubyz");
 		Constants.setGameSide(Side.CLIENT);
-		msd = new CubyzMeshSelectionDetector(renderer);
+		msd = new CubyzMeshSelectionDetector();
 		
 		// Cubyz resources
 		ResourcePack baserp = new ResourcePack();
@@ -312,7 +312,7 @@ public class Cubyz implements GameLogic {
 					try {
 						bm = ResourceUtilities.loadModel(rsc);
 					} catch (IOException e) {
-						CubyzLogger.i.warning(rsc + " block model not found");
+						logger.warning(rsc + " block model not found");
 						bm = ResourceUtilities.loadModel(new Resource("cubyz:undefined"));
 					}
 				}
@@ -337,7 +337,7 @@ public class Cubyz implements GameLogic {
 				Resource texResource = new Resource(bm.subModels.get("default").texture);
 				String texture = texResource.getID();
 				if (!new File("addons/" + texResource.getMod() + "/blocks/textures/" + texture + ".png").exists()) {
-					CubyzLogger.i.warning(texResource + " texture not found");
+					logger.warning(texResource + " texture not found");
 					texture = "undefined";
 				}
 				tex = new Texture("addons/" + texResource.getMod() + "/blocks/textures/" + texture + ".png");
@@ -356,7 +356,7 @@ public class Cubyz implements GameLogic {
 				try {
 					model = ResourceUtilities.loadEntityModel(rsc);
 				} catch (IOException e) {
-					CubyzLogger.i.warning(rsc + " entity model not found");
+					logger.warning(rsc + " entity model not found");
 					//e.printStackTrace();
 					//model = ResourceUtilities.loadEntityModel(new Resource("cubyz:undefined")); // TODO: load a simple cube with the undefined texture
 					return;
@@ -370,7 +370,7 @@ public class Cubyz implements GameLogic {
 				Resource texResource = new Resource(model.texture);
 				String texture = texResource.getID();
 				if (!new File("assets/" + texResource.getMod() + "/textures/entities/" + texture + ".png").exists()) {
-					CubyzLogger.i.warning(texResource + " texture not found");
+					logger.warning(texResource + " texture not found");
 					texture = "blocks/undefined";
 				}
 				
@@ -415,13 +415,13 @@ public class Cubyz implements GameLogic {
 		try {
 			renderer.init(window);
 		} catch (Exception e) {
-			log.log(Level.SEVERE, e, () -> {
+			logger.log(Level.SEVERE, e, () -> {
 				return "An unhandled exception occured while initiazing the renderer:";
 			});
 			e.printStackTrace();
 			System.exit(1);
 		}
-		log.info("Renderer: OK!");
+		logger.info("Renderer: OK!");
 		
 		gameUI.setMenu(LoadingGUI.getInstance());
 		LoadThread lt = new LoadThread();
@@ -464,7 +464,7 @@ public class Cubyz implements GameLogic {
 				musicSource.setBuffer(music.getBufferId());
 				musicSource.setGain(0.3f);
 			} else {
-				CubyzLogger.instance.info("Missing optional sound files. Sounds are disabled.");
+				logger.info("Missing optional sound files. Sounds are disabled.");
 			}
 			
 			renderDeque.add(() -> {
@@ -603,13 +603,13 @@ public class Cubyz implements GameLogic {
 			
 			// render distance
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_MINUS)) {
-				if(ClientSettings.renderDistance >= 2)
-					ClientSettings.renderDistance--;
+				if(ClientSettings.RENDER_DISTANCE >= 2)
+					ClientSettings.RENDER_DISTANCE--;
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_MINUS, false);
 				System.gc();
 			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_EQUAL)) {
-				ClientSettings.renderDistance++;
+				ClientSettings.RENDER_DISTANCE++;
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_EQUAL, false);
 				System.gc();
 			}
@@ -701,7 +701,7 @@ public class Cubyz implements GameLogic {
 				try {
 					bm = ResourceUtilities.loadModel(rsc);
 				} catch (IOException e) {
-					CubyzLogger.i.warning(rsc + " model not found");
+					logger.warning(rsc + " model not found");
 					//e.printStackTrace();
 					bm = ResourceUtilities.loadModel(new Resource("cubyz:undefined"));
 				}
@@ -728,7 +728,7 @@ public class Cubyz implements GameLogic {
 				Resource texResource = new Resource(subModel.texture);
 				String texture = texResource.getID();
 				if (!new File("assets/" + texResource.getMod() + "/textures/" + texture + ".png").exists()) {
-					CubyzLogger.i.warning(texResource + " texture not found");
+					logger.warning(texResource + " texture not found");
 					texture = "blocks/undefined";
 				}
 				tex = new Texture("assets/" + texResource.getMod() + "/textures/" + texture + ".png");
@@ -784,7 +784,7 @@ public class Cubyz implements GameLogic {
 			if (worldSeason != world.getCurrentTorus().getStellarTorus().getSeason()) {
 				worldSeason = world.getCurrentTorus().getStellarTorus().getSeason();
 				seasonUpdateDynamodels();
-				CubyzLogger.i.info("Updated season to ID " + worldSeason);
+				logger.info("Updated season to ID " + worldSeason);
 			}
 			ambient.x = ambient.y = ambient.z = world.getCurrentTorus().getGlobalLighting();
 			if(ambient.x < 0.1f) ambient.x = 0.1f;
@@ -793,12 +793,12 @@ public class Cubyz implements GameLogic {
 			light.setIntensity(world.getCurrentTorus().getGlobalLighting());
 			clearColor = world.getCurrentTorus().getClearColor();
 			ctx.getFog().setColor(clearColor);
-			if (ClientSettings.fogCoefficient == 0) {
+			if (ClientSettings.FOG_COEFFICIENT == 0) {
 				ctx.getFog().setActive(false);
 			} else {
 				ctx.getFog().setActive(true);
 			}
-			ctx.getFog().setDensity(1 / (ClientSettings.renderDistance*ClientSettings.fogCoefficient));
+			ctx.getFog().setDensity(1 / (ClientSettings.RENDER_DISTANCE*ClientSettings.FOG_COEFFICIENT));
 			Player player = world.getLocalPlayer();
 			Block bi = world.getCurrentTorus().getBlock(Math.round(player.getPosition().x), (int)(player.getPosition().y)+3, Math.round(player.getPosition().z));
 			if(bi != null && !bi.isSolid()) {
@@ -899,7 +899,7 @@ public class Cubyz implements GameLogic {
 			if (ch != null && ch.isLoaded()) {
 				world.update();
 			}
-			world.getCurrentTorus().seek((int)lp.getPosition().x, (int)lp.getPosition().z, ClientSettings.renderDistance);
+			world.getCurrentTorus().seek((int)lp.getPosition().x, (int)lp.getPosition().z, ClientSettings.RENDER_DISTANCE);
 			float lightAngle = (float)Math.PI/2 + (float)Math.PI*(((float)world.getGameTime() % world.getCurrentTorus().getStellarTorus().getDayCycle())/(world.getCurrentTorus().getStellarTorus().getDayCycle()/2));
 			skySun.setPositionRaw((float)Math.cos(lightAngle)*500, (float)Math.sin(lightAngle)*500, 0);
 			skySun.setRotation(0, 0, -lightAngle);

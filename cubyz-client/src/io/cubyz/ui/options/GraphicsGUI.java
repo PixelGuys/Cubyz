@@ -25,27 +25,27 @@ public class GraphicsGUI extends MenuGUI {
 			Cubyz.gameUI.back();
 		});
 
-		if (ClientSettings.fogCoefficient == 0f) {
+		if (ClientSettings.FOG_COEFFICIENT == 0f) {
 			fog.setText(new TextKey("gui.cubyz.options.fog.off"));
-		} else if (ClientSettings.fogCoefficient <= 5f) {
+		} else if (ClientSettings.FOG_COEFFICIENT <= 5f) {
 			fog.setText(new TextKey("gui.cubyz.options.fog.near"));
-		} else if (ClientSettings.fogCoefficient > 5f && ClientSettings.fogCoefficient < 15f) {
+		} else if (ClientSettings.FOG_COEFFICIENT > 5f && ClientSettings.FOG_COEFFICIENT < 15f) {
 			fog.setText(new TextKey("gui.cubyz.options.fog.med"));
 		} else {
 			fog.setText(new TextKey("gui.cubyz.options.fog.far"));
 		}
 		fog.setOnAction(() -> {
-			if (ClientSettings.fogCoefficient == 0f) { // off
-				ClientSettings.fogCoefficient = 5f;
+			if (ClientSettings.FOG_COEFFICIENT == 0f) { // off
+				ClientSettings.FOG_COEFFICIENT = 5f;
 				fog.setText(new TextKey("gui.cubyz.options.fog.near"));
-			} else if (ClientSettings.fogCoefficient <= 5f) { // near
-				ClientSettings.fogCoefficient = 10f;
+			} else if (ClientSettings.FOG_COEFFICIENT <= 5f) { // near
+				ClientSettings.FOG_COEFFICIENT = 10f;
 				fog.setText(new TextKey("gui.cubyz.options.fog.med"));
-			} else if (ClientSettings.fogCoefficient > 5f && ClientSettings.fogCoefficient < 15f) { // medium
-				ClientSettings.fogCoefficient = 15f;
+			} else if (ClientSettings.FOG_COEFFICIENT > 5f && ClientSettings.FOG_COEFFICIENT < 15f) { // medium
+				ClientSettings.FOG_COEFFICIENT = 15f;
 				fog.setText(new TextKey("gui.cubyz.options.fog.far"));
 			} else { // far
-				ClientSettings.fogCoefficient = 0f;
+				ClientSettings.FOG_COEFFICIENT = 0f;
 				fog.setText(new TextKey("gui.cubyz.options.fog.off"));
 			}
 		});

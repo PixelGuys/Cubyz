@@ -3,7 +3,6 @@ package io.jungle;
 import de.matthiasmann.twl.utils.PNGDecoder;
 import de.matthiasmann.twl.utils.PNGDecoder.Format;
 import io.cubyz.ClientSettings;
-import io.cubyz.Settings;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -112,7 +111,7 @@ public class Texture {
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, decoder.getWidth(), decoder.getHeight(), 0, GL_RGBA, GL_UNSIGNED_BYTE,
 				buf);
 
-		if (ClientSettings.mipmapping) {
+		if (ClientSettings.MIPMAPPING) {
 			glGenerateMipmap(GL_TEXTURE_2D);
 		}
 		return textureId;

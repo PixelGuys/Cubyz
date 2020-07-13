@@ -18,7 +18,7 @@ public class OptionsGUI extends MenuGUI {
 	private final Button language = new Button();
 	private final Button rpc = new Button();
 	private final Button bindings = new Button();
-	private final Slider renderDistance = new Slider(1, 24, ClientSettings.renderDistance);
+	private final Slider renderDistance = new Slider(1, 24, ClientSettings.RENDER_DISTANCE);
 	
 	private ContextualTextKey langKey = new ContextualTextKey("gui.cubyz.options.language", 1);
 	private ContextualTextKey rpcKey = new ContextualTextKey("gui.cubyz.options.discord", 1);
@@ -39,7 +39,7 @@ public class OptionsGUI extends MenuGUI {
 		renderDistance.setFontSize(18);
 		renderDistance.setText("Render Distance: ");
 		renderDistance.setOnAction(() -> {
-			ClientSettings.renderDistance = renderDistance.getValue();
+			ClientSettings.RENDER_DISTANCE = renderDistance.getValue();
 		});
 		
 		graphics.setSize(250, 45);

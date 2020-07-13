@@ -1,6 +1,6 @@
 package io.cubyz.ndt;
 
-import io.cubyz.CubyzLogger;
+import static io.cubyz.CubyzLogger.logger;
 
 /**
  * NDT (Named Data Tag)
@@ -58,7 +58,7 @@ public class NDTTag {
 		if (bytes[0] == NDTConstants.TYPE_CONTAINER) {
 			return new NDTContainer(tagBytes);
 		}
-		CubyzLogger.instance.warning("Unknown NDT tag type: " + bytes[0]);
+		logger.warning("Unknown NDT tag type: " + bytes[0]);
 		return null;
 	}
 	

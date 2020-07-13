@@ -3,7 +3,7 @@ package io.cubyz.api;
 import java.util.ArrayList;
 import java.util.List;
 
-import io.cubyz.CubyzLogger;
+import static io.cubyz.CubyzLogger.logger;
 
 public class NoIDRegistry<T> {
 	private ArrayList<T> registered;
@@ -44,7 +44,7 @@ public class NoIDRegistry<T> {
 		}
 		registered.add(element);
 		if (debug) {
-			CubyzLogger.instance.info("Registered " + getType(element.getClass()) + " as " + element.toString());
+			logger.info("Registered " + getType(element.getClass()) + " as " + element.toString());
 		}
 	}
 	

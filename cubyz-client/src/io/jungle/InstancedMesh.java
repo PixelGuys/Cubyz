@@ -107,10 +107,6 @@ public class InstancedMesh extends Mesh {
 		initInstances(numInstances);
 	}
 	
-	public int getInstances() {
-		return numInstances;
-	}
-	
 	public void setInstances(int numInst, boolean useShadowMap) {
 		if(useShadowMap) {
 			this.numInstances = numInst;
@@ -304,6 +300,6 @@ public class InstancedMesh extends Mesh {
 	}
 	
 	private void renderChunkInstanced(int size, Transformation transformation) {
-		glDrawElementsInstanced(GL_TRIANGLES, getVertexCount(), GL_UNSIGNED_INT, 0, size);
+		glDrawElementsInstanced(GL_TRIANGLES, vertexCount, GL_UNSIGNED_INT, 0, size);
 	}
 }

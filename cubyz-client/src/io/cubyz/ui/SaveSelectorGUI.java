@@ -9,7 +9,6 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 
 import io.cubyz.ClientOnly;
-import io.cubyz.CubyzLogger;
 import io.cubyz.blocks.Block;
 import io.cubyz.client.Cubyz;
 import io.cubyz.translate.ContextualTextKey;
@@ -18,6 +17,8 @@ import io.cubyz.ui.components.Button;
 import io.cubyz.world.CustomObject;
 import io.cubyz.world.LocalWorld;
 import io.jungle.Window;
+
+import static io.cubyz.CubyzLogger.logger;
 
 public class SaveSelectorGUI extends MenuGUI {
 
@@ -80,7 +81,7 @@ public class SaveSelectorGUI extends MenuGUI {
 	
 							@Override
 							public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-								CubyzLogger.i.throwable(exc);
+								logger.throwable(exc);
 								return FileVisitResult.TERMINATE;
 							}
 	

@@ -13,7 +13,6 @@ import java.util.HashMap;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.InflaterInputStream;
 
-import io.cubyz.CubyzLogger;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.blocks.Block;
 import io.cubyz.entity.Entity;
@@ -22,6 +21,8 @@ import io.cubyz.ndt.NDTContainer;
 import io.cubyz.world.Chunk;
 import io.cubyz.world.LocalStellarTorus;
 import io.cubyz.world.LocalSurface;
+
+import static io.cubyz.CubyzLogger.logger;
 
 public class TorusIO {
 
@@ -68,7 +69,7 @@ public class TorusIO {
 				if (b != null) {
 					blockPalette.put(b, blockPaletteNdt.getInteger(key));
 				} else {
-					CubyzLogger.instance.warning("A block with ID " + key + " is used in world but isn't available.");
+					logger.warning("A block with ID " + key + " is used in world but isn't available.");
 				}
 			}
 			Entity[] entities = new Entity[ndt.getInteger("entityCount")];

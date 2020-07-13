@@ -5,7 +5,6 @@ import java.io.IOException;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
-import io.cubyz.CubyzLogger;
 import io.cubyz.api.Resource;
 import io.cubyz.client.Cubyz;
 import io.cubyz.entity.Entity;
@@ -16,6 +15,8 @@ import io.jungle.Texture;
 import io.jungle.renderers.Transformation;
 import io.jungle.util.Material;
 import io.jungle.util.ShaderProgram;
+
+import static io.cubyz.CubyzLogger.logger;
 
 public class Quadruped implements EntityModel {
 	// Registry stuff:
@@ -28,7 +29,7 @@ public class Quadruped implements EntityModel {
 	@Override
 	public EntityModel createInstance(int[] args, EntityType source) {
 		if(args.length != 7) {
-			CubyzLogger.instance.warning("Wrong data for entity model "+id+": Found "+args.length+" ints but requiered "+7+". Skipping model.");
+			logger.warning("Wrong data for entity model "+id+": Found "+args.length+" ints but requiered "+7+". Skipping model.");
 			return this;
 		}
 		

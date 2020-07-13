@@ -11,6 +11,8 @@ import io.cubyz.client.Cubyz;
 import io.cubyz.ui.ToastManager;
 import io.cubyz.ui.ToastManager.Toast;
 
+import static io.cubyz.CubyzLogger.logger;
+
 public class DiscordIntegration {
 
 	static DiscordRichPresence presence;
@@ -61,7 +63,7 @@ public class DiscordIntegration {
 		lib.Discord_Initialize(appID, handlers, false, null);
 		
 		String path = javaExec + " -cp " + classpath + " io.cubyz.client.GameLauncher";
-		Cubyz.log.fine("Registered launch path as " + path);
+		logger.fine("Registered launch path as " + path);
 		lib.Discord_Register(appID, path);
 		lib.Discord_RunCallbacks();
 		
@@ -88,7 +90,7 @@ public class DiscordIntegration {
         });
 		worker.setName("RPC-Callback-Handler");
 		worker.start();
-		Cubyz.log.info("Discord RPC integration opened!");
+		logger.info("Discord RPC integration opened!");
 		ToastManager.queuedToasts.add(new Toast("Discord Integration", "Linking.."));
 		setStatus("On Main Menu");
 	}

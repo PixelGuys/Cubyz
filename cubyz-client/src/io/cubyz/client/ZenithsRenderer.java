@@ -7,6 +7,7 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
+import io.cubyz.ClientSettings;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
@@ -154,7 +155,7 @@ public class ZenithsRenderer implements Renderer {
 			if (orthogonal) {
 				window.setProjectionMatrix(transformation.getOrthoProjectionMatrix(1f, -1f, -1f, 1f, Z_NEAR, Z_FAR));
 			} else {
-				window.setProjectionMatrix(transformation.getProjectionMatrix(ctx.getCamera().getFov(), window.getWidth(),
+				window.setProjectionMatrix(transformation.getProjectionMatrix(ClientSettings.FOV, window.getWidth(),
 						window.getHeight(), Z_NEAR, Z_FAR));
 			}
 		}
@@ -253,7 +254,7 @@ public class ZenithsRenderer implements Renderer {
 			if (orthogonal) {
 				window.setProjectionMatrix(transformation.getOrthoProjectionMatrix(1f, -1f, -1f, 1f, Z_NEAR, Z_FAR));
 			} else {
-				window.setProjectionMatrix(transformation.getProjectionMatrix(ctx.getCamera().getFov(), window.getWidth(),
+				window.setProjectionMatrix(transformation.getProjectionMatrix(ClientSettings.FOV, window.getWidth(),
 						window.getHeight(), Z_NEAR, Z_FAR));
 			}
 			ctx.getCamera().setViewMatrix(transformation.getViewMatrix(ctx.getCamera()));
