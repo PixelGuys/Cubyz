@@ -29,14 +29,15 @@ public class OreGenerator implements Generator {
 	@Override
 	public void generate(long seed, int cx, int cz, Block[][][] chunk, boolean[][] vegetationIgnoreMap) {
 		Random rand = new Random(seed);
-		long rand1 = rand.nextLong();
-		long rand2 = rand.nextLong();
-		// Generate caves from all close by chunks(±1):
+		int rand1 = rand.nextInt() | 1;
+		int rand2 = rand.nextInt() | 1;
+		// Generate caves from all nearby chunks:
 		for(int x = cx - 1; x <= cx + 1; ++x) {
 			for(int z = cz - 1; z <= cz + 1; ++z) {
-				long randX = (long)x*rand1;
-				long randY = (long)z*rand2;
-				considerCoordinates(x, z, cx, cz, chunk, randX ^ randY ^ seed);
+				int randX = x*rand1;
+				int randZ = z*rand2;
+				rand.setSeed((randX << 32) ^ randZ ^ seed);
+				considerCoordinates(x, z, cx, cz, chunk, (randX << 32) ^ randZ ^ seed);
 			}
 		}
 	}

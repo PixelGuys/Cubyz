@@ -113,7 +113,7 @@ public class LifelandGenerator extends SurfaceGenerator {
 		
 		for (Generator g : sortedGenerators) {
 			if (g instanceof FancyGenerator) {
-				((FancyGenerator) g).generate(r.nextLong(), cx, cz, chunk, vegetationIgnoreMap, heatMap, realHeight, biomeMap);
+				((FancyGenerator) g).generate(r.nextLong(), cx, cz, chunk, vegetationIgnoreMap, heatMap, realHeight, biomeMap, surface.getSize());
 			} else if (g instanceof BigGenerator) {
 				((BigGenerator) g).generate(r.nextLong(), lx, lz, chunk, vegetationIgnoreMap, nn, np, pn, pp);
 			} else {
