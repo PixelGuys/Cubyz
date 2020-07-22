@@ -62,10 +62,12 @@ public class PlayerEntity extends EntityType {
 			if (inc.y != 0) {
 				vy = inc.y;
 			}
-			if(deltaX != 0)
-				deltaX = _getX(deltaX);
-			if(deltaZ != 0)
-				deltaZ = _getZ(deltaZ);
+			if(!flying) { // Allows the player to move through blocks when flying.
+				if(deltaX != 0)
+					deltaX = _getX(deltaX);
+				if(deltaZ != 0)
+					deltaZ = _getZ(deltaZ);
+			}
 			position.add(deltaX, 0, deltaZ);
 			float newX = CubyzMath.worldModulo(position.x, worldSize);
 			float newZ = CubyzMath.worldModulo(position.z, worldSize);
@@ -85,11 +87,11 @@ public class PlayerEntity extends EntityType {
 				health = maxHealth;
 			if (!flying) {
 				vy -= surface.getStellarTorus().getGravity();
-			}
-			vx = 0;
-			vz = 0;
-			updatePosition();
-			if (flying) {
+				vx = 0;
+				vz = 0;
+				updatePosition();
+			} else {
+				position.y += vy;
 				vy = 0;
 			}
 		}

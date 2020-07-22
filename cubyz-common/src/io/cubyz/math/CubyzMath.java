@@ -27,9 +27,9 @@ public class CubyzMath {
 		return num;
 	}
 	public static float match(float x, float playerX, int worldSize) {
-		if(playerX < worldSize/4 && x > 3*worldSize/4) {
+		if(playerX < worldSize >> 2 && x > 3*worldSize >> 2) {
 	        return x - worldSize;
-		} else if(playerX > 3*worldSize/4 && x < worldSize/4) {
+		} else if(playerX > 3*worldSize >> 2 && x < worldSize >> 2) {
 	        return x + worldSize;
 		} else {
 			return x;

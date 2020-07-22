@@ -122,6 +122,7 @@ public class CaveGenerator implements FancyGenerator {
 			worldY += yUnit;
 			worldZ += Math.sin(direction)*xzUnit;
 
+			// reduce the slope, so most caves will be flat most of the time.
 			if(highSlope) {
 				slope *= 0.92F;
 			} else {
@@ -134,6 +135,12 @@ public class CaveGenerator implements FancyGenerator {
 			directionModifier *= 0.75F;
 			slopeModifier += (localRand.nextFloat() - localRand.nextFloat())*localRand.nextFloat()*2;
 			directionModifier += (localRand.nextFloat() - localRand.nextFloat())*localRand.nextFloat()*4;
+			
+			// Make sure that caves close to the bedrock go up again. Prevents ultra-flat caves in the bottom of the world.
+			if(worldY < 2*yScale) {
+				slope = (float)((slope - Math.PI/2)%(2*Math.PI) + Math.PI/2);
+				slope += (2*yScale - worldY)/(2*yScale)*(Math.PI/2 - slope);
+			}
 			
 			// Add a small junction at a random point in the cave:
 			if(curStep == smallJunctionPos && size > 1 && caveLength > 0) {
@@ -213,7 +220,7 @@ public class CaveGenerator implements FancyGenerator {
 		for(int j = 0; j < caveSpawns; ++j) {
 			// Choose some in world coordinates to start generating:
 			double worldX = (double)((x << 4) + rand.nextInt(16));
-			double worldY = (double)200*Math.pow(rand.nextDouble(), 4); // Make more caves on the bottom of the world.
+			double worldY = 10 + (double)200*Math.pow(rand.nextDouble(), 4); // Make more caves on the bottom of the world, but don't let them start to close to the bedrock layer.
 			double worldZ = (double)((z << 4) + rand.nextInt(16));
 			// Randomly pick how many caves origin from this location and add a junction room if there are more than 2:
 			int starters = 1+rand.nextInt(4);

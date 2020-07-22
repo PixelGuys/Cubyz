@@ -7,6 +7,7 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
 import io.cubyz.ClientSettings;
+import io.cubyz.Settings;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.CustomMeshProvider;
@@ -166,7 +167,6 @@ public class MainRenderer implements Renderer {
 		prjViewMatrix.set(window.getProjectionMatrix());
 		prjViewMatrix.mul(ctx.getCamera().getViewMatrix());
 		// TODO: RayAabIntersection
-		
 		frustumInt.set(prjViewMatrix);
 		Vector3f playerPosition = null;
 		if(localPlayer != null) {
@@ -201,7 +201,8 @@ public class MainRenderer implements Renderer {
 
 								BlockSpatial[] spatial = (BlockSpatial[]) bi.getSpatials();
 								if(spatial != null) {
-									ch.getCornerLight(bi.getX() & 15, bi.getY(), bi.getZ() & 15, bi.light);
+									if(Settings.easyLighting)
+										ch.getCornerLight(bi.getX() & 15, bi.getY(), bi.getZ() & 15, bi.light);
 									for(BlockSpatial tmp : spatial) {
 										if (tmp.isSelected()) {
 											breakAnim = bi.getBreakingAnim();
