@@ -123,13 +123,6 @@ public class Chunk {
 					Block b = getBlockAt(x, y, z);
 					if(b != null) {
 						Block[] neighbors = getNeighbors(x, y, z);
-						BlockInstance[] visibleNeighbors = getVisibleNeighbors(x + wx, y, z + wz);
-						if(visibleNeighbors[0] != null) visibleNeighbors[0].neighborWest = getsBlocked(neighbors[0], b.isTransparent());
-						if(visibleNeighbors[1] != null) visibleNeighbors[1].neighborEast = getsBlocked(neighbors[1], b.isTransparent());
-						if(visibleNeighbors[2] != null) visibleNeighbors[2].neighborNorth = getsBlocked(neighbors[2], b.isTransparent());
-						if(visibleNeighbors[3] != null) visibleNeighbors[3].neighborSouth = getsBlocked(neighbors[3], b.isTransparent());
-						if(visibleNeighbors[4] != null) visibleNeighbors[4].neighborUp = getsBlocked(neighbors[4], b.isTransparent());
-						if(visibleNeighbors[5] != null) visibleNeighbors[5].neighborDown = getsBlocked(neighbors[5], b.isTransparent());
 						for (int i = 0; i < neighbors.length; i++) {
 							if (blocksLight(neighbors[i], b.isTransparent())
 														&& (y != 0 || i != 4)
@@ -159,14 +152,33 @@ public class Chunk {
 				if (toCheck[k]) {
 					ch = chunks[k];
 					for (int j = World.WORLD_HEIGHT - 1; j >= 0; j--) {
-						Block inst0 = ch.getBlockAt(dx[k], j, dz[k]);
-						if(inst0 == null) {
+						BlockInstance inst = ch.getBlockInstanceAt((dx[k] << 4) | (j << 8) | dz[k]);
+						Block block = ch.getBlockAt(dx[k], j, dz[k]);
+						// Update neighbor information:
+						if(inst != null) {
+							switch(k) {
+								case 0:
+									inst.neighborWest = getsBlocked(block, blocks[(invdx[k] << 4) | (j << 8) | invdz[k]]);
+									break;
+								case 1:
+									inst.neighborEast = getsBlocked(block, blocks[(invdx[k] << 4) | (j << 8) | invdz[k]]);
+									break;
+								case 2:
+									inst.neighborNorth = getsBlocked(block, blocks[(invdx[k] << 4) | (j << 8) | invdz[k]]);
+									break;
+								case 3:
+									inst.neighborSouth = getsBlocked(block, blocks[(invdx[k] << 4) | (j << 8) | invdz[k]]);
+									break;
+							}
+						}
+						// Update visibility:
+						if(block == null) {
 							continue;
 						}
 						if(ch.contains(dx[k] + wx, j, dz[k] + wz)) {
 							continue;
 						}
-						if (blocksLight(getBlockAt(invdx[k], j, invdz[k]), inst0.isTransparent())) {
+						if (blocksLight(getBlockAt(invdx[k], j, invdz[k]), block.isTransparent())) {
 							ch.revealBlock(dx[k], j, dz[k]);
 							continue;
 						}
@@ -622,7 +634,7 @@ public class Chunk {
 	}
 	
 	/**
-	 * Add the <code>Block</code> b at relative space defined by X, Y, and Z, and if out of bounds, call this method from the other chunk (only work for 1 chunk radius)<br/>
+	 * Add the <code>Block</code> b at relative space defined by X, Y, and Z, and if out of bounds, call this method from the other chunk<br/>
 	 * Meaning that if x or z are out of bounds, this method will call the same method from other chunks to add it.
 	 * @param b
 	 * @param x

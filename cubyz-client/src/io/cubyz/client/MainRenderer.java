@@ -198,7 +198,6 @@ public class MainRenderer implements Renderer {
 									(y < -0.5001f && !bi.neighborUp) ||
 									(z > 0.5001f && !bi.neighborSouth) ||
 									(z < -0.5001f && !bi.neighborNorth)) {
-
 								BlockSpatial[] spatial = (BlockSpatial[]) bi.getSpatials();
 								if(spatial != null) {
 									if(Settings.easyLighting)
