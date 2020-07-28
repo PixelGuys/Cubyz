@@ -61,8 +61,8 @@ public class Quadruped implements EntityModel {
 				movementPattern = MovementPattern.valueOf(parts[1].toUpperCase());
 			}
 		}
-		float textureWidth = 4*legWidth + bodyLength + bodyHeight;
-		float textureHeight = Math.max(2*bodyWidth + 2*bodyHeight, legHeight + legWidth);
+		float textureWidth = Math.max(4*legWidth, headHeight + headLength) + bodyLength + bodyHeight;
+		float textureHeight = Math.max(2*bodyWidth + 2*bodyHeight, legHeight + legWidth + 2*headWidth + 2*headLength);
 		// leg obj:
 		float legOffset = bodyLength + bodyHeight;
 		float[] legPositions = new float[] {
@@ -270,6 +270,120 @@ public class Quadruped implements EntityModel {
 				22, 20, 23,
 				20, 21, 23,
 		};
+		// head obj:
+		float[] headPositions = new float[] {
+				// Top(each vertex two times(the top face is not rendered)):
+				-headLength/2,	headHeight/2,		-headWidth/2,		//0
+				-headLength/2,	headHeight/2,		-headWidth/2,		//1
+				-headLength/2,	headHeight/2,		headWidth/2,		//2
+				-headLength/2,	headHeight/2,		headWidth/2,		//3
+				headLength/2,	headHeight/2,		-headWidth/2,		//4
+				headLength/2,	headHeight/2,		-headWidth/2,		//5
+				headLength/2,	headHeight/2,		headWidth/2,		//6
+				headLength/2,	headHeight/2,		headWidth/2,		//7
+				// Bottom(each vertex three times):
+				-headLength/2,	-headHeight/2,		-headWidth/2,		//8
+				-headLength/2,	-headHeight/2,		-headWidth/2,		//9
+				-headLength/2,	-headHeight/2,		-headWidth/2,		//10
+				-headLength/2,	-headHeight/2,		headWidth/2,		//11
+				-headLength/2,	-headHeight/2,		headWidth/2,		//12
+				-headLength/2,	-headHeight/2,		headWidth/2,		//13
+				headLength/2,	-headHeight/2,		-headWidth/2,		//14
+				headLength/2,	-headHeight/2,		-headWidth/2,		//15
+				headLength/2,	-headHeight/2,		-headWidth/2,		//16
+				headLength/2,	-headHeight/2,		headWidth/2,		//17
+				headLength/2,	-headHeight/2,		headWidth/2,		//18
+				headLength/2,	-headHeight/2,		headWidth/2,		//19
+				// Top face:
+				-headLength/2,	headHeight/2,		-headWidth/2,		//20
+				-headLength/2,	headHeight/2,		headWidth/2,		//21
+				headLength/2,	headHeight/2,		-headWidth/2,		//22
+				headLength/2,	headHeight/2,		headWidth/2,		//23
+		};
+		float headOffsetX = bodyLength + bodyHeight;
+		float headOffsetY = legWidth + legHeight;
+		float[] headTextCoords = new float[] {
+				// Top:
+				(headOffsetX)/textureWidth, (headOffsetY + headWidth)/textureHeight,		//-x
+				(headOffsetX)/textureWidth, (headOffsetY + headWidth)/textureHeight,		//-z
+
+				(headOffsetX)/textureWidth, (headOffsetY)/textureHeight,		//-x
+				(headOffsetX + headHeight)/textureWidth, (headOffsetY + 2*headWidth + 2*headLength)/textureHeight,	//+z
+				
+				(headOffsetX + headHeight)/textureWidth, (headOffsetY + headWidth + headLength)/textureHeight,	//+x
+				(headOffsetX)/textureWidth, (headOffsetY + headWidth + headLength)/textureHeight,	//-z
+				
+				(headOffsetX + headHeight)/textureWidth, (headOffsetY + 2*headWidth + headLength)/textureHeight,	//+x
+				(headOffsetX + headHeight)/textureWidth, (headOffsetY + 2*headWidth + headLength)/textureHeight,	//+z
+				// Bottom:
+				(headOffsetX + headHeight + headLength)/textureWidth, (headOffsetY + headWidth)/textureHeight,	//B
+				(headOffsetX + headHeight)/textureWidth, (headOffsetY + headWidth)/textureHeight,		//-x
+				(headOffsetX + headHeight)/textureWidth, (headOffsetY + headWidth)/textureHeight,		//-z
+
+				(headOffsetX + headHeight + headLength)/textureWidth, (headOffsetY)/textureHeight,	//B
+				(headOffsetX + headHeight)/textureWidth, (headOffsetY)/textureHeight,					//-x
+				(headOffsetX)/textureWidth, (headOffsetY + 2*headWidth + 2*headLength)/textureHeight,	//+z
+
+				(headOffsetX + headHeight)/textureWidth, (headOffsetY + headWidth)/textureHeight,	//B
+				(headOffsetX)/textureWidth, (headOffsetY + headWidth + headLength)/textureHeight,	//+x
+				(headOffsetX + headHeight)/textureWidth, (headOffsetY + headWidth + headLength)/textureHeight,	//-z
+
+				(headOffsetX + headHeight)/textureWidth, (headOffsetY)/textureHeight,	//B
+				(headOffsetX)/textureWidth, (headOffsetY + 2*headWidth + headLength)/textureHeight,	//+x
+				(headOffsetX)/textureWidth, (headOffsetY + 2*headWidth + headLength)/textureHeight,	//+z
+				// Top only:
+				(headOffsetX + headHeight + headLength)/textureWidth, (headOffsetY + headWidth + headLength)/textureHeight,	//T
+
+				(headOffsetX + headHeight + headLength)/textureWidth, (headOffsetY + 2*headWidth + headLength)/textureHeight,	//T
+				
+				(headOffsetX + headHeight)/textureWidth, (headOffsetY + headWidth + headLength)/textureHeight,	//T
+
+				(headOffsetX + headHeight)/textureWidth, (headOffsetY + 2*headWidth + headLength)/textureHeight,	//T
+		};
+		float[] headNormals = new float[] {
+				// Top:
+				-1, 0, 0,
+				0, 0, -1,
+				-1, 0, 0,
+				0, 0, 1,
+				1, 0, 0,
+				0, 0, -1,
+				1, 0, 0,
+				0, 0, 1,
+				// Bottom:
+				0, -1, 0,
+				-1, 0, 0,
+				0, 0, -1,
+				0, -1, 0,
+				-1, 0, 0,
+				0, 0, 1,
+				0, -1, 0,
+				1, 0, 0,
+				0, 0, -1,
+				0, -1, 0,
+				1, 0, 0,
+				0, 0, 1,
+		};
+		int[] headIndices = new int[] {
+				// Bottom:
+				8, 14, 17,
+				11, 8, 17,
+				// -x:
+				0, 9, 12,
+				2, 0, 12,
+				// +x:
+				15, 4, 18,
+				4, 6, 18,
+				// -z:
+				10, 1, 16,
+				1, 5, 16,
+				// +z:
+				3, 13, 19,
+				7, 3, 19,
+				// Top:
+				22, 20, 23,
+				20, 21, 23,
+		};
 		Cubyz.renderDeque.add(new Runnable() {
 			@Override
 			public void run() {
@@ -279,7 +393,8 @@ public class Quadruped implements EntityModel {
 					leg.setMaterial(mat);
 					body = new Mesh(bodyPositions, bodyTextCoords, bodyNormals, bodyIndices);
 					body.setMaterial(mat);
-					head = body; // TODO: Head model.
+					head = new Mesh(headPositions, headTextCoords, headNormals, headIndices);
+					head.setMaterial(mat);
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
@@ -340,6 +455,15 @@ public class Quadruped implements EntityModel {
 		pos.z += xNorm*width;
 		rotation.z = legAngle2;
 		leg.renderOne(() -> {
+			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(pos, rotation, 1), viewMatrix);
+			((ShaderProgram)entityShader).setUniform("modelViewMatrix", modelViewMatrix);
+		});
+		
+		// Head:
+		pos.x += xNorm*length + xNorm*headLength/2 + zNorm*width/2;
+		pos.y += bodyHeight/2 - legWidth/2;
+		pos.z += zNorm*length + zNorm*headLength/2 - xNorm*width/2;
+		head.renderOne(() -> {
 			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(pos, rotation, 1), viewMatrix);
 			((ShaderProgram)entityShader).setUniform("modelViewMatrix", modelViewMatrix);
 		});

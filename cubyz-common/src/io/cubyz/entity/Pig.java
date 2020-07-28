@@ -11,7 +11,7 @@ import io.cubyz.world.Surface;
 public class Pig extends EntityType {
 	public Pig() {
 		super(new Resource("cubyz:pig"));
-		super.model = CubyzRegistries.ENTITY_MODEL_REGISTRY.getByID("cuybz:quadruped").createInstance(new int[] {12, 20, 10, 8, 4, 100, -2}, this);
+		super.model = CubyzRegistries.ENTITY_MODEL_REGISTRY.getByID("cuybz:quadruped").createInstance("body:12x20x10 \n leg:4x8 \n head:10x6x8 \n movement:stable", this);
 	}
 
 	@Override
