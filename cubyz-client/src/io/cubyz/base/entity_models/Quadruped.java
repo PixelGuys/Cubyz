@@ -2,7 +2,9 @@ package io.cubyz.base.entity_models;
 
 import java.io.IOException;
 
+import org.joml.Intersectionf;
 import org.joml.Matrix4f;
+import org.joml.Vector2f;
 import org.joml.Vector3f;
 
 import io.cubyz.api.Resource;
@@ -10,6 +12,7 @@ import io.cubyz.client.Cubyz;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.EntityModel;
 import io.cubyz.entity.EntityType;
+import io.cubyz.entity.Player;
 import io.jungle.Mesh;
 import io.jungle.Texture;
 import io.jungle.renderers.Transformation;
@@ -474,6 +477,19 @@ public class Quadruped implements EntityModel {
 		float v = (float)Math.sqrt(ent.vx*ent.vx + ent.vz*ent.vz);
 		ent.movementAnimation += v;
 		ent.movementAnimation %= 2*legHeight;
+	}
+	@Override
+	public float getCollisionDistance(Vector3f playerPosition, Vector3f dir, Entity ent) {
+		float xNorm = ent.vx/(float)Math.sqrt(ent.vx*ent.vx + ent.vz*ent.vz);
+		float zNorm = ent.vz/(float)Math.sqrt(ent.vx*ent.vx + ent.vz*ent.vz);
+		Vector3f newDir = new Vector3f(dir);
+		newDir.z = dir.x*xNorm + dir.z*zNorm;
+		newDir.x = -dir.x*zNorm + dir.z*xNorm;
+		float distanceZ = (ent.getPosition().x-playerPosition.x)*xNorm + (ent.getPosition().z-playerPosition.z)*zNorm;
+		float distanceX = -(ent.getPosition().x-playerPosition.x)*zNorm + (ent.getPosition().z-playerPosition.z)*xNorm;
+		Vector2f res = new Vector2f();
+		boolean intersects = Intersectionf.intersectRayAab(0, playerPosition.y+Player.cameraHeight, 0, newDir.x, newDir.y, newDir.z, distanceX-bodyWidth/2, ent.getPosition().y, distanceZ-bodyLength/2, distanceX+bodyWidth/2, ent.getPosition().y+bodyHeight+legHeight, distanceZ+bodyLength/2+headLength-0.01f, res);
+		return intersects ? res.x : Float.MAX_VALUE;
 	}
 	
 }

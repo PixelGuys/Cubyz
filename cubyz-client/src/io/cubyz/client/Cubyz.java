@@ -613,7 +613,7 @@ public class Cubyz implements GameLogic {
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_EQUAL, false);
 				System.gc();
 			}
-			msd.selectSpatial(world.getCurrentTorus().getChunks(), world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate(), surface.getSize());
+			msd.selectSpatial(world.getCurrentTorus().getChunks(), world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate(), surface.getSize(), surface);
 		}
 		if (world != null) {
 			if (Keybindings.isPressed("menu")) {
@@ -856,24 +856,26 @@ public class Cubyz implements GameLogic {
 					if(world.getLocalPlayer().isFlying()) { // Ignore hardness when in flying.
 						if (breakCooldown == 0) {
 							breakCooldown = 7;
-							BlockInstance bi = msd.getSelectedBlockInstance();
-							if (bi != null && bi.getBlock().getBlockClass() != BlockClass.UNBREAKABLE) {
-								world.getCurrentTorus().removeBlock(bi.getX(), bi.getY(), bi.getZ());
+							Object bi = msd.getSelected();
+							if (bi != null && bi instanceof BlockInstance && ((BlockInstance)bi).getBlock().getBlockClass() != BlockClass.UNBREAKABLE) {
+								world.getCurrentTorus().removeBlock(((BlockInstance)bi).getX(), ((BlockInstance)bi).getY(), ((BlockInstance)bi).getZ());
 							}
 						}
 					}
 					else {
-						BlockInstance bi = msd.getSelectedBlockInstance();
-						world.getLocalPlayer().breaking(bi, inventorySelection, world.getCurrentTorus());
+						Object selected = msd.getSelected();
+						if(selected instanceof BlockInstance) {
+							world.getLocalPlayer().breaking((BlockInstance)selected, inventorySelection, world.getCurrentTorus());
+						}
 					}
 				} else {
 					world.getLocalPlayer().resetBlockBreaking();
 				}
 				if (Keybindings.isPressed("place")) {
 					//Building Blocks
-					if (buildCooldown == 0 && msd.getSelectedBlockInstance() != null) {
+					if (buildCooldown == 0 && msd.getSelected() != null) {
 						buildCooldown = 10;
-						if(msd.getSelectedBlockInstance().getBlock().onClick(world, msd.getSelectedBlockInstance().getPosition())) {
+						if(msd.getSelected() instanceof BlockInstance && ((BlockInstance)msd.getSelected()).getBlock().onClick(world, ((BlockInstance)msd.getSelected()).getPosition())) {
 							// potentially do a hand animation, in the future
 						} else {
 							Vector3i pos = new Vector3i(0, 0, 0);

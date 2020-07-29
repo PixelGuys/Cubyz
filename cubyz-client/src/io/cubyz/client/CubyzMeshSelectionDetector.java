@@ -5,31 +5,34 @@ import org.joml.Vector3f;
 import org.joml.Vector3i;
 
 import io.cubyz.blocks.BlockInstance;
+import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.world.BlockSpatial;
 import io.cubyz.world.Chunk;
+import io.cubyz.world.Surface;
 
 public class CubyzMeshSelectionDetector {
 	protected Vector3f min = new Vector3f(), max = new Vector3f();
 	private int dirX, dirY, dirZ; // Used to prevent a block placement bug caused by asynchronous player position when selectSpatial and when getEmptyPlace are called.
-	protected BlockInstance selectedSpatial;
+	protected Object selectedSpatial; // Can be either a block or an entity.
 	RayAabIntersection intersection = new RayAabIntersection();
 	
 	/**
 	 * Return selected block instance
 	 * @return selected block instance, or null if none.
 	 */
-	public BlockInstance getSelectedBlockInstance() {
+	public Object getSelected() {
 		return selectedSpatial;
 	}
 	
-	public void selectSpatial(Chunk[] chunks, Vector3f position, Vector3f dir, int worldSize) {
+	public void selectSpatial(Chunk[] chunks, Vector3f position, Vector3f dir, int worldSize, Surface surface) {
+		// Test blocks:
 		Vector3f transformedPosition = new Vector3f(position.x, position.y + Player.cameraHeight, position.z);
 		dirX = (int)Math.signum(dir.x);
 		dirY = (int)Math.signum(dir.y);
 		dirZ = (int)Math.signum(dir.z);
 		float closestDistance = 6f; // selection now limited
-		BlockInstance newSpatial = null;
+		Object newSpatial = null;
 		intersection.set(transformedPosition.x, transformedPosition.y, transformedPosition.z, dir.x, dir.y, dir.z);
 		for (Chunk ch : chunks) {
 			min.set(ch.getMin(position.x, position.z, worldSize));
@@ -60,20 +63,30 @@ public class CubyzMeshSelectionDetector {
 				}
 			}
 		}
+		// Test entities:
+		for(Entity ent : surface.getEntities()) {
+			if(ent.getType().model != null) {
+				float dist = ent.getType().model.getCollisionDistance(position, dir, ent);
+				if(dist < closestDistance) {
+					closestDistance = dist;
+					newSpatial = ent;
+				}
+			}
+		}
 		if(newSpatial == selectedSpatial)
 			return;
 		if(selectedSpatial != null) {
 			synchronized(selectedSpatial) {
-				if(selectedSpatial != null) {
-					(((BlockSpatial[]) selectedSpatial.getSpatials())[0]).setSelected(false);
+				if(selectedSpatial != null && selectedSpatial instanceof BlockInstance) {
+					(((BlockSpatial[]) ((BlockInstance)selectedSpatial).getSpatials())[0]).setSelected(false);
 				}
 			}
 		}
 		selectedSpatial = newSpatial;
 		if(selectedSpatial != null) {
 			synchronized(selectedSpatial) {
-				if(selectedSpatial != null) {
-					(((BlockSpatial[]) selectedSpatial.getSpatials())[0]).setSelected(true);
+				if(selectedSpatial != null && selectedSpatial instanceof BlockInstance) {
+					(((BlockSpatial[]) ((BlockInstance)selectedSpatial).getSpatials())[0]).setSelected(true);
 				}
 			}
 		}
@@ -81,8 +94,8 @@ public class CubyzMeshSelectionDetector {
 	
 	// Returns the free block right next to the currently selected block.
 	public void getEmptyPlace(Vector3i pos, Vector3i dir) {
-		if(selectedSpatial != null) {
-			pos.set(selectedSpatial.getPosition());
+		if(selectedSpatial != null && selectedSpatial instanceof BlockInstance) {
+			pos.set(((BlockInstance)selectedSpatial).getPosition());
 			pos.add(-dirX, 0, 0);
 			dir.add(dirX, 0, 0);
 			min.set(new Vector3f(pos.x, pos.y, pos.z));
