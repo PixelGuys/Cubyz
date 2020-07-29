@@ -16,10 +16,8 @@ import io.cubyz.world.Surface;
 public abstract class Player extends Entity implements CommandSource {
 	public static final float cameraHeight = 1.7f;
 	public Player(Surface surface) {
-		super(CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player"), surface);
+		super(CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player"), surface, 16, 16);
 		// TODO: Take care of data files.
-		health = maxHealth = 16;
-		hunger = maxHunger = 16;
 	}
 	
 	@Override

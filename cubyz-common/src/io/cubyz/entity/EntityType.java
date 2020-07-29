@@ -31,4 +31,10 @@ public abstract class EntityType implements RegistryElement {
 		ent.surface.removeEntity(ent);
 	}
 	
+	/**
+	 * Used for entity AI if it has any.
+	 * @param ent
+	 */
+	public void update(Entity ent) {}
+	
 }

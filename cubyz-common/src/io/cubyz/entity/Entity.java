@@ -16,39 +16,35 @@ public class Entity {
 
 	protected Vector3f position = new Vector3f();
 	protected Vector3f rotation = new Vector3f();
-	private EntityAI ai;
 	public float vx, vy, vz;
 	public float targetVX, targetVZ; // The velocity the AI wants the entity to have.
 	protected float scale = 1f;
 	public float movementAnimation = 0; // Only used by mobs that actually move.
 	
-	private EntityType type;
+	private final EntityType type;
 	
-	public float health, hunger, maxHealth, maxHunger;
+	public float health, hunger;
+	public final float maxHealth, maxHunger;
 	
-	protected float width = 1, height = 2, depth = 1;
+	protected float height = 2;
 	
 	protected float minBlock = 0.3f, maxBlock = 0.7f;
 	
 	public float pickupRange = 2; // Important if this entity can pickup items.
 	
-	public Entity(EntityType type, Surface surface) {
+	public Entity(EntityType type, Surface surface, float maxHealth, float maxHunger) {
 		this.type = type;
 		this.surface = surface;
+		this.maxHealth = health = maxHealth;
+		this.maxHunger = hunger = maxHunger;
 	}
 	
 	public float getScale() {
 		return scale;
 	}
 	
-	public Entity(EntityType type, Surface surface, EntityAI ai) {
-		this.type = type;
-		this.surface = surface;
-		this.ai = ai;
-	}
-	
 	/**
-	 * check and update vertical velocity for collision.
+	 * Check and update vertical velocity for collision.
 	 */
 	protected void updateVY() {
 		int absX = Math.round(position.x);
@@ -315,8 +311,7 @@ public class Entity {
 	}
 	
 	public void update() {
-		if(ai != null)
-			ai.update(this);
+		type.update(this);
 		updatePosition();
 		updateVelocity();
 		
@@ -333,7 +328,7 @@ public class Entity {
 	}
 	
 	protected void updateVelocity() {
-		// TODO: Use the entities mass and force to calculate a realistic velocity change.
+		// TODO: Use the entities mass, force and ground structure to calculate a realistic velocity change.
 		vx += (targetVX-vx)/5;
 		vz += (targetVZ-vz)/5;
 	}

@@ -31,27 +31,20 @@ public class ItemEntity extends Entity implements CustomMeshProvider {
 	public ItemStack items;
 	
 	public ItemEntity(EntityType t, Surface surface, ItemStack items) {
-		super(CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:item_stack"), surface);
+		super(CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:item_stack"), surface, 30*300/1000/*5 minutes until they despawn, unless dropped from a big height.*/, 0);
 		
 		this.items = items;
-		super.height = super.width = super.depth = 0.2f;
+		super.height = 0.2f;
 		super.minBlock = 0.0f;
 		super.maxBlock = 1.0f;
 		scale = 0.2f;
 		super.rotation = new Vector3f((float)(2*Math.random()*Math.PI), (float)(2*Math.random()*Math.PI), (float)(2*Math.random()*Math.PI)); // Not uniform, but should be good enough.
-		super.health = super.maxHealth = 30*300/1000; // 5 minutes until they despawn, unless dropped from a big height.
 	}
 	
 	public ItemEntity(EntityType t, Surface surface, ItemStack items, Vector3i position) {
-		super(new EntityType(new Resource("cubyz:item_stack")) {
-			@Override
-			public Entity newEntity(Surface surface) {
-				return null;
-			}
-			
-		}, surface);
+		super(CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:item_stack"), surface, 30*300/1000/*5 minutes until they despawn, unless dropped from a big height.*/, 0);
 		this.items = items;
-		height = super.width = super.depth = 0.2f;
+		height = 0.2f;
 		minBlock = 0.1f;
 		maxBlock = 0.9f;
 		super.position.x = position.x;
@@ -65,7 +58,6 @@ public class ItemEntity extends Entity implements CustomMeshProvider {
 				(float)(2*Math.random()*Math.PI),
 				(float)(2*Math.random()*Math.PI),
 				(float)(2*Math.random()*Math.PI)); // Not uniform, but should be good enough.
-		super.health = super.maxHealth = 30*300/1000; // 5 minutes until they despawn, unless dropped from a big height.
 	}
 	
 	@Override

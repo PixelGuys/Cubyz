@@ -1,13 +1,10 @@
 package io.cubyz.ui;
 
-import org.lwjgl.glfw.GLFW;
-
 import io.cubyz.client.Cubyz;
 import io.cubyz.items.Item;
 import io.cubyz.items.ItemStack;
 import io.cubyz.ui.components.InventorySlot;
 import io.cubyz.ui.components.Label;
-import io.jungle.Keyboard;
 import io.jungle.MouseInput;
 import io.jungle.Window;
 import io.jungle.hud.Font;
