@@ -32,6 +32,7 @@ import io.cubyz.entity.Entity;
 import io.cubyz.entity.EntityType;
 import io.cubyz.entity.Player;
 import io.cubyz.items.CustomItem;
+import io.cubyz.items.tools.Tool;
 import io.cubyz.multiplayer.GameProfile;
 import io.cubyz.multiplayer.LoginToken;
 import io.cubyz.multiplayer.client.MPClient;
@@ -867,6 +868,11 @@ public class Cubyz implements GameLogic {
 						if(selected instanceof BlockInstance) {
 							world.getLocalPlayer().breaking((BlockInstance)selected, inventorySelection, world.getCurrentTorus());
 						}
+					}
+					// Hit entities:
+					Object selected = msd.getSelected();
+					if(selected instanceof Entity) {
+						((Entity)selected).hit(world.getLocalPlayer().getInventory().getItem(inventorySelection) instanceof Tool ? (Tool)world.getLocalPlayer().getInventory().getItem(inventorySelection) : null, ctx.getCamera().getViewMatrix().positiveZ(dir).negate());
 					}
 				} else {
 					world.getLocalPlayer().resetBlockBreaking();

@@ -59,7 +59,9 @@ public abstract class Surface {
 	public abstract Chunk[] getChunks();
 	public abstract Block[] getPlanetBlocks();
 	public abstract Entity[] getEntities();
+	
 	public abstract void addEntity(Entity en);
+	public abstract void removeEntity(Entity ent);
 	
 	public abstract void synchronousSeek(int x, int z, int renderDistance);
 	public abstract int getHeight(int x, int z);

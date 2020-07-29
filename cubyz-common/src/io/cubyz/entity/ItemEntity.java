@@ -39,6 +39,7 @@ public class ItemEntity extends Entity implements CustomMeshProvider {
 		super.maxBlock = 1.0f;
 		scale = 0.2f;
 		super.rotation = new Vector3f((float)(2*Math.random()*Math.PI), (float)(2*Math.random()*Math.PI), (float)(2*Math.random()*Math.PI)); // Not uniform, but should be good enough.
+		super.health = super.maxHealth = 30*300/1000; // 5 minutes until they despawn, unless dropped from a big height.
 	}
 	
 	public ItemEntity(EntityType t, Surface surface, ItemStack items, Vector3i position) {
@@ -64,11 +65,13 @@ public class ItemEntity extends Entity implements CustomMeshProvider {
 				(float)(2*Math.random()*Math.PI),
 				(float)(2*Math.random()*Math.PI),
 				(float)(2*Math.random()*Math.PI)); // Not uniform, but should be good enough.
+		super.health = super.maxHealth = 30*300/1000; // 5 minutes until they despawn, unless dropped from a big height.
 	}
 	
 	@Override
 	public void update() {
 		vy -= surface.getStellarTorus().getGravity();
+		takeDamage(0.001f);
 		super.update();
 	}
 	

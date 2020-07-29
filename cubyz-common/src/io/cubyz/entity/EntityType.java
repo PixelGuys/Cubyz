@@ -23,5 +23,12 @@ public abstract class EntityType implements RegistryElement {
 	public boolean useDynamicEntityModel() {
 		return false;
 	}
+	/**
+	 * Is called when an entity dies. Used for item drops and removing the entity from the world.
+	 * TODO: Death animation, particle effects.
+	 */
+	public void die(Entity ent) {
+		ent.surface.removeEntity(ent);
+	}
 	
 }

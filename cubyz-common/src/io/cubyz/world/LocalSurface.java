@@ -217,6 +217,10 @@ public class LocalSurface extends Surface {
 		entities.add(ent);
 	}
 	
+	public void removeEntity(Entity ent) {
+		entities.remove(ent);
+	}
+	
 	public void setEntities(Entity[] arr) {
 		entities = new ArrayList<>(arr.length);
 		for (Entity e : arr) {

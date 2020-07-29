@@ -5,6 +5,7 @@ import org.joml.Vector3i;
 
 import io.cubyz.blocks.Block;
 import io.cubyz.items.Inventory;
+import io.cubyz.items.tools.Tool;
 import io.cubyz.ndt.NDTContainer;
 import io.cubyz.world.StellarTorus;
 import io.cubyz.world.Surface;
@@ -17,12 +18,13 @@ public class Entity {
 	protected Vector3f rotation = new Vector3f();
 	private EntityAI ai;
 	public float vx, vy, vz;
+	public float targetVX, targetVZ; // The velocity the AI wants the entity to have.
 	protected float scale = 1f;
 	public float movementAnimation = 0; // Only used by mobs that actually move.
 	
 	private EntityType type;
 	
-	public int health, hunger, maxHealth, maxHunger;
+	public float health, hunger, maxHealth, maxHunger;
 	
 	protected float width = 1, height = 2, depth = 1;
 	
@@ -126,15 +128,25 @@ public class Entity {
 			}
 		}
 	}
+	/**
+	 * All damage taken should get channeled through this function to remove redundant checks if the entity is dead.
+	 * @param amount
+	 */
+	public void takeDamage(float amount) {
+		health -= amount;
+		if(health <= 0) {
+			type.die(this);
+		}
+	}
 	
 	public void stopVY() {
-		health += calculateFallDamage();
+		takeDamage(calculateFallDamage());
 		vy = 0;
 	}
 	
 	public int calculateFallDamage() {
 		if(vy < 0)
-			return -(int)(8*vy*vy);
+			return (int)(8*vy*vy);
 		return 0;
 	}
 	
@@ -287,10 +299,26 @@ public class Entity {
 		return checkBlock(Math.round(position.x), Math.round(position.y), Math.round(position.z));
 	}
 	
+	public void hit(Tool weapon, Vector3f direction) {
+		if(weapon == null) {
+			takeDamage(1);
+			vx += direction.x*0.2;
+			vy += direction.y*0.2;
+			vz += direction.z*0.2;
+		} else {
+			takeDamage(weapon.getDamage());
+			// TODO: Weapon specific knockback.
+			vx += direction.x*0.2;
+			vy += direction.y*0.2;
+			vz += direction.z*0.2;
+		}
+	}
+	
 	public void update() {
 		if(ai != null)
 			ai.update(this);
 		updatePosition();
+		updateVelocity();
 		
 		// clamp health between 0 and maxHealth
 		if (health < 0)
@@ -302,6 +330,12 @@ public class Entity {
 	protected void updatePosition() {
 		updateVY();
 		position.add(_getX(vx), vy, _getZ(vz));
+	}
+	
+	protected void updateVelocity() {
+		// TODO: Use the entities mass and force to calculate a realistic velocity change.
+		vx += (targetVX-vx)/5;
+		vz += (targetVZ-vz)/5;
 	}
 	
 	// NDT related
@@ -325,7 +359,7 @@ public class Entity {
 		ndt.setContainer("position", saveVector(position));
 		ndt.setContainer("rotation", saveVector(rotation));
 		ndt.setContainer("velocity", saveVector(new Vector3f(vx, vy, vz)));
-		ndt.setInteger("health", health);
+		ndt.setFloat("health", health);
 		return ndt;
 	}
 	
@@ -334,7 +368,7 @@ public class Entity {
 		rotation = loadVector3f (ndt.getContainer("rotation"));
 		Vector3f velocity = loadVector3f(ndt.getContainer("velocity"));
 		vx = velocity.x; vy = velocity.y; vz = velocity.z;
-		health = ndt.getInteger("health");
+		health = ndt.getFloat("health");
 	}
 	
 	public EntityType getType() {

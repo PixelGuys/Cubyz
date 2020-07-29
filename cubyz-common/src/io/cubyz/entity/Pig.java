@@ -17,6 +17,7 @@ public class Pig extends EntityType {
 	@Override
 	public Entity newEntity(Surface surface) {
 		Entity ent = new Entity(this, surface, new PigAI());
+		ent.health = ent.maxHealth = 6;
 		ent.height = 1;
 		return ent;
 	}
@@ -32,10 +33,10 @@ public class Pig extends EntityType {
 			
 			if (directionTimer <= System.currentTimeMillis()) {
 				directionTimer = System.currentTimeMillis() + directionRandom.nextInt(5000);
-				ent.vx = directionRandom.nextFloat() * 0.2f - 0.1f;
-				ent.vz = directionRandom.nextFloat() * 0.2f - 0.1f;
-				double xzAngle = Math.atan(ent.vz/ent.vx);
-				if(ent.vx > 0) xzAngle += Math.PI;
+				ent.targetVX = directionRandom.nextFloat() * 0.2f - 0.1f;
+				ent.targetVZ = directionRandom.nextFloat() * 0.2f - 0.1f;
+				double xzAngle = Math.atan(ent.targetVZ/ent.targetVX);
+				if(ent.targetVX > 0) xzAngle += Math.PI;
 				ent.setRotation(new Vector3f(0, (float)xzAngle, 0));
 			}
 			

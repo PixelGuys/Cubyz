@@ -12,7 +12,7 @@ public class GameOverlay extends MenuGUI {
 	int[] healthBar;
 	
 	long lastPlayerHurtMs; // stored here and not in Player for easier multiplayer integration
-	int lastPlayerHealth;
+	float lastPlayerHealth;
 
 	private InventorySlot inv [] = new InventorySlot[8];
 	
@@ -47,8 +47,8 @@ public class GameOverlay extends MenuGUI {
 			}
 		}
 		// Draw the health bar:#
-		int maxHealth = Cubyz.world.getLocalPlayer().maxHealth;
-		int health = Cubyz.world.getLocalPlayer().health;
+		float maxHealth = Cubyz.world.getLocalPlayer().maxHealth;
+		float health = Cubyz.world.getLocalPlayer().health;
 		if (lastPlayerHealth != health) {
 			if (lastPlayerHealth > health) {
 				lastPlayerHurtMs = System.currentTimeMillis();
@@ -61,7 +61,7 @@ public class GameOverlay extends MenuGUI {
 		}
 		String s = health + "/" + maxHealth + " HP";
 		float width = NGraphics.getTextWidth(s);
-		NGraphics.drawImage(healthBar[7], win.getWidth()-maxHealth*12 - 40 - (int) width, 6, 24, 24);
+		NGraphics.drawImage(healthBar[7], (int)(win.getWidth() - maxHealth*12 - 40 - width), 6, 24, 24);
 		NGraphics.drawText(win.getWidth()-maxHealth*12 - 10 - width, 9, s);
 		for(int i = 0; i < maxHealth; i += 2) {
 			boolean half = i+1 == health;
@@ -75,7 +75,7 @@ public class GameOverlay extends MenuGUI {
 			} else {
 				idx = empty ? 4 : (half ? 5 : 6); // if empty = 4, half = 5, full = 6
 			}
-			NGraphics.drawImage(healthBar[idx], i*12 + (win.getWidth()-maxHealth*12-4), 6, 24, 24);
+			NGraphics.drawImage(healthBar[idx], (int)(i*12 + win.getWidth() - maxHealth*12 - 4), 6, 24, 24);
 		}
 	}
 

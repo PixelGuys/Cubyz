@@ -415,8 +415,8 @@ public class Quadruped implements EntityModel {
 			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(pos, rotation, 1), viewMatrix);
 			((ShaderProgram)entityShader).setUniform("modelViewMatrix", modelViewMatrix);
 		});
-		float xNorm = ent.vx/(float)Math.sqrt(ent.vx*ent.vx + ent.vz*ent.vz);
-		float zNorm = ent.vz/(float)Math.sqrt(ent.vx*ent.vx + ent.vz*ent.vz);
+		float xNorm = ent.targetVX/(float)Math.sqrt(ent.targetVX*ent.targetVX + ent.targetVZ*ent.targetVZ);
+		float zNorm = ent.targetVZ/(float)Math.sqrt(ent.targetVX*ent.targetVX + ent.targetVZ*ent.targetVZ);
 		pos.y -= bodyHeight/2 - legWidth/2;
 		float length = bodyLength - legWidth - 0.01f;
 		float width = bodyWidth - legWidth - 0.01f;
@@ -480,8 +480,8 @@ public class Quadruped implements EntityModel {
 	}
 	@Override
 	public float getCollisionDistance(Vector3f playerPosition, Vector3f dir, Entity ent) {
-		float xNorm = ent.vx/(float)Math.sqrt(ent.vx*ent.vx + ent.vz*ent.vz);
-		float zNorm = ent.vz/(float)Math.sqrt(ent.vx*ent.vx + ent.vz*ent.vz);
+		float xNorm = ent.targetVX/(float)Math.sqrt(ent.targetVX*ent.targetVX + ent.targetVZ*ent.targetVZ);
+		float zNorm = ent.targetVZ/(float)Math.sqrt(ent.targetVX*ent.targetVX + ent.targetVZ*ent.targetVZ);
 		Vector3f newDir = new Vector3f(dir);
 		newDir.z = dir.x*xNorm + dir.z*zNorm;
 		newDir.x = -dir.x*zNorm + dir.z*xNorm;
