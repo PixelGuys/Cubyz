@@ -42,10 +42,19 @@ public class MainMenuGUI extends MenuGUI {
 		});
 		
 		mpPlay.setOnAction(() -> {
-			CubyzServer server = new CubyzServer(Cubyz.serverPort);
+			Thread th = new Thread(() -> {
+				CubyzServer server = new CubyzServer(Cubyz.serverPort);
+				try {
+					server.start();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			});
+			th.setName("Integrated Debug Server");
+			th.start();
 			try {
-				server.start(true);
-			} catch (Exception e) {
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
 			Cubyz.requestJoin("localhost");

@@ -3,9 +3,14 @@ package io.cubyz.multiplayer.client;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+
 import io.cubyz.Constants;
 import io.cubyz.CubyzLogger;
 import io.cubyz.client.Cubyz;
+import io.cubyz.multiplayer.BufUtils;
 import io.cubyz.multiplayer.Packet;
 import io.cubyz.world.Chunk;
 import io.cubyz.world.RemoteWorld;
@@ -59,7 +64,7 @@ public class MPClientHandler extends ChannelInboundHandlerAdapter {
 	
 	public void ping() {
 		ByteBuf buf = ctx.alloc().buffer(1);
-		buf.writeByte(Packet.PACKET_PINGDATA);
+		buf.writeByte(Packet.PACKET_SERVER_INFO);
 		ctx.writeAndFlush(buf);
 	}
 	
@@ -82,11 +87,10 @@ public class MPClientHandler extends ChannelInboundHandlerAdapter {
 	public void channelActive(ChannelHandlerContext ctx) {
 		this.ctx = ctx;
 		messages = new ArrayList<>();
-		ByteBuf buf = ctx.alloc().buffer(1);
-		buf.writeByte(Packet.PACKET_GETVERSION);
-		ctx.writeAndFlush(buf);
 		channelActive = true;
 	}
+	
+	private static final Gson GSON = new GsonBuilder().create();
 
 	@Override
 	public void channelRead(ChannelHandlerContext ctx, Object msg) {
@@ -94,19 +98,18 @@ public class MPClientHandler extends ChannelInboundHandlerAdapter {
 		while (buf.isReadable()) {
 			byte responseType = buf.readByte();
 			
-			if (responseType == Packet.PACKET_GETVERSION) {
-				int length = buf.readUnsignedByte();
-				String raw = buf.readCharSequence(length, Constants.CHARSET).toString();
-				cl.getLocalServer().brand = raw.split(";")[0];
-				cl.getLocalServer().version = raw.split(";")[1];
-				logger.fine("[MPClientHandler] Raw version + brand: " + raw);
-			}
-			
-			if (responseType == Packet.PACKET_PINGDATA) {
+			if (responseType == Packet.PACKET_SERVER_INFO) {
 				PingResponse pr = new PingResponse();
-				pr.motd = buf.readCharSequence(buf.readShort(), Constants.CHARSET).toString();
-				pr.onlinePlayers = buf.readInt();
-				pr.maxPlayers = buf.readInt();
+				String json = BufUtils.readString(buf);
+				
+				JsonObject info = GSON.fromJson(json, JsonObject.class);
+				JsonObject brand = info.get("brand").getAsJsonObject();
+				JsonObject players = info.get("players").getAsJsonObject();
+				
+				pr.motd = info.get("description").getAsString();
+				pr.onlinePlayers = players.get("online").getAsInt();
+				pr.maxPlayers = players.get("max").getAsInt();
+				
 				cl.getLocalServer().lastPingResponse = pr;
 			}
 			

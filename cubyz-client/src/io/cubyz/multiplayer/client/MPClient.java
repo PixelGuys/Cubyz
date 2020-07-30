@@ -114,7 +114,7 @@ public class MPClient {
 							p.addLast(cch);
 						}
 					});
-			// Start the client.
+			
 			future = b.connect(host, port);
 			while (!cch.channelActive) {
 				System.out.print("");

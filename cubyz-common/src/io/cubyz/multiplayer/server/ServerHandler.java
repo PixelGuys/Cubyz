@@ -3,9 +3,14 @@ package io.cubyz.multiplayer.server;
 import java.util.HashMap;
 import java.util.UUID;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+
 import io.cubyz.ClientOnly;
 import io.cubyz.Constants;
 import io.cubyz.blocks.Block;
+import io.cubyz.multiplayer.BufUtils;
 import io.cubyz.multiplayer.Packet;
 import io.cubyz.world.LocalStellarTorus;
 import io.netty.buffer.ByteBuf;
@@ -19,15 +24,12 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 	int max = 20;
 	int playerPingTime = 5000; // Time between each ping packets
 	int playerTimeout  = 5000; // Maximum time a client can respond to ping packets.
-	boolean init;
-	boolean isInternal;
-	boolean onlineMode;
 	CubyzServer server;
 	
 	public static LocalStellarTorus stellarTorus;
 	static Thread th;
 	
-	String motd;
+	String description;
 	
 	HashMap<String, Client> clients = new HashMap<>();
 	class Client {
@@ -52,8 +54,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 		max = settings.maxPlayers;
 		playerPingTime = settings.playerPingTime;
 		playerTimeout = settings.playerTimeout;
-		onlineMode = settings.onlineMode;
-		isInternal = settings.internal;
+		description = "A Cubyz server";
 		//stellarTorus = new LocalStellarTorus(); TODO!
 		//Block[] blocks = stellarTorus.generate(); TODO!
 		// Generate the Block meshes:
@@ -105,30 +106,14 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 		return out;
 	}
 	
+	private static final Gson GSON = new GsonBuilder().create();
+	
 	@Override
     public void channelRead(ChannelHandlerContext ctx, Object omsg) {
-		if (!init) {
-			motd = "A Cubyz server";
-			// TODO load properties
-			if (motd.length() > 501) {
-				throw new IllegalArgumentException("MOTD cannot be more than 501 characters long");
-			}
-			init = true;
-		}
 		ByteBuf msg = (ByteBuf) omsg;
 		Client client = getClient(ctx);
 		byte packetType = msg.readByte();
-		if (CubyzServer.internal) {
-			//System.out.println("[Integrated Server] packet type: " + packetType);
-		}
-		if (packetType == Packet.PACKET_GETVERSION) {
-			ByteBuf out = ctx.alloc().ioBuffer(128); // 128-length version including brand
-			out.writeByte(Packet.PACKET_GETVERSION);
-			String seq = Constants.GAME_BRAND + ";" + Constants.GAME_VERSION;
-			out.writeByte(seq.length());
-			out.writeCharSequence(seq, Constants.CHARSET);
-			ctx.write(out);
-		}
+		
 		if (packetType == Packet.PACKET_CHATMSG) {
 			short chatLen = msg.readShort();
 			String chat = msg.readCharSequence(chatLen, Constants.CHARSET).toString();
@@ -162,15 +147,25 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
 				}
 			}
 		}
-		if (packetType == Packet.PACKET_PINGDATA) {
-			ByteBuf out = ctx.alloc().ioBuffer(512);
-			out.writeByte(Packet.PACKET_PINGDATA); // 1 byte
-			out.writeShort(motd.length()); // 2 bytes
-			out.writeCharSequence(motd, Constants.CHARSET);
-			out.writeInt(online); // 4 bytes
-			out.writeInt(max); // 4 bytes
-			// 1+2+4+4=11 bytes of "same size" data
-			//512-11=501, so 501 characters max for motd
+		if (packetType == Packet.PACKET_SERVER_INFO) {
+			ByteBuf out = ctx.alloc().ioBuffer();
+			out.writeByte(Packet.PACKET_SERVER_INFO); // 1 byte
+			
+			JsonObject serverInfo = new JsonObject();
+			serverInfo.addProperty("description", description);
+			
+			JsonObject playersInfo = new JsonObject();
+			playersInfo.addProperty("online", online);
+			playersInfo.addProperty("max", max);
+			serverInfo.add("players", playersInfo);
+			
+			JsonObject brandInfo = new JsonObject();
+			brandInfo.addProperty("name", Constants.GAME_BRAND);
+			brandInfo.addProperty("version", Constants.GAME_VERSION);
+			brandInfo.addProperty("protocolVersion", Constants.GAME_PROTOCOL_VERSION);
+			serverInfo.add("brand", brandInfo);
+			
+			BufUtils.writeString(out, GSON.toJson(serverInfo));
 			ctx.write(out);
 		}
 		if (packetType == Packet.PACKET_MOVE) {

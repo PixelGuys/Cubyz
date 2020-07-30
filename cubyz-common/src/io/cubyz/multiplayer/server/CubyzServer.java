@@ -2,7 +2,6 @@ package io.cubyz.multiplayer.server;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
@@ -13,7 +12,6 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 public class CubyzServer {
 
 	private int port;
-	static boolean internal; // integrated
 	static ServerSettings settings = new ServerSettings();
 	
 	static Channel ch;
@@ -40,10 +38,7 @@ public class CubyzServer {
 		boss.shutdownGracefully();
 	}
 
-	public void start(boolean internal) throws Exception {
-		CubyzServer.internal = internal;
-		settings.internal = internal;
-		
+	public void start() throws Exception {
 		boss = new NioEventLoopGroup();
 		worker = new NioEventLoopGroup();
 		handler = new ServerHandler(this, settings);
@@ -51,25 +46,20 @@ public class CubyzServer {
 		try {
 			ServerBootstrap b = new ServerBootstrap();
 			b.group(boss, worker).channel(NioServerSocketChannel.class)
+					.option(ChannelOption.SO_BACKLOG, 128)
 					.childHandler(new ChannelInitializer<SocketChannel>() {
 						@Override
 						public void initChannel(SocketChannel ch) throws Exception {
 							ch.pipeline().addLast(handler);
 						}
-					}).option(ChannelOption.SO_BACKLOG, 128).
-					childOption(ChannelOption.SO_KEEPALIVE, true);
+					});
 			
-			ChannelFuture f = b.bind(port);
-			ch = f.channel();
+			ch = b.bind(port).channel();
 			
-			if (!internal) {
-				ch.closeFuture().sync();
-			}
+			ch.closeFuture().sync(); // wait for server completion
 		} finally {
-			if (!internal) {
-				worker.shutdownGracefully().sync();
-				boss.shutdownGracefully().sync();
-			}
+			worker.shutdownGracefully();
+			boss.shutdownGracefully();
 		}
 	}
 
