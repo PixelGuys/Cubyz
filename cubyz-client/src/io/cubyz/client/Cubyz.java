@@ -15,7 +15,6 @@ import org.joml.Vector3i;
 import org.joml.Vector4f;
 import org.lwjgl.Version;
 import org.lwjgl.glfw.GLFW;
-import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 
 import io.cubyz.*;
@@ -302,6 +301,8 @@ public class Cubyz implements GameLogic {
 		
 		renderer.setShaderFolder(ResourceManager.lookupPath("cubyz/shaders/easyLighting"));
 		
+		BlockPreview.setShaderFolder(ResourceManager.lookupPath("cubyz/shaders/blockPreview"));
+		
 		ClientOnly.createBlockMesh = (block) -> {
 			Resource rsc = block.getRegistryID();
 			try {
@@ -415,6 +416,7 @@ public class Cubyz implements GameLogic {
 		
 		try {
 			renderer.init(window);
+			BlockPreview.init();
 		} catch (Exception e) {
 			logger.log(Level.SEVERE, e, () -> {
 				return "An unhandled exception occured while initiazing the renderer:";
@@ -641,35 +643,7 @@ public class Cubyz implements GameLogic {
 	private Vector4f clearColor = new Vector4f(0.1f, 0.7f, 0.7f, 1f);
 	
 	public FrameBuffer blockPreview(Block b) {
-		Window window = game.getWindow();
-		Vector3f rot = ctx.getCamera().getRotation();
-		ctx.getCamera().setRotation(0, 0, 0);
-		
-		FrameBuffer buf = new FrameBuffer();
-		buf.genColorTexture(128, 128);
-		buf.genRenderbuffer(128, 128);
-		window.setRenderTarget(buf);
-		window.setClearColor(new Vector4f(0f, 0f, 0f, 0.2f));
-		GL11.glViewport(0, 0, 128, 128);
-		
-		ctx.setHud(null);
-		renderer.orthogonal = true;
-		window.setResized(true); // update projection matrix
-		Spatial spatial = new Spatial(skyBodyMesh);//Meshes.blockMeshes.get(b)); // TODO: Make blockMeshes work here without crashing!
-		spatial.getMesh().getMaterial().setTexture(Meshes.blockTextures.get(b));
-		spatial.setPositionRaw(0, 0.5f, -2f);
-		spatial.setScale(0.5f);
-		Spatial[] spatials = new Spatial[] {spatial};
-		renderer.render(window, ctx, new Vector3f(1, 1, 1), light, EMPTY_CHUNK_LIST, EMPTY_BLOCK_LIST, EMPTY_ENTITY_LIST, spatials, world.getLocalPlayer(), world.getCurrentTorus().getSize());
-		renderer.orthogonal = false;
-		window.setResized(true); // update projection matrix for next render
-		ctx.setHud(gameUI);
-		
-		GL11.glViewport(0, 0, window.getWidth(), window.getHeight());
-		window.setRenderTarget(null);
-		
-		ctx.getCamera().setRotation(rot.x, rot.y, rot.z);
-		return buf;
+		return BlockPreview.generateBuffer(game.getWindow(), new Vector3f(1, 1, 1), b);
 	}
 	
 	public void seasonUpdateDynamodels() {

@@ -43,7 +43,6 @@ public class MainRenderer implements Renderer {
 	private static final float Z_FAR = 1000.0f;
 	private boolean inited = false;
 	private boolean doRender = true;
-	public boolean orthogonal;
 	private Transformation transformation;
 	private String shaders = "";
 	private Matrix4f prjViewMatrix = new Matrix4f();
@@ -93,7 +92,7 @@ public class MainRenderer implements Renderer {
 		entityShader.createFragmentShader(Utils.loadResource(shaders + "/entity_fragment.fs"));
 		entityShader.link();
 		entityShader.createUniform("projectionMatrix");
-		entityShader.createUniform("modelViewMatrix");
+		entityShader.createUniform("viewMatrix");
 		entityShader.createUniform("texture_sampler");
 		entityShader.createUniform("materialHasTexture");
 		entityShader.createFogUniform("fog");
@@ -136,13 +135,8 @@ public class MainRenderer implements Renderer {
 		if (window.isResized()) {
 			glViewport(0, 0, window.getWidth(), window.getHeight());
 			window.setResized(false);
-			
-			if (orthogonal) {
-				window.setProjectionMatrix(transformation.getOrthoProjectionMatrix(1f, -1f, -1f, 1f, Z_NEAR, Z_FAR));
-			} else {
-				window.setProjectionMatrix(transformation.getProjectionMatrix(ClientSettings.FOV, window.getWidth(),
-						window.getHeight(), Z_NEAR, Z_FAR));
-			}
+			window.setProjectionMatrix(transformation.getProjectionMatrix(ClientSettings.FOV, window.getWidth(),
+					window.getHeight(), Z_NEAR, Z_FAR));
 		}
 		if (!doRender)
 			return;
@@ -309,7 +303,7 @@ public class MainRenderer implements Renderer {
 					mesh.renderOne(() -> {
 						Vector3f position = ent.getRenderPosition();
 						Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(position, ent.getRotation(), ent.getScale()), viewMatrix);
-						entityShader.setUniform("modelViewMatrix", modelViewMatrix);
+						entityShader.setUniform("viewMatrix", modelViewMatrix);
 					});
 				}
 			}
@@ -325,7 +319,7 @@ public class MainRenderer implements Renderer {
 				Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(
 						Transformation.getModelMatrix(spatial.getPosition(), spatial.getRotation(), spatial.getScale()),
 						viewMatrix);
-				entityShader.setUniform("modelViewMatrix", modelViewMatrix);
+				entityShader.setUniform("viewMatrix", modelViewMatrix);
 			});
 		}
 		

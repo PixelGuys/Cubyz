@@ -20,7 +20,7 @@ uniform Fog fog;
 
 vec4 ambientC;
 
-void setupColours( bool materialHasTexture, vec2 textCoord)
+void setupColors(bool materialHasTexture, vec2 textCoord)
 {
     if (materialHasTexture)
     {
@@ -38,7 +38,7 @@ void setupColours( bool materialHasTexture, vec2 textCoord)
 
 vec4 calcFog(vec3 pos, vec4 color, Fog fog) {
 	float distance = length(pos);
-	float fogFactor = 1.0 / exp((distance * fog.density) * (distance * fog.density));
+	float fogFactor = 1.0/exp((distance*fog.density)*(distance*fog.density));
 	fogFactor = clamp(fogFactor, 0.0, 1.0);
 	vec3 resultColor = mix(fog.color, color.xyz, fogFactor);
 	return vec4(resultColor.xyz, color.w);
@@ -46,9 +46,9 @@ vec4 calcFog(vec3 pos, vec4 color, Fog fog) {
 
 void main()
 {
-    setupColours(materialHasTexture, outTexCoord);
+    setupColors(materialHasTexture, outTexCoord);
     
-    fragColor = ambientC * vec4(outColor, 1);
+    fragColor = ambientC*vec4(outColor, 1);
     
     if (fog.activ) {
         fragColor = calcFog(mvVertexPos, fragColor, fog);
