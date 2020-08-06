@@ -13,6 +13,7 @@ import io.cubyz.handler.BlockVisibilityChangeHandler;
 import io.cubyz.handler.Handler;
 import io.cubyz.handler.PlaceBlockHandler;
 import io.cubyz.handler.RemoveBlockHandler;
+import io.cubyz.items.ItemStack;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 
 public abstract class Surface {
@@ -73,6 +74,8 @@ public abstract class Surface {
 	public abstract Vector4f getClearColor();
 	
 	public abstract CurrentSurfaceRegistries getCurrentRegistries();
+	
+	public abstract void drop(ItemStack stack, Vector3f pos);
 	
 	public int getSize() {
 		return Integer.MIN_VALUE;

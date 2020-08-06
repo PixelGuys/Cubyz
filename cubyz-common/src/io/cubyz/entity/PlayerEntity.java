@@ -47,8 +47,13 @@ public class PlayerEntity extends EntityType {
 			return (maxTime+timeStarted) - System.currentTimeMillis();
 		}
 		
+		private float incX = 0, incZ = 0;
+		
 		@Override
 		public void move(Vector3f inc, Vector3f rot, int worldSize) {
+			// Store it locally so the hunger mechanics can still use it.
+			incX = inc.x;
+			incZ = inc.z;
 			float deltaX = 0;
 			float deltaZ = 0;
 			if (inc.z != 0) {
@@ -90,6 +95,7 @@ public class PlayerEntity extends EntityType {
 				vx = 0;
 				vz = 0;
 				updatePosition();
+				super.hungerMechanics(incX, vy, incZ);
 			} else {
 				position.y += vy;
 				vy = 0;

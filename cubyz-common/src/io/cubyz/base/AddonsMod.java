@@ -20,6 +20,7 @@ import io.cubyz.api.Registry;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.Ore;
+import io.cubyz.items.Consumable;
 import io.cubyz.items.Item;
 import io.cubyz.items.ItemBlock;
 import io.cubyz.items.Recipe;
@@ -87,7 +88,12 @@ public class AddonsMod {
 						e.printStackTrace();
 					}
 					
-					Item item = new Item();
+					Item item;
+					if(props.containsKey("food")) {
+						item = new Consumable(Float.parseFloat(props.getProperty("food")));
+					} else {
+						item = new Item();
+					}
 					String id = file.getName();
 					if(id.contains("."))
 						id = id.substring(0, id.indexOf('.'));

@@ -2,6 +2,7 @@ package io.cubyz.items;
 
 import io.cubyz.api.RegistryElement;
 import io.cubyz.api.Resource;
+import io.cubyz.entity.Entity;
 import io.cubyz.translate.TextKey;
 
 public class Item implements RegistryElement {
@@ -81,6 +82,15 @@ public class Item implements RegistryElement {
 	@Override
 	public Resource getRegistryID() {
 		return id;
+	}
+	
+	/**
+	 * Returns true if this item should be consumed on use. May be accessed by non-player entities.
+	 * @param user
+	 * @return whether this item is consumed upon use.
+	 */
+	public boolean onUse(Entity user) {
+		return false;
 	}
 	
 }

@@ -60,6 +60,21 @@ public class ItemEntity extends Entity implements CustomMeshProvider {
 				(float)(2*Math.random()*Math.PI)); // Not uniform, but should be good enough.
 	}
 	
+	public ItemEntity(EntityType t, Surface surface, ItemStack items, Vector3f position) {
+		super(CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:item_stack"), surface, 30*300/1000/*5 minutes until they despawn, unless dropped from a big height.*/, 0);
+		this.items = items;
+		height = 0.2f;
+		minBlock = 0.1f;
+		maxBlock = 0.9f;
+		super.position.x = position.x;
+		super.position.y = position.y;
+		super.position.z = position.z;
+		rotation = new Vector3f(
+				(float)(2*Math.random()*Math.PI),
+				(float)(2*Math.random()*Math.PI),
+				(float)(2*Math.random()*Math.PI)); // Not uniform, but should be good enough.
+	}
+	
 	@Override
 	public void update() {
 		vy -= surface.getStellarTorus().getGravity();

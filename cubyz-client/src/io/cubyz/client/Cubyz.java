@@ -31,6 +31,7 @@ import io.cubyz.entity.Entity;
 import io.cubyz.entity.EntityType;
 import io.cubyz.entity.Player;
 import io.cubyz.items.CustomItem;
+import io.cubyz.items.ItemBlock;
 import io.cubyz.items.tools.Tool;
 import io.cubyz.multiplayer.GameProfile;
 import io.cubyz.multiplayer.LoginToken;
@@ -851,27 +852,35 @@ public class Cubyz implements GameLogic {
 				} else {
 					world.getLocalPlayer().resetBlockBreaking();
 				}
-				if (Keybindings.isPressed("place")) {
+				if (Keybindings.isPressed("place") && buildCooldown <= 0) {
+					if(world.getLocalPlayer().getInventory().getItem(inventorySelection) instanceof ItemBlock) {
 					//Building Blocks
-					if (buildCooldown == 0 && msd.getSelected() != null) {
-						buildCooldown = 10;
-						if(msd.getSelected() instanceof BlockInstance && ((BlockInstance)msd.getSelected()).getBlock().onClick(world, ((BlockInstance)msd.getSelected()).getPosition())) {
-							// potentially do a hand animation, in the future
-						} else {
-							Vector3i pos = new Vector3i(0, 0, 0);
-							Vector3i dir = new Vector3i(0, 0, 0);
-							msd.getEmptyPlace(pos, dir);
-							Block b = world.getLocalPlayer().getInventory().getBlock(inventorySelection);
-							if (b != null && pos != null) {
-								boolean dataOnlyUpdate = world.getCurrentTorus().getBlock(pos.x, pos.y, pos.z) == b;
-								byte data = b.mode.generateData(dir, dataOnlyUpdate ? world.getCurrentTorus().getBlockData(pos.x, pos.y, pos.z) : 0);
-								if(dataOnlyUpdate) {
-									world.getCurrentTorus().updateBlockData(pos.x, pos.y, pos.z, data);
-								} else {
-									world.getCurrentTorus().placeBlock(pos.x, pos.y, pos.z, b, data);
+						if (msd.getSelected() != null) {
+							buildCooldown = 10;
+							if(msd.getSelected() instanceof BlockInstance && ((BlockInstance)msd.getSelected()).getBlock().onClick(world, ((BlockInstance)msd.getSelected()).getPosition())) {
+								// potentially do a hand animation, in the future
+							} else {
+								Vector3i pos = new Vector3i(0, 0, 0);
+								Vector3i dir = new Vector3i(0, 0, 0);
+								msd.getEmptyPlace(pos, dir);
+								Block b = world.getLocalPlayer().getInventory().getBlock(inventorySelection);
+								if (b != null && pos != null) {
+									boolean dataOnlyUpdate = world.getCurrentTorus().getBlock(pos.x, pos.y, pos.z) == b;
+									byte data = b.mode.generateData(dir, dataOnlyUpdate ? world.getCurrentTorus().getBlockData(pos.x, pos.y, pos.z) : 0);
+									if(dataOnlyUpdate) {
+										world.getCurrentTorus().updateBlockData(pos.x, pos.y, pos.z, data);
+									} else {
+										world.getCurrentTorus().placeBlock(pos.x, pos.y, pos.z, b, data);
+									}
+									world.getLocalPlayer().getInventory().getStack(inventorySelection).add(-1);
 								}
-								world.getLocalPlayer().getInventory().getStack(inventorySelection).add(-1);
 							}
+						}
+					} else if(world.getLocalPlayer().getInventory().getItem(inventorySelection) != null) {
+						// Use item:
+						if(world.getLocalPlayer().getInventory().getItem(inventorySelection).onUse(world.getLocalPlayer())) {
+							world.getLocalPlayer().getInventory().getStack(inventorySelection).add(-1);
+							buildCooldown = 10;
 						}
 					}
 				}

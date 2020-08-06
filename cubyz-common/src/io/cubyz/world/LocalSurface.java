@@ -312,6 +312,12 @@ public class LocalSurface extends Surface {
 	}
 	
 	@Override
+	public void drop(ItemStack stack, Vector3f pos) {
+		ItemEntity drop = new ItemEntity(itemEntityType, this, stack, pos);
+		entities.add(drop);
+	}
+	
+	@Override
 	public void updateBlockData(int x, int y, int z, byte data) {
 		Chunk ch = getChunk(x >> 4, z >> 4);
 		if (ch != null) {

@@ -314,12 +314,54 @@ public class Entity {
 		type.update(this);
 		updatePosition();
 		updateVelocity();
-		
+
 		// clamp health between 0 and maxHealth
 		if (health < 0)
 			health = 0;
 		if (health > maxHealth)
 			health = maxHealth;
+		
+		if(maxHunger > 0) {
+			hungerMechanics(vx, vy, vz);
+		}
+	}
+	
+	float oldVY = 0;
+	/**
+	 * Simulates the hunger system. TODO: Make dependent on mass
+	 */
+	protected void hungerMechanics(float vx, float vy, float vz) {
+		// Passive energy consumption:
+		hunger -= 0.0004; // Will deplete hunger after 22 minutes of standing still.
+		// Energy consumption due to movement:
+		hunger -= (vx*vx + vz*vz)/16;
+		
+		// Jumping:
+		if(oldVY < vy) { // Only care about positive changes.
+			// Determine the difference in "signed" kinetic energy.
+			float deltaE = vy*vy*Math.signum(vy) - oldVY*oldVY*Math.signum(oldVY);
+			hunger -= deltaE;
+		}
+		oldVY = vy;
+		
+		// Examples:
+		// At 3 blocks/second(player base speed) the cost of movement is about twice as high as the passive consumption.
+		// So when walking on a flat ground in one direction without sprinting the hunger bar will be empty after 22/3≈7 minutes.
+		// When sprinting however the speed is twice as high, so the energy consumption is 4 times higher, meaning the hunger will be empty after only 2 minutes.
+		// Jumping takes 0.05 hunger on jump and on land.
+
+		// Heal if hunger is more than half full:
+		if(hunger > maxHunger/2 && health < maxHealth) {
+			// Maximum healing effect is 1% maxHealth per second:
+			float healing = Math.min(maxHealth*0.01f/30, maxHealth-health);
+			health += healing;
+			hunger -= healing;
+		}
+		// Eat into health when the hunger bar is empty:
+		if(hunger < 0) {
+			health += hunger;
+			hunger = 0;
+		}
 	}
 	
 	protected void updatePosition() {
@@ -355,6 +397,7 @@ public class Entity {
 		ndt.setContainer("rotation", saveVector(rotation));
 		ndt.setContainer("velocity", saveVector(new Vector3f(vx, vy, vz)));
 		ndt.setFloat("health", health);
+		ndt.setFloat("hunger", hunger);
 		return ndt;
 	}
 	
@@ -364,6 +407,7 @@ public class Entity {
 		Vector3f velocity = loadVector3f(ndt.getContainer("velocity"));
 		vx = velocity.x; vy = velocity.y; vz = velocity.z;
 		health = ndt.getFloat("health");
+		health = ndt.getFloat("hunger");
 	}
 	
 	public EntityType getType() {
