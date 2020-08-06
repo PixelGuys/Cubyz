@@ -54,7 +54,7 @@ public class NGraphics {
 	public static int loadImage(String path) {
 		String [] paths = path.split("#");
 		if(paths.length == 1)
-			return nvgCreateImage(nvg, paths[0], 0);
+			return nvgCreateImage(nvg, paths[0], NVG_IMAGE_NEAREST);
 		ByteBuffer buf = null;
 		if (!composedTexturesIds.containsKey(path)) {
 			buf = TextureConverter.byteBuffer(TextureConverter.compose(paths));
