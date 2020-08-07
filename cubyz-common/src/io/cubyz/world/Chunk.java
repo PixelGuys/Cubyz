@@ -1,7 +1,6 @@
  package io.cubyz.world;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Map;
 
 import org.joml.Vector3f;
@@ -637,11 +636,12 @@ public class Chunk {
 	 * Add the <code>Block</code> b at relative space defined by X, Y, and Z, and if out of bounds, call this method from the other chunk<br/>
 	 * Meaning that if x or z are out of bounds, this method will call the same method from other chunks to add it.
 	 * @param b
-	 * @param x
-	 * @param y
+	 * @param x global
+	 * @param y global
 	 * @param z
+	 * @param considerPrevious If the degradability of the block which was there before should be considered.
 	 */
-	public void addBlockPossiblyOutside(Block b, byte data, int x, int y, int z) {
+	public void addBlockPossiblyOutside(Block b, byte data, int x, int y, int z, boolean considerPrevious) {
 		// Make the boundary checks:
 		if (b == null) return;
 		if(y >= World.WORLD_HEIGHT)
@@ -651,41 +651,43 @@ public class Chunk {
 		if(rx < 0 || rx > 15 || rz < 0 || rz > 15) {
 			if (surface.getChunk(cx + ((rx & ~15) >> 4), cz + ((rz & ~15) >> 4)) == null)
 				return;
-			surface.getChunk(cx + ((rx & ~15) >> 4), cz + ((rz & ~15) >> 4)).addBlock(b, data, x & 15, y, z & 15);
+			surface.getChunk(cx + ((rx & ~15) >> 4), cz + ((rz & ~15) >> 4)).addBlock(b, data, x & 15, y, z & 15, considerPrevious);
 			return;
 		} else {
-			addBlock(b, data, x & 15, y, z & 15);
+			addBlock(b, data, x & 15, y, z & 15, considerPrevious);
 		}
 	}
 	
-	public void addBlock(Block b, byte data, int x, int y, int z) {
-		// Checks if there is a block on that position and deposits it if degradable.
+	/**
+	 * @param b
+	 * @param data
+	 * @param x Relative to this Chunk.
+	 * @param y
+	 * @param z Relative to this Chunk.
+	 * @param registerBlockChange
+	 * @param considerPrevious If the degradability of the block which was there before should be considered.
+	 */
+	public void addBlock(Block b, byte data, int x, int y, int z, boolean considerPrevious) {
+		if(y >= World.WORLD_HEIGHT)
+			return;
 		Block b2 = getBlockAt(x, y, z);
 		if(b2 != null) {
-			if(!b2.isDegradable() || b.isDegradable()) {
+			if((!b2.isDegradable() || b.isDegradable()) && considerPrevious) {
 				return;
 			}
 			removeBlockAt(x, y, z, false);
 		}
 		setBlock(x, y, z, b, data);
-		if (b.hasBlockEntity() || b.getBlockClass() == BlockClass.FLUID) {
-			if (b.hasBlockEntity()) {
-				BlockEntity be = b.createBlockEntity(surface, new Vector3i(wx+x, y, wz+z));
-				blockEntities.add(be);
-			}
-			if (b.getBlockClass() == BlockClass.FLUID) {
-				liquids.add((x << 4) | (y << 8) | z);
-				updatingLiquids.add((x << 4) | (y << 8) | z);
-			}
+		if (b.hasBlockEntity()) {
+			Vector3i pos = new Vector3i(wx+x, y, wz+z);
+			blockEntities.add(b.createBlockEntity(surface, pos));
+		}
+		if (b.getBlockClass() == BlockClass.FLUID) {
+			liquids.add((x << 4) | (y << 8) | z);
+			updatingLiquids.add((x << 4) | (y << 8) | z);
 		}
 		if(generated) {
 			Block[] neighbors = getNeighbors(x, y, z);
-			for (int i = 0; i < neighbors.length; i++) {
-				if (blocksLight(neighbors[i], b.isTransparent())) {
-					revealBlock(x&15, y, z&15);
-					break;
-				}
-			}
 			BlockInstance[] visibleNeighbors = getVisibleNeighbors(x + wx, y, z + wz);
 			if(visibleNeighbors[0] != null) visibleNeighbors[0].neighborWest = getsBlocked(neighbors[0], b.isTransparent());
 			if(visibleNeighbors[1] != null) visibleNeighbors[1].neighborEast = getsBlocked(neighbors[1], b.isTransparent());
@@ -693,6 +695,14 @@ public class Chunk {
 			if(visibleNeighbors[3] != null) visibleNeighbors[3].neighborSouth = getsBlocked(neighbors[3], b.isTransparent());
 			if(visibleNeighbors[4] != null) visibleNeighbors[4].neighborUp = getsBlocked(neighbors[4], b.isTransparent());
 			if(visibleNeighbors[5] != null) visibleNeighbors[5].neighborDown = getsBlocked(neighbors[5], b.isTransparent());
+			
+			for (int i = 0; i < neighbors.length; i++) {
+				if (blocksLight(neighbors[i], b.isTransparent())) {
+					revealBlock(x&15, y, z&15);
+					break;
+				}
+			}
+			
 			for (int i = 0; i < neighbors.length; i++) {
 				if(neighbors[i] != null) {
 					int x2 = x+neighborRelativeX[i];
@@ -712,8 +722,31 @@ public class Chunk {
 							ch.hideBlock(x2 & 15, y2, z2 & 15);
 						}
 					}
+					if (neighbors[i].getBlockClass() == BlockClass.FLUID) {
+						int index = ((x2 & 15) << 4) | (y2 << 8) | (z2 & 15);
+						if (!updatingLiquids.contains(index))
+							updatingLiquids.add(index);
+					}
 				}
 			}
+		}
+
+		// Registers blockChange:
+		int index = -1; // Checks if it is already in the list
+		for(int i = 0; i < changes.size(); i++) {
+			BlockChange bc = changes.get(i);
+			if(bc.x == x && bc.y == y && bc.z == z) {
+				index = i;
+				break;
+			}
+		}
+		if(index == -1) { // Creates a new object if the block wasn't changed before
+			changes.add(new BlockChange(-1, b.ID, x, y, z, (byte)0, data));
+		} else if(b.ID == changes.get(index).oldType && data == changes.get(index).oldData) { // Removes the object if the block reverted to it's original state.
+			changes.remove(index);
+		} else {
+			changes.get(index).newType = b.ID;
+			changes.get(index).newData = data;
 		}
 		if(loaded)
 			lightUpdate(x, y, z);
@@ -882,85 +915,6 @@ public class Chunk {
 			}
 		}
 		setBlock(x, y, z, b, data);
-	}
-	
-	public void addBlockAt(int x, int y, int z, Block b, byte data, boolean registerBlockChange) {
-		if(y >= World.WORLD_HEIGHT)
-			return;
-		removeBlockAt(x, y, z, false);
-		if (b.hasBlockEntity()) {
-			Vector3i pos = new Vector3i(wx+x, y, wz+z);
-			blockEntities.add(b.createBlockEntity(surface, pos));
-		}
-		if (b.getBlockClass() == BlockClass.FLUID) {
-			liquids.add((x << 4) | (y << 8) | z);
-			updatingLiquids.add((x << 4) | (y << 8) | z);
-		}
-		setBlock(x, y, z, b, data);
-		Block[] neighbors = getNeighbors(x+wx, y, z+wz);
-		BlockInstance[] visibleNeighbors = getVisibleNeighbors(x+wx, y, z+wz);
-		if(visibleNeighbors[0] != null) visibleNeighbors[0].neighborWest = getsBlocked(neighbors[0], b.isTransparent());
-		if(visibleNeighbors[1] != null) visibleNeighbors[1].neighborEast = getsBlocked(neighbors[1], b.isTransparent());
-		if(visibleNeighbors[2] != null) visibleNeighbors[2].neighborNorth = getsBlocked(neighbors[2], b.isTransparent());
-		if(visibleNeighbors[3] != null) visibleNeighbors[3].neighborSouth = getsBlocked(neighbors[3], b.isTransparent());
-		if(visibleNeighbors[4] != null) visibleNeighbors[4].neighborUp = getsBlocked(neighbors[4], b.isTransparent());
-		if(visibleNeighbors[5] != null) visibleNeighbors[5].neighborDown = getsBlocked(neighbors[5], b.isTransparent());
-		
-		for (int i = 0; i < neighbors.length; i++) {
-			if (blocksLight(neighbors[i], b.isTransparent())) {
-				revealBlock(x, y, z);
-				break;
-			}
-		}
-		
-		for (int i = 0; i < neighbors.length; i++) {
-			int rx = x+neighborRelativeX[i];
-			int ry = y+neighborRelativeY[i];
-			int rz = z+neighborRelativeZ[i];
-			if(neighbors[i] != null) {
-				Chunk ch = getChunk(rx+wx, rz+wz);
-				if (ch.contains(rx+wx, ry, rz+wz)) {
-					Block[] neighbors1 = getNeighbors(rx, ry, rz);
-					boolean vis = true;
-					for (int j = 0; j < neighbors1.length; j++) {
-						if (blocksLight(neighbors1[j], neighbors[i].isTransparent())) {
-							vis = false;
-							break;
-						}
-					}
-					if(vis) {
-						ch.hideBlock(rx & 15, ry, rz & 15);
-					}
-				}
-				if (neighbors[i].getBlockClass() == BlockClass.FLUID) {
-					int index = ((rx & 15) << 4) | (ry << 8) | (rz & 15);
-					if (!updatingLiquids.contains(index))
-						updatingLiquids.add(index);
-				}
-			}
-		}
-
-		if(registerBlockChange) {
-			// Registers blockChange:
-			int index = -1; // Checks if it is already in the list
-			for(int i = 0; i < changes.size(); i++) {
-				BlockChange bc = changes.get(i);
-				if(bc.x == x && bc.y == y && bc.z == z) {
-					index = i;
-					break;
-				}
-			}
-			if(index == -1) { // Creates a new object if the block wasn't changed before
-				changes.add(new BlockChange(-1, b.ID, x, y, z, (byte)0, data));
-			} else if(b.ID == changes.get(index).oldType && data == changes.get(index).oldData) { // Removes the object if the block reverted to it's original state.
-				changes.remove(index);
-			} else {
-				changes.get(index).newType = b.ID;
-				changes.get(index).newData = data;
-			}
-		}
-		if(loaded)
-			lightUpdate(x, y, z);
 	}
 	
 	public boolean contains(int x, int y, int z) {

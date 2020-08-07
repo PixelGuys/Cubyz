@@ -302,7 +302,7 @@ public class LocalSurface extends Surface {
 	public void placeBlock(int x, int y, int z, Block b, byte data) {
 		Chunk ch = getChunk(x >> 4, z >> 4);
 		if (ch != null) {
-			ch.addBlockAt(x & 15, y, z & 15, b, data, true);
+			ch.addBlock(b, data, x & 15, y, z & 15, false);
 			tio.saveChunk(ch); // TODO: Don't save it every time.
 			tio.saveTorusData(this);
 			for (PlaceBlockHandler hand : placeBlockHandlers) {
@@ -452,7 +452,7 @@ public class LocalSurface extends Surface {
 										break;
 								}
 								if(dy == -1 || (neighbors[4] != null && neighbors[4].getBlockClass() != Block.BlockClass.FLUID)) {
-									ch.addBlockPossiblyOutside(block, (byte)0, CubyzMath.worldModulo(wx+bx+dx, worldSize), by+dy, CubyzMath.worldModulo(wz+bz+dz, worldSize));
+									ch.addBlockPossiblyOutside(block, (byte)0, CubyzMath.worldModulo(wx+bx+dx, worldSize), by+dy, CubyzMath.worldModulo(wz+bz+dz, worldSize), true);
 								}
 							}
 						}
