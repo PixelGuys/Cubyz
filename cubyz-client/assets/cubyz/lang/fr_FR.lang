@@ -26,11 +26,24 @@ gui.cubyz.saves.delete=Supprimer
 gui.cubyz.saves.create=Créer une nouvelle partie!
 lang.name=Français
 
-# Blocs
+# Blocks
+block.cubyz.cactus.name=Cactus
 block.cubyz.soil.name=Terre
+block.cubyz.gravel.name=Gravier
+block.cubyz.ice.name=Glace
+block.cubyz.sand.name=Sable
+block.cubyz.snow.name=Neige
+block.cubyz.mossy_cobblestone.name=Pierre moussue
 block.cubyz.cobblestone.name=Pierre
-block.cubyz.oak_log.name=Bûche
-block.cubyz.oak_planks.name=Planches de bois
+block.cubyz.oak_log.name=Bois de chêne
+block.cubyz.oak_leaves.name=Feuilles de chêne
+block.cubyz.oak_top.name=Haut bois de chêne
+block.cubyz.oak_planks.name=Planches de chêne
+block.cubyz.torch.name=Torche
+block.cubyz.workbench.name=Atelier
 
 # Items
-item.cubyz.stick.name=Baton
+item.cubyz.stick.name=Bâton
+item.cubyz.diamond.name=Diamant
+item.cubyz.coal.name=Charbon
+item.cubyz.raw_meat.name=Viande crue

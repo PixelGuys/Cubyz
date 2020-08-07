@@ -1,5 +1,6 @@
 package io.cubyz.blocks;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.Properties;
 
 import org.joml.Vector3i;
@@ -11,6 +12,7 @@ import io.cubyz.api.Resource;
 import io.cubyz.items.Inventory;
 import io.cubyz.items.Item;
 import io.cubyz.items.ItemBlock;
+import io.cubyz.world.Surface;
 import io.cubyz.world.World;
 
 
@@ -38,6 +40,7 @@ public class Block implements RegistryElement {
 	int absorption = 0; // How much light this block absorbs if it is transparent.
 	String gui; // GUI that is opened onClick.
 	public RotationMode mode = CubyzRegistries.ROTATION_MODE_REGISTRY.getByID("cubyz:no_rotation");
+	public Class<? extends BlockEntity> blockEntity;
 	
 	public Block() {}
 	
@@ -154,12 +157,20 @@ public class Block implements RegistryElement {
 		this.light = light;
 	}
 	
-	public BlockEntity createBlockEntity(Vector3i pos) {
+	public BlockEntity createBlockEntity(Surface surface, Vector3i pos) {
+		if (blockEntity != null) {
+			try {
+				return blockEntity.getConstructor(Surface.class, Vector3i.class).newInstance(surface, pos);
+			} catch (InstantiationException | IllegalAccessException | IllegalArgumentException
+					| InvocationTargetException | NoSuchMethodException | SecurityException e) {
+				e.printStackTrace();
+			}
+		}
 		return null;
 	}
 	
 	public boolean hasBlockEntity() {
-		return false;
+		return blockEntity != null;
 	}
 	
 	public BlockClass getBlockClass() {

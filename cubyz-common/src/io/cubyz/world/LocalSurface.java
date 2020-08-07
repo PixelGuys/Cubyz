@@ -394,14 +394,14 @@ public class LocalSurface extends Surface {
 		// Block Entities
 		for (Chunk ch : chunks) {
 			if (ch.isLoaded() && ch.getBlockEntities().size() > 0) {
-				blockEntities = ch.getBlockEntities().values().toArray(blockEntities);
+				blockEntities = ch.getBlockEntities().toArray(blockEntities);
 				for (BlockEntity be : blockEntities) {
-					if (be == null) continue;
+					if (be == null) break; // end of array
 					if (be instanceof Updateable) {
 						Updateable tk = (Updateable) be;
 						tk.update(false);
 						if (tk.randomUpdates()) {
-							if (rnd.nextInt(5) <= 1) { // 1/5 chance
+							if (rnd.nextInt(5) < 1) { // 1/5 chance
 								tk.update(true);
 							}
 						}

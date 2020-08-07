@@ -164,7 +164,7 @@ public class MainRenderer implements Renderer {
 		frustumInt.set(prjViewMatrix);
 		Vector3f playerPosition = null;
 		if(localPlayer != null) {
-			playerPosition = new Vector3f(localPlayer.getPosition()); // Use a constant copy of the player position for the whole rendering to prevent graphics bugs on player movement.
+			playerPosition = localPlayer.getPosition(); // Use a constant copy of the player position for the whole rendering to prevent graphics bugs on player movement.
 		}
 		if(playerPosition != null) {
 			float x0 = playerPosition.x;

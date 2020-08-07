@@ -19,6 +19,7 @@ import io.cubyz.api.Proxy;
 import io.cubyz.api.Registry;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
+import io.cubyz.blocks.BlockEntity;
 import io.cubyz.blocks.Ore;
 import io.cubyz.items.Consumable;
 import io.cubyz.items.Item;
@@ -146,6 +147,13 @@ public class AddonsMod {
 						items.add(itemBlock);
 					} else if(!blockDrop.equals("none")) {
 						missingBlockDrops.put(block, blockDrop);
+					}
+					if (props.containsKey("blockEntity")) {
+						try {
+							block.blockEntity = Class.forName(props.getProperty("blockEntity")).asSubclass(BlockEntity.class);
+						} catch (ClassNotFoundException e) {
+							e.printStackTrace();
+						}
 					}
 					registry.register(block);
 				}

@@ -4,6 +4,8 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Random;
 
+import org.joml.Vector3i;
+
 import io.cubyz.api.RegistryElement;
 import io.cubyz.api.Registry;
 import io.cubyz.api.Resource;
@@ -128,8 +130,10 @@ public class LifelandGenerator extends SurfaceGenerator {
 					Block b = chunk[px][pz][py];
 					if(b != null) {
 						ch.rawAddBlock(px, py, pz, b, (byte)0);
-						//if (b.hasBlockEntity()) TODO: Block entities!
-						//	ch.blockEntities().put(bi, b.createBlockEntity(bi.getPosition()));
+						if (b.hasBlockEntity()) {
+							Vector3i pos = new Vector3i(wx+px, py, wz+pz);
+							ch.getBlockEntities().add(b.createBlockEntity(surface, pos));
+						}
 						if (b.getBlockClass() == BlockClass.FLUID)
 							ch.getUpdatingLiquids().add((px << 4) | (py << 8) | pz);
 					}

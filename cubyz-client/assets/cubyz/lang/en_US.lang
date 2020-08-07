@@ -26,10 +26,22 @@ gui.cubyz.saves.create=Create a new game!
 lang.name=English
 
 # Blocks
+block.cubyz.cactus.name=Cactus
 block.cubyz.soil.name=Soil
+block.cubyz.gravel.name=Gravel
+block.cubyz.ice.name=Ice
+block.cubyz.sand.name=Sand
+block.cubyz.snow.name=Snow
+block.cubyz.mossy_cobblestone.name=Mossy cobblestone
 block.cubyz.cobblestone.name=Cobblestone
 block.cubyz.oak_log.name=Oak Log
+block.cubyz.oak_top.name=Oak Top
 block.cubyz.oak_planks.name=Oak Planks
+block.cubyz.torch.name=Torch
+block.cubyz.workbench.name=Workbench
 
 # Items
 item.cubyz.stick.name=Stick
+item.cubyz.diamond.name=Diamond
+item.cubyz.coal.name=Coal
+item.cubyz.raw_meat.name=Raw meat

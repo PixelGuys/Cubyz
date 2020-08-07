@@ -38,7 +38,7 @@ public class Chunk {
 	private int wx, wz;
 	private boolean generated;
 	private boolean loaded;
-	private Map<BlockInstance, BlockEntity> blockEntities = new HashMap<>();
+	private ArrayList<BlockEntity> blockEntities = new ArrayList<>();
 	
 	private Surface surface;
 	
@@ -667,19 +667,17 @@ public class Chunk {
 			}
 			removeBlockAt(x, y, z, false);
 		}
-		if(b.hasBlockEntity() || b.getBlockClass() == BlockClass.FLUID) {
-			BlockInstance inst0 = new BlockInstance(b, data, new Vector3i(x + wx, y, z + wz), surface.getStellarTorus().getWorld().getLocalPlayer(), surface.getSize());
-			inst0.setStellarTorus(surface);
+		setBlock(x, y, z, b, data);
+		if (b.hasBlockEntity() || b.getBlockClass() == BlockClass.FLUID) {
 			if (b.hasBlockEntity()) {
-				BlockEntity te = b.createBlockEntity(inst0.getPosition());
-				blockEntities.put(inst0, te);
+				BlockEntity be = b.createBlockEntity(surface, new Vector3i(wx+x, y, wz+z));
+				blockEntities.add(be);
 			}
 			if (b.getBlockClass() == BlockClass.FLUID) {
 				liquids.add((x << 4) | (y << 8) | z);
 				updatingLiquids.add((x << 4) | (y << 8) | z);
 			}
 		}
-		setBlock(x, y, z, b, data);
 		if(generated) {
 			Block[] neighbors = getNeighbors(x, y, z);
 			for (int i = 0; i < neighbors.length; i++) {
@@ -727,7 +725,12 @@ public class Chunk {
 			int index = (bc.x << 4) | (bc.y << 8) | bc.z;
 			bc.oldType = blocks[index] == null ? -1 : blocks[index].ID;
 			bc.oldData = blockData[index];
-			blocks[index] = bc.newType == -1 ? null : surface.getPlanetBlocks()[bc.newType];
+			Block b = bc.newType == -1 ? null : surface.getPlanetBlocks()[bc.newType];
+			if (b != null && b.hasBlockEntity()) {
+				Vector3i pos = new Vector3i(wx+bc.x, bc.y, wz+bc.z);
+				blockEntities.add(b.createBlockEntity(surface, pos));
+			}
+			blocks[index] = b;
 			blockData[index] = bc.newData;
 		}
 	}
@@ -792,7 +795,15 @@ public class Chunk {
 			liquids.remove((Object) (((x & 15) << 4) | (y << 8) | (z & 15)));
 		}
 		if (bi.hasBlockEntity()) {
-			blockEntities.remove(bi);
+			//blockEntities.remove(bi);
+			// TODO : be more efficient (maybe have a reference to block entity in BlockInstance?, but it would have yet another big memory footprint)
+			for (BlockEntity be : blockEntities) {
+				Vector3i pos = be.getPosition();
+				if (pos.x == wx+x && pos.y == y && pos.z == wz+z) {
+					blockEntities.remove(be);
+					break;
+				}
+			}
 		}
 		setBlock(x, y, z, null, (byte)0);
 		BlockInstance[] visibleNeighbors = getVisibleNeighbors(x, y, z);
@@ -877,10 +888,10 @@ public class Chunk {
 		if(y >= World.WORLD_HEIGHT)
 			return;
 		removeBlockAt(x, y, z, false);
-		//if (b.hasBlockEntity()) { TODO: Block entities.
-		//	BlockEntity te = b.createBlockEntity(inst0.getPosition());
-		//	blockEntities.put(inst0, te);
-		//}
+		if (b.hasBlockEntity()) {
+			Vector3i pos = new Vector3i(wx+x, y, wz+z);
+			blockEntities.add(b.createBlockEntity(surface, pos));
+		}
 		if (b.getBlockClass() == BlockClass.FLUID) {
 			liquids.add((x << 4) | (y << 8) | z);
 			updatingLiquids.add((x << 4) | (y << 8) | z);
@@ -1121,7 +1132,7 @@ public class Chunk {
 		return visibles;
 	}
 	
-	public Map<BlockInstance, BlockEntity> getBlockEntities() {
+	public ArrayList<BlockEntity> getBlockEntities() {
 		return blockEntities;
 	}
 	
