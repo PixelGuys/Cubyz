@@ -158,9 +158,6 @@ public class PlayerEntity extends EntityType {
 					}
 				}
 				w.removeBlock(bi.getX(), bi.getY(), bi.getZ());
-				if(inv.addItem(bi.getBlock().getBlockDrop(), 1) != 0) {
-					//DropItemOnTheGround(); //TODO: Add this function.
-				}
 			}
 		}
 

@@ -407,7 +407,7 @@ public class Entity {
 		Vector3f velocity = loadVector3f(ndt.getContainer("velocity"));
 		vx = velocity.x; vy = velocity.y; vz = velocity.z;
 		health = ndt.getFloat("health");
-		health = ndt.getFloat("hunger");
+		hunger = ndt.getFloat("hunger");
 	}
 	
 	public EntityType getType() {
