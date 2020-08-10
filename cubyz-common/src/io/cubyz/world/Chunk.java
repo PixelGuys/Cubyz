@@ -115,76 +115,6 @@ public class Chunk {
 		} else { // TODO: Find a similar optimization for easyLighting disabled.
 			
 		}
-		// Sadly the new system doesn't allow for easy access on the BlockInstances through a list, so we have to go through all blocks(which probably is even more efficient because about half of the blocks are non-air).
-		for(int x = 0; x < 16; x++) {
-			for(int y = 0; y <= maxHeight; y++) {
-				for(int  z = 0; z < 16; z++) {
-					Block b = getBlockAt(x, y, z);
-					if(b != null) {
-						Block[] neighbors = getNeighbors(x, y, z);
-						for (int i = 0; i < neighbors.length; i++) {
-							if (blocksLight(neighbors[i], b.isTransparent())
-														&& (y != 0 || i != 4)
-														&& (x != 0 || i != 0 || chx0)
-														&& (x != 15 || i != 1 || chx1)
-														&& (z != 0 || i != 2 || chz0)
-														&& (z != 15 || i != 3 || chz1)) {
-								revealBlock(x, y, z);
-								break;
-							}
-						}
-						if(Settings.easyLighting && b.getLight() != 0) { // Process light sources
-							lightSources.add((x << 4) | (y << 8) | z);
-						}
-					}
-				}
-			}
-		}
-		boolean [] toCheck = {chx0, chx1, chz0, chz1};
-		for (int i = 0; i < 16; i++) {
-			// Checks if blocks from neighboring chunks are changed
-			int [] dx = {15, 0, i, i};
-			int [] dz = {i, i, 15, 0};
-			int [] invdx = {0, 15, i, i};
-			int [] invdz = {i, i, 0, 15};
-			for(int k = 0; k < 4; k++) {
-				if (toCheck[k]) {
-					ch = chunks[k];
-					for (int j = World.WORLD_HEIGHT - 1; j >= 0; j--) {
-						BlockInstance inst = ch.getBlockInstanceAt((dx[k] << 4) | (j << 8) | dz[k]);
-						Block block = ch.getBlockAt(dx[k], j, dz[k]);
-						// Update neighbor information:
-						if(inst != null) {
-							switch(k) {
-								case 0:
-									inst.neighborWest = getsBlocked(block, blocks[(invdx[k] << 4) | (j << 8) | invdz[k]]);
-									break;
-								case 1:
-									inst.neighborEast = getsBlocked(block, blocks[(invdx[k] << 4) | (j << 8) | invdz[k]]);
-									break;
-								case 2:
-									inst.neighborNorth = getsBlocked(block, blocks[(invdx[k] << 4) | (j << 8) | invdz[k]]);
-									break;
-								case 3:
-									inst.neighborSouth = getsBlocked(block, blocks[(invdx[k] << 4) | (j << 8) | invdz[k]]);
-									break;
-							}
-						}
-						// Update visibility:
-						if(block == null) {
-							continue;
-						}
-						if(ch.contains(dx[k] + wx, j, dz[k] + wz)) {
-							continue;
-						}
-						if (blocksLight(getBlockAt(invdx[k], j, invdz[k]), block.isTransparent())) {
-							ch.revealBlock(dx[k], j, dz[k]);
-							continue;
-						}
-					}
-				}
-			}
-		}
 		// Do some light updates.
 		if(Settings.easyLighting) {
 			// Update the highest layer that is not just air:
@@ -277,6 +207,76 @@ public class Chunk {
 			// Take care about light sources:
 			for(int index : lightSources) {
 				lightUpdate((index >>> 4) & 15, (index >>> 8) & 255, index & 15);
+			}
+		}
+		// Sadly the new system doesn't allow for easy access on the BlockInstances through a list, so we have to go through all blocks(which probably is even more efficient because about half of the blocks are non-air).
+		for(int x = 0; x < 16; x++) {
+			for(int y = 0; y <= maxHeight; y++) {
+				for(int  z = 0; z < 16; z++) {
+					Block b = getBlockAt(x, y, z);
+					if(b != null) {
+						Block[] neighbors = getNeighbors(x, y, z);
+						for (int i = 0; i < neighbors.length; i++) {
+							if (blocksLight(neighbors[i], b.isTransparent())
+														&& (y != 0 || i != 4)
+														&& (x != 0 || i != 0 || chx0)
+														&& (x != 15 || i != 1 || chx1)
+														&& (z != 0 || i != 2 || chz0)
+														&& (z != 15 || i != 3 || chz1)) {
+								revealBlock(x, y, z);
+								break;
+							}
+						}
+						if(Settings.easyLighting && b.getLight() != 0) { // Process light sources
+							lightSources.add((x << 4) | (y << 8) | z);
+						}
+					}
+				}
+			}
+		}
+		boolean [] toCheck = {chx0, chx1, chz0, chz1};
+		for (int i = 0; i < 16; i++) {
+			// Checks if blocks from neighboring chunks are changed
+			int [] dx = {15, 0, i, i};
+			int [] dz = {i, i, 15, 0};
+			int [] invdx = {0, 15, i, i};
+			int [] invdz = {i, i, 0, 15};
+			for(int k = 0; k < 4; k++) {
+				if (toCheck[k]) {
+					ch = chunks[k];
+					for (int j = World.WORLD_HEIGHT - 1; j >= 0; j--) {
+						BlockInstance inst = ch.getBlockInstanceAt((dx[k] << 4) | (j << 8) | dz[k]);
+						Block block = ch.getBlockAt(dx[k], j, dz[k]);
+						// Update neighbor information:
+						if(inst != null) {
+							switch(k) {
+								case 0:
+									inst.neighborWest = getsBlocked(block, blocks[(invdx[k] << 4) | (j << 8) | invdz[k]]);
+									break;
+								case 1:
+									inst.neighborEast = getsBlocked(block, blocks[(invdx[k] << 4) | (j << 8) | invdz[k]]);
+									break;
+								case 2:
+									inst.neighborNorth = getsBlocked(block, blocks[(invdx[k] << 4) | (j << 8) | invdz[k]]);
+									break;
+								case 3:
+									inst.neighborSouth = getsBlocked(block, blocks[(invdx[k] << 4) | (j << 8) | invdz[k]]);
+									break;
+							}
+						}
+						// Update visibility:
+						if(block == null) {
+							continue;
+						}
+						if(ch.contains(dx[k] + wx, j, dz[k] + wz)) {
+							continue;
+						}
+						if (blocksLight(getBlockAt(invdx[k], j, invdz[k]), block.isTransparent())) {
+							ch.revealBlock(dx[k], j, dz[k]);
+							continue;
+						}
+					}
+				}
 			}
 		}
 	}
@@ -413,7 +413,7 @@ public class Chunk {
 		for(int dx = -1; dx <= 0; dx++) {
 			for(int dy = -1; dy <= 0; dy++) {
 				for(int dz = -1; dz <= 0; dz++) {
-					neighbors[7 + (dx << 2) + (dy << 1) + dz] = getBlockUnbound(x+dx, y+dy, z+dz);
+					neighbors[7 + (dx << 2) + (dy << 1) + dz] = getBlockUnboundAndUpdateLight(x+dx, y+dy, z+dz);
 					// Take care about the case that this block is a light source, that is brighter than the current light level:
 					if(neighbors[7 + (dx << 2) + (dy << 1) + dz] != null && ((neighbors[7 + (dx << 2) + (dy << 1) + dz].getLight() >>> shift) & 255) > value)
 						return;
@@ -589,6 +589,13 @@ public class Chunk {
 		}
 		if(curLight != maxLight) {
 			light[index] = (light[index] & mask) | (maxLight << shift);
+			for(int dx = -1; dx <= 0; dx++) {
+				for(int dy = -1; dy <= 0; dy++) {
+					for(int dz = -1; dz <= 0; dz++) {
+						updateLight(x+dx, y+dy, z+dz);
+					}
+				}
+			}
 			return maxLight;
 		}
 		return -1;
@@ -817,6 +824,7 @@ public class Chunk {
 				if (bi != null) handler.onBlockAppear(bi.getBlock(), bi.getX(), bi.getY(), bi.getZ());
 			}
 		}
+		getCornerLight(x, y, z, bi.light);
 	}
 	
 	public void removeBlockAt(int x, int y, int z, boolean registerBlockChange) {
@@ -1039,6 +1047,19 @@ public class Chunk {
 		return inst[pos];
 	}
 	
+	private Block getBlockUnboundAndUpdateLight(int x, int y, int z) {
+		if(y < 0 || y >= World.WORLD_HEIGHT || !generated) return null;
+		if(x < 0 || x > 15 || z < 0 || z > 15) {
+			Chunk chunk = surface.getChunk(cx + ((x & ~15) >> 4), cz + ((z & ~15) >> 4));
+			if(chunk != null && chunk.isGenerated()) return chunk.getBlockUnboundAndUpdateLight(x & 15, y, z & 15);
+			return noLight; // Let the lighting engine think this region is blocked.
+		}
+		if(loaded && inst[(x << 4) | (y << 8) | z] != null) {
+			getCornerLight(x, y, z, inst[(x << 4) | (y << 8) | z].light);
+		}
+		return blocks[(x << 4) | (y << 8) | z];
+	}
+	
 	private Block getBlockUnbound(int x, int y, int z) {
 		if(y < 0 || y >= World.WORLD_HEIGHT || !generated) return null;
 		if(x < 0 || x > 15 || z < 0 || z > 15) {
@@ -1048,6 +1069,19 @@ public class Chunk {
 		}
 		return blocks[(x << 4) | (y << 8) | z];
 	}
+	
+	private void updateLight(int x, int y, int z) {
+		if(y < 0 || y >= World.WORLD_HEIGHT || !generated) return;
+		if(x < 0 || x > 15 || z < 0 || z > 15) {
+			Chunk chunk = surface.getChunk(cx + ((x & ~15) >> 4), cz + ((z & ~15) >> 4));
+			if(chunk != null && chunk.isGenerated()) chunk.updateLight(x & 15, y, z & 15);
+			return;
+		}
+		if(loaded && inst[(x << 4) | (y << 8) | z] != null) {
+			getCornerLight(x, y, z, inst[(x << 4) | (y << 8) | z].light);
+		}
+	}
+	
 	private BlockInstance getVisibleUnbound(int x, int y, int z) {
 		if(y < 0 || y >= World.WORLD_HEIGHT || !generated) return null;
 		if(x < 0 || x > 15 || z < 0 || z > 15) {
