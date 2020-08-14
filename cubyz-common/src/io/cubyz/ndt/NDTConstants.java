@@ -1,5 +1,6 @@
 package io.cubyz.ndt;
 
+@Deprecated
 public class NDTConstants {
 
 	// primitive types

@@ -4,6 +4,7 @@ import java.nio.ByteBuffer;
 
 import io.cubyz.Constants;
 
+@Deprecated
 public class NDTString extends NDTTag {
 
 	{

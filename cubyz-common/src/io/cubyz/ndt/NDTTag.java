@@ -5,8 +5,8 @@ import static io.cubyz.CubyzLogger.logger;
 /**
  * NDT (Named Data Tag)
  * @author zenith391
- *
  */
+@Deprecated
 public class NDTTag {
 
 	protected byte type;

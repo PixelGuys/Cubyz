@@ -2,6 +2,7 @@ package io.cubyz.ndt;
 
 import io.cubyz.math.Bits;
 
+@Deprecated
 public class NDTFloat extends NDTTag {
 
 	{

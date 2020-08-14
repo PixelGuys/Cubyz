@@ -9,6 +9,7 @@ import java.util.Set;
 import io.cubyz.Constants;
 import io.cubyz.math.Bits;
 
+@Deprecated
 public class NDTContainer extends NDTTag implements Iterable<NDTTag> {
 
 	HashMap<String, NDTTag> tags = new HashMap<>();
