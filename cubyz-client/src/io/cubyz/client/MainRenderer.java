@@ -135,7 +135,7 @@ public class MainRenderer implements Renderer {
 		if (window.isResized()) {
 			glViewport(0, 0, window.getWidth(), window.getHeight());
 			window.setResized(false);
-			window.setProjectionMatrix(transformation.getProjectionMatrix((float)Math.toDegrees(ClientSettings.FOV), window.getWidth(),
+			window.setProjectionMatrix(transformation.getProjectionMatrix((float)Math.toRadians(ClientSettings.FOV), window.getWidth(),
 					window.getHeight(), Z_NEAR, Z_FAR));
 		}
 		if (!doRender)
