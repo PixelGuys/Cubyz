@@ -38,6 +38,7 @@ public class Configuration {
 		obj.addProperty("antiAliasSamples", Cubyz.ctx.getWindow().getAntialiasSamples());
 		obj.addProperty("easyLighting", Settings.easyLighting);
 		obj.addProperty("renderDistance", ClientSettings.RENDER_DISTANCE);
+		obj.addProperty("fieldOfView", ClientSettings.FOV);
 		
 		try {
 			FileWriter writer = new FileWriter("configuration.json");
@@ -98,6 +99,9 @@ public class Configuration {
 		}
 		if (obj.has("renderDistance")) {
 			ClientSettings.RENDER_DISTANCE = obj.get("renderDistance").getAsInt();
+		}
+		if (obj.has("fieldOfView")) {
+			ClientSettings.FOV = obj.get("fieldOfView").getAsFloat();
 		}
 	}
 	

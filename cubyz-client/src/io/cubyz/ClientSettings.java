@@ -8,6 +8,6 @@ public class ClientSettings {
 	
 	public static int RENDER_DISTANCE = 6;
 	
-	public static float FOV = 70.0f; // TODO: Integrate into settings.
+	public static float FOV = 70.0f;
 	
 }
