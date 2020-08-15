@@ -8,6 +8,7 @@ import io.cubyz.client.Cubyz;
 import static org.lwjgl.glfw.GLFW.*;
 
 import java.awt.MouseInfo;
+import java.awt.Point;
 import java.awt.Robot;
 
 public class MouseInput {
@@ -108,8 +109,9 @@ public class MouseInput {
 
 	public void input(Window window) {
 		int[] pos = window.getPosition();
-		currentPos.x = MouseInfo.getPointerInfo().getLocation().getX() - pos[0];
-		currentPos.y = MouseInfo.getPointerInfo().getLocation().getY() - pos[1];
+		Point mousePosition = MouseInfo.getPointerInfo().getLocation();
+		currentPos.x = mousePosition.getX() - pos[0];
+		currentPos.y = mousePosition.getY() - pos[1];
 		if (grabbed && window.isFocused()) {
 			displVec.y += currentPos.x - (window.getWidth() >> 1);
 			displVec.x += currentPos.y - (window.getHeight() >> 1);

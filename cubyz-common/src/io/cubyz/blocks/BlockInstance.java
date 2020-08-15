@@ -10,7 +10,7 @@ public class BlockInstance {
 
 	private Block block;
 	private Object[] spatial;
-	private final Vector3i position;
+	public final int x, y, z;
 	private Surface surface;
 	public boolean neighborUp, neighborDown, neighborEast, neighborWest, neighborNorth, neighborSouth;
 	private byte blockData;
@@ -18,7 +18,9 @@ public class BlockInstance {
 	
 	public BlockInstance(Block block, byte data, Vector3i position, Player player, int worldSize) {
 		this.block = block;
-		this.position = position;
+		x = position.x;
+		y = position.y;
+		z = position.z;
 		blockData = data;
 		if(Settings.easyLighting)
 			light = new int[8];
@@ -42,19 +44,19 @@ public class BlockInstance {
 	}
 	
 	public Vector3i getPosition() {
-		return position;
+		return new Vector3i(x, y, z);
 	}
 	
 	public int getX() {
-		return position.x;
+		return x;
 	}
 	
 	public int getY() {
-		return position.y;
+		return y;
 	}
 	
 	public int getZ() {
-		return position.z;
+		return z;
 	}
 	
 	public Block getBlock() {

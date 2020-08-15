@@ -95,7 +95,7 @@ public class CubyzMeshSelectionDetector {
 	// Returns the free block right next to the currently selected block.
 	public void getEmptyPlace(Vector3i pos, Vector3i dir) {
 		if(selectedSpatial != null && selectedSpatial instanceof BlockInstance) {
-			pos.set(((BlockInstance)selectedSpatial).getPosition());
+			pos.set(((BlockInstance)selectedSpatial).x, ((BlockInstance)selectedSpatial).y, ((BlockInstance)selectedSpatial).z);
 			pos.add(-dirX, 0, 0);
 			dir.add(dirX, 0, 0);
 			min.set(new Vector3f(pos.x, pos.y, pos.z));
