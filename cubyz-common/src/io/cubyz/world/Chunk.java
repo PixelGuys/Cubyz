@@ -824,7 +824,8 @@ public class Chunk {
 				if (bi != null) handler.onBlockAppear(bi.getBlock(), bi.getX(), bi.getY(), bi.getZ());
 			}
 		}
-		getCornerLight(x, y, z, bi.light);
+		if(Settings.easyLighting)
+			getCornerLight(x, y, z, bi.light);
 	}
 	
 	public void removeBlockAt(int x, int y, int z, boolean registerBlockChange) {
