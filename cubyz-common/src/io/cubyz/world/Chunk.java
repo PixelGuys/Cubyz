@@ -21,6 +21,7 @@ import io.cubyz.world.generator.SurfaceGenerator;
 
 public class Chunk {
 	// used for easy for-loop access of neighbors and their relative direction:
+	// East, West, South, North, Down, Up.
 	private static final int[] neighborRelativeX = {-1, 1, 0, 0, 0, 0};
 	private static final int[] neighborRelativeY = {0, 0, 0, 0, -1, 1};
 	private static final int[] neighborRelativeZ = {0, 0, -1, 1, 0, 0};
@@ -217,7 +218,7 @@ public class Chunk {
 					if(b != null) {
 						Block[] neighbors = getNeighbors(x, y, z);
 						for (int i = 0; i < neighbors.length; i++) {
-							if (blocksLight(neighbors[i], b.isTransparent())
+							if (blocksLight(neighbors[i], b)
 														&& (y != 0 || i != 4)
 														&& (x != 0 || i != 0 || chx0)
 														&& (x != 15 || i != 1 || chx1)
@@ -249,20 +250,7 @@ public class Chunk {
 						Block block = ch.getBlockAt(dx[k], j, dz[k]);
 						// Update neighbor information:
 						if(inst != null) {
-							switch(k) {
-								case 0:
-									inst.neighborWest = getsBlocked(block, blocks[(invdx[k] << 4) | (j << 8) | invdz[k]]);
-									break;
-								case 1:
-									inst.neighborEast = getsBlocked(block, blocks[(invdx[k] << 4) | (j << 8) | invdz[k]]);
-									break;
-								case 2:
-									inst.neighborNorth = getsBlocked(block, blocks[(invdx[k] << 4) | (j << 8) | invdz[k]]);
-									break;
-								case 3:
-									inst.neighborSouth = getsBlocked(block, blocks[(invdx[k] << 4) | (j << 8) | invdz[k]]);
-									break;
-							}
+							inst.updateNeighbor(k ^ 1, getsBlocked(block, blocks[(invdx[k] << 4) | (j << 8) | invdz[k]]), surface.getStellarTorus().getWorld().getLocalPlayer(), surface.getSize());
 						}
 						// Update visibility:
 						if(block == null) {
@@ -271,7 +259,7 @@ public class Chunk {
 						if(ch.contains(dx[k] + wx, j, dz[k] + wz)) {
 							continue;
 						}
-						if (blocksLight(getBlockAt(invdx[k], j, invdz[k]), block.isTransparent())) {
+						if (blocksLight(getBlockAt(invdx[k], j, invdz[k]), block)) {
 							ch.revealBlock(dx[k], j, dz[k]);
 							continue;
 						}
@@ -696,15 +684,12 @@ public class Chunk {
 		if(generated) {
 			Block[] neighbors = getNeighbors(x, y, z);
 			BlockInstance[] visibleNeighbors = getVisibleNeighbors(x + wx, y, z + wz);
-			if(visibleNeighbors[0] != null) visibleNeighbors[0].neighborWest = getsBlocked(neighbors[0], b.isTransparent());
-			if(visibleNeighbors[1] != null) visibleNeighbors[1].neighborEast = getsBlocked(neighbors[1], b.isTransparent());
-			if(visibleNeighbors[2] != null) visibleNeighbors[2].neighborNorth = getsBlocked(neighbors[2], b.isTransparent());
-			if(visibleNeighbors[3] != null) visibleNeighbors[3].neighborSouth = getsBlocked(neighbors[3], b.isTransparent());
-			if(visibleNeighbors[4] != null) visibleNeighbors[4].neighborUp = getsBlocked(neighbors[4], b.isTransparent());
-			if(visibleNeighbors[5] != null) visibleNeighbors[5].neighborDown = getsBlocked(neighbors[5], b.isTransparent());
+			for(int k = 0; k < 6; k++) {
+				if(visibleNeighbors[k] != null) visibleNeighbors[k].updateNeighbor(k ^ 1, getsBlocked(neighbors[k], b), surface.getStellarTorus().getWorld().getLocalPlayer(), surface.getSize());
+			}
 			
 			for (int i = 0; i < neighbors.length; i++) {
-				if (blocksLight(neighbors[i], b.isTransparent())) {
+				if (blocksLight(neighbors[i], b)) {
 					revealBlock(x&15, y, z&15);
 					break;
 				}
@@ -720,7 +705,7 @@ public class Chunk {
 						Block[] neighbors1 = ch.getNeighbors(x2 & 15, y2, z2 & 15);
 						boolean vis = true;
 						for (int j = 0; j < neighbors1.length; j++) {
-							if (blocksLight(neighbors1[j], neighbors[i].isTransparent())) {
+							if (blocksLight(neighbors1[j], neighbors[i])) {
 								vis = false;
 								break;
 							}
@@ -775,15 +760,11 @@ public class Chunk {
 		}
 	}
 	
-	public boolean blocksLight(Block b, boolean transparent) {
-		if(b == null || (b.isTransparent() && !transparent)) {
+	public boolean blocksLight(Block b, Block a) {
+		if(b == null || (b.isTransparent() && a != b)) {
 			return true;
 		}
 		return false;
-	}
-	
-	public boolean getsBlocked(Block b, boolean transparent) {
-		return b == null || !(!b.isTransparent() && transparent);
 	}
 	
 	public boolean getsBlocked(Block b, Block a) {
@@ -810,12 +791,9 @@ public class Chunk {
 		Block b = blocks[index];
 		BlockInstance bi = new BlockInstance(b, blockData[index], new Vector3i(x + wx, y, z + wz), surface.getStellarTorus().getWorld().getLocalPlayer(), surface.getSize());
 		Block[] neighbors = getNeighbors(x, y ,z);
-		if(neighbors[0] != null) bi.neighborEast = getsBlocked(neighbors[0], bi.getBlock());
-		if(neighbors[1] != null) bi.neighborWest = getsBlocked(neighbors[1], bi.getBlock());
-		if(neighbors[2] != null) bi.neighborSouth = getsBlocked(neighbors[2], bi.getBlock());
-		if(neighbors[3] != null) bi.neighborNorth = getsBlocked(neighbors[3], bi.getBlock());
-		if(neighbors[4] != null) bi.neighborDown = getsBlocked(neighbors[4], bi.getBlock());
-		if(neighbors[5] != null) bi.neighborUp = getsBlocked(neighbors[5], bi.getBlock());
+		for(int k = 0; k < 6; k++) {
+			if(neighbors[k] != null) bi.updateNeighbor(k, getsBlocked(neighbors[k], b), surface.getStellarTorus().getWorld().getLocalPlayer(), surface.getSize());
+		}
 		bi.setStellarTorus(surface);
 		visibles.add(bi);
 		inst[(x << 4) | (y << 8) | z] = bi;
@@ -849,12 +827,9 @@ public class Chunk {
 		}
 		setBlock(x, y, z, null, (byte)0);
 		BlockInstance[] visibleNeighbors = getVisibleNeighbors(x, y, z);
-		if(visibleNeighbors[0] != null) visibleNeighbors[0].neighborWest = false;
-		if(visibleNeighbors[1] != null) visibleNeighbors[1].neighborEast = false;
-		if(visibleNeighbors[2] != null) visibleNeighbors[2].neighborNorth = false;
-		if(visibleNeighbors[3] != null) visibleNeighbors[3].neighborSouth = false;
-		if(visibleNeighbors[4] != null) visibleNeighbors[4].neighborUp = false;
-		if(visibleNeighbors[5] != null) visibleNeighbors[5].neighborDown = false;
+		for(int k = 0; k < 6; k++) {
+			if(visibleNeighbors[k] != null) visibleNeighbors[k].updateNeighbor(k ^ 1, false, surface.getStellarTorus().getWorld().getLocalPlayer(), surface.getSize());
+		}
 		if(loaded)
 			lightUpdate(x, y, z);
 		Block[] neighbors = getNeighbors(x, y, z);

@@ -117,6 +117,32 @@ public class MainRenderer implements Renderer {
 
 	FastList<Spatial>[] map = (FastList<Spatial>[]) new FastList[0];
 	
+	public Chunk[] sortChunks(Chunk[] toSort, float playerX, float playerZ) {
+		Chunk[] output = new Chunk[toSort.length];
+		float[] distances = new float[toSort.length];
+		System.arraycopy(toSort, 0, output, 0, toSort.length);
+		for(int i = 0; i < output.length; i++) {
+			distances[i] = (playerX - output[i].getX())*(playerX - output[i].getX()) + (playerZ - output[i].getZ())*(playerZ - output[i].getZ());
+		}
+		// Insert sort them:
+		for(int i = 1; i < output.length; i++) {
+			// TODO: binary search instead of linear search.
+			for(int j = i-1; j >= 0; j--) {
+				if(distances[j] > distances[j+1]) {
+					// Swap them:
+					distances[j] += distances[j+1];
+					distances[j+1] = distances[j] - distances[j+1];
+					distances[j] -= distances[j+1];
+					Chunk local = output[j+1];
+					output[j+1] = output[j];
+					output[j] = local;
+				} else {
+					break;
+				}
+			}
+		}
+		return output;
+	}
 	
 	/**
 	 * Renders a Cubyz world.
@@ -170,6 +196,7 @@ public class MainRenderer implements Renderer {
 			float x0 = playerPosition.x;
 			float z0 = playerPosition.z;
 			float y0 = playerPosition.y + Player.cameraHeight;
+			//chunks = sortChunks(chunks, x0/16 - 0.5f, z0/16 - 0.5f);
 			for (Chunk ch : chunks) {
 				if (!frustumInt.testAab(ch.getMin(x0, z0, worldSize), ch.getMax(x0, z0, worldSize)))
 					continue;
@@ -185,13 +212,14 @@ public class MainRenderer implements Renderer {
 							float y = bi.getY() - y0;
 							z = z - z0;
 							// Only draw blocks that have at least one face facing the player.
+							boolean[] neighbors = bi.getNeighbors();
 							if(bi.getBlock().getBlockClass() == Block.BlockClass.FLUID || // Ignore fluid blocks in the process, so their surface can still be seen from below.
-									(x > 0.5001f && !bi.neighborEast) ||
-									(x < -0.5001f && !bi.neighborWest) ||
-									(y > 0.5001f && !bi.neighborDown) ||
-									(y < -0.5001f && !bi.neighborUp) ||
-									(z > 0.5001f && !bi.neighborSouth) ||
-									(z < -0.5001f && !bi.neighborNorth)) {
+									(x > 0.5001f && !neighbors[0]) ||
+									(x < -0.5001f && !neighbors[1]) ||
+									(y > 0.5001f && !neighbors[4]) ||
+									(y < -0.5001f && !neighbors[5]) ||
+									(z > 0.5001f && !neighbors[2]) ||
+									(z < -0.5001f && !neighbors[3])) {
 								BlockSpatial[] spatial = (BlockSpatial[]) bi.getSpatials();
 								if(spatial != null) {
 									for(BlockSpatial tmp : spatial) {
@@ -208,8 +236,9 @@ public class MainRenderer implements Renderer {
 			}
 		}
 		
+		// TODO: Correctly sort ALL transparent blocks.
 		// sort distances for correct render of transparent blocks
-		Vector3f tmpa = new Vector3f();
+		/*Vector3f tmpa = new Vector3f();
 		Vector3f tmpb = new Vector3f();
 		for (int i = 0; i < blocks.length; i++) {
 			Block b = blocks[i];
@@ -220,7 +249,7 @@ public class MainRenderer implements Renderer {
 					return (int) Math.signum(tmpa.lengthSquared() - tmpb.lengthSquared());
 				});
 			}
-		}
+		}*/
 		
 		renderScene(ctx, ambientLight, map, blocks, entities, spatials,
 				playerPosition, localPlayer, breakAnim);

@@ -7,6 +7,7 @@ import io.cubyz.base.entity_models.Quadruped;
 import io.cubyz.base.rotation.LogRotation;
 import io.cubyz.base.rotation.NoRotation;
 import io.cubyz.base.rotation.TorchRotation;
+import io.cubyz.base.rotation.TransparentRotation;
 import io.cubyz.blocks.RotationMode;
 import io.cubyz.entity.EntityModel;
 
@@ -26,6 +27,7 @@ public class ClientProxy extends CommonProxy {
 		reg.register(new NoRotation());
 		reg.register(new TorchRotation());
 		reg.register(new LogRotation());
+		reg.register(new TransparentRotation());
 	}
 
 	private void registerEntityModels(Registry<EntityModel> reg) {

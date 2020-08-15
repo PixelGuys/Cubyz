@@ -3,7 +3,8 @@ hardness 0.4
 degradable yes
 transparent yes
 absorbedLight 0x0f100010
+rotation cubyz:transparent
 drop auto
 
-model cubyz:block.obj
+model cubyz:plane.obj
 texture cubyz:oak_leaves

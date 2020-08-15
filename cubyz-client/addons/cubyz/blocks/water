@@ -3,6 +3,7 @@ selectable no
 solid no
 transparent yes
 absorbedLight 0x17171100
+rotation cubyz:transparent
 
-model cubyz:block.obj
+model cubyz:plane.obj
 texture cubyz:water

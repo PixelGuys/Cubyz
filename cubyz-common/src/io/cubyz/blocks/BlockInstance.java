@@ -12,7 +12,7 @@ public class BlockInstance {
 	private Object[] spatial;
 	public final int x, y, z;
 	private Surface surface;
-	public boolean neighborUp, neighborDown, neighborEast, neighborWest, neighborNorth, neighborSouth;
+	private boolean[] neighbors;
 	private byte blockData;
 	public final int[] light;
 	
@@ -26,8 +26,22 @@ public class BlockInstance {
 			light = new int[8];
 		else
 			light = null;
+		neighbors = new boolean[6];
 		if(block.mode != null) {
 			spatial = block.mode.generateSpatials(this, blockData, player, worldSize);
+		}
+	}
+	
+	public boolean[] getNeighbors() {
+		return neighbors;
+	}
+	
+	public void updateNeighbor(int i, boolean value, Player player, int worldSize) {
+		if(neighbors[i] != value) {
+			neighbors[i] = value;
+			if(block.mode.dependsOnNeightbors()) {
+				spatial = block.mode.generateSpatials(this, blockData, player, worldSize);
+			}
 		}
 	}
 	

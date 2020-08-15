@@ -209,13 +209,14 @@ public class ZenithsRenderer implements Renderer {
 							float y = bi.getY() - y0;
 							z = z - z0;
 							// Only draw blocks that have at least one face facing the player.
+							boolean[] neighbors = bi.getNeighbors();
 							if(bi.getBlock().getBlockClass() == Block.BlockClass.FLUID || // Ignore fluid blocks in the process, so their surface can still be seen from below.
-									(x > 0.5001f && !bi.neighborEast) ||
-									(x < -0.5001f && !bi.neighborWest) ||
-									(y > 0.5001f && !bi.neighborDown) ||
-									(y < -0.5001f && !bi.neighborUp) ||
-									(z > 0.5001f && !bi.neighborSouth) ||
-									(z < -0.5001f && !bi.neighborNorth)) {
+									(x > 0.5001f && !neighbors[0]) ||
+									(x < -0.5001f && !neighbors[1]) ||
+									(y > 0.5001f && !neighbors[4]) ||
+									(y < -0.5001f && !neighbors[5]) ||
+									(z > 0.5001f && !neighbors[2]) ||
+									(z < -0.5001f && !neighbors[3])) {
 
 								BlockSpatial[] spatial = (BlockSpatial[]) bi.getSpatials();
 								if(spatial != null) {
