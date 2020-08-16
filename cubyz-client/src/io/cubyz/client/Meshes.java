@@ -14,4 +14,7 @@ public class Meshes {
 	public static Map<EntityType, Mesh> entityMeshes = new HashMap<>();
 	public static Map<Block, Texture> blockTextures = new HashMap<>();
 	
+	public static Mesh transparentBlockMesh;
+	public static int transparentAtlasSize;
+	
 }

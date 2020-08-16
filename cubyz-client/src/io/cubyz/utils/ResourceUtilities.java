@@ -1,11 +1,14 @@
 package io.cubyz.utils;
 
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Properties;
+
+import javax.imageio.ImageIO;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -15,6 +18,7 @@ import com.google.gson.JsonObject;
 
 import io.cubyz.Utilities;
 import io.cubyz.api.Resource;
+import io.cubyz.blocks.CustomOre;
 
 public class ResourceUtilities {
 
@@ -155,6 +159,28 @@ public class ResourceUtilities {
 		}
 		
 		return model;
+	}
+	
+	// TODO: Take care about Custom Blocks.
+	public static BufferedImage loadBlockTextureToBufferedImage(Resource block) {
+		String path = "addons/"+block.getMod()+"/blocks/" + block.getID();
+		File file = new File(path);
+		if(!file.exists()) return null;
+		Properties props = new Properties();
+		try {
+			FileReader reader = new FileReader(file);
+			props.load(reader);
+			reader.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+			return null;
+		}
+		Resource texture = new Resource(props.getProperty("texture", null));
+		path = "addons/" + texture.getMod() + "/blocks/textures/" + texture.getID() + ".png";
+		try {
+			return ImageIO.read(new File(path));
+		} catch(Exception e) {e.printStackTrace();}
+		return null;
 	}
 	
 }

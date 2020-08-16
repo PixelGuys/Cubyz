@@ -5,12 +5,12 @@ layout (location=1)  in vec2 texCoord;
 layout (location=2)  in vec3 vertexNormal;
 layout (location=3)  in mat4 modelViewMatrix;
 layout (location=7)  in int easyLight[8];
-layout (location=15) in float selected;
+layout (location=15) in int selected;
 
 out vec2 outTexCoord;
 out vec3 mvVertexPos;
-out float outSelected;
 out vec3 outColor;
+flat out int selectionData;
 
 uniform mat4 projectionMatrix;
 uniform vec3 ambientLight;
@@ -30,7 +30,7 @@ vec3 calcLight(int srgb)
 
 void main()
 {
-	outSelected = selected;
+	selectionData = selected;
 	outColor = 0.003890625*(
 						(0.5-position.x)*(
 							(0.5-position.y)*(

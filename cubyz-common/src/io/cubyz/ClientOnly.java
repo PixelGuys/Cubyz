@@ -10,6 +10,7 @@ import io.cubyz.items.Inventory;
 
 public class ClientOnly {
 
+	public static Consumer<Block[]> generateTextureAtlas;
 	public static Consumer<Block> createBlockMesh;
 	public static Consumer<EntityType> createEntityMesh;
 	public static BiConsumer<String, Object> registerGui;

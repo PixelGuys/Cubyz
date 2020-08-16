@@ -156,7 +156,7 @@ public class Cubyz implements GameLogic {
 		System.gc();
 	}
 	
-	public static void loadWorld(Surface surface) {
+	public static void loadWorld(Surface surface) { // TODO: Seperate all the things out that are generated for the current surface.
 		if (Cubyz.world != null) {
 			quitWorld();
 		}
@@ -232,6 +232,52 @@ public class Cubyz implements GameLogic {
 				item.setImage(NGraphics.nvgImageFrom(tex));
 			}
 		}
+		// Generate the texture atlas for this surface's truly transparent blocks:
+		ArrayList<Block> trulyTransparents = new ArrayList<>();
+		Meshes.transparentBlockMesh = cachedDefaultModels.get("cubyz:plane.obj");
+		for(RegistryElement element : surface.getCurrentRegistries().blockRegistry.registered()) {
+			Block block = (Block)element;
+			if(Meshes.blockMeshes.get(block) == Meshes.transparentBlockMesh) {
+				trulyTransparents.add(block);
+			}
+		}
+		Meshes.transparentAtlasSize = (int)Math.ceil(Math.sqrt(trulyTransparents.size()));
+		int maxSize = 16; // Scale all textures so they fit the size of the biggest texture.
+		// Get the textures for those blocks:
+		ArrayList<BufferedImage> blockTextures = new ArrayList<>();
+		for(Block block : trulyTransparents) {
+			BufferedImage texture = ResourceUtilities.loadBlockTextureToBufferedImage(block.getRegistryID());
+			maxSize = Math.max(maxSize, Math.max(texture.getWidth(), texture.getHeight()));
+			blockTextures.add(texture);
+		}
+		// Put the textures into the atlas
+		BufferedImage atlas = new BufferedImage(maxSize*Meshes.transparentAtlasSize, maxSize*Meshes.transparentAtlasSize, BufferedImage.TYPE_INT_ARGB);
+		int x = 0, y = 0;
+		for(int i = 0; i < blockTextures.size(); i++) {
+			BufferedImage img = blockTextures.get(i);
+			if(img != null) {
+				// Copy and scale the image onto the atlas:
+				for(int x2 = 0; x2 < maxSize; x2++) {
+					for(int y2 = 0; y2 < maxSize; y2++) {
+						atlas.setRGB(x*maxSize + x2, y*maxSize + y2, img.getRGB(x2*img.getWidth()/maxSize, y2*img.getHeight()/maxSize));
+					}
+				}
+			}
+			trulyTransparents.get(i).atlasX = x;
+			trulyTransparents.get(i).atlasY = y;
+			x++;
+			if(x == Meshes.transparentAtlasSize) {
+				x = 0;
+				y++;
+			}
+		}
+		try {
+			ImageIO.write(atlas, "png", new File("test.png"));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		Meshes.transparentBlockMesh.getMaterial().setTexture(new Texture(TextureConverter.fromBufferedImage(atlas)));
+		
 		
 		SoundSource ms = Cubyz.instance.musicSource;
 		if (ms != null) {
@@ -303,7 +349,6 @@ public class Cubyz implements GameLogic {
 		renderer.setShaderFolder(ResourceManager.lookupPath("cubyz/shaders/easyLighting"));
 		
 		BlockPreview.setShaderFolder(ResourceManager.lookupPath("cubyz/shaders/blockPreview"));
-		
 		ClientOnly.createBlockMesh = (block) -> {
 			Resource rsc = block.getRegistryID();
 			try {

@@ -304,11 +304,11 @@ public class ZenithsRenderer implements Renderer {
 			if (mesh.isInstanced()) {
 				InstancedMesh ins = (InstancedMesh) mesh;
 				depthShaderProgram.setUniform("isInstanced", 1);
-				ins.renderListInstanced(map[i], transformation);
+				ins.renderListInstanced(map[i], transformation, false);
 			} else {
 				depthShaderProgram.setUniform("isInstanced", 0);
 				mesh.renderList(map[i], (Spatial gameItem) -> {
-					Matrix4f modelViewMatrix = transformation.getModelViewMatrix(gameItem, lightViewMatrix);
+					Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(gameItem, lightViewMatrix);
 					if (orthogonal) {
 						modelViewMatrix = transformation.getOrtoProjModelMatrix(gameItem);
 					}
@@ -383,11 +383,11 @@ public class ZenithsRenderer implements Renderer {
 				}
 				InstancedMesh ins = (InstancedMesh) mesh;
 				shaderProgram.setUniform("isInstanced", 1);
-				ins.renderListInstanced(map[i], transformation);
+				ins.renderListInstanced(map[i], transformation, false);
 			} else {
 				shaderProgram.setUniform("isInstanced", 0);
 				mesh.renderList(map[i], (Spatial gameItem) -> {
-					Matrix4f modelViewMatrix = transformation.getModelViewMatrix(gameItem, viewMatrix);
+					Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(gameItem, viewMatrix);
 					if (orthogonal) {
 						modelViewMatrix = transformation.getOrtoProjModelMatrix(gameItem, viewMatrix);
 					}

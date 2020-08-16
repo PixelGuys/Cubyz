@@ -37,6 +37,7 @@ public class Block implements RegistryElement {
 	protected boolean degradable = false; // Meaning undegradable parts of trees or other structures can grow through this block.
 	protected BlockClass blockClass;
 	private int light = 0;
+	public int atlasX = 0, atlasY = 0;
 	int absorption = 0; // How much light this block absorbs if it is transparent.
 	String gui; // GUI that is opened onClick.
 	public RotationMode mode = CubyzRegistries.ROTATION_MODE_REGISTRY.getByID("cubyz:no_rotation");

@@ -85,6 +85,8 @@ public class MainRenderer implements Renderer {
 		blockShader.createUniform("break_sampler");
 		blockShader.createUniform("ambientLight");
 		blockShader.createUniform("materialHasTexture");
+		blockShader.createUniform("hasAtlas");
+		blockShader.createUniform("atlasSize");
 		blockShader.createFogUniform("fog");
 		
 		entityShader = new ShaderProgram();
@@ -284,10 +286,19 @@ public class MainRenderer implements Renderer {
 			if (map[i] == null)
 				continue;
 			Mesh mesh = Meshes.blockMeshes.get(blocks[i]);
-			mesh.getMaterial().setTexture(Meshes.blockTextures.get(blocks[i]));
-			blockShader.setUniform("materialHasTexture", mesh.getMaterial().isTextured());
-			InstancedMesh ins = (InstancedMesh) mesh; // Blocks are always instanced.
-			ins.renderListInstanced(map[i], transformation);
+			if(mesh == Meshes.transparentBlockMesh) {
+				blockShader.setUniform("materialHasTexture", true);
+				blockShader.setUniform("hasAtlas", true);
+				blockShader.setUniform("atlasSize", Meshes.transparentAtlasSize);
+				InstancedMesh ins = (InstancedMesh) mesh; // Blocks are always instanced.
+				ins.renderListInstanced(map[i], transformation, true);
+				blockShader.setUniform("hasAtlas", false);
+			} else {
+				mesh.getMaterial().setTexture(Meshes.blockTextures.get(blocks[i]));
+				blockShader.setUniform("materialHasTexture", mesh.getMaterial().isTextured());
+				InstancedMesh ins = (InstancedMesh) mesh; // Blocks are always instanced.
+				ins.renderListInstanced(map[i], transformation, false);
+			}
 		}
 		blockShader.unbind();
 		

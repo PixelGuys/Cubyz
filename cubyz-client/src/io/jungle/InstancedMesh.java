@@ -218,8 +218,9 @@ public class InstancedMesh extends Mesh {
 	 * @param spatials
 	 * @param transformation
 	 * @param viewMatrix
+	 * @param useTextureAtlas
 	 */
-	public boolean renderListInstancedNC(FastList<Spatial> spatials, Transformation transformation) {
+	public boolean renderListInstancedNC(FastList<Spatial> spatials, Transformation transformation, boolean useTextureAtlas) {
 		if (numInstances == 0)
 			return false;
 		initRender();
@@ -230,7 +231,7 @@ public class InstancedMesh extends Mesh {
 			if (numInstances < curSize) {
 				setInstances(curSize, ZenithsRenderer.shadowMap != null);
 			}
-			uploadData(spatials.array, 0, spatials.size, transformation);
+			uploadData(spatials.array, 0, spatials.size, transformation, useTextureAtlas);
 			bool = true;
 		}
 		renderChunkInstanced(spatials.size, transformation);
@@ -239,7 +240,7 @@ public class InstancedMesh extends Mesh {
 		return bool;
 	}
 	
-	public void renderListInstanced(FastList<Spatial> spatials, Transformation transformation) {
+	public void renderListInstanced(FastList<Spatial> spatials, Transformation transformation, boolean useTextureAtlas) {
 		if (numInstances == 0)
 			return;
 		initRender();
@@ -248,14 +249,14 @@ public class InstancedMesh extends Mesh {
 		int length = spatials.size;
 		for (int i = 0; i < length; i += chunkSize) {
 			int end = Math.min(length, i + chunkSize);
-			uploadData(spatials.array, i, end, transformation);
+			uploadData(spatials.array, i, end, transformation, useTextureAtlas);
 			renderChunkInstanced(end-i, transformation);
 		}
 
 		endRender();
 	}
 	
-	public void uploadData(Spatial[] spatials, int startIndex, int endIndex, Transformation transformation) {
+	public void uploadData(Spatial[] spatials, int startIndex, int endIndex, Transformation transformation, boolean useTextureAtlas) {
 		this.instanceDataBuffer.clear();
 		
 		int size = endIndex-startIndex;
@@ -280,9 +281,17 @@ public class InstancedMesh extends Mesh {
 				modelMatrix.get(INSTANCE_SIZE_FLOATS * i, instanceDataBuffer);
 				BlockInstance bi = ((BlockSpatial) spatial).getBlockInstance();
 				if (bi.getBreakingAnim() == 0f) {
-					instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 24, spatial.isSelected() ? 1 : 0);
+					int breakAnimInfo = (int)(spatial.isSelected() ? 1 : 0) << 24;
+					if(useTextureAtlas) {
+						breakAnimInfo |= ((BlockSpatial)spatial).getBlockInstance().getBlock().atlasX << 8 | ((BlockSpatial)spatial).getBlockInstance().getBlock().atlasY;
+					}
+					instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 24, Float.intBitsToFloat(breakAnimInfo));
 				} else {
-					instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 24, bi.getBreakingAnim());
+					int breakAnimInfo = (int)(bi.getBreakingAnim()*255) << 24;
+					if(useTextureAtlas) {
+						breakAnimInfo |= (((BlockSpatial)spatial).getBlockInstance().getBlock().atlasX & 255) << 8 | (((BlockSpatial)spatial).getBlockInstance().getBlock().atlasY & 255);
+					}
+					instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 24, Float.intBitsToFloat(breakAnimInfo));
 				}
 				if (Settings.easyLighting) {
 					for(int j = 0; j < 8; j++) {
