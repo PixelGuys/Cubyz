@@ -130,7 +130,7 @@ public class MainRenderer implements Renderer {
 		for(int i = 1; i < output.length; i++) {
 			// TODO: binary search instead of linear search.
 			for(int j = i-1; j >= 0; j--) {
-				if(distances[j] > distances[j+1]) {
+				if(distances[j] < distances[j+1]) {
 					// Swap them:
 					distances[j] += distances[j+1];
 					distances[j+1] = distances[j] - distances[j+1];
@@ -171,9 +171,14 @@ public class MainRenderer implements Renderer {
 		clear();
 		ctx.getCamera().setViewMatrix(transformation.getViewMatrix(ctx.getCamera()));
 		
+		// Create the mesh map. Create only one entry for the truly transparent block.
+		int transparentIndex = -1;
+		for(int i = blocks.length - 1; i >= 0; transparentIndex = i--) {
+			if(!blocks[i].isTrulyTransparent()) break;
+		}
 		float breakAnim = 0f;
-		if (blocks.length != map.length) {
-			map = (FastList<Spatial>[]) new FastList[blocks.length];
+		if (transparentIndex + 1 != map.length) {
+			map = (FastList<Spatial>[]) new FastList[transparentIndex + 1];
 			int arrayListCapacity = 10;
 			for (int i = 0; i < map.length; i++) {
 				map[i] = new FastList<Spatial>(arrayListCapacity, Spatial.class);
@@ -195,6 +200,7 @@ public class MainRenderer implements Renderer {
 			playerPosition = localPlayer.getPosition(); // Use a constant copy of the player position for the whole rendering to prevent graphics bugs on player movement.
 		}
 		if(playerPosition != null) {
+			Vector3f temp = new Vector3f();
 			float x0 = playerPosition.x;
 			float z0 = playerPosition.z;
 			float y0 = playerPosition.y + Player.cameraHeight;
@@ -210,25 +216,40 @@ public class MainRenderer implements Renderer {
 						float x = CubyzMath.match(bi.getX(), x0, worldSize);
 						float z = CubyzMath.match(bi.getZ(), z0, worldSize);
 						if(frustumInt.testSphere(x, bi.getY(), z, 0.866025f)) {
-							x = x - x0;
-							float y = bi.getY() - y0;
-							z = z - z0;
-							// Only draw blocks that have at least one face facing the player.
-							boolean[] neighbors = bi.getNeighbors();
-							if(bi.getBlock().getBlockClass() == Block.BlockClass.FLUID || // Ignore fluid blocks in the process, so their surface can still be seen from below.
-									(x > 0.5001f && !neighbors[0]) ||
-									(x < -0.5001f && !neighbors[1]) ||
-									(y > 0.5001f && !neighbors[4]) ||
-									(y < -0.5001f && !neighbors[5]) ||
-									(z > 0.5001f && !neighbors[2]) ||
-									(z < -0.5001f && !neighbors[3])) {
+							if(bi.getBlock().isTrulyTransparent()) {
 								BlockSpatial[] spatial = (BlockSpatial[]) bi.getSpatials();
 								if(spatial != null) {
 									for(BlockSpatial tmp : spatial) {
 										if (tmp.isSelected()) {
 											breakAnim = bi.getBreakingAnim();
 										}
-										map[bi.getID()].add(tmp);
+										ctx.getCamera().getPosition().sub(tmp.getPosition(), temp);
+										tmp.distance = temp.lengthSquared();
+										// Insert sort this spatial into the list:
+										map[transparentIndex].add(tmp);
+									}
+								}
+							} else {
+								x = x - x0;
+								float y = bi.getY() - y0;
+								z = z - z0;
+								// Only draw blocks that have at least one face facing the player.
+								boolean[] neighbors = bi.getNeighbors();
+								if(bi.getBlock().getBlockClass() == Block.BlockClass.FLUID || // Ignore fluid blocks in the process, so their surface can still be seen from below.
+										(x > 0.5001f && !neighbors[0]) ||
+										(x < -0.5001f && !neighbors[1]) ||
+										(y > 0.5001f && !neighbors[4]) ||
+										(y < -0.5001f && !neighbors[5]) ||
+										(z > 0.5001f && !neighbors[2]) ||
+										(z < -0.5001f && !neighbors[3])) {
+									BlockSpatial[] spatial = (BlockSpatial[]) bi.getSpatials();
+									if(spatial != null) {
+										for(BlockSpatial tmp : spatial) {
+											if (tmp.isSelected()) {
+												breakAnim = bi.getBreakingAnim();
+											}
+											map[bi.getID()].add(tmp);
+										}
 									}
 								}
 							}
@@ -240,28 +261,25 @@ public class MainRenderer implements Renderer {
 		
 		// TODO: Correctly sort ALL transparent blocks.
 		// sort distances for correct render of transparent blocks
-		/*Vector3f tmpa = new Vector3f();
-		Vector3f tmpb = new Vector3f();
-		for (int i = 0; i < blocks.length; i++) {
+		int i = transparentIndex;
+		if(i >= 0) {
 			Block b = blocks[i];
 			if (b != null && b.isTransparent()) {
 				map[b.ID].sort((sa, sb) -> {
-					ctx.getCamera().getPosition().sub(sa.getPosition(), tmpa);
-					ctx.getCamera().getPosition().sub(sb.getPosition(), tmpb);
-					return (int) Math.signum(tmpa.lengthSquared() - tmpb.lengthSquared());
+					return (int) -Math.signum(sa.distance - sb.distance);
 				});
 			}
-		}*/
+		}
 		
 		renderScene(ctx, ambientLight, map, blocks, entities, spatials,
-				playerPosition, localPlayer, breakAnim);
+				playerPosition, localPlayer, breakAnim, transparentIndex);
 		if (ctx.getHud() != null) {
 			ctx.getHud().render(window);
 		}
 	}
 	
 	public void renderScene(Context ctx, Vector3f ambientLight,
-			FastList<Spatial>[] map, Block[] blocks, Entity[] entities, Spatial[] spatials, Vector3f playerPosition, Player p, float breakAnim) {
+			FastList<Spatial>[] map, Block[] blocks, Entity[] entities, Spatial[] spatials, Vector3f playerPosition, Player p, float breakAnim, int transparentIndex) {
 		blockShader.bind();
 		
 		blockShader.setUniform("fog", ctx.getFog());
@@ -282,7 +300,7 @@ public class MainRenderer implements Renderer {
 			glActiveTexture(GL_TEXTURE2);
 			glBindTexture(GL_TEXTURE_2D, 0);
 		}
-		for (int i = 0; i < blocks.length; i++) {
+		for (int i = 0; i <= transparentIndex; i++) {
 			if (map[i] == null)
 				continue;
 			Mesh mesh = Meshes.blockMeshes.get(blocks[i]);

@@ -15,6 +15,11 @@ public class Spatial {
     private float scale;
     private boolean selected;
     
+    /**
+     * Used to store the distance from the player for transparent blocks, so it doesn't need to get recalculated while sorting.
+     */
+    public float distance;
+    
     public int[] light;
 
     public Spatial(Mesh mesh) {

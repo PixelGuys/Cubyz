@@ -21,8 +21,9 @@ public class Block implements RegistryElement {
 	public static enum BlockClass {
 		WOOD, STONE, SAND, UNBREAKABLE, LEAF, FLUID
 	};
-	
+
 	boolean transparent;
+	boolean trulyTransparent;
 	/**
 	 * Used for rendering optimization.<br/>
 	 * Do not edit or rely on, as it is not an ID to actually describe the block on a persistent state.
@@ -65,6 +66,7 @@ public class Block implements RegistryElement {
 		solid = props.getProperty("solid", "yes").equalsIgnoreCase("yes");
 		gui = props.getProperty("GUI", null);
 		mode = CubyzRegistries.ROTATION_MODE_REGISTRY.getByID(props.getProperty("rotation", "cubyz:no_rotation"));
+		trulyTransparent = "cubyz:plane.obj".equals(props.getProperty("model"));
 	}
 	
 	public void setDegradable(Boolean deg) {
@@ -75,8 +77,18 @@ public class Block implements RegistryElement {
 		return degradable;
 	}
 	
+	/**
+	 * @return Whether this block is transparent to the lighting system.
+	 */
 	public boolean isTransparent() {
 		return transparent;
+	}
+	
+	/**
+	 * @return Whether this block should be rendered as a transparent block.
+	 */
+	public boolean isTrulyTransparent() {
+		return trulyTransparent;
 	}
 	
 	public Block setSolid(boolean solid) {

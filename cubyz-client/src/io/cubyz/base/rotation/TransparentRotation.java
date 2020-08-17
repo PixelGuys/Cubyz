@@ -32,21 +32,27 @@ public class TransparentRotation implements RotationMode {
 				BlockSpatial tmp = new BlockSpatial(bi, player, worldSize);
 				switch(i) {
 					default:
+						tmp.setPosition(bi.getX(), bi.getY() + 0.5f, bi.getZ(), player, worldSize);
 						break;
 					case 4:
 						tmp.setRotation(PI, 0, 0);
+						tmp.setPosition(bi.getX(), bi.getY() - 0.5f, bi.getZ(), player, worldSize);
 						break;
 					case 0:
 						tmp.setRotation(0, 0, -PI_HALF);
+						tmp.setPosition(bi.getX() - 0.5f, bi.getY(), bi.getZ(), player, worldSize);
 						break;
 					case 1:
 						tmp.setRotation(0, 0, PI_HALF);
+						tmp.setPosition(bi.getX() + 0.5f, bi.getY(), bi.getZ(), player, worldSize);
 						break;
 					case 2:
 						tmp.setRotation(PI_HALF, 0, 0);
+						tmp.setPosition(bi.getX(), bi.getY(), bi.getZ() - 0.5f, player, worldSize);
 						break;
 					case 3:
 						tmp.setRotation(-PI_HALF, 0, 0);
+						tmp.setPosition(bi.getX(), bi.getY(), bi.getZ() + 0.5f, player, worldSize);
 						break;
 				}
 				spatials[i] = tmp;
