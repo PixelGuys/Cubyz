@@ -7,7 +7,6 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
 import io.cubyz.ClientSettings;
-import io.cubyz.Settings;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.CustomMeshProvider;
@@ -217,7 +216,7 @@ public class MainRenderer implements Renderer {
 						float z = CubyzMath.match(bi.getZ(), z0, worldSize);
 						if(frustumInt.testSphere(x, bi.getY(), z, 0.866025f)) {
 							if(bi.getBlock().isTrulyTransparent()) {
-								BlockSpatial[] spatial = (BlockSpatial[]) bi.getSpatials();
+								BlockSpatial[] spatial = (BlockSpatial[]) bi.getSpatials(localPlayer, worldSize, ch);
 								if(spatial != null) {
 									for(BlockSpatial tmp : spatial) {
 										if (tmp.isSelected()) {
@@ -242,7 +241,7 @@ public class MainRenderer implements Renderer {
 										(y < -0.5001f && !neighbors[5]) ||
 										(z > 0.5001f && !neighbors[2]) ||
 										(z < -0.5001f && !neighbors[3])) {
-									BlockSpatial[] spatial = (BlockSpatial[]) bi.getSpatials();
+									BlockSpatial[] spatial = (BlockSpatial[]) bi.getSpatials(localPlayer, worldSize, ch);
 									if(spatial != null) {
 										for(BlockSpatial tmp : spatial) {
 											if (tmp.isSelected()) {

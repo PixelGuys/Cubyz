@@ -662,7 +662,7 @@ public class Cubyz implements GameLogic {
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_EQUAL, false);
 				System.gc();
 			}
-			msd.selectSpatial(world.getCurrentTorus().getChunks(), world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate(), surface.getSize(), surface);
+			msd.selectSpatial(world.getCurrentTorus().getChunks(), world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate(), surface.getStellarTorus().getWorld().getLocalPlayer(), surface.getSize(), surface);
 		}
 		if (world != null) {
 			if (Keybindings.isPressed("menu")) {

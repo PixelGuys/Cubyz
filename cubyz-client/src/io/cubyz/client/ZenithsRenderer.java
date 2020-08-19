@@ -218,7 +218,7 @@ public class ZenithsRenderer implements Renderer {
 									(z > 0.5001f && !neighbors[2]) ||
 									(z < -0.5001f && !neighbors[3])) {
 
-								BlockSpatial[] spatial = (BlockSpatial[]) bi.getSpatials();
+								BlockSpatial[] spatial = (BlockSpatial[]) bi.getSpatials(localPlayer, worldSize, ch);
 								if(spatial != null) {
 									ch.getCornerLight(bi.getX() & 15, bi.getY(), bi.getZ() & 15, bi.light);
 									for(BlockSpatial tmp : spatial) {

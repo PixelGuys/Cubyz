@@ -25,7 +25,7 @@ public class CubyzMeshSelectionDetector {
 		return selectedSpatial;
 	}
 	
-	public void selectSpatial(Chunk[] chunks, Vector3f position, Vector3f dir, int worldSize, Surface surface) {
+	public void selectSpatial(Chunk[] chunks, Vector3f position, Vector3f dir, Player localPlayer, int worldSize, Surface surface) {
 		// Test blocks:
 		Vector3f transformedPosition = new Vector3f(position.x, position.y + Player.cameraHeight, position.z);
 		dirX = (int)Math.signum(dir.x);
@@ -78,7 +78,7 @@ public class CubyzMeshSelectionDetector {
 		if(selectedSpatial != null) {
 			synchronized(selectedSpatial) {
 				if(selectedSpatial != null && selectedSpatial instanceof BlockInstance) {
-					for(BlockSpatial spatial : (BlockSpatial[])((BlockInstance)selectedSpatial).getSpatials()) {
+					for(BlockSpatial spatial : (BlockSpatial[])((BlockInstance)selectedSpatial).getSpatials(localPlayer, worldSize, null)) {
 						spatial.setSelected(false);
 					}
 				}
@@ -88,7 +88,7 @@ public class CubyzMeshSelectionDetector {
 		if(selectedSpatial != null) {
 			synchronized(selectedSpatial) {
 				if(selectedSpatial != null && selectedSpatial instanceof BlockInstance) {
-					for(BlockSpatial spatial : (BlockSpatial[])((BlockInstance)selectedSpatial).getSpatials()) {
+					for(BlockSpatial spatial : (BlockSpatial[])((BlockInstance)selectedSpatial).getSpatials(localPlayer, worldSize, null)) {
 						spatial.setSelected(true);
 					}
 				}

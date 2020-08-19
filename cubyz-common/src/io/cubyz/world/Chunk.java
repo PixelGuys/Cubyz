@@ -802,8 +802,6 @@ public class Chunk {
 				if (bi != null) handler.onBlockAppear(bi.getBlock(), bi.getX(), bi.getY(), bi.getZ());
 			}
 		}
-		if(Settings.easyLighting)
-			getCornerLight(x, y, z, bi.light);
 	}
 	
 	public void removeBlockAt(int x, int y, int z, boolean registerBlockChange) {
@@ -1030,8 +1028,8 @@ public class Chunk {
 			if(chunk != null && chunk.isGenerated()) return chunk.getBlockUnboundAndUpdateLight(x & 15, y, z & 15);
 			return noLight; // Let the lighting engine think this region is blocked.
 		}
-		if(loaded && inst[(x << 4) | (y << 8) | z] != null) {
-			getCornerLight(x, y, z, inst[(x << 4) | (y << 8) | z].light);
+		if(inst[(x << 4) | (y << 8) | z] != null) {
+			inst[(x << 4) | (y << 8) | z].scheduleLightUpdate();
 		}
 		return blocks[(x << 4) | (y << 8) | z];
 	}
@@ -1053,8 +1051,8 @@ public class Chunk {
 			if(chunk != null && chunk.isGenerated()) chunk.updateLight(x & 15, y, z & 15);
 			return;
 		}
-		if(loaded && inst[(x << 4) | (y << 8) | z] != null) {
-			getCornerLight(x, y, z, inst[(x << 4) | (y << 8) | z].light);
+		if(inst[(x << 4) | (y << 8) | z] != null) {
+			inst[(x << 4) | (y << 8) | z].scheduleLightUpdate();
 		}
 	}
 	

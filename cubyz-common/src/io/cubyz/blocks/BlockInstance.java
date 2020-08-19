@@ -4,6 +4,7 @@ import org.joml.Vector3i;
 
 import io.cubyz.Settings;
 import io.cubyz.entity.Player;
+import io.cubyz.world.Chunk;
 import io.cubyz.world.Surface;
 
 public class BlockInstance {
@@ -14,6 +15,8 @@ public class BlockInstance {
 	private Surface surface;
 	private boolean[] neighbors;
 	private byte blockData;
+	private boolean spatialUpdate;
+	private boolean lightUpdate;
 	public final int[] light;
 	
 	public BlockInstance(Block block, byte data, Vector3i position, Player player, int worldSize) {
@@ -27,9 +30,8 @@ public class BlockInstance {
 		else
 			light = null;
 		neighbors = new boolean[6];
-		if(block.mode != null) {
-			spatial = block.mode.generateSpatials(this, blockData, player, worldSize);
-		}
+		spatialUpdate = true;
+		scheduleLightUpdate();
 	}
 	
 	public boolean[] getNeighbors() {
@@ -40,7 +42,7 @@ public class BlockInstance {
 		if(neighbors[i] != value) {
 			neighbors[i] = value;
 			if(block.mode.dependsOnNeightbors()) {
-				spatial = block.mode.generateSpatials(this, blockData, player, worldSize);
+				spatialUpdate = true;
 			}
 		}
 	}
@@ -87,10 +89,24 @@ public class BlockInstance {
 	
 	public void setData(byte data, Player player, int worldSize) {
 		blockData = data;
-		spatial = block.mode.generateSpatials(this, blockData, player, worldSize);
+		spatialUpdate = true;
 	}
 	
-	public Object[] getSpatials() {
+	public void scheduleLightUpdate() {
+		lightUpdate = true;
+	}
+	
+	public Object[] getSpatials(Player player, int worldSize, Chunk chunk) {
+		if(spatialUpdate) { // Generate the Spatials on demand.
+			spatial = block.mode.generateSpatials(this, blockData, player, worldSize);
+			spatialUpdate = false;
+		}
+		if(Settings.easyLighting && lightUpdate) { // Update the internal light representation on demand.
+			if(chunk != null) {
+				chunk.getCornerLight(x & 15, y, z & 15, light);
+				lightUpdate = false;
+			}
+		}
 		return spatial;
 	}
 
