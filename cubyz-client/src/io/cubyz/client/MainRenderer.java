@@ -292,7 +292,7 @@ public class MainRenderer implements Renderer {
 
 		blockShader.setUniform("ambientLight", ambientLight);
 
-		if (breakAnim > 0f && breakAnim < 1f) {
+		if(breakAnim > 0f && breakAnim < 1f) {
 			int breakStep = (int)(breakAnim*Cubyz.breakAnimations.length);
 			glActiveTexture(GL_TEXTURE2);
 			glBindTexture(GL_TEXTURE_2D, Cubyz.breakAnimations[breakStep].getId());
@@ -300,23 +300,14 @@ public class MainRenderer implements Renderer {
 			glActiveTexture(GL_TEXTURE2);
 			glBindTexture(GL_TEXTURE_2D, 0);
 		}
-		for (int i = 0; i <= transparentIndex; i++) {
+		// Handle non-transparent blocks:
+		for(int i = 0; i < transparentIndex; i++) {
 			if (map[i] == null)
 				continue;
-			Mesh mesh = Meshes.blockMeshes.get(blocks[i]);
-			if(mesh == Meshes.transparentBlockMesh) {
-				blockShader.setUniform("materialHasTexture", true);
-				blockShader.setUniform("hasAtlas", true);
-				blockShader.setUniform("atlasSize", Meshes.transparentAtlasSize);
-				InstancedMesh ins = (InstancedMesh) mesh; // Blocks are always instanced.
-				ins.renderListInstanced(map[i], transformation, true);
-				blockShader.setUniform("hasAtlas", false);
-			} else {
-				mesh.getMaterial().setTexture(Meshes.blockTextures.get(blocks[i]));
-				blockShader.setUniform("materialHasTexture", mesh.getMaterial().isTextured());
-				InstancedMesh ins = (InstancedMesh) mesh; // Blocks are always instanced.
-				ins.renderListInstanced(map[i], transformation, false);
-			}
+			InstancedMesh mesh = Meshes.blockMeshes.get(blocks[i]);
+			mesh.getMaterial().setTexture(Meshes.blockTextures.get(blocks[i]));
+			blockShader.setUniform("materialHasTexture", mesh.getMaterial().isTextured());
+			mesh.renderListInstanced(map[i], transformation, false);
 		}
 		blockShader.unbind();
 		
@@ -380,6 +371,17 @@ public class MainRenderer implements Renderer {
 		}
 		
 		entityShader.unbind();
+		// Handle transparent blocks after everything else:
+		blockShader.bind();
+		if(transparentIndex >= 0) {
+			InstancedMesh mesh = Meshes.blockMeshes.get(blocks[transparentIndex]);
+			blockShader.setUniform("materialHasTexture", true);
+			blockShader.setUniform("hasAtlas", true);
+			blockShader.setUniform("atlasSize", Meshes.transparentAtlasSize);
+			mesh.renderListInstanced(map[transparentIndex], transformation, true);
+			blockShader.setUniform("hasAtlas", false);
+		}
+		blockShader.unbind();
 	}
 
 	@Override

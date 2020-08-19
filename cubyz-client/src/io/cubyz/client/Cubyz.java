@@ -102,7 +102,7 @@ public class Cubyz implements GameLogic {
 	public static Cubyz instance;
 	
 	public static Deque<Runnable> renderDeque = new ArrayDeque<>();
-	public static HashMap<String, Mesh> cachedDefaultModels = new HashMap<>();
+	public static HashMap<String, InstancedMesh> cachedDefaultModels = new HashMap<>();
 	
 	private static HashMap<String, MenuGUI> userGUIs = new HashMap<>();
 	
@@ -366,7 +366,7 @@ public class Cubyz implements GameLogic {
 				}
 				
 				// Cached meshes
-				Mesh mesh = null;
+				InstancedMesh mesh = null;
 				for (String key : cachedDefaultModels.keySet()) {
 					if (key.equals(bm.subModels.get("default").model)) {
 						mesh = cachedDefaultModels.get(key);
@@ -374,9 +374,9 @@ public class Cubyz implements GameLogic {
 				}
 				if (mesh == null) {
 					Resource rs = new Resource(bm.subModels.get("default").model);
-					mesh = OBJLoader.loadMesh("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), true);
+					mesh = (InstancedMesh)OBJLoader.loadMesh("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), true); // Block meshes are always instanced.
 					//defaultMesh = StaticMeshesLoader.loadInstanced("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), "assets/" + rs.getMod() + "/models/3d/")[0];
-					((InstancedMesh) mesh).setInstances(512, ZenithsRenderer.shadowMap != null);
+					mesh.setInstances(512, ZenithsRenderer.shadowMap != null);
 					mesh.setBoundingRadius(2.0f);
 					Material material = new Material(tex, 0.6F);
 					mesh.setMaterial(material);
@@ -717,7 +717,7 @@ public class Cubyz implements GameLogic {
 			Resource rsc = block.getRegistryID();
 			try {
 				Texture tex = null;
-				Mesh mesh = null;
+				InstancedMesh mesh = null;
 				BlockModel bm = null;
 				try {
 					bm = ResourceUtilities.loadModel(rsc);
@@ -728,7 +728,7 @@ public class Cubyz implements GameLogic {
 				}
 				
 				// Cached meshes
-				Mesh defaultMesh = null;
+				InstancedMesh defaultMesh = null;
 				for (String key : cachedDefaultModels.keySet()) {
 					if (key.equals(bm.subModels.get("default").model)) {
 						defaultMesh = cachedDefaultModels.get(key);
@@ -742,7 +742,7 @@ public class Cubyz implements GameLogic {
 				}
 				if (defaultMesh == null) {
 					Resource rs = new Resource(subModel.model);
-					defaultMesh = OBJLoader.loadMesh("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), false);
+					defaultMesh = (InstancedMesh)OBJLoader.loadMesh("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), true); // Blocks are always instanced.
 					defaultMesh.setBoundingRadius(2.0f);
 					cachedDefaultModels.put(subModel.model, defaultMesh);
 				}
@@ -754,7 +754,7 @@ public class Cubyz implements GameLogic {
 				}
 				tex = new Texture("assets/" + texResource.getMod() + "/textures/" + texture + ".png");
 				
-				mesh = defaultMesh.cloneNoMaterial();
+				mesh = (InstancedMesh)defaultMesh.cloneNoMaterial();
 				Material material = new Material(tex, 0.6F);
 				mesh.setMaterial(material);
 				

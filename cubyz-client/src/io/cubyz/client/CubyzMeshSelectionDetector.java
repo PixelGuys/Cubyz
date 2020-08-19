@@ -78,7 +78,9 @@ public class CubyzMeshSelectionDetector {
 		if(selectedSpatial != null) {
 			synchronized(selectedSpatial) {
 				if(selectedSpatial != null && selectedSpatial instanceof BlockInstance) {
-					(((BlockSpatial[]) ((BlockInstance)selectedSpatial).getSpatials())[0]).setSelected(false);
+					for(BlockSpatial spatial : (BlockSpatial[])((BlockInstance)selectedSpatial).getSpatials()) {
+						spatial.setSelected(false);
+					}
 				}
 			}
 		}
@@ -86,7 +88,9 @@ public class CubyzMeshSelectionDetector {
 		if(selectedSpatial != null) {
 			synchronized(selectedSpatial) {
 				if(selectedSpatial != null && selectedSpatial instanceof BlockInstance) {
-					(((BlockSpatial[]) ((BlockInstance)selectedSpatial).getSpatials())[0]).setSelected(true);
+					for(BlockSpatial spatial : (BlockSpatial[])((BlockInstance)selectedSpatial).getSpatials()) {
+						spatial.setSelected(true);
+					}
 				}
 			}
 		}
