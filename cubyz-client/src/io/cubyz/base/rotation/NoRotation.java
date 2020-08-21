@@ -1,5 +1,7 @@
 package io.cubyz.base.rotation;
 
+import org.joml.RayAabIntersection;
+import org.joml.Vector3f;
 import org.joml.Vector3i;
 
 import io.cubyz.api.Resource;
@@ -42,6 +44,16 @@ public class NoRotation implements RotationMode {
 
 	@Override
 	public byte getNaturalStandard() {
+		return 0;
+	}
+
+	@Override
+	public boolean changesHitbox() {
+		return false;
+	}
+
+	@Override
+	public float getRayIntersection(RayAabIntersection arg0, BlockInstance arg1, Vector3f min, Vector3f max, Vector3f transformedPosition) {
 		return 0;
 	}
 

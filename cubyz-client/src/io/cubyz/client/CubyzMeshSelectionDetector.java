@@ -15,7 +15,7 @@ public class CubyzMeshSelectionDetector {
 	protected Vector3f min = new Vector3f(), max = new Vector3f();
 	private int dirX, dirY, dirZ; // Used to prevent a block placement bug caused by asynchronous player position when selectSpatial and when getEmptyPlace are called.
 	protected Object selectedSpatial; // Can be either a block or an entity.
-	RayAabIntersection intersection = new RayAabIntersection();
+	protected RayAabIntersection intersection = new RayAabIntersection();
 	
 	/**
 	 * Return selected block instance
@@ -54,7 +54,12 @@ public class CubyzMeshSelectionDetector {
 					max.add(0.5f, 0.5f, 0.5f); // scale, scale, scale
 					// Because of the huge number of different BlockInstances that will be tested, it is more efficient to use RayAabIntersection and determine the distance sperately:
 					if (intersection.test(min.x, min.y, min.z, max.x, max.y, max.z)) {
-						float distance = min.add(0.5f, 0.5f, 0.5f).sub(transformedPosition).length();
+						float distance;
+						if(bi.getBlock().mode.changesHitbox()) {
+							distance = bi.getBlock().mode.getRayIntersection(intersection, bi, min, max, transformedPosition);
+						} else {
+							distance = min.add(0.5f, 0.5f, 0.5f).sub(transformedPosition).length();
+						}
 						if(distance < closestDistance) {
 							closestDistance = distance;
 							newSpatial = bi;

@@ -1,5 +1,7 @@
 package io.cubyz.blocks;
 
+import org.joml.RayAabIntersection;
+import org.joml.Vector3f;
 import org.joml.Vector3i;
 
 import io.cubyz.api.RegistryElement;
@@ -24,4 +26,19 @@ public interface RotationMode extends RegistryElement {
 	 * @return standard data for natural generation.
 	 */
 	public byte getNaturalStandard();
+	
+	/**
+	 * @return Whether this RotationMode changes this blocks hitbox for player collision or block selection.
+	 */
+	public boolean changesHitbox();
+	
+	/**
+	 * 
+	 * @param intersection
+	 * @param bi
+	 * @param min minimal point of the surrounding block. May be overwritten.
+	 * @param max maximal point of the surrounding block. May be overwritten.
+	 * @return
+	 */
+	public float getRayIntersection(RayAabIntersection intersection, BlockInstance bi, Vector3f min, Vector3f max, Vector3f transformedPosition);
 }

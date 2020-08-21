@@ -1,5 +1,7 @@
 package io.cubyz.base.rotation;
 
+import org.joml.RayAabIntersection;
+import org.joml.Vector3f;
 import org.joml.Vector3i;
 
 import io.cubyz.api.Resource;
@@ -58,5 +60,21 @@ public class StackableRotation implements RotationMode {
 	@Override
 	public byte getNaturalStandard() {
 		return 16;
+	}
+
+	@Override
+	public boolean changesHitbox() {
+		return true;
+	}
+
+	@Override
+	public float getRayIntersection(RayAabIntersection intersection, BlockInstance bi, Vector3f min, Vector3f max, Vector3f transformedPosition) {
+		max.add(0, bi.getData()/16.0f - 1.0f, 0);
+		// Because of the huge number of different BlockInstances that will be tested, it is more efficient to use RayAabIntersection and determine the distance sperately:
+		if (intersection.test(min.x, min.y, min.z, max.x, max.y, max.z)) {
+			return min.add(0.5f, bi.getData()/32.0f, 0.5f).sub(transformedPosition).length();
+		} else {
+			return Float.MAX_VALUE;
+		}
 	}
 }
