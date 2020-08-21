@@ -214,11 +214,14 @@ public class Chunk {
 		for(int x = 0; x < 16; x++) {
 			for(int y = 0; y <= maxHeight; y++) {
 				for(int  z = 0; z < 16; z++) {
-					Block b = getBlockAt(x, y, z);
+					int index = (x << 4) | (y << 8) | z;
+					Block b = blocks[index];
 					if(b != null) {
-						Block[] neighbors = getNeighbors(x, y, z);
+						byte[] data = new byte[6];
+						int[] indices = new int[6];
+						Block[] neighbors = getNeighbors(x, y ,z, data, indices);
 						for (int i = 0; i < neighbors.length; i++) {
-							if (blocksLight(neighbors[i], b)
+							if (blocksLight(neighbors[i], b, data[i], index - indices[i])
 														&& (y != 0 || i != 4)
 														&& (x != 0 || i != 0 || chx0)
 														&& (x != 15 || i != 1 || chx1)
@@ -229,7 +232,7 @@ public class Chunk {
 							}
 						}
 						if(Settings.easyLighting && b.getLight() != 0) { // Process light sources
-							lightSources.add((x << 4) | (y << 8) | z);
+							lightSources.add(index);
 						}
 					}
 				}
@@ -250,7 +253,7 @@ public class Chunk {
 						Block block = ch.getBlockAt(dx[k], j, dz[k]);
 						// Update neighbor information:
 						if(inst != null) {
-							inst.updateNeighbor(k ^ 1, getsBlocked(block, blocks[(invdx[k] << 4) | (j << 8) | invdz[k]]), surface.getStellarTorus().getWorld().getLocalPlayer(), surface.getSize());
+							inst.updateNeighbor(k ^ 1, getsBlocked(block, blocks[(invdx[k] << 4) | (j << 8) | invdz[k]], ch.blockData[(dx[k] << 4) | (j << 8) | dz[k]], (invdx[k] << 4) | (j << 8) | invdz[k] - (dx[k] << 4) | (j << 8) | dz[k]), surface.getStellarTorus().getWorld().getLocalPlayer(), surface.getSize());
 						}
 						// Update visibility:
 						if(block == null) {
@@ -259,7 +262,7 @@ public class Chunk {
 						if(ch.contains(dx[k] + wx, j, dz[k] + wz)) {
 							continue;
 						}
-						if (blocksLight(getBlockAt(invdx[k], j, invdz[k]), block)) {
+						if (blocksLight(getBlockAt(invdx[k], j, invdz[k]), block, blockData[(invdx[k] << 4) | (j << 8) | invdz[k]], (dx[k] << 4) | (j << 8) | dz[k] - (invdx[k] << 4) | (j << 8) | invdz[k])) {
 							ch.revealBlock(dx[k], j, dz[k]);
 							continue;
 						}
@@ -682,14 +685,16 @@ public class Chunk {
 			updatingLiquids.add((x << 4) | (y << 8) | z);
 		}
 		if(generated) {
-			Block[] neighbors = getNeighbors(x, y, z);
+			byte[] dataN = new byte[6];
+			int[] indices = new int[6];
+			Block[] neighbors = getNeighbors(x, y ,z, dataN, indices);
 			BlockInstance[] visibleNeighbors = getVisibleNeighbors(x + wx, y, z + wz);
 			for(int k = 0; k < 6; k++) {
-				if(visibleNeighbors[k] != null) visibleNeighbors[k].updateNeighbor(k ^ 1, getsBlocked(neighbors[k], b), surface.getStellarTorus().getWorld().getLocalPlayer(), surface.getSize());
+				if(visibleNeighbors[k] != null) visibleNeighbors[k].updateNeighbor(k ^ 1, getsBlocked(neighbors[k], b, dataN[k], ((x << 4) | (y << 8) | z) - indices[k]), surface.getStellarTorus().getWorld().getLocalPlayer(), surface.getSize());
 			}
 			
 			for (int i = 0; i < neighbors.length; i++) {
-				if (blocksLight(neighbors[i], b)) {
+				if (blocksLight(neighbors[i], b, dataN[i], ((x << 4) | (y << 8) | z) - indices[i])) {
 					revealBlock(x&15, y, z&15);
 					break;
 				}
@@ -702,10 +707,12 @@ public class Chunk {
 					int z2 = z+neighborRelativeZ[i];
 					Chunk ch = getChunk(x2 + wx, z2 + wz);
 					if (ch.contains(x2 & 15, y2, z2 & 15)) {
-						Block[] neighbors1 = ch.getNeighbors(x2 & 15, y2, z2 & 15);
+						byte[] dataN1 = new byte[6];
+						int[] indices1 = new int[6];
+						Block[] neighbors1 = ch.getNeighbors(x2 & 15, y2, z2 & 15, dataN1, indices1);
 						boolean vis = true;
 						for (int j = 0; j < neighbors1.length; j++) {
-							if (blocksLight(neighbors1[j], neighbors[i])) {
+							if (blocksLight(neighbors1[j], neighbors[i], dataN1[i], indices[i] - indices1[j])) {
 								vis = false;
 								break;
 							}
@@ -760,15 +767,16 @@ public class Chunk {
 		}
 	}
 	
-	public boolean blocksLight(Block b, Block a) {
-		if(b == null || (b.isTransparent() && a != b)) {
+	public boolean blocksLight(Block b, Block a, byte data, int difference) {
+		if(b == null || (b.isTransparent() && a != b) || b.mode.checkTransparency(data, difference)) {
 			return true;
 		}
 		return false;
 	}
 	
-	public boolean getsBlocked(Block b, Block a) {
-		return a != null && !(b == null || (b.isTransparent() && b != a));
+	public boolean getsBlocked(Block b, Block a, byte data, int difference) {
+		//return !blocksLight(a, b, data, difference);
+		return a != null && !(b == null || (b.isTransparent() && b != a) || b.mode.checkTransparency(data, difference));
 	}
 	
 	public void hideBlock(int x, int y, int z) {
@@ -790,9 +798,11 @@ public class Chunk {
 		int index = (x << 4) | (y << 8) | z;
 		Block b = blocks[index];
 		BlockInstance bi = new BlockInstance(b, blockData[index], new Vector3i(x + wx, y, z + wz), surface.getStellarTorus().getWorld().getLocalPlayer(), surface.getSize());
-		Block[] neighbors = getNeighbors(x, y ,z);
+		byte[] data = new byte[6];
+		int[] indices = new int[6];
+		Block[] neighbors = getNeighbors(x, y ,z, data, indices);
 		for(int k = 0; k < 6; k++) {
-			if(neighbors[k] != null) bi.updateNeighbor(k, getsBlocked(neighbors[k], b), surface.getStellarTorus().getWorld().getLocalPlayer(), surface.getSize());
+			if(neighbors[k] != null) bi.updateNeighbor(k, getsBlocked(neighbors[k], b, data[k], index - indices[k]), surface.getStellarTorus().getWorld().getLocalPlayer(), surface.getSize());
 		}
 		bi.setStellarTorus(surface);
 		visibles.add(bi);
@@ -979,6 +989,31 @@ public class Chunk {
 					Chunk ch = surface.getChunk((xi >> 4) + cx, (zi >> 4) +cz);
 					if(ch != null)
 						neighbors[i] = ch.getBlockAt(xi & 15, yi, zi & 15);
+				}
+			}
+		}
+		return neighbors;
+	}
+	
+	public Block[] getNeighbors(int x, int y, int z, byte[] data, int[] indices) {
+		Block[] neighbors = new Block[6];
+		x &= 15;
+		z &= 15;
+		for(int i = 0; i < 6; i++) {
+			int xi = x+neighborRelativeX[i];
+			int yi = y+neighborRelativeY[i];
+			int zi = z+neighborRelativeZ[i];
+			if(yi == (yi&255)) { // Simple double-bound test for y.
+				if(xi == (xi & 15) && zi == (zi & 15)) { // Simple double-bound test for x and z.
+					neighbors[i] = getBlockAt(xi, yi, zi);
+				} else {
+					Chunk ch = surface.getChunk((xi >> 4) + cx, (zi >> 4) +cz);
+					if(ch != null && y <= World.WORLD_HEIGHT-1) {
+						int index = ((xi & 15) << 4) | (yi << 8) | (zi & 15);
+						neighbors[i] = ch.getBlockAt(xi & 15, yi, zi & 15);
+						data[i] = ch.blockData[index];
+						indices[i] = index;
+					}
 				}
 			}
 		}

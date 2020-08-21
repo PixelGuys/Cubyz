@@ -20,7 +20,7 @@ public class GroundPatch extends StructureModel {
 	}
 
 	@Override
-	public void generate(int x, int z, int h, Block[][][] chunk, int[][] heightMap, Random rand) {
+	public void generate(int x, int z, int h, Block[][][] chunk, float[][] heightMap, Random rand) {
 		float width = this.width + (rand.nextFloat() - 0.5f)*this.variation;
 		float orientation = 2*(float)Math.PI*rand.nextFloat();
 		float ellipseParam = 1 + rand.nextFloat(); 
@@ -47,7 +47,7 @@ public class GroundPatch extends StructureModel {
 				if(dist <= 1) {
 					for(int i = 0; i < depth; i++) {
 						if(dist <= smoothness || (dist - smoothness)/(1 - smoothness) < rand.nextFloat())
-							chunk[px][pz][heightMap[px+8][pz+8] - i] = newGround;
+							chunk[px][pz][(int)heightMap[px+8][pz+8] - i] = newGround;
 					}
 				}
 			}

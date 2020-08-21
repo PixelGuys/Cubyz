@@ -29,13 +29,14 @@ public class TerrainGenerator implements FancyGenerator {
 	private static Block water = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:water");
 
 	@Override
-	public void generate(long seed, int cx, int cz, Block[][][] chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, int[][] heightMap, Biome[][] biomeMap, int worldSize) {
+	public void generate(long seed, int cx, int cz, Block[][][] chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, float[][] heightMap, Biome[][] biomeMap, byte[][][] blockData, int worldSize) {
 		Random rand = new Random(seed);
 		int seedX = rand.nextInt() | 1;
 		int seedZ = rand.nextInt() | 1;
 		for(int px = 0; px < 16; px++) {
 			for(int pz = 0; pz < 16; pz++) {
-				int y = heightMap[px+8][pz+8];
+				int y = (int)heightMap[px+8][pz+8];
+				int yOff = 1 + (int)((heightMap[px+8][pz+8]-y)*16);
 				float temperature = heatMap[px+8][pz+8];
 				for(int j = y > SEA_LEVEL ? Math.min(y, World.WORLD_HEIGHT-1) : SEA_LEVEL; j >= 0; j--) {
 					Block b = null;
@@ -50,7 +51,7 @@ public class TerrainGenerator implements FancyGenerator {
 							b = bedrock;
 						} else if(j == y) {
 							rand.setSeed((seedX*((cx << 4) + px) << 32) ^ seedZ*((cz << 4) + pz));
-							j = biomeMap[px+8][pz+8].struct.addSubTerranian(chunk, j, px, pz, rand);
+							j = biomeMap[px+8][pz+8].struct.addSubTerranian(chunk, blockData, j, px, pz, yOff, rand);
 							continue;
 						} else {
 							b = stone;

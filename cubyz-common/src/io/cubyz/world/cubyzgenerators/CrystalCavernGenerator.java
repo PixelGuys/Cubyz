@@ -35,7 +35,7 @@ public class CrystalCavernGenerator implements FancyGenerator {
 	private Block stone = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:stone");
 
 	@Override
-	public void generate(long seed, int cx, int cz, Block[][][] chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, int[][] heightMap, Biome[][] biomeMap, int worldSize) {
+	public void generate(long seed, int cx, int cz, Block[][][] chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, float[][] heightMap, Biome[][] biomeMap, byte[][][] blockData, int worldSize) {
 		Random rand = new Random(seed);
 		int rand1 = rand.nextInt() | 1;
 		int rand2 = rand.nextInt() | 1;
@@ -51,7 +51,7 @@ public class CrystalCavernGenerator implements FancyGenerator {
 		}
 	}
 	
-	private void generateCave(long random, int cx, int cz, Block[][][] chunk, double worldX, double worldY, double worldZ, float size, float direction, float slope, int curStep, double caveHeightModifier, boolean[][] vegetationIgnoreMap, int[][] heightMap, int[][] crystalSpawns, int[] index) {
+	private void generateCave(long random, int cx, int cz, Block[][][] chunk, double worldX, double worldY, double worldZ, float size, float direction, float slope, int curStep, double caveHeightModifier, boolean[][] vegetationIgnoreMap, float[][] heightMap, int[][] crystalSpawns, int[] index) {
 		double cwx = (double) (cx*16 + 8);
 		double cwz = (double) (cz*16 + 8);
 		float directionModifier = 0.0F;
@@ -221,7 +221,7 @@ public class CrystalCavernGenerator implements FancyGenerator {
 		}
 	}
 
-	private void considerCoordinates(int x, int z, int cx, int cz, Block[][][] chunk, boolean[][] vegetationIgnoreMap, int[][] heightMap, Random rand) {
+	private void considerCoordinates(int x, int z, int cx, int cz, Block[][][] chunk, boolean[][] vegetationIgnoreMap, float[][] heightMap, Random rand) {
 		if(rand.nextInt(2048) != 0) return; // This should be pretty rare(mostly because it is so huge).
 		// Choose some in world coordinates to start generating:
 		double worldX = (double)((x << 4) + rand.nextInt(16));

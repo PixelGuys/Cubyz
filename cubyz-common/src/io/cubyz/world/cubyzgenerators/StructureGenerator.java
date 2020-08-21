@@ -21,7 +21,7 @@ public class StructureGenerator implements FancyGenerator {
 	}
 
 	@Override
-	public void generate(long seed, int cx, int cz, Block[][][] chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, int[][] heightMap, Biome[][] biomeMap, int worldSize) {
+	public void generate(long seed, int cx, int cz, Block[][][] chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, float[][] heightMap, Biome[][] biomeMap, byte[][][] blockData, int worldSize) {
 		int wx = cx << 4;
 		int wz = cz << 4;
 		Random rand = new Random(seed + 3*(seed + 1 & Integer.MAX_VALUE));
@@ -35,7 +35,7 @@ public class StructureGenerator implements FancyGenerator {
 					float randomValue = rand.nextFloat();
 					for(StructureModel model : biomeMap[px][pz].vegetationModels()) {
 						if(model.getChance() > randomValue) {
-							model.generate(px-8, pz-8, heightMap[px][pz]+1, chunk, heightMap, rand);
+							model.generate(px-8, pz-8, (int)heightMap[px][pz]+1, chunk, heightMap, rand);
 							break;
 						} else {
 							randomValue = (randomValue - model.getChance())/(1 - model.getChance()); // Make sure that after the first one was considered all others get the correct chances.

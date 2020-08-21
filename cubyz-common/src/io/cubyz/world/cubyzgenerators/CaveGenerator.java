@@ -25,7 +25,7 @@ public class CaveGenerator implements FancyGenerator {
 	private static Block ice = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:ice");
 	
 	@Override
-	public void generate(long seed, int cx, int cz, Block[][][] chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, int[][] heightMap, Biome[][] biomeMap, int worldSize) {
+	public void generate(long seed, int cx, int cz, Block[][][] chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, float[][] heightMap, Biome[][] biomeMap, byte[][][] blockData, int worldSize) {
 		Random rand = new Random(seed);
 		int rand1 = rand.nextInt() | 1;
 		int rand2 = rand.nextInt() | 1;
@@ -41,7 +41,7 @@ public class CaveGenerator implements FancyGenerator {
 		}
 	}
 
-	private void createJunctionRoom(long localSeed, int cx, int cz, Block[][][] chunk, double worldX, double worldY, double worldZ, boolean[][] vegetationIgnoreMap, int[][] heightMap, Random rand) {
+	private void createJunctionRoom(long localSeed, int cx, int cz, Block[][][] chunk, double worldX, double worldY, double worldZ, boolean[][] vegetationIgnoreMap, float[][] heightMap, Random rand) {
 		// The junction room is just one single room roughly twice as wide as high.
 		float size = 1 + rand.nextFloat()*6;
 		double cwx = cx*16 + 8;
@@ -100,7 +100,7 @@ public class CaveGenerator implements FancyGenerator {
 			}
 		}
 	}
-	private void generateCave(long random, int cx, int cz, Block[][][] chunk, double worldX, double worldY, double worldZ, float size, float direction, float slope, int curStep, int caveLength, double caveHeightModifier, boolean[][] vegetationIgnoreMap, int[][] heightMap) {
+	private void generateCave(long random, int cx, int cz, Block[][][] chunk, double worldX, double worldY, double worldZ, float size, float direction, float slope, int curStep, int caveLength, double caveHeightModifier, boolean[][] vegetationIgnoreMap, float[][] heightMap) {
 		double cwx = (double) (cx*16 + 8);
 		double cwz = (double) (cz*16 + 8);
 		float directionModifier = 0.0F;
@@ -210,7 +210,7 @@ public class CaveGenerator implements FancyGenerator {
 		}
 	}
 
-	private void considerCoordinates(int x, int z, int cx, int cz, Block[][][] chunk, boolean[][] vegetationIgnoreMap, int[][] heightMap, Random rand) {
+	private void considerCoordinates(int x, int z, int cx, int cz, Block[][][] chunk, boolean[][] vegetationIgnoreMap, float[][] heightMap, Random rand) {
 		// Determine how many caves start in this chunk. Make sure the number is usually close to one, but can also rarely reach higher values.
 		int caveSpawns = rand.nextInt(rand.nextInt(rand.nextInt(12) + 1) + 1);
 

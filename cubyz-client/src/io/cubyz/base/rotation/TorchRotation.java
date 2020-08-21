@@ -108,4 +108,14 @@ public class TorchRotation implements RotationMode {
 		if(data == 0) return null;
 		return data;
 	}
+
+	@Override
+	public boolean checkTransparency(byte data, int dir) {
+		return false;
+	}
+
+	@Override
+	public byte getNaturalStandard() {
+		return 1;
+	}
 }

@@ -39,8 +39,8 @@ public class MeshSelectionDetector {
 	        gameItem.setSelected(false);
 	        min.set(gameItem.getPosition());
 	        max.set(gameItem.getPosition());
-	        min.add(-gameItem.getScale(), -gameItem.getScale(), -gameItem.getScale());
-	        max.add(gameItem.getScale(), gameItem.getScale(), gameItem.getScale());
+	        min.sub(gameItem.getScale());
+	        max.add(gameItem.getScale());
 	        if (Intersectionf.intersectRayAab(position, dir, min, max, nearFar) && nearFar.x < closestDistance) {
 	            closestDistance = nearFar.x;
 	            selectedSpatial = gameItem;

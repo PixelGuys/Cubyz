@@ -78,4 +78,14 @@ public class TransparentRotation implements RotationMode {
 	public Byte updateData(byte data, int dir) {
 		return 0;
 	}
+
+	@Override
+	public boolean checkTransparency(byte data, int dir) {
+		return false;
+	}
+
+	@Override
+	public byte getNaturalStandard() {
+		return 0;
+	}
 }

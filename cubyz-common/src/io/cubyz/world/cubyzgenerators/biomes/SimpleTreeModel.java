@@ -26,7 +26,7 @@ public class SimpleTreeModel extends StructureModel {
 	}
 
 	@Override
-	public void generate(int x, int z, int h, Block[][][] chunk, int[][] heightMap, Random rand) {
+	public void generate(int x, int z, int h, Block[][][] chunk, float[][] heightMap, Random rand) {
 		if(h > 0) {
 			int height = height0 + rand.nextInt(deltaHeight);
 			switch(type) {

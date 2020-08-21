@@ -8,11 +8,12 @@ import io.cubyz.blocks.RotationMode;
 import io.cubyz.entity.Player;
 import io.cubyz.world.BlockSpatial;
 
-public class LogRotation implements RotationMode {
-	private static final float PI = (float)Math.PI;
-	private static final float PI_HALF = PI/2;
+/**
+ * For stackable partial blocks, like snow.
+ */
+public class StackableRotation implements RotationMode {
 	
-	Resource id = new Resource("cubyz", "log");
+	Resource id = new Resource("cubyz", "stackable");
 	@Override
 	public Resource getRegistryID() {
 		return id;
@@ -20,13 +21,7 @@ public class LogRotation implements RotationMode {
 
 	@Override
 	public byte generateData(Vector3i dir, byte oldData) {
-		byte data = 0;
-		if(dir.x == 1) data = (byte)0b10;
-		if(dir.x == -1) data = (byte)0b11;
-		if(dir.y == -1) data = (byte)0b0;
-		if(dir.y == 1) data = (byte)0b1;
-		if(dir.z == 1) data = (byte)0b100;
-		if(dir.z == -1) data = (byte)0b101;
+		byte data = 1;
 		return data;
 	}
 
@@ -34,25 +29,8 @@ public class LogRotation implements RotationMode {
 	public Object[] generateSpatials(BlockInstance bi, byte data, Player player, int worldSize) {
 		BlockSpatial[] spatials = new BlockSpatial[1];
 		BlockSpatial tmp = new BlockSpatial(bi, player, worldSize);
-		switch(data) {
-			default:
-				break;
-			case 1:
-				tmp.setRotation(PI, 0, 0);
-				break;
-			case 2:
-				tmp.setRotation(0, 0, -PI_HALF);
-				break;
-			case 3:
-				tmp.setRotation(0, 0, PI_HALF);
-				break;
-			case 4:
-				tmp.setRotation(PI_HALF, 0, 0);
-				break;
-			case 5:
-				tmp.setRotation(-PI_HALF, 0, 0);
-				break;
-		}
+		tmp.setScale(1, data/16.0f, 1);
+		tmp.setPosition(bi.getX(), bi.getY() - 0.5f + data/32.0f, bi.getZ(), player, worldSize);
 		spatials[0] = tmp;
 		return spatials;
 	}
@@ -64,16 +42,21 @@ public class LogRotation implements RotationMode {
 
 	@Override
 	public Byte updateData(byte data, int dir) {
-		return 0;
+		if(data != 16)
+			data++;
+		return data;
 	}
 
 	@Override
 	public boolean checkTransparency(byte data, int dir) {
+		if(data < 16) {//TODO: && ((dir & 1) != 0 || (dir & 512) == 0)) {
+			return true;
+		}
 		return false;
 	}
 
 	@Override
 	public byte getNaturalStandard() {
-		return 0;
+		return 16;
 	}
 }

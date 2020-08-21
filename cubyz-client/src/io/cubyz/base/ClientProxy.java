@@ -3,11 +3,8 @@ package io.cubyz.base;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.GameRegistry;
 import io.cubyz.api.Registry;
-import io.cubyz.base.entity_models.Quadruped;
-import io.cubyz.base.rotation.LogRotation;
-import io.cubyz.base.rotation.NoRotation;
-import io.cubyz.base.rotation.TorchRotation;
-import io.cubyz.base.rotation.TransparentRotation;
+import io.cubyz.base.entity_models.*;
+import io.cubyz.base.rotation.*;
 import io.cubyz.blocks.RotationMode;
 import io.cubyz.entity.EntityModel;
 
@@ -28,6 +25,7 @@ public class ClientProxy extends CommonProxy {
 		reg.register(new TorchRotation());
 		reg.register(new LogRotation());
 		reg.register(new TransparentRotation());
+		reg.register(new StackableRotation());
 	}
 
 	private void registerEntityModels(Registry<EntityModel> reg) {

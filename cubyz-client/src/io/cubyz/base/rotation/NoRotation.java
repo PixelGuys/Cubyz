@@ -35,4 +35,14 @@ public class NoRotation implements RotationMode {
 		return 0;
 	}
 
+	@Override
+	public boolean checkTransparency(byte data, int dir) {
+		return false;
+	}
+
+	@Override
+	public byte getNaturalStandard() {
+		return 0;
+	}
+
 }

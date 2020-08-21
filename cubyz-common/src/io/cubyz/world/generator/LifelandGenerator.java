@@ -65,10 +65,10 @@ public class LifelandGenerator extends SurfaceGenerator {
 		Biome[][] biomeMap = new Biome[32][32];
 		surface.getMapData(wx-8, wz-8, 32, 32, heightMap, heatMap, biomeMap);
 		boolean[][] vegetationIgnoreMap = new boolean[32][32]; // Stores places where vegetation should not grow, like caves and rivers.
-		int[][] realHeight = new int[32][32];
+		float[][] realHeight = new float[32][32];
 		for(int px = 0; px < 32; px++) {
 			for(int pz = 0; pz < 32; pz++) {
-				int h = (int)(heightMap[px][pz]*World.WORLD_HEIGHT);
+				float h = heightMap[px][pz]*World.WORLD_HEIGHT;
 				if(h > World.WORLD_HEIGHT)
 					h = World.WORLD_HEIGHT;
 				realHeight[px][pz] = h;
@@ -77,6 +77,7 @@ public class LifelandGenerator extends SurfaceGenerator {
 		
 		Random r = new Random(seed);
 		Block[][][] chunk = new Block[16][16][World.WORLD_HEIGHT];
+		byte[][][] chunkData = new byte[16][16][World.WORLD_HEIGHT];
 		
 		// Get the MetaChunks used by the BigGenerator.:
 		int lx, lz;
@@ -115,7 +116,7 @@ public class LifelandGenerator extends SurfaceGenerator {
 		
 		for (Generator g : sortedGenerators) {
 			if (g instanceof FancyGenerator) {
-				((FancyGenerator) g).generate(r.nextLong(), cx, cz, chunk, vegetationIgnoreMap, heatMap, realHeight, biomeMap, surface.getSize());
+				((FancyGenerator) g).generate(r.nextLong(), cx, cz, chunk, vegetationIgnoreMap, heatMap, realHeight, biomeMap, chunkData, surface.getSize());
 			} else if (g instanceof BigGenerator) {
 				((BigGenerator) g).generate(r.nextLong(), lx, lz, chunk, vegetationIgnoreMap, nn, np, pn, pp);
 			} else {
@@ -129,7 +130,7 @@ public class LifelandGenerator extends SurfaceGenerator {
 				for(int py = 0; py < World.WORLD_HEIGHT; py++) {
 					Block b = chunk[px][pz][py];
 					if(b != null) {
-						ch.rawAddBlock(px, py, pz, b, (byte)0);
+						ch.rawAddBlock(px, py, pz, b, chunkData[px][pz][py]);
 						if (b.hasBlockEntity()) {
 							Vector3i pos = new Vector3i(wx+px, py, wz+pz);
 							ch.getBlockEntities().add(b.createBlockEntity(surface, pos));

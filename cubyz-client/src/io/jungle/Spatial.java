@@ -12,7 +12,7 @@ public class Spatial {
     private final Vector3f rotation;
     public Matrix4f modelViewMatrix;
     
-    private float scale;
+    private Vector3f scale = new Vector3f(1, 1, 1);
     private boolean selected;
     
     /**
@@ -25,7 +25,6 @@ public class Spatial {
     public Spatial(Mesh mesh) {
         this.mesh = mesh;
         position = new Vector3f(0, 0, 0);
-        scale = 1;
         rotation = new Vector3f(0, 0, 0);
         light = new int[8];
         generateMatrix();
@@ -34,7 +33,6 @@ public class Spatial {
     public Spatial(Mesh mesh, int[] light) {
         this.mesh = mesh;
         position = new Vector3f(0, 0, 0);
-        scale = 1;
         rotation = new Vector3f(0, 0, 0);
         this.light = light;
         generateMatrix();
@@ -84,7 +82,7 @@ public class Spatial {
 		setPosition(position.x, position.y, position.z, p, worldSize);
 	}
 
-    public float getScale() {
+    public Vector3f getScale() {
         return scale;
     }
     
@@ -93,7 +91,14 @@ public class Spatial {
     }
 
     public void setScale(float scale) {
-        this.scale = scale;
+        this.scale.set(scale);
+        generateMatrix();
+    }
+
+    public void setScale(float xScale, float yScale, float zScale) {
+        scale.x = xScale;
+        scale.y = yScale;
+        scale.z = zScale;
         generateMatrix();
     }
 

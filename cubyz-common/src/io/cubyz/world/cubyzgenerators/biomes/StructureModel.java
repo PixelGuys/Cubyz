@@ -11,7 +11,7 @@ public abstract class StructureModel {
 	public StructureModel(float chance) {
 		this.chance = chance;
 	}
-	public abstract void generate(int x, int z, int h, Block[][][] chunk, int[][] heightMap, Random rand);
+	public abstract void generate(int x, int z, int h, Block[][][] chunk, float[][] heightMap, Random rand);
 	public float getChance() {
 		return chance;
 	}
