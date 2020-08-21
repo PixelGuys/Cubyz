@@ -14,6 +14,7 @@ import io.cubyz.blocks.Block;
 import io.jungle.FrameBuffer;
 import io.jungle.Mesh;
 import io.jungle.Spatial;
+import io.jungle.Texture;
 import io.jungle.Window;
 import io.jungle.renderers.Transformation;
 import io.jungle.util.ShaderProgram;
@@ -73,6 +74,7 @@ public abstract class BlockPreview {
 		window.setClearColor(new Vector4f(0f, 0f, 0f, 0f));
 		
 		Spatial spatial = new Spatial(Meshes.blockMeshes.get(b));
+		Texture oldTexture = spatial.getMesh().getMaterial().getTexture();
 		spatial.getMesh().getMaterial().setTexture(Meshes.blockTextures.get(b));
 		
 		glViewport(0, 0, 64, 64);
@@ -98,7 +100,9 @@ public abstract class BlockPreview {
 		glViewport(0, 0, window.getWidth(), window.getHeight());
 		
 		window.setRenderTarget(null);
-		
+
+		// Don't mess up existing texture bindings.
+		spatial.getMesh().getMaterial().setTexture(oldTexture);
 		return buf;
 	}
 
