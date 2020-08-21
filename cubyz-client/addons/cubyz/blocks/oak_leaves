@@ -7,4 +7,4 @@ rotation cubyz:transparent
 drop auto
 
 model cubyz:plane.obj
-texture cubyz:oak_leaves
+texture cubyz:oak_leaves_transparent

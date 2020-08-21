@@ -82,8 +82,14 @@ public class FastList<T> {
 		}
 	}
 	
-	// quick sort algorithm
-	private void sort(Comparator<T> comp, int l, int r) {
+	/**
+	 * Sort using Quick Sort algorithm.
+	 * @param comp comparator
+	 * @param l index of the left-most element in the to sorting area.
+	 * @param r index of the right-most element in the to sorting area.
+	 */
+	public void sort(Comparator<T> comp, int l, int r) {
+		if(l >= r) return;
 		int i = l, j = r;
 		
 		T x = array[(l+r)/2];

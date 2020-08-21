@@ -203,8 +203,9 @@ public class MainRenderer implements Renderer {
 			float x0 = playerPosition.x;
 			float z0 = playerPosition.z;
 			float y0 = playerPosition.y + Player.cameraHeight;
-			//chunks = sortChunks(chunks, x0/16 - 0.5f, z0/16 - 0.5f);
+			chunks = sortChunks(chunks, x0/16 - 0.5f, z0/16 - 0.5f);
 			for (Chunk ch : chunks) {
+				int currentSortingIndex = map[transparentIndex].size;
 				if (!frustumInt.testAab(ch.getMin(x0, z0, worldSize), ch.getMax(x0, z0, worldSize)))
 					continue;
 				int length = ch.getVisibles().size;
@@ -255,18 +256,12 @@ public class MainRenderer implements Renderer {
 						}
 					}
 				}
-			}
-		}
-		
-		// TODO: Correctly sort ALL transparent blocks.
-		// sort distances for correct render of transparent blocks
-		int i = transparentIndex;
-		if(i >= 0) {
-			Block b = blocks[i];
-			if (b != null && b.isTransparent()) {
-				map[b.ID].sort((sa, sb) -> {
-					return (int) -Math.signum(sa.distance - sb.distance);
-				});
+				Block b = blocks[transparentIndex];
+				if (b != null && b.isTransparent()) {
+					map[b.ID].sort((sa, sb) -> {
+						return (int) -Math.signum(sa.distance - sb.distance);
+					}, currentSortingIndex, map[transparentIndex].size - 1);
+				}
 			}
 		}
 		
