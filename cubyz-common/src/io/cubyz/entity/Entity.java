@@ -26,9 +26,10 @@ public class Entity {
 	public float health, hunger;
 	public final float maxHealth, maxHunger;
 	
-	protected float height = 2;
-	
-	protected float minBlock = 0.3f, maxBlock = 0.7f;
+	/**
+	 * Used as hitbox.
+	 */
+	protected float width = 0.25f, height = 1.8f;
 	
 	public float pickupRange = 2; // Important if this entity can pickup items.
 	
@@ -44,86 +45,112 @@ public class Entity {
 	}
 	
 	/**
-	 * Check and update vertical velocity for collision.
+	 * Checks collision against all blocks within the hitbox and updates positions.
 	 */
-	protected void updateVY() {
-		int absX = Math.round(position.x);
-		int absZ = Math.round(position.z);
-		float relX = position.x + 0.5f - absX;
-		float relZ = position.z + 0.5f - absZ;
-		if (vy < 0) {
-			int absY = Math.round(position.y);
-			if(isOnGround()) {
-				stopVY();
-			}
-			else if (relX < minBlock) {
-				if (checkBlock(absX - 1, absY, absZ)) {
-					stopVY();
-				}
-				else if (relZ < minBlock && checkBlock(absX - 1, absY, absZ - 1)) {
-					stopVY();
-				}
-				else if (relZ > maxBlock && checkBlock(absX - 1, absY, absZ + 1)) {
-					stopVY();
-				}
-			}
-			else if (relX > maxBlock) {
-				if (checkBlock(absX + 1, absY, absZ)) {
-					stopVY();
-				}
-				else if (relZ < minBlock && checkBlock(absX + 1, absY, absZ - 1)) {
-					stopVY();
-				}
-				else if (relZ > maxBlock && checkBlock(absX + 1, absY, absZ + 1)) {
-					stopVY();
+	protected void collisionDetection() {
+		// Simulate movement in all directions and prevent movement in a direction that would get the player into a block:
+		int minX = Math.round(position.x - width);
+		int maxX = Math.round(position.x + width);
+		int minY = Math.round(position.y);
+		int maxY = Math.round(position.y + height);
+		int minZ = Math.round(position.z - width);
+		int maxZ = Math.round(position.z + width);
+		if(vx < 0) {
+			int minX2 = Math.round(position.x - width + vx);
+			if(minX2 != minX) {
+				outer:
+				for(int y = minY; y <= maxY; y++) {
+					for(int z = minZ; z <= maxZ; z++) {
+						if(checkBlock(minX2, y, z)) {
+							vx = 0;
+							position.x = minX2 + 0.51f + width;
+							break outer;
+						}
+					}
 				}
 			}
-			if (relZ < minBlock && checkBlock(absX, absY, absZ - 1)) {
-				stopVY();
-			}
-			else if (relZ > maxBlock && checkBlock(absX, absY, absZ + 1)) {
-				stopVY();
-			}
-			
-			// I'm really annoyed by falling into the void and needing ages to get back up.
-			if(absY < -100) {
-				position.y = -100;
-				stopVY();
-			}
-		} else if (vy > 0) {
-			int absY = (int) Math.floor(position.y + height);
-			if(checkBlock(absX, absY, absZ)) {
-				vy = 0;
-			} else if (relX < minBlock) {
-				if (checkBlock(absX - 1, absY, absZ)) {
-					stopVY();
+		} else if(vx > 0) {
+			int maxX2 = Math.round(position.x + width + vx);
+			if(maxX2 != maxX) {
+				outer:
+				for(int y = minY; y <= maxY; y++) {
+					for(int z = minZ; z <= maxZ; z++) {
+						if(checkBlock(maxX2, y, z)) {
+							vx = 0;
+							position.x = maxX2 - 0.51f - width;
+							break outer;
+						}
+					}
 				}
-				else if (relZ < minBlock && checkBlock(absX - 1, absY, absZ - 1)) {
-					stopVY();
-				}
-				else if (relZ > maxBlock && checkBlock(absX - 1, absY, absZ + 1)) {
-					stopVY();
-				}
-			}
-			else if (relX > maxBlock) {
-				if (checkBlock(absX + 1, absY, absZ)) {
-					stopVY();
-				}
-				else if (relZ < minBlock && checkBlock(absX + 1, absY, absZ - 1)) {
-					stopVY();
-				}
-				else if (relZ > maxBlock && checkBlock(absX + 1, absY, absZ + 1)) {
-					stopVY();
-				}
-			}
-			if (relZ < minBlock && checkBlock(absX, absY, absZ - 1)) {
-				stopVY();
-			}
-			else if (relZ > maxBlock && checkBlock(absX, absY, absZ + 1)) {
-				stopVY();
 			}
 		}
+		position.x += vx;
+		minX = Math.round(position.x - width);
+		maxX = Math.round(position.x + width);
+		if(vy < 0) {
+			int minY2 = Math.round(position.y + vy);
+			if(minY2 != minY) {
+				outer:
+				for(int x = minX; x <= maxX; x++) {
+					for(int z = minZ; z <= maxZ; z++) {
+						if(checkBlock(x, minY2, z)) {
+							vy = 0;
+							position.y = minY2 + 0.51f;
+							break outer;
+						}
+					}
+				}
+			}
+		} else if(vy > 0) {
+			int maxY2 = Math.round(position.y + height + vy);
+			if(maxY2 != maxY) {
+				outer:
+				for(int x = minX; x <= maxX; x++) {
+					for(int z = minZ; z <= maxZ; z++) {
+						if(checkBlock(x, maxY2, z)) {
+							vy = 0;
+							position.y = maxY2 - 0.51f - height;
+							break outer;
+						}
+					}
+				}
+			}
+		}
+		position.y += vy;
+		minY = Math.round(position.y);
+		maxY = Math.round(position.y + height);
+		if(vz < 0) {
+			int minZ2 = Math.round(position.z - width + vz);
+			if(minZ2 != minZ) {
+				outer:
+				for(int x = minX; x <= maxX; x++) {
+					for(int y = minY; y <= maxY; y++) {
+						if(checkBlock(x, y, minZ2)) {
+							vz = 0;
+							position.z = minZ2 + 0.51f + width;
+							break outer;
+						}
+					}
+				}
+			}
+		} else if(vz > 0) {
+			int maxZ2 = Math.round(position.z + width + vz);
+			if(maxZ2 != maxZ) {
+				outer:
+				for(int x = minX; x <= maxX; x++) {
+					for(int y = minY; y <= maxY; y++) {
+						if(checkBlock(x, y, maxZ2)) {
+							vz = 0;
+							position.z = maxZ2 - 0.51f - width;
+							break outer;
+						}
+					}
+				}
+			}
+		}
+		position.z += vz;
 	}
+	
 	/**
 	 * All damage taken should get channeled through this function to remove redundant checks if the entity is dead.
 	 * @param amount
@@ -146,153 +173,21 @@ public class Entity {
 		return 0;
 	}
 	
-	/**
-	 * @author IntegratedQuantum
-	 */
-	protected float _getX(float x) {
-		int absX = Math.round(position.x);
-		int absY = Math.round(position.y + 0.5f);
-		int absZ = Math.round(position.z);
-		float relX = position.x + 0.5f - absX;
-		float relZ = position.z + 0.5f - absZ;
-		if (x < 0) {
-			if (relX < minBlock) {
-				relX++;
-				absX--;
-			}
-			
-			if (relX+x > minBlock) {
-				return x;
-			}
-			
-			if (relZ < minBlock) {
-				for (int i = 0; i < height; i++) {
-					if (checkBlock(absX - 1, absY + i, absZ - 1)) {
-						return minBlock + 0.0001F - relX;
-					}
-				}
-			}
-			if (relZ > maxBlock) {
-				for (int i = 0; i < height; i++) {
-					if (checkBlock(absX - 1, absY + i, absZ + 1)) {
-						return minBlock + 0.0001F - relX;
-					}
-				}
-			}
-			for (int i = 0; i < height; i++) {
-				if (checkBlock(absX - 1, absY + i, absZ)) {
-					return minBlock + 0.0001F - relX;
-				}
-			}
-		}
-		else {
-			if (relX > maxBlock) {
-				relX--;
-				absX++;
-			}
-			
-			if (relX+x < maxBlock) {
-				return x;
-			}
-			
-			if (relZ < minBlock) {
-				for (int i = 0; i < height; i++) {
-					if (checkBlock(absX + 1, absY + i, absZ - 1)) {
-						return maxBlock - 0.0001f - relX;
-					}
-				}
-			}
-			if (relZ > maxBlock) {
-				for (int i = 0; i < height; i++) {
-					if( checkBlock(absX + 1, absY + i, absZ + 1)) {
-						return maxBlock - 0.0001f - relX;
-					}
-				}
-			}
-			for (int i = 0; i < height; i++) {
-				if (checkBlock(absX + 1, absY + i, absZ)) {
-					return maxBlock - 0.0001f - relX;
-				}
-			}
-		}
-		return x;
-	}
-	
-	protected float _getZ(float z) {
-		int absX = Math.round(position.x);
-		int absY = Math.round(position.y + 0.5f);
-		int absZ = Math.round(position.z);
-		float relX = position.x + 0.5f - absX;
-		float relZ = position.z + 0.5f - absZ;
-		if(z < 0) {
-			if(relZ < minBlock) {
-				relZ++;
-				absZ--;
-			}
-			if(relZ + z > minBlock) {
-				return z;
-			}
-			if(relX < minBlock) {
-				for(int i = 0; i < height; i++) {
-					if (checkBlock(absX - 1, absY + i, absZ - 1)) {
-						return minBlock + 0.0001F - relZ;
-					}
-				}
-			}
-			if(relX > maxBlock) {
-				for(int i = 0; i < height; i++) {
-					if(checkBlock(absX + 1, absY + i, absZ - 1)) {
-						return minBlock + 0.0001F - relZ;
-					}
-				}
-			}
-			for(int i = 0; i < height; i++) {
-				if(checkBlock(absX, absY + i, absZ - 1)) {
-					return minBlock + 0.0001F - relZ;
-				}
-			}
-		}
-		else {
-			if(relZ > maxBlock) {
-				relZ--;
-				absZ++;
-			}
-			if(relZ+z < maxBlock) {
-				return z;
-			}
-			if(relX < minBlock) {
-				for(int i = 0; i < height; i++) {
-					if(checkBlock(absX - 1, absY + i, absZ + 1)) {
-						return maxBlock - 0.0001f - relZ;
-					}
-				}
-			}
-			if(relX > maxBlock) {
-				for(int i = 0; i < height; i++) {
-					if(checkBlock(absX + 1, absY + i, absZ + 1)) {
-						return maxBlock - 0.0001f - relZ;
-					}
-				}
-			}
-			for(int i = 0; i < height; i++) {
-				if(checkBlock(absX, absY + i, absZ + 1)) {
-					return maxBlock - 0.0001f - relZ;
-				}
-			}
-		}
-		return z;
-	}
-	
 	public boolean checkBlock(int x, int y, int z) {
 		Block bi = surface.getBlock(x, y, z);
 		if(bi != null && bi.isSolid()) {
+			Vector3f distance = new Vector3f(position);
+			distance.sub(x, y, z);
+			if(bi.mode.changesHitbox()) {
+				
+			}
 			return true;
 		}
 		return false;
 	}
 	
 	public boolean isOnGround() {
-		return checkBlock(Math.round(position.x), Math.round(position.y), Math.round(position.z));
+		return checkBlock(Math.round(position.x), Math.round(position.y), Math.round(position.z)) || ((position.y + 0.5f) % 1 < 0.1f && checkBlock(Math.round(position.x), Math.round(position.y) - 1, Math.round(position.z)));
 	}
 	
 	public void hit(Tool weapon, Vector3f direction) {
@@ -311,8 +206,8 @@ public class Entity {
 	}
 	
 	public void update() {
+		collisionDetection();
 		type.update(this);
-		updatePosition();
 		updateVelocity();
 
 		// clamp health between 0 and maxHealth
@@ -322,7 +217,7 @@ public class Entity {
 			health = maxHealth;
 		
 		if(maxHunger > 0) {
-			hungerMechanics(vx, vy, vz);
+			hungerMechanics();
 		}
 	}
 	
@@ -330,7 +225,7 @@ public class Entity {
 	/**
 	 * Simulates the hunger system. TODO: Make dependent on mass
 	 */
-	protected void hungerMechanics(float vx, float vy, float vz) {
+	protected void hungerMechanics() {
 		// Passive energy consumption:
 		hunger -= 0.0004; // Will deplete hunger after 22 minutes of standing still.
 		// Energy consumption due to movement:
@@ -362,11 +257,6 @@ public class Entity {
 			health += hunger;
 			hunger = 0;
 		}
-	}
-	
-	protected void updatePosition() {
-		updateVY();
-		position.add(_getX(vx), vy, _getZ(vz));
 	}
 	
 	protected void updateVelocity() {

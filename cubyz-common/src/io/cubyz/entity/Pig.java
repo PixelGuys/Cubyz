@@ -41,7 +41,7 @@ public class Pig extends EntityType {
 			ent.setRotation(new Vector3f(0, (float)xzAngle, 0));
 		}
 		
-		if (ent._getX(ent.vx) != ent.vx || ent._getZ(ent.vz) != ent.vz) {
+		if (ent.vx == 0 || ent.vz == 0) {
 			// jump
 			if (ent.isOnGround()) {
 				ent.vy = 0.2f;

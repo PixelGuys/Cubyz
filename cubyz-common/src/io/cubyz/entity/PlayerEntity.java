@@ -47,33 +47,14 @@ public class PlayerEntity extends EntityType {
 			return (maxTime+timeStarted) - System.currentTimeMillis();
 		}
 		
-		private float incX = 0, incZ = 0;
-		
 		@Override
 		public void move(Vector3f inc, Vector3f rot, int worldSize) {
 			// Store it locally so the hunger mechanics can still use it.
-			incX = inc.x;
-			incZ = inc.z;
-			float deltaX = 0;
-			float deltaZ = 0;
-			if (inc.z != 0) {
-				deltaX += (float) Math.sin(rot.y) * -1.0F * inc.z;
-				deltaZ += (float) Math.cos(rot.y) * inc.z;
-			}
-			if (inc.x != 0) {
-				deltaX += (float) Math.sin(rot.y - Math.PI/2) * -1.0F * inc.x;
-				deltaZ += (float) Math.cos(rot.y - Math.PI/2) * inc.x;
-			}
+			vx = (float) Math.sin(rot.y) * -1.0F * inc.z + (float) Math.sin(rot.y - Math.PI/2) * -1.0F * inc.x;
+			vz = (float) Math.cos(rot.y) * inc.z + (float) Math.cos(rot.y - Math.PI/2) * inc.x;
 			if (inc.y != 0) {
 				vy = inc.y;
 			}
-			if(!flying) { // Allows the player to move through blocks when flying.
-				if(deltaX != 0)
-					deltaX = _getX(deltaX);
-				if(deltaZ != 0)
-					deltaZ = _getZ(deltaZ);
-			}
-			position.add(deltaX, 0, deltaZ);
 			float newX = CubyzMath.worldModulo(position.x, worldSize);
 			float newZ = CubyzMath.worldModulo(position.z, worldSize);
 			boolean crossedBorder = newX != position.x || newZ != position.z;
@@ -86,18 +67,11 @@ public class PlayerEntity extends EntityType {
 		
 		@Override
 		public void update() {
-			if (health < 0)
-				health = 0;
-			if (health > maxHealth)
-				health = maxHealth;
 			if (!flying) {
 				vy -= surface.getStellarTorus().getGravity();
-				vx = 0;
-				vz = 0;
-				updatePosition();
-				super.hungerMechanics(incX, vy, incZ);
+				super.update();
 			} else {
-				position.y += vy;
+				position.add(vx, vy, vz);
 				vy = 0;
 			}
 		}
