@@ -7,6 +7,7 @@ import org.joml.Vector3i;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.RotationMode;
+import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.world.BlockSpatial;
 
@@ -128,5 +129,15 @@ public class TorchRotation implements RotationMode {
 	@Override
 	public float getRayIntersection(RayAabIntersection arg0, BlockInstance arg1, Vector3f min, Vector3f max, Vector3f transformedPosition) {
 		return 0;
+	}
+
+	@Override
+	public boolean checkEntity(Entity arg0, int x, int y, int z, byte arg2) {
+		return false;
+	}
+
+	@Override
+	public boolean checkEntityAndDoCollision(Entity arg0, Vector3f arg1, int x, int y, int z, byte arg2) {
+		return true;
 	}
 }

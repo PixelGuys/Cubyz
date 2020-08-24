@@ -29,7 +29,7 @@ public class Entity {
 	/**
 	 * Used as hitbox.
 	 */
-	protected float width = 0.25f, height = 1.8f;
+	public float width = 0.25f, height = 1.8f;
 	
 	public float pickupRange = 2; // Important if this entity can pickup items.
 	
@@ -55,14 +55,21 @@ public class Entity {
 		int maxY = Math.round(position.y + height);
 		int minZ = Math.round(position.z - width);
 		int maxZ = Math.round(position.z + width);
+		Vector3f change = new Vector3f(vx, 0, 0);
 		if(vx < 0) {
 			int minX2 = Math.round(position.x - width + vx);
-			if(minX2 != minX) {
+			// First check for partial blocks:
+			for(int y = minY; y <= maxY; y++) {
+				for(int z = minZ; z <= maxZ; z++) {
+					checkBlock(minX, y, z, change);
+				}
+			}
+			if(minX2 != minX && vx == change.x) {
 				outer:
 				for(int y = minY; y <= maxY; y++) {
 					for(int z = minZ; z <= maxZ; z++) {
-						if(checkBlock(minX2, y, z)) {
-							vx = 0;
+						if(checkBlock(minX2, y, z, change)) {
+							change.x = 0;
 							position.x = minX2 + 0.51f + width;
 							break outer;
 						}
@@ -71,12 +78,18 @@ public class Entity {
 			}
 		} else if(vx > 0) {
 			int maxX2 = Math.round(position.x + width + vx);
-			if(maxX2 != maxX) {
+			// First check for partial blocks:
+			for(int y = minY; y <= maxY; y++) {
+				for(int z = minZ; z <= maxZ; z++) {
+					checkBlock(maxX, y, z, change);
+				}
+			}
+			if(maxX2 != maxX && vx == change.x) {
 				outer:
 				for(int y = minY; y <= maxY; y++) {
 					for(int z = minZ; z <= maxZ; z++) {
-						if(checkBlock(maxX2, y, z)) {
-							vx = 0;
+						if(checkBlock(maxX2, y, z, change)) {
+							change.x = 0;
 							position.x = maxX2 - 0.51f - width;
 							break outer;
 						}
@@ -84,17 +97,26 @@ public class Entity {
 				}
 			}
 		}
+		vx = change.x;
 		position.x += vx;
+		change.x = 0;
+		change.y = vy;
 		minX = Math.round(position.x - width);
 		maxX = Math.round(position.x + width);
 		if(vy < 0) {
 			int minY2 = Math.round(position.y + vy);
-			if(minY2 != minY) {
+			// First check for partial blocks:
+			for(int x = minX; x <= maxX; x++) {
+				for(int z = minZ; z <= maxZ; z++) {
+					checkBlock(x, minY, z, change);
+				}
+			}
+			if(minY2 != minY && vy == change.y) {
 				outer:
 				for(int x = minX; x <= maxX; x++) {
 					for(int z = minZ; z <= maxZ; z++) {
-						if(checkBlock(x, minY2, z)) {
-							vy = 0;
+						if(checkBlock(x, minY2, z, change)) {
+							change.y = 0;
 							position.y = minY2 + 0.51f;
 							break outer;
 						}
@@ -103,12 +125,18 @@ public class Entity {
 			}
 		} else if(vy > 0) {
 			int maxY2 = Math.round(position.y + height + vy);
-			if(maxY2 != maxY) {
+			// First check for partial blocks:
+			for(int x = minX; x <= maxX; x++) {
+				for(int z = minZ; z <= maxZ; z++) {
+					checkBlock(x, maxY, z, change);
+				}
+			}
+			if(maxY2 != maxY && vy == change.y) {
 				outer:
 				for(int x = minX; x <= maxX; x++) {
 					for(int z = minZ; z <= maxZ; z++) {
-						if(checkBlock(x, maxY2, z)) {
-							vy = 0;
+						if(checkBlock(x, maxY2, z, change)) {
+							change.y = 0;
 							position.y = maxY2 - 0.51f - height;
 							break outer;
 						}
@@ -116,17 +144,26 @@ public class Entity {
 				}
 			}
 		}
+		vy = change.y;
 		position.y += vy;
+		change.y = 0;
+		change.z = vz;
 		minY = Math.round(position.y);
 		maxY = Math.round(position.y + height);
 		if(vz < 0) {
 			int minZ2 = Math.round(position.z - width + vz);
-			if(minZ2 != minZ) {
+			// First check for partial blocks:
+			for(int x = minX; x <= maxX; x++) {
+				for(int y = minY; y <= maxY; y++) {
+					checkBlock(x, y, minZ, change);
+				}
+			}
+			if(minZ2 != minZ && change.z == vz) {
 				outer:
 				for(int x = minX; x <= maxX; x++) {
 					for(int y = minY; y <= maxY; y++) {
-						if(checkBlock(x, y, minZ2)) {
-							vz = 0;
+						if(checkBlock(x, y, minZ2, change)) {
+							change.z = 0;
 							position.z = minZ2 + 0.51f + width;
 							break outer;
 						}
@@ -135,12 +172,18 @@ public class Entity {
 			}
 		} else if(vz > 0) {
 			int maxZ2 = Math.round(position.z + width + vz);
-			if(maxZ2 != maxZ) {
+			// First check for partial blocks:
+			for(int x = minX; x <= maxX; x++) {
+				for(int y = minY; y <= maxY; y++) {
+					checkBlock(x, y, maxZ, change);
+				}
+			}
+			if(maxZ2 != maxZ && vz == change.z) {
 				outer:
 				for(int x = minX; x <= maxX; x++) {
 					for(int y = minY; y <= maxY; y++) {
-						if(checkBlock(x, y, maxZ2)) {
-							vz = 0;
+						if(checkBlock(x, y, maxZ2, change)) {
+							change.z = 0;
 							position.z = maxZ2 - 0.51f - width;
 							break outer;
 						}
@@ -148,6 +191,7 @@ public class Entity {
 				}
 			}
 		}
+		vz = change.z;
 		position.z += vz;
 	}
 	
@@ -173,13 +217,22 @@ public class Entity {
 		return 0;
 	}
 	
+	public boolean checkBlock(int x, int y, int z, Vector3f displacement) {
+		Block b = surface.getBlock(x, y, z);
+		if(b != null && b.isSolid()) {
+			if(b.mode.changesHitbox()) {
+				return b.mode.checkEntityAndDoCollision(this, displacement, x, y, z, surface.getBlockData(x, y, z));
+			}
+			return true;
+		}
+		return false;
+	}
+	
 	public boolean checkBlock(int x, int y, int z) {
-		Block bi = surface.getBlock(x, y, z);
-		if(bi != null && bi.isSolid()) {
-			Vector3f distance = new Vector3f(position);
-			distance.sub(x, y, z);
-			if(bi.mode.changesHitbox()) {
-				
+		Block b = surface.getBlock(x, y, z);
+		if(b != null && b.isSolid()) {
+			if(b.mode.changesHitbox()) {
+				return b.mode.checkEntity(this, x, y, z, surface.getBlockData(x, y, z));
 			}
 			return true;
 		}
@@ -187,7 +240,13 @@ public class Entity {
 	}
 	
 	public boolean isOnGround() {
-		return checkBlock(Math.round(position.x), Math.round(position.y), Math.round(position.z)) || ((position.y + 0.5f) % 1 < 0.1f && checkBlock(Math.round(position.x), Math.round(position.y) - 1, Math.round(position.z)));
+		// Determine if the entity is on the ground by virtually displacing it by 0.2 below its current position:
+		Vector3f displacement = new Vector3f(0, -0.2f, 0);
+		checkBlock(Math.round(position.x), Math.round(position.y), Math.round(position.z), displacement);
+		if(checkBlock(Math.round(position.x), Math.round(position.y + displacement.y), Math.round(position.z), displacement)) {
+			return true;
+		}
+		return displacement.y != -0.2f;
 	}
 	
 	public void hit(Tool weapon, Vector3f direction) {

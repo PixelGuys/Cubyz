@@ -5,6 +5,7 @@ import org.joml.Vector3f;
 import org.joml.Vector3i;
 
 import io.cubyz.api.RegistryElement;
+import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 
 public interface RotationMode extends RegistryElement {
@@ -41,4 +42,28 @@ public interface RotationMode extends RegistryElement {
 	 * @return
 	 */
 	public float getRayIntersection(RayAabIntersection intersection, BlockInstance bi, Vector3f min, Vector3f max, Vector3f transformedPosition);
+
+	/**
+	 * Check if the entity would collide with the block.
+	 * @param ent Entity to consider
+	 * @param x x-coordinate of the block.
+	 * @param y y-coordinate of the block.
+	 * @param z z-coordinate of the block.
+	 * @param data block data
+	 * @return Whether the entity and block hitboxes overlap.
+	 */
+	public boolean checkEntity(Entity ent, int x, int y, int z, byte blockData);
+	
+	/**
+	 * Check if the entity would collide with the block, if its position was changed by `vel`.
+	 * If a collision occurs, adjust the velocity in way such that the entity does not move inside the block.
+	 * @param ent Entity to consider
+	 * @param vel Velocity of the entity.
+	 * @param x x-coordinate of the block.
+	 * @param y y-coordinate of the block.
+	 * @param z z-coordinate of the block.
+	 * @param data block data
+	 * @return Returns true if the block behaves like a normal block and therefor needs to be handled like a normal block in the specified direction. Returns false if everything has been handled already in here.
+	 */
+	public boolean checkEntityAndDoCollision(Entity ent, Vector3f vel, int x, int y, int z, byte blockData);
 }

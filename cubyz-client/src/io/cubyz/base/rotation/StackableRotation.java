@@ -7,6 +7,7 @@ import org.joml.Vector3i;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.RotationMode;
+import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.world.BlockSpatial;
 
@@ -76,5 +77,30 @@ public class StackableRotation implements RotationMode {
 		} else {
 			return Float.MAX_VALUE;
 		}
+	}
+
+	@Override
+	public boolean checkEntity(Entity ent, int x, int y, int z, byte data) {
+		return 	   y + data/16.0f - 0.5f >= ent.getPosition().y
+				&& y - 0.5f <= ent.getPosition().y + ent.height
+				&& x + 0.5f >= ent.getPosition().x - ent.width
+				&& x - 0.5f <= ent.getPosition().x + ent.width
+				&& x + 0.5f >= ent.getPosition().z - ent.width
+				&& x - 0.5f <= ent.getPosition().z + ent.width;
+	}
+
+	@Override
+	public boolean checkEntityAndDoCollision(Entity ent, Vector3f vel, int x, int y, int z, byte data) {
+		if(vel.y == 0) {
+			return	   y + data/16.0f - 0.5f >= ent.getPosition().y
+					&& y - 0.5f <= ent.getPosition().y + ent.height;
+		}
+		if(vel.y >= 0) {
+			return true;
+		}
+		if(y + data/16.0f - 0.5f >= ent.getPosition().y + vel.y) {
+			vel.y = y + data/16.0f - 0.49f - ent.getPosition().y;
+		}
+		return false;
 	}
 }
