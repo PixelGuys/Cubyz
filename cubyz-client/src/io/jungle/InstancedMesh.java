@@ -28,13 +28,16 @@ public class InstancedMesh extends Mesh {
 	private static final int MATRIX_SIZE_FLOATS = 4 * 4;
 	private static final int MATRIX_SIZE_BYTES = MATRIX_SIZE_FLOATS * FLOAT_SIZE_BYTES;
 
+	private static final int REDUCED_MATRIX_SIZE_FLOATS = 3 * 4;
+	private static final int REDUCED_MATRIX_SIZE_BYTES = REDUCED_MATRIX_SIZE_FLOATS * FLOAT_SIZE_BYTES;
+
 	private static final int SHADOW_INSTANCE_SIZE_BYTES = MATRIX_SIZE_BYTES*2 + FLOAT_SIZE_BYTES;
 
 	private static final int SHADOW_INSTANCE_SIZE_FLOATS = MATRIX_SIZE_FLOATS*2 + 1;
 
-	private static final int INSTANCE_SIZE_BYTES = MATRIX_SIZE_BYTES + FLOAT_SIZE_BYTES + 8*FLOAT_SIZE_BYTES;
+	private static final int INSTANCE_SIZE_BYTES = REDUCED_MATRIX_SIZE_BYTES + FLOAT_SIZE_BYTES + 8*FLOAT_SIZE_BYTES;
 
-	private static final int INSTANCE_SIZE_FLOATS = MATRIX_SIZE_FLOATS + 1 + 8;
+	private static final int INSTANCE_SIZE_FLOATS = REDUCED_MATRIX_SIZE_FLOATS + 1 + 8;
 
 	private int numInstances;
 
@@ -147,7 +150,7 @@ public class InstancedMesh extends Mesh {
 			int start = 3;
 			int strideStart = 0;
 			// Model matrix:
-			for (int i = 0; i < 4; i++) {
+			for (int i = 0; i < 3; i++) {
 				glVertexAttribPointer(start, 4, GL_FLOAT, false, INSTANCE_SIZE_BYTES, strideStart);
 				glVertexAttribDivisor(start, 1);
 				start++;
@@ -278,28 +281,30 @@ public class InstancedMesh extends Mesh {
 			for (int i = 0; i < size; i++) {
 				Spatial spatial = spatials[i+startIndex];
 				Matrix4f modelMatrix = spatial.modelViewMatrix;
-				modelMatrix.get(INSTANCE_SIZE_FLOATS * i, instanceDataBuffer);
+				modelMatrix.get4x3Transposed(INSTANCE_SIZE_FLOATS * i, instanceDataBuffer);
+				if(modelMatrix.m03() != 0 || modelMatrix.m13() != 0 || modelMatrix.m23() != 0 || modelMatrix.m33() != 1)
+				System.out.println(modelMatrix);
 				BlockInstance bi = ((BlockSpatial) spatial).getBlockInstance();
 				if (bi.getBreakingAnim() == 0f) {
 					int breakAnimInfo = (int)(spatial.isSelected() ? 1 : 0) << 24;
 					if(useTextureAtlas) {
 						breakAnimInfo |= ((BlockSpatial)spatial).getBlockInstance().getBlock().atlasX << 8 | ((BlockSpatial)spatial).getBlockInstance().getBlock().atlasY;
 					}
-					instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 24, Float.intBitsToFloat(breakAnimInfo));
+					instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 20, Float.intBitsToFloat(breakAnimInfo));
 				} else {
 					int breakAnimInfo = (int)(bi.getBreakingAnim()*255) << 24;
 					if(useTextureAtlas) {
 						breakAnimInfo |= (((BlockSpatial)spatial).getBlockInstance().getBlock().atlasX & 255) << 8 | (((BlockSpatial)spatial).getBlockInstance().getBlock().atlasY & 255);
 					}
-					instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 24, Float.intBitsToFloat(breakAnimInfo));
+					instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 20, Float.intBitsToFloat(breakAnimInfo));
 				}
 				if (Settings.easyLighting) {
 					for(int j = 0; j < 8; j++) {
-						instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 16 + j, Float.intBitsToFloat(spatial.light[j]));
+						instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 12 + j, Float.intBitsToFloat(spatial.light[j]));
 					}
 				} else {
 					for(int j = 0; j < 8; j++) {
-						instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 16 + j, Float.intBitsToFloat(0x00ffffff));
+						instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 12 + j, Float.intBitsToFloat(0x00ffffff));
 					}
 				}
 			}
