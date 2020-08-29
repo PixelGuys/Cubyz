@@ -8,47 +8,47 @@ import java.util.Comparator;
  * Velocity is reached by sacrificing bound checks, by keeping some additional memory
  * (When removing elements they are not necessarily cleared from the array) and through direct data access.
 **/
-public class FastList<T> {
+public class FloatFastList {
 
-	public T[] array;
+	public float[] array;
 	public int size = 0;
 	private static final int arrayIncrease = 20; // this allow to use less array re-allocations
 
 	@SuppressWarnings("unchecked")
-	public FastList(int initialCapacity, Class<T> type) {
-		array = (T[])Array.newInstance(type, initialCapacity);
+	public FloatFastList(int initialCapacity) {
+		array = (float[])new float[ initialCapacity];
 	}
 
-	public FastList(Class<T> type) {
-		this(10, type);
+	public FloatFastList() {
+		this(10);
 	}
 
 	@SuppressWarnings("unchecked")
 	public void increaseSize(int increment) {
-		T[] newArray = (T[])Array.newInstance(array.getClass().getComponentType(), array.length + increment);
+		float[] newArray = (float[])new float[ array.length + increment];
 		System.arraycopy(array, 0, newArray, 0, array.length);
 		array = newArray;
 	}
 
 	@SuppressWarnings("unchecked")
 	public void trimToSize() {
-		T[] newArray = (T[])Array.newInstance(array.getClass().getComponentType(), size);
+		float[] newArray = (float[])new float[ size];
 		System.arraycopy(array, 0, newArray, 0, size);
 		array = newArray;
 	}
 
 	@SuppressWarnings("unchecked")
-	public T[] toArray() {
-		T[] newArray = (T[])Array.newInstance(array.getClass().getComponentType(), size);
+	public float[] toArray() {
+		float[] newArray = (float[])new float[ size];
 		System.arraycopy(array, 0, newArray, 0, size);
 		return newArray;
 	}
 	
-	public void set(int index, T obj) {
+	public void set(int index, float obj) {
 		array[index] = obj;
 	}
 	
-	public void add(T obj) {
+	public void add(float obj) {
 		if (size == array.length)
 			increaseSize(arrayIncrease);
 		array[size] = obj;
@@ -60,14 +60,14 @@ public class FastList<T> {
 		size--;
 	}
 	
-	public void remove(T t) {
+	public void remove(float t) {
 		for(int i = size-1; i >= 0; i--) {
 			if(array[i] == t)
 				remove(i); // Don't break here in case of multiple occurrence.
 		}
 	}
 	
-	public boolean contains(T t) {
+	public boolean contains(float t) {
 		for(int i = size-1; i >= 0; i--) {
 			if(array[i] == t)
 				return true;
@@ -83,7 +83,7 @@ public class FastList<T> {
 	 * Sort using Quick Sort algorithm.
 	 * @param comp comparator
 	 */
-	public void sort(Comparator<T> comp) {
+	public void sort(Comparator comp) {
 		if (size > 1) {
 			sort(comp, 0, size-1);
 		}
@@ -95,20 +95,20 @@ public class FastList<T> {
 	 * @param l index of the left-most element in the to sorting area.
 	 * @param r index of the right-most element in the to sorting area.
 	 */
-	public void sort(Comparator<T> comp, int l, int r) {
+	public void sort(Comparator comp, int l, int r) {
 		if(l >= r) return;
 		int i = l, j = r;
 		
-		T x = array[(l+r)/2];
+		float x = array[(l+r)/2];
 		while (true) {
-			while (comp.compare((T) array[i], x) < 0) {
+			while (comp.compare( array[i], x) < 0) {
 				i++;
 			}
-			while (comp.compare(x, (T) array[j]) < 0) {
+			while (comp.compare(x,  array[j]) < 0) {
 				j--;
 			}
 			if (i <= j) {
-				T temp = array[i];
+				float temp = array[i];
 				array[i] = array[j];
 				array[j] = temp;
 				i++;

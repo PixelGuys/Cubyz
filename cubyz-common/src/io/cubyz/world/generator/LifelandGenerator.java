@@ -14,6 +14,7 @@ import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.blocks.Ore;
 import io.cubyz.world.Chunk;
 import io.cubyz.world.MetaChunk;
+import io.cubyz.world.ReducedChunk;
 import io.cubyz.world.Surface;
 import io.cubyz.world.World;
 import io.cubyz.world.cubyzgenerators.*;
@@ -143,6 +144,21 @@ public class LifelandGenerator extends SurfaceGenerator {
 		}
 
 		ch.applyBlockChanges();
+	}
+
+	@Override
+	public void generate(ReducedChunk chunk, Surface surface) {
+		long seed = surface.getStellarTorus().getLocalSeed();
+		Random r = new Random(seed);
+		int wx = chunk.cx << 4;
+		int wz = chunk.cz << 4;
+		MetaChunk metaChunk = surface.getMetaChunk(wx & (~255), wz & (~255));
+		for (Generator g : sortedGenerators) {
+			if (g instanceof ReducedGenerator) {
+				((ReducedGenerator) g).generate(r.nextLong(), wx, wz, chunk, metaChunk, surface);
+			}
+		}
+		chunk.applyBlockChanges();
 	}
 
 	@Override

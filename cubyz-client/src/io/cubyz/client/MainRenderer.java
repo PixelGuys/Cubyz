@@ -17,6 +17,7 @@ import io.cubyz.math.CubyzMath;
 import io.cubyz.util.FastList;
 import io.cubyz.world.BlockSpatial;
 import io.cubyz.world.Chunk;
+import io.cubyz.world.ReducedChunk;
 import io.jungle.InstancedMesh;
 import io.jungle.Mesh;
 import io.jungle.Spatial;
@@ -35,6 +36,7 @@ import io.jungle.util.Utils;
 @SuppressWarnings("unchecked")
 public class MainRenderer implements Renderer {
 
+	private ShaderProgram chunkShader;
 	private ShaderProgram blockShader;
 	private ShaderProgram entityShader; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 
@@ -74,6 +76,15 @@ public class MainRenderer implements Renderer {
 	}
 
 	public void loadShaders() throws Exception {
+		chunkShader = new ShaderProgram();
+		chunkShader.createVertexShader(Utils.loadResource(shaders + "/chunk_vertex.vs"));
+		chunkShader.createFragmentShader(Utils.loadResource(shaders + "/chunk_fragment.fs"));
+		chunkShader.link();
+		chunkShader.createUniform("projectionMatrix");
+		chunkShader.createUniform("viewMatrix");
+		chunkShader.createUniform("ambientLight");
+		chunkShader.createFogUniform("fog");
+		
 		blockShader = new ShaderProgram();
 		blockShader.createVertexShader(Utils.loadResource(shaders + "/block_vertex.vs"));
 		blockShader.createFragmentShader(Utils.loadResource(shaders + "/block_fragment.fs"));
@@ -152,13 +163,14 @@ public class MainRenderer implements Renderer {
 	 * @param ambientLight the ambient light to use
 	 * @param directionalLight the directional light to use
 	 * @param chunks the chunks being displayed
+	 * @param reducedChunks the low-resolution far distance chunks to be displayed.
 	 * @param blocks the type of blocks used (or available) in the displayed chunks
 	 * @param entities the entities to render
 	 * @param spatials the special objects to render (that are neither entity, neither blocks, like sun and moon, or rain)
 	 * @param localPlayer The world's local player
 	 */
 	public void render(Window window, Context ctx, Vector3f ambientLight, DirectionalLight directionalLight,
-			Chunk[] chunks, Block[] blocks, Entity[] entities, Spatial[] spatials, Player localPlayer, int worldSize) {
+			Chunk[] chunks, ReducedChunk[] reducedChunks, Block[] blocks, Entity[] entities, Spatial[] spatials, Player localPlayer, int worldSize) {
 		if (window.isResized()) {
 			glViewport(0, 0, window.getWidth(), window.getHeight());
 			window.setResized(false);
@@ -265,7 +277,7 @@ public class MainRenderer implements Renderer {
 			}
 		}
 		
-		renderScene(ctx, ambientLight, map, blocks, entities, spatials,
+		renderScene(ctx, ambientLight, map, blocks, reducedChunks, entities, spatials,
 				playerPosition, localPlayer, breakAnim, transparentIndex);
 		if (ctx.getHud() != null) {
 			ctx.getHud().render(window);
@@ -273,15 +285,31 @@ public class MainRenderer implements Renderer {
 	}
 	
 	public void renderScene(Context ctx, Vector3f ambientLight,
-			FastList<Spatial>[] map, Block[] blocks, Entity[] entities, Spatial[] spatials, Vector3f playerPosition, Player p, float breakAnim, int transparentIndex) {
+			FastList<Spatial>[] map, Block[] blocks, ReducedChunk[] reducedChunks, Entity[] entities, Spatial[] spatials, Vector3f playerPosition, Player p, float breakAnim, int transparentIndex) {
+		chunkShader.bind();
+		
+		chunkShader.setUniform("fog", ctx.getFog());
+		chunkShader.setUniform("projectionMatrix", ctx.getWindow().getProjectionMatrix());
+		
+		Matrix4f viewMatrix = ctx.getCamera().getViewMatrix();
+		chunkShader.setUniform("viewMatrix", viewMatrix);
+
+		chunkShader.setUniform("ambientLight", ambientLight);
+		for(ReducedChunk chunk : reducedChunks) {
+			if(chunk != null) {
+				ReducedChunkMesh mesh = Meshes.chunkMeshes.get(chunk);
+				if(mesh != null) {
+					mesh.render();
+				}
+			}
+		}
+		chunkShader.unbind();
 		blockShader.bind();
 		
 		blockShader.setUniform("fog", ctx.getFog());
 		blockShader.setUniform("projectionMatrix", ctx.getWindow().getProjectionMatrix());
 		blockShader.setUniform("texture_sampler", 0);
 		blockShader.setUniform("break_sampler", 2);
-		
-		Matrix4f viewMatrix = ctx.getCamera().getViewMatrix();
 		blockShader.setUniform("viewMatrix", viewMatrix);
 
 		blockShader.setUniform("ambientLight", ambientLight);

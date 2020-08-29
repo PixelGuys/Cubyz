@@ -5,8 +5,9 @@ import io.cubyz.api.RegistryElement;
 import io.cubyz.math.CubyzMath;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 
-// A metaChunk stores map data for a much bigger area of the world.
-
+/**
+ * A 256×256 big chunk of height-/heat-/humidity-/… and resulting biome-maps.
+ */
 public class MetaChunk {
 	public float[][] heightMap, heatMap, humidityMap;
 	public Biome[][] biomeMap;

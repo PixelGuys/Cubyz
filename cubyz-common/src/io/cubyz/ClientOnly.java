@@ -7,6 +7,7 @@ import io.cubyz.blocks.Block;
 import io.cubyz.entity.EntityType;
 import io.cubyz.entity.Player;
 import io.cubyz.items.Inventory;
+import io.cubyz.world.ReducedChunk;
 
 public class ClientOnly {
 
@@ -16,6 +17,8 @@ public class ClientOnly {
 	public static BiConsumer<String, Object> registerGui;
 	public static BiConsumer<String, Inventory> openGui;
 	public static Consumer<Player> onBorderCrossing;
+	public static Consumer<ReducedChunk> createChunkMesh;
+	public static Consumer<ReducedChunk> deleteChunkMesh;
 	
 	static {
 		createBlockMesh = (b) -> {

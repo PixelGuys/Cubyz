@@ -12,6 +12,7 @@ import org.joml.Vector3f;
 import org.joml.Vector3i;
 import org.joml.Vector4f;
 
+import io.cubyz.ClientOnly;
 import io.cubyz.Settings;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.CurrentSurfaceRegistries;
@@ -44,8 +45,10 @@ public class LocalSurface extends Surface {
 	
 	private List<MetaChunk> metaChunks;
 	private Chunk [] chunks;
+	private ReducedChunk [] reducedChunks;
 	private int lastX = Integer.MAX_VALUE, lastZ = Integer.MAX_VALUE; // Chunk coordinates of the last chunk update.
 	private int doubleRD; // Corresponds to the doubled value of the last used render distance.
+	private int lowResRD; // Distance of low resolution chunk rendering.
 	private int worldSize = 65536; // worldSize-1. Used for bitwise and to better work with coordinates.
 	private ArrayList<Entity> entities = new ArrayList<>();
 	
@@ -71,6 +74,7 @@ public class LocalSurface extends Surface {
 	
 	// synchronized common list for chunk generation
 	private volatile BlockingDeque<Chunk> loadList = new LinkedBlockingDeque<>(MAX_QUEUE_SIZE);
+	private volatile BlockingDeque<ReducedChunk> reducedLoadList = new LinkedBlockingDeque<>(MAX_QUEUE_SIZE);
 	
 	boolean liquidUpdate;
 	
@@ -101,21 +105,58 @@ public class LocalSurface extends Surface {
 		return false;
 	}
 	
+	private void queue(ReducedChunk ch) {
+		if (!isQueued(ch)) {
+			try {
+				reducedLoadList.put(ch);
+			} catch (InterruptedException e) {
+				System.err.println("Interrupted while queuing chunk. This is unexpected.");
+			}
+		}
+	}
+	
+	private boolean isQueued(ReducedChunk ch) {
+		ReducedChunk[] list = reducedLoadList.toArray(new ReducedChunk[0]);
+		for (ReducedChunk ch2 : list) {
+			if (ch2 == ch) {
+				return true;
+			}
+		}
+		return false;
+	}
+	
 	private class ChunkGenerationThread extends Thread {
 		public void run() {
 			while (true) {
-				Chunk popped = null;
-				try {
-					popped = loadList.take();
-				} catch (InterruptedException e) {
-					break;
-				}
-				try {
-					synchronousGenerate(popped);
-					popped.load();
-				} catch (Exception e) {
-					logger.severe("Could not generate chunk " + popped.getX() + ", " + popped.getZ() + " !");
-					logger.throwable(e);
+				if(!loadList.isEmpty()) {
+					Chunk popped = null;
+					try {
+						popped = loadList.take();
+					} catch (InterruptedException e) {
+						break;
+					}
+					try {
+						synchronousGenerate(popped);
+						popped.load();
+					} catch (Exception e) {
+						logger.severe("Could not generate chunk " + popped.getX() + ", " + popped.getZ() + " !");
+						logger.throwable(e);
+					}
+				} else if(!reducedLoadList.isEmpty()) {
+					ReducedChunk popped = null;
+					try {
+						popped = reducedLoadList.take();
+					} catch (InterruptedException e) {
+						break;
+					}
+					try {
+						generator.generate(popped, LocalSurface.this);
+						popped.generated = true;
+						ClientOnly.createChunkMesh.accept(popped);
+					} catch (Exception e) {
+						logger.severe("Could not generate reduced chunk " + popped.cx + ", " + popped.cz + " !");
+						logger.throwable(e);
+					}
 				}
 			}
 		}
@@ -127,6 +168,7 @@ public class LocalSurface extends Surface {
 		this.torus = torus;
 		metaChunks = new ArrayList<>();
 		chunks = new Chunk[0];
+		reducedChunks = new ReducedChunk[0];
 		
 		for (int i = 0; i < Runtime.getRuntime().availableProcessors(); i++) {
 			ChunkGenerationThread thread = new ChunkGenerationThread();
@@ -472,9 +514,19 @@ public class LocalSurface extends Surface {
 	public void unQueueChunk(Chunk ch) {
 		loadList.remove(ch);
 	}
+
+	public void queueChunk(ReducedChunk ch) {
+		queue(ch);
+	}
+
+	public void unQueueChunk(ReducedChunk ch) {
+		reducedLoadList.remove(ch);
+	}
 	
 	@Override
 	public void seek(int x, int z, int renderDistance) {
+		int xOld = x;
+		int zOld = z;
 		int local = x & 15;
 		x >>= 4;
 		x += renderDistance;
@@ -529,6 +581,57 @@ public class LocalSurface extends Surface {
 		if (minK != chunks.length) { // if at least one chunk got unloaded
 			tio.saveTorusData(this);
 		}
+		
+		// Add low-resolution chunks:
+		renderDistance *= 2;
+		x = xOld;
+		z = zOld;
+		local = x & 15;
+		x >>= 4;
+		x += renderDistance;
+		if(local > 7)
+			x++;
+		local = z & 15;
+		z >>= 4;
+		z += renderDistance;
+		if(local > 7)
+			z++;
+		int lowResRD = renderDistance << 1;
+		ReducedChunk [] newReduced = new ReducedChunk[lowResRD*lowResRD];
+		index = 0;
+		minK = 0;
+		ReducedChunk.surface = this;
+		ArrayList<ReducedChunk> reducedChunksToQueue = new ArrayList<>();
+		for(int i = x-lowResRD; i < x; i++) {
+			loop:
+			for(int j = z-lowResRD; j < z; j++) {
+				for(int k = minK; k < reducedChunks.length; k++) {
+					if(CubyzMath.moduloMatchSign(reducedChunks[k].cx-i, worldSize >> 4) == 0 && CubyzMath.moduloMatchSign(reducedChunks[k].cz-j, worldSize >> 4) == 0) {
+						newReduced[index] = reducedChunks[k];
+						// Removes this chunk out of the list of chunks that will be considered in this function.
+						reducedChunks[k] = reducedChunks[minK];
+						reducedChunks[minK] = newReduced[index];
+						minK++;
+						index++;
+						continue loop;
+					}
+				}
+				ReducedChunk ch = new ReducedChunk(i, j, 1, transformData(getChunkData(i, j), tio.blockPalette));
+				reducedChunksToQueue.add(ch);
+				newReduced[index] = ch;
+				index++;
+			}
+		}
+		for (int k = minK; k < reducedChunks.length; k++) {
+			unQueueChunk(reducedChunks[k]);
+			//ClientOnly.deleteChunkMesh.accept(reducedChunks[k]);
+		}
+		reducedChunks = newReduced;
+		this.lowResRD = doubleRD;
+		// Load chunks after they have access to their neighbors:
+		for(ReducedChunk ch : reducedChunksToQueue) {
+			queueChunk(ch);
+		}		
 	}
 	
 	public void setBlocks(Block[] blocks) {
@@ -756,5 +859,10 @@ public class LocalSurface extends Surface {
 		if(sun*sunLight.y > g) g = (int)(sun*sunLight.y);
 		if(sun*sunLight.z > b) b = (int)(sun*sunLight.z);
 		return new Vector3f(r/255.0f, g/255.0f, b/255.0f);
+	}
+
+	@Override
+	public ReducedChunk[] getReducedChunks() {
+		return reducedChunks;
 	}
 }

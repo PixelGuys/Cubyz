@@ -42,9 +42,11 @@ public class Block implements RegistryElement {
 	int absorption = 0; // How much light this block absorbs if it is transparent.
 	String gui; // GUI that is opened onClick.
 	public RotationMode mode = CubyzRegistries.ROTATION_MODE_REGISTRY.getByID("cubyz:no_rotation");
+	public final short color;
 	public Class<? extends BlockEntity> blockEntity;
 	
-	public Block() {}
+	public Block() {color = -1;
+	System.out.printf("x%x\n", color);}
 	
 	public Block(String id, float hardness, BlockClass bc) {
 		setID(id);
@@ -52,6 +54,8 @@ public class Block implements RegistryElement {
 		ItemBlock bd = new ItemBlock(this);
 		setBlockDrop(bd);
 		this.hardness = hardness;
+		color = -1;
+		System.out.printf("x%x\n", color);
 	}
 	
 	public Block(Resource id, Properties props, String bc) {
@@ -67,6 +71,8 @@ public class Block implements RegistryElement {
 		gui = props.getProperty("GUI", null);
 		mode = CubyzRegistries.ROTATION_MODE_REGISTRY.getByID(props.getProperty("rotation", "cubyz:no_rotation"));
 		trulyTransparent = "cubyz:plane.obj".equals(props.getProperty("model"));
+		color = (short)(Integer.decode(props.getProperty("color", "0x4000")) & 65535);
+		System.out.printf("x%x\n", color);
 	}
 	
 	public void setDegradable(Boolean deg) {

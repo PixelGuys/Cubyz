@@ -6,5 +6,7 @@ absorbedLight 0x0f100010
 rotation cubyz:transparent
 drop auto
 
+color 0xf1a4
+
 model cubyz:plane.obj
 texture cubyz:oak_leaves_transparent

@@ -102,7 +102,6 @@ public class Cubyz implements GameLogic {
 	public static Cubyz instance;
 	
 	public static Deque<Runnable> renderDeque = new ArrayDeque<>();
-	public static HashMap<String, InstancedMesh> cachedDefaultModels = new HashMap<>();
 	
 	private static HashMap<String, MenuGUI> userGUIs = new HashMap<>();
 	
@@ -234,7 +233,7 @@ public class Cubyz implements GameLogic {
 		}
 		// Generate the texture atlas for this surface's truly transparent blocks:
 		ArrayList<Block> trulyTransparents = new ArrayList<>();
-		Meshes.transparentBlockMesh = cachedDefaultModels.get("cubyz:plane.obj");
+		Meshes.transparentBlockMesh = Meshes.cachedDefaultModels.get("cubyz:plane.obj");
 		for(RegistryElement element : surface.getCurrentRegistries().blockRegistry.registered()) {
 			Block block = (Block)element;
 			if(Meshes.blockMeshes.get(block) == Meshes.transparentBlockMesh) {
@@ -247,8 +246,10 @@ public class Cubyz implements GameLogic {
 		ArrayList<BufferedImage> blockTextures = new ArrayList<>();
 		for(Block block : trulyTransparents) {
 			BufferedImage texture = ResourceUtilities.loadBlockTextureToBufferedImage(block.getRegistryID());
-			maxSize = Math.max(maxSize, Math.max(texture.getWidth(), texture.getHeight()));
-			blockTextures.add(texture);
+			if(texture != null) {
+				maxSize = Math.max(maxSize, Math.max(texture.getWidth(), texture.getHeight()));
+				blockTextures.add(texture);
+			}
 		}
 		// Put the textures into the atlas
 		BufferedImage atlas = new BufferedImage(maxSize*Meshes.transparentAtlasSize, maxSize*Meshes.transparentAtlasSize, BufferedImage.TYPE_INT_ARGB);
@@ -349,89 +350,8 @@ public class Cubyz implements GameLogic {
 		renderer.setShaderFolder(ResourceManager.lookupPath("cubyz/shaders/easyLighting"));
 		
 		BlockPreview.setShaderFolder(ResourceManager.lookupPath("cubyz/shaders/blockPreview"));
-		ClientOnly.createBlockMesh = (block) -> {
-			Resource rsc = block.getRegistryID();
-			try {
-				Texture tex = null;
-				BlockModel bm = null;
-				if (block.generatesModelAtRuntime()) {
-					bm = ResourceUtilities.loadModel(new Resource("cubyz:undefined"));
-				} else {
-					try {
-						bm = ResourceUtilities.loadModel(rsc);
-					} catch (IOException e) {
-						logger.warning(rsc + " block model not found");
-						bm = ResourceUtilities.loadModel(new Resource("cubyz:undefined"));
-					}
-				}
-				
-				// Cached meshes
-				InstancedMesh mesh = null;
-				for (String key : cachedDefaultModels.keySet()) {
-					if (key.equals(bm.subModels.get("default").model)) {
-						mesh = cachedDefaultModels.get(key);
-					}
-				}
-				if (mesh == null) {
-					Resource rs = new Resource(bm.subModels.get("default").model);
-					mesh = (InstancedMesh)OBJLoader.loadMesh("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), true); // Block meshes are always instanced.
-					//defaultMesh = StaticMeshesLoader.loadInstanced("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), "assets/" + rs.getMod() + "/models/3d/")[0];
-					mesh.setInstances(512, ZenithsRenderer.shadowMap != null);
-					mesh.setBoundingRadius(2.0f);
-					Material material = new Material(tex, 0.6F);
-					mesh.setMaterial(material);
-					cachedDefaultModels.put(bm.subModels.get("default").model, mesh);
-				}
-				Resource texResource = new Resource(bm.subModels.get("default").texture);
-				String texture = texResource.getID();
-				if (!new File("addons/" + texResource.getMod() + "/blocks/textures/" + texture + ".png").exists()) {
-					logger.warning(texResource + " texture not found");
-					texture = "undefined";
-				}
-				tex = new Texture("addons/" + texResource.getMod() + "/blocks/textures/" + texture + ".png");
-				
-				Meshes.blockMeshes.put(block, mesh);
-				Meshes.blockTextures.put(block, tex);
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		};
 		
-		ClientOnly.createEntityMesh = (type) -> {
-			Resource rsc = type.getRegistryID();
-			try {
-				EntityModel model = null;
-				try {
-					model = ResourceUtilities.loadEntityModel(rsc);
-				} catch (IOException e) {
-					logger.warning(rsc + " entity model not found");
-					//e.printStackTrace();
-					//model = ResourceUtilities.loadEntityModel(new Resource("cubyz:undefined")); // TODO: load a simple cube with the undefined texture
-					return;
-				}
-				
-				// Cached meshes
-				Resource rs = new Resource(model.model);
-				Mesh mesh = StaticMeshesLoader.load("assets/" + rs.getMod() + "/models/3d/" + rs.getID(),
-						"assets/" + rs.getMod() + "/models/3d/")[0];
-				mesh.setBoundingRadius(2.0f); // TODO: define custom bounding radius
-				Resource texResource = new Resource(model.texture);
-				String texture = texResource.getID();
-				if (!new File("assets/" + texResource.getMod() + "/textures/entities/" + texture + ".png").exists()) {
-					logger.warning(texResource + " texture not found");
-					texture = "blocks/undefined";
-				}
-				
-				Texture tex = new Texture("assets/" + texResource.getMod() + "/textures/entities/" + texture + ".png");
-				
-				Material material = new Material(tex, 1.0F);
-				mesh.setMaterial(material);
-				
-				Meshes.entityMeshes.put(type, mesh);
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		};
+		Meshes.initMeshCreators();
 		
 		ClientOnly.registerGui = (name, gui) -> {
 			if (userGUIs.containsKey(name)) {
@@ -680,6 +600,7 @@ public class Cubyz implements GameLogic {
 	}
 
 	public static final Chunk[] EMPTY_CHUNK_LIST = new Chunk[0];
+	public static final ReducedChunk[] EMPTY_REDUCED_CHUNK_LIST = new ReducedChunk[0];
 	public static final Block[] EMPTY_BLOCK_LIST = new Block[0];
 	public static final Entity[] EMPTY_ENTITY_LIST = new Entity[0];
 	public static final Spatial[] EMPTY_SPATIAL_LIST = new Spatial[0];
@@ -729,9 +650,9 @@ public class Cubyz implements GameLogic {
 				
 				// Cached meshes
 				InstancedMesh defaultMesh = null;
-				for (String key : cachedDefaultModels.keySet()) {
+				for (String key : Meshes.cachedDefaultModels.keySet()) {
 					if (key.equals(bm.subModels.get("default").model)) {
-						defaultMesh = cachedDefaultModels.get(key);
+						defaultMesh = Meshes.cachedDefaultModels.get(key);
 					}
 				}
 				BlockSubModel subModel = bm.subModels.get("default");
@@ -744,7 +665,7 @@ public class Cubyz implements GameLogic {
 					Resource rs = new Resource(subModel.model);
 					defaultMesh = (InstancedMesh)OBJLoader.loadMesh("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), true); // Blocks are always instanced.
 					defaultMesh.setBoundingRadius(2.0f);
-					cachedDefaultModels.put(subModel.model, defaultMesh);
+					Meshes.cachedDefaultModels.put(subModel.model, defaultMesh);
 				}
 				Resource texResource = new Resource(subModel.texture);
 				String texture = texResource.getID();
@@ -833,7 +754,7 @@ public class Cubyz implements GameLogic {
 			float lightX = (((float)world.getGameTime() % world.getCurrentTorus().getStellarTorus().getDayCycle()) / (float) (world.getCurrentTorus().getStellarTorus().getDayCycle()/2)) - 1f;
 			light.getDirection().set(lightY, 0, lightX);
 			window.setClearColor(clearColor);
-			renderer.render(window, ctx, ambient, light, world.getCurrentTorus().getChunks(), world.getBlocks(), world.getCurrentTorus().getEntities(), worldSpatialList, world.getLocalPlayer(), world.getCurrentTorus().getSize());
+			renderer.render(window, ctx, ambient, light, world.getCurrentTorus().getChunks(), world.getCurrentTorus().getReducedChunks(), world.getBlocks(), world.getCurrentTorus().getEntities(), worldSpatialList, world.getLocalPlayer(), world.getCurrentTorus().getSize());
 		} else {
 			clearColor.y = clearColor.z = 0.7f;
 			clearColor.x = 0.1f;
@@ -847,7 +768,7 @@ public class Cubyz implements GameLogic {
 				window.setRenderTarget(buf);
 			}
 			
-			renderer.render(window, ctx, brightAmbient, light, EMPTY_CHUNK_LIST, EMPTY_BLOCK_LIST, EMPTY_ENTITY_LIST, EMPTY_SPATIAL_LIST, null, -1);
+			renderer.render(window, ctx, brightAmbient, light, EMPTY_CHUNK_LIST, EMPTY_REDUCED_CHUNK_LIST, EMPTY_BLOCK_LIST, EMPTY_ENTITY_LIST, EMPTY_SPATIAL_LIST, null, -1);
 			
 			if (screenshot) {
 				/*FrameBuffer buf = window.getRenderTarget();
