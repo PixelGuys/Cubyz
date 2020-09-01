@@ -296,7 +296,7 @@ public class MainRenderer implements Renderer {
 
 		chunkShader.setUniform("ambientLight", ambientLight);
 		for(ReducedChunk chunk : reducedChunks) {
-			if(chunk != null) {
+			if(chunk != null && chunk.visible) {
 				ReducedChunkMesh mesh = Meshes.chunkMeshes.get(chunk);
 				if(mesh != null) {
 					mesh.render();

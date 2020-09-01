@@ -45,8 +45,7 @@ public class Block implements RegistryElement {
 	public final short color;
 	public Class<? extends BlockEntity> blockEntity;
 	
-	public Block() {color = -1;
-	System.out.printf("x%x\n", color);}
+	public Block() {color = -1;}
 	
 	public Block(String id, float hardness, BlockClass bc) {
 		setID(id);
@@ -55,7 +54,6 @@ public class Block implements RegistryElement {
 		setBlockDrop(bd);
 		this.hardness = hardness;
 		color = -1;
-		System.out.printf("x%x\n", color);
 	}
 	
 	public Block(Resource id, Properties props, String bc) {
@@ -71,8 +69,7 @@ public class Block implements RegistryElement {
 		gui = props.getProperty("GUI", null);
 		mode = CubyzRegistries.ROTATION_MODE_REGISTRY.getByID(props.getProperty("rotation", "cubyz:no_rotation"));
 		trulyTransparent = "cubyz:plane.obj".equals(props.getProperty("model"));
-		color = (short)(Integer.decode(props.getProperty("color", "0x4000")) & 65535);
-		System.out.printf("x%x\n", color);
+		color = (short)(Integer.decode(props.getProperty("color", "0x0000")) & 65535);
 	}
 	
 	public void setDegradable(Boolean deg) {

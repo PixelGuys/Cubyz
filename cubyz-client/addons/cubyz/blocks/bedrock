@@ -3,3 +3,5 @@ class unbreakable
 
 model cubyz:block.obj
 texture cubyz:bedrock
+
+color 0xf000

@@ -7,3 +7,5 @@ drop auto
 
 model cubyz:block.obj
 texture cubyz:iron_ore
+
+color 0xf654

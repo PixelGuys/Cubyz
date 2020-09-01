@@ -4,3 +4,5 @@ drop auto
 
 model cubyz:block.obj
 texture cubyz:gravel
+
+color 0xf888

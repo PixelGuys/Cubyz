@@ -17,11 +17,11 @@ public class ReducedChunk {
 	public final int cx, cz;
 	public final short[] blocks;
 	public boolean generated = false;
+	public boolean visible = true;
 	public ReducedChunk(int cx, int cz, int resolution, ArrayList<BlockChange> changes) {
 		this.cx = cx;
 		this.cz = cz;
 		this.resolution = resolution;
-		System.out.println(resolution);
 		size = (World.WORLD_HEIGHT >>> resolution)*(16 >> resolution)*(16 >> resolution);
 		blocks = new short[size];
 		this.changes = changes;

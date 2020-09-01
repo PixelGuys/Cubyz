@@ -7,15 +7,12 @@ import static org.lwjgl.opengl.GL30.*;
 
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
-import java.nio.ShortBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 
 import org.lwjgl.system.MemoryUtil;
 
 import io.cubyz.util.FloatFastList;
 import io.cubyz.util.IntFastList;
-import io.cubyz.util.ShortFastList;
 import io.cubyz.world.ReducedChunk;
 
 public class ReducedChunkMesh {
@@ -27,7 +24,7 @@ public class ReducedChunkMesh {
 	protected int vertexCount;
 	FloatFastList vertices = new FloatFastList();
 	IntFastList faces = new IntFastList();
-	ShortFastList colors = new ShortFastList();
+	IntFastList colors = new IntFastList();
 	
 	private boolean inited = false;
 
@@ -38,7 +35,7 @@ public class ReducedChunkMesh {
 	private void initMesh() {
 		FloatBuffer posBuffer = null;
 		IntBuffer indexBuffer = null;
-		ShortBuffer colorBuffer = null;
+		IntBuffer colorBuffer = null;
 		try {
 			vertexCount = faces.size;
 			vboIdList = new ArrayList<>();
@@ -58,11 +55,11 @@ public class ReducedChunkMesh {
 			// Color VBO
 			vboId = glGenBuffers();
 			vboIdList.add(vboId);
-			colorBuffer = MemoryUtil.memAllocShort(colors.size);
+			colorBuffer = MemoryUtil.memAllocInt(colors.size);
 			colorBuffer.put(colors.toArray()).flip();
 			glBindBuffer(GL_ARRAY_BUFFER, vboId);
 			glBufferData(GL_ARRAY_BUFFER, colorBuffer, GL_STATIC_DRAW);
-			glVertexAttribPointer(1, 1, GL_SHORT, false, 0, 0);
+			glVertexAttribPointer(1, 1, GL_FLOAT, false, 0, 0);
 
 			// Index VBO
 			vboId = glGenBuffers();
@@ -118,10 +115,10 @@ public class ReducedChunkMesh {
 		glDeleteVertexArrays(vaoId);
 	}
 	
-	private static void generateModelData(ReducedChunk chunk, FloatFastList vertices, IntFastList faces, ShortFastList colors) {
+	private static void generateModelData(ReducedChunk chunk, FloatFastList vertices, IntFastList faces, IntFastList colors) {
 		int zMask = 15 >>> chunk.resolution;
 		int xMask = zMask << (4 - chunk.resolution);
-		int yMask = (xMask | zMask) << (8 - 2*chunk.resolution);
+		int yMask = (255 >>> chunk.resolution) << (8 - 2*chunk.resolution);
 		int zDelta = 1;
 		int xDelta = 1 << (4 - chunk.resolution);
 		int yDelta = 1 << (8 - 2*chunk.resolution);
@@ -137,7 +134,7 @@ public class ReducedChunkMesh {
 			if((i & zMask) != 0 && chunk.blocks[i - zDelta] != 0) negZ = false;
 			if((i & zMask) != zMask && chunk.blocks[i + zDelta] != 0) posZ = false;
 			if(posX || negX || posY || negY || posZ || negZ) {
-				short color = chunk.blocks[i];
+				int color = chunk.blocks[i] & 65535;
 				// Determine the coordinates from index:
 				int x = (i & xMask) >>> (4 - 2*chunk.resolution);
 				int y = (i & yMask) >>> (8 - 3*chunk.resolution);
@@ -265,62 +262,6 @@ public class ReducedChunkMesh {
 					faces.add(i111);
 					faces.add(i011);
 				}
-				/*
-				 * if(negX) {
-					faces.add(i000);
-					faces.add(i011);
-					faces.add(i001);
-
-					faces.add(i000);
-					faces.add(i010);
-					faces.add(i011);
-				}
-				if(posX) {
-					faces.add(i100);
-					faces.add(i101);
-					faces.add(i111);
-
-					faces.add(i100);
-					faces.add(i111);
-					faces.add(i110);
-				}
-				if(negY) {
-					faces.add(i000);
-					faces.add(i001);
-					faces.add(i101);
-
-					faces.add(i000);
-					faces.add(i101);
-					faces.add(i100);
-				}
-				if(posY) {
-					faces.add(i010);
-					faces.add(i111);
-					faces.add(i011);
-
-					faces.add(i010);
-					faces.add(i110);
-					faces.add(i111);
-				}
-				if(negZ) {
-					faces.add(i000);
-					faces.add(i100);
-					faces.add(i110);
-
-					faces.add(i000);
-					faces.add(i110);
-					faces.add(i010);
-				}
-				if(posZ) {
-					faces.add(i001);
-					faces.add(i111);
-					faces.add(i101);
-
-					faces.add(i001);
-					faces.add(i011);
-					faces.add(i111);
-				}
-				 */
 			}
 		}
 	}

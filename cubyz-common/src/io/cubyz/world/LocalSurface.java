@@ -605,12 +605,14 @@ public class LocalSurface extends Surface {
 		for(int i = x-lowResRD; i < x; i++) {
 			loop:
 			for(int j = z-lowResRD; j < z; j++) {
+				boolean visible = i < x-renderDistance-doubleRD/2 || i >= x-renderDistance+doubleRD/2 || j < z-renderDistance-doubleRD/2 || j >= z-renderDistance+doubleRD/2;
 				for(int k = minK; k < reducedChunks.length; k++) {
 					if(CubyzMath.moduloMatchSign(reducedChunks[k].cx-i, worldSize >> 4) == 0 && CubyzMath.moduloMatchSign(reducedChunks[k].cz-j, worldSize >> 4) == 0) {
 						newReduced[index] = reducedChunks[k];
 						// Removes this chunk out of the list of chunks that will be considered in this function.
 						reducedChunks[k] = reducedChunks[minK];
 						reducedChunks[minK] = newReduced[index];
+						newReduced[index].visible = visible;
 						minK++;
 						index++;
 						continue loop;
@@ -619,6 +621,7 @@ public class LocalSurface extends Surface {
 				ReducedChunk ch = new ReducedChunk(i, j, 1, transformData(getChunkData(i, j), tio.blockPalette));
 				reducedChunksToQueue.add(ch);
 				newReduced[index] = ch;
+				newReduced[index].visible = visible;
 				index++;
 			}
 		}

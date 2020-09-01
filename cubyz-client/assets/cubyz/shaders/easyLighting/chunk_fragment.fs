@@ -1,7 +1,7 @@
 #version 330
 
 in vec3 mvVertexPos;
-flat in vec3 outColor;
+in vec3 outColor;
 
 out vec4 fragColor;
 

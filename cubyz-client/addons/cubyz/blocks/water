@@ -7,3 +7,5 @@ rotation cubyz:transparent
 
 model cubyz:plane.obj
 texture cubyz:water
+
+color 0xf02f
