@@ -84,7 +84,7 @@ public class TerrainGenerator implements FancyGenerator, ReducedGenerator {
 						if(j == 0 && y >>> chunk.resolution != 0) {
 							color = bedrock.color;
 						} else if(j == y) {
-							containingMetaChunk.biomeMap[(wx + (x << chunk.resolution)) & 255][(wz + (z << chunk.resolution)) & 255].struct.addSubTerranian(chunk, j, (x << (4 - chunk.resolution) | z));
+							j = containingMetaChunk.biomeMap[(wx + (x << chunk.resolution)) & 255][(wz + (z << chunk.resolution)) & 255].struct.addSubTerranian(chunk, j, (x << (4 - chunk.resolution) | z));
 							continue;
 						} else {
 							color = stone.color;
