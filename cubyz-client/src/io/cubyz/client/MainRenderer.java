@@ -275,6 +275,27 @@ public class MainRenderer implements Renderer {
 					}, currentSortingIndex, map[transparentIndex].size - 1);
 				}
 			}
+			
+			// Render the far away ReducedChunks:
+			chunkShader.bind();
+			
+			chunkShader.setUniform("fog", ctx.getFog());
+			chunkShader.setUniform("projectionMatrix", ctx.getWindow().getProjectionMatrix());
+			
+			chunkShader.setUniform("viewMatrix", ctx.getCamera().getViewMatrix());
+
+			chunkShader.setUniform("ambientLight", ambientLight);
+			for(ReducedChunk chunk : reducedChunks) {
+				if(chunk != null && chunk.visible) {
+					if (!frustumInt.testAab(chunk.getMin(x0, z0, worldSize), chunk.getMax(x0, z0, worldSize)))
+						continue;
+					ReducedChunkMesh mesh = Meshes.chunkMeshes.get(chunk);
+					if(mesh != null) {
+						mesh.render();
+					}
+				}
+			}
+			chunkShader.unbind();
 		}
 		
 		renderScene(ctx, ambientLight, map, blocks, reducedChunks, entities, spatials,
@@ -284,33 +305,15 @@ public class MainRenderer implements Renderer {
 		}
 	}
 	
-	public void renderScene(Context ctx, Vector3f ambientLight,
+	public void renderScene(Context ctx,Vector3f ambientLight,
 			FastList<Spatial>[] map, Block[] blocks, ReducedChunk[] reducedChunks, Entity[] entities, Spatial[] spatials, Vector3f playerPosition, Player p, float breakAnim, int transparentIndex) {
-		chunkShader.bind();
-		
-		chunkShader.setUniform("fog", ctx.getFog());
-		chunkShader.setUniform("projectionMatrix", ctx.getWindow().getProjectionMatrix());
-		
-		Matrix4f viewMatrix = ctx.getCamera().getViewMatrix();
-		chunkShader.setUniform("viewMatrix", viewMatrix);
-
-		chunkShader.setUniform("ambientLight", ambientLight);
-		for(ReducedChunk chunk : reducedChunks) {
-			if(chunk != null && chunk.visible) {
-				ReducedChunkMesh mesh = Meshes.chunkMeshes.get(chunk);
-				if(mesh != null) {
-					mesh.render();
-				}
-			}
-		}
-		chunkShader.unbind();
 		blockShader.bind();
 		
 		blockShader.setUniform("fog", ctx.getFog());
 		blockShader.setUniform("projectionMatrix", ctx.getWindow().getProjectionMatrix());
 		blockShader.setUniform("texture_sampler", 0);
 		blockShader.setUniform("break_sampler", 2);
-		blockShader.setUniform("viewMatrix", viewMatrix);
+		blockShader.setUniform("viewMatrix", ctx.getCamera().getViewMatrix());
 
 		blockShader.setUniform("ambientLight", ambientLight);
 
@@ -347,7 +350,7 @@ public class MainRenderer implements Renderer {
 				if(ent.getType().model != null) {
 					entityShader.setUniform("materialHasTexture", true);
 					entityShader.setUniform("light", ent.getStellarTorus().getWorld().getCurrentTorus().getLight(x, y, z, ambientLight));
-					ent.getType().model.render(viewMatrix, entityShader, ent);
+					ent.getType().model.render(ctx.getCamera().getViewMatrix(), entityShader, ent);
 					continue;
 				}
 				if (ent instanceof CustomMeshProvider) {
@@ -371,7 +374,7 @@ public class MainRenderer implements Renderer {
 					
 					mesh.renderOne(() -> {
 						Vector3f position = ent.getRenderPosition();
-						Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(position, ent.getRotation(), ent.getScale()), viewMatrix);
+						Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(position, ent.getRotation(), ent.getScale()), ctx.getCamera().getViewMatrix());
 						entityShader.setUniform("viewMatrix", modelViewMatrix);
 					});
 				}
@@ -387,7 +390,7 @@ public class MainRenderer implements Renderer {
 			mesh.renderOne(() -> {
 				Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(
 						Transformation.getModelMatrix(spatial.getPosition(), spatial.getRotation(), spatial.getScale()),
-						viewMatrix);
+						ctx.getCamera().getViewMatrix());
 				entityShader.setUniform("viewMatrix", modelViewMatrix);
 			});
 		}

@@ -2,6 +2,9 @@ package io.cubyz.world;
 
 import java.util.ArrayList;
 
+import org.joml.Vector3f;
+
+import io.cubyz.math.CubyzMath;
 import io.cubyz.save.BlockChange;
 
 /**
@@ -39,5 +42,13 @@ public class ReducedChunk {
 			blocks[index] = b;
 			blockData[index] = bc.newData;
 		}*/ // TODO
+	}
+	
+	public Vector3f getMin(float x0, float z0, int worldSize) {
+		return new Vector3f(CubyzMath.match(cx << 4, x0, worldSize), 0, CubyzMath.match(cz << 4, z0, worldSize));
+	}
+	
+	public Vector3f getMax(float x0, float z0, int worldSize) {
+		return new Vector3f(CubyzMath.match(cx << 4, x0, worldSize) + 16, 256, CubyzMath.match(cz << 4, z0, worldSize) + 16);
 	}
 }

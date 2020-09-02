@@ -676,7 +676,7 @@ public class LocalSurface extends Surface {
 				}
 			}
 			// Every time a new MetaChunk is created, go through the list and if the length is at the limit(determined by the renderdistance) remove those that are farthest from the player:
-			while(metaChunks.size() > (doubleRD/16 + 4)*(doubleRD/16 + 4)) {
+			while(metaChunks.size() > (lowResRD/16 + 4)*(lowResRD/16 + 4)) {
 				int max = 0;
 				int index = 0;
 				for(int i = 0; i < metaChunks.size(); i++) {
