@@ -2,7 +2,6 @@ package io.cubyz.world.generator;
 
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.Random;
 
 import org.joml.Vector3i;
 
@@ -76,7 +75,6 @@ public class LifelandGenerator extends SurfaceGenerator {
 			}
 		}
 		
-		Random r = new Random(seed);
 		Block[][][] chunk = new Block[16][16][World.WORLD_HEIGHT];
 		byte[][][] chunkData = new byte[16][16][World.WORLD_HEIGHT];
 		
@@ -117,11 +115,11 @@ public class LifelandGenerator extends SurfaceGenerator {
 		
 		for (Generator g : sortedGenerators) {
 			if (g instanceof FancyGenerator) {
-				((FancyGenerator) g).generate(r.nextLong(), cx, cz, chunk, vegetationIgnoreMap, heatMap, realHeight, biomeMap, chunkData, surface.getSize());
+				((FancyGenerator) g).generate(seed ^ g.getGeneratorSeed(), cx, cz, chunk, vegetationIgnoreMap, heatMap, realHeight, biomeMap, chunkData, surface.getSize());
 			} else if (g instanceof BigGenerator) {
-				((BigGenerator) g).generate(r.nextLong(), lx, lz, chunk, vegetationIgnoreMap, nn, np, pn, pp);
+				((BigGenerator) g).generate(seed ^ g.getGeneratorSeed(), lx, lz, chunk, vegetationIgnoreMap, nn, np, pn, pp);
 			} else {
-				g.generate(r.nextLong(), cx, cz, chunk, vegetationIgnoreMap);
+				g.generate(seed ^ g.getGeneratorSeed(), cx, cz, chunk, vegetationIgnoreMap);
 			}
 		}
 
@@ -149,13 +147,12 @@ public class LifelandGenerator extends SurfaceGenerator {
 	@Override
 	public void generate(ReducedChunk chunk, Surface surface) {
 		long seed = surface.getStellarTorus().getLocalSeed();
-		Random r = new Random(seed);
 		int wx = chunk.cx << 4;
 		int wz = chunk.cz << 4;
 		MetaChunk metaChunk = surface.getMetaChunk(wx & (~255), wz & (~255));
 		for (Generator g : sortedGenerators) {
 			if (g instanceof ReducedGenerator) {
-				((ReducedGenerator) g).generate(r.nextLong(), wx, wz, chunk, metaChunk, surface);
+				((ReducedGenerator) g).generate(seed ^ g.getGeneratorSeed(), wx, wz, chunk, metaChunk, surface);
 			}
 		}
 		chunk.applyBlockChanges();

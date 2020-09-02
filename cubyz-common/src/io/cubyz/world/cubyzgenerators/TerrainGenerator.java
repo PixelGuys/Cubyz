@@ -95,4 +95,9 @@ public class TerrainGenerator implements FancyGenerator, ReducedGenerator {
 			}
 		}
 	}
+
+	@Override
+	public long getGeneratorSeed() {
+		return 0x65c7f9fdc0641f94L;
+	}
 }

@@ -31,7 +31,6 @@ public class ReducedChunkMesh {
 	public ReducedChunkMesh(ReducedChunk chunk) {
 		generateModelData(chunk, vertices, faces, colors);
 	}
-	
 	private void initMesh() {
 		FloatBuffer posBuffer = null;
 		IntBuffer indexBuffer = null;

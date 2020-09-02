@@ -146,4 +146,9 @@ public class OreGenerator implements Generator {
 			}
 		}
 	}
+
+	@Override
+	public long getGeneratorSeed() {
+		return 0x88773787bc9e0105L;
+	}
 }

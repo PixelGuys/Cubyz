@@ -243,4 +243,9 @@ public class CrystalCavernGenerator implements FancyGenerator {
 			considerCrystal(cx << 4, cz << 4, crystalSpawns[i], chunk, crystalSpawns[i][0]*rand1 + crystalSpawns[i][1]*rand2 + crystalSpawns[i][2]*rand3, useNeedles);
 		}
 	}
+
+	@Override
+	public long getGeneratorSeed() {
+		return 0x9b450ffb0d415317L;
+	}
 }
