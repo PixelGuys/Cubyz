@@ -15,8 +15,6 @@ void main()
 {
 	vec4 mvPos = viewMatrix*vec4(position, 1);
 	gl_Position = projectionMatrix*mvPos;
-	outColor = vec3(((color >> 8) & 15)/15.0, ((color >> 4) & 15)/15.0, ((color >> 0) & 15)/15.0);
-	if(ambientLight.x == 0.646893)
-	outColor += vec3(01, 0, 0);
+	outColor = vec3(((color >> 8) & 15)/15.0, ((color >> 4) & 15)/15.0, ((color >> 0) & 15)/15.0)*ambientLight;
     mvVertexPos = mvPos.xyz;
 }
