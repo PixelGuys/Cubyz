@@ -22,9 +22,9 @@ public class ReducedChunkMesh {
 	protected ArrayList<Integer> vboIdList;
 
 	protected int vertexCount;
-	FloatFastList vertices = new FloatFastList();
-	IntFastList faces = new IntFastList();
-	IntFastList colors = new IntFastList();
+	FloatFastList vertices = new FloatFastList(25000);
+	IntFastList faces = new IntFastList(15000);
+	IntFastList colors = new IntFastList(10000);
 	
 	private boolean inited = false;
 

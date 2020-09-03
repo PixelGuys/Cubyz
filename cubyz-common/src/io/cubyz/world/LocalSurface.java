@@ -24,7 +24,6 @@ import io.cubyz.blocks.BlockEntity;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.EntityType;
 import io.cubyz.entity.ItemEntity;
-import io.cubyz.entity.Player;
 import io.cubyz.handler.PlaceBlockHandler;
 import io.cubyz.handler.RemoveBlockHandler;
 import io.cubyz.items.ItemStack;
@@ -43,10 +42,12 @@ import static io.cubyz.CubyzLogger.logger;
 public class LocalSurface extends Surface {
 	private static Random rnd = new Random();
 	
-	private List<MetaChunk> metaChunks;
-	private Chunk [] chunks;
-	private ReducedChunk [] reducedChunks;
+	private MetaChunk[] metaChunks;
+	private Chunk[] chunks;
+	private ReducedChunk[] reducedChunks;
 	private int lastX = Integer.MAX_VALUE, lastZ = Integer.MAX_VALUE; // Chunk coordinates of the last chunk update.
+	private int lastMetaX = Integer.MAX_VALUE, lastMetaZ = Integer.MAX_VALUE; // MetaChunk coordinates of the last chunk update.
+	private int mcDRD; // double renderdistance of MetaChunks.
 	private int doubleRD; // Corresponds to the doubled value of the last used render distance.
 	private int lowResRD; // Distance of low resolution chunk rendering.
 	private int worldSize = 65536; // worldSize-1. Used for bitwise and to better work with coordinates.
@@ -166,7 +167,7 @@ public class LocalSurface extends Surface {
 		registries = new CurrentSurfaceRegistries();
 		localSeed = torus.getLocalSeed();
 		this.torus = torus;
-		metaChunks = new ArrayList<>();
+		metaChunks = new MetaChunk[0];
 		chunks = new Chunk[0];
 		reducedChunks = new ReducedChunk[0];
 		
@@ -527,7 +528,61 @@ public class LocalSurface extends Surface {
 	public void seek(int x, int z, int renderDistance) {
 		int xOld = x;
 		int zOld = z;
-		int local = x & 15;
+		// Care about the MetaChunks:
+		int mcRD = (renderDistance*10 >>> 4) + 4;
+		int local = x & 255;
+		x >>= 8;
+		x += mcRD;
+		if(local > 127)
+			x++;
+		local = z & 255;
+		z >>= 8;
+		z += mcRD;
+		if(local > 127)
+			z++;
+		if(x != lastMetaX || z != lastMetaZ) {
+			int mcDRD = mcRD << 1;
+			MetaChunk[] newMeta = new MetaChunk[mcDRD*mcDRD];
+			int index = 0;
+			int minK = 0;
+			//ArrayList<Chunk> chunksToQueue = new ArrayList<>();
+			for(int i = x-mcDRD; i < x; i++) {
+				loop:
+				for(int j = z-mcDRD; j < z; j++) {
+					for(int k = minK; k < metaChunks.length; k++) {
+						if(metaChunks[k] != null && CubyzMath.moduloMatchSign(metaChunks[k].x-i, worldSize >> 8) == 0 && CubyzMath.moduloMatchSign(metaChunks[k].z-j, worldSize >> 8) == 0) {
+							newMeta[index] = metaChunks[k];
+							// Removes this chunk out of the list of chunks that will be considered in this function.
+							metaChunks[k] = metaChunks[minK];
+							metaChunks[minK] = newMeta[index];
+							minK++;
+							index++;
+							continue loop;
+						}
+					}
+					/*Chunk ch = new Chunk(i, j, this, transformData(getChunkData(i, j), tio.blockPalette));
+					//chunksToQueue.add(ch);
+					newMeta[index] = ch;*/
+					newMeta[index] = null;
+					index++;
+				}
+			}
+			/*for (int k = minK; k < chunks.length; k++) {
+				if(chunks[k].isGenerated())
+					tio.saveChunk(chunks[k]); // Only needs to be stored if it was ever generated.
+				else
+					unQueueChunk(chunks[k]);
+			}*/
+			metaChunks = newMeta;
+			lastMetaX = x;
+			lastMetaZ = z;
+			this.mcDRD = mcDRD;
+		}
+
+		// Care about the Chunks:
+		x = xOld;
+		z = zOld;
+		local = x & 15;
 		x >>= 4;
 		x += renderDistance;
 		if(local > 7)
@@ -574,6 +629,8 @@ public class LocalSurface extends Surface {
 		lastX = x;
 		lastZ = z;
 		this.doubleRD = doubleRD;
+		
+		// Care about the ReducedChunks:
 		// Load chunks after they have access to their neighbors:
 		for(Chunk ch : chunksToQueue) {
 			queueChunk(ch);
@@ -583,7 +640,7 @@ public class LocalSurface extends Surface {
 		}
 		
 		// Add low-resolution chunks:
-		renderDistance *= 2;
+		renderDistance *= 10;
 		x = xOld;
 		z = zOld;
 		local = x & 15;
@@ -661,37 +718,32 @@ public class LocalSurface extends Surface {
 			}
 		}
 	}
+
 	
+	@Override
 	public MetaChunk getMetaChunk(int wx, int wz) {
-		for(MetaChunk ch : metaChunks.toArray(new MetaChunk[0])) {
-			if(ch.x == wx && ch.z == wz) {
-				return ch;
-			}
-		}
-		synchronized(metaChunks) {
-			// Now that the thread got access to this part the list might already contain the searched MetaChunk:
-			for(MetaChunk ch : metaChunks) {
-				if(ch.x == wx && ch.z == wz) {
+		int x = wx >> 8;
+		int z = wz >> 8;
+		// Test if the chunk can be found in the list of visible chunks:
+		int index = CubyzMath.moduloMatchSign(x-(lastMetaX-mcDRD), worldSize >> 8)*mcDRD + CubyzMath.moduloMatchSign(z-(lastMetaZ-mcDRD), worldSize >> 8);
+		wx = CubyzMath.worldModulo(wx, worldSize);
+		wz = CubyzMath.worldModulo(wz, worldSize);
+		if(index < metaChunks.length && index >= 0) {
+			MetaChunk ret = metaChunks[index];
+			
+			if (ret != null) {
+				if(wx == ret.x && wz == ret.z)
+					return ret;
+			} else {
+				synchronized(metaChunks) {
+					MetaChunk ch = new MetaChunk(wx, wz, localSeed, this, registries);
+					metaChunks[index] = ch;
 					return ch;
 				}
 			}
-			// Every time a new MetaChunk is created, go through the list and if the length is at the limit(determined by the renderdistance) remove those that are farthest from the player:
-			while(metaChunks.size() > (lowResRD/16 + 4)*(lowResRD/16 + 4)) {
-				int max = 0;
-				int index = 0;
-				for(int i = 0; i < metaChunks.size(); i++) {
-					Player player = torus.world.getLocalPlayer();
-					int dist = CubyzMath.moduloMatchSign(metaChunks.get(i).x-(int)player.getPosition().x, worldSize)*CubyzMath.moduloMatchSign(metaChunks.get(i).x-(int)player.getPosition().x, worldSize) + CubyzMath.moduloMatchSign(metaChunks.get(i).z-(int)player.getPosition().z, worldSize)*CubyzMath.moduloMatchSign(metaChunks.get(i).z-(int)player.getPosition().z, worldSize);
-					if(dist > max) {
-						max = dist;
-						index = i;
-					}
-				}
-				metaChunks.remove(index);
-			}
-			MetaChunk ch = new MetaChunk(wx, wz, localSeed, this, registries);
-			metaChunks.add(ch);
-			return ch;
+		}
+		synchronized(metaChunks) {
+			return new MetaChunk(wx, wz, localSeed, this, registries);
 		}
 	}
 	
