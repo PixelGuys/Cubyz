@@ -5,18 +5,18 @@ import java.util.Random;
 import io.cubyz.math.CubyzMath;
 
 public class PerlinNoise {
-	private static Random r = new Random();
+	private Random r = new Random();
 
-	private static float[][] xGridPoints; // [x][y]
-	private static float[][] yGridPoints; // [x][y]
+	private float[][] xGridPoints; // [x][y]
+	private float[][] yGridPoints; // [x][y]
 	// Calculate the gradient instead of storing it.
 	// This is inefficient(since it is called every time), but allows infinite chunk generation.
-	private static float generateGradient(int x, int y, int i, long l1, long l2, long l3, int resolution) {
+	private float generateGradient(int x, int y, int i, long l1, long l2, long l3, int resolution) {
 		r.setSeed(l1*x+l2*y+l3*i+resolution);
     	return 2 * r.nextFloat() - 1;
     }
 	
-	private static float getGradientX(int x, int y) {
+	private float getGradientX(int x, int y) {
 		try {
 			return xGridPoints[x][y];
 		} catch (ArrayIndexOutOfBoundsException e) { // quick and dirty fix
@@ -25,7 +25,7 @@ public class PerlinNoise {
 		}
 	}
 	
-	private static float getGradientY(int x, int y) {
+	private float getGradientY(int x, int y) {
 		try {
 			return yGridPoints[x][y];
 		} catch (ArrayIndexOutOfBoundsException e) {
@@ -46,7 +46,7 @@ public class PerlinNoise {
 	}
 
 	// Computes the dot product of the distance and gradient vectors.
-	private static float dotGridGradient(int ix, int iy, float x, float y, int resolution) {
+	private float dotGridGradient(int ix, int iy, float x, float y, int resolution) {
 
 	    // Compute the distance vector
 		float dx = x/resolution - ix;
@@ -62,7 +62,7 @@ public class PerlinNoise {
 	}
 
 	// Compute Perlin noise at coordinates x, y
-	private static float perlin(int x, int y, int resolution, int resolution2, boolean ridged) {
+	private float perlin(int x, int y, int resolution, int resolution2, boolean ridged) {
 
 	    // Determine grid cell coordinates
 	    int x0 = x/resolution;
@@ -95,7 +95,7 @@ public class PerlinNoise {
 	}
 	
 	// Calculate all grid points that will be needed to prevent double calculating them.
-	private static void calculateGridPoints(int x, int y, int width, int height, int scale, long l1, long l2, long l3, int worldSize) {
+	private void calculateGridPoints(int x, int y, int width, int height, int scale, long l1, long l2, long l3, int worldSize) {
 		// Create one gridpoint more, just in case...
 		width += scale;
 		height += scale;
@@ -144,7 +144,7 @@ public class PerlinNoise {
 		yGridPoints = yGridR;
 	}
 	
-	public static float[][] generateThreeOctaveMapFragment(int x, int y, int width, int height, int scale, long seed, int worldSize) {
+	public float[][] generateThreeOctaveMapFragment(int x, int y, int width, int height, int scale, long seed, int worldSize) {
 		float[][] map = new float[width][height];
 		Random r = new Random(seed);
 		long l1 = r.nextLong();

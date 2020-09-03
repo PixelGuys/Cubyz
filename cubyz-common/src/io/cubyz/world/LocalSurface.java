@@ -735,16 +735,12 @@ public class LocalSurface extends Surface {
 				if(wx == ret.x && wz == ret.z)
 					return ret;
 			} else {
-				synchronized(metaChunks) {
-					MetaChunk ch = new MetaChunk(wx, wz, localSeed, this, registries);
-					metaChunks[index] = ch;
-					return ch;
-				}
+				MetaChunk ch = new MetaChunk(wx, wz, localSeed, this, registries);
+				metaChunks[index] = ch;
+				return ch;
 			}
 		}
-		synchronized(metaChunks) {
-			return new MetaChunk(wx, wz, localSeed, this, registries);
-		}
+		return new MetaChunk(wx, wz, localSeed, this, registries);
 	}
 	
 	public MetaChunk getNoGenerateMetaChunk(int wx, int wy) {
