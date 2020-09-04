@@ -22,6 +22,11 @@ public class ReducedChunk {
 	public boolean generated = false;
 	public final int width;
 	public final int widthShift; // log₂(width)
+	/**
+	 * Used for rendering only.
+	 * Do not change!
+	 */
+	public Object mesh = null;
 	public ReducedChunk(int cx, int cz, int resolution, int widthShift, ArrayList<BlockChange> changes) {
 		this.cx = cx;
 		this.cz = cz;

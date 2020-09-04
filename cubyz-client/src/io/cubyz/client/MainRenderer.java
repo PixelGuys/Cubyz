@@ -41,7 +41,7 @@ public class MainRenderer implements Renderer {
 	private ShaderProgram entityShader; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 
 	private static final float Z_NEAR = 0.01f;
-	private static final float Z_FAR = 1000.0f;
+	private static final float Z_FAR = 10000.0f;
 	private boolean inited = false;
 	private boolean doRender = true;
 	private Transformation transformation;
@@ -286,13 +286,14 @@ public class MainRenderer implements Renderer {
 
 			chunkShader.setUniform("ambientLight", ambientLight);
 			for(ReducedChunk chunk : reducedChunks) {
-				if(chunk != null) {
+				if(chunk != null && chunk.generated) {
 					if (!frustumInt.testAab(chunk.getMin(x0, z0, worldSize), chunk.getMax(x0, z0, worldSize)))
 						continue;
-					ReducedChunkMesh mesh = Meshes.chunkMeshes.get(chunk);
-					if(mesh != null) {
-						mesh.render();
+					Object mesh = chunk.mesh;
+					if(mesh == null || !(mesh instanceof ReducedChunkMesh)) {
+						chunk.mesh = mesh = new ReducedChunkMesh(chunk);
 					}
+					((ReducedChunkMesh)mesh).render();
 				}
 			}
 			chunkShader.unbind();

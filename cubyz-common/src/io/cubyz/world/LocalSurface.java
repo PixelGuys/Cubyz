@@ -12,7 +12,6 @@ import org.joml.Vector3f;
 import org.joml.Vector3i;
 import org.joml.Vector4f;
 
-import io.cubyz.ClientOnly;
 import io.cubyz.Settings;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.CurrentSurfaceRegistries;
@@ -152,7 +151,6 @@ public class LocalSurface extends Surface {
 					try {
 						generator.generate(popped, LocalSurface.this);
 						popped.generated = true;
-						ClientOnly.createChunkMesh.accept(popped);
 					} catch (Exception e) {
 						logger.severe("Could not generate reduced chunk " + popped.cx + ", " + popped.cz + " !");
 						logger.throwable(e);

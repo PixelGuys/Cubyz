@@ -16,25 +16,42 @@ import io.cubyz.util.IntFastList;
 import io.cubyz.world.ReducedChunk;
 
 public class ReducedChunkMesh {
-
+	// ThreadLocal lists, to prevent (re-)allocating tons of memory.
+	public static ThreadLocal<FloatFastList> localVertices = new ThreadLocal<FloatFastList>() {
+		@Override
+		protected FloatFastList initialValue() {
+			return new FloatFastList(50000);
+		}
+	};
+	public static ThreadLocal<IntFastList> localFaces = new ThreadLocal<IntFastList>() {
+		@Override
+		protected IntFastList initialValue() {
+			return new IntFastList(30000);
+		}
+	};
+	public static ThreadLocal<IntFastList> localColors = new ThreadLocal<IntFastList>() {
+		@Override
+		protected IntFastList initialValue() {
+			return new IntFastList(20000);
+		}
+	};
+	
 	protected int vaoId;
 
 	protected ArrayList<Integer> vboIdList;
 
 	protected int vertexCount;
-	FloatFastList vertices;
-	IntFastList faces;
-	IntFastList colors;
 	
 	private boolean inited = false;
 
 	public ReducedChunkMesh(ReducedChunk chunk) {
-		vertices = new FloatFastList(25000*chunk.width/16);
-		faces = new IntFastList(15000*chunk.width/16);
-		colors = new IntFastList(10000*chunk.width/16);
+		FloatFastList vertices = localVertices.get();
+		IntFastList faces = localFaces.get();
+		IntFastList colors = localColors.get();
+		vertices.clear();
+		faces.clear();
+		colors.clear();
 		generateModelData(chunk, vertices, faces, colors);
-	}
-	private void initMesh() {
 		FloatBuffer posBuffer = null;
 		IntBuffer indexBuffer = null;
 		IntBuffer colorBuffer = null;
@@ -84,13 +101,10 @@ public class ReducedChunkMesh {
 				MemoryUtil.memFree(colorBuffer);
 			}
 		}
-		inited = true;
 	}
 
 	public void render() {
 		// Init
-		if(!inited)
-			initMesh();
 		glBindVertexArray(vaoId);
 		glEnableVertexAttribArray(0);
 		glEnableVertexAttribArray(1);

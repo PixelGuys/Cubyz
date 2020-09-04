@@ -13,7 +13,6 @@ import io.cubyz.entity.EntityType;
 import io.cubyz.utils.ResourceUtilities;
 import io.cubyz.utils.ResourceUtilities.BlockModel;
 import io.cubyz.utils.ResourceUtilities.EntityModel;
-import io.cubyz.world.ReducedChunk;
 import io.jungle.InstancedMesh;
 import io.jungle.Mesh;
 import io.jungle.Texture;
@@ -23,7 +22,6 @@ import io.jungle.util.StaticMeshesLoader;
 
 public class Meshes {
 
-	public static final HashMap<ReducedChunk, ReducedChunkMesh> chunkMeshes = new HashMap<>();
 	public static final HashMap<Block, InstancedMesh> blockMeshes = new HashMap<>();
 	public static final HashMap<EntityType, Mesh> entityMeshes = new HashMap<>();
 	public static final HashMap<Block, Texture> blockTextures = new HashMap<>();
@@ -119,13 +117,11 @@ public class Meshes {
 			}
 		};
 		
-		ClientOnly.createChunkMesh = (chunk) -> {
-			chunkMeshes.put(chunk, new ReducedChunkMesh(chunk));
-		};
-		
 		ClientOnly.deleteChunkMesh = (chunk) -> {
-			ReducedChunkMesh mesh = chunkMeshes.remove(chunk);
-			mesh.cleanUp();
+			Object mesh = chunk.mesh;
+			if(mesh instanceof ReducedChunkMesh) {
+				((ReducedChunkMesh)mesh).cleanUp();
+			}
 		};
 	}
 }

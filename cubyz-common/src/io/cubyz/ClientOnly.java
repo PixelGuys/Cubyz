@@ -17,7 +17,6 @@ public class ClientOnly {
 	public static BiConsumer<String, Object> registerGui;
 	public static BiConsumer<String, Inventory> openGui;
 	public static Consumer<Player> onBorderCrossing;
-	public static Consumer<ReducedChunk> createChunkMesh;
 	public static Consumer<ReducedChunk> deleteChunkMesh;
 	
 	static {
