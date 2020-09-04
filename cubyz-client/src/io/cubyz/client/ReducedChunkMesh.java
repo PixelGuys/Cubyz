@@ -115,12 +115,12 @@ public class ReducedChunkMesh {
 	}
 	
 	private static void generateModelData(ReducedChunk chunk, FloatFastList vertices, IntFastList faces, IntFastList colors) {
-		int zMask = 15 >>> chunk.resolution;
-		int xMask = zMask << (4 - chunk.resolution);
-		int yMask = (255 >>> chunk.resolution) << (8 - 2*chunk.resolution);
+		int zMask = (chunk.width - 1) >>> chunk.resolution;
+		int xMask = zMask << (chunk.widthShift - chunk.resolution);
+		int yMask = (255 >>> chunk.resolution) << 2*(chunk.widthShift - chunk.resolution);
 		int zDelta = 1;
-		int xDelta = 1 << (4 - chunk.resolution);
-		int yDelta = 1 << (8 - 2*chunk.resolution);
+		int xDelta = 1 << (chunk.widthShift - chunk.resolution);
+		int yDelta = 1 << 2*(chunk.widthShift - chunk.resolution);
 		int offset = 1 << chunk.resolution;
 		// Go through all blocks and check their neighbors:
 		for(int i = 0; i < chunk.size; i++) {
@@ -135,8 +135,8 @@ public class ReducedChunkMesh {
 			if(posX || negX || posY || negY || posZ || negZ) {
 				int color = chunk.blocks[i] & 65535;
 				// Determine the coordinates from index:
-				int x = (i & xMask) >>> (4 - 2*chunk.resolution);
-				int y = (i & yMask) >>> (8 - 3*chunk.resolution);
+				int x = (i & xMask) >>> (chunk.widthShift - 2*chunk.resolution);
+				int y = (i & yMask) >>> (2*chunk.widthShift - 3*chunk.resolution);
 				int z = (i & zMask) << chunk.resolution;
 				x += chunk.cx << 4;
 				z += chunk.cz << 4;

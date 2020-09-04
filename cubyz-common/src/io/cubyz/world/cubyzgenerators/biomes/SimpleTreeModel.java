@@ -137,7 +137,7 @@ public class SimpleTreeModel extends StructureModel implements ReducedStructureM
 		if(h > 0) {
 			int realHeight = height0 + rand.nextInt(deltaHeight);
 			int height = realHeight >>> chunk.resolution;
-			int width = 16 >>> chunk.resolution;
+			int width = chunk.width >>> chunk.resolution;
 			switch(type) {
 				case PYRAMID: {
 					if(h+height+1 >= World.WORLD_HEIGHT >>> chunk.resolution) // the max array index is 255 but world height is 256 (for array **length**)
@@ -151,7 +151,7 @@ public class SimpleTreeModel extends StructureModel implements ReducedStructureM
 						for (int k = 1 - j; k < j; k++) {
 							for (int l = 1 - j; l < j; l++) {
 								if (x+k >= 0 && x+k < width && z+l >= 0 && z+l < width) {
-									int index = ((x + k) << (4 - chunk.resolution)) | ((h + i) << (8 - 2*chunk.resolution)) | (z + l);
+									int index = ((x + k) << (chunk.widthShift - chunk.resolution)) | ((h + i) << 2*(chunk.widthShift - chunk.resolution)) | (z + l);
 									if(chunk.blocks[index] == 0) {
 										chunk.blocks[index] = leaves.color;
 									}
@@ -161,10 +161,10 @@ public class SimpleTreeModel extends StructureModel implements ReducedStructureM
 					}
 					
 					if(chunk.resolution <= 1 && x >= 0 && x < width && z >= 0 && z < width) {
-						int index = (x << (4 - chunk.resolution)) | (h << (8 - 2*chunk.resolution)) | z;
+						int index = (x << (chunk.widthShift - chunk.resolution)) | (h << 2*(chunk.widthShift - chunk.resolution)) | z;
 						for (int i = 0; i < height; i++) {
-							if(chunk.blocks[index + (i << (8 - 2*chunk.resolution))] == 0) {
-								chunk.blocks[index + (i << (8 - 2*chunk.resolution))] = (i == height-1) ? topWood.color : wood.color;
+							if(chunk.blocks[index + (i << 2*(chunk.widthShift - chunk.resolution))] == 0) {
+								chunk.blocks[index + (i << 2*(chunk.widthShift - chunk.resolution))] = (i == height-1) ? topWood.color : wood.color;
 							}
 						}
 					}
@@ -183,7 +183,7 @@ public class SimpleTreeModel extends StructureModel implements ReducedStructureM
 								int dist = i*i + ix*ix + iz*iz;
 								if(dist < floatLeafRadius*floatLeafRadius) {
 									if (x+ix >= 0 && x+ix < width && z+iz >= 0 && z+iz < width) {
-										int index = ((x + ix) << (4 - chunk.resolution)) | ((h + height - 1 + i) << (8 - 2*chunk.resolution)) | (z + iz);
+										int index = ((x + ix) << (chunk.widthShift - chunk.resolution)) | ((h + height - 1 + i) << 2*(chunk.widthShift - chunk.resolution)) | (z + iz);
 										if(chunk.blocks[index] == 0) {
 											chunk.blocks[index] = leaves.color;
 										}
@@ -194,10 +194,10 @@ public class SimpleTreeModel extends StructureModel implements ReducedStructureM
 					}
 					
 					if(chunk.resolution <= 1 && x >= 0 && x < width && z >= 0 && z < width) {
-						int index = (x << (4 - chunk.resolution)) | (h << (8 - 2*chunk.resolution)) | z;
+						int index = (x << (chunk.widthShift - chunk.resolution)) | (h << 2*(chunk.widthShift - chunk.resolution)) | z;
 						for (int i = 0; i < height; i++) {
-							if(chunk.blocks[index + (i << (8 - 2*chunk.resolution))] == 0) {
-								chunk.blocks[index + (i << (8 - 2*chunk.resolution))] = (i == height-1) ? topWood.color : wood.color;
+							if(chunk.blocks[index + (i << 2*(chunk.widthShift - chunk.resolution))] == 0) {
+								chunk.blocks[index + (i << 2*(chunk.widthShift - chunk.resolution))] = (i == height-1) ? topWood.color : wood.color;
 							}
 						}
 					}
@@ -211,7 +211,7 @@ public class SimpleTreeModel extends StructureModel implements ReducedStructureM
 					float floatLeafRadius = leafRadius - rand.nextFloat()/(1 << chunk.resolution);
 					for (int ix = - leafRadius; ix <= leafRadius; ix++) {
 						for (int iz = - leafRadius; iz <= leafRadius; iz++) {
-							if (x+ix >= 0 && x+ix < 16 && z+iz >= 0 && z+iz < 16) {
+							if (x+ix >= 0 && x+ix < chunk.width && z+iz >= 0 && z+iz < chunk.width) {
 								for (int i = leafRadius/2; i+h >= 0; i--) {
 									int dist = ix*ix + iz*iz;
 									// Bushes are wider than tall and always reach onto the ground:
@@ -219,7 +219,7 @@ public class SimpleTreeModel extends StructureModel implements ReducedStructureM
 										dist += 4*i*i;
 									if(dist < floatLeafRadius*floatLeafRadius) {
 										if (x+ix >= 0 && x+ix < width && z+iz >= 0 && z+iz < width) {
-											int index = ((x + ix) << (4 - chunk.resolution)) | ((h + i) << (8 - 2*chunk.resolution)) | (z + iz);
+											int index = ((x + ix) << (chunk.widthShift - chunk.resolution)) | ((h + i) << 2*(chunk.widthShift - chunk.resolution)) | (z + iz);
 											if(chunk.blocks[index] == 0) {
 												chunk.blocks[index] = leaves.color;
 											}

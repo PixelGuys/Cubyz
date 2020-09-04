@@ -79,8 +79,8 @@ public class StructureGenerator implements FancyGenerator, ReducedGenerator {
 			np = surface.getMetaChunk((wx & ~255) - ((wx & 255) == 0 ? 256 : 0), (wz & ~255) + 256);
 			pp = surface.getMetaChunk((wx & ~255) + ((wx & 255) == 240 ? 256 : 0), (wz & ~255) + 256);
 		}
-		for(int px = 0; px < 32; px++) {
-			for(int pz = 0; pz < 32; pz++) {
+		for(int px = 0; px < chunk.width + 16; px++) {
+			for(int pz = 0; pz < chunk.width + 16; pz++) {
 				int wpx = CubyzMath.worldModulo(px - 8 + wx, worldSize);
 				int wpz = CubyzMath.worldModulo(pz - 8 + wz, worldSize);
 				rand.setSeed((wpx*rand1 << 32) ^ wpz*rand2 ^ seed);
@@ -88,10 +88,10 @@ public class StructureGenerator implements FancyGenerator, ReducedGenerator {
 				MetaChunk cur = containingMetaChunk;
 				if(px < 8) {
 					if(pz < 8) cur = nn;
-					else if(32 - pz < 8) cur = np;
-				} else if(32 - px < 8) {
+					else if(chunk.width + 16 - pz < 8) cur = np;
+				} else if(chunk.width + 16 - px < 8) {
 					if(pz < 8) cur = pn;
-					else if(32 - pz < 8) cur = pp;
+					else if(chunk.width + 16 - pz < 8) cur = pp;
 				}
 				Biome biome = cur.biomeMap[wpx & 255][wpz & 255];
 				for(StructureModel model : biome.vegetationModels()) {

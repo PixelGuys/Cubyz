@@ -21,13 +21,17 @@ public class ReducedChunk {
 	public final short[] blocks;
 	public boolean generated = false;
 	public boolean visible = true;
-	public ReducedChunk(int cx, int cz, int resolution, ArrayList<BlockChange> changes) {
+	public final int width;
+	public final int widthShift; // log₂(width)
+	public ReducedChunk(int cx, int cz, int resolution, int widthShift, ArrayList<BlockChange> changes) {
 		this.cx = cx;
 		this.cz = cz;
 		this.resolution = resolution;
-		size = (World.WORLD_HEIGHT >>> resolution)*(16 >> resolution)*(16 >> resolution);
+		width = 1 << widthShift;
+		size = (World.WORLD_HEIGHT >>> resolution)*(width >> resolution)*(width >> resolution);
 		blocks = new short[size];
 		this.changes = changes;
+		this.widthShift = widthShift;
 	}
 	
 	public void applyBlockChanges() {

@@ -63,7 +63,7 @@ public class GroundPatch extends StructureModel implements ReducedStructureModel
 		float orientation = 2*(float)Math.PI*rand.nextFloat();
 		float ellipseParam = 1 + rand.nextFloat(); 
 		
-		int chunkWidth = 16 >>> chunk.resolution;
+		int chunkWidth = chunk.width >>> chunk.resolution;
 
 		// Orientation of the major and minor half axis of the ellipse.
 		// For now simply use a minor axis 1/ellipseParam as big as the major.
@@ -85,7 +85,7 @@ public class GroundPatch extends StructureModel implements ReducedStructureModel
 				float secn = xSecn*(x - px) + zSecn*(z - pz);
 				float dist = main*main + secn*secn;
 				if(dist <= 1) {
-					int index = (px << (4 - chunk.resolution)) | (((int)(metaChunk.heightMap[(px << chunk.resolution) + (chunk.cx << 4) & 255][(pz << chunk.resolution) + (chunk.cz << 4) & 255]*(World.WORLD_HEIGHT >>> chunk.resolution))) << (8 - 2*chunk.resolution)) | pz;
+					int index = (px << (chunk.widthShift - chunk.resolution)) | (((int)(metaChunk.heightMap[(px << chunk.resolution) + (chunk.cx << 4) & 255][(pz << chunk.resolution) + (chunk.cz << 4) & 255]*(World.WORLD_HEIGHT >>> chunk.resolution))) << 2*(chunk.widthShift - chunk.resolution)) | pz;
 					if(dist <= smoothness || (dist - smoothness)/(1 - smoothness) < rand.nextFloat())
 						chunk.blocks[index] = newGround.color;
 				}

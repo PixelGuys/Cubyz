@@ -640,17 +640,17 @@ public class LocalSurface extends Surface {
 		}
 		
 		// Add low-resolution chunks:
+		// Resolution 1:
+		// Resolution 1 ReducedChunks have a size of 2⁴×2⁴.
 		renderDistance *= 10;
 		x = xOld;
 		z = zOld;
 		local = x & 15;
 		x >>= 4;
-		x += renderDistance;
 		if(local > 7)
 			x++;
 		local = z & 15;
 		z >>= 4;
-		z += renderDistance;
 		if(local > 7)
 			z++;
 		int lowResRD = renderDistance << 1;
@@ -659,12 +659,12 @@ public class LocalSurface extends Surface {
 		minK = 0;
 		ReducedChunk.surface = this;
 		ArrayList<ReducedChunk> reducedChunksToQueue = new ArrayList<>();
-		for(int i = x-lowResRD; i < x; i++) {
+		for(int i = x - renderDistance; i < x + renderDistance; i++) {
 			loop:
-			for(int j = z-lowResRD; j < z; j++) {
-				boolean visible = i < x-renderDistance-doubleRD/2 || i >= x-renderDistance+doubleRD/2 || j < z-renderDistance-doubleRD/2 || j >= z-renderDistance+doubleRD/2;
+			for(int j = z - renderDistance; j < z + renderDistance; j++) {
+				boolean visible = i < x-doubleRD/2 || i >= x+doubleRD/2 || j < z-doubleRD/2 || j >= z+doubleRD/2;
 				for(int k = minK; k < reducedChunks.length; k++) {
-					if(CubyzMath.moduloMatchSign(reducedChunks[k].cx-i, worldSize >> 4) == 0 && CubyzMath.moduloMatchSign(reducedChunks[k].cz-j, worldSize >> 4) == 0) {
+					if(reducedChunks[k] != null && CubyzMath.moduloMatchSign(reducedChunks[k].cx-i, worldSize >> 4) == 0 && CubyzMath.moduloMatchSign(reducedChunks[k].cz-j, worldSize >> 4) == 0) {
 						newReduced[index] = reducedChunks[k];
 						// Removes this chunk out of the list of chunks that will be considered in this function.
 						reducedChunks[k] = reducedChunks[minK];
@@ -675,7 +675,7 @@ public class LocalSurface extends Surface {
 						continue loop;
 					}
 				}
-				ReducedChunk ch = new ReducedChunk(i, j, 1, transformData(getChunkData(i, j), tio.blockPalette));
+				ReducedChunk ch = new ReducedChunk(i, j, 1, 4, transformData(getChunkData(i, j), tio.blockPalette));
 				reducedChunksToQueue.add(ch);
 				newReduced[index] = ch;
 				newReduced[index].visible = visible;

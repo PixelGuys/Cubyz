@@ -68,8 +68,8 @@ public class TerrainGenerator implements FancyGenerator, ReducedGenerator {
 
 	@Override
 	public void generate(long seed, int wx, int wz, ReducedChunk chunk, MetaChunk containingMetaChunk, Surface surface) {
-		for(int x = 0; x < 16 >>> chunk.resolution; x++) {
-			for(int z = 0; z < 16 >>> chunk.resolution; z++) {
+		for(int x = 0; x < chunk.width >>> chunk.resolution; x++) {
+			for(int z = 0; z < chunk.width >>> chunk.resolution; z++) {
 				int y = (int)(containingMetaChunk.heightMap[(wx + (x << chunk.resolution)) & 255][(wz + (z << chunk.resolution)) & 255]*(World.WORLD_HEIGHT >>> chunk.resolution));
 				float temperature = containingMetaChunk.heatMap[(wx + (x << chunk.resolution)) & 255][(wz + (z << chunk.resolution)) & 255];
 				for(int j = y > (SEA_LEVEL >>> chunk.resolution) ? Math.min(y, (World.WORLD_HEIGHT >>> chunk.resolution) - 1) : SEA_LEVEL >>> chunk.resolution; j >= 0; j--) {
@@ -84,13 +84,13 @@ public class TerrainGenerator implements FancyGenerator, ReducedGenerator {
 						if(j == 0 && y >>> chunk.resolution != 0) {
 							color = bedrock.color;
 						} else if(j == y) {
-							j = containingMetaChunk.biomeMap[(wx + (x << chunk.resolution)) & 255][(wz + (z << chunk.resolution)) & 255].struct.addSubTerranian(chunk, j, (x << (4 - chunk.resolution) | z));
+							j = containingMetaChunk.biomeMap[(wx + (x << chunk.resolution)) & 255][(wz + (z << chunk.resolution)) & 255].struct.addSubTerranian(chunk, j, (x << (chunk.widthShift - chunk.resolution) | z));
 							continue;
 						} else {
 							color = stone.color;
 						}
 					}
-					chunk.blocks[(x << (4 - chunk.resolution)) | (j << (8 - 2*chunk.resolution)) | z] = color;
+					chunk.blocks[(x << (chunk.widthShift - chunk.resolution)) | (j << 2*(chunk.widthShift - chunk.resolution)) | z] = color;
 				}
 			}
 		}
