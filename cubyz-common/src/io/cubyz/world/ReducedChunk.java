@@ -20,7 +20,6 @@ public class ReducedChunk {
 	public final int cx, cz;
 	public final short[] blocks;
 	public boolean generated = false;
-	public boolean visible = true;
 	public final int width;
 	public final int widthShift; // log₂(width)
 	public ReducedChunk(int cx, int cz, int resolution, int widthShift, ArrayList<BlockChange> changes) {

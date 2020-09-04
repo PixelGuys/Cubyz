@@ -22,13 +22,16 @@ public class ReducedChunkMesh {
 	protected ArrayList<Integer> vboIdList;
 
 	protected int vertexCount;
-	FloatFastList vertices = new FloatFastList(25000);
-	IntFastList faces = new IntFastList(15000);
-	IntFastList colors = new IntFastList(10000);
+	FloatFastList vertices;
+	IntFastList faces;
+	IntFastList colors;
 	
 	private boolean inited = false;
 
 	public ReducedChunkMesh(ReducedChunk chunk) {
+		vertices = new FloatFastList(25000*chunk.width/16);
+		faces = new IntFastList(15000*chunk.width/16);
+		colors = new IntFastList(10000*chunk.width/16);
 		generateModelData(chunk, vertices, faces, colors);
 	}
 	private void initMesh() {

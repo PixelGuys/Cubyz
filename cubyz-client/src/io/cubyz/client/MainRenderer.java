@@ -286,7 +286,7 @@ public class MainRenderer implements Renderer {
 
 			chunkShader.setUniform("ambientLight", ambientLight);
 			for(ReducedChunk chunk : reducedChunks) {
-				if(chunk != null && chunk.visible) {
+				if(chunk != null) {
 					if (!frustumInt.testAab(chunk.getMin(x0, z0, worldSize), chunk.getMax(x0, z0, worldSize)))
 						continue;
 					ReducedChunkMesh mesh = Meshes.chunkMeshes.get(chunk);

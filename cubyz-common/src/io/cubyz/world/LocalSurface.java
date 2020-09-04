@@ -49,7 +49,6 @@ public class LocalSurface extends Surface {
 	private int lastMetaX = Integer.MAX_VALUE, lastMetaZ = Integer.MAX_VALUE; // MetaChunk coordinates of the last chunk update.
 	private int mcDRD; // double renderdistance of MetaChunks.
 	private int doubleRD; // Corresponds to the doubled value of the last used render distance.
-	private int lowResRD; // Distance of low resolution chunk rendering.
 	private int worldSize = 65536; // worldSize-1. Used for bitwise and to better work with coordinates.
 	private ArrayList<Entity> entities = new ArrayList<>();
 	
@@ -641,7 +640,8 @@ public class LocalSurface extends Surface {
 		
 		// Add low-resolution chunks:
 		// Resolution 1:
-		// Resolution 1 ReducedChunks have a size of 2⁴×2⁴.
+		// Resolution 1 ReducedChunks have a size of 2⁴×2⁴ or 2⁵×2⁵.
+		// They range from renderDistance to 10*renderDistance.
 		renderDistance *= 10;
 		x = xOld;
 		z = zOld;
@@ -653,23 +653,44 @@ public class LocalSurface extends Surface {
 		z >>= 4;
 		if(local > 7)
 			z++;
-		int lowResRD = renderDistance << 1;
-		ReducedChunk [] newReduced = new ReducedChunk[lowResRD*lowResRD];
+		// The region that is so close to the center, that it cannot be created as 32×32 big chunks:
+		int minX1 = x - doubleRD/2;
+		if((minX1 & 1) == 1) minX1--;
+		int maxX1 = x + doubleRD/2;
+		if((maxX1 & 1) == 1) maxX1++;
+		int minZ1 = z - doubleRD/2;
+		if((minZ1 & 1) == 1) minZ1--;
+		int maxZ1 = z + doubleRD/2;
+		if((maxZ1 & 1) == 1) maxZ1++;
+		// The region that can be created as 32×32 big chunks:
+		int minX2 = x - renderDistance;
+		if((minX2 & 1) == 1) minX2--;
+		int maxX2 = x + renderDistance;
+		if((maxX2 & 1) == 1) maxX2++;
+		int minZ2 = z - renderDistance;
+		if((minZ2 & 1) == 1) minZ2--;
+		int maxZ2 = z + renderDistance;
+		if((maxZ2 & 1) == 1) maxZ2++;
+		ReducedChunk [] newReduced = new ReducedChunk[
+		                                              (maxX1 - minX1)*(maxZ1 - minZ1) - doubleRD*doubleRD
+		                                              +((maxX2 - minX2)*(maxZ2 - minZ2) - (maxX1 - minX1)*(maxZ1 - minZ1))/4
+		                                              ];
 		index = 0;
 		minK = 0;
 		ReducedChunk.surface = this;
 		ArrayList<ReducedChunk> reducedChunksToQueue = new ArrayList<>();
-		for(int i = x - renderDistance; i < x + renderDistance; i++) {
+		// Look at the 16×16 region:
+		for(int i = minX1; i < maxX1; i++) {
 			loop:
-			for(int j = z - renderDistance; j < z + renderDistance; j++) {
+			for(int j = minZ1; j < maxZ1; j++) {
 				boolean visible = i < x-doubleRD/2 || i >= x+doubleRD/2 || j < z-doubleRD/2 || j >= z+doubleRD/2;
+				if(!visible) continue;
 				for(int k = minK; k < reducedChunks.length; k++) {
-					if(reducedChunks[k] != null && CubyzMath.moduloMatchSign(reducedChunks[k].cx-i, worldSize >> 4) == 0 && CubyzMath.moduloMatchSign(reducedChunks[k].cz-j, worldSize >> 4) == 0) {
+					if(reducedChunks[k].resolution == 1 && reducedChunks[k].width == 16 && CubyzMath.moduloMatchSign(reducedChunks[k].cx-i, worldSize >> 4) == 0 && CubyzMath.moduloMatchSign(reducedChunks[k].cz-j, worldSize >> 4) == 0) {
 						newReduced[index] = reducedChunks[k];
 						// Removes this chunk out of the list of chunks that will be considered in this function.
 						reducedChunks[k] = reducedChunks[minK];
 						reducedChunks[minK] = newReduced[index];
-						newReduced[index].visible = visible;
 						minK++;
 						index++;
 						continue loop;
@@ -678,7 +699,29 @@ public class LocalSurface extends Surface {
 				ReducedChunk ch = new ReducedChunk(i, j, 1, 4, transformData(getChunkData(i, j), tio.blockPalette));
 				reducedChunksToQueue.add(ch);
 				newReduced[index] = ch;
-				newReduced[index].visible = visible;
+				index++;
+			}
+		}
+		// Look at the 32×32 region:
+		for(int i = minX2; i < maxX2; i += 2) {
+			loop:
+			for(int j = minZ2; j < maxZ2; j += 2) {
+				boolean visible = i < minX1 || i >= maxX1 || j < minZ1 || j >= maxZ1;
+				if(!visible) continue;
+				for(int k = minK; k < reducedChunks.length; k++) {
+					if(reducedChunks[k].resolution == 1 && reducedChunks[k].width == 32 && CubyzMath.moduloMatchSign(reducedChunks[k].cx-i, worldSize >> 4) == 0 && CubyzMath.moduloMatchSign(reducedChunks[k].cz-j, worldSize >> 4) == 0) {
+						newReduced[index] = reducedChunks[k];
+						// Removes this chunk out of the list of chunks that will be considered in this function.
+						reducedChunks[k] = reducedChunks[minK];
+						reducedChunks[minK] = newReduced[index];
+						minK++;
+						index++;
+						continue loop;
+					}
+				}
+				ReducedChunk ch = new ReducedChunk(i, j, 1, 5, transformData(getChunkData(i, j), tio.blockPalette));
+				reducedChunksToQueue.add(ch);
+				newReduced[index] = ch;
 				index++;
 			}
 		}
@@ -687,7 +730,6 @@ public class LocalSurface extends Surface {
 			//ClientOnly.deleteChunkMesh.accept(reducedChunks[k]);
 		}
 		reducedChunks = newReduced;
-		this.lowResRD = doubleRD;
 		// Load chunks after they have access to their neighbors:
 		for(ReducedChunk ch : reducedChunksToQueue) {
 			queueChunk(ch);
