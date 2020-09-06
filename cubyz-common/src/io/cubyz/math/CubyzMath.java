@@ -50,4 +50,8 @@ public class CubyzMath {
 		if(result < 0) result += modulo;
 		return result;
 	}
+	
+	public static int shiftRight(int value, int shift) {
+		return shift < 0 ? value << -shift : value >>> shift;
+	}
 }

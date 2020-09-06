@@ -31,6 +31,7 @@ import io.cubyz.math.CubyzMath;
 import io.cubyz.save.BlockChange;
 import io.cubyz.save.MissingBlockException;
 import io.cubyz.save.TorusIO;
+import io.cubyz.util.FastList;
 import io.cubyz.world.cubyzgenerators.CrystalCavernGenerator;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 import io.cubyz.world.generator.LifelandGenerator;
@@ -636,14 +637,11 @@ public class LocalSurface extends Surface {
 			tio.saveTorusData(this);
 		}
 		
-		// Add low-resolution chunks:
-		// Resolution 1:
-		// Resolution 1 ReducedChunks have a size of 2⁴×2⁴ or 2⁵×2⁵.
-		// They range from renderDistance to 10*renderDistance.
-		renderDistance *= 10;
-		x = xOld;
-		z = zOld;
-		local = x & 15;
+		generateReducedChunks(xOld, zOld, renderDistance, 4);
+	}
+	
+	public void generateReducedChunks(int x, int z, int renderDistance, int maxResolution) {
+		int local = x & 15;
 		x >>= 4;
 		if(local > 7)
 			x++;
@@ -651,87 +649,100 @@ public class LocalSurface extends Surface {
 		z >>= 4;
 		if(local > 7)
 			z++;
-		// The region that is so close to the center, that it cannot be created as 32×32 big chunks:
-		int minX1 = x - doubleRD/2;
-		if((minX1 & 1) == 1) minX1--;
-		int maxX1 = x + doubleRD/2;
-		if((maxX1 & 1) == 1) maxX1++;
-		int minZ1 = z - doubleRD/2;
-		if((minZ1 & 1) == 1) minZ1--;
-		int maxZ1 = z + doubleRD/2;
-		if((maxZ1 & 1) == 1) maxZ1++;
-		// The region that can be created as 32×32 big chunks:
-		int minX2 = x - renderDistance;
-		if((minX2 & 1) == 1) minX2--;
-		int maxX2 = x + renderDistance;
-		if((maxX2 & 1) == 1) maxX2++;
-		int minZ2 = z - renderDistance;
-		if((minZ2 & 1) == 1) minZ2--;
-		int maxZ2 = z + renderDistance;
-		if((maxZ2 & 1) == 1) maxZ2++;
-		ReducedChunk [] newReduced = new ReducedChunk[
-		                                              (maxX1 - minX1)*(maxZ1 - minZ1) - doubleRD*doubleRD
-		                                              +((maxX2 - minX2)*(maxZ2 - minZ2) - (maxX1 - minX1)*(maxZ1 - minZ1))/4
-		                                              ];
-		index = 0;
-		minK = 0;
-		ReducedChunk.surface = this;
+		// Go through all resolutions:
+		FastList<ReducedChunk> newReduced = new FastList<ReducedChunk>(reducedChunks.length, ReducedChunk.class);
+		int minXLast = x - doubleRD/2;
+		int maxXLast = x + doubleRD/2;
+		int minZLast = z - doubleRD/2;
+		int maxZLast = z + doubleRD/2;
+		// TODO renderDistance *= 2;
+		renderDistance *= 2;
+		int minK = 0;
+		int widthShift = 4;
 		ArrayList<ReducedChunk> reducedChunksToQueue = new ArrayList<>();
-		// Look at the 16×16 region:
-		for(int i = minX1; i < maxX1; i++) {
-			loop:
-			for(int j = minZ1; j < maxZ1; j++) {
-				boolean visible = i < x-doubleRD/2 || i >= x+doubleRD/2 || j < z-doubleRD/2 || j >= z+doubleRD/2;
-				if(!visible) continue;
-				for(int k = minK; k < reducedChunks.length; k++) {
-					if(reducedChunks[k].resolution == 1 && reducedChunks[k].width == 16 && CubyzMath.moduloMatchSign(reducedChunks[k].cx-i, worldSize >> 4) == 0 && CubyzMath.moduloMatchSign(reducedChunks[k].cz-j, worldSize >> 4) == 0) {
-						newReduced[index] = reducedChunks[k];
-						// Removes this chunk out of the list of chunks that will be considered in this function.
-						reducedChunks[k] = reducedChunks[minK];
-						reducedChunks[minK] = newReduced[index];
-						minK++;
-						index++;
-						continue loop;
+		for(int res = 1; res <= maxResolution; res++) {
+			int widthShiftOld = widthShift;
+			int widthOld = 1 << (widthShift - 4);
+			widthShift++;
+			int widthNew = 1 << (widthShift - 4);
+			int widthMask = widthNew - 1;
+			// Pad between the different chunk sizes:
+			int minXNew = minXLast;
+			int maxXNew = maxXLast;
+			int minZNew = minZLast;
+			int maxZNew = maxZLast;
+			if((minXNew & widthMask) != 0) minXNew -= widthOld;
+			if((maxXNew & widthMask) != 0) maxXNew += widthOld;
+			if((minZNew & widthMask) != 0) minZNew -= widthOld;
+			if((maxZNew & widthMask) != 0) maxZNew += widthOld;
+			for(int cx = minXNew; cx < maxXNew; cx += widthOld) {
+				loop:
+				for(int cz = minZNew; cz < maxZNew; cz += widthOld) {
+					boolean visible = cx < minXLast || cx >= maxXLast || cz < minZLast || cz >= maxZLast;
+					if(!visible) continue;
+					for(int k = minK; k < reducedChunks.length; k++) {
+						if(reducedChunks[k].resolution == res && reducedChunks[k].widthShift == widthShiftOld && CubyzMath.moduloMatchSign(reducedChunks[k].cx-cx, worldSize >> 4) == 0 && CubyzMath.moduloMatchSign(reducedChunks[k].cz-cz, worldSize >> 4) == 0) {
+							newReduced.add(reducedChunks[k]);
+							// Removes this chunk out of the list of chunks that will be considered in this function.
+							reducedChunks[k] = reducedChunks[minK];
+							reducedChunks[minK] = newReduced.array[newReduced.size - 1];
+							minK++;
+							continue loop;
+						}
 					}
+					ReducedChunk ch = new ReducedChunk(cx, cz, res, widthShiftOld, transformData(getChunkData(cx, cz), tio.blockPalette));
+					reducedChunksToQueue.add(ch);
+					newReduced.add(ch);
+					
 				}
-				ReducedChunk ch = new ReducedChunk(i, j, 1, 4, transformData(getChunkData(i, j), tio.blockPalette));
-				reducedChunksToQueue.add(ch);
-				newReduced[index] = ch;
-				index++;
 			}
-		}
-		// Look at the 32×32 region:
-		for(int i = minX2; i < maxX2; i += 2) {
-			loop:
-			for(int j = minZ2; j < maxZ2; j += 2) {
-				boolean visible = i < minX1 || i >= maxX1 || j < minZ1 || j >= maxZ1;
-				if(!visible) continue;
-				for(int k = minK; k < reducedChunks.length; k++) {
-					if(reducedChunks[k].resolution == 1 && reducedChunks[k].width == 32 && CubyzMath.moduloMatchSign(reducedChunks[k].cx-i, worldSize >> 4) == 0 && CubyzMath.moduloMatchSign(reducedChunks[k].cz-j, worldSize >> 4) == 0) {
-						newReduced[index] = reducedChunks[k];
-						// Removes this chunk out of the list of chunks that will be considered in this function.
-						reducedChunks[k] = reducedChunks[minK];
-						reducedChunks[minK] = newReduced[index];
-						minK++;
-						index++;
-						continue loop;
+			// Now add the real chunks:
+			minXLast = minXNew;
+			maxXLast = maxXNew;
+			minZLast = minZNew;
+			maxZLast = maxZNew;
+			minXNew = minXLast - renderDistance;
+			maxXNew = maxXLast + renderDistance;
+			minZNew = minZLast - renderDistance;
+			maxZNew = maxZLast + renderDistance;
+			for(int cx = minXNew; cx < maxXNew; cx += widthNew) {
+				loop:
+				for(int cz = minZNew; cz < maxZNew; cz += widthNew) {
+					boolean visible = cx < minXLast || cx >= maxXLast || cz < minZLast || cz >= maxZLast;
+					if(!visible) continue;
+					for(int k = minK; k < reducedChunks.length; k++) {
+						if(reducedChunks[k].resolution == res && reducedChunks[k].widthShift == widthShift && CubyzMath.moduloMatchSign(reducedChunks[k].cx-cx, worldSize >> 4) == 0 && CubyzMath.moduloMatchSign(reducedChunks[k].cz-cz, worldSize >> 4) == 0) {
+							newReduced.add(reducedChunks[k]);
+							// Removes this chunk out of the list of chunks that will be considered in this function.
+							reducedChunks[k] = reducedChunks[minK];
+							reducedChunks[minK] = newReduced.array[newReduced.size - 1];
+							minK++;
+							continue loop;
+						}
 					}
+					ReducedChunk ch = new ReducedChunk(cx, cz, res, widthShift, transformData(getChunkData(cx, cz), tio.blockPalette));
+					reducedChunksToQueue.add(ch);
+					newReduced.add(ch);
+					
 				}
-				ReducedChunk ch = new ReducedChunk(i, j, 1, 5, transformData(getChunkData(i, j), tio.blockPalette));
-				reducedChunksToQueue.add(ch);
-				newReduced[index] = ch;
-				index++;
 			}
+			minXLast = minXNew;
+			maxXLast = maxXNew;
+			minZLast = minZNew;
+			maxZLast = maxZNew;
+			renderDistance *= 2;
 		}
+		System.out.println((maxXLast - minXLast) + " " + (maxZLast - minZLast));
 		for (int k = minK; k < reducedChunks.length; k++) {
 			unQueueChunk(reducedChunks[k]);
 			//ClientOnly.deleteChunkMesh.accept(reducedChunks[k]);
 		}
-		reducedChunks = newReduced;
+		newReduced.trimToSize();
+		reducedChunks = newReduced.array;
 		// Load chunks after they have access to their neighbors:
 		for(ReducedChunk ch : reducedChunksToQueue) {
 			queueChunk(ch);
-		}		
+		}
 	}
 	
 	public void setBlocks(Block[] blocks) {

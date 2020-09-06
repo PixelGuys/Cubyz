@@ -11,6 +11,7 @@ import java.util.ArrayList;
 
 import org.lwjgl.system.MemoryUtil;
 
+import io.cubyz.math.CubyzMath;
 import io.cubyz.util.FloatFastList;
 import io.cubyz.util.IntFastList;
 import io.cubyz.world.ReducedChunk;
@@ -141,6 +142,9 @@ public class ReducedChunkMesh {
 		int offset = 1 << chunk.resolution;
 		// Go through all blocks and check their neighbors:
 		for(int i = 0; i < chunk.size; i++) {
+			int x = CubyzMath.shiftRight(i & xMask, chunk.widthShift - 2*chunk.resolution);
+			int y = CubyzMath.shiftRight(i & yMask, 2*chunk.widthShift - 3*chunk.resolution);
+			int z = (i & zMask) << chunk.resolution;
 			if(chunk.blocks[i] == 0) continue;
 			boolean posX = true, negX = true, posY = true, negY = true, posZ = true, negZ = true;
 			if((i & xMask) != 0 && chunk.blocks[i - xDelta] != 0) negX = false;
@@ -152,9 +156,6 @@ public class ReducedChunkMesh {
 			if(posX || negX || posY || negY || posZ || negZ) {
 				int color = chunk.blocks[i] & 65535;
 				// Determine the coordinates from index:
-				int x = (i & xMask) >>> (chunk.widthShift - 2*chunk.resolution);
-				int y = (i & yMask) >>> (2*chunk.widthShift - 3*chunk.resolution);
-				int z = (i & zMask) << chunk.resolution;
 				x += chunk.cx << 4;
 				z += chunk.cz << 4;
 				// TODO: Optimize duplicate vertices where two cubes of same color touch.

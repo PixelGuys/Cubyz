@@ -57,6 +57,6 @@ public class ReducedChunk {
 	}
 	
 	public Vector3f getMax(float x0, float z0, int worldSize) {
-		return new Vector3f(CubyzMath.match(cx << 4, x0, worldSize) + 16, 256, CubyzMath.match(cz << 4, z0, worldSize) + 16);
+		return new Vector3f(CubyzMath.match(cx << 4, x0, worldSize) + width, 256, CubyzMath.match(cz << 4, z0, worldSize) + width);
 	}
 }
