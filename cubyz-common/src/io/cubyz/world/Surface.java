@@ -67,7 +67,7 @@ public abstract class Surface {
 	
 	public abstract void synchronousSeek(int x, int z, int renderDistance);
 	public abstract int getHeight(int x, int z);
-	public abstract void seek(int x, int z, int renderDistance);
+	public abstract void seek(int x, int z, int renderDistance, int maxResolution, float farDistanceFactor);
 	
 	public abstract void cleanup();
 	public abstract void update();

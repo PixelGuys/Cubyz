@@ -523,7 +523,7 @@ public class LocalSurface extends Surface {
 	}
 	
 	@Override
-	public void seek(int x, int z, int renderDistance) {
+	public void seek(int x, int z, int renderDistance, int maxResolution, float farDistanceFactor) {
 		int xOld = x;
 		int zOld = z;
 		// Care about the MetaChunks:
@@ -543,7 +543,6 @@ public class LocalSurface extends Surface {
 			MetaChunk[] newMeta = new MetaChunk[mcDRD*mcDRD];
 			int index = 0;
 			int minK = 0;
-			//ArrayList<Chunk> chunksToQueue = new ArrayList<>();
 			for(int i = x-mcDRD; i < x; i++) {
 				loop:
 				for(int j = z-mcDRD; j < z; j++) {
@@ -558,19 +557,10 @@ public class LocalSurface extends Surface {
 							continue loop;
 						}
 					}
-					/*Chunk ch = new Chunk(i, j, this, transformData(getChunkData(i, j), tio.blockPalette));
-					//chunksToQueue.add(ch);
-					newMeta[index] = ch;*/
 					newMeta[index] = null;
 					index++;
 				}
 			}
-			/*for (int k = minK; k < chunks.length; k++) {
-				if(chunks[k].isGenerated())
-					tio.saveChunk(chunks[k]); // Only needs to be stored if it was ever generated.
-				else
-					unQueueChunk(chunks[k]);
-			}*/
 			metaChunks = newMeta;
 			lastMetaX = x;
 			lastMetaZ = z;
@@ -637,7 +627,7 @@ public class LocalSurface extends Surface {
 			tio.saveTorusData(this);
 		}
 		
-		generateReducedChunks(xOld, zOld, renderDistance, 4);
+		generateReducedChunks(xOld, zOld, (int)(renderDistance*farDistanceFactor), maxResolution);
 	}
 	
 	public void generateReducedChunks(int x, int z, int renderDistance, int maxResolution) {
@@ -655,8 +645,7 @@ public class LocalSurface extends Surface {
 		int maxXLast = x + doubleRD/2;
 		int minZLast = z - doubleRD/2;
 		int maxZLast = z + doubleRD/2;
-		// TODO renderDistance *= 2;
-		renderDistance *= 2;
+		renderDistance &= ~1; // Make sure the render distance is a multiple of 2, so the chunks are always placed correctly.
 		int minK = 0;
 		int widthShift = 4;
 		ArrayList<ReducedChunk> reducedChunksToQueue = new ArrayList<>();
@@ -732,7 +721,6 @@ public class LocalSurface extends Surface {
 			maxZLast = maxZNew;
 			renderDistance *= 2;
 		}
-		System.out.println((maxXLast - minXLast) + " " + (maxZLast - minZLast));
 		for (int k = minK; k < reducedChunks.length; k++) {
 			unQueueChunk(reducedChunks[k]);
 			//ClientOnly.deleteChunkMesh.accept(reducedChunks[k]);

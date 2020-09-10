@@ -40,6 +40,8 @@ public class Configuration {
 		obj.addProperty("antiAliasSamples", Cubyz.ctx.getWindow().getAntialiasSamples());
 		obj.addProperty("easyLighting", Settings.easyLighting);
 		obj.addProperty("renderDistance", ClientSettings.RENDER_DISTANCE);
+		obj.addProperty("maxResolution", ClientSettings.MAX_RESOLUTION);
+		obj.addProperty("farDistanceFactor", ClientSettings.FAR_DISTANCE_FACTOR);
 		obj.addProperty("fieldOfView", ClientSettings.FOV);
 		
 		try {
@@ -101,6 +103,12 @@ public class Configuration {
 		}
 		if (obj.has("renderDistance")) {
 			ClientSettings.RENDER_DISTANCE = obj.get("renderDistance").getAsInt();
+		}
+		if (obj.has("maxResolution")) {
+			ClientSettings.MAX_RESOLUTION = obj.get("maxResolution").getAsInt();
+		}
+		if (obj.has("farDistanceFactor")) {
+			ClientSettings.FAR_DISTANCE_FACTOR = obj.get("farDistanceFactor").getAsInt();
 		}
 		if (obj.has("fieldOfView")) {
 			ClientSettings.FOV = obj.get("fieldOfView").getAsFloat();

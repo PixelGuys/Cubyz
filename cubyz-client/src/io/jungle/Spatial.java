@@ -21,6 +21,8 @@ public class Spatial {
     public float distance;
     
     public int[] light;
+    
+    public int scalingData;
 
     public Spatial(Mesh mesh) {
         this.mesh = mesh;

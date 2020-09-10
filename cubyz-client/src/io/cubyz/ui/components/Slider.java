@@ -15,11 +15,31 @@ public class Slider extends Component {
 	private Runnable run;
 	String text = "";
 	private float fontSize = 12.0f;
+	private String[] customValues = null; // The slider doesn't always deal with evenly spaced integer values.
 	
-	public Slider(int min, int max, int cur) {
+	/**
+	 * Creates a slider for evenly spaced integer values.
+	 * @param min left-most value of the slider
+	 * @param max right-most value of the slider
+	 * @param startingValue
+	 */
+	public Slider(int min, int max, int startingValue) {
+		if(min > max) throw new IllegalArgumentException("min has to be smaller than max!");
 		minValue = min;
 		maxValue = max;
-		curValue = cur;
+		curValue = startingValue;
+		if(curValue < min) curValue = min;
+		if(curValue > max) curValue = max;
+	}
+	
+	/**
+	 * Creates a slider for custom values
+	 * @param startingValue
+	 * @param customValues
+	 */
+	public Slider(int startingValue, String[] customValues) {
+		this(0, customValues.length - 1, startingValue);
+		this.customValues = customValues;
 	}
 	
 	public void setText(String text) {
@@ -71,6 +91,6 @@ public class Slider extends Component {
 		NGraphics.fillCircle((int)(x + xOffset + (float)(curValue - minValue)/(maxValue-minValue)*(width - 2*xOffset)), y + height/2 + fontSize/2, (int)(height/2 - fontSize/2 - yOffset));
 		NGraphics.setColor(255, 255, 255);
 		NGraphics.setFont("Default", fontSize);
-		NGraphics.drawText(x + initialXOffset, y + yOffset, text + curValue);
+		NGraphics.drawText(x + initialXOffset, y + yOffset, text + (customValues != null ? customValues[curValue] : curValue));
 	}
 }

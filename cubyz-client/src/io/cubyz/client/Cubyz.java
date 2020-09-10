@@ -856,7 +856,7 @@ public class Cubyz implements GameLogic {
 			if (ch != null && ch.isLoaded()) {
 				world.update();
 			}
-			world.getCurrentTorus().seek((int)lp.getPosition().x, (int)lp.getPosition().z, ClientSettings.RENDER_DISTANCE);
+			world.getCurrentTorus().seek((int)lp.getPosition().x, (int)lp.getPosition().z, ClientSettings.RENDER_DISTANCE, ClientSettings.MAX_RESOLUTION, ClientSettings.FAR_DISTANCE_FACTOR);
 			float lightAngle = (float)Math.PI/2 + (float)Math.PI*(((float)world.getGameTime() % world.getCurrentTorus().getStellarTorus().getDayCycle())/(world.getCurrentTorus().getStellarTorus().getDayCycle()/2));
 			skySun.setPositionRaw((float)Math.cos(lightAngle)*500, (float)Math.sin(lightAngle)*500, 0);
 			skySun.setRotation(0, 0, -lightAngle);
