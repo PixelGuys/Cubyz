@@ -19,7 +19,7 @@ public class Pig extends EntityType {
 
 	@Override
 	public Entity newEntity(Surface surface) {
-		Entity ent = new Entity(this, surface, 6, 10);
+		Entity ent = new Entity(this, surface, 6, 10, 1);
 		ent.height = 1;
 		return ent;
 	}

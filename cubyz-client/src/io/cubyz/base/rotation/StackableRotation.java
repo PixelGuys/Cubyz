@@ -3,6 +3,7 @@ package io.cubyz.base.rotation;
 import org.joml.RayAabIntersection;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
+import org.joml.Vector4f;
 
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.BlockInstance;
@@ -90,7 +91,12 @@ public class StackableRotation implements RotationMode {
 	}
 
 	@Override
-	public boolean checkEntityAndDoCollision(Entity ent, Vector3f vel, int x, int y, int z, byte data) {
+	public boolean checkEntityAndDoCollision(Entity ent, Vector4f vel, int x, int y, int z, byte data) {
+		// Check if the player can step onto this:
+		if(y + data/16.0f - 0.5f - ent.getPosition().y > 0 && y + data/16.0f - 0.5f - ent.getPosition().y <= ent.stepHeight) {
+			vel.w = Math.max(vel.w, y + data/16.0f - 0.5f - ent.getPosition().y);
+			return false;
+		}
 		if(vel.y == 0) {
 			return	   y + data/16.0f - 0.5f >= ent.getPosition().y
 					&& y - 0.5f <= ent.getPosition().y + ent.height;

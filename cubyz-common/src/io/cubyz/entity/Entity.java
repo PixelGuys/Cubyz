@@ -2,6 +2,7 @@ package io.cubyz.entity;
 
 import org.joml.Vector3f;
 import org.joml.Vector3i;
+import org.joml.Vector4f;
 
 import io.cubyz.blocks.Block;
 import io.cubyz.items.Inventory;
@@ -20,6 +21,7 @@ public class Entity {
 	public float targetVX, targetVZ; // The velocity the AI wants the entity to have.
 	protected float scale = 1f;
 	public float movementAnimation = 0; // Only used by mobs that actually move.
+	public final float stepHeight;
 	
 	private final EntityType type;
 	
@@ -33,11 +35,19 @@ public class Entity {
 	
 	public float pickupRange = 2; // Important if this entity can pickup items.
 	
-	public Entity(EntityType type, Surface surface, float maxHealth, float maxHunger) {
+	/**
+	 * @param type
+	 * @param surface
+	 * @param maxHealth
+	 * @param maxHunger
+	 * @param stepHeight height the entity can move upwards without jumping.
+	 */
+	public Entity(EntityType type, Surface surface, float maxHealth, float maxHunger, float stepHeight) {
 		this.type = type;
 		this.surface = surface;
 		this.maxHealth = health = maxHealth;
 		this.maxHunger = hunger = maxHunger;
+		this.stepHeight = stepHeight;
 	}
 	
 	public float getScale() {
@@ -48,6 +58,7 @@ public class Entity {
 	 * Checks collision against all blocks within the hitbox and updates positions.
 	 */
 	protected void collisionDetection() {
+		if(! (this instanceof Player)) return;
 		// Simulate movement in all directions and prevent movement in a direction that would get the player into a block:
 		int minX = Math.round(position.x - width);
 		int maxX = Math.round(position.x + width);
@@ -55,7 +66,7 @@ public class Entity {
 		int maxY = Math.round(position.y + height);
 		int minZ = Math.round(position.z - width);
 		int maxZ = Math.round(position.z + width);
-		Vector3f change = new Vector3f(vx, 0, 0);
+		Vector4f change = new Vector4f(vx, 0, 0, 0);
 		if(vx < 0) {
 			int minX2 = Math.round(position.x - width + vx);
 			// First check for partial blocks:
@@ -193,6 +204,9 @@ public class Entity {
 		}
 		vz = change.z;
 		position.z += vz;
+		// And finally consider the stepping component:
+		position.y += change.w;
+		if(change.w != 0) vy = 0;
 	}
 	
 	/**
@@ -217,11 +231,16 @@ public class Entity {
 		return 0;
 	}
 	
-	public boolean checkBlock(int x, int y, int z, Vector3f displacement) {
+	public boolean checkBlock(int x, int y, int z, Vector4f displacement) {
 		Block b = surface.getBlock(x, y, z);
 		if(b != null && b.isSolid()) {
 			if(b.mode.changesHitbox()) {
 				return b.mode.checkEntityAndDoCollision(this, displacement, x, y, z, surface.getBlockData(x, y, z));
+			}
+			// Check for stepping:
+			if(y + 0.5f - position.y > 0 && y + 0.5f - position.y <= stepHeight) {
+				displacement.w = Math.max(displacement.w, y + 0.5f - position.y);
+				return false;
 			}
 			return true;
 		}
@@ -241,12 +260,12 @@ public class Entity {
 	
 	public boolean isOnGround() {
 		// Determine if the entity is on the ground by virtually displacing it by 0.2 below its current position:
-		Vector3f displacement = new Vector3f(0, -0.2f, 0);
+		Vector4f displacement = new Vector4f(0, -0.2f, 0, 0);
 		checkBlock(Math.round(position.x), Math.round(position.y), Math.round(position.z), displacement);
 		if(checkBlock(Math.round(position.x), Math.round(position.y + displacement.y), Math.round(position.z), displacement)) {
 			return true;
 		}
-		return displacement.y != -0.2f;
+		return displacement.y != -0.2f || displacement.w != 0;
 	}
 	
 	public void hit(Tool weapon, Vector3f direction) {

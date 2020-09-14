@@ -3,6 +3,7 @@ package io.cubyz.base.rotation;
 import org.joml.RayAabIntersection;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
+import org.joml.Vector4f;
 
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.BlockInstance;
@@ -137,7 +138,7 @@ public class TorchRotation implements RotationMode {
 	}
 
 	@Override
-	public boolean checkEntityAndDoCollision(Entity arg0, Vector3f arg1, int x, int y, int z, byte arg2) {
+	public boolean checkEntityAndDoCollision(Entity arg0, Vector4f arg1, int x, int y, int z, byte arg2) {
 		return true;
 	}
 }
