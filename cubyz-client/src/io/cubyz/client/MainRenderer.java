@@ -318,7 +318,7 @@ public class MainRenderer implements Renderer {
 				Mesh mesh = null;
 				if(ent.getType().model != null) {
 					entityShader.setUniform("materialHasTexture", true);
-					entityShader.setUniform("light", ent.getStellarTorus().getWorld().getCurrentTorus().getLight(x, y, z, ambientLight));
+					entityShader.setUniform("light", ent.getSurface().getLight(x, y, z, ambientLight));
 					ent.getType().model.render(viewMatrix, entityShader, ent);
 					continue;
 				}
@@ -339,7 +339,7 @@ public class MainRenderer implements Renderer {
 				
 				if (mesh != null) {
 					entityShader.setUniform("materialHasTexture", mesh.getMaterial().isTextured());
-					entityShader.setUniform("light", ent.getStellarTorus().getWorld().getCurrentTorus().getLight(x, y, z, ambientLight));
+					entityShader.setUniform("light", ent.getSurface().getLight(x, y, z, ambientLight));
 					
 					mesh.renderOne(() -> {
 						Vector3f position = ent.getRenderPosition();

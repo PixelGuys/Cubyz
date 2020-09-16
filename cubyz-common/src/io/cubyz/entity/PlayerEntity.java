@@ -68,7 +68,6 @@ public class PlayerEntity extends EntityType {
 		@Override
 		public void update() {
 			if (!flying) {
-				vy -= surface.getStellarTorus().getGravity();
 				super.update();
 			} else {
 				position.add(vx, vy, vz);

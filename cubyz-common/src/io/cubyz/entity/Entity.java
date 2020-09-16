@@ -56,8 +56,9 @@ public class Entity {
 	
 	/**
 	 * Checks collision against all blocks within the hitbox and updates positions.
+	 * @return The height of the step taken. Needed for hunger calculations.
 	 */
-	protected void collisionDetection() {
+	protected float collisionDetection() {
 		// Simulate movement in all directions and prevent movement in a direction that would get the player into a block:
 		int minX = Math.round(position.x - width);
 		int maxX = Math.round(position.x + width);
@@ -66,6 +67,7 @@ public class Entity {
 		int minZ = Math.round(position.z - width);
 		int maxZ = Math.round(position.z + width);
 		Vector4f change = new Vector4f(vx, 0, 0, 0);
+		float step = 0.0f;
 		if(vx < 0) {
 			int minX2 = Math.round(position.x - width + vx);
 			// First check for partial blocks:
@@ -107,8 +109,12 @@ public class Entity {
 				}
 			}
 		}
-		vx = change.x;
-		position.x += vx;
+		position.x += change.x;
+		if(vx != change.x) {
+			vx = 0;
+			change.w = 0; // Don't step if the player walks into a wall.
+		}
+		step = Math.max(step, change.w);
 		change.x = 0;
 		change.y = vy;
 		minX = Math.round(position.x - width);
@@ -154,8 +160,12 @@ public class Entity {
 				}
 			}
 		}
-		vy = change.y;
-		position.y += vy;
+		position.y += change.y;
+		if(vy != change.y) {
+			vy = 0;
+			change.w = 0; // Don't step if the player walks into a wall.
+		}
+		step = Math.max(step, change.w);
 		change.y = 0;
 		change.z = vz;
 		minY = Math.round(position.y);
@@ -201,11 +211,16 @@ public class Entity {
 				}
 			}
 		}
-		vz = change.z;
-		position.z += vz;
+		position.z += change.z;
+		if(vz != change.z) {
+			vz = 0;
+			change.w = 0; // Don't step if the player walks into a wall.
+		}
+		step = Math.max(step, change.w);
 		// And finally consider the stepping component:
-		position.y += change.w;
-		if(change.w != 0) vy = 0;
+		position.y += step;
+		if(step != 0) vy = 0;
+		return step;
 	}
 	
 	/**
@@ -283,7 +298,7 @@ public class Entity {
 	}
 	
 	public void update() {
-		collisionDetection();
+		float step = collisionDetection();
 		type.update(this);
 		updateVelocity();
 
@@ -294,15 +309,16 @@ public class Entity {
 			health = maxHealth;
 		
 		if(maxHunger > 0) {
-			hungerMechanics();
+			hungerMechanics(step);
 		}
 	}
 	
 	float oldVY = 0;
 	/**
 	 * Simulates the hunger system. TODO: Make dependent on mass
+	 * @param step How high the entity stepped in this update cycle.
 	 */
-	protected void hungerMechanics() {
+	protected void hungerMechanics(float step) {
 		// Passive energy consumption:
 		hunger -= 0.0004; // Will deplete hunger after 22 minutes of standing still.
 		// Energy consumption due to movement:
@@ -315,6 +331,9 @@ public class Entity {
 			hunger -= deltaE;
 		}
 		oldVY = vy;
+		
+		// Stepping: Consider potential energy of the step taken V = m·g·h
+		hunger -= surface.getStellarTorus().getGravity()*step;
 		
 		// Examples:
 		// At 3 blocks/second(player base speed) the cost of movement is about twice as high as the passive consumption.
@@ -340,6 +359,7 @@ public class Entity {
 		// TODO: Use the entities mass, force and ground structure to calculate a realistic velocity change.
 		vx += (targetVX-vx)/5;
 		vz += (targetVZ-vz)/5;
+		vy -= surface.getStellarTorus().getGravity();
 	}
 	
 	// NDT related
@@ -381,8 +401,8 @@ public class Entity {
 		return type;
 	}
 	
-	public StellarTorus getStellarTorus() {
-		return surface.getStellarTorus();
+	public Surface getSurface() {
+		return surface;
 	}
 	
 	public Vector3f getPosition() {
