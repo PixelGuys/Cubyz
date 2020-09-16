@@ -8,7 +8,6 @@ import io.cubyz.blocks.Block;
 import io.cubyz.items.Inventory;
 import io.cubyz.items.tools.Tool;
 import io.cubyz.ndt.NDTContainer;
-import io.cubyz.world.StellarTorus;
 import io.cubyz.world.Surface;
 
 public class Entity {
@@ -162,9 +161,9 @@ public class Entity {
 		}
 		position.y += change.y;
 		if(vy != change.y) {
-			vy = 0;
-			change.w = 0; // Don't step if the player walks into a wall.
+			stopVY();
 		}
+		change.w = 0; // Don't step in y-direction.
 		step = Math.max(step, change.w);
 		change.y = 0;
 		change.z = vz;
