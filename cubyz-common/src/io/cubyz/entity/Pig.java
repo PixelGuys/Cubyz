@@ -29,7 +29,7 @@ public class Pig extends EntityType {
 	long directionTimer = 0;
 	long nerfTimer = 0;
 	@Override
-	public void update(Entity ent) {		
+	public void update(Entity ent) {
 		if (directionTimer <= System.currentTimeMillis()) {
 			directionTimer = System.currentTimeMillis() + directionRandom.nextInt(5000);
 			ent.targetVX = directionRandom.nextFloat() * 0.2f - 0.1f;

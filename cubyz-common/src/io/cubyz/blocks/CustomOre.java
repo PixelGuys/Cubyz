@@ -9,6 +9,7 @@ import java.util.Random;
 
 import io.cubyz.Utilities;
 import io.cubyz.api.CurrentSurfaceRegistries;
+import io.cubyz.items.BlockDrop;
 import io.cubyz.items.CustomItem;
 import io.cubyz.items.tools.CustomMaterial;
 import io.cubyz.ndt.NDTContainer;
@@ -354,7 +355,7 @@ public class CustomOre extends Ore implements CustomObject {
 		ore.setHardness(elasticity*density);
 		
 		if(addTools) {
-			new CustomMaterial((int)(mohsHardness*10 + elasticity*20), (int)(elasticity*30), (int)(elasticity*50), mohsHardness*4.0f/density, mohsHardness*3.0f/density, ore.color, ore.getBlockDrop(), 100, registries);
+			new CustomMaterial((int)(mohsHardness*10 + elasticity*20), (int)(elasticity*30), (int)(elasticity*50), mohsHardness*4.0f/density, mohsHardness*3.0f/density, ore.color, ore.getBlockDrops()[0].item, 100, registries);
 		}
 		return ore;
 	}
@@ -378,7 +379,7 @@ public class CustomOre extends Ore implements CustomObject {
 		CustomItem bd = CustomItem.fromOre(this);
 		registries.itemRegistry.register(bd);
 		bd.setID(getRegistryID());
-		setBlockDrop(bd);
+		addBlockDrop(new BlockDrop(bd, 1)); // TODO: custom amounts for different ores.
 	}
 	
 	public NDTContainer toNDT() {

@@ -26,6 +26,7 @@ import io.cubyz.entity.ItemEntity;
 import io.cubyz.entity.Player;
 import io.cubyz.handler.PlaceBlockHandler;
 import io.cubyz.handler.RemoveBlockHandler;
+import io.cubyz.items.BlockDrop;
 import io.cubyz.items.ItemStack;
 import io.cubyz.math.Bits;
 import io.cubyz.math.CubyzMath;
@@ -174,7 +175,7 @@ public class LocalSurface extends Surface {
 		CustomOre crystalBlock = new CustomOre(0, 0, 0); // TODO: Add a CustomBlock type or interface because this is no ore.
 		crystalBlock.setID(glowCrystalOre.getRegistryID().toString()+"_glow_crystal");
 		crystalBlock.setHardness(40);
-		crystalBlock.setBlockDrop(glowCrystalOre.getBlockDrop());
+		crystalBlock.addBlockDrop(new BlockDrop(glowCrystalOre.getBlockDrops()[0].item, 4));
 		crystalBlock.setLight(glowCrystalOre.color);
 		crystalBlock.color = glowCrystalOre.color;
 		crystalBlock.seed = -1; // TODO: Fix crystal block within the new ore texture generation system.
@@ -293,8 +294,16 @@ public class LocalSurface extends Surface {
 			for (RemoveBlockHandler hand : removeBlockHandlers) {
 				hand.onBlockRemoved(b, x, y, z);
 			}
-			ItemEntity drop = new ItemEntity(itemEntityType, this, new ItemStack(b.getBlockDrop(), 1), new Vector3i(x, y, z));
-			entities.add(drop);
+			// Fetch block drops:
+			for(BlockDrop drop : b.getBlockDrops()) {
+				int amount = (int)(drop.amount);
+				float randomPart = drop.amount - amount;
+				if(Math.random() < randomPart) amount++;
+				if(amount > 0) {
+					ItemEntity ent = new ItemEntity(itemEntityType, this, new ItemStack(drop.item, amount), new Vector3i(x, y, z));
+					entities.add(ent);
+				}
+			}
 		}
 	}
 	

@@ -6,7 +6,6 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Map.Entry;
 import java.util.Properties;
 
 import io.cubyz.api.CubyzRegistries;
@@ -21,6 +20,7 @@ import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockEntity;
 import io.cubyz.blocks.Ore;
+import io.cubyz.items.BlockDrop;
 import io.cubyz.items.Consumable;
 import io.cubyz.items.Item;
 import io.cubyz.items.ItemBlock;
@@ -50,7 +50,11 @@ public class AddonsMod {
 	
 	public ArrayList<File> addons = new ArrayList<>();
 	private ArrayList<Item> items = new ArrayList<>();
-	private HashMap<Block, String> missingBlockDrops = new HashMap<Block, String>();
+	
+	// Used to fetch block drops that aren't loaded during block loading.
+	private ArrayList<Block> missingDropsBlock = new ArrayList<>();
+	private ArrayList<String> missingDropsItem = new ArrayList<>();
+	private ArrayList<Float> missingDropsAmount = new ArrayList<>();
 	
 	@EventHandler(type = "init")
 	public void init() {
@@ -140,13 +144,25 @@ public class AddonsMod {
 					} else {
 						block = new Block(new Resource(addon.getName(), id), props, blockClass);
 					}
-					String blockDrop = props.getProperty("drop", "none").toLowerCase();
-					if(blockDrop.equals("auto")) {
-						ItemBlock itemBlock = new ItemBlock(block);
-						block.setBlockDrop(itemBlock);
-						items.add(itemBlock);
-					} else if(!blockDrop.equals("none")) {
-						missingBlockDrops.put(block, blockDrop);
+					String blockDrops = props.getProperty("drop", "none").toLowerCase();
+					for(String blockDrop : blockDrops.split(",")) {
+						blockDrop = blockDrop.trim();
+						String[] data = blockDrop.split("\\s+");
+						float amount = 1;
+						String name = data[0];
+						if(data.length == 2) {
+							amount = Float.parseFloat(data[0]);
+							name = data[1];
+						}
+						if(name.equals("auto")) {
+							ItemBlock itemBlock = new ItemBlock(block);
+							block.addBlockDrop(new BlockDrop(itemBlock, amount));
+							items.add(itemBlock);
+						} else if(!name.equals("none")) {
+							missingDropsBlock.add(block);
+							missingDropsAmount.add(amount);
+							missingDropsItem.add(name);
+						}
 					}
 					if (props.containsKey("blockEntity")) {
 						try {
@@ -259,10 +275,12 @@ public class AddonsMod {
 	}
 	
 	public void registerBlockDrops() {
-		for(Entry<Block, String> entry : missingBlockDrops.entrySet().toArray(new Entry[0])) {
-			entry.getKey().setBlockDrop(CubyzRegistries.ITEM_REGISTRY.getByID(entry.getValue()));
+		for(int i = 0; i < missingDropsBlock.size(); i++) {
+			missingDropsBlock.get(i).addBlockDrop(new BlockDrop(CubyzRegistries.ITEM_REGISTRY.getByID(missingDropsItem.get(i)), missingDropsAmount.get(i)));
 		}
-		missingBlockDrops.clear();
+		missingDropsBlock.clear();
+		missingDropsItem.clear();
+		missingDropsAmount.clear();
 	}
 	
 	public void registerRecipes(NoIDRegistry<Recipe> recipeRegistry) {

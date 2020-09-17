@@ -9,6 +9,7 @@ import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.GameRegistry;
 import io.cubyz.api.RegistryElement;
 import io.cubyz.api.Resource;
+import io.cubyz.items.BlockDrop;
 import io.cubyz.items.Inventory;
 import io.cubyz.items.Item;
 import io.cubyz.items.ItemBlock;
@@ -34,7 +35,7 @@ public class Block implements RegistryElement {
 	private float hardness; // Time in seconds to break this block by hand.
 	private boolean solid = true;
 	private boolean selectable = true;
-	private Item blockDrop;
+	private BlockDrop[] blockDrops;
 	protected boolean degradable = false; // Meaning undegradable parts of trees or other structures can grow through this block.
 	protected BlockClass blockClass;
 	private int light = 0;
@@ -44,13 +45,16 @@ public class Block implements RegistryElement {
 	public RotationMode mode = CubyzRegistries.ROTATION_MODE_REGISTRY.getByID("cubyz:no_rotation");
 	public Class<? extends BlockEntity> blockEntity;
 	
-	public Block() {}
+	public Block() {
+		blockDrops = new BlockDrop[0];
+	}
 	
 	public Block(String id, float hardness, BlockClass bc) {
 		setID(id);
 		blockClass = bc;
 		ItemBlock bd = new ItemBlock(this);
-		setBlockDrop(bd);
+		blockDrops = new BlockDrop[1];
+		blockDrops[0] = new BlockDrop(bd, 1);
 		this.hardness = hardness;
 	}
 	
@@ -67,6 +71,7 @@ public class Block implements RegistryElement {
 		gui = props.getProperty("GUI", null);
 		mode = CubyzRegistries.ROTATION_MODE_REGISTRY.getByID(props.getProperty("rotation", "cubyz:no_rotation"));
 		trulyTransparent = "cubyz:plane.obj".equals(props.getProperty("model"));
+		blockDrops = new BlockDrop[0];
 	}
 	
 	public void setDegradable(Boolean deg) {
@@ -146,12 +151,15 @@ public class Block implements RegistryElement {
 		this.id = id;
 	}
 	
-	public void setBlockDrop(Item bd) {
-		blockDrop = bd;
+	public void addBlockDrop(BlockDrop bd) {
+		BlockDrop[] newDrops = new BlockDrop[blockDrops.length+1];
+		System.arraycopy(blockDrops, 0, newDrops, 0, blockDrops.length);
+		newDrops[blockDrops.length] = bd;
+		blockDrops = newDrops;
 	}
 	
-	public Item getBlockDrop() {
-		return blockDrop;
+	public BlockDrop[] getBlockDrops() {
+		return blockDrops;
 	}
 	
 	public float getHardness() {

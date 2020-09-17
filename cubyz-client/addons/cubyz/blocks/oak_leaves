@@ -4,7 +4,7 @@ degradable yes
 transparent yes
 absorbedLight 0x0f100010
 rotation cubyz:transparent
-drop auto
+drop auto, 0.1 cubyz:apple
 
 model cubyz:plane.obj
 texture cubyz:oak_leaves_transparent
