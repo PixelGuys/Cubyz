@@ -17,6 +17,10 @@
       </plugin>
     </plugins>
   </build>
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<lwjgl.version>3.2.3</lwjgl.version>
+	</properties>
   <dependencies>
   	<dependency>
   		<groupId>org.joml</groupId>

@@ -21,6 +21,7 @@
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>build-helper-maven-plugin</artifactId>
+				<version>1.9.1</version>
 				<executions>
 					<execution>
 						<phase>generate-sources</phase>
@@ -47,7 +48,17 @@
 				</configuration>
 			</plugin>
 		</plugins>
+	
+		<!-- Move the storage folder manually to target. -->
+		<resources>
+			<resource>
+				<filtering>true</filtering><!-- if it is neccessary -->
+				<directory>../cubyz-common/src/io/cubyz/storage</directory><!-- from -->
+				<targetPath>./io/cubyz/storage</targetPath><!-- to -->
+			</resource>
+		</resources>
 	</build>
+	
 	<repositories>
 		<repository>
 			<id>jcenter</id>
@@ -59,6 +70,7 @@
 
 	<!-- Profiles for lwjgl -->
 	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<lwjgl.version>3.2.3</lwjgl.version>
 	</properties>
 	<profiles>
