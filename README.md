@@ -3,9 +3,34 @@
 [![License](https://img.shields.io/badge/license-bsd3-blue.svg?style=flat
 )](https://github.com/PixelGuys/Cubz/blob/master/LICENSE)
 # Cubyz
-Cubyz is a sandbox 3D voxel video game. It offers a native mod API and is currently just a project on training with LWJGL 3 and Java and is different to most other voxel games due to the fact that it uses random content generation to make every single world unique many some ways(including ores, materials and tools).
+Cubyz is a sandbox 3D voxel video game. It offers a native mod API and is different to most other voxel games due to the fact that it uses procedural content generation to make every single world unique many some ways(including ores, materials and tools).
 
 Cubyz can easily be forked to create a new game with 3D sandbox aspect.
+
+# Run Cubyz
+## Run latest release:
+1. Install [java 8](https://www.oracle.com/Java/technologies/Javase-jre8-downloads.html) or later.
+2. Download the latest release(for your OS) from https://zenith391.itch.io/cubyz
+3. unzip it somewhere and double-click the jar.
+## Compile from source:
+Cubyz is tested to compile and run with maven and eclipse.
+### maven
+0. Install `git` and `maven`.
+1. Clone Cubyz from github:
+- Either run `git clone https://github.com/PixelGuys/Cubyz`
+- Or [download](https://github.com/PixelGuys/Cubyz/archive/master.zip) and unzip Cubyz master branch from github.
+2. `cd` to the directory you want to compile(Cubyz/cubyz-client or Cubyz/cubyz-server).
+3. Run `mvn clean compile` to compile Cubyz.
+4. Run `mvn exec:java` to run Cubyz after compilation.
+### eclipse
+1. Install and open eclipse.
+2. Import the project from github:
+- Select(in the menu bar) File/import/Git/"Projects from Git"
+- Select clone URI
+- Copy `https://github.com/PixelGuys/Cubyz` into the field URI
+- Press next a couple times and maybe choose a custom Destination Directory.
+3. Wait some time for eclipse to download the project. If the source code shows any errors try refreshing the project(right click on project, refresh).
+4. Run `GameLauncher` in `cubyz-client` to start the game.
 ## Requirements
 Windows:
 
