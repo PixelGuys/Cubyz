@@ -328,7 +328,9 @@ public class MainRenderer implements Renderer {
 					if (type == MeshType.BLOCK) {
 						Block b = (Block) provider.getMeshId();
 						mesh = Meshes.blockMeshes.get(b);
-						mesh.getMaterial().setTexture(Meshes.blockTextures.get(b));
+						if(mesh != Meshes.transparentBlockMesh) {
+							mesh.getMaterial().setTexture(Meshes.blockTextures.get(b));
+						}
 					} else if (type == MeshType.ENTITY) {
 						Entity e = (Entity) provider.getMeshId();
 						mesh = Meshes.entityMeshes.get(e);

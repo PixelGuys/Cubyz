@@ -1,5 +1,7 @@
 package io.cubyz.client;
 
+import static org.lwjgl.opengl.GL11.GL_TEXTURE_2D;
+import static org.lwjgl.opengl.GL11.glBindTexture;
 import static org.lwjgl.opengl.GL11C.GL_COLOR_BUFFER_BIT;
 import static org.lwjgl.opengl.GL11C.GL_DEPTH_BUFFER_BIT;
 import static org.lwjgl.opengl.GL11C.GL_STENCIL_BUFFER_BIT;
@@ -73,9 +75,9 @@ public abstract class BlockPreview {
 		window.setRenderTarget(buf);
 		window.setClearColor(new Vector4f(0f, 0f, 0f, 0f));
 		
-		Spatial spatial = new Spatial(Meshes.blockMeshes.get(b));
-		Texture oldTexture = spatial.getMesh().getMaterial().getTexture();
-		spatial.getMesh().getMaterial().setTexture(Meshes.blockTextures.get(b));
+		Mesh mesh = Meshes.blockMeshes.get(b);
+		Spatial spatial = new Spatial(mesh);
+		Texture texture = Meshes.blockTextures.get(b);
 		
 		glViewport(0, 0, 64, 64);
 		Matrix4f projectionMatrix = transformation.getOrthoProjectionMatrix(0.9f, -0.9f, -0.9f, 0.9f, 0.1f, 1000.0f);
@@ -87,9 +89,9 @@ public abstract class BlockPreview {
 		shader.setUniform("texture_sampler", 0);
 		shader.setUniform("dirLight", new Vector3f(-1, -2, -2).normalize());
 		
-		Mesh mesh = spatial.getMesh();
 		shader.setUniform("light", new Vector3f(1, 1, 1));
 		mesh.renderOne(() -> {
+			glBindTexture(GL_TEXTURE_2D, texture.getId()); // Bind the correct texture.
 			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(
 					Transformation.getModelMatrix(spatial.getPosition(), spatial.getRotation(), spatial.getScale()),
 					viewMatrix);
@@ -100,9 +102,6 @@ public abstract class BlockPreview {
 		glViewport(0, 0, window.getWidth(), window.getHeight());
 		
 		window.setRenderTarget(null);
-
-		// Don't mess up existing texture bindings.
-		spatial.getMesh().getMaterial().setTexture(oldTexture);
 		return buf;
 	}
 

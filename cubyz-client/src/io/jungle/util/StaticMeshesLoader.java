@@ -89,7 +89,7 @@ public class StaticMeshesLoader {
 
 	private static void processMaterial(AIMaterial aiMaterial, List<Material> materials, String texturesDir)
 			throws Exception {
-		AIColor4D colour = AIColor4D.create();
+		AIColor4D color = AIColor4D.create();
 
 		AIString path = AIString.calloc();
 		Assimp.aiGetMaterialTexture(aiMaterial, aiTextureType_DIFFUSE, 0, path, (IntBuffer) null, null, null, null,
@@ -101,22 +101,22 @@ public class StaticMeshesLoader {
 			texture = textCache.getTexture(texturesDir + "/" + textPath);
 		}
 
-		Vector4f ambient = Material.DEFAULT_COLOUR;
-		int result = aiGetMaterialColor(aiMaterial, AI_MATKEY_COLOR_AMBIENT, aiTextureType_NONE, 0, colour);
+		Vector4f ambient = Material.DEFAULT_COLOR;
+		int result = aiGetMaterialColor(aiMaterial, AI_MATKEY_COLOR_AMBIENT, aiTextureType_NONE, 0, color);
 		if (result == 0) {
-			ambient = new Vector4f(colour.r(), colour.g(), colour.b(), colour.a());
+			ambient = new Vector4f(color.r(), color.g(), color.b(), color.a());
 		}
 
-		Vector4f diffuse = Material.DEFAULT_COLOUR;
-		result = aiGetMaterialColor(aiMaterial, AI_MATKEY_COLOR_DIFFUSE, aiTextureType_NONE, 0, colour);
+		Vector4f diffuse = Material.DEFAULT_COLOR;
+		result = aiGetMaterialColor(aiMaterial, AI_MATKEY_COLOR_DIFFUSE, aiTextureType_NONE, 0, color);
 		if (result == 0) {
-			diffuse = new Vector4f(colour.r(), colour.g(), colour.b(), colour.a());
+			diffuse = new Vector4f(color.r(), color.g(), color.b(), color.a());
 		}
 
-		Vector4f specular = Material.DEFAULT_COLOUR;
-		result = aiGetMaterialColor(aiMaterial, AI_MATKEY_COLOR_SPECULAR, aiTextureType_NONE, 0, colour);
+		Vector4f specular = Material.DEFAULT_COLOR;
+		result = aiGetMaterialColor(aiMaterial, AI_MATKEY_COLOR_SPECULAR, aiTextureType_NONE, 0, color);
 		if (result == 0) {
-			specular = new Vector4f(colour.r(), colour.g(), colour.b(), colour.a());
+			specular = new Vector4f(color.r(), color.g(), color.b(), color.a());
 		}
 
 		Material material = new Material(ambient, diffuse, specular, 1.0f);

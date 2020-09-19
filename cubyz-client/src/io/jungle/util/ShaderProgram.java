@@ -165,9 +165,9 @@ public class ShaderProgram {
 	}
 
 	public void setUniform(String uniformName, Material material) {
-		setUniform(uniformName + ".ambient", material.getAmbientColour());
-		setUniform(uniformName + ".diffuse", material.getDiffuseColour());
-		setUniform(uniformName + ".specular", material.getSpecularColour());
+		setUniform(uniformName + ".ambient", material.getAmbientColor());
+		setUniform(uniformName + ".diffuse", material.getDiffuseColor());
+		setUniform(uniformName + ".specular", material.getSpecularColor());
 		setUniform(uniformName + ".hasTexture", material.isTextured() ? 1 : 0);
 		setUniform(uniformName + ".reflectance", material.getReflectance());
 	}
