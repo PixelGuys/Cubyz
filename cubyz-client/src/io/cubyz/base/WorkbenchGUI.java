@@ -1,6 +1,7 @@
 package io.cubyz.base;
 
 import io.cubyz.api.CubyzRegistries;
+import io.cubyz.api.Resource;
 import io.cubyz.client.Cubyz;
 import io.cubyz.items.Inventory;
 import io.cubyz.items.Item;
@@ -11,7 +12,6 @@ import io.cubyz.items.tools.Shovel;
 import io.cubyz.items.tools.Sword;
 import io.cubyz.translate.TextKey;
 import io.cubyz.ui.GeneralInventory;
-import io.cubyz.ui.MenuGUI;
 import io.cubyz.ui.components.Button;
 import io.cubyz.ui.components.InventorySlot;
 import io.jungle.MouseInput;
@@ -30,6 +30,7 @@ public class WorkbenchGUI extends GeneralInventory {
 	public static WorkbenchGUI activeGUI;
 	
 	public WorkbenchGUI() {
+		super(new Resource("cubyz:workbench"));
 		normal = new Button();
 		normal.setSize(64, 64);
 		normal.setText(new TextKey("Normal Grid"));
@@ -154,7 +155,7 @@ public class WorkbenchGUI extends GeneralInventory {
 	}
 	
 	@Override
-	public MenuGUI setInventory(Inventory in) {
+	public void setInventory(Inventory in) {
 		this.in = in;
 		inv = new InventorySlot[32];
 		Inventory inventory = Cubyz.world.getLocalPlayer().getInventory();
@@ -170,9 +171,7 @@ public class WorkbenchGUI extends GeneralInventory {
 		for(int i = 0; i < 8; i++) {
 			inv[i+24] = new InventorySlot(inventory.getStack(i+24), i*64-256, 320);
 		}
-		
 		updateMode(Mode.NORMAL);
-		return this;
 	}
 	
 	private void checkCrafting() {

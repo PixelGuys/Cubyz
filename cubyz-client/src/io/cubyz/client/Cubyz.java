@@ -18,6 +18,8 @@ import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL12;
 
 import io.cubyz.*;
+import io.cubyz.api.ClientConnection;
+import io.cubyz.api.ClientRegistries;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.RegistryElement;
 import io.cubyz.api.Resource;
@@ -31,6 +33,7 @@ import io.cubyz.entity.Entity;
 import io.cubyz.entity.EntityType;
 import io.cubyz.entity.Player;
 import io.cubyz.items.CustomItem;
+import io.cubyz.items.Inventory;
 import io.cubyz.items.ItemBlock;
 import io.cubyz.items.tools.Tool;
 import io.cubyz.multiplayer.GameProfile;
@@ -56,7 +59,7 @@ import io.jungle.util.*;
 
 import static io.cubyz.CubyzLogger.logger;
 
-public class Cubyz implements GameLogic {
+public class Cubyz implements GameLogic, ClientConnection {
 
 	public static Context ctx;
 	private Window win;
@@ -103,8 +106,6 @@ public class Cubyz implements GameLogic {
 	
 	public static Deque<Runnable> renderDeque = new ArrayDeque<>();
 	public static HashMap<String, InstancedMesh> cachedDefaultModels = new HashMap<>();
-	
-	private static HashMap<String, MenuGUI> userGUIs = new HashMap<>();
 	
 	public boolean screenshot;
 
@@ -349,6 +350,7 @@ public class Cubyz implements GameLogic {
 		renderer.setShaderFolder(ResourceManager.lookupPath("cubyz/shaders/easyLighting"));
 		
 		BlockPreview.setShaderFolder(ResourceManager.lookupPath("cubyz/shaders/blockPreview"));
+		ClientOnly.client = this;
 		ClientOnly.createBlockMesh = (block) -> {
 			Resource rsc = block.getRegistryID();
 			try {
@@ -433,22 +435,6 @@ public class Cubyz implements GameLogic {
 			}
 		};
 		
-		ClientOnly.registerGui = (name, gui) -> {
-			if (userGUIs.containsKey(name)) {
-				throw new IllegalArgumentException("GUI already registered: " + name);
-			}
-			if (!(gui instanceof MenuGUI)) {
-				throw new IllegalArgumentException("GUI Object must be a MenuGUI");
-			}
-			userGUIs.put(name, (MenuGUI) gui);
-		};
-		
-		ClientOnly.openGui = (name, inv) -> {
-			if (!userGUIs.containsKey(name)) {
-				throw new IllegalArgumentException("No such GUI registered: " + name);
-			}
-			gameUI.setMenu(userGUIs.get(name).setInventory(inv));
-		};
 		ClientOnly.onBorderCrossing = (p) -> {
 			// Simply remake all the spatial data of this surface. Not the most efficient way, but the event of border crossing can be considered rare.
 			Chunk[] chunks = Cubyz.surface.getChunks();
@@ -533,6 +519,16 @@ public class Cubyz implements GameLogic {
 			});
 		});
 		lt.start();
+	}
+	
+	@Override
+	public void openGUI(String name, Inventory inv) {
+		MenuGUI gui = ClientRegistries.GUIS.getByID(name);
+		if (gui == null) {
+			throw new IllegalArgumentException("No such GUI registered: " + name);
+		}
+		gui.setInventory(inv);
+		gameUI.setMenu(gui);
 	}
 
 	private Vector3f dir = new Vector3f();
@@ -898,13 +894,13 @@ public class Cubyz implements GameLogic {
 					world.getLocalPlayer().resetBlockBreaking();
 				}
 				if (Keybindings.isPressed("place") && buildCooldown <= 0) {
-					if(world.getLocalPlayer().getInventory().getItem(inventorySelection) instanceof ItemBlock) {
-					//Building Blocks
+					if((msd.getSelected() instanceof BlockInstance) && ((BlockInstance)msd.getSelected()).getBlock().onClick(world, ((BlockInstance)msd.getSelected()).getPosition())) {
+						// Interact with block(potentially do a hand animation, in the future).
+					} else if(world.getLocalPlayer().getInventory().getItem(inventorySelection) instanceof ItemBlock) {
+						// Build block:
 						if (msd.getSelected() != null) {
 							buildCooldown = 10;
-							if(msd.getSelected() instanceof BlockInstance && ((BlockInstance)msd.getSelected()).getBlock().onClick(world, ((BlockInstance)msd.getSelected()).getPosition())) {
-								// potentially do a hand animation, in the future
-							} else {
+							if(msd.getSelected() instanceof BlockInstance) {
 								Vector3i pos = new Vector3i(0, 0, 0);
 								Vector3i dir = new Vector3i(0, 0, 0);
 								msd.getEmptyPlace(pos, dir);

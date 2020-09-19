@@ -16,10 +16,12 @@ import java.util.Set;
 import org.reflections.Reflections;
 
 import io.cubyz.Constants;
+import io.cubyz.api.ClientConnection;
 import io.cubyz.api.Mod;
 import io.cubyz.api.Side;
 import io.cubyz.command.CommandExecutor;
 import io.cubyz.command.CommandSource;
+import io.cubyz.items.Inventory;
 import io.cubyz.modding.ModLoader;
 import io.cubyz.multiplayer.server.CubyzServer;
 import io.cubyz.world.World;

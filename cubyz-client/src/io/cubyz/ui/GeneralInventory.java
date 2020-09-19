@@ -1,5 +1,6 @@
 package io.cubyz.ui;
 
+import io.cubyz.api.Resource;
 import io.cubyz.client.Cubyz;
 import io.cubyz.items.Item;
 import io.cubyz.items.ItemStack;
@@ -16,6 +17,10 @@ public abstract class GeneralInventory extends MenuGUI {
 	private Label num;
 	
 	protected int width, height;
+	
+	public GeneralInventory(Resource id) {
+		super(id);
+	}
 
 	public void close() {
 		Cubyz.mouse.setGrabbed(true);

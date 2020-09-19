@@ -3,11 +3,9 @@ package io.cubyz.base;
 import org.joml.Vector3i;
 
 import io.cubyz.api.CubyzRegistries;
-import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockEntity;
 import io.cubyz.blocks.Updateable;
 import io.cubyz.world.Surface;
-import io.cubyz.world.cubyzgenerators.biomes.Biome;
 
 public class MeltableBlockEntity extends BlockEntity implements Updateable {
 	

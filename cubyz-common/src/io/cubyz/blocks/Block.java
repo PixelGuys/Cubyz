@@ -5,13 +5,12 @@ import java.util.Properties;
 
 import org.joml.Vector3i;
 
+import io.cubyz.ClientOnly;
 import io.cubyz.api.CubyzRegistries;
-import io.cubyz.api.GameRegistry;
 import io.cubyz.api.RegistryElement;
 import io.cubyz.api.Resource;
 import io.cubyz.items.BlockDrop;
 import io.cubyz.items.Inventory;
-import io.cubyz.items.Item;
 import io.cubyz.items.ItemBlock;
 import io.cubyz.world.Surface;
 import io.cubyz.world.World;
@@ -205,7 +204,7 @@ public class Block implements RegistryElement {
 	 // returns true if the block did something on click.
 	public boolean onClick(World world, Vector3i pos) {
 		if(gui != null) {
-			GameRegistry.openGUI("cubyz:workbench", new Inventory(10)); // TODO: Care about the inventory.
+			ClientOnly.client.openGUI("cubyz:workbench", new Inventory(10)); // TODO: Care about the inventory.
 			return true;
 		}
 		return false;

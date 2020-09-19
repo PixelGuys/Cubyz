@@ -18,7 +18,6 @@ import com.google.gson.JsonObject;
 
 import io.cubyz.Utilities;
 import io.cubyz.api.Resource;
-import io.cubyz.blocks.CustomOre;
 
 public class ResourceUtilities {
 

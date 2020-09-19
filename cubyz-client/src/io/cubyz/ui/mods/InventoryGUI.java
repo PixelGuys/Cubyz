@@ -1,6 +1,7 @@
 package io.cubyz.ui.mods;
 
 import io.cubyz.api.CubyzRegistries;
+import io.cubyz.api.Resource;
 import io.cubyz.client.Cubyz;
 import io.cubyz.items.Inventory;
 import io.cubyz.items.Item;
@@ -13,6 +14,10 @@ import io.jungle.Window;
 // TODO: add possibility to capture and release stacks with the mouse.
 
 public class InventoryGUI extends GeneralInventory {
+	
+	public InventoryGUI() {
+		super(new Resource("cubyz:inventory"));
+	}
 	
 	private void checkCrafting() {
 		// Clear everything in case there is no recipe available.

@@ -1,7 +1,6 @@
 package io.cubyz;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -11,7 +10,6 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 
 import io.cubyz.client.Cubyz;
-import io.cubyz.gpack.MessagePack;
 import io.cubyz.translate.LanguageLoader;
 import io.cubyz.utils.DiscordIntegration;
 
