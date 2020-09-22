@@ -1,11 +1,11 @@
 class ore
 
-hardeness 100
+hardness 100
 veins 2
 size 1.4
 height 16
 
-drop cubyz:SlimeOre
+drop auto
 
 model cubyz:block.obj
 texture cubyz:SlimeOre
