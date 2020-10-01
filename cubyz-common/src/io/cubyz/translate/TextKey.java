@@ -2,24 +2,45 @@ package io.cubyz.translate;
 
 import java.util.Objects;
 
+import io.cubyz.Settings;
+import io.cubyz.util.Tree;
+
 public class TextKey {
 
-	protected String key;
+	protected final String key;
+	protected String translation;
 	
-	public TextKey(String key) {
+	protected TextKey(String key) {
 		this.key = Objects.requireNonNull(key);
+		if(Settings.getLanguage() != null) {
+			Settings.getLanguage().translate(this);
+		} else {
+			translation = key;
+		}
 	}
 	
-	public String getTranslation(Language lang) {
-		return lang.translate(this);
+	public String getTranslation() {
+		return translation;
 	}
 	
 	public String getTranslateKey() {
 		return key;
 	}
 	
-	public String translationOverride(Language lang) {
-		return null;
+	// Store the TextKeys in a tree, so access times are low and languages can be cached in the TextKeys:
+	public static Tree<String, TextKey> textKeys = new Tree<String, TextKey>();
+	public static TextKey createTextKey(String key) {
+		if(!key.contains(".")) return new TextKey(key); // Don't store it if this is no real text key
+		return textKeys.getOrAdd(key.split("\\."), () -> new TextKey(key));
 	}
-	
+	public static void updateLanguage() {
+		// Updates the language of all TextKeys:
+		textKeys.foreach((key) -> {
+			if(Settings.getLanguage() != null) {
+				Settings.getLanguage().translate(key);
+			} else {
+				key.translation = key.key;
+			}
+		});
+	}
 }

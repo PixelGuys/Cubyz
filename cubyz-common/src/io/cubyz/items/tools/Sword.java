@@ -5,6 +5,7 @@ import io.cubyz.api.RegistryElement;
 import io.cubyz.blocks.Block;
 import io.cubyz.items.Item;
 import io.cubyz.items.ItemStack;
+import io.cubyz.translate.ContextualTextKey;
 import io.cubyz.translate.TextKey;
 
 public class Sword extends Tool {
@@ -17,7 +18,7 @@ public class Sword extends Tool {
 		texturePath = 	 "addons/" + handle.id.getMod() + "/items/textures/parts/sword/"+handle.getName()+"_handle.png#"
 						+"addons/" + head.id.getMod() + "/items/textures/parts/sword/"+head.getName()+"_sword_head.png#"
 						+"addons/" + binding.id.getMod() + "/items/textures/parts/sword/"+binding.getName()+"_binding.png";
-		setName(new TextKey(head.getRegistryID().getID()+" Sword"));
+		setName(new ContextualTextKey("cubyz.grammar.tool_material", head.languageId, "cubyz.tools.names.sword"));
 	}
 	
 	private static float calculateSpeed(Material head, Material binding, Material handle) {

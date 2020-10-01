@@ -30,7 +30,7 @@ public class CustomItem extends Item {
 			item.type = GEM;
 		}
 		item.setID(ore.getRegistryID());
-		item.setName(new TextKey(ore.getName()));
+		item.setName(TextKey.createTextKey(ore.getName()));
 		return item;
 	}
 }

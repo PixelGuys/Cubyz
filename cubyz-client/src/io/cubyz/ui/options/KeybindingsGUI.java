@@ -91,7 +91,7 @@ public class KeybindingsGUI extends MenuGUI {
 		container = new ScrollingContainer();
 		
 		done = new Button();
-		done.setText(new TextKey("gui.cubyz.options.done"));
+		done.setText(TextKey.createTextKey("gui.cubyz.options.done"));
 		done.setSize(250, 45);
 		done.setOnAction(() -> {
 			Cubyz.gameUI.back();

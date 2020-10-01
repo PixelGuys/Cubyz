@@ -30,7 +30,7 @@ public class Configuration {
 		}
 		
 		obj.add("keybindings", kb);
-		obj.addProperty("language", Cubyz.lang.getLocale());
+		obj.addProperty("language", Settings.getLanguage().getLocale());
 		obj.addProperty("discordIntegration", DiscordIntegration.isEnabled());
 		obj.addProperty("fogCoefficient", ClientSettings.FOG_COEFFICIENT);
 		obj.addProperty("useMipmaps", ClientSettings.MIPMAPPING);
@@ -51,7 +51,7 @@ public class Configuration {
 	
 	public static void load() {
 		if (!new File("configuration.json").exists()) {
-			Cubyz.lang = LanguageLoader.load("en_US");
+			Settings.setLanguage(LanguageLoader.load("en_US"));
 			return;
 		}
 		
@@ -73,7 +73,7 @@ public class Configuration {
 		
 		if (!obj.has("language"))
 			obj.addProperty("language", "en_US");
-		Cubyz.lang = LanguageLoader.load(obj.get("language").getAsString());
+		Settings.setLanguage(LanguageLoader.load(obj.get("language").getAsString()));
 		
 		if (obj.has("discordIntegration")) {
 			if (obj.get("discordIntegration").getAsBoolean()) {

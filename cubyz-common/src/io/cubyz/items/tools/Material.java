@@ -19,6 +19,7 @@ public class Material implements RegistryElement {
 	public float miningSpeed; // how many times this material is faster than punching the ground.
 	public int miningLevel = 0; // Standard for materials like dirt that can't be used for mining.
 	protected Resource id = Resource.EMPTY;
+	public String languageId;
 	public Material(int heDur, int bDur, int haDur, float dmg, float spd) {
 		headDurability = haDur;
 		bindingDurability = bDur;
@@ -30,6 +31,7 @@ public class Material implements RegistryElement {
 	}
 	public Material(Resource id, List<Modifier> modifiers, HashMap<Item, Integer> items, int heDur, int bDur, int haDur, float dmg, float spd, int lvl) {
 		this.id = id;
+		languageId = id.getMod()+".tools.materials."+id.getID();
 		specialModifiers = modifiers;
 		this.items = items;
 		headDurability = haDur;
@@ -62,6 +64,7 @@ public class Material implements RegistryElement {
 	}
 	public void setID(Resource id) {
 		this.id = id;
+		languageId = id.getMod()+".tools.materials."+id.getID();
 	}
 	@Override
 	public Resource getRegistryID() {

@@ -40,7 +40,6 @@ import io.cubyz.multiplayer.GameProfile;
 import io.cubyz.multiplayer.LoginToken;
 import io.cubyz.multiplayer.client.MPClient;
 import io.cubyz.multiplayer.client.PingResponse;
-import io.cubyz.translate.Language;
 import io.cubyz.ui.*;
 import io.cubyz.ui.mods.InventoryGUI;
 import io.cubyz.utils.*;
@@ -71,7 +70,6 @@ public class Cubyz implements GameLogic, ClientConnection {
 	public static UISystem gameUI;
 	public static World world;
 	public static Surface surface;
-	public static Language lang;
 	public static SoundManager sound;
 	private SoundBuffer music;
 	private SoundSource musicSource;

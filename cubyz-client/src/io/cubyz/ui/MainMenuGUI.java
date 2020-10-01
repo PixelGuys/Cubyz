@@ -21,19 +21,19 @@ public class MainMenuGUI extends MenuGUI {
 	public MainMenuGUI() {
 		DiscordIntegration.setStatus("Main Menu");
 		spPlay.setSize(250, 45);
-		spPlay.setText(new TextKey("gui.cubyz.mainmenu.singleplayer"));
+		spPlay.setText(TextKey.createTextKey("gui.cubyz.mainmenu.singleplayer"));
 		spPlay.setFontSize(16f);
 		
 		mpPlay.setSize(250, 45);
-		mpPlay.setText(new TextKey("gui.cubyz.mainmenu.multiplayer"));
+		mpPlay.setText(TextKey.createTextKey("gui.cubyz.mainmenu.multiplayer"));
 		mpPlay.setFontSize(16f);
 		
 		options.setSize(250, 45);
-		options.setText(new TextKey("gui.cubyz.mainmenu.options"));
+		options.setText(TextKey.createTextKey("gui.cubyz.mainmenu.options"));
 		options.setFontSize(16f);
 		
 		exit.setSize(100, 27);
-		exit.setText(new TextKey("gui.cubyz.mainmenu.exit"));
+		exit.setText(TextKey.createTextKey("gui.cubyz.mainmenu.exit"));
 		titleLabel.setText("Cubyz");
 		titleLabel.setFont(new Font("Title", 72.f));
 		

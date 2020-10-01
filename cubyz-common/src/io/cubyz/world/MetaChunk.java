@@ -17,7 +17,6 @@ public class MetaChunk {
 		this.x = x;
 		this.z = z;
 		this.world = world;
-		
 		heightMap = PerlinNoise.generateThreeOctaveMapFragment(x, z, 256, 256, 2048, seed, world.getSize());
 		heatMap = PerlinNoise.generateThreeOctaveMapFragment(x, z, 256, 256, 2048, seed ^ 6587946239L, world.getSize());
 		humidityMap = PerlinNoise.generateThreeOctaveMapFragment(x, z, 256, 256, 2048, seed ^ -1324585483391L, world.getSize());

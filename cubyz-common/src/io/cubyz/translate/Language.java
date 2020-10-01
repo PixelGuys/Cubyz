@@ -2,9 +2,11 @@ package io.cubyz.translate;
 
 import java.util.HashMap;
 
+import static io.cubyz.CubyzLogger.logger;
+
 public class Language {
 
-	private static HashMap<String, String> keyValues = new HashMap<>();
+	private HashMap<String, String> keyValues = new HashMap<>();
 	private String locale;
 	
 	public Language(String locale) {
@@ -23,16 +25,14 @@ public class Language {
 		return keyValues.get(key);
 	}
 	
-	public String translate(TextKey key) {
-		String override = key.translationOverride(this);
-		if (override != null) {
-			return override;
-		}
-		String v = key.getTranslateKey();
+	public void translate(TextKey key) {
 		if (keyValues.containsKey(key.getTranslateKey())) {
-			v = keyValues.get(key.getTranslateKey());
+			key.translation = keyValues.get(key.getTranslateKey());
+			return;
 		}
-		return v;
+		if(key.getTranslateKey().contains("."))
+			logger.warning("Unable to translate key "+key.getTranslateKey()+" in language "+locale+".");
+		key.translation = key.getTranslateKey();
 	}
 	
 	public String getLocale() {

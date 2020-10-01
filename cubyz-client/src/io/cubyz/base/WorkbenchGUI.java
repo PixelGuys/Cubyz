@@ -33,19 +33,19 @@ public class WorkbenchGUI extends GeneralInventory {
 		super(new Resource("cubyz:workbench"));
 		normal = new Button();
 		normal.setSize(64, 64);
-		normal.setText(new TextKey("Normal Grid"));
+		normal.setText(TextKey.createTextKey("Normal Grid"));
 		axe = new Button();
 		axe.setSize(64, 64);
-		axe.setText(new TextKey("Axe"));
+		axe.setText(TextKey.createTextKey("Axe"));
 		pickaxe = new Button();
 		pickaxe.setSize(64, 64);
-		pickaxe.setText(new TextKey("Pickaxe"));
+		pickaxe.setText(TextKey.createTextKey("Pickaxe"));
 		shovel = new Button();
 		shovel.setSize(64, 64);
-		shovel.setText(new TextKey("Shovel"));
+		shovel.setText(TextKey.createTextKey("Shovel"));
 		sword = new Button();
 		sword.setSize(64, 64);
-		sword.setText(new TextKey("Sword"));
+		sword.setText(TextKey.createTextKey("Sword"));
 		activeGUI = this;
 		
 		normal.setOnAction(() -> {

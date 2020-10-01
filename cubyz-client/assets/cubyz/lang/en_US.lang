@@ -32,16 +32,28 @@ block.cubyz.gravel.name=Gravel
 block.cubyz.ice.name=Ice
 block.cubyz.sand.name=Sand
 block.cubyz.snow.name=Snow
-block.cubyz.mossy_cobblestone.name=Mossy cobblestone
+block.cubyz.mossy_cobblestone.name=Mossy Cobblestone
 block.cubyz.cobblestone.name=Cobblestone
 block.cubyz.oak_log.name=Oak Log
 block.cubyz.oak_top.name=Oak Top
 block.cubyz.oak_planks.name=Oak Planks
+block.cubyz.oak_leaves.name=Oak Leaves
 block.cubyz.torch.name=Torch
 block.cubyz.workbench.name=Workbench
+block.cubyz.iron_ore.name=Iron Ore
 
 # Items
 item.cubyz.stick.name=Stick
 item.cubyz.diamond.name=Diamond
 item.cubyz.coal.name=Coal
 item.cubyz.raw_meat.name=Raw meat
+item.cubyz.apple.name=Apple
+
+# Tools
+cubyz.grammar.tool_material={0} {1}
+cubyz.tools.materials.wood=Wooden
+cubyz.tools.materials.stone=Stone
+cubyz.tools.names.axe=Axe
+cubyz.tools.names.pickaxe=Pickaxe
+cubyz.tools.names.shovel=Shovel
+cubyz.tools.names.sword=Sword

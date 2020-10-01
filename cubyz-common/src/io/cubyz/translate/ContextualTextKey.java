@@ -1,33 +1,26 @@
 package io.cubyz.translate;
 
 public class ContextualTextKey extends TextKey {
-
-	protected Object[] args;
+	TextKey grammar;
 	
-	public ContextualTextKey(String key, int argc) {
-		super(key);
-		args = new Object[argc];
-	}
+	protected TextKey[] arguments;
 	
-	public int getArgumentListSize() {
-		return args.length;
-	}
-	
-	public void setArgument(int i, Object val) {
-		args[i] = val;
+	public ContextualTextKey(String grammar, String... args) {
+		super(grammar);
+		this.grammar = TextKey.createTextKey(grammar);
+		arguments = new TextKey[args.length];
+		for(int i = 0; i < args.length; i++) {
+			arguments[i] = TextKey.createTextKey(args[i]);
+		}
 	}
 	
 	@Override
-	public String translationOverride(Language lang) {
-		if (lang.get(key) != null) {
-			String val = lang.get(key);
-			for (int i = 0; i < args.length; i++) {
-				val = val.replace("{" + i + "}", args[i].toString());
-			}
-			return val;
-		} else {
-			return key;
+	public String getTranslation() {
+		String translation = grammar.getTranslation();
+		for (int i = 0; i < arguments.length; i++) {
+			translation = translation.replace("{" + i + "}", arguments[i].getTranslation());
 		}
+		return translation;
 	}
 	
 }

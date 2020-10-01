@@ -18,7 +18,7 @@ public class GraphicsGUI extends MenuGUI {
 	@Override
 	public void init(long nvg) {
 		done.setSize(250, 45);
-		done.setText(new TextKey("gui.cubyz.options.done"));
+		done.setText(TextKey.createTextKey("gui.cubyz.options.done"));
 		done.setFontSize(16f);
 		
 		done.setOnAction(() -> {
@@ -26,33 +26,33 @@ public class GraphicsGUI extends MenuGUI {
 		});
 
 		if (ClientSettings.FOG_COEFFICIENT == 0f) {
-			fog.setText(new TextKey("gui.cubyz.options.fog.off"));
+			fog.setText(TextKey.createTextKey("gui.cubyz.options.fog.off"));
 		} else if (ClientSettings.FOG_COEFFICIENT <= 5f) {
-			fog.setText(new TextKey("gui.cubyz.options.fog.near"));
+			fog.setText(TextKey.createTextKey("gui.cubyz.options.fog.near"));
 		} else if (ClientSettings.FOG_COEFFICIENT > 5f && ClientSettings.FOG_COEFFICIENT < 15f) {
-			fog.setText(new TextKey("gui.cubyz.options.fog.med"));
+			fog.setText(TextKey.createTextKey("gui.cubyz.options.fog.med"));
 		} else {
-			fog.setText(new TextKey("gui.cubyz.options.fog.far"));
+			fog.setText(TextKey.createTextKey("gui.cubyz.options.fog.far"));
 		}
 		fog.setOnAction(() -> {
 			if (ClientSettings.FOG_COEFFICIENT == 0f) { // off
 				ClientSettings.FOG_COEFFICIENT = 5f;
-				fog.setText(new TextKey("gui.cubyz.options.fog.near"));
+				fog.setText(TextKey.createTextKey("gui.cubyz.options.fog.near"));
 			} else if (ClientSettings.FOG_COEFFICIENT <= 5f) { // near
 				ClientSettings.FOG_COEFFICIENT = 10f;
-				fog.setText(new TextKey("gui.cubyz.options.fog.med"));
+				fog.setText(TextKey.createTextKey("gui.cubyz.options.fog.med"));
 			} else if (ClientSettings.FOG_COEFFICIENT > 5f && ClientSettings.FOG_COEFFICIENT < 15f) { // medium
 				ClientSettings.FOG_COEFFICIENT = 15f;
-				fog.setText(new TextKey("gui.cubyz.options.fog.far"));
+				fog.setText(TextKey.createTextKey("gui.cubyz.options.fog.far"));
 			} else { // far
 				ClientSettings.FOG_COEFFICIENT = 0f;
-				fog.setText(new TextKey("gui.cubyz.options.fog.off"));
+				fog.setText(TextKey.createTextKey("gui.cubyz.options.fog.off"));
 			}
 		});
 		fog.setSize(250, 45);
 		fog.setFontSize(16f);
 		
-		easyLighting.setLabel(new TextKey("gui.cubyz.options.easylighting"));
+		easyLighting.setLabel(TextKey.createTextKey("gui.cubyz.options.easylighting"));
 		easyLighting.setSelected(Settings.easyLighting);
 		easyLighting.setOnAction(() -> {
 			Settings.easyLighting = easyLighting.isSelected();
@@ -60,7 +60,7 @@ public class GraphicsGUI extends MenuGUI {
 		easyLighting.getLabel().setFontSize(16f);
 		
 		Window win = Cubyz.ctx.getWindow();
-		vsync.setLabel(new TextKey("gui.cubyz.options.vsync"));
+		vsync.setLabel(TextKey.createTextKey("gui.cubyz.options.vsync"));
 		vsync.setSelected(win.isVSyncEnabled());
 		vsync.setOnAction(() -> {
 			win.setVSyncEnabled(vsync.isSelected());

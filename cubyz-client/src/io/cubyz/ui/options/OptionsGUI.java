@@ -1,6 +1,7 @@
 package io.cubyz.ui.options;
 
 import io.cubyz.ClientSettings;
+import io.cubyz.Settings;
 import io.cubyz.client.Cubyz;
 import io.cubyz.translate.ContextualTextKey;
 import io.cubyz.translate.LanguageLoader;
@@ -20,15 +21,16 @@ public class OptionsGUI extends MenuGUI {
 	private final Button bindings = new Button();
 	private final Slider renderDistance = new Slider(1, 24, ClientSettings.RENDER_DISTANCE);
 	
-	private ContextualTextKey langKey = new ContextualTextKey("gui.cubyz.options.language", 1);
-	private ContextualTextKey rpcKey = new ContextualTextKey("gui.cubyz.options.discord", 1);
+	private ContextualTextKey langKey = new ContextualTextKey("gui.cubyz.options.language", "lang.name");
+	private ContextualTextKey rpcKeyOn = new ContextualTextKey("gui.cubyz.options.discord", "gui.cubyz.general.on");
+	private ContextualTextKey rpcKeyOff = new ContextualTextKey("gui.cubyz.options.discord", "gui.cubyz.general.off");
 	
 	private String[] languages = new String[] {"en_US", "fr_FR", "ro_RO"};
 	
 	@Override
 	public void init(long nvg) {
 		done.setSize(250, 45);
-		done.setText(new TextKey("gui.cubyz.options.done"));
+		done.setText(TextKey.createTextKey("gui.cubyz.options.done"));
 		done.setFontSize(16f);
 		
 		done.setOnAction(() -> {
@@ -43,7 +45,7 @@ public class OptionsGUI extends MenuGUI {
 		});
 		
 		graphics.setSize(250, 45);
-		graphics.setText(new TextKey("gui.cubyz.options.graphics"));
+		graphics.setText(TextKey.createTextKey("gui.cubyz.options.graphics"));
 		graphics.setFontSize(16f);
 		
 		graphics.setOnAction(() -> {
@@ -51,7 +53,7 @@ public class OptionsGUI extends MenuGUI {
 		});
 		
 		bindings.setSize(250, 45);
-		bindings.setText(new TextKey("gui.cubyz.options.keybindings"));
+		bindings.setText(TextKey.createTextKey("gui.cubyz.options.keybindings"));
 		bindings.setFontSize(16f);
 		
 		bindings.setOnAction(() -> {
@@ -59,27 +61,23 @@ public class OptionsGUI extends MenuGUI {
 		});
 		
 		language.setSize(250, 45);
-		langKey.setArgument(0, Cubyz.lang.translate(new TextKey("lang.name")));
 		language.setText(langKey);
 		language.setFontSize(16f);
 		
 		language.setOnAction(() -> {
 			int index = -1;
 			for (int i = 0; i < languages.length; i++) {
-				if (languages[i].equals(Cubyz.lang.getLocale())) {
+				if (languages[i].equals(Settings.getLanguage().getLocale())) {
 					index = i;
 					break;
 				}
 			}
 			index++;
 			if (index >= languages.length) index = 0;
-			Cubyz.lang = LanguageLoader.load(languages[index]);
-			langKey.setArgument(0, Cubyz.lang.translate(new TextKey("lang.name")));
+			Settings.setLanguage(LanguageLoader.load(languages[index]));
 		});
 		
 		rpc.setSize(250, 45);
-		rpcKey.setArgument(0, "");
-		rpc.setText(rpcKey);
 		rpc.setFontSize(16f);
 		
 		rpc.setOnAction(() -> {
@@ -100,7 +98,8 @@ public class OptionsGUI extends MenuGUI {
 		language.setPosition(win.getWidth() / 2 - 125, 225);
 		rpc.setPosition(win.getWidth() / 2 - 125, 300);
 		bindings.setPosition(win.getWidth() / 2 - 125, 375);
-		rpcKey.setArgument(0, DiscordIntegration.isEnabled() ? Cubyz.lang.translate(new TextKey("gui.cubyz.general.on")) : Cubyz.lang.translate(new TextKey("gui.cubyz.general.off")));
+		
+		rpc.setText(DiscordIntegration.isEnabled() ? rpcKeyOn : rpcKeyOff);
 
 		done.render(nvg, win);
 		renderDistance.render(nvg, win);

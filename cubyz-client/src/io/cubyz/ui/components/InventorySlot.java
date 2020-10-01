@@ -58,12 +58,12 @@ public class InventorySlot extends Component {
 				double y = mouse.getY() + 10;
 				String tooltip;
 				if(item instanceof Tool) {
-					tooltip = item.getName() == null ? "???" : item.getName().getTranslation(Cubyz.lang);
+					tooltip = item.getName() == null ? "???" : item.getName().getTranslation();
 					for(Modifier m : ((Tool)item).getModifiers()) {
 						tooltip += "\n"+m.getName()+"\n"+m.getDescription()+"\n";
 					}
 				} else {
-					tooltip = item.getName() == null ? "???" : item.getName().getTranslation(Cubyz.lang);
+					tooltip = item.getName() == null ? "???" : item.getName().getTranslation();
 				}
 				float[] bounds = NGraphics.getTextSize(tooltip);
 				NGraphics.setColor(20, 20, 20);

@@ -1,6 +1,5 @@
 package io.cubyz.ui.components;
 
-import io.cubyz.client.Cubyz;
 import io.cubyz.translate.TextKey;
 import io.cubyz.ui.Component;
 import io.cubyz.ui.NGraphics;
@@ -10,12 +9,12 @@ import io.jungle.hud.Font;
 public class Label extends Component {
 
 	private Font font = new Font("Default", 12.f);
-	private TextKey text = new TextKey("");
+	private TextKey text = TextKey.createTextKey("");
 	
 	public Label() {}
 	
 	public Label(String text) {
-		this.text = new TextKey(text);
+		this.text = TextKey.createTextKey(text);
 	}
 	
 	public Label(TextKey text) {
@@ -27,7 +26,7 @@ public class Label extends Component {
 	}
 
 	public void setText(String text) {
-		this.text = new TextKey(text);
+		this.text = TextKey.createTextKey(text);
 	}
 	
 	public void setText(TextKey text) {
@@ -50,8 +49,8 @@ public class Label extends Component {
 	public void render(long nvg, Window src) {
 		NGraphics.setColor(255, 255, 255);
 		NGraphics.setFont(font);
-		if (Cubyz.lang != null && text != null) {
-			NGraphics.drawText(x, y, text.getTranslation(Cubyz.lang));
+		if (text != null) {
+			NGraphics.drawText(x, y, text.getTranslation());
 		}
 	}
 	

@@ -40,8 +40,7 @@ public class SaveSelectorGUI extends MenuGUI {
 		deleteButtons = new Button[listOfFiles.length];
 		for (int i = 0; i < saveButtons.length; i++) {
 			String name = listOfFiles[i].getName();
-			ContextualTextKey tk = new ContextualTextKey("gui.cubyz.saves.play", 1);
-			tk.setArgument(0, name);
+			ContextualTextKey tk = new ContextualTextKey("gui.cubyz.saves.play", name);
 			Button b = new Button(tk);
 			b.setSize(200, 40);
 			b.setPosition(10, y);
@@ -57,7 +56,7 @@ public class SaveSelectorGUI extends MenuGUI {
 				Cubyz.loadWorld(world.getCurrentTorus());
 			});
 			saveButtons[i] = b;
-			b = new Button(new TextKey("gui.cubyz.saves.delete"));
+			b = new Button(TextKey.createTextKey("gui.cubyz.saves.delete"));
 			b.setSize(100, 40);
 			b.setPosition(220, y);
 			int index = i;
@@ -105,13 +104,13 @@ public class SaveSelectorGUI extends MenuGUI {
 			deleteButtons[i] = b;
 		}
 		y += 60;
-		createNew = new Button(new TextKey("gui.cubyz.saves.create"));
+		createNew = new Button(TextKey.createTextKey("gui.cubyz.saves.create"));
 		createNew.setSize(300, 40);
 		createNew.setPosition(10, 0);
 		createNew.setOnAction(() -> {
 			Cubyz.gameUI.setMenu(new SaveCreationGUI());
 		});
-		back = new Button(new TextKey("gui.cubyz.general.back"));
+		back = new Button(TextKey.createTextKey("gui.cubyz.general.back"));
 		back.setSize(100, 40);
 		back.setOnAction(() -> {
 			Cubyz.gameUI.back();

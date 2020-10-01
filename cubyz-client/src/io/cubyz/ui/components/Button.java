@@ -64,7 +64,7 @@ public class Button extends Component {
 	}
 
 	public void setText(String text) {
-		this.text = new TextKey(text);
+		this.text = TextKey.createTextKey(text);
 	}
 	
 	public void setText(TextKey text) {
@@ -131,7 +131,7 @@ public class Button extends Component {
 		}
 		NGraphics.setColor(255, 255, 255);
 		NGraphics.setFont("Default", fontSize);
-		NGraphics.drawText(x + (width / 2) - ((text.getTranslation(Cubyz.lang).length() * 5) / 2), (int) (y + (height / 2) - fontSize / 2), text.getTranslation(Cubyz.lang));
+		NGraphics.drawText(x + (width / 2) - ((text.getTranslation().length() * 5) / 2), (int) (y + (height / 2) - fontSize / 2), text.getTranslation());
 		//int ascent = NGraphics.getAscent("ahh");
 	}
 	

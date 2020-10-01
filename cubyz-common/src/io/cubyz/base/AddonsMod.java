@@ -104,7 +104,7 @@ public class AddonsMod {
 						id = id.substring(0, id.indexOf('.'));
 					item.setID(new Resource(addon.getName(), id));
 					if (props.containsKey("translationId"))
-						item.setName(new TextKey(props.getProperty("translationId")));
+						item.setName(TextKey.createTextKey(props.getProperty("translationId")));
 					item.setTexture(props.getProperty("texture", "default.png"), addon.getName());
 					registry.register(item);
 				}

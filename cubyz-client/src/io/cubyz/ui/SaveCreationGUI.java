@@ -35,7 +35,7 @@ public class SaveCreationGUI extends MenuGUI {
 		name.setText("Save " + num);
 		
 		create.setSize(200, 50);
-		create.setText(new TextKey("gui.cubyz.saves.create"));
+		create.setText(TextKey.createTextKey("gui.cubyz.saves.create"));
 		create.setOnAction(() -> {
 			LocalWorld world = new LocalWorld(name.getText());
 			Block[] blocks = world.generate();
@@ -49,7 +49,7 @@ public class SaveCreationGUI extends MenuGUI {
 		});
 		
 		cancel.setSize(100, 50);
-		cancel.setText(new TextKey("gui.cubyz.general.cancel"));
+		cancel.setText(TextKey.createTextKey("gui.cubyz.general.cancel"));
 		cancel.setOnAction(() -> {
 			Cubyz.gameUI.back();
 		});

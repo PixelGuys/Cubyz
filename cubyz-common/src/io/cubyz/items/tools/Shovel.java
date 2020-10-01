@@ -6,6 +6,7 @@ import io.cubyz.blocks.Block;
 import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.items.Item;
 import io.cubyz.items.ItemStack;
+import io.cubyz.translate.ContextualTextKey;
 import io.cubyz.translate.TextKey;
 
 public class Shovel extends Tool {
@@ -18,7 +19,7 @@ public class Shovel extends Tool {
 		texturePath = 	 "addons/" + handle.id.getMod() + "/items/textures/parts/"+handle.getName()+"_handle.png#"
 				+"addons/" + head.id.getMod() + "/items/textures/parts/"+head.getName()+"_shovel_head.png#"
 				+"addons/" + binding.id.getMod() + "/items/textures/parts/"+binding.getName()+"_binding.png";
-		setName(new TextKey(head.getRegistryID().getID()+" Shovel"));
+		setName(new ContextualTextKey("cubyz.grammar.tool_material", head.languageId, "cubyz.tools.names.shovel"));
 	}
 	
 	private static float calculateSpeed(Material head, Material binding, Material handle) {
