@@ -1,0 +1,59 @@
+gui.cubyz.mainmenu.singleplayer=Einzelspieler
+gui.cubyz.mainmenu.multiplayer=Mehrspieler
+gui.cubyz.mainmenu.exit=Verlassen
+gui.cubyz.mainmenu.options=Optionen
+gui.cubyz.options.done=Fertig
+gui.cubyz.general.on=An
+gui.cubyz.general.off=Aus
+gui.cubyz.general.back=Zurück
+gui.cubyz.general.cancel=Abbrechen
+gui.cubyz.options.language=Sprache: {0}
+gui.cubyz.options.discord=Discord Integration: {0}
+gui.cubyz.options.keybindings=Tastaturbelegungen
+gui.cubyz.options.graphics=Graphik
+gui.cubyz.options.fog.med=Nebel: Mittel
+gui.cubyz.options.fog.far=Nebel: Fern
+gui.cubyz.options.fog.near=Nebel: Nah
+gui.cubyz.options.fog.off=Nebel: Aus
+gui.cubyz.options.easylighting=Einfaches Licht
+gui.cubyz.options.vsync=Vertikale Synchronisation
+gui.cubyz.pause.exit=Zurück zum Hauptmenü
+gui.cubyz.pause.resume=Weiter
+gui.cubyz.debug.reload=Neu laden
+gui.cubyz.saves.play=Spiele {0}
+gui.cubyz.saves.delete=Löschen
+gui.cubyz.saves.create=Neues Spiel erstellen!
+lang.name=Deutsch
+
+# Blocks
+block.cubyz.cactus.name=Kaktus
+block.cubyz.soil.name=Erde
+block.cubyz.gravel.name=kies
+block.cubyz.ice.name=Eis
+block.cubyz.sand.name=Sand
+block.cubyz.snow.name=Schnee
+block.cubyz.mossy_cobblestone.name=moosiger Bruchstein
+block.cubyz.cobblestone.name=Bruchstein
+block.cubyz.oak_log.name=Eichen Stamm
+block.cubyz.oak_top.name=Eichen Spitze
+block.cubyz.oak_planks.name=Eichenbretter
+block.cubyz.oak_leaves.name=Eichenblätter
+block.cubyz.torch.name=Fackel
+block.cubyz.workbench.name=Werkbank
+block.cubyz.iron_ore.name=Eisenerz
+
+# Items
+item.cubyz.stick.name=Stock
+item.cubyz.diamond.name=Diamant
+item.cubyz.coal.name=Kohle
+item.cubyz.raw_meat.name=Rohes Fleisch
+item.cubyz.apple.name=Apfel
+
+# Tools
+cubyz.grammar.tool_material={0} {1}
+cubyz.tools.materials.wood=Holz
+cubyz.tools.materials.stone=Stein
+cubyz.tools.names.axe=Axt
+cubyz.tools.names.pickaxe=Spitzhacke
+cubyz.tools.names.shovel=Schaufel
+cubyz.tools.names.sword=Schwert
