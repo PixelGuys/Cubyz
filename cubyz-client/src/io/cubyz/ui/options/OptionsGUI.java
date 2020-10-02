@@ -1,5 +1,8 @@
 package io.cubyz.ui.options;
 
+import java.io.File;
+import java.util.ArrayList;
+
 import io.cubyz.ClientSettings;
 import io.cubyz.Settings;
 import io.cubyz.client.Cubyz;
@@ -10,6 +13,7 @@ import io.cubyz.ui.MenuGUI;
 import io.cubyz.ui.components.Button;
 import io.cubyz.ui.components.Slider;
 import io.cubyz.utils.DiscordIntegration;
+import io.cubyz.utils.ResourceManager;
 import io.jungle.Window;
 
 public class OptionsGUI extends MenuGUI {
@@ -25,10 +29,31 @@ public class OptionsGUI extends MenuGUI {
 	private ContextualTextKey rpcKeyOn = new ContextualTextKey("gui.cubyz.options.discord", "gui.cubyz.general.on");
 	private ContextualTextKey rpcKeyOff = new ContextualTextKey("gui.cubyz.options.discord", "gui.cubyz.general.off");
 	
-	private String[] languages = new String[] {"en_US", "fr_FR", "ro_RO"};
+	private String[] languages;
 	
 	@Override
 	public void init(long nvg) {
+		// Dynamically load the list of languages:
+		File[] assetsFolders = ResourceManager.listFiles("");
+		ArrayList<String> languageFiles = new ArrayList<>();
+		for (File assetFolder : assetsFolders) {
+			File langFolder = ResourceManager.lookup(assetFolder.getName() + "/lang");
+			if(langFolder == null) continue;
+			iteratingLangFiles:
+			for(File langFile : langFolder.listFiles()) {
+				if(langFile.getName().endsWith(".lang")) {
+					String name = langFile.getName().replace(".lang", "");
+					// Check if this language is already in the list:
+					for(String alreadyListed : languageFiles) {
+						if(alreadyListed.equals(name)) continue iteratingLangFiles;
+					}
+					languageFiles.add(name);
+					System.out.println(name);
+				}
+			}
+		}
+		languages = languageFiles.toArray(new String[0]);
+		
 		done.setSize(250, 45);
 		done.setText(TextKey.createTextKey("gui.cubyz.options.done"));
 		done.setFontSize(16f);
