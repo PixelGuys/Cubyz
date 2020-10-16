@@ -20,6 +20,10 @@ import io.jungle.Window;
 
 import static io.cubyz.CubyzLogger.logger;
 
+/**
+ * GUI used to select the world to play.
+ */
+
 public class SaveSelectorGUI extends MenuGUI {
 
 	private Button[] saveButtons;

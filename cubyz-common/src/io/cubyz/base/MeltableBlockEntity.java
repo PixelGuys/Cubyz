@@ -7,6 +7,11 @@ import io.cubyz.blocks.BlockEntity;
 import io.cubyz.blocks.Updateable;
 import io.cubyz.world.Surface;
 
+/**
+ * A block that can turn into water block when a temperature threshold is met.<br>
+ * TODO: Make accessible to all block types with different thresholds and allow definition of those in addon files.
+ */
+
 public class MeltableBlockEntity extends BlockEntity implements Updateable {
 	
 	int heatCount;

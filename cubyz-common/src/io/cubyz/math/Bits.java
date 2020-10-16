@@ -3,6 +3,7 @@ package io.cubyz.math;
 /**
  * Big-endian only number packer
  */
+
 public class Bits {
 	
 	public static boolean getBoolean(byte[] b, int off) {

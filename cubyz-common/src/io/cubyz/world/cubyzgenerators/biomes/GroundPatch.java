@@ -7,7 +7,9 @@ import io.cubyz.world.MetaChunk;
 import io.cubyz.world.ReducedChunk;
 import io.cubyz.world.World;
 
-// A small oval of different ground terrain.
+/**
+ * A small oval of different ground terrain.
+ */
 
 public class GroundPatch extends StructureModel implements ReducedStructureModel {
 	Block newGround;

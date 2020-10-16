@@ -3,7 +3,9 @@ package io.cubyz.world.cubyzgenerators;
 import io.cubyz.api.RegistryElement;
 import io.cubyz.blocks.Block;
 
-// Some interface to access all different generators(caves,terrain,…) through one simple function.
+/**
+ * Some interface to access all different generators(caves,terrain,…) through one simple function.
+ */
 
 public interface Generator extends RegistryElement {
 	

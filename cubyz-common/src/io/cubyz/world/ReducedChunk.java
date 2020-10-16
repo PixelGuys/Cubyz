@@ -12,6 +12,7 @@ import io.cubyz.save.BlockChange;
  * It is trimmed for low memory-usage and high-performance, because many of those are be needed.
  * Instead of storing blocks it only stores 16 bit color values.
  */
+
 public class ReducedChunk {
 	public static Surface surface; // The current surface the player is on.
 	public ArrayList<BlockChange> changes;

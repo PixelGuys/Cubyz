@@ -5,6 +5,10 @@ import java.util.Objects;
 import io.cubyz.Settings;
 import io.cubyz.util.Tree;
 
+/**
+ * A Translation key which is changed every time the language is changed.
+ */
+
 public class TextKey {
 
 	protected final String key;

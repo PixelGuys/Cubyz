@@ -1,5 +1,10 @@
 package io.cubyz.items;
 
+/**
+ * A basic crafting recipe that can be created in any size crafting grid.<br>
+ * TODO: Add a recipe unlocking mechanism or similar.
+ */
+
 public class Recipe {
 	
 	private int x, y; // Size of the shaped figure. If zero: shapeless.

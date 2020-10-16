@@ -11,7 +11,10 @@ import io.cubyz.ui.components.InventorySlot;
 import io.jungle.MouseInput;
 import io.jungle.Window;
 
-// TODO: add possibility to capture and release stacks with the mouse.
+/**
+ * GUI of the normal inventory(when pressing 'I')<br>
+ * TODO: add possibility to capture and release stacks with the mouse.
+ */
 
 public class InventoryGUI extends GeneralInventory {
 	
@@ -26,7 +29,7 @@ public class InventoryGUI extends GeneralInventory {
 		int num = 0;
 		Item[] ar = new Item[4];
 		for(int i = 0; i < 4; i++) {
-			ar[i] = inv[32+i].reference.getItem();
+			ar[i] = inv[32 + i].reference.getItem();
 			if(ar[i] != null)
 				num++;
 		}
@@ -54,16 +57,16 @@ public class InventoryGUI extends GeneralInventory {
 			inv = new InventorySlot[37];
 			Inventory inventory = Cubyz.world.getLocalPlayer().getInventory();
 			for(int i = 0; i < 8; i++) {
-				inv[i] = new InventorySlot(inventory.getStack(i), i*64-256, 64);
+				inv[i] = new InventorySlot(inventory.getStack(i), i*64 - 256, 64);
 			}
 			for(int i = 0; i < 8; i++) {
-				inv[i+8] = new InventorySlot(inventory.getStack(i+8), i*64-256, 256);
+				inv[i + 8] = new InventorySlot(inventory.getStack(i + 8), i*64 - 256, 256);
 			}
 			for(int i = 0; i < 8; i++) {
-				inv[i+16] = new InventorySlot(inventory.getStack(i+16), i*64-256, 320);
+				inv[i + 16] = new InventorySlot(inventory.getStack(i + 16), i*64 - 256, 320);
 			}
 			for(int i = 0; i < 8; i++) {
-				inv[i+24] = new InventorySlot(inventory.getStack(i+24), i*64-256, 384);
+				inv[i + 24] = new InventorySlot(inventory.getStack(i + 24), i*64 - 256, 384);
 			}
 			inv[32] = new InventorySlot(inventory.getStack(32), 0, 544);
 			inv[33] = new InventorySlot(inventory.getStack(33), 64, 544);

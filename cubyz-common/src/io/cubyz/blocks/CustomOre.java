@@ -15,6 +15,10 @@ import io.cubyz.items.tools.CustomMaterial;
 import io.cubyz.ndt.NDTContainer;
 import io.cubyz.world.CustomObject;
 
+/**
+ * A randomly generated ore type.
+ */
+
 public class CustomOre extends Ore implements CustomObject {
 	// Procedurally generated ore textures:
 	public static BufferedImage generateOreTexture(BufferedImage stone, long seed, int color, float shinyness) {

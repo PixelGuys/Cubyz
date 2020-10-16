@@ -8,6 +8,11 @@ import io.cubyz.blocks.Block;
 import io.cubyz.world.MetaChunk;
 import io.cubyz.world.World;
 
+/**
+ * Used to generate rivers.<br>
+ * TODO: Make them a lot bigger.
+ */
+
 public class RiverGenerator implements BigGenerator {
 	
 	@Override

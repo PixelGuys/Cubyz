@@ -39,8 +39,10 @@ import io.cubyz.world.cubyzgenerators.biomes.StructureModel;
 import static io.cubyz.CubyzLogger.logger;
 
 /**
- * Mod used to support add-ons: simple mods without any sort of coding required
+ * Mod used to support add-ons: simple "mods" without any sort of coding required.<br>
+ * TODO: Add more comments and maybe make a uniform parser for everything.
  */
+
 @Mod(id = "addons-loader", name = "Addons Loader")
 @LoadOrder(order = Order.AFTER, id = "cubyz")
 public class AddonsMod {

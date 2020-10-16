@@ -32,7 +32,9 @@ import io.jungle.util.ShaderProgram;
 import io.jungle.util.SpotLight;
 import io.jungle.util.Utils;
 
-// The renderer which will be used for zenith's shadow system once completed.
+/**
+ *  The renderer which will be used for zenith's shadow system once completed.
+ */
 
 @SuppressWarnings("unchecked")
 public class ZenithsRenderer implements Renderer {

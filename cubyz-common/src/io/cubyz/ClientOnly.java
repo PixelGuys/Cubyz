@@ -8,6 +8,10 @@ import io.cubyz.entity.EntityType;
 import io.cubyz.entity.Player;
 import io.cubyz.world.ReducedChunk;
 
+/**
+ * A collection of mostly functions that are only available in the client context.
+ */
+
 public class ClientOnly {
 
 	public static Consumer<Block[]> generateTextureAtlas;
@@ -24,8 +28,7 @@ public class ClientOnly {
 			throw new UnsupportedOperationException("createBlockMesh");
 		};
 		onBorderCrossing = (p) -> {
-			System.out.println("Did it!");
-			return; // This λ is used for updating the Spatial position to be in correct relation to the player.
+			return; // This lambda is used for updating the Spatial position to be in correct relation to the player.
 		};
 	}
 	

@@ -16,6 +16,10 @@ import io.cubyz.handler.RemoveBlockHandler;
 import io.cubyz.items.ItemStack;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 
+/**
+ * Managing system for the 3d block map of a torus.
+ */
+
 public abstract class Surface {
 	
 	protected StellarTorus torus;

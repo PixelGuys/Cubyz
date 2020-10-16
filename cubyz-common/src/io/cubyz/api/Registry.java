@@ -6,6 +6,11 @@ import java.util.Map.Entry;
 
 import static io.cubyz.CubyzLogger.logger;
 
+/**
+ * A registry that uses registry IDs to avoid duplicate entries.
+ * @param <T>
+ */
+
 public class Registry<T extends RegistryElement> {
 	private HashMap<String, T> hashMap;
 	

@@ -17,12 +17,15 @@ import io.cubyz.ui.components.InventorySlot;
 import io.jungle.MouseInput;
 import io.jungle.Window;
 
-// TODO
+/**
+ * The GUI that appears when opening the workbench.
+ */
+
 public class WorkbenchGUI extends GeneralInventory {
 	private static enum Mode {
 		AXE, PICKAXE, SHOVEL, SWORD, NORMAL
 	};
-
+	/**Buttons used for switching the crafting mode.*/
 	Button axe, pickaxe, shovel, sword, normal;
 	Mode craftingMode = Mode.NORMAL;
 	Inventory in;
@@ -149,6 +152,7 @@ public class WorkbenchGUI extends GeneralInventory {
 				}
 			}
 			if(i >= 32) {
+				// If one of the crafting slots was changed, check if the recipe is changed, too.
 				checkCrafting();
 			}
 		}
@@ -160,20 +164,23 @@ public class WorkbenchGUI extends GeneralInventory {
 		inv = new InventorySlot[32];
 		Inventory inventory = Cubyz.world.getLocalPlayer().getInventory();
 		for(int i = 0; i < 8; i++) {
-			inv[i] = new InventorySlot(inventory.getStack(i), i*64-256, 64);
+			inv[i] = new InventorySlot(inventory.getStack(i), i*64 - 256, 64);
 		}
 		for(int i = 0; i < 8; i++) {
-			inv[i+8] = new InventorySlot(inventory.getStack(i+8), i*64-256, 192);
+			inv[i + 8] = new InventorySlot(inventory.getStack(i + 8), i*64 - 256, 192);
 		}
 		for(int i = 0; i < 8; i++) {
-			inv[i+16] = new InventorySlot(inventory.getStack(i+16), i*64-256, 256);
+			inv[i + 16] = new InventorySlot(inventory.getStack(i + 16), i*64 - 256, 256);
 		}
 		for(int i = 0; i < 8; i++) {
-			inv[i+24] = new InventorySlot(inventory.getStack(i+24), i*64-256, 320);
+			inv[i + 24] = new InventorySlot(inventory.getStack(i + 24), i*64 - 256, 320);
 		}
 		updateMode(Mode.NORMAL);
 	}
 	
+	/**
+	 * Checks if the recipe is valid and adds the corresponding item in the output slot.
+	 */
 	private void checkCrafting() {
 		Item item = null;
 		inv[inv.length-1].reference.clear();
@@ -191,12 +198,12 @@ public class WorkbenchGUI extends GeneralInventory {
 				item = Sword.canCraft(inv[32].reference, inv[33].reference, inv[34].reference, Cubyz.surface.getCurrentRegistries());
 				break;
 			case NORMAL:
-				// Find out how many items are there in the grid and put them in an array:
+				// Find out how many and which items are in the crafting grid:
 				int num = 0;
-				Item[] ar = new Item[9];
+				Item[] items = new Item[9];
 				for(int i = 0; i < 9; i++) {
-					ar[i] = inv[32+i].reference.getItem();
-					if(ar[i] != null)
+					items[i] = inv[32 + i].reference.getItem();
+					if(items[i] != null)
 						num++;
 				}
 				// Get the recipes for the given number of items(TODO!):
@@ -206,7 +213,7 @@ public class WorkbenchGUI extends GeneralInventory {
 					Recipe rec = (Recipe) recipes[i];
 					if(rec.getNum() != num)
 						continue;
-					item = rec.canCraft(ar, 3);
+					item = rec.canCraft(items, 3);
 					if(item != null) {
 						inv[41].reference.setItem(item);
 						inv[41].reference.add(rec.getNumRet());
@@ -216,19 +223,19 @@ public class WorkbenchGUI extends GeneralInventory {
 				break;
 		}
 		if(item != null) {
-			inv[inv.length-1].reference.setItem(item);
-			inv[inv.length-1].reference.add(1);
+			inv[inv.length - 1].reference.setItem(item);
+			inv[inv.length - 1].reference.add(1);
 		}
 	}
 	
 	@Override
 	public void render(long nvg, Window win) {
 		super.render(nvg, win);
-		normal.setPosition(win.getWidth() / 2 - 360, win.getHeight()-552);
-		axe.setPosition(win.getWidth() / 2 - 360, win.getHeight()-480);
-		pickaxe.setPosition(win.getWidth() / 2 - 360, win.getHeight()-408);
-		shovel.setPosition(win.getWidth() / 2 - 360, win.getHeight()-336);
-		sword.setPosition(win.getWidth() / 2 - 360, win.getHeight()-264);
+		normal.setPosition(win.getWidth()/2 - 360, win.getHeight() - 552);
+		axe.setPosition(win.getWidth()/2 - 360, win.getHeight() - 480);
+		pickaxe.setPosition(win.getWidth()/2 - 360, win.getHeight() - 408);
+		shovel.setPosition(win.getWidth()/2 - 360, win.getHeight() - 336);
+		sword.setPosition(win.getWidth()/2 - 360, win.getHeight() - 264);
 
 		normal.render(nvg, win);
 		axe.render(nvg, win);

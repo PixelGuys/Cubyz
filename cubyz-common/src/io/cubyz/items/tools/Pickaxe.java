@@ -9,6 +9,10 @@ import io.cubyz.items.ItemStack;
 import io.cubyz.translate.ContextualTextKey;
 import io.cubyz.translate.TextKey;
 
+/**
+ * Tool for mining stone.
+ */
+
 public class Pickaxe extends Tool {
 	private static final int HEAD = 300, BINDING = 50, HANDLE = 50;
 	private static final float baseSpeed = 5.0f, baseDamage = 1.0f;

@@ -1,4 +1,4 @@
-package io.cubyz.ui.options;
+package io.cubyz.ui.settings;
 
 import io.cubyz.ClientSettings;
 import io.cubyz.Settings;
@@ -28,7 +28,7 @@ public class GraphicsGUI extends MenuGUI {
 	@Override
 	public void init(long nvg) {
 		done.setSize(250, 45);
-		done.setText(TextKey.createTextKey("gui.cubyz.options.done"));
+		done.setText(TextKey.createTextKey("gui.cubyz.settings.done"));
 		done.setFontSize(16f);
 		
 		done.setOnAction(() -> {
@@ -63,33 +63,33 @@ public class GraphicsGUI extends MenuGUI {
 		});
 
 		if (ClientSettings.FOG_COEFFICIENT == 0f) {
-			fog.setText(TextKey.createTextKey("gui.cubyz.options.fog.off"));
+			fog.setText(TextKey.createTextKey("gui.cubyz.settings.fog.off"));
 		} else if (ClientSettings.FOG_COEFFICIENT <= 5f) {
-			fog.setText(TextKey.createTextKey("gui.cubyz.options.fog.near"));
+			fog.setText(TextKey.createTextKey("gui.cubyz.settings.fog.near"));
 		} else if (ClientSettings.FOG_COEFFICIENT > 5f && ClientSettings.FOG_COEFFICIENT < 15f) {
-			fog.setText(TextKey.createTextKey("gui.cubyz.options.fog.med"));
+			fog.setText(TextKey.createTextKey("gui.cubyz.settings.fog.med"));
 		} else {
-			fog.setText(TextKey.createTextKey("gui.cubyz.options.fog.far"));
+			fog.setText(TextKey.createTextKey("gui.cubyz.settings.fog.far"));
 		}
 		fog.setOnAction(() -> {
 			if (ClientSettings.FOG_COEFFICIENT == 0f) { // off
 				ClientSettings.FOG_COEFFICIENT = 5f;
-				fog.setText(TextKey.createTextKey("gui.cubyz.options.fog.near"));
+				fog.setText(TextKey.createTextKey("gui.cubyz.settings.fog.near"));
 			} else if (ClientSettings.FOG_COEFFICIENT <= 5f) { // near
 				ClientSettings.FOG_COEFFICIENT = 10f;
-				fog.setText(TextKey.createTextKey("gui.cubyz.options.fog.med"));
+				fog.setText(TextKey.createTextKey("gui.cubyz.settings.fog.med"));
 			} else if (ClientSettings.FOG_COEFFICIENT > 5f && ClientSettings.FOG_COEFFICIENT < 15f) { // medium
 				ClientSettings.FOG_COEFFICIENT = 15f;
-				fog.setText(TextKey.createTextKey("gui.cubyz.options.fog.far"));
+				fog.setText(TextKey.createTextKey("gui.cubyz.settings.fog.far"));
 			} else { // far
 				ClientSettings.FOG_COEFFICIENT = 0f;
-				fog.setText(TextKey.createTextKey("gui.cubyz.options.fog.off"));
+				fog.setText(TextKey.createTextKey("gui.cubyz.settings.fog.off"));
 			}
 		});
 		fog.setSize(250, 45);
 		fog.setFontSize(16f);
 		
-		easyLighting.setLabel(TextKey.createTextKey("gui.cubyz.options.easylighting"));
+		easyLighting.setLabel(TextKey.createTextKey("gui.cubyz.settings.easylighting"));
 		easyLighting.setSelected(Settings.easyLighting);
 		easyLighting.setOnAction(() -> {
 			Settings.easyLighting = easyLighting.isSelected();
@@ -97,7 +97,7 @@ public class GraphicsGUI extends MenuGUI {
 		easyLighting.getLabel().setFontSize(16f);
 		
 		Window win = Cubyz.ctx.getWindow();
-		vsync.setLabel(TextKey.createTextKey("gui.cubyz.options.vsync"));
+		vsync.setLabel(TextKey.createTextKey("gui.cubyz.settings.vsync"));
 		vsync.setSelected(win.isVSyncEnabled());
 		vsync.setOnAction(() -> {
 			win.setVSyncEnabled(vsync.isSelected());
@@ -108,14 +108,14 @@ public class GraphicsGUI extends MenuGUI {
 
 	@Override
 	public void render(long nvg, Window win) {
-		renderDistance.setPosition(win.getWidth() / 2 - 125, 75);
-		maxResolution.setPosition(win.getWidth() / 2 - 125, 150);
-		farDistanceFactor.setPosition(win.getWidth() / 2 - 125, 225);
-		effectiveRenderDistance.setPosition(win.getWidth() / 2 - 125, 300);
-		done.setPosition(win.getWidth() / 2 - 125, win.getHeight() - 75);
-		fog.setPosition(win.getWidth() / 2 - 125, 375);
-		easyLighting.setPosition(win.getWidth() / 2 - 125, 450);
-		vsync.setPosition(win.getWidth() / 2 - 125, 525);
+		renderDistance.setPosition(win.getWidth()/2 - 125, 75);
+		maxResolution.setPosition(win.getWidth()/2 - 125, 150);
+		farDistanceFactor.setPosition(win.getWidth()/2 - 125, 225);
+		effectiveRenderDistance.setPosition(win.getWidth()/2 - 125, 300);
+		done.setPosition(win.getWidth()/2 - 125, win.getHeight() - 75);
+		fog.setPosition(win.getWidth()/2 - 125, 375);
+		easyLighting.setPosition(win.getWidth()/2 - 125, 450);
+		vsync.setPosition(win.getWidth()/2 - 125, 525);
 
 		renderDistance.render(nvg, win);
 		maxResolution.render(nvg, win);

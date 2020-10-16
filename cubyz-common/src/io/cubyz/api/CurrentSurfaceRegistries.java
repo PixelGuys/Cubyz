@@ -8,7 +8,9 @@ import io.cubyz.items.tools.Material;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 import io.cubyz.world.generator.SurfaceGenerator;
 
-// Contains the torus-specific registries.
+/**
+ * Contains the torus-specific registries.
+ */
 
 public class CurrentSurfaceRegistries {
 

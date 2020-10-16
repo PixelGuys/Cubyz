@@ -15,6 +15,7 @@ import io.cubyz.world.BlockSpatial;
 /**
  * For stackable partial blocks, like snow.
  */
+
 public class StackableRotation implements RotationMode {
 	
 	Resource id = new Resource("cubyz", "stackable");

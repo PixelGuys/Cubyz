@@ -10,6 +10,10 @@ import io.cubyz.items.tools.Tool;
 import io.cubyz.ndt.NDTContainer;
 import io.cubyz.world.Surface;
 
+/**
+ * Anything that's not a block or a particle.
+ */
+
 public class Entity {
 
 	protected Surface surface;

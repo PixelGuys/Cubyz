@@ -8,6 +8,10 @@ import io.cubyz.blocks.Block;
 import io.cubyz.math.CubyzMath;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 
+/**
+ * Generates caves using perlin worms.
+ */
+
 public class CaveGenerator implements FancyGenerator {
 	
 	@Override

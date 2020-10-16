@@ -13,6 +13,7 @@ import io.cubyz.world.Surface;
  * 2. Dirt
  * 3. Bedrock
  */
+
 public class FlatlandGenerator extends SurfaceGenerator {
 
 	private static Block grass = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:grass");

@@ -7,6 +7,10 @@ import org.joml.Vector2d;
 import io.jungle.MouseInput;
 import io.jungle.Window;
 
+/**
+ * A type for basic components of the GUI system.
+ */
+
 public abstract class Component {
 
 	protected int x, y, width, height;

@@ -12,9 +12,15 @@ import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.world.BlockSpatial;
 
+import static io.cubyz.Constants.PI;
+import static io.cubyz.Constants.PI_HALF;
+
+/**
+ * Used to manipulate individual faces of transparent blocks.<br>
+ * Doesn't really work good(it only allows for rectangular faces).
+ */
+
 public class TransparentRotation implements RotationMode {
-	private static final float PI = (float)Math.PI;
-	private static final float PI_HALF = PI/2;
 	
 	Resource id = new Resource("cubyz", "transparent");
 	@Override

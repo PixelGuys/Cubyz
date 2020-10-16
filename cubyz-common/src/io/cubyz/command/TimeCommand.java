@@ -2,6 +2,10 @@ package io.cubyz.command;
 
 import io.cubyz.api.Resource;
 
+/**
+ * Changes the world time.
+ */
+
 public class TimeCommand extends CommandBase {
 
 	public TimeCommand() {

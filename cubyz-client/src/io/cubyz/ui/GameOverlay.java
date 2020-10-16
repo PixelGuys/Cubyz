@@ -5,6 +5,11 @@ import io.cubyz.items.Inventory;
 import io.cubyz.ui.components.InventorySlot;
 import io.jungle.Window;
 
+/**
+ * Basic overlay while in-game.<br>
+ * Contains hotbar, hunger bars, and crosshair.
+ */
+
 public class GameOverlay extends MenuGUI {
 
 	int crosshair;
@@ -41,13 +46,13 @@ public class GameOverlay extends MenuGUI {
 		hungerBar[7] = NGraphics.loadImage("assets/cubyz/textures/hunger_bar_icon.png");
 		Inventory inventory = Cubyz.world.getLocalPlayer().getInventory();
 		for(int i = 0; i < 8; i++) {
-			inv[i] = new InventorySlot(inventory.getStack(i), i*64-256, 64);
+			inv[i] = new InventorySlot(inventory.getStack(i), i*64 - 256, 64);
 		}
 	}
 
 	@Override
 	public void render(long nvg, Window win) {
-		NGraphics.drawImage(crosshair, win.getWidth() / 2 - 16, win.getHeight() / 2 - 16, 32, 32);
+		NGraphics.drawImage(crosshair, win.getWidth()/2 - 16, win.getHeight()/2 - 16, 32, 32);
 		NGraphics.setColor(0, 0, 0);
 		if(!(Cubyz.gameUI.getMenuGUI() instanceof GeneralInventory)) {
 			NGraphics.drawImage(selection, win.getWidth()/2 - 254 + Cubyz.inventorySelection*64, win.getHeight() - 62, 60, 60);
@@ -72,16 +77,16 @@ public class GameOverlay extends MenuGUI {
 		String s = Math.round(health*10)/10.0f + "/" + Math.round(maxHealth) + " HP";
 		float width = NGraphics.getTextWidth(s);
 		NGraphics.drawImage(healthBar[7], (int)(win.getWidth() - maxHealth*12 - 40 - width), 6, 24, 24);
-		NGraphics.drawText(win.getWidth()-maxHealth*12 - 10 - width, 9, s);
+		NGraphics.drawText(win.getWidth() - maxHealth*12 - 10 - width, 9, s);
 		for(int i = 0; i < maxHealth; i += 2) {
-			boolean half = i+1 == health;
+			boolean half = i + 1 == health;
 			boolean empty = i >= health;
 			
 			int idx = 0;
 			if (i == 0) { // beggining
 				idx = empty ? 0 : 1;
 			} else if (i == maxHealth-2) { // end
-				idx = i+1 >= health ? 2 : 3;
+				idx = i + 1 >= health ? 2 : 3;
 			} else {
 				idx = empty ? 4 : (half ? 5 : 6); // if empty = 4, half = 5, full = 6
 			}
@@ -95,14 +100,14 @@ public class GameOverlay extends MenuGUI {
 		NGraphics.drawImage(hungerBar[7], (int)(win.getWidth() - maxHunger*12 - 40 - width), 36, 24, 24);
 		NGraphics.drawText(win.getWidth()-maxHunger*12 - 10 - width, 39, s);
 		for(int i = 0; i < maxHunger; i += 2) {
-			boolean half = i+1 == hunger;
+			boolean half = i + 1 == hunger;
 			boolean empty = i >= hunger;
 			
 			int idx = 0;
 			if (i == 0) { // beggining
 				idx = empty ? 0 : 1;
 			} else if (i == maxHunger-2) { // end
-				idx = i+1 >= hunger ? 2 : 3;
+				idx = i + 1 >= hunger ? 2 : 3;
 			} else {
 				idx = empty ? 4 : (half ? 5 : 6); // if empty = 4, half = 5, full = 6
 			}

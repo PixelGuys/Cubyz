@@ -4,7 +4,9 @@ import java.util.Random;
 
 import io.cubyz.blocks.Block;
 
-// A simple model that describes how smaller structures like vegetation should be generated.
+/**
+ * A simple model that describes how smaller structures like vegetation should be generated.
+ */
 
 public abstract class StructureModel {
 	float chance;

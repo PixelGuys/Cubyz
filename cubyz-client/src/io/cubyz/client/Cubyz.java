@@ -45,7 +45,6 @@ import io.cubyz.ui.mods.InventoryGUI;
 import io.cubyz.utils.*;
 import io.cubyz.utils.ResourceUtilities.BlockModel;
 import io.cubyz.utils.ResourceUtilities.BlockSubModel;
-import io.cubyz.utils.ResourceUtilities.EntityModel;
 import io.cubyz.world.*;
 import io.cubyz.world.cubyzgenerators.TerrainGenerator;
 import io.cubyz.world.generator.LifelandGenerator;
@@ -57,6 +56,11 @@ import io.jungle.game.*;
 import io.jungle.util.*;
 
 import static io.cubyz.CubyzLogger.logger;
+
+/**
+ * A complex class that holds everything together.<br>
+ * TODO: Move functionality to better suited places(like world loading should probably be handled somewhere in the World class).
+ */
 
 public class Cubyz implements GameLogic, ClientConnection {
 
@@ -83,7 +87,7 @@ public class Cubyz implements GameLogic, ClientConnection {
 	
 	public static int inventorySelection = 0; // Selected slot in inventory
 
-	private CubyzMeshSelectionDetector msd;
+	private MeshSelectionDetector msd;
 
 	private int breakCooldown = 10;
 	private int buildCooldown = 10;
@@ -124,7 +128,7 @@ public class Cubyz implements GameLogic, ClientConnection {
 		for (Handler handler : logger.getHandlers()) {
 			handler.close();
 		}
-		Configuration.save();
+		ClientSettings.save();
 		DiscordIntegration.closeRPC();
 		if (sound != null) {
 			try {
@@ -338,7 +342,7 @@ public class Cubyz implements GameLogic, ClientConnection {
 		logger.info("LWJGL Version: " + Version.VERSION_MAJOR + "." + Version.VERSION_MINOR + "." + Version.VERSION_REVISION);
 		logger.info("Jungle Version: " + Constants.GAME_VERSION + "-cubyz");
 		Constants.setGameSide(Side.CLIENT);
-		msd = new CubyzMeshSelectionDetector();
+		msd = new MeshSelectionDetector();
 		
 		// Cubyz resources
 		ResourcePack baserp = new ResourcePack();
@@ -813,7 +817,7 @@ public class Cubyz implements GameLogic, ClientConnection {
 				} else {
 					world.getLocalPlayer().resetBlockBreaking();
 				}
-				if (Keybindings.isPressed("place") && buildCooldown <= 0) {
+				if (Keybindings.isPressed("place/use") && buildCooldown <= 0) {
 					if((msd.getSelected() instanceof BlockInstance) && ((BlockInstance)msd.getSelected()).getBlock().onClick(world, ((BlockInstance)msd.getSelected()).getPosition())) {
 						// Interact with block(potentially do a hand animation, in the future).
 					} else if(world.getLocalPlayer().getInventory().getItem(inventorySelection) instanceof ItemBlock) {

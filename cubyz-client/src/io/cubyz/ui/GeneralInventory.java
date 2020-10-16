@@ -10,6 +10,10 @@ import io.jungle.MouseInput;
 import io.jungle.Window;
 import io.jungle.hud.Font;
 
+/**
+ * A class containing common functionality from all Inventory GUIs(tooltips, inventory slot movement, inventory slot drawing).
+ */
+
 public abstract class GeneralInventory extends MenuGUI {
 	protected InventorySlot inv [] = null;
 	

@@ -7,6 +7,7 @@ import java.util.Objects;
  * 
  * @author zenith391
  */
+
 public class Permission {
 
 	int level = 0;

@@ -3,6 +3,10 @@ package io.cubyz.items;
 import io.cubyz.blocks.Block;
 import io.cubyz.translate.TextKey;
 
+/**
+ * Item that corresponds to a block and places that block on use.
+ */
+
 public class ItemBlock extends Item {
 
 	private Block block;

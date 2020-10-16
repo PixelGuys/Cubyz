@@ -5,7 +5,9 @@ import org.joml.Vector3f;
 
 import io.cubyz.api.RegistryElement;
 
-// Used to animate the 3d model of entities.
+/**
+ * Used to animate the 3d model of entities.
+ */
 
 public interface EntityModel extends RegistryElement {
 	public void render(Matrix4f viewMatrix, Object shaderProgram, Entity ent);

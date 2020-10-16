@@ -6,6 +6,10 @@ import io.cubyz.ui.NGraphics;
 import io.jungle.MouseInput;
 import io.jungle.Window;
 
+/**
+ * A slider.
+ */
+
 public class Slider extends Component {
 	
 	private static final int initialXOffset = 5, yOffset = 5; // How far away the slider is from the borders.

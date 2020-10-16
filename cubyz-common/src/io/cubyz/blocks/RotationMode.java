@@ -9,6 +9,12 @@ import io.cubyz.api.RegistryElement;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 
+/**
+ * Each block gets 8 bit of additional storage(apart from the reference to the block type).<br>
+ * These 8 bits are accessed and interpreted by the `RotationMode`.<br>
+ * With the `RotationMode` interface there is almost no limit to what can be done with those 8 bit.
+ */
+
 public interface RotationMode extends RegistryElement {
 	public Object[] generateSpatials(BlockInstance bi, byte data, Player player, int worldSize);
 	// currentData will be 0 if the blockTypes don't match.

@@ -1,5 +1,9 @@
 package io.cubyz.base.rotation;
 
+/**
+ * Rotates the block based on the direction the player is placing it.
+ */
+
 import org.joml.RayAabIntersection;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
@@ -12,9 +16,10 @@ import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.world.BlockSpatial;
 
+import static io.cubyz.Constants.PI;
+import static io.cubyz.Constants.PI_HALF;
+
 public class LogRotation implements RotationMode {
-	private static final float PI = (float)Math.PI;
-	private static final float PI_HALF = PI/2;
 	
 	Resource id = new Resource("cubyz", "log");
 	@Override

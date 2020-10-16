@@ -1,5 +1,9 @@
 package io.cubyz.translate;
 
+/**
+ * Text key that allows defining order of translational elements.
+ */
+
 public class ContextualTextKey extends TextKey {
 	TextKey grammar;
 	

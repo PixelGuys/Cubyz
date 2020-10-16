@@ -20,6 +20,10 @@ import io.jungle.util.Material;
 import io.jungle.util.OBJLoader;
 import io.jungle.util.StaticMeshesLoader;
 
+/**
+ * Used to store active meshes and used to init mesh related lambda functions stored in ClientOnly.
+ */
+
 public class Meshes {
 
 	public static final HashMap<Block, InstancedMesh> blockMeshes = new HashMap<>();

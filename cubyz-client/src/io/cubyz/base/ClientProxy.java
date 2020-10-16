@@ -8,6 +8,10 @@ import io.cubyz.base.rotation.*;
 import io.cubyz.blocks.RotationMode;
 import io.cubyz.entity.EntityModel;
 
+/**
+ * Registers objects that are only available on the client.
+ */
+
 public class ClientProxy extends CommonProxy {
 
 	public void init() {

@@ -1,4 +1,4 @@
-package io.cubyz.ui.options;
+package io.cubyz.ui.settings;
 
 import org.lwjgl.glfw.GLFW;
 
@@ -91,7 +91,7 @@ public class KeybindingsGUI extends MenuGUI {
 		container = new ScrollingContainer();
 		
 		done = new Button();
-		done.setText(TextKey.createTextKey("gui.cubyz.options.done"));
+		done.setText(TextKey.createTextKey("gui.cubyz.settings.done"));
 		done.setSize(250, 45);
 		done.setOnAction(() -> {
 			Cubyz.gameUI.back();
@@ -152,8 +152,8 @@ public class KeybindingsGUI extends MenuGUI {
 			}
 		}
 		
-		container.setSize(win.getWidth(), win.getHeight()-70);
-		done.setPosition(win.getWidth()-270, win.getHeight()-65);
+		container.setSize(win.getWidth(), win.getHeight() - 70);
+		done.setPosition(win.getWidth() - 270, win.getHeight() - 65);
 		
 		container.render(nvg, win);
 		done.render(nvg, win);

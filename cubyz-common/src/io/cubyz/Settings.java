@@ -3,7 +3,9 @@ package io.cubyz;
 import io.cubyz.translate.Language;
 import io.cubyz.translate.TextKey;
 
-// Stores all things that can be changed using settings.
+/**
+ * Stores all things that can be changed on both sides.
+ */
 
 public class Settings {
 	

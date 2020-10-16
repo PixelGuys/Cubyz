@@ -2,6 +2,10 @@ package io.cubyz.math;
 
 import java.util.ArrayList;
 
+/**
+ * A collection of special math functions used by Cubyz.
+ */
+
 public class CubyzMath {
 	// Transform coordinates into the looping coordinate system.
 	public static float worldModulo(float value, int worldSize) {

@@ -3,17 +3,21 @@ package io.cubyz.ui;
 import io.cubyz.Keybindings;
 import io.cubyz.client.Cubyz;
 import io.cubyz.ui.components.Button;
-import io.cubyz.ui.options.OptionsGUI;
+import io.cubyz.ui.settings.SettingsGUI;
 import io.cubyz.world.LocalSurface;
 import io.jungle.Keyboard;
 import io.jungle.Window;
+
+/**
+ * GUI shown when pressing escape while in a world.
+ */
 
 public class PauseGUI extends MenuGUI {
 
 	private Button exit;
 	private Button resume;
 	private Button reload;
-	private Button options;
+	private Button settings;
 	
 	@Override
 	public void init(long nvg) {
@@ -27,10 +31,10 @@ public class PauseGUI extends MenuGUI {
 		exit = new Button("gui.cubyz.pause.exit");
 		resume = new Button("gui.cubyz.pause.resume");
 		reload = new Button("gui.cubyz.debug.reload");
-		options = new Button("gui.cubyz.mainmenu.options");
+		settings = new Button("gui.cubyz.mainmenu.settings");
 		
-		options.setOnAction(() -> {
-			Cubyz.gameUI.setMenu(new OptionsGUI());
+		settings.setOnAction(() -> {
+			Cubyz.gameUI.setMenu(new SettingsGUI());
 		});
 		
 		resume.setOnAction(() -> {
@@ -59,7 +63,7 @@ public class PauseGUI extends MenuGUI {
 		exit.setSize(200, 50);
 		resume.setSize(200, 50);
 		reload.setSize(200, 50);
-		options.setSize(200, 50);
+		settings.setSize(200, 50);
 	}
 
 	@Override
@@ -73,10 +77,10 @@ public class PauseGUI extends MenuGUI {
 		resume.setPosition(win.getWidth() / 2 - 100, 100);
 		exit.setPosition(win.getWidth() / 2 - 100, win.getHeight() - 200);
 		reload.setPosition(win.getWidth() / 2 - 100, win.getHeight() - 300);
-		options.setPosition(win.getWidth() / 2 - 100, 200);
+		settings.setPosition(win.getWidth() / 2 - 100, 200);
 		exit.render(nvg, win);
 		resume.render(nvg, win);
-		options.render(nvg, win);
+		settings.render(nvg, win);
 		if (Cubyz.clientShowDebug) {
 			reload.render(nvg, win);
 		}

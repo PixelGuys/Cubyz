@@ -5,6 +5,7 @@ import io.cubyz.api.Resource;
 /**
  * Command to set player's health to its max health.
  */
+
 public class CureCommand extends CommandBase {
 
 	{

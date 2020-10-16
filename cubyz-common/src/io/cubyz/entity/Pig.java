@@ -10,6 +10,10 @@ import io.cubyz.items.Item;
 import io.cubyz.items.ItemStack;
 import io.cubyz.world.Surface;
 
+/**
+ * A source of meat.
+ */
+
 public class Pig extends EntityType {
 	Item drop = CubyzRegistries.ITEM_REGISTRY.getByID("cubyz:raw_meat");
 	public Pig() {

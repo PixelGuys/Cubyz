@@ -3,6 +3,11 @@ package io.cubyz.ui;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
+/**
+ * Manages popup messages.<br>
+ * TODO: Icons
+ */
+
 public class ToastManager {
 
 	public static Deque<Toast> queuedToasts = new ArrayDeque<>();

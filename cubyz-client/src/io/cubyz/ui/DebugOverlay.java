@@ -11,10 +11,10 @@ import io.cubyz.world.World;
 import io.jungle.Window;
 
 /**
- * Note: This is the F3 debug menu
+ * This is the F3 debug menu
  * @author zenith391
- *
  */
+
 public class DebugOverlay extends MenuGUI {
 
 	String javaVersion = System.getProperty("java.version");
@@ -73,15 +73,12 @@ public class DebugOverlay extends MenuGUI {
 				lastFpsCount = System.currentTimeMillis();
 				for (int i = 0; i < lastFps.length; i++) { // shift the array to left by 1
 					int val = lastFps[i];
-					if (i-1 >= 0) {
-						lastFps[i-1] = val;
-						//lastFps[v]
-					} else {
-						//lastFps[0] = 0;
+					if (i - 1 >= 0) {
+						lastFps[i - 1] = val;
 					}
 				}
 				
-				lastFps[49] = Cubyz.getFPS(); // set new fps value
+				lastFps[lastFps.length - 1] = Cubyz.getFPS(); // set new fps value
 			}
 		}
 	}

@@ -5,6 +5,10 @@ import io.cubyz.client.Meshes;
 import io.cubyz.entity.Player;
 import io.jungle.Spatial;
 
+/**
+ * Spatial that also stores a reference to the BlockInstance.
+ */
+
 public class BlockSpatial extends Spatial {
 	private BlockInstance owner;
 	

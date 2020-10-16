@@ -12,6 +12,10 @@ import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.world.BlockSpatial;
 
+/**
+ * The default RotationMode that places the block in the grid without translation or rotation.
+ */
+
 public class NoRotation implements RotationMode {
 	Resource id = new Resource("cubyz", "no_rotation");
 	@Override

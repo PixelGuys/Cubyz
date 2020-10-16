@@ -11,7 +11,11 @@ import io.cubyz.world.BlockSpatial;
 import io.cubyz.world.Chunk;
 import io.cubyz.world.Surface;
 
-public class CubyzMeshSelectionDetector {
+/**
+ * A class used to determine what mesh the player is looking at using ray intersection.
+ */
+
+public class MeshSelectionDetector {
 	protected Vector3f min = new Vector3f(), max = new Vector3f();
 	private int dirX, dirY, dirZ; // Used to prevent a block placement bug caused by asynchronous player position when selectSpatial and when getEmptyPlace are called.
 	protected Object selectedSpatial; // Can be either a block or an entity.
@@ -24,7 +28,15 @@ public class CubyzMeshSelectionDetector {
 	public Object getSelected() {
 		return selectedSpatial;
 	}
-	
+	/**
+	 * Select the block or entity the player is looking at.
+	 * @param chunks
+	 * @param position player position
+	 * @param dir camera direction
+	 * @param localPlayer
+	 * @param worldSize
+	 * @param surface
+	 */
 	public void selectSpatial(Chunk[] chunks, Vector3f position, Vector3f dir, Player localPlayer, int worldSize, Surface surface) {
 		// Test blocks:
 		Vector3f transformedPosition = new Vector3f(position.x, position.y + Player.cameraHeight, position.z);
@@ -80,6 +92,7 @@ public class CubyzMeshSelectionDetector {
 		}
 		if(newSpatial == selectedSpatial)
 			return;
+		// Mark block spatials as selected/unselected if the selected mesh has changed:
 		if(selectedSpatial != null) {
 			synchronized(selectedSpatial) {
 				if(selectedSpatial != null && selectedSpatial instanceof BlockInstance) {
@@ -101,7 +114,11 @@ public class CubyzMeshSelectionDetector {
 		}
 	}
 	
-	// Returns the free block right next to the currently selected block.
+	/**
+	 * Returns the free block right next to the currently selected block.
+	 * @param pos selected block position
+	 * @param dir camera direction
+	 */
 	public void getEmptyPlace(Vector3i pos, Vector3i dir) {
 		if(selectedSpatial != null && selectedSpatial instanceof BlockInstance) {
 			pos.set(((BlockInstance)selectedSpatial).x, ((BlockInstance)selectedSpatial).y, ((BlockInstance)selectedSpatial).z);

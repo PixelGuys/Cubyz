@@ -4,6 +4,10 @@ import java.util.HashMap;
 
 import static io.cubyz.CubyzLogger.logger;
 
+/**
+ * A translation of all cubyz texts to a certain language.
+ */
+
 public class Language {
 
 	private HashMap<String, String> keyValues = new HashMap<>();

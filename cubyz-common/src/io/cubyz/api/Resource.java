@@ -1,5 +1,9 @@
 package io.cubyz.api;
 
+/**
+ * Resource IDs are used for registering. The general recommended format is "mod:name".
+ */
+
 public class Resource {
 
 	public static final Resource EMPTY = new Resource("empty:empty");

@@ -12,7 +12,13 @@ import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.world.BlockSpatial;
 
+/**
+ * Rotates and translates the model, so it hangs on the wall or stands on the ground like a torch.<br>
+ * It also allows the player to place multiple torches of the same type in different rotation in the same block.
+ */
+
 public class TorchRotation implements RotationMode {
+	// Position offsets for the torch hanging on the wall:
 	private static final Vector3f POS_X = new Vector3f(0.4f, 0.2f, 0);
 	private static final Vector3f NEG_X = new Vector3f(-0.4f, 0.2f, 0);
 	private static final Vector3f POS_Z = new Vector3f(0, 0.2f, 0.4f);

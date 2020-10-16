@@ -6,6 +6,10 @@ import io.cubyz.ui.components.ProgressBar;
 import io.cubyz.utils.ResourceManager;
 import io.jungle.Window;
 
+/**
+ * A GUI showing the progress of the loading phase.
+ */
+
 public class LoadingGUI extends MenuGUI {
 
 	private static final LoadingGUI INSTANCE = new LoadingGUI();

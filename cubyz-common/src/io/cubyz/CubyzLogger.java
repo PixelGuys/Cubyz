@@ -15,6 +15,10 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
+/**
+ * Used for logging. Best to use with `import static io.cubyz.CubyzLogger.logger`.
+ */
+
 public class CubyzLogger extends Logger {
 
 	public static boolean useDefaultHandler = false;

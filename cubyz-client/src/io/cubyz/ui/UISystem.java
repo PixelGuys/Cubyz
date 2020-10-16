@@ -12,6 +12,10 @@ import io.jungle.Window;
 import io.jungle.hud.Font;
 import io.jungle.hud.Hud;
 
+/**
+ * UI system working in the background, to add effects like transition.
+ */
+
 public class UISystem extends Hud {
 
 	private boolean inited = false;
@@ -24,7 +28,7 @@ public class UISystem extends Hud {
 	
 	public static float guiScale = 1f;
 	private TransitionStyle curTransition;
-	private long lastAnimMs = System.currentTimeMillis();
+	private long lastAnimTime = System.currentTimeMillis();
 	private long transitionDur;
 
 	public UISystem() {}
@@ -121,8 +125,8 @@ public class UISystem extends Hud {
 	public void render(Window window) {
 		if (inited) {
 			super.render(window);
-			transitionDur += System.currentTimeMillis() - lastAnimMs;
-			lastAnimMs = System.currentTimeMillis();
+			transitionDur += System.currentTimeMillis() - lastAnimTime;
+			lastAnimTime = System.currentTimeMillis();
 			nvgBeginFrame(nvg, window.getWidth(), window.getHeight(), 1);
 			NGraphics.setGlobalAlphaMultiplier(1f);
 			NGraphics.setColor(0, 0, 0);

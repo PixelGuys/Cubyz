@@ -7,6 +7,11 @@ import io.cubyz.ui.NGraphics;
 import io.jungle.MouseInput;
 import io.jungle.Window;
 
+/**
+ * A pressable button which fires an event on press.<br>
+ * TODO: Custom texture.
+ */
+
 public class Button extends Component {
 	
 	private static final int[] button = {
@@ -36,7 +41,7 @@ public class Button extends Component {
 	private boolean pressed;
 	private boolean hovered;
 	private boolean canRepress = true;
-	private Runnable run;
+	private Runnable onAction;
 	private float fontSize = 12f;
 	private TextKey text;
 	private Object userObject;
@@ -71,8 +76,8 @@ public class Button extends Component {
 		this.text = text;
 	}
 
-	public void setOnAction(Runnable run) {
-		this.run = run;
+	public void setOnAction(Runnable onAction) {
+		this.onAction = onAction;
 	}
 	
 	public float getFontSize() {
@@ -115,8 +120,8 @@ public class Button extends Component {
 			pressed = false;
 			canRepress = true;
 			if (isInside(mouse.getCurrentPos())) {
-				if (run != null) {
-					run.run();
+				if (onAction != null) {
+					onAction.run();
 				}
 			}
 		}

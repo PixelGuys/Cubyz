@@ -19,6 +19,11 @@ import io.jungle.renderers.Transformation;
 import io.jungle.util.Material;
 import io.jungle.util.ShaderProgram;
 
+/**
+ * An entity model for all possible quadruped mobs that handles model creation and movement animation.<br>
+ * TODO: Simplify this and allow for custom head/leg/body models.
+ */
+
 public class Quadruped implements EntityModel {
 	private enum MovementPattern {
 		STABLE, FAST,

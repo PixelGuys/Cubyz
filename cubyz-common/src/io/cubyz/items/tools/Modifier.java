@@ -3,7 +3,10 @@ package io.cubyz.items.tools;
 import io.cubyz.api.RegistryElement;
 import io.cubyz.api.Resource;
 
-// Modifier a certain material may have.
+/**
+ * A modifier is a special property that a material can have.
+ */
+
 public abstract class Modifier implements RegistryElement {
 	protected final Resource id;
 	protected final String name;

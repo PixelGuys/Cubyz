@@ -6,6 +6,10 @@ import io.cubyz.ui.NGraphics;
 import io.jungle.Window;
 import io.jungle.hud.Font;
 
+/**
+ * Just a simple component for text display only.
+ */
+
 public class Label extends Component {
 
 	private Font font = new Font("Default", 12.f);

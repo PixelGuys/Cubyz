@@ -10,7 +10,7 @@ import java.util.Set;
 import org.reflections.Reflections;
 
 import io.cubyz.ClientOnly;
-import io.cubyz.Configuration;
+import io.cubyz.ClientSettings;
 import io.cubyz.Constants;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Mod;
@@ -29,6 +29,10 @@ import io.jungle.util.StaticMeshesLoader;
 
 import static io.cubyz.CubyzLogger.logger;
 
+/**
+ * Loads all mods.
+ */
+
 public class LoadThread extends Thread {
 
 	static int i = -1;
@@ -41,7 +45,7 @@ public class LoadThread extends Thread {
 	
 	public void run() {
 		setName("Load-Thread");
-		Cubyz.renderDeque.add(Configuration::load); // run in render thread due to some graphical reasons
+		Cubyz.renderDeque.add(ClientSettings::load); // run in render thread due to some graphical reasons
 		LoadingGUI l = LoadingGUI.getInstance();
 		l.setStep(1, 0, 0);
 		

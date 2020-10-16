@@ -32,19 +32,11 @@ import io.cubyz.world.cubyzgenerators.biomes.SimpleVegetation;
 import io.cubyz.world.generator.*;
 
 /**
- * Mod adding Cubyz default content.
+ * Mod adding Cubyz default content, which is not added by addon files.
  */
 @Mod(id = "cubyz", name = "Cubyz")
 @SuppressWarnings("unused")
 public class BaseMod {
-	
-	// Entities:
-	static PlayerEntity player;
-	
-	// Recipes:
-	static Recipe oakLogToPlanks;
-	static Recipe oakPlanksToStick;
-	static Recipe oakToWorkbench;
 	
 	// Client Proxy is defined in cubyz-client, a normal mod would define it in the same mod of course.
 	// Proxies are injected at runtime.

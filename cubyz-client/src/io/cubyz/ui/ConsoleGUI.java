@@ -9,6 +9,11 @@ import io.jungle.Keyboard;
 import io.jungle.Window;
 
 // (the console GUI is different from chat GUI)
+
+/**
+ * A GUI to enter cheat commands.
+ */
+
 public class ConsoleGUI extends MenuGUI {
 
 	TextInput input;

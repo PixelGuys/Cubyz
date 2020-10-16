@@ -9,6 +9,10 @@ import io.cubyz.blocks.Block;
 import io.cubyz.items.Item;
 import io.cubyz.ndt.NDTContainer;
 
+/**
+ * An item that can break blocks faster on use or does damage to entities.
+ */
+
 public abstract class Tool extends Item {
 	
 	Material head, binding, handle;

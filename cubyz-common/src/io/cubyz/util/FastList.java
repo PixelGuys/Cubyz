@@ -4,10 +4,11 @@ import java.lang.reflect.Array;
 import java.util.Comparator;
 
 /** 
- * A faster list implementation.
- * Velocity is reached by sacrificing bound checks, by keeping some additional memory
+ * A faster list implementation.<br>
+ * Velocity is reached by sacrificing bound checks, by keeping some additional memory<br>
  * (When removing elements they are not necessarily cleared from the array) and through direct data access.
 **/
+
 public class FastList<T> {
 
 	public T[] array;

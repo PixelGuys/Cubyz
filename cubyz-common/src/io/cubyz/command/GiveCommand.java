@@ -6,6 +6,10 @@ import io.cubyz.entity.Player;
 import io.cubyz.items.Inventory;
 import io.cubyz.items.Item;
 
+/**
+ * Gives a certain item to the local player.
+ */
+
 public class GiveCommand extends CommandBase {
 
 	{

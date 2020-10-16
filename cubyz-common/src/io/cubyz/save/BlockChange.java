@@ -7,6 +7,10 @@ import io.cubyz.api.RegistryElement;
 import io.cubyz.blocks.Block;
 import io.cubyz.math.Bits;
 
+/**
+ * Used to store the difference between the generated world and the player-edited world for easier storage.
+ */
+
 public class BlockChange {
 	public int oldType, newType; // IDs of the blocks. -1 = air
 	public byte oldData, newData; // Data of the blocks. Mostly used for storing rotation and flow data.

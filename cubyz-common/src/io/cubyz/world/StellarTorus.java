@@ -2,7 +2,7 @@ package io.cubyz.world;
 
 import org.joml.Vector4f;
 
-/*
+/**
  * STELLAR TORUSES !!1!!!
  */
 public abstract class StellarTorus {

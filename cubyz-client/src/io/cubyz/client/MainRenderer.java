@@ -31,11 +31,14 @@ import io.jungle.util.ShaderProgram;
 import io.jungle.util.SpotLight;
 import io.jungle.util.Utils;
 
-// Renderer that is used when easyLighting is enabled.
+/**
+ * Renderer that is used when easyLighting is enabled.
+ */
 
 @SuppressWarnings("unchecked")
 public class MainRenderer implements Renderer {
 
+	/**A simple shader for low resolution chunks*/
 	private ShaderProgram chunkShader;
 	private ShaderProgram blockShader;
 	private ShaderProgram entityShader; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
@@ -129,6 +132,13 @@ public class MainRenderer implements Renderer {
 
 	FastList<Spatial>[] map = (FastList<Spatial>[]) new FastList[0];
 	
+	/**
+	 * Sorts the chunks based on their distance from the player to reduce complexity when sorting the transparent blocks.
+	 * @param toSort
+	 * @param playerX
+	 * @param playerZ
+	 * @return sorted chunk array
+	 */
 	public Chunk[] sortChunks(Chunk[] toSort, float playerX, float playerZ) {
 		Chunk[] output = new Chunk[toSort.length];
 		float[] distances = new float[toSort.length];

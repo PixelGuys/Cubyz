@@ -5,7 +5,9 @@ import java.util.Random;
 import io.cubyz.blocks.Block;
 import io.cubyz.world.World;
 
-// One position vegetation, like grass or cactus.
+/**
+ * One position vegetation, like grass or cactus.
+ */
 
 public class SimpleVegetation extends StructureModel {
 	Block block;

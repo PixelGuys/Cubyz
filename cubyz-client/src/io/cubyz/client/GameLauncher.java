@@ -6,6 +6,10 @@ import static io.cubyz.CubyzLogger.logger;
 
 import io.cubyz.CubyzLogger;
 
+/**
+ * Class containing the main function.
+ */
+
 public class GameLauncher extends Game {
 
 	public static GameLauncher instance;

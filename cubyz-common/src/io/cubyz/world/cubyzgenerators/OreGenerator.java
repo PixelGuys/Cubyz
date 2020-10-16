@@ -7,6 +7,10 @@ import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.Ore;
 
+/**
+ * Generator of ore veins.
+ */
+
 public class OreGenerator implements Generator {
 	
 	@Override

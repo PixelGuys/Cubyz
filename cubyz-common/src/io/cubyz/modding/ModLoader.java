@@ -19,7 +19,9 @@ import io.cubyz.api.SideOnly;
 
 import static io.cubyz.CubyzLogger.logger;
 
-// Most methods should ALWAYS be found as if it were on Side.SERVER
+/**
+ * Most methods should ALWAYS be found as if it were on Side.SERVER
+ */
 public class ModLoader {
 	
 	public static boolean isCorrectSide(Side currentSide, Method method) {

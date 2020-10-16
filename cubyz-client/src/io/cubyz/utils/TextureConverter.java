@@ -14,6 +14,11 @@ import javax.imageio.ImageIO;
 
 import org.lwjgl.system.MemoryUtil;
 
+/**
+ * Collection of texture conversion tools such as:<br>
+ * laying textures on top of each other, converting the color and converting image to stream or buffer.
+ */
+
 public class TextureConverter {
 
 	public static ByteBuffer byteBuffer(BufferedImage img) {

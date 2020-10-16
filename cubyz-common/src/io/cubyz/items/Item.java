@@ -5,6 +5,10 @@ import io.cubyz.api.Resource;
 import io.cubyz.entity.Entity;
 import io.cubyz.translate.TextKey;
 
+/**
+ * "Thing" the player can store in their inventory.
+ */
+
 public class Item implements RegistryElement {
 
 	private int image = -1;

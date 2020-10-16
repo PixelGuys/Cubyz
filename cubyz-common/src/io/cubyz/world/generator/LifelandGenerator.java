@@ -19,6 +19,10 @@ import io.cubyz.world.World;
 import io.cubyz.world.cubyzgenerators.*;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 
+/**
+ * The normal generator for Cubyz.
+ */
+
 public class LifelandGenerator extends SurfaceGenerator {
 	
 	public static void init() {

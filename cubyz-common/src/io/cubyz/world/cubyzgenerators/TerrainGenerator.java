@@ -11,6 +11,10 @@ import io.cubyz.world.Surface;
 import io.cubyz.world.World;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 
+/**
+ * Generates the basic terrain(stone, dirt, sand, ...).
+ */
+
 public class TerrainGenerator implements FancyGenerator, ReducedGenerator {
 	
 	@Override

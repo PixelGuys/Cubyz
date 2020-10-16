@@ -5,6 +5,11 @@ import static org.lwjgl.glfw.GLFW.*;
 import io.cubyz.client.Cubyz;
 import io.jungle.Keyboard;
 
+/**
+ * Stores the current key bindings.<br>
+ * TODO: Integrate this into ClientSettings for consistency.
+ */
+
 public class Keybindings {
 	
 	public static final int MOUSE_LEFT_CLICK = 78945;
@@ -12,7 +17,7 @@ public class Keybindings {
 	public static final int MOUSE_RIGHT_CLICK = 78947;
 
 	public static String[] keyNames = {
-		"place",
+		"place/use",
 		"destroy",
 		"forward",
 		"backward",

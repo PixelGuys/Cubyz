@@ -16,6 +16,10 @@ import io.cubyz.util.FloatFastList;
 import io.cubyz.util.IntFastList;
 import io.cubyz.world.ReducedChunk;
 
+/**
+ * Used to create chunk meshes for reduced chunks.
+ */
+
 public class ReducedChunkMesh {
 	// ThreadLocal lists, to prevent (re-)allocating tons of memory.
 	public static ThreadLocal<FloatFastList> localVertices = new ThreadLocal<FloatFastList>() {

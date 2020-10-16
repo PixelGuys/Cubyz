@@ -4,6 +4,10 @@ import java.nio.charset.Charset;
 
 import io.cubyz.api.Side;
 
+/**
+ * A set of constant like version or math.
+ */
+
 public class Constants {
 
 	public static final String CHARSET_NAME = "UTF-8";
@@ -15,6 +19,12 @@ public class Constants {
 	public static final String GAME_VERSION = "0.6.0";
 	public static final int GAME_PROTOCOL_VERSION = 1;
 	public static final String GAME_BRAND = "cubyz";
+	
+	/**float math constants*/
+	public static final float	PI = (float)Math.PI,
+								PI_HALF = PI/2;
+	
+	
 	static Side currentSide = null;
 	
 	public static Side getGameSide() {

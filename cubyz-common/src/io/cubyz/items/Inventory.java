@@ -5,6 +5,10 @@ import io.cubyz.blocks.Block;
 import io.cubyz.items.tools.Tool;
 import io.cubyz.ndt.NDTContainer;
 
+/**
+ * A storage container for Items.
+ */
+
 public class Inventory {
 	private ItemStack[] items; // First 8 item stacks are the hotbar
 	

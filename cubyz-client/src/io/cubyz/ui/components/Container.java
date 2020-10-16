@@ -5,7 +5,11 @@ import java.util.ArrayList;
 import io.cubyz.ui.Component;
 import io.jungle.Window;
 
-public class Container extends Component {
+/**
+ * A Component that contains other Components.
+ */
+
+public abstract class Container extends Component {
 
 	protected ArrayList<Component> childrens;
 	

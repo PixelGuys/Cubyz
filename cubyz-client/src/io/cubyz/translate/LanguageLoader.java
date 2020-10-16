@@ -11,6 +11,10 @@ import io.cubyz.utils.ResourceManager;
 
 import static io.cubyz.CubyzLogger.logger;
 
+/**
+ * Loads a language file based on locale.
+ */
+
 public class LanguageLoader {
 
 	public static Language load(String locale) {

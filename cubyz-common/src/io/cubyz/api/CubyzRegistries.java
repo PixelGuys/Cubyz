@@ -12,6 +12,10 @@ import io.cubyz.items.tools.Modifier;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 import io.cubyz.world.generator.SurfaceGenerator;
 
+/**
+ * A list of registries that are used on both server and client.
+ */
+
 public class CubyzRegistries {
 
 	public static final Registry<Block>       BLOCK_REGISTRY         = new Registry<Block>();

@@ -3,6 +3,10 @@ package io.cubyz.items;
 import io.cubyz.blocks.CustomOre;
 import io.cubyz.translate.TextKey;
 
+/**
+ * Used for randomly generated items.
+ */
+
 public class CustomItem extends Item {
 	private static final int GEM = 0, METAL = 1, CRYSTAL = 2;// More to come.
 	private int color;

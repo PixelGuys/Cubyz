@@ -7,6 +7,10 @@ import io.cubyz.entity.Player;
 import io.cubyz.world.Chunk;
 import io.cubyz.world.Surface;
 
+/**
+ * A block that will be used for rendering.
+ */
+
 public class BlockInstance {
 
 	private Block block;

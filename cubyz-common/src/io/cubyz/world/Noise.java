@@ -8,6 +8,7 @@ import io.cubyz.math.CubyzMath;
  * Fractal Noise Generator for world generation.
  * @author IntegratedQuantum
  */
+
 public class Noise {
 	static long getSeed(int x, int y, int offsetX, int offsetY, int worldSize, long seed) {
 		return (((long)(CubyzMath.worldModulo(offsetX + x, worldSize))) << 16) ^ seed ^ (((long)(CubyzMath.worldModulo(offsetY + y, worldSize))) << 32);

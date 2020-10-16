@@ -9,6 +9,7 @@ import io.cubyz.api.RegistryElement;
  * Abstract class for all game commands.
  * @author zenith391
  */
+
 public abstract class CommandBase implements RegistryElement {
 
 	protected String name;

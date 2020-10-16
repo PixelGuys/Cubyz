@@ -9,6 +9,11 @@ import io.jungle.Keyboard;
 import io.jungle.Window;
 import io.jungle.hud.Font;
 
+/**
+ * Just a text field.<br>
+ * TODO: In most utilities you will start writing multiple characters, after pressing a key for longer time(the exact timing is defined in the OS), you will write more characters.
+ */
+
 public class TextInput extends Component {
 
 	private Font font = new Font("Default", 12.f);
@@ -38,7 +43,7 @@ public class TextInput extends Component {
 	@Override
 	public void render(long nvg, Window src) {
 		NGraphics.setColor(127, 127, 127);
-		NGraphics.fillRect(x-3, y-3, width+6, height+6);
+		NGraphics.fillRect(x - 3, y - 3, width + 6, height + 6);
 		
 		if (focused)
 			NGraphics.setColor(200, 200, 200);
@@ -49,7 +54,7 @@ public class TextInput extends Component {
 		NGraphics.setFont(font);
 		float textWidth = NGraphics.getTextWidth(text);
 		float textHeight = NGraphics.getTextAscent(text);
-		NGraphics.drawText(x+2, y+height/2 - textHeight, text);
+		NGraphics.drawText(x + 2, y + height/2 - textHeight, text);
 		
 		if (Cubyz.mouse.isLeftButtonPressed() && !hasPressed) {
 			hasPressed = true;
@@ -71,7 +76,7 @@ public class TextInput extends Component {
 			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_BACKSPACE)) {
 				if (text.length() > 0) {
-					text = text.substring(0, text.length()-1);
+					text = text.substring(0, text.length() - 1);
 				}
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_BACKSPACE, false);
 				cursorVisible = true;
@@ -79,7 +84,7 @@ public class TextInput extends Component {
 			
 			if (cursorVisible) {
 				NGraphics.setColor(0, 0, 0);
-				NGraphics.drawText(x+2+textWidth, y+height/2 - textHeight, "_");
+				NGraphics.drawText(x + 2 + textWidth, y + height/2 - textHeight, "_");
 			}
 			
 			if (cursorCounter >= 30) {

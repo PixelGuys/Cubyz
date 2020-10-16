@@ -9,6 +9,10 @@ import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.math.CubyzMath;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 
+/**
+ * Generates a special cavern that contains giant crystals.
+ */
+
 public class CrystalCavernGenerator implements FancyGenerator {
 	
 	private static Block glowCrystal, crystalOre;

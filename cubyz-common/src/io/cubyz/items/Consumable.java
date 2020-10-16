@@ -2,6 +2,10 @@ package io.cubyz.items;
 
 import io.cubyz.entity.Entity;
 
+/**
+ * Things the player can eat, drink, or otherwise use once.
+ */
+
 public class Consumable extends Item {
 	float foodValue;
 	// TODO: Effects.

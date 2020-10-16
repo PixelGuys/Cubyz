@@ -5,7 +5,7 @@ import io.cubyz.multiplayer.server.CubyzServer;
 import io.cubyz.translate.TextKey;
 import io.cubyz.ui.components.Button;
 import io.cubyz.ui.components.Label;
-import io.cubyz.ui.options.OptionsGUI;
+import io.cubyz.ui.settings.SettingsGUI;
 import io.cubyz.utils.DiscordIntegration;
 import io.jungle.Window;
 import io.jungle.hud.Font;
@@ -15,7 +15,7 @@ public class MainMenuGUI extends MenuGUI {
 	private Button spPlay = new Button();
 	private Button mpPlay = new Button();
 	private Button exit = new Button();
-	private Button options = new Button();
+	private Button settings = new Button();
 	private Label titleLabel = new Label();
 	
 	public MainMenuGUI() {
@@ -28,9 +28,9 @@ public class MainMenuGUI extends MenuGUI {
 		mpPlay.setText(TextKey.createTextKey("gui.cubyz.mainmenu.multiplayer"));
 		mpPlay.setFontSize(16f);
 		
-		options.setSize(250, 45);
-		options.setText(TextKey.createTextKey("gui.cubyz.mainmenu.options"));
-		options.setFontSize(16f);
+		settings.setSize(250, 45);
+		settings.setText(TextKey.createTextKey("gui.cubyz.mainmenu.settings"));
+		settings.setFontSize(16f);
 		
 		exit.setSize(100, 27);
 		exit.setText(TextKey.createTextKey("gui.cubyz.mainmenu.exit"));
@@ -66,8 +66,8 @@ public class MainMenuGUI extends MenuGUI {
 			Cubyz.instance.game.exit();
 		});
 		
-		options.setOnAction(() -> {
-			Cubyz.gameUI.setMenu(new OptionsGUI());
+		settings.setOnAction(() -> {
+			Cubyz.gameUI.setMenu(new SettingsGUI());
 		});
 	}
 	
@@ -75,13 +75,13 @@ public class MainMenuGUI extends MenuGUI {
 	public void render(long nvg, Window win) {
 		spPlay.setPosition(win.getWidth() / 2 - 125, 300);
 		mpPlay.setPosition(win.getWidth() / 2 - 125, 375);
-		options.setPosition(win.getWidth() / 2 - 125, 450);
+		settings.setPosition(win.getWidth() / 2 - 125, 450);
 		exit.setPosition(win.getWidth() - 120, win.getHeight() - 40);
 		titleLabel.setPosition(win.getWidth() / 2 - 80, 50);
 		
 		spPlay.render(nvg, win);
 		mpPlay.render(nvg, win);
-		options.render(nvg, win);
+		settings.render(nvg, win);
 		exit.render(nvg, win);
 		titleLabel.render(nvg, win);
 	}

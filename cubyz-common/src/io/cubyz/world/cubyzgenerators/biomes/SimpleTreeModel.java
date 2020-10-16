@@ -7,6 +7,11 @@ import io.cubyz.world.MetaChunk;
 import io.cubyz.world.ReducedChunk;
 import io.cubyz.world.World;
 
+/**
+ * Creates a variety of different tree shapes.<br>
+ * TODO: Add more!
+ */
+
 public class SimpleTreeModel extends StructureModel implements ReducedStructureModel {
 	private enum Type { // TODO: More different types and type access through biome addon files.
 		PYRAMID,

@@ -4,6 +4,10 @@ import java.util.Random;
 
 import io.cubyz.math.CubyzMath;
 
+/**
+ * A generator for (multi-layered) perlin noise.
+ */
+
 public class PerlinNoise {
 	private Random r = new Random();
 

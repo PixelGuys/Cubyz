@@ -6,6 +6,10 @@ import io.cubyz.ui.Component;
 import io.cubyz.ui.NGraphics;
 import io.jungle.Window;
 
+/**
+ * A simple checkbox which fires an event on change.
+ */
+
 public class CheckBox extends Component {
 	private boolean selected = false;
 	private Label label;
@@ -63,7 +67,7 @@ public class CheckBox extends Component {
 		}
 		if (selected) {
 			NGraphics.setColor(50, 200, 50);
-			NGraphics.fillRect(x+2, y+2, width-5, height-5);
+			NGraphics.fillRect(x + 2, y + 2, width - 5, height - 5);
 		}
 		if (label != null) {
 			label.setPosition(x + width + 5, y + 10);

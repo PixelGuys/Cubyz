@@ -5,8 +5,9 @@ import java.util.Random;
 import io.cubyz.blocks.Block;
 import io.cubyz.world.ReducedChunk;
 
-// Stores the vertical structure of a biome from top to bottom.
-// TODO: Randomly variable structure(like top-block is either ice or snow, or there are 4-7 sand blocks on top).
+/**
+ * Stores the vertical structure of a biome from top to bottom.<br>
+ */
 
 public class BlockStructure {
 	private final BlockStack[] structure;

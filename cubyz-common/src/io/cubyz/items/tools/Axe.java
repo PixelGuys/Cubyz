@@ -9,6 +9,10 @@ import io.cubyz.items.ItemStack;
 import io.cubyz.translate.ContextualTextKey;
 import io.cubyz.translate.TextKey;
 
+/**
+ * A tool for cutting wood.
+ */
+
 public class Axe extends Tool {
 	private static final int HEAD = 300, BINDING = 50, HANDLE = 50;
 	private static final float baseSpeed = 2.0f, baseDamage = 2.0f;

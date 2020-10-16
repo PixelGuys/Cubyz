@@ -5,6 +5,11 @@ import java.util.List;
 
 import static io.cubyz.CubyzLogger.logger;
 
+/**
+ * A registry type that doesn't use any ID, but instead uses the T.equals() function.
+ * @param <T>
+ */
+
 public class NoIDRegistry<T> {
 	private ArrayList<T> registered;
 	private boolean debug = Boolean.parseBoolean(System.getProperty("registry.debugEnabled", "false"));

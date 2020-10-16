@@ -10,6 +10,10 @@ import io.cubyz.items.ItemStack;
 import io.cubyz.ndt.NDTContainer;
 import io.cubyz.world.Surface;
 
+/**
+ * An ItemStack that lies on the ground and can be picked up.
+ */
+
 public class ItemEntity extends Entity implements CustomMeshProvider {
 	
 	public static class ItemEntityType extends EntityType {

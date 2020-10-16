@@ -8,6 +8,7 @@ import io.cubyz.entity.Player;
 /**
  * Base class for Cubyz worlds.
  */
+
 public abstract class World {
 
 	public static final int WORLD_HEIGHT = 256;

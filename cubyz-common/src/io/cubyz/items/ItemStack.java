@@ -4,6 +4,10 @@ import io.cubyz.api.CurrentSurfaceRegistries;
 import io.cubyz.blocks.Block;
 import io.cubyz.ndt.NDTContainer;
 
+/**
+ * A stack of items, used for storage in inventories.
+ */
+
 public class ItemStack {
 
 	private Item item;

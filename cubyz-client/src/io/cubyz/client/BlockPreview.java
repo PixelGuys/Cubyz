@@ -22,7 +22,9 @@ import io.jungle.renderers.Transformation;
 import io.jungle.util.ShaderProgram;
 import io.jungle.util.Utils;
 
-// Used for rendering block preview images in the inventory.
+/**
+ * Used for rendering block preview images in the inventory.
+ */
 
 public abstract class BlockPreview {
 	private static ShaderProgram shader;
@@ -67,17 +69,17 @@ public abstract class BlockPreview {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	}
 	
-	public static FrameBuffer generateBuffer(Window window, Vector3f ambientLight, Block b) {
-		FrameBuffer buf = new FrameBuffer();
-		buf.genColorTexture(64, 64);
-		buf.genRenderbuffer(64, 64);
-		buf.bind();
-		window.setRenderTarget(buf);
+	public static FrameBuffer generateBuffer(Window window, Vector3f ambientLight, Block block) {
+		FrameBuffer buffer = new FrameBuffer();
+		buffer.genColorTexture(64, 64);
+		buffer.genRenderbuffer(64, 64);
+		buffer.bind();
+		window.setRenderTarget(buffer);
 		window.setClearColor(new Vector4f(0f, 0f, 0f, 0f));
 		
-		Mesh mesh = Meshes.blockMeshes.get(b);
+		Mesh mesh = Meshes.blockMeshes.get(block);
 		Spatial spatial = new Spatial(mesh);
-		Texture texture = Meshes.blockTextures.get(b);
+		Texture texture = Meshes.blockTextures.get(block);
 		
 		glViewport(0, 0, 64, 64);
 		Matrix4f projectionMatrix = transformation.getOrthoProjectionMatrix(0.9f, -0.9f, -0.9f, 0.9f, 0.1f, 1000.0f);
@@ -102,7 +104,7 @@ public abstract class BlockPreview {
 		glViewport(0, 0, window.getWidth(), window.getHeight());
 		
 		window.setRenderTarget(null);
-		return buf;
+		return buffer;
 	}
 
 	public static void cleanup() {

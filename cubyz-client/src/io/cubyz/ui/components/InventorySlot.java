@@ -17,13 +17,17 @@ import io.jungle.MouseInput;
 import io.jungle.Window;
 import io.jungle.hud.Font;
 
-// GUI for an inventory slot referencing an ItemStack somewhere else.
-public class InventorySlot extends Component {
-	public static final int SLOTSIZE = 64;
-	public static final int SLOT = NGraphics.loadImage("assets/cubyz/guis/inventory/inventory_slot.png");
+/**
+ * GUI for an inventory slot referencing an ItemStack.
+ */
 
-	private boolean pressed = false;
-	private boolean pressedR = false;
+
+public class InventorySlot extends Component {
+	public static final int SLOT_SIZE = 64;
+	public static final int SLOT_IMAGE = NGraphics.loadImage("assets/cubyz/guis/inventory/inventory_slot.png");
+
+	/**State of mouse buttons if the mouse is in the area.*/
+	private boolean pressedLeft = false, pressedRight = false;
 	public boolean takeOnly;
 	
 	// WARNING: The y-axis for this element goes from bottom to top!
@@ -38,7 +42,7 @@ public class InventorySlot extends Component {
 		inv.setFont(new Font("Default", 16.f));
 		this.x = x;
 		this.y = y;
-		width = height = SLOTSIZE;
+		width = height = SLOT_SIZE;
 		this.takeOnly = takeOnly;
 	}
 	public InventorySlot(ItemStack ref, int x, int y) {
@@ -82,16 +86,16 @@ public class InventorySlot extends Component {
 		if(!isInside(mouse.getCurrentPos(), width, height))
 			return false;
 		if(mouse.isLeftButtonPressed()) {
-			pressed = true;
+			pressedLeft = true;
 			return false;
 		}
 		if(mouse.isRightButtonPressed()) {
-			pressedR = true;
+			pressedRight = true;
 			return false;
 		}
-		if(!pressed && !pressedR)
+		if(!pressedLeft && !pressedRight)
 			return false;
-		if(pressedR && carried.getItem() != null) {
+		if(pressedRight && carried.getItem() != null) {
 			if(reference.getItem() == carried.getItem()) {
 				if(reference.add(1) != 0)
 					carried.add(-1);
@@ -101,14 +105,14 @@ public class InventorySlot extends Component {
 				reference.setAmount(1);
 				carried.add(-1);
 			}
-			pressedR = false;
+			pressedRight = false;
 			return true;
 		}
-		pressedR = false;
+		pressedRight = false;
 		// If the mouse button was just released inside after pressing:
 		// Remove the ItemStack from this slot and replace with the one carried by the mouse.
 		// Actual replacement in the inventory is done elsewhere.
-		pressed = false;
+		pressedLeft = false;
 		if(reference.getItem() == carried.getItem()) {
 			reference.setAmount(carried.getAmount() + reference.getAmount());
 			carried.clear();
@@ -125,7 +129,7 @@ public class InventorySlot extends Component {
 
 	@Override
 	public void render(long nvg, Window win) {
-		NGraphics.drawImage(SLOT, win.getWidth()/2 + x, win.getHeight() - y, width, height);
+		NGraphics.drawImage(SLOT_IMAGE, win.getWidth()/2 + x, win.getHeight() - y, width, height);
 		Item item = reference.getItem();
 		if(item != null) {
 			if(item.getImage() == -1) {

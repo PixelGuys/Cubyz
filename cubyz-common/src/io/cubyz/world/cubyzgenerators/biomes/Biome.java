@@ -3,6 +3,10 @@ package io.cubyz.world.cubyzgenerators.biomes;
 import io.cubyz.api.RegistryElement;
 import io.cubyz.api.Resource;
 
+/**
+ * A climate region with special ground, plants and structures.
+ */
+
 public class Biome implements RegistryElement {
 	public float temperature;
 	float humidity;

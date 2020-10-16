@@ -5,6 +5,10 @@ import io.cubyz.entity.Player;
 import io.cubyz.items.Inventory;
 import io.cubyz.items.ItemStack;
 
+/**
+ * Clears the inventory of the local player.
+ */
+
 public class ClearCommand extends CommandBase {
 
 	{

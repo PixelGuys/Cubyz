@@ -4,6 +4,11 @@ import io.cubyz.ui.Component;
 import io.cubyz.ui.NGraphics;
 import io.jungle.Window;
 
+/**
+ * A bar that shows progress :P<br>
+ * TODO: Custom color.
+ */
+
 public class ProgressBar extends Component {
 
 	int value;
