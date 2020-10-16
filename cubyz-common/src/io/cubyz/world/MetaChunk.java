@@ -25,17 +25,11 @@ public class MetaChunk {
 		this.x = x;
 		this.z = z;
 		this.world = world;
-<<<<<<< HEAD
-		heightMap = PerlinNoise.generateThreeOctaveMapFragment(x, z, 256, 256, 2048, seed, world.getSize());
-		heatMap = PerlinNoise.generateThreeOctaveMapFragment(x, z, 256, 256, 2048, seed ^ 6587946239L, world.getSize());
-		humidityMap = PerlinNoise.generateThreeOctaveMapFragment(x, z, 256, 256, 2048, seed ^ -1324585483391L, world.getSize());
-=======
 		
 		PerlinNoise noise = threadLocalNoise.get();
 		heightMap = noise.generateThreeOctaveMapFragment(x, z, 256, 256, 2048, seed, world.getSize());
 		heatMap = noise.generateThreeOctaveMapFragment(x, z, 256, 256, 2048, seed ^ 6587946239L, world.getSize());
 		humidityMap = noise.generateThreeOctaveMapFragment(x, z, 256, 256, 2048, seed ^ -1324585483391L, world.getSize());
->>>>>>> far_distance_rendering
 		
 		biomeMap = new Biome[256][256];
 		advancedHeightMapGeneration(seed, registries);

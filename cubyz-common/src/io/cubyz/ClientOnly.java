@@ -6,11 +6,7 @@ import io.cubyz.api.ClientConnection;
 import io.cubyz.blocks.Block;
 import io.cubyz.entity.EntityType;
 import io.cubyz.entity.Player;
-<<<<<<< HEAD
-=======
-import io.cubyz.items.Inventory;
 import io.cubyz.world.ReducedChunk;
->>>>>>> far_distance_rendering
 
 public class ClientOnly {
 

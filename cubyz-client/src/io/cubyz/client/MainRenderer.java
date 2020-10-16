@@ -350,13 +350,8 @@ public class MainRenderer implements Renderer {
 				Mesh mesh = null;
 				if(ent.getType().model != null) {
 					entityShader.setUniform("materialHasTexture", true);
-<<<<<<< HEAD
 					entityShader.setUniform("light", ent.getSurface().getLight(x, y, z, ambientLight));
-					ent.getType().model.render(viewMatrix, entityShader, ent);
-=======
-					entityShader.setUniform("light", ent.getStellarTorus().getWorld().getCurrentTorus().getLight(x, y, z, ambientLight));
 					ent.getType().model.render(ctx.getCamera().getViewMatrix(), entityShader, ent);
->>>>>>> far_distance_rendering
 					continue;
 				}
 				if (ent instanceof CustomMeshProvider) {

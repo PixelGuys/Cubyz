@@ -349,57 +349,8 @@ public class Cubyz implements GameLogic, ClientConnection {
 		renderer.setShaderFolder(ResourceManager.lookupPath("cubyz/shaders/easyLighting"));
 		
 		BlockPreview.setShaderFolder(ResourceManager.lookupPath("cubyz/shaders/blockPreview"));
-<<<<<<< HEAD
+
 		ClientOnly.client = this;
-		ClientOnly.createBlockMesh = (block) -> {
-			Resource rsc = block.getRegistryID();
-			try {
-				Texture tex = null;
-				BlockModel bm = null;
-				if (block.generatesModelAtRuntime()) {
-					bm = ResourceUtilities.loadModel(new Resource("cubyz:undefined"));
-				} else {
-					try {
-						bm = ResourceUtilities.loadModel(rsc);
-					} catch (IOException e) {
-						logger.warning(rsc + " block model not found");
-						bm = ResourceUtilities.loadModel(new Resource("cubyz:undefined"));
-					}
-				}
-				
-				// Cached meshes
-				InstancedMesh mesh = null;
-				for (String key : cachedDefaultModels.keySet()) {
-					if (key.equals(bm.subModels.get("default").model)) {
-						mesh = cachedDefaultModels.get(key);
-					}
-				}
-				if (mesh == null) {
-					Resource rs = new Resource(bm.subModels.get("default").model);
-					mesh = (InstancedMesh)OBJLoader.loadMesh("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), true); // Block meshes are always instanced.
-					//defaultMesh = StaticMeshesLoader.loadInstanced("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), "assets/" + rs.getMod() + "/models/3d/")[0];
-					mesh.setInstances(512, ZenithsRenderer.shadowMap != null);
-					mesh.setBoundingRadius(2.0f);
-					Material material = new Material(tex, 0.6F);
-					mesh.setMaterial(material);
-					cachedDefaultModels.put(bm.subModels.get("default").model, mesh);
-				}
-				Resource texResource = new Resource(bm.subModels.get("default").texture);
-				String texture = texResource.getID();
-				if (!new File("addons/" + texResource.getMod() + "/blocks/textures/" + texture + ".png").exists()) {
-					logger.warning(texResource + " texture not found");
-					texture = "undefined";
-				}
-				tex = new Texture("addons/" + texResource.getMod() + "/blocks/textures/" + texture + ".png");
-				
-				Meshes.blockMeshes.put(block, mesh);
-				Meshes.blockTextures.put(block, tex);
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		};
-=======
->>>>>>> far_distance_rendering
 		
 		Meshes.initMeshCreators();
 		

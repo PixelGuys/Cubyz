@@ -45,13 +45,10 @@ public class Block implements RegistryElement {
 	public final short color;
 	public Class<? extends BlockEntity> blockEntity;
 	
-<<<<<<< HEAD
 	public Block() {
 		blockDrops = new BlockDrop[0];
+		color = -1;
 	}
-=======
-	public Block() {color = -1;}
->>>>>>> far_distance_rendering
 	
 	public Block(String id, float hardness, BlockClass bc) {
 		setID(id);
@@ -76,11 +73,8 @@ public class Block implements RegistryElement {
 		gui = props.getProperty("GUI", null);
 		mode = CubyzRegistries.ROTATION_MODE_REGISTRY.getByID(props.getProperty("rotation", "cubyz:no_rotation"));
 		trulyTransparent = "cubyz:plane.obj".equals(props.getProperty("model"));
-<<<<<<< HEAD
 		blockDrops = new BlockDrop[0];
-=======
 		color = (short)(Integer.decode(props.getProperty("color", "0x0000")) & 65535);
->>>>>>> far_distance_rendering
 	}
 	
 	public void setDegradable(Boolean deg) {

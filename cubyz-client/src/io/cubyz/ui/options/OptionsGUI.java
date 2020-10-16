@@ -1,13 +1,9 @@
 package io.cubyz.ui.options;
 
-<<<<<<< HEAD
 import java.io.File;
 import java.util.ArrayList;
 
-import io.cubyz.ClientSettings;
 import io.cubyz.Settings;
-=======
->>>>>>> far_distance_rendering
 import io.cubyz.client.Cubyz;
 import io.cubyz.translate.ContextualTextKey;
 import io.cubyz.translate.LanguageLoader;
@@ -112,21 +108,12 @@ public class OptionsGUI extends MenuGUI {
 	@Override
 	public void render(long nvg, Window win) {
 		done.setPosition(win.getWidth() / 2 - 125, win.getHeight() - 75);
-<<<<<<< HEAD
-		renderDistance.setPosition(win.getWidth() / 2 - 125, 75);
-		graphics.setPosition(win.getWidth() / 2 - 125, 150);
-		language.setPosition(win.getWidth() / 2 - 125, 225);
-		rpc.setPosition(win.getWidth() / 2 - 125, 300);
-		bindings.setPosition(win.getWidth() / 2 - 125, 375);
-		
-		rpc.setText(DiscordIntegration.isEnabled() ? rpcKeyOn : rpcKeyOff);
-=======
 		graphics.setPosition(win.getWidth() / 2 - 125, 75);
 		language.setPosition(win.getWidth() / 2 - 125, 150);
 		rpc.setPosition(win.getWidth() / 2 - 125, 225);
 		bindings.setPosition(win.getWidth() / 2 - 125, 300);
-		rpcKey.setArgument(0, DiscordIntegration.isEnabled() ? Cubyz.lang.translate(new TextKey("gui.cubyz.general.on")) : Cubyz.lang.translate(new TextKey("gui.cubyz.general.off")));
->>>>>>> far_distance_rendering
+
+		rpc.setText(DiscordIntegration.isEnabled() ? rpcKeyOn : rpcKeyOff);
 
 		done.render(nvg, win);
 		graphics.render(nvg, win);
