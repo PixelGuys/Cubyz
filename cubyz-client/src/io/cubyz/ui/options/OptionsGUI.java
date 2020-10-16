@@ -1,17 +1,19 @@
 package io.cubyz.ui.options;
 
+<<<<<<< HEAD
 import java.io.File;
 import java.util.ArrayList;
 
 import io.cubyz.ClientSettings;
 import io.cubyz.Settings;
+=======
+>>>>>>> far_distance_rendering
 import io.cubyz.client.Cubyz;
 import io.cubyz.translate.ContextualTextKey;
 import io.cubyz.translate.LanguageLoader;
 import io.cubyz.translate.TextKey;
 import io.cubyz.ui.MenuGUI;
 import io.cubyz.ui.components.Button;
-import io.cubyz.ui.components.Slider;
 import io.cubyz.utils.DiscordIntegration;
 import io.cubyz.utils.ResourceManager;
 import io.jungle.Window;
@@ -23,7 +25,6 @@ public class OptionsGUI extends MenuGUI {
 	private final Button language = new Button();
 	private final Button rpc = new Button();
 	private final Button bindings = new Button();
-	private final Slider renderDistance = new Slider(1, 24, ClientSettings.RENDER_DISTANCE);
 	
 	private ContextualTextKey langKey = new ContextualTextKey("gui.cubyz.options.language", "lang.name");
 	private ContextualTextKey rpcKeyOn = new ContextualTextKey("gui.cubyz.options.discord", "gui.cubyz.general.on");
@@ -60,13 +61,6 @@ public class OptionsGUI extends MenuGUI {
 		
 		done.setOnAction(() -> {
 			Cubyz.gameUI.back();
-		});
-		
-		renderDistance.setSize(250, 45);
-		renderDistance.setFontSize(18);
-		renderDistance.setText("Render Distance: ");
-		renderDistance.setOnAction(() -> {
-			ClientSettings.RENDER_DISTANCE = renderDistance.getValue();
 		});
 		
 		graphics.setSize(250, 45);
@@ -118,6 +112,7 @@ public class OptionsGUI extends MenuGUI {
 	@Override
 	public void render(long nvg, Window win) {
 		done.setPosition(win.getWidth() / 2 - 125, win.getHeight() - 75);
+<<<<<<< HEAD
 		renderDistance.setPosition(win.getWidth() / 2 - 125, 75);
 		graphics.setPosition(win.getWidth() / 2 - 125, 150);
 		language.setPosition(win.getWidth() / 2 - 125, 225);
@@ -125,9 +120,15 @@ public class OptionsGUI extends MenuGUI {
 		bindings.setPosition(win.getWidth() / 2 - 125, 375);
 		
 		rpc.setText(DiscordIntegration.isEnabled() ? rpcKeyOn : rpcKeyOff);
+=======
+		graphics.setPosition(win.getWidth() / 2 - 125, 75);
+		language.setPosition(win.getWidth() / 2 - 125, 150);
+		rpc.setPosition(win.getWidth() / 2 - 125, 225);
+		bindings.setPosition(win.getWidth() / 2 - 125, 300);
+		rpcKey.setArgument(0, DiscordIntegration.isEnabled() ? Cubyz.lang.translate(new TextKey("gui.cubyz.general.on")) : Cubyz.lang.translate(new TextKey("gui.cubyz.general.off")));
+>>>>>>> far_distance_rendering
 
 		done.render(nvg, win);
-		renderDistance.render(nvg, win);
 		graphics.render(nvg, win);
 		language.render(nvg, win);
 		rpc.render(nvg, win);

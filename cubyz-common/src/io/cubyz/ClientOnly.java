@@ -6,6 +6,11 @@ import io.cubyz.api.ClientConnection;
 import io.cubyz.blocks.Block;
 import io.cubyz.entity.EntityType;
 import io.cubyz.entity.Player;
+<<<<<<< HEAD
+=======
+import io.cubyz.items.Inventory;
+import io.cubyz.world.ReducedChunk;
+>>>>>>> far_distance_rendering
 
 public class ClientOnly {
 
@@ -13,6 +18,7 @@ public class ClientOnly {
 	public static Consumer<Block> createBlockMesh;
 	public static Consumer<EntityType> createEntityMesh;
 	public static Consumer<Player> onBorderCrossing;
+	public static Consumer<ReducedChunk> deleteChunkMesh;
 	
 	// I didn't know where else to put it.
 	public static ClientConnection client;

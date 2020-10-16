@@ -3,9 +3,11 @@ package io.cubyz.world.cubyzgenerators.biomes;
 import java.util.Random;
 
 import io.cubyz.blocks.Block;
+import io.cubyz.world.MetaChunk;
+import io.cubyz.world.ReducedChunk;
 import io.cubyz.world.World;
 
-public class SimpleTreeModel extends StructureModel {
+public class SimpleTreeModel extends StructureModel implements ReducedStructureModel {
 	private enum Type { // TODO: More different types and type access through biome addon files.
 		PYRAMID,
 		ROUND,
@@ -43,7 +45,7 @@ public class SimpleTreeModel extends StructureModel {
 						}
 					}
 					
-					//Position of the first block of leaves
+					// Position of the first block of leaves
 					height = 3*height >> 1;
 					for (int i = height/3; i < height; i++) {
 						int j = (height - i) >> 1;
@@ -119,6 +121,109 @@ public class SimpleTreeModel extends StructureModel {
 											continue;
 										}
 										chunk[x+ix][z+iz][h+i+height-1] = leaves;
+									}
+								}
+							}
+						}
+					}
+					break;
+				}
+			}
+		}
+	}
+
+	@Override
+	public void generate(int x, int z, int h, ReducedChunk chunk, MetaChunk metaChunk, Random rand) {
+		if(h > 0) {
+			int realHeight = height0 + rand.nextInt(deltaHeight);
+			int height = realHeight >>> chunk.resolution;
+			int width = chunk.width >>> chunk.resolution;
+			switch(type) {
+				case PYRAMID: {
+					if(h+height+1 >= World.WORLD_HEIGHT >>> chunk.resolution) // the max array index is 255 but world height is 256 (for array **length**)
+						return;
+
+					// Generate the leaves first because at that low resolution the stem might otherwise no leaves might be drawn for small trees.
+					// Position of the first block of leaves
+					height = (3*realHeight >>> 1) >>> chunk.resolution;
+					for (int i = height/3; i < height; i++) {
+						int j = (height - i) >> 1;
+						for (int k = 1 - j; k < j; k++) {
+							for (int l = 1 - j; l < j; l++) {
+								if (x+k >= 0 && x+k < width && z+l >= 0 && z+l < width) {
+									int index = ((x + k) << (chunk.widthShift - chunk.resolution)) | ((h + i) << 2*(chunk.widthShift - chunk.resolution)) | (z + l);
+									if(chunk.blocks[index] == 0) {
+										chunk.blocks[index] = leaves.color;
+									}
+								}
+							}
+						}
+					}
+					
+					if(chunk.resolution <= 1 && x >= 0 && x < width && z >= 0 && z < width) {
+						int index = (x << (chunk.widthShift - chunk.resolution)) | (h << 2*(chunk.widthShift - chunk.resolution)) | z;
+						for (int i = 0; i < height; i++) {
+							if(chunk.blocks[index + (i << 2*(chunk.widthShift - chunk.resolution))] == 0) {
+								chunk.blocks[index + (i << 2*(chunk.widthShift - chunk.resolution))] = (i == height-1) ? topWood.color : wood.color;
+							}
+						}
+					}
+					break;
+				}
+				case ROUND: {
+					if(h+height+1 >= World.WORLD_HEIGHT >>> chunk.resolution) // the max array index is 255 but world height is 256 (for array **length**)
+						return;
+
+					// Generate the leaves first because at that low resolution the stem might otherwise no leaves might be drawn for small trees.
+					int leafRadius = (1 + realHeight/2) >>> chunk.resolution;
+					float floatLeafRadius = leafRadius - rand.nextFloat()/(1 << chunk.resolution);
+					for (int i = -leafRadius; i < leafRadius; i++) {
+						for (int ix = - leafRadius; ix <= leafRadius; ix++) {
+							for (int iz = - leafRadius; iz <= leafRadius; iz++) {
+								int dist = i*i + ix*ix + iz*iz;
+								if(dist < floatLeafRadius*floatLeafRadius) {
+									if (x+ix >= 0 && x+ix < width && z+iz >= 0 && z+iz < width) {
+										int index = ((x + ix) << (chunk.widthShift - chunk.resolution)) | ((h + height - 1 + i) << 2*(chunk.widthShift - chunk.resolution)) | (z + iz);
+										if(chunk.blocks[index] == 0) {
+											chunk.blocks[index] = leaves.color;
+										}
+									}
+								}
+							}
+						}
+					}
+					
+					if(chunk.resolution <= 1 && x >= 0 && x < width && z >= 0 && z < width) {
+						int index = (x << (chunk.widthShift - chunk.resolution)) | (h << 2*(chunk.widthShift - chunk.resolution)) | z;
+						for (int i = 0; i < height; i++) {
+							if(chunk.blocks[index + (i << 2*(chunk.widthShift - chunk.resolution))] == 0) {
+								chunk.blocks[index + (i << 2*(chunk.widthShift - chunk.resolution))] = (i == height-1) ? topWood.color : wood.color;
+							}
+						}
+					}
+					break;
+				}
+				case BUSH: {
+					if(h+height+1 >= World.WORLD_HEIGHT >>> chunk.resolution) // the max array index is 255 but world height is 256 (for array **length**)
+						return;
+					// Generate only leaves because the stem is usually not visible on bushes.
+					int leafRadius = (realHeight/2 + 1) >>> chunk.resolution;
+					float floatLeafRadius = leafRadius - rand.nextFloat()/(1 << chunk.resolution);
+					for (int ix = - leafRadius; ix <= leafRadius; ix++) {
+						for (int iz = - leafRadius; iz <= leafRadius; iz++) {
+							if (x+ix >= 0 && x+ix < chunk.width && z+iz >= 0 && z+iz < chunk.width) {
+								for (int i = leafRadius/2; i+h >= 0; i--) {
+									int dist = ix*ix + iz*iz;
+									// Bushes are wider than tall and always reach onto the ground:
+									if(i > 0)
+										dist += 4*i*i;
+									if(dist < floatLeafRadius*floatLeafRadius) {
+										if (x+ix >= 0 && x+ix < width && z+iz >= 0 && z+iz < width) {
+											int index = ((x + ix) << (chunk.widthShift - chunk.resolution)) | ((h + i) << 2*(chunk.widthShift - chunk.resolution)) | (z + iz);
+											if(chunk.blocks[index] == 0) {
+												chunk.blocks[index] = leaves.color;
+											}
+										}
 									}
 								}
 							}

@@ -8,3 +8,5 @@ rotation cubyz:torch
 
 model cubyz:torch.obj
 texture cubyz:torch
+
+color 0x0f90

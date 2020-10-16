@@ -149,4 +149,9 @@ public class RiverGenerator implements BigGenerator {
 			}
 		}
 	}
+
+	@Override
+	public long getGeneratorSeed() {
+		return 0xe94966f1a3853a9eL;
+	}
 }

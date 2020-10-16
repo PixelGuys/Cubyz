@@ -4,3 +4,5 @@ drop cubyz:soil
 
 model cubyz:persidetexture.obj
 texture cubyz:snow_grass
+
+color 0xffff

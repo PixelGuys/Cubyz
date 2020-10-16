@@ -103,7 +103,6 @@ public class Cubyz implements GameLogic, ClientConnection {
 	public static Cubyz instance;
 	
 	public static Deque<Runnable> renderDeque = new ArrayDeque<>();
-	public static HashMap<String, InstancedMesh> cachedDefaultModels = new HashMap<>();
 	
 	public boolean screenshot;
 
@@ -233,7 +232,7 @@ public class Cubyz implements GameLogic, ClientConnection {
 		}
 		// Generate the texture atlas for this surface's truly transparent blocks:
 		ArrayList<Block> trulyTransparents = new ArrayList<>();
-		Meshes.transparentBlockMesh = cachedDefaultModels.get("cubyz:plane.obj");
+		Meshes.transparentBlockMesh = Meshes.cachedDefaultModels.get("cubyz:plane.obj");
 		for(RegistryElement element : surface.getCurrentRegistries().blockRegistry.registered()) {
 			Block block = (Block)element;
 			if(Meshes.blockMeshes.get(block) == Meshes.transparentBlockMesh) {
@@ -246,8 +245,10 @@ public class Cubyz implements GameLogic, ClientConnection {
 		ArrayList<BufferedImage> blockTextures = new ArrayList<>();
 		for(Block block : trulyTransparents) {
 			BufferedImage texture = ResourceUtilities.loadBlockTextureToBufferedImage(block.getRegistryID());
-			maxSize = Math.max(maxSize, Math.max(texture.getWidth(), texture.getHeight()));
-			blockTextures.add(texture);
+			if(texture != null) {
+				maxSize = Math.max(maxSize, Math.max(texture.getWidth(), texture.getHeight()));
+				blockTextures.add(texture);
+			}
 		}
 		// Put the textures into the atlas
 		BufferedImage atlas = new BufferedImage(maxSize*Meshes.transparentAtlasSize, maxSize*Meshes.transparentAtlasSize, BufferedImage.TYPE_INT_ARGB);
@@ -348,6 +349,7 @@ public class Cubyz implements GameLogic, ClientConnection {
 		renderer.setShaderFolder(ResourceManager.lookupPath("cubyz/shaders/easyLighting"));
 		
 		BlockPreview.setShaderFolder(ResourceManager.lookupPath("cubyz/shaders/blockPreview"));
+<<<<<<< HEAD
 		ClientOnly.client = this;
 		ClientOnly.createBlockMesh = (block) -> {
 			Resource rsc = block.getRegistryID();
@@ -396,42 +398,10 @@ public class Cubyz implements GameLogic, ClientConnection {
 				e.printStackTrace();
 			}
 		};
+=======
+>>>>>>> far_distance_rendering
 		
-		ClientOnly.createEntityMesh = (type) -> {
-			Resource rsc = type.getRegistryID();
-			try {
-				EntityModel model = null;
-				try {
-					model = ResourceUtilities.loadEntityModel(rsc);
-				} catch (IOException e) {
-					logger.warning(rsc + " entity model not found");
-					//e.printStackTrace();
-					//model = ResourceUtilities.loadEntityModel(new Resource("cubyz:undefined")); // TODO: load a simple cube with the undefined texture
-					return;
-				}
-				
-				// Cached meshes
-				Resource rs = new Resource(model.model);
-				Mesh mesh = StaticMeshesLoader.load("assets/" + rs.getMod() + "/models/3d/" + rs.getID(),
-						"assets/" + rs.getMod() + "/models/3d/")[0];
-				mesh.setBoundingRadius(2.0f); // TODO: define custom bounding radius
-				Resource texResource = new Resource(model.texture);
-				String texture = texResource.getID();
-				if (!new File("assets/" + texResource.getMod() + "/textures/entities/" + texture + ".png").exists()) {
-					logger.warning(texResource + " texture not found");
-					texture = "blocks/undefined";
-				}
-				
-				Texture tex = new Texture("assets/" + texResource.getMod() + "/textures/entities/" + texture + ".png");
-				
-				Material material = new Material(tex, 1.0F);
-				mesh.setMaterial(material);
-				
-				Meshes.entityMeshes.put(type, mesh);
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		};
+		Meshes.initMeshCreators();
 		
 		ClientOnly.onBorderCrossing = (p) -> {
 			// Simply remake all the spatial data of this surface. Not the most efficient way, but the event of border crossing can be considered rare.
@@ -674,6 +644,7 @@ public class Cubyz implements GameLogic, ClientConnection {
 	}
 
 	public static final Chunk[] EMPTY_CHUNK_LIST = new Chunk[0];
+	public static final ReducedChunk[] EMPTY_REDUCED_CHUNK_LIST = new ReducedChunk[0];
 	public static final Block[] EMPTY_BLOCK_LIST = new Block[0];
 	public static final Entity[] EMPTY_ENTITY_LIST = new Entity[0];
 	public static final Spatial[] EMPTY_SPATIAL_LIST = new Spatial[0];
@@ -723,9 +694,9 @@ public class Cubyz implements GameLogic, ClientConnection {
 				
 				// Cached meshes
 				InstancedMesh defaultMesh = null;
-				for (String key : cachedDefaultModels.keySet()) {
+				for (String key : Meshes.cachedDefaultModels.keySet()) {
 					if (key.equals(bm.subModels.get("default").model)) {
-						defaultMesh = cachedDefaultModels.get(key);
+						defaultMesh = Meshes.cachedDefaultModels.get(key);
 					}
 				}
 				BlockSubModel subModel = bm.subModels.get("default");
@@ -738,7 +709,7 @@ public class Cubyz implements GameLogic, ClientConnection {
 					Resource rs = new Resource(subModel.model);
 					defaultMesh = (InstancedMesh)OBJLoader.loadMesh("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), true); // Blocks are always instanced.
 					defaultMesh.setBoundingRadius(2.0f);
-					cachedDefaultModels.put(subModel.model, defaultMesh);
+					Meshes.cachedDefaultModels.put(subModel.model, defaultMesh);
 				}
 				Resource texResource = new Resource(subModel.texture);
 				String texture = texResource.getID();
@@ -827,7 +798,7 @@ public class Cubyz implements GameLogic, ClientConnection {
 			float lightX = (((float)world.getGameTime() % world.getCurrentTorus().getStellarTorus().getDayCycle()) / (float) (world.getCurrentTorus().getStellarTorus().getDayCycle()/2)) - 1f;
 			light.getDirection().set(lightY, 0, lightX);
 			window.setClearColor(clearColor);
-			renderer.render(window, ctx, ambient, light, world.getCurrentTorus().getChunks(), world.getBlocks(), world.getCurrentTorus().getEntities(), worldSpatialList, world.getLocalPlayer(), world.getCurrentTorus().getSize());
+			renderer.render(window, ctx, ambient, light, world.getCurrentTorus().getChunks(), world.getCurrentTorus().getReducedChunks(), world.getBlocks(), world.getCurrentTorus().getEntities(), worldSpatialList, world.getLocalPlayer(), world.getCurrentTorus().getSize());
 		} else {
 			clearColor.y = clearColor.z = 0.7f;
 			clearColor.x = 0.1f;
@@ -841,7 +812,7 @@ public class Cubyz implements GameLogic, ClientConnection {
 				window.setRenderTarget(buf);
 			}
 			
-			renderer.render(window, ctx, brightAmbient, light, EMPTY_CHUNK_LIST, EMPTY_BLOCK_LIST, EMPTY_ENTITY_LIST, EMPTY_SPATIAL_LIST, null, -1);
+			renderer.render(window, ctx, brightAmbient, light, EMPTY_CHUNK_LIST, EMPTY_REDUCED_CHUNK_LIST, EMPTY_BLOCK_LIST, EMPTY_ENTITY_LIST, EMPTY_SPATIAL_LIST, null, -1);
 			
 			if (screenshot) {
 				/*FrameBuffer buf = window.getRenderTarget();
@@ -929,7 +900,7 @@ public class Cubyz implements GameLogic, ClientConnection {
 			if (ch != null && ch.isLoaded()) {
 				world.update();
 			}
-			world.getCurrentTorus().seek((int)lp.getPosition().x, (int)lp.getPosition().z, ClientSettings.RENDER_DISTANCE);
+			world.getCurrentTorus().seek((int)lp.getPosition().x, (int)lp.getPosition().z, ClientSettings.RENDER_DISTANCE, ClientSettings.MAX_RESOLUTION, ClientSettings.FAR_DISTANCE_FACTOR);
 			float lightAngle = (float)Math.PI/2 + (float)Math.PI*(((float)world.getGameTime() % world.getCurrentTorus().getStellarTorus().getDayCycle())/(world.getCurrentTorus().getStellarTorus().getDayCycle()/2));
 			skySun.setPositionRaw((float)Math.cos(lightAngle)*500, (float)Math.sin(lightAngle)*500, 0);
 			skySun.setRotation(0, 0, -lightAngle);

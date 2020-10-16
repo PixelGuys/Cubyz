@@ -7,3 +7,5 @@ rotation cubyz:stackable
 model cubyz:block.obj
 texture cubyz:snow
 blockEntity io.cubyz.base.MeltableBlockEntity
+
+color 0xffff

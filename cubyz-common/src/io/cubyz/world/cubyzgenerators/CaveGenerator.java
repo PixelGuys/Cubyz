@@ -248,4 +248,8 @@ public class CaveGenerator implements FancyGenerator {
 		}
 	}
 
+	@Override
+	public long getGeneratorSeed() {
+		return 0xb898ec9ce9d2ef37L;
+	}
 }

@@ -174,8 +174,13 @@ public class ResourceUtilities {
 			e.printStackTrace();
 			return null;
 		}
-		Resource texture = new Resource(props.getProperty("texture", null));
-		path = "addons/" + texture.getMod() + "/blocks/textures/" + texture.getID() + ".png";
+		String resource = props.getProperty("texture", null);
+		if(resource != null) {
+			Resource texture = new Resource(resource);
+			path = "addons/" + texture.getMod() + "/blocks/textures/" + texture.getID() + ".png";
+		} else {
+			path = "addons/cubyz/blocks/textures/undefined.png";
+		}
 		try {
 			return ImageIO.read(new File(path));
 		} catch(Exception e) {e.printStackTrace();}

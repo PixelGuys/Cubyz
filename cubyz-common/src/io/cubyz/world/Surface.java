@@ -56,7 +56,8 @@ public abstract class Surface {
 	public abstract Chunk getChunk(int x, int z);
 	public abstract MetaChunk getMetaChunk(int wx, int wz);
 	public abstract Biome getBiome(int x, int z);
-	
+
+	public abstract ReducedChunk[] getReducedChunks();
 	public abstract Chunk[] getChunks();
 	public abstract Block[] getPlanetBlocks();
 	public abstract Entity[] getEntities();
@@ -66,7 +67,7 @@ public abstract class Surface {
 	
 	public abstract void synchronousSeek(int x, int z, int renderDistance);
 	public abstract int getHeight(int x, int z);
-	public abstract void seek(int x, int z, int renderDistance);
+	public abstract void seek(int x, int z, int renderDistance, int maxResolution, float farDistanceFactor);
 	
 	public abstract void cleanup();
 	public abstract void update();

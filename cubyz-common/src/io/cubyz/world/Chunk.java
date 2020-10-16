@@ -19,6 +19,10 @@ import io.cubyz.save.BlockChange;
 import io.cubyz.util.FastList;
 import io.cubyz.world.generator.SurfaceGenerator;
 
+/**
+ * A 16×WORLD_HEIGHT×16 big chunk of the world map.
+ */
+
 public class Chunk {
 	// used for easy for-loop access of neighbors and their relative direction:
 	// East, West, South, North, Down, Up.

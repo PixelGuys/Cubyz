@@ -6,3 +6,5 @@ rotation cubyz:log
 
 model cubyz:persidetexture.obj
 texture cubyz:oak_top
+
+color 0xf652

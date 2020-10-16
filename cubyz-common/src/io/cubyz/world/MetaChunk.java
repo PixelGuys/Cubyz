@@ -5,9 +5,17 @@ import io.cubyz.api.RegistryElement;
 import io.cubyz.math.CubyzMath;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 
-// A metaChunk stores map data for a much bigger area of the world.
-
+/**
+ * A 256×256 big chunk of height-/heat-/humidity-/… and resulting biome-maps.
+ */
 public class MetaChunk {
+	public static ThreadLocal<PerlinNoise> threadLocalNoise = new ThreadLocal<PerlinNoise>() {
+		@Override
+		protected PerlinNoise initialValue() {
+			return new PerlinNoise();
+		}
+	};
+	
 	public float[][] heightMap, heatMap, humidityMap;
 	public Biome[][] biomeMap;
 	Surface world;
@@ -17,9 +25,17 @@ public class MetaChunk {
 		this.x = x;
 		this.z = z;
 		this.world = world;
+<<<<<<< HEAD
 		heightMap = PerlinNoise.generateThreeOctaveMapFragment(x, z, 256, 256, 2048, seed, world.getSize());
 		heatMap = PerlinNoise.generateThreeOctaveMapFragment(x, z, 256, 256, 2048, seed ^ 6587946239L, world.getSize());
 		humidityMap = PerlinNoise.generateThreeOctaveMapFragment(x, z, 256, 256, 2048, seed ^ -1324585483391L, world.getSize());
+=======
+		
+		PerlinNoise noise = threadLocalNoise.get();
+		heightMap = noise.generateThreeOctaveMapFragment(x, z, 256, 256, 2048, seed, world.getSize());
+		heatMap = noise.generateThreeOctaveMapFragment(x, z, 256, 256, 2048, seed ^ 6587946239L, world.getSize());
+		humidityMap = noise.generateThreeOctaveMapFragment(x, z, 256, 256, 2048, seed ^ -1324585483391L, world.getSize());
+>>>>>>> far_distance_rendering
 		
 		biomeMap = new Biome[256][256];
 		advancedHeightMapGeneration(seed, registries);

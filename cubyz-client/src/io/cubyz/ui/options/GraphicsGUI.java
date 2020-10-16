@@ -7,6 +7,8 @@ import io.cubyz.translate.TextKey;
 import io.cubyz.ui.MenuGUI;
 import io.cubyz.ui.components.Button;
 import io.cubyz.ui.components.CheckBox;
+import io.cubyz.ui.components.Label;
+import io.cubyz.ui.components.Slider;
 import io.jungle.Window;
 
 public class GraphicsGUI extends MenuGUI {
@@ -14,7 +16,15 @@ public class GraphicsGUI extends MenuGUI {
 	private Button fog = new Button();
 	private CheckBox easyLighting = new CheckBox();
 	private CheckBox vsync = new CheckBox();
+	private Label effectiveRenderDistance = new Label();
+	private final Slider renderDistance = new Slider(1, 24, ClientSettings.RENDER_DISTANCE);
+	private final Slider maxResolution = new Slider(ClientSettings.MAX_RESOLUTION, new String[] {"16 (no reduced quality chunks are generated)", "8", "4", "2", "1"});
+	private final Slider farDistanceFactor = new Slider(Math.round(ClientSettings.FAR_DISTANCE_FACTOR*2) - 1, new String[] {"0.5", "1.0", "1.5", "2.0", "2.5", "3.0", "3.5", "4.0"});
 
+	private void recalculateERD() {
+		effectiveRenderDistance.setText("Effective Render Distance ≈ " + (ClientSettings.RENDER_DISTANCE + ((((int)(ClientSettings.RENDER_DISTANCE*ClientSettings.FAR_DISTANCE_FACTOR) & ~1) << ClientSettings.MAX_RESOLUTION))));
+	}
+	
 	@Override
 	public void init(long nvg) {
 		done.setSize(250, 45);
@@ -23,6 +33,33 @@ public class GraphicsGUI extends MenuGUI {
 		
 		done.setOnAction(() -> {
 			Cubyz.gameUI.back();
+		});
+		
+		effectiveRenderDistance.setFontSize(18);
+		recalculateERD();
+		
+		renderDistance.setSize(250, 45);
+		renderDistance.setFontSize(18);
+		renderDistance.setText("Render Distance: ");
+		renderDistance.setOnAction(() -> {
+			ClientSettings.RENDER_DISTANCE = renderDistance.getValue();
+			recalculateERD();
+		});
+		
+		maxResolution.setSize(250, 45);
+		maxResolution.setFontSize(18);
+		maxResolution.setText("Minimal Resolution of chunks: ");
+		maxResolution.setOnAction(() -> {
+			ClientSettings.MAX_RESOLUTION = maxResolution.getValue();
+			recalculateERD();
+		});
+		
+		farDistanceFactor.setSize(250, 45);
+		farDistanceFactor.setFontSize(18);
+		farDistanceFactor.setText("Scale of effective render distance: ");
+		farDistanceFactor.setOnAction(() -> {
+			ClientSettings.FAR_DISTANCE_FACTOR = (farDistanceFactor.getValue() + 1)/2.0f;
+			recalculateERD();
 		});
 
 		if (ClientSettings.FOG_COEFFICIENT == 0f) {
@@ -71,11 +108,19 @@ public class GraphicsGUI extends MenuGUI {
 
 	@Override
 	public void render(long nvg, Window win) {
+		renderDistance.setPosition(win.getWidth() / 2 - 125, 75);
+		maxResolution.setPosition(win.getWidth() / 2 - 125, 150);
+		farDistanceFactor.setPosition(win.getWidth() / 2 - 125, 225);
+		effectiveRenderDistance.setPosition(win.getWidth() / 2 - 125, 300);
 		done.setPosition(win.getWidth() / 2 - 125, win.getHeight() - 75);
-		fog.setPosition(win.getWidth() / 2 - 125, 75);
-		easyLighting.setPosition(win.getWidth() / 2 - 125, 150);
-		vsync.setPosition(win.getWidth() / 2 - 125, 225);
+		fog.setPosition(win.getWidth() / 2 - 125, 375);
+		easyLighting.setPosition(win.getWidth() / 2 - 125, 450);
+		vsync.setPosition(win.getWidth() / 2 - 125, 525);
 
+		renderDistance.render(nvg, win);
+		maxResolution.render(nvg, win);
+		farDistanceFactor.render(nvg, win);
+		effectiveRenderDistance.render(nvg, win);
 		done.render(nvg, win);
 		fog.render(nvg, win);
 		easyLighting.render(nvg, win);

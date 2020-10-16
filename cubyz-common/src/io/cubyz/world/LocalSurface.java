@@ -23,7 +23,6 @@ import io.cubyz.blocks.BlockEntity;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.EntityType;
 import io.cubyz.entity.ItemEntity;
-import io.cubyz.entity.Player;
 import io.cubyz.handler.PlaceBlockHandler;
 import io.cubyz.handler.RemoveBlockHandler;
 import io.cubyz.items.BlockDrop;
@@ -33,6 +32,7 @@ import io.cubyz.math.CubyzMath;
 import io.cubyz.save.BlockChange;
 import io.cubyz.save.MissingBlockException;
 import io.cubyz.save.TorusIO;
+import io.cubyz.util.FastList;
 import io.cubyz.world.cubyzgenerators.CrystalCavernGenerator;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 import io.cubyz.world.generator.LifelandGenerator;
@@ -43,9 +43,12 @@ import static io.cubyz.CubyzLogger.logger;
 public class LocalSurface extends Surface {
 	private static Random rnd = new Random();
 	
-	private List<MetaChunk> metaChunks;
-	private Chunk [] chunks;
+	private MetaChunk[] metaChunks;
+	private Chunk[] chunks;
+	private ReducedChunk[] reducedChunks;
 	private int lastX = Integer.MAX_VALUE, lastZ = Integer.MAX_VALUE; // Chunk coordinates of the last chunk update.
+	private int lastMetaX = Integer.MAX_VALUE, lastMetaZ = Integer.MAX_VALUE; // MetaChunk coordinates of the last chunk update.
+	private int mcDRD; // double renderdistance of MetaChunks.
 	private int doubleRD; // Corresponds to the doubled value of the last used render distance.
 	private int worldSize = 65536; // worldSize-1. Used for bitwise and to better work with coordinates.
 	private ArrayList<Entity> entities = new ArrayList<>();
@@ -72,6 +75,7 @@ public class LocalSurface extends Surface {
 	
 	// synchronized common list for chunk generation
 	private volatile BlockingDeque<Chunk> loadList = new LinkedBlockingDeque<>(MAX_QUEUE_SIZE);
+	private volatile BlockingDeque<ReducedChunk> reducedLoadList = new LinkedBlockingDeque<>(MAX_QUEUE_SIZE);
 	
 	boolean liquidUpdate;
 	
@@ -102,21 +106,57 @@ public class LocalSurface extends Surface {
 		return false;
 	}
 	
+	private void queue(ReducedChunk ch) {
+		if (!isQueued(ch)) {
+			try {
+				reducedLoadList.put(ch);
+			} catch (InterruptedException e) {
+				System.err.println("Interrupted while queuing chunk. This is unexpected.");
+			}
+		}
+	}
+	
+	private boolean isQueued(ReducedChunk ch) {
+		ReducedChunk[] list = reducedLoadList.toArray(new ReducedChunk[0]);
+		for (ReducedChunk ch2 : list) {
+			if (ch2 == ch) {
+				return true;
+			}
+		}
+		return false;
+	}
+	
 	private class ChunkGenerationThread extends Thread {
 		public void run() {
 			while (true) {
-				Chunk popped = null;
-				try {
-					popped = loadList.take();
-				} catch (InterruptedException e) {
-					break;
-				}
-				try {
-					synchronousGenerate(popped);
-					popped.load();
-				} catch (Exception e) {
-					logger.severe("Could not generate chunk " + popped.getX() + ", " + popped.getZ() + " !");
-					logger.throwable(e);
+				if(!loadList.isEmpty()) {
+					Chunk popped = null;
+					try {
+						popped = loadList.take();
+					} catch (InterruptedException e) {
+						break;
+					}
+					try {
+						synchronousGenerate(popped);
+						popped.load();
+					} catch (Exception e) {
+						logger.severe("Could not generate chunk " + popped.getX() + ", " + popped.getZ() + " !");
+						logger.throwable(e);
+					}
+				} else if(!reducedLoadList.isEmpty()) {
+					ReducedChunk popped = null;
+					try {
+						popped = reducedLoadList.take();
+					} catch (InterruptedException e) {
+						break;
+					}
+					try {
+						generator.generate(popped, LocalSurface.this);
+						popped.generated = true;
+					} catch (Exception e) {
+						logger.severe("Could not generate reduced chunk " + popped.cx + ", " + popped.cz + " !");
+						logger.throwable(e);
+					}
 				}
 			}
 		}
@@ -126,8 +166,9 @@ public class LocalSurface extends Surface {
 		registries = new CurrentSurfaceRegistries();
 		localSeed = torus.getLocalSeed();
 		this.torus = torus;
-		metaChunks = new ArrayList<>();
+		metaChunks = new MetaChunk[0];
 		chunks = new Chunk[0];
+		reducedChunks = new ReducedChunk[0];
 		
 		for (int i = 0; i < Runtime.getRuntime().availableProcessors(); i++) {
 			ChunkGenerationThread thread = new ChunkGenerationThread();
@@ -481,10 +522,64 @@ public class LocalSurface extends Surface {
 	public void unQueueChunk(Chunk ch) {
 		loadList.remove(ch);
 	}
+
+	public void queueChunk(ReducedChunk ch) {
+		queue(ch);
+	}
+
+	public void unQueueChunk(ReducedChunk ch) {
+		reducedLoadList.remove(ch);
+	}
 	
 	@Override
-	public void seek(int x, int z, int renderDistance) {
-		int local = x & 15;
+	public void seek(int x, int z, int renderDistance, int maxResolution, float farDistanceFactor) {
+		int xOld = x;
+		int zOld = z;
+		// Care about the MetaChunks:
+		int mcRD = (renderDistance*10 >>> 4) + 4;
+		int local = x & 255;
+		x >>= 8;
+		x += mcRD;
+		if(local > 127)
+			x++;
+		local = z & 255;
+		z >>= 8;
+		z += mcRD;
+		if(local > 127)
+			z++;
+		if(x != lastMetaX || z != lastMetaZ) {
+			int mcDRD = mcRD << 1;
+			MetaChunk[] newMeta = new MetaChunk[mcDRD*mcDRD];
+			int index = 0;
+			int minK = 0;
+			for(int i = x-mcDRD; i < x; i++) {
+				loop:
+				for(int j = z-mcDRD; j < z; j++) {
+					for(int k = minK; k < metaChunks.length; k++) {
+						if(metaChunks[k] != null && CubyzMath.moduloMatchSign(metaChunks[k].x-i, worldSize >> 8) == 0 && CubyzMath.moduloMatchSign(metaChunks[k].z-j, worldSize >> 8) == 0) {
+							newMeta[index] = metaChunks[k];
+							// Removes this chunk out of the list of chunks that will be considered in this function.
+							metaChunks[k] = metaChunks[minK];
+							metaChunks[minK] = newMeta[index];
+							minK++;
+							index++;
+							continue loop;
+						}
+					}
+					newMeta[index] = null;
+					index++;
+				}
+			}
+			metaChunks = newMeta;
+			lastMetaX = x;
+			lastMetaZ = z;
+			this.mcDRD = mcDRD;
+		}
+
+		// Care about the Chunks:
+		x = xOld;
+		z = zOld;
+		local = x & 15;
 		x >>= 4;
 		x += renderDistance;
 		if(local > 7)
@@ -531,12 +626,119 @@ public class LocalSurface extends Surface {
 		lastX = x;
 		lastZ = z;
 		this.doubleRD = doubleRD;
+		
+		// Care about the ReducedChunks:
 		// Load chunks after they have access to their neighbors:
 		for(Chunk ch : chunksToQueue) {
 			queueChunk(ch);
 		}
 		if (minK != chunks.length) { // if at least one chunk got unloaded
 			tio.saveTorusData(this);
+		}
+		
+		generateReducedChunks(xOld, zOld, (int)(renderDistance*farDistanceFactor), maxResolution);
+	}
+	
+	public void generateReducedChunks(int x, int z, int renderDistance, int maxResolution) {
+		int local = x & 15;
+		x >>= 4;
+		if(local > 7)
+			x++;
+		local = z & 15;
+		z >>= 4;
+		if(local > 7)
+			z++;
+		// Go through all resolutions:
+		FastList<ReducedChunk> newReduced = new FastList<ReducedChunk>(reducedChunks.length, ReducedChunk.class);
+		int minXLast = x - doubleRD/2;
+		int maxXLast = x + doubleRD/2;
+		int minZLast = z - doubleRD/2;
+		int maxZLast = z + doubleRD/2;
+		renderDistance &= ~1; // Make sure the render distance is a multiple of 2, so the chunks are always placed correctly.
+		int minK = 0;
+		int widthShift = 4;
+		ArrayList<ReducedChunk> reducedChunksToQueue = new ArrayList<>();
+		for(int res = 1; res <= maxResolution; res++) {
+			int widthShiftOld = widthShift;
+			int widthOld = 1 << (widthShift - 4);
+			widthShift++;
+			int widthNew = 1 << (widthShift - 4);
+			int widthMask = widthNew - 1;
+			// Pad between the different chunk sizes:
+			int minXNew = minXLast;
+			int maxXNew = maxXLast;
+			int minZNew = minZLast;
+			int maxZNew = maxZLast;
+			if((minXNew & widthMask) != 0) minXNew -= widthOld;
+			if((maxXNew & widthMask) != 0) maxXNew += widthOld;
+			if((minZNew & widthMask) != 0) minZNew -= widthOld;
+			if((maxZNew & widthMask) != 0) maxZNew += widthOld;
+			for(int cx = minXNew; cx < maxXNew; cx += widthOld) {
+				loop:
+				for(int cz = minZNew; cz < maxZNew; cz += widthOld) {
+					boolean visible = cx < minXLast || cx >= maxXLast || cz < minZLast || cz >= maxZLast;
+					if(!visible) continue;
+					for(int k = minK; k < reducedChunks.length; k++) {
+						if(reducedChunks[k].resolution == res && reducedChunks[k].widthShift == widthShiftOld && CubyzMath.moduloMatchSign(reducedChunks[k].cx-cx, worldSize >> 4) == 0 && CubyzMath.moduloMatchSign(reducedChunks[k].cz-cz, worldSize >> 4) == 0) {
+							newReduced.add(reducedChunks[k]);
+							// Removes this chunk out of the list of chunks that will be considered in this function.
+							reducedChunks[k] = reducedChunks[minK];
+							reducedChunks[minK] = newReduced.array[newReduced.size - 1];
+							minK++;
+							continue loop;
+						}
+					}
+					ReducedChunk ch = new ReducedChunk(cx, cz, res, widthShiftOld, transformData(getChunkData(cx, cz), tio.blockPalette));
+					reducedChunksToQueue.add(ch);
+					newReduced.add(ch);
+					
+				}
+			}
+			// Now add the real chunks:
+			minXLast = minXNew;
+			maxXLast = maxXNew;
+			minZLast = minZNew;
+			maxZLast = maxZNew;
+			minXNew = minXLast - renderDistance;
+			maxXNew = maxXLast + renderDistance;
+			minZNew = minZLast - renderDistance;
+			maxZNew = maxZLast + renderDistance;
+			for(int cx = minXNew; cx < maxXNew; cx += widthNew) {
+				loop:
+				for(int cz = minZNew; cz < maxZNew; cz += widthNew) {
+					boolean visible = cx < minXLast || cx >= maxXLast || cz < minZLast || cz >= maxZLast;
+					if(!visible) continue;
+					for(int k = minK; k < reducedChunks.length; k++) {
+						if(reducedChunks[k].resolution == res && reducedChunks[k].widthShift == widthShift && CubyzMath.moduloMatchSign(reducedChunks[k].cx-cx, worldSize >> 4) == 0 && CubyzMath.moduloMatchSign(reducedChunks[k].cz-cz, worldSize >> 4) == 0) {
+							newReduced.add(reducedChunks[k]);
+							// Removes this chunk out of the list of chunks that will be considered in this function.
+							reducedChunks[k] = reducedChunks[minK];
+							reducedChunks[minK] = newReduced.array[newReduced.size - 1];
+							minK++;
+							continue loop;
+						}
+					}
+					ReducedChunk ch = new ReducedChunk(cx, cz, res, widthShift, transformData(getChunkData(cx, cz), tio.blockPalette));
+					reducedChunksToQueue.add(ch);
+					newReduced.add(ch);
+					
+				}
+			}
+			minXLast = minXNew;
+			maxXLast = maxXNew;
+			minZLast = minZNew;
+			maxZLast = maxZNew;
+			renderDistance *= 2;
+		}
+		for (int k = minK; k < reducedChunks.length; k++) {
+			unQueueChunk(reducedChunks[k]);
+			//ClientOnly.deleteChunkMesh.accept(reducedChunks[k]);
+		}
+		newReduced.trimToSize();
+		reducedChunks = newReduced.array;
+		// Load chunks after they have access to their neighbors:
+		for(ReducedChunk ch : reducedChunksToQueue) {
+			queueChunk(ch);
 		}
 	}
 	
@@ -564,38 +766,29 @@ public class LocalSurface extends Surface {
 			}
 		}
 	}
+
 	
+	@Override
 	public MetaChunk getMetaChunk(int wx, int wz) {
-		for(MetaChunk ch : metaChunks.toArray(new MetaChunk[0])) {
-			if(ch.x == wx && ch.z == wz) {
+		int x = wx >> 8;
+		int z = wz >> 8;
+		// Test if the chunk can be found in the list of visible chunks:
+		int index = CubyzMath.moduloMatchSign(x-(lastMetaX-mcDRD), worldSize >> 8)*mcDRD + CubyzMath.moduloMatchSign(z-(lastMetaZ-mcDRD), worldSize >> 8);
+		wx = CubyzMath.worldModulo(wx, worldSize);
+		wz = CubyzMath.worldModulo(wz, worldSize);
+		if(index < metaChunks.length && index >= 0) {
+			MetaChunk ret = metaChunks[index];
+			
+			if (ret != null) {
+				if(wx == ret.x && wz == ret.z)
+					return ret;
+			} else {
+				MetaChunk ch = new MetaChunk(wx, wz, localSeed, this, registries);
+				metaChunks[index] = ch;
 				return ch;
 			}
 		}
-		synchronized(metaChunks) {
-			// Now that the thread got access to this part the list might already contain the searched MetaChunk:
-			for(MetaChunk ch : metaChunks) {
-				if(ch.x == wx && ch.z == wz) {
-					return ch;
-				}
-			}
-			// Every time a new MetaChunk is created, go through the list and if the length is at the limit(determined by the renderdistance) remove those that are farthest from the player:
-			while(metaChunks.size() > (doubleRD/16 + 4)*(doubleRD/16 + 4)) {
-				int max = 0;
-				int index = 0;
-				for(int i = 0; i < metaChunks.size(); i++) {
-					Player player = torus.world.getLocalPlayer();
-					int dist = CubyzMath.moduloMatchSign(metaChunks.get(i).x-(int)player.getPosition().x, worldSize)*CubyzMath.moduloMatchSign(metaChunks.get(i).x-(int)player.getPosition().x, worldSize) + CubyzMath.moduloMatchSign(metaChunks.get(i).z-(int)player.getPosition().z, worldSize)*CubyzMath.moduloMatchSign(metaChunks.get(i).z-(int)player.getPosition().z, worldSize);
-					if(dist > max) {
-						max = dist;
-						index = i;
-					}
-				}
-				metaChunks.remove(index);
-			}
-			MetaChunk ch = new MetaChunk(wx, wz, localSeed, this, registries);
-			metaChunks.add(ch);
-			return ch;
-		}
+		return new MetaChunk(wx, wz, localSeed, this, registries);
 	}
 	
 	public MetaChunk getNoGenerateMetaChunk(int wx, int wy) {
@@ -765,5 +958,10 @@ public class LocalSurface extends Surface {
 		if(sun*sunLight.y > g) g = (int)(sun*sunLight.y);
 		if(sun*sunLight.z > b) b = (int)(sun*sunLight.z);
 		return new Vector3f(r/255.0f, g/255.0f, b/255.0f);
+	}
+
+	@Override
+	public ReducedChunk[] getReducedChunks() {
+		return reducedChunks;
 	}
 }

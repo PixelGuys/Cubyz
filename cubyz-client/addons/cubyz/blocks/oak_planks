@@ -4,3 +4,5 @@ drop auto
 
 model cubyz:block.obj
 texture cubyz:oak_planks
+
+color 0xfda5
