@@ -76,8 +76,11 @@ public abstract class GeneralInventory extends MenuGUI {
 			num.setPosition(x + 50-32, y + 48-32);
 			num.render(nvg, win);
 		}
-		for(int i = 0; i < inv.length; i++) { // tooltips
-			inv[i].drawTooltip(Cubyz.mouse, win.getWidth() / 2, win.getHeight());
+		// Draw tooltips, when the nothing is carried.
+		if(item == null) {
+			for(int i = 0; i < inv.length; i++) { // tooltips
+				inv[i].drawTooltip(Cubyz.mouse, win.getWidth() / 2, win.getHeight());
+			}
 		}
 	}
 
