@@ -11,7 +11,7 @@ import io.cubyz.ndt.NDTContainer;
 public class ItemStack {
 
 	private Item item;
-	int number = 0;
+	int amount = 0;
 	
 	public ItemStack() {
 		item = null;
@@ -23,33 +23,41 @@ public class ItemStack {
 	
 	public ItemStack(Item item, int amount) {
 		this.item = item;
-		number = amount;
+		this.amount = amount;
 	}
 	
 	public void update() {}
 	
 	public boolean filled() {
-		return number >= item.stackSize;
+		return amount >= item.stackSize;
 	}
 	
 	public boolean empty() {
-		return number <= 0;
+		return amount <= 0;
 	}
 	
 	public int add(int number) {
-		this.number += number;
-		if(this.number < 0) {
-			number = number-this.number;
-			this.number = 0;
+		this.amount += number;
+		if(this.amount < 0) {
+			number = number-this.amount;
+			this.amount = 0;
 		}
-		else if(this.number > item.stackSize) {
-			number = number-this.number+item.stackSize;
-			this.number = item.stackSize;
+		else if(this.amount > item.stackSize) {
+			number = number-this.amount+item.stackSize;
+			this.amount = item.stackSize;
 		}
 		if(empty()) {
 			clear();
 		}
 		return number;
+	}
+	
+	/**
+	 * @param number number of items
+	 * @return whether the given number of items can be added to this stack.
+	 */
+	public boolean canAddAll(int number) {
+		return this.amount + number <= item.stackSize;
 	}
 	
 	public void setItem(Item i) {
@@ -70,11 +78,15 @@ public class ItemStack {
 	}
 	
 	public int getAmount() {
-		return number;
+		return amount;
 	}
 	
-	public void setAmount(int a) { // For use in special cases only!
-		number = a;
+	/**
+	 * For use in special cases only!
+	 * @param a new amount
+	 */
+	public void setAmount(int a) {
+		amount = a;
 	}
 	
 	public void loadFrom(NDTContainer container, CurrentSurfaceRegistries registries) {
@@ -83,9 +95,9 @@ public class ItemStack {
 			throw new IllegalStateException("item " + container.getString("id") + " is not in registry.");
 		}
 		if (container.hasKey("size"))
-			number = container.getInteger("size");
+			amount = container.getInteger("size");
 		else
-			number = 1;
+			amount = 1;
 	}
 	
 	public void saveTo(NDTContainer container) {
@@ -93,12 +105,12 @@ public class ItemStack {
 			throw new IllegalStateException("item is null");
 		}
 		container.setString("id", item.getRegistryID().toString());
-		container.setInteger("size", number);
+		container.setInteger("size", amount);
 	}
 	
 	public void clear() {
 		item = null;
-		number = 0;
+		amount = 0;
 	}
 	
 }

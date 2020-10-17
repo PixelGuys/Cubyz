@@ -81,10 +81,9 @@ public class InventorySlot extends Component {
 	}
 	
 	public boolean grabWithMouse(MouseInput mouse, ItemStack carried, int width, int height) {
-		if(takeOnly && carried.getItem() != null && reference.getItem() != null)
-			return false;
 		if(!isInside(mouse.getCurrentPos(), width, height))
 			return false;
+		// Only do something when the button is released:
 		if(mouse.isLeftButtonPressed()) {
 			pressedLeft = true;
 			return false;
@@ -95,6 +94,22 @@ public class InventorySlot extends Component {
 		}
 		if(!pressedLeft && !pressedRight)
 			return false;
+		
+		if(takeOnly) {
+			pressedRight = pressedLeft = false;
+			// Take all items from this slot if possible, no matter what button is pressed:
+			if(carried.getItem() == null) {
+				carried.setItem(reference.getItem());
+			} else if(carried.getItem() != reference.getItem()) {
+				return false; // Cannot pick it up.
+			}
+			if(carried.canAddAll(reference.getAmount())) {
+				carried.add(reference.getAmount());
+				reference.clear();
+				return true;
+			}
+			return false;
+		}
 		if(pressedRight && carried.getItem() != null) {
 			if(reference.getItem() == carried.getItem()) {
 				if(reference.add(1) != 0)

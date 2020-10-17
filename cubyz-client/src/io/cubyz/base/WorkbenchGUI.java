@@ -115,7 +115,6 @@ public class WorkbenchGUI extends GeneralInventory {
 	@Override
 	protected void mouseAction(MouseInput mouse, Window win) {
 		for(int i = 0; i < inv.length; i++) {
-			// TODO: Don't really swap the references. Just swap the contents of the references. That will make everything a lot easier.
 			if(inv[i].grabWithMouse(mouse, carried, win.getWidth()/2, win.getHeight())) {
 				if(craftingMode == Mode.NORMAL) {
 					if (i == inv.length-1 && carried.getItem() != null) {
