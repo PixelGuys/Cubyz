@@ -819,15 +819,15 @@ public class Chunk {
 	}
 	
 	public void removeBlockAt(int x, int y, int z, boolean registerBlockChange) {
-		Block bi = getBlockAt(x, y, z);
-		if(bi == null)
+		Block block = getBlockAt(x, y, z);
+		if(block == null)
 			return;
 		hideBlock(x & 15, y, z & 15);
-		if (bi.getBlockClass() == BlockClass.FLUID) {
+		if (block.getBlockClass() == BlockClass.FLUID) {
 			liquids.remove((Object) (((x & 15) << 4) | (y << 8) | (z & 15)));
 		}
-		if (bi.hasBlockEntity()) {
-			//blockEntities.remove(bi);
+		if (block.hasBlockEntity()) {
+			//blockEntities.remove(block);
 			// TODO : be more efficient (maybe have a reference to block entity in BlockInstance?, but it would have yet another big memory footprint)
 			for (BlockEntity be : blockEntities) {
 				Vector3i pos = be.getPosition();
@@ -846,30 +846,31 @@ public class Chunk {
 			lightUpdate(x, y, z);
 		Block[] neighbors = getNeighbors(x, y, z);
 		for (int i = 0; i < neighbors.length; i++) {
-			Block block = neighbors[i];
-			if (block != null) {
+			Block neighbor = neighbors[i];
+			if (neighbor != null) {
 				int nx = x+neighborRelativeX[i]+wx;
 				int ny = y+neighborRelativeY[i];
 				int nz = z+neighborRelativeZ[i]+wz;
 				Chunk ch = getChunk(nx, nz);
 				// Check if the block is structurally depending on the removed block:
-				if(block.mode.dependsOnNeightbors()) {
+				if(neighbor.mode.dependsOnNeightbors()) {
 					byte oldData = ch.getBlockData(nx & 15, ny, nz & 15);
-					Byte newData = block.mode.updateData(oldData, i ^ 1);
-					if(newData == null) surface.removeBlock(nx, ny, nz);
-					else if(newData.byteValue() != oldData) {
+					Byte newData = neighbor.mode.updateData(oldData, i ^ 1);
+					if(newData == null) {
+						surface.removeBlock(nx, ny, nz);
+						break; // Break here to prevent making a non-existent block visible.
+					} else if(newData.byteValue() != oldData) {
 						surface.updateBlockData(nx, ny, nz, newData);
 						// TODO: Eventual item drops.
 					}
-				} else {
-					if (!ch.contains(nx, ny, nz)) {
-						ch.revealBlock((x+neighborRelativeX[i]) & 15, y+neighborRelativeY[i], (z+neighborRelativeZ[i]) & 15);
-					}
-					if (block.getBlockClass() == BlockClass.FLUID) {
-						int index = (((x+neighborRelativeX[i]) & 15) << 4) | ((y+neighborRelativeY[i]) << 8) | ((z+neighborRelativeZ[i]) & 15);
-						if (!updatingLiquids.contains(index))
-							updatingLiquids.add(index);
-					}
+				}
+				if (!ch.contains(nx, ny, nz)) {
+					ch.revealBlock((x+neighborRelativeX[i]) & 15, y+neighborRelativeY[i], (z+neighborRelativeZ[i]) & 15);
+				}
+				if (neighbor.getBlockClass() == BlockClass.FLUID) {
+					int index = (((x+neighborRelativeX[i]) & 15) << 4) | ((y+neighborRelativeY[i]) << 8) | ((z+neighborRelativeZ[i]) & 15);
+					if (!updatingLiquids.contains(index))
+						updatingLiquids.add(index);
 				}
 			}
 		}
@@ -887,7 +888,7 @@ public class Chunk {
 				}
 			}
 			if(index == -1) { // Creates a new object if the block wasn't changed before
-				changes.add(new BlockChange(bi.ID, -1, x, y, z, oldData, (byte)0));
+				changes.add(new BlockChange(block.ID, -1, x, y, z, oldData, (byte)0));
 				return;
 			}
 			if(changes.get(index).oldType == -1) { // Removes the object if the block reverted to it's original state(air).
