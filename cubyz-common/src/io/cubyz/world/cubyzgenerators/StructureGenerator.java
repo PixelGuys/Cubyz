@@ -67,17 +67,25 @@ public class StructureGenerator implements FancyGenerator, ReducedGenerator {
 		MetaChunk np = containingMetaChunk;
 		MetaChunk pn = containingMetaChunk;
 		MetaChunk pp = containingMetaChunk;
-		if((wx & 255) == 0) {
-			nn = np = surface.getMetaChunk((wx & ~255) - 256, wz & ~255);
-		} else if((wx & 255) == 240) {
-			pn = pp = surface.getMetaChunk((wx & ~255) + 256, wz & ~255);
+		MetaChunk no = containingMetaChunk;
+		MetaChunk po = containingMetaChunk;
+		MetaChunk on = containingMetaChunk;
+		MetaChunk op = containingMetaChunk;
+		if((wx & 255) <= 8) {
+			no = nn = np = surface.getMetaChunk((wx & ~255) - 256, wz & ~255);
 		}
-		if((wz & 255) == 0) {
-			nn = surface.getMetaChunk((wx & ~255) - ((wx & 255) == 0 ? 256 : 0), (wz & ~255) - 256);
-			pn = surface.getMetaChunk((wx & ~255) + ((wx & 255) == 240 ? 256 : 0), (wz & ~255) - 256);
-		} else if((wz & 255) == 240) {
-			np = surface.getMetaChunk((wx & ~255) - ((wx & 255) == 0 ? 256 : 0), (wz & ~255) + 256);
-			pp = surface.getMetaChunk((wx & ~255) + ((wx & 255) == 240 ? 256 : 0), (wz & ~255) + 256);
+		if((wx & 255) >= 256 - 8 - chunk.width) {
+			po = pn = pp = surface.getMetaChunk((wx & ~255) + 256, wz & ~255);
+		}
+		if((wz & 255) <= 8) {
+			on = surface.getMetaChunk((wx & ~255), (wz & ~255) - 256);
+			nn = surface.getMetaChunk((wx & ~255) - ((wx & 255) <= 8 ? 256 : 0), (wz & ~255) - 256);
+			pn = surface.getMetaChunk((wx & ~255) + ((wx & 255) >= 256 - 8 - chunk.width ? 256 : 0), (wz & ~255) - 256);
+		}
+		if((wz & 255) >= 256 - 8 - chunk.width) {
+			op = surface.getMetaChunk((wx & ~255), (wz & ~255) + 256);
+			np = surface.getMetaChunk((wx & ~255) - ((wx & 255) <= 8 ? 256 : 0), (wz & ~255) + 256);
+			pp = surface.getMetaChunk((wx & ~255) + ((wx & 255) >= 256 - 8 - chunk.width ? 256 : 0), (wz & ~255) + 256);
 		}
 		for(int px = 0; px < chunk.width + 16; px++) {
 			for(int pz = 0; pz < chunk.width + 16; pz++) {
@@ -88,10 +96,15 @@ public class StructureGenerator implements FancyGenerator, ReducedGenerator {
 				MetaChunk cur = containingMetaChunk;
 				if(px < 8) {
 					if(pz < 8) cur = nn;
-					else if(chunk.width + 16 - pz < 8) cur = np;
-				} else if(chunk.width + 16 - px < 8) {
+					else if(chunk.width + 16 - pz <= 8) cur = np;
+					else cur = no;
+				} else if(chunk.width + 16 - px <= 8) {
 					if(pz < 8) cur = pn;
-					else if(chunk.width + 16 - pz < 8) cur = pp;
+					else if(chunk.width + 16 - pz <= 8) cur = pp;
+					else cur = po;
+				} else {
+					if(pz < 8) cur = on;
+					else if(chunk.width + 16 - pz <= 8) cur = op;
 				}
 				Biome biome = cur.biomeMap[wpx & 255][wpz & 255];
 				for(StructureModel model : biome.vegetationModels()) {
