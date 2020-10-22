@@ -61,11 +61,9 @@ public class GroundPatch extends StructureModel implements ReducedStructureModel
 
 	@Override
 	public void generate(int x, int z, int height, ReducedChunk chunk, MetaChunk metaChunk, Random rand) {
-		float width = (this.width + (rand.nextFloat() - 0.5f)*this.variation)/(1 << chunk.resolution);
+		float width = this.width + (rand.nextFloat() - 0.5f)*this.variation;
 		float orientation = 2*(float)Math.PI*rand.nextFloat();
 		float ellipseParam = 1 + rand.nextFloat(); 
-		
-		int chunkWidth = chunk.width >>> chunk.resolution;
 
 		// Orientation of the major and minor half axis of the ellipse.
 		// For now simply use a minor axis 1/ellipseParam as big as the major.
@@ -76,20 +74,22 @@ public class GroundPatch extends StructureModel implements ReducedStructureModel
 		int xMin = (int)(x - width);
 		if(xMin < 0) xMin = 0;
 		int xMax = (int)(x + width);
-		if(xMax >= chunkWidth) xMax = chunkWidth - 1;
+		if(xMax >= 16) xMax = 15;
 		int zMin = (int)(z - width);
 		if(zMin < 0) zMin = 0;
 		int zMax = (int)(z + width);
-		if(zMax >= chunkWidth) zMax = chunkWidth - 1;
-		for(int px = xMin; px <= xMax; px++) {
-			for(int pz = zMin; pz <= zMax; pz++) {
+		if(zMax >= 16) zMax = 15;
+		for(int px = chunk.startIndex(xMin); px <= xMax; px++) {
+			for(int pz = chunk.startIndex(zMin); pz <= zMax; pz++) {
 				float main = xMain*(x - px) + zMain*(z - pz);
 				float secn = xSecn*(x - px) + zSecn*(z - pz);
 				float dist = main*main + secn*secn;
 				if(dist <= 1) {
-					int index = (px << (chunk.widthShift - chunk.resolution)) | (((int)(metaChunk.heightMap[(px << chunk.resolution) + (chunk.cx << 4) & 255][(pz << chunk.resolution) + (chunk.cz << 4) & 255]*(World.WORLD_HEIGHT >>> chunk.resolution))) << 2*(chunk.widthShift - chunk.resolution)) | pz;
-					if(dist <= smoothness || (dist - smoothness)/(1 - smoothness) < rand.nextFloat())
-						chunk.blocks[index] = newGround.color;
+					int startHeight = (int)(metaChunk.heightMap[px + (chunk.cx << 4) & 255][pz + (chunk.cz << 4) & 255]*World.WORLD_HEIGHT);
+					for(int py = chunk.startIndex((int)(startHeight - depth + 1)); py <= startHeight; py += chunk.resolution) {
+						if(dist <= smoothness || (dist - smoothness)/(1 - smoothness) < rand.nextFloat())
+							chunk.updateBlock(px, py, pz, newGround.color);
+					}
 				}
 			}
 		}

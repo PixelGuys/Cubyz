@@ -49,11 +49,11 @@ public class FlatlandGenerator extends SurfaceGenerator {
 
 	@Override
 	public void generate(ReducedChunk chunk, Surface surface) {
-		for (int x = 0; x < 16 >>> chunk.resolution; x++) {
-			for (int z = 0; z < 16 >>> chunk.resolution; z++) {
-				for (int y = 0; y <= 2 >>> chunk.resolution; y++) {
+		for (int x = 0; x < 16 >>> chunk.resolutionShift; x++) {
+			for (int z = 0; z < 16 >>> chunk.resolutionShift; z++) {
+				for (int y = 0; y <= 2 >>> chunk.resolutionShift; y++) {
 					short color = 0;
-					if (y == 2 >>> chunk.resolution) {
+					if (y == 2 >>> chunk.resolutionShift) {
 						color = grass.color;
 					}
 					else if (y == 1) {
@@ -62,7 +62,7 @@ public class FlatlandGenerator extends SurfaceGenerator {
 					else if (y == 0) {
 						color = bedrock.color;
 					}
-					chunk.blocks[(x << (4 - chunk.resolution)) | (y << (8 - 2*chunk.resolution) | z)] = color;
+					chunk.blocks[(x << (4 - chunk.resolutionShift)) | (y << (8 - 2*chunk.resolutionShift) | z)] = color;
 				}
 			}
 		}

@@ -48,8 +48,8 @@ public class BlockStructure {
 		for(int i = 0; i < structure.length; i++) {
 			// Only do the non-random part. No one is going to care about the exact block placement here.
 			// Choose a minimum of 1 block per layer to compensate for losses from rightshifting and not considering the random part.
-			for(int j = 0; j <= structure[i].min >>> chunk.resolution; j++) {
-				chunk.blocks[xz | (depth-- << 2*(chunk.widthShift - chunk.resolution))] = structure[i].block.color;
+			for(int j = 0; j <= structure[i].min >>> chunk.resolutionShift; j++) {
+				chunk.blocks[xz | (depth-- << 2*(chunk.widthShift - chunk.resolutionShift))] = structure[i].block.color;
 				if(depth <= 0) return depth;
 			}
 		}

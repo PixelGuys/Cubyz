@@ -137,18 +137,18 @@ public class ReducedChunkMesh {
 	}
 	
 	private static void generateModelData(ReducedChunk chunk, FloatFastList vertices, IntFastList faces, IntFastList colors) {
-		int zMask = (chunk.width - 1) >>> chunk.resolution;
-		int xMask = zMask << (chunk.widthShift - chunk.resolution);
-		int yMask = (255 >>> chunk.resolution) << 2*(chunk.widthShift - chunk.resolution);
+		int zMask = (chunk.width - 1) >>> chunk.resolutionShift;
+		int xMask = zMask << (chunk.widthShift - chunk.resolutionShift);
+		int yMask = (255 >>> chunk.resolutionShift) << 2*(chunk.widthShift - chunk.resolutionShift);
 		int zDelta = 1;
-		int xDelta = 1 << (chunk.widthShift - chunk.resolution);
-		int yDelta = 1 << 2*(chunk.widthShift - chunk.resolution);
-		int offset = 1 << chunk.resolution;
+		int xDelta = 1 << (chunk.widthShift - chunk.resolutionShift);
+		int yDelta = 1 << 2*(chunk.widthShift - chunk.resolutionShift);
+		int offset = 1 << chunk.resolutionShift;
 		// Go through all blocks and check their neighbors:
 		for(int i = 0; i < chunk.size; i++) {
-			int x = CubyzMath.shiftRight(i & xMask, chunk.widthShift - 2*chunk.resolution);
-			int y = CubyzMath.shiftRight(i & yMask, 2*chunk.widthShift - 3*chunk.resolution);
-			int z = (i & zMask) << chunk.resolution;
+			int x = CubyzMath.shiftRight(i & xMask, chunk.widthShift - 2*chunk.resolutionShift);
+			int y = CubyzMath.shiftRight(i & yMask, 2*chunk.widthShift - 3*chunk.resolutionShift);
+			int z = (i & zMask) << chunk.resolutionShift;
 			if(chunk.blocks[i] == 0) continue;
 			boolean posX = true, negX = true, posY = true, negY = true, posZ = true, negZ = true;
 			if((i & xMask) != 0 && chunk.blocks[i - xDelta] != 0) negX = false;

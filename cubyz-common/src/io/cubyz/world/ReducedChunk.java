@@ -8,32 +8,42 @@ import io.cubyz.math.CubyzMath;
 import io.cubyz.save.BlockChange;
 
 /**
- * A chunk with smaller resolution(2 blocks, 4 blocks, 8 blocks or 16 blocks). Used to work out the far-distance map of cubyz terrain.
- * It is trimmed for low memory-usage and high-performance, because many of those are be needed.
- * Instead of storing blocks it only stores 16 bit color values.
+ * A chunk with smaller resolution(2 blocks, 4 blocks, 8 blocks or 16 blocks). Used to work out the far-distance map of cubyz terrain.<br>
+ * It is trimmed for low memory-usage and high-performance, because many of those are be needed.<br>
+ * Instead of storing blocks it only stores 16 bit color values.<br>
+ * For performance reasons, Cubyz uses a pretty simple downscaling algorithm: Only take every resolutionth voxel in each dimension.<br>
  */
 
 public class ReducedChunk {
-	public static Surface surface; // The current surface the player is on.
+	/**The current surface the player is on.*/
+	public static Surface surface;
 	public ArrayList<BlockChange> changes;
-	public final int resolution; // 0 - 1; 1 - 2; 2 - 4; 3 - 8; 4 - 16
+	/**1 << resolutionShift = resolution*/
+	public final int resolutionShift;
+	/**How many blocks each voxel is wide.*/
+	public final int resolution;
+	/**If ((x & resoultionMask) == 0), a block can be considered to be visible.*/
+	public final int resolutionMask;
 	public final int size;
 	public final int cx, cz;
 	public final short[] blocks;
 	public boolean generated = false;
 	public final int width;
-	public final int widthShift; // log₂(width)
+	/** =log₂(width)*/
+	public final int widthShift;
 	/**
 	 * Used for rendering only.
 	 * Do not change!
 	 */
 	public Object mesh = null;
-	public ReducedChunk(int cx, int cz, int resolution, int widthShift, ArrayList<BlockChange> changes) {
+	public ReducedChunk(int cx, int cz, int resolutionShift, int widthShift, ArrayList<BlockChange> changes) {
 		this.cx = cx;
 		this.cz = cz;
-		this.resolution = resolution;
+		this.resolutionShift = resolutionShift;
+		this.resolution = 1 << resolutionShift;
+		this.resolutionMask = resolution - 1;
 		width = 1 << widthShift;
-		size = (World.WORLD_HEIGHT >>> resolution)*(width >> resolution)*(width >> resolution);
+		size = (World.WORLD_HEIGHT >>> resolutionShift)*(width >> resolutionShift)*(width >> resolutionShift);
 		blocks = new short[size];
 		this.changes = changes;
 		this.widthShift = widthShift;
@@ -59,5 +69,52 @@ public class ReducedChunk {
 	
 	public Vector3f getMax(float x0, float z0, int worldSize) {
 		return new Vector3f(CubyzMath.match(cx << 4, x0, worldSize) + width, 256, CubyzMath.match(cz << 4, z0, worldSize) + width);
+	}
+	
+	/**
+	 * This is useful to convert for loops to work for reduced resolution:<br>
+	 * Instead of using<br>
+	 * for(int i = start; i < end; i++)<br>
+	 * for(int i = chunk.startIndex(start); i < end; i += chunk.resolution)<br>
+	 * should be used to only activate those voxels that are used in Cubyz's downscaling technique.
+	 * @param index The normal starting index(for normal generation).
+	 * @return the next higher index that is inside the grid of this chunk.
+	 */
+	public int startIndex(int start) {
+		return start+resolutionMask & ~resolutionMask;
+	}
+	
+	/**
+	 * Updates a block if current value is 0 (air) and if it is inside this chunk.
+	 * @param x relative x without considering resolution.
+	 * @param y relative y without considering resolution.
+	 * @param z relative z without considering resolution.
+	 * @param newColor
+	 */
+	public void updateBlockIfAir(int x, int y, int z, short newColor) {
+		if(x < 0 || x >= width || z < 0 || z >= width) return;
+		x >>= resolutionShift;
+		y >>= resolutionShift;
+		z >>= resolutionShift;
+		int index = (x << (widthShift - resolutionShift)) | (y << 2*(widthShift - resolutionShift)) | z;
+		if(blocks[index] == (short)0) {
+			blocks[index] = newColor;
+		}
+	}
+	
+	/**
+	 * Updates a block if it is inside this chunk.
+	 * @param x relative x without considering resolution.
+	 * @param y relative y without considering resolution.
+	 * @param z relative z without considering resolution.
+	 * @param newColor
+	 */
+	public void updateBlock(int x, int y, int z, short newColor) {
+		if(x < 0 || x >= width || z < 0 || z >= width) return;
+		x >>= resolutionShift;
+		y >>= resolutionShift;
+		z >>= resolutionShift;
+		int index = (x << (widthShift - resolutionShift)) | (y << 2*(widthShift - resolutionShift)) | z;
+		blocks[index] = newColor;
 	}
 }

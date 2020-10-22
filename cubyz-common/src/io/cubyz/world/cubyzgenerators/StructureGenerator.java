@@ -97,7 +97,7 @@ public class StructureGenerator implements FancyGenerator, ReducedGenerator {
 				for(StructureModel model : biome.vegetationModels()) {
 					if(model.getChance() > randomValue) {
 						if(model instanceof ReducedStructureModel)
-							((ReducedStructureModel)model).generate((px - 8) >>> chunk.resolution, (pz - 8) >>> chunk.resolution, (int)(cur.heightMap[wpx & 255][wpz & 255]*(World.WORLD_HEIGHT >>> chunk.resolution)) + 1, chunk, containingMetaChunk, rand);
+							((ReducedStructureModel)model).generate(px - 8, pz - 8, (int)(cur.heightMap[wpx & 255][wpz & 255]*World.WORLD_HEIGHT) + 1, chunk, containingMetaChunk, rand);
 						break;
 					} else {
 						randomValue = (randomValue - model.getChance())/(1 - model.getChance()); // Make sure that after the first one was considered all others get the correct chances.

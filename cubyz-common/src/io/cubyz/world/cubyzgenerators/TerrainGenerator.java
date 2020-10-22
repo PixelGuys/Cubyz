@@ -72,11 +72,11 @@ public class TerrainGenerator implements FancyGenerator, ReducedGenerator {
 
 	@Override
 	public void generate(long seed, int wx, int wz, ReducedChunk chunk, MetaChunk containingMetaChunk, Surface surface) {
-		for(int x = 0; x < chunk.width >>> chunk.resolution; x++) {
-			for(int z = 0; z < chunk.width >>> chunk.resolution; z++) {
-				int y = (int)(containingMetaChunk.heightMap[(wx + (x << chunk.resolution)) & 255][(wz + (z << chunk.resolution)) & 255]*(World.WORLD_HEIGHT >>> chunk.resolution));
-				float temperature = containingMetaChunk.heatMap[(wx + (x << chunk.resolution)) & 255][(wz + (z << chunk.resolution)) & 255];
-				for(int j = y > (SEA_LEVEL >>> chunk.resolution) ? Math.min(y, (World.WORLD_HEIGHT >>> chunk.resolution) - 1) : SEA_LEVEL >>> chunk.resolution; j >= 0; j--) {
+		for(int x = 0; x < chunk.width >>> chunk.resolutionShift; x++) {
+			for(int z = 0; z < chunk.width >>> chunk.resolutionShift; z++) {
+				int y = (int)(containingMetaChunk.heightMap[(wx + (x << chunk.resolutionShift)) & 255][(wz + (z << chunk.resolutionShift)) & 255]*(World.WORLD_HEIGHT >>> chunk.resolutionShift));
+				float temperature = containingMetaChunk.heatMap[(wx + (x << chunk.resolutionShift)) & 255][(wz + (z << chunk.resolutionShift)) & 255];
+				for(int j = y > (SEA_LEVEL >>> chunk.resolutionShift) ? Math.min(y, (World.WORLD_HEIGHT >>> chunk.resolutionShift) - 1) : SEA_LEVEL >>> chunk.resolutionShift; j >= 0; j--) {
 					short color = 0;
 					if(j > y) {
 						if(temperature <= 0 && j == SEA_LEVEL) {
@@ -85,16 +85,16 @@ public class TerrainGenerator implements FancyGenerator, ReducedGenerator {
 							color = water.color;
 						}
 					} else {
-						if(j == 0 && y >>> chunk.resolution != 0) {
+						if(j == 0 && y >>> chunk.resolutionShift != 0) {
 							color = bedrock.color;
 						} else if(j == y) {
-							j = containingMetaChunk.biomeMap[(wx + (x << chunk.resolution)) & 255][(wz + (z << chunk.resolution)) & 255].struct.addSubTerranian(chunk, j, (x << (chunk.widthShift - chunk.resolution) | z));
+							j = containingMetaChunk.biomeMap[(wx + (x << chunk.resolutionShift)) & 255][(wz + (z << chunk.resolutionShift)) & 255].struct.addSubTerranian(chunk, j, (x << (chunk.widthShift - chunk.resolutionShift) | z));
 							continue;
 						} else {
 							color = stone.color;
 						}
 					}
-					chunk.blocks[(x << (chunk.widthShift - chunk.resolution)) | (j << 2*(chunk.widthShift - chunk.resolution)) | z] = color;
+					chunk.blocks[(x << (chunk.widthShift - chunk.resolutionShift)) | (j << 2*(chunk.widthShift - chunk.resolutionShift)) | z] = color;
 				}
 			}
 		}
