@@ -29,7 +29,7 @@ public class SimpleVegetation extends StructureModel implements ReducedStructure
 				if(deltaHeight != 0)
 					height += rand.nextInt(deltaHeight);
 				for(int dh = 0; dh < height; dh++)
-					chunk.rawAddBlock(x, h+dh, z, block, (byte)0);
+					chunk.rawAddBlock(x, h+dh, z, block);
 			}
 		}
 	}

@@ -133,7 +133,7 @@ public class CrystalCavernGenerator implements FancyGenerator {
 							for(int curY = yMax - 1; curY >= yMin; --curY) {
 								double distToCenterY = ((double) curY + 0.5 - worldY) / (yScale);
 								if(distToCenterX*distToCenterX + distToCenterY*distToCenterY + distToCenterZ*distToCenterZ < 1.0 && !water.equals(chunk.getBlockAt(curX, curYIndex, curZ)) && !ice.equals(chunk.getBlockAt(curX, curYIndex, curZ))) {
-									chunk.rawAddBlock(curX, curZ, curYIndex, null, (byte)0);
+									chunk.rawAddBlock(curX, curZ, curYIndex, null);
 									if(heightMap[curX][curZ] == curYIndex)
 										vegetationIgnoreMap[curX][curZ] = true;
 								}
@@ -209,9 +209,9 @@ public class CrystalCavernGenerator implements FancyGenerator {
 				        		if(dist <= size*size) {
 						        	if(x3 >= 0 && x3 < 16 && y3 >= 0 && y3 < 256 && z3 >= 0 && z3 < 16) {
 						        		if(chunk.getBlockAt((int)x3, (int)y3, (int)z3) == null || chunk.getBlockAt((int)x3, (int)y3, (int)z3).isDegradable() || chunk.getBlockAt((int)x3, (int)y3, (int)z3).getBlockClass() == BlockClass.FLUID) {
-						        			chunk.rawAddBlock((int)x3, (int)y3, (int)z3, glowCrystal, (byte)0);
+						        			chunk.rawAddBlock((int)x3, (int)y3, (int)z3, glowCrystal);
 						        		} else if(chunk.getBlockAt((int)x3, (int)y3, (int)z3) == stone) {
-						        			chunk.rawAddBlock((int)x3, (int)y3, (int)z3, crystalOre, (byte)0); // When the crystal goes through stone, generate the corresponding ore at that position.
+						        			chunk.rawAddBlock((int)x3, (int)y3, (int)z3, crystalOre); // When the crystal goes through stone, generate the corresponding ore at that position.
 						        		}
 						        	}
 				        		}

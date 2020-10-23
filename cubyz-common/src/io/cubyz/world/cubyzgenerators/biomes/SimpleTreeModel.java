@@ -47,7 +47,7 @@ public class SimpleTreeModel extends StructureModel implements ReducedStructureM
 							if(chunk.getBlockAt(x, h+i, z) != null && (!chunk.getBlockAt(x, h+i, z).isDegradable() || wood.isDegradable())) {
 								continue;
 							}
-							chunk.rawAddBlock(x, h+i, z, (i == height-1) ? topWood : wood, (byte)0);
+							chunk.rawAddBlock(x, h+i, z, (i == height-1) ? topWood : wood);
 						}
 					}
 					
@@ -61,7 +61,7 @@ public class SimpleTreeModel extends StructureModel implements ReducedStructureM
 									if(chunk.getBlockAt(x+k, h+i, z+l) != null && (!chunk.getBlockAt(x+k, h+i, z+l).isDegradable() || leaves.isDegradable())) {
 										continue;
 									}
-									chunk.rawAddBlock(x+k, h+i, z+l, leaves, (byte)0);
+									chunk.rawAddBlock(x+k, h+i, z+l, leaves);
 								}
 							}
 						}
@@ -77,7 +77,7 @@ public class SimpleTreeModel extends StructureModel implements ReducedStructureM
 							if(chunk.getBlockAt(x, h+i, z) != null && (!chunk.getBlockAt(x, h+i, z).isDegradable() || wood.isDegradable())) {
 								continue;
 							}
-							chunk.rawAddBlock(x, h+i, z, (i == height-1) ? topWood : wood, (byte)0);
+							chunk.rawAddBlock(x, h+i, z, (i == height-1) ? topWood : wood);
 						}
 					}
 					
@@ -92,7 +92,7 @@ public class SimpleTreeModel extends StructureModel implements ReducedStructureM
 										if(chunk.getBlockAt(x+ix, h+i+height-1, z+iz) != null && (!chunk.getBlockAt(x+ix, h+i+height-1, z+iz).isDegradable() || leaves.isDegradable())) {
 											continue;
 										}
-										chunk.rawAddBlock(x+ix, h+i+height-1, z+iz, leaves, (byte)0);
+										chunk.rawAddBlock(x+ix, h+i+height-1, z+iz, leaves);
 									}
 								}
 							}
@@ -111,7 +111,7 @@ public class SimpleTreeModel extends StructureModel implements ReducedStructureM
 							if(chunk.getBlockAt(x, h+i, z) != null && (!chunk.getBlockAt(x, h+i, z).isDegradable() || wood.isDegradable())) {
 								continue;
 							}
-							chunk.rawAddBlock(x, h+i, z, (i == height-1) ? topWood : wood, (byte)0);
+							chunk.rawAddBlock(x, h+i, z, (i == height-1) ? topWood : wood);
 						}
 					}
 					
@@ -128,7 +128,7 @@ public class SimpleTreeModel extends StructureModel implements ReducedStructureM
 										if(chunk.getBlockAt(x+ix, h+i+height-1, z+iz) != null && (!chunk.getBlockAt(x+ix, h+i+height-1, z+iz).isDegradable() || leaves.isDegradable())) {
 											continue;
 										}
-										chunk.rawAddBlock(x+ix, h+i+height-1, z+iz, leaves, (byte)0);
+										chunk.rawAddBlock(x+ix, h+i+height-1, z+iz, leaves);
 									}
 								}
 							}

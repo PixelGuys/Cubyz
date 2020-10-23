@@ -53,7 +53,7 @@ public class GroundPatch extends StructureModel implements ReducedStructureModel
 				if(dist <= 1) {
 					for(int i = 0; i < depth; i++) {
 						if(dist <= smoothness || (dist - smoothness)/(1 - smoothness) < rand.nextFloat())
-							chunk.rawAddBlock(px, (int)heightMap[px+8][pz+8] - i, pz, newGround, (byte)0);
+							chunk.rawAddBlock(px, (int)heightMap[px+8][pz+8] - i, pz, newGround);
 					}
 				}
 			}

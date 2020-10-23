@@ -140,7 +140,7 @@ public class OreGenerator implements Generator {
 									double distToCenterY = ((double) curY + 0.5 - worldY) / scale;
 									// The first ore that gets into a position will be placed:
 									if(chunk.getBlockAt(curX, curHeightIndex, curZ) == stone && distToCenterX*distToCenterX + distToCenterY*distToCenterY + distToCenterZ*distToCenterZ < 1.0) {
-										chunk.rawAddBlock(curX, curHeightIndex, curZ, ore, (byte)0);
+										chunk.rawAddBlock(curX, curHeightIndex, curZ, ore);
 									}
 									--curHeightIndex;
 								}

@@ -35,7 +35,7 @@ public class FlatlandGenerator extends SurfaceGenerator {
 					if (y == 0) {
 						b = bedrock;
 					}
-					chunk.rawAddBlock(x, y, z, b, (byte)0);
+					chunk.rawAddBlock(x, y, z, b);
 				}
 			}
 		}

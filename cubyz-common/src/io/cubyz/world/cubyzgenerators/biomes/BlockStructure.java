@@ -28,7 +28,7 @@ public class BlockStructure {
 			}
 			int variation = rand.nextInt(1 + structure[i].max - structure[i].min);
 			for(int j = 0; j < variation; j++) {
-				chunk.rawAddBlock(x, depth--, z, structure[i].block, (byte)0);
+				chunk.rawAddBlock(x, depth--, z, structure[i].block);
 				if(depth <= 0) return depth;
 			}
 		}

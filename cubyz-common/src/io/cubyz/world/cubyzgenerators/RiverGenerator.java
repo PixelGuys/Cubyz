@@ -139,11 +139,11 @@ public class RiverGenerator implements BigGenerator {
 							if(height1-height2 < 1) height2 = height1-2;
 							if(maxLength > 5) {
 								for(int h = height1; h <= height0; h++) {
-									chunk.rawAddBlock(ix, h, iz, null, (byte)0);
+									chunk.rawAddBlock(ix, h, iz, null);
 								}
 							}
 							for(int h = height2; h < height1; h++) {
-								chunk.rawAddBlock(ix, h, iz, water, (byte)0);
+								chunk.rawAddBlock(ix, h, iz, water);
 							}
 						}
 						// Add to the vegetationIgnoreMap if on a river:

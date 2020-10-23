@@ -904,6 +904,8 @@ public class Chunk {
 	 * @param x
 	 * @param y
 	 * @param z
+	 * @param b
+	 * @param data
 	 */
 	public void rawAddBlock(int x, int y, int z, Block b, byte data) {
 		if (b != null) {
@@ -912,6 +914,17 @@ public class Chunk {
 			}
 		}
 		setBlock(x, y, z, b, data);
+	}
+	
+	/**
+	 * Raw add block. Doesn't do any checks. To use with WorldGenerators. Uses RotationMode default block data.
+	 * @param x
+	 * @param y
+	 * @param z
+	 * @param b
+	 */
+	public void rawAddBlock(int x, int y, int z, Block b) {
+		rawAddBlock(x, y, z, b, b == null ? 0 : b.mode.getNaturalStandard());
 	}
 	
 	public boolean contains(int x, int y, int z) {

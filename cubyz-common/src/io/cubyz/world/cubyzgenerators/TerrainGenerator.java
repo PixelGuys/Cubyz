@@ -65,7 +65,7 @@ public class TerrainGenerator implements FancyGenerator, ReducedGenerator {
 							b = stone;
 						}
 					}
-					chunk.rawAddBlock(x, j, z, b, (byte)0);
+					chunk.rawAddBlock(x, j, z, b);
 				}
 			}
 		}

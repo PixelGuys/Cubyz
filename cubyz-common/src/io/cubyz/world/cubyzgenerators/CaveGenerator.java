@@ -93,7 +93,7 @@ public class CaveGenerator implements FancyGenerator {
 							if(distToCenter < 1.0) {
 								// Add a small roughness parameter to make walls look a bit rough by filling only 5/6 of the blocks at the walls with air:
 								if((distToCenter <= 0.9 || localRand.nextInt(6) != 0) && !water.equals(chunk.getBlockAt(curX, curYIndex, curZ)) && !ice.equals(chunk.getBlockAt(curX, curYIndex, curZ))) {
-									chunk.rawAddBlock(curX, curYIndex, curZ, null, (byte)0);
+									chunk.rawAddBlock(curX, curYIndex, curZ, null);
 									if(heightMap[curX][curZ] == curYIndex)
 										vegetationIgnoreMap[curX][curZ] = true;
 								}
@@ -201,7 +201,7 @@ public class CaveGenerator implements FancyGenerator {
 								for(int curY = yMax - 1; curY >= yMin; --curY) {
 									double distToCenterH = ((double) curY + 0.5 - worldY) / yScale;
 									if(distToCenterX*distToCenterX + distToCenterH*distToCenterH + distToCenterZ*distToCenterZ < 1.0 && !water.equals(chunk.getBlockAt(curX, curYIndex, curZ)) && !ice.equals(chunk.getBlockAt(curX, curYIndex, curZ))) {
-										chunk.rawAddBlock(curX, curYIndex, curZ, null, (byte)0);
+										chunk.rawAddBlock(curX, curYIndex, curZ, null);
 										if(heightMap[curX][curZ] == curYIndex)
 											vegetationIgnoreMap[curX][curZ] = true;
 									}
