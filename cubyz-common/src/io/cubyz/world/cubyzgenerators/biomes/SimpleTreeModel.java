@@ -3,6 +3,7 @@ package io.cubyz.world.cubyzgenerators.biomes;
 import java.util.Random;
 
 import io.cubyz.blocks.Block;
+import io.cubyz.world.Chunk;
 import io.cubyz.world.MetaChunk;
 import io.cubyz.world.ReducedChunk;
 import io.cubyz.world.World;
@@ -33,7 +34,7 @@ public class SimpleTreeModel extends StructureModel implements ReducedStructureM
 	}
 
 	@Override
-	public void generate(int x, int z, int h, Block[][][] chunk, float[][] heightMap, Random rand) {
+	public void generate(int x, int z, int h, Chunk chunk, float[][] heightMap, Random rand) {
 		if(h > 0) {
 			int height = height0 + rand.nextInt(deltaHeight);
 			switch(type) {
@@ -43,10 +44,10 @@ public class SimpleTreeModel extends StructureModel implements ReducedStructureM
 					
 					if(x >= 0 && x < 16 && z >= 0 && z < 16) {
 						for (int i = 0; i < height; i++) {
-							if(chunk[x][z][h+i] != null && (!chunk[x][z][h+i].isDegradable() || wood.isDegradable())) {
+							if(chunk.getBlockAt(x, h+i, z) != null && (!chunk.getBlockAt(x, h+i, z).isDegradable() || wood.isDegradable())) {
 								continue;
 							}
-							chunk[x][z][h+i] = (i == height-1) ? topWood : wood;
+							chunk.rawAddBlock(x, h+i, z, (i == height-1) ? topWood : wood, (byte)0);
 						}
 					}
 					
@@ -57,10 +58,10 @@ public class SimpleTreeModel extends StructureModel implements ReducedStructureM
 						for (int k = 1 - j; k < j; k++) {
 							for (int l = 1 - j; l < j; l++) {
 								if (x+k >= 0 && x+k < 16 && z+l >= 0 && z+l < 16) {
-									if(chunk[x+k][z+l][h+i] != null && (!chunk[x+k][z+l][h+i].isDegradable() || leaves.isDegradable())) {
+									if(chunk.getBlockAt(x+k, h+i, z+l) != null && (!chunk.getBlockAt(x+k, h+i, z+l).isDegradable() || leaves.isDegradable())) {
 										continue;
 									}
-									chunk[x+k][z+l][h+i] = leaves;
+									chunk.rawAddBlock(x+k, h+i, z+l, leaves, (byte)0);
 								}
 							}
 						}
@@ -73,10 +74,10 @@ public class SimpleTreeModel extends StructureModel implements ReducedStructureM
 					
 					if(x >= 0 && x < 16 && z >= 0 && z < 16) {
 						for (int i = 0; i < height; i++) {
-							if(chunk[x][z][h+i] != null && (!chunk[x][z][h+i].isDegradable() || wood.isDegradable())) {
+							if(chunk.getBlockAt(x, h+i, z) != null && (!chunk.getBlockAt(x, h+i, z).isDegradable() || wood.isDegradable())) {
 								continue;
 							}
-							chunk[x][z][h+i] = (i == height-1) ? topWood : wood;
+							chunk.rawAddBlock(x, h+i, z, (i == height-1) ? topWood : wood, (byte)0);
 						}
 					}
 					
@@ -88,10 +89,10 @@ public class SimpleTreeModel extends StructureModel implements ReducedStructureM
 								int dist = i*i + ix*ix + iz*iz;
 								if(dist < (floatLeafRadius)*(floatLeafRadius) && (dist < (floatLeafRadius - 0.25f)*(floatLeafRadius - 0.25f) || rand.nextInt(2) != 0)) {
 									if (x+ix >= 0 && x+ix < 16 && z+iz >= 0 && z+iz < 16) {
-										if(chunk[x+ix][z+iz][h+i+height-1] != null && (!chunk[x+ix][z+iz][h+i+height-1].isDegradable() || leaves.isDegradable())) {
+										if(chunk.getBlockAt(x+ix, h+i+height-1, z+iz) != null && (!chunk.getBlockAt(x+ix, h+i+height-1, z+iz).isDegradable() || leaves.isDegradable())) {
 											continue;
 										}
-										chunk[x+ix][z+iz][h+i+height-1] = leaves;
+										chunk.rawAddBlock(x+ix, h+i+height-1, z+iz, leaves, (byte)0);
 									}
 								}
 							}
@@ -107,10 +108,10 @@ public class SimpleTreeModel extends StructureModel implements ReducedStructureM
 					
 					if(x >= 0 && x < 16 && z >= 0 && z < 16) {
 						for (int i = 0; i < height; i++) {
-							if(chunk[x][z][h+i] != null && (!chunk[x][z][h+i].isDegradable() || wood.isDegradable())) {
+							if(chunk.getBlockAt(x, h+i, z) != null && (!chunk.getBlockAt(x, h+i, z).isDegradable() || wood.isDegradable())) {
 								continue;
 							}
-							chunk[x][z][h+i] = (i == height-1) ? topWood : wood;
+							chunk.rawAddBlock(x, h+i, z, (i == height-1) ? topWood : wood, (byte)0);
 						}
 					}
 					
@@ -124,10 +125,10 @@ public class SimpleTreeModel extends StructureModel implements ReducedStructureM
 									// Bushes are wider than tall:
 									dist += 4*i*i;
 									if(dist < (floatLeafRadius)*(floatLeafRadius) && (dist < (floatLeafRadius - 0.25f)*(floatLeafRadius - 0.25f) || rand.nextInt(2) != 0)) {
-										if(chunk[x+ix][z+iz][h+i+height-1] != null && (!chunk[x+ix][z+iz][h+i+height-1].isDegradable() || leaves.isDegradable())) {
+										if(chunk.getBlockAt(x+ix, h+i+height-1, z+iz) != null && (!chunk.getBlockAt(x+ix, h+i+height-1, z+iz).isDegradable() || leaves.isDegradable())) {
 											continue;
 										}
-										chunk[x+ix][z+iz][h+i+height-1] = leaves;
+										chunk.rawAddBlock(x+ix, h+i+height-1, z+iz, leaves, (byte)0);
 									}
 								}
 							}

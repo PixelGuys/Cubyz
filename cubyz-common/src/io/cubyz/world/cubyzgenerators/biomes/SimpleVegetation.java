@@ -3,6 +3,7 @@ package io.cubyz.world.cubyzgenerators.biomes;
 import java.util.Random;
 
 import io.cubyz.blocks.Block;
+import io.cubyz.world.Chunk;
 import io.cubyz.world.MetaChunk;
 import io.cubyz.world.ReducedChunk;
 import io.cubyz.world.World;
@@ -21,14 +22,14 @@ public class SimpleVegetation extends StructureModel implements ReducedStructure
 		deltaHeight = dh;
 	}
 	@Override
-	public void generate(int x, int z, int h, Block[][][] chunk, float[][] heightMap, Random rand) {
+	public void generate(int x, int z, int h, Chunk chunk, float[][] heightMap, Random rand) {
 		if(h > 0 && x >= 0 && x < 16 && z >= 0 && z < 16) {
 			int height = height0;
 			if(h+height < World.WORLD_HEIGHT) {
 				if(deltaHeight != 0)
 					height += rand.nextInt(deltaHeight);
 				for(int dh = 0; dh < height; dh++)
-					chunk[x][z][h+dh] = block;
+					chunk.rawAddBlock(x, h+dh, z, block, (byte)0);
 			}
 		}
 	}

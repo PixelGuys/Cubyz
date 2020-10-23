@@ -5,6 +5,7 @@ import java.util.Random;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
+import io.cubyz.world.Chunk;
 import io.cubyz.world.MetaChunk;
 import io.cubyz.world.ReducedChunk;
 import io.cubyz.world.Surface;
@@ -36,7 +37,7 @@ public class TerrainGenerator implements FancyGenerator, ReducedGenerator {
 	private static Block water = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:water");
 
 	@Override
-	public void generate(long seed, int cx, int cz, Block[][][] chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, float[][] heightMap, Biome[][] biomeMap, byte[][][] blockData, int worldSize) {
+	public void generate(long seed, int cx, int cz, Chunk chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, float[][] heightMap, Biome[][] biomeMap, int worldSize) {
 		Random rand = new Random(seed);
 		int seedX = rand.nextInt() | 1;
 		int seedZ = rand.nextInt() | 1;
@@ -58,13 +59,13 @@ public class TerrainGenerator implements FancyGenerator, ReducedGenerator {
 							b = bedrock;
 						} else if(j == y) {
 							rand.setSeed((seedX*((cx << 4) + x) << 32) ^ seedZ*((cz << 4) + z));
-							j = biomeMap[x+8][z+8].struct.addSubTerranian(chunk, blockData, j, x, z, yOff, rand);
+							j = biomeMap[x+8][z+8].struct.addSubTerranian(chunk, j, x, z, yOff, rand);
 							continue;
 						} else {
 							b = stone;
 						}
 					}
-					chunk[x][z][j] = b;
+					chunk.rawAddBlock(x, j, z, b, (byte)0);
 				}
 			}
 		}

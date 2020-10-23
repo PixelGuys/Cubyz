@@ -1,6 +1,6 @@
 package io.cubyz.world.cubyzgenerators;
 
-import io.cubyz.blocks.Block;
+import io.cubyz.world.Chunk;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 
 /**
@@ -9,6 +9,6 @@ import io.cubyz.world.cubyzgenerators.biomes.Biome;
 
 public interface FancyGenerator extends Generator {
 	abstract int getPriority(); // Used to prioritize certain generators(like map generation) over others(like vegetation generation).
-	abstract void generate(long seed, int cx, int cz, Block[][][] chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, float[][] heightMap, Biome[][] biomeMap, byte[][][] blockData, int worldSize);
-	default void generate(long seed, int cx, int cz, Block[][][] chunk, boolean[][] vegetationIgnoreMap) {}
+	abstract void generate(long seed, int cx, int cz, Chunk chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, float[][] heightMap, Biome[][] biomeMap, int worldSize);
+	default void generate(long seed, int cx, int cz, Chunk chunk, boolean[][] vegetationIgnoreMap) {}
 }

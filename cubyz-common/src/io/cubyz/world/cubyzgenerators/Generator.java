@@ -1,7 +1,7 @@
 package io.cubyz.world.cubyzgenerators;
 
 import io.cubyz.api.RegistryElement;
-import io.cubyz.blocks.Block;
+import io.cubyz.world.Chunk;
 
 /**
  * Some interface to access all different generators(caves,terrain,…) through one simple function.
@@ -10,7 +10,7 @@ import io.cubyz.blocks.Block;
 public interface Generator extends RegistryElement {
 	
 	abstract int getPriority(); // Used to prioritize certain generators(like map generation) over others(like vegetation generation).
-	abstract void generate(long seed, int cx, int cz, Block[][][] chunk, boolean[][] vegetationIgnoreMap);
+	abstract void generate(long seed, int cx, int cz, Chunk chunk, boolean[][] vegetationIgnoreMap);
 	
 	/**
 	 * To avoid duplicate seeds in similar generation algorithms, the SurfaceGenerator xors the torus-seed with the generator specific seed.

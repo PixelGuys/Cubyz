@@ -3,13 +3,9 @@ package io.cubyz.world.generator;
 import java.util.Arrays;
 import java.util.Comparator;
 
-import org.joml.Vector3i;
-
 import io.cubyz.api.RegistryElement;
 import io.cubyz.api.Registry;
 import io.cubyz.api.Resource;
-import io.cubyz.blocks.Block;
-import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.blocks.Ore;
 import io.cubyz.world.Chunk;
 import io.cubyz.world.MetaChunk;
@@ -57,9 +53,9 @@ public class LifelandGenerator extends SurfaceGenerator {
 	}
 	
 	@Override
-	public void generate(Chunk ch, Surface surface) {
-		int cx = ch.getX();
-		int cz = ch.getZ();
+	public void generate(Chunk chunk, Surface surface) {
+		int cx = chunk.getX();
+		int cz = chunk.getZ();
 		int wx = cx << 4;
 		int wz = cz << 4;
 		long seed = surface.getStellarTorus().getLocalSeed();
@@ -78,9 +74,6 @@ public class LifelandGenerator extends SurfaceGenerator {
 				realHeight[px][pz] = h;
 			}
 		}
-		
-		Block[][][] chunk = new Block[16][16][World.WORLD_HEIGHT];
-		byte[][][] chunkData = new byte[16][16][World.WORLD_HEIGHT];
 		
 		// Get the MetaChunks used by the BigGenerator.:
 		int lx, lz;
@@ -119,7 +112,7 @@ public class LifelandGenerator extends SurfaceGenerator {
 		
 		for (Generator g : sortedGenerators) {
 			if (g instanceof FancyGenerator) {
-				((FancyGenerator) g).generate(seed ^ g.getGeneratorSeed(), cx, cz, chunk, vegetationIgnoreMap, heatMap, realHeight, biomeMap, chunkData, surface.getSize());
+				((FancyGenerator) g).generate(seed ^ g.getGeneratorSeed(), cx, cz, chunk, vegetationIgnoreMap, heatMap, realHeight, biomeMap, surface.getSize());
 			} else if (g instanceof BigGenerator) {
 				((BigGenerator) g).generate(seed ^ g.getGeneratorSeed(), lx, lz, chunk, vegetationIgnoreMap, nn, np, pn, pp);
 			} else {
@@ -127,25 +120,7 @@ public class LifelandGenerator extends SurfaceGenerator {
 			}
 		}
 
-		// Place the blocks in the chunk:
-		for(int px = 0; px < 16; px++) {
-			for(int pz = 0; pz < 16; pz++) {
-				for(int py = 0; py < World.WORLD_HEIGHT; py++) {
-					Block b = chunk[px][pz][py];
-					if(b != null) {
-						ch.rawAddBlock(px, py, pz, b, chunkData[px][pz][py]);
-						if (b.hasBlockEntity()) {
-							Vector3i pos = new Vector3i(wx+px, py, wz+pz);
-							ch.getBlockEntities().add(b.createBlockEntity(surface, pos));
-						}
-						if (b.getBlockClass() == BlockClass.FLUID)
-							ch.getUpdatingLiquids().add((px << 4) | (py << 8) | pz);
-					}
-				}
-			}
-		}
-
-		ch.applyBlockChanges();
+		chunk.applyBlockChanges();
 	}
 
 	@Override

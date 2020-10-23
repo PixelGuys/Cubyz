@@ -3,6 +3,7 @@ package io.cubyz.world.cubyzgenerators.biomes;
 import java.util.Random;
 
 import io.cubyz.blocks.Block;
+import io.cubyz.world.Chunk;
 import io.cubyz.world.MetaChunk;
 import io.cubyz.world.ReducedChunk;
 import io.cubyz.world.World;
@@ -25,7 +26,7 @@ public class GroundPatch extends StructureModel implements ReducedStructureModel
 	}
 
 	@Override
-	public void generate(int x, int z, int h, Block[][][] chunk, float[][] heightMap, Random rand) {
+	public void generate(int x, int z, int h, Chunk chunk, float[][] heightMap, Random rand) {
 		float width = this.width + (rand.nextFloat() - 0.5f)*this.variation;
 		float orientation = 2*(float)Math.PI*rand.nextFloat();
 		float ellipseParam = 1 + rand.nextFloat(); 
@@ -52,7 +53,7 @@ public class GroundPatch extends StructureModel implements ReducedStructureModel
 				if(dist <= 1) {
 					for(int i = 0; i < depth; i++) {
 						if(dist <= smoothness || (dist - smoothness)/(1 - smoothness) < rand.nextFloat())
-							chunk[px][pz][(int)heightMap[px+8][pz+8] - i] = newGround;
+							chunk.rawAddBlock(px, (int)heightMap[px+8][pz+8] - i, pz, newGround, (byte)0);
 					}
 				}
 			}

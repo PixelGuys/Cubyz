@@ -3,6 +3,7 @@ package io.cubyz.world.cubyzgenerators.biomes;
 import java.util.Random;
 
 import io.cubyz.blocks.Block;
+import io.cubyz.world.Chunk;
 import io.cubyz.world.ReducedChunk;
 
 /**
@@ -14,20 +15,20 @@ public class BlockStructure {
 	public BlockStructure(BlockStack ... blocks) {
 		structure = blocks;
 	}
-	public int addSubTerranian(Block[][][] chunk, byte[][][] data, int depth, int x, int z, int highResDepth, Random rand) {
+	public int addSubTerranian(Chunk chunk, int depth, int x, int z, int highResDepth, Random rand) {
 		int startingDepth = depth;
 		for(int i = 0; i < structure.length; i++) {
 			for(int j = 0; j < structure[i].min; j++) {
-				chunk[x][z][depth--] = structure[i].block;
-				data[x][z][depth+1] = structure[i].block.mode.getNaturalStandard();
+				byte data = structure[i].block.mode.getNaturalStandard();
 				if(i == 0 && j == 0 && structure[i].block.mode.getRegistryID().toString().equals("cubyz:stackable")) {
-					data[x][z][depth+1] = (byte)highResDepth;
+					data = (byte)highResDepth;
 				}
+				chunk.rawAddBlock(x, depth--, z, structure[i].block, data);
 				if(depth <= 0) return depth;
 			}
 			int variation = rand.nextInt(1 + structure[i].max - structure[i].min);
 			for(int j = 0; j < variation; j++) {
-				chunk[x][z][depth--] = structure[i].block;
+				chunk.rawAddBlock(x, depth--, z, structure[i].block, (byte)0);
 				if(depth <= 0) return depth;
 			}
 		}

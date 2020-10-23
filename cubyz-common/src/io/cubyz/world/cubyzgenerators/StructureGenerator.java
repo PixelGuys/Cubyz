@@ -3,8 +3,8 @@ package io.cubyz.world.cubyzgenerators;
 import java.util.Random;
 
 import io.cubyz.api.Resource;
-import io.cubyz.blocks.Block;
 import io.cubyz.math.CubyzMath;
+import io.cubyz.world.Chunk;
 import io.cubyz.world.MetaChunk;
 import io.cubyz.world.ReducedChunk;
 import io.cubyz.world.Surface;
@@ -31,7 +31,7 @@ public class StructureGenerator implements FancyGenerator, ReducedGenerator {
 	}
 
 	@Override
-	public void generate(long seed, int cx, int cz, Block[][][] chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, float[][] heightMap, Biome[][] biomeMap, byte[][][] blockData, int worldSize) {
+	public void generate(long seed, int cx, int cz, Chunk chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, float[][] heightMap, Biome[][] biomeMap, int worldSize) {
 		int wx = cx << 4;
 		int wz = cz << 4;
 		Random rand = new Random(seed + 3*(seed + 1 & Integer.MAX_VALUE));
