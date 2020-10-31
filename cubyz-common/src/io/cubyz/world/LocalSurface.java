@@ -44,7 +44,7 @@ public class LocalSurface extends Surface {
 	private static Random rnd = new Random();
 	
 	private MetaChunk[] metaChunks;
-	private Chunk[] chunks;
+	private NormalChunk[] chunks;
 	private ReducedChunk[] reducedChunks;
 	private int lastX = Integer.MAX_VALUE, lastZ = Integer.MAX_VALUE; // Chunk coordinates of the last chunk update.
 	private int lastMetaX = Integer.MAX_VALUE, lastMetaZ = Integer.MAX_VALUE; // MetaChunk coordinates of the last chunk update.
@@ -74,7 +74,7 @@ public class LocalSurface extends Surface {
 	private final long localSeed; // Each torus has a different seed for world generation. All those seeds are generated using the main world seed.
 	
 	// synchronized common list for chunk generation
-	private volatile BlockingDeque<Chunk> loadList = new LinkedBlockingDeque<>(MAX_QUEUE_SIZE);
+	private volatile BlockingDeque<NormalChunk> loadList = new LinkedBlockingDeque<>(MAX_QUEUE_SIZE);
 	private volatile BlockingDeque<ReducedChunk> reducedLoadList = new LinkedBlockingDeque<>(MAX_QUEUE_SIZE);
 	
 	boolean liquidUpdate;
@@ -86,7 +86,7 @@ public class LocalSurface extends Surface {
 
 	private ArrayList<CustomOre> customOres = new ArrayList<>();
 	
-	private void queue(Chunk ch) {
+	private void queue(NormalChunk ch) {
 		if (!isQueued(ch)) {
 			try {
 				loadList.put(ch);
@@ -96,9 +96,9 @@ public class LocalSurface extends Surface {
 		}
 	}
 	
-	private boolean isQueued(Chunk ch) {
-		Chunk[] list = loadList.toArray(new Chunk[0]);
-		for (Chunk ch2 : list) {
+	private boolean isQueued(NormalChunk ch) {
+		NormalChunk[] list = loadList.toArray(new NormalChunk[0]);
+		for (NormalChunk ch2 : list) {
 			if (ch2 == ch) {
 				return true;
 			}
@@ -130,7 +130,7 @@ public class LocalSurface extends Surface {
 		public void run() {
 			while (true) {
 				if(!loadList.isEmpty()) {
-					Chunk popped = null;
+					NormalChunk popped = null;
 					try {
 						popped = loadList.take();
 					} catch (InterruptedException e) {
@@ -167,7 +167,7 @@ public class LocalSurface extends Surface {
 		localSeed = torus.getLocalSeed();
 		this.torus = torus;
 		metaChunks = new MetaChunk[0];
-		chunks = new Chunk[0];
+		chunks = new NormalChunk[0];
 		reducedChunks = new ReducedChunk[0];
 		
 		for (int i = 0; i < Runtime.getRuntime().availableProcessors(); i++) {
@@ -275,10 +275,10 @@ public class LocalSurface extends Surface {
 		// Transform to chunk coordinates:
 		x >>= 4;
 		z >>= 4;
-		Chunk ch = getChunk(x, z);
+		NormalChunk ch = getChunk(x, z);
 		if(ch == null) {
-			ch = new Chunk(x, z, this, transformData(getChunkData(x, z), tio.blockPalette));
-			Chunk[] newList = new Chunk[chunks.length+1];
+			ch = new NormalChunk(x, z, this, transformData(getChunkData(x, z), tio.blockPalette));
+			NormalChunk[] newList = new NormalChunk[chunks.length+1];
 			newList[chunks.length] = ch;
 			chunks = newList;
 		}
@@ -299,7 +299,7 @@ public class LocalSurface extends Surface {
 		}
 	}
 	
-	public void synchronousGenerate(Chunk ch) {
+	public void synchronousGenerate(NormalChunk ch) {
 		ch.generateFrom(generator);
 		tio.saveChunk(ch);
 	}
@@ -326,7 +326,7 @@ public class LocalSurface extends Surface {
 	
 	@Override
 	public void removeBlock(int x, int y, int z) {
-		Chunk ch = getChunk(x >> 4, z >> 4);
+		NormalChunk ch = getChunk(x >> 4, z >> 4);
 		if (ch != null) {
 			Block b = ch.getBlockAt(x & 15, y, z & 15);
 			ch.removeBlockAt(x & 15, y, z & 15, true);
@@ -350,7 +350,7 @@ public class LocalSurface extends Surface {
 	
 	@Override
 	public void placeBlock(int x, int y, int z, Block b, byte data) {
-		Chunk ch = getChunk(x >> 4, z >> 4);
+		NormalChunk ch = getChunk(x >> 4, z >> 4);
 		if (ch != null) {
 			ch.addBlock(b, data, x & 15, y, z & 15, false);
 			tio.saveChunk(ch); // TODO: Don't save it every time.
@@ -369,7 +369,7 @@ public class LocalSurface extends Surface {
 	
 	@Override
 	public void updateBlockData(int x, int y, int z, byte data) {
-		Chunk ch = getChunk(x >> 4, z >> 4);
+		NormalChunk ch = getChunk(x >> 4, z >> 4);
 		if (ch != null) {
 			ch.setBlockData(x & 15, y, z & 15, data);
 			tio.saveChunk(ch); // TODO: Don't save it every time.
@@ -442,7 +442,7 @@ public class LocalSurface extends Surface {
 			}
 		}
 		// Block Entities
-		for (Chunk ch : chunks) {
+		for (NormalChunk ch : chunks) {
 			if (ch.isLoaded() && ch.getBlockEntities().size() > 0) {
 				blockEntities = ch.getBlockEntities().toArray(blockEntities);
 				for (BlockEntity be : blockEntities) {
@@ -464,7 +464,7 @@ public class LocalSurface extends Surface {
 		if (gameTime % 3 == 0 && world.inLqdUpdate) {
 			world.inLqdUpdate = false;
 			//Profiler.startProfiling();
-			for (Chunk ch : chunks) {
+			for (NormalChunk ch : chunks) {
 				int wx = ch.getX() << 4;
 				int wz = ch.getZ() << 4;
 				if (ch.isLoaded() && ch.getLiquids().size() > 0) {
@@ -514,12 +514,12 @@ public class LocalSurface extends Surface {
 	}
 
 	@Override
-	public void queueChunk(Chunk ch) {
+	public void queueChunk(NormalChunk ch) {
 		queue(ch);
 	}
 	
 
-	public void unQueueChunk(Chunk ch) {
+	public void unQueueChunk(NormalChunk ch) {
 		loadList.remove(ch);
 	}
 
@@ -592,10 +592,10 @@ public class LocalSurface extends Surface {
 		if(x == lastX && z == lastZ)
 			return;
 		int doubleRD = renderDistance << 1;
-		Chunk [] newVisibles = new Chunk[doubleRD*doubleRD];
+		NormalChunk [] newVisibles = new NormalChunk[doubleRD*doubleRD];
 		int index = 0;
 		int minK = 0;
-		ArrayList<Chunk> chunksToQueue = new ArrayList<>();
+		ArrayList<NormalChunk> chunksToQueue = new ArrayList<>();
 		for(int i = x-doubleRD; i < x; i++) {
 			loop:
 			for(int j = z-doubleRD; j < z; j++) {
@@ -610,7 +610,7 @@ public class LocalSurface extends Surface {
 						continue loop;
 					}
 				}
-				Chunk ch = new Chunk(i, j, this, transformData(getChunkData(i, j), tio.blockPalette));
+				NormalChunk ch = new NormalChunk(i, j, this, transformData(getChunkData(i, j), tio.blockPalette));
 				chunksToQueue.add(ch);
 				newVisibles[index] = ch;
 				index++;
@@ -629,7 +629,7 @@ public class LocalSurface extends Surface {
 		
 		// Care about the ReducedChunks:
 		// Load chunks after they have access to their neighbors:
-		for(Chunk ch : chunksToQueue) {
+		for(NormalChunk ch : chunksToQueue) {
 			queueChunk(ch);
 		}
 		if (minK != chunks.length) { // if at least one chunk got unloaded
@@ -801,13 +801,13 @@ public class LocalSurface extends Surface {
 	}
 	
 	@Override
-	public Chunk getChunk(int x, int z) {
+	public NormalChunk getChunk(int x, int z) {
 		// Test if the chunk can be found in the list of visible chunks:
 		int index = CubyzMath.moduloMatchSign(x-(lastX-doubleRD), worldSize >> 4)*doubleRD + CubyzMath.moduloMatchSign(z-(lastZ-doubleRD), worldSize >> 4);
 		x = CubyzMath.worldModulo(x, worldSize >> 4);
 		z = CubyzMath.worldModulo(z, worldSize >> 4);
 		if(index < chunks.length && index >= 0) {
-			Chunk ret = chunks[index];
+			NormalChunk ret = chunks[index];
 			if (ret != null && x == ret.getX() && z == ret.getZ())
 				return ret;
 		}
@@ -819,7 +819,7 @@ public class LocalSurface extends Surface {
 		if (y > World.WORLD_HEIGHT || y < 0)
 			return null;
 
-		Chunk ch = getChunk(x >> 4, z >> 4);
+		NormalChunk ch = getChunk(x >> 4, z >> 4);
 		if (ch != null && ch.isGenerated()) {
 			Block b = ch.getBlockAt(x & 15, y, z & 15);
 			return b;
@@ -833,7 +833,7 @@ public class LocalSurface extends Surface {
 		if (y > World.WORLD_HEIGHT || y < 0)
 			return 0;
 
-		Chunk ch = getChunk(x >> 4, z >> 4);
+		NormalChunk ch = getChunk(x >> 4, z >> 4);
 		if (ch != null && ch.isGenerated()) {
 			return ch.getBlockData(x & 15, y, z & 15);
 		} else {
@@ -895,7 +895,7 @@ public class LocalSurface extends Surface {
 	}
 
 	@Override
-	public Chunk[] getChunks() {
+	public NormalChunk[] getChunks() {
 		return chunks;
 	}
 
@@ -946,7 +946,7 @@ public class LocalSurface extends Surface {
 
 	@Override
 	public Vector3f getLight(int x, int y, int z, Vector3f sunLight) {
-		Chunk ch = getChunk(x >> 4, z >> 4);
+		NormalChunk ch = getChunk(x >> 4, z >> 4);
 		if(ch == null || !ch.isLoaded() || !Settings.easyLighting)
 			return new Vector3f(1, 1, 1);
 		int light = ch.getLight(x & 15, y, z & 15);

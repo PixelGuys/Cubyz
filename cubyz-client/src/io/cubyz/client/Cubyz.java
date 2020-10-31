@@ -360,8 +360,8 @@ public class Cubyz implements GameLogic, ClientConnection {
 		
 		ClientOnly.onBorderCrossing = (p) -> {
 			// Simply remake all the spatial data of this surface. Not the most efficient way, but the event of border crossing can be considered rare.
-			Chunk[] chunks = Cubyz.surface.getChunks();
-			for(Chunk ch : chunks) {
+			NormalChunk[] chunks = Cubyz.surface.getChunks();
+			for(NormalChunk ch : chunks) {
 				for(int i = 0; i < ch.getVisibles().size; i++) {
 					BlockInstance bi = ch.getVisibles().array[i];
 					bi.setData(bi.getData(), world.getLocalPlayer(), surface.getSize());
@@ -598,7 +598,7 @@ public class Cubyz implements GameLogic, ClientConnection {
 		mouse.clearScroll();
 	}
 
-	public static final Chunk[] EMPTY_CHUNK_LIST = new Chunk[0];
+	public static final NormalChunk[] EMPTY_CHUNK_LIST = new NormalChunk[0];
 	public static final ReducedChunk[] EMPTY_REDUCED_CHUNK_LIST = new ReducedChunk[0];
 	public static final Block[] EMPTY_BLOCK_LIST = new Block[0];
 	public static final Entity[] EMPTY_ENTITY_LIST = new Entity[0];
@@ -851,7 +851,7 @@ public class Cubyz implements GameLogic, ClientConnection {
 				}
 			}
 			playerInc.x = playerInc.y = playerInc.z = 0.0F; // Reset positions
-			Chunk ch = world.getCurrentTorus().getChunk((int)lp.getPosition().x >> 4, (int)lp.getPosition().z >> 4);
+			NormalChunk ch = world.getCurrentTorus().getChunk((int)lp.getPosition().x >> 4, (int)lp.getPosition().z >> 4);
 			if (ch != null && ch.isLoaded()) {
 				world.update();
 			}

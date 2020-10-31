@@ -15,7 +15,7 @@ import io.cubyz.entity.Player;
 import io.cubyz.math.CubyzMath;
 import io.cubyz.util.FastList;
 import io.cubyz.world.BlockSpatial;
-import io.cubyz.world.Chunk;
+import io.cubyz.world.NormalChunk;
 import io.jungle.FrameBuffer;
 import io.jungle.InstancedMesh;
 import io.jungle.Mesh;
@@ -149,7 +149,7 @@ public class ZenithsRenderer implements Renderer {
 	 * @param localPlayer The world's local player
 	 */
 	public void render(Window window, Context ctx, Vector3f ambientLight, DirectionalLight directionalLight,
-			Chunk[] chunks, Block[] blocks, Entity[] entities, Spatial[] spatials, Player localPlayer, int worldSize) {
+			NormalChunk[] chunks, Block[] blocks, Entity[] entities, Spatial[] spatials, Player localPlayer, int worldSize) {
 		if (window.isResized()) {
 			glViewport(0, 0, window.getWidth(), window.getHeight());
 			window.setResized(false);
@@ -196,7 +196,7 @@ public class ZenithsRenderer implements Renderer {
 			float x0 = playerPosition.x;
 			float z0 = playerPosition.z;
 			float y0 = playerPosition.y + Player.cameraHeight;
-			for (Chunk ch : chunks) {
+			for (NormalChunk ch : chunks) {
 				if (!frustumInt.testAab(ch.getMin(x0, z0, worldSize), ch.getMax(x0, z0, worldSize)))
 					continue;
 				int length = ch.getVisibles().size;

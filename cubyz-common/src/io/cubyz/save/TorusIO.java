@@ -18,7 +18,7 @@ import io.cubyz.blocks.Block;
 import io.cubyz.entity.Entity;
 import io.cubyz.math.Bits;
 import io.cubyz.ndt.NDTContainer;
-import io.cubyz.world.Chunk;
+import io.cubyz.world.NormalChunk;
 import io.cubyz.world.LocalStellarTorus;
 import io.cubyz.world.LocalSurface;
 
@@ -155,7 +155,7 @@ public class TorusIO {
 		}
 	}
 
-	public void saveChunk(Chunk ch) {
+	public void saveChunk(NormalChunk ch) {
 		byte[] cb = ch.save(blockPalette);
 		int[] cd = ch.getData();
 		int index = -1;

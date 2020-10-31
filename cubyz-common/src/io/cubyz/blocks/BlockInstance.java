@@ -4,7 +4,7 @@ import org.joml.Vector3i;
 
 import io.cubyz.Settings;
 import io.cubyz.entity.Player;
-import io.cubyz.world.Chunk;
+import io.cubyz.world.NormalChunk;
 import io.cubyz.world.Surface;
 
 /**
@@ -100,7 +100,7 @@ public class BlockInstance {
 		lightUpdate = true;
 	}
 	
-	public Object[] getSpatials(Player player, int worldSize, Chunk chunk) {
+	public Object[] getSpatials(Player player, int worldSize, NormalChunk chunk) {
 		if(spatialUpdate) { // Generate the Spatials on demand.
 			spatial = block.mode.generateSpatials(this, blockData, player, worldSize);
 			spatialUpdate = false;

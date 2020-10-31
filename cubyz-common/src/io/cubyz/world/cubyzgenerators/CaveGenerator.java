@@ -6,7 +6,7 @@ import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.math.CubyzMath;
-import io.cubyz.world.Chunk;
+import io.cubyz.world.NormalChunk;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 
 /**
@@ -30,7 +30,7 @@ public class CaveGenerator implements FancyGenerator {
 	private static Block ice = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:ice");
 	
 	@Override
-	public void generate(long seed, int cx, int cz, Chunk chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, float[][] heightMap, Biome[][] biomeMap, int worldSize) {
+	public void generate(long seed, int cx, int cz, NormalChunk chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, float[][] heightMap, Biome[][] biomeMap, int worldSize) {
 		Random rand = new Random(seed);
 		int rand1 = rand.nextInt() | 1;
 		int rand2 = rand.nextInt() | 1;
@@ -46,7 +46,7 @@ public class CaveGenerator implements FancyGenerator {
 		}
 	}
 
-	private void createJunctionRoom(long localSeed, int cx, int cz, Chunk chunk, double worldX, double worldY, double worldZ, boolean[][] vegetationIgnoreMap, float[][] heightMap, Random rand) {
+	private void createJunctionRoom(long localSeed, int cx, int cz, NormalChunk chunk, double worldX, double worldY, double worldZ, boolean[][] vegetationIgnoreMap, float[][] heightMap, Random rand) {
 		// The junction room is just one single room roughly twice as wide as high.
 		float size = 1 + rand.nextFloat()*6;
 		double cwx = cx*16 + 8;
@@ -93,7 +93,7 @@ public class CaveGenerator implements FancyGenerator {
 							if(distToCenter < 1.0) {
 								// Add a small roughness parameter to make walls look a bit rough by filling only 5/6 of the blocks at the walls with air:
 								if((distToCenter <= 0.9 || localRand.nextInt(6) != 0) && !water.equals(chunk.getBlockAt(curX, curYIndex, curZ)) && !ice.equals(chunk.getBlockAt(curX, curYIndex, curZ))) {
-									chunk.rawAddBlock(curX, curYIndex, curZ, null);
+									chunk.updateBlock(curX, curYIndex, curZ, null);
 									if(heightMap[curX][curZ] == curYIndex)
 										vegetationIgnoreMap[curX][curZ] = true;
 								}
@@ -105,7 +105,7 @@ public class CaveGenerator implements FancyGenerator {
 			}
 		}
 	}
-	private void generateCave(long random, int cx, int cz, Chunk chunk, double worldX, double worldY, double worldZ, float size, float direction, float slope, int curStep, int caveLength, double caveHeightModifier, boolean[][] vegetationIgnoreMap, float[][] heightMap) {
+	private void generateCave(long random, int cx, int cz, NormalChunk chunk, double worldX, double worldY, double worldZ, float size, float direction, float slope, int curStep, int caveLength, double caveHeightModifier, boolean[][] vegetationIgnoreMap, float[][] heightMap) {
 		double cwx = (double) (cx*16 + 8);
 		double cwz = (double) (cz*16 + 8);
 		float directionModifier = 0.0F;
@@ -201,7 +201,7 @@ public class CaveGenerator implements FancyGenerator {
 								for(int curY = yMax - 1; curY >= yMin; --curY) {
 									double distToCenterH = ((double) curY + 0.5 - worldY) / yScale;
 									if(distToCenterX*distToCenterX + distToCenterH*distToCenterH + distToCenterZ*distToCenterZ < 1.0 && !water.equals(chunk.getBlockAt(curX, curYIndex, curZ)) && !ice.equals(chunk.getBlockAt(curX, curYIndex, curZ))) {
-										chunk.rawAddBlock(curX, curYIndex, curZ, null);
+										chunk.updateBlock(curX, curYIndex, curZ, null);
 										if(heightMap[curX][curZ] == curYIndex)
 											vegetationIgnoreMap[curX][curZ] = true;
 									}
@@ -215,7 +215,7 @@ public class CaveGenerator implements FancyGenerator {
 		}
 	}
 
-	private void considerCoordinates(int x, int z, int cx, int cz, Chunk chunk, boolean[][] vegetationIgnoreMap, float[][] heightMap, Random rand) {
+	private void considerCoordinates(int x, int z, int cx, int cz, NormalChunk chunk, boolean[][] vegetationIgnoreMap, float[][] heightMap, Random rand) {
 		// Determine how many caves start in this chunk. Make sure the number is usually close to one, but can also rarely reach higher values.
 		int caveSpawns = rand.nextInt(rand.nextInt(rand.nextInt(12) + 1) + 1);
 

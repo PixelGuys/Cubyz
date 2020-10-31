@@ -16,7 +16,7 @@ import io.cubyz.entity.Player;
 import io.cubyz.math.CubyzMath;
 import io.cubyz.util.FastList;
 import io.cubyz.world.BlockSpatial;
-import io.cubyz.world.Chunk;
+import io.cubyz.world.NormalChunk;
 import io.cubyz.world.ReducedChunk;
 import io.jungle.InstancedMesh;
 import io.jungle.Mesh;
@@ -139,8 +139,8 @@ public class MainRenderer implements Renderer {
 	 * @param playerZ
 	 * @return sorted chunk array
 	 */
-	public Chunk[] sortChunks(Chunk[] toSort, float playerX, float playerZ) {
-		Chunk[] output = new Chunk[toSort.length];
+	public NormalChunk[] sortChunks(NormalChunk[] toSort, float playerX, float playerZ) {
+		NormalChunk[] output = new NormalChunk[toSort.length];
 		float[] distances = new float[toSort.length];
 		System.arraycopy(toSort, 0, output, 0, toSort.length);
 		for(int i = 0; i < output.length; i++) {
@@ -155,7 +155,7 @@ public class MainRenderer implements Renderer {
 					distances[j] += distances[j+1];
 					distances[j+1] = distances[j] - distances[j+1];
 					distances[j] -= distances[j+1];
-					Chunk local = output[j+1];
+					NormalChunk local = output[j+1];
 					output[j+1] = output[j];
 					output[j] = local;
 				} else {
@@ -180,7 +180,7 @@ public class MainRenderer implements Renderer {
 	 * @param localPlayer The world's local player
 	 */
 	public void render(Window window, Context ctx, Vector3f ambientLight, DirectionalLight directionalLight,
-			Chunk[] chunks, ReducedChunk[] reducedChunks, Block[] blocks, Entity[] entities, Spatial[] spatials, Player localPlayer, int worldSize) {
+			NormalChunk[] chunks, ReducedChunk[] reducedChunks, Block[] blocks, Entity[] entities, Spatial[] spatials, Player localPlayer, int worldSize) {
 		if (window.isResized()) {
 			glViewport(0, 0, window.getWidth(), window.getHeight());
 			window.setResized(false);
@@ -226,7 +226,7 @@ public class MainRenderer implements Renderer {
 			float z0 = playerPosition.z;
 			float y0 = playerPosition.y + Player.cameraHeight;
 			chunks = sortChunks(chunks, x0/16 - 0.5f, z0/16 - 0.5f);
-			for (Chunk ch : chunks) {
+			for (NormalChunk ch : chunks) {
 				int currentSortingIndex = map[transparentIndex].size;
 				if (!frustumInt.testAab(ch.getMin(x0, z0, worldSize), ch.getMax(x0, z0, worldSize)))
 					continue;

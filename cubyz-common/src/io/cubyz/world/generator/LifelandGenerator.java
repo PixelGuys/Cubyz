@@ -7,7 +7,7 @@ import io.cubyz.api.RegistryElement;
 import io.cubyz.api.Registry;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Ore;
-import io.cubyz.world.Chunk;
+import io.cubyz.world.NormalChunk;
 import io.cubyz.world.MetaChunk;
 import io.cubyz.world.ReducedChunk;
 import io.cubyz.world.Surface;
@@ -53,7 +53,7 @@ public class LifelandGenerator extends SurfaceGenerator {
 	}
 	
 	@Override
-	public void generate(Chunk chunk, Surface surface) {
+	public void generate(NormalChunk chunk, Surface surface) {
 		int cx = chunk.getX();
 		int cz = chunk.getZ();
 		int wx = cx << 4;
@@ -109,6 +109,7 @@ public class LifelandGenerator extends SurfaceGenerator {
 				pp = surface.getMetaChunk((wx & (~255)) + 256, (wz & (~255)) + 256);
 			}
 		}
+		MetaChunk containing = surface.getMetaChunk((wx & (~255)), (wz & (~255)));
 		
 		for (Generator g : sortedGenerators) {
 			if (g instanceof FancyGenerator) {
@@ -116,7 +117,7 @@ public class LifelandGenerator extends SurfaceGenerator {
 			} else if (g instanceof BigGenerator) {
 				((BigGenerator) g).generate(seed ^ g.getGeneratorSeed(), lx, lz, chunk, vegetationIgnoreMap, nn, np, pn, pp);
 			} else {
-				g.generate(seed ^ g.getGeneratorSeed(), cx, cz, chunk, vegetationIgnoreMap);
+				g.generate(seed ^ g.getGeneratorSeed(), cx, cz, chunk, containing, surface, vegetationIgnoreMap);
 			}
 		}
 

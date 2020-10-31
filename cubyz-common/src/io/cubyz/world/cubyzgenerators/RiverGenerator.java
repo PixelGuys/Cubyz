@@ -5,7 +5,7 @@ import java.util.Random;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
-import io.cubyz.world.Chunk;
+import io.cubyz.world.NormalChunk;
 import io.cubyz.world.MetaChunk;
 import io.cubyz.world.World;
 
@@ -28,7 +28,7 @@ public class RiverGenerator implements BigGenerator {
 	private static Block water = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:water");
 
 	@Override
-	public void generate(long seed, int lx, int lz, Chunk chunk, boolean[][] vegetationIgnoreMap, MetaChunk nn, MetaChunk np, MetaChunk pn, MetaChunk pp) {
+	public void generate(long seed, int lx, int lz, NormalChunk chunk, boolean[][] vegetationIgnoreMap, MetaChunk nn, MetaChunk np, MetaChunk pn, MetaChunk pp) {
 		// Consider coordinates in each MetaChunk.
 		considerMetaChunk(nn, lx, lz, chunk, nn, np, pn, pp, seed, vegetationIgnoreMap);
 		considerMetaChunk(np, lx, lz, chunk, nn, np, pn, pp, seed, vegetationIgnoreMap);
@@ -36,7 +36,7 @@ public class RiverGenerator implements BigGenerator {
 		considerMetaChunk(pp, lx, lz, chunk, nn, np, pn, pp, seed, vegetationIgnoreMap);
 	}
 	
-	private void considerMetaChunk(MetaChunk m, int lx, int lz, Chunk chunk, MetaChunk nn, MetaChunk np, MetaChunk pn, MetaChunk pp, long seed, boolean[][] vegetationIgnoreMap) {
+	private void considerMetaChunk(MetaChunk m, int lx, int lz, NormalChunk chunk, MetaChunk nn, MetaChunk np, MetaChunk pn, MetaChunk pp, long seed, boolean[][] vegetationIgnoreMap) {
 		Random rand = new Random(seed^((long)m.x*Float.floatToRawIntBits(m.heightMap[255][0]))^((long)m.z*Float.floatToRawIntBits(m.heightMap[0][255])));
 		int num = 2 + rand.nextInt(4);
 		for(int i = 0; i < num; i++) {
@@ -87,7 +87,7 @@ public class RiverGenerator implements BigGenerator {
 		return res;
 	}
 	
-	private void makeRiver(float x, float z, int lx, int lz, Chunk chunk, MetaChunk nn, MetaChunk np, MetaChunk pn, MetaChunk pp, float width, int x00, int y00, float[] oldDir, float curHeight, boolean[][] vegetationIgnoreMap, int maxLength) {
+	private void makeRiver(float x, float z, int lx, int lz, NormalChunk chunk, MetaChunk nn, MetaChunk np, MetaChunk pn, MetaChunk pp, float width, int x00, int y00, float[] oldDir, float curHeight, boolean[][] vegetationIgnoreMap, int maxLength) {
 		float dist = (float)Math.sqrt((x-x00)*(x-x00) + (z-y00)*(z-y00));
 		if(128-dist-2*width <= 0 || maxLength == 0) return;
 		// Get the gradient of the surrounding positions in the heightMap:
@@ -139,11 +139,11 @@ public class RiverGenerator implements BigGenerator {
 							if(height1-height2 < 1) height2 = height1-2;
 							if(maxLength > 5) {
 								for(int h = height1; h <= height0; h++) {
-									chunk.rawAddBlock(ix, h, iz, null);
+									chunk.updateBlock(ix, h, iz, null);
 								}
 							}
 							for(int h = height2; h < height1; h++) {
-								chunk.rawAddBlock(ix, h, iz, water);
+								chunk.updateBlock(ix, h, iz, water);
 							}
 						}
 						// Add to the vegetationIgnoreMap if on a river:

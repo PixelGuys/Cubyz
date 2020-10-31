@@ -6,7 +6,9 @@ import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.Ore;
-import io.cubyz.world.Chunk;
+import io.cubyz.world.MetaChunk;
+import io.cubyz.world.NormalChunk;
+import io.cubyz.world.Surface;
 
 /**
  * Generator of ore veins.
@@ -32,7 +34,7 @@ public class OreGenerator implements Generator {
 
 	// Works basically similar to cave generation, but considers a lot less chunks and has a few other differences.
 	@Override
-	public void generate(long seed, int cx, int cz, Chunk chunk, boolean[][] vegetationIgnoreMap) {
+	public void generate(long seed, int cx, int cz, NormalChunk chunk, MetaChunk containingMetaChunk, Surface surface, boolean[][] vegetationIgnoreMap) {
 		Random rand = new Random(seed);
 		int rand1 = rand.nextInt() | 1;
 		int rand2 = rand.nextInt() | 1;
@@ -46,7 +48,7 @@ public class OreGenerator implements Generator {
 			}
 		}
 	}
-	private void considerCoordinates(int x, int z, int cx, int cz, Chunk chunk, long seed) {
+	private void considerCoordinates(int x, int z, int cx, int cz, NormalChunk chunk, long seed) {
 		Random rand = new Random();
 		for(int i = 0; i < ores.length; i++) {
 			// Compose the seeds from some random stats of the ore. They generally shouldn't be the same for two different ores.
@@ -73,7 +75,7 @@ public class OreGenerator implements Generator {
 			}
 		}
 	}
-	private void generateVein(long random, int cx, int cz, Chunk chunk, double worldX, double worldY, double worldZ, float radius, float direction, float slope, int veinLength, Block ore) {
+	private void generateVein(long random, int cx, int cz, NormalChunk chunk, double worldX, double worldY, double worldZ, float radius, float direction, float slope, int veinLength, Block ore) {
 		double cwx = (double) (cx*16 + 8);
 		double cwz = (double) (cz*16 + 8);
 		float directionModifier = 0.0F;
@@ -140,7 +142,7 @@ public class OreGenerator implements Generator {
 									double distToCenterY = ((double) curY + 0.5 - worldY) / scale;
 									// The first ore that gets into a position will be placed:
 									if(chunk.getBlockAt(curX, curHeightIndex, curZ) == stone && distToCenterX*distToCenterX + distToCenterY*distToCenterY + distToCenterZ*distToCenterZ < 1.0) {
-										chunk.rawAddBlock(curX, curHeightIndex, curZ, ore);
+										chunk.updateBlock(curX, curHeightIndex, curZ, ore);
 									}
 									--curHeightIndex;
 								}

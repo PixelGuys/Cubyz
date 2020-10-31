@@ -7,7 +7,7 @@ import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.math.CubyzMath;
-import io.cubyz.world.Chunk;
+import io.cubyz.world.NormalChunk;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 
 /**
@@ -40,7 +40,7 @@ public class CrystalCavernGenerator implements FancyGenerator {
 	private Block stone = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:stone");
 
 	@Override
-	public void generate(long seed, int cx, int cz, Chunk chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, float[][] heightMap, Biome[][] biomeMap, int worldSize) {
+	public void generate(long seed, int cx, int cz, NormalChunk chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, float[][] heightMap, Biome[][] biomeMap, int worldSize) {
 		Random rand = new Random(seed);
 		int rand1 = rand.nextInt() | 1;
 		int rand2 = rand.nextInt() | 1;
@@ -56,7 +56,7 @@ public class CrystalCavernGenerator implements FancyGenerator {
 		}
 	}
 	
-	private void generateCave(long random, int cx, int cz, Chunk chunk, double worldX, double worldY, double worldZ, float size, float direction, float slope, int curStep, double caveHeightModifier, boolean[][] vegetationIgnoreMap, float[][] heightMap, int[][] crystalSpawns, int[] index) {
+	private void generateCave(long random, int cx, int cz, NormalChunk chunk, double worldX, double worldY, double worldZ, float size, float direction, float slope, int curStep, double caveHeightModifier, boolean[][] vegetationIgnoreMap, float[][] heightMap, int[][] crystalSpawns, int[] index) {
 		double cwx = (double) (cx*16 + 8);
 		double cwz = (double) (cz*16 + 8);
 		float directionModifier = 0.0F;
@@ -133,7 +133,7 @@ public class CrystalCavernGenerator implements FancyGenerator {
 							for(int curY = yMax - 1; curY >= yMin; --curY) {
 								double distToCenterY = ((double) curY + 0.5 - worldY) / (yScale);
 								if(distToCenterX*distToCenterX + distToCenterY*distToCenterY + distToCenterZ*distToCenterZ < 1.0 && !water.equals(chunk.getBlockAt(curX, curYIndex, curZ)) && !ice.equals(chunk.getBlockAt(curX, curYIndex, curZ))) {
-									chunk.rawAddBlock(curX, curZ, curYIndex, null);
+									chunk.updateBlock(curX, curZ, curYIndex, null);
 									if(heightMap[curX][curZ] == curYIndex)
 										vegetationIgnoreMap[curX][curZ] = true;
 								}
@@ -169,7 +169,7 @@ public class CrystalCavernGenerator implements FancyGenerator {
 		return x*x+y*y+z*z;
 	}
 	
-	private void considerCrystal(int wx, int wz, int[] xyz, Chunk chunk, long seed, boolean useNeedles) {
+	private void considerCrystal(int wx, int wz, int[] xyz, NormalChunk chunk, long seed, boolean useNeedles) {
 		if(xyz[0] >= wx-32 && xyz[0] <= wx+48 && xyz[2] >= wz-32 && xyz[2] <= wz+48) {
 			int x = xyz[0]-wx;
 			int y = xyz[1];
@@ -209,9 +209,9 @@ public class CrystalCavernGenerator implements FancyGenerator {
 				        		if(dist <= size*size) {
 						        	if(x3 >= 0 && x3 < 16 && y3 >= 0 && y3 < 256 && z3 >= 0 && z3 < 16) {
 						        		if(chunk.getBlockAt((int)x3, (int)y3, (int)z3) == null || chunk.getBlockAt((int)x3, (int)y3, (int)z3).isDegradable() || chunk.getBlockAt((int)x3, (int)y3, (int)z3).getBlockClass() == BlockClass.FLUID) {
-						        			chunk.rawAddBlock((int)x3, (int)y3, (int)z3, glowCrystal);
+						        			chunk.updateBlock((int)x3, (int)y3, (int)z3, glowCrystal);
 						        		} else if(chunk.getBlockAt((int)x3, (int)y3, (int)z3) == stone) {
-						        			chunk.rawAddBlock((int)x3, (int)y3, (int)z3, crystalOre); // When the crystal goes through stone, generate the corresponding ore at that position.
+						        			chunk.updateBlock((int)x3, (int)y3, (int)z3, crystalOre); // When the crystal goes through stone, generate the corresponding ore at that position.
 						        		}
 						        	}
 				        		}
@@ -226,7 +226,7 @@ public class CrystalCavernGenerator implements FancyGenerator {
 		}
 	}
 
-	private void considerCoordinates(int x, int z, int cx, int cz, Chunk chunk, boolean[][] vegetationIgnoreMap, float[][] heightMap, Random rand) {
+	private void considerCoordinates(int x, int z, int cx, int cz, NormalChunk chunk, boolean[][] vegetationIgnoreMap, float[][] heightMap, Random rand) {
 		if(rand.nextInt(2048) != 0) return; // This should be pretty rare(mostly because it is so huge).
 		// Choose some in world coordinates to start generating:
 		double worldX = (double)((x << 4) + rand.nextInt(16));

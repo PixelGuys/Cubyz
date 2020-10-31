@@ -3,7 +3,7 @@ package io.cubyz.world.cubyzgenerators.biomes;
 import java.util.Random;
 
 import io.cubyz.blocks.Block;
-import io.cubyz.world.Chunk;
+import io.cubyz.world.NormalChunk;
 import io.cubyz.world.ReducedChunk;
 
 /**
@@ -15,7 +15,7 @@ public class BlockStructure {
 	public BlockStructure(BlockStack ... blocks) {
 		structure = blocks;
 	}
-	public int addSubTerranian(Chunk chunk, int depth, int x, int z, int highResDepth, Random rand) {
+	public int addSubTerranian(NormalChunk chunk, int depth, int x, int z, int highResDepth, Random rand) {
 		int startingDepth = depth;
 		for(int i = 0; i < structure.length; i++) {
 			for(int j = 0; j < structure[i].min; j++) {
@@ -28,7 +28,7 @@ public class BlockStructure {
 			}
 			int variation = rand.nextInt(1 + structure[i].max - structure[i].min);
 			for(int j = 0; j < variation; j++) {
-				chunk.rawAddBlock(x, depth--, z, structure[i].block);
+				chunk.updateBlock(x, depth--, z, structure[i].block);
 				if(depth <= 0) return depth;
 			}
 		}

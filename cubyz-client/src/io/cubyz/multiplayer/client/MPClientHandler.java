@@ -12,7 +12,7 @@ import io.cubyz.CubyzLogger;
 import io.cubyz.client.Cubyz;
 import io.cubyz.multiplayer.BufUtils;
 import io.cubyz.multiplayer.Packet;
-import io.cubyz.world.Chunk;
+import io.cubyz.world.NormalChunk;
 import io.cubyz.world.RemoteWorld;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
@@ -28,7 +28,7 @@ public class MPClientHandler extends ChannelInboundHandlerAdapter {
 	private ChatHandler chHandler;
 	private ArrayList<String> messages;
 	
-	private Chunk lastChunkReceived;
+	private NormalChunk lastChunkReceived;
 	private RemoteWorld world;
 
 	private boolean hasPinged;

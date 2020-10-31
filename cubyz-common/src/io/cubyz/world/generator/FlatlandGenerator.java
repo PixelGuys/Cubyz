@@ -3,7 +3,7 @@ package io.cubyz.world.generator;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
-import io.cubyz.world.Chunk;
+import io.cubyz.world.NormalChunk;
 import io.cubyz.world.ReducedChunk;
 import io.cubyz.world.Surface;
 
@@ -21,7 +21,7 @@ public class FlatlandGenerator extends SurfaceGenerator {
 	private static Block bedrock = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:bedrock");
 	
 	@Override
-	public void generate(Chunk chunk, Surface surface) {
+	public void generate(NormalChunk chunk, Surface surface) {
 		for (int x = 0; x < 16; x++) {
 			for (int z = 0; z < 16; z++) {
 				for (int y = 0; y < 3; y++) {
@@ -35,7 +35,7 @@ public class FlatlandGenerator extends SurfaceGenerator {
 					if (y == 0) {
 						b = bedrock;
 					}
-					chunk.rawAddBlock(x, y, z, b);
+					chunk.updateBlock(x, y, z, b);
 				}
 			}
 		}

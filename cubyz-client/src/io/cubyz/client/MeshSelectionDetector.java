@@ -8,7 +8,7 @@ import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.world.BlockSpatial;
-import io.cubyz.world.Chunk;
+import io.cubyz.world.NormalChunk;
 import io.cubyz.world.Surface;
 
 /**
@@ -37,7 +37,7 @@ public class MeshSelectionDetector {
 	 * @param worldSize
 	 * @param surface
 	 */
-	public void selectSpatial(Chunk[] chunks, Vector3f position, Vector3f dir, Player localPlayer, int worldSize, Surface surface) {
+	public void selectSpatial(NormalChunk[] chunks, Vector3f position, Vector3f dir, Player localPlayer, int worldSize, Surface surface) {
 		// Test blocks:
 		Vector3f transformedPosition = new Vector3f(position.x, position.y + Player.cameraHeight, position.z);
 		dirX = (int)Math.signum(dir.x);
@@ -46,7 +46,7 @@ public class MeshSelectionDetector {
 		float closestDistance = 6f; // selection now limited
 		Object newSpatial = null;
 		intersection.set(transformedPosition.x, transformedPosition.y, transformedPosition.z, dir.x, dir.y, dir.z);
-		for (Chunk ch : chunks) {
+		for (NormalChunk ch : chunks) {
 			min.set(ch.getMin(position.x, position.z, worldSize));
 			max.set(ch.getMax(position.x, position.z, worldSize));
 			// Check if the chunk is in view:

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 
 import org.joml.Vector3f;
 
+import io.cubyz.blocks.Block;
 import io.cubyz.math.CubyzMath;
 import io.cubyz.save.BlockChange;
 
@@ -14,7 +15,7 @@ import io.cubyz.save.BlockChange;
  * For performance reasons, Cubyz uses a pretty simple downscaling algorithm: Only take every resolutionth voxel in each dimension.<br>
  */
 
-public class ReducedChunk {
+public class ReducedChunk implements Chunk {
 	/**The current surface the player is on.*/
 	public static Surface surface;
 	public ArrayList<BlockChange> changes;
@@ -71,50 +72,52 @@ public class ReducedChunk {
 		return new Vector3f(CubyzMath.match(cx << 4, x0, worldSize) + width, 256, CubyzMath.match(cz << 4, z0, worldSize) + width);
 	}
 	
-	/**
-	 * This is useful to convert for loops to work for reduced resolution:<br>
-	 * Instead of using<br>
-	 * for(int i = start; i < end; i++)<br>
-	 * for(int i = chunk.startIndex(start); i < end; i += chunk.resolution)<br>
-	 * should be used to only activate those voxels that are used in Cubyz's downscaling technique.
-	 * @param index The normal starting index(for normal generation).
-	 * @return the next higher index that is inside the grid of this chunk.
-	 */
 	public int startIndex(int start) {
 		return start+resolutionMask & ~resolutionMask;
 	}
 	
-	/**
-	 * Updates a block if current value is 0 (air) and if it is inside this chunk.
-	 * @param x relative x without considering resolution.
-	 * @param y relative y without considering resolution.
-	 * @param z relative z without considering resolution.
-	 * @param newColor
-	 */
-	public void updateBlockIfAir(int x, int y, int z, short newColor) {
-		if(x < 0 || x >= width || z < 0 || z >= width) return;
+	public void updateBlockIfAir(int x, int y, int z, Block newBlock) {
+		//if(x < 0 || x >= width || z < 0 || z >= width) return;
 		x >>= resolutionShift;
 		y >>= resolutionShift;
 		z >>= resolutionShift;
 		int index = (x << (widthShift - resolutionShift)) | (y << 2*(widthShift - resolutionShift)) | z;
 		if(blocks[index] == (short)0) {
-			blocks[index] = newColor;
+			blocks[index] = newBlock.color;
 		}
 	}
 	
-	/**
-	 * Updates a block if it is inside this chunk.
-	 * @param x relative x without considering resolution.
-	 * @param y relative y without considering resolution.
-	 * @param z relative z without considering resolution.
-	 * @param newColor
-	 */
-	public void updateBlock(int x, int y, int z, short newColor) {
-		if(x < 0 || x >= width || z < 0 || z >= width) return;
+	public void updateBlock(int x, int y, int z, Block newBlock) {
+		//if(x < 0 || x >= width || z < 0 || z >= width) return;
 		x >>= resolutionShift;
 		y >>= resolutionShift;
 		z >>= resolutionShift;
 		int index = (x << (widthShift - resolutionShift)) | (y << 2*(widthShift - resolutionShift)) | z;
-		blocks[index] = newColor;
+		blocks[index] = newBlock.color;
+	}
+
+	@Override
+	public boolean liesInChunk(int x, int z) {
+		return (x & resolutionMask) == 0 && (z & resolutionMask) == 0 && x >= 0 && x < width && z >= 0 && z < width;
+	}
+
+	@Override
+	public int getVoxelSize() {
+		return resolution;
+	}
+
+	@Override
+	public int getWorldX() {
+		return cx << 4;
+	}
+
+	@Override
+	public int getWorldZ() {
+		return cz << 4;
+	}
+	
+	@Override
+	public int getWidth() {
+		return width;
 	}
 }

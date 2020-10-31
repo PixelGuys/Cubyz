@@ -51,18 +51,18 @@ public abstract class Surface {
 	 * 
 	 * @param action - Chunk action
 	 */
-	public abstract void queueChunk(Chunk ch);
+	public abstract void queueChunk(NormalChunk ch);
 	
 	public abstract float getGlobalLighting();
 	
 	public abstract Vector3f getLight(int x, int y, int z, Vector3f sunLight);
 
-	public abstract Chunk getChunk(int x, int z);
+	public abstract NormalChunk getChunk(int x, int z);
 	public abstract MetaChunk getMetaChunk(int wx, int wz);
 	public abstract Biome getBiome(int x, int z);
 
 	public abstract ReducedChunk[] getReducedChunks();
-	public abstract Chunk[] getChunks();
+	public abstract NormalChunk[] getChunks();
 	public abstract Block[] getPlanetBlocks();
 	public abstract Entity[] getEntities();
 	

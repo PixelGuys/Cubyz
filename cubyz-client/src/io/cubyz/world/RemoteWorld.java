@@ -25,7 +25,7 @@ public class RemoteWorld extends World {
 	private GameProfile localGameProfile;
 	private ArrayList<Entity> entities;
 	
-	private ArrayList<Chunk> chunks;
+	private ArrayList<NormalChunk> chunks;
 	private Block[] blocks;
 	
 	private LifelandGenerator gen = new LifelandGenerator();
