@@ -26,6 +26,17 @@ public class ItemStack {
 		this.amount = amount;
 	}
 	
+	/**
+	 * Create a new ItemStack from the supplied item stack.<br>
+	 * Deletes the content of the supplied item stack to avoid duplication.
+	 * @param supplier
+	 */
+	public ItemStack(ItemStack supplier) {
+		this.item = supplier.item;
+		this.amount = supplier.amount;
+		supplier.clear();
+	}
+	
 	public void update() {}
 	
 	public boolean filled() {

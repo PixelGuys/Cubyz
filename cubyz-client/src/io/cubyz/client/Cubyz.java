@@ -330,7 +330,7 @@ public class Cubyz implements GameLogic, ClientConnection {
 		ctx = new Context(game, new Camera());
 		ctx.setHud(gameUI);
 		ctx.setFog(new Fog(true, new Vector3f(0.5f, 0.5f, 0.5f), 0.025f));
-		light = new DirectionalLight(new Vector3f(1.0f, 1.0f, 1.0f), new Vector3f(0.0f, 1.0f, 0.0f), 0.4f);
+		light = new DirectionalLight(new Vector3f(1.0f, 1.0f, 1.0f), new Vector3f(0.0f, 1.0f, 0.0f).mul(0.1f));
 		mouse = new MouseInput();
 		mouse.init(window);
 		logger.info("Version " + Constants.GAME_VERSION + " of brand " + Constants.GAME_BRAND);
@@ -726,7 +726,6 @@ public class Cubyz implements GameLogic, ClientConnection {
 			if(ambient.x < 0.1f) ambient.x = 0.1f;
 			if(ambient.y < 0.1f) ambient.y = 0.1f;
 			if(ambient.z < 0.1f) ambient.z = 0.1f;
-			light.setIntensity(world.getCurrentTorus().getGlobalLighting());
 			clearColor = world.getCurrentTorus().getClearColor();
 			ctx.getFog().setColor(clearColor);
 			if (ClientSettings.FOG_COEFFICIENT == 0) {
@@ -747,6 +746,8 @@ public class Cubyz implements GameLogic, ClientConnection {
 			float lightY = (((float)world.getGameTime() % world.getCurrentTorus().getStellarTorus().getDayCycle()) / (float) (world.getCurrentTorus().getStellarTorus().getDayCycle()/2)) - 1f; // TODO: work on it more
 			float lightX = (((float)world.getGameTime() % world.getCurrentTorus().getStellarTorus().getDayCycle()) / (float) (world.getCurrentTorus().getStellarTorus().getDayCycle()/2)) - 1f;
 			light.getDirection().set(lightY, 0, lightX);
+			// Set intensity:
+			light.setDirection(light.getDirection().mul(0.1f*world.getCurrentTorus().getGlobalLighting()/light.getDirection().length()));
 			window.setClearColor(clearColor);
 			renderer.render(window, ctx, ambient, light, world.getCurrentTorus().getChunks(), world.getCurrentTorus().getReducedChunks(), world.getBlocks(), world.getCurrentTorus().getEntities(), worldSpatialList, world.getLocalPlayer(), world.getCurrentTorus().getSize());
 		} else {

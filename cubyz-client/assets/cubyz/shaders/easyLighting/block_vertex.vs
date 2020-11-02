@@ -14,6 +14,7 @@ flat out int selectionData;
 
 uniform mat4 projectionMatrix;
 uniform vec3 ambientLight;
+uniform vec3 directionalLight;
 uniform mat4 viewMatrix;
 
 vec3 calcLight(int srgb)
@@ -22,6 +23,7 @@ vec3 calcLight(int srgb)
     float r = (srgb >> 16) & 255;
     float g = (srgb >> 8) & 255;
     float b = (srgb >> 0) & 255;
+    s = s*(1 - dot(directionalLight, vertexNormal));
     r = max(s*ambientLight.x, r);
     g = max(s*ambientLight.y, g);
     b = max(s*ambientLight.z, b);

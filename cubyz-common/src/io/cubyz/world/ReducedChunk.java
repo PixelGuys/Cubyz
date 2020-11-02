@@ -27,7 +27,7 @@ public class ReducedChunk implements Chunk {
 	public final int resolutionMask;
 	public final int size;
 	public final int cx, cz;
-	public final short[] blocks;
+	public final Block[] blocks;
 	public boolean generated = false;
 	public final int width;
 	/** =log₂(width)*/
@@ -45,7 +45,7 @@ public class ReducedChunk implements Chunk {
 		this.resolutionMask = resolution - 1;
 		width = 1 << widthShift;
 		size = (World.WORLD_HEIGHT >>> resolutionShift)*(width >> resolutionShift)*(width >> resolutionShift);
-		blocks = new short[size];
+		blocks = new Block[size];
 		this.changes = changes;
 		this.widthShift = widthShift;
 	}
@@ -82,8 +82,8 @@ public class ReducedChunk implements Chunk {
 		y >>= resolutionShift;
 		z >>= resolutionShift;
 		int index = (x << (widthShift - resolutionShift)) | (y << 2*(widthShift - resolutionShift)) | z;
-		if(blocks[index] == (short)0) {
-			blocks[index] = newBlock.color;
+		if(blocks[index] == null) {
+			blocks[index] = newBlock;
 		}
 	}
 	
@@ -93,7 +93,7 @@ public class ReducedChunk implements Chunk {
 		y >>= resolutionShift;
 		z >>= resolutionShift;
 		int index = (x << (widthShift - resolutionShift)) | (y << 2*(widthShift - resolutionShift)) | z;
-		blocks[index] = newBlock.color;
+		blocks[index] = newBlock;
 	}
 
 	@Override

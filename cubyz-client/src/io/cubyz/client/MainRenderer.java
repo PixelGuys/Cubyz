@@ -86,6 +86,7 @@ public class MainRenderer implements Renderer {
 		chunkShader.createUniform("projectionMatrix");
 		chunkShader.createUniform("viewMatrix");
 		chunkShader.createUniform("ambientLight");
+		chunkShader.createUniform("directionalLight");
 		chunkShader.createFogUniform("fog");
 		
 		blockShader = new ShaderProgram();
@@ -97,6 +98,7 @@ public class MainRenderer implements Renderer {
 		blockShader.createUniform("texture_sampler");
 		blockShader.createUniform("break_sampler");
 		blockShader.createUniform("ambientLight");
+		blockShader.createUniform("directionalLight");
 		blockShader.createUniform("materialHasTexture");
 		blockShader.createUniform("hasAtlas");
 		blockShader.createUniform("atlasSize");
@@ -295,6 +297,8 @@ public class MainRenderer implements Renderer {
 			chunkShader.setUniform("viewMatrix", ctx.getCamera().getViewMatrix());
 
 			chunkShader.setUniform("ambientLight", ambientLight);
+			chunkShader.setUniform("directionalLight", directionalLight.getDirection());
+			
 			for(ReducedChunk chunk : reducedChunks) {
 				if(chunk != null && chunk.generated) {
 					if (!frustumInt.testAab(chunk.getMin(x0, z0, worldSize), chunk.getMax(x0, z0, worldSize)))
@@ -309,14 +313,14 @@ public class MainRenderer implements Renderer {
 			chunkShader.unbind();
 		}
 		
-		renderScene(ctx, ambientLight, map, blocks, reducedChunks, entities, spatials,
+		renderScene(ctx, ambientLight, directionalLight, map, blocks, reducedChunks, entities, spatials,
 				playerPosition, localPlayer, breakAnim, transparentIndex);
 		if (ctx.getHud() != null) {
 			ctx.getHud().render(window);
 		}
 	}
 	
-	public void renderScene(Context ctx,Vector3f ambientLight,
+	public void renderScene(Context ctx,Vector3f ambientLight, DirectionalLight directionalLight,
 			FastList<Spatial>[] map, Block[] blocks, ReducedChunk[] reducedChunks, Entity[] entities, Spatial[] spatials, Vector3f playerPosition, Player p, float breakAnim, int transparentIndex) {
 		blockShader.bind();
 		
@@ -327,6 +331,7 @@ public class MainRenderer implements Renderer {
 		blockShader.setUniform("viewMatrix", ctx.getCamera().getViewMatrix());
 
 		blockShader.setUniform("ambientLight", ambientLight);
+		blockShader.setUniform("directionalLight", directionalLight.getDirection());
 
 		if(breakAnim > 0f && breakAnim < 1f) {
 			int breakStep = (int)(breakAnim*Cubyz.breakAnimations.length);

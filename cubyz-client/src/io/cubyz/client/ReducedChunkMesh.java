@@ -28,6 +28,12 @@ public class ReducedChunkMesh {
 			return new FloatFastList(50000);
 		}
 	};
+	public static ThreadLocal<FloatFastList> localNormals = new ThreadLocal<FloatFastList>() {
+		@Override
+		protected FloatFastList initialValue() {
+			return new FloatFastList(50000);
+		}
+	};
 	public static ThreadLocal<IntFastList> localFaces = new ThreadLocal<IntFastList>() {
 		@Override
 		protected IntFastList initialValue() {
@@ -51,13 +57,16 @@ public class ReducedChunkMesh {
 
 	public ReducedChunkMesh(ReducedChunk chunk) {
 		FloatFastList vertices = localVertices.get();
+		FloatFastList normals = localNormals.get();
 		IntFastList faces = localFaces.get();
 		IntFastList colors = localColors.get();
+		normals.clear();
 		vertices.clear();
 		faces.clear();
 		colors.clear();
-		generateModelData(chunk, vertices, faces, colors);
+		generateModelData(chunk, vertices, normals, faces, colors);
 		FloatBuffer posBuffer = null;
+		FloatBuffer normalBuffer = null;
 		IntBuffer indexBuffer = null;
 		IntBuffer colorBuffer = null;
 		try {
@@ -76,6 +85,16 @@ public class ReducedChunkMesh {
 			glBufferData(GL_ARRAY_BUFFER, posBuffer, GL_STATIC_DRAW);
 			glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, 0);
 
+
+			// Normal VBO
+			vboId = glGenBuffers();
+			vboIdList.add(vboId);
+			normalBuffer = MemoryUtil.memAllocFloat(normals.size);
+			normalBuffer.put(normals.toArray()).flip();
+			glBindBuffer(GL_ARRAY_BUFFER, vboId);
+			glBufferData(GL_ARRAY_BUFFER, normalBuffer, GL_STATIC_DRAW);
+			glVertexAttribPointer(1, 3, GL_FLOAT, false, 0, 0);
+
 			// Color VBO
 			vboId = glGenBuffers();
 			vboIdList.add(vboId);
@@ -83,7 +102,7 @@ public class ReducedChunkMesh {
 			colorBuffer.put(colors.toArray()).flip();
 			glBindBuffer(GL_ARRAY_BUFFER, vboId);
 			glBufferData(GL_ARRAY_BUFFER, colorBuffer, GL_STATIC_DRAW);
-			glVertexAttribPointer(1, 1, GL_FLOAT, false, 0, 0);
+			glVertexAttribPointer(2, 1, GL_FLOAT, false, 0, 0);
 
 			// Index VBO
 			vboId = glGenBuffers();
@@ -113,11 +132,13 @@ public class ReducedChunkMesh {
 		glBindVertexArray(vaoId);
 		glEnableVertexAttribArray(0);
 		glEnableVertexAttribArray(1);
+		glEnableVertexAttribArray(2);
 		// Draw
 		glDrawElements(GL_TRIANGLES, vertexCount, GL_UNSIGNED_INT, 0);
 		// Restore state
 		glDisableVertexAttribArray(0);
 		glDisableVertexAttribArray(1);
+		glDisableVertexAttribArray(2);
 		glBindVertexArray(0);
 	}
 
@@ -136,7 +157,32 @@ public class ReducedChunkMesh {
 		glDeleteVertexArrays(vaoId);
 	}
 	
-	private static void generateModelData(ReducedChunk chunk, FloatFastList vertices, IntFastList faces, IntFastList colors) {
+	/**
+	 * Adds a vertex and color and returns the index.
+	 * @param vertices
+	 * @param x
+	 * @param y
+	 * @param z
+	 * @return
+	 */
+	private static int addVertex(FloatFastList vertices, float x, float y, float z, IntFastList colors, int color) {
+		int index = vertices.size/3;
+		vertices.add(x);
+		vertices.add(y);
+		vertices.add(z);
+		colors.add(color);
+		return index;
+	}
+	
+	private static void addNormals(FloatFastList normals, float x, float y, float z, int amount) {
+		for(int i = 0; i < amount; i++) {
+			normals.add(x);
+			normals.add(y);
+			normals.add(z);
+		}
+	}
+	
+	private static void generateModelData(ReducedChunk chunk, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList colors) {
 		int zMask = (chunk.width - 1) >>> chunk.resolutionShift;
 		int xMask = zMask << (chunk.widthShift - chunk.resolutionShift);
 		int yMask = (255 >>> chunk.resolutionShift) << 2*(chunk.widthShift - chunk.resolutionShift);
@@ -146,143 +192,103 @@ public class ReducedChunkMesh {
 		int offset = 1 << chunk.resolutionShift;
 		// Go through all blocks and check their neighbors:
 		for(int i = 0; i < chunk.size; i++) {
-			int x = CubyzMath.shiftRight(i & xMask, chunk.widthShift - 2*chunk.resolutionShift);
-			int y = CubyzMath.shiftRight(i & yMask, 2*chunk.widthShift - 3*chunk.resolutionShift);
-			int z = (i & zMask) << chunk.resolutionShift;
-			if(chunk.blocks[i] == 0) continue;
+			if(chunk.blocks[i] == null) continue;
 			boolean posX = true, negX = true, posY = true, negY = true, posZ = true, negZ = true;
-			if((i & xMask) != 0 && chunk.blocks[i - xDelta] != 0) negX = false;
-			if((i & xMask) != xMask && chunk.blocks[i + xDelta] != 0) posX = false;
-			if((i & yMask) == 0 || chunk.blocks[i - yDelta] != 0) negY = false; // Never draw the bedrock face of a chunk.
-			if((i & yMask) != yMask && chunk.blocks[i + yDelta] != 0) posY = false;
-			if((i & zMask) != 0 && chunk.blocks[i - zDelta] != 0) negZ = false;
-			if((i & zMask) != zMask && chunk.blocks[i + zDelta] != 0) posZ = false;
-			if(posX || negX || posY || negY || posZ || negZ) {
-				int color = chunk.blocks[i] & 65535;
-				// Determine the coordinates from index:
-				x += chunk.cx << 4;
-				z += chunk.cz << 4;
-				// TODO: Optimize duplicate vertices where two cubes of same color touch.
-				// Activate the vertices used and link their indices:
-				int i000 = 0;
-				if(negX | negY | negZ) {
-					i000 = vertices.size/3;
-					vertices.add(x - 0.5f);
-					vertices.add(y - 0.5f);
-					vertices.add(z - 0.5f);
-					colors.add(color);
-				}
-				int i001 = 0;
-				if(negX | negY | posZ) {
-					i001 = vertices.size/3;
-					vertices.add(x - 0.5f);
-					vertices.add(y - 0.5f);
-					vertices.add(z + offset - 0.5f);
-					colors.add(color);
-				}
-				int i010 = 0;
-				if(negX | posY | negZ) {
-					i010 = vertices.size/3;
-					vertices.add(x - 0.5f);
-					vertices.add(y + offset - 0.5f);
-					vertices.add(z - 0.5f);
-					colors.add(color);
-				}
-				int i011 = 0;
-				if(negX | posY | posZ) {
-					i011 = vertices.size/3;
-					vertices.add(x - 0.5f);
-					vertices.add(y + offset - 0.5f);
-					vertices.add(z + offset - 0.5f);
-					colors.add(color);
-				}
-				int i100 = 0;
-				if(posX | negY | negZ) {
-					i100 = vertices.size/3;
-					vertices.add(x + offset - 0.5f);
-					vertices.add(y - 0.5f);
-					vertices.add(z - 0.5f);
-					colors.add(color);
-				}
-				int i101 = 0;
-				if(posX | negY | posZ) {
-					i101 = vertices.size/3;
-					vertices.add(x + offset - 0.5f);
-					vertices.add(y - 0.5f);
-					vertices.add(z + offset - 0.5f);
-					colors.add(color);
-				}
-				int i110 = 0;
-				if(posX | posY | negZ) {
-					i110 = vertices.size/3;
-					vertices.add(x + offset - 0.5f);
-					vertices.add(y + offset - 0.5f);
-					vertices.add(z - 0.5f);
-					colors.add(color);
-				}
-				int i111 = 0;
-				if(posX | posY | posZ) {
-					i111 = vertices.size/3;
-					vertices.add(x + offset - 0.5f);
-					vertices.add(y + offset - 0.5f);
-					vertices.add(z + offset - 0.5f);
-					colors.add(color);
-				}
-				// Add the faces:
-				if(negX) {
-					faces.add(i000);
-					faces.add(i001);
-					faces.add(i011);
+			if((i & xMask) != 0 && chunk.blocks[i - xDelta] != null) negX = false;
+			if((i & xMask) != xMask && chunk.blocks[i + xDelta] != null) posX = false;
+			if((i & yMask) == 0 || chunk.blocks[i - yDelta] != null) negY = false; // Never draw the bedrock face of a chunk.
+			if((i & yMask) != yMask && chunk.blocks[i + yDelta] != null) posY = false;
+			if((i & zMask) != 0 && chunk.blocks[i - zDelta] != null) negZ = false;
+			if((i & zMask) != zMask && chunk.blocks[i + zDelta] != null) posZ = false;
+			float x = CubyzMath.shiftRight(i & xMask, chunk.widthShift - 2*chunk.resolutionShift) - 0.5f;
+			float y = CubyzMath.shiftRight(i & yMask, 2*chunk.widthShift - 3*chunk.resolutionShift) - 0.5f;
+			float z = ((i & zMask) << chunk.resolutionShift) - 0.5f;
+			x += chunk.cx << 4;
+			z += chunk.cz << 4;
+			int color = chunk.blocks[i].color & 65535;
+			if(negX) {
+				int i000 = addVertex(vertices, x, y, z, colors, color);
+				int i001 = addVertex(vertices, x, y, z + offset, colors, color);
+				int i010 = addVertex(vertices, x, y + offset, z, colors, color);
+				int i011 = addVertex(vertices, x, y + offset, z + offset, colors, color);
+				addNormals(normals, -1, 0, 0, 4);
+				faces.add(i000);
+				faces.add(i001);
+				faces.add(i011);
 
-					faces.add(i000);
-					faces.add(i011);
-					faces.add(i010);
-				}
-				if(posX) {
-					faces.add(i100);
-					faces.add(i111);
-					faces.add(i101);
+				faces.add(i000);
+				faces.add(i011);
+				faces.add(i010);
+			}
+			if(posX) {
+				int i100 = addVertex(vertices, x + offset, y, z, colors, color);
+				int i101 = addVertex(vertices, x + offset, y, z + offset, colors, color);
+				int i110 = addVertex(vertices, x + offset, y + offset, z, colors, color);
+				int i111 = addVertex(vertices, x + offset, y + offset, z + offset, colors, color);
+				addNormals(normals, 1, 0, 0, 4);
+				faces.add(i100);
+				faces.add(i111);
+				faces.add(i101);
 
-					faces.add(i100);
-					faces.add(i110);
-					faces.add(i111);
-				}
-				if(negY) {
-					faces.add(i000);
-					faces.add(i101);
-					faces.add(i001);
+				faces.add(i100);
+				faces.add(i110);
+				faces.add(i111);
+			}
+			if(negY) {
+				int i000 = addVertex(vertices, x, y, z, colors, color);
+				int i001 = addVertex(vertices, x, y, z + offset, colors, color);
+				int i100 = addVertex(vertices, x + offset, y, z, colors, color);
+				int i101 = addVertex(vertices, x + offset, y, z + offset, colors, color);
+				addNormals(normals, 0, -1, 0, 4);
+				faces.add(i000);
+				faces.add(i101);
+				faces.add(i001);
 
-					faces.add(i000);
-					faces.add(i100);
-					faces.add(i101);
-				}
-				if(posY) {
-					faces.add(i010);
-					faces.add(i011);
-					faces.add(i111);
+				faces.add(i000);
+				faces.add(i100);
+				faces.add(i101);
+			}
+			if(posY) {
+				int i010 = addVertex(vertices, x, y + offset, z, colors, color);
+				int i011 = addVertex(vertices, x, y + offset, z + offset, colors, color);
+				int i110 = addVertex(vertices, x + offset, y + offset, z, colors, color);
+				int i111 = addVertex(vertices, x + offset, y + offset, z + offset, colors, color);
+				addNormals(normals, 0, 1, 0, 4);
+				faces.add(i010);
+				faces.add(i011);
+				faces.add(i111);
 
-					faces.add(i010);
-					faces.add(i111);
-					faces.add(i110);
-				}
-				if(negZ) {
-					faces.add(i000);
-					faces.add(i110);
-					faces.add(i100);
+				faces.add(i010);
+				faces.add(i111);
+				faces.add(i110);
+			}
+			if(negZ) {
+				int i000 = addVertex(vertices, x, y, z, colors, color);
+				int i010 = addVertex(vertices, x, y + offset, z, colors, color);
+				int i100 = addVertex(vertices, x + offset, y, z, colors, color);
+				int i110 = addVertex(vertices, x + offset, y + offset, z, colors, color);
+				addNormals(normals, 0, 0, -1, 4);
+				faces.add(i000);
+				faces.add(i110);
+				faces.add(i100);
 
-					faces.add(i000);
-					faces.add(i010);
-					faces.add(i110);
-				}
-				if(posZ) {
-					faces.add(i001);
-					faces.add(i101);
-					faces.add(i111);
+				faces.add(i000);
+				faces.add(i010);
+				faces.add(i110);
+			}
+			if(posZ) {
+				int i001 = addVertex(vertices, x, y, z + offset, colors, color);
+				int i011 = addVertex(vertices, x, y + offset, z + offset, colors, color);
+				int i101 = addVertex(vertices, x + offset, y, z + offset, colors, color);
+				int i111 = addVertex(vertices, x + offset, y + offset, z + offset, colors, color);
+				addNormals(normals, 0, 0, 1, 4);
+				faces.add(i001);
+				faces.add(i101);
+				faces.add(i111);
 
-					faces.add(i001);
-					faces.add(i111);
-					faces.add(i011);
-				}
+				faces.add(i001);
+				faces.add(i111);
+				faces.add(i011);
 			}
 		}
 	}

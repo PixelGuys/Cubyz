@@ -78,24 +78,24 @@ public class TerrainGenerator implements FancyGenerator, ReducedGenerator {
 				int y = (int)(containingMetaChunk.heightMap[(wx + (x << chunk.resolutionShift)) & 255][(wz + (z << chunk.resolutionShift)) & 255]*(World.WORLD_HEIGHT >>> chunk.resolutionShift));
 				float temperature = containingMetaChunk.heatMap[(wx + (x << chunk.resolutionShift)) & 255][(wz + (z << chunk.resolutionShift)) & 255];
 				for(int j = y > (SEA_LEVEL >>> chunk.resolutionShift) ? Math.min(y, (World.WORLD_HEIGHT >>> chunk.resolutionShift) - 1) : SEA_LEVEL >>> chunk.resolutionShift; j >= 0; j--) {
-					short color = 0;
+					Block block = null;
 					if(j > y) {
 						if(temperature <= 0 && j == SEA_LEVEL) {
-							color = ice.color;
+							block = ice;
 						} else {
-							color = water.color;
+							block = water;
 						}
 					} else {
 						if(j == 0 && y >>> chunk.resolutionShift != 0) {
-							color = bedrock.color;
+							block = bedrock;
 						} else if(j == y) {
 							j = containingMetaChunk.biomeMap[(wx + (x << chunk.resolutionShift)) & 255][(wz + (z << chunk.resolutionShift)) & 255].struct.addSubTerranian(chunk, j, (x << (chunk.widthShift - chunk.resolutionShift) | z));
 							continue;
 						} else {
-							color = stone.color;
+							block = stone;
 						}
 					}
-					chunk.blocks[(x << (chunk.widthShift - chunk.resolutionShift)) | (j << 2*(chunk.widthShift - chunk.resolutionShift)) | z] = color;
+					chunk.blocks[(x << (chunk.widthShift - chunk.resolutionShift)) | (j << 2*(chunk.widthShift - chunk.resolutionShift)) | z] = block;
 				}
 			}
 		}

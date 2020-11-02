@@ -52,17 +52,17 @@ public class FlatlandGenerator extends SurfaceGenerator {
 		for (int x = 0; x < 16 >>> chunk.resolutionShift; x++) {
 			for (int z = 0; z < 16 >>> chunk.resolutionShift; z++) {
 				for (int y = 0; y <= 2 >>> chunk.resolutionShift; y++) {
-					short color = 0;
+					Block block = null;
 					if (y == 2 >>> chunk.resolutionShift) {
-						color = grass.color;
+						block = grass;
 					}
 					else if (y == 1) {
-						color = dirt.color;
+						block = dirt;
 					}
 					else if (y == 0) {
-						color = bedrock.color;
+						block = bedrock;
 					}
-					chunk.blocks[(x << (4 - chunk.resolutionShift)) | (y << (8 - 2*chunk.resolutionShift) | z)] = color;
+					chunk.blocks[(x << (4 - chunk.resolutionShift)) | (y << (8 - 2*chunk.resolutionShift) | z)] = block;
 				}
 			}
 		}

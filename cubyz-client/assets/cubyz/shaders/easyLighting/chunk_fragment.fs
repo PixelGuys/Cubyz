@@ -2,6 +2,9 @@
 
 in vec3 mvVertexPos;
 in vec3 outColor;
+in vec3 outNormal;
+
+uniform vec3 directionalLight;
 
 out vec4 fragColor;
 
@@ -23,7 +26,7 @@ vec4 calcFog(vec3 pos, vec4 color, Fog fog) {
 
 void main()
 {
-    fragColor = vec4(outColor, 1);
+    fragColor = vec4(outColor*(1 - dot(directionalLight, outNormal)), 1);
     
     if(fog.activ) {
         fragColor = calcFog(mvVertexPos, fragColor, fog);
