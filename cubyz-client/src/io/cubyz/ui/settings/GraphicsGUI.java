@@ -22,7 +22,8 @@ public class GraphicsGUI extends MenuGUI {
 	private final Slider farDistanceFactor = new Slider(Math.round(ClientSettings.FAR_DISTANCE_FACTOR*2) - 1, new String[] {"0.5", "1.0", "1.5", "2.0", "2.5", "3.0", "3.5", "4.0"});
 
 	private void recalculateERD() {
-		effectiveRenderDistance.setText("Effective Render Distance ≈ " + (ClientSettings.RENDER_DISTANCE + ((((int)(ClientSettings.RENDER_DISTANCE*ClientSettings.FAR_DISTANCE_FACTOR) & ~1) << ClientSettings.MAX_RESOLUTION))));
+		ClientSettings.EFFECTIVE_RENDER_DISTANCE = (ClientSettings.RENDER_DISTANCE + ((((int)(ClientSettings.RENDER_DISTANCE*ClientSettings.FAR_DISTANCE_FACTOR) & ~1) << ClientSettings.MAX_RESOLUTION)));
+		effectiveRenderDistance.setText("Effective Render Distance ≈ " + ClientSettings.EFFECTIVE_RENDER_DISTANCE);
 	}
 	
 	@Override

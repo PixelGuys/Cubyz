@@ -32,7 +32,9 @@ public class ClientSettings {
 	
 	public static float FOV = 70.0f;
 	
-	
+
+	/**Not actually a setting, but stored here anyways.*/
+	public static int EFFECTIVE_RENDER_DISTANCE = (ClientSettings.RENDER_DISTANCE + ((((int)(ClientSettings.RENDER_DISTANCE*ClientSettings.FAR_DISTANCE_FACTOR) & ~1) << ClientSettings.MAX_RESOLUTION)));
 	
 	public static final Gson GSON =
 			new GsonBuilder()

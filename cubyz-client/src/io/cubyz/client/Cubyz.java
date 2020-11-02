@@ -733,7 +733,7 @@ public class Cubyz implements GameLogic, ClientConnection {
 			} else {
 				ctx.getFog().setActive(true);
 			}
-			ctx.getFog().setDensity(1 / (ClientSettings.RENDER_DISTANCE*ClientSettings.FOG_COEFFICIENT));
+			ctx.getFog().setDensity(1 / (ClientSettings.EFFECTIVE_RENDER_DISTANCE*ClientSettings.FOG_COEFFICIENT));
 			Player player = world.getLocalPlayer();
 			Block bi = world.getCurrentTorus().getBlock(Math.round(player.getPosition().x), (int)(player.getPosition().y)+3, Math.round(player.getPosition().z));
 			if(bi != null && !bi.isSolid()) {
