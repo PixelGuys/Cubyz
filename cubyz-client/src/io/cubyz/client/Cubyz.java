@@ -275,11 +275,6 @@ public class Cubyz implements GameLogic, ClientConnection {
 				y++;
 			}
 		}
-		try {
-			ImageIO.write(atlas, "png", new File("test.png"));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
 		Meshes.transparentBlockMesh.getMaterial().setTexture(new Texture(TextureConverter.fromBufferedImage(atlas)));
 		
 		
