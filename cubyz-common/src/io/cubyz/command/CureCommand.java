@@ -1,6 +1,7 @@
 package io.cubyz.command;
 
 import io.cubyz.api.Resource;
+import io.cubyz.entity.Player;
 
 /**
  * Command to set player's health to its max health.
@@ -23,7 +24,9 @@ public class CureCommand extends CommandBase {
 			source.feedback("'cure' must be executed by a player");
 			return;
 		}
-		source.getWorld().getLocalPlayer().health = source.getWorld().getLocalPlayer().maxHealth;
+		Player player = source.getWorld().getLocalPlayer();
+		player.health = player.maxHealth;
+		player.hunger = player.maxHunger;
 	}
 
 }

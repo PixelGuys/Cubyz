@@ -135,7 +135,7 @@ public class Server {
 		
 		Thread th = new Thread(() -> {
 			try {
-				server.start(false);
+				server.start();
 			} catch (Exception e) {
 				logger.severe("Error while starting the server");
 				e.printStackTrace();
