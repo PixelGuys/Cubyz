@@ -39,11 +39,11 @@ public class GroundPatch extends StructureModel {
 		int xMin = (int)(x - width);
 		if(xMin < 0) xMin = 0;
 		int xMax = (int)(x + width);
-		if(xMax >= 16) xMax = 15;
+		if(xMax >= chunk.getWidth()) xMax = chunk.getWidth() - 1;
 		int zMin = (int)(z - width);
 		if(zMin < 0) zMin = 0;
 		int zMax = (int)(z + width);
-		if(zMax >= 16) zMax = 15;
+		if(zMax >= chunk.getWidth()) zMax = chunk.getWidth() - 1;
 		for(int px = chunk.startIndex(xMin); px <= xMax; px++) {
 			for(int pz = chunk.startIndex(zMin); pz <= zMax; pz++) {
 				float main = xMain*(x - px) + zMain*(z - pz);
