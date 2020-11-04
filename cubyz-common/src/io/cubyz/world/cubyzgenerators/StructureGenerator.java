@@ -9,7 +9,6 @@ import io.cubyz.world.Chunk;
 import io.cubyz.world.MetaChunk;
 import io.cubyz.world.ReducedChunk;
 import io.cubyz.world.Surface;
-import io.cubyz.world.World;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 import io.cubyz.world.cubyzgenerators.biomes.StructureModel;
 
@@ -31,9 +30,7 @@ public class StructureGenerator implements Generator, ReducedGenerator {
 	}
 
 	@Override
-	public void generate(long seed, int cx, int cz, NormalChunk chunk, MetaChunk containingMetaChunk, Surface surface, boolean[][] vegetationIgnoreMap) {
-		int wx = cx << 4;
-		int wz = cz << 4;
+	public void generate(long seed, int wx, int wz, NormalChunk chunk, MetaChunk containingMetaChunk, Surface surface, boolean[][] vegetationIgnoreMap) {
 		this.generate(seed, wx, wz, chunk, containingMetaChunk, surface);
 	}
 	
@@ -89,7 +86,7 @@ public class StructureGenerator implements Generator, ReducedGenerator {
 				Biome biome = cur.biomeMap[wpx & 255][wpz & 255];
 				for(StructureModel model : biome.vegetationModels()) {
 					if(model.getChance() > randomValue) {
-						model.generate(px - 8, pz - 8, (int)(cur.heightMap[wpx & 255][wpz & 255]*World.WORLD_HEIGHT) + 1, chunk, containingMetaChunk, rand);
+						model.generate(px - 8, pz - 8, (int)(cur.heightMap[wpx & 255][wpz & 255]) + 1, chunk, containingMetaChunk, rand);
 						break;
 					} else {
 						randomValue = (randomValue - model.getChance())/(1 - model.getChance()); // Make sure that after the first one was considered all others get the correct chances.

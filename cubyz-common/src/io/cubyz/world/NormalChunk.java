@@ -899,23 +899,6 @@ public class NormalChunk implements Chunk {
 		}
 	}
 	
-	/**
-	 * Raw add block. Doesn't do any checks. To use with WorldGenerators
-	 * @param x
-	 * @param y
-	 * @param z
-	 * @param b
-	 * @param data
-	 */
-	public void rawAddBlock(int x, int y, int z, Block b, byte data) {
-		if (b != null) {
-			if (b.getBlockClass() == BlockClass.FLUID) {
-				liquids.add((x << 4) | (y << 8) | z);
-			}
-		}
-		setBlock(x, y, z, b, data);
-	}
-	
 	public boolean contains(int x, int y, int z) {
 		return inst[((x & 15) << 4) | (y << 8) | (z & 15)] != null;
 	}
@@ -1166,17 +1149,27 @@ public class NormalChunk implements Chunk {
 	}
 	
 	public void updateBlock(int x, int y, int z, Block newBlock) {
+		updateBlock(x, y, z, newBlock, newBlock == null ? 0 : newBlock.mode.getNaturalStandard());
+	}
+
+	@Override
+	public void updateBlock(int x, int y, int z, Block newBlock, byte data) {
 		int index = (x << 4) | (y << 8) | z;
 		if (newBlock != null && newBlock.getBlockClass() == BlockClass.FLUID) {
 			liquids.add(index);
 		}
 		blocks[index] = newBlock;
-		blockData[index] = newBlock == null ? 0 : newBlock.mode.getNaturalStandard();
+		blockData[index] = data;
 	}
 
 	@Override
 	public boolean liesInChunk(int x, int z) {
 		return x >= 0 && x < 16 && z >= 0 && z < 16;
+	}
+
+	@Override
+	public boolean liesInChunk(int y) {
+		return y >= 0 && y < World.WORLD_HEIGHT;
 	}
 
 	@Override

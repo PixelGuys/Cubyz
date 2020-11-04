@@ -34,10 +34,12 @@ public class OreGenerator implements Generator {
 
 	// Works basically similar to cave generation, but considers a lot less chunks and has a few other differences.
 	@Override
-	public void generate(long seed, int cx, int cz, NormalChunk chunk, MetaChunk containingMetaChunk, Surface surface, boolean[][] vegetationIgnoreMap) {
+	public void generate(long seed, int wx, int wz, NormalChunk chunk, MetaChunk containingMetaChunk, Surface surface, boolean[][] vegetationIgnoreMap) {
 		Random rand = new Random(seed);
 		int rand1 = rand.nextInt() | 1;
 		int rand2 = rand.nextInt() | 1;
+		int cx = wx >> 4;
+		int cz = wz >> 4;
 		// Generate caves from all nearby chunks:
 		for(int x = cx - 1; x <= cx + 1; ++x) {
 			for(int z = cz - 1; z <= cz + 1; ++z) {

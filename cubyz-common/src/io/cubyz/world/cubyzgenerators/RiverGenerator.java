@@ -7,7 +7,6 @@ import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.world.NormalChunk;
 import io.cubyz.world.MetaChunk;
-import io.cubyz.world.World;
 
 /**
  * Used to generate rivers.<br>
@@ -132,9 +131,9 @@ public class RiverGenerator implements BigGenerator {
 						if(((px-lx)&(~15)) == 0 && ((pz-lz)&(~15)) == 0) {
 							int ix = px&15;
 							int iz = pz&15;
-							int height0 = (int)(getHeight(px, pz, nn, np, pn, pp)*World.WORLD_HEIGHT);
-							int height1 = (int)(curHeight*World.WORLD_HEIGHT);
-							int height2 = (int)(nextHeight*World.WORLD_HEIGHT);
+							int height0 = (int)(getHeight(px, pz, nn, np, pn, pp));
+							int height1 = (int)(curHeight);
+							int height2 = (int)(nextHeight);
 							if(height0-height1 < 0) height1 = height0;
 							if(height1-height2 < 1) height2 = height1-2;
 							if(maxLength > 5) {

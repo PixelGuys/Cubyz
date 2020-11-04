@@ -11,7 +11,6 @@ import io.cubyz.world.NormalChunk;
 import io.cubyz.world.MetaChunk;
 import io.cubyz.world.ReducedChunk;
 import io.cubyz.world.Surface;
-import io.cubyz.world.World;
 import io.cubyz.world.cubyzgenerators.*;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 
@@ -65,15 +64,6 @@ public class LifelandGenerator extends SurfaceGenerator {
 		Biome[][] biomeMap = new Biome[32][32];
 		surface.getMapData(wx-8, wz-8, 32, 32, heightMap, heatMap, biomeMap);
 		boolean[][] vegetationIgnoreMap = new boolean[32][32]; // Stores places where vegetation should not grow, like caves and rivers.
-		float[][] realHeight = new float[32][32];
-		for(int px = 0; px < 32; px++) {
-			for(int pz = 0; pz < 32; pz++) {
-				float h = heightMap[px][pz]*World.WORLD_HEIGHT;
-				if(h > World.WORLD_HEIGHT)
-					h = World.WORLD_HEIGHT;
-				realHeight[px][pz] = h;
-			}
-		}
 		
 		// Get the MetaChunks used by the BigGenerator.:
 		int lx, lz;
@@ -113,11 +103,11 @@ public class LifelandGenerator extends SurfaceGenerator {
 		
 		for (Generator g : sortedGenerators) {
 			if (g instanceof FancyGenerator) {
-				((FancyGenerator) g).generate(seed ^ g.getGeneratorSeed(), cx, cz, chunk, vegetationIgnoreMap, heatMap, realHeight, biomeMap, surface.getSize());
+				((FancyGenerator) g).generate(seed ^ g.getGeneratorSeed(), cx, cz, chunk, vegetationIgnoreMap, heatMap, heightMap, biomeMap, surface.getSize());
 			} else if (g instanceof BigGenerator) {
 				((BigGenerator) g).generate(seed ^ g.getGeneratorSeed(), lx, lz, chunk, vegetationIgnoreMap, nn, np, pn, pp);
 			} else {
-				g.generate(seed ^ g.getGeneratorSeed(), cx, cz, chunk, containing, surface, vegetationIgnoreMap);
+				g.generate(seed ^ g.getGeneratorSeed(), wx, wz, chunk, containing, surface, vegetationIgnoreMap);
 			}
 		}
 

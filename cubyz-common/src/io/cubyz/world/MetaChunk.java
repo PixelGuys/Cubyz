@@ -97,7 +97,7 @@ public class MetaChunk {
 					weight += localWeight;
 				}
 				height = height/weight;
-				heightMap[ix][iy] = height;
+				heightMap[ix][iy] = height*World.WORLD_HEIGHT;
 				for(int i = 0; i < numberOfBiomes; i++) {
 					if(closeBiomes[i].minHeight <= height && closeBiomes[i].maxHeight >= height) {
 						biomeMap[ix][iy] = closeBiomes[i];

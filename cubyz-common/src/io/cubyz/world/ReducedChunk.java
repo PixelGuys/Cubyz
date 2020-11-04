@@ -72,12 +72,13 @@ public class ReducedChunk implements Chunk {
 		return new Vector3f(CubyzMath.match(cx << 4, x0, worldSize) + width, 256, CubyzMath.match(cz << 4, z0, worldSize) + width);
 	}
 	
+	@Override
 	public int startIndex(int start) {
 		return start+resolutionMask & ~resolutionMask;
 	}
 	
+	@Override
 	public void updateBlockIfAir(int x, int y, int z, Block newBlock) {
-		//if(x < 0 || x >= width || z < 0 || z >= width) return;
 		x >>= resolutionShift;
 		y >>= resolutionShift;
 		z >>= resolutionShift;
@@ -87,8 +88,8 @@ public class ReducedChunk implements Chunk {
 		}
 	}
 	
+	@Override
 	public void updateBlock(int x, int y, int z, Block newBlock) {
-		//if(x < 0 || x >= width || z < 0 || z >= width) return;
 		x >>= resolutionShift;
 		y >>= resolutionShift;
 		z >>= resolutionShift;
@@ -97,8 +98,18 @@ public class ReducedChunk implements Chunk {
 	}
 
 	@Override
+	public void updateBlock(int x, int y, int z, Block newBlock, byte data) {
+		updateBlock(x, y, z, newBlock);
+	}
+
+	@Override
 	public boolean liesInChunk(int x, int z) {
 		return (x & resolutionMask) == 0 && (z & resolutionMask) == 0 && x >= 0 && x < width && z >= 0 && z < width;
+	}
+
+	@Override
+	public boolean liesInChunk(int y) {
+		return (y & resolutionMask) == 0 && y >= 0 && y < World.WORLD_HEIGHT;
 	}
 
 	@Override

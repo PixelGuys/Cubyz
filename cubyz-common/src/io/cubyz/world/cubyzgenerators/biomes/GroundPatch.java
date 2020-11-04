@@ -5,7 +5,6 @@ import java.util.Random;
 import io.cubyz.blocks.Block;
 import io.cubyz.world.Chunk;
 import io.cubyz.world.MetaChunk;
-import io.cubyz.world.World;
 
 /**
  * A small oval of different ground terrain.
@@ -50,7 +49,7 @@ public class GroundPatch extends StructureModel {
 				float secn = xSecn*(x - px) + zSecn*(z - pz);
 				float dist = main*main + secn*secn;
 				if(dist <= 1) {
-					int startHeight = (int)(metaChunk.heightMap[px + chunk.getWorldX() & 255][pz + chunk.getWorldZ() & 255]*World.WORLD_HEIGHT);
+					int startHeight = (int)(metaChunk.heightMap[px + chunk.getWorldX() & 255][pz + chunk.getWorldZ() & 255]);
 					for(int py = chunk.startIndex((int)(startHeight - depth + 1)); py <= startHeight; py += chunk.getVoxelSize()) {
 						if(dist <= smoothness || (dist - smoothness)/(1 - smoothness) < rand.nextFloat())
 							chunk.updateBlock(px, py, pz, newGround);

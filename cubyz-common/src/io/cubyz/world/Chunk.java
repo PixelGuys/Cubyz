@@ -40,12 +40,30 @@ public interface Chunk {
 	public void updateBlock(int x, int y, int z, Block newBlock);
 	
 	/**
+	 * Updates a block if it is inside this chunk and sets its block data to the specified value(if blockdata is supported).<br>
+	 * Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
+	 * @param x relative x without considering resolution.
+	 * @param y relative y without considering resolution.
+	 * @param z relative z without considering resolution.
+	 * @param newBlock
+	 * @param data block data.
+	 */
+	public void updateBlock(int x, int y, int z, Block newBlock, byte data);
+	
+	/**
 	 * Checks if the given <b>relative</b> coordinates lie within the resolved grid of this chunk.
 	 * @param x
 	 * @param z
 	 * @return
 	 */
 	public boolean liesInChunk(int x, int z);
+	
+	/**
+	 * Checks if the given y coordinate lie within the resolved grid of this chunk.
+	 * @param y
+	 * @return
+	 */
+	public boolean liesInChunk(int y);
 	
 	/**
 	 * @return The size of one voxel unit inside the given Chunk.
