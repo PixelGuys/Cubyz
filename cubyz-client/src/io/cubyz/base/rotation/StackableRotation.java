@@ -31,11 +31,11 @@ public class StackableRotation implements RotationMode {
 	}
 
 	@Override
-	public Object[] generateSpatials(BlockInstance bi, byte data, Player player, int worldSize) {
+	public Object[] generateSpatials(BlockInstance bi, byte data, Player player, int worldSizeX, int worldSizeZ) {
 		BlockSpatial[] spatials = new BlockSpatial[1];
-		BlockSpatial tmp = new BlockSpatial(bi, player, worldSize);
+		BlockSpatial tmp = new BlockSpatial(bi, player, worldSizeX, worldSizeZ);
 		tmp.setScale(1, data/16.0f, 1);
-		tmp.setPosition(bi.getX(), bi.getY() - 0.5f + data/32.0f, bi.getZ(), player, worldSize);
+		tmp.setPosition(bi.getX(), bi.getY() - 0.5f + data/32.0f, bi.getZ(), player, worldSizeX, worldSizeZ);
 		spatials[0] = tmp;
 		return spatials;
 	}

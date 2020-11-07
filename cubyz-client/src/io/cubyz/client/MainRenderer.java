@@ -182,7 +182,7 @@ public class MainRenderer implements Renderer {
 	 * @param localPlayer The world's local player
 	 */
 	public void render(Window window, Context ctx, Vector3f ambientLight, DirectionalLight directionalLight,
-			NormalChunk[] chunks, ReducedChunk[] reducedChunks, Block[] blocks, Entity[] entities, Spatial[] spatials, Player localPlayer, int worldSize) {
+			NormalChunk[] chunks, ReducedChunk[] reducedChunks, Block[] blocks, Entity[] entities, Spatial[] spatials, Player localPlayer, int worldSizeX, int worldSizeZ) {
 		if (window.isResized()) {
 			glViewport(0, 0, window.getWidth(), window.getHeight());
 			window.setResized(false);
@@ -230,18 +230,18 @@ public class MainRenderer implements Renderer {
 			chunks = sortChunks(chunks, x0/16 - 0.5f, z0/16 - 0.5f);
 			for (NormalChunk ch : chunks) {
 				int currentSortingIndex = map[transparentIndex].size;
-				if (!frustumInt.testAab(ch.getMin(x0, z0, worldSize), ch.getMax(x0, z0, worldSize)))
+				if (!frustumInt.testAab(ch.getMin(x0, z0, worldSizeX, worldSizeZ), ch.getMax(x0, z0, worldSizeX, worldSizeZ)))
 					continue;
 				int length = ch.getVisibles().size;
 				BlockInstance[] vis = ch.getVisibles().array;
 				for (int i = 0; i < length; i++) {
 					BlockInstance bi = vis[i];
 					if(bi != null) { // Sometimes block changes happen while rendering.
-						float x = CubyzMath.match(bi.getX(), x0, worldSize);
-						float z = CubyzMath.match(bi.getZ(), z0, worldSize);
+						float x = CubyzMath.match(bi.getX(), x0, worldSizeX);
+						float z = CubyzMath.match(bi.getZ(), z0, worldSizeZ);
 						if(frustumInt.testSphere(x, bi.getY(), z, 0.866025f)) {
 							if(bi.getBlock().isTrulyTransparent()) {
-								BlockSpatial[] spatial = (BlockSpatial[]) bi.getSpatials(localPlayer, worldSize, ch);
+								BlockSpatial[] spatial = (BlockSpatial[]) bi.getSpatials(localPlayer, worldSizeX, worldSizeZ, ch);
 								if(spatial != null) {
 									for(BlockSpatial tmp : spatial) {
 										if (tmp.isSelected()) {
@@ -266,7 +266,7 @@ public class MainRenderer implements Renderer {
 										(y < -0.5001f && !neighbors[5]) ||
 										(z > 0.5001f && !neighbors[2]) ||
 										(z < -0.5001f && !neighbors[3])) {
-									BlockSpatial[] spatial = (BlockSpatial[]) bi.getSpatials(localPlayer, worldSize, ch);
+									BlockSpatial[] spatial = (BlockSpatial[]) bi.getSpatials(localPlayer, worldSizeX, worldSizeZ, ch);
 									if(spatial != null) {
 										for(BlockSpatial tmp : spatial) {
 											if (tmp.isSelected()) {
@@ -301,7 +301,7 @@ public class MainRenderer implements Renderer {
 			
 			for(ReducedChunk chunk : reducedChunks) {
 				if(chunk != null && chunk.generated) {
-					if (!frustumInt.testAab(chunk.getMin(x0, z0, worldSize), chunk.getMax(x0, z0, worldSize)))
+					if (!frustumInt.testAab(chunk.getMin(x0, z0, worldSizeX, worldSizeZ), chunk.getMax(x0, z0, worldSizeX, worldSizeZ)))
 						continue;
 					Object mesh = chunk.mesh;
 					if(mesh == null || !(mesh instanceof ReducedChunkMesh)) {

@@ -149,7 +149,7 @@ public class ZenithsRenderer implements Renderer {
 	 * @param localPlayer The world's local player
 	 */
 	public void render(Window window, Context ctx, Vector3f ambientLight, DirectionalLight directionalLight,
-			NormalChunk[] chunks, Block[] blocks, Entity[] entities, Spatial[] spatials, Player localPlayer, int worldSize) {
+			NormalChunk[] chunks, Block[] blocks, Entity[] entities, Spatial[] spatials, Player localPlayer, int worldSizeX, int worldSizeZ) {
 		if (window.isResized()) {
 			glViewport(0, 0, window.getWidth(), window.getHeight());
 			window.setResized(false);
@@ -197,15 +197,15 @@ public class ZenithsRenderer implements Renderer {
 			float z0 = playerPosition.z;
 			float y0 = playerPosition.y + Player.cameraHeight;
 			for (NormalChunk ch : chunks) {
-				if (!frustumInt.testAab(ch.getMin(x0, z0, worldSize), ch.getMax(x0, z0, worldSize)))
+				if (!frustumInt.testAab(ch.getMin(x0, z0, worldSizeX, worldSizeZ), ch.getMax(x0, z0, worldSizeX, worldSizeZ)))
 					continue;
 				int length = ch.getVisibles().size;
 				BlockInstance[] vis = ch.getVisibles().array;
 				for (int i = 0; i < length; i++) {
 					BlockInstance bi = vis[i];
 					if(bi != null) { // Sometimes block changes happen while rendering.
-						float x = CubyzMath.match(bi.getX(), x0, worldSize);
-						float z = CubyzMath.match(bi.getZ(), z0, worldSize);
+						float x = CubyzMath.match(bi.getX(), x0, worldSizeX);
+						float z = CubyzMath.match(bi.getZ(), z0, worldSizeZ);
 						if(frustumInt.testSphere(x, bi.getY(), z, 0.866025f)) {
 							x = x - x0;
 							float y = bi.getY() - y0;
@@ -220,7 +220,7 @@ public class ZenithsRenderer implements Renderer {
 									(z > 0.5001f && !neighbors[2]) ||
 									(z < -0.5001f && !neighbors[3])) {
 
-								BlockSpatial[] spatial = (BlockSpatial[]) bi.getSpatials(localPlayer, worldSize, ch);
+								BlockSpatial[] spatial = (BlockSpatial[]) bi.getSpatials(localPlayer, worldSizeX, worldSizeZ, ch);
 								if(spatial != null) {
 									ch.getCornerLight(bi.getX() & 15, bi.getY(), bi.getZ() & 15, bi.light);
 									for(BlockSpatial tmp : spatial) {

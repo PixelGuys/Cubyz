@@ -37,7 +37,7 @@ public class MeshSelectionDetector {
 	 * @param worldSize
 	 * @param surface
 	 */
-	public void selectSpatial(NormalChunk[] chunks, Vector3f position, Vector3f dir, Player localPlayer, int worldSize, Surface surface) {
+	public void selectSpatial(NormalChunk[] chunks, Vector3f position, Vector3f dir, Player localPlayer, Surface surface) {
 		// Test blocks:
 		Vector3f transformedPosition = new Vector3f(position.x, position.y + Player.cameraHeight, position.z);
 		dirX = (int)Math.signum(dir.x);
@@ -47,8 +47,8 @@ public class MeshSelectionDetector {
 		Object newSpatial = null;
 		intersection.set(transformedPosition.x, transformedPosition.y, transformedPosition.z, dir.x, dir.y, dir.z);
 		for (NormalChunk ch : chunks) {
-			min.set(ch.getMin(position.x, position.z, worldSize));
-			max.set(ch.getMax(position.x, position.z, worldSize));
+			min.set(ch.getMin(position.x, position.z, surface.getSizeX(), surface.getSizeZ()));
+			max.set(ch.getMax(position.x, position.z, surface.getSizeX(), surface.getSizeZ()));
 			// Check if the chunk is in view:
 			if (!intersection.test(min.x-1, -1, min.z-1, max.x+1, 256, max.z+1)) // 1 is added/subtracted because chunk min-max don't align with the block min max.
 				continue;
@@ -96,7 +96,7 @@ public class MeshSelectionDetector {
 		if(selectedSpatial != null) {
 			synchronized(selectedSpatial) {
 				if(selectedSpatial != null && selectedSpatial instanceof BlockInstance) {
-					for(BlockSpatial spatial : (BlockSpatial[])((BlockInstance)selectedSpatial).getSpatials(localPlayer, worldSize, null)) {
+					for(BlockSpatial spatial : (BlockSpatial[])((BlockInstance)selectedSpatial).getSpatials(localPlayer, surface.getSizeX(), surface.getSizeZ(), null)) {
 						spatial.setSelected(false);
 					}
 				}
@@ -106,7 +106,7 @@ public class MeshSelectionDetector {
 		if(selectedSpatial != null) {
 			synchronized(selectedSpatial) {
 				if(selectedSpatial != null && selectedSpatial instanceof BlockInstance) {
-					for(BlockSpatial spatial : (BlockSpatial[])((BlockInstance)selectedSpatial).getSpatials(localPlayer, worldSize, null)) {
+					for(BlockSpatial spatial : (BlockSpatial[])((BlockInstance)selectedSpatial).getSpatials(localPlayer, surface.getSizeX(), surface.getSizeZ(), null)) {
 						spatial.setSelected(true);
 					}
 				}

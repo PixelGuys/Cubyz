@@ -48,15 +48,15 @@ public class PlayerEntity extends EntityType {
 		}
 		
 		@Override
-		public void move(Vector3f inc, Vector3f rot, int worldSize) {
+		public void move(Vector3f inc, Vector3f rot, int worldSizeX, int worldSizeZ) {
 			// Store it locally so the hunger mechanics can still use it.
 			vx = (float) Math.sin(rot.y) * -1.0F * inc.z + (float) Math.sin(rot.y - Math.PI/2) * -1.0F * inc.x;
 			vz = (float) Math.cos(rot.y) * inc.z + (float) Math.cos(rot.y - Math.PI/2) * inc.x;
 			if (inc.y != 0) {
 				vy = inc.y;
 			}
-			float newX = CubyzMath.worldModulo(position.x, worldSize);
-			float newZ = CubyzMath.worldModulo(position.z, worldSize);
+			float newX = CubyzMath.worldModulo(position.x, worldSizeX);
+			float newZ = CubyzMath.worldModulo(position.z, worldSizeZ);
 			boolean crossedBorder = newX != position.x || newZ != position.z;
 			position.x = newX;
 			position.z = newZ;

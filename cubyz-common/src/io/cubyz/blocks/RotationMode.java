@@ -16,7 +16,7 @@ import io.cubyz.entity.Player;
  */
 
 public interface RotationMode extends RegistryElement {
-	public Object[] generateSpatials(BlockInstance bi, byte data, Player player, int worldSize);
+	public Object[] generateSpatials(BlockInstance bi, byte data, Player player, int worldSizeX, int worldSizeZ);
 	// currentData will be 0 if the blockTypes don't match.
 	public byte generateData(Vector3i placementPosition, byte currentData);
 

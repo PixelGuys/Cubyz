@@ -8,6 +8,7 @@ import io.cubyz.blocks.Block;
 import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.math.CubyzMath;
 import io.cubyz.world.NormalChunk;
+import io.cubyz.world.Surface;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 
 /**
@@ -40,16 +41,17 @@ public class CrystalCavernGenerator implements FancyGenerator {
 	private Block stone = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:stone");
 
 	@Override
-	public void generate(long seed, int cx, int cz, NormalChunk chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, float[][] heightMap, Biome[][] biomeMap, int worldSize) {
+	public void generate(long seed, int cx, int cz, NormalChunk chunk, boolean[][] vegetationIgnoreMap, float[][] heatMap, float[][] heightMap, Biome[][] biomeMap, Surface surface) {
 		Random rand = new Random(seed);
 		int rand1 = rand.nextInt() | 1;
 		int rand2 = rand.nextInt() | 1;
-		int chunksSize = worldSize >> 4;
+		int chunksSizeX = surface.getSizeX();
+		int chunksSizeZ = surface.getSizeZ();
 		// Generate caves from all nearby chunks:
 		for(int x = cx - range; x <= cx + range; ++x) {
 			for(int z = cz - range; z <= cz + range; ++z) {
-				int randX = CubyzMath.worldModulo(x, chunksSize)*rand1;
-				int randZ = CubyzMath.worldModulo(z, chunksSize)*rand2;
+				int randX = CubyzMath.worldModulo(x, chunksSizeX)*rand1;
+				int randZ = CubyzMath.worldModulo(z, chunksSizeZ)*rand2;
 				rand.setSeed((randX << 32) ^ randZ ^ seed);
 				considerCoordinates(x, z, cx, cz, chunk, vegetationIgnoreMap, heightMap, rand);
 			}

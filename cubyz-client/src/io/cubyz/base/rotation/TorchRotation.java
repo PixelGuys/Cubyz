@@ -42,35 +42,35 @@ public class TorchRotation implements RotationMode {
 	}
 
 	@Override
-	public Object[] generateSpatials(BlockInstance bi, byte data, Player player, int worldSize) {
+	public Object[] generateSpatials(BlockInstance bi, byte data, Player player, int worldSizeX, int worldSizeZ) {
 		BlockSpatial[] spatials = new BlockSpatial[5];
 		int index = 0;
 		if((data & 0b1) != 0) {
-			BlockSpatial tmp = new BlockSpatial(bi, player, worldSize);
-			tmp.setPosition(bi.getX() + POS_X.x, bi.getY() + POS_X.y, bi.getZ() + POS_X.z, player, worldSize);
+			BlockSpatial tmp = new BlockSpatial(bi, player, worldSizeX, worldSizeZ);
+			tmp.setPosition(bi.getX() + POS_X.x, bi.getY() + POS_X.y, bi.getZ() + POS_X.z, player, worldSizeX, worldSizeZ);
 			tmp.setRotation(0, 0, -0.3f);
 			spatials[index++] = tmp;
 		}
 		if((data & 0b10) != 0) {
-			BlockSpatial tmp = new BlockSpatial(bi, player, worldSize);
-			tmp.setPosition(bi.getX() + NEG_X.x, bi.getY() + NEG_X.y, bi.getZ() + NEG_X.z, player, worldSize);
+			BlockSpatial tmp = new BlockSpatial(bi, player, worldSizeX, worldSizeZ);
+			tmp.setPosition(bi.getX() + NEG_X.x, bi.getY() + NEG_X.y, bi.getZ() + NEG_X.z, player, worldSizeX, worldSizeZ);
 			tmp.setRotation(0, 0, 0.3f);
 			spatials[index++] = tmp;
 		}
 		if((data & 0b100) != 0) {
-			BlockSpatial tmp = new BlockSpatial(bi, player, worldSize);
-			tmp.setPosition(bi.getX() + POS_Z.x, bi.getY() + POS_Z.y, bi.getZ() + POS_Z.z, player, worldSize);
+			BlockSpatial tmp = new BlockSpatial(bi, player, worldSizeX, worldSizeZ);
+			tmp.setPosition(bi.getX() + POS_Z.x, bi.getY() + POS_Z.y, bi.getZ() + POS_Z.z, player, worldSizeX, worldSizeZ);
 			tmp.setRotation(0.3f, 0, 0);
 			spatials[index++] = tmp;
 		}
 		if((data & 0b1000) != 0) {
-			BlockSpatial tmp = new BlockSpatial(bi, player, worldSize);
-			tmp.setPosition(bi.getX() + NEG_Z.x, bi.getY() + NEG_Z.y, bi.getZ() + NEG_Z.z, player, worldSize);
+			BlockSpatial tmp = new BlockSpatial(bi, player, worldSizeX, worldSizeZ);
+			tmp.setPosition(bi.getX() + NEG_Z.x, bi.getY() + NEG_Z.y, bi.getZ() + NEG_Z.z, player, worldSizeX, worldSizeZ);
 			tmp.setRotation(-0.3f, 0, 0);
 			spatials[index++] = tmp;
 		}
 		if((data & 0b10000) != 0) {
-			BlockSpatial tmp = new BlockSpatial(bi, player, worldSize);
+			BlockSpatial tmp = new BlockSpatial(bi, player, worldSizeX, worldSizeZ);
 			spatials[index++] = tmp;
 		}
 		if(index == spatials.length) {

@@ -27,16 +27,16 @@ public class MetaChunk {
 		this.world = world;
 		
 		PerlinNoise noise = threadLocalNoise.get();
-		heightMap = noise.generateThreeOctaveMapFragment(x, z, 256, 256, 2048, seed, world.getSize());
-		heatMap = noise.generateThreeOctaveMapFragment(x, z, 256, 256, 2048, seed ^ 6587946239L, world.getSize());
-		humidityMap = noise.generateThreeOctaveMapFragment(x, z, 256, 256, 2048, seed ^ -1324585483391L, world.getSize());
+		heightMap = noise.generateThreeOctaveMapFragment(x, z, 256, 256, 2048, seed, world.getSizeX(), world.getSizeZ());
+		heatMap = noise.generateThreeOctaveMapFragment(x, z, 256, 256, 2048, seed ^ 6587946239L, world.getSizeX(), world.getSizeZ());
+		humidityMap = noise.generateThreeOctaveMapFragment(x, z, 256, 256, 2048, seed ^ -1324585483391L, world.getSizeX(), world.getSizeZ());
 		
 		biomeMap = new Biome[256][256];
 		advancedHeightMapGeneration(seed, registries);
 	}
 	
 	public void advancedHeightMapGeneration(long seed, CurrentSurfaceRegistries registries) {
-		float[][] rougherMap = Noise.generateFractalTerrain(x, z, 256, 256, 128, seed ^ -954936678493L, world.getSize()); // Map used to add terrain roughness.
+		float[][] rougherMap = Noise.generateFractalTerrain(x, z, 256, 256, 128, seed ^ -954936678493L, world.getSizeX(), world.getSizeZ()); // Map used to add terrain roughness.
 		for(int ix = 0; ix < 256; ix++) {
 			for(int iy = 0; iy < 256; iy++) {
 				// How many of the first biomes are used in the interpolation. This is limited to prevent long-range effects of biomes.

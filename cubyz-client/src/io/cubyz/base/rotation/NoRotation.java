@@ -29,8 +29,8 @@ public class NoRotation implements RotationMode {
 	}
 
 	@Override
-	public Object[] generateSpatials(BlockInstance bi, byte data, Player player, int worldSize) {
-		return new BlockSpatial[] {new BlockSpatial(bi, player, worldSize)};
+	public Object[] generateSpatials(BlockInstance bi, byte data, Player player, int worldSizeX, int worldSizeZ) {
+		return new BlockSpatial[] {new BlockSpatial(bi, player, worldSizeX, worldSizeZ)};
 	}
 
 	@Override

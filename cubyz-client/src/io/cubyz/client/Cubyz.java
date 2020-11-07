@@ -185,8 +185,8 @@ public class Cubyz implements GameLogic, ClientConnection {
 				int highestY;
 				logger.info("Finding position..");
 				while (true) {
-					dx = rnd.nextInt(surface.getSize());
-					dz = rnd.nextInt(surface.getSize());
+					dx = rnd.nextInt(surface.getSizeX());
+					dz = rnd.nextInt(surface.getSizeZ());
 					logger.info("Trying " + dx + " ? " + dz);
 					world.getCurrentTorus().synchronousSeek(dx, dz, ClientSettings.RENDER_DISTANCE);
 					highestY = world.getCurrentTorus().getHeight(dx, dz);
@@ -359,7 +359,7 @@ public class Cubyz implements GameLogic, ClientConnection {
 			for(NormalChunk ch : chunks) {
 				for(int i = 0; i < ch.getVisibles().size; i++) {
 					BlockInstance bi = ch.getVisibles().array[i];
-					bi.setData(bi.getData(), world.getLocalPlayer(), surface.getSize());
+					bi.setData(bi.getData(), world.getLocalPlayer());
 				}
 			}
 		};
@@ -576,7 +576,7 @@ public class Cubyz implements GameLogic, ClientConnection {
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_EQUAL, false);
 				System.gc();
 			}
-			msd.selectSpatial(world.getCurrentTorus().getChunks(), world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate(), surface.getStellarTorus().getWorld().getLocalPlayer(), surface.getSize(), surface);
+			msd.selectSpatial(world.getCurrentTorus().getChunks(), world.getLocalPlayer().getPosition(), ctx.getCamera().getViewMatrix().positiveZ(dir).negate(), surface.getStellarTorus().getWorld().getLocalPlayer(), surface);
 		}
 		if (world != null) {
 			if (Keybindings.isPressed("menu")) {
@@ -749,7 +749,7 @@ public class Cubyz implements GameLogic, ClientConnection {
 			// Set intensity:
 			light.setDirection(light.getDirection().mul(0.1f*world.getCurrentTorus().getGlobalLighting()/light.getDirection().length()));
 			window.setClearColor(clearColor);
-			renderer.render(window, ctx, ambient, light, world.getCurrentTorus().getChunks(), world.getCurrentTorus().getReducedChunks(), world.getBlocks(), world.getCurrentTorus().getEntities(), worldSpatialList, world.getLocalPlayer(), world.getCurrentTorus().getSize());
+			renderer.render(window, ctx, ambient, light, world.getCurrentTorus().getChunks(), world.getCurrentTorus().getReducedChunks(), world.getBlocks(), world.getCurrentTorus().getEntities(), worldSpatialList, world.getLocalPlayer(), world.getCurrentTorus().getSizeX(), world.getCurrentTorus().getSizeZ());
 		} else {
 			clearColor.y = clearColor.z = 0.7f;
 			clearColor.x = 0.1f;
@@ -763,7 +763,7 @@ public class Cubyz implements GameLogic, ClientConnection {
 				window.setRenderTarget(buf);
 			}
 			
-			renderer.render(window, ctx, brightAmbient, light, EMPTY_CHUNK_LIST, EMPTY_REDUCED_CHUNK_LIST, EMPTY_BLOCK_LIST, EMPTY_ENTITY_LIST, EMPTY_SPATIAL_LIST, null, -1);
+			renderer.render(window, ctx, brightAmbient, light, EMPTY_CHUNK_LIST, EMPTY_REDUCED_CHUNK_LIST, EMPTY_BLOCK_LIST, EMPTY_ENTITY_LIST, EMPTY_SPATIAL_LIST, null, -1, -1);
 			
 			if (screenshot) {
 				/*FrameBuffer buf = window.getRenderTarget();
@@ -781,7 +781,7 @@ public class Cubyz implements GameLogic, ClientConnection {
 		if (!gameUI.doesGUIPauseGame() && world != null) {
 			Player lp = world.getLocalPlayer();
 			if (!gameUI.doesGUIBlockInput()) {
-				lp.move(playerInc.mul(0.11F), ctx.getCamera().getRotation(), world.getCurrentTorus().getSize());
+				lp.move(playerInc.mul(0.11F), ctx.getCamera().getRotation(), world.getCurrentTorus().getSizeX(), world.getCurrentTorus().getSizeZ());
 				if (breakCooldown > 0) {
 					breakCooldown--;
 				}

@@ -34,35 +34,35 @@ public class TransparentRotation implements RotationMode {
 	}
 
 	@Override
-	public Object[] generateSpatials(BlockInstance bi, byte data, Player player, int worldSize) {
+	public Object[] generateSpatials(BlockInstance bi, byte data, Player player, int worldSizeX, int worldSizeZ) {
 		BlockSpatial[] spatials = new BlockSpatial[6];
 		int total = 0;
 		for(int i = 0; i < 6; i++) {
 			if(!bi.getNeighbors()[i]) {
-				BlockSpatial tmp = new BlockSpatial(bi, player, worldSize);
+				BlockSpatial tmp = new BlockSpatial(bi, player, worldSizeX, worldSizeZ);
 				switch(i) {
 					default:
-						tmp.setPosition(bi.getX(), bi.getY() + 0.5f, bi.getZ(), player, worldSize);
+						tmp.setPosition(bi.getX(), bi.getY() + 0.5f, bi.getZ(), player, worldSizeX, worldSizeZ);
 						break;
 					case 4:
 						tmp.setRotation(PI, 0, 0);
-						tmp.setPosition(bi.getX(), bi.getY() - 0.5f, bi.getZ(), player, worldSize);
+						tmp.setPosition(bi.getX(), bi.getY() - 0.5f, bi.getZ(), player, worldSizeX, worldSizeZ);
 						break;
 					case 0:
 						tmp.setRotation(0, 0, -PI_HALF);
-						tmp.setPosition(bi.getX() - 0.5f, bi.getY(), bi.getZ(), player, worldSize);
+						tmp.setPosition(bi.getX() - 0.5f, bi.getY(), bi.getZ(), player, worldSizeX, worldSizeZ);
 						break;
 					case 1:
 						tmp.setRotation(0, 0, PI_HALF);
-						tmp.setPosition(bi.getX() + 0.5f, bi.getY(), bi.getZ(), player, worldSize);
+						tmp.setPosition(bi.getX() + 0.5f, bi.getY(), bi.getZ(), player, worldSizeX, worldSizeZ);
 						break;
 					case 2:
 						tmp.setRotation(PI_HALF, 0, 0);
-						tmp.setPosition(bi.getX(), bi.getY(), bi.getZ() - 0.5f, player, worldSize);
+						tmp.setPosition(bi.getX(), bi.getY(), bi.getZ() - 0.5f, player, worldSizeX, worldSizeZ);
 						break;
 					case 3:
 						tmp.setRotation(-PI_HALF, 0, 0);
-						tmp.setPosition(bi.getX(), bi.getY(), bi.getZ() + 0.5f, player, worldSize);
+						tmp.setPosition(bi.getX(), bi.getY(), bi.getZ() + 0.5f, player, worldSizeX, worldSizeZ);
 						break;
 				}
 				spatials[i] = tmp;

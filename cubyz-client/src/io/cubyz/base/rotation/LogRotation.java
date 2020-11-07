@@ -40,9 +40,9 @@ public class LogRotation implements RotationMode {
 	}
 
 	@Override
-	public Object[] generateSpatials(BlockInstance bi, byte data, Player player, int worldSize) {
+	public Object[] generateSpatials(BlockInstance bi, byte data, Player player, int worldSizeX, int worldSizeZ) {
 		BlockSpatial[] spatials = new BlockSpatial[1];
-		BlockSpatial tmp = new BlockSpatial(bi, player, worldSize);
+		BlockSpatial tmp = new BlockSpatial(bi, player, worldSizeX, worldSizeZ);
 		switch(data) {
 			default:
 				break;

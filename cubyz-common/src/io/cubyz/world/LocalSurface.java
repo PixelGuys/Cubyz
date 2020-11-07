@@ -50,7 +50,7 @@ public class LocalSurface extends Surface {
 	private int lastMetaX = Integer.MAX_VALUE, lastMetaZ = Integer.MAX_VALUE; // MetaChunk coordinates of the last chunk update.
 	private int mcDRD; // double renderdistance of MetaChunks.
 	private int doubleRD; // Corresponds to the doubled value of the last used render distance.
-	private int worldSize = 65536; // worldSize-1. Used for bitwise and to better work with coordinates.
+	private int worldSizeX = 65536, worldSizeZ = 16384;
 	private ArrayList<Entity> entities = new ArrayList<>();
 	
 	private Block[] torusBlocks;
@@ -502,7 +502,7 @@ public class LocalSurface extends Surface {
 										break;
 								}
 								if(dy == -1 || (neighbors[4] != null && neighbors[4].getBlockClass() != Block.BlockClass.FLUID)) {
-									ch.addBlockPossiblyOutside(block, (byte)0, CubyzMath.worldModulo(wx+bx+dx, worldSize), by+dy, CubyzMath.worldModulo(wz+bz+dz, worldSize), true);
+									ch.addBlockPossiblyOutside(block, (byte)0, CubyzMath.worldModulo(wx+bx+dx, worldSizeX), by+dy, CubyzMath.worldModulo(wz+bz+dz, worldSizeZ), true);
 								}
 							}
 						}
@@ -556,7 +556,7 @@ public class LocalSurface extends Surface {
 				loop:
 				for(int j = z-mcDRD; j < z; j++) {
 					for(int k = minK; k < metaChunks.length; k++) {
-						if(metaChunks[k] != null && CubyzMath.moduloMatchSign(metaChunks[k].x-i, worldSize >> 8) == 0 && CubyzMath.moduloMatchSign(metaChunks[k].z-j, worldSize >> 8) == 0) {
+						if(metaChunks[k] != null && CubyzMath.moduloMatchSign(metaChunks[k].x-i, worldSizeX >> 8) == 0 && CubyzMath.moduloMatchSign(metaChunks[k].z-j, worldSizeZ >> 8) == 0) {
 							newMeta[index] = metaChunks[k];
 							// Removes this chunk out of the list of chunks that will be considered in this function.
 							metaChunks[k] = metaChunks[minK];
@@ -600,7 +600,7 @@ public class LocalSurface extends Surface {
 			loop:
 			for(int j = z-doubleRD; j < z; j++) {
 				for(int k = minK; k < chunks.length; k++) {
-					if(CubyzMath.moduloMatchSign(chunks[k].getX()-i, worldSize >> 4) == 0 && CubyzMath.moduloMatchSign(chunks[k].getZ()-j, worldSize >> 4) == 0) {
+					if(CubyzMath.moduloMatchSign(chunks[k].getX()-i, worldSizeX >> 4) == 0 && CubyzMath.moduloMatchSign(chunks[k].getZ()-j, worldSizeZ >> 4) == 0) {
 						newVisibles[index] = chunks[k];
 						// Removes this chunk out of the list of chunks that will be considered in this function.
 						chunks[k] = chunks[minK];
@@ -679,7 +679,7 @@ public class LocalSurface extends Surface {
 					boolean visible = cx < minXLast || cx >= maxXLast || cz < minZLast || cz >= maxZLast;
 					if(!visible) continue;
 					for(int k = minK; k < reducedChunks.length; k++) {
-						if(reducedChunks[k].resolutionShift == res && reducedChunks[k].widthShift == widthShiftOld && CubyzMath.moduloMatchSign(reducedChunks[k].cx-cx, worldSize >> 4) == 0 && CubyzMath.moduloMatchSign(reducedChunks[k].cz-cz, worldSize >> 4) == 0) {
+						if(reducedChunks[k].resolutionShift == res && reducedChunks[k].widthShift == widthShiftOld && CubyzMath.moduloMatchSign(reducedChunks[k].cx-cx, worldSizeX >> 4) == 0 && CubyzMath.moduloMatchSign(reducedChunks[k].cz-cz, worldSizeZ >> 4) == 0) {
 							newReduced.add(reducedChunks[k]);
 							// Removes this chunk out of the list of chunks that will be considered in this function.
 							reducedChunks[k] = reducedChunks[minK];
@@ -709,7 +709,7 @@ public class LocalSurface extends Surface {
 					boolean visible = cx < minXLast || cx >= maxXLast || cz < minZLast || cz >= maxZLast;
 					if(!visible) continue;
 					for(int k = minK; k < reducedChunks.length; k++) {
-						if(reducedChunks[k].resolutionShift == res && reducedChunks[k].widthShift == widthShift && CubyzMath.moduloMatchSign(reducedChunks[k].cx-cx, worldSize >> 4) == 0 && CubyzMath.moduloMatchSign(reducedChunks[k].cz-cz, worldSize >> 4) == 0) {
+						if(reducedChunks[k].resolutionShift == res && reducedChunks[k].widthShift == widthShift && CubyzMath.moduloMatchSign(reducedChunks[k].cx-cx, worldSizeX >> 4) == 0 && CubyzMath.moduloMatchSign(reducedChunks[k].cz-cz, worldSizeZ >> 4) == 0) {
 							newReduced.add(reducedChunks[k]);
 							// Removes this chunk out of the list of chunks that will be considered in this function.
 							reducedChunks[k] = reducedChunks[minK];
@@ -749,9 +749,9 @@ public class LocalSurface extends Surface {
 	public void getMapData(int x, int z, int width, int height, float [][] heightMap, float[][] heatMap, Biome[][] biomeMap) {
 		int x0 = x&(~255);
 		int z0 = z&(~255);
-		for(int px = x0; CubyzMath.moduloMatchSign(px - x, worldSize) < width; px += 256) {
-			for(int pz = z0; CubyzMath.moduloMatchSign(pz-z, worldSize) < height; pz += 256) {
-				MetaChunk ch = getMetaChunk(CubyzMath.worldModulo(px, worldSize), CubyzMath.worldModulo(pz, worldSize));
+		for(int px = x0; CubyzMath.moduloMatchSign(px - x, worldSizeX) < width; px += 256) {
+			for(int pz = z0; CubyzMath.moduloMatchSign(pz-z, worldSizeZ) < height; pz += 256) {
+				MetaChunk ch = getMetaChunk(CubyzMath.worldModulo(px, worldSizeX), CubyzMath.worldModulo(pz, worldSizeZ));
 				int xS = Math.max(px-x, 0);
 				int zS = Math.max(pz-z, 0);
 				int xE = Math.min(px + 256 - x, width);
@@ -773,9 +773,9 @@ public class LocalSurface extends Surface {
 		int x = wx >> 8;
 		int z = wz >> 8;
 		// Test if the chunk can be found in the list of visible chunks:
-		int index = CubyzMath.moduloMatchSign(x-(lastMetaX-mcDRD), worldSize >> 8)*mcDRD + CubyzMath.moduloMatchSign(z-(lastMetaZ-mcDRD), worldSize >> 8);
-		wx = CubyzMath.worldModulo(wx, worldSize);
-		wz = CubyzMath.worldModulo(wz, worldSize);
+		int index = CubyzMath.moduloMatchSign(x-(lastMetaX-mcDRD), worldSizeX >> 8)*mcDRD + CubyzMath.moduloMatchSign(z-(lastMetaZ-mcDRD), worldSizeZ >> 8);
+		wx = CubyzMath.worldModulo(wx, worldSizeX);
+		wz = CubyzMath.worldModulo(wz, worldSizeZ);
 		if(index < metaChunks.length && index >= 0) {
 			MetaChunk ret = metaChunks[index];
 			
@@ -803,9 +803,9 @@ public class LocalSurface extends Surface {
 	@Override
 	public NormalChunk getChunk(int x, int z) {
 		// Test if the chunk can be found in the list of visible chunks:
-		int index = CubyzMath.moduloMatchSign(x-(lastX-doubleRD), worldSize >> 4)*doubleRD + CubyzMath.moduloMatchSign(z-(lastZ-doubleRD), worldSize >> 4);
-		x = CubyzMath.worldModulo(x, worldSize >> 4);
-		z = CubyzMath.worldModulo(z, worldSize >> 4);
+		int index = CubyzMath.moduloMatchSign(x-(lastX-doubleRD), worldSizeX >> 4)*doubleRD + CubyzMath.moduloMatchSign(z-(lastZ-doubleRD), worldSizeZ >> 4);
+		x = CubyzMath.worldModulo(x, worldSizeX >> 4);
+		z = CubyzMath.worldModulo(z, worldSizeZ >> 4);
 		if(index < chunks.length && index >= 0) {
 			NormalChunk ret = chunks[index];
 			if (ret != null && x == ret.getX() && z == ret.getZ())
@@ -886,8 +886,13 @@ public class LocalSurface extends Surface {
 	}
 	
 	@Override
-	public int getSize() {
-		return worldSize;
+	public int getSizeX() {
+		return worldSizeX;
+	}
+	
+	@Override
+	public int getSizeZ() {
+		return worldSizeZ;
 	}
 	
 	public ArrayList<CustomOre> getCustomOres() {

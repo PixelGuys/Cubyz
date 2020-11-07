@@ -23,7 +23,7 @@ public class BlockInstance {
 	private boolean lightUpdate;
 	public final int[] light;
 	
-	public BlockInstance(Block block, byte data, Vector3i position, Player player, int worldSize) {
+	public BlockInstance(Block block, byte data, Vector3i position, Player player) {
 		this.block = block;
 		x = position.x;
 		y = position.y;
@@ -42,7 +42,7 @@ public class BlockInstance {
 		return neighbors;
 	}
 	
-	public void updateNeighbor(int i, boolean value, Player player, int worldSize) {
+	public void updateNeighbor(int i, boolean value, Player player) {
 		if(neighbors[i] != value) {
 			neighbors[i] = value;
 			if(block.mode.dependsOnNeightbors()) {
@@ -91,7 +91,7 @@ public class BlockInstance {
 		return blockData;
 	}
 	
-	public void setData(byte data, Player player, int worldSize) {
+	public void setData(byte data, Player player) {
 		blockData = data;
 		spatialUpdate = true;
 	}
@@ -100,9 +100,9 @@ public class BlockInstance {
 		lightUpdate = true;
 	}
 	
-	public Object[] getSpatials(Player player, int worldSize, NormalChunk chunk) {
+	public Object[] getSpatials(Player player, int worldSizeX, int worldSizeZ, NormalChunk chunk) {
 		if(spatialUpdate) { // Generate the Spatials on demand.
-			spatial = block.mode.generateSpatials(this, blockData, player, worldSize);
+			spatial = block.mode.generateSpatials(this, blockData, player, worldSizeX, worldSizeZ);
 			spatialUpdate = false;
 		}
 		if(Settings.easyLighting && lightUpdate) { // Update the internal light representation on demand.

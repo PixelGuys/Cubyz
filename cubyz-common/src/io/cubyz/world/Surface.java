@@ -82,7 +82,11 @@ public abstract class Surface {
 	
 	public abstract void drop(ItemStack stack, Vector3f pos);
 	
-	public int getSize() {
+	public int getSizeX() {
+		return Integer.MIN_VALUE;
+	}
+	
+	public int getSizeZ() {
 		return Integer.MIN_VALUE;
 	}
 	

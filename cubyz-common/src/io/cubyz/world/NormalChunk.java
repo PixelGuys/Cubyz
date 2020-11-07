@@ -52,8 +52,8 @@ public class NormalChunk implements Chunk {
 	
 	public NormalChunk(int cx, int cz, Surface surface, ArrayList<BlockChange> changes) {
 		if(surface != null) {
-			cx = CubyzMath.worldModulo(cx, surface.getSize() >>> 4);
-			cz = CubyzMath.worldModulo(cz, surface.getSize() >>> 4);
+			cx = CubyzMath.worldModulo(cx, surface.getSizeX() >>> 4);
+			cz = CubyzMath.worldModulo(cz, surface.getSizeZ() >>> 4);
 		}
 		if(Settings.easyLighting) {
 			light = new int[16*World.WORLD_HEIGHT*16];
@@ -257,7 +257,7 @@ public class NormalChunk implements Chunk {
 						Block block = ch.getBlockAt(dx[k], j, dz[k]);
 						// Update neighbor information:
 						if(inst != null) {
-							inst.updateNeighbor(k ^ 1, getsBlocked(block, blocks[(invdx[k] << 4) | (j << 8) | invdz[k]], ch.blockData[(dx[k] << 4) | (j << 8) | dz[k]], (invdx[k] << 4) | (j << 8) | invdz[k] - (dx[k] << 4) | (j << 8) | dz[k]), surface.getStellarTorus().getWorld().getLocalPlayer(), surface.getSize());
+							inst.updateNeighbor(k ^ 1, getsBlocked(block, blocks[(invdx[k] << 4) | (j << 8) | invdz[k]], ch.blockData[(dx[k] << 4) | (j << 8) | dz[k]], (invdx[k] << 4) | (j << 8) | invdz[k] - (dx[k] << 4) | (j << 8) | dz[k]), surface.getStellarTorus().getWorld().getLocalPlayer());
 						}
 						// Update visibility:
 						if(block == null) {
@@ -305,7 +305,7 @@ public class NormalChunk implements Chunk {
 			blockData[index] = data;
 			// Update the instance:
 			if(inst[index] != null)
-				inst[index].setData(data, surface.getStellarTorus().getWorld().getLocalPlayer(), surface.getSize());
+				inst[index].setData(data, surface.getStellarTorus().getWorld().getLocalPlayer());
 		}
 	}
 	
@@ -694,7 +694,7 @@ public class NormalChunk implements Chunk {
 			Block[] neighbors = getNeighbors(x, y ,z, dataN, indices);
 			BlockInstance[] visibleNeighbors = getVisibleNeighbors(x + wx, y, z + wz);
 			for(int k = 0; k < 6; k++) {
-				if(visibleNeighbors[k] != null) visibleNeighbors[k].updateNeighbor(k ^ 1, getsBlocked(neighbors[k], b, dataN[k], ((x << 4) | (y << 8) | z) - indices[k]), surface.getStellarTorus().getWorld().getLocalPlayer(), surface.getSize());
+				if(visibleNeighbors[k] != null) visibleNeighbors[k].updateNeighbor(k ^ 1, getsBlocked(neighbors[k], b, dataN[k], ((x << 4) | (y << 8) | z) - indices[k]), surface.getStellarTorus().getWorld().getLocalPlayer());
 			}
 			
 			for (int i = 0; i < neighbors.length; i++) {
@@ -801,12 +801,12 @@ public class NormalChunk implements Chunk {
 		if(y < 0 || y >= World.WORLD_HEIGHT) return;
 		int index = (x << 4) | (y << 8) | z;
 		Block b = blocks[index];
-		BlockInstance bi = new BlockInstance(b, blockData[index], new Vector3i(x + wx, y, z + wz), surface.getStellarTorus().getWorld().getLocalPlayer(), surface.getSize());
+		BlockInstance bi = new BlockInstance(b, blockData[index], new Vector3i(x + wx, y, z + wz), surface.getStellarTorus().getWorld().getLocalPlayer());
 		byte[] data = new byte[6];
 		int[] indices = new int[6];
 		Block[] neighbors = getNeighbors(x, y ,z, data, indices);
 		for(int k = 0; k < 6; k++) {
-			if(neighbors[k] != null) bi.updateNeighbor(k, getsBlocked(neighbors[k], b, data[k], index - indices[k]), surface.getStellarTorus().getWorld().getLocalPlayer(), surface.getSize());
+			if(neighbors[k] != null) bi.updateNeighbor(k, getsBlocked(neighbors[k], b, data[k], index - indices[k]), surface.getStellarTorus().getWorld().getLocalPlayer());
 		}
 		bi.setStellarTorus(surface);
 		visibles.add(bi);
@@ -840,7 +840,7 @@ public class NormalChunk implements Chunk {
 		setBlock(x, y, z, null, (byte)0);
 		BlockInstance[] visibleNeighbors = getVisibleNeighbors(x, y, z);
 		for(int k = 0; k < 6; k++) {
-			if(visibleNeighbors[k] != null) visibleNeighbors[k].updateNeighbor(k ^ 1, false, surface.getStellarTorus().getWorld().getLocalPlayer(), surface.getSize());
+			if(visibleNeighbors[k] != null) visibleNeighbors[k].updateNeighbor(k ^ 1, false, surface.getStellarTorus().getWorld().getLocalPlayer());
 		}
 		if(loaded)
 			lightUpdate(x, y, z);
@@ -1091,12 +1091,12 @@ public class NormalChunk implements Chunk {
 		return inst[(x << 4) | (y << 8) | z];
 	}
 	
-	public Vector3f getMin(float x0, float z0, int worldSize) {
-		return new Vector3f(CubyzMath.match(wx, x0, worldSize), 0, CubyzMath.match(wz, z0, worldSize));
+	public Vector3f getMin(float x0, float z0, int worldSizeX, int worldSizeZ) {
+		return new Vector3f(CubyzMath.match(wx, x0, worldSizeX), 0, CubyzMath.match(wz, z0, worldSizeZ));
 	}
 	
-	public Vector3f getMax(float x0, float z0, int worldSize) {
-		return new Vector3f(CubyzMath.match(wx, x0, worldSize) + 16, 256, CubyzMath.match(wz, z0, worldSize) + 16);
+	public Vector3f getMax(float x0, float z0, int worldSizeX, int worldSizeZ) {
+		return new Vector3f(CubyzMath.match(wx, x0, worldSizeX) + 16, 256, CubyzMath.match(wz, z0, worldSizeZ) + 16);
 	}
 	
 	public int getX() {

@@ -61,18 +61,18 @@ public class Spatial {
     }
 
 	// Does take player position into account.
-	public void setPosition(float x, float y, float z, Player p, int worldSize) {
-		if(p.getPosition().x < worldSize/4 && x > 3*worldSize/4) {
-	        this.position.x = x - worldSize;
-		} else if(p.getPosition().x > 3*worldSize/4 && x < worldSize/4) {
-	        this.position.x = x + worldSize;
+	public void setPosition(float x, float y, float z, Player p, int worldSizeX, int worldSizeZ) {
+		if(p.getPosition().x < worldSizeX/4 && x > 3*worldSizeX/4) {
+	        this.position.x = x - worldSizeX;
+		} else if(p.getPosition().x > 3*worldSizeX/4 && x < worldSizeX/4) {
+	        this.position.x = x + worldSizeX;
 		} else {
 			this.position.x = x;
 		}
-		if(p.getPosition().z < worldSize/4 && z >= 3*worldSize/4) {
-	        this.position.z = z - worldSize;
-		} else if(p.getPosition().z >= 3*worldSize/4 && z < worldSize/4) {
-	        this.position.z = z + worldSize;
+		if(p.getPosition().z < worldSizeZ/4 && z >= 3*worldSizeZ/4) {
+	        this.position.z = z - worldSizeZ;
+		} else if(p.getPosition().z >= 3*worldSizeZ/4 && z < worldSizeZ/4) {
+	        this.position.z = z + worldSizeZ;
 		} else {
 			this.position.z = z;
 		}
@@ -80,8 +80,8 @@ public class Spatial {
         generateMatrix();
     }
 	
-	public void setPosition(Vector3f position, Player p, int worldSize) {
-		setPosition(position.x, position.y, position.z, p, worldSize);
+	public void setPosition(Vector3f position, Player p, int worldSizeX, int worldSizeZ) {
+		setPosition(position.x, position.y, position.z, p, worldSizeX, worldSizeZ);
 	}
 
     public Vector3f getScale() {

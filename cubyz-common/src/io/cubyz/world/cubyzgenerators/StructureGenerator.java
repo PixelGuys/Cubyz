@@ -36,7 +36,8 @@ public class StructureGenerator implements Generator, ReducedGenerator {
 	
 	private void generate(long seed, int wx, int wz, Chunk chunk, MetaChunk containingMetaChunk, Surface surface) {
 		Random rand = new Random(seed + 3*(seed + 1 & Integer.MAX_VALUE));
-		int worldSize = surface.getSize();
+		int worldSizeX = surface.getSizeX();
+		int worldSizeZ = surface.getSizeZ();
 		long rand1 = rand.nextInt() | 1;
 		long rand2 = rand.nextInt() | 1;
 		// Get the meta chunks for the surrounding regions:
@@ -66,8 +67,8 @@ public class StructureGenerator implements Generator, ReducedGenerator {
 		}
 		for(int px = 0; px < chunk.getWidth() + 16; px++) {
 			for(int pz = 0; pz < chunk.getWidth() + 16; pz++) {
-				int wpx = CubyzMath.worldModulo(px - 8 + wx, worldSize);
-				int wpz = CubyzMath.worldModulo(pz - 8 + wz, worldSize);
+				int wpx = CubyzMath.worldModulo(px - 8 + wx, worldSizeX);
+				int wpz = CubyzMath.worldModulo(pz - 8 + wz, worldSizeZ);
 				rand.setSeed((wpx*rand1 << 32) ^ wpz*rand2 ^ seed);
 				float randomValue = rand.nextFloat();
 				MetaChunk cur = containingMetaChunk;

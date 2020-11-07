@@ -12,9 +12,9 @@ import io.jungle.Spatial;
 public class BlockSpatial extends Spatial {
 	private BlockInstance owner;
 	
-	public BlockSpatial(BlockInstance bi, Player p, int worldSize) {
+	public BlockSpatial(BlockInstance bi, Player p, int worldSizeX, int worldSizeZ) {
 		super(Meshes.blockMeshes.get(bi.getBlock()), bi.light);
-		setPosition(bi.getX(), bi.getY(), bi.getZ(), p, worldSize);
+		setPosition(bi.getX(), bi.getY(), bi.getZ(), p, worldSizeX, worldSizeZ);
 		this.owner = bi;
 	}
 
