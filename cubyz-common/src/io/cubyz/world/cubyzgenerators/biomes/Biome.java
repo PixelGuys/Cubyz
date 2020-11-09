@@ -8,6 +8,52 @@ import io.cubyz.api.Resource;
  */
 
 public class Biome implements RegistryElement {
+	public static enum Type {
+		/**hot, wet, lowland*/
+		RAINFOREST,
+		/**hot, medium, lowland*/
+		SHRUBLAND,
+		/**hot, dry, lowland*/
+		DESERT,
+		/**temperate, wet, lowland*/
+		SWAMP,
+		/**temperate, medium, lowland*/
+		FOREST,
+		/**temperate, dry, lowland*/
+		GRASSLAND,
+		/**cold, icy, lowland*/
+		TUNDRA,
+		/**cold, medium, lowland*/
+		TAIGA,
+		/**cold, dry, lowland*/
+		COLD_DESERT,
+		
+		
+		/**cold, icy, highland or polar lowland*/
+		GLACIER,
+		
+
+		/**temperate, medium, highland*/
+		MOUNTAIN_FOREST,
+		/**temperate, dry, highland*/
+		MOUNTAIN_GRASSLAND,
+		/**cold, dry, highland*/
+		PEAK,
+		
+
+		/**temperate ocean*/
+		OCEAN,
+		/**tropical ocean(coral reefs and stuff)*/
+		WARM_OCEAN,
+		/**arctic ocean(ice sheets)*/
+		ARCTIC_OCEAN,
+		
+		/**deep ocean trench*/
+		TRENCH,
+	}
+	static {
+		BiomeGenerator.generateTypeMap(5643968457L, 2048, 512);
+	}
 	public float temperature;
 	float humidity;
 	public float height;
@@ -15,7 +61,7 @@ public class Biome implements RegistryElement {
 	float roughness;
 	protected Resource identifier;
 	public BlockStructure struct;
-	private boolean supportsRivers; // Wether the starting point of a river can be in this biome. If false rivers will be able to flow through this biome anyways.
+	private boolean supportsRivers; // Whether the starting point of a river can be in this biome. If false rivers will be able to flow through this biome anyways.
 	private StructureModel[] vegetationModels; // The first members in this array will get prioritized.
 	
 	// The coefficients are represented like this: a[0] + a[1]*x + a[2]*x^2 + … + a[n-1]*x^(n-1)

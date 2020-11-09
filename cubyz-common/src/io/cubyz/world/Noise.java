@@ -10,8 +10,11 @@ import io.cubyz.math.CubyzMath;
  */
 
 public class Noise {
-	static long getSeed(int x, int y, int offsetX, int offsetY, int worldSizeX, int worldSizeZ, long seed) {
-		return (((long)(CubyzMath.worldModulo(offsetX + x, worldSizeX))) << 16) ^ seed ^ (((long)(CubyzMath.worldModulo(offsetY + y, worldSizeZ))) << 32);
+	static long getSeed(int x, int y, int offsetX, int offsetY, int worldSizeX, int worldSizeY, long seed, int scale) {
+		Random rand = new Random(seed*(scale | 1));
+		long l1 = rand.nextLong() | 1;
+		long l2 = rand.nextLong() | 1;
+		return (((long)(CubyzMath.worldModulo(offsetX + x, worldSizeX)))*l1) ^ seed ^ (((long)(CubyzMath.worldModulo(offsetY + y, worldSizeY)))*l2);
 	}
 	private static void generateFractalTerrain(int wx, int wy, int x0, int y0, int width, int height, int scale, long seed, int worldSizeX, int worldSizeZ, float[][] map) {
 		int max =scale+1;
@@ -21,13 +24,13 @@ public class Noise {
 		int offsetY = wy&(~and);
 		Random rand = new Random();
 		// Generate the 4 corner points of this map using a coordinate-depending seed:
-		rand.setSeed(getSeed(0, 0, offsetX, offsetY, worldSizeX, worldSizeZ, seed));
+		rand.setSeed(getSeed(0, 0, offsetX, offsetY, worldSizeX, worldSizeZ, seed, scale));
 		bigMap[0][0] = rand.nextFloat();
-		rand.setSeed(getSeed(0, scale, offsetX, offsetY, worldSizeX, worldSizeZ, seed));
+		rand.setSeed(getSeed(0, scale, offsetX, offsetY, worldSizeX, worldSizeZ, seed, scale));
 		bigMap[0][scale] = rand.nextFloat();
-		rand.setSeed(getSeed(scale, 0, offsetX, offsetY, worldSizeX, worldSizeZ, seed));
+		rand.setSeed(getSeed(scale, 0, offsetX, offsetY, worldSizeX, worldSizeZ, seed, scale));
 		bigMap[scale][0] = rand.nextFloat();
-		rand.setSeed(getSeed(scale, scale, offsetX, offsetY, worldSizeX, worldSizeZ, seed));
+		rand.setSeed(getSeed(scale, scale, offsetX, offsetY, worldSizeX, worldSizeZ, seed, scale));
 		bigMap[scale][scale] = rand.nextFloat();
 		// Increase the "grid" of points with already known heights in each round by a factor of 2×2, like so(# marks the gridpoints of the first grid, * the points of the second grid and + the points of the third grid(and so on…)):
 		/*
@@ -53,7 +56,7 @@ public class Noise {
 			// x coordinate on the grid:
 			for(int x = 0; x < max; x += res<<1) {
 				for(int y = res; y+res < max; y += res<<1) {
-					if(x == 0 || x == scale) rand.setSeed(getSeed(x, y, offsetX, offsetY, worldSizeX, worldSizeZ, seed)); // If the point touches another region, the seed has to be coordinate dependent.
+					if(x == 0 || x == scale) rand.setSeed(getSeed(x, y, offsetX, offsetY, worldSizeX, worldSizeZ, seed, res)); // If the point touches another region, the seed has to be coordinate dependent.
 					bigMap[x][y] = (bigMap[x][y-res]+bigMap[x][y+res])/2 + (rand.nextFloat()-0.5f)*res/scale;
 					if(bigMap[x][y] > 1.0f) bigMap[x][y] = 1.0f;
 					if(bigMap[x][y] < 0.0f) bigMap[x][y] = 0.0f;
@@ -62,7 +65,7 @@ public class Noise {
 			// y coordinate on the grid:
 			for(int x = res; x+res < max; x += res<<1) {
 				for(int y = 0; y < max; y += res<<1) {
-					if(y == 0 || y == scale) rand.setSeed(getSeed(x, y, offsetX, offsetY, worldSizeX, worldSizeZ, seed)); // If the point touches another region, the seed has to be coordinate dependent.
+					if(y == 0 || y == scale) rand.setSeed(getSeed(x, y, offsetX, offsetY, worldSizeX, worldSizeZ, seed, res)); // If the point touches another region, the seed has to be coordinate dependent.
 					bigMap[x][y] = (bigMap[x-res][y]+bigMap[x+res][y])/2 + (rand.nextFloat()-0.5f)*res/scale;
 					if(bigMap[x][y] > 1.0f) bigMap[x][y] = 1.0f;
 					if(bigMap[x][y] < 0.0f) bigMap[x][y] = 0.0f;
@@ -107,7 +110,7 @@ public class Noise {
 		float fac = 2048;
 		for(int x = -2; x <= 2; x++) {
 			for(int y = -2; y <= 2; y++) {
-				Random r = new Random(getSeed(wx, wy, x*width, y*height, worldSizeX, worldSizeZ, seed));
+				Random r = new Random(getSeed(wx, wy, x*width, y*height, worldSizeX, worldSizeZ, seed, scale));
 				for(int i = 0; i < num; i++) {
 					pointsX[index] = x*width+r.nextFloat()*width;
 					pointsY[index] = y*width+r.nextFloat()*height;
