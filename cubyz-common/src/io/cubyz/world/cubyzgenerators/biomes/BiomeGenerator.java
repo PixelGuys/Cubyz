@@ -17,7 +17,6 @@ public class BiomeGenerator {
 	public static final float HOT_POINT = 0.3f;
 	public static final float DRY_POINT = 0.35f;
 	public static final float WET_POINT = 0.65f;
-	public static final float MID_POINT = 0.5f;
 	
 	public static Biome.Type[][] generateTypeMap(long seed, int width, int height) {
 		// Generate the height map:
@@ -72,8 +71,6 @@ public class BiomeGenerator {
 					if(temp <= FROST_POINT) {
 						if(temp <= ICE_POINT) {
 							map[x][y] = Biome.Type.GLACIER;
-						} else if(humid <= DRY_POINT) {
-							map[x][y] = Biome.Type.COLD_DESERT;
 						} else if(humid < WET_POINT) {
 							map[x][y] = Biome.Type.TAIGA;
 						} else {
@@ -98,13 +95,13 @@ public class BiomeGenerator {
 					}
 				} else {
 					if(temp <= FROST_POINT) {
-						if(humid <= MID_POINT) {
+						if(humid <= WET_POINT) {
 							map[x][y] = Biome.Type.PEAK;
 						} else {
 							map[x][y] = Biome.Type.GLACIER;
 						}
 					} else {
-						if(humid <= MID_POINT) {
+						if(humid <= WET_POINT) {
 							map[x][y] = Biome.Type.MOUNTAIN_GRASSLAND;
 						} else {
 							map[x][y] = Biome.Type.MOUNTAIN_FOREST;
@@ -326,9 +323,6 @@ public class BiomeGenerator {
 			case ARCTIC_OCEAN:
 				color = 0xa0a0ff;
 				break;
-			case COLD_DESERT:
-				color = 0xb0b0a0;
-				break;
 			case DESERT:
 				color = 0xffff30;
 				break;
@@ -373,6 +367,9 @@ public class BiomeGenerator {
 				break;
 			case WARM_OCEAN:
 				color = 0x008090;
+				break;
+			case ETERNAL_DARKNESS:
+				color = 0x000000;
 				break;
 			default:
 				color = 0;

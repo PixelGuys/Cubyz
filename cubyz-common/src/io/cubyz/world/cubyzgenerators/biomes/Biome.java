@@ -25,8 +25,6 @@ public class Biome implements RegistryElement {
 		TUNDRA,
 		/**cold, medium, lowland*/
 		TAIGA,
-		/**cold, dry, lowland*/
-		COLD_DESERT,
 		
 		
 		/**cold, icy, highland or polar lowland*/
@@ -50,6 +48,10 @@ public class Biome implements RegistryElement {
 		
 		/**deep ocean trench*/
 		TRENCH,
+		
+		
+		/**region that never sees the sun, due to how the torus orbits it.*/
+		ETERNAL_DARKNESS,
 	}
 	static {
 		BiomeGenerator.generateTypeMap(5643968457L, 2048, 512);
