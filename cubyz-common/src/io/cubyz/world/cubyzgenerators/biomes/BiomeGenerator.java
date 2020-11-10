@@ -5,6 +5,7 @@ import java.io.File;
 
 import javax.imageio.ImageIO;
 
+import io.cubyz.math.CubyzMath;
 import io.cubyz.world.Noise;
 
 public class BiomeGenerator {
@@ -20,7 +21,7 @@ public class BiomeGenerator {
 	
 	public static Biome.Type[][] generateTypeMap(long seed, int width, int height) {
 		// Generate the height map:
-		float[][] heightMap = Noise.generateFractalTerrain(0, 0, width, height, Math.min(width, height) >> 2, seed^7675238959286L, width, height);
+		float[][] heightMap = Noise.generateFractalTerrain(0, 0, width, height, Math.min(width, height) >> 3, seed^7675238959286L, width, height);
 		// Make non-mountain regions more flat:
 		for(int x = 0; x < width; x++) {
 			for(int y = 0; y < height; y++) {
@@ -50,6 +51,7 @@ public class BiomeGenerator {
 		
 		// Run a simple fluidynamics simulation using the temperature and height map, to make the temperature map smoother and generate humidity:
 		float[][] humidityMap = runSimulation(temperatureMap, heightMap, width, height, seed);
+		
 		
 		
 		Biome.Type[][] map = new Biome.Type[width][height];
@@ -149,6 +151,10 @@ public class BiomeGenerator {
 				T[x][y] = temperatureMap[x << resolution][y << resolution];
 				H[x][y] = humidityDistribution(y, height);
 				ρ[x][y] = 1;
+				vx[x][y] -= 0.5f;
+				vy[x][y] -= 0.5f;
+				vx[x][y] /= 0.5f;
+				vy[x][y] /= 0.5f;
 			}
 		}
 		// And some more arrays to store the values of the next iteration:
@@ -170,8 +176,8 @@ public class BiomeGenerator {
 					if(heightMap[x << resolution][y <<  resolution] < OCEAN_THRESHOLD) {
 						H[x][y] = 1;
 					} else {
-						H[x][y] *= 1 - 0.2f*dt*(0.25f + (heightMap[x << resolution][y <<  resolution] - OCEAN_THRESHOLD)/(1 - OCEAN_THRESHOLD));
-						H[x][y] += 0.2f*dt*(humidityDistribution(y, height) - H[x][y]);
+						H[x][y] += 0.25f*dt*((humidityDistribution(y, height)) - 0.5f);
+						H[x][y] *= 1.0f - 0.1f*dt*(0.25f + (heightMap[x << resolution][y <<  resolution] - OCEAN_THRESHOLD)/(1 - OCEAN_THRESHOLD));
 					}
 					T[x][y] += dt*0.1f*(temperatureMap[x << resolution][y << resolution] - T[x][y]);
 				}
@@ -228,8 +234,34 @@ public class BiomeGenerator {
 				humidityMap[x][y] = H[x0][y0]*(1-xFac)*(1-yFac) + H[x0][y1]*(1-xFac)*yFac + H[x1][y0]*xFac*(1-yFac) + H[x1][y1]*xFac*yFac;
 			}
 		}
+		for(int x0 = 0; x0 < width; x0++) {
+			for(int y0 = 0; y0 < height; y0++) {
+				int x1 = mod(x0 + 1, width);
+				int y1 = mod(y0 + 1, height);
+				fractalInterpolate(T[x0][y0], T[x0][y1], T[x1][y0], T[x1][y1], temperatureMap, resolution, x0, y0, seed, width << resolution, height << resolution);
+				fractalInterpolate(H[x0][y0], H[x0][y1], H[x1][y0], H[x1][y1], humidityMap, resolution, x0, y0, seed, width << resolution, height << resolution);
+			}
+		}
 		
 		return humidityMap;
+	}
+	
+	private static void fractalInterpolate(float value00, float value01, float value10, float value11, float[][] map, int resolution, int x, int y, long seed, int width, int height) {
+		x <<= resolution;
+		y <<= resolution;
+		int kernelWidth = 1 << resolution;
+		float[][] fragment = new float[kernelWidth + 1][kernelWidth + 1];
+		// Initialize values:
+		fragment[0][0] = value00;
+		fragment[0][kernelWidth] = value01;
+		fragment[kernelWidth][0] = value10;
+		fragment[kernelWidth][kernelWidth] = value11;
+		Noise.generateInitializedFractalTerrain(0, 0, height, kernelWidth, seed, width, height, fragment, -Float.MAX_VALUE, Float.MAX_VALUE);
+		for(int i = 0; i < kernelWidth; i++) {
+			for(int j = 0; j < kernelWidth; j++) {
+				map[x + i][y + j] = fragment[i][j];
+			}
+		}
 	}
 	
 	private static float humidityDistribution(int y, int height) {

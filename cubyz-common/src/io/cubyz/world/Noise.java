@@ -16,7 +16,7 @@ public class Noise {
 		long l2 = rand.nextLong() | 1;
 		return (((long)(CubyzMath.worldModulo(offsetX + x, worldSizeX)))*l1) ^ seed ^ (((long)(CubyzMath.worldModulo(offsetY + y, worldSizeY)))*l2);
 	}
-	private static void generateFractalTerrain(int wx, int wy, int x0, int y0, int width, int height, int scale, long seed, int worldSizeX, int worldSizeZ, float[][] map) {
+	public static void generateFractalTerrain(int wx, int wy, int x0, int y0, int width, int height, int scale, long seed, int worldSizeX, int worldSizeZ, float[][] map) {
 		int max =scale+1;
 		int and = scale-1;
 		float[][] bigMap = new float[max][max];
@@ -32,6 +32,16 @@ public class Noise {
 		bigMap[scale][0] = rand.nextFloat();
 		rand.setSeed(getSeed(scale, scale, offsetX, offsetY, worldSizeX, worldSizeZ, seed, scale));
 		bigMap[scale][scale] = rand.nextFloat();
+		generateInitializedFractalTerrain(offsetX, offsetY, scale, scale, seed, worldSizeX, worldSizeZ, bigMap, 0, 1);
+		for(int px = 0; px < width; px++) {
+			for(int py = 0; py < height; py++) {
+				map[x0 + px][y0 + py] = bigMap[(wx&and)+px][(wy&and)+py];
+				if(map[x0 + px][y0 + py] >= 1.0f)
+					map[x0 + px][y0 + py] = 0.9999f;
+			}
+		}
+	}
+	public static void generateInitializedFractalTerrain(int offsetX, int offsetY, int scale, int startingScale, long seed, int worldSizeX, int worldSizeZ, float[][] bigMap, float lowerLimit, float upperLimit) {
 		// Increase the "grid" of points with already known heights in each round by a factor of 2×2, like so(# marks the gridpoints of the first grid, * the points of the second grid and + the points of the third grid(and so on…)):
 		/*
 			#+*+#
@@ -52,39 +62,35 @@ public class Noise {
 			 Another important thing to note is that the side length of the grid has to be 2^n + 1 because every new gridpoint needs a new neighbor. So the rightmost column and the bottom row are already part of the next map piece.
 			 One other important thing in the implementation of this algorithm is that the relative height change has to decrease the in every iteration. Otherwise the terrain would look really noisy.
 		 */
-		for(int res = scale*2; res > 0; res >>>= 1) {
+		int max =startingScale+1;
+		Random rand = new Random(seed);
+		for(int res = startingScale*2; res > 0; res >>>= 1) {
 			// x coordinate on the grid:
 			for(int x = 0; x < max; x += res<<1) {
 				for(int y = res; y+res < max; y += res<<1) {
-					if(x == 0 || x == scale) rand.setSeed(getSeed(x, y, offsetX, offsetY, worldSizeX, worldSizeZ, seed, res)); // If the point touches another region, the seed has to be coordinate dependent.
+					rand.setSeed(getSeed(x, y, offsetX, offsetY, worldSizeX, worldSizeZ, seed, res));
 					bigMap[x][y] = (bigMap[x][y-res]+bigMap[x][y+res])/2 + (rand.nextFloat()-0.5f)*res/scale;
-					if(bigMap[x][y] > 1.0f) bigMap[x][y] = 1.0f;
-					if(bigMap[x][y] < 0.0f) bigMap[x][y] = 0.0f;
+					if(bigMap[x][y] > upperLimit) bigMap[x][y] = upperLimit;
+					if(bigMap[x][y] < lowerLimit) bigMap[x][y] = lowerLimit;
 				}
 			}
 			// y coordinate on the grid:
 			for(int x = res; x+res < max; x += res<<1) {
 				for(int y = 0; y < max; y += res<<1) {
-					if(y == 0 || y == scale) rand.setSeed(getSeed(x, y, offsetX, offsetY, worldSizeX, worldSizeZ, seed, res)); // If the point touches another region, the seed has to be coordinate dependent.
+					rand.setSeed(getSeed(x, y, offsetX, offsetY, worldSizeX, worldSizeZ, seed, res));
 					bigMap[x][y] = (bigMap[x-res][y]+bigMap[x+res][y])/2 + (rand.nextFloat()-0.5f)*res/scale;
-					if(bigMap[x][y] > 1.0f) bigMap[x][y] = 1.0f;
-					if(bigMap[x][y] < 0.0f) bigMap[x][y] = 0.0f;
+					if(bigMap[x][y] > upperLimit) bigMap[x][y] = upperLimit;
+					if(bigMap[x][y] < lowerLimit) bigMap[x][y] = lowerLimit;
 				}
 			}
 			// No coordinate on the grid:
 			for(int x = res; x+res < max; x += res<<1) {
 				for(int y = res; y+res < max; y += res<<1) {
+					rand.setSeed(getSeed(x, y, offsetX, offsetY, worldSizeX, worldSizeZ, seed, res));
 					bigMap[x][y] = (bigMap[x-res][y-res]+bigMap[x+res][y-res]+bigMap[x-res][y+res]+bigMap[x+res][y+res])/4 + (rand.nextFloat()-0.5f)*res/scale;
-					if(bigMap[x][y] > 1.0f) bigMap[x][y] = 1.0f;
-					if(bigMap[x][y] < 0.0f) bigMap[x][y] = 0.0f;
+					if(bigMap[x][y] > upperLimit) bigMap[x][y] = upperLimit;
+					if(bigMap[x][y] < lowerLimit) bigMap[x][y] = lowerLimit;
 				}
-			}
-		}
-		for(int px = 0; px < width; px++) {
-			for(int py = 0; py < height; py++) {
-				map[x0 + px][y0 + py] = bigMap[(wx&and)+px][(wy&and)+py];
-				if(map[x0 + px][y0 + py] >= 1.0f)
-					map[x0 + px][y0 + py] = 0.9999f;
 			}
 		}
 	}
