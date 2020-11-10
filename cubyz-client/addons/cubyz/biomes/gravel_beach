@@ -1,5 +1,4 @@
-temperature 20
-humidity 0.5
+type GRASSLAND
 height 96-102-106
 ground_structure 2 to 3 cubyz:gravel
 roughness 0.05

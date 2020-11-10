@@ -36,7 +36,7 @@ public class RiverGenerator implements BigGenerator {
 	}
 	
 	private void considerMetaChunk(MetaChunk m, int lx, int lz, NormalChunk chunk, MetaChunk nn, MetaChunk np, MetaChunk pn, MetaChunk pp, long seed, boolean[][] vegetationIgnoreMap) {
-		Random rand = new Random(seed^((long)m.x*Float.floatToRawIntBits(m.heightMap[255][0]))^((long)m.z*Float.floatToRawIntBits(m.heightMap[0][255])));
+		Random rand = new Random(seed^((long)m.wx*Float.floatToRawIntBits(m.heightMap[255][0]))^((long)m.wz*Float.floatToRawIntBits(m.heightMap[0][255])));
 		int num = 2 + rand.nextInt(4);
 		for(int i = 0; i < num; i++) {
 			int x = rand.nextInt(256);

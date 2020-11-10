@@ -56,7 +56,7 @@ public class Registry<T extends RegistryElement> {
 		return -1;
 	}
 	
-	public void register(T element) {
+	public boolean register(T element) {
 		if (hashMap.containsKey(element.getRegistryID().toString())) {
 			throw new IllegalStateException(getType(element.getClass()) + " with identifier \"" + element.getRegistryID() + "\" is already registered!");
 		}
@@ -66,13 +66,14 @@ public class Registry<T extends RegistryElement> {
 			}
 			System.err.println(element.getClass().getName() + " does not have any ID set. Skipping!");
 			System.err.flush();
-			return;
+			return false;
 		}
 		hashMap.put(element.getRegistryID().toString(), element);
 		if (debug) {
 			logger.info("Registered " + getType(element.getClass()) + " as " + element.getRegistryID());
 		}
 		dirty = true;
+		return true;
 	}
 	
 	@SuppressWarnings("unchecked")

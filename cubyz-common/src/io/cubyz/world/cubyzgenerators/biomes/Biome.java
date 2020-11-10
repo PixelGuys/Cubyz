@@ -53,11 +53,7 @@ public class Biome implements RegistryElement {
 		/**region that never sees the sun, due to how the torus orbits it.*/
 		ETERNAL_DARKNESS,
 	}
-	static {
-		BiomeGenerator.generateTypeMap(5643968457L, 2048, 512);
-	}
-	public float temperature;
-	float humidity;
+	public final Type type;
 	public float height;
 	public float minHeight, maxHeight;
 	float roughness;
@@ -67,11 +63,10 @@ public class Biome implements RegistryElement {
 	private StructureModel[] vegetationModels; // The first members in this array will get prioritized.
 	
 	// The coefficients are represented like this: a[0] + a[1]*x + a[2]*x^2 + … + a[n-1]*x^(n-1)
-	public Biome(Resource id, float humidity, float temperature, float height, float min, float max, float roughness, BlockStructure str, boolean rivers, StructureModel ... models) {
+	public Biome(Resource id, String type, float height, float min, float max, float roughness, BlockStructure str, boolean rivers, StructureModel ... models) {
+		this.type = Type.valueOf(type);
 		identifier = id;
 		this.roughness = roughness;
-		this.temperature = temperature;
-		this.humidity = humidity;
 		this.height = height;
 		minHeight = min;
 		maxHeight = max;
@@ -85,11 +80,6 @@ public class Biome implements RegistryElement {
 	
 	public StructureModel[] vegetationModels() {
 		return vegetationModels;
-	}
-
-	public float dist(float h, float t, float hum) {
-		// Simple euclidean distance.
-		return (temperature-t)*(temperature-t) + (humidity - hum)*(humidity - hum) + (height - h)*(height - h);
 	}
 	
 	@Override

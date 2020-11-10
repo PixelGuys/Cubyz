@@ -9,7 +9,7 @@ import io.cubyz.items.Item;
 import io.cubyz.items.Recipe;
 import io.cubyz.items.tools.Material;
 import io.cubyz.items.tools.Modifier;
-import io.cubyz.world.cubyzgenerators.biomes.Biome;
+import io.cubyz.world.cubyzgenerators.biomes.BiomeRegistry;
 import io.cubyz.world.generator.SurfaceGenerator;
 
 /**
@@ -25,7 +25,7 @@ public class CubyzRegistries {
 	public static final Registry<CommandBase> COMMAND_REGISTRY       = new Registry<CommandBase>();
 	public static final Registry<Material>    TOOL_MATERIAL_REGISTRY = new Registry<Material>();
 	public static final Registry<Modifier>    TOOL_MODIFIER_REGISTRY = new Registry<Modifier>();
-	public static final Registry<Biome>       BIOME_REGISTRY         = new Registry<Biome>();
+	public static final BiomeRegistry         BIOME_REGISTRY         = new BiomeRegistry();
 	public static final Registry<RotationMode>ROTATION_MODE_REGISTRY = new Registry<RotationMode>();
 	public static final Registry<EntityModel> ENTITY_MODEL_REGISTRY  = new Registry<EntityModel>();
 	

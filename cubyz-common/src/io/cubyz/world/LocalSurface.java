@@ -35,6 +35,8 @@ import io.cubyz.save.TorusIO;
 import io.cubyz.util.FastList;
 import io.cubyz.world.cubyzgenerators.CrystalCavernGenerator;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
+import io.cubyz.world.cubyzgenerators.biomes.Biome.Type;
+import io.cubyz.world.cubyzgenerators.biomes.BiomeGenerator;
 import io.cubyz.world.generator.LifelandGenerator;
 import io.cubyz.world.generator.SurfaceGenerator;
 
@@ -50,7 +52,7 @@ public class LocalSurface extends Surface {
 	private int lastMetaX = Integer.MAX_VALUE, lastMetaZ = Integer.MAX_VALUE; // MetaChunk coordinates of the last chunk update.
 	private int mcDRD; // double renderdistance of MetaChunks.
 	private int doubleRD; // Corresponds to the doubled value of the last used render distance.
-	private int worldSizeX = 65536, worldSizeZ = 16384;
+	private final int worldSizeX = 65536, worldSizeZ = 16384;
 	private ArrayList<Entity> entities = new ArrayList<>();
 	
 	private Block[] torusBlocks;
@@ -72,6 +74,8 @@ public class LocalSurface extends Surface {
 	Vector4f clearColor = new Vector4f(0, 0, 0, 1.0f);
 	
 	private final long localSeed; // Each torus has a different seed for world generation. All those seeds are generated using the main world seed.
+	
+	private final Biome.Type[][] biomeMap;
 	
 	// synchronized common list for chunk generation
 	private volatile BlockingDeque<NormalChunk> loadList = new LinkedBlockingDeque<>(MAX_QUEUE_SIZE);
@@ -187,6 +191,8 @@ public class LocalSurface extends Surface {
 		} else {
 			tio.saveTorusData(this);
 		}
+		
+		biomeMap = BiomeGenerator.generateTypeMap(localSeed, worldSizeX/256, worldSizeZ/256);
 		//setChunkQueueSize(torus.world.getRenderDistance() << 2);
 	}
 	
@@ -556,7 +562,7 @@ public class LocalSurface extends Surface {
 				loop:
 				for(int j = z-mcDRD; j < z; j++) {
 					for(int k = minK; k < metaChunks.length; k++) {
-						if(metaChunks[k] != null && CubyzMath.moduloMatchSign(metaChunks[k].x-i, worldSizeX >> 8) == 0 && CubyzMath.moduloMatchSign(metaChunks[k].z-j, worldSizeZ >> 8) == 0) {
+						if(metaChunks[k] != null && CubyzMath.moduloMatchSign(metaChunks[k].wx-i, worldSizeX >> 8) == 0 && CubyzMath.moduloMatchSign(metaChunks[k].wz-j, worldSizeZ >> 8) == 0) {
 							newMeta[index] = metaChunks[k];
 							// Removes this chunk out of the list of chunks that will be considered in this function.
 							metaChunks[k] = metaChunks[minK];
@@ -746,7 +752,7 @@ public class LocalSurface extends Surface {
 		torusBlocks = blocks;
 	}
 	
-	public void getMapData(int x, int z, int width, int height, float [][] heightMap, float[][] heatMap, Biome[][] biomeMap) {
+	public void getMapData(int x, int z, int width, int height, float [][] heightMap, Biome[][] biomeMap) {
 		int x0 = x&(~255);
 		int z0 = z&(~255);
 		for(int px = x0; CubyzMath.moduloMatchSign(px - x, worldSizeX) < width; px += 256) {
@@ -759,7 +765,6 @@ public class LocalSurface extends Surface {
 				for(int cx = xS; cx < xE; cx++) {
 					for(int cz = zS; cz < zE; cz++) {
 						heightMap[cx][cz] = ch.heightMap[(cx + x) & 255][(cz + z) & 255];
-						heatMap[cx][cz] = ch.heatMap[(cx + x) & 255][(cz + z) & 255];
 						biomeMap[cx][cz] = ch.biomeMap[(cx + x) & 255][(cz + z) & 255];
 					}
 				}
@@ -780,7 +785,7 @@ public class LocalSurface extends Surface {
 			MetaChunk ret = metaChunks[index];
 			
 			if (ret != null) {
-				if(wx == ret.x && wz == ret.z)
+				if(wx == ret.wx && wz == ret.wz)
 					return ret;
 			} else {
 				MetaChunk ch = new MetaChunk(wx, wz, localSeed, this, registries);
@@ -793,7 +798,7 @@ public class LocalSurface extends Surface {
 	
 	public MetaChunk getNoGenerateMetaChunk(int wx, int wy) {
 		for(MetaChunk ch : metaChunks) {
-			if(ch.x == wx && ch.z == wy) {
+			if(ch.wx == wx && ch.wz == wy) {
 				return ch;
 			}
 		}
@@ -968,5 +973,10 @@ public class LocalSurface extends Surface {
 	@Override
 	public ReducedChunk[] getReducedChunks() {
 		return reducedChunks;
+	}
+
+	@Override
+	public Type[][] getBiomeMap() {
+		return biomeMap;
 	}
 }

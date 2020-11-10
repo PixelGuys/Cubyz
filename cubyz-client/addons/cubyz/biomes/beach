@@ -1,5 +1,4 @@
-temperature 25
-humidity 0.3
+type RAINFOREST
 height 96-102-106
 ground_structure 3 to 4 cubyz:sand
 roughness 0

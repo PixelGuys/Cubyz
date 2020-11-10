@@ -28,13 +28,13 @@ public class MeltableBlockEntity extends BlockEntity implements Updateable {
 	@Override
 	public void update(boolean isRandomUpdate) {
 		if (isRandomUpdate) {
-			float temp = surface.getBiome(position.x, position.z).temperature - position.y*0;
+			/*float temp = surface.getBiome(position.x, position.z).temperature - position.y*0; TODO: measure temperature in the new biome system.
 			if (temp > 0.45f) {
 				heatCount++;
 			}
 			if (heatCount == 5) {
 				surface.placeBlock(position.x, position.y, position.z, CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:water"), (byte) 0);
-			}
+			}*/
 		}
 	}
 

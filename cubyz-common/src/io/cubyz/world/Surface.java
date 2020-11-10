@@ -82,6 +82,8 @@ public abstract class Surface {
 	
 	public abstract void drop(ItemStack stack, Vector3f pos);
 	
+	public abstract Biome.Type[][] getBiomeMap();
+	
 	public int getSizeX() {
 		return Integer.MIN_VALUE;
 	}
@@ -94,7 +96,7 @@ public abstract class Surface {
 		return torus;
 	}
 
-	public abstract void getMapData(int x, int z, int width, int height, float[][] heightMap, float[][] heatMap, Biome[][] biomeMap);
+	public abstract void getMapData(int x, int z, int width, int height, float[][] heightMap, Biome[][] biomeMap);
 
 	
 }

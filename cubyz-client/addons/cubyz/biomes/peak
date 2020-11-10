@@ -1,5 +1,4 @@
-temperature 0
-humidity 0.2
+type PEAK
 height 220-230-256
 roughness 4
 

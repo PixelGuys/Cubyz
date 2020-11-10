@@ -60,9 +60,8 @@ public class LifelandGenerator extends SurfaceGenerator {
 		long seed = surface.getStellarTorus().getLocalSeed();
 		// Generate some maps:
 		float[][] heightMap = new float[32][32];
-		float[][] heatMap = new float[32][32];
 		Biome[][] biomeMap = new Biome[32][32];
-		surface.getMapData(wx-8, wz-8, 32, 32, heightMap, heatMap, biomeMap);
+		surface.getMapData(wx-8, wz-8, 32, 32, heightMap, biomeMap);
 		boolean[][] vegetationIgnoreMap = new boolean[32][32]; // Stores places where vegetation should not grow, like caves and rivers.
 		
 		// Get the MetaChunks used by the BigGenerator.:
@@ -103,7 +102,7 @@ public class LifelandGenerator extends SurfaceGenerator {
 		
 		for (Generator g : sortedGenerators) {
 			if (g instanceof FancyGenerator) {
-				((FancyGenerator) g).generate(seed ^ g.getGeneratorSeed(), cx, cz, chunk, vegetationIgnoreMap, heatMap, heightMap, biomeMap, surface);
+				((FancyGenerator) g).generate(seed ^ g.getGeneratorSeed(), cx, cz, chunk, vegetationIgnoreMap, heightMap, biomeMap, surface);
 			} else if (g instanceof BigGenerator) {
 				((BigGenerator) g).generate(seed ^ g.getGeneratorSeed(), lx, lz, chunk, vegetationIgnoreMap, nn, np, pn, pp);
 			} else {

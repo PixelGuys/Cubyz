@@ -1,5 +1,4 @@
-temperature 5
-humidity 1
+type ARCTIC_OCEAN
 height 0-50-100
 ground_structure 1 to 2 cubyz:cobblestone
 roughness 0.3

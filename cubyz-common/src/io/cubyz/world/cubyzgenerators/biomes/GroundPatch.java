@@ -45,14 +45,16 @@ public class GroundPatch extends StructureModel {
 		if(zMax >= chunk.getWidth()) zMax = chunk.getWidth() - 1;
 		for(int px = chunk.startIndex(xMin); px <= xMax; px++) {
 			for(int pz = chunk.startIndex(zMin); pz <= zMax; pz++) {
-				float main = xMain*(x - px) + zMain*(z - pz);
-				float secn = xSecn*(x - px) + zSecn*(z - pz);
-				float dist = main*main + secn*secn;
-				if(dist <= 1) {
-					int startHeight = (int)(metaChunk.heightMap[px + chunk.getWorldX() & 255][pz + chunk.getWorldZ() & 255]);
-					for(int py = chunk.startIndex((int)(startHeight - depth + 1)); py <= startHeight; py += chunk.getVoxelSize()) {
-						if(dist <= smoothness || (dist - smoothness)/(1 - smoothness) < rand.nextFloat())
-							chunk.updateBlock(px, py, pz, newGround);
+				if(chunk.liesInChunk(px, pz)) {
+					float main = xMain*(x - px) + zMain*(z - pz);
+					float secn = xSecn*(x - px) + zSecn*(z - pz);
+					float dist = main*main + secn*secn;
+					if(dist <= 1) {
+						int startHeight = (int)(metaChunk.heightMap[px + chunk.getWorldX() & 255][pz + chunk.getWorldZ() & 255]);
+						for(int py = chunk.startIndex((int)(startHeight - depth + 1)); py <= startHeight; py += chunk.getVoxelSize()) {
+							if(dist <= smoothness || (dist - smoothness)/(1 - smoothness) < rand.nextFloat())
+								chunk.updateBlock(px, py, pz, newGround);
+						}
 					}
 				}
 			}

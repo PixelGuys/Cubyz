@@ -11,6 +11,7 @@ import io.cubyz.world.MetaChunk;
 import io.cubyz.world.ReducedChunk;
 import io.cubyz.world.Surface;
 import io.cubyz.world.World;
+import io.cubyz.world.cubyzgenerators.biomes.Biome;
 
 /**
  * Generates the basic terrain(stone, dirt, sand, ...).
@@ -48,13 +49,12 @@ public class TerrainGenerator implements Generator, ReducedGenerator {
 			for(int z = 0; z < chunk.getWidth(); z += chunk.getVoxelSize()) {
 				int y = (int)containingMetaChunk.heightMap[wx+x & 255][wz+z & 255];
 				int yOff = 1 + (int)((containingMetaChunk.heightMap[wx+x & 255][wz+z & 255] - y)*16);
-				float temperature = containingMetaChunk.heatMap[wx+x & 255][wz+z & 255];
 				boolean addedBlockStructure = false;
 				for(int j = y > SEA_LEVEL ? Math.min(y, World.WORLD_HEIGHT-1) : SEA_LEVEL; j >= 0; j--) {
 					if(!chunk.liesInChunk(j)) continue;
 					Block b = null;
 					if(j > y) {
-						if(temperature <= 0 && j == SEA_LEVEL) {
+						if(containingMetaChunk.biomeMap[wx+x & 255][wz+z & 255].type == Biome.Type.ARCTIC_OCEAN && j == SEA_LEVEL) {
 							b = ice;
 						} else {
 							b = water;

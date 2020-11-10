@@ -1,5 +1,4 @@
-temperature 15
-humidity 0.3
+type SHRUBLAND
 height 120-140-160
 ground_structure cubyz:grass, 2 cubyz:soil
 roughness 0.2
