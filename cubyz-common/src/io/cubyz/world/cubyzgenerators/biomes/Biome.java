@@ -66,7 +66,7 @@ public class Biome implements RegistryElement {
 	public Biome(Resource id, String type, float height, float min, float max, float roughness, BlockStructure str, boolean rivers, StructureModel ... models) {
 		this.type = Type.valueOf(type);
 		identifier = id;
-		this.roughness = roughness;
+		this.roughness = Math.max(roughness, 0.01f);
 		this.height = height;
 		minHeight = min;
 		maxHeight = max;
@@ -87,6 +87,6 @@ public class Biome implements RegistryElement {
 		return identifier;
 	}
 	public float getRoughness() {
-		return roughness*Math.min(maxHeight - height, height - minHeight)/(maxHeight - minHeight);
+		return roughness;
 	}
 }

@@ -135,7 +135,7 @@ public class BiomeGenerator {
 		float[][] humidityMap = new float[width][height];
 		
 		// Run the simulation only on a reduced part of the map to reduce required processing power:
-		int resolution = 3;
+		int resolution = 2;
 		width >>= resolution;
 		height >>= resolution;
 		float[][] H = new float[width][height];
@@ -163,8 +163,8 @@ public class BiomeGenerator {
 		
 		
 		// Do some amount of steps:
-		int steps = 100;
-		float dt = 0.5f;
+		int steps = 100*height/(512 >> resolution);
+		float dt = 0.5f*height/(512 >> resolution);
 		for(int i = 0; i < steps; i++) {
 			
 			// update humidity(increase in oceans and decrease on land) and temperature(temperature tries to stay close to the starting value):

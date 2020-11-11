@@ -39,9 +39,6 @@ public class MetaChunk {
 			for(int z = 0; z <= 256; z += 256) {
 				rand.setSeed(l1*(this.wx + x) ^ l2*(this.wz + z) ^ seed);
 				ArrayList<Biome> biomes = registries.biomeRegistry.byTypeBiomes.get(world.getBiomeMap()[CubyzMath.worldModulo(wx + x, world.getSizeX()) >> 8][CubyzMath.worldModulo(wz + z, world.getSizeZ()) >> 8]);
-				if(biomes.size() == 0) {
-					System.out.println(world.getBiomeMap()[wx >> 8][wz >> 8]);
-				}
 				biomeMap[x][z] = biomes.get(rand.nextInt(biomes.size()));
 				heightMap[x][z] = biomeMap[x][z].height;
 			}
