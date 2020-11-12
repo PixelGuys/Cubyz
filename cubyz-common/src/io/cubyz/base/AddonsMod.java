@@ -194,6 +194,7 @@ public class AddonsMod {
 					
 					float roughness = 1;
 					float minHeight = 0, height = 0.5f, maxHeight = 1;
+					float chance = 1.0f;
 					boolean supportsRivers = false;
 					String type = "ETERNAL_DARKNESS";
 					
@@ -231,6 +232,8 @@ public class AddonsMod {
 									maxHeight = Float.parseFloat(heightArguments[2])/256.0f;
 								} else if(line.startsWith("type")) {
 									type = line.substring(4).trim();
+								} else if(line.startsWith("chance")) {
+									chance = Float.parseFloat(line.substring(6).trim());
 								} else if(line.startsWith("rivers")) {
 									supportsRivers = true;
 								} else if(line.startsWith("ground_structure")) {
@@ -261,7 +264,7 @@ public class AddonsMod {
 							}
 						}
 						
-						Biome biome = new Biome(res, type, height, minHeight, maxHeight, roughness, new BlockStructure(underground.toArray(new BlockStructure.BlockStack[0])), supportsRivers, vegetation.toArray(new StructureModel[0]));
+						Biome biome = new Biome(res, type, height, minHeight, maxHeight, roughness, chance, new BlockStructure(underground.toArray(new BlockStructure.BlockStack[0])), supportsRivers, vegetation.toArray(new StructureModel[0]));
 						reg.register(biome);
 						
 						buf.close();

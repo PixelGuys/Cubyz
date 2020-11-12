@@ -11,8 +11,8 @@ import io.cubyz.world.MetaChunk;
  */
 
 public class GroundPatch extends StructureModel {
-	Block newGround;
-	float width, variation, depth, smoothness;
+	private final Block newGround;
+	private final float width, variation, depth, smoothness;
 	
 	public GroundPatch(Block newGround, float chance, float width, float variation, float depth, float smoothness) {
 		super(chance);

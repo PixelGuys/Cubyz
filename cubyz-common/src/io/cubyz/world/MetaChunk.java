@@ -1,10 +1,10 @@
 package io.cubyz.world;
 
-import java.util.ArrayList;
 import java.util.Random;
 
 import io.cubyz.api.CurrentSurfaceRegistries;
 import io.cubyz.math.CubyzMath;
+import io.cubyz.util.RandomList;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 
 /**
@@ -12,10 +12,10 @@ import io.cubyz.world.cubyzgenerators.biomes.Biome;
  */
 public class MetaChunk {
 	
-	public float[][] heightMap;
-	public Biome[][] biomeMap;
-	Surface world;
-	public int wx, wz;
+	public final float[][] heightMap;
+	public final Biome[][] biomeMap;
+	private final Surface world;
+	public final int wx, wz;
 	
 	public MetaChunk(int x, int z, long seed, Surface world, CurrentSurfaceRegistries registries) {
 		this.wx = x;
@@ -38,8 +38,8 @@ public class MetaChunk {
 		for(int x = 0; x <= 256; x += 256) {
 			for(int z = 0; z <= 256; z += 256) {
 				rand.setSeed(l1*(this.wx + x) ^ l2*(this.wz + z) ^ seed);
-				ArrayList<Biome> biomes = registries.biomeRegistry.byTypeBiomes.get(world.getBiomeMap()[CubyzMath.worldModulo(wx + x, world.getSizeX()) >> 8][CubyzMath.worldModulo(wz + z, world.getSizeZ()) >> 8]);
-				biomeMap[x][z] = biomes.get(rand.nextInt(biomes.size()));
+				RandomList<Biome> biomes = registries.biomeRegistry.byTypeBiomes.get(world.getBiomeMap()[CubyzMath.worldModulo(wx + x, world.getSizeX()) >> 8][CubyzMath.worldModulo(wz + z, world.getSizeZ()) >> 8]);
+				biomeMap[x][z] = biomes.getRandomly(rand);
 				heightMap[x][z] = biomeMap[x][z].height;
 			}
 		}
@@ -56,7 +56,7 @@ public class MetaChunk {
 					} else {
 						biomeMap[x][z] = biomeMap[x][z+res];
 					}
-					heightMap[x][z] = (heightMap[x][z-res]+heightMap[x][z+res])/2 + (rand.nextFloat()-0.5f)*res/256*biomeMap[x][z].getRoughness();
+					heightMap[x][z] = (heightMap[x][z-res]+heightMap[x][z+res])/2 + (rand.nextFloat()-0.5f)*res/256*biomeMap[x][z].roughness;
 					if(heightMap[x][z] >= biomeMap[x][z].maxHeight) heightMap[x][z] = biomeMap[x][z].maxHeight - 0.00001f;
 					if(heightMap[x][z] < biomeMap[x][z].minHeight) heightMap[x][z] = biomeMap[x][z].minHeight;
 				}
@@ -70,7 +70,7 @@ public class MetaChunk {
 					} else {
 						biomeMap[x][z] = biomeMap[x+res][z];
 					}
-					heightMap[x][z] = (heightMap[x-res][z]+heightMap[x+res][z])/2 + (rand.nextFloat()-0.5f)*res/256*biomeMap[x][z].getRoughness();
+					heightMap[x][z] = (heightMap[x-res][z]+heightMap[x+res][z])/2 + (rand.nextFloat()-0.5f)*res/256*biomeMap[x][z].roughness;
 					if(heightMap[x][z] >= biomeMap[x][z].maxHeight) heightMap[x][z] = biomeMap[x][z].maxHeight - 0.00001f;
 					if(heightMap[x][z] < biomeMap[x][z].minHeight) heightMap[x][z] = biomeMap[x][z].minHeight;
 				}
@@ -92,7 +92,7 @@ public class MetaChunk {
 							biomeMap[x][z] = biomeMap[x+res][z+res];
 						}
 					}
-					heightMap[x][z] = (heightMap[x-res][z-res]+heightMap[x+res][z-res]+heightMap[x-res][z+res]+heightMap[x+res][z+res])/4 + (rand.nextFloat()-0.5f)*res/256*biomeMap[x][z].getRoughness();
+					heightMap[x][z] = (heightMap[x-res][z-res]+heightMap[x+res][z-res]+heightMap[x-res][z+res]+heightMap[x+res][z+res])/4 + (rand.nextFloat()-0.5f)*res/256*biomeMap[x][z].roughness;
 					if(heightMap[x][z] >= biomeMap[x][z].maxHeight) heightMap[x][z] = biomeMap[x][z].maxHeight - 0.00001f;
 					if(heightMap[x][z] < biomeMap[x][z].minHeight) heightMap[x][z] = biomeMap[x][z].minHeight;
 				}
