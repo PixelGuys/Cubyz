@@ -5,19 +5,32 @@ import java.io.File;
 
 import javax.imageio.ImageIO;
 
-import io.cubyz.math.CubyzMath;
 import io.cubyz.world.Noise;
 
+/**
+ * The class responsible for generating the biome type map (aka the climate map).
+ */
+
 public class BiomeGenerator {
-	public static final float OCEAN_THRESHOLD = 0.5f;
-	public static final float MOUNTAIN_RATIO = 0.8f;
-	public static final float MOUNTAIN_POWER = 3f;
-	public static final float ICE_POINT = -0.5f;
-	public static final float FROST_POINT = -0.3f;
-	public static final float HOT_POINT = 0.3f;
-	public static final float DRY_POINT = 0.35f;
-	public static final float WET_POINT = 0.65f;
+	/**Constants that define how the climate map is generated. TODO: Change these depending on the world.*/
+	public static final float	OCEAN_THRESHOLD = 0.5f,
+								MOUNTAIN_RATIO = 0.8f,
+								MOUNTAIN_POWER = 3f,
+								ICE_POINT = -0.5f,
+								FROST_POINT = -0.3f,
+								HOT_POINT = 0.3f,
+								DRY_POINT = 0.35f,
+								WET_POINT = 0.65f;
 	
+	private static final int resolution = 2;
+	
+	/**
+	 * Generates a map with the static parameters defined in this class and 
+	 * @param seed
+	 * @param width of the map(should be world-width/256)
+	 * @param height of the map(should be world-height/256)
+	 * @return
+	 */
 	public static Biome.Type[][] generateTypeMap(long seed, int width, int height) {
 		// Generate the height map:
 		float[][] heightMap = Noise.generateFractalTerrain(0, 0, width, height, Math.min(width, height) >> 3, seed^7675238959286L, width, height);
@@ -54,7 +67,7 @@ public class BiomeGenerator {
 		
 		
 		Biome.Type[][] map = new Biome.Type[width][height];
-		// Select the biome types based on the above data:
+		// Select the biome types based on the constants:
 		for(int x = 0; x < width; x++) {
 			for(int y = 0; y < height; y++) {
 				float temp = temperatureMap[x][y];
@@ -135,7 +148,6 @@ public class BiomeGenerator {
 		float[][] humidityMap = new float[width][height];
 		
 		// Run the simulation only on a reduced part of the map to reduce required processing power:
-		int resolution = 2;
 		width >>= resolution;
 		height >>= resolution;
 		float[][] H = new float[width][height];
@@ -167,15 +179,19 @@ public class BiomeGenerator {
 		float dt = 0.5f*height/(512 >> resolution);
 		for(int i = 0; i < steps; i++) {
 			
-			// update humidity(increase in oceans and decrease on land) and temperature(temperature tries to stay close to the starting value):
+			// update humidity and temperature:
 			for(int x = 0; x < width; x++) {
 				for(int y = 0; y < height; y++) {
 					if(heightMap[x << resolution][y <<  resolution] < OCEAN_THRESHOLD) {
+						// Evaporate water above oceans:
 						H[x][y] = 1;
 					} else {
+						// Get closer to the initial humidity distribution(which is needed to create deserts at the edge of tropics):
 						H[x][y] += 0.25f*dt*((humidityDistribution(y, height)) - 0.5f);
+						// Rain down water on higher terrain:
 						H[x][y] *= 1.0f - 0.1f*dt*(0.25f + (heightMap[x << resolution][y <<  resolution] - OCEAN_THRESHOLD)/(1 - OCEAN_THRESHOLD));
 					}
+					// Get closer to the initial temperature distribution(which is needed to prevent arctic and tropic from mixing):
 					T[x][y] += dt*0.1f*(temperatureMap[x << resolution][y << resolution] - T[x][y]);
 				}
 			}
@@ -183,6 +199,7 @@ public class BiomeGenerator {
 			// Calculate changes:
 			for(int x = 0; x < width; x++) {
 				for(int y = 0; y < height; y++) {
+					// Displace the current region using the velocity:
 					float xNew = x + vx[x][y]*dt;
 					float yNew = y + vy[x][y]*dt;
 					int x0 = mod((int)Math.floor(xNew), width);
@@ -191,6 +208,7 @@ public class BiomeGenerator {
 					int y1 = mod(y0+1, height);
 					float xFac = mod(xNew, 1);
 					float yFac = mod(yNew, 1);
+					// Distribute content of this region to the regions that are intersected by the displaced region.
 					update(ρ[x][y], vx[x][y], vy[x][y], T[x][y], H[x][y], dρ, ax, ay, dT, dH, x0, y0, 1-xFac, 1-yFac);
 					update(ρ[x][y], vx[x][y], vy[x][y], T[x][y], H[x][y], dρ, ax, ay, dT, dH, x0, y1, 1-xFac, yFac);
 					update(ρ[x][y], vx[x][y], vy[x][y], T[x][y], H[x][y], dρ, ax, ay, dT, dH, x1, y0, xFac, 1-yFac);
@@ -201,12 +219,12 @@ public class BiomeGenerator {
 			// Update changes:
 			for(int x = 0; x < width; x++) {
 				for(int y = 0; y < height; y++) {
+					// Divide by ρ to conserve those quantities.
 					vx[x][y] = ax[x][y]/dρ[x][y];
 					vy[x][y] = ay[x][y]/dρ[x][y];
 					H[x][y] = dH[x][y]/dρ[x][y];
 					T[x][y] = dT[x][y]/dρ[x][y];
 					ρ[x][y] = dρ[x][y];
-					
 
 					ax[x][y] = 0;
 					ay[x][y] = 0;
@@ -224,13 +242,14 @@ public class BiomeGenerator {
 				int y0 = y >> resolution;
 				int x1 = mod(x0 + 1, width);
 				int y1 = mod(y0 + 1, height);
-				float xFac = (x - (x0 << resolution))/8.0f;
-				float yFac = (y - (y0 << resolution))/8.0f;
+				float xFac = (x - (x0 << resolution))/(float)(1 << resolution);
+				float yFac = (y - (y0 << resolution))/(float)(1 << resolution);
 
 				temperatureMap[x][y] = T[x0][y0]*(1-xFac)*(1-yFac) + T[x0][y1]*(1-xFac)*yFac + T[x1][y0]*xFac*(1-yFac) + T[x1][y1]*xFac*yFac;
 				humidityMap[x][y] = H[x0][y0]*(1-xFac)*(1-yFac) + H[x0][y1]*(1-xFac)*yFac + H[x1][y0]*xFac*(1-yFac) + H[x1][y1]*xFac*yFac;
 			}
 		}
+		// Upscale the result and add some randomness using a fractal algorithm.
 		for(int x0 = 0; x0 < width; x0++) {
 			for(int y0 = 0; y0 < height; y0++) {
 				int x1 = mod(x0 + 1, width);
@@ -263,7 +282,7 @@ public class BiomeGenerator {
 	
 	private static float humidityDistribution(int y, int height) {
 		// On earth there is high humidity at the equator and the poles and low humidty at around 30°.
-		// Interpolating through the given data resulted in this function:
+		// Interpolating through this data resulted in this function:
 		// 1 - 2916/125*x² - 16038/125*x⁴ + 268272/125*x⁶ - 629856/125*x⁸
 		
 		// Start by putting x in range:
@@ -278,6 +297,23 @@ public class BiomeGenerator {
 		return x*0.5f + 0.5f;
 	}
 	
+	/**
+	 * Update one region that intersects the displaced region in a rectangle of size xFac×yFac.
+	 * @param ρ Density of the displaced region.
+	 * @param vx x-velocity of the displaced region.
+	 * @param vy y-velocity of the displaced region.
+	 * @param temperature of the displaced region.
+	 * @param humidity of the displaced region.
+	 * @param aρ next iteration density array.
+	 * @param dx next iteration vx array.
+	 * @param dy next iteration vy array.
+	 * @param dT next iteration temperature array.
+	 * @param dH next iteration humidity array.
+	 * @param x coordinate of this region
+	 * @param y coordinate of this region
+	 * @param xFac
+	 * @param yFac
+	 */
 	private static void update(float ρ, float vx, float vy, float temperature, float humidity, float[][] aρ, float[][] dx, float[][] dy, float[][] dT, float[][] dH, int x, int y, float xFac, float yFac) {
 		float factor = ρ*xFac*yFac;
 		aρ[x][y] += factor;

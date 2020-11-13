@@ -58,10 +58,10 @@ public class Biome extends ChanceObject implements RegistryElement {
 	public final float height;
 	public final float minHeight, maxHeight;
 	public final float roughness;
-	protected Resource identifier;
+	public final Resource identifier;
 	public final BlockStructure struct;
-	private boolean supportsRivers; // Whether the starting point of a river can be in this biome. If false rivers will be able to flow through this biome anyways.
-	private StructureModel[] vegetationModels; // The first members in this array will get prioritized.
+	public final boolean supportsRivers; // Whether the starting point of a river can be in this biome. If false rivers will be able to flow through this biome anyways.
+	public final StructureModel[] vegetationModels; // The first members in this array will get prioritized.
 	
 	public Biome(Resource id, String type, float height, float min, float max, float roughness, float chance, BlockStructure str, boolean rivers, StructureModel ... models) {
 		super(chance);
@@ -74,13 +74,6 @@ public class Biome extends ChanceObject implements RegistryElement {
 		struct = str;
 		supportsRivers = rivers;
 		vegetationModels = models;
-	}
-	public boolean supportsRivers() {
-		return supportsRivers;
-	}
-	
-	public StructureModel[] vegetationModels() {
-		return vegetationModels;
 	}
 	
 	@Override

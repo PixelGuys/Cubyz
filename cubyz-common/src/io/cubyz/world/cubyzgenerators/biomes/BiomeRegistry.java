@@ -5,6 +5,10 @@ import java.util.HashMap;
 import io.cubyz.api.Registry;
 import io.cubyz.util.RandomList;
 
+/**
+ * A registry that also keeps a map of biomes by type.
+ */
+
 public class BiomeRegistry extends Registry<Biome> {
 	public final HashMap<Biome.Type, RandomList<Biome>> byTypeBiomes = new HashMap<Biome.Type, RandomList<Biome>>();
 	public BiomeRegistry() {

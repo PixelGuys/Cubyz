@@ -85,7 +85,7 @@ public class StructureGenerator implements Generator, ReducedGenerator {
 					else if(chunk.getWidth() + 16 - pz <= 8) cur = op;
 				}
 				Biome biome = cur.biomeMap[wpx & 255][wpz & 255];
-				for(StructureModel model : biome.vegetationModels()) {
+				for(StructureModel model : biome.vegetationModels) {
 					if(model.getChance() > randomValue) {
 						model.generate(px - 8, pz - 8, (int)(cur.heightMap[wpx & 255][wpz & 255]) + 1, chunk, containingMetaChunk, rand);
 						break;

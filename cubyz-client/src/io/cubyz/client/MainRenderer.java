@@ -380,7 +380,7 @@ public class MainRenderer implements Renderer {
 						}
 					} else if (type == MeshType.ENTITY) {
 						Entity e = (Entity) provider.getMeshId();
-						mesh = Meshes.entityMeshes.get(e);
+						mesh = Meshes.entityMeshes.get(e.getType());
 					}
 				} else {
 					mesh = Meshes.entityMeshes.get(ent.getType());

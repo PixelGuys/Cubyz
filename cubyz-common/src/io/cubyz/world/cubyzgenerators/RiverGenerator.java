@@ -41,7 +41,7 @@ public class RiverGenerator implements BigGenerator {
 		for(int i = 0; i < num; i++) {
 			int x = rand.nextInt(256);
 			int z = rand.nextInt(256);
-			if(m.biomeMap[x][z].supportsRivers()) {
+			if(m.biomeMap[x][z].supportsRivers) {
 				if(m == pp || m == pn) {
 					x += 256;
 				}

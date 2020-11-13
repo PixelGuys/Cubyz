@@ -6,7 +6,6 @@ import io.cubyz.blocks.Block;
 import io.cubyz.items.Item;
 import io.cubyz.items.ItemStack;
 import io.cubyz.translate.ContextualTextKey;
-import io.cubyz.translate.TextKey;
 
 /**
  * Tool for fighting.

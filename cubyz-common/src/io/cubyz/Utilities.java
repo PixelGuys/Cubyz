@@ -31,7 +31,8 @@ public class Utilities {
 		reader.close();
 		return txt;
 	}
-	
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public static Object copyIfNull(Object dest, Object value) {
 		try {
 			Class<?> cl = value.getClass();

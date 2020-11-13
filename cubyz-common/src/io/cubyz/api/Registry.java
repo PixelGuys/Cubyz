@@ -98,6 +98,7 @@ public class Registry<T extends RegistryElement> {
 	}
 	
 	// Print all registered objects.
+	@SuppressWarnings("unchecked")
 	@Override
 	public String toString() {
 		String res = "";
