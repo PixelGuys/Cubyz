@@ -14,6 +14,7 @@ import io.cubyz.blocks.RotationMode;
 import io.cubyz.command.ClearCommand;
 import io.cubyz.command.CureCommand;
 import io.cubyz.command.GiveCommand;
+import io.cubyz.command.TPCommand;
 import io.cubyz.command.TimeCommand;
 import io.cubyz.entity.EntityType;
 import io.cubyz.entity.ItemEntity;
@@ -53,6 +54,7 @@ public class BaseMod {
 		CubyzRegistries.COMMAND_REGISTRY.register(new ClearCommand());
 		CubyzRegistries.COMMAND_REGISTRY.register(new CureCommand());
 		CubyzRegistries.COMMAND_REGISTRY.register(new TimeCommand());
+		CubyzRegistries.COMMAND_REGISTRY.register(new TPCommand());
 		
 		// Init proxy
 		proxy.init();

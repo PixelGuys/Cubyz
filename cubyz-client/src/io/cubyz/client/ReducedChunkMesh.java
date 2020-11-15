@@ -203,8 +203,6 @@ public class ReducedChunkMesh {
 			float x = CubyzMath.shiftRight(i & xMask, chunk.widthShift - 2*chunk.resolutionShift) - 0.5f;
 			float y = CubyzMath.shiftRight(i & yMask, 2*chunk.widthShift - 3*chunk.resolutionShift) - 0.5f;
 			float z = ((i & zMask) << chunk.resolutionShift) - 0.5f;
-			x += chunk.cx << 4;
-			z += chunk.cz << 4;
 			int color = chunk.blocks[i].color & 65535;
 			if(negX) {
 				int i000 = addVertex(vertices, x, y, z, colors, color);

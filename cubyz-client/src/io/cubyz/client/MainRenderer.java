@@ -85,6 +85,7 @@ public class MainRenderer implements Renderer {
 		chunkShader.link();
 		chunkShader.createUniform("projectionMatrix");
 		chunkShader.createUniform("viewMatrix");
+		chunkShader.createUniform("modelPosition");
 		chunkShader.createUniform("ambientLight");
 		chunkShader.createUniform("directionalLight");
 		chunkShader.createFogUniform("fog");
@@ -207,7 +208,7 @@ public class MainRenderer implements Renderer {
 				map[i] = new FastList<Spatial>(arrayListCapacity, Spatial.class);
 			}
 		}
-		// Don't create a new ArrayList every time to reduce re-allocations:
+		// Don't create a new list every time to reduce re-allocations:
 		for (int i = 0; i < map.length; i++) {
 			map[i].clear();
 		}
@@ -304,6 +305,7 @@ public class MainRenderer implements Renderer {
 					if (!frustumInt.testAab(chunk.getMin(x0, z0, worldSizeX, worldSizeZ), chunk.getMax(x0, z0, worldSizeX, worldSizeZ)))
 						continue;
 					Object mesh = chunk.mesh;
+					chunkShader.setUniform("modelPosition", chunk.getMin(x0, z0, worldSizeX, worldSizeZ));
 					if(mesh == null || !(mesh instanceof ReducedChunkMesh)) {
 						chunk.mesh = mesh = new ReducedChunkMesh(chunk);
 					}
