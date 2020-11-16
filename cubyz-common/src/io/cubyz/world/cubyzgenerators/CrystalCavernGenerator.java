@@ -45,8 +45,8 @@ public class CrystalCavernGenerator implements FancyGenerator {
 		Random rand = new Random(seed);
 		int rand1 = rand.nextInt() | 1;
 		int rand2 = rand.nextInt() | 1;
-		int chunksSizeX = surface.getSizeX();
-		int chunksSizeZ = surface.getSizeZ();
+		int chunksSizeX = surface.getSizeX() >> 4;
+		int chunksSizeZ = surface.getSizeZ() >> 4;
 		// Generate caves from all nearby chunks:
 		for(int x = cx - range; x <= cx + range; ++x) {
 			for(int z = cz - range; z <= cz + range; ++z) {
@@ -122,20 +122,19 @@ public class CrystalCavernGenerator implements FancyGenerator {
 					zMin = 0;
 				if (zMax > 16)
 					zMax = 16;
-				
 				// Go through all blocks within range of the cave center and remove them if they
 				// are within range of the center.
 				for(int curX = xMin; curX < xMax; ++curX) {
-					double distToCenterX = ((double) (curX + cx*16) + 0.5 - worldX) / xzScale;
+					double distToCenterX = ((double) (curX + cx*16) - worldX) / xzScale;
 					
 					for(int curZ = zMin; curZ < zMax; ++curZ) {
-						double distToCenterZ = ((double) (curZ + cz*16) + 0.5 - worldZ) / xzScale;
+						double distToCenterZ = ((double) (curZ + cz*16) - worldZ) / xzScale;
 						int curYIndex = yMax;
 						if(distToCenterX * distToCenterX + distToCenterZ * distToCenterZ < 1.0) {
 							for(int curY = yMax - 1; curY >= yMin; --curY) {
-								double distToCenterY = ((double) curY + 0.5 - worldY) / (yScale);
-								if(distToCenterX*distToCenterX + distToCenterY*distToCenterY + distToCenterZ*distToCenterZ < 1.0 && !water.equals(chunk.getBlockAt(curX, curYIndex, curZ)) && !ice.equals(chunk.getBlockAt(curX, curYIndex, curZ))) {
-									chunk.updateBlock(curX, curZ, curYIndex, null);
+								double distToCenterY = ((double) curY - worldY) / (yScale);
+								if(distToCenterX*distToCenterX + distToCenterY*distToCenterY + distToCenterZ*distToCenterZ < 1.0 && water != chunk.getBlockAt(curX, curYIndex, curZ) && ice != chunk.getBlockAt(curX, curYIndex, curZ)) {
+									chunk.updateBlock(curX, curYIndex, curZ, null);
 									if(heightMap[curX][curZ] == curYIndex)
 										vegetationIgnoreMap[curX][curZ] = true;
 								}
