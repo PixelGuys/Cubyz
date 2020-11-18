@@ -189,7 +189,7 @@ public class Window {
 		} // the stack frame is popped automatically
 
 		glfwSetCharCallback(handle, (window, codePoint) -> {
-			Keyboard.pushCodePoint((char) codePoint);
+			Keyboard.pushChar((char) codePoint);
 		});
 		
 		glfwSetKeyCallback(handle, (window, key, scancode, action, mods) -> {

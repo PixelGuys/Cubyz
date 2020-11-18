@@ -772,8 +772,7 @@ public class Cubyz implements GameLogic, ClientConnection {
 			}
 		}
 		
-		Keyboard.releaseCodePoint();
-		Keyboard.releaseKeyCode();
+		Keyboard.release();
 	}
 	
 	@Override

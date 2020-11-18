@@ -70,8 +70,8 @@ public class TextInput extends Component {
 		}
 		
 		if (focused) {
-			if (Keyboard.hasCodePoint()) {
-				text = text + Keyboard.getCodePoint();
+			if (Keyboard.hasCharSequence()) {
+				text = text + Keyboard.getCharSequence();
 				cursorVisible = true;
 			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_BACKSPACE)) {

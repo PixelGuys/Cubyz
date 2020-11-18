@@ -2,28 +2,42 @@ package io.jungle;
 
 import java.util.ArrayList;
 
+import io.cubyz.CubyzLogger;
+
 public class Keyboard {
 
-	static ArrayList<Integer> pressedKeys;
-	static char currentCodePoint;
-	static boolean hasCodePoint;
+	static ArrayList<Integer> pressedKeys = new ArrayList<Integer>();
+	private static int bufferLen = 256;
+	static final char[] charBuffer = new char[bufferLen]; // Pseudo-circular buffer of the last chars, to avoid problems if the user is a fast typer or uses macros or compose key.
+	private static int lastStart = 0, lastEnd = 0, current = 0;
 	static int currentKeyCode;
 	static boolean hasKeyCode;
 	static int keyMods;
 	
-	static {
-		pressedKeys = new ArrayList<Integer>();
-		currentCodePoint = 0;
-		hasCodePoint = false;
+	public static void pushChar(char ch) {
+		int next = (current+1)%bufferLen;
+		if(next == lastStart) {
+			CubyzLogger.logger.warning("Char buffer is full. Ignoring char '"+ch+"'.");
+			return;
+		}
+		charBuffer[current] = ch;
+		current = next;
 	}
 	
-	public static void pushCodePoint(char codePoint) {
-		currentCodePoint = codePoint;
-		hasCodePoint = true;
+	public static boolean hasCharSequence() {
+		return lastStart != lastEnd;
 	}
 	
-	public static boolean hasCodePoint() {
-		return hasCodePoint;
+	/**
+	 * Returns the last chars input by the user.
+	 * @return
+	 */
+	public static String getCharSequence() {
+		String sequence = "";
+		for(int i = lastStart; i != lastEnd; i = (i+1)%bufferLen) {
+			sequence += charBuffer[i];
+		}
+		return sequence;
 	}
 	
 	public static void pushKeyCode(int keyCode) {
@@ -36,22 +50,12 @@ public class Keyboard {
 	}
 	
 	/**
-	 * Reads code point, keeps it on buffer.
-	 * @return code point
+	 * Resets buffers.
 	 */
-	public static char getCodePoint() {
-		return currentCodePoint;
-	}
-	
-	/**
-	 * Reads code point, does not keep it on buffer.
-	 * @return code point
-	 */
-	public static char releaseCodePoint() {
-		char cp = currentCodePoint;
-		currentCodePoint = 0;
-		hasCodePoint = false;
-		return cp;
+	public static void release() {
+		releaseKeyCode();
+		lastStart = lastEnd;
+		lastEnd = current;
 	}
 	
 	/**
