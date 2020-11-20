@@ -16,7 +16,7 @@ import io.cubyz.world.Surface;
 public abstract class Player extends Entity implements CommandSource {
 	public static final float cameraHeight = 1.7f;
 	public Player(Surface surface) {
-		super(CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player"), surface, 16, 16, 0.5f);
+		super(CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player"), null, surface, 16, 16, 0.5f);
 		// TODO: Take care of data files.
 	}
 	

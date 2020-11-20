@@ -28,6 +28,8 @@ public class Entity {
 	
 	private final EntityType type;
 	
+	private final EntityAI entityAI;
+	
 	public float health, hunger;
 	public final float maxHealth, maxHunger;
 	
@@ -40,17 +42,19 @@ public class Entity {
 	
 	/**
 	 * @param type
+	 * @param ai
 	 * @param surface
 	 * @param maxHealth
 	 * @param maxHunger
 	 * @param stepHeight height the entity can move upwards without jumping.
 	 */
-	public Entity(EntityType type, Surface surface, float maxHealth, float maxHunger, float stepHeight) {
+	public Entity(EntityType type, EntityAI ai, Surface surface, float maxHealth, float maxHunger, float stepHeight) {
 		this.type = type;
 		this.surface = surface;
 		this.maxHealth = health = maxHealth;
 		this.maxHunger = hunger = maxHunger;
 		this.stepHeight = stepHeight;
+		entityAI = ai;
 	}
 	
 	public float getScale() {
@@ -302,7 +306,8 @@ public class Entity {
 	
 	public void update() {
 		float step = collisionDetection();
-		type.update(this);
+		if(entityAI != null)
+			entityAI.update(this);
 		updateVelocity();
 
 		// clamp health between 0 and maxHealth

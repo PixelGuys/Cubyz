@@ -35,7 +35,7 @@ public class ItemEntity extends Entity implements CustomMeshProvider {
 	public ItemStack items;
 	
 	public ItemEntity(EntityType t, Surface surface, ItemStack items) {
-		super(CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:item_stack"), surface, 30*300/1000/*5 minutes until they despawn, unless dropped from a big height.*/, 0, 0);
+		super(CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:item_stack"), null, surface, 30*300/1000/*5 minutes until they despawn, unless dropped from a big height.*/, 0, 0);
 		
 		this.items = items;
 		super.height = 0.2f;
@@ -45,7 +45,7 @@ public class ItemEntity extends Entity implements CustomMeshProvider {
 	}
 	
 	public ItemEntity(EntityType t, Surface surface, ItemStack items, Vector3i position) {
-		super(CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:item_stack"), surface, 30*300/1000/*5 minutes until they despawn, unless dropped from a big height.*/, 0, 0);
+		super(CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:item_stack"), null, surface, 30*300/1000/*5 minutes until they despawn, unless dropped from a big height.*/, 0, 0);
 		this.items = items;
 		height = 0.2f;
 		width = 0.1f;
@@ -63,7 +63,7 @@ public class ItemEntity extends Entity implements CustomMeshProvider {
 	}
 	
 	public ItemEntity(EntityType t, Surface surface, ItemStack items, Vector3f position) {
-		super(CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:item_stack"), surface, 30*300/1000/*5 minutes until they despawn, unless dropped from a big height.*/, 0, 0);
+		super(CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:item_stack"), null, surface, 30*300/1000/*5 minutes until they despawn, unless dropped from a big height.*/, 0, 0);
 		this.items = items;
 		height = 0.2f;
 		width = 0.1f;

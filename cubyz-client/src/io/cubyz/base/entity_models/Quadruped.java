@@ -422,6 +422,10 @@ public class Quadruped implements EntityModel {
 		});
 		float xNorm = ent.targetVX/(float)Math.sqrt(ent.targetVX*ent.targetVX + ent.targetVZ*ent.targetVZ);
 		float zNorm = ent.targetVZ/(float)Math.sqrt(ent.targetVX*ent.targetVX + ent.targetVZ*ent.targetVZ);
+		if(xNorm != xNorm) {
+			xNorm = 1;
+			zNorm = 0;
+		}
 		pos.y -= bodyHeight/2 - legWidth/2;
 		float length = bodyLength - legWidth - 0.01f;
 		float width = bodyWidth - legWidth - 0.01f;
