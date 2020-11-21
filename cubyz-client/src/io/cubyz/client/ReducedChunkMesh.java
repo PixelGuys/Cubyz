@@ -52,8 +52,6 @@ public class ReducedChunkMesh {
 	protected ArrayList<Integer> vboIdList;
 
 	protected int vertexCount;
-	
-	private boolean inited = false;
 
 	public ReducedChunkMesh(ReducedChunk chunk) {
 		FloatFastList vertices = localVertices.get();
@@ -143,7 +141,6 @@ public class ReducedChunkMesh {
 	}
 
 	public void cleanUp() {
-		if(!inited) return;
 		glDisableVertexAttribArray(0);
 
 		// Delete the VBOs

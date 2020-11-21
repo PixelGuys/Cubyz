@@ -77,7 +77,7 @@ public class SimpleTreeModel extends StructureModel {
 						for (int px = chunk.startIndex(x - leafRadius); px <= x + leafRadius; px += chunk.getVoxelSize()) {
 							for (int pz = chunk.startIndex(z - leafRadius); pz <= z + leafRadius; pz += chunk.getVoxelSize()) {
 								int dist = (py - center)*(py - center) + (px - x)*(px - x) + (pz - z)*(pz - z);
-								if(chunk.liesInChunk(px, pz) && dist < (floatLeafRadius)*(floatLeafRadius) && (dist < (floatLeafRadius - 0.25f)*(floatLeafRadius - 0.25f) || rand.nextInt(2) != 0)) { // TODO: Use another seed to make this more reliable!
+								if(chunk.liesInChunk(px, pz) && chunk.liesInChunk(py) && dist < (floatLeafRadius)*(floatLeafRadius) && (dist < (floatLeafRadius - 0.25f)*(floatLeafRadius - 0.25f) || rand.nextInt(2) != 0)) { // TODO: Use another seed to make this more reliable!
 									chunk.updateBlockIfAir(px, py, pz, leaves);
 								}
 							}

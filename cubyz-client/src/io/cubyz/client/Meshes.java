@@ -4,6 +4,7 @@ import static io.cubyz.CubyzLogger.logger;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 import io.cubyz.ClientOnly;
@@ -35,6 +36,25 @@ public class Meshes {
 	
 
 	public static final HashMap<String, InstancedMesh> cachedDefaultModels = new HashMap<>();
+	
+	public static final ArrayList<Object> removableMeshes = new ArrayList<>();
+	
+	/**
+	 * Cleans all meshes scheduled for removal.
+	 * Needs to be called from an openGL thread!
+	 */
+	public static void cleanUp() {
+		synchronized(removableMeshes) {
+			for(Object mesh : removableMeshes) {
+				if(mesh instanceof ReducedChunkMesh) {
+					((ReducedChunkMesh) mesh).cleanUp();
+				} else if(mesh instanceof Mesh) {
+					((Mesh) mesh).cleanUp();
+				}
+			}
+			removableMeshes.clear();
+		}
+	}
 	
 	public static void initMeshCreators() {
 		ClientOnly.createBlockMesh = (block) -> {
@@ -122,9 +142,8 @@ public class Meshes {
 		};
 		
 		ClientOnly.deleteChunkMesh = (chunk) -> {
-			Object mesh = chunk.mesh;
-			if(mesh instanceof ReducedChunkMesh) {
-				((ReducedChunkMesh)mesh).cleanUp();
+			synchronized(removableMeshes) {
+				removableMeshes.add(chunk.mesh);
 			}
 		};
 	}

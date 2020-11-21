@@ -12,6 +12,7 @@ import org.joml.Vector3f;
 import org.joml.Vector3i;
 import org.joml.Vector4f;
 
+import io.cubyz.ClientOnly;
 import io.cubyz.Settings;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.CurrentSurfaceRegistries;
@@ -67,7 +68,7 @@ public class LocalSurface extends Surface {
 	
 	private TorusIO tio;
 	
-	private List<ChunkGenerationThread> threads = new ArrayList<>();
+	private List<ChunkGenerationThread> generatorThreads = new ArrayList<>();
 	private boolean generated;
 	
 	float ambientLight = 0f;
@@ -131,8 +132,9 @@ public class LocalSurface extends Surface {
 	}
 	
 	private class ChunkGenerationThread extends Thread {
+		volatile boolean running = true;
 		public void run() {
-			while (true) {
+			while (running) {
 				if(!loadList.isEmpty()) {
 					NormalChunk popped = null;
 					try {
@@ -164,6 +166,12 @@ public class LocalSurface extends Surface {
 				}
 			}
 		}
+		
+		@Override
+		public void interrupt() {
+			running = false; // Make sure the Thread stops in all cases.
+			super.interrupt();
+		}
 	}
 	
 	public LocalSurface(LocalStellarTorus torus) {
@@ -179,7 +187,7 @@ public class LocalSurface extends Surface {
 			thread.setName("Local-Chunk-Thread-" + i);
 			thread.setDaemon(true);
 			thread.start();
-			threads.add(thread);
+			generatorThreads.add(thread);
 		}
 		generator = registries.worldGeneratorRegistry.getByID("cubyz:lifeland");
 		if (generator instanceof LifelandGenerator) {
@@ -738,7 +746,7 @@ public class LocalSurface extends Surface {
 		}
 		for (int k = minK; k < reducedChunks.length; k++) {
 			unQueueChunk(reducedChunks[k]);
-			//ClientOnly.deleteChunkMesh.accept(reducedChunks[k]);
+			ClientOnly.deleteChunkMesh.accept(reducedChunks[k]);
 		}
 		newReduced.trimToSize();
 		reducedChunks = newReduced.array;
@@ -929,12 +937,19 @@ public class LocalSurface extends Surface {
 		try {
 			forceSave();
 			
-			for (Thread thread : threads) {
+			for (Thread thread : generatorThreads) {
 				thread.interrupt();
 				thread.join();
 			}
-			threads = new ArrayList<>();
+			generatorThreads = new ArrayList<>();
+
+			// Clean up additional GPU data:
+			for(ReducedChunk chunk : reducedChunks) {
+				System.out.println(chunk);
+				ClientOnly.deleteChunkMesh.accept(chunk);
+			}
 			
+			reducedChunks = null;
 			chunks = null;
 			chunkData = null;
 			blockData = null;

@@ -166,7 +166,7 @@ public class LocalWorld extends World {
 	
 	@Override
 	public void cleanup() {
-		
+		currentTorus.cleanup();
 	}
 	
 	boolean loggedUpdSkip = false;

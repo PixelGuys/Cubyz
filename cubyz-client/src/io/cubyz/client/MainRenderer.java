@@ -193,6 +193,8 @@ public class MainRenderer implements Renderer {
 		if (!doRender)
 			return;
 		clear();
+		// Clean up old chunk meshes:
+		Meshes.cleanUp();
 		ctx.getCamera().setViewMatrix(transformation.getViewMatrix(ctx.getCamera()));
 		
 		// Create the mesh map. Create only one entry for the truly transparent block.
