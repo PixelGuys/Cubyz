@@ -62,15 +62,14 @@ public class MeshSelectionDetector {
 						continue;
 					min.set(new Vector3f(bi.getX(), bi.getY(), bi.getZ()));
 					max.set(min);
-					min.add(-0.5f, -0.5f, -0.5f); // -scale, -scale, -scale
-					max.add(0.5f, 0.5f, 0.5f); // scale, scale, scale
+					max.add(1, 1, 1); // scale, scale, scale
 					// Because of the huge number of different BlockInstances that will be tested, it is more efficient to use RayAabIntersection and determine the distance sperately:
 					if (intersection.test(min.x, min.y, min.z, max.x, max.y, max.z)) {
 						float distance;
 						if(bi.getBlock().mode.changesHitbox()) {
 							distance = bi.getBlock().mode.getRayIntersection(intersection, bi, min, max, transformedPosition);
 						} else {
-							distance = min.add(0.5f, 0.5f, 0.5f).sub(transformedPosition).length();
+							distance = min.sub(transformedPosition).length();
 						}
 						if(distance < closestDistance) {
 							closestDistance = distance;
@@ -126,15 +125,13 @@ public class MeshSelectionDetector {
 			dir.add(dirX, 0, 0);
 			min.set(new Vector3f(pos.x, pos.y, pos.z));
 			max.set(min);
-			min.add(-0.5f, -0.5f, -0.5f); // -scale, -scale, -scale
-			max.add(0.5f, 0.5f, 0.5f); // scale, scale, scale
+			max.add(1, 1, 1); // scale, scale, scale
 			if (!intersection.test(min.x, min.y, min.z, max.x, max.y, max.z)) {
 				pos.add(dirX, -dirY, 0);
 				dir.add(-dirX, dirY, 0);
 				min.set(new Vector3f(pos.x, pos.y, pos.z));
 				max.set(min);
-				min.add(-0.5f, -0.5f, -0.5f); // -scale, -scale, -scale
-				max.add(0.5f, 0.5f, 0.5f); // scale, scale, scale
+				max.add(1, 1, 1); // scale, scale, scale
 				if (!intersection.test(min.x, min.y, min.z, max.x, max.y, max.z)) {
 					pos.add(0, dirY, -dirZ);
 					dir.add(0, -dirY, dirZ);

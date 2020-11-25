@@ -35,7 +35,7 @@ public class StackableRotation implements RotationMode {
 		BlockSpatial[] spatials = new BlockSpatial[1];
 		BlockSpatial tmp = new BlockSpatial(bi, player, worldSizeX, worldSizeZ);
 		tmp.setScale(1, data/16.0f, 1);
-		tmp.setPosition(bi.getX(), bi.getY() - 0.5f + data/32.0f, bi.getZ(), player, worldSizeX, worldSizeZ);
+		tmp.setPosition(bi.getX(), bi.getY(), bi.getZ(), player, worldSizeX, worldSizeZ);
 		spatials[0] = tmp;
 		return spatials;
 	}
@@ -83,30 +83,30 @@ public class StackableRotation implements RotationMode {
 
 	@Override
 	public boolean checkEntity(Entity ent, int x, int y, int z, byte data) {
-		return 	   y + data/16.0f - 0.5f >= ent.getPosition().y
-				&& y - 0.5f <= ent.getPosition().y + ent.height
-				&& x + 0.5f >= ent.getPosition().x - ent.width
-				&& x - 0.5f <= ent.getPosition().x + ent.width
-				&& x + 0.5f >= ent.getPosition().z - ent.width
-				&& x - 0.5f <= ent.getPosition().z + ent.width;
+		return 	   y + data/16.0f >= ent.getPosition().y
+				&& y     <= ent.getPosition().y + ent.height
+				&& x + 1 >= ent.getPosition().x - ent.width
+				&& x     <= ent.getPosition().x + ent.width
+				&& x + 1 >= ent.getPosition().z - ent.width
+				&& x     <= ent.getPosition().z + ent.width;
 	}
 
 	@Override
 	public boolean checkEntityAndDoCollision(Entity ent, Vector4f vel, int x, int y, int z, byte data) {
 		// Check if the player can step onto this:
-		if(y + data/16.0f - 0.5f - ent.getPosition().y > 0 && y + data/16.0f - 0.5f - ent.getPosition().y <= ent.stepHeight) {
-			vel.w = Math.max(vel.w, y + data/16.0f - 0.5f - ent.getPosition().y);
+		if(y + data/16.0f - ent.getPosition().y > 0 && y + data/16.0f - ent.getPosition().y <= ent.stepHeight) {
+			vel.w = Math.max(vel.w, y + data/16.0f - ent.getPosition().y);
 			return false;
 		}
 		if(vel.y == 0) {
-			return	   y + data/16.0f - 0.5f >= ent.getPosition().y
-					&& y - 0.5f <= ent.getPosition().y + ent.height;
+			return	   y + data/16.0f >= ent.getPosition().y
+					&& y <= ent.getPosition().y + ent.height;
 		}
 		if(vel.y >= 0) {
 			return true;
 		}
-		if(y + data/16.0f - 0.5f >= ent.getPosition().y + vel.y) {
-			vel.y = y + data/16.0f - 0.49f - ent.getPosition().y;
+		if(y + data/16.0f >= ent.getPosition().y + vel.y) {
+			vel.y = y + data/16.0f + 0.01f - ent.getPosition().y;
 		}
 		return false;
 	}

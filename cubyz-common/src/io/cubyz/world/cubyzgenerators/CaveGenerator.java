@@ -64,7 +64,7 @@ public class CaveGenerator implements FancyGenerator {
 			// Determine min and max of the current cave segment in all directions.
 			int xMin = (int)(worldX - xzScale) - cx*16 - 1;
 			int xMax = (int)(worldX + xzScale) - cx*16 + 1;
-			int yMin = (int)(worldY - 0.7*yScale - 0.5); // Make also sure the ground of the cave is kind of flat, so the player can easily walk through.
+			int yMin = (int)(worldY - 0.7*yScale); // Make also sure the ground of the cave is kind of flat, so the player can easily walk through.
 			int yMax = (int)(worldY + yScale) + 1;
 			int zMin = (int)(worldZ - xzScale) - cz*16 - 1;
 			int zMax = (int)(worldZ + xzScale) - cz*16 + 1;
@@ -83,14 +83,14 @@ public class CaveGenerator implements FancyGenerator {
 			// Go through all blocks within range of the cave center and remove them if they
 			// are within range of the center.
 			for(int curX = xMin; curX < xMax; ++curX) {
-				double distToCenterX = ((double) (curX + cx*16) + 0.5 - worldX) / xzScale;
+				double distToCenterX = ((double) (curX + cx*16) - worldX) / xzScale;
 				
 				for(int curZ = zMin; curZ < zMax; ++curZ) {
-					double distToCenterZ = ((double) (curZ + cz*16) + 0.5 - worldZ) / xzScale;
+					double distToCenterZ = ((double) (curZ + cz*16) - worldZ) / xzScale;
 					int curYIndex = yMax;
 					if(distToCenterX * distToCenterX + distToCenterZ * distToCenterZ < 1.0) {
 						for(int curY = yMax - 1; curY >= yMin; --curY) {
-							double distToCenterY = ((double) curY + 0.5 - worldY) / yScale;
+							double distToCenterY = ((double) curY - worldY) / yScale;
 							double distToCenter = distToCenterX*distToCenterX + distToCenterY*distToCenterY + distToCenterZ*distToCenterZ;
 							if(distToCenter < 1.0) {
 								// Add a small roughness parameter to make walls look a bit rough by filling only 5/6 of the blocks at the walls with air:
@@ -174,7 +174,7 @@ public class CaveGenerator implements FancyGenerator {
 					// Determine min and max of the current cave segment in all directions.
 					int xMin = (int)(worldX - xzScale) - cx*16 - 1;
 					int xMax = (int)(worldX + xzScale) - cx*16 + 1;
-					int yMin = (int)(worldY - 0.7*yScale - 0.5); // Make also sure the ground of the cave is kind of flat, so the player can easily walk through.
+					int yMin = (int)(worldY - 0.7*yScale); // Make also sure the ground of the cave is kind of flat, so the player can easily walk through.
 					int yMax = (int)(worldY + yScale) + 1;
 					int zMin = (int)(worldZ - xzScale) - cz*16 - 1;
 					int zMax = (int)(worldZ + xzScale) - cz*16 + 1;

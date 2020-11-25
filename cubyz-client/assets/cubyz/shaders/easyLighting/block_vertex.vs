@@ -34,21 +34,21 @@ void main()
 {
 	selectionData = selected;
 	outColor = 0.003890625*(
-						(0.5 - position.x)*(
-							(0.5 - position.y)*(
-								  (0.5 - position.z)*calcLight(easyLight[0])
-								+ (0.5 + position.z)*calcLight(easyLight[1])
-							) + (0.5 + position.y)*(
-								  (0.5 - position.z)*calcLight(easyLight[2])
-								+ (0.5 + position.z)*calcLight(easyLight[3])
+						(1 - position.x)*(
+							(1 - position.y)*(
+								  (1 - position.z)*calcLight(easyLight[0])
+								+ (position.z)*calcLight(easyLight[1])
+							) + (position.y)*(
+								  (1 - position.z)*calcLight(easyLight[2])
+								+ (position.z)*calcLight(easyLight[3])
 							)
-						) + (0.5 + position.x)*(
-							(0.5 - position.y)*(
-								(0.5 - position.z)*calcLight(easyLight[4])
-								+(0.5 + position.z)*calcLight(easyLight[5])
-							) + (0.5 + position.y)*(
-								  (0.5 - position.z)*calcLight(easyLight[6])
-								+ (0.5 + position.z)*calcLight(easyLight[7])
+						) + (position.x)*(
+							(1 - position.y)*(
+								(1 - position.z)*calcLight(easyLight[4])
+								+(position.z)*calcLight(easyLight[5])
+							) + (position.y)*(
+								  (1 - position.z)*calcLight(easyLight[6])
+								+ (position.z)*calcLight(easyLight[7])
 							)
 						));
 	vec4 mvPos = viewMatrix*vec4(vec4(position, 1)*modelViewMatrix, 1);

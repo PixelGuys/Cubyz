@@ -242,7 +242,7 @@ public class MainRenderer implements Renderer {
 					if(bi != null) { // Sometimes block changes happen while rendering.
 						float x = CubyzMath.match(bi.getX(), x0, worldSizeX);
 						float z = CubyzMath.match(bi.getZ(), z0, worldSizeZ);
-						if(frustumInt.testSphere(x, bi.getY(), z, 0.866025f)) {
+						if(frustumInt.testSphere(x + 0.5f, bi.getY() + 0.5f, z + 0.5f, 0.866025f)) {
 							if(bi.getBlock().isTrulyTransparent()) {
 								BlockSpatial[] spatial = (BlockSpatial[]) bi.getSpatials(localPlayer, worldSizeX, worldSizeZ, ch);
 								if(spatial != null) {
@@ -263,12 +263,12 @@ public class MainRenderer implements Renderer {
 								// Only draw blocks that have at least one face facing the player.
 								boolean[] neighbors = bi.getNeighbors();
 								if(bi.getBlock().getBlockClass() == Block.BlockClass.FLUID || // Ignore fluid blocks in the process, so their surface can still be seen from below.
-										(x > 0.5001f && !neighbors[0]) ||
-										(x < -0.5001f && !neighbors[1]) ||
-										(y > 0.5001f && !neighbors[4]) ||
-										(y < -0.5001f && !neighbors[5]) ||
-										(z > 0.5001f && !neighbors[2]) ||
-										(z < -0.5001f && !neighbors[3])) {
+										(x > 1.0001f && !neighbors[0]) ||
+										(x < -0.0001f && !neighbors[1]) ||
+										(y > 1.0001f && !neighbors[4]) ||
+										(y < -0.0001f && !neighbors[5]) ||
+										(z > 1.0001f && !neighbors[2]) ||
+										(z < -0.0001f && !neighbors[3])) {
 									BlockSpatial[] spatial = (BlockSpatial[]) bi.getSpatials(localPlayer, worldSizeX, worldSizeZ, ch);
 									if(spatial != null) {
 										for(BlockSpatial tmp : spatial) {

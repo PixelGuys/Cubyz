@@ -67,16 +67,16 @@ public class Entity {
 	 */
 	protected float collisionDetection() {
 		// Simulate movement in all directions and prevent movement in a direction that would get the player into a block:
-		int minX = Math.round(position.x - width);
-		int maxX = Math.round(position.x + width);
-		int minY = Math.round(position.y);
-		int maxY = Math.round(position.y + height);
-		int minZ = Math.round(position.z - width);
-		int maxZ = Math.round(position.z + width);
+		int minX = (int)Math.floor(position.x - width);
+		int maxX = (int)Math.floor(position.x + width);
+		int minY = (int)Math.floor(position.y);
+		int maxY = (int)Math.floor(position.y + height);
+		int minZ = (int)Math.floor(position.z - width);
+		int maxZ = (int)Math.floor(position.z + width);
 		Vector4f change = new Vector4f(vx, 0, 0, 0);
 		float step = 0.0f;
 		if(vx < 0) {
-			int minX2 = Math.round(position.x - width + vx);
+			int minX2 = (int)Math.floor(position.x - width + vx);
 			// First check for partial blocks:
 			for(int y = minY; y <= maxY; y++) {
 				for(int z = minZ; z <= maxZ; z++) {
@@ -89,14 +89,14 @@ public class Entity {
 					for(int z = minZ; z <= maxZ; z++) {
 						if(checkBlock(minX2, y, z, change)) {
 							change.x = 0;
-							position.x = minX2 + 0.51f + width;
+							position.x = minX2 + 1.01f + width;
 							break outer;
 						}
 					}
 				}
 			}
 		} else if(vx > 0) {
-			int maxX2 = Math.round(position.x + width + vx);
+			int maxX2 = (int)Math.floor(position.x + width + vx);
 			// First check for partial blocks:
 			for(int y = minY; y <= maxY; y++) {
 				for(int z = minZ; z <= maxZ; z++) {
@@ -109,7 +109,7 @@ public class Entity {
 					for(int z = minZ; z <= maxZ; z++) {
 						if(checkBlock(maxX2, y, z, change)) {
 							change.x = 0;
-							position.x = maxX2 - 0.51f - width;
+							position.x = maxX2 - 0.01f - width;
 							break outer;
 						}
 					}
@@ -124,10 +124,10 @@ public class Entity {
 		step = Math.max(step, change.w);
 		change.x = 0;
 		change.y = vy;
-		minX = Math.round(position.x - width);
-		maxX = Math.round(position.x + width);
+		minX = (int)Math.floor(position.x - width);
+		maxX = (int)Math.floor(position.x + width);
 		if(vy < 0) {
-			int minY2 = Math.round(position.y + vy);
+			int minY2 = (int)Math.floor(position.y + vy);
 			// First check for partial blocks:
 			for(int x = minX; x <= maxX; x++) {
 				for(int z = minZ; z <= maxZ; z++) {
@@ -140,14 +140,14 @@ public class Entity {
 					for(int z = minZ; z <= maxZ; z++) {
 						if(checkBlock(x, minY2, z, change)) {
 							change.y = 0;
-							position.y = minY2 + 0.51f;
+							position.y = minY2 + 1.01f;
 							break outer;
 						}
 					}
 				}
 			}
 		} else if(vy > 0) {
-			int maxY2 = Math.round(position.y + height + vy);
+			int maxY2 = (int)Math.floor(position.y + height + vy);
 			// First check for partial blocks:
 			for(int x = minX; x <= maxX; x++) {
 				for(int z = minZ; z <= maxZ; z++) {
@@ -160,7 +160,7 @@ public class Entity {
 					for(int z = minZ; z <= maxZ; z++) {
 						if(checkBlock(x, maxY2, z, change)) {
 							change.y = 0;
-							position.y = maxY2 - 0.51f - height;
+							position.y = maxY2 - 0.01f - height;
 							break outer;
 						}
 					}
@@ -175,10 +175,10 @@ public class Entity {
 		step = Math.max(step, change.w);
 		change.y = 0;
 		change.z = vz;
-		minY = Math.round(position.y);
-		maxY = Math.round(position.y + height);
+		minY = (int)Math.floor(position.y);
+		maxY = (int)Math.floor(position.y + height);
 		if(vz < 0) {
-			int minZ2 = Math.round(position.z - width + vz);
+			int minZ2 = (int)Math.floor(position.z - width + vz);
 			// First check for partial blocks:
 			for(int x = minX; x <= maxX; x++) {
 				for(int y = minY; y <= maxY; y++) {
@@ -191,14 +191,14 @@ public class Entity {
 					for(int y = minY; y <= maxY; y++) {
 						if(checkBlock(x, y, minZ2, change)) {
 							change.z = 0;
-							position.z = minZ2 + 0.51f + width;
+							position.z = minZ2 + 1.01f + width;
 							break outer;
 						}
 					}
 				}
 			}
 		} else if(vz > 0) {
-			int maxZ2 = Math.round(position.z + width + vz);
+			int maxZ2 = (int)Math.floor(position.z + width + vz);
 			// First check for partial blocks:
 			for(int x = minX; x <= maxX; x++) {
 				for(int y = minY; y <= maxY; y++) {
@@ -211,7 +211,7 @@ public class Entity {
 					for(int y = minY; y <= maxY; y++) {
 						if(checkBlock(x, y, maxZ2, change)) {
 							change.z = 0;
-							position.z = maxZ2 - 0.51f - width;
+							position.z = maxZ2 - 0.01f - width;
 							break outer;
 						}
 					}
@@ -259,8 +259,8 @@ public class Entity {
 				return b.mode.checkEntityAndDoCollision(this, displacement, x, y, z, surface.getBlockData(x, y, z));
 			}
 			// Check for stepping:
-			if(y + 0.5f - position.y > 0 && y + 0.5f - position.y <= stepHeight) {
-				displacement.w = Math.max(displacement.w, y + 0.5f - position.y);
+			if(y + 1 - position.y > 0 && y + 1 - position.y <= stepHeight) {
+				displacement.w = Math.max(displacement.w, y + 1 - position.y);
 				return false;
 			}
 			return true;
@@ -282,8 +282,8 @@ public class Entity {
 	public boolean isOnGround() {
 		// Determine if the entity is on the ground by virtually displacing it by 0.2 below its current position:
 		Vector4f displacement = new Vector4f(0, -0.2f, 0, 0);
-		checkBlock(Math.round(position.x), Math.round(position.y), Math.round(position.z), displacement);
-		if(checkBlock(Math.round(position.x), Math.round(position.y + displacement.y), Math.round(position.z), displacement)) {
+		checkBlock((int)Math.floor(position.x), (int)Math.floor(position.y), (int)Math.floor(position.z), displacement);
+		if(checkBlock((int)Math.floor(position.x), (int)Math.floor(position.y + displacement.y), (int)Math.floor(position.z), displacement)) {
 			return true;
 		}
 		return displacement.y != -0.2f || displacement.w != 0;

@@ -134,14 +134,14 @@ public class OreGenerator implements Generator {
 					// Go through all blocks within range of the vein center and change them if they
 					// are within range of the center.
 					for(int curX = xmin; curX < xmax; ++curX) {
-						double distToCenterX = ((double) (curX + cx*16) + 0.5 - worldX) / scale;
+						double distToCenterX = ((double) (curX + cx*16) - worldX) / scale;
 						
 						for(int curZ = zmin; curZ < zmax; ++curZ) {
-							double distToCenterZ = ((double) (curZ + cz*16) + 0.5 - worldZ) / scale;
+							double distToCenterZ = ((double) (curZ + cz*16) - worldZ) / scale;
 							int curHeightIndex = ymax;
 							if(distToCenterX * distToCenterX + distToCenterZ * distToCenterZ < 1.0) {
 								for(int curY = ymax - 1; curY >= ymin; --curY) {
-									double distToCenterY = ((double) curY + 0.5 - worldY) / scale;
+									double distToCenterY = ((double) curY - worldY) / scale;
 									// The first ore that gets into a position will be placed:
 									if(chunk.getBlockAt(curX, curHeightIndex, curZ) == stone && distToCenterX*distToCenterX + distToCenterY*distToCenterY + distToCenterZ*distToCenterZ < 1.0) {
 										chunk.updateBlock(curX, curHeightIndex, curZ, ore);
