@@ -49,8 +49,8 @@ public class InstancedMesh extends Mesh {
 		return true;
 	}
 	
-	public InstancedMesh(int vao, int count, List<Integer> vaoIds, int numInstances) {
-		super(vao, count, vaoIds);
+	public InstancedMesh(int vao, int count, List<Integer> vaoIds, Model model, int numInstances) {
+		super(vao, count, vaoIds, model);
 		glBindVertexArray(vaoId);
 		modelViewVBO = glGenBuffers();
 		initInstances(numInstances);
@@ -96,15 +96,8 @@ public class InstancedMesh extends Mesh {
 		glBindVertexArray(0);
 	}
 	
-	private float[] positions, textCoords, normals;
-	private int[] indices;
-	
-	public InstancedMesh(float[] positions, float[] textCoords, float[] normals, int[] indices, int numInstances) {
-		super(positions, textCoords, normals, indices);
-		this.positions = positions;
-		this.textCoords = textCoords;
-		this.normals = normals;
-		this.indices = indices;
+	public InstancedMesh(Model model, int numInstances) {
+		super(model);
 		glBindVertexArray(vaoId);
 		modelViewVBO = glGenBuffers();
 		initInstances(numInstances);
@@ -176,7 +169,7 @@ public class InstancedMesh extends Mesh {
 	}
 
 	public Mesh cloneNoMaterial() {
-		Mesh clone = new InstancedMesh(positions, textCoords, normals, indices, 0);
+		Mesh clone = new InstancedMesh(super.model, 0);
 		clone.boundingRadius = boundingRadius;
 		clone.cullFace = cullFace;
 		clone.frustum = frustum;

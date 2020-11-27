@@ -34,6 +34,8 @@ public class Mesh implements Cloneable {
 	protected boolean cullFace = true;
 
 	protected boolean hasNormals;
+	
+	public final Model model;
 
 	public static final Vector4f DEFAULT_COLOR = new Vector4f(0.75f, 0.75f, 0.75f, 1.f);
 
@@ -61,14 +63,15 @@ public class Mesh implements Cloneable {
 		return false;
 	}
 
-	public Mesh(float[] positions, float[] textCoords, float[] normals, int[] indices) {
+	public Mesh(Model model) {
+		this.model = model;
 		FloatBuffer posBuffer = null;
 		FloatBuffer textCoordsBuffer = null;
 		FloatBuffer vecNormalsBuffer = null;
 		IntBuffer indicesBuffer = null;
-		hasNormals = normals.length > 0 || true;
+		hasNormals = model.normals.length > 0 || true;
 		try {
-			vertexCount = indices.length;
+			vertexCount = model.indices.length;
 			vboIdList = new ArrayList<>();
 
 			vaoId = glGenVertexArrays();
@@ -77,8 +80,8 @@ public class Mesh implements Cloneable {
 			// Position VBO
 			int vboId = glGenBuffers();
 			vboIdList.add(vboId);
-			posBuffer = MemoryUtil.memAllocFloat(positions.length);
-			posBuffer.put(positions).flip();
+			posBuffer = MemoryUtil.memAllocFloat(model.positions.length);
+			posBuffer.put(model.positions).flip();
 			glBindBuffer(GL_ARRAY_BUFFER, vboId);
 			glBufferData(GL_ARRAY_BUFFER, posBuffer, GL_STATIC_DRAW);
 			glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, 0);
@@ -86,8 +89,8 @@ public class Mesh implements Cloneable {
 			// Texture coordinates VBO
 			vboId = glGenBuffers();
 			vboIdList.add(vboId);
-			textCoordsBuffer = MemoryUtil.memAllocFloat(textCoords.length);
-			textCoordsBuffer.put(textCoords).flip();
+			textCoordsBuffer = MemoryUtil.memAllocFloat(model.textCoords.length);
+			textCoordsBuffer.put(model.textCoords).flip();
 			glBindBuffer(GL_ARRAY_BUFFER, vboId);
 			glBufferData(GL_ARRAY_BUFFER, textCoordsBuffer, GL_STATIC_DRAW);
 			glVertexAttribPointer(1, 2, GL_FLOAT, false, 0, 0);
@@ -95,8 +98,8 @@ public class Mesh implements Cloneable {
 			// Vertex normals VBO
 			vboId = glGenBuffers();
 			vboIdList.add(vboId);
-			vecNormalsBuffer = MemoryUtil.memAllocFloat(normals.length);
-			vecNormalsBuffer.put(normals).flip();
+			vecNormalsBuffer = MemoryUtil.memAllocFloat(model.normals.length);
+			vecNormalsBuffer.put(model.normals).flip();
 			glBindBuffer(GL_ARRAY_BUFFER, vboId);
 			glBufferData(GL_ARRAY_BUFFER, vecNormalsBuffer, GL_STATIC_DRAW);
 			glVertexAttribPointer(2, 3, GL_FLOAT, false, 0, 0);
@@ -104,8 +107,8 @@ public class Mesh implements Cloneable {
 			// Index VBO
 			vboId = glGenBuffers();
 			vboIdList.add(vboId);
-			indicesBuffer = MemoryUtil.memAllocInt(indices.length);
-			indicesBuffer.put(indices).flip();
+			indicesBuffer = MemoryUtil.memAllocInt(model.indices.length);
+			indicesBuffer.put(model.indices).flip();
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboId);
 			glBufferData(GL_ELEMENT_ARRAY_BUFFER, indicesBuffer, GL_STATIC_DRAW);
 
@@ -127,7 +130,8 @@ public class Mesh implements Cloneable {
 		}
 	}
 
-	protected Mesh(int vao, int count, List<Integer> vboId) {
+	protected Mesh(int vao, int count, List<Integer> vboId, Model model) {
+		this.model = model;
 		vertexCount = count;
 		vaoId = vao;
 		vboIdList = vboId;
@@ -144,7 +148,7 @@ public class Mesh implements Cloneable {
 	 * different
 	 */
 	public Mesh cloneNoMaterial() {
-		Mesh clone = new Mesh(vaoId, vertexCount, vboIdList);
+		Mesh clone = new Mesh(vaoId, vertexCount, vboIdList, model);
 		clone.boundingRadius = boundingRadius;
 		clone.cullFace = cullFace;
 		clone.frustum = frustum;

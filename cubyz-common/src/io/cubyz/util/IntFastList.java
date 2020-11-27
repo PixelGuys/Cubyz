@@ -1,17 +1,18 @@
 package io.cubyz.util;
 
+import java.lang.reflect.Array;
 import java.util.Comparator;
 
 /** 
- * A faster list implementation.
- * Velocity is reached by sacrificing bound checks, by keeping some additional memory
+ * A faster list implementation.<br>
+ * Velocity is reached by sacrificing bound checks, by keeping some additional memory<br>
  * (When removing elements they are not necessarily cleared from the array) and through direct data access.
 **/
+
 public class IntFastList {
 
 	public int[] array;
 	public int size = 0;
-	private static final int arrayIncrease = 20; // this allow to use less array re-allocations
 
 	@SuppressWarnings("unchecked")
 	public IntFastList(int initialCapacity) {
@@ -49,20 +50,29 @@ public class IntFastList {
 	
 	public void add(int obj) {
 		if (size == array.length)
-			increaseSize(arrayIncrease);
+			increaseSize(array.length/2 + 1);
 		array[size] = obj;
 		size++;
 	}
 	
-	public void removeIndex(int index) {
+	public void add(int[] obj) {
+		if (size + obj.length == array.length)
+			increaseSize(Math.max(array.length*3/2, array.length + obj.length));
+		for(int o : obj) {
+			array[size] = o;
+			size++;
+		}
+	}
+	
+	public void removeInd(int index) {
 		System.arraycopy(array, index+1, array, index, array.length-index-1);
 		size--;
 	}
 	
-	public void removeValue(int t) {
+	public void removeEl(int t) {
 		for(int i = size-1; i >= 0; i--) {
 			if(array[i] == t)
-				removeIndex(i); // Don't break here in case of multiple occurrence.
+				removeInd(i); // Don't break here in case of multiple occurrence.
 		}
 	}
 	

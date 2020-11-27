@@ -15,6 +15,10 @@ import java.nio.file.Path;
  */
 public class TemplateToPrimitive {
 	public static void main(String[] args) {
+		if(args.length < 2) {
+			System.out.println("Usage: \njava TemplateToPrimitive <file> <primitive>");
+			System.exit(1);
+		}
 		String primitive = args[1];
 		String file = "";
 		try (BufferedReader br = new BufferedReader(new FileReader(args[0]))) {

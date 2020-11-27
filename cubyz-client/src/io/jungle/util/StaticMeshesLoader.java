@@ -19,6 +19,7 @@ import org.lwjgl.assimp.Assimp;
 
 import io.jungle.InstancedMesh;
 import io.jungle.Mesh;
+import io.jungle.Model;
 import io.jungle.Texture;
 
 import static org.lwjgl.assimp.Assimp.*;
@@ -134,8 +135,8 @@ public class StaticMeshesLoader {
 		processTextCoords(aiMesh, textures);
 		processIndices(aiMesh, indices);
 
-		Mesh mesh = new Mesh(vertices, Utils.listToArray(textures), Utils.listToArray(normals),
-				Utils.listIntToArray(indices));
+		Mesh mesh = new Mesh(new Model(vertices, Utils.listToArray(textures), Utils.listToArray(normals),
+				Utils.listIntToArray(indices)));
 		Material material;
 		int materialIdx = aiMesh.mMaterialIndex();
 		if (materialIdx >= 0 && materialIdx < materials.size()) {
@@ -157,8 +158,8 @@ public class StaticMeshesLoader {
 		processNormals(aiMesh, normals);
 		processTextCoords(aiMesh, textures);
 		processIndices(aiMesh, indices);
-		InstancedMesh mesh = new InstancedMesh(vertices, Utils.listToArray(textures), Utils.listToArray(normals),
-				Utils.listIntToArray(indices), 0);
+		InstancedMesh mesh = new InstancedMesh(new Model(vertices, Utils.listToArray(textures), Utils.listToArray(normals),
+				Utils.listIntToArray(indices)), 0);
 		Material material;
 		int materialIdx = aiMesh.mMaterialIndex();
 		if (materialIdx >= 0 && materialIdx < materials.size()) {

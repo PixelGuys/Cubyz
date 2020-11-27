@@ -8,9 +8,13 @@ import org.joml.Vector4f;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.RotationMode;
+import io.cubyz.client.Meshes;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
+import io.cubyz.util.FloatFastList;
+import io.cubyz.util.IntFastList;
 import io.cubyz.world.BlockSpatial;
+import io.jungle.Mesh;
 
 /**
  * The default RotationMode that places the block in the grid without translation or rotation.
@@ -71,5 +75,10 @@ public class NoRotation implements RotationMode {
 	@Override
 	public boolean checkEntityAndDoCollision(Entity arg0, Vector4f arg1, int x, int y, int z, byte arg2) {
 		return true;
+	}
+	
+	@Override
+	public void generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
+		Meshes.blockMeshes.get(bi.getBlock()).model.addToChunkMesh(bi.x & 15, bi.y, bi.z & 15, bi.light, vertices, normals, faces, lighting, texture);
 	}
 }

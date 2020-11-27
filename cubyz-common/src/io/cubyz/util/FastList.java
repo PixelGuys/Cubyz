@@ -13,7 +13,6 @@ public class FastList<T> {
 
 	public T[] array;
 	public int size = 0;
-	private static final int arrayIncrease = 20; // this allow to use less array re-allocations
 
 	@SuppressWarnings("unchecked")
 	public FastList(int initialCapacity, Class<T> type) {
@@ -51,9 +50,18 @@ public class FastList<T> {
 	
 	public void add(T obj) {
 		if (size == array.length)
-			increaseSize(arrayIncrease);
+			increaseSize(array.length/2 + 1);
 		array[size] = obj;
 		size++;
+	}
+	
+	public void add(T[] obj) {
+		if (size + obj.length == array.length)
+			increaseSize(Math.max(array.length*3/2, array.length + obj.length));
+		for(T o : obj) {
+			array[size] = o;
+			size++;
+		}
 	}
 	
 	public void remove(int index) {

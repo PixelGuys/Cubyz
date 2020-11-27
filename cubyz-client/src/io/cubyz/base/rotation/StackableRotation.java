@@ -8,8 +8,11 @@ import org.joml.Vector4f;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.RotationMode;
+import io.cubyz.client.Meshes;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
+import io.cubyz.util.FloatFastList;
+import io.cubyz.util.IntFastList;
 import io.cubyz.world.BlockSpatial;
 
 /**
@@ -73,7 +76,7 @@ public class StackableRotation implements RotationMode {
 	@Override
 	public float getRayIntersection(RayAabIntersection intersection, BlockInstance bi, Vector3f min, Vector3f max, Vector3f transformedPosition) {
 		max.add(0, bi.getData()/16.0f - 1.0f, 0);
-		// Because of the huge number of different BlockInstances that will be tested, it is more efficient to use RayAabIntersection and determine the distance sperately:
+		// Because of the huge number of different BlockInstances that will be tested, it is more efficient to use RayAabIntersection and determine the distance seperately:
 		if (intersection.test(min.x, min.y, min.z, max.x, max.y, max.z)) {
 			return min.add(0.5f, bi.getData()/32.0f, 0.5f).sub(transformedPosition).length();
 		} else {
@@ -109,5 +112,11 @@ public class StackableRotation implements RotationMode {
 			vel.y = y + data/16.0f + 0.01f - ent.getPosition().y;
 		}
 		return false;
+	}
+	
+	@Override
+	public void generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
+		// TODO: Perform face cutting.
+		Meshes.blockMeshes.get(bi.getBlock()).model.addToChunkMesh(bi.x & 15, bi.y, bi.z & 15, bi.light, vertices, normals, faces, lighting, texture);
 	}
 }

@@ -8,8 +8,11 @@ import org.joml.Vector4f;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.RotationMode;
+import io.cubyz.client.Meshes;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
+import io.cubyz.util.FloatFastList;
+import io.cubyz.util.IntFastList;
 import io.cubyz.world.BlockSpatial;
 
 import static io.cubyz.Constants.PI;
@@ -18,8 +21,10 @@ import static io.cubyz.Constants.PI_HALF;
 /**
  * Used to manipulate individual faces of transparent blocks.<br>
  * Doesn't really work good(it only allows for rectangular faces).
+ * Will be replaced soon.
  */
 
+@Deprecated
 public class TransparentRotation implements RotationMode {
 	
 	Resource id = new Resource("cubyz", "transparent");
@@ -117,5 +122,10 @@ public class TransparentRotation implements RotationMode {
 	@Override
 	public boolean checkEntityAndDoCollision(Entity arg0, Vector4f arg1, int x, int y, int z, byte arg2) {
 		return true;
+	}
+	
+	@Override
+	public void generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
+		Meshes.blockMeshes.get(bi.getBlock()).model.addToChunkMesh(bi.x & 15, bi.y, bi.z & 15, bi.light, vertices, normals, faces, lighting, texture);
 	}
 }

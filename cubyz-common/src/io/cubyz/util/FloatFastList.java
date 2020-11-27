@@ -1,17 +1,18 @@
 package io.cubyz.util;
 
+import java.lang.reflect.Array;
 import java.util.Comparator;
 
 /** 
- * A faster list implementation.
- * Velocity is reached by sacrificing bound checks, by keeping some additional memory
+ * A faster list implementation.<br>
+ * Velocity is reached by sacrificing bound checks, by keeping some additional memory<br>
  * (When removing elements they are not necessarily cleared from the array) and through direct data access.
 **/
+
 public class FloatFastList {
 
 	public float[] array;
 	public int size = 0;
-	private static final int arrayIncrease = 20; // this allow to use less array re-allocations
 
 	@SuppressWarnings("unchecked")
 	public FloatFastList(int initialCapacity) {
@@ -49,9 +50,18 @@ public class FloatFastList {
 	
 	public void add(float obj) {
 		if (size == array.length)
-			increaseSize(arrayIncrease);
+			increaseSize(array.length/2 + 1);
 		array[size] = obj;
 		size++;
+	}
+	
+	public void add(float[] obj) {
+		if (size + obj.length == array.length)
+			increaseSize(Math.max(array.length*3/2, array.length + obj.length));
+		for(float o : obj) {
+			array[size] = o;
+			size++;
+		}
 	}
 	
 	public void remove(int index) {

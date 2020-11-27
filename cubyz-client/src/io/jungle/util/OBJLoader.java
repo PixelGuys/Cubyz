@@ -11,6 +11,7 @@ import org.joml.Vector3f;
 
 import io.jungle.InstancedMesh;
 import io.jungle.Mesh;
+import io.jungle.Model;
 
 public class OBJLoader {
 
@@ -100,7 +101,7 @@ public class OBJLoader {
 		}
 		int[] indicesArr = new int[indices.size()];
 		indicesArr = indices.stream().mapToInt((Integer v) -> v).toArray();
-		Mesh mesh = new Mesh(posArr, textCoordArr, normArr, indicesArr);
+		Mesh mesh = new Mesh(new Model(posArr, textCoordArr, normArr, indicesArr));
 		return mesh;
 	}
 	
@@ -128,7 +129,7 @@ public class OBJLoader {
 		}
 		int[] indicesArr = new int[indices.size()];
 		indicesArr = indices.stream().mapToInt((Integer v) -> v).toArray();
-		InstancedMesh mesh = new InstancedMesh(posArr, textCoordArr, normArr, indicesArr, 0);
+		InstancedMesh mesh = new InstancedMesh(new Model(posArr, textCoordArr, normArr, indicesArr), 0);
 		return mesh;
 	}
 

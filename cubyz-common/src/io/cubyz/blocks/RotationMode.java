@@ -8,6 +8,8 @@ import org.joml.Vector4f;
 import io.cubyz.api.RegistryElement;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
+import io.cubyz.util.FloatFastList;
+import io.cubyz.util.IntFastList;
 
 /**
  * Each block gets 8 bit of additional storage(apart from the reference to the block type).<br>
@@ -16,6 +18,17 @@ import io.cubyz.entity.Player;
  */
 
 public interface RotationMode extends RegistryElement {
+	/**
+	 * Called when generating the chunk mesh.
+	 * @param bi
+	 * @param vertices
+	 * @param normals
+	 * @param faces
+	 * @param lighting
+	 * @param texture
+	 */
+	public void generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture);
+	
 	public Object[] generateSpatials(BlockInstance bi, byte data, Player player, int worldSizeX, int worldSizeZ);
 	// currentData will be 0 if the blockTypes don't match.
 	public byte generateData(Vector3i placementPosition, byte currentData);

@@ -8,8 +8,11 @@ import org.joml.Vector4f;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.RotationMode;
+import io.cubyz.client.Meshes;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
+import io.cubyz.util.FloatFastList;
+import io.cubyz.util.IntFastList;
 import io.cubyz.world.BlockSpatial;
 
 /**
@@ -146,5 +149,11 @@ public class TorchRotation implements RotationMode {
 	@Override
 	public boolean checkEntityAndDoCollision(Entity arg0, Vector4f arg1, int x, int y, int z, byte arg2) {
 		return true;
+	}
+	
+	@Override
+	public void generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
+		// TODO: Add rotation and translation.
+		Meshes.blockMeshes.get(bi.getBlock()).model.addToChunkMesh(bi.x & 15, bi.y, bi.z & 15, bi.light, vertices, normals, faces, lighting, texture);
 	}
 }
