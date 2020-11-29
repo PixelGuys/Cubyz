@@ -56,7 +56,7 @@ public class IntFastList {
 	}
 	
 	public void add(int[] obj) {
-		if (size + obj.length == array.length)
+		if (size + obj.length >= array.length)
 			increaseSize(Math.max(array.length*3/2, array.length + obj.length));
 		for(int o : obj) {
 			array[size] = o;

@@ -23,7 +23,7 @@ import io.cubyz.world.generator.SurfaceGenerator;
  * A 16×WORLD_HEIGHT×16 big chunk of the world map.
  */
 
-public class NormalChunk implements Chunk {
+public class NormalChunk extends Chunk {
 	// used for easy for-loop access of neighbors and their relative direction:
 	// East, West, South, North, Down, Up.
 	private static final int[] neighborRelativeX = {-1, 1, 0, 0, 0, 0};
@@ -41,6 +41,7 @@ public class NormalChunk implements Chunk {
 	private int cx, cz;
 	private int wx, wz;
 	private boolean generated;
+	private boolean startedloading;
 	private boolean loaded;
 	private ArrayList<BlockEntity> blockEntities = new ArrayList<>();
 	
@@ -81,12 +82,12 @@ public class NormalChunk implements Chunk {
 	}
 	// Loads the chunk
 	public void load() {
-		if(loaded) {
+		if(startedloading) {
 			// Empty the list, so blocks won't get added twice. This will also be important, when there is a manual chunk reloading.
 			clear();
 		}
 		
-		loaded = true;
+		startedloading = true;
 		NormalChunk [] chunks = new NormalChunk[4];
 		NormalChunk ch = surface.getChunk(cx - 1, cz);
 		chunks[0] = ch;
@@ -274,6 +275,7 @@ public class NormalChunk implements Chunk {
 				}
 			}
 		}
+		loaded = true;
 	}
 	
 	// Function calls are faster than two pointer references, which would happen when using a 3D-array, and functions can additionally be inlined by the VM.
@@ -535,7 +537,7 @@ public class NormalChunk implements Chunk {
 			maxLight = Math.max(maxLight, applyNeighbors(light[index-16], shift, neighbors[0], neighbors[1], neighbors[2], neighbors[3]));
 		} else {
 			NormalChunk chunk = surface.getChunk(cx-1, cz);
-			if(chunk != null && chunk.isLoaded()) {
+			if(chunk != null && chunk.startedloading) {
 				maxLight = Math.max(maxLight, applyNeighbors(chunk.light[index | 0xf0], shift, neighbors[0], neighbors[1], neighbors[2], neighbors[3]));
 			}
 		}
@@ -543,7 +545,7 @@ public class NormalChunk implements Chunk {
 			maxLight = Math.max(maxLight, applyNeighbors(light[index+16], shift, neighbors[4], neighbors[5], neighbors[6], neighbors[7]));
 		} else {
 			NormalChunk chunk = surface.getChunk(cx+1, cz);
-			if(chunk != null && chunk.isLoaded()) {
+			if(chunk != null && chunk.startedloading) {
 				maxLight = Math.max(maxLight, applyNeighbors(chunk.light[index & ~0xf0], shift, neighbors[4], neighbors[5], neighbors[6], neighbors[7]));
 			}
 		}
@@ -551,7 +553,7 @@ public class NormalChunk implements Chunk {
 			maxLight = Math.max(maxLight, applyNeighbors(light[index-1], shift, neighbors[0], neighbors[2], neighbors[4], neighbors[6]));
 		} else {
 			NormalChunk chunk = surface.getChunk(cx, cz-1);
-			if(chunk != null && chunk.isLoaded()) {
+			if(chunk != null && chunk.startedloading) {
 				maxLight = Math.max(maxLight, applyNeighbors(chunk.light[index | 0xf], shift, neighbors[0], neighbors[2], neighbors[4], neighbors[6]));
 			}
 		}
@@ -559,7 +561,7 @@ public class NormalChunk implements Chunk {
 			maxLight = Math.max(maxLight, applyNeighbors(light[index+1], shift, neighbors[1], neighbors[3], neighbors[5], neighbors[7]));
 		} else {
 			NormalChunk chunk = surface.getChunk(cx, cz+1);
-			if(chunk != null && chunk.isLoaded()) {
+			if(chunk != null && chunk.startedloading) {
 				maxLight = Math.max(maxLight, applyNeighbors(chunk.light[index & ~0xf], shift, neighbors[1], neighbors[3], neighbors[5], neighbors[7]));
 			}
 		}
@@ -751,7 +753,7 @@ public class NormalChunk implements Chunk {
 			changes.get(index).newType = b.ID;
 			changes.get(index).newData = data;
 		}
-		if(loaded)
+		if(startedloading)
 			lightUpdate(x, y, z);
 	}
 	
@@ -842,7 +844,7 @@ public class NormalChunk implements Chunk {
 		for(int k = 0; k < 6; k++) {
 			if(visibleNeighbors[k] != null) visibleNeighbors[k].updateNeighbor(k ^ 1, false, surface.getStellarTorus().getWorld().getLocalPlayer());
 		}
-		if(loaded)
+		if(startedloading)
 			lightUpdate(x, y, z);
 		Block[] neighbors = getNeighbors(x, y, z);
 		for (int i = 0; i < neighbors.length; i++) {

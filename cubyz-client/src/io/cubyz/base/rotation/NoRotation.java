@@ -79,6 +79,6 @@ public class NoRotation implements RotationMode {
 	
 	@Override
 	public void generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
-		Meshes.blockMeshes.get(bi.getBlock()).model.addToChunkMesh(bi.x & 15, bi.y, bi.z & 15, bi.light, vertices, normals, faces, lighting, texture);
+		Meshes.blockMeshes.get(bi.getBlock()).model.addToChunkMesh(bi.x & 15, bi.y, bi.z & 15, bi.getBlock().atlasX, bi.getBlock().atlasY, bi.light, vertices, normals, faces, lighting, texture);
 	}
 }

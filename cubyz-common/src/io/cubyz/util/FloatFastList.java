@@ -56,7 +56,7 @@ public class FloatFastList {
 	}
 	
 	public void add(float[] obj) {
-		if (size + obj.length == array.length)
+		if (size + obj.length >= array.length)
 			increaseSize(Math.max(array.length*3/2, array.length + obj.length));
 		for(float o : obj) {
 			array[size] = o;

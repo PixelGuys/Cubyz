@@ -113,6 +113,9 @@ public class ReducedChunkMesh {
 			glBindBuffer(GL_ARRAY_BUFFER, 0);
 			glBindVertexArray(0);
 		} finally {
+			if (normalBuffer != null) {
+				MemoryUtil.memFree(normalBuffer);
+			}
 			if (posBuffer != null) {
 				MemoryUtil.memFree(posBuffer);
 			}

@@ -15,7 +15,7 @@ import io.cubyz.save.BlockChange;
  * For performance reasons, Cubyz uses a pretty simple downscaling algorithm: Only take every resolutionth voxel in each dimension.<br>
  */
 
-public class ReducedChunk implements Chunk {
+public class ReducedChunk extends Chunk {
 	/**The current surface the player is on.*/
 	public static Surface surface;
 	public ArrayList<BlockChange> changes;
@@ -32,11 +32,7 @@ public class ReducedChunk implements Chunk {
 	public final int width;
 	/** =log₂(width)*/
 	public final int widthShift;
-	/**
-	 * Used for rendering only.
-	 * Do not change!
-	 */
-	public Object mesh = null;
+	
 	public ReducedChunk(int cx, int cz, int resolutionShift, int widthShift, ArrayList<BlockChange> changes) {
 		this.cx = cx;
 		this.cz = cz;

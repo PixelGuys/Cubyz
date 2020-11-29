@@ -33,6 +33,8 @@ public class Meshes {
 	
 	public static Mesh transparentBlockMesh;
 	public static int transparentAtlasSize;
+	public static int atlasSize;
+	public static Texture atlas;
 	
 
 	public static final HashMap<String, InstancedMesh> cachedDefaultModels = new HashMap<>();
@@ -48,6 +50,8 @@ public class Meshes {
 			for(Object mesh : removableMeshes) {
 				if(mesh instanceof ReducedChunkMesh) {
 					((ReducedChunkMesh) mesh).cleanUp();
+				} else if(mesh instanceof NormalChunkMesh) {
+					((NormalChunkMesh) mesh).cleanUp();
 				} else if(mesh instanceof Mesh) {
 					((Mesh) mesh).cleanUp();
 				}
@@ -143,7 +147,7 @@ public class Meshes {
 		
 		ClientOnly.deleteChunkMesh = (chunk) -> {
 			synchronized(removableMeshes) {
-				removableMeshes.add(chunk.mesh);
+				removableMeshes.add(chunk.getChunkMesh());
 			}
 		};
 	}

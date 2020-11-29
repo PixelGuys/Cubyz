@@ -56,7 +56,7 @@ public class FastList<T> {
 	}
 	
 	public void add(T[] obj) {
-		if (size + obj.length == array.length)
+		if (size + obj.length >= array.length)
 			increaseSize(Math.max(array.length*3/2, array.length + obj.length));
 		for(T o : obj) {
 			array[size] = o;

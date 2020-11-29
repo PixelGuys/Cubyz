@@ -3,9 +3,7 @@
 layout (location=0)  in vec3 position;
 layout (location=1)  in vec2 texCoord;
 layout (location=2)  in vec3 vertexNormal;
-layout (location=3)  in mat3x4 modelViewMatrix;
-layout (location=6)  in int easyLight[8];
-layout (location=14) in int selected;
+layout (location=3)  in int easyLight;
 
 out vec2 outTexCoord;
 out vec3 mvVertexPos;
@@ -16,6 +14,7 @@ uniform mat4 projectionMatrix;
 uniform vec3 ambientLight;
 uniform vec3 directionalLight;
 uniform mat4 viewMatrix;
+uniform vec3 modelPosition;
 
 vec3 calcLight(int srgb)
 {
@@ -32,26 +31,9 @@ vec3 calcLight(int srgb)
 
 void main()
 {
-	selectionData = selected;
-	outColor = 0.003890625*(
-						(1 - position.x)*(
-							(1 - position.y)*(
-								  (1 - position.z)*calcLight(easyLight[0])
-								+ (position.z)*calcLight(easyLight[1])
-							) + (position.y)*(
-								  (1 - position.z)*calcLight(easyLight[2])
-								+ (position.z)*calcLight(easyLight[3])
-							)
-						) + (position.x)*(
-							(1 - position.y)*(
-								(1 - position.z)*calcLight(easyLight[4])
-								+(position.z)*calcLight(easyLight[5])
-							) + (position.y)*(
-								  (1 - position.z)*calcLight(easyLight[6])
-								+ (position.z)*calcLight(easyLight[7])
-							)
-						));
-	vec4 mvPos = viewMatrix*vec4(vec4(position, 1)*modelViewMatrix, 1);
+	selectionData = 0;
+	outColor = calcLight(easyLight)*0.003890625;
+	vec4 mvPos = viewMatrix*vec4(position + modelPosition, 1);
 	gl_Position = projectionMatrix*mvPos;
     outTexCoord = texCoord;
     mvVertexPos = mvPos.xyz;

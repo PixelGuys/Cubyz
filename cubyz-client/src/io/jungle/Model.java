@@ -1,5 +1,6 @@
 package io.jungle;
 
+import io.cubyz.client.Meshes;
 import io.cubyz.util.FloatFastList;
 import io.cubyz.util.IntFastList;
 
@@ -37,7 +38,7 @@ public class Model {
 		return (int)(srgb[0])<<24 | (int)(srgb[1])<<16 | (int)(srgb[2])<<8 | (int)(srgb[3]);
 	}
 	
-	public void addToChunkMesh(int x, int y, int z, int[] light, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
+	public void addToChunkMesh(int x, int y, int z, float offsetX, float offsetY, int[] light, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
 		int indexOffset = vertices.size/3;
 		for(int i = 0; i < positions.length; i += 3) {
 			vertices.add(positions[i] + x);
@@ -53,8 +54,8 @@ public class Model {
 		
 		for(int i = 0; i < textCoords.length; i += 2) {
 			// TODO: Use atlas specific coordinates!
-			texture.add(textCoords[i]);
-			texture.add(textCoords[i+1]);
+			texture.add((textCoords[i] + offsetX)/Meshes.atlasSize);
+			texture.add((textCoords[i+1] + offsetY)/Meshes.atlasSize);
 		}
 		
 		normals.add(this.normals);

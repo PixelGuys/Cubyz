@@ -635,6 +635,7 @@ public class LocalSurface extends Surface {
 				tio.saveChunk(chunks[k]); // Only needs to be stored if it was ever generated.
 			else
 				unQueueChunk(chunks[k]);
+			ClientOnly.deleteChunkMesh.accept(chunks[k]);
 		}
 		chunks = newVisibles;
 		lastX = x;

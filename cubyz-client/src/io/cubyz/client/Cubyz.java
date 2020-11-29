@@ -236,13 +236,18 @@ public class Cubyz implements GameLogic, ClientConnection {
 		}
 		// Generate the texture atlas for this surface's truly transparent blocks:
 		ArrayList<Block> trulyTransparents = new ArrayList<>();
+		ArrayList<Block> nonTransparents = new ArrayList<>();
 		Meshes.transparentBlockMesh = Meshes.cachedDefaultModels.get("cubyz:plane.obj");
 		for(RegistryElement element : surface.getCurrentRegistries().blockRegistry.registered()) {
 			Block block = (Block)element;
 			if(Meshes.blockMeshes.get(block) == Meshes.transparentBlockMesh) {
 				trulyTransparents.add(block);
+			} else {
+				nonTransparents.add(block);
 			}
 		}
+		
+		// transparent-only atlas:
 		Meshes.transparentAtlasSize = (int)Math.ceil(Math.sqrt(trulyTransparents.size()));
 		int maxSize = 16; // Scale all textures so they fit the size of the biggest texture.
 		// Get the textures for those blocks:
@@ -276,6 +281,53 @@ public class Cubyz implements GameLogic, ClientConnection {
 			}
 		}
 		Meshes.transparentBlockMesh.getMaterial().setTexture(new Texture(TextureConverter.fromBufferedImage(atlas)));
+		
+		
+		// non-transparent atlas:
+		Meshes.atlasSize = (int)Math.ceil(Math.sqrt(nonTransparents.size()));
+		maxSize = 16; // Scale all textures so they fit the size of the biggest texture.
+		// Get the textures for those blocks:
+		blockTextures.clear();
+		for(Block block : nonTransparents) {
+			BufferedImage texture = ResourceUtilities.loadBlockTextureToBufferedImage(block.getRegistryID());
+			if(texture != null) {
+			} else if(block instanceof CustomOre) {
+				CustomOre ore = (CustomOre)block;
+				BufferedImage stone = getImage("addons/cubyz/blocks/textures/stone.png");
+				texture = CustomOre.generateOreTexture(stone, ore.seed, ore.color, ore.shinyness);
+			} else {
+				texture = ResourceUtilities.loadBlockTextureToBufferedImage(new Resource("cubyz", "undefined"));
+			}
+			maxSize = Math.max(maxSize, Math.max(texture.getWidth(), texture.getHeight()));
+			blockTextures.add(texture);
+		}
+		// Put the textures into the atlas
+		atlas = new BufferedImage(maxSize*Meshes.atlasSize, maxSize*Meshes.atlasSize, BufferedImage.TYPE_INT_ARGB);
+		x = 0;
+		y = 0;
+		for(int i = 0; i < blockTextures.size(); i++) {
+			BufferedImage img = blockTextures.get(i);
+			if(img != null) {
+				// Copy and scale the image onto the atlas:
+				for(int x2 = 0; x2 < maxSize; x2++) {
+					for(int y2 = 0; y2 < maxSize; y2++) {
+						atlas.setRGB(x*maxSize + x2, y*maxSize + y2, img.getRGB(x2*img.getWidth()/maxSize, y2*img.getHeight()/maxSize));
+					}
+				}
+			}
+			nonTransparents.get(i).atlasX = x;
+			nonTransparents.get(i).atlasY = y;
+			System.out.println(x+" "+y+" "+nonTransparents.get(i).getRegistryID());
+			x++;
+			if(x == Meshes.atlasSize) {
+				x = 0;
+				y++;
+			}
+		}
+		try {
+			ImageIO.write(atlas, "png", new File("test.png"));
+		} catch(Exception e) {}
+		Meshes.atlas = new Texture(TextureConverter.fromBufferedImage(atlas));
 		
 		
 		SoundSource ms = Cubyz.instance.musicSource;

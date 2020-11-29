@@ -1,12 +1,14 @@
 package io.cubyz.world;
 
+import io.cubyz.ClientOnly;
 import io.cubyz.blocks.Block;
 
 /**
  * Common interface for chunks of all scales and sizes.
  */
 
-public interface Chunk {
+public abstract class Chunk {
+	private Object chunkMesh = null;
 	
 	/**
 	 * This is useful to convert for loops to work for reduced resolution:<br>
@@ -17,7 +19,7 @@ public interface Chunk {
 	 * @param index The normal starting index(for normal generation).
 	 * @return the next higher index that is inside the grid of this chunk.
 	 */
-	public int startIndex(int start);
+	public abstract int startIndex(int start);
 	
 	/**
 	 * Updates a block if current value is 0 (air) and if it is inside this chunk.<br>
@@ -27,7 +29,7 @@ public interface Chunk {
 	 * @param z relative z without considering resolution.
 	 * @param newBlock
 	 */
-	public void updateBlockIfAir(int x, int y, int z, Block newBlock);
+	public abstract void updateBlockIfAir(int x, int y, int z, Block newBlock);
 	
 	/**
 	 * Updates a block if it is inside this chunk.<br>
@@ -37,7 +39,7 @@ public interface Chunk {
 	 * @param z relative z without considering resolution.
 	 * @param newBlock
 	 */
-	public void updateBlock(int x, int y, int z, Block newBlock);
+	public abstract void updateBlock(int x, int y, int z, Block newBlock);
 	
 	/**
 	 * Updates a block if it is inside this chunk and sets its block data to the specified value(if blockdata is supported).<br>
@@ -48,7 +50,7 @@ public interface Chunk {
 	 * @param newBlock
 	 * @param data block data.
 	 */
-	public void updateBlock(int x, int y, int z, Block newBlock, byte data);
+	public abstract void updateBlock(int x, int y, int z, Block newBlock, byte data);
 	
 	/**
 	 * Checks if the given <b>relative</b> coordinates lie within the resolved grid of this chunk.
@@ -56,30 +58,48 @@ public interface Chunk {
 	 * @param z
 	 * @return
 	 */
-	public boolean liesInChunk(int x, int z);
+	public abstract boolean liesInChunk(int x, int z);
 	
 	/**
 	 * Checks if the given y coordinate lie within the resolved grid of this chunk.
 	 * @param y
 	 * @return
 	 */
-	public boolean liesInChunk(int y);
+	public abstract boolean liesInChunk(int y);
 	
 	/**
 	 * @return The size of one voxel unit inside the given Chunk.
 	 */
-	public int getVoxelSize();
+	public abstract int getVoxelSize();
 	
 	/**
 	 * @return starting x coordinate of this chunk relative to the current surface.
 	 */
-	public int getWorldX();
+	public abstract int getWorldX();
 	/**
 	 * @return starting z coordinate of this chunk relative to the current surface.
 	 */
-	public int getWorldZ();
+	public abstract int getWorldZ();
 	/**
 	 * @return this chunks width.
 	 */
-	public int getWidth();
+	public abstract int getWidth();
+	
+	/**
+	 * Store a chunk mesh in this chunk.
+	 * @param mesh
+	 */
+	public void setChunkMesh(Object mesh) {
+		if(chunkMesh != null)
+			ClientOnly.deleteChunkMesh.accept(this);
+		chunkMesh = mesh;
+	}
+	
+	/**
+	 * Returns the currently stored chunk mesh.
+	 * @return mesh
+	 */
+	public Object getChunkMesh() {
+		return chunkMesh;
+	}
 }

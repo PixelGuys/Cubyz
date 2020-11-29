@@ -1,5 +1,9 @@
 package io.cubyz.client;
 
+import static org.lwjgl.opengl.GL11.GL_TEXTURE_2D;
+import static org.lwjgl.opengl.GL11.glBindTexture;
+import static org.lwjgl.opengl.GL13.GL_TEXTURE0;
+import static org.lwjgl.opengl.GL13.glActiveTexture;
 import static org.lwjgl.opengl.GL13C.*;
 
 import org.joml.FrustumIntersection;
@@ -101,6 +105,7 @@ public class MainRenderer implements Renderer {
 		blockShader.createUniform("ambientLight");
 		blockShader.createUniform("directionalLight");
 		blockShader.createUniform("materialHasTexture");
+		blockShader.createUniform("modelPosition");
 		blockShader.createUniform("hasAtlas");
 		blockShader.createUniform("atlasSize");
 		blockShader.createFogUniform("fog");
@@ -232,10 +237,10 @@ public class MainRenderer implements Renderer {
 			float y0 = playerPosition.y + Player.cameraHeight;
 			chunks = sortChunks(chunks, x0/16 - 0.5f, z0/16 - 0.5f);
 			for (NormalChunk ch : chunks) {
-				int currentSortingIndex = map[transparentIndex].size;
-				if (!frustumInt.testAab(ch.getMin(x0, z0, worldSizeX, worldSizeZ), ch.getMax(x0, z0, worldSizeX, worldSizeZ)))
+				//int currentSortingIndex = map[transparentIndex].size;
+				if (!ch.isLoaded() || !frustumInt.testAab(ch.getMin(x0, z0, worldSizeX, worldSizeZ), ch.getMax(x0, z0, worldSizeX, worldSizeZ)))
 					continue;
-				int length = ch.getVisibles().size;
+				/*int length = ch.getVisibles().size;
 				BlockInstance[] vis = ch.getVisibles().array;
 				for (int i = 0; i < length; i++) {
 					BlockInstance bi = vis[i];
@@ -288,7 +293,42 @@ public class MainRenderer implements Renderer {
 					map[b.ID].sort((sa, sb) -> {
 						return (int) -Math.signum(sa.distance - sb.distance);
 					}, currentSortingIndex, map[transparentIndex].size - 1);
+				}*/
+				
+				blockShader.bind();
+				
+				blockShader.setUniform("fog", ctx.getFog());
+				blockShader.setUniform("projectionMatrix", ctx.getWindow().getProjectionMatrix());
+				blockShader.setUniform("texture_sampler", 0);
+				blockShader.setUniform("break_sampler", 2);
+				blockShader.setUniform("viewMatrix", ctx.getCamera().getViewMatrix());
+
+				blockShader.setUniform("ambientLight", ambientLight);
+				blockShader.setUniform("directionalLight", directionalLight.getDirection());
+				
+				
+				blockShader.setUniform("modelPosition", ch.getMin(x0, z0, worldSizeX, worldSizeZ));
+				
+				//NormalChunkMesh mesh2 = new NormalChunkMesh(ch, localPlayer);
+				Object mesh = ch.getChunkMesh();
+				if(mesh == null || !(mesh instanceof NormalChunkMesh)) {
+					mesh = new NormalChunkMesh(ch, localPlayer);
+					ch.setChunkMesh(mesh);
 				}
+				((NormalChunkMesh)mesh).render();
+				// Activate first texture bank
+				glActiveTexture(GL_TEXTURE0);
+				// Bind the texture
+				glBindTexture(GL_TEXTURE_2D, Meshes.atlas.getId());
+				
+				//mesh2.render();
+				
+				//mesh2.cleanUp();
+				
+				
+				
+				blockShader.unbind();
+				
 			}
 			
 			// Render the far away ReducedChunks:
@@ -306,10 +346,10 @@ public class MainRenderer implements Renderer {
 				if(chunk != null && chunk.generated) {
 					if (!frustumInt.testAab(chunk.getMin(x0, z0, worldSizeX, worldSizeZ), chunk.getMax(x0, z0, worldSizeX, worldSizeZ)))
 						continue;
-					Object mesh = chunk.mesh;
+					Object mesh = chunk.getChunkMesh();
 					chunkShader.setUniform("modelPosition", chunk.getMin(x0, z0, worldSizeX, worldSizeZ));
 					if(mesh == null || !(mesh instanceof ReducedChunkMesh)) {
-						chunk.mesh = mesh = new ReducedChunkMesh(chunk);
+						chunk.setChunkMesh(mesh = new ReducedChunkMesh(chunk));
 					}
 					((ReducedChunkMesh)mesh).render();
 				}
