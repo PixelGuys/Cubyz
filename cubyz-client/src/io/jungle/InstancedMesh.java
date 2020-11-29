@@ -16,8 +16,11 @@ import io.cubyz.Settings;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.client.ZenithsRenderer;
 import io.cubyz.util.FastList;
-import io.cubyz.world.BlockSpatial;
 import io.jungle.renderers.Transformation;
+
+/**
+ * Unused for now, but might be reactivated for entities one day.
+ */
 
 public class InstancedMesh extends Mesh {
 
@@ -253,7 +256,7 @@ public class InstancedMesh extends Mesh {
 	}
 	
 	public void uploadData(Spatial[] spatials, int startIndex, int endIndex, Transformation transformation, boolean useTextureAtlas) {
-		this.instanceDataBuffer.clear();
+		/*this.instanceDataBuffer.clear();
 		
 		int size = endIndex-startIndex;
 		boolean doShadow = ZenithsRenderer.shadowMap != null;
@@ -303,7 +306,7 @@ public class InstancedMesh extends Mesh {
 			}
 		}
 
-		glBufferData(GL_ARRAY_BUFFER, instanceDataBuffer, GL_DYNAMIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, instanceDataBuffer, GL_DYNAMIC_DRAW);*/
 	}
 	
 	private void renderChunkInstanced(int size, Transformation transformation) {

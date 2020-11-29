@@ -13,7 +13,6 @@ import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.util.FloatFastList;
 import io.cubyz.util.IntFastList;
-import io.cubyz.world.BlockSpatial;
 
 import static io.cubyz.Constants.PI;
 import static io.cubyz.Constants.PI_HALF;
@@ -38,7 +37,7 @@ public class TransparentRotation implements RotationMode {
 		return 0;
 	}
 
-	@Override
+	/*@Override
 	public Object[] generateSpatials(BlockInstance bi, byte data, Player player, int worldSizeX, int worldSizeZ) {
 		BlockSpatial[] spatials = new BlockSpatial[6];
 		int total = 0;
@@ -82,7 +81,7 @@ public class TransparentRotation implements RotationMode {
 			}
 		}
 		return out;
-	}
+	}*/
 
 	@Override
 	public boolean dependsOnNeightbors() {

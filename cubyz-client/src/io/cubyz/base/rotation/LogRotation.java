@@ -17,7 +17,6 @@ import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.util.FloatFastList;
 import io.cubyz.util.IntFastList;
-import io.cubyz.world.BlockSpatial;
 
 import static io.cubyz.Constants.PI;
 import static io.cubyz.Constants.PI_HALF;
@@ -42,7 +41,7 @@ public class LogRotation implements RotationMode {
 		return data;
 	}
 
-	@Override
+	/*@Override
 	public Object[] generateSpatials(BlockInstance bi, byte data, Player player, int worldSizeX, int worldSizeZ) {
 		BlockSpatial[] spatials = new BlockSpatial[1];
 		BlockSpatial tmp = new BlockSpatial(bi, player, worldSizeX, worldSizeZ);
@@ -67,7 +66,7 @@ public class LogRotation implements RotationMode {
 		}
 		spatials[0] = tmp;
 		return spatials;
-	}
+	}*/
 
 	@Override
 	public boolean dependsOnNeightbors() {

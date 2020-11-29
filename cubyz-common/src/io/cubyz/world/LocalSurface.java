@@ -946,7 +946,9 @@ public class LocalSurface extends Surface {
 
 			// Clean up additional GPU data:
 			for(ReducedChunk chunk : reducedChunks) {
-				System.out.println(chunk);
+				ClientOnly.deleteChunkMesh.accept(chunk);
+			}
+			for(NormalChunk chunk : chunks) {
 				ClientOnly.deleteChunkMesh.accept(chunk);
 			}
 			

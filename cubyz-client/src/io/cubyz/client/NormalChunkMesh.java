@@ -12,13 +12,10 @@ import java.util.ArrayList;
 import org.lwjgl.system.MemoryUtil;
 
 import io.cubyz.blocks.BlockInstance;
-import io.cubyz.entity.Player;
-import io.cubyz.math.CubyzMath;
 import io.cubyz.util.FastList;
 import io.cubyz.util.FloatFastList;
 import io.cubyz.util.IntFastList;
 import io.cubyz.world.NormalChunk;
-import io.cubyz.world.ReducedChunk;
 
 /**
  * Used to create chunk meshes for reduced chunks.
@@ -63,7 +60,7 @@ public class NormalChunkMesh {
 
 	protected int vertexCount;
 
-	public NormalChunkMesh(NormalChunk chunk, Player player) {
+	public NormalChunkMesh(NormalChunk chunk) {
 		FloatFastList vertices = localVertices.get();
 		FloatFastList normals = localNormals.get();
 		IntFastList faces = localFaces.get();
@@ -74,7 +71,7 @@ public class NormalChunkMesh {
 		faces.clear();
 		lighting.clear();
 		texture.clear();
-		generateModelData(chunk, player, vertices, normals, faces, lighting, texture);
+		generateModelData(chunk, vertices, normals, faces, lighting, texture);
 		FloatBuffer posBuffer = null;
 		FloatBuffer textureBuffer = null;
 		FloatBuffer normalBuffer = null;
@@ -184,12 +181,12 @@ public class NormalChunkMesh {
 		glDeleteVertexArrays(vaoId);
 	}
 	
-	private static void generateModelData(NormalChunk chunk, Player player, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
+	private static void generateModelData(NormalChunk chunk, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
 		// Go through all blocks and check their neighbors:
 		FastList<BlockInstance> visibles = chunk.getVisibles();
 		for(int i = 0; i < visibles.size; i++) {
 			BlockInstance bi = visibles.array[i];
-			bi.getSpatials(player, chunk.getWorldX(), chunk.getWorldZ(), chunk);
+			bi.updateLighting(chunk.getWorldX(), chunk.getWorldZ(), chunk);
 			bi.getBlock().mode.generateChunkMesh(bi, vertices, normals, faces, lighting, texture);
 		}
 	}

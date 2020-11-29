@@ -13,7 +13,6 @@ import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.util.FloatFastList;
 import io.cubyz.util.IntFastList;
-import io.cubyz.world.BlockSpatial;
 
 /**
  * For stackable partial blocks, like snow.
@@ -33,7 +32,7 @@ public class StackableRotation implements RotationMode {
 		return data;
 	}
 
-	@Override
+	/*@Override
 	public Object[] generateSpatials(BlockInstance bi, byte data, Player player, int worldSizeX, int worldSizeZ) {
 		BlockSpatial[] spatials = new BlockSpatial[1];
 		BlockSpatial tmp = new BlockSpatial(bi, player, worldSizeX, worldSizeZ);
@@ -41,7 +40,7 @@ public class StackableRotation implements RotationMode {
 		tmp.setPosition(bi.getX(), bi.getY(), bi.getZ(), player, worldSizeX, worldSizeZ);
 		spatials[0] = tmp;
 		return spatials;
-	}
+	}*/
 
 	@Override
 	public boolean dependsOnNeightbors() {

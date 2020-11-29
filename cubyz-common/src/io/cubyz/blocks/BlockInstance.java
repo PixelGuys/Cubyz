@@ -14,12 +14,10 @@ import io.cubyz.world.Surface;
 public class BlockInstance {
 
 	private Block block;
-	private Object[] spatial;
 	public final int x, y, z;
 	private Surface surface;
 	private boolean[] neighbors;
 	private byte blockData;
-	private boolean spatialUpdate;
 	private boolean lightUpdate;
 	public final int[] light;
 	
@@ -34,7 +32,6 @@ public class BlockInstance {
 		else
 			light = null;
 		neighbors = new boolean[6];
-		spatialUpdate = true;
 		scheduleLightUpdate();
 	}
 	
@@ -45,9 +42,6 @@ public class BlockInstance {
 	public void updateNeighbor(int i, boolean value, Player player) {
 		if(neighbors[i] != value) {
 			neighbors[i] = value;
-			if(block.mode.dependsOnNeightbors()) {
-				spatialUpdate = true;
-			}
 		}
 	}
 	
@@ -93,25 +87,20 @@ public class BlockInstance {
 	
 	public void setData(byte data, Player player) {
 		blockData = data;
-		spatialUpdate = true;
 	}
 	
 	public void scheduleLightUpdate() {
 		lightUpdate = true;
 	}
 	
-	public Object[] getSpatials(Player player, int worldSizeX, int worldSizeZ, NormalChunk chunk) {
-		if(spatialUpdate) { // Generate the Spatials on demand.
-			spatial = block.mode.generateSpatials(this, blockData, player, worldSizeX, worldSizeZ);
-			spatialUpdate = false;
-		}
+	public int[] updateLighting(int worldSizeX, int worldSizeZ, NormalChunk chunk) {
 		if(Settings.easyLighting && lightUpdate) { // Update the internal light representation on demand.
 			if(chunk != null) {
 				chunk.getCornerLight(x & 15, y, z & 15, light);
 				lightUpdate = false;
 			}
 		}
-		return spatial;
+		return light;
 	}
 
 	float breakAnim = 0f;

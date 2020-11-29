@@ -6,6 +6,7 @@ import io.cubyz.util.IntFastList;
 
 /**
  * A simple data holder for the indexed model data.
+ * Override for model specific optimizations(like for cube models).
  */
 public class Model {
 	public final float[] positions;
@@ -53,7 +54,6 @@ public class Model {
 		}
 		
 		for(int i = 0; i < textCoords.length; i += 2) {
-			// TODO: Use atlas specific coordinates!
 			texture.add((textCoords[i] + offsetX)/Meshes.atlasSize);
 			texture.add((textCoords[i+1] + offsetY)/Meshes.atlasSize);
 		}

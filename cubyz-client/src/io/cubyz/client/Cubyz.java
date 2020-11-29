@@ -317,7 +317,6 @@ public class Cubyz implements GameLogic, ClientConnection {
 			}
 			nonTransparents.get(i).atlasX = x;
 			nonTransparents.get(i).atlasY = y;
-			System.out.println(x+" "+y+" "+nonTransparents.get(i).getRegistryID());
 			x++;
 			if(x == Meshes.atlasSize) {
 				x = 0;

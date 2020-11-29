@@ -14,7 +14,6 @@ import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.math.CubyzMath;
 import io.cubyz.util.FastList;
-import io.cubyz.world.BlockSpatial;
 import io.cubyz.world.NormalChunk;
 import io.jungle.FrameBuffer;
 import io.jungle.InstancedMesh;
@@ -36,6 +35,7 @@ import io.jungle.util.Utils;
  *  The renderer which will be used for zenith's shadow system once completed.
  */
 
+@Deprecated
 @SuppressWarnings("unchecked")
 public class ZenithsRenderer implements Renderer {
 
@@ -220,7 +220,7 @@ public class ZenithsRenderer implements Renderer {
 									(z > 1.0001f && !neighbors[2]) ||
 									(z < -0.0001f && !neighbors[3])) {
 
-								BlockSpatial[] spatial = (BlockSpatial[]) bi.getSpatials(localPlayer, worldSizeX, worldSizeZ, ch);
+								/*BlockSpatial[] spatial = (BlockSpatial[]) bi.getSpatials(localPlayer, worldSizeX, worldSizeZ, ch);
 								if(spatial != null) {
 									ch.getCornerLight(bi.getX() & 15, bi.getY(), bi.getZ() & 15, bi.light);
 									for(BlockSpatial tmp : spatial) {
@@ -229,7 +229,7 @@ public class ZenithsRenderer implements Renderer {
 										}
 										map[bi.getID()].add(tmp);
 									}
-								}
+								}*/
 							}
 						}
 					}

@@ -7,7 +7,6 @@ import org.joml.Vector3i;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
-import io.cubyz.world.BlockSpatial;
 import io.cubyz.world.NormalChunk;
 import io.cubyz.world.Surface;
 
@@ -91,26 +90,7 @@ public class MeshSelectionDetector {
 		}
 		if(newSpatial == selectedSpatial)
 			return;
-		// Mark block spatials as selected/unselected if the selected mesh has changed:
-		if(selectedSpatial != null) {
-			synchronized(selectedSpatial) {
-				if(selectedSpatial != null && selectedSpatial instanceof BlockInstance) {
-					for(BlockSpatial spatial : (BlockSpatial[])((BlockInstance)selectedSpatial).getSpatials(localPlayer, surface.getSizeX(), surface.getSizeZ(), null)) {
-						spatial.setSelected(false);
-					}
-				}
-			}
-		}
 		selectedSpatial = newSpatial;
-		if(selectedSpatial != null) {
-			synchronized(selectedSpatial) {
-				if(selectedSpatial != null && selectedSpatial instanceof BlockInstance) {
-					for(BlockSpatial spatial : (BlockSpatial[])((BlockInstance)selectedSpatial).getSpatials(localPlayer, surface.getSizeX(), surface.getSizeZ(), null)) {
-						spatial.setSelected(true);
-					}
-				}
-			}
-		}
 	}
 	
 	/**

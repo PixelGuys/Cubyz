@@ -16,31 +16,17 @@ struct Fog {
 
 uniform sampler2D texture_sampler;
 uniform sampler2D break_sampler;
-uniform bool materialHasTexture;
 uniform Fog fog;
-uniform bool hasAtlas;
-uniform int atlasSize;
 
 vec4 ambientC;
 
-void setupColors(bool materialHasTexture, vec2 textCoord)
+void setupColors(vec2 textCoord)
 {
-	if(hasAtlas) {
-        ambientC = texture(texture_sampler, (textCoord + vec2((selectionData >> 8) & 255, (selectionData >> 0) & 255))/atlasSize); // selectionData is also being used for the texture atlas position, to reduce data transfer.
-        vec4 data = texture(break_sampler, textCoord);
-        if (((selectionData >> 24) & 255) != 0 && ((selectionData >> 24) & 255) != 255) { // selected value is re-used for breaking animation
-        	ambientC += data;
-        }
-	} else if(materialHasTexture) {
-        ambientC = texture(texture_sampler, textCoord);
-        vec4 data = texture(break_sampler, textCoord);
-        if (((selectionData >> 24) & 255) != 0 && ((selectionData >> 24) & 255) != 255) { // selected value is re-used for breaking animation
-        	ambientC += data;
-        }
-    }
-    else {
-        ambientC = vec4(1, 1, 1, 1);
-    }
+	ambientC = texture(texture_sampler, textCoord);
+	vec4 data = texture(break_sampler, textCoord);
+	if (((selectionData >> 24) & 255) != 0 && ((selectionData >> 24) & 255) != 255) { // selected value is re-used for breaking animation
+		ambientC += data;
+	}
 }
 
 vec4 calcFog(vec3 pos, vec4 color, Fog fog) {
@@ -53,15 +39,15 @@ vec4 calcFog(vec3 pos, vec4 color, Fog fog) {
 
 void main()
 {
-    setupColors(materialHasTexture, outTexCoord);
-    
-    fragColor = ambientC*vec4(outColor, 1);
-    
-    if(fog.activ) {
-        fragColor = calcFog(mvVertexPos, fragColor, fog);
-    }
-    
-    if(((selectionData >> 24) & 255) != 0) {
-    	fragColor.z += 0.4;
-    }
+	setupColors(outTexCoord);
+	
+	fragColor = ambientC*vec4(outColor, 1);
+	
+	if(fog.activ) {
+		fragColor = calcFog(mvVertexPos, fragColor, fog);
+	}
+	
+	if(((selectionData >> 24) & 255) != 0) {
+		fragColor.z += 0.4;
+	}
 }

@@ -10,11 +10,8 @@ import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.RotationMode;
 import io.cubyz.client.Meshes;
 import io.cubyz.entity.Entity;
-import io.cubyz.entity.Player;
 import io.cubyz.util.FloatFastList;
 import io.cubyz.util.IntFastList;
-import io.cubyz.world.BlockSpatial;
-import io.jungle.Mesh;
 
 /**
  * The default RotationMode that places the block in the grid without translation or rotation.
@@ -30,11 +27,6 @@ public class NoRotation implements RotationMode {
 	@Override
 	public byte generateData(Vector3i dir, byte oldData) {
 		return 0;
-	}
-
-	@Override
-	public Object[] generateSpatials(BlockInstance bi, byte data, Player player, int worldSizeX, int worldSizeZ) {
-		return new BlockSpatial[] {new BlockSpatial(bi, player, worldSizeX, worldSizeZ)};
 	}
 
 	@Override

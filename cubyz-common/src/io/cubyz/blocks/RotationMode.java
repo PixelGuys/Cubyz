@@ -29,7 +29,6 @@ public interface RotationMode extends RegistryElement {
 	 */
 	public void generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture);
 	
-	public Object[] generateSpatials(BlockInstance bi, byte data, Player player, int worldSizeX, int worldSizeZ);
 	// currentData will be 0 if the blockTypes don't match.
 	public byte generateData(Vector3i placementPosition, byte currentData);
 

@@ -12,17 +12,13 @@ import org.joml.Vector3f;
 
 import io.cubyz.ClientSettings;
 import io.cubyz.blocks.Block;
-import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.CustomMeshProvider;
 import io.cubyz.entity.CustomMeshProvider.MeshType;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
-import io.cubyz.math.CubyzMath;
 import io.cubyz.util.FastList;
-import io.cubyz.world.BlockSpatial;
 import io.cubyz.world.NormalChunk;
 import io.cubyz.world.ReducedChunk;
-import io.jungle.InstancedMesh;
 import io.jungle.Mesh;
 import io.jungle.Spatial;
 import io.jungle.Window;
@@ -104,10 +100,7 @@ public class MainRenderer implements Renderer {
 		blockShader.createUniform("break_sampler");
 		blockShader.createUniform("ambientLight");
 		blockShader.createUniform("directionalLight");
-		blockShader.createUniform("materialHasTexture");
 		blockShader.createUniform("modelPosition");
-		blockShader.createUniform("hasAtlas");
-		blockShader.createUniform("atlasSize");
 		blockShader.createFogUniform("fog");
 		
 		entityShader = new ShaderProgram();
@@ -231,105 +224,40 @@ public class MainRenderer implements Renderer {
 			playerPosition = localPlayer.getPosition(); // Use a constant copy of the player position for the whole rendering to prevent graphics bugs on player movement.
 		}
 		if(playerPosition != null) {
-			Vector3f temp = new Vector3f();
+			
+			blockShader.bind();
+			
+			blockShader.setUniform("fog", ctx.getFog());
+			blockShader.setUniform("projectionMatrix", ctx.getWindow().getProjectionMatrix());
+			blockShader.setUniform("texture_sampler", 0);
+			blockShader.setUniform("break_sampler", 2);
+			blockShader.setUniform("viewMatrix", ctx.getCamera().getViewMatrix());
+
+			blockShader.setUniform("ambientLight", ambientLight);
+			blockShader.setUniform("directionalLight", directionalLight.getDirection());
+			
+			// Activate first texture bank
+			glActiveTexture(GL_TEXTURE0);
+			// Bind the texture
+			glBindTexture(GL_TEXTURE_2D, Meshes.atlas.getId());		
+			
 			float x0 = playerPosition.x;
 			float z0 = playerPosition.z;
-			float y0 = playerPosition.y + Player.cameraHeight;
 			chunks = sortChunks(chunks, x0/16 - 0.5f, z0/16 - 0.5f);
 			for (NormalChunk ch : chunks) {
-				//int currentSortingIndex = map[transparentIndex].size;
 				if (!ch.isLoaded() || !frustumInt.testAab(ch.getMin(x0, z0, worldSizeX, worldSizeZ), ch.getMax(x0, z0, worldSizeX, worldSizeZ)))
 					continue;
-				/*int length = ch.getVisibles().size;
-				BlockInstance[] vis = ch.getVisibles().array;
-				for (int i = 0; i < length; i++) {
-					BlockInstance bi = vis[i];
-					if(bi != null) { // Sometimes block changes happen while rendering.
-						float x = CubyzMath.match(bi.getX(), x0, worldSizeX);
-						float z = CubyzMath.match(bi.getZ(), z0, worldSizeZ);
-						if(frustumInt.testSphere(x + 0.5f, bi.getY() + 0.5f, z + 0.5f, 0.866025f)) {
-							if(bi.getBlock().isTrulyTransparent()) {
-								BlockSpatial[] spatial = (BlockSpatial[]) bi.getSpatials(localPlayer, worldSizeX, worldSizeZ, ch);
-								if(spatial != null) {
-									for(BlockSpatial tmp : spatial) {
-										if (tmp.isSelected()) {
-											breakAnim = bi.getBreakingAnim();
-										}
-										ctx.getCamera().getPosition().sub(tmp.getPosition(), temp);
-										tmp.distance = temp.lengthSquared();
-										// Insert sort this spatial into the list:
-										map[transparentIndex].add(tmp);
-									}
-								}
-							} else {
-								x = x - x0;
-								float y = bi.getY() - y0;
-								z = z - z0;
-								// Only draw blocks that have at least one face facing the player.
-								boolean[] neighbors = bi.getNeighbors();
-								if(bi.getBlock().getBlockClass() == Block.BlockClass.FLUID || // Ignore fluid blocks in the process, so their surface can still be seen from below.
-										(x > 1.0001f && !neighbors[0]) ||
-										(x < -0.0001f && !neighbors[1]) ||
-										(y > 1.0001f && !neighbors[4]) ||
-										(y < -0.0001f && !neighbors[5]) ||
-										(z > 1.0001f && !neighbors[2]) ||
-										(z < -0.0001f && !neighbors[3])) {
-									BlockSpatial[] spatial = (BlockSpatial[]) bi.getSpatials(localPlayer, worldSizeX, worldSizeZ, ch);
-									if(spatial != null) {
-										for(BlockSpatial tmp : spatial) {
-											if (tmp.isSelected()) {
-												breakAnim = bi.getBreakingAnim();
-											}
-											map[bi.getID()].add(tmp);
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-				Block b = blocks[transparentIndex];
-				if (b != null && b.isTransparent()) {
-					map[b.ID].sort((sa, sb) -> {
-						return (int) -Math.signum(sa.distance - sb.distance);
-					}, currentSortingIndex, map[transparentIndex].size - 1);
-				}*/
-				
-				blockShader.bind();
-				
-				blockShader.setUniform("fog", ctx.getFog());
-				blockShader.setUniform("projectionMatrix", ctx.getWindow().getProjectionMatrix());
-				blockShader.setUniform("texture_sampler", 0);
-				blockShader.setUniform("break_sampler", 2);
-				blockShader.setUniform("viewMatrix", ctx.getCamera().getViewMatrix());
-
-				blockShader.setUniform("ambientLight", ambientLight);
-				blockShader.setUniform("directionalLight", directionalLight.getDirection());
-				
 				
 				blockShader.setUniform("modelPosition", ch.getMin(x0, z0, worldSizeX, worldSizeZ));
 				
-				//NormalChunkMesh mesh2 = new NormalChunkMesh(ch, localPlayer);
 				Object mesh = ch.getChunkMesh();
 				if(mesh == null || !(mesh instanceof NormalChunkMesh)) {
-					mesh = new NormalChunkMesh(ch, localPlayer);
+					mesh = new NormalChunkMesh(ch);
 					ch.setChunkMesh(mesh);
 				}
-				((NormalChunkMesh)mesh).render();
-				// Activate first texture bank
-				glActiveTexture(GL_TEXTURE0);
-				// Bind the texture
-				glBindTexture(GL_TEXTURE_2D, Meshes.atlas.getId());
-				
-				//mesh2.render();
-				
-				//mesh2.cleanUp();
-				
-				
-				
-				blockShader.unbind();
-				
+				((NormalChunkMesh)mesh).render();		
 			}
+			blockShader.unbind();
 			
 			// Render the far away ReducedChunks:
 			chunkShader.bind();
@@ -366,35 +294,6 @@ public class MainRenderer implements Renderer {
 	
 	public void renderScene(Context ctx,Vector3f ambientLight, DirectionalLight directionalLight,
 			FastList<Spatial>[] map, Block[] blocks, ReducedChunk[] reducedChunks, Entity[] entities, Spatial[] spatials, Vector3f playerPosition, Player p, float breakAnim, int transparentIndex) {
-		blockShader.bind();
-		
-		blockShader.setUniform("fog", ctx.getFog());
-		blockShader.setUniform("projectionMatrix", ctx.getWindow().getProjectionMatrix());
-		blockShader.setUniform("texture_sampler", 0);
-		blockShader.setUniform("break_sampler", 2);
-		blockShader.setUniform("viewMatrix", ctx.getCamera().getViewMatrix());
-
-		blockShader.setUniform("ambientLight", ambientLight);
-		blockShader.setUniform("directionalLight", directionalLight.getDirection());
-
-		if(breakAnim > 0f && breakAnim < 1f) {
-			int breakStep = (int)(breakAnim*Cubyz.breakAnimations.length);
-			glActiveTexture(GL_TEXTURE2);
-			glBindTexture(GL_TEXTURE_2D, Cubyz.breakAnimations[breakStep].getId());
-		} else {
-			glActiveTexture(GL_TEXTURE2);
-			glBindTexture(GL_TEXTURE_2D, 0);
-		}
-		// Handle non-transparent blocks:
-		for(int i = 0; i < transparentIndex; i++) {
-			if (map[i] == null)
-				continue;
-			InstancedMesh mesh = Meshes.blockMeshes.get(blocks[i]);
-			mesh.getMaterial().setTexture(Meshes.blockTextures.get(blocks[i]));
-			blockShader.setUniform("materialHasTexture", mesh.getMaterial().isTextured());
-			mesh.renderListInstanced(map[i], transformation, false);
-		}
-		blockShader.unbind();
 		
 		entityShader.bind();
 		entityShader.setUniform("fog", ctx.getFog());
@@ -458,17 +357,6 @@ public class MainRenderer implements Renderer {
 		}
 		
 		entityShader.unbind();
-		// Handle transparent blocks after everything else:
-		blockShader.bind();
-		if(transparentIndex >= 0) {
-			InstancedMesh mesh = Meshes.blockMeshes.get(blocks[transparentIndex]);
-			blockShader.setUniform("materialHasTexture", true);
-			blockShader.setUniform("hasAtlas", true);
-			blockShader.setUniform("atlasSize", Meshes.transparentAtlasSize);
-			mesh.renderListInstanced(map[transparentIndex], transformation, true);
-			blockShader.setUniform("hasAtlas", false);
-		}
-		blockShader.unbind();
 	}
 
 	@Override

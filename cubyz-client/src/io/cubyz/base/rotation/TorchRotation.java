@@ -13,7 +13,6 @@ import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.util.FloatFastList;
 import io.cubyz.util.IntFastList;
-import io.cubyz.world.BlockSpatial;
 
 /**
  * Rotates and translates the model, so it hangs on the wall or stands on the ground like a torch.<br>
@@ -44,7 +43,7 @@ public class TorchRotation implements RotationMode {
 		return (byte)(data | oldData);
 	}
 
-	@Override
+	/*@Override
 	public Object[] generateSpatials(BlockInstance bi, byte data, Player player, int worldSizeX, int worldSizeZ) {
 		BlockSpatial[] spatials = new BlockSpatial[5];
 		int index = 0;
@@ -82,7 +81,7 @@ public class TorchRotation implements RotationMode {
 		BlockSpatial[] trimmedArray = new BlockSpatial[index];
 		System.arraycopy(spatials, 0, trimmedArray, 0, index);
 		return trimmedArray;
-	}
+	}*/
 
 	@Override
 	public boolean dependsOnNeightbors() {
