@@ -87,7 +87,7 @@ public class Cubyz implements GameLogic, ClientConnection {
 	
 	public static int inventorySelection = 0; // Selected slot in inventory
 
-	private MeshSelectionDetector msd;
+	public MeshSelectionDetector msd;
 
 	private int breakCooldown = 10;
 	private int buildCooldown = 10;

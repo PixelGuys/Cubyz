@@ -12,11 +12,11 @@ import org.joml.Vector3f;
 
 import io.cubyz.ClientSettings;
 import io.cubyz.blocks.Block;
+import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.CustomMeshProvider;
 import io.cubyz.entity.CustomMeshProvider.MeshType;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
-import io.cubyz.util.FastList;
 import io.cubyz.world.NormalChunk;
 import io.cubyz.world.ReducedChunk;
 import io.jungle.Mesh;
@@ -32,10 +32,10 @@ import io.jungle.util.SpotLight;
 import io.jungle.util.Utils;
 
 /**
- * Renderer that is used when easyLighting is enabled.
+ * Renderer that should be used when easyLighting is enabled.
+ * Currently it is used always, simply because it's the only renderer available for now.
  */
 
-@SuppressWarnings("unchecked")
 public class MainRenderer implements Renderer {
 
 	/**A simple shader for low resolution chunks*/
@@ -101,6 +101,7 @@ public class MainRenderer implements Renderer {
 		blockShader.createUniform("ambientLight");
 		blockShader.createUniform("directionalLight");
 		blockShader.createUniform("modelPosition");
+		blockShader.createUniform("selectedIndex");
 		blockShader.createFogUniform("fog");
 		
 		entityShader = new ShaderProgram();
@@ -130,8 +131,6 @@ public class MainRenderer implements Renderer {
 	public void clear() {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	}
-
-	FastList<Spatial>[] map = (FastList<Spatial>[]) new FastList[0];
 	
 	/**
 	 * Sorts the chunks based on their distance from the player to reduce complexity when sorting the transparent blocks.
@@ -193,25 +192,10 @@ public class MainRenderer implements Renderer {
 		clear();
 		// Clean up old chunk meshes:
 		Meshes.cleanUp();
+		
 		ctx.getCamera().setViewMatrix(transformation.getViewMatrix(ctx.getCamera()));
 		
-		// Create the mesh map. Create only one entry for the truly transparent block.
-		int transparentIndex = -1;
-		for(int i = blocks.length - 1; i >= 0; transparentIndex = i--) {
-			if(!blocks[i].isTrulyTransparent()) break;
-		}
-		float breakAnim = 0f;
-		if (transparentIndex + 1 != map.length) {
-			map = (FastList<Spatial>[]) new FastList[transparentIndex + 1];
-			int arrayListCapacity = 10;
-			for (int i = 0; i < map.length; i++) {
-				map[i] = new FastList<Spatial>(arrayListCapacity, Spatial.class);
-			}
-		}
-		// Don't create a new list every time to reduce re-allocations:
-		for (int i = 0; i < map.length; i++) {
-			map[i].clear();
-		}
+		float breakAnim = 0;
 		
 		
 		// Uses FrustumCulling on the chunks.
@@ -239,7 +223,21 @@ public class MainRenderer implements Renderer {
 			// Activate first texture bank
 			glActiveTexture(GL_TEXTURE0);
 			// Bind the texture
-			glBindTexture(GL_TEXTURE_2D, Meshes.atlas.getId());		
+			glBindTexture(GL_TEXTURE_2D, Meshes.atlas.getId());
+			BlockInstance selected = null;
+			if(Cubyz.instance.msd.getSelected() instanceof BlockInstance) {
+				selected = (BlockInstance)Cubyz.instance.msd.getSelected();
+				breakAnim = selected.getBreakingAnim();
+			}
+			
+			if(breakAnim > 0f && breakAnim < 1f) {
+				int breakStep = (int)(breakAnim*Cubyz.breakAnimations.length);
+				glActiveTexture(GL_TEXTURE2);
+				glBindTexture(GL_TEXTURE_2D, Cubyz.breakAnimations[breakStep].getId());
+			} else {
+				glActiveTexture(GL_TEXTURE2);
+				glBindTexture(GL_TEXTURE_2D, 0);
+			}
 			
 			float x0 = playerPosition.x;
 			float z0 = playerPosition.z;
@@ -249,6 +247,12 @@ public class MainRenderer implements Renderer {
 					continue;
 				
 				blockShader.setUniform("modelPosition", ch.getMin(x0, z0, worldSizeX, worldSizeZ));
+				
+				if(selected != null && selected.source == ch) {
+					blockShader.setUniform("selectedIndex", selected.renderIndex);
+				} else {
+					blockShader.setUniform("selectedIndex", -1);
+				}
 				
 				Object mesh = ch.getChunkMesh();
 				if(mesh == null || !(mesh instanceof NormalChunkMesh)) {
@@ -285,15 +289,15 @@ public class MainRenderer implements Renderer {
 			chunkShader.unbind();
 		}
 		
-		renderScene(ctx, ambientLight, directionalLight, map, blocks, reducedChunks, entities, spatials,
-				playerPosition, localPlayer, breakAnim, transparentIndex);
+		renderScene(ctx, ambientLight, directionalLight, blocks, reducedChunks, entities, spatials,
+				playerPosition, localPlayer, breakAnim);
 		if (ctx.getHud() != null) {
 			ctx.getHud().render(window);
 		}
 	}
 	
 	public void renderScene(Context ctx,Vector3f ambientLight, DirectionalLight directionalLight,
-			FastList<Spatial>[] map, Block[] blocks, ReducedChunk[] reducedChunks, Entity[] entities, Spatial[] spatials, Vector3f playerPosition, Player p, float breakAnim, int transparentIndex) {
+			Block[] blocks, ReducedChunk[] reducedChunks, Entity[] entities, Spatial[] spatials, Vector3f playerPosition, Player p, float breakAnim) {
 		
 		entityShader.bind();
 		entityShader.setUniform("fog", ctx.getFog());

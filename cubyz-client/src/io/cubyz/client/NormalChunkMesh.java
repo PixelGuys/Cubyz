@@ -47,6 +47,12 @@ public class NormalChunkMesh {
 			return new IntFastList(20000);
 		}
 	};
+	public static ThreadLocal<IntFastList> localRenderIndices = new ThreadLocal<IntFastList>() {
+		@Override
+		protected IntFastList initialValue() {
+			return new IntFastList(20000);
+		}
+	};
 	public static ThreadLocal<FloatFastList> localTexture = new ThreadLocal<FloatFastList>() {
 		@Override
 		protected FloatFastList initialValue() {
@@ -66,17 +72,20 @@ public class NormalChunkMesh {
 		IntFastList faces = localFaces.get();
 		IntFastList lighting = localLighting.get();
 		FloatFastList texture = localTexture.get();
+		IntFastList renderIndices = localRenderIndices.get();
 		normals.clear();
 		vertices.clear();
 		faces.clear();
 		lighting.clear();
 		texture.clear();
-		generateModelData(chunk, vertices, normals, faces, lighting, texture);
+		renderIndices.clear();
+		generateModelData(chunk, vertices, normals, faces, lighting, texture, renderIndices);
 		FloatBuffer posBuffer = null;
 		FloatBuffer textureBuffer = null;
 		FloatBuffer normalBuffer = null;
 		IntBuffer indexBuffer = null;
 		IntBuffer lightingBuffer = null;
+		IntBuffer renderIndexBuffer = null;
 		try {
 			vertexCount = faces.size;
 			vboIdList = new ArrayList<>();
@@ -121,6 +130,15 @@ public class NormalChunkMesh {
 			glBufferData(GL_ARRAY_BUFFER, lightingBuffer, GL_STATIC_DRAW);
 			glVertexAttribPointer(3, 1, GL_FLOAT, false, 0, 0);
 
+			// render index VBO
+			vboId = glGenBuffers();
+			vboIdList.add(vboId);
+			renderIndexBuffer = MemoryUtil.memAllocInt(renderIndices.size);
+			renderIndexBuffer.put(renderIndices.toArray()).flip();
+			glBindBuffer(GL_ARRAY_BUFFER, vboId);
+			glBufferData(GL_ARRAY_BUFFER, renderIndexBuffer, GL_STATIC_DRAW);
+			glVertexAttribPointer(4, 1, GL_FLOAT, false, 0, 0);
+
 			// Index VBO
 			vboId = glGenBuffers();
 			vboIdList.add(vboId);
@@ -147,6 +165,9 @@ public class NormalChunkMesh {
 			if (lightingBuffer != null) {
 				MemoryUtil.memFree(lightingBuffer);
 			}
+			if (renderIndexBuffer != null) {
+				MemoryUtil.memFree(renderIndexBuffer);
+			}
 		}
 	}
 
@@ -157,6 +178,7 @@ public class NormalChunkMesh {
 		glEnableVertexAttribArray(1);
 		glEnableVertexAttribArray(2);
 		glEnableVertexAttribArray(3);
+		glEnableVertexAttribArray(4);
 		// Draw
 		glDrawElements(GL_TRIANGLES, vertexCount, GL_UNSIGNED_INT, 0);
 		// Restore state
@@ -164,6 +186,7 @@ public class NormalChunkMesh {
 		glDisableVertexAttribArray(1);
 		glDisableVertexAttribArray(2);
 		glDisableVertexAttribArray(3);
+		glDisableVertexAttribArray(4);
 		glBindVertexArray(0);
 	}
 
@@ -181,13 +204,15 @@ public class NormalChunkMesh {
 		glDeleteVertexArrays(vaoId);
 	}
 	
-	private static void generateModelData(NormalChunk chunk, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
+	private static void generateModelData(NormalChunk chunk, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices) {
 		// Go through all blocks and check their neighbors:
 		FastList<BlockInstance> visibles = chunk.getVisibles();
+		int index = 0;
 		for(int i = 0; i < visibles.size; i++) {
 			BlockInstance bi = visibles.array[i];
 			bi.updateLighting(chunk.getWorldX(), chunk.getWorldZ(), chunk);
-			bi.getBlock().mode.generateChunkMesh(bi, vertices, normals, faces, lighting, texture);
+			bi.renderIndex = index;
+			index = bi.getBlock().mode.generateChunkMesh(bi, vertices, normals, faces, lighting, texture, renderIndices, index);
 		}
 	}
 }

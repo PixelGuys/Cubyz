@@ -20,8 +20,11 @@ public class BlockInstance {
 	private byte blockData;
 	private boolean lightUpdate;
 	public final int[] light;
+	public final NormalChunk source;
+	public int renderIndex = 0;
 	
-	public BlockInstance(Block block, byte data, Vector3i position, Player player) {
+	public BlockInstance(Block block, byte data, Vector3i position, Player player, NormalChunk source) {
+		this.source = source;
 		this.block = block;
 		x = position.x;
 		y = position.y;

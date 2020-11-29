@@ -39,7 +39,7 @@ public class Model {
 		return (int)(srgb[0])<<24 | (int)(srgb[1])<<16 | (int)(srgb[2])<<8 | (int)(srgb[3]);
 	}
 	
-	public void addToChunkMesh(int x, int y, int z, float offsetX, float offsetY, int[] light, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
+	public void addToChunkMesh(int x, int y, int z, float offsetX, float offsetY, int[] light, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
 		int indexOffset = vertices.size/3;
 		for(int i = 0; i < positions.length; i += 3) {
 			vertices.add(positions[i] + x);
@@ -47,6 +47,7 @@ public class Model {
 			vertices.add(positions[i+2] + z);
 			
 			lighting.add(interpolateLight(positions[i], positions[i+1], positions[i+2], light));
+			renderIndices.add(renderIndex);
 		}
 		
 		for(int i = 0; i < indices.length; i++) {

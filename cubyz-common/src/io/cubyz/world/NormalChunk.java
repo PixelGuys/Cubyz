@@ -803,7 +803,7 @@ public class NormalChunk extends Chunk {
 		if(y < 0 || y >= World.WORLD_HEIGHT) return;
 		int index = (x << 4) | (y << 8) | z;
 		Block b = blocks[index];
-		BlockInstance bi = new BlockInstance(b, blockData[index], new Vector3i(x + wx, y, z + wz), surface.getStellarTorus().getWorld().getLocalPlayer());
+		BlockInstance bi = new BlockInstance(b, blockData[index], new Vector3i(x + wx, y, z + wz), surface.getStellarTorus().getWorld().getLocalPlayer(), this);
 		byte[] data = new byte[6];
 		int[] indices = new int[6];
 		Block[] neighbors = getNeighbors(x, y ,z, data, indices);

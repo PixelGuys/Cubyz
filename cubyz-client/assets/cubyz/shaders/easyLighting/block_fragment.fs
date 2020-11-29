@@ -3,8 +3,7 @@
 in vec2 outTexCoord;
 in vec3 outColor;
 in vec3 mvVertexPos;
-in float outSelected;
-flat in int selectionData;
+flat in int selectionIndex;
 
 out vec4 fragColor;
 
@@ -17,16 +16,14 @@ struct Fog {
 uniform sampler2D texture_sampler;
 uniform sampler2D break_sampler;
 uniform Fog fog;
+uniform int selectedIndex;
 
 vec4 ambientC;
 
 void setupColors(vec2 textCoord)
 {
 	ambientC = texture(texture_sampler, textCoord);
-	vec4 data = texture(break_sampler, textCoord);
-	if (((selectionData >> 24) & 255) != 0 && ((selectionData >> 24) & 255) != 255) { // selected value is re-used for breaking animation
-		ambientC += data;
-	}
+	ambientC += texture(break_sampler, textCoord)*float(selectedIndex == selectionIndex);
 }
 
 vec4 calcFog(vec3 pos, vec4 color, Fog fog) {
@@ -47,7 +44,7 @@ void main()
 		fragColor = calcFog(mvVertexPos, fragColor, fog);
 	}
 	
-	if(((selectionData >> 24) & 255) != 0) {
+	if(selectedIndex == selectionIndex) {
 		fragColor.z += 0.4;
 	}
 }
