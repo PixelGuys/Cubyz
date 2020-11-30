@@ -1,9 +1,5 @@
 package io.cubyz.base.rotation;
 
-/**
- * Rotates the block based on the direction the player is placing it.
- */
-
 import org.joml.RayAabIntersection;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
@@ -14,12 +10,12 @@ import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.RotationMode;
 import io.cubyz.client.Meshes;
 import io.cubyz.entity.Entity;
-import io.cubyz.entity.Player;
 import io.cubyz.util.FloatFastList;
 import io.cubyz.util.IntFastList;
 
-import static io.cubyz.Constants.PI;
-import static io.cubyz.Constants.PI_HALF;
+/**
+ * Rotates the block based on the direction the player is placing it.
+ */
 
 public class LogRotation implements RotationMode {
 	
@@ -40,33 +36,6 @@ public class LogRotation implements RotationMode {
 		if(dir.z == -1) data = (byte)0b101;
 		return data;
 	}
-
-	/*@Override
-	public Object[] generateSpatials(BlockInstance bi, byte data, Player player, int worldSizeX, int worldSizeZ) {
-		BlockSpatial[] spatials = new BlockSpatial[1];
-		BlockSpatial tmp = new BlockSpatial(bi, player, worldSizeX, worldSizeZ);
-		switch(data) {
-			default:
-				break;
-			case 1:
-				tmp.setRotation(PI, 0, 0);
-				break;
-			case 2:
-				tmp.setRotation(0, 0, -PI_HALF);
-				break;
-			case 3:
-				tmp.setRotation(0, 0, PI_HALF);
-				break;
-			case 4:
-				tmp.setRotation(PI_HALF, 0, 0);
-				break;
-			case 5:
-				tmp.setRotation(-PI_HALF, 0, 0);
-				break;
-		}
-		spatials[0] = tmp;
-		return spatials;
-	}*/
 
 	@Override
 	public boolean dependsOnNeightbors() {
@@ -110,8 +79,43 @@ public class LogRotation implements RotationMode {
 	
 	@Override
 	public int generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
-		// TODO: Apply rotation.
-		Meshes.blockMeshes.get(bi.getBlock()).model.addToChunkMesh(bi.x & 15, bi.y, bi.z & 15, bi.getBlock().atlasX, bi.getBlock().atlasY, bi.light, vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
+		
+		boolean[] directionInversion;
+		int[] directionMap;
+		switch(bi.getData()) {
+			default:{
+				directionInversion = new boolean[] {false, false, false};
+				directionMap = new int[] {0, 1, 2};
+				break;
+			}
+			case 1: {
+				directionInversion = new boolean[] {true, true, false};
+				directionMap = new int[] {0, 1, 2};
+				break;
+			}
+			case 2: {
+				directionInversion = new boolean[] {true, false, false};
+				directionMap = new int[] {1, 0, 2};
+				break;
+			}
+			case 3: {
+				directionInversion = new boolean[] {false, true, false};
+				directionMap = new int[] {1, 0, 2};
+				break;
+			}
+			case 4: {
+				directionInversion = new boolean[] {false, false, true};
+				directionMap = new int[] {0, 2, 1};
+				break;
+			}
+			case 5: {
+				directionInversion = new boolean[] {false, true, false};
+				directionMap = new int[] {0, 2, 1};
+				break;
+			}
+		}
+		
+		Meshes.blockMeshes.get(bi.getBlock()).model.addToChunkMeshSimpleRotation(bi.x & 15, bi.y, bi.z & 15, directionMap, directionInversion, bi.getBlock().atlasX, bi.getBlock().atlasY, bi.light, vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
 		return renderIndex + 1;
 	}
 }
