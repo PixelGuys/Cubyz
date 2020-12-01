@@ -167,7 +167,7 @@ public class LoadThread extends Thread {
 				}
 				if (finishedMeshes) {
 					try {
-						Cubyz.skyBodyMesh = StaticMeshesLoader.load(
+						Cubyz.skyBodyMesh = StaticMeshesLoader.load(new Resource("cubyz:sky_body.obj"),
 								ResourceManager.lookupPath(ResourceManager.contextToLocal(ResourceContext.MODEL3D, new Resource("cubyz:sky_body.obj"))), // TODO: Use a torus model.
 								ResourceManager.lookupPath("cubyz/models/3d/"))[0];
 					} catch (Exception e) {

@@ -55,7 +55,7 @@ public class FastList<T> {
 		size++;
 	}
 	
-	public void add(T[] obj) {
+	public void add(T... obj) {
 		if (size + obj.length >= array.length)
 			increaseSize(Math.max(array.length*3/2, array.length + obj.length));
 		for(T o : obj) {
@@ -82,6 +82,18 @@ public class FastList<T> {
 				return true;
 		}
 		return false;
+	}
+	
+	/**
+	 * @param t
+	 * @return -1 if t is outside this list<br>the index of t else
+	 */
+	public int indexOf(T t) {
+		for(int i = size-1; i >= 0; i--) {
+			if(array[i] == t)
+				return i;
+		}
+		return -1;
 	}
 	
 	public boolean isEmpty() {

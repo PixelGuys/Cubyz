@@ -13,8 +13,8 @@ import io.cubyz.entity.Entity;
 import io.cubyz.entity.EntityModel;
 import io.cubyz.entity.EntityType;
 import io.cubyz.entity.Player;
+import io.cubyz.models.Model;
 import io.jungle.Mesh;
-import io.jungle.Model;
 import io.jungle.Texture;
 import io.jungle.renderers.Transformation;
 import io.jungle.util.Material;
@@ -398,11 +398,11 @@ public class Quadruped implements EntityModel {
 			public void run() {
 				try {
 					Material mat = new Material(new Texture("addons/" + source.getRegistryID().getMod() + "/entities/textures/" + source.getRegistryID().getID() + ".png"));
-					leg = new Mesh(new Model(legPositions, legTextCoords, legNormals, legIndices));
+					leg = new Mesh(new Model(source.getRegistryID(), legPositions, legTextCoords, legNormals, legIndices));
 					leg.setMaterial(mat);
-					body = new Mesh(new Model(bodyPositions, bodyTextCoords, bodyNormals, bodyIndices));
+					body = new Mesh(new Model(source.getRegistryID(), bodyPositions, bodyTextCoords, bodyNormals, bodyIndices));
 					body.setMaterial(mat);
-					head = new Mesh(new Model(headPositions, headTextCoords, headNormals, headIndices));
+					head = new Mesh(new Model(source.getRegistryID(), headPositions, headTextCoords, headNormals, headIndices));
 					head.setMaterial(mat);
 				} catch (IOException e) {
 					e.printStackTrace();

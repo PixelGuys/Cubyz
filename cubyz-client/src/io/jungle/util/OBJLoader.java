@@ -9,13 +9,22 @@ import java.util.Scanner;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
 
+import io.cubyz.api.Resource;
+import io.cubyz.client.Meshes;
+import io.cubyz.models.Model;
 import io.jungle.InstancedMesh;
 import io.jungle.Mesh;
-import io.jungle.Model;
 
 public class OBJLoader {
 
-	public static Mesh loadMesh(String fileName, boolean instanced) throws Exception {
+	public static Mesh loadMesh(Resource id, String fileName, boolean instanced) throws Exception {
+		Model model = Meshes.models.getByID(id);
+		if(model != null) {
+			if(instanced)
+				return new InstancedMesh(model, 0);
+			else
+				return new Mesh(model);
+		}
 
 		List<Vector3f> vertices = new ArrayList<>();
 		List<Vector2f> textures = new ArrayList<>();
@@ -71,13 +80,13 @@ public class OBJLoader {
 		
 		sc.close();
 		if (instanced) {
-			return reorderListsInstanced(vertices, textures, normals, faces);
+			return reorderListsInstanced(id, vertices, textures, normals, faces);
 		} else {
-			return reorderLists(vertices, textures, normals, faces);
+			return reorderLists(id, vertices, textures, normals, faces);
 		}
 	}
 
-	private static Mesh reorderLists(List<Vector3f> posList, List<Vector2f> textCoordList, List<Vector3f> normList,
+	private static Mesh reorderLists(Resource id, List<Vector3f> posList, List<Vector2f> textCoordList, List<Vector3f> normList,
 			List<Face> facesList) {
 
 		List<Integer> indices = new ArrayList<>();
@@ -101,11 +110,13 @@ public class OBJLoader {
 		}
 		int[] indicesArr = new int[indices.size()];
 		indicesArr = indices.stream().mapToInt((Integer v) -> v).toArray();
-		Mesh mesh = new Mesh(new Model(posArr, textCoordArr, normArr, indicesArr));
+		Model model = new Model(id, posArr, textCoordArr, normArr, indicesArr);
+		Meshes.models.register(model);
+		Mesh mesh = new Mesh(model);
 		return mesh;
 	}
 	
-	private static InstancedMesh reorderListsInstanced(List<Vector3f> posList, List<Vector2f> textCoordList, List<Vector3f> normList,
+	private static InstancedMesh reorderListsInstanced(Resource id, List<Vector3f> posList, List<Vector2f> textCoordList, List<Vector3f> normList,
 			List<Face> facesList) {
 
 		List<Integer> indices = new ArrayList<>();
@@ -129,7 +140,9 @@ public class OBJLoader {
 		}
 		int[] indicesArr = new int[indices.size()];
 		indicesArr = indices.stream().mapToInt((Integer v) -> v).toArray();
-		InstancedMesh mesh = new InstancedMesh(new Model(posArr, textCoordArr, normArr, indicesArr), 0);
+		Model model = new Model(id, posArr, textCoordArr, normArr, indicesArr);
+		Meshes.models.register(model);
+		InstancedMesh mesh = new InstancedMesh(model, 0);
 		return mesh;
 	}
 

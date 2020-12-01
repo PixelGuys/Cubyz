@@ -15,6 +15,7 @@ import org.lwjgl.system.MemoryUtil;
 import io.cubyz.Settings;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.client.ZenithsRenderer;
+import io.cubyz.models.Model;
 import io.cubyz.util.FastList;
 import io.jungle.renderers.Transformation;
 

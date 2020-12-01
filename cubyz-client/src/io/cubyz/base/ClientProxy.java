@@ -7,6 +7,7 @@ import io.cubyz.base.entity_models.*;
 import io.cubyz.base.rotation.*;
 import io.cubyz.blocks.RotationMode;
 import io.cubyz.entity.EntityModel;
+import io.cubyz.models.CubeModel;
 
 /**
  * Registers objects that are only available on the client.
@@ -22,6 +23,7 @@ public class ClientProxy extends CommonProxy {
 	public void preInit() {
 		registerRotationModes(CubyzRegistries.ROTATION_MODE_REGISTRY);
 		registerEntityModels(CubyzRegistries.ENTITY_MODEL_REGISTRY);
+		CubeModel.registerCubeModels();
 	}
 
 	private void registerRotationModes(Registry<RotationMode> reg) {

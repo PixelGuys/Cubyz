@@ -1,5 +1,7 @@
-package io.jungle;
+package io.cubyz.models;
 
+import io.cubyz.api.RegistryElement;
+import io.cubyz.api.Resource;
 import io.cubyz.client.Meshes;
 import io.cubyz.util.FloatFastList;
 import io.cubyz.util.IntFastList;
@@ -8,12 +10,14 @@ import io.cubyz.util.IntFastList;
  * A simple data holder for the indexed model data.
  * Override for model specific optimizations(like for cube models).
  */
-public class Model {
+public class Model implements RegistryElement {
 	public final float[] positions;
 	public final float[] textCoords;
 	public final float[] normals;
 	public final int[] indices;
-	public Model(float[] positions, float[] textCoords, float[] normals, int[] indices) {
+	private final Resource id;
+	public Model(Resource id, float[] positions, float[] textCoords, float[] normals, int[] indices) {
+		this.id = id;
 		this.positions = positions;
 		this.textCoords = textCoords;
 		this.normals = normals;
@@ -26,7 +30,7 @@ public class Model {
 		srgb[2] += weight*(light>>>8 & 255);
 		srgb[3] += weight*(light & 255);
 	}
-	private static int interpolateLight(float dx, float dy, float dz, int[] light) {
+	protected static int interpolateLight(float dx, float dy, float dz, int[] light) {
 		float[] srgb = new float[4];
 		addWeightedLight((1 - dx)*(1 - dy)*(1 - dz), srgb, light[0]);
 		addWeightedLight((1 - dx)*(1 - dy)*dz      , srgb, light[1]);
@@ -47,6 +51,7 @@ public class Model {
 	 * @param offsetX on texture atlas
 	 * @param offsetY on texture atlas
 	 * @param light corner light data of block
+	 * @param neighbors which of the neighbors of the block instance are full blocks.
 	 * @param vertices
 	 * @param normals
 	 * @param faces
@@ -55,7 +60,7 @@ public class Model {
 	 * @param renderIndices
 	 * @param renderIndex
 	 */
-	public void addToChunkMesh(int x, int y, int z, float offsetX, float offsetY, int[] light, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
+	public void addToChunkMesh(int x, int y, int z, float offsetX, float offsetY, int[] light, boolean[] neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
 		int indexOffset = vertices.size/3;
 		for(int i = 0; i < positions.length; i += 3) {
 			vertices.add(positions[i] + x);
@@ -78,7 +83,7 @@ public class Model {
 		normals.add(this.normals);
 	}
 	
-	private static float conditionalInversion(float coord, boolean inverse) {
+	protected static float conditionalInversion(float coord, boolean inverse) {
 		return inverse ? 1-coord : coord;
 	}
 	
@@ -92,6 +97,7 @@ public class Model {
 	 * @param offsetX on texture atlas
 	 * @param offsetY on texture atlas
 	 * @param light corner light data of block
+	 * @param neighbors which of the neighbors of the block instance are full blocks.
 	 * @param vertices
 	 * @param normals
 	 * @param faces
@@ -100,14 +106,16 @@ public class Model {
 	 * @param renderIndices
 	 * @param renderIndex
 	 */
-	public void addToChunkMeshSimpleRotation(int x, int y, int z, int[] directionMap, boolean[] directionInversion, float offsetX, float offsetY, int[] light, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
+	public void addToChunkMeshSimpleRotation(int x, int y, int z, int[] directionMap, boolean[] directionInversion, float offsetX, float offsetY, int[] light, boolean[] neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
 		int indexOffset = vertices.size/3;
 		for(int i = 0; i < positions.length; i += 3) {
 			vertices.add(conditionalInversion(positions[i+directionMap[0]], directionInversion[0]) + x);
 			vertices.add(conditionalInversion(positions[i+directionMap[1]], directionInversion[1]) + y);
 			vertices.add(conditionalInversion(positions[i+directionMap[2]], directionInversion[2]) + z);
 			
-			lighting.add(interpolateLight(positions[i+directionMap[0]], positions[i+directionMap[1]], positions[i+directionMap[2]], light));
+			lighting.add(interpolateLight(	conditionalInversion(positions[i+directionMap[0]], directionInversion[0]),
+											conditionalInversion(positions[i+directionMap[1]], directionInversion[1]),
+											conditionalInversion(positions[i+directionMap[2]], directionInversion[2]), light));
 			renderIndices.add(renderIndex);
 		}
 		
@@ -121,5 +129,10 @@ public class Model {
 		}
 		
 		normals.add(this.normals);
+	}
+
+	@Override
+	public Resource getRegistryID() {
+		return id;
 	}
 }

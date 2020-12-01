@@ -708,7 +708,7 @@ public class Cubyz implements GameLogic, ClientConnection {
 				}
 				if (defaultMesh == null) {
 					Resource rs = new Resource(subModel.model);
-					defaultMesh = (InstancedMesh)OBJLoader.loadMesh("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), true); // Blocks are always instanced.
+					defaultMesh = (InstancedMesh)OBJLoader.loadMesh(rs, "assets/" + rs.getMod() + "/models/3d/" + rs.getID(), true); // Blocks are always instanced.
 					defaultMesh.setBoundingRadius(2.0f);
 					Meshes.cachedDefaultModels.put(subModel.model, defaultMesh);
 				}

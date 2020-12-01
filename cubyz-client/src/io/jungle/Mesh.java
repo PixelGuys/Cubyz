@@ -15,6 +15,7 @@ import static org.lwjgl.opengl.GL30.*;
 import org.joml.Vector4f;
 import org.lwjgl.system.MemoryUtil;
 
+import io.cubyz.models.Model;
 import io.cubyz.util.FastList;
 import io.jungle.util.Material;
 

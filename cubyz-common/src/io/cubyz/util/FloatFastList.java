@@ -55,7 +55,7 @@ public class FloatFastList {
 		size++;
 	}
 	
-	public void add(float[] obj) {
+	public void add(float... obj) {
 		if (size + obj.length >= array.length)
 			increaseSize(Math.max(array.length*3/2, array.length + obj.length));
 		for(float o : obj) {
@@ -82,6 +82,18 @@ public class FloatFastList {
 				return true;
 		}
 		return false;
+	}
+	
+	/**
+	 * @param t
+	 * @return -1 if t is outside this list<br>the index of t else
+	 */
+	public int indexOf(float t) {
+		for(int i = size-1; i >= 0; i--) {
+			if(array[i] == t)
+				return i;
+		}
+		return -1;
 	}
 	
 	public boolean isEmpty() {

@@ -17,21 +17,39 @@ import org.lwjgl.assimp.AIString;
 import org.lwjgl.assimp.AIVector3D;
 import org.lwjgl.assimp.Assimp;
 
+import io.cubyz.api.Resource;
+import io.cubyz.client.Meshes;
+import io.cubyz.models.Model;
 import io.jungle.InstancedMesh;
 import io.jungle.Mesh;
-import io.jungle.Model;
 import io.jungle.Texture;
 
 import static org.lwjgl.assimp.Assimp.*;
 
 public class StaticMeshesLoader {
-
-	public static Mesh[] load(String resourcePath, String texturesDir) throws Exception {
-		return load(resourcePath, texturesDir,
-				aiProcess_JoinIdenticalVertices | aiProcess_Triangulate | aiProcess_FixInfacingNormals);
+	
+	private static final int flags = aiProcess_JoinIdenticalVertices | aiProcess_Triangulate | aiProcess_FixInfacingNormals;
+	
+	public static Model loadModelData(Resource id, String resourcePath) {
+		AIScene aiScene = aiImportFile(resourcePath, flags);
+		PointerBuffer aiMeshes = aiScene.mMeshes();
+		AIMesh aiMesh = AIMesh.create(aiMeshes.get());
+		float[] vertices = processVertices(aiMesh);
+		List<Float> textures = new ArrayList<>();
+		List<Float> normals = new ArrayList<>();
+		List<Integer> indices = new ArrayList<>();
+	
+		processNormals(aiMesh, normals);
+		processTextCoords(aiMesh, textures);
+		processIndices(aiMesh, indices);
+		return new Model(id, vertices, Utils.listToArray(textures), Utils.listToArray(normals), Utils.listIntToArray(indices));
 	}
 
-	public static Mesh[] load(String resourcePath, String texturesDir, int flags) throws Exception {
+	public static Mesh[] load(Resource id, String resourcePath, String texturesDir) throws Exception {
+		return load(id, resourcePath, texturesDir, flags);
+	}
+
+	public static Mesh[] load(Resource id, String resourcePath, String texturesDir, int flags) throws Exception {
 		AIScene aiScene = aiImportFile(resourcePath, flags);
 		if (aiScene == null) {
 			throw new Exception("Error loading model");
@@ -50,19 +68,18 @@ public class StaticMeshesLoader {
 		Mesh[] meshes = new Mesh[numMeshes];
 		for (int i = 0; i < numMeshes; i++) {
 			AIMesh aiMesh = AIMesh.create(aiMeshes.get(i));
-			Mesh mesh = processMesh(aiMesh, materials);
+			Mesh mesh = processMesh(id, aiMesh, materials);
 			meshes[i] = mesh;
 		}
 
 		return meshes;
 	}
 	
-	public static InstancedMesh[] loadInstanced(String resourcePath, String texturesDir) throws Exception {
-		return loadInstanced(resourcePath, texturesDir,
-				aiProcess_JoinIdenticalVertices | aiProcess_Triangulate | aiProcess_FixInfacingNormals);
+	public static InstancedMesh[] loadInstanced(Resource id, String resourcePath, String texturesDir) throws Exception {
+		return loadInstanced(id, resourcePath, texturesDir, flags);
 	}
 
-	public static InstancedMesh[] loadInstanced(String resourcePath, String texturesDir, int flags) throws Exception {
+	public static InstancedMesh[] loadInstanced(Resource id, String resourcePath, String texturesDir, int flags) throws Exception {
 		AIScene aiScene = aiImportFile(resourcePath, flags);
 		if (aiScene == null) {
 			throw new Exception("Error loading model");
@@ -81,7 +98,7 @@ public class StaticMeshesLoader {
 		InstancedMesh[] meshes = new InstancedMesh[numMeshes];
 		for (int i = 0; i < numMeshes; i++) {
 			AIMesh aiMesh = AIMesh.create(aiMeshes.get(i));
-			InstancedMesh mesh = processInstancedMesh(aiMesh, materials);
+			InstancedMesh mesh = processInstancedMesh(id, aiMesh, materials);
 			meshes[i] = mesh;
 		}
 
@@ -125,18 +142,24 @@ public class StaticMeshesLoader {
 		materials.add(material);
 	}
 
-	private static Mesh processMesh(AIMesh aiMesh, List<Material> materials) {
-		float[] vertices = processVertices(aiMesh);
-		List<Float> textures = new ArrayList<>();
-		List<Float> normals = new ArrayList<>();
-		List<Integer> indices = new ArrayList<>();
-
-		processNormals(aiMesh, normals);
-		processTextCoords(aiMesh, textures);
-		processIndices(aiMesh, indices);
-
-		Mesh mesh = new Mesh(new Model(vertices, Utils.listToArray(textures), Utils.listToArray(normals),
-				Utils.listIntToArray(indices)));
+	private static Mesh processMesh(Resource id, AIMesh aiMesh, List<Material> materials) {
+		Model model = Meshes.models.getByID(id);
+		Mesh mesh;
+		if(model != null) {
+			mesh = new Mesh(model);
+		} else {
+			float[] vertices = processVertices(aiMesh);
+			List<Float> textures = new ArrayList<>();
+			List<Float> normals = new ArrayList<>();
+			List<Integer> indices = new ArrayList<>();
+	
+			processNormals(aiMesh, normals);
+			processTextCoords(aiMesh, textures);
+			processIndices(aiMesh, indices);
+			model = new Model(id, vertices, Utils.listToArray(textures), Utils.listToArray(normals), Utils.listIntToArray(indices));
+			Meshes.models.register(model);
+			mesh = new Mesh(model);
+		}
 		Material material;
 		int materialIdx = aiMesh.mMaterialIndex();
 		if (materialIdx >= 0 && materialIdx < materials.size()) {
@@ -149,17 +172,24 @@ public class StaticMeshesLoader {
 		return mesh;
 	}
 	
-	private static InstancedMesh processInstancedMesh(AIMesh aiMesh, List<Material> materials) {
-		float[] vertices = processVertices(aiMesh);
-		List<Float> textures = new ArrayList<>();
-		List<Float> normals = new ArrayList<>();
-		List<Integer> indices = new ArrayList<>();
-
-		processNormals(aiMesh, normals);
-		processTextCoords(aiMesh, textures);
-		processIndices(aiMesh, indices);
-		InstancedMesh mesh = new InstancedMesh(new Model(vertices, Utils.listToArray(textures), Utils.listToArray(normals),
-				Utils.listIntToArray(indices)), 0);
+	private static InstancedMesh processInstancedMesh(Resource id, AIMesh aiMesh, List<Material> materials) {
+		Model model = Meshes.models.getByID(id);
+		InstancedMesh mesh;
+		if(model != null) {
+			mesh = new InstancedMesh(model, 0);
+		} else {
+			float[] vertices = processVertices(aiMesh);
+			List<Float> textures = new ArrayList<>();
+			List<Float> normals = new ArrayList<>();
+			List<Integer> indices = new ArrayList<>();
+	
+			processNormals(aiMesh, normals);
+			processTextCoords(aiMesh, textures);
+			processIndices(aiMesh, indices);
+			model = new Model(id, vertices, Utils.listToArray(textures), Utils.listToArray(normals), Utils.listIntToArray(indices));
+			Meshes.models.register(model);
+			mesh = new InstancedMesh(model, 0);
+		}
 		Material material;
 		int materialIdx = aiMesh.mMaterialIndex();
 		if (materialIdx >= 0 && materialIdx < materials.size()) {

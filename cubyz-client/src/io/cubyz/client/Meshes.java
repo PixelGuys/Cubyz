@@ -8,9 +8,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 import io.cubyz.ClientOnly;
+import io.cubyz.api.Registry;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.entity.EntityType;
+import io.cubyz.models.Model;
 import io.cubyz.utils.ResourceUtilities;
 import io.cubyz.utils.ResourceUtilities.BlockModel;
 import io.cubyz.utils.ResourceUtilities.EntityModel;
@@ -38,6 +40,8 @@ public class Meshes {
 	
 
 	public static final HashMap<String, InstancedMesh> cachedDefaultModels = new HashMap<>();
+	
+	public static final Registry<Model> models = new Registry<>();
 	
 	public static final ArrayList<Object> removableMeshes = new ArrayList<>();
 	
@@ -86,7 +90,7 @@ public class Meshes {
 				}
 				if (mesh == null) {
 					Resource rs = new Resource(bm.subModels.get("default").model);
-					mesh = (InstancedMesh)OBJLoader.loadMesh("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), true); // Block meshes are always instanced.
+					mesh = (InstancedMesh)OBJLoader.loadMesh(rs, "assets/" + rs.getMod() + "/models/3d/" + rs.getID(), true); // Block meshes are always instanced.
 					//defaultMesh = StaticMeshesLoader.loadInstanced("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), "assets/" + rs.getMod() + "/models/3d/")[0];
 					mesh.setInstances(512, ZenithsRenderer.shadowMap != null);
 					mesh.setBoundingRadius(2.0f);
@@ -124,7 +128,7 @@ public class Meshes {
 				
 				// Cached meshes
 				Resource rs = new Resource(model.model);
-				Mesh mesh = StaticMeshesLoader.load("assets/" + rs.getMod() + "/models/3d/" + rs.getID(),
+				Mesh mesh = StaticMeshesLoader.load(rs, "assets/" + rs.getMod() + "/models/3d/" + rs.getID(),
 						"assets/" + rs.getMod() + "/models/3d/")[0];
 				mesh.setBoundingRadius(2.0f); // TODO: define custom bounding radius
 				Resource texResource = new Resource(model.texture);

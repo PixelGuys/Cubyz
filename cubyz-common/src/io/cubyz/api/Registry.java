@@ -93,6 +93,10 @@ public class Registry<T extends RegistryElement> {
 		return hashMap.get(id);
 	}
 	
+	public T getByID(Resource id) {
+		return hashMap.get(id.toString());
+	}
+	
 	public int getLength() {
 		return hashMap.size();
 	}
