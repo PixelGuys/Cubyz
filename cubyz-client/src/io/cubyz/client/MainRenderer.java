@@ -255,7 +255,7 @@ public class MainRenderer implements Renderer {
 				}
 				
 				Object mesh = ch.getChunkMesh();
-				if(mesh == null || !(mesh instanceof NormalChunkMesh)) {
+				if(ch.wasUpdated() || mesh == null || !(mesh instanceof NormalChunkMesh)) {
 					mesh = new NormalChunkMesh(ch);
 					ch.setChunkMesh(mesh);
 				}

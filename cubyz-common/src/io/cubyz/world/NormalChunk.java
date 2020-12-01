@@ -43,6 +43,7 @@ public class NormalChunk extends Chunk {
 	private boolean generated;
 	private boolean startedloading;
 	private boolean loaded;
+	private boolean updated = true;
 	private ArrayList<BlockEntity> blockEntities = new ArrayList<>();
 	
 	private Surface surface;
@@ -283,6 +284,7 @@ public class NormalChunk extends Chunk {
 		int index = (x << 4) | (y << 8) | z;
 		blocks[index] = b;
 		blockData[index] = data;
+		updated = true;
 	}
 	
 	public void setBlockData(int x, int y, int z, byte data) {
@@ -309,6 +311,7 @@ public class NormalChunk extends Chunk {
 			if(inst[index] != null)
 				inst[index].setData(data, surface.getStellarTorus().getWorld().getLocalPlayer());
 		}
+		updated = true;
 	}
 	
 	public byte getBlockData(int x, int y, int z) {
@@ -405,6 +408,7 @@ public class NormalChunk extends Chunk {
 			return;
 		}
 		light[(x << 4) | (y << 8) | z] = (light[(x << 4) | (y << 8) | z] & mask) | (value << shift);
+		updated = true;
 		// Get all eight neighbors of this lighting node:
 		Block[] neighbors = new Block[8];
 		for(int dx = -1; dx <= 0; dx++) {
@@ -593,6 +597,7 @@ public class NormalChunk extends Chunk {
 					}
 				}
 			}
+			updated = true;
 			return maxLight;
 		}
 		return -1;
@@ -771,6 +776,7 @@ public class NormalChunk extends Chunk {
 			blocks[index] = b;
 			blockData[index] = bc.newData;
 		}
+		updated = true;
 	}
 	
 	public boolean blocksLight(Block b, Block a, byte data, int difference) {
@@ -796,6 +802,7 @@ public class NormalChunk extends Chunk {
 				if (res != null) handler.onBlockHide(res.getBlock(), res.getX(), res.getY(), res.getZ());
 			}
 		}
+		updated = true;
 	}
 	
 	public synchronized void revealBlock(int x, int y, int z) {
@@ -818,6 +825,7 @@ public class NormalChunk extends Chunk {
 				if (bi != null) handler.onBlockAppear(bi.getBlock(), bi.getX(), bi.getY(), bi.getZ());
 			}
 		}
+		updated = true;
 	}
 	
 	public void removeBlockAt(int x, int y, int z, boolean registerBlockChange) {
@@ -1133,6 +1141,10 @@ public class NormalChunk extends Chunk {
 		return loaded;
 	}
 	
+	public boolean wasUpdated() {
+		return updated;
+	}
+	
 	public int startIndex(int start) {
 		return start;
 	}
@@ -1148,10 +1160,17 @@ public class NormalChunk extends Chunk {
 			blocks[index] = newBlock;
 			blockData[index] = newBlock == null ? 0 : newBlock.mode.getNaturalStandard();
 		}
+		updated = true;
 	}
 	
 	public void updateBlock(int x, int y, int z, Block newBlock) {
 		updateBlock(x, y, z, newBlock, newBlock == null ? 0 : newBlock.mode.getNaturalStandard());
+	}
+	
+	@Override
+	public void setChunkMesh(Object mesh) {
+		updated = false;
+		super.setChunkMesh(mesh);
 	}
 
 	@Override
@@ -1162,6 +1181,7 @@ public class NormalChunk extends Chunk {
 		}
 		blocks[index] = newBlock;
 		blockData[index] = data;
+		updated = true;
 	}
 
 	@Override
