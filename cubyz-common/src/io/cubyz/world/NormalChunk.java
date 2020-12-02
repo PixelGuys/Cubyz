@@ -411,10 +411,12 @@ public class NormalChunk extends Chunk {
 		updated = true;
 		// Get all eight neighbors of this lighting node:
 		Block[] neighbors = new Block[8];
+		byte[] neighborData = new byte[8];
 		for(int dx = -1; dx <= 0; dx++) {
 			for(int dy = -1; dy <= 0; dy++) {
 				for(int dz = -1; dz <= 0; dz++) {
 					neighbors[7 + (dx << 2) + (dy << 1) + dz] = getBlockUnboundAndUpdateLight(x+dx, y+dy, z+dz);
+					neighborData[7 + (dx << 2) + (dy << 1) + dz] = getDataUnbound(x+dx, y+dy, z+dz);
 					// Take care about the case that this block is a light source, that is brighter than the current light level:
 					if(neighbors[7 + (dx << 2) + (dy << 1) + dz] != null && ((neighbors[7 + (dx << 2) + (dy << 1) + dz].getLight() >>> shift) & 255) > value)
 						return;
@@ -423,34 +425,34 @@ public class NormalChunk extends Chunk {
 		}
 		// Update all neighbors that should be updated:
 		if(nx) {
-			int light = applyNeighborsConstructive(value, shift, neighbors[0], neighbors[1], neighbors[2], neighbors[3]);
+			int light = applyNeighborsConstructive(value, shift, neighbors[0], neighborData[0], neighbors[1], neighborData[1], neighbors[2], neighborData[2], neighbors[3], neighborData[3]);
 			constructiveLightUpdate(x-1, y, z, shift, mask, light, true, false, true, true, true, true);
 		}
 		if(px) {
-			int light = applyNeighborsConstructive(value, shift, neighbors[4], neighbors[5], neighbors[6], neighbors[7]);
+			int light = applyNeighborsConstructive(value, shift, neighbors[4], neighborData[4], neighbors[5], neighborData[5], neighbors[6], neighborData[6], neighbors[7], neighborData[7]);
 			constructiveLightUpdate(x+1, y, z, shift, mask, light, false, true, true, true, true, true);
 		}
 		if(nz) {
-			int light = applyNeighborsConstructive(value, shift, neighbors[0], neighbors[2], neighbors[4], neighbors[6]);
+			int light = applyNeighborsConstructive(value, shift, neighbors[0], neighborData[0], neighbors[2], neighborData[2], neighbors[4], neighborData[4], neighbors[6], neighborData[6]);
 			constructiveLightUpdate(x, y, z-1, shift, mask, light, true, true, true, true, true, false);
 		}
 		if(pz) {
-			int light = applyNeighborsConstructive(value, shift, neighbors[1], neighbors[3], neighbors[5], neighbors[7]);
+			int light = applyNeighborsConstructive(value, shift, neighbors[1], neighborData[1], neighbors[3], neighborData[3], neighbors[5], neighborData[5], neighbors[7], neighborData[7]);
 			constructiveLightUpdate(x, y, z+1, shift, mask, light, true, true, true, true, false, true);
 		}
 		if(ny) {
-			int light = applyNeighborsConstructive(value, shift, neighbors[0], neighbors[1], neighbors[4], neighbors[5]);
+			int light = applyNeighborsConstructive(value, shift, neighbors[0], neighborData[0], neighbors[1], neighborData[1], neighbors[4], neighborData[4], neighbors[5], neighborData[5]);
 			if(shift == 24 && light != 0)
 				light += 8;
 			constructiveLightUpdate(x, y-1, z, shift, mask, light, true, true, true, false, true, true);
 		}
 		if(py) {
-			int light = applyNeighborsConstructive(value, shift, neighbors[2], neighbors[3], neighbors[6], neighbors[7]);
+			int light = applyNeighborsConstructive(value, shift, neighbors[2], neighborData[2], neighbors[3], neighborData[3], neighbors[6], neighborData[6], neighbors[7], neighborData[7]);
 			constructiveLightUpdate(x, y+1, z, shift, mask, light, true, true, false, true, true, true);
 		}
 	}
-	private int applyNeighbors(int light, int shift, Block n1, Block n2, Block n3, Block n4) {
-		light = applyNeighborsConstructive((light >>> shift) & 255, shift, n1, n2, n3, n4);
+	private int applyNeighbors(int light, int shift, Block n1, byte d1, Block n2, byte d2, Block n3, byte d3, Block n4, byte d4) {
+		light = applyNeighborsConstructive((light >>> shift) & 255, shift, n1, d1, n2, d2, n3, d3, n4, d4);
 		// Check if one of the blocks is glowing bright enough to support more light:
 		if(n1 != null) {
 			light = Math.max(light, (n1.getLight() >>> shift) & 255);
@@ -466,29 +468,29 @@ public class NormalChunk extends Chunk {
 		}
 		return light;
 	}
-	private int applyNeighborsConstructive(int light, int shift, Block n1, Block n2, Block n3, Block n4) {
+	private int applyNeighborsConstructive(int light, int shift, Block n1, byte d1, Block n2, byte d2, Block n3, byte d3, Block n4, byte d4) {
 		light <<= 2; // make sure small absorptions don't get ignored while dividing by 4.
 		int solidNeighbors = 0;
 		if(n1 != null) {
-			if(n1.isTransparent()) {
+			if(n1.isTransparent(d1)) {
 				light -= (n1.getAbsorption() >>> shift) & 255;
 			} else
 				solidNeighbors++;
 		}
 		if(n2 != null) {
-			if(n2.isTransparent()) {
+			if(n2.isTransparent(d2)) {
 				light -= (n2.getAbsorption() >>> shift) & 255;
 			} else
 				solidNeighbors++;
 		}
 		if(n3 != null) {
-			if(n3.isTransparent()) {
+			if(n3.isTransparent(d3)) {
 				light -= (n3.getAbsorption() >>> shift) & 255;
 			} else
 				solidNeighbors++;
 		}
 		if(n4 != null) {
-			if(n4.isTransparent()) {
+			if(n4.isTransparent(d4)) {
 				light -= (n4.getAbsorption() >>> shift) & 255;
 			} else
 				solidNeighbors++;
@@ -523,10 +525,12 @@ public class NormalChunk extends Chunk {
 		
 		// Get all eight neighbors of this lighting node:
 		Block[] neighbors = new Block[8];
+		byte[] neighborData = new byte[8];
 		for(int dx = -1; dx <= 0; dx++) {
 			for(int dy = -1; dy <= 0; dy++) {
 				for(int dz = -1; dz <= 0; dz++) {
 					neighbors[7 + (dx << 2) + (dy << 1) + dz] = getBlockUnbound(x+dx, y+dy, z+dz);
+					neighborData[7 + (dx << 2) + (dy << 1) + dz] = getDataUnbound(x+dx, y+dy, z+dz);
 					// Take care about the case that this block is a light source:
 					if(neighbors[7 + (dx << 2) + (dy << 1) + dz] != null)
 						maxLight = Math.max(maxLight, (neighbors[7 + (dx << 2) + (dy << 1) + dz].getLight() >>> shift) & 255);
@@ -538,42 +542,42 @@ public class NormalChunk extends Chunk {
 		int index = (x << 4) | (y << 8) | z; // Works close to the datastructure. Allows for some optimizations.
 		
 		if(x != 0) {
-			maxLight = Math.max(maxLight, applyNeighbors(light[index-16], shift, neighbors[0], neighbors[1], neighbors[2], neighbors[3]));
+			maxLight = Math.max(maxLight, applyNeighbors(light[index-16], shift, neighbors[0], neighborData[0], neighbors[1], neighborData[1], neighbors[2], neighborData[2], neighbors[3], neighborData[3]));
 		} else {
 			NormalChunk chunk = surface.getChunk(cx-1, cz);
 			if(chunk != null && chunk.startedloading) {
-				maxLight = Math.max(maxLight, applyNeighbors(chunk.light[index | 0xf0], shift, neighbors[0], neighbors[1], neighbors[2], neighbors[3]));
+				maxLight = Math.max(maxLight, applyNeighbors(chunk.light[index | 0xf0], shift, neighbors[0], neighborData[0], neighbors[1], neighborData[1], neighbors[2], neighborData[2], neighbors[3], neighborData[3]));
 			}
 		}
 		if(x != 15) {
-			maxLight = Math.max(maxLight, applyNeighbors(light[index+16], shift, neighbors[4], neighbors[5], neighbors[6], neighbors[7]));
+			maxLight = Math.max(maxLight, applyNeighbors(light[index+16], shift, neighbors[4], neighborData[4], neighbors[5], neighborData[5], neighbors[6], neighborData[6], neighbors[7], neighborData[7]));
 		} else {
 			NormalChunk chunk = surface.getChunk(cx+1, cz);
 			if(chunk != null && chunk.startedloading) {
-				maxLight = Math.max(maxLight, applyNeighbors(chunk.light[index & ~0xf0], shift, neighbors[4], neighbors[5], neighbors[6], neighbors[7]));
+				maxLight = Math.max(maxLight, applyNeighbors(chunk.light[index & ~0xf0], shift, neighbors[4], neighborData[4], neighbors[5], neighborData[5], neighbors[6], neighborData[6], neighbors[7], neighborData[7]));
 			}
 		}
 		if(z != 0) {
-			maxLight = Math.max(maxLight, applyNeighbors(light[index-1], shift, neighbors[0], neighbors[2], neighbors[4], neighbors[6]));
+			maxLight = Math.max(maxLight, applyNeighbors(light[index-1], shift, neighbors[0], neighborData[0], neighbors[2], neighborData[2], neighbors[4], neighborData[4], neighbors[6], neighborData[6]));
 		} else {
 			NormalChunk chunk = surface.getChunk(cx, cz-1);
 			if(chunk != null && chunk.startedloading) {
-				maxLight = Math.max(maxLight, applyNeighbors(chunk.light[index | 0xf], shift, neighbors[0], neighbors[2], neighbors[4], neighbors[6]));
+				maxLight = Math.max(maxLight, applyNeighbors(chunk.light[index | 0xf], shift, neighbors[0], neighborData[0], neighbors[2], neighborData[2], neighbors[4], neighborData[4], neighbors[6], neighborData[6]));
 			}
 		}
 		if(z != 15) {
-			maxLight = Math.max(maxLight, applyNeighbors(light[index+1], shift, neighbors[1], neighbors[3], neighbors[5], neighbors[7]));
+			maxLight = Math.max(maxLight, applyNeighbors(light[index+1], shift, neighbors[1], neighborData[1], neighbors[3], neighborData[3], neighbors[5], neighborData[5], neighbors[7], neighborData[7]));
 		} else {
 			NormalChunk chunk = surface.getChunk(cx, cz+1);
 			if(chunk != null && chunk.startedloading) {
-				maxLight = Math.max(maxLight, applyNeighbors(chunk.light[index & ~0xf], shift, neighbors[1], neighbors[3], neighbors[5], neighbors[7]));
+				maxLight = Math.max(maxLight, applyNeighbors(chunk.light[index & ~0xf], shift, neighbors[1], neighborData[1], neighbors[3], neighborData[3], neighbors[5], neighborData[5], neighbors[7], neighborData[7]));
 			}
 		}
 		if(y != 0) {
-			maxLight = Math.max(maxLight, applyNeighbors(light[index-256], shift, neighbors[0], neighbors[1], neighbors[4], neighbors[5]));
+			maxLight = Math.max(maxLight, applyNeighbors(light[index-256], shift, neighbors[0], neighborData[0], neighbors[1], neighborData[1], neighbors[4], neighborData[4], neighbors[5], neighborData[5]));
 		}
 		if(y != 255) {
-			int local = applyNeighbors(light[index+256], shift, neighbors[2], neighbors[3], neighbors[6], neighbors[7]);
+			int local = applyNeighbors(light[index+256], shift, neighbors[2], neighborData[2], neighbors[3], neighborData[3], neighbors[6], neighborData[6], neighbors[7], neighborData[7]);
 			if(shift == 24 && local != 0)
 				local += 8;
 			maxLight = Math.max(maxLight, local);
@@ -780,7 +784,7 @@ public class NormalChunk extends Chunk {
 	}
 	
 	public boolean blocksLight(Block b, Block a, byte data, int difference) {
-		if(b == null || (b.isTransparent() && a != b) || b.mode.checkTransparency(data, difference)) {
+		if(b == null || (b.isTransparent(data) && a != b) || b.mode.checkTransparency(data, difference)) {
 			return true;
 		}
 		return false;
@@ -788,7 +792,7 @@ public class NormalChunk extends Chunk {
 	
 	public boolean getsBlocked(Block b, Block a, byte data, int difference) {
 		//return !blocksLight(a, b, data, difference);
-		return a != null && !(b == null || (b.isTransparent() && b != a) || b.mode.checkTransparency(data, difference));
+		return a != null && !(b == null || (b.isTransparent(data) && b != a) || b.mode.checkTransparency(data, difference));
 	}
 	
 	public void hideBlock(int x, int y, int z) {
@@ -1077,6 +1081,16 @@ public class NormalChunk extends Chunk {
 			return noLight; // Let the lighting engine think this region is blocked.
 		}
 		return blocks[(x << 4) | (y << 8) | z];
+	}
+	
+	private byte getDataUnbound(int x, int y, int z) {
+		if(y < 0 || y >= World.WORLD_HEIGHT || !generated) return 0;
+		if(x < 0 || x > 15 || z < 0 || z > 15) {
+			NormalChunk chunk = surface.getChunk(cx + ((x & ~15) >> 4), cz + ((z & ~15) >> 4));
+			if(chunk != null && chunk.isGenerated()) return chunk.getDataUnbound(x & 15, y, z & 15);
+			return 0; // Let the lighting engine think this region is blocked.
+		}
+		return blockData[(x << 4) | (y << 8) | z];
 	}
 	
 	private void updateLight(int x, int y, int z) {

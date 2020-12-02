@@ -25,7 +25,7 @@ public class Block implements RegistryElement {
 		WOOD, STONE, SAND, UNBREAKABLE, LEAF, FLUID
 	};
 
-	boolean transparent;
+	private boolean transparent;
 	boolean trulyTransparent;
 	/**
 	 * Used for rendering optimization.<br/>
@@ -95,8 +95,8 @@ public class Block implements RegistryElement {
 	/**
 	 * @return Whether this block is transparent to the lighting system.
 	 */
-	public boolean isTransparent() {
-		return transparent;
+	public boolean isTransparent(byte data) { // TODO: Better directional light management.
+		return transparent || mode.checkTransparency(data, 0);
 	}
 	
 	/**

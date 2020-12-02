@@ -111,7 +111,7 @@ public class LocalWorld extends World {
 		ArrayList<Ore> ores = new ArrayList<Ore>();
 		for (RegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
 			Block b = (Block) ire;
-			if(!b.isTransparent() && !b.isTrulyTransparent()) {
+			if(!b.isTransparent(b.mode.getNaturalStandard()) && !b.isTrulyTransparent()) {
 				b.ID = ID;
 				blockList.add(b);
 				ID++;
@@ -124,7 +124,7 @@ public class LocalWorld extends World {
 		
 		for (RegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
 			Block b = (Block) ire;
-			if(b.isTransparent() && !b.isTrulyTransparent()) {
+			if(b.isTransparent(b.mode.getNaturalStandard()) && !b.isTrulyTransparent()) {
 				b.ID = ID;
 				blockList.add(b);
 				ID++;

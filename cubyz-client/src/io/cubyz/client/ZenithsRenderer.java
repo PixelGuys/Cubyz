@@ -240,7 +240,7 @@ public class ZenithsRenderer implements Renderer {
 		// sort distances for correct render of transparent blocks
 		Vector3f tmpa = new Vector3f();
 		Vector3f tmpb = new Vector3f();
-		for (int i = 0; i < blocks.length; i++) {
+		/*for (int i = 0; i < blocks.length; i++) {
 			Block b = blocks[i];
 			if (b != null && b.isTransparent()) {
 				map[b.ID].sort((sa, sb) -> {
@@ -249,7 +249,7 @@ public class ZenithsRenderer implements Renderer {
 					return (int) Math.signum(tmpa.lengthSquared() - tmpb.lengthSquared());
 				});
 			}
-		}
+		}*/
 		
 		if (shadowMap != null) { // remember it will be disableable
 			renderDepthMap(directionalLight, blocks, selected, selectedBlock);

@@ -5,12 +5,14 @@ import org.joml.Vector3f;
 import org.joml.Vector3i;
 import org.joml.Vector4f;
 
+import io.cubyz.CubyzLogger;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.RotationMode;
 import io.cubyz.client.Meshes;
 import io.cubyz.entity.Entity;
-import io.cubyz.entity.Player;
+import io.cubyz.models.CubeModel;
+import io.cubyz.models.Model;
 import io.cubyz.util.FloatFastList;
 import io.cubyz.util.IntFastList;
 
@@ -31,16 +33,6 @@ public class StackableRotation implements RotationMode {
 		byte data = 1;
 		return data;
 	}
-
-	/*@Override
-	public Object[] generateSpatials(BlockInstance bi, byte data, Player player, int worldSizeX, int worldSizeZ) {
-		BlockSpatial[] spatials = new BlockSpatial[1];
-		BlockSpatial tmp = new BlockSpatial(bi, player, worldSizeX, worldSizeZ);
-		tmp.setScale(1, data/16.0f, 1);
-		tmp.setPosition(bi.getX(), bi.getY(), bi.getZ(), player, worldSizeX, worldSizeZ);
-		spatials[0] = tmp;
-		return spatials;
-	}*/
 
 	@Override
 	public boolean dependsOnNeightbors() {
@@ -115,8 +107,63 @@ public class StackableRotation implements RotationMode {
 	
 	@Override
 	public int generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
-		// TODO: Perform face cutting.
-		Meshes.blockMeshes.get(bi.getBlock()).model.addToChunkMesh(bi.x & 15, bi.y, bi.z & 15, bi.getBlock().atlasX, bi.getBlock().atlasY, bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
+		Model model = Meshes.blockMeshes.get(bi.getBlock()).model;
+		if(!(model instanceof CubeModel)) {
+			CubyzLogger.logger.severe("Unsupported model "+model.getRegistryID()+" in block "+bi.getBlock().getRegistryID()+" for stackable block type. Skipping block.");
+			return renderIndex;
+		}
+		int x = bi.getX()&15;
+		int y = bi.getY();
+		int z = bi.getZ()&15;
+		boolean[] neighbors = bi.getNeighbors();
+		int[] light = bi.light;
+		int offsetX = bi.getBlock().atlasX;
+		int offsetY = bi.getBlock().atlasY;
+		
+		// Copies code from CubeModel and applies height transformation to it:
+		int indexOffset = vertices.size/3;
+		int size = model.positions.length/3;
+		float factor = bi.getData()/16.0f;
+		IntFastList indexesAdded = new IntFastList(24);
+		for(int i = 0; i < size; i++) {
+			int i2 = i*2;
+			int i3 = i*3;
+			float nx = model.normals[i3];
+			float ny = model.normals[i3+1];
+			float nz = model.normals[i3+2];
+			if(nx == -1 && !neighbors[0] ||
+			   nx == 1 && !neighbors[1] ||
+			   nz == -1 && !neighbors[2] ||
+			   nz == 1 && !neighbors[3] ||
+			   ny == -1 && (!neighbors[4] || factor == 1) ||
+			   ny == 1 && !neighbors[5]) {
+				vertices.add(model.positions[i3] + x);
+				if(ny != -1)
+					vertices.add(model.positions[i3+1]*factor + y);
+				else
+					vertices.add(model.positions[i3+1] + y);
+				vertices.add(model.positions[i3+2] + z);
+				normals.add(nx);
+				normals.add(ny);
+				normals.add(nz);
+				
+				lighting.add(Model.interpolateLight(model.positions[i3], ny != -1 ? model.positions[i3+1]*factor : model.positions[i3+1], model.positions[i3+2], light));
+				renderIndices.add(renderIndex);
+
+				texture.add((model.textCoords[i2] + offsetX)/Meshes.atlasSize);
+				if(ny == 0)
+					texture.add((model.textCoords[i2+1]*factor + offsetY)/Meshes.atlasSize);
+				else
+					texture.add((model.textCoords[i2+1] + offsetY)/Meshes.atlasSize);
+				indexesAdded.add(i);
+			}
+		}
+		
+		for(int i = 0; i < model.indices.length; i += 3) {
+			if(indexesAdded.contains(model.indices[i]) && indexesAdded.contains(model.indices[i+1]) && indexesAdded.contains(model.indices[i+2])) {
+				faces.add(indexesAdded.indexOf(model.indices[i]) + indexOffset, indexesAdded.indexOf(model.indices[i+1]) + indexOffset, indexesAdded.indexOf(model.indices[i+2]) + indexOffset);
+			}
+		}
 		return renderIndex + 1;
 	}
 }

@@ -34,7 +34,7 @@ public class Model implements RegistryElement {
 		srgb[2] += weight*(light>>>8 & 255);
 		srgb[3] += weight*(light & 255);
 	}
-	protected static int interpolateLight(float dx, float dy, float dz, int[] light) {
+	public static int interpolateLight(float dx, float dy, float dz, int[] light) {
 		float[] srgb = new float[4];
 		addWeightedLight((1 - dx)*(1 - dy)*(1 - dz), srgb, light[0]);
 		addWeightedLight((1 - dx)*(1 - dy)*dz      , srgb, light[1]);
