@@ -1,5 +1,9 @@
 package io.cubyz.models;
 
+import org.joml.Matrix3f;
+import org.joml.Vector3f;
+import org.joml.Vector4f;
+
 import io.cubyz.api.RegistryElement;
 import io.cubyz.api.Resource;
 import io.cubyz.client.Meshes;
@@ -129,6 +133,55 @@ public class Model implements RegistryElement {
 		}
 		
 		normals.add(this.normals);
+	}
+	
+	/**
+	 * Adds model to chunk mesh, but multiplies a rotation matrix to the coordinates.
+	 * This is also the only operation that allows floating point translation.
+	 * @param x position relative to chunk.min();
+	 * @param y position relative to chunk.min();
+	 * @param z position relative to chunk.min();
+	 * @param rotationMatrix set to null if only floating translation is required.
+	 * @param offsetX on texture atlas
+	 * @param offsetY on texture atlas
+	 * @param light corner light data of block
+	 * @param neighbors which of the neighbors of the block instance are full blocks.
+	 * @param vertices
+	 * @param normals
+	 * @param faces
+	 * @param lighting
+	 * @param texture
+	 * @param renderIndices
+	 * @param renderIndex
+	 */
+	public void addToChunkMeshRotation(float x, float y, float z, Matrix3f rotationMatrix, float offsetX, float offsetY, int[] light, boolean[] neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
+		int indexOffset = vertices.size/3;
+		for(int i = 0; i < positions.length; i += 3) {
+			Vector3f pos = new Vector3f(positions[i], positions[i+1], positions[i+2]);
+			Vector3f normal = new Vector3f(this.normals[i], this.normals[i+1], this.normals[i+2]);
+			if(rotationMatrix != null) {
+				pos = pos.mul(rotationMatrix);
+				normal = normal.mul(rotationMatrix);
+			}
+			vertices.add(pos.x + x);
+			vertices.add(pos.y + y);
+			vertices.add(pos.z + z);
+			normals.add(normal.x);
+			normals.add(normal.y);
+			normals.add(normal.z);
+			
+			lighting.add(interpolateLight(pos.x, pos.y, pos.z, light));
+			renderIndices.add(renderIndex);
+		}
+		
+		for(int i = 0; i < indices.length; i++) {
+			faces.add(indices[i] + indexOffset);
+		}
+		
+		for(int i = 0; i < textCoords.length; i += 2) {
+			texture.add((textCoords[i] + offsetX)/Meshes.atlasSize);
+			texture.add((textCoords[i+1] + offsetY)/Meshes.atlasSize);
+		}
 	}
 
 	@Override

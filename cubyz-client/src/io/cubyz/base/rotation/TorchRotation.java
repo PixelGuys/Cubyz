@@ -1,5 +1,6 @@
 package io.cubyz.base.rotation;
 
+import org.joml.Matrix3f;
 import org.joml.RayAabIntersection;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
@@ -10,7 +11,7 @@ import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.RotationMode;
 import io.cubyz.client.Meshes;
 import io.cubyz.entity.Entity;
-import io.cubyz.entity.Player;
+import io.cubyz.models.Model;
 import io.cubyz.util.FloatFastList;
 import io.cubyz.util.IntFastList;
 
@@ -20,11 +21,11 @@ import io.cubyz.util.IntFastList;
  */
 
 public class TorchRotation implements RotationMode {
-	// Position offsets for the torch hanging on the wall:
-	private static final Vector3f POS_X = new Vector3f(0.4f, 0.2f, 0);
-	private static final Vector3f NEG_X = new Vector3f(-0.4f, 0.2f, 0);
-	private static final Vector3f POS_Z = new Vector3f(0, 0.2f, 0.4f);
-	private static final Vector3f NEG_Z = new Vector3f(0, 0.2f, -0.4f);
+	// Rotation/translation matrices for torches on the wall:
+	private static final Matrix3f POS_X = new Matrix3f().identity().rotateXYZ(0, 0, 0.3f);
+	private static final Matrix3f NEG_X = new Matrix3f().identity().rotateXYZ(0, 0, -0.3f);
+	private static final Matrix3f POS_Z = new Matrix3f().identity().rotateXYZ(-0.3f, 0, 0);
+	private static final Matrix3f NEG_Z = new Matrix3f().identity().rotateXYZ(0.3f, 0, 0);
 	
 	Resource id = new Resource("cubyz", "torch");
 	@Override
@@ -42,46 +43,6 @@ public class TorchRotation implements RotationMode {
 		if(dir.z == -1) data = (byte)0b1000;
 		return (byte)(data | oldData);
 	}
-
-	/*@Override
-	public Object[] generateSpatials(BlockInstance bi, byte data, Player player, int worldSizeX, int worldSizeZ) {
-		BlockSpatial[] spatials = new BlockSpatial[5];
-		int index = 0;
-		if((data & 0b1) != 0) {
-			BlockSpatial tmp = new BlockSpatial(bi, player, worldSizeX, worldSizeZ);
-			tmp.setPosition(bi.getX() + POS_X.x, bi.getY() + POS_X.y, bi.getZ() + POS_X.z, player, worldSizeX, worldSizeZ);
-			tmp.setRotation(0, 0, -0.3f);
-			spatials[index++] = tmp;
-		}
-		if((data & 0b10) != 0) {
-			BlockSpatial tmp = new BlockSpatial(bi, player, worldSizeX, worldSizeZ);
-			tmp.setPosition(bi.getX() + NEG_X.x, bi.getY() + NEG_X.y, bi.getZ() + NEG_X.z, player, worldSizeX, worldSizeZ);
-			tmp.setRotation(0, 0, 0.3f);
-			spatials[index++] = tmp;
-		}
-		if((data & 0b100) != 0) {
-			BlockSpatial tmp = new BlockSpatial(bi, player, worldSizeX, worldSizeZ);
-			tmp.setPosition(bi.getX() + POS_Z.x, bi.getY() + POS_Z.y, bi.getZ() + POS_Z.z, player, worldSizeX, worldSizeZ);
-			tmp.setRotation(0.3f, 0, 0);
-			spatials[index++] = tmp;
-		}
-		if((data & 0b1000) != 0) {
-			BlockSpatial tmp = new BlockSpatial(bi, player, worldSizeX, worldSizeZ);
-			tmp.setPosition(bi.getX() + NEG_Z.x, bi.getY() + NEG_Z.y, bi.getZ() + NEG_Z.z, player, worldSizeX, worldSizeZ);
-			tmp.setRotation(-0.3f, 0, 0);
-			spatials[index++] = tmp;
-		}
-		if((data & 0b10000) != 0) {
-			BlockSpatial tmp = new BlockSpatial(bi, player, worldSizeX, worldSizeZ);
-			spatials[index++] = tmp;
-		}
-		if(index == spatials.length) {
-			return spatials;
-		}
-		BlockSpatial[] trimmedArray = new BlockSpatial[index];
-		System.arraycopy(spatials, 0, trimmedArray, 0, index);
-		return trimmedArray;
-	}*/
 
 	@Override
 	public boolean dependsOnNeightbors() {
@@ -152,8 +113,28 @@ public class TorchRotation implements RotationMode {
 	
 	@Override
 	public int generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
-		// TODO: Add rotation and translation.
-		Meshes.blockMeshes.get(bi.getBlock()).model.addToChunkMesh(bi.x & 15, bi.y, bi.z & 15, bi.getBlock().atlasX, bi.getBlock().atlasY, bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
-		return renderIndex + 1;
+		byte data = bi.getData();
+		Model model = Meshes.blockMeshes.get(bi.getBlock()).model;
+		if((data & 0b1) != 0) {
+			model.addToChunkMeshRotation((bi.x & 15) + 0.9f, bi.y + 0.7f, (bi.z & 15) + 0.5f, POS_X, bi.getBlock().atlasX, bi.getBlock().atlasY, bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
+			renderIndex++;
+		}
+		if((data & 0b10) != 0) {
+			model.addToChunkMeshRotation((bi.x & 15) + 0.1f, bi.y + 0.7f, (bi.z & 15) + 0.5f, NEG_X, bi.getBlock().atlasX, bi.getBlock().atlasY, bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
+			renderIndex++;
+		}
+		if((data & 0b100) != 0) {
+			model.addToChunkMeshRotation((bi.x & 15) + 0.5f, bi.y + 0.7f, (bi.z & 15) + 0.9f, POS_Z, bi.getBlock().atlasX, bi.getBlock().atlasY, bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
+			renderIndex++;
+		}
+		if((data & 0b1000) != 0) {
+			model.addToChunkMeshRotation((bi.x & 15) + 0.5f, bi.y + 0.7f, (bi.z & 15) + 0.1f, NEG_Z, bi.getBlock().atlasX, bi.getBlock().atlasY, bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
+			renderIndex++;
+		}
+		if((data & 0b10000) != 0) {
+			model.addToChunkMeshRotation((bi.x & 15) + 0.5f, bi.y + 0.5f, (bi.z & 15) + 0.5f, null, bi.getBlock().atlasX, bi.getBlock().atlasY, bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
+			renderIndex++;
+		}
+		return renderIndex;
 	}
 }
