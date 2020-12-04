@@ -63,8 +63,14 @@ public class NormalChunkMesh {
 	protected int vaoId;
 
 	protected ArrayList<Integer> vboIdList;
+	
+	protected int transparentVaoId;
+
+	protected ArrayList<Integer> transparentVboIdList;
 
 	protected int vertexCount;
+
+	protected int transparentVertexCount;
 
 	public NormalChunkMesh(NormalChunk chunk) {
 		FloatFastList vertices = localVertices.get();
@@ -80,6 +86,22 @@ public class NormalChunkMesh {
 		texture.clear();
 		renderIndices.clear();
 		generateModelData(chunk, vertices, normals, faces, lighting, texture, renderIndices);
+		vertexCount = faces.size;
+		vboIdList = new ArrayList<>();
+		vaoId = bufferData(vertices, normals, faces, lighting, texture, renderIndices, vboIdList);
+		normals.clear();
+		vertices.clear();
+		faces.clear();
+		lighting.clear();
+		texture.clear();
+		renderIndices.clear();
+		generateTransparentModelData(chunk, vertices, normals, faces, lighting, texture, renderIndices);
+		transparentVertexCount = faces.size;
+		transparentVboIdList = new ArrayList<>();
+		transparentVaoId = bufferData(vertices, normals, faces, lighting, texture, renderIndices, transparentVboIdList);
+	}
+	
+	public int bufferData(FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, ArrayList<Integer> vboIdList) {
 		FloatBuffer posBuffer = null;
 		FloatBuffer textureBuffer = null;
 		FloatBuffer normalBuffer = null;
@@ -87,10 +109,9 @@ public class NormalChunkMesh {
 		IntBuffer lightingBuffer = null;
 		IntBuffer renderIndexBuffer = null;
 		try {
-			vertexCount = faces.size;
 			vboIdList = new ArrayList<>();
 
-			vaoId = glGenVertexArrays();
+			int vaoId = glGenVertexArrays();
 			glBindVertexArray(vaoId);
 
 			// Position VBO
@@ -149,6 +170,7 @@ public class NormalChunkMesh {
 
 			glBindBuffer(GL_ARRAY_BUFFER, 0);
 			glBindVertexArray(0);
+			return vaoId;
 		} finally {
 			if (posBuffer != null) {
 				MemoryUtil.memFree(posBuffer);
@@ -190,6 +212,25 @@ public class NormalChunkMesh {
 		glBindVertexArray(0);
 	}
 
+	public void renderTransparent() {
+		// Init
+		glBindVertexArray(transparentVaoId);
+		glEnableVertexAttribArray(0);
+		glEnableVertexAttribArray(1);
+		glEnableVertexAttribArray(2);
+		glEnableVertexAttribArray(3);
+		glEnableVertexAttribArray(4);
+		// Draw
+		glDrawElements(GL_TRIANGLES, transparentVertexCount, GL_UNSIGNED_INT, 0);
+		// Restore state
+		glDisableVertexAttribArray(0);
+		glDisableVertexAttribArray(1);
+		glDisableVertexAttribArray(2);
+		glDisableVertexAttribArray(3);
+		glDisableVertexAttribArray(4);
+		glBindVertexArray(0);
+	}
+
 	public void cleanUp() {
 		glDisableVertexAttribArray(0);
 
@@ -198,10 +239,14 @@ public class NormalChunkMesh {
 		for (int vboId : vboIdList) {
 			glDeleteBuffers(vboId);
 		}
+		for (int vboId : transparentVboIdList) {
+			glDeleteBuffers(vboId);
+		}
 
 		// Delete the VAO
 		glBindVertexArray(0);
 		glDeleteVertexArrays(vaoId);
+		glDeleteVertexArrays(transparentVaoId);
 	}
 	
 	private static void generateModelData(NormalChunk chunk, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices) {
@@ -210,9 +255,25 @@ public class NormalChunkMesh {
 		int index = 0;
 		for(int i = 0; i < visibles.size; i++) {
 			BlockInstance bi = visibles.array[i];
-			bi.updateLighting(chunk.getWorldX(), chunk.getWorldZ(), chunk);
-			bi.renderIndex = index;
-			index = bi.getBlock().mode.generateChunkMesh(bi, vertices, normals, faces, lighting, texture, renderIndices, index);
+			if(!bi.getBlock().isTrulyTransparent()) {
+				bi.updateLighting(chunk.getWorldX(), chunk.getWorldZ(), chunk);
+				bi.renderIndex = index;
+				index = bi.getBlock().mode.generateChunkMesh(bi, vertices, normals, faces, lighting, texture, renderIndices, index);
+			}
+		}
+	}
+	
+	private static void generateTransparentModelData(NormalChunk chunk, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices) {
+		// Go through all blocks and check their neighbors:
+		FastList<BlockInstance> visibles = chunk.getVisibles();
+		int index = 0;
+		for(int i = 0; i < visibles.size; i++) {
+			BlockInstance bi = visibles.array[i];
+			if(bi.getBlock().isTrulyTransparent()) {
+				bi.updateLighting(chunk.getWorldX(), chunk.getWorldZ(), chunk);
+				bi.renderIndex = index;
+				index = bi.getBlock().mode.generateChunkMesh(bi, vertices, normals, faces, lighting, texture, renderIndices, index);
+			}
 		}
 	}
 }

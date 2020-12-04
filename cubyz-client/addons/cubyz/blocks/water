@@ -3,9 +3,8 @@ selectable no
 solid no
 transparent yes
 absorbedLight 0x17171100
-rotation cubyz:transparent
 
-model cubyz:plane.obj
+model cubyz:block.obj
 texture cubyz:water
 
 color 0xf02f

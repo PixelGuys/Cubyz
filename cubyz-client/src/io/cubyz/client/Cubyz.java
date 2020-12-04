@@ -235,60 +235,15 @@ public class Cubyz implements GameLogic, ClientConnection {
 			}
 		}
 		// Generate the texture atlas for this surface's truly transparent blocks:
-		ArrayList<Block> trulyTransparents = new ArrayList<>();
-		ArrayList<Block> nonTransparents = new ArrayList<>();
-		Meshes.transparentBlockMesh = Meshes.cachedDefaultModels.get("cubyz:plane.obj");
+		ArrayList<Block> blocks = new ArrayList<>();
 		for(RegistryElement element : surface.getCurrentRegistries().blockRegistry.registered()) {
-			Block block = (Block)element;
-			if(Meshes.blockMeshes.get(block) == Meshes.transparentBlockMesh) {
-				trulyTransparents.add(block);
-			} else {
-				nonTransparents.add(block);
-			}
+			blocks.add((Block)element);
 		}
-		
-		// transparent-only atlas:
-		Meshes.transparentAtlasSize = (int)Math.ceil(Math.sqrt(trulyTransparents.size()));
+		Meshes.atlasSize = (int)Math.ceil(Math.sqrt(blocks.size()));
 		int maxSize = 16; // Scale all textures so they fit the size of the biggest texture.
 		// Get the textures for those blocks:
 		ArrayList<BufferedImage> blockTextures = new ArrayList<>();
-		for(Block block : trulyTransparents) {
-			BufferedImage texture = ResourceUtilities.loadBlockTextureToBufferedImage(block.getRegistryID());
-			if(texture != null) {
-				maxSize = Math.max(maxSize, Math.max(texture.getWidth(), texture.getHeight()));
-				blockTextures.add(texture);
-			}
-		}
-		// Put the textures into the atlas
-		BufferedImage atlas = new BufferedImage(maxSize*Meshes.transparentAtlasSize, maxSize*Meshes.transparentAtlasSize, BufferedImage.TYPE_INT_ARGB);
-		int x = 0, y = 0;
-		for(int i = 0; i < blockTextures.size(); i++) {
-			BufferedImage img = blockTextures.get(i);
-			if(img != null) {
-				// Copy and scale the image onto the atlas:
-				for(int x2 = 0; x2 < maxSize; x2++) {
-					for(int y2 = 0; y2 < maxSize; y2++) {
-						atlas.setRGB(x*maxSize + x2, y*maxSize + y2, img.getRGB(x2*img.getWidth()/maxSize, y2*img.getHeight()/maxSize));
-					}
-				}
-			}
-			trulyTransparents.get(i).atlasX = x;
-			trulyTransparents.get(i).atlasY = y;
-			x++;
-			if(x == Meshes.transparentAtlasSize) {
-				x = 0;
-				y++;
-			}
-		}
-		Meshes.transparentBlockMesh.getMaterial().setTexture(new Texture(TextureConverter.fromBufferedImage(atlas)));
-		
-		
-		// non-transparent atlas:
-		Meshes.atlasSize = (int)Math.ceil(Math.sqrt(nonTransparents.size()));
-		maxSize = 16; // Scale all textures so they fit the size of the biggest texture.
-		// Get the textures for those blocks:
-		blockTextures.clear();
-		for(Block block : nonTransparents) {
+		for(Block block : blocks) {
 			BufferedImage texture = ResourceUtilities.loadBlockTextureToBufferedImage(block.getRegistryID());
 			if(texture != null) {
 			} else if(block instanceof CustomOre) {
@@ -302,9 +257,9 @@ public class Cubyz implements GameLogic, ClientConnection {
 			blockTextures.add(texture);
 		}
 		// Put the textures into the atlas
-		atlas = new BufferedImage(maxSize*Meshes.atlasSize, maxSize*Meshes.atlasSize, BufferedImage.TYPE_INT_ARGB);
-		x = 0;
-		y = 0;
+		BufferedImage atlas = new BufferedImage(maxSize*Meshes.atlasSize, maxSize*Meshes.atlasSize, BufferedImage.TYPE_INT_ARGB);
+		int x = 0;
+		int y = 0;
 		for(int i = 0; i < blockTextures.size(); i++) {
 			BufferedImage img = blockTextures.get(i);
 			if(img != null) {
@@ -315,8 +270,8 @@ public class Cubyz implements GameLogic, ClientConnection {
 					}
 				}
 			}
-			nonTransparents.get(i).atlasX = x;
-			nonTransparents.get(i).atlasY = y;
+			blocks.get(i).atlasX = x;
+			blocks.get(i).atlasY = y;
 			x++;
 			if(x == Meshes.atlasSize) {
 				x = 0;

@@ -17,6 +17,7 @@ import io.cubyz.entity.CustomMeshProvider;
 import io.cubyz.entity.CustomMeshProvider.MeshType;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
+import io.cubyz.util.FastList;
 import io.cubyz.world.NormalChunk;
 import io.cubyz.world.ReducedChunk;
 import io.jungle.Mesh;
@@ -241,11 +242,11 @@ public class MainRenderer implements Renderer {
 			
 			float x0 = playerPosition.x;
 			float z0 = playerPosition.z;
-			chunks = sortChunks(chunks, x0/16 - 0.5f, z0/16 - 0.5f);
+			FastList<NormalChunk> visibleChunks = new FastList<NormalChunk>(chunks.length, NormalChunk.class);
 			for (NormalChunk ch : chunks) {
 				if (!ch.isLoaded() || !frustumInt.testAab(ch.getMin(x0, z0, worldSizeX, worldSizeZ), ch.getMax(x0, z0, worldSizeX, worldSizeZ)))
 					continue;
-				
+				visibleChunks.add(ch);
 				blockShader.setUniform("modelPosition", ch.getMin(x0, z0, worldSizeX, worldSizeZ));
 				
 				if(selected != null && selected.source == ch) {
@@ -286,81 +287,124 @@ public class MainRenderer implements Renderer {
 					((ReducedChunkMesh)mesh).render();
 				}
 			}
+			
 			chunkShader.unbind();
+			
+			// Render entities:
+			
+			entityShader.bind();
+			entityShader.setUniform("fog", ctx.getFog());
+			entityShader.setUniform("projectionMatrix", ctx.getWindow().getProjectionMatrix());
+			entityShader.setUniform("texture_sampler", 0);
+			for (int i = 0; i < entities.length; i++) {
+				Entity ent = entities[i];
+				int x = (int)(ent.getPosition().x + 1.0f);
+				int y = (int)(ent.getPosition().y + 1.0f);
+				int z = (int)(ent.getPosition().z + 1.0f);
+				if (ent != null && ent != localPlayer) { // don't render local player
+					Mesh mesh = null;
+					if(ent.getType().model != null) {
+						entityShader.setUniform("materialHasTexture", true);
+						entityShader.setUniform("light", ent.getSurface().getLight(x, y, z, ambientLight));
+						ent.getType().model.render(ctx.getCamera().getViewMatrix(), entityShader, ent);
+						continue;
+					}
+					if (ent instanceof CustomMeshProvider) {
+						CustomMeshProvider provider = (CustomMeshProvider) ent;
+						MeshType type = provider.getMeshType();
+						if (type == MeshType.BLOCK) {
+							Block b = (Block) provider.getMeshId();
+							mesh = Meshes.blockMeshes.get(b);
+							mesh.getMaterial().setTexture(Meshes.blockTextures.get(b));
+						} else if (type == MeshType.ENTITY) {
+							Entity e = (Entity) provider.getMeshId();
+							mesh = Meshes.entityMeshes.get(e.getType());
+						}
+					} else {
+						mesh = Meshes.entityMeshes.get(ent.getType());
+					}
+					
+					if (mesh != null) {
+						entityShader.setUniform("materialHasTexture", mesh.getMaterial().isTextured());
+						entityShader.setUniform("light", ent.getSurface().getLight(x, y, z, ambientLight));
+						
+						mesh.renderOne(() -> {
+							Vector3f position = ent.getRenderPosition();
+							Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(position, ent.getRotation(), ent.getScale()), ctx.getCamera().getViewMatrix());
+							entityShader.setUniform("viewMatrix", modelViewMatrix);
+						});
+					}
+				}
+			}
+			
+			entityShader.setUniform("fog.activ", 0); // manually disable the fog
+			for (int i = 0; i < spatials.length; i++) {
+				Spatial spatial = spatials[i];
+				Mesh mesh = spatial.getMesh();
+				entityShader.setUniform("light", new Vector3f(1, 1, 1));
+				entityShader.setUniform("materialHasTexture", mesh.getMaterial().isTextured());
+				mesh.renderOne(() -> {
+					Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(
+							Transformation.getModelMatrix(spatial.getPosition(), spatial.getRotation(), spatial.getScale()),
+							ctx.getCamera().getViewMatrix());
+					entityShader.setUniform("viewMatrix", modelViewMatrix);
+				});
+			}
+			
+			entityShader.unbind();
+			
+			// Render transparent chunk meshes:
+			blockShader.bind();
+			
+			blockShader.setUniform("fog", ctx.getFog());
+			blockShader.setUniform("projectionMatrix", ctx.getWindow().getProjectionMatrix());
+			blockShader.setUniform("texture_sampler", 0);
+			blockShader.setUniform("break_sampler", 2);
+			blockShader.setUniform("viewMatrix", ctx.getCamera().getViewMatrix());
+
+			blockShader.setUniform("ambientLight", ambientLight);
+			blockShader.setUniform("directionalLight", directionalLight.getDirection());
+			
+			// Activate first texture bank
+			glActiveTexture(GL_TEXTURE0);
+			// Bind the texture
+			glBindTexture(GL_TEXTURE_2D, Meshes.atlas.getId());
+			if(Cubyz.instance.msd.getSelected() instanceof BlockInstance) {
+				selected = (BlockInstance)Cubyz.instance.msd.getSelected();
+				breakAnim = selected.getBreakingAnim();
+			}
+			
+			if(breakAnim > 0f && breakAnim < 1f) {
+				int breakStep = (int)(breakAnim*Cubyz.breakAnimations.length);
+				glActiveTexture(GL_TEXTURE2);
+				glBindTexture(GL_TEXTURE_2D, Cubyz.breakAnimations[breakStep].getId());
+			} else {
+				glActiveTexture(GL_TEXTURE2);
+				glBindTexture(GL_TEXTURE_2D, 0);
+			}
+
+			chunks = sortChunks(visibleChunks.toArray(), x0/16 - 0.5f, z0/16 - 0.5f);
+			for (NormalChunk ch : chunks) {				
+				blockShader.setUniform("modelPosition", ch.getMin(x0, z0, worldSizeX, worldSizeZ));
+				
+				if(selected != null && selected.source == ch) {
+					blockShader.setUniform("selectedIndex", selected.renderIndex);
+				} else {
+					blockShader.setUniform("selectedIndex", -1);
+				}
+				
+				Object mesh = ch.getChunkMesh();
+				if(ch.wasUpdated() || mesh == null || !(mesh instanceof NormalChunkMesh)) {
+					mesh = new NormalChunkMesh(ch);
+					ch.setChunkMesh(mesh);
+				}
+				((NormalChunkMesh)mesh).renderTransparent();		
+			}
+			blockShader.unbind();
 		}
-		
-		renderScene(ctx, ambientLight, directionalLight, blocks, reducedChunks, entities, spatials,
-				playerPosition, localPlayer, breakAnim);
 		if (ctx.getHud() != null) {
 			ctx.getHud().render(window);
 		}
-	}
-	
-	public void renderScene(Context ctx,Vector3f ambientLight, DirectionalLight directionalLight,
-			Block[] blocks, ReducedChunk[] reducedChunks, Entity[] entities, Spatial[] spatials, Vector3f playerPosition, Player p, float breakAnim) {
-		
-		entityShader.bind();
-		entityShader.setUniform("fog", ctx.getFog());
-		entityShader.setUniform("projectionMatrix", ctx.getWindow().getProjectionMatrix());
-		entityShader.setUniform("texture_sampler", 0);
-		for (int i = 0; i < entities.length; i++) {
-			Entity ent = entities[i];
-			int x = (int)(ent.getPosition().x + 1.0f);
-			int y = (int)(ent.getPosition().y + 1.0f);
-			int z = (int)(ent.getPosition().z + 1.0f);
-			if (ent != null && ent != p) { // don't render local player
-				Mesh mesh = null;
-				if(ent.getType().model != null) {
-					entityShader.setUniform("materialHasTexture", true);
-					entityShader.setUniform("light", ent.getSurface().getLight(x, y, z, ambientLight));
-					ent.getType().model.render(ctx.getCamera().getViewMatrix(), entityShader, ent);
-					continue;
-				}
-				if (ent instanceof CustomMeshProvider) {
-					CustomMeshProvider provider = (CustomMeshProvider) ent;
-					MeshType type = provider.getMeshType();
-					if (type == MeshType.BLOCK) {
-						Block b = (Block) provider.getMeshId();
-						mesh = Meshes.blockMeshes.get(b);
-						if(mesh != Meshes.transparentBlockMesh) {
-							mesh.getMaterial().setTexture(Meshes.blockTextures.get(b));
-						}
-					} else if (type == MeshType.ENTITY) {
-						Entity e = (Entity) provider.getMeshId();
-						mesh = Meshes.entityMeshes.get(e.getType());
-					}
-				} else {
-					mesh = Meshes.entityMeshes.get(ent.getType());
-				}
-				
-				if (mesh != null) {
-					entityShader.setUniform("materialHasTexture", mesh.getMaterial().isTextured());
-					entityShader.setUniform("light", ent.getSurface().getLight(x, y, z, ambientLight));
-					
-					mesh.renderOne(() -> {
-						Vector3f position = ent.getRenderPosition();
-						Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(position, ent.getRotation(), ent.getScale()), ctx.getCamera().getViewMatrix());
-						entityShader.setUniform("viewMatrix", modelViewMatrix);
-					});
-				}
-			}
-		}
-		
-		entityShader.setUniform("fog.activ", 0); // manually disable the fog
-		for (int i = 0; i < spatials.length; i++) {
-			Spatial spatial = spatials[i];
-			Mesh mesh = spatial.getMesh();
-			entityShader.setUniform("light", new Vector3f(1, 1, 1));
-			entityShader.setUniform("materialHasTexture", mesh.getMaterial().isTextured());
-			mesh.renderOne(() -> {
-				Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(
-						Transformation.getModelMatrix(spatial.getPosition(), spatial.getRotation(), spatial.getScale()),
-						ctx.getCamera().getViewMatrix());
-				entityShader.setUniform("viewMatrix", modelViewMatrix);
-			});
-		}
-		
-		entityShader.unbind();
 	}
 
 	@Override

@@ -30,7 +30,6 @@ public class ClientProxy extends CommonProxy {
 		reg.register(new NoRotation());
 		reg.register(new TorchRotation());
 		reg.register(new LogRotation());
-		reg.register(new TransparentRotation());
 		reg.register(new StackableRotation());
 	}
 

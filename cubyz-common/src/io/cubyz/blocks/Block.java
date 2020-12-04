@@ -72,14 +72,14 @@ public class Block implements RegistryElement {
 		hardness = Float.parseFloat(props.getProperty("hardness", "1"));
 		blockClass = BlockClass.valueOf(bc);
 		light = Integer.decode(props.getProperty("emittedLight", "0"));
-		absorption = Integer.decode(props.getProperty("absorbedLight", "0"));
-		transparent = props.getProperty("transparent", "no").equalsIgnoreCase("yes");
+		absorption = Integer.decode(props.getProperty("absorbedLight", "-1"));
+		transparent = props.getProperty("absorbedLight", "").length() != 0;
 		degradable = props.getProperty("degradable", "no").equalsIgnoreCase("yes");
 		selectable = props.getProperty("selectable", "yes").equalsIgnoreCase("yes");
 		solid = props.getProperty("solid", "yes").equalsIgnoreCase("yes");
 		gui = props.getProperty("GUI", null);
 		mode = CubyzRegistries.ROTATION_MODE_REGISTRY.getByID(props.getProperty("rotation", "cubyz:no_rotation"));
-		trulyTransparent = "cubyz:plane.obj".equals(props.getProperty("model"));
+		trulyTransparent = props.getProperty("transparent", "no").equalsIgnoreCase("yes");
 		blockDrops = new BlockDrop[0];
 		color = (short)(Integer.decode(props.getProperty("color", "0x0000")) & 65535);
 	}

@@ -33,8 +33,6 @@ public class Meshes {
 	public static final HashMap<EntityType, Mesh> entityMeshes = new HashMap<>();
 	public static final HashMap<Block, Texture> blockTextures = new HashMap<>();
 	
-	public static Mesh transparentBlockMesh;
-	public static int transparentAtlasSize;
 	public static int atlasSize;
 	public static Texture atlas;
 	

@@ -1,7 +1,6 @@
 class leaf
 hardness 0.3
 solid no
-transparent yes
 absorbedLight 0x06080008
 
 model cubyz:grass_herb.obj
