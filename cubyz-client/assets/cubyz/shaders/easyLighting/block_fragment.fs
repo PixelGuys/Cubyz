@@ -17,13 +17,15 @@ uniform sampler2D texture_sampler;
 uniform sampler2D break_sampler;
 uniform Fog fog;
 uniform int selectedIndex;
+uniform int atlasSize;
 
 vec4 ambientC;
 
 void setupColors(vec2 textCoord)
 {
-	ambientC = texture(texture_sampler, textCoord);
-	ambientC += texture(break_sampler, textCoord)*float(selectedIndex == selectionIndex);
+	vec4 bg = texture(texture_sampler, textCoord);
+	ambientC = texture(break_sampler, fract(textCoord*atlasSize))*float(selectedIndex == selectionIndex);
+	ambientC = vec4(mix(vec4(bg), vec4(ambientC), ambientC.a));
 }
 
 vec4 calcFog(vec3 pos, vec4 color, Fog fog) {
@@ -42,9 +44,5 @@ void main()
 	
 	if(fog.activ) {
 		fragColor = calcFog(mvVertexPos, fragColor, fog);
-	}
-	
-	if(selectedIndex == selectionIndex) {
-		fragColor.z += 0.4;
 	}
 }

@@ -103,6 +103,7 @@ public class MainRenderer implements Renderer {
 		blockShader.createUniform("directionalLight");
 		blockShader.createUniform("modelPosition");
 		blockShader.createUniform("selectedIndex");
+		blockShader.createUniform("atlasSize");
 		blockShader.createFogUniform("fog");
 		
 		entityShader = new ShaderProgram();
@@ -221,6 +222,8 @@ public class MainRenderer implements Renderer {
 			blockShader.setUniform("ambientLight", ambientLight);
 			blockShader.setUniform("directionalLight", directionalLight.getDirection());
 			
+			blockShader.setUniform("atlasSize", Meshes.atlasSize);
+			
 			// Activate first texture bank
 			glActiveTexture(GL_TEXTURE0);
 			// Bind the texture
@@ -232,12 +235,12 @@ public class MainRenderer implements Renderer {
 			}
 			
 			if(breakAnim > 0f && breakAnim < 1f) {
-				int breakStep = (int)(breakAnim*Cubyz.breakAnimations.length);
+				int breakStep = (int)(breakAnim*(Cubyz.breakAnimations.length - 1)) + 1;
 				glActiveTexture(GL_TEXTURE2);
 				glBindTexture(GL_TEXTURE_2D, Cubyz.breakAnimations[breakStep].getId());
 			} else {
 				glActiveTexture(GL_TEXTURE2);
-				glBindTexture(GL_TEXTURE_2D, 0);
+				glBindTexture(GL_TEXTURE_2D, Cubyz.breakAnimations[0].getId());
 			}
 			
 			float x0 = playerPosition.x;
@@ -365,6 +368,8 @@ public class MainRenderer implements Renderer {
 			blockShader.setUniform("ambientLight", ambientLight);
 			blockShader.setUniform("directionalLight", directionalLight.getDirection());
 			
+			blockShader.setUniform("atlasSize", Meshes.atlasSize);
+			
 			// Activate first texture bank
 			glActiveTexture(GL_TEXTURE0);
 			// Bind the texture
@@ -375,12 +380,12 @@ public class MainRenderer implements Renderer {
 			}
 			
 			if(breakAnim > 0f && breakAnim < 1f) {
-				int breakStep = (int)(breakAnim*Cubyz.breakAnimations.length);
+				int breakStep = (int)(breakAnim*(Cubyz.breakAnimations.length - 1)) + 1;
 				glActiveTexture(GL_TEXTURE2);
 				glBindTexture(GL_TEXTURE_2D, Cubyz.breakAnimations[breakStep].getId());
 			} else {
 				glActiveTexture(GL_TEXTURE2);
-				glBindTexture(GL_TEXTURE_2D, 0);
+				glBindTexture(GL_TEXTURE_2D, Cubyz.breakAnimations[0].getId());
 			}
 
 			chunks = sortChunks(visibleChunks.toArray(), x0/16 - 0.5f, z0/16 - 0.5f);
