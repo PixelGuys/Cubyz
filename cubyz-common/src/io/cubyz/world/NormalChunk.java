@@ -211,10 +211,6 @@ public class NormalChunk extends Chunk {
 					op.singleLightUpdate(x, y, z);
 				}
 			}
-			// Take care about light sources:
-			for(int index : lightSources) {
-				lightUpdate((index >>> 4) & 15, (index >>> 8) & 255, index & 15);
-			}
 		}
 		// Sadly the new system doesn't allow for easy access on the BlockInstances through a list, so we have to go through all blocks(which probably is even more efficient because about half of the blocks are non-air).
 		for(int x = 0; x < 16; x++) {
@@ -244,6 +240,12 @@ public class NormalChunk extends Chunk {
 				}
 			}
 		}
+		if(Settings.easyLighting) {
+			// Take care about light sources:
+			for(int index : lightSources) {
+				lightUpdate((index >>> 4) & 15, (index >>> 8) & 255, index & 15);
+			}
+		}
 		boolean [] toCheck = {chx0, chx1, chz0, chz1};
 		for (int i = 0; i < 16; i++) {
 			// Checks if blocks from neighboring chunks are changed
@@ -260,12 +262,10 @@ public class NormalChunk extends Chunk {
 						// Update neighbor information:
 						if(inst != null) {
 							inst.updateNeighbor(k ^ 1, getsBlocked(block, blocks[(invdx[k] << 4) | (j << 8) | invdz[k]], ch.blockData[(dx[k] << 4) | (j << 8) | dz[k]], (invdx[k] << 4) | (j << 8) | invdz[k] - (dx[k] << 4) | (j << 8) | dz[k]), surface.getStellarTorus().getWorld().getLocalPlayer());
+							continue;
 						}
 						// Update visibility:
 						if(block == null) {
-							continue;
-						}
-						if(ch.contains(dx[k] + wx, j, dz[k] + wz)) {
 							continue;
 						}
 						if (blocksLight(getBlockAt(invdx[k], j, invdz[k]), block, blockData[(invdx[k] << 4) | (j << 8) | invdz[k]], (dx[k] << 4) | (j << 8) | dz[k] - (invdx[k] << 4) | (j << 8) | invdz[k])) {

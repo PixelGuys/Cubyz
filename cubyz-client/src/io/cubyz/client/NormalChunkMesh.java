@@ -102,6 +102,7 @@ public class NormalChunkMesh {
 	}
 	
 	public int bufferData(FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, ArrayList<Integer> vboIdList) {
+		if(faces.size == 0) return -1;
 		FloatBuffer posBuffer = null;
 		FloatBuffer textureBuffer = null;
 		FloatBuffer normalBuffer = null;
@@ -109,8 +110,6 @@ public class NormalChunkMesh {
 		IntBuffer lightingBuffer = null;
 		IntBuffer renderIndexBuffer = null;
 		try {
-			vboIdList = new ArrayList<>();
-
 			int vaoId = glGenVertexArrays();
 			glBindVertexArray(vaoId);
 
@@ -194,6 +193,7 @@ public class NormalChunkMesh {
 	}
 
 	public void render() {
+		if(vaoId == -1) return;
 		// Init
 		glBindVertexArray(vaoId);
 		glEnableVertexAttribArray(0);
@@ -213,6 +213,7 @@ public class NormalChunkMesh {
 	}
 
 	public void renderTransparent() {
+		if(transparentVaoId == -1) return;
 		// Init
 		glBindVertexArray(transparentVaoId);
 		glEnableVertexAttribArray(0);

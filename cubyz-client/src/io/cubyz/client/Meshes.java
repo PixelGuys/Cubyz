@@ -16,7 +16,6 @@ import io.cubyz.models.Model;
 import io.cubyz.utils.ResourceUtilities;
 import io.cubyz.utils.ResourceUtilities.BlockModel;
 import io.cubyz.utils.ResourceUtilities.EntityModel;
-import io.jungle.InstancedMesh;
 import io.jungle.Mesh;
 import io.jungle.Texture;
 import io.jungle.util.Material;
@@ -29,7 +28,7 @@ import io.jungle.util.StaticMeshesLoader;
 
 public class Meshes {
 
-	public static final HashMap<Block, InstancedMesh> blockMeshes = new HashMap<>();
+	public static final HashMap<Block, Mesh> blockMeshes = new HashMap<>();
 	public static final HashMap<EntityType, Mesh> entityMeshes = new HashMap<>();
 	public static final HashMap<Block, Texture> blockTextures = new HashMap<>();
 	
@@ -37,7 +36,7 @@ public class Meshes {
 	public static Texture atlas;
 	
 
-	public static final HashMap<String, InstancedMesh> cachedDefaultModels = new HashMap<>();
+	public static final HashMap<String, Mesh> cachedDefaultModels = new HashMap<>();
 	
 	public static final Registry<Model> models = new Registry<>();
 	
@@ -80,7 +79,7 @@ public class Meshes {
 				}
 				
 				// Cached meshes
-				InstancedMesh mesh = null;
+				Mesh mesh = null;
 				for (String key : cachedDefaultModels.keySet()) {
 					if (key.equals(bm.subModels.get("default").model)) {
 						mesh = cachedDefaultModels.get(key);
@@ -88,9 +87,8 @@ public class Meshes {
 				}
 				if (mesh == null) {
 					Resource rs = new Resource(bm.subModels.get("default").model);
-					mesh = (InstancedMesh)OBJLoader.loadMesh(rs, "assets/" + rs.getMod() + "/models/3d/" + rs.getID(), true); // Block meshes are always instanced.
+					mesh = OBJLoader.loadMesh(rs, "assets/" + rs.getMod() + "/models/3d/" + rs.getID(), false);
 					//defaultMesh = StaticMeshesLoader.loadInstanced("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), "assets/" + rs.getMod() + "/models/3d/")[0];
-					mesh.setInstances(512, ZenithsRenderer.shadowMap != null);
 					mesh.setBoundingRadius(2.0f);
 					Material material = new Material(tex, 0.6F);
 					mesh.setMaterial(material);

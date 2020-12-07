@@ -649,7 +649,7 @@ public class Cubyz implements GameLogic, ClientConnection {
 				}
 				
 				// Cached meshes
-				InstancedMesh defaultMesh = null;
+				Mesh defaultMesh = null;
 				for (String key : Meshes.cachedDefaultModels.keySet()) {
 					if (key.equals(bm.subModels.get("default").model)) {
 						defaultMesh = Meshes.cachedDefaultModels.get(key);

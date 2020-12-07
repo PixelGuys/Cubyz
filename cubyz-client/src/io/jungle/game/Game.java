@@ -131,7 +131,7 @@ public class Game {
 	public void update() {
 		logic.update(1.0f);
 	}
-
+	
 	public void render() {
 		logic.render(win);
 		win.render();
