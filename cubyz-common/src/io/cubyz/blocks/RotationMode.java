@@ -7,7 +7,6 @@ import org.joml.Vector4f;
 
 import io.cubyz.api.RegistryElement;
 import io.cubyz.entity.Entity;
-import io.cubyz.entity.Player;
 import io.cubyz.util.FloatFastList;
 import io.cubyz.util.IntFastList;
 
@@ -66,14 +65,16 @@ public interface RotationMode extends RegistryElement {
 
 	/**
 	 * Check if the entity would collide with the block.
-	 * @param ent Entity to consider
+	 * @param pos position of the entity.
+	 * @param width width of the entity hitbox.
+	 * @param height of the entity hitbox.
 	 * @param x x-coordinate of the block.
 	 * @param y y-coordinate of the block.
 	 * @param z z-coordinate of the block.
 	 * @param data block data
 	 * @return Whether the entity and block hitboxes overlap.
 	 */
-	public boolean checkEntity(Entity ent, int x, int y, int z, byte blockData);
+	public boolean checkEntity(Vector3f pos, float width, float height, int x, int y, int z, byte blockData);
 	
 	/**
 	 * Check if the entity would collide with the block, if its position was changed by `vel`.

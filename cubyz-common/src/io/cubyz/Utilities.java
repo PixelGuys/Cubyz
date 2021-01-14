@@ -93,5 +93,4 @@ public class Utilities {
 			System.arraycopy(array, 0, array, i, ((len - i) < i) ? (len - i) : i);
 		}
 	}
-	
 }

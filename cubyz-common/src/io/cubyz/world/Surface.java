@@ -80,9 +80,12 @@ public abstract class Surface {
 	
 	public abstract CurrentSurfaceRegistries getCurrentRegistries();
 	
-	public abstract void drop(ItemStack stack, Vector3f pos);
+	public abstract void drop(ItemStack stack, Vector3f pos, Vector3f dir, float vel);
 	
 	public abstract Biome.Type[][] getBiomeMap();
+	
+	public abstract ChunkEntityManager getEntityManagerAt(int wx, int wz);
+	public abstract ChunkEntityManager[] getEntityManagers();
 	
 	public int getSizeX() {
 		return Integer.MIN_VALUE;
@@ -97,6 +100,7 @@ public abstract class Surface {
 	}
 
 	public abstract void getMapData(int x, int z, int width, int height, float[][] heightMap, Biome[][] biomeMap);
+
 
 	
 }

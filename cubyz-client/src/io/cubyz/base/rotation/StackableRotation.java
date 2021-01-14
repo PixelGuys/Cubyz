@@ -76,13 +76,13 @@ public class StackableRotation implements RotationMode {
 	}
 
 	@Override
-	public boolean checkEntity(Entity ent, int x, int y, int z, byte data) {
-		return 	   y + data/16.0f >= ent.getPosition().y
-				&& y     <= ent.getPosition().y + ent.height
-				&& x + 1 >= ent.getPosition().x - ent.width
-				&& x     <= ent.getPosition().x + ent.width
-				&& x + 1 >= ent.getPosition().z - ent.width
-				&& x     <= ent.getPosition().z + ent.width;
+	public boolean checkEntity(Vector3f pos, float width, float height, int x, int y, int z, byte blockData) {
+		return 	   y + blockData/16.0f >= pos.y
+				&& y     <= pos.y + height
+				&& x + 1 >= pos.x - width
+				&& x     <= pos.x + width
+				&& x + 1 >= pos.z - width
+				&& x     <= pos.z + width;
 	}
 
 	@Override

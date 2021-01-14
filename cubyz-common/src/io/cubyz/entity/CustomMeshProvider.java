@@ -19,7 +19,6 @@ public interface CustomMeshProvider {
 	
 	
 	public static enum MeshType {
-		BLOCK,
 		ENTITY;
 	}
 	

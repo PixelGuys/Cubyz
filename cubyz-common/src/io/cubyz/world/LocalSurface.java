@@ -9,12 +9,10 @@ import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 
 import org.joml.Vector3f;
-import org.joml.Vector3i;
 import org.joml.Vector4f;
 
 import io.cubyz.ClientOnly;
 import io.cubyz.Settings;
-import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.CurrentSurfaceRegistries;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.CustomOre;
@@ -22,8 +20,7 @@ import io.cubyz.blocks.Updateable;
 import io.cubyz.blocks.Ore;
 import io.cubyz.blocks.BlockEntity;
 import io.cubyz.entity.Entity;
-import io.cubyz.entity.EntityType;
-import io.cubyz.entity.ItemEntity;
+import io.cubyz.entity.ItemEntityManager;
 import io.cubyz.handler.PlaceBlockHandler;
 import io.cubyz.handler.RemoveBlockHandler;
 import io.cubyz.items.BlockDrop;
@@ -49,8 +46,10 @@ public class LocalSurface extends Surface {
 	private MetaChunk[] metaChunks;
 	private NormalChunk[] chunks;
 	private ReducedChunk[] reducedChunks;
+	private ChunkEntityManager[] entityManagers;
 	private int lastX = Integer.MAX_VALUE, lastZ = Integer.MAX_VALUE; // Chunk coordinates of the last chunk update.
 	private int lastMetaX = Integer.MAX_VALUE, lastMetaZ = Integer.MAX_VALUE; // MetaChunk coordinates of the last chunk update.
+	private int lastEntityX = Integer.MAX_VALUE, lastEntityZ = Integer.MAX_VALUE, doubleEntityRD; // MetaChunk coordinates of the last chunk update.
 	private int mcDRD; // double renderdistance of MetaChunks.
 	private int doubleRD; // Corresponds to the doubled value of the last used render distance.
 	private final int worldSizeX = 65536, worldSizeZ = 16384;
@@ -180,6 +179,7 @@ public class LocalSurface extends Surface {
 		this.torus = torus;
 		metaChunks = new MetaChunk[0];
 		chunks = new NormalChunk[0];
+		entityManagers = new ChunkEntityManager[0];
 		reducedChunks = new ReducedChunk[0];
 		
 		for (int i = 0; i < Runtime.getRuntime().availableProcessors(); i++) {
@@ -336,8 +336,6 @@ public class LocalSurface extends Surface {
 		return list;
 	}
 	
-	private EntityType itemEntityType = CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:item_stack");
-	
 	@Override
 	public void removeBlock(int x, int y, int z) {
 		NormalChunk ch = getChunk(x >> 4, z >> 4);
@@ -355,8 +353,8 @@ public class LocalSurface extends Surface {
 				float randomPart = drop.amount - amount;
 				if(Math.random() < randomPart) amount++;
 				if(amount > 0) {
-					ItemEntity ent = new ItemEntity(itemEntityType, this, new ItemStack(drop.item, amount), new Vector3i(x, y, z));
-					entities.add(ent);
+					ItemEntityManager manager = this.getEntityManagerAt(x & ~15, z & ~15).itemEntityManager;
+					manager.add(x, y, z, 0, 0, 0, new ItemStack(drop.item, amount), 30*300 /*5 minutes at normal update speed.*/);
 				}
 			}
 		}
@@ -376,9 +374,9 @@ public class LocalSurface extends Surface {
 	}
 	
 	@Override
-	public void drop(ItemStack stack, Vector3f pos) {
-		ItemEntity drop = new ItemEntity(itemEntityType, this, stack, pos);
-		entities.add(drop);
+	public void drop(ItemStack stack, Vector3f pos, Vector3f dir, float velocity) {
+		ItemEntityManager manager = this.getEntityManagerAt(((int)pos.x) & ~15, ((int)pos.z) & ~15).itemEntityManager;
+		manager.add(pos.x, pos.y, pos.z, dir.x*velocity, dir.y*velocity, dir.z*velocity, stack, 30*300 /*5 minutes at normal update speed.*/);
 	}
 	
 	@Override
@@ -435,25 +433,32 @@ public class LocalSurface extends Surface {
 		for (int i = 0; i < entities.size(); i++) {
 			Entity en = entities.get(i);
 			en.update();
-			if(en instanceof ItemEntity) {
-				ItemEntity itemEn = (ItemEntity)en;
-				// Check if a player or other entity is nearby that can pickup this item:
-				for (int j = 0; j < entities.size(); j++) {
-					Entity en2 = entities.get(j);
-					// Every entity with and inventory can pick up stuff.
-					if(en2.getInventory() != null) {
-						if(en.getPosition().distance(en2.getPosition()) <= en2.pickupRange) {
-							int newAmount = en2.getInventory().addItem(itemEn.items.getItem(), itemEn.items.getAmount());
-							if(newAmount != 0) {
-								itemEn.items.setAmount(newAmount);
-							} else {
-								entities.remove(en);
-								break;
-							}
-						}
+			// Check item entities:
+			if(en.getInventory() != null) {
+				int x0 = (int)(en.getPosition().x - en.width) & ~15;
+				int z0 = (int)(en.getPosition().z - en.width) & ~15;
+				int x1 = (int)(en.getPosition().x + en.width) & ~15;
+				int z1 = (int)(en.getPosition().z + en.width) & ~15;
+				if(getEntityManagerAt(x0, z0) != null)
+					getEntityManagerAt(x0, z0).itemEntityManager.checkEntity(en);
+				if(x0 != x1) {
+					if(getEntityManagerAt(x1, z0) != null)
+						getEntityManagerAt(x1, z0).itemEntityManager.checkEntity(en);
+					if(z0 != z1) {
+						if(getEntityManagerAt(x0, z1) != null)
+							getEntityManagerAt(x0, z1).itemEntityManager.checkEntity(en);
+						if(getEntityManagerAt(x1, z1) != null)
+							getEntityManagerAt(x1, z1).itemEntityManager.checkEntity(en);
 					}
+				} else if(z0 != z1) {
+					if(getEntityManagerAt(x0, z1) != null)
+						getEntityManagerAt(x0, z1).itemEntityManager.checkEntity(en);
 				}
 			}
+		}
+		// Item Entities
+		for(int i = 0; i < entityManagers.length; i++) {
+			entityManagers[i].itemEntityManager.update();
 		}
 		// Block Entities
 		for (NormalChunk ch : chunks) {
@@ -603,54 +608,87 @@ public class LocalSurface extends Surface {
 		z += renderDistance;
 		if(local > 7)
 			z++;
-		if(x == lastX && z == lastZ)
-			return;
-		int doubleRD = renderDistance << 1;
-		NormalChunk [] newVisibles = new NormalChunk[doubleRD*doubleRD];
-		int index = 0;
-		int minK = 0;
-		ArrayList<NormalChunk> chunksToQueue = new ArrayList<>();
-		for(int i = x-doubleRD; i < x; i++) {
-			loop:
-			for(int j = z-doubleRD; j < z; j++) {
-				for(int k = minK; k < chunks.length; k++) {
-					if(CubyzMath.moduloMatchSign(chunks[k].getX()-i, worldSizeX >> 4) == 0 && CubyzMath.moduloMatchSign(chunks[k].getZ()-j, worldSizeZ >> 4) == 0) {
-						newVisibles[index] = chunks[k];
-						// Removes this chunk out of the list of chunks that will be considered in this function.
-						chunks[k] = chunks[minK];
-						chunks[minK] = newVisibles[index];
-						minK++;
-						index++;
-						continue loop;
+		if(x != lastX || z != lastZ) {
+			int doubleRD = renderDistance << 1;
+			NormalChunk [] newVisibles = new NormalChunk[doubleRD*doubleRD];
+			int index = 0;
+			int minK = 0;
+			ArrayList<NormalChunk> chunksToQueue = new ArrayList<>();
+			for(int i = x-doubleRD; i < x; i++) {
+				loop:
+				for(int j = z-doubleRD; j < z; j++) {
+					for(int k = minK; k < chunks.length; k++) {
+						if(CubyzMath.moduloMatchSign(chunks[k].getX()-i, worldSizeX >> 4) == 0 && CubyzMath.moduloMatchSign(chunks[k].getZ()-j, worldSizeZ >> 4) == 0) {
+							newVisibles[index] = chunks[k];
+							// Removes this chunk out of the list of chunks that will be considered in this function.
+							chunks[k] = chunks[minK];
+							chunks[minK] = newVisibles[index];
+							minK++;
+							index++;
+							continue loop;
+						}
 					}
+					NormalChunk ch = new NormalChunk(i, j, this, transformData(getChunkData(i, j), tio.blockPalette));
+					chunksToQueue.add(ch);
+					newVisibles[index] = ch;
+					index++;
 				}
-				NormalChunk ch = new NormalChunk(i, j, this, transformData(getChunkData(i, j), tio.blockPalette));
-				chunksToQueue.add(ch);
-				newVisibles[index] = ch;
-				index++;
 			}
+			for (int k = minK; k < chunks.length; k++) {
+				if(chunks[k].isGenerated())
+					tio.saveChunk(chunks[k]); // Only needs to be stored if it was ever generated.
+				else
+					unQueueChunk(chunks[k]);
+				ClientOnly.deleteChunkMesh.accept(chunks[k]);
+			}
+			chunks = newVisibles;
+			lastX = x;
+			lastZ = z;
+			this.doubleRD = doubleRD;
+			
+			// Load chunks after they have access to their neighbors:
+			for(NormalChunk ch : chunksToQueue) {
+				queueChunk(ch);
+			}
+			if (minK != chunks.length) { // if at least one chunk got unloaded
+				tio.saveTorusData(this);
+			}
+			
+			// Update the entity managers:
+			x += Settings.entityDistance - renderDistance;
+			z += Settings.entityDistance - renderDistance;
+			index = minK = 0;
+			ChunkEntityManager [] newManagers = new ChunkEntityManager[Settings.entityDistance*Settings.entityDistance*4];
+			for(int i = x - 2*Settings.entityDistance; i < x; i++) {
+				int wx = i << 4;
+				loop:
+				for(int j = z - 2*Settings.entityDistance; j < z; j++) {
+					int wz = j << 4;
+					for(int k = minK; k < entityManagers.length; k++) {
+						if(CubyzMath.moduloMatchSign(entityManagers[k].wx-wx, worldSizeX) == 0 && CubyzMath.moduloMatchSign(entityManagers[k].wz-wz, worldSizeZ) == 0) {
+							newManagers[index] = entityManagers[k];
+							// Removes this chunk out of the list of chunks that will be considered in this function.
+							entityManagers[k] = entityManagers[minK];
+							entityManagers[minK] = newManagers[index];
+							minK++;
+							index++;
+							continue loop;
+						}
+					}
+					newManagers[index++] = new ChunkEntityManager(this, this.getChunk(i, j));
+				}
+			}
+			for (int k = minK; k < entityManagers.length; k++) {
+				if(entityManagers[k].chunk.isGenerated())
+					; // TODO: Save block drops.
+			}
+			entityManagers = newManagers;
+			this.doubleEntityRD = 2*Settings.entityDistance;
+			lastEntityX = x;
+			lastEntityZ = z;
 		}
-		for (int k = minK; k < chunks.length; k++) {
-			if(chunks[k].isGenerated())
-				tio.saveChunk(chunks[k]); // Only needs to be stored if it was ever generated.
-			else
-				unQueueChunk(chunks[k]);
-			ClientOnly.deleteChunkMesh.accept(chunks[k]);
-		}
-		chunks = newVisibles;
-		lastX = x;
-		lastZ = z;
-		this.doubleRD = doubleRD;
-		
+
 		// Care about the ReducedChunks:
-		// Load chunks after they have access to their neighbors:
-		for(NormalChunk ch : chunksToQueue) {
-			queueChunk(ch);
-		}
-		if (minK != chunks.length) { // if at least one chunk got unloaded
-			tio.saveTorusData(this);
-		}
-		
 		generateReducedChunks(xOld, zOld, (int)(renderDistance*farDistanceFactor), maxResolution);
 	}
 	
@@ -826,6 +864,24 @@ public class LocalSurface extends Surface {
 				return ret;
 		}
 		return null;
+	}
+
+	@Override
+	public ChunkEntityManager getEntityManagerAt(int wx, int wz) {
+		// Test if the chunk can be found in the list of visible chunks:
+		int x = wx >> 4;
+		int z = wz >> 4;
+		int index = CubyzMath.moduloMatchSign(x-(lastEntityX-doubleEntityRD), worldSizeX >> 4)*doubleEntityRD + CubyzMath.moduloMatchSign(z-(lastEntityZ-doubleEntityRD), worldSizeZ >> 4);
+		if(index < entityManagers.length && index >= 0) {
+			ChunkEntityManager ret = entityManagers[index];
+			return ret;
+		}
+		return null;
+	}
+	
+	@Override
+	public ChunkEntityManager[] getEntityManagers() {
+		return entityManagers;
 	}
 
 	@Override

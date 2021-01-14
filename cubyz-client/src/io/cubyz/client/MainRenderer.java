@@ -16,8 +16,11 @@ import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.CustomMeshProvider;
 import io.cubyz.entity.CustomMeshProvider.MeshType;
 import io.cubyz.entity.Entity;
+import io.cubyz.entity.ItemEntityManager;
 import io.cubyz.entity.Player;
+import io.cubyz.items.ItemBlock;
 import io.cubyz.util.FastList;
+import io.cubyz.world.ChunkEntityManager;
 import io.cubyz.world.NormalChunk;
 import io.cubyz.world.ReducedChunk;
 import io.jungle.Mesh;
@@ -315,11 +318,7 @@ public class MainRenderer implements Renderer {
 					if (ent instanceof CustomMeshProvider) {
 						CustomMeshProvider provider = (CustomMeshProvider) ent;
 						MeshType type = provider.getMeshType();
-						if (type == MeshType.BLOCK) {
-							Block b = (Block) provider.getMeshId();
-							mesh = Meshes.blockMeshes.get(b);
-							mesh.getMaterial().setTexture(Meshes.blockTextures.get(b));
-						} else if (type == MeshType.ENTITY) {
+						if (type == MeshType.ENTITY) {
 							Entity e = (Entity) provider.getMeshId();
 							mesh = Meshes.entityMeshes.get(e.getType());
 						}
@@ -339,6 +338,38 @@ public class MainRenderer implements Renderer {
 					}
 				}
 			}
+			
+			// Render item entities:
+			for(ChunkEntityManager chManager : localPlayer.getSurface().getEntityManagers()) {
+				NormalChunk chunk = chManager.chunk;
+				if (!chunk.isLoaded() || !frustumInt.testAab(chunk.getMin(x0, z0, worldSizeX, worldSizeZ), chunk.getMax(x0, z0, worldSizeX, worldSizeZ)))
+					continue;
+				ItemEntityManager manager = chManager.itemEntityManager;
+				for(int i = 0; i < manager.size; i++) {
+					int index = i;
+					int index3 = 3*i;
+					int x = (int)(manager.posxyz[index3] + 1.0f);
+					int y = (int)(manager.posxyz[index3+1] + 1.0f);
+					int z = (int)(manager.posxyz[index3+2] + 1.0f);
+					Mesh mesh = null;
+					if(manager.itemStacks[i].getItem() instanceof ItemBlock) {
+						Block b = ((ItemBlock)manager.itemStacks[i].getItem()).getBlock();
+						mesh = Meshes.blockMeshes.get(b);
+						mesh.getMaterial().setTexture(Meshes.blockTextures.get(b));
+					}
+					if(mesh != null) {
+						entityShader.setUniform("materialHasTexture", mesh.getMaterial().isTextured());
+						entityShader.setUniform("light", localPlayer.getSurface().getLight(x, y, z, ambientLight));
+						
+						mesh.renderOne(() -> {
+							Vector3f position = manager.getPosition(index);
+							Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(position, manager.getRotation(index), ItemEntityManager.diameter), ctx.getCamera().getViewMatrix());
+							entityShader.setUniform("viewMatrix", modelViewMatrix);
+						});
+					}
+				}
+			}
+			
 			
 			entityShader.setUniform("fog.activ", 0); // manually disable the fog
 			for (int i = 0; i < spatials.length; i++) {

@@ -32,7 +32,7 @@ public class Pig extends EntityType {
 	@Override
 	public void die(Entity ent) {
 		// Drop 1-4 raw meat:
-		ent.surface.drop(new ItemStack(drop, 1+(int)(Math.random()*4)), ent.position);
+		ent.surface.drop(new ItemStack(drop, 1+(int)(Math.random()*4)), ent.position, new Vector3f((float)Math.random(), (float)Math.random(), (float)Math.random()), 0.2f);
 		super.die(ent);
 	}
 	

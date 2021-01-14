@@ -102,7 +102,7 @@ public class TorchRotation implements RotationMode {
 	}
 
 	@Override
-	public boolean checkEntity(Entity arg0, int x, int y, int z, byte arg2) {
+	public boolean checkEntity(Vector3f pos, float width, float height, int x, int y, int z, byte blockData) {
 		return false;
 	}
 

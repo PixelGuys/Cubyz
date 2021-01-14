@@ -1046,6 +1046,13 @@ public class NormalChunk extends Chunk {
 		return null;
 	}
 	
+	/**
+	 * Uses relative coordinates!
+	 * @param x
+	 * @param y
+	 * @param z
+	 * @return block at the coordinates x+wx, y, z+wz
+	 */
 	public Block getBlockAt(int x, int y, int z) {
 		if (y > World.WORLD_HEIGHT-1)
 			return null;
@@ -1059,7 +1066,15 @@ public class NormalChunk extends Chunk {
 	public BlockInstance getBlockInstanceAt(int pos) {
 		return inst[pos];
 	}
+
 	
+	/**
+	 * Uses relative coordinates. Correctly works for blocks outside this chunk.
+	 * @param x
+	 * @param y
+	 * @param z
+	 * @return block at the coordinates x+wx, y, z+wz
+	 */
 	private Block getBlockUnboundAndUpdateLight(int x, int y, int z) {
 		if(y < 0 || y >= World.WORLD_HEIGHT || !generated) return null;
 		if(x < 0 || x > 15 || z < 0 || z > 15) {
@@ -1072,8 +1087,16 @@ public class NormalChunk extends Chunk {
 		}
 		return blocks[(x << 4) | (y << 8) | z];
 	}
+
 	
-	private Block getBlockUnbound(int x, int y, int z) {
+	/**
+	 * Uses relative coordinates. Correctly works for blocks outside this chunk.
+	 * @param x
+	 * @param y
+	 * @param z
+	 * @return block at the coordinates x+wx, y, z+wz
+	 */
+	public Block getBlockUnbound(int x, int y, int z) {
 		if(y < 0 || y >= World.WORLD_HEIGHT || !generated) return null;
 		if(x < 0 || x > 15 || z < 0 || z > 15) {
 			NormalChunk chunk = surface.getChunk(cx + ((x & ~15) >> 4), cz + ((z & ~15) >> 4));
@@ -1082,8 +1105,17 @@ public class NormalChunk extends Chunk {
 		}
 		return blocks[(x << 4) | (y << 8) | z];
 	}
+
+
 	
-	private byte getDataUnbound(int x, int y, int z) {
+	/**
+	 * Uses relative coordinates. Correctly works for blocks outside this chunk.
+	 * @param x
+	 * @param y
+	 * @param z
+	 * @return blockdata at the coordinates x+wx, y, z+wz
+	 */
+	public byte getDataUnbound(int x, int y, int z) {
 		if(y < 0 || y >= World.WORLD_HEIGHT || !generated) return 0;
 		if(x < 0 || x > 15 || z < 0 || z > 15) {
 			NormalChunk chunk = surface.getChunk(cx + ((x & ~15) >> 4), cz + ((z & ~15) >> 4));

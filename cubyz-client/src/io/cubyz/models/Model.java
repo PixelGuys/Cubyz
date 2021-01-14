@@ -2,7 +2,6 @@ package io.cubyz.models;
 
 import org.joml.Matrix3f;
 import org.joml.Vector3f;
-import org.joml.Vector4f;
 
 import io.cubyz.api.RegistryElement;
 import io.cubyz.api.Resource;

@@ -38,8 +38,6 @@ public class Entity {
 	 */
 	public float width = 0.25f, height = 1.8f;
 	
-	public float pickupRange = 2; // Important if this entity can pickup items.
-	
 	/**
 	 * @param type
 	 * @param ai
@@ -272,7 +270,7 @@ public class Entity {
 		Block b = surface.getBlock(x, y, z);
 		if(b != null && b.isSolid()) {
 			if(b.mode.changesHitbox()) {
-				return b.mode.checkEntity(this, x, y, z, surface.getBlockData(x, y, z));
+				return b.mode.checkEntity(position, width, height, x, y, z, surface.getBlockData(x, y, z));
 			}
 			return true;
 		}

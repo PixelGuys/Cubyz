@@ -12,6 +12,9 @@ public class Settings {
 	public static boolean easyLighting = true; // Enables the easy-lighting system.
 	
 	private static Language currentLanguage = null;
+	
+	public static int entityDistance = 5;
+	
 	public static void setLanguage(Language lang) {
 		currentLanguage = lang;
 		TextKey.updateLanguage();
