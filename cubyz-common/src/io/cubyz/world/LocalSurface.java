@@ -3,7 +3,6 @@ package io.cubyz.world;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -25,10 +24,7 @@ import io.cubyz.handler.PlaceBlockHandler;
 import io.cubyz.handler.RemoveBlockHandler;
 import io.cubyz.items.BlockDrop;
 import io.cubyz.items.ItemStack;
-import io.cubyz.math.Bits;
 import io.cubyz.math.CubyzMath;
-import io.cubyz.save.BlockChange;
-import io.cubyz.save.MissingBlockException;
 import io.cubyz.save.TorusIO;
 import io.cubyz.util.FastList;
 import io.cubyz.world.cubyzgenerators.CrystalCavernGenerator;
@@ -43,23 +39,19 @@ import static io.cubyz.CubyzLogger.logger;
 public class LocalSurface extends Surface {
 	private static Random rnd = new Random();
 	
-	private MetaChunk[] metaChunks;
+	private Region[] regions;
 	private NormalChunk[] chunks;
 	private ReducedChunk[] reducedChunks;
 	private ChunkEntityManager[] entityManagers;
 	private int lastX = Integer.MAX_VALUE, lastZ = Integer.MAX_VALUE; // Chunk coordinates of the last chunk update.
-	private int lastMetaX = Integer.MAX_VALUE, lastMetaZ = Integer.MAX_VALUE; // MetaChunk coordinates of the last chunk update.
-	private int lastEntityX = Integer.MAX_VALUE, lastEntityZ = Integer.MAX_VALUE, doubleEntityRD; // MetaChunk coordinates of the last chunk update.
-	private int mcDRD; // double renderdistance of MetaChunks.
+	private int lastRegX = Integer.MAX_VALUE, lastRegZ = Integer.MAX_VALUE; // Region coordinates of the last chunk update.
+	private int lastEntityX = Integer.MAX_VALUE, lastEntityZ = Integer.MAX_VALUE, doubleEntityRD;
+	private int regDRD; // double renderdistance of Region.
 	private int doubleRD; // Corresponds to the doubled value of the last used render distance.
 	private final int worldSizeX = 65536, worldSizeZ = 16384;
 	private ArrayList<Entity> entities = new ArrayList<>();
 	
 	private Block[] torusBlocks;
-	
-	// Stores a reference to the lists of WorldIO.
-	public ArrayList<byte[]> blockData;
-	public ArrayList<int[]> chunkData;
 	
 	private static int MAX_QUEUE_SIZE = 40;
 	
@@ -177,7 +169,7 @@ public class LocalSurface extends Surface {
 		registries = new CurrentSurfaceRegistries();
 		localSeed = torus.getLocalSeed();
 		this.torus = torus;
-		metaChunks = new MetaChunk[0];
+		regions = new Region[0];
 		chunks = new NormalChunk[0];
 		entityManagers = new ChunkEntityManager[0];
 		reducedChunks = new ReducedChunk[0];
@@ -243,7 +235,6 @@ public class LocalSurface extends Surface {
 		// Init crystal caverns with those two blocks:
 		CrystalCavernGenerator.init(crystalBlock, glowCrystalOre);
 
-		tio.link(this);
 		tio.loadTorusData(this); // load data here in order for entities to also be loaded.
 		
 		if(generated) {
@@ -267,6 +258,10 @@ public class LocalSurface extends Surface {
 	public void forceSave() {
 		tio.saveTorusData(this);
 		((LocalWorld) torus.getWorld()).forceSave();
+		for(Region region : regions) {
+			if(region != null)
+				region.regIO.saveData();
+		}
 	}
 	
 	public void addEntity(Entity ent) {
@@ -291,7 +286,7 @@ public class LocalSurface extends Surface {
 		z >>= 4;
 		NormalChunk ch = getChunk(x, z);
 		if(ch == null) {
-			ch = new NormalChunk(x, z, this, transformData(getChunkData(x, z), tio.blockPalette));
+			ch = new NormalChunk(x, z, this);
 			NormalChunk[] newList = new NormalChunk[chunks.length+1];
 			newList[chunks.length] = ch;
 			chunks = newList;
@@ -315,25 +310,7 @@ public class LocalSurface extends Surface {
 	
 	public void synchronousGenerate(NormalChunk ch) {
 		ch.generateFrom(generator);
-		tio.saveChunk(ch);
-	}
-	
-	public ArrayList<BlockChange> transformData(byte[] data, Map<Block, Integer> blockPalette) {
-		int size = Bits.getInt(data, 8);
-		ArrayList<BlockChange> list = new ArrayList<BlockChange>(size);
-		for (int i = 0; i < size; i++) {
-			try {
-				list.add(new BlockChange(data, 12 + i*17, blockPalette));
-			} catch (MissingBlockException e) {
-				// If the block is missing, we replace it by nothing
-				int off = 12 + i*17;
-				int x = Bits.getInt(data, off + 0);
-				int y = Bits.getInt(data, off + 4);
-				int z = Bits.getInt(data, off + 8);
-				list.add(new BlockChange(-2, -1, x, y, z, (byte)0, (byte)0));
-			}
-		}
-		return list;
+		ch.region.regIO.saveChunk(ch);
 	}
 	
 	@Override
@@ -342,7 +319,7 @@ public class LocalSurface extends Surface {
 		if (ch != null) {
 			Block b = ch.getBlockAt(x & 15, y, z & 15);
 			ch.removeBlockAt(x & 15, y, z & 15, true);
-			tio.saveChunk(ch); // TODO: Don't save it every time.
+			ch.region.regIO.saveChunk(ch); // TODO: Don't save it every time.
 			tio.saveTorusData(this);
 			for (RemoveBlockHandler hand : removeBlockHandlers) {
 				hand.onBlockRemoved(b, x, y, z);
@@ -365,8 +342,7 @@ public class LocalSurface extends Surface {
 		NormalChunk ch = getChunk(x >> 4, z >> 4);
 		if (ch != null) {
 			ch.addBlock(b, data, x & 15, y, z & 15, false);
-			tio.saveChunk(ch); // TODO: Don't save it every time.
-			tio.saveTorusData(this);
+			ch.region.regIO.saveChunk(ch); // TODO: Don't save it every time.
 			for (PlaceBlockHandler hand : placeBlockHandlers) {
 				hand.onBlockPlaced(b, x, y, z);
 			}
@@ -384,8 +360,7 @@ public class LocalSurface extends Surface {
 		NormalChunk ch = getChunk(x >> 4, z >> 4);
 		if (ch != null) {
 			ch.setBlockData(x & 15, y, z & 15, data);
-			tio.saveChunk(ch); // TODO: Don't save it every time.
-			tio.saveTorusData(this);
+			ch.region.regIO.saveChunk(ch); // TODO: Don't save it every time.
 		}
 	}
 	
@@ -554,7 +529,7 @@ public class LocalSurface extends Surface {
 	public void seek(int x, int z, int renderDistance, int maxResolution, float farDistanceFactor) {
 		int xOld = x;
 		int zOld = z;
-		// Care about the MetaChunks:
+		// Care about the Regions:
 		int mcRD = (renderDistance*10 >>> 4) + 4;
 		int local = x & 255;
 		x >>= 8;
@@ -566,33 +541,38 @@ public class LocalSurface extends Surface {
 		z += mcRD;
 		if(local > 127)
 			z++;
-		if(x != lastMetaX || z != lastMetaZ) {
+		if(x != lastRegX || z != lastRegZ) {
 			int mcDRD = mcRD << 1;
-			MetaChunk[] newMeta = new MetaChunk[mcDRD*mcDRD];
+			Region[] newRegions = new Region[mcDRD*mcDRD];
 			int index = 0;
 			int minK = 0;
 			for(int i = x-mcDRD; i < x; i++) {
 				loop:
 				for(int j = z-mcDRD; j < z; j++) {
-					for(int k = minK; k < metaChunks.length; k++) {
-						if(metaChunks[k] != null && CubyzMath.moduloMatchSign(metaChunks[k].wx-i, worldSizeX >> 8) == 0 && CubyzMath.moduloMatchSign(metaChunks[k].wz-j, worldSizeZ >> 8) == 0) {
-							newMeta[index] = metaChunks[k];
+					for(int k = minK; k < regions.length; k++) {
+						if(regions[k] != null && CubyzMath.moduloMatchSign(regions[k].wx-i, worldSizeX >> 8) == 0 && CubyzMath.moduloMatchSign(regions[k].wz-j, worldSizeZ >> 8) == 0) {
+							newRegions[index] = regions[k];
 							// Removes this chunk out of the list of chunks that will be considered in this function.
-							metaChunks[k] = metaChunks[minK];
-							metaChunks[minK] = newMeta[index];
+							regions[k] = regions[minK];
+							regions[minK] = newRegions[index];
 							minK++;
 							index++;
 							continue loop;
 						}
 					}
-					newMeta[index] = null;
+					newRegions[index] = null;
 					index++;
 				}
 			}
-			metaChunks = newMeta;
-			lastMetaX = x;
-			lastMetaZ = z;
-			this.mcDRD = mcDRD;
+			// Store the no longer used Regions:
+			for (int k = minK; k < regions.length; k++) {
+				if(regions[k] != null)
+					regions[k].regIO.saveData();
+			}
+			regions = newRegions;
+			lastRegX = x;
+			lastRegZ = z;
+			this.regDRD = mcDRD;
 		}
 
 		// Care about the Chunks:
@@ -628,7 +608,7 @@ public class LocalSurface extends Surface {
 							continue loop;
 						}
 					}
-					NormalChunk ch = new NormalChunk(i, j, this, transformData(getChunkData(i, j), tio.blockPalette));
+					NormalChunk ch = new NormalChunk(i, j, this);
 					chunksToQueue.add(ch);
 					newVisibles[index] = ch;
 					index++;
@@ -636,7 +616,7 @@ public class LocalSurface extends Surface {
 			}
 			for (int k = minK; k < chunks.length; k++) {
 				if(chunks[k].isGenerated())
-					tio.saveChunk(chunks[k]); // Only needs to be stored if it was ever generated.
+					chunks[k].region.regIO.saveChunk(chunks[k]); // Only needs to be stored if it was ever generated.
 				else
 					unQueueChunk(chunks[k]);
 				ClientOnly.deleteChunkMesh.accept(chunks[k]);
@@ -741,7 +721,7 @@ public class LocalSurface extends Surface {
 							continue loop;
 						}
 					}
-					ReducedChunk ch = new ReducedChunk(cx, cz, res, widthShiftOld, transformData(getChunkData(cx, cz), tio.blockPalette));
+					ReducedChunk ch = new ReducedChunk(cx, cz, res, widthShiftOld);
 					reducedChunksToQueue.add(ch);
 					newReduced.add(ch);
 					
@@ -771,7 +751,7 @@ public class LocalSurface extends Surface {
 							continue loop;
 						}
 					}
-					ReducedChunk ch = new ReducedChunk(cx, cz, res, widthShift, transformData(getChunkData(cx, cz), tio.blockPalette));
+					ReducedChunk ch = new ReducedChunk(cx, cz, res, widthShift);
 					reducedChunksToQueue.add(ch);
 					newReduced.add(ch);
 					
@@ -804,7 +784,7 @@ public class LocalSurface extends Surface {
 		int z0 = z&(~255);
 		for(int px = x0; CubyzMath.moduloMatchSign(px - x, worldSizeX) < width; px += 256) {
 			for(int pz = z0; CubyzMath.moduloMatchSign(pz-z, worldSizeZ) < height; pz += 256) {
-				MetaChunk ch = getMetaChunk(CubyzMath.worldModulo(px, worldSizeX), CubyzMath.worldModulo(pz, worldSizeZ));
+				Region ch = getRegion(CubyzMath.worldModulo(px, worldSizeX), CubyzMath.worldModulo(pz, worldSizeZ));
 				int xS = Math.max(px-x, 0);
 				int zS = Math.max(pz-z, 0);
 				int xE = Math.min(px + 256 - x, width);
@@ -821,32 +801,34 @@ public class LocalSurface extends Surface {
 
 	
 	@Override
-	public MetaChunk getMetaChunk(int wx, int wz) {
+	public Region getRegion(int wx, int wz) {
+		wx &= ~255;
+		wz &= ~255;
 		int x = wx >> 8;
 		int z = wz >> 8;
 		// Test if the chunk can be found in the list of visible chunks:
-		int index = CubyzMath.moduloMatchSign(x-(lastMetaX-mcDRD), worldSizeX >> 8)*mcDRD + CubyzMath.moduloMatchSign(z-(lastMetaZ-mcDRD), worldSizeZ >> 8);
+		int index = CubyzMath.moduloMatchSign(x-(lastRegX-regDRD), worldSizeX >> 8)*regDRD + CubyzMath.moduloMatchSign(z-(lastRegZ-regDRD), worldSizeZ >> 8);
 		wx = CubyzMath.worldModulo(wx, worldSizeX);
 		wz = CubyzMath.worldModulo(wz, worldSizeZ);
-		if(index < metaChunks.length && index >= 0) {
-			MetaChunk ret = metaChunks[index];
+		if(index < regions.length && index >= 0) {
+			Region ret = regions[index];
 			
 			if (ret != null) {
 				if(wx == ret.wx && wz == ret.wz)
 					return ret;
 			} else {
-				MetaChunk ch = new MetaChunk(wx, wz, localSeed, this, registries);
-				metaChunks[index] = ch;
+				Region ch = new Region(wx, wz, localSeed, this, registries, tio);
+				regions[index] = ch;
 				return ch;
 			}
 		}
-		return new MetaChunk(wx, wz, localSeed, this, registries);
+		return new Region(wx, wz, localSeed, this, registries, tio);
 	}
 	
-	public MetaChunk getNoGenerateMetaChunk(int wx, int wy) {
-		for(MetaChunk ch : metaChunks) {
-			if(ch.wx == wx && ch.wz == wy) {
-				return ch;
+	public Region getNoGenerateRegion(int wx, int wy) {
+		for(Region reg : regions) {
+			if(reg.wx == wx && reg.wz == wy) {
+				return reg;
 			}
 		}
 		return null;
@@ -911,25 +893,6 @@ public class LocalSurface extends Surface {
 		}
 	}
 	
-	public byte[] getChunkData(int x, int z) { // Gets the data of a Chunk.
-		int index = -1;
-		for(int i = 0; i < chunkData.size(); i++) {
-			int [] arr = chunkData.get(i);
-			if(arr[0] == x && arr[1] == z) {
-				index = i;
-				break;
-			}
-		}
-		if(index == -1) {
-			byte[] dummy = new byte[12];
-			Bits.putInt(dummy, 0, x);
-			Bits.putInt(dummy, 4, z);
-			Bits.putInt(dummy, 8, 0);
-			return dummy;
-		}
-		return blockData.get(index);
-	}
-	
 	public long getSeed() {
 		return localSeed;
 	}
@@ -985,7 +948,7 @@ public class LocalSurface extends Surface {
 	}
 	
 	public int getHeight(int x, int z) {
-		return (int)(getMetaChunk(x & ~255, z & ~255).heightMap[x & 255][z & 255]);
+		return (int)(getRegion(x & ~255, z & ~255).heightMap[x & 255][z & 255]);
 	}
 
 	@Override
@@ -1010,8 +973,6 @@ public class LocalSurface extends Surface {
 			
 			reducedChunks = null;
 			chunks = null;
-			chunkData = null;
-			blockData = null;
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -1024,8 +985,8 @@ public class LocalSurface extends Surface {
 
 	@Override
 	public Biome getBiome(int x, int z) {
-		MetaChunk mc = getMetaChunk(x & ~255, z & ~255);
-		return mc.biomeMap[x & 255][z & 255];
+		Region reg = getRegion(x & ~255, z & ~255);
+		return reg.biomeMap[x & 255][z & 255];
 	}
 
 	@Override

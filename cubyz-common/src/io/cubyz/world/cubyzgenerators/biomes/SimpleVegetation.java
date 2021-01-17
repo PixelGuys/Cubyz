@@ -4,7 +4,7 @@ import java.util.Random;
 
 import io.cubyz.blocks.Block;
 import io.cubyz.world.Chunk;
-import io.cubyz.world.MetaChunk;
+import io.cubyz.world.Region;
 import io.cubyz.world.World;
 
 /**
@@ -21,7 +21,7 @@ public class SimpleVegetation extends StructureModel {
 		deltaHeight = dh;
 	}
 	@Override
-	public void generate(int x, int z, int h, Chunk chunk, MetaChunk metaChunk, Random rand) {
+	public void generate(int x, int z, int h, Chunk chunk, Region region, Random rand) {
 		if(chunk.liesInChunk(x, z)) {
 			int height = height0;
 			if(h+height < World.WORLD_HEIGHT) {

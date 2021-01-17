@@ -4,23 +4,28 @@ import java.util.Random;
 
 import io.cubyz.api.CurrentSurfaceRegistries;
 import io.cubyz.math.CubyzMath;
+import io.cubyz.save.RegionIO;
+import io.cubyz.save.TorusIO;
 import io.cubyz.util.RandomList;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 
 /**
  * A 256×256 big chunk of height-/heat-/humidity-/… and resulting biome-maps.
  */
-public class MetaChunk {
+public class Region {
 	
 	public final float[][] heightMap;
 	public final Biome[][] biomeMap;
 	private final Surface world;
 	public final int wx, wz;
+	public final RegionIO regIO;
 	
-	public MetaChunk(int x, int z, long seed, Surface world, CurrentSurfaceRegistries registries) {
+	public Region(int x, int z, long seed, Surface world, CurrentSurfaceRegistries registries, TorusIO tio) {
 		this.wx = x;
 		this.wz = z;
 		this.world = world;
+		
+		regIO = new RegionIO(this, tio);
 		
 		heightMap = new float[256][256];
 		

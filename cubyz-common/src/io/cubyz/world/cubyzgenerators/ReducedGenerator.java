@@ -1,6 +1,6 @@
 package io.cubyz.world.cubyzgenerators;
 
-import io.cubyz.world.MetaChunk;
+import io.cubyz.world.Region;
 import io.cubyz.world.ReducedChunk;
 import io.cubyz.world.Surface;
 
@@ -9,5 +9,5 @@ import io.cubyz.world.Surface;
  */
 
 public interface ReducedGenerator {
-	abstract void generate(long seed, int wx, int wz, ReducedChunk chunk, MetaChunk containingMetaChunk, Surface surface);
+	abstract void generate(long seed, int wx, int wz, ReducedChunk chunk, Region containingRegion, Surface surface);
 }

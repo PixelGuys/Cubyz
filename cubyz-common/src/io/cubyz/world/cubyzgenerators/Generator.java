@@ -1,7 +1,7 @@
 package io.cubyz.world.cubyzgenerators;
 
 import io.cubyz.api.RegistryElement;
-import io.cubyz.world.MetaChunk;
+import io.cubyz.world.Region;
 import io.cubyz.world.NormalChunk;
 import io.cubyz.world.Surface;
 
@@ -12,7 +12,7 @@ import io.cubyz.world.Surface;
 public interface Generator extends RegistryElement {
 	
 	abstract int getPriority(); // Used to prioritize certain generators(like map generation) over others(like vegetation generation).
-	abstract void generate(long seed, int wx, int wz, NormalChunk chunk, MetaChunk containingMetaChunk, Surface surface, boolean[][] vegetationIgnoreMap);
+	abstract void generate(long seed, int wx, int wz, NormalChunk chunk, Region containingRegion, Surface surface, boolean[][] vegetationIgnoreMap);
 	
 	/**
 	 * To avoid duplicate seeds in similar generation algorithms, the SurfaceGenerator xors the torus-seed with the generator specific seed.

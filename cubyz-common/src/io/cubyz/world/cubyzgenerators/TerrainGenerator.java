@@ -7,7 +7,7 @@ import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.world.NormalChunk;
 import io.cubyz.world.Chunk;
-import io.cubyz.world.MetaChunk;
+import io.cubyz.world.Region;
 import io.cubyz.world.ReducedChunk;
 import io.cubyz.world.Surface;
 import io.cubyz.world.World;
@@ -38,23 +38,23 @@ public class TerrainGenerator implements Generator, ReducedGenerator {
 	private static Block water = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:water");
 
 	@Override
-	public void generate(long seed, int wx, int wz, NormalChunk chunk, MetaChunk containingMetaChunk, Surface surface, boolean[][] vegetationIgnoreMap) {
-		this.generate(seed, wx, wz, chunk, containingMetaChunk, surface);
+	public void generate(long seed, int wx, int wz, NormalChunk chunk, Region containingRegion, Surface surface, boolean[][] vegetationIgnoreMap) {
+		this.generate(seed, wx, wz, chunk, containingRegion, surface);
 	}
-	public void generate(long seed, int wx, int wz, Chunk chunk, MetaChunk containingMetaChunk, Surface surface) {
+	public void generate(long seed, int wx, int wz, Chunk chunk, Region containingRegion, Surface surface) {
 		Random rand = new Random(seed);
 		int seedX = rand.nextInt() | 1;
 		int seedZ = rand.nextInt() | 1;
 		for(int x = 0; x < chunk.getWidth(); x += chunk.getVoxelSize()) {
 			for(int z = 0; z < chunk.getWidth(); z += chunk.getVoxelSize()) {
-				int y = (int)containingMetaChunk.heightMap[wx+x & 255][wz+z & 255];
-				int yOff = 1 + (int)((containingMetaChunk.heightMap[wx+x & 255][wz+z & 255] - y)*16);
+				int y = (int)containingRegion.heightMap[wx+x & 255][wz+z & 255];
+				int yOff = 1 + (int)((containingRegion.heightMap[wx+x & 255][wz+z & 255] - y)*16);
 				boolean addedBlockStructure = false;
 				for(int j = y > SEA_LEVEL ? Math.min(y, World.WORLD_HEIGHT-1) : SEA_LEVEL; j >= 0; j--) {
 					if(!chunk.liesInChunk(j)) continue;
 					Block b = null;
 					if(j > y) {
-						if(containingMetaChunk.biomeMap[wx+x & 255][wz+z & 255].type == Biome.Type.ARCTIC_OCEAN && j == SEA_LEVEL) {
+						if(containingRegion.biomeMap[wx+x & 255][wz+z & 255].type == Biome.Type.ARCTIC_OCEAN && j == SEA_LEVEL) {
 							b = ice;
 						} else {
 							b = water;
@@ -64,7 +64,7 @@ public class TerrainGenerator implements Generator, ReducedGenerator {
 							b = bedrock;
 						} else if(!addedBlockStructure) {
 							rand.setSeed((seedX*(wx + x) << 32) ^ seedZ*(wz + z));
-							j = containingMetaChunk.biomeMap[wx+x & 255][wz+z & 255].struct.addSubTerranian(chunk, j, x, z, yOff, rand);
+							j = containingRegion.biomeMap[wx+x & 255][wz+z & 255].struct.addSubTerranian(chunk, j, x, z, yOff, rand);
 							addedBlockStructure = true;
 							continue;
 						} else {
@@ -78,8 +78,8 @@ public class TerrainGenerator implements Generator, ReducedGenerator {
 	}
 
 	@Override
-	public void generate(long seed, int wx, int wz, ReducedChunk chunk, MetaChunk containingMetaChunk, Surface surface) {
-		this.generate(seed, wx, wz, (Chunk)chunk, containingMetaChunk, surface);
+	public void generate(long seed, int wx, int wz, ReducedChunk chunk, Region containingRegion, Surface surface) {
+		this.generate(seed, wx, wz, (Chunk)chunk, containingRegion, surface);
 	}
 
 	@Override

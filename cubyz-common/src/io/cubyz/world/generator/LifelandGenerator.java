@@ -8,7 +8,7 @@ import io.cubyz.api.Registry;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Ore;
 import io.cubyz.world.NormalChunk;
-import io.cubyz.world.MetaChunk;
+import io.cubyz.world.Region;
 import io.cubyz.world.ReducedChunk;
 import io.cubyz.world.Surface;
 import io.cubyz.world.cubyzgenerators.*;
@@ -64,41 +64,41 @@ public class LifelandGenerator extends SurfaceGenerator {
 		surface.getMapData(wx-8, wz-8, 32, 32, heightMap, biomeMap);
 		boolean[][] vegetationIgnoreMap = new boolean[32][32]; // Stores places where vegetation should not grow, like caves and rivers.
 		
-		// Get the MetaChunks used by the BigGenerator.:
+		// Get the Regions used by the BigGenerator.:
 		int lx, lz;
-		MetaChunk nn, np, pn, pp;
+		Region nn, np, pn, pp;
 		if((wx & 255) < 128) {
 			lx = (wx & 255) + 256;
 			if((wz & 255) < 128) {
 				lz = (wz & 255) + 256;
-				nn = surface.getMetaChunk((wx & (~255)) - 256, (wz & (~255)) - 256);
-				np = surface.getMetaChunk((wx & (~255)) - 256, (wz & (~255)));
-				pn = surface.getMetaChunk((wx & (~255)), (wz & (~255)) - 256);
-				pp = surface.getMetaChunk((wx & (~255)), (wz & (~255)));
+				nn = surface.getRegion((wx & (~255)) - 256, (wz & (~255)) - 256);
+				np = surface.getRegion((wx & (~255)) - 256, (wz & (~255)));
+				pn = surface.getRegion((wx & (~255)), (wz & (~255)) - 256);
+				pp = surface.getRegion((wx & (~255)), (wz & (~255)));
 			} else {
 				lz = (wz & 255);
-				nn = surface.getMetaChunk((wx & (~255)) - 256, (wz & (~255)));
-				np = surface.getMetaChunk((wx & (~255)) - 256, (wz & (~255)) + 256);
-				pn = surface.getMetaChunk((wx & (~255)), (wz & (~255)));
-				pp = surface.getMetaChunk((wx & (~255)), (wz & (~255)) + 256);
+				nn = surface.getRegion((wx & (~255)) - 256, (wz & (~255)));
+				np = surface.getRegion((wx & (~255)) - 256, (wz & (~255)) + 256);
+				pn = surface.getRegion((wx & (~255)), (wz & (~255)));
+				pp = surface.getRegion((wx & (~255)), (wz & (~255)) + 256);
 			}
 		} else {
 			lx = (wx & 255);
 			if((wz & 255) < 128) {
 				lz = (wz & 255) + 256;
-				nn = surface.getMetaChunk((wx & (~255)), (wz & (~255)) - 256);
-				np = surface.getMetaChunk((wx & (~255)), (wz & (~255)));
-				pn = surface.getMetaChunk((wx & (~255)) + 256, (wz & (~255)) - 256);
-				pp = surface.getMetaChunk((wx & (~255)) + 256, (wz & (~255)));
+				nn = surface.getRegion((wx & (~255)), (wz & (~255)) - 256);
+				np = surface.getRegion((wx & (~255)), (wz & (~255)));
+				pn = surface.getRegion((wx & (~255)) + 256, (wz & (~255)) - 256);
+				pp = surface.getRegion((wx & (~255)) + 256, (wz & (~255)));
 			} else {
 				lz = (wz & 255);
-				nn = surface.getMetaChunk((wx & (~255)), (wz & (~255)));
-				np = surface.getMetaChunk((wx & (~255)), (wz & (~255)) + 256);
-				pn = surface.getMetaChunk((wx & (~255)) + 256, (wz & (~255)));
-				pp = surface.getMetaChunk((wx & (~255)) + 256, (wz & (~255)) + 256);
+				nn = surface.getRegion((wx & (~255)), (wz & (~255)));
+				np = surface.getRegion((wx & (~255)), (wz & (~255)) + 256);
+				pn = surface.getRegion((wx & (~255)) + 256, (wz & (~255)));
+				pp = surface.getRegion((wx & (~255)) + 256, (wz & (~255)) + 256);
 			}
 		}
-		MetaChunk containing = surface.getMetaChunk((wx & (~255)), (wz & (~255)));
+		Region containing = surface.getRegion((wx & (~255)), (wz & (~255)));
 		
 		for (Generator g : sortedGenerators) {
 			if (g instanceof FancyGenerator) {
@@ -118,10 +118,10 @@ public class LifelandGenerator extends SurfaceGenerator {
 		long seed = surface.getStellarTorus().getLocalSeed();
 		int wx = chunk.cx << 4;
 		int wz = chunk.cz << 4;
-		MetaChunk metaChunk = surface.getMetaChunk(wx & (~255), wz & (~255));
+		Region region = surface.getRegion(wx & (~255), wz & (~255));
 		for (Generator g : sortedGenerators) {
 			if (g instanceof ReducedGenerator) {
-				((ReducedGenerator) g).generate(seed ^ g.getGeneratorSeed(), wx, wz, chunk, metaChunk, surface);
+				((ReducedGenerator) g).generate(seed ^ g.getGeneratorSeed(), wx, wz, chunk, region, surface);
 			}
 		}
 		chunk.applyBlockChanges();

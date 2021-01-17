@@ -58,7 +58,7 @@ public abstract class Surface {
 	public abstract Vector3f getLight(int x, int y, int z, Vector3f sunLight);
 
 	public abstract NormalChunk getChunk(int x, int z);
-	public abstract MetaChunk getMetaChunk(int wx, int wz);
+	public abstract Region getRegion(int wx, int wz);
 	public abstract Biome getBiome(int x, int z);
 
 	public abstract ReducedChunk[] getReducedChunks();

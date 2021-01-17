@@ -4,7 +4,7 @@ import java.util.Random;
 
 import io.cubyz.blocks.Block;
 import io.cubyz.world.Chunk;
-import io.cubyz.world.MetaChunk;
+import io.cubyz.world.Region;
 
 /**
  * A small oval of different ground terrain.
@@ -24,7 +24,7 @@ public class GroundPatch extends StructureModel {
 	}
 
 	@Override
-	public void generate(int x, int z, int height, Chunk chunk, MetaChunk metaChunk, Random rand) {
+	public void generate(int x, int z, int height, Chunk chunk, Region region, Random rand) {
 		float width = this.width + (rand.nextFloat() - 0.5f)*this.variation;
 		float orientation = 2*(float)Math.PI*rand.nextFloat();
 		float ellipseParam = 1 + rand.nextFloat(); 
@@ -50,7 +50,7 @@ public class GroundPatch extends StructureModel {
 					float secn = xSecn*(x - px) + zSecn*(z - pz);
 					float dist = main*main + secn*secn;
 					if(dist <= 1) {
-						int startHeight = (int)(metaChunk.heightMap[px + chunk.getWorldX() & 255][pz + chunk.getWorldZ() & 255]);
+						int startHeight = (int)(region.heightMap[px + chunk.getWorldX() & 255][pz + chunk.getWorldZ() & 255]);
 						for(int py = chunk.startIndex((int)(startHeight - depth + 1)); py <= startHeight; py += chunk.getVoxelSize()) {
 							if(dist <= smoothness || (dist - smoothness)/(1 - smoothness) < rand.nextFloat())
 								chunk.updateBlock(px, py, pz, newGround);

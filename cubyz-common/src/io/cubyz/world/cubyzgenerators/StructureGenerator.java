@@ -6,7 +6,7 @@ import io.cubyz.api.Resource;
 import io.cubyz.math.CubyzMath;
 import io.cubyz.world.NormalChunk;
 import io.cubyz.world.Chunk;
-import io.cubyz.world.MetaChunk;
+import io.cubyz.world.Region;
 import io.cubyz.world.ReducedChunk;
 import io.cubyz.world.Surface;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
@@ -30,40 +30,40 @@ public class StructureGenerator implements Generator, ReducedGenerator {
 	}
 
 	@Override
-	public void generate(long seed, int wx, int wz, NormalChunk chunk, MetaChunk containingMetaChunk, Surface surface, boolean[][] vegetationIgnoreMap) {
-		this.generate(seed, wx, wz, chunk, containingMetaChunk, surface);
+	public void generate(long seed, int wx, int wz, NormalChunk chunk, Region containingRegion, Surface surface, boolean[][] vegetationIgnoreMap) {
+		this.generate(seed, wx, wz, chunk, containingRegion, surface);
 	}
 	
-	private void generate(long seed, int wx, int wz, Chunk chunk, MetaChunk containingMetaChunk, Surface surface) {
+	private void generate(long seed, int wx, int wz, Chunk chunk, Region containingRegion, Surface surface) {
 		Random rand = new Random(seed + 3*(seed + 1 & Integer.MAX_VALUE));
 		int worldSizeX = surface.getSizeX();
 		int worldSizeZ = surface.getSizeZ();
 		long rand1 = rand.nextInt() | 1;
 		long rand2 = rand.nextInt() | 1;
-		// Get the meta chunks for the surrounding regions:
-		MetaChunk nn = containingMetaChunk;
-		MetaChunk np = containingMetaChunk;
-		MetaChunk pn = containingMetaChunk;
-		MetaChunk pp = containingMetaChunk;
-		MetaChunk no = containingMetaChunk;
-		MetaChunk po = containingMetaChunk;
-		MetaChunk on = containingMetaChunk;
-		MetaChunk op = containingMetaChunk;
+		// Get the regions for the surrounding regions:
+		Region nn = containingRegion;
+		Region np = containingRegion;
+		Region pn = containingRegion;
+		Region pp = containingRegion;
+		Region no = containingRegion;
+		Region po = containingRegion;
+		Region on = containingRegion;
+		Region op = containingRegion;
 		if((wx & 255) <= 8) {
-			no = nn = np = surface.getMetaChunk((wx & ~255) - 256, wz & ~255);
+			no = nn = np = surface.getRegion((wx & ~255) - 256, wz & ~255);
 		}
 		if((wx & 255) >= 256 - 8 - chunk.getWidth()) {
-			po = pn = pp = surface.getMetaChunk((wx & ~255) + 256, wz & ~255);
+			po = pn = pp = surface.getRegion((wx & ~255) + 256, wz & ~255);
 		}
 		if((wz & 255) <= 8) {
-			on = surface.getMetaChunk((wx & ~255), (wz & ~255) - 256);
-			nn = surface.getMetaChunk((wx & ~255) - ((wx & 255) <= 8 ? 256 : 0), (wz & ~255) - 256);
-			pn = surface.getMetaChunk((wx & ~255) + ((wx & 255) >= 256 - 8 - chunk.getWidth() ? 256 : 0), (wz & ~255) - 256);
+			on = surface.getRegion((wx & ~255), (wz & ~255) - 256);
+			nn = surface.getRegion((wx & ~255) - ((wx & 255) <= 8 ? 256 : 0), (wz & ~255) - 256);
+			pn = surface.getRegion((wx & ~255) + ((wx & 255) >= 256 - 8 - chunk.getWidth() ? 256 : 0), (wz & ~255) - 256);
 		}
 		if((wz & 255) >= 256 - 8 - chunk.getWidth()) {
-			op = surface.getMetaChunk((wx & ~255), (wz & ~255) + 256);
-			np = surface.getMetaChunk((wx & ~255) - ((wx & 255) <= 8 ? 256 : 0), (wz & ~255) + 256);
-			pp = surface.getMetaChunk((wx & ~255) + ((wx & 255) >= 256 - 8 - chunk.getWidth() ? 256 : 0), (wz & ~255) + 256);
+			op = surface.getRegion((wx & ~255), (wz & ~255) + 256);
+			np = surface.getRegion((wx & ~255) - ((wx & 255) <= 8 ? 256 : 0), (wz & ~255) + 256);
+			pp = surface.getRegion((wx & ~255) + ((wx & 255) >= 256 - 8 - chunk.getWidth() ? 256 : 0), (wz & ~255) + 256);
 		}
 		for(int px = 0; px < chunk.getWidth() + 16; px++) {
 			for(int pz = 0; pz < chunk.getWidth() + 16; pz++) {
@@ -71,7 +71,7 @@ public class StructureGenerator implements Generator, ReducedGenerator {
 				int wpz = CubyzMath.worldModulo(pz - 8 + wz, worldSizeZ);
 				rand.setSeed((wpx*rand1 << 32) ^ wpz*rand2 ^ seed);
 				float randomValue = rand.nextFloat();
-				MetaChunk cur = containingMetaChunk;
+				Region cur = containingRegion;
 				if(px < 8) {
 					if(pz < 8) cur = nn;
 					else if(chunk.getWidth() + 16 - pz <= 8) cur = np;
@@ -87,7 +87,7 @@ public class StructureGenerator implements Generator, ReducedGenerator {
 				Biome biome = cur.biomeMap[wpx & 255][wpz & 255];
 				for(StructureModel model : biome.vegetationModels) {
 					if(model.getChance() > randomValue) {
-						model.generate(px - 8, pz - 8, (int)(cur.heightMap[wpx & 255][wpz & 255]) + 1, chunk, containingMetaChunk, rand);
+						model.generate(px - 8, pz - 8, (int)(cur.heightMap[wpx & 255][wpz & 255]) + 1, chunk, containingRegion, rand);
 						break;
 					} else {
 						randomValue = (randomValue - model.getChance())/(1 - model.getChance()); // Make sure that after the first one was considered all others get the correct chances.
@@ -98,8 +98,8 @@ public class StructureGenerator implements Generator, ReducedGenerator {
 	}
 
 	@Override
-	public void generate(long seed, int wx, int wz, ReducedChunk chunk, MetaChunk containingMetaChunk, Surface surface) {
-		this.generate(seed, wx, wz, (Chunk)chunk, containingMetaChunk, surface);
+	public void generate(long seed, int wx, int wz, ReducedChunk chunk, Region containingRegion, Surface surface) {
+		this.generate(seed, wx, wz, (Chunk)chunk, containingRegion, surface);
 	}
 
 	@Override

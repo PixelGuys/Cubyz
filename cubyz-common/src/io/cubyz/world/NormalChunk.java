@@ -52,7 +52,9 @@ public class NormalChunk extends Chunk {
 	
 	private int maxHeight; // Max height of the terrain after loading. Used to prevent bugs at chunk borders.
 	
-	public NormalChunk(int cx, int cz, Surface surface, ArrayList<BlockChange> changes) {
+	public final Region region;
+	
+	public NormalChunk(int cx, int cz, Surface surface) {
 		if(surface != null) {
 			cx = CubyzMath.worldModulo(cx, surface.getSizeX() >>> 4);
 			cz = CubyzMath.worldModulo(cz, surface.getSizeZ() >>> 4);
@@ -68,7 +70,7 @@ public class NormalChunk extends Chunk {
 		wx = cx << 4;
 		wz = cz << 4;
 		this.surface = surface;
-		this.changes = changes;
+		this.region = surface.getRegion(wx, wz);
 	}
 	
 	public void generateFrom(SurfaceGenerator gen) {
@@ -768,6 +770,8 @@ public class NormalChunk extends Chunk {
 	
 	// Apply Block Changes loaded from file/stored in WorldIO. Must be called before loading.
 	public void applyBlockChanges() {
+		if(changes == null)
+			changes = region.regIO.getBlockChanges(cx, cz);
 		for(BlockChange bc : changes) {
 			int index = (bc.x << 4) | (bc.y << 8) | bc.z;
 			bc.oldType = blocks[index] == null ? -1 : blocks[index].ID;

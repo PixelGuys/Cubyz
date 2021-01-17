@@ -4,7 +4,7 @@ import java.util.Random;
 
 import io.cubyz.blocks.Block;
 import io.cubyz.world.Chunk;
-import io.cubyz.world.MetaChunk;
+import io.cubyz.world.Region;
 import io.cubyz.world.World;
 
 /**
@@ -33,7 +33,7 @@ public class SimpleTreeModel extends StructureModel {
 	}
 
 	@Override
-	public void generate(int x, int z, int h, Chunk chunk, MetaChunk metaChunk, Random rand) {
+	public void generate(int x, int z, int h, Chunk chunk, Region region, Random rand) {
 		if(h > 0) {
 			int height = height0 + rand.nextInt(deltaHeight);
 			switch(type) {

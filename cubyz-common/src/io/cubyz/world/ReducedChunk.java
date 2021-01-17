@@ -33,7 +33,7 @@ public class ReducedChunk extends Chunk {
 	/** =log₂(width)*/
 	public final int widthShift;
 	
-	public ReducedChunk(int cx, int cz, int resolutionShift, int widthShift, ArrayList<BlockChange> changes) {
+	public ReducedChunk(int cx, int cz, int resolutionShift, int widthShift) {
 		this.cx = cx;
 		this.cz = cz;
 		this.resolutionShift = resolutionShift;
