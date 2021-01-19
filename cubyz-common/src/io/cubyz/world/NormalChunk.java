@@ -1,7 +1,6 @@
  package io.cubyz.world;
 
 import java.util.ArrayList;
-import java.util.Map;
 
 import org.joml.Vector3f;
 import org.joml.Vector3i;
@@ -16,6 +15,7 @@ import io.cubyz.handler.BlockVisibilityChangeHandler;
 import io.cubyz.math.Bits;
 import io.cubyz.math.CubyzMath;
 import io.cubyz.save.BlockChange;
+import io.cubyz.save.Palette;
 import io.cubyz.util.FastList;
 import io.cubyz.world.generator.SurfaceGenerator;
 
@@ -926,7 +926,7 @@ public class NormalChunk extends Chunk {
 	 * @param blockPalette
 	 * @return chunk data as byte[]
 	 */
-	public byte[] save(Map<Block, Integer> blockPalette) {
+	public byte[] save(Palette<Block> blockPalette) {
 		byte[] data = new byte[12 + (changes.size()*17)];
 		Bits.putInt(data, 0, cx);
 		Bits.putInt(data, 4, cz);

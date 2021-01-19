@@ -660,7 +660,7 @@ public class LocalSurface extends Surface {
 			}
 			for (int k = minK; k < entityManagers.length; k++) {
 				if(entityManagers[k].chunk.isGenerated())
-					; // TODO: Save block drops.
+					entityManagers[k].chunk.region.regIO.saveItemEntities(entityManagers[k].itemEntityManager);
 			}
 			entityManagers = newManagers;
 			this.doubleEntityRD = 2*Settings.entityDistance;

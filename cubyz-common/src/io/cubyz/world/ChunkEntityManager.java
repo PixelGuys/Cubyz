@@ -14,7 +14,7 @@ public class ChunkEntityManager {
 		wx = chunk.getWorldX();
 		wz = chunk.getWorldZ();
 		this.chunk = chunk;
-		itemEntityManager = new ItemEntityManager(surface, chunk, 1);
+		itemEntityManager = chunk.region.regIO.readItemEntities(surface, chunk);
 	}
 	
 	public void update() {

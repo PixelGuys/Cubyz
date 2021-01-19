@@ -90,7 +90,7 @@ public class NDTContainer extends NDTTag implements Iterable<NDTTag> {
 	}
 	
 	public NDTTag getTag(String key) {
-		if (!hasKey(key)) throw new IllegalArgumentException("No tag with key " + key);
+		if (!hasKey(key)) return null;
 		return tags.get(key);
 	}
 	

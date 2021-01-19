@@ -11,8 +11,10 @@ import java.util.ArrayList;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.InflaterInputStream;
 
+import io.cubyz.entity.ItemEntityManager;
 import io.cubyz.math.Bits;
 import io.cubyz.world.Region;
+import io.cubyz.world.Surface;
 import io.cubyz.world.NormalChunk;
 
 /**
@@ -147,6 +149,33 @@ public class RegionIO {
 				blockData.set(index, cb);
 				chunkData.set(index, cd);
 			}
+		}
+	}
+	
+	public ItemEntityManager readItemEntities(Surface surface, NormalChunk chunk) {
+		File file = new File(dir, "itemEnt"+chunk.getWorldX()+" "+chunk.getWorldZ());
+		if(!file.exists()) return new ItemEntityManager(surface, chunk, 1);
+		try {
+			BufferedInputStream stream = new BufferedInputStream(new InflaterInputStream(new FileInputStream(file)));
+			byte[] data = stream.readAllBytes();
+			stream.close();
+			return new ItemEntityManager(surface, chunk, data, tio.itemPalette);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return new ItemEntityManager(surface, chunk, 1);
+	}
+	
+	public void saveItemEntities(ItemEntityManager manager) {
+		if(manager.size == 0) return;
+		File file = new File(dir, "itemEnt"+manager.chunk.getWorldX()+" "+manager.chunk.getWorldZ());
+		if(!dir.exists()) dir.mkdirs();
+		try {
+			BufferedOutputStream out = new BufferedOutputStream(new DeflaterOutputStream(new FileOutputStream(file)));
+			out.write(manager.store(tio.itemPalette));
+			out.close();
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 	}
 }

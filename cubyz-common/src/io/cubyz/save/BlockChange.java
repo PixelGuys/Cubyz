@@ -1,7 +1,5 @@
 package io.cubyz.save;
 
-import java.util.Map;
-
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.RegistryElement;
 import io.cubyz.blocks.Block;
@@ -26,7 +24,7 @@ public class BlockChange {
 		this.z = z;
 	}
 	
-	public BlockChange(byte[] data, int off, Map<Block, Integer> blockPalette) {
+	public BlockChange(byte[] data, int off, Palette<Block> blockPalette) {
 		x = Bits.getInt(data, off + 0);
 		y = Bits.getInt(data, off + 4);
 		z = Bits.getInt(data, off + 8);
@@ -36,16 +34,11 @@ public class BlockChange {
 		int palId = Bits.getInt(data, off + 13);
 		int runtimeId = -1;
 		if (palId != -1) {
-			for (Block b : blockPalette.keySet()) {
-				Integer i = blockPalette.get(b);
-				if (i == palId) {
-					runtimeId = b.ID;
-					break;
-				}
-			}
-			if (runtimeId == -1) {
+			Block b = blockPalette.getElement(palId);
+			if(b == null) {
 				throw new MissingBlockException();
 			}
+			runtimeId = b.ID;
 		}
 		newType = runtimeId;
 		oldType = -2;
@@ -57,7 +50,7 @@ public class BlockChange {
 	 * @param data
 	 * @param off
 	 */
-	public void save(byte[] data, int off, Map<Block, Integer> blockPalette) {
+	public void save(byte[] data, int off, Palette<Block> blockPalette) {
 		Bits.putInt(data, off, x);
 		Bits.putInt(data, off + 4, y);
 		Bits.putInt(data, off + 8, z);
@@ -75,10 +68,7 @@ public class BlockChange {
 			if (b == null) {
 				throw new RuntimeException("newType is invalid: " + newType);
 			}
-			if (!blockPalette.containsKey(b)) {
-				blockPalette.put(b, blockPalette.size());
-			}
-			Bits.putInt(data, off + 13, blockPalette.get(b));
+			Bits.putInt(data, off + 13, blockPalette.getIndex(b));
 		}
 	}
 }

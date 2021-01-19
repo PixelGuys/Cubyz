@@ -6,24 +6,21 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.HashMap;
 
-import io.cubyz.api.Registry;
-import io.cubyz.api.RegistryElement;
 import io.cubyz.blocks.Block;
 import io.cubyz.entity.Entity;
+import io.cubyz.items.Item;
 import io.cubyz.math.Bits;
 import io.cubyz.ndt.NDTContainer;
 import io.cubyz.world.LocalStellarTorus;
 import io.cubyz.world.LocalSurface;
 
-import static io.cubyz.CubyzLogger.logger;
-
 public class TorusIO {
 
 	final File dir;
 	private LocalStellarTorus torus;
-	public HashMap<Block, Integer> blockPalette = new HashMap<>();
+	public Palette<Block> blockPalette;
+	public Palette<Item> itemPalette;
 
 	public TorusIO(LocalStellarTorus torus, File directory) {
 		dir = directory;
@@ -35,25 +32,6 @@ public class TorusIO {
 
 	public boolean hasTorusData() {
 		return new File(dir, "torus.dat").exists();
-	}
-	
-	public static <T extends RegistryElement> NDTContainer readPalette(NDTContainer paletteNDT, HashMap<T, Integer> palette, Registry<T> registry) {
-		for (String key : paletteNDT.keys()) {
-			T t = registry.getByID(key);
-			if (t != null) {
-				palette.put(t, paletteNDT.getInteger(key));
-			} else {
-				logger.warning("A block with ID " + key + " is used in world but isn't available.");
-			}
-		}
-		return paletteNDT;
-	}
-	
-	public static <T extends RegistryElement> NDTContainer storePalette(NDTContainer paletteNDT, HashMap<T, Integer> palette) {
-		for (T t : palette.keySet()) {
-			paletteNDT.setInteger(t.getRegistryID().toString(), palette.get(t));
-		}
-		return paletteNDT;
 	}
 
 	public void loadTorusData(LocalSurface surface) {
@@ -71,7 +49,8 @@ public class TorusIO {
 				throw new RuntimeException("World is out-of-date");
 			}
 			torus.setName(ndt.getString("name"));
-			readPalette(ndt.getContainer("blockPalette"), blockPalette, surface.registries.blockRegistry);
+			blockPalette = new Palette<Block>(ndt.getContainer("blockPalette"), surface.registries.blockRegistry);
+			itemPalette = new Palette<Item>(ndt.getContainer("itemPalette"), surface.registries.itemRegistry);
 			Entity[] entities = new Entity[ndt.getInteger("entityCount")];
 			for (int i = 0; i < entities.length; i++) {
 				// TODO: Only load entities that are in loaded chunks.
@@ -93,7 +72,8 @@ public class TorusIO {
 			ndt.setInteger("version", 2);
 			ndt.setString("name", torus.getName());
 			ndt.setInteger("entityCount", surface == null ? 0 : surface.getEntities().length);
-			ndt.setContainer("blockPalette", storePalette(new NDTContainer(), blockPalette));
+			ndt.setContainer("blockPalette", blockPalette.saveTo(new NDTContainer()));
+			ndt.setContainer("itemPalette", itemPalette.saveTo(new NDTContainer()));
 			byte[] len = new byte[4];
 			Bits.putInt(len, 0, ndt.getData().length);
 			out.write(len);

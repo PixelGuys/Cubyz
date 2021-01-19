@@ -5,7 +5,10 @@ import java.util.Arrays;
 import org.joml.Vector3f;
 
 import io.cubyz.blocks.Block;
+import io.cubyz.items.Item;
 import io.cubyz.items.ItemStack;
+import io.cubyz.math.Bits;
+import io.cubyz.save.Palette;
 import io.cubyz.world.ChunkEntityManager;
 import io.cubyz.world.NormalChunk;
 import io.cubyz.world.Surface;
@@ -29,7 +32,7 @@ public class ItemEntityManager {
 	public ItemStack[] itemStacks;
 	public int[] despawnTime;
 
-	private final NormalChunk chunk;
+	public final NormalChunk chunk;
 	private final Surface surface;
 	private float gravity;
 	public int size;
@@ -47,6 +50,78 @@ public class ItemEntityManager {
 		this.surface = surface;
 		this.chunk = chunk;
 		gravity = surface.getStellarTorus().getGravity();
+	}
+	
+	public ItemEntityManager(Surface surface, NormalChunk chunk, byte[] data, Palette<Item> itemPalette) {
+		// Read the length:
+		int index = 0;
+		int length = Bits.getInt(data, index);
+		index += 4;
+		// Check if the length is right:
+		if(data.length-index != length*4*9) throw new IllegalStateException("Save file is corrupted.");
+		// Init variables:
+		capacity = (length+63) & ~63;
+		posxyz = new float[3 * capacity];
+		velxyz = new float[3 * capacity];
+		rotxyz = new float[3 * capacity];
+		itemStacks = new ItemStack[capacity];
+		despawnTime = new int[capacity];
+		
+		this.surface = surface;
+		this.chunk = chunk;
+		gravity = surface.getStellarTorus().getGravity();
+		
+		// Read the data:
+		for(int i = 0; i < length; i++) {
+			float x = Bits.getFloat(data, index);
+			index += 4;
+			float y = Bits.getFloat(data, index);
+			index += 4;
+			float z = Bits.getFloat(data, index);
+			index += 4;
+			float vx = Bits.getFloat(data, index);
+			index += 4;
+			float vy = Bits.getFloat(data, index);
+			index += 4;
+			float vz = Bits.getFloat(data, index);
+			index += 4;
+			Item item = itemPalette.getElement(Bits.getInt(data, index));
+			index += 4;
+			int itemAmount = Bits.getInt(data, index);
+			index += 4;
+			int despawnTime = Bits.getInt(data, index);
+			index += 4;
+			add(x, y, z, vx, vy, vz, new ItemStack(item, itemAmount), despawnTime);
+		}
+	}
+	
+	public byte[] store(Palette<Item> itemPalette) {
+		byte[] data = new byte[size*4*9 + 4];
+		int index = 0;
+		Bits.putInt(data, 0, size);
+		index += 4;
+		for(int i = 0; i < size; i++) {
+			int i3 = i*3;
+			Bits.putFloat(data, index, posxyz[i3]);
+			index += 4;
+			Bits.putFloat(data, index, posxyz[i3+1]);
+			index += 4;
+			Bits.putFloat(data, index, posxyz[i3+2]);
+			index += 4;
+			Bits.putFloat(data, index, velxyz[i3]);
+			index += 4;
+			Bits.putFloat(data, index, velxyz[i3+1]);
+			index += 4;
+			Bits.putFloat(data, index, velxyz[i3+2]);
+			index += 4;
+			Bits.putInt(data, index, itemPalette.getIndex(itemStacks[i].getItem()));
+			index += 4;
+			Bits.putInt(data, index, itemStacks[i].getAmount());
+			index += 4;
+			Bits.putInt(data, index, despawnTime[i]);
+			index += 4;
+		}
+		return data;
 	}
 	
 	public void update() {
