@@ -103,8 +103,6 @@ public class GraphicsGUI extends MenuGUI {
 		vsync.setOnAction(() -> {
 			win.setVSyncEnabled(vsync.isSelected());
 		});
-		
-		// TODO: slider for RenderDistance.
 	}
 
 	@Override

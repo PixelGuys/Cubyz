@@ -19,8 +19,8 @@ public class TorusIO {
 
 	final File dir;
 	private LocalStellarTorus torus;
-	public Palette<Block> blockPalette;
-	public Palette<Item> itemPalette;
+	public Palette<Block> blockPalette = new Palette<Block>(null, null);
+	public Palette<Item> itemPalette = new Palette<Item>(null, null);
 
 	public TorusIO(LocalStellarTorus torus, File directory) {
 		dir = directory;

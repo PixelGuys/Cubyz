@@ -46,7 +46,6 @@ import io.cubyz.utils.*;
 import io.cubyz.utils.ResourceUtilities.BlockModel;
 import io.cubyz.utils.ResourceUtilities.BlockSubModel;
 import io.cubyz.world.*;
-import io.cubyz.world.cubyzgenerators.TerrainGenerator;
 import io.cubyz.world.generator.LifelandGenerator;
 import io.jungle.*;
 import io.jungle.audio.SoundBuffer;
@@ -154,7 +153,7 @@ public class Cubyz implements GameLogic, ClientConnection {
 				ms.stop();
 			}
 		}
-		// TODO: unload custom ore models
+		
 		System.gc();
 	}
 	
@@ -176,7 +175,7 @@ public class Cubyz implements GameLogic, ClientConnection {
 			worldSpatialList = new Spatial[] {skySun/*, skyMoon*/};
 		}
 		Cubyz.surface = surface;
-		Cubyz.world = surface.getStellarTorus().getWorld();
+		World world = surface.getStellarTorus().getWorld();
 		if (world.isLocal()) {
 			Random rnd = new Random();
 			int dx = 0;
@@ -188,15 +187,21 @@ public class Cubyz implements GameLogic, ClientConnection {
 					dx = rnd.nextInt(surface.getSizeX());
 					dz = rnd.nextInt(surface.getSizeZ());
 					logger.info("Trying " + dx + " ? " + dz);
-					world.getCurrentTorus().synchronousSeek(dx, dz, ClientSettings.RENDER_DISTANCE);
-					highestY = world.getCurrentTorus().getHeight(dx, dz);
-					if(highestY >= TerrainGenerator.SEA_LEVEL) // TODO: Take care about other SurfaceGenerators.
+					if(world.getCurrentTorus().isValidSpawnLocation(dx, dz)) 
 						break;
+				}
+				world.getCurrentTorus().seek((int)dx, (int)dz, ClientSettings.RENDER_DISTANCE, ClientSettings.MAX_RESOLUTION, ClientSettings.FAR_DISTANCE_FACTOR);
+				highestY = World.WORLD_HEIGHT - 1;
+				while(highestY >= 0) {
+					if(world.getCurrentTorus().getBlock(dx, highestY, dz) != null && world.getCurrentTorus().getBlock(dx, highestY, dz).isSolid()) break;
+					highestY--;
 				}
 				world.getLocalPlayer().setPosition(new Vector3i(dx, highestY+2, dz));
 				logger.info("OK!");
 			}
 		}
+		// Make sure the world is null until the player position is known.
+		Cubyz.world = world;
 		DiscordIntegration.setStatus("Playing");
 		Cubyz.gameUI.addOverlay(new GameOverlay());
 		
@@ -749,7 +754,8 @@ public class Cubyz implements GameLogic, ClientConnection {
 				ambient.z *= 1.0f - Math.pow(((absorption >>> 0) & 255)/255.0f, 0.25);
 			}
 			light.setColor(clearColor);
-			float lightY = (((float)world.getGameTime() % world.getCurrentTorus().getStellarTorus().getDayCycle()) / (float) (world.getCurrentTorus().getStellarTorus().getDayCycle()/2)) - 1f; // TODO: work on it more
+			 // TODO: Make light direction and sun position depend on relative position on the torus, to get realistic day-night patterns at the poles.
+			float lightY = (((float)world.getGameTime() % world.getCurrentTorus().getStellarTorus().getDayCycle()) / (float) (world.getCurrentTorus().getStellarTorus().getDayCycle()/2)) - 1f;
 			float lightX = (((float)world.getGameTime() % world.getCurrentTorus().getStellarTorus().getDayCycle()) / (float) (world.getCurrentTorus().getStellarTorus().getDayCycle()/2)) - 1f;
 			light.getDirection().set(lightY, 0, lightX);
 			// Set intensity:

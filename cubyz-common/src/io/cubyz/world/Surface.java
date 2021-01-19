@@ -69,7 +69,6 @@ public abstract class Surface {
 	public abstract void addEntity(Entity en);
 	public abstract void removeEntity(Entity ent);
 	
-	public abstract void synchronousSeek(int x, int z, int renderDistance);
 	public abstract int getHeight(int x, int z);
 	public abstract void seek(int x, int z, int renderDistance, int maxResolution, float farDistanceFactor);
 	
@@ -101,6 +100,5 @@ public abstract class Surface {
 
 	public abstract void getMapData(int x, int z, int width, int height, float[][] heightMap, Biome[][] biomeMap);
 
-
-	
+	public abstract boolean isValidSpawnLocation(int x, int z);
 }

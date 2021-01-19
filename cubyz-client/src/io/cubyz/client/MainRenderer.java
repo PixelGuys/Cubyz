@@ -153,7 +153,6 @@ public class MainRenderer implements Renderer {
 		}
 		// Insert sort them:
 		for(int i = 1; i < output.length; i++) {
-			// TODO: binary search instead of linear search.
 			for(int j = i-1; j >= 0; j--) {
 				if(distances[j] < distances[j+1]) {
 					// Swap them:
@@ -206,7 +205,7 @@ public class MainRenderer implements Renderer {
 		// Uses FrustumCulling on the chunks.
 		prjViewMatrix.set(window.getProjectionMatrix());
 		prjViewMatrix.mul(ctx.getCamera().getViewMatrix());
-		// TODO: RayAabIntersection
+
 		frustumInt.set(prjViewMatrix);
 		Vector3f playerPosition = null;
 		if(localPlayer != null) {

@@ -15,7 +15,7 @@ import io.jungle.hud.Font;
 
 /**
  * GUI shown when creating a new world in a new world file.<br>
- * TODO: world seed.
+ * TODO: world seed and other related settings.
  */
 
 public class SaveCreationGUI extends MenuGUI {

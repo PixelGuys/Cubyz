@@ -280,32 +280,16 @@ public class LocalSurface extends Surface {
 	}
 	
 	@Override
-	public void synchronousSeek(int x, int z, int renderDistance) {
-		// Transform to chunk coordinates:
-		x >>= 4;
-		z >>= 4;
-		NormalChunk ch = getChunk(x, z);
-		if(ch == null) {
-			ch = new NormalChunk(x, z, this);
-			NormalChunk[] newList = new NormalChunk[chunks.length+1];
-			newList[chunks.length] = ch;
-			chunks = newList;
-		}
-		if (!ch.isGenerated()) { // TODO actually fix synchronousSeek so we can access blocks generated through it
-			synchronousGenerate(ch);
-			ch.load();
-			int local = x & 15;
-			x += renderDistance;
-			if(local > 7)
-				x++;
-			local = z & 15;
-			z += renderDistance;
-			if(local > 7)
-				z++;
-			lastX = x;
-			lastZ = z;
-			doubleRD = renderDistance << 1;
-		}
+	public boolean isValidSpawnLocation(int x, int z) {
+		// Just make sure there is a forest nearby, so the player will always be able to get the resources needed to start properly.
+		int mapX = biomeMap.length*x/worldSizeX;
+		int mapZ = biomeMap[0].length*z/worldSizeZ;
+		return biomeMap[mapX][mapZ] == Biome.Type.FOREST
+				| biomeMap[mapX][mapZ] == Biome.Type.GRASSLAND
+				| biomeMap[mapX][mapZ] == Biome.Type.MOUNTAIN_FOREST
+				| biomeMap[mapX][mapZ] == Biome.Type.RAINFOREST
+				| biomeMap[mapX][mapZ] == Biome.Type.SWAMP
+				| biomeMap[mapX][mapZ] == Biome.Type.TAIGA;
 	}
 	
 	public void synchronousGenerate(NormalChunk ch) {
@@ -319,8 +303,6 @@ public class LocalSurface extends Surface {
 		if (ch != null) {
 			Block b = ch.getBlockAt(x & 15, y, z & 15);
 			ch.removeBlockAt(x & 15, y, z & 15, true);
-			ch.region.regIO.saveChunk(ch); // TODO: Don't save it every time.
-			tio.saveTorusData(this);
 			for (RemoveBlockHandler hand : removeBlockHandlers) {
 				hand.onBlockRemoved(b, x, y, z);
 			}
@@ -342,7 +324,6 @@ public class LocalSurface extends Surface {
 		NormalChunk ch = getChunk(x >> 4, z >> 4);
 		if (ch != null) {
 			ch.addBlock(b, data, x & 15, y, z & 15, false);
-			ch.region.regIO.saveChunk(ch); // TODO: Don't save it every time.
 			for (PlaceBlockHandler hand : placeBlockHandlers) {
 				hand.onBlockPlaced(b, x, y, z);
 			}
@@ -360,7 +341,6 @@ public class LocalSurface extends Surface {
 		NormalChunk ch = getChunk(x >> 4, z >> 4);
 		if (ch != null) {
 			ch.setBlockData(x & 15, y, z & 15, data);
-			ch.region.regIO.saveChunk(ch); // TODO: Don't save it every time.
 		}
 	}
 	
@@ -655,7 +635,7 @@ public class LocalSurface extends Surface {
 							continue loop;
 						}
 					}
-					newManagers[index++] = new ChunkEntityManager(this, this.getChunk(i, j));
+					newManagers[index++] = new ChunkEntityManager(this, this.getChunk(CubyzMath.worldModulo(i, worldSizeX >> 4), CubyzMath.worldModulo(j, worldSizeZ >> 4)));
 				}
 			}
 			for (int k = minK; k < entityManagers.length; k++) {
