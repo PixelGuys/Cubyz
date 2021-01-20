@@ -30,8 +30,10 @@ public class LocalWorld extends World {
 	private long gameTime;
 	public boolean inLqdUpdate;
 	private WorldIO wio;
+	private final Class<?> chunkProvider;
 	
-	public LocalWorld(String name) {
+	public LocalWorld(String name, Class<?> chunkProvider) {
+		this.chunkProvider = chunkProvider;
 		this.name = name;
 		wio = new WorldIO(this, new File("saves/" + name));
 		if (wio.hasWorldData()) {
@@ -90,7 +92,7 @@ public class LocalWorld extends World {
 	
 	public void setCurrentTorusID(long seed) {
 		LocalStellarTorus torus = new LocalStellarTorus(this, seed);
-		currentTorus = new LocalSurface(torus);
+		currentTorus = new LocalSurface(torus, chunkProvider);
 		toruses.add(torus);
 	}
 	
@@ -102,7 +104,7 @@ public class LocalWorld extends World {
 		Random rand = new Random(seed);
 		if (currentTorus == null) {
 			LocalStellarTorus torus = new LocalStellarTorus(this, rand.nextLong());
-			currentTorus = new LocalSurface(torus);
+			currentTorus = new LocalSurface(torus, chunkProvider);
 			toruses.add(torus);
 		}
 		ArrayList<Block> blockList = new ArrayList<>();

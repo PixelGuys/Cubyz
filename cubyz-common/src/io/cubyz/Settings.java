@@ -9,8 +9,6 @@ import io.cubyz.translate.TextKey;
 
 public class Settings {
 	
-	public static boolean easyLighting = true; // Enables the easy-lighting system.
-	
 	private static Language currentLanguage = null;
 	
 	public static int entityDistance = 5;

@@ -1,6 +1,7 @@
 package io.cubyz.world;
 
 import java.io.File;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -72,6 +73,8 @@ public class LocalSurface extends Surface {
 	// synchronized common list for chunk generation
 	private volatile BlockingDeque<NormalChunk> loadList = new LinkedBlockingDeque<>(MAX_QUEUE_SIZE);
 	private volatile BlockingDeque<ReducedChunk> reducedLoadList = new LinkedBlockingDeque<>(MAX_QUEUE_SIZE);
+	
+	private final Class<?> chunkProvider;
 	
 	boolean liquidUpdate;
 	
@@ -165,10 +168,19 @@ public class LocalSurface extends Surface {
 		}
 	}
 	
-	public LocalSurface(LocalStellarTorus torus) {
+	public LocalSurface(LocalStellarTorus torus, Class<?> chunkProvider) {
 		registries = new CurrentSurfaceRegistries();
 		localSeed = torus.getLocalSeed();
 		this.torus = torus;
+		this.chunkProvider = chunkProvider;
+		// Check if the chunkProvider is valid:
+		if(!NormalChunk.class.isAssignableFrom(chunkProvider) ||
+				chunkProvider.getConstructors().length != 1 ||
+				chunkProvider.getConstructors()[0].getParameterTypes().length != 3 ||
+				!chunkProvider.getConstructors()[0].getParameterTypes()[0].equals(Integer.class) ||
+				!chunkProvider.getConstructors()[0].getParameterTypes()[1].equals(Integer.class) ||
+				!chunkProvider.getConstructors()[0].getParameterTypes()[2].equals(Surface.class))
+			throw new IllegalArgumentException("Chunk provider "+chunkProvider+" is invalid! It needs to be a subclass of NormalChunk and MUST contain a single constructor with parameters (Integer, Integer, Surface)");
 		regions = new Region[0];
 		chunks = new NormalChunk[0];
 		entityManagers = new ChunkEntityManager[0];
@@ -588,10 +600,22 @@ public class LocalSurface extends Surface {
 							continue loop;
 						}
 					}
-					NormalChunk ch = new NormalChunk(i, j, this);
-					chunksToQueue.add(ch);
-					newVisibles[index] = ch;
-					index++;
+					try {
+						NormalChunk ch = (NormalChunk)chunkProvider.getDeclaredConstructors()[0].newInstance(i, j, this);
+						chunksToQueue.add(ch);
+						newVisibles[index] = ch;
+						index++;
+					} catch (InstantiationException e) {
+						e.printStackTrace();
+					} catch (IllegalAccessException e) {
+						e.printStackTrace();
+					} catch (IllegalArgumentException e) {
+						e.printStackTrace();
+					} catch (InvocationTargetException e) {
+						e.printStackTrace();
+					} catch (SecurityException e) {
+						e.printStackTrace();
+					}
 				}
 			}
 			for (int k = minK; k < chunks.length; k++) {
@@ -970,9 +994,9 @@ public class LocalSurface extends Surface {
 	}
 
 	@Override
-	public Vector3f getLight(int x, int y, int z, Vector3f sunLight) {
+	public Vector3f getLight(int x, int y, int z, Vector3f sunLight, boolean easyLighting) {
 		NormalChunk ch = getChunk(x >> 4, z >> 4);
-		if(ch == null || !ch.isLoaded() || !Settings.easyLighting)
+		if(ch == null || !ch.isLoaded() || !easyLighting)
 			return new Vector3f(1, 1, 1);
 		int light = ch.getLight(x & 15, y, z & 15);
 		int sun = (light >>> 24) & 255;

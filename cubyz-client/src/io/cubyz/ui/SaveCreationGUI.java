@@ -10,6 +10,7 @@ import io.cubyz.ui.components.Button;
 import io.cubyz.ui.components.TextInput;
 import io.cubyz.world.CustomObject;
 import io.cubyz.world.LocalWorld;
+import io.cubyz.world.VisibleChunk;
 import io.jungle.Window;
 import io.jungle.hud.Font;
 
@@ -42,7 +43,7 @@ public class SaveCreationGUI extends MenuGUI {
 		create.setSize(200, 50);
 		create.setText(TextKey.createTextKey("gui.cubyz.saves.create"));
 		create.setOnAction(() -> {
-			LocalWorld world = new LocalWorld(name.getText());
+			LocalWorld world = new LocalWorld(name.getText(), VisibleChunk.class);
 			Block[] blocks = world.generate();
 			for(Block bl : blocks) {
 				if (bl instanceof CustomObject) {

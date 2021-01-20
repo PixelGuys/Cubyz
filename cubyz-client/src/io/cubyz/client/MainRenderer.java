@@ -310,7 +310,7 @@ public class MainRenderer implements Renderer {
 					Mesh mesh = null;
 					if(ent.getType().model != null) {
 						entityShader.setUniform("materialHasTexture", true);
-						entityShader.setUniform("light", ent.getSurface().getLight(x, y, z, ambientLight));
+						entityShader.setUniform("light", ent.getSurface().getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
 						ent.getType().model.render(ctx.getCamera().getViewMatrix(), entityShader, ent);
 						continue;
 					}
@@ -327,7 +327,7 @@ public class MainRenderer implements Renderer {
 					
 					if (mesh != null) {
 						entityShader.setUniform("materialHasTexture", mesh.getMaterial().isTextured());
-						entityShader.setUniform("light", ent.getSurface().getLight(x, y, z, ambientLight));
+						entityShader.setUniform("light", ent.getSurface().getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
 						
 						mesh.renderOne(() -> {
 							Vector3f position = ent.getRenderPosition();
@@ -358,7 +358,7 @@ public class MainRenderer implements Renderer {
 					}
 					if(mesh != null) {
 						entityShader.setUniform("materialHasTexture", mesh.getMaterial().isTextured());
-						entityShader.setUniform("light", localPlayer.getSurface().getLight(x, y, z, ambientLight));
+						entityShader.setUniform("light", localPlayer.getSurface().getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
 						
 						mesh.renderOne(() -> {
 							Vector3f position = manager.getPosition(index);

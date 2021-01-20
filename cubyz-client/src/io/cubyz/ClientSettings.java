@@ -32,6 +32,8 @@ public class ClientSettings {
 	
 	public static float FOV = 70.0f;
 	
+	public static boolean easyLighting = true; // Enables the easy-lighting system.
+	
 
 	/**Not actually a setting, but stored here anyways.*/
 	public static int EFFECTIVE_RENDER_DISTANCE = (ClientSettings.RENDER_DISTANCE + ((((int)(ClientSettings.RENDER_DISTANCE*ClientSettings.FAR_DISTANCE_FACTOR) & ~1) << ClientSettings.MAX_RESOLUTION)));
@@ -57,7 +59,7 @@ public class ClientSettings {
 		settings.addProperty("useMipmaps", ClientSettings.MIPMAPPING);
 		settings.addProperty("vsync", Cubyz.ctx.getWindow().isVSyncEnabled());
 		settings.addProperty("antiAliasSamples", Cubyz.ctx.getWindow().getAntialiasSamples());
-		settings.addProperty("easyLighting", Settings.easyLighting);
+		settings.addProperty("easyLighting", ClientSettings.easyLighting);
 		settings.addProperty("renderDistance", ClientSettings.RENDER_DISTANCE);
 		settings.addProperty("maxResolution", ClientSettings.MAX_RESOLUTION);
 		settings.addProperty("farDistanceFactor", ClientSettings.FAR_DISTANCE_FACTOR);
@@ -118,7 +120,7 @@ public class ClientSettings {
 		}
 
 		if (settings.has("easyLighting")) {
-			Settings.easyLighting = settings.get("easyLighting").getAsBoolean();
+			ClientSettings.easyLighting = settings.get("easyLighting").getAsBoolean();
 		}
 		if (settings.has("renderDistance")) {
 			ClientSettings.RENDER_DISTANCE = settings.get("renderDistance").getAsInt();

@@ -16,6 +16,7 @@ import io.cubyz.translate.TextKey;
 import io.cubyz.ui.components.Button;
 import io.cubyz.world.CustomObject;
 import io.cubyz.world.LocalWorld;
+import io.cubyz.world.VisibleChunk;
 import io.jungle.Window;
 
 import static io.cubyz.CubyzLogger.logger;
@@ -49,7 +50,7 @@ public class SaveSelectorGUI extends MenuGUI {
 			b.setSize(200, 40);
 			b.setPosition(10, y);
 			b.setOnAction(() -> {
-				LocalWorld world = new LocalWorld(name);
+				LocalWorld world = new LocalWorld(name, VisibleChunk.class);
 				Block[] blocks = world.generate();
 				for(Block bl : blocks) {
 					if (bl instanceof CustomObject) {

@@ -1,7 +1,6 @@
 package io.cubyz.ui.settings;
 
 import io.cubyz.ClientSettings;
-import io.cubyz.Settings;
 import io.cubyz.client.Cubyz;
 import io.cubyz.translate.TextKey;
 import io.cubyz.ui.MenuGUI;
@@ -91,9 +90,9 @@ public class GraphicsGUI extends MenuGUI {
 		fog.setFontSize(16f);
 		
 		easyLighting.setLabel(TextKey.createTextKey("gui.cubyz.settings.easylighting"));
-		easyLighting.setSelected(Settings.easyLighting);
+		easyLighting.setSelected(ClientSettings.easyLighting);
 		easyLighting.setOnAction(() -> {
-			Settings.easyLighting = easyLighting.isSelected();
+			ClientSettings.easyLighting = easyLighting.isSelected();
 		});
 		easyLighting.getLabel().setFontSize(16f);
 		

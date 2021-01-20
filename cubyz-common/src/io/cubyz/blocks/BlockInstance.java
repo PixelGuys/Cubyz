@@ -2,7 +2,6 @@ package io.cubyz.blocks;
 
 import org.joml.Vector3i;
 
-import io.cubyz.Settings;
 import io.cubyz.entity.Player;
 import io.cubyz.world.NormalChunk;
 import io.cubyz.world.Surface;
@@ -30,10 +29,7 @@ public class BlockInstance {
 		y = position.y;
 		z = position.z;
 		blockData = data;
-		if(Settings.easyLighting)
-			light = new int[8];
-		else
-			light = null;
+		light = new int[8];
 		neighbors = new boolean[6];
 		scheduleLightUpdate();
 	}
@@ -97,7 +93,7 @@ public class BlockInstance {
 	}
 	
 	public int[] updateLighting(int worldSizeX, int worldSizeZ, NormalChunk chunk) {
-		if(Settings.easyLighting && lightUpdate) { // Update the internal light representation on demand.
+		if(lightUpdate) { // Update the internal light representation on demand.
 			if(chunk != null) {
 				chunk.getCornerLight(x & 15, y, z & 15, light);
 				lightUpdate = false;

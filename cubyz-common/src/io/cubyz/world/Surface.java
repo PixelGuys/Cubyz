@@ -55,7 +55,7 @@ public abstract class Surface {
 	
 	public abstract float getGlobalLighting();
 	
-	public abstract Vector3f getLight(int x, int y, int z, Vector3f sunLight);
+	public abstract Vector3f getLight(int x, int y, int z, Vector3f sunLight, boolean easyLighting);
 
 	public abstract NormalChunk getChunk(int x, int z);
 	public abstract Region getRegion(int wx, int wz);
