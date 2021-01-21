@@ -268,6 +268,9 @@ public class LocalSurface extends Surface {
 
 	
 	public void forceSave() {
+		for(NormalChunk chunk : chunks) {
+			chunk.region.regIO.saveChunk(chunk);
+		}
 		tio.saveTorusData(this);
 		((LocalWorld) torus.getWorld()).forceSave();
 		for(Region region : regions) {
@@ -306,7 +309,6 @@ public class LocalSurface extends Surface {
 	
 	public void synchronousGenerate(NormalChunk ch) {
 		ch.generateFrom(generator);
-		ch.region.regIO.saveChunk(ch);
 	}
 	
 	@Override
@@ -601,7 +603,7 @@ public class LocalSurface extends Surface {
 						}
 					}
 					try {
-						NormalChunk ch = (NormalChunk)chunkProvider.getDeclaredConstructors()[0].newInstance(i, j, this);
+						NormalChunk ch = (NormalChunk)chunkProvider.getDeclaredConstructors()[0].newInstance(CubyzMath.worldModulo(i, worldSizeX >> 4), CubyzMath.worldModulo(j, worldSizeZ >> 4), this);
 						chunksToQueue.add(ch);
 						newVisibles[index] = ch;
 						index++;

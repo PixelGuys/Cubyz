@@ -37,14 +37,12 @@ public class RegionIO {
 		ArrayList<BlockChange> list = new ArrayList<BlockChange>(size);
 		for (int i = 0; i < size; i++) {
 			try {
-				list.add(new BlockChange(data, 12 + i*17, tio.blockPalette));
+				list.add(new BlockChange(data, 12 + i*9, tio.blockPalette));
 			} catch (MissingBlockException e) {
 				// If the block is missing, we replace it by nothing
-				int off = 12 + i*17;
-				int x = Bits.getInt(data, off + 0);
-				int y = Bits.getInt(data, off + 4);
-				int z = Bits.getInt(data, off + 8);
-				list.add(new BlockChange(-2, -1, x, y, z, (byte)0, (byte)0));
+				int off = 12 + i*9;
+				int index = Bits.getInt(data, off + 0);
+				list.add(new BlockChange(-2, -1, index, (byte)0, (byte)0));
 			}
 		}
 		return list;

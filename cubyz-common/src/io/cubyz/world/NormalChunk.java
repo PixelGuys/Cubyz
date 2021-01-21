@@ -41,7 +41,7 @@ public class NormalChunk extends Chunk {
 	/**Liquids that should be updated at next frame. Stores the local index of the block.*/
 	private ArrayList<Integer> updatingLiquids = new ArrayList<>();
 	/**Reports block changes. Only those will be saved!*/
-	private ArrayList<BlockChange> changes;
+	private final ArrayList<BlockChange> changes;
 	private FastList<BlockInstance> visibles = new FastList<BlockInstance>(50, BlockInstance.class);
 	protected final int cx, cz;
 	protected final int wx, wz;
@@ -72,6 +72,7 @@ public class NormalChunk extends Chunk {
 		wz = cz << 4;
 		this.surface = surface;
 		this.region = surface.getRegion(wx, wz);
+		changes = region.regIO.getBlockChanges(cx, cz);
 	}
 	
 	public void generateFrom(SurfaceGenerator gen) {
@@ -109,13 +110,13 @@ public class NormalChunk extends Chunk {
 			int bcIndex = -1; // Checks if it is already in the list
 			for(int i = 0; i < changes.size(); i++) {
 				BlockChange bc = changes.get(i);
-				if(bc.x == x && bc.y == y && bc.z == z) {
+				if(bc.index == index) {
 					bcIndex = i;
 					break;
 				}
 			}
-			if(index == -1) { // Creates a new object if the block wasn't changed before
-				changes.add(new BlockChange(-1, blocks[index].ID, x, y, z, blockData[index], data));
+			if(bcIndex == -1) { // Creates a new object if the block wasn't changed before
+				changes.add(new BlockChange(-1, blocks[index].ID, index, blockData[index], data));
 			} else if(blocks[index].ID == changes.get(bcIndex).oldType && data == changes.get(bcIndex).oldData) { // Removes the object if the block reverted to it's original state.
 				changes.remove(bcIndex);
 			} else {
@@ -245,16 +246,17 @@ public class NormalChunk extends Chunk {
 		}
 
 		// Registers blockChange:
+		int blockIndex = ((x & 15) << 4) | (y << 8) | (z & 15);
 		int index = -1; // Checks if it is already in the list
 		for(int i = 0; i < changes.size(); i++) {
 			BlockChange bc = changes.get(i);
-			if(bc.x == x && bc.y == y && bc.z == z) {
+			if(bc.index == blockIndex) {
 				index = i;
 				break;
 			}
 		}
 		if(index == -1) { // Creates a new object if the block wasn't changed before
-			changes.add(new BlockChange(-1, b.ID, x, y, z, (byte)0, data));
+			changes.add(new BlockChange(-1, b.ID, blockIndex, (byte)0, data));
 		} else if(b.ID == changes.get(index).oldType && data == changes.get(index).oldData) { // Removes the object if the block reverted to it's original state.
 			changes.remove(index);
 		} else {
@@ -269,19 +271,19 @@ public class NormalChunk extends Chunk {
 	 * Apply Block Changes loaded from file/stored in WorldIO. Must be called before loading.
 	 */
 	public void applyBlockChanges() {
-		if(changes == null)
-			changes = region.regIO.getBlockChanges(cx, cz);
 		for(BlockChange bc : changes) {
-			int index = (bc.x << 4) | (bc.y << 8) | bc.z;
-			bc.oldType = blocks[index] == null ? -1 : blocks[index].ID;
-			bc.oldData = blockData[index];
+			bc.oldType = blocks[bc.index] == null ? -1 : blocks[bc.index].ID;
+			bc.oldData = blockData[bc.index];
 			Block b = bc.newType == -1 ? null : surface.getPlanetBlocks()[bc.newType];
 			if (b != null && b.hasBlockEntity()) {
-				Vector3i pos = new Vector3i(wx+bc.x, bc.y, wz+bc.z);
+				int z = bc.index & 15;
+				int x = (bc.index >>> 4) & 15;
+				int y = bc.index >>> 8;
+				Vector3i pos = new Vector3i(wx+x, y, wz+z);
 				blockEntities.add(b.createBlockEntity(surface, pos));
 			}
-			blocks[index] = b;
-			blockData[index] = bc.newData;
+			blocks[bc.index] = b;
+			blockData[bc.index] = bc.newData;
 		}
 		updated = true;
 	}
@@ -395,17 +397,18 @@ public class NormalChunk extends Chunk {
 		setBlock(x, y, z, null, (byte)0); // TODO: Investigate why this is called twice.
 
 		if(registerBlockChange) {
+			int blockIndex = ((x & 15) << 4) | (y << 8) | (z & 15);
 			// Registers blockChange:
 			int index = -1; // Checks if it is already in the list
 			for(int i = 0; i < changes.size(); i++) {
 				BlockChange bc = changes.get(i);
-				if(bc.x == x && bc.y == y && bc.z == z) {
+				if(bc.index == blockIndex) {
 					index = i;
 					break;
 				}
 			}
 			if(index == -1) { // Creates a new object if the block wasn't changed before
-				changes.add(new BlockChange(block.ID, -1, x, y, z, oldData, (byte)0));
+				changes.add(new BlockChange(block.ID, -1, blockIndex, oldData, (byte)0));
 				return;
 			}
 			if(changes.get(index).oldType == -1) { // Removes the object if the block reverted to it's original state(air).
@@ -426,12 +429,12 @@ public class NormalChunk extends Chunk {
 	 * @return chunk data as byte[]
 	 */
 	public byte[] save(Palette<Block> blockPalette) {
-		byte[] data = new byte[12 + (changes.size()*17)];
+		byte[] data = new byte[12 + (changes.size()*9)];
 		Bits.putInt(data, 0, cx);
 		Bits.putInt(data, 4, cz);
 		Bits.putInt(data, 8, changes.size());
 		for(int i = 0; i < changes.size(); i++) {
-			changes.get(i).save(data, 12 + i*17, blockPalette);
+			changes.get(i).save(data, 12 + i*9, blockPalette);
 		}
 		return data;
 	}
