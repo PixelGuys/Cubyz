@@ -103,10 +103,45 @@ public class SampleTester {
 			return sb.toString();
 	}
 	
+	public static void next(StringBuilder current, char c1, char c2, char c3, int depth) {
+		int i1 = getIndex(c1);
+		int i2 = getIndex(c2);
+		int i3 = getIndex(c3);
+		Node[] list = tree.get((byte)i1).get((byte)i2).get((byte)i3).next;
+		for(int i = 0; i < list.length; i++) {
+			char c4 = getChar(list[i].value);
+			if(c3 == ' ' && c4 == ' ') {
+				if(depth >= 5) {
+					System.out.println(current.toString().trim());
+				}
+			} else if(depth <= 10) {
+				StringBuilder sb = new StringBuilder(current);
+				if(c3 == ' ') {
+					sb.append((char)(c4+'A'-'a'));
+				} else {
+					sb.append(c4);
+				}
+				next(sb, c2, c3, c4, depth+1);
+			}
+		}
+	}
+	
+	public static void generateAll() {
+		next(new StringBuilder(), ' ', ' ', ' ', 0);
+	}
+	
 	public static void main(String[] args) {
 		readData(args[0]);
-		for(int i = 0; i < 100; i++) {
-			System.out.println(randomName(new Random()));
+		if(args.length == 1) {
+			for(int i = 0; i < 100; i++) {
+				System.out.println(randomName(new Random()));
+			}
+		} else if(args[1].equals("all")) {
+			generateAll();
+		} else {
+			for(int i = 0; i < Integer.parseInt(args[1]); i++) {
+				System.out.println(randomName(new Random()));
+			}
 		}
 	}
 }
