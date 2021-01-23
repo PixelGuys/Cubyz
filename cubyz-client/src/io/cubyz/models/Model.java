@@ -33,16 +33,25 @@ public class Model implements RegistryElement {
 		srgb[2] += weight*(light>>>8 & 255);
 		srgb[3] += weight*(light & 255);
 	}
-	public static int interpolateLight(float dx, float dy, float dz, int[] light) {
+	public static int interpolateLight(float dx, float dy, float dz, float nx, float ny, float nz, int[] light) {
+		dx += 0.5f + nx*0.5f - 0.0000001f;
+		dy += 0.5f + ny*0.5f - 0.0000001f;
+		dz += 0.5f + nz*0.5f - 0.0000001f;
+		int x0 = (int)dx;
+		int y0 = (int)dy;
+		int z0 = (int)dz;
+		dx -= x0;
+		dy -= y0;
+		dz -= z0;
 		float[] srgb = new float[4];
-		addWeightedLight((1 - dx)*(1 - dy)*(1 - dz), srgb, light[0]);
-		addWeightedLight((1 - dx)*(1 - dy)*dz      , srgb, light[1]);
-		addWeightedLight((1 - dx)*dy      *(1 - dz), srgb, light[2]);
-		addWeightedLight((1 - dx)*dy      *dz      , srgb, light[3]);
-		addWeightedLight(dx      *(1 - dy)*(1 - dz), srgb, light[4]);
-		addWeightedLight(dx      *(1 - dy)*dz      , srgb, light[5]);
-		addWeightedLight(dx      *dy      *(1 - dz), srgb, light[6]);
-		addWeightedLight(dx      *dy      *dz      , srgb, light[7]);
+		addWeightedLight((1 - dx)*(1 - dy)*(1 - dz), srgb, light[x0		+ y0*3		+ z0*9]);
+		addWeightedLight((1 - dx)*(1 - dy)*dz      , srgb, light[x0		+ y0*3		+ (z0+1)*9]);
+		addWeightedLight((1 - dx)*dy      *(1 - dz), srgb, light[x0		+ (y0+1)*3		+ z0*9]);
+		addWeightedLight((1 - dx)*dy      *dz      , srgb, light[x0		+ (y0+1)*3		+ (z0+1)*9]);
+		addWeightedLight(dx      *(1 - dy)*(1 - dz), srgb, light[(x0+1)	+ y0*3		+ z0*9]);
+		addWeightedLight(dx      *(1 - dy)*dz      , srgb, light[(x0+1)	+ y0*3		+ (z0+1)*9]);
+		addWeightedLight(dx      *dy      *(1 - dz), srgb, light[(x0+1)	+ (y0+1)*3		+ z0*9]);
+		addWeightedLight(dx      *dy      *dz      , srgb, light[(x0+1)	+ (y0+1)*3		+ (z0+1)*9]);
 		return (int)(srgb[0])<<24 | (int)(srgb[1])<<16 | (int)(srgb[2])<<8 | (int)(srgb[3]);
 	}
 	
@@ -70,7 +79,7 @@ public class Model implements RegistryElement {
 			vertices.add(positions[i+1] + y);
 			vertices.add(positions[i+2] + z);
 			
-			lighting.add(interpolateLight(positions[i], positions[i+1], positions[i+2], light));
+			lighting.add(interpolateLight(positions[i], positions[i+1], positions[i+2], this.normals[i], this.normals[i+1], this.normals[i+2], light));
 			renderIndices.add(renderIndex);
 		}
 		
@@ -118,7 +127,8 @@ public class Model implements RegistryElement {
 			
 			lighting.add(interpolateLight(	conditionalInversion(positions[i+directionMap[0]], directionInversion[0]),
 											conditionalInversion(positions[i+directionMap[1]], directionInversion[1]),
-											conditionalInversion(positions[i+directionMap[2]], directionInversion[2]), light));
+											conditionalInversion(positions[i+directionMap[2]], directionInversion[2]),
+											this.normals[i], this.normals[i+1], this.normals[i+2], light));
 			renderIndices.add(renderIndex);
 		}
 		
@@ -169,7 +179,7 @@ public class Model implements RegistryElement {
 			normals.add(normal.y);
 			normals.add(normal.z);
 			
-			lighting.add(interpolateLight(pos.x, pos.y, pos.z, light));
+			lighting.add(interpolateLight(pos.x, pos.y, pos.z, normal.x, normal.y, normal.z, light));
 			renderIndices.add(renderIndex);
 		}
 		

@@ -1012,6 +1012,36 @@ public class LocalSurface extends Surface {
 	}
 
 	@Override
+	public void getLight(int x, int y, int z, int[] array) {
+		Block block = getBlock(x, y, z);
+		if(block == null) return;
+		int selfLight = block.getLight();
+		x--;
+		y--;
+		z--;
+		for(int ix = 0; ix < 3; ix++) {
+			for(int iy = 0; iy < 3; iy++) {
+				for(int iz = 0; iz < 3; iz++) {
+					array[ix + iy*3 + iz*9] = getLight(x+ix, y+iy, z+iz, selfLight);
+				}
+			}
+		}
+	}
+	
+	private int getLight(int x, int y, int z, int minLight) {
+		NormalChunk ch = getChunk(x >> 4, z >> 4);
+		if(ch == null || !ch.isLoaded())
+			return 0xff000000;
+		int light = ch.getLight(x & 15, y, z & 15);
+		// Make sure all light channels are at least as big as the minimum:
+		if((light & 0xff000000) >>> 24 < (light & 0xff000000) >>> 24) light = (light & 0x00ffffff) | (minLight & 0xff000000);
+		if((light & 0x00ff0000) < (light & 0x00ff0000)) light = (light & 0xff00ffff) | (minLight & 0x00ff0000);
+		if((light & 0x0000ff00) < (light & 0x0000ff00)) light = (light & 0xffff00ff) | (minLight & 0x0000ff00);
+		if((light & 0x000000ff) < (light & 0x000000ff)) light = (light & 0xffffff00) | (minLight & 0x000000ff);
+		return light;
+	}
+
+	@Override
 	public ReducedChunk[] getReducedChunks() {
 		return reducedChunks;
 	}

@@ -131,12 +131,12 @@ public class StackableRotation implements RotationMode {
 			float nx = model.normals[i3];
 			float ny = model.normals[i3+1];
 			float nz = model.normals[i3+2];
-			if(nx == -1 && !neighbors[0] ||
-			   nx == 1 && !neighbors[1] ||
-			   nz == -1 && !neighbors[2] ||
-			   nz == 1 && !neighbors[3] ||
-			   ny == -1 && (!neighbors[4] || factor == 1) ||
-			   ny == 1 && !neighbors[5]) {
+			if(nx == -1 && neighbors[0] ||
+			   nx == 1 && neighbors[1] ||
+			   nz == -1 && neighbors[2] ||
+			   nz == 1 && neighbors[3] ||
+			   ny == -1 && (neighbors[4] || factor == 1) ||
+			   ny == 1 && neighbors[5]) {
 				vertices.add(model.positions[i3] + x);
 				if(ny != -1)
 					vertices.add(model.positions[i3+1]*factor + y);
@@ -147,7 +147,7 @@ public class StackableRotation implements RotationMode {
 				normals.add(ny);
 				normals.add(nz);
 				
-				lighting.add(Model.interpolateLight(model.positions[i3], ny != -1 ? model.positions[i3+1]*factor : model.positions[i3+1], model.positions[i3+2], light));
+				lighting.add(Model.interpolateLight(model.positions[i3], ny != -1 ? model.positions[i3+1]*factor : model.positions[i3+1], model.positions[i3+2], model.normals[i3], model.normals[i3+1], model.normals[i3+2], light));
 				renderIndices.add(renderIndex);
 
 				texture.add((model.textCoords[i2] + offsetX)/Meshes.atlasSize);

@@ -54,8 +54,9 @@ public abstract class Surface {
 	public abstract void queueChunk(NormalChunk ch);
 	
 	public abstract float getGlobalLighting();
-	
+
 	public abstract Vector3f getLight(int x, int y, int z, Vector3f sunLight, boolean easyLighting);
+	public abstract void getLight(int x, int y, int z, int[] array);
 
 	public abstract NormalChunk getChunk(int x, int z);
 	public abstract Region getRegion(int wx, int wz);

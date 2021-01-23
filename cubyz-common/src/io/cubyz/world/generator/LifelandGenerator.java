@@ -109,8 +109,6 @@ public class LifelandGenerator extends SurfaceGenerator {
 				g.generate(seed ^ g.getGeneratorSeed(), wx, wz, chunk, containing, surface, vegetationIgnoreMap);
 			}
 		}
-
-		chunk.applyBlockChanges();
 	}
 
 	@Override

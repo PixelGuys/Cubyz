@@ -17,7 +17,6 @@ public class BlockInstance {
 	private Surface surface;
 	private boolean[] neighbors;
 	private byte blockData;
-	private boolean lightUpdate;
 	public final int[] light;
 	public final NormalChunk source;
 	public int renderIndex = 0;
@@ -29,9 +28,8 @@ public class BlockInstance {
 		y = position.y;
 		z = position.z;
 		blockData = data;
-		light = new int[8];
+		light = new int[27];
 		neighbors = new boolean[6];
-		scheduleLightUpdate();
 	}
 	
 	public boolean[] getNeighbors() {
@@ -88,16 +86,9 @@ public class BlockInstance {
 		blockData = data;
 	}
 	
-	public void scheduleLightUpdate() {
-		lightUpdate = true;
-	}
-	
 	public int[] updateLighting(int worldSizeX, int worldSizeZ, NormalChunk chunk) {
-		if(lightUpdate) { // Update the internal light representation on demand.
-			if(chunk != null) {
-				chunk.getCornerLight(x & 15, y, z & 15, light);
-				lightUpdate = false;
-			}
+		if(chunk != null) {
+			surface.getLight(x, y, z, light);
 		}
 		return light;
 	}

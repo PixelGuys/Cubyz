@@ -23,12 +23,12 @@ public class CubeModel extends Model {
 			float nx = super.normals[i3];
 			float ny = super.normals[i3+1];
 			float nz = super.normals[i3+2];
-			if(nx == -1 && !neighbors[0] || 
-			   nx == 1 && !neighbors[1] || 
-			   nz == -1 && !neighbors[2] ||
-			   nz == 1 && !neighbors[3] ||
-			   ny == -1 && !neighbors[4] ||
-			   ny == 1 && !neighbors[5]) {
+			if(nx == -1 && neighbors[0] ||
+			   nx == 1 && neighbors[1] ||
+			   nz == -1 && neighbors[2] ||
+			   nz == 1 && neighbors[3] ||
+			   ny == -1 && neighbors[4] ||
+			   ny == 1 && neighbors[5]) {
 				vertices.add(positions[i3] + x);
 				vertices.add(positions[i3+1] + y);
 				vertices.add(positions[i3+2] + z);
@@ -36,7 +36,7 @@ public class CubeModel extends Model {
 				normals.add(ny);
 				normals.add(nz);
 				
-				lighting.add(Model.interpolateLight(positions[i3], positions[i3+1], positions[i3+2], light));
+				lighting.add(Model.interpolateLight(positions[i3], positions[i3+1], positions[i3+2], super.normals[i3], super.normals[i3+1], super.normals[i3+2], light));
 				renderIndices.add(renderIndex);
 				
 				texture.add((textCoords[i2] + offsetX)/Meshes.atlasSize);
@@ -64,12 +64,12 @@ public class CubeModel extends Model {
 			float nx = conditionalInversion(super.normals[i3+directionMap[0]]*0.5f, directionInversion[0])*2;
 			float ny = conditionalInversion(super.normals[i3+directionMap[1]]*0.5f, directionInversion[1])*2;
 			float nz = conditionalInversion(super.normals[i3+directionMap[2]]*0.5f, directionInversion[2])*2;
-			if(nx == -1 && !neighbors[0] || 
-			   nx == 1 && !neighbors[1] || 
-			   nz == -1 && !neighbors[2] ||
-			   nz == 1 && !neighbors[3] ||
-			   ny == -1 && !neighbors[4] ||
-			   ny == 1 && !neighbors[5]) {
+			if(nx == -1 && neighbors[0] ||
+			   nx == 1 && neighbors[1] ||
+			   nz == -1 && neighbors[2] ||
+			   nz == 1 && neighbors[3] ||
+			   ny == -1 && neighbors[4] ||
+			   ny == 1 && neighbors[5]) {
 				vertices.add(conditionalInversion(positions[i3+directionMap[0]], directionInversion[0]) + x);
 				vertices.add(conditionalInversion(positions[i3+directionMap[1]], directionInversion[1]) + y);
 				vertices.add(conditionalInversion(positions[i3+directionMap[2]], directionInversion[2]) + z);
@@ -80,7 +80,8 @@ public class CubeModel extends Model {
 				
 				lighting.add(interpolateLight(	conditionalInversion(positions[i3+directionMap[0]], directionInversion[0]),
 												conditionalInversion(positions[i3+directionMap[1]], directionInversion[1]),
-												conditionalInversion(positions[i3+directionMap[2]], directionInversion[2]), light));
+												conditionalInversion(positions[i3+directionMap[2]], directionInversion[2]),
+												nx, ny, nz, light));
 				renderIndices.add(renderIndex);
 				
 				texture.add((textCoords[i2] + offsetX)/Meshes.atlasSize);

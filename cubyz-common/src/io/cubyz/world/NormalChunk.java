@@ -77,6 +77,7 @@ public class NormalChunk extends Chunk {
 	
 	public void generateFrom(SurfaceGenerator gen) {
 		gen.generate(this, surface);
+		applyBlockChanges();
 		generated = true;
 	}
 	
@@ -205,11 +206,11 @@ public class NormalChunk extends Chunk {
 			Block[] neighbors = getNeighbors(x, y ,z, dataN, indices);
 			BlockInstance[] visibleNeighbors = getVisibleNeighbors(x + wx, y, z + wz);
 			for(int k = 0; k < 6; k++) {
-				if(visibleNeighbors[k] != null) visibleNeighbors[k].updateNeighbor(k ^ 1, getsBlocked(neighbors[k], b, dataN[k], ((x << 4) | (y << 8) | z) - indices[k]), surface.getStellarTorus().getWorld().getLocalPlayer());
+				if(visibleNeighbors[k] != null) visibleNeighbors[k].updateNeighbor(k ^ 1, blocksBlockNot(b, neighbors[k], data, ((x << 4) | (y << 8) | z) - indices[k]), surface.getStellarTorus().getWorld().getLocalPlayer());
 			}
 			
 			for (int i = 0; i < neighbors.length; i++) {
-				if (blocksLight(neighbors[i], b, dataN[i], ((x << 4) | (y << 8) | z) - indices[i])) {
+				if (blocksBlockNot(neighbors[i], b, dataN[i], ((x << 4) | (y << 8) | z) - indices[i])) {
 					revealBlock(x&15, y, z&15);
 					break;
 				}
@@ -227,7 +228,7 @@ public class NormalChunk extends Chunk {
 						Block[] neighbors1 = ch.getNeighbors(x2 & 15, y2, z2 & 15, dataN1, indices1);
 						boolean vis = true;
 						for (int j = 0; j < neighbors1.length; j++) {
-							if (blocksLight(neighbors1[j], neighbors[i], dataN1[i], indices[i] - indices1[j])) {
+							if (blocksBlockNot(neighbors1[j], neighbors[i], dataN1[j], indices[i] - indices1[j])) {
 								vis = false;
 								break;
 							}
@@ -288,16 +289,16 @@ public class NormalChunk extends Chunk {
 		updated = true;
 	}
 	
-	public boolean blocksLight(Block b, Block a, byte data, int difference) {
-		if(b == null || (b.isTransparent(data) && a != b) || b.mode.checkTransparency(data, difference)) {
-			return true;
-		}
-		return false;
-	}
-	
-	public boolean getsBlocked(Block b, Block a, byte data, int difference) {
-		//return !blocksLight(a, b, data, difference);
-		return a != null && !(b == null || (b.isTransparent(data) && b != a) || b.mode.checkTransparency(data, difference));
+	/**
+	 * Returns true if <i>blocker</i> does not block <i>blocked</i>.
+	 * @param blocker
+	 * @param blocked
+	 * @param blockerData
+	 * @param direction
+	 * @return
+	 */
+	public boolean blocksBlockNot(Block blocker, Block blocked, byte blockerData, int direction) {
+		return blocker == null || blocker.mode.checkTransparency(blockerData, direction) || (blocker != blocked && blocker.isTransparent(blockerData));
 	}
 	
 	public void hideBlock(int x, int y, int z) {
@@ -324,7 +325,7 @@ public class NormalChunk extends Chunk {
 		int[] indices = new int[6];
 		Block[] neighbors = getNeighbors(x, y ,z, data, indices);
 		for(int k = 0; k < 6; k++) {
-			if(neighbors[k] != null) bi.updateNeighbor(k, getsBlocked(neighbors[k], b, data[k], index - indices[k]), surface.getStellarTorus().getWorld().getLocalPlayer());
+			bi.updateNeighbor(k, blocksBlockNot(neighbors[k], b, data[k], index - indices[k]), surface.getStellarTorus().getWorld().getLocalPlayer());
 		}
 		bi.setStellarTorus(surface);
 		visibles.add(bi);
@@ -359,7 +360,7 @@ public class NormalChunk extends Chunk {
 		setBlock(x, y, z, null, (byte)0);
 		BlockInstance[] visibleNeighbors = getVisibleNeighbors(x, y, z);
 		for(int k = 0; k < 6; k++) {
-			if(visibleNeighbors[k] != null) visibleNeighbors[k].updateNeighbor(k ^ 1, false, surface.getStellarTorus().getWorld().getLocalPlayer());
+			if(visibleNeighbors[k] != null) visibleNeighbors[k].updateNeighbor(k ^ 1, true, surface.getStellarTorus().getWorld().getLocalPlayer());
 		}
 		if(startedloading)
 			lightUpdate(x, y, z);
@@ -650,7 +651,6 @@ public class NormalChunk extends Chunk {
 	protected void lightUpdate(int x, int y, int z) {}
 	public void load() {}
 	public int getLight(int x, int y, int z) {return 0;}
-	public void getCornerLight(int x, int y, int z, int[] arr) {}
 	
 	// Implementations of interface Chunk:
 	
