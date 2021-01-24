@@ -30,9 +30,7 @@ import io.jungle.game.Context;
 import io.jungle.renderers.Renderer;
 import io.jungle.renderers.Transformation;
 import io.jungle.util.DirectionalLight;
-import io.jungle.util.PointLight;
 import io.jungle.util.ShaderProgram;
-import io.jungle.util.SpotLight;
 import io.jungle.util.Utils;
 
 /**
@@ -183,6 +181,7 @@ public class MainRenderer implements Renderer {
 	 * @param spatials the special objects to render (that are neither entity, neither blocks, like sun and moon, or rain)
 	 * @param localPlayer The world's local player
 	 */
+	@Override
 	public void render(Window window, Context ctx, Vector3f ambientLight, DirectionalLight directionalLight,
 			NormalChunk[] chunks, ReducedChunk[] reducedChunks, Block[] blocks, Entity[] entities, Spatial[] spatials, Player localPlayer, int worldSizeX, int worldSizeZ) {
 		if (window.isResized()) {
@@ -452,12 +451,6 @@ public class MainRenderer implements Renderer {
 			entityShader.cleanup();
 			entityShader = null;
 		}
-	}
-
-	@Override
-	public void render(Window win, Context ctx, Vector3f ambientLight, PointLight[] pointLightList,
-			SpotLight[] spotLightList, DirectionalLight directionalLight) {
-		throw new UnsupportedOperationException("Cubyz Renderer doesn't support this method.");
 	}
 
 	@Override
