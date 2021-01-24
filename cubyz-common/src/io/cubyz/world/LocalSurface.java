@@ -544,7 +544,7 @@ public class LocalSurface extends Surface {
 				loop:
 				for(int j = z-mcDRD; j < z; j++) {
 					for(int k = minK; k < regions.length; k++) {
-						if(regions[k] != null && CubyzMath.moduloMatchSign(regions[k].wx-i, worldSizeX >> 8) == 0 && CubyzMath.moduloMatchSign(regions[k].wz-j, worldSizeZ >> 8) == 0) {
+						if(regions[k] != null && CubyzMath.moduloMatchSign(regions[k].wx-(i << 8), worldSizeX) == 0 && CubyzMath.moduloMatchSign(regions[k].wz-(j << 8), worldSizeZ) == 0) {
 							newRegions[index] = regions[k];
 							// Removes this chunk out of the list of chunks that will be considered in this function.
 							regions[k] = regions[minK];
@@ -817,15 +817,17 @@ public class LocalSurface extends Surface {
 		wx = CubyzMath.worldModulo(wx, worldSizeX);
 		wz = CubyzMath.worldModulo(wz, worldSizeZ);
 		if(index < regions.length && index >= 0) {
-			Region ret = regions[index];
-			
-			if (ret != null) {
-				if(wx == ret.wx && wz == ret.wz)
-					return ret;
-			} else {
-				Region ch = new Region(wx, wz, localSeed, this, registries, tio);
-				regions[index] = ch;
-				return ch;
+			synchronized(regions) {
+				Region ret = regions[index];
+				
+				if (ret != null) {
+					if(wx == ret.wx && wz == ret.wz)
+						return ret;
+				} else {
+					Region ch = new Region(wx, wz, localSeed, this, registries, tio);
+					regions[index] = ch;
+					return ch;
+				}
 			}
 		}
 		return new Region(wx, wz, localSeed, this, registries, tio);

@@ -131,6 +131,7 @@ public class RegionIO {
 	public void saveChunk(NormalChunk ch) {
 		byte[] cb = ch.save(tio.blockPalette);
 		int[] cd = ch.getData();
+		if(cb.length <= 12) return;
 		int index = -1;
 		synchronized (blockData) {
 			for (int i = 0; i < blockData.size(); i++) {
