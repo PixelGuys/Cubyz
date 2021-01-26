@@ -39,6 +39,9 @@ import io.jungle.util.Utils;
  */
 
 public class MainRenderer implements Renderer {
+	
+	/**The number of milliseconds after which no more chunk meshes are created. This allows the game to run smoother on movement.*/
+	private static int maximumMeshTime = 12;
 
 	/**A simple shader for low resolution chunks*/
 	private ShaderProgram chunkShader;
@@ -193,6 +196,7 @@ public class MainRenderer implements Renderer {
 		if (!doRender)
 			return;
 		clear();
+		long startTime = System.currentTimeMillis();
 		// Clean up old chunk meshes:
 		Meshes.cleanUp();
 		
@@ -261,8 +265,13 @@ public class MainRenderer implements Renderer {
 				
 				Object mesh = ch.getChunkMesh();
 				if(ch.wasUpdated() || mesh == null || !(mesh instanceof NormalChunkMesh)) {
-					mesh = new NormalChunkMesh(ch);
-					ch.setChunkMesh(mesh);
+					if(System.currentTimeMillis() - startTime > maximumMeshTime) {
+						// Stop meshing if the frame is taking to long.
+						if(!(mesh instanceof NormalChunkMesh)) continue;
+					} else {
+						mesh = new NormalChunkMesh(ch);
+						ch.setChunkMesh(mesh);
+					}
 				}
 				((NormalChunkMesh)mesh).render();		
 			}
@@ -286,7 +295,12 @@ public class MainRenderer implements Renderer {
 					Object mesh = chunk.getChunkMesh();
 					chunkShader.setUniform("modelPosition", chunk.getMin(x0, z0, worldSizeX, worldSizeZ));
 					if(mesh == null || !(mesh instanceof ReducedChunkMesh)) {
-						chunk.setChunkMesh(mesh = new ReducedChunkMesh(chunk));
+						if(System.currentTimeMillis() - startTime > maximumMeshTime) {
+							// Stop meshing if the frame is taking to long.
+							if(!(mesh instanceof ReducedChunkMesh)) continue;
+						} else {
+							chunk.setChunkMesh(mesh = new ReducedChunkMesh(chunk));
+						}
 					}
 					((ReducedChunkMesh)mesh).render();
 				}
@@ -429,8 +443,13 @@ public class MainRenderer implements Renderer {
 				
 				Object mesh = ch.getChunkMesh();
 				if(ch.wasUpdated() || mesh == null || !(mesh instanceof NormalChunkMesh)) {
-					mesh = new NormalChunkMesh(ch);
-					ch.setChunkMesh(mesh);
+					if(System.currentTimeMillis() - startTime > maximumMeshTime) {
+						// Stop meshing if the frame is taking to long.
+						if(!(mesh instanceof NormalChunkMesh)) continue;
+					} else {
+						mesh = new NormalChunkMesh(ch);
+						ch.setChunkMesh(mesh);
+					}
 				}
 				((NormalChunkMesh)mesh).renderTransparent();		
 			}

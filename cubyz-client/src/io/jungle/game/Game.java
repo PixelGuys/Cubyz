@@ -82,6 +82,7 @@ public class Game {
 		updateThread.setName("Game-Update-Thread");
 		updateThread.start();
 		renderThread = Thread.currentThread();
+		renderThread.setPriority(Thread.MAX_PRIORITY);
 		loop();
 		logic.cleanup();
 	}
