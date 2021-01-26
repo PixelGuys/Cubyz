@@ -15,10 +15,12 @@ import io.cubyz.ClientOnly;
 import io.cubyz.Settings;
 import io.cubyz.api.CurrentSurfaceRegistries;
 import io.cubyz.blocks.Block;
-import io.cubyz.blocks.CustomOre;
+import io.cubyz.blocks.CustomBlock;
 import io.cubyz.blocks.Updateable;
 import io.cubyz.blocks.Ore;
+import io.cubyz.blocks.OreTextureProvider;
 import io.cubyz.blocks.BlockEntity;
+import io.cubyz.blocks.CrystalTextureProvider;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.ItemEntityManager;
 import io.cubyz.handler.PlaceBlockHandler;
@@ -83,7 +85,7 @@ public class LocalSurface extends Surface {
 	
 	public CurrentSurfaceRegistries registries;
 
-	private ArrayList<CustomOre> customOres = new ArrayList<>();
+	private ArrayList<CustomBlock> customBlocks = new ArrayList<>();
 	
 	private void queue(NormalChunk ch) {
 		if (!isQueued(ch)) {
@@ -213,32 +215,31 @@ public class LocalSurface extends Surface {
 		int randomAmount = 9 + rand.nextInt(3); // TODO
 		int i = 0;
 		for(i = 0; i < randomAmount; i++) {
-			CustomOre block = CustomOre.random(rand, registries);
-			customOres.add(block);
+			CustomBlock block = CustomBlock.random(rand, registries, new OreTextureProvider());
+			customBlocks.add(block);
 			ores.add(block);
 			blockList.add(block);
 			block.ID = ID++;
 			registries.blockRegistry.register(block);
 		}
-		
 		// Create the crystal ore for the CrystalCaverns:
-		CustomOre glowCrystalOre = CustomOre.random(rand, registries);
+		CustomBlock glowCrystalOre = CustomBlock.random(rand, registries, new OreTextureProvider());
 		glowCrystalOre.makeGlow(); // Make sure it glows.
-		customOres.add(glowCrystalOre);
+		customBlocks.add(glowCrystalOre);
 		ores.add(glowCrystalOre);
 		blockList.add(glowCrystalOre);
 		glowCrystalOre.ID = ID++;
 		registries.blockRegistry.register(glowCrystalOre);
 		i++;
 		// Create the crystal block for the CrystalCaverns:
-		CustomOre crystalBlock = new CustomOre(0, 0, 0); // TODO: Add a CustomBlock type or interface because this is no ore.
+		CustomBlock crystalBlock = new CustomBlock(0, 0, 0, new CrystalTextureProvider()); // TODO: Add a CustomBlock type or interface because this is no ore.
 		crystalBlock.setID(glowCrystalOre.getRegistryID().toString()+"_glow_crystal");
 		crystalBlock.setHardness(40);
 		crystalBlock.addBlockDrop(new BlockDrop(glowCrystalOre.getBlockDrops()[0].item, 4));
 		crystalBlock.setLight(glowCrystalOre.color);
 		crystalBlock.color = glowCrystalOre.color;
-		crystalBlock.seed = -1; // TODO: Fix crystal block within the new ore texture generation system.
-		customOres.add(crystalBlock);
+		crystalBlock.seed = glowCrystalOre.seed;
+		customBlocks.add(crystalBlock);
 		ores.add(crystalBlock);
 		blockList.add(crystalBlock);
 		crystalBlock.ID = ID++;
@@ -936,8 +937,8 @@ public class LocalSurface extends Surface {
 		return worldSizeZ;
 	}
 	
-	public ArrayList<CustomOre> getCustomOres() {
-		return customOres;
+	public ArrayList<CustomBlock> getCustomBlocks() {
+		return customBlocks;
 	}
 
 	@Override

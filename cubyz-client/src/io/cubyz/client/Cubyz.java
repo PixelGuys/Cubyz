@@ -26,7 +26,7 @@ import io.cubyz.api.Resource;
 import io.cubyz.api.Side;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
-import io.cubyz.blocks.CustomOre;
+import io.cubyz.blocks.CustomBlock;
 import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.client.loading.LoadThread;
 import io.cubyz.entity.Entity;
@@ -207,10 +207,10 @@ public class Cubyz implements GameLogic, ClientConnection {
 		
 		if (world instanceof LocalWorld) { // custom ores on multiplayer later, maybe?
 			LocalSurface ts = (LocalSurface) surface;
-			ArrayList<CustomOre> customOres = ts.getCustomOres();
-			for (CustomOre ore : customOres) {
+			ArrayList<CustomBlock> customBlocks = ts.getCustomBlocks();
+			for (CustomBlock block : customBlocks) {
 				BufferedImage stone = getImage("addons/cubyz/blocks/textures/stone.png");
-				BufferedImage img = CustomOre.generateOreTexture(stone, ore.seed, ore.color, ore.shinyness);
+				BufferedImage img = block.textureProvider.generateTexture(block, stone);
 				InputStream is = TextureConverter.fromBufferedImage(img);
 				Texture tex = new Texture(is);
 				try {
@@ -218,7 +218,7 @@ public class Cubyz implements GameLogic, ClientConnection {
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-				Meshes.blockTextures.put(ore, tex);
+				Meshes.blockTextures.put(block, tex);
 			}
 			for (RegistryElement reg : ts.getCurrentRegistries().itemRegistry.registered()) {
 				if(!(reg instanceof CustomItem)) continue;
@@ -251,10 +251,10 @@ public class Cubyz implements GameLogic, ClientConnection {
 		for(Block block : blocks) {
 			BufferedImage texture = ResourceUtilities.loadBlockTextureToBufferedImage(block.getRegistryID());
 			if(texture != null) {
-			} else if(block instanceof CustomOre) {
-				CustomOre ore = (CustomOre)block;
+			} else if(block instanceof CustomBlock) {
+				CustomBlock ore = (CustomBlock)block;
 				BufferedImage stone = getImage("addons/cubyz/blocks/textures/stone.png");
-				texture = CustomOre.generateOreTexture(stone, ore.seed, ore.color, ore.shinyness);
+				texture = ore.textureProvider.generateTexture(ore, stone);
 			} else {
 				texture = ResourceUtilities.loadBlockTextureToBufferedImage(new Resource("cubyz", "undefined"));
 			}

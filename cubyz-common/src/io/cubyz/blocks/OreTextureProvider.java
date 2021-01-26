@@ -1,20 +1,17 @@
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
-import java.util.Random;
-import javax.imageio.ImageIO;
+package io.cubyz.blocks;
 
-public class OreTexture {
-	public static BufferedImage getImage(String fileName) {
-		try {
-			return ImageIO.read(new File(fileName));
-		} catch(Exception e) {e.printStackTrace();}
-		return null;
+import java.awt.image.BufferedImage;
+import java.util.Random;
+
+public class OreTextureProvider implements TextureProvider {
+	BufferedImage stone;
+	public OreTextureProvider() {
+		
 	}
-	
-	public static BufferedImage generateOreTexture(BufferedImage stone, long seed, int color, float shinyness) {
+	// Procedurally generated ore textures:
+	public BufferedImage generateTexture(CustomBlock block, BufferedImage stone) {
 		BufferedImage canvas = new BufferedImage(16, 16, BufferedImage.TYPE_INT_RGB);
-		Random rand = new Random(seed);
+		Random rand = new Random(block.seed);
 		// Init the canvas:
 		for(int px = 0; px < 16; px++) {
 			for(int py = 0; py < 16; py++) {
@@ -33,47 +30,7 @@ public class OreTexture {
 		// Make bigger ovals more rough:
 		float roughness = (float)(size*(1-standard2)/3.0);
 		int differentColors = 4 + (int)(1.5*(size-1.5));
-		int [] colors = new int[differentColors]; // Use a color palette of less than 6 different colors.
-		for(int i = 0; i < differentColors; i++) { //TODO: Make sure the contrast fits everywhere and maybe use hue-shifting.
-			int r = (color >>> 16) & 255;
-			int g = (color >>> 8) & 255;
-			int b = (color >>> 0) & 255;
-			// Add a brightness value to the color:
-			int brightness = (int)(-100*(differentColors/2.0-i)/differentColors);
-			if(brightness > 0) {
-				brightness *= shinyness+1;
-			}
-			r += brightness;
-			g += brightness;
-			b += brightness;
-			// make sure that once a color channel is satured the others get increased further:
-			int totalDif = 0;
-			if(r > 255) {
-				totalDif += r-255;
-			}
-			if(g > 255) {
-				totalDif += g-255;
-			}
-			if(b > 255) {
-				totalDif += b-255;
-			}
-			totalDif = totalDif*3/2;
-			r += totalDif;
-			g += totalDif;
-			b += totalDif;
-			// Add some flavor to the color, so it's not just a scale based on lighting:
-			r += rand.nextInt(32) - 16;
-			g += rand.nextInt(32) - 16;
-			b += rand.nextInt(32) - 16;
-			// Bound checks:
-			if(r > 255) r = 255;
-			if(r < 0) r = 0;
-			if(g > 255) g = 255;
-			if(g < 0) g = 0;
-			if(b > 255) b = 255;
-			if(b < 0) b = 0;
-			colors[i] = (r << 16) | (g << 8) | b;
-		}
+		int[] colors = TextureProvider.createColorPalette(block, differentColors, 100, 16);
 		// Number of ovals drawn:
 		int spawns = (int)(rand.nextDouble()*4) + 8 + (int)(30.0/Math.pow(size-variation/2, 4));
 		boolean isCrystal = rand.nextDouble() < 0.0; // TODO
@@ -144,24 +101,5 @@ public class OreTexture {
 			}
 		}
 		return canvas;
-	}
-
-	public static void main(String[] args) { // Just playing around with some ore textures. Don't mind the code and the random image appearing in the project path.
-		int n = 100;
-		BufferedImage stone = getImage("../../cubyz-client/addons/cubyz/blocks/textures/stone.png");
-		BufferedImage canvas = new BufferedImage(16*n, 16*n, BufferedImage.TYPE_INT_RGB);
-		for(int ix = 0; ix < n; ix++) {
-			for(int iy = 0; iy < n; iy++) {
-				long seed = 4378256*ix ^ 574690546*iy;
-				Random rand = new Random(seed);
-				BufferedImage ore = generateOreTexture(stone, seed, rand.nextInt(0xffffff), rand.nextFloat());
-				canvas.getGraphics().drawImage(ore, ix*16, iy*16, null);
-			}
-		}
-		try {
-			ImageIO.write(canvas, "png", new File("test.png"));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
 	}
 }

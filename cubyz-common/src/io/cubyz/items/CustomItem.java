@@ -1,6 +1,6 @@
 package io.cubyz.items;
 
-import io.cubyz.blocks.CustomOre;
+import io.cubyz.blocks.CustomBlock;
 import io.cubyz.translate.TextKey;
 
 /**
@@ -23,18 +23,18 @@ public class CustomItem extends Item {
 		return type == CRYSTAL;
 	}
 	
-	public static CustomItem fromOre(CustomOre ore) {
+	public static CustomItem fromOre(CustomBlock block) {
 		CustomItem item = new CustomItem();
-		item.color = ore.color;
-		if(ore.getName().endsWith("um")) {
+		item.color = block.color;
+		if(block.getName().endsWith("um")) {
 			item.type = METAL;
-		} else if(ore.getName().endsWith("ite")) {
+		} else if(block.getName().endsWith("ite")) {
 				item.type = CRYSTAL;
 		} else {
 			item.type = GEM;
 		}
-		item.setID(ore.getRegistryID());
-		item.setName(TextKey.createTextKey(ore.getName()));
+		item.setID(block.getRegistryID());
+		item.setName(TextKey.createTextKey(block.getName()));
 		return item;
 	}
 }

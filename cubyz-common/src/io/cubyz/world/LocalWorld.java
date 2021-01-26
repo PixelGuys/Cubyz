@@ -113,7 +113,7 @@ public class LocalWorld extends World {
 		ArrayList<Ore> ores = new ArrayList<Ore>();
 		for (RegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
 			Block b = (Block) ire;
-			if(!b.isViewThrough(b.mode.getNaturalStandard()) && !b.isTransparent()) {
+			if(!b.isTransparent()) {
 				b.ID = ID;
 				blockList.add(b);
 				ID++;
@@ -123,19 +123,6 @@ public class LocalWorld extends World {
 		if(currentTorus != null && currentTorus instanceof LocalSurface) {
 			ID = currentTorus.generate(blockList, ores, ID);
 		}
-		
-		for (RegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
-			Block b = (Block) ire;
-			if(b.isViewThrough(b.mode.getNaturalStandard()) && !b.isTransparent()) {
-				b.ID = ID;
-				blockList.add(b);
-				ID++;
-			}
-			try {
-				ores.add((Ore)b);
-			}
-			catch(Exception e) {}
-		}
 		// Put the truly transparent blocks at the end of the list to make sure the renderer calls the last.
 		for (RegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
 			Block b = (Block) ire;
@@ -144,10 +131,9 @@ public class LocalWorld extends World {
 				blockList.add(b);
 				ID++;
 			}
-			try {
+			if(b instanceof Ore) {
 				ores.add((Ore)b);
 			}
-			catch(Exception e) {}
 		}
 		LifelandGenerator.initOres(ores.toArray(new Ore[ores.size()]));
 		generated = true;
