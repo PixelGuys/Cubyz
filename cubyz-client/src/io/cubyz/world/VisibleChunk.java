@@ -172,7 +172,7 @@ public class VisibleChunk extends NormalChunk {
 	 */
 	public void constructiveLightUpdate(int index, int lightValue, int channelMask, int channelShift) {
 		if(!startedloading) return;
-		if(blocks[index] != null && !blocks[index].isTransparent(blockData[index]) && ((blocks[index].getLight() >>> channelShift) & 255) != lightValue) return;
+		if(blocks[index] != null && !blocks[index].isLightingTransparent(blockData[index]) && ((blocks[index].getLight() >>> channelShift) & 255) != lightValue) return;
 		lightValue = propagateLight(blocks[index], blockData[index], lightValue, channelShift);
 		if(blocks[index] != null)
 			lightValue = Math.max(lightValue, ((blocks[index].getLight() >>> channelShift) & 255));
@@ -304,7 +304,7 @@ public class VisibleChunk extends NormalChunk {
 		// y+1:
 		if((index & 0xff00) != 0xff00) { // if(y != 255)
 			newValue = Math.max(newValue, propagateLight(blocks[index], blockData[index], ((light[index + 256] >>> channelShift) & 255) + (channelShift == 24 ? 8 : 0), channelShift));
-		} else if(blocks[index] != null && !blocks[index].isTransparent(blockData[index])) {
+		} else if(blocks[index] != null && !blocks[index].isLightingTransparent(blockData[index])) {
 			newValue = 255;
 		}
 		
@@ -364,7 +364,7 @@ public class VisibleChunk extends NormalChunk {
 	}
 	
 	private int propagateLight(Block block, byte data, int previousValue, int channelShift) {
-		if(block != null && !block.isTransparent(data)) return 0;
+		if(block != null && !block.isLightingTransparent(data)) return 0;
 		int transparencyFactor = 8;
 		if(block != null) {
 			transparencyFactor += (block.getAbsorption() >>> channelShift) & 255;

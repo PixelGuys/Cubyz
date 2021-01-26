@@ -256,7 +256,7 @@ public class NormalChunkMesh {
 		int index = 0;
 		for(int i = 0; i < visibles.size; i++) {
 			BlockInstance bi = visibles.array[i];
-			if(!bi.getBlock().isTrulyTransparent()) {
+			if(!bi.getBlock().isTransparent()) {
 				bi.updateLighting(chunk.getWorldX(), chunk.getWorldZ(), chunk);
 				bi.renderIndex = index;
 				index = bi.getBlock().mode.generateChunkMesh(bi, vertices, normals, faces, lighting, texture, renderIndices, index);
@@ -270,7 +270,7 @@ public class NormalChunkMesh {
 		int index = 0;
 		for(int i = 0; i < visibles.size; i++) {
 			BlockInstance bi = visibles.array[i];
-			if(bi.getBlock().isTrulyTransparent()) {
+			if(bi.getBlock().isTransparent()) {
 				bi.updateLighting(chunk.getWorldX(), chunk.getWorldZ(), chunk);
 				bi.renderIndex = index;
 				index = bi.getBlock().mode.generateChunkMesh(bi, vertices, normals, faces, lighting, texture, renderIndices, index);

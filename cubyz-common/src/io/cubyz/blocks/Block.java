@@ -16,7 +16,7 @@ import io.cubyz.world.Surface;
 import io.cubyz.world.World;
 
 /**
- * Defines the properties and behaviour of Cubyz's basic building units.
+ * Defines the properties and behavior of Cubyz's basic building units.
  */
 
 public class Block implements RegistryElement {
@@ -25,8 +25,8 @@ public class Block implements RegistryElement {
 		WOOD, STONE, SAND, UNBREAKABLE, LEAF, FLUID
 	};
 
-	private boolean transparent;
-	boolean trulyTransparent;
+	private boolean lightingTransparent;
+	boolean transparent;
 	/**
 	 * Used for rendering optimization.<br/>
 	 * Do not edit or rely on, as it is not an ID to actually describe the block on a persistent state.
@@ -41,6 +41,7 @@ public class Block implements RegistryElement {
 	private BlockDrop[] blockDrops;
 	/**Meaning undegradable parts of trees or other structures can grow through this block.*/
 	protected boolean degradable = false;
+	protected boolean viewThrough = false;
 	protected BlockClass blockClass;
 	private int light = 0;
 	public int atlasX = 0, atlasY = 0;
@@ -73,13 +74,14 @@ public class Block implements RegistryElement {
 		blockClass = BlockClass.valueOf(bc);
 		light = Integer.decode(props.getProperty("emittedLight", "0"));
 		absorption = Integer.decode(props.getProperty("absorbedLight", "0"));
-		transparent = props.getProperty("absorbedLight", "").length() != 0;
+		lightingTransparent = props.getProperty("absorbedLight", "").length() != 0;
 		degradable = props.getProperty("degradable", "no").equalsIgnoreCase("yes");
 		selectable = props.getProperty("selectable", "yes").equalsIgnoreCase("yes");
 		solid = props.getProperty("solid", "yes").equalsIgnoreCase("yes");
 		gui = props.getProperty("GUI", null);
 		mode = CubyzRegistries.ROTATION_MODE_REGISTRY.getByID(props.getProperty("rotation", "cubyz:no_rotation"));
-		trulyTransparent = props.getProperty("transparent", "no").equalsIgnoreCase("yes");
+		transparent = props.getProperty("transparent", "no").equalsIgnoreCase("yes");
+		viewThrough = props.getProperty("viewThrough", "no").equalsIgnoreCase("yes") || transparent;
 		blockDrops = new BlockDrop[0];
 		color = (short)(Integer.decode(props.getProperty("color", "0x0000")) & 65535);
 	}
@@ -95,15 +97,22 @@ public class Block implements RegistryElement {
 	/**
 	 * @return Whether this block is transparent to the lighting system.
 	 */
-	public boolean isTransparent(byte data) { // TODO: Better directional light management.
-		return transparent || mode.checkTransparency(data, 0);
+	public boolean isLightingTransparent(byte data) { // TODO: Better directional light management.
+		return lightingTransparent || isViewThrough(data);
+	}
+	
+	/**
+	 * @return Whether this block model can be viewed through.
+	 */
+	public boolean isViewThrough(byte data) { // TODO: Better directional light management.
+		return viewThrough || mode.checkTransparency(data, 0);
 	}
 	
 	/**
 	 * @return Whether this block should be rendered as a transparent block.
 	 */
-	public boolean isTrulyTransparent() {
-		return trulyTransparent;
+	public boolean isTransparent() {
+		return transparent;
 	}
 	
 	public Block setSolid(boolean solid) {
@@ -119,8 +128,8 @@ public class Block implements RegistryElement {
 		this.selectable = selectable;
 	}
 	
-	public void setTransparent(boolean transparent) {
-		this.transparent = transparent;
+	public void setLightingTransparent(boolean lightingTransparent) {
+		this.lightingTransparent = lightingTransparent;
 	}
 
 	public void setBlockClass(BlockClass bc) {

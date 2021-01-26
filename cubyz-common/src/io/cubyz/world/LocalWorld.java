@@ -113,7 +113,7 @@ public class LocalWorld extends World {
 		ArrayList<Ore> ores = new ArrayList<Ore>();
 		for (RegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
 			Block b = (Block) ire;
-			if(!b.isTransparent(b.mode.getNaturalStandard()) && !b.isTrulyTransparent()) {
+			if(!b.isViewThrough(b.mode.getNaturalStandard()) && !b.isTransparent()) {
 				b.ID = ID;
 				blockList.add(b);
 				ID++;
@@ -126,7 +126,7 @@ public class LocalWorld extends World {
 		
 		for (RegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
 			Block b = (Block) ire;
-			if(b.isTransparent(b.mode.getNaturalStandard()) && !b.isTrulyTransparent()) {
+			if(b.isViewThrough(b.mode.getNaturalStandard()) && !b.isTransparent()) {
 				b.ID = ID;
 				blockList.add(b);
 				ID++;
@@ -139,7 +139,7 @@ public class LocalWorld extends World {
 		// Put the truly transparent blocks at the end of the list to make sure the renderer calls the last.
 		for (RegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
 			Block b = (Block) ire;
-			if(b.isTrulyTransparent()) {
+			if(b.isTransparent()) {
 				b.ID = ID;
 				blockList.add(b);
 				ID++;

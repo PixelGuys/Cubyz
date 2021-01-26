@@ -298,7 +298,7 @@ public class NormalChunk extends Chunk {
 	 * @return
 	 */
 	public boolean blocksBlockNot(Block blocker, Block blocked, byte blockerData, int direction) {
-		return blocker == null || blocker.mode.checkTransparency(blockerData, direction) || (blocker != blocked && blocker.isTransparent(blockerData));
+		return blocker == null || blocker.mode.checkTransparency(blockerData, direction) || (blocker != blocked && blocker.isViewThrough(blockerData));
 	}
 	
 	public void hideBlock(int x, int y, int z) {

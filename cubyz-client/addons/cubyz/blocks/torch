@@ -2,6 +2,7 @@ class wood
 hardness 0.3
 solid no
 emittedLight 0x00a09080
+viewThrough yes
 drop auto
 rotation cubyz:torch
 
