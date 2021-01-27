@@ -1038,10 +1038,10 @@ public class LocalSurface extends Surface {
 			return 0xff000000;
 		int light = ch.getLight(x & 15, y, z & 15);
 		// Make sure all light channels are at least as big as the minimum:
-		if((light & 0xff000000) >>> 24 < (light & 0xff000000) >>> 24) light = (light & 0x00ffffff) | (minLight & 0xff000000);
-		if((light & 0x00ff0000) < (light & 0x00ff0000)) light = (light & 0xff00ffff) | (minLight & 0x00ff0000);
-		if((light & 0x0000ff00) < (light & 0x0000ff00)) light = (light & 0xffff00ff) | (minLight & 0x0000ff00);
-		if((light & 0x000000ff) < (light & 0x000000ff)) light = (light & 0xffffff00) | (minLight & 0x000000ff);
+		if((light & 0xff000000) >>> 24 < (minLight & 0xff000000) >>> 24) light = (light & 0x00ffffff) | (minLight & 0xff000000);
+		if((light & 0x00ff0000) < (minLight & 0x00ff0000)) light = (light & 0xff00ffff) | (minLight & 0x00ff0000);
+		if((light & 0x0000ff00) < (minLight & 0x0000ff00)) light = (light & 0xffff00ff) | (minLight & 0x0000ff00);
+		if((light & 0x000000ff) < (minLight & 0x000000ff)) light = (light & 0xffffff00) | (minLight & 0x000000ff);
 		return light;
 	}
 
