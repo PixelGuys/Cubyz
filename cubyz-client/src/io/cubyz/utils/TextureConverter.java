@@ -14,7 +14,7 @@ import javax.imageio.ImageIO;
 
 import org.lwjgl.system.MemoryUtil;
 
-import io.cubyz.util.ColorUtils;
+import io.cubyz.util.PixelUtils;
 
 /**
  * Collection of texture conversion tools such as:<br>
@@ -77,32 +77,7 @@ public class TextureConverter {
 		String [] parts = path.split("\\|");
 		BufferedImage template = ImageIO.read(new File(parts[0]+parts[2]));
 		int color = Integer.parseInt(parts[1]);
-		convertTemplate(template, color);
+		PixelUtils.convertTemplate(template, color);
 		return template;
-	}
-	
-	public static void convertTemplate(BufferedImage tem, int color) {
-		color |= 0x1f1f1f; // Prevent overflows.
-		for(int x = 0; x < tem.getWidth(); x++) {
-			for(int y = 0; y < tem.getHeight(); y++) {
-				int hsvItem = ColorUtils.getHSV(color);
-				int hsvTemp = tem.getRGB(x, y);
-				int a = hsvTemp >>> 24;
-				int h1 =  (hsvItem >>> 16) & 255;
-				int s1 = (hsvItem >>> 8) & 255;
-				int v1 = (hsvItem >>> 0) & 255;
-				int h2 =  (hsvTemp >>> 16) & 255;
-				int s2 = (hsvTemp >>> 8) & 255;
-				int v2 = (hsvTemp >>> 0) & 255;
-				h2 += h1;
-				s2 += s1;
-				v2 += v1;
-				h2 &= 255;
-				s2 &= 255;
-				v2 &= 255;
-				int resHSV = (h2 << 16) | (s2 << 8) | v2;
-				tem.setRGB(x, y, ColorUtils.getRGB(resHSV) | (a << 24));
-			}
-		}
 	}
 }

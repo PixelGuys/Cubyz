@@ -1,7 +1,52 @@
 package io.cubyz.util;
 
-public class ColorUtils {
-	// Some useful color conversions:
+import java.awt.image.BufferedImage;
+
+/**
+ * Some useful methods for generating graphics.
+ */
+
+public class PixelUtils {
+	
+	/**
+	 * Colors a template image.
+	 * @param template
+	 * @param color
+	 */
+	public static void convertTemplate(BufferedImage template, int color) {
+		color |= 0x1f1f1f; // Prevent overflows.
+		int hsv = getHSV(color);
+		int h1 =  (hsv >>> 16) & 255;
+		int s1 = (hsv >>> 8) & 255;
+		int v1 = (hsv >>> 0) & 255;
+		for(int x = 0; x < template.getWidth(); x++) {
+			for(int y = 0; y < template.getHeight(); y++) {
+				int hsvTemp = template.getRGB(x, y);
+				int a = hsvTemp >>> 24;
+				int h2 =  (hsvTemp >>> 16) & 255;
+				// Make sure the sign of the saturation and value parameters is correct:
+				int s2 = (hsvTemp >>> 8) & 255;
+				if(s2 >= 128) s2 |= 0xffffff00;
+				int v2 = (hsvTemp >>> 0) & 255;
+				if(v2 >= 128) v2 |= 0xffffff00;
+				h2 += h1;
+				s2 += s1;
+				v2 += v1;
+				h2 &= 255;
+				// Make sure there are no jumps in saturation or value:
+				s2 = Math.max(0, Math.min(s2, 255));
+				v2 = Math.max(0, Math.min(v2, 255));
+				int resHSV = (h2 << 16) | (s2 << 8) | v2;
+				template.setRGB(x, y, getRGB(resHSV) | (a << 24));
+			}
+		}
+	}
+	
+	/**
+	 * Converts rgb int to hsv int.
+	 * @param rgb
+	 * @return hsv
+	 */
 	public static int getHSV(int rgb) {
 		double r = ((rgb >>> 16) & 255)/255.0;
 		double g = ((rgb >>> 8) & 255)/255.0;
@@ -34,7 +79,12 @@ public class ColorUtils {
 	    int output = ((int)(h*255) << 16) | ((int)(s*255) << 8) | (int)(v*255);
 	    return output;
 	}
-	
+
+	/**
+	 * Converts hsv int to rgb int.
+	 * @param hsv
+	 * @return rgb
+	 */
 	public static int getRGB(int hsv) {
 		double h = ((hsv >>> 16) & 255)/255.0;
 		double s = ((hsv >>> 8) & 255)/255.0;

@@ -42,6 +42,7 @@ import io.cubyz.multiplayer.client.MPClient;
 import io.cubyz.multiplayer.client.PingResponse;
 import io.cubyz.ui.*;
 import io.cubyz.ui.mods.InventoryGUI;
+import io.cubyz.util.PixelUtils;
 import io.cubyz.utils.*;
 import io.cubyz.utils.ResourceUtilities.BlockModel;
 import io.cubyz.utils.ResourceUtilities.BlockSubModel;
@@ -227,7 +228,7 @@ public class Cubyz implements GameLogic, ClientConnection {
 					canvas = getImage("addons/cubyz/items/textures/materials/templates/"+"gem1"+".png"); // TODO: More gem types.
 				else
 					canvas = getImage("addons/cubyz/items/textures/materials/templates/"+"crystal1"+".png"); // TODO: More crystal types.
-				TextureConverter.convertTemplate(canvas, item.getColor());
+				PixelUtils.convertTemplate(canvas, item.getColor());
 				InputStream is = TextureConverter.fromBufferedImage(canvas);
 				Texture tex = new Texture(is);
 				try {

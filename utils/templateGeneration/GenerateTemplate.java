@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import javax.imageio.ImageIO;
 
-public class GenerateItemTemplate {
+public class GenerateTemplate {
 	public static int getHSV(int rgb) {
 		double r = ((rgb >>> 16) & 255)/255.0;
 		double g = ((rgb >>> 8) & 255)/255.0;
@@ -44,10 +44,10 @@ public class GenerateItemTemplate {
 		return null;
 	}
 	public static void main(String[] args) {
-		BufferedImage ore = (BufferedImage)getImage("stone_sword_head.png");
+		BufferedImage ore = (BufferedImage)getImage(args[0]);
 		for(int i = 0; i < 16; i++) {
 			for(int j = 0; j < 16; j++) {
-				int color = 0x767676;
+				int color = 0x69bfbf;
 				int hsv = getHSV(color);
 				int colorOre = ore.getRGB(i, j);
 				int hsvOre = getHSV(colorOre);
