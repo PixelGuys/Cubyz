@@ -1,10 +1,13 @@
 package io.cubyz.blocks;
 
 import java.awt.image.BufferedImage;
+import java.io.File;
 import java.util.Random;
 
+import javax.imageio.ImageIO;
+
 public interface TextureProvider {
-	BufferedImage generateTexture(CustomBlock block, BufferedImage stone);
+	BufferedImage generateTexture(CustomBlock block);
 	
 	public static int[] createColorPalette(CustomBlock block, int differentColors, int brightnessScale, int randomAdditive) {
 		int [] colors = new int[differentColors];
@@ -50,5 +53,12 @@ public interface TextureProvider {
 			colors[i] = (r << 16) | (g << 8) | b;
 		}
 		return colors;
+	}
+	
+	public static BufferedImage getImage(String file) {
+		try {
+			return ImageIO.read(new File(file));
+		} catch(Exception e) {e.printStackTrace();}
+		return null;
 	}
 }

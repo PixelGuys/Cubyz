@@ -62,7 +62,11 @@ public class GenerateItemTemplate {
 				s2 -= s1;
 				v2 -= v1;
 				h2 &= 255;
+				if(s2 > 127) s2 = 127;
+				if(s2 < -128) s2 = -128;
 				s2 &= 255;
+				if(v2 > 127) v2 = 127;
+				if(v2 < -128) v2 = -128;
 				v2 &= 255;
 				int res = (a << 24) | (h2 << 16) | (s2 << 8) | v2;
 				

@@ -209,8 +209,7 @@ public class Cubyz implements GameLogic, ClientConnection {
 			LocalSurface ts = (LocalSurface) surface;
 			ArrayList<CustomBlock> customBlocks = ts.getCustomBlocks();
 			for (CustomBlock block : customBlocks) {
-				BufferedImage stone = getImage("addons/cubyz/blocks/textures/stone.png");
-				BufferedImage img = block.textureProvider.generateTexture(block, stone);
+				BufferedImage img = block.textureProvider.generateTexture(block);
 				InputStream is = TextureConverter.fromBufferedImage(img);
 				Texture tex = new Texture(is);
 				try {
@@ -253,8 +252,7 @@ public class Cubyz implements GameLogic, ClientConnection {
 			if(texture != null) {
 			} else if(block instanceof CustomBlock) {
 				CustomBlock ore = (CustomBlock)block;
-				BufferedImage stone = getImage("addons/cubyz/blocks/textures/stone.png");
-				texture = ore.textureProvider.generateTexture(ore, stone);
+				texture = ore.textureProvider.generateTexture(ore);
 			} else {
 				texture = ResourceUtilities.loadBlockTextureToBufferedImage(new Resource("cubyz", "undefined"));
 			}

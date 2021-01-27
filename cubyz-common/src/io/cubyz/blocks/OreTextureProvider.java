@@ -9,7 +9,8 @@ public class OreTextureProvider implements TextureProvider {
 		
 	}
 	// Procedurally generated ore textures:
-	public BufferedImage generateTexture(CustomBlock block, BufferedImage stone) {
+	public BufferedImage generateTexture(CustomBlock block) {
+		BufferedImage stone = TextureProvider.getImage("addons/cubyz/blocks/textures/stone.png");
 		BufferedImage canvas = new BufferedImage(16, 16, BufferedImage.TYPE_INT_RGB);
 		Random rand = new Random(block.seed);
 		// Init the canvas:

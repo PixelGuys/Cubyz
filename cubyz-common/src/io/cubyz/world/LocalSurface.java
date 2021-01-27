@@ -222,6 +222,7 @@ public class LocalSurface extends Surface {
 			block.ID = ID++;
 			registries.blockRegistry.register(block);
 		}
+
 		// Create the crystal ore for the CrystalCaverns:
 		CustomBlock glowCrystalOre = CustomBlock.random(rand, registries, new OreTextureProvider());
 		glowCrystalOre.makeGlow(); // Make sure it glows.
