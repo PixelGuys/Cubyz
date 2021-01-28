@@ -540,30 +540,18 @@ public class LocalSurface extends Surface {
 		if(x != lastRegX || z != lastRegZ) {
 			int mcDRD = mcRD << 1;
 			Region[] newRegions = new Region[mcDRD*mcDRD];
-			int index = 0;
-			int minK = 0;
-			for(int i = x-mcDRD; i < x; i++) {
-				loop:
-				for(int j = z-mcDRD; j < z; j++) {
-					for(int k = minK; k < regions.length; k++) {
-						if(regions[k] != null && CubyzMath.moduloMatchSign(regions[k].wx-(i << 8), worldSizeX) == 0 && CubyzMath.moduloMatchSign(regions[k].wz-(j << 8), worldSizeZ) == 0) {
-							newRegions[index] = regions[k];
-							// Removes this chunk out of the list of chunks that will be considered in this function.
-							regions[k] = regions[minK];
-							regions[minK] = newRegions[index];
-							minK++;
-							index++;
-							continue loop;
-						}
+			// Go through the old regions and put them in the new array:
+			for(int i = 0; i < regions.length; i++) {
+				if(regions[i] != null) {
+					int dx = CubyzMath.moduloMatchSign((regions[i].wx >> 8) - (x-mcDRD), worldSizeX >> 8);
+					int dz = CubyzMath.moduloMatchSign((regions[i].wz >> 8) - (z-mcDRD), worldSizeZ >> 8);
+					if(dx >= 0 && dx < mcDRD && dz >= 0 && dz < mcDRD) {
+						int index = dx*mcDRD + dz;
+						newRegions[index] = regions[i];
+					} else {
+						regions[i].regIO.saveData();
 					}
-					newRegions[index] = null;
-					index++;
 				}
-			}
-			// Store the no longer used Regions:
-			for (int k = minK; k < regions.length; k++) {
-				if(regions[k] != null)
-					regions[k].regIO.saveData();
 			}
 			regions = newRegions;
 			lastRegX = x;
@@ -587,22 +575,29 @@ public class LocalSurface extends Surface {
 		if(x != lastX || z != lastZ) {
 			int doubleRD = renderDistance << 1;
 			NormalChunk [] newVisibles = new NormalChunk[doubleRD*doubleRD];
-			int index = 0;
-			int minK = 0;
+			// Go through the old chunks and put them in the new array:
+			for(int i = 0; i < chunks.length; i++) {
+				int dx = CubyzMath.moduloMatchSign(chunks[i].cx - (x-doubleRD), worldSizeX >> 4);
+				int dz = CubyzMath.moduloMatchSign(chunks[i].cz - (z-doubleRD), worldSizeZ >> 4);
+				if(dx >= 0 && dx < doubleRD && dz >= 0 && dz < doubleRD) {
+					int index = dx*doubleRD + dz;
+					newVisibles[index] = chunks[i];
+				} else {
+					if(chunks[i].isGenerated())
+						chunks[i].region.regIO.saveChunk(chunks[i]); // Only needs to be stored if it was ever generated.
+					else
+						unQueueChunk(chunks[i]);
+					ClientOnly.deleteChunkMesh.accept(chunks[i]);
+				}
+			}
+			// Fill the gaps:
 			ArrayList<NormalChunk> chunksToQueue = new ArrayList<>();
+			int index = 0;
 			for(int i = x-doubleRD; i < x; i++) {
-				loop:
 				for(int j = z-doubleRD; j < z; j++) {
-					for(int k = minK; k < chunks.length; k++) {
-						if(CubyzMath.moduloMatchSign(chunks[k].getX()-i, worldSizeX >> 4) == 0 && CubyzMath.moduloMatchSign(chunks[k].getZ()-j, worldSizeZ >> 4) == 0) {
-							newVisibles[index] = chunks[k];
-							// Removes this chunk out of the list of chunks that will be considered in this function.
-							chunks[k] = chunks[minK];
-							chunks[minK] = newVisibles[index];
-							minK++;
-							index++;
-							continue loop;
-						}
+					if(newVisibles[index] != null) {
+						index++;
+						continue;
 					}
 					try {
 						NormalChunk ch = (NormalChunk)chunkProvider.getDeclaredConstructors()[0].newInstance(CubyzMath.worldModulo(i, worldSizeX >> 4), CubyzMath.worldModulo(j, worldSizeZ >> 4), this);
@@ -622,13 +617,6 @@ public class LocalSurface extends Surface {
 					}
 				}
 			}
-			for (int k = minK; k < chunks.length; k++) {
-				if(chunks[k].isGenerated())
-					chunks[k].region.regIO.saveChunk(chunks[k]); // Only needs to be stored if it was ever generated.
-				else
-					unQueueChunk(chunks[k]);
-				ClientOnly.deleteChunkMesh.accept(chunks[k]);
-			}
 			chunks = newVisibles;
 			lastX = x;
 			lastZ = z;
@@ -638,37 +626,34 @@ public class LocalSurface extends Surface {
 			for(NormalChunk ch : chunksToQueue) {
 				queueChunk(ch);
 			}
-			if (minK != chunks.length) { // if at least one chunk got unloaded
-				tio.saveTorusData(this);
-			}
+			// Save the data:
+			tio.saveTorusData(this);
 			
 			// Update the entity managers:
 			x += Settings.entityDistance - renderDistance;
 			z += Settings.entityDistance - renderDistance;
-			index = minK = 0;
 			ChunkEntityManager [] newManagers = new ChunkEntityManager[Settings.entityDistance*Settings.entityDistance*4];
-			for(int i = x - 2*Settings.entityDistance; i < x; i++) {
-				int wx = i << 4;
-				loop:
-				for(int j = z - 2*Settings.entityDistance; j < z; j++) {
-					int wz = j << 4;
-					for(int k = minK; k < entityManagers.length; k++) {
-						if(CubyzMath.moduloMatchSign(entityManagers[k].wx-wx, worldSizeX) == 0 && CubyzMath.moduloMatchSign(entityManagers[k].wz-wz, worldSizeZ) == 0) {
-							newManagers[index] = entityManagers[k];
-							// Removes this chunk out of the list of chunks that will be considered in this function.
-							entityManagers[k] = entityManagers[minK];
-							entityManagers[minK] = newManagers[index];
-							minK++;
-							index++;
-							continue loop;
-						}
-					}
-					newManagers[index++] = new ChunkEntityManager(this, this.getChunk(CubyzMath.worldModulo(i, worldSizeX >> 4), CubyzMath.worldModulo(j, worldSizeZ >> 4)));
+			// Go through the old managers and put them in the new array:
+			for(int i = 0; i < entityManagers.length; i++) {
+				int dx = CubyzMath.moduloMatchSign((entityManagers[i].wx >> 4) - (x - Settings.entityDistance*2), worldSizeX >> 4);
+				int dz = CubyzMath.moduloMatchSign((entityManagers[i].wz >> 4) - (z - Settings.entityDistance*2), worldSizeZ >> 4);
+				if(dx >= 0 && dx < Settings.entityDistance*2 && dz >= 0 && dz < Settings.entityDistance*2) {
+					index = dx*Settings.entityDistance*2 + dz;
+					newManagers[index] = entityManagers[i];
+				} else {
+					if(entityManagers[i].chunk.isGenerated())
+						entityManagers[i].chunk.region.regIO.saveItemEntities(entityManagers[i].itemEntityManager); // Only needs to be stored if it was ever generated.
 				}
 			}
-			for (int k = minK; k < entityManagers.length; k++) {
-				if(entityManagers[k].chunk.isGenerated())
-					entityManagers[k].chunk.region.regIO.saveItemEntities(entityManagers[k].itemEntityManager);
+			// Fill the gaps:
+			index = 0;
+			for(int i = x - 2*Settings.entityDistance; i < x; i++) {
+				for(int j = z - 2*Settings.entityDistance; j < z; j++) {
+					if(newManagers[index] == null) {
+						newManagers[index] = new ChunkEntityManager(this, this.getChunk(CubyzMath.worldModulo(i, worldSizeX >> 4), CubyzMath.worldModulo(j, worldSizeZ >> 4)));
+					}
+					index++;
+				}
 			}
 			entityManagers = newManagers;
 			this.doubleEntityRD = 2*Settings.entityDistance;
@@ -815,20 +800,19 @@ public class LocalSurface extends Surface {
 		int x = wx >> 8;
 		int z = wz >> 8;
 		// Test if the chunk can be found in the list of visible chunks:
-		int index = CubyzMath.moduloMatchSign(x-(lastRegX-regDRD), worldSizeX >> 8)*regDRD + CubyzMath.moduloMatchSign(z-(lastRegZ-regDRD), worldSizeZ >> 8);
-		wx = CubyzMath.worldModulo(wx, worldSizeX);
-		wz = CubyzMath.worldModulo(wz, worldSizeZ);
-		if(index < regions.length && index >= 0) {
+		int dx = CubyzMath.moduloMatchSign(x-(lastRegX-regDRD), worldSizeX >> 8);
+		int dz = CubyzMath.moduloMatchSign(z-(lastRegZ-regDRD), worldSizeZ >> 8);
+		if(dx >= 0 && dx < regDRD && dz >= 0 && dz < regDRD) {
+			int index = dx*regDRD + dz;
 			synchronized(regions) {
 				Region ret = regions[index];
 				
 				if (ret != null) {
-					if(wx == ret.wx && wz == ret.wz)
-						return ret;
+					return ret;
 				} else {
-					Region ch = new Region(wx, wz, localSeed, this, registries, tio);
-					regions[index] = ch;
-					return ch;
+					Region reg = new Region(wx, wz, localSeed, this, registries, tio);
+					regions[index] = reg;
+					return reg;
 				}
 			}
 		}
@@ -847,26 +831,25 @@ public class LocalSurface extends Surface {
 	@Override
 	public NormalChunk getChunk(int x, int z) {
 		// Test if the chunk can be found in the list of visible chunks:
-		int index = CubyzMath.moduloMatchSign(x-(lastX-doubleRD), worldSizeX >> 4)*doubleRD + CubyzMath.moduloMatchSign(z-(lastZ-doubleRD), worldSizeZ >> 4);
-		x = CubyzMath.worldModulo(x, worldSizeX >> 4);
-		z = CubyzMath.worldModulo(z, worldSizeZ >> 4);
-		if(index < chunks.length && index >= 0) {
-			NormalChunk ret = chunks[index];
-			if (ret != null && x == ret.getX() && z == ret.getZ())
-				return ret;
+		int dx = CubyzMath.moduloMatchSign(x-(lastX-doubleRD), worldSizeX >> 4);
+		int dz = CubyzMath.moduloMatchSign(z-(lastZ-doubleRD), worldSizeZ >> 4);
+		if(dx >= 0 && dx < doubleRD && dz >= 0 && dz < doubleRD) {
+			int index = dx*doubleRD + dz;
+			return chunks[index];
 		}
 		return null;
 	}
 
 	@Override
 	public ChunkEntityManager getEntityManagerAt(int wx, int wz) {
-		// Test if the chunk can be found in the list of visible chunks:
 		int x = wx >> 4;
 		int z = wz >> 4;
-		int index = CubyzMath.moduloMatchSign(x-(lastEntityX-doubleEntityRD), worldSizeX >> 4)*doubleEntityRD + CubyzMath.moduloMatchSign(z-(lastEntityZ-doubleEntityRD), worldSizeZ >> 4);
-		if(index < entityManagers.length && index >= 0) {
-			ChunkEntityManager ret = entityManagers[index];
-			return ret;
+		// Test if the chunk can be found in the list of visible chunks:
+		int dx = CubyzMath.moduloMatchSign(x-(lastEntityX-doubleEntityRD), worldSizeX >> 4);
+		int dz = CubyzMath.moduloMatchSign(z-(lastEntityZ-doubleEntityRD), worldSizeZ >> 4);
+		if(dx >= 0 && dx < doubleEntityRD && dz >= 0 && dz < doubleEntityRD) {
+			int index = dx*doubleEntityRD + dz;
+			return entityManagers[index];
 		}
 		return null;
 	}
