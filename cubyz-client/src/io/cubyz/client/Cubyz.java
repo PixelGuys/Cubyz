@@ -830,22 +830,7 @@ public class Cubyz implements GameLogic, ClientConnection {
 						// Build block:
 						if (msd.getSelected() != null) {
 							buildCooldown = 10;
-							if(msd.getSelected() instanceof BlockInstance) {
-								Vector3i pos = new Vector3i(0, 0, 0);
-								Vector3i dir = new Vector3i(0, 0, 0);
-								msd.getEmptyPlace(pos, dir);
-								Block b = world.getLocalPlayer().getInventory().getBlock(inventorySelection);
-								if (b != null && pos != null) {
-									boolean dataOnlyUpdate = world.getCurrentTorus().getBlock(pos.x, pos.y, pos.z) == b;
-									byte data = b.mode.generateData(dir, dataOnlyUpdate ? world.getCurrentTorus().getBlockData(pos.x, pos.y, pos.z) : 0);
-									if(dataOnlyUpdate) {
-										world.getCurrentTorus().updateBlockData(pos.x, pos.y, pos.z, data);
-									} else {
-										world.getCurrentTorus().placeBlock(pos.x, pos.y, pos.z, b, data);
-									}
-									world.getLocalPlayer().getInventory().getStack(inventorySelection).add(-1);
-								}
-							}
+							msd.placeBlock(world.getLocalPlayer().getInventory(), inventorySelection, world.getCurrentTorus());
 						}
 					} else if(world.getLocalPlayer().getInventory().getItem(inventorySelection) != null) {
 						// Use item:

@@ -7,6 +7,7 @@ import org.joml.Vector4f;
 
 import io.cubyz.api.RegistryElement;
 import io.cubyz.entity.Entity;
+import io.cubyz.util.ByteWrapper;
 import io.cubyz.util.FloatFastList;
 import io.cubyz.util.IntFastList;
 
@@ -30,8 +31,16 @@ public interface RotationMode extends RegistryElement {
 	 */
 	public int generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex);
 	
-	// currentData will be 0 if the blockTypes don't match.
-	public byte generateData(Vector3i placementPosition, byte currentData);
+	/**
+	 * Update or place a block.
+	 * @param relativePlayerPosition Position of the player head relative to the (0, 0, 0) corner of the block.
+	 * @param playerDirection
+	 * @param relativeDir the direction in which the selected neighbor is.
+	 * @param currentData 0 if no block was there before.
+	 * @param blockPlacing true if the position of the block was previously empty/nonsolid.
+	 * @return true if the placing was successful, false otherwise.
+	 */
+	public boolean generateData(Vector3f relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDir, ByteWrapper currentData, boolean blockPlacing);
 
 	public boolean dependsOnNeightbors(); // Returns if the block should be destroyed or changed when a certain neighbor is removed.
 	public Byte updateData(byte oldData, int removedDir); // removedDir is given in the same format as used in Chunk. If the returned value is null, then the block will be removed instead of only updating the data.

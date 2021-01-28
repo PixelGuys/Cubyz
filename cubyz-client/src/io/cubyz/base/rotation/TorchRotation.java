@@ -12,6 +12,7 @@ import io.cubyz.blocks.RotationMode;
 import io.cubyz.client.Meshes;
 import io.cubyz.entity.Entity;
 import io.cubyz.models.Model;
+import io.cubyz.util.ByteWrapper;
 import io.cubyz.util.FloatFastList;
 import io.cubyz.util.IntFastList;
 
@@ -34,14 +35,17 @@ public class TorchRotation implements RotationMode {
 	}
 
 	@Override
-	public byte generateData(Vector3i dir, byte oldData) {
+	public boolean generateData(Vector3f relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, ByteWrapper currentData, boolean blockPlacing) {
 		byte data = (byte)0;
-		if(dir.x == 1) data = (byte)0b1;
-		if(dir.x == -1) data = (byte)0b10;
-		if(dir.y == -1) data = (byte)0b10000;
-		if(dir.z == 1) data = (byte)0b100;
-		if(dir.z == -1) data = (byte)0b1000;
-		return (byte)(data | oldData);
+		if(relativeDirection.x == 1) data = (byte)0b1;
+		if(relativeDirection.x == -1) data = (byte)0b10;
+		if(relativeDirection.y == -1) data = (byte)0b10000;
+		if(relativeDirection.z == 1) data = (byte)0b100;
+		if(relativeDirection.z == -1) data = (byte)0b1000;
+		data |= currentData.data;
+		if(data == currentData.data) return false;
+		currentData.data = data;
+		return true;
 	}
 
 	@Override

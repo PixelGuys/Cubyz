@@ -10,6 +10,7 @@ import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.RotationMode;
 import io.cubyz.client.Meshes;
 import io.cubyz.entity.Entity;
+import io.cubyz.util.ByteWrapper;
 import io.cubyz.util.FloatFastList;
 import io.cubyz.util.IntFastList;
 
@@ -25,8 +26,10 @@ public class NoRotation implements RotationMode {
 	}
 
 	@Override
-	public byte generateData(Vector3i dir, byte oldData) {
-		return 0;
+	public boolean generateData(Vector3f relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, ByteWrapper currentData, boolean blockPlacing) {
+		if(!blockPlacing) return false;
+		currentData.data = 0;
+		return true;
 	}
 
 	@Override

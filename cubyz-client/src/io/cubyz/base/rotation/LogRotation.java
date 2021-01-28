@@ -10,6 +10,7 @@ import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.RotationMode;
 import io.cubyz.client.Meshes;
 import io.cubyz.entity.Entity;
+import io.cubyz.util.ByteWrapper;
 import io.cubyz.util.FloatFastList;
 import io.cubyz.util.IntFastList;
 
@@ -26,15 +27,18 @@ public class LogRotation implements RotationMode {
 	}
 
 	@Override
-	public byte generateData(Vector3i dir, byte oldData) {
-		byte data = 0;
-		if(dir.x == 1) data = (byte)0b10;
-		if(dir.x == -1) data = (byte)0b11;
-		if(dir.y == -1) data = (byte)0b0;
-		if(dir.y == 1) data = (byte)0b1;
-		if(dir.z == 1) data = (byte)0b100;
-		if(dir.z == -1) data = (byte)0b101;
-		return data;
+	public boolean generateData(Vector3f relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, ByteWrapper currentData, boolean blockPlacing) {
+		if(!blockPlacing) return false;
+		byte data = -1;
+		if(relativeDirection.x == 1) data = (byte)0b10;
+		if(relativeDirection.x == -1) data = (byte)0b11;
+		if(relativeDirection.y == -1) data = (byte)0b0;
+		if(relativeDirection.y == 1) data = (byte)0b1;
+		if(relativeDirection.z == 1) data = (byte)0b100;
+		if(relativeDirection.z == -1) data = (byte)0b101;
+		if(data == -1) return false;
+		currentData.data = data;
+		return true;
 	}
 
 	@Override

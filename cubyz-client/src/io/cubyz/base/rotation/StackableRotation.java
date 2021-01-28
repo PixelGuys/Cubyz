@@ -1,6 +1,8 @@
 package io.cubyz.base.rotation;
 
+import org.joml.Intersectionf;
 import org.joml.RayAabIntersection;
+import org.joml.Vector2f;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 import org.joml.Vector4f;
@@ -13,6 +15,7 @@ import io.cubyz.client.Meshes;
 import io.cubyz.entity.Entity;
 import io.cubyz.models.CubeModel;
 import io.cubyz.models.Model;
+import io.cubyz.util.ByteWrapper;
 import io.cubyz.util.FloatFastList;
 import io.cubyz.util.IntFastList;
 
@@ -29,9 +32,29 @@ public class StackableRotation implements RotationMode {
 	}
 
 	@Override
-	public byte generateData(Vector3i dir, byte oldData) {
-		byte data = 1;
-		return data;
+	public boolean generateData(Vector3f relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, ByteWrapper currentData, boolean blockPlacing) {
+		if(blockPlacing) {
+			currentData.data = 1;
+			return true;
+		}
+		Vector3f min = new Vector3f();
+		Vector3f max = new Vector3f(1, currentData.data/16.0f, 1);
+		Vector2f result = new Vector2f();
+		// Check if the ray is going through the block:
+		if(Intersectionf.intersectRayAab(relativePlayerPosition, playerDirection, min, max, result)) {
+			// Check if the ray is going through the top layer and going the right direction:
+			min.y = max.y - 0.0001f;
+			if(playerDirection.y < 0 && Intersectionf.intersectRayAab(relativePlayerPosition, playerDirection, min, max, result)) {
+				if(currentData.data == 16) return false;
+				currentData.data++;
+				return true;
+			}
+			return false;
+		} else {
+			if(currentData.data == 16) return false;
+			currentData.data++;
+			return true;
+		}
 	}
 
 	@Override
@@ -41,8 +64,6 @@ public class StackableRotation implements RotationMode {
 
 	@Override
 	public Byte updateData(byte data, int dir) {
-		if(data != 16)
-			data++;
 		return data;
 	}
 
