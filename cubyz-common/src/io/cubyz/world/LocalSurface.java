@@ -629,16 +629,18 @@ public class LocalSurface extends Surface {
 			// Save the data:
 			tio.saveTorusData(this);
 			
+			int entityDistance = Math.min(Settings.entityDistance, renderDistance);
+			
 			// Update the entity managers:
-			x += Settings.entityDistance - renderDistance;
-			z += Settings.entityDistance - renderDistance;
-			ChunkEntityManager [] newManagers = new ChunkEntityManager[Settings.entityDistance*Settings.entityDistance*4];
+			x += entityDistance - renderDistance;
+			z += entityDistance - renderDistance;
+			ChunkEntityManager [] newManagers = new ChunkEntityManager[entityDistance*entityDistance*4];
 			// Go through the old managers and put them in the new array:
 			for(int i = 0; i < entityManagers.length; i++) {
-				int dx = CubyzMath.moduloMatchSign((entityManagers[i].wx >> 4) - (x - Settings.entityDistance*2), worldSizeX >> 4);
-				int dz = CubyzMath.moduloMatchSign((entityManagers[i].wz >> 4) - (z - Settings.entityDistance*2), worldSizeZ >> 4);
-				if(dx >= 0 && dx < Settings.entityDistance*2 && dz >= 0 && dz < Settings.entityDistance*2) {
-					index = dx*Settings.entityDistance*2 + dz;
+				int dx = CubyzMath.moduloMatchSign((entityManagers[i].wx >> 4) - (x - entityDistance*2), worldSizeX >> 4);
+				int dz = CubyzMath.moduloMatchSign((entityManagers[i].wz >> 4) - (z - entityDistance*2), worldSizeZ >> 4);
+				if(dx >= 0 && dx < entityDistance*2 && dz >= 0 && dz < entityDistance*2) {
+					index = dx*entityDistance*2 + dz;
 					newManagers[index] = entityManagers[i];
 				} else {
 					if(entityManagers[i].chunk.isGenerated())
@@ -647,8 +649,8 @@ public class LocalSurface extends Surface {
 			}
 			// Fill the gaps:
 			index = 0;
-			for(int i = x - 2*Settings.entityDistance; i < x; i++) {
-				for(int j = z - 2*Settings.entityDistance; j < z; j++) {
+			for(int i = x - 2*entityDistance; i < x; i++) {
+				for(int j = z - 2*entityDistance; j < z; j++) {
 					if(newManagers[index] == null) {
 						newManagers[index] = new ChunkEntityManager(this, this.getChunk(CubyzMath.worldModulo(i, worldSizeX >> 4), CubyzMath.worldModulo(j, worldSizeZ >> 4)));
 					}
@@ -656,7 +658,7 @@ public class LocalSurface extends Surface {
 				}
 			}
 			entityManagers = newManagers;
-			this.doubleEntityRD = 2*Settings.entityDistance;
+			this.doubleEntityRD = 2*entityDistance;
 			lastEntityX = x;
 			lastEntityZ = z;
 		}
