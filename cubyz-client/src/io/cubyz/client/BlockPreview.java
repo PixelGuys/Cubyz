@@ -1,7 +1,5 @@
 package io.cubyz.client;
 
-import static org.lwjgl.opengl.GL11.GL_TEXTURE_2D;
-import static org.lwjgl.opengl.GL11.glBindTexture;
 import static org.lwjgl.opengl.GL11C.GL_COLOR_BUFFER_BIT;
 import static org.lwjgl.opengl.GL11C.GL_DEPTH_BUFFER_BIT;
 import static org.lwjgl.opengl.GL11C.GL_STENCIL_BUFFER_BIT;
@@ -16,7 +14,6 @@ import io.cubyz.blocks.Block;
 import io.jungle.FrameBuffer;
 import io.jungle.Mesh;
 import io.jungle.Spatial;
-import io.jungle.Texture;
 import io.jungle.Window;
 import io.jungle.renderers.Transformation;
 import io.jungle.util.ShaderProgram;
@@ -79,12 +76,11 @@ public abstract class BlockPreview {
 		
 		Mesh mesh = Meshes.blockMeshes.get(block);
 		Spatial spatial = new Spatial(mesh);
-		Texture texture = Meshes.blockTextures.get(block);
 		
 		glViewport(0, 0, 64, 64);
 		Matrix4f projectionMatrix = transformation.getOrthoProjectionMatrix(0.9f, -0.9f, -0.9f, 0.9f, 0.1f, 1000.0f);
 		clear();
-		Matrix4f viewMatrix = transformation.getViewMatrix(new Vector3f(1, 1.5f, 1), new Vector3f((float)Math.PI/4, -(float)Math.PI/4, 0));
+		Matrix4f viewMatrix = transformation.getViewMatrix(new Vector3f(-1, -1.6f, -1), new Vector3f(-3*(float)Math.PI/4, -(float)Math.PI/4, 0));
 
 		shader.bind();
 		shader.setUniform("projectionMatrix", projectionMatrix);
@@ -92,8 +88,8 @@ public abstract class BlockPreview {
 		shader.setUniform("dirLight", new Vector3f(-1, -2, -2).normalize());
 		
 		shader.setUniform("light", new Vector3f(1, 1, 1));
+		mesh.getMaterial().setTexture(Meshes.blockTextures.get(block));
 		mesh.renderOne(() -> {
-			glBindTexture(GL_TEXTURE_2D, texture.getId()); // Bind the correct texture.
 			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(
 					Transformation.getModelMatrix(spatial.getPosition(), spatial.getRotation(), spatial.getScale()),
 					viewMatrix);
