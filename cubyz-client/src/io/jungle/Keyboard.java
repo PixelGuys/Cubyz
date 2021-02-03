@@ -2,6 +2,8 @@ package io.jungle;
 
 import java.util.ArrayList;
 
+import org.lwjgl.glfw.GLFW;
+
 import io.cubyz.CubyzLogger;
 
 public class Keyboard {
@@ -30,17 +32,21 @@ public class Keyboard {
 	
 	/**
 	 * Returns the last chars input by the user.
-	 * @return
+	 * @return chars typed in by the user. Calls to backspace are encrypted using '\0'.
 	 */
-	public static String getCharSequence() {
-		String sequence = "";
+	public static char[] getCharSequence() {
+		char[] sequence = new char[(lastEnd - lastStart + bufferLen)%bufferLen];
+		int index = 0;
 		for(int i = lastStart; i != lastEnd; i = (i+1)%bufferLen) {
-			sequence += charBuffer[i];
+			sequence[index++] = charBuffer[i];
 		}
 		return sequence;
 	}
 	
 	public static void pushKeyCode(int keyCode) {
+		if(keyCode == GLFW.GLFW_KEY_BACKSPACE) {
+			pushChar('\0');
+		}
 		currentKeyCode = keyCode;
 		hasKeyCode = true;
 	}

@@ -1,7 +1,5 @@
 package io.cubyz.ui.components;
 
-import org.lwjgl.glfw.GLFW;
-
 import io.cubyz.client.Cubyz;
 import io.cubyz.ui.Component;
 import io.cubyz.ui.NGraphics;
@@ -71,14 +69,15 @@ public class TextInput extends Component {
 		
 		if (focused) {
 			if (Keyboard.hasCharSequence()) {
-				text = text + Keyboard.getCharSequence();
-				cursorVisible = true;
-			}
-			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_BACKSPACE)) {
-				if (text.length() > 0) {
-					text = text.substring(0, text.length() - 1);
+				char[] chars = Keyboard.getCharSequence();
+				for(int i = 0; i < chars.length; i++) {
+					if(chars[i] == '\0') { // Backspace.
+						if(text.length() > 0)
+							text = text.substring(0, text.length() - 1);
+					} else {
+						text += chars[i];
+					}
 				}
-				Keyboard.setKeyPressed(GLFW.GLFW_KEY_BACKSPACE, false);
 				cursorVisible = true;
 			}
 			
