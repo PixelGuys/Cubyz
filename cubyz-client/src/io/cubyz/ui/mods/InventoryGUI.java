@@ -1,10 +1,13 @@
 package io.cubyz.ui.mods;
 
+import org.joml.Vector3f;
+
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Resource;
 import io.cubyz.client.Cubyz;
 import io.cubyz.items.Inventory;
 import io.cubyz.items.Item;
+import io.cubyz.items.ItemStack;
 import io.cubyz.items.Recipe;
 import io.cubyz.ui.GeneralInventory;
 import io.cubyz.ui.components.InventorySlot;
@@ -18,18 +21,32 @@ import io.jungle.Window;
 
 public class InventoryGUI extends GeneralInventory {
 	
+	int playerInventorySize;
+	
 	public InventoryGUI() {
 		super(new Resource("cubyz:inventory"));
+	}
+
+	@Override
+	public void close() {
+		super.close();
+		 // Place the crafting slots in an empty slot or throw them out.
+		for(int i = playerInventorySize; i < playerInventorySize + 5; i++) {
+			if(inv[i].reference.empty()) continue;
+			inv[i].reference.setAmount(Cubyz.world.getLocalPlayer().getInventory().addItem(inv[i].reference.getItem(), inv[i].reference.getAmount()));
+			if(inv[i].reference.empty()) continue;
+			Cubyz.surface.drop(inv[i].reference, Cubyz.world.getLocalPlayer().getPosition(), new Vector3f(), 0);
+		}
 	}
 	
 	private void checkCrafting() {
 		// Clear everything in case there is no recipe available.
-		inv[36].reference.clear();
+		inv[playerInventorySize+4].reference.clear();
 		// Find out how many items are there in the grid and put them in an array:
 		int num = 0;
 		Item[] ar = new Item[4];
 		for(int i = 0; i < 4; i++) {
-			ar[i] = inv[32 + i].reference.getItem();
+			ar[i] = inv[playerInventorySize + i].reference.getItem();
 			if(ar[i] != null)
 				num++;
 		}
@@ -44,8 +61,8 @@ public class InventoryGUI extends GeneralInventory {
 			item = rec.canCraft(ar, 2);
 			if(item != null) {
 				
-				inv[36].reference.setItem(item);
-				inv[36].reference.add(rec.getNumRet());
+				inv[playerInventorySize+4].reference.setItem(item);
+				inv[playerInventorySize+4].reference.add(rec.getNumRet());
 				return;
 			}
 		}
@@ -54,7 +71,8 @@ public class InventoryGUI extends GeneralInventory {
 	@Override
 	protected void positionSlots() {
 		if(inv == null) {
-			inv = new InventorySlot[37];
+			playerInventorySize = Cubyz.world.getLocalPlayer().getInventory().getCapacity();
+			inv = new InventorySlot[playerInventorySize + 5];
 			Inventory inventory = Cubyz.world.getLocalPlayer().getInventory();
 			for(int i = 0; i < 8; i++) {
 				inv[i] = new InventorySlot(inventory.getStack(i), i*64 - 256, 64);
@@ -68,11 +86,11 @@ public class InventoryGUI extends GeneralInventory {
 			for(int i = 0; i < 8; i++) {
 				inv[i + 24] = new InventorySlot(inventory.getStack(i + 24), i*64 - 256, 384);
 			}
-			inv[32] = new InventorySlot(inventory.getStack(32), 0, 544);
-			inv[33] = new InventorySlot(inventory.getStack(33), 64, 544);
-			inv[34] = new InventorySlot(inventory.getStack(34), 0, 480);
-			inv[35] = new InventorySlot(inventory.getStack(35), 64, 480);
-			inv[36] = new InventorySlot(inventory.getStack(36), 192, 512, true);
+			inv[playerInventorySize] = new InventorySlot(new ItemStack(), 0, 544);
+			inv[playerInventorySize+1] = new InventorySlot(new ItemStack(), 64, 544);
+			inv[playerInventorySize+2] = new InventorySlot(new ItemStack(), 0, 480);
+			inv[playerInventorySize+3] = new InventorySlot(new ItemStack(), 64, 480);
+			inv[playerInventorySize+4] = new InventorySlot(new ItemStack(), 192, 512, true);
 		}
 		width = 576;
 		height = 576;
@@ -80,17 +98,17 @@ public class InventoryGUI extends GeneralInventory {
 
 	@Override
 	protected void mouseAction(MouseInput mouse, Window win) {
-		boolean notNull = inv[36].reference.getItem() != null;
+		boolean notNull = inv[playerInventorySize+4].reference.getItem() != null;
 		for(int i = 0; i < inv.length; i++) {
 			if(inv[i].grabWithMouse(mouse, carried, win.getWidth()/2, win.getHeight())) {
-				if (i == 36 && notNull) {
+				if (i == playerInventorySize+4 && notNull) {
 					// Remove items in the crafting grid.
-					for(int j = 32; j <= 35; j++) {
+					for(int j = playerInventorySize; j < playerInventorySize+4; j++) {
 						inv[j].reference.add(-1);
 					}
 				}
 			}
-			if(i >= 32) {
+			if(i >= playerInventorySize) {
 				checkCrafting();
 			}
 		}

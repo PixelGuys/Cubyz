@@ -28,8 +28,10 @@ public abstract class MenuGUI implements RegistryElement {
 		return false;
 	}
 	
-	// Optional methods
-	public void dispose() {}
+	/**
+	 * Is guaranteed to be called when this GUI is closed.
+	 */
+	public void close() {}
 	
 	// For those guis that count on a block inventory. Others can safely ignore this.
 	public void setInventory(Inventory inv) {}

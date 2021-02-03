@@ -1,5 +1,7 @@
 package io.cubyz.ui;
 
+import org.joml.Vector3f;
+
 import io.cubyz.api.Resource;
 import io.cubyz.client.Cubyz;
 import io.cubyz.items.Item;
@@ -17,7 +19,8 @@ import io.jungle.hud.Font;
 public abstract class GeneralInventory extends MenuGUI {
 	protected InventorySlot inv [] = null;
 	
-	protected ItemStack carried = new ItemStack(); // ItemStack currently carried by the mouse.
+	/** ItemStack carried by the mouse.*/
+	protected ItemStack carried = new ItemStack();
 	private Label num;
 	
 	protected int width, height;
@@ -26,17 +29,14 @@ public abstract class GeneralInventory extends MenuGUI {
 		super(id);
 	}
 
+	@Override
 	public void close() {
-		Cubyz.mouse.setGrabbed(true);
 		 // Place the last stack carried by the mouse in an empty slot.
-		if(carried.getItem() != null) {
-			for(int i = 0; i < inv.length; i++) {
-				if(inv[i].reference.getItem() == null && !inv[i].takeOnly) {
-					Cubyz.world.getLocalPlayer().getInventory().setStack(i, carried);
-					return;
-				}
+		if(!carried.empty()) {
+			carried.setAmount(Cubyz.world.getLocalPlayer().getInventory().addItem(carried.getItem(), carried.getAmount()));
+			if(!carried.empty()) {
+				Cubyz.surface.drop(carried, Cubyz.world.getLocalPlayer().getPosition(), new Vector3f(), 0);
 			}
-			//DropItemStack(carried); //TODO!
 		}
 	}
 
@@ -56,10 +56,6 @@ public abstract class GeneralInventory extends MenuGUI {
 		for(int i = 0; i < inv.length; i++) {
 			inv[i].render(nvg, win);
 		}
-		/*if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_ESCAPE)) {
-			Cubyz.gameUI.setMenu(null);
-			Cubyz.mouse.setGrabbed(true);
-		}*/
 		// Check if the mouse takes up a new ItemStack/sets one down.
 		mouseAction(Cubyz.mouse, win);
 		

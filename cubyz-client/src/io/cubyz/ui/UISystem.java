@@ -63,12 +63,6 @@ public class UISystem extends Hud {
 	}
 	
 	public void setMenu(MenuGUI gui, boolean addQueue, TransitionStyle style) {
-		/*CubyzLogger.instance.fine("Set UI GUI to " + gui); // used to debug UI menu sets
-		try {
-			throw new Error();
-		} catch (Error e) {
-			e.printStackTrace(System.out);
-		}*/
 		this.curTransition = style;
 		transitionDur = 0;
 		if (style != TransitionStyle.NONE) {
@@ -80,6 +74,9 @@ public class UISystem extends Hud {
 		if (this.gui != null && this.gui.ungrabsMouse() && (gui == null ? true : !gui.ungrabsMouse())) {
 			Cubyz.mouse.setGrabbed(true);
 		}
+		if(this.gui != null) {
+			this.gui.close();
+		}
 		if (gui != null) {
 			gui.init(nvg);
 		}
@@ -87,9 +84,9 @@ public class UISystem extends Hud {
 		if (gui != null && gui.ungrabsMouse() && (this.gui == null ? true : !this.gui.ungrabsMouse())) {
 			Cubyz.mouse.setGrabbed(false);
 		}
-		if (gui == null || gui.doesPauseGame()) {
-			//System.gc();
-		}
+		/*if (gui == null || gui.doesPauseGame()) {
+			System.gc();
+		}*/
 	}
 	
 	public MenuGUI getMenuGUI() {
