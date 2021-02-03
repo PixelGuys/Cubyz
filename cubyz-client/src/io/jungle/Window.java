@@ -5,6 +5,8 @@ import static org.lwjgl.opengl.GL13.*;
 import static org.lwjgl.system.MemoryStack.stackPush;
 import static org.lwjgl.system.MemoryUtil.NULL;
 
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
 import java.nio.IntBuffer;
 
 import javax.swing.JOptionPane;
@@ -117,7 +119,10 @@ public class Window {
 					oldW = width.get(0);
 					oldH = height.get(0);
 				}
-				glfwSetWindowMonitor(handle, glfwGetPrimaryMonitor(), 0, 0, 1920, 1080, GLFW_DONT_CARE); // TODO: resolutions other than 1920x1080
+				GraphicsDevice gd = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
+				int width = gd.getDisplayMode().getWidth();
+				int height = gd.getDisplayMode().getHeight();
+				glfwSetWindowMonitor(handle, glfwGetPrimaryMonitor(), 0, 0, width, height, GLFW_DONT_CARE);
 			} else {
 				glfwSetWindowMonitor(handle, NULL, oldX, oldY, oldW, oldH, GLFW_DONT_CARE);
 				glfwSetWindowAttrib(handle, GLFW_DECORATED, GLFW_TRUE);
