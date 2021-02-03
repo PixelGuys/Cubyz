@@ -59,11 +59,11 @@ public class PauseGUI extends MenuGUI {
 				}
 			});
 		});
-		
-		exit.setSize(200, 50);
-		resume.setSize(200, 50);
-		reload.setSize(200, 50);
-		settings.setSize(200, 50);
+
+		exit.setBounds(-100, 200, 200, 50, Component.ALIGN_BOTTOM);
+		resume.setBounds(-100, 100, 200, 50, Component.ALIGN_TOP);
+		reload.setBounds(-100, 300, 200, 50, Component.ALIGN_BOTTOM);
+		settings.setBounds(-100, 200, 200, 50, Component.ALIGN_TOP);
 	}
 
 	@Override
@@ -74,10 +74,6 @@ public class PauseGUI extends MenuGUI {
 			Cubyz.gameUI.setMenu(null, TransitionStyle.NONE);
 		}
 		if(resume == null) init(nvg); // Prevents a bug that sometimes occurs.
-		resume.setPosition(win.getWidth() / 2 - 100, 100);
-		exit.setPosition(win.getWidth() / 2 - 100, win.getHeight() - 200);
-		reload.setPosition(win.getWidth() / 2 - 100, win.getHeight() - 300);
-		settings.setPosition(win.getWidth() / 2 - 100, 200);
 		exit.render(nvg, win);
 		resume.render(nvg, win);
 		settings.render(nvg, win);

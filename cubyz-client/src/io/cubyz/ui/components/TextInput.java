@@ -39,7 +39,7 @@ public class TextInput extends Component {
 	private int cursorCounter;
 
 	@Override
-	public void render(long nvg, Window src) {
+	public void render(long nvg, Window src, int x, int y) {
 		NGraphics.setColor(127, 127, 127);
 		NGraphics.fillRect(x - 3, y - 3, width + 6, height + 6);
 		

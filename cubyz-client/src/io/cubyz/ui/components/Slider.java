@@ -64,16 +64,16 @@ public class Slider extends Component {
 	}
 	
 	@Override
-	public void setSize(int width, int height) {
-		super.setSize(width, height);
+	public void setBounds(int x, int y, int width, int height, byte align) {
+		super.setBounds(x, y, width, height, align);
 		xOffset = (int)(initialXOffset + height/2 - fontSize/2 - yOffset);
 	}
 
 	@Override
-	public void render(long nvg, Window src) {
+	public void render(long nvg, Window src, int x, int y) {
 		MouseInput mouse = Cubyz.mouse;
 		if (mouse.isLeftButtonPressed() && isInside(mouse.getCurrentPos())) {
-			double dx = mouse.getCurrentPos().x - super.x;
+			double dx = mouse.getCurrentPos().x - x;
 			dx -= xOffset;
 			dx = dx/(super.width - 2*xOffset);
 			dx *= maxValue - minValue;

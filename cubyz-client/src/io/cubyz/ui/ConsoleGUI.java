@@ -21,8 +21,7 @@ public class ConsoleGUI extends MenuGUI {
 	@Override
 	public void init(long nvg) {
 		input = new TextInput();
-		input.setWidth(200);
-		input.setHeight(20);
+		input.setBounds(0, 0, 200, 20, Component.ALIGN_TOP_LEFT);
 		Cubyz.mouse.setGrabbed(false);
 	}
 

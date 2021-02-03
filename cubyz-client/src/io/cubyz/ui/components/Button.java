@@ -88,7 +88,7 @@ public class Button extends Component {
 		this.fontSize = fontSize;
 	}
 	
-	private void drawTexture(int[] texture) {
+	private void drawTexture(int[] texture, int x, int y) {
 		NGraphics.setColor(texture[0], texture[1], texture[2]);
 		NGraphics.fillRect(x+5, y+5, width-10, height-10);
 		NGraphics.setColor(texture[3], texture[4], texture[5]);
@@ -106,7 +106,7 @@ public class Button extends Component {
 	}
 
 	@Override
-	public void render(long nvg, Window src) {
+	public void render(long nvg, Window src, int x, int y) {
 		MouseInput mouse = Cubyz.mouse;
 		if (mouse.isLeftButtonPressed() && canRepress && isInside(mouse.getCurrentPos())) {
 			pressed = true;
@@ -126,12 +126,12 @@ public class Button extends Component {
 			}
 		}
 		if (pressed) {
-			drawTexture(buttonPressed);
+			drawTexture(buttonPressed, x, y);
 		} else {
 			if (hovered) {
-				drawTexture(buttonHovered);
+				drawTexture(buttonHovered, x, y);
 			} else {
-				drawTexture(button);
+				drawTexture(button, x, y);
 			}
 		}
 		NGraphics.setColor(255, 255, 255);

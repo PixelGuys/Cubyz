@@ -69,7 +69,7 @@ public abstract class GeneralInventory extends MenuGUI {
 			int y = (int)Cubyz.mouse.getCurrentPos().y;
 			NGraphics.drawImage(item.getImage(), x - 32, y - 32, 64, 64);
 			num.setText("" + carried.getAmount());
-			num.setPosition(x + 50-32, y + 48-32);
+			num.setPosition(x+50-32, y+48-32, Component.ALIGN_TOP_LEFT);
 			num.render(nvg, win);
 		}
 		// Draw tooltips, when the nothing is carried.

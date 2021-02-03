@@ -14,7 +14,7 @@ public class ScrollingContainer extends Container {
 	
 	int mPickY = -1;
 	
-	public void render(long nvg, Window src) {
+	public void render(long nvg, Window src, int x, int y) {
 		MouseInput mouse = Cubyz.mouse;
 		maxY = 0;
 		for (Component child : childrens) {

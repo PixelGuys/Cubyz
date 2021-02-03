@@ -55,12 +55,12 @@ public class LoadingGUI extends MenuGUI {
 		pb1.setMaxValue(5);
 	}
 
-	void setPosition(float x, float y, Component c, Window w) {
-		c.setPosition((int) (x * w.getWidth()), (int) (y * w.getHeight()));
+	void setPosition(float x, float y, Component c, Window win) {
+		c.setPosition((int)(x*win.getWidth()), (int)(y*win.getHeight()), Component.ALIGN_TOP_LEFT);
 	}
-	
-	void setSize(float w, float h, Component c, Window win) {
-		c.setSize((int) (w * win.getWidth()), (int) (h * win.getHeight()));
+
+	void setBounds(float x, float y, float w, float h, Component c, Window win) {
+		c.setBounds((int)(x*win.getWidth()), (int)(y*win.getHeight()), (int)(w*win.getWidth()), (int)(h*win.getHeight()), Component.ALIGN_TOP_LEFT);
 	}
 	
 	@Override
@@ -85,10 +85,8 @@ public class LoadingGUI extends MenuGUI {
 				alphaDecrease = true;
 			}
 		}
-		setPosition(0.25f, 0.55f, pb1, win);
-		setPosition(0.25f, 0.75f, pb2, win);
-		setSize(0.50f, 0.1f, pb1, win);
-		setSize(0.50f, 0.1f, pb2, win);
+		setBounds(0.25f, 0.55f, 0.5f, 0.1f, pb1, win);
+		setBounds(0.25f, 0.75f, 0.5f, 0.1f, pb2, win);
 		setPosition(0.5f, 0.6f, step, win);
 		setPosition(0.5f, 0.8f, step2, win);
 		pb1.render(nvg, win);

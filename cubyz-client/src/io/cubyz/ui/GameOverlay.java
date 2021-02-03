@@ -46,7 +46,7 @@ public class GameOverlay extends MenuGUI {
 		hungerBar[7] = NGraphics.loadImage("assets/cubyz/textures/hunger_bar_icon.png");
 		Inventory inventory = Cubyz.world.getLocalPlayer().getInventory();
 		for(int i = 0; i < 8; i++) {
-			inv[i] = new InventorySlot(inventory.getStack(i), i*64 - 256, 64);
+			inv[i] = new InventorySlot(inventory.getStack(i), i*64 - 256, 64, Component.ALIGN_BOTTOM);
 		}
 	}
 

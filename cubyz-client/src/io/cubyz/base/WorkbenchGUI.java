@@ -11,6 +11,7 @@ import io.cubyz.items.tools.Pickaxe;
 import io.cubyz.items.tools.Shovel;
 import io.cubyz.items.tools.Sword;
 import io.cubyz.translate.TextKey;
+import io.cubyz.ui.Component;
 import io.cubyz.ui.GeneralInventory;
 import io.cubyz.ui.components.Button;
 import io.cubyz.ui.components.InventorySlot;
@@ -35,19 +36,19 @@ public class WorkbenchGUI extends GeneralInventory {
 	public WorkbenchGUI() {
 		super(new Resource("cubyz:workbench"));
 		normal = new Button();
-		normal.setSize(64, 64);
+		normal.setBounds(-360, 552, 64, 64, Component.ALIGN_BOTTOM);
 		normal.setText(TextKey.createTextKey("Normal Grid"));
 		axe = new Button();
-		axe.setSize(64, 64);
+		axe.setBounds(-360, 480, 64, 64, Component.ALIGN_BOTTOM);
 		axe.setText(TextKey.createTextKey("Axe"));
 		pickaxe = new Button();
-		pickaxe.setSize(64, 64);
+		pickaxe.setBounds(-360, 408, 64, 64, Component.ALIGN_BOTTOM);
 		pickaxe.setText(TextKey.createTextKey("Pickaxe"));
 		shovel = new Button();
-		shovel.setSize(64, 64);
+		shovel.setBounds(-360, 336, 64, 64, Component.ALIGN_BOTTOM);
 		shovel.setText(TextKey.createTextKey("Shovel"));
 		sword = new Button();
-		sword.setSize(64, 64);
+		sword.setBounds(-360, 264, 64, 64, Component.ALIGN_BOTTOM);
 		sword.setText(TextKey.createTextKey("Sword"));
 		activeGUI = this;
 		
@@ -79,24 +80,24 @@ public class WorkbenchGUI extends GeneralInventory {
 			case SHOVEL:
 			case SWORD:
 				newInv = new InventorySlot[36];
-				newInv[32] = new InventorySlot(in.getStack(0), -96, 552); // head
-				newInv[33] = new InventorySlot(in.getStack(1), -128, 480); // binding
-				newInv[34] = new InventorySlot(in.getStack(2), -96, 408); // handle
-				newInv[35] = new InventorySlot(in.getStack(3), 32, 480, true); // new tool
+				newInv[32] = new InventorySlot(in.getStack(0), -96, 552, Component.ALIGN_BOTTOM); // head
+				newInv[33] = new InventorySlot(in.getStack(1), -128, 480, Component.ALIGN_BOTTOM); // binding
+				newInv[34] = new InventorySlot(in.getStack(2), -96, 408, Component.ALIGN_BOTTOM); // handle
+				newInv[35] = new InventorySlot(in.getStack(3), 32, 480, Component.ALIGN_BOTTOM, true); // new tool
 				
 				break;
 			case NORMAL:
 				newInv = new InventorySlot[42];
-				newInv[32] = new InventorySlot(in.getStack(0), -128, 408);
-				newInv[33] = new InventorySlot(in.getStack(3), -64, 408);
-				newInv[34] = new InventorySlot(in.getStack(6), 0, 408);
-				newInv[35] = new InventorySlot(in.getStack(1), -128, 480);
-				newInv[36] = new InventorySlot(in.getStack(4), -64, 480);
-				newInv[37] = new InventorySlot(in.getStack(7), 0, 480);
-				newInv[38] = new InventorySlot(in.getStack(2), -128, 552);
-				newInv[39] = new InventorySlot(in.getStack(5), -64, 552);
-				newInv[40] = new InventorySlot(in.getStack(8), 0, 552);
-				newInv[41] = new InventorySlot(in.getStack(9), 92, 480, true); // crafting result
+				newInv[32] = new InventorySlot(in.getStack(0), -128, 408, Component.ALIGN_BOTTOM);
+				newInv[33] = new InventorySlot(in.getStack(3), -64, 408, Component.ALIGN_BOTTOM);
+				newInv[34] = new InventorySlot(in.getStack(6), 0, 408, Component.ALIGN_BOTTOM);
+				newInv[35] = new InventorySlot(in.getStack(1), -128, 480, Component.ALIGN_BOTTOM);
+				newInv[36] = new InventorySlot(in.getStack(4), -64, 480, Component.ALIGN_BOTTOM);
+				newInv[37] = new InventorySlot(in.getStack(7), 0, 480, Component.ALIGN_BOTTOM);
+				newInv[38] = new InventorySlot(in.getStack(2), -128, 552, Component.ALIGN_BOTTOM);
+				newInv[39] = new InventorySlot(in.getStack(5), -64, 552, Component.ALIGN_BOTTOM);
+				newInv[40] = new InventorySlot(in.getStack(8), 0, 552, Component.ALIGN_BOTTOM);
+				newInv[41] = new InventorySlot(in.getStack(9), 92, 480, Component.ALIGN_BOTTOM, true); // crafting result
 				
 				break;
 			default: return;
@@ -163,16 +164,16 @@ public class WorkbenchGUI extends GeneralInventory {
 		inv = new InventorySlot[32];
 		Inventory inventory = Cubyz.world.getLocalPlayer().getInventory();
 		for(int i = 0; i < 8; i++) {
-			inv[i] = new InventorySlot(inventory.getStack(i), i*64 - 256, 64);
+			inv[i] = new InventorySlot(inventory.getStack(i), i*64 - 256, 64, Component.ALIGN_BOTTOM);
 		}
 		for(int i = 0; i < 8; i++) {
-			inv[i + 8] = new InventorySlot(inventory.getStack(i + 8), i*64 - 256, 192);
+			inv[i + 8] = new InventorySlot(inventory.getStack(i + 8), i*64 - 256, 192, Component.ALIGN_BOTTOM);
 		}
 		for(int i = 0; i < 8; i++) {
-			inv[i + 16] = new InventorySlot(inventory.getStack(i + 16), i*64 - 256, 256);
+			inv[i + 16] = new InventorySlot(inventory.getStack(i + 16), i*64 - 256, 256, Component.ALIGN_BOTTOM);
 		}
 		for(int i = 0; i < 8; i++) {
-			inv[i + 24] = new InventorySlot(inventory.getStack(i + 24), i*64 - 256, 320);
+			inv[i + 24] = new InventorySlot(inventory.getStack(i + 24), i*64 - 256, 320, Component.ALIGN_BOTTOM);
 		}
 		updateMode(Mode.NORMAL);
 	}
@@ -230,11 +231,6 @@ public class WorkbenchGUI extends GeneralInventory {
 	@Override
 	public void render(long nvg, Window win) {
 		super.render(nvg, win);
-		normal.setPosition(win.getWidth()/2 - 360, win.getHeight() - 552);
-		axe.setPosition(win.getWidth()/2 - 360, win.getHeight() - 480);
-		pickaxe.setPosition(win.getWidth()/2 - 360, win.getHeight() - 408);
-		shovel.setPosition(win.getWidth()/2 - 360, win.getHeight() - 336);
-		sword.setPosition(win.getWidth()/2 - 360, win.getHeight() - 264);
 
 		normal.render(nvg, win);
 		axe.render(nvg, win);

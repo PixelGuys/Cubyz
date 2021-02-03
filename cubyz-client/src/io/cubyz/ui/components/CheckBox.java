@@ -51,7 +51,7 @@ public class CheckBox extends Component {
 	private boolean canRepress = true;
 
 	@Override
-	public void render(long nvg, Window src) {
+	public void render(long nvg, Window src, int x, int y) {
 		NGraphics.setColor(0, 0, 0);
 		NGraphics.drawRect(x, y, width, height);
 		if (Cubyz.mouse.isLeftButtonPressed() && isInside(Cubyz.mouse.getCurrentPos())) {
@@ -70,8 +70,7 @@ public class CheckBox extends Component {
 			NGraphics.fillRect(x + 2, y + 2, width - 5, height - 5);
 		}
 		if (label != null) {
-			label.setPosition(x + width + 5, y + 10);
-			label.render(nvg, src);
+			label.render(nvg, src, x + width + 5, y + 10);
 		}
 	}
 }

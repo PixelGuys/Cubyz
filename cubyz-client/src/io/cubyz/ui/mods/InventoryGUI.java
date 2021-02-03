@@ -9,6 +9,7 @@ import io.cubyz.items.Inventory;
 import io.cubyz.items.Item;
 import io.cubyz.items.ItemStack;
 import io.cubyz.items.Recipe;
+import io.cubyz.ui.Component;
 import io.cubyz.ui.GeneralInventory;
 import io.cubyz.ui.components.InventorySlot;
 import io.jungle.MouseInput;
@@ -75,22 +76,22 @@ public class InventoryGUI extends GeneralInventory {
 			inv = new InventorySlot[playerInventorySize + 5];
 			Inventory inventory = Cubyz.world.getLocalPlayer().getInventory();
 			for(int i = 0; i < 8; i++) {
-				inv[i] = new InventorySlot(inventory.getStack(i), i*64 - 256, 64);
+				inv[i] = new InventorySlot(inventory.getStack(i), i*64 - 256, 64, Component.ALIGN_BOTTOM);
 			}
 			for(int i = 0; i < 8; i++) {
-				inv[i + 8] = new InventorySlot(inventory.getStack(i + 8), i*64 - 256, 256);
+				inv[i + 8] = new InventorySlot(inventory.getStack(i + 8), i*64 - 256, 256, Component.ALIGN_BOTTOM);
 			}
 			for(int i = 0; i < 8; i++) {
-				inv[i + 16] = new InventorySlot(inventory.getStack(i + 16), i*64 - 256, 320);
+				inv[i + 16] = new InventorySlot(inventory.getStack(i + 16), i*64 - 256, 320, Component.ALIGN_BOTTOM);
 			}
 			for(int i = 0; i < 8; i++) {
-				inv[i + 24] = new InventorySlot(inventory.getStack(i + 24), i*64 - 256, 384);
+				inv[i + 24] = new InventorySlot(inventory.getStack(i + 24), i*64 - 256, 384, Component.ALIGN_BOTTOM);
 			}
-			inv[playerInventorySize] = new InventorySlot(new ItemStack(), 0, 544);
-			inv[playerInventorySize+1] = new InventorySlot(new ItemStack(), 64, 544);
-			inv[playerInventorySize+2] = new InventorySlot(new ItemStack(), 0, 480);
-			inv[playerInventorySize+3] = new InventorySlot(new ItemStack(), 64, 480);
-			inv[playerInventorySize+4] = new InventorySlot(new ItemStack(), 192, 512, true);
+			inv[playerInventorySize] = new InventorySlot(new ItemStack(), 0, 544, Component.ALIGN_BOTTOM);
+			inv[playerInventorySize+1] = new InventorySlot(new ItemStack(), 64, 544, Component.ALIGN_BOTTOM);
+			inv[playerInventorySize+2] = new InventorySlot(new ItemStack(), 0, 480, Component.ALIGN_BOTTOM);
+			inv[playerInventorySize+3] = new InventorySlot(new ItemStack(), 64, 480, Component.ALIGN_BOTTOM);
+			inv[playerInventorySize+4] = new InventorySlot(new ItemStack(), 192, 512, Component.ALIGN_BOTTOM, true);
 		}
 		width = 576;
 		height = 576;

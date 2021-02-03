@@ -8,6 +8,7 @@ import io.cubyz.client.Cubyz;
 import io.cubyz.translate.ContextualTextKey;
 import io.cubyz.translate.LanguageLoader;
 import io.cubyz.translate.TextKey;
+import io.cubyz.ui.Component;
 import io.cubyz.ui.MenuGUI;
 import io.cubyz.ui.components.Button;
 import io.cubyz.utils.DiscordIntegration;
@@ -50,7 +51,7 @@ public class SettingsGUI extends MenuGUI {
 		}
 		languages = languageFiles.toArray(new String[0]);
 		
-		done.setSize(250, 45);
+		done.setBounds(-125, 75, 250, 45, Component.ALIGN_BOTTOM);
 		done.setText(TextKey.createTextKey("gui.cubyz.settings.done"));
 		done.setFontSize(16f);
 		
@@ -58,23 +59,23 @@ public class SettingsGUI extends MenuGUI {
 			Cubyz.gameUI.back();
 		});
 		
-		graphics.setSize(250, 45);
+		graphics.setBounds(-125, 75, 250, 45, Component.ALIGN_TOP);
 		graphics.setText(TextKey.createTextKey("gui.cubyz.settings.graphics"));
 		graphics.setFontSize(16f);
 		
 		graphics.setOnAction(() -> {
 			Cubyz.gameUI.setMenu(new GraphicsGUI());
 		});
-		
-		bindings.setSize(250, 45);
+
+		bindings.setBounds(-125, 300, 250, 45, Component.ALIGN_TOP);
 		bindings.setText(TextKey.createTextKey("gui.cubyz.settings.keybindings"));
 		bindings.setFontSize(16f);
 		
 		bindings.setOnAction(() -> {
 			Cubyz.gameUI.setMenu(new KeybindingsGUI());
 		});
-		
-		language.setSize(250, 45);
+
+		language.setBounds(-125, 150, 250, 45, Component.ALIGN_TOP);
 		language.setText(langKey);
 		language.setFontSize(16f);
 		
@@ -90,8 +91,8 @@ public class SettingsGUI extends MenuGUI {
 			if (index >= languages.length) index = 0;
 			Settings.setLanguage(LanguageLoader.load(languages[index]));
 		});
-		
-		rpc.setSize(250, 45);
+
+		rpc.setBounds(-125, 225, 250, 45, Component.ALIGN_TOP);
 		rpc.setFontSize(16f);
 		
 		rpc.setOnAction(() -> {
@@ -106,12 +107,6 @@ public class SettingsGUI extends MenuGUI {
 
 	@Override
 	public void render(long nvg, Window win) {
-		done.setPosition(win.getWidth()/2 - 125, win.getHeight() - 75);
-		graphics.setPosition(win.getWidth()/2 - 125, 75);
-		language.setPosition(win.getWidth()/2 - 125, 150);
-		rpc.setPosition(win.getWidth()/2 - 125, 225);
-		bindings.setPosition(win.getWidth()/2 - 125, 300);
-
 		rpc.setText(DiscordIntegration.isEnabled() ? rpcKeyOn : rpcKeyOff);
 
 		done.render(nvg, win);

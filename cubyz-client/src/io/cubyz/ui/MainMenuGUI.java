@@ -20,22 +20,24 @@ public class MainMenuGUI extends MenuGUI {
 	
 	public MainMenuGUI() {
 		DiscordIntegration.setStatus("Main Menu");
-		spPlay.setSize(250, 45);
+		spPlay.setBounds(-125, 300, 250, 45, Component.ALIGN_TOP);
 		spPlay.setText(TextKey.createTextKey("gui.cubyz.mainmenu.singleplayer"));
 		spPlay.setFontSize(16f);
 		
-		mpPlay.setSize(250, 45);
+		mpPlay.setBounds(-125, 375, 250, 45, Component.ALIGN_TOP);
 		mpPlay.setText(TextKey.createTextKey("gui.cubyz.mainmenu.multiplayer"));
 		mpPlay.setFontSize(16f);
-		
-		settings.setSize(250, 45);
+
+		settings.setBounds(-125, 450, 250, 45, Component.ALIGN_TOP);
 		settings.setText(TextKey.createTextKey("gui.cubyz.mainmenu.settings"));
 		settings.setFontSize(16f);
-		
-		exit.setSize(100, 27);
+
+		exit.setBounds(120, 40, 100, 27, Component.ALIGN_BOTTOM_RIGHT);
 		exit.setText(TextKey.createTextKey("gui.cubyz.mainmenu.exit"));
+		
 		titleLabel.setText("Cubyz");
 		titleLabel.setFont(new Font("Title", 72.f));
+		titleLabel.setPosition(-80, 50, Component.ALIGN_TOP);
 		
 		spPlay.setOnAction(() -> {
 			Cubyz.gameUI.setMenu(new SaveSelectorGUI());
@@ -73,12 +75,6 @@ public class MainMenuGUI extends MenuGUI {
 	
 	@Override
 	public void render(long nvg, Window win) {
-		spPlay.setPosition(win.getWidth() / 2 - 125, 300);
-		mpPlay.setPosition(win.getWidth() / 2 - 125, 375);
-		settings.setPosition(win.getWidth() / 2 - 125, 450);
-		exit.setPosition(win.getWidth() - 120, win.getHeight() - 40);
-		titleLabel.setPosition(win.getWidth() / 2 - 80, 50);
-		
 		spPlay.render(nvg, win);
 		mpPlay.render(nvg, win);
 		settings.render(nvg, win);

@@ -3,6 +3,7 @@ package io.cubyz.ui.settings;
 import io.cubyz.ClientSettings;
 import io.cubyz.client.Cubyz;
 import io.cubyz.translate.TextKey;
+import io.cubyz.ui.Component;
 import io.cubyz.ui.MenuGUI;
 import io.cubyz.ui.components.Button;
 import io.cubyz.ui.components.CheckBox;
@@ -27,7 +28,7 @@ public class GraphicsGUI extends MenuGUI {
 	
 	@Override
 	public void init(long nvg) {
-		done.setSize(250, 45);
+		done.setBounds(-125, 75, 250, 45, Component.ALIGN_BOTTOM);
 		done.setText(TextKey.createTextKey("gui.cubyz.settings.done"));
 		done.setFontSize(16f);
 		
@@ -37,30 +38,32 @@ public class GraphicsGUI extends MenuGUI {
 		
 		effectiveRenderDistance.setFontSize(18);
 		recalculateERD();
-		
-		renderDistance.setSize(250, 45);
+
+		renderDistance.setBounds(-125, 75, 250, 45, Component.ALIGN_TOP);
 		renderDistance.setFontSize(18);
 		renderDistance.setText("Render Distance: ");
 		renderDistance.setOnAction(() -> {
 			ClientSettings.RENDER_DISTANCE = renderDistance.getValue();
 			recalculateERD();
 		});
-		
-		maxResolution.setSize(250, 45);
+
+		maxResolution.setBounds(-125, 150, 250, 45, Component.ALIGN_TOP);
 		maxResolution.setFontSize(18);
 		maxResolution.setText("Minimal Resolution of chunks: ");
 		maxResolution.setOnAction(() -> {
 			ClientSettings.MAX_RESOLUTION = maxResolution.getValue();
 			recalculateERD();
 		});
-		
-		farDistanceFactor.setSize(250, 45);
+
+		farDistanceFactor.setBounds(-125, 225, 250, 45, Component.ALIGN_TOP);
 		farDistanceFactor.setFontSize(18);
 		farDistanceFactor.setText("Scale of effective render distance: ");
 		farDistanceFactor.setOnAction(() -> {
 			ClientSettings.FAR_DISTANCE_FACTOR = (farDistanceFactor.getValue() + 1)/2.0f;
 			recalculateERD();
 		});
+		
+		effectiveRenderDistance.setPosition(-125, 300, Component.ALIGN_TOP);
 
 		if (ClientSettings.FOG_COEFFICIENT == 0f) {
 			fog.setText(TextKey.createTextKey("gui.cubyz.settings.fog.off"));
@@ -86,9 +89,10 @@ public class GraphicsGUI extends MenuGUI {
 				fog.setText(TextKey.createTextKey("gui.cubyz.settings.fog.off"));
 			}
 		});
-		fog.setSize(250, 45);
+		fog.setBounds(-125, 375, 250, 45, Component.ALIGN_TOP);
 		fog.setFontSize(16f);
-		
+
+		easyLighting.setPosition(-125, 450, Component.ALIGN_TOP);
 		easyLighting.setLabel(TextKey.createTextKey("gui.cubyz.settings.easylighting"));
 		easyLighting.setSelected(ClientSettings.easyLighting);
 		easyLighting.setOnAction(() -> {
@@ -97,6 +101,7 @@ public class GraphicsGUI extends MenuGUI {
 		easyLighting.getLabel().setFontSize(16f);
 		
 		Window win = Cubyz.ctx.getWindow();
+		vsync.setPosition(-125, 525, Component.ALIGN_TOP);
 		vsync.setLabel(TextKey.createTextKey("gui.cubyz.settings.vsync"));
 		vsync.setSelected(win.isVSyncEnabled());
 		vsync.setOnAction(() -> {
@@ -106,15 +111,6 @@ public class GraphicsGUI extends MenuGUI {
 
 	@Override
 	public void render(long nvg, Window win) {
-		renderDistance.setPosition(win.getWidth()/2 - 125, 75);
-		maxResolution.setPosition(win.getWidth()/2 - 125, 150);
-		farDistanceFactor.setPosition(win.getWidth()/2 - 125, 225);
-		effectiveRenderDistance.setPosition(win.getWidth()/2 - 125, 300);
-		done.setPosition(win.getWidth()/2 - 125, win.getHeight() - 75);
-		fog.setPosition(win.getWidth()/2 - 125, 375);
-		easyLighting.setPosition(win.getWidth()/2 - 125, 450);
-		vsync.setPosition(win.getWidth()/2 - 125, 525);
-
 		renderDistance.render(nvg, win);
 		maxResolution.render(nvg, win);
 		farDistanceFactor.render(nvg, win);

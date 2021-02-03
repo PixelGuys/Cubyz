@@ -36,21 +36,19 @@ public class InventorySlot extends Component {
 	
 	private Label inv;
 	
-	public InventorySlot(ItemStack ref, int x, int y, boolean takeOnly) {
+	public InventorySlot(ItemStack ref, int x, int y, byte align, boolean takeOnly) {
 		reference = ref;
 		inv = new Label();
 		inv.setFont(new Font("Default", 16.f));
-		this.x = x;
-		this.y = y;
-		width = height = SLOT_SIZE;
+		setBounds(x, y, SLOT_SIZE, SLOT_SIZE, align);
 		this.takeOnly = takeOnly;
 	}
-	public InventorySlot(ItemStack ref, int x, int y) {
-		this(ref, x, y, false);
+	public InventorySlot(ItemStack ref, int x, int y, byte align) {
+		this(ref, x, y, align, false);
 	}
 	
 	public boolean isInside(Vector2d vec, int width, int height) {
-		Rectangle hitbox = new Rectangle(width+this.x, height-this.y, this.width, this.height);
+		Rectangle hitbox = new Rectangle(width+this.getX(), height-this.getY(), this.width, this.height);
 		return hitbox.contains(vec.x, vec.y);
 	}
 	
@@ -143,8 +141,8 @@ public class InventorySlot extends Component {
 	}
 
 	@Override
-	public void render(long nvg, Window win) {
-		NGraphics.drawImage(SLOT_IMAGE, win.getWidth()/2 + x, win.getHeight() - y, width, height);
+	public void render(long nvg, Window win, int x, int y) {
+		NGraphics.drawImage(SLOT_IMAGE, x, y, width, height);
 		Item item = reference.getItem();
 		if(item != null) {
 			if(item.getImage() == -1) {
@@ -160,17 +158,16 @@ public class InventorySlot extends Component {
 					item.setImage(NGraphics.loadImage(item.getTexture()));
 				}
 			}
-			NGraphics.drawImage(item.getImage(), win.getWidth()/2 + x + 4, win.getHeight() - y + 4, width - 8, height - 8);
+			NGraphics.drawImage(item.getImage(), x + 4, y + 4, width - 8, height - 8);
 			if(Tool.class.isInstance(item)) {
 				Tool tool = (Tool)item;
 				float durab = tool.durability();
 				NGraphics.setColor((int)((1.0f - durab)*255.0f), (int)(durab*255.0f), 0);
-				NGraphics.fillRect(win.getWidth()/2 + x + 8, win.getHeight() - y + 56, (int)(48.0f*durab), 4);
+				NGraphics.fillRect(x + 8, y + 56, (int)(48.0f*durab), 4);
 				NGraphics.setColor(0, 0, 0);
 			}
 			inv.setText("" + reference.getAmount());
-			inv.setPosition(win.getWidth()/2 + x + 50, win.getHeight() - y + 48);
-			inv.render(nvg, win);
+			inv.render(nvg, win, x + 50, y + 48);
 		}
 	}
 

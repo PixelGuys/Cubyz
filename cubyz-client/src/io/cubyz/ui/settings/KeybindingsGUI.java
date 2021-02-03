@@ -6,6 +6,7 @@ import io.cubyz.Keybindings;
 import io.cubyz.Utilities;
 import io.cubyz.client.Cubyz;
 import io.cubyz.translate.TextKey;
+import io.cubyz.ui.Component;
 import io.cubyz.ui.MenuGUI;
 import io.cubyz.ui.components.Button;
 import io.cubyz.ui.components.Label;
@@ -92,7 +93,7 @@ public class KeybindingsGUI extends MenuGUI {
 		
 		done = new Button();
 		done.setText(TextKey.createTextKey("gui.cubyz.settings.done"));
-		done.setSize(250, 45);
+		done.setBounds(270, 65, 250, 45, Component.ALIGN_BOTTOM_RIGHT);
 		done.setOnAction(() -> {
 			Cubyz.gameUI.back();
 		});
@@ -112,15 +113,14 @@ public class KeybindingsGUI extends MenuGUI {
 			label.setFont(new Font("Default", 24f));
 			label.setText(Utilities.capitalize(name));
 			
-			button.setPosition(120, y);
-			button.setSize(250, 25);
+			button.setBounds(120, y, 250, 25, Component.ALIGN_TOP_LEFT);
 			button.setOnAction(() -> {
 				if (listen == null) {
 					listen = name;
 					button.setText("Click or press any key");
 				}
 			});
-			label.setPosition(20, y);
+			label.setPosition(20, y, Component.ALIGN_TOP_LEFT);
 			container.add(label);
 			container.add(button);
 			
@@ -152,8 +152,7 @@ public class KeybindingsGUI extends MenuGUI {
 			}
 		}
 		
-		container.setSize(win.getWidth(), win.getHeight() - 70);
-		done.setPosition(win.getWidth() - 270, win.getHeight() - 65);
+		container.setBounds(0, 0, win.getWidth(), win.getHeight() - 70, Component.ALIGN_TOP_LEFT);
 		
 		container.render(nvg, win);
 		done.render(nvg, win);

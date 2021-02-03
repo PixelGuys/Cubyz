@@ -31,7 +31,7 @@ public class SaveCreationGUI extends MenuGUI {
 		create = new Button();
 		cancel = new Button();
 		
-		name.setSize(200, 30);
+		name.setBounds(-100, 100, 200, 30, Component.ALIGN_TOP);
 		name.setFont(new Font("Default", 20f));
 		
 		int num = 1;
@@ -39,8 +39,8 @@ public class SaveCreationGUI extends MenuGUI {
 			num++;
 		}
 		name.setText("Save " + num);
-		
-		create.setSize(200, 50);
+
+		create.setBounds(10, 60, 200, 50, Component.ALIGN_BOTTOM_LEFT);
 		create.setText(TextKey.createTextKey("gui.cubyz.saves.create"));
 		create.setOnAction(() -> {
 			LocalWorld world = new LocalWorld(name.getText(), VisibleChunk.class);
@@ -53,8 +53,8 @@ public class SaveCreationGUI extends MenuGUI {
 			Cubyz.gameUI.setMenu(null, false); // hide from UISystem.back()
 			Cubyz.loadWorld(world.getCurrentTorus());
 		});
-		
-		cancel.setSize(100, 50);
+
+		cancel.setBounds(110, 60, 100, 50, Component.ALIGN_BOTTOM_LEFT);
 		cancel.setText(TextKey.createTextKey("gui.cubyz.general.cancel"));
 		cancel.setOnAction(() -> {
 			Cubyz.gameUI.back();
@@ -63,10 +63,6 @@ public class SaveCreationGUI extends MenuGUI {
 
 	@Override
 	public void render(long nvg, Window win) {
-		create.setPosition(10, win.getHeight() - 60);
-		name.setPosition(win.getWidth() / 2 - 100, 100);
-		cancel.setPosition(win.getWidth() - 110, win.getHeight() - 60);
-		
 		name.render(nvg, win);
 		create.render(nvg, win);
 		cancel.render(nvg, win);
