@@ -2,6 +2,7 @@ package io.cubyz.save;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -155,8 +156,9 @@ public class RegionIO {
 		File file = new File(dir, "itemEnt"+chunk.getWorldX()+" "+chunk.getWorldZ());
 		if(!file.exists()) return new ItemEntityManager(surface, chunk, 1);
 		try {
-			BufferedInputStream stream = new BufferedInputStream(new InflaterInputStream(new FileInputStream(file)));
-			byte[] data = stream.readAllBytes();
+			byte[] data = new byte[(int) file.length()];
+			DataInputStream stream = new DataInputStream(new InflaterInputStream(new FileInputStream(file)));
+			stream.readFully(data);
 			stream.close();
 			return new ItemEntityManager(surface, chunk, data, tio.itemPalette);
 		} catch (IOException e) {
