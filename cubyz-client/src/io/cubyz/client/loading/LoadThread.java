@@ -1,13 +1,13 @@
 package io.cubyz.client.loading;
 
 import java.io.File;
-import java.net.MalformedURLException;
+import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
-import java.util.Set;
-
-import org.reflections.Reflections;
+import java.util.Enumeration;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 
 import io.cubyz.ClientOnly;
 import io.cubyz.ClientSettings;
@@ -56,7 +56,7 @@ public class LoadThread extends Thread {
 		ArrayList<File> modSearchPath = new ArrayList<>();
 		modSearchPath.add(new File("mods"));
 		modSearchPath.add(new File("mods/" + Constants.GAME_VERSION));
-		ArrayList<URL> modUrl = new ArrayList<>();
+		ArrayList<String> modPaths = new ArrayList<>();
 		
 		for (File sp : modSearchPath) {
 			if (!sp.exists()) {
@@ -64,21 +64,19 @@ public class LoadThread extends Thread {
 			}
 			for (File mod : sp.listFiles()) {
 				if (mod.isFile()) {
-					try {
-						modUrl.add(mod.toURI().toURL());
-						System.out.println("- Add " + mod.toURI().toURL());
-					} catch (MalformedURLException e) {
-						e.printStackTrace();
-					}
+					modPaths.add(mod.getAbsolutePath());
+					System.out.println("- Add " + mod.getName());
 				}
 			}
 		}
 		
-		URLClassLoader loader = new URLClassLoader(modUrl.toArray(new URL[modUrl.size()]), LoadThread.class.getClassLoader());
 		logger.info("Seeking mods..");
 		long start = System.currentTimeMillis();
-		Reflections reflections = new Reflections("", loader); // load all mods
-		Set<Class<?>> allClasses = reflections.getTypesAnnotatedWith(Mod.class);
+		// Load all mods:
+		ArrayList<Class<?>> allClasses = new ArrayList<>();
+		for(String path : modPaths) {
+			loadModClasses(path, allClasses);
+		}
 		long end = System.currentTimeMillis();
 		logger.info("Took " + (end - start) + "ms for reflection");
 		if (!allClasses.contains(BaseMod.class)) {
@@ -199,6 +197,32 @@ public class LoadThread extends Thread {
 		}
 		
 		System.gc();
+	}
+	
+	public static void loadModClasses(String pathToJar, ArrayList<Class<?>> modClasses) {
+		try {
+			JarFile jarFile = new JarFile(pathToJar);
+			Enumeration<JarEntry> e = jarFile.entries();
+	
+			URL[] urls = { new URL("jar:file:" + pathToJar+"!/") };
+			URLClassLoader cl = URLClassLoader.newInstance(urls);
+	
+			while (e.hasMoreElements()) {
+			    JarEntry je = e.nextElement();
+			    if(je.isDirectory() || !je.getName().endsWith(".class") || je.getName().contains("module-info")){
+			        continue;
+			    }
+			    // -6 because of .class
+			    String className = je.getName().substring(0,je.getName().length()-6);
+			    className = className.replace('/', '.');
+			    Class<?> c = cl.loadClass(className);
+			    if(c.isAnnotationPresent(Mod.class)) modClasses.add(c);
+	
+			}
+			jarFile.close();
+		} catch(IOException | ClassNotFoundException e) {
+			e.printStackTrace();
+		}
 	}
 	
 }

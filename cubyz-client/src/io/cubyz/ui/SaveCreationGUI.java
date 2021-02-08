@@ -54,7 +54,7 @@ public class SaveCreationGUI extends MenuGUI {
 			Cubyz.loadWorld(world.getCurrentTorus());
 		});
 
-		cancel.setBounds(110, 60, 100, 50, Component.ALIGN_BOTTOM_LEFT);
+		cancel.setBounds(110, 60, 100, 50, Component.ALIGN_BOTTOM_RIGHT);
 		cancel.setText(TextKey.createTextKey("gui.cubyz.general.cancel"));
 		cancel.setOnAction(() -> {
 			Cubyz.gameUI.back();
