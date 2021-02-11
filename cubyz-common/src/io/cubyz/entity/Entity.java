@@ -381,7 +381,7 @@ public class Entity {
 		NDTContainer ndt = new NDTContainer();
 		ndt.setFloat("x", vec.x);
 		ndt.setFloat("y", vec.y);
-		ndt.setFloat("z", vec.y);
+		ndt.setFloat("z", vec.z);
 		return ndt;
 	}
 	
