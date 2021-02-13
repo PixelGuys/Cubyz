@@ -22,6 +22,10 @@ public class TPCommand extends CommandBase {
 			source.feedback("'tp' must be executed by a player");
 			return;
 		}
+		if(args.length < 3) {
+			source.feedback("Usage: tp <x> <y> <z>");
+			return;
+		}
 		Player player = source.getWorld().getLocalPlayer();
 		player.setPosition(new Vector3f(Float.parseFloat(args[1]), Float.parseFloat(args[2]), Float.parseFloat(args[3])));
 	}
