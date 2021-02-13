@@ -38,7 +38,7 @@ public class SimpleTreeModel extends StructureModel {
 			int height = height0 + rand.nextInt(deltaHeight);
 			switch(type) {
 				case PYRAMID: {
-					if(h+height+1 >= World.WORLD_HEIGHT) // the max array index is 255 but world height is 256 (for array **length**)
+					if(h + (3*height >> 1) + 1 >= World.WORLD_HEIGHT) // the max array index is 255 but world height is 256 (for array **length**)
 						return;
 					
 					if(chunk.liesInChunk(x, z)) {

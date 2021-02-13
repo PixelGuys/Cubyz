@@ -41,6 +41,7 @@ public class Noise {
 			}
 		}
 	}
+	
 	public static void generateInitializedFractalTerrain(int offsetX, int offsetY, int scale, int startingScale, long seed, int worldSizeX, int worldSizeZ, float[][] bigMap, float lowerLimit, float upperLimit) {
 		// Increase the "grid" of points with already known heights in each round by a factor of 2×2, like so(# marks the gridpoints of the first grid, * the points of the second grid and + the points of the third grid(and so on…)):
 		/*
