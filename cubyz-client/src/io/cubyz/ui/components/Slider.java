@@ -1,10 +1,10 @@
 package io.cubyz.ui.components;
 
-import io.cubyz.client.Cubyz;
+import io.cubyz.client.GameLauncher;
+import io.cubyz.input.MouseInput;
+import io.cubyz.rendering.Window;
 import io.cubyz.ui.Component;
 import io.cubyz.ui.NGraphics;
-import io.jungle.MouseInput;
-import io.jungle.Window;
 
 /**
  * A slider.
@@ -71,7 +71,7 @@ public class Slider extends Component {
 
 	@Override
 	public void render(long nvg, Window src, int x, int y) {
-		MouseInput mouse = Cubyz.mouse;
+		MouseInput mouse = GameLauncher.input.mouse;
 		if (mouse.isLeftButtonPressed() && isInside(mouse.getCurrentPos())) {
 			double dx = mouse.getCurrentPos().x - x;
 			dx -= xOffset;

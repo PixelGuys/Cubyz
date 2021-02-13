@@ -8,6 +8,7 @@ import club.minnced.discord.rpc.DiscordRPC;
 import club.minnced.discord.rpc.DiscordRichPresence;
 import club.minnced.discord.rpc.DiscordUser;
 import io.cubyz.client.Cubyz;
+import io.cubyz.client.GameLauncher;
 import io.cubyz.ui.ToastManager;
 import io.cubyz.ui.ToastManager.Toast;
 
@@ -47,12 +48,12 @@ public class DiscordIntegration {
 			String serverIP = secret.split(":")[0];
 			int serverPort = Integer.parseInt(secret.split(":")[1]);
 			System.out.println("Attempting to join server " + serverIP + " at port " + serverPort);
-			Cubyz.requestJoin(serverIP, serverPort);
+			GameLauncher.logic.requestJoin(serverIP, serverPort);
 		};
 		
 		handlers.joinRequest = (user) -> {
 			ToastManager.queuedToasts.push(new Toast("Discord Integration", "Join request from " + user.username));
-			if (Cubyz.serverOnline < Cubyz.serverCapacity) {
+			if (GameLauncher.logic.serverOnline < GameLauncher.logic.serverCapacity) {
 				lib.Discord_Respond(user.userId, DiscordRPC.DISCORD_REPLY_YES);
 			} else {
 				lib.Discord_Respond(user.userId, DiscordRPC.DISCORD_REPLY_NO);
@@ -79,7 +80,7 @@ public class DiscordIntegration {
 		
 		
 		worker = new Thread(() -> {
-            while (!Thread.currentThread().isInterrupted()) {
+            while(!Thread.currentThread().isInterrupted()) {
                 lib.Discord_RunCallbacks();
                 try {
                     Thread.sleep(2000);
@@ -100,12 +101,11 @@ public class DiscordIntegration {
 	}
 	
 	public static void updateState() {
-		if (Cubyz.world != null) {
-			if (Cubyz.isIntegratedServer) {
+		if(Cubyz.world != null) {
+			if(GameLauncher.logic.isIntegratedServer) {
 				presence.details = "Singleplayer";
-			}
-			else {
-				if (Cubyz.isOnlineServerOpened) {
+			} else {
+				if(GameLauncher.logic.isOnlineServerOpened) {
 					presence.details = "Join me ;)";
 					presence.partyMax = 50; // temporary
 				} else {
@@ -120,7 +120,7 @@ public class DiscordIntegration {
 	}
 	
 	public static void setStatus(String status) {
-		if (isEnabled()) {
+		if(isEnabled()) {
 			presence.state = status;
 			updateState();
 		}
@@ -128,7 +128,7 @@ public class DiscordIntegration {
 	
 	public static void closeRPC() {
 		DiscordRPC lib = DiscordRPC.INSTANCE;
-		if (worker != null)
+		if(worker != null)
 			worker.interrupt();
 		worker = null;
 		lib.Discord_Shutdown();

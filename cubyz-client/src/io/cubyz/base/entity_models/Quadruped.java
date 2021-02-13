@@ -14,11 +14,11 @@ import io.cubyz.entity.EntityModel;
 import io.cubyz.entity.EntityType;
 import io.cubyz.entity.Player;
 import io.cubyz.models.Model;
-import io.jungle.Mesh;
-import io.jungle.Texture;
-import io.jungle.renderers.Transformation;
-import io.jungle.util.Material;
-import io.jungle.util.ShaderProgram;
+import io.cubyz.rendering.Material;
+import io.cubyz.rendering.Mesh;
+import io.cubyz.rendering.ShaderProgram;
+import io.cubyz.rendering.Texture;
+import io.cubyz.rendering.Transformation;
 
 /**
  * An entity model for all possible quadruped mobs that handles model creation and movement animation.<br>

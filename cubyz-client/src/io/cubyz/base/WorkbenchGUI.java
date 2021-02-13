@@ -3,6 +3,7 @@ package io.cubyz.base;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Resource;
 import io.cubyz.client.Cubyz;
+import io.cubyz.input.MouseInput;
 import io.cubyz.items.Inventory;
 import io.cubyz.items.Item;
 import io.cubyz.items.Recipe;
@@ -10,13 +11,12 @@ import io.cubyz.items.tools.Axe;
 import io.cubyz.items.tools.Pickaxe;
 import io.cubyz.items.tools.Shovel;
 import io.cubyz.items.tools.Sword;
+import io.cubyz.rendering.Window;
 import io.cubyz.translate.TextKey;
 import io.cubyz.ui.Component;
 import io.cubyz.ui.GeneralInventory;
 import io.cubyz.ui.components.Button;
 import io.cubyz.ui.components.InventorySlot;
-import io.jungle.MouseInput;
-import io.jungle.Window;
 
 /**
  * The GUI that appears when opening the workbench.

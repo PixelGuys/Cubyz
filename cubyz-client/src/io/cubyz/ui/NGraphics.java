@@ -13,10 +13,10 @@ import org.lwjgl.nanovg.NanoVG;
 import org.lwjgl.nanovg.NanoVGGL3;
 
 import io.cubyz.CubyzLogger;
+import io.cubyz.rendering.Font;
+import io.cubyz.rendering.Hud;
+import io.cubyz.rendering.Texture;
 import io.cubyz.utils.TextureConverter;
-import io.jungle.Texture;
-import io.jungle.hud.Font;
-import io.jungle.hud.Hud;
 
 /**
  * Graphics system wrapping NanoVG.

@@ -1,10 +1,10 @@
 package io.cubyz.ui.components;
 
-import io.cubyz.client.Cubyz;
+import io.cubyz.client.GameLauncher;
+import io.cubyz.rendering.Window;
 import io.cubyz.translate.TextKey;
 import io.cubyz.ui.Component;
 import io.cubyz.ui.NGraphics;
-import io.jungle.Window;
 
 /**
  * A simple checkbox which fires an event on change.
@@ -54,7 +54,7 @@ public class CheckBox extends Component {
 	public void render(long nvg, Window src, int x, int y) {
 		NGraphics.setColor(0, 0, 0);
 		NGraphics.drawRect(x, y, width, height);
-		if (Cubyz.mouse.isLeftButtonPressed() && isInside(Cubyz.mouse.getCurrentPos())) {
+		if (GameLauncher.input.mouse.isLeftButtonPressed() && isInside(GameLauncher.input.mouse.getCurrentPos())) {
 			if (canRepress) {
 				selected = !selected;
 				canRepress = false;

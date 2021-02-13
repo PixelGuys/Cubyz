@@ -2,6 +2,7 @@ package io.cubyz.ui.settings;
 
 import io.cubyz.ClientSettings;
 import io.cubyz.client.Cubyz;
+import io.cubyz.rendering.Window;
 import io.cubyz.translate.TextKey;
 import io.cubyz.ui.Component;
 import io.cubyz.ui.MenuGUI;
@@ -9,7 +10,6 @@ import io.cubyz.ui.components.Button;
 import io.cubyz.ui.components.CheckBox;
 import io.cubyz.ui.components.Label;
 import io.cubyz.ui.components.Slider;
-import io.jungle.Window;
 
 public class GraphicsGUI extends MenuGUI {
 	private Button done = new Button();
@@ -100,12 +100,11 @@ public class GraphicsGUI extends MenuGUI {
 		});
 		easyLighting.getLabel().setFontSize(16f);
 		
-		Window win = Cubyz.ctx.getWindow();
 		vsync.setPosition(-125, 525, Component.ALIGN_TOP);
 		vsync.setLabel(TextKey.createTextKey("gui.cubyz.settings.vsync"));
-		vsync.setSelected(win.isVSyncEnabled());
+		vsync.setSelected(Cubyz.window.isVSyncEnabled());
 		vsync.setOnAction(() -> {
-			win.setVSyncEnabled(vsync.isSelected());
+			Cubyz.window.setVSyncEnabled(vsync.isSelected());
 		});
 	}
 

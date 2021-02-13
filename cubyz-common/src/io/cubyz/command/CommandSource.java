@@ -1,6 +1,6 @@
 package io.cubyz.command;
 
-import io.cubyz.world.World;
+import io.cubyz.world.Surface;
 
 /**
  * Base interface for all entities that can execute commands.
@@ -10,6 +10,6 @@ import io.cubyz.world.World;
 public interface CommandSource {
 	
 	public void feedback(String feedback);
-	public World getWorld();
+	public Surface getSurface();
 	
 }

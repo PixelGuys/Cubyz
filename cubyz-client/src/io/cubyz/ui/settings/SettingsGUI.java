@@ -5,6 +5,7 @@ import java.util.ArrayList;
 
 import io.cubyz.Settings;
 import io.cubyz.client.Cubyz;
+import io.cubyz.rendering.Window;
 import io.cubyz.translate.ContextualTextKey;
 import io.cubyz.translate.LanguageLoader;
 import io.cubyz.translate.TextKey;
@@ -13,7 +14,6 @@ import io.cubyz.ui.MenuGUI;
 import io.cubyz.ui.components.Button;
 import io.cubyz.utils.DiscordIntegration;
 import io.cubyz.utils.ResourceManager;
-import io.jungle.Window;
 
 public class SettingsGUI extends MenuGUI {
 

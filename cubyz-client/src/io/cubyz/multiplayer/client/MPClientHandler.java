@@ -9,11 +9,11 @@ import com.google.gson.JsonObject;
 
 import io.cubyz.Constants;
 import io.cubyz.CubyzLogger;
-import io.cubyz.client.Cubyz;
+import io.cubyz.client.GameLogic;
+import io.cubyz.client.GameLauncher;
 import io.cubyz.multiplayer.BufUtils;
 import io.cubyz.multiplayer.Packet;
 import io.cubyz.world.NormalChunk;
-import io.cubyz.world.RemoteWorld;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
@@ -71,8 +71,8 @@ public class MPClientHandler extends ChannelInboundHandlerAdapter {
 	public void connect() {
 		ByteBuf buf = ctx.alloc().buffer(1);
 		buf.writeByte(Packet.PACKET_LISTEN);
-		buf.writeCharSequence(Cubyz.profile.getUUID().toString(), Constants.CHARSET);
-		String username = Cubyz.profile.getUsername();
+		buf.writeCharSequence(GameLauncher.logic.profile.getUUID().toString(), Constants.CHARSET);
+		String username = GameLauncher.logic.profile.getUsername();
 		buf.writeShort(username.length());
 		buf.writeCharSequence(username, Constants.CHARSET);
 		ctx.writeAndFlush(buf);
@@ -116,7 +116,7 @@ public class MPClientHandler extends ChannelInboundHandlerAdapter {
 			if (responseType == Packet.PACKET_PINGPONG) {
 				ByteBuf b = ctx.alloc().buffer(37);
 				b.writeByte(Packet.PACKET_PINGPONG);
-				b.writeCharSequence(Cubyz.profile.getUUID().toString(), Constants.CHARSET);
+				b.writeCharSequence(GameLauncher.logic.profile.getUUID().toString(), Constants.CHARSET);
 				ctx.write(b);
 			}
 			

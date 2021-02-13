@@ -1,10 +1,10 @@
 package io.cubyz.ui.components;
 
+import io.cubyz.rendering.Font;
+import io.cubyz.rendering.Window;
 import io.cubyz.translate.TextKey;
 import io.cubyz.ui.Component;
 import io.cubyz.ui.NGraphics;
-import io.jungle.Window;
-import io.jungle.hud.Font;
 
 /**
  * Just a simple component for text display only.

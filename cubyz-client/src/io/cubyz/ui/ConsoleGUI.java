@@ -3,10 +3,11 @@ package io.cubyz.ui;
 import org.lwjgl.glfw.GLFW;
 
 import io.cubyz.client.Cubyz;
+import io.cubyz.client.GameLauncher;
 import io.cubyz.command.CommandExecutor;
+import io.cubyz.input.Keyboard;
+import io.cubyz.rendering.Window;
 import io.cubyz.ui.components.TextInput;
-import io.jungle.Keyboard;
-import io.jungle.Window;
 
 // (the console GUI is different from chat GUI)
 
@@ -22,7 +23,7 @@ public class ConsoleGUI extends MenuGUI {
 	public void init(long nvg) {
 		input = new TextInput();
 		input.setBounds(0, 0, 200, 20, Component.ALIGN_TOP_LEFT);
-		Cubyz.mouse.setGrabbed(false);
+		GameLauncher.input.mouse.setGrabbed(false);
 	}
 
 	@Override

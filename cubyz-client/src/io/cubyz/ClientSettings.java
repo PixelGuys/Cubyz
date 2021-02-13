@@ -10,6 +10,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 
 import io.cubyz.client.Cubyz;
+import io.cubyz.input.Keybindings;
 import io.cubyz.translate.LanguageLoader;
 import io.cubyz.utils.DiscordIntegration;
 
@@ -57,8 +58,8 @@ public class ClientSettings {
 		settings.addProperty("discordIntegration", DiscordIntegration.isEnabled());
 		settings.addProperty("fogCoefficient", ClientSettings.FOG_COEFFICIENT);
 		settings.addProperty("useMipmaps", ClientSettings.MIPMAPPING);
-		settings.addProperty("vsync", Cubyz.ctx.getWindow().isVSyncEnabled());
-		settings.addProperty("antiAliasSamples", Cubyz.ctx.getWindow().getAntialiasSamples());
+		settings.addProperty("vsync", Cubyz.window.isVSyncEnabled());
+		settings.addProperty("antiAliasSamples", Cubyz.window.getAntialiasSamples());
 		settings.addProperty("easyLighting", ClientSettings.easyLighting);
 		settings.addProperty("renderDistance", ClientSettings.RENDER_DISTANCE);
 		settings.addProperty("maxResolution", ClientSettings.MAX_RESOLUTION);
@@ -114,9 +115,9 @@ public class ClientSettings {
 			ClientSettings.MIPMAPPING = settings.get("useMipmaps").getAsBoolean();
 		}
 		if (settings.has("vsync")) {
-			Cubyz.ctx.getWindow().setVSyncEnabled(settings.get("vsync").getAsBoolean());
+			Cubyz.window.setVSyncEnabled(settings.get("vsync").getAsBoolean());
 		} else { // V-Sync enabled by default
-			Cubyz.ctx.getWindow().setVSyncEnabled(true);
+			Cubyz.window.setVSyncEnabled(true);
 		}
 
 		if (settings.has("easyLighting")) {

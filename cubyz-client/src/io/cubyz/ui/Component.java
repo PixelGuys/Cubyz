@@ -4,8 +4,8 @@ import java.awt.Rectangle;
 
 import org.joml.Vector2d;
 
-import io.jungle.MouseInput;
-import io.jungle.Window;
+import io.cubyz.input.MouseInput;
+import io.cubyz.rendering.Window;
 
 /**
  * A type for basic components of the GUI system.

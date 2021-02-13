@@ -4,13 +4,14 @@ import org.joml.Vector3f;
 
 import io.cubyz.api.Resource;
 import io.cubyz.client.Cubyz;
+import io.cubyz.client.GameLauncher;
+import io.cubyz.input.MouseInput;
 import io.cubyz.items.Item;
 import io.cubyz.items.ItemStack;
+import io.cubyz.rendering.Font;
+import io.cubyz.rendering.Window;
 import io.cubyz.ui.components.InventorySlot;
 import io.cubyz.ui.components.Label;
-import io.jungle.MouseInput;
-import io.jungle.Window;
-import io.jungle.hud.Font;
 
 /**
  * A class containing common functionality from all Inventory GUIs(tooltips, inventory slot movement, inventory slot drawing).
@@ -42,7 +43,7 @@ public abstract class GeneralInventory extends MenuGUI {
 
 	@Override
 	public void init(long nvg) {
-		Cubyz.mouse.setGrabbed(false);
+		GameLauncher.input.mouse.setGrabbed(false);
 		num = new Label();
 		num.setFont(new Font("Default", 16.f));
 		positionSlots();
@@ -57,7 +58,7 @@ public abstract class GeneralInventory extends MenuGUI {
 			inv[i].render(nvg, win);
 		}
 		// Check if the mouse takes up a new ItemStack/sets one down.
-		mouseAction(Cubyz.mouse, win);
+		mouseAction(GameLauncher.input.mouse, win);
 		
 		// Draw the stack carried by the mouse:
 		Item item = carried.getItem();
@@ -65,8 +66,8 @@ public abstract class GeneralInventory extends MenuGUI {
 			if(item.getImage() == -1) {
 				item.setImage(NGraphics.loadImage(item.getTexture()));
 			}
-			int x = (int)Cubyz.mouse.getCurrentPos().x;
-			int y = (int)Cubyz.mouse.getCurrentPos().y;
+			int x = (int)GameLauncher.input.mouse.getCurrentPos().x;
+			int y = (int)GameLauncher.input.mouse.getCurrentPos().y;
 			NGraphics.drawImage(item.getImage(), x - 32, y - 32, 64, 64);
 			num.setText("" + carried.getAmount());
 			num.setPosition(x+50-32, y+48-32, Component.ALIGN_TOP_LEFT);
@@ -75,7 +76,7 @@ public abstract class GeneralInventory extends MenuGUI {
 		// Draw tooltips, when the nothing is carried.
 		if(item == null) {
 			for(int i = 0; i < inv.length; i++) { // tooltips
-				inv[i].drawTooltip(Cubyz.mouse, win.getWidth() / 2, win.getHeight());
+				inv[i].drawTooltip(GameLauncher.input.mouse, win.getWidth() / 2, win.getHeight());
 			}
 		}
 	}

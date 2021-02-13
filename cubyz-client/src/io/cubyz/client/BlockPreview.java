@@ -11,13 +11,13 @@ import org.joml.Vector3f;
 import org.joml.Vector4f;
 
 import io.cubyz.blocks.Block;
-import io.jungle.FrameBuffer;
-import io.jungle.Mesh;
-import io.jungle.Spatial;
-import io.jungle.Window;
-import io.jungle.renderers.Transformation;
-import io.jungle.util.ShaderProgram;
-import io.jungle.util.Utils;
+import io.cubyz.rendering.FrameBuffer;
+import io.cubyz.rendering.Mesh;
+import io.cubyz.rendering.ShaderProgram;
+import io.cubyz.rendering.Spatial;
+import io.cubyz.rendering.Transformation;
+import io.cubyz.rendering.Window;
+import io.cubyz.utils.Utils;
 
 /**
  * Used for rendering block preview images in the inventory.

@@ -1,10 +1,10 @@
 package io.cubyz.ui.components;
 
-import io.cubyz.client.Cubyz;
+import io.cubyz.client.GameLauncher;
+import io.cubyz.input.MouseInput;
+import io.cubyz.rendering.Window;
 import io.cubyz.ui.Component;
 import io.cubyz.ui.NGraphics;
-import io.jungle.MouseInput;
-import io.jungle.Window;
 
 public class ScrollingContainer extends Container {
 
@@ -15,7 +15,7 @@ public class ScrollingContainer extends Container {
 	int mPickY = -1;
 	
 	public void render(long nvg, Window src, int x, int y) {
-		MouseInput mouse = Cubyz.mouse;
+		MouseInput mouse = GameLauncher.input.mouse;
 		maxY = 0;
 		for (Component child : childrens) {
 			maxY = Math.max(maxY, child.getY()+child.getHeight());

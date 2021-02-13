@@ -2,8 +2,8 @@ package io.cubyz.ui;
 
 import io.cubyz.client.Cubyz;
 import io.cubyz.items.Inventory;
+import io.cubyz.rendering.Window;
 import io.cubyz.ui.components.InventorySlot;
-import io.jungle.Window;
 
 /**
  * Basic overlay while in-game.<br>

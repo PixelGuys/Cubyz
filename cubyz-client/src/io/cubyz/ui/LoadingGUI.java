@@ -1,10 +1,10 @@
 package io.cubyz.ui;
 
 import io.cubyz.client.Cubyz;
+import io.cubyz.rendering.Window;
 import io.cubyz.ui.components.Label;
 import io.cubyz.ui.components.ProgressBar;
 import io.cubyz.utils.ResourceManager;
-import io.jungle.Window;
 
 /**
  * A GUI showing the progress of the loading phase.

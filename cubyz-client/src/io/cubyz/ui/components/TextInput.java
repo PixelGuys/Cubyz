@@ -1,11 +1,11 @@
 package io.cubyz.ui.components;
 
-import io.cubyz.client.Cubyz;
+import io.cubyz.client.GameLauncher;
+import io.cubyz.input.Keyboard;
+import io.cubyz.rendering.Font;
+import io.cubyz.rendering.Window;
 import io.cubyz.ui.Component;
 import io.cubyz.ui.NGraphics;
-import io.jungle.Keyboard;
-import io.jungle.Window;
-import io.jungle.hud.Font;
 
 /**
  * Just a text field.<br>
@@ -54,11 +54,11 @@ public class TextInput extends Component {
 		float textHeight = NGraphics.getTextAscent(text);
 		NGraphics.drawText(x + 2, y + height/2 - textHeight, text);
 		
-		if (Cubyz.mouse.isLeftButtonPressed() && !hasPressed) {
+		if (GameLauncher.input.mouse.isLeftButtonPressed() && !hasPressed) {
 			hasPressed = true;
-		} else if (!Cubyz.mouse.isLeftButtonPressed()) {
+		} else if (!GameLauncher.input.mouse.isLeftButtonPressed()) {
 			if (hasPressed) { // just released left button
-				if (isInside(Cubyz.mouse.getCurrentPos())) {
+				if (isInside(GameLauncher.input.mouse.getCurrentPos())) {
 					focused = true;
 				} else {
 					focused = false;

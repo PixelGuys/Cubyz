@@ -85,7 +85,6 @@ public class LocalWorld extends World {
 		return toruses;
 	}
 
-	@Override
 	public LocalSurface getCurrentTorus() {
 		return currentTorus;
 	}

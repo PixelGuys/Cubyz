@@ -24,7 +24,7 @@ public class GiveCommand extends CommandBase {
 	@Override
 	public void commandExecute(CommandSource source, String[] args) {
 		
-		Registry<Item> items = source.getWorld().getCurrentTorus().getCurrentRegistries().itemRegistry;
+		Registry<Item> items = source.getSurface().getCurrentRegistries().itemRegistry;
 		if (args.length < 2) {
 			source.feedback("Usage: give <item id> [amount]");
 			return;
@@ -37,7 +37,7 @@ public class GiveCommand extends CommandBase {
 			source.feedback("'give' must be executed by a player");
 			return;
 		}
-		Player local = source.getWorld().getLocalPlayer();
+		Player local = source.getSurface().getStellarTorus().getWorld().getLocalPlayer();
 		Inventory inv = local.getInventory();
 		int amount = 1;
 		if (args.length > 2) {

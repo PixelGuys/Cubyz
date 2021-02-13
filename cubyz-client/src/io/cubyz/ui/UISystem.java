@@ -7,10 +7,10 @@ import static org.lwjgl.system.MemoryUtil.*;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 
-import io.cubyz.client.Cubyz;
-import io.jungle.Window;
-import io.jungle.hud.Font;
-import io.jungle.hud.Hud;
+import io.cubyz.client.GameLauncher;
+import io.cubyz.rendering.Font;
+import io.cubyz.rendering.Hud;
+import io.cubyz.rendering.Window;
 
 /**
  * UI system working in the background, to add effects like transition.
@@ -72,7 +72,7 @@ public class UISystem extends Hud {
 			menuQueue.add(this.gui);
 		}
 		if (this.gui != null && this.gui.ungrabsMouse() && (gui == null ? true : !gui.ungrabsMouse())) {
-			Cubyz.mouse.setGrabbed(true);
+			GameLauncher.input.mouse.setGrabbed(true);
 		}
 		if(this.gui != null) {
 			this.gui.close();
@@ -82,11 +82,8 @@ public class UISystem extends Hud {
 		}
 		this.gui = gui;
 		if (gui != null && gui.ungrabsMouse() && (this.gui == null ? true : !this.gui.ungrabsMouse())) {
-			Cubyz.mouse.setGrabbed(false);
+			GameLauncher.input.mouse.setGrabbed(false);
 		}
-		/*if (gui == null || gui.doesPauseGame()) {
-			System.gc();
-		}*/
 	}
 	
 	public MenuGUI getMenuGUI() {

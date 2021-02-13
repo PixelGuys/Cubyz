@@ -5,14 +5,15 @@ import java.io.File;
 import io.cubyz.ClientOnly;
 import io.cubyz.blocks.Block;
 import io.cubyz.client.Cubyz;
+import io.cubyz.client.GameLauncher;
+import io.cubyz.rendering.Font;
+import io.cubyz.rendering.Window;
 import io.cubyz.translate.TextKey;
 import io.cubyz.ui.components.Button;
 import io.cubyz.ui.components.TextInput;
 import io.cubyz.world.CustomObject;
 import io.cubyz.world.LocalWorld;
 import io.cubyz.world.VisibleChunk;
-import io.jungle.Window;
-import io.jungle.hud.Font;
 
 /**
  * GUI shown when creating a new world in a new world file.<br>
@@ -51,7 +52,7 @@ public class SaveCreationGUI extends MenuGUI {
 				}
 			}
 			Cubyz.gameUI.setMenu(null, false); // hide from UISystem.back()
-			Cubyz.loadWorld(world.getCurrentTorus());
+			GameLauncher.logic.loadWorld(world.getCurrentTorus());
 		});
 
 		cancel.setBounds(110, 60, 100, 50, Component.ALIGN_BOTTOM_RIGHT);

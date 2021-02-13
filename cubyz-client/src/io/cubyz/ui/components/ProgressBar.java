@@ -1,8 +1,8 @@
 package io.cubyz.ui.components;
 
+import io.cubyz.rendering.Window;
 import io.cubyz.ui.Component;
 import io.cubyz.ui.NGraphics;
-import io.jungle.Window;
 
 /**
  * A bar that shows progress :P<br>

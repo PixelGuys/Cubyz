@@ -2,8 +2,8 @@ package io.cubyz.ui.components;
 
 import java.util.ArrayList;
 
+import io.cubyz.rendering.Window;
 import io.cubyz.ui.Component;
-import io.jungle.Window;
 
 /**
  * A Component that contains other Components.

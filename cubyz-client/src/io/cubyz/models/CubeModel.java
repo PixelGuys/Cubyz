@@ -2,9 +2,9 @@ package io.cubyz.models;
 
 import io.cubyz.api.Resource;
 import io.cubyz.client.Meshes;
+import io.cubyz.rendering.StaticMeshesLoader;
 import io.cubyz.util.FloatFastList;
 import io.cubyz.util.IntFastList;
-import io.jungle.util.StaticMeshesLoader;
 
 public class CubeModel extends Model {
 	protected CubeModel(Resource id, Model template) {

@@ -3,7 +3,7 @@ package io.cubyz.ui;
 import io.cubyz.api.RegistryElement;
 import io.cubyz.api.Resource;
 import io.cubyz.items.Inventory;
-import io.jungle.Window;
+import io.cubyz.rendering.Window;
 
 public abstract class MenuGUI implements RegistryElement {
 	

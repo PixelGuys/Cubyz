@@ -5,17 +5,17 @@ import java.awt.Rectangle;
 import org.joml.Vector2d;
 
 import io.cubyz.blocks.Block;
-import io.cubyz.client.Cubyz;
+import io.cubyz.client.GameLauncher;
+import io.cubyz.input.MouseInput;
 import io.cubyz.items.Item;
 import io.cubyz.items.ItemBlock;
 import io.cubyz.items.ItemStack;
 import io.cubyz.items.tools.Modifier;
 import io.cubyz.items.tools.Tool;
+import io.cubyz.rendering.Font;
+import io.cubyz.rendering.Window;
 import io.cubyz.ui.Component;
 import io.cubyz.ui.NGraphics;
-import io.jungle.MouseInput;
-import io.jungle.Window;
-import io.jungle.hud.Font;
 
 /**
  * GUI for an inventory slot referencing an ItemStack.
@@ -152,7 +152,7 @@ public class InventorySlot extends Component {
 					if (item.getTexture() != null) {
 						item.setImage(NGraphics.loadImage(item.getTexture()));
 					} else {
-						item.setImage(NGraphics.nvgImageFrom(Cubyz.instance.blockPreview(b).getColorTexture()));
+						item.setImage(NGraphics.nvgImageFrom(GameLauncher.logic.blockPreview(b).getColorTexture()));
 					}
 				} else {
 					item.setImage(NGraphics.loadImage(item.getTexture()));

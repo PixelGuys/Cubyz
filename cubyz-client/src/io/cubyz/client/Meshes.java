@@ -13,14 +13,14 @@ import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.entity.EntityType;
 import io.cubyz.models.Model;
+import io.cubyz.rendering.Material;
+import io.cubyz.rendering.Mesh;
+import io.cubyz.rendering.OBJLoader;
+import io.cubyz.rendering.StaticMeshesLoader;
+import io.cubyz.rendering.Texture;
 import io.cubyz.utils.ResourceUtilities;
 import io.cubyz.utils.ResourceUtilities.BlockModel;
 import io.cubyz.utils.ResourceUtilities.EntityModel;
-import io.jungle.Mesh;
-import io.jungle.Texture;
-import io.jungle.util.Material;
-import io.jungle.util.OBJLoader;
-import io.jungle.util.StaticMeshesLoader;
 
 /**
  * Used to store active meshes and used to init mesh related lambda functions stored in ClientOnly.

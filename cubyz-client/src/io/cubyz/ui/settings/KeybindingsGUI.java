@@ -2,18 +2,19 @@ package io.cubyz.ui.settings;
 
 import org.lwjgl.glfw.GLFW;
 
-import io.cubyz.Keybindings;
 import io.cubyz.Utilities;
 import io.cubyz.client.Cubyz;
+import io.cubyz.client.GameLauncher;
+import io.cubyz.input.Keybindings;
+import io.cubyz.input.Keyboard;
+import io.cubyz.rendering.Font;
+import io.cubyz.rendering.Window;
 import io.cubyz.translate.TextKey;
 import io.cubyz.ui.Component;
 import io.cubyz.ui.MenuGUI;
 import io.cubyz.ui.components.Button;
 import io.cubyz.ui.components.Label;
 import io.cubyz.ui.components.ScrollingContainer;
-import io.jungle.Keyboard;
-import io.jungle.Window;
-import io.jungle.hud.Font;
 
 public class KeybindingsGUI extends MenuGUI {
 
@@ -137,15 +138,15 @@ public class KeybindingsGUI extends MenuGUI {
 				Keybindings.setKeyCode(listen, Keyboard.getKeyCode());
 				initUI();
 				listen = null;
-			} else if (Cubyz.mouse.isLeftButtonPressed()) {
+			} else if (GameLauncher.input.mouse.isLeftButtonPressed()) {
 				Keybindings.setKeyCode(listen, Keybindings.MOUSE_LEFT_CLICK);
 				initUI();
 				listen = null;
-			} else if (Cubyz.mouse.isMiddleButtonPressed()) {
+			} else if (GameLauncher.input.mouse.isMiddleButtonPressed()) {
 				Keybindings.setKeyCode(listen, Keybindings.MOUSE_MIDDLE_CLICK);
 				initUI();
 				listen = null;
-			} else if (Cubyz.mouse.isRightButtonPressed()) {
+			} else if (GameLauncher.input.mouse.isRightButtonPressed()) {
 				Keybindings.setKeyCode(listen, Keybindings.MOUSE_RIGHT_CLICK);
 				initUI();
 				listen = null;

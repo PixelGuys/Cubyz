@@ -1,12 +1,13 @@
 package io.cubyz.ui;
 
-import io.cubyz.Keybindings;
 import io.cubyz.client.Cubyz;
+import io.cubyz.client.GameLauncher;
+import io.cubyz.input.Keybindings;
+import io.cubyz.input.Keyboard;
+import io.cubyz.rendering.Window;
 import io.cubyz.ui.components.Button;
 import io.cubyz.ui.settings.SettingsGUI;
 import io.cubyz.world.LocalSurface;
-import io.jungle.Keyboard;
-import io.jungle.Window;
 
 /**
  * GUI shown when pressing escape while in a world.
@@ -21,7 +22,7 @@ public class PauseGUI extends MenuGUI {
 	
 	@Override
 	public void init(long nvg) {
-		Cubyz.mouse.setGrabbed(false);
+		GameLauncher.input.mouse.setGrabbed(false);
 		if (Cubyz.world != null) {
 			if (Cubyz.world.isLocal()) {
 				LocalSurface surface = (LocalSurface) Cubyz.surface;
@@ -38,12 +39,12 @@ public class PauseGUI extends MenuGUI {
 		});
 		
 		resume.setOnAction(() -> {
-			Cubyz.mouse.setGrabbed(true);
+			GameLauncher.input.mouse.setGrabbed(true);
 			Cubyz.gameUI.setMenu(null);
 		});
 		
 		exit.setOnAction(() -> {
-			Cubyz.quitWorld();
+			GameLauncher.logic.quitWorld();
 			Cubyz.gameUI.setMenu(new MainMenuGUI());
 		});
 		
@@ -51,8 +52,8 @@ public class PauseGUI extends MenuGUI {
 			Cubyz.renderDeque.add(() -> {
 				try {
 					System.out.println("Reloading shaders..");
-					Cubyz.renderer.unloadShaders();
-					Cubyz.renderer.loadShaders();
+					GameLauncher.renderer.unloadShaders();
+					GameLauncher.renderer.loadShaders();
 					System.out.println("Reloaded!");
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -70,14 +71,14 @@ public class PauseGUI extends MenuGUI {
 	public void render(long nvg, Window win) {
 		if (Keybindings.isPressed("menu")) {
 			Keyboard.setKeyPressed(Keybindings.getKeyCode("menu"), false);
-			Cubyz.mouse.setGrabbed(true);
+			GameLauncher.input.mouse.setGrabbed(true);
 			Cubyz.gameUI.setMenu(null, TransitionStyle.NONE);
 		}
 		if(resume == null) init(nvg); // Prevents a bug that sometimes occurs.
 		exit.render(nvg, win);
 		resume.render(nvg, win);
 		settings.render(nvg, win);
-		if (Cubyz.clientShowDebug) {
+		if (GameLauncher.input.clientShowDebug) {
 			reload.render(nvg, win);
 		}
 	}

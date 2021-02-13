@@ -1,14 +1,15 @@
 package io.cubyz.ui;
 
 import io.cubyz.client.Cubyz;
+import io.cubyz.client.GameLauncher;
 import io.cubyz.multiplayer.server.CubyzServer;
+import io.cubyz.rendering.Font;
+import io.cubyz.rendering.Window;
 import io.cubyz.translate.TextKey;
 import io.cubyz.ui.components.Button;
 import io.cubyz.ui.components.Label;
 import io.cubyz.ui.settings.SettingsGUI;
 import io.cubyz.utils.DiscordIntegration;
-import io.jungle.Window;
-import io.jungle.hud.Font;
 
 public class MainMenuGUI extends MenuGUI {
 	
@@ -45,7 +46,7 @@ public class MainMenuGUI extends MenuGUI {
 		
 		mpPlay.setOnAction(() -> {
 			Thread th = new Thread(() -> {
-				CubyzServer server = new CubyzServer(Cubyz.serverPort);
+				CubyzServer server = new CubyzServer(GameLauncher.logic.serverPort);
 				try {
 					server.start();
 				} catch (Exception e) {
@@ -59,13 +60,13 @@ public class MainMenuGUI extends MenuGUI {
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
-			Cubyz.requestJoin("localhost");
+			GameLauncher.logic.requestJoin("localhost");
 			Cubyz.gameUI.setMenu(null, false);
-			Cubyz.loadWorld(Cubyz.mpClient.getHandler().getWorld().getCurrentTorus());
+			GameLauncher.logic.loadWorld(GameLauncher.logic.mpClient.getHandler().getWorld().getCurrentTorus());
 		});
 		
 		exit.setOnAction(() -> {
-			Cubyz.instance.game.exit();
+			GameLauncher.instance.exit();
 		});
 		
 		settings.setOnAction(() -> {

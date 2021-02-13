@@ -12,7 +12,6 @@ import io.cubyz.items.tools.Tool;
 import io.cubyz.math.CubyzMath;
 import io.cubyz.ndt.NDTContainer;
 import io.cubyz.world.Surface;
-import io.cubyz.world.World;
 
 public class PlayerEntity extends EntityType {
 
@@ -143,8 +142,8 @@ public class PlayerEntity extends EntityType {
 		}
 
 		@Override
-		public World getWorld() {
-			return surface.getStellarTorus().getWorld();
+		public Surface getSurface() {
+			return surface;
 		}
 	}
 

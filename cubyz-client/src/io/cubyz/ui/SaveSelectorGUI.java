@@ -11,13 +11,14 @@ import java.nio.file.attribute.BasicFileAttributes;
 import io.cubyz.ClientOnly;
 import io.cubyz.blocks.Block;
 import io.cubyz.client.Cubyz;
+import io.cubyz.client.GameLauncher;
+import io.cubyz.rendering.Window;
 import io.cubyz.translate.ContextualTextKey;
 import io.cubyz.translate.TextKey;
 import io.cubyz.ui.components.Button;
 import io.cubyz.world.CustomObject;
 import io.cubyz.world.LocalWorld;
 import io.cubyz.world.VisibleChunk;
-import io.jungle.Window;
 
 import static io.cubyz.CubyzLogger.logger;
 
@@ -57,7 +58,7 @@ public class SaveSelectorGUI extends MenuGUI {
 					}
 				}
 				Cubyz.gameUI.setMenu(null, false); // hide from UISystem.back()
-				Cubyz.loadWorld(world.getCurrentTorus());
+				GameLauncher.logic.loadWorld(world.getCurrentTorus());
 			});
 			saveButtons[i] = b;
 			b = new Button(TextKey.createTextKey("gui.cubyz.saves.delete"));

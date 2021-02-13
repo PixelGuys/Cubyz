@@ -18,7 +18,7 @@ public class TPCommand extends CommandBase {
 
 	@Override
 	public void commandExecute(CommandSource source, String[] args) {
-		if (source.getWorld() == null) {
+		if (source.getSurface() == null) {
 			source.feedback("'tp' must be executed by a player");
 			return;
 		}
@@ -26,7 +26,7 @@ public class TPCommand extends CommandBase {
 			source.feedback("Usage: tp <x> <y> <z>");
 			return;
 		}
-		Player player = source.getWorld().getLocalPlayer();
+		Player player = source.getSurface().getStellarTorus().getWorld().getLocalPlayer();
 		player.setPosition(new Vector3f(Float.parseFloat(args[1]), Float.parseFloat(args[2]), Float.parseFloat(args[3])));
 	}
 }
