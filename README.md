@@ -10,7 +10,7 @@ Cubyz can easily be forked to create a new game with 3D sandbox aspect.
 ## About
 - [ZaUserA](https://github.com/ZaUserA), [zenith391](https://github.com/zenith391) and [IntegratedQuantum](https://github.com/IntegratedQuantum) who all contributed to the game and made everything possible!
 - The development started on August 22, 2018. Cubyz is already over 2 years old!
-- Cubyz has [Jungle Engine](https://github.com/zenith391/Jungle-Engine) under the hood!
+- Cubyz runs its own engine!
 - This game is under BSD-3-Clause license for more details please check the [LICENSE](https://github.com/PixelGuys/Cubz/blob/master/LICENSE) file.
 - You can receive announcements about Cubyz on our [discord](https://discord.gg/XtqCRRG) server.
 
