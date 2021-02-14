@@ -71,7 +71,7 @@ public abstract class Surface {
 	public abstract void removeEntity(Entity ent);
 	
 	public abstract int getHeight(int x, int z);
-	public abstract void seek(int x, int z, int renderDistance, int maxResolution, float farDistanceFactor);
+	public abstract void seek(int x, int z, int renderDistance, int highestLOD, float LODFactor);
 	
 	public abstract void cleanup();
 	public abstract void update();

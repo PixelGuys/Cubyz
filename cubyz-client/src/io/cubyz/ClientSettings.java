@@ -27,9 +27,11 @@ public class ClientSettings {
 	
 	public static int RENDER_DISTANCE = 4;
 	
-	public static int MAX_RESOLUTION = 4;
+	/**maximum quality reduction.*/
+	public static int HIGHEST_LOD = 4;
 	
-	public static float FAR_DISTANCE_FACTOR = 2.0f;
+	/**Scaling factor that scales the size of the LOD region and by that scaling the effective render distance.*/
+	public static float LOD_FACTOR = 2.0f;
 	
 	public static float FOV = 70.0f;
 	
@@ -37,7 +39,7 @@ public class ClientSettings {
 	
 
 	/**Not actually a setting, but stored here anyways.*/
-	public static int EFFECTIVE_RENDER_DISTANCE = (ClientSettings.RENDER_DISTANCE + ((((int)(ClientSettings.RENDER_DISTANCE*ClientSettings.FAR_DISTANCE_FACTOR) & ~1) << ClientSettings.MAX_RESOLUTION)));
+	public static int EFFECTIVE_RENDER_DISTANCE = (ClientSettings.RENDER_DISTANCE + ((((int)(ClientSettings.RENDER_DISTANCE*ClientSettings.LOD_FACTOR) & ~1) << ClientSettings.HIGHEST_LOD)));
 	
 	public static final Gson GSON =
 			new GsonBuilder()
@@ -62,8 +64,8 @@ public class ClientSettings {
 		settings.addProperty("antiAliasSamples", Cubyz.window.getAntialiasSamples());
 		settings.addProperty("easyLighting", ClientSettings.easyLighting);
 		settings.addProperty("renderDistance", ClientSettings.RENDER_DISTANCE);
-		settings.addProperty("maxResolution", ClientSettings.MAX_RESOLUTION);
-		settings.addProperty("farDistanceFactor", ClientSettings.FAR_DISTANCE_FACTOR);
+		settings.addProperty("highestLOD", ClientSettings.HIGHEST_LOD);
+		settings.addProperty("farDistanceFactor", ClientSettings.LOD_FACTOR);
 		settings.addProperty("fieldOfView", ClientSettings.FOV);
 		
 		try {
@@ -127,10 +129,10 @@ public class ClientSettings {
 			ClientSettings.RENDER_DISTANCE = settings.get("renderDistance").getAsInt();
 		}
 		if (settings.has("maxResolution")) {
-			ClientSettings.MAX_RESOLUTION = settings.get("maxResolution").getAsInt();
+			ClientSettings.HIGHEST_LOD = settings.get("maxResolution").getAsInt();
 		}
 		if (settings.has("farDistanceFactor")) {
-			ClientSettings.FAR_DISTANCE_FACTOR = settings.get("farDistanceFactor").getAsInt();
+			ClientSettings.LOD_FACTOR = settings.get("farDistanceFactor").getAsInt();
 		}
 		if (settings.has("fieldOfView")) {
 			ClientSettings.FOV = settings.get("fieldOfView").getAsFloat();

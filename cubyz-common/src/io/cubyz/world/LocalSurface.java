@@ -522,7 +522,7 @@ public class LocalSurface extends Surface {
 	}
 	
 	@Override
-	public void seek(int x, int z, int renderDistance, int maxResolution, float farDistanceFactor) {
+	public void seek(int x, int z, int renderDistance, int highestLOD, float LODFactor) {
 		int xOld = x;
 		int zOld = z;
 		// Care about the Regions:
@@ -664,7 +664,7 @@ public class LocalSurface extends Surface {
 		}
 
 		// Care about the ReducedChunks:
-		generateReducedChunks(xOld, zOld, (int)(renderDistance*farDistanceFactor), maxResolution);
+		generateReducedChunks(xOld, zOld, (int)(renderDistance*LODFactor), highestLOD);
 	}
 	
 	public void generateReducedChunks(int x, int z, int renderDistance, int maxResolution) {

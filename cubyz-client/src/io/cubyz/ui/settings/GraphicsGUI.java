@@ -18,11 +18,11 @@ public class GraphicsGUI extends MenuGUI {
 	private CheckBox vsync = new CheckBox();
 	private Label effectiveRenderDistance = new Label();
 	private final Slider renderDistance = new Slider(1, 24, ClientSettings.RENDER_DISTANCE);
-	private final Slider maxResolution = new Slider(ClientSettings.MAX_RESOLUTION, new String[] {"16 (no reduced quality chunks are generated)", "8", "4", "2", "1"});
-	private final Slider farDistanceFactor = new Slider(Math.round(ClientSettings.FAR_DISTANCE_FACTOR*2) - 1, new String[] {"0.5", "1.0", "1.5", "2.0", "2.5", "3.0", "3.5", "4.0"});
+	private final Slider highestLOD = new Slider(ClientSettings.HIGHEST_LOD, new String[] {"1", "2", "4", "8", "16"});
+	private final Slider LODFactor = new Slider(Math.round(ClientSettings.LOD_FACTOR*2) - 1, new String[] {"0.5", "1.0", "1.5", "2.0", "2.5", "3.0", "3.5", "4.0"});
 
 	private void recalculateERD() {
-		ClientSettings.EFFECTIVE_RENDER_DISTANCE = (ClientSettings.RENDER_DISTANCE + ((((int)(ClientSettings.RENDER_DISTANCE*ClientSettings.FAR_DISTANCE_FACTOR) & ~1) << ClientSettings.MAX_RESOLUTION)));
+		ClientSettings.EFFECTIVE_RENDER_DISTANCE = (ClientSettings.RENDER_DISTANCE + ((((int)(ClientSettings.RENDER_DISTANCE*ClientSettings.LOD_FACTOR) & ~1) << ClientSettings.HIGHEST_LOD)));
 		effectiveRenderDistance.setText("Effective Render Distance ≈ " + ClientSettings.EFFECTIVE_RENDER_DISTANCE);
 	}
 	
@@ -47,19 +47,19 @@ public class GraphicsGUI extends MenuGUI {
 			recalculateERD();
 		});
 
-		maxResolution.setBounds(-125, 150, 250, 45, Component.ALIGN_TOP);
-		maxResolution.setFontSize(18);
-		maxResolution.setText("Minimal Resolution of chunks: ");
-		maxResolution.setOnAction(() -> {
-			ClientSettings.MAX_RESOLUTION = maxResolution.getValue();
+		highestLOD.setBounds(-125, 150, 250, 45, Component.ALIGN_TOP);
+		highestLOD.setFontSize(18);
+		highestLOD.setText("Maximum LOD: ");
+		highestLOD.setOnAction(() -> {
+			ClientSettings.HIGHEST_LOD = highestLOD.getValue();
 			recalculateERD();
 		});
 
-		farDistanceFactor.setBounds(-125, 225, 250, 45, Component.ALIGN_TOP);
-		farDistanceFactor.setFontSize(18);
-		farDistanceFactor.setText("Scale of effective render distance: ");
-		farDistanceFactor.setOnAction(() -> {
-			ClientSettings.FAR_DISTANCE_FACTOR = (farDistanceFactor.getValue() + 1)/2.0f;
+		LODFactor.setBounds(-125, 225, 250, 45, Component.ALIGN_TOP);
+		LODFactor.setFontSize(18);
+		LODFactor.setText("LOD Factor: ");
+		LODFactor.setOnAction(() -> {
+			ClientSettings.LOD_FACTOR = (LODFactor.getValue() + 1)/2.0f;
 			recalculateERD();
 		});
 		
@@ -111,8 +111,8 @@ public class GraphicsGUI extends MenuGUI {
 	@Override
 	public void render(long nvg, Window win) {
 		renderDistance.render(nvg, win);
-		maxResolution.render(nvg, win);
-		farDistanceFactor.render(nvg, win);
+		highestLOD.render(nvg, win);
+		LODFactor.render(nvg, win);
 		effectiveRenderDistance.render(nvg, win);
 		done.render(nvg, win);
 		fog.render(nvg, win);
