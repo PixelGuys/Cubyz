@@ -21,6 +21,7 @@ import io.cubyz.client.NormalChunkMesh;
 import io.cubyz.client.ReducedChunkMesh;
 import io.cubyz.entity.CustomMeshProvider;
 import io.cubyz.entity.CustomMeshProvider.MeshType;
+import io.cubyz.input.Keyboard;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.ItemEntityManager;
 import io.cubyz.entity.Player;
@@ -272,6 +273,7 @@ public class MainRenderer {
 				screenshot = false;*/
 			}
 		}
+		Keyboard.release(); // TODO: Why is this called in the render thread???
 	}
 	
 	/**

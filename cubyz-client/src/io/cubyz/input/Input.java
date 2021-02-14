@@ -167,6 +167,5 @@ public class Input {
 			}
 		}
 		mouse.clearScroll();
-		Keyboard.release();
 	}
 }

@@ -1,5 +1,5 @@
 type BETWEEN
-height 96-102-106
+height 96-106
 ground_structure 2 to 3 cubyz:cobblestone
 roughness 0.1
 

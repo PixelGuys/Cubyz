@@ -1,5 +1,5 @@
 type RAINFOREST
-height 102-114-140
+height 102-140
 ground_structure cubyz:grass, 2 to 3 cubyz:soil
 roughness 0.1
 

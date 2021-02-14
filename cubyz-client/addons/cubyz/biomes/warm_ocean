@@ -1,5 +1,5 @@
 type WARM_OCEAN
-height 0-50-100
+height 0-100
 ground_structure 2 to 4 cubyz:sand
 roughness 0.2
 
