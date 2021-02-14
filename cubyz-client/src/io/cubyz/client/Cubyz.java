@@ -5,6 +5,7 @@ import java.util.Deque;
 
 import org.joml.Vector3f;
 
+import io.cubyz.entity.PlayerEntity.PlayerImpl;
 import io.cubyz.rendering.Camera;
 import io.cubyz.rendering.Fog;
 import io.cubyz.rendering.Hud;
@@ -28,6 +29,7 @@ public class Cubyz {
 	// World related stuff:
 	public static Surface surface;
 	public static World world;
+	public static PlayerImpl player;
 	
 	// Other:
 	public static Vector3f playerInc = new Vector3f();

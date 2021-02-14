@@ -37,8 +37,8 @@ public class GiveCommand extends CommandBase {
 			source.feedback("'give' must be executed by a player");
 			return;
 		}
-		Player local = source.getSurface().getStellarTorus().getWorld().getLocalPlayer();
-		Inventory inv = local.getInventory();
+		Player player = (Player)source;
+		Inventory inv = player.getInventory();
 		int amount = 1;
 		if (args.length > 2) {
 			try {

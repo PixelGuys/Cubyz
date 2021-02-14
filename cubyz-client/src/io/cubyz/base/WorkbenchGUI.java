@@ -162,7 +162,7 @@ public class WorkbenchGUI extends GeneralInventory {
 	public void setInventory(Inventory in) {
 		this.in = in;
 		inv = new InventorySlot[32];
-		Inventory inventory = Cubyz.world.getLocalPlayer().getInventory();
+		Inventory inventory = Cubyz.player.getInventory();
 		for(int i = 0; i < 8; i++) {
 			inv[i] = new InventorySlot(inventory.getStack(i), i*64 - 256, 64, Component.ALIGN_BOTTOM);
 		}

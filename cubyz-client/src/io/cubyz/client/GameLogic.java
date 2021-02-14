@@ -31,7 +31,7 @@ import io.cubyz.blocks.CustomBlock;
 import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.client.loading.LoadThread;
 import io.cubyz.entity.Entity;
-import io.cubyz.entity.Player;
+import io.cubyz.entity.PlayerEntity.PlayerImpl;
 import io.cubyz.input.Keybindings;
 import io.cubyz.items.CustomItem;
 import io.cubyz.items.Inventory;
@@ -142,11 +142,12 @@ public class GameLogic implements ClientConnection {
 		}
 		Cubyz.surface = surface;
 		World world = surface.getStellarTorus().getWorld();
+		Cubyz.player = (PlayerImpl)world.getLocalPlayer();
 		if (world.isLocal()) {
 			Random rnd = new Random();
 			int dx = 0;
 			int dz = 0;
-			if (world.getLocalPlayer().getPosition().x == 0 && world.getLocalPlayer().getPosition().z == 0) {
+			if (Cubyz.player.getPosition().x == 0 && Cubyz.player.getPosition().z == 0) {
 				int highestY;
 				logger.info("Finding position..");
 				while (true) {
@@ -162,7 +163,7 @@ public class GameLogic implements ClientConnection {
 					if(Cubyz.surface.getBlock(dx, highestY, dz) != null && Cubyz.surface.getBlock(dx, highestY, dz).isSolid()) break;
 					highestY--;
 				}
-				world.getLocalPlayer().setPosition(new Vector3i(dx, highestY+2, dz));
+				Cubyz.player.setPosition(new Vector3i(dx, highestY+2, dz));
 				logger.info("OK!");
 			}
 		}
@@ -324,7 +325,7 @@ public class GameLogic implements ClientConnection {
 			for(NormalChunk ch : chunks) {
 				for(int i = 0; i < ch.getVisibles().size; i++) {
 					BlockInstance bi = ch.getVisibles().array[i];
-					bi.setData(bi.getData(), Cubyz.world.getLocalPlayer());
+					bi.setData(bi.getData());
 				}
 			}
 		};
@@ -420,9 +421,8 @@ public class GameLogic implements ClientConnection {
 	
 	public void update(float interval) {
 		if (!Cubyz.gameUI.doesGUIPauseGame() && Cubyz.world != null) {
-			Player lp = Cubyz.world.getLocalPlayer();
 			if (!Cubyz.gameUI.doesGUIBlockInput()) {
-				lp.move(Cubyz.playerInc.mul(0.11F), Cubyz.camera.getRotation(), Cubyz.surface.getSizeX(), Cubyz.surface.getSizeZ());
+				Cubyz.player.move(Cubyz.playerInc.mul(0.11F), Cubyz.camera.getRotation(), Cubyz.surface.getSizeX(), Cubyz.surface.getSizeZ());
 				if (breakCooldown > 0) {
 					breakCooldown--;
 				}
@@ -431,7 +431,7 @@ public class GameLogic implements ClientConnection {
 				}
 				if (Keybindings.isPressed("destroy")) {
 					//Breaking Blocks
-					if(Cubyz.world.getLocalPlayer().isFlying()) { // Ignore hardness when in flying.
+					if(Cubyz.player.isFlying()) { // Ignore hardness when in flying.
 						if (breakCooldown == 0) {
 							breakCooldown = 7;
 							Object bi = Cubyz.msd.getSelected();
@@ -443,41 +443,41 @@ public class GameLogic implements ClientConnection {
 					else {
 						Object selected = Cubyz.msd.getSelected();
 						if(selected instanceof BlockInstance) {
-							Cubyz.world.getLocalPlayer().breaking((BlockInstance)selected, Cubyz.inventorySelection, Cubyz.surface);
+							Cubyz.player.breaking((BlockInstance)selected, Cubyz.inventorySelection, Cubyz.surface);
 						}
 					}
 					// Hit entities:
 					Object selected = Cubyz.msd.getSelected();
 					if(selected instanceof Entity) {
-						((Entity)selected).hit(Cubyz.world.getLocalPlayer().getInventory().getItem(Cubyz.inventorySelection) instanceof Tool ? (Tool)Cubyz.world.getLocalPlayer().getInventory().getItem(Cubyz.inventorySelection) : null, Cubyz.camera.getViewMatrix().positiveZ(Cubyz.dir).negate());
+						((Entity)selected).hit(Cubyz.player.getInventory().getItem(Cubyz.inventorySelection) instanceof Tool ? (Tool)Cubyz.player.getInventory().getItem(Cubyz.inventorySelection) : null, Cubyz.camera.getViewMatrix().positiveZ(Cubyz.dir).negate());
 					}
 				} else {
-					Cubyz.world.getLocalPlayer().resetBlockBreaking();
+					Cubyz.player.resetBlockBreaking();
 				}
 				if (Keybindings.isPressed("place/use") && buildCooldown <= 0) {
 					if((Cubyz.msd.getSelected() instanceof BlockInstance) && ((BlockInstance)Cubyz.msd.getSelected()).getBlock().onClick(Cubyz.world, ((BlockInstance)Cubyz.msd.getSelected()).getPosition())) {
 						// Interact with block(potentially do a hand animation, in the future).
-					} else if(Cubyz.world.getLocalPlayer().getInventory().getItem(Cubyz.inventorySelection) instanceof ItemBlock) {
+					} else if(Cubyz.player.getInventory().getItem(Cubyz.inventorySelection) instanceof ItemBlock) {
 						// Build block:
 						if (Cubyz.msd.getSelected() != null) {
 							buildCooldown = 10;
-							Cubyz.msd.placeBlock(Cubyz.world.getLocalPlayer().getInventory(), Cubyz.inventorySelection, Cubyz.surface);
+							Cubyz.msd.placeBlock(Cubyz.player.getInventory(), Cubyz.inventorySelection, Cubyz.surface);
 						}
-					} else if(Cubyz.world.getLocalPlayer().getInventory().getItem(Cubyz.inventorySelection) != null) {
+					} else if(Cubyz.player.getInventory().getItem(Cubyz.inventorySelection) != null) {
 						// Use item:
-						if(Cubyz.world.getLocalPlayer().getInventory().getItem(Cubyz.inventorySelection).onUse(Cubyz.world.getLocalPlayer())) {
-							Cubyz.world.getLocalPlayer().getInventory().getStack(Cubyz.inventorySelection).add(-1);
+						if(Cubyz.player.getInventory().getItem(Cubyz.inventorySelection).onUse(Cubyz.player)) {
+							Cubyz.player.getInventory().getStack(Cubyz.inventorySelection).add(-1);
 							buildCooldown = 10;
 						}
 					}
 				}
 			}
 			Cubyz.playerInc.x = Cubyz.playerInc.y = Cubyz.playerInc.z = 0.0F; // Reset positions
-			NormalChunk ch = Cubyz.surface.getChunk((int)lp.getPosition().x >> 4, (int)lp.getPosition().z >> 4);
+			NormalChunk ch = Cubyz.surface.getChunk((int)Cubyz.player.getPosition().x >> 4, (int)Cubyz.player.getPosition().z >> 4);
 			if (ch != null && ch.isLoaded()) {
 				Cubyz.world.update();
 			}
-			Cubyz.surface.seek((int)lp.getPosition().x, (int)lp.getPosition().z, ClientSettings.RENDER_DISTANCE, ClientSettings.MAX_RESOLUTION, ClientSettings.FAR_DISTANCE_FACTOR);
+			Cubyz.surface.seek((int)Cubyz.player.getPosition().x, (int)Cubyz.player.getPosition().z, ClientSettings.RENDER_DISTANCE, ClientSettings.MAX_RESOLUTION, ClientSettings.FAR_DISTANCE_FACTOR);
 			float lightAngle = (float)Math.PI/2 + (float)Math.PI*(((float)Cubyz.world.getGameTime() % Cubyz.surface.getStellarTorus().getDayCycle())/(Cubyz.surface.getStellarTorus().getDayCycle()/2));
 			skySun.setPositionRaw((float)Math.cos(lightAngle)*500, (float)Math.sin(lightAngle)*500, 0);
 			skySun.setRotation(0, 0, -lightAngle);

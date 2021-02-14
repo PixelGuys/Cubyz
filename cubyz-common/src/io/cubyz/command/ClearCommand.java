@@ -22,12 +22,12 @@ public class ClearCommand extends CommandBase {
 
 	@Override
 	public void commandExecute(CommandSource source, String[] args) {
-		if (source.getSurface() == null) {
+		if (!(source instanceof Player)) {
 			source.feedback("'clear' must be executed by a player");
 			return;
 		}
-		Player local = source.getSurface().getStellarTorus().getWorld().getLocalPlayer();
-		Inventory inv = local.getInventory();
+		Player player = (Player)source;
+		Inventory inv = player.getInventory();
 		for (int i = 0; i < inv.getCapacity(); i++) {
 			if (inv.hasStack(i)) {
 				inv.setStack(i, new ItemStack());

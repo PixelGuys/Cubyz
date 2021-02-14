@@ -34,9 +34,9 @@ public abstract class GeneralInventory extends MenuGUI {
 	public void close() {
 		 // Place the last stack carried by the mouse in an empty slot.
 		if(!carried.empty()) {
-			carried.setAmount(Cubyz.world.getLocalPlayer().getInventory().addItem(carried.getItem(), carried.getAmount()));
+			carried.setAmount(Cubyz.player.getInventory().addItem(carried.getItem(), carried.getAmount()));
 			if(!carried.empty()) {
-				Cubyz.surface.drop(carried, Cubyz.world.getLocalPlayer().getPosition(), new Vector3f(), 0);
+				Cubyz.surface.drop(carried, Cubyz.player.getPosition(), new Vector3f(), 0);
 			}
 		}
 	}

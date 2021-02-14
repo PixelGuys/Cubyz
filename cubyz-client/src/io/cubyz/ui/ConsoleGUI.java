@@ -31,7 +31,7 @@ public class ConsoleGUI extends MenuGUI {
 		input.render(nvg, win);
 		if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_ENTER)) {
 			String text = input.getText();
-			CommandExecutor.execute(text, Cubyz.world.getLocalPlayer());
+			CommandExecutor.execute(text, Cubyz.player);
 			input.setText("");
 			Keyboard.setKeyPressed(GLFW.GLFW_KEY_ENTER, false);
 		}

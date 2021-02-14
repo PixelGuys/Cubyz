@@ -44,7 +44,7 @@ public class GameOverlay extends MenuGUI {
 		hungerBar[5] = NGraphics.loadImage("assets/cubyz/textures/hunger_bar_mid_half.png");
 		hungerBar[6] = NGraphics.loadImage("assets/cubyz/textures/hunger_bar_mid_full.png");
 		hungerBar[7] = NGraphics.loadImage("assets/cubyz/textures/hunger_bar_icon.png");
-		Inventory inventory = Cubyz.world.getLocalPlayer().getInventory();
+		Inventory inventory = Cubyz.player.getInventory();
 		for(int i = 0; i < 8; i++) {
 			inv[i] = new InventorySlot(inventory.getStack(i), i*64 - 256, 64, Component.ALIGN_BOTTOM);
 		}
@@ -57,15 +57,15 @@ public class GameOverlay extends MenuGUI {
 		if(!(Cubyz.gameUI.getMenuGUI() instanceof GeneralInventory)) {
 			NGraphics.drawImage(selection, win.getWidth()/2 - 254 + Cubyz.inventorySelection*64, win.getHeight() - 62, 60, 60);
 			for(int i = 0; i < 8; i++) {
-				inv[i].reference = Cubyz.world.getLocalPlayer().getInventory().getStack(i); // without it, if moved in inventory, stack won't refresh
+				inv[i].reference = Cubyz.player.getInventory().getStack(i); // without it, if moved in inventory, stack won't refresh
 				inv[i].render(nvg, win);
 			}
 		}
 		// Draw the health bar:
-		float maxHealth = Cubyz.world.getLocalPlayer().maxHealth;
-		float health = Cubyz.world.getLocalPlayer().health;
-		if (lastPlayerHealth != health) {
-			if (lastPlayerHealth > health) {
+		float maxHealth = Cubyz.player.maxHealth;
+		float health = Cubyz.player.health;
+		if(lastPlayerHealth != health) {
+			if(lastPlayerHealth > health) {
 				lastPlayerHurtMs = System.currentTimeMillis();
 			}
 			lastPlayerHealth = health;
@@ -83,9 +83,9 @@ public class GameOverlay extends MenuGUI {
 			boolean empty = i >= health;
 			
 			int idx = 0;
-			if (i == 0) { // beggining
+			if(i == 0) { // beggining
 				idx = empty ? 0 : 1;
-			} else if (i == maxHealth-2) { // end
+			} else if(i == maxHealth-2) { // end
 				idx = i + 1 >= health ? 2 : 3;
 			} else {
 				idx = empty ? 4 : (half ? 5 : 6); // if empty = 4, half = 5, full = 6
@@ -93,8 +93,8 @@ public class GameOverlay extends MenuGUI {
 			NGraphics.drawImage(healthBar[idx], (int)(i*12 + win.getWidth() - maxHealth*12 - 4), 6, 24, 24);
 		}
 		// Draw the hunger bar:
-		float maxHunger = Cubyz.world.getLocalPlayer().maxHunger;
-		float hunger = Cubyz.world.getLocalPlayer().hunger;
+		float maxHunger = Cubyz.player.maxHunger;
+		float hunger = Cubyz.player.hunger;
 		s = Math.round(hunger*10)/10.0f + "/" + Math.round(maxHunger) + " HP";
 		width = NGraphics.getTextWidth(s);
 		NGraphics.drawImage(hungerBar[7], (int)(win.getWidth() - maxHunger*12 - 40 - width), 36, 24, 24);
@@ -104,9 +104,9 @@ public class GameOverlay extends MenuGUI {
 			boolean empty = i >= hunger;
 			
 			int idx = 0;
-			if (i == 0) { // beggining
+			if(i == 0) { // beggining
 				idx = empty ? 0 : 1;
-			} else if (i == maxHunger-2) { // end
+			} else if(i == maxHunger-2) { // end
 				idx = i + 1 >= hunger ? 2 : 3;
 			} else {
 				idx = empty ? 4 : (half ? 5 : 6); // if empty = 4, half = 5, full = 6

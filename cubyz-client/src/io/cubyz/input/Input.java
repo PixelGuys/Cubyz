@@ -8,7 +8,6 @@ import io.cubyz.api.CubyzRegistries;
 import io.cubyz.client.Cubyz;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.EntityType;
-import io.cubyz.entity.Player;
 import io.cubyz.rendering.Window;
 import io.cubyz.ui.ConsoleGUI;
 import io.cubyz.ui.PauseGUI;
@@ -44,7 +43,7 @@ public class Input {
 		if(!Cubyz.gameUI.doesGUIBlockInput() && Cubyz.world != null) {
 			if(Keybindings.isPressed("forward")) {
 				if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT_CONTROL)) {
-					if(Cubyz.world.getLocalPlayer().isFlying()) {
+					if(Cubyz.player.isFlying()) {
 						Cubyz.playerInc.z = -8;
 					} else {
 						Cubyz.playerInc.z = -2;
@@ -63,25 +62,24 @@ public class Input {
 				Cubyz.playerInc.x = 1;
 			}
 			if(Keybindings.isPressed("jump")) {
-				Player localPlayer = Cubyz.world.getLocalPlayer();
-				if(localPlayer.isFlying()) {
-					Cubyz.world.getLocalPlayer().vy = 0.25F;
-				} else if(Cubyz.world.getLocalPlayer().isOnGround()) {
-					Cubyz.world.getLocalPlayer().vy = 0.25F;
+				if(Cubyz.player.isFlying()) {
+					Cubyz.player.vy = 0.25F;
+				} else if(Cubyz.player.isOnGround()) {
+					Cubyz.player.vy = 0.25F;
 				}
 			}
 			if(Keybindings.isPressed("fall")) {
-				if(Cubyz.world.getLocalPlayer().isFlying()) {
-					Cubyz.world.getLocalPlayer().vy = -0.25F;
+				if(Cubyz.player.isFlying()) {
+					Cubyz.player.vy = -0.25F;
 				}
 			}
 			if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_F)) {
-				Cubyz.world.getLocalPlayer().setFlying(!Cubyz.world.getLocalPlayer().isFlying());
+				Cubyz.player.setFlying(!Cubyz.player.isFlying());
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_F, false);
 			}
 			if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_P)) {
 				// debug: spawn a pig
-				Vector3f pos = new Vector3f(Cubyz.world.getLocalPlayer().getPosition());
+				Vector3f pos = new Vector3f(Cubyz.player.getPosition());
 				EntityType pigType = CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:pig");
 				if (pigType == null) return;
 				Entity pig = pigType.newEntity(Cubyz.surface);
@@ -152,7 +150,7 @@ public class Input {
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_EQUAL, false);
 				System.gc();
 			}
-			Cubyz.msd.selectSpatial(Cubyz.surface.getChunks(), Cubyz.world.getLocalPlayer().getPosition(), Cubyz.camera.getViewMatrix().positiveZ(Cubyz.dir).negate(), Cubyz.surface.getStellarTorus().getWorld().getLocalPlayer(), Cubyz.surface);
+			Cubyz.msd.selectSpatial(Cubyz.surface.getChunks(), Cubyz.player.getPosition(), Cubyz.camera.getViewMatrix().positiveZ(Cubyz.dir).negate(), Cubyz.player, Cubyz.surface);
 		}
 		if(Cubyz.world != null) {
 			if(Keybindings.isPressed("menu")) {

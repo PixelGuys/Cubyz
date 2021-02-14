@@ -2,7 +2,6 @@ package io.cubyz.blocks;
 
 import org.joml.Vector3i;
 
-import io.cubyz.entity.Player;
 import io.cubyz.world.NormalChunk;
 import io.cubyz.world.Surface;
 
@@ -21,7 +20,7 @@ public class BlockInstance {
 	public final NormalChunk source;
 	public int renderIndex = 0;
 	
-	public BlockInstance(Block block, byte data, Vector3i position, Player player, NormalChunk source) {
+	public BlockInstance(Block block, byte data, Vector3i position, NormalChunk source) {
 		this.source = source;
 		this.block = block;
 		x = position.x;
@@ -36,7 +35,7 @@ public class BlockInstance {
 		return neighbors;
 	}
 	
-	public void updateNeighbor(int i, boolean value, Player player) {
+	public void updateNeighbor(int i, boolean value) {
 		if(neighbors[i] != value) {
 			neighbors[i] = value;
 		}
@@ -82,7 +81,7 @@ public class BlockInstance {
 		return blockData;
 	}
 	
-	public void setData(byte data, Player player) {
+	public void setData(byte data) {
 		blockData = data;
 	}
 	

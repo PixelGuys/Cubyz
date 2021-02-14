@@ -126,7 +126,7 @@ public class NormalChunk extends Chunk {
 			blockData[index] = data;
 			// Update the instance:
 			if(inst[index] != null)
-				inst[index].setData(data, surface.getStellarTorus().getWorld().getLocalPlayer());
+				inst[index].setData(data);
 		}
 		updated = true;
 	}
@@ -206,7 +206,7 @@ public class NormalChunk extends Chunk {
 			Block[] neighbors = getNeighbors(x, y ,z, dataN, indices);
 			BlockInstance[] visibleNeighbors = getVisibleNeighbors(x + wx, y, z + wz);
 			for(int k = 0; k < 6; k++) {
-				if(visibleNeighbors[k] != null) visibleNeighbors[k].updateNeighbor(k ^ 1, blocksBlockNot(b, neighbors[k], data, ((x << 4) | (y << 8) | z) - indices[k]), surface.getStellarTorus().getWorld().getLocalPlayer());
+				if(visibleNeighbors[k] != null) visibleNeighbors[k].updateNeighbor(k ^ 1, blocksBlockNot(b, neighbors[k], data, ((x << 4) | (y << 8) | z) - indices[k]));
 			}
 			
 			for (int i = 0; i < neighbors.length; i++) {
@@ -320,12 +320,12 @@ public class NormalChunk extends Chunk {
 		if(y < 0 || y >= World.WORLD_HEIGHT) return;
 		int index = (x << 4) | (y << 8) | z;
 		Block b = blocks[index];
-		BlockInstance bi = new BlockInstance(b, blockData[index], new Vector3i(x + wx, y, z + wz), surface.getStellarTorus().getWorld().getLocalPlayer(), this);
+		BlockInstance bi = new BlockInstance(b, blockData[index], new Vector3i(x + wx, y, z + wz), this);
 		byte[] data = new byte[6];
 		int[] indices = new int[6];
 		Block[] neighbors = getNeighbors(x, y ,z, data, indices);
 		for(int k = 0; k < 6; k++) {
-			bi.updateNeighbor(k, blocksBlockNot(neighbors[k], b, data[k], index - indices[k]), surface.getStellarTorus().getWorld().getLocalPlayer());
+			bi.updateNeighbor(k, blocksBlockNot(neighbors[k], b, data[k], index - indices[k]));
 		}
 		bi.setStellarTorus(surface);
 		visibles.add(bi);
@@ -360,7 +360,7 @@ public class NormalChunk extends Chunk {
 		setBlock(x, y, z, null, (byte)0);
 		BlockInstance[] visibleNeighbors = getVisibleNeighbors(x, y, z);
 		for(int k = 0; k < 6; k++) {
-			if(visibleNeighbors[k] != null) visibleNeighbors[k].updateNeighbor(k ^ 1, true, surface.getStellarTorus().getWorld().getLocalPlayer());
+			if(visibleNeighbors[k] != null) visibleNeighbors[k].updateNeighbor(k ^ 1, true);
 		}
 		if(startedloading)
 			lightUpdate(x, y, z);

@@ -20,11 +20,11 @@ public class CureCommand extends CommandBase {
 
 	@Override
 	public void commandExecute(CommandSource source, String[] args) {
-		if (source.getSurface() == null) {
+		if (!(source instanceof Player)) {
 			source.feedback("'cure' must be executed by a player");
 			return;
 		}
-		Player player = source.getSurface().getStellarTorus().getWorld().getLocalPlayer();
+		Player player = (Player)source;
 		player.health = player.maxHealth;
 		player.hunger = player.maxHunger;
 	}

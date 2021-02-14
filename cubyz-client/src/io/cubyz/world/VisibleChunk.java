@@ -128,7 +128,7 @@ public class VisibleChunk extends NormalChunk {
 						Block block = ch.getBlockAt(dx[k], j, dz[k]);
 						// Update neighbor information:
 						if(inst != null) {
-							inst.updateNeighbor(k ^ 1, blocksBlockNot(blocks[(invdx[k] << 4) | (j << 8) | invdz[k]], block, blockData[(invdx[k] << 4) | (j << 8) | invdz[k]], (invdx[k] << 4) | (j << 8) | invdz[k] - (dx[k] << 4) | (j << 8) | dz[k]), surface.getStellarTorus().getWorld().getLocalPlayer());
+							inst.updateNeighbor(k ^ 1, blocksBlockNot(blocks[(invdx[k] << 4) | (j << 8) | invdz[k]], block, blockData[(invdx[k] << 4) | (j << 8) | invdz[k]], (invdx[k] << 4) | (j << 8) | invdz[k] - (dx[k] << 4) | (j << 8) | dz[k]));
 							continue;
 						}
 						// Update visibility:

@@ -210,12 +210,12 @@ public class MainRenderer {
 				}
 			}
 			if(Cubyz.playerInc.y != 0) {
-				Cubyz.world.getLocalPlayer().vy = Cubyz.playerInc.y;
+				Cubyz.player.vy = Cubyz.playerInc.y;
 			}
 			if(Cubyz.playerInc.x != 0) {
-				Cubyz.world.getLocalPlayer().vx = Cubyz.playerInc.x;
+				Cubyz.player.vx = Cubyz.playerInc.x;
 			}
-			Cubyz.camera.setPosition(Cubyz.world.getLocalPlayer().getPosition().x, Cubyz.world.getLocalPlayer().getPosition().y + Player.cameraHeight + playerBobbing, Cubyz.world.getLocalPlayer().getPosition().z);
+			Cubyz.camera.setPosition(Cubyz.player.getPosition().x, Cubyz.player.getPosition().y + Player.cameraHeight + playerBobbing, Cubyz.player.getPosition().z);
 		}
 		
 		if(!Cubyz.renderDeque.isEmpty()) {
@@ -235,7 +235,7 @@ public class MainRenderer {
 				Cubyz.fog.setActive(true);
 			}
 			Cubyz.fog.setDensity(1 / (ClientSettings.EFFECTIVE_RENDER_DISTANCE*ClientSettings.FOG_COEFFICIENT));
-			Player player = Cubyz.world.getLocalPlayer();
+			Player player = Cubyz.player;
 			Block bi = Cubyz.surface.getBlock(Math.round(player.getPosition().x), (int)(player.getPosition().y)+3, Math.round(player.getPosition().z));
 			if(bi != null && !bi.isSolid()) {
 				int absorption = bi.getAbsorption();
@@ -251,7 +251,7 @@ public class MainRenderer {
 			// Set intensity:
 			light.setDirection(light.getDirection().mul(0.1f*Cubyz.surface.getGlobalLighting()/light.getDirection().length()));
 			window.setClearColor(clearColor);
-			render(window, ambient, light, Cubyz.surface.getChunks(), Cubyz.surface.getReducedChunks(), Cubyz.world.getBlocks(), Cubyz.surface.getEntities(), worldSpatialList, Cubyz.world.getLocalPlayer(), Cubyz.surface.getSizeX(), Cubyz.surface.getSizeZ());
+			render(window, ambient, light, Cubyz.surface.getChunks(), Cubyz.surface.getReducedChunks(), Cubyz.world.getBlocks(), Cubyz.surface.getEntities(), worldSpatialList, Cubyz.player, Cubyz.surface.getSizeX(), Cubyz.surface.getSizeZ());
 		} else {
 			clearColor.y = clearColor.z = 0.7f;
 			clearColor.x = 0.1f;

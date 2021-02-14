@@ -39,7 +39,7 @@ public class DebugOverlay extends MenuGUI {
 			
 			if(Cubyz.world != null) {
 				World world = Cubyz.world;
-				Player p = world.getLocalPlayer();
+				Player p = Cubyz.player;
 				float x = p.getPosition().x;
 				float y = p.getPosition().y;
 				float z = p.getPosition().z;

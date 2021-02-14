@@ -34,9 +34,9 @@ public class InventoryGUI extends GeneralInventory {
 		 // Place the crafting slots in an empty slot or throw them out.
 		for(int i = playerInventorySize; i < playerInventorySize + 5; i++) {
 			if(inv[i].reference.empty()) continue;
-			inv[i].reference.setAmount(Cubyz.world.getLocalPlayer().getInventory().addItem(inv[i].reference.getItem(), inv[i].reference.getAmount()));
+			inv[i].reference.setAmount(Cubyz.player.getInventory().addItem(inv[i].reference.getItem(), inv[i].reference.getAmount()));
 			if(inv[i].reference.empty()) continue;
-			Cubyz.surface.drop(inv[i].reference, Cubyz.world.getLocalPlayer().getPosition(), new Vector3f(), 0);
+			Cubyz.surface.drop(inv[i].reference, Cubyz.player.getPosition(), new Vector3f(), 0);
 		}
 	}
 	
@@ -72,9 +72,9 @@ public class InventoryGUI extends GeneralInventory {
 	@Override
 	protected void positionSlots() {
 		if(inv == null) {
-			playerInventorySize = Cubyz.world.getLocalPlayer().getInventory().getCapacity();
+			playerInventorySize = Cubyz.player.getInventory().getCapacity();
 			inv = new InventorySlot[playerInventorySize + 5];
-			Inventory inventory = Cubyz.world.getLocalPlayer().getInventory();
+			Inventory inventory = Cubyz.player.getInventory();
 			for(int i = 0; i < 8; i++) {
 				inv[i] = new InventorySlot(inventory.getStack(i), i*64 - 256, 64, Component.ALIGN_BOTTOM);
 			}
