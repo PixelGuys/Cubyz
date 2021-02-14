@@ -248,6 +248,7 @@ public class NormalChunkMesh {
 		glBindVertexArray(0);
 		glDeleteVertexArrays(vaoId);
 		glDeleteVertexArrays(transparentVaoId);
+		vaoId = transparentVaoId = -1;
 	}
 	
 	private static void generateModelData(NormalChunk chunk, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices) {
