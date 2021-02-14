@@ -1,8 +1,0 @@
-{
-	"models": {
-		"default": {
-			"model": "cubyz:block.obj",
-			"texture": "cubyz:undefined"
-		}
-	}
-}

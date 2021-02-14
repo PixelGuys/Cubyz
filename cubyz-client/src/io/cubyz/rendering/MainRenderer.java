@@ -1,14 +1,10 @@
 package io.cubyz.rendering;
 
-import static io.cubyz.CubyzLogger.logger;
 import static org.lwjgl.opengl.GL11.GL_TEXTURE_2D;
 import static org.lwjgl.opengl.GL11.glBindTexture;
 import static org.lwjgl.opengl.GL13.GL_TEXTURE0;
 import static org.lwjgl.opengl.GL13.glActiveTexture;
 import static org.lwjgl.opengl.GL13C.*;
-
-import java.io.File;
-import java.io.IOException;
 
 import org.joml.FrustumIntersection;
 import org.joml.Matrix4f;
@@ -16,9 +12,6 @@ import org.joml.Vector3f;
 import org.joml.Vector4f;
 
 import io.cubyz.ClientSettings;
-import io.cubyz.api.CubyzRegistries;
-import io.cubyz.api.RegistryElement;
-import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.client.Cubyz;
@@ -33,10 +26,7 @@ import io.cubyz.entity.ItemEntityManager;
 import io.cubyz.entity.Player;
 import io.cubyz.items.ItemBlock;
 import io.cubyz.util.FastList;
-import io.cubyz.utils.ResourceUtilities;
 import io.cubyz.utils.Utils;
-import io.cubyz.utils.ResourceUtilities.BlockModel;
-import io.cubyz.utils.ResourceUtilities.BlockSubModel;
 import io.cubyz.world.ChunkEntityManager;
 import io.cubyz.world.NormalChunk;
 import io.cubyz.world.ReducedChunk;
@@ -72,8 +62,6 @@ public class MainRenderer {
 	private Vector3f brightAmbient = new Vector3f(1, 1, 1);
 	private Vector4f clearColor = new Vector4f(0.1f, 0.7f, 0.7f, 1f);
 	private DirectionalLight light = new DirectionalLight(new Vector3f(1.0f, 1.0f, 1.0f), new Vector3f(0.0f, 1.0f, 0.0f).mul(0.1f));
-
-	private int worldSeason = 0;
 
 	private static final NormalChunk[] EMPTY_CHUNK_LIST = new NormalChunk[0];
 	private static final ReducedChunk[] EMPTY_REDUCED_CHUNK_LIST = new ReducedChunk[0];
@@ -197,79 +185,6 @@ public class MainRenderer {
 		return output;
 	}
 	
-	public void seasonUpdateDynamodels() {
-		
-		String season = null;
-		switch (worldSeason) {
-		case 0:
-			season = "spring";
-			break;
-		case 1:
-			season = "summer";
-			break;
-		case 2:
-			season = "autumn";
-			break;
-		case 3:
-			season = "winter";
-			break;
-		default:
-			return;
-		}
-		
-		for (RegistryElement elem : CubyzRegistries.BLOCK_REGISTRY.registered()) {
-			Block block = (Block) elem;
-			Resource rsc = block.getRegistryID();
-			try {
-				Texture tex = null;
-				InstancedMesh mesh = null;
-				BlockModel bm = null;
-				try {
-					bm = ResourceUtilities.loadModel(rsc);
-				} catch (IOException e) {
-					logger.warning(rsc + " model not found");
-					//e.printStackTrace();
-					bm = ResourceUtilities.loadModel(new Resource("cubyz:undefined"));
-				}
-				
-				// Cached meshes
-				Mesh defaultMesh = null;
-				for (String key : Meshes.cachedDefaultModels.keySet()) {
-					if (key.equals(bm.subModels.get("default").model)) {
-						defaultMesh = Meshes.cachedDefaultModels.get(key);
-					}
-				}
-				BlockSubModel subModel = bm.subModels.get("default");
-				if (bm.dynaModelPurposes.contains("seasons")) {
-					if (bm.subModels.containsKey(season)) {
-						subModel = bm.subModels.get(season);
-					}
-				}
-				if (defaultMesh == null) {
-					Resource rs = new Resource(subModel.model);
-					defaultMesh = (InstancedMesh)OBJLoader.loadMesh(rs, "assets/" + rs.getMod() + "/models/3d/" + rs.getID(), true); // Blocks are always instanced.
-					defaultMesh.setBoundingRadius(2.0f);
-					Meshes.cachedDefaultModels.put(subModel.model, defaultMesh);
-				}
-				Resource texResource = new Resource(subModel.texture);
-				String texture = texResource.getID();
-				if (!new File("assets/" + texResource.getMod() + "/textures/" + texture + ".png").exists()) {
-					logger.warning(texResource + " texture not found");
-					texture = "blocks/undefined";
-				}
-				tex = new Texture("assets/" + texResource.getMod() + "/textures/" + texture + ".png");
-				
-				mesh = (InstancedMesh)defaultMesh.cloneNoMaterial();
-				Material material = new Material(tex, 0.6F);
-				mesh.setMaterial(material);
-				
-				Meshes.blockMeshes.put(block, mesh);
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
-	}
-	
 	/**
 	 * Render the current world.
 	 * @param window
@@ -306,12 +221,7 @@ public class MainRenderer {
 			Cubyz.renderDeque.pop().run();
 		}
 		if(Cubyz.world != null) {
-			// TODO: Handle seasons and colors and sun position in the surface.
-			if(worldSeason != Cubyz.surface.getStellarTorus().getSeason()) {
-				worldSeason = Cubyz.surface.getStellarTorus().getSeason();
-				seasonUpdateDynamodels();
-				logger.info("Updated season to ID " + worldSeason);
-			}
+			// TODO: Handle colors and sun position in the surface.
 			ambient.x = ambient.y = ambient.z = Cubyz.surface.getGlobalLighting();
 			if(ambient.x < 0.1f) ambient.x = 0.1f;
 			if(ambient.y < 0.1f) ambient.y = 0.1f;

@@ -3,9 +3,11 @@ package io.cubyz.client;
 import static io.cubyz.CubyzLogger.logger;
 
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Properties;
 
 import io.cubyz.ClientOnly;
 import io.cubyz.api.Registry;
@@ -19,7 +21,6 @@ import io.cubyz.rendering.OBJLoader;
 import io.cubyz.rendering.StaticMeshesLoader;
 import io.cubyz.rendering.Texture;
 import io.cubyz.utils.ResourceUtilities;
-import io.cubyz.utils.ResourceUtilities.BlockModel;
 import io.cubyz.utils.ResourceUtilities.EntityModel;
 
 /**
@@ -66,41 +67,53 @@ public class Meshes {
 			Resource rsc = block.getRegistryID();
 			try {
 				Texture tex = null;
-				BlockModel bm = null;
-				if (block.generatesModelAtRuntime()) {
-					bm = ResourceUtilities.loadModel(new Resource("cubyz:undefined"));
-				} else {
+				String model = null;
+				String texture = null;
+				// Try loading it from the addons files:
+				String path = "addons/"+rsc.getMod()+"/blocks/" + rsc.getID();
+				File file = new File(path);
+				if(file.exists()) {
+					Properties props = new Properties();
 					try {
-						bm = ResourceUtilities.loadModel(rsc);
+						FileReader reader = new FileReader(file);
+						props.load(reader);
+						reader.close();
 					} catch (IOException e) {
-						logger.warning(rsc + " block model not found");
-						bm = ResourceUtilities.loadModel(new Resource("cubyz:undefined"));
+						e.printStackTrace();
 					}
+					model = props.getProperty("model", null);
+					texture = props.getProperty("texture", null);
+				}
+				if(model == null) {
+					model = "cubyz:block.obj";
+				}
+				if(texture == null) {
+					texture = "cubyz:undefined";
 				}
 				
 				// Cached meshes
 				Mesh mesh = null;
 				for (String key : cachedDefaultModels.keySet()) {
-					if (key.equals(bm.subModels.get("default").model)) {
+					if (key.equals(model)) {
 						mesh = cachedDefaultModels.get(key);
 					}
 				}
 				if (mesh == null) {
-					Resource rs = new Resource(bm.subModels.get("default").model);
+					Resource rs = new Resource(model);
 					mesh = OBJLoader.loadMesh(rs, "assets/" + rs.getMod() + "/models/3d/" + rs.getID(), false);
 					//defaultMesh = StaticMeshesLoader.loadInstanced("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), "assets/" + rs.getMod() + "/models/3d/")[0];
 					mesh.setBoundingRadius(2.0f);
 					Material material = new Material(tex, 0.6F);
 					mesh.setMaterial(material);
-					cachedDefaultModels.put(bm.subModels.get("default").model, mesh);
+					cachedDefaultModels.put(model, mesh);
 				}
-				Resource texResource = new Resource(bm.subModels.get("default").texture);
-				String texture = texResource.getID();
-				if (!new File("addons/" + texResource.getMod() + "/blocks/textures/" + texture + ".png").exists()) {
+				Resource texResource = new Resource(texture);
+				String textureID = texResource.getID();
+				if (!new File("addons/" + texResource.getMod() + "/blocks/textures/" + textureID + ".png").exists()) {
 					logger.warning(texResource + " texture not found");
-					texture = "undefined";
+					textureID = "undefined";
 				}
-				tex = new Texture("addons/" + texResource.getMod() + "/blocks/textures/" + texture + ".png");
+				tex = new Texture("addons/" + texResource.getMod() + "/blocks/textures/" + textureID + ".png");
 				
 				Meshes.blockMeshes.put(block, mesh);
 				Meshes.blockTextures.put(block, tex);
