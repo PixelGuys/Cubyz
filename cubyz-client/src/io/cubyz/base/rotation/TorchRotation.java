@@ -120,23 +120,23 @@ public class TorchRotation implements RotationMode {
 		byte data = bi.getData();
 		Model model = Meshes.blockMeshes.get(bi.getBlock()).model;
 		if((data & 0b1) != 0) {
-			model.addToChunkMeshRotation((bi.x & 15) + 0.9f, bi.y + 0.7f, (bi.z & 15) + 0.5f, POS_X, bi.getBlock().atlasX, bi.getBlock().atlasY, bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
+			model.addToChunkMeshRotation((bi.x & 15) + 0.9f, (bi.y & 15) + 0.7f, (bi.z & 15) + 0.5f, POS_X, bi.getBlock().atlasX, bi.getBlock().atlasY, bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
 			renderIndex++;
 		}
 		if((data & 0b10) != 0) {
-			model.addToChunkMeshRotation((bi.x & 15) + 0.1f, bi.y + 0.7f, (bi.z & 15) + 0.5f, NEG_X, bi.getBlock().atlasX, bi.getBlock().atlasY, bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
+			model.addToChunkMeshRotation((bi.x & 15) + 0.1f, (bi.y & 15) + 0.7f, (bi.z & 15) + 0.5f, NEG_X, bi.getBlock().atlasX, bi.getBlock().atlasY, bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
 			renderIndex++;
 		}
 		if((data & 0b100) != 0) {
-			model.addToChunkMeshRotation((bi.x & 15) + 0.5f, bi.y + 0.7f, (bi.z & 15) + 0.9f, POS_Z, bi.getBlock().atlasX, bi.getBlock().atlasY, bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
+			model.addToChunkMeshRotation((bi.x & 15) + 0.5f, (bi.y & 15) + 0.7f, (bi.z & 15) + 0.9f, POS_Z, bi.getBlock().atlasX, bi.getBlock().atlasY, bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
 			renderIndex++;
 		}
 		if((data & 0b1000) != 0) {
-			model.addToChunkMeshRotation((bi.x & 15) + 0.5f, bi.y + 0.7f, (bi.z & 15) + 0.1f, NEG_Z, bi.getBlock().atlasX, bi.getBlock().atlasY, bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
+			model.addToChunkMeshRotation((bi.x & 15) + 0.5f, (bi.y & 15) + 0.7f, (bi.z & 15) + 0.1f, NEG_Z, bi.getBlock().atlasX, bi.getBlock().atlasY, bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
 			renderIndex++;
 		}
 		if((data & 0b10000) != 0) {
-			model.addToChunkMeshRotation((bi.x & 15) + 0.5f, bi.y + 0.5f, (bi.z & 15) + 0.5f, null, bi.getBlock().atlasX, bi.getBlock().atlasY, bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
+			model.addToChunkMeshRotation((bi.x & 15) + 0.5f, (bi.y & 15) + 0.5f, (bi.z & 15) + 0.5f, null, bi.getBlock().atlasX, bi.getBlock().atlasY, bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
 			renderIndex++;
 		}
 		return renderIndex;

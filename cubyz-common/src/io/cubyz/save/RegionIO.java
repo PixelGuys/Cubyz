@@ -27,21 +27,49 @@ public class RegionIO {
 	private ArrayList<int[]> chunkData;
 	private final File dir;
 	private final TorusIO tio;
+	private int[][] heightMap;
 	
 	public RegionIO(Region region, TorusIO tio) {
 		this.tio = tio;
 		dir = new File(tio.dir.getAbsolutePath()+"/"+region.wx+","+region.wz);
 	}
 	
+	public void loadHeightMap(Region region) {
+		heightMap = new int[256][256];
+		if(dir.exists()) {
+			try {
+				InputStream in = new BufferedInputStream(new InflaterInputStream(new FileInputStream(dir+"/height.dat")));
+				byte[] data = new byte[256*256*4];
+				in.read(data);
+				int index = 0;
+				for(int x = 0; x < 256; x++) {
+					for(int z = 0; z < 256; z++) {
+						heightMap[x][z] = Bits.getInt(data, index);
+						index += 4;
+					}
+				}
+				in.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		} else {
+			for(int x = 0; x < 256; x++) {
+				for(int z = 0; z < 256; z++) {
+					heightMap[x][z] = (int)region.heightMap[x][z];
+				}
+			}
+		}
+	}
+	
 	public ArrayList<BlockChange> transformData(byte[] data) {
-		int size = Bits.getInt(data, 8);
+		int size = Bits.getInt(data, 12);
 		ArrayList<BlockChange> list = new ArrayList<BlockChange>(size);
 		for (int i = 0; i < size; i++) {
 			try {
-				list.add(new BlockChange(data, 12 + i*9, tio.blockPalette));
+				list.add(new BlockChange(data, 16 + i*9, tio.blockPalette));
 			} catch (MissingBlockException e) {
 				// If the block is missing, we replace it by nothing
-				int off = 12 + i*9;
+				int off = 16 + i*9;
 				int index = Bits.getInt(data, off + 0);
 				list.add(new BlockChange(-2, -1, index, (byte)0, (byte)0));
 			}
@@ -67,9 +95,10 @@ public class RegionIO {
 					in.read(data);
 					blockData.add(data);
 					
-					int ox = Bits.getInt(data, 0);
-					int oz = Bits.getInt(data, 4);
-					int[] ckData = new int[] {ox, oz};
+					int cx = Bits.getInt(data, 0);
+					int cy = Bits.getInt(data, 4);
+					int cz = Bits.getInt(data, 8);
+					int[] ckData = new int[] {cx, cy, cz};
 					chunkData.add(ckData);
 				}
 				in.close();
@@ -88,12 +117,12 @@ public class RegionIO {
 				byte[] len = new byte[4];
 				int l = 0;
 				for (byte[] data : blockData)
-					if (data.length > 12)
+					if (data.length > 16)
 						l++;
 				Bits.putInt(len, 0, l);
 				out.write(len);
 				for (byte[] data : blockData) {
-					if(data.length > 12) { // Only write data if there is any data other than the chunk coordinates.
+					if(data.length > 16) { // Only write data if there is any data other than the chunk coordinates.
 						byte[] b = new byte[4];
 						Bits.putInt(b, 0, data.length);
 						out.write(b);
@@ -105,25 +134,44 @@ public class RegionIO {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		// Save height map:
+		if(dir.exists() && heightMap != null) {
+			try {
+				BufferedOutputStream out = new BufferedOutputStream(new DeflaterOutputStream(new FileOutputStream(dir+"/height.dat")));
+				byte[] data = new byte[256*256*4];
+				int index = 0;
+				for(int x = 0; x < 256; x++) {
+					for(int z = 0; z < 256; z++) {
+						Bits.putInt(data, index, heightMap[x][z]);
+						index += 4;
+					}
+				}
+				out.write(data);
+				out.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 	}
 	
-	public ArrayList<BlockChange> getBlockChanges(int cx, int cz) {
+	public ArrayList<BlockChange> getBlockChanges(int cx, int cy, int cz) {
 		if(blockData == null) {
 			readFile();
 		}
 		int index = -1;
 		for(int i = 0; i < chunkData.size(); i++) {
 			int [] arr = chunkData.get(i);
-			if(arr[0] == cx && arr[1] == cz) {
+			if(arr[0] == cx && arr[1] == cy && arr[2] == cz) {
 				index = i;
 				break;
 			}
 		}
 		if(index == -1) {
-			byte[] dummy = new byte[12];
+			byte[] dummy = new byte[16];
 			Bits.putInt(dummy, 0, cx);
-			Bits.putInt(dummy, 4, cz);
-			Bits.putInt(dummy, 8, 0);
+			Bits.putInt(dummy, 4, cy);
+			Bits.putInt(dummy, 8, cz);
+			Bits.putInt(dummy, 12, 0);
 			return transformData(dummy);
 		}
 		return transformData(blockData.get(index));
@@ -132,12 +180,12 @@ public class RegionIO {
 	public void saveChunk(NormalChunk ch) {
 		byte[] cb = ch.save(tio.blockPalette);
 		int[] cd = ch.getData();
-		if(cb.length <= 12) return;
+		if(cb.length <= 16) return;
 		int index = -1;
 		synchronized (blockData) {
 			for (int i = 0; i < blockData.size(); i++) {
 				int[] cd2 = chunkData.get(i);
-				if (cd[0] == cd2[0] && cd[1] == cd2[1]) {
+				if (cd[0] == cd2[0] && cd[1] == cd2[1] && cd[2] == cd2[2]) {
 					index = i;
 					break;
 				}
@@ -153,11 +201,13 @@ public class RegionIO {
 	}
 	
 	public ItemEntityManager readItemEntities(Surface surface, NormalChunk chunk) {
-		File file = new File(dir, "itemEnt"+chunk.getWorldX()+" "+chunk.getWorldZ());
+		File file = new File(dir, "itemEnt"+chunk.getWorldX()+" "+chunk.getWorldY()+" "+chunk.getWorldZ());
+		//System.out.println(file.getName());
 		if(!file.exists()) return new ItemEntityManager(surface, chunk, 1);
+		System.out.println(file.getName());
 		try {
 			byte[] data = new byte[(int) file.length()];
-			DataInputStream stream = new DataInputStream(new InflaterInputStream(new FileInputStream(file)));
+			DataInputStream stream = new DataInputStream(new FileInputStream(file));
 			stream.readFully(data);
 			stream.close();
 			return new ItemEntityManager(surface, chunk, data, tio.itemPalette);
@@ -169,14 +219,29 @@ public class RegionIO {
 	
 	public void saveItemEntities(ItemEntityManager manager) {
 		if(manager.size == 0) return;
-		File file = new File(dir, "itemEnt"+manager.chunk.getWorldX()+" "+manager.chunk.getWorldZ());
+		File file = new File(dir, "itemEnt"+manager.chunk.getWorldX()+" "+manager.chunk.getWorldY()+" "+manager.chunk.getWorldZ());
 		if(!dir.exists()) dir.mkdirs();
 		try {
-			BufferedOutputStream out = new BufferedOutputStream(new DeflaterOutputStream(new FileOutputStream(file)));
-			out.write(manager.store(tio.itemPalette));
+			BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(file));
+			byte[] data = manager.store(tio.itemPalette);
+			out.write(data);
 			out.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+	
+	public int getHeight(int wx, int wz, Region region) {
+		wx &= 255;
+		wz &= 255;
+		if(heightMap == null) this.loadHeightMap(region);
+		return heightMap[wx][wz];
+	}
+	
+	public void setHeight(int wx, int wz, int height, Region region) {
+		wx &= 255;
+		wz &= 255;
+		if(heightMap == null) this.loadHeightMap(region);
+		heightMap[wx][wz] = height;
 	}
 }

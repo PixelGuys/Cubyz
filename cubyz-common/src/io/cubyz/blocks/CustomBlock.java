@@ -155,7 +155,7 @@ public class CustomBlock extends Ore implements CustomObject {
 		// Use a seed based on the name, so if the same ore gets generated twice in the giant world, it will have the same properties.
 		// This fact could also allow an interactive wiki which displays an ores property with knowledge of only the name(TODO).
 		rand = new Random(Utilities.hash(name));
-		CustomBlock ore = new CustomBlock(8+rand.nextInt(200), 1+rand.nextFloat()*15, 1+rand.nextFloat()*9, texProvider);
+		CustomBlock ore = new CustomBlock(8+rand.nextInt(200), (1+rand.nextFloat()*15)/16, 1+rand.nextFloat()*9, texProvider);
 		ore.name = name;
 		ore.color = rand.nextInt(0xFFFFFF);
 		ore.seed = rand.nextLong();

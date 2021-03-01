@@ -1,6 +1,6 @@
 class ore
 hardness 40
-veins 10
+veins 0.625
 size 15
 height 128
 drop cubyz:coal

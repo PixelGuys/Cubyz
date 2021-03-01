@@ -4,10 +4,8 @@ import java.util.Random;
 
 import io.cubyz.api.Resource;
 import io.cubyz.math.CubyzMath;
-import io.cubyz.world.NormalChunk;
 import io.cubyz.world.Chunk;
 import io.cubyz.world.Region;
-import io.cubyz.world.ReducedChunk;
 import io.cubyz.world.Surface;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 import io.cubyz.world.cubyzgenerators.biomes.StructureModel;
@@ -17,7 +15,7 @@ import io.cubyz.world.cubyzgenerators.biomes.StructureModel;
  * Other structures(like rivers, caves, crystal caverns, …) should be created seperately.
  */
 
-public class StructureGenerator implements Generator, ReducedGenerator {
+public class StructureGenerator implements Generator {
 	
 	@Override
 	public Resource getRegistryID() {
@@ -30,11 +28,11 @@ public class StructureGenerator implements Generator, ReducedGenerator {
 	}
 
 	@Override
-	public void generate(long seed, int wx, int wz, NormalChunk chunk, Region containingRegion, Surface surface, boolean[][] vegetationIgnoreMap) {
-		this.generate(seed, wx, wz, chunk, containingRegion, surface);
+	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, Region containingRegion, Surface surface, boolean[][] vegetationIgnoreMap) {
+		this.generate(seed, wx, wy, wz, chunk, containingRegion, surface);
 	}
 	
-	private void generate(long seed, int wx, int wz, Chunk chunk, Region containingRegion, Surface surface) {
+	private void generate(long seed, int wx, int wy, int wz, Chunk chunk, Region containingRegion, Surface surface) {
 		Random rand = new Random(seed + 3*(seed + 1 & Integer.MAX_VALUE));
 		int worldSizeX = surface.getSizeX();
 		int worldSizeZ = surface.getSizeZ();
@@ -95,11 +93,6 @@ public class StructureGenerator implements Generator, ReducedGenerator {
 				}
 			}
 		}
-	}
-
-	@Override
-	public void generate(long seed, int wx, int wz, ReducedChunk chunk, Region containingRegion, Surface surface) {
-		this.generate(seed, wx, wz, (Chunk)chunk, containingRegion, surface);
 	}
 
 	@Override

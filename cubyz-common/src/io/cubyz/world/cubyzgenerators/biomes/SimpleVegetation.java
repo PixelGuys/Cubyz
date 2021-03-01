@@ -22,13 +22,17 @@ public class SimpleVegetation extends StructureModel {
 	}
 	@Override
 	public void generate(int x, int z, int h, Chunk chunk, Region region, Random rand) {
-		if(chunk.liesInChunk(x, z)) {
+		int y = chunk.getWorldY();
+		if(chunk.liesInChunk(x, h-y, z)) {
 			int height = height0;
 			if(h+height < World.WORLD_HEIGHT) {
 				if(deltaHeight != 0)
 					height += rand.nextInt(deltaHeight);
-				for(int py = chunk.startIndex(h); py < h + height; py += chunk.getVoxelSize())
-					chunk.updateBlockIfAir(x, py, z, block);
+				for(int py = chunk.startIndex(h); py < h + height; py += chunk.getVoxelSize()) {
+					if(chunk.liesInChunk(x, py-y, z)) {
+						chunk.updateBlockIfAir(x, py-y, z, block);
+					}
+				}
 			}
 		}
 	}

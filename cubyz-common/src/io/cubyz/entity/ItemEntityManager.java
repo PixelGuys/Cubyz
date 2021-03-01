@@ -10,7 +10,6 @@ import io.cubyz.items.Item;
 import io.cubyz.items.ItemStack;
 import io.cubyz.math.Bits;
 import io.cubyz.save.Palette;
-import io.cubyz.world.ChunkEntityManager;
 import io.cubyz.world.NormalChunk;
 import io.cubyz.world.Surface;
 
@@ -60,7 +59,7 @@ public class ItemEntityManager {
 		index += 4;
 		// Check if the length is right:
 		if(data.length-index != length*4*9) {
-			CubyzLogger.logger.warning("Save file is corrupted. Skipping item entites for chunk "+chunk.getWorldX()+" "+chunk.getWorldZ());
+			CubyzLogger.logger.warning("Save file is corrupted. Skipping item entites for chunk "+chunk.getWorldX()+" "+chunk.getWorldY()+" "+chunk.getWorldZ());
 			length = 0;
 		}
 		// Init variables:
@@ -74,7 +73,6 @@ public class ItemEntityManager {
 		this.surface = surface;
 		this.chunk = chunk;
 		gravity = surface.getStellarTorus().getGravity();
-		
 		// Read the data:
 		for(int i = 0; i < length; i++) {
 			float x = Bits.getFloat(data, index);
@@ -140,11 +138,15 @@ public class ItemEntityManager {
 			posxyz[index3+1] += velxyz[index3+1];
 			posxyz[index3+2] += velxyz[index3+2];
 			// Check if it's still inside this chunk:
-			if(posxyz[index3] - chunk.getWorldX() < 0 || posxyz[index3] - chunk.getWorldX() >= 16 || posxyz[index3+2] - chunk.getWorldZ() < 0 || posxyz[index3+2] - chunk.getWorldZ() >= 16) {
+			if(!chunk.isInside(posxyz[index3], posxyz[index3 + 1], posxyz[index3 + 2])) {
 				// Move it to another manager:
-				ChunkEntityManager other = surface.getEntityManagerAt(((int)posxyz[index3]) & ~15, ((int)posxyz[index3+2]) & ~15);
-				other.itemEntityManager.add(posxyz[index3], posxyz[index3+1], posxyz[index3+2], velxyz[index3], velxyz[index3+1], velxyz[index3+2], rotxyz[index3], rotxyz[index3+1], rotxyz[index3+2], itemStacks[i], despawnTime[i]);
-				remove(i);
+				ChunkEntityManager other = surface.getEntityManagerAt(((int)posxyz[index3]) & ~15, ((int)posxyz[index3+1]) & ~15, ((int)posxyz[index3+2]) & ~15);
+				if(other == null) {
+					// TODO: Append it to the right file.
+				} else {
+					other.itemEntityManager.add(posxyz[index3], posxyz[index3+1], posxyz[index3+2], velxyz[index3], velxyz[index3+1], velxyz[index3+2], rotxyz[index3], rotxyz[index3+1], rotxyz[index3+2], itemStacks[i], despawnTime[i]);
+				}
+					remove(i);
 				i--;
 				continue;
 			}
@@ -280,6 +282,7 @@ public class ItemEntityManager {
 	private void checkBlock(int index3, int x, int y, int z) {
 		// Transform to chunk-relative coordinates:
 		x -= chunk.getWorldX();
+		y -= chunk.getWorldY();
 		z -= chunk.getWorldZ();
 		Block block = chunk.getBlockUnbound(x, y, z);
 		if(block == null) return;
@@ -292,7 +295,7 @@ public class ItemEntityManager {
 		if(isInside) {
 			if(block.isSolid()) {
 				velxyz[index3] = velxyz[index3+1] = velxyz[index3+2] = 0;
-				posxyz[index3+1] = y+1 + radius - 0.01f;
+				posxyz[index3+1] = y+chunk.getWorldY()+1 + radius - 0.01f;
 				// TODO: Prevent item entities from getting stuck in a block.
 			} else {
 				// TODO: Add buoyancy and drag.

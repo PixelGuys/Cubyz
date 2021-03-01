@@ -1,6 +1,6 @@
 class ore
 hardness 80
-veins 1.5
+veins 0.1
 size 4
 height 16
 drop cubyz:diamond

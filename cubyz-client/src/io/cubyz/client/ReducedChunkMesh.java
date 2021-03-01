@@ -185,7 +185,7 @@ public class ReducedChunkMesh {
 	private static void generateModelData(ReducedChunk chunk, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList colors) {
 		int zMask = (chunk.width - 1) >>> chunk.resolutionShift;
 		int xMask = zMask << (chunk.widthShift - chunk.resolutionShift);
-		int yMask = (255 >>> chunk.resolutionShift) << 2*(chunk.widthShift - chunk.resolutionShift);
+		int yMask = xMask << (chunk.widthShift - chunk.resolutionShift);
 		int zDelta = 1;
 		int xDelta = 1 << (chunk.widthShift - chunk.resolutionShift);
 		int yDelta = 1 << 2*(chunk.widthShift - chunk.resolutionShift);

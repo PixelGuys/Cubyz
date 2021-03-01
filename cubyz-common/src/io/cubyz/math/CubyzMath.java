@@ -16,14 +16,7 @@ public class CubyzMath {
 		if(value < 0) return value%worldSize + worldSize;
 		return value%worldSize;
 	}
-	public static float moduloMatchSign(float num, int worldSize) { // The world coordinates are given as two's complement in the bitregion of the worldAnd.
-		if(num > (worldSize >> 1))
-			return num - worldSize;
-		if(num < -(worldSize >> 1))
-			return num + worldSize;
-		return num;
-	}
-	public static int moduloMatchSign(int num, int worldSize) { // The world coordinates are given as two's complement in the bitregion of the worldAnd.
+	public static int moduloMatchSign(int num, int worldSize) {
 		if(num > (worldSize >> 1))
 			return num - worldSize;
 		if(num < -(worldSize >> 1))

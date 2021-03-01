@@ -2,10 +2,7 @@ package io.cubyz.world;
 
 import io.cubyz.ClientOnly;
 import io.cubyz.blocks.Block;
-
-/**
- * Common interface for chunks of all scales and sizes.
- */
+import io.cubyz.world.generator.SurfaceGenerator;
 
 public abstract class Chunk {
 	private Object chunkMesh = null;
@@ -42,6 +39,16 @@ public abstract class Chunk {
 	public abstract void updateBlock(int x, int y, int z, Block newBlock);
 	
 	/**
+	 * Updates a block if it is inside this chunk.<br>
+	 * Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
+	 * @param x relative x without considering resolution.
+	 * @param y relative y without considering resolution.
+	 * @param z relative z without considering resolution.
+	 * @return block at x y z
+	 */
+	public abstract Block getBlock(int x, int y, int z);
+	
+	/**
 	 * Updates a block if it is inside this chunk and sets its block data to the specified value(if blockdata is supported).<br>
 	 * Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
 	 * @param x relative x without considering resolution.
@@ -53,19 +60,18 @@ public abstract class Chunk {
 	public abstract void updateBlock(int x, int y, int z, Block newBlock, byte data);
 	
 	/**
+	 * Generates this chunk.
+	 * @param gen
+	 */
+	public abstract void generateFrom(SurfaceGenerator gen);
+	
+	/**
 	 * Checks if the given <b>relative</b> coordinates lie within the resolved grid of this chunk.
 	 * @param x
 	 * @param z
 	 * @return
 	 */
-	public abstract boolean liesInChunk(int x, int z);
-	
-	/**
-	 * Checks if the given y coordinate lie within the resolved grid of this chunk.
-	 * @param y
-	 * @return
-	 */
-	public abstract boolean liesInChunk(int y);
+	public abstract boolean liesInChunk(int x, int y, int z);
 	
 	/**
 	 * @return The size of one voxel unit inside the given Chunk.
@@ -76,6 +82,10 @@ public abstract class Chunk {
 	 * @return starting x coordinate of this chunk relative to the current surface.
 	 */
 	public abstract int getWorldX();
+	/**
+	 * @return starting y coordinate of this chunk relative to the current surface.
+	 */
+	public abstract int getWorldY();
 	/**
 	 * @return starting z coordinate of this chunk relative to the current surface.
 	 */

@@ -93,6 +93,7 @@ public class GameLogic implements ClientConnection {
 		for (Handler handler : logger.getHandlers()) {
 			handler.close();
 		}
+		if(Cubyz.world != null) quitWorld();
 		ClientSettings.save();
 		DiscordIntegration.closeRPC();
 		if (sound != null) {
@@ -157,7 +158,7 @@ public class GameLogic implements ClientConnection {
 					if(Cubyz.surface.isValidSpawnLocation(dx, dz)) 
 						break;
 				}
-				Cubyz.surface.seek((int)dx, (int)dz, ClientSettings.RENDER_DISTANCE, ClientSettings.HIGHEST_LOD, ClientSettings.LOD_FACTOR);
+				Cubyz.surface.seek((int)dx, World.WORLD_HEIGHT - 1, (int)dz, ClientSettings.RENDER_DISTANCE, ClientSettings.EFFECTIVE_RENDER_DISTANCE*NormalChunk.chunkSize*3/2/256);
 				highestY = World.WORLD_HEIGHT - 1;
 				while(highestY >= 0) {
 					if(Cubyz.surface.getBlock(dx, highestY, dz) != null && Cubyz.surface.getBlock(dx, highestY, dz).isSolid()) break;
@@ -473,11 +474,12 @@ public class GameLogic implements ClientConnection {
 				}
 			}
 			Cubyz.playerInc.x = Cubyz.playerInc.y = Cubyz.playerInc.z = 0.0F; // Reset positions
-			NormalChunk ch = Cubyz.surface.getChunk((int)Cubyz.player.getPosition().x >> 4, (int)Cubyz.player.getPosition().z >> 4);
+			NormalChunk ch = Cubyz.surface.getChunk((int)Cubyz.player.getPosition().x >> 4, (int)Cubyz.player.getPosition().y >> 4, (int)Cubyz.player.getPosition().z >> 4);
 			if (ch != null && ch.isLoaded()) {
 				Cubyz.world.update();
 			}
-			Cubyz.surface.seek((int)Cubyz.player.getPosition().x, (int)Cubyz.player.getPosition().z, ClientSettings.RENDER_DISTANCE, ClientSettings.HIGHEST_LOD, ClientSettings.LOD_FACTOR);
+			Cubyz.surface.seek((int)Cubyz.player.getPosition().x, (int)Cubyz.player.getPosition().y, (int)Cubyz.player.getPosition().z, ClientSettings.RENDER_DISTANCE, ClientSettings.EFFECTIVE_RENDER_DISTANCE*NormalChunk.chunkSize*3/2/256);
+			Cubyz.chunkTree.update((int)Cubyz.player.getPosition().x, (int)Cubyz.player.getPosition().y, (int)Cubyz.player.getPosition().z, ClientSettings.RENDER_DISTANCE, ClientSettings.HIGHEST_LOD, ClientSettings.LOD_FACTOR);
 			float lightAngle = (float)Math.PI/2 + (float)Math.PI*(((float)Cubyz.world.getGameTime() % Cubyz.surface.getStellarTorus().getDayCycle())/(Cubyz.surface.getStellarTorus().getDayCycle()/2));
 			skySun.setPositionRaw((float)Math.cos(lightAngle)*500, (float)Math.sin(lightAngle)*500, 0);
 			skySun.setRotation(0, 0, -lightAngle);

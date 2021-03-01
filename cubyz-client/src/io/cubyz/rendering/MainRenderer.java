@@ -19,6 +19,7 @@ import io.cubyz.client.GameLauncher;
 import io.cubyz.client.Meshes;
 import io.cubyz.client.NormalChunkMesh;
 import io.cubyz.client.ReducedChunkMesh;
+import io.cubyz.entity.ChunkEntityManager;
 import io.cubyz.entity.CustomMeshProvider;
 import io.cubyz.entity.CustomMeshProvider.MeshType;
 import io.cubyz.input.Keyboard;
@@ -28,7 +29,7 @@ import io.cubyz.entity.Player;
 import io.cubyz.items.ItemBlock;
 import io.cubyz.util.FastList;
 import io.cubyz.utils.Utils;
-import io.cubyz.world.ChunkEntityManager;
+import io.cubyz.world.Chunk;
 import io.cubyz.world.NormalChunk;
 import io.cubyz.world.ReducedChunk;
 
@@ -64,8 +65,6 @@ public class MainRenderer {
 	private Vector4f clearColor = new Vector4f(0.1f, 0.7f, 0.7f, 1f);
 	private DirectionalLight light = new DirectionalLight(new Vector3f(1.0f, 1.0f, 1.0f), new Vector3f(0.0f, 1.0f, 0.0f).mul(0.1f));
 
-	private static final NormalChunk[] EMPTY_CHUNK_LIST = new NormalChunk[0];
-	private static final ReducedChunk[] EMPTY_REDUCED_CHUNK_LIST = new ReducedChunk[0];
 	private static final Block[] EMPTY_BLOCK_LIST = new Block[0];
 	private static final Entity[] EMPTY_ENTITY_LIST = new Entity[0];
 	private static final Spatial[] EMPTY_SPATIAL_LIST = new Spatial[0];
@@ -160,12 +159,12 @@ public class MainRenderer {
 	 * @param playerZ
 	 * @return sorted chunk array
 	 */
-	public NormalChunk[] sortChunks(NormalChunk[] toSort, float playerX, float playerZ) {
+	public NormalChunk[] sortChunks(NormalChunk[] toSort, float playerX, float playerY, float playerZ) {
 		NormalChunk[] output = new NormalChunk[toSort.length];
 		float[] distances = new float[toSort.length];
 		System.arraycopy(toSort, 0, output, 0, toSort.length);
 		for(int i = 0; i < output.length; i++) {
-			distances[i] = (playerX - output[i].getX())*(playerX - output[i].getX()) + (playerZ - output[i].getZ())*(playerZ - output[i].getZ());
+			distances[i] = (playerX - output[i].getX())*(playerX - output[i].getX()) + (playerY - output[i].getY())*(playerY - output[i].getY()) + (playerZ - output[i].getZ())*(playerZ - output[i].getZ());
 		}
 		// Insert sort them:
 		for(int i = 1; i < output.length; i++) {
@@ -251,7 +250,7 @@ public class MainRenderer {
 			// Set intensity:
 			light.setDirection(light.getDirection().mul(0.1f*Cubyz.surface.getGlobalLighting()/light.getDirection().length()));
 			window.setClearColor(clearColor);
-			render(window, ambient, light, Cubyz.surface.getChunks(), Cubyz.surface.getReducedChunks(), Cubyz.world.getBlocks(), Cubyz.surface.getEntities(), worldSpatialList, Cubyz.player, Cubyz.surface.getSizeX(), Cubyz.surface.getSizeZ());
+			render(window, ambient, light, Cubyz.world.getBlocks(), Cubyz.surface.getEntities(), worldSpatialList, Cubyz.player, Cubyz.surface.getSizeX(), Cubyz.surface.getSizeZ());
 		} else {
 			clearColor.y = clearColor.z = 0.7f;
 			clearColor.x = 0.1f;
@@ -265,7 +264,7 @@ public class MainRenderer {
 				window.setRenderTarget(buf);
 			}
 			
-			render(window, brightAmbient, light, EMPTY_CHUNK_LIST, EMPTY_REDUCED_CHUNK_LIST, EMPTY_BLOCK_LIST, EMPTY_ENTITY_LIST, EMPTY_SPATIAL_LIST, null, -1, -1);
+			render(window, brightAmbient, light, EMPTY_BLOCK_LIST, EMPTY_ENTITY_LIST, EMPTY_SPATIAL_LIST, null, -1, -1);
 			
 			if (screenshot) {
 				/*FrameBuffer buf = window.getRenderTarget();
@@ -289,8 +288,7 @@ public class MainRenderer {
 	 * @param spatials the special objects to render (that are neither entity, neither blocks, like sun and moon, or rain)
 	 * @param localPlayer The world's local player
 	 */
-	public void render(Window window, Vector3f ambientLight, DirectionalLight directionalLight,
-			NormalChunk[] chunks, ReducedChunk[] reducedChunks, Block[] blocks, Entity[] entities, Spatial[] spatials, Player localPlayer, int worldSizeX, int worldSizeZ) {
+	public void render(Window window, Vector3f ambientLight, DirectionalLight directionalLight, Block[] blocks, Entity[] entities, Spatial[] spatials, Player localPlayer, int worldSizeX, int worldSizeZ) {
 		if (window.isResized()) {
 			glViewport(0, 0, window.getWidth(), window.getHeight());
 			window.setResized(false);
@@ -353,31 +351,37 @@ public class MainRenderer {
 			}
 			
 			float x0 = playerPosition.x;
+			float y0 = playerPosition.y;
 			float z0 = playerPosition.z;
-			FastList<NormalChunk> visibleChunks = new FastList<NormalChunk>(chunks.length, NormalChunk.class);
-			for (NormalChunk ch : chunks) {
-				if (!ch.isLoaded() || !frustumInt.testAab(ch.getMin(x0, z0, worldSizeX, worldSizeZ), ch.getMax(x0, z0, worldSizeX, worldSizeZ)))
-					continue;
-				visibleChunks.add(ch);
-				blockShader.setUniform("modelPosition", ch.getMin(x0, z0, worldSizeX, worldSizeZ));
-				
-				if(selected != null && selected.source == ch) {
-					blockShader.setUniform("selectedIndex", selected.renderIndex);
-				} else {
-					blockShader.setUniform("selectedIndex", -1);
-				}
-				
-				Object mesh = ch.getChunkMesh();
-				if(ch.wasUpdated() || mesh == null || !(mesh instanceof NormalChunkMesh)) {
-					if(System.currentTimeMillis() - startTime > maximumMeshTime) {
-						// Stop meshing if the frame is taking to long.
-						if(!(mesh instanceof NormalChunkMesh)) continue;
+			FastList<NormalChunk> visibleChunks = new FastList<NormalChunk>(NormalChunk.class);
+			FastList<ReducedChunk> visibleReduced = new FastList<ReducedChunk>(ReducedChunk.class);
+			for (Chunk ch : Cubyz.chunkTree.getRenderChunks(frustumInt, x0, z0)) {
+				if(ch instanceof NormalChunk) {
+					NormalChunk chunk = (NormalChunk)ch;
+					if(!chunk.isLoaded()) continue;
+					visibleChunks.add(chunk);
+					blockShader.setUniform("modelPosition", chunk.getMin(x0, z0, worldSizeX, worldSizeZ));
+					
+					if(selected != null && selected.source == ch) {
+						blockShader.setUniform("selectedIndex", selected.renderIndex);
 					} else {
-						mesh = new NormalChunkMesh(ch);
-						ch.setChunkMesh(mesh);
+						blockShader.setUniform("selectedIndex", -1);
 					}
+					
+					Object mesh = chunk.getChunkMesh();
+					if(chunk.wasUpdated() || mesh == null || !(mesh instanceof NormalChunkMesh)) {
+						if(System.currentTimeMillis() - startTime > maximumMeshTime) {
+							// Stop meshing if the frame is taking to long.
+							if(!(mesh instanceof NormalChunkMesh)) continue;
+						} else {
+							mesh = new NormalChunkMesh(chunk);
+							chunk.setChunkMesh(mesh);
+						}
+					}
+					((NormalChunkMesh)mesh).render();
+				} else if(ch instanceof ReducedChunk) {
+					visibleReduced.add((ReducedChunk)ch);
 				}
-				((NormalChunkMesh)mesh).render();		
 			}
 			blockShader.unbind();
 			
@@ -392,7 +396,8 @@ public class MainRenderer {
 			chunkShader.setUniform("ambientLight", ambientLight);
 			chunkShader.setUniform("directionalLight", directionalLight.getDirection());
 			
-			for(ReducedChunk chunk : reducedChunks) {
+			for(int i = 0; i < visibleReduced.size; i++) {
+				ReducedChunk chunk = visibleReduced.array[i];
 				if(chunk != null && chunk.generated) {
 					if (!frustumInt.testAab(chunk.getMin(x0, z0, worldSizeX, worldSizeZ), chunk.getMax(x0, z0, worldSizeX, worldSizeZ)))
 						continue;
@@ -535,7 +540,7 @@ public class MainRenderer {
 				glBindTexture(GL_TEXTURE_2D, GameLauncher.logic.breakAnimations[0].getId());
 			}
 
-			chunks = sortChunks(visibleChunks.toArray(), x0/16 - 0.5f, z0/16 - 0.5f);
+			NormalChunk[] chunks = sortChunks(visibleChunks.toArray(), x0/16 - 0.5f, y0/16 - 0.5f, z0/16 - 0.5f);
 			for (NormalChunk ch : chunks) {				
 				blockShader.setUniform("modelPosition", ch.getMin(x0, z0, worldSizeX, worldSizeZ));
 				

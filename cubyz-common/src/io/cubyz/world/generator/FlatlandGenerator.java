@@ -3,8 +3,7 @@ package io.cubyz.world.generator;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
-import io.cubyz.world.NormalChunk;
-import io.cubyz.world.ReducedChunk;
+import io.cubyz.world.Chunk;
 import io.cubyz.world.Surface;
 
 /**
@@ -18,22 +17,19 @@ public class FlatlandGenerator extends SurfaceGenerator {
 
 	private static Block grass = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:grass");
 	private static Block dirt = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:dirt");
-	private static Block bedrock = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:bedrock");
 	
 	@Override
-	public void generate(NormalChunk chunk, Surface surface) {
+	public void generate(Chunk chunk, Surface surface) {
 		for (int x = 0; x < 16; x++) {
 			for (int z = 0; z < 16; z++) {
-				for (int y = 0; y < 3; y++) {
+				for (int y = 0; y < 16; y++) {
+					int wy = y + chunk.getWorldY();
+					if(wy >= 3) continue;
 					Block b = null;
-					if (y == 2) {
+					if (wy == 2) {
 						b = grass;
-					}
-					if (y == 1) {
+					} else {
 						b = dirt;
-					}
-					if (y == 0) {
-						b = bedrock;
 					}
 					chunk.updateBlock(x, y, z, b);
 				}
@@ -44,28 +40,6 @@ public class FlatlandGenerator extends SurfaceGenerator {
 	@Override
 	public Resource getRegistryID() {
 		return new Resource("cubyz", "flatland");
-	}
-
-	@Override
-	public void generate(ReducedChunk chunk, Surface surface) {
-		for (int x = 0; x < 16 >>> chunk.resolutionShift; x++) {
-			for (int z = 0; z < 16 >>> chunk.resolutionShift; z++) {
-				for (int y = 0; y <= 2 >>> chunk.resolutionShift; y++) {
-					Block block = null;
-					if (y == 2 >>> chunk.resolutionShift) {
-						block = grass;
-					}
-					else if (y == 1) {
-						block = dirt;
-					}
-					else if (y == 0) {
-						block = bedrock;
-					}
-					chunk.blocks[(x << (4 - chunk.resolutionShift)) | (y << (8 - 2*chunk.resolutionShift) | z)] = block;
-				}
-			}
-		}
-		chunk.applyBlockChanges();
 	}
 
 }

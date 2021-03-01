@@ -8,6 +8,7 @@ import org.joml.Vector4f;
 import io.cubyz.api.CurrentSurfaceRegistries;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockEntity;
+import io.cubyz.entity.ChunkEntityManager;
 import io.cubyz.entity.Entity;
 import io.cubyz.handler.BlockVisibilityChangeHandler;
 import io.cubyz.handler.Handler;
@@ -48,21 +49,21 @@ public abstract class Surface {
 	public abstract BlockEntity getBlockEntity(int x, int y, int z);
 	
 	/**
-	 * 
+	 * Doesn't check if the chunk is already queued!
 	 * @param action - Chunk action
 	 */
-	public abstract void queueChunk(NormalChunk ch);
+	public abstract void queueChunk(Chunk ch);
+	public abstract void unQueueChunk(Chunk ch);
 	
 	public abstract float getGlobalLighting();
 
 	public abstract Vector3f getLight(int x, int y, int z, Vector3f sunLight, boolean easyLighting);
 	public abstract void getLight(int x, int y, int z, int[] array);
 
-	public abstract NormalChunk getChunk(int x, int z);
+	public abstract NormalChunk getChunk(int x, int y, int z);
 	public abstract Region getRegion(int wx, int wz);
 	public abstract Biome getBiome(int x, int z);
 
-	public abstract ReducedChunk[] getReducedChunks();
 	public abstract NormalChunk[] getChunks();
 	public abstract Block[] getPlanetBlocks();
 	public abstract Entity[] getEntities();
@@ -71,7 +72,7 @@ public abstract class Surface {
 	public abstract void removeEntity(Entity ent);
 	
 	public abstract int getHeight(int x, int z);
-	public abstract void seek(int x, int z, int renderDistance, int highestLOD, float LODFactor);
+	public abstract void seek(int x, int y, int z, int renderDistance, int regionRenderDistance);
 	
 	public abstract void cleanup();
 	public abstract void update();
@@ -84,7 +85,7 @@ public abstract class Surface {
 	
 	public abstract Biome.Type[][] getBiomeMap();
 	
-	public abstract ChunkEntityManager getEntityManagerAt(int wx, int wz);
+	public abstract ChunkEntityManager getEntityManagerAt(int wx, int wy, int wz);
 	public abstract ChunkEntityManager[] getEntityManagers();
 	
 	public int getSizeX() {

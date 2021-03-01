@@ -20,15 +20,14 @@ public class BlockStructure {
 		for(int i = 0; i < structure.length; i++) {
 			int total = structure[i].min + rand.nextInt(1 + structure[i].max - structure[i].min);
 			for(int j = 0; j < total; j++) {
-				if(!chunk.liesInChunk(depth)) {
-					depth--;
-					continue;
-				}
 				byte data = structure[i].block.mode.getNaturalStandard();
 				if(i == 0 && j == 0 && structure[i].block.mode.getRegistryID().toString().equals("cubyz:stackable")) {
 					data = (byte)highResDepth;
 				}
-				chunk.updateBlock(x, depth--, z, structure[i].block, data);
+				if(chunk.liesInChunk(x, depth - chunk.getWorldY(), z)) {
+					chunk.updateBlock(x, depth - chunk.getWorldY(), z, structure[i].block, data);
+				}
+				depth--;
 				if(depth <= 0) return depth;
 			}
 		}

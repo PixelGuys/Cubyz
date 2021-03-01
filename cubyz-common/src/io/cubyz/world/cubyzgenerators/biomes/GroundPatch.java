@@ -25,6 +25,7 @@ public class GroundPatch extends StructureModel {
 
 	@Override
 	public void generate(int x, int z, int height, Chunk chunk, Region region, Random rand) {
+		int y = chunk.getWorldY();
 		float width = this.width + (rand.nextFloat() - 0.5f)*this.variation;
 		float orientation = 2*(float)Math.PI*rand.nextFloat();
 		float ellipseParam = 1 + rand.nextFloat(); 
@@ -45,15 +46,16 @@ public class GroundPatch extends StructureModel {
 		if(zMax >= chunk.getWidth()) zMax = chunk.getWidth() - 1;
 		for(int px = chunk.startIndex(xMin); px <= xMax; px++) {
 			for(int pz = chunk.startIndex(zMin); pz <= zMax; pz++) {
-				if(chunk.liesInChunk(px, pz)) {
-					float main = xMain*(x - px) + zMain*(z - pz);
-					float secn = xSecn*(x - px) + zSecn*(z - pz);
-					float dist = main*main + secn*secn;
-					if(dist <= 1) {
-						int startHeight = (int)(region.heightMap[px + chunk.getWorldX() & 255][pz + chunk.getWorldZ() & 255]);
-						for(int py = chunk.startIndex((int)(startHeight - depth + 1)); py <= startHeight; py += chunk.getVoxelSize()) {
-							if(dist <= smoothness || (dist - smoothness)/(1 - smoothness) < rand.nextFloat())
-								chunk.updateBlock(px, py, pz, newGround);
+				float main = xMain*(x - px) + zMain*(z - pz);
+				float secn = xSecn*(x - px) + zSecn*(z - pz);
+				float dist = main*main + secn*secn;
+				if(dist <= 1) {
+					int startHeight = (int)(region.heightMap[px + chunk.getWorldX() & 255][pz + chunk.getWorldZ() & 255]);
+					for(int py = chunk.startIndex((int)(startHeight - depth + 1)); py <= startHeight; py += chunk.getVoxelSize()) {
+						if(dist <= smoothness || (dist - smoothness)/(1 - smoothness) < rand.nextFloat()) {
+							if(chunk.liesInChunk(px, py-y, pz)) {
+								chunk.updateBlock(px, py-y, pz, newGround);
+							}
 						}
 					}
 				}

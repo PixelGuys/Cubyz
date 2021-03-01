@@ -134,7 +134,7 @@ public class StackableRotation implements RotationMode {
 			return renderIndex;
 		}
 		int x = bi.getX()&15;
-		int y = bi.getY();
+		int y = bi.getY()&15;
 		int z = bi.getZ()&15;
 		boolean[] neighbors = bi.getNeighbors();
 		int[] light = bi.light;

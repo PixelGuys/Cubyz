@@ -7,6 +7,7 @@ import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.Block.BlockClass;
 import io.cubyz.math.CubyzMath;
+import io.cubyz.world.Chunk;
 import io.cubyz.world.NormalChunk;
 import io.cubyz.world.Surface;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
@@ -18,6 +19,13 @@ import io.cubyz.world.cubyzgenerators.biomes.Biome;
 public class CrystalCavernGenerator implements FancyGenerator {
 	
 	private static Block glowCrystal, crystalOre;
+	
+	private static ThreadLocal<int[][]> crystalDataArray = new ThreadLocal<int[][]>() {
+		@Override
+		public int[][] initialValue() {
+			return new int[2048][3]; // TODO: Properly evaluate the maximum number of crystal spawns per crystal cavern.
+		}
+	};
 	
 	public static void init(Block crystal, Block ore) {
 		glowCrystal = crystal;
@@ -35,37 +43,48 @@ public class CrystalCavernGenerator implements FancyGenerator {
 		return 65537; // Directly after normal caves.
 	}
 	
-	private static final int range = 32;
+	private static final int range = 3;
 	private Block water = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:water");
 	private Block ice = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:ice");
 	private Block stone = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:stone");
+	
+	private static final int crystalChunkWorldSize = 256;
+	private static final int crystalChunkSize = crystalChunkWorldSize/NormalChunk.chunkSize;
 
 	@Override
-	public void generate(long seed, int cx, int cz, NormalChunk chunk, boolean[][] vegetationIgnoreMap, float[][] heightMap, Biome[][] biomeMap, Surface surface) {
+	public void generate(long seed, int cx, int cy, int cz, Chunk chunk, boolean[][] vegetationIgnoreMap, float[][] heightMap, Biome[][] biomeMap, Surface surface) {
+		int ccx = cx/crystalChunkSize;
+		int ccy = cy/crystalChunkSize;
+		int ccz = cz/crystalChunkSize;
 		Random rand = new Random(seed);
 		int rand1 = rand.nextInt() | 1;
 		int rand2 = rand.nextInt() | 1;
+		int rand3 = rand.nextInt() | 1;
 		int chunksSizeX = surface.getSizeX() >> 4;
 		int chunksSizeZ = surface.getSizeZ() >> 4;
 		// Generate caves from all nearby chunks:
-		for(int x = cx - range; x <= cx + range; ++x) {
-			for(int z = cz - range; z <= cz + range; ++z) {
-				int randX = CubyzMath.worldModulo(x, chunksSizeX)*rand1;
-				int randZ = CubyzMath.worldModulo(z, chunksSizeZ)*rand2;
-				rand.setSeed((randX << 32) ^ randZ ^ seed);
-				considerCoordinates(x, z, cx, cz, chunk, vegetationIgnoreMap, heightMap, rand);
+		for(int x = ccx - range; x <= ccx + range; ++x) {
+			for(int y = ccy - range; y <= ccy + range; ++y) {
+				for(int z = ccz - range; z <= ccz + range; ++z) {
+					int randX = CubyzMath.worldModulo(x, chunksSizeX/crystalChunkSize)*rand1;
+					int randY = y*rand2;
+					int randZ = CubyzMath.worldModulo(z, chunksSizeZ/crystalChunkSize)*rand3;
+					rand.setSeed((randY << 48) ^ (randY >>> 16) ^ (randX << 32) ^ randZ ^ seed);
+					considerCoordinates(x, y, z, cx, cy, cz, chunk, vegetationIgnoreMap, heightMap, rand);
+				}
 			}
 		}
 	}
 	
-	private void generateCave(long random, int cx, int cz, NormalChunk chunk, double worldX, double worldY, double worldZ, float size, float direction, float slope, int curStep, double caveHeightModifier, boolean[][] vegetationIgnoreMap, float[][] heightMap, int[][] crystalSpawns, int[] index) {
+	private void generateCave(long random, int cx, int cy, int cz, Chunk chunk, double worldX, double worldY, double worldZ, float size, float direction, float slope, int curStep, double caveHeightModifier, boolean[][] vegetationIgnoreMap, float[][] heightMap, int[][] crystalSpawns, int[] index) {
 		double cwx = (double) (cx*16 + 8);
+		double cwy = (double) (cy*16 + 8);
 		double cwz = (double) (cz*16 + 8);
 		float directionModifier = 0.0F;
 		float slopeModifier = 0.0F;
 		Random localRand = new Random(random);
 		// Choose a random cave length if not specified:
-		int local = range*16 - 16;
+		int local = (range - 1)*crystalChunkWorldSize;
 		int caveLength = local - localRand.nextInt(local / 4);
 
 		for(boolean highSlope = localRand.nextInt(6) == 0; curStep < caveLength; ++curStep) {
@@ -106,18 +125,18 @@ public class CrystalCavernGenerator implements FancyGenerator {
 				// Determine min and max of the current cave segment in all directions.
 				int xMin = (int)(worldX - xzScale) - cx*16 - 1;
 				int xMax = (int)(worldX + xzScale) - cx*16 + 1;
-				int yMin = (int)(worldY - yScale) - 1;
-				int yMax = (int)(worldY + yScale) + 1;
+				int yMin = (int)(worldY - yScale) - cy*16 - 1;
+				int yMax = (int)(worldY + yScale) - cy*16 + 1;
 				int zMin = (int)(worldZ - xzScale) - cz*16 - 1;
 				int zMax = (int)(worldZ + xzScale) - cz*16 + 1;
 				if (xMin < 0)
 					xMin = 0;
 				if (xMax > 16)
 					xMax = 16;
-				if (yMin < 1)
-					yMin = 1; // Don't make caves expand to the bedrock layer.
-				if (yMax > 248)
-					yMax = 248;
+				if (yMin < 0)
+					yMin = 0;
+				if (yMax > 16)
+					yMax = 16;
 				if (zMin < 0)
 					zMin = 0;
 				if (zMax > 16)
@@ -129,16 +148,14 @@ public class CrystalCavernGenerator implements FancyGenerator {
 					
 					for(int curZ = zMin; curZ < zMax; ++curZ) {
 						double distToCenterZ = ((double) (curZ + cz*16) - worldZ) / xzScale;
-						int curYIndex = yMax;
 						if(distToCenterX * distToCenterX + distToCenterZ * distToCenterZ < 1.0) {
 							for(int curY = yMax - 1; curY >= yMin; --curY) {
-								double distToCenterY = ((double) curY - worldY) / (yScale);
-								if(distToCenterX*distToCenterX + distToCenterY*distToCenterY + distToCenterZ*distToCenterZ < 1.0 && water != chunk.getBlockAt(curX, curYIndex, curZ) && ice != chunk.getBlockAt(curX, curYIndex, curZ)) {
-									chunk.updateBlock(curX, curYIndex, curZ, null);
-									if(heightMap[curX][curZ] == curYIndex)
+								double distToCenterY = ((double) (curY + cy*16) - worldY) / (yScale);
+								if(distToCenterX*distToCenterX + distToCenterY*distToCenterY + distToCenterZ*distToCenterZ < 1.0 && water != chunk.getBlock(curX, curY, curZ) && ice != chunk.getBlock(curX, curY, curZ)) {
+									chunk.updateBlock(curX, curY, curZ, null);
+									if(heightMap[curX][curZ] == curY)
 										vegetationIgnoreMap[curX][curZ] = true;
 								}
-								--curYIndex;
 							}
 						}
 					}
@@ -146,7 +163,7 @@ public class CrystalCavernGenerator implements FancyGenerator {
 			}
 			long seed = localRand.nextLong();
 			// Only let crystals spawn when they are close enough to the chunk.
-			if(worldX >= cwx - 40 && worldZ >= cwz - 40 && worldX <= cwx + 40 && worldZ <= cwz + 40) {
+			if(worldX >= cwx - 40 && worldY >= cwy - 40 && worldZ >= cwz - 40 && worldX <= cwx + 40 && worldY <= cwy + 40 && worldZ <= cwz + 40) {
 				// Consider a good amount of crystal spawns in the region.
 				Random rand = new Random(seed);
 				int amount = (int)(1+20*xzScale*yScale/size/size);
@@ -170,11 +187,11 @@ public class CrystalCavernGenerator implements FancyGenerator {
 		return x*x+y*y+z*z;
 	}
 	
-	private void considerCrystal(int wx, int wz, int[] xyz, NormalChunk chunk, long seed, boolean useNeedles) {
-		if(xyz[0] >= wx-32 && xyz[0] <= wx+48 && xyz[2] >= wz-32 && xyz[2] <= wz+48) {
-			int x = xyz[0]-wx;
-			int y = xyz[1];
-			int z = xyz[2]-wz;
+	private void considerCrystal(int wx, int wy, int wz, int[] xyz, Chunk chunk, long seed, boolean useNeedles) {
+		if(xyz[0] >= wx-32 && xyz[0] <= wx+48 && xyz[1] >= wy-32 && xyz[1] <= wy+48 && xyz[2] >= wz-32 && xyz[2] <= wz+48) {
+			int x = xyz[0] - wx;
+			int y = xyz[1] - wy;
+			int z = xyz[2] - wz;
 			Random rand = new Random(seed);
 			// Make some crystal spikes in random directions:
 			int spikes = 4;
@@ -208,10 +225,10 @@ public class CrystalCavernGenerator implements FancyGenerator {
 				        	for(int z3 = zMin; z3 <= zMax; z3++) {
 				        		double dist = distSqr(x3-x2, y3-y2, z3-z2);
 				        		if(dist <= size*size) {
-						        	if(x3 >= 0 && x3 < 16 && y3 >= 0 && y3 < 256 && z3 >= 0 && z3 < 16) {
-						        		if(chunk.getBlockAt((int)x3, (int)y3, (int)z3) == null || chunk.getBlockAt((int)x3, (int)y3, (int)z3).isDegradable() || chunk.getBlockAt((int)x3, (int)y3, (int)z3).getBlockClass() == BlockClass.FLUID) {
+						        	if(x3 >= 0 && x3 < 16 && y3 >= 0 && y3 < 16 && z3 >= 0 && z3 < 16) {
+						        		if(chunk.getBlock((int)x3, (int)y3, (int)z3) == null || chunk.getBlock((int)x3, (int)y3, (int)z3).isDegradable() || chunk.getBlock((int)x3, (int)y3, (int)z3).getBlockClass() == BlockClass.FLUID) {
 						        			chunk.updateBlock((int)x3, (int)y3, (int)z3, glowCrystal);
-						        		} else if(chunk.getBlockAt((int)x3, (int)y3, (int)z3) == stone) {
+						        		} else if(chunk.getBlock((int)x3, (int)y3, (int)z3) == stone) {
 						        			chunk.updateBlock((int)x3, (int)y3, (int)z3, crystalOre); // When the crystal goes through stone, generate the corresponding ore at that position.
 						        		}
 						        	}
@@ -227,26 +244,27 @@ public class CrystalCavernGenerator implements FancyGenerator {
 		}
 	}
 
-	private void considerCoordinates(int x, int z, int cx, int cz, NormalChunk chunk, boolean[][] vegetationIgnoreMap, float[][] heightMap, Random rand) {
-		if(rand.nextInt(2048) != 0) return; // This should be pretty rare(mostly because it is so huge).
+	private void considerCoordinates(int x, int y, int z, int cx, int cy, int cz, Chunk chunk, boolean[][] vegetationIgnoreMap, float[][] heightMap, Random rand) {
+		if(rand.nextInt(16) != 0) return; // This should be pretty rare(mostly because it is so huge).
 		// Choose some in world coordinates to start generating:
-		double worldX = (double)((x << 4) + rand.nextInt(16));
-		double worldZ = (double)((z << 4) + rand.nextInt(16));
+		double worldX = (x + rand.nextFloat())*crystalChunkWorldSize;
+		double worldY = (y + rand.nextFloat())*crystalChunkWorldSize;
+		if(worldY > 0) return; // crystal caverns not generate close to the surface!
+		double worldZ = (z + rand.nextFloat())*crystalChunkWorldSize;
 		float direction = rand.nextFloat()*(float)Math.PI*2.0F;
 		float slope = (rand.nextFloat() - 0.5F)/4.0F;
 		float size = rand.nextFloat()*20 + 20;
-		double worldY = size + rand.nextFloat()*10;
-		int[][] crystalSpawns = new int[1024][3]; // TODO: Properly evaluate the maximum number of crystal spawns per crystal cavern.
+		int[][] crystalSpawns = crystalDataArray.get();
 		int[] index = {0};
 		long rand1 = rand.nextLong();
 		long rand2 = rand.nextLong();
 		long rand3 = rand.nextLong();
 		boolean useNeedles = rand.nextBoolean(); // Different crystal type.
-		generateCave(rand.nextLong(), cx, cz, chunk, worldX, worldY, worldZ, size, direction, slope, 0, 0.75, vegetationIgnoreMap, heightMap, crystalSpawns, index);
+		generateCave(rand.nextLong(), cx, cy, cz, chunk, worldX, worldY, worldZ, size, direction, slope, 0, 0.75, vegetationIgnoreMap, heightMap, crystalSpawns, index);
 
 		// Generate the crystals:
 		for(int i = 0; i < index[0]; i++) {
-			considerCrystal(cx << 4, cz << 4, crystalSpawns[i], chunk, crystalSpawns[i][0]*rand1 + crystalSpawns[i][1]*rand2 + crystalSpawns[i][2]*rand3, useNeedles);
+			considerCrystal(cx << 4, cy << 4, cz << 4, crystalSpawns[i], chunk, crystalSpawns[i][0]*rand1 + crystalSpawns[i][1]*rand2 + crystalSpawns[i][2]*rand3, useNeedles);
 		}
 	}
 

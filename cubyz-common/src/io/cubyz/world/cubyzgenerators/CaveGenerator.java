@@ -6,12 +6,13 @@ import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.math.CubyzMath;
+import io.cubyz.world.Chunk;
 import io.cubyz.world.NormalChunk;
 import io.cubyz.world.Surface;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 
 /**
- * Generates caves using perlin worms.
+ * Generates caves using perlin worms algorithm.
  */
 
 public class CaveGenerator implements FancyGenerator {
@@ -31,24 +32,29 @@ public class CaveGenerator implements FancyGenerator {
 	private static Block ice = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:ice");
 	
 	@Override
-	public void generate(long seed, int cx, int cz, NormalChunk chunk, boolean[][] vegetationIgnoreMap, float[][] heightMap, Biome[][] biomeMap, Surface surface) {
+	public void generate(long seed, int cx, int cy, int cz, Chunk chunk, boolean[][] vegetationIgnoreMap, float[][] heightMap, Biome[][] biomeMap, Surface surface) {
 		Random rand = new Random(seed);
 		int rand1 = rand.nextInt() | 1;
 		int rand2 = rand.nextInt() | 1;
+		int rand3 = rand.nextInt() | 1;
 		int chunksSizeX = surface.getSizeX() >> 4;
 		int chunksSizeZ = surface.getSizeZ() >> 4;
+		
 		// Generate caves from all nearby chunks:
 		for(int x = cx - range; x <= cx + range; ++x) {
-			for(int z = cz - range; z <= cz + range; ++z) {
-				int randX = (CubyzMath.worldModulo(x, chunksSizeX))*rand1;
-				int randZ = (CubyzMath.worldModulo(z, chunksSizeZ))*rand2;
-				rand.setSeed((randX << 32) ^ randZ ^ seed);
-				considerCoordinates(x, z, cx, cz, chunk, vegetationIgnoreMap, heightMap, rand);
+			for(int y = cy - range; y <= cy + range; ++y) {
+				for(int z = cz - range; z <= cz + range; ++z) {
+					int randX = CubyzMath.worldModulo(x, chunksSizeX)*rand1;
+					int randY = y*rand2;
+					int randZ = CubyzMath.worldModulo(z, chunksSizeZ)*rand3;
+					rand.setSeed((randY << 48) ^ (randY >>> 16) ^ (randX << 32) ^ randZ ^ seed);
+					considerCoordinates(x, y, z, cx, cy, cz, chunk, vegetationIgnoreMap, heightMap, rand);
+				}
 			}
 		}
 	}
 
-	private void createJunctionRoom(long localSeed, int cx, int cz, NormalChunk chunk, double worldX, double worldY, double worldZ, boolean[][] vegetationIgnoreMap, float[][] heightMap, Random rand) {
+	private void createJunctionRoom(long localSeed, int cx, int cy, int cz, Chunk chunk, double worldX, double worldY, double worldZ, boolean[][] vegetationIgnoreMap, float[][] heightMap, Random rand) {
 		// The junction room is just one single room roughly twice as wide as high.
 		float size = 1 + rand.nextFloat()*6;
 		double cwx = cx*16 + 8;
@@ -64,18 +70,18 @@ public class CaveGenerator implements FancyGenerator {
 			// Determine min and max of the current cave segment in all directions.
 			int xMin = (int)(worldX - xzScale) - cx*16 - 1;
 			int xMax = (int)(worldX + xzScale) - cx*16 + 1;
-			int yMin = (int)(worldY - 0.7*yScale); // Make also sure the ground of the cave is kind of flat, so the player can easily walk through.
-			int yMax = (int)(worldY + yScale) + 1;
+			int yMin = (int)(worldY - 0.7*yScale) - cy*16; // Make also sure the ground of the cave is kind of flat, so the player can easily walk through.
+			int yMax = (int)(worldY + yScale) - cy*16 + 1;
 			int zMin = (int)(worldZ - xzScale) - cz*16 - 1;
 			int zMax = (int)(worldZ + xzScale) - cz*16 + 1;
 			if (xMin < 0)
 				xMin = 0;
 			if (xMax > 16)
 				xMax = 16;
-			if (yMin < 1)
-				yMin = 1; // Don't make caves expand to the bedrock layer.
-			if (yMax > 248)
-				yMax = 248;
+			if (yMin < 0)
+				yMin = 0;
+			if (yMax > 16)
+				yMax = 16;
 			if (zMin < 0)
 				zMin = 0;
 			if (zMax > 16)
@@ -87,27 +93,25 @@ public class CaveGenerator implements FancyGenerator {
 				
 				for(int curZ = zMin; curZ < zMax; ++curZ) {
 					double distToCenterZ = ((double) (curZ + cz*16) - worldZ) / xzScale;
-					int curYIndex = yMax;
 					if(distToCenterX * distToCenterX + distToCenterZ * distToCenterZ < 1.0) {
 						for(int curY = yMax - 1; curY >= yMin; --curY) {
-							double distToCenterY = ((double) curY - worldY) / yScale;
+							double distToCenterY = ((double) (curY + cy*16) - worldY) / yScale;
 							double distToCenter = distToCenterX*distToCenterX + distToCenterY*distToCenterY + distToCenterZ*distToCenterZ;
 							if(distToCenter < 1.0) {
 								// Add a small roughness parameter to make walls look a bit rough by filling only 5/6 of the blocks at the walls with air:
-								if((distToCenter <= 0.9 || localRand.nextInt(6) != 0) && !water.equals(chunk.getBlockAt(curX, curYIndex, curZ)) && !ice.equals(chunk.getBlockAt(curX, curYIndex, curZ))) {
-									chunk.updateBlock(curX, curYIndex, curZ, null);
-									if(heightMap[curX][curZ] == curYIndex)
+								if((distToCenter <= 0.9 || localRand.nextInt(6) != 0) && !water.equals(chunk.getBlock(curX, curY, curZ)) && !ice.equals(chunk.getBlock(curX, curY, curZ))) {
+									chunk.updateBlock(curX, curY, curZ, null);
+									if(heightMap[curX][curZ] == curY)
 										vegetationIgnoreMap[curX][curZ] = true;
 								}
 							}
-							--curYIndex;
 						}
 					}
 				}
 			}
 		}
 	}
-	private void generateCave(long random, int cx, int cz, NormalChunk chunk, double worldX, double worldY, double worldZ, float size, float direction, float slope, int curStep, int caveLength, double caveHeightModifier, boolean[][] vegetationIgnoreMap, float[][] heightMap) {
+	private void generateCave(long random, int cx, int cy, int cz, Chunk chunk, double worldX, double worldY, double worldZ, float size, float direction, float slope, int curStep, int caveLength, double caveHeightModifier, boolean[][] vegetationIgnoreMap, float[][] heightMap) {
 		double cwx = (double) (cx*16 + 8);
 		double cwz = (double) (cz*16 + 8);
 		float directionModifier = 0.0F;
@@ -153,8 +157,8 @@ public class CaveGenerator implements FancyGenerator {
 			
 			// Add a small junction at a random point in the cave:
 			if(curStep == smallJunctionPos && size > 1 && caveLength > 0) {
-				this.generateCave(localRand.nextLong(), cx, cz, chunk, worldX, worldY, worldZ, localRand.nextFloat()*0.5F + 0.5F, direction - ((float)Math.PI/2), slope/3.0F, curStep, caveLength, 1, vegetationIgnoreMap, heightMap);
-				this.generateCave(localRand.nextLong(), cx, cz, chunk, worldX, worldY, worldZ, localRand.nextFloat()*0.5F + 0.5F, direction + ((float)Math.PI/2), slope/3.0F, curStep, caveLength, 1, vegetationIgnoreMap, heightMap);
+				this.generateCave(localRand.nextLong(), cx, cy, cz, chunk, worldX, worldY, worldZ, localRand.nextFloat()*0.5F + 0.5F, direction - ((float)Math.PI/2), slope/3.0F, curStep, caveLength, 1, vegetationIgnoreMap, heightMap);
+				this.generateCave(localRand.nextLong(), cx, cy, cz, chunk, worldX, worldY, worldZ, localRand.nextFloat()*0.5F + 0.5F, direction + ((float)Math.PI/2), slope/3.0F, curStep, caveLength, 1, vegetationIgnoreMap, heightMap);
 				return;
 			}
 
@@ -174,18 +178,18 @@ public class CaveGenerator implements FancyGenerator {
 					// Determine min and max of the current cave segment in all directions.
 					int xMin = (int)(worldX - xzScale) - cx*16 - 1;
 					int xMax = (int)(worldX + xzScale) - cx*16 + 1;
-					int yMin = (int)(worldY - 0.7*yScale); // Make also sure the ground of the cave is kind of flat, so the player can easily walk through.
-					int yMax = (int)(worldY + yScale) + 1;
+					int yMin = (int)(worldY - 0.7*yScale) - cy*16; // Make also sure the ground of the cave is kind of flat, so the player can easily walk through.
+					int yMax = (int)(worldY + yScale) - cy*16 + 1;
 					int zMin = (int)(worldZ - xzScale) - cz*16 - 1;
 					int zMax = (int)(worldZ + xzScale) - cz*16 + 1;
 					if (xMin < 0)
 						xMin = 0;
 					if (xMax > 16)
 						xMax = 16;
-					if (yMin < 1)
-						yMin = 1; // Don't make caves expand to the bedrock layer.
-					if (yMax > 248)
-						yMax = 248;
+					if (yMin < 0)
+						yMin = 0;
+					if (yMax > 16)
+						yMax = 16;
 					if (zMin < 0)
 						zMin = 0;
 					if (zMax > 16)
@@ -198,16 +202,14 @@ public class CaveGenerator implements FancyGenerator {
 						
 						for(int curZ = zMin; curZ < zMax; ++curZ) {
 							double distToCenterZ = ((double) (curZ + cz*16) - worldZ) / xzScale;
-							int curYIndex = yMax;
 							if(distToCenterX * distToCenterX + distToCenterZ * distToCenterZ < 1.0) {
 								for(int curY = yMax - 1; curY >= yMin; --curY) {
-									double distToCenterH = ((double) curY - worldY) / yScale;
-									if(distToCenterX*distToCenterX + distToCenterH*distToCenterH + distToCenterZ*distToCenterZ < 1.0 && !water.equals(chunk.getBlockAt(curX, curYIndex, curZ)) && !ice.equals(chunk.getBlockAt(curX, curYIndex, curZ))) {
-										chunk.updateBlock(curX, curYIndex, curZ, null);
-										if(heightMap[curX][curZ] == curYIndex)
+									double distToCenterH = ((double) (curY + cy*16) - worldY) / yScale;
+									if(distToCenterX*distToCenterX + distToCenterH*distToCenterH + distToCenterZ*distToCenterZ < 1.0 && !water.equals(chunk.getBlock(curX, curY, curZ)) && !ice.equals(chunk.getBlock(curX, curY, curZ))) {
+										chunk.updateBlock(curX, curY, curZ, null);
+										if(heightMap[curX][curZ] == curY)
 											vegetationIgnoreMap[curX][curZ] = true;
 									}
-									--curYIndex;
 								}
 							}
 						}
@@ -217,41 +219,34 @@ public class CaveGenerator implements FancyGenerator {
 		}
 	}
 
-	private void considerCoordinates(int x, int z, int cx, int cz, NormalChunk chunk, boolean[][] vegetationIgnoreMap, float[][] heightMap, Random rand) {
-		// Determine how many caves start in this chunk. Make sure the number is usually close to one, but can also rarely reach higher values.
-		int caveSpawns = rand.nextInt(rand.nextInt(rand.nextInt(12) + 1) + 1);
+	private void considerCoordinates(int x, int y, int z, int cx, int cy, int cz, Chunk chunk, boolean[][] vegetationIgnoreMap, float[][] heightMap, Random rand) {
+		// Use a height depending chance to spawn a cave in this chunk. Below y=-128 caves spawn roughly every 32 chunks, Above y=128 no caves spawn:
+		if(rand.nextInt(1024) > 32 - 32*Math.max((y << NormalChunk.chunkShift) + 128, 0)/256.0f) return;
 
-		// Add a 5/6 chance to skip this chunk to make sure the underworld isn't flooded with caves.
-		if (rand.nextInt(6) != 0) {
-			caveSpawns = 0;
+		// Choose some in world coordinates to start generating:
+		double worldX = (double)((x << 4) + rand.nextInt(16));
+		double worldY = (double)((y << 4) + rand.nextInt(16));
+		double worldZ = (double)((z << 4) + rand.nextInt(16));
+		// Randomly pick how many caves origin from this location and add a junction room if there are more than 2:
+		int starters = 1+rand.nextInt(4);
+		if(starters > 1) {
+			createJunctionRoom(rand.nextLong(), cx, cy, cz, chunk, worldX, worldY, worldZ, vegetationIgnoreMap, heightMap, rand);
 		}
-
-		for(int j = 0; j < caveSpawns; ++j) {
-			// Choose some in world coordinates to start generating:
-			double worldX = (double)((x << 4) + rand.nextInt(16));
-			double worldY = 10 + (double)200*Math.pow(rand.nextDouble(), 4); // Make more caves on the bottom of the world, but don't let them start to close to the bedrock layer.
-			double worldZ = (double)((z << 4) + rand.nextInt(16));
-			// Randomly pick how many caves origin from this location and add a junction room if there are more than 2:
-			int starters = 1+rand.nextInt(4);
-			if(starters > 1) {
-				createJunctionRoom(rand.nextLong(), cx, cz, chunk, worldX, worldY, worldZ, vegetationIgnoreMap, heightMap, rand);
+		
+		for(int i = 0; i < starters; ++i) {
+			float direction = rand.nextFloat()*(float)Math.PI*2.0F;
+			float slope = (rand.nextFloat() - 0.5F)/4.0F;
+			// Greatly increase the slope for a small amount of random caves:
+			if(rand.nextInt(16) == 0) {
+				slope *= 8.0F;
+			}
+			float size = rand.nextFloat()*2.0F + rand.nextFloat();
+			// Increase the size of a small proportion of the caves by up to 4 times the original size:
+			if(rand.nextInt(10) == 0) {
+				size *= rand.nextFloat()*rand.nextFloat()*3.0F + 1.0F;
 			}
 
-			for(int i = 0; i < starters; ++i) {
-				float direction = rand.nextFloat()*(float)Math.PI*2.0F;
-				float slope = (rand.nextFloat() - 0.5F)/4.0F;
-				// Greatly increase the slope for a small amount of random caves:
-				if(rand.nextInt(16) == 0) {
-					slope *= 8.0F;
-				}
-				float size = rand.nextFloat()*2.0F + rand.nextFloat();
-				// Increase the size of a small proportion of the caves by up to 4 times the original size:
-				if(rand.nextInt(10) == 0) {
-					size *= rand.nextFloat()*rand.nextFloat()*3.0F + 1.0F;
-				}
-
-				generateCave(rand.nextLong(), cx, cz, chunk, worldX, worldY, worldZ, size, direction, slope, 0, 0, 1, vegetationIgnoreMap, heightMap);
-			}
+			generateCave(rand.nextLong(), cx, cy, cz, chunk, worldX, worldY, worldZ, size, direction, slope, 0, 0, 1, vegetationIgnoreMap, heightMap);
 		}
 	}
 

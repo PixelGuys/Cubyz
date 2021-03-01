@@ -11,6 +11,7 @@ import io.cubyz.rendering.Fog;
 import io.cubyz.rendering.Hud;
 import io.cubyz.rendering.Window;
 import io.cubyz.ui.UISystem;
+import io.cubyz.world.RenderOctTree;
 import io.cubyz.world.Surface;
 import io.cubyz.world.World;
 
@@ -25,6 +26,7 @@ public class Cubyz {
 	public static Hud hud = new Hud();
 	public static Deque<Runnable> renderDeque = new ArrayDeque<>();
 	public static Window window = new Window();
+	public static RenderOctTree chunkTree = new RenderOctTree();
 	
 	// World related stuff:
 	public static Surface surface;

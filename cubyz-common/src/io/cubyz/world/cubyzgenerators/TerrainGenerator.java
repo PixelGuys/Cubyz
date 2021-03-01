@@ -5,10 +5,8 @@ import java.util.Random;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
-import io.cubyz.world.NormalChunk;
 import io.cubyz.world.Chunk;
 import io.cubyz.world.Region;
-import io.cubyz.world.ReducedChunk;
 import io.cubyz.world.Surface;
 import io.cubyz.world.World;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
@@ -17,7 +15,7 @@ import io.cubyz.world.cubyzgenerators.biomes.Biome;
  * Generates the basic terrain(stone, dirt, sand, ...).
  */
 
-public class TerrainGenerator implements Generator, ReducedGenerator {
+public class TerrainGenerator implements Generator {
 	
 	@Override
 	public int getPriority() {
@@ -38,10 +36,11 @@ public class TerrainGenerator implements Generator, ReducedGenerator {
 	private static Block water = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:water");
 
 	@Override
-	public void generate(long seed, int wx, int wz, NormalChunk chunk, Region containingRegion, Surface surface, boolean[][] vegetationIgnoreMap) {
-		this.generate(seed, wx, wz, chunk, containingRegion, surface);
+	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, Region containingRegion, Surface surface, boolean[][] vegetationIgnoreMap) {
+		this.generate(seed, wx, wy, wz, chunk, containingRegion, surface);
 	}
-	public void generate(long seed, int wx, int wz, Chunk chunk, Region containingRegion, Surface surface) {
+	
+	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, Region containingRegion, Surface surface) {
 		Random rand = new Random(seed);
 		int seedX = rand.nextInt() | 1;
 		int seedZ = rand.nextInt() | 1;
@@ -50,8 +49,10 @@ public class TerrainGenerator implements Generator, ReducedGenerator {
 				int y = (int)containingRegion.heightMap[wx+x & 255][wz+z & 255];
 				int yOff = 1 + (int)((containingRegion.heightMap[wx+x & 255][wz+z & 255] - y)*16);
 				boolean addedBlockStructure = false;
-				for(int j = y > SEA_LEVEL ? Math.min(y, World.WORLD_HEIGHT-1) : SEA_LEVEL; j >= 0; j--) {
-					if(!chunk.liesInChunk(j)) continue;
+				int startY = y > SEA_LEVEL ? Math.min(y, World.WORLD_HEIGHT-1) : SEA_LEVEL;
+				int endY = Math.max(chunk.getWorldY(), 0);
+				for(int j = startY; j >= endY; j--) {
+					if(!chunk.liesInChunk(x, j - chunk.getWorldY(), z)) continue;
 					Block b = null;
 					if(j > y) {
 						if(containingRegion.biomeMap[wx+x & 255][wz+z & 255].type == Biome.Type.ARCTIC_OCEAN && j == SEA_LEVEL) {
@@ -71,15 +72,10 @@ public class TerrainGenerator implements Generator, ReducedGenerator {
 							b = stone;
 						}
 					}
-					chunk.updateBlock(x, j, z, b);
+					chunk.updateBlock(x, j - chunk.getWorldY(), z, b);
 				}
 			}
 		}
-	}
-
-	@Override
-	public void generate(long seed, int wx, int wz, ReducedChunk chunk, Region containingRegion, Surface surface) {
-		this.generate(seed, wx, wz, (Chunk)chunk, containingRegion, surface);
 	}
 
 	@Override

@@ -1,12 +1,12 @@
 package io.cubyz.world;
 
-import java.util.ArrayList;
 
 import org.joml.Vector3f;
 
 import io.cubyz.blocks.Block;
+import io.cubyz.client.Cubyz;
 import io.cubyz.math.CubyzMath;
-import io.cubyz.save.BlockChange;
+import io.cubyz.world.generator.SurfaceGenerator;
 
 /**
  * A chunk with smaller resolution(2 blocks, 4 blocks, 8 blocks or 16 blocks). Used to work out the far-distance map of cubyz terrain.<br>
@@ -16,9 +16,6 @@ import io.cubyz.save.BlockChange;
  */
 
 public class ReducedChunk extends Chunk {
-	/**The current surface the player is on.*/
-	public static Surface surface;
-	public ArrayList<BlockChange> changes;
 	/**1 << resolutionShift = resolution*/
 	public final int resolutionShift;
 	/**How many blocks each voxel is wide.*/
@@ -26,46 +23,36 @@ public class ReducedChunk extends Chunk {
 	/**If ((x & resoultionMask) == 0), a block can be considered to be visible.*/
 	public final int resolutionMask;
 	public final int size;
-	public final int cx, cz;
+	public final int wx, wy, wz;
 	public final Block[] blocks;
 	public boolean generated = false;
 	public final int width;
 	/** =log₂(width)*/
 	public final int widthShift;
 	
-	public ReducedChunk(int cx, int cz, int resolutionShift, int widthShift) {
-		this.cx = cx;
-		this.cz = cz;
+	public ReducedChunk(int wx, int wy, int wz, int resolutionShift, int widthShift) {
+		this.wx = wx;
+		this.wy = wy;
+		this.wz = wz;
 		this.resolutionShift = resolutionShift;
 		this.resolution = 1 << resolutionShift;
 		this.resolutionMask = resolution - 1;
 		width = 1 << widthShift;
 		size = (World.WORLD_HEIGHT >>> resolutionShift)*(width >> resolutionShift)*(width >> resolutionShift);
 		blocks = new Block[size];
-		this.changes = changes;
 		this.widthShift = widthShift;
 	}
 	
 	public void applyBlockChanges() {
-		/*for(BlockChange bc : changes) {
-			
-			int index = ((bc.x >>> resolution) << (4 - resolution)) | ((bc.y >>> resolution) << (8 - 2*resolution)) | (bc.z >>> resolution);
-			Block b = bc.newType == -1 ? null : surface.getPlanetBlocks()[bc.newType];
-			if (b != null && b.hasBlockEntity()) {
-				Vector3i pos = new Vector3i(wx+bc.x, bc.y, wz+bc.z);
-				blockEntities.add(b.createBlockEntity(surface, pos));
-			}
-			blocks[index] = b;
-			blockData[index] = bc.newData;
-		}*/ // TODO
+		// TODO
 	}
 	
 	public Vector3f getMin(float x0, float z0, int worldSizeX, int worldSizeZ) {
-		return new Vector3f(CubyzMath.match(cx << 4, x0, worldSizeX), 0, CubyzMath.match(cz << 4, z0, worldSizeZ));
+		return new Vector3f(CubyzMath.match(wx, x0, worldSizeX), wy, CubyzMath.match(wz, z0, worldSizeZ));
 	}
 	
 	public Vector3f getMax(float x0, float z0, int worldSizeX, int worldSizeZ) {
-		return new Vector3f(CubyzMath.match(cx << 4, x0, worldSizeX) + width, 256, CubyzMath.match(cz << 4, z0, worldSizeZ) + width);
+		return new Vector3f(CubyzMath.match(wx, x0, worldSizeX) + width, (wy) + width, CubyzMath.match(wz, z0, worldSizeZ) + width);
 	}
 	
 	@Override
@@ -97,15 +84,24 @@ public class ReducedChunk extends Chunk {
 	public void updateBlock(int x, int y, int z, Block newBlock, byte data) {
 		updateBlock(x, y, z, newBlock);
 	}
-
-	@Override
-	public boolean liesInChunk(int x, int z) {
-		return (x & resolutionMask) == 0 && (z & resolutionMask) == 0 && x >= 0 && x < width && z >= 0 && z < width;
+	
+	public void generateFrom(SurfaceGenerator gen) {
+		gen.generate(this, Cubyz.surface);
+		applyBlockChanges();
+		generated = true;
 	}
 
 	@Override
-	public boolean liesInChunk(int y) {
-		return (y & resolutionMask) == 0 && y >= 0 && y < World.WORLD_HEIGHT;
+	public boolean liesInChunk(int x, int y, int z) {
+		return (x & resolutionMask) == 0
+				&& (y & resolutionMask) == 0
+				&& (z & resolutionMask) == 0
+				&& x >= 0
+				&& x < width
+				&& y >= 0
+				&& y < width
+				&& z >= 0
+				&& z < width;
 	}
 
 	@Override
@@ -115,16 +111,31 @@ public class ReducedChunk extends Chunk {
 
 	@Override
 	public int getWorldX() {
-		return cx << 4;
+		return wx;
+	}
+
+	@Override
+	public int getWorldY() {
+		return wy;
 	}
 
 	@Override
 	public int getWorldZ() {
-		return cz << 4;
+		return wz;
 	}
 	
 	@Override
 	public int getWidth() {
 		return width;
 	}
+
+	@Override
+	public Block getBlock(int x, int y, int z) {
+		x >>= resolutionShift;
+		y >>= resolutionShift;
+		z >>= resolutionShift;
+		int index = (x << (widthShift - resolutionShift)) | (y << 2*(widthShift - resolutionShift)) | z;
+		return blocks[index];
+	}
 }
+

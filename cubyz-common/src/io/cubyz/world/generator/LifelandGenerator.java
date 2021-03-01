@@ -7,9 +7,9 @@ import io.cubyz.api.RegistryElement;
 import io.cubyz.api.Registry;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Ore;
-import io.cubyz.world.NormalChunk;
 import io.cubyz.world.Region;
-import io.cubyz.world.ReducedChunk;
+import io.cubyz.world.Chunk;
+import io.cubyz.world.NormalChunk;
 import io.cubyz.world.Surface;
 import io.cubyz.world.cubyzgenerators.*;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
@@ -21,7 +21,7 @@ import io.cubyz.world.cubyzgenerators.biomes.Biome;
 public class LifelandGenerator extends SurfaceGenerator {
 	
 	public static void init() {
-		GENERATORS.registerAll(new TerrainGenerator(), new RiverGenerator(), new OreGenerator(), new CaveGenerator(), new CrystalCavernGenerator(), new StructureGenerator());
+		GENERATORS.registerAll(new TerrainGenerator(), new OreGenerator(), new CaveGenerator(), new CrystalCavernGenerator(), new StructureGenerator());
 	}
 	
 	public static void initOres(Ore[] ores) {
@@ -52,11 +52,13 @@ public class LifelandGenerator extends SurfaceGenerator {
 	}
 	
 	@Override
-	public void generate(NormalChunk chunk, Surface surface) {
-		int cx = chunk.getX();
-		int cz = chunk.getZ();
-		int wx = cx << 4;
-		int wz = cz << 4;
+	public void generate(Chunk chunk, Surface surface) {
+		int wx = chunk.getWorldX();
+		int wy = chunk.getWorldY();
+		int wz = chunk.getWorldZ();
+		int cx = wx >> NormalChunk.chunkShift;
+		int cy = wy >> NormalChunk.chunkShift;
+		int cz = wz >> NormalChunk.chunkShift;
 		long seed = surface.getStellarTorus().getLocalSeed();
 		// Generate some maps:
 		float[][] heightMap = new float[32][32];
@@ -64,65 +66,15 @@ public class LifelandGenerator extends SurfaceGenerator {
 		surface.getMapData(wx-8, wz-8, 32, 32, heightMap, biomeMap);
 		boolean[][] vegetationIgnoreMap = new boolean[32][32]; // Stores places where vegetation should not grow, like caves and rivers.
 		
-		// Get the Regions used by the BigGenerator.:
-		int lx, lz;
-		Region nn, np, pn, pp;
-		if((wx & 255) < 128) {
-			lx = (wx & 255) + 256;
-			if((wz & 255) < 128) {
-				lz = (wz & 255) + 256;
-				nn = surface.getRegion((wx & (~255)) - 256, (wz & (~255)) - 256);
-				np = surface.getRegion((wx & (~255)) - 256, (wz & (~255)));
-				pn = surface.getRegion((wx & (~255)), (wz & (~255)) - 256);
-				pp = surface.getRegion((wx & (~255)), (wz & (~255)));
-			} else {
-				lz = (wz & 255);
-				nn = surface.getRegion((wx & (~255)) - 256, (wz & (~255)));
-				np = surface.getRegion((wx & (~255)) - 256, (wz & (~255)) + 256);
-				pn = surface.getRegion((wx & (~255)), (wz & (~255)));
-				pp = surface.getRegion((wx & (~255)), (wz & (~255)) + 256);
-			}
-		} else {
-			lx = (wx & 255);
-			if((wz & 255) < 128) {
-				lz = (wz & 255) + 256;
-				nn = surface.getRegion((wx & (~255)), (wz & (~255)) - 256);
-				np = surface.getRegion((wx & (~255)), (wz & (~255)));
-				pn = surface.getRegion((wx & (~255)) + 256, (wz & (~255)) - 256);
-				pp = surface.getRegion((wx & (~255)) + 256, (wz & (~255)));
-			} else {
-				lz = (wz & 255);
-				nn = surface.getRegion((wx & (~255)), (wz & (~255)));
-				np = surface.getRegion((wx & (~255)), (wz & (~255)) + 256);
-				pn = surface.getRegion((wx & (~255)) + 256, (wz & (~255)));
-				pp = surface.getRegion((wx & (~255)) + 256, (wz & (~255)) + 256);
-			}
-		}
 		Region containing = surface.getRegion((wx & (~255)), (wz & (~255)));
 		
 		for (Generator g : sortedGenerators) {
 			if (g instanceof FancyGenerator) {
-				((FancyGenerator) g).generate(seed ^ g.getGeneratorSeed(), cx, cz, chunk, vegetationIgnoreMap, heightMap, biomeMap, surface);
-			} else if (g instanceof BigGenerator) {
-				((BigGenerator) g).generate(seed ^ g.getGeneratorSeed(), lx, lz, chunk, vegetationIgnoreMap, nn, np, pn, pp);
+				((FancyGenerator) g).generate(seed ^ g.getGeneratorSeed(), cx, cy, cz, chunk, vegetationIgnoreMap, heightMap, biomeMap, surface);
 			} else {
-				g.generate(seed ^ g.getGeneratorSeed(), wx, wz, chunk, containing, surface, vegetationIgnoreMap);
+				g.generate(seed ^ g.getGeneratorSeed(), wx, wy, wz, chunk, containing, surface, vegetationIgnoreMap);
 			}
 		}
-	}
-
-	@Override
-	public void generate(ReducedChunk chunk, Surface surface) {
-		long seed = surface.getStellarTorus().getLocalSeed();
-		int wx = chunk.cx << 4;
-		int wz = chunk.cz << 4;
-		Region region = surface.getRegion(wx & (~255), wz & (~255));
-		for (Generator g : sortedGenerators) {
-			if (g instanceof ReducedGenerator) {
-				((ReducedGenerator) g).generate(seed ^ g.getGeneratorSeed(), wx, wz, chunk, region, surface);
-			}
-		}
-		chunk.applyBlockChanges();
 	}
 
 	@Override

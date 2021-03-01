@@ -7,7 +7,7 @@ import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.Ore;
 import io.cubyz.world.Region;
-import io.cubyz.world.NormalChunk;
+import io.cubyz.world.Chunk;
 import io.cubyz.world.Surface;
 
 /**
@@ -34,33 +34,40 @@ public class OreGenerator implements Generator {
 
 	// Works basically similar to cave generation, but considers a lot less chunks and has a few other differences.
 	@Override
-	public void generate(long seed, int wx, int wz, NormalChunk chunk, Region containingRegion, Surface surface, boolean[][] vegetationIgnoreMap) {
+	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, Region containingRegion, Surface surface, boolean[][] vegetationIgnoreMap) {
 		Random rand = new Random(seed);
 		int rand1 = rand.nextInt() | 1;
 		int rand2 = rand.nextInt() | 1;
+		int rand3 = rand.nextInt() | 1;
 		int cx = wx >> 4;
+		int cy = wy >> 4;
 		int cz = wz >> 4;
 		// Generate caves from all nearby chunks:
 		for(int x = cx - 1; x <= cx + 1; ++x) {
-			for(int z = cz - 1; z <= cz + 1; ++z) {
-				int randX = x*rand1;
-				int randZ = z*rand2;
-				rand.setSeed((randX << 32) ^ randZ ^ seed);
-				considerCoordinates(x, z, cx, cz, chunk, (randX << 32) ^ randZ ^ seed);
+			for(int y = cy - 1; y <= cy + 1; ++y) {
+				for(int z = cz - 1; z <= cz + 1; ++z) {
+					int randX = x*rand1;
+					int randY = y*rand2;
+					int randZ = z*rand3;
+					rand.setSeed((randY << 48) ^ (randY >>> 16) ^ (randX << 32) ^ randZ ^ seed);
+					considerCoordinates(x, y, z, cx, cy, cz, chunk, (randX << 32) ^ randZ ^ seed);
+				}
 			}
 		}
 	}
-	private void considerCoordinates(int x, int z, int cx, int cz, NormalChunk chunk, long seed) {
+	private void considerCoordinates(int x, int y, int z, int cx, int cy, int cz, Chunk chunk, long seed) {
 		Random rand = new Random();
 		for(int i = 0; i < ores.length; i++) {
+			if(ores[i].maxHeight <= y << 4) continue;
 			// Compose the seeds from some random stats of the ore. They generally shouldn't be the same for two different ores.
 			rand.setSeed(seed^(ores[i].maxHeight)^(Float.floatToIntBits(ores[i].size))^ores[i].getRegistryID().getID().charAt(0)^Float.floatToIntBits(ores[i].getHardness()));
 			// Determine how many veins of this type start in this chunk. The number depends on parameters set for the specific ore:
-			int veins = (int)Math.round(2*ores[i].veins*rand.nextFloat());
+			int veins = (int)ores[i].veins;
+			if(ores[i].veins - veins >= rand.nextFloat()) veins++;
 			for(int j = 0; j < veins; ++j) {
 				// Choose some in world coordinates to start generating:
 				double worldX = (double)((x << 4) + rand.nextInt(16));
-				double worldY = (double)rand.nextInt(ores[i].maxHeight);
+				double worldY = (double)((y << 4) + rand.nextInt(16));
 				double worldZ = (double)((z << 4) + rand.nextInt(16));
 				float direction = rand.nextFloat()*(float)Math.PI*2.0F;
 				float slope = (rand.nextFloat() - 0.5F)/4.0F;
@@ -73,11 +80,11 @@ public class OreGenerator implements Generator {
 				if(2*radius + length > 8) { // Make sure the vein isn't too big:
 					radius = 4 - length/2.0f;
 				}
-				generateVein(rand.nextLong(), cx, cz, chunk, worldX, worldY, worldZ, radius, direction, slope, length, ores[i]);
+				generateVein(rand.nextLong(), cx, cy, cz, chunk, worldX, worldY, worldZ, radius, direction, slope, length, ores[i]);
 			}
 		}
 	}
-	private void generateVein(long random, int cx, int cz, NormalChunk chunk, double worldX, double worldY, double worldZ, float radius, float direction, float slope, int veinLength, Block ore) {
+	private void generateVein(long random, int cx, int cy, int cz, Chunk chunk, double worldX, double worldY, double worldZ, float radius, float direction, float slope, int veinLength, Block ore) {
 		double cwx = (double) (cx*16 + 8);
 		double cwz = (double) (cz*16 + 8);
 		float directionModifier = 0.0F;
@@ -98,7 +105,7 @@ public class OreGenerator implements Generator {
 			slopeModifier += (localRand.nextFloat() - localRand.nextFloat())*localRand.nextFloat()*2;
 			directionModifier += (localRand.nextFloat() - localRand.nextFloat())*localRand.nextFloat()*4;
 
-			// Add a small chance to ignore one point of the vein to make the walls look more rough.
+			// Add a small chance to ignore one point of the vein to make it look more rough.
 			if(localRand.nextInt(4) != 0) {
 				double deltaX = worldX - cwx;
 				double deltaZ = worldZ - cwz;
@@ -114,18 +121,18 @@ public class OreGenerator implements Generator {
 					// Determine min and max of the current vein segment in all directions.
 					int xmin = (int)(worldX - scale) - cx*16 - 1;
 					int xmax = (int)(worldX + scale) - cx*16 + 1;
-					int ymin = (int)(worldY - scale) - 1;
-					int ymax = (int)(worldY + scale) + 1;
+					int ymin = (int)(worldY - scale) - cy*16 - 1;
+					int ymax = (int)(worldY + scale) - cy*16 + 1;
 					int zmin = (int)(worldZ - scale) - cz*16 - 1;
 					int zmax = (int)(worldZ + scale) - cz*16 + 1;
 					if (xmin < 0)
 						xmin = 0;
 					if (xmax > 16)
 						xmax = 16;
-					if (ymin < 1)
-						ymin = 1; // Don't make veins expand to the bedrock layer.
-					if (ymax > 248)
-						ymax = 248;
+					if (ymin < 0)
+						ymin = 0;
+					if (ymax > 16)
+						ymax = 16;
 					if (zmin < 0)
 						zmin = 0;
 					if (zmax > 16)
@@ -138,15 +145,13 @@ public class OreGenerator implements Generator {
 						
 						for(int curZ = zmin; curZ < zmax; ++curZ) {
 							double distToCenterZ = ((double) (curZ + cz*16) - worldZ) / scale;
-							int curHeightIndex = ymax;
 							if(distToCenterX * distToCenterX + distToCenterZ * distToCenterZ < 1.0) {
 								for(int curY = ymax - 1; curY >= ymin; --curY) {
-									double distToCenterY = ((double) curY - worldY) / scale;
+									double distToCenterY = ((double) (curY + cy*16) - worldY) / scale;
 									// The first ore that gets into a position will be placed:
-									if(chunk.getBlockAt(curX, curHeightIndex, curZ) == stone && distToCenterX*distToCenterX + distToCenterY*distToCenterY + distToCenterZ*distToCenterZ < 1.0) {
-										chunk.updateBlock(curX, curHeightIndex, curZ, ore);
+									if(chunk.getBlock(curX, curY, curZ) == stone && distToCenterX*distToCenterX + distToCenterY*distToCenterY + distToCenterZ*distToCenterZ < 1.0) {
+										chunk.updateBlock(curX, curY, curZ, ore);
 									}
-									--curHeightIndex;
 								}
 							}
 						}
