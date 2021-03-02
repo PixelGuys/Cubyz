@@ -90,11 +90,19 @@ public class Registry<T extends RegistryElement> {
 	}
 	
 	public T getByID(String id) {
-		return hashMap.get(id);
+		T obj = hashMap.get(id);
+		if(obj == null) {
+			logger.warning("Couldn't find registry element with name: "+id);
+		}
+		return obj;
 	}
 	
 	public T getByID(Resource id) {
-		return hashMap.get(id.toString());
+		T obj = hashMap.get(id.toString());
+		if(obj == null) {
+			logger.warning("Couldn't find registry element with name: "+id);
+		}
+		return obj;
 	}
 	
 	public int getLength() {

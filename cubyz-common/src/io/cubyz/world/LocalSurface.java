@@ -84,21 +84,19 @@ public class LocalSurface extends Surface {
 		volatile boolean running = true;
 		public void run() {
 			while (running) {
-				if(!loadList.isEmpty()) {
-					Chunk popped = null;
-					try {
-						popped = loadList.take();
-					} catch (InterruptedException e) {
-						break;
-					}
-					try {
-						synchronousGenerate(popped);
-						if(popped instanceof NormalChunk)
-							((NormalChunk)popped).load();
-					} catch (Exception e) {
-						logger.severe("Could not generate " + popped.getVoxelSize() + "-chunk " + popped.getWorldX()+", " + popped.getWorldY() + ", " + popped.getWorldZ() + " !");
-						logger.throwable(e);
-					}
+				Chunk popped = null;
+				try {
+					popped = loadList.take();
+				} catch (InterruptedException e) {
+					break;
+				}
+				try {
+					synchronousGenerate(popped);
+					if(popped instanceof NormalChunk)
+						((NormalChunk)popped).load();
+				} catch (Exception e) {
+					logger.severe("Could not generate " + popped.getVoxelSize() + "-chunk " + popped.getWorldX()+", " + popped.getWorldY() + ", " + popped.getWorldZ() + " !");
+					logger.throwable(e);
 				}
 			}
 		}
