@@ -9,6 +9,7 @@ import io.cubyz.math.CubyzMath;
 import io.cubyz.save.RegionIO;
 import io.cubyz.save.TorusIO;
 import io.cubyz.util.RandomList;
+import io.cubyz.world.cubyzgenerators.TerrainGenerator;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 
 /**
@@ -216,5 +217,14 @@ public class Region {
 		for(int i = 0; i < triangles.length; i += 3) {
 			drawTriangle(biomeList.get(triangles[i]), biomeList.get(triangles[i+1]), biomeList.get(triangles[i+2]), roughMap);
 		}
+	}
+	
+	// TODO: Store the two in data files.
+	public int getMinHeight() {
+		return TerrainGenerator.SEA_LEVEL;
+	}
+	
+	public int getMaxHeight() {
+		return World.WORLD_HEIGHT;
 	}
 }

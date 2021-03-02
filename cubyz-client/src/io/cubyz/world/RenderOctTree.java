@@ -10,6 +10,7 @@ import io.cubyz.ClientOnly;
 import io.cubyz.client.Cubyz;
 import io.cubyz.math.CubyzMath;
 import io.cubyz.util.HashMapKey3D;
+import io.cubyz.world.cubyzgenerators.TerrainGenerator;
 
 public class RenderOctTree {
 	private int lastX, lastY, lastZ, lastRD, lastLOD;
@@ -132,6 +133,7 @@ public class RenderOctTree {
 		if(lastX == px && lastY == py && lastZ == pz && lastRD == renderDistance && lastLOD == highestLOD && lastFactor == LODFactor) return;
 		
 		int maxRenderDistance = (int)Math.ceil((renderDistance << highestLOD)*LODFactor*NormalChunk.chunkSize);
+		int nearRenderDistance = maxRenderDistance >> (highestLOD - 1); // Only render underground for nearby chunks. Otherwise the lag gets massive.
 		int LODShift = highestLOD + NormalChunk.chunkShift;
 		int LODSize = NormalChunk.chunkSize << highestLOD;
 		int LODMask = LODSize - 1;
@@ -150,6 +152,13 @@ public class RenderOctTree {
 				int maxZ = (pz + maxZRenderDistance + LODMask) & ~LODMask;
 				
 				for(int z = minZ; z <= maxZ; z += LODSize) {
+					// Make sure underground chunks are only generated if they are close to the player.
+					if(y + LODSize < Cubyz.surface.getRegion(x, z).getMinHeight() && y - LODSize < Cubyz.surface.getRegion(x, z).getMaxHeight()) {
+						int dx = Math.abs(x - px) - LODSize;
+						int dy = Math.abs(y - py) - LODSize;
+						int dz = Math.abs(z - pz) - LODSize;
+						if(dx*dx + dy*dy + dz*dz > nearRenderDistance*nearRenderDistance) continue;
+					}
 					int x̅ = CubyzMath.worldModulo(x, Cubyz.surface.getSizeX());
 					int z̅ = CubyzMath.worldModulo(z, Cubyz.surface.getSizeZ());
 					int rootX = x̅ >> LODShift;
