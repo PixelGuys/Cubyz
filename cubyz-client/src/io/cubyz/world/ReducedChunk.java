@@ -38,7 +38,7 @@ public class ReducedChunk extends Chunk {
 		this.resolution = 1 << resolutionShift;
 		this.resolutionMask = resolution - 1;
 		width = 1 << widthShift;
-		size = (World.WORLD_HEIGHT >>> resolutionShift)*(width >> resolutionShift)*(width >> resolutionShift);
+		size = (width >>> resolutionShift)*(width >> resolutionShift)*(width >> resolutionShift);
 		blocks = new Block[size];
 		this.widthShift = widthShift;
 	}

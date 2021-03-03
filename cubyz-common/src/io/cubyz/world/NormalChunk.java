@@ -176,14 +176,12 @@ public class NormalChunk extends Chunk {
 	 * @param b
 	 * @param x global
 	 * @param y global
-	 * @param z gloabl
+	 * @param z global
 	 * @param considerPrevious If the degradability of the block which was there before should be considered.
 	 */
 	public void addBlockPossiblyOutside(Block b, byte data, int x, int y, int z, boolean considerPrevious) {
 		// Make the boundary checks:
 		if (b == null) return;
-		if(y >= World.WORLD_HEIGHT)
-			return;
 		int rx = x - wx;
 		int ry = y - wy;
 		int rz = z - wz;

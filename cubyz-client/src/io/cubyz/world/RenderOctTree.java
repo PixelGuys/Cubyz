@@ -10,7 +10,6 @@ import io.cubyz.ClientOnly;
 import io.cubyz.client.Cubyz;
 import io.cubyz.math.CubyzMath;
 import io.cubyz.util.HashMapKey3D;
-import io.cubyz.world.cubyzgenerators.TerrainGenerator;
 
 public class RenderOctTree {
 	private int lastX, lastY, lastZ, lastRD, lastLOD;
@@ -127,6 +126,18 @@ public class RenderOctTree {
 		public Vector3f getMax(float x0, float z0) {
 			return new Vector3f(CubyzMath.match(x, x0, Cubyz.surface.getSizeX()) + size, y + size, CubyzMath.match(z, z0, Cubyz.surface.getSizeZ()) + size);
 		}
+		
+		public void cleanup() {
+			if(chunk != null) {
+				ClientOnly.deleteChunkMesh.accept(chunk);
+				chunk = null;
+			}
+			if(nextNodes != null) {
+				for(int i = 0; i < 8; i++) {
+					nextNodes[i].cleanup();
+				}
+			}
+		}
 	}
 	HashMap<HashMapKey3D, OctTreeNode> roots = new HashMap<HashMapKey3D, OctTreeNode>();
 	public void update(int px, int py, int pz, int renderDistance, int highestLOD, float LODFactor) {
@@ -152,10 +163,10 @@ public class RenderOctTree {
 				
 				for(int z = minZ; z <= maxZ; z += LODSize) {
 					// Make sure underground chunks are only generated if they are close to the player.
-					if(y + LODSize < Cubyz.surface.getRegion(x, z).getMinHeight() && y - LODSize < Cubyz.surface.getRegion(x, z).getMaxHeight()) {
-						int dx = Math.abs(x - px) - LODSize;
-						int dy = Math.abs(y - py) - LODSize;
-						int dz = Math.abs(z - pz) - LODSize;
+					if(y + LODSize <= Cubyz.surface.getRegion(x, z).getMinHeight() || y > Cubyz.surface.getRegion(x, z).getMaxHeight()) {
+						int dx = Math.abs(x + LODSize/2 - px) - LODSize/2;
+						int dy = Math.abs(y + LODSize/2 - py) - LODSize/2;
+						int dz = Math.abs(z + LODSize/2 - pz) - LODSize/2;
 						if(dx*dx + dy*dy + dz*dz > nearRenderDistance*nearRenderDistance) continue;
 					}
 					int x̅ = CubyzMath.worldModulo(x, Cubyz.surface.getSizeX());
@@ -193,6 +204,12 @@ public class RenderOctTree {
 			}
 		}
 		return renderChunks.toArray(new Chunk[0]);
+	}
+	
+	public void cleanup() {
+		for(OctTreeNode node : roots.values()) {
+			node.cleanup();
+		}
 	}
 	
 }

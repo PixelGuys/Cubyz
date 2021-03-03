@@ -5,7 +5,6 @@ import java.util.Random;
 import io.cubyz.blocks.Block;
 import io.cubyz.world.Chunk;
 import io.cubyz.world.Region;
-import io.cubyz.world.World;
 
 /**
  * One position vegetation, like grass or cactus.
@@ -25,13 +24,11 @@ public class SimpleVegetation extends StructureModel {
 		int y = chunk.getWorldY();
 		if(chunk.liesInChunk(x, h-y, z)) {
 			int height = height0;
-			if(h+height < World.WORLD_HEIGHT) {
-				if(deltaHeight != 0)
-					height += rand.nextInt(deltaHeight);
-				for(int py = chunk.startIndex(h); py < h + height; py += chunk.getVoxelSize()) {
-					if(chunk.liesInChunk(x, py-y, z)) {
-						chunk.updateBlockIfAir(x, py-y, z, block);
-					}
+			if(deltaHeight != 0)
+				height += rand.nextInt(deltaHeight);
+			for(int py = chunk.startIndex(h); py < h + height; py += chunk.getVoxelSize()) {
+				if(chunk.liesInChunk(x, py-y, z)) {
+					chunk.updateBlockIfAir(x, py-y, z, block);
 				}
 			}
 		}

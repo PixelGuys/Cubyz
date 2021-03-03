@@ -5,7 +5,6 @@ import java.util.Random;
 import io.cubyz.blocks.Block;
 import io.cubyz.world.Chunk;
 import io.cubyz.world.Region;
-import io.cubyz.world.World;
 
 /**
  * Creates a variety of different tree shapes.<br>
@@ -40,9 +39,6 @@ public class SimpleTreeModel extends StructureModel {
 		if(h < chunk.getWidth()) {
 			switch(type) {
 				case PYRAMID: {
-					if(h + (3*height >> 1) + 1 >= World.WORLD_HEIGHT) // the max array index is 255 but world height is 256 (for array **length**)
-						return;
-					
 					for(int py = chunk.startIndex(h); py < h+height; py += chunk.getVoxelSize()) {
 						if(chunk.liesInChunk(x, py, z)) {
 							chunk.updateBlockIfAir(x, py, z, (py == height-1) ? topWood : wood);
@@ -62,9 +58,6 @@ public class SimpleTreeModel extends StructureModel {
 					break;
 				}
 				case ROUND: {
-					if(h+height+1 >= World.WORLD_HEIGHT) // the max array index is 255 but world height is 256 (for array **length**)
-						return;
-					
 					for(int py = chunk.startIndex(h); py < h+height; py += chunk.getVoxelSize()) {
 						if(chunk.liesInChunk(x, py, z)) {
 							chunk.updateBlockIfAir(x, py, z, (py == height-1) ? topWood : wood);
@@ -88,8 +81,6 @@ public class SimpleTreeModel extends StructureModel {
 					break;
 				}
 				case BUSH: {
-					if(h+height+1 >= World.WORLD_HEIGHT) // the max array index is 255 but world height is 256 (for array **length**)
-						return;
 					int oldHeight = height;
 					if(height > 2) height = 2; // Make sure the stem of the bush stays small.
 					

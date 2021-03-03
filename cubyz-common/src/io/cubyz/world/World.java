@@ -11,7 +11,6 @@ import io.cubyz.entity.Player;
 
 public abstract class World {
 
-	public static final int WORLD_HEIGHT = 256;
 	protected int seed;
 	
 	public abstract Player getLocalPlayer();

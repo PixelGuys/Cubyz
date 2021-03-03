@@ -1,5 +1,5 @@
 type DESERT
-height 102-140
+height 2 to 40
 ground_structure 3 to 4 cubyz:sand
 roughness 0.1
 

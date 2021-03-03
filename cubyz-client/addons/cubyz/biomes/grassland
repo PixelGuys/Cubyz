@@ -1,5 +1,5 @@
 type GRASSLAND
-height 102-140
+height 2 to 40
 ground_structure cubyz:grass, 2 to 3 cubyz:soil
 roughness 0
 

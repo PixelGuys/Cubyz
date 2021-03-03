@@ -2,7 +2,7 @@ class ore
 hardness 40
 veins 0.625
 size 15
-height 128
+height 28
 drop cubyz:coal
 
 model cubyz:block.obj

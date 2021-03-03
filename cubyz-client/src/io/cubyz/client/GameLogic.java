@@ -103,6 +103,7 @@ public class GameLogic implements ClientConnection {
 				e.printStackTrace();
 			}
 		}
+		Cubyz.chunkTree.cleanup();
 	}
 	
 	public void quitWorld() {
@@ -158,8 +159,8 @@ public class GameLogic implements ClientConnection {
 					if(Cubyz.surface.isValidSpawnLocation(dx, dz)) 
 						break;
 				}
-				Cubyz.surface.seek((int)dx, World.WORLD_HEIGHT - 1, (int)dz, ClientSettings.RENDER_DISTANCE, ClientSettings.EFFECTIVE_RENDER_DISTANCE*NormalChunk.chunkSize*3/2/256);
-				highestY = World.WORLD_HEIGHT - 1;
+				Cubyz.surface.seek((int)dx, 256/*TODO: Start height that works always*/, (int)dz, ClientSettings.RENDER_DISTANCE, ClientSettings.EFFECTIVE_RENDER_DISTANCE*NormalChunk.chunkSize*3/2/256);
+				highestY = 512;
 				while(highestY >= 0) {
 					if(Cubyz.surface.getBlock(dx, highestY, dz) != null && Cubyz.surface.getBlock(dx, highestY, dz).isSolid()) break;
 					highestY--;

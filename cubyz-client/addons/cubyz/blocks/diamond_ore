@@ -2,7 +2,7 @@ class ore
 hardness 80
 veins 0.1
 size 4
-height 16
+height -80
 drop cubyz:diamond
 
 model cubyz:block.obj

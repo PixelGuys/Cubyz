@@ -139,7 +139,7 @@ public class AddonsMod {
 					if(blockClass.equals("ORE")) { // Ores:
 						float veins = Float.parseFloat(props.getProperty("veins", "0"));
 						float size = Float.parseFloat(props.getProperty("size", "0"));
-						int height = Integer.parseUnsignedInt(props.getProperty("height", "0"));
+						int height = Integer.parseInt(props.getProperty("height", "0"));
 						Ore ore = new Ore(new Resource(addon.getName(), id), props, height, veins, size);
 						block = ore;
 						blockClass = "STONE";
@@ -226,9 +226,9 @@ public class AddonsMod {
 								if(line.startsWith("roughness")) {
 									roughness = Float.parseFloat(line.substring(9));
 								} else if(line.startsWith("height")) {
-									String[] heightArguments = line.substring(6).split("-");
-									minHeight = Float.parseFloat(heightArguments[0])/256.0f;
-									maxHeight = Float.parseFloat(heightArguments[1])/256.0f;
+									String[] heightArguments = line.substring(6).split("to");
+									minHeight = Float.parseFloat(heightArguments[0].trim());
+									maxHeight = Float.parseFloat(heightArguments[1].trim());
 								} else if(line.startsWith("type")) {
 									type = line.substring(4).trim();
 								} else if(line.startsWith("chance")) {

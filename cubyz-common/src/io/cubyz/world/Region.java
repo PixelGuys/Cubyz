@@ -9,7 +9,6 @@ import io.cubyz.math.CubyzMath;
 import io.cubyz.save.RegionIO;
 import io.cubyz.save.TorusIO;
 import io.cubyz.util.RandomList;
-import io.cubyz.world.cubyzgenerators.TerrainGenerator;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 
 /**
@@ -22,6 +21,9 @@ public class Region {
 	private final Surface world;
 	public final int wx, wz;
 	public final RegionIO regIO;
+	// TODO: Store the two in data files.
+	public int minHeight = 0;
+	public int maxHeight = 256;
 	
 	public Region(int x, int z, long seed, Surface world, CurrentSurfaceRegistries registries, TorusIO tio) {
 		this.wx = x;
@@ -127,7 +129,8 @@ public class Region {
 			// TODO: Use a replacement biome, such as a beach.
 			biomeMap[x][z] = first;
 		}
-		heightMap[x][z] *= World.WORLD_HEIGHT;
+		minHeight = Math.min(minHeight, (int)heightMap[x][z]);
+		maxHeight = Math.max(maxHeight, (int)heightMap[x][z]);
 	}
 	
 	public void generateBiomesForNearbyRegion(Random rand, int x, int z, ArrayList<RandomNorm> biomeList, RandomList<Biome> availableBiomes) {
@@ -219,12 +222,11 @@ public class Region {
 		}
 	}
 	
-	// TODO: Store the two in data files.
 	public int getMinHeight() {
-		return TerrainGenerator.SEA_LEVEL;
+		return minHeight;
 	}
 	
 	public int getMaxHeight() {
-		return World.WORLD_HEIGHT;
+		return maxHeight;
 	}
 }

@@ -8,7 +8,6 @@ import io.cubyz.blocks.Block;
 import io.cubyz.world.Chunk;
 import io.cubyz.world.Region;
 import io.cubyz.world.Surface;
-import io.cubyz.world.World;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 
 /**
@@ -31,7 +30,6 @@ public class TerrainGenerator implements Generator {
 	private static Block stone = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:stone");
 
 	// Liquid
-	public static final int SEA_LEVEL = 100;
 	private static Block water = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:water");
 
 	@Override
@@ -47,12 +45,12 @@ public class TerrainGenerator implements Generator {
 			for(int z = 0; z < chunk.getWidth(); z += chunk.getVoxelSize()) {
 				int y = chunk.startIndex((int)containingRegion.heightMap[wx+x & 255][wz+z & 255] - chunk.getVoxelSize() + 1);
 				int yOff = 1 + (int)((containingRegion.heightMap[wx+x & 255][wz+z & 255] - y)*16);
-				int startY = y > SEA_LEVEL ? y : chunk.startIndex(SEA_LEVEL - chunk.getVoxelSize() + 1);
+				int startY = y > 0 ? y : 0;
 				int endY = chunk.getWorldY();
 				for(int j = startY; j >= endY; j--) {
 					Block b = null;
 					if(j > y) {
-						if(containingRegion.biomeMap[wx+x & 255][wz+z & 255].type == Biome.Type.ARCTIC_OCEAN && j == SEA_LEVEL) {
+						if(containingRegion.biomeMap[wx+x & 255][wz+z & 255].type == Biome.Type.ARCTIC_OCEAN && j == 0) {
 							b = ice;
 						} else {
 							b = water;

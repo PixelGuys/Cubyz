@@ -1,5 +1,5 @@
 type OCEAN
-height 0-100
+height -100 to 0
 ground_structure 2 to 3 cubyz:gravel
 roughness 0.2
 
