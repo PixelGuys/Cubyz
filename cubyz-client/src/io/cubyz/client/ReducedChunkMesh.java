@@ -5,14 +5,12 @@ import static org.lwjgl.opengl.GL15.*;
 import static org.lwjgl.opengl.GL20.*;
 import static org.lwjgl.opengl.GL30.*;
 
-import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 
 import org.lwjgl.system.MemoryUtil;
 
 import io.cubyz.math.CubyzMath;
-import io.cubyz.util.FloatFastList;
 import io.cubyz.util.IntFastList;
 import io.cubyz.world.ReducedChunk;
 
@@ -22,16 +20,10 @@ import io.cubyz.world.ReducedChunk;
 
 public class ReducedChunkMesh {
 	// ThreadLocal lists, to prevent (re-)allocating tons of memory.
-	public static ThreadLocal<FloatFastList> localVertices = new ThreadLocal<FloatFastList>() {
+	public static ThreadLocal<IntFastList> localVerticesAndNormals = new ThreadLocal<IntFastList>() {
 		@Override
-		protected FloatFastList initialValue() {
-			return new FloatFastList(50000);
-		}
-	};
-	public static ThreadLocal<FloatFastList> localNormals = new ThreadLocal<FloatFastList>() {
-		@Override
-		protected FloatFastList initialValue() {
-			return new FloatFastList(50000);
+		protected IntFastList initialValue() {
+			return new IntFastList(20000);
 		}
 	};
 	public static ThreadLocal<IntFastList> localFaces = new ThreadLocal<IntFastList>() {
@@ -54,17 +46,14 @@ public class ReducedChunkMesh {
 	protected int vertexCount;
 
 	public ReducedChunkMesh(ReducedChunk chunk) {
-		FloatFastList vertices = localVertices.get();
-		FloatFastList normals = localNormals.get();
+		IntFastList verticesAndNormals = localVerticesAndNormals.get();
 		IntFastList faces = localFaces.get();
 		IntFastList colors = localColors.get();
-		normals.clear();
-		vertices.clear();
+		verticesAndNormals.clear();
 		faces.clear();
 		colors.clear();
-		generateModelData(chunk, vertices, normals, faces, colors);
-		FloatBuffer posBuffer = null;
-		FloatBuffer normalBuffer = null;
+		generateModelData(chunk, verticesAndNormals, faces, colors);
+		IntBuffer posAndNormalBuffer = null;
 		IntBuffer indexBuffer = null;
 		IntBuffer colorBuffer = null;
 		try {
@@ -74,24 +63,14 @@ public class ReducedChunkMesh {
 			vaoId = glGenVertexArrays();
 			glBindVertexArray(vaoId);
 
-			// Position VBO
+			// Position and normal VBO
 			int vboId = glGenBuffers();
 			vboIdList.add(vboId);
-			posBuffer = MemoryUtil.memAllocFloat(vertices.size);
-			posBuffer.put(vertices.toArray()).flip();
+			posAndNormalBuffer = MemoryUtil.memAllocInt(verticesAndNormals.size);
+			posAndNormalBuffer.put(verticesAndNormals.toArray()).flip();
 			glBindBuffer(GL_ARRAY_BUFFER, vboId);
-			glBufferData(GL_ARRAY_BUFFER, posBuffer, GL_STATIC_DRAW);
-			glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, 0);
-
-
-			// Normal VBO
-			vboId = glGenBuffers();
-			vboIdList.add(vboId);
-			normalBuffer = MemoryUtil.memAllocFloat(normals.size);
-			normalBuffer.put(normals.toArray()).flip();
-			glBindBuffer(GL_ARRAY_BUFFER, vboId);
-			glBufferData(GL_ARRAY_BUFFER, normalBuffer, GL_STATIC_DRAW);
-			glVertexAttribPointer(1, 3, GL_FLOAT, false, 0, 0);
+			glBufferData(GL_ARRAY_BUFFER, posAndNormalBuffer, GL_STATIC_DRAW);
+			glVertexAttribPointer(0, 1, GL_FLOAT, false, 0, 0);
 
 			// Color VBO
 			vboId = glGenBuffers();
@@ -100,7 +79,7 @@ public class ReducedChunkMesh {
 			colorBuffer.put(colors.toArray()).flip();
 			glBindBuffer(GL_ARRAY_BUFFER, vboId);
 			glBufferData(GL_ARRAY_BUFFER, colorBuffer, GL_STATIC_DRAW);
-			glVertexAttribPointer(2, 1, GL_FLOAT, false, 0, 0);
+			glVertexAttribPointer(1, 1, GL_FLOAT, false, 0, 0);
 
 			// Index VBO
 			vboId = glGenBuffers();
@@ -113,11 +92,8 @@ public class ReducedChunkMesh {
 			glBindBuffer(GL_ARRAY_BUFFER, 0);
 			glBindVertexArray(0);
 		} finally {
-			if (normalBuffer != null) {
-				MemoryUtil.memFree(normalBuffer);
-			}
-			if (posBuffer != null) {
-				MemoryUtil.memFree(posBuffer);
+			if (posAndNormalBuffer != null) {
+				MemoryUtil.memFree(posAndNormalBuffer);
 			}
 			if (indexBuffer != null) {
 				MemoryUtil.memFree(indexBuffer);
@@ -133,13 +109,11 @@ public class ReducedChunkMesh {
 		glBindVertexArray(vaoId);
 		glEnableVertexAttribArray(0);
 		glEnableVertexAttribArray(1);
-		glEnableVertexAttribArray(2);
 		// Draw
 		glDrawElements(GL_TRIANGLES, vertexCount, GL_UNSIGNED_INT, 0);
 		// Restore state
 		glDisableVertexAttribArray(0);
 		glDisableVertexAttribArray(1);
-		glDisableVertexAttribArray(2);
 		glBindVertexArray(0);
 	}
 
@@ -165,24 +139,17 @@ public class ReducedChunkMesh {
 	 * @param z
 	 * @return
 	 */
-	private static int addVertex(FloatFastList vertices, float x, float y, float z, IntFastList colors, int color) {
-		int index = vertices.size/3;
-		vertices.add(x);
-		vertices.add(y);
-		vertices.add(z);
+	private static int addVertex(IntFastList verticesAndNormals, int x, int y, int z, int normal, IntFastList colors, int color) {
+		// Normals are handled the same way neighbors are.
+		int value = 0;
+		value |= normal;
+		value |= (x << 3) | (y << 12) | (z << 21);
+		verticesAndNormals.add(value);
 		colors.add(color);
-		return index;
+		return verticesAndNormals.size - 1;
 	}
 	
-	private static void addNormals(FloatFastList normals, float x, float y, float z, int amount) {
-		for(int i = 0; i < amount; i++) {
-			normals.add(x);
-			normals.add(y);
-			normals.add(z);
-		}
-	}
-	
-	private static void generateModelData(ReducedChunk chunk, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList colors) {
+	private static void generateModelData(ReducedChunk chunk, IntFastList verticesAndNormals, IntFastList faces, IntFastList colors) {
 		int zMask = (chunk.width - 1) >>> chunk.resolutionShift;
 		int xMask = zMask << (chunk.widthShift - chunk.resolutionShift);
 		int yMask = xMask << (chunk.widthShift - chunk.resolutionShift);
@@ -196,20 +163,20 @@ public class ReducedChunkMesh {
 			boolean posX = true, negX = true, posY = true, negY = true, posZ = true, negZ = true;
 			if((i & xMask) != 0 && chunk.blocks[i - xDelta] != null) negX = false;
 			if((i & xMask) != xMask && chunk.blocks[i + xDelta] != null) posX = false;
-			if((i & yMask) == 0 || chunk.blocks[i - yDelta] != null) negY = false; // Never draw the bedrock face of a chunk.
+			if((i & yMask) != 0 && chunk.blocks[i - yDelta] != null) negY = false;
 			if((i & yMask) != yMask && chunk.blocks[i + yDelta] != null) posY = false;
 			if((i & zMask) != 0 && chunk.blocks[i - zDelta] != null) negZ = false;
 			if((i & zMask) != zMask && chunk.blocks[i + zDelta] != null) posZ = false;
-			float x = CubyzMath.shiftRight(i & xMask, chunk.widthShift - 2*chunk.resolutionShift);
-			float y = CubyzMath.shiftRight(i & yMask, 2*chunk.widthShift - 3*chunk.resolutionShift);
-			float z = ((i & zMask) << chunk.resolutionShift);
+			int x = CubyzMath.shiftRight(i & xMask, chunk.widthShift - 2*chunk.resolutionShift);
+			int y = CubyzMath.shiftRight(i & yMask, 2*chunk.widthShift - 3*chunk.resolutionShift);
+			int z = ((i & zMask) << chunk.resolutionShift);
 			int color = chunk.blocks[i].color & 65535;
 			if(negX) {
-				int i000 = addVertex(vertices, x, y, z, colors, color);
-				int i001 = addVertex(vertices, x, y, z + offset, colors, color);
-				int i010 = addVertex(vertices, x, y + offset, z, colors, color);
-				int i011 = addVertex(vertices, x, y + offset, z + offset, colors, color);
-				addNormals(normals, -1, 0, 0, 4);
+				int normal = 0;
+				int i000 = addVertex(verticesAndNormals, x, y, z, normal, colors, color);
+				int i001 = addVertex(verticesAndNormals, x, y, z + offset, normal, colors, color);
+				int i010 = addVertex(verticesAndNormals, x, y + offset, z, normal, colors, color);
+				int i011 = addVertex(verticesAndNormals, x, y + offset, z + offset, normal, colors, color);
 				faces.add(i000);
 				faces.add(i001);
 				faces.add(i011);
@@ -219,11 +186,11 @@ public class ReducedChunkMesh {
 				faces.add(i010);
 			}
 			if(posX) {
-				int i100 = addVertex(vertices, x + offset, y, z, colors, color);
-				int i101 = addVertex(vertices, x + offset, y, z + offset, colors, color);
-				int i110 = addVertex(vertices, x + offset, y + offset, z, colors, color);
-				int i111 = addVertex(vertices, x + offset, y + offset, z + offset, colors, color);
-				addNormals(normals, 1, 0, 0, 4);
+				int normal = 1;
+				int i100 = addVertex(verticesAndNormals, x + offset, y, z, normal, colors, color);
+				int i101 = addVertex(verticesAndNormals, x + offset, y, z + offset, normal, colors, color);
+				int i110 = addVertex(verticesAndNormals, x + offset, y + offset, z, normal, colors, color);
+				int i111 = addVertex(verticesAndNormals, x + offset, y + offset, z + offset, normal, colors, color);
 				faces.add(i100);
 				faces.add(i111);
 				faces.add(i101);
@@ -233,11 +200,11 @@ public class ReducedChunkMesh {
 				faces.add(i111);
 			}
 			if(negY) {
-				int i000 = addVertex(vertices, x, y, z, colors, color);
-				int i001 = addVertex(vertices, x, y, z + offset, colors, color);
-				int i100 = addVertex(vertices, x + offset, y, z, colors, color);
-				int i101 = addVertex(vertices, x + offset, y, z + offset, colors, color);
-				addNormals(normals, 0, -1, 0, 4);
+				int normal = 4;
+				int i000 = addVertex(verticesAndNormals, x, y, z, normal, colors, color);
+				int i001 = addVertex(verticesAndNormals, x, y, z + offset, normal, colors, color);
+				int i100 = addVertex(verticesAndNormals, x + offset, y, z, normal, colors, color);
+				int i101 = addVertex(verticesAndNormals, x + offset, y, z + offset, normal, colors, color);
 				faces.add(i000);
 				faces.add(i101);
 				faces.add(i001);
@@ -247,11 +214,11 @@ public class ReducedChunkMesh {
 				faces.add(i101);
 			}
 			if(posY) {
-				int i010 = addVertex(vertices, x, y + offset, z, colors, color);
-				int i011 = addVertex(vertices, x, y + offset, z + offset, colors, color);
-				int i110 = addVertex(vertices, x + offset, y + offset, z, colors, color);
-				int i111 = addVertex(vertices, x + offset, y + offset, z + offset, colors, color);
-				addNormals(normals, 0, 1, 0, 4);
+				int normal = 5;
+				int i010 = addVertex(verticesAndNormals, x, y + offset, z, normal, colors, color);
+				int i011 = addVertex(verticesAndNormals, x, y + offset, z + offset, normal, colors, color);
+				int i110 = addVertex(verticesAndNormals, x + offset, y + offset, z, normal, colors, color);
+				int i111 = addVertex(verticesAndNormals, x + offset, y + offset, z + offset, normal, colors, color);
 				faces.add(i010);
 				faces.add(i011);
 				faces.add(i111);
@@ -261,11 +228,11 @@ public class ReducedChunkMesh {
 				faces.add(i110);
 			}
 			if(negZ) {
-				int i000 = addVertex(vertices, x, y, z, colors, color);
-				int i010 = addVertex(vertices, x, y + offset, z, colors, color);
-				int i100 = addVertex(vertices, x + offset, y, z, colors, color);
-				int i110 = addVertex(vertices, x + offset, y + offset, z, colors, color);
-				addNormals(normals, 0, 0, -1, 4);
+				int normal = 2;
+				int i000 = addVertex(verticesAndNormals, x, y, z, normal, colors, color);
+				int i010 = addVertex(verticesAndNormals, x, y + offset, z, normal, colors, color);
+				int i100 = addVertex(verticesAndNormals, x + offset, y, z, normal, colors, color);
+				int i110 = addVertex(verticesAndNormals, x + offset, y + offset, z, normal, colors, color);
 				faces.add(i000);
 				faces.add(i110);
 				faces.add(i100);
@@ -275,11 +242,11 @@ public class ReducedChunkMesh {
 				faces.add(i110);
 			}
 			if(posZ) {
-				int i001 = addVertex(vertices, x, y, z + offset, colors, color);
-				int i011 = addVertex(vertices, x, y + offset, z + offset, colors, color);
-				int i101 = addVertex(vertices, x + offset, y, z + offset, colors, color);
-				int i111 = addVertex(vertices, x + offset, y + offset, z + offset, colors, color);
-				addNormals(normals, 0, 0, 1, 4);
+				int normal = 3;
+				int i001 = addVertex(verticesAndNormals, x, y, z + offset, normal, colors, color);
+				int i011 = addVertex(verticesAndNormals, x, y + offset, z + offset, normal, colors, color);
+				int i101 = addVertex(verticesAndNormals, x + offset, y, z + offset, normal, colors, color);
+				int i111 = addVertex(verticesAndNormals, x + offset, y + offset, z + offset, normal, colors, color);
 				faces.add(i001);
 				faces.add(i101);
 				faces.add(i111);

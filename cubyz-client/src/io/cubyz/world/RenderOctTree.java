@@ -139,7 +139,6 @@ public class RenderOctTree {
 		int LODMask = LODSize - 1;
 		int minX = (px - maxRenderDistance) & ~LODMask;
 		int maxX = (px + maxRenderDistance + LODMask) & ~LODMask;
-
 		HashMap<HashMapKey3D, OctTreeNode> newMap = new HashMap<HashMapKey3D, OctTreeNode>();
 		for(int x = minX; x <= maxX; x += LODSize) {
 			int maxYRenderDistance = (int)Math.ceil(Math.sqrt(maxRenderDistance*maxRenderDistance - (x - px)*(x - px)));
