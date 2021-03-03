@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 import org.joml.FrustumIntersection;
-import org.joml.Vector3f;
 
 import io.cubyz.ClientOnly;
 import io.cubyz.client.Cubyz;
@@ -109,7 +108,7 @@ public class RenderOctTree {
 		}
 		public void getChunks(FrustumIntersection frustumInt, ArrayList<Chunk> chunks, float x0, float z0) {
 			if(chunk != null) {
-				if(frustumInt.testAab(getMin(x0, z0), getMax(x0, z0))) {
+				if(testFrustum(frustumInt, x0, z0)) {
 					chunks.add(chunk);
 				}
 			} else if(nextNodes != null) {
@@ -119,12 +118,9 @@ public class RenderOctTree {
 			}
 		}
 		
-		public Vector3f getMin(float x0, float z0) {
-			return new Vector3f(CubyzMath.match(x, x0, Cubyz.surface.getSizeX()), y, CubyzMath.match(z, z0, Cubyz.surface.getSizeZ()));
-		}
-		
-		public Vector3f getMax(float x0, float z0) {
-			return new Vector3f(CubyzMath.match(x, x0, Cubyz.surface.getSizeX()) + size, y + size, CubyzMath.match(z, z0, Cubyz.surface.getSizeZ()) + size);
+		public boolean testFrustum(FrustumIntersection frustumInt, float x0, float z0) {
+			return frustumInt.testAab(CubyzMath.match(x, x0, Cubyz.surface.getSizeX()), y, CubyzMath.match(z, z0, Cubyz.surface.getSizeZ()), 
+					CubyzMath.match(x, x0, Cubyz.surface.getSizeX()) + size, y + size, CubyzMath.match(z, z0, Cubyz.surface.getSizeZ()) + size);
 		}
 		
 		public void cleanup() {
@@ -144,7 +140,7 @@ public class RenderOctTree {
 		if(lastX == px && lastY == py && lastZ == pz && lastRD == renderDistance && lastLOD == highestLOD && lastFactor == LODFactor) return;
 		
 		int maxRenderDistance = (int)Math.ceil((renderDistance << highestLOD)*LODFactor*NormalChunk.chunkSize);
-		int nearRenderDistance = maxRenderDistance >> (highestLOD - 1); // Only render underground for nearby chunks. Otherwise the lag gets massive.
+		int nearRenderDistance = renderDistance; // Only render underground for nearby chunks. Otherwise the lag gets massive. TODO: render at least some ReducedChunks there.
 		int LODShift = highestLOD + NormalChunk.chunkShift;
 		int LODSize = NormalChunk.chunkSize << highestLOD;
 		int LODMask = LODSize - 1;
@@ -199,7 +195,7 @@ public class RenderOctTree {
 		ArrayList<Chunk> renderChunks = new ArrayList<>();
 		for(OctTreeNode node : roots.values()) {
 			// Check if the root is in the frustum:
-			if(frustumInt.testAab(node.getMin(x0, z0), node.getMax(x0, z0))) {
+			if(node.testFrustum(frustumInt, x0, z0)) {
 				node.getChunks(frustumInt, renderChunks, x0, z0);
 			}
 		}
