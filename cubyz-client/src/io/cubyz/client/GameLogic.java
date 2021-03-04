@@ -150,7 +150,6 @@ public class GameLogic implements ClientConnection {
 			int dx = 0;
 			int dz = 0;
 			if (Cubyz.player.getPosition().x == 0 && Cubyz.player.getPosition().z == 0) {
-				int highestY;
 				logger.info("Finding position..");
 				while (true) {
 					dx = rnd.nextInt(surface.getSizeX());
@@ -159,13 +158,9 @@ public class GameLogic implements ClientConnection {
 					if(Cubyz.surface.isValidSpawnLocation(dx, dz)) 
 						break;
 				}
-				Cubyz.surface.seek((int)dx, 256/*TODO: Start height that works always*/, (int)dz, ClientSettings.RENDER_DISTANCE, ClientSettings.EFFECTIVE_RENDER_DISTANCE*NormalChunk.chunkSize*2);
-				highestY = 512;
-				while(highestY >= 0) {
-					if(Cubyz.surface.getBlock(dx, highestY, dz) != null && Cubyz.surface.getBlock(dx, highestY, dz).isSolid()) break;
-					highestY--;
-				}
-				Cubyz.player.setPosition(new Vector3i(dx, highestY+2, dz));
+				int startY = (int)surface.getRegion((int)dx, (int)dz).heightMap[(int)dx & Region.regionMask][dz & Region.regionMask];
+				Cubyz.surface.seek((int)dx, startY, (int)dz, ClientSettings.RENDER_DISTANCE, ClientSettings.EFFECTIVE_RENDER_DISTANCE*NormalChunk.chunkSize*2);
+				Cubyz.player.setPosition(new Vector3i(dx, startY+2, dz));
 				logger.info("OK!");
 			}
 		}

@@ -63,9 +63,6 @@ public class NormalChunk extends Chunk {
 	
 	protected final Surface surface;
 	
-	/**A random block used as a replacement for blocks from yet unloaded chunks.*/
-	Block noLight = new Block();
-	
 	public final Region region;
 	
 	public NormalChunk(int cx, int cy, int cz, Surface surface) {
@@ -611,7 +608,7 @@ public class NormalChunk extends Chunk {
 		if(x < 0 || x >= chunkSize || y < 0 || y >= chunkSize || z < 0 || z >= chunkSize) {
 			NormalChunk chunk = surface.getChunk(cx + (x >> chunkShift), cy + (y >> chunkShift), cz + (z >> chunkShift));
 			if(chunk != null && chunk.isGenerated()) return chunk.getBlockUnbound(x & chunkMask, y & chunkMask, z & chunkMask);
-			return noLight; // Let the lighting engine think this region is blocked. TODO: Check if this is still needed after the recent lighting update.
+			return null;
 		}
 		return blocks[getIndex(x, y, z)];
 	}

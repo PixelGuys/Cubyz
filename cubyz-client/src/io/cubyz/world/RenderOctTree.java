@@ -140,7 +140,7 @@ public class RenderOctTree {
 		if(lastX == px && lastY == py && lastZ == pz && lastRD == renderDistance && lastLOD == highestLOD && lastFactor == LODFactor) return;
 		
 		int maxRenderDistance = (int)Math.ceil((renderDistance << highestLOD)*LODFactor*NormalChunk.chunkSize);
-		int nearRenderDistance = renderDistance; // Only render underground for nearby chunks. Otherwise the lag gets massive. TODO: render at least some ReducedChunks there.
+		int nearRenderDistance = renderDistance*NormalChunk.chunkSize; // Only render underground for nearby chunks. Otherwise the lag gets massive. TODO: render at least some ReducedChunks there.
 		int LODShift = highestLOD + NormalChunk.chunkShift;
 		int LODSize = NormalChunk.chunkSize << highestLOD;
 		int LODMask = LODSize - 1;
@@ -160,9 +160,9 @@ public class RenderOctTree {
 				for(int z = minZ; z <= maxZ; z += LODSize) {
 					// Make sure underground chunks are only generated if they are close to the player.
 					if(y + LODSize <= Cubyz.surface.getRegion(x, z).getMinHeight() || y > Cubyz.surface.getRegion(x, z).getMaxHeight()) {
-						int dx = Math.abs(x + LODSize/2 - px) - LODSize/2;
-						int dy = Math.abs(y + LODSize/2 - py) - LODSize/2;
-						int dz = Math.abs(z + LODSize/2 - pz) - LODSize/2;
+						int dx = Math.max(0, Math.abs(x + LODSize/2 - px) - LODSize/2);
+						int dy = Math.max(0, Math.abs(y + LODSize/2 - py) - LODSize/2);
+						int dz = Math.max(0, Math.abs(z + LODSize/2 - pz) - LODSize/2);
 						if(dx*dx + dy*dy + dz*dz > nearRenderDistance*nearRenderDistance) continue;
 					}
 					int x̅ = CubyzMath.worldModulo(x, Cubyz.surface.getSizeX());

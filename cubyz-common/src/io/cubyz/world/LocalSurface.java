@@ -28,6 +28,7 @@ import io.cubyz.items.BlockDrop;
 import io.cubyz.items.ItemStack;
 import io.cubyz.math.CubyzMath;
 import io.cubyz.save.TorusIO;
+import io.cubyz.util.HashMapKey3D;
 import io.cubyz.world.cubyzgenerators.CrystalCavernGenerator;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 import io.cubyz.world.cubyzgenerators.biomes.Biome.Type;
@@ -39,7 +40,7 @@ import static io.cubyz.CubyzLogger.logger;
 
 public class LocalSurface extends Surface {
 	private Region[] regions;
-	private HashMap<Integer, MetaChunk> metaChunks = new HashMap<Integer, MetaChunk>();
+	private HashMap<HashMapKey3D, MetaChunk> metaChunks = new HashMap<HashMapKey3D, MetaChunk>();
 	private NormalChunk[] chunks = new NormalChunk[0];
 	//private OldReducedChunk[] reducedChunks;
 	private ChunkEntityManager[] entityManagers = new ChunkEntityManager[0];
@@ -456,7 +457,7 @@ public class LocalSurface extends Surface {
 		if(xOld != lastX || yOld != lastY || zOld != lastZ) {
 			ArrayList<NormalChunk> chunkList = new ArrayList<>();
 			ArrayList<ChunkEntityManager> managers = new ArrayList<>();
-			HashMap<Integer, MetaChunk> newMetaChunks = new HashMap<Integer, MetaChunk>();
+			HashMap<HashMapKey3D, MetaChunk> newMetaChunks = new HashMap<HashMapKey3D, MetaChunk>();
 			int metaRenderDistance = (int)Math.ceil(renderDistance/(float)(MetaChunk.metaChunkSize*NormalChunk.chunkSize));
 			x = xOld;
 			y = yOld;
@@ -469,15 +470,13 @@ public class LocalSurface extends Surface {
 					for(int metaZ = z0 - metaRenderDistance; metaZ <= z0 + metaRenderDistance + 1; metaZ++) {
 						int xReal = CubyzMath.worldModulo(metaX, worldSizeX/(MetaChunk.metaChunkSize*NormalChunk.chunkSize));
 						int zReal = CubyzMath.worldModulo(metaZ, worldSizeZ/(MetaChunk.metaChunkSize*NormalChunk.chunkSize));
-						// Get the hashmap "index":
-						// TODO: Checks for y coordinate, prevent worldSize from getting higher than that limit.
-						int index = ((xReal & 2047) << 11) | ((metaY & 1023) << 22) | (zReal & 2047);
+						HashMapKey3D key = new HashMapKey3D(xReal, metaY, zReal);
 						// Check if it already exists:
-						MetaChunk metaChunk = metaChunks.get(index);
+						MetaChunk metaChunk = metaChunks.get(key);
 						if(metaChunk == null) {
 							metaChunk = new MetaChunk(xReal*(MetaChunk.metaChunkSize*NormalChunk.chunkSize), metaY*(MetaChunk.metaChunkSize*NormalChunk.chunkSize), zReal*(MetaChunk.metaChunkSize*NormalChunk.chunkSize), this);
 						}
-						newMetaChunks.put(index, metaChunk);
+						newMetaChunks.put(key, metaChunk);
 						metaChunk.updatePlayer(xOld, yOld, zOld, renderDistance, Settings.entityDistance, chunkList, managers);
 					}
 				}
@@ -518,7 +517,6 @@ public class LocalSurface extends Surface {
 				}
 			}
 		}
-		System.out.println(wx+" "+wz+" "+x+" "+z+" "+dx+" "+dz+" "+lastRegX+" "+lastRegZ+" "+regDRD+" "+(worldSizeZ >> Region.regionShift));
 		return new Region(wx, wz, localSeed, this, registries, tio);
 	}
 	
@@ -538,8 +536,8 @@ public class LocalSurface extends Surface {
 		int metaX = cx >> (MetaChunk.metaChunkShift);
 		int metaY = cy >> (MetaChunk.metaChunkShift);
 		int metaZ = cz >> (MetaChunk.metaChunkShift);
-		int index = ((metaX & 2047) << 11) | ((metaY & 1023) << 22) | (metaZ & 2047);
-		return metaChunks.get(index);
+		HashMapKey3D key = new HashMapKey3D(metaX, metaY, metaZ);
+		return metaChunks.get(key);
 	}
 	
 	@Override
