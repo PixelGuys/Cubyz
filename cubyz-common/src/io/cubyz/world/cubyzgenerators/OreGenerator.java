@@ -8,6 +8,7 @@ import io.cubyz.blocks.Block;
 import io.cubyz.blocks.Ore;
 import io.cubyz.world.Region;
 import io.cubyz.world.Chunk;
+import io.cubyz.world.NormalChunk;
 import io.cubyz.world.Surface;
 
 /**
@@ -34,14 +35,14 @@ public class OreGenerator implements Generator {
 
 	// Works basically similar to cave generation, but considers a lot less chunks and has a few other differences.
 	@Override
-	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, Region containingRegion, Surface surface, boolean[][] vegetationIgnoreMap) {
+	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, Region containingRegion, Surface surface) {
 		Random rand = new Random(seed);
 		int rand1 = rand.nextInt() | 1;
 		int rand2 = rand.nextInt() | 1;
 		int rand3 = rand.nextInt() | 1;
-		int cx = wx >> 4;
-		int cy = wy >> 4;
-		int cz = wz >> 4;
+		int cx = wx >> NormalChunk.chunkShift;
+		int cy = wy >> NormalChunk.chunkShift;
+		int cz = wz >> NormalChunk.chunkShift;
 		// Generate caves from all nearby chunks:
 		for(int x = cx - 1; x <= cx + 1; ++x) {
 			for(int y = cy - 1; y <= cy + 1; ++y) {
@@ -58,7 +59,7 @@ public class OreGenerator implements Generator {
 	private void considerCoordinates(int x, int y, int z, int cx, int cy, int cz, Chunk chunk, long seed) {
 		Random rand = new Random();
 		for(int i = 0; i < ores.length; i++) {
-			if(ores[i].maxHeight <= y << 4) continue;
+			if(ores[i].maxHeight <= y << NormalChunk.chunkShift) continue;
 			// Compose the seeds from some random stats of the ore. They generally shouldn't be the same for two different ores.
 			rand.setSeed(seed^(ores[i].maxHeight)^(Float.floatToIntBits(ores[i].size))^ores[i].getRegistryID().getID().charAt(0)^Float.floatToIntBits(ores[i].getHardness()));
 			// Determine how many veins of this type start in this chunk. The number depends on parameters set for the specific ore:
@@ -66,9 +67,9 @@ public class OreGenerator implements Generator {
 			if(ores[i].veins - veins >= rand.nextFloat()) veins++;
 			for(int j = 0; j < veins; ++j) {
 				// Choose some in world coordinates to start generating:
-				double worldX = (double)((x << 4) + rand.nextInt(16));
-				double worldY = (double)((y << 4) + rand.nextInt(16));
-				double worldZ = (double)((z << 4) + rand.nextInt(16));
+				double worldX = (double)((x << NormalChunk.chunkShift) + rand.nextInt(NormalChunk.chunkSize));
+				double worldY = (double)((y << NormalChunk.chunkShift) + rand.nextInt(NormalChunk.chunkSize));
+				double worldZ = (double)((z << NormalChunk.chunkShift) + rand.nextInt(NormalChunk.chunkSize));
 				float direction = rand.nextFloat()*(float)Math.PI*2.0F;
 				float slope = (rand.nextFloat() - 0.5F)/4.0F;
 				int size = (int)Math.round(2*ores[i].size*rand.nextFloat()); // Desired number of ore blocks in this vein. Might not get reached depending on the underground conditions. For example the last ore placed has a lower chance of getting placed all blocks.
@@ -85,8 +86,8 @@ public class OreGenerator implements Generator {
 		}
 	}
 	private void generateVein(long random, int cx, int cy, int cz, Chunk chunk, double worldX, double worldY, double worldZ, float radius, float direction, float slope, int veinLength, Block ore) {
-		double cwx = (double) (cx*16 + 8);
-		double cwz = (double) (cz*16 + 8);
+		double cwx = (double) (cx*NormalChunk.chunkSize + NormalChunk.chunkSize/2);
+		double cwz = (double) (cz*NormalChunk.chunkSize + NormalChunk.chunkSize/2);
 		float directionModifier = 0.0F;
 		float slopeModifier = 0.0F;
 		Random localRand = new Random(random);
@@ -117,37 +118,37 @@ public class OreGenerator implements Generator {
 				}
 
 				// Only care about it if it is inside the current chunk:
-				if(worldX >= cwx - 8 - scale && worldZ >= cwz - 8 - scale && worldX <= cwx + 8 + scale && worldZ <= cwz + 8 + scale) {
+				if(worldX >= cwx - NormalChunk.chunkSize/2 - scale && worldZ >= cwz - NormalChunk.chunkSize/2 - scale && worldX <= cwx + NormalChunk.chunkSize/2 + scale && worldZ <= cwz + NormalChunk.chunkSize/2 + scale) {
 					// Determine min and max of the current vein segment in all directions.
-					int xmin = (int)(worldX - scale) - cx*16 - 1;
-					int xmax = (int)(worldX + scale) - cx*16 + 1;
-					int ymin = (int)(worldY - scale) - cy*16 - 1;
-					int ymax = (int)(worldY + scale) - cy*16 + 1;
-					int zmin = (int)(worldZ - scale) - cz*16 - 1;
-					int zmax = (int)(worldZ + scale) - cz*16 + 1;
+					int xmin = (int)(worldX - scale) - cx*NormalChunk.chunkSize - 1;
+					int xmax = (int)(worldX + scale) - cx*NormalChunk.chunkSize + 1;
+					int ymin = (int)(worldY - scale) - cy*NormalChunk.chunkSize - 1;
+					int ymax = (int)(worldY + scale) - cy*NormalChunk.chunkSize + 1;
+					int zmin = (int)(worldZ - scale) - cz*NormalChunk.chunkSize - 1;
+					int zmax = (int)(worldZ + scale) - cz*NormalChunk.chunkSize + 1;
 					if (xmin < 0)
 						xmin = 0;
-					if (xmax > 16)
-						xmax = 16;
+					if (xmax > NormalChunk.chunkSize)
+						xmax = NormalChunk.chunkSize;
 					if (ymin < 0)
 						ymin = 0;
-					if (ymax > 16)
-						ymax = 16;
+					if (ymax > NormalChunk.chunkSize)
+						ymax = NormalChunk.chunkSize;
 					if (zmin < 0)
 						zmin = 0;
-					if (zmax > 16)
-						zmax = 16;
+					if (zmax > NormalChunk.chunkSize)
+						zmax = NormalChunk.chunkSize;
 
 					// Go through all blocks within range of the vein center and change them if they
 					// are within range of the center.
 					for(int curX = xmin; curX < xmax; ++curX) {
-						double distToCenterX = ((double) (curX + cx*16) - worldX) / scale;
+						double distToCenterX = ((double) (curX + cx*NormalChunk.chunkSize) - worldX) / scale;
 						
 						for(int curZ = zmin; curZ < zmax; ++curZ) {
-							double distToCenterZ = ((double) (curZ + cz*16) - worldZ) / scale;
+							double distToCenterZ = ((double) (curZ + cz*NormalChunk.chunkSize) - worldZ) / scale;
 							if(distToCenterX * distToCenterX + distToCenterZ * distToCenterZ < 1.0) {
 								for(int curY = ymax - 1; curY >= ymin; --curY) {
-									double distToCenterY = ((double) (curY + cy*16) - worldY) / scale;
+									double distToCenterY = ((double) (curY + cy*NormalChunk.chunkSize) - worldY) / scale;
 									// The first ore that gets into a position will be placed:
 									if(chunk.getBlock(curX, curY, curZ) == stone && distToCenterX*distToCenterX + distToCenterY*distToCenterY + distToCenterZ*distToCenterZ < 1.0) {
 										chunk.updateBlock(curX, curY, curZ, ore);

@@ -12,7 +12,7 @@ import io.cubyz.world.Surface;
 public interface Generator extends RegistryElement {
 	
 	abstract int getPriority(); // Used to prioritize certain generators(like map generation) over others(like vegetation generation).
-	abstract void generate(long seed, int wx, int wy, int wz, Chunk chunk, Region containingRegion, Surface surface, boolean[][] vegetationIgnoreMap);
+	abstract void generate(long seed, int wx, int wy, int wz, Chunk chunk, Region containingRegion, Surface surface);
 	
 	/**
 	 * To avoid duplicate seeds in similar generation algorithms, the SurfaceGenerator xors the torus-seed with the generator specific seed.

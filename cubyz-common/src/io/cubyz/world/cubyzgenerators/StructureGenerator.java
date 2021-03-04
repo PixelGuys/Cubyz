@@ -28,11 +28,7 @@ public class StructureGenerator implements Generator {
 	}
 
 	@Override
-	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, Region containingRegion, Surface surface, boolean[][] vegetationIgnoreMap) {
-		this.generate(seed, wx, wy, wz, chunk, containingRegion, surface);
-	}
-	
-	private void generate(long seed, int wx, int wy, int wz, Chunk chunk, Region containingRegion, Surface surface) {
+	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, Region containingRegion, Surface surface) {
 		Random rand = new Random(seed + 3*(seed + 1 & Integer.MAX_VALUE));
 		int worldSizeX = surface.getSizeX();
 		int worldSizeZ = surface.getSizeZ();
@@ -47,21 +43,21 @@ public class StructureGenerator implements Generator {
 		Region po = containingRegion;
 		Region on = containingRegion;
 		Region op = containingRegion;
-		if((wx & 255) <= 8) {
-			no = nn = np = surface.getRegion((wx & ~255) - 256, wz & ~255);
+		if((wx & Region.regionMask) <= 8) {
+			no = nn = np = surface.getRegion((wx & ~Region.regionMask) - Region.regionSize, wz & ~Region.regionMask);
 		}
-		if((wx & 255) >= 256 - 8 - chunk.getWidth()) {
-			po = pn = pp = surface.getRegion((wx & ~255) + 256, wz & ~255);
+		if((wx & Region.regionMask) >= Region.regionSize - 8 - chunk.getWidth()) {
+			po = pn = pp = surface.getRegion((wx & ~Region.regionMask) + Region.regionSize, wz & ~Region.regionMask);
 		}
-		if((wz & 255) <= 8) {
-			on = surface.getRegion((wx & ~255), (wz & ~255) - 256);
-			nn = surface.getRegion((wx & ~255) - ((wx & 255) <= 8 ? 256 : 0), (wz & ~255) - 256);
-			pn = surface.getRegion((wx & ~255) + ((wx & 255) >= 256 - 8 - chunk.getWidth() ? 256 : 0), (wz & ~255) - 256);
+		if((wz & Region.regionMask) <= 8) {
+			on = surface.getRegion((wx & ~Region.regionMask), (wz & ~Region.regionMask) - Region.regionSize);
+			nn = surface.getRegion((wx & ~Region.regionMask) - ((wx & Region.regionMask) <= 8 ? Region.regionSize : 0), (wz & ~Region.regionMask) - Region.regionSize);
+			pn = surface.getRegion((wx & ~Region.regionMask) + ((wx & Region.regionMask) >= Region.regionSize - 8 - chunk.getWidth() ? Region.regionSize : 0), (wz & ~Region.regionMask) - Region.regionSize);
 		}
-		if((wz & 255) >= 256 - 8 - chunk.getWidth()) {
-			op = surface.getRegion((wx & ~255), (wz & ~255) + 256);
-			np = surface.getRegion((wx & ~255) - ((wx & 255) <= 8 ? 256 : 0), (wz & ~255) + 256);
-			pp = surface.getRegion((wx & ~255) + ((wx & 255) >= 256 - 8 - chunk.getWidth() ? 256 : 0), (wz & ~255) + 256);
+		if((wz & Region.regionMask) >= Region.regionSize - 8 - chunk.getWidth()) {
+			op = surface.getRegion((wx & ~Region.regionMask), (wz & ~Region.regionMask) + Region.regionSize);
+			np = surface.getRegion((wx & ~Region.regionMask) - ((wx & Region.regionMask) <= 8 ? Region.regionSize : 0), (wz & ~Region.regionMask) + Region.regionSize);
+			pp = surface.getRegion((wx & ~Region.regionMask) + ((wx & Region.regionMask) >= Region.regionSize - 8 - chunk.getWidth() ? Region.regionSize : 0), (wz & ~Region.regionMask) + Region.regionSize);
 		}
 		for(int px = 0; px < chunk.getWidth() + 16; px++) {
 			for(int pz = 0; pz < chunk.getWidth() + 16; pz++) {
@@ -82,10 +78,10 @@ public class StructureGenerator implements Generator {
 					if(pz < 8) cur = on;
 					else if(chunk.getWidth() + 16 - pz <= 8) cur = op;
 				}
-				Biome biome = cur.biomeMap[wpx & 255][wpz & 255];
+				Biome biome = cur.biomeMap[wpx & Region.regionMask][wpz & Region.regionMask];
 				for(StructureModel model : biome.vegetationModels) {
 					if(model.getChance() > randomValue) {
-						model.generate(px - 8, pz - 8, (int)(cur.heightMap[wpx & 255][wpz & 255]) + 1, chunk, containingRegion, rand);
+						model.generate(px - 8, pz - 8, (int)(cur.heightMap[wpx & Region.regionMask][wpz & Region.regionMask]) + 1, chunk, containingRegion, rand);
 						break;
 					} else {
 						randomValue = (randomValue - model.getChance())/(1 - model.getChance()); // Make sure that after the first one was considered all others get the correct chances.

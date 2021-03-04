@@ -24,10 +24,10 @@ const vec3[6] normals = vec3[6](
 
 void main()
 {
-	int normal = positionAndNormals & 7;
-	int x = (positionAndNormals >> 3) & 511;
-	int y = (positionAndNormals >> 12) & 511;
-	int z = (positionAndNormals >> 21) & 511;
+	int normal = (color >> 24) & 7;
+	int x = (positionAndNormals) & 1023;
+	int y = (positionAndNormals >> 10) & 1023;
+	int z = (positionAndNormals >> 20) & 1023;
 	vec4 mvPos = viewMatrix*vec4(vec3(x, y, z) + modelPosition, 1);
 	gl_Position = projectionMatrix*mvPos;
 	outColor = vec3(((color >> 8) & 15)/15.0, ((color >> 4) & 15)/15.0, ((color >> 0) & 15)/15.0)*ambientLight;

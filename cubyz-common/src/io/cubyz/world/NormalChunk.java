@@ -19,12 +19,12 @@ import io.cubyz.util.FastList;
 import io.cubyz.world.generator.SurfaceGenerator;
 
 /**
- * 16³ chunk of the world.
+ * 32³ chunk of the world.
  */
 
 public class NormalChunk extends Chunk {
 	
-	public static final int chunkShift = 4;
+	public static final int chunkShift = 5;
 	
 	public static final int chunkShift2 = 2*chunkShift;
 	

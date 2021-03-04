@@ -35,15 +35,15 @@ public class RegionIO {
 	}
 	
 	public void loadHeightMap(Region region) {
-		heightMap = new int[256][256];
+		heightMap = new int[Region.regionSize][Region.regionSize];
 		if(dir.exists()) {
 			try {
 				InputStream in = new BufferedInputStream(new InflaterInputStream(new FileInputStream(dir+"/height.dat")));
-				byte[] data = new byte[256*256*4];
+				byte[] data = new byte[Region.regionSize*Region.regionSize*4];
 				in.read(data);
 				int index = 0;
-				for(int x = 0; x < 256; x++) {
-					for(int z = 0; z < 256; z++) {
+				for(int x = 0; x < Region.regionSize; x++) {
+					for(int z = 0; z < Region.regionSize; z++) {
 						heightMap[x][z] = Bits.getInt(data, index);
 						index += 4;
 					}
@@ -53,8 +53,8 @@ public class RegionIO {
 				e.printStackTrace();
 			}
 		} else {
-			for(int x = 0; x < 256; x++) {
-				for(int z = 0; z < 256; z++) {
+			for(int x = 0; x < Region.regionSize; x++) {
+				for(int z = 0; z < Region.regionSize; z++) {
 					heightMap[x][z] = (int)region.heightMap[x][z];
 				}
 			}
@@ -138,10 +138,10 @@ public class RegionIO {
 		if(dir.exists() && heightMap != null) {
 			try {
 				BufferedOutputStream out = new BufferedOutputStream(new DeflaterOutputStream(new FileOutputStream(dir+"/height.dat")));
-				byte[] data = new byte[256*256*4];
+				byte[] data = new byte[Region.regionSize*Region.regionSize*4];
 				int index = 0;
-				for(int x = 0; x < 256; x++) {
-					for(int z = 0; z < 256; z++) {
+				for(int x = 0; x < Region.regionSize; x++) {
+					for(int z = 0; z < Region.regionSize; z++) {
 						Bits.putInt(data, index, heightMap[x][z]);
 						index += 4;
 					}
@@ -232,15 +232,15 @@ public class RegionIO {
 	}
 	
 	public int getHeight(int wx, int wz, Region region) {
-		wx &= 255;
-		wz &= 255;
+		wx &= Region.regionMask;
+		wz &= Region.regionMask;
 		if(heightMap == null) this.loadHeightMap(region);
 		return heightMap[wx][wz];
 	}
 	
 	public void setHeight(int wx, int wz, int height, Region region) {
-		wx &= 255;
-		wz &= 255;
+		wx &= Region.regionMask;
+		wz &= Region.regionMask;
 		if(heightMap == null) this.loadHeightMap(region);
 		heightMap[wx][wz] = height;
 	}

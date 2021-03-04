@@ -27,8 +27,8 @@ public class BiomeGenerator {
 	/**
 	 * Generates a map with the static parameters defined in this class and 
 	 * @param seed
-	 * @param width of the map(should be world-width/256)
-	 * @param height of the map(should be world-height/256)
+	 * @param width of the map(should be world-width/Region.regionSize)
+	 * @param height of the map(should be world-height/Region.regionSize)
 	 * @return
 	 */
 	public static Biome.Type[][] generateTypeMap(long seed, int width, int height) {

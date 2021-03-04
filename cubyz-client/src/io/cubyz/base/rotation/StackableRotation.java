@@ -18,6 +18,7 @@ import io.cubyz.models.Model;
 import io.cubyz.util.ByteWrapper;
 import io.cubyz.util.FloatFastList;
 import io.cubyz.util.IntFastList;
+import io.cubyz.world.NormalChunk;
 
 /**
  * For stackable partial blocks, like snow.
@@ -133,9 +134,9 @@ public class StackableRotation implements RotationMode {
 			CubyzLogger.logger.severe("Unsupported model "+model.getRegistryID()+" in block "+bi.getBlock().getRegistryID()+" for stackable block type. Skipping block.");
 			return renderIndex;
 		}
-		int x = bi.getX()&15;
-		int y = bi.getY()&15;
-		int z = bi.getZ()&15;
+		int x = bi.getX() & NormalChunk.chunkMask;
+		int y = bi.getY() & NormalChunk.chunkMask;
+		int z = bi.getZ() & NormalChunk.chunkMask;
 		boolean[] neighbors = bi.getNeighbors();
 		int[] light = bi.light;
 		int offsetX = bi.getBlock().atlasX;

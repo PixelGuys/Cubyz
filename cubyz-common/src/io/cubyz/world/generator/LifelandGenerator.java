@@ -9,10 +9,8 @@ import io.cubyz.api.Resource;
 import io.cubyz.blocks.Ore;
 import io.cubyz.world.Region;
 import io.cubyz.world.Chunk;
-import io.cubyz.world.NormalChunk;
 import io.cubyz.world.Surface;
 import io.cubyz.world.cubyzgenerators.*;
-import io.cubyz.world.cubyzgenerators.biomes.Biome;
 
 /**
  * The normal generator for Cubyz.
@@ -56,24 +54,12 @@ public class LifelandGenerator extends SurfaceGenerator {
 		int wx = chunk.getWorldX();
 		int wy = chunk.getWorldY();
 		int wz = chunk.getWorldZ();
-		int cx = wx >> NormalChunk.chunkShift;
-		int cy = wy >> NormalChunk.chunkShift;
-		int cz = wz >> NormalChunk.chunkShift;
 		long seed = surface.getStellarTorus().getLocalSeed();
-		// Generate some maps:
-		float[][] heightMap = new float[32][32];
-		Biome[][] biomeMap = new Biome[32][32];
-		surface.getMapData(wx-8, wz-8, 32, 32, heightMap, biomeMap);
-		boolean[][] vegetationIgnoreMap = new boolean[32][32]; // Stores places where vegetation should not grow, like caves and rivers.
 		
-		Region containing = surface.getRegion((wx & (~255)), (wz & (~255)));
+		Region containing = surface.getRegion((wx & (~Region.regionMask)), (wz & (~Region.regionMask)));
 		
 		for (Generator g : sortedGenerators) {
-			if (g instanceof FancyGenerator) {
-				((FancyGenerator) g).generate(seed ^ g.getGeneratorSeed(), cx, cy, cz, chunk, vegetationIgnoreMap, heightMap, biomeMap, surface);
-			} else {
-				g.generate(seed ^ g.getGeneratorSeed(), wx, wy, wz, chunk, containing, surface, vegetationIgnoreMap);
-			}
+			g.generate(seed ^ g.getGeneratorSeed(), wx, wy, wz, chunk, containing, surface);
 		}
 	}
 

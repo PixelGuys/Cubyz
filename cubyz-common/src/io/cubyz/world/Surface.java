@@ -100,7 +100,5 @@ public abstract class Surface {
 		return torus;
 	}
 
-	public abstract void getMapData(int x, int z, int width, int height, float[][] heightMap, Biome[][] biomeMap);
-
 	public abstract boolean isValidSpawnLocation(int x, int z);
 }

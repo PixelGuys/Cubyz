@@ -540,7 +540,7 @@ public class MainRenderer {
 				glBindTexture(GL_TEXTURE_2D, GameLauncher.logic.breakAnimations[0].getId());
 			}
 
-			NormalChunk[] chunks = sortChunks(visibleChunks.toArray(), x0/16 - 0.5f, y0/16 - 0.5f, z0/16 - 0.5f);
+			NormalChunk[] chunks = sortChunks(visibleChunks.toArray(), x0/NormalChunk.chunkSize - 0.5f, y0/NormalChunk.chunkSize - 0.5f, z0/NormalChunk.chunkSize - 0.5f);
 			for (NormalChunk ch : chunks) {				
 				blockShader.setUniform("modelPosition", ch.getMin(x0, z0, worldSizeX, worldSizeZ));
 				

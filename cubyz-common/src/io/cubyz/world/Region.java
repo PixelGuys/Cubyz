@@ -12,9 +12,12 @@ import io.cubyz.util.RandomList;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 
 /**
- * A 256×256 big chunk of height-/heat-/humidity-/… and resulting biome-maps.
+ * A regionSize×regionSize big chunk of height-/heat-/humidity-/… and resulting biome-maps.
  */
 public class Region {
+	public static int regionShift = 9;
+	public static int regionSize = 1 << regionShift;
+	public static int regionMask = regionSize - 1;
 	
 	public final float[][] heightMap;
 	public final Biome[][] biomeMap;
@@ -32,9 +35,9 @@ public class Region {
 		
 		regIO = new RegionIO(this, tio);
 		
-		heightMap = new float[256][256];
+		heightMap = new float[regionSize][regionSize];
 		
-		biomeMap = new Biome[256][256];
+		biomeMap = new Biome[regionSize][regionSize];
 		advancedHeightMapGeneration(seed, registries);
 	}
 	
@@ -137,8 +140,8 @@ public class Region {
 		int amount = 1 + rand.nextInt(3);
 		outer:
 		for(int i = 0; i < amount; i++) {
-			int biomeX = x + 16 + rand.nextInt(224);
-			int biomeZ = z + 16 + rand.nextInt(224);
+			int biomeX = x + NormalChunk.chunkSize + rand.nextInt(regionSize - 2*NormalChunk.chunkSize);// TODO: Consider more chunk, so there is no need for this margin.
+			int biomeZ = z + NormalChunk.chunkSize + rand.nextInt(regionSize - 2*NormalChunk.chunkSize);
 			// Test if it is too close to other biomes:
 			for(int j = 0; j < i; j++) {
 				if(Math.max(Math.abs(biomeX - biomeList.get(biomeList.size() - i + j).x), Math.abs(biomeZ - biomeList.get(biomeList.size() - i + j).z)) <= 32) {
@@ -160,7 +163,7 @@ public class Region {
 		float m2 = (float)(third.x-smallest.x)/(third.z-smallest.z);
 		float m3 = (float)(third.x-second.x)/(third.z-second.z);
 		// Go through the lower-z-part of the triangle:
-		for(int pz = Math.max(smallest.z, 0); pz < Math.min(second.z, 256); pz++) {
+		for(int pz = Math.max(smallest.z, 0); pz < Math.min(second.z, regionSize); pz++) {
 			int dz = pz-smallest.z;
 			int xMin = (int)(m1*dz+smallest.x);
 			int xMax = (int)(m2*dz+smallest.x);
@@ -170,13 +173,13 @@ public class Region {
 				xMax = local;
 			}
 			xMin = Math.max(xMin, 0);
-			xMax = Math.min(xMax, 255);
+			xMax = Math.min(xMax, regionMask);
 			for(int px = xMin; px <= xMax; px++) {
 				interpolateBiomes(px, pz, n1, n2, n3, roughMap);
 			}
 		}
 		// Go through the upper-z-part of the triangle:
-		for(int pz = Math.max(second.z, 0); pz < Math.min(third.z, 256); pz++) {
+		for(int pz = Math.max(second.z, 0); pz < Math.min(third.z, regionSize); pz++) {
 			int dy0 = pz-smallest.z;
 			int dy = pz-second.z;
 			int xMin = (int)(m2*dy0+smallest.x);
@@ -187,7 +190,7 @@ public class Region {
 				xMax = local;
 			}
 			xMin = Math.max(xMin, 0);
-			xMax = Math.min(xMax, 255);
+			xMax = Math.min(xMax, regionMask);
 			for(int px = xMin; px <= xMax; px++) {
 				interpolateBiomes(px, pz, n1, n2, n3, roughMap);
 			}
@@ -196,16 +199,16 @@ public class Region {
 	
 	public void advancedHeightMapGeneration(long seed, CurrentSurfaceRegistries registries) {
 		// Generate a rough map for terrain overlay:
-		float[][] roughMap = Noise.generateFractalTerrain(wx, wz, 256, 256, 128, seed ^ -954936678493L, world.getSizeX(), world.getSizeZ());
+		float[][] roughMap = Noise.generateFractalTerrain(wx, wz, regionSize, regionSize, 128, seed ^ -954936678493L, world.getSizeX(), world.getSizeZ());
 		Random rand = new Random(seed);
 		long l1 = rand.nextLong();
 		long l2 = rand.nextLong();
 		// Generate biomes for nearby regions:
 		ArrayList<RandomNorm> biomeList = new ArrayList<>(50);
-		for(int x = -256; x <= 256; x += 256) {
-			for(int z = -256; z <= 256; z += 256) {
+		for(int x = -regionSize; x <= regionSize; x += regionSize) {
+			for(int z = -regionSize; z <= regionSize; z += regionSize) {
 				rand.setSeed(l1*(this.wx + x) ^ l2*(this.wz + z) ^ seed);
-				RandomList<Biome> biomes = registries.biomeRegistry.byTypeBiomes.get(world.getBiomeMap()[CubyzMath.worldModulo(wx + x, world.getSizeX()) >> 8][CubyzMath.worldModulo(wz + z, world.getSizeZ()) >> 8]);
+				RandomList<Biome> biomes = registries.biomeRegistry.byTypeBiomes.get(world.getBiomeMap()[CubyzMath.worldModulo(wx + x, world.getSizeX()) >> Region.regionShift][CubyzMath.worldModulo(wz + z, world.getSizeZ()) >> Region.regionShift]);
 				generateBiomesForNearbyRegion(rand, x, z, biomeList, biomes);
 			}
 		}

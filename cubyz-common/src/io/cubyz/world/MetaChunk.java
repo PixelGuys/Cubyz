@@ -68,17 +68,17 @@ public class MetaChunk {
 	public void liquidUpdate() {
 		for (NormalChunk ch : chunks) {
 			if(ch == null) continue;
-			int wx = ch.getX() << 4;
-			int wz = ch.getZ() << 4;
+			int wx = ch.getX() << NormalChunk.chunkShift;
+			int wz = ch.getZ() << NormalChunk.chunkShift;
 			if (ch.isLoaded() && ch.getLiquids().size() > 0) {
 				Integer[] liquids = ch.getUpdatingLiquids().toArray(new Integer[0]);
 				int size = ch.getUpdatingLiquids().size();
 				ch.getUpdatingLiquids().clear();
 				for (int j = 0; j < size; j++) {
 					Block block = ch.getBlockAtIndex(liquids[j]);
-					int bx = (liquids[j] >> 4) & 15;
-					int by = liquids[j] >> 8;
-					int bz = liquids[j] & 15;
+					int bx = (liquids[j] >> NormalChunk.chunkShift) & NormalChunk.chunkMask;
+					int by = liquids[j] >> NormalChunk.chunkShift2;
+					int bz = liquids[j] & NormalChunk.chunkMask;
 					Block[] neighbors = ch.getNeighbors(bx, by, bz);
 					for (int i = 0; i < 5; i++) {
 						Block b = neighbors[i];
@@ -151,7 +151,7 @@ public class MetaChunk {
 						}
 					} else if(chunk == null) {
 						try {
-							chunk = (NormalChunk)surface.chunkProvider.getDeclaredConstructors()[0].newInstance(CubyzMath.worldModulo((wx >> 4) + px, surface.getSizeX() >> 4), (wy >> 4) + py, CubyzMath.worldModulo((wz >> 4) + pz, surface.getSizeZ() >> 4), surface);
+							chunk = (NormalChunk)surface.chunkProvider.getDeclaredConstructors()[0].newInstance(CubyzMath.worldModulo((wx >> NormalChunk.chunkShift) + px, surface.getSizeX() >> NormalChunk.chunkShift), (wy >> NormalChunk.chunkShift) + py, CubyzMath.worldModulo((wz >> NormalChunk.chunkShift) + pz, surface.getSizeZ() >> NormalChunk.chunkShift), surface);
 							chunks[index] = chunk;
 							surface.queueChunk(chunks[index]);
 							chunksList.add(chunks[index]);

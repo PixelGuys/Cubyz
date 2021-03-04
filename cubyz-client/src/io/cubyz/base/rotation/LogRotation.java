@@ -13,6 +13,7 @@ import io.cubyz.entity.Entity;
 import io.cubyz.util.ByteWrapper;
 import io.cubyz.util.FloatFastList;
 import io.cubyz.util.IntFastList;
+import io.cubyz.world.NormalChunk;
 
 /**
  * Rotates the block based on the direction the player is placing it.
@@ -119,7 +120,7 @@ public class LogRotation implements RotationMode {
 			}
 		}
 		
-		Meshes.blockMeshes.get(bi.getBlock()).model.addToChunkMeshSimpleRotation(bi.x & 15, bi.y & 15, bi.z & 15, directionMap, directionInversion, bi.getBlock().atlasX, bi.getBlock().atlasY, bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
+		Meshes.blockMeshes.get(bi.getBlock()).model.addToChunkMeshSimpleRotation(bi.x & NormalChunk.chunkMask, bi.y & NormalChunk.chunkMask, bi.z & NormalChunk.chunkMask, directionMap, directionInversion, bi.getBlock().atlasX, bi.getBlock().atlasY, bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
 		return renderIndex + 1;
 	}
 }

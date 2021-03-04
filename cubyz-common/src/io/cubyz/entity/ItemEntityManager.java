@@ -140,7 +140,7 @@ public class ItemEntityManager {
 			// Check if it's still inside this chunk:
 			if(!chunk.isInside(posxyz[index3], posxyz[index3 + 1], posxyz[index3 + 2])) {
 				// Move it to another manager:
-				ChunkEntityManager other = surface.getEntityManagerAt(((int)posxyz[index3]) & ~15, ((int)posxyz[index3+1]) & ~15, ((int)posxyz[index3+2]) & ~15);
+				ChunkEntityManager other = surface.getEntityManagerAt(((int)posxyz[index3]) & ~NormalChunk.chunkMask, ((int)posxyz[index3+1]) & ~NormalChunk.chunkMask, ((int)posxyz[index3+2]) & ~NormalChunk.chunkMask);
 				if(other == null) {
 					// TODO: Append it to the right file.
 				} else {

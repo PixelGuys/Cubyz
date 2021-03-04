@@ -20,9 +20,9 @@ public class FlatlandGenerator extends SurfaceGenerator {
 	
 	@Override
 	public void generate(Chunk chunk, Surface surface) {
-		for (int x = 0; x < 16; x++) {
-			for (int z = 0; z < 16; z++) {
-				for (int y = 0; y < 16; y++) {
+		for (int x = 0; x < chunk.getWidth(); x++) {
+			for (int z = 0; z < chunk.getWidth(); z++) {
+				for (int y = 0; y < chunk.getWidth(); y++) {
 					int wy = y + chunk.getWorldY();
 					if(wy >= 3) continue;
 					Block b = null;

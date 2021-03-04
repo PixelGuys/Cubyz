@@ -142,7 +142,7 @@ public class LocalSurface extends Surface {
 			tio.saveTorusData(this);
 		}
 		
-		biomeMap = BiomeGenerator.generateTypeMap(localSeed, worldSizeX/256, worldSizeZ/256);
+		biomeMap = BiomeGenerator.generateTypeMap(localSeed, worldSizeX/Region.regionSize, worldSizeZ/Region.regionSize);
 		//setChunkQueueSize(torus.world.getRenderDistance() << 2);
 	}
 	
@@ -333,12 +333,12 @@ public class LocalSurface extends Surface {
 			en.update();
 			// Check item entities:
 			if(en.getInventory() != null) {
-				int x0 = (int)(en.getPosition().x - en.width) & ~15;
-				int y0 = (int)(en.getPosition().y - en.width) & ~15;
-				int z0 = (int)(en.getPosition().z - en.width) & ~15;
-				int x1 = (int)(en.getPosition().x + en.width) & ~15;
-				int y1 = (int)(en.getPosition().y + en.width) & ~15;
-				int z1 = (int)(en.getPosition().z + en.width) & ~15;
+				int x0 = (int)(en.getPosition().x - en.width) & ~NormalChunk.chunkMask;
+				int y0 = (int)(en.getPosition().y - en.width) & ~NormalChunk.chunkMask;
+				int z0 = (int)(en.getPosition().z - en.width) & ~NormalChunk.chunkMask;
+				int x1 = (int)(en.getPosition().x + en.width) & ~NormalChunk.chunkMask;
+				int y1 = (int)(en.getPosition().y + en.width) & ~NormalChunk.chunkMask;
+				int z1 = (int)(en.getPosition().z + en.width) & ~NormalChunk.chunkMask;
 				if(getEntityManagerAt(x0, y0, z0) != null)
 					getEntityManagerAt(x0, y0, z0).itemEntityManager.checkEntity(en);
 				if(x0 != x1) {
@@ -419,15 +419,16 @@ public class LocalSurface extends Surface {
 		int yOld = y;
 		int zOld = z;
 		// Care about the Regions:
-		int local = x & 255;
-		x >>= 8;
+		regionRenderDistance = (regionRenderDistance+Region.regionSize-1)/Region.regionSize;
+		int local = x & Region.regionMask;
+		x >>= Region.regionShift;
 		x += regionRenderDistance;
-		if(local > 127)
+		if(local >= Region.regionSize/2)
 			x++;
-		local = z & 255;
-		z >>= 8;
+		local = z & Region.regionMask;
+		z >>= Region.regionShift;
 		z += regionRenderDistance;
-		if(local > 127)
+		if(local >= Region.regionSize/2)
 			z++;
 		int regionDRD = regionRenderDistance << 1;
 		if(x != lastRegX || z != lastRegZ || regionDRD != regDRD) {
@@ -435,8 +436,8 @@ public class LocalSurface extends Surface {
 			// Go through the old regions and put them in the new array:
 			for(int i = 0; i < regions.length; i++) {
 				if(regions[i] != null) {
-					int dx = CubyzMath.moduloMatchSign((regions[i].wx >> 8) - (x-regionDRD), worldSizeX >> 8);
-					int dz = CubyzMath.moduloMatchSign((regions[i].wz >> 8) - (z-regionDRD), worldSizeZ >> 8);
+					int dx = CubyzMath.moduloMatchSign((regions[i].wx >> Region.regionShift) - (x-regionDRD), worldSizeX >> Region.regionShift);
+					int dz = CubyzMath.moduloMatchSign((regions[i].wz >> Region.regionShift) - (z-regionDRD), worldSizeZ >> Region.regionShift);
 					if(dx >= 0 && dx < regionDRD && dz >= 0 && dz < regionDRD) {
 						int index = dx*regionDRD + dz;
 						newRegions[index] = regions[i];
@@ -493,36 +494,16 @@ public class LocalSurface extends Surface {
 	public void setBlocks(Block[] blocks) {
 		torusBlocks = blocks;
 	}
-	
-	public void getMapData(int x, int z, int width, int height, float [][] heightMap, Biome[][] biomeMap) {
-		int x0 = x&(~255);
-		int z0 = z&(~255);
-		for(int px = x0; CubyzMath.moduloMatchSign(px - x, worldSizeX) < width; px += 256) {
-			for(int pz = z0; CubyzMath.moduloMatchSign(pz-z, worldSizeZ) < height; pz += 256) {
-				Region ch = getRegion(CubyzMath.worldModulo(px, worldSizeX), CubyzMath.worldModulo(pz, worldSizeZ));
-				int xS = Math.max(px-x, 0);
-				int zS = Math.max(pz-z, 0);
-				int xE = Math.min(px + 256 - x, width);
-				int zE = Math.min(pz + 256 - z, height);
-				for(int cx = xS; cx < xE; cx++) {
-					for(int cz = zS; cz < zE; cz++) {
-						heightMap[cx][cz] = ch.heightMap[(cx + x) & 255][(cz + z) & 255];
-						biomeMap[cx][cz] = ch.biomeMap[(cx + x) & 255][(cz + z) & 255];
-					}
-				}
-			}
-		}
-	}
 
 	@Override
 	public Region getRegion(int wx, int wz) {
-		wx &= ~255;
-		wz &= ~255;
-		int x = wx >> 8;
-		int z = wz >> 8;
+		wx &= ~Region.regionMask;
+		wz &= ~Region.regionMask;
+		int x = wx >> Region.regionShift;
+		int z = wz >> Region.regionShift;
 		// Test if the chunk can be found in the list of visible chunks:
-		int dx = CubyzMath.moduloMatchSign(x-(lastRegX-regDRD), worldSizeX >> 8);
-		int dz = CubyzMath.moduloMatchSign(z-(lastRegZ-regDRD), worldSizeZ >> 8);
+		int dx = CubyzMath.moduloMatchSign(x - (lastRegX - regDRD/2), worldSizeX >> Region.regionShift) + regDRD/2;
+		int dz = CubyzMath.moduloMatchSign(z - (lastRegZ - regDRD/2), worldSizeZ >> Region.regionShift) + regDRD/2;
 		if(dx >= 0 && dx < regDRD && dz >= 0 && dz < regDRD) {
 			int index = dx*regDRD + dz;
 			synchronized(regions) {
@@ -537,6 +518,7 @@ public class LocalSurface extends Surface {
 				}
 			}
 		}
+		System.out.println(wx+" "+wz+" "+x+" "+z+" "+dx+" "+dz+" "+lastRegX+" "+lastRegZ+" "+regDRD+" "+(worldSizeZ >> Region.regionShift));
 		return new Region(wx, wz, localSeed, this, registries, tio);
 	}
 	
@@ -627,7 +609,7 @@ public class LocalSurface extends Surface {
 	@Override
 	public BlockEntity getBlockEntity(int x, int y, int z) {
 		/*BlockInstance bi = getBlockInstance(x, y, z);
-		Chunk ck = _getNoGenerateChunk(bi.getX() >> 4, bi.getZ() >> 4);
+		Chunk ck = _getNoGenerateChunk(bi.getX() >> NormalChunk.chunkShift, bi.getZ() >> NormalChunk.chunkShift);
 		return ck.blockEntities().get(bi);*/
 		return null; // TODO: Work on BlockEntities!
 	}
@@ -662,7 +644,7 @@ public class LocalSurface extends Surface {
 	}
 	
 	public int getHeight(int x, int z) {
-		return (int)(getRegion(x & ~255, z & ~255).heightMap[x & 255][z & 255]);
+		return (int)(getRegion(x & ~Region.regionMask, z & ~Region.regionMask).heightMap[x & Region.regionMask][z & Region.regionMask]);
 	}
 
 	@Override
@@ -695,8 +677,8 @@ public class LocalSurface extends Surface {
 
 	@Override
 	public Biome getBiome(int x, int z) {
-		Region reg = getRegion(x & ~255, z & ~255);
-		return reg.biomeMap[x & 255][z & 255];
+		Region reg = getRegion(x & ~Region.regionMask, z & ~Region.regionMask);
+		return reg.biomeMap[x & Region.regionMask][z & Region.regionMask];
 	}
 
 	@Override

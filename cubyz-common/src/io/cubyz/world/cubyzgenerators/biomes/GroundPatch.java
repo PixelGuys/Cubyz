@@ -50,7 +50,7 @@ public class GroundPatch extends StructureModel {
 				float secn = xSecn*(x - px) + zSecn*(z - pz);
 				float dist = main*main + secn*secn;
 				if(dist <= 1) {
-					int startHeight = (int)(region.heightMap[px + chunk.getWorldX() & 255][pz + chunk.getWorldZ() & 255]);
+					int startHeight = (int)(region.heightMap[px + chunk.getWorldX() & Region.regionMask][pz + chunk.getWorldZ() & Region.regionMask]);
 					for(int py = chunk.startIndex((int)(startHeight - depth + 1)); py <= startHeight; py += chunk.getVoxelSize()) {
 						if(dist <= smoothness || (dist - smoothness)/(1 - smoothness) < rand.nextFloat()) {
 							if(chunk.liesInChunk(px, py-y, pz)) {
