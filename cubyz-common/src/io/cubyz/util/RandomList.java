@@ -1,6 +1,7 @@
 package io.cubyz.util;
 
 import java.util.Random;
+import java.util.function.Consumer;
 
 import io.cubyz.math.CubyzMath;
 
@@ -37,6 +38,22 @@ public class RandomList<T extends ChanceObject> {
 		ChanceObject[] newArray = new ChanceObject[array.length + increment];
 		System.arraycopy(array, 0, newArray, 0, array.length);
 		array = newArray;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public void forEach(Consumer<T> action) {
+		for(int i = 0; i < size; i++) {
+			action.accept((T)array[i]);
+		}
+	}
+	
+	public int size() {
+		return size;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public T get(int index) {
+		return (T)array[index];
 	}
 	
 	public void add(T object) {

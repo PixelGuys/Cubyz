@@ -2,6 +2,7 @@ package io.cubyz.world;
 
 import java.util.ArrayList;
 import java.util.Random;
+import java.util.function.Consumer;
 
 import io.cubyz.algorithms.DelaunayTriangulator;
 import io.cubyz.api.CurrentSurfaceRegistries;
@@ -81,7 +82,7 @@ public class Region {
 		return (3 - 2*x)*x*x;
 	}
 	
-	public void interpolateBiomes(int x, int z, RandomNorm n1, RandomNorm n2, RandomNorm n3, float[][] roughMap) {
+	public void interpolateBiomes(int x, int z, RandomNorm n1, RandomNorm n2, RandomNorm n3, Biome r12, Biome r13, Biome r23, float[][] roughMap) {
 		float interpolationWeight = (n2.z - n3.z)*(n1.x - n3.x) + (n3.x - n2.x)*(n1.z - n3.z);
 		float w1 = ((n2.z - n3.z)*(x - n3.x) + (n3.x - n2.x)*(z - n3.z))/interpolationWeight;
 		float w2 = ((n3.z - n1.z)*(x - n3.x) + (n1.x - n3.x)*(z - n3.z))/interpolationWeight;
@@ -96,22 +97,25 @@ public class Region {
 		// Sort them by value:
 		Biome first = n1.biome;
 		Biome second = n2.biome;
-		Biome third = n3.biome;
+		Biome replacement = r12;
 		if(val2 > val1) {
 			first = n2.biome;
 			second = n1.biome;
 			if(val3 > val2) {
 				first = n3.biome;
 				second = n2.biome;
-				third = n1.biome;
+				replacement = r23;
 			}
 		} else if(val3 > val1) {
 			first = n3.biome;
-			third = n1.biome;
+			replacement = r23;
 			if(val1 > val2) {
 				second = n1.biome;
-				third = n2.biome;
+				replacement = r13;
 			}
+		} else if(val3 > val2) {
+			second = n3.biome;
+			replacement = r13;
 		}
 		heightMap[x][z] = (val1*n1.height + val2*n2.height + val3*n3.height)/(val1 + val2 + val3);
 		float roughness = (val1*n1.biome.roughness + val2*n2.biome.roughness + val3*n3.biome.roughness)/(val1 + val2 + val3);
@@ -126,11 +130,9 @@ public class Region {
 			biomeMap[x][z] = first;
 		} else if(second.minHeight <= heightMap[x][z] && second.maxHeight >= heightMap[x][z]) {
 			biomeMap[x][z] = second;
-		} else if(third.minHeight <= heightMap[x][z] && third.maxHeight >= heightMap[x][z]) {
-			biomeMap[x][z] = third;
 		} else {
-			// TODO: Use a replacement biome, such as a beach.
-			biomeMap[x][z] = first;
+			// Use a replacement biome, such as a beach.
+			biomeMap[x][z] = replacement;
 		}
 		minHeight = Math.min(minHeight, (int)heightMap[x][z]);
 		maxHeight = Math.max(maxHeight, (int)heightMap[x][z]);
@@ -153,7 +155,57 @@ public class Region {
 		}
 	}
 	
-	public void drawTriangle(RandomNorm n1, RandomNorm n2, RandomNorm n3, float[][] roughMap) {
+	public Biome findReplacement(float minHeight, float maxHeight, RandomList<Biome> biomes1, RandomList<Biome> biomes2, float random) {
+		ArrayList<Biome> validBiomes = new ArrayList<Biome>();
+		Consumer<Biome> action = (b) -> {
+			if(b.minHeight <= minHeight & b.maxHeight >= maxHeight) {
+				validBiomes.add(b);
+			}
+		};
+		biomes1.forEach(action);
+		biomes2.forEach(action);
+		if(validBiomes.size() == 0) {
+			// Anything is better than nothing, so choose a random biome from the whole list:
+			int result = (int)(random*(biomes1.size() + biomes2.size()));
+			if(result < biomes1.size()) {
+				return biomes1.get(result);
+			} else {
+				return biomes2.get(result - biomes1.size());
+			}
+		}
+		int result = (int)(random*validBiomes.size());
+		return validBiomes.get(result);
+	}
+	
+	public void drawTriangle(RandomNorm n1, RandomNorm n2, RandomNorm n3, float[][] roughMap, CurrentSurfaceRegistries registries) {
+		Random triangleRandom = new Random(n1.x*5478361L ^ n1.z*5642785727L ^ n2.x*6734896731L ^ n2.z*657438643875L ^ n3.x*65783958734L ^ n3.z*673891094012L);
+		// Determine connecting biomes in case there is a conflict:
+		Biome r12 = n1.biome, r13 = n3.biome, r23 = n2.biome;
+		if(n1.biome.minHeight > n2.biome.maxHeight) {
+			r12 = findReplacement(n2.biome.maxHeight, n1.biome.minHeight, registries.biomeRegistry.byTypeBiomes.get(n1.biome.type), registries.biomeRegistry.byTypeBiomes.get(n2.biome.type), triangleRandom.nextFloat());
+		} else if(n1.biome.maxHeight < n2.biome.minHeight) {
+			r12 = findReplacement(n1.biome.maxHeight, n2.biome.minHeight, registries.biomeRegistry.byTypeBiomes.get(n1.biome.type), registries.biomeRegistry.byTypeBiomes.get(n2.biome.type), triangleRandom.nextFloat());
+		}
+		if(n1.biome.minHeight > n3.biome.maxHeight) {
+			r13 = findReplacement(n3.biome.maxHeight, n1.biome.minHeight, registries.biomeRegistry.byTypeBiomes.get(n1.biome.type), registries.biomeRegistry.byTypeBiomes.get(n3.biome.type), triangleRandom.nextFloat());
+		} else if(n1.biome.maxHeight < n3.biome.minHeight) {
+			r13 = findReplacement(n1.biome.maxHeight, n3.biome.minHeight, registries.biomeRegistry.byTypeBiomes.get(n1.biome.type), registries.biomeRegistry.byTypeBiomes.get(n3.biome.type), triangleRandom.nextFloat());
+		}
+		if(n2.biome.minHeight > n3.biome.maxHeight) {
+			r23 = findReplacement(n3.biome.maxHeight, n2.biome.minHeight, registries.biomeRegistry.byTypeBiomes.get(n2.biome.type), registries.biomeRegistry.byTypeBiomes.get(n3.biome.type), triangleRandom.nextFloat());
+		} else if(n2.biome.maxHeight < n3.biome.minHeight) {
+			r23 = findReplacement(n2.biome.maxHeight, n3.biome.minHeight, registries.biomeRegistry.byTypeBiomes.get(n2.biome.type), registries.biomeRegistry.byTypeBiomes.get(n3.biome.type), triangleRandom.nextFloat());
+		}
+		// Temporary fix. TODO: Make this work for similar biomes as well.
+		if(n1.biome == n2.biome) {
+			r12 = r23;
+		}
+		if(n1.biome == n3.biome) {
+			r13 = r12;
+		}
+		if(n2.biome == n3.biome) {
+			r23 = r13;
+		}
 		// Sort them by z coordinate:
 		RandomNorm smallest = n1.z < n2.z ? (n1.z < n3.z ? n1 : n3) : (n2.z < n3.z ? n2 : n3);
 		RandomNorm second = smallest == n1 ? (n2.z < n3.z ? n2 : n3) : (smallest == n2 ? (n1.z < n3.z ? n1 : n3) : (n1.z < n2.z ? n1 : n2));
@@ -175,7 +227,7 @@ public class Region {
 			xMin = Math.max(xMin, 0);
 			xMax = Math.min(xMax, regionMask);
 			for(int px = xMin; px <= xMax; px++) {
-				interpolateBiomes(px, pz, n1, n2, n3, roughMap);
+				interpolateBiomes(px, pz, n1, n2, n3, r12, r13, r23, roughMap);
 			}
 		}
 		// Go through the upper-z-part of the triangle:
@@ -192,7 +244,7 @@ public class Region {
 			xMin = Math.max(xMin, 0);
 			xMax = Math.min(xMax, regionMask);
 			for(int px = xMin; px <= xMax; px++) {
-				interpolateBiomes(px, pz, n1, n2, n3, roughMap);
+				interpolateBiomes(px, pz, n1, n2, n3, r12, r13, r23, roughMap);
 			}
 		}
 	}
@@ -221,7 +273,7 @@ public class Region {
 		int[] triangles = DelaunayTriangulator.computeTriangles(points, 0, points.length);
 		// "Render" the triangles onto the biome map:
 		for(int i = 0; i < triangles.length; i += 3) {
-			drawTriangle(biomeList.get(triangles[i]), biomeList.get(triangles[i+1]), biomeList.get(triangles[i+2]), roughMap);
+			drawTriangle(biomeList.get(triangles[i]), biomeList.get(triangles[i+1]), biomeList.get(triangles[i+2]), roughMap, registries);
 		}
 	}
 	

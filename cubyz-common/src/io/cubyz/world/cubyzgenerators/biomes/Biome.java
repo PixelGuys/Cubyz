@@ -9,10 +9,7 @@ import io.cubyz.util.ChanceObject;
  */
 
 public class Biome extends ChanceObject implements RegistryElement {
-	public static enum Type {
-		/**Just a biome to connect other biomes.*/
-		BETWEEN,
-		
+	public static enum Type {		
 		/**hot, wet, lowland*/
 		RAINFOREST,
 		/**hot, medium, lowland*/
