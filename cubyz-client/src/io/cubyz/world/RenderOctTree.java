@@ -206,6 +206,7 @@ public class RenderOctTree {
 		for(OctTreeNode node : roots.values()) {
 			node.cleanup();
 		}
+		roots.clear();
 	}
 	
 }

@@ -103,7 +103,6 @@ public class GameLogic implements ClientConnection {
 				e.printStackTrace();
 			}
 		}
-		Cubyz.chunkTree.cleanup();
 	}
 	
 	public void quitWorld() {
@@ -114,6 +113,7 @@ public class GameLogic implements ClientConnection {
 		}
 		Cubyz.world.cleanup();
 		Cubyz.world = null;
+		Cubyz.chunkTree.cleanup();
 		
 		SoundSource ms = musicSource;
 		if (ms != null) {
