@@ -44,26 +44,30 @@ public class StructureGenerator implements Generator {
 		Region on = containingRegion;
 		Region op = containingRegion;
 		if((wx & Region.regionMask) <= 8) {
-			no = nn = np = surface.getRegion((wx & ~Region.regionMask) - Region.regionSize, wz & ~Region.regionMask);
+			no = nn = np = surface.getRegion((wx & ~Region.regionMask) - Region.regionSize, wz & ~Region.regionMask, chunk.getVoxelSize());
 		}
 		if((wx & Region.regionMask) >= Region.regionSize - 8 - chunk.getWidth()) {
-			po = pn = pp = surface.getRegion((wx & ~Region.regionMask) + Region.regionSize, wz & ~Region.regionMask);
+			po = pn = pp = surface.getRegion((wx & ~Region.regionMask) + Region.regionSize, wz & ~Region.regionMask, chunk.getVoxelSize());
 		}
 		if((wz & Region.regionMask) <= 8) {
-			on = surface.getRegion((wx & ~Region.regionMask), (wz & ~Region.regionMask) - Region.regionSize);
-			nn = surface.getRegion((wx & ~Region.regionMask) - ((wx & Region.regionMask) <= 8 ? Region.regionSize : 0), (wz & ~Region.regionMask) - Region.regionSize);
-			pn = surface.getRegion((wx & ~Region.regionMask) + ((wx & Region.regionMask) >= Region.regionSize - 8 - chunk.getWidth() ? Region.regionSize : 0), (wz & ~Region.regionMask) - Region.regionSize);
+			on = surface.getRegion((wx & ~Region.regionMask), (wz & ~Region.regionMask) - Region.regionSize, chunk.getVoxelSize());
+			nn = surface.getRegion((wx & ~Region.regionMask) - ((wx & Region.regionMask) <= 8 ? Region.regionSize : 0), (wz & ~Region.regionMask) - Region.regionSize, chunk.getVoxelSize());
+			pn = surface.getRegion((wx & ~Region.regionMask) + ((wx & Region.regionMask) >= Region.regionSize - 8 - chunk.getWidth() ? Region.regionSize : 0), (wz & ~Region.regionMask) - Region.regionSize, chunk.getVoxelSize());
 		}
 		if((wz & Region.regionMask) >= Region.regionSize - 8 - chunk.getWidth()) {
-			op = surface.getRegion((wx & ~Region.regionMask), (wz & ~Region.regionMask) + Region.regionSize);
-			np = surface.getRegion((wx & ~Region.regionMask) - ((wx & Region.regionMask) <= 8 ? Region.regionSize : 0), (wz & ~Region.regionMask) + Region.regionSize);
-			pp = surface.getRegion((wx & ~Region.regionMask) + ((wx & Region.regionMask) >= Region.regionSize - 8 - chunk.getWidth() ? Region.regionSize : 0), (wz & ~Region.regionMask) + Region.regionSize);
+			op = surface.getRegion((wx & ~Region.regionMask), (wz & ~Region.regionMask) + Region.regionSize, chunk.getVoxelSize());
+			np = surface.getRegion((wx & ~Region.regionMask) - ((wx & Region.regionMask) <= 8 ? Region.regionSize : 0), (wz & ~Region.regionMask) + Region.regionSize, chunk.getVoxelSize());
+			pp = surface.getRegion((wx & ~Region.regionMask) + ((wx & Region.regionMask) >= Region.regionSize - 8 - chunk.getWidth() ? Region.regionSize : 0), (wz & ~Region.regionMask) + Region.regionSize, chunk.getVoxelSize());
 		}
 		for(int px = 0; px < chunk.getWidth() + 16; px++) {
 			for(int pz = 0; pz < chunk.getWidth() + 16; pz++) {
 				int wpx = CubyzMath.worldModulo(px - 8 + wx, worldSizeX);
 				int wpz = CubyzMath.worldModulo(pz - 8 + wz, worldSizeZ);
 				rand.setSeed((wpx*rand1 << 32) ^ wpz*rand2 ^ seed);
+				// Make sure the coordinates are inside the resolution grid of the Regions internal array:
+				wpx = wpx & ~(chunk.getVoxelSize() - 1);
+				wpz = wpz & ~(chunk.getVoxelSize() - 1);
+				
 				float randomValue = rand.nextFloat();
 				Region cur = containingRegion;
 				if(px < 8) {

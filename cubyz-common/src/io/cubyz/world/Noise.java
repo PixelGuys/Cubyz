@@ -16,7 +16,7 @@ public class Noise {
 		long l2 = rand.nextLong() | 1;
 		return (((long)(CubyzMath.worldModulo(offsetX + x, worldSizeX)))*l1) ^ seed ^ (((long)(CubyzMath.worldModulo(offsetY + y, worldSizeY)))*l2);
 	}
-	public static void generateFractalTerrain(int wx, int wy, int x0, int y0, int width, int height, int scale, long seed, int worldSizeX, int worldSizeZ, float[][] map) {
+	public static void generateFractalTerrain(int wx, int wy, int x0, int y0, int width, int height, int scale, long seed, int worldSizeX, int worldSizeZ, float[][] map, int maxResolution) {
 		int max =scale+1;
 		int and = scale-1;
 		float[][] bigMap = new float[max][max];
@@ -32,7 +32,7 @@ public class Noise {
 		bigMap[scale][0] = rand.nextFloat();
 		rand.setSeed(getSeed(scale, scale, offsetX, offsetY, worldSizeX, worldSizeZ, seed, scale));
 		bigMap[scale][scale] = rand.nextFloat();
-		generateInitializedFractalTerrain(offsetX, offsetY, scale, scale, seed, worldSizeX, worldSizeZ, bigMap, 0, 1);
+		generateInitializedFractalTerrain(offsetX, offsetY, scale, scale, seed, worldSizeX, worldSizeZ, bigMap, 0, 1, maxResolution);
 		for(int px = 0; px < width; px++) {
 			for(int py = 0; py < height; py++) {
 				map[x0 + px][y0 + py] = bigMap[(wx&and)+px][(wy&and)+py];
@@ -42,7 +42,7 @@ public class Noise {
 		}
 	}
 	
-	public static void generateInitializedFractalTerrain(int offsetX, int offsetY, int scale, int startingScale, long seed, int worldSizeX, int worldSizeZ, float[][] bigMap, float lowerLimit, float upperLimit) {
+	public static void generateInitializedFractalTerrain(int offsetX, int offsetY, int scale, int startingScale, long seed, int worldSizeX, int worldSizeZ, float[][] bigMap, float lowerLimit, float upperLimit, int maxResolution) {
 		// Increase the "grid" of points with already known heights in each round by a factor of 2×2, like so(# marks the gridpoints of the first grid, * the points of the second grid and + the points of the third grid(and so on…)):
 		/*
 			#+*+#
@@ -65,7 +65,7 @@ public class Noise {
 		 */
 		int max =startingScale+1;
 		Random rand = new Random(seed);
-		for(int res = startingScale*2; res > 0; res >>>= 1) {
+		for(int res = startingScale*2; res >= maxResolution; res >>>= 1) {
 			// x coordinate on the grid:
 			for(int x = 0; x < max; x += res<<1) {
 				for(int y = res; y+res < max; y += res<<1) {
@@ -95,11 +95,18 @@ public class Noise {
 			}
 		}
 	}
+	public static void generateSparseFractalTerrain(int wx, int wy, int width, int height, int scale, long seed, int worldSizeX, int worldSizeZ, float[][] map, int maxResolution) {
+		for(int x0 = 0; x0 < width; x0 += scale) {
+			for(int y0 = 0; y0 < height; y0 += scale) {
+				generateFractalTerrain(wx + x0, wy + y0, x0, y0, Math.min(width-x0, scale), Math.min(height-y0, scale), scale, seed, worldSizeX, worldSizeZ, map, maxResolution);
+			}
+		}
+	}
 	public static float[][] generateFractalTerrain(int wx, int wy, int width, int height, int scale, long seed, int worldSizeX, int worldSizeZ) {
 		float[][] map = new float[width][height];
 		for(int x0 = 0; x0 < width; x0 += scale) {
 			for(int y0 = 0; y0 < height; y0 += scale) {
-				generateFractalTerrain(wx + x0, wy + y0, x0, y0, Math.min(width-x0, scale), Math.min(height-y0, scale), scale, seed, worldSizeX, worldSizeZ, map);
+				generateFractalTerrain(wx + x0, wy + y0, x0, y0, Math.min(width-x0, scale), Math.min(height-y0, scale), scale, seed, worldSizeX, worldSizeZ, map, 1);
 			}
 		}
 		return map;

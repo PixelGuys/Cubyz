@@ -56,7 +56,7 @@ public class LifelandGenerator extends SurfaceGenerator {
 		int wz = chunk.getWorldZ();
 		long seed = surface.getStellarTorus().getLocalSeed();
 		
-		Region containing = surface.getRegion((wx & (~Region.regionMask)), (wz & (~Region.regionMask)));
+		Region containing = surface.getRegion((wx & (~Region.regionMask)), (wz & (~Region.regionMask)), chunk.getVoxelSize());
 		
 		for (Generator g : sortedGenerators) {
 			g.generate(seed ^ g.getGeneratorSeed(), wx, wy, wz, chunk, containing, surface);

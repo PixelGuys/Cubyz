@@ -159,7 +159,7 @@ public class RenderOctTree {
 				
 				for(int z = minZ; z <= maxZ; z += LODSize) {
 					// Make sure underground chunks are only generated if they are close to the player.
-					if(y + LODSize <= Cubyz.surface.getRegion(x, z).getMinHeight() || y > Cubyz.surface.getRegion(x, z).getMaxHeight()) {
+					if(y + LODSize <= Cubyz.surface.getRegion(x, z, 16).getMinHeight() || y > Cubyz.surface.getRegion(x, z, 16).getMaxHeight()) {
 						int dx = Math.max(0, Math.abs(x + LODSize/2 - px) - LODSize/2);
 						int dy = Math.max(0, Math.abs(y + LODSize/2 - py) - LODSize/2);
 						int dz = Math.max(0, Math.abs(z + LODSize/2 - pz) - LODSize/2);

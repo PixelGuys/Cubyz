@@ -61,7 +61,7 @@ public abstract class Surface {
 	public abstract void getLight(int x, int y, int z, int[] array);
 
 	public abstract NormalChunk getChunk(int x, int y, int z);
-	public abstract Region getRegion(int wx, int wz);
+	public abstract Region getRegion(int wx, int wz, int voxelSize);
 	public abstract Biome getBiome(int x, int z);
 
 	public abstract NormalChunk[] getChunks();

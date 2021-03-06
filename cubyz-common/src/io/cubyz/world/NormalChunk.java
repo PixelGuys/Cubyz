@@ -80,7 +80,7 @@ public class NormalChunk extends Chunk {
 		wy = cy << chunkShift;
 		wz = cz << chunkShift;
 		this.surface = surface;
-		this.region = surface.getRegion(wx, wz);
+		this.region = surface.getRegion(wx, wz, 1);
 		changes = region.regIO.getBlockChanges(cx, cy, cz);
 	}
 	

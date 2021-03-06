@@ -495,7 +495,7 @@ public class LocalSurface extends Surface {
 	}
 
 	@Override
-	public Region getRegion(int wx, int wz) {
+	public Region getRegion(int wx, int wz, int voxelSize) {
 		wx &= ~Region.regionMask;
 		wz &= ~Region.regionMask;
 		int x = wx >> Region.regionShift;
@@ -509,15 +509,16 @@ public class LocalSurface extends Surface {
 				Region ret = regions[index];
 				
 				if (ret != null) {
+					ret.ensureResolution(getSeed(), registries, voxelSize);
 					return ret;
 				} else {
-					Region reg = new Region(wx, wz, localSeed, this, registries, tio);
+					Region reg = new Region(wx, wz, localSeed, this, registries, tio, voxelSize);
 					regions[index] = reg;
 					return reg;
 				}
 			}
 		}
-		return new Region(wx, wz, localSeed, this, registries, tio);
+		return new Region(wx, wz, localSeed, this, registries, tio, voxelSize);
 	}
 	
 	public Region getNoGenerateRegion(int wx, int wy) {
@@ -642,7 +643,7 @@ public class LocalSurface extends Surface {
 	}
 	
 	public int getHeight(int x, int z) {
-		return (int)(getRegion(x & ~Region.regionMask, z & ~Region.regionMask).heightMap[x & Region.regionMask][z & Region.regionMask]);
+		return (int)(getRegion(x & ~Region.regionMask, z & ~Region.regionMask, 1).heightMap[x & Region.regionMask][z & Region.regionMask]);
 	}
 
 	@Override
@@ -675,7 +676,7 @@ public class LocalSurface extends Surface {
 
 	@Override
 	public Biome getBiome(int x, int z) {
-		Region reg = getRegion(x & ~Region.regionMask, z & ~Region.regionMask);
+		Region reg = getRegion(x & ~Region.regionMask, z & ~Region.regionMask, 1);
 		return reg.biomeMap[x & Region.regionMask][z & Region.regionMask];
 	}
 

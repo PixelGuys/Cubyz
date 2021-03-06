@@ -22,6 +22,7 @@ public class Region {
 	
 	public final float[][] heightMap;
 	public final Biome[][] biomeMap;
+	private int voxelSize;
 	private final Surface world;
 	public final int wx, wz;
 	public final RegionIO regIO;
@@ -29,7 +30,12 @@ public class Region {
 	public int minHeight = 0;
 	public int maxHeight = 256;
 	
-	public Region(int x, int z, long seed, Surface world, CurrentSurfaceRegistries registries, TorusIO tio) {
+	// Data used for generating the map:
+	protected ArrayList<RandomNorm> biomeList = new ArrayList<RandomNorm>(50);
+	protected int[] triangles;
+	protected float[][] roughMap;
+	
+	public Region(int x, int z, long seed, Surface world, CurrentSurfaceRegistries registries, TorusIO tio, int initialVoxelSize) {
 		this.wx = x;
 		this.wz = z;
 		this.world = world;
@@ -39,7 +45,21 @@ public class Region {
 		heightMap = new float[regionSize][regionSize];
 		
 		biomeMap = new Biome[regionSize][regionSize];
-		advancedHeightMapGeneration(seed, registries);
+		prepareGeneration(seed, registries);
+		advancedHeightMapGeneration(seed, registries, voxelSize = initialVoxelSize);
+	}
+	
+	/**
+	 * Generates higher resolution terrain if necessary.
+	 * @param seed
+	 * @param registries
+	 * @param voxelSize size of the new resolution. Must be a power of 2!
+	 */
+	public void ensureResolution(long seed, CurrentSurfaceRegistries registries, int voxelSize) {
+		if(voxelSize < this.voxelSize) {
+			advancedHeightMapGeneration(seed, registries, voxelSize);
+			this.voxelSize = voxelSize;
+		}
 	}
 	
 	/**
@@ -177,7 +197,7 @@ public class Region {
 		return validBiomes.get(result);
 	}
 	
-	public void drawTriangle(RandomNorm n1, RandomNorm n2, RandomNorm n3, float[][] roughMap, CurrentSurfaceRegistries registries) {
+	public void drawTriangle(RandomNorm n1, RandomNorm n2, RandomNorm n3, float[][] roughMap, CurrentSurfaceRegistries registries, int voxelSize) {
 		Random triangleRandom = new Random(n1.x*5478361L ^ n1.z*5642785727L ^ n2.x*6734896731L ^ n2.z*657438643875L ^ n3.x*65783958734L ^ n3.z*673891094012L);
 		// Determine connecting biomes in case there is a conflict:
 		Biome r12 = n1.biome, r13 = n3.biome, r23 = n2.biome;
@@ -215,7 +235,9 @@ public class Region {
 		float m2 = (float)(third.x-smallest.x)/(third.z-smallest.z);
 		float m3 = (float)(third.x-second.x)/(third.z-second.z);
 		// Go through the lower-z-part of the triangle:
-		for(int pz = Math.max(smallest.z, 0); pz < Math.min(second.z, regionSize); pz++) {
+		int minZ = alignToGrid(Math.max(smallest.z, 0), voxelSize);
+		int maxZ = Math.min(second.z, regionSize);
+		for(int pz = minZ; pz < maxZ; pz += voxelSize) {
 			int dz = pz-smallest.z;
 			int xMin = (int)(m1*dz+smallest.x);
 			int xMax = (int)(m2*dz+smallest.x);
@@ -224,14 +246,16 @@ public class Region {
 				xMin = xMax;
 				xMax = local;
 			}
-			xMin = Math.max(xMin, 0);
+			xMin = alignToGrid(Math.max(xMin, 0), voxelSize);
 			xMax = Math.min(xMax, regionMask);
-			for(int px = xMin; px <= xMax; px++) {
+			for(int px = xMin; px <= xMax; px += voxelSize) {
 				interpolateBiomes(px, pz, n1, n2, n3, r12, r13, r23, roughMap);
 			}
 		}
 		// Go through the upper-z-part of the triangle:
-		for(int pz = Math.max(second.z, 0); pz < Math.min(third.z, regionSize); pz++) {
+		minZ = alignToGrid(Math.max(second.z, 0), voxelSize);
+		maxZ = Math.min(third.z, regionSize);
+		for(int pz = minZ; pz < maxZ; pz += voxelSize) {
 			int dy0 = pz-smallest.z;
 			int dy = pz-second.z;
 			int xMin = (int)(m2*dy0+smallest.x);
@@ -241,22 +265,21 @@ public class Region {
 				xMin = xMax;
 				xMax = local;
 			}
-			xMin = Math.max(xMin, 0);
+			xMin = alignToGrid(Math.max(xMin, 0), voxelSize);
 			xMax = Math.min(xMax, regionMask);
-			for(int px = xMin; px <= xMax; px++) {
+			for(int px = xMin; px <= xMax; px += voxelSize) {
 				interpolateBiomes(px, pz, n1, n2, n3, r12, r13, r23, roughMap);
 			}
 		}
 	}
 	
-	public void advancedHeightMapGeneration(long seed, CurrentSurfaceRegistries registries) {
+	public void prepareGeneration(long seed, CurrentSurfaceRegistries registries) {
 		// Generate a rough map for terrain overlay:
-		float[][] roughMap = Noise.generateFractalTerrain(wx, wz, regionSize, regionSize, 128, seed ^ -954936678493L, world.getSizeX(), world.getSizeZ());
+		roughMap = new float[regionSize][regionSize];
 		Random rand = new Random(seed);
 		long l1 = rand.nextLong();
 		long l2 = rand.nextLong();
 		// Generate biomes for nearby regions:
-		ArrayList<RandomNorm> biomeList = new ArrayList<>(50);
 		for(int x = -regionSize; x <= regionSize; x += regionSize) {
 			for(int z = -regionSize; z <= regionSize; z += regionSize) {
 				rand.setSeed(l1*(this.wx + x) ^ l2*(this.wz + z) ^ seed);
@@ -270,10 +293,14 @@ public class Region {
 			points[index] = biomeList.get(i).x;
 			points[index+1] = biomeList.get(i).z;
 		}
-		int[] triangles = DelaunayTriangulator.computeTriangles(points, 0, points.length);
+		triangles = DelaunayTriangulator.computeTriangles(points, 0, points.length);
+	}
+	
+	public void advancedHeightMapGeneration(long seed, CurrentSurfaceRegistries registries, int voxelSize) {
+		Noise.generateSparseFractalTerrain(wx, wz, regionSize, regionSize, 128, seed ^ -954936678493L, world.getSizeX(), world.getSizeZ(), roughMap, voxelSize); // TODO: Consider other Noise functions.
 		// "Render" the triangles onto the biome map:
 		for(int i = 0; i < triangles.length; i += 3) {
-			drawTriangle(biomeList.get(triangles[i]), biomeList.get(triangles[i+1]), biomeList.get(triangles[i+2]), roughMap, registries);
+			drawTriangle(biomeList.get(triangles[i]), biomeList.get(triangles[i+1]), biomeList.get(triangles[i+2]), roughMap, registries, voxelSize);
 		}
 	}
 	
@@ -283,5 +310,9 @@ public class Region {
 	
 	public int getMaxHeight() {
 		return maxHeight;
+	}
+	
+	private static int alignToGrid(int value, int voxelSize) {
+		return (value + voxelSize - 1) & ~(voxelSize - 1);
 	}
 }

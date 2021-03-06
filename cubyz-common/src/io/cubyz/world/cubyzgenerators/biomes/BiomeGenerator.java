@@ -272,7 +272,7 @@ public class BiomeGenerator {
 		fragment[0][kernelWidth] = value01;
 		fragment[kernelWidth][0] = value10;
 		fragment[kernelWidth][kernelWidth] = value11;
-		Noise.generateInitializedFractalTerrain(0, 0, height, kernelWidth, seed, width, height, fragment, -Float.MAX_VALUE, Float.MAX_VALUE);
+		Noise.generateInitializedFractalTerrain(0, 0, height, kernelWidth, seed, width, height, fragment, -Float.MAX_VALUE, Float.MAX_VALUE, 1);
 		for(int i = 0; i < kernelWidth; i++) {
 			for(int j = 0; j < kernelWidth; j++) {
 				map[x + i][y + j] = fragment[i][j];
