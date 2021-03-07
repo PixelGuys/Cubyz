@@ -43,9 +43,8 @@ public class RemoteWorld extends World {
 		entities.add(localPlayer);
 		chunks = new ArrayList<>();
 		
-		blocks = new Block[CubyzRegistries.BLOCK_REGISTRY.registered().length];
-		for (RegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
-			Block b = (Block) ire;
+		blocks = new Block[CubyzRegistries.BLOCK_REGISTRY.size()];
+		for (Block b : CubyzRegistries.BLOCK_REGISTRY.registered(new Block[0])) {
 			blocks[b.ID] = b;
 		}
 	}

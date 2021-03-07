@@ -19,7 +19,6 @@ import org.lwjgl.opengl.GL12;
 import io.cubyz.*;
 import io.cubyz.api.ClientConnection;
 import io.cubyz.api.ClientRegistries;
-import io.cubyz.api.RegistryElement;
 import io.cubyz.api.Resource;
 import io.cubyz.api.Side;
 import io.cubyz.audio.SoundBuffer;
@@ -35,6 +34,7 @@ import io.cubyz.entity.PlayerEntity.PlayerImpl;
 import io.cubyz.input.Keybindings;
 import io.cubyz.items.CustomItem;
 import io.cubyz.items.Inventory;
+import io.cubyz.items.Item;
 import io.cubyz.items.ItemBlock;
 import io.cubyz.items.tools.Tool;
 import io.cubyz.multiplayer.GameProfile;
@@ -183,7 +183,7 @@ public class GameLogic implements ClientConnection {
 				}
 				Meshes.blockTextures.put(block, tex);
 			}
-			for (RegistryElement reg : ts.getCurrentRegistries().itemRegistry.registered()) {
+			for (Item reg : ts.getCurrentRegistries().itemRegistry.registered(new Item[0])) {
 				if(!(reg instanceof CustomItem)) continue;
 				CustomItem item = (CustomItem)reg;
 				BufferedImage canvas;
@@ -204,8 +204,8 @@ public class GameLogic implements ClientConnection {
 		}
 		// Generate the texture atlas for this surface's truly transparent blocks:
 		ArrayList<Block> blocks = new ArrayList<>();
-		for(RegistryElement element : surface.getCurrentRegistries().blockRegistry.registered()) {
-			blocks.add((Block)element);
+		for(Block block : surface.getCurrentRegistries().blockRegistry.registered(new Block[0])) {
+			blocks.add(block);
 		}
 		Meshes.atlasSize = (int)Math.ceil(Math.sqrt(blocks.size()));
 		int maxSize = 16; // Scale all textures so they fit the size of the biggest texture.

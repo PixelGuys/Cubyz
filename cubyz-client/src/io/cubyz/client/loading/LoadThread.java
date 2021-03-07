@@ -138,20 +138,20 @@ public class LoadThread extends Thread {
 			public void run() {
 				i++;
 				boolean finishedMeshes = false;
-				if (i < CubyzRegistries.BLOCK_REGISTRY.registered().length || i < CubyzRegistries.ENTITY_REGISTRY.registered().length) {
-					if(i < CubyzRegistries.BLOCK_REGISTRY.registered().length) {
-						Block b = (Block) CubyzRegistries.BLOCK_REGISTRY.registered()[i];
+				if(i < CubyzRegistries.BLOCK_REGISTRY.size() || i < CubyzRegistries.ENTITY_REGISTRY.size()) {
+					if(i < CubyzRegistries.BLOCK_REGISTRY.size()) {
+						Block b = CubyzRegistries.BLOCK_REGISTRY.registered(new Block[0])[i];
 						ClientOnly.createBlockMesh.accept(b);
 					}
-					if(i < CubyzRegistries.ENTITY_REGISTRY.registered().length) {
-						EntityType e = (EntityType) CubyzRegistries.ENTITY_REGISTRY.registered()[i];
+					if(i < CubyzRegistries.ENTITY_REGISTRY.size()) {
+						EntityType e = CubyzRegistries.ENTITY_REGISTRY.registered(new EntityType[0])[i];
 						if (!e.useDynamicEntityModel()) {
 							ClientOnly.createEntityMesh.accept(e);
 						}
 					}
-					if(i < CubyzRegistries.BLOCK_REGISTRY.registered().length-1 || i < CubyzRegistries.ENTITY_REGISTRY.registered().length-1) {
+					if(i < CubyzRegistries.BLOCK_REGISTRY.size()-1 || i < CubyzRegistries.ENTITY_REGISTRY.size()-1) {
 						Cubyz.renderDeque.add(run);
-						l.setStep(4, i+1, CubyzRegistries.BLOCK_REGISTRY.registered().length);
+						l.setStep(4, i+1, CubyzRegistries.BLOCK_REGISTRY.size());
 					} else {
 						finishedMeshes = true;
 						synchronized (lock) {
@@ -164,7 +164,7 @@ public class LoadThread extends Thread {
 						lock.notifyAll();
 					}
 				}
-				if (finishedMeshes) {
+				if(finishedMeshes) {
 					try {
 						GameLauncher.logic.skyBodyMesh = StaticMeshesLoader.load(new Resource("cubyz:sky_body.obj"),
 								ResourceManager.lookupPath(ResourceManager.contextToLocal(ResourceContext.MODEL3D, new Resource("cubyz:sky_body.obj"))), // TODO: Use a torus model.

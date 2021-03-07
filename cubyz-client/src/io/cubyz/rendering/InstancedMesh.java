@@ -128,7 +128,6 @@ public class InstancedMesh extends Mesh {
 
 	public Mesh cloneNoMaterial() {
 		Mesh clone = new InstancedMesh(super.model, 0);
-		clone.boundingRadius = boundingRadius;
 		clone.cullFace = cullFace;
 		clone.frustum = frustum;
 		return clone;

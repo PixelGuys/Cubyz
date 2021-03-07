@@ -16,8 +16,7 @@ import io.cubyz.ui.GeneralInventory;
 import io.cubyz.ui.components.InventorySlot;
 
 /**
- * GUI of the normal inventory(when pressing 'I')<br>
- * TODO: add possibility to capture and release stacks with the mouse.
+ * GUI of the normal inventory(when pressing 'I')
  */
 
 public class InventoryGUI extends GeneralInventory {
@@ -51,12 +50,10 @@ public class InventoryGUI extends GeneralInventory {
 			if(ar[i] != null)
 				num++;
 		}
-		// Get the recipes for the given number of items(TODO!):
-		Object[] recipes = CubyzRegistries.RECIPE_REGISTRY.registered();
+		Recipe[] recipes = CubyzRegistries.RECIPE_REGISTRY.registered(new Recipe[0]);
 		// Find a fitting recipe:
 		Item item = null;
-		for(int i = 0; i < recipes.length; i++) {
-			Recipe rec = (Recipe) recipes[i];
+		for(Recipe rec : recipes) {
 			if(rec.getNum() != num)
 				continue;
 			item = rec.canCraft(ar, 2);

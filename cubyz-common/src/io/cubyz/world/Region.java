@@ -26,7 +26,7 @@ public class Region {
 	private final Surface world;
 	public final int wx, wz;
 	public final RegionIO regIO;
-	// TODO: Store the two in data files.
+	
 	public int minHeight = Integer.MAX_VALUE;
 	public int maxHeight = 0;
 	
@@ -96,6 +96,7 @@ public class Region {
 		return (3 - 2*x)*x*x;
 	}
 	
+	// TODO: Rougher biome borders, less edgy terrain.
 	public void interpolateBiomes(int x, int z, RandomNorm n1, RandomNorm n2, RandomNorm n3, Biome r12, Biome r13, Biome r23, float[][] heightMap, Biome[][] biomeMap, float[][] roughMap, int voxelSize) {
 		float interpolationWeight = (n2.z - n3.z)*(n1.x - n3.x) + (n3.x - n2.x)*(n1.z - n3.z);
 		float w1 = ((n2.z - n3.z)*(x - n3.x) + (n3.x - n2.x)*(z - n3.z))/interpolationWeight;
@@ -149,8 +150,42 @@ public class Region {
 		} else if(second.minHeight <= heightMap[mapX][mapZ] && second.maxHeight >= heightMap[mapX][mapZ]) {
 			biomeMap[mapX][mapZ] = second;
 		} else {
-			// Use a replacement biome, such as a beach.
-			biomeMap[mapX][mapZ] = replacement;
+			// Use a replacement biome, such as a beach:
+			
+			// Check if the replacement biome fits into the height region:
+			if(replacement.minHeight <= heightMap[mapX][mapZ] && replacement.maxHeight >= heightMap[mapX][mapZ]) {
+				biomeMap[mapX][mapZ] = replacement;
+			} else {
+				// Check the other possible replacement biomes instead:
+				if(r12.minHeight <= heightMap[mapX][mapZ] && r12.maxHeight >= heightMap[mapX][mapZ]) {
+					biomeMap[mapX][mapZ] = r12;
+				} else if(r13.minHeight <= heightMap[mapX][mapZ] && r13.maxHeight >= heightMap[mapX][mapZ]) {
+					biomeMap[mapX][mapZ] = r13;
+				} else if(r23.minHeight <= heightMap[mapX][mapZ] && r23.maxHeight >= heightMap[mapX][mapZ]) {
+					biomeMap[mapX][mapZ] = r23;
+				} else {
+					// If none of the replacement biomes fits, try to choose the biome that fits best:
+					float b1Score = Math.max(n1.biome.minHeight - heightMap[mapX][mapZ], heightMap[mapX][mapZ] - n1.biome.maxHeight);
+					float b2Score = Math.max(n2.biome.minHeight - heightMap[mapX][mapZ], heightMap[mapX][mapZ] - n2.biome.maxHeight);
+					float b3Score = Math.max(n3.biome.minHeight - heightMap[mapX][mapZ], heightMap[mapX][mapZ] - n3.biome.maxHeight);
+					float replacementScore = Math.max(replacement.minHeight - heightMap[mapX][mapZ], heightMap[mapX][mapZ] - replacement.maxHeight);
+					Biome biome = n1.biome;
+					float maxScore = b1Score;
+					if(b2Score < maxScore) {
+						maxScore = b2Score;
+						biome = n2.biome;
+					}
+					if(b3Score < maxScore) {
+						maxScore = b3Score;
+						biome = n3.biome;
+					}
+					if(replacementScore < maxScore) {
+						maxScore = replacementScore;
+						biome = replacement;
+					}
+					biomeMap[mapX][mapZ] = biome;
+				}
+			}
 		}
 		this.minHeight = Math.min(this.minHeight, (int)heightMap[mapX][mapZ]);
 		this.minHeight = Math.max(this.minHeight, 0);
@@ -161,7 +196,7 @@ public class Region {
 		int amount = 1 + rand.nextInt(3);
 		outer:
 		for(int i = 0; i < amount; i++) {
-			int biomeX = x + NormalChunk.chunkSize + rand.nextInt(regionSize - 2*NormalChunk.chunkSize);// TODO: Consider more chunk, so there is no need for this margin.
+			int biomeX = x + NormalChunk.chunkSize + rand.nextInt(regionSize - 2*NormalChunk.chunkSize);// TODO: Consider more surrounding regions, so there is no need for this margin.
 			int biomeZ = z + NormalChunk.chunkSize + rand.nextInt(regionSize - 2*NormalChunk.chunkSize);
 			// Test if it is too close to other biomes:
 			for(int j = 0; j < i; j++) {
@@ -214,16 +249,6 @@ public class Region {
 			r23 = findReplacement(n3.biome.maxHeight, n2.biome.minHeight, registries.biomeRegistry.byTypeBiomes.get(n2.biome.type), registries.biomeRegistry.byTypeBiomes.get(n3.biome.type), triangleRandom.nextFloat());
 		} else if(n2.biome.maxHeight < n3.biome.minHeight) {
 			r23 = findReplacement(n2.biome.maxHeight, n3.biome.minHeight, registries.biomeRegistry.byTypeBiomes.get(n2.biome.type), registries.biomeRegistry.byTypeBiomes.get(n3.biome.type), triangleRandom.nextFloat());
-		}
-		// Temporary fix. TODO: Make this work for similar biomes as well.
-		if(n1.biome == n2.biome) {
-			r12 = r23;
-		}
-		if(n1.biome == n3.biome) {
-			r13 = r12;
-		}
-		if(n2.biome == n3.biome) {
-			r23 = r13;
 		}
 		// Sort them by z coordinate:
 		RandomNorm smallest = n1.z < n2.z ? (n1.z < n3.z ? n1 : n3) : (n2.z < n3.z ? n2 : n3);

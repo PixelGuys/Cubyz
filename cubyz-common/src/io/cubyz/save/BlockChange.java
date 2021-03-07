@@ -1,7 +1,6 @@
 package io.cubyz.save;
 
 import io.cubyz.api.CubyzRegistries;
-import io.cubyz.api.RegistryElement;
 import io.cubyz.blocks.Block;
 import io.cubyz.math.Bits;
 
@@ -53,8 +52,8 @@ public class BlockChange {
 			Bits.putInt(data, off + 5, -1);
 		} else {
 			Block b = null;
-			for (RegistryElement elem : CubyzRegistries.BLOCK_REGISTRY.registered()) {
-				b = (Block) elem;
+			for (Block block : CubyzRegistries.BLOCK_REGISTRY.registered(new Block[0])) {
+				b = block;
 				if (b.ID == newType) {
 					break;
 				}

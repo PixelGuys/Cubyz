@@ -1,7 +1,6 @@
 package io.cubyz.items.tools;
 
 import io.cubyz.api.CurrentSurfaceRegistries;
-import io.cubyz.api.RegistryElement;
 import io.cubyz.blocks.Block;
 import io.cubyz.items.Item;
 import io.cubyz.items.ItemStack;
@@ -34,16 +33,15 @@ public class Sword extends Tool {
 	
 	public static Item canCraft(ItemStack head, ItemStack binding, ItemStack handle, CurrentSurfaceRegistries registries) {
 		Material he = null, bi = null, ha = null;
-		for(RegistryElement reg : registries.materialRegistry.registered()) {
-			Material ma = (Material)reg;
-			if(ma.getItems().containsKey(head.getItem()) && head.getAmount()*ma.getItems().get(head.getItem()) >= HEAD) {
-				he = ma;
+		for(Material mat : registries.materialRegistry.registered(new Material[0])) {
+			if(mat.getItems().containsKey(head.getItem()) && head.getAmount()*mat.getItems().get(head.getItem()) >= HEAD) {
+				he = mat;
 			}
-			if(ma.getItems().containsKey(binding.getItem()) && binding.getAmount()*ma.getItems().get(binding.getItem()) >= BINDING) {
-				bi = ma;
+			if(mat.getItems().containsKey(binding.getItem()) && binding.getAmount()*mat.getItems().get(binding.getItem()) >= BINDING) {
+				bi = mat;
 			}
-			if(ma.getItems().containsKey(handle.getItem()) && handle.getAmount()*ma.getItems().get(handle.getItem()) >= HANDLE) {
-				ha = ma;
+			if(mat.getItems().containsKey(handle.getItem()) && handle.getAmount()*mat.getItems().get(handle.getItem()) >= HANDLE) {
+				ha = mat;
 			}
 		}
 		if(he == null || bi == null || ha == null)
@@ -54,16 +52,15 @@ public class Sword extends Tool {
 	
 	public static int[] craftingAmount(ItemStack head, ItemStack binding, ItemStack handle, CurrentSurfaceRegistries registries) {
 		int[] amount = new int[3];
-		for(RegistryElement reg : registries.materialRegistry.registered()) {
-			Material ma = (Material)reg;
-			if(ma.getItems().containsKey(head.getItem()) && head.getAmount()*ma.getItems().get(head.getItem()) >= HEAD) {
-				amount[0] = (HEAD + ma.getItems().get(head.getItem()) - 1)/ma.getItems().get(head.getItem());
+		for(Material mat : registries.materialRegistry.registered(new Material[0])) {
+			if(mat.getItems().containsKey(head.getItem()) && head.getAmount()*mat.getItems().get(head.getItem()) >= HEAD) {
+				amount[0] = (HEAD + mat.getItems().get(head.getItem()) - 1)/mat.getItems().get(head.getItem());
 			}
-			if(ma.getItems().containsKey(binding.getItem()) && binding.getAmount()*ma.getItems().get(binding.getItem()) >= BINDING) {
-				amount[1] = (BINDING + ma.getItems().get(binding.getItem()) - 1)/ma.getItems().get(binding.getItem());
+			if(mat.getItems().containsKey(binding.getItem()) && binding.getAmount()*mat.getItems().get(binding.getItem()) >= BINDING) {
+				amount[1] = (BINDING + mat.getItems().get(binding.getItem()) - 1)/mat.getItems().get(binding.getItem());
 			}
-			if(ma.getItems().containsKey(handle.getItem()) && handle.getAmount()*ma.getItems().get(handle.getItem()) >= HANDLE) {
-				amount[2] = (HANDLE + ma.getItems().get(handle.getItem()) - 1)/ma.getItems().get(handle.getItem());
+			if(mat.getItems().containsKey(handle.getItem()) && handle.getAmount()*mat.getItems().get(handle.getItem()) >= HANDLE) {
+				amount[2] = (HANDLE + mat.getItems().get(handle.getItem()) - 1)/mat.getItems().get(handle.getItem());
 			}
 		}
 		return amount;

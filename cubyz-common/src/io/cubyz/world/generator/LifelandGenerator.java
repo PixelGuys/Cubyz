@@ -3,7 +3,6 @@ package io.cubyz.world.generator;
 import java.util.Arrays;
 import java.util.Comparator;
 
-import io.cubyz.api.RegistryElement;
 import io.cubyz.api.Registry;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Ore;
@@ -30,10 +29,10 @@ public class LifelandGenerator extends SurfaceGenerator {
 	Generator[] sortedGenerators;
 	
 	public void sortGenerators() {
-		RegistryElement[] unsorted = GENERATORS.registered();
+		Generator[] unsorted = GENERATORS.registered(new Generator[0]);
 		sortedGenerators = new Generator[unsorted.length];
 		for (int i = 0; i < unsorted.length; i++) {
-			sortedGenerators[i] = (Generator)unsorted[i];
+			sortedGenerators[i] = unsorted[i];
 		}
 		Arrays.sort(sortedGenerators, new Comparator<Generator>() {
 			@Override

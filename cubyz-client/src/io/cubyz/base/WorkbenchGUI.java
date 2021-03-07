@@ -206,8 +206,7 @@ public class WorkbenchGUI extends GeneralInventory {
 					if(items[i] != null)
 						num++;
 				}
-				// Get the recipes for the given number of items(TODO!):
-				Object[] recipes = CubyzRegistries.RECIPE_REGISTRY.registered();
+				Recipe[] recipes = CubyzRegistries.RECIPE_REGISTRY.registered(new Recipe[0]);
 				// Find a fitting recipe:
 				for(int i = 0; i < recipes.length; i++) {
 					Recipe rec = (Recipe) recipes[i];

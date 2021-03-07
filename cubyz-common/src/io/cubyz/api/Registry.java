@@ -15,7 +15,7 @@ public class Registry<T extends RegistryElement> {
 	private HashMap<String, T> hashMap;
 	
 	// cache values to avoid useless memory allocation (toArray allocates a new array at each call)
-	private RegistryElement[] values;
+	private T[] values;
 	private boolean dirty = true;
 	
 	private boolean debug = Boolean.parseBoolean(System.getProperty("registry.debugEnabled", "false"));
@@ -29,12 +29,16 @@ public class Registry<T extends RegistryElement> {
 		hashMap = new HashMap<String, T>(other.hashMap);
 	}
 	
-	public RegistryElement[] registered() { // can be casted to T
+	public T[] registered(T[] array) {
 		if (dirty) {
-			values = hashMap.values().toArray(new RegistryElement[0]);
+			values = hashMap.values().toArray(array);
 			dirty = false;
 		}
 		return values;
+	}
+	
+	public int size() {
+		return hashMap.size();
 	}
 	
 	protected String getType(Class<?> cl) {

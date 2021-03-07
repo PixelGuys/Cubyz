@@ -8,8 +8,7 @@ import io.cubyz.ui.Component;
 import io.cubyz.ui.NGraphics;
 
 /**
- * Just a text field.<br>
- * TODO: In most utilities you will start writing multiple characters, after pressing a key for longer time(the exact timing is defined in the OS), you will write more characters.
+ * Just a text field.
  */
 
 public class TextInput extends Component {

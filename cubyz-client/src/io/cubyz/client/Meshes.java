@@ -102,7 +102,6 @@ public class Meshes {
 					Resource rs = new Resource(model);
 					mesh = OBJLoader.loadMesh(rs, "assets/" + rs.getMod() + "/models/3d/" + rs.getID(), false);
 					//defaultMesh = StaticMeshesLoader.loadInstanced("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), "assets/" + rs.getMod() + "/models/3d/")[0];
-					mesh.setBoundingRadius(2.0f);
 					Material material = new Material(tex, 0.6F);
 					mesh.setMaterial(material);
 					cachedDefaultModels.put(model, mesh);
@@ -139,7 +138,6 @@ public class Meshes {
 				Resource rs = new Resource(model.model);
 				Mesh mesh = StaticMeshesLoader.load(rs, "assets/" + rs.getMod() + "/models/3d/" + rs.getID(),
 						"assets/" + rs.getMod() + "/models/3d/")[0];
-				mesh.setBoundingRadius(2.0f); // TODO: define custom bounding radius
 				Resource texResource = new Resource(model.texture);
 				String texture = texResource.getID();
 				if (!new File("assets/" + texResource.getMod() + "/textures/entities/" + texture + ".png").exists()) {

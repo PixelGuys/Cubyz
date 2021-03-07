@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Random;
 
 import io.cubyz.api.CubyzRegistries;
-import io.cubyz.api.RegistryElement;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.Ore;
 import io.cubyz.entity.Entity;
@@ -110,8 +109,7 @@ public class LocalWorld extends World {
 		// Set the IDs again every time a new world is loaded. This is necessary, because the random block creation would otherwise mess with it.
 		int ID = 0;
 		ArrayList<Ore> ores = new ArrayList<Ore>();
-		for (RegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
-			Block b = (Block) ire;
+		for (Block b : CubyzRegistries.BLOCK_REGISTRY.registered(new Block[0])) {
 			if(!b.isTransparent()) {
 				b.ID = ID;
 				blockList.add(b);
@@ -123,8 +121,7 @@ public class LocalWorld extends World {
 			ID = currentTorus.generate(blockList, ores, ID);
 		}
 		// Put the truly transparent blocks at the end of the list to make sure the renderer calls the last.
-		for (RegistryElement ire : CubyzRegistries.BLOCK_REGISTRY.registered()) {
-			Block b = (Block) ire;
+		for (Block b : CubyzRegistries.BLOCK_REGISTRY.registered(new Block[0])) {
 			if(b.isTransparent()) {
 				b.ID = ID;
 				blockList.add(b);

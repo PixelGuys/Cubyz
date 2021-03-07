@@ -12,7 +12,7 @@ import io.cubyz.world.Region;
  */
 
 public class SimpleTreeModel extends StructureModel {
-	private enum Type { // TODO: More different types and type access through biome addon files.
+	private enum Type { // TODO: More different types.
 		PYRAMID,
 		ROUND,
 		BUSH,

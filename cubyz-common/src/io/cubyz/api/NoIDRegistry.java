@@ -22,8 +22,8 @@ public class NoIDRegistry<T> {
 		registered = new ArrayList<T>(other.registered);
 	}
 	
-	public Object[] registered() { // can be casted to T
-		return registered.toArray();
+	public T[] registered(T[] array) {
+		return registered.toArray(array);
 	}
 	
 	protected String getType(Class<?> cl) {

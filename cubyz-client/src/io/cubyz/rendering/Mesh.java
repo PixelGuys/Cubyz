@@ -28,8 +28,6 @@ public class Mesh implements Cloneable {
 
 	protected Material material;
 
-	protected float boundingRadius = 1.25f;
-
 	protected boolean frustum = true;
 	protected boolean cullFace = true;
 
@@ -38,10 +36,6 @@ public class Mesh implements Cloneable {
 	public final Model model;
 
 	public static final Vector4f DEFAULT_COLOR = new Vector4f(0.75f, 0.75f, 0.75f, 1.f);
-
-	public float getBoundingRadius() {
-		return boundingRadius;
-	}
 
 	public boolean supportsFrustumCulling() {
 		return frustum;
@@ -53,10 +47,6 @@ public class Mesh implements Cloneable {
 
 	public void setSupportsCullFace(boolean bool) {
 		cullFace = bool;
-	}
-
-	public void setBoundingRadius(float boundingRadius) {
-		this.boundingRadius = boundingRadius;
 	}
 	
 	public boolean isInstanced() {
@@ -149,7 +139,6 @@ public class Mesh implements Cloneable {
 	 */
 	public Mesh cloneNoMaterial() {
 		Mesh clone = new Mesh(vaoId, vertexCount, vboIdList, model);
-		clone.boundingRadius = boundingRadius;
 		clone.cullFace = cullFace;
 		clone.frustum = frustum;
 		return clone;
