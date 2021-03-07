@@ -39,14 +39,14 @@ public class TerrainGenerator implements Generator {
 		int seedZ = rand.nextInt() | 1;
 		for(int x = 0; x < chunk.getWidth(); x += chunk.getVoxelSize()) {
 			for(int z = 0; z < chunk.getWidth(); z += chunk.getVoxelSize()) {
-				int y = chunk.startIndex((int)containingRegion.heightMap[wx+x & Region.regionMask][wz+z & Region.regionMask] - chunk.getVoxelSize() + 1);
-				int yOff = 1 + (int)((containingRegion.heightMap[wx+x & Region.regionMask][wz+z & Region.regionMask] - y)*16);
+				int y = chunk.startIndex((int)containingRegion.getHeight(wx + x, wz + z) - chunk.getVoxelSize() + 1);
+				int yOff = 1 + (int)((containingRegion.getHeight(wx + x, wz + z) - y)*16);
 				int startY = y > 0 ? y : 0;
 				int endY = chunk.getWorldY();
 				for(int j = startY; j >= endY; j--) {
 					Block b = null;
 					if(j > y) {
-						if(containingRegion.biomeMap[wx+x & Region.regionMask][wz+z & Region.regionMask].type == Biome.Type.ARCTIC_OCEAN && j == 0) {
+						if(containingRegion.getBiome(wx + x, wz + z).type == Biome.Type.ARCTIC_OCEAN && j == 0) {
 							b = ice;
 						} else {
 							b = water;
@@ -54,7 +54,7 @@ public class TerrainGenerator implements Generator {
 					} else {
 						if(j == y) {
 							rand.setSeed((seedX*(wx + x) << 32) ^ seedZ*(wz + z));
-							j = containingRegion.biomeMap[wx+x & Region.regionMask][wz+z & Region.regionMask].struct.addSubTerranian(chunk, j, x, z, yOff, rand);
+							j = containingRegion.getBiome(wx + x, wz + z).struct.addSubTerranian(chunk, j, x, z, yOff, rand);
 							continue;
 						} else {
 							b = stone;

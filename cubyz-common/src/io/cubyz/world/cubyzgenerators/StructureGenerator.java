@@ -44,20 +44,20 @@ public class StructureGenerator implements Generator {
 		Region on = containingRegion;
 		Region op = containingRegion;
 		if((wx & Region.regionMask) <= 8) {
-			no = nn = np = surface.getRegion((wx & ~Region.regionMask) - Region.regionSize, wz & ~Region.regionMask, chunk.getVoxelSize());
+			no = nn = np = surface.getRegion(wx - Region.regionSize, wz, chunk.getVoxelSize());
 		}
 		if((wx & Region.regionMask) >= Region.regionSize - 8 - chunk.getWidth()) {
-			po = pn = pp = surface.getRegion((wx & ~Region.regionMask) + Region.regionSize, wz & ~Region.regionMask, chunk.getVoxelSize());
+			po = pn = pp = surface.getRegion(wx + Region.regionSize, wz, chunk.getVoxelSize());
 		}
 		if((wz & Region.regionMask) <= 8) {
-			on = surface.getRegion((wx & ~Region.regionMask), (wz & ~Region.regionMask) - Region.regionSize, chunk.getVoxelSize());
-			nn = surface.getRegion((wx & ~Region.regionMask) - ((wx & Region.regionMask) <= 8 ? Region.regionSize : 0), (wz & ~Region.regionMask) - Region.regionSize, chunk.getVoxelSize());
-			pn = surface.getRegion((wx & ~Region.regionMask) + ((wx & Region.regionMask) >= Region.regionSize - 8 - chunk.getWidth() ? Region.regionSize : 0), (wz & ~Region.regionMask) - Region.regionSize, chunk.getVoxelSize());
+			on = surface.getRegion(wx, wz - Region.regionSize, chunk.getVoxelSize());
+			nn = surface.getRegion(wx - ((wx & Region.regionMask) <= 8 ? Region.regionSize : 0), wz - Region.regionSize, chunk.getVoxelSize());
+			pn = surface.getRegion(wx + ((wx & Region.regionMask) >= Region.regionSize - 8 - chunk.getWidth() ? Region.regionSize : 0), wz - Region.regionSize, chunk.getVoxelSize());
 		}
 		if((wz & Region.regionMask) >= Region.regionSize - 8 - chunk.getWidth()) {
-			op = surface.getRegion((wx & ~Region.regionMask), (wz & ~Region.regionMask) + Region.regionSize, chunk.getVoxelSize());
-			np = surface.getRegion((wx & ~Region.regionMask) - ((wx & Region.regionMask) <= 8 ? Region.regionSize : 0), (wz & ~Region.regionMask) + Region.regionSize, chunk.getVoxelSize());
-			pp = surface.getRegion((wx & ~Region.regionMask) + ((wx & Region.regionMask) >= Region.regionSize - 8 - chunk.getWidth() ? Region.regionSize : 0), (wz & ~Region.regionMask) + Region.regionSize, chunk.getVoxelSize());
+			op = surface.getRegion(wx, wz + Region.regionSize, chunk.getVoxelSize());
+			np = surface.getRegion(wx - ((wx & Region.regionMask) <= 8 ? Region.regionSize : 0), wz + Region.regionSize, chunk.getVoxelSize());
+			pp = surface.getRegion(wx + ((wx & Region.regionMask) >= Region.regionSize - 8 - chunk.getWidth() ? Region.regionSize : 0), wz + Region.regionSize, chunk.getVoxelSize());
 		}
 		for(int px = 0; px < chunk.getWidth() + 16; px++) {
 			for(int pz = 0; pz < chunk.getWidth() + 16; pz++) {
@@ -82,10 +82,10 @@ public class StructureGenerator implements Generator {
 					if(pz < 8) cur = on;
 					else if(chunk.getWidth() + 16 - pz <= 8) cur = op;
 				}
-				Biome biome = cur.biomeMap[wpx & Region.regionMask][wpz & Region.regionMask];
+				Biome biome = cur.getBiome(wpx, wpz);
 				for(StructureModel model : biome.vegetationModels) {
 					if(model.getChance() > randomValue) {
-						model.generate(px - 8, pz - 8, (int)(cur.heightMap[wpx & Region.regionMask][wpz & Region.regionMask]) + 1, chunk, containingRegion, rand);
+						model.generate(px - 8, pz - 8, (int)cur.getHeight(wpx, wpz) + 1, chunk, containingRegion, rand);
 						break;
 					} else {
 						randomValue = (randomValue - model.getChance())/(1 - model.getChance()); // Make sure that after the first one was considered all others get the correct chances.

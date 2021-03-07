@@ -158,7 +158,7 @@ public class GameLogic implements ClientConnection {
 					if(Cubyz.surface.isValidSpawnLocation(dx, dz)) 
 						break;
 				}
-				int startY = (int)surface.getRegion((int)dx, (int)dz, 1).heightMap[(int)dx & Region.regionMask][dz & Region.regionMask];
+				int startY = (int)surface.getRegion((int)dx, (int)dz, 1).getHeight(dx, dz);
 				Cubyz.surface.seek((int)dx, startY, (int)dz, ClientSettings.RENDER_DISTANCE, ClientSettings.EFFECTIVE_RENDER_DISTANCE*NormalChunk.chunkSize*2);
 				Cubyz.player.setPosition(new Vector3i(dx, startY+2, dz));
 				logger.info("OK!");

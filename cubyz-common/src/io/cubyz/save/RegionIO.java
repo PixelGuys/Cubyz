@@ -55,7 +55,7 @@ public class RegionIO {
 		} else {
 			for(int x = 0; x < Region.regionSize; x++) {
 				for(int z = 0; z < Region.regionSize; z++) {
-					heightMap[x][z] = (int)region.heightMap[x][z];
+					heightMap[x][z] = (int)region.getHeight(x, z);
 				}
 			}
 		}

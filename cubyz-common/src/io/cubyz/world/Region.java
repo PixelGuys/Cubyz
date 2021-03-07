@@ -20,20 +20,19 @@ public class Region {
 	public static int regionSize = 1 << regionShift;
 	public static int regionMask = regionSize - 1;
 	
-	public final float[][] heightMap;
-	public final Biome[][] biomeMap;
+	private float[][] heightMap;
+	private Biome[][] biomeMap;
 	private int voxelSize;
 	private final Surface world;
 	public final int wx, wz;
 	public final RegionIO regIO;
 	// TODO: Store the two in data files.
-	public int minHeight = 0;
-	public int maxHeight = 256;
+	public int minHeight = Integer.MAX_VALUE;
+	public int maxHeight = 0;
 	
 	// Data used for generating the map:
 	protected ArrayList<RandomNorm> biomeList = new ArrayList<RandomNorm>(50);
 	protected int[] triangles;
-	protected float[][] roughMap;
 	
 	public Region(int x, int z, long seed, Surface world, CurrentSurfaceRegistries registries, TorusIO tio, int initialVoxelSize) {
 		this.wx = x;
@@ -41,10 +40,6 @@ public class Region {
 		this.world = world;
 		
 		regIO = new RegionIO(this, tio);
-		
-		heightMap = new float[regionSize][regionSize];
-		
-		biomeMap = new Biome[regionSize][regionSize];
 		prepareGeneration(seed, registries);
 		advancedHeightMapGeneration(seed, registries, voxelSize = initialVoxelSize);
 	}
@@ -55,10 +50,9 @@ public class Region {
 	 * @param registries
 	 * @param voxelSize size of the new resolution. Must be a power of 2!
 	 */
-	public void ensureResolution(long seed, CurrentSurfaceRegistries registries, int voxelSize) {
+	public synchronized void ensureResolution(long seed, CurrentSurfaceRegistries registries, int voxelSize) {
 		if(voxelSize < this.voxelSize) {
 			advancedHeightMapGeneration(seed, registries, voxelSize);
-			this.voxelSize = voxelSize;
 		}
 	}
 	
@@ -102,7 +96,7 @@ public class Region {
 		return (3 - 2*x)*x*x;
 	}
 	
-	public void interpolateBiomes(int x, int z, RandomNorm n1, RandomNorm n2, RandomNorm n3, Biome r12, Biome r13, Biome r23, float[][] roughMap) {
+	public void interpolateBiomes(int x, int z, RandomNorm n1, RandomNorm n2, RandomNorm n3, Biome r12, Biome r13, Biome r23, float[][] heightMap, Biome[][] biomeMap, float[][] roughMap, int voxelSize) {
 		float interpolationWeight = (n2.z - n3.z)*(n1.x - n3.x) + (n3.x - n2.x)*(n1.z - n3.z);
 		float w1 = ((n2.z - n3.z)*(x - n3.x) + (n3.x - n2.x)*(z - n3.z))/interpolationWeight;
 		float w2 = ((n3.z - n1.z)*(x - n3.x) + (n1.x - n3.x)*(z - n3.z))/interpolationWeight;
@@ -137,25 +131,30 @@ public class Region {
 			second = n3.biome;
 			replacement = r13;
 		}
-		heightMap[x][z] = (val1*n1.height + val2*n2.height + val3*n3.height)/(val1 + val2 + val3);
+		int mapX = x/voxelSize;
+		int mapZ = z/voxelSize;
+		heightMap[mapX][mapZ] = (val1*n1.height + val2*n2.height + val3*n3.height)/(val1 + val2 + val3);
 		float roughness = (val1*n1.biome.roughness + val2*n2.biome.roughness + val3*n3.biome.roughness)/(val1 + val2 + val3);
-		heightMap[x][z] += (roughMap[x][z] - 0.5f)*roughness;
+		heightMap[mapX][mapZ] += (roughMap[mapX][mapZ] - 0.5f)*roughness;
 		// In case of extreme roughness the terrain should "mirror" at the interpolated height limits(minHeight, maxHeight) of the biomes:
 		float minHeight = (val1*n1.biome.minHeight + val2*n2.biome.minHeight + val3*n3.biome.minHeight)/(val1 + val2 + val3);
 		float maxHeight = (val1*n1.biome.maxHeight + val2*n2.biome.maxHeight + val3*n3.biome.maxHeight)/(val1 + val2 + val3);
-		heightMap[x][z] = CubyzMath.floorMod(heightMap[x][z] - minHeight, 2*(maxHeight - minHeight));
-		if(heightMap[x][z] > maxHeight - minHeight) heightMap[x][z] = 2*(maxHeight - minHeight) - heightMap[x][z];
-		heightMap[x][z] += minHeight;
-		if(first.minHeight <= heightMap[x][z] && first.maxHeight >= heightMap[x][z]) {
-			biomeMap[x][z] = first;
-		} else if(second.minHeight <= heightMap[x][z] && second.maxHeight >= heightMap[x][z]) {
-			biomeMap[x][z] = second;
+		heightMap[mapX][mapZ] = CubyzMath.floorMod(heightMap[mapX][mapZ] - minHeight, 2*(maxHeight - minHeight));
+		if(heightMap[mapX][mapZ] > maxHeight - minHeight) {
+			heightMap[mapX][mapZ] = 2*(maxHeight - minHeight) - heightMap[mapX][mapZ];
+		}
+		heightMap[mapX][mapZ] += minHeight;
+		if(first.minHeight <= heightMap[mapX][mapZ] && first.maxHeight >= heightMap[mapX][mapZ]) {
+			biomeMap[mapX][mapZ] = first;
+		} else if(second.minHeight <= heightMap[mapX][mapZ] && second.maxHeight >= heightMap[mapX][mapZ]) {
+			biomeMap[mapX][mapZ] = second;
 		} else {
 			// Use a replacement biome, such as a beach.
-			biomeMap[x][z] = replacement;
+			biomeMap[mapX][mapZ] = replacement;
 		}
-		minHeight = Math.min(minHeight, (int)heightMap[x][z]);
-		maxHeight = Math.max(maxHeight, (int)heightMap[x][z]);
+		this.minHeight = Math.min(this.minHeight, (int)heightMap[mapX][mapZ]);
+		this.minHeight = Math.max(this.minHeight, 0);
+		this.maxHeight = Math.max(this.maxHeight, (int)heightMap[mapX][mapZ]);
 	}
 	
 	public void generateBiomesForNearbyRegion(Random rand, int x, int z, ArrayList<RandomNorm> biomeList, RandomList<Biome> availableBiomes) {
@@ -197,7 +196,7 @@ public class Region {
 		return validBiomes.get(result);
 	}
 	
-	public void drawTriangle(RandomNorm n1, RandomNorm n2, RandomNorm n3, float[][] roughMap, CurrentSurfaceRegistries registries, int voxelSize) {
+	public void drawTriangle(RandomNorm n1, RandomNorm n2, RandomNorm n3, float[][] heightMap, Biome[][] biomeMap, float[][] roughMap, CurrentSurfaceRegistries registries, int voxelSize) {
 		Random triangleRandom = new Random(n1.x*5478361L ^ n1.z*5642785727L ^ n2.x*6734896731L ^ n2.z*657438643875L ^ n3.x*65783958734L ^ n3.z*673891094012L);
 		// Determine connecting biomes in case there is a conflict:
 		Biome r12 = n1.biome, r13 = n3.biome, r23 = n2.biome;
@@ -249,7 +248,7 @@ public class Region {
 			xMin = alignToGrid(Math.max(xMin, 0), voxelSize);
 			xMax = Math.min(xMax, regionMask);
 			for(int px = xMin; px <= xMax; px += voxelSize) {
-				interpolateBiomes(px, pz, n1, n2, n3, r12, r13, r23, roughMap);
+				interpolateBiomes(px, pz, n1, n2, n3, r12, r13, r23, heightMap, biomeMap, roughMap, voxelSize);
 			}
 		}
 		// Go through the upper-z-part of the triangle:
@@ -268,14 +267,13 @@ public class Region {
 			xMin = alignToGrid(Math.max(xMin, 0), voxelSize);
 			xMax = Math.min(xMax, regionMask);
 			for(int px = xMin; px <= xMax; px += voxelSize) {
-				interpolateBiomes(px, pz, n1, n2, n3, r12, r13, r23, roughMap);
+				interpolateBiomes(px, pz, n1, n2, n3, r12, r13, r23, heightMap, biomeMap, roughMap, voxelSize);
 			}
 		}
 	}
 	
 	public void prepareGeneration(long seed, CurrentSurfaceRegistries registries) {
 		// Generate a rough map for terrain overlay:
-		roughMap = new float[regionSize][regionSize];
 		Random rand = new Random(seed);
 		long l1 = rand.nextLong();
 		long l2 = rand.nextLong();
@@ -297,11 +295,32 @@ public class Region {
 	}
 	
 	public void advancedHeightMapGeneration(long seed, CurrentSurfaceRegistries registries, int voxelSize) {
-		Noise.generateSparseFractalTerrain(wx, wz, regionSize, regionSize, 128, seed ^ -954936678493L, world.getSizeX(), world.getSizeZ(), roughMap, voxelSize); // TODO: Consider other Noise functions.
+		
+		float[][] newHeightMap = new float[regionSize/voxelSize][regionSize/voxelSize];
+		
+		Biome[][] newBiomeMap = new Biome[regionSize/voxelSize][regionSize/voxelSize];
+		float[][] roughMap = new float[regionSize/voxelSize][regionSize/voxelSize];
+		Noise.generateSparseFractalTerrain(wx/voxelSize, wz/voxelSize, regionSize/voxelSize, regionSize/voxelSize, 128/voxelSize, seed ^ -954936678493L, world.getSizeX(), world.getSizeZ(), roughMap, voxelSize); // TODO: Consider other Noise functions.
 		// "Render" the triangles onto the biome map:
 		for(int i = 0; i < triangles.length; i += 3) {
-			drawTriangle(biomeList.get(triangles[i]), biomeList.get(triangles[i+1]), biomeList.get(triangles[i+2]), roughMap, registries, voxelSize);
+			drawTriangle(biomeList.get(triangles[i]), biomeList.get(triangles[i+1]), biomeList.get(triangles[i+2]), newHeightMap, newBiomeMap, roughMap, registries, voxelSize);
 		}
+		
+		biomeMap = newBiomeMap;
+		heightMap = newHeightMap;
+		this.voxelSize = voxelSize;
+	}
+	
+	public Biome getBiome(int wx, int wz) {
+		wx = (wx & regionMask)/voxelSize;
+		wz = (wz & regionMask)/voxelSize;
+		return biomeMap[wx][wz];
+	}
+	
+	public float getHeight(int wx, int wz) {
+		wx = (wx & regionMask)/voxelSize;
+		wz = (wz & regionMask)/voxelSize;
+		return heightMap[wx][wz];
 	}
 	
 	public int getMinHeight() {
@@ -310,6 +329,10 @@ public class Region {
 	
 	public int getMaxHeight() {
 		return maxHeight;
+	}
+	
+	public int getVoxelSize() {
+		return voxelSize;
 	}
 	
 	private static int alignToGrid(int value, int voxelSize) {

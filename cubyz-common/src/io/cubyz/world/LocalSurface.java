@@ -642,8 +642,8 @@ public class LocalSurface extends Surface {
 		return entities.toArray(new Entity[entities.size()]);
 	}
 	
-	public int getHeight(int x, int z) {
-		return (int)(getRegion(x & ~Region.regionMask, z & ~Region.regionMask, 1).heightMap[x & Region.regionMask][z & Region.regionMask]);
+	public int getHeight(int wx, int wz) {
+		return (int)getRegion(wx, wz, 1).getHeight(wx, wz);
 	}
 
 	@Override
@@ -675,9 +675,9 @@ public class LocalSurface extends Surface {
 	}
 
 	@Override
-	public Biome getBiome(int x, int z) {
-		Region reg = getRegion(x & ~Region.regionMask, z & ~Region.regionMask, 1);
-		return reg.biomeMap[x & Region.regionMask][z & Region.regionMask];
+	public Biome getBiome(int wx, int wz) {
+		Region reg = getRegion(wx, wz, 1);
+		return reg.getBiome(wx, wz);
 	}
 
 	@Override
