@@ -129,6 +129,7 @@ public class ReducedChunkMesh {
 		// Delete the VAO
 		glBindVertexArray(0);
 		glDeleteVertexArrays(vaoId);
+		vaoId = -1;
 	}
 	
 	/**

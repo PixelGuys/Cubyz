@@ -14,6 +14,7 @@ public class RenderOctTree {
 	private int lastX, lastY, lastZ, lastRD, lastLOD;
 	private float lastFactor;
 	public static class OctTreeNode {
+		boolean shouldBeRemoved;
 		public OctTreeNode[] nextNodes = null;
 		public final int x, y, z, size;
 		public Chunk chunk;
@@ -93,10 +94,7 @@ public class RenderOctTree {
 			} else {
 				if(nextNodes != null) {
 					for(int i = 0; i < 8; i++) {
-						if(nextNodes[i] != null && nextNodes[i].chunk != null) {
-							ClientOnly.deleteChunkMesh.accept(nextNodes[i].chunk);
-							Cubyz.surface.unQueueChunk(nextNodes[i].chunk);
-						}
+						nextNodes[i].cleanup();
 					}
 					nextNodes = null;
 				}
@@ -175,10 +173,24 @@ public class RenderOctTree {
 					OctTreeNode node = roots.get(key);
 					if(node == null) {
 						node = new OctTreeNode(x̅, y, z̅, LODSize);
+						// Mark this node to be potentially removed in the next update:
+						node.shouldBeRemoved = true;
+					} else {
+						// Mark that this node should not be removed.
+						node.shouldBeRemoved = false;
 					}
 					newMap.put(key, node);
 					node.update(px, py, pz, renderDistance*NormalChunk.chunkSize, maxRenderDistance);
 				}
+			}
+		}
+		// Clean memory for unused nodes:
+		for(OctTreeNode node : roots.values()) {
+			if(node.shouldBeRemoved) {
+				node.cleanup();
+			} else {
+				// Mark this node to be potentially removed in the next update:
+				node.shouldBeRemoved = true;
 			}
 		}
 		roots = newMap;
