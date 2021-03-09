@@ -28,7 +28,6 @@ public class BlockStructure {
 					chunk.updateBlock(x, depth - chunk.getWorldY(), z, structure[i].block, data);
 				}
 				depth--;
-				if(depth <= 0) return depth;
 			}
 		}
 		if(depth == startingDepth) return depth;

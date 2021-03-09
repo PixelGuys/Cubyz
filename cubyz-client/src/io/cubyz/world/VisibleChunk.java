@@ -157,7 +157,7 @@ public class VisibleChunk extends NormalChunk {
 			int z = index & chunkMask;
 			region.regIO.setHeight(x+wx, z+wz, y+wy, region);
 			return;
-		} else {
+		} else if((light[index] & 0xff000000) != 0xff000000) {
 			constructiveLightUpdate(index, 255+8, 0xff000000, 24);
 			// y-1:
 			if((index & chunkMask<<chunkShift2) == 0) { // if(y == 0)

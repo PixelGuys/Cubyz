@@ -39,6 +39,7 @@ public class BlockInstance {
 		if(neighbors[i] != value) {
 			neighbors[i] = value;
 		}
+		source.setUpdated();
 	}
 	
 	public Surface getStellarTorus() {

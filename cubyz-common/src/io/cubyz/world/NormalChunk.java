@@ -440,14 +440,14 @@ public class NormalChunk extends Chunk {
 			}
 			if(index == -1) { // Creates a new object if the block wasn't changed before
 				changes.add(new BlockChange(block.ID, -1, blockIndex, oldData, (byte)0));
-				return;
-			}
-			if(changes.get(index).oldType == -1) { // Removes the object if the block reverted to it's original state(air).
+			} else if(changes.get(index).oldType == -1) { // Removes the object if the block reverted to it's original state(air).
 				changes.remove(index);
-				return;
+			} else {
+				changes.get(index).newType = -1;
 			}
-			changes.get(index).newType = -1;
 		}
+		
+		updateNeighborChunks(x, y, z);
 	}
 	
 	/**
@@ -537,7 +537,7 @@ public class NormalChunk extends Chunk {
 				data[i] = blockData[index];
 				indices[i] = index;
 			} else {
-				NormalChunk ch = surface.getChunk((xi >> chunkShift) + cx, (yi >> chunkShift) + cy, (zi >> chunkShift) +cz);
+				NormalChunk ch = surface.getChunk((xi >> chunkShift) + cx, (yi >> chunkShift) + cy, (zi >> chunkShift) + cz);
 				if(ch != null) {
 					int index = getIndex(xi & chunkMask, yi & chunkMask, zi & chunkMask);
 					neighbors[i] = ch.getBlock(xi & chunkMask, yi & chunkMask, zi & chunkMask);
@@ -547,6 +547,28 @@ public class NormalChunk extends Chunk {
 			}
 		}
 		return neighbors;
+	}
+	
+	/**
+	 * Ensures that all neighboring chunks around a block update are updated to prevent light bugs on block removal.
+	 * @param x
+	 * @param y
+	 * @param z
+	 */
+	public void updateNeighborChunks(int x, int y, int z) {
+		x &= chunkMask;
+		y &= chunkMask;
+		z &= chunkMask;
+		for(int i = 0; i < 6; i++) {
+			int xi = x+neighborRelativeX[i];
+			int yi = y+neighborRelativeY[i];
+			int zi = z+neighborRelativeZ[i];
+			if(xi != (xi & chunkMask) || yi != (yi & chunkMask) || zi != (zi & chunkMask)) { // Simple double-bound test for coordinates.
+				NormalChunk ch = surface.getChunk((xi >> chunkShift) + cx, (yi >> chunkShift) + cy, (zi >> chunkShift) + cz);
+				if(ch != null)
+					ch.setUpdated();
+			}
+		}
 	}
 	
 	/**
@@ -706,6 +728,10 @@ public class NormalChunk extends Chunk {
 	
 	public boolean wasUpdated() {
 		return updated;
+	}
+	
+	public void setUpdated() {
+		updated = true;
 	}
 	
 	public int startIndex(int start) {

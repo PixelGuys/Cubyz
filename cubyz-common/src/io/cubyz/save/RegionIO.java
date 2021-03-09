@@ -202,9 +202,7 @@ public class RegionIO {
 	
 	public ItemEntityManager readItemEntities(Surface surface, NormalChunk chunk) {
 		File file = new File(dir, "itemEnt"+chunk.getWorldX()+" "+chunk.getWorldY()+" "+chunk.getWorldZ());
-		//System.out.println(file.getName());
 		if(!file.exists()) return new ItemEntityManager(surface, chunk, 1);
-		System.out.println(file.getName());
 		try {
 			byte[] data = new byte[(int) file.length()];
 			DataInputStream stream = new DataInputStream(new FileInputStream(file));

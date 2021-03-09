@@ -16,7 +16,7 @@ import io.cubyz.world.Surface;
 public class FlatlandGenerator extends SurfaceGenerator {
 
 	private static Block grass = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:grass");
-	private static Block dirt = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:dirt");
+	private static Block soil = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:soil");
 	
 	@Override
 	public void generate(Chunk chunk, Surface surface) {
@@ -29,7 +29,7 @@ public class FlatlandGenerator extends SurfaceGenerator {
 					if (wy == 2) {
 						b = grass;
 					} else {
-						b = dirt;
+						b = soil;
 					}
 					chunk.updateBlock(x, y, z, b);
 				}
