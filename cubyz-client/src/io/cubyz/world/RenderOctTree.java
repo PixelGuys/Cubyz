@@ -24,10 +24,17 @@ public class RenderOctTree {
 			this.z = z;
 			this.size = size;
 		}
-		public void update(int px, int py, int pz, int renderDistance, int maxRD) {
+		public void update(int px, int py, int pz, int renderDistance, int maxRD, int minHeight, int maxHeight, int nearRenderDistance) {
 			double dx = Math.abs(x + size/2 - px);
 			double dy = Math.abs(y + size/2 - py);
 			double dz = Math.abs(z + size/2 - pz);
+			// Check if this chunk is outside the nearRenderDistance or outside the height limits:
+			if(y + size <= Cubyz.surface.getRegion(x, z, 16).getMinHeight() || y > Cubyz.surface.getRegion(x, z, 16).getMaxHeight()) {
+				int dx2 = (int)Math.max(0, dx - size/2);
+				int dy2 = (int)Math.max(0, dy - size/2);
+				int dz2 = (int)Math.max(0, dz - size/2);
+				if(dx2*dx2 + dy2*dy2 + dz2*dz2 > nearRenderDistance*nearRenderDistance) return;
+			}
 			
 			// Check if this chunk has reached the smallest possible size:
 			if(size == NormalChunk.chunkSize) {
@@ -67,7 +74,7 @@ public class RenderOctTree {
 					}
 				}
 				for(int i = 0; i < 8; i++) {
-					nextNodes[i].update(px, py, pz, renderDistance, maxRD/2);
+					nextNodes[i].update(px, py, pz, renderDistance, maxRD/2, minHeight, maxHeight, nearRenderDistance);
 				}
 				if(chunk != null) {
 					ClientOnly.deleteChunkMesh.accept(chunk);
@@ -83,7 +90,7 @@ public class RenderOctTree {
 					}
 				}
 				for(int i = 0; i < 8; i++) {
-					nextNodes[i].update(px, py, pz, renderDistance, maxRD/2);
+					nextNodes[i].update(px, py, pz, renderDistance, maxRD/2, minHeight, maxHeight, nearRenderDistance);
 				}
 				if(chunk != null) {
 					ClientOnly.deleteChunkMesh.accept(chunk);
@@ -180,7 +187,7 @@ public class RenderOctTree {
 						node.shouldBeRemoved = false;
 					}
 					newMap.put(key, node);
-					node.update(px, py, pz, renderDistance*NormalChunk.chunkSize, maxRenderDistance);
+					node.update(px, py, pz, renderDistance*NormalChunk.chunkSize, maxRenderDistance, Cubyz.surface.getRegion(x, z, 16).getMinHeight(), Cubyz.surface.getRegion(x, z, 16).getMaxHeight(), nearRenderDistance);
 				}
 			}
 		}
