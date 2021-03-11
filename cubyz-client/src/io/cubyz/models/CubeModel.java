@@ -61,9 +61,9 @@ public class CubeModel extends Model {
 		for(int i = 0; i < size; i++) {
 			int i2 = i*2;
 			int i3 = i*3;
-			float nx = conditionalInversion(super.normals[i3+directionMap[0]]*0.5f, directionInversion[0])*2;
-			float ny = conditionalInversion(super.normals[i3+directionMap[1]]*0.5f, directionInversion[1])*2;
-			float nz = conditionalInversion(super.normals[i3+directionMap[2]]*0.5f, directionInversion[2])*2;
+			float nx = conditionalInversion(super.normals[i3+directionMap[0]]*0.5f + 0.5f, directionInversion[0])*2 - 1;
+			float ny = conditionalInversion(super.normals[i3+directionMap[1]]*0.5f + 0.5f, directionInversion[1])*2 - 1;
+			float nz = conditionalInversion(super.normals[i3+directionMap[2]]*0.5f + 0.5f, directionInversion[2])*2 - 1;
 			if(nx == -1 && neighbors[0] ||
 			   nx == 1 && neighbors[1] ||
 			   nz == -1 && neighbors[2] ||
