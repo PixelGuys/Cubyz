@@ -24,7 +24,7 @@ vec4 ambientC;
 void setupColors(vec2 textCoord) {
 	vec4 bg = texture(texture_sampler, textCoord);
 	ambientC = texture(break_sampler, fract(textCoord*atlasSize))*float(selectedIndex == selectionIndex);
-	ambientC = vec4(mix(vec4(bg), vec4(ambientC), ambientC.a));
+	ambientC = vec4(mix(vec3(bg), vec3(ambientC), ambientC.a), bg.a);
 }
 
 vec4 calcFog(vec3 pos, vec4 color, Fog fog) {
