@@ -28,7 +28,7 @@ public class SimpleVegetation extends StructureModel {
 				height += rand.nextInt(deltaHeight);
 			for(int py = chunk.startIndex(h); py < h + height; py += chunk.getVoxelSize()) {
 				if(chunk.liesInChunk(x, py-y, z)) {
-					chunk.updateBlockIfAir(x, py-y, z, block);
+					chunk.updateBlockIfDegradable(x, py-y, z, block);
 				}
 			}
 		}

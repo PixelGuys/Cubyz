@@ -746,19 +746,21 @@ public class NormalChunk extends Chunk {
 	public int getLight(int x, int y, int z) {return 0;}
 	
 	// Implementations of interface Chunk:
-	
-	public void updateBlockIfAir(int x, int y, int z, Block newBlock) {
+
+	@Override
+	public void updateBlockIfDegradable(int x, int y, int z, Block newBlock) {
 		int index = getIndex(x, y, z);
-		if(blocks[index] == null) {
+		if(blocks[index] == null || blocks[index].isDegradable()) {
 			if (newBlock != null && newBlock.getBlockClass() == BlockClass.FLUID) {
 				liquids.add(index);
 			}
 			blocks[index] = newBlock;
 			blockData[index] = newBlock == null ? 0 : newBlock.mode.getNaturalStandard();
+			updated = true;
 		}
-		updated = true;
 	}
 	
+	@Override
 	public void updateBlock(int x, int y, int z, Block newBlock) {
 		updateBlock(x, y, z, newBlock, newBlock == null ? 0 : newBlock.mode.getNaturalStandard());
 	}

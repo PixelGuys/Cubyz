@@ -61,12 +61,12 @@ public class ReducedChunk extends Chunk {
 	}
 	
 	@Override
-	public void updateBlockIfAir(int x, int y, int z, Block newBlock) {
+	public void updateBlockIfDegradable(int x, int y, int z, Block newBlock) {
 		x >>= resolutionShift;
 		y >>= resolutionShift;
 		z >>= resolutionShift;
 		int index = (x << (widthShift - resolutionShift)) | (y << 2*(widthShift - resolutionShift)) | z;
-		if(blocks[index] == null) {
+		if(blocks[index] == null || blocks[index].isDegradable()) {
 			blocks[index] = newBlock;
 		}
 	}

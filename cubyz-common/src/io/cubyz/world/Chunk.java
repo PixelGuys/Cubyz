@@ -19,14 +19,14 @@ public abstract class Chunk {
 	public abstract int startIndex(int start);
 	
 	/**
-	 * Updates a block if current value is 0 (air) and if it is inside this chunk.<br>
+	 * Updates a block if current value is air or the current block is degradable.<br>
 	 * Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
 	 * @param x relative x without considering resolution.
 	 * @param y relative y without considering resolution.
 	 * @param z relative z without considering resolution.
 	 * @param newBlock
 	 */
-	public abstract void updateBlockIfAir(int x, int y, int z, Block newBlock);
+	public abstract void updateBlockIfDegradable(int x, int y, int z, Block newBlock);
 	
 	/**
 	 * Updates a block if it is inside this chunk.<br>

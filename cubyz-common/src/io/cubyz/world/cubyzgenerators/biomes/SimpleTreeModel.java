@@ -41,7 +41,7 @@ public class SimpleTreeModel extends StructureModel {
 				case PYRAMID: {
 					for(int py = chunk.startIndex(h); py < h+height; py += chunk.getVoxelSize()) {
 						if(chunk.liesInChunk(x, py, z)) {
-							chunk.updateBlockIfAir(x, py, z, (py == height-1) ? topWood : wood);
+							chunk.updateBlockIfDegradable(x, py, z, (py == h + height-1) ? topWood : wood);
 						}
 					}
 					// Position of the first block of leaves
@@ -51,7 +51,7 @@ public class SimpleTreeModel extends StructureModel {
 						for(int px = chunk.startIndex(x + 1 - j); px < x + j; px += chunk.getVoxelSize()) {
 							for(int pz = chunk.startIndex(z + 1 - j); pz < z + j; pz += chunk.getVoxelSize()) {
 								if(chunk.liesInChunk(px, py, pz))
-									chunk.updateBlockIfAir(px, py, pz, leaves);
+									chunk.updateBlockIfDegradable(px, py, pz, leaves);
 							}
 						}
 					}
@@ -60,7 +60,7 @@ public class SimpleTreeModel extends StructureModel {
 				case ROUND: {
 					for(int py = chunk.startIndex(h); py < h+height; py += chunk.getVoxelSize()) {
 						if(chunk.liesInChunk(x, py, z)) {
-							chunk.updateBlockIfAir(x, py, z, (py == height-1) ? topWood : wood);
+							chunk.updateBlockIfDegradable(x, py, z, (py == h + height-1) ? topWood : wood);
 						}
 					}
 					
@@ -73,7 +73,7 @@ public class SimpleTreeModel extends StructureModel {
 							for(int pz = chunk.startIndex(z - leafRadius); pz <= z + leafRadius; pz += chunk.getVoxelSize()) {
 								int dist = (py - center)*(py - center) + (px - x)*(px - x) + (pz - z)*(pz - z);
 								if(chunk.liesInChunk(px, py, pz) && dist < (floatLeafRadius)*(floatLeafRadius) && (dist < (floatLeafRadius - 0.25f)*(floatLeafRadius - 0.25f) || rand.nextInt(2) != 0)) { // TODO: Use another seed to make this more reliable!
-									chunk.updateBlockIfAir(px, py, pz, leaves);
+									chunk.updateBlockIfDegradable(px, py, pz, leaves);
 								}
 							}
 						}
@@ -86,7 +86,7 @@ public class SimpleTreeModel extends StructureModel {
 					
 					for(int py = chunk.startIndex(h); py < h + height; py += chunk.getVoxelSize()) {
 						if(chunk.liesInChunk(x, py, z)) {
-							chunk.updateBlockIfAir(x, py, z, (py == height-1) ? topWood : wood);
+							chunk.updateBlockIfDegradable(x, py, z, (py == h + height-1) ? topWood : wood);
 						}
 					}
 					
@@ -100,7 +100,7 @@ public class SimpleTreeModel extends StructureModel {
 								// Bushes are wider than tall:
 								dist += 4*(py - center)*(py - center);
 								if(chunk.liesInChunk(px, py, pz) && dist < (floatLeafRadius)*(floatLeafRadius) && (dist < (floatLeafRadius - 0.25f)*(floatLeafRadius - 0.25f) || rand.nextInt(2) != 0)) { // TODO: Use another seed to make this more reliable!
-									chunk.updateBlockIfAir(px, py, pz, leaves);
+									chunk.updateBlockIfDegradable(px, py, pz, leaves);
 								}
 							}
 						}
