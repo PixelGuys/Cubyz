@@ -87,14 +87,9 @@ public class Input {
 				Cubyz.surface.addEntity(pig);
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_P, false);
 			}
-			if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_C)) {
-				int mods = Keyboard.getKeyMods();
-				if((mods & GLFW.GLFW_MOD_CONTROL) == GLFW.GLFW_MOD_CONTROL) {
-					if((mods & GLFW.GLFW_MOD_SHIFT) == GLFW.GLFW_MOD_SHIFT) { // Control + Shift + C
-						if(Cubyz.gameUI.getMenuGUI() == null) {
-							Cubyz.gameUI.setMenu(new ConsoleGUI());
-						}
-					}
+			if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_T)) {
+				if(Cubyz.gameUI.getMenuGUI() == null) {
+					Cubyz.gameUI.setMenu(new ConsoleGUI());
 				}
 			}
 			if(Keybindings.isPressed("inventory")) {
@@ -112,7 +107,7 @@ public class Input {
 			}
 			
 			// inventory related
-			Cubyz.inventorySelection = (Cubyz.inventorySelection + (int) mouse.getScrollOffset()) & 7;
+			Cubyz.inventorySelection = (Cubyz.inventorySelection - (int) mouse.getScrollOffset()) & 7;
 			if(Keybindings.isPressed("hotbar 1")) {
 				Cubyz.inventorySelection = 0;
 			}
