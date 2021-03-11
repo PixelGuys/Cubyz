@@ -25,9 +25,9 @@ public class RenderOctTree {
 			this.size = size;
 		}
 		public void update(int px, int py, int pz, int renderDistance, int maxRD, int minHeight, int maxHeight, int nearRenderDistance) {
-			double dx = Math.abs(x + size/2 - px);
+			double dx = Math.abs(CubyzMath.moduloMatchSign(x + size/2 - px, Cubyz.surface.getSizeX()));
 			double dy = Math.abs(y + size/2 - py);
-			double dz = Math.abs(z + size/2 - pz);
+			double dz = Math.abs(CubyzMath.moduloMatchSign(z + size/2 - pz, Cubyz.surface.getSizeZ()));
 			// Check if this chunk is outside the nearRenderDistance or outside the height limits:
 			if(y + size <= Cubyz.surface.getRegion(x, z, 16).getMinHeight() || y > Cubyz.surface.getRegion(x, z, 16).getMaxHeight()) {
 				int dx2 = (int)Math.max(0, dx - size/2);
@@ -131,6 +131,7 @@ public class RenderOctTree {
 		public void cleanup() {
 			if(chunk != null) {
 				ClientOnly.deleteChunkMesh.accept(chunk);
+				Cubyz.surface.unQueueChunk(chunk);
 				chunk = null;
 			}
 			if(nextNodes != null) {

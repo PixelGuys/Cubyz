@@ -13,7 +13,7 @@ import io.cubyz.util.RandomList;
 import io.cubyz.world.cubyzgenerators.biomes.Biome;
 
 /**
- * A regionSize×regionSize big chunk of height-/heat-/humidity-/… and resulting biome-maps.
+ * A regionSize×regionSize big chunk of height and biome-maps.
  */
 public class Region {
 	public static int regionShift = 9;
@@ -23,7 +23,7 @@ public class Region {
 	private float[][] heightMap;
 	private Biome[][] biomeMap;
 	private int voxelSize;
-	private final Surface world;
+	private final Surface surface;
 	public final int wx, wz;
 	public final RegionIO regIO;
 	
@@ -34,10 +34,10 @@ public class Region {
 	protected ArrayList<RandomNorm> biomeList = new ArrayList<RandomNorm>(50);
 	protected int[] triangles;
 	
-	public Region(int x, int z, long seed, Surface world, CurrentSurfaceRegistries registries, TorusIO tio, int initialVoxelSize) {
+	public Region(int x, int z, long seed, Surface surface, CurrentSurfaceRegistries registries, TorusIO tio, int initialVoxelSize) {
 		this.wx = x;
 		this.wz = z;
-		this.world = world;
+		this.surface = surface;
 		
 		regIO = new RegionIO(this, tio);
 		prepareGeneration(seed, registries);
@@ -305,8 +305,8 @@ public class Region {
 		// Generate biomes for nearby regions:
 		for(int x = -regionSize; x <= regionSize; x += regionSize) {
 			for(int z = -regionSize; z <= regionSize; z += regionSize) {
-				rand.setSeed(l1*(this.wx + x) ^ l2*(this.wz + z) ^ seed);
-				RandomList<Biome> biomes = registries.biomeRegistry.byTypeBiomes.get(world.getBiomeMap()[CubyzMath.worldModulo(wx + x, world.getSizeX()) >> Region.regionShift][CubyzMath.worldModulo(wz + z, world.getSizeZ()) >> Region.regionShift]);
+				rand.setSeed(l1*CubyzMath.worldModulo(this.wx + x, surface.getSizeX()) ^ l2*CubyzMath.worldModulo(this.wz + z, surface.getSizeZ()) ^ seed);
+				RandomList<Biome> biomes = registries.biomeRegistry.byTypeBiomes.get(surface.getBiomeMap()[CubyzMath.worldModulo(wx + x, surface.getSizeX()) >> Region.regionShift][CubyzMath.worldModulo(wz + z, surface.getSizeZ()) >> Region.regionShift]);
 				generateBiomesForNearbyRegion(rand, x, z, biomeList, biomes);
 			}
 		}
@@ -325,7 +325,7 @@ public class Region {
 		
 		Biome[][] newBiomeMap = new Biome[regionSize/voxelSize][regionSize/voxelSize];
 		float[][] roughMap = new float[regionSize/voxelSize][regionSize/voxelSize];
-		Noise.generateSparseFractalTerrain(wx/voxelSize, wz/voxelSize, regionSize/voxelSize, regionSize/voxelSize, 128/voxelSize, seed ^ -954936678493L, world.getSizeX(), world.getSizeZ(), roughMap, voxelSize); // TODO: Consider other Noise functions.
+		Noise.generateSparseFractalTerrain(wx/voxelSize, wz/voxelSize, regionSize/voxelSize, regionSize/voxelSize, 128/voxelSize, seed ^ -954936678493L, surface.getSizeX(), surface.getSizeZ(), roughMap, voxelSize); // TODO: Consider other Noise functions.
 		// "Render" the triangles onto the biome map:
 		for(int i = 0; i < triangles.length; i += 3) {
 			drawTriangle(biomeList.get(triangles[i]), biomeList.get(triangles[i+1]), biomeList.get(triangles[i+2]), newHeightMap, newBiomeMap, roughMap, registries, voxelSize);
