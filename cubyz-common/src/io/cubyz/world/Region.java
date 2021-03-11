@@ -31,7 +31,7 @@ public class Region {
 	public int maxHeight = 0;
 	
 	// Data used for generating the map:
-	protected ArrayList<RandomNorm> biomeList = new ArrayList<RandomNorm>(50);
+	protected ArrayList<BiomePoint> biomeList = new ArrayList<BiomePoint>(50);
 	protected int[] triangles;
 	
 	public Region(int x, int z, long seed, Surface surface, CurrentSurfaceRegistries registries, TorusIO tio, int initialVoxelSize) {
@@ -57,38 +57,17 @@ public class Region {
 	}
 	
 	/**
-	 * A direction dependent classifier of length.
+	 * Stores the point of a biome placement.
 	 */
-	private static final class RandomNorm {
-		/**3 directions spaced at 120° angles apart.*/
-		static final float[] directions = {
-				0.25881904510252096f, 0.9659258262890682f,
-				-0.9659258262890683f, -0.2588190451025208f,
-				0.7071067811865468f, -0.7071067811865483f,
-		};
-		final float[] norms = new float[3];
+	private static final class BiomePoint {
 		final float height;
 		final Biome biome;
 		final int x, z;
-		public RandomNorm(Random rand, int x, int z, Biome biome) {
+		public BiomePoint(Random rand, int x, int z, Biome biome) {
 			this.x = x;
 			this.z = z;
 			this.biome = biome;
 			height = (biome.maxHeight - biome.minHeight)*rand.nextFloat() + biome.minHeight;
-			for(int i = 0; i < norms.length; i++) {
-				norms[i] = rand.nextFloat()*0.5f + 0.5f;
-			}
-		}
-		public float getInterpolationValue(int x, int z) {
-			x -= this.x;
-			z -= this.z;
-			if(x == 0 & z == 0) return 1;
-			float dist = (float)Math.sqrt(x*x + z*z);
-			float value = 0;
-			for(int i = 0; i < norms.length; i++) {
-				value += norms[i]*s(Math.max(0, (x*directions[2*i] + z*directions[2*i + 1])/dist));
-			}
-			return value;
 		}
 	}
 	
@@ -96,8 +75,8 @@ public class Region {
 		return (3 - 2*x)*x*x;
 	}
 	
-	// TODO: Rougher biome borders, less edgy terrain.
-	public void interpolateBiomes(int x, int z, RandomNorm n1, RandomNorm n2, RandomNorm n3, Biome r12, Biome r13, Biome r23, float[][] heightMap, Biome[][] biomeMap, float[][] roughMap, int voxelSize) {
+	// TODO: less edgy terrain.
+	public void interpolateBiomes(Random rand, int x, int z, BiomePoint n1, BiomePoint n2, BiomePoint n3, Biome r12, Biome r13, Biome r23, float[][] heightMap, Biome[][] biomeMap, float[][] roughMap, int voxelSize) {
 		float interpolationWeight = (n2.z - n3.z)*(n1.x - n3.x) + (n3.x - n2.x)*(n1.z - n3.z);
 		float w1 = ((n2.z - n3.z)*(x - n3.x) + (n3.x - n2.x)*(z - n3.z))/interpolationWeight;
 		float w2 = ((n3.z - n1.z)*(x - n3.x) + (n1.x - n3.x)*(z - n3.z))/interpolationWeight;
@@ -106,40 +85,50 @@ public class Region {
 		w1 = s(w1);
 		w2 = s(w2);
 		w3 = s(w3);
-		float val1 = n1.getInterpolationValue(x, z)*w1;
-		float val2 = n2.getInterpolationValue(x, z)*w2;
-		float val3 = n3.getInterpolationValue(x, z)*w3;
+		// Randomize the values slightly to get a less linear look:
+		float biomeWeight1 = w1*(3 + rand.nextFloat());
+		float biomeWeight2 = w2*(3 + rand.nextFloat());
+		float biomeWeight3 = w3*(3 + rand.nextFloat());
+		// Norm them:
+		float sum = w1 + w2 + w3;
+		w1 /= sum;
+		w2 /= sum;
+		w3 /= sum;
+		sum = biomeWeight1 + biomeWeight2 + biomeWeight3;
+		biomeWeight1 /= sum;
+		biomeWeight2 /= sum;
+		biomeWeight3 /= sum;
 		// Sort them by value:
 		Biome first = n1.biome;
 		Biome second = n2.biome;
 		Biome replacement = r12;
-		if(val2 > val1) {
+		if(biomeWeight2 > biomeWeight1) {
 			first = n2.biome;
 			second = n1.biome;
-			if(val3 > val2) {
+			if(biomeWeight3 > biomeWeight2) {
 				first = n3.biome;
 				second = n2.biome;
 				replacement = r23;
 			}
-		} else if(val3 > val1) {
+		} else if(biomeWeight3 > biomeWeight1) {
 			first = n3.biome;
 			replacement = r23;
-			if(val1 > val2) {
+			if(biomeWeight1 > biomeWeight2) {
 				second = n1.biome;
 				replacement = r13;
 			}
-		} else if(val3 > val2) {
+		} else if(biomeWeight3 > biomeWeight2) {
 			second = n3.biome;
 			replacement = r13;
 		}
 		int mapX = x/voxelSize;
 		int mapZ = z/voxelSize;
-		heightMap[mapX][mapZ] = (val1*n1.height + val2*n2.height + val3*n3.height)/(val1 + val2 + val3);
-		float roughness = (val1*n1.biome.roughness + val2*n2.biome.roughness + val3*n3.biome.roughness)/(val1 + val2 + val3);
+		heightMap[mapX][mapZ] = w1*n1.height + w2*n2.height + w3*n3.height;
+		float roughness = w1*n1.biome.roughness + w2*n2.biome.roughness + w3*n3.biome.roughness;
 		heightMap[mapX][mapZ] += (roughMap[mapX][mapZ] - 0.5f)*roughness;
 		// In case of extreme roughness the terrain should "mirror" at the interpolated height limits(minHeight, maxHeight) of the biomes:
-		float minHeight = (val1*n1.biome.minHeight + val2*n2.biome.minHeight + val3*n3.biome.minHeight)/(val1 + val2 + val3);
-		float maxHeight = (val1*n1.biome.maxHeight + val2*n2.biome.maxHeight + val3*n3.biome.maxHeight)/(val1 + val2 + val3);
+		float minHeight = w1*n1.biome.minHeight + w2*n2.biome.minHeight + w3*n3.biome.minHeight;
+		float maxHeight = w1*n1.biome.maxHeight + w2*n2.biome.maxHeight + w3*n3.biome.maxHeight;
 		heightMap[mapX][mapZ] = CubyzMath.floorMod(heightMap[mapX][mapZ] - minHeight, 2*(maxHeight - minHeight));
 		if(heightMap[mapX][mapZ] > maxHeight - minHeight) {
 			heightMap[mapX][mapZ] = 2*(maxHeight - minHeight) - heightMap[mapX][mapZ];
@@ -192,7 +181,7 @@ public class Region {
 		this.maxHeight = Math.max(this.maxHeight, (int)heightMap[mapX][mapZ]);
 	}
 	
-	public void generateBiomesForNearbyRegion(Random rand, int x, int z, ArrayList<RandomNorm> biomeList, RandomList<Biome> availableBiomes) {
+	public void generateBiomesForNearbyRegion(Random rand, int x, int z, ArrayList<BiomePoint> biomeList, RandomList<Biome> availableBiomes) {
 		int amount = 1 + rand.nextInt(3);
 		outer:
 		for(int i = 0; i < amount; i++) {
@@ -205,7 +194,7 @@ public class Region {
 					continue outer;
 				}
 			}
-			biomeList.add(new RandomNorm(rand, biomeX, biomeZ, availableBiomes.getRandomly(rand)));
+			biomeList.add(new BiomePoint(rand, biomeX, biomeZ, availableBiomes.getRandomly(rand)));
 		}
 	}
 	
@@ -231,29 +220,29 @@ public class Region {
 		return validBiomes.get(result);
 	}
 	
-	public void drawTriangle(RandomNorm n1, RandomNorm n2, RandomNorm n3, float[][] heightMap, Biome[][] biomeMap, float[][] roughMap, CurrentSurfaceRegistries registries, int voxelSize) {
-		Random triangleRandom = new Random(n1.x*5478361L ^ n1.z*5642785727L ^ n2.x*6734896731L ^ n2.z*657438643875L ^ n3.x*65783958734L ^ n3.z*673891094012L);
+	public void drawTriangle(BiomePoint n1, BiomePoint n2, BiomePoint n3, float[][] heightMap, Biome[][] biomeMap, float[][] roughMap, CurrentSurfaceRegistries registries, int voxelSize) {
+		Random rand = new Random(n1.x*5478361L ^ n1.z*5642785727L ^ n2.x*6734896731L ^ n2.z*657438643875L ^ n3.x*65783958734L ^ n3.z*673891094012L);
 		// Determine connecting biomes in case there is a conflict:
 		Biome r12 = n1.biome, r13 = n3.biome, r23 = n2.biome;
 		if(n1.biome.minHeight > n2.biome.maxHeight) {
-			r12 = findReplacement(n2.biome.maxHeight, n1.biome.minHeight, registries.biomeRegistry.byTypeBiomes.get(n1.biome.type), registries.biomeRegistry.byTypeBiomes.get(n2.biome.type), triangleRandom.nextFloat());
+			r12 = findReplacement(n2.biome.maxHeight, n1.biome.minHeight, registries.biomeRegistry.byTypeBiomes.get(n1.biome.type), registries.biomeRegistry.byTypeBiomes.get(n2.biome.type), rand.nextFloat());
 		} else if(n1.biome.maxHeight < n2.biome.minHeight) {
-			r12 = findReplacement(n1.biome.maxHeight, n2.biome.minHeight, registries.biomeRegistry.byTypeBiomes.get(n1.biome.type), registries.biomeRegistry.byTypeBiomes.get(n2.biome.type), triangleRandom.nextFloat());
+			r12 = findReplacement(n1.biome.maxHeight, n2.biome.minHeight, registries.biomeRegistry.byTypeBiomes.get(n1.biome.type), registries.biomeRegistry.byTypeBiomes.get(n2.biome.type), rand.nextFloat());
 		}
 		if(n1.biome.minHeight > n3.biome.maxHeight) {
-			r13 = findReplacement(n3.biome.maxHeight, n1.biome.minHeight, registries.biomeRegistry.byTypeBiomes.get(n1.biome.type), registries.biomeRegistry.byTypeBiomes.get(n3.biome.type), triangleRandom.nextFloat());
+			r13 = findReplacement(n3.biome.maxHeight, n1.biome.minHeight, registries.biomeRegistry.byTypeBiomes.get(n1.biome.type), registries.biomeRegistry.byTypeBiomes.get(n3.biome.type), rand.nextFloat());
 		} else if(n1.biome.maxHeight < n3.biome.minHeight) {
-			r13 = findReplacement(n1.biome.maxHeight, n3.biome.minHeight, registries.biomeRegistry.byTypeBiomes.get(n1.biome.type), registries.biomeRegistry.byTypeBiomes.get(n3.biome.type), triangleRandom.nextFloat());
+			r13 = findReplacement(n1.biome.maxHeight, n3.biome.minHeight, registries.biomeRegistry.byTypeBiomes.get(n1.biome.type), registries.biomeRegistry.byTypeBiomes.get(n3.biome.type), rand.nextFloat());
 		}
 		if(n2.biome.minHeight > n3.biome.maxHeight) {
-			r23 = findReplacement(n3.biome.maxHeight, n2.biome.minHeight, registries.biomeRegistry.byTypeBiomes.get(n2.biome.type), registries.biomeRegistry.byTypeBiomes.get(n3.biome.type), triangleRandom.nextFloat());
+			r23 = findReplacement(n3.biome.maxHeight, n2.biome.minHeight, registries.biomeRegistry.byTypeBiomes.get(n2.biome.type), registries.biomeRegistry.byTypeBiomes.get(n3.biome.type), rand.nextFloat());
 		} else if(n2.biome.maxHeight < n3.biome.minHeight) {
-			r23 = findReplacement(n2.biome.maxHeight, n3.biome.minHeight, registries.biomeRegistry.byTypeBiomes.get(n2.biome.type), registries.biomeRegistry.byTypeBiomes.get(n3.biome.type), triangleRandom.nextFloat());
+			r23 = findReplacement(n2.biome.maxHeight, n3.biome.minHeight, registries.biomeRegistry.byTypeBiomes.get(n2.biome.type), registries.biomeRegistry.byTypeBiomes.get(n3.biome.type), rand.nextFloat());
 		}
 		// Sort them by z coordinate:
-		RandomNorm smallest = n1.z < n2.z ? (n1.z < n3.z ? n1 : n3) : (n2.z < n3.z ? n2 : n3);
-		RandomNorm second = smallest == n1 ? (n2.z < n3.z ? n2 : n3) : (smallest == n2 ? (n1.z < n3.z ? n1 : n3) : (n1.z < n2.z ? n1 : n2));
-		RandomNorm third = (n1 == smallest | n1 == second) ? ((n2 == smallest | n2 == second) ? n3 : n2) : n1;
+		BiomePoint smallest = n1.z < n2.z ? (n1.z < n3.z ? n1 : n3) : (n2.z < n3.z ? n2 : n3);
+		BiomePoint second = smallest == n1 ? (n2.z < n3.z ? n2 : n3) : (smallest == n2 ? (n1.z < n3.z ? n1 : n3) : (n1.z < n2.z ? n1 : n2));
+		BiomePoint third = (n1 == smallest | n1 == second) ? ((n2 == smallest | n2 == second) ? n3 : n2) : n1;
 		// Calculate the slopes of the edges:
 		float m1 = (float)(second.x-smallest.x)/(second.z-smallest.z);
 		float m2 = (float)(third.x-smallest.x)/(third.z-smallest.z);
@@ -261,6 +250,9 @@ public class Region {
 		// Go through the lower-z-part of the triangle:
 		int minZ = alignToGrid(Math.max(smallest.z, 0), voxelSize);
 		int maxZ = Math.min(second.z, regionSize);
+		
+		long rand1 = rand.nextLong() | 1;
+		long rand2 = rand.nextLong() | 1;
 		for(int pz = minZ; pz < maxZ; pz += voxelSize) {
 			int dz = pz-smallest.z;
 			int xMin = (int)(m1*dz+smallest.x);
@@ -273,7 +265,8 @@ public class Region {
 			xMin = alignToGrid(Math.max(xMin, 0), voxelSize);
 			xMax = Math.min(xMax, regionMask);
 			for(int px = xMin; px <= xMax; px += voxelSize) {
-				interpolateBiomes(px, pz, n1, n2, n3, r12, r13, r23, heightMap, biomeMap, roughMap, voxelSize);
+				rand.setSeed(px*rand1 ^ pz*rand2);
+				interpolateBiomes(rand, px, pz, n1, n2, n3, r12, r13, r23, heightMap, biomeMap, roughMap, voxelSize);
 			}
 		}
 		// Go through the upper-z-part of the triangle:
@@ -292,7 +285,8 @@ public class Region {
 			xMin = alignToGrid(Math.max(xMin, 0), voxelSize);
 			xMax = Math.min(xMax, regionMask);
 			for(int px = xMin; px <= xMax; px += voxelSize) {
-				interpolateBiomes(px, pz, n1, n2, n3, r12, r13, r23, heightMap, biomeMap, roughMap, voxelSize);
+				rand.setSeed(px*rand1 ^ pz*rand2);
+				interpolateBiomes(rand, px, pz, n1, n2, n3, r12, r13, r23, heightMap, biomeMap, roughMap, voxelSize);
 			}
 		}
 	}
