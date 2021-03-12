@@ -244,7 +244,7 @@ public class CrystalCavernGenerator implements Generator {
 		// Choose some in world coordinates to start generating:
 		double worldX = (x + rand.nextFloat())*crystalChunkWorldSize;
 		double worldY = (y + rand.nextFloat())*crystalChunkWorldSize;
-		if(worldY > 0) return; // crystal caverns not generate close to the surface!
+		if(worldY > -128) return; // crystal caverns not generate close to the surface!
 		double worldZ = (z + rand.nextFloat())*crystalChunkWorldSize;
 		float direction = rand.nextFloat()*(float)Math.PI*2.0F;
 		float slope = (rand.nextFloat() - 0.5F)/4.0F;

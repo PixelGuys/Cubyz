@@ -47,7 +47,7 @@ public class LocalSurface extends Surface {
 	private int lastX = Integer.MAX_VALUE, lastY = Integer.MAX_VALUE, lastZ = Integer.MAX_VALUE; // Chunk coordinates of the last chunk update.
 	private int lastRegX = Integer.MAX_VALUE, lastRegZ = Integer.MAX_VALUE; // Region coordinates of the last chunk update.
 	private int regDRD; // double renderdistance of Region.
-	private final int worldSizeX = 65536, worldSizeZ = 16384;
+	private final int worldSizeX = 131072, worldSizeZ = 32768;
 	private ArrayList<Entity> entities = new ArrayList<>();
 	
 	private Block[] torusBlocks;
