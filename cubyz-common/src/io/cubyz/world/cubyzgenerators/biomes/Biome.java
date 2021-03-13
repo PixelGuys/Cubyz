@@ -57,16 +57,20 @@ public class Biome extends ChanceObject implements RegistryElement {
 	public final Type type;
 	public final float minHeight, maxHeight;
 	public final float roughness;
+	public final float hills;
+	public final float mountains;
 	public final Resource identifier;
 	public final BlockStructure struct;
 	public final boolean supportsRivers; // Whether the starting point of a river can be in this biome. If false rivers will be able to flow through this biome anyways.
 	public final StructureModel[] vegetationModels; // The first members in this array will get prioritized.
 	
-	public Biome(Resource id, String type, float min, float max, float roughness, float chance, BlockStructure str, boolean rivers, StructureModel ... models) {
+	public Biome(Resource id, String type, float min, float max, float roughness, float hills, float mountains, float chance, BlockStructure str, boolean rivers, StructureModel ... models) {
 		super(chance);
 		this.type = Type.valueOf(type);
 		identifier = id;
-		this.roughness = Math.max(roughness, 0.01f);
+		this.roughness = roughness;
+		this.hills = hills;
+		this.mountains = mountains;
 		minHeight = min;
 		maxHeight = max;
 		struct = str;

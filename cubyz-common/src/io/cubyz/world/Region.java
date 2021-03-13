@@ -34,6 +34,13 @@ public class Region {
 	protected ArrayList<BiomePoint> biomeList = new ArrayList<BiomePoint>(50);
 	protected int[] triangles;
 	
+	private static ThreadLocal<PerlinNoise> threadLocalNoise = new ThreadLocal<PerlinNoise>() {
+		@Override
+		protected PerlinNoise initialValue() {
+			return new PerlinNoise();
+		}
+	};
+	
 	public Region(int x, int z, long seed, Surface surface, CurrentSurfaceRegistries registries, TorusIO tio, int initialVoxelSize) {
 		this.wx = x;
 		this.wz = z;
@@ -76,7 +83,7 @@ public class Region {
 	}
 	
 	// TODO: less edgy terrain.
-	public void interpolateBiomes(Random rand, int x, int z, BiomePoint n1, BiomePoint n2, BiomePoint n3, Biome r12, Biome r13, Biome r23, float[][] heightMap, Biome[][] biomeMap, float[][] roughMap, int voxelSize) {
+	public void interpolateBiomes(Random rand, int x, int z, BiomePoint n1, BiomePoint n2, BiomePoint n3, Biome r12, Biome r13, Biome r23, float[][] heightMap, Biome[][] biomeMap, float[][] mountainMap, float[][] hillMap, float[][] roughMap, int voxelSize) {
 		float interpolationWeight = (n2.z - n3.z)*(n1.x - n3.x) + (n3.x - n2.x)*(n1.z - n3.z);
 		float w1 = ((n2.z - n3.z)*(x - n3.x) + (n3.x - n2.x)*(z - n3.z))/interpolationWeight;
 		float w2 = ((n3.z - n1.z)*(x - n3.x) + (n1.x - n3.x)*(z - n3.z))/interpolationWeight;
@@ -124,6 +131,8 @@ public class Region {
 		int mapX = x/voxelSize;
 		int mapZ = z/voxelSize;
 		heightMap[mapX][mapZ] = w1*n1.height + w2*n2.height + w3*n3.height;
+		
+		// Add roughness:
 		float roughness = w1*n1.biome.roughness + w2*n2.biome.roughness + w3*n3.biome.roughness;
 		heightMap[mapX][mapZ] += (roughMap[mapX][mapZ] - 0.5f)*roughness;
 		// In case of extreme roughness the terrain should "mirror" at the interpolated height limits(minHeight, maxHeight) of the biomes:
@@ -134,6 +143,19 @@ public class Region {
 			heightMap[mapX][mapZ] = 2*(maxHeight - minHeight) - heightMap[mapX][mapZ];
 		}
 		heightMap[mapX][mapZ] += minHeight;
+		
+		// Add mountains:
+		float mountains = w1*n1.biome.mountains + w2*n2.biome.mountains + w3*n3.biome.mountains;
+		heightMap[mapX][mapZ] += (mountainMap[mapX][mapZ] - 0.5f)*2*mountains;
+		
+		// In case of low height the terrain should "mirror" at the interpolated lower height limit of the biomes:
+		if(heightMap[mapX][mapZ] < minHeight) heightMap[mapX][mapZ] = 2*minHeight - heightMap[mapX][mapZ];
+		
+		// Add hills:
+		float hills = w1*n1.biome.hills + w2*n2.biome.hills + w3*n3.biome.hills;
+		heightMap[mapX][mapZ] += (hillMap[mapX][mapZ] - 0.5f)*2*hills;
+		
+		// Check if the biome fits into the height limits:
 		if(first.minHeight <= heightMap[mapX][mapZ] && first.maxHeight >= heightMap[mapX][mapZ]) {
 			biomeMap[mapX][mapZ] = first;
 		} else if(second.minHeight <= heightMap[mapX][mapZ] && second.maxHeight >= heightMap[mapX][mapZ]) {
@@ -220,7 +242,7 @@ public class Region {
 		return validBiomes.get(result);
 	}
 	
-	public void drawTriangle(BiomePoint n1, BiomePoint n2, BiomePoint n3, float[][] heightMap, Biome[][] biomeMap, float[][] roughMap, CurrentSurfaceRegistries registries, int voxelSize) {
+	public void drawTriangle(BiomePoint n1, BiomePoint n2, BiomePoint n3, float[][] heightMap, Biome[][] biomeMap, float[][] mountainMap, float[][] hillMap, float[][] roughMap, CurrentSurfaceRegistries registries, int voxelSize) {
 		Random rand = new Random(n1.x*5478361L ^ n1.z*5642785727L ^ n2.x*6734896731L ^ n2.z*657438643875L ^ n3.x*65783958734L ^ n3.z*673891094012L);
 		// Determine connecting biomes in case there is a conflict:
 		Biome r12 = n1.biome, r13 = n3.biome, r23 = n2.biome;
@@ -266,7 +288,7 @@ public class Region {
 			xMax = Math.min(xMax, regionMask);
 			for(int px = xMin; px <= xMax; px += voxelSize) {
 				rand.setSeed(px*rand1 ^ pz*rand2);
-				interpolateBiomes(rand, px, pz, n1, n2, n3, r12, r13, r23, heightMap, biomeMap, roughMap, voxelSize);
+				interpolateBiomes(rand, px, pz, n1, n2, n3, r12, r13, r23, heightMap, biomeMap, mountainMap, hillMap, roughMap, voxelSize);
 			}
 		}
 		// Go through the upper-z-part of the triangle:
@@ -286,7 +308,7 @@ public class Region {
 			xMax = Math.min(xMax, regionMask);
 			for(int px = xMin; px <= xMax; px += voxelSize) {
 				rand.setSeed(px*rand1 ^ pz*rand2);
-				interpolateBiomes(rand, px, pz, n1, n2, n3, r12, r13, r23, heightMap, biomeMap, roughMap, voxelSize);
+				interpolateBiomes(rand, px, pz, n1, n2, n3, r12, r13, r23, heightMap, biomeMap, mountainMap, hillMap, roughMap, voxelSize);
 			}
 		}
 	}
@@ -318,11 +340,20 @@ public class Region {
 		float[][] newHeightMap = new float[regionSize/voxelSize][regionSize/voxelSize];
 		
 		Biome[][] newBiomeMap = new Biome[regionSize/voxelSize][regionSize/voxelSize];
+		
+		// A ridgid noise map to generate interesting mountains.
+		float[][] mountainMap = threadLocalNoise.get().generateRidgidNoise(wx, wz, regionSize, regionSize, 1024, 16, seed ^ -954936678493L, surface.getSizeX(), surface.getSizeZ(), voxelSize, 0.5f);
+		
+		// A smooth map for smaller hills.
+		float[][] hillMap = threadLocalNoise.get().generateRidgidNoise(wx, wz, regionSize, regionSize, 128, 32, seed ^ -954936678493L, surface.getSizeX(), surface.getSizeZ(), voxelSize, 0.5f);
+		
+		// A fractal map to generate high-detail roughness.
 		float[][] roughMap = new float[regionSize/voxelSize][regionSize/voxelSize];
-		Noise.generateSparseFractalTerrain(wx/voxelSize, wz/voxelSize, regionSize/voxelSize, regionSize/voxelSize, 128/voxelSize, seed ^ -954936678493L, surface.getSizeX(), surface.getSizeZ(), roughMap, voxelSize); // TODO: Consider other Noise functions.
+		Noise.generateSparseFractalTerrain(wx/voxelSize, wz/voxelSize, regionSize/voxelSize, regionSize/voxelSize, 64/voxelSize, seed ^ -954936678493L, surface.getSizeX(), surface.getSizeZ(), roughMap, voxelSize);
+		
 		// "Render" the triangles onto the biome map:
 		for(int i = 0; i < triangles.length; i += 3) {
-			drawTriangle(biomeList.get(triangles[i]), biomeList.get(triangles[i+1]), biomeList.get(triangles[i+2]), newHeightMap, newBiomeMap, roughMap, registries, voxelSize);
+			drawTriangle(biomeList.get(triangles[i]), biomeList.get(triangles[i+1]), biomeList.get(triangles[i+2]), newHeightMap, newBiomeMap, mountainMap, hillMap, roughMap, registries, voxelSize);
 		}
 		
 		biomeMap = newBiomeMap;

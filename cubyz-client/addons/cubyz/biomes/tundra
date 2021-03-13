@@ -1,4 +1,6 @@
 type TUNDRA
 height 2 to 40
 ground_structure 0 to 1 cubyz:grass, 0 to 1 cubyz:gravel
-roughness 0.1
+roughness 10
+hills 15
+mountains 20

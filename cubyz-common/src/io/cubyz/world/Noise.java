@@ -36,8 +36,9 @@ public class Noise {
 		for(int px = 0; px < width; px++) {
 			for(int py = 0; py < height; py++) {
 				map[x0 + px][y0 + py] = bigMap[(wx&and)+px][(wy&and)+py];
-				if(map[x0 + px][y0 + py] >= 1.0f)
+				if(map[x0 + px][y0 + py] >= 1.0f) {
 					map[x0 + px][y0 + py] = 0.9999f;
+				}
 			}
 		}
 	}

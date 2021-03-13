@@ -192,7 +192,9 @@ public class AddonsMod {
 					ArrayList<BlockStructure.BlockStack> underground = new ArrayList<>();
 					ArrayList<StructureModel> vegetation = new ArrayList<>();
 					
-					float roughness = 1;
+					float roughness = 0;
+					float hills = 0;
+					float mountains = 0;
 					float minHeight = 0, maxHeight = 1;
 					float chance = 1.0f;
 					boolean supportsRivers = false;
@@ -225,6 +227,10 @@ public class AddonsMod {
 							} else {
 								if(line.startsWith("roughness")) {
 									roughness = Float.parseFloat(line.substring(9));
+								} else if(line.startsWith("hills")) {
+									hills = Float.parseFloat(line.substring(5));
+								} else if(line.startsWith("mountains")) {
+									mountains = Float.parseFloat(line.substring(9));
 								} else if(line.startsWith("height")) {
 									String[] heightArguments = line.substring(6).split("to");
 									minHeight = Float.parseFloat(heightArguments[0].trim());
@@ -263,7 +269,7 @@ public class AddonsMod {
 							}
 						}
 						
-						Biome biome = new Biome(res, type, minHeight, maxHeight, roughness, chance, new BlockStructure(underground.toArray(new BlockStructure.BlockStack[0])), supportsRivers, vegetation.toArray(new StructureModel[0]));
+						Biome biome = new Biome(res, type, minHeight, maxHeight, roughness, hills, mountains, chance, new BlockStructure(underground.toArray(new BlockStructure.BlockStack[0])), supportsRivers, vegetation.toArray(new StructureModel[0]));
 						reg.register(biome);
 						
 						buf.close();

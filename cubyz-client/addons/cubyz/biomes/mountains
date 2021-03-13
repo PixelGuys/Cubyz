@@ -1,7 +1,8 @@
 type MOUNTAIN_FOREST
 height 20 to 256
 ground_structure cubyz:grass, 1 to 2 cubyz:soil
-roughness 1.5
+mountains 400
+roughness 10
 
 rivers
 

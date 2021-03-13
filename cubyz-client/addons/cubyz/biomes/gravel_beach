@@ -1,7 +1,6 @@
 type OCEAN
 height -4 to 6
 ground_structure 2 to 3 cubyz:gravel
-roughness 0.05
 chance 0
 
 structures:

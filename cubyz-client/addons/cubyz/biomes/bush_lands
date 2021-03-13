@@ -1,7 +1,8 @@
 type SHRUBLAND
 height 20 to 60
 ground_structure cubyz:grass, 2 cubyz:soil
-roughness 0.2
+roughness 20
+hills 10
 
 rivers
 

@@ -1,7 +1,7 @@
 type DESERT
 height 2 to 40
 ground_structure 3 to 4 cubyz:sand
-roughness 0.1
+hills 20
 
 structures:
 	cubyz:simple_vegetation cubyz:cactus 0.01 2 3

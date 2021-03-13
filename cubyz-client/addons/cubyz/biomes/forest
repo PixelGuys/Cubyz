@@ -1,7 +1,8 @@
 type FOREST
 height 2 to 40
 ground_structure cubyz:grass, 2 to 3 cubyz:soil
-roughness 0.1
+roughness 10
+hills 10
 
 structures:
 	cubyz:simple_tree cubyz:oak_leaves cubyz:oak_log cubyz:oak_top 0.05 6 3 round

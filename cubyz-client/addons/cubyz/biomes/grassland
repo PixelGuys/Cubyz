@@ -1,7 +1,8 @@
 type GRASSLAND
 height 2 to 40
 ground_structure cubyz:grass, 2 to 3 cubyz:soil
-roughness 0
+roughness 1
+hills 5
 
 structures:
 	cubyz:simple_tree cubyz:oak_leaves cubyz:oak_log cubyz:oak_top 0.001 6 3 round
