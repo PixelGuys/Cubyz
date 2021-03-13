@@ -57,7 +57,6 @@ public class Server {
 	public static void loadGame() {
 		Constants.setGameSide(Side.SERVER);
 		logger.info("Searching mods..");
-		ArrayList<Object> mods = new ArrayList<>();
 		ArrayList<File> modSearchPath = new ArrayList<>();
 		modSearchPath.add(new File("mods"));
 		modSearchPath.add(new File("mods/" + Constants.GAME_VERSION));
@@ -87,29 +86,29 @@ public class Server {
 		
 		for (Class<?> cl : allClasses) {
 			try {
-				mods.add(cl.getConstructor().newInstance());
+				ModLoader.mods.add(cl.getConstructor().newInstance());
 			} catch (InstantiationException | IllegalAccessException | IllegalArgumentException
 					| InvocationTargetException | NoSuchMethodException | SecurityException e) {
 				e.printStackTrace();
 			}
 		}
 		
-		for (int i = 0; i < mods.size(); i++) {
-			Object mod = mods.get(i);
+		for (int i = 0; i < ModLoader.mods.size(); i++) {
+			Object mod = ModLoader.mods.get(i);
 			Mod modA = mod.getClass().getAnnotation(Mod.class);
 			logger.info("Pre-initiating " + modA.name() + " (" + modA.id() + ")");
 			ModLoader.preInit(mod, Side.SERVER);
 		}
 		
-		for (int i = 0; i < mods.size(); i++) {
-			Object mod = mods.get(i);
+		for (int i = 0; i < ModLoader.mods.size(); i++) {
+			Object mod = ModLoader.mods.get(i);
 			Mod modA = mod.getClass().getAnnotation(Mod.class);
 			logger.info("Initiating " + modA.name() + " (" + modA.id() + ")");
 			ModLoader.init(mod);
 		}
 		
-		for (int i = 0; i < mods.size(); i++) {
-			Object mod = mods.get(i);
+		for (int i = 0; i < ModLoader.mods.size(); i++) {
+			Object mod = ModLoader.mods.get(i);
 			Mod modA = mod.getClass().getAnnotation(Mod.class);
 			logger.info("Post-initiating " + modA.name() + " (" + modA.id() + ")");
 			ModLoader.postInit(mod);

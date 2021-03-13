@@ -53,7 +53,6 @@ public class LoadThread extends Thread {
 		l.setStep(2, 0, 0); // load mods
 		
 		// Load Mods (via reflection)
-		ArrayList<Object> mods = new ArrayList<>();
 		ArrayList<File> modSearchPath = new ArrayList<>();
 		modSearchPath.add(new File("mods"));
 		modSearchPath.add(new File("mods/" + Constants.GAME_VERSION));
@@ -88,47 +87,47 @@ public class LoadThread extends Thread {
 		for (Class<?> cl : allClasses) {
 			logger.info("Mod class present: " + cl.getName());
 			try {
-				mods.add(cl.getConstructor().newInstance());
+				ModLoader.mods.add(cl.getConstructor().newInstance());
 			} catch (Exception e) {
 				logger.warning("Error while loading mod:");
 				e.printStackTrace();
 			}
 		}
 		logger.info("Mod list complete");
-		ModLoader.sortMods(mods);
+		ModLoader.sortMods();
 		
 		// TODO re-add pre-init
-		l.setStep(2, 0, mods.size());
-		for (int i = 0; i < mods.size(); i++) {
-			l.setStep(2, i+1, mods.size());
-			Object mod = mods.get(i);
+		l.setStep(2, 0, ModLoader.mods.size());
+		for (int i = 0; i < ModLoader.mods.size(); i++) {
+			l.setStep(2, i+1, ModLoader.mods.size());
+			Object mod = ModLoader.mods.get(i);
 			logger.info("Pre-initiating " + mod);
 			ModLoader.preInit(mod, Side.CLIENT);
 		}
 		
 		// Between pre-init and init code
-		l.setStep(3, 0, mods.size());
+		l.setStep(3, 0, ModLoader.mods.size());
 		
-		for (int i = 0; i < mods.size(); i++) {
-			Object mod = mods.get(i);
+		for (int i = 0; i < ModLoader.mods.size(); i++) {
+			Object mod = ModLoader.mods.get(i);
 			ModLoader.registerEntries(mod, "block");
 		}
-		for (int i = 0; i < mods.size(); i++) {
-			Object mod = mods.get(i);
+		for (int i = 0; i < ModLoader.mods.size(); i++) {
+			Object mod = ModLoader.mods.get(i);
 			ModLoader.registerEntries(mod, "item");
 		}
-		for (int i = 0; i < mods.size(); i++) {
-			Object mod = mods.get(i);
+		for (int i = 0; i < ModLoader.mods.size(); i++) {
+			Object mod = ModLoader.mods.get(i);
 			ModLoader.registerEntries(mod, "entity");
 		}
-		for (int i = 0; i < mods.size(); i++) {
-			Object mod = mods.get(i);
+		for (int i = 0; i < ModLoader.mods.size(); i++) {
+			Object mod = ModLoader.mods.get(i);
 			ModLoader.registerEntries(mod, "biome");
 		}
 		
-		for (int i = 0; i < mods.size(); i++) {
-			l.setStep(3, i+1, mods.size());
-			Object mod = mods.get(i);
+		for (int i = 0; i < ModLoader.mods.size(); i++) {
+			l.setStep(3, i+1, ModLoader.mods.size());
+			Object mod = ModLoader.mods.get(i);
 			logger.info("Initiating " + mod);
 			ModLoader.init(mod);
 		}
@@ -184,10 +183,10 @@ public class LoadThread extends Thread {
 			return;
 		}
 		
-		l.setStep(5, 0, mods.size());
-		for (int i = 0; i < mods.size(); i++) {
-			l.setStep(5, i+1, mods.size());
-			Object mod = mods.get(i);
+		l.setStep(5, 0, ModLoader.mods.size());
+		for (int i = 0; i < ModLoader.mods.size(); i++) {
+			l.setStep(5, i+1, ModLoader.mods.size());
+			Object mod = ModLoader.mods.get(i);
 			logger.info("Post-initiating " + mod);
 			ModLoader.postInit(mod);
 		}

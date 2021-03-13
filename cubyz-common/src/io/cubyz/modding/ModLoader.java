@@ -4,10 +4,11 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 
 import io.cubyz.api.CubyzRegistries;
+import io.cubyz.api.CurrentSurfaceRegistries;
 import io.cubyz.api.EventHandler;
 import io.cubyz.api.LoadOrder;
 import io.cubyz.api.Mod;
@@ -23,6 +24,7 @@ import static io.cubyz.CubyzLogger.logger;
  * Most methods should ALWAYS be found as if it were on Side.SERVER
  */
 public class ModLoader {
+	public static final ArrayList<Object> mods = new ArrayList<Object>();
 	
 	public static boolean isCorrectSide(Side currentSide, Method method) {
 		boolean haveAnnot = false;
@@ -67,7 +69,7 @@ public class ModLoader {
 		return null;
 	}
 	
-	public static void sortMods(List<Object> mods) {
+	public static void sortMods() {
 		HashMap<String, Object> modIds = new HashMap<>();
 		for (Object mod : mods) {
 			Mod annot = mod.getClass().getAnnotation(Mod.class);
@@ -125,6 +127,19 @@ public class ModLoader {
 		Method m = eventHandlerMethodSided(mod, "postInit", Side.SERVER);
 		if (m != null)
 			safeMethodInvoke(true, m, mod);
+	}
+	
+	/**
+	 * Calls mods after the surface has been generated.
+	 * @param mod
+	 * @param reg registries of this surface.
+	 */
+	public static void postSurfaceGen(CurrentSurfaceRegistries reg) {
+		for(Object mod : mods) {
+			Method m = eventHandlerMethodSided(mod, "postSurfaceGen", Side.SERVER);
+			if (m != null)
+				safeMethodInvoke(true, m, mod, reg);
+		}
 	}
 	
 	static void injectProxy(Object mod, Side side) {

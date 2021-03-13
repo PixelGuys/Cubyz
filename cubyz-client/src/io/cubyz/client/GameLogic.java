@@ -257,6 +257,9 @@ public class GameLogic implements ClientConnection {
 				ms.play();
 			}
 		}
+		
+		// Call mods for this new surface. Mods sometimes need to do extra stuff for the specific surface.
+		
 	}
 
 	public void requestJoin(String host) {

@@ -144,7 +144,6 @@ public class LocalSurface extends Surface {
 		}
 		
 		biomeMap = BiomeGenerator.generateTypeMap(localSeed, worldSizeX/Region.regionSize, worldSizeZ/Region.regionSize);
-		//setChunkQueueSize(torus.world.getRenderDistance() << 2);
 	}
 	
 	public int generate(ArrayList<Block> blockList, ArrayList<Ore> ores, int ID) {
