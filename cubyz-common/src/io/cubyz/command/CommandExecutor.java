@@ -7,7 +7,7 @@ public class CommandExecutor {
 
 	public static void execute(String cmd, CommandSource source) {
 		Registry<CommandBase> commandRegistry = CubyzRegistries.COMMAND_REGISTRY;
-		String[] split = cmd.split(" ");
+		String[] split = cmd.split("(\\s)+");
 		if (split.length < 1) {
 			return;
 		}
