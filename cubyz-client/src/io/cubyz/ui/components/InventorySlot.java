@@ -97,6 +97,7 @@ public class InventorySlot extends Component {
 			pressedRight = pressedLeft = false;
 			// Take all items from this slot if possible, no matter what button is pressed:
 			if(carried.getItem() == null) {
+				if(reference.getItem() == null) return true;
 				carried.setItem(reference.getItem());
 			} else if(carried.getItem() != reference.getItem()) {
 				return false; // Cannot pick it up.
