@@ -37,6 +37,7 @@ import io.cubyz.items.Inventory;
 import io.cubyz.items.Item;
 import io.cubyz.items.ItemBlock;
 import io.cubyz.items.tools.Tool;
+import io.cubyz.modding.ModLoader;
 import io.cubyz.multiplayer.GameProfile;
 import io.cubyz.multiplayer.LoginToken;
 import io.cubyz.multiplayer.client.MPClient;
@@ -259,7 +260,7 @@ public class GameLogic implements ClientConnection {
 		}
 		
 		// Call mods for this new surface. Mods sometimes need to do extra stuff for the specific surface.
-		
+		ModLoader.postSurfaceGen(surface.getCurrentRegistries());
 	}
 
 	public void requestJoin(String host) {

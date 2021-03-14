@@ -108,11 +108,7 @@ public class BiomeGenerator {
 					}
 				} else {
 					if(temp <= FROST_POINT) {
-						if(humid <= WET_POINT) {
-							map[x][y] = Biome.Type.PEAK;
-						} else {
-							map[x][y] = Biome.Type.GLACIER;
-						}
+						map[x][y] = Biome.Type.PEAK;
 					} else {
 						if(humid <= WET_POINT) {
 							map[x][y] = Biome.Type.MOUNTAIN_GRASSLAND;

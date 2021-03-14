@@ -2,7 +2,6 @@ package io.cubyz.world;
 
 import java.util.ArrayList;
 import java.util.Random;
-import java.util.function.Consumer;
 
 import io.cubyz.algorithms.DelaunayTriangulator;
 import io.cubyz.api.CurrentSurfaceRegistries;
@@ -70,11 +69,32 @@ public class Region {
 		final float height;
 		final Biome biome;
 		final int x, z;
+		final long seed;
 		public BiomePoint(Random rand, int x, int z, Biome biome) {
 			this.x = x;
 			this.z = z;
 			this.biome = biome;
 			height = (biome.maxHeight - biome.minHeight)*rand.nextFloat() + biome.minHeight;
+			seed = rand.nextLong();
+		}
+		
+		public Biome getFittingReplacement(float height) {
+			// Check if the existing Biome fits and if not choose a fitting replacement:
+			Biome biome = this.biome;
+			if(height < biome.minHeight) {
+				Random rand = new Random(seed ^ 654295489239294L);
+				while(height < biome.minHeight) {
+					if(biome.lowerReplacements.length == 0) break;
+					biome = biome.lowerReplacements[rand.nextInt(biome.lowerReplacements.length)];
+				}
+			} else if(height > biome.maxHeight) {
+				Random rand = new Random(seed ^ 56473865395165948L);
+				while(height > biome.maxHeight) {
+					if(biome.upperReplacements.length == 0) break;
+					biome = biome.upperReplacements[rand.nextInt(biome.upperReplacements.length)];
+				}
+			}
+			return biome;
 		}
 	}
 	
@@ -83,7 +103,7 @@ public class Region {
 	}
 	
 	// TODO: less edgy terrain.
-	public void interpolateBiomes(Random rand, int x, int z, BiomePoint n1, BiomePoint n2, BiomePoint n3, Biome r12, Biome r13, Biome r23, float[][] heightMap, Biome[][] biomeMap, float[][] mountainMap, float[][] hillMap, float[][] roughMap, int voxelSize) {
+	public void interpolateBiomes(Random rand, int x, int z, BiomePoint n1, BiomePoint n2, BiomePoint n3, float[][] heightMap, Biome[][] biomeMap, float[][] mountainMap, float[][] hillMap, float[][] roughMap, int voxelSize) {
 		float interpolationWeight = (n2.z - n3.z)*(n1.x - n3.x) + (n3.x - n2.x)*(n1.z - n3.z);
 		float w1 = ((n2.z - n3.z)*(x - n3.x) + (n3.x - n2.x)*(z - n3.z))/interpolationWeight;
 		float w2 = ((n3.z - n1.z)*(x - n3.x) + (n1.x - n3.x)*(z - n3.z))/interpolationWeight;
@@ -105,29 +125,6 @@ public class Region {
 		biomeWeight1 /= sum;
 		biomeWeight2 /= sum;
 		biomeWeight3 /= sum;
-		// Sort them by value:
-		Biome first = n1.biome;
-		Biome second = n2.biome;
-		Biome replacement = r12;
-		if(biomeWeight2 > biomeWeight1) {
-			first = n2.biome;
-			second = n1.biome;
-			if(biomeWeight3 > biomeWeight2) {
-				first = n3.biome;
-				second = n2.biome;
-				replacement = r23;
-			}
-		} else if(biomeWeight3 > biomeWeight1) {
-			first = n3.biome;
-			replacement = r23;
-			if(biomeWeight1 > biomeWeight2) {
-				second = n1.biome;
-				replacement = r13;
-			}
-		} else if(biomeWeight3 > biomeWeight2) {
-			second = n3.biome;
-			replacement = r13;
-		}
 		int mapX = x/voxelSize;
 		int mapZ = z/voxelSize;
 		heightMap[mapX][mapZ] = w1*n1.height + w2*n2.height + w3*n3.height;
@@ -154,50 +151,20 @@ public class Region {
 		// Add hills:
 		float hills = w1*n1.biome.hills + w2*n2.biome.hills + w3*n3.biome.hills;
 		heightMap[mapX][mapZ] += (hillMap[mapX][mapZ] - 0.5f)*2*hills;
-		
-		// Check if the biome fits into the height limits:
-		if(first.minHeight <= heightMap[mapX][mapZ] && first.maxHeight >= heightMap[mapX][mapZ]) {
-			biomeMap[mapX][mapZ] = first;
-		} else if(second.minHeight <= heightMap[mapX][mapZ] && second.maxHeight >= heightMap[mapX][mapZ]) {
-			biomeMap[mapX][mapZ] = second;
-		} else {
-			// Use a replacement biome, such as a beach:
-			
-			// Check if the replacement biome fits into the height region:
-			if(replacement.minHeight <= heightMap[mapX][mapZ] && replacement.maxHeight >= heightMap[mapX][mapZ]) {
-				biomeMap[mapX][mapZ] = replacement;
-			} else {
-				// Check the other possible replacement biomes instead:
-				if(r12.minHeight <= heightMap[mapX][mapZ] && r12.maxHeight >= heightMap[mapX][mapZ]) {
-					biomeMap[mapX][mapZ] = r12;
-				} else if(r13.minHeight <= heightMap[mapX][mapZ] && r13.maxHeight >= heightMap[mapX][mapZ]) {
-					biomeMap[mapX][mapZ] = r13;
-				} else if(r23.minHeight <= heightMap[mapX][mapZ] && r23.maxHeight >= heightMap[mapX][mapZ]) {
-					biomeMap[mapX][mapZ] = r23;
-				} else {
-					// If none of the replacement biomes fits, try to choose the biome that fits best:
-					float b1Score = Math.max(n1.biome.minHeight - heightMap[mapX][mapZ], heightMap[mapX][mapZ] - n1.biome.maxHeight);
-					float b2Score = Math.max(n2.biome.minHeight - heightMap[mapX][mapZ], heightMap[mapX][mapZ] - n2.biome.maxHeight);
-					float b3Score = Math.max(n3.biome.minHeight - heightMap[mapX][mapZ], heightMap[mapX][mapZ] - n3.biome.maxHeight);
-					float replacementScore = Math.max(replacement.minHeight - heightMap[mapX][mapZ], heightMap[mapX][mapZ] - replacement.maxHeight);
-					Biome biome = n1.biome;
-					float maxScore = b1Score;
-					if(b2Score < maxScore) {
-						maxScore = b2Score;
-						biome = n2.biome;
-					}
-					if(b3Score < maxScore) {
-						maxScore = b3Score;
-						biome = n3.biome;
-					}
-					if(replacementScore < maxScore) {
-						maxScore = replacementScore;
-						biome = replacement;
-					}
-					biomeMap[mapX][mapZ] = biome;
-				}
+
+		// Get the closest biome:
+		BiomePoint first = n1;
+		if(biomeWeight2 > biomeWeight1) {
+			first = n2;
+			if(biomeWeight3 > biomeWeight2) {
+				first = n3;
 			}
+		} else if(biomeWeight3 > biomeWeight1) {
+			first = n3;
 		}
+		// Get a replacement biome that fits the height. Make the terrain rough by using a slightly randomized heightmap:
+		biomeMap[mapX][mapZ] = first.getFittingReplacement(heightMap[mapX][mapZ] + rand.nextFloat()*4 - 2);
+		
 		this.minHeight = Math.min(this.minHeight, (int)heightMap[mapX][mapZ]);
 		this.minHeight = Math.max(this.minHeight, 0);
 		this.maxHeight = Math.max(this.maxHeight, (int)heightMap[mapX][mapZ]);
@@ -220,47 +187,8 @@ public class Region {
 		}
 	}
 	
-	public Biome findReplacement(float minHeight, float maxHeight, RandomList<Biome> biomes1, RandomList<Biome> biomes2, float random) {
-		ArrayList<Biome> validBiomes = new ArrayList<Biome>();
-		Consumer<Biome> action = (b) -> {
-			if(b.minHeight <= minHeight & b.maxHeight >= maxHeight) {
-				validBiomes.add(b);
-			}
-		};
-		biomes1.forEach(action);
-		biomes2.forEach(action);
-		if(validBiomes.size() == 0) {
-			// Anything is better than nothing, so choose a random biome from the whole list:
-			int result = (int)(random*(biomes1.size() + biomes2.size()));
-			if(result < biomes1.size()) {
-				return biomes1.get(result);
-			} else {
-				return biomes2.get(result - biomes1.size());
-			}
-		}
-		int result = (int)(random*validBiomes.size());
-		return validBiomes.get(result);
-	}
-	
 	public void drawTriangle(BiomePoint n1, BiomePoint n2, BiomePoint n3, float[][] heightMap, Biome[][] biomeMap, float[][] mountainMap, float[][] hillMap, float[][] roughMap, CurrentSurfaceRegistries registries, int voxelSize) {
 		Random rand = new Random(n1.x*5478361L ^ n1.z*5642785727L ^ n2.x*6734896731L ^ n2.z*657438643875L ^ n3.x*65783958734L ^ n3.z*673891094012L);
-		// Determine connecting biomes in case there is a conflict:
-		Biome r12 = n1.biome, r13 = n3.biome, r23 = n2.biome;
-		if(n1.biome.minHeight > n2.biome.maxHeight) {
-			r12 = findReplacement(n2.biome.maxHeight, n1.biome.minHeight, registries.biomeRegistry.byTypeBiomes.get(n1.biome.type), registries.biomeRegistry.byTypeBiomes.get(n2.biome.type), rand.nextFloat());
-		} else if(n1.biome.maxHeight < n2.biome.minHeight) {
-			r12 = findReplacement(n1.biome.maxHeight, n2.biome.minHeight, registries.biomeRegistry.byTypeBiomes.get(n1.biome.type), registries.biomeRegistry.byTypeBiomes.get(n2.biome.type), rand.nextFloat());
-		}
-		if(n1.biome.minHeight > n3.biome.maxHeight) {
-			r13 = findReplacement(n3.biome.maxHeight, n1.biome.minHeight, registries.biomeRegistry.byTypeBiomes.get(n1.biome.type), registries.biomeRegistry.byTypeBiomes.get(n3.biome.type), rand.nextFloat());
-		} else if(n1.biome.maxHeight < n3.biome.minHeight) {
-			r13 = findReplacement(n1.biome.maxHeight, n3.biome.minHeight, registries.biomeRegistry.byTypeBiomes.get(n1.biome.type), registries.biomeRegistry.byTypeBiomes.get(n3.biome.type), rand.nextFloat());
-		}
-		if(n2.biome.minHeight > n3.biome.maxHeight) {
-			r23 = findReplacement(n3.biome.maxHeight, n2.biome.minHeight, registries.biomeRegistry.byTypeBiomes.get(n2.biome.type), registries.biomeRegistry.byTypeBiomes.get(n3.biome.type), rand.nextFloat());
-		} else if(n2.biome.maxHeight < n3.biome.minHeight) {
-			r23 = findReplacement(n2.biome.maxHeight, n3.biome.minHeight, registries.biomeRegistry.byTypeBiomes.get(n2.biome.type), registries.biomeRegistry.byTypeBiomes.get(n3.biome.type), rand.nextFloat());
-		}
 		// Sort them by z coordinate:
 		BiomePoint smallest = n1.z < n2.z ? (n1.z < n3.z ? n1 : n3) : (n2.z < n3.z ? n2 : n3);
 		BiomePoint second = smallest == n1 ? (n2.z < n3.z ? n2 : n3) : (smallest == n2 ? (n1.z < n3.z ? n1 : n3) : (n1.z < n2.z ? n1 : n2));
@@ -288,7 +216,7 @@ public class Region {
 			xMax = Math.min(xMax, regionMask);
 			for(int px = xMin; px <= xMax; px += voxelSize) {
 				rand.setSeed(px*rand1 ^ pz*rand2);
-				interpolateBiomes(rand, px, pz, n1, n2, n3, r12, r13, r23, heightMap, biomeMap, mountainMap, hillMap, roughMap, voxelSize);
+				interpolateBiomes(rand, px, pz, n1, n2, n3, heightMap, biomeMap, mountainMap, hillMap, roughMap, voxelSize);
 			}
 		}
 		// Go through the upper-z-part of the triangle:
@@ -308,7 +236,7 @@ public class Region {
 			xMax = Math.min(xMax, regionMask);
 			for(int px = xMin; px <= xMax; px += voxelSize) {
 				rand.setSeed(px*rand1 ^ pz*rand2);
-				interpolateBiomes(rand, px, pz, n1, n2, n3, r12, r13, r23, heightMap, biomeMap, mountainMap, hillMap, roughMap, voxelSize);
+				interpolateBiomes(rand, px, pz, n1, n2, n3, heightMap, biomeMap, mountainMap, hillMap, roughMap, voxelSize);
 			}
 		}
 	}

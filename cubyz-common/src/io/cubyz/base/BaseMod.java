@@ -1,8 +1,10 @@
 package io.cubyz.base;
 
 import java.io.File;
+import java.util.ArrayList;
 
 import io.cubyz.api.CubyzRegistries;
+import io.cubyz.api.CurrentSurfaceRegistries;
 import io.cubyz.api.EventHandler;
 import io.cubyz.api.Mod;
 import io.cubyz.api.NoIDRegistry;
@@ -80,5 +82,50 @@ public class BaseMod {
 	public void registerModifiers(Registry<Modifier> reg) {
 		reg.register(new FallingApart());
 		reg.register(new Regrowth());
+	}
+
+	@EventHandler(type = "postSurfaceGen")
+	public void postSurfaceGen(CurrentSurfaceRegistries registries) {
+		// Get a list of replacement biomes for each biome:
+		for(Biome biome : registries.biomeRegistry.registered(new Biome[0])) {
+			ArrayList<Biome> replacements = new ArrayList<Biome>();
+			// Check lower replacements:
+			// Check if there are replacement biomes of the same type:
+			registries.biomeRegistry.byTypeBiomes.get(biome.type).forEach(replacement -> {
+				if(replacement.maxHeight > biome.minHeight && replacement.minHeight < biome.minHeight) {
+					replacements.add(replacement);
+				}
+			});
+			// If that doesn't work, check for the next smaller height region:
+			if(replacements.size() == 0) {
+				Biome.checkLowerTypesInRegistry(biome.type, replacement -> {
+					if(replacement.maxHeight > biome.minHeight && replacement.minHeight < biome.minHeight) {
+						replacements.add(replacement);
+					}
+				}, registries.biomeRegistry);
+			}
+			biome.lowerReplacements = replacements.toArray(biome.lowerReplacements);
+			
+			replacements.clear();
+			// Check upper replacements:
+			// Check if there are replacement biomes of the same type:
+			registries.biomeRegistry.byTypeBiomes.get(biome.type).forEach(replacement -> {
+				if(replacement.minHeight < biome.maxHeight && replacement.maxHeight > biome.maxHeight) {
+					replacements.add(replacement);
+				}
+			});
+			// If that doesn't work, check for the next smaller height region:
+			if(replacements.size() == 0) {
+				Biome.checkHigherTypesInRegistry(biome.type, replacement -> {
+					if(replacement.minHeight < biome.maxHeight && replacement.maxHeight > biome.maxHeight) {
+						replacements.add(replacement);
+					}
+				}, registries.biomeRegistry);
+			}
+			for(Biome b : replacements)  {
+				System.out.println(b);
+			}
+			biome.upperReplacements = replacements.toArray(biome.upperReplacements);
+		}
 	}
 }

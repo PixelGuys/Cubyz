@@ -1,5 +1,5 @@
 type ARCTIC_OCEAN
-height -100 to 0
+height -100 to -2
 ground_structure 1 to 2 cubyz:cobblestone
 roughness 20
 hills 10
