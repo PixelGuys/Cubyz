@@ -113,7 +113,7 @@ public class MeshSelectionDetector {
 				Vector3i neighborDir = new Vector3i();
 				// Check if stuff can be added to the block itself:
 				if(b == bi.getBlock()) {
-					if(b.mode.generateData(relativePos, dir, neighborDir, data, false)) {
+					if(b.mode.generateData(Cubyz.surface, bi.x, bi.y, bi.z, relativePos, dir, neighborDir, data, false)) {
 						surface.updateBlockData(bi.x, bi.y, bi.z, data.data);
 						inv.getStack(selectedSlot).add(-1);
 						return;
@@ -127,12 +127,12 @@ public class MeshSelectionDetector {
 				boolean dataOnlyUpdate = surface.getBlock(neighbor.x, neighbor.y, neighbor.z) == b;
 				if(dataOnlyUpdate) {
 					data.data = surface.getBlockData(neighbor.x, neighbor.y, neighbor.z);
-					if(b.mode.generateData(relativePos, dir, neighborDir, data, false)) {
+					if(b.mode.generateData(Cubyz.surface, neighbor.x, neighbor.y, neighbor.z, relativePos, dir, neighborDir, data, false)) {
 						surface.updateBlockData(neighbor.x, neighbor.y, neighbor.z, data.data);
 						inv.getStack(selectedSlot).add(-1);
 					}
 				} else {
-					if(b.mode.generateData(relativePos, dir, neighborDir, data, true)) {
+					if(b.mode.generateData(Cubyz.surface, neighbor.x, neighbor.y, neighbor.z, relativePos, dir, neighborDir, data, true)) {
 						surface.placeBlock(neighbor.x, neighbor.y, neighbor.z, b, data.data);
 						inv.getStack(selectedSlot).add(-1);
 					}

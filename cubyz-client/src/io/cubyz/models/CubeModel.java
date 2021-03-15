@@ -2,7 +2,7 @@ package io.cubyz.models;
 
 import io.cubyz.api.Resource;
 import io.cubyz.client.Meshes;
-import io.cubyz.rendering.StaticMeshesLoader;
+import io.cubyz.rendering.ModelLoader;
 import io.cubyz.util.FloatFastList;
 import io.cubyz.util.IntFastList;
 
@@ -99,11 +99,11 @@ public class CubeModel extends Model {
 	
 	
 	public static void registerCubeModels() {
-		Model standardCube = StaticMeshesLoader.loadModelData(new Resource("", ""), "assets/cubyz/models/3d/block.obj");
+		Model standardCube = ModelLoader.loadModel(new Resource("", ""), "assets/cubyz/models/3d/block.obj");
 		standardCube = new CubeModel(new Resource("cubyz", "block.obj"), standardCube);
 		Meshes.models.register(standardCube);
 		
-		Model sidedCube = StaticMeshesLoader.loadModelData(new Resource("", ""), "assets/cubyz/models/3d/persidetexture.obj");
+		Model sidedCube = ModelLoader.loadModel(new Resource("", ""), "assets/cubyz/models/3d/persidetexture.obj");
 		sidedCube = new CubeModel(new Resource("cubyz", "persidetexture.obj"), sidedCube);
 		Meshes.models.register(sidedCube);
 	}

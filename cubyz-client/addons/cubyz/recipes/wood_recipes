@@ -26,3 +26,8 @@ shaped
 C
 S
 result 8*cubyz:torch
+
+shaped
+S P S
+S P S
+result 6*cubyz:oak_fence

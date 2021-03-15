@@ -23,7 +23,8 @@ import io.cubyz.client.Cubyz;
 import io.cubyz.client.GameLauncher;
 import io.cubyz.entity.EntityType;
 import io.cubyz.modding.ModLoader;
-import io.cubyz.rendering.StaticMeshesLoader;
+import io.cubyz.rendering.Mesh;
+import io.cubyz.rendering.ModelLoader;
 import io.cubyz.ui.LoadingGUI;
 import io.cubyz.utils.ResourceContext;
 import io.cubyz.utils.ResourceManager;
@@ -165,9 +166,7 @@ public class LoadThread extends Thread {
 				}
 				if(finishedMeshes) {
 					try {
-						GameLauncher.logic.skyBodyMesh = StaticMeshesLoader.load(new Resource("cubyz:sky_body.obj"),
-								ResourceManager.lookupPath(ResourceManager.contextToLocal(ResourceContext.MODEL3D, new Resource("cubyz:sky_body.obj"))), // TODO: Use a torus model.
-								ResourceManager.lookupPath("cubyz/models/3d/"))[0];
+						GameLauncher.logic.skyBodyMesh = new Mesh(ModelLoader.loadModel(new Resource("cubyz:sky_body.obj"), ResourceManager.lookupPath(ResourceManager.contextToLocal(ResourceContext.MODEL3D, new Resource("cubyz:sky_body.obj")))));
 					} catch (Exception e) {
 						e.printStackTrace();
 					}

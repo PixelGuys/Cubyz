@@ -77,7 +77,6 @@ public class Recipe {
 			if(braek)
 				break;
 		}
-		
 		if(xLen < x)
 			return null;
 		// Remove all rows containing null
@@ -115,8 +114,8 @@ public class Recipe {
 		
 		// Check the remaining structure for the needed shape:
 		int index = 0;
-		for(int i = x0; i < x0+xLen; i++) {
-			for(int j = y0; j < y0+yLen; j++) {
+		for(int j = y0; j < y0+yLen; j++) {
+			for(int i = x0; i < x0+xLen; i++) {
 				if(items[i+j*size] != pattern[index])
 					return null;
 				index++;

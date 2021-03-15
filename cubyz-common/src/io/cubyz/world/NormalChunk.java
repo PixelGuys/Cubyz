@@ -234,13 +234,26 @@ public class NormalChunk extends Chunk {
 					break;
 				}
 			}
-			
 			for (int i = 0; i < neighbors.length; i++) {
 				if(neighbors[i] != null) {
 					int x2 = x+neighborRelativeX[i];
 					int y2 = y+neighborRelativeY[i];
 					int z2 = z+neighborRelativeZ[i];
-					NormalChunk ch = getChunk(x2 + wx, y2 + wy, z2 + wz);
+					int nx = x2 + wx;
+					int ny = y2 + wy;
+					int nz = z2 + wz;
+					NormalChunk ch = getChunk(nx, ny, nz);
+					if(neighbors[i].mode.dependsOnNeightbors()) {
+						byte oldData = ch.getBlockData(nx & chunkMask, ny & chunkMask, nz & chunkMask);
+						Byte newData = neighbors[i].mode.updateData(oldData, i ^ 1, b);
+						if(newData == null) {
+							surface.removeBlock(nx, ny, nz);
+							break; // Break here to prevent making stuff with non-existent blocks.
+						} else if(newData.byteValue() != oldData) {
+							surface.updateBlockData(nx, ny, nz, newData);
+							// TODO: Eventual item drops.
+						}
+					}
 					if (ch.contains(x2 & chunkMask, y2 & chunkMask, z2 & chunkMask)) {
 						byte[] dataN1 = new byte[6];
 						int[] indices1 = new int[6];
@@ -405,7 +418,7 @@ public class NormalChunk extends Chunk {
 				// Check if the block is structurally depending on the removed block:
 				if(neighbor.mode.dependsOnNeightbors()) {
 					byte oldData = ch.getBlockData(nx & chunkMask, ny & chunkMask, nz & chunkMask);
-					Byte newData = neighbor.mode.updateData(oldData, i ^ 1);
+					Byte newData = neighbor.mode.updateData(oldData, i ^ 1, null);
 					if(newData == null) {
 						surface.removeBlock(nx, ny, nz);
 						break; // Break here to prevent making a non-existent block visible.

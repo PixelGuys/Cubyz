@@ -122,9 +122,6 @@ public class BaseMod {
 					}
 				}, registries.biomeRegistry);
 			}
-			for(Biome b : replacements)  {
-				System.out.println(b);
-			}
 			biome.upperReplacements = replacements.toArray(biome.upperReplacements);
 		}
 	}

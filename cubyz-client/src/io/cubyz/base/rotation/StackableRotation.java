@@ -9,6 +9,7 @@ import org.joml.Vector4f;
 
 import io.cubyz.CubyzLogger;
 import io.cubyz.api.Resource;
+import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.blocks.RotationMode;
 import io.cubyz.client.Meshes;
@@ -19,6 +20,7 @@ import io.cubyz.util.ByteWrapper;
 import io.cubyz.util.FloatFastList;
 import io.cubyz.util.IntFastList;
 import io.cubyz.world.NormalChunk;
+import io.cubyz.world.Surface;
 
 /**
  * For stackable partial blocks, like snow.
@@ -33,7 +35,7 @@ public class StackableRotation implements RotationMode {
 	}
 
 	@Override
-	public boolean generateData(Vector3f relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, ByteWrapper currentData, boolean blockPlacing) {
+	public boolean generateData(Surface surface, int x, int y, int z, Vector3f relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, ByteWrapper currentData, boolean blockPlacing) {
 		if(blockPlacing) {
 			currentData.data = 1;
 			return true;
@@ -64,7 +66,7 @@ public class StackableRotation implements RotationMode {
 	}
 
 	@Override
-	public Byte updateData(byte data, int dir) {
+	public Byte updateData(byte data, int dir, Block newNeighbor) {
 		return data;
 	}
 
@@ -103,8 +105,8 @@ public class StackableRotation implements RotationMode {
 				&& y     <= pos.y + height
 				&& x + 1 >= pos.x - width
 				&& x     <= pos.x + width
-				&& x + 1 >= pos.z - width
-				&& x     <= pos.z + width;
+				&& z + 1 >= pos.z - width
+				&& z     <= pos.z + width;
 	}
 
 	@Override

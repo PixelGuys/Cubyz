@@ -441,4 +441,56 @@ public class Entity {
 		return null;
 	}
 	
+	public static boolean aabCollision(float x1, float y1, float z1, float w1, float h1, float d1, float x2, float y2, float z2, float w2, float h2, float d2) {
+		return x1 + w1 >= x2
+				&& x1 <= x2 + w2
+				&& y1 + h1 >= y2
+				&& y1 <= y2 + h2
+				&& z1 + d1 >= z2
+				&& z1 <= z2 + d2;
+	}
+	
+	/**
+	 * @param vel
+	 * @param x0
+	 * @param y0
+	 * @param z0
+	 * @param w width in x direction
+	 * @param h height in y direction
+	 * @param d depth in z direction
+	 * @param blockData
+	 * @return
+	 */
+	public void aabCollision(Vector4f vel, float x0, float y0, float z0, float w, float h, float d, byte blockData) {
+		// check if the displacement is inside the box:
+		if(aabCollision(position.x - width + vel.x, position.y + vel.y, position.z - width + vel.z, width*2, height, width*2, x0, y0, z0, w, h, d)) {
+			// Check if the entity can step on it:
+			if(y0 + h - position.y > 0 && y0 + h - position.y <= stepHeight) {
+				vel.w = Math.max(vel.w, y0 + h - position.y);
+				return;
+			}
+			// Only collide if the previous position was outside:
+			if(!aabCollision(position.x - width, position.y, position.z - width, width*2, height, width*2, x0, y0, z0, w, h, d)) {
+				// Check in which direction the current displacement goes and changes accordingly:
+				if(vel.x < 0) {
+					vel.x = x0 + w - (position.x - width) + 0.01f;
+				} else if(vel.x > 0) {
+					vel.x = x0 - (position.x + width) - 0.01f;
+				}
+				else if(vel.y < 0) {
+					vel.y = y0 + h - (position.y) + 0.01f;
+				}
+				else if(vel.y > 0) {
+					vel.y = y0 - (position.y + height) - 0.01f;
+				}
+				else if(vel.z < 0) {
+					vel.z = z0 + d - (position.z - width) + 0.01f;
+				} else if(vel.z > 0) {
+					vel.z = z0 - (position.z + width) - 0.01f;
+				}
+			}
+		}
+			
+	}
+	
 }

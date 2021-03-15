@@ -17,8 +17,7 @@ import io.cubyz.entity.EntityType;
 import io.cubyz.models.Model;
 import io.cubyz.rendering.Material;
 import io.cubyz.rendering.Mesh;
-import io.cubyz.rendering.OBJLoader;
-import io.cubyz.rendering.StaticMeshesLoader;
+import io.cubyz.rendering.ModelLoader;
 import io.cubyz.rendering.Texture;
 import io.cubyz.utils.ResourceUtilities;
 import io.cubyz.utils.ResourceUtilities.EntityModel;
@@ -100,7 +99,7 @@ public class Meshes {
 				}
 				if (mesh == null) {
 					Resource rs = new Resource(model);
-					mesh = OBJLoader.loadMesh(rs, "assets/" + rs.getMod() + "/models/3d/" + rs.getID(), false);
+					mesh = new Mesh(ModelLoader.loadModel(rs, "assets/" + rs.getMod() + "/models/3d/" + rs.getID()));
 					//defaultMesh = StaticMeshesLoader.loadInstanced("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), "assets/" + rs.getMod() + "/models/3d/")[0];
 					Material material = new Material(tex, 0.6F);
 					mesh.setMaterial(material);
@@ -136,8 +135,7 @@ public class Meshes {
 				
 				// Cached meshes
 				Resource rs = new Resource(model.model);
-				Mesh mesh = StaticMeshesLoader.load(rs, "assets/" + rs.getMod() + "/models/3d/" + rs.getID(),
-						"assets/" + rs.getMod() + "/models/3d/")[0];
+				Mesh mesh = new Mesh(ModelLoader.loadModel(rs, "assets/" + rs.getMod() + "/models/3d/" + rs.getID()));
 				Resource texResource = new Resource(model.texture);
 				String texture = texResource.getID();
 				if (!new File("assets/" + texResource.getMod() + "/textures/entities/" + texture + ".png").exists()) {

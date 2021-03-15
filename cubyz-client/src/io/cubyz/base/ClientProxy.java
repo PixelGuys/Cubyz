@@ -31,6 +31,7 @@ public class ClientProxy extends CommonProxy {
 		reg.register(new TorchRotation());
 		reg.register(new LogRotation());
 		reg.register(new StackableRotation());
+		reg.register(new FenceRotation());
 	}
 
 	private void registerEntityModels(Registry<EntityModel> reg) {

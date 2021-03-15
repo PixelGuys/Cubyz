@@ -10,6 +10,7 @@ import io.cubyz.entity.Entity;
 import io.cubyz.util.ByteWrapper;
 import io.cubyz.util.FloatFastList;
 import io.cubyz.util.IntFastList;
+import io.cubyz.world.Surface;
 
 /**
  * Each block gets 8 bit of additional storage(apart from the reference to the block type).<br>
@@ -33,6 +34,10 @@ public interface RotationMode extends RegistryElement {
 	
 	/**
 	 * Update or place a block.
+	 * @param surface
+	 * @param x
+	 * @param y
+	 * @param z
 	 * @param relativePlayerPosition Position of the player head relative to the (0, 0, 0) corner of the block.
 	 * @param playerDirection
 	 * @param relativeDir the direction in which the selected neighbor is.
@@ -40,10 +45,21 @@ public interface RotationMode extends RegistryElement {
 	 * @param blockPlacing true if the position of the block was previously empty/nonsolid.
 	 * @return true if the placing was successful, false otherwise.
 	 */
-	public boolean generateData(Vector3f relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDir, ByteWrapper currentData, boolean blockPlacing);
+	public boolean generateData(Surface surface, int x, int y, int z, Vector3f relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDir, ByteWrapper currentData, boolean blockPlacing);
 
-	public boolean dependsOnNeightbors(); // Returns if the block should be destroyed or changed when a certain neighbor is removed.
-	public Byte updateData(byte oldData, int removedDir); // removedDir is given in the same format as used in Chunk. If the returned value is null, then the block will be removed instead of only updating the data.
+	/**
+	 * @return if the block should be destroyed or changed when a certain neighbor is removed.
+	 */
+	public boolean dependsOnNeightbors();
+	
+	/**
+	 * Updates data of a placed block if the RotationMode dependsOnNeighbors().
+	 * If the returned value is null, then the block will be removed instead of only updating the data.
+	 * @param oldData
+	 * @param removedDir given as neighbor index (See NormalChunk.)
+	 * @return new data
+	 */
+	public Byte updateData(byte oldData, int removedDir, Block newNeighbor);
 	
 	/**
 	 * A RotationMode may even alter the blocks transparency. Here is where it's done.
