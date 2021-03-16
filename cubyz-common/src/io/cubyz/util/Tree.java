@@ -9,12 +9,13 @@ public class Tree<Key, Value> {
 		private final HashMap<Key, TreeNode> nextNodes = new HashMap<Key, TreeNode>();
 		private final HashMap<Key, Value> leaves = new HashMap<Key, Value>();
 		
+		@SuppressWarnings("unchecked")
 		private void foreach(Consumer<Value> action) {
-			for(Value value : leaves.values()) {
-				action.accept(value);
+			for(Object value : leaves.values().toArray()) {
+				action.accept((Value)value);
 			}
-			for(TreeNode next : nextNodes.values()) {
-				next.foreach(action);
+			for(Object next : nextNodes.values().toArray()) {
+				((TreeNode)next).foreach(action);
 			}
 		}
 	}
