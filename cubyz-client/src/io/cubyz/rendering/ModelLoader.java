@@ -13,6 +13,7 @@ import org.lwjgl.assimp.AIScene;
 import org.lwjgl.assimp.AIVector3D;
 
 import io.cubyz.api.Resource;
+import io.cubyz.client.Meshes;
 import io.cubyz.models.Model;
 import io.cubyz.utils.Utils;
 
@@ -21,6 +22,14 @@ public class ModelLoader {
 	private static final int flags = aiProcess_JoinIdenticalVertices | aiProcess_Triangulate;
 	
 	public static Model loadModel(Resource id, String filePath) {
+		Model model = Meshes.models.getByID(id);
+		if(model != null) return model;
+		model = loadUnregisteredModel(id, filePath);
+		Meshes.models.register(model);
+		return model;
+	}
+	
+	public static Model loadUnregisteredModel(Resource id, String filePath) {
 		AIScene aiScene = aiImportFile(filePath, flags);
 		PointerBuffer aiMeshes = aiScene.mMeshes();
 		AIMesh aiMesh = AIMesh.create(aiMeshes.get());

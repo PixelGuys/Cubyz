@@ -99,11 +99,11 @@ public class CubeModel extends Model {
 	
 	
 	public static void registerCubeModels() {
-		Model standardCube = ModelLoader.loadModel(new Resource("", ""), "assets/cubyz/models/3d/block.obj");
+		Model standardCube = ModelLoader.loadUnregisteredModel(new Resource("", ""), "assets/cubyz/models/3d/block.obj");
 		standardCube = new CubeModel(new Resource("cubyz", "block.obj"), standardCube);
 		Meshes.models.register(standardCube);
 		
-		Model sidedCube = ModelLoader.loadModel(new Resource("", ""), "assets/cubyz/models/3d/persidetexture.obj");
+		Model sidedCube = ModelLoader.loadUnregisteredModel(new Resource("", ""), "assets/cubyz/models/3d/persidetexture.obj");
 		sidedCube = new CubeModel(new Resource("cubyz", "persidetexture.obj"), sidedCube);
 		Meshes.models.register(sidedCube);
 	}
