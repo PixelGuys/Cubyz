@@ -42,6 +42,7 @@ import io.cubyz.multiplayer.GameProfile;
 import io.cubyz.multiplayer.LoginToken;
 import io.cubyz.multiplayer.client.MPClient;
 import io.cubyz.multiplayer.client.PingResponse;
+import io.cubyz.rendering.BlockPreview;
 import io.cubyz.rendering.FrameBuffer;
 import io.cubyz.rendering.Material;
 import io.cubyz.rendering.Mesh;

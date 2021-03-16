@@ -1,4 +1,4 @@
-package io.cubyz.client;
+package io.cubyz.rendering;
 
 import static org.lwjgl.opengl.GL11C.GL_COLOR_BUFFER_BIT;
 import static org.lwjgl.opengl.GL11C.GL_DEPTH_BUFFER_BIT;
@@ -11,12 +11,7 @@ import org.joml.Vector3f;
 import org.joml.Vector4f;
 
 import io.cubyz.blocks.Block;
-import io.cubyz.rendering.FrameBuffer;
-import io.cubyz.rendering.Mesh;
-import io.cubyz.rendering.ShaderProgram;
-import io.cubyz.rendering.Spatial;
-import io.cubyz.rendering.Transformation;
-import io.cubyz.rendering.Window;
+import io.cubyz.client.Meshes;
 import io.cubyz.utils.Utils;
 
 /**
@@ -78,14 +73,14 @@ public abstract class BlockPreview {
 		Spatial spatial = new Spatial(mesh);
 		
 		glViewport(0, 0, 64, 64);
-		Matrix4f projectionMatrix = transformation.getOrthoProjectionMatrix(0.9f, -0.9f, -0.9f, 0.9f, 0.1f, 1000.0f);
+		Matrix4f projectionMatrix = transformation.getProjectionMatrix(0.013f, 1f, 1f, 0.1f, 10000.0f);//.getOrthoProjectionMatrix(0.9f, -0.9f, -0.9f, 0.9f, 0.1f, 1000.0f);
 		clear();
-		Matrix4f viewMatrix = transformation.getViewMatrix(new Vector3f(-1, -1.6f, -1), new Vector3f(-3*(float)Math.PI/4, -(float)Math.PI/4, 0));
+		Matrix4f viewMatrix = transformation.getViewMatrix(new Vector3f(64, 90.3f, 64), new Vector3f(3*(float)Math.PI/4, 3*(float)Math.PI/4, 0));
 
 		shader.bind();
 		shader.setUniform("projectionMatrix", projectionMatrix);
 		shader.setUniform("texture_sampler", 0);
-		shader.setUniform("dirLight", new Vector3f(-1, -2, -2).normalize());
+		shader.setUniform("dirLight", new Vector3f(2, -2, 1.5f).normalize());
 		
 		shader.setUniform("light", new Vector3f(1, 1, 1));
 		mesh.getMaterial().setTexture(Meshes.blockTextures.get(block));
