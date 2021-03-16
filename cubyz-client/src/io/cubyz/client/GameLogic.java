@@ -387,22 +387,21 @@ public class GameLogic implements ClientConnection {
 			} else {
 				logger.info("Missing optional sound files. Sounds are disabled.");
 			}
-			
-			Cubyz.renderDeque.add(() -> {
-				File[] list = new File("assets/cubyz/textures/breaking").listFiles();
-				ArrayList<Texture> breakingAnims = new ArrayList<>();
-				for (File file : list) {
-					try {
-						Texture tex = new Texture(file);
-						tex.setWrapMode(GL12.GL_REPEAT);
-						breakingAnims.add(tex);
-					} catch (IOException e) {
-						e.printStackTrace();
-					}
+		});
+		Cubyz.renderDeque.add(() -> {
+			File[] list = new File("assets/cubyz/textures/breaking").listFiles();
+			ArrayList<Texture> breakingAnims = new ArrayList<>();
+			for (File file : list) {
+				try {
+					Texture tex = new Texture(file);
+					tex.setWrapMode(GL12.GL_REPEAT);
+					breakingAnims.add(tex);
+				} catch (IOException e) {
+					e.printStackTrace();
 				}
-				breakAnimations = breakingAnims.toArray(new Texture[breakingAnims.size()]);
-				System.gc();
-			});
+			}
+			breakAnimations = breakingAnims.toArray(new Texture[breakingAnims.size()]);
+			System.gc();
 		});
 		lt.start();
 	}
