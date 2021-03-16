@@ -217,7 +217,7 @@ public class MainRenderer {
 			Cubyz.camera.setPosition(Cubyz.player.getPosition().x, Cubyz.player.getPosition().y + Player.cameraHeight + playerBobbing, Cubyz.player.getPosition().z);
 		}
 		
-		if(!Cubyz.renderDeque.isEmpty()) {
+		while(!Cubyz.renderDeque.isEmpty()) {
 			Cubyz.renderDeque.pop().run();
 		}
 		if(Cubyz.world != null) {
