@@ -9,6 +9,7 @@ import io.cubyz.blocks.BlockInstance;
 import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.items.Inventory;
+import io.cubyz.math.CubyzMath;
 import io.cubyz.util.ByteWrapper;
 import io.cubyz.world.NormalChunk;
 import io.cubyz.world.Surface;
@@ -147,9 +148,9 @@ public class MeshSelectionDetector {
 	 * @param dir camera direction
 	 */
 	private void getEmptyPlace(Vector3i pos, Vector3i dir) {
-		int dirX = (int)Math.signum(this.dir.x);
-		int dirY = (int)Math.signum(this.dir.y);
-		int dirZ = (int)Math.signum(this.dir.z);
+		int dirX = CubyzMath.nonZeroSign(this.dir.x);
+		int dirY = CubyzMath.nonZeroSign(this.dir.y);
+		int dirZ = CubyzMath.nonZeroSign(this.dir.z);
 		pos.set(((BlockInstance)selectedSpatial).x, ((BlockInstance)selectedSpatial).y, ((BlockInstance)selectedSpatial).z);
 		pos.add(-dirX, 0, 0);
 		dir.add(dirX, 0, 0);

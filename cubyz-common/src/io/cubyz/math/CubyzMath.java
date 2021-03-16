@@ -115,4 +115,15 @@ public class CubyzMath {
 		int bitLength = binaryLog(input);
 		return ~(-2L << bitLength);
 	}
+	
+	/**
+	 * Works like the normal sign function except for sign(0) which in this function returns 1.
+	 * @param in
+	 * @return
+	 */
+	public static int nonZeroSign(float in) {
+		in = Math.signum(in);
+		if(in == 0) in = 1;
+		return (int)in;
+	}
 }
