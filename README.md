@@ -28,7 +28,7 @@ Cubyz is tested to compile and run with maven and eclipse.
 - Or [download](https://github.com/PixelGuys/Cubyz/archive/master.zip) and unzip Cubyz master branch from github.
 2. `cd` to the directory you want to compile(Cubyz/cubyz-client or Cubyz/cubyz-server).
 3. Run `mvn clean compile` to compile Cubyz.
-4. Run `mvn exec:java` to run Cubyz after compilation.
+4. Run `mvn exec:exec` to run Cubyz after compilation.
 ### eclipse
 1. Install and open eclipse.
 2. Import the project from github:
