@@ -36,12 +36,26 @@ public class SimpleTreeModel extends StructureModel {
 		int y = chunk.getWorldY();
 		h -= y;
 		int height = height0 + rand.nextInt(deltaHeight);
+		
+		if(chunk.getVoxelSize() >= 16) {
+			// Ensures that even at lowest resolution some leaves are rendered for smaller trees.
+			if(chunk.liesInChunk(x, h, z)) {
+				chunk.updateBlockIfDegradable(x, h, z, leaves);
+			}
+			if(chunk.liesInChunk(x, h + chunk.getVoxelSize(), z)) {
+				chunk.updateBlockIfDegradable(x, h + chunk.getVoxelSize(), z, leaves);
+			}
+			return;
+		}
+		
 		if(h < chunk.getWidth()) {
 			switch(type) {
 				case PYRAMID: {
-					for(int py = chunk.startIndex(h); py < h+height; py += chunk.getVoxelSize()) {
-						if(chunk.liesInChunk(x, py, z)) {
-							chunk.updateBlockIfDegradable(x, py, z, (py == h + height-1) ? topWood : wood);
+					if(chunk.getVoxelSize() <= 2) {
+						for(int py = chunk.startIndex(h); py < h+height; py += chunk.getVoxelSize()) {
+							if(chunk.liesInChunk(x, py, z)) {
+								chunk.updateBlockIfDegradable(x, py, z, (py == h + height-1) ? topWood : wood);
+							}
 						}
 					}
 					// Position of the first block of leaves
@@ -58,9 +72,11 @@ public class SimpleTreeModel extends StructureModel {
 					break;
 				}
 				case ROUND: {
-					for(int py = chunk.startIndex(h); py < h+height; py += chunk.getVoxelSize()) {
-						if(chunk.liesInChunk(x, py, z)) {
-							chunk.updateBlockIfDegradable(x, py, z, (py == h + height-1) ? topWood : wood);
+					if(chunk.getVoxelSize() <= 2) {
+						for(int py = chunk.startIndex(h); py < h+height; py += chunk.getVoxelSize()) {
+							if(chunk.liesInChunk(x, py, z)) {
+								chunk.updateBlockIfDegradable(x, py, z, (py == h + height-1) ? topWood : wood);
+							}
 						}
 					}
 					
@@ -83,10 +99,12 @@ public class SimpleTreeModel extends StructureModel {
 				case BUSH: {
 					int oldHeight = height;
 					if(height > 2) height = 2; // Make sure the stem of the bush stays small.
-					
-					for(int py = chunk.startIndex(h); py < h + height; py += chunk.getVoxelSize()) {
-						if(chunk.liesInChunk(x, py, z)) {
-							chunk.updateBlockIfDegradable(x, py, z, (py == h + height-1) ? topWood : wood);
+
+					if(chunk.getVoxelSize() <= 2) {
+						for(int py = chunk.startIndex(h); py < h + height; py += chunk.getVoxelSize()) {
+							if(chunk.liesInChunk(x, py, z)) {
+								chunk.updateBlockIfDegradable(x, py, z, (py == h + height-1) ? topWood : wood);
+							}
 						}
 					}
 					

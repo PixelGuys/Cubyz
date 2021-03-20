@@ -27,7 +27,7 @@ public class BlockStructure {
 				if(chunk.liesInChunk(x, depth - chunk.getWorldY(), z)) {
 					chunk.updateBlock(x, depth - chunk.getWorldY(), z, structure[i].block, data);
 				}
-				depth--;
+				depth -= chunk.getVoxelSize();
 			}
 		}
 		if(depth == startingDepth) return depth;

@@ -93,10 +93,7 @@ public class ReducedChunk extends Chunk {
 
 	@Override
 	public boolean liesInChunk(int x, int y, int z) {
-		return (x & resolutionMask) == 0
-				&& (y & resolutionMask) == 0
-				&& (z & resolutionMask) == 0
-				&& x >= 0
+		return x >= 0
 				&& x < width
 				&& y >= 0
 				&& y < width

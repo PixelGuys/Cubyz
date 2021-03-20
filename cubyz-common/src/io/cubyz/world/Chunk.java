@@ -66,7 +66,7 @@ public abstract class Chunk {
 	public abstract void generateFrom(SurfaceGenerator gen);
 	
 	/**
-	 * Checks if the given <b>relative</b> coordinates lie within the resolved grid of this chunk.
+	 * Checks if the given <b>relative</b> coordinates lie within the bounds of this chunk.
 	 * @param x
 	 * @param z
 	 * @return
