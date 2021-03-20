@@ -16,7 +16,7 @@ public class Constants {
 	public static final String GAME_BUILD_TYPE = "ALPHA";
 	
 	// WARNING! Both brand name and version cannot contain ';' inside!
-	public static final String GAME_VERSION = "0.7.0";
+	public static final String GAME_VERSION = "0.8.0";
 	public static final int GAME_PROTOCOL_VERSION = 1;
 	public static final String GAME_BRAND = "cubyz";
 	

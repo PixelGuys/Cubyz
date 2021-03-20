@@ -256,7 +256,9 @@ public class GameLogic implements ClientConnection {
 		SoundSource ms = musicSource;
 		if (ms != null) {
 			if (!ms.isPlaying()) {
-				ms.play();
+				// ms.play();
+				// Music is disabled for now because right now it's annoying and kind of unrelated to the game.
+				// TODO: Find a better concept for playing music in the game that preferably fits the player's current situation.
 			}
 		}
 		
