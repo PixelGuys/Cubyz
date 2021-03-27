@@ -96,7 +96,9 @@ public class GraphicsGUI extends MenuGUI {
 		easyLighting.setLabel(TextKey.createTextKey("gui.cubyz.settings.easylighting"));
 		easyLighting.setSelected(ClientSettings.easyLighting);
 		easyLighting.setOnAction(() -> {
-			ClientSettings.easyLighting = easyLighting.isSelected();
+			//ClientSettings.easyLighting = easyLighting.isSelected();
+			easyLighting.setSelected(true);
+			throw new UnsupportedOperationException("Only easy lighting is supported for now.");
 		});
 		easyLighting.getLabel().setFontSize(16f);
 		

@@ -1,5 +1,6 @@
 package io.cubyz.ui.components;
 
+import io.cubyz.CubyzLogger;
 import io.cubyz.client.GameLauncher;
 import io.cubyz.input.MouseInput;
 import io.cubyz.rendering.Window;
@@ -121,7 +122,11 @@ public class Button extends Component {
 			canRepress = true;
 			if (isInside(mouse.getCurrentPos())) {
 				if (onAction != null) {
-					onAction.run();
+					try {
+						onAction.run();
+					} catch(Exception e) {
+						CubyzLogger.logger.throwable(e);
+					}
 				}
 			}
 		}
@@ -137,7 +142,6 @@ public class Button extends Component {
 		NGraphics.setColor(255, 255, 255);
 		NGraphics.setFont("Default", fontSize);
 		NGraphics.drawText(x + (width / 2) - ((text.getTranslation().length() * 5) / 2), (int) (y + (height / 2) - fontSize / 2), text.getTranslation());
-		//int ascent = NGraphics.getAscent("ahh");
 	}
 	
 }

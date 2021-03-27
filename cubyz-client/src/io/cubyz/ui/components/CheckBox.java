@@ -1,5 +1,6 @@
 package io.cubyz.ui.components;
 
+import io.cubyz.CubyzLogger;
 import io.cubyz.client.GameLauncher;
 import io.cubyz.rendering.Window;
 import io.cubyz.translate.TextKey;
@@ -59,7 +60,11 @@ public class CheckBox extends Component {
 				selected = !selected;
 				canRepress = false;
 				if (onAction != null) {
-					onAction.run();
+					try {
+						onAction.run();
+					} catch(Exception e) {
+						CubyzLogger.logger.throwable(e);
+					}
 				}
 			}
 		} else {
