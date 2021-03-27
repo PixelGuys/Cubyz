@@ -2,7 +2,7 @@ package io.cubyz.translate;
 
 import java.util.HashMap;
 
-import static io.cubyz.CubyzLogger.logger;
+import io.cubyz.Logger;
 
 /**
  * A translation of all cubyz texts to a certain language.
@@ -35,7 +35,7 @@ public class Language {
 			return;
 		}
 		if(key.getTranslateKey().contains("."))
-			logger.warning("Unable to translate key "+key.getTranslateKey()+" in language "+locale+".");
+			Logger.warning("Unable to translate key "+key.getTranslateKey()+" in language "+locale+".");
 		key.translation = key.getTranslateKey();
 	}
 	

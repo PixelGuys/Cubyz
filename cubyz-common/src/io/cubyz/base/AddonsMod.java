@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Properties;
 
+import io.cubyz.Logger;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.EventHandler;
 import io.cubyz.api.LoadOrder;
@@ -35,8 +36,6 @@ import io.cubyz.world.cubyzgenerators.biomes.GroundPatch;
 import io.cubyz.world.cubyzgenerators.biomes.SimpleTreeModel;
 import io.cubyz.world.cubyzgenerators.biomes.SimpleVegetation;
 import io.cubyz.world.cubyzgenerators.biomes.StructureModel;
-
-import static io.cubyz.CubyzLogger.logger;
 
 /**
  * Mod used to support add-ons: simple "mods" without any sort of coding required.<br>
@@ -92,7 +91,7 @@ public class AddonsMod {
 						props.load(reader);
 						reader.close();
 					} catch (IOException e) {
-						e.printStackTrace();
+						Logger.throwable(e);
 					}
 					
 					Item item;
@@ -128,7 +127,7 @@ public class AddonsMod {
 						props.load(reader);
 						reader.close();
 					} catch (IOException e) {
-						e.printStackTrace();
+						Logger.throwable(e);
 					}
 					
 					Block block;
@@ -170,7 +169,7 @@ public class AddonsMod {
 						try {
 							block.blockEntity = Class.forName(props.getProperty("blockEntity")).asSubclass(BlockEntity.class);
 						} catch (ClassNotFoundException e) {
-							e.printStackTrace();
+							Logger.throwable(e);
 						}
 					}
 					registry.register(block);
@@ -222,7 +221,7 @@ public class AddonsMod {
 									String [] arguments = line.substring("cubyz:ground_patch".length()).trim().split("\\s+");
 									vegetation.add(new GroundPatch(CubyzRegistries.BLOCK_REGISTRY.getByID(arguments[0]), Float.parseFloat(arguments[1]), Float.parseFloat(arguments[2]), Float.parseFloat(arguments[3]), Float.parseFloat(arguments[4]), Float.parseFloat(arguments[5])));
 								} else {
-									logger.warning("Could not find structure \"" + line.split("\\s+")[0] + "\" specified in line " + lineNumber + " in file " + file.getPath());
+									Logger.warning("Could not find structure \"" + line.split("\\s+")[0] + "\" specified in line " + lineNumber + " in file " + file.getPath());
 								}
 							} else {
 								if(line.startsWith("roughness")) {
@@ -264,7 +263,7 @@ public class AddonsMod {
 								} else if(line.startsWith("structures:")) {
 									startedStructures = true;
 								} else {
-									logger.warning("Could not find argument \"" + line.split("\\s+")[0] + "\" specified in line " + lineNumber + " in file " + file.getPath());
+									Logger.warning("Could not find argument \"" + line.split("\\s+")[0] + "\" specified in line " + lineNumber + " in file " + file.getPath());
 								}
 							}
 						}
@@ -274,7 +273,7 @@ public class AddonsMod {
 						
 						buf.close();
 					} catch(IOException e) {
-						e.printStackTrace();
+						Logger.throwable(e);
 					}
 				}
 			}
@@ -314,7 +313,7 @@ public class AddonsMod {
 								String[] parts = line.split("=");
 								Item item = CubyzRegistries.ITEM_REGISTRY.getByID(parts[1].replaceAll("\\s",""));
 								if(item == null) {
-									logger.warning("Skipping unknown item \"" + parts[1].replaceAll("\\s","") + "\" in line " + lineNumber + " in \"" + file.getPath()+"\".");
+									Logger.warning("Skipping unknown item \"" + parts[1].replaceAll("\\s","") + "\" in line " + lineNumber + " in \"" + file.getPath()+"\".");
 								} else {
 									shortCuts.put(parts[0].replaceAll("\\s",""), CubyzRegistries.ITEM_REGISTRY.getByID(parts[1].replaceAll("\\s",""))); // Remove all whitespaces, wherever they might be. Not necessarily the most robust way, but it should work.
 								}
@@ -344,7 +343,7 @@ public class AddonsMod {
 									item = CubyzRegistries.ITEM_REGISTRY.getByID(result);
 								}
 								if(item == null) {
-									logger.warning("Skipping recipe with unknown item \"" + result + "\" in line " + lineNumber + " in \"" + file.getPath()+"\".");
+									Logger.warning("Skipping recipe with unknown item \"" + result + "\" in line " + lineNumber + " in \"" + file.getPath()+"\".");
 								} else {
 									if(shaped) {
 										int x = CubyzMath.max(itemsPerRow);
@@ -375,7 +374,7 @@ public class AddonsMod {
 										item = CubyzRegistries.ITEM_REGISTRY.getByID(words[i]);
 										if(item == null) {
 											startedRecipe = false; // Skip unknown recipes.
-											logger.warning("Skipping recipe with unknown item \"" + words[i] + "\" in line " + lineNumber + " in \"" + file.getPath()+"\".");
+											Logger.warning("Skipping recipe with unknown item \"" + words[i] + "\" in line " + lineNumber + " in \"" + file.getPath()+"\".");
 										}
 									}
 									items.add(item);
@@ -384,7 +383,7 @@ public class AddonsMod {
 						}
 						buf.close();
 					} catch(IOException e) {
-						e.printStackTrace();
+						Logger.throwable(e);
 					}
 				}
 			}
@@ -435,7 +434,7 @@ public class AddonsMod {
 							} else {
 								Item item = CubyzRegistries.ITEM_REGISTRY.getByID(parts[0]);
 								if(item == null) {
-									logger.warning("Could not find argument or item \"" + parts[0] + "\" specified in line " + lineNumber + " in file " + file.getPath());
+									Logger.warning("Could not find argument or item \"" + parts[0] + "\" specified in line " + lineNumber + " in file " + file.getPath());
 								} else {
 									int amount = Integer.parseInt(parts[1]);
 									items.put(item, amount);
@@ -449,7 +448,7 @@ public class AddonsMod {
 						
 						buf.close();
 					} catch(IOException e) {
-						e.printStackTrace();
+						Logger.throwable(e);
 					}
 				}
 			}

@@ -14,6 +14,7 @@ import javax.imageio.ImageIO;
 
 import org.lwjgl.system.MemoryUtil;
 
+import io.cubyz.Logger;
 import io.cubyz.util.PixelUtils;
 
 /**
@@ -28,7 +29,7 @@ public class TextureConverter {
 		try {
 			ImageIO.write(img, "png", baos);
 		} catch (IOException e) {
-			e.printStackTrace();
+			Logger.throwable(e);
 		}
 		byte[] array = baos.toByteArray();
 		ByteBuffer buf = MemoryUtil.memAlloc(array.length);
@@ -42,7 +43,7 @@ public class TextureConverter {
 		try {
 			ImageIO.write(img, "png", baos);
 		} catch (IOException e) {
-			e.printStackTrace();
+			Logger.throwable(e);
 		}
 		byte[] array = baos.toByteArray();
 		return new ByteArrayInputStream(array);
@@ -67,7 +68,7 @@ public class TextureConverter {
 			return out;
 		}
 		catch(IOException e) {
-			e.printStackTrace();
+			Logger.throwable(e);
 			System.out.println(Arrays.toString(paths));
 		}
 		return null;

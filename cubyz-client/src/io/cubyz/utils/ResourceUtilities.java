@@ -13,6 +13,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 
+import io.cubyz.Logger;
 import io.cubyz.Utilities;
 import io.cubyz.api.Resource;
 
@@ -73,7 +74,7 @@ public class ResourceUtilities {
 			props.load(reader);
 			reader.close();
 		} catch (IOException e) {
-			e.printStackTrace();
+			Logger.throwable(e);
 			return null;
 		}
 		String resource = props.getProperty("texture", null);
@@ -85,7 +86,9 @@ public class ResourceUtilities {
 		}
 		try {
 			return ImageIO.read(new File(path));
-		} catch(Exception e) {e.printStackTrace();}
+		} catch(Exception e) {
+			Logger.throwable(e);
+		}
 		return null;
 	}
 	

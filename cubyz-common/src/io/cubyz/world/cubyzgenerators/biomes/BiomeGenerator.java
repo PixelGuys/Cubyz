@@ -5,6 +5,7 @@ import java.io.File;
 
 import javax.imageio.ImageIO;
 
+import io.cubyz.Logger;
 import io.cubyz.world.Noise;
 
 /**
@@ -345,7 +346,7 @@ public class BiomeGenerator {
 			File outputfile = new File("image.png");
 			ImageIO.write(img, "png", outputfile);
 		} catch(Exception e) {
-			e.printStackTrace();
+			Logger.throwable(e);
 		}
 	}
 	

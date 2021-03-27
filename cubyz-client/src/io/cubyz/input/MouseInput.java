@@ -3,6 +3,7 @@ package io.cubyz.input;
 import org.joml.Vector2d;
 import org.joml.Vector2f;
 
+import io.cubyz.Logger;
 import io.cubyz.client.GameLauncher;
 import io.cubyz.rendering.Window;
 
@@ -33,7 +34,7 @@ public class MouseInput {
 		try {
 			r = new Robot();
 		} catch (Exception e) {
-			e.printStackTrace();
+			Logger.throwable(e);
 		}
 	}
 

@@ -4,7 +4,7 @@ import java.util.Arrays;
 
 import org.joml.Vector3f;
 
-import io.cubyz.CubyzLogger;
+import io.cubyz.Logger;
 import io.cubyz.blocks.Block;
 import io.cubyz.items.Item;
 import io.cubyz.items.ItemStack;
@@ -59,7 +59,7 @@ public class ItemEntityManager {
 		index += 4;
 		// Check if the length is right:
 		if(data.length-index != length*4*9) {
-			CubyzLogger.logger.warning("Save file is corrupted. Skipping item entites for chunk "+chunk.getWorldX()+" "+chunk.getWorldY()+" "+chunk.getWorldZ());
+			Logger.warning("Save file is corrupted. Skipping item entites for chunk "+chunk.getWorldX()+" "+chunk.getWorldY()+" "+chunk.getWorldZ());
 			length = 0;
 		}
 		// Init variables:

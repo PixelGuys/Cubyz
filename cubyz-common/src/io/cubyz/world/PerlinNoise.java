@@ -2,6 +2,7 @@ package io.cubyz.world;
 
 import java.util.Random;
 
+import io.cubyz.Logger;
 import io.cubyz.math.CubyzMath;
 
 public class PerlinNoise {
@@ -20,7 +21,7 @@ public class PerlinNoise {
 		try {
 			return xGridPoints[x][y];
 		} catch (ArrayIndexOutOfBoundsException e) { // quick and dirty fix
-			e.printStackTrace();
+			Logger.throwable(e);
 			return 0;
 		}
 	}
@@ -29,7 +30,7 @@ public class PerlinNoise {
 		try {
 			return yGridPoints[x][y];
 		} catch (ArrayIndexOutOfBoundsException e) {
-			e.printStackTrace();
+			Logger.throwable(e);
 			return 0;
 		}
 	}

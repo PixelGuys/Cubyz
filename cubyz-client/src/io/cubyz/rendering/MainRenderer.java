@@ -12,6 +12,7 @@ import org.joml.Vector3f;
 import org.joml.Vector4f;
 
 import io.cubyz.ClientSettings;
+import io.cubyz.Logger;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.client.Cubyz;
@@ -588,7 +589,7 @@ public class MainRenderer {
 					loadShaders();
 					doRender = true;
 				} catch (Exception e) {
-					e.printStackTrace();
+					Logger.throwable(e);
 				}
 			} else {
 				shaders = path;

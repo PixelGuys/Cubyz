@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Random;
 
+import io.cubyz.Logger;
 import io.cubyz.Utilities;
 import io.cubyz.api.CurrentSurfaceRegistries;
 import io.cubyz.items.BlockDrop;
@@ -75,7 +76,7 @@ public class CustomBlock extends Ore implements CustomObject {
 			tree = new Node(is, 4);
 			is.close();
 		} catch (IOException e) {
-			e.printStackTrace();
+			Logger.throwable(e);
 		}
 	}
 

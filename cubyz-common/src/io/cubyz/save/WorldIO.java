@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
+import io.cubyz.Logger;
 import io.cubyz.math.Bits;
 import io.cubyz.ndt.NDTContainer;
 import io.cubyz.world.LocalWorld;
@@ -46,7 +47,7 @@ public class WorldIO {
 			world.setCurrentTorusID(ndt.getLong("currentTorusID"));
 			in.close();
 		} catch (IOException e) {
-			e.printStackTrace();
+			Logger.throwable(e);
 		}
 	}
 
@@ -64,7 +65,7 @@ public class WorldIO {
 			world.setGameTime(ndt.getLong("gameTime"));
 			in.close();
 		} catch (IOException e) {
-			e.printStackTrace();
+			Logger.throwable(e);
 		}
 	}
 	
@@ -85,7 +86,7 @@ public class WorldIO {
 			out.write(ndt.getData());
 			out.close();
 		} catch (IOException e) {
-			e.printStackTrace();
+			Logger.throwable(e);
 		}
 	}
 

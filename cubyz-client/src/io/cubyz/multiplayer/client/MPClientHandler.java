@@ -8,7 +8,6 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 
 import io.cubyz.Constants;
-import io.cubyz.CubyzLogger;
 import io.cubyz.client.GameLogic;
 import io.cubyz.client.GameLauncher;
 import io.cubyz.multiplayer.BufUtils;
@@ -17,8 +16,6 @@ import io.cubyz.world.NormalChunk;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
-
-import static io.cubyz.CubyzLogger.logger;
 
 @SuppressWarnings("unused")
 public class MPClientHandler extends ChannelInboundHandlerAdapter {

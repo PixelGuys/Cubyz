@@ -73,7 +73,7 @@ public class ClientSettings {
 			GSON.toJson(settings, writer);
 			writer.close();
 		} catch (IOException e) {
-			e.printStackTrace();
+			Logger.throwable(e);
 		}
 	}
 	
@@ -89,7 +89,7 @@ public class ClientSettings {
 			settings = GSON.fromJson(reader, JsonObject.class);
 			reader.close();
 		} catch (IOException e) {
-			e.printStackTrace();
+			Logger.throwable(e);
 		}
 		
 		if (settings.has("keybindings")) {

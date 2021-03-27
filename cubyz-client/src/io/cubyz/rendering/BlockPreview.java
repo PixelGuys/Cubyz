@@ -10,6 +10,7 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
+import io.cubyz.Logger;
 import io.cubyz.blocks.Block;
 import io.cubyz.client.Meshes;
 import io.cubyz.utils.Utils;
@@ -113,7 +114,7 @@ public abstract class BlockPreview {
 					shaders = path;
 					loadShader();
 				} catch (Exception e) {
-					e.printStackTrace();
+					Logger.throwable(e);
 				}
 			} else {
 				shaders = path;

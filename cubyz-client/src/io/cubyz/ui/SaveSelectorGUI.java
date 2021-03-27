@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 
 import io.cubyz.ClientOnly;
+import io.cubyz.Logger;
 import io.cubyz.blocks.Block;
 import io.cubyz.client.Cubyz;
 import io.cubyz.client.GameLauncher;
@@ -19,8 +20,6 @@ import io.cubyz.ui.components.Button;
 import io.cubyz.world.CustomObject;
 import io.cubyz.world.LocalWorld;
 import io.cubyz.world.VisibleChunk;
-
-import static io.cubyz.CubyzLogger.logger;
 
 /**
  * GUI used to select the world to play.
@@ -84,7 +83,7 @@ public class SaveSelectorGUI extends MenuGUI {
 	
 							@Override
 							public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-								logger.throwable(exc);
+								Logger.throwable(exc);
 								return FileVisitResult.TERMINATE;
 							}
 	
@@ -96,7 +95,7 @@ public class SaveSelectorGUI extends MenuGUI {
 							
 						});
 					} catch (IOException e) {
-						e.printStackTrace();
+						Logger.throwable(e);
 					}
 					// Remove the buttons:
 					saveButtons[index] = null;

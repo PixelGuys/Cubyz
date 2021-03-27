@@ -4,7 +4,7 @@ import java.util.ArrayList;
 
 import org.lwjgl.glfw.GLFW;
 
-import io.cubyz.CubyzLogger;
+import io.cubyz.Logger;
 
 public class Keyboard {
 
@@ -19,7 +19,7 @@ public class Keyboard {
 	public static void pushChar(char ch) {
 		int next = (current+1)%bufferLen;
 		if(next == lastStart) {
-			CubyzLogger.logger.warning("Char buffer is full. Ignoring char '"+ch+"'.");
+			Logger.warning("Char buffer is full. Ignoring char '"+ch+"'.");
 			return;
 		}
 		charBuffer[current] = ch;

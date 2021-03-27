@@ -12,6 +12,7 @@ import java.util.jar.JarFile;
 import io.cubyz.ClientOnly;
 import io.cubyz.ClientSettings;
 import io.cubyz.Constants;
+import io.cubyz.Logger;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.Mod;
 import io.cubyz.api.Resource;
@@ -28,8 +29,6 @@ import io.cubyz.rendering.ModelLoader;
 import io.cubyz.ui.LoadingGUI;
 import io.cubyz.utils.ResourceContext;
 import io.cubyz.utils.ResourceManager;
-
-import static io.cubyz.CubyzLogger.logger;
 
 /**
  * Loads all mods.
@@ -71,7 +70,7 @@ public class LoadThread extends Thread {
 			}
 		}
 		
-		logger.info("Seeking mods..");
+		Logger.log("Seeking mods..");
 		long start = System.currentTimeMillis();
 		// Load all mods:
 		ArrayList<Class<?>> allClasses = new ArrayList<>();
@@ -79,22 +78,22 @@ public class LoadThread extends Thread {
 			loadModClasses(path, allClasses);
 		}
 		long end = System.currentTimeMillis();
-		logger.info("Took " + (end - start) + "ms for reflection");
+		Logger.log("Took " + (end - start) + "ms for reflection");
 		if (!allClasses.contains(BaseMod.class)) {
 			allClasses.add(BaseMod.class);
 			allClasses.add(AddonsMod.class);
-			logger.info("Manually adding BaseMod (probably on distributed JAR)");
+			Logger.log("Manually adding BaseMod (probably on distributed JAR)");
 		}
 		for (Class<?> cl : allClasses) {
-			logger.info("Mod class present: " + cl.getName());
+			Logger.log("Mod class present: " + cl.getName());
 			try {
 				ModLoader.mods.add(cl.getConstructor().newInstance());
 			} catch (Exception e) {
-				logger.warning("Error while loading mod:");
-				e.printStackTrace();
+				Logger.warning("Error while loading mod:");
+				Logger.throwable(e);
 			}
 		}
-		logger.info("Mod list complete");
+		Logger.log("Mod list complete");
 		ModLoader.sortMods();
 		
 		// TODO re-add pre-init
@@ -102,7 +101,7 @@ public class LoadThread extends Thread {
 		for (int i = 0; i < ModLoader.mods.size(); i++) {
 			l.setStep(2, i+1, ModLoader.mods.size());
 			Object mod = ModLoader.mods.get(i);
-			logger.info("Pre-initiating " + mod);
+			Logger.log("Pre-initiating " + mod);
 			ModLoader.preInit(mod, Side.CLIENT);
 		}
 		
@@ -129,7 +128,7 @@ public class LoadThread extends Thread {
 		for (int i = 0; i < ModLoader.mods.size(); i++) {
 			l.setStep(3, i+1, ModLoader.mods.size());
 			Object mod = ModLoader.mods.get(i);
-			logger.info("Initiating " + mod);
+			Logger.log("Initiating " + mod);
 			ModLoader.init(mod);
 		}
 		
@@ -168,7 +167,7 @@ public class LoadThread extends Thread {
 					try {
 						GameLauncher.logic.skyBodyMesh = new Mesh(ModelLoader.loadModel(new Resource("cubyz:sky_body.obj"), ResourceManager.lookupPath(ResourceManager.contextToLocal(ResourceContext.MODEL3D, new Resource("cubyz:sky_body.obj")))));
 					} catch (Exception e) {
-						e.printStackTrace();
+						Logger.throwable(e);
 					}
 				}
 			}
@@ -186,7 +185,7 @@ public class LoadThread extends Thread {
 		for (int i = 0; i < ModLoader.mods.size(); i++) {
 			l.setStep(5, i+1, ModLoader.mods.size());
 			Object mod = ModLoader.mods.get(i);
-			logger.info("Post-initiating " + mod);
+			Logger.log("Post-initiating " + mod);
 			ModLoader.postInit(mod);
 		}
 		l.finishLoading();
@@ -220,7 +219,7 @@ public class LoadThread extends Thread {
 			}
 			jarFile.close();
 		} catch(IOException | ClassNotFoundException e) {
-			e.printStackTrace();
+			Logger.throwable(e);
 		}
 	}
 	

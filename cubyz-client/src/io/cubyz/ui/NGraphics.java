@@ -12,7 +12,6 @@ import org.lwjgl.nanovg.NVGPaint;
 import org.lwjgl.nanovg.NanoVG;
 import org.lwjgl.nanovg.NanoVGGL3;
 
-import io.cubyz.CubyzLogger;
 import io.cubyz.rendering.Font;
 import io.cubyz.rendering.Hud;
 import io.cubyz.rendering.Texture;

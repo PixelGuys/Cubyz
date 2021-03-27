@@ -21,9 +21,8 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.system.Library;
 import org.lwjgl.system.MemoryStack;
 
+import io.cubyz.Logger;
 import io.cubyz.input.Keyboard;
-
-import static io.cubyz.CubyzLogger.logger;
 
 public class Window {
 
@@ -47,7 +46,7 @@ public class Window {
 		try {
 			Library.initialize(); // initialize LWJGL libraries to be able to catch any potential errors (like missing library)
 		} catch (UnsatisfiedLinkError e) {
-			logger.severe("Missing LWJGL libraries for " + 
+			Logger.severe("Missing LWJGL libraries for " + 
 					System.getProperty("os.name") + " on " + System.getProperty("os.arch"));
 			JOptionPane.showMessageDialog(null, "Missing LWJGL libraries for " + 
 					System.getProperty("os.name") + " on " + System.getProperty("os.arch"), "Error", JOptionPane.ERROR_MESSAGE);
@@ -171,7 +170,7 @@ public class Window {
 		if (handle == NULL) {
 			int err = glfwGetError(PointerBuffer.allocateDirect(1));
 			if (err == 65543 || err == 65540) { // we want a too much recent version
-				logger.warning("A legacy version of OpenGL will be used as 3.3 is unavailable!");
+				Logger.warning("A legacy version of OpenGL will be used as 3.3 is unavailable!");
 				glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 				glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 				glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_ANY_PROFILE);
@@ -230,7 +229,7 @@ public class Window {
 			setClearColor(new Vector4f(0.f, 0.f, 0.f, 0.f));
 		}
 		
-		logger.fine("OpenGL Version: " + GL11.glGetString(GL11.GL_VERSION));
+		Logger.log("OpenGL Version: " + GL11.glGetString(GL11.GL_VERSION));
 		show();
 		restoreState();
 	}

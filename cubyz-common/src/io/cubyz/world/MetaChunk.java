@@ -1,9 +1,9 @@
 package io.cubyz.world;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 
 import io.cubyz.ClientOnly;
+import io.cubyz.Logger;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockEntity;
 import io.cubyz.blocks.Updateable;
@@ -155,16 +155,8 @@ public class MetaChunk {
 							chunks[index] = chunk;
 							surface.queueChunk(chunks[index]);
 							chunksList.add(chunks[index]);
-						} catch (InstantiationException e) {
-							e.printStackTrace();
-						} catch (IllegalAccessException e) {
-							e.printStackTrace();
-						} catch (IllegalArgumentException e) {
-							e.printStackTrace();
-						} catch (InvocationTargetException e) {
-							e.printStackTrace();
-						} catch (SecurityException e) {
-							e.printStackTrace();
+						} catch (Exception e) {
+							Logger.throwable(e);
 						}
 					} else {
 						chunksList.add(chunk);

@@ -1,6 +1,6 @@
 package io.cubyz.ui.components;
 
-import io.cubyz.CubyzLogger;
+import io.cubyz.Logger;
 import io.cubyz.client.GameLauncher;
 import io.cubyz.input.MouseInput;
 import io.cubyz.rendering.Window;
@@ -125,7 +125,7 @@ public class Button extends Component {
 					try {
 						onAction.run();
 					} catch(Exception e) {
-						CubyzLogger.logger.throwable(e);
+						Logger.throwable(e);
 					}
 				}
 			}

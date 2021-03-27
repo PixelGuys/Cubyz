@@ -1,5 +1,6 @@
 package io.cubyz.ui;
 
+import io.cubyz.Logger;
 import io.cubyz.client.Cubyz;
 import io.cubyz.client.GameLauncher;
 import io.cubyz.input.Keybindings;
@@ -51,12 +52,12 @@ public class PauseGUI extends MenuGUI {
 		reload.setOnAction(() -> {
 			Cubyz.renderDeque.add(() -> {
 				try {
-					System.out.println("Reloading shaders..");
+					Logger.log("Reloading shaders..");
 					GameLauncher.renderer.unloadShaders();
 					GameLauncher.renderer.loadShaders();
-					System.out.println("Reloaded!");
+					Logger.log("Reloaded!");
 				} catch (Exception e) {
-					e.printStackTrace();
+					Logger.throwable(e);
 				}
 			});
 		});

@@ -5,11 +5,9 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.Objects;
 import java.util.Properties;
-import java.util.logging.Level;
 
+import io.cubyz.Logger;
 import io.cubyz.utils.ResourceManager;
-
-import static io.cubyz.CubyzLogger.logger;
 
 /**
  * Loads a language file based on locale.
@@ -33,10 +31,11 @@ public class LanguageLoader {
 					}
 					reader.close();
 				} catch (IOException e) {
-					logger.log(Level.SEVERE, "Could not open language file " + locale + " for mod " + assetFolder.getName(), e);
+					Logger.severe("Could not open language file " + locale + " for mod " + assetFolder.getName());
+					Logger.throwable(e);
 				}
 			} else if (assetFolder.getName().equals("cubyz")) {
-				logger.warning("Language \"" + locale + "\" not found");
+				Logger.warning("Language \"" + locale + "\" not found");
 			}
 		}
 		return lang;

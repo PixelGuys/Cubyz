@@ -1,8 +1,6 @@
 package io.cubyz.client;
 
-import static io.cubyz.CubyzLogger.logger;
-
-import io.cubyz.CubyzLogger;
+import io.cubyz.Logger;
 import io.cubyz.input.Input;
 import io.cubyz.rendering.MainRenderer;
 
@@ -23,10 +21,10 @@ public abstract class GameLauncher {
 			renderer = new MainRenderer();
 			logic = new GameLogic();
 			instance.start();
-			logger.info("Stopped!");
+			Logger.log("Stopped!");
 			System.exit(0);
 		} catch(Exception e) {
-			CubyzLogger.logger.throwable(e);
+			Logger.throwable(e);
 			throw e;
 		}
 	}

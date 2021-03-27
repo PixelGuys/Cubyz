@@ -7,7 +7,7 @@ import org.joml.Vector3f;
 import org.joml.Vector3i;
 import org.joml.Vector4f;
 
-import io.cubyz.CubyzLogger;
+import io.cubyz.Logger;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
@@ -133,7 +133,7 @@ public class StackableRotation implements RotationMode {
 	public int generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
 		Model model = Meshes.blockMeshes.get(bi.getBlock()).model;
 		if(!(model instanceof CubeModel)) {
-			CubyzLogger.logger.severe("Unsupported model "+model.getRegistryID()+" in block "+bi.getBlock().getRegistryID()+" for stackable block type. Skipping block.");
+			Logger.severe("Unsupported model "+model.getRegistryID()+" in block "+bi.getBlock().getRegistryID()+" for stackable block type. Skipping block.");
 			return renderIndex;
 		}
 		int x = bi.getX() & NormalChunk.chunkMask;

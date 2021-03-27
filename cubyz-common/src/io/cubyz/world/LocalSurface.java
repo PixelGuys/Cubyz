@@ -11,6 +11,7 @@ import java.util.concurrent.LinkedBlockingDeque;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
+import io.cubyz.Logger;
 import io.cubyz.Settings;
 import io.cubyz.api.CurrentSurfaceRegistries;
 import io.cubyz.blocks.Block;
@@ -35,8 +36,6 @@ import io.cubyz.world.cubyzgenerators.biomes.Biome.Type;
 import io.cubyz.world.cubyzgenerators.biomes.BiomeGenerator;
 import io.cubyz.world.generator.LifelandGenerator;
 import io.cubyz.world.generator.SurfaceGenerator;
-
-import static io.cubyz.CubyzLogger.logger;
 
 public class LocalSurface extends Surface {
 	private Region[] regions;
@@ -96,8 +95,8 @@ public class LocalSurface extends Surface {
 					if(popped instanceof NormalChunk)
 						((NormalChunk)popped).load();
 				} catch (Exception e) {
-					logger.severe("Could not generate " + popped.getVoxelSize() + "-chunk " + popped.getWorldX()+", " + popped.getWorldY() + ", " + popped.getWorldZ() + " !");
-					logger.throwable(e);
+					Logger.severe("Could not generate " + popped.getVoxelSize() + "-chunk " + popped.getWorldX()+", " + popped.getWorldY() + ", " + popped.getWorldZ() + " !");
+					Logger.throwable(e);
 				}
 			}
 		}
@@ -664,7 +663,7 @@ public class LocalSurface extends Surface {
 			
 			metaChunks = null;
 		} catch (Exception e) {
-			e.printStackTrace();
+			Logger.throwable(e);
 		}
 	}
 

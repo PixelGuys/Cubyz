@@ -5,7 +5,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
-import java.util.logging.*;
 
 import javax.imageio.ImageIO;
 import javax.swing.JOptionPane;
@@ -55,8 +54,6 @@ import io.cubyz.utils.*;
 import io.cubyz.world.*;
 import io.cubyz.world.generator.LifelandGenerator;
 
-import static io.cubyz.CubyzLogger.logger;
-
 /**
  * A complex class that holds everything together.<br>
  * TODO: Move functionality to better suited places(like world loading should probably be handled somewhere in the World class).
@@ -92,9 +89,6 @@ public class GameLogic implements ClientConnection {
 	}
 
 	public void cleanup() {
-		for (Handler handler : logger.getHandlers()) {
-			handler.close();
-		}
 		if(Cubyz.world != null) quitWorld();
 		ClientSettings.save();
 		DiscordIntegration.closeRPC();
@@ -102,7 +96,7 @@ public class GameLogic implements ClientConnection {
 			try {
 				sound.dispose();
 			} catch (Exception e) {
-				e.printStackTrace();
+				Logger.throwable(e);
 			}
 		}
 	}
@@ -152,18 +146,18 @@ public class GameLogic implements ClientConnection {
 			int dx = 0;
 			int dz = 0;
 			if (Cubyz.player.getPosition().x == 0 && Cubyz.player.getPosition().z == 0) {
-				logger.info("Finding position..");
+				Logger.log("Finding position..");
 				while (true) {
 					dx = rnd.nextInt(surface.getSizeX());
 					dz = rnd.nextInt(surface.getSizeZ());
-					logger.info("Trying " + dx + " ? " + dz);
+					Logger.log("Trying " + dx + " ? " + dz);
 					if(Cubyz.surface.isValidSpawnLocation(dx, dz)) 
 						break;
 				}
 				int startY = (int)surface.getRegion((int)dx, (int)dz, 1).getHeight(dx, dz);
 				Cubyz.surface.seek((int)dx, startY, (int)dz, ClientSettings.RENDER_DISTANCE, ClientSettings.EFFECTIVE_RENDER_DISTANCE*NormalChunk.chunkSize*2);
 				Cubyz.player.setPosition(new Vector3i(dx, startY+2, dz));
-				logger.info("OK!");
+				Logger.log("OK!");
 			}
 		}
 		// Make sure the world is null until the player position is known.
@@ -181,7 +175,7 @@ public class GameLogic implements ClientConnection {
 				try {
 					is.close();
 				} catch (IOException e) {
-					e.printStackTrace();
+					Logger.throwable(e);
 				}
 				Meshes.blockTextures.put(block, tex);
 			}
@@ -199,7 +193,7 @@ public class GameLogic implements ClientConnection {
 				try {
 					is.close();
 				} catch (IOException e) {
-					e.printStackTrace();
+					Logger.throwable(e);
 				}
 				item.setImage(NGraphics.nvgImageFrom(tex));
 			}
@@ -297,16 +291,16 @@ public class GameLogic implements ClientConnection {
 
 	public void init(Window window) throws Exception {
 		if (!new File("assets").exists()) {
-			logger.severe("Assets not found.");
+			Logger.severe("Assets not found.");
 			JOptionPane.showMessageDialog(null, "Cubyz could not detect its assets.\nDid you forgot to extract the game?", "Error", JOptionPane.ERROR_MESSAGE);
 			System.exit(1);
 		}
 		
 		Cubyz.gameUI.init(window);
 		Cubyz.hud = Cubyz.gameUI;
-		logger.info("Version " + Constants.GAME_VERSION + " of brand " + Constants.GAME_BRAND);
-		logger.info("LWJGL Version: " + Version.VERSION_MAJOR + "." + Version.VERSION_MINOR + "." + Version.VERSION_REVISION);
-		logger.info("Jungle Version: " + Constants.GAME_VERSION + "-cubyz");
+		Logger.log("Version " + Constants.GAME_VERSION + " of brand " + Constants.GAME_BRAND);
+		Logger.log("LWJGL Version: " + Version.VERSION_MAJOR + "." + Version.VERSION_MINOR + "." + Version.VERSION_REVISION);
+		Logger.log("Jungle Version: " + Constants.GAME_VERSION + "-cubyz");
 		Constants.setGameSide(Side.CLIENT);
 		
 		// Cubyz resources
@@ -338,13 +332,11 @@ public class GameLogic implements ClientConnection {
 			GameLauncher.renderer.init(window);
 			BlockPreview.init();
 		} catch (Exception e) {
-			logger.log(Level.SEVERE, e, () -> {
-				return "An unhandled exception occured while initiazing the renderer:";
-			});
-			e.printStackTrace();
+			Logger.severe("An unhandled exception occured while initiazing the renderer:");
+			Logger.throwable(e);
 			System.exit(1);
 		}
-		logger.info("Renderer: OK!");
+		Logger.log("Renderer: OK!");
 		
 		Cubyz.gameUI.setMenu(LoadingGUI.getInstance());
 		LoadThread lt = new LoadThread();
@@ -364,7 +356,7 @@ public class GameLogic implements ClientConnection {
 		try {
 			mpClient = new MPClient();
 		} catch (Exception e) {
-			e.printStackTrace();
+			Logger.throwable(e);
 		}
 		
 		LoadThread.addOnLoadFinished(() -> {
@@ -374,20 +366,20 @@ public class GameLogic implements ClientConnection {
 			try {
 				sound.init();
 			} catch (Exception e) {
-				e.printStackTrace();
+				Logger.throwable(e);
 			}
 			
 			if (ResourceManager.lookupPath("cubyz/sound") != null) {
 				try {
 					music = new SoundBuffer(ResourceManager.lookupPath("cubyz/sound/Sincerely.ogg"));
 				} catch (Exception e) {
-					e.printStackTrace();
+					Logger.throwable(e);
 				}
 				musicSource = new SoundSource(true, true);
 				musicSource.setBuffer(music.getBufferId());
 				musicSource.setGain(0.3f);
 			} else {
-				logger.info("Missing optional sound files. Sounds are disabled.");
+				Logger.log("Missing optional sound files. Sounds are disabled.");
 			}
 		});
 		Cubyz.renderDeque.add(() -> {
@@ -399,7 +391,7 @@ public class GameLogic implements ClientConnection {
 					tex.setWrapMode(GL12.GL_REPEAT);
 					breakingAnims.add(tex);
 				} catch (IOException e) {
-					e.printStackTrace();
+					Logger.throwable(e);
 				}
 			}
 			breakAnimations = breakingAnims.toArray(new Texture[breakingAnims.size()]);
@@ -495,7 +487,9 @@ public class GameLogic implements ClientConnection {
 	public static BufferedImage getImage(String fileName) {
 		try {
 			return ImageIO.read(new File(fileName));
-		} catch(Exception e) {}//e.printStackTrace();}
+		} catch(Exception e) {
+			Logger.throwable(e);
+		}
 		return null;
 	}
 }

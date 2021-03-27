@@ -1,11 +1,11 @@
 package io.cubyz.blocks;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.Properties;
 
 import org.joml.Vector3i;
 
 import io.cubyz.ClientOnly;
+import io.cubyz.Logger;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.api.RegistryElement;
 import io.cubyz.api.Resource;
@@ -201,9 +201,8 @@ public class Block implements RegistryElement {
 		if (blockEntity != null) {
 			try {
 				return blockEntity.getConstructor(Surface.class, Vector3i.class).newInstance(surface, pos);
-			} catch (InstantiationException | IllegalAccessException | IllegalArgumentException
-					| InvocationTargetException | NoSuchMethodException | SecurityException e) {
-				e.printStackTrace();
+			} catch (Exception e) {
+				Logger.throwable(e);
 			}
 		}
 		return null;

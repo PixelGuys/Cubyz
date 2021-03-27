@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.InflaterInputStream;
 
+import io.cubyz.Logger;
 import io.cubyz.entity.ItemEntityManager;
 import io.cubyz.math.Bits;
 import io.cubyz.world.Region;
@@ -50,7 +51,7 @@ public class RegionIO {
 				}
 				in.close();
 			} catch (IOException e) {
-				e.printStackTrace();
+				Logger.throwable(e);
 			}
 		} else {
 			for(int x = 0; x < Region.regionSize; x++) {
@@ -103,7 +104,7 @@ public class RegionIO {
 				}
 				in.close();
 			} catch (IOException e) {
-				e.printStackTrace();
+				Logger.throwable(e);
 			}
 		}
 	}
@@ -132,7 +133,7 @@ public class RegionIO {
 			}
 			out.close();
 		} catch (IOException e) {
-			e.printStackTrace();
+			Logger.throwable(e);
 		}
 		// Save height map:
 		if(dir.exists() && heightMap != null) {
@@ -149,7 +150,7 @@ public class RegionIO {
 				out.write(data);
 				out.close();
 			} catch (IOException e) {
-				e.printStackTrace();
+				Logger.throwable(e);
 			}
 		}
 	}
@@ -210,7 +211,7 @@ public class RegionIO {
 			stream.close();
 			return new ItemEntityManager(surface, chunk, data, tio.itemPalette);
 		} catch (IOException e) {
-			e.printStackTrace();
+			Logger.throwable(e);
 		}
 		return new ItemEntityManager(surface, chunk, 1);
 	}
@@ -225,7 +226,7 @@ public class RegionIO {
 			out.write(data);
 			out.close();
 		} catch (IOException e) {
-			e.printStackTrace();
+			Logger.throwable(e);
 		}
 	}
 	

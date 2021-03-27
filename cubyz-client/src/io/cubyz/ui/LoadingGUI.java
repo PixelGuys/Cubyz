@@ -27,9 +27,7 @@ public class LoadingGUI extends MenuGUI {
 		while (alpha > 0 || !alphaDecrease) {
 			try {
 				Thread.sleep(10);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
+			} catch (InterruptedException e) {}
 		}
 		MainMenuGUI mmg = new MainMenuGUI();
 		Cubyz.gameUI.setMenu(mmg, false); // don't add itself to the back queue

@@ -1,10 +1,9 @@
 package io.cubyz.save;
 
-import static io.cubyz.CubyzLogger.logger;
-
 import java.util.Arrays;
 import java.util.HashMap;
 
+import io.cubyz.Logger;
 import io.cubyz.api.Registry;
 import io.cubyz.api.RegistryElement;
 import io.cubyz.ndt.NDTContainer;
@@ -23,7 +22,7 @@ public class Palette <T extends RegistryElement> {
 			if (t != null) {
 				TToInt.put(t, paletteNDT.getInteger(key));
 			} else {
-				logger.warning("A block with ID " + key + " is used in world but isn't available.");
+				Logger.warning("A block with ID " + key + " is used in world but isn't available.");
 			}
 		}
 		intToT = new Object[TToInt.size()];

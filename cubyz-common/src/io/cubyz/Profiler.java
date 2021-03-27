@@ -3,8 +3,6 @@ package io.cubyz;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.cubyz.CubyzLogger.logger;
-
 public class Profiler {
 	
 	private static long start;
@@ -21,14 +19,14 @@ public class Profiler {
 	private static int i;
 	
 	public static void printProfileTime(String name) {
-		logger.info("Profile \"" + name + "\" took " + getProfileTime() + "ns (" + getProfileTime()/1000000 + "ms)");
+		Logger.log("Profile \"" + name + "\" took " + getProfileTime() + "ns (" + getProfileTime()/1000000 + "ms)");
 		if (!profileAverages.containsKey(name)) {
 			profileAverages.put(name, getProfileTime());
 		}
 		i++;
 		profileAverages.put(name, (profileAverages.get(name) + getProfileTime()) / 2);
 		if (i % 10 == 0) {
-			logger.info("Average (" + name + "): " + profileAverages.get(name) + "ns (" + profileAverages.get(name)/1000000 + "ms)");
+			Logger.log("Average (" + name + "): " + profileAverages.get(name) + "ns (" + profileAverages.get(name)/1000000 + "ms)");
 		}
 	}
 	

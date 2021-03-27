@@ -6,6 +6,8 @@ import java.util.Random;
 
 import javax.imageio.ImageIO;
 
+import io.cubyz.Logger;
+
 public interface TextureProvider {
 	BufferedImage generateTexture(CustomBlock block);
 	
@@ -58,7 +60,9 @@ public interface TextureProvider {
 	public static BufferedImage getImage(String file) {
 		try {
 			return ImageIO.read(new File(file));
-		} catch(Exception e) {e.printStackTrace();}
+		} catch(Exception e) {
+			Logger.throwable(e);
+		}
 		return null;
 	}
 }

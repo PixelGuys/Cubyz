@@ -7,12 +7,11 @@ import club.minnced.discord.rpc.DiscordEventHandlers.OnReady;
 import club.minnced.discord.rpc.DiscordRPC;
 import club.minnced.discord.rpc.DiscordRichPresence;
 import club.minnced.discord.rpc.DiscordUser;
+import io.cubyz.Logger;
 import io.cubyz.client.Cubyz;
 import io.cubyz.client.GameLauncher;
 import io.cubyz.ui.ToastManager;
 import io.cubyz.ui.ToastManager.Toast;
-
-import static io.cubyz.CubyzLogger.logger;
 
 public class DiscordIntegration {
 
@@ -64,7 +63,7 @@ public class DiscordIntegration {
 		lib.Discord_Initialize(appID, handlers, false, null);
 		
 		String path = javaExec + " -cp " + classpath + " io.cubyz.client.GameLauncher";
-		logger.fine("Registered launch path as " + path);
+		Logger.log("Registered launch path as " + path);
 		lib.Discord_Register(appID, path);
 		lib.Discord_RunCallbacks();
 		
@@ -91,7 +90,7 @@ public class DiscordIntegration {
         });
 		worker.setName("RPC-Callback-Handler");
 		worker.start();
-		logger.info("Discord RPC integration opened!");
+		Logger.log("Discord RPC integration opened!");
 		ToastManager.queuedToasts.add(new Toast("Discord Integration", "Linking.."));
 		setStatus("On Main Menu");
 	}

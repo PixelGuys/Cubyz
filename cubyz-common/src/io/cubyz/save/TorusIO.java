@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
+import io.cubyz.Logger;
 import io.cubyz.blocks.Block;
 import io.cubyz.entity.Entity;
 import io.cubyz.items.Item;
@@ -61,7 +62,7 @@ public class TorusIO {
 			}
 			in.close();
 		} catch (IOException e) {
-			e.printStackTrace();
+			Logger.throwable(e);
 		}
 	}
 	
@@ -86,7 +87,7 @@ public class TorusIO {
 			}
 			out.close();
 		} catch (IOException e) {
-			e.printStackTrace();
+			Logger.throwable(e);
 		}
 	}
 

@@ -3,6 +3,7 @@ package io.cubyz.rendering;
 import de.matthiasmann.twl.utils.PNGDecoder;
 import de.matthiasmann.twl.utils.PNGDecoder.Format;
 import io.cubyz.ClientSettings;
+import io.cubyz.Logger;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -61,7 +62,7 @@ public class Texture {
 		try {
 			id = loadTexture(is);
 		} catch (Exception e) {
-			e.printStackTrace();
+			Logger.throwable(e);
 		}
 	}
 	

@@ -58,7 +58,7 @@ public class Utilities {
 			}
 			return dest;
 		} catch (Exception e) {
-			e.printStackTrace();
+			Logger.throwable(e);
 		}
 		return null;
 	}

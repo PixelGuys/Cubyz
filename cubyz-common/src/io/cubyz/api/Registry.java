@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
 
-import static io.cubyz.CubyzLogger.logger;
+import io.cubyz.Logger;
 
 /**
  * A registry that uses registry IDs to avoid duplicate entries.
@@ -74,7 +74,7 @@ public class Registry<T extends RegistryElement> {
 		}
 		hashMap.put(element.getRegistryID().toString(), element);
 		if (debug) {
-			logger.info("Registered " + getType(element.getClass()) + " as " + element.getRegistryID());
+			Logger.log("Registered " + getType(element.getClass()) + " as " + element.getRegistryID());
 		}
 		dirty = true;
 		return true;
@@ -96,7 +96,7 @@ public class Registry<T extends RegistryElement> {
 	public T getByID(String id) {
 		T obj = hashMap.get(id);
 		if(obj == null) {
-			logger.warning("Couldn't find registry element with name: "+id);
+			Logger.warning("Couldn't find registry element with name: "+id);
 		}
 		return obj;
 	}
@@ -104,7 +104,7 @@ public class Registry<T extends RegistryElement> {
 	public T getByID(Resource id) {
 		T obj = hashMap.get(id.toString());
 		if(obj == null) {
-			logger.warning("Couldn't find registry element with name: "+id);
+			Logger.warning("Couldn't find registry element with name: "+id);
 		}
 		return obj;
 	}

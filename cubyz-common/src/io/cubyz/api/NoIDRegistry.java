@@ -3,7 +3,7 @@ package io.cubyz.api;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.cubyz.CubyzLogger.logger;
+import io.cubyz.Logger;
 
 /**
  * A registry type that doesn't use any ID, but instead uses the T.equals() function.
@@ -49,7 +49,7 @@ public class NoIDRegistry<T> {
 		}
 		registered.add(element);
 		if (debug) {
-			logger.info("Registered " + getType(element.getClass()) + " as " + element.toString());
+			Logger.log("Registered " + getType(element.getClass()) + " as " + element.toString());
 		}
 	}
 	

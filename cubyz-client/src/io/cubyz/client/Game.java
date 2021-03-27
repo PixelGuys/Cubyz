@@ -1,5 +1,7 @@
 package io.cubyz.client;
 
+import io.cubyz.Logger;
+
 public class Game {
 	protected volatile boolean running;
 	private Thread updateThread;
@@ -61,7 +63,7 @@ public class Game {
 		try {
 			GameLauncher.logic.init(Cubyz.window);
 		} catch (Exception e) {
-			e.printStackTrace();
+			Logger.throwable(e);
 		}
 		GameLauncher.input.init();
 		Cubyz.window.show();

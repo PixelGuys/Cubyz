@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+import io.cubyz.Logger;
 import io.cubyz.api.CubyzRegistries;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.Ore;
@@ -12,8 +13,6 @@ import io.cubyz.entity.Entity;
 import io.cubyz.entity.Player;
 import io.cubyz.save.WorldIO;
 import io.cubyz.world.generator.LifelandGenerator;
-
-import static io.cubyz.CubyzLogger.logger;
 
 public class LocalWorld extends World {
 	
@@ -164,9 +163,9 @@ public class LocalWorld extends World {
 			if ((milliTime + 100) < System.currentTimeMillis()) { // we skipped updates
 				if (!loggedUpdSkip) {
 					if (DO_LATE_UPDATES) {
-						logger.warning(((System.currentTimeMillis() - milliTime) / 100) + " updates late! Doing them.");
+						Logger.warning(((System.currentTimeMillis() - milliTime) / 100) + " updates late! Doing them.");
 					} else {
-						logger.warning(((System.currentTimeMillis() - milliTime) / 100) + " updates skipped!");
+						Logger.warning(((System.currentTimeMillis() - milliTime) / 100) + " updates skipped!");
 					}
 					loggedUpdSkip = true;
 				}

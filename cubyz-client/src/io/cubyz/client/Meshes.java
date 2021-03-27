@@ -1,7 +1,5 @@
 package io.cubyz.client;
 
-import static io.cubyz.CubyzLogger.logger;
-
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
@@ -10,6 +8,7 @@ import java.util.HashMap;
 import java.util.Properties;
 
 import io.cubyz.ClientOnly;
+import io.cubyz.Logger;
 import io.cubyz.api.Registry;
 import io.cubyz.api.Resource;
 import io.cubyz.blocks.Block;
@@ -78,7 +77,7 @@ public class Meshes {
 						props.load(reader);
 						reader.close();
 					} catch (IOException e) {
-						e.printStackTrace();
+						Logger.throwable(e);
 					}
 					model = props.getProperty("model", null);
 					texture = props.getProperty("texture", null);
@@ -108,7 +107,7 @@ public class Meshes {
 				Resource texResource = new Resource(texture);
 				String textureID = texResource.getID();
 				if (!new File("addons/" + texResource.getMod() + "/blocks/textures/" + textureID + ".png").exists()) {
-					logger.warning(texResource + " texture not found");
+					Logger.warning(texResource + " texture not found");
 					textureID = "undefined";
 				}
 				tex = new Texture("addons/" + texResource.getMod() + "/blocks/textures/" + textureID + ".png");
@@ -116,7 +115,7 @@ public class Meshes {
 				Meshes.blockMeshes.put(block, mesh);
 				Meshes.blockTextures.put(block, tex);
 			} catch (Exception e) {
-				e.printStackTrace();
+				Logger.throwable(e);
 			}
 		};
 		
@@ -127,8 +126,8 @@ public class Meshes {
 				try {
 					model = ResourceUtilities.loadEntityModel(rsc);
 				} catch (IOException e) {
-					logger.warning(rsc + " entity model not found");
-					//e.printStackTrace();
+					Logger.warning(rsc + " entity model not found");
+					//Logger.throwable(e);
 					//model = ResourceUtilities.loadEntityModel(new Resource("cubyz:undefined")); // TODO: load a simple cube with the undefined texture
 					return;
 				}
@@ -139,7 +138,7 @@ public class Meshes {
 				Resource texResource = new Resource(model.texture);
 				String texture = texResource.getID();
 				if (!new File("assets/" + texResource.getMod() + "/textures/entities/" + texture + ".png").exists()) {
-					logger.warning(texResource + " texture not found");
+					Logger.warning(texResource + " texture not found");
 					texture = "blocks/undefined";
 				}
 				
@@ -150,7 +149,7 @@ public class Meshes {
 				
 				Meshes.entityMeshes.put(type, mesh);
 			} catch (Exception e) {
-				e.printStackTrace();
+				Logger.throwable(e);
 			}
 		};
 		

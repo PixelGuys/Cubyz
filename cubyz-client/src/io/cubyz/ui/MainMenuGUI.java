@@ -1,5 +1,6 @@
 package io.cubyz.ui;
 
+import io.cubyz.Logger;
 import io.cubyz.client.Cubyz;
 import io.cubyz.client.GameLauncher;
 import io.cubyz.multiplayer.server.CubyzServer;
@@ -50,16 +51,14 @@ public class MainMenuGUI extends MenuGUI {
 				try {
 					server.start();
 				} catch (Exception e) {
-					e.printStackTrace();
+					Logger.throwable(e);
 				}
 			});
 			th.setName("Integrated Debug Server");
 			th.start();
 			try {
 				Thread.sleep(1000);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
+			} catch (InterruptedException e) {}
 			GameLauncher.logic.requestJoin("localhost");
 			Cubyz.gameUI.setMenu(null, false);
 			GameLauncher.logic.loadWorld(GameLauncher.logic.mpClient.getHandler().getWorld().getCurrentTorus());
