@@ -29,7 +29,6 @@ public class Input {
 	}
 	
 	public void update(Window window) {
-		mouse.input(window);
 		if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_F3)) {
 			clientShowDebug = !clientShowDebug;
 			Keyboard.setKeyPressed(GLFW.GLFW_KEY_F3, false);
