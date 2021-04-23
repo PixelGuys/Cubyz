@@ -13,6 +13,7 @@ import org.joml.Vector4f;
 
 import io.cubyz.ClientSettings;
 import io.cubyz.Logger;
+import io.cubyz.api.CubyzRegistries;
 import io.cubyz.blocks.Block;
 import io.cubyz.blocks.BlockInstance;
 import io.cubyz.client.Cubyz;
@@ -478,6 +479,10 @@ public class MainRenderer {
 					Mesh mesh = null;
 					if(manager.itemStacks[i].getItem() instanceof ItemBlock) {
 						Block b = ((ItemBlock)manager.itemStacks[i].getItem()).getBlock();
+						mesh = Meshes.blockMeshes.get(b);
+						mesh.getMaterial().setTexture(Meshes.blockTextures.get(b));
+					} else {
+						Block b = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:diamond_ore");
 						mesh = Meshes.blockMeshes.get(b);
 						mesh.getMaterial().setTexture(Meshes.blockTextures.get(b));
 					}

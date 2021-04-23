@@ -24,6 +24,8 @@ public class ItemEntityManager {
 	/**Diameter of all item entities hitboxes as a unit sphere of the max-norm (cube).*/
 	public static final float diameter = 2*radius;
 	
+	public static final float pickupRange = 1;
+	
 	private static final int capacityIncrease = 64;
 	
 	public float[] posxyz;
@@ -161,7 +163,7 @@ public class ItemEntityManager {
 	public void checkEntity(Entity ent) {
 		for(int i = 0; i < size; i++) {
 			int index3 = 3*i;
-			if(Math.abs(ent.position.x - posxyz[index3]) < ent.width + diameter && Math.abs(ent.position.y + ent.height/2 - posxyz[index3+1]) < ent.height + diameter && Math.abs(ent.position.z - posxyz[index3+2]) < ent.width + diameter) {
+			if(Math.abs(ent.position.x - posxyz[index3]) < ent.width + pickupRange && Math.abs(ent.position.y + ent.height/2 - posxyz[index3+1]) < ent.height + pickupRange && Math.abs(ent.position.z - posxyz[index3+2]) < ent.width + pickupRange) {
 				int newAmount = ent.getInventory().addItem(itemStacks[i].getItem(), itemStacks[i].getAmount());
 				if(newAmount != 0) {
 					itemStacks[i].setAmount(newAmount);
@@ -295,7 +297,6 @@ public class ItemEntityManager {
 		if(isInside) {
 			if(block.isSolid()) {
 				velxyz[index3] = velxyz[index3+1] = velxyz[index3+2] = 0;
-				posxyz[index3+1] = y+chunk.getWorldY()+1 + radius - 0.01f;
 				// TODO: Prevent item entities from getting stuck in a block.
 			} else {
 				// TODO: Add buoyancy and drag.
