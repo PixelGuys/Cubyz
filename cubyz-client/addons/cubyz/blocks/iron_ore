@@ -1,6 +1,6 @@
 class ore
 hardness 60
-veins 0.5
+veins 4
 size 10
 height -32
 drop auto
