@@ -145,11 +145,14 @@ public class ItemEntityManager {
 				ChunkEntityManager other = surface.getEntityManagerAt(((int)posxyz[index3]) & ~NormalChunk.chunkMask, ((int)posxyz[index3+1]) & ~NormalChunk.chunkMask, ((int)posxyz[index3+2]) & ~NormalChunk.chunkMask);
 				if(other == null) {
 					// TODO: Append it to the right file.
+					posxyz[index3] -= velxyz[index3];
+					posxyz[index3+1] -= velxyz[index3+1];
+					posxyz[index3+2] -= velxyz[index3+2];
 				} else {
 					other.itemEntityManager.add(posxyz[index3], posxyz[index3+1], posxyz[index3+2], velxyz[index3], velxyz[index3+1], velxyz[index3+2], rotxyz[index3], rotxyz[index3+1], rotxyz[index3+2], itemStacks[i], despawnTime[i]);
-				}
 					remove(i);
-				i--;
+					i--;
+				}
 				continue;
 			}
 			despawnTime[i]--;
