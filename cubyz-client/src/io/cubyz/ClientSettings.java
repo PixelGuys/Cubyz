@@ -128,8 +128,8 @@ public class ClientSettings {
 		if (settings.has("renderDistance")) {
 			ClientSettings.RENDER_DISTANCE = settings.get("renderDistance").getAsInt();
 		}
-		if (settings.has("maxResolution")) {
-			ClientSettings.HIGHEST_LOD = settings.get("maxResolution").getAsInt();
+		if (settings.has("highestLOD")) {
+			ClientSettings.HIGHEST_LOD = settings.get("highestLOD").getAsInt();
 		}
 		if (settings.has("farDistanceFactor")) {
 			ClientSettings.LOD_FACTOR = settings.get("farDistanceFactor").getAsInt();

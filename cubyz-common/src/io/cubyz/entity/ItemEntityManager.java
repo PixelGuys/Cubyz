@@ -148,7 +148,7 @@ public class ItemEntityManager {
 					posxyz[index3] -= velxyz[index3];
 					posxyz[index3+1] -= velxyz[index3+1];
 					posxyz[index3+2] -= velxyz[index3+2];
-				} else {
+				} else if(other.itemEntityManager != this) {
 					other.itemEntityManager.add(posxyz[index3], posxyz[index3+1], posxyz[index3+2], velxyz[index3], velxyz[index3+1], velxyz[index3+2], rotxyz[index3], rotxyz[index3+1], rotxyz[index3+2], itemStacks[i], despawnTime[i]);
 					remove(i);
 					i--;
