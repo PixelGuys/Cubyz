@@ -1,0 +1,11 @@
+class sand
+hardness 6.5
+drop auto
+
+rotation cubyz:stackable
+
+model cubyz:block.obj
+texture cubyz:snow
+blockEntity cubyz.modding.base.MeltableBlockEntity
+
+color 0xffff

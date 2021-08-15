@@ -1,0 +1,32 @@
+package cubyz.world.items;
+
+import cubyz.utils.translate.TextKey;
+import cubyz.world.blocks.Block;
+
+/**
+ * Item that corresponds to a block and places that block on use.
+ */
+
+public class ItemBlock extends Item {
+
+	private Block block;
+	
+	public ItemBlock() {
+		
+	}
+	
+	public ItemBlock(Block block) {
+		setBlock(block);
+	}
+	
+	public Block getBlock() {
+		return block;
+	}
+	
+	public void setBlock(Block block) {
+		this.block = block;
+		setID(block.getRegistryID());
+		this.setName(TextKey.createTextKey("block." + block.getRegistryID().getMod() + "." + block.getRegistryID().getID() + ".name"));
+	}
+	
+}

@@ -1,0 +1,163 @@
+package cubyz.gui.input;
+
+import org.joml.Vector3f;
+import org.lwjgl.glfw.GLFW;
+
+import cubyz.api.CubyzRegistries;
+import cubyz.client.ClientSettings;
+import cubyz.client.Cubyz;
+import cubyz.client.rendering.Window;
+import cubyz.gui.ConsoleGUI;
+import cubyz.gui.PauseGUI;
+import cubyz.gui.TransitionStyle;
+import cubyz.gui.mods.InventoryGUI;
+import cubyz.world.entity.Entity;
+import cubyz.world.entity.EntityType;
+
+/**
+ * Handles all the inputs.
+ */
+
+public class Input {
+	public MouseInput mouse;
+
+	public boolean clientShowDebug = false;
+	
+	public void init() {
+		mouse = new MouseInput();
+		mouse.init(Cubyz.window);
+	}
+	
+	public void update(Window window) {
+		if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_F3)) {
+			clientShowDebug = !clientShowDebug;
+			Keyboard.setKeyPressed(GLFW.GLFW_KEY_F3, false);
+		}
+		if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_F11)) {
+			Cubyz.renderDeque.push(() -> {
+				window.setFullscreen(!window.isFullscreen());
+			});
+			Keyboard.setKeyPressed(GLFW.GLFW_KEY_F11, false);
+		}
+		if(!Cubyz.gameUI.doesGUIBlockInput() && Cubyz.world != null) {
+			if(Keybindings.isPressed("forward")) {
+				if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT_CONTROL)) {
+					if(Cubyz.player.isFlying()) {
+						Cubyz.playerInc.z = -8;
+					} else {
+						Cubyz.playerInc.z = -2;
+					}
+				} else {
+					Cubyz.playerInc.z = -1;
+				}
+			}
+			if(Keybindings.isPressed("backward")) {
+				Cubyz.playerInc.z = 1;
+			}
+			if(Keybindings.isPressed("left")) {
+				Cubyz.playerInc.x = -1;
+			}
+			if(Keybindings.isPressed("right")) {
+				Cubyz.playerInc.x = 1;
+			}
+			if(Keybindings.isPressed("jump")) {
+				if(Cubyz.player.isFlying()) {
+					Cubyz.player.vy = 0.25F;
+				} else if(Cubyz.player.isOnGround()) {
+					Cubyz.player.vy = 0.25F;
+				}
+			}
+			if(Keybindings.isPressed("fall")) {
+				if(Cubyz.player.isFlying()) {
+					Cubyz.player.vy = -0.25F;
+				}
+			}
+			if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_F)) {
+				Cubyz.player.setFlying(!Cubyz.player.isFlying());
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_F, false);
+			}
+			if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_P)) {
+				// debug: spawn a pig
+				Vector3f pos = new Vector3f(Cubyz.player.getPosition());
+				EntityType pigType = CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:pig");
+				if (pigType == null) return;
+				Entity pig = pigType.newEntity(Cubyz.surface);
+				pig.setPosition(pos);
+				Cubyz.surface.addEntity(pig);
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_P, false);
+			}
+			if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_T)) {
+				if(Cubyz.gameUI.getMenuGUI() == null) {
+					Cubyz.gameUI.setMenu(new ConsoleGUI());
+				}
+			}
+			if(Keybindings.isPressed("inventory")) {
+				Cubyz.gameUI.setMenu(new InventoryGUI());
+				Keyboard.setKeyPressed(Keybindings.getKeyCode("inventory"), false);
+			}
+			if((mouse.isLeftButtonPressed() || mouse.isRightButtonPressed()) && !mouse.isGrabbed() && Cubyz.gameUI.getMenuGUI() == null) {
+				mouse.setGrabbed(true);
+				mouse.clearPos(window.getWidth()/2, window.getHeight()/2);
+			}
+			
+			if(mouse.isGrabbed()) {
+				Cubyz.camera.moveRotation(mouse.getDisplVec().x*0.0089F, mouse.getDisplVec().y*0.0089F, 5F);
+				mouse.clearPos(Cubyz.window.getWidth()/2, Cubyz.window.getHeight()/2);
+			}
+			
+			// inventory related
+			Cubyz.inventorySelection = (Cubyz.inventorySelection - (int) mouse.getScrollOffset()) & 7;
+			if(Keybindings.isPressed("hotbar 1")) {
+				Cubyz.inventorySelection = 0;
+			}
+			if(Keybindings.isPressed("hotbar 2")) {
+				Cubyz.inventorySelection = 1;
+			}
+			if(Keybindings.isPressed("hotbar 3")) {
+				Cubyz.inventorySelection = 2;
+			}
+			if(Keybindings.isPressed("hotbar 4")) {
+				Cubyz.inventorySelection = 3;
+			}
+			if(Keybindings.isPressed("hotbar 5")) {
+				Cubyz.inventorySelection = 4;
+			}
+			if(Keybindings.isPressed("hotbar 6")) {
+				Cubyz.inventorySelection = 5;
+			}
+			if(Keybindings.isPressed("hotbar 7")) {
+				Cubyz.inventorySelection = 6;
+			}
+			if(Keybindings.isPressed("hotbar 8")) {
+				Cubyz.inventorySelection = 7;
+			}
+			
+			// render distance
+			if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_MINUS)) {
+				if(ClientSettings.RENDER_DISTANCE >= 2)
+					ClientSettings.RENDER_DISTANCE--;
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_MINUS, false);
+				System.gc();
+			}
+			if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_EQUAL)) {
+				ClientSettings.RENDER_DISTANCE++;
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_EQUAL, false);
+				System.gc();
+			}
+			Cubyz.msd.selectSpatial(Cubyz.surface.getChunks(), Cubyz.player.getPosition(), Cubyz.camera.getViewMatrix().positiveZ(Cubyz.dir).negate(), Cubyz.player, Cubyz.surface);
+		}
+		if(Cubyz.world != null) {
+			if(Keybindings.isPressed("menu")) {
+				if(Cubyz.gameUI.getMenuGUI() != null) {
+					Cubyz.gameUI.setMenu(null);
+					mouse.setGrabbed(true);
+					Keyboard.setKeyPressed(Keybindings.getKeyCode("menu"), false);
+				} else {
+					Keyboard.setKeyPressed(Keybindings.getKeyCode("menu"), false);
+					Cubyz.gameUI.setMenu(new PauseGUI(), TransitionStyle.NONE);
+				}
+			}
+		}
+		mouse.clearScroll();
+	}
+}

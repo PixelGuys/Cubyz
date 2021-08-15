@@ -1,0 +1,59 @@
+gui.cubyz.mainmenu.singleplayer=Un jugador
+gui.cubyz.mainmenu.multiplayer=Multijugador
+gui.cubyz.mainmenu.exit=Salir del juego
+gui.cubyz.mainmenu.settings=Opciones
+gui.cubyz.settings.done=Hecho
+gui.cubyz.general.on=Activado
+gui.cubyz.general.off=Desactivado
+gui.cubyz.general.back=Atrás
+gui.cubyz.general.cancel=Cancelar
+gui.cubyz.settings.language=Lenguaje: {0}
+gui.cubyz.settings.discord=Integración con Discord: {0}
+gui.cubyz.settings.keybindings=Config. teclado
+gui.cubyz.settings.graphics=Gráficos
+gui.cubyz.settings.fog.med=Niebla: Moderada
+gui.cubyz.settings.fog.far=Niebla: Lejana
+gui.cubyz.settings.fog.near=Niebla: Cerca
+gui.cubyz.settings.fog.off=Niebla: Desactivada
+gui.cubyz.settings.easylighting=Iluminación ligera
+gui.cubyz.settings.vsync=Sincronización Vertical
+gui.cubyz.pause.exit=Salir al menú principal
+gui.cubyz.pause.resume=Resumir
+gui.cubyz.debug.reload=Recargar
+gui.cubyz.saves.play=Jugar {0}
+gui.cubyz.saves.delete=Borrar
+gui.cubyz.saves.create=¡Crea un nuevo mundo!
+lang.name=Español
+
+# Blocks
+block.cubyz.cactus.name=Cactus
+block.cubyz.soil.name=Tierra
+block.cubyz.gravel.name=Grava
+block.cubyz.ice.name=Hielo
+block.cubyz.sand.name=Arena
+block.cubyz.snow.name=Nieve
+block.cubyz.mossy_cobblestone.name=Adoquín con musgo
+block.cubyz.cobblestone.name=Adoquín
+block.cubyz.oak_log.name=Tronco de roble
+block.cubyz.oak_top.name=Tapa de roble
+block.cubyz.oak_planks.name=Tablones de roble
+block.cubyz.oak_leaves.name=Hojas de roble
+block.cubyz.torch.name=Antorcha
+block.cubyz.workbench.name=Mesa de trabajo
+block.cubyz.iron_ore.name=Mineral de hierro
+
+# Items
+item.cubyz.stick.name=Palo
+item.cubyz.diamond.name=Diamante
+item.cubyz.coal.name=Carbón
+item.cubyz.raw_meat.name=Carne cruda
+item.cubyz.apple.name=Manzana
+
+# Tools
+cubyz.grammar.tool_material={1} {0}
+cubyz.tools.materials.wood=de madera
+cubyz.tools.materials.stone=de piedra
+cubyz.tools.names.axe=Hacha
+cubyz.tools.names.pickaxe=Pico
+cubyz.tools.names.shovel=Pala
+cubyz.tools.names.sword=Espada

@@ -1,0 +1,9 @@
+class stone
+hardness 10
+drop auto
+
+model cubyz:block.obj
+texture cubyz:ice
+blockEntity cubyz.modding.base.MeltableBlockEntity
+
+color 0xf78f

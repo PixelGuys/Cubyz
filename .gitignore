@@ -23,16 +23,16 @@
 hs_err_pid*
 
 # test images
-cubyz-client/image.png
-cubyz-client/test.png
+image.png
+test.png
 
 #Eclipse workspace/projects files
 .metadata/
 .recommenders/
-cubyz-client/dependency-reduced-pom.xml
-cubyz-client/target/
-cubyz-client/logs/
-cubyz-client/saves/
-cubyz-client/cache/
-cubyz-client/saves/World/world.dat
-cubyz-client/settings.json
+dependency-reduced-pom.xml
+target/
+logs/
+saves/
+cache/
+saves/World/world.dat
+settings.json
