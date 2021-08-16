@@ -26,34 +26,34 @@ gui.cubyz.saves.create=Criar um novo jogo!
 lang.name=Português
 
 # Blocks
-block.cubyz.cactus.name=Cactus
-block.cubyz.soil.name=Soil
-block.cubyz.gravel.name=Gravel
-block.cubyz.ice.name=Ice
-block.cubyz.sand.name=Sand
-block.cubyz.snow.name=Snow
-block.cubyz.mossy_cobblestone.name=Mossy Cobblestone
-block.cubyz.cobblestone.name=Cobblestone
-block.cubyz.oak_log.name=Oak Log
-block.cubyz.oak_top.name=Oak Top
-block.cubyz.oak_planks.name=Oak Planks
-block.cubyz.oak_leaves.name=Oak Leaves
-block.cubyz.torch.name=Torch
-block.cubyz.workbench.name=Workbench
-block.cubyz.iron_ore.name=Iron Ore
+block.cubyz.cactus.name=Cacto
+block.cubyz.soil.name=Solo
+block.cubyz.gravel.name=Gravilha
+block.cubyz.ice.name=Gelo
+block.cubyz.sand.name=Areia
+block.cubyz.snow.name=Neve
+block.cubyz.mossy_cobblestone.name=Pedregulho com Musgo
+block.cubyz.cobblestone.name=Pedregulho
+block.cubyz.oak_log.name=Tronco de Carvalho
+block.cubyz.oak_top.name=Topo de Carvalho
+block.cubyz.oak_planks.name=Tábuas de Carvalho
+block.cubyz.oak_leaves.name=Folhas de Carvalho
+block.cubyz.torch.name=Tocha
+block.cubyz.workbench.name=Mesa de Trabalho
+block.cubyz.iron_ore.name=Minério de Ferro
 
 # Items
-item.cubyz.stick.name=Stick
-item.cubyz.diamond.name=Diamond
-item.cubyz.coal.name=Coal
-item.cubyz.raw_meat.name=Raw meat
-item.cubyz.apple.name=Apple
+item.cubyz.stick.name=Pau
+item.cubyz.diamond.name=Diamante
+item.cubyz.coal.name=Carvão
+item.cubyz.raw_meat.name=Carne Crua
+item.cubyz.apple.name=Maçã
 
 # Tools
 cubyz.grammar.tool_material={0} {1}
-cubyz.tools.materials.wood=Wooden
-cubyz.tools.materials.stone=Stone
-cubyz.tools.names.axe=Axe
-cubyz.tools.names.pickaxe=Pickaxe
-cubyz.tools.names.shovel=Shovel
-cubyz.tools.names.sword=Sword
+cubyz.tools.materials.wood=Madeira
+cubyz.tools.materials.stone=Pedra
+cubyz.tools.names.axe=Machado
+cubyz.tools.names.pickaxe=Picareta
+cubyz.tools.names.shovel=Pá
+cubyz.tools.names.sword=Espada
