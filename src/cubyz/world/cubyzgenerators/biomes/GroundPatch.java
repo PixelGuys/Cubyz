@@ -3,8 +3,8 @@ package cubyz.world.cubyzgenerators.biomes;
 import java.util.Random;
 
 import cubyz.world.Chunk;
-import cubyz.world.Region;
 import cubyz.world.blocks.Block;
+import cubyz.world.terrain.MapFragment;
 
 /**
  * A small oval of different ground terrain.
@@ -24,7 +24,7 @@ public class GroundPatch extends StructureModel {
 	}
 
 	@Override
-	public void generate(int x, int z, int height, Chunk chunk, Region region, Random rand) {
+	public void generate(int x, int z, int height, Chunk chunk, MapFragment map, Random rand) {
 		int y = chunk.getWorldY();
 		float width = this.width + (rand.nextFloat() - 0.5f)*this.variation;
 		float orientation = 2*(float)Math.PI*rand.nextFloat();
@@ -50,7 +50,7 @@ public class GroundPatch extends StructureModel {
 				float secn = xSecn*(x - px) + zSecn*(z - pz);
 				float dist = main*main + secn*secn;
 				if(dist <= 1) {
-					int startHeight = (int)region.getHeight(px + chunk.getWorldX(), pz + chunk.getWorldZ());
+					int startHeight = (int)map.getHeight(px + chunk.getWorldX(), pz + chunk.getWorldZ());
 					for(int py = chunk.startIndex((int)(startHeight - depth + 1)); py <= startHeight; py += chunk.getVoxelSize()) {
 						if(dist <= smoothness || (dist - smoothness)/(1 - smoothness) < rand.nextFloat()) {
 							if(chunk.liesInChunk(px, py-y, pz)) {

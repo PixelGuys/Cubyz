@@ -16,7 +16,7 @@ public class ChunkEntityManager {
 		wy = chunk.getWorldY();
 		wz = chunk.getWorldZ();
 		this.chunk = chunk;
-		itemEntityManager = chunk.region.regIO.readItemEntities(surface, chunk);
+		itemEntityManager = chunk.map.mapIO.readItemEntities(surface, chunk);
 	}
 	
 	public void update() {

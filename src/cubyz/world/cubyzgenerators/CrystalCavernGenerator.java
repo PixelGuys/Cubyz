@@ -4,13 +4,12 @@ import java.util.Random;
 
 import cubyz.api.CubyzRegistries;
 import cubyz.api.Resource;
-import cubyz.utils.math.CubyzMath;
 import cubyz.world.Chunk;
 import cubyz.world.NormalChunk;
-import cubyz.world.Region;
 import cubyz.world.Surface;
 import cubyz.world.blocks.Block;
 import cubyz.world.blocks.Block.BlockClass;
+import cubyz.world.terrain.MapFragment;
 
 /**
  * Generates a special cavern that contains giant crystals.
@@ -51,7 +50,7 @@ public class CrystalCavernGenerator implements Generator {
 	private static final int crystalChunkWorldSize = 256;
 
 	@Override
-	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, Region containingRegion, Surface surface) {
+	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, MapFragment map, Surface surface) {
 		int ccx = wx/crystalChunkWorldSize;
 		int ccy = wy/crystalChunkWorldSize;
 		int ccz = wz/crystalChunkWorldSize;
@@ -63,9 +62,9 @@ public class CrystalCavernGenerator implements Generator {
 		for(int x = ccx - range; x <= ccx + range; ++x) {
 			for(int y = ccy - range; y <= ccy + range; ++y) {
 				for(int z = ccz - range; z <= ccz + range; ++z) {
-					int randX = CubyzMath.worldModulo(x, surface.getSizeX()/crystalChunkWorldSize)*rand1;
+					int randX = x*rand1;
 					int randY = y*rand2;
-					int randZ = CubyzMath.worldModulo(z, surface.getSizeZ()/crystalChunkWorldSize)*rand3;
+					int randZ = z*rand3;
 					rand.setSeed((randY << 48) ^ (randY >>> 16) ^ (randX << 32) ^ randZ ^ seed);
 					considerCoordinates(x, y, z, wx, wy, wz, chunk, rand);
 				}

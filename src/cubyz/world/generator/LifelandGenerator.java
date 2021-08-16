@@ -6,10 +6,10 @@ import java.util.Comparator;
 import cubyz.api.Registry;
 import cubyz.api.Resource;
 import cubyz.world.Chunk;
-import cubyz.world.Region;
 import cubyz.world.Surface;
 import cubyz.world.blocks.Ore;
 import cubyz.world.cubyzgenerators.*;
+import cubyz.world.terrain.MapFragment;
 
 /**
  * The normal generator for Cubyz.
@@ -55,7 +55,7 @@ public class LifelandGenerator extends SurfaceGenerator {
 		int wz = chunk.getWorldZ();
 		long seed = surface.getStellarTorus().getLocalSeed();
 		
-		Region containing = surface.getRegion(wx, wz, chunk.getVoxelSize());
+		MapFragment containing = surface.getMapFragment(wx, wz, chunk.getVoxelSize());
 		
 		for (Generator g : sortedGenerators) {
 			g.generate(seed ^ g.getGeneratorSeed(), wx, wy, wz, chunk, containing, surface);

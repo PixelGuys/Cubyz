@@ -50,8 +50,8 @@ public class MeshSelectionDetector {
 		Object newSpatial = null;
 		intersection.set(pos.x, pos.y, pos.z, dir.x, dir.y, dir.z);
 		for (NormalChunk ch : chunks) {
-			min.set(ch.getMin(pos.x, pos.z, surface.getSizeX(), surface.getSizeZ()));
-			max.set(ch.getMax(pos.x, pos.z, surface.getSizeX(), surface.getSizeZ()));
+			min.set(ch.getMin());
+			max.set(ch.getMax());
 			// Check if the chunk is in view:
 			if (!intersection.test(min.x-1, min.y-1, min.z-1, max.x+1, max.y+1, max.z+1)) // 1 is added/subtracted because chunk min-max don't align with the block min max.
 				continue;

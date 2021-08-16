@@ -4,12 +4,11 @@ import java.util.Random;
 
 import cubyz.api.CubyzRegistries;
 import cubyz.api.Resource;
-import cubyz.utils.math.CubyzMath;
 import cubyz.world.Chunk;
 import cubyz.world.NormalChunk;
-import cubyz.world.Region;
 import cubyz.world.Surface;
 import cubyz.world.blocks.Block;
+import cubyz.world.terrain.MapFragment;
 
 /**
  * Generates caves using perlin worms algorithm.
@@ -32,13 +31,11 @@ public class CaveGenerator implements Generator {
 	private static Block ice = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:ice");
 	
 	@Override
-	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, Region containingRegion, Surface surface) {
+	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, MapFragment map, Surface surface) {
 		Random rand = new Random(seed);
 		int rand1 = rand.nextInt() | 1;
 		int rand2 = rand.nextInt() | 1;
 		int rand3 = rand.nextInt() | 1;
-		int chunksSizeX = surface.getSizeX() >> NormalChunk.chunkShift;
-		int chunksSizeZ = surface.getSizeZ() >> NormalChunk.chunkShift;
 		int cx = wx >> NormalChunk.chunkShift;
 		int cy = wy >> NormalChunk.chunkShift;
 		int cz = wz >> NormalChunk.chunkShift;
@@ -46,9 +43,9 @@ public class CaveGenerator implements Generator {
 		for(int x = cx - range; x <= cx + range; ++x) {
 			for(int y = cy - range; y <= cy + range; ++y) {
 				for(int z = cz - range; z <= cz + range; ++z) {
-					int randX = CubyzMath.worldModulo(x, chunksSizeX)*rand1;
+					int randX = x*rand1;
 					int randY = y*rand2;
-					int randZ = CubyzMath.worldModulo(z, chunksSizeZ)*rand3;
+					int randZ = z*rand3;
 					rand.setSeed((randY << 48) ^ (randY >>> 16) ^ (randX << 32) ^ randZ ^ seed);
 					considerCoordinates(x, y, z, wx, wy, wz, chunk, rand);
 				}

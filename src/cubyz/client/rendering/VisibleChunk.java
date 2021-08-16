@@ -1,9 +1,11 @@
-package cubyz.world;
+package cubyz.client.rendering;
 
 import java.util.ArrayList;
 
 import cubyz.client.ClientSettings;
 import cubyz.utils.Utilities;
+import cubyz.world.NormalChunk;
+import cubyz.world.Surface;
 import cubyz.world.blocks.Block;
 import cubyz.world.blocks.BlockInstance;
 
@@ -93,7 +95,7 @@ public class VisibleChunk extends NormalChunk {
 			// Update the sun channel:
 			for(int x = 0; x < chunkSize; x++) {
 				for(int z = 0; z < chunkSize; z++) {
-					int startHeight = region.regIO.getHeight(x+wx, z+wz, region);
+					int startHeight = map.mapIO.getHeight(x+wx, z+wz, map);
 					startHeight -= wy;
 					if(startHeight < chunkSize) {
 						propagateSunLight(getIndex(x, chunkMask, z));
@@ -155,7 +157,7 @@ public class VisibleChunk extends NormalChunk {
 			int x = index>>chunkShift & chunkMask;
 			int y = index>>chunkShift2 & chunkMask;
 			int z = index & chunkMask;
-			region.regIO.setHeight(x+wx, z+wz, y+wy, region);
+			map.mapIO.setHeight(x+wx, z+wz, y+wy, map);
 			return;
 		} else if((light[index] & 0xff000000) != 0xff000000) {
 			constructiveLightUpdate(index, 255+8, 24);
@@ -220,7 +222,7 @@ public class VisibleChunk extends NormalChunk {
 			int x = index>>chunkShift & chunkMask;
 			int y = index>>chunkShift2 & chunkMask;
 			int z = index & chunkMask;
-			region.regIO.setHeight(x+wx, z+wz, Math.min(y+wy-1, region.regIO.getHeight(x+wx, z+wz, region)), region);
+			map.mapIO.setHeight(x+wx, z+wz, Math.min(y+wy-1, map.mapIO.getHeight(x+wx, z+wz, map)), map);
 		}
 		light[index] = (~(255 << channelShift) & light[index]) | (lightValue << channelShift);
 		updated = true;
@@ -385,7 +387,7 @@ public class VisibleChunk extends NormalChunk {
 			int x = index>>chunkShift & chunkMask;
 			int y = index>>chunkShift2 & chunkMask;
 			int z = index & chunkMask;
-			region.regIO.setHeight(x+wx, z+wz, Math.max(y+wy, region.regIO.getHeight(x+wx, z+wz, region)), region);
+			map.mapIO.setHeight(x+wx, z+wz, Math.max(y+wy, map.mapIO.getHeight(x+wx, z+wz, map)), map);
 		}
 		updated = true;
 		light[index] = (light[index] & ~(255 << channelShift)) | (newValue << channelShift);

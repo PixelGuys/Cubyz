@@ -4,7 +4,6 @@ package cubyz.world;
 import org.joml.Vector3f;
 
 import cubyz.client.Cubyz;
-import cubyz.utils.math.CubyzMath;
 import cubyz.world.blocks.Block;
 import cubyz.world.generator.SurfaceGenerator;
 
@@ -47,12 +46,12 @@ public class ReducedChunk extends Chunk {
 		// TODO
 	}
 	
-	public Vector3f getMin(float x0, float z0, int worldSizeX, int worldSizeZ) {
-		return new Vector3f(CubyzMath.match(wx, x0, worldSizeX), wy, CubyzMath.match(wz, z0, worldSizeZ));
+	public Vector3f getMin() {
+		return new Vector3f(wx, wy, wz);
 	}
 	
-	public Vector3f getMax(float x0, float z0, int worldSizeX, int worldSizeZ) {
-		return new Vector3f(CubyzMath.match(wx, x0, worldSizeX) + width, (wy) + width, CubyzMath.match(wz, z0, worldSizeZ) + width);
+	public Vector3f getMax() {
+		return new Vector3f(wx + width, (wy) + width, wz + width);
 	}
 	
 	@Override

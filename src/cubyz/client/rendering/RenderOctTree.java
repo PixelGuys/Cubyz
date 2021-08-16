@@ -1,4 +1,4 @@
-package cubyz.world;
+package cubyz.client.rendering;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -9,6 +9,9 @@ import cubyz.client.ClientOnly;
 import cubyz.client.Cubyz;
 import cubyz.utils.datastructures.HashMapKey3D;
 import cubyz.utils.math.CubyzMath;
+import cubyz.world.Chunk;
+import cubyz.world.NormalChunk;
+import cubyz.world.ReducedChunk;
 
 public class RenderOctTree {
 	private int lastX, lastY, lastZ, lastRD, lastLOD;
@@ -25,11 +28,11 @@ public class RenderOctTree {
 			this.size = size;
 		}
 		public void update(int px, int py, int pz, int renderDistance, int maxRD, int minHeight, int maxHeight, int nearRenderDistance) {
-			double dx = Math.abs(CubyzMath.moduloMatchSign(x + size/2 - px, Cubyz.surface.getSizeX()));
+			double dx = Math.abs(x + size/2 - px);
 			double dy = Math.abs(y + size/2 - py);
-			double dz = Math.abs(CubyzMath.moduloMatchSign(z + size/2 - pz, Cubyz.surface.getSizeZ()));
+			double dz = Math.abs(z + size/2 - pz);
 			// Check if this chunk is outside the nearRenderDistance or outside the height limits:
-			if(y + size <= Cubyz.surface.getRegion(x, z, 16).getMinHeight() || y > Cubyz.surface.getRegion(x, z, 16).getMaxHeight()) {
+			if(y + size <= Cubyz.surface.getMapFragment(x, z, 16).getMinHeight() || y > Cubyz.surface.getMapFragment(x, z, 16).getMaxHeight()) {
 				int dx2 = (int)Math.max(0, dx - size/2);
 				int dy2 = (int)Math.max(0, dy - size/2);
 				int dz2 = (int)Math.max(0, dz - size/2);
@@ -124,8 +127,7 @@ public class RenderOctTree {
 		}
 		
 		public boolean testFrustum(FrustumIntersection frustumInt, float x0, float z0) {
-			return frustumInt.testAab(CubyzMath.match(x, x0, Cubyz.surface.getSizeX()), y, CubyzMath.match(z, z0, Cubyz.surface.getSizeZ()), 
-					CubyzMath.match(x, x0, Cubyz.surface.getSizeX()) + size, y + size, CubyzMath.match(z, z0, Cubyz.surface.getSizeZ()) + size);
+			return frustumInt.testAab(x, y, z, x + size, y + size, z + size);
 		}
 		
 		public void cleanup() {
@@ -165,22 +167,20 @@ public class RenderOctTree {
 				
 				for(int z = minZ; z <= maxZ; z += LODSize) {
 					// Make sure underground chunks are only generated if they are close to the player.
-					if(y + LODSize <= Cubyz.surface.getRegion(x, z, 16).getMinHeight() || y > Cubyz.surface.getRegion(x, z, 16).getMaxHeight()) {
+					if(y + LODSize <= Cubyz.surface.getMapFragment(x, z, 16).getMinHeight() || y > Cubyz.surface.getMapFragment(x, z, 16).getMaxHeight()) {
 						int dx = Math.max(0, Math.abs(x + LODSize/2 - px) - LODSize/2);
 						int dy = Math.max(0, Math.abs(y + LODSize/2 - py) - LODSize/2);
 						int dz = Math.max(0, Math.abs(z + LODSize/2 - pz) - LODSize/2);
 						if(dx*dx + dy*dy + dz*dz > nearRenderDistance*nearRenderDistance) continue;
 					}
-					int x̅ = CubyzMath.worldModulo(x, Cubyz.surface.getSizeX());
-					int z̅ = CubyzMath.worldModulo(z, Cubyz.surface.getSizeZ());
-					int rootX = x̅ >> LODShift;
+					int rootX = x >> LODShift;
 					int rootY = y >> LODShift;
-					int rootZ = z̅ >> LODShift;
+					int rootZ = z >> LODShift;
 		
 					HashMapKey3D key = new HashMapKey3D(rootX, rootY, rootZ);
 					OctTreeNode node = roots.get(key);
 					if(node == null) {
-						node = new OctTreeNode(x̅, y, z̅, LODSize);
+						node = new OctTreeNode(x, y, z, LODSize);
 						// Mark this node to be potentially removed in the next update:
 						node.shouldBeRemoved = true;
 					} else {
@@ -188,7 +188,7 @@ public class RenderOctTree {
 						node.shouldBeRemoved = false;
 					}
 					newMap.put(key, node);
-					node.update(px, py, pz, renderDistance*NormalChunk.chunkSize, maxRenderDistance, Cubyz.surface.getRegion(x, z, 16).getMinHeight(), Cubyz.surface.getRegion(x, z, 16).getMaxHeight(), nearRenderDistance);
+					node.update(px, py, pz, renderDistance*NormalChunk.chunkSize, maxRenderDistance, Cubyz.surface.getMapFragment(x, z, 16).getMinHeight(), Cubyz.surface.getMapFragment(x, z, 16).getMaxHeight(), nearRenderDistance);
 				}
 			}
 		}

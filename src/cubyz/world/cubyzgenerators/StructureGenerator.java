@@ -3,12 +3,11 @@ package cubyz.world.cubyzgenerators;
 import java.util.Random;
 
 import cubyz.api.Resource;
-import cubyz.utils.math.CubyzMath;
 import cubyz.world.Chunk;
-import cubyz.world.Region;
 import cubyz.world.Surface;
 import cubyz.world.cubyzgenerators.biomes.Biome;
 import cubyz.world.cubyzgenerators.biomes.StructureModel;
+import cubyz.world.terrain.MapFragment;
 
 /**
  * Used for small structures only.
@@ -28,48 +27,46 @@ public class StructureGenerator implements Generator {
 	}
 
 	@Override
-	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, Region containingRegion, Surface surface) {
+	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, MapFragment map, Surface surface) {
 		Random rand = new Random(seed + 3*(seed + 1 & Integer.MAX_VALUE));
-		int worldSizeX = surface.getSizeX();
-		int worldSizeZ = surface.getSizeZ();
 		long rand1 = rand.nextInt() | 1;
 		long rand2 = rand.nextInt() | 1;
 		// Get the regions for the surrounding regions:
-		Region nn = containingRegion;
-		Region np = containingRegion;
-		Region pn = containingRegion;
-		Region pp = containingRegion;
-		Region no = containingRegion;
-		Region po = containingRegion;
-		Region on = containingRegion;
-		Region op = containingRegion;
-		if((wx & Region.regionMask) <= 8) {
-			no = nn = np = surface.getRegion(wx - Region.regionSize, wz, chunk.getVoxelSize());
+		MapFragment nn = map;
+		MapFragment np = map;
+		MapFragment pn = map;
+		MapFragment pp = map;
+		MapFragment no = map;
+		MapFragment po = map;
+		MapFragment on = map;
+		MapFragment op = map;
+		if((wx & MapFragment.MAP_MASK) <= 8) {
+			no = nn = np = surface.getMapFragment(wx - MapFragment.MAP_SIZE, wz, chunk.getVoxelSize());
 		}
-		if((wx & Region.regionMask) >= Region.regionSize - 8 - chunk.getWidth()) {
-			po = pn = pp = surface.getRegion(wx + Region.regionSize, wz, chunk.getVoxelSize());
+		if((wx & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth()) {
+			po = pn = pp = surface.getMapFragment(wx + MapFragment.MAP_SIZE, wz, chunk.getVoxelSize());
 		}
-		if((wz & Region.regionMask) <= 8) {
-			on = surface.getRegion(wx, wz - Region.regionSize, chunk.getVoxelSize());
-			nn = surface.getRegion(wx - ((wx & Region.regionMask) <= 8 ? Region.regionSize : 0), wz - Region.regionSize, chunk.getVoxelSize());
-			pn = surface.getRegion(wx + ((wx & Region.regionMask) >= Region.regionSize - 8 - chunk.getWidth() ? Region.regionSize : 0), wz - Region.regionSize, chunk.getVoxelSize());
+		if((wz & MapFragment.MAP_MASK) <= 8) {
+			on = surface.getMapFragment(wx, wz - MapFragment.MAP_SIZE, chunk.getVoxelSize());
+			nn = surface.getMapFragment(wx - ((wx & MapFragment.MAP_MASK) <= 8 ? MapFragment.MAP_SIZE : 0), wz - MapFragment.MAP_SIZE, chunk.getVoxelSize());
+			pn = surface.getMapFragment(wx + ((wx & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth() ? MapFragment.MAP_SIZE : 0), wz - MapFragment.MAP_SIZE, chunk.getVoxelSize());
 		}
-		if((wz & Region.regionMask) >= Region.regionSize - 8 - chunk.getWidth()) {
-			op = surface.getRegion(wx, wz + Region.regionSize, chunk.getVoxelSize());
-			np = surface.getRegion(wx - ((wx & Region.regionMask) <= 8 ? Region.regionSize : 0), wz + Region.regionSize, chunk.getVoxelSize());
-			pp = surface.getRegion(wx + ((wx & Region.regionMask) >= Region.regionSize - 8 - chunk.getWidth() ? Region.regionSize : 0), wz + Region.regionSize, chunk.getVoxelSize());
+		if((wz & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth()) {
+			op = surface.getMapFragment(wx, wz + MapFragment.MAP_SIZE, chunk.getVoxelSize());
+			np = surface.getMapFragment(wx - ((wx & MapFragment.MAP_MASK) <= 8 ? MapFragment.MAP_SIZE : 0), wz + MapFragment.MAP_SIZE, chunk.getVoxelSize());
+			pp = surface.getMapFragment(wx + ((wx & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth() ? MapFragment.MAP_SIZE : 0), wz + MapFragment.MAP_SIZE, chunk.getVoxelSize());
 		}
 		for(int px = 0; px < chunk.getWidth() + 16; px++) {
 			for(int pz = 0; pz < chunk.getWidth() + 16; pz++) {
-				int wpx = CubyzMath.worldModulo(px - 8 + wx, worldSizeX);
-				int wpz = CubyzMath.worldModulo(pz - 8 + wz, worldSizeZ);
+				int wpx = px - 8 + wx;
+				int wpz = pz - 8 + wz;
 				rand.setSeed((wpx*rand1 << 32) ^ wpz*rand2 ^ seed);
 				// Make sure the coordinates are inside the resolution grid of the Regions internal array:
 				wpx = wpx & ~(chunk.getVoxelSize() - 1);
 				wpz = wpz & ~(chunk.getVoxelSize() - 1);
 				
 				float randomValue = rand.nextFloat();
-				Region cur = containingRegion;
+				MapFragment cur = map;
 				if(px < 8) {
 					if(pz < 8) cur = nn;
 					else if(chunk.getWidth() + 16 - pz <= 8) cur = np;
@@ -85,7 +82,7 @@ public class StructureGenerator implements Generator {
 				Biome biome = cur.getBiome(wpx, wpz);
 				for(StructureModel model : biome.vegetationModels) {
 					if(model.getChance() > randomValue) {
-						model.generate(px - 8, pz - 8, (int)cur.getHeight(wpx, wpz) + 1, chunk, containingRegion, rand);
+						model.generate(px - 8, pz - 8, (int)cur.getHeight(wpx, wpz) + 1, chunk, map, rand);
 						break;
 					} else {
 						randomValue = (randomValue - model.getChance())/(1 - model.getChance()); // Make sure that after the first one was considered all others get the correct chances.

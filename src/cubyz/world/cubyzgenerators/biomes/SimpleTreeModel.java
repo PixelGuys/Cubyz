@@ -3,8 +3,8 @@ package cubyz.world.cubyzgenerators.biomes;
 import java.util.Random;
 
 import cubyz.world.Chunk;
-import cubyz.world.Region;
 import cubyz.world.blocks.Block;
+import cubyz.world.terrain.MapFragment;
 
 /**
  * Creates a variety of different tree shapes.<br>
@@ -32,7 +32,7 @@ public class SimpleTreeModel extends StructureModel {
 	}
 
 	@Override
-	public void generate(int x, int z, int h, Chunk chunk, Region region, Random rand) {
+	public void generate(int x, int z, int h, Chunk chunk, MapFragment map, Random rand) {
 		int y = chunk.getWorldY();
 		h -= y;
 		int height = height0 + rand.nextInt(deltaHeight);

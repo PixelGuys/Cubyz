@@ -19,7 +19,6 @@ import cubyz.client.GameLauncher;
 import cubyz.client.Meshes;
 import cubyz.client.NormalChunkMesh;
 import cubyz.client.ReducedChunkMesh;
-import cubyz.gui.input.Input;
 import cubyz.gui.input.Keyboard;
 import cubyz.utils.Utils;
 import cubyz.utils.datastructures.FastList;
@@ -253,7 +252,7 @@ public class MainRenderer {
 			// Set intensity:
 			light.setDirection(light.getDirection().mul(0.1f*Cubyz.surface.getGlobalLighting()/light.getDirection().length()));
 			window.setClearColor(clearColor);
-			render(window, ambient, light, Cubyz.world.getBlocks(), Cubyz.surface.getEntities(), worldSpatialList, Cubyz.player, Cubyz.surface.getSizeX(), Cubyz.surface.getSizeZ());
+			render(window, ambient, light, Cubyz.world.getBlocks(), Cubyz.surface.getEntities(), worldSpatialList, Cubyz.player);
 		} else {
 			clearColor.y = clearColor.z = 0.7f;
 			clearColor.x = 0.1f;
@@ -267,7 +266,7 @@ public class MainRenderer {
 				window.setRenderTarget(buf);
 			}
 			
-			render(window, brightAmbient, light, EMPTY_BLOCK_LIST, EMPTY_ENTITY_LIST, EMPTY_SPATIAL_LIST, null, -1, -1);
+			render(window, brightAmbient, light, EMPTY_BLOCK_LIST, EMPTY_ENTITY_LIST, EMPTY_SPATIAL_LIST, null);
 			
 			if (screenshot) {
 				/*FrameBuffer buf = window.getRenderTarget();
@@ -292,7 +291,7 @@ public class MainRenderer {
 	 * @param spatials the special objects to render (that are neither entity, neither blocks, like sun and moon, or rain)
 	 * @param localPlayer The world's local player
 	 */
-	public void render(Window window, Vector3f ambientLight, DirectionalLight directionalLight, Block[] blocks, Entity[] entities, Spatial[] spatials, Player localPlayer, int worldSizeX, int worldSizeZ) {
+	public void render(Window window, Vector3f ambientLight, DirectionalLight directionalLight, Block[] blocks, Entity[] entities, Spatial[] spatials, Player localPlayer) {
 		if (window.isResized()) {
 			glViewport(0, 0, window.getWidth(), window.getHeight());
 			window.setResized(false);
@@ -364,7 +363,7 @@ public class MainRenderer {
 					NormalChunk chunk = (NormalChunk)ch;
 					if(!chunk.isLoaded()) continue;
 					visibleChunks.add(chunk);
-					blockShader.setUniform("modelPosition", chunk.getMin(x0, z0, worldSizeX, worldSizeZ));
+					blockShader.setUniform("modelPosition", chunk.getMin());
 					
 					if(selected != null && selected.source == ch) {
 						blockShader.setUniform("selectedIndex", selected.renderIndex);
@@ -403,10 +402,10 @@ public class MainRenderer {
 			for(int i = 0; i < visibleReduced.size; i++) {
 				ReducedChunk chunk = visibleReduced.array[i];
 				if(chunk != null && chunk.generated) {
-					if (!frustumInt.testAab(chunk.getMin(x0, z0, worldSizeX, worldSizeZ), chunk.getMax(x0, z0, worldSizeX, worldSizeZ)))
+					if (!frustumInt.testAab(chunk.getMin(), chunk.getMax()))
 						continue;
 					Object mesh = chunk.getChunkMesh();
-					chunkShader.setUniform("modelPosition", chunk.getMin(x0, z0, worldSizeX, worldSizeZ));
+					chunkShader.setUniform("modelPosition", chunk.getMin());
 					if(mesh == null || !(mesh instanceof ReducedChunkMesh)) {
 						if(System.currentTimeMillis() - startTime > maximumMeshTime) {
 							// Stop meshing if the frame is taking to long.
@@ -467,7 +466,7 @@ public class MainRenderer {
 			// Render item entities:
 			for(ChunkEntityManager chManager : localPlayer.getSurface().getEntityManagers()) {
 				NormalChunk chunk = chManager.chunk;
-				if (!chunk.isLoaded() || !frustumInt.testAab(chunk.getMin(x0, z0, worldSizeX, worldSizeZ), chunk.getMax(x0, z0, worldSizeX, worldSizeZ)))
+				if (!chunk.isLoaded() || !frustumInt.testAab(chunk.getMin(), chunk.getMax()))
 					continue;
 				ItemEntityManager manager = chManager.itemEntityManager;
 				for(int i = 0; i < manager.size; i++) {
@@ -550,7 +549,7 @@ public class MainRenderer {
 
 			NormalChunk[] chunks = sortChunks(visibleChunks.toArray(), x0/NormalChunk.chunkSize - 0.5f, y0/NormalChunk.chunkSize - 0.5f, z0/NormalChunk.chunkSize - 0.5f);
 			for (NormalChunk ch : chunks) {				
-				blockShader.setUniform("modelPosition", ch.getMin(x0, z0, worldSizeX, worldSizeZ));
+				blockShader.setUniform("modelPosition", ch.getMin());
 				
 				if(selected != null && selected.source == ch) {
 					blockShader.setUniform("selectedIndex", selected.renderIndex);

@@ -15,36 +15,36 @@ import java.util.zip.InflaterInputStream;
 import cubyz.Logger;
 import cubyz.utils.math.Bits;
 import cubyz.world.NormalChunk;
-import cubyz.world.Region;
 import cubyz.world.Surface;
 import cubyz.world.entity.ItemEntityManager;
+import cubyz.world.terrain.MapFragment;
 
 /**
  * Handles saving and loading of all Chunks within a Region.
  */
 
-public class RegionIO {
+public class MapIO {
 	private ArrayList<byte[]> blockData;
 	private ArrayList<int[]> chunkData;
 	private final File dir;
 	private final TorusIO tio;
 	private int[][] heightMap;
 	
-	public RegionIO(Region region, TorusIO tio) {
+	public MapIO(MapFragment map, TorusIO tio) {
 		this.tio = tio;
-		dir = new File(tio.dir.getAbsolutePath()+"/"+region.wx+","+region.wz);
+		dir = new File(tio.dir.getAbsolutePath()+"/"+map.wx+","+map.wz);
 	}
 	
-	public void loadHeightMap(Region region) {
-		heightMap = new int[Region.regionSize][Region.regionSize];
+	public void loadHeightMap(MapFragment map) {
+		heightMap = new int[MapFragment.MAP_SIZE][MapFragment.MAP_SIZE];
 		if(dir.exists()) {
 			try {
 				InputStream in = new BufferedInputStream(new InflaterInputStream(new FileInputStream(dir+"/height.dat")));
-				byte[] data = new byte[Region.regionSize*Region.regionSize*4];
+				byte[] data = new byte[MapFragment.MAP_SIZE*MapFragment.MAP_SIZE*4];
 				in.read(data);
 				int index = 0;
-				for(int x = 0; x < Region.regionSize; x++) {
-					for(int z = 0; z < Region.regionSize; z++) {
+				for(int x = 0; x < MapFragment.MAP_SIZE; x++) {
+					for(int z = 0; z < MapFragment.MAP_SIZE; z++) {
 						heightMap[x][z] = Bits.getInt(data, index);
 						index += 4;
 					}
@@ -54,9 +54,9 @@ public class RegionIO {
 				Logger.throwable(e);
 			}
 		} else {
-			for(int x = 0; x < Region.regionSize; x++) {
-				for(int z = 0; z < Region.regionSize; z++) {
-					heightMap[x][z] = (int)region.getHeight(x, z);
+			for(int x = 0; x < MapFragment.MAP_SIZE; x++) {
+				for(int z = 0; z < MapFragment.MAP_SIZE; z++) {
+					heightMap[x][z] = (int)map.getHeight(x, z);
 				}
 			}
 		}
@@ -139,10 +139,10 @@ public class RegionIO {
 		if(dir.exists() && heightMap != null) {
 			try {
 				BufferedOutputStream out = new BufferedOutputStream(new DeflaterOutputStream(new FileOutputStream(dir+"/height.dat")));
-				byte[] data = new byte[Region.regionSize*Region.regionSize*4];
+				byte[] data = new byte[MapFragment.MAP_SIZE*MapFragment.MAP_SIZE*4];
 				int index = 0;
-				for(int x = 0; x < Region.regionSize; x++) {
-					for(int z = 0; z < Region.regionSize; z++) {
+				for(int x = 0; x < MapFragment.MAP_SIZE; x++) {
+					for(int z = 0; z < MapFragment.MAP_SIZE; z++) {
 						Bits.putInt(data, index, heightMap[x][z]);
 						index += 4;
 					}
@@ -230,17 +230,17 @@ public class RegionIO {
 		}
 	}
 	
-	public int getHeight(int wx, int wz, Region region) {
-		wx &= Region.regionMask;
-		wz &= Region.regionMask;
-		if(heightMap == null) this.loadHeightMap(region);
+	public int getHeight(int wx, int wz, MapFragment map) {
+		wx &= MapFragment.MAP_MASK;
+		wz &= MapFragment.MAP_MASK;
+		if(heightMap == null) this.loadHeightMap(map);
 		return heightMap[wx][wz];
 	}
 	
-	public void setHeight(int wx, int wz, int height, Region region) {
-		wx &= Region.regionMask;
-		wz &= Region.regionMask;
-		if(heightMap == null) this.loadHeightMap(region);
+	public void setHeight(int wx, int wz, int height, MapFragment map) {
+		wx &= MapFragment.MAP_MASK;
+		wz &= MapFragment.MAP_MASK;
+		if(heightMap == null) this.loadHeightMap(map);
 		heightMap[wx][wz] = height;
 	}
 }

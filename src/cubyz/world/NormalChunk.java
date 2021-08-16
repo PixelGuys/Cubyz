@@ -8,7 +8,6 @@ import org.joml.Vector3i;
 import cubyz.utils.Utilities;
 import cubyz.utils.datastructures.FastList;
 import cubyz.utils.math.Bits;
-import cubyz.utils.math.CubyzMath;
 import cubyz.world.blocks.Block;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.BlockInstance;
@@ -17,6 +16,7 @@ import cubyz.world.generator.SurfaceGenerator;
 import cubyz.world.handler.BlockVisibilityChangeHandler;
 import cubyz.world.save.BlockChange;
 import cubyz.world.save.Palette;
+import cubyz.world.terrain.MapFragment;
 
 /**
  * 32³ chunk of the world.
@@ -63,13 +63,9 @@ public class NormalChunk extends Chunk {
 	
 	protected final Surface surface;
 	
-	public final Region region;
+	public final MapFragment map;
 	
 	public NormalChunk(int cx, int cy, int cz, Surface surface) {
-		if(surface != null) {
-			cx = CubyzMath.worldModulo(cx, surface.getSizeX() >> chunkShift);
-			cz = CubyzMath.worldModulo(cz, surface.getSizeZ() >> chunkShift);
-		}
 		inst = new BlockInstance[arraySize];
 		blocks = new Block[arraySize];
 		blockData = new byte[arraySize];
@@ -80,8 +76,8 @@ public class NormalChunk extends Chunk {
 		wy = cy << chunkShift;
 		wz = cz << chunkShift;
 		this.surface = surface;
-		this.region = surface.getRegion(wx, wz, 1);
-		changes = region.regIO.getBlockChanges(cx, cy, cz);
+		this.map = surface.getMapFragment(wx, wz, 1);
+		changes = map.mapIO.getBlockChanges(cx, cy, cz);
 	}
 	
 	public void generateFrom(SurfaceGenerator gen) {
@@ -695,12 +691,12 @@ public class NormalChunk extends Chunk {
 		return (x - wx) >= 0 && (x - wx) < chunkSize && (y - wy) >= 0 && (y - wy) < chunkSize && (z - wz) >= 0 && (z - wz) < chunkSize;
 	}
 	
-	public Vector3f getMin(float x0, float z0, int worldSizeX, int worldSizeZ) {
-		return new Vector3f(CubyzMath.match(wx, x0, worldSizeX), wy, CubyzMath.match(wz, z0, worldSizeZ));
+	public Vector3f getMin() {
+		return new Vector3f(wx, wy, wz);
 	}
 	
-	public Vector3f getMax(float x0, float z0, int worldSizeX, int worldSizeZ) {
-		return new Vector3f(CubyzMath.match(wx, x0, worldSizeX) + chunkSize, wy + chunkSize, CubyzMath.match(wz, z0, worldSizeZ) + chunkSize);
+	public Vector3f getMax() {
+		return new Vector3f(wx + chunkSize, wy + chunkSize, wz + chunkSize);
 	}
 	
 	public int getX() {

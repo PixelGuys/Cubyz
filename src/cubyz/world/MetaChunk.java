@@ -4,7 +4,6 @@ import java.util.ArrayList;
 
 import cubyz.Logger;
 import cubyz.client.ClientOnly;
-import cubyz.utils.math.CubyzMath;
 import cubyz.world.blocks.Block;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.Updateable;
@@ -36,11 +35,11 @@ public class MetaChunk {
 	public void save() {
 		for(NormalChunk chunk : chunks) {
 			if(chunk != null)
-				chunk.region.regIO.saveChunk(chunk);
+				chunk.map.mapIO.saveChunk(chunk);
 		}
 		for(ChunkEntityManager manager : entityManagers) {
 			if(manager != null)
-				manager.chunk.region.regIO.saveItemEntities(manager.itemEntityManager);
+				manager.chunk.map.mapIO.saveItemEntities(manager.itemEntityManager);
 		}
 	}
 	
@@ -105,7 +104,7 @@ public class MetaChunk {
 									break;
 							}
 							if(dy == -1 || (neighbors[4] != null && neighbors[4].getBlockClass() != Block.BlockClass.FLUID)) {
-								ch.addBlockPossiblyOutside(block, (byte)0, CubyzMath.worldModulo(wx+bx+dx, surface.getSizeX()), by+dy, CubyzMath.worldModulo(wz+bz+dz, surface.getSizeZ()), true);
+								ch.addBlockPossiblyOutside(block, (byte)0, wx+bx+dx, by+dy, wz+bz+dz, true);
 							}
 						}
 					}
@@ -130,12 +129,12 @@ public class MetaChunk {
 		int edSquare = entityDistance*entityDistance << NormalChunk.chunkShift2;
 		edSquare = Math.min(rdSquare, edSquare);
 		for(int px = 0; px < metaChunkSize; px++) {
-			long dx = CubyzMath.moduloMatchSign(px*NormalChunk.chunkSize + wx - x, surface.getSizeX());
+			long dx = px*NormalChunk.chunkSize + wx - x;
 			long distX = dx*dx;
 			for(int py = 0; py < metaChunkSize; py++) {
 				long distY = (long)(py*NormalChunk.chunkSize + wy - y)*(py*NormalChunk.chunkSize + wy - y);
 				for(int pz = 0; pz < metaChunkSize; pz++) {
-					long dz = CubyzMath.moduloMatchSign(pz*NormalChunk.chunkSize + wz - z, surface.getSizeZ());
+					long dz = pz*NormalChunk.chunkSize + wz - z;
 					long distZ = dz*dz;
 					long dist = distX + distY + distZ;
 					int index = (px << metaChunkShift) | (py <<  metaChunkShift2) | pz;
@@ -143,7 +142,7 @@ public class MetaChunk {
 					if(dist > rdSquare) {
 						if(chunk != null) {
 							if(chunk.isGenerated())
-								chunk.region.regIO.saveChunk(chunk); // Only needs to be stored if it was ever generated.
+								chunk.map.mapIO.saveChunk(chunk); // Only needs to be stored if it was ever generated.
 							else
 								surface.unQueueChunk(chunk);
 							ClientOnly.deleteChunkMesh.accept(chunk);
@@ -151,7 +150,7 @@ public class MetaChunk {
 						}
 					} else if(chunk == null) {
 						try {
-							chunk = (NormalChunk)surface.chunkProvider.getDeclaredConstructors()[0].newInstance(CubyzMath.worldModulo((wx >> NormalChunk.chunkShift) + px, surface.getSizeX() >> NormalChunk.chunkShift), (wy >> NormalChunk.chunkShift) + py, CubyzMath.worldModulo((wz >> NormalChunk.chunkShift) + pz, surface.getSizeZ() >> NormalChunk.chunkShift), surface);
+							chunk = (NormalChunk)surface.chunkProvider.getDeclaredConstructors()[0].newInstance((wx >> NormalChunk.chunkShift) + px, (wy >> NormalChunk.chunkShift) + py, (wz >> NormalChunk.chunkShift) + pz, surface);
 							chunks[index] = chunk;
 							surface.queueChunk(chunks[index]);
 							chunksList.add(chunks[index]);
@@ -164,7 +163,7 @@ public class MetaChunk {
 					ChunkEntityManager manager = entityManagers[index];
 					if(dist > edSquare) {
 						if(manager != null) {
-							manager.chunk.region.regIO.saveItemEntities(manager.itemEntityManager);
+							manager.chunk.map.mapIO.saveItemEntities(manager.itemEntityManager);
 							entityManagers[index] = null;
 						}
 					} else if(manager == null) {

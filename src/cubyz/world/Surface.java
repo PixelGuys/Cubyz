@@ -16,6 +16,7 @@ import cubyz.world.handler.Handler;
 import cubyz.world.handler.PlaceBlockHandler;
 import cubyz.world.handler.RemoveBlockHandler;
 import cubyz.world.items.ItemStack;
+import cubyz.world.terrain.MapFragment;
 
 /**
  * Managing system for the 3d block map of a torus.
@@ -61,7 +62,7 @@ public abstract class Surface {
 	public abstract void getLight(int x, int y, int z, int[] array);
 
 	public abstract NormalChunk getChunk(int x, int y, int z);
-	public abstract Region getRegion(int wx, int wz, int voxelSize);
+	public abstract MapFragment getMapFragment(int wx, int wz, int voxelSize);
 	public abstract Biome getBiome(int x, int z);
 
 	public abstract NormalChunk[] getChunks();
@@ -83,18 +84,8 @@ public abstract class Surface {
 	
 	public abstract void drop(ItemStack stack, Vector3f pos, Vector3f dir, float vel);
 	
-	public abstract Biome.Type[][] getBiomeMap();
-	
 	public abstract ChunkEntityManager getEntityManagerAt(int wx, int wy, int wz);
 	public abstract ChunkEntityManager[] getEntityManagers();
-	
-	public int getSizeX() {
-		return Integer.MIN_VALUE;
-	}
-	
-	public int getSizeZ() {
-		return Integer.MIN_VALUE;
-	}
 	
 	public StellarTorus getStellarTorus() {
 		return torus;

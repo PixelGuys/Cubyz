@@ -12,13 +12,13 @@ import cubyz.Logger;
 import cubyz.client.ClientOnly;
 import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
+import cubyz.client.rendering.VisibleChunk;
 import cubyz.client.rendering.Window;
 import cubyz.gui.components.Button;
 import cubyz.utils.translate.ContextualTextKey;
 import cubyz.utils.translate.TextKey;
 import cubyz.world.CustomObject;
 import cubyz.world.LocalWorld;
-import cubyz.world.VisibleChunk;
 import cubyz.world.blocks.Block;
 
 /**

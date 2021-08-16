@@ -15,7 +15,6 @@ import cubyz.Logger;
 import cubyz.Settings;
 import cubyz.api.CurrentSurfaceRegistries;
 import cubyz.utils.datastructures.HashMapKey3D;
-import cubyz.utils.math.CubyzMath;
 import cubyz.world.blocks.Block;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.CrystalTextureProvider;
@@ -24,8 +23,6 @@ import cubyz.world.blocks.Ore;
 import cubyz.world.blocks.OreTextureProvider;
 import cubyz.world.cubyzgenerators.CrystalCavernGenerator;
 import cubyz.world.cubyzgenerators.biomes.Biome;
-import cubyz.world.cubyzgenerators.biomes.BiomeGenerator;
-import cubyz.world.cubyzgenerators.biomes.Biome.Type;
 import cubyz.world.entity.ChunkEntityManager;
 import cubyz.world.entity.Entity;
 import cubyz.world.entity.ItemEntityManager;
@@ -36,9 +33,10 @@ import cubyz.world.handler.RemoveBlockHandler;
 import cubyz.world.items.BlockDrop;
 import cubyz.world.items.ItemStack;
 import cubyz.world.save.TorusIO;
+import cubyz.world.terrain.MapFragment;
 
 public class LocalSurface extends Surface {
-	private Region[] regions;
+	private MapFragment[] maps;
 	private HashMap<HashMapKey3D, MetaChunk> metaChunks = new HashMap<HashMapKey3D, MetaChunk>();
 	private NormalChunk[] chunks = new NormalChunk[0];
 	//private OldReducedChunk[] reducedChunks;
@@ -46,7 +44,6 @@ public class LocalSurface extends Surface {
 	private int lastX = Integer.MAX_VALUE, lastY = Integer.MAX_VALUE, lastZ = Integer.MAX_VALUE; // Chunk coordinates of the last chunk update.
 	private int lastRegX = Integer.MAX_VALUE, lastRegZ = Integer.MAX_VALUE; // Region coordinates of the last chunk update.
 	private int regDRD; // double renderdistance of Region.
-	private final int worldSizeX = 131072, worldSizeZ = 32768;
 	private ArrayList<Entity> entities = new ArrayList<>();
 	
 	private Block[] torusBlocks;
@@ -62,8 +59,6 @@ public class LocalSurface extends Surface {
 	Vector4f clearColor = new Vector4f(0, 0, 0, 1.0f);
 	
 	private final long localSeed; // Each torus has a different seed for world generation. All those seeds are generated using the main world seed.
-	
-	private final Biome.Type[][] biomeMap;
 	
 	// synchronized common list for chunk generation
 	private volatile BlockingDeque<Chunk> loadList = new LinkedBlockingDeque<>();
@@ -122,7 +117,7 @@ public class LocalSurface extends Surface {
 				!chunkProvider.getConstructors()[0].getParameterTypes()[2].equals(Integer.class) ||
 				!chunkProvider.getConstructors()[0].getParameterTypes()[3].equals(Surface.class))
 			throw new IllegalArgumentException("Chunk provider "+chunkProvider+" is invalid! It needs to be a subclass of NormalChunk and MUST contain a single constructor with parameters (Integer, Integer, Integer, Surface)");
-		regions = new Region[0];
+		maps = new MapFragment[0];
 		
 		for (int i = 0; i < Runtime.getRuntime().availableProcessors(); i++) {
 			ChunkGenerationThread thread = new ChunkGenerationThread();
@@ -141,8 +136,6 @@ public class LocalSurface extends Surface {
 		} else {
 			tio.saveTorusData(this);
 		}
-		
-		biomeMap = BiomeGenerator.generateTypeMap(localSeed, worldSizeX/Region.regionSize, worldSizeZ/Region.regionSize);
 	}
 	
 	public int generate(ArrayList<Block> blockList, ArrayList<Ore> ores, int ID) {
@@ -201,9 +194,9 @@ public class LocalSurface extends Surface {
 		}
 		tio.saveTorusData(this);
 		((LocalWorld) torus.getWorld()).forceSave();
-		for(Region region : regions) {
-			if(region != null)
-				region.regIO.saveData();
+		for(MapFragment map : maps) {
+			if(map != null)
+				map.mapIO.saveData();
 		}
 	}
 	
@@ -225,14 +218,8 @@ public class LocalSurface extends Surface {
 	@Override
 	public boolean isValidSpawnLocation(int x, int z) {
 		// Just make sure there is a forest nearby, so the player will always be able to get the resources needed to start properly.
-		int mapX = biomeMap.length*x/worldSizeX;
-		int mapZ = biomeMap[0].length*z/worldSizeZ;
-		return biomeMap[mapX][mapZ] == Biome.Type.FOREST
-				| biomeMap[mapX][mapZ] == Biome.Type.GRASSLAND
-				| biomeMap[mapX][mapZ] == Biome.Type.MOUNTAIN_FOREST
-				| biomeMap[mapX][mapZ] == Biome.Type.RAINFOREST
-				| biomeMap[mapX][mapZ] == Biome.Type.SWAMP
-				| biomeMap[mapX][mapZ] == Biome.Type.TAIGA;
+		// TODO!
+		return true;
 	}
 	
 	public void synchronousGenerate(Chunk ch) {
@@ -418,34 +405,34 @@ public class LocalSurface extends Surface {
 		int yOld = y;
 		int zOld = z;
 		// Care about the Regions:
-		regionRenderDistance = (regionRenderDistance+Region.regionSize-1)/Region.regionSize;
-		int local = x & Region.regionMask;
-		x >>= Region.regionShift;
+		regionRenderDistance = (regionRenderDistance + MapFragment.MAP_SIZE - 1)/MapFragment.MAP_SIZE;
+		int local = x & MapFragment.MAP_MASK;
+		x >>= MapFragment.MAP_SHIFT;
 		x += regionRenderDistance;
-		if(local >= Region.regionSize/2)
+		if(local >= MapFragment.MAP_SIZE/2)
 			x++;
-		local = z & Region.regionMask;
-		z >>= Region.regionShift;
+		local = z & MapFragment.MAP_MASK;
+		z >>= MapFragment.MAP_SHIFT;
 		z += regionRenderDistance;
-		if(local >= Region.regionSize/2)
+		if(local >= MapFragment.MAP_SIZE/2)
 			z++;
 		int regionDRD = regionRenderDistance << 1;
 		if(x != lastRegX || z != lastRegZ || regionDRD != regDRD) {
-			Region[] newRegions = new Region[regionDRD*regionDRD];
+			MapFragment[] newMaps = new MapFragment[regionDRD*regionDRD];
 			// Go through the old regions and put them in the new array:
-			for(int i = 0; i < regions.length; i++) {
-				if(regions[i] != null) {
-					int dx = CubyzMath.moduloMatchSign((regions[i].wx >> Region.regionShift) - (x-regionDRD), worldSizeX >> Region.regionShift);
-					int dz = CubyzMath.moduloMatchSign((regions[i].wz >> Region.regionShift) - (z-regionDRD), worldSizeZ >> Region.regionShift);
+			for(int i = 0; i < maps.length; i++) {
+				if(maps[i] != null) {
+					int dx = (maps[i].wx >> MapFragment.MAP_SHIFT) - (x-regionDRD);
+					int dz = (maps[i].wz >> MapFragment.MAP_SHIFT) - (z-regionDRD);
 					if(dx >= 0 && dx < regionDRD && dz >= 0 && dz < regionDRD) {
 						int index = dx*regionDRD + dz;
-						newRegions[index] = regions[i];
+						newMaps[index] = maps[i];
 					} else {
-						regions[i].regIO.saveData();
+						maps[i].mapIO.saveData();
 					}
 				}
 			}
-			regions = newRegions;
+			maps = newMaps;
 			lastRegX = x;
 			lastRegZ = z;
 			regDRD = regionDRD;
@@ -466,8 +453,8 @@ public class LocalSurface extends Surface {
 			for(int metaX = x0 - metaRenderDistance; metaX <= x0 + metaRenderDistance + 1; metaX++) {
 				for(int metaY = y0 - metaRenderDistance; metaY <= y0 + metaRenderDistance + 1; metaY++) {
 					for(int metaZ = z0 - metaRenderDistance; metaZ <= z0 + metaRenderDistance + 1; metaZ++) {
-						int xReal = CubyzMath.worldModulo(metaX, worldSizeX/(MetaChunk.metaChunkSize*NormalChunk.chunkSize));
-						int zReal = CubyzMath.worldModulo(metaZ, worldSizeZ/(MetaChunk.metaChunkSize*NormalChunk.chunkSize));
+						int xReal = metaX;
+						int zReal = metaZ;
 						HashMapKey3D key = new HashMapKey3D(xReal, metaY, zReal);
 						// Check if it already exists:
 						MetaChunk metaChunk = metaChunks.get(key);
@@ -493,44 +480,42 @@ public class LocalSurface extends Surface {
 	}
 
 	@Override
-	public Region getRegion(int wx, int wz, int voxelSize) {
-		wx &= ~Region.regionMask;
-		wz &= ~Region.regionMask;
-		int x = wx >> Region.regionShift;
-		int z = wz >> Region.regionShift;
+	public MapFragment getMapFragment(int wx, int wz, int voxelSize) {
+		wx &= ~MapFragment.MAP_MASK;
+		wz &= ~MapFragment.MAP_MASK;
+		int x = wx >> MapFragment.MAP_SHIFT;
+		int z = wz >> MapFragment.MAP_SHIFT;
 		// Test if the chunk can be found in the list of visible chunks:
-		int dx = CubyzMath.moduloMatchSign(x - (lastRegX - regDRD/2), worldSizeX >> Region.regionShift) + regDRD/2;
-		int dz = CubyzMath.moduloMatchSign(z - (lastRegZ - regDRD/2), worldSizeZ >> Region.regionShift) + regDRD/2;
+		int dx = x - (lastRegX - regDRD/2) + regDRD/2;
+		int dz = z - (lastRegZ - regDRD/2) + regDRD/2;
 		if(dx >= 0 && dx < regDRD && dz >= 0 && dz < regDRD) {
 			int index = dx*regDRD + dz;
-			synchronized(regions) {
-				Region ret = regions[index];
+			synchronized(maps) {
+				MapFragment ret = maps[index];
 				
 				if (ret != null) {
 					ret.ensureResolution(getSeed(), registries, voxelSize);
 					return ret;
 				} else {
-					Region reg = new Region(wx, wz, localSeed, this, registries, tio, voxelSize);
-					regions[index] = reg;
-					return reg;
+					MapFragment map = new MapFragment(wx, wz, localSeed, this, registries, tio, voxelSize);
+					maps[index] = map;
+					return map;
 				}
 			}
 		}
-		return new Region(wx, wz, localSeed, this, registries, tio, voxelSize);
+		return new MapFragment(wx, wz, localSeed, this, registries, tio, voxelSize);
 	}
 	
-	public Region getNoGenerateRegion(int wx, int wy) {
-		for(Region reg : regions) {
-			if(reg.wx == wx && reg.wz == wy) {
-				return reg;
+	public MapFragment getNoGenerateRegion(int wx, int wy) {
+		for(MapFragment map : maps) {
+			if(map.wx == wx && map.wz == wy) {
+				return map;
 			}
 		}
 		return null;
 	}
 	
 	public MetaChunk getMetaChunk(int cx, int cy, int cz) {
-		cx = CubyzMath.worldModulo(cx, worldSizeX >> NormalChunk.chunkShift);
-		cz = CubyzMath.worldModulo(cz, worldSizeZ >> NormalChunk.chunkShift);
 		// Test if the metachunk exists:
 		int metaX = cx >> (MetaChunk.metaChunkShift);
 		int metaY = cy >> (MetaChunk.metaChunkShift);
@@ -541,8 +526,6 @@ public class LocalSurface extends Surface {
 	
 	@Override
 	public NormalChunk getChunk(int cx, int cy, int cz) {
-		cx = CubyzMath.worldModulo(cx, worldSizeX >> NormalChunk.chunkShift);
-		cz = CubyzMath.worldModulo(cz, worldSizeZ >> NormalChunk.chunkShift);
 		MetaChunk meta = getMetaChunk(cx, cy, cz);
 		if(meta != null) {
 			return meta.getChunk(cx, cy, cz);
@@ -555,8 +538,6 @@ public class LocalSurface extends Surface {
 		int cx = wx >> NormalChunk.chunkShift;
 		int cy = wy >> NormalChunk.chunkShift;
 		int cz = wz >> NormalChunk.chunkShift;
-		cx = CubyzMath.worldModulo(cx, worldSizeX >> NormalChunk.chunkShift);
-		cz = CubyzMath.worldModulo(cz, worldSizeZ >> NormalChunk.chunkShift);
 		MetaChunk meta = getMetaChunk(cx, cy, cz);
 		if(meta != null) {
 			return meta.getEntityManager(cx, cy, cz);
@@ -611,16 +592,6 @@ public class LocalSurface extends Surface {
 		return null; // TODO: Work on BlockEntities!
 	}
 	
-	@Override
-	public int getSizeX() {
-		return worldSizeX;
-	}
-	
-	@Override
-	public int getSizeZ() {
-		return worldSizeZ;
-	}
-	
 	public ArrayList<CustomBlock> getCustomBlocks() {
 		return customBlocks;
 	}
@@ -641,7 +612,7 @@ public class LocalSurface extends Surface {
 	}
 	
 	public int getHeight(int wx, int wz) {
-		return (int)getRegion(wx, wz, 1).getHeight(wx, wz);
+		return (int)getMapFragment(wx, wz, 1).getHeight(wx, wz);
 	}
 
 	@Override
@@ -674,7 +645,7 @@ public class LocalSurface extends Surface {
 
 	@Override
 	public Biome getBiome(int wx, int wz) {
-		Region reg = getRegion(wx, wz, 1);
+		MapFragment reg = getMapFragment(wx, wz, 1);
 		return reg.getBiome(wx, wz);
 	}
 
@@ -722,10 +693,5 @@ public class LocalSurface extends Surface {
 		if((light & 0x0000ff00) < (minLight & 0x0000ff00)) light = (light & 0xffff00ff) | (minLight & 0x0000ff00);
 		if((light & 0x000000ff) < (minLight & 0x000000ff)) light = (light & 0xffffff00) | (minLight & 0x000000ff);
 		return light;
-	}
-
-	@Override
-	public Type[][] getBiomeMap() {
-		return biomeMap;
 	}
 }

@@ -3,8 +3,8 @@ package cubyz.world.cubyzgenerators.biomes;
 import java.util.Random;
 
 import cubyz.world.Chunk;
-import cubyz.world.Region;
 import cubyz.world.blocks.Block;
+import cubyz.world.terrain.MapFragment;
 
 /**
  * One position vegetation, like grass or cactus.
@@ -20,7 +20,7 @@ public class SimpleVegetation extends StructureModel {
 		deltaHeight = dh;
 	}
 	@Override
-	public void generate(int x, int z, int h, Chunk chunk, Region region, Random rand) {
+	public void generate(int x, int z, int h, Chunk chunk, MapFragment map, Random rand) {
 		int y = chunk.getWorldY();
 		if(chunk.liesInChunk(x, h-y, z)) {
 			int height = height0;

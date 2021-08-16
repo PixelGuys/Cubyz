@@ -6,10 +6,10 @@ import cubyz.api.CubyzRegistries;
 import cubyz.api.Resource;
 import cubyz.world.Chunk;
 import cubyz.world.NormalChunk;
-import cubyz.world.Region;
 import cubyz.world.Surface;
 import cubyz.world.blocks.Block;
 import cubyz.world.blocks.Ore;
+import cubyz.world.terrain.MapFragment;
 
 /**
  * Generator of ore veins.
@@ -35,7 +35,7 @@ public class OreGenerator implements Generator {
 
 	// Works basically similar to cave generation, but considers a lot less chunks and has a few other differences.
 	@Override
-	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, Region containingRegion, Surface surface) {
+	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, MapFragment map, Surface surface) {
 		Random rand = new Random(seed);
 		int rand1 = rand.nextInt() | 1;
 		int rand2 = rand.nextInt() | 1;

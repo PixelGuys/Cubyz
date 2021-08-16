@@ -1,4 +1,4 @@
-package cubyz.world;
+package cubyz.world.terrain.noise;
 
 import java.util.Random;
 
@@ -90,13 +90,11 @@ public class PerlinNoise {
 	}
 	
 	// Calculate all grid points that will be needed to prevent double calculating them.
-	private void calculateGridPoints(int x, int y, int width, int height, int scale, long l1, long l2, long l3, int worldSizeX, int worldSizeZ) {
+	private void calculateGridPoints(int x, int y, int width, int height, int scale, long l1, long l2, long l3) {
 		// Create one gridpoint more, just in case...
 		width += scale;
 		height += scale;
-		int resolution = scale;
-		int localSizeX = worldSizeX/resolution;
-		int localSizeZ = worldSizeZ/resolution;
+		int resolutionShift = CubyzMath.binaryLog(scale);
 		// Determine grid cell coordinates of all cells that points can be in:
 		float[][] xGrid = new float[width/scale + 3][height/scale + 3]; // Simply assume the absolute maximum number of grid points are generated.
 		float[][] yGrid = new float[width/scale + 3][height/scale + 3]; // Simply assume the absolute maximum number of grid points are generated.
@@ -104,29 +102,29 @@ public class PerlinNoise {
 		int x0 = 0;
 		for(int ix = x; ix < x+width; ix += scale) {
 			numY = 0;
-			x0 = CubyzMath.worldModulo(ix/resolution, localSizeX);
+			x0 = ix >> resolutionShift;
 			int y0 = 0;
 			for(int iy = y; iy < y+height; iy += scale) {
-			    y0 = CubyzMath.worldModulo(iy/resolution, localSizeZ);
-				xGrid[numX][numY] = generateGradient(x0, y0, 0, l1, l2, l3, resolution);
-				yGrid[numX][numY] = generateGradient(x0, y0, 1, l1, l2, l3, resolution);
+			    y0 = iy >> resolutionShift;
+				xGrid[numX][numY] = generateGradient(x0, y0, 0, l1, l2, l3, resolutionShift);
+				yGrid[numX][numY] = generateGradient(x0, y0, 1, l1, l2, l3, resolutionShift);
 				numY++;
 			}
-			xGrid[numX][numY] = generateGradient(x0, CubyzMath.worldModulo(y0 + 1, localSizeX), 0, l1, l2, l3, resolution);
-			yGrid[numX][numY] = generateGradient(x0, CubyzMath.worldModulo(y0 + 1, localSizeZ), 1, l1, l2, l3, resolution);
+			xGrid[numX][numY] = generateGradient(x0, y0 + 1, 0, l1, l2, l3, resolutionShift);
+			yGrid[numX][numY] = generateGradient(x0, y0 + 1, 1, l1, l2, l3, resolutionShift);
 			numX++;
 		}
 		numY = 0;
 		int y0 = 0;
 		for(int iy = y; iy < y+height; iy += scale) {
-		    y0 = CubyzMath.worldModulo(iy/resolution, localSizeZ);
-			xGrid[numX][numY] = generateGradient(CubyzMath.worldModulo(x0+1, localSizeX), y0, 0, l1, l2, l3, resolution);
-			yGrid[numX][numY] = generateGradient(CubyzMath.worldModulo(x0+1, localSizeZ), y0, 1, l1, l2, l3, resolution);
+		    y0 = iy >> resolutionShift;
+			xGrid[numX][numY] = generateGradient(x0+1, y0, 0, l1, l2, l3, resolutionShift);
+			yGrid[numX][numY] = generateGradient(x0+1, y0, 1, l1, l2, l3, resolutionShift);
 			numY++;
 		}
 		
-		xGrid[numX][numY] = generateGradient(CubyzMath.worldModulo(x0+1, localSizeX), CubyzMath.worldModulo(y0+1, localSizeZ), 0, l1, l2, l3, resolution);
-		yGrid[numX][numY] = generateGradient(CubyzMath.worldModulo(x0+1, localSizeX), CubyzMath.worldModulo(y0+1, localSizeZ), 1, l1, l2, l3, resolution);
+		xGrid[numX][numY] = generateGradient(x0+1, y0+1, 0, l1, l2, l3, resolutionShift);
+		yGrid[numX][numY] = generateGradient(x0+1, y0+1, 1, l1, l2, l3, resolutionShift);
 		numY++;
 		numX++;
 		xGridPoints = xGrid;
@@ -148,7 +146,7 @@ public class PerlinNoise {
 	 * @param reductionFactor amplitude reduction for each frequency increase.
 	 * @return
 	 */
-	public float[][] generateRidgidNoise(int x, int y, int width, int height, int scale, int minScale, long seed, int worldSizeX, int worldSizeZ, int voxelSize, float reductionFactor) {
+	public float[][] generateRidgidNoise(int x, int y, int width, int height, int scale, int minScale, long seed, int voxelSize, float reductionFactor) {
 		float[][] map = new float[width/voxelSize][height/voxelSize];
 		Random r = new Random(seed);
 		long l1 = r.nextLong();
@@ -156,7 +154,7 @@ public class PerlinNoise {
 		long l3 = r.nextLong();
 		float fac = 1/((1 - (float)Math.pow(reductionFactor, CubyzMath.binaryLog(scale/minScale)+1))/(1 - reductionFactor)); // geometric series.
 		for(; scale >= minScale; scale >>= 1) {
-			calculateGridPoints(x, y, width, height, scale, l1, l2, l3, worldSizeX, worldSizeZ);
+			calculateGridPoints(x, y, width, height, scale, l1, l2, l3);
 			int resolution = scale;
 			int resolution2 = resolution-1;
 			int x0 = x & ~resolution2;
@@ -187,7 +185,7 @@ public class PerlinNoise {
 	 * @param reductionFactor amplitude reduction for each frequency increase.
 	 * @return
 	 */
-	public float[][] generateSmoothNoise(int x, int y, int width, int height, int scale, int minScale, long seed, int worldSizeX, int worldSizeZ, int voxelSize, float reductionFactor) {
+	public float[][] generateSmoothNoise(int x, int y, int width, int height, int scale, int minScale, long seed, int voxelSize, float reductionFactor) {
 		float[][] map = new float[width/voxelSize][height/voxelSize];
 		Random r = new Random(seed);
 		long l1 = r.nextLong();
@@ -195,7 +193,7 @@ public class PerlinNoise {
 		long l3 = r.nextLong();
 		float fac = 1/((1 - (float)Math.pow(reductionFactor, CubyzMath.binaryLog(scale/minScale)+1))/(1 - reductionFactor)); // geometric series.
 		for(; scale >= minScale; scale >>= 1) {
-			calculateGridPoints(x, y, width, height, scale, l1, l2, l3, worldSizeX, worldSizeZ);
+			calculateGridPoints(x, y, width, height, scale, l1, l2, l3);
 			int resolution = scale;
 			int resolution2 = resolution-1;
 			int x0 = x & ~resolution2;

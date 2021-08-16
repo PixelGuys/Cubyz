@@ -145,13 +145,13 @@ public class GameLogic implements ClientConnection {
 			if (Cubyz.player.getPosition().x == 0 && Cubyz.player.getPosition().z == 0) {
 				Logger.log("Finding position..");
 				while (true) {
-					dx = rnd.nextInt(surface.getSizeX());
-					dz = rnd.nextInt(surface.getSizeZ());
+					dx = rnd.nextInt(65536);
+					dz = rnd.nextInt(65536);
 					Logger.log("Trying " + dx + " ? " + dz);
 					if(Cubyz.surface.isValidSpawnLocation(dx, dz)) 
 						break;
 				}
-				int startY = (int)surface.getRegion((int)dx, (int)dz, 1).getHeight(dx, dz);
+				int startY = (int)surface.getMapFragment((int)dx, (int)dz, 1).getHeight(dx, dz);
 				Cubyz.surface.seek((int)dx, startY, (int)dz, ClientSettings.RENDER_DISTANCE, ClientSettings.EFFECTIVE_RENDER_DISTANCE*NormalChunk.chunkSize*2);
 				Cubyz.player.setPosition(new Vector3i(dx, startY+2, dz));
 				Logger.log("OK!");
@@ -285,17 +285,6 @@ public class GameLogic implements ClientConnection {
 		
 		Meshes.initMeshCreators();
 		
-		ClientOnly.onBorderCrossing = (p) -> {
-			// Simply remake all the spatial data of this surface. Not the most efficient way, but the event of border crossing can be considered rare.
-			NormalChunk[] chunks = Cubyz.surface.getChunks();
-			for(NormalChunk ch : chunks) {
-				for(int i = 0; i < ch.getVisibles().size; i++) {
-					BlockInstance bi = ch.getVisibles().array[i];
-					bi.setData(bi.getData());
-				}
-			}
-		};
-		
 		try {
 			GameLauncher.renderer.init(window);
 			BlockPreview.init();
@@ -367,7 +356,7 @@ public class GameLogic implements ClientConnection {
 	public void update(float interval) {
 		if (!Cubyz.gameUI.doesGUIPauseGame() && Cubyz.world != null) {
 			if (!Cubyz.gameUI.doesGUIBlockInput()) {
-				Cubyz.player.move(Cubyz.playerInc.mul(0.11F), Cubyz.camera.getRotation(), Cubyz.surface.getSizeX(), Cubyz.surface.getSizeZ());
+				Cubyz.player.move(Cubyz.playerInc.mul(0.11F), Cubyz.camera.getRotation());
 				if (breakCooldown > 0) {
 					breakCooldown--;
 				}
