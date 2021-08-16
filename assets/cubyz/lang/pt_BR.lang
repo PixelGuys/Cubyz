@@ -1,0 +1,59 @@
+gui.cubyz.mainmenu.singleplayer=Um Jogador
+gui.cubyz.mainmenu.multiplayer=Multijogador
+gui.cubyz.mainmenu.exit=Sair
+gui.cubyz.mainmenu.settings=Opções
+gui.cubyz.settings.done=Feito
+gui.cubyz.general.on=Ligado
+gui.cubyz.general.off=Desligado
+gui.cubyz.general.back=Voltar
+gui.cubyz.general.cancel=Cancelar
+gui.cubyz.settings.language=Linguagem: {0}
+gui.cubyz.settings.discord=Integração com o Discord: {0}
+gui.cubyz.settings.keybindings=Controlos
+gui.cubyz.settings.graphics=Gráficos
+gui.cubyz.settings.fog.med=Nevoeiro: Médio
+gui.cubyz.settings.fog.far=Nevoeiro: Longe
+gui.cubyz.settings.fog.near=Nevoeiro: Perto
+gui.cubyz.settings.fog.off=Nevoeiro: Desligado
+gui.cubyz.settings.easylighting=Easy Lighting
+gui.cubyz.settings.vsync=Vertical Synchronization
+gui.cubyz.pause.exit=Voltar para o menu principal
+gui.cubyz.pause.resume=Resumir
+gui.cubyz.debug.reload=Recarregar
+gui.cubyz.saves.play=Jogar {0}
+gui.cubyz.saves.delete=Apagar
+gui.cubyz.saves.create=Criar um novo jogo!
+lang.name=Português
+
+# Blocks
+block.cubyz.cactus.name=Cactus
+block.cubyz.soil.name=Soil
+block.cubyz.gravel.name=Gravel
+block.cubyz.ice.name=Ice
+block.cubyz.sand.name=Sand
+block.cubyz.snow.name=Snow
+block.cubyz.mossy_cobblestone.name=Mossy Cobblestone
+block.cubyz.cobblestone.name=Cobblestone
+block.cubyz.oak_log.name=Oak Log
+block.cubyz.oak_top.name=Oak Top
+block.cubyz.oak_planks.name=Oak Planks
+block.cubyz.oak_leaves.name=Oak Leaves
+block.cubyz.torch.name=Torch
+block.cubyz.workbench.name=Workbench
+block.cubyz.iron_ore.name=Iron Ore
+
+# Items
+item.cubyz.stick.name=Stick
+item.cubyz.diamond.name=Diamond
+item.cubyz.coal.name=Coal
+item.cubyz.raw_meat.name=Raw meat
+item.cubyz.apple.name=Apple
+
+# Tools
+cubyz.grammar.tool_material={0} {1}
+cubyz.tools.materials.wood=Wooden
+cubyz.tools.materials.stone=Stone
+cubyz.tools.names.axe=Axe
+cubyz.tools.names.pickaxe=Pickaxe
+cubyz.tools.names.shovel=Shovel
+cubyz.tools.names.sword=Sword
