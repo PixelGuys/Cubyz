@@ -33,7 +33,7 @@ public class Window {
 	private boolean fullscreen = false;
 	private FrameBuffer buffer;
 	private boolean focused = false;
-	private boolean vsync = false;
+	private boolean vsync = true;
 	private int antiAlias = 0;
 	
 	private Vector4f clearColor;
