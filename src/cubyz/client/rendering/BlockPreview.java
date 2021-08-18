@@ -20,6 +20,13 @@ import cubyz.world.blocks.Block;
  */
 
 public abstract class BlockPreview {
+	// Uniform locations:
+	public static int loc_projectionMatrix;
+	public static int loc_viewMatrix;
+	public static int loc_texture_sampler;
+	public static int loc_light;
+	public static int loc_dirLight;
+	
 	private static ShaderProgram shader;
 
 	private static boolean inited = false;
@@ -38,15 +45,9 @@ public abstract class BlockPreview {
 	}
 
 	public static void loadShader() throws Exception {
-		shader = new ShaderProgram();
-		shader.createVertexShader(Utils.loadResource(shaders + "/vertex.vs"));
-		shader.createFragmentShader(Utils.loadResource(shaders + "/fragment.fs"));
-		shader.link();
-		shader.createUniform("projectionMatrix");
-		shader.createUniform("viewMatrix");
-		shader.createUniform("texture_sampler");
-		shader.createUniform("light");
-		shader.createUniform("dirLight");
+		shader = new ShaderProgram(Utils.loadResource(shaders + "/vertex.vs"),
+				Utils.loadResource(shaders + "/fragment.fs"),
+				BlockPreview.class);
 		
 		System.gc();
 	}
@@ -79,17 +80,17 @@ public abstract class BlockPreview {
 		Matrix4f viewMatrix = transformation.getViewMatrix(new Vector3f(64, 90.3f, 64), new Vector3f(3*(float)Math.PI/4, 3*(float)Math.PI/4, 0));
 
 		shader.bind();
-		shader.setUniform("projectionMatrix", projectionMatrix);
-		shader.setUniform("texture_sampler", 0);
-		shader.setUniform("dirLight", new Vector3f(2, -2, 1.5f).normalize());
+		shader.setUniform(loc_projectionMatrix, projectionMatrix);
+		shader.setUniform(loc_texture_sampler, 0);
+		shader.setUniform(loc_dirLight, new Vector3f(2, -2, 1.5f).normalize());
 		
-		shader.setUniform("light", new Vector3f(1, 1, 1));
+		shader.setUniform(loc_light, new Vector3f(1, 1, 1));
 		mesh.getMaterial().setTexture(Meshes.blockTextures.get(block));
 		mesh.renderOne(() -> {
 			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(
 					Transformation.getModelMatrix(spatial.getPosition(), spatial.getRotation(), spatial.getScale()),
 					viewMatrix);
-			shader.setUniform("viewMatrix", modelViewMatrix);
+			shader.setUniform(loc_viewMatrix, modelViewMatrix);
 		});
 		
 		shader.unbind();

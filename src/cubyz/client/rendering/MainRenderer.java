@@ -42,6 +42,41 @@ import cubyz.world.items.ItemBlock;
 
 public class MainRenderer {
 	
+	public static final class ChunkUniforms {
+		public static int loc_projectionMatrix;
+		public static int loc_viewMatrix;
+		public static int loc_modelPosition;
+		public static int loc_ambientLight;
+		public static int loc_directionalLight;
+		public static int loc_fog_activ;
+		public static int loc_fog_color;
+		public static int loc_fog_density;
+	}
+	public static final class BlockUniforms {
+		public static int loc_projectionMatrix;
+		public static int loc_viewMatrix;
+		public static int loc_texture_sampler;
+		public static int loc_break_sampler;
+		public static int loc_ambientLight;
+		public static int loc_directionalLight;
+		public static int loc_modelPosition;
+		public static int loc_selectedIndex;
+		public static int loc_atlasSize;
+		public static int loc_fog_activ;
+		public static int loc_fog_color;
+		public static int loc_fog_density;
+	}
+	public static class EntityUniforms {
+		public static int loc_projectionMatrix;
+		public static int loc_viewMatrix;
+		public static int loc_texture_sampler;
+		public static int loc_materialHasTexture;
+		public static int loc_fog_activ;
+		public static int loc_fog_color;
+		public static int loc_fog_density;
+		public static int loc_light;
+	}
+	
 	/**The number of milliseconds after which no more chunk meshes are created. This allows the game to run smoother on movement.*/
 	private static int maximumMeshTime = 12;
 
@@ -101,42 +136,17 @@ public class MainRenderer {
 	}
 
 	public void loadShaders() throws Exception {
-		chunkShader = new ShaderProgram();
-		chunkShader.createVertexShader(Utils.loadResource(shaders + "/chunk_vertex.vs"));
-		chunkShader.createFragmentShader(Utils.loadResource(shaders + "/chunk_fragment.fs"));
-		chunkShader.link();
-		chunkShader.createUniform("projectionMatrix");
-		chunkShader.createUniform("viewMatrix");
-		chunkShader.createUniform("modelPosition");
-		chunkShader.createUniform("ambientLight");
-		chunkShader.createUniform("directionalLight");
-		chunkShader.createFogUniform("fog");
-		
-		blockShader = new ShaderProgram();
-		blockShader.createVertexShader(Utils.loadResource(shaders + "/block_vertex.vs"));
-		blockShader.createFragmentShader(Utils.loadResource(shaders + "/block_fragment.fs"));
-		blockShader.link();
-		blockShader.createUniform("projectionMatrix");
-		blockShader.createUniform("viewMatrix");
-		blockShader.createUniform("texture_sampler");
-		blockShader.createUniform("break_sampler");
-		blockShader.createUniform("ambientLight");
-		blockShader.createUniform("directionalLight");
-		blockShader.createUniform("modelPosition");
-		blockShader.createUniform("selectedIndex");
-		blockShader.createUniform("atlasSize");
-		blockShader.createFogUniform("fog");
-		
-		entityShader = new ShaderProgram();
-		entityShader.createVertexShader(Utils.loadResource(shaders + "/entity_vertex.vs"));
-		entityShader.createFragmentShader(Utils.loadResource(shaders + "/entity_fragment.fs"));
-		entityShader.link();
-		entityShader.createUniform("projectionMatrix");
-		entityShader.createUniform("viewMatrix");
-		entityShader.createUniform("texture_sampler");
-		entityShader.createUniform("materialHasTexture");
-		entityShader.createFogUniform("fog");
-		entityShader.createUniform("light");
+		chunkShader = new ShaderProgram(Utils.loadResource(shaders + "/chunk_vertex.vs"),
+				Utils.loadResource(shaders + "/chunk_fragment.fs"),
+				ChunkUniforms.class);
+
+		blockShader = new ShaderProgram(Utils.loadResource(shaders + "/block_vertex.vs"),
+				Utils.loadResource(shaders + "/block_fragment.fs"),
+				BlockUniforms.class);
+
+		entityShader = new ShaderProgram(Utils.loadResource(shaders + "/entity_vertex.vs"),
+				Utils.loadResource(shaders + "/entity_fragment.fs"),
+				EntityUniforms.class);
 		
 		System.gc();
 	}
@@ -322,17 +332,19 @@ public class MainRenderer {
 		if(playerPosition != null) {
 			
 			blockShader.bind();
-			
-			blockShader.setUniform("fog", Cubyz.fog);
-			blockShader.setUniform("projectionMatrix", Cubyz.window.getProjectionMatrix());
-			blockShader.setUniform("texture_sampler", 0);
-			blockShader.setUniform("break_sampler", 2);
-			blockShader.setUniform("viewMatrix", Cubyz.camera.getViewMatrix());
 
-			blockShader.setUniform("ambientLight", ambientLight);
-			blockShader.setUniform("directionalLight", directionalLight.getDirection());
+			blockShader.setUniform(BlockUniforms.loc_fog_activ, Cubyz.fog.isActive());
+			blockShader.setUniform(BlockUniforms.loc_fog_color, Cubyz.fog.getColor());
+			blockShader.setUniform(BlockUniforms.loc_fog_density, Cubyz.fog.getDensity());
+			blockShader.setUniform(BlockUniforms.loc_projectionMatrix, Cubyz.window.getProjectionMatrix());
+			blockShader.setUniform(BlockUniforms.loc_texture_sampler, 0);
+			blockShader.setUniform(BlockUniforms.loc_break_sampler, 2);
+			blockShader.setUniform(BlockUniforms.loc_viewMatrix, Cubyz.camera.getViewMatrix());
+
+			blockShader.setUniform(BlockUniforms.loc_ambientLight, ambientLight);
+			blockShader.setUniform(BlockUniforms.loc_directionalLight, directionalLight.getDirection());
 			
-			blockShader.setUniform("atlasSize", Meshes.atlasSize);
+			blockShader.setUniform(BlockUniforms.loc_atlasSize, Meshes.atlasSize);
 			
 			// Activate first texture bank
 			glActiveTexture(GL_TEXTURE0);
@@ -363,12 +375,12 @@ public class MainRenderer {
 					NormalChunk chunk = (NormalChunk)ch;
 					if(!chunk.isLoaded()) continue;
 					visibleChunks.add(chunk);
-					blockShader.setUniform("modelPosition", chunk.getMin());
+					blockShader.setUniform(BlockUniforms.loc_modelPosition, chunk.getMin());
 					
 					if(selected != null && selected.source == ch) {
-						blockShader.setUniform("selectedIndex", selected.renderIndex);
+						blockShader.setUniform(BlockUniforms.loc_selectedIndex, selected.renderIndex);
 					} else {
-						blockShader.setUniform("selectedIndex", -1);
+						blockShader.setUniform(BlockUniforms.loc_selectedIndex, -1);
 					}
 					
 					Object mesh = chunk.getChunkMesh();
@@ -390,14 +402,16 @@ public class MainRenderer {
 			
 			// Render the far away ReducedChunks:
 			chunkShader.bind();
-			
-			chunkShader.setUniform("fog", Cubyz.fog);
-			chunkShader.setUniform("projectionMatrix", Cubyz.window.getProjectionMatrix());
-			
-			chunkShader.setUniform("viewMatrix", Cubyz.camera.getViewMatrix());
 
-			chunkShader.setUniform("ambientLight", ambientLight);
-			chunkShader.setUniform("directionalLight", directionalLight.getDirection());
+			chunkShader.setUniform(ChunkUniforms.loc_fog_activ, Cubyz.fog.isActive());
+			chunkShader.setUniform(ChunkUniforms.loc_fog_color, Cubyz.fog.getColor());
+			chunkShader.setUniform(ChunkUniforms.loc_fog_density, Cubyz.fog.getDensity());
+			chunkShader.setUniform(ChunkUniforms.loc_projectionMatrix, Cubyz.window.getProjectionMatrix());
+			
+			chunkShader.setUniform(ChunkUniforms.loc_viewMatrix, Cubyz.camera.getViewMatrix());
+
+			chunkShader.setUniform(ChunkUniforms.loc_ambientLight, ambientLight);
+			chunkShader.setUniform(ChunkUniforms.loc_directionalLight, directionalLight.getDirection());
 			
 			for(int i = 0; i < visibleReduced.size; i++) {
 				ReducedChunk chunk = visibleReduced.array[i];
@@ -405,7 +419,7 @@ public class MainRenderer {
 					if (!frustumInt.testAab(chunk.getMin(), chunk.getMax()))
 						continue;
 					Object mesh = chunk.getChunkMesh();
-					chunkShader.setUniform("modelPosition", chunk.getMin());
+					chunkShader.setUniform(ChunkUniforms.loc_modelPosition, chunk.getMin());
 					if(mesh == null || !(mesh instanceof ReducedChunkMesh)) {
 						if(System.currentTimeMillis() - startTime > maximumMeshTime) {
 							// Stop meshing if the frame is taking to long.
@@ -423,9 +437,11 @@ public class MainRenderer {
 			// Render entities:
 			
 			entityShader.bind();
-			entityShader.setUniform("fog", Cubyz.fog);
-			entityShader.setUniform("projectionMatrix", Cubyz.window.getProjectionMatrix());
-			entityShader.setUniform("texture_sampler", 0);
+			entityShader.setUniform(EntityUniforms.loc_fog_activ, Cubyz.fog.isActive());
+			entityShader.setUniform(EntityUniforms.loc_fog_color, Cubyz.fog.getColor());
+			entityShader.setUniform(EntityUniforms.loc_fog_density, Cubyz.fog.getDensity());
+			entityShader.setUniform(EntityUniforms.loc_projectionMatrix, Cubyz.window.getProjectionMatrix());
+			entityShader.setUniform(EntityUniforms.loc_texture_sampler, 0);
 			for (int i = 0; i < entities.length; i++) {
 				Entity ent = entities[i];
 				int x = (int)(ent.getPosition().x + 1.0f);
@@ -434,8 +450,8 @@ public class MainRenderer {
 				if (ent != null && ent != localPlayer) { // don't render local player
 					Mesh mesh = null;
 					if(ent.getType().model != null) {
-						entityShader.setUniform("materialHasTexture", true);
-						entityShader.setUniform("light", ent.getSurface().getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
+						entityShader.setUniform(EntityUniforms.loc_materialHasTexture, true);
+						entityShader.setUniform(EntityUniforms.loc_light, ent.getSurface().getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
 						ent.getType().model.render(Cubyz.camera.getViewMatrix(), entityShader, ent);
 						continue;
 					}
@@ -451,13 +467,13 @@ public class MainRenderer {
 					}
 					
 					if (mesh != null) {
-						entityShader.setUniform("materialHasTexture", mesh.getMaterial().isTextured());
-						entityShader.setUniform("light", ent.getSurface().getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
+						entityShader.setUniform(EntityUniforms.loc_materialHasTexture, mesh.getMaterial().isTextured());
+						entityShader.setUniform(EntityUniforms.loc_light, ent.getSurface().getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
 						
 						mesh.renderOne(() -> {
 							Vector3f position = ent.getRenderPosition();
 							Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(position, ent.getRotation(), ent.getScale()), Cubyz.camera.getViewMatrix());
-							entityShader.setUniform("viewMatrix", modelViewMatrix);
+							entityShader.setUniform(EntityUniforms.loc_viewMatrix, modelViewMatrix);
 						});
 					}
 				}
@@ -486,30 +502,30 @@ public class MainRenderer {
 						mesh.getMaterial().setTexture(Meshes.blockTextures.get(b));
 					}
 					if(mesh != null) {
-						entityShader.setUniform("materialHasTexture", mesh.getMaterial().isTextured());
-						entityShader.setUniform("light", localPlayer.getSurface().getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
+						entityShader.setUniform(EntityUniforms.loc_materialHasTexture, mesh.getMaterial().isTextured());
+						entityShader.setUniform(EntityUniforms.loc_light, localPlayer.getSurface().getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
 						
 						mesh.renderOne(() -> {
 							Vector3f position = manager.getPosition(index);
 							Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(position, manager.getRotation(index), ItemEntityManager.diameter), Cubyz.camera.getViewMatrix());
-							entityShader.setUniform("viewMatrix", modelViewMatrix);
+							entityShader.setUniform(EntityUniforms.loc_viewMatrix, modelViewMatrix);
 						});
 					}
 				}
 			}
 			
 			
-			entityShader.setUniform("fog.activ", 0); // manually disable the fog
+			blockShader.setUniform(BlockUniforms.loc_fog_activ, 0); // manually disable the fog
 			for (int i = 0; i < spatials.length; i++) {
 				Spatial spatial = spatials[i];
 				Mesh mesh = spatial.getMesh();
-				entityShader.setUniform("light", new Vector3f(1, 1, 1));
-				entityShader.setUniform("materialHasTexture", mesh.getMaterial().isTextured());
+				entityShader.setUniform(EntityUniforms.loc_light, new Vector3f(1, 1, 1));
+				entityShader.setUniform(EntityUniforms.loc_materialHasTexture, mesh.getMaterial().isTextured());
 				mesh.renderOne(() -> {
 					Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(
 							Transformation.getModelMatrix(spatial.getPosition(), spatial.getRotation(), spatial.getScale()),
 							Cubyz.camera.getViewMatrix());
-					entityShader.setUniform("viewMatrix", modelViewMatrix);
+					entityShader.setUniform(EntityUniforms.loc_viewMatrix, modelViewMatrix);
 				});
 			}
 			
@@ -517,17 +533,19 @@ public class MainRenderer {
 			
 			// Render transparent chunk meshes:
 			blockShader.bind();
-			
-			blockShader.setUniform("fog", Cubyz.fog);
-			blockShader.setUniform("projectionMatrix", Cubyz.window.getProjectionMatrix());
-			blockShader.setUniform("texture_sampler", 0);
-			blockShader.setUniform("break_sampler", 2);
-			blockShader.setUniform("viewMatrix", Cubyz.camera.getViewMatrix());
 
-			blockShader.setUniform("ambientLight", ambientLight);
-			blockShader.setUniform("directionalLight", directionalLight.getDirection());
+			blockShader.setUniform(BlockUniforms.loc_fog_activ, Cubyz.fog.isActive());
+			blockShader.setUniform(BlockUniforms.loc_fog_color, Cubyz.fog.getColor());
+			blockShader.setUniform(BlockUniforms.loc_fog_density, Cubyz.fog.getDensity());
+			blockShader.setUniform(BlockUniforms.loc_projectionMatrix, Cubyz.window.getProjectionMatrix());
+			blockShader.setUniform(BlockUniforms.loc_texture_sampler, 0);
+			blockShader.setUniform(BlockUniforms.loc_break_sampler, 2);
+			blockShader.setUniform(BlockUniforms.loc_viewMatrix, Cubyz.camera.getViewMatrix());
+
+			blockShader.setUniform(BlockUniforms.loc_ambientLight, ambientLight);
+			blockShader.setUniform(BlockUniforms.loc_directionalLight, directionalLight.getDirection());
 			
-			blockShader.setUniform("atlasSize", Meshes.atlasSize);
+			blockShader.setUniform(BlockUniforms.loc_atlasSize, Meshes.atlasSize);
 			
 			// Activate first texture bank
 			glActiveTexture(GL_TEXTURE0);
@@ -548,13 +566,13 @@ public class MainRenderer {
 			}
 
 			NormalChunk[] chunks = sortChunks(visibleChunks.toArray(), x0/NormalChunk.chunkSize - 0.5f, y0/NormalChunk.chunkSize - 0.5f, z0/NormalChunk.chunkSize - 0.5f);
-			for (NormalChunk ch : chunks) {				
-				blockShader.setUniform("modelPosition", ch.getMin());
+			for (NormalChunk ch : chunks) {
+				blockShader.setUniform(BlockUniforms.loc_modelPosition, ch.getMin());
 				
 				if(selected != null && selected.source == ch) {
-					blockShader.setUniform("selectedIndex", selected.renderIndex);
+					blockShader.setUniform(BlockUniforms.loc_selectedIndex, selected.renderIndex);
 				} else {
-					blockShader.setUniform("selectedIndex", -1);
+					blockShader.setUniform(BlockUniforms.loc_selectedIndex, -1);
 				}
 				
 				Object mesh = ch.getChunkMesh();

@@ -1,14 +1,17 @@
 package cubyz.client.rendering;
 
+import java.lang.reflect.Field;
+import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
-import java.util.HashMap;
-import java.util.Map;
+import java.nio.IntBuffer;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
 import static org.lwjgl.opengl.GL20.*;
 import org.lwjgl.system.MemoryStack;
+
+import cubyz.Logger;
 
 public class ShaderProgram {
 
@@ -18,90 +21,70 @@ public class ShaderProgram {
 
 	private int fragmentShaderId;
 
-	private final Map<String, Integer> uniforms;
+	//private final Map<String, Integer> uniforms;
 
-	public ShaderProgram() throws Exception {
+	/**
+	 * Creates the fragment shader and initializes uniform locations.
+	 * @param vertexCode code of the vertex shader
+	 * @param fragmentCode code of the fragment shader
+	 * @param uniformLocations all uniform locations will be stored in static variables in this class. <br>
+	 * The expected format is "loc_"+nameInShaderCode. dots "." are replaced by "_", to prevent issues.
+	 */
+	public ShaderProgram(String vertexCode, String fragmentCode, Class<?> uniformLocations) throws Exception {
 		programId = glCreateProgram();
 		if (programId == 0) {
 			throw new Exception("Could not create Shader");
 		}
-		uniforms = new HashMap<>();
+		//uniforms = new HashMap<>();
+		createVertexShader(vertexCode);
+		createFragmentShader(fragmentCode);
+		link();
+		storeUniforms(uniformLocations);
 	}
-
-	public void createUniform(String uniformName) throws Exception {
-		int uniformLocation = glGetUniformLocation(programId, uniformName);
-		if (uniformLocation < 0) {
-			throw new Exception("Could not find uniform:" + uniformName);
+	
+	public void storeUniforms(Class<?> uniformLocations) {
+		IntBuffer size = ByteBuffer.allocateDirect(4).asIntBuffer();
+		IntBuffer type = ByteBuffer.allocateDirect(4).asIntBuffer();
+		for(int i = 0;; i++) {
+			String uniformName = glGetActiveUniform(programId, i, 256, size, type);
+			if(uniformName.length() == 0) break; // When there is no further uniform, opengl just returns an empty string.
+			try { // Try to put it into the variable of the same name from the given class.
+				Field f = uniformLocations.getDeclaredField("loc_"+uniformName.replace('.', '_'));
+				f.setInt(null, glGetUniformLocation(programId, uniformName));
+			} catch(Exception e) {
+				Logger.warning("Could not find variable \"loc_"+uniformName.replace('.', '_')+"\" in class \""+uniformLocations.descriptorString()+"\" to store uniform location.");
+				Logger.throwable(e);
+			}
 		}
-		uniforms.put(uniformName, uniformLocation);
 	}
 
-	public void createDirectionalLightUniform(String uniformName) throws Exception {
-		createUniform(uniformName + ".colour");
-		createUniform(uniformName + ".direction");
-		createUniform(uniformName + ".intensity");
-	}
-
-	public void createMaterialUniform(String uniformName) throws Exception {
-		createUniform(uniformName + ".ambient");
-		createUniform(uniformName + ".diffuse");
-		createUniform(uniformName + ".specular");
-		createUniform(uniformName + ".hasTexture");
-		createUniform(uniformName + ".reflectance");
-	}
-	
-	public void createFogUniform(String uniformName) throws Exception {
-		createUniform(uniformName + ".activ");
-		createUniform(uniformName + ".color");
-		createUniform(uniformName + ".density");
-	}
-	
-	public void setUniform(String uniformName, Fog fog) {
-		setUniform(uniformName + ".activ", fog.isActive() ? 1 : 0);
-		setUniform(uniformName + ".density", fog.getDensity());
-		setUniform(uniformName + ".color", fog.getColor());
-	}
-
-	public void setUniform(String uniformName, Matrix4f value) {
+	public void setUniform(int location, Matrix4f value) {
 		try (MemoryStack stack = MemoryStack.stackPush()) {
 			// Dump the matrix into a float buffer
 			FloatBuffer fb = stack.mallocFloat(16);
 			value.get(fb);
-			glUniformMatrix4fv(uniforms.get(uniformName), false, fb);
+			glUniformMatrix4fv(location, false, fb);
 		}
 	}
 
-	public void setUniform(String uniformName, int value) {
-		glUniform1i(uniforms.get(uniformName), value);
+	public void setUniform(int location, int value) {
+		glUniform1i(location, value);
 	}
 	
-	public void setUniform(String uniformName, boolean value) {
-		glUniform1i(uniforms.get(uniformName), value ? 1 : 0);
+	public void setUniform(int location, boolean value) {
+		glUniform1i(location, value ? 1 : 0);
 	}
 
-	public void setUniform(String uniformName, float value) {
-		glUniform1f(uniforms.get(uniformName), value);
+	public void setUniform(int location, float value) {
+		glUniform1f(location, value);
 	}
 
-	public void setUniform(String uniformName, Vector3f value) {
-		glUniform3f(uniforms.get(uniformName), value.x, value.y, value.z);
+	public void setUniform(int location, Vector3f value) {
+		glUniform3f(location, value.x, value.y, value.z);
 	}
 
-	public void setUniform(String uniformName, Vector4f value) {
-		glUniform4f(uniforms.get(uniformName), value.x, value.y, value.z, value.w);
-	}
-
-	public void setUniform(String uniformName, DirectionalLight dirLight) {
-		setUniform(uniformName + ".color", dirLight.getColor());
-		setUniform(uniformName + ".direction", dirLight.getDirection());
-	}
-
-	public void setUniform(String uniformName, Material material) {
-		setUniform(uniformName + ".ambient", material.getAmbientColor());
-		setUniform(uniformName + ".diffuse", material.getDiffuseColor());
-		setUniform(uniformName + ".specular", material.getSpecularColor());
-		setUniform(uniformName + ".hasTexture", material.isTextured() ? 1 : 0);
-		setUniform(uniformName + ".reflectance", material.getReflectance());
+	public void setUniform(int location, Vector4f value) {
+		glUniform4f(location, value.x, value.y, value.z, value.w);
 	}
 
 	public void createVertexShader(String shaderCode) throws Exception {
