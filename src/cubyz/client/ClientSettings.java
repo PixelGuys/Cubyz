@@ -1,19 +1,16 @@
 package cubyz.client;
 
 import java.io.File;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonObject;
 
 import cubyz.Logger;
 import cubyz.Settings;
 import cubyz.gui.input.Keybindings;
 import cubyz.rendering.Window;
 import cubyz.utils.DiscordIntegration;
+import cubyz.utils.json.JsonObject;
+import cubyz.utils.json.JsonParser;
 import cubyz.utils.translate.LanguageLoader;
 
 /**
@@ -43,36 +40,31 @@ public class ClientSettings {
 	/**Not actually a setting, but stored here anyways.*/
 	public static int EFFECTIVE_RENDER_DISTANCE = (ClientSettings.RENDER_DISTANCE + ((((int)(ClientSettings.RENDER_DISTANCE*ClientSettings.LOD_FACTOR) & ~1) << ClientSettings.HIGHEST_LOD)));
 	
-	public static final Gson GSON =
-			new GsonBuilder()
-			.setPrettyPrinting()
-			.create();
-	
 	public static void save() {
 		JsonObject settings = new JsonObject();
 		JsonObject keyBindings = new JsonObject();
 		
 		for (String name : Keybindings.keyNames) {
 			int keyCode = Keybindings.getKeyCode(name);
-			keyBindings.addProperty(name, keyCode);
+			keyBindings.put(name, keyCode);
 		}
 		
-		settings.add("keybindings", keyBindings);
-		settings.addProperty("language", Settings.getLanguage().getLocale());
-		settings.addProperty("discordIntegration", DiscordIntegration.isEnabled());
-		settings.addProperty("fogCoefficient", ClientSettings.FOG_COEFFICIENT);
-		settings.addProperty("useMipmaps", ClientSettings.MIPMAPPING);
-		settings.addProperty("vsync", Window.isVSyncEnabled());
-		settings.addProperty("antiAliasSamples", Window.getAntialiasSamples());
-		settings.addProperty("easyLighting", ClientSettings.easyLighting);
-		settings.addProperty("renderDistance", ClientSettings.RENDER_DISTANCE);
-		settings.addProperty("highestLOD", ClientSettings.HIGHEST_LOD);
-		settings.addProperty("farDistanceFactor", ClientSettings.LOD_FACTOR);
-		settings.addProperty("fieldOfView", ClientSettings.FOV);
+		settings.put("keybindings", keyBindings);
+		settings.put("language", Settings.getLanguage().getLocale());
+		settings.put("discordIntegration", DiscordIntegration.isEnabled());
+		settings.put("fogCoefficient", ClientSettings.FOG_COEFFICIENT);
+		settings.put("useMipmaps", ClientSettings.MIPMAPPING);
+		settings.put("vsync", Window.isVSyncEnabled());
+		settings.put("antiAliasSamples", Window.getAntialiasSamples());
+		settings.put("easyLighting", ClientSettings.easyLighting);
+		settings.put("renderDistance", ClientSettings.RENDER_DISTANCE);
+		settings.put("highestLOD", ClientSettings.HIGHEST_LOD);
+		settings.put("farDistanceFactor", ClientSettings.LOD_FACTOR);
+		settings.put("fieldOfView", ClientSettings.FOV);
 		
 		try {
 			FileWriter writer = new FileWriter("settings.json");
-			GSON.toJson(settings, writer);
+			writer.append(settings.toString());
 			writer.close();
 		} catch (IOException e) {
 			Logger.throwable(e);
@@ -86,59 +78,36 @@ public class ClientSettings {
 		}
 		
 		JsonObject settings = null;
-		try {
-			FileReader reader = new FileReader("settings.json");
-			settings = GSON.fromJson(reader, JsonObject.class);
-			reader.close();
-		} catch (IOException e) {
-			Logger.throwable(e);
-		}
+		settings = JsonParser.parseObjectFromFile("settings.json");
 		
-		if (settings.has("keybindings")) {
-			JsonObject keyBindings = settings.getAsJsonObject("keybindings");
-			for (String name : keyBindings.keySet()) {
-				Keybindings.setKeyCode(name, keyBindings.get(name).getAsInt());
+		JsonObject keyBindings = settings.getObject("keybindings");
+		if(keyBindings != null) {
+			for (String name : keyBindings.map.keySet()) {
+				Keybindings.setKeyCode(name, keyBindings.getInt(name, Keybindings.getKeyCode(name)));
 			}
 		}
 		
-		if (!settings.has("language"))
-			settings.addProperty("language", "en_US");
-		Settings.setLanguage(LanguageLoader.load(settings.get("language").getAsString()));
+		Settings.setLanguage(LanguageLoader.load(settings.getString("language", "en_US")));
 		
-		if (settings.has("discordIntegration")) {
-			if (settings.get("discordIntegration").getAsBoolean()) {
-				DiscordIntegration.startRPC();
-			}
+		if(settings.getBool("discordIntegration", false)) {
+			DiscordIntegration.startRPC();
 		}
 		
-		if (settings.has("fogCoefficient")) {
-			ClientSettings.FOG_COEFFICIENT = settings.get("fogCoefficient").getAsFloat();
-		}
+		FOG_COEFFICIENT = settings.getFloat("fogCoefficient", FOG_COEFFICIENT);
 		
-		if (settings.has("useMipmaps")) {
-			ClientSettings.MIPMAPPING = settings.get("useMipmaps").getAsBoolean();
-		}
-		if (settings.has("vsync")) {
-			Window.setVSyncEnabled(settings.get("vsync").getAsBoolean());
-		} else { // V-Sync enabled by default
-			Window.setVSyncEnabled(true);
-		}
+		MIPMAPPING = settings.getBool("useMipmaps", MIPMAPPING);
 
-		if (settings.has("easyLighting")) {
-			ClientSettings.easyLighting = settings.get("easyLighting").getAsBoolean();
-		}
-		if (settings.has("renderDistance")) {
-			ClientSettings.RENDER_DISTANCE = settings.get("renderDistance").getAsInt();
-		}
-		if (settings.has("highestLOD")) {
-			ClientSettings.HIGHEST_LOD = settings.get("highestLOD").getAsInt();
-		}
-		if (settings.has("farDistanceFactor")) {
-			ClientSettings.LOD_FACTOR = settings.get("farDistanceFactor").getAsInt();
-		}
-		if (settings.has("fieldOfView")) {
-			ClientSettings.FOV = settings.get("fieldOfView").getAsFloat();
-		}
+		Window.setVSyncEnabled(settings.getBool("vsync", true));
+
+		easyLighting = settings.getBool("easyLighting", easyLighting);
+
+		RENDER_DISTANCE = settings.getInt("renderDistance", RENDER_DISTANCE);
+
+		HIGHEST_LOD = settings.getInt("highestLOD", HIGHEST_LOD);
+
+		LOD_FACTOR = settings.getFloat("farDistanceFactor", LOD_FACTOR);
+		
+		FOV = settings.getFloat("fieldOfView", FOV);
 	}
 	
 }

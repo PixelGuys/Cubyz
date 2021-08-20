@@ -9,16 +9,12 @@ import java.util.Properties;
 
 import javax.imageio.ImageIO;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonObject;
-
 import cubyz.Logger;
 import cubyz.api.Resource;
+import cubyz.utils.json.JsonObject;
+import cubyz.utils.json.JsonParser;
 
 public class ResourceUtilities {
-
-	public static final Gson GSON = new GsonBuilder().setLenient().create();
 	
 	public static class EntityModelAnimation {
 		// TODO
@@ -33,23 +29,16 @@ public class ResourceUtilities {
 	
 	public static EntityModel loadEntityModel(Resource entity) throws IOException {
 		String path = ResourceManager.contextToLocal(ResourceContext.MODEL_ENTITY, entity);
-		File file = ResourceManager.lookup(path);
-		if (file == null) {
-			throw new IOException();
-		}
-		String json = Utilities.readFile(file);
 		
 		EntityModel model = new EntityModel();
-		JsonObject obj = GSON.fromJson(json, JsonObject.class);
-		if (obj.has("parent")) {
-			model.parent = obj.get("parent").getAsString();
-		}
-		if (!obj.has("model")) {
+		JsonObject obj = JsonParser.parseObjectFromFile(path);
+		model.parent = obj.getString("parent", null);
+		JsonObject jsonModel = obj.getObject("model");
+		if (jsonModel == null) {
 			throw new IOException("Missing \"model\" entry from model " + entity);
 		}
-		JsonObject jsonModel = obj.getAsJsonObject("model");
-		model.model = jsonModel.get("path").getAsString();
-		model.texture = jsonModel.get("texture").getAsString();
+		model.model = jsonModel.getString("path");
+		model.texture = jsonModel.getString("texture");
 		
 		if (model.parent != null) {
 			if (model.parent.equals(entity.toString())) {
