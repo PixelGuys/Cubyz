@@ -1,11 +1,10 @@
 package cubyz.gui.components;
 
-import cubyz.client.GameLauncher;
-import cubyz.client.rendering.Font;
-import cubyz.client.rendering.Window;
 import cubyz.gui.Component;
 import cubyz.gui.NGraphics;
 import cubyz.gui.input.Keyboard;
+import cubyz.gui.input.Mouse;
+import cubyz.rendering.Font;
 
 /**
  * Just a text field.
@@ -38,7 +37,7 @@ public class TextInput extends Component {
 	private int cursorCounter;
 
 	@Override
-	public void render(long nvg, Window src, int x, int y) {
+	public void render(long nvg, int x, int y) {
 		NGraphics.setColor(127, 127, 127);
 		NGraphics.fillRect(x - 3, y - 3, width + 6, height + 6);
 		
@@ -53,11 +52,11 @@ public class TextInput extends Component {
 		float textHeight = NGraphics.getTextAscent(text);
 		NGraphics.drawText(x + 2, y + height/2 - textHeight, text);
 		
-		if (GameLauncher.input.mouse.isLeftButtonPressed() && !hasPressed) {
+		if (Mouse.isLeftButtonPressed() && !hasPressed) {
 			hasPressed = true;
-		} else if (!GameLauncher.input.mouse.isLeftButtonPressed()) {
+		} else if (!Mouse.isLeftButtonPressed()) {
 			if (hasPressed) { // just released left button
-				if (isInside(GameLauncher.input.mouse.getCurrentPos())) {
+				if (isInside(Mouse.getCurrentPos())) {
 					focused = true;
 				} else {
 					focused = false;

@@ -1,9 +1,9 @@
 package cubyz.gui;
 
 import cubyz.client.Cubyz;
-import cubyz.client.rendering.Window;
 import cubyz.gui.components.Label;
 import cubyz.gui.components.ProgressBar;
+import cubyz.rendering.Window;
 import cubyz.utils.ResourceManager;
 
 /**
@@ -53,25 +53,25 @@ public class LoadingGUI extends MenuGUI {
 		pb1.setMaxValue(5);
 	}
 
-	void setPosition(float x, float y, Component c, Window win) {
-		c.setPosition((int)(x*win.getWidth()), (int)(y*win.getHeight()), Component.ALIGN_TOP_LEFT);
+	void setPosition(float x, float y, Component c) {
+		c.setPosition((int)(x*Window.getWidth()), (int)(y*Window.getHeight()), Component.ALIGN_TOP_LEFT);
 	}
 
-	void setBounds(float x, float y, float w, float h, Component c, Window win) {
-		c.setBounds((int)(x*win.getWidth()), (int)(y*win.getHeight()), (int)(w*win.getWidth()), (int)(h*win.getHeight()), Component.ALIGN_TOP_LEFT);
+	void setBounds(float x, float y, float w, float h, Component c) {
+		c.setBounds((int)(x*Window.getWidth()), (int)(y*Window.getHeight()), (int)(w*Window.getWidth()), (int)(h*Window.getHeight()), Component.ALIGN_TOP_LEFT);
 	}
 	
 	@Override
-	public void render(long nvg, Window win) {
+	public void render(long nvg) {
 		if (splashID == -1) {
 			splashID = NGraphics.loadImage(ResourceManager.lookupPath("cubyz/textures/splash.png"));
 		}
 		
 		NGraphics.setColor(0, 0, 0);
-		NGraphics.fillRect(0, 0, win.getWidth(), win.getHeight());
+		NGraphics.fillRect(0, 0, Window.getWidth(), Window.getHeight());
 		NGraphics.setColor(255, 255, 255, alpha);
-		NGraphics.fillRect(0, 0, win.getWidth(), win.getHeight());
-		NGraphics.drawImage(splashID, win.getWidth()/2-100, (int)(0.1f*win.getHeight()), 200, 200);
+		NGraphics.fillRect(0, 0, Window.getWidth(), Window.getHeight());
+		NGraphics.drawImage(splashID, Window.getWidth()/2-100, (int)(0.1f*Window.getHeight()), 200, 200);
 		if (alphaDecrease) {
 			if (alpha > 0) {
 				alpha -= 4;
@@ -83,18 +83,18 @@ public class LoadingGUI extends MenuGUI {
 				alphaDecrease = true;
 			}
 		}
-		setBounds(0.25f, 0.55f, 0.5f, 0.1f, pb1, win);
-		setBounds(0.25f, 0.75f, 0.5f, 0.1f, pb2, win);
-		setPosition(0.5f, 0.6f, step, win);
-		setPosition(0.5f, 0.8f, step2, win);
-		pb1.render(nvg, win);
+		setBounds(0.25f, 0.55f, 0.5f, 0.1f, pb1);
+		setBounds(0.25f, 0.75f, 0.5f, 0.1f, pb2);
+		setPosition(0.5f, 0.6f, step);
+		setPosition(0.5f, 0.8f, step2);
+		pb1.render(nvg);
 		if (hasStep2) {
-			pb2.render(nvg, win);
+			pb2.render(nvg);
 		}
 		NGraphics.setColor(0, 0, 0);
-		step.render(nvg, win);
+		step.render(nvg);
 		if (hasStep2) {
-			step2.render(nvg, win);
+			step2.render(nvg);
 		}
 	}
 	

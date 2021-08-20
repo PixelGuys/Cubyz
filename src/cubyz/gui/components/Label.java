@@ -1,9 +1,8 @@
 package cubyz.gui.components;
 
-import cubyz.client.rendering.Font;
-import cubyz.client.rendering.Window;
 import cubyz.gui.Component;
 import cubyz.gui.NGraphics;
+import cubyz.rendering.Font;
 import cubyz.utils.translate.TextKey;
 
 /**
@@ -50,7 +49,7 @@ public class Label extends Component {
 	}
 
 	@Override
-	public void render(long nvg, Window src, int x, int y) {
+	public void render(long nvg, int x, int y) {
 		NGraphics.setColor(255, 255, 255);
 		NGraphics.setFont(font);
 		if (text != null) {

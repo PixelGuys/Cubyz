@@ -5,7 +5,6 @@ import java.util.ArrayList;
 
 import cubyz.Settings;
 import cubyz.client.Cubyz;
-import cubyz.client.rendering.Window;
 import cubyz.gui.Component;
 import cubyz.gui.MenuGUI;
 import cubyz.gui.components.Button;
@@ -106,14 +105,14 @@ public class SettingsGUI extends MenuGUI {
 	}
 
 	@Override
-	public void render(long nvg, Window win) {
+	public void render(long nvg) {
 		rpc.setText(DiscordIntegration.isEnabled() ? rpcKeyOn : rpcKeyOff);
 
-		done.render(nvg, win);
-		graphics.render(nvg, win);
-		language.render(nvg, win);
-		rpc.render(nvg, win);
-		bindings.render(nvg, win);
+		done.render(nvg);
+		graphics.render(nvg);
+		language.render(nvg);
+		rpc.render(nvg);
+		bindings.render(nvg);
 	}
 	
 	@Override

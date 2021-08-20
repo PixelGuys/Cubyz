@@ -3,12 +3,11 @@ package cubyz.modding.base;
 import cubyz.api.CubyzRegistries;
 import cubyz.api.Resource;
 import cubyz.client.Cubyz;
-import cubyz.client.rendering.Window;
 import cubyz.gui.Component;
 import cubyz.gui.GeneralInventory;
 import cubyz.gui.components.Button;
 import cubyz.gui.components.InventorySlot;
-import cubyz.gui.input.MouseInput;
+import cubyz.rendering.Window;
 import cubyz.utils.translate.TextKey;
 import cubyz.world.items.Inventory;
 import cubyz.world.items.Item;
@@ -114,9 +113,9 @@ public class WorkbenchGUI extends GeneralInventory {
 	}
 
 	@Override
-	protected void mouseAction(MouseInput mouse, Window win) {
+	protected void mouseAction() {
 		for(int i = 0; i < inv.length; i++) {
-			if(inv[i].grabWithMouse(mouse, carried, win.getWidth()/2, win.getHeight())) {
+			if(inv[i].grabWithMouse(carried, Window.getWidth()/2, Window.getHeight())) {
 				if(craftingMode == Mode.NORMAL) {
 					if (i == inv.length-1 && carried.getItem() != null) {
 						// Remove one of each of the items in the crafting grid.
@@ -228,14 +227,14 @@ public class WorkbenchGUI extends GeneralInventory {
 	}
 	
 	@Override
-	public void render(long nvg, Window win) {
-		super.render(nvg, win);
+	public void render(long nvg) {
+		super.render(nvg);
 
-		normal.render(nvg, win);
-		axe.render(nvg, win);
-		pickaxe.render(nvg, win);
-		shovel.render(nvg, win);
-		sword.render(nvg, win);
+		normal.render(nvg);
+		axe.render(nvg);
+		pickaxe.render(nvg);
+		shovel.render(nvg);
+		sword.render(nvg);
 	}
 
 }

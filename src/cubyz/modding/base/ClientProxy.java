@@ -3,9 +3,9 @@ package cubyz.modding.base;
 import cubyz.api.ClientRegistries;
 import cubyz.api.CubyzRegistries;
 import cubyz.api.Registry;
-import cubyz.client.rendering.entity_models.*;
-import cubyz.client.rendering.models.CubeModel;
-import cubyz.client.rendering.rotation.*;
+import cubyz.rendering.entity_models.*;
+import cubyz.rendering.models.CubeModel;
+import cubyz.rendering.rotation.*;
 import cubyz.world.blocks.RotationMode;
 import cubyz.world.entity.EntityModel;
 

@@ -5,11 +5,10 @@ import org.joml.Vector3f;
 import cubyz.api.CubyzRegistries;
 import cubyz.api.Resource;
 import cubyz.client.Cubyz;
-import cubyz.client.rendering.Window;
 import cubyz.gui.Component;
 import cubyz.gui.GeneralInventory;
 import cubyz.gui.components.InventorySlot;
-import cubyz.gui.input.MouseInput;
+import cubyz.rendering.Window;
 import cubyz.world.items.Inventory;
 import cubyz.world.items.Item;
 import cubyz.world.items.ItemStack;
@@ -95,10 +94,10 @@ public class InventoryGUI extends GeneralInventory {
 	}
 
 	@Override
-	protected void mouseAction(MouseInput mouse, Window win) {
+	protected void mouseAction() {
 		boolean notNull = inv[playerInventorySize+4].reference.getItem() != null;
 		for(int i = 0; i < inv.length; i++) {
-			if(inv[i].grabWithMouse(mouse, carried, win.getWidth()/2, win.getHeight())) {
+			if(inv[i].grabWithMouse(carried, Window.getWidth()/2, Window.getHeight())) {
 				if (i == playerInventorySize+4 && notNull) {
 					// Remove items in the crafting grid.
 					for(int j = playerInventorySize; j < playerInventorySize+4; j++) {

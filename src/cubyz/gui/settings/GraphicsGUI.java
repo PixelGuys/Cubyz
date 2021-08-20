@@ -2,13 +2,13 @@ package cubyz.gui.settings;
 
 import cubyz.client.ClientSettings;
 import cubyz.client.Cubyz;
-import cubyz.client.rendering.Window;
 import cubyz.gui.Component;
 import cubyz.gui.MenuGUI;
 import cubyz.gui.components.Button;
 import cubyz.gui.components.CheckBox;
 import cubyz.gui.components.Label;
 import cubyz.gui.components.Slider;
+import cubyz.rendering.Window;
 import cubyz.utils.translate.TextKey;
 
 public class GraphicsGUI extends MenuGUI {
@@ -104,22 +104,22 @@ public class GraphicsGUI extends MenuGUI {
 		
 		vsync.setPosition(-125, 525, Component.ALIGN_TOP);
 		vsync.setLabel(TextKey.createTextKey("gui.cubyz.settings.vsync"));
-		vsync.setSelected(Cubyz.window.isVSyncEnabled());
+		vsync.setSelected(Window.isVSyncEnabled());
 		vsync.setOnAction(() -> {
-			Cubyz.window.setVSyncEnabled(vsync.isSelected());
+			Window.setVSyncEnabled(vsync.isSelected());
 		});
 	}
 
 	@Override
-	public void render(long nvg, Window win) {
-		renderDistance.render(nvg, win);
-		highestLOD.render(nvg, win);
-		LODFactor.render(nvg, win);
-		effectiveRenderDistance.render(nvg, win);
-		done.render(nvg, win);
-		fog.render(nvg, win);
-		easyLighting.render(nvg, win);
-		vsync.render(nvg, win);
+	public void render(long nvg) {
+		renderDistance.render(nvg);
+		highestLOD.render(nvg);
+		LODFactor.render(nvg);
+		effectiveRenderDistance.render(nvg);
+		done.render(nvg);
+		fog.render(nvg);
+		easyLighting.render(nvg);
+		vsync.render(nvg);
 	}
 	
 	@Override

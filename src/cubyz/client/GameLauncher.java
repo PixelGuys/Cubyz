@@ -1,8 +1,9 @@
 package cubyz.client;
 
 import cubyz.Logger;
-import cubyz.client.rendering.MainRenderer;
 import cubyz.gui.input.Input;
+import cubyz.rendering.MainRenderer;
+import cubyz.rendering.Window;
 
 /**
  * Class containing the main function.
@@ -16,6 +17,7 @@ public abstract class GameLauncher {
 	
 	public static void main(String[] args) {
 		try {
+			Window.init();
 			input = new Input();
 			instance = new Game();
 			renderer = new MainRenderer();

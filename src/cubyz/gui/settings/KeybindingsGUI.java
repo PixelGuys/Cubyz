@@ -3,9 +3,6 @@ package cubyz.gui.settings;
 import org.lwjgl.glfw.GLFW;
 
 import cubyz.client.Cubyz;
-import cubyz.client.GameLauncher;
-import cubyz.client.rendering.Font;
-import cubyz.client.rendering.Window;
 import cubyz.gui.Component;
 import cubyz.gui.MenuGUI;
 import cubyz.gui.components.Button;
@@ -13,6 +10,9 @@ import cubyz.gui.components.Label;
 import cubyz.gui.components.ScrollingContainer;
 import cubyz.gui.input.Keybindings;
 import cubyz.gui.input.Keyboard;
+import cubyz.gui.input.Mouse;
+import cubyz.rendering.Font;
+import cubyz.rendering.Window;
 import cubyz.utils.Utilities;
 import cubyz.utils.translate.TextKey;
 
@@ -131,32 +131,32 @@ public class KeybindingsGUI extends MenuGUI {
 	}
 
 	@Override
-	public void render(long nvg, Window win) {
+	public void render(long nvg) {
 		
-		if (listen != null) {
-			if (Keyboard.hasKeyCode()) {
+		if(listen != null) {
+			if(Keyboard.hasKeyCode()) {
 				Keybindings.setKeyCode(listen, Keyboard.getKeyCode());
 				initUI();
 				listen = null;
-			} else if (GameLauncher.input.mouse.isLeftButtonPressed()) {
+			} else if(Mouse.isLeftButtonPressed()) {
 				Keybindings.setKeyCode(listen, Keybindings.MOUSE_LEFT_CLICK);
 				initUI();
 				listen = null;
-			} else if (GameLauncher.input.mouse.isMiddleButtonPressed()) {
+			} else if(Mouse.isMiddleButtonPressed()) {
 				Keybindings.setKeyCode(listen, Keybindings.MOUSE_MIDDLE_CLICK);
 				initUI();
 				listen = null;
-			} else if (GameLauncher.input.mouse.isRightButtonPressed()) {
+			} else if(Mouse.isRightButtonPressed()) {
 				Keybindings.setKeyCode(listen, Keybindings.MOUSE_RIGHT_CLICK);
 				initUI();
 				listen = null;
 			}
 		}
 		
-		container.setBounds(0, 0, win.getWidth(), win.getHeight() - 70, Component.ALIGN_TOP_LEFT);
+		container.setBounds(0, 0, Window.getWidth(), Window.getHeight() - 70, Component.ALIGN_TOP_LEFT);
 		
-		container.render(nvg, win);
-		done.render(nvg, win);
+		container.render(nvg);
+		done.render(nvg);
 	}
 	
 	@Override

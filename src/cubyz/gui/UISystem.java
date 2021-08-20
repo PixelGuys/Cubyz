@@ -7,10 +7,10 @@ import static org.lwjgl.system.MemoryUtil.*;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 
-import cubyz.client.GameLauncher;
-import cubyz.client.rendering.Font;
-import cubyz.client.rendering.Hud;
-import cubyz.client.rendering.Window;
+import cubyz.gui.input.Mouse;
+import cubyz.rendering.Font;
+import cubyz.rendering.Hud;
+import cubyz.rendering.Window;
 
 /**
  * UI system working in the background, to add effects like transition.
@@ -72,7 +72,7 @@ public class UISystem extends Hud {
 			menuQueue.add(this.gui);
 		}
 		if (this.gui != null && this.gui.ungrabsMouse() && (gui == null ? true : !gui.ungrabsMouse())) {
-			GameLauncher.input.mouse.setGrabbed(true);
+			Mouse.setGrabbed(true);
 		}
 		if(this.gui != null) {
 			this.gui.close();
@@ -82,7 +82,7 @@ public class UISystem extends Hud {
 		}
 		this.gui = gui;
 		if (gui != null && gui.ungrabsMouse() && (this.gui == null ? true : !this.gui.ungrabsMouse())) {
-			GameLauncher.input.mouse.setGrabbed(false);
+			Mouse.setGrabbed(false);
 		}
 	}
 	
@@ -102,7 +102,7 @@ public class UISystem extends Hud {
 	}
 
 	@Override
-	public void init(Window window) throws Exception {
+	public void init() throws Exception {
 		nvg = nvgCreate(0);
 	    if (nvg == NULL) {
 	        throw new Exception("Could not init NanoVG");
@@ -116,12 +116,12 @@ public class UISystem extends Hud {
 	}
 
 	@Override
-	public void render(Window window) {
+	public void render() {
 		if (inited) {
-			super.render(window);
+			super.render();
 			transitionDur += System.currentTimeMillis() - lastAnimTime;
 			lastAnimTime = System.currentTimeMillis();
-			nvgBeginFrame(nvg, window.getWidth(), window.getHeight(), 1);
+			nvgBeginFrame(nvg, Window.getWidth(), Window.getHeight(), 1);
 			NGraphics.setGlobalAlphaMultiplier(1f);
 			NGraphics.setColor(0, 0, 0);
 			if (curTransition == TransitionStyle.FADE_OUT_IN) {
@@ -136,23 +136,23 @@ public class UISystem extends Hud {
 				float alpha2 = Math.min(Math.max(1f - (float) transitionDur/fadeSpeedHalf, 0f), 1f);
 				if (gui != null) {
 					NGraphics.setGlobalAlphaMultiplier(alpha1);
-					gui.render(nvg, window);
+					gui.render(nvg);
 				}
 				if (oldGui != null) {
 					NGraphics.setGlobalAlphaMultiplier(alpha2);
-					oldGui.render(nvg, window);
+					oldGui.render(nvg);
 				}
 			} else {
 				if (gui != null) {
-					gui.render(nvg, window);
+					gui.render(nvg);
 				}
 			}
 			NGraphics.setGlobalAlphaMultiplier(1f);
 			for (MenuGUI overlay : overlays) {
-				overlay.render(nvg, window);
+				overlay.render(nvg);
 			}
 			nvgEndFrame(nvg);
-			window.restoreState();
+			Window.restoreState();
 		}
 	}
 

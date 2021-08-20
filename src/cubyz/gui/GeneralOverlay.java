@@ -2,8 +2,8 @@ package cubyz.gui;
 
 import org.lwjgl.nanovg.NanoVG;
 
-import cubyz.client.rendering.Window;
 import cubyz.gui.ToastManager.Toast;
+import cubyz.rendering.Window;
 
 public class GeneralOverlay extends MenuGUI {
 
@@ -16,7 +16,7 @@ public class GeneralOverlay extends MenuGUI {
 	}
 
 	@Override
-	public void render(long nvg, Window win) {
+	public void render(long nvg) {
 		// Toasts
 		if (!ToastManager.queuedToasts.isEmpty() && currentToast == null) {
 			currentToast = ToastManager.queuedToasts.pop();
@@ -28,11 +28,11 @@ public class GeneralOverlay extends MenuGUI {
 			int defaultAlign = NGraphics.getTextAlign();
 			NGraphics.setTextAlign(NanoVG.NVG_ALIGN_RIGHT | NanoVG.NVG_ALIGN_TOP);
 			NGraphics.setColor(0, 0, 0, 127);
-			NGraphics.fillRect(win.getWidth() - 200, 0, 200, 50);
+			NGraphics.fillRect(Window.getWidth() - 200, 0, 200, 50);
 			NGraphics.setFont("Title", 24f);
-			NGraphics.drawText(win.getWidth(), 0, currentToast.title);
+			NGraphics.drawText(Window.getWidth(), 0, currentToast.title);
 			NGraphics.setFont("Default", 12f);
-			NGraphics.drawText(win.getWidth(), 30, currentToast.text);
+			NGraphics.drawText(Window.getWidth(), 30, currentToast.text);
 			NGraphics.setTextAlign(defaultAlign);
 			if (toastStartTimestamp < System.currentTimeMillis() - 2500) {
 				currentToast = null;

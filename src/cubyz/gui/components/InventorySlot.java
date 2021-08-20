@@ -5,11 +5,10 @@ import java.awt.Rectangle;
 import org.joml.Vector2d;
 
 import cubyz.client.GameLauncher;
-import cubyz.client.rendering.Font;
-import cubyz.client.rendering.Window;
 import cubyz.gui.Component;
 import cubyz.gui.NGraphics;
-import cubyz.gui.input.MouseInput;
+import cubyz.gui.input.Mouse;
+import cubyz.rendering.Font;
 import cubyz.world.blocks.Block;
 import cubyz.world.items.Item;
 import cubyz.world.items.ItemBlock;
@@ -52,12 +51,12 @@ public class InventorySlot extends Component {
 		return hitbox.contains(vec.x, vec.y);
 	}
 	
-	public void drawTooltip(MouseInput mouse, int width, int height) {
+	public void drawTooltip(int width, int height) {
 		Item item = reference.getItem();
 		if (item != null) {
-			if (isInside(mouse.getCurrentPos(), width, height)) {
-				double x = mouse.getX() + 10;
-				double y = mouse.getY() + 10;
+			if (isInside(Mouse.getCurrentPos(), width, height)) {
+				double x = Mouse.getX() + 10;
+				double y = Mouse.getY() + 10;
 				String tooltip;
 				if(item instanceof Tool) {
 					tooltip = item.getName() == null ? "???" : item.getName().getTranslation();
@@ -78,8 +77,8 @@ public class InventorySlot extends Component {
 		}
 	}
 	
-	public boolean grabWithMouse(MouseInput mouse, ItemStack carried, int width, int height) {
-		if(!isInside(mouse.getCurrentPos(), width, height)) {
+	public boolean grabWithMouse(ItemStack carried, int width, int height) {
+		if(!isInside(Mouse.getCurrentPos(), width, height)) {
 			if(!pressedLeft && !pressedRight)
 				return false;
 			// If the right button was pressed above this, put one item down as soon as the mouse is outside:
@@ -98,11 +97,11 @@ public class InventorySlot extends Component {
 			}
 		}
 		// Only do something when the button is released:
-		if(mouse.isLeftButtonPressed()) {
+		if(Mouse.isLeftButtonPressed()) {
 			pressedLeft = true;
 			return false;
 		}
-		if(mouse.isRightButtonPressed()) {
+		if(Mouse.isRightButtonPressed()) {
 			pressedRight = true;
 			return false;
 		}
@@ -158,7 +157,7 @@ public class InventorySlot extends Component {
 	}
 
 	@Override
-	public void render(long nvg, Window win, int x, int y) {
+	public void render(long nvg, int x, int y) {
 		NGraphics.drawImage(SLOT_IMAGE, x, y, width, height);
 		Item item = reference.getItem();
 		if(item != null) {
@@ -184,7 +183,7 @@ public class InventorySlot extends Component {
 				NGraphics.setColor(0, 0, 0);
 			}
 			inv.setText("" + reference.getAmount());
-			inv.render(nvg, win, x + 50, y + 48);
+			inv.render(nvg, x + 50, y + 48);
 		}
 	}
 

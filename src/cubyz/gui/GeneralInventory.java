@@ -4,12 +4,11 @@ import org.joml.Vector3f;
 
 import cubyz.api.Resource;
 import cubyz.client.Cubyz;
-import cubyz.client.GameLauncher;
-import cubyz.client.rendering.Font;
-import cubyz.client.rendering.Window;
 import cubyz.gui.components.InventorySlot;
 import cubyz.gui.components.Label;
-import cubyz.gui.input.MouseInput;
+import cubyz.gui.input.Mouse;
+import cubyz.rendering.Font;
+import cubyz.rendering.Window;
 import cubyz.world.items.Item;
 import cubyz.world.items.ItemStack;
 
@@ -43,22 +42,22 @@ public abstract class GeneralInventory extends MenuGUI {
 
 	@Override
 	public void init(long nvg) {
-		GameLauncher.input.mouse.setGrabbed(false);
+		Mouse.setGrabbed(false);
 		num = new Label();
 		num.setFont(new Font("Default", 16.f));
 		positionSlots();
 	}
 
 	@Override
-	public void render(long nvg, Window win) {
+	public void render(long nvg) {
 		NGraphics.setColor(191, 191, 191);
-		NGraphics.fillRect(win.getWidth()/2-width/2, win.getHeight()-height, width, height);
+		NGraphics.fillRect(Window.getWidth()/2-width/2, Window.getHeight()-height, width, height);
 		NGraphics.setColor(0, 0, 0);
 		for(int i = 0; i < inv.length; i++) {
-			inv[i].render(nvg, win);
+			inv[i].render(nvg);
 		}
 		// Check if the mouse takes up a new ItemStack/sets one down.
-		mouseAction(GameLauncher.input.mouse, win);
+		mouseAction();
 		
 		// Draw the stack carried by the mouse:
 		Item item = carried.getItem();
@@ -66,17 +65,17 @@ public abstract class GeneralInventory extends MenuGUI {
 			if(item.getImage() == -1) {
 				item.setImage(NGraphics.loadImage(item.getTexture()));
 			}
-			int x = (int)GameLauncher.input.mouse.getCurrentPos().x;
-			int y = (int)GameLauncher.input.mouse.getCurrentPos().y;
+			int x = (int)Mouse.getCurrentPos().x;
+			int y = (int)Mouse.getCurrentPos().y;
 			NGraphics.drawImage(item.getImage(), x - 32, y - 32, 64, 64);
 			num.setText("" + carried.getAmount());
 			num.setPosition(x+50-32, y+48-32, Component.ALIGN_TOP_LEFT);
-			num.render(nvg, win);
+			num.render(nvg);
 		}
 		// Draw tooltips, when the nothing is carried.
 		if(item == null) {
 			for(int i = 0; i < inv.length; i++) { // tooltips
-				inv[i].drawTooltip(GameLauncher.input.mouse, win.getWidth() / 2, win.getHeight());
+				inv[i].drawTooltip(Window.getWidth() / 2, Window.getHeight());
 			}
 		}
 	}
@@ -88,5 +87,5 @@ public abstract class GeneralInventory extends MenuGUI {
 	
 	protected abstract void positionSlots();
 	
-	protected abstract void mouseAction(MouseInput mouse, Window win);
+	protected abstract void mouseAction();
 }

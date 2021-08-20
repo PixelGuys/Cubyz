@@ -5,11 +5,10 @@ import java.io.File;
 import cubyz.client.ClientOnly;
 import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
-import cubyz.client.rendering.Font;
-import cubyz.client.rendering.VisibleChunk;
-import cubyz.client.rendering.Window;
 import cubyz.gui.components.Button;
 import cubyz.gui.components.TextInput;
+import cubyz.rendering.Font;
+import cubyz.rendering.VisibleChunk;
 import cubyz.utils.translate.TextKey;
 import cubyz.world.CustomObject;
 import cubyz.world.LocalWorld;
@@ -63,10 +62,10 @@ public class SaveCreationGUI extends MenuGUI {
 	}
 
 	@Override
-	public void render(long nvg, Window win) {
-		name.render(nvg, win);
-		create.render(nvg, win);
-		cancel.render(nvg, win);
+	public void render(long nvg) {
+		name.render(nvg);
+		create.render(nvg);
+		cancel.render(nvg);
 	}
 	
 	@Override

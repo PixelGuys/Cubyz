@@ -5,7 +5,7 @@ import cubyz.client.ClientSettings;
 import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
 import cubyz.client.GameLogic;
-import cubyz.client.rendering.Window;
+import cubyz.rendering.Window;
 import cubyz.world.LocalSurface;
 import cubyz.world.LocalWorld;
 import cubyz.world.World;
@@ -25,14 +25,14 @@ public class DebugOverlay extends MenuGUI {
 	long lastFpsCount = System.currentTimeMillis();
 	
 	@Override
-	public void render(long nvg, Window win) {
+	public void render(long nvg) {
 		if(GameLauncher.input.clientShowDebug) {
 			NGraphics.setFont("Default", 12.0F);
 			NGraphics.setColor(255, 255, 255);
-			NGraphics.drawText(0, 0, GameLogic.getFPS() + " fps" + (win.isVSyncEnabled() ? " (vsync)" : ""));
+			NGraphics.drawText(0, 0, GameLogic.getFPS() + " fps" + (Window.isVSyncEnabled() ? " (vsync)" : ""));
 			NGraphics.drawText(100, 0, GameLauncher.instance.getUPS() + " ups");
 			NGraphics.drawText(0, 12, "Branded \"" + Constants.GAME_BRAND + "\", version " + Constants.GAME_VERSION);
-			NGraphics.drawText(0, 24, "Windowed (" + win.getWidth() + "x" + win.getHeight() + ")");
+			NGraphics.drawText(0, 24, "Windowed (" + Window.getWidth() + "x" + Window.getHeight() + ")");
 			NGraphics.drawText(0, 36, "Java " + javaVersion);
 			NGraphics.drawText(0, 108, "Memory: " + (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory())/1024/1024
 					+ "/" + (Runtime.getRuntime().totalMemory()/1024/1024) + "MiB (max " + (Runtime.getRuntime().maxMemory()/1024/1024) + "MiB)");
@@ -61,7 +61,7 @@ public class DebugOverlay extends MenuGUI {
 				}
 			}
 			
-			int h = win.getHeight();
+			int h = Window.getHeight();
 			NGraphics.drawText(0, h - 12, "0  fps -");
 			NGraphics.drawText(0, h - 42, "30 fps -");
 			NGraphics.drawText(0, h - 72, "60 fps -");

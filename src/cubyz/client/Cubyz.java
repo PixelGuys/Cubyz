@@ -5,12 +5,11 @@ import java.util.Deque;
 
 import org.joml.Vector3f;
 
-import cubyz.client.rendering.Camera;
-import cubyz.client.rendering.Fog;
-import cubyz.client.rendering.Hud;
-import cubyz.client.rendering.RenderOctTree;
-import cubyz.client.rendering.Window;
 import cubyz.gui.UISystem;
+import cubyz.rendering.Camera;
+import cubyz.rendering.Fog;
+import cubyz.rendering.Hud;
+import cubyz.rendering.RenderOctTree;
 import cubyz.world.Surface;
 import cubyz.world.World;
 import cubyz.world.entity.PlayerEntity.PlayerImpl;
@@ -25,7 +24,6 @@ public class Cubyz {
 	public static UISystem gameUI = new UISystem();
 	public static Hud hud = new Hud();
 	public static Deque<Runnable> renderDeque = new ArrayDeque<>();
-	public static Window window = new Window();
 	public static RenderOctTree chunkTree = new RenderOctTree();
 	
 	// World related stuff:

@@ -12,9 +12,8 @@ import cubyz.Logger;
 import cubyz.client.ClientOnly;
 import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
-import cubyz.client.rendering.VisibleChunk;
-import cubyz.client.rendering.Window;
 import cubyz.gui.components.Button;
+import cubyz.rendering.VisibleChunk;
 import cubyz.utils.translate.ContextualTextKey;
 import cubyz.utils.translate.TextKey;
 import cubyz.world.CustomObject;
@@ -120,18 +119,18 @@ public class SaveSelectorGUI extends MenuGUI {
 	}
 
 	@Override
-	public void render(long nvg, Window win) {
+	public void render(long nvg) {
 		for (Button b : saveButtons) {
 			if(b != null)
-				b.render(nvg, win);
+				b.render(nvg);
 		}
 		for (Button b : deleteButtons) {
 			if(b != null)
-				b.render(nvg, win);
+				b.render(nvg);
 		}
 		if(createNew == null) init(nvg);
-		createNew.render(nvg, win);
-		back.render(nvg, win);
+		createNew.render(nvg);
+		back.render(nvg);
 	}
 
 	@Override

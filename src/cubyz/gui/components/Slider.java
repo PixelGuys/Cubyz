@@ -1,10 +1,8 @@
 package cubyz.gui.components;
 
-import cubyz.client.GameLauncher;
-import cubyz.client.rendering.Window;
 import cubyz.gui.Component;
 import cubyz.gui.NGraphics;
-import cubyz.gui.input.MouseInput;
+import cubyz.gui.input.Mouse;
 
 /**
  * A slider.
@@ -70,10 +68,9 @@ public class Slider extends Component {
 	}
 
 	@Override
-	public void render(long nvg, Window src, int x, int y) {
-		MouseInput mouse = GameLauncher.input.mouse;
-		if (mouse.isLeftButtonPressed() && isInside(mouse.getCurrentPos())) {
-			double dx = mouse.getCurrentPos().x - x;
+	public void render(long nvg, int x, int y) {
+		if (Mouse.isLeftButtonPressed() && isInside(Mouse.getCurrentPos())) {
+			double dx = Mouse.getCurrentPos().x - x;
 			dx -= xOffset;
 			dx = dx/(super.width - 2*xOffset);
 			dx *= maxValue - minValue;

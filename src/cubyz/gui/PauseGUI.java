@@ -3,10 +3,10 @@ package cubyz.gui;
 import cubyz.Logger;
 import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
-import cubyz.client.rendering.Window;
 import cubyz.gui.components.Button;
 import cubyz.gui.input.Keybindings;
 import cubyz.gui.input.Keyboard;
+import cubyz.gui.input.Mouse;
 import cubyz.gui.settings.SettingsGUI;
 import cubyz.world.LocalSurface;
 
@@ -23,7 +23,7 @@ public class PauseGUI extends MenuGUI {
 	
 	@Override
 	public void init(long nvg) {
-		GameLauncher.input.mouse.setGrabbed(false);
+		Mouse.setGrabbed(false);
 		if (Cubyz.world != null) {
 			if (Cubyz.world.isLocal()) {
 				LocalSurface surface = (LocalSurface) Cubyz.surface;
@@ -40,7 +40,7 @@ public class PauseGUI extends MenuGUI {
 		});
 		
 		resume.setOnAction(() -> {
-			GameLauncher.input.mouse.setGrabbed(true);
+			Mouse.setGrabbed(true);
 			Cubyz.gameUI.setMenu(null);
 		});
 		
@@ -69,18 +69,18 @@ public class PauseGUI extends MenuGUI {
 	}
 
 	@Override
-	public void render(long nvg, Window win) {
+	public void render(long nvg) {
 		if (Keybindings.isPressed("menu")) {
 			Keyboard.setKeyPressed(Keybindings.getKeyCode("menu"), false);
-			GameLauncher.input.mouse.setGrabbed(true);
+			Mouse.setGrabbed(true);
 			Cubyz.gameUI.setMenu(null, TransitionStyle.NONE);
 		}
 		if(resume == null) init(nvg); // Prevents a bug that sometimes occurs.
-		exit.render(nvg, win);
-		resume.render(nvg, win);
-		settings.render(nvg, win);
+		exit.render(nvg);
+		resume.render(nvg);
+		settings.render(nvg);
 		if (GameLauncher.input.clientShowDebug) {
-			reload.render(nvg, win);
+			reload.render(nvg);
 		}
 	}
 

@@ -1,10 +1,8 @@
 package cubyz.gui.components;
 
-import cubyz.client.GameLauncher;
-import cubyz.client.rendering.Window;
 import cubyz.gui.Component;
 import cubyz.gui.NGraphics;
-import cubyz.gui.input.MouseInput;
+import cubyz.gui.input.Mouse;
 
 public class ScrollingContainer extends Container {
 
@@ -14,13 +12,13 @@ public class ScrollingContainer extends Container {
 	
 	int mPickY = -1;
 	
-	public void render(long nvg, Window src, int x, int y) {
-		MouseInput mouse = GameLauncher.input.mouse;
+	@Override
+	public void render(long nvg, int x, int y) {
 		maxY = 0;
 		for (Component child : childrens) {
 			maxY = Math.max(maxY, child.getY()+child.getHeight());
 			child.setY(child.getY() - scrollY);
-			child.render(nvg, src);
+			child.render(nvg);
 			child.setY(child.getY() + scrollY);
 		}
 		if (maxY > height) {
@@ -29,21 +27,21 @@ public class ScrollingContainer extends Container {
 			NGraphics.setColor(255, 255, 255);
 			NGraphics.fillRect(x + width - scrollBarWidth, (int) (y+(scrollY/((float) maxY / height))), scrollBarWidth, 10);
 			if (mPickY == -1) {
-				if (mouse.getX() > x + width - scrollBarWidth && mouse.getX() < x + width) {
-					if (mouse.getY() > y && mouse.getY() < height) {
-						if (mouse.isLeftButtonPressed()) {
-							mPickY = (int) mouse.getY();
+				if (Mouse.getX() > x + width - scrollBarWidth && Mouse.getX() < x + width) {
+					if (Mouse.getY() > y && Mouse.getY() < height) {
+						if (Mouse.isLeftButtonPressed()) {
+							mPickY = (int) Mouse.getY();
 						}
 					}
 				}
 			} else {
-				if (mouse.isLeftButtonPressed()) {
-					scrollY = (int) Math.min(maxY, mouse.getY()*(maxY/height) + mPickY);
+				if (Mouse.isLeftButtonPressed()) {
+					scrollY = (int) Math.min(maxY, Mouse.getY()*(maxY/height) + mPickY);
 				} else {
 					mPickY = -1;
 				}
 			}
-			scrollY += -mouse.getScrollOffset() * 40;
+			scrollY += -Mouse.getScrollOffset() * 40;
 			if (scrollY < 0) scrollY = 0;
 		} else {
 			scrollY = 0;

@@ -4,8 +4,7 @@ import java.awt.Rectangle;
 
 import org.joml.Vector2d;
 
-import cubyz.client.rendering.Window;
-import cubyz.gui.input.MouseInput;
+import cubyz.rendering.Window;
 
 /**
  * A type for basic components of the GUI system.
@@ -72,24 +71,24 @@ public abstract class Component {
 		return isInside((int) vec.x, (int) vec.y);
 	}
 
-	public void render(long nvg, Window src) {
+	public void render(long nvg) {
 		// Calculate coordinates in the window:
 		if((align & ALIGN_LEFT) != 0) {
 			lastRenderX = x;
 		} else if((align & ALIGN_RIGHT) != 0) {
-			lastRenderX = src.getWidth() - x;
+			lastRenderX = Window.getWidth() - x;
 		} else {
-			lastRenderX = src.getWidth()/2 + x;
+			lastRenderX = Window.getWidth()/2 + x;
 		}
 		if((align & ALIGN_TOP) != 0) {
 			lastRenderY = y;
 		} else if((align & ALIGN_BOTTOM) != 0) {
-			lastRenderY = src.getHeight() - y;
+			lastRenderY = Window.getHeight() - y;
 		} else {
-			lastRenderY = src.getHeight()/2 + y;
+			lastRenderY = Window.getHeight()/2 + y;
 		}
 		// Call the subclass render function:
-		render(nvg, src, lastRenderX, lastRenderY);
+		render(nvg, lastRenderX, lastRenderY);
 	}
 	
 	/**
@@ -99,10 +98,9 @@ public abstract class Component {
 	 * @param x coordinate with alignment considered.
 	 * @param y coordinate with alignment considered.
 	 */
-	public abstract void render(long nvg, Window src, int x, int y);
+	public abstract void render(long nvg, int x, int y);
 	
-	public void init(long nvg, Window src) {}
-	public void dispose(long nvg, Window src) {}
-	public void input(MouseInput mouse) {} // TODO: use in ScrollingContainer
+	public void init(long nvg) {}
+	public void dispose(long nvg) {}
 	
 }

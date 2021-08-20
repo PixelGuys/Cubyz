@@ -2,7 +2,6 @@ package cubyz.gui;
 
 import cubyz.api.RegistryElement;
 import cubyz.api.Resource;
-import cubyz.client.rendering.Window;
 import cubyz.world.items.Inventory;
 
 public abstract class MenuGUI implements RegistryElement {
@@ -20,7 +19,7 @@ public abstract class MenuGUI implements RegistryElement {
 	}
 	
 	public abstract void init(long nvg);
-	public abstract void render(long nvg, Window win); 
+	public abstract void render(long nvg);
 	
 	public abstract boolean doesPauseGame();
 	

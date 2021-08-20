@@ -12,9 +12,9 @@ import org.lwjgl.nanovg.NVGPaint;
 import org.lwjgl.nanovg.NanoVG;
 import org.lwjgl.nanovg.NanoVGGL3;
 
-import cubyz.client.rendering.Font;
-import cubyz.client.rendering.Hud;
-import cubyz.client.rendering.Texture;
+import cubyz.rendering.Font;
+import cubyz.rendering.Hud;
+import cubyz.rendering.Texture;
 import cubyz.utils.TextureConverter;
 
 /**

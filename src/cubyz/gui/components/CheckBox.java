@@ -1,10 +1,9 @@
 package cubyz.gui.components;
 
 import cubyz.Logger;
-import cubyz.client.GameLauncher;
-import cubyz.client.rendering.Window;
 import cubyz.gui.Component;
 import cubyz.gui.NGraphics;
+import cubyz.gui.input.Mouse;
 import cubyz.utils.translate.TextKey;
 
 /**
@@ -52,14 +51,14 @@ public class CheckBox extends Component {
 	private boolean canRepress = true;
 
 	@Override
-	public void render(long nvg, Window src, int x, int y) {
+	public void render(long nvg, int x, int y) {
 		NGraphics.setColor(0, 0, 0);
 		NGraphics.drawRect(x, y, width, height);
-		if (GameLauncher.input.mouse.isLeftButtonPressed() && isInside(GameLauncher.input.mouse.getCurrentPos())) {
-			if (canRepress) {
+		if(Mouse.isLeftButtonPressed() && isInside(Mouse.getCurrentPos())) {
+			if(canRepress) {
 				selected = !selected;
 				canRepress = false;
-				if (onAction != null) {
+				if(onAction != null) {
 					try {
 						onAction.run();
 					} catch(Exception e) {
@@ -75,7 +74,7 @@ public class CheckBox extends Component {
 			NGraphics.fillRect(x + 2, y + 2, width - 5, height - 5);
 		}
 		if (label != null) {
-			label.render(nvg, src, x + width + 5, y + 10);
+			label.render(nvg, x + width + 5, y + 10);
 		}
 	}
 }

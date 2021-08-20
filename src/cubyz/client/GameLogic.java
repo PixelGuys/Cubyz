@@ -21,13 +21,6 @@ import cubyz.api.ClientRegistries;
 import cubyz.api.Resource;
 import cubyz.api.Side;
 import cubyz.client.loading.LoadThread;
-import cubyz.client.rendering.BlockPreview;
-import cubyz.client.rendering.FrameBuffer;
-import cubyz.client.rendering.Material;
-import cubyz.client.rendering.Mesh;
-import cubyz.client.rendering.Spatial;
-import cubyz.client.rendering.Texture;
-import cubyz.client.rendering.Window;
 import cubyz.gui.GameOverlay;
 import cubyz.gui.LoadingGUI;
 import cubyz.gui.MenuGUI;
@@ -37,6 +30,13 @@ import cubyz.gui.audio.SoundManager;
 import cubyz.gui.audio.SoundSource;
 import cubyz.gui.input.Keybindings;
 import cubyz.modding.ModLoader;
+import cubyz.rendering.BlockPreview;
+import cubyz.rendering.FrameBuffer;
+import cubyz.rendering.Material;
+import cubyz.rendering.Mesh;
+import cubyz.rendering.Spatial;
+import cubyz.rendering.Texture;
+import cubyz.rendering.Window;
 import cubyz.utils.*;
 import cubyz.utils.datastructures.PixelUtils;
 import cubyz.world.*;
@@ -81,8 +81,8 @@ public class GameLogic implements ClientConnection {
 	public boolean isOnlineServerOpened = false;
 
 	public GameLogic() {
-		Cubyz.window.setSize(800, 600);
-		Cubyz.window.setTitle("Cubyz " + Constants.GAME_BUILD_TYPE + " " + Constants.GAME_VERSION);
+		Window.setSize(800, 600);
+		Window.setTitle("Cubyz " + Constants.GAME_BUILD_TYPE + " " + Constants.GAME_VERSION);
 	}
 
 	public void cleanup() {
@@ -257,14 +257,14 @@ public class GameLogic implements ClientConnection {
 		ModLoader.postSurfaceGen(surface.getCurrentRegistries());
 	}
 
-	public void init(Window window) throws Exception {
+	public void init() throws Exception {
 		if (!new File("assets").exists()) {
 			Logger.severe("Assets not found.");
 			JOptionPane.showMessageDialog(null, "Cubyz could not detect its assets.\nDid you forgot to extract the game?", "Error", JOptionPane.ERROR_MESSAGE);
 			System.exit(1);
 		}
 		
-		Cubyz.gameUI.init(window);
+		Cubyz.gameUI.init();
 		Cubyz.hud = Cubyz.gameUI;
 		Logger.log("Version " + Constants.GAME_VERSION + " of brand " + Constants.GAME_BRAND);
 		Logger.log("LWJGL Version: " + Version.VERSION_MAJOR + "." + Version.VERSION_MINOR + "." + Version.VERSION_REVISION);
@@ -286,7 +286,7 @@ public class GameLogic implements ClientConnection {
 		Meshes.initMeshCreators();
 		
 		try {
-			GameLauncher.renderer.init(window);
+			GameLauncher.renderer.init();
 			BlockPreview.init();
 		} catch (Exception e) {
 			Logger.severe("An unhandled exception occured while initiazing the renderer:");
@@ -350,7 +350,7 @@ public class GameLogic implements ClientConnection {
 	}
 	
 	public FrameBuffer blockPreview(Block b) {
-		return BlockPreview.generateBuffer(Cubyz.window, new Vector3f(1, 1, 1), b);
+		return BlockPreview.generateBuffer(new Vector3f(1, 1, 1), b);
 	}	
 	
 	public void update(float interval) {

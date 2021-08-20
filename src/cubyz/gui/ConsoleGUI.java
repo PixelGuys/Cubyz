@@ -3,11 +3,10 @@ package cubyz.gui;
 import org.lwjgl.glfw.GLFW;
 
 import cubyz.client.Cubyz;
-import cubyz.client.GameLauncher;
-import cubyz.client.rendering.Window;
 import cubyz.command.CommandExecutor;
 import cubyz.gui.components.TextInput;
 import cubyz.gui.input.Keyboard;
+import cubyz.gui.input.Mouse;
 
 // (the console GUI is different from chat GUI)
 
@@ -23,12 +22,12 @@ public class ConsoleGUI extends MenuGUI {
 	public void init(long nvg) {
 		input = new TextInput();
 		input.setBounds(0, 0, 200, 20, Component.ALIGN_TOP_LEFT);
-		GameLauncher.input.mouse.setGrabbed(false);
+		Mouse.setGrabbed(false);
 	}
 
 	@Override
-	public void render(long nvg, Window win) {
-		input.render(nvg, win);
+	public void render(long nvg) {
+		input.render(nvg);
 		if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_ENTER)) {
 			String text = input.getText();
 			CommandExecutor.execute(text, Cubyz.player);

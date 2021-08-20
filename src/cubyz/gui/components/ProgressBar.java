@@ -1,6 +1,5 @@
 package cubyz.gui.components;
 
-import cubyz.client.rendering.Window;
 import cubyz.gui.Component;
 import cubyz.gui.NGraphics;
 
@@ -31,7 +30,7 @@ public class ProgressBar extends Component {
 	}
 
 	@Override
-	public void render(long nvg, Window src, int x, int y) {
+	public void render(long nvg, int x, int y) {
 		NGraphics.setColor(0, 0, 0);
 		NGraphics.drawRect(x, y, width, height);
 		NGraphics.setColor(255, 0, 0);

@@ -3,11 +3,10 @@ package cubyz.gui;
 import cubyz.Logger;
 import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
-import cubyz.client.rendering.Font;
-import cubyz.client.rendering.Window;
 import cubyz.gui.components.Button;
 import cubyz.gui.components.Label;
 import cubyz.gui.settings.SettingsGUI;
+import cubyz.rendering.Font;
 import cubyz.utils.DiscordIntegration;
 import cubyz.utils.translate.TextKey;
 
@@ -58,12 +57,12 @@ public class MainMenuGUI extends MenuGUI {
 	}
 	
 	@Override
-	public void render(long nvg, Window win) {
-		spPlay.render(nvg, win);
-		mpPlay.render(nvg, win);
-		settings.render(nvg, win);
-		exit.render(nvg, win);
-		titleLabel.render(nvg, win);
+	public void render(long nvg) {
+		spPlay.render(nvg);
+		mpPlay.render(nvg);
+		settings.render(nvg);
+		exit.render(nvg);
+		titleLabel.render(nvg);
 	}
 	
 	@Override

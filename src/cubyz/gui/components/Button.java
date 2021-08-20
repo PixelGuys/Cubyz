@@ -1,11 +1,9 @@
 package cubyz.gui.components;
 
 import cubyz.Logger;
-import cubyz.client.GameLauncher;
-import cubyz.client.rendering.Window;
 import cubyz.gui.Component;
 import cubyz.gui.NGraphics;
-import cubyz.gui.input.MouseInput;
+import cubyz.gui.input.Mouse;
 import cubyz.utils.translate.TextKey;
 
 /**
@@ -107,20 +105,19 @@ public class Button extends Component {
 	}
 
 	@Override
-	public void render(long nvg, Window src, int x, int y) {
-		MouseInput mouse = GameLauncher.input.mouse;
-		if (mouse.isLeftButtonPressed() && canRepress && isInside(mouse.getCurrentPos())) {
+	public void render(long nvg, int x, int y) {
+		if (Mouse.isLeftButtonPressed() && canRepress && isInside(Mouse.getCurrentPos())) {
 			pressed = true;
 			canRepress = false;
-		} else if (isInside(mouse.getCurrentPos())) {
+		} else if (isInside(Mouse.getCurrentPos())) {
 			hovered = true;
 		} else {
 			hovered = false;
 		}
-		if (!canRepress && !mouse.isLeftButtonPressed()) {
+		if (!canRepress && !Mouse.isLeftButtonPressed()) {
 			pressed = false;
 			canRepress = true;
-			if (isInside(mouse.getCurrentPos())) {
+			if (isInside(Mouse.getCurrentPos())) {
 				if (onAction != null) {
 					try {
 						onAction.run();

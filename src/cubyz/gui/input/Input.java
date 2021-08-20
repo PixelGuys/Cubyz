@@ -6,11 +6,11 @@ import org.lwjgl.glfw.GLFW;
 import cubyz.api.CubyzRegistries;
 import cubyz.client.ClientSettings;
 import cubyz.client.Cubyz;
-import cubyz.client.rendering.Window;
 import cubyz.gui.ConsoleGUI;
 import cubyz.gui.PauseGUI;
 import cubyz.gui.TransitionStyle;
 import cubyz.gui.mods.InventoryGUI;
+import cubyz.rendering.Window;
 import cubyz.world.entity.Entity;
 import cubyz.world.entity.EntityType;
 
@@ -19,23 +19,20 @@ import cubyz.world.entity.EntityType;
  */
 
 public class Input {
-	public MouseInput mouse;
-
 	public boolean clientShowDebug = false;
 	
 	public void init() {
-		mouse = new MouseInput();
-		mouse.init(Cubyz.window);
+		Mouse.init();
 	}
 	
-	public void update(Window window) {
+	public void update() {
 		if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_F3)) {
 			clientShowDebug = !clientShowDebug;
 			Keyboard.setKeyPressed(GLFW.GLFW_KEY_F3, false);
 		}
 		if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_F11)) {
 			Cubyz.renderDeque.push(() -> {
-				window.setFullscreen(!window.isFullscreen());
+				Window.setFullscreen(!Window.isFullscreen());
 			});
 			Keyboard.setKeyPressed(GLFW.GLFW_KEY_F11, false);
 		}
@@ -95,18 +92,18 @@ public class Input {
 				Cubyz.gameUI.setMenu(new InventoryGUI());
 				Keyboard.setKeyPressed(Keybindings.getKeyCode("inventory"), false);
 			}
-			if((mouse.isLeftButtonPressed() || mouse.isRightButtonPressed()) && !mouse.isGrabbed() && Cubyz.gameUI.getMenuGUI() == null) {
-				mouse.setGrabbed(true);
-				mouse.clearPos(window.getWidth()/2, window.getHeight()/2);
+			if((Mouse.isLeftButtonPressed() || Mouse.isRightButtonPressed()) && !Mouse.isGrabbed() && Cubyz.gameUI.getMenuGUI() == null) {
+				Mouse.setGrabbed(true);
+				Mouse.clearPos(Window.getWidth()/2, Window.getHeight()/2);
 			}
 			
-			if(mouse.isGrabbed()) {
-				Cubyz.camera.moveRotation(mouse.getDisplVec().x*0.0089F, mouse.getDisplVec().y*0.0089F, 5F);
-				mouse.clearPos(Cubyz.window.getWidth()/2, Cubyz.window.getHeight()/2);
+			if(Mouse.isGrabbed()) {
+				Cubyz.camera.moveRotation(Mouse.getDisplVec().x*0.0089F, Mouse.getDisplVec().y*0.0089F, 5F);
+				Mouse.clearPos(Window.getWidth()/2, Window.getHeight()/2);
 			}
 			
 			// inventory related
-			Cubyz.inventorySelection = (Cubyz.inventorySelection - (int) mouse.getScrollOffset()) & 7;
+			Cubyz.inventorySelection = (Cubyz.inventorySelection - (int) Mouse.getScrollOffset()) & 7;
 			if(Keybindings.isPressed("hotbar 1")) {
 				Cubyz.inventorySelection = 0;
 			}
@@ -150,7 +147,7 @@ public class Input {
 			if(Keybindings.isPressed("menu")) {
 				if(Cubyz.gameUI.getMenuGUI() != null) {
 					Cubyz.gameUI.setMenu(null);
-					mouse.setGrabbed(true);
+					Mouse.setGrabbed(true);
 					Keyboard.setKeyPressed(Keybindings.getKeyCode("menu"), false);
 				} else {
 					Keyboard.setKeyPressed(Keybindings.getKeyCode("menu"), false);
@@ -158,6 +155,6 @@ public class Input {
 				}
 			}
 		}
-		mouse.clearScroll();
+		Mouse.clearScroll();
 	}
 }

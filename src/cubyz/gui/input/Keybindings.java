@@ -2,8 +2,6 @@ package cubyz.gui.input;
 
 import static org.lwjgl.glfw.GLFW.*;
 
-import cubyz.client.GameLauncher;
-
 /**
  * Stores the current key bindings.<br>
  * TODO: Integrate this into ClientSettings for consistency.
@@ -104,11 +102,11 @@ public class Keybindings {
 	public static boolean isPressed(int id) {
 		switch (id) {
 			case MOUSE_LEFT_CLICK:
-				return GameLauncher.input.mouse.isGrabbed() && GameLauncher.input.mouse.isLeftButtonPressed();
+				return Mouse.isGrabbed() && Mouse.isLeftButtonPressed();
 			case MOUSE_MIDDLE_CLICK:
-				return GameLauncher.input.mouse.isGrabbed() && GameLauncher.input.mouse.isMiddleButtonPressed();
+				return Mouse.isGrabbed() && Mouse.isMiddleButtonPressed();
 			case MOUSE_RIGHT_CLICK:
-				return GameLauncher.input.mouse.isGrabbed() && GameLauncher.input.mouse.isRightButtonPressed();
+				return Mouse.isGrabbed() && Mouse.isRightButtonPressed();
 			default:
 				return Keyboard.isKeyPressed(id);
 		}

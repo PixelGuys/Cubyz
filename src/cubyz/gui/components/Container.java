@@ -2,7 +2,6 @@ package cubyz.gui.components;
 
 import java.util.ArrayList;
 
-import cubyz.client.rendering.Window;
 import cubyz.gui.Component;
 
 /**
@@ -31,9 +30,9 @@ public abstract class Container extends Component {
 	}
 
 	@Override
-	public void render(long nvg, Window src) {
+	public void render(long nvg) {
 		for (Component child : childrens) {
-			child.render(nvg, src);
+			child.render(nvg);
 		}
 	}
 	

@@ -1,6 +1,7 @@
 package cubyz.client;
 
 import cubyz.Logger;
+import cubyz.rendering.Window;
 
 public class Game {
 	protected volatile boolean running;
@@ -61,12 +62,12 @@ public class Game {
 	public void start() {
 		running = true;
 		try {
-			GameLauncher.logic.init(Cubyz.window);
+			GameLauncher.logic.init();
 		} catch (Exception e) {
 			Logger.throwable(e);
 		}
 		GameLauncher.input.init();
-		Cubyz.window.show();
+		Window.show();
 		updateThread = new Thread(() -> {
 			updateLoop();
 		});
@@ -118,7 +119,7 @@ public class Game {
 	}
 
 	public void handleInput() {
-		GameLauncher.input.update(Cubyz.window);
+		GameLauncher.input.update();
 	}
 
 	public void update() {
@@ -126,7 +127,7 @@ public class Game {
 	}
 	
 	public void render() {
-		GameLauncher.renderer.render(Cubyz.window);
-		Cubyz.window.render();
+		GameLauncher.renderer.render();
+		Window.render();
 	}
 }
