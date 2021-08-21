@@ -2,8 +2,8 @@ package cubyz.gui.components;
 
 import cubyz.Logger;
 import cubyz.gui.Component;
-import cubyz.gui.NGraphics;
 import cubyz.gui.input.Mouse;
+import cubyz.rendering.Graphics;
 import cubyz.utils.translate.TextKey;
 
 /**
@@ -52,8 +52,8 @@ public class CheckBox extends Component {
 
 	@Override
 	public void render(long nvg, int x, int y) {
-		NGraphics.setColor(0, 0, 0);
-		NGraphics.drawRect(x, y, width, height);
+		Graphics.setColor(0x000000);
+		Graphics.drawRect(x, y, width, height);
 		if(Mouse.isLeftButtonPressed() && isInside(Mouse.getCurrentPos())) {
 			if(canRepress) {
 				selected = !selected;
@@ -70,8 +70,8 @@ public class CheckBox extends Component {
 			canRepress = true;
 		}
 		if (selected) {
-			NGraphics.setColor(50, 200, 50);
-			NGraphics.fillRect(x + 2, y + 2, width - 5, height - 5);
+			Graphics.setColor(0x32A832);
+			Graphics.fillRect(x + 3, y + 3, width - 6, height - 6);
 		}
 		if (label != null) {
 			label.render(nvg, x + width + 5, y + 10);

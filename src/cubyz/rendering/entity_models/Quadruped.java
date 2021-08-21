@@ -1,7 +1,5 @@
 package cubyz.rendering.entity_models;
 
-import java.io.IOException;
-
 import org.joml.Intersectionf;
 import org.joml.Matrix4f;
 import org.joml.Vector2f;
@@ -397,17 +395,13 @@ public class Quadruped implements EntityModel {
 		Cubyz.renderDeque.add(new Runnable() {
 			@Override
 			public void run() {
-				try {
-					Material mat = new Material(new Texture("assets/" + source.getRegistryID().getMod() + "/entities/textures/" + source.getRegistryID().getID() + ".png"));
-					leg = new Mesh(new Model(source.getRegistryID(), legPositions, legTextCoords, legNormals, legIndices));
-					leg.setMaterial(mat);
-					body = new Mesh(new Model(source.getRegistryID(), bodyPositions, bodyTextCoords, bodyNormals, bodyIndices));
-					body.setMaterial(mat);
-					head = new Mesh(new Model(source.getRegistryID(), headPositions, headTextCoords, headNormals, headIndices));
-					head.setMaterial(mat);
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
+				Material mat = new Material(Texture.loadFromFile("assets/" + source.getRegistryID().getMod() + "/entities/textures/" + source.getRegistryID().getID() + ".png"));
+				leg = new Mesh(new Model(source.getRegistryID(), legPositions, legTextCoords, legNormals, legIndices));
+				leg.setMaterial(mat);
+				body = new Mesh(new Model(source.getRegistryID(), bodyPositions, bodyTextCoords, bodyNormals, bodyIndices));
+				body.setMaterial(mat);
+				head = new Mesh(new Model(source.getRegistryID(), headPositions, headTextCoords, headNormals, headIndices));
+				head.setMaterial(mat);
 			}
 			
 		});

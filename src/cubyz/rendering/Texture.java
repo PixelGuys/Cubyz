@@ -21,8 +21,17 @@ public class Texture {
 	protected int pixelFormat;
 	protected int internalFormat;
 	protected InputStream is;
+	
+	public static Texture loadFromFile(String path) {
+		try {
+			return new Texture(path);
+		} catch(IOException e) {
+			Logger.throwable(e);
+			return null; // TODO: Default image.
+		}
+	}
 
-	public Texture(String fileName) throws IOException {
+	private Texture(String fileName) throws IOException {
 		this(new FileInputStream(fileName));
 	}
 	

@@ -24,7 +24,6 @@ import cubyz.client.loading.LoadThread;
 import cubyz.gui.GameOverlay;
 import cubyz.gui.LoadingGUI;
 import cubyz.gui.MenuGUI;
-import cubyz.gui.NGraphics;
 import cubyz.gui.audio.SoundBuffer;
 import cubyz.gui.audio.SoundManager;
 import cubyz.gui.audio.SoundSource;
@@ -192,7 +191,7 @@ public class GameLogic implements ClientConnection {
 				} catch (IOException e) {
 					Logger.throwable(e);
 				}
-				item.setImage(NGraphics.nvgImageFrom(tex));
+				item.setImage(tex);
 			}
 		}
 		// Generate the texture atlas for this surface's truly transparent blocks:

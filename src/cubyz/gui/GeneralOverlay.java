@@ -3,6 +3,7 @@ package cubyz.gui;
 import org.lwjgl.nanovg.NanoVG;
 
 import cubyz.gui.ToastManager.Toast;
+import cubyz.rendering.Graphics;
 import cubyz.rendering.Window;
 
 public class GeneralOverlay extends MenuGUI {
@@ -28,7 +29,8 @@ public class GeneralOverlay extends MenuGUI {
 			int defaultAlign = NGraphics.getTextAlign();
 			NGraphics.setTextAlign(NanoVG.NVG_ALIGN_RIGHT | NanoVG.NVG_ALIGN_TOP);
 			NGraphics.setColor(0, 0, 0, 127);
-			NGraphics.fillRect(Window.getWidth() - 200, 0, 200, 50);
+			Graphics.setColor(0x000000, 127);
+			Graphics.fillRect(Window.getWidth() - 200, 0, 200, 50);
 			NGraphics.setFont("Title", 24f);
 			NGraphics.drawText(Window.getWidth(), 0, currentToast.title);
 			NGraphics.setFont("Default", 12f);

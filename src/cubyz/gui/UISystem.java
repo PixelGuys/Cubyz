@@ -2,6 +2,8 @@ package cubyz.gui;
 
 import static org.lwjgl.nanovg.NanoVG.*;
 import static org.lwjgl.nanovg.NanoVGGL3.*;
+import static org.lwjgl.opengl.GL11.GL_DEPTH_TEST;
+import static org.lwjgl.opengl.GL11.glDisable;
 import static org.lwjgl.system.MemoryUtil.*;
 
 import java.util.ArrayDeque;
@@ -9,6 +11,7 @@ import java.util.ArrayList;
 
 import cubyz.gui.input.Mouse;
 import cubyz.rendering.Font;
+import cubyz.rendering.Graphics;
 import cubyz.rendering.Hud;
 import cubyz.rendering.Window;
 
@@ -119,6 +122,7 @@ public class UISystem extends Hud {
 	public void render() {
 		if (inited) {
 			super.render();
+			glDisable(GL_DEPTH_TEST);
 			transitionDur += System.currentTimeMillis() - lastAnimTime;
 			lastAnimTime = System.currentTimeMillis();
 			nvgBeginFrame(nvg, Window.getWidth(), Window.getHeight(), 1);

@@ -30,16 +30,20 @@ public class ShaderProgram {
 	 * @param uniformLocations all uniform locations will be stored in static variables in this class. <br>
 	 * The expected format is "loc_"+nameInShaderCode. dots "." are replaced by "_", to prevent issues.
 	 */
-	public ShaderProgram(String vertexCode, String fragmentCode, Class<?> uniformLocations) throws Exception {
+	public ShaderProgram(String vertexCode, String fragmentCode, Class<?> uniformLocations) {
 		programId = glCreateProgram();
-		if (programId == 0) {
-			throw new Exception("Could not create Shader");
+		try {
+			if (programId == 0) {
+				throw new Exception("Could not create Shader");
+			}
+			//uniforms = new HashMap<>();
+			createVertexShader(vertexCode);
+			createFragmentShader(fragmentCode);
+			link();
+			storeUniforms(uniformLocations);
+		} catch(Exception e) {
+			Logger.throwable(e);
 		}
-		//uniforms = new HashMap<>();
-		createVertexShader(vertexCode);
-		createFragmentShader(fragmentCode);
-		link();
-		storeUniforms(uniformLocations);
 	}
 	
 	public void storeUniforms(Class<?> uniformLocations) {

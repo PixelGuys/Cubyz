@@ -1,7 +1,7 @@
 package cubyz.gui.components;
 
 import cubyz.gui.Component;
-import cubyz.gui.NGraphics;
+import cubyz.rendering.Graphics;
 
 /**
  * A bar that shows progress :P<br>
@@ -31,10 +31,10 @@ public class ProgressBar extends Component {
 
 	@Override
 	public void render(long nvg, int x, int y) {
-		NGraphics.setColor(0, 0, 0);
-		NGraphics.drawRect(x, y, width, height);
-		NGraphics.setColor(255, 0, 0);
-		NGraphics.fillRect(x, y, (width / maxValue) * value, height);
+		Graphics.setColor(0xff0000);
+		Graphics.fillRect(x, y, (width / maxValue) * value, height);
+		Graphics.setColor(0x000000);
+		Graphics.drawRect(x, y, width, height);
 	}
 
 }

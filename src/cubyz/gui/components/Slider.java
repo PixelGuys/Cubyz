@@ -3,6 +3,7 @@ package cubyz.gui.components;
 import cubyz.gui.Component;
 import cubyz.gui.NGraphics;
 import cubyz.gui.input.Mouse;
+import cubyz.rendering.Graphics;
 
 /**
  * A slider.
@@ -84,12 +85,12 @@ public class Slider extends Component {
 			}
 		}
 
-		NGraphics.setColor(127, 127, 160);
-		NGraphics.fillRect(x, y, width, height);
-		NGraphics.setColor(160, 160, 200);
-		NGraphics.fillRect(x + initialXOffset, y + yOffset + fontSize, width - 2*initialXOffset, height - 2*yOffset - fontSize);
-		NGraphics.setColor(200, 200, 240);
-		NGraphics.fillCircle((int)(x + xOffset + (float)(curValue - minValue)/(maxValue-minValue)*(width - 2*xOffset)), y + height/2 + fontSize/2, (int)(height/2 - fontSize/2 - yOffset));
+		Graphics.setColor(0x7F7FA0);
+		Graphics.fillRect(x, y, width, height);
+		Graphics.setColor(0xA0A0C8);
+		Graphics.fillRect(x + initialXOffset, y + yOffset + fontSize, width - 2*initialXOffset, height - 2*yOffset - fontSize);
+		Graphics.setColor(0xC8C8F0);
+		Graphics.fillCircle(x + xOffset + (float)(curValue - minValue)/(maxValue-minValue)*(width - 2*xOffset), y + height/2 + fontSize/2, height/2 - fontSize/2 - yOffset);
 		NGraphics.setColor(255, 255, 255);
 		NGraphics.setFont("Default", fontSize);
 		NGraphics.drawText(x + initialXOffset, y + yOffset, text + (customValues != null ? customValues[curValue] : curValue));

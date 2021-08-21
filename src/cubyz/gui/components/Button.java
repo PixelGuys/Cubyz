@@ -4,6 +4,7 @@ import cubyz.Logger;
 import cubyz.gui.Component;
 import cubyz.gui.NGraphics;
 import cubyz.gui.input.Mouse;
+import cubyz.rendering.Graphics;
 import cubyz.utils.translate.TextKey;
 
 /**
@@ -88,20 +89,20 @@ public class Button extends Component {
 	}
 	
 	private void drawTexture(int[] texture, int x, int y) {
-		NGraphics.setColor(texture[0], texture[1], texture[2]);
-		NGraphics.fillRect(x+5, y+5, width-10, height-10);
-		NGraphics.setColor(texture[3], texture[4], texture[5]);
+		Graphics.setColor(texture[0]<<16 | texture[1]<<8 | texture[2]);
+		Graphics.fillRect(x+5, y+5, width-10, height-10);
+		Graphics.setColor(texture[3]<<16 | texture[4]<<8 | texture[5]);
 		for(int i = 0; i < 5; i++)
-			NGraphics.fillRect(x+i+1, y+i, width-2*i-1, 1);
-		NGraphics.setColor(texture[6], texture[7], texture[8]);
+			Graphics.fillRect(x+i+1, y+i, width-2*i-1, 1);
+		Graphics.setColor(texture[6]<<16 | texture[7]<<8 | texture[8]);
 		for(int i = 0; i < 5; i++)
-			NGraphics.fillRect(x+width-i-1, y+i+1, 1, height-2*i-1);
-		NGraphics.setColor(texture[9], texture[10], texture[11]);
+			Graphics.fillRect(x+width-i-1, y+i+1, 1, height-2*i-1);
+		Graphics.setColor(texture[9]<<16 | texture[10]<<8 | texture[11]);
 		for(int i = 0; i < 5; i++)
-			NGraphics.fillRect(x+i, y+height-i-1, width-2*i-1, 1);
-		NGraphics.setColor(texture[12], texture[13], texture[14]);
+			Graphics.fillRect(x+i, y+height-i-1, width-2*i-1, 1);
+		Graphics.setColor(texture[12]<<16 | texture[13]<<8 | texture[14]);
 		for(int i = 0; i < 5; i++)
-			NGraphics.fillRect(x+i, y+i, 1, height-2*i-1);
+			Graphics.fillRect(x+i, y+i, 1, height-2*i-1);
 	}
 
 	@Override

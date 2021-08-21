@@ -3,6 +3,8 @@ package cubyz.gui;
 import cubyz.client.Cubyz;
 import cubyz.gui.components.Label;
 import cubyz.gui.components.ProgressBar;
+import cubyz.rendering.Graphics;
+import cubyz.rendering.Texture;
 import cubyz.rendering.Window;
 import cubyz.utils.ResourceManager;
 
@@ -21,7 +23,7 @@ public class LoadingGUI extends MenuGUI {
 	private ProgressBar pb2 = new ProgressBar();
 	private int alpha = 0;
 	boolean alphaDecrease = false;
-	int splashID = -1;
+	private static Texture splash;
 	
 	public void finishLoading() {
 		while (alpha > 0 || !alphaDecrease) {
@@ -63,15 +65,15 @@ public class LoadingGUI extends MenuGUI {
 	
 	@Override
 	public void render(long nvg) {
-		if (splashID == -1) {
-			splashID = NGraphics.loadImage(ResourceManager.lookupPath("cubyz/textures/splash.png"));
-		}
+		if (splash == null) {
+			splash = Texture.loadFromFile(ResourceManager.lookupPath("cubyz/textures/splash.png"));
+		}		
 		
-		NGraphics.setColor(0, 0, 0);
-		NGraphics.fillRect(0, 0, Window.getWidth(), Window.getHeight());
-		NGraphics.setColor(255, 255, 255, alpha);
-		NGraphics.fillRect(0, 0, Window.getWidth(), Window.getHeight());
-		NGraphics.drawImage(splashID, Window.getWidth()/2-100, (int)(0.1f*Window.getHeight()), 200, 200);
+		Graphics.setColor(0x000000);
+		Graphics.fillRect(0, 0, Window.getWidth(), Window.getHeight());
+		Graphics.setColor(0xFFFFFF, alpha);
+		Graphics.fillRect(0, 0, Window.getWidth(), Window.getHeight());
+		Graphics.drawImage(splash, Window.getWidth()/2-100, (int)(0.1f*Window.getHeight()), 200, 200);
 		if (alphaDecrease) {
 			if (alpha > 0) {
 				alpha -= 4;

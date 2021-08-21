@@ -9,6 +9,8 @@ import cubyz.gui.Component;
 import cubyz.gui.NGraphics;
 import cubyz.gui.input.Mouse;
 import cubyz.rendering.Font;
+import cubyz.rendering.Graphics;
+import cubyz.rendering.Texture;
 import cubyz.world.blocks.Block;
 import cubyz.world.items.Item;
 import cubyz.world.items.ItemBlock;
@@ -23,7 +25,7 @@ import cubyz.world.items.tools.Tool;
 
 public class InventorySlot extends Component {
 	public static final int SLOT_SIZE = 64;
-	public static final int SLOT_IMAGE = NGraphics.loadImage("assets/cubyz/guis/inventory/inventory_slot.png");
+	public static Texture SLOT_IMAGE = Texture.loadFromFile("assets/cubyz/guis/inventory/inventory_slot.png");
 
 	/**State of mouse buttons if the mouse is in the area.*/
 	private boolean pressedLeft = false, pressedRight = false;
@@ -53,8 +55,8 @@ public class InventorySlot extends Component {
 	
 	public void drawTooltip(int width, int height) {
 		Item item = reference.getItem();
-		if (item != null) {
-			if (isInside(Mouse.getCurrentPos(), width, height)) {
+		if(item != null) {
+			if(isInside(Mouse.getCurrentPos(), width, height)) {
 				double x = Mouse.getX() + 10;
 				double y = Mouse.getY() + 10;
 				String tooltip;
@@ -67,10 +69,10 @@ public class InventorySlot extends Component {
 					tooltip = item.getName() == null ? "???" : item.getName().getTranslation();
 				}
 				float[] bounds = NGraphics.getTextSize(tooltip);
-				NGraphics.setColor(20, 20, 20);
-				NGraphics.fillRect((float) x, (float) y, bounds[0], bounds[1]);
-				NGraphics.setColor(127, 127, 127);
-				NGraphics.drawRect((float) x, (float) y, bounds[0], bounds[1]);
+				Graphics.setColor(0x141414);
+				Graphics.fillRect((float)x, (float)y, bounds[0], bounds[1]);
+				Graphics.setColor(0x7F7F7F);
+				Graphics.drawRect((int)x, (int)y, (int)bounds[0], (int)bounds[1]);
 				NGraphics.setColor(255, 255, 255);
 				NGraphics.drawText((int) x, (int) y, tooltip);
 			}
@@ -158,28 +160,28 @@ public class InventorySlot extends Component {
 
 	@Override
 	public void render(long nvg, int x, int y) {
-		NGraphics.drawImage(SLOT_IMAGE, x, y, width, height);
+		Graphics.drawImage(SLOT_IMAGE, x, y, width, height);
 		Item item = reference.getItem();
 		if(item != null) {
-			if(item.getImage() == -1) {
+			if(item.getImage() == null) {
 				if (item instanceof ItemBlock) {
 					ItemBlock ib = (ItemBlock) item;
 					Block b = ib.getBlock();
 					if (item.getTexture() != null) {
-						item.setImage(NGraphics.loadImage(item.getTexture()));
+						item.setImage(Texture.loadFromFile(item.getTexture()));
 					} else {
-						item.setImage(NGraphics.nvgImageFrom(GameLauncher.logic.blockPreview(b).getColorTexture()));
+						item.setImage(GameLauncher.logic.blockPreview(b).getColorTexture());
 					}
 				} else {
-					item.setImage(NGraphics.loadImage(item.getTexture()));
+					item.setImage(Texture.loadFromFile(item.getTexture()));
 				}
 			}
-			NGraphics.drawImage(item.getImage(), x + 4, y + 4, width - 8, height - 8);
+			Graphics.drawImage(item.getImage(), x + 4, y + 4, width - 8, height - 8);
 			if(Tool.class.isInstance(item)) {
 				Tool tool = (Tool)item;
 				float durab = tool.durability();
-				NGraphics.setColor((int)((1.0f - durab)*255.0f), (int)(durab*255.0f), 0);
-				NGraphics.fillRect(x + 8, y + 56, (int)(48.0f*durab), 4);
+				Graphics.setColor((int)((1.0f - durab)*255.0f)<<16 | (int)(durab*255.0f)<<8 | 0);
+				Graphics.fillRect(x + 8, y + 56, 48.0f*durab, 4);
 				NGraphics.setColor(0, 0, 0);
 			}
 			inv.setText("" + reference.getAmount());

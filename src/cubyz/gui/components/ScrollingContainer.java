@@ -1,8 +1,8 @@
 package cubyz.gui.components;
 
 import cubyz.gui.Component;
-import cubyz.gui.NGraphics;
 import cubyz.gui.input.Mouse;
+import cubyz.rendering.Graphics;
 
 public class ScrollingContainer extends Container {
 
@@ -22,10 +22,10 @@ public class ScrollingContainer extends Container {
 			child.setY(child.getY() + scrollY);
 		}
 		if (maxY > height) {
-			NGraphics.setColor(0, 0, 0);
-			NGraphics.fillRect(x + width - scrollBarWidth, y, scrollBarWidth, height);
-			NGraphics.setColor(255, 255, 255);
-			NGraphics.fillRect(x + width - scrollBarWidth, (int) (y+(scrollY/((float) maxY / height))), scrollBarWidth, 10);
+			Graphics.setColor(0x000000);
+			Graphics.fillRect(x + width - scrollBarWidth, y, scrollBarWidth, height);
+			Graphics.setColor(0xffffff);
+			Graphics.fillRect(x + width - scrollBarWidth, y+(scrollY/((float) maxY / height)), scrollBarWidth, 10);
 			if (mPickY == -1) {
 				if (Mouse.getX() > x + width - scrollBarWidth && Mouse.getX() < x + width) {
 					if (Mouse.getY() > y && Mouse.getY() < height) {

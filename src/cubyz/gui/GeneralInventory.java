@@ -8,6 +8,8 @@ import cubyz.gui.components.InventorySlot;
 import cubyz.gui.components.Label;
 import cubyz.gui.input.Mouse;
 import cubyz.rendering.Font;
+import cubyz.rendering.Graphics;
+import cubyz.rendering.Texture;
 import cubyz.rendering.Window;
 import cubyz.world.items.Item;
 import cubyz.world.items.ItemStack;
@@ -50,8 +52,8 @@ public abstract class GeneralInventory extends MenuGUI {
 
 	@Override
 	public void render(long nvg) {
-		NGraphics.setColor(191, 191, 191);
-		NGraphics.fillRect(Window.getWidth()/2-width/2, Window.getHeight()-height, width, height);
+		Graphics.setColor(0xDFDFDF);
+		Graphics.fillRect(Window.getWidth()/2f-width/2f, Window.getHeight()-height, width, height);
 		NGraphics.setColor(0, 0, 0);
 		for(int i = 0; i < inv.length; i++) {
 			inv[i].render(nvg);
@@ -62,12 +64,12 @@ public abstract class GeneralInventory extends MenuGUI {
 		// Draw the stack carried by the mouse:
 		Item item = carried.getItem();
 		if(item != null) {
-			if(item.getImage() == -1) {
-				item.setImage(NGraphics.loadImage(item.getTexture()));
+			if(item.getImage() == null) {
+				item.setImage(Texture.loadFromFile(item.getTexture()));
 			}
 			int x = (int)Mouse.getCurrentPos().x;
 			int y = (int)Mouse.getCurrentPos().y;
-			NGraphics.drawImage(item.getImage(), x - 32, y - 32, 64, 64);
+			Graphics.drawImage(item.getImage(), x - 32, y - 32, 64, 64);
 			num.setText("" + carried.getAmount());
 			num.setPosition(x+50-32, y+48-32, Component.ALIGN_TOP_LEFT);
 			num.render(nvg);

@@ -5,6 +5,7 @@ import cubyz.gui.NGraphics;
 import cubyz.gui.input.Keyboard;
 import cubyz.gui.input.Mouse;
 import cubyz.rendering.Font;
+import cubyz.rendering.Graphics;
 
 /**
  * Just a text field.
@@ -38,14 +39,14 @@ public class TextInput extends Component {
 
 	@Override
 	public void render(long nvg, int x, int y) {
-		NGraphics.setColor(127, 127, 127);
-		NGraphics.fillRect(x - 3, y - 3, width + 6, height + 6);
+		Graphics.setColor(0x7F7F7F);
+		Graphics.fillRect(x - 3, y - 3, width + 6, height + 6);
 		
 		if (focused)
-			NGraphics.setColor(200, 200, 200);
+			Graphics.setColor(0xC8C8C8);
 		else
-			NGraphics.setColor(255, 255, 255);
-		NGraphics.fillRect(x, y, width, height);
+			Graphics.setColor(0xffffff);
+		Graphics.fillRect(x, y, width, height);
 		NGraphics.setColor(0, 0, 0);
 		NGraphics.setFont(font);
 		float textWidth = NGraphics.getTextWidth(text);

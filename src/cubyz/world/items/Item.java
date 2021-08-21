@@ -2,6 +2,7 @@ package cubyz.world.items;
 
 import cubyz.api.RegistryElement;
 import cubyz.api.Resource;
+import cubyz.rendering.Texture; //#line CLIENTONLY
 import cubyz.utils.translate.TextKey;
 import cubyz.world.entity.Entity;
 
@@ -10,8 +11,6 @@ import cubyz.world.entity.Entity;
  */
 
 public class Item implements RegistryElement {
-
-	private int image = -1;
 	
 	protected String texturePath;
 	protected String modelPath;
@@ -34,22 +33,6 @@ public class Item implements RegistryElement {
 	
 	public void setTexture(String texturePath, String addon) {
 		this.texturePath = "assets/" + addon + "/items/textures/" + texturePath;
-	}
-	
-	/**
-	 * This is used for rendering only.
-	 * @param image image id
-	 */
-	public void setImage(int image) {
-		this.image = image;
-	}
-	
-	/**
-	 * This is used for rendering only.
-	 * @return image id
-	 */
-	public int getImage() {
-		return image;
 	}
 	
 	/**
@@ -96,5 +79,25 @@ public class Item implements RegistryElement {
 	public boolean onUse(Entity user) {
 		return false;
 	}
+
 	
+	//#start CLIENTONLY ----------------------
+	private Texture image = null;
+
+	/**
+	 * This is used for rendering only.
+	 * @param image image id
+	 */
+	public void setImage(Texture image) {
+		this.image = image;
+	}
+	
+	/**
+	 * This is used for rendering only.
+	 * @return image id
+	 */
+	public Texture getImage() {
+		return image;
+	}
+	//#end -----------------------------------
 }

@@ -5,6 +5,7 @@ import cubyz.client.ClientSettings;
 import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
 import cubyz.client.GameLogic;
+import cubyz.rendering.Graphics;
 import cubyz.rendering.Window;
 import cubyz.world.LocalSurface;
 import cubyz.world.LocalWorld;
@@ -29,6 +30,7 @@ public class DebugOverlay extends MenuGUI {
 		if(GameLauncher.input.clientShowDebug) {
 			NGraphics.setFont("Default", 12.0F);
 			NGraphics.setColor(255, 255, 255);
+			Graphics.setColor(0xFFFFFF);
 			NGraphics.drawText(0, 0, GameLogic.getFPS() + " fps" + (Window.isVSyncEnabled() ? " (vsync)" : ""));
 			NGraphics.drawText(100, 0, GameLauncher.instance.getUPS() + " ups");
 			NGraphics.drawText(0, 12, "Branded \"" + Constants.GAME_BRAND + "\", version " + Constants.GAME_VERSION);
@@ -67,7 +69,7 @@ public class DebugOverlay extends MenuGUI {
 			NGraphics.drawText(0, h - 72, "60 fps -");
 			for(int i = 0; i < lastFps.length; i++) {
 				if(lastFps[i] != 0) {
-					NGraphics.fillRect(i*4, h - lastFps[i], 4, lastFps[i]);
+					Graphics.fillRect(i*4, h - lastFps[i], 4, lastFps[i]);
 				}
 			}
 			
