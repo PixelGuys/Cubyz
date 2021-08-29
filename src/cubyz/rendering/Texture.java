@@ -3,6 +3,7 @@ package cubyz.rendering;
 import de.matthiasmann.twl.utils.PNGDecoder;
 import de.matthiasmann.twl.utils.PNGDecoder.Format;
 
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -11,6 +12,7 @@ import java.nio.ByteBuffer;
 
 import cubyz.Logger;
 import cubyz.client.ClientSettings;
+import cubyz.utils.TextureConverter;
 
 import static org.lwjgl.opengl.GL30.*;
 
@@ -29,6 +31,10 @@ public class Texture {
 			Logger.throwable(e);
 			return null; // TODO: Default image.
 		}
+	}
+	
+	public static Texture loadFromImage(BufferedImage img) {
+		return new Texture(TextureConverter.fromBufferedImage(img));
 	}
 
 	private Texture(String fileName) throws IOException {
@@ -60,6 +66,12 @@ public class Texture {
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, pixelFormat, GL_FLOAT, (ByteBuffer) null);
+	}
+	
+	public void updateTexture(BufferedImage img) {
+		cleanup();
+		is = TextureConverter.fromBufferedImage(img);
+		create();
 	}
 	
 	public void setWrapMode(int wrap) {

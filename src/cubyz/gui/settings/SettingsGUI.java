@@ -50,33 +50,33 @@ public class SettingsGUI extends MenuGUI {
 		}
 		languages = languageFiles.toArray(new String[0]);
 		
-		done.setBounds(-125, 75, 250, 45, Component.ALIGN_BOTTOM);
+		done.setBounds(-125, 75, 250, 50, Component.ALIGN_BOTTOM);
 		done.setText(TextKey.createTextKey("gui.cubyz.settings.done"));
-		done.setFontSize(16f);
+		done.setFontSize(32f);
 		
 		done.setOnAction(() -> {
 			Cubyz.gameUI.back();
 		});
 		
-		graphics.setBounds(-125, 75, 250, 45, Component.ALIGN_TOP);
+		graphics.setBounds(-125, 75, 250, 50, Component.ALIGN_TOP);
 		graphics.setText(TextKey.createTextKey("gui.cubyz.settings.graphics"));
-		graphics.setFontSize(16f);
+		graphics.setFontSize(32f);
 		
 		graphics.setOnAction(() -> {
 			Cubyz.gameUI.setMenu(new GraphicsGUI());
 		});
 
-		bindings.setBounds(-125, 300, 250, 45, Component.ALIGN_TOP);
+		bindings.setBounds(-125, 300, 250, 50, Component.ALIGN_TOP);
 		bindings.setText(TextKey.createTextKey("gui.cubyz.settings.keybindings"));
-		bindings.setFontSize(16f);
+		bindings.setFontSize(32f);
 		
 		bindings.setOnAction(() -> {
 			Cubyz.gameUI.setMenu(new KeybindingsGUI());
 		});
 
-		language.setBounds(-125, 150, 250, 45, Component.ALIGN_TOP);
+		language.setBounds(-125, 150, 250, 50, Component.ALIGN_TOP);
 		language.setText(langKey);
-		language.setFontSize(16f);
+		language.setFontSize(32f);
 		
 		language.setOnAction(() -> {
 			int index = -1;
@@ -92,7 +92,7 @@ public class SettingsGUI extends MenuGUI {
 		});
 
 		rpc.setBounds(-125, 225, 250, 45, Component.ALIGN_TOP);
-		rpc.setFontSize(16f);
+		rpc.setFontSize(32f);
 		
 		rpc.setOnAction(() -> {
 			if (DiscordIntegration.isEnabled()) {

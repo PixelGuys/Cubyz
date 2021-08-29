@@ -2,9 +2,9 @@ package cubyz.gui.components;
 
 import cubyz.Logger;
 import cubyz.gui.Component;
-import cubyz.gui.NGraphics;
 import cubyz.gui.input.Mouse;
 import cubyz.rendering.Graphics;
+import cubyz.rendering.text.Fonts;
 import cubyz.utils.translate.TextKey;
 
 /**
@@ -42,8 +42,7 @@ public class Button extends Component {
 	private boolean hovered;
 	private boolean canRepress = true;
 	private Runnable onAction;
-	private float fontSize = 12f;
-	private TextKey text;
+	private Label textLabel = new Label(Fonts.PIXEL_FONT, 240);
 	private Object userObject;
 	
 	public Button() {}
@@ -57,7 +56,7 @@ public class Button extends Component {
 	}
 	
 	public TextKey getText() {
-		return text;
+		return textLabel.getText();
 	}
 	
 	public Object getUserObject() {
@@ -69,11 +68,11 @@ public class Button extends Component {
 	}
 
 	public void setText(String text) {
-		this.text = TextKey.createTextKey(text);
+		textLabel.setText(text);
 	}
 	
 	public void setText(TextKey text) {
-		this.text = text;
+		textLabel.setText(text);
 	}
 
 	public void setOnAction(Runnable onAction) {
@@ -81,11 +80,11 @@ public class Button extends Component {
 	}
 	
 	public float getFontSize() {
-		return fontSize;
+		return textLabel.getHeight();
 	}
 
 	public void setFontSize(float fontSize) {
-		this.fontSize = fontSize;
+		textLabel.setFontSize(fontSize);
 	}
 	
 	private void drawTexture(int[] texture, int x, int y) {
@@ -137,9 +136,7 @@ public class Button extends Component {
 				drawTexture(button, x, y);
 			}
 		}
-		NGraphics.setColor(255, 255, 255);
-		NGraphics.setFont("Default", fontSize);
-		NGraphics.drawText(x + (width / 2) - ((text.getTranslation().length() * 5) / 2), (int) (y + (height / 2) - fontSize / 2), text.getTranslation());
+		textLabel.render(nvg, x + width/2, y + height/2);
 	}
 	
 }

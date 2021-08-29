@@ -25,6 +25,11 @@ public class LoadingGUI extends MenuGUI {
 	boolean alphaDecrease = false;
 	private static Texture splash;
 	
+	public LoadingGUI() {
+		step.setTextAlign(Component.ALIGN_CENTER);
+		step2.setTextAlign(Component.ALIGN_CENTER);
+	}
+	
 	public void finishLoading() {
 		while (alpha > 0 || !alphaDecrease) {
 			try {
@@ -93,7 +98,7 @@ public class LoadingGUI extends MenuGUI {
 		if (hasStep2) {
 			pb2.render(nvg);
 		}
-		NGraphics.setColor(0, 0, 0);
+		Graphics.setColor(0x000000);
 		step.render(nvg);
 		if (hasStep2) {
 			step2.render(nvg);

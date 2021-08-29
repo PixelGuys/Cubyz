@@ -11,7 +11,6 @@ import cubyz.gui.components.ScrollingContainer;
 import cubyz.gui.input.Keybindings;
 import cubyz.gui.input.Keyboard;
 import cubyz.gui.input.Mouse;
-import cubyz.rendering.Font;
 import cubyz.rendering.Window;
 import cubyz.utils.Utilities;
 import cubyz.utils.translate.TextKey;
@@ -95,6 +94,7 @@ public class KeybindingsGUI extends MenuGUI {
 		done = new Button();
 		done.setText(TextKey.createTextKey("gui.cubyz.settings.done"));
 		done.setBounds(270, 65, 250, 45, Component.ALIGN_BOTTOM_RIGHT);
+		done.setFontSize(32);
 		done.setOnAction(() -> {
 			Cubyz.gameUI.back();
 		});
@@ -111,17 +111,18 @@ public class KeybindingsGUI extends MenuGUI {
 				text = nonAlpha(Keybindings.getKeyCode(name));
 			}
 			button.setText(text);
-			label.setFont(new Font("Default", 24f));
 			label.setText(Utilities.capitalize(name));
 			
-			button.setBounds(120, y, 250, 25, Component.ALIGN_TOP_LEFT);
+			button.setBounds(160, y, 250, 25, Component.ALIGN_TOP_LEFT);
+			button.setFontSize(16);
 			button.setOnAction(() -> {
 				if (listen == null) {
 					listen = name;
 					button.setText("Click or press any key");
 				}
 			});
-			label.setPosition(20, y, Component.ALIGN_TOP_LEFT);
+			label.setBounds(20, y, 0, 24, Component.ALIGN_TOP_LEFT);
+			label.setTextAlign(Component.ALIGN_TOP_LEFT);
 			container.add(label);
 			container.add(button);
 			

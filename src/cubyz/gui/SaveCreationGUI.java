@@ -7,8 +7,8 @@ import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
 import cubyz.gui.components.Button;
 import cubyz.gui.components.TextInput;
-import cubyz.rendering.Font;
 import cubyz.rendering.VisibleChunk;
+import cubyz.rendering.text.Fonts;
 import cubyz.utils.translate.TextKey;
 import cubyz.world.CustomObject;
 import cubyz.world.LocalWorld;
@@ -31,8 +31,8 @@ public class SaveCreationGUI extends MenuGUI {
 		create = new Button();
 		cancel = new Button();
 		
-		name.setBounds(-100, 100, 200, 30, Component.ALIGN_TOP);
-		name.setFont(new Font("Default", 20f));
+		name.setBounds(-250, 100, 500, 40, Component.ALIGN_TOP);
+		name.setFont(Fonts.PIXEL_FONT, 32);
 		
 		int num = 1;
 		while(new File("saves/Save "+num).exists()) {
@@ -42,6 +42,7 @@ public class SaveCreationGUI extends MenuGUI {
 
 		create.setBounds(10, 60, 200, 50, Component.ALIGN_BOTTOM_LEFT);
 		create.setText(TextKey.createTextKey("gui.cubyz.saves.create"));
+		create.setFontSize(32);
 		create.setOnAction(() -> {
 			LocalWorld world = new LocalWorld(name.getText(), VisibleChunk.class);
 			Block[] blocks = world.generate();
@@ -56,6 +57,7 @@ public class SaveCreationGUI extends MenuGUI {
 
 		cancel.setBounds(110, 60, 100, 50, Component.ALIGN_BOTTOM_RIGHT);
 		cancel.setText(TextKey.createTextKey("gui.cubyz.general.cancel"));
+		cancel.setFontSize(32);
 		cancel.setOnAction(() -> {
 			Cubyz.gameUI.back();
 		});

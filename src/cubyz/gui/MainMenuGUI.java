@@ -6,7 +6,6 @@ import cubyz.client.GameLauncher;
 import cubyz.gui.components.Button;
 import cubyz.gui.components.Label;
 import cubyz.gui.settings.SettingsGUI;
-import cubyz.rendering.Font;
 import cubyz.utils.DiscordIntegration;
 import cubyz.utils.translate.TextKey;
 
@@ -20,24 +19,25 @@ public class MainMenuGUI extends MenuGUI {
 	
 	public MainMenuGUI() {
 		DiscordIntegration.setStatus("Main Menu");
-		spPlay.setBounds(-125, 300, 250, 45, Component.ALIGN_TOP);
+		spPlay.setBounds(-125, 300, 250, 50, Component.ALIGN_TOP);
 		spPlay.setText(TextKey.createTextKey("gui.cubyz.mainmenu.singleplayer"));
-		spPlay.setFontSize(16f);
+		spPlay.setFontSize(32f);
 		
-		mpPlay.setBounds(-125, 375, 250, 45, Component.ALIGN_TOP);
+		mpPlay.setBounds(-125, 375, 250, 50, Component.ALIGN_TOP);
 		mpPlay.setText(TextKey.createTextKey("gui.cubyz.mainmenu.multiplayer"));
-		mpPlay.setFontSize(16f);
+		mpPlay.setFontSize(32f);
 
-		settings.setBounds(-125, 450, 250, 45, Component.ALIGN_TOP);
+		settings.setBounds(-125, 450, 250, 50, Component.ALIGN_TOP);
 		settings.setText(TextKey.createTextKey("gui.cubyz.mainmenu.settings"));
-		settings.setFontSize(16f);
+		settings.setFontSize(32f);
 
-		exit.setBounds(120, 40, 100, 27, Component.ALIGN_BOTTOM_RIGHT);
+		exit.setBounds(120, 60, 100, 27, Component.ALIGN_BOTTOM_RIGHT);
 		exit.setText(TextKey.createTextKey("gui.cubyz.mainmenu.exit"));
+		exit.setFontSize(16f);
 		
+		titleLabel.setTextAlign(Component.ALIGN_CENTER);
 		titleLabel.setText("Cubyz");
-		titleLabel.setFont(new Font("Title", 72.f));
-		titleLabel.setPosition(-80, 50, Component.ALIGN_TOP);
+		titleLabel.setBounds(0, 50, 0, 74, Component.ALIGN_TOP);
 		
 		spPlay.setOnAction(() -> {
 			Cubyz.gameUI.setMenu(new SaveSelectorGUI());

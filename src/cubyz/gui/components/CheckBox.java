@@ -30,14 +30,17 @@ public class CheckBox extends Component {
 	
 	public void setLabel(Label label) {
 		this.label = label;
+		this.label.setTextAlign(ALIGN_LEFT);
 	}
 	
 	public void setLabel(String label) {
 		this.label = new Label(label);
+		this.label.setTextAlign(ALIGN_LEFT);
 	}
 	
 	public void setLabel(TextKey label) {
 		this.label = new Label(label);
+		this.label.setTextAlign(ALIGN_LEFT);
 	}
 	
 	public Label getLabel() {
@@ -74,7 +77,7 @@ public class CheckBox extends Component {
 			Graphics.fillRect(x + 3, y + 3, width - 6, height - 6);
 		}
 		if (label != null) {
-			label.render(nvg, x + width + 5, y + 10);
+			label.render(nvg, x + width + 5, y + height/2);
 		}
 	}
 }

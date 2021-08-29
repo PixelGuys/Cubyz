@@ -1,9 +1,9 @@
 package cubyz.gui.components;
 
 import cubyz.gui.Component;
-import cubyz.gui.NGraphics;
 import cubyz.gui.input.Mouse;
 import cubyz.rendering.Graphics;
+import cubyz.rendering.text.Fonts;
 
 /**
  * A slider.
@@ -17,7 +17,7 @@ public class Slider extends Component {
 	private int xOffset;
 	private Runnable run;
 	String text = "";
-	private float fontSize = 12.0f;
+	private float fontSize = 16.0f;
 	private String[] customValues = null; // The slider doesn't always deal with evenly spaced integer values.
 	
 	/**
@@ -91,8 +91,8 @@ public class Slider extends Component {
 		Graphics.fillRect(x + initialXOffset, y + yOffset + fontSize, width - 2*initialXOffset, height - 2*yOffset - fontSize);
 		Graphics.setColor(0xC8C8F0);
 		Graphics.fillCircle(x + xOffset + (float)(curValue - minValue)/(maxValue-minValue)*(width - 2*xOffset), y + height/2 + fontSize/2, height/2 - fontSize/2 - yOffset);
-		NGraphics.setColor(255, 255, 255);
-		NGraphics.setFont("Default", fontSize);
-		NGraphics.drawText(x + initialXOffset, y + yOffset, text + (customValues != null ? customValues[curValue] : curValue));
+		Graphics.setColor(0xffffff);
+		Graphics.setFont(Fonts.PIXEL_FONT, fontSize);
+		Graphics.drawText(x + initialXOffset, y + yOffset, text + (customValues != null ? customValues[curValue] : curValue));
 	}
 }

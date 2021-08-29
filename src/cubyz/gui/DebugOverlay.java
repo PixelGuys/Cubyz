@@ -7,6 +7,7 @@ import cubyz.client.GameLauncher;
 import cubyz.client.GameLogic;
 import cubyz.rendering.Graphics;
 import cubyz.rendering.Window;
+import cubyz.rendering.text.Fonts;
 import cubyz.world.LocalSurface;
 import cubyz.world.LocalWorld;
 import cubyz.world.World;
@@ -28,15 +29,14 @@ public class DebugOverlay extends MenuGUI {
 	@Override
 	public void render(long nvg) {
 		if(GameLauncher.input.clientShowDebug) {
-			NGraphics.setFont("Default", 12.0F);
-			NGraphics.setColor(255, 255, 255);
+			Graphics.setFont(Fonts.PIXEL_FONT, 16.0F);
 			Graphics.setColor(0xFFFFFF);
-			NGraphics.drawText(0, 0, GameLogic.getFPS() + " fps" + (Window.isVSyncEnabled() ? " (vsync)" : ""));
-			NGraphics.drawText(100, 0, GameLauncher.instance.getUPS() + " ups");
-			NGraphics.drawText(0, 12, "Branded \"" + Constants.GAME_BRAND + "\", version " + Constants.GAME_VERSION);
-			NGraphics.drawText(0, 24, "Windowed (" + Window.getWidth() + "x" + Window.getHeight() + ")");
-			NGraphics.drawText(0, 36, "Java " + javaVersion);
-			NGraphics.drawText(0, 108, "Memory: " + (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory())/1024/1024
+			Graphics.drawText(0, 0, GameLogic.getFPS() + " fps" + (Window.isVSyncEnabled() ? " (vsync)" : ""));
+			Graphics.drawText(120, 0, GameLauncher.instance.getUPS() + " ups");
+			Graphics.drawText(0, 20, "Branded \"" + Constants.GAME_BRAND + "\", version " + Constants.GAME_VERSION);
+			Graphics.drawText(0, 40, "Windowed (" + Window.getWidth() + "x" + Window.getHeight() + ")");
+			Graphics.drawText(0, 60, "Java " + javaVersion);
+			Graphics.drawText(0, 200, "Memory: " + (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory())/1024/1024
 					+ "/" + (Runtime.getRuntime().totalMemory()/1024/1024) + "MiB (max " + (Runtime.getRuntime().maxMemory()/1024/1024) + "MiB)");
 			
 			if(Cubyz.world != null) {
@@ -46,27 +46,27 @@ public class DebugOverlay extends MenuGUI {
 				float y = p.getPosition().y;
 				float z = p.getPosition().z;
 				
-				NGraphics.drawText(0, 48, "XYZ: " + x + ", " + y + ", " + z);
-				NGraphics.drawText(0, 60, "Loaded Chunks: " + Cubyz.surface.getChunks().length);
-				NGraphics.drawText(0, 72, "Render Distance: " + ClientSettings.RENDER_DISTANCE);
-				NGraphics.drawText(0, 84, "Game Time: " + world.getGameTime());
+				Graphics.drawText(0, 80, "XYZ: " + x + ", " + y + ", " + z);
+				Graphics.drawText(0, 100, "Loaded Chunks: " + Cubyz.surface.getChunks().length);
+				Graphics.drawText(0, 120, "Render Distance: " + ClientSettings.RENDER_DISTANCE);
+				Graphics.drawText(0, 140, "Game Time: " + world.getGameTime());
 				if(world instanceof LocalWorld) {
-					NGraphics.drawText(0, 96, "Chunk Queue Size: " + ((LocalSurface) Cubyz.surface).getChunkQueueSize());
-					NGraphics.drawText(0, 118, "Biome: " + Cubyz.surface.getBiome((int)p.getPosition().x, (int)p.getPosition().z).getRegistryID());
+					Graphics.drawText(0, 160, "Chunk Queue Size: " + ((LocalSurface) Cubyz.surface).getChunkQueueSize());
+					Graphics.drawText(0, 180, "Biome: " + Cubyz.surface.getBiome((int)p.getPosition().x, (int)p.getPosition().z).getRegistryID());
 				}
 				
 				if(p instanceof PlayerImpl) { // player on local world
 					PlayerImpl pi = (PlayerImpl) p;
 					if(pi.getRemainingBreakTime() > 0) {
-						NGraphics.drawText(0, 132, "Remaining Breaking Time: " + pi.getRemainingBreakTime());
+						Graphics.drawText(0, 200, "Remaining Breaking Time: " + pi.getRemainingBreakTime());
 					}
 				}
 			}
 			
 			int h = Window.getHeight();
-			NGraphics.drawText(0, h - 12, "0  fps -");
-			NGraphics.drawText(0, h - 42, "30 fps -");
-			NGraphics.drawText(0, h - 72, "60 fps -");
+			Graphics.drawText(0, h - 20, "00 fps \\_");
+			Graphics.drawText(0, h - 50, "30 fps \\_");
+			Graphics.drawText(0, h - 80, "60 fps \\_");
 			for(int i = 0; i < lastFps.length; i++) {
 				if(lastFps[i] != 0) {
 					Graphics.fillRect(i*4, h - lastFps[i], 4, lastFps[i]);

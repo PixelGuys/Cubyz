@@ -22,6 +22,8 @@ import static org.lwjgl.opengl.GL30.glGenVertexArrays;
 
 import java.io.IOException;
 
+import cubyz.rendering.text.CubyzFont;
+import cubyz.rendering.text.TextLine;
 import cubyz.utils.Utils;
 
 //INFO: This class is structured differently than usual: Variables and functions are structured by use-case.
@@ -307,5 +309,30 @@ public class Graphics {
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 		
 		imageShader.unbind();
+	}
+	
+	// ----------------------------------------------------------------------------
+	// Stuff for drawText:
+
+	private static CubyzFont font;
+	private static float fontSize;
+	public static void setFont(CubyzFont font, float fontSize) {
+		Graphics.font = font;
+		Graphics.fontSize = fontSize;
+	}
+	
+	/**
+	 * Draws a given string.
+	 * Uses TextLine.
+	 * @param texture
+	 * @param x left
+	 * @param y top
+	 * @param width
+	 * @param height
+	 */
+	public static void drawText(float x, float y, String text) {
+		text = String.format("#%06x", (0xffffff & color)) + text; // Add the coloring information.
+		TextLine line = new TextLine(font, text, fontSize, false);
+		line.render(x, y);
 	}
 }

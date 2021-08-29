@@ -30,17 +30,16 @@ public class GraphicsGUI extends MenuGUI {
 	public void init(long nvg) {
 		done.setBounds(-125, 75, 250, 45, Component.ALIGN_BOTTOM);
 		done.setText(TextKey.createTextKey("gui.cubyz.settings.done"));
-		done.setFontSize(16f);
+		done.setFontSize(32f);
 		
 		done.setOnAction(() -> {
 			Cubyz.gameUI.back();
 		});
 		
-		effectiveRenderDistance.setFontSize(18);
 		recalculateERD();
 
 		renderDistance.setBounds(-125, 75, 250, 45, Component.ALIGN_TOP);
-		renderDistance.setFontSize(18);
+		renderDistance.setFontSize(16);
 		renderDistance.setText("Render Distance: ");
 		renderDistance.setOnAction(() -> {
 			ClientSettings.RENDER_DISTANCE = renderDistance.getValue();
@@ -48,7 +47,7 @@ public class GraphicsGUI extends MenuGUI {
 		});
 
 		highestLOD.setBounds(-125, 150, 250, 45, Component.ALIGN_TOP);
-		highestLOD.setFontSize(18);
+		highestLOD.setFontSize(16);
 		highestLOD.setText("Maximum LOD: ");
 		highestLOD.setOnAction(() -> {
 			ClientSettings.HIGHEST_LOD = highestLOD.getValue();
@@ -56,14 +55,14 @@ public class GraphicsGUI extends MenuGUI {
 		});
 
 		LODFactor.setBounds(-125, 225, 250, 45, Component.ALIGN_TOP);
-		LODFactor.setFontSize(18);
+		LODFactor.setFontSize(16);
 		LODFactor.setText("LOD Factor: ");
 		LODFactor.setOnAction(() -> {
 			ClientSettings.LOD_FACTOR = (LODFactor.getValue() + 1)/2.0f;
 			recalculateERD();
 		});
 		
-		effectiveRenderDistance.setPosition(-125, 300, Component.ALIGN_TOP);
+		effectiveRenderDistance.setBounds(0, 300, 0, 16, Component.ALIGN_TOP);
 
 		if (ClientSettings.FOG_COEFFICIENT == 0f) {
 			fog.setText(TextKey.createTextKey("gui.cubyz.settings.fog.off"));
@@ -90,7 +89,7 @@ public class GraphicsGUI extends MenuGUI {
 			}
 		});
 		fog.setBounds(-125, 375, 250, 45, Component.ALIGN_TOP);
-		fog.setFontSize(16f);
+		fog.setFontSize(32f);
 
 		easyLighting.setPosition(-125, 450, Component.ALIGN_TOP);
 		easyLighting.setLabel(TextKey.createTextKey("gui.cubyz.settings.easylighting"));
@@ -100,7 +99,7 @@ public class GraphicsGUI extends MenuGUI {
 			easyLighting.setSelected(true);
 			throw new UnsupportedOperationException("Only easy lighting is supported for now.");
 		});
-		easyLighting.getLabel().setFontSize(16f);
+		easyLighting.getLabel().setFontSize(32f);
 		
 		vsync.setPosition(-125, 525, Component.ALIGN_TOP);
 		vsync.setLabel(TextKey.createTextKey("gui.cubyz.settings.vsync"));
@@ -108,6 +107,7 @@ public class GraphicsGUI extends MenuGUI {
 		vsync.setOnAction(() -> {
 			Window.setVSyncEnabled(vsync.isSelected());
 		});
+		vsync.getLabel().setFontSize(32f);
 	}
 
 	@Override

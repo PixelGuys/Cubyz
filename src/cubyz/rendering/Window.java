@@ -199,12 +199,7 @@ public abstract class Window {
 		});
 		
 		glfwSetKeyCallback(handle, (window, key, scancode, action, mods) -> {
-			if (action == GLFW_PRESS) {
-				Keyboard.setKeyPressed(key, true);
-			}
-			if (action == GLFW_RELEASE) {
-				Keyboard.setKeyPressed(key, false);
-			}
+			Keyboard.setKeyPressed(key, action != GLFW_RELEASE);
 			Keyboard.setKeyMods(mods);
 			Keyboard.pushKeyCode(key);
 		});

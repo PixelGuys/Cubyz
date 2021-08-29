@@ -2,8 +2,6 @@ package cubyz.gui.input;
 
 import java.util.ArrayList;
 
-import org.lwjgl.glfw.GLFW;
-
 import cubyz.Logger;
 
 public class Keyboard {
@@ -15,6 +13,11 @@ public class Keyboard {
 	static int currentKeyCode;
 	static boolean hasKeyCode;
 	static int keyMods;
+	
+	/**
+	 * There can be only one KeyListener to prevent issues like interacting with multiple GUI elements at the same time.
+	 */
+	public static KeyListener activeComponent;
 	
 	public static void pushChar(char ch) {
 		int next = (current+1)%bufferLen;
@@ -44,9 +47,6 @@ public class Keyboard {
 	}
 	
 	public static void pushKeyCode(int keyCode) {
-		if(keyCode == GLFW.GLFW_KEY_BACKSPACE) {
-			pushChar('\0');
-		}
 		currentKeyCode = keyCode;
 		hasKeyCode = true;
 	}
@@ -101,6 +101,8 @@ public class Keyboard {
 	
 	public static void setKeyPressed(int key, boolean press) {
 		if (press) {
+			if(activeComponent != null)
+				activeComponent.onKeyPress(key);
 			if (!pressedKeys.contains(key)) {
 				pressedKeys.add(key);
 			}

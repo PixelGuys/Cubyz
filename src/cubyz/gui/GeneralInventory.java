@@ -7,7 +7,6 @@ import cubyz.client.Cubyz;
 import cubyz.gui.components.InventorySlot;
 import cubyz.gui.components.Label;
 import cubyz.gui.input.Mouse;
-import cubyz.rendering.Font;
 import cubyz.rendering.Graphics;
 import cubyz.rendering.Texture;
 import cubyz.rendering.Window;
@@ -46,7 +45,7 @@ public abstract class GeneralInventory extends MenuGUI {
 	public void init(long nvg) {
 		Mouse.setGrabbed(false);
 		num = new Label();
-		num.setFont(new Font("Default", 16.f));
+		num.setTextAlign(Component.ALIGN_CENTER);
 		positionSlots();
 	}
 
@@ -54,7 +53,7 @@ public abstract class GeneralInventory extends MenuGUI {
 	public void render(long nvg) {
 		Graphics.setColor(0xDFDFDF);
 		Graphics.fillRect(Window.getWidth()/2f-width/2f, Window.getHeight()-height, width, height);
-		NGraphics.setColor(0, 0, 0);
+		Graphics.setColor(0x000000);
 		for(int i = 0; i < inv.length; i++) {
 			inv[i].render(nvg);
 		}

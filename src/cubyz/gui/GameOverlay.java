@@ -5,6 +5,8 @@ import cubyz.gui.components.InventorySlot;
 import cubyz.rendering.Graphics;
 import cubyz.rendering.Texture;
 import cubyz.rendering.Window;
+import cubyz.rendering.text.Fonts;
+import cubyz.rendering.text.TextLine;
 import cubyz.world.items.Inventory;
 
 /**
@@ -55,7 +57,7 @@ public class GameOverlay extends MenuGUI {
 	@Override
 	public void render(long nvg) {
 		Graphics.drawImage(crosshair, Window.getWidth()/2 - 16, Window.getHeight()/2 - 16, 32, 32);
-		NGraphics.setColor(0, 0, 0);
+		Graphics.setColor(0x000000);
 		if(!(Cubyz.gameUI.getMenuGUI() instanceof GeneralInventory)) {
 			Graphics.drawImage(selection, Window.getWidth()/2 - 254 + Cubyz.inventorySelection*64, Window.getHeight() - 62, 60, 60);
 			for(int i = 0; i < 8; i++) {
@@ -76,10 +78,10 @@ public class GameOverlay extends MenuGUI {
 			Graphics.setColor(0xFF3232, (int) (255-(System.currentTimeMillis()-lastPlayerHurtMs))/2);
 			Graphics.fillRect(0, 0, Window.getWidth(), Window.getHeight());
 		}
-		String s = Math.round(health*10)/10.0f + "/" + Math.round(maxHealth) + " HP";
-		float width = NGraphics.getTextWidth(s);
+		TextLine text = new TextLine(Fonts.PIXEL_FONT, Math.round(health*10)/10.0f + "/" + Math.round(maxHealth) + " HP", 16, false);
+		float width = text.getWidth();
 		Graphics.drawImage(healthBar[7], (int)(Window.getWidth() - maxHealth*12 - 40 - width), 6, 24, 24);
-		NGraphics.drawText(Window.getWidth() - maxHealth*12 - 10 - width, 9, s);
+		text.render(Window.getWidth() - maxHealth*12 - 10 - width, 9);
 		for(int i = 0; i < maxHealth; i += 2) {
 			boolean half = i + 1 == health;
 			boolean empty = i >= health;
@@ -97,10 +99,10 @@ public class GameOverlay extends MenuGUI {
 		// Draw the hunger bar:
 		float maxHunger = Cubyz.player.maxHunger;
 		float hunger = Cubyz.player.hunger;
-		s = Math.round(hunger*10)/10.0f + "/" + Math.round(maxHunger) + " HP";
-		width = NGraphics.getTextWidth(s);
+		text = new TextLine(Fonts.PIXEL_FONT, Math.round(hunger*10)/10.0f + "/" + Math.round(maxHunger) + " HP", 16, false);
+		width = text.getWidth();
 		Graphics.drawImage(hungerBar[7], (int)(Window.getWidth() - maxHunger*12 - 40 - width), 36, 24, 24);
-		NGraphics.drawText(Window.getWidth()-maxHunger*12 - 10 - width, 39, s);
+		text.render(Window.getWidth() - maxHealth*12 - 10 - width, 39);
 		for(int i = 0; i < maxHunger; i += 2) {
 			boolean half = i + 1 == hunger;
 			boolean empty = i >= hunger;

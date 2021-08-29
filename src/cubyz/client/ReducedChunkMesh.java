@@ -118,8 +118,6 @@ public class ReducedChunkMesh {
 	}
 
 	public void cleanUp() {
-		glDisableVertexAttribArray(0);
-
 		// Delete the VBOs
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		for (int vboId : vboIdList) {

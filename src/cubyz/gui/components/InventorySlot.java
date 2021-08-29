@@ -6,11 +6,11 @@ import org.joml.Vector2d;
 
 import cubyz.client.GameLauncher;
 import cubyz.gui.Component;
-import cubyz.gui.NGraphics;
 import cubyz.gui.input.Mouse;
-import cubyz.rendering.Font;
 import cubyz.rendering.Graphics;
 import cubyz.rendering.Texture;
+import cubyz.rendering.text.Fonts;
+import cubyz.rendering.text.TextLine;
 import cubyz.world.blocks.Block;
 import cubyz.world.items.Item;
 import cubyz.world.items.ItemBlock;
@@ -26,6 +26,7 @@ import cubyz.world.items.tools.Tool;
 public class InventorySlot extends Component {
 	public static final int SLOT_SIZE = 64;
 	public static Texture SLOT_IMAGE = Texture.loadFromFile("assets/cubyz/guis/inventory/inventory_slot.png");
+	static float FONT_SIZE = 16;
 
 	/**State of mouse buttons if the mouse is in the area.*/
 	private boolean pressedLeft = false, pressedRight = false;
@@ -40,7 +41,8 @@ public class InventorySlot extends Component {
 	public InventorySlot(ItemStack ref, int x, int y, byte align, boolean takeOnly) {
 		reference = ref;
 		inv = new Label();
-		inv.setFont(new Font("Default", 16.f));
+		inv.setFontSize(FONT_SIZE);
+		inv.setTextAlign(Component.ALIGN_CENTER);
 		setBounds(x, y, SLOT_SIZE, SLOT_SIZE, align);
 		this.takeOnly = takeOnly;
 	}
@@ -57,8 +59,8 @@ public class InventorySlot extends Component {
 		Item item = reference.getItem();
 		if(item != null) {
 			if(isInside(Mouse.getCurrentPos(), width, height)) {
-				double x = Mouse.getX() + 10;
-				double y = Mouse.getY() + 10;
+				float x = (float)Mouse.getX() + 10;
+				float y = (float)Mouse.getY() + 10;
 				String tooltip;
 				if(item instanceof Tool) {
 					tooltip = item.getName() == null ? "???" : item.getName().getTranslation();
@@ -68,13 +70,22 @@ public class InventorySlot extends Component {
 				} else {
 					tooltip = item.getName() == null ? "???" : item.getName().getTranslation();
 				}
-				float[] bounds = NGraphics.getTextSize(tooltip);
+				String[] lines = tooltip.split("\n");
+				TextLine[] textLines = new TextLine[lines.length];
+				float textWidth = 0;
+				for(int i = 0; i < lines.length; i++) {
+					textLines[i] = new TextLine(Fonts.PIXEL_FONT, "#ffffff"+lines[i], FONT_SIZE, false);
+					textWidth = Math.max(textWidth, textLines[i].getWidth());
+				}
+				float textHeight = lines.length*FONT_SIZE;
+				
 				Graphics.setColor(0x141414);
-				Graphics.fillRect((float)x, (float)y, bounds[0], bounds[1]);
+				Graphics.fillRect(x, y, textWidth + 1, textHeight + 1);
 				Graphics.setColor(0x7F7F7F);
-				Graphics.drawRect((int)x, (int)y, (int)bounds[0], (int)bounds[1]);
-				NGraphics.setColor(255, 255, 255);
-				NGraphics.drawText((int) x, (int) y, tooltip);
+				Graphics.drawRect((int)x, (int)y, (int)textWidth + 1, (int)textHeight + 1);
+				for(int i = 0; i < textLines.length; i++) {
+					textLines[i].render(x, y + i*FONT_SIZE);
+				}
 			}
 		}
 	}
@@ -182,7 +193,7 @@ public class InventorySlot extends Component {
 				float durab = tool.durability();
 				Graphics.setColor((int)((1.0f - durab)*255.0f)<<16 | (int)(durab*255.0f)<<8 | 0);
 				Graphics.fillRect(x + 8, y + 56, 48.0f*durab, 4);
-				NGraphics.setColor(0, 0, 0);
+				Graphics.setColor(0x000000);
 			}
 			inv.setText("" + reference.getAmount());
 			inv.render(nvg, x + 50, y + 48);

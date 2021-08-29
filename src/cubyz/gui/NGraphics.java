@@ -12,7 +12,7 @@ import cubyz.rendering.Graphics;
  */
 public class NGraphics {
 
-	private static long nvg;
+	/*private static long nvg;
 	private static NVGColor color = NVGColor.create();
 	private static int textAlign = NVG_ALIGN_LEFT | NVG_ALIGN_TOP;
 	private static float globalAlphaMultiplier;
@@ -95,6 +95,6 @@ public class NGraphics {
 	
 	public static void setColor(int r, int g, int b) {
 		setColor(r, g, b, 255);
-	}
+	}*/
 	
 }

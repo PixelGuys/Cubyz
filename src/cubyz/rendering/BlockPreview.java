@@ -1,5 +1,8 @@
 package cubyz.rendering;
 
+import static org.lwjgl.opengl.GL11.GL_DEPTH_TEST;
+import static org.lwjgl.opengl.GL11.glDisable;
+import static org.lwjgl.opengl.GL11.glEnable;
 import static org.lwjgl.opengl.GL11C.GL_COLOR_BUFFER_BIT;
 import static org.lwjgl.opengl.GL11C.GL_DEPTH_BUFFER_BIT;
 import static org.lwjgl.opengl.GL11C.GL_STENCIL_BUFFER_BIT;
@@ -64,6 +67,7 @@ public abstract class BlockPreview {
 	}
 	
 	public static FrameBuffer generateBuffer(Vector3f ambientLight, Block block) {
+		glEnable(GL_DEPTH_TEST);
 		FrameBuffer buffer = new FrameBuffer();
 		buffer.genColorTexture(64, 64);
 		buffer.genRenderbuffer(64, 64);
@@ -97,6 +101,7 @@ public abstract class BlockPreview {
 		glViewport(0, 0, Window.getWidth(), Window.getHeight());
 		
 		Window.setRenderTarget(null);
+		glDisable(GL_DEPTH_TEST);
 		return buffer;
 	}
 

@@ -1,11 +1,12 @@
 package cubyz.gui.components;
 
 import cubyz.gui.Component;
-import cubyz.gui.NGraphics;
 import cubyz.gui.input.Keyboard;
 import cubyz.gui.input.Mouse;
-import cubyz.rendering.Font;
 import cubyz.rendering.Graphics;
+import cubyz.rendering.text.CubyzFont;
+import cubyz.rendering.text.Fonts;
+import cubyz.rendering.text.TextLine;
 
 /**
  * Just a text field.
@@ -13,29 +14,22 @@ import cubyz.rendering.Graphics;
 
 public class TextInput extends Component {
 
-	private Font font = new Font("Default", 12.f);
-	public String text = "";
+	public TextLine textLine = new TextLine(Fonts.PIXEL_FONT, "", 16, true);
 	private boolean focused;
+	private boolean hasPressed;
+	
 	
 	public String getText() {
-		return text;
+		return textLine.getText();
 	}
 
 	public void setText(String text) {
-		this.text = text;
-	}
-
-	public Font getFont() {
-		return font;
+		textLine.updateText(text);
 	}
 	
-	public void setFont(Font font) {
-		this.font = font;
+	public void setFont(CubyzFont font, float fontSize) {
+		textLine = new TextLine(font, textLine.getText(), fontSize, true);
 	}
-	
-	private boolean hasPressed;
-	private boolean cursorVisible;
-	private int cursorCounter;
 
 	@Override
 	public void render(long nvg, int x, int y) {
@@ -47,49 +41,35 @@ public class TextInput extends Component {
 		else
 			Graphics.setColor(0xffffff);
 		Graphics.fillRect(x, y, width, height);
-		NGraphics.setColor(0, 0, 0);
-		NGraphics.setFont(font);
-		float textWidth = NGraphics.getTextWidth(text);
-		float textHeight = NGraphics.getTextAscent(text);
-		NGraphics.drawText(x + 2, y + height/2 - textHeight, text);
+		Graphics.setColor(0x000000);
+		Graphics.setFont(Fonts.PIXEL_FONT, 16);
 		
-		if (Mouse.isLeftButtonPressed() && !hasPressed) {
-			hasPressed = true;
+		if (Mouse.isLeftButtonPressed()) {
+			if(isInside(Mouse.getCurrentPos()) || hasPressed) {
+				if(!hasPressed) { // Started pressing
+					hasPressed = true;
+					textLine.startSelection((float)Mouse.getX() - x);
+				} else { // Is pressing
+					textLine.changeSelection((float)Mouse.getX() - x);
+				}
+			} else {
+				textLine.unselect();
+			}
 		} else if (!Mouse.isLeftButtonPressed()) {
 			if (hasPressed) { // just released left button
-				if (isInside(Mouse.getCurrentPos())) {
-					focused = true;
-				} else {
-					focused = false;
-				}
+				focused = true;
+				hasPressed = false;
+				textLine.endSelection((float)Mouse.getX() - x);
 			}
-			hasPressed = false;
 		}
+		
+		textLine.render(x + 2, y);
 		
 		if (focused) {
 			if (Keyboard.hasCharSequence()) {
 				char[] chars = Keyboard.getCharSequence();
-				for(int i = 0; i < chars.length; i++) {
-					if(chars[i] == '\0') { // Backspace.
-						if(text.length() > 0)
-							text = text.substring(0, text.length() - 1);
-					} else {
-						text += chars[i];
-					}
-				}
-				cursorVisible = true;
+				textLine.addText(new String(chars));
 			}
-			
-			if (cursorVisible) {
-				NGraphics.setColor(0, 0, 0);
-				NGraphics.drawText(x + 2 + textWidth, y + height/2 - textHeight, "_");
-			}
-			
-			if (cursorCounter >= 30) {
-				cursorVisible = !cursorVisible;
-				cursorCounter = 0;
-			}
-			cursorCounter++;
 		}
 	}
 	

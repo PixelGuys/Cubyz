@@ -2,8 +2,16 @@ package cubyz.gui;
 
 import static org.lwjgl.nanovg.NanoVG.*;
 import static org.lwjgl.nanovg.NanoVGGL3.*;
+import static org.lwjgl.opengl.GL11.GL_BLEND;
+import static org.lwjgl.opengl.GL11.GL_CULL_FACE;
 import static org.lwjgl.opengl.GL11.GL_DEPTH_TEST;
+import static org.lwjgl.opengl.GL11.GL_ONE_MINUS_SRC_ALPHA;
+import static org.lwjgl.opengl.GL11.GL_SRC_ALPHA;
+import static org.lwjgl.opengl.GL11.glBlendFunc;
 import static org.lwjgl.opengl.GL11.glDisable;
+import static org.lwjgl.opengl.GL11.glEnable;
+import static org.lwjgl.opengl.GL13.GL_TEXTURE0;
+import static org.lwjgl.opengl.GL13.glActiveTexture;
 import static org.lwjgl.system.MemoryUtil.*;
 
 import java.util.ArrayDeque;
@@ -114,7 +122,6 @@ public class UISystem extends Hud {
 		Font.register("Title", "assets/cubyz/fonts/opensans/OpenSans-Bold.ttf", nvg);
 		Font.register("Bold", "assets/cubyz/fonts/opensans/OpenSans-Bold.ttf", nvg);
 		Font.register("Light", "assets/cubyz/fonts/opensans/OpenSans-Light.ttf", nvg);
-		NGraphics.setNanoID(nvg);
 		inited = true;
 	}
 
@@ -123,11 +130,15 @@ public class UISystem extends Hud {
 		if (inited) {
 			super.render();
 			glDisable(GL_DEPTH_TEST);
+			glDisable(GL_CULL_FACE);
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			glActiveTexture(GL_TEXTURE0);
 			transitionDur += System.currentTimeMillis() - lastAnimTime;
 			lastAnimTime = System.currentTimeMillis();
 			nvgBeginFrame(nvg, Window.getWidth(), Window.getHeight(), 1);
-			NGraphics.setGlobalAlphaMultiplier(1f);
-			NGraphics.setColor(0, 0, 0);
+			Graphics.setGlobalAlphaMultiplier(1);
+			Graphics.setColor(0x000000);
 			if (curTransition == TransitionStyle.FADE_OUT_IN) {
 				// those values are meant to be tweaked and will be available for fine tuning from setMenu later
 				float fadeSpeed = 250f;
@@ -139,11 +150,11 @@ public class UISystem extends Hud {
 				float alpha1 = Math.min(Math.max(((float) transitionDur-fadeSpeedHalf)/fadeSpeedHalf, 0f), 1f);
 				float alpha2 = Math.min(Math.max(1f - (float) transitionDur/fadeSpeedHalf, 0f), 1f);
 				if (gui != null) {
-					NGraphics.setGlobalAlphaMultiplier(alpha1);
+					Graphics.setGlobalAlphaMultiplier(alpha1);
 					gui.render(nvg);
 				}
 				if (oldGui != null) {
-					NGraphics.setGlobalAlphaMultiplier(alpha2);
+					Graphics.setGlobalAlphaMultiplier(alpha2);
 					oldGui.render(nvg);
 				}
 			} else {
@@ -151,7 +162,7 @@ public class UISystem extends Hud {
 					gui.render(nvg);
 				}
 			}
-			NGraphics.setGlobalAlphaMultiplier(1f);
+			Graphics.setGlobalAlphaMultiplier(1f);
 			for (MenuGUI overlay : overlays) {
 				overlay.render(nvg);
 			}
