@@ -32,7 +32,7 @@ public class TextInput extends Component {
 	}
 
 	@Override
-	public void render(long nvg, int x, int y) {
+	public void render(int x, int y) {
 		Graphics.setColor(0x7F7F7F);
 		Graphics.fillRect(x - 3, y - 3, width + 6, height + 6);
 		

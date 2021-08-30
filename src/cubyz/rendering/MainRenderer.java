@@ -590,7 +590,7 @@ public class MainRenderer {
 			}
 			blockShader.unbind();
 		}
-		Cubyz.hud.render();
+		Cubyz.gameUI.render();
 	}
 
 	public void cleanup() {

@@ -26,7 +26,7 @@ public class SaveCreationGUI extends MenuGUI {
 	private TextInput name;
 	
 	@Override
-	public void init(long nvg) {
+	public void init() {
 		name = new TextInput();
 		create = new Button();
 		cancel = new Button();
@@ -64,10 +64,10 @@ public class SaveCreationGUI extends MenuGUI {
 	}
 
 	@Override
-	public void render(long nvg) {
-		name.render(nvg);
-		create.render(nvg);
-		cancel.render(nvg);
+	public void render() {
+		name.render();
+		create.render();
+		cancel.render();
 	}
 	
 	@Override

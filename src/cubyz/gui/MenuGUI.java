@@ -18,8 +18,8 @@ public abstract class MenuGUI implements RegistryElement {
 		this.id = id;
 	}
 	
-	public abstract void init(long nvg);
-	public abstract void render(long nvg);
+	public abstract void init();
+	public abstract void render();
 	
 	public abstract boolean doesPauseGame();
 	

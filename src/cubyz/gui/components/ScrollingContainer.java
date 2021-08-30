@@ -13,12 +13,12 @@ public class ScrollingContainer extends Container {
 	int mPickY = -1;
 	
 	@Override
-	public void render(long nvg, int x, int y) {
+	public void render(int x, int y) {
 		maxY = 0;
 		for (Component child : childrens) {
 			maxY = Math.max(maxY, child.getY()+child.getHeight());
 			child.setY(child.getY() - scrollY);
-			child.render(nvg);
+			child.render();
 			child.setY(child.getY() + scrollY);
 		}
 		if (maxY > height) {

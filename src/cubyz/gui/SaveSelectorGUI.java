@@ -32,7 +32,7 @@ public class SaveSelectorGUI extends MenuGUI {
 	private Button back;
 	
 	@Override
-	public void init(long nvg) {
+	public void init() {
 		int y = 10;
 		// Find all save folders that currently exist:
 		File folder = new File("saves");
@@ -101,7 +101,7 @@ public class SaveSelectorGUI extends MenuGUI {
 					// Remove the buttons:
 					saveButtons[index] = null;
 					deleteButtons[index] = null;
-					init(nvg); // re-init to re-order
+					init(); // re-init to re-order
 				}
 			});
 			y += 60;
@@ -123,18 +123,18 @@ public class SaveSelectorGUI extends MenuGUI {
 	}
 
 	@Override
-	public void render(long nvg) {
+	public void render() {
 		for (Button b : saveButtons) {
 			if(b != null)
-				b.render(nvg);
+				b.render();
 		}
 		for (Button b : deleteButtons) {
 			if(b != null)
-				b.render(nvg);
+				b.render();
 		}
-		if(createNew == null) init(nvg);
-		createNew.render(nvg);
-		back.render(nvg);
+		if(createNew == null) init();
+		createNew.render();
+		back.render();
 	}
 
 	@Override

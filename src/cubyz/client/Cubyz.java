@@ -8,7 +8,6 @@ import org.joml.Vector3f;
 import cubyz.gui.UISystem;
 import cubyz.rendering.Camera;
 import cubyz.rendering.Fog;
-import cubyz.rendering.Hud;
 import cubyz.rendering.RenderOctTree;
 import cubyz.world.Surface;
 import cubyz.world.World;
@@ -22,7 +21,6 @@ public class Cubyz {
 	public static Camera camera = new Camera();
 	public static Fog fog = new Fog(true, new Vector3f(0.5f, 0.5f, 0.5f), 0.025f);
 	public static UISystem gameUI = new UISystem();
-	public static Hud hud = new Hud();
 	public static Deque<Runnable> renderDeque = new ArrayDeque<>();
 	public static RenderOctTree chunkTree = new RenderOctTree();
 	

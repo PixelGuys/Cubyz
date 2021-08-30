@@ -42,7 +42,7 @@ public abstract class GeneralInventory extends MenuGUI {
 	}
 
 	@Override
-	public void init(long nvg) {
+	public void init() {
 		Mouse.setGrabbed(false);
 		num = new Label();
 		num.setTextAlign(Component.ALIGN_CENTER);
@@ -50,12 +50,12 @@ public abstract class GeneralInventory extends MenuGUI {
 	}
 
 	@Override
-	public void render(long nvg) {
+	public void render() {
 		Graphics.setColor(0xDFDFDF);
 		Graphics.fillRect(Window.getWidth()/2f-width/2f, Window.getHeight()-height, width, height);
 		Graphics.setColor(0x000000);
 		for(int i = 0; i < inv.length; i++) {
-			inv[i].render(nvg);
+			inv[i].render();
 		}
 		// Check if the mouse takes up a new ItemStack/sets one down.
 		mouseAction();
@@ -71,7 +71,7 @@ public abstract class GeneralInventory extends MenuGUI {
 			Graphics.drawImage(item.getImage(), x - 32, y - 32, 64, 64);
 			num.setText("" + carried.getAmount());
 			num.setPosition(x+50-32, y+48-32, Component.ALIGN_TOP_LEFT);
-			num.render(nvg);
+			num.render();
 		}
 		// Draw tooltips, when the nothing is carried.
 		if(item == null) {

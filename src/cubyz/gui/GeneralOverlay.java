@@ -11,12 +11,12 @@ public class GeneralOverlay extends MenuGUI {
 	Toast currentToast;
 	
 	@Override
-	public void init(long nvg) {
+	public void init() {
 		
 	}
 
 	@Override
-	public void render(long nvg) {
+	public void render() {
 		// Toasts
 		if(!ToastManager.queuedToasts.isEmpty() && currentToast == null) {
 			currentToast = ToastManager.queuedToasts.pop();

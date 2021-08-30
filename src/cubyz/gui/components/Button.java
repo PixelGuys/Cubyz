@@ -105,7 +105,7 @@ public class Button extends Component {
 	}
 
 	@Override
-	public void render(long nvg, int x, int y) {
+	public void render(int x, int y) {
 		if (Mouse.isLeftButtonPressed() && canRepress && isInside(Mouse.getCurrentPos())) {
 			pressed = true;
 			canRepress = false;
@@ -136,7 +136,7 @@ public class Button extends Component {
 				drawTexture(button, x, y);
 			}
 		}
-		textLabel.render(nvg, x + width/2, y + height/2);
+		textLabel.render(x + width/2, y + height/2);
 	}
 	
 }

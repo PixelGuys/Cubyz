@@ -227,14 +227,14 @@ public class WorkbenchGUI extends GeneralInventory {
 	}
 	
 	@Override
-	public void render(long nvg) {
-		super.render(nvg);
+	public void render() {
+		super.render();
 
-		normal.render(nvg);
-		axe.render(nvg);
-		pickaxe.render(nvg);
-		shovel.render(nvg);
-		sword.render(nvg);
+		normal.render();
+		axe.render();
+		pickaxe.render();
+		shovel.render();
+		sword.render();
 	}
 
 }

@@ -263,8 +263,6 @@ public class GameLogic implements ClientConnection {
 			System.exit(1);
 		}
 		
-		Cubyz.gameUI.init();
-		Cubyz.hud = Cubyz.gameUI;
 		Logger.log("Version " + Constants.GAME_VERSION + " of brand " + Constants.GAME_BRAND);
 		Logger.log("LWJGL Version: " + Version.VERSION_MAJOR + "." + Version.VERSION_MINOR + "." + Version.VERSION_REVISION);
 		Logger.log("Jungle Version: " + Constants.GAME_VERSION + "-cubyz");

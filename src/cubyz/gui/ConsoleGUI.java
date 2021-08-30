@@ -19,15 +19,15 @@ public class ConsoleGUI extends MenuGUI {
 	TextInput input;
 	
 	@Override
-	public void init(long nvg) {
+	public void init() {
 		input = new TextInput();
 		input.setBounds(0, 0, 200, 20, Component.ALIGN_TOP_LEFT);
 		Mouse.setGrabbed(false);
 	}
 
 	@Override
-	public void render(long nvg) {
-		input.render(nvg);
+	public void render() {
+		input.render();
 		if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_ENTER)) {
 			String text = input.getText();
 			CommandExecutor.execute(text, Cubyz.player);

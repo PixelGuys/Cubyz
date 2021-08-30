@@ -1,7 +1,5 @@
 package cubyz.gui;
 
-import static org.lwjgl.nanovg.NanoVG.*;
-import static org.lwjgl.nanovg.NanoVGGL3.*;
 import static org.lwjgl.opengl.GL11.GL_BLEND;
 import static org.lwjgl.opengl.GL11.GL_CULL_FACE;
 import static org.lwjgl.opengl.GL11.GL_DEPTH_TEST;
@@ -12,24 +10,19 @@ import static org.lwjgl.opengl.GL11.glDisable;
 import static org.lwjgl.opengl.GL11.glEnable;
 import static org.lwjgl.opengl.GL13.GL_TEXTURE0;
 import static org.lwjgl.opengl.GL13.glActiveTexture;
-import static org.lwjgl.system.MemoryUtil.*;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 
 import cubyz.gui.input.Mouse;
-import cubyz.rendering.Font;
 import cubyz.rendering.Graphics;
-import cubyz.rendering.Hud;
 import cubyz.rendering.Window;
 
 /**
  * UI system working in the background, to add effects like transition.
  */
 
-public class UISystem extends Hud {
-
-	private boolean inited = false;
+public class UISystem {
 	
 	private MenuGUI gui;
 	/** kept only for transition effect */
@@ -45,7 +38,7 @@ public class UISystem extends Hud {
 	public UISystem() {}
 	
 	public void addOverlay(MenuGUI over) {
-		over.init(nvg);
+		over.init();
 		overlays.add(over);
 	}
 	
@@ -89,7 +82,7 @@ public class UISystem extends Hud {
 			this.gui.close();
 		}
 		if (gui != null) {
-			gui.init(nvg);
+			gui.init();
 		}
 		this.gui = gui;
 		if (gui != null && gui.ungrabsMouse() && (this.gui == null ? true : !this.gui.ungrabsMouse())) {
@@ -112,63 +105,44 @@ public class UISystem extends Hud {
 		return gui == null ? false : gui.doesPauseGame();
 	}
 
-	@Override
-	public void init() throws Exception {
-		nvg = nvgCreate(0);
-	    if (nvg == NULL) {
-	        throw new Exception("Could not init NanoVG");
-	    }
-		Font.register("Default", "assets/cubyz/fonts/opensans/OpenSans-Bold.ttf", nvg);
-		Font.register("Title", "assets/cubyz/fonts/opensans/OpenSans-Bold.ttf", nvg);
-		Font.register("Bold", "assets/cubyz/fonts/opensans/OpenSans-Bold.ttf", nvg);
-		Font.register("Light", "assets/cubyz/fonts/opensans/OpenSans-Light.ttf", nvg);
-		inited = true;
-	}
-
-	@Override
 	public void render() {
-		if (inited) {
-			super.render();
-			glDisable(GL_DEPTH_TEST);
-			glDisable(GL_CULL_FACE);
-			glEnable(GL_BLEND);
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-			glActiveTexture(GL_TEXTURE0);
-			transitionDur += System.currentTimeMillis() - lastAnimTime;
-			lastAnimTime = System.currentTimeMillis();
-			nvgBeginFrame(nvg, Window.getWidth(), Window.getHeight(), 1);
-			Graphics.setGlobalAlphaMultiplier(1);
-			Graphics.setColor(0x000000);
-			if (curTransition == TransitionStyle.FADE_OUT_IN) {
-				// those values are meant to be tweaked and will be available for fine tuning from setMenu later
-				float fadeSpeed = 250f;
-				float fadeSpeedHalf = fadeSpeed / 2f;
-				if (transitionDur >= fadeSpeed) {
-					curTransition = null;
-					oldGui = null;
-				}
-				float alpha1 = Math.min(Math.max(((float) transitionDur-fadeSpeedHalf)/fadeSpeedHalf, 0f), 1f);
-				float alpha2 = Math.min(Math.max(1f - (float) transitionDur/fadeSpeedHalf, 0f), 1f);
-				if (gui != null) {
-					Graphics.setGlobalAlphaMultiplier(alpha1);
-					gui.render(nvg);
-				}
-				if (oldGui != null) {
-					Graphics.setGlobalAlphaMultiplier(alpha2);
-					oldGui.render(nvg);
-				}
-			} else {
-				if (gui != null) {
-					gui.render(nvg);
-				}
+		glDisable(GL_DEPTH_TEST);
+		glDisable(GL_CULL_FACE);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glActiveTexture(GL_TEXTURE0);
+		transitionDur += System.currentTimeMillis() - lastAnimTime;
+		lastAnimTime = System.currentTimeMillis();
+		Graphics.setGlobalAlphaMultiplier(1);
+		Graphics.setColor(0x000000);
+		if (curTransition == TransitionStyle.FADE_OUT_IN) {
+			// those values are meant to be tweaked and will be available for fine tuning from setMenu later
+			float fadeSpeed = 250f;
+			float fadeSpeedHalf = fadeSpeed / 2f;
+			if (transitionDur >= fadeSpeed) {
+				curTransition = null;
+				oldGui = null;
 			}
-			Graphics.setGlobalAlphaMultiplier(1f);
-			for (MenuGUI overlay : overlays) {
-				overlay.render(nvg);
+			float alpha1 = Math.min(Math.max(((float) transitionDur-fadeSpeedHalf)/fadeSpeedHalf, 0f), 1f);
+			float alpha2 = Math.min(Math.max(1f - (float) transitionDur/fadeSpeedHalf, 0f), 1f);
+			if (gui != null) {
+				Graphics.setGlobalAlphaMultiplier(alpha1);
+				gui.render();
 			}
-			nvgEndFrame(nvg);
-			Window.restoreState();
+			if (oldGui != null) {
+				Graphics.setGlobalAlphaMultiplier(alpha2);
+				oldGui.render();
+			}
+		} else {
+			if (gui != null) {
+				gui.render();
+			}
 		}
+		Graphics.setGlobalAlphaMultiplier(1f);
+		for (MenuGUI overlay : overlays) {
+			overlay.render();
+		}
+		Window.restoreState();
 	}
 
 }

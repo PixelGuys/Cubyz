@@ -54,7 +54,7 @@ public class CheckBox extends Component {
 	private boolean canRepress = true;
 
 	@Override
-	public void render(long nvg, int x, int y) {
+	public void render(int x, int y) {
 		Graphics.setColor(0x000000);
 		Graphics.drawRect(x, y, width, height);
 		if(Mouse.isLeftButtonPressed() && isInside(Mouse.getCurrentPos())) {
@@ -77,7 +77,7 @@ public class CheckBox extends Component {
 			Graphics.fillRect(x + 3, y + 3, width - 6, height - 6);
 		}
 		if (label != null) {
-			label.render(nvg, x + width + 5, y + height/2);
+			label.render(x + width + 5, y + height/2);
 		}
 	}
 }

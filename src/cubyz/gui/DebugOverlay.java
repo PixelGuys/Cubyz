@@ -27,7 +27,7 @@ public class DebugOverlay extends MenuGUI {
 	long lastFpsCount = System.currentTimeMillis();
 	
 	@Override
-	public void render(long nvg) {
+	public void render() {
 		if(GameLauncher.input.clientShowDebug) {
 			Graphics.setFont(Fonts.PIXEL_FONT, 16.0F);
 			Graphics.setColor(0xFFFFFF);
@@ -93,6 +93,6 @@ public class DebugOverlay extends MenuGUI {
 	}
 
 	@Override
-	public void init(long nvg) {}
+	public void init() {}
 
 }

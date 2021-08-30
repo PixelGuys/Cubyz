@@ -22,7 +22,7 @@ public class KeybindingsGUI extends MenuGUI {
 	private String listen;
 	
 	@Override
-	public void init(long nvg) {
+	public void init() {
 		initUI();
 	}
 	
@@ -132,8 +132,7 @@ public class KeybindingsGUI extends MenuGUI {
 	}
 
 	@Override
-	public void render(long nvg) {
-		
+	public void render() {
 		if(listen != null) {
 			if(Keyboard.hasKeyCode()) {
 				Keybindings.setKeyCode(listen, Keyboard.getKeyCode());
@@ -156,8 +155,8 @@ public class KeybindingsGUI extends MenuGUI {
 		
 		container.setBounds(0, 0, Window.getWidth(), Window.getHeight() - 70, Component.ALIGN_TOP_LEFT);
 		
-		container.render(nvg);
-		done.render(nvg);
+		container.render();
+		done.render();
 	}
 	
 	@Override

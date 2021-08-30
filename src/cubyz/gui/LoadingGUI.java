@@ -56,7 +56,7 @@ public class LoadingGUI extends MenuGUI {
 	}
 	
 	@Override
-	public void init(long nvg) {
+	public void init() {
 		pb1.setMaxValue(5);
 	}
 
@@ -69,7 +69,7 @@ public class LoadingGUI extends MenuGUI {
 	}
 	
 	@Override
-	public void render(long nvg) {
+	public void render() {
 		if (splash == null) {
 			splash = Texture.loadFromFile(ResourceManager.lookupPath("cubyz/textures/splash.png"));
 		}		
@@ -94,14 +94,14 @@ public class LoadingGUI extends MenuGUI {
 		setBounds(0.25f, 0.75f, 0.5f, 0.1f, pb2);
 		setPosition(0.5f, 0.6f, step);
 		setPosition(0.5f, 0.8f, step2);
-		pb1.render(nvg);
+		pb1.render();
 		if (hasStep2) {
-			pb2.render(nvg);
+			pb2.render();
 		}
 		Graphics.setColor(0x000000);
-		step.render(nvg);
+		step.render();
 		if (hasStep2) {
-			step2.render(nvg);
+			step2.render();
 		}
 	}
 	

@@ -27,7 +27,7 @@ public class GameOverlay extends MenuGUI {
 	private InventorySlot inv [] = new InventorySlot[8];
 	
 	@Override
-	public void init(long nvg) {
+	public void init() {
 		crosshair = Texture.loadFromFile("assets/cubyz/textures/crosshair.png");
 		selection = Texture.loadFromFile("assets/cubyz/guis/inventory/selected_slot.png");
 		healthBar = new Texture[8];
@@ -55,14 +55,14 @@ public class GameOverlay extends MenuGUI {
 	}
 
 	@Override
-	public void render(long nvg) {
+	public void render() {
 		Graphics.drawImage(crosshair, Window.getWidth()/2 - 16, Window.getHeight()/2 - 16, 32, 32);
 		Graphics.setColor(0x000000);
 		if(!(Cubyz.gameUI.getMenuGUI() instanceof GeneralInventory)) {
 			Graphics.drawImage(selection, Window.getWidth()/2 - 254 + Cubyz.inventorySelection*64, Window.getHeight() - 62, 60, 60);
 			for(int i = 0; i < 8; i++) {
 				inv[i].reference = Cubyz.player.getInventory().getStack(i); // without it, if moved in inventory, stack won't refresh
-				inv[i].render(nvg);
+				inv[i].render();
 			}
 		}
 		// Draw the health bar:

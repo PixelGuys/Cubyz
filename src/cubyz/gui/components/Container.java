@@ -30,9 +30,9 @@ public abstract class Container extends Component {
 	}
 
 	@Override
-	public void render(long nvg) {
+	public void render() {
 		for (Component child : childrens) {
-			child.render(nvg);
+			child.render();
 		}
 	}
 	

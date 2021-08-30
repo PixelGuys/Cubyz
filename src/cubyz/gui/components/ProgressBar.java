@@ -30,7 +30,7 @@ public class ProgressBar extends Component {
 	}
 
 	@Override
-	public void render(long nvg, int x, int y) {
+	public void render(int x, int y) {
 		Graphics.setColor(0xff0000);
 		Graphics.fillRect(x, y, (width / maxValue) * value, height);
 		Graphics.setColor(0x000000);

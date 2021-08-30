@@ -29,7 +29,7 @@ public class SettingsGUI extends MenuGUI {
 	private String[] languages;
 	
 	@Override
-	public void init(long nvg) {
+	public void init() {
 		// Dynamically load the list of languages:
 		File[] assetsFolders = ResourceManager.listFiles("");
 		ArrayList<String> languageFiles = new ArrayList<>();
@@ -105,14 +105,14 @@ public class SettingsGUI extends MenuGUI {
 	}
 
 	@Override
-	public void render(long nvg) {
+	public void render() {
 		rpc.setText(DiscordIntegration.isEnabled() ? rpcKeyOn : rpcKeyOff);
 
-		done.render(nvg);
-		graphics.render(nvg);
-		language.render(nvg);
-		rpc.render(nvg);
-		bindings.render(nvg);
+		done.render();
+		graphics.render();
+		language.render();
+		rpc.render();
+		bindings.render();
 	}
 	
 	@Override

@@ -71,7 +71,7 @@ public abstract class Component {
 		return isInside((int) vec.x, (int) vec.y);
 	}
 
-	public void render(long nvg) {
+	public void render() {
 		// Calculate coordinates in the window:
 		if((align & ALIGN_LEFT) != 0) {
 			lastRenderX = x;
@@ -88,7 +88,7 @@ public abstract class Component {
 			lastRenderY = Window.getHeight()/2 + y;
 		}
 		// Call the subclass render function:
-		render(nvg, lastRenderX, lastRenderY);
+		render(lastRenderX, lastRenderY);
 	}
 	
 	/**
@@ -98,9 +98,9 @@ public abstract class Component {
 	 * @param x coordinate with alignment considered.
 	 * @param y coordinate with alignment considered.
 	 */
-	public abstract void render(long nvg, int x, int y);
+	public abstract void render(int x, int y);
 	
-	public void init(long nvg) {}
-	public void dispose(long nvg) {}
+	public void init() {}
+	public void dispose() {}
 	
 }

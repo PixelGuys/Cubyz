@@ -57,12 +57,12 @@ public class MainMenuGUI extends MenuGUI {
 	}
 	
 	@Override
-	public void render(long nvg) {
-		spPlay.render(nvg);
-		mpPlay.render(nvg);
-		settings.render(nvg);
-		exit.render(nvg);
-		titleLabel.render(nvg);
+	public void render() {
+		spPlay.render();
+		mpPlay.render();
+		settings.render();
+		exit.render();
+		titleLabel.render();
 	}
 	
 	@Override
@@ -76,6 +76,6 @@ public class MainMenuGUI extends MenuGUI {
 	}
 
 	@Override
-	public void init(long nvg) {}
+	public void init() {}
 
 }

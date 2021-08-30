@@ -170,7 +170,7 @@ public class InventorySlot extends Component {
 	}
 
 	@Override
-	public void render(long nvg, int x, int y) {
+	public void render(int x, int y) {
 		Graphics.drawImage(SLOT_IMAGE, x, y, width, height);
 		Item item = reference.getItem();
 		if(item != null) {
@@ -196,7 +196,7 @@ public class InventorySlot extends Component {
 				Graphics.setColor(0x000000);
 			}
 			inv.setText("" + reference.getAmount());
-			inv.render(nvg, x + 50, y + 48);
+			inv.render(x + 50, y + 48);
 		}
 	}
 

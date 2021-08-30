@@ -27,7 +27,7 @@ public class GraphicsGUI extends MenuGUI {
 	}
 	
 	@Override
-	public void init(long nvg) {
+	public void init() {
 		done.setBounds(-125, 75, 250, 45, Component.ALIGN_BOTTOM);
 		done.setText(TextKey.createTextKey("gui.cubyz.settings.done"));
 		done.setFontSize(32f);
@@ -111,15 +111,15 @@ public class GraphicsGUI extends MenuGUI {
 	}
 
 	@Override
-	public void render(long nvg) {
-		renderDistance.render(nvg);
-		highestLOD.render(nvg);
-		LODFactor.render(nvg);
-		effectiveRenderDistance.render(nvg);
-		done.render(nvg);
-		fog.render(nvg);
-		easyLighting.render(nvg);
-		vsync.render(nvg);
+	public void render() {
+		renderDistance.render();
+		highestLOD.render();
+		LODFactor.render();
+		effectiveRenderDistance.render();
+		done.render();
+		fog.render();
+		easyLighting.render();
+		vsync.render();
 	}
 	
 	@Override

@@ -69,7 +69,7 @@ public class Slider extends Component {
 	}
 
 	@Override
-	public void render(long nvg, int x, int y) {
+	public void render(int x, int y) {
 		if (Mouse.isLeftButtonPressed() && isInside(Mouse.getCurrentPos())) {
 			double dx = Mouse.getCurrentPos().x - x;
 			dx -= xOffset;

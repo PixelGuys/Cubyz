@@ -22,7 +22,7 @@ public class PauseGUI extends MenuGUI {
 	private Button settings;
 	
 	@Override
-	public void init(long nvg) {
+	public void init() {
 		Mouse.setGrabbed(false);
 		if (Cubyz.world != null) {
 			if (Cubyz.world.isLocal()) {
@@ -73,18 +73,18 @@ public class PauseGUI extends MenuGUI {
 	}
 
 	@Override
-	public void render(long nvg) {
+	public void render() {
 		if (Keybindings.isPressed("menu")) {
 			Keyboard.setKeyPressed(Keybindings.getKeyCode("menu"), false);
 			Mouse.setGrabbed(true);
 			Cubyz.gameUI.setMenu(null, TransitionStyle.NONE);
 		}
-		if(resume == null) init(nvg); // Prevents a bug that sometimes occurs.
-		exit.render(nvg);
-		resume.render(nvg);
-		settings.render(nvg);
+		if(resume == null) init(); // Prevents a bug that sometimes occurs.
+		exit.render();
+		resume.render();
+		settings.render();
 		if (GameLauncher.input.clientShowDebug) {
-			reload.render(nvg);
+			reload.render();
 		}
 	}
 

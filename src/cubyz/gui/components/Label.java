@@ -76,7 +76,7 @@ public class Label extends Component {
 	}
 
 	@Override
-	public void render(long nvg, int x, int y) {
+	public void render(int x, int y) {
 		line.updateText(text.getTranslation());
 		this.width = (int)line.getWidth();
 		// Calculate text alignment:
