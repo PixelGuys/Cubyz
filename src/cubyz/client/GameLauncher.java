@@ -30,5 +30,4 @@ public abstract class GameLauncher {
 			throw e;
 		}
 	}
-	
 }

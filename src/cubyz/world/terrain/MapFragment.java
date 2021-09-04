@@ -96,17 +96,16 @@ public class MapFragment {
 		Biome[][] biomeMap = new Biome[scaledSize][scaledSize];
 		// Create the biomes that will be placed on the map:
 		BiomePoint[][] biomePositions = new BiomePoint[MAP_SIZE/BIOME_SIZE + 3][MAP_SIZE/BIOME_SIZE + 3];
+		Biome.Type[][] typeMap = ClimateMap.getBiomeMap(seed, wx - BIOME_SIZE, wz - BIOME_SIZE, MAP_SIZE + 3*BIOME_SIZE, MAP_SIZE + 3*BIOME_SIZE);
 		Random rand = new Random();
 		for(int x = -BIOME_SIZE; x <= MAP_SIZE + BIOME_SIZE; x += BIOME_SIZE) {
 			for(int z = -BIOME_SIZE; z <= MAP_SIZE + BIOME_SIZE; z += BIOME_SIZE) {
 				rand.setSeed((x + wx)*65784967549L + (z + wz)*6758934659L + seed);
-				// TODO: Select Biome type based on temperature and humidity.
-				Biome.Type type = Biome.Type.values()[rand.nextInt(Biome.Type.values().length)];
-				if(type == Biome.Type.TRENCH || type == Biome.Type.ETERNAL_DARKNESS) {
-					type = Biome.Type.OCEAN;
-				}
+				int xIndex = x/BIOME_SIZE + 1;
+				int zIndex = z/BIOME_SIZE + 1;
+				Biome.Type type = typeMap[xIndex][zIndex];
 				Biome biome = registries.biomeRegistry.byTypeBiomes.get(type).getRandomly(rand);
-				biomePositions[x/BIOME_SIZE + 1][z/BIOME_SIZE + 1] = new BiomePoint(biome, (x + rand.nextInt(BIOME_SIZE) - BIOME_SIZE/2)/(float)resolution, (z + rand.nextInt(BIOME_SIZE) - BIOME_SIZE/2)/(float)resolution, rand.nextFloat()*(biome.maxHeight - biome.minHeight) + biome.minHeight, rand.nextLong());
+				biomePositions[xIndex][zIndex] = new BiomePoint(biome, (x + rand.nextInt(BIOME_SIZE) - BIOME_SIZE/2)/(float)resolution, (z + rand.nextInt(BIOME_SIZE) - BIOME_SIZE/2)/(float)resolution, rand.nextFloat()*(biome.maxHeight - biome.minHeight) + biome.minHeight, rand.nextLong());
 			}
 		}
 		int scaledBiomeSize = BIOME_SIZE/resolution;
