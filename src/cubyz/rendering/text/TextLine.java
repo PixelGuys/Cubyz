@@ -357,6 +357,7 @@ public class TextLine implements KeyListener {
 		public static int loc_fontEffects;
 		public static int loc_fontSize;
 		public static int loc_texture_sampler;
+		public static int loc_alpha;
 	}
 
 	static int textVAO;
@@ -386,6 +387,11 @@ public class TextLine implements KeyListener {
 		glVertexAttribPointer(1, 2, GL_FLOAT, false, 4*4, 8);
 		glEnableVertexAttribArray(0);
 		glEnableVertexAttribArray(1);
+	}
+
+	public static void setGlobalAlphaMultiplier(float multiplier) {
+		textShader.bind();
+		glUniform1f(TextUniforms.loc_alpha, multiplier);
 	}
 	
 	/**

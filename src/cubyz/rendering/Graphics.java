@@ -59,6 +59,7 @@ public class Graphics {
 	 */
 	public static void setGlobalAlphaMultiplier(float multiplier) {
 		globalAlphaMultiplier = multiplier;
+		TextLine.setGlobalAlphaMultiplier(multiplier);
 	}
 	
 

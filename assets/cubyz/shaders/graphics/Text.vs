@@ -15,6 +15,8 @@ uniform vec2 fontSize;
 uniform float ratio;
 uniform int fontEffects;
 
+uniform float alpha;
+
 
 vec2 convert2Proportional(vec2 original,vec2 full) {
 	return vec2(original.x/full.x,original.y/full.y);
@@ -36,5 +38,5 @@ void main() {
 	
 	gl_Position = vec4(position,0,1);
 	frag_face_pos = face_pos;
-	color = vec4((fontEffects & 0xff0000)>>16, (fontEffects & 0xff00)>>8, fontEffects & 0xff, 255)/255.0;
+	color = vec4(vec3((fontEffects & 0xff0000)>>16, (fontEffects & 0xff00)>>8, fontEffects & 0xff)/255.0, alpha);
 }
