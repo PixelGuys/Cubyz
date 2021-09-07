@@ -8,17 +8,22 @@ import static org.lwjgl.opengl.GL30.*;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 
+import org.joml.Vector3f;
 import org.lwjgl.system.MemoryUtil;
 
+import cubyz.rendering.ShaderProgram;
+import cubyz.rendering.Window;
+import cubyz.utils.Utils;
 import cubyz.utils.datastructures.IntFastList;
 import cubyz.utils.math.CubyzMath;
+import cubyz.world.Chunk;
 import cubyz.world.ReducedChunk;
 
 /**
  * Used to create chunk meshes for reduced chunks.
  */
 
-public class ReducedChunkMesh {
+public class ReducedChunkMesh extends ChunkMesh {
 	// ThreadLocal lists, to prevent (re-)allocating tons of memory.
 	public static ThreadLocal<IntFastList> localVertices = new ThreadLocal<IntFastList>() {
 		@Override
@@ -38,14 +43,59 @@ public class ReducedChunkMesh {
 			return new IntFastList(20000);
 		}
 	};
+
+	// Shader stuff:
+	public static int loc_projectionMatrix;
+	public static int loc_viewMatrix;
+	public static int loc_modelPosition;
+	public static int loc_ambientLight;
+	public static int loc_directionalLight;
+	public static int loc_fog_activ;
+	public static int loc_fog_color;
+	public static int loc_fog_density;
+
+	public static ShaderProgram shader;
+	
+	public static void init(String shaderFolder) throws Exception {
+		shader = new ShaderProgram(Utils.loadResource(shaderFolder + "/chunk_vertex.vs"),
+				Utils.loadResource(shaderFolder + "/chunk_fragment.fs"),
+				ReducedChunkMesh.class);
+	}
+
+	public static void bindShader(Vector3f ambient, Vector3f directional) {
+		shader.bind();
+
+		shader.setUniform(loc_fog_activ, Cubyz.fog.isActive());
+		shader.setUniform(loc_fog_color, Cubyz.fog.getColor());
+		shader.setUniform(loc_fog_density, Cubyz.fog.getDensity());
+		shader.setUniform(loc_projectionMatrix, Window.getProjectionMatrix());
+		
+		shader.setUniform(loc_viewMatrix, Cubyz.camera.getViewMatrix());
+
+		shader.setUniform(loc_ambientLight, ambient);
+		shader.setUniform(loc_directionalLight, directional);
+	}
 	
 	protected int vaoId;
 
-	protected ArrayList<Integer> vboIdList;
+	protected ArrayList<Integer> vboIdList = new ArrayList<>();
 
 	protected int vertexCount;
 
-	public ReducedChunkMesh(ReducedChunk chunk) {
+	private ReducedChunk chunk;
+
+	private boolean needsUpdate = false;
+
+	public ReducedChunkMesh(ReducedChunkMesh replacement, int wx, int wy, int wz, int size) {
+		super(replacement, wx, wy, wz, size);
+	}
+	
+	@Override
+	public void regenerateMesh() {
+		cleanUp();
+		ReducedChunk chunk = this.chunk;
+		if(chunk == null) return;
+		needsUpdate = false;
 		IntFastList vertices = localVertices.get();
 		IntFastList faces = localFaces.get();
 		IntFastList colorsAndNormals = localColorsAndNormals.get();
@@ -58,7 +108,10 @@ public class ReducedChunkMesh {
 		IntBuffer colorAndNormalBuffer = null;
 		try {
 			vertexCount = faces.size;
-			vboIdList = new ArrayList<>();
+			if(vertexCount == 0)
+				return;
+			
+			vboIdList.clear();
 
 			vaoId = glGenVertexArrays();
 			glBindVertexArray(vaoId);
@@ -104,7 +157,33 @@ public class ReducedChunkMesh {
 		}
 	}
 
+	public void updateChunk(ReducedChunk chunk) {
+		if(chunk != this.chunk) {
+			needsUpdate = chunk != null;
+		}
+		this.chunk = chunk;
+	}
+
+	@Override
+	public boolean needsUpdate() {
+		return needsUpdate;
+	}
+
+	@Override
+	public Chunk getChunk() {
+		return chunk;
+	}
+
+	@Override
 	public void render() {
+		if(needsUpdate || chunk == null) {
+			if(replacement != null) {
+				replacement.render();
+			}
+			return;
+		}
+		if(vaoId == -1) return;
+		glUniform3f(loc_modelPosition, wx, wy, wz);
 		// Init
 		glBindVertexArray(vaoId);
 		glEnableVertexAttribArray(0);
@@ -117,6 +196,7 @@ public class ReducedChunkMesh {
 		glBindVertexArray(0);
 	}
 
+	@Override
 	public void cleanUp() {
 		// Delete the VBOs
 		glBindBuffer(GL_ARRAY_BUFFER, 0);

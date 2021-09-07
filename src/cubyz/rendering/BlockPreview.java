@@ -41,7 +41,6 @@ public abstract class BlockPreview {
 	}
 
 	public static void unloadShader() throws Exception {
-		shader.unbind();
 		shader.cleanup();
 		shader = null;
 		System.gc();

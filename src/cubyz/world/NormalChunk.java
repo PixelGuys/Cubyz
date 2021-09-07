@@ -743,6 +743,10 @@ public class NormalChunk extends Chunk {
 		updated = true;
 	}
 	
+	public void setUpdated(boolean updated) {
+		this.updated = updated;
+	}
+	
 	public int startIndex(int start) {
 		return start;
 	}
@@ -772,12 +776,6 @@ public class NormalChunk extends Chunk {
 	@Override
 	public void updateBlock(int x, int y, int z, Block newBlock) {
 		updateBlock(x, y, z, newBlock, newBlock == null ? 0 : newBlock.mode.getNaturalStandard());
-	}
-	
-	@Override
-	public void setChunkMesh(Object mesh) {
-		updated = false;
-		super.setChunkMesh(mesh);
 	}
 
 	@Override

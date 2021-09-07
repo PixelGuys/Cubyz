@@ -5,11 +5,13 @@ import java.util.HashMap;
 
 import org.joml.FrustumIntersection;
 
-import cubyz.client.ClientOnly;
+import cubyz.client.ChunkMesh;
 import cubyz.client.Cubyz;
+import cubyz.client.Meshes;
+import cubyz.client.NormalChunkMesh;
+import cubyz.client.ReducedChunkMesh;
 import cubyz.utils.datastructures.HashMapKey3D;
 import cubyz.utils.math.CubyzMath;
-import cubyz.world.Chunk;
 import cubyz.world.NormalChunk;
 import cubyz.world.ReducedChunk;
 
@@ -20,108 +22,100 @@ public class RenderOctTree {
 		boolean shouldBeRemoved;
 		public OctTreeNode[] nextNodes = null;
 		public final int x, y, z, size;
-		public Chunk chunk;
-		public OctTreeNode(int x, int y, int z, int size) {
+		//public Chunk chunk;
+		public ChunkMesh mesh;
+		public OctTreeNode(ReducedChunkMesh replacement, int x, int y, int z, int size) {
+			System.out.println(replacement);
 			this.x = x;
 			this.y = y;
 			this.z = z;
 			this.size = size;
+			if(size == NormalChunk.chunkSize) {
+				mesh = new NormalChunkMesh(replacement, x, y, z, size);
+			} else {
+				mesh = new ReducedChunkMesh(replacement, x, y, z, size);
+			}
 		}
 		public void update(int px, int py, int pz, int renderDistance, int maxRD, int minHeight, int maxHeight, int nearRenderDistance) {
-			double dx = Math.abs(x + size/2 - px);
-			double dy = Math.abs(y + size/2 - py);
-			double dz = Math.abs(z + size/2 - pz);
-			// Check if this chunk is outside the nearRenderDistance or outside the height limits:
-			if(y + size <= Cubyz.surface.getMapFragment(x, z, 16).getMinHeight() || y > Cubyz.surface.getMapFragment(x, z, 16).getMaxHeight()) {
-				int dx2 = (int)Math.max(0, dx - size/2);
-				int dy2 = (int)Math.max(0, dy - size/2);
-				int dz2 = (int)Math.max(0, dz - size/2);
-				if(dx2*dx2 + dy2*dy2 + dz2*dz2 > nearRenderDistance*nearRenderDistance) return;
-			}
-			
-			// Check if this chunk has reached the smallest possible size:
-			if(size == NormalChunk.chunkSize) {
-				// Check if this is a normal or a reduced chunk:
-				double dist = dx*dx + dy*dy + dz*dz;
-				if(dist < renderDistance*renderDistance) {
-					if(chunk == null || !(chunk instanceof NormalChunk)) {
-						if(chunk != null) {
-							ClientOnly.deleteChunkMesh.accept(chunk);
-							Cubyz.surface.unQueueChunk(chunk);
+			synchronized(this) {
+				double dx = Math.abs(x + size/2 - px);
+				double dy = Math.abs(y + size/2 - py);
+				double dz = Math.abs(z + size/2 - pz);
+				// Check if this chunk is outside the nearRenderDistance or outside the height limits:
+				if(y + size <= Cubyz.surface.getMapFragment(x, z, 16).getMinHeight() || y > Cubyz.surface.getMapFragment(x, z, 16).getMaxHeight()) {
+					int dx2 = (int)Math.max(0, dx - size/2);
+					int dy2 = (int)Math.max(0, dy - size/2);
+					int dz2 = (int)Math.max(0, dz - size/2);
+					if(dx2*dx2 + dy2*dy2 + dz2*dz2 > nearRenderDistance*nearRenderDistance) return;
+				}
+				
+				// Check if this chunk has reached the smallest possible size:
+				if(size == NormalChunk.chunkSize) {
+					// Check if this is a normal or a reduced chunk:
+					double dist = dx*dx + dy*dy + dz*dz;
+					if(dist < renderDistance*renderDistance) {
+						if(mesh.getChunk() == null) {
+							((NormalChunkMesh)mesh).updateChunk(Cubyz.surface.getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift));
 						}
-						chunk = Cubyz.surface.getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift);
+					} else {
+						if(mesh.getChunk() != null) {
+							((NormalChunkMesh)mesh).updateChunk(null);
+						}
 					}
+					return;
+				}
+				// Calculate the minimum distance between the next nodes and the player:
+				dx = Math.max(0, dx - size/4);
+				dy = Math.max(0, dy - size/4);
+				dz = Math.max(0, dz - size/4);
+				double minDist = dx*dx + dy*dy + dz*dz;
+				// Check if parts of this OctTree require using normal chunks:
+				if(size == NormalChunk.chunkSize*2 && minDist < renderDistance*renderDistance) {
+					if(nextNodes == null) {
+						nextNodes = new OctTreeNode[8];
+						for(int i = 0; i < 8; i++) {
+							nextNodes[i] = new OctTreeNode((ReducedChunkMesh)mesh, x + ((i & 1) == 0 ? 0 : size/2), y + ((i & 2) == 0 ? 0 : size/2), z + ((i & 4) == 0 ? 0 : size/2), size/2);
+						}
+					}
+					for(int i = 0; i < 8; i++) {
+						nextNodes[i].update(px, py, pz, renderDistance, maxRD/2, minHeight, maxHeight, nearRenderDistance);
+					}
+				// Check if parts of this OctTree require a higher resolution:
+				} else if(minDist < maxRD*maxRD/4 && size > NormalChunk.chunkSize*2) {
+					if(nextNodes == null) {
+						nextNodes = new OctTreeNode[8];
+						for(int i = 0; i < 8; i++) {
+							nextNodes[i] = new OctTreeNode((ReducedChunkMesh)mesh, x + ((i & 1) == 0 ? 0 : size/2), y + ((i & 2) == 0 ? 0 : size/2), z + ((i & 4) == 0 ? 0 : size/2), size/2);
+						}
+					}
+					for(int i = 0; i < 8; i++) {
+						nextNodes[i].update(px, py, pz, renderDistance, maxRD/2, minHeight, maxHeight, nearRenderDistance);
+					}
+				// This OctTree doesn't require higher resolution:
 				} else {
-					if(chunk == null || (chunk instanceof NormalChunk)) {
-						if(chunk != null) {
-							ClientOnly.deleteChunkMesh.accept(chunk);
-							Cubyz.surface.unQueueChunk(chunk);
+					if(nextNodes != null) {
+						for(int i = 0; i < 8; i++) {
+							nextNodes[i].cleanup();
 						}
-						chunk = new ReducedChunk(x, y, z, 1, NormalChunk.chunkShift);
-						Cubyz.surface.queueChunk(chunk);
+						nextNodes = null;
 					}
 				}
-				return;
-			}
-			// Calculate the minimum distance between the next nodes and the player:
-			dx = Math.max(0, dx - size/4);
-			dy = Math.max(0, dy - size/4);
-			dz = Math.max(0, dz - size/4);
-			double minDist = dx*dx + dy*dy + dz*dz;
-			// Check if parts of this OctTree require using normal chunks:
-			if(size == NormalChunk.chunkSize*2 && minDist < renderDistance*renderDistance) {
-				if(nextNodes == null) {
-					nextNodes = new OctTreeNode[8];
-					for(int i = 0; i < 8; i++) {
-						nextNodes[i] = new OctTreeNode(x + ((i & 1) == 0 ? 0 : size/2), y + ((i & 2) == 0 ? 0 : size/2), z + ((i & 4) == 0 ? 0 : size/2), size/2);
-					}
-				}
-				for(int i = 0; i < 8; i++) {
-					nextNodes[i].update(px, py, pz, renderDistance, maxRD/2, minHeight, maxHeight, nearRenderDistance);
-				}
-				if(chunk != null) {
-					ClientOnly.deleteChunkMesh.accept(chunk);
-					Cubyz.surface.unQueueChunk(chunk);
-					chunk = null;
-				}
-			// Check if parts of this OctTree require a higher resolution:
-			} else if(minDist < maxRD*maxRD/4 && size > NormalChunk.chunkSize*2) {
-				if(nextNodes == null) {
-					nextNodes = new OctTreeNode[8];
-					for(int i = 0; i < 8; i++) {
-						nextNodes[i] = new OctTreeNode(x + ((i & 1) == 0 ? 0 : size/2), y + ((i & 2) == 0 ? 0 : size/2), z + ((i & 4) == 0 ? 0 : size/2), size/2);
-					}
-				}
-				for(int i = 0; i < 8; i++) {
-					nextNodes[i].update(px, py, pz, renderDistance, maxRD/2, minHeight, maxHeight, nearRenderDistance);
-				}
-				if(chunk != null) {
-					ClientOnly.deleteChunkMesh.accept(chunk);
-					Cubyz.surface.unQueueChunk(chunk);
-					chunk = null;
-				}
-			// This OctTree doesn't require higher resolution:
-			} else {
-				if(nextNodes != null) {
-					for(int i = 0; i < 8; i++) {
-						nextNodes[i].cleanup();
-					}
-					nextNodes = null;
-				}
-				if(chunk == null) {
-					chunk = new ReducedChunk(x, y, z, CubyzMath.binaryLog(size) - NormalChunk.chunkShift, CubyzMath.binaryLog(size));
-					Cubyz.surface.queueChunk(chunk);
+				if(mesh.getChunk() == null) {
+					((ReducedChunkMesh)mesh).updateChunk(new ReducedChunk(x, y, z, CubyzMath.binaryLog(size) - NormalChunk.chunkShift, CubyzMath.binaryLog(size)));
+					Cubyz.surface.queueChunk(mesh.getChunk());
 				}
 			}
 		}
-		public void getChunks(FrustumIntersection frustumInt, ArrayList<Chunk> chunks, float x0, float z0) {
-			if(chunk != null) {
-				if(testFrustum(frustumInt, x0, z0)) {
-					chunks.add(chunk);
-				}
-			} else if(nextNodes != null) {
-				for(int i = 0; i < 8; i++) {
-					nextNodes[i].getChunks(frustumInt, chunks, x0, z0);
+		public void getChunks(FrustumIntersection frustumInt, ArrayList<ChunkMesh> meshes, float x0, float z0) {
+			synchronized(this) {
+				if(nextNodes != null) {
+					for(int i = 0; i < 8; i++) {
+						nextNodes[i].getChunks(frustumInt, meshes, x0, z0);
+					}
+				} else {
+					if(testFrustum(frustumInt, x0, z0)) {
+						meshes.add(mesh);
+					}
 				}
 			}
 		}
@@ -131,10 +125,10 @@ public class RenderOctTree {
 		}
 		
 		public void cleanup() {
-			if(chunk != null) {
-				ClientOnly.deleteChunkMesh.accept(chunk);
-				Cubyz.surface.unQueueChunk(chunk);
-				chunk = null;
+			if(mesh != null) {
+				Meshes.deleteMesh(mesh);
+				Cubyz.surface.unQueueChunk(mesh.getChunk());
+				mesh = null;
 			}
 			if(nextNodes != null) {
 				for(int i = 0; i < 8; i++) {
@@ -180,7 +174,7 @@ public class RenderOctTree {
 					HashMapKey3D key = new HashMapKey3D(rootX, rootY, rootZ);
 					OctTreeNode node = roots.get(key);
 					if(node == null) {
-						node = new OctTreeNode(x, y, z, LODSize);
+						node = new OctTreeNode(null, x, y, z, LODSize);
 						// Mark this node to be potentially removed in the next update:
 						node.shouldBeRemoved = true;
 					} else {
@@ -211,15 +205,15 @@ public class RenderOctTree {
 		
 	}
 	
-	public Chunk[] getRenderChunks(FrustumIntersection frustumInt, float x0, float z0) {
-		ArrayList<Chunk> renderChunks = new ArrayList<>();
+	public ChunkMesh[] getRenderChunks(FrustumIntersection frustumInt, float x0, float z0) {
+		ArrayList<ChunkMesh> meshes = new ArrayList<>();
 		for(OctTreeNode node : roots.values()) {
 			// Check if the root is in the frustum:
 			if(node.testFrustum(frustumInt, x0, z0)) {
-				node.getChunks(frustumInt, renderChunks, x0, z0);
+				node.getChunks(frustumInt, meshes, x0, z0);
 			}
 		}
-		return renderChunks.toArray(new Chunk[0]);
+		return meshes.toArray(new ChunkMesh[0]);
 	}
 	
 	public void cleanup() {

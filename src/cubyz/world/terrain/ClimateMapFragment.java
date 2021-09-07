@@ -1,6 +1,5 @@
 package cubyz.world.terrain;
 
-import cubyz.utils.datastructures.Cache;
 import cubyz.world.cubyzgenerators.biomes.Biome;
 import cubyz.world.terrain.noise.FractalNoise;
 

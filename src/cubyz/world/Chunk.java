@@ -1,12 +1,9 @@
 package cubyz.world;
 
-import cubyz.client.ClientOnly;
 import cubyz.world.blocks.Block;
 import cubyz.world.generator.SurfaceGenerator;
 
 public abstract class Chunk {
-	private Object chunkMesh = null;
-	
 	/**
 	 * This is useful to convert for loops to work for reduced resolution:<br>
 	 * Instead of using<br>
@@ -94,22 +91,4 @@ public abstract class Chunk {
 	 * @return this chunks width.
 	 */
 	public abstract int getWidth();
-	
-	/**
-	 * Store a chunk mesh in this chunk.
-	 * @param mesh
-	 */
-	public void setChunkMesh(Object mesh) {
-		if(chunkMesh != null)
-			ClientOnly.deleteChunkMesh.accept(this);
-		chunkMesh = mesh;
-	}
-	
-	/**
-	 * Returns the currently stored chunk mesh.
-	 * @return mesh
-	 */
-	public Object getChunkMesh() {
-		return chunkMesh;
-	}
 }

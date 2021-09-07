@@ -3,7 +3,6 @@ package cubyz.world;
 import java.util.ArrayList;
 
 import cubyz.Logger;
-import cubyz.client.ClientOnly;
 import cubyz.world.blocks.Block;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.Updateable;
@@ -113,13 +112,6 @@ public class MetaChunk {
 		}
 	}
 	
-	public void cleanup() {
-		for (NormalChunk chunk : chunks) {
-			if(chunk == null) continue;
-			ClientOnly.deleteChunkMesh.accept(chunk);
-		}
-	}
-	
 	public void updatePlayer(int x, int y, int z, int renderDistance, int entityDistance, ArrayList<NormalChunk> chunksList, ArrayList<ChunkEntityManager> managers) {
 		// Shift the player position, so chunks are loaded once the center comes into render distance:
 		x -= NormalChunk.chunkSize/2;
@@ -145,7 +137,6 @@ public class MetaChunk {
 								chunk.map.mapIO.saveChunk(chunk); // Only needs to be stored if it was ever generated.
 							else
 								surface.unQueueChunk(chunk);
-							ClientOnly.deleteChunkMesh.accept(chunk);
 							chunks[index] = null;
 						}
 					} else if(chunk == null) {

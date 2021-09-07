@@ -38,7 +38,7 @@ public class Meshes {
 	
 	public static final Registry<Model> models = new Registry<>();
 	
-	public static final ArrayList<Object> removableMeshes = new ArrayList<>();
+	public static final ArrayList<ChunkMesh> removableMeshes = new ArrayList<>();
 	
 	/**
 	 * Cleans all meshes scheduled for removal.
@@ -46,16 +46,17 @@ public class Meshes {
 	 */
 	public static void cleanUp() {
 		synchronized(removableMeshes) {
-			for(Object mesh : removableMeshes) {
-				if(mesh instanceof ReducedChunkMesh) {
-					((ReducedChunkMesh) mesh).cleanUp();
-				} else if(mesh instanceof NormalChunkMesh) {
-					((NormalChunkMesh) mesh).cleanUp();
-				} else if(mesh instanceof Mesh) {
-					((Mesh) mesh).cleanUp();
-				}
+			for(ChunkMesh mesh : removableMeshes) {
+				mesh.cleanUp();
 			}
 			removableMeshes.clear();
+		}
+	}
+
+	public static void deleteMesh(ChunkMesh mesh) {
+		if(mesh == null) return;
+		synchronized(removableMeshes) {
+			removableMeshes.add(mesh);
 		}
 	}
 	
@@ -143,12 +144,6 @@ public class Meshes {
 			mesh.setMaterial(material);
 			
 			Meshes.entityMeshes.put(type, mesh);
-		};
-		
-		ClientOnly.deleteChunkMesh = (chunk) -> {
-			synchronized(removableMeshes) {
-				removableMeshes.add(chunk.getChunkMesh());
-			}
 		};
 	}
 }

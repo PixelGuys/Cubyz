@@ -3,7 +3,6 @@ package cubyz.client;
 import java.util.function.Consumer;
 
 import cubyz.api.ClientConnection;
-import cubyz.world.Chunk;
 import cubyz.world.blocks.Block;
 import cubyz.world.entity.EntityType;
 
@@ -16,7 +15,6 @@ public class ClientOnly {
 	public static Consumer<Block[]> generateTextureAtlas;
 	public static Consumer<Block> createBlockMesh;
 	public static Consumer<EntityType> createEntityMesh;
-	public static Consumer<Chunk> deleteChunkMesh;
 	
 	// I didn't know where else to put it.
 	public static ClientConnection client;
