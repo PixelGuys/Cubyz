@@ -287,9 +287,15 @@ public class NormalChunkMesh extends ChunkMesh implements Runnable {
 
 	@Override
 	public void render() {
-		if(needsUpdate || chunk == null) {
+		if(chunk == null || needsUpdate) {
 			ReducedChunkMesh.shader.bind();
-			replacement.render();
+			glUniform3f(ReducedChunkMesh.loc_lowerBounds, wx, wy, wz);
+			glUniform3f(ReducedChunkMesh.loc_upperBounds, wx+size, wy+size, wz+size);
+			if(replacement != null) {
+				replacement.renderReplacement();
+			}
+			glUniform3f(ReducedChunkMesh.loc_lowerBounds, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY);
+			glUniform3f(ReducedChunkMesh.loc_upperBounds, Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY);
 			shader.bind();
 			return;
 		}

@@ -48,10 +48,10 @@ public class RenderOctTree {
 					if(dx2*dx2 + dy2*dy2 + dz2*dz2 > nearRenderDistance*nearRenderDistance) return;
 				}
 				
+				double dist = dx*dx + dy*dy + dz*dz;
 				// Check if this chunk has reached the smallest possible size:
 				if(size == NormalChunk.chunkSize) {
 					// Check if this is a normal or a reduced chunk:
-					double dist = dx*dx + dy*dy + dz*dz;
 					if(dist < renderDistance*renderDistance) {
 						if(mesh.getChunk() == null) {
 							((NormalChunkMesh)mesh).updateChunk(Cubyz.surface.getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift));
@@ -99,9 +99,16 @@ public class RenderOctTree {
 						nextNodes = null;
 					}
 				}
-				if(mesh.getChunk() == null) {
-					((ReducedChunkMesh)mesh).updateChunk(new ReducedChunk(x, y, z, CubyzMath.binaryLog(size) - NormalChunk.chunkShift, CubyzMath.binaryLog(size)));
-					Cubyz.surface.queueChunk(mesh.getChunk());
+				if(dist < maxRD*maxRD) {
+					if(mesh.getChunk() == null) {
+						((ReducedChunkMesh)mesh).updateChunk(new ReducedChunk(x, y, z, CubyzMath.binaryLog(size) - NormalChunk.chunkShift, CubyzMath.binaryLog(size)));
+						Cubyz.surface.queueChunk(mesh.getChunk());
+					}
+				} else {
+					if(mesh.getChunk() != null) {
+						Cubyz.surface.unQueueChunk(mesh.getChunk());
+						((ReducedChunkMesh)mesh).updateChunk(null);
+					}
 				}
 			}
 		}

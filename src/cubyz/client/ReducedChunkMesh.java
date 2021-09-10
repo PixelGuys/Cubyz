@@ -53,6 +53,8 @@ public class ReducedChunkMesh extends ChunkMesh implements Runnable {
 	public static int loc_fog_activ;
 	public static int loc_fog_color;
 	public static int loc_fog_density;
+	public static int loc_lowerBounds;
+	public static int loc_upperBounds;
 
 	public static ShaderProgram shader;
 	
@@ -93,7 +95,7 @@ public class ReducedChunkMesh extends ChunkMesh implements Runnable {
 	@Override
 	public void run() {
 		synchronized(this) {
-			if(!needsUpdate) {
+			if(!needsUpdate && chunk != null && chunk.generated) {
 				needsUpdate = true;
 				Meshes.queueMesh(this);
 			}
@@ -191,12 +193,37 @@ public class ReducedChunkMesh extends ChunkMesh implements Runnable {
 		return chunk;
 	}
 
+	public void renderReplacement() {
+		if(chunk == null || !chunk.generated || needsUpdate) {
+			if(replacement != null) {
+				replacement.renderReplacement();
+			}
+			return;
+		}
+		if(vaoId == -1) return;
+		glUniform3f(loc_modelPosition, wx, wy, wz);
+		// Init
+		glBindVertexArray(vaoId);
+		glEnableVertexAttribArray(0);
+		glEnableVertexAttribArray(1);
+		// Draw
+		glDrawElements(GL_TRIANGLES, vertexCount, GL_UNSIGNED_INT, 0);
+		// Restore state
+		glDisableVertexAttribArray(0);
+		glDisableVertexAttribArray(1);
+		glBindVertexArray(0);
+	}
+
 	@Override
 	public void render() {
-		if(chunk == null) {
+		if(chunk == null || !chunk.generated || needsUpdate) {
+			glUniform3f(loc_lowerBounds, wx, wy, wz);
+			glUniform3f(loc_upperBounds, wx+size, wy+size, wz+size);
 			if(replacement != null) {
-				replacement.render();
+				replacement.renderReplacement();
 			}
+			glUniform3f(loc_lowerBounds, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY);
+			glUniform3f(loc_upperBounds, Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY);
 			return;
 		}
 		if(vaoId == -1) return;
