@@ -88,6 +88,7 @@ public class ReducedChunk extends Chunk {
 		gen.generate(this, Cubyz.surface);
 		applyBlockChanges();
 		generated = true;
+		if(meshListener != null) meshListener.run();
 	}
 
 	@Override

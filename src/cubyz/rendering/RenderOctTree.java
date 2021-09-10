@@ -25,7 +25,6 @@ public class RenderOctTree {
 		//public Chunk chunk;
 		public ChunkMesh mesh;
 		public OctTreeNode(ReducedChunkMesh replacement, int x, int y, int z, int size) {
-			System.out.println(replacement);
 			this.x = x;
 			this.y = y;
 			this.z = z;

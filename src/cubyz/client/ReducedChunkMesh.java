@@ -23,7 +23,7 @@ import cubyz.world.ReducedChunk;
  * Used to create chunk meshes for reduced chunks.
  */
 
-public class ReducedChunkMesh extends ChunkMesh {
+public class ReducedChunkMesh extends ChunkMesh implements Runnable {
 	// ThreadLocal lists, to prevent (re-)allocating tons of memory.
 	public static ThreadLocal<IntFastList> localVertices = new ThreadLocal<IntFastList>() {
 		@Override
@@ -89,13 +89,29 @@ public class ReducedChunkMesh extends ChunkMesh {
 	public ReducedChunkMesh(ReducedChunkMesh replacement, int wx, int wy, int wz, int size) {
 		super(replacement, wx, wy, wz, size);
 	}
+
+	@Override
+	public void run() {
+		synchronized(this) {
+			if(!needsUpdate) {
+				needsUpdate = true;
+				Meshes.queueMesh(this);
+			}
+		}
+	}
 	
 	@Override
 	public void regenerateMesh() {
 		cleanUp();
-		ReducedChunk chunk = this.chunk;
-		if(chunk == null) return;
-		needsUpdate = false;
+		ReducedChunk chunk;
+		synchronized(this) {
+			chunk = this.chunk;
+			if(!needsUpdate)
+				return;
+			needsUpdate = false;
+			if(chunk == null)
+				return;
+		}
 		IntFastList vertices = localVertices.get();
 		IntFastList faces = localFaces.get();
 		IntFastList colorsAndNormals = localColorsAndNormals.get();
@@ -159,14 +175,15 @@ public class ReducedChunkMesh extends ChunkMesh {
 
 	public void updateChunk(ReducedChunk chunk) {
 		if(chunk != this.chunk) {
-			needsUpdate = chunk != null;
+			synchronized(this) {
+				if(this.chunk != null)
+					this.chunk.setMeshListener(null);
+				this.chunk = chunk;
+				if(chunk != null)
+					chunk.setMeshListener(this);
+				run();
+			}
 		}
-		this.chunk = chunk;
-	}
-
-	@Override
-	public boolean needsUpdate() {
-		return needsUpdate;
 	}
 
 	@Override
@@ -176,7 +193,7 @@ public class ReducedChunkMesh extends ChunkMesh {
 
 	@Override
 	public void render() {
-		if(needsUpdate || chunk == null) {
+		if(chunk == null) {
 			if(replacement != null) {
 				replacement.render();
 			}

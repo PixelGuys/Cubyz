@@ -26,7 +26,7 @@ import cubyz.world.blocks.BlockInstance;
  * Used to create chunk meshes for normal chunks.
  */
 
-public class NormalChunkMesh extends ChunkMesh {
+public class NormalChunkMesh extends ChunkMesh implements Runnable {
 	// ThreadLocal lists, to prevent (re-)allocating tons of memory.
 	public static ThreadLocal<FloatFastList> localVertices = new ThreadLocal<FloatFastList>() {
 		@Override
@@ -123,14 +123,29 @@ public class NormalChunkMesh extends ChunkMesh {
 	public NormalChunkMesh(ReducedChunkMesh replacement, int wx, int wy, int wz, int size) {
 		super(replacement, wx, wy, wz, size);
 	}
+
+	@Override
+	public void run() {
+		synchronized(this) {
+			if(!needsUpdate) {
+				needsUpdate = true;
+				Meshes.queueMesh(this);
+			}
+		}
+	}
 	
 	@Override
 	public void regenerateMesh() {
 		cleanUp();
-		NormalChunk chunk = this.chunk;
-		if(chunk == null) return;
-		chunk.setUpdated(false);
-		needsUpdate = false;
+		NormalChunk chunk;
+		synchronized(this) {
+			chunk = this.chunk;
+			if(!needsUpdate)
+				return;
+			needsUpdate = false;
+			if(chunk == null)
+				return;
+		}
 		FloatFastList vertices = localVertices.get();
 		FloatFastList normals = localNormals.get();
 		IntFastList faces = localFaces.get();
@@ -254,14 +269,15 @@ public class NormalChunkMesh extends ChunkMesh {
 
 	public void updateChunk(NormalChunk chunk) {
 		if(chunk != this.chunk) {
-			needsUpdate = chunk != null;
+			synchronized(this) {
+				if(this.chunk != null)
+					this.chunk.setMeshListener(null);
+				this.chunk = chunk;
+				if(chunk != null)
+					chunk.setMeshListener(this);
+				run();
+			}
 		}
-		this.chunk = chunk;
-	}
-
-	@Override
-	public boolean needsUpdate() {
-		return chunk == null || needsUpdate || chunk.wasUpdated();
 	}
 
 	@Override

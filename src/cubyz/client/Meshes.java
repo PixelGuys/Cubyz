@@ -17,6 +17,7 @@ import cubyz.rendering.Texture;
 import cubyz.rendering.models.Model;
 import cubyz.utils.ResourceUtilities;
 import cubyz.utils.ResourceUtilities.EntityModel;
+import cubyz.utils.datastructures.BinaryMaxHeap;
 import cubyz.world.blocks.Block;
 import cubyz.world.entity.EntityType;
 
@@ -39,6 +40,8 @@ public class Meshes {
 	public static final Registry<Model> models = new Registry<>();
 	
 	public static final ArrayList<ChunkMesh> removableMeshes = new ArrayList<>();
+
+	private static final BinaryMaxHeap<ChunkMesh> updateQueue = new BinaryMaxHeap<ChunkMesh>(new ChunkMesh[16]);
 	
 	/**
 	 * Cleans all meshes scheduled for removal.
@@ -58,6 +61,21 @@ public class Meshes {
 		synchronized(removableMeshes) {
 			removableMeshes.add(mesh);
 		}
+	}
+
+	public static void queueMesh(ChunkMesh mesh) {
+		// Calculate the priority, which is determined by distance and resolution/size.
+		float dx = Cubyz.player.getPosition().x - mesh.wx;
+		float dy = Cubyz.player.getPosition().y - mesh.wy;
+		float dz = Cubyz.player.getPosition().z - mesh.wz;
+		float dist = dx*dx + dy*dy + dz*dz;
+		float priority = -dist/mesh.size;
+		mesh.updatePriority(priority);
+		updateQueue.add(mesh);
+	}
+
+	public static ChunkMesh getNextQueuedMesh() {
+		return updateQueue.extractMax();
 	}
 	
 	public static void initMeshCreators() {

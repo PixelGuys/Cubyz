@@ -25,7 +25,6 @@ import cubyz.gui.input.Mouse;
 import cubyz.utils.Utils;
 import cubyz.utils.datastructures.FastList;
 import cubyz.world.NormalChunk;
-import cubyz.world.ReducedChunk;
 import cubyz.world.blocks.Block;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.entity.ChunkEntityManager;
@@ -318,6 +317,13 @@ public class MainRenderer {
 			float x0 = playerPosition.x;
 			float y0 = playerPosition.y;
 			float z0 = playerPosition.z;
+			// Update meshes:
+			while(System.currentTimeMillis() - startTime <= maximumMeshTime) {
+				ChunkMesh mesh = Meshes.getNextQueuedMesh();
+				if(mesh == null) break;
+				mesh.regenerateMesh();
+			}
+
 			FastList<NormalChunkMesh> visibleChunks = new FastList<NormalChunkMesh>(NormalChunkMesh.class);
 			FastList<ReducedChunkMesh> visibleReduced = new FastList<ReducedChunkMesh>(ReducedChunkMesh.class);
 			for (ChunkMesh mesh : Cubyz.chunkTree.getRenderChunks(frustumInt, x0, z0)) {
@@ -328,14 +334,6 @@ public class MainRenderer {
 						NormalChunkMesh.shader.setUniform(NormalChunkMesh.loc_selectedIndex, selected.renderIndex);
 					} else {
 						NormalChunkMesh.shader.setUniform(NormalChunkMesh.loc_selectedIndex, -1);
-					}
-					
-					if(mesh.needsUpdate()) {
-						if(System.currentTimeMillis() - startTime > maximumMeshTime) {
-							// Stop meshing if the frame is taking to long.
-						} else {
-							mesh.regenerateMesh();
-						}
 					}
 					mesh.render();
 				} else if(mesh instanceof ReducedChunkMesh) {
@@ -348,15 +346,6 @@ public class MainRenderer {
 			
 			for(int i = 0; i < visibleReduced.size; i++) {
 				ReducedChunkMesh mesh = visibleReduced.array[i];
-				if(mesh.needsUpdate()) {
-					if(((ReducedChunk)mesh.getChunk()).generated) {
-						if(System.currentTimeMillis() - startTime > maximumMeshTime) {
-							// Stop meshing if the frame is taking to long.
-						} else {
-							mesh.regenerateMesh();
-						}
-					}
-				}
 				mesh.render();
 			}
 			

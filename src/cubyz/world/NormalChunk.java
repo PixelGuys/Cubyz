@@ -735,16 +735,8 @@ public class NormalChunk extends Chunk {
 		return loaded;
 	}
 	
-	public boolean wasUpdated() {
-		return updated;
-	}
-	
 	public void setUpdated() {
-		updated = true;
-	}
-	
-	public void setUpdated(boolean updated) {
-		this.updated = updated;
+		if(meshListener != null) meshListener.run();
 	}
 	
 	public int startIndex(int start) {
