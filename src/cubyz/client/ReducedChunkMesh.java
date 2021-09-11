@@ -114,6 +114,8 @@ public class ReducedChunkMesh extends ChunkMesh implements Runnable {
 			if(chunk == null)
 				return;
 		}
+		generated = true;
+		
 		IntFastList vertices = localVertices.get();
 		IntFastList faces = localFaces.get();
 		IntFastList colorsAndNormals = localColorsAndNormals.get();
@@ -216,7 +218,7 @@ public class ReducedChunkMesh extends ChunkMesh implements Runnable {
 
 	@Override
 	public void render() {
-		if(chunk == null || !chunk.generated || needsUpdate) {
+		if(chunk == null || !generated) {
 			glUniform3f(loc_lowerBounds, wx, wy, wz);
 			glUniform3f(loc_upperBounds, wx+size, wy+size, wz+size);
 			if(replacement != null) {

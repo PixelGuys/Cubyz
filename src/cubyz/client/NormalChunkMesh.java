@@ -178,6 +178,8 @@ public class NormalChunkMesh extends ChunkMesh implements Runnable {
 		if(faces.size == 0) {
 			return -1;
 		}
+		generated = true;
+		
 		FloatBuffer posBuffer = null;
 		FloatBuffer textureBuffer = null;
 		FloatBuffer normalBuffer = null;
@@ -287,7 +289,7 @@ public class NormalChunkMesh extends ChunkMesh implements Runnable {
 
 	@Override
 	public void render() {
-		if(chunk == null || needsUpdate) {
+		if(chunk == null || !generated) {
 			ReducedChunkMesh.shader.bind();
 			glUniform3f(ReducedChunkMesh.loc_lowerBounds, wx, wy, wz);
 			glUniform3f(ReducedChunkMesh.loc_upperBounds, wx+size, wy+size, wz+size);

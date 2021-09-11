@@ -10,6 +10,8 @@ public abstract class ChunkMesh implements Comparable<ChunkMesh> {
 
 	protected float priority = 0;
 
+	protected boolean generated = false;
+
 	public ChunkMesh(ReducedChunkMesh replacement, int wx, int wy, int wz, int size) {
 		this.replacement = replacement;
 		this.wx = wx;
