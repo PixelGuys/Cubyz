@@ -87,6 +87,11 @@ public class NormalChunkMesh extends ChunkMesh implements Runnable {
 				NormalChunkMesh.class);
 	}
 
+	/**
+	 * Also updates the uniforms.
+	 * @param ambient
+	 * @param directional
+	 */
 	public static void bindShader(Vector3f ambient, Vector3f directional) {
 		shader.bind();
 
@@ -179,7 +184,7 @@ public class NormalChunkMesh extends ChunkMesh implements Runnable {
 			return -1;
 		}
 		generated = true;
-		
+
 		FloatBuffer posBuffer = null;
 		FloatBuffer textureBuffer = null;
 		FloatBuffer normalBuffer = null;
@@ -189,6 +194,12 @@ public class NormalChunkMesh extends ChunkMesh implements Runnable {
 		try {
 			int vaoId = glGenVertexArrays();
 			glBindVertexArray(vaoId);
+			// Enable vertex arrays once.
+			glEnableVertexAttribArray(0);
+			glEnableVertexAttribArray(1);
+			glEnableVertexAttribArray(2);
+			glEnableVertexAttribArray(3);
+			glEnableVertexAttribArray(4);
 
 			// Position VBO
 			int vboId = glGenBuffers();
@@ -294,7 +305,7 @@ public class NormalChunkMesh extends ChunkMesh implements Runnable {
 			glUniform3f(ReducedChunkMesh.loc_lowerBounds, wx, wy, wz);
 			glUniform3f(ReducedChunkMesh.loc_upperBounds, wx+size, wy+size, wz+size);
 			if(replacement != null) {
-				replacement.renderReplacement();
+				replacement.render();
 			}
 			glUniform3f(ReducedChunkMesh.loc_lowerBounds, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY);
 			glUniform3f(ReducedChunkMesh.loc_upperBounds, Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY);
@@ -303,43 +314,18 @@ public class NormalChunkMesh extends ChunkMesh implements Runnable {
 		}
 		if(vaoId == -1) return;
 		glUniform3f(loc_modelPosition, wx, wy, wz);
-		// Init
+
 		glBindVertexArray(vaoId);
-		glEnableVertexAttribArray(0);
-		glEnableVertexAttribArray(1);
-		glEnableVertexAttribArray(2);
-		glEnableVertexAttribArray(3);
-		glEnableVertexAttribArray(4);
-		// Draw
 		glDrawElements(GL_TRIANGLES, vertexCount, GL_UNSIGNED_INT, 0);
-		// Restore state
-		glDisableVertexAttribArray(0);
-		glDisableVertexAttribArray(1);
-		glDisableVertexAttribArray(2);
-		glDisableVertexAttribArray(3);
-		glDisableVertexAttribArray(4);
-		glBindVertexArray(0);
 	}
 
 	public void renderTransparent() {
 		if(transparentVaoId == -1) return;
+
 		glUniform3f(loc_modelPosition, wx, wy, wz);
-		// Init
+
 		glBindVertexArray(transparentVaoId);
-		glEnableVertexAttribArray(0);
-		glEnableVertexAttribArray(1);
-		glEnableVertexAttribArray(2);
-		glEnableVertexAttribArray(3);
-		glEnableVertexAttribArray(4);
-		// Draw
 		glDrawElements(GL_TRIANGLES, transparentVertexCount, GL_UNSIGNED_INT, 0);
-		// Restore state
-		glDisableVertexAttribArray(0);
-		glDisableVertexAttribArray(1);
-		glDisableVertexAttribArray(2);
-		glDisableVertexAttribArray(3);
-		glDisableVertexAttribArray(4);
-		glBindVertexArray(0);
 	}
 
 	@Override

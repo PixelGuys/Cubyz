@@ -39,8 +39,10 @@ public class Meshes {
 	
 	public static final Registry<Model> models = new Registry<>();
 	
+	/** List of meshes that need to be cleaned. */
 	public static final ArrayList<ChunkMesh> removableMeshes = new ArrayList<>();
 
+	/** List of meshes that need to be (re-)generated. */
 	private static final BinaryMaxHeap<ChunkMesh> updateQueue = new BinaryMaxHeap<ChunkMesh>(new ChunkMesh[16]);
 	
 	/**
@@ -56,6 +58,10 @@ public class Meshes {
 		}
 	}
 
+	/**
+	 * Schedules a mesh to be cleaned in the near future.
+	 * @param mesh
+	 */
 	public static void deleteMesh(ChunkMesh mesh) {
 		if(mesh == null) return;
 		synchronized(removableMeshes) {
@@ -63,6 +69,10 @@ public class Meshes {
 		}
 	}
 
+	/**
+	 * Schedules a mesh to be regenerated in the near future.
+	 * @param mesh
+	 */
 	public static void queueMesh(ChunkMesh mesh) {
 		// Calculate the priority, which is determined by distance and resolution/size.
 		float dx = Cubyz.player.getPosition().x - mesh.wx;

@@ -64,6 +64,11 @@ public class ReducedChunkMesh extends ChunkMesh implements Runnable {
 				ReducedChunkMesh.class);
 	}
 
+	/**
+	 * Also updates the uniforms.
+	 * @param ambient
+	 * @param directional
+	 */
 	public static void bindShader(Vector3f ambient, Vector3f directional) {
 		shader.bind();
 
@@ -115,7 +120,7 @@ public class ReducedChunkMesh extends ChunkMesh implements Runnable {
 				return;
 		}
 		generated = true;
-		
+
 		IntFastList vertices = localVertices.get();
 		IntFastList faces = localFaces.get();
 		IntFastList colorsAndNormals = localColorsAndNormals.get();
@@ -135,6 +140,9 @@ public class ReducedChunkMesh extends ChunkMesh implements Runnable {
 
 			vaoId = glGenVertexArrays();
 			glBindVertexArray(vaoId);
+			// Enable vertex arrays once.
+			glEnableVertexAttribArray(0);
+			glEnableVertexAttribArray(1);
 
 			// Position and normal VBO
 			int vboId = glGenBuffers();
@@ -195,34 +203,13 @@ public class ReducedChunkMesh extends ChunkMesh implements Runnable {
 		return chunk;
 	}
 
-	public void renderReplacement() {
-		if(chunk == null || !chunk.generated || needsUpdate) {
-			if(replacement != null) {
-				replacement.renderReplacement();
-			}
-			return;
-		}
-		if(vaoId == -1) return;
-		glUniform3f(loc_modelPosition, wx, wy, wz);
-		// Init
-		glBindVertexArray(vaoId);
-		glEnableVertexAttribArray(0);
-		glEnableVertexAttribArray(1);
-		// Draw
-		glDrawElements(GL_TRIANGLES, vertexCount, GL_UNSIGNED_INT, 0);
-		// Restore state
-		glDisableVertexAttribArray(0);
-		glDisableVertexAttribArray(1);
-		glBindVertexArray(0);
-	}
-
 	@Override
 	public void render() {
 		if(chunk == null || !generated) {
 			glUniform3f(loc_lowerBounds, wx, wy, wz);
 			glUniform3f(loc_upperBounds, wx+size, wy+size, wz+size);
 			if(replacement != null) {
-				replacement.renderReplacement();
+				replacement.render();
 			}
 			glUniform3f(loc_lowerBounds, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY);
 			glUniform3f(loc_upperBounds, Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY);
@@ -230,16 +217,9 @@ public class ReducedChunkMesh extends ChunkMesh implements Runnable {
 		}
 		if(vaoId == -1) return;
 		glUniform3f(loc_modelPosition, wx, wy, wz);
-		// Init
+		
 		glBindVertexArray(vaoId);
-		glEnableVertexAttribArray(0);
-		glEnableVertexAttribArray(1);
-		// Draw
 		glDrawElements(GL_TRIANGLES, vertexCount, GL_UNSIGNED_INT, 0);
-		// Restore state
-		glDisableVertexAttribArray(0);
-		glDisableVertexAttribArray(1);
-		glBindVertexArray(0);
 	}
 
 	@Override

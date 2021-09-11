@@ -2,6 +2,10 @@ package cubyz.client;
 
 import cubyz.world.Chunk;
 
+/**
+ * A chunk mesh contains all rendering data of a single chunk.
+ */
+
 public abstract class ChunkMesh implements Comparable<ChunkMesh> {
 
 	public final int wx, wy, wz, size;
@@ -24,9 +28,23 @@ public abstract class ChunkMesh implements Comparable<ChunkMesh> {
 		this.priority = priority;
 	}
 
+	/**
+	 * Removes all data from the GPU.
+	 * MUST BE CALLED BEFORE GETTING RID OF THE OBJECT!
+	 */
 	public abstract void cleanUp();
+	
+	/**
+	 * Updates the Mesh based on changes of the chunk.
+	 */
 	public abstract void regenerateMesh();
+
 	public abstract void render();
+
+	/**
+	 * Returns the chunk associated with the mesh.
+	 * @return chunk. Can be null!
+	 */
 	public abstract Chunk getChunk();
 
 	@Override
