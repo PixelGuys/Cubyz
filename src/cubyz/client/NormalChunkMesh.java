@@ -1,32 +1,24 @@
 package cubyz.client;
 
-import static org.lwjgl.opengl.GL11.GL_FLOAT;
-import static org.lwjgl.opengl.GL11.GL_TRIANGLES;
-import static org.lwjgl.opengl.GL11.GL_UNSIGNED_INT;
-import static org.lwjgl.opengl.GL11.glDrawElements;
-import static org.lwjgl.opengl.GL15.GL_ARRAY_BUFFER;
-import static org.lwjgl.opengl.GL15.GL_ELEMENT_ARRAY_BUFFER;
-import static org.lwjgl.opengl.GL15.GL_STATIC_DRAW;
-import static org.lwjgl.opengl.GL15.glBindBuffer;
-import static org.lwjgl.opengl.GL15.glBufferData;
-import static org.lwjgl.opengl.GL15.glDeleteBuffers;
-import static org.lwjgl.opengl.GL15.glGenBuffers;
-import static org.lwjgl.opengl.GL20.glDisableVertexAttribArray;
-import static org.lwjgl.opengl.GL20.glEnableVertexAttribArray;
-import static org.lwjgl.opengl.GL20.glVertexAttribPointer;
-import static org.lwjgl.opengl.GL30.glBindVertexArray;
-import static org.lwjgl.opengl.GL30.glDeleteVertexArrays;
-import static org.lwjgl.opengl.GL30.glGenVertexArrays;
+import static org.lwjgl.opengl.GL11.*;
+import static org.lwjgl.opengl.GL15.*;
+import static org.lwjgl.opengl.GL20.*;
+import static org.lwjgl.opengl.GL30.*;
 
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 
+import org.joml.Vector3f;
 import org.lwjgl.system.MemoryUtil;
 
+import cubyz.rendering.ShaderProgram;
+import cubyz.rendering.Window;
+import cubyz.utils.Utils;
 import cubyz.utils.datastructures.FastList;
 import cubyz.utils.datastructures.FloatFastList;
 import cubyz.utils.datastructures.IntFastList;
+import cubyz.world.Chunk;
 import cubyz.world.NormalChunk;
 import cubyz.world.blocks.BlockInstance;
 
@@ -34,7 +26,7 @@ import cubyz.world.blocks.BlockInstance;
  * Used to create chunk meshes for normal chunks.
  */
 
-public class NormalChunkMesh {
+public class NormalChunkMesh extends ChunkMesh implements Runnable {
 	// ThreadLocal lists, to prevent (re-)allocating tons of memory.
 	public static ThreadLocal<FloatFastList> localVertices = new ThreadLocal<FloatFastList>() {
 		@Override
@@ -72,20 +64,93 @@ public class NormalChunkMesh {
 			return new FloatFastList(40000);
 		}
 	};
+
+	// Shader stuff:
+	public static int loc_projectionMatrix;
+	public static int loc_viewMatrix;
+	public static int loc_texture_sampler;
+	public static int loc_break_sampler;
+	public static int loc_ambientLight;
+	public static int loc_directionalLight;
+	public static int loc_modelPosition;
+	public static int loc_selectedIndex;
+	public static int loc_atlasSize;
+	public static int loc_fog_activ;
+	public static int loc_fog_color;
+	public static int loc_fog_density;
+
+	public static ShaderProgram shader;
+
+	public static void init(String shaderFolder) throws Exception {
+		shader = new ShaderProgram(Utils.loadResource(shaderFolder + "/block_vertex.vs"),
+				Utils.loadResource(shaderFolder + "/block_fragment.fs"),
+				NormalChunkMesh.class);
+	}
+
+	/**
+	 * Also updates the uniforms.
+	 * @param ambient
+	 * @param directional
+	 */
+	public static void bindShader(Vector3f ambient, Vector3f directional) {
+		shader.bind();
+
+		shader.setUniform(loc_fog_activ, Cubyz.fog.isActive());
+		shader.setUniform(loc_fog_color, Cubyz.fog.getColor());
+		shader.setUniform(loc_fog_density, Cubyz.fog.getDensity());
+		shader.setUniform(loc_projectionMatrix, Window.getProjectionMatrix());
+		shader.setUniform(loc_texture_sampler, 0);
+		shader.setUniform(loc_break_sampler, 2);
+		shader.setUniform(loc_viewMatrix, Cubyz.camera.getViewMatrix());
+
+		shader.setUniform(loc_ambientLight, ambient);
+		shader.setUniform(loc_directionalLight, directional);
+		
+		shader.setUniform(loc_atlasSize, Meshes.atlasSize);
+	}
 	
 	protected int vaoId;
 
-	protected ArrayList<Integer> vboIdList;
+	protected ArrayList<Integer> vboIdList = new ArrayList<>();
 	
 	protected int transparentVaoId;
 
-	protected ArrayList<Integer> transparentVboIdList;
+	protected ArrayList<Integer> transparentVboIdList = new ArrayList<>();
 
 	protected int vertexCount;
 
 	protected int transparentVertexCount;
 
-	public NormalChunkMesh(NormalChunk chunk) {
+	private NormalChunk chunk;
+	
+	private boolean needsUpdate = false;
+
+	public NormalChunkMesh(ReducedChunkMesh replacement, int wx, int wy, int wz, int size) {
+		super(replacement, wx, wy, wz, size);
+	}
+
+	@Override
+	public void run() {
+		synchronized(this) {
+			if(!needsUpdate) {
+				needsUpdate = true;
+				Meshes.queueMesh(this);
+			}
+		}
+	}
+	
+	@Override
+	public void regenerateMesh() {
+		cleanUp();
+		NormalChunk chunk;
+		synchronized(this) {
+			chunk = this.chunk;
+			if(!needsUpdate)
+				return;
+			needsUpdate = false;
+			if(chunk == null)
+				return;
+		}
 		FloatFastList vertices = localVertices.get();
 		FloatFastList normals = localNormals.get();
 		IntFastList faces = localFaces.get();
@@ -100,7 +165,7 @@ public class NormalChunkMesh {
 		renderIndices.clear();
 		generateModelData(chunk, vertices, normals, faces, lighting, texture, renderIndices);
 		vertexCount = faces.size;
-		vboIdList = new ArrayList<>();
+		vboIdList.clear();
 		vaoId = bufferData(vertices, normals, faces, lighting, texture, renderIndices, vboIdList);
 		normals.clear();
 		vertices.clear();
@@ -110,12 +175,16 @@ public class NormalChunkMesh {
 		renderIndices.clear();
 		generateTransparentModelData(chunk, vertices, normals, faces, lighting, texture, renderIndices);
 		transparentVertexCount = faces.size;
-		transparentVboIdList = new ArrayList<>();
+		transparentVboIdList.clear();
 		transparentVaoId = bufferData(vertices, normals, faces, lighting, texture, renderIndices, transparentVboIdList);
 	}
 	
 	public int bufferData(FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, ArrayList<Integer> vboIdList) {
-		if(faces.size == 0) return -1;
+		if(faces.size == 0) {
+			return -1;
+		}
+		generated = true;
+
 		FloatBuffer posBuffer = null;
 		FloatBuffer textureBuffer = null;
 		FloatBuffer normalBuffer = null;
@@ -125,6 +194,12 @@ public class NormalChunkMesh {
 		try {
 			int vaoId = glGenVertexArrays();
 			glBindVertexArray(vaoId);
+			// Enable vertex arrays once.
+			glEnableVertexAttribArray(0);
+			glEnableVertexAttribArray(1);
+			glEnableVertexAttribArray(2);
+			glEnableVertexAttribArray(3);
+			glEnableVertexAttribArray(4);
 
 			// Position VBO
 			int vboId = glGenBuffers();
@@ -205,46 +280,55 @@ public class NormalChunkMesh {
 		}
 	}
 
+	public void updateChunk(NormalChunk chunk) {
+		if(chunk != this.chunk) {
+			synchronized(this) {
+				if(this.chunk != null)
+					this.chunk.setMeshListener(null);
+				this.chunk = chunk;
+				if(chunk != null)
+					chunk.setMeshListener(this);
+				run();
+			}
+		}
+	}
+
+	@Override
+	public Chunk getChunk() {
+		return chunk;
+	}
+
+	@Override
 	public void render() {
+		if(chunk == null || !generated) {
+			ReducedChunkMesh.shader.bind();
+			glUniform3f(ReducedChunkMesh.loc_lowerBounds, wx, wy, wz);
+			glUniform3f(ReducedChunkMesh.loc_upperBounds, wx+size, wy+size, wz+size);
+			if(replacement != null) {
+				replacement.render();
+			}
+			glUniform3f(ReducedChunkMesh.loc_lowerBounds, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY);
+			glUniform3f(ReducedChunkMesh.loc_upperBounds, Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY);
+			shader.bind();
+			return;
+		}
 		if(vaoId == -1) return;
-		// Init
+		glUniform3f(loc_modelPosition, wx, wy, wz);
+
 		glBindVertexArray(vaoId);
-		glEnableVertexAttribArray(0);
-		glEnableVertexAttribArray(1);
-		glEnableVertexAttribArray(2);
-		glEnableVertexAttribArray(3);
-		glEnableVertexAttribArray(4);
-		// Draw
 		glDrawElements(GL_TRIANGLES, vertexCount, GL_UNSIGNED_INT, 0);
-		// Restore state
-		glDisableVertexAttribArray(0);
-		glDisableVertexAttribArray(1);
-		glDisableVertexAttribArray(2);
-		glDisableVertexAttribArray(3);
-		glDisableVertexAttribArray(4);
-		glBindVertexArray(0);
 	}
 
 	public void renderTransparent() {
 		if(transparentVaoId == -1) return;
-		// Init
+
+		glUniform3f(loc_modelPosition, wx, wy, wz);
+
 		glBindVertexArray(transparentVaoId);
-		glEnableVertexAttribArray(0);
-		glEnableVertexAttribArray(1);
-		glEnableVertexAttribArray(2);
-		glEnableVertexAttribArray(3);
-		glEnableVertexAttribArray(4);
-		// Draw
 		glDrawElements(GL_TRIANGLES, transparentVertexCount, GL_UNSIGNED_INT, 0);
-		// Restore state
-		glDisableVertexAttribArray(0);
-		glDisableVertexAttribArray(1);
-		glDisableVertexAttribArray(2);
-		glDisableVertexAttribArray(3);
-		glDisableVertexAttribArray(4);
-		glBindVertexArray(0);
 	}
 
+	@Override
 	public void cleanUp() {
 		// Delete the VBOs
 		glBindBuffer(GL_ARRAY_BUFFER, 0);

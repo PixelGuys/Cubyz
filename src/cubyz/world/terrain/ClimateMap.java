@@ -38,7 +38,6 @@ public class ClimateMap {
 				}
 			}
 		}
-		System.out.println(cache.cacheMisses+"/"+cache.cacheRequests);
 		return map;
 	}
 	
@@ -60,7 +59,6 @@ public class ClimateMap {
 	public static ClimateMapFragment getOrGenerateFragment(long seed, int wx, int wz) {
 		int hash = ClimateMapFragment.hashCode(wx, wz) & CACHE_MASK;
 		ClimateMapFragment ret = cache.find(new ClimateMapFragmentComparator(wx, wz), hash);
-		System.out.println(wx+" "+wz+" "+ret);
 		if(ret != null) return ret;
 		synchronized(cache.cache[hash]) {
 			// Try again in case it was already generated in another thread:

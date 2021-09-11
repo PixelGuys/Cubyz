@@ -13,6 +13,7 @@ import org.joml.Vector4f;
 
 import cubyz.Logger;
 import cubyz.api.CubyzRegistries;
+import cubyz.client.ChunkMesh;
 import cubyz.client.ClientSettings;
 import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
@@ -23,9 +24,7 @@ import cubyz.gui.input.Keyboard;
 import cubyz.gui.input.Mouse;
 import cubyz.utils.Utils;
 import cubyz.utils.datastructures.FastList;
-import cubyz.world.Chunk;
 import cubyz.world.NormalChunk;
-import cubyz.world.ReducedChunk;
 import cubyz.world.blocks.Block;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.entity.ChunkEntityManager;
@@ -42,31 +41,6 @@ import cubyz.world.items.ItemBlock;
  */
 
 public class MainRenderer {
-	
-	public static final class ChunkUniforms {
-		public static int loc_projectionMatrix;
-		public static int loc_viewMatrix;
-		public static int loc_modelPosition;
-		public static int loc_ambientLight;
-		public static int loc_directionalLight;
-		public static int loc_fog_activ;
-		public static int loc_fog_color;
-		public static int loc_fog_density;
-	}
-	public static final class BlockUniforms {
-		public static int loc_projectionMatrix;
-		public static int loc_viewMatrix;
-		public static int loc_texture_sampler;
-		public static int loc_break_sampler;
-		public static int loc_ambientLight;
-		public static int loc_directionalLight;
-		public static int loc_modelPosition;
-		public static int loc_selectedIndex;
-		public static int loc_atlasSize;
-		public static int loc_fog_activ;
-		public static int loc_fog_color;
-		public static int loc_fog_density;
-	}
 	public static class EntityUniforms {
 		public static int loc_projectionMatrix;
 		public static int loc_viewMatrix;
@@ -79,11 +53,8 @@ public class MainRenderer {
 	}
 	
 	/**The number of milliseconds after which no more chunk meshes are created. This allows the game to run smoother on movement.*/
-	private static int maximumMeshTime = 12;
+	private static int maximumMeshTime = 1;
 
-	/**A simple shader for low resolution chunks*/
-	private ShaderProgram chunkShader;
-	private ShaderProgram blockShader;
 	private ShaderProgram entityShader; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 
 	private static final float Z_NEAR = 0.01f;
@@ -123,10 +94,6 @@ public class MainRenderer {
 	}
 
 	public void unloadShaders() throws Exception {
-		blockShader.unbind();
-		blockShader.cleanup();
-		blockShader = null;
-		entityShader.unbind();
 		entityShader.cleanup();
 		entityShader = null;
 		System.gc();
@@ -137,14 +104,6 @@ public class MainRenderer {
 	}
 
 	public void loadShaders() throws Exception {
-		chunkShader = new ShaderProgram(Utils.loadResource(shaders + "/chunk_vertex.vs"),
-				Utils.loadResource(shaders + "/chunk_fragment.fs"),
-				ChunkUniforms.class);
-
-		blockShader = new ShaderProgram(Utils.loadResource(shaders + "/block_vertex.vs"),
-				Utils.loadResource(shaders + "/block_fragment.fs"),
-				BlockUniforms.class);
-
 		entityShader = new ShaderProgram(Utils.loadResource(shaders + "/entity_vertex.vs"),
 				Utils.loadResource(shaders + "/entity_fragment.fs"),
 				EntityUniforms.class);
@@ -157,6 +116,8 @@ public class MainRenderer {
 		Window.setProjectionMatrix(transformation.getProjectionMatrix((float) Math.toRadians(70.0f), Window.getWidth(),
 				Window.getHeight(), Z_NEAR, Z_FAR));
 		loadShaders();
+		ReducedChunkMesh.init(shaders);
+		NormalChunkMesh.init(shaders);
 
 		inited = true;
 	}
@@ -172,12 +133,12 @@ public class MainRenderer {
 	 * @param playerZ
 	 * @return sorted chunk array
 	 */
-	public NormalChunk[] sortChunks(NormalChunk[] toSort, float playerX, float playerY, float playerZ) {
-		NormalChunk[] output = new NormalChunk[toSort.length];
+	public NormalChunkMesh[] sortChunks(NormalChunkMesh[] toSort, float playerX, float playerY, float playerZ) {
+		NormalChunkMesh[] output = new NormalChunkMesh[toSort.length];
 		float[] distances = new float[toSort.length];
 		System.arraycopy(toSort, 0, output, 0, toSort.length);
 		for(int i = 0; i < output.length; i++) {
-			distances[i] = (playerX - output[i].getX())*(playerX - output[i].getX()) + (playerY - output[i].getY())*(playerY - output[i].getY()) + (playerZ - output[i].getZ())*(playerZ - output[i].getZ());
+			distances[i] = (playerX - output[i].wx)*(playerX - output[i].wx) + (playerY - output[i].wy)*(playerY - output[i].wy) + (playerZ - output[i].wz)*(playerZ - output[i].wz);
 		}
 		// Insert sort them:
 		for(int i = 1; i < output.length; i++) {
@@ -187,7 +148,7 @@ public class MainRenderer {
 					distances[j] += distances[j+1];
 					distances[j+1] = distances[j] - distances[j+1];
 					distances[j] -= distances[j+1];
-					NormalChunk local = output[j+1];
+					NormalChunkMesh local = output[j+1];
 					output[j+1] = output[j];
 					output[j] = local;
 				} else {
@@ -331,21 +292,9 @@ public class MainRenderer {
 			playerPosition = localPlayer.getPosition(); // Use a constant copy of the player position for the whole rendering to prevent graphics bugs on player movement.
 		}
 		if(playerPosition != null) {
+			ReducedChunkMesh.bindShader(ambientLight, directionalLight.getDirection()); // Update the uniforms. The uniforms are needed to render the replacement meshes.
 			
-			blockShader.bind();
-
-			blockShader.setUniform(BlockUniforms.loc_fog_activ, Cubyz.fog.isActive());
-			blockShader.setUniform(BlockUniforms.loc_fog_color, Cubyz.fog.getColor());
-			blockShader.setUniform(BlockUniforms.loc_fog_density, Cubyz.fog.getDensity());
-			blockShader.setUniform(BlockUniforms.loc_projectionMatrix, Window.getProjectionMatrix());
-			blockShader.setUniform(BlockUniforms.loc_texture_sampler, 0);
-			blockShader.setUniform(BlockUniforms.loc_break_sampler, 2);
-			blockShader.setUniform(BlockUniforms.loc_viewMatrix, Cubyz.camera.getViewMatrix());
-
-			blockShader.setUniform(BlockUniforms.loc_ambientLight, ambientLight);
-			blockShader.setUniform(BlockUniforms.loc_directionalLight, directionalLight.getDirection());
-			
-			blockShader.setUniform(BlockUniforms.loc_atlasSize, Meshes.atlasSize);
+			NormalChunkMesh.bindShader(ambientLight, directionalLight.getDirection());
 			
 			// Activate first texture bank
 			glActiveTexture(GL_TEXTURE0);
@@ -369,71 +318,37 @@ public class MainRenderer {
 			float x0 = playerPosition.x;
 			float y0 = playerPosition.y;
 			float z0 = playerPosition.z;
-			FastList<NormalChunk> visibleChunks = new FastList<NormalChunk>(NormalChunk.class);
-			FastList<ReducedChunk> visibleReduced = new FastList<ReducedChunk>(ReducedChunk.class);
-			for (Chunk ch : Cubyz.chunkTree.getRenderChunks(frustumInt, x0, z0)) {
-				if(ch instanceof NormalChunk) {
-					NormalChunk chunk = (NormalChunk)ch;
-					if(!chunk.isLoaded()) continue;
-					visibleChunks.add(chunk);
-					blockShader.setUniform(BlockUniforms.loc_modelPosition, chunk.getMin());
+			// Update meshes:
+			while(System.currentTimeMillis() - startTime <= maximumMeshTime) {
+				ChunkMesh mesh = Meshes.getNextQueuedMesh();
+				if(mesh == null) break;
+				mesh.regenerateMesh();
+			}
+
+			FastList<NormalChunkMesh> visibleChunks = new FastList<NormalChunkMesh>(NormalChunkMesh.class);
+			FastList<ReducedChunkMesh> visibleReduced = new FastList<ReducedChunkMesh>(ReducedChunkMesh.class);
+			for (ChunkMesh mesh : Cubyz.chunkTree.getRenderChunks(frustumInt, x0, z0)) {
+				if(mesh instanceof NormalChunkMesh) {
+					visibleChunks.add((NormalChunkMesh)mesh);
 					
-					if(selected != null && selected.source == ch) {
-						blockShader.setUniform(BlockUniforms.loc_selectedIndex, selected.renderIndex);
+					if(selected != null && selected.source == mesh.getChunk()) {
+						NormalChunkMesh.shader.setUniform(NormalChunkMesh.loc_selectedIndex, selected.renderIndex);
 					} else {
-						blockShader.setUniform(BlockUniforms.loc_selectedIndex, -1);
+						NormalChunkMesh.shader.setUniform(NormalChunkMesh.loc_selectedIndex, -1);
 					}
-					
-					Object mesh = chunk.getChunkMesh();
-					if(chunk.wasUpdated() || mesh == null || !(mesh instanceof NormalChunkMesh)) {
-						if(System.currentTimeMillis() - startTime > maximumMeshTime) {
-							// Stop meshing if the frame is taking to long.
-							if(!(mesh instanceof NormalChunkMesh)) continue;
-						} else {
-							mesh = new NormalChunkMesh(chunk);
-							chunk.setChunkMesh(mesh);
-						}
-					}
-					((NormalChunkMesh)mesh).render();
-				} else if(ch instanceof ReducedChunk) {
-					visibleReduced.add((ReducedChunk)ch);
+					mesh.render();
+				} else if(mesh instanceof ReducedChunkMesh) {
+					visibleReduced.add((ReducedChunkMesh)mesh);
 				}
 			}
-			blockShader.unbind();
 			
 			// Render the far away ReducedChunks:
-			chunkShader.bind();
-
-			chunkShader.setUniform(ChunkUniforms.loc_fog_activ, Cubyz.fog.isActive());
-			chunkShader.setUniform(ChunkUniforms.loc_fog_color, Cubyz.fog.getColor());
-			chunkShader.setUniform(ChunkUniforms.loc_fog_density, Cubyz.fog.getDensity());
-			chunkShader.setUniform(ChunkUniforms.loc_projectionMatrix, Window.getProjectionMatrix());
-			
-			chunkShader.setUniform(ChunkUniforms.loc_viewMatrix, Cubyz.camera.getViewMatrix());
-
-			chunkShader.setUniform(ChunkUniforms.loc_ambientLight, ambientLight);
-			chunkShader.setUniform(ChunkUniforms.loc_directionalLight, directionalLight.getDirection());
+			ReducedChunkMesh.bindShader(ambientLight, directionalLight.getDirection());
 			
 			for(int i = 0; i < visibleReduced.size; i++) {
-				ReducedChunk chunk = visibleReduced.array[i];
-				if(chunk != null && chunk.generated) {
-					if (!frustumInt.testAab(chunk.getMin(), chunk.getMax()))
-						continue;
-					Object mesh = chunk.getChunkMesh();
-					chunkShader.setUniform(ChunkUniforms.loc_modelPosition, chunk.getMin());
-					if(mesh == null || !(mesh instanceof ReducedChunkMesh)) {
-						if(System.currentTimeMillis() - startTime > maximumMeshTime) {
-							// Stop meshing if the frame is taking to long.
-							if(!(mesh instanceof ReducedChunkMesh)) continue;
-						} else {
-							chunk.setChunkMesh(mesh = new ReducedChunkMesh(chunk));
-						}
-					}
-					((ReducedChunkMesh)mesh).render();
-				}
+				ReducedChunkMesh mesh = visibleReduced.array[i];
+				mesh.render();
 			}
-			
-			chunkShader.unbind();
 			
 			// Render entities:
 			
@@ -515,8 +430,8 @@ public class MainRenderer {
 				}
 			}
 			
-			
-			blockShader.setUniform(BlockUniforms.loc_fog_activ, 0); // manually disable the fog
+			NormalChunkMesh.shader.bind();
+			NormalChunkMesh.shader.setUniform(NormalChunkMesh.loc_fog_activ, 0); // manually disable the fog
 			for (int i = 0; i < spatials.length; i++) {
 				Spatial spatial = spatials[i];
 				Mesh mesh = spatial.getMesh();
@@ -530,23 +445,8 @@ public class MainRenderer {
 				});
 			}
 			
-			entityShader.unbind();
-			
 			// Render transparent chunk meshes:
-			blockShader.bind();
-
-			blockShader.setUniform(BlockUniforms.loc_fog_activ, Cubyz.fog.isActive());
-			blockShader.setUniform(BlockUniforms.loc_fog_color, Cubyz.fog.getColor());
-			blockShader.setUniform(BlockUniforms.loc_fog_density, Cubyz.fog.getDensity());
-			blockShader.setUniform(BlockUniforms.loc_projectionMatrix, Window.getProjectionMatrix());
-			blockShader.setUniform(BlockUniforms.loc_texture_sampler, 0);
-			blockShader.setUniform(BlockUniforms.loc_break_sampler, 2);
-			blockShader.setUniform(BlockUniforms.loc_viewMatrix, Cubyz.camera.getViewMatrix());
-
-			blockShader.setUniform(BlockUniforms.loc_ambientLight, ambientLight);
-			blockShader.setUniform(BlockUniforms.loc_directionalLight, directionalLight.getDirection());
-			
-			blockShader.setUniform(BlockUniforms.loc_atlasSize, Meshes.atlasSize);
+			NormalChunkMesh.bindShader(ambientLight, directionalLight.getDirection());
 			
 			// Activate first texture bank
 			glActiveTexture(GL_TEXTURE0);
@@ -566,38 +466,22 @@ public class MainRenderer {
 				glBindTexture(GL_TEXTURE_2D, GameLauncher.logic.breakAnimations[0].getId());
 			}
 
-			NormalChunk[] chunks = sortChunks(visibleChunks.toArray(), x0/NormalChunk.chunkSize - 0.5f, y0/NormalChunk.chunkSize - 0.5f, z0/NormalChunk.chunkSize - 0.5f);
-			for (NormalChunk ch : chunks) {
-				blockShader.setUniform(BlockUniforms.loc_modelPosition, ch.getMin());
+			NormalChunkMesh[] meshes = sortChunks(visibleChunks.toArray(), x0/NormalChunk.chunkSize - 0.5f, y0/NormalChunk.chunkSize - 0.5f, z0/NormalChunk.chunkSize - 0.5f);
+			for (NormalChunkMesh mesh : meshes) {
 				
-				if(selected != null && selected.source == ch) {
-					blockShader.setUniform(BlockUniforms.loc_selectedIndex, selected.renderIndex);
+				if(selected != null && selected.source == mesh.getChunk()) {
+					NormalChunkMesh.shader.setUniform(NormalChunkMesh.loc_selectedIndex, selected.renderIndex);
 				} else {
-					blockShader.setUniform(BlockUniforms.loc_selectedIndex, -1);
+					NormalChunkMesh.shader.setUniform(NormalChunkMesh.loc_selectedIndex, -1);
 				}
 				
-				Object mesh = ch.getChunkMesh();
-				if(ch.wasUpdated() || mesh == null || !(mesh instanceof NormalChunkMesh)) {
-					if(System.currentTimeMillis() - startTime > maximumMeshTime) {
-						// Stop meshing if the frame is taking to long.
-						if(!(mesh instanceof NormalChunkMesh)) continue;
-					} else {
-						mesh = new NormalChunkMesh(ch);
-						ch.setChunkMesh(mesh);
-					}
-				}
-				((NormalChunkMesh)mesh).renderTransparent();		
+				mesh.renderTransparent();		
 			}
-			blockShader.unbind();
 		}
 		Cubyz.gameUI.render();
 	}
 
 	public void cleanup() {
-		if (blockShader != null) {
-			blockShader.cleanup();
-			blockShader = null;
-		}
 		if (entityShader != null) {
 			entityShader.cleanup();
 			entityShader = null;

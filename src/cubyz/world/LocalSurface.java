@@ -626,11 +626,6 @@ public class LocalSurface extends Surface {
 				thread.join();
 			}
 			generatorThreads = new ArrayList<>();
-
-			// Clean up additional GPU data:
-			for(MetaChunk chunk : metaChunks.values()) {
-				chunk.cleanup();
-			}
 			
 			metaChunks = null;
 		} catch (Exception e) {

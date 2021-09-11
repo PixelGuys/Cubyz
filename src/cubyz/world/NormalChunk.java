@@ -735,12 +735,8 @@ public class NormalChunk extends Chunk {
 		return loaded;
 	}
 	
-	public boolean wasUpdated() {
-		return updated;
-	}
-	
 	public void setUpdated() {
-		updated = true;
+		if(meshListener != null) meshListener.run();
 	}
 	
 	public int startIndex(int start) {
@@ -772,12 +768,6 @@ public class NormalChunk extends Chunk {
 	@Override
 	public void updateBlock(int x, int y, int z, Block newBlock) {
 		updateBlock(x, y, z, newBlock, newBlock == null ? 0 : newBlock.mode.getNaturalStandard());
-	}
-	
-	@Override
-	public void setChunkMesh(Object mesh) {
-		updated = false;
-		super.setChunkMesh(mesh);
 	}
 
 	@Override
