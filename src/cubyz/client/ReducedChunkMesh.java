@@ -269,11 +269,19 @@ public class ReducedChunkMesh extends ChunkMesh implements Runnable {
 		colorsAndNormals.add((color & 0x00ffffff) | (normal << 24));
 		return vertices.size - 1;
 	}
-	
+
 	private static void generateModelData(ReducedChunk chunk, IntFastList vertices, IntFastList faces, IntFastList colorsAndNormals) {
 		int zMask = (chunk.width - 1) >>> chunk.resolutionShift;
 		int xMask = zMask << (chunk.widthShift - chunk.resolutionShift);
 		int yMask = xMask << (chunk.widthShift - chunk.resolutionShift);
+		// Position of the center blocks:
+		int zHalfLower = zMask >>> 1;
+		int zHalfUpper = zHalfLower + 1;
+		int xHalfLower = zHalfLower << (chunk.widthShift - chunk.resolutionShift);
+		int xHalfUpper = zHalfUpper << (chunk.widthShift - chunk.resolutionShift);
+		int yHalfLower = xHalfLower << (chunk.widthShift - chunk.resolutionShift);
+		int yHalfUpper = xHalfUpper << (chunk.widthShift - chunk.resolutionShift);
+
 		int zDelta = 1;
 		int xDelta = 1 << (chunk.widthShift - chunk.resolutionShift);
 		int yDelta = 1 << 2*(chunk.widthShift - chunk.resolutionShift);
@@ -288,6 +296,50 @@ public class ReducedChunkMesh extends ChunkMesh implements Runnable {
 			if((i & yMask) != yMask && chunk.blocks[i + yDelta] != null) posY = false;
 			if((i & zMask) != 0 && chunk.blocks[i - zDelta] != null) negZ = false;
 			if((i & zMask) != zMask && chunk.blocks[i + zDelta] != null) posZ = false;
+			// Check a second neighbor if the chunk is close to a potential border.
+			// This prevents cracks in the terrain at lod borders.
+			if((i & xMask) == xHalfUpper) {
+				negX |= chunk.blocks[i - 2*xDelta] == null
+				|| (i & yMask) != yMask && chunk.blocks[i - xDelta + yDelta] == null
+				|| (i & yMask) != 0 && chunk.blocks[i - xDelta - yDelta] == null
+				|| (i & zMask) != zMask && chunk.blocks[i - xDelta + zDelta] == null
+				|| (i & zMask) != 0 && chunk.blocks[i - xDelta - zDelta] == null;
+			}
+			if((i & xMask) == xHalfLower) {
+				posX |= chunk.blocks[i + 2*xDelta] == null
+				|| (i & yMask) != yMask && chunk.blocks[i + xDelta + yDelta] == null
+				|| (i & yMask) != 0 && chunk.blocks[i + xDelta - yDelta] == null
+				|| (i & zMask) != zMask && chunk.blocks[i + xDelta + zDelta] == null
+				|| (i & zMask) != 0 && chunk.blocks[i + xDelta - zDelta] == null;
+			}
+			if((i & yMask) == yHalfUpper) {
+				negY |= chunk.blocks[i - 2*yDelta] == null
+				|| (i & xMask) != xMask && chunk.blocks[i - yDelta + xDelta] == null
+				|| (i & xMask) != 0 && chunk.blocks[i - yDelta - xDelta] == null
+				|| (i & zMask) != zMask && chunk.blocks[i - yDelta + zDelta] == null
+				|| (i & zMask) != 0 && chunk.blocks[i - yDelta - zDelta] == null;
+			}
+			if((i & yMask) == yHalfLower) {
+				posY |= chunk.blocks[i + 2*yDelta] == null
+				|| (i & xMask) != xMask && chunk.blocks[i + yDelta + xDelta] == null
+				|| (i & xMask) != 0 && chunk.blocks[i + yDelta - xDelta] == null
+				|| (i & zMask) != zMask && chunk.blocks[i + yDelta + zDelta] == null
+				|| (i & zMask) != 0 && chunk.blocks[i + yDelta - zDelta] == null;
+			}
+			if((i & zMask) == zHalfUpper) {
+				negZ |= chunk.blocks[i - 2*zDelta] == null
+				|| (i & yMask) != yMask && chunk.blocks[i - zDelta + yDelta] == null
+				|| (i & yMask) != 0 && chunk.blocks[i - zDelta - yDelta] == null
+				|| (i & xMask) != xMask && chunk.blocks[i - zDelta + xDelta] == null
+				|| (i & xMask) != 0 && chunk.blocks[i - zDelta - xDelta] == null;
+			}
+			if((i & zMask) == zHalfLower) {
+				posZ |= chunk.blocks[i + 2*zDelta] == null
+				|| (i & yMask) != yMask && chunk.blocks[i + zDelta + yDelta] == null
+				|| (i & yMask) != 0 && chunk.blocks[i + zDelta - yDelta] == null
+				|| (i & xMask) != xMask && chunk.blocks[i + zDelta + xDelta] == null
+				|| (i & xMask) != 0 && chunk.blocks[i + zDelta - xDelta] == null;
+			}
 			int x = CubyzMath.shiftRight(i & xMask, chunk.widthShift - 2*chunk.resolutionShift);
 			int y = CubyzMath.shiftRight(i & yMask, 2*chunk.widthShift - 3*chunk.resolutionShift);
 			int z = ((i & zMask) << chunk.resolutionShift);

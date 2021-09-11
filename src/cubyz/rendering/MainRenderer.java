@@ -292,6 +292,7 @@ public class MainRenderer {
 			playerPosition = localPlayer.getPosition(); // Use a constant copy of the player position for the whole rendering to prevent graphics bugs on player movement.
 		}
 		if(playerPosition != null) {
+			ReducedChunkMesh.bindShader(ambientLight, directionalLight.getDirection()); // Update the uniforms. The uniforms are needed to render the replacement meshes.
 			
 			NormalChunkMesh.bindShader(ambientLight, directionalLight.getDirection());
 			
