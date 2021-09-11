@@ -70,10 +70,24 @@ public class TextLine implements KeyListener {
 		this.font = font;
 		this.height = height;
 		this.isEditable = isEditable;
-		updateText(text);
+		_updateText(text);
 	}
 	
+	/**
+	 * This event came from the outside, so the cursor position is set to 0, to prevent issues.
+	 * @param text
+	 */
 	public void updateText(String text) {
+		if(cursorPosition != null)
+			cursorPosition = TextHitInfo.trailing(-1);
+		_updateText(text);
+	}
+	
+	/**
+	 * Make sure to correct the cursor position when calling!
+	 * @param text
+	 */
+	private void _updateText(String text) {
 		if(text == null) text = "";
 		this.text = text;
 		if(text.length() == 0) {
@@ -162,7 +176,7 @@ public class TextLine implements KeyListener {
 		if(selectionStart != null) deleteTextAtCursor(true); // overwrite selected text.
 		int insertionIndex = cursorPosition.getInsertionIndex();
 		text = text.substring(0, insertionIndex)+addition+text.substring(insertionIndex);
-		updateText(text);
+		_updateText(text);
 		cursorPosition = TextHitInfo.leading(insertionIndex + addition.length());
 		
 		cursorPosition = fixEdge(cursorPosition);
@@ -238,7 +252,7 @@ public class TextLine implements KeyListener {
 					oldPositionIndex -= end - start;
 				}
 			}
-			updateText(text);
+			_updateText(text);
 			// Update cursor:
 			if(isLeading)
 				cursorPosition = TextHitInfo.leading(oldPositionIndex);
