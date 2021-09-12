@@ -578,6 +578,7 @@ public class NormalChunk extends Chunk {
 					ch.setUpdated();
 			}
 		}
+		setUpdated();
 	}
 	
 	/**
