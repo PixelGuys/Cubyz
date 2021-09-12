@@ -31,8 +31,8 @@ public class LanguageLoader {
 					}
 					reader.close();
 				} catch (IOException e) {
-					Logger.severe("Could not open language file " + locale + " for mod " + assetFolder.getName());
-					Logger.throwable(e);
+					Logger.error("Could not open language file " + locale + " for mod " + assetFolder.getName());
+					Logger.error(e);
 				}
 			} else if (assetFolder.getName().equals("cubyz")) {
 				Logger.warning("Language \"" + locale + "\" not found");

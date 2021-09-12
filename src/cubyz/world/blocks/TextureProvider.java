@@ -61,7 +61,7 @@ public interface TextureProvider {
 		try {
 			return ImageIO.read(new File(file));
 		} catch(Exception e) {
-			Logger.throwable(e);
+			Logger.error(e);
 		}
 		return null;
 	}

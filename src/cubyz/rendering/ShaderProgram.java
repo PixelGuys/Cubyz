@@ -42,7 +42,7 @@ public class ShaderProgram {
 			link();
 			storeUniforms(uniformLocations);
 		} catch(Exception e) {
-			Logger.throwable(e);
+			Logger.error(e);
 		}
 	}
 	
@@ -57,7 +57,7 @@ public class ShaderProgram {
 				f.setInt(null, glGetUniformLocation(programId, uniformName));
 			} catch(Exception e) {
 				Logger.warning("Could not find variable \"loc_"+uniformName.replace('.', '_')+"\" in class \""+uniformLocations.descriptorString()+"\" to store uniform location.");
-				Logger.throwable(e);
+				Logger.warning(e);
 			}
 		}
 	}

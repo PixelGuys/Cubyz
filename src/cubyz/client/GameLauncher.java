@@ -23,10 +23,10 @@ public abstract class GameLauncher {
 			renderer = new MainRenderer();
 			logic = new GameLogic();
 			instance.start();
-			Logger.log("Stopped!");
+			Logger.info("Stopped!");
 			System.exit(0);
 		} catch(Exception e) {
-			Logger.throwable(e);
+			Logger.crash(e);
 			throw e;
 		}
 	}

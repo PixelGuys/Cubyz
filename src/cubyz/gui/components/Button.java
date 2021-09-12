@@ -122,7 +122,7 @@ public class Button extends Component {
 					try {
 						onAction.run();
 					} catch(Exception e) {
-						Logger.throwable(e);
+						Logger.error(e);
 					}
 				}
 			}

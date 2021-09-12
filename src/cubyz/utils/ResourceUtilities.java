@@ -62,7 +62,7 @@ public class ResourceUtilities {
 			props.load(reader);
 			reader.close();
 		} catch (IOException e) {
-			Logger.throwable(e);
+			Logger.error(e);
 			return null;
 		}
 		String resource = props.getProperty("texture", null);
@@ -75,7 +75,7 @@ public class ResourceUtilities {
 		try {
 			return ImageIO.read(new File(path));
 		} catch(Exception e) {
-			Logger.throwable(e);
+			Logger.error(e);
 		}
 		return null;
 	}

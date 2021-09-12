@@ -76,7 +76,7 @@ public class CustomBlock extends Ore implements CustomObject {
 			tree = new Node(is, 4);
 			is.close();
 		} catch (IOException e) {
-			Logger.throwable(e);
+			Logger.error(e);
 		}
 	}
 

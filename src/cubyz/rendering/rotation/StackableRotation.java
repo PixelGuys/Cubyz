@@ -133,7 +133,7 @@ public class StackableRotation implements RotationMode {
 	public int generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
 		Model model = Meshes.blockMeshes.get(bi.getBlock()).model;
 		if(!(model instanceof CubeModel)) {
-			Logger.severe("Unsupported model "+model.getRegistryID()+" in block "+bi.getBlock().getRegistryID()+" for stackable block type. Skipping block.");
+			Logger.error("Unsupported model "+model.getRegistryID()+" in block "+bi.getBlock().getRegistryID()+" for stackable block type. Skipping block.");
 			return renderIndex;
 		}
 		int x = bi.getX() & NormalChunk.chunkMask;

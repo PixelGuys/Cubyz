@@ -42,7 +42,7 @@ public abstract class Window {
 		try {
 			Library.initialize(); // initialize LWJGL libraries to be able to catch any potential errors (like missing library)
 		} catch (UnsatisfiedLinkError e) {
-			Logger.severe("Missing LWJGL libraries for " + 
+			Logger.crash("Missing LWJGL libraries for " + 
 					System.getProperty("os.name") + " on " + System.getProperty("os.arch"));
 			JOptionPane.showMessageDialog(null, "Missing LWJGL libraries for " + 
 					System.getProperty("os.name") + " on " + System.getProperty("os.arch"), "Error", JOptionPane.ERROR_MESSAGE);
@@ -220,7 +220,7 @@ public abstract class Window {
 			setClearColor(new Vector4f(0.f, 0.f, 0.f, 0.f));
 		}
 		
-		Logger.log("OpenGL Version: " + GL11.glGetString(GL11.GL_VERSION));
+		Logger.info("OpenGL Version: " + GL11.glGetString(GL11.GL_VERSION));
 		show();
 		restoreState();
 	}

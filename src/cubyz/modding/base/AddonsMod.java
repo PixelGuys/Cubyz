@@ -91,7 +91,7 @@ public class AddonsMod {
 						props.load(reader);
 						reader.close();
 					} catch (IOException e) {
-						Logger.throwable(e);
+						Logger.error(e);
 					}
 					
 					Item item;
@@ -127,7 +127,7 @@ public class AddonsMod {
 						props.load(reader);
 						reader.close();
 					} catch (IOException e) {
-						Logger.throwable(e);
+						Logger.error(e);
 					}
 					
 					Block block;
@@ -169,7 +169,7 @@ public class AddonsMod {
 						try {
 							block.blockEntity = Class.forName(props.getProperty("blockEntity")).asSubclass(BlockEntity.class);
 						} catch (ClassNotFoundException e) {
-							Logger.throwable(e);
+							Logger.error(e);
 						}
 					}
 					registry.register(block);
@@ -273,7 +273,7 @@ public class AddonsMod {
 						
 						buf.close();
 					} catch(IOException e) {
-						Logger.throwable(e);
+						Logger.error(e);
 					}
 				}
 			}
@@ -383,7 +383,7 @@ public class AddonsMod {
 						}
 						buf.close();
 					} catch(IOException e) {
-						Logger.throwable(e);
+						Logger.error(e);
 					}
 				}
 			}
@@ -448,7 +448,7 @@ public class AddonsMod {
 						
 						buf.close();
 					} catch(IOException e) {
-						Logger.throwable(e);
+						Logger.error(e);
 					}
 				}
 			}

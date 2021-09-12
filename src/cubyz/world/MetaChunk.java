@@ -146,7 +146,7 @@ public class MetaChunk {
 							surface.queueChunk(chunks[index]);
 							chunksList.add(chunks[index]);
 						} catch (Exception e) {
-							Logger.throwable(e);
+							Logger.error(e);
 						}
 					} else {
 						chunksList.add(chunk);

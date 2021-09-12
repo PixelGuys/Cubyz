@@ -90,8 +90,8 @@ public class LocalSurface extends Surface {
 					if(popped instanceof NormalChunk)
 						((NormalChunk)popped).load();
 				} catch (Exception e) {
-					Logger.severe("Could not generate " + popped.getVoxelSize() + "-chunk " + popped.getWorldX()+", " + popped.getWorldY() + ", " + popped.getWorldZ() + " !");
-					Logger.throwable(e);
+					Logger.error("Could not generate " + popped.getVoxelSize() + "-chunk " + popped.getWorldX()+", " + popped.getWorldY() + ", " + popped.getWorldZ() + " !");
+					Logger.error(e);
 				}
 			}
 		}
@@ -629,7 +629,7 @@ public class LocalSurface extends Surface {
 			
 			metaChunks = null;
 		} catch (Exception e) {
-			Logger.throwable(e);
+			Logger.error(e);
 		}
 	}
 

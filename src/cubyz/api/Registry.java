@@ -74,7 +74,7 @@ public class Registry<T extends RegistryElement> {
 		}
 		hashMap.put(element.getRegistryID().toString(), element);
 		if (debug) {
-			Logger.log("Registered " + getType(element.getClass()) + " as " + element.getRegistryID());
+			Logger.info("Registered " + getType(element.getClass()) + " as " + element.getRegistryID());
 		}
 		dirty = true;
 		return true;

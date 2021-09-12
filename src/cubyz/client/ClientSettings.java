@@ -67,7 +67,7 @@ public class ClientSettings {
 			writer.append(settings.toString());
 			writer.close();
 		} catch (IOException e) {
-			Logger.throwable(e);
+			Logger.warning(e);
 		}
 	}
 	

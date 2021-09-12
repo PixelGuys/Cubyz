@@ -119,7 +119,7 @@ public abstract class BlockPreview {
 					shaders = path;
 					loadShader();
 				} catch (Exception e) {
-					Logger.throwable(e);
+					Logger.error(e);
 				}
 			} else {
 				shaders = path;

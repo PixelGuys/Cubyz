@@ -496,7 +496,7 @@ public class MainRenderer {
 					loadShaders();
 					doRender = true;
 				} catch (Exception e) {
-					Logger.throwable(e);
+					Logger.warning(e);
 				}
 			} else {
 				shaders = path;

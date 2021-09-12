@@ -47,7 +47,7 @@ public class WorldIO {
 			world.setCurrentTorusID(ndt.getLong("currentTorusID"));
 			in.close();
 		} catch (IOException e) {
-			Logger.throwable(e);
+			Logger.error(e);
 		}
 	}
 
@@ -65,7 +65,7 @@ public class WorldIO {
 			world.setGameTime(ndt.getLong("gameTime"));
 			in.close();
 		} catch (IOException e) {
-			Logger.throwable(e);
+			Logger.error(e);
 		}
 	}
 	
@@ -86,7 +86,7 @@ public class WorldIO {
 			out.write(ndt.getData());
 			out.close();
 		} catch (IOException e) {
-			Logger.throwable(e);
+			Logger.error(e);
 		}
 	}
 

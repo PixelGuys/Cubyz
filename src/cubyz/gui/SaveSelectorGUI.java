@@ -83,20 +83,20 @@ public class SaveSelectorGUI extends MenuGUI {
 							}
 	
 							@Override
-							public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-								Logger.throwable(exc);
+							public FileVisitResult visitFileFailed(Path file, IOException e) throws IOException {
+								Logger.error(e);
 								return FileVisitResult.TERMINATE;
 							}
 	
 							@Override
-							public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+							public FileVisitResult postVisitDirectory(Path dir, IOException e) throws IOException {
 								Files.delete(dir);
 								return FileVisitResult.CONTINUE;
 							}
 							
 						});
 					} catch (IOException e) {
-						Logger.throwable(e);
+						Logger.error(e);
 					}
 					// Remove the buttons:
 					saveButtons[index] = null;

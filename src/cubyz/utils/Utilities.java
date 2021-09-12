@@ -60,7 +60,7 @@ public class Utilities {
 			}
 			return dest;
 		} catch (Exception e) {
-			Logger.throwable(e);
+			Logger.error(e);
 		}
 		return null;
 	}

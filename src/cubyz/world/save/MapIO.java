@@ -51,7 +51,7 @@ public class MapIO {
 				}
 				in.close();
 			} catch (IOException e) {
-				Logger.throwable(e);
+				Logger.error(e);
 			}
 		} else {
 			for(int x = 0; x < MapFragment.MAP_SIZE; x++) {
@@ -104,7 +104,7 @@ public class MapIO {
 				}
 				in.close();
 			} catch (IOException e) {
-				Logger.throwable(e);
+				Logger.error(e);
 			}
 		}
 	}
@@ -133,7 +133,7 @@ public class MapIO {
 			}
 			out.close();
 		} catch (IOException e) {
-			Logger.throwable(e);
+			Logger.error(e);
 		}
 		// Save height map:
 		if(dir.exists() && heightMap != null) {
@@ -150,7 +150,7 @@ public class MapIO {
 				out.write(data);
 				out.close();
 			} catch (IOException e) {
-				Logger.throwable(e);
+				Logger.error(e);
 			}
 		}
 	}
@@ -211,7 +211,7 @@ public class MapIO {
 			stream.close();
 			return new ItemEntityManager(surface, chunk, data, tio.itemPalette);
 		} catch (IOException e) {
-			Logger.throwable(e);
+			Logger.error(e);
 		}
 		return new ItemEntityManager(surface, chunk, 1);
 	}
@@ -226,7 +226,7 @@ public class MapIO {
 			out.write(data);
 			out.close();
 		} catch (IOException e) {
-			Logger.throwable(e);
+			Logger.error(e);
 		}
 	}
 	

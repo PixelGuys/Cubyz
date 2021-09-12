@@ -21,7 +21,7 @@ public class PerlinNoise {
 		try {
 			return xGridPoints[x][y];
 		} catch (ArrayIndexOutOfBoundsException e) { // quick and dirty fix
-			Logger.throwable(e);
+			Logger.error(e);
 			return 0;
 		}
 	}
@@ -30,7 +30,7 @@ public class PerlinNoise {
 		try {
 			return yGridPoints[x][y];
 		} catch (ArrayIndexOutOfBoundsException e) {
-			Logger.throwable(e);
+			Logger.error(e);
 			return 0;
 		}
 	}

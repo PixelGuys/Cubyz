@@ -13,7 +13,7 @@ public abstract class JsonParser {
 		try {
 			text = new String(Files.readAllBytes(Paths.get(path)));
 		} catch (IOException e) {
-			Logger.throwable(e);
+			Logger.error(e);
 			return new JsonObject();
 		}
 		char[] characters = text.trim().toCharArray(); // Remove leading and trailing spaces and convert to char array.

@@ -52,12 +52,12 @@ public class PauseGUI extends MenuGUI {
 		reload.setOnAction(() -> {
 			Cubyz.renderDeque.add(() -> {
 				try {
-					Logger.log("Reloading shaders..");
+					Logger.info("Reloading shaders..");
 					GameLauncher.renderer.unloadShaders();
 					GameLauncher.renderer.loadShaders();
-					Logger.log("Reloaded!");
+					Logger.info("Reloaded!");
 				} catch (Exception e) {
-					Logger.throwable(e);
+					Logger.error(e);
 				}
 			});
 		});

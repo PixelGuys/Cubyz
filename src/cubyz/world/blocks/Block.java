@@ -202,7 +202,7 @@ public class Block implements RegistryElement {
 			try {
 				return blockEntity.getConstructor(Surface.class, Vector3i.class).newInstance(surface, pos);
 			} catch (Exception e) {
-				Logger.throwable(e);
+				Logger.error(e);
 			}
 		}
 		return null;

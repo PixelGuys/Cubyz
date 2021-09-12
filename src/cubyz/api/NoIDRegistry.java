@@ -49,7 +49,7 @@ public class NoIDRegistry<T> {
 		}
 		registered.add(element);
 		if (debug) {
-			Logger.log("Registered " + getType(element.getClass()) + " as " + element.toString());
+			Logger.info("Registered " + getType(element.getClass()) + " as " + element.toString());
 		}
 	}
 	

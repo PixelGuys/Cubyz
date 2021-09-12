@@ -104,7 +104,7 @@ public class Meshes {
 					props.load(reader);
 					reader.close();
 				} catch (IOException e) {
-					Logger.throwable(e);
+					Logger.warning(e);
 				}
 				model = props.getProperty("model", null);
 				texture = props.getProperty("texture", null);

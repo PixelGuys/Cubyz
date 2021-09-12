@@ -28,7 +28,7 @@ public class Texture {
 		try {
 			return new Texture(path);
 		} catch(IOException e) {
-			Logger.throwable(e);
+			Logger.error(e);
 			return null; // TODO: Default image.
 		}
 	}
@@ -84,7 +84,7 @@ public class Texture {
 		try {
 			id = loadTexture(is);
 		} catch (Exception e) {
-			Logger.throwable(e);
+			Logger.error(e);
 		}
 	}
 	

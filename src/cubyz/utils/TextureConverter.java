@@ -29,7 +29,7 @@ public class TextureConverter {
 		try {
 			ImageIO.write(img, "png", baos);
 		} catch (IOException e) {
-			Logger.throwable(e);
+			Logger.error(e);
 		}
 		byte[] array = baos.toByteArray();
 		ByteBuffer buf = MemoryUtil.memAlloc(array.length);
@@ -43,7 +43,7 @@ public class TextureConverter {
 		try {
 			ImageIO.write(img, "png", baos);
 		} catch (IOException e) {
-			Logger.throwable(e);
+			Logger.error(e);
 		}
 		byte[] array = baos.toByteArray();
 		return new ByteArrayInputStream(array);
@@ -68,8 +68,8 @@ public class TextureConverter {
 			return out;
 		}
 		catch(IOException e) {
-			Logger.throwable(e);
-			System.out.println(Arrays.toString(paths));
+			Logger.error(e);
+			Logger.info(Arrays.toString(paths));
 		}
 		return null;
 	}

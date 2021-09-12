@@ -59,7 +59,7 @@ public class Game {
 				sync(loopStartTime, secsPerUpdate);
 			}
 		} catch (Exception e) {
-			Logger.throwable(e);
+			Logger.crash(e);
 		}
 	}
 
@@ -68,7 +68,7 @@ public class Game {
 		try {
 			GameLauncher.logic.init();
 		} catch (Exception e) {
-			Logger.throwable(e);
+			Logger.crash(e);
 		}
 		GameLauncher.input.init();
 		Window.show();

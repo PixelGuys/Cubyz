@@ -62,7 +62,7 @@ public class TorusIO {
 			}
 			in.close();
 		} catch (IOException e) {
-			Logger.throwable(e);
+			Logger.error(e);
 		}
 	}
 	
@@ -87,7 +87,7 @@ public class TorusIO {
 			}
 			out.close();
 		} catch (IOException e) {
-			Logger.throwable(e);
+			Logger.error(e);
 		}
 	}
 
