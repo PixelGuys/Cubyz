@@ -10,6 +10,7 @@ import cubyz.gui.ConsoleGUI;
 import cubyz.gui.PauseGUI;
 import cubyz.gui.TransitionStyle;
 import cubyz.gui.mods.InventoryGUI;
+import cubyz.rendering.Camera;
 import cubyz.rendering.Window;
 import cubyz.world.entity.Entity;
 import cubyz.world.entity.EntityType;
@@ -94,12 +95,12 @@ public class Input {
 			}
 			if((Mouse.isLeftButtonPressed() || Mouse.isRightButtonPressed()) && !Mouse.isGrabbed() && Cubyz.gameUI.getMenuGUI() == null) {
 				Mouse.setGrabbed(true);
-				Mouse.clearPos(Window.getWidth()/2, Window.getHeight()/2);
+				Mouse.clearDelta();
 			}
 			
 			if(Mouse.isGrabbed()) {
-				Cubyz.camera.moveRotation(Mouse.getDisplVec().x*0.0089F, Mouse.getDisplVec().y*0.0089F, 5F);
-				Mouse.clearPos(Window.getWidth()/2, Window.getHeight()/2);
+				Camera.moveRotation(Mouse.getDeltaX()*0.0089F, Mouse.getDeltaY()*0.0089F);
+				Mouse.clearDelta();
 			}
 			
 			// inventory related
@@ -141,7 +142,7 @@ public class Input {
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_EQUAL, false);
 				System.gc();
 			}
-			Cubyz.msd.selectSpatial(Cubyz.surface.getChunks(), Cubyz.player.getPosition(), Cubyz.camera.getViewMatrix().positiveZ(Cubyz.dir).negate(), Cubyz.player, Cubyz.surface);
+			Cubyz.msd.selectSpatial(Cubyz.surface.getChunks(), Cubyz.player.getPosition(), Camera.getViewMatrix().positiveZ(Cubyz.dir).negate(), Cubyz.player, Cubyz.surface);
 		}
 		if(Cubyz.world != null) {
 			if(Keybindings.isPressed("menu")) {

@@ -21,7 +21,6 @@ import cubyz.client.Meshes;
 import cubyz.client.NormalChunkMesh;
 import cubyz.client.ReducedChunkMesh;
 import cubyz.gui.input.Keyboard;
-import cubyz.gui.input.Mouse;
 import cubyz.utils.Utils;
 import cubyz.utils.datastructures.FastList;
 import cubyz.world.NormalChunk;
@@ -188,7 +187,7 @@ public class MainRenderer {
 			if(Cubyz.playerInc.x != 0) {
 				Cubyz.player.vx = Cubyz.playerInc.x;
 			}
-			Cubyz.camera.setPosition(Cubyz.player.getPosition().x, Cubyz.player.getPosition().y + Player.cameraHeight + playerBobbing, Cubyz.player.getPosition().z);
+			Camera.setPosition(Cubyz.player.getPosition().x, Cubyz.player.getPosition().y + Player.cameraHeight + playerBobbing, Cubyz.player.getPosition().z);
 		}
 		
 		while(!Cubyz.renderDeque.isEmpty()) {
@@ -246,7 +245,6 @@ public class MainRenderer {
 				screenshot = false;*/
 			}
 		}
-		Mouse.input();
 		Keyboard.release(); // TODO: Why is this called in the render thread???
 	}
 	
@@ -277,14 +275,14 @@ public class MainRenderer {
 		// Clean up old chunk meshes:
 		Meshes.cleanUp();
 		
-		Cubyz.camera.setViewMatrix(transformation.getViewMatrix(Cubyz.camera));
+		Camera.setViewMatrix(transformation.getViewMatrix(Camera.getPosition(), Camera.getRotation()));
 		
 		float breakAnim = 0;
 		
 		
 		// Uses FrustumCulling on the chunks.
 		prjViewMatrix.set(Window.getProjectionMatrix());
-		prjViewMatrix.mul(Cubyz.camera.getViewMatrix());
+		prjViewMatrix.mul(Camera.getViewMatrix());
 
 		frustumInt.set(prjViewMatrix);
 		Vector3f playerPosition = null;
@@ -368,7 +366,7 @@ public class MainRenderer {
 					if(ent.getType().model != null) {
 						entityShader.setUniform(EntityUniforms.loc_materialHasTexture, true);
 						entityShader.setUniform(EntityUniforms.loc_light, ent.getSurface().getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
-						ent.getType().model.render(Cubyz.camera.getViewMatrix(), entityShader, ent);
+						ent.getType().model.render(Camera.getViewMatrix(), entityShader, ent);
 						continue;
 					}
 					if (ent instanceof CustomMeshProvider) {
@@ -388,7 +386,7 @@ public class MainRenderer {
 						
 						mesh.renderOne(() -> {
 							Vector3f position = ent.getRenderPosition();
-							Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(position, ent.getRotation(), ent.getScale()), Cubyz.camera.getViewMatrix());
+							Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(position, ent.getRotation(), ent.getScale()), Camera.getViewMatrix());
 							entityShader.setUniform(EntityUniforms.loc_viewMatrix, modelViewMatrix);
 						});
 					}
@@ -423,7 +421,7 @@ public class MainRenderer {
 						
 						mesh.renderOne(() -> {
 							Vector3f position = manager.getPosition(index);
-							Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(position, manager.getRotation(index), ItemEntityManager.diameter), Cubyz.camera.getViewMatrix());
+							Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(position, manager.getRotation(index), ItemEntityManager.diameter), Camera.getViewMatrix());
 							entityShader.setUniform(EntityUniforms.loc_viewMatrix, modelViewMatrix);
 						});
 					}
@@ -440,7 +438,7 @@ public class MainRenderer {
 				mesh.renderOne(() -> {
 					Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(
 							Transformation.getModelMatrix(spatial.getPosition(), spatial.getRotation(), spatial.getScale()),
-							Cubyz.camera.getViewMatrix());
+							Camera.getViewMatrix());
 					entityShader.setUniform(EntityUniforms.loc_viewMatrix, modelViewMatrix);
 				});
 			}

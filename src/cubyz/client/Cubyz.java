@@ -6,7 +6,6 @@ import java.util.Deque;
 import org.joml.Vector3f;
 
 import cubyz.gui.UISystem;
-import cubyz.rendering.Camera;
 import cubyz.rendering.Fog;
 import cubyz.rendering.RenderOctTree;
 import cubyz.world.Surface;
@@ -18,7 +17,6 @@ import cubyz.world.entity.PlayerEntity.PlayerImpl;
  */
 public class Cubyz {
 	// stuff for rendering:
-	public static Camera camera = new Camera();
 	public static Fog fog = new Fog(true, new Vector3f(0.5f, 0.5f, 0.5f), 0.025f);
 	public static UISystem gameUI = new UISystem();
 	public static Deque<Runnable> renderDeque = new ArrayDeque<>();

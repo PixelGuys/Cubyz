@@ -1,43 +1,33 @@
 package cubyz.gui.input;
 
 import org.joml.Vector2d;
-import org.joml.Vector2f;
 
-import cubyz.Logger;
-import cubyz.client.GameLauncher;
 import cubyz.rendering.Window;
 
 import static org.lwjgl.glfw.GLFW.*;
 
-import java.awt.MouseInfo;
-import java.awt.Point;
-import java.awt.Robot;
-
 public abstract class Mouse {
 
 	private static final Vector2d currentPos = new Vector2d();
-	private static final Vector2f displVec = new Vector2f();
+
+	// Mouse deltas are averaged over multiple frames using a circular buffer:
+	private static final float[] deltaX = new float[3],
+								deltaY = new float[deltaX.length];
+	private static int deltaBufferPosition = 0;
 
 	private static boolean leftButtonPressed = false;
 	private static boolean middleButtonPressed = false;
 	private static boolean rightButtonPressed = false;
 
 	private static boolean grabbed = false;
-	private static Robot r;
 	
 	private static int lastScroll = 0, curScroll = 0, scrollOffset = 0;
 
-	static {
-		try {
-			r = new Robot();
-		} catch (Exception e) {
-			Logger.throwable(e);
-		}
-	}
-
-	public static void clearPos(int x, int y) {
-		currentPos.set(x, y);
-		displVec.set(0, 0);
+	public static void clearDelta() {
+		deltaBufferPosition++;
+		deltaBufferPosition = deltaBufferPosition%deltaX.length;
+		deltaX[deltaBufferPosition] = 0;
+		deltaY[deltaBufferPosition] = 0;
 	}
 	
 	public static double getScrollOffset() {
@@ -59,9 +49,10 @@ public abstract class Mouse {
 			if (!grab) {
 				glfwSetInputMode(Window.getWindowHandle(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 			} else {
-				int[] pos = Window.getPosition();
-				r.mouseMove(pos[0] + Window.getWidth() / 2, pos[1] + Window.getHeight() / 2);
-				glfwSetInputMode(Window.getWindowHandle(), GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+				glfwSetInputMode(Window.getWindowHandle(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+				if(glfwRawMouseMotionSupported())
+					glfwSetInputMode(Window.getWindowHandle(), GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+
 			}
 			grabbed = grab;
 		}
@@ -80,6 +71,12 @@ public abstract class Mouse {
 	}
 
 	public static void init() {
+		glfwSetCursorPosCallback(Window.getWindowHandle(), (windowHandle, x, y) -> {
+			deltaX[deltaBufferPosition] += x - currentPos.x;
+			deltaY[deltaBufferPosition] += y - currentPos.y;
+			currentPos.x = x;
+			currentPos.y = y;
+		});
 		glfwSetMouseButtonCallback(Window.getWindowHandle(), (windowHandle, button, action, mode) -> {
 			if (action == GLFW_PRESS || action == GLFW_RELEASE) {
 				if (button == GLFW_MOUSE_BUTTON_1) {
@@ -98,22 +95,30 @@ public abstract class Mouse {
 		});
 	}
 
-	public static Vector2f getDisplVec() {
-		return displVec;
+	/**
+	 * Calculates the mouse delta average of the last frames.
+	 * @return x
+	 */
+	public static float getDeltaX() {
+		float result = 0;
+		for(int i = 0; i < deltaX.length; i++) {
+			result += deltaX[i];
+		}
+		result /= deltaX.length;
+		return result;
 	}
 
-	public static void input() {
-		int[] pos = Window.getPosition();
-		Point mousePosition = MouseInfo.getPointerInfo().getLocation();
-		currentPos.x = mousePosition.getX() - pos[0];
-		currentPos.y = mousePosition.getY() - pos[1];
-		if (grabbed && Window.isFocused()) {
-			displVec.y += currentPos.x - (Window.getWidth() >> 1);
-			displVec.x += currentPos.y - (Window.getHeight() >> 1);
-			if (GameLauncher.instance.getRenderThread().isAlive() && GameLauncher.instance.getUpdateThread().isAlive()) {
-				r.mouseMove(pos[0] + (Window.getWidth() >> 1), pos[1] + (Window.getHeight() >> 1));
-			}
+	/**
+	 * Calculates the mouse delta average of the last frames.
+	 * @return y
+	 */
+	public static float getDeltaY() {
+		float result = 0;
+		for(int i = 0; i < deltaY.length; i++) {
+			result += deltaY[i];
 		}
+		result /= deltaY.length;
+		return result;
 	}
 
 	public static boolean isLeftButtonPressed() {

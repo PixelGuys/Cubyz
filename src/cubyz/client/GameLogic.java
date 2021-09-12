@@ -30,6 +30,7 @@ import cubyz.gui.audio.SoundSource;
 import cubyz.gui.input.Keybindings;
 import cubyz.modding.ModLoader;
 import cubyz.rendering.BlockPreview;
+import cubyz.rendering.Camera;
 import cubyz.rendering.FrameBuffer;
 import cubyz.rendering.Material;
 import cubyz.rendering.Mesh;
@@ -353,7 +354,7 @@ public class GameLogic implements ClientConnection {
 	public void update(float interval) {
 		if (!Cubyz.gameUI.doesGUIPauseGame() && Cubyz.world != null) {
 			if (!Cubyz.gameUI.doesGUIBlockInput()) {
-				Cubyz.player.move(Cubyz.playerInc.mul(0.11F), Cubyz.camera.getRotation());
+				Cubyz.player.move(Cubyz.playerInc.mul(0.11F), Camera.getRotation());
 				if (breakCooldown > 0) {
 					breakCooldown--;
 				}
@@ -380,7 +381,7 @@ public class GameLogic implements ClientConnection {
 					// Hit entities:
 					Object selected = Cubyz.msd.getSelected();
 					if(selected instanceof Entity) {
-						((Entity)selected).hit(Cubyz.player.getInventory().getItem(Cubyz.inventorySelection) instanceof Tool ? (Tool)Cubyz.player.getInventory().getItem(Cubyz.inventorySelection) : null, Cubyz.camera.getViewMatrix().positiveZ(Cubyz.dir).negate());
+						((Entity)selected).hit(Cubyz.player.getInventory().getItem(Cubyz.inventorySelection) instanceof Tool ? (Tool)Cubyz.player.getInventory().getItem(Cubyz.inventorySelection) : null, Camera.getViewMatrix().positiveZ(Cubyz.dir).negate());
 					}
 				} else {
 					Cubyz.player.resetBlockBreaking();

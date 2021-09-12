@@ -3,44 +3,34 @@ package cubyz.rendering;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
-public class Camera {
+public abstract class Camera {
 	private static final float PI_HALF = (float)(Math.PI/2);
 
-	private final Vector3f position;
+	private static final Vector3f position = new Vector3f();
 
-	private final Vector3f rotation;
+	private static final Vector3f rotation = new Vector3f();
 	
-	private Matrix4f viewMatrix;
+	private static Matrix4f viewMatrix;
 
-	public Camera() {
-		position = new Vector3f(0, 0, 0);
-		rotation = new Vector3f(0, 0, 0);
-	}
-
-	public Matrix4f getViewMatrix() {
+	public static Matrix4f getViewMatrix() {
 		return viewMatrix;
 	}
 
-	public void setViewMatrix(Matrix4f viewMatrix) {
-		this.viewMatrix = viewMatrix;
-	}
-	
-	public Camera(Vector3f position, Vector3f rotation) {
-		this.position = position;
-		this.rotation = rotation;
+	public static void setViewMatrix(Matrix4f viewMatrix) {
+		Camera.viewMatrix = viewMatrix;
 	}
 
-	public Vector3f getPosition() {
+	public static Vector3f getPosition() {
 		return position;
 	}
 
-	public void setPosition(float x, float y, float z) {
+	public static void setPosition(float x, float y, float z) {
 		position.x = x;
 		position.y = y;
 		position.z = z;
 	}
 
-	public void movePosition(float offsetX, float offsetY, float offsetZ) {
+	public static void movePosition(float offsetX, float offsetY, float offsetZ) {
 		if (offsetZ != 0) {
 			position.x -= (float) Math.sin(rotation.y) * offsetZ;
 			position.z += (float) Math.cos(rotation.y) * offsetZ;
@@ -52,11 +42,11 @@ public class Camera {
 		position.y += offsetY;
 	}
 
-	public Vector3f getRotation() {
+	public static Vector3f getRotation() {
 		return rotation;
 	}
 
-	public void setRotation(float x, float y, float z) {
+	public static void setRotation(float x, float y, float z) {
 		if (x > PI_HALF) {
 			x = PI_HALF;
 		} else if (x < -PI_HALF) {
@@ -67,15 +57,16 @@ public class Camera {
 		rotation.z = z;
 	}
 
-	public void moveRotation(float offsetX, float offsetY, float offsetZ) {
-		rotation.x += offsetX;
+	public static void moveRotation(float mouseX, float mouseY) {
+		// Mouse movement along the x-axis rotates the image along the y-axis.
+		rotation.x += mouseY;
 		if (rotation.x > PI_HALF) {
 			rotation.x = PI_HALF;
 		} else if (rotation.x < -PI_HALF) {
 			rotation.x = -PI_HALF;
 		}
-		rotation.y += offsetY;
-		rotation.z += offsetZ;
+		// Mouse movement along the y-axis rotates the image along the x-axis.
+		rotation.y += mouseX;
 	}
 
 }

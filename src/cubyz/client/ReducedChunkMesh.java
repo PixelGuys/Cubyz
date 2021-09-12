@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import org.joml.Vector3f;
 import org.lwjgl.system.MemoryUtil;
 
+import cubyz.rendering.Camera;
 import cubyz.rendering.ShaderProgram;
 import cubyz.rendering.Window;
 import cubyz.utils.Utils;
@@ -77,7 +78,7 @@ public class ReducedChunkMesh extends ChunkMesh implements Runnable {
 		shader.setUniform(loc_fog_density, Cubyz.fog.getDensity());
 		shader.setUniform(loc_projectionMatrix, Window.getProjectionMatrix());
 		
-		shader.setUniform(loc_viewMatrix, Cubyz.camera.getViewMatrix());
+		shader.setUniform(loc_viewMatrix, Camera.getViewMatrix());
 
 		shader.setUniform(loc_ambientLight, ambient);
 		shader.setUniform(loc_directionalLight, directional);
