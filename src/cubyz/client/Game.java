@@ -42,20 +42,24 @@ public class Game {
 	}
 	
 	public void updateLoop() {
-		double previous = getTime() + 1;
-		double loopStartTime = getTime();
-		int updates = 0;
-		while (running) {
-			loopStartTime = getTime();
-			handleInput();
-			update();
-			updates++;
-			if (getTime() > previous) {
-				previous = getTime() + 1;
-				ups = updates;
-				updates = 0;
+		try {
+			double previous = getTime() + 1;
+			double loopStartTime = getTime();
+			int updates = 0;
+			while (running) {
+				loopStartTime = getTime();
+				handleInput();
+				update();
+				updates++;
+				if (getTime() > previous) {
+					previous = getTime() + 1;
+					ups = updates;
+					updates = 0;
+				}
+				sync(loopStartTime, secsPerUpdate);
 			}
-			sync(loopStartTime, secsPerUpdate);
+		} catch (Exception e) {
+			Logger.throwable(e);
 		}
 	}
 
