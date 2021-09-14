@@ -7,6 +7,7 @@ import org.joml.Vector3f;
 
 import cubyz.api.Resource;
 import cubyz.client.Cubyz;
+import cubyz.client.entity.ClientEntity;
 import cubyz.rendering.MainRenderer;
 import cubyz.rendering.Material;
 import cubyz.rendering.Mesh;
@@ -408,16 +409,16 @@ public class Quadruped implements EntityModel {
 	}
 
 	@Override
-	public void render(Matrix4f viewMatrix, Object entityShader, Entity ent) {
+	public void render(Matrix4f viewMatrix, Object entityShader, ClientEntity ent) {
 		Vector3f pos = new Vector3f(ent.getRenderPosition());
-		Vector3f rotation =  new Vector3f(ent.getRotation());
+		Vector3f rotation =  new Vector3f(ent.rotation);
 		pos.y += legHeight/2; // Adjust the body position by the height of the legs.
 		body.renderOne(() -> {
 			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(pos, rotation, 1), viewMatrix);
 			((ShaderProgram)entityShader).setUniform(MainRenderer.EntityUniforms.loc_viewMatrix, modelViewMatrix);
 		});
-		float xNorm = ent.targetVX/(float)Math.sqrt(ent.targetVX*ent.targetVX + ent.targetVZ*ent.targetVZ);
-		float zNorm = ent.targetVZ/(float)Math.sqrt(ent.targetVX*ent.targetVX + ent.targetVZ*ent.targetVZ);
+		float xNorm = ent.velocity.x/(float)Math.sqrt(ent.velocity.x*ent.velocity.x + ent.velocity.z*ent.velocity.z);
+		float zNorm = ent.velocity.z/(float)Math.sqrt(ent.velocity.x*ent.velocity.x + ent.velocity.z*ent.velocity.z);
 		if(xNorm != xNorm) {
 			xNorm = 1;
 			zNorm = 0;
@@ -478,9 +479,9 @@ public class Quadruped implements EntityModel {
 		
 	}
 	@Override
-	public void update(Entity ent) {
-		float v = (float)Math.sqrt(ent.vx*ent.vx + ent.vz*ent.vz);
-		ent.movementAnimation += v;
+	public void update(ClientEntity ent, float deltaTime) {
+		float v = (float)Math.sqrt(ent.velocity.x*ent.velocity.x + ent.velocity.z*ent.velocity.z);
+		ent.movementAnimation += v*deltaTime;
 		ent.movementAnimation %= 2*legHeight;
 	}
 	@Override

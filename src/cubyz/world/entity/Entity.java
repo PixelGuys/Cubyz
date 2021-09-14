@@ -22,8 +22,8 @@ public class Entity {
 	protected Vector3f rotation = new Vector3f();
 	public float vx, vy, vz;
 	public float targetVX, targetVZ; // The velocity the AI wants the entity to have.
+
 	protected float scale = 1f;
-	public float movementAnimation = 0; // Only used by mobs that actually move.
 	public final float stepHeight;
 	
 	private final EntityType type;
@@ -32,6 +32,10 @@ public class Entity {
 	
 	public float health, hunger;
 	public final float maxHealth, maxHunger;
+
+	public final int id;
+
+	private static int currentID = 0;
 	
 	/**
 	 * Used as hitbox.
@@ -53,6 +57,8 @@ public class Entity {
 		this.maxHunger = hunger = maxHunger;
 		this.stepHeight = stepHeight;
 		entityAI = ai;
+
+		id = currentID++;
 	}
 	
 	public float getScale() {

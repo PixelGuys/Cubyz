@@ -20,6 +20,7 @@ import cubyz.api.ClientConnection;
 import cubyz.api.ClientRegistries;
 import cubyz.api.Resource;
 import cubyz.api.Side;
+import cubyz.client.entity.ClientEntityManager;
 import cubyz.client.loading.LoadThread;
 import cubyz.gui.GameOverlay;
 import cubyz.gui.LoadingGUI;
@@ -414,6 +415,9 @@ public class GameLogic implements ClientConnection {
 			float lightAngle = (float)Math.PI/2 + (float)Math.PI*(((float)Cubyz.world.getGameTime() % Cubyz.surface.getStellarTorus().getDayCycle())/(Cubyz.surface.getStellarTorus().getDayCycle()/2));
 			skySun.setPositionRaw((float)Math.cos(lightAngle)*500, (float)Math.sin(lightAngle)*500, 0);
 			skySun.setRotation(0, 0, -lightAngle);
+
+			// TODO: Send entities to clients:
+			ClientEntityManager.serverUpdate(Cubyz.surface.getEntities());
 		}
 	}
 

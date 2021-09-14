@@ -67,7 +67,6 @@ public class Pig extends EntityType {
 					}
 				}
 			}
-			model.update(ent);
 		}
 	}
 

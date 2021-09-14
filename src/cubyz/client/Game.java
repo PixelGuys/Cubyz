@@ -7,7 +7,7 @@ public class Game {
 	protected volatile boolean running;
 	private Thread updateThread;
 	private Thread renderThread;
-	double secsPerUpdate = 1d / 30d;
+	public double secsPerUpdate = 1d / 30d;
 	private int targetFps = 60;
 	
 	private int fps;
@@ -48,7 +48,6 @@ public class Game {
 			int updates = 0;
 			while (running) {
 				loopStartTime = getTime();
-				handleInput();
 				update();
 				updates++;
 				if (getTime() > previous) {
@@ -106,6 +105,7 @@ public class Game {
 			}
 			
 			render();
+			handleInput();
 			++frames;
 			sync(loopStartTime, 1 / 60);
 		}

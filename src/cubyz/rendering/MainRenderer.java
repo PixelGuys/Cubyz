@@ -20,6 +20,8 @@ import cubyz.client.GameLauncher;
 import cubyz.client.Meshes;
 import cubyz.client.NormalChunkMesh;
 import cubyz.client.ReducedChunkMesh;
+import cubyz.client.entity.ClientEntity;
+import cubyz.client.entity.ClientEntityManager;
 import cubyz.gui.input.Keyboard;
 import cubyz.utils.Utils;
 import cubyz.utils.datastructures.FastList;
@@ -28,7 +30,6 @@ import cubyz.world.blocks.Block;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.entity.ChunkEntityManager;
 import cubyz.world.entity.CustomMeshProvider;
-import cubyz.world.entity.Entity;
 import cubyz.world.entity.ItemEntityManager;
 import cubyz.world.entity.Player;
 import cubyz.world.entity.CustomMeshProvider.MeshType;
@@ -74,7 +75,7 @@ public class MainRenderer {
 	private DirectionalLight light = new DirectionalLight(new Vector3f(1.0f, 1.0f, 1.0f), new Vector3f(0.0f, 1.0f, 0.0f).mul(0.1f));
 
 	private static final Block[] EMPTY_BLOCK_LIST = new Block[0];
-	private static final Entity[] EMPTY_ENTITY_LIST = new Entity[0];
+	private static final ClientEntity[] EMPTY_ENTITY_LIST = new ClientEntity[0];
 	private static final Spatial[] EMPTY_SPATIAL_LIST = new Spatial[0];
 	public Spatial[] worldSpatialList;
 	
@@ -223,7 +224,7 @@ public class MainRenderer {
 			// Set intensity:
 			light.setDirection(light.getDirection().mul(0.1f*Cubyz.surface.getGlobalLighting()/light.getDirection().length()));
 			Window.setClearColor(clearColor);
-			render(ambient, light, Cubyz.world.getBlocks(), Cubyz.surface.getEntities(), worldSpatialList, Cubyz.player);
+			render(ambient, light, Cubyz.world.getBlocks(), ClientEntityManager.getEntities(), worldSpatialList, Cubyz.player);
 		} else {
 			clearColor.y = clearColor.z = 0.7f;
 			clearColor.x = 0.1f;
@@ -261,7 +262,7 @@ public class MainRenderer {
 	 * @param spatials the special objects to render (that are neither entity, neither blocks, like sun and moon, or rain)
 	 * @param localPlayer The world's local player
 	 */
-	public void render(Vector3f ambientLight, DirectionalLight directionalLight, Block[] blocks, Entity[] entities, Spatial[] spatials, Player localPlayer) {
+	public void render(Vector3f ambientLight, DirectionalLight directionalLight, Block[] blocks, ClientEntity[] entities, Spatial[] spatials, Player localPlayer) {
 		if (Window.isResized()) {
 			glViewport(0, 0, Window.getWidth(), Window.getHeight());
 			Window.setResized(false);
@@ -357,36 +358,36 @@ public class MainRenderer {
 			entityShader.setUniform(EntityUniforms.loc_projectionMatrix, Window.getProjectionMatrix());
 			entityShader.setUniform(EntityUniforms.loc_texture_sampler, 0);
 			for (int i = 0; i < entities.length; i++) {
-				Entity ent = entities[i];
-				int x = (int)(ent.getPosition().x + 1.0f);
-				int y = (int)(ent.getPosition().y + 1.0f);
-				int z = (int)(ent.getPosition().z + 1.0f);
-				if (ent != null && ent != localPlayer) { // don't render local player
+				ClientEntity ent = entities[i];
+				int x = (int)(ent.position.x + 1.0f);
+				int y = (int)(ent.position.y + 1.0f);
+				int z = (int)(ent.position.z + 1.0f);
+				if (ent != null && ent.id != localPlayer.id) { // don't render local player
 					Mesh mesh = null;
-					if(ent.getType().model != null) {
+					if(ent.type.model != null) {
 						entityShader.setUniform(EntityUniforms.loc_materialHasTexture, true);
-						entityShader.setUniform(EntityUniforms.loc_light, ent.getSurface().getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
-						ent.getType().model.render(Camera.getViewMatrix(), entityShader, ent);
+						entityShader.setUniform(EntityUniforms.loc_light, Cubyz.surface.getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
+						ent.type.model.render(Camera.getViewMatrix(), entityShader, ent);
 						continue;
 					}
 					if (ent instanceof CustomMeshProvider) {
 						CustomMeshProvider provider = (CustomMeshProvider) ent;
 						MeshType type = provider.getMeshType();
 						if (type == MeshType.ENTITY) {
-							Entity e = (Entity) provider.getMeshId();
-							mesh = Meshes.entityMeshes.get(e.getType());
+							ClientEntity e = (ClientEntity) provider.getMeshId();
+							mesh = Meshes.entityMeshes.get(e.type);
 						}
 					} else {
-						mesh = Meshes.entityMeshes.get(ent.getType());
+						mesh = Meshes.entityMeshes.get(ent.type);
 					}
 					
 					if (mesh != null) {
 						entityShader.setUniform(EntityUniforms.loc_materialHasTexture, mesh.getMaterial().isTextured());
-						entityShader.setUniform(EntityUniforms.loc_light, ent.getSurface().getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
+						entityShader.setUniform(EntityUniforms.loc_light, Cubyz.surface.getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
 						
 						mesh.renderOne(() -> {
 							Vector3f position = ent.getRenderPosition();
-							Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(position, ent.getRotation(), ent.getScale()), Camera.getViewMatrix());
+							Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(position, ent.rotation, 1), Camera.getViewMatrix());
 							entityShader.setUniform(EntityUniforms.loc_viewMatrix, modelViewMatrix);
 						});
 					}
