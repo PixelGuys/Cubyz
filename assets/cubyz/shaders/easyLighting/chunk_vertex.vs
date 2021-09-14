@@ -31,16 +31,18 @@ void main()
 	int y = (positionAndNormals >> 10) & 1023;
 	int z = (positionAndNormals >> 20) & 1023;
 
-	// Only draw faces that are inside the bounds:
+	// Only draw faces that are inside the bounds. The others will be clipped using GL_CLIP_DISTANCE0:
 	vec3 globalPosition = vec3(x, y, z) + modelPosition;
 	globalPosition -= normals[normal]*0.5; // Prevent showing faces that are outside this chunkpiece.
 	if(globalPosition.x < lowerBounds.x || globalPosition.x > upperBounds.x
 			|| globalPosition.y < lowerBounds.y || globalPosition.y > upperBounds.y
 			|| globalPosition.z < lowerBounds.z || globalPosition.z > upperBounds.z) {
-		globalPosition = vec3(0.0/0.0);
+		gl_ClipDistance[0] = -1/0.0;
 	} else {
-		globalPosition = vec3(x, y, z) + modelPosition;
+		gl_ClipDistance[0] = 1;
 	}
+	
+	globalPosition = vec3(x, y, z) + modelPosition;
 	
 	vec4 mvPos = viewMatrix*vec4(globalPosition, 1);
 	gl_Position = projectionMatrix*mvPos;
