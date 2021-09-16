@@ -33,13 +33,7 @@ public class NormalChunk extends Chunk {
 	public static final int chunkMask = chunkSize - 1;
 	
 	public static final int arraySize = chunkSize*chunkSize*chunkSize;
-	/**
-	 * Used for easy for-loop access of neighbors and their relative direction:
-	 * East, West, South, North, Down, Up.
-	 */
-	private static final int[] neighborRelativeX = {-1, 1, 0, 0, 0, 0},
-							   neighborRelativeY = {0, 0, 0, 0, -1, 1},
-							   neighborRelativeZ = {0, 0, -1, 1, 0, 0};
+
 	/**Due to having powers of 2 as dimensions it is more efficient to use a one-dimensional array.*/
 	protected Block[] blocks;
 	/**Important data used to store rotation. Will be used later for water levels and stuff like that.*/
@@ -232,9 +226,9 @@ public class NormalChunk extends Chunk {
 			}
 			for (int i = 0; i < neighbors.length; i++) {
 				if(neighbors[i] != null) {
-					int x2 = x+neighborRelativeX[i];
-					int y2 = y+neighborRelativeY[i];
-					int z2 = z+neighborRelativeZ[i];
+					int x2 = x+Neighbors.REL_X[i];
+					int y2 = y+Neighbors.REL_Y[i];
+					int z2 = z+Neighbors.REL_Z[i];
 					int nx = x2 + wx;
 					int ny = y2 + wy;
 					int nz = z2 + wz;
@@ -407,9 +401,9 @@ public class NormalChunk extends Chunk {
 		for (int i = 0; i < neighbors.length; i++) {
 			Block neighbor = neighbors[i];
 			if (neighbor != null) {
-				int nx = x + neighborRelativeX[i] + wx;
-				int ny = y + neighborRelativeY[i] + wy;
-				int nz = z + neighborRelativeZ[i] + wz;
+				int nx = x + Neighbors.REL_X[i] + wx;
+				int ny = y + Neighbors.REL_Y[i] + wy;
+				int nz = z + Neighbors.REL_Z[i] + wz;
 				NormalChunk ch = getChunk(nx, ny, nz);
 				// Check if the block is structurally depending on the removed block:
 				if(neighbor.mode.dependsOnNeightbors()) {
@@ -424,10 +418,10 @@ public class NormalChunk extends Chunk {
 					}
 				}
 				if (!ch.contains(nx, ny, nz)) {
-					ch.revealBlock(x+neighborRelativeX[i] & chunkMask, y+neighborRelativeY[i] & chunkMask, z+neighborRelativeZ[i] & chunkMask);
+					ch.revealBlock(x+Neighbors.REL_X[i] & chunkMask, y+Neighbors.REL_Y[i] & chunkMask, z+Neighbors.REL_Z[i] & chunkMask);
 				}
 				if (neighbor.getBlockClass() == BlockClass.FLUID) {
-					int index = getIndex(x+neighborRelativeX[i] & chunkMask, y+neighborRelativeY[i] & chunkMask, z+neighborRelativeZ[i] & chunkMask);
+					int index = getIndex(x+Neighbors.REL_X[i] & chunkMask, y+Neighbors.REL_Y[i] & chunkMask, z+Neighbors.REL_Z[i] & chunkMask);
 					if (!updatingLiquids.contains(index))
 						updatingLiquids.add(index);
 				}
@@ -517,9 +511,9 @@ public class NormalChunk extends Chunk {
 		y &= chunkMask;
 		z &= chunkMask;
 		for(int i = 0; i < 6; i++) {
-			int xi = x+neighborRelativeX[i];
-			int yi = y+neighborRelativeY[i];
-			int zi = z+neighborRelativeZ[i];
+			int xi = x+Neighbors.REL_X[i];
+			int yi = y+Neighbors.REL_Y[i];
+			int zi = z+Neighbors.REL_Z[i];
 			if(xi == (xi & chunkMask) && yi == (yi & chunkMask) && zi == (zi & chunkMask)) { // Simple double-bound test for coordinates.
 				neighbors[i] = getBlock(xi, yi, zi);
 			} else {
@@ -537,9 +531,9 @@ public class NormalChunk extends Chunk {
 		y &= chunkMask;
 		z &= chunkMask;
 		for(int i = 0; i < 6; i++) {
-			int xi = x+neighborRelativeX[i];
-			int yi = y+neighborRelativeY[i];
-			int zi = z+neighborRelativeZ[i];
+			int xi = x+Neighbors.REL_X[i];
+			int yi = y+Neighbors.REL_Y[i];
+			int zi = z+Neighbors.REL_Z[i];
 			if(xi == (xi & chunkMask) && yi == (yi & chunkMask) && zi == (zi & chunkMask)) { // Simple double-bound test for coordinates.
 				int index = getIndex(xi, yi, zi);
 				neighbors[i] = getBlock(xi, yi, zi);
@@ -569,9 +563,9 @@ public class NormalChunk extends Chunk {
 		y &= chunkMask;
 		z &= chunkMask;
 		for(int i = 0; i < 6; i++) {
-			int xi = x+neighborRelativeX[i];
-			int yi = y+neighborRelativeY[i];
-			int zi = z+neighborRelativeZ[i];
+			int xi = x+Neighbors.REL_X[i];
+			int yi = y+Neighbors.REL_Y[i];
+			int zi = z+Neighbors.REL_Z[i];
 			if(xi != (xi & chunkMask) || yi != (yi & chunkMask) || zi != (zi & chunkMask)) { // Simple double-bound test for coordinates.
 				NormalChunk ch = surface.getChunk((xi >> chunkShift) + cx, (yi >> chunkShift) + cy, (zi >> chunkShift) + cz);
 				if(ch != null)
@@ -591,15 +585,15 @@ public class NormalChunk extends Chunk {
 	public BlockInstance[] getVisibleNeighbors(int x, int y, int z) {
 		BlockInstance[] inst = new BlockInstance[6];
 		for(int i = 0; i < 6; i++) {
-			inst[i] = getVisibleUnbound(x+neighborRelativeX[i], y+neighborRelativeY[i], z+neighborRelativeZ[i]);
+			inst[i] = getVisibleUnbound(x+Neighbors.REL_X[i], y+Neighbors.REL_Y[i], z+Neighbors.REL_Z[i]);
 		}
 		return inst;
 	}
 	
 	public Block getNeighbor(int i, int x, int y, int z) {
-		int xi = x+neighborRelativeX[i];
-		int yi = y+neighborRelativeY[i];
-		int zi = z+neighborRelativeZ[i];
+		int xi = x+Neighbors.REL_X[i];
+		int yi = y+Neighbors.REL_Y[i];
+		int zi = z+Neighbors.REL_Z[i];
 		if(xi == (xi & chunkMask) && yi == (yi & chunkMask) && zi == (zi & chunkMask)) { // Simple double-bound test for coordinates.
 			return getBlock(xi, yi, zi);
 		} else {

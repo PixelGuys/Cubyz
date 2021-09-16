@@ -4,6 +4,7 @@ import java.util.ArrayList;
 
 import cubyz.client.ClientSettings;
 import cubyz.utils.Utilities;
+import cubyz.world.Neighbors;
 import cubyz.world.NormalChunk;
 import cubyz.world.Surface;
 import cubyz.world.blocks.Block;
@@ -43,22 +44,22 @@ public class VisibleChunk extends NormalChunk {
 		startedloading = true;
 		VisibleChunk [] chunks = new VisibleChunk[6];
 		VisibleChunk ch = (VisibleChunk)surface.getChunk(cx - 1, cy, cz);
-		chunks[0] = ch;
+		chunks[Neighbors.DIR_NEG_X] = ch;
 		boolean chx0 = ch != null && ch.startedloading;
 		ch = (VisibleChunk)surface.getChunk(cx + 1, cy, cz);
-		chunks[1] = ch;
+		chunks[Neighbors.DIR_POS_X] = ch;
 		boolean chx1 = ch != null && ch.startedloading;
 		ch = (VisibleChunk)surface.getChunk(cx, cy, cz - 1);
-		chunks[2] = ch;
+		chunks[Neighbors.DIR_NEG_Z] = ch;
 		boolean chz0 = ch != null && ch.startedloading;
 		ch = (VisibleChunk)surface.getChunk(cx, cy, cz + 1);
-		chunks[3] = ch;
+		chunks[Neighbors.DIR_POS_Z] = ch;
 		boolean chz1 = ch != null && ch.startedloading;
 		ch = (VisibleChunk)surface.getChunk(cx, cy - 1, cz);
-		chunks[4] = ch;
+		chunks[Neighbors.DIR_DOWN] = ch;
 		boolean chy0 = ch != null && ch.startedloading;
 		ch = (VisibleChunk)surface.getChunk(cx, cy + 1, cz);
-		chunks[5] = ch;
+		chunks[Neighbors.DIR_UP] = ch;
 		boolean chy1 = ch != null && ch.startedloading;
 		// Use lighting calculations that are done anyways if easyLighting is enabled to determine the maximum height inside this chunk.
 		ArrayList<Integer> lightSources = new ArrayList<>();
@@ -74,12 +75,12 @@ public class VisibleChunk extends NormalChunk {
 						Block[] neighbors = getNeighbors(x, y ,z, data, indices);
 						for (int i = 0; i < neighbors.length; i++) {
 							if (blocksBlockNot(neighbors[i], b, data[i], index - indices[i])
-														&& (y != 0 || i != 4 || chy0)
-														&& (y != chunkMask || i != 5 || chy1)
-														&& (x != 0 || i != 0 || chx0)
-														&& (x != chunkMask || i != 1 || chx1)
-														&& (z != 0 || i != 2 || chz0)
-														&& (z != chunkMask || i != 3 || chz1)) {
+														&& (y != 0 || i != Neighbors.DIR_DOWN || chy0)
+														&& (y != chunkMask || i != Neighbors.DIR_UP || chy1)
+														&& (x != 0 || i != Neighbors.DIR_NEG_X || chx0)
+														&& (x != chunkMask || i != Neighbors.DIR_POS_X || chx1)
+														&& (z != 0 || i != Neighbors.DIR_NEG_Z || chz0)
+														&& (z != chunkMask || i != Neighbors.DIR_POS_Z || chz1)) {
 								revealBlock(x, y, z);
 								break;
 							}
@@ -108,6 +109,7 @@ public class VisibleChunk extends NormalChunk {
 			}
 		}
 		boolean [] toCheck = {chx0, chx1, chz0, chz1, chy0, chy1};
+		int[] chunkIndices = {Neighbors.DIR_NEG_X, Neighbors.DIR_POS_X, Neighbors.DIR_NEG_Z, Neighbors.DIR_POS_Z, Neighbors.DIR_DOWN, Neighbors.DIR_UP};
 		for (int i = 0; i < chunkSize; i++) {
 			for (int j = 0; j < chunkSize; j++) {
 				// Checks if blocks from neighboring chunks are changed
@@ -119,7 +121,7 @@ public class VisibleChunk extends NormalChunk {
 				int [] invdz = {i, i, 0, chunkMask, j, j};
 				for(int k = 0; k < chunks.length; k++) {
 					if (toCheck[k]) {
-						ch = chunks[k];
+						ch = chunks[chunkIndices[k]];
 						// Load light from loaded chunks:
 						int indexThis = getIndex(invdx[k], invdy[k], invdz[k]);
 						int indexOther = getIndex(dx[k], dy[k], dz[k]);
@@ -129,7 +131,7 @@ public class VisibleChunk extends NormalChunk {
 						Block block = ch.blocks[indexOther];
 						// Update neighbor information:
 						if(inst != null) {
-							inst.updateNeighbor(k ^ 1, blocksBlockNot(blocks[indexThis], block, blockData[indexThis], indexThis - indexOther));
+							inst.updateNeighbor(chunkIndices[k] ^ 1, blocksBlockNot(blocks[indexThis], block, blockData[indexThis], indexThis - indexOther));
 							continue;
 						}
 						// Update visibility:

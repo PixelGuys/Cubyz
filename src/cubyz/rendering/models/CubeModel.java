@@ -5,6 +5,7 @@ import cubyz.client.Meshes;
 import cubyz.rendering.ModelLoader;
 import cubyz.utils.datastructures.FloatFastList;
 import cubyz.utils.datastructures.IntFastList;
+import cubyz.world.Neighbors;
 
 public class CubeModel extends Model {
 	protected CubeModel(Resource id, Model template) {
@@ -23,12 +24,12 @@ public class CubeModel extends Model {
 			float nx = super.normals[i3];
 			float ny = super.normals[i3+1];
 			float nz = super.normals[i3+2];
-			if(nx == -1 && neighbors[0] ||
-			   nx == 1 && neighbors[1] ||
-			   nz == -1 && neighbors[2] ||
-			   nz == 1 && neighbors[3] ||
-			   ny == -1 && neighbors[4] ||
-			   ny == 1 && neighbors[5]) {
+			if(nx == -1 && neighbors[Neighbors.DIR_NEG_X] ||
+			   nx == 1 && neighbors[Neighbors.DIR_POS_X] ||
+			   nz == -1 && neighbors[Neighbors.DIR_NEG_Z] ||
+			   nz == 1 && neighbors[Neighbors.DIR_POS_Z] ||
+			   ny == -1 && neighbors[Neighbors.DIR_DOWN] ||
+			   ny == 1 && neighbors[Neighbors.DIR_UP]) {
 				vertices.add(positions[i3] + x);
 				vertices.add(positions[i3+1] + y);
 				vertices.add(positions[i3+2] + z);
@@ -64,12 +65,12 @@ public class CubeModel extends Model {
 			float nx = conditionalInversion(super.normals[i3+directionMap[0]]*0.5f + 0.5f, directionInversion[0])*2 - 1;
 			float ny = conditionalInversion(super.normals[i3+directionMap[1]]*0.5f + 0.5f, directionInversion[1])*2 - 1;
 			float nz = conditionalInversion(super.normals[i3+directionMap[2]]*0.5f + 0.5f, directionInversion[2])*2 - 1;
-			if(nx == -1 && neighbors[0] ||
-			   nx == 1 && neighbors[1] ||
-			   nz == -1 && neighbors[2] ||
-			   nz == 1 && neighbors[3] ||
-			   ny == -1 && neighbors[4] ||
-			   ny == 1 && neighbors[5]) {
+			if(nx == -1 && neighbors[Neighbors.DIR_NEG_X] ||
+			   nx == 1 && neighbors[Neighbors.DIR_POS_X] ||
+			   nz == -1 && neighbors[Neighbors.DIR_NEG_Z] ||
+			   nz == 1 && neighbors[Neighbors.DIR_POS_Z] ||
+			   ny == -1 && neighbors[Neighbors.DIR_DOWN] ||
+			   ny == 1 && neighbors[Neighbors.DIR_UP]) {
 				vertices.add(conditionalInversion(positions[i3+directionMap[0]], directionInversion[0]) + x);
 				vertices.add(conditionalInversion(positions[i3+directionMap[1]], directionInversion[1]) + y);
 				vertices.add(conditionalInversion(positions[i3+directionMap[2]], directionInversion[2]) + z);
