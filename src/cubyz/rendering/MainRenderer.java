@@ -298,7 +298,8 @@ public class MainRenderer {
 			// Activate first texture bank
 			glActiveTexture(GL_TEXTURE0);
 			// Bind the texture
-			glBindTexture(GL_TEXTURE_2D, Meshes.atlas.getId());
+			Meshes.blockTextureArray.bind();
+
 			BlockInstance selected = null;
 			if(Cubyz.msd.getSelected() instanceof BlockInstance) {
 				selected = (BlockInstance)Cubyz.msd.getSelected();
@@ -450,7 +451,7 @@ public class MainRenderer {
 			// Activate first texture bank
 			glActiveTexture(GL_TEXTURE0);
 			// Bind the texture
-			glBindTexture(GL_TEXTURE_2D, Meshes.atlas.getId());
+			Meshes.blockTextureArray.bind();
 			if(Cubyz.msd.getSelected() instanceof BlockInstance) {
 				selected = (BlockInstance)Cubyz.msd.getSelected();
 				breakAnim = selected.getBreakingAnim();

@@ -13,7 +13,7 @@ public class CubeModel extends Model {
 	}
 
 	@Override
-	public void addToChunkMesh(int x, int y, int z, float offsetX, float offsetY, int[] light, boolean[] neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
+	public void addToChunkMesh(int x, int y, int z, int textureIndex, int[] light, boolean[] neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
 		// Being a cube it is possible to optimize neighbor data:
 		int indexOffset = vertices.size/3;
 		int size = positions.length/3;
@@ -40,8 +40,9 @@ public class CubeModel extends Model {
 				lighting.add(Model.interpolateLight(positions[i3], positions[i3+1], positions[i3+2], super.normals[i3], super.normals[i3+1], super.normals[i3+2], light));
 				renderIndices.add(renderIndex);
 				
-				texture.add((textCoords[i2] + offsetX)/Meshes.atlasSize);
-				texture.add((textCoords[i2+1] + offsetY)/Meshes.atlasSize);
+				texture.add(textCoords[i2]);
+				texture.add(textCoords[i2+1]);
+				texture.add((float)textureIndex);
 				indexesAdded.add(i);
 			}
 		}
@@ -54,7 +55,7 @@ public class CubeModel extends Model {
 	}
 
 	@Override
-	public void addToChunkMeshSimpleRotation(int x, int y, int z, int[] directionMap, boolean[] directionInversion, float offsetX, float offsetY, int[] light, boolean[] neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
+	public void addToChunkMeshSimpleRotation(int x, int y, int z, int[] directionMap, boolean[] directionInversion, int textureIndex, int[] light, boolean[] neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
 		// Being a cube it is possible to optimize neighbor data:
 		int indexOffset = vertices.size/3;
 		int size = positions.length/3;
@@ -85,8 +86,10 @@ public class CubeModel extends Model {
 												nx, ny, nz, light));
 				renderIndices.add(renderIndex);
 				
-				texture.add((textCoords[i2] + offsetX)/Meshes.atlasSize);
-				texture.add((textCoords[i2+1] + offsetY)/Meshes.atlasSize);
+				texture.add(textCoords[i2]);
+				texture.add(textCoords[i2+1]);
+				texture.add((float)textureIndex);
+
 				indexesAdded.add(i);
 			}
 		}

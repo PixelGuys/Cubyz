@@ -14,6 +14,7 @@ import cubyz.rendering.Material;
 import cubyz.rendering.Mesh;
 import cubyz.rendering.ModelLoader;
 import cubyz.rendering.Texture;
+import cubyz.rendering.TextureArray;
 import cubyz.rendering.models.Model;
 import cubyz.utils.ResourceUtilities;
 import cubyz.utils.ResourceUtilities.EntityModel;
@@ -31,8 +32,7 @@ public class Meshes {
 	public static final HashMap<EntityType, Mesh> entityMeshes = new HashMap<>();
 	public static final HashMap<Block, Texture> blockTextures = new HashMap<>();
 	
-	public static int atlasSize;
-	public static Texture atlas;
+	public static final TextureArray blockTextureArray = new TextureArray();
 	
 
 	public static final HashMap<String, Mesh> cachedDefaultModels = new HashMap<>();

@@ -37,6 +37,7 @@ import cubyz.rendering.Material;
 import cubyz.rendering.Mesh;
 import cubyz.rendering.Spatial;
 import cubyz.rendering.Texture;
+import cubyz.rendering.TextureArray;
 import cubyz.rendering.Window;
 import cubyz.utils.*;
 import cubyz.utils.datastructures.PixelUtils;
@@ -201,8 +202,6 @@ public class GameLogic implements ClientConnection {
 		for(Block block : surface.getCurrentRegistries().blockRegistry.registered(new Block[0])) {
 			blocks.add(block);
 		}
-		Meshes.atlasSize = (int)Math.ceil(Math.sqrt(blocks.size()));
-		int maxSize = 16; // Scale all textures so they fit the size of the biggest texture.
 		// Get the textures for those blocks:
 		ArrayList<BufferedImage> blockTextures = new ArrayList<>();
 		for(Block block : blocks) {
@@ -214,35 +213,17 @@ public class GameLogic implements ClientConnection {
 			} else {
 				texture = ResourceUtilities.loadBlockTextureToBufferedImage(new Resource("cubyz", "undefined"));
 			}
-			maxSize = Math.max(maxSize, Math.max(texture.getWidth(), texture.getHeight()));
 			blockTextures.add(texture);
 		}
 		// Put the textures into the atlas
-		BufferedImage atlas = new BufferedImage(maxSize*Meshes.atlasSize, maxSize*Meshes.atlasSize, BufferedImage.TYPE_INT_ARGB);
-		int x = 0;
-		int y = 0;
+		TextureArray textures = Meshes.blockTextureArray;
+		textures.clear();
 		for(int i = 0; i < blockTextures.size(); i++) {
 			BufferedImage img = blockTextures.get(i);
-			if(img != null) {
-				// Copy and scale the image onto the atlas:
-				for(int x2 = 0; x2 < maxSize; x2++) {
-					for(int y2 = 0; y2 < maxSize; y2++) {
-						atlas.setRGB(x*maxSize + x2, y*maxSize + y2, img.getRGB(x2*img.getWidth()/maxSize, y2*img.getHeight()/maxSize));
-					}
-				}
-			}
-			blocks.get(i).atlasX = x;
-			blocks.get(i).atlasY = y;
-			x++;
-			if(x == Meshes.atlasSize) {
-				x = 0;
-				y++;
-			}
+			textures.addTexture(img);
+			blocks.get(i).textureIndex = i;
 		}
-		try {
-			ImageIO.write(atlas, "png", new File("test.png"));
-		} catch(Exception e) {}
-		Meshes.atlas = new Texture(TextureConverter.fromBufferedImage(atlas));
+		textures.generate();
 		
 		
 		SoundSource ms = musicSource;

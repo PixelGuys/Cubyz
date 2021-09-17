@@ -75,7 +75,6 @@ public class NormalChunkMesh extends ChunkMesh implements Runnable {
 	public static int loc_directionalLight;
 	public static int loc_modelPosition;
 	public static int loc_selectedIndex;
-	public static int loc_atlasSize;
 	public static int loc_fog_activ;
 	public static int loc_fog_color;
 	public static int loc_fog_density;
@@ -106,8 +105,6 @@ public class NormalChunkMesh extends ChunkMesh implements Runnable {
 
 		shader.setUniform(loc_ambientLight, ambient);
 		shader.setUniform(loc_directionalLight, directional);
-		
-		shader.setUniform(loc_atlasSize, Meshes.atlasSize);
 	}
 	
 	protected int vaoId;
@@ -218,7 +215,7 @@ public class NormalChunkMesh extends ChunkMesh implements Runnable {
 			textureBuffer.put(texture.toArray()).flip();
 			glBindBuffer(GL_ARRAY_BUFFER, vboId);
 			glBufferData(GL_ARRAY_BUFFER, textureBuffer, GL_STATIC_DRAW);
-			glVertexAttribPointer(1, 2, GL_FLOAT, false, 0, 0);
+			glVertexAttribPointer(1, 3, GL_FLOAT, false, 0, 0);
 
 
 			// Normal VBO

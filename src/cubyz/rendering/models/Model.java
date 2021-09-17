@@ -72,7 +72,7 @@ public class Model implements RegistryElement {
 	 * @param renderIndices
 	 * @param renderIndex
 	 */
-	public void addToChunkMesh(int x, int y, int z, float offsetX, float offsetY, int[] light, boolean[] neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
+	public void addToChunkMesh(int x, int y, int z, int textureIndex, int[] light, boolean[] neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
 		int indexOffset = vertices.size/3;
 		for(int i = 0; i < positions.length; i += 3) {
 			vertices.add(positions[i] + x);
@@ -88,8 +88,9 @@ public class Model implements RegistryElement {
 		}
 		
 		for(int i = 0; i < textCoords.length; i += 2) {
-			texture.add((textCoords[i] + offsetX)/Meshes.atlasSize);
-			texture.add((textCoords[i+1] + offsetY)/Meshes.atlasSize);
+			texture.add(textCoords[i]);
+			texture.add(textCoords[i+1]);
+			texture.add((float)textureIndex);
 		}
 		
 		normals.add(this.normals);
@@ -118,7 +119,7 @@ public class Model implements RegistryElement {
 	 * @param renderIndices
 	 * @param renderIndex
 	 */
-	public void addToChunkMeshSimpleRotation(int x, int y, int z, int[] directionMap, boolean[] directionInversion, float offsetX, float offsetY, int[] light, boolean[] neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
+	public void addToChunkMeshSimpleRotation(int x, int y, int z, int[] directionMap, boolean[] directionInversion, int textureIndex, int[] light, boolean[] neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
 		int indexOffset = vertices.size/3;
 		for(int i = 0; i < positions.length; i += 3) {
 			vertices.add(conditionalInversion(positions[i+directionMap[0]], directionInversion[0]) + x);
@@ -137,8 +138,9 @@ public class Model implements RegistryElement {
 		}
 		
 		for(int i = 0; i < textCoords.length; i += 2) {
-			texture.add((textCoords[i] + offsetX)/Meshes.atlasSize);
-			texture.add((textCoords[i+1] + offsetY)/Meshes.atlasSize);
+			texture.add(textCoords[i]);
+			texture.add(textCoords[i+1]);
+			texture.add((float)textureIndex);
 		}
 		
 		normals.add(this.normals);
@@ -163,7 +165,7 @@ public class Model implements RegistryElement {
 	 * @param renderIndices
 	 * @param renderIndex
 	 */
-	public void addToChunkMeshRotation(float x, float y, float z, Matrix3f rotationMatrix, float offsetX, float offsetY, int[] light, boolean[] neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
+	public void addToChunkMeshRotation(float x, float y, float z, Matrix3f rotationMatrix, int textureIndex, int[] light, boolean[] neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
 		int indexOffset = vertices.size/3;
 		for(int i = 0; i < positions.length; i += 3) {
 			Vector3f pos = new Vector3f(positions[i], positions[i+1], positions[i+2]);
@@ -188,8 +190,9 @@ public class Model implements RegistryElement {
 		}
 		
 		for(int i = 0; i < textCoords.length; i += 2) {
-			texture.add((textCoords[i] + offsetX)/Meshes.atlasSize);
-			texture.add((textCoords[i+1] + offsetY)/Meshes.atlasSize);
+			texture.add(textCoords[i]);
+			texture.add(textCoords[i+1]);
+			texture.add((float)textureIndex);
 		}
 	}
 

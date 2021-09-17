@@ -1,6 +1,6 @@
 #version 330
 
-in vec2 outTexCoord;
+in vec3 outTexCoord;
 in vec3 outColor;
 in vec3 mvVertexPos;
 flat in int selectionIndex;
@@ -13,17 +13,16 @@ struct Fog {
 	float density;
 };
 
-uniform sampler2D texture_sampler;
+uniform sampler2DArray texture_sampler;
 uniform sampler2D break_sampler;
 uniform Fog fog;
 uniform int selectedIndex;
-uniform int atlasSize;
 
 vec4 ambientC;
 
-void setupColors(vec2 textCoord) {
+void setupColors(vec3 textCoord) {
 	vec4 bg = texture(texture_sampler, textCoord);
-	ambientC = texture(break_sampler, fract(textCoord*atlasSize))*float(selectedIndex == selectionIndex);
+	ambientC = texture(break_sampler, fract(textCoord.xy))*float(selectedIndex == selectionIndex);
 	ambientC = vec4(mix(vec3(bg), vec3(ambientC), ambientC.a), bg.a);
 }
 

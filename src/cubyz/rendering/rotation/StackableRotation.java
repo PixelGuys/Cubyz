@@ -141,8 +141,7 @@ public class StackableRotation implements RotationMode {
 		int z = bi.getZ() & NormalChunk.chunkMask;
 		boolean[] neighbors = bi.getNeighbors();
 		int[] light = bi.light;
-		int offsetX = bi.getBlock().atlasX;
-		int offsetY = bi.getBlock().atlasY;
+		int textureIndex = bi.getBlock().textureIndex;
 		
 		// Copies code from CubeModel and applies height transformation to it:
 		int indexOffset = vertices.size/3;
@@ -174,11 +173,12 @@ public class StackableRotation implements RotationMode {
 				lighting.add(Model.interpolateLight(model.positions[i3], ny != -1 ? model.positions[i3+1]*factor : model.positions[i3+1], model.positions[i3+2], model.normals[i3], model.normals[i3+1], model.normals[i3+2], light));
 				renderIndices.add(renderIndex);
 
-				texture.add((model.textCoords[i2] + offsetX)/Meshes.atlasSize);
+				texture.add(model.textCoords[i2]);
 				if(ny == 0)
-					texture.add((model.textCoords[i2+1]*factor + offsetY)/Meshes.atlasSize);
+					texture.add(model.textCoords[i2+1]*factor);
 				else
-					texture.add((model.textCoords[i2+1] + offsetY)/Meshes.atlasSize);
+					texture.add(model.textCoords[i2+1]);
+				texture.add((float)textureIndex);
 				indexesAdded.add(i);
 			}
 		}
