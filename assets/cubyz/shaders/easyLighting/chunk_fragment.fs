@@ -29,6 +29,7 @@ vec4 calcFog(vec3 pos, vec4 color, Fog fog) {
 void main()
 {
     fragColor = texture(texture_sampler, outTexCoord)*vec4((1 - dot(directionalLight, outNormal))*ambientLight, 1);
+	if(fragColor.a != 1) discard;
     
     if(fog.activ) {
         fragColor = calcFog(mvVertexPos, fragColor, fog);

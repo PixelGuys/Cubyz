@@ -6,6 +6,7 @@ import java.awt.image.BufferedImage;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import cubyz.Logger;
 import cubyz.utils.math.CubyzMath;
@@ -14,6 +15,8 @@ public class TextureArray {
 	private final ArrayList<BufferedImage> textures = new ArrayList<>();
 
 	private final int textureId;
+
+	public boolean[] isTransparent;
 
 	public TextureArray() {
 		textureId = glGenTextures();
@@ -36,7 +39,7 @@ public class TextureArray {
 		textures.clear();
 	}
 
-	private static int lodColorInterpolation(int[] colors) {
+	private static int lodColorInterpolation(int[] colors, boolean isTransparent) {
 		int[] r = new int[4];
 		int[] g = new int[4];
 		int[] b = new int[4];
@@ -57,6 +60,15 @@ public class TextureArray {
 			rSum += r[i]*r[i];
 			gSum += g[i]*g[i];
 			bSum += b[i]*b[i];
+		}
+		aSum = (int)Math.round(Math.sqrt(aSum))/2;
+		if(!isTransparent) {
+			// If the source image isn't transparent then the mipmapped version shouldn't do that either. In case of uncertainty an opaque version gets used.
+			if(aSum < 128) {
+				aSum = 0;
+			} else {
+				aSum = 255;
+			}
 		}
 		rSum = (int)Math.round(Math.sqrt(rSum))/2;
 		gSum = (int)Math.round(Math.sqrt(gSum))/2;
@@ -111,8 +123,22 @@ public class TextureArray {
 			buf[i] = ByteBuffer.allocateDirect(4*(maxWidth >> i)*(maxHeight >> i)).asIntBuffer();
 		}
 
+		isTransparent = new boolean[layers];
+
 		for(int i = 0; i < layers; i++) {
 			BufferedImage img = textures.get(i);
+			// Check if the image contains non-binary alpha values, which makes it transparent.
+			for(int x = 0; x < img.getWidth(); x++) {
+				for(int y = 0; y < img.getHeight(); y++) {
+					int a = img.getRGB(x, y) & 0xff000000;
+					if(a != 0 && a != 0xff000000) {
+						isTransparent[i] = true;
+						System.out.println(a);
+						break;
+					}
+				}
+			}
+
 			// Fill the buffer using nearest sampling. Probably not the best solutions for all textures, but that's what happens when someone doesn't use power of 2 textures...
 			for(int x = 0; x < maxWidth; x++) {
 				for(int y = 0; y < maxHeight; y++) {
@@ -137,7 +163,7 @@ public class TextureArray {
 							colors[1] = buf[lod-1].get(index2 + 1);
 							colors[2] = buf[lod-1].get(index2 + curWidth*2);
 							colors[3] = buf[lod-1].get(index2 + curWidth*2 + 1);
-							int result = lodColorInterpolation(colors);
+							int result = lodColorInterpolation(colors, isTransparent[i]);
 							buf[lod].put(index, result);
 						}
 					}
