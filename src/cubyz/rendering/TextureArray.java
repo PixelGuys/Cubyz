@@ -47,23 +47,13 @@ public class TextureArray {
 			b[i] = colors[i]>>>8 & 0xFF;
 			a[i] = colors[i] & 0xFF;
 		}
-		int rgba = 0;
-		// If the alpha channel is binary, then the resulting alpha should also be binary!
-		boolean isBinary = true;
-		for(int i = 0; i < 4; i++) {
-			if(a[i] != 0xFF && a[i] != 0)
-				isBinary = false;
-		}
-		if(isBinary) {
-			rgba = a[0];
-		} else {
-			rgba = (a[0] + a[1] + a[2] + a[3])/4;
-		}
 		// Use gamma corrected average(https://stackoverflow.com/a/832314/13082649):
+		int aSum = 0;
 		int rSum = 0;
 		int gSum = 0;
 		int bSum = 0;
 		for(int i = 0; i < 4; i++) {
+			aSum += a[i]*a[i];
 			rSum += r[i]*r[i];
 			gSum += g[i]*g[i];
 			bSum += b[i]*b[i];
@@ -71,6 +61,10 @@ public class TextureArray {
 		rSum = (int)Math.round(Math.sqrt(rSum))/2;
 		gSum = (int)Math.round(Math.sqrt(gSum))/2;
 		bSum = (int)Math.round(Math.sqrt(bSum))/2;
+		if(aSum > 0xFF) {
+			Logger.warning("@IntegratedQuantum: color out of range");
+			aSum = 0xFF;
+		}
 		if(rSum > 0xFF) {
 			Logger.warning("@IntegratedQuantum: color out of range");
 			rSum = 0xFF;
@@ -83,8 +77,7 @@ public class TextureArray {
 			Logger.warning("@IntegratedQuantum: color out of range");
 			bSum = 0xFF;
 		}
-		rgba |= rSum<<24 | gSum<<16 | bSum<<8;
-		return rgba;
+		return rSum<<24 | gSum<<16 | bSum<<8 | aSum;
 	}
 
 	/**
@@ -110,10 +103,13 @@ public class TextureArray {
 
 		glBindTexture(GL_TEXTURE_2D_ARRAY, textureId);
 
-		int maxLOD = CubyzMath.binaryLog(Math.max(maxWidth, maxHeight));
+		int maxLOD = 1 + CubyzMath.binaryLog(Math.max(maxWidth, maxHeight));
 		glTexStorage3D(GL_TEXTURE_2D_ARRAY, maxLOD, GL_RGBA8, maxWidth, maxHeight, layers);
 
-		IntBuffer buf = ByteBuffer.allocateDirect(4*maxWidth*maxHeight).asIntBuffer();
+		IntBuffer[] buf = new IntBuffer[maxLOD];
+		for(int i = 0; i < maxLOD; i++) {
+			buf[i] = ByteBuffer.allocateDirect(4*(maxWidth >> i)*(maxHeight >> i)).asIntBuffer();
+		}
 
 		for(int i = 0; i < layers; i++) {
 			BufferedImage img = textures.get(i);
@@ -123,7 +119,7 @@ public class TextureArray {
 					int index = x + y*maxWidth;
 					int argb = img.getRGB(x*img.getWidth()/maxWidth, y*img.getHeight()/maxHeight);
 					int rgba = argb<<8 | argb>>>24;
-					buf.put(index, rgba);
+					buf[0].put(index, rgba);
 				}
 			}
 
@@ -137,16 +133,16 @@ public class TextureArray {
 							int index = x + y*curWidth;
 							int index2 = 2*x + 2*y*2*curWidth;
 							int[] colors = new int[4]; // The 4 colors that should be combined.
-							colors[0] = buf.get(index2);
-							colors[1] = buf.get(index2 + 1);
-							colors[2] = buf.get(index2 + curWidth*2);
-							colors[3] = buf.get(index2 + curWidth*2 + 1);
+							colors[0] = buf[lod-1].get(index2);
+							colors[1] = buf[lod-1].get(index2 + 1);
+							colors[2] = buf[lod-1].get(index2 + curWidth*2);
+							colors[3] = buf[lod-1].get(index2 + curWidth*2 + 1);
 							int result = lodColorInterpolation(colors);
-							buf.put(index, result);
+							buf[lod].put(index, result);
 						}
 					}
 				}
-				glTexSubImage3D(GL_TEXTURE_2D_ARRAY, lod, 0, 0, i, curWidth, curHeight, 1, GL_RGBA, GL_UNSIGNED_BYTE, buf);
+				glTexSubImage3D(GL_TEXTURE_2D_ARRAY, lod, 0, 0, i, curWidth, curHeight, 1, GL_RGBA, GL_UNSIGNED_BYTE, buf[lod]);
 			}
 		}
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LOD, CubyzMath.binaryLog(Math.max(maxWidth, maxHeight)));
