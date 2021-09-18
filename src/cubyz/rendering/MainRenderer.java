@@ -396,7 +396,7 @@ public class MainRenderer {
 			}
 			
 			// Render item entities:
-			for(ChunkEntityManager chManager : localPlayer.getSurface().getEntityManagers()) {
+			/*for(ChunkEntityManager chManager : localPlayer.getSurface().getEntityManagers()) {
 				NormalChunk chunk = chManager.chunk;
 				if (!chunk.isLoaded() || !frustumInt.testAab(chunk.getMin(), chunk.getMax()))
 					continue;
@@ -428,7 +428,7 @@ public class MainRenderer {
 						});
 					}
 				}
-			}
+			}*/ // TODO: Fix item entities.
 			
 			NormalChunkMesh.shader.bind();
 			NormalChunkMesh.shader.setUniform(NormalChunkMesh.loc_fog_activ, 0); // manually disable the fog

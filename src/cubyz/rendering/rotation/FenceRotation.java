@@ -168,7 +168,7 @@ public class FenceRotation implements RotationMode {
 		int x = bi.getX() & NormalChunk.chunkMask;
 		int y = bi.getY() & NormalChunk.chunkMask;
 		int z = bi.getZ() & NormalChunk.chunkMask;
-		int textureIndex = bi.getBlock().textureIndex;
+		int[] textureIndices = bi.getBlock().textureIndices;
 		boolean negX = (bi.getData() & 0b00010) == 0;
 		boolean posX = (bi.getData() & 0b00100) == 0;
 		boolean negZ = (bi.getData() & 0b01000) == 0;
@@ -200,9 +200,10 @@ public class FenceRotation implements RotationMode {
 		}
 		
 		for(int i = 0; i < model.textCoords.length; i += 2) {
+			int i3 = i/2*3;
 			texture.add(model.textCoords[i]);
 			texture.add(model.textCoords[i+1]);
-			texture.add((float)textureIndex);
+			texture.add((float)textureIndices[Model.normalToNeighbor(model.normals[i3], model.normals[i3+1], model.normals[i3+2])]);
 		}
 		
 		normals.add(model.normals);

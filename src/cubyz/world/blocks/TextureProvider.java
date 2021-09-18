@@ -2,6 +2,7 @@ package cubyz.world.blocks;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Random;
 
 import javax.imageio.ImageIO;
@@ -9,7 +10,7 @@ import javax.imageio.ImageIO;
 import cubyz.Logger;
 
 public interface TextureProvider {
-	BufferedImage generateTexture(CustomBlock block);
+	void generateTexture(CustomBlock block, ArrayList<BufferedImage> textures, ArrayList<String> ids);
 	
 	public static int[] createColorPalette(CustomBlock block, int differentColors, int brightnessScale, int randomAdditive) {
 		int [] colors = new int[differentColors];

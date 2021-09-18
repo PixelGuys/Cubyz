@@ -30,7 +30,6 @@ public class Meshes {
 
 	public static final HashMap<Block, Mesh> blockMeshes = new HashMap<>();
 	public static final HashMap<EntityType, Mesh> entityMeshes = new HashMap<>();
-	public static final HashMap<Block, Texture> blockTextures = new HashMap<>();
 	
 	public static final TextureArray blockTextureArray = new TextureArray();
 	
@@ -93,7 +92,6 @@ public class Meshes {
 			Resource rsc = block.getRegistryID();
 			Texture tex = null;
 			String model = null;
-			String texture = null;
 			// Try loading it from the assets:
 			String path = "assets/"+rsc.getMod()+"/blocks/" + rsc.getID();
 			File file = new File(path);
@@ -107,13 +105,9 @@ public class Meshes {
 					Logger.warning(e);
 				}
 				model = props.getProperty("model", null);
-				texture = props.getProperty("texture", null);
 			}
 			if(model == null) {
 				model = "cubyz:block.obj";
-			}
-			if(texture == null) {
-				texture = "cubyz:undefined";
 			}
 			
 			// Cached meshes
@@ -131,16 +125,8 @@ public class Meshes {
 				mesh.setMaterial(material);
 				cachedDefaultModels.put(model, mesh);
 			}
-			Resource texResource = new Resource(texture);
-			String textureID = texResource.getID();
-			if (!new File("assets/" + texResource.getMod() + "/blocks/textures/" + textureID + ".png").exists()) {
-				Logger.warning(texResource + " texture not found");
-				textureID = "undefined";
-			}
-			tex = Texture.loadFromFile("assets/" + texResource.getMod() + "/blocks/textures/" + textureID + ".png");
 			
 			Meshes.blockMeshes.put(block, mesh);
-			Meshes.blockTextures.put(block, tex);
 		};
 		
 		ClientOnly.createEntityMesh = (type) -> {

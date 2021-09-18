@@ -1,12 +1,12 @@
 #version 330
 
-in vec2 outTexCoord;
+in vec3 outTexCoord;
 in vec3 mvVertexPos;
 in vec3 mvVertexNormal;
 
 out vec4 fragColor;
 
-uniform sampler2D texture_sampler;
+uniform sampler2DArray texture_sampler;
 uniform vec3 light;
 uniform vec3 dirLight;
 

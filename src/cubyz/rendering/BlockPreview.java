@@ -16,6 +16,7 @@ import org.joml.Vector4f;
 import cubyz.Logger;
 import cubyz.client.Meshes;
 import cubyz.utils.Utils;
+import cubyz.world.Neighbors;
 import cubyz.world.blocks.Block;
 
 /**
@@ -29,6 +30,12 @@ public abstract class BlockPreview {
 	public static int loc_texture_sampler;
 	public static int loc_light;
 	public static int loc_dirLight;
+	public static int loc_texPosX;
+	public static int loc_texNegX;
+	public static int loc_texPosY;
+	public static int loc_texNegY;
+	public static int loc_texPosZ;
+	public static int loc_texNegZ;
 	
 	private static ShaderProgram shader;
 
@@ -88,7 +95,14 @@ public abstract class BlockPreview {
 		shader.setUniform(loc_dirLight, new Vector3f(2, -2, 1.5f).normalize());
 		
 		shader.setUniform(loc_light, new Vector3f(1, 1, 1));
-		mesh.getMaterial().setTexture(Meshes.blockTextures.get(block));
+		Meshes.blockTextureArray.bind();
+		mesh.getMaterial().setTexture(null);
+		shader.setUniform(loc_texNegX, block.textureIndices[Neighbors.DIR_NEG_X]);
+		shader.setUniform(loc_texPosX, block.textureIndices[Neighbors.DIR_POS_X]);
+		shader.setUniform(loc_texNegY, block.textureIndices[Neighbors.DIR_DOWN]);
+		shader.setUniform(loc_texPosY, block.textureIndices[Neighbors.DIR_UP]);
+		shader.setUniform(loc_texNegZ, block.textureIndices[Neighbors.DIR_NEG_Z]);
+		shader.setUniform(loc_texPosZ, block.textureIndices[Neighbors.DIR_POS_Z]);
 		mesh.renderOne(() -> {
 			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(
 					Transformation.getModelMatrix(spatial.getPosition(), spatial.getRotation(), spatial.getScale()),

@@ -44,7 +44,7 @@ public class Block implements RegistryElement {
 	protected boolean viewThrough = false;
 	protected BlockClass blockClass;
 	private int light = 0;
-	public int textureIndex = 0;
+	public int[] textureIndices = new int[6];
 	/**How much light this block absorbs if it is transparent.*/
 	int absorption = 0;
 	/**GUI that is opened on click.*/

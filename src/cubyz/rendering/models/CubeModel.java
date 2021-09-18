@@ -13,7 +13,7 @@ public class CubeModel extends Model {
 	}
 
 	@Override
-	public void addToChunkMesh(int x, int y, int z, int textureIndex, int[] light, boolean[] neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
+	public void addToChunkMesh(int x, int y, int z, int[] textureIndices, int[] light, boolean[] neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
 		// Being a cube it is possible to optimize neighbor data:
 		int indexOffset = vertices.size/3;
 		int size = positions.length/3;
@@ -42,7 +42,7 @@ public class CubeModel extends Model {
 				
 				texture.add(textCoords[i2]);
 				texture.add(textCoords[i2+1]);
-				texture.add((float)textureIndex);
+				texture.add((float)textureIndices[normalToNeighbor(this.normals[i3], this.normals[i3+1], this.normals[i3+2])]);
 				indexesAdded.add(i);
 			}
 		}
@@ -55,7 +55,7 @@ public class CubeModel extends Model {
 	}
 
 	@Override
-	public void addToChunkMeshSimpleRotation(int x, int y, int z, int[] directionMap, boolean[] directionInversion, int textureIndex, int[] light, boolean[] neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
+	public void addToChunkMeshSimpleRotation(int x, int y, int z, int[] directionMap, boolean[] directionInversion, int[] textureIndices, int[] light, boolean[] neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
 		// Being a cube it is possible to optimize neighbor data:
 		int indexOffset = vertices.size/3;
 		int size = positions.length/3;
@@ -88,7 +88,7 @@ public class CubeModel extends Model {
 				
 				texture.add(textCoords[i2]);
 				texture.add(textCoords[i2+1]);
-				texture.add((float)textureIndex);
+				texture.add((float)textureIndices[normalToNeighbor(this.normals[i3], this.normals[i3+1], this.normals[i3+2])]);
 
 				indexesAdded.add(i);
 			}
@@ -106,9 +106,5 @@ public class CubeModel extends Model {
 		Model standardCube = ModelLoader.loadUnregisteredModel(new Resource("", ""), "assets/cubyz/models/3d/block.obj");
 		standardCube = new CubeModel(new Resource("cubyz", "block.obj"), standardCube);
 		Meshes.models.register(standardCube);
-		
-		Model sidedCube = ModelLoader.loadUnregisteredModel(new Resource("", ""), "assets/cubyz/models/3d/persidetexture.obj");
-		sidedCube = new CubeModel(new Resource("cubyz", "persidetexture.obj"), sidedCube);
-		Meshes.models.register(sidedCube);
 	}
 }
