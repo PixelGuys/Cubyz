@@ -338,8 +338,8 @@ public class ReducedChunkMesh extends ChunkMesh implements Runnable {
 			if(negX) {
 				int normal = 0;
 				int i000 = addVertex(vertices, x, y, z, normal, colorsAndNormals, block, 0b00);
-				int i001 = addVertex(vertices, x, y, z + offset, normal, colorsAndNormals, block, 0b01);
-				int i010 = addVertex(vertices, x, y + offset, z, normal, colorsAndNormals, block, 0b10);
+				int i001 = addVertex(vertices, x, y, z + offset, normal, colorsAndNormals, block, 0b10);
+				int i010 = addVertex(vertices, x, y + offset, z, normal, colorsAndNormals, block, 0b01);
 				int i011 = addVertex(vertices, x, y + offset, z + offset, normal, colorsAndNormals, block, 0b11);
 				faces.add(i000);
 				faces.add(i001);
@@ -351,10 +351,10 @@ public class ReducedChunkMesh extends ChunkMesh implements Runnable {
 			}
 			if(posX) {
 				int normal = 1;
-				int i100 = addVertex(vertices, x + offset, y, z, normal, colorsAndNormals, block, 0b10);
+				int i100 = addVertex(vertices, x + offset, y, z, normal, colorsAndNormals, block, 0b01);
 				int i101 = addVertex(vertices, x + offset, y, z + offset, normal, colorsAndNormals, block, 0b11);
 				int i110 = addVertex(vertices, x + offset, y + offset, z, normal, colorsAndNormals, block, 0b00);
-				int i111 = addVertex(vertices, x + offset, y + offset, z + offset, normal, colorsAndNormals, block, 0b01);
+				int i111 = addVertex(vertices, x + offset, y + offset, z + offset, normal, colorsAndNormals, block, 0b10);
 				faces.add(i100);
 				faces.add(i111);
 				faces.add(i101);
