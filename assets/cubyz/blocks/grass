@@ -2,7 +2,7 @@ class sand
 hardness 6
 drop cubyz:soil
 
-model cubyz:persidetexture.obj
-texture cubyz:grass
-
-color 0xf360
+model cubyz:block.obj
+texture cubyz:grass_side
+texture_top cubyz:grass_top
+texture_bottom cubyz:soil

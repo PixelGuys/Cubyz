@@ -25,6 +25,7 @@ import cubyz.client.entity.ClientEntityManager;
 import cubyz.gui.input.Keyboard;
 import cubyz.utils.Utils;
 import cubyz.utils.datastructures.FastList;
+import cubyz.world.Neighbors;
 import cubyz.world.NormalChunk;
 import cubyz.world.blocks.Block;
 import cubyz.world.blocks.BlockInstance;
@@ -51,11 +52,27 @@ public class MainRenderer {
 		public static int loc_fog_density;
 		public static int loc_light;
 	}
+	public static class BlockDropUniforms {
+		public static int loc_projectionMatrix;
+		public static int loc_viewMatrix;
+		public static int loc_texture_sampler;
+		public static int loc_fog_activ;
+		public static int loc_fog_color;
+		public static int loc_fog_density;
+		public static int loc_light;
+		public static int loc_texPosX;
+		public static int loc_texNegX;
+		public static int loc_texPosY;
+		public static int loc_texNegY;
+		public static int loc_texPosZ;
+		public static int loc_texNegZ;
+	}
 	
 	/**The number of milliseconds after which no more chunk meshes are created. This allows the game to run smoother on movement.*/
 	private static int maximumMeshTime = 1;
 
 	private ShaderProgram entityShader; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
+	private ShaderProgram blockDropShader;
 
 	private static final float Z_NEAR = 0.01f;
 	private static final float Z_FAR = 10000.0f;
@@ -96,6 +113,8 @@ public class MainRenderer {
 	public void unloadShaders() throws Exception {
 		entityShader.cleanup();
 		entityShader = null;
+		blockDropShader.cleanup();
+		blockDropShader = null;
 		System.gc();
 	}
 
@@ -107,6 +126,9 @@ public class MainRenderer {
 		entityShader = new ShaderProgram(Utils.loadResource(shaders + "/entity_vertex.vs"),
 				Utils.loadResource(shaders + "/entity_fragment.fs"),
 				EntityUniforms.class);
+		blockDropShader = new ShaderProgram(Utils.loadResource(shaders + "/block_drop.vs"),
+				Utils.loadResource(shaders + "/block_drop.fs"),
+				BlockDropUniforms.class);
 		
 		System.gc();
 	}
@@ -396,6 +418,13 @@ public class MainRenderer {
 			}
 			
 			// Render item entities:
+			Meshes.blockTextureArray.bind();
+			blockDropShader.bind();
+			blockDropShader.setUniform(BlockDropUniforms.loc_fog_activ, Cubyz.fog.isActive());
+			blockDropShader.setUniform(BlockDropUniforms.loc_fog_color, Cubyz.fog.getColor());
+			blockDropShader.setUniform(BlockDropUniforms.loc_fog_density, Cubyz.fog.getDensity());
+			blockDropShader.setUniform(BlockDropUniforms.loc_projectionMatrix, Window.getProjectionMatrix());
+			blockDropShader.setUniform(BlockDropUniforms.loc_texture_sampler, 0);
 			for(ChunkEntityManager chManager : localPlayer.getSurface().getEntityManagers()) {
 				NormalChunk chunk = chManager.chunk;
 				if (!chunk.isLoaded() || !frustumInt.testAab(chunk.getMin(), chunk.getMax()))
@@ -408,23 +437,29 @@ public class MainRenderer {
 					int y = (int)(manager.posxyz[index3+1] + 1.0f);
 					int z = (int)(manager.posxyz[index3+2] + 1.0f);
 					Mesh mesh = null;
+					Block block;
 					if(manager.itemStacks[i].getItem() instanceof ItemBlock) {
-						Block b = ((ItemBlock)manager.itemStacks[i].getItem()).getBlock();
-						mesh = Meshes.blockMeshes.get(b);
-						mesh.getMaterial().setTexture(Meshes.blockTextures.get(b));
+						block = ((ItemBlock)manager.itemStacks[i].getItem()).getBlock();
+						mesh = Meshes.blockMeshes.get(block);
+						mesh.getMaterial().setTexture(null);
 					} else {
-						Block b = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:diamond_ore");
-						mesh = Meshes.blockMeshes.get(b);
-						mesh.getMaterial().setTexture(Meshes.blockTextures.get(b));
+						block = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:diamond_ore");
+						mesh = Meshes.blockMeshes.get(block);
+						mesh.getMaterial().setTexture(null);
 					}
+					blockDropShader.setUniform(BlockDropUniforms.loc_texNegX, block.textureIndices[Neighbors.DIR_NEG_X]);
+					blockDropShader.setUniform(BlockDropUniforms.loc_texPosX, block.textureIndices[Neighbors.DIR_POS_X]);
+					blockDropShader.setUniform(BlockDropUniforms.loc_texNegY, block.textureIndices[Neighbors.DIR_DOWN]);
+					blockDropShader.setUniform(BlockDropUniforms.loc_texPosY, block.textureIndices[Neighbors.DIR_UP]);
+					blockDropShader.setUniform(BlockDropUniforms.loc_texNegZ, block.textureIndices[Neighbors.DIR_NEG_Z]);
+					blockDropShader.setUniform(BlockDropUniforms.loc_texPosZ, block.textureIndices[Neighbors.DIR_POS_Z]);
 					if(mesh != null) {
-						entityShader.setUniform(EntityUniforms.loc_materialHasTexture, mesh.getMaterial().isTextured());
-						entityShader.setUniform(EntityUniforms.loc_light, localPlayer.getSurface().getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
+						blockDropShader.setUniform(BlockDropUniforms.loc_light, localPlayer.getSurface().getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
 						
 						mesh.renderOne(() -> {
 							Vector3f position = manager.getPosition(index);
 							Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(position, manager.getRotation(index), ItemEntityManager.diameter), Camera.getViewMatrix());
-							entityShader.setUniform(EntityUniforms.loc_viewMatrix, modelViewMatrix);
+							blockDropShader.setUniform(BlockDropUniforms.loc_viewMatrix, modelViewMatrix);
 						});
 					}
 				}

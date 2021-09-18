@@ -5,9 +5,9 @@ import org.joml.Vector3f;
 
 import cubyz.api.RegistryElement;
 import cubyz.api.Resource;
-import cubyz.client.Meshes;
 import cubyz.utils.datastructures.FloatFastList;
 import cubyz.utils.datastructures.IntFastList;
+import cubyz.world.Neighbors;
 
 /**
  * A simple data holder for the indexed model data.
@@ -54,6 +54,28 @@ public class Model implements RegistryElement {
 		addWeightedLight(dx      *dy      *dz      , srgb, light[(x0+1)	+ (y0+1)*3		+ (z0+1)*9]);
 		return (int)(srgb[0])<<24 | (int)(srgb[1])<<16 | (int)(srgb[2])<<8 | (int)(srgb[3]);
 	}
+
+	public static int normalToNeighbor(float nx, float ny, float nz) {
+		if(nx == -1) {
+			return Neighbors.DIR_NEG_X;
+		}
+		if(nx == 1) {
+			return Neighbors.DIR_POS_X;
+		}
+		if(nz == -1) {
+			return Neighbors.DIR_NEG_Z;
+		}
+		if(nz == 1) {
+			return Neighbors.DIR_POS_Z;
+		}
+		if(ny == -1) {
+			return Neighbors.DIR_DOWN;
+		}
+		if(ny == 1) {
+			return Neighbors.DIR_UP;
+		}
+		return 0;
+	}
 	
 	/**
 	 * Adds model to chunk mesh without doing any further transformations.
@@ -72,7 +94,7 @@ public class Model implements RegistryElement {
 	 * @param renderIndices
 	 * @param renderIndex
 	 */
-	public void addToChunkMesh(int x, int y, int z, int textureIndex, int[] light, boolean[] neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
+	public void addToChunkMesh(int x, int y, int z, int[] textureIndices, int[] light, boolean[] neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
 		int indexOffset = vertices.size/3;
 		for(int i = 0; i < positions.length; i += 3) {
 			vertices.add(positions[i] + x);
@@ -88,9 +110,10 @@ public class Model implements RegistryElement {
 		}
 		
 		for(int i = 0; i < textCoords.length; i += 2) {
+			int i3 = i/2*3;
 			texture.add(textCoords[i]);
 			texture.add(textCoords[i+1]);
-			texture.add((float)textureIndex);
+			texture.add((float)textureIndices[normalToNeighbor(this.normals[i3], this.normals[i3+1], this.normals[i3+2])]);
 		}
 		
 		normals.add(this.normals);
@@ -119,7 +142,7 @@ public class Model implements RegistryElement {
 	 * @param renderIndices
 	 * @param renderIndex
 	 */
-	public void addToChunkMeshSimpleRotation(int x, int y, int z, int[] directionMap, boolean[] directionInversion, int textureIndex, int[] light, boolean[] neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
+	public void addToChunkMeshSimpleRotation(int x, int y, int z, int[] directionMap, boolean[] directionInversion, int[] textureIndices, int[] light, boolean[] neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
 		int indexOffset = vertices.size/3;
 		for(int i = 0; i < positions.length; i += 3) {
 			vertices.add(conditionalInversion(positions[i+directionMap[0]], directionInversion[0]) + x);
@@ -138,9 +161,10 @@ public class Model implements RegistryElement {
 		}
 		
 		for(int i = 0; i < textCoords.length; i += 2) {
+			int i3 = i/2*3;
 			texture.add(textCoords[i]);
 			texture.add(textCoords[i+1]);
-			texture.add((float)textureIndex);
+			texture.add((float)textureIndices[normalToNeighbor(this.normals[i3], this.normals[i3+1], this.normals[i3+2])]);
 		}
 		
 		normals.add(this.normals);
@@ -165,7 +189,7 @@ public class Model implements RegistryElement {
 	 * @param renderIndices
 	 * @param renderIndex
 	 */
-	public void addToChunkMeshRotation(float x, float y, float z, Matrix3f rotationMatrix, int textureIndex, int[] light, boolean[] neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
+	public void addToChunkMeshRotation(float x, float y, float z, Matrix3f rotationMatrix, int[] textureIndices, int[] light, boolean[] neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
 		int indexOffset = vertices.size/3;
 		for(int i = 0; i < positions.length; i += 3) {
 			Vector3f pos = new Vector3f(positions[i], positions[i+1], positions[i+2]);
@@ -190,9 +214,10 @@ public class Model implements RegistryElement {
 		}
 		
 		for(int i = 0; i < textCoords.length; i += 2) {
+			int i3 = i/2*3;
 			texture.add(textCoords[i]);
 			texture.add(textCoords[i+1]);
-			texture.add((float)textureIndex);
+			texture.add((float)textureIndices[normalToNeighbor(this.normals[i3], this.normals[i3+1], this.normals[i3+2])]);
 		}
 	}
 

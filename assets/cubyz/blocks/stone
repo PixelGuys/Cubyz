@@ -4,5 +4,3 @@ drop cubyz:cobblestone
 
 model cubyz:block.obj
 texture cubyz:stone
-
-color 0xfaaa

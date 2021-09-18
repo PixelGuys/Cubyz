@@ -18,7 +18,6 @@ import org.lwjgl.opengl.GL12;
 import cubyz.*;
 import cubyz.api.ClientConnection;
 import cubyz.api.ClientRegistries;
-import cubyz.api.Resource;
 import cubyz.api.Side;
 import cubyz.client.entity.ClientEntityManager;
 import cubyz.client.loading.LoadThread;
@@ -166,18 +165,6 @@ public class GameLogic implements ClientConnection {
 		
 		if (world instanceof LocalWorld) { // custom ores on multiplayer later, maybe?
 			LocalSurface ts = (LocalSurface) surface;
-			ArrayList<CustomBlock> customBlocks = ts.getCustomBlocks();
-			for (CustomBlock block : customBlocks) {
-				BufferedImage img = block.textureProvider.generateTexture(block);
-				InputStream is = TextureConverter.fromBufferedImage(img);
-				Texture tex = new Texture(is);
-				try {
-					is.close();
-				} catch (IOException e) {
-					Logger.warning(e);
-				}
-				Meshes.blockTextures.put(block, tex);
-			}
 			for (Item reg : ts.getCurrentRegistries().itemRegistry.registered(new Item[0])) {
 				if(!(reg instanceof CustomItem)) continue;
 				CustomItem item = (CustomItem)reg;
@@ -204,16 +191,13 @@ public class GameLogic implements ClientConnection {
 		}
 		// Get the textures for those blocks:
 		ArrayList<BufferedImage> blockTextures = new ArrayList<>();
+		ArrayList<String> blockIDs = new ArrayList<>();
 		for(Block block : blocks) {
-			BufferedImage texture = ResourceUtilities.loadBlockTextureToBufferedImage(block.getRegistryID());
-			if(texture != null) {
-			} else if(block instanceof CustomBlock) {
+			ResourceUtilities.loadBlockTexturesToBufferedImage(block, blockTextures, blockIDs);
+			if(block instanceof CustomBlock) {
 				CustomBlock ore = (CustomBlock)block;
-				texture = ore.textureProvider.generateTexture(ore);
-			} else {
-				texture = ResourceUtilities.loadBlockTextureToBufferedImage(new Resource("cubyz", "undefined"));
+				ore.textureProvider.generateTexture(ore, blockTextures, blockIDs);
 			}
-			blockTextures.add(texture);
 		}
 		// Put the textures into the atlas
 		TextureArray textures = Meshes.blockTextureArray;
@@ -221,7 +205,6 @@ public class GameLogic implements ClientConnection {
 		for(int i = 0; i < blockTextures.size(); i++) {
 			BufferedImage img = blockTextures.get(i);
 			textures.addTexture(img);
-			blocks.get(i).textureIndex = i;
 		}
 		textures.generate();
 		

@@ -6,7 +6,7 @@ layout (location=2)  in vec3 vertexNormal;
 
 out vec3 outTexCoord;
 out vec3 mvVertexPos;
-out vec3 mvVertexNormal;
+out float outSelected;
 
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
@@ -20,9 +20,8 @@ uniform int texNegZ;
 
 void main()
 {
-	vec4 mvPos = viewMatrix*vec4(position, 1);
-	gl_Position = projectionMatrix*mvPos;
-   	mvVertexNormal = normalize(viewMatrix*vec4(vertexNormal, 0.0)).xyz;
+	vec4 mvPos = viewMatrix * vec4(position, 1);
+	gl_Position = projectionMatrix * mvPos;
 	int texture = 0;
 	if(vertexNormal == vec3(1, 0, 0)) {
 		texture = texPosX;

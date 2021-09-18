@@ -1,12 +1,7 @@
 #version 330
 
-in vec3 mvVertexPos;
 in vec3 outTexCoord;
-in vec3 outNormal;
-
-uniform vec3 directionalLight;
-uniform vec3 ambientLight;
-uniform sampler2DArray texture_sampler;
+in vec3 mvVertexPos;
 
 out vec4 fragColor;
 
@@ -16,7 +11,15 @@ struct Fog {
 	float density;
 };
 
+uniform sampler2DArray texture_sampler;
 uniform Fog fog;
+uniform vec3 light;
+
+vec4 ambientC;
+
+void setupColors(vec3 textCoord) {
+	ambientC = texture(texture_sampler, textCoord);
+}
 
 vec4 calcFog(vec3 pos, vec4 color, Fog fog) {
 	float distance = length(pos);
@@ -26,13 +29,12 @@ vec4 calcFog(vec3 pos, vec4 color, Fog fog) {
 	return vec4(resultColor.xyz, color.w);
 }
 
-void main()
-{
-    fragColor = texture(texture_sampler, outTexCoord)*vec4((1 - dot(directionalLight, outNormal))*ambientLight, 1);
-	if(fragColor.a <= 0.5f) discard;
-	else fragColor.a = 1;
-    
-    if(fog.activ) {
-        fragColor = calcFog(mvVertexPos, fragColor, fog);
-    }
+void main() {
+	setupColors(outTexCoord);
+	
+	fragColor = ambientC*vec4(light, 1);
+	
+	if (fog.activ) {
+		fragColor = calcFog(mvVertexPos, fragColor, fog);
+	}
 }
