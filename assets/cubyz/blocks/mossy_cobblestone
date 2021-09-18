@@ -4,5 +4,3 @@ drop auto
 
 model cubyz:block.obj
 texture cubyz:mossy_cobblestone
-
-color 0xf897

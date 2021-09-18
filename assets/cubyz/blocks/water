@@ -6,5 +6,3 @@ absorbedLight 0x17171100
 
 model cubyz:block.obj
 texture cubyz:water
-
-color 0xf02f

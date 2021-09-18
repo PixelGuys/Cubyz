@@ -2,5 +2,3 @@ class wood
 hardness 7.5
 drop auto
 GUI cubyz:workbench
-
-color 0xfda5

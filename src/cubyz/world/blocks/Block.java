@@ -50,12 +50,10 @@ public class Block implements RegistryElement {
 	/**GUI that is opened on click.*/
 	String gui;
 	public RotationMode mode = CubyzRegistries.ROTATION_MODE_REGISTRY.getByID("cubyz:no_rotation");
-	public final short color;
 	public Class<? extends BlockEntity> blockEntity;
 	
 	public Block() {
 		blockDrops = new BlockDrop[0];
-		color = -1;
 	}
 	
 	public Block(String id, float hardness, BlockClass bc) {
@@ -65,7 +63,6 @@ public class Block implements RegistryElement {
 		blockDrops = new BlockDrop[1];
 		blockDrops[0] = new BlockDrop(bd, 1);
 		this.hardness = hardness;
-		color = -1;
 	}
 	
 	public Block(Resource id, Properties props, String bc) {
@@ -83,7 +80,6 @@ public class Block implements RegistryElement {
 		transparent = props.getProperty("transparent", "no").equalsIgnoreCase("yes");
 		viewThrough = props.getProperty("viewThrough", "no").equalsIgnoreCase("yes") || transparent;
 		blockDrops = new BlockDrop[0];
-		color = (short)(Integer.decode(props.getProperty("color", "0x0000")) & 65535);
 	}
 	
 	public void setDegradable(Boolean deg) {

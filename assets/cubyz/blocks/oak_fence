@@ -6,5 +6,3 @@ rotation cubyz:fence
 
 model cubyz:fence.obj
 texture cubyz:oak_planks
-
-color 0xfda5

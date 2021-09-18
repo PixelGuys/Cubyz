@@ -8,5 +8,3 @@ model cubyz:block.obj
 texture cubyz:oak_log_side
 texture_top cubyz:oak_log_rings_top
 texture_bottom cubyz:oak_log_rings_bottom
-
-color 0xf652

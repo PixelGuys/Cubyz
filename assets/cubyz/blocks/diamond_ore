@@ -7,5 +7,3 @@ drop cubyz:diamond
 
 model cubyz:block.obj
 texture cubyz:diamond_ore
-
-color 0xf677

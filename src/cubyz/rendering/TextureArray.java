@@ -6,7 +6,6 @@ import java.awt.image.BufferedImage;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 
 import cubyz.Logger;
 import cubyz.utils.math.CubyzMath;
@@ -133,7 +132,6 @@ public class TextureArray {
 					int a = img.getRGB(x, y) & 0xff000000;
 					if(a != 0 && a != 0xff000000) {
 						isTransparent[i] = true;
-						System.out.println(a);
 						break;
 					}
 				}

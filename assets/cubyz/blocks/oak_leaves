@@ -5,7 +5,6 @@ transparent yes
 absorbedLight 0x0f100010
 drop auto, 0.1 cubyz:apple
 
-color 0xf181
 
 model cubyz:block.obj
 texture cubyz:oak_leaves_transparent

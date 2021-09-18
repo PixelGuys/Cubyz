@@ -4,5 +4,3 @@ drop auto
 
 model cubyz:block.obj
 texture cubyz:cactus
-
-color 0xf0f0
