@@ -139,7 +139,8 @@ public class AddonsMod {
 						float veins = Float.parseFloat(props.getProperty("veins", "0"));
 						float size = Float.parseFloat(props.getProperty("size", "0"));
 						int height = Integer.parseInt(props.getProperty("height", "0"));
-						Ore ore = new Ore(new Resource(addon.getName(), id), props, height, veins, size);
+						float density = Float.parseFloat(props.getProperty("density", "0.5"));
+						Ore ore = new Ore(new Resource(addon.getName(), id), props, height, veins, size, density);
 						block = ore;
 						blockClass = "STONE";
 					} else {

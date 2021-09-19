@@ -1,8 +1,9 @@
 class ore
 hardness 60
 veins 4
-size 10
-height -32
+size 20
+height 20
+density 0.5
 drop auto
 
 model cubyz:block.obj

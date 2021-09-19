@@ -161,7 +161,7 @@ public class LocalSurface extends Surface {
 		registries.blockRegistry.register(glowCrystalOre);
 		i++;
 		// Create the crystal block for the CrystalCaverns:
-		CustomBlock crystalBlock = new CustomBlock(0, 0, 0, new CrystalTextureProvider()); // TODO: Add a CustomBlock type or interface because this is no ore.
+		CustomBlock crystalBlock = new CustomBlock(0, 0, 0, 0, new CrystalTextureProvider()); // TODO: Add a CustomBlock type or interface because this is no ore.
 		crystalBlock.setID(glowCrystalOre.getRegistryID().toString()+"_glow_crystal");
 		crystalBlock.setHardness(40);
 		crystalBlock.addBlockDrop(new BlockDrop(glowCrystalOre.getBlockDrops()[0].item, 4));
