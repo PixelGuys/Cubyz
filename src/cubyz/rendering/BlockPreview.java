@@ -85,7 +85,8 @@ public abstract class BlockPreview {
 		Spatial spatial = new Spatial(mesh);
 		
 		glViewport(0, 0, 64, 64);
-		Matrix4f projectionMatrix = Transformation.getProjectionMatrix(0.013f, 1f, 1f, 0.1f, 10000.0f);//.getOrthoProjectionMatrix(0.9f, -0.9f, -0.9f, 0.9f, 0.1f, 1000.0f);
+		Matrix4f projectionMatrix = new Matrix4f();
+		Transformation.updateProjectionMatrix(projectionMatrix, 0.013f, 1f, 1f, 0.1f, 10000.0f);
 		clear();
 		Matrix4f viewMatrix = transformation.getViewMatrix(new Vector3f(64, 90.3f, 64), new Vector3f(3*(float)Math.PI/4, 3*(float)Math.PI/4, 0));
 

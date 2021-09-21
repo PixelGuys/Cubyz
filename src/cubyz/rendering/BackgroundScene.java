@@ -134,8 +134,8 @@ public class BackgroundScene {
 		buffer.genRenderbuffer(SIZE, SIZE);
 		buffer.bind();
 
-		Window.setProjectionMatrix(Transformation.getProjectionMatrix((float)Math.toRadians(90),
-		SIZE, SIZE, MainRenderer.Z_NEAR, MainRenderer.Z_FAR));
+		Transformation.updateProjectionMatrix(Window.getProjectionMatrix(), (float)Math.toRadians(90),
+		SIZE, SIZE, MainRenderer.Z_NEAR, MainRenderer.Z_FAR);
 
 		Vector3f cameraRotation = Camera.getRotation();
 		Vector3f rotationCopy = new Vector3f(cameraRotation);
@@ -178,8 +178,8 @@ public class BackgroundScene {
 		// Reset state:
 		buffer.unbind();
 		glViewport(0, 0, Window.getWidth(), Window.getHeight());
-		Window.setProjectionMatrix(Transformation.getProjectionMatrix((float)Math.toRadians(ClientSettings.FOV),
-		Window.getWidth(), Window.getHeight(), MainRenderer.Z_NEAR, MainRenderer.Z_FAR));
+		Transformation.updateProjectionMatrix(Window.getProjectionMatrix(), (float)Math.toRadians(ClientSettings.FOV),
+		Window.getWidth(), Window.getHeight(), MainRenderer.Z_NEAR, MainRenderer.Z_FAR);
 		Logger.debug("Made cubemap.");
 		cameraRotation.set(rotationCopy);
 		Cubyz.gameUI.showOverlay = showOverlay;

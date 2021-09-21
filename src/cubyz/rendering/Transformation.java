@@ -5,8 +5,6 @@ import org.joml.Vector3f;
 
 public class Transformation {
 
-	private static final Matrix4f projectionMatrix = new Matrix4f();
-
 	private final Matrix4f worldMatrix;
 
 	private final Matrix4f viewMatrix;
@@ -27,11 +25,10 @@ public class Transformation {
 		lightViewMatrix = new Matrix4f();
 	}
 
-	public static Matrix4f getProjectionMatrix(float fov, float width, float height, float zNear, float zFar) {
+	public static void updateProjectionMatrix(Matrix4f projectionMatrix, float fov, float width, float height, float zNear, float zFar) {
 		float aspectRatio = width / height;
 		projectionMatrix.identity();
 		projectionMatrix.perspective(fov, aspectRatio, zNear, zFar);
-		return projectionMatrix;
 	}
 
 	public Matrix4f getWorldMatrix(Vector3f offset, Vector3f rotation, float scale) {

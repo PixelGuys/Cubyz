@@ -131,8 +131,8 @@ public class MainRenderer {
 
 	public void init() throws Exception {
 		transformation = new Transformation();
-		Window.setProjectionMatrix(Transformation.getProjectionMatrix((float) Math.toRadians(70.0f), Window.getWidth(),
-				Window.getHeight(), Z_NEAR, Z_FAR));
+		Transformation.updateProjectionMatrix(Window.getProjectionMatrix(), (float)Math.toRadians(ClientSettings.FOV),
+		Window.getWidth(), Window.getHeight(), Z_NEAR, Z_FAR);
 		loadShaders();
 		ReducedChunkMesh.init(shaders);
 		NormalChunkMesh.init(shaders);
@@ -189,8 +189,8 @@ public class MainRenderer {
 		if (Window.isResized()) {
 			glViewport(0, 0, Window.getWidth(), Window.getHeight());
 			Window.setResized(false);
-			Window.setProjectionMatrix(Transformation.getProjectionMatrix((float)Math.toRadians(ClientSettings.FOV),
-			Window.getWidth(), Window.getHeight(), Z_NEAR, Z_FAR));
+			Transformation.updateProjectionMatrix(Window.getProjectionMatrix(), (float)Math.toRadians(ClientSettings.FOV),
+			Window.getWidth(), Window.getHeight(), Z_NEAR, Z_FAR);
 		}
 		
 		if(Cubyz.world != null) {
