@@ -44,6 +44,7 @@ import cubyz.world.*;
 import cubyz.world.blocks.Block;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.CustomBlock;
+import cubyz.world.blocks.Ore;
 import cubyz.world.blocks.Block.BlockClass;
 import cubyz.world.entity.Entity;
 import cubyz.world.entity.PlayerEntity.PlayerImpl;
@@ -199,6 +200,7 @@ public class GameLogic implements ClientConnection {
 				ore.textureProvider.generateTexture(ore, blockTextures, blockIDs);
 			}
 		}
+		LifelandGenerator.initOres(surface.getCurrentRegistries().oreRegistry.registered(new Ore[0]));
 		// Put the textures into the atlas
 		TextureArray textures = Meshes.blockTextureArray;
 		textures.clear();

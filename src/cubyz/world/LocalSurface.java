@@ -20,7 +20,6 @@ import cubyz.world.blocks.Block;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.CrystalTextureProvider;
 import cubyz.world.blocks.CustomBlock;
-import cubyz.world.blocks.Ore;
 import cubyz.world.blocks.OreTextureProvider;
 import cubyz.world.cubyzgenerators.CrystalCavernGenerator;
 import cubyz.world.cubyzgenerators.biomes.Biome;
@@ -139,14 +138,13 @@ public class LocalSurface extends Surface {
 		}
 	}
 	
-	public int generate(ArrayList<Block> blockList, ArrayList<Ore> ores, int ID) {
+	public int generate(ArrayList<Block> blockList, int ID) {
 		Random rand = new Random(localSeed);
 		int randomAmount = 9 + rand.nextInt(3); // TODO
 		int i = 0;
 		for(i = 0; i < randomAmount; i++) {
 			CustomBlock block = CustomBlock.random(rand, registries, new OreTextureProvider());
 			customBlocks.add(block);
-			ores.add(block);
 			blockList.add(block);
 			block.ID = ID++;
 			registries.blockRegistry.register(block);
@@ -156,13 +154,12 @@ public class LocalSurface extends Surface {
 		CustomBlock glowCrystalOre = CustomBlock.random(rand, registries, new OreTextureProvider());
 		glowCrystalOre.makeGlow(); // Make sure it glows.
 		customBlocks.add(glowCrystalOre);
-		ores.add(glowCrystalOre);
 		blockList.add(glowCrystalOre);
 		glowCrystalOre.ID = ID++;
 		registries.blockRegistry.register(glowCrystalOre);
 		i++;
 		// Create the crystal block for the CrystalCaverns:
-		CustomBlock crystalBlock = new CustomBlock(0, 0, 0, 0, new CrystalTextureProvider()); // TODO: Add a CustomBlock type or interface because this is no ore.
+		CustomBlock crystalBlock = new CustomBlock(new CrystalTextureProvider());
 		crystalBlock.setID(glowCrystalOre.getRegistryID().toString()+"_glow_crystal");
 		crystalBlock.setHardness(40);
 		crystalBlock.addBlockDrop(new BlockDrop(glowCrystalOre.getBlockDrops()[0].item, 4));
@@ -170,7 +167,6 @@ public class LocalSurface extends Surface {
 		crystalBlock.color = glowCrystalOre.color;
 		crystalBlock.seed = glowCrystalOre.seed;
 		customBlocks.add(crystalBlock);
-		ores.add(crystalBlock);
 		blockList.add(crystalBlock);
 		crystalBlock.ID = ID++;
 		registries.blockRegistry.register(crystalBlock);

@@ -8,10 +8,8 @@ import java.util.Random;
 import cubyz.Logger;
 import cubyz.api.CubyzRegistries;
 import cubyz.world.blocks.Block;
-import cubyz.world.blocks.Ore;
 import cubyz.world.entity.Entity;
 import cubyz.world.entity.Player;
-import cubyz.world.generator.LifelandGenerator;
 import cubyz.world.save.WorldIO;
 
 public class LocalWorld extends World {
@@ -107,7 +105,6 @@ public class LocalWorld extends World {
 		ArrayList<Block> blockList = new ArrayList<>();
 		// Set the IDs again every time a new world is loaded. This is necessary, because the random block creation would otherwise mess with it.
 		int ID = 0;
-		ArrayList<Ore> ores = new ArrayList<Ore>();
 		for (Block b : CubyzRegistries.BLOCK_REGISTRY.registered(new Block[0])) {
 			if(!b.isTransparent()) {
 				b.ID = ID;
@@ -117,7 +114,7 @@ public class LocalWorld extends World {
 		}
 		// Generate the ores of the current torus:
 		if(currentTorus != null && currentTorus instanceof LocalSurface) {
-			ID = currentTorus.generate(blockList, ores, ID);
+			ID = currentTorus.generate(blockList, ID);
 		}
 		// Put the truly transparent blocks at the end of the list to make sure the renderer calls the last.
 		for (Block b : CubyzRegistries.BLOCK_REGISTRY.registered(new Block[0])) {
@@ -126,11 +123,7 @@ public class LocalWorld extends World {
 				blockList.add(b);
 				ID++;
 			}
-			if(b instanceof Ore) {
-				ores.add((Ore)b);
-			}
 		}
-		LifelandGenerator.initOres(ores.toArray(new Ore[ores.size()]));
 		generated = true;
 		for (Entity ent : currentTorus.getEntities()) {
 			if (ent instanceof Player) {

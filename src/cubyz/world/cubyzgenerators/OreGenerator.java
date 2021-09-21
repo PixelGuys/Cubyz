@@ -2,12 +2,10 @@ package cubyz.world.cubyzgenerators;
 
 import java.util.Random;
 
-import cubyz.api.CubyzRegistries;
 import cubyz.api.Resource;
 import cubyz.world.Chunk;
 import cubyz.world.NormalChunk;
 import cubyz.world.Surface;
-import cubyz.world.blocks.Block;
 import cubyz.world.blocks.Ore;
 import cubyz.world.terrain.MapFragment;
 
@@ -26,8 +24,6 @@ public class OreGenerator implements Generator {
 	public int getPriority() {
 		return 32768; // Somewhere before cave generation.
 	}
-	
-	private static Block stone = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:stone");
 
 	public static Ore[] ores;
 	public OreGenerator() {}
@@ -62,7 +58,7 @@ public class OreGenerator implements Generator {
 		for(int i = 0; i < ores.length; i++) {
 			if(ores[i].maxHeight <= y << NormalChunk.chunkShift) continue;
 			// Compose the seeds from some random stats of the ore. They generally shouldn't be the same for two different ores.
-			rand.setSeed(seed^(ores[i].maxHeight)^(Float.floatToIntBits(ores[i].size))^ores[i].getRegistryID().getID().charAt(0)^Float.floatToIntBits(ores[i].getHardness()));
+			rand.setSeed(seed^(ores[i].maxHeight)^(Float.floatToIntBits(ores[i].size))^ores[i].block.getRegistryID().getID().charAt(0)^Float.floatToIntBits(ores[i].block.getHardness()));
 			// Determine how many veins of this type start in this chunk. The number depends on parameters set for the specific ore:
 			int veins = (int)ores[i].veins;
 			if(ores[i].veins - veins >= rand.nextFloat()) veins++;
@@ -109,8 +105,8 @@ public class OreGenerator implements Generator {
 					yPoint += relY;
 					zPoint += relZ;
 					if(xPoint >= 0 && xPoint < NormalChunk.chunkSize && yPoint >= 0 && yPoint < NormalChunk.chunkSize && zPoint >= 0 && zPoint < NormalChunk.chunkSize) { // Bound check.
-						if(chunk.getBlock((int)xPoint, (int)yPoint, (int)zPoint) == stone) {
-							chunk.updateBlock((int)xPoint, (int)yPoint, (int)zPoint, ores[i]);
+						if(ores[i].canCreateVeinInBlock(chunk.getBlock((int)xPoint, (int)yPoint, (int)zPoint))) {
+							chunk.updateBlock((int)xPoint, (int)yPoint, (int)zPoint, ores[i].block);
 						}
 					}
 				}

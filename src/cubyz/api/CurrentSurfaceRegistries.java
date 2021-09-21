@@ -1,6 +1,7 @@
 package cubyz.api;
 
 import cubyz.world.blocks.Block;
+import cubyz.world.blocks.Ore;
 import cubyz.world.cubyzgenerators.biomes.BiomeRegistry;
 import cubyz.world.entity.EntityType;
 import cubyz.world.generator.SurfaceGenerator;
@@ -15,6 +16,7 @@ import cubyz.world.items.tools.Material;
 public class CurrentSurfaceRegistries {
 
 	public final Registry<Block>       blockRegistry         = new Registry<Block>(CubyzRegistries.BLOCK_REGISTRY);
+	public final NoIDRegistry<Ore>     oreRegistry           = new NoIDRegistry<Ore>(CubyzRegistries.ORE_REGISTRY);
 	public final Registry<Item>        itemRegistry          = new Registry<Item>(CubyzRegistries.ITEM_REGISTRY);
 	public final NoIDRegistry<Recipe>  recipeRegistry        = new NoIDRegistry<Recipe>(CubyzRegistries.RECIPE_REGISTRY);
 	public final Registry<EntityType>  entityRegistry        = new Registry<EntityType>(CubyzRegistries.ENTITY_REGISTRY);

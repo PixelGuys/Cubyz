@@ -56,12 +56,15 @@ public class AddonsMod {
 	private ArrayList<Block> missingDropsBlock = new ArrayList<>();
 	private ArrayList<String> missingDropsItem = new ArrayList<>();
 	private ArrayList<Float> missingDropsAmount = new ArrayList<>();
+
+	private ArrayList<Ore> ores = new ArrayList<Ore>();
+	private ArrayList<String[]> oreContainers = new ArrayList<String[]>();
 	
 	@EventHandler(type = "init")
 	public void init() {
 		proxy.init(this);
 		registerMaterials(CubyzRegistries.TOOL_MATERIAL_REGISTRY);
-		registerBlockDrops();
+		registerMissingStuff();
 		registerRecipes(CubyzRegistries.RECIPE_REGISTRY);
 	}
 
@@ -135,16 +138,19 @@ public class AddonsMod {
 					if(id.contains("."))
 						id = id.substring(0, id.indexOf('.'));
 					String blockClass = props.getProperty("class", "STONE").toUpperCase();
-					if(blockClass.equals("ORE")) { // Ores:
+					String oreProperties = props.getProperty("ore");
+					block = new Block(new Resource(addon.getName(), id), props, blockClass);
+					if(oreProperties != null) { // Ores:
+						// Extract the ids:
+						String[] oreIDs = oreProperties.split(" ");
 						float veins = Float.parseFloat(props.getProperty("veins", "0"));
 						float size = Float.parseFloat(props.getProperty("size", "0"));
 						int height = Integer.parseInt(props.getProperty("height", "0"));
 						float density = Float.parseFloat(props.getProperty("density", "0.5"));
-						Ore ore = new Ore(new Resource(addon.getName(), id), props, height, veins, size, density);
-						block = ore;
-						blockClass = "STONE";
-					} else {
-						block = new Block(new Resource(addon.getName(), id), props, blockClass);
+						Ore ore = new Ore(block, new Block[oreIDs.length], height, veins, size, density);
+						ores.add(ore);
+						CubyzRegistries.ORE_REGISTRY.register(ore);
+						oreContainers.add(oreIDs);
 					}
 					String blockDrops = props.getProperty("drop", "none").toLowerCase();
 					for(String blockDrop : blockDrops.split(",")) {
@@ -281,10 +287,20 @@ public class AddonsMod {
 		}
 	}
 	
-	public void registerBlockDrops() {
+	public void registerMissingStuff() {
 		for(int i = 0; i < missingDropsBlock.size(); i++) {
 			missingDropsBlock.get(i).addBlockDrop(new BlockDrop(CubyzRegistries.ITEM_REGISTRY.getByID(missingDropsItem.get(i)), missingDropsAmount.get(i)));
 		}
+		for(int i = 0; i < ores.size(); i++) {
+			for(int j = 0; j < oreContainers.get(i).length; j++) {
+				ores.get(i).sources[j] = CubyzRegistries.BLOCK_REGISTRY.getByID(oreContainers.get(i)[j]);
+				if(ores.get(i).sources[j] == null) {
+					Logger.error("Couldn't find source block "+oreContainers.get(i)[j]+" for ore "+ores.get(i).block);
+				}
+			}
+		}
+		ores.clear();
+		oreContainers.clear();
 		missingDropsBlock.clear();
 		missingDropsItem.clear();
 		missingDropsAmount.clear();

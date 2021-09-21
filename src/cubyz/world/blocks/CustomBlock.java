@@ -18,9 +18,7 @@ import cubyz.world.items.tools.CustomMaterial;
  * A randomly generated ore type.
  */
 
-public class CustomBlock extends Ore implements CustomObject {
-	
-	
+public class CustomBlock extends Block implements CustomObject {
 	// Nodes and leaf to generate tree structure for random ore name generator.
 	private static class Node {
 		byte value;
@@ -80,8 +78,7 @@ public class CustomBlock extends Ore implements CustomObject {
 		}
 	}
 
-	public CustomBlock(int maxHeight, float veins, float size, float density, TextureProvider texProvider) {
-		super(maxHeight, veins, size, density);
+	public CustomBlock(TextureProvider texProvider) {
 		this.textureProvider = texProvider;
 		super.blockClass = BlockClass.STONE;
 	}
@@ -156,15 +153,17 @@ public class CustomBlock extends Ore implements CustomObject {
 		// Use a seed based on the name, so if the same ore gets generated twice in the giant world, it will have the same properties.
 		// This fact could also allow an interactive wiki which displays an ores property with knowledge of only the name(TODO).
 		rand = new Random(Utilities.hash(name));
-		CustomBlock ore = new CustomBlock(rand.nextInt(200) - 100, (1+rand.nextFloat()*15)/2, 1+rand.nextFloat()*9, rand.nextFloat(), texProvider);
-		ore.name = name;
-		ore.color = rand.nextInt(0xFFFFFF);
-		ore.seed = rand.nextLong();
-		ore.setID("cubyz:" + ore.name.toLowerCase() + "_ore");
+		CustomBlock block = new CustomBlock(texProvider);
+		Ore ore = new Ore(block, new Block[]{registries.blockRegistry.getByID("cubyz:stone")}, rand.nextInt(200) - 100, (1+rand.nextFloat()*15)/2, 1+rand.nextFloat()*9, rand.nextFloat());
+		registries.oreRegistry.register(ore);
+		block.name = name;
+		block.color = rand.nextInt(0xFFFFFF);
+		block.seed = rand.nextLong();
+		block.setID("cubyz:" + block.name.toLowerCase() + "_ore");
 		if(rand.nextInt(4) == 0) { // Make some ores glow.
-			ore.makeGlow();
+			block.makeGlow();
 		}
-		ore.makeBlockDrop(registries);
+		block.makeBlockDrop(registries);
 		boolean addTools = true; // TODO
 		/* 	A little reasoning behind the choice of material properties:
 			There are some important concepts when looking at the hardness of a material:
@@ -224,12 +223,12 @@ public class CustomBlock extends Ore implements CustomObject {
 		elasticity += factor;
 		density += factor;
 
-		ore.setHardness(elasticity*density);
+		block.setHardness(elasticity*density);
 		
 		if(addTools) {
-			new CustomMaterial((int)(mohsHardness*10 + elasticity*20), (int)(elasticity*30), (int)(elasticity*50), mohsHardness*4.0f/density, mohsHardness*3.0f/density, ore.color, ore.getBlockDrops()[0].item, 100, registries);
+			new CustomMaterial((int)(mohsHardness*10 + elasticity*20), (int)(elasticity*30), (int)(elasticity*50), mohsHardness*4.0f/density, mohsHardness*3.0f/density, block.color, block.getBlockDrops()[0].item, 100, registries);
 		}
-		return ore;
+		return block;
 	}
 	
 	/*public static CustomOre fromNDT(NDTContainer ndt) {

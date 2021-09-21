@@ -2,6 +2,7 @@ package cubyz.api;
 
 import cubyz.command.CommandBase;
 import cubyz.world.blocks.Block;
+import cubyz.world.blocks.Ore;
 import cubyz.world.blocks.RotationMode;
 import cubyz.world.cubyzgenerators.biomes.BiomeRegistry;
 import cubyz.world.entity.EntityModel;
@@ -21,6 +22,7 @@ import cubyz.world.items.tools.Modifier;
 public class CubyzRegistries {
 
 	public static final Registry<Block>                  BLOCK_REGISTRY          = new Registry<Block>();
+	public static final NoIDRegistry<Ore>                ORE_REGISTRY            = new NoIDRegistry<Ore>();
 	public static final Registry<Item>                   ITEM_REGISTRY           = new Registry<Item>();
 	public static final NoIDRegistry<Recipe>             RECIPE_REGISTRY         = new NoIDRegistry<Recipe>();
 	public static final Registry<EntityType>             ENTITY_REGISTRY         = new Registry<EntityType>();

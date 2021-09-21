@@ -1,9 +1,10 @@
-class ore
+class stone
 hardness 60
 veins 4
 size 20
 height 20
 density 0.5
+ore cubyz:stone
 drop auto
 
 model cubyz:block.obj
