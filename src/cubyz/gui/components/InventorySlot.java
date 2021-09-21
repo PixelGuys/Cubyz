@@ -156,6 +156,7 @@ public class InventorySlot extends Component {
 		// Actual replacement in the inventory is done elsewhere.
 		pressedLeft = false;
 		if(reference.getItem() == carried.getItem()) {
+			if(reference.getItem() == null) return false;
 			carried.add(-reference.add(carried.getAmount()));
 			return true;
 		}
