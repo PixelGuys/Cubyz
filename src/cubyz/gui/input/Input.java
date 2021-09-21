@@ -10,6 +10,7 @@ import cubyz.gui.ConsoleGUI;
 import cubyz.gui.PauseGUI;
 import cubyz.gui.TransitionStyle;
 import cubyz.gui.mods.InventoryGUI;
+import cubyz.rendering.BackgroundScene;
 import cubyz.rendering.Camera;
 import cubyz.rendering.Window;
 import cubyz.world.entity.Entity;
@@ -156,6 +157,10 @@ public class Input {
 				}
 			}
 		}
+		if((Keyboard.isKeyPressed(GLFW.GLFW_KEY_RIGHT_CONTROL) || Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT_CONTROL)) && Keyboard.isKeyPressed(GLFW.GLFW_KEY_PRINT_SCREEN)) {
+			BackgroundScene.takeBackgroundImage();
+		}
+
 		Mouse.clearScroll();
 	}
 }

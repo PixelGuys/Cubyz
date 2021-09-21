@@ -14,6 +14,9 @@ import static org.lwjgl.opengl.GL13.glActiveTexture;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 
+import org.lwjgl.glfw.GLFW;
+
+import cubyz.gui.input.Keyboard;
 import cubyz.gui.input.Mouse;
 import cubyz.rendering.Graphics;
 import cubyz.rendering.Window;
@@ -34,6 +37,8 @@ public class UISystem {
 	private TransitionStyle curTransition;
 	private long lastAnimTime = System.currentTimeMillis();
 	private long transitionDur;
+
+	public boolean showOverlay = true;
 
 	public UISystem() {}
 	
@@ -106,41 +111,47 @@ public class UISystem {
 	}
 
 	public void render() {
-		glDisable(GL_DEPTH_TEST);
-		glDisable(GL_CULL_FACE);
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		glActiveTexture(GL_TEXTURE0);
-		transitionDur += System.currentTimeMillis() - lastAnimTime;
-		lastAnimTime = System.currentTimeMillis();
-		Graphics.setGlobalAlphaMultiplier(1);
-		Graphics.setColor(0x000000);
-		if (curTransition == TransitionStyle.FADE_OUT_IN) {
-			// those values are meant to be tweaked and will be available for fine tuning from setMenu later
-			float fadeSpeed = 250f;
-			float fadeSpeedHalf = fadeSpeed / 2f;
-			if (transitionDur >= fadeSpeed) {
-				curTransition = null;
-				oldGui = null;
-			}
-			float alpha1 = Math.min(Math.max(((float) transitionDur-fadeSpeedHalf)/fadeSpeedHalf, 0f), 1f);
-			float alpha2 = Math.min(Math.max(1f - (float) transitionDur/fadeSpeedHalf, 0f), 1f);
-			if (gui != null) {
-				Graphics.setGlobalAlphaMultiplier(alpha1);
-				gui.render();
-			}
-			if (oldGui != null) {
-				Graphics.setGlobalAlphaMultiplier(alpha2);
-				oldGui.render();
-			}
-		} else {
-			if (gui != null) {
-				gui.render();
-			}
+		if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_F1)) {
+			Keyboard.setKeyPressed(GLFW.GLFW_KEY_F1, false);
+			showOverlay = !showOverlay;
 		}
-		Graphics.setGlobalAlphaMultiplier(1f);
-		for (MenuGUI overlay : overlays) {
-			overlay.render();
+		if(showOverlay) {
+			glDisable(GL_DEPTH_TEST);
+			glDisable(GL_CULL_FACE);
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			glActiveTexture(GL_TEXTURE0);
+			transitionDur += System.currentTimeMillis() - lastAnimTime;
+			lastAnimTime = System.currentTimeMillis();
+			Graphics.setGlobalAlphaMultiplier(1);
+			Graphics.setColor(0x000000);
+			if (curTransition == TransitionStyle.FADE_OUT_IN) {
+				// those values are meant to be tweaked and will be available for fine tuning from setMenu later
+				float fadeSpeed = 250f;
+				float fadeSpeedHalf = fadeSpeed / 2f;
+				if (transitionDur >= fadeSpeed) {
+					curTransition = null;
+					oldGui = null;
+				}
+				float alpha1 = Math.min(Math.max(((float) transitionDur-fadeSpeedHalf)/fadeSpeedHalf, 0f), 1f);
+				float alpha2 = Math.min(Math.max(1f - (float) transitionDur/fadeSpeedHalf, 0f), 1f);
+				if (gui != null) {
+					Graphics.setGlobalAlphaMultiplier(alpha1);
+					gui.render();
+				}
+				if (oldGui != null) {
+					Graphics.setGlobalAlphaMultiplier(alpha2);
+					oldGui.render();
+				}
+			} else {
+				if (gui != null) {
+					gui.render();
+				}
+			}
+			Graphics.setGlobalAlphaMultiplier(1f);
+			for (MenuGUI overlay : overlays) {
+				overlay.render();
+			}
 		}
 		Window.restoreState();
 	}

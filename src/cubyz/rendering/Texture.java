@@ -33,6 +33,15 @@ public class Texture {
 		}
 	}
 	
+	public static Texture loadFromFile(File file) {
+		try {
+			return new Texture(file);
+		} catch(IOException e) {
+			Logger.error(e);
+			return null; // TODO: Default image.
+		}
+	}
+	
 	public static Texture loadFromImage(BufferedImage img) {
 		return new Texture(TextureConverter.fromBufferedImage(img));
 	}

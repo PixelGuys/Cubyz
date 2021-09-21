@@ -10,7 +10,7 @@ public abstract class Camera {
 
 	private static final Vector3f rotation = new Vector3f();
 	
-	private static Matrix4f viewMatrix;
+	private static Matrix4f viewMatrix = new Matrix4f().identity();
 
 	public static Matrix4f getViewMatrix() {
 		return viewMatrix;

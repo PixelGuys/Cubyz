@@ -69,13 +69,13 @@ public class MainRenderer {
 	}
 	
 	/**The number of milliseconds after which no more chunk meshes are created. This allows the game to run smoother on movement.*/
-	private static int maximumMeshTime = 1;
+	private static int maximumMeshTime = 8;
 
 	private ShaderProgram entityShader; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 	private ShaderProgram blockDropShader;
 
-	private static final float Z_NEAR = 0.01f;
-	private static final float Z_FAR = 10000.0f;
+	public static final float Z_NEAR = 0.01f;
+	public static final float Z_FAR = 10000.0f;
 	private boolean inited = false;
 	private boolean doRender = true;
 	private Transformation transformation;
@@ -87,13 +87,9 @@ public class MainRenderer {
 	private boolean bobbingUp;
 	
 	private Vector3f ambient = new Vector3f();
-	private Vector3f brightAmbient = new Vector3f(1, 1, 1);
 	private Vector4f clearColor = new Vector4f(0.1f, 0.7f, 0.7f, 1f);
 	private DirectionalLight light = new DirectionalLight(new Vector3f(1.0f, 1.0f, 1.0f), new Vector3f(0.0f, 1.0f, 0.0f).mul(0.1f));
 
-	private static final Block[] EMPTY_BLOCK_LIST = new Block[0];
-	private static final ClientEntity[] EMPTY_ENTITY_LIST = new ClientEntity[0];
-	private static final Spatial[] EMPTY_SPATIAL_LIST = new Spatial[0];
 	public Spatial[] worldSpatialList;
 	
 	public boolean screenshot;
@@ -135,7 +131,7 @@ public class MainRenderer {
 
 	public void init() throws Exception {
 		transformation = new Transformation();
-		Window.setProjectionMatrix(transformation.getProjectionMatrix((float) Math.toRadians(70.0f), Window.getWidth(),
+		Window.setProjectionMatrix(Transformation.getProjectionMatrix((float) Math.toRadians(70.0f), Window.getWidth(),
 				Window.getHeight(), Z_NEAR, Z_FAR));
 		loadShaders();
 		ReducedChunkMesh.init(shaders);
@@ -188,6 +184,13 @@ public class MainRenderer {
 	public void render() {
 		if(Window.shouldClose()) {
 			GameLauncher.instance.exit();
+		}
+		clear();
+		if (Window.isResized()) {
+			glViewport(0, 0, Window.getWidth(), Window.getHeight());
+			Window.setResized(false);
+			Window.setProjectionMatrix(Transformation.getProjectionMatrix((float)Math.toRadians(ClientSettings.FOV),
+			Window.getWidth(), Window.getHeight(), Z_NEAR, Z_FAR));
 		}
 		
 		if(Cubyz.world != null) {
@@ -252,22 +255,10 @@ public class MainRenderer {
 			clearColor.x = 0.1f;
 			
 			Window.setClearColor(clearColor);
-			
-			if (screenshot) {
-				FrameBuffer buf = new FrameBuffer();
-				buf.genColorTexture(Window.getWidth(), Window.getHeight());
-				buf.genRenderbuffer(Window.getWidth(), Window.getHeight());
-				Window.setRenderTarget(buf);
-			}
-			
-			render(brightAmbient, light, EMPTY_BLOCK_LIST, EMPTY_ENTITY_LIST, EMPTY_SPATIAL_LIST, null);
-			
-			if (screenshot) {
-				/*FrameBuffer buf = window.getRenderTarget();
-				window.setRenderTarget(null);
-				screenshot = false;*/
-			}
+
+			BackgroundScene.renderBackground();
 		}
+		Cubyz.gameUI.render();
 		Keyboard.release(); // TODO: Why is this called in the render thread???
 	}
 	
@@ -285,15 +276,8 @@ public class MainRenderer {
 	 * @param localPlayer The world's local player
 	 */
 	public void render(Vector3f ambientLight, DirectionalLight directionalLight, Block[] blocks, ClientEntity[] entities, Spatial[] spatials, Player localPlayer) {
-		if (Window.isResized()) {
-			glViewport(0, 0, Window.getWidth(), Window.getHeight());
-			Window.setResized(false);
-			Window.setProjectionMatrix(transformation.getProjectionMatrix((float)Math.toRadians(ClientSettings.FOV),
-			Window.getWidth(), Window.getHeight(), Z_NEAR, Z_FAR));
-		}
 		if (!doRender)
 			return;
-		clear();
 		long startTime = System.currentTimeMillis();
 		// Clean up old chunk meshes:
 		Meshes.cleanUp();
@@ -513,7 +497,6 @@ public class MainRenderer {
 				mesh.renderTransparent();		
 			}
 		}
-		Cubyz.gameUI.render();
 	}
 
 	public void cleanup() {
