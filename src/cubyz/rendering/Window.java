@@ -30,7 +30,7 @@ public abstract class Window {
 	private static long handle;
 	private static int width, height;
 	private static boolean resized = true;
-	private static Matrix4f projectionMatrix;
+	private static final Matrix4f projectionMatrix = new Matrix4f();
 	private static boolean fullscreen = false;
 	private static FrameBuffer buffer;
 	private static boolean focused = false;
@@ -57,10 +57,6 @@ public abstract class Window {
 	
 	public static Matrix4f getProjectionMatrix() {
 		return projectionMatrix;
-	}
-	
-	public static void setProjectionMatrix(Matrix4f projectionMatrix) {
-		Window.projectionMatrix = projectionMatrix;
 	}
 
 	public static void setClearColor(Vector4f clearColor) {
