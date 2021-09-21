@@ -1,7 +1,5 @@
 package cubyz.world;
 
-import java.util.ArrayList;
-
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
@@ -11,10 +9,6 @@ import cubyz.world.blocks.BlockEntity;
 import cubyz.world.cubyzgenerators.biomes.Biome;
 import cubyz.world.entity.ChunkEntityManager;
 import cubyz.world.entity.Entity;
-import cubyz.world.handler.BlockVisibilityChangeHandler;
-import cubyz.world.handler.Handler;
-import cubyz.world.handler.PlaceBlockHandler;
-import cubyz.world.handler.RemoveBlockHandler;
 import cubyz.world.items.ItemStack;
 import cubyz.world.terrain.MapFragment;
 
@@ -25,21 +19,6 @@ import cubyz.world.terrain.MapFragment;
 public abstract class Surface {
 	
 	protected StellarTorus torus;
-	protected ArrayList<PlaceBlockHandler> placeBlockHandlers = new ArrayList<>();
-	protected ArrayList<RemoveBlockHandler> removeBlockHandlers = new ArrayList<>();
-	public ArrayList<BlockVisibilityChangeHandler> visibHandlers = new ArrayList<>();
-	
-	public void addHandler(Handler handler) {
-		if (handler instanceof PlaceBlockHandler) {
-			placeBlockHandlers.add((PlaceBlockHandler) handler);
-		} else if (handler instanceof RemoveBlockHandler) {
-			removeBlockHandlers.add((RemoveBlockHandler) handler);
-		} else if (handler instanceof BlockVisibilityChangeHandler) {
-			visibHandlers.add((BlockVisibilityChangeHandler) handler);
-		} else {
-			throw new IllegalArgumentException("Handler isn't accepted by surface");
-		}
-	}
 	
 	public abstract void removeBlock(int x, int y, int z);
 	public abstract void placeBlock(int x, int y, int z, Block b, byte data);

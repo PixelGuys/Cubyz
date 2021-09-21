@@ -13,7 +13,6 @@ import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.Block.BlockClass;
 import cubyz.world.generator.SurfaceGenerator;
-import cubyz.world.handler.BlockVisibilityChangeHandler;
 import cubyz.world.save.BlockChange;
 import cubyz.world.save.Palette;
 import cubyz.world.terrain.MapFragment;
@@ -329,11 +328,11 @@ public class NormalChunk extends Chunk {
 		if(res == null) return;
 		visibles.remove(res);
 		inst[getIndex(x, y, z)] = null;
-		if (surface != null) {
+		/*if (surface != null) {
 			for (BlockVisibilityChangeHandler handler : surface.visibHandlers) {
 				if (res != null) handler.onBlockHide(res.getBlock(), res.getX(), res.getY(), res.getZ());
 			}
-		}
+		}*/
 		updated = true;
 	}
 	
@@ -356,11 +355,11 @@ public class NormalChunk extends Chunk {
 		bi.setStellarTorus(surface);
 		visibles.add(bi);
 		inst[index] = bi;
-		if (surface != null) {
+		/*if (surface != null) {
 			for (BlockVisibilityChangeHandler handler : surface.visibHandlers) {
 				if (bi != null) handler.onBlockAppear(bi.getBlock(), bi.getX(), bi.getY(), bi.getZ());
 			}
-		}
+		}*/
 		updated = true;
 	}
 	

@@ -13,6 +13,7 @@ import org.joml.Vector4f;
 
 import cubyz.Logger;
 import cubyz.Settings;
+import cubyz.api.CubyzRegistries;
 import cubyz.api.CurrentSurfaceRegistries;
 import cubyz.utils.datastructures.HashMapKey3D;
 import cubyz.world.blocks.Block;
@@ -232,8 +233,8 @@ public class LocalSurface extends Surface {
 		if (ch != null) {
 			Block b = ch.getBlock(x & NormalChunk.chunkMask, y & NormalChunk.chunkMask, z & NormalChunk.chunkMask);
 			ch.removeBlockAt(x & NormalChunk.chunkMask, y & NormalChunk.chunkMask, z & NormalChunk.chunkMask, true);
-			for (RemoveBlockHandler hand : removeBlockHandlers) {
-				hand.onBlockRemoved(b, x, y, z);
+			for (RemoveBlockHandler hand : CubyzRegistries.REMOVE_HANDLER_REGISTRY.registered(new RemoveBlockHandler[0])) {
+				hand.onBlockRemoved(this, b, x, y, z);
 			}
 			// Fetch block drops:
 			for(BlockDrop drop : b.getBlockDrops()) {
@@ -253,8 +254,8 @@ public class LocalSurface extends Surface {
 		NormalChunk ch = getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift);
 		if (ch != null) {
 			ch.addBlock(b, data, x & NormalChunk.chunkMask, y & NormalChunk.chunkMask, z & NormalChunk.chunkMask, false);
-			for (PlaceBlockHandler hand : placeBlockHandlers) {
-				hand.onBlockPlaced(b, x, y, z);
+			for (PlaceBlockHandler hand : CubyzRegistries.PLACE_HANDLER_REGISTRY.registered(new PlaceBlockHandler[0])) {
+				hand.onBlockPlaced(this, b, x, y, z);
 			}
 		}
 	}
