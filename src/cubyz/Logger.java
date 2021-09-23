@@ -100,17 +100,11 @@ public class Logger {
 	 * @param ANSIColor
 	 */
 	public static void log(String prefix, Object object, String ANSIColor) {
-		ANSIColor = "\033[0m" + ANSIColor;
 		Date date = new Date(System.currentTimeMillis());
 		StringBuilder sb = new StringBuilder();
-		if(supportsANSI) sb.append(ANSIColor);
 		sb.append("[" + format.format(date) + " | " + prefix + " | " + Thread.currentThread().getName() + "] ");
 		sb.append(toString(object) + "\n");
 	
-		if(ANSIColor.contains("31") || ANSIColor.contains("33"))
-			System.err.print(sb.toString());
-		else
-			System.out.print(sb.toString());
 		
 		if (latestLogOutput != null) {
 			try {
@@ -126,6 +120,14 @@ public class Logger {
 				throw new Error(e);
 			}
 		}
+
+		ANSIColor = "\033[0m" + ANSIColor;
+		if(supportsANSI) sb.insert(0, ANSIColor);
+
+		if(ANSIColor.contains("31") || ANSIColor.contains("33"))
+			System.err.print(sb.toString());
+		else
+			System.out.print(sb.toString());
 	}
 	
 	
