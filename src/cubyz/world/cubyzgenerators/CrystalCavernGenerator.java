@@ -239,7 +239,7 @@ public class CrystalCavernGenerator implements Generator {
 	}
 
 	private void considerCoordinates(int x, int y, int z, int wx, int wy, int wz, Chunk chunk, Random rand) {
-		if(rand.nextInt(16) != 0) return; // This should be pretty rare(mostly because it is so huge).
+		if(rand.nextInt(3) != 0) return; // This should be pretty rare(mostly because it is so huge).
 		// Choose some in world coordinates to start generating:
 		double worldX = (x + rand.nextFloat())*crystalChunkWorldSize;
 		double worldY = (y + rand.nextFloat())*crystalChunkWorldSize;

@@ -19,7 +19,7 @@ public class ReducedChunk extends Chunk {
 	public final int resolutionShift;
 	/**How many blocks each voxel is wide.*/
 	public final int resolution;
-	/**If ((x & resoultionMask) == 0), a block can be considered to be visible.*/
+	/**If ((x & resolutionMask) == 0), a block can be considered to be visible.*/
 	public final int resolutionMask;
 	public final int size;
 	public final int wx, wy, wz;

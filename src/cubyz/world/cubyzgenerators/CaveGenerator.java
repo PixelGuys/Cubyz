@@ -209,8 +209,8 @@ public class CaveGenerator implements Generator {
 	}
 
 	private void considerCoordinates(int x, int y, int z, int wx, int wy, int wz, Chunk chunk, Random rand) {
-		// Use a height depending chance to spawn a cave in this chunk. Below y=-128 caves spawn roughly every 32 chunks, Above y=128 no caves spawn:
-		if(rand.nextInt(1024) > (2 - 2*Math.max((y << NormalChunk.chunkShift) + 128, 0)/256.0f)*NormalChunk.chunkSize) return;
+		// Use a height depending chance to spawn a cave in this chunk. Below y=-128 caves spawn roughly every 16 chunks, Above y=128 no caves spawn:
+		if(rand.nextInt(512) > (2 - 2*Math.max((y << NormalChunk.chunkShift) + 128, 0)/256.0f)*NormalChunk.chunkSize) return;
 
 		// Choose some in world coordinates to start generating:
 		double worldX = (double)((x << NormalChunk.chunkShift) + rand.nextInt(NormalChunk.chunkSize));
