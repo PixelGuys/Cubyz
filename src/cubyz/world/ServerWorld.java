@@ -14,28 +14,33 @@ import org.joml.Vector4f;
 import cubyz.Logger;
 import cubyz.Settings;
 import cubyz.api.CubyzRegistries;
-import cubyz.api.CurrentSurfaceRegistries;
+import cubyz.api.CurrentWorldRegistries;
 import cubyz.utils.datastructures.HashMapKey3D;
 import cubyz.world.blocks.Block;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.CrystalTextureProvider;
 import cubyz.world.blocks.CustomBlock;
+import cubyz.world.blocks.Ore;
 import cubyz.world.blocks.OreTextureProvider;
 import cubyz.world.cubyzgenerators.CrystalCavernGenerator;
 import cubyz.world.cubyzgenerators.biomes.Biome;
 import cubyz.world.entity.ChunkEntityManager;
 import cubyz.world.entity.Entity;
 import cubyz.world.entity.ItemEntityManager;
+import cubyz.world.entity.Player;
 import cubyz.world.generator.LifelandGenerator;
 import cubyz.world.generator.SurfaceGenerator;
 import cubyz.world.handler.PlaceBlockHandler;
 import cubyz.world.handler.RemoveBlockHandler;
 import cubyz.world.items.BlockDrop;
 import cubyz.world.items.ItemStack;
-import cubyz.world.save.TorusIO;
+import cubyz.world.save.WorldIO;
 import cubyz.world.terrain.MapFragment;
 
-public class LocalSurface extends Surface {
+public class ServerWorld {
+	public static final int DAY_CYCLE = 12000; // Length of one in-game day in 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
+	public static final float GRAVITY = 0.022f;
+
 	private MapFragment[] maps;
 	private HashMap<HashMapKey3D, MetaChunk> metaChunks = new HashMap<HashMapKey3D, MetaChunk>();
 	private NormalChunk[] chunks = new NormalChunk[0];
@@ -46,19 +51,26 @@ public class LocalSurface extends Surface {
 	private int regDRD; // double renderdistance of Region.
 	private ArrayList<Entity> entities = new ArrayList<>();
 	
-	private Block[] torusBlocks;
+	private Block[] blocks;
 	
 	private SurfaceGenerator generator;
 	
-	private TorusIO tio;
+	private WorldIO wio;
 	
 	private List<ChunkGenerationThread> generatorThreads = new ArrayList<>();
 	private boolean generated;
+
+	private long gameTime;
+	private long milliTime;
+
+	private final long seed;
+
+	private final String name;
+
+	private Player player;
 	
 	float ambientLight = 0f;
 	Vector4f clearColor = new Vector4f(0, 0, 0, 1.0f);
-	
-	private final long localSeed; // Each torus has a different seed for world generation. All those seeds are generated using the main world seed.
 	
 	// synchronized common list for chunk generation
 	private volatile BlockingDeque<Chunk> loadList = new LinkedBlockingDeque<>();
@@ -71,7 +83,7 @@ public class LocalSurface extends Surface {
 	BlockEntity[] blockEntities = new BlockEntity[0];
 	Integer[] liquids = new Integer[0];
 	
-	public CurrentSurfaceRegistries registries;
+	public CurrentWorldRegistries registries;
 
 	private ArrayList<CustomBlock> customBlocks = new ArrayList<>();
 	
@@ -103,10 +115,9 @@ public class LocalSurface extends Surface {
 		}
 	}
 	
-	public LocalSurface(LocalStellarTorus torus, Class<?> chunkProvider) {
-		registries = new CurrentSurfaceRegistries();
-		localSeed = torus.getLocalSeed();
-		this.torus = torus;
+	public ServerWorld(String name, Class<?> chunkProvider) {
+		this.name = name;
+		registries = new CurrentWorldRegistries();
 		this.chunkProvider = chunkProvider;
 		// Check if the chunkProvider is valid:
 		if(!NormalChunk.class.isAssignableFrom(chunkProvider) ||
@@ -115,10 +126,60 @@ public class LocalSurface extends Surface {
 				!chunkProvider.getConstructors()[0].getParameterTypes()[0].equals(Integer.class) ||
 				!chunkProvider.getConstructors()[0].getParameterTypes()[1].equals(Integer.class) ||
 				!chunkProvider.getConstructors()[0].getParameterTypes()[2].equals(Integer.class) ||
-				!chunkProvider.getConstructors()[0].getParameterTypes()[3].equals(Surface.class))
-			throw new IllegalArgumentException("Chunk provider "+chunkProvider+" is invalid! It needs to be a subclass of NormalChunk and MUST contain a single constructor with parameters (Integer, Integer, Integer, Surface)");
+				!chunkProvider.getConstructors()[0].getParameterTypes()[3].equals(ServerWorld.class))
+			throw new IllegalArgumentException("Chunk provider "+chunkProvider+" is invalid! It needs to be a subclass of NormalChunk and MUST contain a single constructor with parameters (Integer, Integer, Integer, ServerWorld)");
 		maps = new MapFragment[0];
 		
+		generator = registries.worldGeneratorRegistry.getByID("cubyz:lifeland");
+		if (generator instanceof LifelandGenerator) {
+			((LifelandGenerator) generator).sortGenerators();
+		}
+		wio = new WorldIO(this, new File("saves/" + name));
+		if (wio.hasWorldData()) {
+			seed = wio.loadWorldSeed();
+			wio.loadWorldData();
+			generated = true;
+		} else {
+			seed = new Random().nextInt();
+			wio.saveWorldData();
+		}
+	}
+
+	// Returns the blocks, so their meshes can be created and stored.
+	public Block[] generate() {
+		ArrayList<Block> blockList = new ArrayList<>();
+		// Set the IDs again every time a new world is loaded. This is necessary, because the random block creation would otherwise mess with it.
+		int ID = 0;
+		for (Block b : CubyzRegistries.BLOCK_REGISTRY.registered(new Block[0])) {
+			if(!b.isTransparent()) {
+				b.ID = ID;
+				blockList.add(b);
+				ID++;
+			}
+		}
+		// Generate the random ores:
+		generate(blockList, ID);
+
+		// Put the truly transparent blocks at the end of the list to make sure the renderer calls the last.
+		for (Block b : CubyzRegistries.BLOCK_REGISTRY.registered(new Block[0])) {
+			if(b.isTransparent()) {
+				b.ID = ID;
+				blockList.add(b);
+				ID++;
+			}
+		}
+		for (Entity ent : getEntities()) {
+			if (ent instanceof Player) {
+				player = (Player) ent;
+			}
+		}
+		if (player == null) {
+			player = (Player) CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player").newEntity(this);
+			addEntity(player);
+		}
+		wio.saveWorldData();
+		blocks = blockList.toArray(new Block[0]);
+		LifelandGenerator.initOres(registries.oreRegistry.registered(new Ore[0]));
 		for (int i = 0; i < Runtime.getRuntime().availableProcessors(); i++) {
 			ChunkGenerationThread thread = new ChunkGenerationThread();
 			thread.setName("Local-Chunk-Thread-" + i);
@@ -126,20 +187,16 @@ public class LocalSurface extends Surface {
 			thread.start();
 			generatorThreads.add(thread);
 		}
-		generator = registries.worldGeneratorRegistry.getByID("cubyz:lifeland");
-		if (generator instanceof LifelandGenerator) {
-			((LifelandGenerator) generator).sortGenerators();
-		}
-		tio = new TorusIO(torus, new File("saves/" + torus.getWorld().getName() + "/" + localSeed)); // use seed in path
-		if (tio.hasTorusData()) {
-			generated = true;
-		} else {
-			tio.saveTorusData(this);
-		}
+		generated = true;
+		return blocks;
+	}
+
+	public Player getLocalPlayer() {
+		return player;
 	}
 	
-	public int generate(ArrayList<Block> blockList, int ID) {
-		Random rand = new Random(localSeed);
+	private int generate(ArrayList<Block> blockList, int ID) {
+		Random rand = new Random(seed);
 		int randomAmount = 9 + rand.nextInt(3); // TODO
 		int i = 0;
 		for(i = 0; i < randomAmount; i++) {
@@ -174,13 +231,12 @@ public class LocalSurface extends Surface {
 		// Init crystal caverns with those two blocks:
 		CrystalCavernGenerator.init(crystalBlock, glowCrystalOre);
 
-		tio.loadTorusData(this); // load data here in order for entities to also be loaded.
+		wio.loadWorldData(); // load data here in order for entities to also be loaded.
 		
 		if(generated) {
-			tio.saveTorusData(this);
+			wio.saveWorldData();
 		}
 		generated = true;
-		torusBlocks = blockList.toArray(new Block[0]);
 		return ID;
 	}
 
@@ -189,8 +245,7 @@ public class LocalSurface extends Surface {
 		for(MetaChunk chunk : metaChunks.values()) {
 			if(chunk != null) chunk.save();
 		}
-		tio.saveTorusData(this);
-		((LocalWorld) torus.getWorld()).forceSave();
+		wio.saveWorldData();
 		for(MapFragment map : maps) {
 			if(map != null)
 				map.mapIO.saveData();
@@ -212,7 +267,6 @@ public class LocalSurface extends Surface {
 		}
 	}
 	
-	@Override
 	public boolean isValidSpawnLocation(int x, int z) {
 		// Just make sure there is a forest nearby, so the player will always be able to get the resources needed to start properly.
 		// TODO!
@@ -223,7 +277,6 @@ public class LocalSurface extends Surface {
 		ch.generateFrom(generator);
 	}
 	
-	@Override
 	public void removeBlock(int x, int y, int z) {
 		NormalChunk ch = getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift);
 		if (ch != null) {
@@ -245,7 +298,6 @@ public class LocalSurface extends Surface {
 		}
 	}
 	
-	@Override
 	public void placeBlock(int x, int y, int z, Block b, byte data) {
 		NormalChunk ch = getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift);
 		if (ch != null) {
@@ -256,24 +308,36 @@ public class LocalSurface extends Surface {
 		}
 	}
 	
-	@Override
 	public void drop(ItemStack stack, Vector3f pos, Vector3f dir, float velocity) {
 		ItemEntityManager manager = this.getEntityManagerAt((int)pos.x & ~NormalChunk.chunkMask, (int)pos.y & ~NormalChunk.chunkMask, (int)pos.z & ~NormalChunk.chunkMask).itemEntityManager;
 		manager.add(pos.x, pos.y, pos.z, dir.x*velocity, dir.y*velocity, dir.z*velocity, stack, 30*300 /*5 minutes at normal update speed.*/);
 	}
 	
-	@Override
 	public void updateBlockData(int x, int y, int z, byte data) {
 		NormalChunk ch = getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift);
 		if (ch != null) {
 			ch.setBlockData(x & NormalChunk.chunkMask, y & NormalChunk.chunkMask, z & NormalChunk.chunkMask, data);
 		}
 	}
+
+	public void setGameTime(long time) {
+		gameTime = time;
+	}
+
+	public long getGameTime() {
+		return gameTime;
+	}
 	
 	public void update() {
-		long gameTime = torus.world.getGameTime();
-		int dayCycle = torus.getDayCycle();
-		LocalWorld world = (LocalWorld) torus.getWorld();
+		if(milliTime + 100 < System.currentTimeMillis()) {
+			milliTime += 100;
+			gameTime++; // gameTime is measured in 100ms.
+			if((milliTime + 100) < System.currentTimeMillis()) { // we skipped updates
+				Logger.warning(((System.currentTimeMillis() - milliTime)/100)/10.0f + " seconds of updates skipped!");
+				milliTime = System.currentTimeMillis();
+			}
+		}
+		int dayCycle = ServerWorld.DAY_CYCLE;
 		// Ambient light
 		{
 			int dayTime = Math.abs((int)(gameTime % dayCycle) - (dayCycle >> 1));
@@ -368,8 +432,7 @@ public class LocalSurface extends Surface {
 		}
 		
 		// Liquids
-		if (gameTime % 3 == 0 && world.inLqdUpdate) {
-			world.inLqdUpdate = false;
+		if (gameTime % 3 == 0) {
 			//Profiler.startProfiling();
 			for(MetaChunk chunk : metaChunks.values()) {
 				chunk.liquidUpdate();
@@ -378,7 +441,6 @@ public class LocalSurface extends Surface {
 		}
 	}
 
-	@Override
 	public void queueChunk(Chunk ch) {
 		try {
 			loadList.put(ch);
@@ -387,7 +449,6 @@ public class LocalSurface extends Surface {
 		}
 	}
 	
-	@Override
 	public void unQueueChunk(Chunk ch) {
 		loadList.remove(ch);
 	}
@@ -396,7 +457,6 @@ public class LocalSurface extends Surface {
 		return loadList.size();
 	}
 	
-	@Override
 	public void seek(int x, int y, int z, int renderDistance, int regionRenderDistance) {
 		int xOld = x;
 		int yOld = y;
@@ -471,12 +531,7 @@ public class LocalSurface extends Surface {
 			lastZ = zOld;
 		}
 	}
-	
-	public void setBlocks(Block[] blocks) {
-		torusBlocks = blocks;
-	}
 
-	@Override
 	public MapFragment getMapFragment(int wx, int wz, int voxelSize) {
 		wx &= ~MapFragment.MAP_MASK;
 		wz &= ~MapFragment.MAP_MASK;
@@ -494,13 +549,13 @@ public class LocalSurface extends Surface {
 					ret.ensureResolution(getSeed(), registries, voxelSize);
 					return ret;
 				} else {
-					MapFragment map = new MapFragment(wx, wz, localSeed, this, registries, tio, voxelSize);
+					MapFragment map = new MapFragment(wx, wz, seed, this, registries, wio, voxelSize);
 					maps[index] = map;
 					return map;
 				}
 			}
 		}
-		return new MapFragment(wx, wz, localSeed, this, registries, tio, voxelSize);
+		return new MapFragment(wx, wz, seed, this, registries, wio, voxelSize);
 	}
 	
 	public MapFragment getNoGenerateRegion(int wx, int wy) {
@@ -521,7 +576,6 @@ public class LocalSurface extends Surface {
 		return metaChunks.get(key);
 	}
 	
-	@Override
 	public NormalChunk getChunk(int cx, int cy, int cz) {
 		MetaChunk meta = getMetaChunk(cx, cy, cz);
 		if(meta != null) {
@@ -530,7 +584,6 @@ public class LocalSurface extends Surface {
 		return null;
 	}
 
-	@Override
 	public ChunkEntityManager getEntityManagerAt(int wx, int wy, int wz) {
 		int cx = wx >> NormalChunk.chunkShift;
 		int cy = wy >> NormalChunk.chunkShift;
@@ -542,12 +595,10 @@ public class LocalSurface extends Surface {
 		return null;
 	}
 	
-	@Override
 	public ChunkEntityManager[] getEntityManagers() {
 		return entityManagers;
 	}
 
-	@Override
 	public Block getBlock(int x, int y, int z) {
 		NormalChunk ch = getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift);
 		if (ch != null && ch.isGenerated()) {
@@ -558,7 +609,6 @@ public class LocalSurface extends Surface {
 		}
 	}
 	
-	@Override
 	public byte getBlockData(int x, int y, int z) {
 		NormalChunk ch = getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift);
 		if (ch != null && ch.isGenerated()) {
@@ -569,19 +619,21 @@ public class LocalSurface extends Surface {
 	}
 	
 	public long getSeed() {
-		return localSeed;
+		return seed;
 	}
 	
 	public float getGlobalLighting() {
 		return ambientLight;
 	}
 
-	@Override
 	public Vector4f getClearColor() {
 		return clearColor;
 	}
 
-	@Override
+	public String getName() {
+		return name;
+	}
+
 	public BlockEntity getBlockEntity(int x, int y, int z) {
 		/*BlockInstance bi = getBlockInstance(x, y, z);
 		Chunk ck = _getNoGenerateChunk(bi.getX() >> NormalChunk.chunkShift, bi.getZ() >> NormalChunk.chunkShift);
@@ -593,17 +645,14 @@ public class LocalSurface extends Surface {
 		return customBlocks;
 	}
 
-	@Override
 	public NormalChunk[] getChunks() {
 		return chunks;
 	}
 
-	@Override
-	public Block[] getPlanetBlocks() {
-		return torusBlocks;
+	public Block[] getBlocks() {
+		return blocks;
 	}
 	
-	@Override
 	public Entity[] getEntities() {
 		return entities.toArray(new Entity[entities.size()]);
 	}
@@ -612,7 +661,6 @@ public class LocalSurface extends Surface {
 		return (int)getMapFragment(wx, wz, 1).getHeight(wx, wz);
 	}
 
-	@Override
 	public void cleanup() {
 		// Be sure to dereference and finalize the maximum of things
 		try {
@@ -630,18 +678,15 @@ public class LocalSurface extends Surface {
 		}
 	}
 
-	@Override
-	public CurrentSurfaceRegistries getCurrentRegistries() {
+	public CurrentWorldRegistries getCurrentRegistries() {
 		return registries;
 	}
 
-	@Override
 	public Biome getBiome(int wx, int wz) {
 		MapFragment reg = getMapFragment(wx, wz, 1);
 		return reg.getBiome(wx, wz);
 	}
 
-	@Override
 	public Vector3f getLight(int x, int y, int z, Vector3f sunLight, boolean easyLighting) {
 		NormalChunk ch = getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift);
 		if(ch == null || !ch.isLoaded() || !easyLighting)
@@ -657,7 +702,6 @@ public class LocalSurface extends Surface {
 		return new Vector3f(r/255.0f, g/255.0f, b/255.0f);
 	}
 
-	@Override
 	public void getLight(int x, int y, int z, int[] array) {
 		Block block = getBlock(x, y, z);
 		if(block == null) return;

@@ -3,7 +3,7 @@ package cubyz.world.items.tools;
 import java.util.ArrayList;
 import java.util.List;
 
-import cubyz.api.CurrentSurfaceRegistries;
+import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Registry;
 import cubyz.utils.ndt.NDTContainer;
 import cubyz.world.blocks.Block;
@@ -116,7 +116,7 @@ public abstract class Tool extends Item {
 		return container;
 	}
 	
-	public static Tool loadFrom(NDTContainer container, CurrentSurfaceRegistries registries) {
+	public static Tool loadFrom(NDTContainer container, CurrentWorldRegistries registries) {
 		String type = container.getString("type");
 		Tool tool = null;
 		Registry<Material> matReg = registries.materialRegistry;

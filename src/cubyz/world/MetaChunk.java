@@ -21,14 +21,14 @@ public class MetaChunk {
 	public final int wx, wy, wz;
 	public final NormalChunk[] chunks;
 	public final ChunkEntityManager[] entityManagers;
-	public final LocalSurface surface;
-	public MetaChunk(int wx, int wy, int wz, LocalSurface surface) {
+	public final ServerWorld world;
+	public MetaChunk(int wx, int wy, int wz, ServerWorld world) {
 		this.wx = wx;
 		this.wy = wy;
 		this.wz = wz;
 		chunks = new NormalChunk[metaChunkSize*metaChunkSize*metaChunkSize];
 		entityManagers = new ChunkEntityManager[metaChunkSize*metaChunkSize*metaChunkSize];
-		this.surface = surface;
+		this.world = world;
 	}
 	
 	public void save() {
@@ -136,14 +136,14 @@ public class MetaChunk {
 							if(chunk.isGenerated())
 								chunk.map.mapIO.saveChunk(chunk); // Only needs to be stored if it was ever generated.
 							else
-								surface.unQueueChunk(chunk);
+								world.unQueueChunk(chunk);
 							chunks[index] = null;
 						}
 					} else if(chunk == null) {
 						try {
-							chunk = (NormalChunk)surface.chunkProvider.getDeclaredConstructors()[0].newInstance((wx >> NormalChunk.chunkShift) + px, (wy >> NormalChunk.chunkShift) + py, (wz >> NormalChunk.chunkShift) + pz, surface);
+							chunk = (NormalChunk)world.chunkProvider.getDeclaredConstructors()[0].newInstance((wx >> NormalChunk.chunkShift) + px, (wy >> NormalChunk.chunkShift) + py, (wz >> NormalChunk.chunkShift) + pz, world);
 							chunks[index] = chunk;
-							surface.queueChunk(chunks[index]);
+							world.queueChunk(chunks[index]);
 							chunksList.add(chunks[index]);
 						} catch (Exception e) {
 							Logger.error(e);
@@ -158,7 +158,7 @@ public class MetaChunk {
 							entityManagers[index] = null;
 						}
 					} else if(manager == null) {
-						manager = new ChunkEntityManager(surface, chunk);
+						manager = new ChunkEntityManager(world, chunk);
 						entityManagers[index] = manager;
 						managers.add(manager);
 					} else {

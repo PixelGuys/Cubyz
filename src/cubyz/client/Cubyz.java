@@ -8,8 +8,7 @@ import org.joml.Vector3f;
 import cubyz.gui.UISystem;
 import cubyz.rendering.Fog;
 import cubyz.rendering.RenderOctTree;
-import cubyz.world.Surface;
-import cubyz.world.World;
+import cubyz.world.ServerWorld;
 import cubyz.world.entity.PlayerEntity.PlayerImpl;
 
 /**
@@ -23,8 +22,7 @@ public class Cubyz {
 	public static RenderOctTree chunkTree = new RenderOctTree();
 	
 	// World related stuff:
-	public static Surface surface;
-	public static World world;
+	public static ServerWorld world;
 	public static PlayerImpl player;
 	
 	// Other:

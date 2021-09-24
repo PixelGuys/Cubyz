@@ -15,7 +15,7 @@ import java.util.zip.InflaterInputStream;
 import cubyz.Logger;
 import cubyz.utils.math.Bits;
 import cubyz.world.NormalChunk;
-import cubyz.world.Surface;
+import cubyz.world.ServerWorld;
 import cubyz.world.entity.ItemEntityManager;
 import cubyz.world.terrain.MapFragment;
 
@@ -27,12 +27,12 @@ public class MapIO {
 	private ArrayList<byte[]> blockData;
 	private ArrayList<int[]> chunkData;
 	private final File dir;
-	private final TorusIO tio;
+	private final WorldIO wio;
 	private int[][] heightMap;
 	
-	public MapIO(MapFragment map, TorusIO tio) {
-		this.tio = tio;
-		dir = new File(tio.dir.getAbsolutePath()+"/"+map.wx+","+map.wz);
+	public MapIO(MapFragment map, WorldIO wio) {
+		this.wio = wio;
+		dir = new File(wio.dir.getAbsolutePath()+"/"+map.wx+","+map.wz);
 	}
 	
 	public void loadHeightMap(MapFragment map) {
@@ -67,7 +67,7 @@ public class MapIO {
 		ArrayList<BlockChange> list = new ArrayList<BlockChange>(size);
 		for (int i = 0; i < size; i++) {
 			try {
-				list.add(new BlockChange(data, 16 + i*9, tio.blockPalette));
+				list.add(new BlockChange(data, 16 + i*9, wio.blockPalette));
 			} catch (MissingBlockException e) {
 				// If the block is missing, we replace it by nothing
 				int off = 16 + i*9;
@@ -179,7 +179,7 @@ public class MapIO {
 	}
 
 	public void saveChunk(NormalChunk ch) {
-		byte[] cb = ch.save(tio.blockPalette);
+		byte[] cb = ch.save(wio.blockPalette);
 		int[] cd = ch.getData();
 		if(cb.length <= 16) return;
 		int index = -1;
@@ -201,19 +201,19 @@ public class MapIO {
 		}
 	}
 	
-	public ItemEntityManager readItemEntities(Surface surface, NormalChunk chunk) {
+	public ItemEntityManager readItemEntities(ServerWorld world, NormalChunk chunk) {
 		File file = new File(dir, "itemEnt"+chunk.getWorldX()+" "+chunk.getWorldY()+" "+chunk.getWorldZ());
-		if(!file.exists()) return new ItemEntityManager(surface, chunk, 1);
+		if(!file.exists()) return new ItemEntityManager(world, chunk, 1);
 		try {
 			byte[] data = new byte[(int) file.length()];
 			DataInputStream stream = new DataInputStream(new FileInputStream(file));
 			stream.readFully(data);
 			stream.close();
-			return new ItemEntityManager(surface, chunk, data, tio.itemPalette);
+			return new ItemEntityManager(world, chunk, data, wio.itemPalette);
 		} catch (IOException e) {
 			Logger.error(e);
 		}
-		return new ItemEntityManager(surface, chunk, 1);
+		return new ItemEntityManager(world, chunk, 1);
 	}
 	
 	public void saveItemEntities(ItemEntityManager manager) {
@@ -222,7 +222,7 @@ public class MapIO {
 		if(!dir.exists()) dir.mkdirs();
 		try {
 			BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(file));
-			byte[] data = manager.store(tio.itemPalette);
+			byte[] data = manager.store(wio.itemPalette);
 			out.write(data);
 			out.close();
 		} catch (IOException e) {

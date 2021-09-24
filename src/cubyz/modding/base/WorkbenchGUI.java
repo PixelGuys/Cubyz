@@ -129,16 +129,16 @@ public class WorkbenchGUI extends GeneralInventory {
 						int[] items;
 						switch(craftingMode) {
 							case AXE:
-								items = Axe.craftingAmount(inv[32].reference, inv[33].reference, inv[34].reference, Cubyz.surface.getCurrentRegistries());
+								items = Axe.craftingAmount(inv[32].reference, inv[33].reference, inv[34].reference, Cubyz.world.getCurrentRegistries());
 								break;
 							case PICKAXE:
-								items = Pickaxe.craftingAmount(inv[32].reference, inv[33].reference, inv[34].reference, Cubyz.surface.getCurrentRegistries());
+								items = Pickaxe.craftingAmount(inv[32].reference, inv[33].reference, inv[34].reference, Cubyz.world.getCurrentRegistries());
 								break;
 							case SHOVEL:
-								items = Shovel.craftingAmount(inv[32].reference, inv[33].reference, inv[34].reference, Cubyz.surface.getCurrentRegistries());
+								items = Shovel.craftingAmount(inv[32].reference, inv[33].reference, inv[34].reference, Cubyz.world.getCurrentRegistries());
 								break;
 							case SWORD:
-								items = Sword.craftingAmount(inv[32].reference, inv[33].reference, inv[34].reference, Cubyz.surface.getCurrentRegistries());
+								items = Sword.craftingAmount(inv[32].reference, inv[33].reference, inv[34].reference, Cubyz.world.getCurrentRegistries());
 								break;
 							default:
 								return;
@@ -185,16 +185,16 @@ public class WorkbenchGUI extends GeneralInventory {
 		inv[inv.length-1].reference.clear();
 		switch(craftingMode) {
 			case AXE:
-				item = Axe.canCraft(inv[32].reference, inv[33].reference, inv[34].reference, Cubyz.surface.getCurrentRegistries());
+				item = Axe.canCraft(inv[32].reference, inv[33].reference, inv[34].reference, Cubyz.world.getCurrentRegistries());
 				break;
 			case PICKAXE:
-				item = Pickaxe.canCraft(inv[32].reference, inv[33].reference, inv[34].reference, Cubyz.surface.getCurrentRegistries());
+				item = Pickaxe.canCraft(inv[32].reference, inv[33].reference, inv[34].reference, Cubyz.world.getCurrentRegistries());
 				break;
 			case SHOVEL:
-				item = Shovel.canCraft(inv[32].reference, inv[33].reference, inv[34].reference, Cubyz.surface.getCurrentRegistries());
+				item = Shovel.canCraft(inv[32].reference, inv[33].reference, inv[34].reference, Cubyz.world.getCurrentRegistries());
 				break;
 			case SWORD:
-				item = Sword.canCraft(inv[32].reference, inv[33].reference, inv[34].reference, Cubyz.surface.getCurrentRegistries());
+				item = Sword.canCraft(inv[32].reference, inv[33].reference, inv[34].reference, Cubyz.world.getCurrentRegistries());
 				break;
 			case NORMAL:
 				// Find out how many and which items are in the crafting grid:

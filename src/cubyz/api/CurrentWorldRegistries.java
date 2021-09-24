@@ -10,10 +10,10 @@ import cubyz.world.items.Recipe;
 import cubyz.world.items.tools.Material;
 
 /**
- * Contains the torus-specific registries.
+ * Contains the world-specific registries.
  */
 
-public class CurrentSurfaceRegistries {
+public class CurrentWorldRegistries {
 
 	public final Registry<Block>       blockRegistry         = new Registry<Block>(CubyzRegistries.BLOCK_REGISTRY);
 	public final NoIDRegistry<Ore>     oreRegistry           = new NoIDRegistry<Ore>(CubyzRegistries.ORE_REGISTRY);

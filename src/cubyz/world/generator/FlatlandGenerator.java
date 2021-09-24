@@ -3,7 +3,7 @@ package cubyz.world.generator;
 import cubyz.api.CubyzRegistries;
 import cubyz.api.Resource;
 import cubyz.world.Chunk;
-import cubyz.world.Surface;
+import cubyz.world.ServerWorld;
 import cubyz.world.blocks.Block;
 
 /**
@@ -19,7 +19,7 @@ public class FlatlandGenerator extends SurfaceGenerator {
 	private static Block soil = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:soil");
 	
 	@Override
-	public void generate(Chunk chunk, Surface surface) {
+	public void generate(Chunk chunk, ServerWorld world) {
 		for (int x = 0; x < chunk.getWidth(); x++) {
 			for (int z = 0; z < chunk.getWidth(); z++) {
 				for (int y = 0; y < chunk.getWidth(); y++) {

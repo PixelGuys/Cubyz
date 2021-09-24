@@ -9,7 +9,7 @@ import java.util.HashMap;
 
 import cubyz.Logger;
 import cubyz.api.CubyzRegistries;
-import cubyz.api.CurrentSurfaceRegistries;
+import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.EventHandler;
 import cubyz.api.LoadOrder;
 import cubyz.api.Mod;
@@ -129,13 +129,13 @@ public class ModLoader {
 	}
 	
 	/**
-	 * Calls mods after the surface has been generated.
+	 * Calls mods after the world has been generated.
 	 * @param mod
-	 * @param reg registries of this surface.
+	 * @param reg registries of this world.
 	 */
-	public static void postSurfaceGen(CurrentSurfaceRegistries reg) {
+	public static void postWorldGen(CurrentWorldRegistries reg) {
 		for(Object mod : mods) {
-			Method m = eventHandlerMethodSided(mod, "postSurfaceGen", Side.SERVER);
+			Method m = eventHandlerMethodSided(mod, "postWorldGen", Side.SERVER);
 			if (m != null)
 				safeMethodInvoke(true, m, mod, reg);
 		}

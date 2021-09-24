@@ -7,7 +7,7 @@ import java.io.InputStream;
 import java.util.Random;
 
 import cubyz.Logger;
-import cubyz.api.CurrentSurfaceRegistries;
+import cubyz.api.CurrentWorldRegistries;
 import cubyz.utils.Utilities;
 import cubyz.world.CustomObject;
 import cubyz.world.items.BlockDrop;
@@ -148,7 +148,7 @@ public class CustomBlock extends Block implements CustomObject {
 			return sb.toString();
 	}
 	
-	public static CustomBlock random(Random rand, CurrentSurfaceRegistries registries, TextureProvider texProvider) {
+	public static CustomBlock random(Random rand, CurrentWorldRegistries registries, TextureProvider texProvider) {
 		String name = randomName(rand);
 		// Use a seed based on the name, so if the same ore gets generated twice in the giant world, it will have the same properties.
 		// This fact could also allow an interactive wiki which displays an ores property with knowledge of only the name(TODO).
@@ -246,7 +246,7 @@ public class CustomBlock extends Block implements CustomObject {
 		return ore;
 	}*/
 	
-	private void makeBlockDrop(CurrentSurfaceRegistries registries) {
+	private void makeBlockDrop(CurrentWorldRegistries registries) {
 		CustomItem bd = CustomItem.fromOre(this);
 		registries.itemRegistry.register(bd);
 		bd.setID(getRegistryID());

@@ -2,7 +2,7 @@ package cubyz.world.blocks;
 
 import org.joml.Vector3i;
 
-import cubyz.world.Surface;
+import cubyz.world.ServerWorld;
 
 /**
  * BlockEntities are blocks that have need additional data, like an inventory, or need to be iterated, like meltable blocks.
@@ -11,15 +11,15 @@ import cubyz.world.Surface;
 public abstract class BlockEntity {
 
 	protected Vector3i position;
-	protected Surface surface;
+	protected ServerWorld world;
 	
-	public BlockEntity(Surface surface, Vector3i pos) {
-		this.surface = surface;
+	public BlockEntity(ServerWorld world, Vector3i pos) {
+		this.world = world;
 		this.position = pos;
 	}
 	
-	public Surface getSurface() {
-		return surface;
+	public ServerWorld getWorld() {
+		return world;
 	}
 	
 	public Vector3i getPosition() {

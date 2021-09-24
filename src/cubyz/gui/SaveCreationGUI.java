@@ -11,7 +11,7 @@ import cubyz.rendering.VisibleChunk;
 import cubyz.rendering.text.Fonts;
 import cubyz.utils.translate.TextKey;
 import cubyz.world.CustomObject;
-import cubyz.world.LocalWorld;
+import cubyz.world.ServerWorld;
 import cubyz.world.blocks.Block;
 
 /**
@@ -44,7 +44,7 @@ public class SaveCreationGUI extends MenuGUI {
 		create.setText(TextKey.createTextKey("gui.cubyz.saves.create"));
 		create.setFontSize(32);
 		create.setOnAction(() -> {
-			LocalWorld world = new LocalWorld(name.getText(), VisibleChunk.class);
+			ServerWorld world = new ServerWorld(name.getText(), VisibleChunk.class);
 			Block[] blocks = world.generate();
 			for(Block bl : blocks) {
 				if (bl instanceof CustomObject) {
@@ -52,7 +52,7 @@ public class SaveCreationGUI extends MenuGUI {
 				}
 			}
 			Cubyz.gameUI.setMenu(null, false); // hide from UISystem.back()
-			GameLauncher.logic.loadWorld(world.getCurrentTorus());
+			GameLauncher.logic.loadWorld(world);
 		});
 
 		cancel.setBounds(110, 60, 100, 50, Component.ALIGN_BOTTOM_RIGHT);

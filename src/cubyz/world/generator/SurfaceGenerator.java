@@ -2,10 +2,10 @@ package cubyz.world.generator;
 
 import cubyz.api.RegistryElement;
 import cubyz.world.Chunk;
-import cubyz.world.Surface;
+import cubyz.world.ServerWorld;
 
 public abstract class SurfaceGenerator implements RegistryElement {
 
-	public abstract void generate(Chunk chunk, Surface surface);
+	public abstract void generate(Chunk chunk, ServerWorld world);
 	
 }

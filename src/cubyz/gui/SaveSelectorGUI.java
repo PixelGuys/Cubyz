@@ -17,7 +17,7 @@ import cubyz.rendering.VisibleChunk;
 import cubyz.utils.translate.ContextualTextKey;
 import cubyz.utils.translate.TextKey;
 import cubyz.world.CustomObject;
-import cubyz.world.LocalWorld;
+import cubyz.world.ServerWorld;
 import cubyz.world.blocks.Block;
 
 /**
@@ -49,7 +49,7 @@ public class SaveSelectorGUI extends MenuGUI {
 			b.setBounds(10, y, 400, 40, Component.ALIGN_TOP_LEFT);
 			b.setFontSize(32);
 			b.setOnAction(() -> {
-				LocalWorld world = new LocalWorld(name, VisibleChunk.class);
+				ServerWorld world = new ServerWorld(name, VisibleChunk.class);
 				Block[] blocks = world.generate();
 				for(Block bl : blocks) {
 					if (bl instanceof CustomObject) {
@@ -57,7 +57,7 @@ public class SaveSelectorGUI extends MenuGUI {
 					}
 				}
 				Cubyz.gameUI.setMenu(null, false); // hide from UISystem.back()
-				GameLauncher.logic.loadWorld(world.getCurrentTorus());
+				GameLauncher.logic.loadWorld(world);
 			});
 			saveButtons[i] = b;
 			b = new Button(TextKey.createTextKey("gui.cubyz.saves.delete"));

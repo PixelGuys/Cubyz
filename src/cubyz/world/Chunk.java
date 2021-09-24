@@ -85,15 +85,15 @@ public abstract class Chunk {
 	public abstract int getVoxelSize();
 	
 	/**
-	 * @return starting x coordinate of this chunk relative to the current surface.
+	 * @return starting x coordinate of this chunk.
 	 */
 	public abstract int getWorldX();
 	/**
-	 * @return starting y coordinate of this chunk relative to the current surface.
+	 * @return starting y coordinate of this chunk.
 	 */
 	public abstract int getWorldY();
 	/**
-	 * @return starting z coordinate of this chunk relative to the current surface.
+	 * @return starting z coordinate of this chunk.
 	 */
 	public abstract int getWorldZ();
 	/**

@@ -2,11 +2,11 @@ package cubyz.world.terrain;
 
 import java.util.Random;
 
-import cubyz.api.CurrentSurfaceRegistries;
-import cubyz.world.Surface;
+import cubyz.api.CurrentWorldRegistries;
+import cubyz.world.ServerWorld;
 import cubyz.world.cubyzgenerators.biomes.Biome;
 import cubyz.world.save.MapIO;
-import cubyz.world.save.TorusIO;
+import cubyz.world.save.WorldIO;
 import cubyz.world.terrain.noise.FractalNoise;
 import cubyz.world.terrain.noise.PerlinNoise;
 
@@ -66,7 +66,7 @@ public class MapFragment {
 		}
 	};
 	
-	public final Surface surface;
+	public final ServerWorld world;
 	public final int wx, wz;
 	public int resolution = Integer.MAX_VALUE;
 	public float[][] heightMap;
@@ -76,19 +76,19 @@ public class MapFragment {
 	public int minHeight = Integer.MAX_VALUE;
 	public int maxHeight = 0;
 	
-	public MapFragment(int wx, int wz, long seed, Surface surface, CurrentSurfaceRegistries registries, TorusIO tio) {
-		this.surface = surface;
+	public MapFragment(int wx, int wz, long seed, ServerWorld world, CurrentWorldRegistries registries, WorldIO tio) {
+		this.world = world;
 		this.wx = wx;
 		this.wz = wz;
 		mapIO = new MapIO(this, tio);
 	}
 	
-	public MapFragment(int wx, int wz, long seed, Surface surface, CurrentSurfaceRegistries registries, TorusIO tio, int resolution) {
-		this(wx, wz, seed, surface, registries, tio);
+	public MapFragment(int wx, int wz, long seed, ServerWorld world, CurrentWorldRegistries registries, WorldIO tio, int resolution) {
+		this(wx, wz, seed, world, registries, tio);
 		ensureResolution(seed, registries, resolution);
 	}
 	
-	public synchronized void ensureResolution(long seed, CurrentSurfaceRegistries registries, int resolution) {
+	public synchronized void ensureResolution(long seed, CurrentWorldRegistries registries, int resolution) {
 		if(resolution >= this.resolution) return;
 		
 		int scaledSize = MAP_SIZE/resolution;

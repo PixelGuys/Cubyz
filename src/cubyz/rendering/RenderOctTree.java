@@ -41,7 +41,7 @@ public class RenderOctTree {
 				double dy = Math.abs(y + size/2 - py);
 				double dz = Math.abs(z + size/2 - pz);
 				// Check if this chunk is outside the nearRenderDistance or outside the height limits:
-				if(y + size <= Cubyz.surface.getMapFragment(x, z, 16).getMinHeight() || y > Cubyz.surface.getMapFragment(x, z, 16).getMaxHeight()) {
+				if(y + size <= Cubyz.world.getMapFragment(x, z, 16).getMinHeight() || y > Cubyz.world.getMapFragment(x, z, 16).getMaxHeight()) {
 					int dx2 = (int)Math.max(0, dx - size/2);
 					int dy2 = (int)Math.max(0, dy - size/2);
 					int dz2 = (int)Math.max(0, dz - size/2);
@@ -54,7 +54,7 @@ public class RenderOctTree {
 					// Check if this is a normal or a reduced chunk:
 					if(dist < renderDistance*renderDistance) {
 						if(mesh.getChunk() == null) {
-							((NormalChunkMesh)mesh).updateChunk(Cubyz.surface.getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift));
+							((NormalChunkMesh)mesh).updateChunk(Cubyz.world.getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift));
 						}
 					} else {
 						if(mesh.getChunk() != null) {
@@ -102,11 +102,11 @@ public class RenderOctTree {
 				if(dist < maxRD*maxRD) {
 					if(mesh.getChunk() == null) {
 						((ReducedChunkMesh)mesh).updateChunk(new ReducedChunk(x, y, z, CubyzMath.binaryLog(size) - NormalChunk.chunkShift, CubyzMath.binaryLog(size)));
-						Cubyz.surface.queueChunk(mesh.getChunk());
+						Cubyz.world.queueChunk(mesh.getChunk());
 					}
 				} else {
 					if(mesh.getChunk() != null) {
-						Cubyz.surface.unQueueChunk(mesh.getChunk());
+						Cubyz.world.unQueueChunk(mesh.getChunk());
 						((ReducedChunkMesh)mesh).updateChunk(null);
 					}
 				}
@@ -133,7 +133,8 @@ public class RenderOctTree {
 		public void cleanup() {
 			if(mesh != null) {
 				Meshes.deleteMesh(mesh);
-				Cubyz.surface.unQueueChunk(mesh.getChunk());
+				if(Cubyz.world != null)
+					Cubyz.world.unQueueChunk(mesh.getChunk());
 				mesh = null;
 			}
 			if(nextNodes != null) {
@@ -167,7 +168,7 @@ public class RenderOctTree {
 				
 				for(int z = minZ; z <= maxZ; z += LODSize) {
 					// Make sure underground chunks are only generated if they are close to the player.
-					if(y + LODSize <= Cubyz.surface.getMapFragment(x, z, 16).getMinHeight() || y > Cubyz.surface.getMapFragment(x, z, 16).getMaxHeight()) {
+					if(y + LODSize <= Cubyz.world.getMapFragment(x, z, 16).getMinHeight() || y > Cubyz.world.getMapFragment(x, z, 16).getMaxHeight()) {
 						int dx = Math.max(0, Math.abs(x + LODSize/2 - px) - LODSize/2);
 						int dy = Math.max(0, Math.abs(y + LODSize/2 - py) - LODSize/2);
 						int dz = Math.max(0, Math.abs(z + LODSize/2 - pz) - LODSize/2);
@@ -188,7 +189,7 @@ public class RenderOctTree {
 						node.shouldBeRemoved = false;
 					}
 					newMap.put(key, node);
-					node.update(px, py, pz, renderDistance*NormalChunk.chunkSize, maxRenderDistance, Cubyz.surface.getMapFragment(x, z, 16).getMinHeight(), Cubyz.surface.getMapFragment(x, z, 16).getMaxHeight(), nearRenderDistance);
+					node.update(px, py, pz, renderDistance*NormalChunk.chunkSize, maxRenderDistance, Cubyz.world.getMapFragment(x, z, 16).getMinHeight(), Cubyz.world.getMapFragment(x, z, 16).getMaxHeight(), nearRenderDistance);
 				}
 			}
 		}

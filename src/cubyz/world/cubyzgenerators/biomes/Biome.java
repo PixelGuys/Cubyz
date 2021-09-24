@@ -49,10 +49,6 @@ public class Biome extends ChanceObject implements RegistryElement {
 		
 		/**deep ocean trench*/
 		TRENCH,
-		
-		
-		/**region that never sees the sun, due to how the torus orbits it.*/
-		ETERNAL_DARKNESS,
 	}
 	
 	public final Type type;

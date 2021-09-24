@@ -1,6 +1,6 @@
 package cubyz.world.items.tools;
 
-import cubyz.api.CurrentSurfaceRegistries;
+import cubyz.api.CurrentWorldRegistries;
 import cubyz.world.items.Item;
 
 /**
@@ -9,7 +9,7 @@ import cubyz.world.items.Item;
 
 public class CustomMaterial extends Material {
 	private int color;
-	public CustomMaterial(int heDur, int bDur, int haDur, float dmg, float spd, int color, Item item, int value, CurrentSurfaceRegistries registries) {
+	public CustomMaterial(int heDur, int bDur, int haDur, float dmg, float spd, int color, Item item, int value, CurrentWorldRegistries registries) {
 		super(heDur, bDur, haDur, dmg, spd);
 		this.color = color;
 		addItem(item, value);

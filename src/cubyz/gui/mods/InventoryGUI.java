@@ -34,7 +34,7 @@ public class InventoryGUI extends GeneralInventory {
 			if(inv[i].reference.empty()) continue;
 			inv[i].reference.setAmount(Cubyz.player.getInventory().addItem(inv[i].reference.getItem(), inv[i].reference.getAmount()));
 			if(inv[i].reference.empty()) continue;
-			Cubyz.surface.drop(inv[i].reference, Cubyz.player.getPosition(), new Vector3f(), 0);
+			Cubyz.world.drop(inv[i].reference, Cubyz.player.getPosition(), new Vector3f(), 0);
 		}
 	}
 	

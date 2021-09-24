@@ -11,7 +11,7 @@ import cubyz.utils.datastructures.ByteWrapper;
 import cubyz.utils.datastructures.FloatFastList;
 import cubyz.utils.datastructures.IntFastList;
 import cubyz.world.NormalChunk;
-import cubyz.world.Surface;
+import cubyz.world.ServerWorld;
 import cubyz.world.blocks.Block;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.RotationMode;
@@ -29,7 +29,7 @@ public class NoRotation implements RotationMode {
 	}
 
 	@Override
-	public boolean generateData(Surface surface, int x, int y, int z, Vector3f relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, ByteWrapper currentData, boolean blockPlacing) {
+	public boolean generateData(ServerWorld world, int x, int y, int z, Vector3f relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, ByteWrapper currentData, boolean blockPlacing) {
 		if(!blockPlacing) return false;
 		currentData.data = 0;
 		return true;

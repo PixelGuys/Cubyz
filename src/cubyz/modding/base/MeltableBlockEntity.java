@@ -2,7 +2,7 @@ package cubyz.modding.base;
 
 import org.joml.Vector3i;
 
-import cubyz.world.Surface;
+import cubyz.world.ServerWorld;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.Updateable;
 
@@ -15,8 +15,8 @@ public class MeltableBlockEntity extends BlockEntity implements Updateable {
 	
 	int heatCount;
 
-	public MeltableBlockEntity(Surface surface, Vector3i pos) {
-		super(surface, pos);
+	public MeltableBlockEntity(ServerWorld world, Vector3i pos) {
+		super(world, pos);
 	}
 
 	@Override
@@ -27,12 +27,12 @@ public class MeltableBlockEntity extends BlockEntity implements Updateable {
 	@Override
 	public void update(boolean isRandomUpdate) {
 		if (isRandomUpdate) {
-			/*float temp = surface.getBiome(position.x, position.z).temperature - position.y*0; TODO: measure temperature in the new biome system.
+			/*float temp = world.getBiome(position.x, position.z).temperature - position.y*0; TODO: measure temperature in the new biome system.
 			if (temp > 0.45f) {
 				heatCount++;
 			}
 			if (heatCount == 5) {
-				surface.placeBlock(position.x, position.y, position.z, CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:water"), (byte) 0);
+				world.placeBlock(position.x, position.y, position.z, CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:water"), (byte) 0);
 			}*/
 		}
 	}

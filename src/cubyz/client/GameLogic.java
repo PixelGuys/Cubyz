@@ -120,7 +120,7 @@ public class GameLogic implements ClientConnection {
 		System.gc();
 	}
 	
-	public void loadWorld(Surface surface) { // TODO: Seperate all the things out that are generated for the current surface.
+	public void loadWorld(ServerWorld world) { // TODO: Seperate all the things out that are generated for the current world.
 		if (Cubyz.world != null) {
 			quitWorld();
 		}
@@ -137,57 +137,49 @@ public class GameLogic implements ClientConnection {
 			skyMoon.setPositionRaw(100, 1, 0);
 			GameLauncher.renderer.worldSpatialList = new Spatial[] {skySun/*, skyMoon*/};
 		}
-		Cubyz.surface = surface;
-		World world = surface.getStellarTorus().getWorld();
 		Cubyz.player = (PlayerImpl)world.getLocalPlayer();
-		if (world.isLocal()) {
-			Random rnd = new Random();
-			int dx = 0;
-			int dz = 0;
-			if (Cubyz.player.getPosition().x == 0 && Cubyz.player.getPosition().z == 0) {
-				Logger.info("Finding position..");
-				while (true) {
-					dx = rnd.nextInt(65536);
-					dz = rnd.nextInt(65536);
-					Logger.info("Trying " + dx + " ? " + dz);
-					if(Cubyz.surface.isValidSpawnLocation(dx, dz)) 
-						break;
-				}
-				int startY = (int)surface.getMapFragment((int)dx, (int)dz, 1).getHeight(dx, dz);
-				Cubyz.surface.seek((int)dx, startY, (int)dz, ClientSettings.RENDER_DISTANCE, ClientSettings.EFFECTIVE_RENDER_DISTANCE*NormalChunk.chunkSize*2);
-				Cubyz.player.setPosition(new Vector3i(dx, startY+2, dz));
-				Logger.info("OK!");
+		Random rnd = new Random();
+		int dx = 0;
+		int dz = 0;
+		if (Cubyz.player.getPosition().x == 0 && Cubyz.player.getPosition().z == 0) {
+			Logger.info("Finding position..");
+			while (true) {
+				dx = rnd.nextInt(65536);
+				dz = rnd.nextInt(65536);
+				Logger.info("Trying " + dx + " ? " + dz);
+				if(world.isValidSpawnLocation(dx, dz)) 
+					break;
 			}
+			int startY = (int)world.getMapFragment((int)dx, (int)dz, 1).getHeight(dx, dz);
+			world.seek((int)dx, startY, (int)dz, ClientSettings.RENDER_DISTANCE, ClientSettings.EFFECTIVE_RENDER_DISTANCE*NormalChunk.chunkSize*2);
+			Cubyz.player.setPosition(new Vector3i(dx, startY+2, dz));
+			Logger.info("OK!");
 		}
 		// Make sure the world is null until the player position is known.
-		Cubyz.world = world;
 		DiscordIntegration.setStatus("Playing");
 		Cubyz.gameUI.addOverlay(new GameOverlay());
 		
-		if (world instanceof LocalWorld) { // custom ores on multiplayer later, maybe?
-			LocalSurface ts = (LocalSurface) surface;
-			for (Item reg : ts.getCurrentRegistries().itemRegistry.registered(new Item[0])) {
-				if(!(reg instanceof CustomItem)) continue;
-				CustomItem item = (CustomItem)reg;
-				BufferedImage canvas;
-				if(item.isGem())
-					canvas = getImage("assets/cubyz/items/textures/materials/templates/"+"gem1"+".png"); // TODO: More gem types.
-				else
-					canvas = getImage("assets/cubyz/items/textures/materials/templates/"+"crystal1"+".png"); // TODO: More crystal types.
-				PixelUtils.convertTemplate(canvas, item.getColor());
-				InputStream is = TextureConverter.fromBufferedImage(canvas);
-				Texture tex = new Texture(is);
-				try {
-					is.close();
-				} catch (IOException e) {
-					Logger.warning(e);
-				}
-				item.setImage(tex);
+		for (Item reg : world.getCurrentRegistries().itemRegistry.registered(new Item[0])) {
+			if(!(reg instanceof CustomItem)) continue;
+			CustomItem item = (CustomItem)reg;
+			BufferedImage canvas;
+			if(item.isGem())
+				canvas = getImage("assets/cubyz/items/textures/materials/templates/"+"gem1"+".png"); // TODO: More gem types.
+			else
+				canvas = getImage("assets/cubyz/items/textures/materials/templates/"+"crystal1"+".png"); // TODO: More crystal types.
+			PixelUtils.convertTemplate(canvas, item.getColor());
+			InputStream is = TextureConverter.fromBufferedImage(canvas);
+			Texture tex = new Texture(is);
+			try {
+				is.close();
+			} catch (IOException e) {
+				Logger.warning(e);
 			}
+			item.setImage(tex);
 		}
-		// Generate the texture atlas for this surface's truly transparent blocks:
+		// Generate the texture atlas for this world's truly transparent blocks:
 		ArrayList<Block> blocks = new ArrayList<>();
-		for(Block block : surface.getCurrentRegistries().blockRegistry.registered(new Block[0])) {
+		for(Block block : world.getCurrentRegistries().blockRegistry.registered(new Block[0])) {
 			blocks.add(block);
 		}
 		// Get the textures for those blocks:
@@ -200,7 +192,7 @@ public class GameLogic implements ClientConnection {
 				ore.textureProvider.generateTexture(ore, blockTextures, blockIDs);
 			}
 		}
-		LifelandGenerator.initOres(surface.getCurrentRegistries().oreRegistry.registered(new Ore[0]));
+		Cubyz.world = world;
 		// Put the textures into the atlas
 		TextureArray textures = Meshes.blockTextureArray;
 		textures.clear();
@@ -220,8 +212,8 @@ public class GameLogic implements ClientConnection {
 			}
 		}
 		
-		// Call mods for this new surface. Mods sometimes need to do extra stuff for the specific surface.
-		ModLoader.postSurfaceGen(surface.getCurrentRegistries());
+		// Call mods for this new world. Mods sometimes need to do extra stuff for the specific world.
+		ModLoader.postWorldGen(world.getCurrentRegistries());
 	}
 
 	public void init() throws Exception {
@@ -335,14 +327,14 @@ public class GameLogic implements ClientConnection {
 							breakCooldown = 7;
 							Object bi = Cubyz.msd.getSelected();
 							if (bi != null && bi instanceof BlockInstance && ((BlockInstance)bi).getBlock().getBlockClass() != BlockClass.UNBREAKABLE) {
-								Cubyz.surface.removeBlock(((BlockInstance)bi).getX(), ((BlockInstance)bi).getY(), ((BlockInstance)bi).getZ());
+								Cubyz.world.removeBlock(((BlockInstance)bi).getX(), ((BlockInstance)bi).getY(), ((BlockInstance)bi).getZ());
 							}
 						}
 					}
 					else {
 						Object selected = Cubyz.msd.getSelected();
 						if(selected instanceof BlockInstance) {
-							Cubyz.player.breaking((BlockInstance)selected, Cubyz.inventorySelection, Cubyz.surface);
+							Cubyz.player.breaking((BlockInstance)selected, Cubyz.inventorySelection, Cubyz.world);
 						}
 					}
 					// Hit entities:
@@ -360,7 +352,7 @@ public class GameLogic implements ClientConnection {
 						// Build block:
 						if (Cubyz.msd.getSelected() != null) {
 							buildCooldown = 10;
-							Cubyz.msd.placeBlock(Cubyz.player.getInventory(), Cubyz.inventorySelection, Cubyz.surface);
+							Cubyz.msd.placeBlock(Cubyz.player.getInventory(), Cubyz.inventorySelection, Cubyz.world);
 						}
 					} else if(Cubyz.player.getInventory().getItem(Cubyz.inventorySelection) != null) {
 						// Use item:
@@ -372,18 +364,18 @@ public class GameLogic implements ClientConnection {
 				}
 			}
 			Cubyz.playerInc.x = Cubyz.playerInc.y = Cubyz.playerInc.z = 0.0F; // Reset positions
-			NormalChunk ch = Cubyz.surface.getChunk((int)Cubyz.player.getPosition().x >> NormalChunk.chunkShift, (int)Cubyz.player.getPosition().y >> NormalChunk.chunkShift, (int)Cubyz.player.getPosition().z >> NormalChunk.chunkShift);
+			NormalChunk ch = Cubyz.world.getChunk((int)Cubyz.player.getPosition().x >> NormalChunk.chunkShift, (int)Cubyz.player.getPosition().y >> NormalChunk.chunkShift, (int)Cubyz.player.getPosition().z >> NormalChunk.chunkShift);
 			if (ch != null && ch.isLoaded()) {
 				Cubyz.world.update();
 			}
-			Cubyz.surface.seek((int)Cubyz.player.getPosition().x, (int)Cubyz.player.getPosition().y, (int)Cubyz.player.getPosition().z, ClientSettings.RENDER_DISTANCE, ClientSettings.EFFECTIVE_RENDER_DISTANCE*NormalChunk.chunkSize*2);
+			Cubyz.world.seek((int)Cubyz.player.getPosition().x, (int)Cubyz.player.getPosition().y, (int)Cubyz.player.getPosition().z, ClientSettings.RENDER_DISTANCE, ClientSettings.EFFECTIVE_RENDER_DISTANCE*NormalChunk.chunkSize*2);
 			Cubyz.chunkTree.update((int)Cubyz.player.getPosition().x, (int)Cubyz.player.getPosition().y, (int)Cubyz.player.getPosition().z, ClientSettings.RENDER_DISTANCE, ClientSettings.HIGHEST_LOD, ClientSettings.LOD_FACTOR);
-			float lightAngle = (float)Math.PI/2 + (float)Math.PI*(((float)Cubyz.world.getGameTime() % Cubyz.surface.getStellarTorus().getDayCycle())/(Cubyz.surface.getStellarTorus().getDayCycle()/2));
+			float lightAngle = (float)Math.PI/2 + (float)Math.PI*(((float)Cubyz.world.getGameTime() % ServerWorld.DAY_CYCLE)/(ServerWorld.DAY_CYCLE/2));
 			skySun.setPositionRaw((float)Math.cos(lightAngle)*500, (float)Math.sin(lightAngle)*500, 0);
 			skySun.setRotation(0, 0, -lightAngle);
 
 			// TODO: Send entities to clients:
-			ClientEntityManager.serverUpdate(Cubyz.surface.getEntities());
+			ClientEntityManager.serverUpdate(Cubyz.world.getEntities());
 		}
 	}
 

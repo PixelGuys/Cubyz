@@ -54,11 +54,11 @@ public class NormalChunk extends Chunk {
 	protected boolean updated = true;
 	private ArrayList<BlockEntity> blockEntities = new ArrayList<>();
 	
-	protected final Surface surface;
+	protected final ServerWorld world;
 	
 	public final MapFragment map;
 	
-	public NormalChunk(int cx, int cy, int cz, Surface surface) {
+	public NormalChunk(int cx, int cy, int cz, ServerWorld world) {
 		inst = new BlockInstance[arraySize];
 		blocks = new Block[arraySize];
 		blockData = new byte[arraySize];
@@ -68,13 +68,13 @@ public class NormalChunk extends Chunk {
 		wx = cx << chunkShift;
 		wy = cy << chunkShift;
 		wz = cz << chunkShift;
-		this.surface = surface;
-		this.map = surface.getMapFragment(wx, wz, 1);
+		this.world = world;
+		this.map = world.getMapFragment(wx, wz, 1);
 		changes = map.mapIO.getBlockChanges(cx, cy, cz);
 	}
 	
 	public void generateFrom(SurfaceGenerator gen) {
-		gen.generate(this, surface);
+		gen.generate(this, world);
 		applyBlockChanges();
 		generated = true;
 	}
@@ -172,9 +172,9 @@ public class NormalChunk extends Chunk {
 		int ry = y - wy;
 		int rz = z - wz;
 		if(rx < 0 || rx >= chunkSize || ry < 0 || ry >= chunkSize || rz < 0 || rz >= chunkSize) {
-			if (surface.getChunk(cx + (rx >> chunkShift), cy + (ry >> chunkShift), cz + (rz >> chunkShift)) == null)
+			if (world.getChunk(cx + (rx >> chunkShift), cy + (ry >> chunkShift), cz + (rz >> chunkShift)) == null)
 				return;
-			surface.getChunk(cx + (rx >> chunkShift), cy + (ry >> chunkShift), cz + (rz >> chunkShift)).addBlock(b, data, x & chunkMask, y & chunkMask, z & chunkMask, considerPrevious);
+			world.getChunk(cx + (rx >> chunkShift), cy + (ry >> chunkShift), cz + (rz >> chunkShift)).addBlock(b, data, x & chunkMask, y & chunkMask, z & chunkMask, considerPrevious);
 			return;
 		} else {
 			addBlock(b, data, rx, ry, rz, considerPrevious);
@@ -202,7 +202,7 @@ public class NormalChunk extends Chunk {
 		setBlock(x, y, z, b, data);
 		if (b.hasBlockEntity()) {
 			Vector3i pos = new Vector3i(wx+x, wy+y, wz+z);
-			blockEntities.add(b.createBlockEntity(surface, pos));
+			blockEntities.add(b.createBlockEntity(world, pos));
 		}
 		if (b.getBlockClass() == BlockClass.FLUID) {
 			liquids.add(getIndex(x, y, z));
@@ -236,10 +236,10 @@ public class NormalChunk extends Chunk {
 						byte oldData = ch.getBlockData(nx & chunkMask, ny & chunkMask, nz & chunkMask);
 						Byte newData = neighbors[i].mode.updateData(oldData, i ^ 1, b);
 						if(newData == null) {
-							surface.removeBlock(nx, ny, nz);
+							world.removeBlock(nx, ny, nz);
 							break; // Break here to prevent making stuff with non-existent blocks.
 						} else if(newData.byteValue() != oldData) {
-							surface.updateBlockData(nx, ny, nz, newData);
+							world.updateBlockData(nx, ny, nz, newData);
 							// TODO: Eventual item drops.
 						}
 					}
@@ -296,13 +296,13 @@ public class NormalChunk extends Chunk {
 		for(BlockChange bc : changes) {
 			bc.oldType = blocks[bc.index] == null ? -1 : blocks[bc.index].ID;
 			bc.oldData = blockData[bc.index];
-			Block b = bc.newType == -1 ? null : surface.getPlanetBlocks()[bc.newType];
+			Block b = bc.newType == -1 ? null : world.getBlocks()[bc.newType];
 			if (b != null && b.hasBlockEntity()) {
 				int z = bc.index & chunkMask;
 				int x = (bc.index >>> chunkShift) & chunkMask;
 				int y = (bc.index >>> chunkShift2) & chunkMask;
 				Vector3i pos = new Vector3i(wx+x, wy+y, wz+z);
-				blockEntities.add(b.createBlockEntity(surface, pos));
+				blockEntities.add(b.createBlockEntity(world, pos));
 			}
 			blocks[bc.index] = b;
 			blockData[bc.index] = bc.newData;
@@ -328,8 +328,8 @@ public class NormalChunk extends Chunk {
 		if(res == null) return;
 		visibles.remove(res);
 		inst[getIndex(x, y, z)] = null;
-		/*if (surface != null) {
-			for (BlockVisibilityChangeHandler handler : surface.visibHandlers) {
+		/*if (world != null) {
+			for (BlockVisibilityChangeHandler handler : world.visibHandlers) {
 				if (res != null) handler.onBlockHide(res.getBlock(), res.getX(), res.getY(), res.getZ());
 			}
 		}*/
@@ -352,11 +352,11 @@ public class NormalChunk extends Chunk {
 		for(int k = 0; k < 6; k++) {
 			bi.updateNeighbor(k, blocksBlockNot(neighbors[k], b, data[k], index - indices[k]));
 		}
-		bi.setStellarTorus(surface);
+		bi.setWorld(world);
 		visibles.add(bi);
 		inst[index] = bi;
-		/*if (surface != null) {
-			for (BlockVisibilityChangeHandler handler : surface.visibHandlers) {
+		/*if (world != null) {
+			for (BlockVisibilityChangeHandler handler : world.visibHandlers) {
 				if (bi != null) handler.onBlockAppear(bi.getBlock(), bi.getX(), bi.getY(), bi.getZ());
 			}
 		}*/
@@ -409,10 +409,10 @@ public class NormalChunk extends Chunk {
 					byte oldData = ch.getBlockData(nx & chunkMask, ny & chunkMask, nz & chunkMask);
 					Byte newData = neighbor.mode.updateData(oldData, i ^ 1, null);
 					if(newData == null) {
-						surface.removeBlock(nx, ny, nz);
+						world.removeBlock(nx, ny, nz);
 						break; // Break here to prevent making a non-existent block visible.
 					} else if(newData.byteValue() != oldData) {
-						surface.updateBlockData(nx, ny, nz, newData);
+						world.updateBlockData(nx, ny, nz, newData);
 						// TODO: Eventual item drops.
 					}
 				}
@@ -500,7 +500,7 @@ public class NormalChunk extends Chunk {
 		y >>= chunkShift;
 		z >>= chunkShift;
 		if(cx != x || cy != y || cz != z)
-			return surface.getChunk(x, y, z);
+			return world.getChunk(x, y, z);
 		return this;
 	}
 	
@@ -516,7 +516,7 @@ public class NormalChunk extends Chunk {
 			if(xi == (xi & chunkMask) && yi == (yi & chunkMask) && zi == (zi & chunkMask)) { // Simple double-bound test for coordinates.
 				neighbors[i] = getBlock(xi, yi, zi);
 			} else {
-				NormalChunk ch = surface.getChunk((xi >> chunkShift) + cx, (yi >> chunkShift) + cy, (zi >> chunkShift) +cz);
+				NormalChunk ch = world.getChunk((xi >> chunkShift) + cx, (yi >> chunkShift) + cy, (zi >> chunkShift) +cz);
 				if(ch != null)
 					neighbors[i] = ch.getBlock(xi & chunkMask, yi & chunkMask, zi & chunkMask);
 			}
@@ -539,7 +539,7 @@ public class NormalChunk extends Chunk {
 				data[i] = blockData[index];
 				indices[i] = index;
 			} else {
-				NormalChunk ch = surface.getChunk((xi >> chunkShift) + cx, (yi >> chunkShift) + cy, (zi >> chunkShift) + cz);
+				NormalChunk ch = world.getChunk((xi >> chunkShift) + cx, (yi >> chunkShift) + cy, (zi >> chunkShift) + cz);
 				if(ch != null) {
 					int index = getIndex(xi & chunkMask, yi & chunkMask, zi & chunkMask);
 					neighbors[i] = ch.getBlock(xi & chunkMask, yi & chunkMask, zi & chunkMask);
@@ -566,7 +566,7 @@ public class NormalChunk extends Chunk {
 			int yi = y+Neighbors.REL_Y[i];
 			int zi = z+Neighbors.REL_Z[i];
 			if(xi != (xi & chunkMask) || yi != (yi & chunkMask) || zi != (zi & chunkMask)) { // Simple double-bound test for coordinates.
-				NormalChunk ch = surface.getChunk((xi >> chunkShift) + cx, (yi >> chunkShift) + cy, (zi >> chunkShift) + cz);
+				NormalChunk ch = world.getChunk((xi >> chunkShift) + cx, (yi >> chunkShift) + cy, (zi >> chunkShift) + cz);
 				if(ch != null)
 					ch.setUpdated();
 			}
@@ -596,7 +596,7 @@ public class NormalChunk extends Chunk {
 		if(xi == (xi & chunkMask) && yi == (yi & chunkMask) && zi == (zi & chunkMask)) { // Simple double-bound test for coordinates.
 			return getBlock(xi, yi, zi);
 		} else {
-			return surface.getBlock(xi + wx, yi + wy, zi + wz);
+			return world.getBlock(xi + wx, yi + wy, zi + wz);
 		}
 	}
 	
@@ -631,7 +631,7 @@ public class NormalChunk extends Chunk {
 	public Block getBlockUnbound(int x, int y, int z) {
 		if(!generated) return null;
 		if(x < 0 || x >= chunkSize || y < 0 || y >= chunkSize || z < 0 || z >= chunkSize) {
-			NormalChunk chunk = surface.getChunk(cx + (x >> chunkShift), cy + (y >> chunkShift), cz + (z >> chunkShift));
+			NormalChunk chunk = world.getChunk(cx + (x >> chunkShift), cy + (y >> chunkShift), cz + (z >> chunkShift));
 			if(chunk != null && chunk.isGenerated()) return chunk.getBlockUnbound(x & chunkMask, y & chunkMask, z & chunkMask);
 			return null;
 		}
@@ -650,7 +650,7 @@ public class NormalChunk extends Chunk {
 	public byte getDataUnbound(int x, int y, int z) {
 		if(!generated) return 0;
 		if(x < 0 || x >= chunkSize || y < 0 || y >= chunkSize || z < 0 || z >= chunkSize) {
-			NormalChunk chunk = surface.getChunk(cx + (x >> chunkShift), cy + (y >> chunkShift), cz + (z >> chunkShift));
+			NormalChunk chunk = world.getChunk(cx + (x >> chunkShift), cy + (y >> chunkShift), cz + (z >> chunkShift));
 			if(chunk != null && chunk.isGenerated()) return chunk.getDataUnbound(x & chunkMask, y & chunkMask, z & chunkMask);
 			return 0; // Let the lighting engine think this region is blocked.
 		}
@@ -667,7 +667,7 @@ public class NormalChunk extends Chunk {
 	private BlockInstance getVisibleUnbound(int x, int y, int z) {
 		if(!generated) return null;
 		if(x < 0 || x >= chunkSize || y < 0 || y >= chunkSize || z < 0 || z >= chunkSize) {
-			NormalChunk chunk = surface.getChunk(cx + (x >> chunkShift), cy + (y >> chunkShift), cz + (z >> chunkShift));
+			NormalChunk chunk = world.getChunk(cx + (x >> chunkShift), cy + (y >> chunkShift), cz + (z >> chunkShift));
 			if(chunk != null) return chunk.getVisibleUnbound(x & chunkMask, y & chunkMask, z & chunkMask);
 			return null;
 		}

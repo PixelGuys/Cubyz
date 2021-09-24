@@ -1,6 +1,6 @@
 package cubyz.world.items.tools;
 
-import cubyz.api.CurrentSurfaceRegistries;
+import cubyz.api.CurrentWorldRegistries;
 import cubyz.utils.translate.ContextualTextKey;
 import cubyz.world.blocks.Block;
 import cubyz.world.items.Item;
@@ -31,7 +31,7 @@ public class Sword extends Tool {
 		return head.damage + baseDamage;
 	}
 	
-	public static Item canCraft(ItemStack head, ItemStack binding, ItemStack handle, CurrentSurfaceRegistries registries) {
+	public static Item canCraft(ItemStack head, ItemStack binding, ItemStack handle, CurrentWorldRegistries registries) {
 		Material he = null, bi = null, ha = null;
 		for(Material mat : registries.materialRegistry.registered(new Material[0])) {
 			if(mat.getItems().containsKey(head.getItem()) && head.getAmount()*mat.getItems().get(head.getItem()) >= HEAD) {
@@ -50,7 +50,7 @@ public class Sword extends Tool {
 			
 	}
 	
-	public static int[] craftingAmount(ItemStack head, ItemStack binding, ItemStack handle, CurrentSurfaceRegistries registries) {
+	public static int[] craftingAmount(ItemStack head, ItemStack binding, ItemStack handle, CurrentWorldRegistries registries) {
 		int[] amount = new int[3];
 		for(Material mat : registries.materialRegistry.registered(new Material[0])) {
 			if(mat.getItems().containsKey(head.getItem()) && head.getAmount()*mat.getItems().get(head.getItem()) >= HEAD) {

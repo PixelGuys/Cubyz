@@ -9,8 +9,7 @@ import cubyz.api.CubyzRegistries;
 import cubyz.api.RegistryElement;
 import cubyz.api.Resource;
 import cubyz.client.ClientOnly;
-import cubyz.world.Surface;
-import cubyz.world.World;
+import cubyz.world.ServerWorld;
 import cubyz.world.items.BlockDrop;
 import cubyz.world.items.Inventory;
 import cubyz.world.items.ItemBlock;
@@ -193,10 +192,10 @@ public class Block implements RegistryElement {
 		this.light = light;
 	}
 	
-	public BlockEntity createBlockEntity(Surface surface, Vector3i pos) {
+	public BlockEntity createBlockEntity(ServerWorld world, Vector3i pos) {
 		if (blockEntity != null) {
 			try {
-				return blockEntity.getConstructor(Surface.class, Vector3i.class).newInstance(surface, pos);
+				return blockEntity.getConstructor(ServerWorld.class, Vector3i.class).newInstance(world, pos);
 			} catch (Exception e) {
 				Logger.error(e);
 			}
@@ -222,7 +221,7 @@ public class Block implements RegistryElement {
 	 * @param pos
 	 * @return if the block did something on click.
 	 */
-	public boolean onClick(World world, Vector3i pos) {
+	public boolean onClick(ServerWorld world, Vector3i pos) {
 		if(gui != null) {
 			ClientOnly.client.openGUI("cubyz:workbench", new Inventory(10)); // TODO: Care about the inventory.
 			return true;

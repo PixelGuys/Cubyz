@@ -80,9 +80,9 @@ public class Input {
 				Vector3f pos = new Vector3f(Cubyz.player.getPosition());
 				EntityType pigType = CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:pig");
 				if (pigType == null) return;
-				Entity pig = pigType.newEntity(Cubyz.surface);
+				Entity pig = pigType.newEntity(Cubyz.world);
 				pig.setPosition(pos);
-				Cubyz.surface.addEntity(pig);
+				Cubyz.world.addEntity(pig);
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_P, false);
 			}
 			if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_T)) {
@@ -143,7 +143,7 @@ public class Input {
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_EQUAL, false);
 				System.gc();
 			}
-			Cubyz.msd.selectSpatial(Cubyz.surface.getChunks(), Cubyz.player.getPosition(), Camera.getViewMatrix().positiveZ(Cubyz.dir).negate(), Cubyz.player, Cubyz.surface);
+			Cubyz.msd.selectSpatial(Cubyz.world.getChunks(), Cubyz.player.getPosition(), Camera.getViewMatrix().positiveZ(Cubyz.dir).negate(), Cubyz.player, Cubyz.world);
 		}
 		if(Cubyz.world != null) {
 			if(Keybindings.isPressed("menu")) {

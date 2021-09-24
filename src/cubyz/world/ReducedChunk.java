@@ -85,7 +85,7 @@ public class ReducedChunk extends Chunk {
 	}
 	
 	public void generateFrom(SurfaceGenerator gen) {
-		gen.generate(this, Cubyz.surface);
+		gen.generate(this, Cubyz.world);
 		applyBlockChanges();
 		generated = true;
 		if(meshListener != null) meshListener.run();

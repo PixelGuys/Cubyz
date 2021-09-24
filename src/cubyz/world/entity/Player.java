@@ -4,7 +4,7 @@ import org.joml.Vector3f;
 
 import cubyz.api.CubyzRegistries;
 import cubyz.command.CommandSource;
-import cubyz.world.Surface;
+import cubyz.world.ServerWorld;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.items.Inventory;
 
@@ -15,14 +15,14 @@ import cubyz.world.items.Inventory;
 
 public abstract class Player extends Entity implements CommandSource {
 	public static final float cameraHeight = 1.7f;
-	public Player(Surface surface) {
-		super(CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player"), null, surface, 16, 16, 0.5f);
+	public Player(ServerWorld world) {
+		super(CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player"), null, world, 16, 16, 0.5f);
 		// TODO: Take care of data files.
 	}
 	
 	@Override
 	public abstract Inventory getInventory();
-	public abstract void breaking(BlockInstance bi, int slot, Surface w);
+	public abstract void breaking(BlockInstance bi, int slot, ServerWorld world);
 	public abstract void resetBlockBreaking();
 	public abstract boolean isFlying();
 	public abstract void setFlying(boolean fly);

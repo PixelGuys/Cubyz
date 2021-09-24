@@ -8,9 +8,6 @@ import cubyz.client.GameLogic;
 import cubyz.rendering.Graphics;
 import cubyz.rendering.Window;
 import cubyz.rendering.text.Fonts;
-import cubyz.world.LocalSurface;
-import cubyz.world.LocalWorld;
-import cubyz.world.World;
 import cubyz.world.entity.Player;
 import cubyz.world.entity.PlayerEntity.PlayerImpl;
 
@@ -40,20 +37,17 @@ public class DebugOverlay extends MenuGUI {
 					+ "/" + (Runtime.getRuntime().totalMemory()/1024/1024) + "MiB (max " + (Runtime.getRuntime().maxMemory()/1024/1024) + "MiB)");
 			
 			if(Cubyz.world != null) {
-				World world = Cubyz.world;
 				Player p = Cubyz.player;
 				float x = p.getPosition().x;
 				float y = p.getPosition().y;
 				float z = p.getPosition().z;
 				
 				Graphics.drawText(0, 80, "XYZ: " + x + ", " + y + ", " + z);
-				Graphics.drawText(0, 100, "Loaded Chunks: " + Cubyz.surface.getChunks().length);
+				Graphics.drawText(0, 100, "Loaded Chunks: " + Cubyz.world.getChunks().length);
 				Graphics.drawText(0, 120, "Render Distance: " + ClientSettings.RENDER_DISTANCE);
-				Graphics.drawText(0, 140, "Game Time: " + world.getGameTime());
-				if(world instanceof LocalWorld) {
-					Graphics.drawText(0, 160, "Chunk Queue Size: " + ((LocalSurface) Cubyz.surface).getChunkQueueSize());
-					Graphics.drawText(0, 180, "Biome: " + Cubyz.surface.getBiome((int)p.getPosition().x, (int)p.getPosition().z).getRegistryID());
-				}
+				Graphics.drawText(0, 140, "Game Time: " + Cubyz.world.getGameTime());
+				Graphics.drawText(0, 160, "Chunk Queue Size: " + Cubyz.world.getChunkQueueSize());
+				Graphics.drawText(0, 180, "Biome: " + Cubyz.world.getBiome((int)p.getPosition().x, (int)p.getPosition().z).getRegistryID());
 				
 				if(p instanceof PlayerImpl) { // player on local world
 					PlayerImpl pi = (PlayerImpl) p;

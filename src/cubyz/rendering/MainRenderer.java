@@ -25,6 +25,7 @@ import cubyz.client.entity.ClientEntityManager;
 import cubyz.gui.input.Keyboard;
 import cubyz.utils.Utils;
 import cubyz.utils.datastructures.FastList;
+import cubyz.world.ServerWorld;
 import cubyz.world.Neighbors;
 import cubyz.world.NormalChunk;
 import cubyz.world.blocks.Block;
@@ -220,12 +221,12 @@ public class MainRenderer {
 			Cubyz.renderDeque.pop().run();
 		}
 		if(Cubyz.world != null) {
-			// TODO: Handle colors and sun position in the surface.
-			ambient.x = ambient.y = ambient.z = Cubyz.surface.getGlobalLighting();
+			// TODO: Handle colors and sun position in the world.
+			ambient.x = ambient.y = ambient.z = Cubyz.world.getGlobalLighting();
 			if(ambient.x < 0.1f) ambient.x = 0.1f;
 			if(ambient.y < 0.1f) ambient.y = 0.1f;
 			if(ambient.z < 0.1f) ambient.z = 0.1f;
-			clearColor = Cubyz.surface.getClearColor();
+			clearColor = Cubyz.world.getClearColor();
 			Cubyz.fog.setColor(clearColor);
 			if(ClientSettings.FOG_COEFFICIENT == 0) {
 				Cubyz.fog.setActive(false);
@@ -234,7 +235,7 @@ public class MainRenderer {
 			}
 			Cubyz.fog.setDensity(1 / (ClientSettings.EFFECTIVE_RENDER_DISTANCE*ClientSettings.FOG_COEFFICIENT));
 			Player player = Cubyz.player;
-			Block bi = Cubyz.surface.getBlock(Math.round(player.getPosition().x), (int)(player.getPosition().y)+3, Math.round(player.getPosition().z));
+			Block bi = Cubyz.world.getBlock(Math.round(player.getPosition().x), (int)(player.getPosition().y)+3, Math.round(player.getPosition().z));
 			if(bi != null && !bi.isSolid()) {
 				int absorption = bi.getAbsorption();
 				ambient.x *= 1.0f - Math.pow(((absorption >>> 16) & 255)/255.0f, 0.25);
@@ -242,12 +243,12 @@ public class MainRenderer {
 				ambient.z *= 1.0f - Math.pow(((absorption >>> 0) & 255)/255.0f, 0.25);
 			}
 			light.setColor(clearColor);
-			 // TODO: Make light direction and sun position depend on relative position on the torus, to get realistic day-night patterns at the poles.
-			float lightY = (((float)Cubyz.world.getGameTime() % Cubyz.surface.getStellarTorus().getDayCycle()) / (float) (Cubyz.surface.getStellarTorus().getDayCycle()/2)) - 1f;
-			float lightX = (((float)Cubyz.world.getGameTime() % Cubyz.surface.getStellarTorus().getDayCycle()) / (float) (Cubyz.surface.getStellarTorus().getDayCycle()/2)) - 1f;
+			
+			float lightY = (((float)Cubyz.world.getGameTime() % ServerWorld.DAY_CYCLE) / (float) (ServerWorld.DAY_CYCLE/2)) - 1f;
+			float lightX = (((float)Cubyz.world.getGameTime() % ServerWorld.DAY_CYCLE) / (float) (ServerWorld.DAY_CYCLE/2)) - 1f;
 			light.getDirection().set(lightY, 0, lightX);
 			// Set intensity:
-			light.setDirection(light.getDirection().mul(0.1f*Cubyz.surface.getGlobalLighting()/light.getDirection().length()));
+			light.setDirection(light.getDirection().mul(0.1f*Cubyz.world.getGlobalLighting()/light.getDirection().length()));
 			Window.setClearColor(clearColor);
 			render(ambient, light, Cubyz.world.getBlocks(), ClientEntityManager.getEntities(), worldSpatialList, Cubyz.player);
 		} else {
@@ -373,7 +374,7 @@ public class MainRenderer {
 					Mesh mesh = null;
 					if(ent.type.model != null) {
 						entityShader.setUniform(EntityUniforms.loc_materialHasTexture, true);
-						entityShader.setUniform(EntityUniforms.loc_light, Cubyz.surface.getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
+						entityShader.setUniform(EntityUniforms.loc_light, Cubyz.world.getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
 						ent.type.model.render(Camera.getViewMatrix(), entityShader, ent);
 						continue;
 					}
@@ -390,7 +391,7 @@ public class MainRenderer {
 					
 					if (mesh != null) {
 						entityShader.setUniform(EntityUniforms.loc_materialHasTexture, mesh.getMaterial().isTextured());
-						entityShader.setUniform(EntityUniforms.loc_light, Cubyz.surface.getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
+						entityShader.setUniform(EntityUniforms.loc_light, Cubyz.world.getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
 						
 						mesh.renderOne(() -> {
 							Vector3f position = ent.getRenderPosition();
@@ -409,7 +410,7 @@ public class MainRenderer {
 			blockDropShader.setUniform(BlockDropUniforms.loc_fog_density, Cubyz.fog.getDensity());
 			blockDropShader.setUniform(BlockDropUniforms.loc_projectionMatrix, Window.getProjectionMatrix());
 			blockDropShader.setUniform(BlockDropUniforms.loc_texture_sampler, 0);
-			for(ChunkEntityManager chManager : localPlayer.getSurface().getEntityManagers()) {
+			for(ChunkEntityManager chManager : localPlayer.getWorld().getEntityManagers()) {
 				NormalChunk chunk = chManager.chunk;
 				if (!chunk.isLoaded() || !frustumInt.testAab(chunk.getMin(), chunk.getMax()))
 					continue;
@@ -438,7 +439,7 @@ public class MainRenderer {
 					blockDropShader.setUniform(BlockDropUniforms.loc_texNegZ, block.textureIndices[Neighbors.DIR_NEG_Z]);
 					blockDropShader.setUniform(BlockDropUniforms.loc_texPosZ, block.textureIndices[Neighbors.DIR_POS_Z]);
 					if(mesh != null) {
-						blockDropShader.setUniform(BlockDropUniforms.loc_light, localPlayer.getSurface().getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
+						blockDropShader.setUniform(BlockDropUniforms.loc_light, localPlayer.getWorld().getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
 						
 						mesh.renderOne(() -> {
 							Vector3f position = manager.getPosition(index);

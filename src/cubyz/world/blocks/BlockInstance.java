@@ -3,7 +3,7 @@ package cubyz.world.blocks;
 import org.joml.Vector3i;
 
 import cubyz.world.NormalChunk;
-import cubyz.world.Surface;
+import cubyz.world.ServerWorld;
 
 /**
  * A block that will be used for rendering.
@@ -13,7 +13,7 @@ public class BlockInstance {
 
 	private Block block;
 	public final int x, y, z;
-	private Surface surface;
+	private ServerWorld world;
 	private boolean[] neighbors;
 	private byte blockData;
 	public final int[] light;
@@ -42,12 +42,12 @@ public class BlockInstance {
 		source.setUpdated();
 	}
 	
-	public Surface getStellarTorus() {
-		return surface;
+	public ServerWorld getWorld() {
+		return world;
 	}
 	
-	public void setStellarTorus(Surface world) {
-		this.surface = world;
+	public void setWorld(ServerWorld world) {
+		this.world = world;
 	}
 	
 	public int getID() {
@@ -88,7 +88,7 @@ public class BlockInstance {
 	
 	public int[] updateLighting(int worldSizeX, int worldSizeZ, NormalChunk chunk) {
 		if(chunk != null) {
-			surface.getLight(x, y, z, light);
+			world.getLight(x, y, z, light);
 		}
 		return light;
 	}

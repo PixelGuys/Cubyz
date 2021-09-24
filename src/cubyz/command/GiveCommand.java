@@ -24,7 +24,7 @@ public class GiveCommand extends CommandBase {
 	@Override
 	public void commandExecute(CommandSource source, String[] args) {
 		
-		Registry<Item> items = source.getSurface().getCurrentRegistries().itemRegistry;
+		Registry<Item> items = source.getWorld().getCurrentRegistries().itemRegistry;
 		if (args.length < 2) {
 			source.feedback("Usage: give <item id> [amount]");
 			return;

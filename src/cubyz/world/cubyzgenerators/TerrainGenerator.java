@@ -5,7 +5,7 @@ import java.util.Random;
 import cubyz.api.CubyzRegistries;
 import cubyz.api.Resource;
 import cubyz.world.Chunk;
-import cubyz.world.Surface;
+import cubyz.world.ServerWorld;
 import cubyz.world.blocks.Block;
 import cubyz.world.cubyzgenerators.biomes.Biome;
 import cubyz.world.terrain.MapFragment;
@@ -33,7 +33,7 @@ public class TerrainGenerator implements Generator {
 	private static Block water = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:water");
 
 	@Override
-	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, MapFragment map, Surface surface) {
+	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, MapFragment map, ServerWorld world) {
 		Random rand = new Random(seed);
 		int seedX = rand.nextInt() | 1;
 		int seedZ = rand.nextInt() | 1;

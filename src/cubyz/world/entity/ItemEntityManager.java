@@ -7,7 +7,7 @@ import org.joml.Vector3f;
 import cubyz.Logger;
 import cubyz.utils.math.Bits;
 import cubyz.world.NormalChunk;
-import cubyz.world.Surface;
+import cubyz.world.ServerWorld;
 import cubyz.world.blocks.Block;
 import cubyz.world.items.Item;
 import cubyz.world.items.ItemStack;
@@ -35,12 +35,12 @@ public class ItemEntityManager {
 	public int[] despawnTime;
 
 	public final NormalChunk chunk;
-	private final Surface surface;
+	private final ServerWorld world;
 	private float gravity;
 	public int size;
 	private int capacity;
 	
-	public ItemEntityManager(Surface surface, NormalChunk chunk, int minCapacity) {
+	public ItemEntityManager(ServerWorld world, NormalChunk chunk, int minCapacity) {
 		// Always use a multiple of 64 as the capacity.
 		capacity = (minCapacity+63) & ~63;
 		posxyz = new float[3 * capacity];
@@ -49,12 +49,12 @@ public class ItemEntityManager {
 		itemStacks = new ItemStack[capacity];
 		despawnTime = new int[capacity];
 		
-		this.surface = surface;
+		this.world = world;
 		this.chunk = chunk;
-		gravity = surface.getStellarTorus().getGravity();
+		gravity = ServerWorld.GRAVITY;
 	}
 	
-	public ItemEntityManager(Surface surface, NormalChunk chunk, byte[] data, Palette<Item> itemPalette) {
+	public ItemEntityManager(ServerWorld world, NormalChunk chunk, byte[] data, Palette<Item> itemPalette) {
 		// Read the length:
 		int index = 0;
 		int length = Bits.getInt(data, index);
@@ -72,9 +72,9 @@ public class ItemEntityManager {
 		itemStacks = new ItemStack[capacity];
 		despawnTime = new int[capacity];
 		
-		this.surface = surface;
+		this.world = world;
 		this.chunk = chunk;
-		gravity = surface.getStellarTorus().getGravity();
+		gravity = ServerWorld.GRAVITY;
 		// Read the data:
 		for(int i = 0; i < length; i++) {
 			float x = Bits.getFloat(data, index);
@@ -142,7 +142,7 @@ public class ItemEntityManager {
 			// Check if it's still inside this chunk:
 			if(!chunk.isInside(posxyz[index3], posxyz[index3 + 1], posxyz[index3 + 2])) {
 				// Move it to another manager:
-				ChunkEntityManager other = surface.getEntityManagerAt(((int)posxyz[index3]) & ~NormalChunk.chunkMask, ((int)posxyz[index3+1]) & ~NormalChunk.chunkMask, ((int)posxyz[index3+2]) & ~NormalChunk.chunkMask);
+				ChunkEntityManager other = world.getEntityManagerAt(((int)posxyz[index3]) & ~NormalChunk.chunkMask, ((int)posxyz[index3+1]) & ~NormalChunk.chunkMask, ((int)posxyz[index3+2]) & ~NormalChunk.chunkMask);
 				if(other == null) {
 					// TODO: Append it to the right file.
 					posxyz[index3] -= velxyz[index3];

@@ -25,7 +25,7 @@ public class BlockChange {
 		index = Bits.getInt(data, off + 0);
 		newData = data[off + 4];
 		
-		// Convert the palette (torus-specific) ID to the runtime ID
+		// Convert the palette (world-specific) ID to the runtime ID
 		int palId = Bits.getInt(data, off + 5);
 		int runtimeId = -1;
 		if (palId != -1) {

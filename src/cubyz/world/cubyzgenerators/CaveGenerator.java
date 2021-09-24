@@ -6,7 +6,7 @@ import cubyz.api.CubyzRegistries;
 import cubyz.api.Resource;
 import cubyz.world.Chunk;
 import cubyz.world.NormalChunk;
-import cubyz.world.Surface;
+import cubyz.world.ServerWorld;
 import cubyz.world.blocks.Block;
 import cubyz.world.terrain.MapFragment;
 
@@ -31,7 +31,7 @@ public class CaveGenerator implements Generator {
 	private static Block ice = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:ice");
 	
 	@Override
-	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, MapFragment map, Surface surface) {
+	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, MapFragment map, ServerWorld world) {
 		Random rand = new Random(seed);
 		int rand1 = rand.nextInt() | 1;
 		int rand2 = rand.nextInt() | 1;

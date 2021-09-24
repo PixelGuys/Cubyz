@@ -5,7 +5,7 @@ import org.joml.Vector3i;
 import org.joml.Vector4f;
 
 import cubyz.utils.ndt.NDTContainer;
-import cubyz.world.Surface;
+import cubyz.world.ServerWorld;
 import cubyz.world.blocks.Block;
 import cubyz.world.items.Inventory;
 import cubyz.world.items.tools.Tool;
@@ -16,7 +16,7 @@ import cubyz.world.items.tools.Tool;
 
 public class Entity {
 
-	protected Surface surface;
+	protected ServerWorld world;
 
 	protected Vector3f position = new Vector3f();
 	protected Vector3f rotation = new Vector3f();
@@ -45,14 +45,14 @@ public class Entity {
 	/**
 	 * @param type
 	 * @param ai
-	 * @param surface
+	 * @param world
 	 * @param maxHealth
 	 * @param maxHunger
 	 * @param stepHeight height the entity can move upwards without jumping.
 	 */
-	public Entity(EntityType type, EntityAI ai, Surface surface, float maxHealth, float maxHunger, float stepHeight) {
+	public Entity(EntityType type, EntityAI ai, ServerWorld world, float maxHealth, float maxHunger, float stepHeight) {
 		this.type = type;
-		this.surface = surface;
+		this.world = world;
 		this.maxHealth = health = maxHealth;
 		this.maxHunger = hunger = maxHunger;
 		this.stepHeight = stepHeight;
@@ -257,10 +257,10 @@ public class Entity {
 	}
 	
 	public boolean checkBlock(int x, int y, int z, Vector4f displacement) {
-		Block b = surface.getBlock(x, y, z);
+		Block b = world.getBlock(x, y, z);
 		if(b != null && b.isSolid()) {
 			if(b.mode.changesHitbox()) {
-				return b.mode.checkEntityAndDoCollision(this, displacement, x, y, z, surface.getBlockData(x, y, z));
+				return b.mode.checkEntityAndDoCollision(this, displacement, x, y, z, world.getBlockData(x, y, z));
 			}
 			// Check for stepping:
 			if(y + 1 - position.y > 0 && y + 1 - position.y <= stepHeight) {
@@ -273,10 +273,10 @@ public class Entity {
 	}
 	
 	public boolean checkBlock(int x, int y, int z) {
-		Block b = surface.getBlock(x, y, z);
+		Block b = world.getBlock(x, y, z);
 		if(b != null && b.isSolid()) {
 			if(b.mode.changesHitbox()) {
-				return b.mode.checkEntity(position, width, height, x, y, z, surface.getBlockData(x, y, z));
+				return b.mode.checkEntity(position, width, height, x, y, z, world.getBlockData(x, y, z));
 			}
 			return true;
 		}
@@ -345,7 +345,7 @@ public class Entity {
 		oldVY = vy;
 		
 		// Stepping: Consider potential energy of the step taken V = m·g·h
-		hunger -= surface.getStellarTorus().getGravity()*step;
+		hunger -= ServerWorld.GRAVITY*step;
 		
 		// Examples:
 		// At 3 blocks/second(player base speed) the cost of movement is about twice as high as the passive consumption.
@@ -371,7 +371,7 @@ public class Entity {
 		// TODO: Use the entities mass, force and ground structure to calculate a realistic velocity change.
 		vx += (targetVX-vx)/5;
 		vz += (targetVZ-vz)/5;
-		vy -= surface.getStellarTorus().getGravity();
+		vy -= ServerWorld.GRAVITY;
 	}
 	
 	// NDT related
@@ -413,8 +413,8 @@ public class Entity {
 		return type;
 	}
 	
-	public Surface getSurface() {
-		return surface;
+	public ServerWorld getWorld() {
+		return world;
 	}
 	
 	public Vector3f getPosition() {

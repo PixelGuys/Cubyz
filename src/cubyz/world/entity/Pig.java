@@ -6,7 +6,7 @@ import org.joml.Vector3f;
 
 import cubyz.api.CubyzRegistries;
 import cubyz.api.Resource;
-import cubyz.world.Surface;
+import cubyz.world.ServerWorld;
 import cubyz.world.items.Item;
 import cubyz.world.items.ItemStack;
 
@@ -22,8 +22,8 @@ public class Pig extends EntityType {
 	}
 
 	@Override
-	public Entity newEntity(Surface surface) {
-		Entity ent = new Entity(this, new PigAI(), surface, 6, 10, 1);
+	public Entity newEntity(ServerWorld world) {
+		Entity ent = new Entity(this, new PigAI(), world, 6, 10, 1);
 		ent.height = 1;
 		return ent;
 	}
@@ -32,7 +32,7 @@ public class Pig extends EntityType {
 	@Override
 	public void die(Entity ent) {
 		// Drop 1-4 raw meat:
-		ent.surface.drop(new ItemStack(drop, 1+(int)(Math.random()*4)), ent.position, new Vector3f((float)Math.random(), (float)Math.random(), (float)Math.random()), 0.2f);
+		ent.world.drop(new ItemStack(drop, 1+(int)(Math.random()*4)), ent.position, new Vector3f((float)Math.random(), (float)Math.random(), (float)Math.random()), 0.2f);
 		super.die(ent);
 	}
 	

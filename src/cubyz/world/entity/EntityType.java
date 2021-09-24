@@ -2,7 +2,7 @@ package cubyz.world.entity;
 
 import cubyz.api.RegistryElement;
 import cubyz.api.Resource;
-import cubyz.world.Surface;
+import cubyz.world.ServerWorld;
 
 public abstract class EntityType implements RegistryElement {
 	
@@ -18,7 +18,7 @@ public abstract class EntityType implements RegistryElement {
 		return id;
 	}
 	
-	public abstract Entity newEntity(Surface surface);
+	public abstract Entity newEntity(ServerWorld world);
 	
 	public boolean useDynamicEntityModel() {
 		return false;
@@ -28,7 +28,7 @@ public abstract class EntityType implements RegistryElement {
 	 * TODO: Death animation, particle effects.
 	 */
 	public void die(Entity ent) {
-		ent.surface.removeEntity(ent);
+		ent.world.removeEntity(ent);
 	}
 	
 }

@@ -36,7 +36,7 @@ public abstract class GeneralInventory extends MenuGUI {
 		if(!carried.empty()) {
 			carried.setAmount(Cubyz.player.getInventory().addItem(carried.getItem(), carried.getAmount()));
 			if(!carried.empty()) {
-				Cubyz.surface.drop(carried, Cubyz.player.getPosition(), new Vector3f(), 0);
+				Cubyz.world.drop(carried, Cubyz.player.getPosition(), new Vector3f(), 0);
 			}
 		}
 	}

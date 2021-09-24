@@ -5,7 +5,7 @@ import org.joml.Vector3f;
 
 import cubyz.api.Resource;
 import cubyz.utils.ndt.NDTContainer;
-import cubyz.world.Surface;
+import cubyz.world.ServerWorld;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.Block.BlockClass;
 import cubyz.world.items.Inventory;
@@ -26,8 +26,8 @@ public class PlayerEntity extends EntityType {
 		private int maxTime = -1;
 		private int breakingSlot = -1; // Slot used to break the block. Slot change results in restart of block breaking.
 
-		public PlayerImpl(Surface surface) {
-			super(surface);
+		public PlayerImpl(ServerWorld world) {
+			super(world);
 		}
 		
 		@Override
@@ -76,7 +76,7 @@ public class PlayerEntity extends EntityType {
 		public void loadFrom(NDTContainer ndt) {
 			super.loadFrom(ndt);
 			if (ndt.hasKey("inventory")) {
-				inv.loadFrom(ndt.getContainer("inventory"), surface.getCurrentRegistries());
+				inv.loadFrom(ndt.getContainer("inventory"), world.getCurrentRegistries());
 			}
 		}
 		
@@ -102,7 +102,7 @@ public class PlayerEntity extends EntityType {
 		}
 
 		@Override
-		public void breaking(BlockInstance bi, int slot, Surface w) {
+		public void breaking(BlockInstance bi, int slot, ServerWorld world) {
 			if(bi != toBreak || breakingSlot != slot) {
 				resetBlockBreaking(); // Make sure block breaking animation is reset.
 				toBreak = bi;
@@ -119,7 +119,7 @@ public class PlayerEntity extends EntityType {
 						inv.getStack(slot).clear();
 					}
 				}
-				w.removeBlock(bi.getX(), bi.getY(), bi.getZ());
+				world.removeBlock(bi.getX(), bi.getY(), bi.getZ());
 			}
 		}
 
@@ -132,14 +132,14 @@ public class PlayerEntity extends EntityType {
 		}
 
 		@Override
-		public Surface getSurface() {
-			return surface;
+		public ServerWorld getWorld() {
+			return world;
 		}
 	}
 
 	@Override
-	public Entity newEntity(Surface surface) {
-		return new PlayerImpl(surface);
+	public Entity newEntity(ServerWorld world) {
+		return new PlayerImpl(world);
 	}
 	
 }

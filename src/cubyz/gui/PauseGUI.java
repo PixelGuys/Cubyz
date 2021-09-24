@@ -8,7 +8,6 @@ import cubyz.gui.input.Keybindings;
 import cubyz.gui.input.Keyboard;
 import cubyz.gui.input.Mouse;
 import cubyz.gui.settings.SettingsGUI;
-import cubyz.world.LocalSurface;
 
 /**
  * GUI shown when pressing escape while in a world.
@@ -25,10 +24,7 @@ public class PauseGUI extends MenuGUI {
 	public void init() {
 		Mouse.setGrabbed(false);
 		if (Cubyz.world != null) {
-			if (Cubyz.world.isLocal()) {
-				LocalSurface surface = (LocalSurface) Cubyz.surface;
-				surface.forceSave();
-			}
+			Cubyz.world.forceSave();
 		}
 		exit = new Button("gui.cubyz.pause.exit");
 		resume = new Button("gui.cubyz.pause.resume");

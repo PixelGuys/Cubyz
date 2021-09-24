@@ -4,7 +4,7 @@ import java.io.File;
 import java.util.ArrayList;
 
 import cubyz.api.CubyzRegistries;
-import cubyz.api.CurrentSurfaceRegistries;
+import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.EventHandler;
 import cubyz.api.Mod;
 import cubyz.api.NoIDRegistry;
@@ -84,8 +84,8 @@ public class BaseMod {
 		reg.register(new Regrowth());
 	}
 
-	@EventHandler(type = "postSurfaceGen")
-	public void postSurfaceGen(CurrentSurfaceRegistries registries) {
+	@EventHandler(type = "postWorldGen")
+	public void postWorldGen(CurrentWorldRegistries registries) {
 		// Get a list of replacement biomes for each biome:
 		for(Biome biome : registries.biomeRegistry.registered(new Biome[0])) {
 			ArrayList<Biome> replacements = new ArrayList<Biome>();

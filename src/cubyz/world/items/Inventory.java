@@ -1,6 +1,6 @@
 package cubyz.world.items;
 
-import cubyz.api.CurrentSurfaceRegistries;
+import cubyz.api.CurrentWorldRegistries;
 import cubyz.utils.ndt.NDTContainer;
 import cubyz.world.blocks.Block;
 import cubyz.world.items.tools.Tool;
@@ -81,7 +81,7 @@ public class Inventory {
 		return container;
 	}
 	
-	public void loadFrom(NDTContainer container, CurrentSurfaceRegistries registries) {
+	public void loadFrom(NDTContainer container, CurrentWorldRegistries registries) {
 		items = new ItemStack[container.getInteger("capacity")];
 		for (int i = 0; i < items.length; i++) {
 			if (container.hasKey(String.valueOf(i))) {

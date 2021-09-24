@@ -6,7 +6,7 @@ import cubyz.api.CubyzRegistries;
 import cubyz.api.Resource;
 import cubyz.world.Chunk;
 import cubyz.world.NormalChunk;
-import cubyz.world.Surface;
+import cubyz.world.ServerWorld;
 import cubyz.world.blocks.Block;
 import cubyz.world.blocks.Block.BlockClass;
 import cubyz.world.terrain.MapFragment;
@@ -50,7 +50,7 @@ public class CrystalCavernGenerator implements Generator {
 	private static final int crystalChunkWorldSize = 256;
 
 	@Override
-	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, MapFragment map, Surface surface) {
+	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, MapFragment map, ServerWorld world) {
 		int ccx = wx/crystalChunkWorldSize;
 		int ccy = wy/crystalChunkWorldSize;
 		int ccz = wz/crystalChunkWorldSize;
