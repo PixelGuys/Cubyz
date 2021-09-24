@@ -6,7 +6,7 @@ import java.util.HashMap;
 import cubyz.Logger;
 import cubyz.api.Registry;
 import cubyz.api.RegistryElement;
-import cubyz.utils.ndt.NDTContainer;
+import cubyz.utils.json.JsonObject;
 
 /**
  * Basically a bi-directional map.
@@ -15,12 +15,12 @@ import cubyz.utils.ndt.NDTContainer;
 public class Palette <T extends RegistryElement> {
 	private final HashMap<T, Integer> TToInt = new HashMap<T, Integer>();
 	private Object[] intToT = new Object[0];
-	public Palette(NDTContainer paletteNDT, Registry<T> registry) {
-		if(paletteNDT == null) return;
-		for (String key : paletteNDT.keys()) {
+	public Palette(JsonObject json, Registry<T> registry) {
+		if(json == null) return;
+		for (String key : json.map.keySet()) {
 			T t = registry.getByID(key);
 			if (t != null) {
-				TToInt.put(t, paletteNDT.getInteger(key));
+				TToInt.put(t, json.getInt(key, 0));
 			} else {
 				Logger.warning("A block with ID " + key + " is used in world but isn't available.");
 			}
@@ -30,11 +30,12 @@ public class Palette <T extends RegistryElement> {
 			intToT[TToInt.get(t)] = t;
 		}
 	}
-	public NDTContainer saveTo(NDTContainer container) {
+	public JsonObject save() {
+		JsonObject json = new JsonObject();
 		for (T t : TToInt.keySet()) {
-			container.setInteger(t.getRegistryID().toString(), TToInt.get(t));
+			json.put(t.getRegistryID().toString(), (int)TToInt.get(t));
 		}
-		return container;
+		return json;
 	}
 	@SuppressWarnings("unchecked")
 	public T getElement(int index) {

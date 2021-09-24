@@ -44,7 +44,6 @@ import cubyz.world.*;
 import cubyz.world.blocks.Block;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.CustomBlock;
-import cubyz.world.blocks.Ore;
 import cubyz.world.blocks.Block.BlockClass;
 import cubyz.world.entity.Entity;
 import cubyz.world.entity.PlayerEntity.PlayerImpl;

@@ -4,7 +4,7 @@ import org.joml.Vector3f;
 import org.joml.Vector3i;
 import org.joml.Vector4f;
 
-import cubyz.utils.ndt.NDTContainer;
+import cubyz.utils.json.JsonObject;
 import cubyz.world.ServerWorld;
 import cubyz.world.blocks.Block;
 import cubyz.world.items.Inventory;
@@ -376,37 +376,39 @@ public class Entity {
 	
 	// NDT related
 	
-	private Vector3f loadVector3f(NDTContainer ndt) {
-		float x = ndt.getFloat("x");
-		float y = ndt.getFloat("y");
-		float z = ndt.getFloat("z");
+	private Vector3f loadVector3f(JsonObject json) {
+		float x = json.getFloat("x", 0);
+		float y = json.getFloat("y", 0);
+		float z = json.getFloat("z", 0);
 		return new Vector3f(x, y, z);
 	}
 	
-	private NDTContainer saveVector(Vector3f vec) {
-		NDTContainer ndt = new NDTContainer();
-		ndt.setFloat("x", vec.x);
-		ndt.setFloat("y", vec.y);
-		ndt.setFloat("z", vec.z);
-		return ndt;
+	private JsonObject saveVector(Vector3f vec) {
+		JsonObject json = new JsonObject();
+		json.put("x", vec.x);
+		json.put("y", vec.y);
+		json.put("z", vec.z);
+		return json;
 	}
 	
-	public NDTContainer saveTo(NDTContainer ndt) {
-		ndt.setContainer("position", saveVector(position));
-		ndt.setContainer("rotation", saveVector(rotation));
-		ndt.setContainer("velocity", saveVector(new Vector3f(vx, vy, vz)));
-		ndt.setFloat("health", health);
-		ndt.setFloat("hunger", hunger);
-		return ndt;
+	public JsonObject save() {
+		JsonObject json = new JsonObject();
+		json.put("id", type.getRegistryID().toString());
+		json.put("position", saveVector(position));
+		json.put("rotation", saveVector(rotation));
+		json.put("velocity", saveVector(new Vector3f(vx, vy, vz)));
+		json.put("health", health);
+		json.put("hunger", hunger);
+		return json;
 	}
 	
-	public void loadFrom(NDTContainer ndt) {
-		position = loadVector3f(ndt.getContainer("position"));
-		rotation = loadVector3f (ndt.getContainer("rotation"));
-		Vector3f velocity = loadVector3f(ndt.getContainer("velocity"));
+	public void loadFrom(JsonObject json) {
+		position = loadVector3f(json.getObjectOrNew("position"));
+		rotation = loadVector3f(json.getObjectOrNew("rotation"));
+		Vector3f velocity = loadVector3f(json.getObjectOrNew("velocity"));
 		vx = velocity.x; vy = velocity.y; vz = velocity.z;
-		health = ndt.getFloat("health");
-		hunger = ndt.getFloat("hunger");
+		health = json.getFloat("health", maxHealth);
+		hunger = json.getFloat("hunger", maxHunger);
 	}
 	
 	public EntityType getType() {

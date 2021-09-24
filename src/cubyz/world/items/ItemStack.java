@@ -1,7 +1,5 @@
 package cubyz.world.items;
 
-import cubyz.api.CurrentWorldRegistries;
-import cubyz.utils.ndt.NDTContainer;
 import cubyz.world.blocks.Block;
 
 /**
@@ -98,25 +96,6 @@ public class ItemStack {
 	 */
 	public void setAmount(int a) {
 		amount = a;
-	}
-	
-	public void loadFrom(NDTContainer container, CurrentWorldRegistries registries) {
-		item = registries.itemRegistry.getByID(container.getString("id"));
-		if (item == null) {
-			throw new IllegalStateException("item " + container.getString("id") + " is not in registry.");
-		}
-		if (container.hasKey("size"))
-			amount = container.getInteger("size");
-		else
-			amount = 1;
-	}
-	
-	public void saveTo(NDTContainer container) {
-		if (item == null) {
-			throw new IllegalStateException("item is null");
-		}
-		container.setString("id", item.getRegistryID().toString());
-		container.setInteger("size", amount);
 	}
 	
 	public void clear() {

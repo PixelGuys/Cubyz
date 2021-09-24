@@ -18,10 +18,26 @@ public class JsonObject implements JsonElement {
 	}
 
 	@Override
+	public long getLong(String key, long defaultValue) {
+		JsonElement object = map.get(key);
+		if(object != null)
+			return object.getLong(defaultValue);
+		return defaultValue;
+	}
+
+	@Override
 	public float getFloat(String key, float defaultValue) {
 		JsonElement object = map.get(key);
 		if(object != null)
 			return object.getFloat(defaultValue);
+		return defaultValue;
+	}
+
+	@Override
+	public double getDouble(String key, double defaultValue) {
+		JsonElement object = map.get(key);
+		if(object != null)
+			return object.getDouble(defaultValue);
 		return defaultValue;
 	}
 
@@ -37,7 +53,7 @@ public class JsonObject implements JsonElement {
 	public String getString(String key, String defaultValue) {
 		JsonElement object = map.get(key);
 		if(object != null)
-			return object.getString(defaultValue);
+			return object.getStringValue(defaultValue);
 		return defaultValue;
 	}
 
@@ -69,17 +85,24 @@ public class JsonObject implements JsonElement {
 		return null;
 	}
 
+	public JsonObject getObjectOrNew(String key) {
+		JsonElement object = map.get(key);
+		if(object instanceof JsonObject)
+			return (JsonObject)object;
+		return null;
+	}
+
 	/**
 	 * Adds a new property to this JsonObject.
 	 */
-	public void put(String key, int value) {
+	public void put(String key, long value) {
 		map.put(key, new JsonInt(value));
 	}
 
 	/**
 	 * Adds a new property to this JsonObject.
 	 */
-	public void put(String key, float value) {
+	public void put(String key, double value) {
 		map.put(key, new JsonFloat(value));
 	}
 

@@ -4,7 +4,7 @@ package cubyz.world.entity;
 import org.joml.Vector3f;
 
 import cubyz.api.Resource;
-import cubyz.utils.ndt.NDTContainer;
+import cubyz.utils.json.JsonObject;
 import cubyz.world.ServerWorld;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.Block.BlockClass;
@@ -73,18 +73,16 @@ public class PlayerEntity extends EntityType {
 		public void feedback(String feedback) {}
 		
 		@Override
-		public void loadFrom(NDTContainer ndt) {
-			super.loadFrom(ndt);
-			if (ndt.hasKey("inventory")) {
-				inv.loadFrom(ndt.getContainer("inventory"), world.getCurrentRegistries());
-			}
+		public void loadFrom(JsonObject json) {
+			super.loadFrom(json);
+			inv.loadFrom(json.getObjectOrNew("inventory"), world.getCurrentRegistries());
 		}
 		
 		@Override
-		public NDTContainer saveTo(NDTContainer ndt) {
-			ndt = super.saveTo(ndt);
-			ndt.setContainer("inventory", inv.saveTo(new NDTContainer()));
-			return ndt;
+		public JsonObject save() {
+			JsonObject json = super.save();
+			json.put("inventory", inv.save());
+			return json;
 		}
 		
 		private void calculateBreakTime(BlockInstance bi, int slot) {

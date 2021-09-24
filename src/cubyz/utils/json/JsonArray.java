@@ -18,9 +18,27 @@ public class JsonArray implements JsonElement {
 	 * Fills the given array with values. Only works if the type of `this` is JSON_ARRAY.
 	 * @param defaultValues Replacement if the requested types don't exist.
 	 */
+	public void getInts(long[] defaultValues) {
+		for(int i = 0; i < Math.min(defaultValues.length, array.size()); i++) {
+			defaultValues[i] = array.get(i).getLong(defaultValues[i]);
+		}
+	}
+	/**
+	 * Fills the given array with values. Only works if the type of `this` is JSON_ARRAY.
+	 * @param defaultValues Replacement if the requested types don't exist.
+	 */
 	public void getFloats(float[] defaultValues) {
 		for(int i = 0; i < Math.min(defaultValues.length, array.size()); i++) {
 			defaultValues[i] = array.get(i).getFloat(defaultValues[i]);
+		}
+	}
+	/**
+	 * Fills the given array with values. Only works if the type of `this` is JSON_ARRAY.
+	 * @param defaultValues Replacement if the requested types don't exist.
+	 */
+	public void getDoubles(double[] defaultValues) {
+		for(int i = 0; i < Math.min(defaultValues.length, array.size()); i++) {
+			defaultValues[i] = array.get(i).getDouble(defaultValues[i]);
 		}
 	}
 	/**
@@ -38,7 +56,7 @@ public class JsonArray implements JsonElement {
 	 */
 	public void getStrings(String[] defaultValues) {
 		for(int i = 0; i < Math.min(defaultValues.length, array.size()); i++) {
-			defaultValues[i] = array.get(i).getString(defaultValues[i]);
+			defaultValues[i] = array.get(i).getStringValue(defaultValues[i]);
 		}
 	}
 

@@ -1,21 +1,21 @@
 package cubyz.world.save;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 
 import cubyz.Logger;
-import cubyz.utils.math.Bits;
-import cubyz.utils.ndt.NDTContainer;
+import cubyz.utils.json.JsonArray;
+import cubyz.utils.json.JsonObject;
+import cubyz.utils.json.JsonParser;
 import cubyz.world.ServerWorld;
 import cubyz.world.blocks.Block;
 import cubyz.world.entity.Entity;
 import cubyz.world.items.Item;
 
 public class WorldIO {
+	public static final int WORLD_DATA_VERSION = 1;
 
 	final File dir;
 	private ServerWorld world;
@@ -37,19 +37,11 @@ public class WorldIO {
 	// Load the seed, which is needed before custom item and ore generation.
 	public long loadWorldSeed() {
 		try {
-			InputStream in = new FileInputStream(new File(dir, "world.dat"));
-			byte[] len = new byte[4];
-			in.read(len);
-			int l = Bits.getInt(len, 0);
-			byte[] src = new byte[l];
-			in.read(src);
-			NDTContainer ndt = new NDTContainer(src);
-			if (ndt.getInteger("version") != 3) {
-				in.close();
-				throw new IOException("Cannot read version " + ndt.getInteger("version"));
+			JsonObject worldData = JsonParser.parseObjectFromFile(dir+"/world.dat");
+			if(worldData.getInt("version", -1) != WORLD_DATA_VERSION) {
+				throw new IOException("Cannot read version " + worldData.getInt("version", -1));
 			}
-			in.close();
-			return ndt.getLong("seed");
+			return worldData.getLong("seed", -1);
 		} catch (IOException e) {
 			Logger.error(e);
 			return -1;
@@ -58,30 +50,24 @@ public class WorldIO {
 
 	public void loadWorldData() {
 		try {
-			InputStream in = new FileInputStream(new File(dir, "world.dat"));
-			byte[] len = new byte[4];
-			in.read(len);
-			int l = Bits.getInt(len, 0);
-			byte[] dst = new byte[l];
-			in.read(dst);
-			
-			NDTContainer ndt = new NDTContainer(dst);
-			if (ndt.getInteger("version") < 3) {
-				in.close();
-				throw new RuntimeException("World is out-of-date");
+			JsonObject worldData = JsonParser.parseObjectFromFile(dir+"/world.dat");
+			if(worldData.getInt("version", -1) != WORLD_DATA_VERSION) {
+				throw new IOException("Cannot read version " + worldData.getInt("version", -1));
 			}
-			blockPalette = new Palette<Block>(ndt.getContainer("blockPalette"), world.registries.blockRegistry);
-			itemPalette = new Palette<Item>(ndt.getContainer("itemPalette"), world.registries.itemRegistry);
-			Entity[] entities = new Entity[ndt.getInteger("entityCount")];
-			for (int i = 0; i < entities.length; i++) {
+			blockPalette = new Palette<Block>(worldData.getObject("blockPalette"), world.registries.blockRegistry);
+			itemPalette = new Palette<Item>(worldData.getObject("itemPalette"), world.registries.itemRegistry);
+
+			JsonArray entityJson = worldData.getArrayNoNull("entities");
+			
+			Entity[] entities = new Entity[entityJson.array.size()];
+			for(int i = 0; i < entities.length; i++) {
 				// TODO: Only load entities that are in loaded chunks.
-				entities[i] = EntityIO.loadEntity(in, world);
+				entities[i] = EntityIO.loadEntity((JsonObject)entityJson.array.get(i), world);
 			}
 			if (world != null) {
 				world.setEntities(entities);
 			}
-			world.setGameTime(ndt.getLong("gameTime"));
-			in.close();
+			world.setGameTime(worldData.getLong("gameTime", 0));
 		} catch (IOException e) {
 			Logger.error(e);
 		}
@@ -90,24 +76,22 @@ public class WorldIO {
 	public void saveWorldData() {
 		try {
 			OutputStream out = new FileOutputStream(new File(dir, "world.dat"));
-			NDTContainer ndt = new NDTContainer();
-			ndt.setInteger("version", 3);
-			ndt.setLong("seed", world.getSeed());
-			ndt.setLong("gameTime", world.getGameTime());
-			ndt.setInteger("entityCount", world == null ? 0 : world.getEntities().length);
-			ndt.setContainer("blockPalette", blockPalette.saveTo(new NDTContainer()));
-			ndt.setContainer("itemPalette", itemPalette.saveTo(new NDTContainer()));
-			byte[] len = new byte[4];
-			Bits.putInt(len, 0, ndt.getData().length);
-			out.write(len);
-			out.write(ndt.getData());
-
+			JsonObject worldData = new JsonObject();
+			worldData.put("version", WORLD_DATA_VERSION);
+			worldData.put("seed", world.getSeed());
+			worldData.put("gameTime", world.getGameTime());
+			worldData.put("entityCount", world == null ? 0 : world.getEntities().length);
+			worldData.put("blockPalette", blockPalette.save());
+			worldData.put("itemPalette", itemPalette.save());
+			JsonArray entityData = new JsonArray();
+			worldData.put("entities", entityData);
 			if (world != null) {
 				for (Entity ent : world.getEntities()) {
 					if(ent != null)
-						EntityIO.saveEntity(ent, out);
+						entityData.add(ent.save());
 				}
 			}
+			out.write(worldData.toString().getBytes());
 			out.close();
 		} catch (IOException e) {
 			Logger.error(e);

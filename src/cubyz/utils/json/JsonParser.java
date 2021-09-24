@@ -137,9 +137,9 @@ public abstract class JsonParser {
 				}
 				try {
 					if(isFloat) {
-						value = new JsonFloat(Float.parseFloat(new String(chars, index[0], end - index[0])));
+						value = new JsonFloat(Double.parseDouble(new String(chars, index[0], end - index[0])));
 					} else {
-						value = new JsonInt(Integer.decode(new String(chars, index[0], end - index[0])));
+						value = new JsonInt(Long.decode(new String(chars, index[0], end - index[0])));
 					}
 				} catch(Exception e) {
 					printError(index[0], chars, "Cannot parse number: "+new String(chars, index[0], end - index[0])+".");

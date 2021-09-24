@@ -1,8 +1,8 @@
 package cubyz.utils.json;
 
 public class JsonFloat implements JsonElement {
-	public float value;
-	public JsonFloat(float value) {
+	public double value;
+	public JsonFloat(double value) {
 		this.value = value;
 	}
 	@Override
@@ -10,7 +10,15 @@ public class JsonFloat implements JsonElement {
 		return (int)value;
 	}
 	@Override
+	public long getLong(long defaultValue) {
+		return (long)value;
+	}
+	@Override
 	public float getFloat(float defaultValue) {
+		return (float)value;
+	}
+	@Override
+	public double getDouble(double defaultValue) {
 		return value;
 	}
 	public String toString() {

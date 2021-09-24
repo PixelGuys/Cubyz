@@ -1,7 +1,7 @@
 package cubyz.world.items;
 
 import cubyz.api.CurrentWorldRegistries;
-import cubyz.utils.ndt.NDTContainer;
+import cubyz.utils.json.JsonObject;
 import cubyz.world.blocks.Block;
 import cubyz.world.items.tools.Tool;
 
@@ -63,34 +63,36 @@ public class Inventory {
 		return items[slot].getAmount();
 	}
 	
-	public NDTContainer saveTo(NDTContainer container) {
-		container.setInteger("capacity", items.length);
+	public JsonObject save() {
+		JsonObject json = new JsonObject();
+		json.put("capacity", items.length);
 		for (int i = 0; i < items.length; i++) {
-			NDTContainer ndt = new NDTContainer();
+			JsonObject stackJson = new JsonObject();
 			ItemStack stack = items[i];
 			if (stack.getItem() != null) {
-				ndt.setString("item", stack.getItem().getRegistryID().toString());
-				ndt.setInteger("amount", stack.getAmount());
+				stackJson.put("item", stack.getItem().getRegistryID().toString());
+				stackJson.put("amount", stack.getAmount());
 				if(stack.getItem() instanceof Tool) {
 					Tool tool = (Tool)stack.getItem();
-					ndt.setContainer("tool", tool.saveTo(new NDTContainer()));
+					stackJson.put("tool", tool.save());
 				}
-				container.setContainer(String.valueOf(i), ndt);
+				json.put(String.valueOf(i), stackJson);
 			}
 		}
-		return container;
+		return json;
 	}
 	
-	public void loadFrom(NDTContainer container, CurrentWorldRegistries registries) {
-		items = new ItemStack[container.getInteger("capacity")];
-		for (int i = 0; i < items.length; i++) {
-			if (container.hasKey(String.valueOf(i))) {
-				NDTContainer ndt = container.getContainer(String.valueOf(i));
-				Item item = registries.itemRegistry.getByID(ndt.getString("item"));
+	public void loadFrom(JsonObject json, CurrentWorldRegistries registries) {
+		items = new ItemStack[json.getInt("capacity", 0)];
+		for(int i = 0; i < items.length; i++) {
+			JsonObject stackJson = json.getObject(String.valueOf(i));
+			if(stackJson != null) {
+				Item item = registries.itemRegistry.getByID(stackJson.getString("item", "null"));
 				if (item == null) {
 					// Check if it is a tool:
-					if(ndt.hasKey("tool")) {
-						item = Tool.loadFrom(ndt.getContainer("tool"), registries);
+					JsonObject tool = stackJson.getObject("tool");
+					if(tool != null) {
+						item = Tool.loadFrom(tool, registries);
 					} else {
 						// item not existant in this version of the game. Can't do much so ignore it.
 						items[i] = new ItemStack();
@@ -98,7 +100,7 @@ public class Inventory {
 					}
 				}
 				ItemStack stack = new ItemStack(item);
-				stack.add(ndt.getInteger("amount"));
+				stack.add(stackJson.getInt("amount", 1));
 				items[i] = stack;
 			} else {
 				items[i] = new ItemStack();

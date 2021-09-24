@@ -5,7 +5,7 @@ import java.util.List;
 
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Registry;
-import cubyz.utils.ndt.NDTContainer;
+import cubyz.utils.json.JsonObject;
 import cubyz.world.blocks.Block;
 import cubyz.world.items.Item;
 
@@ -96,43 +96,44 @@ public abstract class Tool extends Item {
 		return modifiers;
 	}
 	
-	public NDTContainer saveTo(NDTContainer container) {
+	public JsonObject save() {
+		JsonObject json = new JsonObject();
 		if(this instanceof Axe)
-			container.setString("type", "Axe");
+			json.put("type", "Axe");
 		else if(this instanceof Pickaxe)
-			container.setString("type", "Pickaxe");
+			json.put("type", "Pickaxe");
 		else if(this instanceof Shovel)
-			container.setString("type", "Shovel");
+			json.put("type", "Shovel");
 		else if(this instanceof Sword)
-			container.setString("type", "Sword");
-		container.setString("head", head.getRegistryID().toString());
-		container.setString("binding", binding.getRegistryID().toString());
-		container.setString("handle", handle.getRegistryID().toString());
-		container.setInteger("durability", durability);
+			json.put("type", "Sword");
+		json.put("head", head.getRegistryID().toString());
+		json.put("binding", binding.getRegistryID().toString());
+		json.put("handle", handle.getRegistryID().toString());
+		json.put("durability", durability);
 		// The following can be changed by modifiers, so they need to be stored, too:
-		container.setInteger("maxDurability", maxDurability);
-		container.setFloat("speed", speed);
-		container.setFloat("damage", damage);
-		return container;
+		json.put("maxDurability", maxDurability);
+		json.put("speed", speed);
+		json.put("damage", damage);
+		return json;
 	}
 	
-	public static Tool loadFrom(NDTContainer container, CurrentWorldRegistries registries) {
-		String type = container.getString("type");
+	public static Tool loadFrom(JsonObject json, CurrentWorldRegistries registries) {
+		String type = json.getString("type", "none");
 		Tool tool = null;
 		Registry<Material> matReg = registries.materialRegistry;
 		if(type.equals("Axe")) {
-			tool = new Axe(matReg.getByID(container.getString("head")), matReg.getByID(container.getString("binding")), matReg.getByID(container.getString("handle")));
+			tool = new Axe(matReg.getByID(json.getString("head", "")), matReg.getByID(json.getString("binding", "")), matReg.getByID(json.getString("handle", "")));
 		} else if(type.equals("Pickaxe")) {
-			tool = new Pickaxe(matReg.getByID(container.getString("head")), matReg.getByID(container.getString("binding")), matReg.getByID(container.getString("handle")));
+			tool = new Pickaxe(matReg.getByID(json.getString("head", "")), matReg.getByID(json.getString("binding", "")), matReg.getByID(json.getString("handle", "")));
 		} else if(type.equals("Shovel")) {
-			tool = new Shovel(matReg.getByID(container.getString("head")), matReg.getByID(container.getString("binding")), matReg.getByID(container.getString("handle")));
+			tool = new Shovel(matReg.getByID(json.getString("head", "")), matReg.getByID(json.getString("binding", "")), matReg.getByID(json.getString("handle", "")));
 		} else if(type.equals("Sword")) {
-			tool = new Sword(matReg.getByID(container.getString("head")), matReg.getByID(container.getString("binding")), matReg.getByID(container.getString("handle")));
+			tool = new Sword(matReg.getByID(json.getString("head", "")), matReg.getByID(json.getString("binding", "")), matReg.getByID(json.getString("handle", "")));
 		}
-		tool.durability = container.getInteger("durability");
-		tool.maxDurability = container.getInteger("maxDurability");
-		tool.speed = container.getFloat("speed");
-		tool.damage = container.getFloat("damage");
+		tool.durability = json.getInt("durability", 0);
+		tool.maxDurability = json.getInt("maxDurability", 0);
+		tool.speed = json.getFloat("speed", 0);
+		tool.damage = json.getFloat("damage", 0);
 		return tool;
 	}
 	

@@ -40,8 +40,8 @@ public class ResourceUtilities {
 		if (jsonModel == null) {
 			throw new IOException("Missing \"model\" entry from model " + entity);
 		}
-		model.model = jsonModel.getString("path");
-		model.texture = jsonModel.getString("texture");
+		model.model = jsonModel.getString("path", "");
+		model.texture = jsonModel.getString("texture", "");
 		
 		if (model.parent != null) {
 			if (model.parent.equals(entity.toString())) {

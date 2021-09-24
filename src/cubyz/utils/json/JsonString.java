@@ -6,7 +6,7 @@ public class JsonString implements JsonElement {
 		this.value = value;
 	}
 	@Override
-	public String getString(String defaultValue) {
+	public String getStringValue(String defaultValue) {
 		return value;
 	}
 	

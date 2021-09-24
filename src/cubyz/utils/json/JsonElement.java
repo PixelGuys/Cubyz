@@ -9,10 +9,24 @@ public interface JsonElement {
 		return defaultValue;
 	}
 	/**
+	 * Returns the long value, if the JsonObject stores one. Otherwise it uses the defaultValue.
+	 * @param defaultValue Replacement if the requested type doesn't exist.
+	 */
+	default long getLong(long defaultValue) {
+		return defaultValue;
+	}
+	/**
 	 * Returns the float value, if the JsonObject stores one. Otherwise it uses the defaultValue.
 	 * @param defaultValue Replacement if the requested type doesn't exist.
 	 */
 	default float getFloat(float defaultValue) {
+		return defaultValue;
+	}
+	/**
+	 * Returns the double value, if the JsonObject stores one. Otherwise it uses the defaultValue.
+	 * @param defaultValue Replacement if the requested type doesn't exist.
+	 */
+	default double getDouble(double defaultValue) {
 		return defaultValue;
 	}
 	/**
@@ -26,7 +40,7 @@ public interface JsonElement {
 	 * Returns the String value, if the JsonObject stores one. Otherwise it uses the defaultValue.
 	 * @param defaultValue Replacement if the requested type doesn't exist.
 	 */
-	default String getString(String defaultValue) {
+	default String getStringValue(String defaultValue) {
 		return defaultValue;
 	}
 	default boolean isNull() {
@@ -44,12 +58,32 @@ public interface JsonElement {
 	}
 
 	/**
+	 * Gets the long value of a child. Or uses the defaultValue if the child is not present.
+	 * @param key
+	 * @param defaultValue
+	 * @return
+	 */
+	default long getLong(String key, long defaultValue) {
+		return defaultValue;
+	}
+
+	/**
 	 * Gets the float value of a child. Or uses the defaultValue if the child is not present.
 	 * @param key
 	 * @param defaultValue
 	 * @return
 	 */
 	default float getFloat(String key, float defaultValue) {
+		return defaultValue;
+	}
+
+	/**
+	 * Gets the double value of a child. Or uses the defaultValue if the child is not present.
+	 * @param key
+	 * @param defaultValue
+	 * @return
+	 */
+	default double getDouble(String key, double defaultValue) {
 		return defaultValue;
 	}
 
