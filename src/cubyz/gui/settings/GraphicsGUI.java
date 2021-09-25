@@ -17,9 +17,9 @@ public class GraphicsGUI extends MenuGUI {
 	private CheckBox easyLighting = new CheckBox();
 	private CheckBox vsync = new CheckBox();
 	private Label effectiveRenderDistance = new Label();
-	private final Slider renderDistance = new Slider(1, 24, ClientSettings.RENDER_DISTANCE);
+	private final Slider renderDistance = new Slider(1, 12, ClientSettings.RENDER_DISTANCE);
 	private final Slider highestLOD = new Slider(ClientSettings.HIGHEST_LOD, new String[] {"1", "2", "4", "8", "16"});
-	private final Slider LODFactor = new Slider(Math.round(ClientSettings.LOD_FACTOR*2) - 1, new String[] {"0.5", "1.0", "1.5", "2.0", "2.5", "3.0", "3.5", "4.0"});
+	private final Slider LODFactor = new Slider(Math.round(ClientSettings.LOD_FACTOR*2) - 1, new String[] {"0.5", "1.0", "1.5", "2.0", "2.5", "3.0", "3.5", "4.0", "4.5", "5.0"});
 
 	private void recalculateERD() {
 		ClientSettings.EFFECTIVE_RENDER_DISTANCE = (ClientSettings.RENDER_DISTANCE + ((((int)(ClientSettings.RENDER_DISTANCE*ClientSettings.LOD_FACTOR) & ~1) << ClientSettings.HIGHEST_LOD)));
