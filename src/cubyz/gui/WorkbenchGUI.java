@@ -1,10 +1,8 @@
-package cubyz.modding.base;
+package cubyz.gui;
 
 import cubyz.api.CubyzRegistries;
 import cubyz.api.Resource;
 import cubyz.client.Cubyz;
-import cubyz.gui.Component;
-import cubyz.gui.GeneralInventory;
 import cubyz.gui.components.Button;
 import cubyz.gui.components.InventorySlot;
 import cubyz.rendering.Window;
@@ -35,19 +33,24 @@ public class WorkbenchGUI extends GeneralInventory {
 	public WorkbenchGUI() {
 		super(new Resource("cubyz:workbench"));
 		normal = new Button();
-		normal.setBounds(-360, 552, 64, 64, Component.ALIGN_BOTTOM);
-		normal.setText(TextKey.createTextKey("Normal Grid"));
+		normal.setBounds(-424, 552, 128, 64, Component.ALIGN_BOTTOM);
+		normal.setFontSize(32);
+		normal.setText(TextKey.createTextKey("Grid"));
 		axe = new Button();
-		axe.setBounds(-360, 480, 64, 64, Component.ALIGN_BOTTOM);
+		axe.setBounds(-424, 480, 128, 64, Component.ALIGN_BOTTOM);
+		axe.setFontSize(32);
 		axe.setText(TextKey.createTextKey("Axe"));
 		pickaxe = new Button();
-		pickaxe.setBounds(-360, 408, 64, 64, Component.ALIGN_BOTTOM);
+		pickaxe.setBounds(-424, 408, 128, 64, Component.ALIGN_BOTTOM);
+		pickaxe.setFontSize(32);
 		pickaxe.setText(TextKey.createTextKey("Pickaxe"));
 		shovel = new Button();
-		shovel.setBounds(-360, 336, 64, 64, Component.ALIGN_BOTTOM);
+		shovel.setBounds(-424, 336, 128, 64, Component.ALIGN_BOTTOM);
+		shovel.setFontSize(32);
 		shovel.setText(TextKey.createTextKey("Shovel"));
 		sword = new Button();
-		sword.setBounds(-360, 264, 64, 64, Component.ALIGN_BOTTOM);
+		sword.setBounds(-424, 264, 128, 64, Component.ALIGN_BOTTOM);
+		sword.setFontSize(32);
 		sword.setText(TextKey.createTextKey("Sword"));
 		activeGUI = this;
 		
