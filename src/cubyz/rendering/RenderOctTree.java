@@ -11,9 +11,8 @@ import cubyz.client.Meshes;
 import cubyz.client.NormalChunkMesh;
 import cubyz.client.ReducedChunkMesh;
 import cubyz.utils.datastructures.HashMapKey3D;
-import cubyz.utils.math.CubyzMath;
+import cubyz.world.ChunkData;
 import cubyz.world.NormalChunk;
-import cubyz.world.ReducedChunk;
 
 public class RenderOctTree {
 	private int lastX, lastY, lastZ, lastRD, lastLOD;
@@ -33,6 +32,9 @@ public class RenderOctTree {
 				mesh = new NormalChunkMesh(replacement, x, y, z, size);
 			} else {
 				mesh = new ReducedChunkMesh(replacement, x, y, z, size);
+				ChunkData data = new ChunkData(x, y, z, size/NormalChunk.chunkSize);
+				data.setMeshListener((ReducedChunkMesh)mesh);
+				Cubyz.world.queueChunk(data);
 			}
 		}
 		public void update(int px, int py, int pz, int renderDistance, int maxRD, int minHeight, int maxHeight, int nearRenderDistance) {
@@ -99,17 +101,6 @@ public class RenderOctTree {
 						nextNodes = null;
 					}
 				}
-				if(dist < maxRD*maxRD) {
-					if(mesh.getChunk() == null) {
-						((ReducedChunkMesh)mesh).updateChunk(new ReducedChunk(x, y, z, CubyzMath.binaryLog(size) - NormalChunk.chunkShift, CubyzMath.binaryLog(size)));
-						Cubyz.world.queueChunk(mesh.getChunk());
-					}
-				} else {
-					if(mesh.getChunk() != null) {
-						Cubyz.world.unQueueChunk(mesh.getChunk());
-						((ReducedChunkMesh)mesh).updateChunk(null);
-					}
-				}
 			}
 		}
 		public void getChunks(FrustumIntersection frustumInt, ArrayList<ChunkMesh> meshes, float x0, float z0) {
@@ -155,16 +146,25 @@ public class RenderOctTree {
 		int LODMask = LODSize - 1;
 		int minX = (px - maxRenderDistance) & ~LODMask;
 		int maxX = (px + maxRenderDistance + LODMask) & ~LODMask;
+		// The LOD chunks are offset from grid to make generation easier.
+		minX += LODSize/2 - NormalChunk.chunkSize;
+		maxX += LODSize/2 - NormalChunk.chunkSize;
 		HashMap<HashMapKey3D, OctTreeNode> newMap = new HashMap<HashMapKey3D, OctTreeNode>();
 		for(int x = minX; x <= maxX; x += LODSize) {
 			int maxYRenderDistance = (int)Math.ceil(Math.sqrt(maxRenderDistance*maxRenderDistance - (x - px)*(x - px)));
 			int minY = (py - maxYRenderDistance) & ~LODMask;
 			int maxY = (py + maxYRenderDistance + LODMask) & ~LODMask;
+			// The LOD chunks are offset from grid to make generation easier.
+			minY += LODSize/2 - NormalChunk.chunkSize;
+			maxY += LODSize/2 - NormalChunk.chunkSize;
 			
 			for(int y = minY; y <= maxY; y += LODSize) {
 				int maxZRenderDistance = (int)Math.ceil(Math.sqrt(maxYRenderDistance*maxYRenderDistance - (y - py)*(y - py)));
 				int minZ = (pz - maxZRenderDistance) & ~LODMask;
 				int maxZ = (pz + maxZRenderDistance + LODMask) & ~LODMask;
+				// The LOD chunks are offset from grid to make generation easier.
+				minZ += LODSize/2 - NormalChunk.chunkSize;
+				maxZ += LODSize/2 - NormalChunk.chunkSize;
 				
 				for(int z = minZ; z <= maxZ; z += LODSize) {
 					// Make sure underground chunks are only generated if they are close to the player.

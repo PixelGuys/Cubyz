@@ -47,7 +47,6 @@ public class NormalChunk extends Chunk {
 	private final ArrayList<BlockChange> changes;
 	private FastList<BlockInstance> visibles = new FastList<BlockInstance>(50, BlockInstance.class);
 	protected final int cx, cy, cz;
-	protected final int wx, wy, wz;
 	protected boolean generated;
 	protected boolean startedloading;
 	protected boolean loaded;
@@ -59,15 +58,13 @@ public class NormalChunk extends Chunk {
 	public final MapFragment map;
 	
 	public NormalChunk(int cx, int cy, int cz, ServerWorld world) {
+		super(cx << chunkShift, cy << chunkShift, cz << chunkShift, 1);
 		inst = new BlockInstance[arraySize];
 		blocks = new Block[arraySize];
 		blockData = new byte[arraySize];
 		this.cx = cx;
 		this.cy = cy;
 		this.cz = cz;
-		wx = cx << chunkShift;
-		wy = cy << chunkShift;
-		wz = cz << chunkShift;
 		this.world = world;
 		this.map = world.getMapFragment(wx, wz, 1);
 		changes = map.mapIO.getBlockChanges(cx, cy, cz);
@@ -95,7 +92,7 @@ public class NormalChunk extends Chunk {
 	 * @param z 0 ≤ z < chunkSize
 	 * @return
 	 */
-	public int getIndex(int x, int y, int z) {
+	public static int getIndex(int x, int y, int z) {
 		return (x << chunkShift) | (y << chunkShift2) | z;
 	}
 	
@@ -730,7 +727,7 @@ public class NormalChunk extends Chunk {
 	}
 	
 	public void setUpdated() {
-		if(meshListener != null) meshListener.run();
+		if(meshListener != null) meshListener.accept(this);
 	}
 	
 	public int startIndex(int start) {

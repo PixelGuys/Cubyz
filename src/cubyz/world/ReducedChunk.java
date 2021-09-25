@@ -22,24 +22,21 @@ public class ReducedChunk extends Chunk {
 	/**If ((x & resolutionMask) == 0), a block can be considered to be visible.*/
 	public final int resolutionMask;
 	public final int size;
-	public final int wx, wy, wz;
 	public final Block[] blocks;
 	public boolean generated = false;
 	public final int width;
 	/** =log₂(width)*/
 	public final int widthShift;
 	
-	public ReducedChunk(int wx, int wy, int wz, int resolutionShift, int widthShift) {
-		this.wx = wx;
-		this.wy = wy;
-		this.wz = wz;
+	public ReducedChunk(int wx, int wy, int wz, int resolutionShift) {
+		super(wx, wy, wz, 1 << resolutionShift);
 		this.resolutionShift = resolutionShift;
 		this.resolution = 1 << resolutionShift;
 		this.resolutionMask = resolution - 1;
+		widthShift = NormalChunk.chunkShift + resolutionShift;
 		width = 1 << widthShift;
 		size = (width >>> resolutionShift)*(width >> resolutionShift)*(width >> resolutionShift);
 		blocks = new Block[size];
-		this.widthShift = widthShift;
 	}
 	
 	public void applyBlockChanges() {
@@ -88,7 +85,7 @@ public class ReducedChunk extends Chunk {
 		gen.generate(this, Cubyz.world);
 		applyBlockChanges();
 		generated = true;
-		if(meshListener != null) meshListener.run();
+		if(meshListener != null) meshListener.accept(this);
 	}
 
 	@Override

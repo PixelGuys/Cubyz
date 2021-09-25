@@ -7,6 +7,7 @@ import static org.lwjgl.opengl.GL30.*;
 
 import java.nio.IntBuffer;
 import java.util.ArrayList;
+import java.util.function.Consumer;
 
 import org.joml.Vector3f;
 import org.lwjgl.system.MemoryUtil;
@@ -16,18 +17,17 @@ import cubyz.rendering.ShaderProgram;
 import cubyz.rendering.Window;
 import cubyz.utils.Utils;
 import cubyz.utils.datastructures.IntFastList;
-import cubyz.utils.math.CubyzMath;
-import cubyz.world.Chunk;
+import cubyz.world.ChunkData;
 import cubyz.world.Neighbors;
 import cubyz.world.NormalChunk;
-import cubyz.world.ReducedChunk;
+import cubyz.world.ReducedChunkVisibilityData;
 import cubyz.world.blocks.Block;
 
 /**
  * Used to create chunk meshes for reduced chunks.
  */
 
-public class ReducedChunkMesh extends ChunkMesh implements Runnable {
+public class ReducedChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 	// ThreadLocal lists, to prevent (re-)allocating tons of memory.
 	public static ThreadLocal<IntFastList> localVertices = new ThreadLocal<IntFastList>() {
 		@Override
@@ -97,7 +97,7 @@ public class ReducedChunkMesh extends ChunkMesh implements Runnable {
 
 	protected int vertexCount;
 
-	private ReducedChunk chunk;
+	private ReducedChunkVisibilityData chunkVisibilityData;
 
 	private boolean needsUpdate = false;
 
@@ -106,11 +106,12 @@ public class ReducedChunkMesh extends ChunkMesh implements Runnable {
 	}
 
 	@Override
-	public void run() {
+	public void accept(ChunkData data) {
 		synchronized(this) {
-			if(!needsUpdate && chunk != null && chunk.generated) {
+			if(data instanceof ReducedChunkVisibilityData) {
 				needsUpdate = true;
 				Meshes.queueMesh(this);
+				chunkVisibilityData = (ReducedChunkVisibilityData)data;
 			}
 		}
 	}
@@ -118,13 +119,13 @@ public class ReducedChunkMesh extends ChunkMesh implements Runnable {
 	@Override
 	public void regenerateMesh() {
 		cleanUp();
-		ReducedChunk chunk;
+		ReducedChunkVisibilityData chunkVisibilityData;
 		synchronized(this) {
-			chunk = this.chunk;
+			chunkVisibilityData = this.chunkVisibilityData;
 			if(!needsUpdate)
 				return;
 			needsUpdate = false;
-			if(chunk == null)
+			if(chunkVisibilityData == null)
 				return;
 		}
 		generated = true;
@@ -135,7 +136,7 @@ public class ReducedChunkMesh extends ChunkMesh implements Runnable {
 		vertices.clear();
 		faces.clear();
 		texCoordsAndNormals.clear();
-		generateModelData(chunk, vertices, faces, texCoordsAndNormals);
+		generateModelData(chunkVisibilityData, vertices, faces, texCoordsAndNormals);
 		IntBuffer posBuffer = null;
 		IntBuffer indexBuffer = null;
 		IntBuffer colorAndNormalBuffer = null;
@@ -193,27 +194,14 @@ public class ReducedChunkMesh extends ChunkMesh implements Runnable {
 		}
 	}
 
-	public void updateChunk(ReducedChunk chunk) {
-		if(chunk != this.chunk) {
-			synchronized(this) {
-				if(this.chunk != null)
-					this.chunk.setMeshListener(null);
-				this.chunk = chunk;
-				if(chunk != null)
-					chunk.setMeshListener(this);
-				run();
-			}
-		}
-	}
-
 	@Override
-	public Chunk getChunk() {
-		return chunk;
+	public ChunkData getChunk() {
+		return this;
 	}
 
 	@Override
 	public void render() {
-		if(chunk == null || !generated) {
+		if(chunkVisibilityData == null || !generated) {
 			glUniform3f(loc_lowerBounds, wx, wy, wz);
 			glUniform3f(loc_upperBounds, wx+size, wy+size, wz+size);
 			if(replacement != null) {
@@ -262,86 +250,20 @@ public class ReducedChunkMesh extends ChunkMesh implements Runnable {
 		return vertices.size - 1;
 	}
 
-	private static void generateModelData(ReducedChunk chunk, IntFastList vertices, IntFastList faces, IntFastList colorsAndNormals) {
-		int zMask = (chunk.width - 1) >>> chunk.resolutionShift;
-		int xMask = zMask << (chunk.widthShift - chunk.resolutionShift);
-		int yMask = xMask << (chunk.widthShift - chunk.resolutionShift);
-		// Position of the center blocks:
-		int zHalfLower = zMask >>> 1;
-		int zHalfUpper = zHalfLower + 1;
-		int xHalfLower = zHalfLower << (chunk.widthShift - chunk.resolutionShift);
-		int xHalfUpper = zHalfUpper << (chunk.widthShift - chunk.resolutionShift);
-		int yHalfLower = xHalfLower << (chunk.widthShift - chunk.resolutionShift);
-		int yHalfUpper = xHalfUpper << (chunk.widthShift - chunk.resolutionShift);
-
-		int zDelta = 1;
-		int xDelta = 1 << (chunk.widthShift - chunk.resolutionShift);
-		int yDelta = 1 << 2*(chunk.widthShift - chunk.resolutionShift);
-		int offset = 1 << chunk.resolutionShift;
-		// Go through all blocks and check their neighbors:
-		for(int i = 0; i < chunk.size; i++) {
-			if(chunk.blocks[i] == null) continue;
-			boolean posX = true, negX = true, posY = true, negY = true, posZ = true, negZ = true;
-			if((i & xMask) != 0 && chunk.blocks[i - xDelta] != null) negX = false;
-			if((i & xMask) != xMask && chunk.blocks[i + xDelta] != null) posX = false;
-			if((i & yMask) != 0 && chunk.blocks[i - yDelta] != null) negY = false;
-			if((i & yMask) != yMask && chunk.blocks[i + yDelta] != null) posY = false;
-			if((i & zMask) != 0 && chunk.blocks[i - zDelta] != null) negZ = false;
-			if((i & zMask) != zMask && chunk.blocks[i + zDelta] != null) posZ = false;
-			// Check a second neighbor if the chunk is close to a potential border.
-			// This prevents cracks in the terrain at lod borders.
-			if((i & xMask) == xHalfUpper) {
-				negX |= chunk.blocks[i - 2*xDelta] == null
-				|| (i & yMask) != yMask && chunk.blocks[i - xDelta + yDelta] == null
-				|| (i & yMask) != 0 && chunk.blocks[i - xDelta - yDelta] == null
-				|| (i & zMask) != zMask && chunk.blocks[i - xDelta + zDelta] == null
-				|| (i & zMask) != 0 && chunk.blocks[i - xDelta - zDelta] == null;
-			}
-			if((i & xMask) == xHalfLower) {
-				posX |= chunk.blocks[i + 2*xDelta] == null
-				|| (i & yMask) != yMask && chunk.blocks[i + xDelta + yDelta] == null
-				|| (i & yMask) != 0 && chunk.blocks[i + xDelta - yDelta] == null
-				|| (i & zMask) != zMask && chunk.blocks[i + xDelta + zDelta] == null
-				|| (i & zMask) != 0 && chunk.blocks[i + xDelta - zDelta] == null;
-			}
-			if((i & yMask) == yHalfUpper) {
-				negY |= chunk.blocks[i - 2*yDelta] == null
-				|| (i & xMask) != xMask && chunk.blocks[i - yDelta + xDelta] == null
-				|| (i & xMask) != 0 && chunk.blocks[i - yDelta - xDelta] == null
-				|| (i & zMask) != zMask && chunk.blocks[i - yDelta + zDelta] == null
-				|| (i & zMask) != 0 && chunk.blocks[i - yDelta - zDelta] == null;
-			}
-			if((i & yMask) == yHalfLower) {
-				posY |= chunk.blocks[i + 2*yDelta] == null
-				|| (i & xMask) != xMask && chunk.blocks[i + yDelta + xDelta] == null
-				|| (i & xMask) != 0 && chunk.blocks[i + yDelta - xDelta] == null
-				|| (i & zMask) != zMask && chunk.blocks[i + yDelta + zDelta] == null
-				|| (i & zMask) != 0 && chunk.blocks[i + yDelta - zDelta] == null;
-			}
-			if((i & zMask) == zHalfUpper) {
-				negZ |= chunk.blocks[i - 2*zDelta] == null
-				|| (i & yMask) != yMask && chunk.blocks[i - zDelta + yDelta] == null
-				|| (i & yMask) != 0 && chunk.blocks[i - zDelta - yDelta] == null
-				|| (i & xMask) != xMask && chunk.blocks[i - zDelta + xDelta] == null
-				|| (i & xMask) != 0 && chunk.blocks[i - zDelta - xDelta] == null;
-			}
-			if((i & zMask) == zHalfLower) {
-				posZ |= chunk.blocks[i + 2*zDelta] == null
-				|| (i & yMask) != yMask && chunk.blocks[i + zDelta + yDelta] == null
-				|| (i & yMask) != 0 && chunk.blocks[i + zDelta - yDelta] == null
-				|| (i & xMask) != xMask && chunk.blocks[i + zDelta + xDelta] == null
-				|| (i & xMask) != 0 && chunk.blocks[i + zDelta - xDelta] == null;
-			}
-			int x = CubyzMath.shiftRight(i & xMask, chunk.widthShift - 2*chunk.resolutionShift);
-			int y = CubyzMath.shiftRight(i & yMask, 2*chunk.widthShift - 3*chunk.resolutionShift);
-			int z = ((i & zMask) << chunk.resolutionShift);
-			Block block = chunk.blocks[i];
-			if(negX) {
+	private static void generateModelData(ReducedChunkVisibilityData chunkVisibilityData, IntFastList vertices, IntFastList faces, IntFastList colorsAndNormals) {
+		for(int i = 0; i < chunkVisibilityData.size; i++) {
+			Block block = chunkVisibilityData.visibleBlocks[i];
+			int x = chunkVisibilityData.x[i]*chunkVisibilityData.voxelSize;
+			int y = chunkVisibilityData.y[i]*chunkVisibilityData.voxelSize;
+			int z = chunkVisibilityData.z[i]*chunkVisibilityData.voxelSize;
+			int voxelSize = chunkVisibilityData.voxelSize;
+			byte neighbors = chunkVisibilityData.neighbors[i];
+			if((neighbors & Neighbors.BIT_MASK[Neighbors.DIR_NEG_X]) != 0) {
 				int normal = 0;
 				int i000 = addVertex(vertices, x, y, z, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_NEG_X], 0b01);
-				int i001 = addVertex(vertices, x, y, z + offset, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_NEG_X], 0b11);
-				int i010 = addVertex(vertices, x, y + offset, z, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_NEG_X], 0b00);
-				int i011 = addVertex(vertices, x, y + offset, z + offset, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_NEG_X], 0b10);
+				int i001 = addVertex(vertices, x, y, z + voxelSize, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_NEG_X], 0b11);
+				int i010 = addVertex(vertices, x, y + voxelSize, z, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_NEG_X], 0b00);
+				int i011 = addVertex(vertices, x, y + voxelSize, z + voxelSize, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_NEG_X], 0b10);
 				faces.add(i000);
 				faces.add(i001);
 				faces.add(i011);
@@ -350,12 +272,12 @@ public class ReducedChunkMesh extends ChunkMesh implements Runnable {
 				faces.add(i011);
 				faces.add(i010);
 			}
-			if(posX) {
+			if((neighbors & Neighbors.BIT_MASK[Neighbors.DIR_POS_X]) != 0) {
 				int normal = 1;
-				int i100 = addVertex(vertices, x + offset, y, z, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_POS_X], 0b11);
-				int i101 = addVertex(vertices, x + offset, y, z + offset, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_POS_X], 0b01);
-				int i110 = addVertex(vertices, x + offset, y + offset, z, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_POS_X], 0b10);
-				int i111 = addVertex(vertices, x + offset, y + offset, z + offset, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_POS_X], 0b00);
+				int i100 = addVertex(vertices, x + voxelSize, y, z, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_POS_X], 0b11);
+				int i101 = addVertex(vertices, x + voxelSize, y, z + voxelSize, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_POS_X], 0b01);
+				int i110 = addVertex(vertices, x + voxelSize, y + voxelSize, z, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_POS_X], 0b10);
+				int i111 = addVertex(vertices, x + voxelSize, y + voxelSize, z + voxelSize, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_POS_X], 0b00);
 				faces.add(i100);
 				faces.add(i111);
 				faces.add(i101);
@@ -364,12 +286,12 @@ public class ReducedChunkMesh extends ChunkMesh implements Runnable {
 				faces.add(i110);
 				faces.add(i111);
 			}
-			if(negY) {
+			if((neighbors & Neighbors.BIT_MASK[Neighbors.DIR_DOWN]) != 0) {
 				int normal = 4;
 				int i000 = addVertex(vertices, x, y, z, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_DOWN], 0b11);
-				int i001 = addVertex(vertices, x, y, z + offset, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_DOWN], 0b10);
-				int i100 = addVertex(vertices, x + offset, y, z, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_DOWN], 0b01);
-				int i101 = addVertex(vertices, x + offset, y, z + offset, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_DOWN], 0b00);
+				int i001 = addVertex(vertices, x, y, z + voxelSize, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_DOWN], 0b10);
+				int i100 = addVertex(vertices, x + voxelSize, y, z, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_DOWN], 0b01);
+				int i101 = addVertex(vertices, x + voxelSize, y, z + voxelSize, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_DOWN], 0b00);
 				faces.add(i000);
 				faces.add(i101);
 				faces.add(i001);
@@ -378,12 +300,12 @@ public class ReducedChunkMesh extends ChunkMesh implements Runnable {
 				faces.add(i100);
 				faces.add(i101);
 			}
-			if(posY) {
+			if((neighbors & Neighbors.BIT_MASK[Neighbors.DIR_UP]) != 0) {
 				int normal = 5;
-				int i010 = addVertex(vertices, x, y + offset, z, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_UP], 0b01);
-				int i011 = addVertex(vertices, x, y + offset, z + offset, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_UP], 0b00);
-				int i110 = addVertex(vertices, x + offset, y + offset, z, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_UP], 0b11);
-				int i111 = addVertex(vertices, x + offset, y + offset, z + offset, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_UP], 0b10);
+				int i010 = addVertex(vertices, x, y + voxelSize, z, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_UP], 0b01);
+				int i011 = addVertex(vertices, x, y + voxelSize, z + voxelSize, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_UP], 0b00);
+				int i110 = addVertex(vertices, x + voxelSize, y + voxelSize, z, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_UP], 0b11);
+				int i111 = addVertex(vertices, x + voxelSize, y + voxelSize, z + voxelSize, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_UP], 0b10);
 				faces.add(i010);
 				faces.add(i011);
 				faces.add(i111);
@@ -392,12 +314,12 @@ public class ReducedChunkMesh extends ChunkMesh implements Runnable {
 				faces.add(i111);
 				faces.add(i110);
 			}
-			if(negZ) {
+			if((neighbors & Neighbors.BIT_MASK[Neighbors.DIR_NEG_Z]) != 0) {
 				int normal = 2;
 				int i000 = addVertex(vertices, x, y, z, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_NEG_Z], 0b11);
-				int i010 = addVertex(vertices, x, y + offset, z, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_NEG_Z], 0b10);
-				int i100 = addVertex(vertices, x + offset, y, z, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_NEG_Z], 0b01);
-				int i110 = addVertex(vertices, x + offset, y + offset, z, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_NEG_Z], 0b00);
+				int i010 = addVertex(vertices, x, y + voxelSize, z, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_NEG_Z], 0b10);
+				int i100 = addVertex(vertices, x + voxelSize, y, z, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_NEG_Z], 0b01);
+				int i110 = addVertex(vertices, x + voxelSize, y + voxelSize, z, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_NEG_Z], 0b00);
 				faces.add(i000);
 				faces.add(i110);
 				faces.add(i100);
@@ -406,12 +328,12 @@ public class ReducedChunkMesh extends ChunkMesh implements Runnable {
 				faces.add(i010);
 				faces.add(i110);
 			}
-			if(posZ) {
+			if((neighbors & Neighbors.BIT_MASK[Neighbors.DIR_POS_Z]) != 0) {
 				int normal = 3;
-				int i001 = addVertex(vertices, x, y, z + offset, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_POS_Z], 0b01);
-				int i011 = addVertex(vertices, x, y + offset, z + offset, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_POS_Z], 0b00);
-				int i101 = addVertex(vertices, x + offset, y, z + offset, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_POS_Z], 0b11);
-				int i111 = addVertex(vertices, x + offset, y + offset, z + offset, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_POS_Z], 0b10);
+				int i001 = addVertex(vertices, x, y, z + voxelSize, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_POS_Z], 0b01);
+				int i011 = addVertex(vertices, x, y + voxelSize, z + voxelSize, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_POS_Z], 0b00);
+				int i101 = addVertex(vertices, x + voxelSize, y, z + voxelSize, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_POS_Z], 0b11);
+				int i111 = addVertex(vertices, x + voxelSize, y + voxelSize, z + voxelSize, normal, colorsAndNormals, block.textureIndices[Neighbors.DIR_POS_Z], 0b10);
 				faces.add(i001);
 				faces.add(i101);
 				faces.add(i111);

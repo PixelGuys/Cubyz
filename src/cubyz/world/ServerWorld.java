@@ -15,7 +15,9 @@ import cubyz.Logger;
 import cubyz.Settings;
 import cubyz.api.CubyzRegistries;
 import cubyz.api.CurrentWorldRegistries;
+import cubyz.utils.datastructures.Cache;
 import cubyz.utils.datastructures.HashMapKey3D;
+import cubyz.utils.math.CubyzMath;
 import cubyz.world.blocks.Block;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.CrystalTextureProvider;
@@ -44,7 +46,6 @@ public class ServerWorld {
 	private MapFragment[] maps;
 	private HashMap<HashMapKey3D, MetaChunk> metaChunks = new HashMap<HashMapKey3D, MetaChunk>();
 	private NormalChunk[] chunks = new NormalChunk[0];
-	//private OldReducedChunk[] reducedChunks;
 	private ChunkEntityManager[] entityManagers = new ChunkEntityManager[0];
 	private int lastX = Integer.MAX_VALUE, lastY = Integer.MAX_VALUE, lastZ = Integer.MAX_VALUE; // Chunk coordinates of the last chunk update.
 	private int lastRegX = Integer.MAX_VALUE, lastRegZ = Integer.MAX_VALUE; // Region coordinates of the last chunk update.
@@ -73,8 +74,11 @@ public class ServerWorld {
 	Vector4f clearColor = new Vector4f(0, 0, 0, 1.0f);
 	
 	// synchronized common list for chunk generation
-	private volatile BlockingDeque<Chunk> loadList = new LinkedBlockingDeque<>();
-	//private volatile BlockingDeque<OldReducedChunk> reducedLoadList = new LinkedBlockingDeque<>();
+	private volatile BlockingDeque<ChunkData> loadList = new LinkedBlockingDeque<>();
+
+	// There will be at most 1 GB of reduced chunks in here.
+	private static final int CHUNK_CACHE_MASK = 8191;
+	private Cache<ReducedChunk> reducedChunkCache = new Cache<ReducedChunk>(new ReducedChunk[CHUNK_CACHE_MASK+1][4]);
 	
 	public final Class<?> chunkProvider;
 	
@@ -91,7 +95,7 @@ public class ServerWorld {
 		volatile boolean running = true;
 		public void run() {
 			while (running) {
-				Chunk popped = null;
+				ChunkData popped = null;
 				try {
 					popped = loadList.take();
 				} catch (InterruptedException e) {
@@ -99,10 +103,8 @@ public class ServerWorld {
 				}
 				try {
 					synchronousGenerate(popped);
-					if(popped instanceof NormalChunk)
-						((NormalChunk)popped).load();
 				} catch (Exception e) {
-					Logger.error("Could not generate " + popped.getVoxelSize() + "-chunk " + popped.getWorldX()+", " + popped.getWorldY() + ", " + popped.getWorldZ() + " !");
+					Logger.error("Could not generate " + popped.voxelSize + "-chunk " + popped.wx + ", " + popped.wy + ", " + popped.wz + " !");
 					Logger.error(e);
 				}
 			}
@@ -273,8 +275,15 @@ public class ServerWorld {
 		return true;
 	}
 	
-	public void synchronousGenerate(Chunk ch) {
-		ch.generateFrom(generator);
+	public void synchronousGenerate(ChunkData ch) {
+		if(ch instanceof NormalChunk) {
+			((NormalChunk)ch).generateFrom(generator);
+			((NormalChunk)ch).load();
+		} else {
+			ReducedChunkVisibilityData visibilityData = new ReducedChunkVisibilityData(this, ch.wx, ch.wy, ch.wz, ch.voxelSize);
+			visibilityData.setMeshListener(ch.meshListener);
+			ch.meshListener.accept(visibilityData);
+		}
 	}
 	
 	public void removeBlock(int x, int y, int z) {
@@ -441,7 +450,7 @@ public class ServerWorld {
 		}
 	}
 
-	public void queueChunk(Chunk ch) {
+	public void queueChunk(ChunkData ch) {
 		try {
 			loadList.put(ch);
 		} catch (InterruptedException e) {
@@ -449,7 +458,7 @@ public class ServerWorld {
 		}
 	}
 	
-	public void unQueueChunk(Chunk ch) {
+	public void unQueueChunk(ChunkData ch) {
 		loadList.remove(ch);
 	}
 	
@@ -565,6 +574,30 @@ public class ServerWorld {
 			}
 		}
 		return null;
+	}
+
+	/**
+	 * Only for internal use. Generates a reduced chunk at a given location, or if possible gets it from the cache.
+	 * @param wx
+	 * @param wy
+	 * @param wz
+	 * @param voxelSize
+	 * @return
+	 */
+	public ReducedChunk getOrGenerateReducedChunk(int wx, int wy, int wz, int voxelSize) {
+		ChunkData data = new ChunkData(wx, wy, wz, voxelSize);
+		int hash = data.hashCode() & CHUNK_CACHE_MASK;
+		ReducedChunk res = reducedChunkCache.find(data, hash);
+		if(res != null) return res;
+		synchronized(reducedChunkCache.cache[hash]) {
+			res = reducedChunkCache.find(data, hash);
+			if(res != null) return res;
+			// Generate a new chunk:
+			res = new ReducedChunk(wx, wy, wz, CubyzMath.binaryLog(voxelSize));
+			res.generateFrom(generator);
+			reducedChunkCache.addToCache(res, hash);
+		}
+		return res;
 	}
 	
 	public MetaChunk getMetaChunk(int cx, int cy, int cz) {

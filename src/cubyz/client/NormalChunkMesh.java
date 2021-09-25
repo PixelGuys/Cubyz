@@ -8,6 +8,7 @@ import static org.lwjgl.opengl.GL30.*;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
+import java.util.function.Consumer;
 
 import org.joml.Vector3f;
 import org.lwjgl.system.MemoryUtil;
@@ -19,7 +20,7 @@ import cubyz.utils.Utils;
 import cubyz.utils.datastructures.FastList;
 import cubyz.utils.datastructures.FloatFastList;
 import cubyz.utils.datastructures.IntFastList;
-import cubyz.world.Chunk;
+import cubyz.world.ChunkData;
 import cubyz.world.NormalChunk;
 import cubyz.world.blocks.BlockInstance;
 
@@ -27,7 +28,7 @@ import cubyz.world.blocks.BlockInstance;
  * Used to create chunk meshes for normal chunks.
  */
 
-public class NormalChunkMesh extends ChunkMesh implements Runnable {
+public class NormalChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 	// ThreadLocal lists, to prevent (re-)allocating tons of memory.
 	public static ThreadLocal<FloatFastList> localVertices = new ThreadLocal<FloatFastList>() {
 		@Override
@@ -128,7 +129,7 @@ public class NormalChunkMesh extends ChunkMesh implements Runnable {
 	}
 
 	@Override
-	public void run() {
+	public void accept(ChunkData data) {
 		synchronized(this) {
 			if(!needsUpdate) {
 				needsUpdate = true;
@@ -286,13 +287,13 @@ public class NormalChunkMesh extends ChunkMesh implements Runnable {
 				this.chunk = chunk;
 				if(chunk != null)
 					chunk.setMeshListener(this);
-				run();
+				accept(null);
 			}
 		}
 	}
 
 	@Override
-	public Chunk getChunk() {
+	public ChunkData getChunk() {
 		return chunk;
 	}
 

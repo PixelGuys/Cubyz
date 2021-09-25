@@ -3,15 +3,9 @@ package cubyz.world;
 import cubyz.world.blocks.Block;
 import cubyz.world.generator.SurfaceGenerator;
 
-public abstract class Chunk {
-	protected Runnable meshListener;
-
-	/**
-	 * The mesh listener will be notified every time the mesh should change.
-	 * @param listener
-	 */
-	public void setMeshListener(Runnable listener) {
-		meshListener = listener;
+public abstract class Chunk extends ChunkData {
+	public Chunk(int wx, int wy, int wz, int voxelSize) {
+		super(wx, wy, wz, voxelSize);
 	}
 	/**
 	 * This is useful to convert for loops to work for reduced resolution:<br>
