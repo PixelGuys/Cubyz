@@ -44,15 +44,21 @@ public class UISystem {
 	
 	public void addOverlay(MenuGUI over) {
 		over.init();
-		overlays.add(over);
+		synchronized(overlays) {
+			overlays.add(over);
+		}
 	}
 	
 	public boolean removeOverlay(MenuGUI over) {
-		return overlays.remove(over);
+		synchronized(overlays) {
+			return overlays.remove(over);
+		}
 	}
 	
-	public ArrayList<MenuGUI> getOverlays() {
-		return overlays;
+	public MenuGUI[] getOverlays() {
+		synchronized(overlays) {
+			return overlays.toArray(new MenuGUI[0]);
+		}
 	}
 	
 	public void back() {
@@ -149,7 +155,7 @@ public class UISystem {
 				}
 			}
 			Graphics.setGlobalAlphaMultiplier(1f);
-			for (MenuGUI overlay : overlays) {
+			for(MenuGUI overlay : getOverlays()) {
 				overlay.render();
 			}
 		}
