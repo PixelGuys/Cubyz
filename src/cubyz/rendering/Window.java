@@ -155,9 +155,9 @@ public abstract class Window {
 		glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE); // the window will be resizable
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
-	    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_ANY_PROFILE);
-	    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // allow to use newer versions (if available) at the price of having deprecated features possibly removed
-	    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
+		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_ANY_PROFILE);
+		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // allow to use newer versions (if available) at the price of having deprecated features possibly removed
+		glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
 
 		handle = glfwCreateWindow(640, 480, "Cubyz", monitorID, NULL);
 		if (handle == NULL) {
@@ -202,9 +202,9 @@ public abstract class Window {
 		});
 		
 		glfwSetFramebufferSizeCallback(handle, (window, width, height) -> {
-		    Window.width = width;
-		    Window.height = height;
-		    Window.setResized(true);
+			Window.width = width;
+			Window.height = height;
+			Window.setResized(true);
 		});
 		
 		glfwSetWindowFocusCallback(handle, (window, focused) -> {
@@ -271,9 +271,9 @@ public abstract class Window {
 	
 	// Used to restore state, as NanoVG can touch some OpenGL parameters
 	public static void restoreState() {
-        glEnable(GL_DEPTH_TEST);
-        glEnable(GL_CULL_FACE);
-        glCullFace(GL_BACK);
+		glEnable(GL_DEPTH_TEST);
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_BACK);
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glEnable(GL_CLIP_DISTANCE0);

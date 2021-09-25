@@ -36,6 +36,7 @@ public class BackgroundScene {
 	private static Texture texture;
 
 	private static float angle = 0;
+	private static long lastTime = System.nanoTime();
 
 	static {
 		try {
@@ -105,7 +106,9 @@ public class BackgroundScene {
 		glDisable(GL_CULL_FACE); // I'm not sure if my triangles are rotated correctly, and there are no triangles facing away from the player anyways.
 
 		// Use a simple rotation around the y axis, with a steadily increasing angle.
-		angle += 0.001f;
+		long newTime = System.nanoTime();
+		angle += (newTime - lastTime)/2e10f;
+		lastTime = newTime;
 		Matrix4f viewMatrix = new Matrix4f().identity().rotateY(angle);
 		cubeShader.bind();
 
