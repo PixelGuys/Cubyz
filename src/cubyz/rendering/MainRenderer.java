@@ -192,6 +192,9 @@ public class MainRenderer {
 			Window.setResized(false);
 			Transformation.updateProjectionMatrix(Window.getProjectionMatrix(), (float)Math.toRadians(ClientSettings.FOV),
 			Window.getWidth(), Window.getHeight(), Z_NEAR, Z_FAR);
+			// Use a projection matrix that prevent z-fighting:
+			Transformation.updateProjectionMatrix(ReducedChunkMesh.projMatrix, (float)Math.toRadians(ClientSettings.FOV),
+				Window.getWidth(), Window.getHeight(), 2.0f, 16384.0f);
 		}
 		
 		if(Cubyz.world != null) {

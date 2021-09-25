@@ -17,6 +17,7 @@ import cubyz.Logger;
 import cubyz.client.ClientSettings;
 import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
+import cubyz.client.ReducedChunkMesh;
 import cubyz.utils.Utils;
 
 /**
@@ -136,6 +137,9 @@ public class BackgroundScene {
 
 		Transformation.updateProjectionMatrix(Window.getProjectionMatrix(), (float)Math.toRadians(90),
 		SIZE, SIZE, MainRenderer.Z_NEAR, MainRenderer.Z_FAR);
+		// Use a projection matrix that prevent z-fighting:
+		Transformation.updateProjectionMatrix(ReducedChunkMesh.projMatrix, (float)Math.toRadians(90),
+			SIZE, SIZE, 2.0f, 16384.0f);
 
 		Vector3f cameraRotation = Camera.getRotation();
 		Vector3f rotationCopy = new Vector3f(cameraRotation);
@@ -180,6 +184,8 @@ public class BackgroundScene {
 		glViewport(0, 0, Window.getWidth(), Window.getHeight());
 		Transformation.updateProjectionMatrix(Window.getProjectionMatrix(), (float)Math.toRadians(ClientSettings.FOV),
 		Window.getWidth(), Window.getHeight(), MainRenderer.Z_NEAR, MainRenderer.Z_FAR);
+		Transformation.updateProjectionMatrix(ReducedChunkMesh.projMatrix, (float)Math.toRadians(ClientSettings.FOV),
+			Window.getWidth(), Window.getHeight(), 2.0f, 16384.0f);
 		Logger.debug("Made cubemap.");
 		cameraRotation.set(rotationCopy);
 		Cubyz.gameUI.showOverlay = showOverlay;

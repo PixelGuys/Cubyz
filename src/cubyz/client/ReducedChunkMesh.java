@@ -15,8 +15,6 @@ import org.lwjgl.system.MemoryUtil;
 
 import cubyz.rendering.Camera;
 import cubyz.rendering.ShaderProgram;
-import cubyz.rendering.Transformation;
-import cubyz.rendering.Window;
 import cubyz.utils.Utils;
 import cubyz.utils.datastructures.IntFastList;
 import cubyz.world.ChunkData;
@@ -72,6 +70,8 @@ public class ReducedChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 				ReducedChunkMesh.class);
 	}
 
+	public static final Matrix4f projMatrix = new Matrix4f();
+
 	/**
 	 * Also updates the uniforms.
 	 * @param ambient
@@ -84,10 +84,6 @@ public class ReducedChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 		shader.setUniform(loc_fog_color, Cubyz.fog.getColor());
 		shader.setUniform(loc_fog_density, Cubyz.fog.getDensity());
 
-		// Use a projection matrix that prevent z-fighting:
-		Matrix4f projMatrix = new Matrix4f();
-		Transformation.updateProjectionMatrix(projMatrix, (float)Math.toRadians(ClientSettings.FOV),
-			Window.getWidth(), Window.getHeight(), 4.0f, 16384.0f);
 		shader.setUniform(loc_projectionMatrix, projMatrix);
 		
 		shader.setUniform(loc_texture_sampler, 0);
