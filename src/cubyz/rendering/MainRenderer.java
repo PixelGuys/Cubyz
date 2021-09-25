@@ -4,7 +4,7 @@ import static org.lwjgl.opengl.GL11.GL_TEXTURE_2D;
 import static org.lwjgl.opengl.GL11.glBindTexture;
 import static org.lwjgl.opengl.GL13.GL_TEXTURE0;
 import static org.lwjgl.opengl.GL13.glActiveTexture;
-import static org.lwjgl.opengl.GL13C.*;
+import static org.lwjgl.opengl.GL41.*;
 
 import org.joml.FrustumIntersection;
 import org.joml.Matrix4f;
@@ -75,7 +75,7 @@ public class MainRenderer {
 	private ShaderProgram entityShader; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 	private ShaderProgram blockDropShader;
 
-	public static final float Z_NEAR = 0.01f;
+	public static final float Z_NEAR = 0.1f;
 	public static final float Z_FAR = 10000.0f;
 	private boolean inited = false;
 	private boolean doRender = true;
@@ -298,8 +298,10 @@ public class MainRenderer {
 			playerPosition = localPlayer.getPosition(); // Use a constant copy of the player position for the whole rendering to prevent graphics bugs on player movement.
 		}
 		if(playerPosition != null) {
-			ReducedChunkMesh.bindShader(ambientLight, directionalLight.getDirection()); // Update the uniforms. The uniforms are needed to render the replacement meshes.
-			
+			 // Update the uniforms. The uniforms are needed to render the replacement meshes.
+			ReducedChunkMesh.bindShader(ambientLight, directionalLight.getDirection());
+			ReducedChunkMesh.shader.setUniform(ReducedChunkMesh.loc_projectionMatrix, Window.getProjectionMatrix()); // Use the same matrix for replacement meshes.
+
 			NormalChunkMesh.bindShader(ambientLight, directionalLight.getDirection());
 			
 			// Activate first texture bank
@@ -332,6 +334,8 @@ public class MainRenderer {
 				mesh.regenerateMesh();
 			}
 
+			glDepthRangef(0, 0.05f);
+
 			FastList<NormalChunkMesh> visibleChunks = new FastList<NormalChunkMesh>(NormalChunkMesh.class);
 			FastList<ReducedChunkMesh> visibleReduced = new FastList<ReducedChunkMesh>(ReducedChunkMesh.class);
 			for (ChunkMesh mesh : Cubyz.chunkTree.getRenderChunks(frustumInt, x0, z0)) {
@@ -350,12 +354,14 @@ public class MainRenderer {
 			}
 			
 			// Render the far away ReducedChunks:
+			glDepthRangef(0.05f, 1.0f); // ← Used to fix z-fighting.
 			ReducedChunkMesh.bindShader(ambientLight, directionalLight.getDirection());
 			
 			for(int i = 0; i < visibleReduced.size; i++) {
 				ReducedChunkMesh mesh = visibleReduced.array[i];
 				mesh.render();
 			}
+			glDepthRangef(0, 0.05f);
 			
 			// Render entities:
 			

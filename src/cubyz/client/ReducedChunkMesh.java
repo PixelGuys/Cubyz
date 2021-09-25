@@ -9,11 +9,13 @@ import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.function.Consumer;
 
+import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.lwjgl.system.MemoryUtil;
 
 import cubyz.rendering.Camera;
 import cubyz.rendering.ShaderProgram;
+import cubyz.rendering.Transformation;
 import cubyz.rendering.Window;
 import cubyz.utils.Utils;
 import cubyz.utils.datastructures.IntFastList;
@@ -81,7 +83,12 @@ public class ReducedChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 		shader.setUniform(loc_fog_activ, Cubyz.fog.isActive());
 		shader.setUniform(loc_fog_color, Cubyz.fog.getColor());
 		shader.setUniform(loc_fog_density, Cubyz.fog.getDensity());
-		shader.setUniform(loc_projectionMatrix, Window.getProjectionMatrix());
+
+		// Use a projection matrix that prevent z-fighting:
+		Matrix4f projMatrix = new Matrix4f();
+		Transformation.updateProjectionMatrix(projMatrix, (float)Math.toRadians(ClientSettings.FOV),
+			Window.getWidth(), Window.getHeight(), 4.0f, 16384.0f);
+		shader.setUniform(loc_projectionMatrix, projMatrix);
 		
 		shader.setUniform(loc_texture_sampler, 0);
 		
