@@ -142,7 +142,7 @@ public class VisibleChunk extends NormalChunk {
 							ch.revealBlock(dx[k], dy[k], dz[k]);
 							continue;
 						}
-						ch.updated = true;
+						ch.setUpdated();
 					}
 				}
 			}
@@ -219,6 +219,7 @@ public class VisibleChunk extends NormalChunk {
 		if(blocks[index] != null)
 			lightValue = Math.max(lightValue, ((blocks[index].getLight() >>> channelShift) & 255));
 		int prevValue = (light[index] >>> channelShift) & 255;
+		setUpdated();
 		if(lightValue <= prevValue) return;
 		if(channelShift == 24 && lightValue == 255) { // Update the sun height map.
 			int x = index>>chunkShift & chunkMask;
@@ -227,7 +228,6 @@ public class VisibleChunk extends NormalChunk {
 			map.mapIO.setHeight(x+wx, z+wz, Math.min(y+wy-1, map.mapIO.getHeight(x+wx, z+wz, map)), map);
 		}
 		light[index] = (~(255 << channelShift) & light[index]) | (lightValue << channelShift);
-		updated = true;
 		// Go through all neighbors:
 		// z-1:
 		if((index & chunkMask) == 0) { // if(z == 0)
@@ -391,7 +391,7 @@ public class VisibleChunk extends NormalChunk {
 			int z = index & chunkMask;
 			map.mapIO.setHeight(x+wx, z+wz, Math.max(y+wy, map.mapIO.getHeight(x+wx, z+wz, map)), map);
 		}
-		updated = true;
+		setUpdated();
 		light[index] = (light[index] & ~(255 << channelShift)) | (newValue << channelShift);
 		// Go through all neighbors and update them:
 		// z-1:

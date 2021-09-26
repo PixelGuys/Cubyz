@@ -50,7 +50,6 @@ public class NormalChunk extends Chunk {
 	protected boolean generated;
 	protected boolean startedloading;
 	protected boolean loaded;
-	protected boolean updated = true;
 	private ArrayList<BlockEntity> blockEntities = new ArrayList<>();
 	
 	protected final ServerWorld world;
@@ -108,7 +107,7 @@ public class NormalChunk extends Chunk {
 		int index = getIndex(x, y, z);
 		blocks[index] = b;
 		blockData[index] = data;
-		updated = true;
+		setUpdated();
 	}
 	
 	public void setBlockData(int x, int y, int z, byte data) {
@@ -135,7 +134,7 @@ public class NormalChunk extends Chunk {
 			if(inst[index] != null)
 				inst[index].setData(data);
 		}
-		updated = true;
+		setUpdated();
 	}
 	
 	public byte getBlockData(int x, int y, int z) {
@@ -304,7 +303,7 @@ public class NormalChunk extends Chunk {
 			blocks[bc.index] = b;
 			blockData[bc.index] = bc.newData;
 		}
-		updated = true;
+		setUpdated();
 	}
 	
 	/**
@@ -330,7 +329,7 @@ public class NormalChunk extends Chunk {
 				if (res != null) handler.onBlockHide(res.getBlock(), res.getX(), res.getY(), res.getZ());
 			}
 		}*/
-		updated = true;
+		setUpdated();
 	}
 	
 	/**
@@ -357,7 +356,7 @@ public class NormalChunk extends Chunk {
 				if (bi != null) handler.onBlockAppear(bi.getBlock(), bi.getX(), bi.getY(), bi.getZ());
 			}
 		}*/
-		updated = true;
+		setUpdated();
 	}
 	
 	/**
@@ -752,7 +751,7 @@ public class NormalChunk extends Chunk {
 			}
 			blocks[index] = newBlock;
 			blockData[index] = newBlock == null ? 0 : newBlock.mode.getNaturalStandard();
-			updated = true;
+			setUpdated();
 		}
 	}
 	
@@ -769,7 +768,7 @@ public class NormalChunk extends Chunk {
 		}
 		blocks[index] = newBlock;
 		blockData[index] = data;
-		updated = true;
+		setUpdated();
 	}
 
 	@Override
