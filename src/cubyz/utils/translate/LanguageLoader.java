@@ -3,6 +3,7 @@ package cubyz.utils.translate;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.Properties;
 
@@ -24,7 +25,7 @@ public class LanguageLoader {
 			if (langFile != null) {
 				Properties props = new Properties();
 				try {
-					FileReader reader = new FileReader(langFile);
+					FileReader reader = new FileReader(langFile, StandardCharsets.UTF_8);
 					props.load(reader);
 					for (Object key : props.keySet()) {
 						lang.add(key.toString(), props.getProperty(key.toString()));
