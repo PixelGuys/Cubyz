@@ -121,6 +121,13 @@ public class UISystem {
 			Keyboard.setKeyPressed(GLFW.GLFW_KEY_F1, false);
 			showOverlay = !showOverlay;
 		}
+		if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_ESCAPE)) {
+			// Return to the previous screen if escape was pressed:
+			if(!menuQueue.isEmpty()) {
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_ESCAPE, false);
+				back();
+			}
+		}
 		if(showOverlay) {
 			glDisable(GL_DEPTH_TEST);
 			glDisable(GL_CULL_FACE);
