@@ -288,6 +288,9 @@ public class NormalChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 				if(chunk != null)
 					chunk.setMeshListener(this);
 				accept(null);
+				if(chunk == null) {
+					generated = false;
+				}
 			}
 		}
 	}
