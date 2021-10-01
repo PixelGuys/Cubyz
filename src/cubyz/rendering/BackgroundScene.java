@@ -86,7 +86,7 @@ public class BackgroundScene {
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices, GL_STATIC_DRAW);
 
 		// Load a random texture from the backgrounds folder. The player may make their own pictures which have a chance of getting shown aswell.
-		File bgs = new File("backgrounds");
+		File bgs = new File("assets/backgrounds");
 		File[] images = bgs.listFiles(new FileFilter() {
 			public boolean accept(File file) {
 				return file.isFile() && file.getName().toLowerCase().endsWith(".png");
@@ -176,7 +176,7 @@ public class BackgroundScene {
 		}
 
 		try {//Try to screate image, else show exception.
-			ImageIO.write(image, "png", new File("backgrounds/"+Cubyz.world.getName()+"_"+Cubyz.world.getGameTime()+".png"));
+			ImageIO.write(image, "png", new File("assets/backgrounds/"+Cubyz.world.getName()+"_"+Cubyz.world.getGameTime()+".png"));
 		}
 		catch (Exception e) {
 			System.out.println("ScreenShot() exception: " +e);
@@ -189,7 +189,7 @@ public class BackgroundScene {
 		Window.getWidth(), Window.getHeight(), MainRenderer.Z_NEAR, MainRenderer.Z_FAR);
 		Transformation.updateProjectionMatrix(ReducedChunkMesh.projMatrix, (float)Math.toRadians(ClientSettings.FOV),
 			Window.getWidth(), Window.getHeight(), 2.0f, 16384.0f);
-		Logger.debug("Made cubemap.");
+		Logger.debug("Made background image.");
 		cameraRotation.set(rotationCopy);
 		Cubyz.gameUI.showOverlay = showOverlay;
 	}
