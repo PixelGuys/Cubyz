@@ -61,7 +61,7 @@ public class CreativeGUI extends GeneralInventory {
 		for (int i = 0; i < items.length; i++) {
 			Item item = items[i];
 			inv[32 + i] = new InventorySlot(
-					new ItemStack(item, 1), x, y, Component.ALIGN_BOTTOM);
+					new ItemStack(item, 64), x, y, Component.ALIGN_BOTTOM);
 			x += 64;
 			if (x > 192) {
 				x = -256;
