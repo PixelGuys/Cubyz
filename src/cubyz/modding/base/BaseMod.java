@@ -1,34 +1,26 @@
 package cubyz.modding.base;
 
-import java.io.File;
 import java.util.ArrayList;
 
 import cubyz.api.CubyzRegistries;
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.EventHandler;
 import cubyz.api.Mod;
-import cubyz.api.NoIDRegistry;
 import cubyz.api.Proxy;
 import cubyz.api.Registry;
-import cubyz.api.Resource;
 import cubyz.command.ClearCommand;
 import cubyz.command.CureCommand;
+import cubyz.command.GameTimeCycleCommand;
 import cubyz.command.GiveCommand;
 import cubyz.command.TPCommand;
 import cubyz.command.TimeCommand;
-import cubyz.world.blocks.Block;
-import cubyz.world.blocks.RotationMode;
 import cubyz.world.cubyzgenerators.biomes.Biome;
-import cubyz.world.cubyzgenerators.biomes.BlockStructure;
-import cubyz.world.cubyzgenerators.biomes.SimpleTreeModel;
-import cubyz.world.cubyzgenerators.biomes.SimpleVegetation;
 import cubyz.world.entity.EntityType;
 import cubyz.world.entity.Pig;
 import cubyz.world.entity.PlayerEntity;
-import cubyz.world.generator.*;
-import cubyz.world.items.Item;
-import cubyz.world.items.Recipe;
-import cubyz.world.items.tools.Material;
+import cubyz.world.generator.FlatlandGenerator;
+import cubyz.world.generator.LifelandGenerator;
+import cubyz.world.generator.SurfaceGenerator;
 import cubyz.world.items.tools.Modifier;
 import cubyz.world.items.tools.modifiers.FallingApart;
 import cubyz.world.items.tools.modifiers.Regrowth;
@@ -37,7 +29,6 @@ import cubyz.world.items.tools.modifiers.Regrowth;
  * Mod adding Cubyz default content, which is not added by addon files.
  */
 @Mod(id = "cubyz", name = "Cubyz")
-@SuppressWarnings("unused")
 public class BaseMod {
 	
 	// Client Proxy is defined in cubyz-client, a normal mod would define it in the same mod of course.
@@ -51,6 +42,7 @@ public class BaseMod {
 		// As they are independent to other (the correct order for others is block -> item (for item blocks and other items) -> entity)
 		registerWorldGenerators(CubyzRegistries.STELLAR_TORUS_GENERATOR_REGISTRY);
 		
+		CubyzRegistries.COMMAND_REGISTRY.register(new GameTimeCycleCommand());
 		CubyzRegistries.COMMAND_REGISTRY.register(new GiveCommand());
 		CubyzRegistries.COMMAND_REGISTRY.register(new ClearCommand());
 		CubyzRegistries.COMMAND_REGISTRY.register(new CureCommand());
