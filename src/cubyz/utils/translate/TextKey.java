@@ -37,6 +37,7 @@ public class TextKey {
 		if(!key.contains(".")) return new TextKey(key); // Don't store it if this is no real text key
 		return textKeys.getOrAdd(key.split("\\."), () -> new TextKey(key));
 	}
+	
 	public static void updateLanguage() {
 		// Updates the language of all TextKeys:
 		textKeys.foreach((key) -> {

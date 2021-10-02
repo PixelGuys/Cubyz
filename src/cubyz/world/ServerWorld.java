@@ -140,6 +140,7 @@ public class ServerWorld {
 			((LifelandGenerator) generator).sortGenerators();
 		}
 		wio = new WorldIO(this, new File("saves/" + name));
+		milliTime = System.currentTimeMillis();
 		if (wio.hasWorldData()) {
 			seed = wio.loadWorldSeed();
 			wio.loadWorldData();
@@ -359,13 +360,18 @@ public class ServerWorld {
 		long newTime = System.currentTimeMillis();
 		float deltaTime = (newTime - lastUpdateTime)/1000.0f;
 		lastUpdateTime = newTime;
-		if(deltaTime > 0.3f) {
+		if (deltaTime > 0.3f) {
 			Logger.warning("Update time is getting too high. It's already at "+deltaTime+" s!");
 			deltaTime = 0.3f;
 		}
-		if(milliTime + 100 < newTime) {
+		
+		if (milliTime + 100 < newTime) {
 			milliTime += 100;
 			gameTime++; // gameTime is measured in 100ms.
+		}
+		if (milliTime < newTime - 1000) {
+			Logger.warning("Behind update schedule by " + (newTime - milliTime) / 1000.0f + "s!");
+			milliTime = newTime - 1000; // so we don't accumulate too much time to catch
 		}
 		int dayCycle = ServerWorld.DAY_CYCLE;
 		// Ambient light
