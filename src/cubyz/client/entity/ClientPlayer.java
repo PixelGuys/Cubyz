@@ -34,7 +34,8 @@ public class ClientPlayer extends Player {
 			return;
 		}
 		lastUpdateTime = newTime;
-		if(Cubyz.world.getChunk((int)Cubyz.player.getPosition().x >> NormalChunk.chunkShift, (int)Cubyz.player.getPosition().y >> NormalChunk.chunkShift, (int)Cubyz.player.getPosition().z >> NormalChunk.chunkShift) == null) return;
+		NormalChunk ch = Cubyz.world.getChunk((int)Cubyz.player.getPosition().x >> NormalChunk.chunkShift, (int)Cubyz.player.getPosition().y >> NormalChunk.chunkShift, (int)Cubyz.player.getPosition().z >> NormalChunk.chunkShift);
+		if(ch == null || !ch.isLoaded()) return;
 		if(Cubyz.gameUI.doesGUIPauseGame() || Cubyz.world == null) {
 			return;
 		}
