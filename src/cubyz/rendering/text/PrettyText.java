@@ -116,7 +116,7 @@ public class PrettyText {
 		}
 		if(actualText.length() == 0)
 			actualText = " ";
-		textLine.layout = new TextLayout(actualText, textLine.font.font, textLine.font.fontGraphics.getFontRenderContext());
+		textLine.layout = new TextLayout(actualText, textLine.font.getFont(), textLine.font.fontGraphics.getFontRenderContext());
 		//sortMarkers(markers, textLine.layout);
 		prepareLines(markers, textLine);
 		textLine.textMarkingInfo = markers.toArray(new TextMarker[0]);
@@ -279,7 +279,7 @@ class LineSegment {
 		Graphics.setColor(color);
 		y += 1f*ratio; // Some offset, so the underline isn't connected to the text.
 		if(!isOverline) {
-			y += source.font.font.getSize()*ratio;
+			y += source.font.getSize()*ratio;
 		}
 		if(isBold) {
 			Graphics.fillRect(ratio*this.x + x, y - 0.375f*ratio, width*ratio, ratio*1.5f);

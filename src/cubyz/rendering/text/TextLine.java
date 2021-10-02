@@ -98,7 +98,7 @@ public class TextLine implements KeyListener {
 			PrettyText.parse(this);
 			//layout = new TextLayout(text, font.font, font.fontGraphics.getFontRenderContext());
 			TextLayoutGraphics.generateGlyphData(layout, this);
-			textWidth = (float)layout.getPixelBounds(null, 0, 0).getWidth()*height/font.font.getSize();
+			textWidth = (float)layout.getPixelBounds(null, 0, 0).getWidth()*height/font.getSize();
 			xOffset = (float)layout.getPixelBounds(null, 0, 0).getMinX();
 		}
 	}
@@ -121,8 +121,8 @@ public class TextLine implements KeyListener {
 			return TextHitInfo.trailing(-1);
 		} else {
 			// Do the hit-test using an overestimated bound.
-			return layout.hitTestChar(mouseX*font.font.getSize()/height, font.font.getSize()/2,
-					new Rectangle2D.Float(-1000, -1000, textWidth*font.font.getSize()/height + 2000, font.font.getSize() + 2000));
+			return layout.hitTestChar(mouseX*font.getSize()/height, font.getSize()/2,
+					new Rectangle2D.Float(-1000, -1000, textWidth*font.getSize()/height + 2000, font.getSize() + 2000));
 		}
 	}
 	
@@ -422,7 +422,7 @@ public class TextLine implements KeyListener {
 	
 	public void render(float x, float y) {
 		// Correct by the height of the font:
-		float ratio = (float)height/font.font.getSize();
+		float ratio = (float)height/font.getSize();
 		y += 0.01f; // Prevents artifact on pixel borders.
 		
 		// Draw the lines:
