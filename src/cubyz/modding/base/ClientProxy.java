@@ -3,6 +3,7 @@ package cubyz.modding.base;
 import cubyz.api.ClientRegistries;
 import cubyz.api.CubyzRegistries;
 import cubyz.api.Registry;
+import cubyz.gui.CreativeGUI;
 import cubyz.gui.WorkbenchGUI;
 import cubyz.rendering.entity_models.*;
 import cubyz.rendering.models.CubeModel;
@@ -19,6 +20,7 @@ public class ClientProxy extends CommonProxy {
 	public void init() {
 		super.init();
 		ClientRegistries.GUIS.register(new WorkbenchGUI());
+		ClientRegistries.GUIS.register(new CreativeGUI());
 	}
 	
 	public void preInit() {

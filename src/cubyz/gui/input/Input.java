@@ -4,6 +4,7 @@ import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
 
 import cubyz.api.CubyzRegistries;
+import cubyz.client.ClientOnly;
 import cubyz.client.ClientSettings;
 import cubyz.client.Cubyz;
 import cubyz.gui.ConsoleGUI;
@@ -15,6 +16,7 @@ import cubyz.rendering.Camera;
 import cubyz.rendering.Window;
 import cubyz.world.entity.Entity;
 import cubyz.world.entity.EntityType;
+import cubyz.world.items.Inventory;
 
 /**
  * Handles all the inputs.
@@ -88,6 +90,11 @@ public class Input {
 			if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_T)) {
 				if(Cubyz.gameUI.getMenuGUI() == null) {
 					Cubyz.gameUI.setMenu(new ConsoleGUI());
+				}
+			}
+			if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_C)) {
+				if(Cubyz.gameUI.getMenuGUI() == null) {
+					ClientOnly.client.openGUI("cubyz:creative", new Inventory(0));
 				}
 			}
 			if(Keybindings.isPressed("inventory")) {
