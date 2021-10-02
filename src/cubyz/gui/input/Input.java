@@ -8,7 +8,7 @@ import cubyz.client.ClientSettings;
 import cubyz.client.Cubyz;
 import cubyz.gui.ConsoleGUI;
 import cubyz.gui.PauseGUI;
-import cubyz.gui.TransitionStyle;
+import cubyz.gui.Transition;
 import cubyz.gui.mods.InventoryGUI;
 import cubyz.rendering.BackgroundScene;
 import cubyz.rendering.Camera;
@@ -153,7 +153,7 @@ public class Input {
 					Keyboard.setKeyPressed(Keybindings.getKeyCode("menu"), false);
 				} else {
 					Keyboard.setKeyPressed(Keybindings.getKeyCode("menu"), false);
-					Cubyz.gameUI.setMenu(new PauseGUI(), TransitionStyle.NONE);
+					Cubyz.gameUI.setMenu(new PauseGUI(), new Transition.None());
 				}
 			}
 		}

@@ -34,9 +34,9 @@ public class UISystem {
 	private ArrayDeque<MenuGUI> menuQueue = new ArrayDeque<>();
 	
 	public static float guiScale = 1f;
-	private TransitionStyle curTransition;
+	private Transition curTransition;
 	private long lastAnimTime = System.currentTimeMillis();
-	private long transitionDur;
+	private float transitionTime;
 
 	public boolean showOverlay = true;
 
@@ -62,25 +62,27 @@ public class UISystem {
 	}
 	
 	public void back() {
-		setMenu(menuQueue.pollLast(), false, TransitionStyle.FADE_OUT_IN);
+		setMenu(menuQueue.pollLast(), false, new Transition.FadeOutIn());
 	}
 	
 	public void setMenu(MenuGUI gui) {
-		setMenu(gui, true, TransitionStyle.FADE_OUT_IN);
+		setMenu(gui, true, new Transition.FadeOutIn());
 	}
 	
 	public void setMenu(MenuGUI gui, boolean addQueue) {
-		setMenu(gui, addQueue, TransitionStyle.FADE_OUT_IN);
+		setMenu(gui, addQueue, new Transition.FadeOutIn());
 	}
 	
-	public void setMenu(MenuGUI gui, TransitionStyle style) {
+	public void setMenu(MenuGUI gui, Transition style) {
 		setMenu(gui, true, style);
 	}
 	
-	public void setMenu(MenuGUI gui, boolean addQueue, TransitionStyle style) {
+	public void setMenu(MenuGUI gui, boolean addQueue, Transition style) {
 		this.curTransition = style;
-		transitionDur = 0;
-		if (style != TransitionStyle.NONE) {
+		this.transitionTime = 0;
+		
+		// If the transition is none, we don't have to bother with setting oldGui variable
+		if (!(style instanceof Transition.None)) {
 			oldGui = this.gui;
 		}
 		if (this.gui != null && addQueue) {
@@ -134,20 +136,25 @@ public class UISystem {
 			glEnable(GL_BLEND);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 			glActiveTexture(GL_TEXTURE0);
-			transitionDur += System.currentTimeMillis() - lastAnimTime;
+			transitionTime += System.currentTimeMillis() - lastAnimTime;
 			lastAnimTime = System.currentTimeMillis();
 			Graphics.setGlobalAlphaMultiplier(1);
 			Graphics.setColor(0x000000);
-			if (curTransition == TransitionStyle.FADE_OUT_IN) {
-				// those values are meant to be tweaked and will be available for fine tuning from setMenu later
-				float fadeSpeed = 250f;
-				float fadeSpeedHalf = fadeSpeed / 2f;
-				if (transitionDur >= fadeSpeed) {
+			if (curTransition != null) {
+//				float fadeSpeed = 250f;
+//				float fadeSpeedHalf = fadeSpeed / 2f;
+//				if (transitionTime >= fadeSpeed) {
+//					curTransition = null;
+//					oldGui = null;
+//				}
+//				float alpha1 = Math.min(Math.max(((float) transitionTime-fadeSpeedHalf)/fadeSpeedHalf, 0f), 1f);
+//				float alpha2 = Math.min(Math.max(1f - (float) transitionTime/fadeSpeedHalf, 0f), 1f);
+				float alpha1 = curTransition.getCurrentGuiOpacity(transitionTime / curTransition.getDuration());
+				float alpha2 = curTransition.getOldGuiOpacity(transitionTime / curTransition.getDuration());
+				if (transitionTime >= curTransition.duration) {
 					curTransition = null;
 					oldGui = null;
 				}
-				float alpha1 = Math.min(Math.max(((float) transitionDur-fadeSpeedHalf)/fadeSpeedHalf, 0f), 1f);
-				float alpha2 = Math.min(Math.max(1f - (float) transitionDur/fadeSpeedHalf, 0f), 1f);
 				if (gui != null) {
 					Graphics.setGlobalAlphaMultiplier(alpha1);
 					gui.render();

@@ -73,7 +73,7 @@ public class PauseGUI extends MenuGUI {
 		if (Keybindings.isPressed("menu")) {
 			Keyboard.setKeyPressed(Keybindings.getKeyCode("menu"), false);
 			Mouse.setGrabbed(true);
-			Cubyz.gameUI.setMenu(null, TransitionStyle.NONE);
+			Cubyz.gameUI.setMenu(null, new Transition.None());
 		}
 		if(resume == null) init(); // Prevents a bug that sometimes occurs.
 		exit.render();
