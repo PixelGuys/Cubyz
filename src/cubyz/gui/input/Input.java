@@ -42,33 +42,33 @@ public class Input {
 			if(Keybindings.isPressed("forward")) {
 				if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT_CONTROL)) {
 					if(Cubyz.player.isFlying()) {
-						Cubyz.playerInc.z = -8;
+						Cubyz.playerInc.z = -32;
 					} else {
-						Cubyz.playerInc.z = -2;
+						Cubyz.playerInc.z = -8;
 					}
 				} else {
-					Cubyz.playerInc.z = -1;
+					Cubyz.playerInc.z = -4;
 				}
 			}
 			if(Keybindings.isPressed("backward")) {
-				Cubyz.playerInc.z = 1;
+				Cubyz.playerInc.z = 4;
 			}
 			if(Keybindings.isPressed("left")) {
-				Cubyz.playerInc.x = -1;
+				Cubyz.playerInc.x = -4;
 			}
 			if(Keybindings.isPressed("right")) {
-				Cubyz.playerInc.x = 1;
+				Cubyz.playerInc.x = 4;
 			}
 			if(Keybindings.isPressed("jump")) {
 				if(Cubyz.player.isFlying()) {
-					Cubyz.player.vy = 0.25F;
+					Cubyz.player.vy = 5;
 				} else if(Cubyz.player.isOnGround()) {
-					Cubyz.player.vy = 0.25F;
+					Cubyz.player.vy = 5;
 				}
 			}
 			if(Keybindings.isPressed("fall")) {
 				if(Cubyz.player.isFlying()) {
-					Cubyz.player.vy = -0.25F;
+					Cubyz.player.vy = -5;
 				}
 			}
 			if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_F)) {

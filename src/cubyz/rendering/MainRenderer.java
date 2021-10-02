@@ -140,10 +140,6 @@ public class MainRenderer {
 
 		inited = true;
 	}
-
-	public void clear() {
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-	}
 	
 	/**
 	 * Sorts the chunks based on their distance from the player to reduce complexity when sorting the transparent blocks.
@@ -186,7 +182,6 @@ public class MainRenderer {
 		if(Window.shouldClose()) {
 			GameLauncher.instance.exit();
 		}
-		clear();
 		if (Window.isResized()) {
 			glViewport(0, 0, Window.getWidth(), Window.getHeight());
 			Window.setResized(false);
@@ -419,7 +414,7 @@ public class MainRenderer {
 			blockDropShader.setUniform(BlockDropUniforms.loc_fog_density, Cubyz.fog.getDensity());
 			blockDropShader.setUniform(BlockDropUniforms.loc_projectionMatrix, Window.getProjectionMatrix());
 			blockDropShader.setUniform(BlockDropUniforms.loc_texture_sampler, 0);
-			for(ChunkEntityManager chManager : localPlayer.getWorld().getEntityManagers()) {
+			for(ChunkEntityManager chManager : Cubyz.world.getEntityManagers()) {
 				NormalChunk chunk = chManager.chunk;
 				if (!chunk.isLoaded() || !frustumInt.testAab(chunk.getMin(), chunk.getMax()))
 					continue;
@@ -448,7 +443,7 @@ public class MainRenderer {
 					blockDropShader.setUniform(BlockDropUniforms.loc_texNegZ, block.textureIndices[Neighbors.DIR_NEG_Z]);
 					blockDropShader.setUniform(BlockDropUniforms.loc_texPosZ, block.textureIndices[Neighbors.DIR_POS_Z]);
 					if(mesh != null) {
-						blockDropShader.setUniform(BlockDropUniforms.loc_light, localPlayer.getWorld().getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
+						blockDropShader.setUniform(BlockDropUniforms.loc_light, Cubyz.world.getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
 						
 						mesh.renderOne(() -> {
 							Vector3f position = manager.getPosition(index);

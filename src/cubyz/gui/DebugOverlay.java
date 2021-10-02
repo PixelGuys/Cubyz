@@ -9,7 +9,6 @@ import cubyz.rendering.Graphics;
 import cubyz.rendering.Window;
 import cubyz.rendering.text.Fonts;
 import cubyz.world.entity.Player;
-import cubyz.world.entity.PlayerEntity.PlayerImpl;
 
 /**
  * This is the F3 debug menu
@@ -49,11 +48,8 @@ public class DebugOverlay extends MenuGUI {
 				Graphics.drawText(0, 160, "Chunk Queue Size: " + Cubyz.world.getChunkQueueSize());
 				Graphics.drawText(0, 180, "Biome: " + Cubyz.world.getBiome((int)p.getPosition().x, (int)p.getPosition().z).getRegistryID());
 				
-				if(p instanceof PlayerImpl) { // player on local world
-					PlayerImpl pi = (PlayerImpl) p;
-					if(pi.getRemainingBreakTime() > 0) {
-						Graphics.drawText(0, 200, "Remaining Breaking Time: " + pi.getRemainingBreakTime());
-					}
+				if(p.getRemainingBreakTime() > 0) {
+					Graphics.drawText(0, 200, "Remaining Breaking Time: " + p.getRemainingBreakTime());
 				}
 			}
 			

@@ -33,7 +33,7 @@ public class Entity {
 	public float health, hunger;
 	public final float maxHealth, maxHunger;
 
-	public final int id;
+	public int id;
 
 	private static int currentID = 0;
 	
@@ -69,7 +69,7 @@ public class Entity {
 	 * Checks collision against all blocks within the hitbox and updates positions.
 	 * @return The height of the step taken. Needed for hunger calculations.
 	 */
-	protected float collisionDetection() {
+	protected float collisionDetection(float deltaTime) {
 		// Simulate movement in all directions and prevent movement in a direction that would get the player into a block:
 		int minX = (int)Math.floor(position.x - width);
 		int maxX = (int)Math.floor(position.x + width);
@@ -77,43 +77,46 @@ public class Entity {
 		int maxY = (int)Math.floor(position.y + height);
 		int minZ = (int)Math.floor(position.z - width);
 		int maxZ = (int)Math.floor(position.z + width);
-		Vector4f change = new Vector4f(vx, 0, 0, 0);
+		float deltaX = vx*deltaTime;
+		float deltaY = vy*deltaTime;
+		float deltaZ = vz*deltaTime;
+		Vector4f change = new Vector4f(deltaX, 0, 0, 0);
 		float step = 0.0f;
-		if(vx < 0) {
-			int minX2 = (int)Math.floor(position.x - width + vx);
+		if(deltaX < 0) {
+			int minX2 = (int)Math.floor(position.x - width + deltaX);
 			// First check for partial blocks:
 			for(int y = minY; y <= maxY; y++) {
 				for(int z = minZ; z <= maxZ; z++) {
 					checkBlock(minX, y, z, change);
 				}
 			}
-			if(minX2 != minX && vx == change.x) {
+			if(minX2 != minX && deltaX == change.x) {
 				outer:
 				for(int y = minY; y <= maxY; y++) {
 					for(int z = minZ; z <= maxZ; z++) {
 						if(checkBlock(minX2, y, z, change)) {
 							change.x = 0;
-							position.x = minX2 + 1.01f + width;
+							position.x = minX2 + 1.001f + width;
 							break outer;
 						}
 					}
 				}
 			}
-		} else if(vx > 0) {
-			int maxX2 = (int)Math.floor(position.x + width + vx);
+		} else if(deltaX > 0) {
+			int maxX2 = (int)Math.floor(position.x + width + deltaX);
 			// First check for partial blocks:
 			for(int y = minY; y <= maxY; y++) {
 				for(int z = minZ; z <= maxZ; z++) {
 					checkBlock(maxX, y, z, change);
 				}
 			}
-			if(maxX2 != maxX && vx == change.x) {
+			if(maxX2 != maxX && deltaX == change.x) {
 				outer:
 				for(int y = minY; y <= maxY; y++) {
 					for(int z = minZ; z <= maxZ; z++) {
 						if(checkBlock(maxX2, y, z, change)) {
 							change.x = 0;
-							position.x = maxX2 - 0.01f - width;
+							position.x = maxX2 - 0.001f - width;
 							break outer;
 						}
 					}
@@ -121,50 +124,50 @@ public class Entity {
 			}
 		}
 		position.x += change.x;
-		if(vx != change.x) {
+		if(deltaX != change.x) {
 			vx = 0;
 			change.w = 0; // Don't step if the player walks into a wall.
 		}
 		step = Math.max(step, change.w);
 		change.x = 0;
-		change.y = vy;
+		change.y = deltaY;
 		minX = (int)Math.floor(position.x - width);
 		maxX = (int)Math.floor(position.x + width);
-		if(vy < 0) {
-			int minY2 = (int)Math.floor(position.y + vy);
+		if(deltaY < 0) {
+			int minY2 = (int)Math.floor(position.y + deltaY);
 			// First check for partial blocks:
 			for(int x = minX; x <= maxX; x++) {
 				for(int z = minZ; z <= maxZ; z++) {
 					checkBlock(x, minY, z, change);
 				}
 			}
-			if(minY2 != minY && vy == change.y) {
+			if(minY2 != minY && deltaY == change.y) {
 				outer:
 				for(int x = minX; x <= maxX; x++) {
 					for(int z = minZ; z <= maxZ; z++) {
 						if(checkBlock(x, minY2, z, change)) {
 							change.y = 0;
-							position.y = minY2 + 1.01f;
+							position.y = minY2 + 1.001f;
 							break outer;
 						}
 					}
 				}
 			}
-		} else if(vy > 0) {
-			int maxY2 = (int)Math.floor(position.y + height + vy);
+		} else if(deltaY > 0) {
+			int maxY2 = (int)Math.floor(position.y + height + deltaY);
 			// First check for partial blocks:
 			for(int x = minX; x <= maxX; x++) {
 				for(int z = minZ; z <= maxZ; z++) {
 					checkBlock(x, maxY, z, change);
 				}
 			}
-			if(maxY2 != maxY && vy == change.y) {
+			if(maxY2 != maxY && deltaY == change.y) {
 				outer:
 				for(int x = minX; x <= maxX; x++) {
 					for(int z = minZ; z <= maxZ; z++) {
 						if(checkBlock(x, maxY2, z, change)) {
 							change.y = 0;
-							position.y = maxY2 - 0.01f - height;
+							position.y = maxY2 - 0.001f - height;
 							break outer;
 						}
 					}
@@ -172,50 +175,50 @@ public class Entity {
 			}
 		}
 		position.y += change.y;
-		if(vy != change.y) {
+		if(deltaY != change.y) {
 			stopVY();
 		}
 		change.w = 0; // Don't step in y-direction.
 		step = Math.max(step, change.w);
 		change.y = 0;
-		change.z = vz;
+		change.z = deltaZ;
 		minY = (int)Math.floor(position.y);
 		maxY = (int)Math.floor(position.y + height);
-		if(vz < 0) {
-			int minZ2 = (int)Math.floor(position.z - width + vz);
+		if(deltaZ < 0) {
+			int minZ2 = (int)Math.floor(position.z - width + deltaZ);
 			// First check for partial blocks:
 			for(int x = minX; x <= maxX; x++) {
 				for(int y = minY; y <= maxY; y++) {
 					checkBlock(x, y, minZ, change);
 				}
 			}
-			if(minZ2 != minZ && change.z == vz) {
+			if(minZ2 != minZ && change.z == deltaZ) {
 				outer:
 				for(int x = minX; x <= maxX; x++) {
 					for(int y = minY; y <= maxY; y++) {
 						if(checkBlock(x, y, minZ2, change)) {
 							change.z = 0;
-							position.z = minZ2 + 1.01f + width;
+							position.z = minZ2 + 1.001f + width;
 							break outer;
 						}
 					}
 				}
 			}
-		} else if(vz > 0) {
-			int maxZ2 = (int)Math.floor(position.z + width + vz);
+		} else if(deltaZ > 0) {
+			int maxZ2 = (int)Math.floor(position.z + width + deltaZ);
 			// First check for partial blocks:
 			for(int x = minX; x <= maxX; x++) {
 				for(int y = minY; y <= maxY; y++) {
 					checkBlock(x, y, maxZ, change);
 				}
 			}
-			if(maxZ2 != maxZ && vz == change.z) {
+			if(maxZ2 != maxZ && deltaZ == change.z) {
 				outer:
 				for(int x = minX; x <= maxX; x++) {
 					for(int y = minY; y <= maxY; y++) {
 						if(checkBlock(x, y, maxZ2, change)) {
 							change.z = 0;
-							position.z = maxZ2 - 0.01f - width;
+							position.z = maxZ2 - 0.001f - width;
 							break outer;
 						}
 					}
@@ -223,7 +226,7 @@ public class Entity {
 			}
 		}
 		position.z += change.z;
-		if(vz != change.z) {
+		if(deltaZ != change.z) {
 			vz = 0;
 			change.w = 0; // Don't step if the player walks into a wall.
 		}
@@ -252,15 +255,15 @@ public class Entity {
 	
 	public int calculateFallDamage() {
 		if(vy < 0)
-			return (int)(8*vy*vy);
+			return (int)(8*vy*vy/900);
 		return 0;
 	}
 	
 	public boolean checkBlock(int x, int y, int z, Vector4f displacement) {
-		Block b = world.getBlock(x, y, z);
+		Block b = getBlock(x, y, z);
 		if(b != null && b.isSolid()) {
 			if(b.mode.changesHitbox()) {
-				return b.mode.checkEntityAndDoCollision(this, displacement, x, y, z, world.getBlockData(x, y, z));
+				return b.mode.checkEntityAndDoCollision(this, displacement, x, y, z, getBlockData(x, y, z));
 			}
 			// Check for stepping:
 			if(y + 1 - position.y > 0 && y + 1 - position.y <= stepHeight) {
@@ -271,12 +274,19 @@ public class Entity {
 		}
 		return false;
 	}
+
+	protected Block getBlock(int x, int y, int z) {
+		return world.getBlock(x, y, z);
+	}
+	protected byte getBlockData(int x, int y, int z) {
+		return world.getBlockData(x, y, z);
+	}
 	
 	public boolean checkBlock(int x, int y, int z) {
-		Block b = world.getBlock(x, y, z);
+		Block b = getBlock(x, y, z);
 		if(b != null && b.isSolid()) {
 			if(b.mode.changesHitbox()) {
-				return b.mode.checkEntity(position, width, height, x, y, z, world.getBlockData(x, y, z));
+				return b.mode.checkEntity(position, width, height, x, y, z, getBlockData(x, y, z));
 			}
 			return true;
 		}
@@ -308,11 +318,11 @@ public class Entity {
 		}
 	}
 	
-	public void update() {
-		float step = collisionDetection();
+	public void update(float deltaTime) {
+		float step = collisionDetection(deltaTime);
 		if(entityAI != null)
 			entityAI.update(this);
-		updateVelocity();
+		updateVelocity(deltaTime);
 
 		// clamp health between 0 and maxHealth
 		if (health < 0)
@@ -321,7 +331,7 @@ public class Entity {
 			health = maxHealth;
 		
 		if(maxHunger > 0) {
-			hungerMechanics(step);
+			hungerMechanics(step, deltaTime);
 		}
 	}
 	
@@ -330,22 +340,22 @@ public class Entity {
 	 * Simulates the hunger system. TODO: Make dependent on mass
 	 * @param step How high the entity stepped in this update cycle.
 	 */
-	protected void hungerMechanics(float step) {
+	protected void hungerMechanics(float step, float deltaTime) {
 		// Passive energy consumption:
-		hunger -= 0.0004; // Will deplete hunger after 22 minutes of standing still.
+		hunger -= 0.00013333*deltaTime; // Will deplete hunger after 22 minutes of standing still.
 		// Energy consumption due to movement:
-		hunger -= (vx*vx + vz*vz)/16;
+		hunger -= (vx*vx + vz*vz)/900/16*deltaTime;
 		
 		// Jumping:
 		if(oldVY < vy) { // Only care about positive changes.
 			// Determine the difference in "signed" kinetic energy.
 			float deltaE = vy*vy*Math.signum(vy) - oldVY*oldVY*Math.signum(oldVY);
-			hunger -= deltaE;
+			hunger -= deltaE/900;
 		}
 		oldVY = vy;
 		
 		// Stepping: Consider potential energy of the step taken V = m·g·h
-		hunger -= ServerWorld.GRAVITY*step;
+		hunger -= ServerWorld.GRAVITY*step/900;
 		
 		// Examples:
 		// At 3 blocks/second(player base speed) the cost of movement is about twice as high as the passive consumption.
@@ -356,7 +366,7 @@ public class Entity {
 		// Heal if hunger is more than half full:
 		if(hunger > maxHunger/2 && health < maxHealth) {
 			// Maximum healing effect is 1% maxHealth per second:
-			float healing = Math.min(maxHealth*0.01f/30, maxHealth-health);
+			float healing = Math.min(maxHealth*deltaTime*0.01f, maxHealth-health);
 			health += healing;
 			hunger -= healing;
 		}
@@ -367,11 +377,11 @@ public class Entity {
 		}
 	}
 	
-	protected void updateVelocity() {
+	protected void updateVelocity(float deltaTime) {
 		// TODO: Use the entities mass, force and ground structure to calculate a realistic velocity change.
-		vx += (targetVX-vx)/5;
-		vz += (targetVZ-vz)/5;
-		vy -= ServerWorld.GRAVITY;
+		vx += (targetVX-vx)/5*deltaTime;
+		vz += (targetVZ-vz)/5*deltaTime;
+		vy -= ServerWorld.GRAVITY*deltaTime;
 	}
 	
 	// NDT related
@@ -406,7 +416,9 @@ public class Entity {
 		position = loadVector3f(json.getObjectOrNew("position"));
 		rotation = loadVector3f(json.getObjectOrNew("rotation"));
 		Vector3f velocity = loadVector3f(json.getObjectOrNew("velocity"));
-		vx = velocity.x; vy = velocity.y; vz = velocity.z;
+		vx = velocity.x;
+		vy = velocity.y;
+		vz = velocity.z;
 		health = json.getFloat("health", maxHealth);
 		hunger = json.getFloat("hunger", maxHunger);
 	}

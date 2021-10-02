@@ -10,7 +10,6 @@ import javax.imageio.ImageIO;
 import javax.swing.JOptionPane;
 
 import org.joml.Vector3f;
-import org.joml.Vector3i;
 import org.joml.Vector4f;
 import org.lwjgl.Version;
 import org.lwjgl.opengl.GL12;
@@ -20,6 +19,7 @@ import cubyz.api.ClientConnection;
 import cubyz.api.ClientRegistries;
 import cubyz.api.Side;
 import cubyz.client.entity.ClientEntityManager;
+import cubyz.client.entity.ClientPlayer;
 import cubyz.client.loading.LoadThread;
 import cubyz.gui.GameOverlay;
 import cubyz.gui.LoadingGUI;
@@ -27,10 +27,8 @@ import cubyz.gui.MenuGUI;
 import cubyz.gui.audio.SoundBuffer;
 import cubyz.gui.audio.SoundManager;
 import cubyz.gui.audio.SoundSource;
-import cubyz.gui.input.Keybindings;
 import cubyz.modding.ModLoader;
 import cubyz.rendering.BlockPreview;
-import cubyz.rendering.Camera;
 import cubyz.rendering.FrameBuffer;
 import cubyz.rendering.Material;
 import cubyz.rendering.Mesh;
@@ -42,17 +40,11 @@ import cubyz.utils.*;
 import cubyz.utils.datastructures.PixelUtils;
 import cubyz.world.*;
 import cubyz.world.blocks.Block;
-import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.CustomBlock;
-import cubyz.world.blocks.Block.BlockClass;
-import cubyz.world.entity.Entity;
-import cubyz.world.entity.PlayerEntity.PlayerImpl;
 import cubyz.world.generator.LifelandGenerator;
 import cubyz.world.items.CustomItem;
 import cubyz.world.items.Inventory;
 import cubyz.world.items.Item;
-import cubyz.world.items.ItemBlock;
-import cubyz.world.items.tools.Tool;
 
 /**
  * A complex class that holds everything together.<br>
@@ -69,9 +61,6 @@ public class GameLogic implements ClientConnection {
 	public Mesh skyBodyMesh;
 	private Spatial skySun;
 	private Spatial skyMoon;
-
-	private int breakCooldown = 10;
-	private int buildCooldown = 10;
 
 	public String serverIP = "localhost";
 	public int serverPort = 58961;
@@ -136,24 +125,7 @@ public class GameLogic implements ClientConnection {
 			skyMoon.setPositionRaw(100, 1, 0);
 			GameLauncher.renderer.worldSpatialList = new Spatial[] {skySun/*, skyMoon*/};
 		}
-		Cubyz.player = (PlayerImpl)world.getLocalPlayer();
-		Random rnd = new Random();
-		int dx = 0;
-		int dz = 0;
-		if (Cubyz.player.getPosition().x == 0 && Cubyz.player.getPosition().z == 0) {
-			Logger.info("Finding position..");
-			while (true) {
-				dx = rnd.nextInt(65536);
-				dz = rnd.nextInt(65536);
-				Logger.info("Trying " + dx + " ? " + dz);
-				if(world.isValidSpawnLocation(dx, dz)) 
-					break;
-			}
-			int startY = (int)world.getMapFragment((int)dx, (int)dz, 1).getHeight(dx, dz);
-			world.seek((int)dx, startY, (int)dz, ClientSettings.RENDER_DISTANCE, ClientSettings.EFFECTIVE_RENDER_DISTANCE*NormalChunk.chunkSize*2);
-			Cubyz.player.setPosition(new Vector3i(dx, startY+2, dz));
-			Logger.info("OK!");
-		}
+		Cubyz.player = new ClientPlayer(world.getLocalPlayer());
 		// Make sure the world is null until the player position is known.
 		DiscordIntegration.setStatus("Playing");
 		Cubyz.gameUI.addOverlay(new GameOverlay());
@@ -310,59 +282,7 @@ public class GameLogic implements ClientConnection {
 	}	
 	
 	public void update(float interval) {
-		if (!Cubyz.gameUI.doesGUIPauseGame() && Cubyz.world != null) {
-			if (!Cubyz.gameUI.doesGUIBlockInput()) {
-				Cubyz.player.move(Cubyz.playerInc.mul(0.11F), Camera.getRotation());
-				if (breakCooldown > 0) {
-					breakCooldown--;
-				}
-				if (buildCooldown > 0) {
-					buildCooldown--;
-				}
-				if (Keybindings.isPressed("destroy")) {
-					//Breaking Blocks
-					if(Cubyz.player.isFlying()) { // Ignore hardness when in flying.
-						if (breakCooldown == 0) {
-							breakCooldown = 7;
-							Object bi = Cubyz.msd.getSelected();
-							if (bi != null && bi instanceof BlockInstance && ((BlockInstance)bi).getBlock().getBlockClass() != BlockClass.UNBREAKABLE) {
-								Cubyz.world.removeBlock(((BlockInstance)bi).getX(), ((BlockInstance)bi).getY(), ((BlockInstance)bi).getZ());
-							}
-						}
-					}
-					else {
-						Object selected = Cubyz.msd.getSelected();
-						if(selected instanceof BlockInstance) {
-							Cubyz.player.breaking((BlockInstance)selected, Cubyz.inventorySelection, Cubyz.world);
-						}
-					}
-					// Hit entities:
-					Object selected = Cubyz.msd.getSelected();
-					if(selected instanceof Entity) {
-						((Entity)selected).hit(Cubyz.player.getInventory().getItem(Cubyz.inventorySelection) instanceof Tool ? (Tool)Cubyz.player.getInventory().getItem(Cubyz.inventorySelection) : null, Camera.getViewMatrix().positiveZ(Cubyz.dir).negate());
-					}
-				} else {
-					Cubyz.player.resetBlockBreaking();
-				}
-				if (Keybindings.isPressed("place/use") && buildCooldown <= 0) {
-					if((Cubyz.msd.getSelected() instanceof BlockInstance) && ((BlockInstance)Cubyz.msd.getSelected()).getBlock().onClick(Cubyz.world, ((BlockInstance)Cubyz.msd.getSelected()).getPosition())) {
-						// Interact with block(potentially do a hand animation, in the future).
-					} else if(Cubyz.player.getInventory().getItem(Cubyz.inventorySelection) instanceof ItemBlock) {
-						// Build block:
-						if (Cubyz.msd.getSelected() != null) {
-							buildCooldown = 10;
-							Cubyz.msd.placeBlock(Cubyz.player.getInventory(), Cubyz.inventorySelection, Cubyz.world);
-						}
-					} else if(Cubyz.player.getInventory().getItem(Cubyz.inventorySelection) != null) {
-						// Use item:
-						if(Cubyz.player.getInventory().getItem(Cubyz.inventorySelection).onUse(Cubyz.player)) {
-							Cubyz.player.getInventory().getStack(Cubyz.inventorySelection).add(-1);
-							buildCooldown = 10;
-						}
-					}
-				}
-			}
-			Cubyz.playerInc.x = Cubyz.playerInc.y = Cubyz.playerInc.z = 0.0F; // Reset positions
+		if(!Cubyz.gameUI.doesGUIPauseGame() && Cubyz.world != null) {
 			NormalChunk ch = Cubyz.world.getChunk((int)Cubyz.player.getPosition().x >> NormalChunk.chunkShift, (int)Cubyz.player.getPosition().y >> NormalChunk.chunkShift, (int)Cubyz.player.getPosition().z >> NormalChunk.chunkShift);
 			if (ch != null && ch.isLoaded()) {
 				Cubyz.world.update();

@@ -93,11 +93,8 @@ public class Game {
 
 	public void loop() {
 		double previous = getTime();
-		double loopStartTime = getTime();
 		int frames = 0;
 		while (running) {
-			loopStartTime = getTime();
-
 			if (previous < getTime() - 1) {
 				previous = getTime();
 				fps = frames;
@@ -106,8 +103,9 @@ public class Game {
 			
 			render();
 			handleInput();
+			if(Cubyz.player != null)
+				Cubyz.player.update();
 			++frames;
-			sync(loopStartTime, 1 / 60);
 		}
 	}
 	

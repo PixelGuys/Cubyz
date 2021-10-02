@@ -288,6 +288,7 @@ public abstract class Window {
 		glfwMakeContextCurrent(handle);
 		glfwSwapBuffers(handle);
 		glfwPollEvents();
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	}
 	
 }

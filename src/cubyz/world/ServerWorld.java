@@ -9,12 +9,14 @@ import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 
 import org.joml.Vector3f;
+import org.joml.Vector3i;
 import org.joml.Vector4f;
 
 import cubyz.Logger;
 import cubyz.Settings;
 import cubyz.api.CubyzRegistries;
 import cubyz.api.CurrentWorldRegistries;
+import cubyz.client.ClientSettings;
 import cubyz.utils.datastructures.Cache;
 import cubyz.utils.datastructures.HashMapKey3D;
 import cubyz.utils.math.CubyzMath;
@@ -41,7 +43,7 @@ import cubyz.world.terrain.MapFragment;
 
 public class ServerWorld {
 	public static final int DAY_CYCLE = 12000; // Length of one in-game day in 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
-	public static final float GRAVITY = 0.022f;
+	public static final float GRAVITY = 9.81f;
 
 	private MapFragment[] maps;
 	private HashMap<HashMapKey3D, MetaChunk> metaChunks = new HashMap<HashMapKey3D, MetaChunk>();
@@ -63,6 +65,7 @@ public class ServerWorld {
 
 	private long gameTime;
 	private long milliTime;
+	private long lastUpdateTime = System.currentTimeMillis();
 
 	private final long seed;
 
@@ -178,6 +181,21 @@ public class ServerWorld {
 		if (player == null) {
 			player = (Player) CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player").newEntity(this);
 			addEntity(player);
+			Random rnd = new Random();
+			int dx = 0;
+			int dz = 0;
+			Logger.info("Finding position..");
+			while (true) {
+				dx = rnd.nextInt(65536);
+				dz = rnd.nextInt(65536);
+				Logger.info("Trying " + dx + " ? " + dz);
+				if(isValidSpawnLocation(dx, dz))
+					break;
+			}
+			int startY = (int)getMapFragment((int)dx, (int)dz, 1).getHeight(dx, dz);
+			seek((int)dx, startY, (int)dz, ClientSettings.RENDER_DISTANCE, ClientSettings.EFFECTIVE_RENDER_DISTANCE*NormalChunk.chunkSize*2);
+			player.setPosition(new Vector3i(dx, startY+2, dz));
+			Logger.info("OK!");
 		}
 		wio.saveWorldData();
 		blocks = blockList.toArray(new Block[0]);
@@ -338,13 +356,16 @@ public class ServerWorld {
 	}
 	
 	public void update() {
-		if(milliTime + 100 < System.currentTimeMillis()) {
+		long newTime = System.currentTimeMillis();
+		float deltaTime = (newTime - lastUpdateTime)/1000.0f;
+		lastUpdateTime = newTime;
+		if(deltaTime > 0.3f) {
+			Logger.warning("Update time is getting too high. It's already at "+deltaTime+" s!");
+			deltaTime = 0.3f;
+		}
+		if(milliTime + 100 < newTime) {
 			milliTime += 100;
 			gameTime++; // gameTime is measured in 100ms.
-			if((milliTime + 100) < System.currentTimeMillis()) { // we skipped updates
-				Logger.warning(((System.currentTimeMillis() - milliTime)/100)/10.0f + " seconds of updates skipped!");
-				milliTime = System.currentTimeMillis();
-			}
 		}
 		int dayCycle = ServerWorld.DAY_CYCLE;
 		// Ambient light
@@ -386,7 +407,7 @@ public class ServerWorld {
 		// Entities
 		for (int i = 0; i < entities.size(); i++) {
 			Entity en = entities.get(i);
-			en.update();
+			en.update(deltaTime);
 			// Check item entities:
 			if(en.getInventory() != null) {
 				int x0 = (int)(en.getPosition().x - en.width) & ~NormalChunk.chunkMask;

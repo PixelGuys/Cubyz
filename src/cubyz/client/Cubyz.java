@@ -5,11 +5,11 @@ import java.util.Deque;
 
 import org.joml.Vector3f;
 
+import cubyz.client.entity.ClientPlayer;
 import cubyz.gui.UISystem;
 import cubyz.rendering.Fog;
 import cubyz.rendering.RenderOctTree;
 import cubyz.world.ServerWorld;
-import cubyz.world.entity.PlayerEntity.PlayerImpl;
 
 /**
  * A simple data holder for all static data that is needed for basic game functionality.
@@ -23,7 +23,7 @@ public class Cubyz {
 	
 	// World related stuff:
 	public static ServerWorld world;
-	public static PlayerImpl player;
+	public static ClientPlayer player;
 	
 	// Other:
 	public static Vector3f playerInc = new Vector3f();
