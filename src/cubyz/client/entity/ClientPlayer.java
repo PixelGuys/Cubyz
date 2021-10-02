@@ -35,7 +35,7 @@ public class ClientPlayer extends Player {
 		}
 		lastUpdateTime = newTime;
 		NormalChunk ch = Cubyz.world.getChunk((int)Cubyz.player.getPosition().x >> NormalChunk.chunkShift, (int)Cubyz.player.getPosition().y >> NormalChunk.chunkShift, (int)Cubyz.player.getPosition().z >> NormalChunk.chunkShift);
-		if(ch == null || !ch.isLoaded()) return;
+		if(ch == null || !ch.isGenerated()) return;
 		if(Cubyz.gameUI.doesGUIPauseGame() || Cubyz.world == null) {
 			return;
 		}
