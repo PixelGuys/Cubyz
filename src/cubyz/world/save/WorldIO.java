@@ -67,6 +67,7 @@ public class WorldIO {
 			if (world != null) {
 				world.setEntities(entities);
 			}
+			world.setGameTimeCycle(worldData.getBool("doGameTimeCycle", true));
 			world.setGameTime(worldData.getLong("gameTime", 0));
 		} catch (IOException e) {
 			Logger.error(e);
@@ -79,6 +80,7 @@ public class WorldIO {
 			JsonObject worldData = new JsonObject();
 			worldData.put("version", WORLD_DATA_VERSION);
 			worldData.put("seed", world.getSeed());
+			worldData.put("doGameTimeCycle", world.shouldDoGameTimeCycle());
 			worldData.put("gameTime", world.getGameTime());
 			worldData.put("entityCount", world == null ? 0 : world.getEntities().length);
 			worldData.put("blockPalette", blockPalette.save());

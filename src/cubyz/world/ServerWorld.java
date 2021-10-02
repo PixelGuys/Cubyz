@@ -66,7 +66,7 @@ public class ServerWorld {
 	private long gameTime;
 	private long milliTime;
 	private long lastUpdateTime = System.currentTimeMillis();
-	private boolean gameTimeCycle = true;
+	private boolean doGameTimeCycle = true;
 	
 	private final long seed;
 
@@ -359,12 +359,12 @@ public class ServerWorld {
 	
 	public void setGameTimeCycle(boolean value)
 	{
-		gameTimeCycle = value;
+		doGameTimeCycle = value;
 	}
 	
 	public boolean shouldDoGameTimeCycle()
 	{
-		return gameTimeCycle;
+		return doGameTimeCycle;
 	}
 	
 	public void update() {
@@ -378,7 +378,7 @@ public class ServerWorld {
 		
 		if (milliTime + 100 < newTime) {
 			milliTime += 100;
-			if (gameTimeCycle) gameTime++; // gameTime is measured in 100ms.
+			if (doGameTimeCycle) gameTime++; // gameTime is measured in 100ms.
 		}
 		if (milliTime < newTime - 1000) {
 			Logger.warning("Behind update schedule by " + (newTime - milliTime) / 1000.0f + "s!");
