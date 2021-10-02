@@ -43,7 +43,7 @@ import cubyz.world.terrain.MapFragment;
 
 public class ServerWorld {
 	public static final int DAY_CYCLE = 12000; // Length of one in-game day in 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
-	public static final float GRAVITY = 9.81f;
+	public static final float GRAVITY = 9.81F*1.5F;
 
 	private MapFragment[] maps;
 	private HashMap<HashMapKey3D, MetaChunk> metaChunks = new HashMap<HashMapKey3D, MetaChunk>();

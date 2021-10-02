@@ -63,9 +63,9 @@ public class Input {
 			}
 			if(Keybindings.isPressed("jump")) {
 				if(Cubyz.player.isFlying()) {
-					Cubyz.player.vy = 5;
+					Cubyz.player.vy = 5.45F;
 				} else if(Cubyz.player.isOnGround()) {
-					Cubyz.player.vy = 5;
+					Cubyz.player.vy = 5.45F;
 				}
 			}
 			if(Keybindings.isPressed("fall")) {
