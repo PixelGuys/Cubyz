@@ -33,7 +33,7 @@ public class CreativeGUI extends GeneralInventory {
 			if(inv[i].grabWithMouse(carried, Window.getWidth()/2, Window.getHeight())) {
 				if (i >= 32) {
 					Item[] items = CubyzRegistries.ITEM_REGISTRY.registered(new Item[0]);
-					inv[i].reference = new ItemStack(items[i - 32], 1);
+					inv[i].reference = new ItemStack(items[i - 32], 64);
 				}
 			}
 		}
