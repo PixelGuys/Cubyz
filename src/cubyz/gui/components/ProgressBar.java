@@ -9,9 +9,9 @@ import cubyz.rendering.Graphics;
  */
 
 public class ProgressBar extends Component {
-
-	int value;
-	int maxValue;
+	private int value;
+	private int maxValue;
+	private int alpha = 255;
 
 	public int getValue() {
 		return value;
@@ -28,12 +28,20 @@ public class ProgressBar extends Component {
 	public void setMaxValue(int maxValue) {
 		this.maxValue = maxValue;
 	}
+	
+	public void setColorAlpha(int alpha) {
+		this.alpha = alpha;
+	}
+	
+	public int getColorAlpha() {
+		return alpha;
+	}
 
 	@Override
 	public void render(int x, int y) {
-		Graphics.setColor(0xff0000);
+		Graphics.setColor(0xff0000, alpha);
 		Graphics.fillRect(x, y, (width / maxValue) * value, height);
-		Graphics.setColor(0x000000);
+		Graphics.setColor(0x000000, alpha);
 		Graphics.drawRect(x, y, width, height);
 	}
 

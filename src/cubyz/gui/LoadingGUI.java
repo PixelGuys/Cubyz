@@ -19,10 +19,15 @@ public class LoadingGUI extends MenuGUI {
 	private Label step = new Label();
 	private Label step2 = new Label();
 	private boolean hasStep2 = false;
+	
+	private boolean isLastStep = false;
+	private boolean currentStepCompleted = false;
 	private ProgressBar pb1 = new ProgressBar();
 	private ProgressBar pb2 = new ProgressBar();
-	private int alpha = 0;
-	boolean alphaDecrease = false;
+	//private int alpha = 0;
+	//boolean alphaDecrease = false;
+	private int alpha = 255;
+	private boolean alphaDecrease = true;
 	private static Texture splash;
 	
 	public LoadingGUI() {
@@ -45,11 +50,19 @@ public class LoadingGUI extends MenuGUI {
 	public void setStep(int step, int subStep, int subStepMax) {
 		this.step.setText(step + "/5");
 		pb1.setValue(step);
+		if (step == 5) {
+			// TODO: a stepMax parameter to set which step is the last
+			isLastStep = true;
+		}
 		if (subStepMax != 0) {
 			hasStep2 = true;
 			pb2.setValue(subStep);
 			pb2.setMaxValue(subStepMax);
 			step2.setText(subStep + "/" + subStepMax);
+			// We've reached the last sub-step, so the current step is completed
+			if (subStep == subStepMax) {
+				currentStepCompleted = true;
+			}
 		} else {
 			hasStep2 = false;
 		}
@@ -79,21 +92,18 @@ public class LoadingGUI extends MenuGUI {
 		Graphics.setColor(0xFFFFFF, alpha);
 		Graphics.fillRect(0, 0, Window.getWidth(), Window.getHeight());
 		Graphics.drawImage(splash, Window.getWidth()/2-100, (int)(0.1f*Window.getHeight()), 200, 200);
-		if (alphaDecrease) {
+		if (isLastStep && currentStepCompleted) {
 			if (alpha > 0) {
 				alpha -= 4;
-			}
-		} else {
-			if (alpha < 255) {
-				alpha += 4;
-			} else {
-				alphaDecrease = true;
 			}
 		}
 		setBounds(0.25f, 0.55f, 0.5f, 0.1f, pb1);
 		setBounds(0.25f, 0.75f, 0.5f, 0.1f, pb2);
 		setPosition(0.5f, 0.6f, step);
 		setPosition(0.5f, 0.8f, step2);
+		
+		pb1.setColorAlpha(alpha);
+		pb2.setColorAlpha(alpha);
 		pb1.render();
 		if (hasStep2) {
 			pb2.render();

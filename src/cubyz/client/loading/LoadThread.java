@@ -49,6 +49,7 @@ public class LoadThread extends Thread {
 		Cubyz.renderDeque.add(ClientSettings::load); // run in render thread due to some graphical reasons
 		LoadingGUI l = LoadingGUI.getInstance();
 		l.setStep(1, 0, 0);
+		// TODO: remove this step as there appears to be nothing
 		
 		l.setStep(2, 0, 0); // load mods
 		
@@ -96,7 +97,6 @@ public class LoadThread extends Thread {
 		Logger.info("Mod list complete");
 		ModLoader.sortMods();
 		
-		// TODO re-add pre-init
 		l.setStep(2, 0, ModLoader.mods.size());
 		for (int i = 0; i < ModLoader.mods.size(); i++) {
 			l.setStep(2, i+1, ModLoader.mods.size());
