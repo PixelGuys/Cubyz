@@ -1,30 +1,68 @@
 # GUI
 
-gui.cubyz.mainmenu.singleplayer=Singurătate
-gui.cubyz.mainmenu.multiplayer=Cu alți jucători
-gui.cubyz.mainmenu.exit=Inchide Jocul
+gui.cubyz.mainmenu.singleplayer=Singleplayer
+gui.cubyz.mainmenu.multiplayer=Multiplayer
+gui.cubyz.mainmenu.exit=Închide Jocul
 gui.cubyz.mainmenu.settings=Setări
-gui.cubyz.settings.done=Gata
-gui.cubyz.general.on=Activat
-gui.cubyz.general.off=Dezactivat
-gui.cubyz.settings.language=Limbă: {0}
-gui.cubyz.settings.discord=Integrație Discord: {0}
-gui.cubyz.settings.keybindings=Controale de butoane
-gui.cubyz.pause.exit=Ieși la meniul principal
+gui.cubyz.settings.done=Terminat
+gui.cubyz.general.on=Activată
+gui.cubyz.general.off=Dezactivată
+gui.cubyz.general.back=Înapoi
+gui.cubyz.general.cancel=Anulează
+gui.cubyz.settings.language=Limba: {0}
+gui.cubyz.settings.discord=Integrare Discord: {0}
+gui.cubyz.settings.keybindings=Controale
+gui.cubyz.settings.graphics=Setări video
+gui.cubyz.settings.fog.med=Ceață: La Distanță Medie
+gui.cubyz.settings.fog.far=Ceață: La Distanță Mare  
+gui.cubyz.settings.fog.near=Ceață: La Distanță Mică
+gui.cubyz.settings.fog.off=Ceață: Dezactivată
+gui.cubyz.settings.easylighting=Lumină Optimizată
+gui.cubyz.settings.vsync=Folosiți VSync
+gui.cubyz.pause.exit=Ieșire la meniul principal
 gui.cubyz.pause.resume=Reia
-gui.cubyz.debug.reload=Reîncarcă
-gui.cubyz.saves.play=Joacă {0}
+gui.cubyz.debug.reload=Reîmprospătare
+gui.cubyz.saves.play=Joacă pe lumea "{0}"
 gui.cubyz.saves.delete=Șterge
-gui.cubyz.saves.create=Creeaza un joc nou!
+gui.cubyz.saves.create=Creează o nouă salvare de joc!
 
 # Blocks
-block.cubyz.soil.name=Pămant
-block.cubyz.cobblestone.name=Piatră Crăpată
-block.cubyz.oak_log.name=Buștean de Stejar
-block.cubyz.oak_planks.name=Scânduri de Stejar
+
+block.cubyz.cactus.name=Cactus
+block.cubyz.gravel.name=Pietriș
+block.cubyz.soil.name=Pământ
+block.cubyz.ice.name=Ghiață
+block.cubyz.sand.name=Nisip
+block.cubyz.snow.name=Zăpadă
+block.cubyz.mossy_cobblestone.name=Piatră Spartă cu Mușchi
+block.cubyz.cobblestone.name=Piatră Spartă
+block.cubyz.oak_log.name=Butucă de Stejar
+block.cubyz.oak_top.name=Butucă de Stejar cioplită
+block.cubyz.oak_planks.name=Scândură de Stejar
+block.cubyz.oak_leaves.name=Frunze de Stejar
+block.cubyz.torch.name=Torță
+block.cubyz.workbench.name=Stație de lucru
+block.cubyz.iron_ore.name=Minereu de fier
+block.cubyz.oak_fence.name=Gard de Stejar
 
 # Items
-item.cubyz.stick.name=Băț
 
-# Name
+item.cubyz.stick.name=Băț
+item.cubyz.diamond.name=Diamant
+item.cubyz.coal.name=Cărbune
+item.cubyz.raw_meat.name=Carne crudă
+item.cubyz.apple.name=Măr
+
+# Tools
+
+cubyz.grammar.tool_material={1} {0}
+cubyz.tools.materials.wood=Lemn
+cubyz.tools.materials.stone=Piatră
+cubyz.tools.names.axe=Topor de
+cubyz.tools.names.pickaxe=Târnăcop de
+cubyz.tools.names.shovel=Lopată de
+cubyz.tools.names.sword=Sabie de
+
+# General
+
 lang.name=Română
