@@ -28,7 +28,7 @@ public class MusicManager {
 	private static long fadeInStart = 0;
 	private static long silenceStart = 0;
 	
-	private static final boolean DEBUG = true;
+	private static final boolean DEBUG = false;
 	
 	// Durations in milliseconds
 	private static final long SILENCE_DURATION  = 5000;
