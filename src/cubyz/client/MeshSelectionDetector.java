@@ -55,10 +55,10 @@ public class MeshSelectionDetector {
 			min.set(ch.getMin());
 			max.set(ch.getMax());
 			// Sadly RayAabIntersection doesn't work with double, so we have to convert to relative distances before testing:
-			min.sub(position);
-			max.sub(position);
+			min.sub(pos);
+			max.sub(pos);
 			Vector3f minf = new Vector3f((float)min.x, (float)min.y, (float)min.z);
-			Vector3f maxf = new Vector3f((float)min.x, (float)min.y, (float)min.z);
+			Vector3f maxf = new Vector3f((float)max.x, (float)max.y, (float)max.z);
 			// Check if the chunk is in view:
 			if (!intersection.test(minf.x-1, minf.y-1, minf.z-1, maxf.x+1, maxf.y+1, maxf.z+1)) // 1 is added/subtracted because chunk min-max don't align with the block min max.
 				continue;
@@ -71,15 +71,18 @@ public class MeshSelectionDetector {
 					if(!bi.getBlock().isSolid())
 						continue;
 					min.set(new Vector3f(bi.getX(), bi.getY(), bi.getZ()));
+					min.sub(pos);
 					max.set(min);
 					max.add(1, 1, 1); // scale, scale, scale
+					minf.set((float)min.x, (float)min.y, (float)min.z);
+					maxf.set((float)max.x, (float)max.y, (float)max.z);
 					// Because of the huge number of different BlockInstances that will be tested, it is more efficient to use RayAabIntersection and determine the distance separately:
 					if (intersection.test(minf.x, minf.y, minf.z, maxf.x, maxf.y, maxf.z)) {
 						double distance;
 						if(bi.getBlock().mode.changesHitbox()) {
 							distance = bi.getBlock().mode.getRayIntersection(intersection, bi, minf, maxf, new Vector3f());
 						} else {
-							distance = min.sub(pos).length();
+							distance = minf.length();
 						}
 						if(distance < closestDistance) {
 							closestDistance = distance;
