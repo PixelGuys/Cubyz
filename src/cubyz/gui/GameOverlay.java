@@ -56,8 +56,8 @@ public class GameOverlay extends MenuGUI {
 
 	@Override
 	public void render() {
+		Graphics.setColor(0xFFFFFF);
 		Graphics.drawImage(crosshair, Window.getWidth()/2 - 16, Window.getHeight()/2 - 16, 32, 32);
-		Graphics.setColor(0x000000);
 		if(!(Cubyz.gameUI.getMenuGUI() instanceof GeneralInventory)) {
 			Graphics.drawImage(selection, Window.getWidth()/2 - 254 + Cubyz.inventorySelection*64, Window.getHeight() - 62, 60, 60);
 			for(int i = 0; i < 8; i++) {
@@ -78,6 +78,7 @@ public class GameOverlay extends MenuGUI {
 			Graphics.setColor(0xFF3232, (int) (255-(System.currentTimeMillis()-lastPlayerHurtMs))/2);
 			Graphics.fillRect(0, 0, Window.getWidth(), Window.getHeight());
 		}
+		Graphics.setColor(0xFFFFFF);
 		TextLine text = new TextLine(Fonts.PIXEL_FONT, Math.round(health*10)/10.0f + "/" + Math.round(maxHealth) + " HP", 16, false);
 		float width = text.getWidth();
 		Graphics.drawImage(healthBar[7], (int)(Window.getWidth() - maxHealth*12 - 40 - width), 6, 24, 24);

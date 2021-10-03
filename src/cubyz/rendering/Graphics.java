@@ -275,6 +275,7 @@ public class Graphics {
 		static int loc_start;
 		static int loc_size;
 		static int loc_image;
+		static int loc_color;
 	}
 	static ShaderProgram imageShader;
 	
@@ -305,6 +306,7 @@ public class Graphics {
 		glUniform2f(ImageUniforms.loc_screen, Window.getWidth(), Window.getHeight());
 		glUniform2f(ImageUniforms.loc_start, x, y);
 		glUniform2f(ImageUniforms.loc_size, width, height);
+		glUniform1i(ImageUniforms.loc_color, color);
 		
 		glBindVertexArray(rectVAO);
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
