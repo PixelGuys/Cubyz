@@ -66,6 +66,10 @@ public class Player extends Entity implements CommandSource {
 	public Inventory getInventory() {
 		return inv;
 	}
+	
+	public void setInventory(Inventory inv) {
+		this.inv = inv;
+	}
 
 	@Override
 	public void feedback(String feedback) {}

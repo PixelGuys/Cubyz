@@ -23,6 +23,7 @@ public class ClientPlayer extends Player {
 	public ClientPlayer(Player player) {
 		super(null);
 		this.id = player.id;
+		this.setInventory(player.getInventory());
 		this.position.set(player.getPosition());
 	}
 	
