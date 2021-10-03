@@ -4,6 +4,7 @@ import cubyz.Logger;
 import cubyz.gui.input.Input;
 import cubyz.rendering.MainRenderer;
 import cubyz.rendering.Window;
+import cubyz.world.items.tools.TextureGenerator;
 
 /**
  * Class containing the main function.
@@ -16,6 +17,7 @@ public abstract class GameLauncher {
 	public static GameLogic logic;
 	
 	public static void main(String[] args) {
+		TextureGenerator.generate(null);
 		try {
 			Window.init();
 			input = new Input();
