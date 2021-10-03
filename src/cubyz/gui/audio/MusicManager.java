@@ -21,8 +21,19 @@ public class MusicManager {
 	private static HashMap<String, SoundBuffer> buffers = new HashMap<>();
 	private static HashMap<String, Float> positions = new HashMap<>();
 	
+	private static String oldMusic = "None";
 	private static String currentMusic = "None";
+	private static boolean currentMusicStarted = true;
+	private static long fadeOutStart = 0;
+	private static long fadeInStart = 0;
 	private static long silenceStart = 0;
+	
+	private static final boolean DEBUG = true;
+	
+	// Durations in milliseconds
+	private static final long SILENCE_DURATION  = 5000;
+	private static final long FADE_IN_DURATION  = 5000;
+	private static final long FADE_OUT_DURATION = 5000;
 
 	public static void init(SoundManager manager) {
 		MusicManager.manager = manager;
@@ -33,7 +44,7 @@ public class MusicManager {
 		}
 	}
 	
-	public static void setMusic(String musicName) {
+	public static void loadMusic(String musicName) {
 		if (currentMusic != "None") {
 			positions.put(currentMusic, source.getPlaybackPosition());
 		}
@@ -52,6 +63,21 @@ public class MusicManager {
 		source.setPlaybackPosition(positions.getOrDefault(musicName, 0.0f));
 	}
 	
+	public static void setMusic(String musicName) {
+		if (DEBUG) Logger.debug("Previous music was " + oldMusic);
+		if (musicName == oldMusic) {
+			currentMusic = musicName;
+			currentMusicStarted = true;
+			fadeInStart = 0;
+			return;
+		}
+		currentMusic = musicName;
+		currentMusicStarted = false;
+		fadeOutStart = System.currentTimeMillis();
+		silenceStart = 0;
+		if (DEBUG) Logger.debug("Start fade out");
+	}
+	
 	public static void start() {
 		
 	}
@@ -68,12 +94,34 @@ public class MusicManager {
 		if (!source.isPlaying()) {
 			silenceStart = System.currentTimeMillis();
 			positions.put(currentMusic, 0.0f);
-			currentMusic = "None";
+			if (currentMusicStarted) {
+				currentMusic = "None";
+			} else {
+				loadMusic(currentMusic);
+			}
 		} else {
-			long dur = System.currentTimeMillis() - silenceStart;
-			float gain = dur / 5000.0f;
-			if (gain < 0.0f) gain = 0.0f;
+			long silenceDuration = System.currentTimeMillis() - silenceStart;
+			if (!currentMusicStarted && silenceStart > 0 && silenceDuration >= SILENCE_DURATION) {
+				loadMusic(currentMusic);
+				oldMusic = currentMusic;
+				currentMusicStarted = true;
+				fadeInStart = System.currentTimeMillis();
+				if (DEBUG) Logger.debug("Start fade in");
+			}
+			long fadeIn = System.currentTimeMillis() - fadeInStart;
+			float gain = fadeIn / (float) FADE_IN_DURATION;
+			if (!currentMusicStarted && silenceStart != 0) {
+				gain = 0.0f;
+			}
 			if (gain > 1.0f) gain = 1.0f;
+			if (!currentMusicStarted && silenceStart == 0) {
+				float fadeOut = (System.currentTimeMillis() - fadeOutStart) / (float) FADE_OUT_DURATION;
+				gain = gain * (1 - fadeOut);
+				if (fadeOut >= 1) {
+					silenceStart = System.currentTimeMillis();
+					if (DEBUG) Logger.debug("Start silence");
+				}
+			}
 			source.setGain(gain * 0.3f);
 		}
 		
@@ -86,7 +134,7 @@ public class MusicManager {
 		}
 		
 		if (!currentMusic.equals(targetMusic)) {
-			Logger.info("Change music to " + targetMusic);
+			if (DEBUG) Logger.debug("Change music to " + targetMusic + " from " + currentMusic);
 			setMusic(targetMusic); // TODO: smooth transition between music
 		}
 	}

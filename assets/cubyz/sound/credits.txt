@@ -7,3 +7,7 @@ License: https://filmmusic.io/standard-license
 Dark Times by Kevin MacLeod
 Link: https://incompetech.filmmusic.io/song/3611-dark-times
 License: https://filmmusic.io/standard-license
+
+Eastern Thought by Kevin MacLeod
+Link: https://incompetech.filmmusic.io/song/3692-eastern-thought
+License: https://filmmusic.io/standard-license
