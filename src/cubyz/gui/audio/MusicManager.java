@@ -57,7 +57,7 @@ public class MusicManager {
 		}
 		
 		if (!currentMusic.equals(targetMusic)) {
-			source.stop();
+			Logger.info("Change music to " + targetMusic);
 			setMusic(targetMusic); // TODO: smooth transition between music
 			source.play();
 		}
