@@ -24,6 +24,7 @@ import cubyz.client.loading.LoadThread;
 import cubyz.gui.GameOverlay;
 import cubyz.gui.LoadingGUI;
 import cubyz.gui.MenuGUI;
+import cubyz.gui.audio.MusicManager;
 import cubyz.gui.audio.SoundBuffer;
 import cubyz.gui.audio.SoundManager;
 import cubyz.gui.audio.SoundSource;
@@ -53,8 +54,6 @@ import cubyz.world.items.Item;
 
 public class GameLogic implements ClientConnection {
 	public SoundManager sound;
-	private SoundBuffer music;
-	private SoundSource musicSource;
 	
 	public Texture[] breakAnimations;
 	
@@ -98,13 +97,7 @@ public class GameLogic implements ClientConnection {
 		Cubyz.player = null;
 		Cubyz.world = null;
 		Cubyz.chunkTree.cleanup();
-		
-		SoundSource ms = musicSource;
-		if (ms != null) {
-			if (ms.isPlaying()) {
-				ms.stop();
-			}
-		}
+		MusicManager.stop();
 		
 		System.gc();
 	}
@@ -174,15 +167,8 @@ public class GameLogic implements ClientConnection {
 		}
 		textures.generate();
 		
-		
-		SoundSource ms = musicSource;
-		if (ms != null) {
-			if (!ms.isPlaying()) {
-				// ms.play();
-				// Music is disabled for now because right now it's annoying and kind of unrelated to the game.
-				// TODO: Find a better concept for playing music in the game that preferably fits the player's current situation.
-			}
-		}
+		MusicManager.init(sound);
+		MusicManager.start();
 		
 		// Call mods for this new world. Mods sometimes need to do extra stuff for the specific world.
 		ModLoader.postWorldGen(world.getCurrentRegistries());
@@ -235,19 +221,6 @@ public class GameLogic implements ClientConnection {
 				sound.init();
 			} catch (Exception e) {
 				Logger.error(e);
-			}
-			
-			if (ResourceManager.lookupPath("cubyz/sound") != null) {
-				try {
-					music = new SoundBuffer(ResourceManager.lookupPath("cubyz/sound/Sincerely.ogg"));
-				} catch (Exception e) {
-					Logger.warning(e);
-				}
-				musicSource = new SoundSource(true, true);
-				musicSource.setBuffer(music.getBufferId());
-				musicSource.setGain(0.3f);
-			} else {
-				Logger.info("Missing optional sound files. Sounds are disabled.");
 			}
 		});
 		Cubyz.renderDeque.add(() -> {
