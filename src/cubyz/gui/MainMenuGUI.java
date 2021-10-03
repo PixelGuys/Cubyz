@@ -91,7 +91,7 @@ public class MainMenuGUI extends MenuGUI {
 		float spImageHeight = spImageWidth / (16f / 9f);
 		Rectangle spImageBox = new Rectangle(
 				(int) (spImageWidth * (1 - spSize) / 2),
-				(int) (Window.getHeight() - spImageHeight + spImageHeight * ((1 - spSize) / 2)),
+				(int) (Window.getHeight() - spImageHeight + spImageHeight * (1 - spSize) / 2),
 				(int) (spImageWidth * spSize), (int) (spImageHeight * spSize));
 		Graphics.drawImage(spImage, spImageBox.x, spImageBox.y, spImageBox.width, spImageBox.height);
 		spLabel.setBounds((int) -spImageWidth / 2, (int) (Window.getHeight() / 2 - spImageHeight / 2), 200, 24, Component.ALIGN_CENTER);
@@ -101,7 +101,7 @@ public class MainMenuGUI extends MenuGUI {
 		float mpImageHeight = mpImageWidth / (16f / 9f);
 		Rectangle mpImageBox = new Rectangle(
 				(int) (spImageWidth + mpImageWidth * (1 - mpSize) / 2),
-				(int) (Window.getHeight() - mpImageHeight + mpImageHeight * ((1 - mpSize) / 2)),
+				(int) (Window.getHeight() - mpImageHeight + mpImageHeight * (1 - mpSize) / 2),
 				(int) (mpImageWidth * mpSize), (int) (mpImageHeight * mpSize));
 		Graphics.drawImage(mpImage, mpImageBox.x, mpImageBox.y, mpImageBox.width, mpImageBox.height);
 		mpLabel.setBounds((int) spImageWidth / 2, (int) (Window.getHeight() / 2 - mpImageHeight / 2), 200, 24, Component.ALIGN_CENTER);

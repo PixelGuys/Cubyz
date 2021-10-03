@@ -205,6 +205,7 @@ public class AddonsMod {
 					float chance = 1.0f;
 					boolean supportsRivers = false;
 					String type = "ETERNAL_DARKNESS";
+					String preferredMusic = null;
 					
 					boolean startedStructures = false;
 					try {
@@ -267,6 +268,8 @@ public class AddonsMod {
 											underground.add(new BlockStructure.BlockStack(block, min, max));
 										}
 									}
+								} else if (line.startsWith("music")) {
+									preferredMusic = line.substring(6);
 								} else if(line.startsWith("structures:")) {
 									startedStructures = true;
 								} else {
@@ -275,7 +278,7 @@ public class AddonsMod {
 							}
 						}
 						
-						Biome biome = new Biome(res, type, minHeight, maxHeight, roughness, hills, mountains, chance, new BlockStructure(underground.toArray(new BlockStructure.BlockStack[0])), supportsRivers, vegetation.toArray(new StructureModel[0]));
+						Biome biome = new Biome(res, type, minHeight, maxHeight, roughness, hills, mountains, chance, preferredMusic, new BlockStructure(underground.toArray(new BlockStructure.BlockStack[0])), supportsRivers, vegetation.toArray(new StructureModel[0]));
 						reg.register(biome);
 						
 						buf.close();

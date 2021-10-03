@@ -62,8 +62,9 @@ public class Biome extends ChanceObject implements RegistryElement {
 	public final StructureModel[] vegetationModels; // The first members in this array will get prioritized.
 	public Biome[] upperReplacements = new Biome[0];
 	public Biome[] lowerReplacements = new Biome[0];
+	public String preferredMusic = null;
 	
-	public Biome(Resource id, String type, float min, float max, float roughness, float hills, float mountains, float chance, BlockStructure str, boolean rivers, StructureModel ... models) {
+	public Biome(Resource id, String type, float min, float max, float roughness, float hills, float mountains, float chance, String music, BlockStructure str, boolean rivers, StructureModel ... models) {
 		super(chance);
 		this.type = Type.valueOf(type);
 		identifier = id;
@@ -75,6 +76,7 @@ public class Biome extends ChanceObject implements RegistryElement {
 		struct = str;
 		supportsRivers = rivers;
 		vegetationModels = models;
+		preferredMusic = music;
 	}
 	
 	@Override
