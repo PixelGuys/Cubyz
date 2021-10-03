@@ -81,6 +81,7 @@ public class MainMenuGUI extends MenuGUI {
 		lastRender = System.currentTimeMillis();
 		if (!loadedTextures) {
 			spImage = Texture.loadFromFile(ResourceManager.lookup("cubyz/textures/singleplayer_image.png"));
+			// TODO: when multiplayer is actually implemented, change the image so that we can see other players in it
 			mpImage = Texture.loadFromFile(ResourceManager.lookup("cubyz/textures/multiplayer_image.png"));
 			loadedTextures = true;
 		}
@@ -98,7 +99,6 @@ public class MainMenuGUI extends MenuGUI {
 		
 		float mpImageWidth = Window.getWidth() / 2;
 		float mpImageHeight = mpImageWidth / (16f / 9f);
-		//Rectangle mpImageBox = new Rectangle((int) spImageWidth, (int) (Window.getHeight() - mpImageHeight), (int) mpImageWidth, (int) mpImageHeight);
 		Rectangle mpImageBox = new Rectangle(
 				(int) (spImageWidth + mpImageWidth * (1 - mpSize) / 2),
 				(int) (Window.getHeight() - mpImageHeight + mpImageHeight*((1-mpSize)/2)),

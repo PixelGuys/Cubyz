@@ -16,10 +16,10 @@ gui.cubyz.settings.fog.med=Brouillard: Moyen
 gui.cubyz.settings.fog.far=Brouillard: Loin
 gui.cubyz.settings.fog.near=Brouillard: Proche
 gui.cubyz.settings.fog.off=Brouillard: Désactivé
-gui.cubyz.settings.easylighting=Système de lumière de merde
+gui.cubyz.settings.easylighting=Système de lumière fluide
 gui.cubyz.settings.vsync=Synchronization verticale
 gui.cubyz.pause.exit=Quitter vers le menu
-gui.cubyz.pause.resume=Resumer
+gui.cubyz.pause.resume=Continuer
 gui.cubyz.debug.reload=Recharger
 gui.cubyz.saves.play=Jouer à {0}
 gui.cubyz.saves.delete=Supprimer
@@ -41,9 +41,20 @@ block.cubyz.oak_top.name=Haut bois de chêne
 block.cubyz.oak_planks.name=Planches de chêne
 block.cubyz.torch.name=Torche
 block.cubyz.workbench.name=Atelier
+block.cubyz.iron_ore.name=Minerai de fer
 
 # Items
 item.cubyz.stick.name=Bâton
 item.cubyz.diamond.name=Diamant
 item.cubyz.coal.name=Charbon
 item.cubyz.raw_meat.name=Viande crue
+item.cubyz.apple.name=Pomme
+
+# Tools
+cubyz.grammar.tool_material={1} {0}
+cubyz.tools.materials.wood=en bois
+cubyz.tools.materials.stone=en pierre
+cubyz.tools.names.axe=Hâche
+cubyz.tools.names.pickaxe=Pioche
+cubyz.tools.names.shovel=Pelle
+cubyz.tools.names.sword=Épée
