@@ -2,7 +2,7 @@ package cubyz.gui.audio;
 
 import org.joml.Vector3f;
 
-import static org.lwjgl.openal.AL10.*;
+import static org.lwjgl.openal.AL11.*;
 
 public class SoundSource {
 
@@ -45,6 +45,14 @@ public class SoundSource {
 
 	public boolean isPlaying() {
 		return alGetSourcei(sourceId, AL_SOURCE_STATE) == AL_PLAYING;
+	}
+	
+	public float getPlaybackPosition() {
+		return alGetSourcef(sourceId, AL_SEC_OFFSET);
+	}
+	
+	public void setPlaybackPosition(float seconds) {
+		alSourcef(sourceId, AL_SEC_OFFSET, seconds);
 	}
 
 	public void pause() {
