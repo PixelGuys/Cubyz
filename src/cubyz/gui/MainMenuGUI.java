@@ -29,6 +29,9 @@ public class MainMenuGUI extends MenuGUI {
 	private Texture mpImage;
 	private Label spLabel = new Label(TextKey.createTextKey("gui.cubyz.mainmenu.singleplayer"));
 	private Label mpLabel = new Label(TextKey.createTextKey("gui.cubyz.mainmenu.multiplayer"));
+	private float spSize = 0.9f;
+	private float mpSize = 0.9f;
+	
 	private boolean loadedTextures = false;
 	private boolean mousePressed = false;
 	
@@ -67,8 +70,11 @@ public class MainMenuGUI extends MenuGUI {
 	@Override
 	public void init() {}
 	
+	long lastRender = System.currentTimeMillis();
 	@Override
 	public void render() {
+		float delta = (System.currentTimeMillis() - lastRender) / 1000.0f;
+		lastRender = System.currentTimeMillis();
 		if (!loadedTextures) {
 			spImage = Texture.loadFromFile(ResourceManager.lookup("cubyz/textures/singleplayer_image.png"));
 			mpImage = Texture.loadFromFile(ResourceManager.lookup("cubyz/textures/multiplayer_image.png"));
@@ -78,14 +84,21 @@ public class MainMenuGUI extends MenuGUI {
 		Graphics.setColor(0xFFFFFF);
 		float spImageWidth = Window.getWidth() / 2;
 		float spImageHeight = spImageWidth / (16f / 9f);
-		Rectangle spImageBox = new Rectangle(0, (int) (Window.getHeight() - spImageHeight), (int) spImageWidth, (int) spImageHeight);
+		Rectangle spImageBox = new Rectangle(
+				(int) (spImageWidth * (1 - spSize) / 2),
+				(int) (Window.getHeight() - spImageHeight + spImageHeight*((1-spSize)/2)),
+				(int) (spImageWidth * spSize), (int) (spImageHeight * spSize));
 		Graphics.drawImage(spImage, spImageBox.x, spImageBox.y, spImageBox.width, spImageBox.height);
 		spLabel.setBounds((int) -spImageWidth / 2, (int) (Window.getHeight() / 2 - spImageHeight / 2), 200, 24, Component.ALIGN_CENTER);
 		spLabel.render();
 		
 		float mpImageWidth = Window.getWidth() / 2;
 		float mpImageHeight = mpImageWidth / (16f / 9f);
-		Rectangle mpImageBox = new Rectangle((int) spImageWidth, (int) (Window.getHeight() - mpImageHeight), (int) mpImageWidth, (int) mpImageHeight);
+		//Rectangle mpImageBox = new Rectangle((int) spImageWidth, (int) (Window.getHeight() - mpImageHeight), (int) mpImageWidth, (int) mpImageHeight);
+		Rectangle mpImageBox = new Rectangle(
+				(int) (spImageWidth + mpImageWidth * (1 - mpSize) / 2),
+				(int) (Window.getHeight() - mpImageHeight + mpImageHeight*((1-mpSize)/2)),
+				(int) (mpImageWidth * mpSize), (int) (mpImageHeight * mpSize));
 		Graphics.drawImage(mpImage, mpImageBox.x, mpImageBox.y, mpImageBox.width, mpImageBox.height);
 		mpLabel.setBounds((int) spImageWidth / 2, (int) (Window.getHeight() / 2 - mpImageHeight / 2), 200, 24, Component.ALIGN_CENTER);
 		mpLabel.render();
@@ -99,13 +112,32 @@ public class MainMenuGUI extends MenuGUI {
 			return; // one of the buttons changed the GUI
 		}
 		
+		Vector2d pos = Mouse.getCurrentPos();
+		if (spImageBox.contains(pos.x, pos.y)) {
+			if (spSize < 1.0f) {
+				spSize += 0.5f * delta;
+			}
+		} else {
+			if (spSize > 0.9f) {
+				spSize -= 0.5f * delta;
+			}
+		}
+		if (mpImageBox.contains(pos.x, pos.y)) {
+			if (mpSize < 1.0f) {
+				mpSize += 0.5f * delta;
+			}
+		} else {
+			if (mpSize > 0.9f) {
+				mpSize -= 0.5f * delta;
+			}
+		}
+		
 		if (Mouse.isLeftButtonPressed()) {
 			if (!mousePressed) {
 				mousePressed = true;
 			}
 		} else {
 			if (mousePressed) { // released mouse
-				Vector2d pos = Mouse.getCurrentPos();
 				if (spImageBox.contains(pos.x, pos.y)) {
 					launchSingleplayer();
 				} else if (mpImageBox.contains(pos.x, pos.y)) {
