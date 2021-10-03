@@ -19,7 +19,7 @@ public class ChunkEntityManager {
 		itemEntityManager = chunk.map.mapIO.readItemEntities(world, chunk);
 	}
 	
-	public void update() {
-		itemEntityManager.update();
+	public void update(float deltaTime) {
+		itemEntityManager.update(deltaTime);
 	}
 }

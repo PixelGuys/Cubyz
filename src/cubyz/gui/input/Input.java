@@ -1,6 +1,6 @@
 package cubyz.gui.input;
 
-import org.joml.Vector3f;
+import org.joml.Vector3d;
 import org.lwjgl.glfw.GLFW;
 
 import cubyz.api.CubyzRegistries;
@@ -79,7 +79,7 @@ public class Input {
 			}
 			if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_P)) {
 				// debug: spawn a pig
-				Vector3f pos = new Vector3f(Cubyz.player.getPosition());
+				Vector3d pos = new Vector3d(Cubyz.player.getPosition());
 				EntityType pigType = CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:pig");
 				if (pigType == null) return;
 				Entity pig = pigType.newEntity(Cubyz.world);

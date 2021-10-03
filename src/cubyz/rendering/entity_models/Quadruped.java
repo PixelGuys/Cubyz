@@ -1,8 +1,9 @@
 package cubyz.rendering.entity_models;
 
-import org.joml.Intersectionf;
+import org.joml.Intersectiond;
 import org.joml.Matrix4f;
-import org.joml.Vector2f;
+import org.joml.Vector2d;
+import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 import cubyz.api.Resource;
@@ -410,15 +411,15 @@ public class Quadruped implements EntityModel {
 
 	@Override
 	public void render(Matrix4f viewMatrix, Object entityShader, ClientEntity ent) {
-		Vector3f pos = new Vector3f(ent.getRenderPosition());
+		Vector3d pos = new Vector3d(ent.getRenderPosition()).sub(Cubyz.player.getPosition());
 		Vector3f rotation =  new Vector3f(ent.rotation);
 		pos.y += legHeight/2; // Adjust the body position by the height of the legs.
 		body.renderOne(() -> {
-			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(pos, rotation, 1), viewMatrix);
+			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(new Vector3f((float)pos.x, (float)pos.y, (float)pos.z), rotation, 1), viewMatrix);
 			((ShaderProgram)entityShader).setUniform(MainRenderer.EntityUniforms.loc_viewMatrix, modelViewMatrix);
 		});
-		float xNorm = ent.velocity.x/(float)Math.sqrt(ent.velocity.x*ent.velocity.x + ent.velocity.z*ent.velocity.z);
-		float zNorm = ent.velocity.z/(float)Math.sqrt(ent.velocity.x*ent.velocity.x + ent.velocity.z*ent.velocity.z);
+		double xNorm = ent.velocity.x/Math.sqrt(ent.velocity.x*ent.velocity.x + ent.velocity.z*ent.velocity.z);
+		double zNorm = ent.velocity.z/Math.sqrt(ent.velocity.x*ent.velocity.x + ent.velocity.z*ent.velocity.z);
 		if(xNorm != xNorm) {
 			xNorm = 1;
 			zNorm = 0;
@@ -440,7 +441,7 @@ public class Quadruped implements EntityModel {
 		pos.z += zNorm*length/2 + xNorm*width/2;
 		rotation.z = legAngle1;
 		leg.renderOne(() -> {
-			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(pos, rotation, 1), viewMatrix);
+			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(new Vector3f((float)pos.x, (float)pos.y, (float)pos.z), rotation, 1), viewMatrix);
 			((ShaderProgram)entityShader).setUniform(MainRenderer.EntityUniforms.loc_viewMatrix, modelViewMatrix);
 		});
 		// Front side2:
@@ -448,7 +449,7 @@ public class Quadruped implements EntityModel {
 		pos.z += -xNorm*width;
 		rotation.z = movementPattern == MovementPattern.STABLE ? legAngle2 : legAngle1;
 		leg.renderOne(() -> {
-			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(pos, rotation, 1), viewMatrix);
+			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(new Vector3f((float)pos.x, (float)pos.y, (float)pos.z), rotation, 1), viewMatrix);
 			((ShaderProgram)entityShader).setUniform(MainRenderer.EntityUniforms.loc_viewMatrix, modelViewMatrix);
 		});
 		// Back side2:
@@ -456,7 +457,7 @@ public class Quadruped implements EntityModel {
 		pos.z += -zNorm*length;
 		rotation.z = movementPattern == MovementPattern.STABLE ? legAngle1 : legAngle2;
 		leg.renderOne(() -> {
-			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(pos, rotation, 1), viewMatrix);
+			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(new Vector3f((float)pos.x, (float)pos.y, (float)pos.z), rotation, 1), viewMatrix);
 			((ShaderProgram)entityShader).setUniform(MainRenderer.EntityUniforms.loc_viewMatrix, modelViewMatrix);
 		});
 		// Back side1:
@@ -464,7 +465,7 @@ public class Quadruped implements EntityModel {
 		pos.z += xNorm*width;
 		rotation.z = legAngle2;
 		leg.renderOne(() -> {
-			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(pos, rotation, 1), viewMatrix);
+			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(new Vector3f((float)pos.x, (float)pos.y, (float)pos.z), rotation, 1), viewMatrix);
 			((ShaderProgram)entityShader).setUniform(MainRenderer.EntityUniforms.loc_viewMatrix, modelViewMatrix);
 		});
 		
@@ -473,7 +474,7 @@ public class Quadruped implements EntityModel {
 		pos.y += bodyHeight/2 - legWidth/2;
 		pos.z += zNorm*length + zNorm*headLength/2 - xNorm*width/2;
 		head.renderOne(() -> {
-			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(pos, rotation, 1), viewMatrix);
+			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(new Vector3f((float)pos.x, (float)pos.y, (float)pos.z), rotation, 1), viewMatrix);
 			((ShaderProgram)entityShader).setUniform(MainRenderer.EntityUniforms.loc_viewMatrix, modelViewMatrix);
 		});
 		
@@ -485,17 +486,17 @@ public class Quadruped implements EntityModel {
 		ent.movementAnimation %= 2*legHeight;
 	}
 	@Override
-	public float getCollisionDistance(Vector3f playerPosition, Vector3f dir, Entity ent) {
-		float xNorm = ent.targetVX/(float)Math.sqrt(ent.targetVX*ent.targetVX + ent.targetVZ*ent.targetVZ);
-		float zNorm = ent.targetVZ/(float)Math.sqrt(ent.targetVX*ent.targetVX + ent.targetVZ*ent.targetVZ);
-		Vector3f newDir = new Vector3f(dir);
+	public double getCollisionDistance(Vector3d playerPosition, Vector3f dir, Entity ent) {
+		double xNorm = ent.targetVX/Math.sqrt(ent.targetVX*ent.targetVX + ent.targetVZ*ent.targetVZ);
+		double zNorm = ent.targetVZ/Math.sqrt(ent.targetVX*ent.targetVX + ent.targetVZ*ent.targetVZ);
+		Vector3d newDir = new Vector3d(dir);
 		newDir.z = dir.x*xNorm + dir.z*zNorm;
 		newDir.x = -dir.x*zNorm + dir.z*xNorm;
-		float distanceZ = (ent.getPosition().x-playerPosition.x)*xNorm + (ent.getPosition().z-playerPosition.z)*zNorm;
-		float distanceX = -(ent.getPosition().x-playerPosition.x)*zNorm + (ent.getPosition().z-playerPosition.z)*xNorm;
-		Vector2f res = new Vector2f();
-		boolean intersects = Intersectionf.intersectRayAab(0, playerPosition.y+Player.cameraHeight, 0, newDir.x, newDir.y, newDir.z, distanceX-bodyWidth/2, ent.getPosition().y, distanceZ-bodyLength/2, distanceX+bodyWidth/2, ent.getPosition().y+bodyHeight+legHeight, distanceZ+bodyLength/2+headLength-0.01f, res);
-		return intersects ? res.x : Float.MAX_VALUE;
+		double distanceZ = (ent.getPosition().x-playerPosition.x)*xNorm + (ent.getPosition().z-playerPosition.z)*zNorm;
+		double distanceX = -(ent.getPosition().x-playerPosition.x)*zNorm + (ent.getPosition().z-playerPosition.z)*xNorm;
+		Vector2d res = new Vector2d();
+		boolean intersects = Intersectiond.intersectRayAab(0, Player.cameraHeight, 0, newDir.x, newDir.y, newDir.z, distanceX-bodyWidth/2, (float)(ent.getPosition().y - playerPosition.x), distanceZ-bodyLength/2, distanceX+bodyWidth/2, ent.getPosition().y+bodyHeight+legHeight, distanceZ+bodyLength/2+headLength-0.01f, res);
+		return intersects ? res.x : Double.MAX_VALUE;
 	}
 	
 }

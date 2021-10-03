@@ -1,6 +1,7 @@
 package cubyz.client;
 
 import org.joml.RayAabIntersection;
+import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 
@@ -19,8 +20,9 @@ import cubyz.world.items.Inventory;
  */
 
 public class MeshSelectionDetector {
-	protected Vector3f min = new Vector3f(), max = new Vector3f();
-	protected Vector3f pos = new Vector3f(), dir = new Vector3f(); // Store player position at the time this was updated. Used to prevent bugs caused by asynchronous player movement.
+	protected Vector3d min = new Vector3d(), max = new Vector3d();
+	protected Vector3d pos = new Vector3d();
+	protected Vector3f dir = new Vector3f(); // Store player position at the time this was updated. Used to prevent bugs caused by asynchronous player movement.
 	protected Object selectedSpatial; // Can be either a block or an entity.
 	protected RayAabIntersection intersection = new RayAabIntersection();
 	
@@ -40,20 +42,25 @@ public class MeshSelectionDetector {
 	 * @param worldSize
 	 * @param world
 	 */
-	public void selectSpatial(NormalChunk[] chunks, Vector3f position, Vector3f direction, Player localPlayer, ServerWorld world) {
+	public void selectSpatial(NormalChunk[] chunks, Vector3d position, Vector3f direction, Player localPlayer, ServerWorld world) {
 		pos.set(position);
 		pos.y += Player.cameraHeight;
 		dir.set(direction);
 		
 		// Test blocks:
-		float closestDistance = 6f; // selection now limited
+		double closestDistance = 6f; // selection now limited
 		Object newSpatial = null;
-		intersection.set(pos.x, pos.y, pos.z, dir.x, dir.y, dir.z);
+		intersection.set(0, 0, 0, dir.x, dir.y, dir.z);
 		for (NormalChunk ch : chunks) {
 			min.set(ch.getMin());
 			max.set(ch.getMax());
+			// Sadly RayAabIntersection doesn't work with double, so we have to convert to relative distances before testing:
+			min.sub(position);
+			max.sub(position);
+			Vector3f minf = new Vector3f((float)min.x, (float)min.y, (float)min.z);
+			Vector3f maxf = new Vector3f((float)min.x, (float)min.y, (float)min.z);
 			// Check if the chunk is in view:
-			if (!intersection.test(min.x-1, min.y-1, min.z-1, max.x+1, max.y+1, max.z+1)) // 1 is added/subtracted because chunk min-max don't align with the block min max.
+			if (!intersection.test(minf.x-1, minf.y-1, minf.z-1, maxf.x+1, maxf.y+1, maxf.z+1)) // 1 is added/subtracted because chunk min-max don't align with the block min max.
 				continue;
 			synchronized (ch) {
 				BlockInstance[] array = ch.getVisibles().array;
@@ -67,10 +74,10 @@ public class MeshSelectionDetector {
 					max.set(min);
 					max.add(1, 1, 1); // scale, scale, scale
 					// Because of the huge number of different BlockInstances that will be tested, it is more efficient to use RayAabIntersection and determine the distance separately:
-					if (intersection.test(min.x, min.y, min.z, max.x, max.y, max.z)) {
-						float distance;
+					if (intersection.test(minf.x, minf.y, minf.z, maxf.x, maxf.y, maxf.z)) {
+						double distance;
 						if(bi.getBlock().mode.changesHitbox()) {
-							distance = bi.getBlock().mode.getRayIntersection(intersection, bi, min, max, pos);
+							distance = bi.getBlock().mode.getRayIntersection(intersection, bi, minf, maxf, new Vector3f());
 						} else {
 							distance = min.sub(pos).length();
 						}
@@ -85,7 +92,7 @@ public class MeshSelectionDetector {
 		// Test entities:
 		for(Entity ent : world.getEntities()) {
 			if(ent.getType().model != null) {
-				float dist = ent.getType().model.getCollisionDistance(pos, dir, ent);
+				double dist = ent.getType().model.getCollisionDistance(pos, dir, ent);
 				if(dist < closestDistance) {
 					closestDistance = dist;
 					newSpatial = ent;
@@ -107,7 +114,7 @@ public class MeshSelectionDetector {
 		if(selectedSpatial != null && selectedSpatial instanceof BlockInstance) {
 			BlockInstance bi = (BlockInstance)selectedSpatial;
 			ByteWrapper data = new ByteWrapper(bi.getData());
-			Vector3f relativePos = new Vector3f(pos);
+			Vector3d relativePos = new Vector3d(pos);
 			relativePos.sub(bi.x, bi.y, bi.z);
 			Block b = inv.getBlock(selectedSlot);
 			if (b != null) {
@@ -154,16 +161,16 @@ public class MeshSelectionDetector {
 		pos.set(((BlockInstance)selectedSpatial).x, ((BlockInstance)selectedSpatial).y, ((BlockInstance)selectedSpatial).z);
 		pos.add(-dirX, 0, 0);
 		dir.add(dirX, 0, 0);
-		min.set(new Vector3f(pos.x, pos.y, pos.z));
+		min.set(pos.x, pos.y, pos.z).sub(this.pos);
 		max.set(min);
 		max.add(1, 1, 1); // scale, scale, scale
-		if (!intersection.test(min.x, min.y, min.z, max.x, max.y, max.z)) {
+		if (!intersection.test((float)min.x, (float)min.y, (float)min.z, (float)max.x, (float)max.y, (float)max.z)) {
 			pos.add(dirX, -dirY, 0);
 			dir.add(-dirX, dirY, 0);
-			min.set(new Vector3f(pos.x, pos.y, pos.z));
+			min.set(pos.x, pos.y, pos.z).sub(this.pos);
 			max.set(min);
 			max.add(1, 1, 1); // scale, scale, scale
-			if (!intersection.test(min.x, min.y, min.z, max.x, max.y, max.z)) {
+			if (!intersection.test((float)min.x, (float)min.y, (float)min.z, (float)max.x, (float)max.y, (float)max.z)) {
 				pos.add(0, dirY, -dirZ);
 				dir.add(0, -dirY, dirZ);
 			}

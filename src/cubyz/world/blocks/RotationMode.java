@@ -1,9 +1,10 @@
 package cubyz.world.blocks;
 
 import org.joml.RayAabIntersection;
+import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
-import org.joml.Vector4f;
+import org.joml.Vector4d;
 
 import cubyz.api.RegistryElement;
 import cubyz.utils.datastructures.ByteWrapper;
@@ -45,7 +46,7 @@ public interface RotationMode extends RegistryElement {
 	 * @param blockPlacing true if the position of the block was previously empty/nonsolid.
 	 * @return true if the placing was successful, false otherwise.
 	 */
-	public boolean generateData(ServerWorld world, int x, int y, int z, Vector3f relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDir, ByteWrapper currentData, boolean blockPlacing);
+	public boolean generateData(ServerWorld world, int x, int y, int z, Vector3d relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDir, ByteWrapper currentData, boolean blockPlacing);
 
 	/**
 	 * @return if the block should be destroyed or changed when a certain neighbor is removed.
@@ -99,7 +100,7 @@ public interface RotationMode extends RegistryElement {
 	 * @param data block data
 	 * @return Whether the entity and block hitboxes overlap.
 	 */
-	public boolean checkEntity(Vector3f pos, float width, float height, int x, int y, int z, byte blockData);
+	public boolean checkEntity(Vector3d pos, double width, double height, int x, int y, int z, byte blockData);
 	
 	/**
 	 * Check if the entity would collide with the block, if its position was changed by `vel`.
@@ -112,5 +113,5 @@ public interface RotationMode extends RegistryElement {
 	 * @param data block data
 	 * @return Returns true if the block behaves like a normal block and therefor needs to be handled like a normal block in the specified direction. Returns false if everything has been handled already in here.
 	 */
-	public boolean checkEntityAndDoCollision(Entity ent, Vector4f vel, int x, int y, int z, byte blockData);
+	public boolean checkEntityAndDoCollision(Entity ent, Vector4d vel, int x, int y, int z, byte blockData);
 }

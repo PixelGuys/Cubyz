@@ -103,22 +103,22 @@ public class RenderOctTree {
 				}
 			}
 		}
-		public void getChunks(FrustumIntersection frustumInt, ArrayList<ChunkMesh> meshes, float x0, float z0) {
+		public void getChunks(FrustumIntersection frustumInt, ArrayList<ChunkMesh> meshes, double x0, double y0, double z0) {
 			synchronized(this) {
 				if(nextNodes != null) {
 					for(int i = 0; i < 8; i++) {
-						nextNodes[i].getChunks(frustumInt, meshes, x0, z0);
+						nextNodes[i].getChunks(frustumInt, meshes, x0, y0, z0);
 					}
 				} else {
-					if(testFrustum(frustumInt, x0, z0)) {
+					if(testFrustum(frustumInt, x0, y0, z0)) {
 						meshes.add(mesh);
 					}
 				}
 			}
 		}
 		
-		public boolean testFrustum(FrustumIntersection frustumInt, float x0, float z0) {
-			return frustumInt.testAab(x, y, z, x + size, y + size, z + size);
+		public boolean testFrustum(FrustumIntersection frustumInt, double x0, double y0, double z0) {
+			return frustumInt.testAab((float)(x - x0), (float)(y - y0), (float)(z - z0), (float)(x + size - x0), (float)(y + size - y0), (float)(z + size - z0));
 		}
 		
 		public void cleanup() {
@@ -212,12 +212,12 @@ public class RenderOctTree {
 		
 	}
 	
-	public ChunkMesh[] getRenderChunks(FrustumIntersection frustumInt, float x0, float z0) {
+	public ChunkMesh[] getRenderChunks(FrustumIntersection frustumInt, double x0, double y0, double z0) {
 		ArrayList<ChunkMesh> meshes = new ArrayList<>();
 		for(OctTreeNode node : roots.values()) {
 			// Check if the root is in the frustum:
-			if(node.testFrustum(frustumInt, x0, z0)) {
-				node.getChunks(frustumInt, meshes, x0, z0);
+			if(node.testFrustum(frustumInt, x0, y0, z0)) {
+				node.getChunks(frustumInt, meshes, x0, y0, z0);
 			}
 		}
 		return meshes.toArray(new ChunkMesh[0]);

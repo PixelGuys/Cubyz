@@ -10,6 +10,7 @@ import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.function.Consumer;
 
+import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.lwjgl.system.MemoryUtil;
 
@@ -301,13 +302,13 @@ public class NormalChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 	}
 
 	@Override
-	public void render() {
+	public void render(Vector3d playerPosition) {
 		if(chunk == null || !generated) {
 			ReducedChunkMesh.shader.bind();
-			glUniform3f(ReducedChunkMesh.loc_lowerBounds, wx, wy, wz);
-			glUniform3f(ReducedChunkMesh.loc_upperBounds, wx+size, wy+size, wz+size);
+			glUniform3f(ReducedChunkMesh.loc_lowerBounds, (float)(wx - playerPosition.x - 0.001), (float)(wy - playerPosition.y - 0.001), (float)(wz - playerPosition.z - 0.001));
+			glUniform3f(ReducedChunkMesh.loc_upperBounds, (float)(wx + size - playerPosition.x + 0.001), (float)(wy + size - playerPosition.y + 0.001), (float)(wz + size - playerPosition.z + 0.001));
 			if(replacement != null) {
-				replacement.render();
+				replacement.render(playerPosition);
 			}
 			glUniform3f(ReducedChunkMesh.loc_lowerBounds, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY);
 			glUniform3f(ReducedChunkMesh.loc_upperBounds, Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY);
@@ -315,16 +316,16 @@ public class NormalChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 			return;
 		}
 		if(vaoId == -1) return;
-		glUniform3f(loc_modelPosition, wx, wy, wz);
+		glUniform3f(loc_modelPosition, (float)(wx - playerPosition.x), (float)(wy - playerPosition.y), (float)(wz - playerPosition.z));
 
 		glBindVertexArray(vaoId);
 		glDrawElements(GL_TRIANGLES, vertexCount, GL_UNSIGNED_INT, 0);
 	}
 
-	public void renderTransparent() {
+	public void renderTransparent(Vector3d playerPosition) {
 		if(transparentVaoId == -1) return;
 
-		glUniform3f(loc_modelPosition, wx, wy, wz);
+		glUniform3f(loc_modelPosition, (float)(wx - playerPosition.x), (float)(wy - playerPosition.y), (float)(wz - playerPosition.z));
 
 		glBindVertexArray(transparentVaoId);
 		glDrawElements(GL_TRIANGLES, transparentVertexCount, GL_UNSIGNED_INT, 0);

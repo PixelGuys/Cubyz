@@ -2,6 +2,7 @@ package cubyz.world.entity;
 
 import java.util.Arrays;
 
+import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 import cubyz.Logger;
@@ -28,8 +29,8 @@ public class ItemEntityManager {
 	
 	private static final int capacityIncrease = 64;
 	
-	public float[] posxyz;
-	public float[] velxyz;
+	public double[] posxyz;
+	public double[] velxyz;
 	public float[] rotxyz;
 	public ItemStack[] itemStacks;
 	public int[] despawnTime;
@@ -43,8 +44,8 @@ public class ItemEntityManager {
 	public ItemEntityManager(ServerWorld world, NormalChunk chunk, int minCapacity) {
 		// Always use a multiple of 64 as the capacity.
 		capacity = (minCapacity+63) & ~63;
-		posxyz = new float[3 * capacity];
-		velxyz = new float[3 * capacity];
+		posxyz = new double[3 * capacity];
+		velxyz = new double[3 * capacity];
 		rotxyz = new float[3 * capacity];
 		itemStacks = new ItemStack[capacity];
 		despawnTime = new int[capacity];
@@ -60,14 +61,14 @@ public class ItemEntityManager {
 		int length = Bits.getInt(data, index);
 		index += 4;
 		// Check if the length is right:
-		if(data.length-index != length*4*9) {
+		if(data.length-index != length*(4*3 + 8*6)) {
 			Logger.warning("Save file is corrupted. Skipping item entites for chunk "+chunk.getWorldX()+" "+chunk.getWorldY()+" "+chunk.getWorldZ());
 			length = 0;
 		}
 		// Init variables:
 		capacity = (length+63) & ~63;
-		posxyz = new float[3 * capacity];
-		velxyz = new float[3 * capacity];
+		posxyz = new double[3 * capacity];
+		velxyz = new double[3 * capacity];
 		rotxyz = new float[3 * capacity];
 		itemStacks = new ItemStack[capacity];
 		despawnTime = new int[capacity];
@@ -77,18 +78,18 @@ public class ItemEntityManager {
 		gravity = ServerWorld.GRAVITY;
 		// Read the data:
 		for(int i = 0; i < length; i++) {
-			float x = Bits.getFloat(data, index);
-			index += 4;
-			float y = Bits.getFloat(data, index);
-			index += 4;
-			float z = Bits.getFloat(data, index);
-			index += 4;
-			float vx = Bits.getFloat(data, index);
-			index += 4;
-			float vy = Bits.getFloat(data, index);
-			index += 4;
-			float vz = Bits.getFloat(data, index);
-			index += 4;
+			double x = Bits.getDouble(data, index);
+			index += 8;
+			double y = Bits.getDouble(data, index);
+			index += 8;
+			double z = Bits.getDouble(data, index);
+			index += 8;
+			double vx = Bits.getDouble(data, index);
+			index += 8;
+			double vy = Bits.getDouble(data, index);
+			index += 8;
+			double vz = Bits.getDouble(data, index);
+			index += 8;
 			Item item = itemPalette.getElement(Bits.getInt(data, index));
 			index += 4;
 			int itemAmount = Bits.getInt(data, index);
@@ -100,24 +101,24 @@ public class ItemEntityManager {
 	}
 	
 	public byte[] store(Palette<Item> itemPalette) {
-		byte[] data = new byte[size*4*9 + 4];
+		byte[] data = new byte[size*(4*3 + 8*6) + 4];
 		int index = 0;
 		Bits.putInt(data, 0, size);
 		index += 4;
 		for(int i = 0; i < size; i++) {
 			int i3 = i*3;
-			Bits.putFloat(data, index, posxyz[i3]);
-			index += 4;
-			Bits.putFloat(data, index, posxyz[i3+1]);
-			index += 4;
-			Bits.putFloat(data, index, posxyz[i3+2]);
-			index += 4;
-			Bits.putFloat(data, index, velxyz[i3]);
-			index += 4;
-			Bits.putFloat(data, index, velxyz[i3+1]);
-			index += 4;
-			Bits.putFloat(data, index, velxyz[i3+2]);
-			index += 4;
+			Bits.putDouble(data, index, posxyz[i3]);
+			index += 8;
+			Bits.putDouble(data, index, posxyz[i3+1]);
+			index += 8;
+			Bits.putDouble(data, index, posxyz[i3+2]);
+			index += 8;
+			Bits.putDouble(data, index, velxyz[i3]);
+			index += 8;
+			Bits.putDouble(data, index, velxyz[i3+1]);
+			index += 8;
+			Bits.putDouble(data, index, velxyz[i3+2]);
+			index += 8;
 			Bits.putInt(data, index, itemPalette.getIndex(itemStacks[i].getItem()));
 			index += 4;
 			Bits.putInt(data, index, itemStacks[i].getAmount());
@@ -128,26 +129,26 @@ public class ItemEntityManager {
 		return data;
 	}
 	
-	public void update() {
+	public void update(float deltaTime) {
 		for(int i = 0; i < size; i++) {
 			int index3 = i*3;
 			// Update gravity:
-			velxyz[index3+1] -= gravity;
+			velxyz[index3+1] -= gravity*deltaTime;
 			// Check collision with blocks:
 			checkBlocks(index3);
 			// Update position:
-			posxyz[index3] += velxyz[index3];
-			posxyz[index3+1] += velxyz[index3+1];
-			posxyz[index3+2] += velxyz[index3+2];
+			posxyz[index3] += velxyz[index3]*deltaTime;
+			posxyz[index3+1] += velxyz[index3+1]*deltaTime;
+			posxyz[index3+2] += velxyz[index3+2]*deltaTime;
 			// Check if it's still inside this chunk:
 			if(!chunk.isInside(posxyz[index3], posxyz[index3 + 1], posxyz[index3 + 2])) {
 				// Move it to another manager:
 				ChunkEntityManager other = world.getEntityManagerAt(((int)posxyz[index3]) & ~NormalChunk.chunkMask, ((int)posxyz[index3+1]) & ~NormalChunk.chunkMask, ((int)posxyz[index3+2]) & ~NormalChunk.chunkMask);
 				if(other == null) {
 					// TODO: Append it to the right file.
-					posxyz[index3] -= velxyz[index3];
-					posxyz[index3+1] -= velxyz[index3+1];
-					posxyz[index3+2] -= velxyz[index3+2];
+					posxyz[index3] -= velxyz[index3]*deltaTime;
+					posxyz[index3+1] -= velxyz[index3+1]*deltaTime;
+					posxyz[index3+2] -= velxyz[index3+2]*deltaTime;
 				} else if(other.itemEntityManager != this) {
 					other.itemEntityManager.add(posxyz[index3], posxyz[index3+1], posxyz[index3+2], velxyz[index3], velxyz[index3+1], velxyz[index3+2], rotxyz[index3], rotxyz[index3+1], rotxyz[index3+2], itemStacks[i], despawnTime[i]);
 					remove(i);
@@ -179,15 +180,15 @@ public class ItemEntityManager {
 		}
 	}
 	
-	public void add(int x, int y, int z, float vx, float vy, float vz, ItemStack itemStack, int despawnTime) {
-		add(x + (float)Math.random(), y + (float)Math.random(), z + (float)Math.random(), vx, vy, vz, (float)(2*Math.random()*Math.PI), (float)(2*Math.random()*Math.PI), (float)(2*Math.random()*Math.PI), itemStack, despawnTime);
+	public void add(int x, int y, int z, double vx, double vy, double vz, ItemStack itemStack, int despawnTime) {
+		add(x + Math.random(), y + Math.random(), z + Math.random(), vx, vy, vz, (float)(2*Math.random()*Math.PI), (float)(2*Math.random()*Math.PI), (float)(2*Math.random()*Math.PI), itemStack, despawnTime);
 	}
 	
-	public void add(float x, float y, float z, float vx, float vy, float vz, ItemStack itemStack, int despawnTime) {
+	public void add(double x, double y, double z, double vx, double vy, double vz, ItemStack itemStack, int despawnTime) {
 		add(x, y, z, vx, vy, vz, (float)(2*Math.random()*Math.PI), (float)(2*Math.random()*Math.PI), (float)(2*Math.random()*Math.PI), itemStack, despawnTime);
 	}
 	
-	public void add(float x, float y, float z, float vx, float vy, float vz, float rotX, float rotY, float rotZ, ItemStack itemStack, int despawnTime) {
+	public void add(double x, double y, double z, double vx, double vy, double vz, float rotX, float rotY, float rotZ, ItemStack itemStack, int despawnTime) {
 		if(size == capacity) {
 			increaseCapacity();
 		}
@@ -225,9 +226,9 @@ public class ItemEntityManager {
 		despawnTime[index] = despawnTime[size];
 	}
 	
-	public Vector3f getPosition(int index) {
+	public Vector3d getPosition(int index) {
 		index *= 3;
-		return new Vector3f(posxyz[index], posxyz[index+1], posxyz[index+2]);
+		return new Vector3d(posxyz[index], posxyz[index+1], posxyz[index+2]);
 	}
 	
 	public Vector3f getRotation(int index) {
@@ -245,9 +246,9 @@ public class ItemEntityManager {
 	}
 	
 	private void checkBlocks(int index3) {
-		float x = posxyz[index3] - radius;
-		float y = posxyz[index3+1] - radius;
-		float z = posxyz[index3+2] - radius;
+		double x = posxyz[index3] - radius;
+		double y = posxyz[index3+1] - radius;
+		double z = posxyz[index3+2] - radius;
 		int x0 = (int)x;
 		int y0 = (int)y;
 		int z0 = (int)z;
@@ -295,7 +296,7 @@ public class ItemEntityManager {
 		// Check if the item entity is inside the block:
 		boolean isInside = true;
 		if(block.mode.changesHitbox()) {
-			isInside = block.mode.checkEntity(new Vector3f(posxyz[index3], posxyz[index3+1]+radius, posxyz[index3+2]), radius, diameter, x, y, z, data);
+			isInside = block.mode.checkEntity(new Vector3d(posxyz[index3], posxyz[index3+1]+radius, posxyz[index3+2]), radius, diameter, x, y, z, data);
 		}
 		if(isInside) {
 			if(block.isSolid()) {

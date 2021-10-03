@@ -1,34 +1,35 @@
 package cubyz.client.entity;
 
+import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 import cubyz.client.GameLauncher;
 import cubyz.world.entity.EntityType;
 
 public class ClientEntity {
-	public Vector3f[] lastPosition = new Vector3f[8];
+	public Vector3d[] lastPosition = new Vector3d[8];
 	public Vector3f rotation = new Vector3f();
 	public int frontIndex = 0;
 	public int currentIndex = 0;
 	public float timeInCurrentFrame = 0;
 	public float timeFactor = 1.0f;
-	public Vector3f position = new Vector3f();
-	public Vector3f velocity = new Vector3f();
+	public Vector3d position = new Vector3d();
+	public Vector3d velocity = new Vector3d();
 	public float movementAnimation = 0; // Only used by mobs that actually move.
 
-	public final float height;
+	public final double height;
 	
 	public final EntityType type;
 	
-	public Vector3f getRenderPosition() { // default method for render pos
-		return new Vector3f(position.x, position.y + height/2, position.z);
+	public Vector3d getRenderPosition() { // default method for render pos
+		return new Vector3d(position.x, position.y + height/2, position.z);
 	}
 
 	public final int id;
 
 	private long lastUpdate;
 
-	public ClientEntity(Vector3f position, Vector3f rotation, int id, EntityType type, float height) {
+	public ClientEntity(Vector3d position, Vector3f rotation, int id, EntityType type, double height) {
 		lastPosition[0] = position;
 		this.rotation.set(rotation);
 		this.position.set(position);
@@ -37,7 +38,7 @@ public class ClientEntity {
 		this.height = height;
 	}
 
-	public void updatePosition(Vector3f position, Vector3f rotation) {
+	public void updatePosition(Vector3d position, Vector3f rotation) {
 		frontIndex = (frontIndex + 1)%lastPosition.length;
 		lastPosition[frontIndex] = position;
 		rotation.set(rotation);
@@ -51,7 +52,7 @@ public class ClientEntity {
 			// Skip the first call and lag spikes.
 			return;
 		}
-		Vector3f nextPosition = new Vector3f(); // Position in 1 update.
+		Vector3d nextPosition = new Vector3d(); // Position in 1 update.
 		float timeStep = 0;
 		if(currentIndex == frontIndex) {
 			timeStep = (float)GameLauncher.instance.secsPerUpdate - timeInCurrentFrame;

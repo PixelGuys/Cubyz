@@ -1,9 +1,10 @@
 package cubyz.rendering.rotation;
 
 import org.joml.RayAabIntersection;
+import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
-import org.joml.Vector4f;
+import org.joml.Vector4d;
 
 import cubyz.api.Resource;
 import cubyz.client.Meshes;
@@ -30,7 +31,7 @@ public class LogRotation implements RotationMode {
 	}
 
 	@Override
-	public boolean generateData(ServerWorld world, int x, int y, int z, Vector3f relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, ByteWrapper currentData, boolean blockPlacing) {
+	public boolean generateData(ServerWorld world, int x, int y, int z, Vector3d relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, ByteWrapper currentData, boolean blockPlacing) {
 		if(!blockPlacing) return false;
 		byte data = -1;
 		if(relativeDirection.x == 1) data = (byte)0b10;
@@ -75,12 +76,12 @@ public class LogRotation implements RotationMode {
 	}
 
 	@Override
-	public boolean checkEntity(Vector3f pos, float width, float height, int x, int y, int z, byte blockData) {
+	public boolean checkEntity(Vector3d pos, double width, double height, int x, int y, int z, byte blockData) {
 		return false;
 	}
 
 	@Override
-	public boolean checkEntityAndDoCollision(Entity arg0, Vector4f arg1, int x, int y, int z, byte arg2) {
+	public boolean checkEntityAndDoCollision(Entity arg0, Vector4d arg1, int x, int y, int z, byte arg2) {
 		return true;
 	}
 	

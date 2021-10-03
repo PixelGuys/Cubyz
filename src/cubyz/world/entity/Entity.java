@@ -1,8 +1,9 @@
 package cubyz.world.entity;
 
+import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
-import org.joml.Vector4f;
+import org.joml.Vector4d;
 
 import cubyz.utils.json.JsonObject;
 import cubyz.world.ServerWorld;
@@ -18,13 +19,13 @@ public class Entity {
 
 	protected ServerWorld world;
 
-	protected Vector3f position = new Vector3f();
+	protected Vector3d position = new Vector3d();
 	protected Vector3f rotation = new Vector3f();
-	public float vx, vy, vz;
-	public float targetVX, targetVZ; // The velocity the AI wants the entity to have.
+	public double vx, vy, vz;
+	public double targetVX, targetVZ; // The velocity the AI wants the entity to have.
 
-	protected float scale = 1f;
-	public final float stepHeight;
+	protected double scale = 1f;
+	public final double stepHeight;
 	
 	private final EntityType type;
 	
@@ -40,7 +41,7 @@ public class Entity {
 	/**
 	 * Used as hitbox.
 	 */
-	public float width = 0.25f, height = 1.8f;
+	public double width = 0.25f, height = 1.8f;
 	
 	/**
 	 * @param type
@@ -61,7 +62,7 @@ public class Entity {
 		id = currentID++;
 	}
 	
-	public float getScale() {
+	public double getScale() {
 		return scale;
 	}
 	
@@ -69,7 +70,7 @@ public class Entity {
 	 * Checks collision against all blocks within the hitbox and updates positions.
 	 * @return The height of the step taken. Needed for hunger calculations.
 	 */
-	protected float collisionDetection(float deltaTime) {
+	protected double collisionDetection(float deltaTime) {
 		// Simulate movement in all directions and prevent movement in a direction that would get the player into a block:
 		int minX = (int)Math.floor(position.x - width);
 		int maxX = (int)Math.floor(position.x + width);
@@ -77,11 +78,11 @@ public class Entity {
 		int maxY = (int)Math.floor(position.y + height);
 		int minZ = (int)Math.floor(position.z - width);
 		int maxZ = (int)Math.floor(position.z + width);
-		float deltaX = vx*deltaTime;
-		float deltaY = vy*deltaTime;
-		float deltaZ = vz*deltaTime;
-		Vector4f change = new Vector4f(deltaX, 0, 0, 0);
-		float step = 0.0f;
+		double deltaX = vx*deltaTime;
+		double deltaY = vy*deltaTime;
+		double deltaZ = vz*deltaTime;
+		Vector4d change = new Vector4d(deltaX, 0, 0, 0);
+		double step = 0.0f;
 		if(deltaX < 0) {
 			int minX2 = (int)Math.floor(position.x - width + deltaX);
 			// First check for partial blocks:
@@ -259,7 +260,7 @@ public class Entity {
 		return 0;
 	}
 	
-	public boolean checkBlock(int x, int y, int z, Vector4f displacement) {
+	public boolean checkBlock(int x, int y, int z, Vector4d displacement) {
 		Block b = getBlock(x, y, z);
 		if(b != null && b.isSolid()) {
 			if(b.mode.changesHitbox()) {
@@ -295,7 +296,7 @@ public class Entity {
 	
 	public boolean isOnGround() {
 		// Determine if the entity is on the ground by virtually displacing it by 0.2 below its current position:
-		Vector4f displacement = new Vector4f(0, -0.2f, 0, 0);
+		Vector4d displacement = new Vector4d(0, -0.2f, 0, 0);
 		checkBlock((int)Math.floor(position.x), (int)Math.floor(position.y), (int)Math.floor(position.z), displacement);
 		if(checkBlock((int)Math.floor(position.x), (int)Math.floor(position.y + displacement.y), (int)Math.floor(position.z), displacement)) {
 			return true;
@@ -319,7 +320,7 @@ public class Entity {
 	}
 	
 	public void update(float deltaTime) {
-		float step = collisionDetection(deltaTime);
+		double step = collisionDetection(deltaTime);
 		if(entityAI != null)
 			entityAI.update(this);
 		updateVelocity(deltaTime);
@@ -331,11 +332,11 @@ public class Entity {
 			health = maxHealth;
 		
 		if(maxHunger > 0) {
-			hungerMechanics(step, deltaTime);
+			hungerMechanics((float)step, deltaTime);
 		}
 	}
 	
-	float oldVY = 0;
+	double oldVY = 0;
 	/**
 	 * Simulates the hunger system. TODO: Make dependent on mass
 	 * @param step How high the entity stepped in this update cycle.
@@ -349,8 +350,8 @@ public class Entity {
 		// Jumping:
 		if(oldVY < vy) { // Only care about positive changes.
 			// Determine the difference in "signed" kinetic energy.
-			float deltaE = vy*vy*Math.signum(vy) - oldVY*oldVY*Math.signum(oldVY);
-			hunger -= deltaE/900;
+			double deltaE = vy*vy*Math.signum(vy) - oldVY*oldVY*Math.signum(oldVY);
+			hunger -= (float)deltaE/900;
 		}
 		oldVY = vy;
 		
@@ -393,7 +394,22 @@ public class Entity {
 		return new Vector3f(x, y, z);
 	}
 	
+	private Vector3d loadVector3d(JsonObject json) {
+		double x = json.getDouble("x", 0);
+		double y = json.getDouble("y", 0);
+		double z = json.getDouble("z", 0);
+		return new Vector3d(x, y, z);
+	}
+	
 	private JsonObject saveVector(Vector3f vec) {
+		JsonObject json = new JsonObject();
+		json.put("x", vec.x);
+		json.put("y", vec.y);
+		json.put("z", vec.z);
+		return json;
+	}
+	
+	private JsonObject saveVector(Vector3d vec) {
 		JsonObject json = new JsonObject();
 		json.put("x", vec.x);
 		json.put("y", vec.y);
@@ -406,16 +422,16 @@ public class Entity {
 		json.put("id", type.getRegistryID().toString());
 		json.put("position", saveVector(position));
 		json.put("rotation", saveVector(rotation));
-		json.put("velocity", saveVector(new Vector3f(vx, vy, vz)));
+		json.put("velocity", saveVector(new Vector3d(vx, vy, vz)));
 		json.put("health", health);
 		json.put("hunger", hunger);
 		return json;
 	}
 	
 	public void loadFrom(JsonObject json) {
-		position = loadVector3f(json.getObjectOrNew("position"));
+		position = loadVector3d(json.getObjectOrNew("position"));
 		rotation = loadVector3f(json.getObjectOrNew("rotation"));
-		Vector3f velocity = loadVector3f(json.getObjectOrNew("velocity"));
+		Vector3d velocity = loadVector3d(json.getObjectOrNew("velocity"));
 		vx = velocity.x;
 		vy = velocity.y;
 		vz = velocity.z;
@@ -431,12 +447,8 @@ public class Entity {
 		return world;
 	}
 	
-	public Vector3f getPosition() {
+	public Vector3d getPosition() {
 		return position;
-	}
-	
-	public Vector3f getRenderPosition() { // default method for render pos
-		return new Vector3f(position.x, position.y + height/2, position.z);
 	}
 	
 	public void setPosition(Vector3i position) {
@@ -445,7 +457,7 @@ public class Entity {
 		this.position.z = position.z;
 	}
 	
-	public void setPosition(Vector3f position) {
+	public void setPosition(Vector3d position) {
 		this.position = position;
 	}
 	
@@ -461,7 +473,7 @@ public class Entity {
 		return null;
 	}
 	
-	public static boolean aabCollision(float x1, float y1, float z1, float w1, float h1, float d1, float x2, float y2, float z2, float w2, float h2, float d2) {
+	public static boolean aabCollision(double x1, double y1, double z1, double w1, double h1, double d1, double x2, double y2, double z2, double w2, double h2, double d2) {
 		return x1 + w1 >= x2
 				&& x1 <= x2 + w2
 				&& y1 + h1 >= y2
@@ -481,7 +493,7 @@ public class Entity {
 	 * @param blockData
 	 * @return
 	 */
-	public void aabCollision(Vector4f vel, float x0, float y0, float z0, float w, float h, float d, byte blockData) {
+	public void aabCollision(Vector4d vel, double x0, double y0, double z0, double w, double h, double d, byte blockData) {
 		// check if the displacement is inside the box:
 		if(aabCollision(position.x - width + vel.x, position.y + vel.y, position.z - width + vel.z, width*2, height, width*2, x0, y0, z0, w, h, d)) {
 			// Check if the entity can step on it:

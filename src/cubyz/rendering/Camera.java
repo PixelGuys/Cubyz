@@ -30,18 +30,6 @@ public abstract class Camera {
 		position.z = z;
 	}
 
-	public static void movePosition(float offsetX, float offsetY, float offsetZ) {
-		if (offsetZ != 0) {
-			position.x -= (float) Math.sin(rotation.y) * offsetZ;
-			position.z += (float) Math.cos(rotation.y) * offsetZ;
-		}
-		if (offsetX != 0) {
-			position.x -= (float) Math.sin(rotation.y - PI_HALF) * offsetX;
-			position.z += (float) Math.cos(rotation.y - PI_HALF) * offsetX;
-		}
-		position.y += offsetY;
-	}
-
 	public static Vector3f getRotation() {
 		return rotation;
 	}

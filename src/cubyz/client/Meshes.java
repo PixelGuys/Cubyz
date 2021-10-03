@@ -74,11 +74,11 @@ public class Meshes {
 	 */
 	public static void queueMesh(ChunkMesh mesh) {
 		// Calculate the priority, which is determined by distance and resolution/size.
-		float dx = Cubyz.player.getPosition().x - mesh.wx;
-		float dy = Cubyz.player.getPosition().y - mesh.wy;
-		float dz = Cubyz.player.getPosition().z - mesh.wz;
-		float dist = dx*dx + dy*dy + dz*dz;
-		float priority = -dist/mesh.size;
+		double dx = Cubyz.player.getPosition().x - mesh.wx;
+		double dy = Cubyz.player.getPosition().y - mesh.wy;
+		double dz = Cubyz.player.getPosition().z - mesh.wz;
+		double dist = dx*dx + dy*dy + dz*dz;
+		float priority = -(float)dist/mesh.size;
 		mesh.updatePriority(priority);
 		updateQueue.add(mesh);
 	}

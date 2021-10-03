@@ -1,8 +1,6 @@
 package cubyz.gui;
 
-import cubyz.Logger;
 import cubyz.api.CubyzRegistries;
-import cubyz.api.Registry;
 import cubyz.api.Resource;
 import cubyz.client.Cubyz;
 import cubyz.gui.components.InventorySlot;

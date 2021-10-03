@@ -8,6 +8,7 @@ import java.util.Random;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 
+import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 import org.joml.Vector4f;
@@ -337,7 +338,7 @@ public class ServerWorld {
 		}
 	}
 	
-	public void drop(ItemStack stack, Vector3f pos, Vector3f dir, float velocity) {
+	public void drop(ItemStack stack, Vector3d pos, Vector3f dir, float velocity) {
 		ItemEntityManager manager = this.getEntityManagerAt((int)pos.x & ~NormalChunk.chunkMask, (int)pos.y & ~NormalChunk.chunkMask, (int)pos.z & ~NormalChunk.chunkMask).itemEntityManager;
 		manager.add(pos.x, pos.y, pos.z, dir.x*velocity, dir.y*velocity, dir.z*velocity, stack, 30*300 /*5 minutes at normal update speed.*/);
 	}
@@ -471,7 +472,7 @@ public class ServerWorld {
 		}
 		// Item Entities
 		for(int i = 0; i < entityManagers.length; i++) {
-			entityManagers[i].itemEntityManager.update();
+			entityManagers[i].itemEntityManager.update(deltaTime);
 		}
 		// Block Entities
 		for(MetaChunk chunk : metaChunks.values()) {

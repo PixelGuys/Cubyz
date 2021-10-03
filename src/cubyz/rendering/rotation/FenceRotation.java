@@ -1,9 +1,10 @@
 package cubyz.rendering.rotation;
 
 import org.joml.RayAabIntersection;
+import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
-import org.joml.Vector4f;
+import org.joml.Vector4d;
 
 import cubyz.api.Resource;
 import cubyz.client.Meshes;
@@ -26,7 +27,7 @@ public class FenceRotation implements RotationMode {
 	}
 
 	@Override
-	public boolean generateData(ServerWorld world, int x, int y, int z, Vector3f relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, ByteWrapper currentData, boolean blockPlacing) {
+	public boolean generateData(ServerWorld world, int x, int y, int z, Vector3d relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, ByteWrapper currentData, boolean blockPlacing) {
 		if(!blockPlacing) return false;
 		NormalChunk chunk = world.getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift);
 		currentData.data = (byte)1;
@@ -113,7 +114,7 @@ public class FenceRotation implements RotationMode {
 	}
 
 	@Override
-	public boolean checkEntity(Vector3f pos, float width, float height, int x, int y, int z, byte blockData) {
+	public boolean checkEntity(Vector3d pos, double width, double height, int x, int y, int z, byte blockData) {
 		// Hit area is just a simple + with a width of 0.25:
 		return y >= pos.y
 				&& y <= pos.y + height
@@ -136,7 +137,7 @@ public class FenceRotation implements RotationMode {
 	}
 
 	@Override
-	public boolean checkEntityAndDoCollision(Entity ent, Vector4f vel, int x, int y, int z, byte blockData) {
+	public boolean checkEntityAndDoCollision(Entity ent, Vector4d vel, int x, int y, int z, byte blockData) {
 		// Hit area is just a simple + with a width of 0.25:
 		float xOffset = 0;
 		float xLen = 1;

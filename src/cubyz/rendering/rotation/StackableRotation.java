@@ -1,11 +1,12 @@
 package cubyz.rendering.rotation;
 
-import org.joml.Intersectionf;
+import org.joml.Intersectiond;
 import org.joml.RayAabIntersection;
-import org.joml.Vector2f;
+import org.joml.Vector2d;
+import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
-import org.joml.Vector4f;
+import org.joml.Vector4d;
 
 import cubyz.Logger;
 import cubyz.api.Resource;
@@ -36,19 +37,20 @@ public class StackableRotation implements RotationMode {
 	}
 
 	@Override
-	public boolean generateData(ServerWorld world, int x, int y, int z, Vector3f relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, ByteWrapper currentData, boolean blockPlacing) {
+	public boolean generateData(ServerWorld world, int x, int y, int z, Vector3d relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, ByteWrapper currentData, boolean blockPlacing) {
 		if(blockPlacing) {
 			currentData.data = 1;
 			return true;
 		}
-		Vector3f min = new Vector3f();
-		Vector3f max = new Vector3f(1, currentData.data/16.0f, 1);
-		Vector2f result = new Vector2f();
+		Vector3d dir = new Vector3d(playerDirection);
+		Vector3d min = new Vector3d();
+		Vector3d max = new Vector3d(1, currentData.data/16.0f, 1);
+		Vector2d result = new Vector2d();
 		// Check if the ray is going through the block:
-		if(Intersectionf.intersectRayAab(relativePlayerPosition, playerDirection, min, max, result)) {
+		if(Intersectiond.intersectRayAab(relativePlayerPosition, dir, min, max, result)) {
 			// Check if the ray is going through the top layer and going the right direction:
 			min.y = max.y - 0.0001f;
-			if(playerDirection.y < 0 && Intersectionf.intersectRayAab(relativePlayerPosition, playerDirection, min, max, result)) {
+			if(playerDirection.y < 0 && Intersectiond.intersectRayAab(relativePlayerPosition, dir, min, max, result)) {
 				if(currentData.data == 16) return false;
 				currentData.data++;
 				return true;
@@ -101,7 +103,7 @@ public class StackableRotation implements RotationMode {
 	}
 
 	@Override
-	public boolean checkEntity(Vector3f pos, float width, float height, int x, int y, int z, byte blockData) {
+	public boolean checkEntity(Vector3d pos, double width, double height, int x, int y, int z, byte blockData) {
 		return 	   y + blockData/16.0f >= pos.y
 				&& y     <= pos.y + height
 				&& x + 1 >= pos.x - width
@@ -111,7 +113,7 @@ public class StackableRotation implements RotationMode {
 	}
 
 	@Override
-	public boolean checkEntityAndDoCollision(Entity ent, Vector4f vel, int x, int y, int z, byte data) {
+	public boolean checkEntityAndDoCollision(Entity ent, Vector4d vel, int x, int y, int z, byte data) {
 		// Check if the player can step onto this:
 		if(y + data/16.0f - ent.getPosition().y > 0 && y + data/16.0f - ent.getPosition().y <= ent.stepHeight) {
 			vel.w = Math.max(vel.w, y + data/16.0f - ent.getPosition().y);

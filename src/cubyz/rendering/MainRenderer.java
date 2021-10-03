@@ -8,6 +8,7 @@ import static org.lwjgl.opengl.GL41.*;
 
 import org.joml.FrustumIntersection;
 import org.joml.Matrix4f;
+import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
@@ -148,9 +149,9 @@ public class MainRenderer {
 	 * @param playerZ
 	 * @return sorted chunk array
 	 */
-	public NormalChunkMesh[] sortChunks(NormalChunkMesh[] toSort, float playerX, float playerY, float playerZ) {
+	public NormalChunkMesh[] sortChunks(NormalChunkMesh[] toSort, double playerX, double playerY, double playerZ) {
 		NormalChunkMesh[] output = new NormalChunkMesh[toSort.length];
-		float[] distances = new float[toSort.length];
+		double[] distances = new double[toSort.length];
 		System.arraycopy(toSort, 0, output, 0, toSort.length);
 		for(int i = 0; i < output.length; i++) {
 			distances[i] = (playerX - output[i].wx)*(playerX - output[i].wx) + (playerY - output[i].wy)*(playerY - output[i].wy) + (playerZ - output[i].wz)*(playerZ - output[i].wz);
@@ -212,7 +213,7 @@ public class MainRenderer {
 			if(Cubyz.playerInc.x != 0) {
 				Cubyz.player.vx = Cubyz.playerInc.x;
 			}
-			Camera.setPosition(Cubyz.player.getPosition().x, Cubyz.player.getPosition().y + Player.cameraHeight + playerBobbing, Cubyz.player.getPosition().z);
+			Camera.setPosition(0, Player.cameraHeight + playerBobbing, 0);
 		}
 		
 		while(!Cubyz.renderDeque.isEmpty()) {
@@ -233,7 +234,7 @@ public class MainRenderer {
 			}
 			Cubyz.fog.setDensity(1 / (ClientSettings.EFFECTIVE_RENDER_DISTANCE*ClientSettings.FOG_COEFFICIENT));
 			Player player = Cubyz.player;
-			Block bi = Cubyz.world.getBlock(Math.round(player.getPosition().x), (int)(player.getPosition().y)+3, Math.round(player.getPosition().z));
+			Block bi = Cubyz.world.getBlock((int)Math.round(player.getPosition().x), (int)(player.getPosition().y)+3, (int)Math.round(player.getPosition().z));
 			if(bi != null && !bi.isSolid()) {
 				int absorption = bi.getAbsorption();
 				ambient.x *= 1.0f - Math.pow(((absorption >>> 16) & 255)/255.0f, 0.25);
@@ -291,11 +292,8 @@ public class MainRenderer {
 		prjViewMatrix.mul(Camera.getViewMatrix());
 
 		frustumInt.set(prjViewMatrix);
-		Vector3f playerPosition = null;
 		if(localPlayer != null) {
-			playerPosition = localPlayer.getPosition(); // Use a constant copy of the player position for the whole rendering to prevent graphics bugs on player movement.
-		}
-		if(playerPosition != null) {
+			Vector3d playerPosition = localPlayer.getPosition(); // Use a constant copy of the player position for the whole rendering to prevent graphics bugs on player movement.
 			 // Update the uniforms. The uniforms are needed to render the replacement meshes.
 			ReducedChunkMesh.bindShader(ambientLight, directionalLight.getDirection());
 			ReducedChunkMesh.shader.setUniform(ReducedChunkMesh.loc_projectionMatrix, Window.getProjectionMatrix()); // Use the same matrix for replacement meshes.
@@ -322,9 +320,9 @@ public class MainRenderer {
 				glBindTexture(GL_TEXTURE_2D, GameLauncher.logic.breakAnimations[0].getId());
 			}
 			
-			float x0 = playerPosition.x;
-			float y0 = playerPosition.y;
-			float z0 = playerPosition.z;
+			double x0 = playerPosition.x;
+			double y0 = playerPosition.y;
+			double z0 = playerPosition.z;
 			// Update meshes:
 			while(System.currentTimeMillis() - startTime <= maximumMeshTime) {
 				ChunkMesh mesh = Meshes.getNextQueuedMesh();
@@ -336,7 +334,7 @@ public class MainRenderer {
 
 			FastList<NormalChunkMesh> visibleChunks = new FastList<NormalChunkMesh>(NormalChunkMesh.class);
 			FastList<ReducedChunkMesh> visibleReduced = new FastList<ReducedChunkMesh>(ReducedChunkMesh.class);
-			for (ChunkMesh mesh : Cubyz.chunkTree.getRenderChunks(frustumInt, x0, z0)) {
+			for (ChunkMesh mesh : Cubyz.chunkTree.getRenderChunks(frustumInt, x0, y0, z0)) {
 				if(mesh instanceof NormalChunkMesh) {
 					visibleChunks.add((NormalChunkMesh)mesh);
 					
@@ -345,7 +343,7 @@ public class MainRenderer {
 					} else {
 						NormalChunkMesh.shader.setUniform(NormalChunkMesh.loc_selectedIndex, -1);
 					}
-					mesh.render();
+					mesh.render(playerPosition);
 				} else if(mesh instanceof ReducedChunkMesh) {
 					visibleReduced.add((ReducedChunkMesh)mesh);
 				}
@@ -357,7 +355,7 @@ public class MainRenderer {
 			
 			for(int i = 0; i < visibleReduced.size; i++) {
 				ReducedChunkMesh mesh = visibleReduced.array[i];
-				mesh.render();
+				mesh.render(playerPosition);
 			}
 			glDepthRangef(0, 0.05f);
 			
@@ -398,8 +396,8 @@ public class MainRenderer {
 						entityShader.setUniform(EntityUniforms.loc_light, Cubyz.world.getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
 						
 						mesh.renderOne(() -> {
-							Vector3f position = ent.getRenderPosition();
-							Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(position, ent.rotation, 1), Camera.getViewMatrix());
+							Vector3d position = ent.getRenderPosition().sub(playerPosition);
+							Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(new Vector3f((float)position.x, (float)position.y, (float)position.z), ent.rotation, 1), Camera.getViewMatrix());
 							entityShader.setUniform(EntityUniforms.loc_viewMatrix, modelViewMatrix);
 						});
 					}
@@ -416,7 +414,9 @@ public class MainRenderer {
 			blockDropShader.setUniform(BlockDropUniforms.loc_texture_sampler, 0);
 			for(ChunkEntityManager chManager : Cubyz.world.getEntityManagers()) {
 				NormalChunk chunk = chManager.chunk;
-				if (!chunk.isLoaded() || !frustumInt.testAab(chunk.getMin(), chunk.getMax()))
+				Vector3d min = chunk.getMin().sub(playerPosition);
+				Vector3d max = chunk.getMax().sub(playerPosition);
+				if (!chunk.isLoaded() || !frustumInt.testAab((float)min.x, (float)min.y, (float)min.z, (float)max.x, (float)max.y, (float)max.z))
 					continue;
 				ItemEntityManager manager = chManager.itemEntityManager;
 				for(int i = 0; i < manager.size; i++) {
@@ -446,8 +446,8 @@ public class MainRenderer {
 						blockDropShader.setUniform(BlockDropUniforms.loc_light, Cubyz.world.getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
 						
 						mesh.renderOne(() -> {
-							Vector3f position = manager.getPosition(index);
-							Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(position, manager.getRotation(index), ItemEntityManager.diameter), Camera.getViewMatrix());
+							Vector3d position = manager.getPosition(index);
+							Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(new Vector3f((float)position.x, (float)position.y, (float)position.z), manager.getRotation(index), ItemEntityManager.diameter), Camera.getViewMatrix());
 							blockDropShader.setUniform(BlockDropUniforms.loc_viewMatrix, modelViewMatrix);
 						});
 					}
@@ -499,7 +499,7 @@ public class MainRenderer {
 					NormalChunkMesh.shader.setUniform(NormalChunkMesh.loc_selectedIndex, -1);
 				}
 				
-				mesh.renderTransparent();		
+				mesh.renderTransparent(playerPosition);		
 			}
 		}
 	}

@@ -2,7 +2,7 @@ package cubyz.world;
 
 import java.util.ArrayList;
 
-import org.joml.Vector3f;
+import org.joml.Vector3d;
 import org.joml.Vector3i;
 
 import cubyz.utils.Utilities;
@@ -681,12 +681,23 @@ public class NormalChunk extends Chunk {
 		return (x - wx) >= 0 && (x - wx) < chunkSize && (y - wy) >= 0 && (y - wy) < chunkSize && (z - wz) >= 0 && (z - wz) < chunkSize;
 	}
 	
-	public Vector3f getMin() {
-		return new Vector3f(wx, wy, wz);
+	/**
+	 * Checks if a given coordinate is inside this chunk.
+	 * @param x
+	 * @param y
+	 * @param z
+	 * @return
+	 */
+	public boolean isInside(double x, double y, double z) {
+		return (x - wx) >= 0 && (x - wx) < chunkSize && (y - wy) >= 0 && (y - wy) < chunkSize && (z - wz) >= 0 && (z - wz) < chunkSize;
 	}
 	
-	public Vector3f getMax() {
-		return new Vector3f(wx + chunkSize, wy + chunkSize, wz + chunkSize);
+	public Vector3d getMin() {
+		return new Vector3d(wx, wy, wz);
+	}
+	
+	public Vector3d getMax() {
+		return new Vector3d(wx + chunkSize, wy + chunkSize, wz + chunkSize);
 	}
 	
 	public int getX() {

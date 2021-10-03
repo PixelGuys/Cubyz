@@ -1,6 +1,7 @@
 package cubyz.world.entity;
 
 import org.joml.Matrix4f;
+import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 import cubyz.api.RegistryElement;
@@ -15,7 +16,7 @@ public interface EntityModel extends RegistryElement {
 	public EntityModel createInstance(String data, EntityType source);
 	public void update(ClientEntity ent, float deltaTime);
 	/**
-	 * Should return Float.MAX_VALUE if no collision happens.
+	 * Should return Double.MAX_VALUE if no collision happens.
 	 */
-	public float getCollisionDistance(Vector3f playerPosition, Vector3f direction, Entity ent);
+	public double getCollisionDistance(Vector3d playerPosition, Vector3f direction, Entity ent);
 }

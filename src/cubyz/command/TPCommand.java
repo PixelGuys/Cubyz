@@ -1,6 +1,6 @@
 package cubyz.command;
 
-import org.joml.Vector3f;
+import org.joml.Vector3d;
 
 import cubyz.api.Resource;
 import cubyz.world.entity.Player;
@@ -27,6 +27,6 @@ public class TPCommand extends CommandBase {
 			return;
 		}
 		Player player = (Player)source;
-		player.setPosition(new Vector3f(Float.parseFloat(args[1]), Float.parseFloat(args[2]), Float.parseFloat(args[3])));
+		player.setPosition(new Vector3d(Double.parseDouble(args[1]), Double.parseDouble(args[2]), Double.parseDouble(args[3])));
 	}
 }

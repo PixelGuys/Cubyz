@@ -1,5 +1,7 @@
 package cubyz.client;
 
+import org.joml.Vector3d;
+
 import cubyz.world.ChunkData;
 import cubyz.world.NormalChunk;
 
@@ -38,7 +40,11 @@ public abstract class ChunkMesh extends ChunkData implements Comparable<ChunkMes
 	 */
 	public abstract void regenerateMesh();
 
-	public abstract void render();
+	/**
+	 * The player position is subtracted before render. This allows the GPU to calculate on floats even if the player is at high coordinates.
+	 * @param playerPosition
+	 */
+	public abstract void render(Vector3d playerPosition);
 
 	/**
 	 * Returns the chunk associated with the mesh.
