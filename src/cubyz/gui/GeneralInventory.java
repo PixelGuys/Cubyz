@@ -69,7 +69,9 @@ public abstract class GeneralInventory extends MenuGUI {
 			}
 			int x = (int)Mouse.getCurrentPos().x;
 			int y = (int)Mouse.getCurrentPos().y;
+			Graphics.setColor(0xFFFFFF);
 			Graphics.drawImage(item.getImage(), x - 32, y - 32, 64, 64);
+			Graphics.setColor(0x000000);
 			num.setText("" + carried.getAmount());
 			num.setPosition(x+50-32, y+48-32, Component.ALIGN_TOP_LEFT);
 			num.render();
