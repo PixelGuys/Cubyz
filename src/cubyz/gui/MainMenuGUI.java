@@ -68,7 +68,11 @@ public class MainMenuGUI extends MenuGUI {
 	}
 	
 	@Override
-	public void init() {}
+	public void init() {
+		spSize = 0.9f;
+		mpSize = 0.9f;
+		lastRender = System.currentTimeMillis();
+	}
 	
 	long lastRender = System.currentTimeMillis();
 	@Override
