@@ -759,19 +759,11 @@ public class ServerWorld {
 		return reg.getBiome(wx, wz);
 	}
 
-	public Vector3f getLight(int x, int y, int z, Vector3f sunLight, boolean easyLighting) {
+	public int getLight(int x, int y, int z, Vector3f sunLight, boolean easyLighting) {
 		NormalChunk ch = getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift);
 		if(ch == null || !ch.isLoaded() || !easyLighting)
-			return new Vector3f(1, 1, 1);
-		int light = ch.getLight(x & NormalChunk.chunkMask, y & NormalChunk.chunkMask, z & NormalChunk.chunkMask);
-		int sun = (light >>> 24) & 255;
-		int r = (light >>> 16) & 255;
-		int g = (light >>> 8) & 255;
-		int b = (light >>> 0) & 255;
-		if(sun*sunLight.x > r) r = (int)(sun*sunLight.x);
-		if(sun*sunLight.y > g) g = (int)(sun*sunLight.y);
-		if(sun*sunLight.z > b) b = (int)(sun*sunLight.z);
-		return new Vector3f(r/255.0f, g/255.0f, b/255.0f);
+			return 0xffffffff;
+		return ch.getLight(x & NormalChunk.chunkMask, y & NormalChunk.chunkMask, z & NormalChunk.chunkMask);
 	}
 
 	public void getLight(int x, int y, int z, int[] array) {

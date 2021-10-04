@@ -53,6 +53,8 @@ public class MainRenderer {
 		public static int loc_fog_color;
 		public static int loc_fog_density;
 		public static int loc_light;
+		public static int loc_ambientLight;
+		public static int loc_directionalLight;
 	}
 	public static class BlockDropUniforms {
 		public static int loc_projectionMatrix;
@@ -367,6 +369,9 @@ public class MainRenderer {
 			entityShader.setUniform(EntityUniforms.loc_fog_density, Cubyz.fog.getDensity());
 			entityShader.setUniform(EntityUniforms.loc_projectionMatrix, Window.getProjectionMatrix());
 			entityShader.setUniform(EntityUniforms.loc_texture_sampler, 0);
+			entityShader.setUniform(EntityUniforms.loc_ambientLight, ambient);
+			entityShader.setUniform(EntityUniforms.loc_directionalLight, directionalLight.getDirection());
+
 			for (int i = 0; i < entities.length; i++) {
 				ClientEntity ent = entities[i];
 				int x = (int)(ent.position.x + 1.0f);

@@ -2,6 +2,7 @@
 
 in vec2 outTexCoord;
 in vec3 mvVertexPos;
+in vec3 outLight;
 
 out vec4 fragColor;
 
@@ -14,20 +15,18 @@ struct Fog {
 uniform sampler2D texture_sampler;
 uniform bool materialHasTexture;
 uniform Fog fog;
-uniform vec3 light;
 
 vec4 ambientC;
 
-void setupColors(bool materialHasTexture, vec2 textCoord)
-{
-    if (materialHasTexture)
-    {
-        ambientC = texture(texture_sampler, textCoord);
-    }
-    else
-    {
-        ambientC = vec4(1, 1, 1, 1);
-    }
+void setupColors(bool materialHasTexture, vec2 textCoord) {
+	if (materialHasTexture)
+	{
+		ambientC = texture(texture_sampler, textCoord);
+	}
+	else
+	{
+		ambientC = vec4(1, 1, 1, 1);
+	}
 }
 
 vec4 calcFog(vec3 pos, vec4 color, Fog fog) {
@@ -38,13 +37,12 @@ vec4 calcFog(vec3 pos, vec4 color, Fog fog) {
 	return vec4(resultColor.xyz, color.w);
 }
 
-void main()
-{
-    setupColors(materialHasTexture, outTexCoord);
-    
-    fragColor = ambientC*vec4(light, 1);
-    
-    if (fog.activ) {
-        fragColor = calcFog(mvVertexPos, fragColor, fog);
-    }
+void main() {
+	setupColors(materialHasTexture, outTexCoord);
+	
+	fragColor = ambientC*vec4(outLight, 1);
+	
+	if (fog.activ) {
+		fragColor = calcFog(mvVertexPos, fragColor, fog);
+	}
 }
