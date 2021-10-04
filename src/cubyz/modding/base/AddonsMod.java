@@ -18,8 +18,9 @@ import cubyz.api.Order;
 import cubyz.api.Proxy;
 import cubyz.api.Registry;
 import cubyz.api.Resource;
+import cubyz.utils.json.JsonObject;
+import cubyz.utils.json.JsonParser;
 import cubyz.utils.math.CubyzMath;
-import cubyz.utils.translate.TextKey;
 import cubyz.world.blocks.Block;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.Ore;
@@ -34,7 +35,7 @@ import cubyz.world.items.Consumable;
 import cubyz.world.items.Item;
 import cubyz.world.items.ItemBlock;
 import cubyz.world.items.Recipe;
-import cubyz.world.items.tools.Material;
+import cubyz.world.items.tools.MaterialOld;
 import cubyz.world.items.tools.Modifier;
 
 /**
@@ -88,28 +89,20 @@ public class AddonsMod {
 			if (items.exists()) {
 				for (File file : items.listFiles()) {
 					if(file.isDirectory()) continue;
-					Properties props = new Properties();
-					try {
-						FileReader reader = new FileReader(file);
-						props.load(reader);
-						reader.close();
-					} catch (IOException e) {
-						Logger.error(e);
-					}
+					JsonObject json = JsonParser.parseObjectFromFile(file.getPath());
 					
-					Item item;
-					if(props.containsKey("food")) {
-						item = new Consumable(Float.parseFloat(props.getProperty("food")));
-					} else {
-						item = new Item();
-					}
 					String id = file.getName();
 					if(id.contains("."))
 						id = id.substring(0, id.indexOf('.'));
-					item.setID(new Resource(addon.getName(), id));
-					if (props.containsKey("translationId"))
-						item.setName(TextKey.createTextKey(props.getProperty("translationId")));
-					item.setTexture(props.getProperty("texture", "default.png"), addon.getName());
+					id = addon.getName() + ":" + id;
+
+					Item item;
+					if(json.map.containsKey("food")) {
+						item = new Consumable(new Resource(id), json);
+					} else {
+						item = new Item(new Resource(id), json);
+					}
+					item.setTexture(json.getString("texture", "default.png"), addon.getName());
 					registry.register(item);
 				}
 			}
@@ -410,7 +403,7 @@ public class AddonsMod {
 		}
 	}
 	
-	public void registerMaterials(Registry<Material> reg) {
+	public void registerMaterials(Registry<MaterialOld> reg) {
 		for (File addon : addons) {
 			File biomes = new File(addon, "materials");
 			if (biomes.exists()) {
@@ -462,7 +455,7 @@ public class AddonsMod {
 							}
 						}
 						
-						Material mat = new Material(res, modifiers, items, headDurability, bindingDurability, handleDurability, damage, miningSpeed, miningLevel);
+						MaterialOld mat = new MaterialOld(res, modifiers, items, headDurability, bindingDurability, handleDurability, damage, miningSpeed, miningLevel);
 						
 						reg.register(mat);
 						

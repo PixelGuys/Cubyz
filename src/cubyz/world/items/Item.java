@@ -3,8 +3,10 @@ package cubyz.world.items;
 import cubyz.api.RegistryElement;
 import cubyz.api.Resource;
 import cubyz.rendering.Texture; //#line CLIENTONLY
+import cubyz.utils.json.JsonObject;
 import cubyz.utils.translate.TextKey;
 import cubyz.world.entity.Entity;
+import cubyz.world.items.tools.Material;
 
 /**
  * "Thing" the player can store in their inventory.
@@ -18,6 +20,22 @@ public class Item implements RegistryElement {
 	protected Resource id = Resource.EMPTY;
 	private TextKey name;
 	protected int stackSize = 64;
+
+	public final Material material;
+
+	public Item(Resource id, JsonObject json) {
+		this.id = id;
+		name = TextKey.createTextKey(json.getString("translationId", id.getID()));
+		if(json.map.containsKey("material")) {
+			material = new Material(json.getObject("material"));
+		} else {
+			material = null;
+		}
+	}
+
+	public Item() {
+		material = null;
+	}
 	
 	public String getTexture() {
 		return texturePath;

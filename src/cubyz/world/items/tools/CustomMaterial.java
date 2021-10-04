@@ -7,7 +7,7 @@ import cubyz.world.items.Item;
  * Tool material for a randomly generated ore.
  */
 
-public class CustomMaterial extends Material {
+public class CustomMaterial extends MaterialOld {
 	private int color;
 	public CustomMaterial(int heDur, int bDur, int haDur, float dmg, float spd, int color, Item item, int value, CurrentWorldRegistries registries) {
 		super(heDur, bDur, haDur, dmg, spd);

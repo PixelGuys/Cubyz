@@ -12,7 +12,7 @@ import cubyz.world.handler.RemoveBlockHandler;
 import cubyz.world.handler.PlaceBlockHandler;
 import cubyz.world.items.Item;
 import cubyz.world.items.Recipe;
-import cubyz.world.items.tools.Material;
+import cubyz.world.items.tools.MaterialOld;
 import cubyz.world.items.tools.Modifier;
 
 /**
@@ -27,7 +27,7 @@ public class CubyzRegistries {
 	public static final NoIDRegistry<Recipe>             RECIPE_REGISTRY         = new NoIDRegistry<Recipe>();
 	public static final Registry<EntityType>             ENTITY_REGISTRY         = new Registry<EntityType>();
 	public static final Registry<CommandBase>            COMMAND_REGISTRY        = new Registry<CommandBase>();
-	public static final Registry<Material>               TOOL_MATERIAL_REGISTRY  = new Registry<Material>();
+	public static final Registry<MaterialOld>               TOOL_MATERIAL_REGISTRY  = new Registry<MaterialOld>();
 	public static final Registry<Modifier>               TOOL_MODIFIER_REGISTRY  = new Registry<Modifier>();
 	public static final BiomeRegistry                    BIOME_REGISTRY          = new BiomeRegistry();
 	public static final Registry<RotationMode>           ROTATION_MODE_REGISTRY  = new Registry<RotationMode>();

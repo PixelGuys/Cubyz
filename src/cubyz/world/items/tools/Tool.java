@@ -15,13 +15,13 @@ import cubyz.world.items.Item;
 
 public abstract class Tool extends Item {
 	
-	Material head, binding, handle;
+	MaterialOld head, binding, handle;
 	List<Modifier> modifiers = new ArrayList<>();
 	int durability, maxDurability;
 	float speed;
 	float damage;
 	
-	public Tool(Material head, Material binding, Material handle, float speed, float damage) {
+	public Tool(MaterialOld head, MaterialOld binding, MaterialOld handle, float speed, float damage) {
 		this.head = head;
 		this.binding = binding;
 		this.handle = handle;
@@ -48,15 +48,15 @@ public abstract class Tool extends Item {
 	
 	public abstract boolean canBreak(Block b);
 	
-	public Material getHeadMaterial() {
+	public MaterialOld getHeadMaterial() {
 		return head;
 	}
 	
-	public Material getBindingMaterial() {
+	public MaterialOld getBindingMaterial() {
 		return binding;
 	}
 	
-	public Material getHandleMaterial() {
+	public MaterialOld getHandleMaterial() {
 		return handle;
 	}
 	
@@ -120,7 +120,7 @@ public abstract class Tool extends Item {
 	public static Tool loadFrom(JsonObject json, CurrentWorldRegistries registries) {
 		String type = json.getString("type", "none");
 		Tool tool = null;
-		Registry<Material> matReg = registries.materialRegistry;
+		Registry<MaterialOld> matReg = registries.materialRegistry;
 		if(type.equals("Axe")) {
 			tool = new Axe(matReg.getByID(json.getString("head", "")), matReg.getByID(json.getString("binding", "")), matReg.getByID(json.getString("handle", "")));
 		} else if(type.equals("Pickaxe")) {

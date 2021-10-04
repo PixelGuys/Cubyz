@@ -1,5 +1,7 @@
 package cubyz.world.items;
 
+import cubyz.api.Resource;
+import cubyz.utils.json.JsonObject;
 import cubyz.world.entity.Entity;
 
 /**
@@ -10,8 +12,9 @@ public class Consumable extends Item {
 	float foodValue;
 	// TODO: Effects.
 	
-	public Consumable(float food) {
-		foodValue = food;
+	public Consumable(Resource id, JsonObject json) {
+		super(id, json);
+		foodValue = json.getFloat("food", 1);
 	}
 	
 	@Override
