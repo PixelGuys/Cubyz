@@ -1,5 +1,7 @@
 package cubyz.world.items.tools;
 
+import cubyz.utils.json.JsonArray;
+import cubyz.utils.json.JsonObject;
 import cubyz.world.items.Item;
 
 import java.awt.image.BufferedImage;
@@ -242,6 +244,47 @@ public class TextureGenerator {
 			}
 		}
 	}
+
+	private static float[][] generateHeightMap(Item[][] itemGrid) {
+		float[][] heightMap = new float[17][17];
+		for(int x = 0; x < 17; x++) {
+			for(int y = 0; y < 17; y++) {
+				// The heighmap basically consists of the amount of neighbors this pixel has.
+				// Also check if there are different neighbors.
+				Item oneItem = itemGrid[x == 0 ? x : x-1][y == 0 ? y : y-1];
+				boolean hasDifferentItems = false;
+				for(int dx = -1; dx <= 0; dx++) {
+					if(x + dx < 0 || x + dx >= 16) continue;
+					for(int dy = -1; dy <= 0; dy++) {
+						if(y + dy < 0 || y + dy >= 16) continue;
+
+						heightMap[x][y] += itemGrid[x + dx][y + dy] != null ? (1 + (float)(4 * Math.random() - 2) * itemGrid[x + dx][y + dy].material.roughness) : 0;
+						if(itemGrid[x + dx][y + dy] != oneItem)
+							hasDifferentItems = true;
+					}
+				}
+
+				// If there is multiple items at this junction, make it go inward to make embedded parts stick out more:
+				if(hasDifferentItems) {
+					heightMap[x][y]--;
+				}
+				
+				// Take into account further neighbors with lower priority:
+
+				for(int dx = -2; dx <= 1; dx++) {
+					if(x + dx < 0 || x + dx >= 16) continue;
+					for(int dy = -2; dy <= 1; dy++) {
+						if(y + dy < 0 || y + dy >= 16) continue;
+
+						heightMap[x][y] += itemGrid[x + dx][y + dy] != null ? 1.0f/((dx + 0.5f)*(dx + 0.5f) + (dy + 0.5f)*(dy + 0.5f)) : 0;
+						if(itemGrid[x + dx][y + dy] != oneItem)
+							hasDifferentItems = true;
+					}
+				}
+			}
+		}
+		return heightMap;
+	}
 	static Item item = new Item();
 	static Item i2em = new Item();
 	static Item i3em = new Item();
@@ -326,10 +369,50 @@ public class TextureGenerator {
 		},
 	};
 	public static void generate(Item[] grid) {
-		BufferedImage fullStack = new BufferedImage(80, 16*testCases.length, BufferedImage.TYPE_INT_ARGB);
+		JsonObject material = new JsonObject();
+		material.put("density", 1.0f);
+		material.put("resistance", 1.0f);
+		material.put("power", 1.0f);
+		material.put("roughness", 0.7f);
+		JsonArray colors = new JsonArray();
+		colors.addInts(0xff522e05, 0xff502c03, 0xff553204, 0xff67400e, 0xff784a12, 0xff984a22, 0xffaa4a32, 0xffab4a42, 0xffac4a52, 0xffad4a62, 0xffbc4a62, 0xffcc8a62, 0xffdc9a62, 0xffeeaa66, 0xffffbb77, 0xffffcc88, 0xffffdd99, 0xffffee99, 0xffffffaa, 0xffffffbb, 0xffffffcc, 0xffffffdd, 0xffffffee, 0xffffffff);
+		material.put("colors", colors);
+		item.material = new Material(material);
+
+		material = new JsonObject();
+		material.put("density", 1.0f);
+		material.put("resistance", 1.0f);
+		material.put("power", 1.0f);
+		material.put("roughness", 0.3f);
+		colors = new JsonArray();
+		colors.addInts(0xff4a9494, 0xff53a5a5, 0xff59b3b3, 0xff59bbbb, 0xff7dcbcb);
+		material.put("colors", colors);
+		i2em.material = new Material(material);
+
+		material = new JsonObject();
+		material.put("density", 1.0f);
+		material.put("resistance", 1.0f);
+		material.put("power", 1.0f);
+		material.put("roughness", 1.0f);
+		colors = new JsonArray();
+		colors.addInts(0xff282828, 0xff404040, 0xff606060, 0xff808080, 0xffb0b0b0);
+		material.put("colors", colors);
+		i3em.material = new Material(material);
+
+		material = new JsonObject();
+		material.put("density", 1.0f);
+		material.put("resistance", 1.0f);
+		material.put("power", 1.0f);
+		material.put("roughness", 0.0f);
+		colors = new JsonArray();
+		colors.addInts(0xff28af28, 0xff40bf40, 0xff60cf60, 0xff80df80, 0xffb0ffb0);
+		material.put("colors", colors);
+		i4em.material = new Material(material);
+
+		BufferedImage fullStack = new BufferedImage(32, 16*testCases.length, BufferedImage.TYPE_INT_ARGB);
 		for(int j = 0; j < testCases.length; j++) {
 			grid = testCases[j];
-			BufferedImage img = new BufferedImage(80, 16, BufferedImage.TYPE_INT_ARGB);
+			BufferedImage img = new BufferedImage(32, 16, BufferedImage.TYPE_INT_ARGB);
 			PixelData[][] pixelMaterials = new PixelData[16][16];
 			for(int x = 0; x < 16; x++) {
 				for(int y = 0; y < 16; y++) {
@@ -351,7 +434,7 @@ public class TextureGenerator {
 				14, 14, 14, 14, 14,
 			};
 			
-			for(int x = 0; x < 80; x++) {
+			for(int x = 0; x < 32; x++) {
 				for(int y = 0; y < 16; y++) {
 					img.setRGB(x, y, 0xffffffff);
 				}
@@ -368,10 +451,10 @@ public class TextureGenerator {
 			}
 			for(int i = 0; i < 25; i++) {
 				if(grid[i] == null) continue;
-				img.setRGB(16+gridCentersX[i], gridCentersY[i], grid[i].hashCode() | 0xff000000);
-				img.setRGB(16+gridCentersX[i], gridCentersY[i]-1, grid[i].hashCode() | 0xff000000);
-				img.setRGB(16+gridCentersX[i]-1, gridCentersY[i], grid[i].hashCode() | 0xff000000);
-				img.setRGB(16+gridCentersX[i]-1, gridCentersY[i]-1, grid[i].hashCode() | 0xff000000);
+				img.setRGB(16+gridCentersX[i], gridCentersY[i], grid[i].material.colorPalette[2]);
+				img.setRGB(16+gridCentersX[i], gridCentersY[i]-1, grid[i].material.colorPalette[2]);
+				img.setRGB(16+gridCentersX[i]-1, gridCentersY[i], grid[i].material.colorPalette[2]);
+				img.setRGB(16+gridCentersX[i]-1, gridCentersY[i]-1, grid[i].material.colorPalette[2]);
 			}
 			// Count all neighbors:
 			int[] neighborCount = new int[25];
@@ -416,50 +499,29 @@ public class TextureGenerator {
 				}
 			}
 
-
+			Item[][] itemGrid = new Item[16][16];
 			for(int x = 0; x < 16; x++) {
 				for(int y = 0; y < 16; y++) {
-					// Choose a random material at conflict zones:
 					if(pixelMaterials[x][y].items.size() != 0) {
-						Item mat = pixelMaterials[x][y].items.get((int)(Math.random()*pixelMaterials[x][y].items.size()));
-						img.setRGB(x, y, mat.hashCode() | 0xff000000);
-						img.setRGB(x+32, y, mat.hashCode() | 0xff000000);
-						img.setRGB(x+48, y, mat.hashCode() | 0xff000000);
-						img.setRGB(x+64, y, mat.hashCode() | 0xff000000);
-						if(pixelMaterials[x][y].items.size() != 1) {
-							if(pixelMaterials[x][y].items.contains(item)) {
-								img.setRGB(x+32, y, item.hashCode() | 0xff000000);
-							}
-							else if(pixelMaterials[x][y].items.contains(i2em)) {
-								img.setRGB(x+32, y, i2em.hashCode() | 0xff000000);
-							}
-							else if(pixelMaterials[x][y].items.contains(i3em)) {
-								img.setRGB(x+32, y, i3em.hashCode() | 0xff000000);
-							}
-							else if(pixelMaterials[x][y].items.contains(i4em)) {
-								img.setRGB(x+32, y, i4em.hashCode() | 0xff000000);
-							}
-							if(pixelMaterials[x][y].items.contains(item)) {
-								img.setRGB(x+48, y, item.hashCode() | 0xff000000);
-							}
-							if(pixelMaterials[x][y].items.contains(i2em)) {
-								img.setRGB(x+48, y, i2em.hashCode() | 0xff000000);
-							}
-							if(pixelMaterials[x][y].items.contains(i3em)) {
-								img.setRGB(x+48, y, i3em.hashCode() | 0xff000000);
-							}
-							if(pixelMaterials[x][y].items.contains(i4em)) {
-								img.setRGB(x+48, y, i4em.hashCode() | 0xff000000);
-							}
-							// Check if there's actually 2 different materials in here:
-							Item first = pixelMaterials[x][y].items.get(0);
-							img.setRGB(x, y, 0xffffff00);
-							for(Item other : pixelMaterials[x][y].items) {
-								if(other != first)
-									img.setRGB(x, y, 0xffff0000);
-							}
-						}
+						// Choose a random material at conflict zones:
+						itemGrid[x][y] = pixelMaterials[x][y].items.get((int)(Math.random()*pixelMaterials[x][y].items.size()));
 					}
+				}
+			}
+			// Generate a height map, which will be used for lighting calulations.
+			float[][] heightMap = generateHeightMap(itemGrid);
+			for(int x = 0; x < 16; x++) {
+				for(int y = 0; y < 16; y++) {
+					Item mat = itemGrid[x][y];
+					img.setRGB(x + 16, y, item.material.colorPalette[(int)heightMap[x][y]]);
+					if(mat == null) continue;
+
+					// Calculate the lighting based on the nearest free space:
+					float lightTL = heightMap[x][y] - heightMap[x + 1][y + 1];
+					float lightTR = heightMap[x + 1][y] - heightMap[x][y + 1];
+					int light = 2 - (int)Math.round((lightTL*2 + lightTR)/6);
+					light = Math.max(Math.min(light, 4), 0);
+					img.setRGB(x, y, mat.material.colorPalette[light]);
 				}
 			}
 

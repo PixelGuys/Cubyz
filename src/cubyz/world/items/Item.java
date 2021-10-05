@@ -21,7 +21,7 @@ public class Item implements RegistryElement {
 	private TextKey name;
 	protected int stackSize = 64;
 
-	public final Material material;
+	public Material material;
 
 	public Item(Resource id, JsonObject json) {
 		this.id = id;

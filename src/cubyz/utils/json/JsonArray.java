@@ -61,39 +61,39 @@ public class JsonArray implements JsonElement {
 	}
 
 	/**
-	 * Fills the given array with values. Only works if the type of `this` is JSON_ARRAY.
-	 * @param defaultValues Replacement if the requested types don't exist.
+	 * Adds the given array into `this`.
+	 * @param values
 	 */
-	public void addInts(int... defaultValues) {
-		for(int i = 0; i < defaultValues.length; i++) {
-			array.add(new JsonInt(defaultValues[i]));
+	public void addInts(int... values) {
+		for(int i = 0; i < values.length; i++) {
+			array.add(new JsonInt(values[i]));
 		}
 	}
 	/**
-	 * Fills the given array with values. Only works if the type of `this` is JSON_ARRAY.
-	 * @param defaultValues Replacement if the requested types don't exist.
+	 * Adds the given array into `this`.
+	 * @param values
 	 */
-	public void addFloats(float... defaultValues) {
-		for(int i = 0; i < defaultValues.length; i++) {
-			array.add(new JsonFloat(defaultValues[i]));
+	public void addFloats(float... values) {
+		for(int i = 0; i < values.length; i++) {
+			array.add(new JsonFloat(values[i]));
 		}
 	}
 	/**
-	 * Fills the given array with values. Only works if the type of `this` is JSON_ARRAY.
-	 * @param defaultValues Replacement if the requested types don't exist.
+	 * Adds the given array into `this`.
+	 * @param values
 	 */
-	public void addBools(boolean... defaultValues) {
-		for(int i = 0; i < defaultValues.length; i++) {
-			array.add(new JsonOthers(false, defaultValues[i]));
+	public void addBools(boolean... values) {
+		for(int i = 0; i < values.length; i++) {
+			array.add(new JsonOthers(false, values[i]));
 		}
 	}
 	/**
-	 * Fills the given array with values. Only works if the type of `this` is JSON_ARRAY.
-	 * @param defaultValues Replacement if the requested types don't exist.
+	 * Adds the given array into `this`.
+	 * @param values
 	 */
-	public void addStrings(String... defaultValues) {
-		for(int i = 0; i < defaultValues.length; i++) {
-			array.add(new JsonString(defaultValues[i]));
+	public void addStrings(String... values) {
+		for(int i = 0; i < values.length; i++) {
+			array.add(new JsonString(values[i]));
 		}
 	}
 
