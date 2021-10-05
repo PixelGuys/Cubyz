@@ -137,11 +137,18 @@ public class ServerWorld {
 			throw new IllegalArgumentException("Chunk provider "+chunkProvider+" is invalid! It needs to be a subclass of NormalChunk and MUST contain a single constructor with parameters (Integer, Integer, Integer, ServerWorld)");
 		maps = new MapFragment[0];
 		
-		generator = registries.worldGeneratorRegistry.getByID("cubyz:lifeland");
+		wio = new WorldIO(this, new File("saves/" + name));
+		String generatorId = "cubyz:lifeland";
+		if (wio.hasWorldData()) {
+			generatorId = wio.loadWorldGenerator();
+		}
+		generator = registries.worldGeneratorRegistry.getByID(generatorId);
+		if (generator == null) {
+			throw new IllegalArgumentException("The world uses unsupported generator " + generatorId);
+		}
 		if (generator instanceof LifelandGenerator) {
 			((LifelandGenerator) generator).sortGenerators();
 		}
-		wio = new WorldIO(this, new File("saves/" + name));
 		milliTime = System.currentTimeMillis();
 		if (wio.hasWorldData()) {
 			seed = wio.loadWorldSeed();
@@ -151,6 +158,10 @@ public class ServerWorld {
 			seed = new Random().nextInt();
 			wio.saveWorldData();
 		}
+	}
+	
+	public SurfaceGenerator getGenerator() {
+		return generator;
 	}
 
 	// Returns the blocks, so their meshes can be created and stored.
