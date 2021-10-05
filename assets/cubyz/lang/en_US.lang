@@ -57,3 +57,7 @@ cubyz.tools.names.axe=Axe
 cubyz.tools.names.pickaxe=Pickaxe
 cubyz.tools.names.shovel=Shovel
 cubyz.tools.names.sword=Sword
+
+# Misc
+generator.cubyz.lifeland.name=Lifeland
+generator.cubyz.flatland.name=Flatland

@@ -142,13 +142,7 @@ public class ServerWorld {
 		if (wio.hasWorldData()) {
 			generatorId = wio.loadWorldGenerator();
 		}
-		generator = registries.worldGeneratorRegistry.getByID(generatorId);
-		if (generator == null) {
-			throw new IllegalArgumentException("The world uses unsupported generator " + generatorId);
-		}
-		if (generator instanceof LifelandGenerator) {
-			((LifelandGenerator) generator).sortGenerators();
-		}
+		setGenerator(generatorId);
 		milliTime = System.currentTimeMillis();
 		if (wio.hasWorldData()) {
 			seed = wio.loadWorldSeed();
@@ -157,6 +151,16 @@ public class ServerWorld {
 		} else {
 			seed = new Random().nextInt();
 			wio.saveWorldData();
+		}
+	}
+	
+	public void setGenerator(String generatorId) {
+		generator = registries.worldGeneratorRegistry.getByID(generatorId);
+		if (generator == null) {
+			throw new IllegalArgumentException("The world uses unsupported generator " + generatorId);
+		}
+		if (generator instanceof LifelandGenerator) {
+			((LifelandGenerator) generator).sortGenerators();
 		}
 	}
 	

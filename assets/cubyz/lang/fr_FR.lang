@@ -58,3 +58,7 @@ cubyz.tools.names.axe=Hâche
 cubyz.tools.names.pickaxe=Pioche
 cubyz.tools.names.shovel=Pelle
 cubyz.tools.names.sword=Épée
+
+# Misc
+generator.cubyz.lifeland.name=Terre de vie
+generator.cubyz.flatland.name=Terre plate

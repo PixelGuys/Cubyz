@@ -1,7 +1,10 @@
 package cubyz.gui;
 
 import java.io.File;
+import java.util.ArrayList;
 
+import cubyz.api.CubyzRegistries;
+import cubyz.api.Resource;
 import cubyz.client.ClientOnly;
 import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
@@ -13,6 +16,7 @@ import cubyz.utils.translate.TextKey;
 import cubyz.world.CustomObject;
 import cubyz.world.ServerWorld;
 import cubyz.world.blocks.Block;
+import cubyz.world.generator.SurfaceGenerator;
 
 /**
  * GUI shown when creating a new world in a new world file.<br>
@@ -24,12 +28,22 @@ public class SaveCreationGUI extends MenuGUI {
 	private Button create;
 	private Button cancel;
 	private TextInput name;
+	private Button generator;
+	private Resource[] generators;
 	
 	@Override
 	public void init() {
 		name = new TextInput();
 		create = new Button();
 		cancel = new Button();
+		generator = new Button();
+		
+		SurfaceGenerator[] gen = CubyzRegistries.STELLAR_TORUS_GENERATOR_REGISTRY.registered(new SurfaceGenerator[0]);
+		ArrayList<Resource> generatorsName = new ArrayList<>();
+		for (SurfaceGenerator g : gen) {
+			generatorsName.add(g.getRegistryID());
+		}
+		generators = generatorsName.toArray(new Resource[0]);
 		
 		name.setBounds(-250, 100, 500, 40, Component.ALIGN_TOP);
 		name.setFont(Fonts.PIXEL_FONT, 32);
@@ -39,12 +53,24 @@ public class SaveCreationGUI extends MenuGUI {
 			num++;
 		}
 		name.setText("Save " + num);
+		
+		generator.setBounds(-250, 160, 400, 40, Component.ALIGN_TOP);
+		generator.setFontSize(16);
+		generator.setText("Generator: " + TextKey.createTextKey("generator.cubyz.lifeland.name").getTranslation());
+		generator.setUserObject(1);
+		generator.setOnAction(() -> {
+			int index = ((Integer) generator.getUserObject() + 1) % generators.length;
+			generator.setUserObject(index);
+			Resource id = generators[index];
+			generator.setText("Generator: " + TextKey.createTextKey("generator." + id.getMod() + "." + id.getID() + ".name").getTranslation());
+		});
 
 		create.setBounds(10, 60, 200, 50, Component.ALIGN_BOTTOM_LEFT);
 		create.setText(TextKey.createTextKey("gui.cubyz.saves.create"));
 		create.setFontSize(32);
 		create.setOnAction(() -> {
 			ServerWorld world = new ServerWorld(name.getText(), VisibleChunk.class);
+			world.setGenerator(generators[(int) generator.getUserObject()].toString());
 			Block[] blocks = world.generate();
 			for(Block bl : blocks) {
 				if (bl instanceof CustomObject) {
@@ -66,6 +92,7 @@ public class SaveCreationGUI extends MenuGUI {
 	@Override
 	public void render() {
 		name.render();
+		generator.render();
 		create.render();
 		cancel.render();
 	}
