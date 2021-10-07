@@ -35,8 +35,17 @@ public class ClientPlayer extends Player {
 			return;
 		}
 		lastUpdateTime = newTime;
-		NormalChunk ch = Cubyz.world.getChunk((int)Cubyz.player.getPosition().x >> NormalChunk.chunkShift, (int)Cubyz.player.getPosition().y >> NormalChunk.chunkShift, (int)Cubyz.player.getPosition().z >> NormalChunk.chunkShift);
-		if(ch == null || !ch.isGenerated()) return;
+		
+		double px = Cubyz.player.getPosition().x;
+		double py = Cubyz.player.getPosition().y;
+		double pz = Cubyz.player.getPosition().z;
+		NormalChunk ch = Cubyz.world.getChunk((int) px >> NormalChunk.chunkShift, (int) py >> NormalChunk.chunkShift, (int) pz >> NormalChunk.chunkShift);
+		boolean inReduced =
+				   Cubyz.world.hasReducedChunk((int)px, (int)py, (int)pz, 16)
+				|| Cubyz.world.hasReducedChunk((int)px, (int)py, (int)pz, 8)
+				|| Cubyz.world.hasReducedChunk((int)px, (int)py, (int)pz, 4)
+				|| Cubyz.world.hasReducedChunk((int)px, (int)py, (int)pz, 2);
+		if(ch == null || !ch.isGenerated() || inReduced) return;
 		if(Cubyz.gameUI.doesGUIPauseGame() || Cubyz.world == null) {
 			return;
 		}

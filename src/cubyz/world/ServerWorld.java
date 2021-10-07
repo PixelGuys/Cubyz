@@ -654,6 +654,13 @@ public class ServerWorld {
 		return res;
 	}
 	
+	public boolean hasReducedChunk(int wx, int wy, int wz, int voxelSize) {
+		ChunkData data = new ChunkData(wx, wy, wz, voxelSize);
+		int hash = data.hashCode() & CHUNK_CACHE_MASK;
+		ReducedChunk res = reducedChunkCache.find(data, hash);
+		return res != null;
+	}
+	
 	public MetaChunk getMetaChunk(int cx, int cy, int cz) {
 		// Test if the metachunk exists:
 		int metaX = cx >> (MetaChunk.metaChunkShift);
