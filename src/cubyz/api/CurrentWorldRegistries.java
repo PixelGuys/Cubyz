@@ -7,7 +7,6 @@ import cubyz.world.entity.EntityType;
 import cubyz.world.generator.SurfaceGenerator;
 import cubyz.world.items.Item;
 import cubyz.world.items.Recipe;
-import cubyz.world.items.tools.MaterialOld;
 
 /**
  * Contains the world-specific registries.
@@ -20,7 +19,6 @@ public class CurrentWorldRegistries {
 	public final Registry<Item>        itemRegistry          = new Registry<Item>(CubyzRegistries.ITEM_REGISTRY);
 	public final NoIDRegistry<Recipe>  recipeRegistry        = new NoIDRegistry<Recipe>(CubyzRegistries.RECIPE_REGISTRY);
 	public final Registry<EntityType>  entityRegistry        = new Registry<EntityType>(CubyzRegistries.ENTITY_REGISTRY);
-	public final Registry<MaterialOld>    materialRegistry		 = new Registry<MaterialOld>(CubyzRegistries.TOOL_MATERIAL_REGISTRY);
 	public final BiomeRegistry         biomeRegistry         = new BiomeRegistry(CubyzRegistries.BIOME_REGISTRY);
 	
 	// world generation

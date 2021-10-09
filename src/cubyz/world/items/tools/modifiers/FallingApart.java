@@ -1,7 +1,7 @@
 package cubyz.world.items.tools.modifiers;
 
 import cubyz.world.items.tools.Modifier;
-import cubyz.world.items.tools.OldTool;
+import cubyz.world.items.tools.Tool;
 
 public class FallingApart extends Modifier {
 	public static final float DECAY_RATE = 0.001f;
@@ -15,17 +15,17 @@ public class FallingApart extends Modifier {
 	}
 
 	@Override
-	public void onUse(OldTool tool) {
-		tool.setSpeed(tool.getSpeed()*(1 - DECAY_RATE)*strength);
+	public void onUse(Tool tool) {
+		/*tool.setSpeed(tool.getSpeed()*(1 - DECAY_RATE)*strength);
 		tool.setMaxDurability((int) Math.round(tool.getMaxDurability()*(1 - DECAY_RATE)*strength)); // Yes, even durability is affected
 		if(tool.getDurability() > tool.getMaxDurability()) {
 			tool.setDurability(tool.getMaxDurability());
 		}
-		tool.setDamage(tool.getDamage()*(1 - DECAY_RATE)*strength);
+		tool.setDamage(tool.getDamage()*(1 - DECAY_RATE)*strength);*/ // TODO: Implement modifiers into the new tool system.
 	}
 
 	@Override
-	public void onTick(OldTool tool) {}
+	public void onTick(Tool tool) {}
 
 	@Override
 	public Modifier createInstance(int strength) {

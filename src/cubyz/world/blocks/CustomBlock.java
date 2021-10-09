@@ -12,7 +12,6 @@ import cubyz.utils.Utilities;
 import cubyz.world.CustomObject;
 import cubyz.world.items.BlockDrop;
 import cubyz.world.items.CustomItem;
-import cubyz.world.items.tools.CustomMaterial;
 import cubyz.world.items.tools.Material;
 
 /**
@@ -165,7 +164,6 @@ public class CustomBlock extends Block implements CustomObject {
 			block.makeGlow();
 		}
 		block.makeBlockDrop(registries, rand);
-		boolean addTools = true; // TODO
 		/* 	A little reasoning behind the choice of material properties:
 			There are some important concepts when looking at the hardness of a material:
 			1. mohs-hardness scale which determines how easy it is to scratch a material.
@@ -225,10 +223,6 @@ public class CustomBlock extends Block implements CustomObject {
 		density += factor;
 
 		block.setHardness(elasticity*density);
-		
-		if(addTools) {
-			new CustomMaterial((int)(mohsHardness*10 + elasticity*20), (int)(elasticity*30), (int)(elasticity*50), mohsHardness*4.0f/density, mohsHardness*3.0f/density, block.color, block.getBlockDrops()[0].item, 100, registries);
-		}
 		return block;
 	}
 	
@@ -251,6 +245,7 @@ public class CustomBlock extends Block implements CustomObject {
 		CustomItem bd = CustomItem.fromOre(this);
 		registries.itemRegistry.register(bd);
 		bd.setID(getRegistryID());
+		// TODO: Don't add materials for all custom blocks.
 		bd.material = new Material(1 + rand.nextFloat(), 1 + rand.nextFloat(), 1 + rand.nextFloat(), rand.nextFloat(), TextureProvider.createColorPalette(this, 5, 100, 16));
 		addBlockDrop(new BlockDrop(bd, 1)); // TODO: custom amounts for different ores.
 	}

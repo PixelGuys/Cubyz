@@ -14,7 +14,6 @@ import cubyz.gui.settings.SettingsGUI;
 import cubyz.rendering.Graphics;
 import cubyz.rendering.Texture;
 import cubyz.rendering.Window;
-import cubyz.rendering.text.Fonts;
 import cubyz.utils.DiscordIntegration;
 import cubyz.utils.ResourceManager;
 import cubyz.utils.translate.TextKey;

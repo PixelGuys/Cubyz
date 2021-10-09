@@ -38,7 +38,7 @@ public abstract class Modifier implements RegistryElement {
 	}
 	
 	public abstract Modifier createInstance(int strength);
-	public abstract void onUse(OldTool tool); // For modifiers that do something when the tool is used for what it is supposed to.
-	public abstract void onTick(OldTool tool); // For modifiers that do something to the tool over time.
+	public abstract void onUse(Tool tool); // For modifiers that do something when the tool is used for what it is supposed to.
+	public abstract void onTick(Tool tool); // For modifiers that do something to the tool over time.
 	//void onHit(Mob mob); // When hit a mob with it, no matter if the tool was build for that as main purpose. Will be included once we have mobs.
 }

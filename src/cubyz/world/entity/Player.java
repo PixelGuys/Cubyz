@@ -9,7 +9,6 @@ import cubyz.world.ServerWorld;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.Block.BlockClass;
 import cubyz.world.items.Inventory;
-import cubyz.world.items.tools.OldTool;
 import cubyz.world.items.tools.Tool;
 
 /**
@@ -94,12 +93,6 @@ public class Player extends Entity implements CommandSource {
 		}
 		timeStarted = System.currentTimeMillis();
 		maxTime = (int)(Math.round(bi.getBlock().getHardness()*200));
-		if(inv.getItem(slot) instanceof OldTool) {
-			OldTool tool = (OldTool)inv.getItem(slot);
-			if(tool.canBreak(bi.getBlock())) {
-				maxTime = (int)(maxTime/tool.getSpeed());
-			}
-		}
 		if(inv.getItem(slot) instanceof Tool) {
 			Tool tool = (Tool)inv.getItem(slot);
 			float power = tool.getPower(bi.getBlock());
@@ -119,8 +112,8 @@ public class Player extends Entity implements CommandSource {
 		long deltaTime = System.currentTimeMillis() - timeStarted;
 		bi.setBreakingAnimation((float) deltaTime / (float) maxTime);
 		if (deltaTime > maxTime) {
-			if(OldTool.class.isInstance(inv.getItem(slot))) {
-				if(((OldTool)inv.getItem(slot)).used()) {
+			if(inv.getItem(slot) instanceof Tool) {
+				if(((Tool)inv.getItem(slot)).onUse()) {
 					inv.getStack(slot).clear();
 				}
 			}

@@ -17,19 +17,19 @@ public class Tool extends Item {
 	public final BufferedImage texture = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
 
 	/** Reduction factor to block breaking time. */
-	float pickaxePower;
+	public float pickaxePower;
 	/** Reduction factor to block breaking time. */
-	float axePower;
+	public float axePower;
 	/** Reduction factor to block breaking time. */
-	float shovelPower;
+	public float shovelPower;
 	/** TODO: damage */
-	float damage = 1;
+	public float damage = 1;
 
 	public int durability;
 	public int maxDurability;
 
 	/** How long it takes to swing the tool in seconds. */
-	float swingTime;
+	public float swingTime;
 
 	float mass;
 
@@ -121,5 +121,13 @@ public class Tool extends Item {
 			default:
 				return 0;
 		}
+	}
+
+	/**
+	 * Uses the tool and returns true if it should be deleted.
+	 */
+	public boolean onUse() {
+		durability--;
+		return durability <= 0;
 	}
 }

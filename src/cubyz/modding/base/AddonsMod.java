@@ -35,8 +35,6 @@ import cubyz.world.items.Consumable;
 import cubyz.world.items.Item;
 import cubyz.world.items.ItemBlock;
 import cubyz.world.items.Recipe;
-import cubyz.world.items.tools.MaterialOld;
-import cubyz.world.items.tools.Modifier;
 
 /**
  * Mod used to support add-ons: simple "mods" without any sort of coding required.<br>
@@ -64,7 +62,6 @@ public class AddonsMod {
 	@EventHandler(type = "init")
 	public void init() {
 		proxy.init(this);
-		registerMaterials(CubyzRegistries.TOOL_MATERIAL_REGISTRY);
 		registerMissingStuff();
 		registerRecipes(CubyzRegistries.RECIPE_REGISTRY);
 	}
@@ -394,71 +391,6 @@ public class AddonsMod {
 								}
 							}
 						}
-						buf.close();
-					} catch(IOException e) {
-						Logger.error(e);
-					}
-				}
-			}
-		}
-	}
-	
-	public void registerMaterials(Registry<MaterialOld> reg) {
-		for (File addon : addons) {
-			File biomes = new File(addon, "materials");
-			if (biomes.exists()) {
-				for (File file : biomes.listFiles()) {
-					if(file.isDirectory()) continue;
-					String id = file.getName();
-					if(id.contains("."))
-						id = id.substring(0, id.indexOf('.'));
-					Resource res = new Resource(addon.getName(), id);
-					ArrayList<Modifier> modifiers = new ArrayList<>();
-					HashMap<Item, Integer> items = new HashMap<>();
-					
-					int headDurability = 0, bindingDurability = 0, handleDurability = 0;
-					float damage = 0, miningSpeed = 0;
-					int miningLevel = 0;
-					
-					try {
-						BufferedReader buf = new BufferedReader(new FileReader(file));
-						String line;
-						int lineNumber = 0;
-						while((line = buf.readLine()) != null) {
-							lineNumber++;
-							line = line.replaceAll("//.*", ""); // Ignore comments with "//".
-							line = line.trim(); // Remove whitespaces before and after the word starts.
-							String[] parts = line.split("\\s+");
-							if(line.length() == 0) continue;
-							if(parts[0].equals("modifier")) {
-								modifiers.add(CubyzRegistries.TOOL_MODIFIER_REGISTRY.getByID(parts[1]).createInstance(Integer.parseInt(parts[2])));
-							} else if(parts[0].equals("head")) {
-								headDurability = Integer.parseInt(line.substring(4).replaceAll("\\s",""));
-							} else if(parts[0].equals("binding")) {
-								bindingDurability = Integer.parseInt(line.substring(7).replaceAll("\\s",""));
-							} else if(parts[0].equals("handle")) {
-								handleDurability = Integer.parseInt(line.substring(6).replaceAll("\\s",""));
-							} else if(parts[0].equals("damage")) {
-								damage = Float.parseFloat(line.substring(6).replaceAll("\\s",""));
-							} else if(parts[0].equals("speed")) {
-								miningSpeed = Float.parseFloat(line.substring(5).replaceAll("\\s",""));
-							} else if(parts[0].equals("level")) {
-								miningLevel = Integer.parseInt(line.substring(5).replaceAll("\\s",""));
-							} else {
-								Item item = CubyzRegistries.ITEM_REGISTRY.getByID(parts[0]);
-								if(item == null) {
-									Logger.warning("Could not find argument or item \"" + parts[0] + "\" specified in line " + lineNumber + " in file " + file.getPath());
-								} else {
-									int amount = Integer.parseInt(parts[1]);
-									items.put(item, amount);
-								}
-							}
-						}
-						
-						MaterialOld mat = new MaterialOld(res, modifiers, items, headDurability, bindingDurability, handleDurability, damage, miningSpeed, miningLevel);
-						
-						reg.register(mat);
-						
 						buf.close();
 					} catch(IOException e) {
 						Logger.error(e);

@@ -152,7 +152,7 @@ public class ToolPhysics {
 				}
 			}
 		}
-		tool.durability = tool.maxDurability = (int)(durability * 10); // TODO: Balancing.
+		tool.durability = tool.maxDurability = (int)(durability); // TODO: Balancing.
 	}
 
 	/**
@@ -184,7 +184,7 @@ public class ToolPhysics {
 		// TODO: Balance it.
 		float sharpnessFactor = (float) Math.pow(6 - Math.abs(collisionPoint.z - 6), 1);
 
-		return sharpnessFactor*calculateImpactEnergy(tool, collisionPoint);
+		return sharpnessFactor*calculateImpactEnergy(tool, collisionPoint)/4;
 	}
 
 	/**
@@ -197,7 +197,7 @@ public class ToolPhysics {
 		// Axes are used for breaking up wood. This requires a larger area (= smooth tip) rather than a sharp tip.
 		float areaFactor = (float) Math.pow(Math.abs(collisionPoint.z - 6) + 1, 1);
 
-		return areaFactor*calculateImpactEnergy(tool, collisionPoint)/2;
+		return areaFactor*calculateImpactEnergy(tool, collisionPoint)/8;
 	}
 
 	/**
@@ -260,13 +260,13 @@ public class ToolPhysics {
 			}
 		}
 		// Count the area:
-		int area = 0;
+		float area = 0;
 		for(int x = 0; x < 16; x++) {
 			for(int y = 0; y < 16; y++) {
 				area += sandPiles[x][y];
 			}
 		}
-		area /= 128; // TODO: Balancing
+		area /= 512; // TODO: Balancing
 		return area*calculateImpactEnergy(tool, collisionPoint);
 	}
 
@@ -295,7 +295,7 @@ public class ToolPhysics {
 		tool.shovelPower = evaluateShovelPower(tool, leftCollisionPoint);
 
 		// It takes longer to swing a heavy tool.
-		tool.swingTime = (tool.mass + tool.inertiaHandle/4)/128; // TODO: Balancing
+		tool.swingTime = (tool.mass + tool.inertiaHandle/8)/256; // TODO: Balancing
 
 		// TODO: Swords and throwing weapons.
 

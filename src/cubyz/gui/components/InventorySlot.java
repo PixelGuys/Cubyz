@@ -15,8 +15,6 @@ import cubyz.world.blocks.Block;
 import cubyz.world.items.Item;
 import cubyz.world.items.ItemBlock;
 import cubyz.world.items.ItemStack;
-import cubyz.world.items.tools.Modifier;
-import cubyz.world.items.tools.OldTool;
 import cubyz.world.items.tools.Tool;
 
 /**
@@ -68,11 +66,14 @@ public class InventorySlot extends Component {
 				float x = (float)Mouse.getX() + 10;
 				float y = (float)Mouse.getY() + 10;
 				String tooltip;
-				if(item instanceof OldTool) {
+				if(item instanceof Tool) {
 					tooltip = item.getName() == null ? "???" : item.getName().getTranslation();
-					for(Modifier m : ((OldTool)item).getModifiers()) {
-						tooltip += "\n"+m.getName()+"\n"+m.getDescription()+"\n";
-					}
+					Tool tool = (Tool) item;
+					tooltip += "\nTime to swing: "+tool.swingTime+" s";
+					tooltip += "\nPickaxe power: "+(int) (100*tool.pickaxePower)+" %";
+					tooltip += "\nAxe power: "+(int) (100*tool.axePower)+" %";
+					tooltip += "\nShovel power: "+(int) (100*tool.shovelPower)+" %";
+					tooltip += "\nDurability: "+tool.durability+"/"+tool.maxDurability;
 				} else {
 					tooltip = item.getName() == null ? "???" : item.getName().getTranslation();
 				}
@@ -197,13 +198,6 @@ public class InventorySlot extends Component {
 				}
 			}
 			Graphics.drawImage(item.getImage(), x + 4, y + 4, width - 8, height - 8);
-			if(OldTool.class.isInstance(item)) {
-				OldTool tool = (OldTool)item;
-				float durab = tool.durability();
-				Graphics.setColor((int)((1.0f - durab)*255.0f)<<16 | (int)(durab*255.0f)<<8 | 0);
-				Graphics.fillRect(x + 8, y + 56, 48.0f*durab, 4);
-				Graphics.setColor(0xffffff);
-			}
 			if(item instanceof Tool) {
 				Tool tool = (Tool)item;
 				int durab = tool.durability*255/tool.maxDurability;
