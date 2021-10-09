@@ -46,7 +46,7 @@ import cubyz.utils.Utils;
  * This is internally done using java.awt.TextLayout.
  */
 public class TextLine implements KeyListener {
-	final CubyzFont font;
+	public final CubyzFont font;
 	final ArrayList<Glyph> glyphs = new ArrayList<Glyph>();
 	final float height;
 	private float textWidth;

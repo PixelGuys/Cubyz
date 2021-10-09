@@ -89,6 +89,8 @@ public class Input {
 			}
 			if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_T)) {
 				if(Cubyz.gameUI.getMenuGUI() == null) {
+					Keyboard.release();
+					Keyboard.release();
 					Cubyz.gameUI.setMenu(new ConsoleGUI());
 				}
 			}

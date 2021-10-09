@@ -26,7 +26,15 @@ public class TextInput extends Component {
 	public void setText(String text) {
 		textLine.updateText(text);
 	}
+
+	public void setFocused(boolean focused) {
+		this.focused = focused;
+	}
 	
+	public void setFontSize(float fontSize) {
+		setFont(this.textLine.font, fontSize);
+	}
+
 	public void setFont(CubyzFont font, float fontSize) {
 		textLine = new TextLine(font, textLine.getText(), fontSize, true);
 	}
