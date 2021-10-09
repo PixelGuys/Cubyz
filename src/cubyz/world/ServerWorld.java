@@ -146,7 +146,6 @@ public class ServerWorld {
 		milliTime = System.currentTimeMillis();
 		if (wio.hasWorldData()) {
 			seed = wio.loadWorldSeed();
-			wio.loadWorldData();
 			generated = true;
 		} else {
 			seed = new Random().nextInt();

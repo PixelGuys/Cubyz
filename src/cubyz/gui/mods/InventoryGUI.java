@@ -97,7 +97,7 @@ public class InventoryGUI extends GeneralInventory {
 	protected void mouseAction() {
 		boolean notNull = inv[playerInventorySize+4].reference.getItem() != null;
 		for(int i = 0; i < inv.length; i++) {
-			if(inv[i].grabWithMouse(carried, Window.getWidth()/2, Window.getHeight())) {
+			if(inv[i].grabWithMouse(carriedStack, Window.getWidth()/2, Window.getHeight())) {
 				if (i == playerInventorySize+4 && notNull) {
 					// Remove items in the crafting grid.
 					for(int j = playerInventorySize; j < playerInventorySize+4; j++) {

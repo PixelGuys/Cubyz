@@ -4,6 +4,7 @@ import cubyz.world.items.Item;
 
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.Random;
 
 /**
  * Generates the texture of a Tool using the material information.
@@ -262,7 +263,7 @@ public class TextureGenerator {
 		}
 	}
 
-	private static float[][] generateHeightMap(Item[][] itemGrid) {
+	private static float[][] generateHeightMap(Item[][] itemGrid, Random rand) {
 		float[][] heightMap = new float[17][17];
 		for(int x = 0; x < 17; x++) {
 			for(int y = 0; y < 17; y++) {
@@ -275,7 +276,7 @@ public class TextureGenerator {
 					for(int dy = -1; dy <= 0; dy++) {
 						if(y + dy < 0 || y + dy >= 16) continue;
 
-						heightMap[x][y] += itemGrid[x + dx][y + dy] != null ? (1 + (float)(4 * Math.random() - 2) * itemGrid[x + dx][y + dy].material.roughness) : 0;
+						heightMap[x][y] += itemGrid[x + dx][y + dy] != null ? (1 + (4 * rand.nextFloat() - 2) * itemGrid[x + dx][y + dy].material.roughness) : 0;
 						if(itemGrid[x + dx][y + dy] != oneItem)
 							hasDifferentItems = true;
 					}
@@ -311,6 +312,8 @@ public class TextureGenerator {
 				pixelMaterials[x][y] = new PixelData();
 			}
 		}
+
+		Random rand = new Random(tool.hashCode());
 		
 		// Count all neighbors:
 		int[] neighborCount = new int[25];
@@ -361,12 +364,12 @@ public class TextureGenerator {
 			for(int y = 0; y < 16; y++) {
 				if(pixelMaterials[x][y].items.size() != 0) {
 					// Choose a random material at conflict zones:
-					itemGrid[x][y] = pixelMaterials[x][y].items.get((int)(Math.random() * pixelMaterials[x][y].items.size()));
+					itemGrid[x][y] = pixelMaterials[x][y].items.get(rand.nextInt(pixelMaterials[x][y].items.size()));
 				}
 			}
 		}
 		// Generate a height map, which will be used for lighting calulations.
-		float[][] heightMap = generateHeightMap(itemGrid);
+		float[][] heightMap = generateHeightMap(itemGrid, rand);
 		for(int x = 0; x < 16; x++) {
 			for(int y = 0; y < 16; y++) {
 				Item mat = itemGrid[x][y];

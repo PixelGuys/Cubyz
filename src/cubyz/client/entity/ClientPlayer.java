@@ -11,7 +11,7 @@ import cubyz.world.blocks.Block.BlockClass;
 import cubyz.world.entity.Entity;
 import cubyz.world.entity.Player;
 import cubyz.world.items.ItemBlock;
-import cubyz.world.items.tools.OldTool;
+import cubyz.world.items.tools.Tool;
 
 public class ClientPlayer extends Player {
 	private int breakCooldown = 10;
@@ -77,7 +77,7 @@ public class ClientPlayer extends Player {
 				// Hit entities:
 				Object selected = Cubyz.msd.getSelected();
 				if(selected instanceof Entity) {
-					((Entity)selected).hit(getInventory().getItem(Cubyz.inventorySelection) instanceof OldTool ? (OldTool)getInventory().getItem(Cubyz.inventorySelection) : null, Camera.getViewMatrix().positiveZ(Cubyz.dir).negate());
+					((Entity)selected).hit(getInventory().getItem(Cubyz.inventorySelection) instanceof Tool ? (Tool)getInventory().getItem(Cubyz.inventorySelection) : null, Camera.getViewMatrix().positiveZ(Cubyz.dir).negate());
 				}
 			} else {
 				resetBlockBreaking();

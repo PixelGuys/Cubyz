@@ -247,8 +247,8 @@ public class GameLogic implements ClientConnection {
 		if (gui == null) {
 			throw new IllegalArgumentException("No such GUI registered: " + name);
 		}
-		gui.setInventory(inv);
 		Cubyz.gameUI.setMenu(gui);
+		gui.setInventory(inv);
 	}
 	
 	public FrameBuffer blockPreview(Block b) {

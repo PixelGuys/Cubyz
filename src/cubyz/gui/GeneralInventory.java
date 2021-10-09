@@ -8,7 +8,6 @@ import cubyz.gui.components.InventorySlot;
 import cubyz.gui.components.Label;
 import cubyz.gui.input.Mouse;
 import cubyz.rendering.Graphics;
-import cubyz.rendering.Texture;
 import cubyz.rendering.Window;
 import cubyz.world.items.Item;
 import cubyz.world.items.ItemStack;
@@ -21,7 +20,8 @@ public abstract class GeneralInventory extends MenuGUI {
 	protected InventorySlot inv [] = null;
 	
 	/** ItemStack carried by the mouse.*/
-	protected ItemStack carried = new ItemStack();
+	protected ItemStack carriedStack = new ItemStack();
+	protected InventorySlot carried = null;
 	private Label num;
 	
 	protected int width, height;
@@ -33,10 +33,10 @@ public abstract class GeneralInventory extends MenuGUI {
 	@Override
 	public void close() {
 		 // Place the last stack carried by the mouse in an empty slot.
-		if(!carried.empty()) {
-			carried.setAmount(Cubyz.player.getInventory().addItem(carried.getItem(), carried.getAmount()));
-			if(!carried.empty()) {
-				Cubyz.world.drop(carried, Cubyz.player.getPosition(), new Vector3f(), 0);
+		if(!carriedStack.empty()) {
+			carriedStack.setAmount(Cubyz.player.getInventory().addItem(carriedStack.getItem(), carriedStack.getAmount()));
+			if(!carriedStack.empty()) {
+				Cubyz.world.drop(carriedStack, Cubyz.player.getPosition(), new Vector3f(), 0);
 			}
 		}
 	}
@@ -51,6 +51,11 @@ public abstract class GeneralInventory extends MenuGUI {
 
 	@Override
 	public void render() {
+		if(carried == null) {
+			carried = new InventorySlot(carriedStack);
+			carried.renderFrame = false;
+		}
+
 		Graphics.setColor(0xDFDFDF);
 		Graphics.fillRect(Window.getWidth()/2f-width/2f, Window.getHeight()-height, width, height);
 		Graphics.setColor(0xFFFFFF);
@@ -62,19 +67,13 @@ public abstract class GeneralInventory extends MenuGUI {
 		mouseAction();
 		
 		// Draw the stack carried by the mouse:
-		Item item = carried.getItem();
+		Item item = carriedStack.getItem();
 		if(item != null) {
-			if(item.getImage() == null) {
-				item.setImage(Texture.loadFromFile(item.getTexture()));
-			}
 			int x = (int)Mouse.getCurrentPos().x;
 			int y = (int)Mouse.getCurrentPos().y;
 			Graphics.setColor(0xFFFFFF);
-			Graphics.drawImage(item.getImage(), x - 32, y - 32, 64, 64);
-			Graphics.setColor(0x000000);
-			num.setText("" + carried.getAmount());
-			num.setPosition(x+50-32, y+48-32, Component.ALIGN_TOP_LEFT);
-			num.render();
+			carried.setPosition(x-32, y-32, Component.ALIGN_TOP_LEFT);
+			carried.render();
 		}
 		// Draw tooltips, when the nothing is carried.
 		if(item == null) {

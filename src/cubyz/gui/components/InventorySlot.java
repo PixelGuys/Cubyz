@@ -17,6 +17,7 @@ import cubyz.world.items.ItemBlock;
 import cubyz.world.items.ItemStack;
 import cubyz.world.items.tools.Modifier;
 import cubyz.world.items.tools.OldTool;
+import cubyz.world.items.tools.Tool;
 
 /**
  * GUI for an inventory slot referencing an ItemStack.
@@ -31,6 +32,8 @@ public class InventorySlot extends Component {
 	/**State of mouse buttons if the mouse is in the area.*/
 	private boolean pressedLeft = false, pressedRight = false;
 	public boolean takeOnly;
+
+	public boolean renderFrame = true;
 	
 	// WARNING: The y-axis for this element goes from bottom to top!
 	
@@ -48,6 +51,9 @@ public class InventorySlot extends Component {
 	}
 	public InventorySlot(ItemStack ref, int x, int y, byte align) {
 		this(ref, x, y, align, false);
+	}
+	public InventorySlot(ItemStack ref) {
+		this(ref, 0, 0, (byte) 0, false);
 	}
 	
 	public boolean isInside(Vector2d vec, int width, int height) {
@@ -171,7 +177,8 @@ public class InventorySlot extends Component {
 
 	@Override
 	public void render(int x, int y) {
-		Graphics.drawImage(SLOT_IMAGE, x, y, width, height);
+		if(renderFrame)
+			Graphics.drawImage(SLOT_IMAGE, x, y, width, height);
 		Item item = reference.getItem();
 		if(item != null) {
 			if(item.getImage() == null) {
@@ -183,6 +190,8 @@ public class InventorySlot extends Component {
 					} else {
 						item.setImage(GameLauncher.logic.blockPreview(b).getColorTexture());
 					}
+				} else if (item instanceof Tool) {
+					item.setImage(Texture.loadFromImage(((Tool)item).texture));
 				} else {
 					item.setImage(Texture.loadFromFile(item.getTexture()));
 				}
@@ -193,7 +202,14 @@ public class InventorySlot extends Component {
 				float durab = tool.durability();
 				Graphics.setColor((int)((1.0f - durab)*255.0f)<<16 | (int)(durab*255.0f)<<8 | 0);
 				Graphics.fillRect(x + 8, y + 56, 48.0f*durab, 4);
-				Graphics.setColor(0x000000);
+				Graphics.setColor(0xffffff);
+			}
+			if(item instanceof Tool) {
+				Tool tool = (Tool)item;
+				int durab = tool.durability*255/tool.maxDurability;
+				Graphics.setColor((255 - durab) << 16 | durab << 8 | 0);
+				Graphics.fillRect(x + 8, y + 56, 48.0f/255.0f*durab, 4);
+				Graphics.setColor(0xffffff);
 			}
 			inv.setText("" + reference.getAmount());
 			inv.render(x + 50, y + 48);

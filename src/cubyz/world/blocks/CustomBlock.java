@@ -13,6 +13,7 @@ import cubyz.world.CustomObject;
 import cubyz.world.items.BlockDrop;
 import cubyz.world.items.CustomItem;
 import cubyz.world.items.tools.CustomMaterial;
+import cubyz.world.items.tools.Material;
 
 /**
  * A randomly generated ore type.
@@ -163,7 +164,7 @@ public class CustomBlock extends Block implements CustomObject {
 		if(rand.nextInt(4) == 0) { // Make some ores glow.
 			block.makeGlow();
 		}
-		block.makeBlockDrop(registries);
+		block.makeBlockDrop(registries, rand);
 		boolean addTools = true; // TODO
 		/* 	A little reasoning behind the choice of material properties:
 			There are some important concepts when looking at the hardness of a material:
@@ -246,10 +247,11 @@ public class CustomBlock extends Block implements CustomObject {
 		return ore;
 	}*/
 	
-	private void makeBlockDrop(CurrentWorldRegistries registries) {
+	private void makeBlockDrop(CurrentWorldRegistries registries, Random rand) {
 		CustomItem bd = CustomItem.fromOre(this);
 		registries.itemRegistry.register(bd);
 		bd.setID(getRegistryID());
+		bd.material = new Material(1 + rand.nextFloat(), 1 + rand.nextFloat(), 1 + rand.nextFloat(), rand.nextFloat(), TextureProvider.createColorPalette(this, 5, 100, 16));
 		addBlockDrop(new BlockDrop(bd, 1)); // TODO: custom amounts for different ores.
 	}
 	

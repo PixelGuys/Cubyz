@@ -10,6 +10,7 @@ import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.Block.BlockClass;
 import cubyz.world.items.Inventory;
 import cubyz.world.items.tools.OldTool;
+import cubyz.world.items.tools.Tool;
 
 /**
  * Base class for both implementation and MP version of Player.
@@ -98,6 +99,11 @@ public class Player extends Entity implements CommandSource {
 			if(tool.canBreak(bi.getBlock())) {
 				maxTime = (int)(maxTime/tool.getSpeed());
 			}
+		}
+		if(inv.getItem(slot) instanceof Tool) {
+			Tool tool = (Tool)inv.getItem(slot);
+			float power = tool.getPower(bi.getBlock());
+			maxTime = (int)(maxTime/power);
 		}
 	}
 

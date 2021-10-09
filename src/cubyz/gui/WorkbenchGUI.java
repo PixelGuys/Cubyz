@@ -1,6 +1,5 @@
 package cubyz.gui;
 
-import cubyz.api.CubyzRegistries;
 import cubyz.api.Resource;
 import cubyz.client.Cubyz;
 import cubyz.gui.components.Button;
@@ -9,11 +8,11 @@ import cubyz.rendering.Window;
 import cubyz.utils.translate.TextKey;
 import cubyz.world.items.Inventory;
 import cubyz.world.items.Item;
-import cubyz.world.items.Recipe;
 import cubyz.world.items.tools.Axe;
 import cubyz.world.items.tools.Pickaxe;
 import cubyz.world.items.tools.Shovel;
 import cubyz.world.items.tools.Sword;
+import cubyz.world.items.tools.Tool;
 
 /**
  * The GUI that appears when opening the workbench.
@@ -89,17 +88,38 @@ public class WorkbenchGUI extends GeneralInventory {
 				
 				break;
 			case NORMAL:
-				newInv = new InventorySlot[42];
-				newInv[32] = new InventorySlot(in.getStack(0), -128, 408, Component.ALIGN_BOTTOM);
-				newInv[33] = new InventorySlot(in.getStack(3), -64, 408, Component.ALIGN_BOTTOM);
-				newInv[34] = new InventorySlot(in.getStack(6), 0, 408, Component.ALIGN_BOTTOM);
-				newInv[35] = new InventorySlot(in.getStack(1), -128, 480, Component.ALIGN_BOTTOM);
-				newInv[36] = new InventorySlot(in.getStack(4), -64, 480, Component.ALIGN_BOTTOM);
-				newInv[37] = new InventorySlot(in.getStack(7), 0, 480, Component.ALIGN_BOTTOM);
-				newInv[38] = new InventorySlot(in.getStack(2), -128, 552, Component.ALIGN_BOTTOM);
-				newInv[39] = new InventorySlot(in.getStack(5), -64, 552, Component.ALIGN_BOTTOM);
-				newInv[40] = new InventorySlot(in.getStack(8), 0, 552, Component.ALIGN_BOTTOM);
-				newInv[41] = new InventorySlot(in.getStack(9), 92, 480, Component.ALIGN_BOTTOM, true); // crafting result
+				newInv = new InventorySlot[58];
+				newInv[32] = new InventorySlot(in.getStack(0), -192, 672, Component.ALIGN_BOTTOM);
+				newInv[33] = new InventorySlot(in.getStack(1), -128, 672, Component.ALIGN_BOTTOM);
+				newInv[34] = new InventorySlot(in.getStack(2), -64, 672, Component.ALIGN_BOTTOM);
+				newInv[35] = new InventorySlot(in.getStack(3), 0, 672, Component.ALIGN_BOTTOM);
+				newInv[36] = new InventorySlot(in.getStack(4), 64, 672, Component.ALIGN_BOTTOM);
+
+				newInv[37] = new InventorySlot(in.getStack(5), -192, 608, Component.ALIGN_BOTTOM);
+				newInv[38] = new InventorySlot(in.getStack(6), -128, 608, Component.ALIGN_BOTTOM);
+				newInv[39] = new InventorySlot(in.getStack(7), -64, 608, Component.ALIGN_BOTTOM);
+				newInv[40] = new InventorySlot(in.getStack(8), 0, 608, Component.ALIGN_BOTTOM);
+				newInv[41] = new InventorySlot(in.getStack(9), 64, 608, Component.ALIGN_BOTTOM);
+
+				newInv[42] = new InventorySlot(in.getStack(10), -192, 544, Component.ALIGN_BOTTOM);
+				newInv[43] = new InventorySlot(in.getStack(11), -128, 544, Component.ALIGN_BOTTOM);
+				newInv[44] = new InventorySlot(in.getStack(12), -64, 544, Component.ALIGN_BOTTOM);
+				newInv[45] = new InventorySlot(in.getStack(13), 0, 544, Component.ALIGN_BOTTOM);
+				newInv[46] = new InventorySlot(in.getStack(14), 64, 544, Component.ALIGN_BOTTOM);
+
+				newInv[47] = new InventorySlot(in.getStack(15), -192, 480, Component.ALIGN_BOTTOM);
+				newInv[48] = new InventorySlot(in.getStack(16), -128, 480, Component.ALIGN_BOTTOM);
+				newInv[49] = new InventorySlot(in.getStack(17), -64, 480, Component.ALIGN_BOTTOM);
+				newInv[50] = new InventorySlot(in.getStack(18), 0, 480, Component.ALIGN_BOTTOM);
+				newInv[51] = new InventorySlot(in.getStack(19), 64, 480, Component.ALIGN_BOTTOM);
+
+				newInv[52] = new InventorySlot(in.getStack(20), -192, 416, Component.ALIGN_BOTTOM);
+				newInv[53] = new InventorySlot(in.getStack(21), -128, 416, Component.ALIGN_BOTTOM);
+				newInv[54] = new InventorySlot(in.getStack(22), -64, 416, Component.ALIGN_BOTTOM);
+				newInv[55] = new InventorySlot(in.getStack(23), 0, 416, Component.ALIGN_BOTTOM);
+				newInv[56] = new InventorySlot(in.getStack(24), 64, 416, Component.ALIGN_BOTTOM);
+
+				newInv[57] = new InventorySlot(in.getStack(25), 192, 544, Component.ALIGN_BOTTOM, true); // crafting result
 				
 				break;
 			default: return;
@@ -112,22 +132,22 @@ public class WorkbenchGUI extends GeneralInventory {
 	@Override
 	protected void positionSlots() {
 		width = 576;
-		height = 576;
+		height = 704;
 	}
 
 	@Override
 	protected void mouseAction() {
 		for(int i = 0; i < inv.length; i++) {
-			if(inv[i].grabWithMouse(carried, Window.getWidth()/2, Window.getHeight())) {
+			if(inv[i].grabWithMouse(carriedStack, Window.getWidth()/2, Window.getHeight())) {
 				if(craftingMode == Mode.NORMAL) {
-					if (i == inv.length-1 && carried.getItem() != null) {
+					if (i == inv.length-1 && carriedStack.getItem() != null) {
 						// Remove one of each of the items in the crafting grid.
 						for(int j = 32; j < inv.length-1; j++) {
 							inv[j].reference.add(-1);
 						}
 					}
 				} else {
-					if (i == inv.length-1 && carried.getItem() != null) {
+					if (i == inv.length-1 && carriedStack.getItem() != null) {
 						// Remove items in the crafting grid.
 						int[] items;
 						switch(craftingMode) {
@@ -200,26 +220,16 @@ public class WorkbenchGUI extends GeneralInventory {
 				item = Sword.canCraft(inv[32].reference, inv[33].reference, inv[34].reference, Cubyz.world.getCurrentRegistries());
 				break;
 			case NORMAL:
-				// Find out how many and which items are in the crafting grid:
+				Item[] items = new Item[25];
 				int num = 0;
-				Item[] items = new Item[9];
-				for(int i = 0; i < 9; i++) {
-					items[i] = inv[32 + i].reference.getItem();
-					if(items[i] != null)
+				for(int i = 0; i < 25; i++) {
+					if(inv[32 + i].reference.getItem() != null && inv[32 + i].reference.getItem().material != null) {
+						items[i] = inv[32 + i].reference.getItem();
 						num++;
-				}
-				Recipe[] recipes = CubyzRegistries.RECIPE_REGISTRY.registered(new Recipe[0]);
-				// Find a fitting recipe:
-				for(int i = 0; i < recipes.length; i++) {
-					Recipe rec = (Recipe) recipes[i];
-					if(rec.getNum() != num)
-						continue;
-					item = rec.canCraft(items, 3);
-					if(item != null) {
-						inv[41].reference.setItem(item);
-						inv[41].reference.add(rec.getNumRet());
-						return;
 					}
+				}
+				if(num != 0) {
+					item = new Tool(items);
 				}
 				break;
 		}

@@ -53,7 +53,7 @@ public interface TextureProvider {
 			if(g < 0) g = 0;
 			if(b > 255) b = 255;
 			if(b < 0) b = 0;
-			colors[i] = (r << 16) | (g << 8) | b;
+			colors[i] = (r << 16) | (g << 8) | b | 0xff000000;
 		}
 		return colors;
 	}

@@ -28,4 +28,21 @@ public class Material {
 		colorPalette = new int[colors.array.size()];
 		colors.getInts(colorPalette);
 	}
+
+	public Material(float density, float resistance, float power, float roughness, int[] colors) {
+		this.density = density;
+		this.resistance = resistance;
+		this.power = power;
+		this.roughness = roughness;
+		colorPalette = colors;
+	}
+
+	@Override
+	public int hashCode() {
+		int hash = Float.floatToIntBits(density);
+		hash = 101*hash + Float.floatToIntBits(resistance);
+		hash = 101*hash + Float.floatToIntBits(power);
+		hash = 101*hash + Float.floatToIntBits(roughness);
+		return hash;
+	}
 }

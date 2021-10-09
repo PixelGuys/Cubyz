@@ -1,6 +1,5 @@
 package cubyz.gui;
 
-import cubyz.api.CubyzRegistries;
 import cubyz.api.Resource;
 import cubyz.client.Cubyz;
 import cubyz.gui.components.InventorySlot;
@@ -16,7 +15,12 @@ public class CreativeGUI extends GeneralInventory {
 
 	public CreativeGUI() {
 		super(new Resource("cubyz:creative"));
-		inv = new InventorySlot[32 + CubyzRegistries.ITEM_REGISTRY.size()];
+	}
+	
+	@Override
+	public void init() {
+		super.init();
+		inv = new InventorySlot[32 + Cubyz.world.registries.itemRegistry.size()];
 	}
 
 	@Override
@@ -28,9 +32,9 @@ public class CreativeGUI extends GeneralInventory {
 	@Override
 	protected void mouseAction() {
 		for(int i = 0; i < inv.length; i++) {
-			if(inv[i].grabWithMouse(carried, Window.getWidth()/2, Window.getHeight())) {
+			if(inv[i].grabWithMouse(carriedStack, Window.getWidth()/2, Window.getHeight())) {
 				if (i >= 32) {
-					Item[] items = CubyzRegistries.ITEM_REGISTRY.registered(new Item[0]);
+					Item[] items = Cubyz.world.registries.itemRegistry.registered(new Item[0]);
 					inv[i].reference = new ItemStack(items[i - 32], 64);
 				}
 			}
@@ -53,7 +57,7 @@ public class CreativeGUI extends GeneralInventory {
 			inv[i + 24] = new InventorySlot(inventory.getStack(i + 24), i*64 - 256, 320, Component.ALIGN_BOTTOM);
 		}
 		
-		Item[] items = CubyzRegistries.ITEM_REGISTRY.registered(new Item[0]);
+		Item[] items = Cubyz.world.registries.itemRegistry.registered(new Item[0]);
 		int x = -256;
 		int y = 408 + (items.length / 8) * 64;
 		for (int i = 0; i < items.length; i++) {

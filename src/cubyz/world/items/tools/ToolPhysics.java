@@ -5,9 +5,6 @@ import java.util.Stack;
 import org.joml.Vector2f;
 import org.joml.Vector3i;
 
-import cubyz.world.ServerWorld;
-import cubyz.world.items.Item;
-
 /**
  * Determines the physical properties of a tool to caclulate in-game parameters such as durability and speed.
  */
@@ -46,6 +43,8 @@ public class ToolPhysics {
 		double mass = 0;
 		for(int x = 0; x < 16; x++) {
 			for(int y = 0; y < 16; y++) {
+				if(tool.materialGrid[x][y] == null) continue;
+
 				double localMass = tool.materialGrid[x][y].material.density;
 				centerMassX += localMass*(x + 0.5);
 				centerMassY += localMass*(y + 0.5);
@@ -60,6 +59,8 @@ public class ToolPhysics {
 		double inertia = 0;
 		for(int x = 0; x < 16; x++) {
 			for(int y = 0; y < 16; y++) {
+				if(tool.materialGrid[x][y] == null) continue;
+				
 				double localMass = tool.materialGrid[x][y].material.density;
 				double dx = x + 0.5 - tool.centerOfMass.x;
 				double dy = y + 0.5 - tool.centerOfMass.y;
@@ -76,49 +77,25 @@ public class ToolPhysics {
 	 * @param tool
 	 * @param point
 	 */
-	private static void determineSharpness(Tool tool, Vector3i point) {
-		// A region is smooth(non-sharp) if a subset pixels can be divided into filled and emtpy using a single line.
-		Item[][] subset = new Item[5][5];
-		for(int x = 0; x < 5; x++) {
-			for(int y = 0; y < 5; y++) {
-				if(x + point.x - 2 >= 0 && x + point.x - 2 < 16) {
-					if(y + point.y - 2 >= 0 && y + point.y - 2 < 16) {
-						subset[x][y] = tool.materialGrid[x + point.x - 2][y + point.y - 2];
-					}
+	private static void determineSharpness(Tool tool, Vector3i point, float initialAngle) {
+		Vector2f center = new Vector2f(tool.handlePosition);
+		center.sub(new Vector2f(tool.centerOfMass).sub(tool.handlePosition).normalize().mul(16));
+		// A region is smooth if there is a lot of pixel within similar angle/distance:
+		float originalAngle = (float) Math.atan2(point.y + 0.5f - center.y, point.x + 0.5f - center.x) - initialAngle;
+		float originalDistance = (float) Math.cos(originalAngle) * center.distance(point.x + 0.5f, point.y + 0.5f);
+		int numOfSmoothPixels = 0;
+		for(int x = 0; x < 16; x++) {
+			for(int y = 0; y < 16; y++) {
+				float angle = (float) Math.atan2(y + 0.5f - center.y, x + 0.5f - center.x) - initialAngle;
+				float distance = (float) Math.cos(angle) * center.distance(x + 0.5f, y + 0.5f);
+				float deltaAngle = Math.abs(angle - originalAngle);
+				float deltaDist = Math.abs(distance - originalDistance);
+				if(deltaAngle <= 0.2 && deltaDist <= 0.7f) {
+					numOfSmoothPixels++;
 				}
 			}
 		}
-		// This line is determined using gradient descent.
-		Vector2f base = new Vector2f();
-		Vector2f direction = new Vector2f(1, 0);
-		Vector2f position = new Vector2f();
-		Vector2f deltaDir = new Vector2f();
-		Vector2f deltaPos = new Vector2f();
-		int wrongSidedThings = 0;
-		for(float stepSize = 1; stepSize >= 0.01f; stepSize *= 0.8f) {
-			for(int x = 0; x < 5; x++) {
-				for(int y = 0; y < 5; y++) {
-					position.set(x, y);
-					position.sub(base);
-					float projection = position.dot(direction);
-					position.fma(projection, direction);
-					float orthogonal = position.dot(new Vector2f(direction.y, -direction.x));
-					if(orthogonal < 0 != (subset[x][y] != null)) {
-						// That thing belongs on the other side.
-						deltaPos.add(position.mul(stepSize));
-						deltaDir.add(position.mul(projection * stepSize));
-						if(stepSize*0.8f < 0.01f) {
-							wrongSidedThings++;
-						}
-					}
-				}
-			}
-			position.add(deltaPos);
-			direction.add(deltaDir);
-			deltaPos.set(0);
-			deltaDir.set(0);
-		}
-		point.z = wrongSidedThings;
+		point.z = numOfSmoothPixels;
 	}
 
 	/**
@@ -141,18 +118,17 @@ public class ToolPhysics {
 		float frontCollisionDistance = 0;
 		for(int x = 0; x < 16; x++) {
 			for(int y = 0; y < 16; y++) {
+				if(tool.materialGrid[x][y] == null) continue;
+
 				float angle = (float) Math.atan2(y + 0.5f - center.y, x + 0.5f - center.x) - initialAngle;
 				float distance = (float) Math.cos(angle) * center.distance(x + 0.5f, y + 0.5f);
-				if(angle < 0) {
-					if(angle < leftCollisionAngle) {
-						leftCollisionAngle = angle;
-						leftCollisionPoint.set(x, y, 0);
-					}
-				} else {
-					if(angle > rightCollisionAngle) {
-						rightCollisionAngle = angle;
-						rightCollisionPoint.set(x, y, 0);
-					}
+				if(angle < leftCollisionAngle) {
+					leftCollisionAngle = angle;
+					leftCollisionPoint.set(x, y, 0);
+				}
+				if(angle > rightCollisionAngle) {
+					rightCollisionAngle = angle;
+					rightCollisionPoint.set(x, y, 0);
 				}
 				if(distance > frontCollisionDistance) {
 					frontCollisionDistance = angle;
@@ -161,9 +137,9 @@ public class ToolPhysics {
 			}
 		}
 		// sharpness is hard.
-		determineSharpness(tool, leftCollisionPoint);
-		determineSharpness(tool, rightCollisionPoint);
-		determineSharpness(tool, frontCollisionPoint);
+		determineSharpness(tool, leftCollisionPoint, initialAngle);
+		determineSharpness(tool, rightCollisionPoint, initialAngle);
+		determineSharpness(tool, frontCollisionPoint, initialAngle);
 	}
 
 	private static void calculateDurability(Tool tool) {
@@ -190,9 +166,9 @@ public class ToolPhysics {
 		// But when the pickaxe does get heaier 2 things happen:
 		// 1. The player needs to lift a bigger weight, so the tool speed gets reduced(caclulated elsewhere).
 		// 2. When travelling down the tool also gets additional energy from gravity, so the force is increased by m·g.
-		impactEnergy *= tool.materialGrid[collisionPoint.x][collisionPoint.y].material.power + tool.mass * ServerWorld.GRAVITY;
+		impactEnergy *= tool.materialGrid[collisionPoint.x][collisionPoint.y].material.power + tool.mass / 128;
 
-		return impactEnergy/100; // TODO: Balancing
+		return impactEnergy; // TODO: Balancing
 	}
 
 	/**
@@ -206,7 +182,7 @@ public class ToolPhysics {
 		// So a tool is a good pickaxe, if it delivers a energy force and if it has a sharp tip.
 		
 		// TODO: Balance it.
-		float sharpnessFactor = collisionPoint.z;
+		float sharpnessFactor = (float) Math.pow(6 - Math.abs(collisionPoint.z - 6), 1);
 
 		return sharpnessFactor*calculateImpactEnergy(tool, collisionPoint);
 	}
@@ -219,9 +195,9 @@ public class ToolPhysics {
 	 */
 	private static float evaluateAxePower(Tool tool, Vector3i collisionPoint) {
 		// Axes are used for breaking up wood. This requires a larger area (= smooth tip) rather than a sharp tip.
-		float areaFactor = 1.0f/collisionPoint.z;
+		float areaFactor = (float) Math.pow(Math.abs(collisionPoint.z - 6) + 1, 1);
 
-		return areaFactor*calculateImpactEnergy(tool, collisionPoint);
+		return areaFactor*calculateImpactEnergy(tool, collisionPoint)/2;
 	}
 
 	/**
@@ -258,28 +234,28 @@ public class ToolPhysics {
 				if(sandPiles[x - 1][y - 1] > sandPiles[x][y] + 1) {
 					sandPiles[x - 1][y - 1] = sandPiles[x][y] + 1;
 					xStack.push(x - 1);
-					xStack.push(y - 1);
+					yStack.push(y - 1);
 				}
 			}
 			if(x - 1 >= 0 && y + 1 < 16 && tool.materialGrid[x - 1][y + 1] != null) {
 				if(sandPiles[x - 1][y + 1] > sandPiles[x][y] + 1) {
 					sandPiles[x - 1][y + 1] = sandPiles[x][y] + 1;
 					xStack.push(x - 1);
-					xStack.push(y + 1);
+					yStack.push(y + 1);
 				}
 			}
 			if(x + 1 < 16 && y - 1 >= 0 && tool.materialGrid[x + 1][y - 1] != null) {
 				if(sandPiles[x + 1][y - 1] > sandPiles[x][y] + 1) {
 					sandPiles[x + 1][y - 1] = sandPiles[x][y] + 1;
 					xStack.push(x + 1);
-					xStack.push(y - 1);
+					yStack.push(y - 1);
 				}
 			}
 			if(x + 1 < 16 && y + 1 < 16 && tool.materialGrid[x + 1][y + 1] != null) {
 				if(sandPiles[x + 1][y + 1] > sandPiles[x][y] + 1) {
 					sandPiles[x + 1][y + 1] = sandPiles[x][y] + 1;
 					xStack.push(x + 1);
-					xStack.push(y + 1);
+					yStack.push(y + 1);
 				}
 			}
 		}
@@ -290,7 +266,7 @@ public class ToolPhysics {
 				area += sandPiles[x][y];
 			}
 		}
-		area /= 16*16; // TODO: Balancing
+		area /= 128; // TODO: Balancing
 		return area*calculateImpactEnergy(tool, collisionPoint);
 	}
 
@@ -319,7 +295,7 @@ public class ToolPhysics {
 		tool.shovelPower = evaluateShovelPower(tool, leftCollisionPoint);
 
 		// It takes longer to swing a heavy tool.
-		tool.swingTime = (tool.mass + tool.inertiaHandle)/256; // TODO: Balancing
+		tool.swingTime = (tool.mass + tool.inertiaHandle/4)/128; // TODO: Balancing
 
 		// TODO: Swords and throwing weapons.
 

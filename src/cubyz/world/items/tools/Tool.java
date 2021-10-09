@@ -8,6 +8,7 @@ import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Registry;
 import cubyz.utils.json.JsonArray;
 import cubyz.utils.json.JsonObject;
+import cubyz.world.blocks.Block;
 import cubyz.world.items.Item;
 
 public class Tool extends Item {
@@ -21,9 +22,11 @@ public class Tool extends Item {
 	float axePower;
 	/** Reduction factor to block breaking time. */
 	float shovelPower;
+	/** TODO: damage */
+	float damage = 1;
 
-	int durability;
-	int maxDurability;
+	public int durability;
+	public int maxDurability;
 
 	/** How long it takes to swing the tool in seconds. */
 	float swingTime;
@@ -49,6 +52,7 @@ public class Tool extends Item {
 		// Produce the tool and its textures:
 		// The material grid, which comes from texture generation, is needed on both server and client, to generate the tool properties.
 		TextureGenerator.generate(this);
+		ToolPhysics.evaluateTool(this);
 	}
 	/**
 	 * Loads a tool from a json file.
@@ -75,11 +79,47 @@ public class Tool extends Item {
 		JsonArray array = new JsonArray();
 		String[] ids = new String[craftingGrid.length];
 		for(int i = 0; i < craftingGrid.length; i++) {
-			ids[i] = craftingGrid[i].getRegistryID().toString();
+			if(craftingGrid[i] != null) {
+				ids[i] = craftingGrid[i].getRegistryID().toString();
+			}
 		}
 		array.addStrings(ids);
 		json.put("grid", array);
 		json.put("durability", durability);
 		return json;
+	}
+
+	@Override
+	public int hashCode() {
+		int hash = 0;
+		for(Item item : craftingGrid) {
+			if(item != null) {
+				hash = 33 * hash + item.material.hashCode();
+			}
+		}
+		return hash;
+	}
+
+	public float getDamage() {
+		return damage;
+	}
+
+	public float getPower(Block block) {
+		switch(block.getBlockClass()) {
+			case FLUID:
+				return 0;
+			case LEAF:
+				return 1; // TODO
+			case SAND:
+				return shovelPower/swingTime;
+			case STONE:
+				return pickaxePower/swingTime;
+			case UNBREAKABLE:
+				return 0;
+			case WOOD:
+				return axePower/swingTime;
+			default:
+				return 0;
+		}
 	}
 }
