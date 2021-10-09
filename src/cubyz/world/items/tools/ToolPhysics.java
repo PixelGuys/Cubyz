@@ -3,6 +3,7 @@ package cubyz.world.items.tools;
 import java.util.Stack;
 
 import org.joml.Vector2f;
+import org.joml.Vector2i;
 import org.joml.Vector3i;
 
 /**
@@ -79,7 +80,7 @@ public class ToolPhysics {
 	 */
 	private static void determineSharpness(Tool tool, Vector3i point, float initialAngle) {
 		Vector2f center = new Vector2f(tool.handlePosition);
-		center.sub(new Vector2f(tool.centerOfMass).sub(tool.handlePosition).normalize().mul(16));
+		center.sub(new Vector2f(tool.centerOfMass).sub(tool.handlePosition).normalize().mul(-16));
 		// A region is smooth if there is a lot of pixel within similar angle/distance:
 		float originalAngle = (float) Math.atan2(point.y + 0.5f - center.y, point.x + 0.5f - center.x) - initialAngle;
 		float originalDistance = (float) Math.cos(originalAngle) * center.distance(point.x + 0.5f, point.y + 0.5f);
@@ -106,11 +107,11 @@ public class ToolPhysics {
 	 * @param rightCollisionPoint
 	 * @param topCollisionPoint
 	 */
-	private static void determineCollisionPoints(Tool tool, Vector3i leftCollisionPoint, Vector3i rightCollisionPoint, Vector3i frontCollisionPoint) {
+	private static void determineCollisionPoints(Tool tool, Vector3i leftCollisionPoint, Vector3i rightCollisionPoint, Vector3i frontCollisionPoint, float factor) {
 		// For finding that point the center of rotation is assumed to be 1 arm(16 pixel) begind the handle.
 		// Additionally the handle is assumed to go towards the center of mass.
 		Vector2f center = new Vector2f(tool.handlePosition);
-		center.sub(new Vector2f(tool.centerOfMass).sub(tool.handlePosition).normalize().mul(16));
+		center.sub(new Vector2f(tool.centerOfMass).sub(tool.handlePosition).normalize().mul(factor));
 		// Angle of the handle.
 		float initialAngle = (float) Math.atan2(tool.handlePosition.y - center.y, tool.handlePosition.x - center.x);
 		float leftCollisionAngle = 0;
@@ -136,6 +137,7 @@ public class ToolPhysics {
 				}
 			}
 		}
+
 		// sharpness is hard.
 		determineSharpness(tool, leftCollisionPoint, initialAngle);
 		determineSharpness(tool, rightCollisionPoint, initialAngle);
@@ -177,14 +179,45 @@ public class ToolPhysics {
 	 * @param collisionPoint
 	 * @return
 	 */
-	private static float evaluatePickaxePower(Tool tool, Vector3i collisionPoint) {
+	private static float evaluatePickaxePower(Tool tool, Vector3i collisionPointLower, Vector3i collisionPointUpper) {
 		// Pickaxes are used for breaking up rocks. This requires a high energy in a small area.
 		// So a tool is a good pickaxe, if it delivers a energy force and if it has a sharp tip.
-		
-		// TODO: Balance it.
-		float sharpnessFactor = (float) Math.pow(6 - Math.abs(collisionPoint.z - 6), 1);
 
-		return sharpnessFactor*calculateImpactEnergy(tool, collisionPoint)/4;
+		// A sharp tip has less than two neighbors:
+		int neighborsLower = 0;
+		for(int x = -1; x <= 1; x++) {
+			for(int y = -1; y <= 1; y++) {
+				if(x + collisionPointLower.x >= 0 && x + collisionPointLower.x < 16) {
+					if(y + collisionPointLower.y >= 0 && y + collisionPointLower.y < 16) {
+						if(tool.materialGrid[x + collisionPointLower.x][y + collisionPointLower.y] != null)
+							neighborsLower++;
+					}
+				}
+			}
+		}
+		int neighborsUpper = 0;
+		Vector2i dirUpper = new Vector2i();
+		for(int x = -1; x <= 1; x++) {
+			for(int y = -1; y <= 1; y++) {
+				if(x + collisionPointUpper.x >= 0 && x + collisionPointUpper.x < 16) {
+					if(y + collisionPointUpper.y >= 0 && y + collisionPointUpper.y < 16) {
+						if(tool.materialGrid[x + collisionPointUpper.x][y + collisionPointUpper.y] != null) {
+							neighborsUpper++;
+							dirUpper.x += x;
+							dirUpper.y += y;
+						}
+					}
+				}
+			}
+		}
+		if(neighborsLower > 3 && neighborsUpper > 3) return 0;
+
+		// A pickaxe never points upwards:
+		if(neighborsUpper == 3 && dirUpper.y == 2) {
+			return 0;
+		}
+
+		return calculateImpactEnergy(tool, collisionPointLower);
 	}
 
 	/**
@@ -193,11 +226,12 @@ public class ToolPhysics {
 	 * @param collisionPoint
 	 * @return
 	 */
-	private static float evaluateAxePower(Tool tool, Vector3i collisionPoint) {
+	private static float evaluateAxePower(Tool tool, Vector3i collisionPointLower, Vector3i collisionPointUpper) {
 		// Axes are used for breaking up wood. This requires a larger area (= smooth tip) rather than a sharp tip.
-		float areaFactor = (float) Math.pow(Math.abs(collisionPoint.z - 6) + 1, 1);
+		collisionPointLower.z = collisionPointUpper.z;
+		float areaFactor = (float) (0.25f + collisionPointLower.distance(collisionPointUpper)/4);
 
-		return areaFactor*calculateImpactEnergy(tool, collisionPoint)/8;
+		return areaFactor*calculateImpactEnergy(tool, collisionPointLower)/8;
 	}
 
 	/**
@@ -279,23 +313,29 @@ public class ToolPhysics {
 		findHandle(tool);
 		calculateDurability(tool);
 		determineInertia(tool);
-		Vector3i leftCollisionPoint = new Vector3i();
-		Vector3i rightCollisionPoint = new Vector3i();
-		Vector3i frontCollisionPoint = new Vector3i();
-		determineCollisionPoints(tool, leftCollisionPoint, rightCollisionPoint, frontCollisionPoint);
+		Vector3i leftCollisionPointLower = new Vector3i();
+		Vector3i rightCollisionPointLower = new Vector3i();
+		Vector3i frontCollisionPointLower = new Vector3i();
+		Vector3i leftCollisionPointUpper = new Vector3i();
+		Vector3i rightCollisionPointUpper = new Vector3i();
+		Vector3i frontCollisionPointUpper = new Vector3i();
+		determineCollisionPoints(tool, leftCollisionPointLower, rightCollisionPointLower, frontCollisionPointLower, 16);
+		determineCollisionPoints(tool, rightCollisionPointUpper, leftCollisionPointUpper, frontCollisionPointUpper, -20);
 
-		float leftPP = evaluatePickaxePower(tool, leftCollisionPoint);
-		float rightPP = evaluatePickaxePower(tool, leftCollisionPoint);
+		float leftPP = evaluatePickaxePower(tool, leftCollisionPointLower, leftCollisionPointUpper);
+		float rightPP = evaluatePickaxePower(tool, rightCollisionPointLower, rightCollisionPointUpper);
 		tool.pickaxePower = Math.max(leftPP, rightPP); // TODO: Adjust the swing direction.
 
-		float leftAP = evaluateAxePower(tool, leftCollisionPoint);
-		float rightAP = evaluateAxePower(tool, leftCollisionPoint);
+		float leftAP = evaluateAxePower(tool, leftCollisionPointLower, leftCollisionPointUpper);
+		float rightAP = evaluateAxePower(tool, rightCollisionPointLower, rightCollisionPointUpper);
 		tool.axePower = Math.max(leftAP, rightAP); // TODO: Adjust the swing direction.
 
-		tool.shovelPower = evaluateShovelPower(tool, leftCollisionPoint);
+		tool.shovelPower = evaluateShovelPower(tool, frontCollisionPointLower);
 
 		// It takes longer to swing a heavy tool.
 		tool.swingTime = (tool.mass + tool.inertiaHandle/8)/256; // TODO: Balancing
+
+		// TODO: Evaluate handle.
 
 		// TODO: Swords and throwing weapons.
 
