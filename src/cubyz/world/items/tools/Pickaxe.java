@@ -11,7 +11,7 @@ import cubyz.world.items.ItemStack;
  * Tool for mining stone.
  */
 
-public class Pickaxe extends Tool {
+public class Pickaxe extends OldTool {
 	private static final int HEAD = 300, BINDING = 50, HANDLE = 50;
 	private static final float baseSpeed = 5.0f, baseDamage = 1.0f;
 

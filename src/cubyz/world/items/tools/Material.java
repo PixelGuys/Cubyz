@@ -9,7 +9,7 @@ import cubyz.utils.json.JsonObject;
 public class Material {
 	/** how much it weighs */
 	public final float density;
-	/** how fast it breaks */
+	/** how long it takes until the tool breaks */
 	public final float resistance;
 	/** how useful it is for block breaking */
 	public final float power;

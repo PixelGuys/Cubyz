@@ -16,7 +16,7 @@ import cubyz.world.items.Item;
 import cubyz.world.items.ItemBlock;
 import cubyz.world.items.ItemStack;
 import cubyz.world.items.tools.Modifier;
-import cubyz.world.items.tools.Tool;
+import cubyz.world.items.tools.OldTool;
 
 /**
  * GUI for an inventory slot referencing an ItemStack.
@@ -62,9 +62,9 @@ public class InventorySlot extends Component {
 				float x = (float)Mouse.getX() + 10;
 				float y = (float)Mouse.getY() + 10;
 				String tooltip;
-				if(item instanceof Tool) {
+				if(item instanceof OldTool) {
 					tooltip = item.getName() == null ? "???" : item.getName().getTranslation();
-					for(Modifier m : ((Tool)item).getModifiers()) {
+					for(Modifier m : ((OldTool)item).getModifiers()) {
 						tooltip += "\n"+m.getName()+"\n"+m.getDescription()+"\n";
 					}
 				} else {
@@ -188,8 +188,8 @@ public class InventorySlot extends Component {
 				}
 			}
 			Graphics.drawImage(item.getImage(), x + 4, y + 4, width - 8, height - 8);
-			if(Tool.class.isInstance(item)) {
-				Tool tool = (Tool)item;
+			if(OldTool.class.isInstance(item)) {
+				OldTool tool = (OldTool)item;
 				float durab = tool.durability();
 				Graphics.setColor((int)((1.0f - durab)*255.0f)<<16 | (int)(durab*255.0f)<<8 | 0);
 				Graphics.fillRect(x + 8, y + 56, 48.0f*durab, 4);

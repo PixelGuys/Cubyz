@@ -1,7 +1,7 @@
 package cubyz.world.items.tools.modifiers;
 
 import cubyz.world.items.tools.Modifier;
-import cubyz.world.items.tools.Tool;
+import cubyz.world.items.tools.OldTool;
 
 public class Regrowth extends Modifier {
 	
@@ -17,12 +17,12 @@ public class Regrowth extends Modifier {
 	}
 
 	@Override
-	public void onUse(Tool tool) {
+	public void onUse(OldTool tool) {
 		return;
 	}
 
 	@Override
-	public void onTick(Tool tool) {
+	public void onTick(OldTool tool) {
 		ticks += strength;
 		if(ticks >= TICKS_TO_HEAL) { // TODO: should be nerfed, like only doing it when player have X experience, or food, or health
 			ticks -= TICKS_TO_HEAL;

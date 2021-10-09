@@ -11,7 +11,7 @@ import cubyz.world.items.ItemStack;
  * A tool for cutting wood.
  */
 
-public class Axe extends Tool {
+public class Axe extends OldTool {
 	private static final int HEAD = 300, BINDING = 50, HANDLE = 50;
 	private static final float baseSpeed = 2.0f, baseDamage = 2.0f;
 

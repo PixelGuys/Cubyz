@@ -9,7 +9,7 @@ import cubyz.utils.json.JsonObject;
 import cubyz.world.ServerWorld;
 import cubyz.world.blocks.Block;
 import cubyz.world.items.Inventory;
-import cubyz.world.items.tools.Tool;
+import cubyz.world.items.tools.OldTool;
 
 /**
  * Anything that's not a block or a particle.
@@ -304,7 +304,7 @@ public class Entity {
 		return displacement.y != -0.2f || displacement.w != 0;
 	}
 	
-	public void hit(Tool weapon, Vector3f direction) {
+	public void hit(OldTool weapon, Vector3f direction) {
 		if(weapon == null) {
 			takeDamage(1);
 			vx += direction.x*0.2;

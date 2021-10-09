@@ -3,7 +3,7 @@ package cubyz.world.items;
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.utils.json.JsonObject;
 import cubyz.world.blocks.Block;
-import cubyz.world.items.tools.Tool;
+import cubyz.world.items.tools.OldTool;
 
 /**
  * A storage container for Items.
@@ -72,8 +72,8 @@ public class Inventory {
 			if (stack.getItem() != null) {
 				stackJson.put("item", stack.getItem().getRegistryID().toString());
 				stackJson.put("amount", stack.getAmount());
-				if(stack.getItem() instanceof Tool) {
-					Tool tool = (Tool)stack.getItem();
+				if(stack.getItem() instanceof OldTool) {
+					OldTool tool = (OldTool)stack.getItem();
 					stackJson.put("tool", tool.save());
 				}
 				json.put(String.valueOf(i), stackJson);
@@ -92,7 +92,7 @@ public class Inventory {
 					// Check if it is a tool:
 					JsonObject tool = stackJson.getObject("tool");
 					if(tool != null) {
-						item = Tool.loadFrom(tool, registries);
+						item = OldTool.loadFrom(tool, registries);
 					} else {
 						// item not existant in this version of the game. Can't do much so ignore it.
 						items[i] = new ItemStack();

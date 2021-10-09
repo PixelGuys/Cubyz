@@ -1,140 +1,85 @@
 package cubyz.world.items.tools;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.awt.image.BufferedImage;
+
+import org.joml.Vector2f;
 
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Registry;
+import cubyz.utils.json.JsonArray;
 import cubyz.utils.json.JsonObject;
-import cubyz.world.blocks.Block;
 import cubyz.world.items.Item;
 
-/**
- * An item that can break blocks faster on use or does damage to entities.
- */
+public class Tool extends Item {
+	public final Item[] craftingGrid;
+	public final Item[][] materialGrid = new Item[16][16];
+	public final BufferedImage texture = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
 
-public abstract class Tool extends Item {
-	
-	MaterialOld head, binding, handle;
-	List<Modifier> modifiers = new ArrayList<>();
-	int durability, maxDurability;
-	float speed;
-	float damage;
-	
-	public Tool(MaterialOld head, MaterialOld binding, MaterialOld handle, float speed, float damage) {
-		this.head = head;
-		this.binding = binding;
-		this.handle = handle;
-		this.speed = speed;
-		this.damage = damage;
-		durability = maxDurability = head.headDurability + binding.bindingDurability + handle.handleDurability;
-		stackSize = 1;
-		modifiers.addAll(head.specialModifiers);
-		modifiers.addAll(binding.specialModifiers);
-		modifiers.addAll(handle.specialModifiers);
+	/** Reduction factor to block breaking time. */
+	float pickaxePower;
+	/** Reduction factor to block breaking time. */
+	float axePower;
+	/** Reduction factor to block breaking time. */
+	float shovelPower;
+
+	int durability;
+	int maxDurability;
+
+	/** How long it takes to swing the tool in seconds. */
+	float swingTime;
+
+	float mass;
+
+	/** Where the player holds the tool. */
+	public final Vector2f handlePosition = new Vector2f();
+	/** Moment of inertia relative to the handle */
+	float inertiaHandle;
+
+	/** Where the tool rotates around when being thrown. */
+	public final Vector2f centerOfMass = new Vector2f();
+	/** Moment of inertia relative to the center of mass */
+	float inertiaCenterOfMass;
+
+	/**
+	 * Creates a new tool from contents of the crafting grid.
+	 * @param craftingGrid must be a 5×5 grid with only material items in it.
+	 */
+	public Tool(Item[] craftingGrid) {
+		this.craftingGrid = craftingGrid;
+		// Produce the tool and its textures:
+		// The material grid, which comes from texture generation, is needed on both server and client, to generate the tool properties.
+		TextureGenerator.generate(this);
 	}
-	
-	public boolean used() {
-		durability--;
-		for (Modifier m : modifiers) {
-			m.onUse(this);
+	/**
+	 * Loads a tool from a json file.
+	 * @param items
+	 * @param registries
+	 */
+	public Tool(JsonObject json, CurrentWorldRegistries registries) {
+		this(extractItemsFromJson(json.getArrayNoNull("grid"), registries.itemRegistry));
+		durability = json.getInt("durability", maxDurability);
+	}
+
+	private static Item[] extractItemsFromJson(JsonArray json, Registry<Item> registry) {
+		Item[] items = new Item[25];
+		String[] ids = new String[25];
+		json.getStrings(ids);
+		for(int i = 0; i < ids.length; i++) {
+			items[i] = registry.getByID(ids[i]);
 		}
-		return durability <= 0;
-	}
-	
-	public float durability() {
-		return (float)durability/maxDurability;
-	}
-	
-	public abstract boolean canBreak(Block b);
-	
-	public MaterialOld getHeadMaterial() {
-		return head;
-	}
-	
-	public MaterialOld getBindingMaterial() {
-		return binding;
-	}
-	
-	public MaterialOld getHandleMaterial() {
-		return handle;
-	}
-	
-	public float getSpeed() {
-		return speed;
-	}
-	
-	public float getDamage() {
-		return damage;
-	}
-	
-	public int getDurability() {
-		return durability;
-	}
-	
-	public void setDurability(int durability) {
-		this.durability = durability;
-	}
-	
-	public void setMaxDurability(int maxDurability) {
-		this.maxDurability = maxDurability;
+		return items;
 	}
 
-	public void setSpeed(float speed) {
-		this.speed = speed;
-	}
-
-	public void setDamage(float damage) {
-		this.damage = damage;
-	}
-
-	public int getMaxDurability() {
-		return maxDurability;
-	}
-	
-	public List<Modifier> getModifiers() {
-		return modifiers;
-	}
-	
 	public JsonObject save() {
 		JsonObject json = new JsonObject();
-		if(this instanceof Axe)
-			json.put("type", "Axe");
-		else if(this instanceof Pickaxe)
-			json.put("type", "Pickaxe");
-		else if(this instanceof Shovel)
-			json.put("type", "Shovel");
-		else if(this instanceof Sword)
-			json.put("type", "Sword");
-		json.put("head", head.getRegistryID().toString());
-		json.put("binding", binding.getRegistryID().toString());
-		json.put("handle", handle.getRegistryID().toString());
+		JsonArray array = new JsonArray();
+		String[] ids = new String[craftingGrid.length];
+		for(int i = 0; i < craftingGrid.length; i++) {
+			ids[i] = craftingGrid[i].getRegistryID().toString();
+		}
+		array.addStrings(ids);
+		json.put("grid", array);
 		json.put("durability", durability);
-		// The following can be changed by modifiers, so they need to be stored, too:
-		json.put("maxDurability", maxDurability);
-		json.put("speed", speed);
-		json.put("damage", damage);
 		return json;
 	}
-	
-	public static Tool loadFrom(JsonObject json, CurrentWorldRegistries registries) {
-		String type = json.getString("type", "none");
-		Tool tool = null;
-		Registry<MaterialOld> matReg = registries.materialRegistry;
-		if(type.equals("Axe")) {
-			tool = new Axe(matReg.getByID(json.getString("head", "")), matReg.getByID(json.getString("binding", "")), matReg.getByID(json.getString("handle", "")));
-		} else if(type.equals("Pickaxe")) {
-			tool = new Pickaxe(matReg.getByID(json.getString("head", "")), matReg.getByID(json.getString("binding", "")), matReg.getByID(json.getString("handle", "")));
-		} else if(type.equals("Shovel")) {
-			tool = new Shovel(matReg.getByID(json.getString("head", "")), matReg.getByID(json.getString("binding", "")), matReg.getByID(json.getString("handle", "")));
-		} else if(type.equals("Sword")) {
-			tool = new Sword(matReg.getByID(json.getString("head", "")), matReg.getByID(json.getString("binding", "")), matReg.getByID(json.getString("handle", "")));
-		}
-		tool.durability = json.getInt("durability", 0);
-		tool.maxDurability = json.getInt("maxDurability", 0);
-		tool.speed = json.getFloat("speed", 0);
-		tool.damage = json.getFloat("damage", 0);
-		return tool;
-	}
-	
 }

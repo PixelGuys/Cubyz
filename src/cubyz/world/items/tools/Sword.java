@@ -10,7 +10,7 @@ import cubyz.world.items.ItemStack;
  * Tool for fighting.
  */
 
-public class Sword extends Tool {
+public class Sword extends OldTool {
 	private static final int HEAD = 200, BINDING = 50, HANDLE = 50;
 	private static final float baseSpeed = 1.0f, baseDamage = 4.0f;
 

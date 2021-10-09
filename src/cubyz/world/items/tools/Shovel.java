@@ -11,7 +11,7 @@ import cubyz.world.items.ItemStack;
  * Tool for digging stuff.
  */
 
-public class Shovel extends Tool {
+public class Shovel extends OldTool {
 	private static final int HEAD = 100, BINDING = 50, HANDLE = 50;
 	private static final float baseSpeed = 1.5f;
 
