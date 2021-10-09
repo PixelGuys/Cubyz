@@ -42,6 +42,7 @@ public class TerrainGenerator implements Generator {
 				int y = chunk.startIndex((int)map.getHeight(wx + x, wz + z) - chunk.getVoxelSize() + 1);
 				int yOff = 1 + (int)((map.getHeight(wx + x, wz + z) - y)*16);
 				int startY = y > 0 ? y : 0;
+				startY = Math.min(startY, wy + chunk.getWidth() - 1);
 				int endY = chunk.getWorldY();
 				for(int j = startY; j >= endY; j--) {
 					Block b = null;
