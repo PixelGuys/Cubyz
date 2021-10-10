@@ -36,6 +36,7 @@ vec4 calcFog(vec3 pos, vec4 color, Fog fog) {
 
 void main() {
 	setupColors(outTexCoord);
+	if(ambientC.a != 1) discard;
 
 	fragColor = ambientC*vec4(outColor, 1);
 

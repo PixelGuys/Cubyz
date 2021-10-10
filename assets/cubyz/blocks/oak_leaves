@@ -1,7 +1,7 @@
 class leaf
 hardness 0.4
 degradable yes
-transparent yes
+viewThrough yes
 absorbedLight 0x0f100010
 drop auto, 0.1 cubyz:apple
 
