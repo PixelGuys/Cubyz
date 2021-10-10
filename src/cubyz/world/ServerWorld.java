@@ -804,7 +804,7 @@ public class ServerWorld {
 	}
 	
 	private int getLight(NormalChunk ch, int x, int y, int z, int minLight) {
-		if(x - ch.wx != (x & NormalChunk.chunkMask) && y - ch.wy != (y & NormalChunk.chunkMask) && z - ch.wz != (z & NormalChunk.chunkMask))
+		if(x - ch.wx != (x & NormalChunk.chunkMask) || y - ch.wy != (y & NormalChunk.chunkMask) || z - ch.wz != (z & NormalChunk.chunkMask))
 			ch = getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift);
 		if(ch == null || !ch.isLoaded())
 			return 0xff000000;
