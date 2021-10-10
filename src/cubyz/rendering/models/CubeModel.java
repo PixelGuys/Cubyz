@@ -17,7 +17,8 @@ public class CubeModel extends Model {
 		// Being a cube it is possible to optimize neighbor data:
 		int indexOffset = vertices.size/3;
 		int size = positions.length/3;
-		IntFastList indexesAdded = new IntFastList(24);
+		int[] indicesAdded = new int[size];
+		int position = 0;
 		for(int i = 0; i < size; i++) {
 			int i2 = i*2;
 			int i3 = i*3;
@@ -43,13 +44,15 @@ public class CubeModel extends Model {
 				texture.add(textCoords[i2]);
 				texture.add(textCoords[i2+1]);
 				texture.add((float)textureIndices[normalToNeighbor(this.normals[i3], this.normals[i3+1], this.normals[i3+2])]);
-				indexesAdded.add(i);
+				indicesAdded[i] = position++;
+			} else {
+				indicesAdded[i] = -1;
 			}
 		}
 		
 		for(int i = 0; i < indices.length; i += 3) {
-			if(indexesAdded.contains(indices[i]) && indexesAdded.contains(indices[i+1]) && indexesAdded.contains(indices[i+2])) {
-				faces.add(indexesAdded.indexOf(indices[i]) + indexOffset, indexesAdded.indexOf(indices[i+1]) + indexOffset, indexesAdded.indexOf(indices[i+2]) + indexOffset);
+			if(indicesAdded[indices[i]] != -1 && indicesAdded[indices[i + 1]] != -1 && indicesAdded[indices[i + 2]] != -1) {
+				faces.add(indicesAdded[indices[i]] + indexOffset, indicesAdded[indices[i + 1]] + indexOffset, indicesAdded[indices[i + 2]] + indexOffset);
 			}
 		}
 	}
@@ -59,7 +62,8 @@ public class CubeModel extends Model {
 		// Being a cube it is possible to optimize neighbor data:
 		int indexOffset = vertices.size/3;
 		int size = positions.length/3;
-		IntFastList indexesAdded = new IntFastList(24);
+		int[] indicesAdded = new int[size];
+		int position = 0;
 		for(int i = 0; i < size; i++) {
 			int i2 = i*2;
 			int i3 = i*3;
@@ -90,13 +94,15 @@ public class CubeModel extends Model {
 				texture.add(textCoords[i2+1]);
 				texture.add((float)textureIndices[normalToNeighbor(this.normals[i3], this.normals[i3+1], this.normals[i3+2])]);
 
-				indexesAdded.add(i);
+				indicesAdded[i] = position++;
+			} else {
+				indicesAdded[i] = -1;
 			}
 		}
 		
 		for(int i = 0; i < indices.length; i += 3) {
-			if(indexesAdded.contains(indices[i]) && indexesAdded.contains(indices[i+1]) && indexesAdded.contains(indices[i+2])) {
-				faces.add(indexesAdded.indexOf(indices[i]) + indexOffset, indexesAdded.indexOf(indices[i+1]) + indexOffset, indexesAdded.indexOf(indices[i+2]) + indexOffset);
+			if(indicesAdded[indices[i]] != -1 && indicesAdded[indices[i + 1]] != -1 && indicesAdded[indices[i + 2]] != -1) {
+				faces.add(indicesAdded[indices[i]] + indexOffset, indicesAdded[indices[i + 1]] + indexOffset, indicesAdded[indices[i + 2]] + indexOffset);
 			}
 		}
 	}

@@ -27,7 +27,7 @@ public class Model implements RegistryElement {
 		this.indices = indices;
 	}
 	
-	private static void addWeightedLight(float weight, float[] srgb, int light) {
+	protected static void addWeightedLight(float weight, float[] srgb, int light) {
 		srgb[0] += weight*(light>>>24);
 		srgb[1] += weight*(light>>>16 & 255);
 		srgb[2] += weight*(light>>>8 & 255);

@@ -787,7 +787,7 @@ public class ServerWorld {
 		return ch.getLight(x & NormalChunk.chunkMask, y & NormalChunk.chunkMask, z & NormalChunk.chunkMask);
 	}
 
-	public void getLight(int x, int y, int z, int[] array) {
+	public void getLight(NormalChunk ch, int x, int y, int z, int[] array) {
 		Block block = getBlock(x, y, z);
 		if(block == null) return;
 		int selfLight = block.getLight();
@@ -797,14 +797,15 @@ public class ServerWorld {
 		for(int ix = 0; ix < 3; ix++) {
 			for(int iy = 0; iy < 3; iy++) {
 				for(int iz = 0; iz < 3; iz++) {
-					array[ix + iy*3 + iz*9] = getLight(x+ix, y+iy, z+iz, selfLight);
+					array[ix + iy*3 + iz*9] = getLight(ch, x+ix, y+iy, z+iz, selfLight);
 				}
 			}
 		}
 	}
 	
-	private int getLight(int x, int y, int z, int minLight) {
-		NormalChunk ch = getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift);
+	private int getLight(NormalChunk ch, int x, int y, int z, int minLight) {
+		if(x - ch.wx != (x & NormalChunk.chunkMask) && y - ch.wy != (y & NormalChunk.chunkMask) && z - ch.wz != (z & NormalChunk.chunkMask))
+			ch = getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift);
 		if(ch == null || !ch.isLoaded())
 			return 0xff000000;
 		int light = ch.getLight(x & NormalChunk.chunkMask, y & NormalChunk.chunkMask, z & NormalChunk.chunkMask);

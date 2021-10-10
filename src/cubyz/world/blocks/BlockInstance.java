@@ -88,7 +88,7 @@ public class BlockInstance {
 	
 	public int[] updateLighting(int worldSizeX, int worldSizeZ, NormalChunk chunk) {
 		if(chunk != null) {
-			world.getLight(x, y, z, light);
+			world.getLight(chunk, x, y, z, light);
 		}
 		return light;
 	}
