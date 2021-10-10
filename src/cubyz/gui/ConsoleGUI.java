@@ -169,10 +169,11 @@ public class ConsoleGUI extends MenuGUI {
 			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_TAB)){
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_TAB, false);
-				
 				if (searchmode) {
-					textLine.updateText("");
-					searchmode = false;
+					if (possibleCommands.size()>0) {
+						bestGuessIndex = (bestGuessIndex+1)%possibleCommands.size();
+						textLine.updateText(COMPLETIONCOLOR+possibleCommands.get(bestGuessIndex).substring(text.length()));
+					}
 				}else {
 					updatePossibleCommands();
 					searchmode = true;
