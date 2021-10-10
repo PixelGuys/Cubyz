@@ -141,8 +141,8 @@ public class ConsoleGUI extends MenuGUI {
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_UP)){
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_UP, false);
 				if (searchmode) {
-					if (possibleCommands.size()>bestGuessIndex+1) {
-						bestGuessIndex++;
+					if (possibleCommands.size()>0) {
+						bestGuessIndex = (bestGuessIndex+1)%possibleCommands.size();
 						textLine.updateText(COMPLETIONCOLOR+possibleCommands.get(bestGuessIndex).substring(text.length()));
 					}
 				}else {
@@ -156,9 +156,10 @@ public class ConsoleGUI extends MenuGUI {
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_DOWN)){
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_DOWN, false);
 				if (searchmode) {
-					if (0<bestGuessIndex) {
-						bestGuessIndex--;
-						textLine.updateText(COMPLETIONCOLOR+possibleCommands.get(bestGuessIndex).substring(text.length()));					}
+					if (possibleCommands.size()>0) {
+						bestGuessIndex = (possibleCommands.size() + bestGuessIndex-1)%possibleCommands.size();
+						textLine.updateText(COMPLETIONCOLOR+possibleCommands.get(bestGuessIndex).substring(text.length()));
+					}
 				}else {
 					if (!("".equals(consoleArray[current]))) {
 						current=(current+1)%SIZE;
