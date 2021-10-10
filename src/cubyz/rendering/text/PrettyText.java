@@ -21,10 +21,12 @@ public class PrettyText {
 		char[] chars = textLine.text.toCharArray();
 		StringBuilder reducedString = new StringBuilder();
 		ArrayList<TextMarker> markers = new ArrayList<>();
+
 		if(textLine.isEditable) {
 			// Control characters are marked using a flag in this boolean array.
 			textLine.isControlCharacter = new boolean[chars.length];
 		}
+
 		for(int i = 0; i < chars.length; i++) {
 			if(i+1 == chars.length) {
 				// The last character is at most closing a given effect:
@@ -110,12 +112,12 @@ public class PrettyText {
 			}
 		}
 		String actualText = reducedString.toString();
+		if(actualText.length() == 0)
+			actualText = " ";
 		if(!textLine.isEditable) {
 			// There are no control characters shown in non-editable text.
 			textLine.isControlCharacter = new boolean[actualText.length()];
 		}
-		if(actualText.length() == 0)
-			actualText = " ";
 		textLine.layout = new TextLayout(actualText, textLine.font.getFont(), textLine.font.fontGraphics.getFontRenderContext());
 		//sortMarkers(markers, textLine.layout);
 		prepareLines(markers, textLine);

@@ -110,6 +110,10 @@ public class TextLine implements KeyListener {
 	public String getText() {
 		return text;
 	}
+
+	public float getTextWidth() {
+		return textWidth;
+	}
 	
 	// -------------------------------------------------
 	// Cursor and selection stuff:
