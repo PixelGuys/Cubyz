@@ -89,8 +89,6 @@ public class ConsoleGUI extends MenuGUI {
 
 	@Override
 	public void render() {
-		//System.out.println(bestGuessIndex);
-		//textLine.unselect();
 		input.render();
 		text = input.getText();
 		if (searchmode) {
@@ -118,7 +116,6 @@ public class ConsoleGUI extends MenuGUI {
 			if (searchmode && bestGuessIndex != -1) {
 				text = possibleCommands.get(bestGuessIndex);
 			}
-			System.out.println(text);
 			searchmode = false;
 			consoleArray[end]=text;
 			end = (end+1)%SIZE;
@@ -201,8 +198,6 @@ public class ConsoleGUI extends MenuGUI {
 		}else {
 			bestGuessIndex = 0;
 		}
-		System.out.println(bestGuessIndex);
-		System.out.println(possibleCommands.toString());
 	}
 
 	@Override
