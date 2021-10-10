@@ -1,5 +1,11 @@
 package cubyz.gui;
 
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.IOException;
+
 import org.lwjgl.glfw.GLFW;
 
 import cubyz.client.Cubyz;
@@ -17,12 +23,21 @@ import cubyz.gui.input.Mouse;
 public class ConsoleGUI extends MenuGUI {
 
 	TextInput input;
-	final static int CONSOLE_HEIGHT = 40; //TODO Changeable via Options
-	final static int CONSOLE_WIDTH = 400; //TODO Changeable via Options
-	final static int SIZE = 128;
-	private static int end = -1;
-	private static int current = -1;
+	
+	private final static int CONSOLE_HEIGHT = 40; //TODO Changeable via Options
+	private final static int CONSOLE_WIDTH = 400; //TODO Changeable via Options
+	private final static int SIZE = 128;
+
 	private static String[] consoleArray = new String[SIZE];
+	private static int end;
+	private static int current;
+
+	private static boolean gotData = false;
+	private static ObjectInputStream iS;
+	private static ObjectOutputStream oS;
+	private final static String PATH = "ConsoleHistory.tmp";
+	
+	
 
 	@Override
 	public void init() {
@@ -31,18 +46,31 @@ public class ConsoleGUI extends MenuGUI {
 		input.setFontSize(CONSOLE_HEIGHT-2);
 		input.textLine.endSelection(0);
 		input.setFocused(true);
-		if (end == -1){
-			end = 0;
-		}
-		if (current == -1){
-			current = 0;
-		}
-		for (int i = 0; i < SIZE; i++) {
-			if(consoleArray[i]==null){
-				consoleArray[i]="";
+
+		Mouse.setGrabbed(false);
+
+		if (!gotData) {
+			try {
+				iS = new ObjectInputStream(new FileInputStream(PATH));
+			} catch (IOException f){
+				for (int i = 0; i < SIZE; i++) {
+					consoleArray[i]="";
+				}
+				end = 0;
+				current = 0;
+			}
+			gotData = true;
+			try{
+				consoleArray = (String[]) iS.readObject();
+				end = (int) iS.readObject();
+				current = (int) iS.readObject();
+				iS.close();
+			} catch (Exception e) {
+				//Now we are fucked
 			}
 		}
-		Mouse.setGrabbed(false);
+
+		
 	}
 
 	@Override
@@ -56,7 +84,22 @@ public class ConsoleGUI extends MenuGUI {
 			current = end;
 			consoleArray[current]="";
 			CommandExecutor.execute(text, Cubyz.player);
-			input.setText("");	
+			input.setText("");
+
+			try {
+				oS = new ObjectOutputStream(new FileOutputStream(PATH));
+			} catch (IOException f){
+				//Do nothing
+			}
+			try{
+				oS.writeObject(consoleArray);
+				oS.writeObject(end);
+				oS.writeObject(current);
+				oS.close();
+			} catch (Exception e) {
+				//Now we are fucked
+			}
+
 		}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_UP)){
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_UP, false);
