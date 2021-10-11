@@ -91,6 +91,7 @@ public class ServerWorld {
 		511, // 64 MB
 		2047, // 64 MB
 	};
+	@SuppressWarnings("unchecked")
 	private final Cache<MapFragment>[] mapCache = new Cache[] {
 	    new Cache<MapFragment>(new MapFragment[MAP_CACHE_MASK[0] + 1][4]),
 	    new Cache<MapFragment>(new MapFragment[MAP_CACHE_MASK[1] + 1][4]),
@@ -602,7 +603,7 @@ public class ServerWorld {
 	public MapFragment getNoGenerateRegion(int wx, int wz, int voxelSize) {
 		wx &= ~MapFragment.MAP_MASK;
 		wz &= ~MapFragment.MAP_MASK;
-		
+
 		MapFragmentCompare data = new MapFragmentCompare(wx, wz, voxelSize);
 		int index = CubyzMath.binaryLog(voxelSize);
 		int hash = data.hashCode() & MAP_CACHE_MASK[index];

@@ -42,27 +42,25 @@ public class TerrainGenerator implements Generator {
 				int y = chunk.startIndex((int)map.getHeight(wx + x, wz + z) - chunk.getVoxelSize() + 1);
 				int yOff = 1 + (int)((map.getHeight(wx + x, wz + z) - y)*16);
 				int startY = y > 0 ? y : 0;
-				startY = Math.min(startY, wy + chunk.getWidth() - 1);
-				int endY = chunk.getWorldY();
-				for(int j = startY; j >= endY; j--) {
-					Block b = null;
-					if(j > y) {
-						if(map.getBiome(wx + x, wz + z).type == Biome.Type.ARCTIC_OCEAN && j == 0) {
-							b = ice;
-						} else {
-							b = water;
-						}
+				startY = chunk.startIndex(Math.min(startY, wy + chunk.getWidth() - chunk.getVoxelSize()));
+				int endY = wy;
+				int j = startY;
+				// Add water between 0 and the terrain height:
+				for(; j >= Math.max(y+1, endY); j -= chunk.getVoxelSize()) {
+					if(map.getBiome(wx + x, wz + z).type == Biome.Type.ARCTIC_OCEAN && j == 0) {
+						chunk.updateBlock(x, j - wy, z, ice);
 					} else {
-						if(j == y) {
-							rand.setSeed((seedX*(wx + x) << 32) ^ seedZ*(wz + z));
-							j = map.getBiome(wx + x, wz + z).struct.addSubTerranian(chunk, j, x, z, yOff, rand);
-							continue;
-						} else {
-							b = stone;
-						}
+						chunk.updateBlock(x, j - wy, z, water);
 					}
-					if(!chunk.liesInChunk(x, j - chunk.getWorldY(), z)) continue;
-					chunk.updateBlock(x, j - chunk.getWorldY(), z, b);
+				}
+				// Add the biomes surface structure:
+				if(j <= y) {
+					rand.setSeed((seedX*(wx + x) << 32) ^ seedZ*(wz + z));
+					j = Math.min(map.getBiome(wx + x, wz + z).struct.addSubTerranian(chunk, y, x, z, yOff, rand), j);
+				}
+				// Add the underground:
+				for(; j >= endY; j -= chunk.getVoxelSize()) {
+					chunk.updateBlock(x, j - wy, z, stone);
 				}
 			}
 		}
