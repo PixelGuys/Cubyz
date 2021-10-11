@@ -4,9 +4,9 @@ import java.util.Random;
 
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.world.ServerWorld;
-import cubyz.world.cubyzgenerators.biomes.Biome;
 import cubyz.world.save.MapIO;
 import cubyz.world.save.WorldIO;
+import cubyz.world.terrain.biomes.Biome;
 import cubyz.world.terrain.noise.FractalNoise;
 import cubyz.world.terrain.noise.PerlinNoise;
 

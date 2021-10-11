@@ -6,7 +6,7 @@ import cubyz.Logger;
 import cubyz.client.Cubyz;
 import cubyz.utils.ResourceManager;
 import cubyz.world.ServerWorld;
-import cubyz.world.cubyzgenerators.biomes.Biome;
+import cubyz.world.terrain.biomes.Biome;
 
 public class MusicManager {
 	

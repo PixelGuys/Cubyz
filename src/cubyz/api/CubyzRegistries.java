@@ -4,15 +4,15 @@ import cubyz.command.CommandBase;
 import cubyz.world.blocks.Block;
 import cubyz.world.blocks.Ore;
 import cubyz.world.blocks.RotationMode;
-import cubyz.world.cubyzgenerators.biomes.BiomeRegistry;
 import cubyz.world.entity.EntityModel;
 import cubyz.world.entity.EntityType;
-import cubyz.world.generator.SurfaceGenerator;
 import cubyz.world.handler.RemoveBlockHandler;
 import cubyz.world.handler.PlaceBlockHandler;
 import cubyz.world.items.Item;
 import cubyz.world.items.Recipe;
 import cubyz.world.items.tools.Modifier;
+import cubyz.world.terrain.biomes.BiomeRegistry;
+import cubyz.world.terrain.worldgenerators.SurfaceGenerator;
 
 /**
  * A list of registries that are used on both server and client.

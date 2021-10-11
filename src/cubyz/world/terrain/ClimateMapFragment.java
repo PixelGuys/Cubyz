@@ -1,6 +1,6 @@
 package cubyz.world.terrain;
 
-import cubyz.world.cubyzgenerators.biomes.Biome;
+import cubyz.world.terrain.biomes.Biome;
 import cubyz.world.terrain.noise.FractalNoise;
 
 public class ClimateMapFragment {

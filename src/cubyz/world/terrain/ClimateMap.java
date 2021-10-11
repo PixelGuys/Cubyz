@@ -1,7 +1,7 @@
 package cubyz.world.terrain;
 
 import cubyz.utils.datastructures.Cache;
-import cubyz.world.cubyzgenerators.biomes.Biome;
+import cubyz.world.terrain.biomes.Biome;
 
 public class ClimateMap {
 	private static final int CACHE_SIZE = 1 << 8; // Must be a power of 2!

@@ -27,20 +27,20 @@ import cubyz.world.blocks.CrystalTextureProvider;
 import cubyz.world.blocks.CustomBlock;
 import cubyz.world.blocks.Ore;
 import cubyz.world.blocks.OreTextureProvider;
-import cubyz.world.cubyzgenerators.CrystalCavernGenerator;
-import cubyz.world.cubyzgenerators.biomes.Biome;
 import cubyz.world.entity.ChunkEntityManager;
 import cubyz.world.entity.Entity;
 import cubyz.world.entity.ItemEntityManager;
 import cubyz.world.entity.Player;
-import cubyz.world.generator.LifelandGenerator;
-import cubyz.world.generator.SurfaceGenerator;
 import cubyz.world.handler.PlaceBlockHandler;
 import cubyz.world.handler.RemoveBlockHandler;
 import cubyz.world.items.BlockDrop;
 import cubyz.world.items.ItemStack;
 import cubyz.world.save.WorldIO;
 import cubyz.world.terrain.MapFragment;
+import cubyz.world.terrain.biomes.Biome;
+import cubyz.world.terrain.generators.CrystalCavernGenerator;
+import cubyz.world.terrain.worldgenerators.LifelandGenerator;
+import cubyz.world.terrain.worldgenerators.SurfaceGenerator;
 
 public class ServerWorld {
 	public static final int DAY_CYCLE = 12000; // Length of one in-game day in 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes

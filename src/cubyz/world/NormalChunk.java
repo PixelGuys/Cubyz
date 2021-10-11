@@ -12,10 +12,10 @@ import cubyz.world.blocks.Block;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.Block.BlockClass;
-import cubyz.world.generator.SurfaceGenerator;
 import cubyz.world.save.BlockChange;
 import cubyz.world.save.Palette;
 import cubyz.world.terrain.MapFragment;
+import cubyz.world.terrain.worldgenerators.SurfaceGenerator;
 
 /**
  * 32³ chunk of the world.

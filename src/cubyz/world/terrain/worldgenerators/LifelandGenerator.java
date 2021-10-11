@@ -1,4 +1,4 @@
-package cubyz.world.generator;
+package cubyz.world.terrain.worldgenerators;
 
 import java.util.Arrays;
 import java.util.Comparator;
@@ -8,8 +8,13 @@ import cubyz.api.Resource;
 import cubyz.world.Chunk;
 import cubyz.world.ServerWorld;
 import cubyz.world.blocks.Ore;
-import cubyz.world.cubyzgenerators.*;
 import cubyz.world.terrain.MapFragment;
+import cubyz.world.terrain.generators.CaveGenerator;
+import cubyz.world.terrain.generators.CrystalCavernGenerator;
+import cubyz.world.terrain.generators.Generator;
+import cubyz.world.terrain.generators.OreGenerator;
+import cubyz.world.terrain.generators.StructureGenerator;
+import cubyz.world.terrain.generators.TerrainGenerator;
 
 /**
  * The normal generator for Cubyz.

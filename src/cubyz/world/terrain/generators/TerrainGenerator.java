@@ -1,4 +1,4 @@
-package cubyz.world.cubyzgenerators;
+package cubyz.world.terrain.generators;
 
 import java.util.Random;
 
@@ -7,8 +7,8 @@ import cubyz.api.Resource;
 import cubyz.world.Chunk;
 import cubyz.world.ServerWorld;
 import cubyz.world.blocks.Block;
-import cubyz.world.cubyzgenerators.biomes.Biome;
 import cubyz.world.terrain.MapFragment;
+import cubyz.world.terrain.biomes.Biome;
 
 /**
  * Generates the basic terrain(stone, dirt, sand, ...).

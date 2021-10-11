@@ -1,4 +1,4 @@
-package cubyz.world.cubyzgenerators.biomes;
+package cubyz.world.terrain.biomes;
 
 import java.util.function.Consumer;
 
