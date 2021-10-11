@@ -23,10 +23,6 @@ public class TextInput extends Component {
 		return textLine.getText();
 	}
 
-	public float getTextWidth() {
-		return textLine.getTextWidth()+2;
-	}
-
 	public void setText(String text) {
 		textLine.updateText(text);
 	}
