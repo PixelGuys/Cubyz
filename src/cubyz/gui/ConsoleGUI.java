@@ -49,6 +49,7 @@ public class ConsoleGUI extends MenuGUI {
 	//Storage and pointer for searching in commands
 	private static final CommandBase[] COMMANDS = CubyzRegistries.COMMAND_REGISTRY.registered(new CommandBase[0]);
 	private static ArrayList<CommandBase> possibleCommands = new ArrayList<>();
+	private static CommandBase command;
 	private static int bestGuessIndex;
 	private static boolean searchmode;
 	private static String text;
@@ -73,6 +74,8 @@ public class ConsoleGUI extends MenuGUI {
 
 		searchmode = false;
 		textLine.updateText("");
+		bestGuessIndex = -1;
+		command = null;
 
 		if (!gotData) {
 			try {
@@ -80,16 +83,14 @@ public class ConsoleGUI extends MenuGUI {
 				consoleArray = (String[]) iS.readObject();
 				end = (int) iS.readObject();
 				iS.close();
-			}
-			catch (IOException ioE) {
+			} catch (IOException ioE) {
 				//Creates new history if cant read file(wrong format; doesnt exist; damaged)
 				for (int i = 0; i < SIZE; i++) {
 					consoleArray[i] = "";
 				}
 				end = 0;
 				current = 0;
-			}
-			catch (ClassNotFoundException cnfE) {
+			} catch (ClassNotFoundException cnfE) {
 				Logger.error(cnfE);
 			}
 			gotData = true;
@@ -110,7 +111,13 @@ public class ConsoleGUI extends MenuGUI {
 			//Updates suggestions in case of deletion of chars
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_BACKSPACE)) {
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_BACKSPACE, false);
-				updatePossibleCommands();
+				if (command == null) {
+					updatePossibleCommands();
+				} else if (text.startsWith(command.getCommandName())) {
+					command = null;
+					arg = -1;
+					textLine.updateText("");
+				}
 			}
 		}
 		textLine.render(input.textLine.getTextWidth() + 4, 0);
@@ -118,14 +125,20 @@ public class ConsoleGUI extends MenuGUI {
 		if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_ENTER)) {
 			Keyboard.setKeyPressed(GLFW.GLFW_KEY_ENTER, false);
 			//Autocompletes command if in searchmode and there is a possible command
-			if (searchmode && bestGuessIndex != -1) {
-				text = possibleCommands.get(bestGuessIndex).getCommandName();
+			if (searchmode && command == null && bestGuessIndex != -1) {
+				command = possibleCommands.get(bestGuessIndex);
+				text = command.getCommandName();
 				input.setText(text);
-				searchmode = false;
+			}
+			if (command == null) {
+				for (int i = 0; i < COMMANDS.length; i++) {
+					if (COMMANDS[i].getCommandName().equals(text)) {
+						command = COMMANDS[i];
+					}
+				}
 			}
 			//Executes command and puts it in history if there is no argument or all arguments are set
-			if (bestGuessIndex != -1 && (possibleCommands.get(bestGuessIndex).getExpectedArgs().length == 0 || (arg > -1 && arg + 1 == possibleCommands.get(bestGuessIndex).getExpectedArgs().length))) {
-				searchmode = false;
+			if (text != "" && (!searchmode || command == null || (command != null && command.getExpectedArgs().length == 0 || (arg > -1 && arg + 1 == command.getExpectedArgs().length)))) {
 				consoleArray[end] = text;
 				end = (end + 1) % SIZE;
 				current = end;
@@ -134,20 +147,21 @@ public class ConsoleGUI extends MenuGUI {
 				textLine.updateText("");
 				input.setText("");
 				arg = -1;
-			}
-			//Sets arguemnts
-			else if(bestGuessIndex != -1 && possibleCommands.get(bestGuessIndex).getExpectedArgs().length != 0){
+				command = null;
+				searchmode = false;
+			//Sets arguments
+			} else if(searchmode && command != null && command.getExpectedArgs().length != 0){
 				arg++;
 				text += " ";
 				input.setText(text);
 				float startSelection = input.textLine.getTextWidth() + 10;
-				text += possibleCommands.get(bestGuessIndex).getExpectedArgs()[arg];
+				text += command.getExpectedArgs()[arg];
 				input.setText(text);
 				input.textLine.startSelection(startSelection);
 				input.textLine.endSelection(input.textLine.getTextWidth());
 				String s = "";
-				for (int i = arg + 1; i < possibleCommands.get(bestGuessIndex).getExpectedArgs().length; i++) {
-					s += " " + possibleCommands.get(bestGuessIndex).getExpectedArgs()[i];
+				for (int i = arg + 1; i < command.getExpectedArgs().length; i++) {
+					s += " " + command.getExpectedArgs()[i];
 				}
 				textLine.updateText(s);
 			}
@@ -156,8 +170,7 @@ public class ConsoleGUI extends MenuGUI {
 				oS.writeObject(consoleArray);
 				oS.writeObject(end);
 				oS.close();
-			}
-			catch (IOException e) {
+			} catch (IOException e) {
 				Logger.error(e);
 			}
 
@@ -170,8 +183,7 @@ public class ConsoleGUI extends MenuGUI {
 					bestGuessIndex = (bestGuessIndex + 1) % possibleCommands.size();
 					textLine.updateText(COMPLETION_COLOR+possibleCommands.get(bestGuessIndex).getCommandName().substring(text.length()));
 				}
-			}
-			else {
+			} else {
 				if (!("".equals(consoleArray[(SIZE + current - 1) % SIZE]))) {
 					current = (SIZE + current - 1) % SIZE;
 					input.setText(consoleArray[current]);
@@ -187,8 +199,7 @@ public class ConsoleGUI extends MenuGUI {
 					bestGuessIndex = (possibleCommands.size() + bestGuessIndex - 1) % possibleCommands.size();
 					textLine.updateText(COMPLETION_COLOR+possibleCommands.get(bestGuessIndex).getCommandName().substring(text.length()));
 				}
-			}
-			else {
+			} else {
 				if (!("".equals(consoleArray[current]))) {
 					current = (current + 1) % SIZE;
 					input.setText(consoleArray[current]);
@@ -199,22 +210,24 @@ public class ConsoleGUI extends MenuGUI {
 		//Starts autocompletion by tab and if active cycles through
 		if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_TAB)) {
 			Keyboard.setKeyPressed(GLFW.GLFW_KEY_TAB, false);
-			if (searchmode) {
-				if (possibleCommands.size() > 0) {
-					bestGuessIndex = (bestGuessIndex + 1) % possibleCommands.size();
-					textLine.updateText(COMPLETION_COLOR + possibleCommands.get(bestGuessIndex).getCommandName().substring(text.length()));
+			if (command == null) {
+				if (searchmode) {
+					if (possibleCommands.size() > 0) {
+						bestGuessIndex = (bestGuessIndex + 1) % possibleCommands.size();
+						textLine.updateText(COMPLETION_COLOR + possibleCommands.get(bestGuessIndex).getCommandName().substring(text.length()));
+					}
+				} else {
+					searchmode = true;
+					updatePossibleCommands();
 				}
 			}
-			else {
-				searchmode = true;
-				updatePossibleCommands();
-			}
+			
 		}
 	}
 
 	//Finds commands a sorted arraylist of commands starting with the userinput
 	private void updatePossibleCommands() {
-		if (searchmode) {
+		if (searchmode && command == null) {
 			possibleCommands.clear();
 			for (int i = 0; i < COMMANDS.length; i++) {
 				if (COMMANDS[i].getCommandName().startsWith(text)) {
@@ -231,14 +244,12 @@ public class ConsoleGUI extends MenuGUI {
 			);
 			if (possibleCommands.size() == 0) {
 				bestGuessIndex = -1;
-			}
-			else {
+			} else {
 				bestGuessIndex = 0;
 			}
 			if (bestGuessIndex>-1) {
 				textLine.updateText(COMPLETION_COLOR+possibleCommands.get(bestGuessIndex).getCommandName().substring(text.length()));
-			}
-			else {
+			} else {
 				textLine.updateText("");
 			}
 		}
