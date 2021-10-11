@@ -16,7 +16,7 @@ public class GiveCommand extends CommandBase {
 		name = "give";
 		expectedArgs = new String[2];
 		expectedArgs[0] = "<item id>";
-		expectedArgs[0] = "<optional: amount>";
+		expectedArgs[1] = "<optional: amount>";
 	}
 	
 	@Override
