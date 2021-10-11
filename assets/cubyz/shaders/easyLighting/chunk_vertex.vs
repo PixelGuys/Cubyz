@@ -28,9 +28,14 @@ void main()
 {
 	int normal = (texCoordAndNormals >> 24) & 7;
 	outTexCoord = vec3(float(texCoordAndNormals>>17 & 1)*voxelSize, float(texCoordAndNormals>>16 & 1)*voxelSize, float(texCoordAndNormals & 65535));
-	int x = (positionAndNormals) & 1023;
-	int y = (positionAndNormals >> 10) & 1023;
-	int z = (positionAndNormals >> 20) & 1023;
+	
+	int voxelSize = positionAndNormals >> 18;
+	int x = positionAndNormals & 63;
+	int y = positionAndNormals >> 6 & 63;
+	int z = positionAndNormals >> 12 & 63;
+	x *= voxelSize;
+	y *= voxelSize;
+	z *= voxelSize;
 
 	// Only draw faces that are inside the bounds. The others will be clipped using GL_CLIP_DISTANCE0:
 	vec3 globalPosition = vec3(x, y, z) + modelPosition;
