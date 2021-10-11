@@ -10,6 +10,8 @@ public class TimeCommand extends CommandBase {
 
 	public TimeCommand() {
 		name = "time";
+		expectedArgs = new String[1];
+		expectedArgs[0] = "<time>";
 	}
 	
 	@Override

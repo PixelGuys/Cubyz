@@ -10,6 +10,8 @@ public class GameTimeCycleCommand extends CommandBase {
 
 	public GameTimeCycleCommand() {
 		name = "doGameTimeCycle";
+		expectedArgs = new String[1];
+		expectedArgs[0] = "<Dont know what this is>";
 	}
 	
 	@Override

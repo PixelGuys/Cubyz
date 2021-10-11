@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
+import java.util.Comparator;
 
 import org.lwjgl.glfw.GLFW;
 
@@ -44,9 +45,10 @@ public class ConsoleGUI extends MenuGUI {
 	private final static String PATH = "ConsoleHistory";
 
 	private final static CommandBase[] COMMANDS = CubyzRegistries.COMMAND_REGISTRY.registered(new CommandBase[0]);
-	private static ArrayList<String> possibleCommands = new ArrayList<>();
+	private static ArrayList<CommandBase> possibleCommands = new ArrayList<>();
 	private static int bestGuessIndex;
 	private static boolean searchmode;
+	private static int arg = -1;
 	private static String text;
 
 	private final static String COMPLETIONCOLOR = "#606060";
@@ -95,7 +97,7 @@ public class ConsoleGUI extends MenuGUI {
 			if (Keyboard.hasCharSequence()) {
 				updatePossibleCommands();
 				if (bestGuessIndex>-1){
-					textLine.updateText(COMPLETIONCOLOR+possibleCommands.get(bestGuessIndex).substring(text.length()));
+					textLine.updateText(COMPLETIONCOLOR+possibleCommands.get(bestGuessIndex).getCommandName().substring(text.length()));
 				}else {
 					textLine.updateText("");
 				}
@@ -104,27 +106,70 @@ public class ConsoleGUI extends MenuGUI {
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_BACKSPACE, false);
 				updatePossibleCommands();
 				if (bestGuessIndex>-1){
-					textLine.updateText(COMPLETIONCOLOR+possibleCommands.get(bestGuessIndex).substring(text.length()));
+					textLine.updateText(COMPLETIONCOLOR+possibleCommands.get(bestGuessIndex).getCommandName().substring(text.length()));
 				}else {
 					textLine.updateText("");
 				}
 			}
 		}
-		textLine.render(input.getTextWidth()+4, 0);
+		textLine.render(input.textLine.getTextWidth()+4, 0);
 		if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_ENTER)) {
 			Keyboard.setKeyPressed(GLFW.GLFW_KEY_ENTER, false);
-			if (searchmode && bestGuessIndex != -1) {
-				text = possibleCommands.get(bestGuessIndex);
+			if (searchmode && bestGuessIndex != -1 && possibleCommands.get(bestGuessIndex).getExpectedArgs().length == 0) {		
+				text = possibleCommands.get(bestGuessIndex).getCommandName();
+				searchmode = false;
+				consoleArray[end]=text;
+				end = (end+1)%SIZE;
+				current = end;
+				consoleArray[current]="";
+				CommandExecutor.execute(text, Cubyz.player);
+				updatePossibleCommands();
+				textLine.updateText("");
+				input.setText("");
 			}
-			searchmode = false;
-			consoleArray[end]=text;
-			end = (end+1)%SIZE;
-			current = end;
-			consoleArray[current]="";
-			CommandExecutor.execute(text, Cubyz.player);
-			input.setText("");
-			updatePossibleCommands();
-			textLine.updateText("");
+			if (searchmode && bestGuessIndex != -1 && possibleCommands.get(bestGuessIndex).getExpectedArgs().length != 0){
+				text = possibleCommands.get(bestGuessIndex).getCommandName();
+				arg++;
+				text += " ";
+				input.setText(text);
+				float startSelection = input.textLine.getTextWidth()+10;
+				text += possibleCommands.get(bestGuessIndex).getExpectedArgs()[arg];
+				input.setText(text);
+				input.textLine.startSelection(startSelection);
+				input.textLine.endSelection(input.textLine.getTextWidth());
+				String s = "";
+				for (int i = arg+1; i < possibleCommands.get(bestGuessIndex).getExpectedArgs().length; i++) {
+					s += " " + possibleCommands.get(bestGuessIndex).getExpectedArgs()[i];
+				}
+				textLine.updateText(s);
+				searchmode = false;
+			}else if (arg > -1) {
+				arg++;
+				if (arg == possibleCommands.get(bestGuessIndex).getExpectedArgs().length) {
+					consoleArray[end]=text;
+					end = (end+1)%SIZE;
+					current = end;
+					consoleArray[current]="";
+					CommandExecutor.execute(text, Cubyz.player);
+					updatePossibleCommands();
+					textLine.updateText("");
+					input.setText("");
+					arg = -1;
+				}else {
+					text += " ";
+					input.setText(text);
+					float startSelection = input.textLine.getTextWidth()+10;
+					text += possibleCommands.get(bestGuessIndex).getExpectedArgs()[arg];
+					input.setText(text);
+					input.textLine.startSelection(startSelection);
+					input.textLine.endSelection(input.textLine.getTextWidth());
+					String s = "";
+					for (int i = arg+1; i < possibleCommands.get(bestGuessIndex).getExpectedArgs().length; i++) {
+						s += " " + possibleCommands.get(bestGuessIndex).getExpectedArgs()[i];
+					}
+					textLine.updateText(s);
+				}
+			}
 			
 			try {
 				oS = new ObjectOutputStream(new FileOutputStream(PATH));
@@ -134,13 +179,14 @@ public class ConsoleGUI extends MenuGUI {
 			} catch (IOException e) {
 				Logger.error(e);
 			}
+
 		}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_UP)){
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_UP, false);
 				if (searchmode) {
 					if (possibleCommands.size()>0) {
 						bestGuessIndex = (bestGuessIndex+1)%possibleCommands.size();
-						textLine.updateText(COMPLETIONCOLOR+possibleCommands.get(bestGuessIndex).substring(text.length()));
+						textLine.updateText(COMPLETIONCOLOR+possibleCommands.get(bestGuessIndex).getCommandName().substring(text.length()));
 					}
 				}else {
 					if (!("".equals(consoleArray[(SIZE+current-1)%SIZE]))) {
@@ -155,7 +201,7 @@ public class ConsoleGUI extends MenuGUI {
 				if (searchmode) {
 					if (possibleCommands.size()>0) {
 						bestGuessIndex = (possibleCommands.size() + bestGuessIndex-1)%possibleCommands.size();
-						textLine.updateText(COMPLETIONCOLOR+possibleCommands.get(bestGuessIndex).substring(text.length()));
+						textLine.updateText(COMPLETIONCOLOR+possibleCommands.get(bestGuessIndex).getCommandName().substring(text.length()));
 					}
 				}else {
 					if (!("".equals(consoleArray[current]))) {
@@ -170,13 +216,13 @@ public class ConsoleGUI extends MenuGUI {
 				if (searchmode) {
 					if (possibleCommands.size()>0) {
 						bestGuessIndex = (bestGuessIndex+1)%possibleCommands.size();
-						textLine.updateText(COMPLETIONCOLOR+possibleCommands.get(bestGuessIndex).substring(text.length()));
+						textLine.updateText(COMPLETIONCOLOR+possibleCommands.get(bestGuessIndex).getCommandName().substring(text.length()));
 					}
 				}else {
 					updatePossibleCommands();
 					searchmode = true;
 					if (bestGuessIndex>-1){
-						textLine.updateText(COMPLETIONCOLOR+possibleCommands.get(bestGuessIndex).substring(text.length()));
+						textLine.updateText(COMPLETIONCOLOR+possibleCommands.get(bestGuessIndex).getCommandName().substring(text.length()));
 					}else {
 						textLine.updateText("");
 					}
@@ -189,10 +235,17 @@ public class ConsoleGUI extends MenuGUI {
 		possibleCommands.clear();
 		for (int i = 0; i < COMMANDS.length; i++) {
 			if (COMMANDS[i].getCommandName().startsWith(text)) {
-				possibleCommands.add(COMMANDS[i].getCommandName());	
+				possibleCommands.add(COMMANDS[i]);
 			}
 		}
-		possibleCommands.sort(String.CASE_INSENSITIVE_ORDER);
+		possibleCommands.sort(
+			new Comparator<CommandBase>() {
+				@Override
+				public int compare(CommandBase cb1, CommandBase cb2) {
+					return cb1.getCommandName().compareTo(cb2.getCommandName());
+				}
+			}
+		);
 		if (possibleCommands.size()==0) {
 			bestGuessIndex = -1;
 		}else {

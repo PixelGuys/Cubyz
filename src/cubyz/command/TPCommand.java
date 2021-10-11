@@ -9,6 +9,10 @@ public class TPCommand extends CommandBase {
 
 	{
 		name = "tp";
+		expectedArgs = new String[3];
+		expectedArgs[0] = "<x>";
+		expectedArgs[1] = "<y>";
+		expectedArgs[2] = "<z>";
 	}
 	
 	@Override

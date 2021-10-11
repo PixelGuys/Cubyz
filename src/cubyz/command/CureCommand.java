@@ -11,6 +11,7 @@ public class CureCommand extends CommandBase {
 
 	{
 		name = "cure";
+		expectedArgs = new String[0];
 	}
 	
 	@Override

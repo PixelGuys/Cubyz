@@ -13,6 +13,7 @@ public class ClearCommand extends CommandBase {
 
 	{
 		name = "clear";
+		expectedArgs = new String[0];
 	}
 	
 	@Override
