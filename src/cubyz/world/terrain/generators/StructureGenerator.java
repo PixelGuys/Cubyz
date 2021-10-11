@@ -67,10 +67,6 @@ public class StructureGenerator implements Generator {
 				wpz = wpz & ~(chunk.getVoxelSize() - 1);
 				
 				float randomValue = rand.nextFloat();
-				if(stepSize != 1) {
-					// Increase chance if there are less spawn points considered. Messes up probabilities, but it's too far away to really matter.
-					randomValue = (float)Math.pow(randomValue, stepSize);
-				}
 				MapFragment cur = map;
 				if(px < 8) {
 					if(pz < 8) cur = nn;
@@ -86,11 +82,17 @@ public class StructureGenerator implements Generator {
 				}
 				Biome biome = cur.getBiome(wpx, wpz);
 				for(StructureModel model : biome.vegetationModels) {
-					if(model.getChance() > randomValue) {
+					float adaptedChance = model.getChance();
+					if(stepSize != 1) {
+						// Increase chance if there are less spawn points considered. Messes up positions, but at that distance density matters more.
+						adaptedChance = 1 - (float)Math.pow(1 - adaptedChance, stepSize*stepSize);
+					}
+					if(adaptedChance > randomValue) {
 						model.generate(px - 8, pz - 8, (int)cur.getHeight(wpx, wpz) + 1, chunk, map, rand);
 						break;
 					} else {
-						randomValue = (randomValue - model.getChance())/(1 - model.getChance()); // Make sure that after the first one was considered all others get the correct chances.
+						// Make sure that after the first one was considered all others get the correct chances.
+						randomValue = (randomValue - adaptedChance)/(1 - adaptedChance);
 					}
 				}
 			}
