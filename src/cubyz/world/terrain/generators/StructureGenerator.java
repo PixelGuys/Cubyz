@@ -56,8 +56,9 @@ public class StructureGenerator implements Generator {
 			np = world.getMapFragment(wx - ((wx & MapFragment.MAP_MASK) <= 8 ? MapFragment.MAP_SIZE : 0), wz + MapFragment.MAP_SIZE, chunk.getVoxelSize());
 			pp = world.getMapFragment(wx + ((wx & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth() ? MapFragment.MAP_SIZE : 0), wz + MapFragment.MAP_SIZE, chunk.getVoxelSize());
 		}
-		for(int px = 0; px < chunk.getWidth() + 16; px++) {
-			for(int pz = 0; pz < chunk.getWidth() + 16; pz++) {
+		int stepSize = Math.max(1, chunk.voxelSize/2);
+		for(int px = 0; px < chunk.getWidth() + 16; px += stepSize) {
+			for(int pz = 0; pz < chunk.getWidth() + 16; pz += stepSize) {
 				int wpx = px - 8 + wx;
 				int wpz = pz - 8 + wz;
 				rand.setSeed((wpx*rand1 << 32) ^ wpz*rand2 ^ seed);
@@ -66,6 +67,10 @@ public class StructureGenerator implements Generator {
 				wpz = wpz & ~(chunk.getVoxelSize() - 1);
 				
 				float randomValue = rand.nextFloat();
+				if(stepSize != 1) {
+					// Increase chance if there are less spawn points considered. Messes up probabilities, but it's too far away to really matter.
+					randomValue = (float)Math.pow(randomValue, stepSize);
+				}
 				MapFragment cur = map;
 				if(px < 8) {
 					if(pz < 8) cur = nn;
