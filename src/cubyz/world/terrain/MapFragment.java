@@ -13,7 +13,8 @@ import cubyz.world.terrain.noise.PerlinNoise;
 /**
  * Generates and stores the height and Biome maps of the planet.
  */
-public class MapFragment {
+public class MapFragment extends MapFragmentCompare {
+	
 	private static class BiomePoint {
 		final Biome biome;
 		final float x;
@@ -67,8 +68,6 @@ public class MapFragment {
 	};
 	
 	public final ServerWorld world;
-	public final int wx, wz;
-	public int resolution = Integer.MAX_VALUE;
 	public float[][] heightMap;
 	public Biome[][] biomeMap;
 	public final MapIO mapIO;
@@ -76,21 +75,14 @@ public class MapFragment {
 	public int minHeight = Integer.MAX_VALUE;
 	public int maxHeight = 0;
 	
-	public MapFragment(int wx, int wz, long seed, ServerWorld world, CurrentWorldRegistries registries, WorldIO tio) {
+	public MapFragment(int wx, int wz, long seed, ServerWorld world, CurrentWorldRegistries registries, WorldIO tio, int voxelSize) {
+		super(wx, wz, voxelSize);
 		this.world = world;
-		this.wx = wx;
-		this.wz = wz;
 		mapIO = new MapIO(this, tio);
+		generateMap(seed, registries, voxelSize);
 	}
 	
-	public MapFragment(int wx, int wz, long seed, ServerWorld world, CurrentWorldRegistries registries, WorldIO tio, int resolution) {
-		this(wx, wz, seed, world, registries, tio);
-		ensureResolution(seed, registries, resolution);
-	}
-	
-	public synchronized void ensureResolution(long seed, CurrentWorldRegistries registries, int resolution) {
-		if(resolution >= this.resolution) return;
-		
+	public synchronized void generateMap(long seed, CurrentWorldRegistries registries, int resolution) {
 		int scaledSize = MAP_SIZE/resolution;
 		float[][] heightMap = new float[scaledSize][scaledSize];
 		Biome[][] biomeMap = new Biome[scaledSize][scaledSize];
@@ -194,19 +186,18 @@ public class MapFragment {
 		synchronized(this) {
 			this.biomeMap = biomeMap;
 			this.heightMap = heightMap;
-			this.resolution = resolution;
 		}
 	}
 	
 	public Biome getBiome(int wx, int wz) {
-		wx = (wx & MAP_MASK)/resolution;
-		wz = (wz & MAP_MASK)/resolution;
+		wx = (wx & MAP_MASK)/voxelSize;
+		wz = (wz & MAP_MASK)/voxelSize;
 		return biomeMap[wx][wz];
 	}
 	
 	public float getHeight(int wx, int wz) {
-		wx = (wx & MAP_MASK)/resolution;
-		wz = (wz & MAP_MASK)/resolution;
+		wx = (wx & MAP_MASK)/voxelSize;
+		wz = (wz & MAP_MASK)/voxelSize;
 		return heightMap[wx][wz];
 	}
 	

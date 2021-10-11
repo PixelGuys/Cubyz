@@ -65,7 +65,7 @@ public class NormalChunk extends Chunk {
 		this.cy = cy;
 		this.cz = cz;
 		this.world = world;
-		this.map = world.getMapFragment(wx, wz, 1);
+		this.map = world.getOrGenerateMapFragment(wx, wz, 1);
 		changes = map.mapIO.getBlockChanges(cx, cy, cz);
 	}
 	

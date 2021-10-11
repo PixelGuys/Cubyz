@@ -60,7 +60,7 @@ public class LifelandGenerator extends SurfaceGenerator {
 		int wz = chunk.getWorldZ();
 		long seed = world.getSeed();
 		
-		MapFragment containing = world.getMapFragment(wx, wz, chunk.getVoxelSize());
+		MapFragment containing = world.getOrGenerateMapFragment(wx, wz, chunk.getVoxelSize());
 		
 		for (Generator g : sortedGenerators) {
 			g.generate(seed ^ g.getGeneratorSeed(), wx, wy, wz, chunk, containing, world);

@@ -41,20 +41,20 @@ public class StructureGenerator implements Generator {
 		MapFragment on = map;
 		MapFragment op = map;
 		if((wx & MapFragment.MAP_MASK) <= 8) {
-			no = nn = np = world.getMapFragment(wx - MapFragment.MAP_SIZE, wz, chunk.getVoxelSize());
+			no = nn = np = world.getOrGenerateMapFragment(wx - MapFragment.MAP_SIZE, wz, chunk.getVoxelSize());
 		}
 		if((wx & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth()) {
-			po = pn = pp = world.getMapFragment(wx + MapFragment.MAP_SIZE, wz, chunk.getVoxelSize());
+			po = pn = pp = world.getOrGenerateMapFragment(wx + MapFragment.MAP_SIZE, wz, chunk.getVoxelSize());
 		}
 		if((wz & MapFragment.MAP_MASK) <= 8) {
-			on = world.getMapFragment(wx, wz - MapFragment.MAP_SIZE, chunk.getVoxelSize());
-			nn = world.getMapFragment(wx - ((wx & MapFragment.MAP_MASK) <= 8 ? MapFragment.MAP_SIZE : 0), wz - MapFragment.MAP_SIZE, chunk.getVoxelSize());
-			pn = world.getMapFragment(wx + ((wx & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth() ? MapFragment.MAP_SIZE : 0), wz - MapFragment.MAP_SIZE, chunk.getVoxelSize());
+			on = world.getOrGenerateMapFragment(wx, wz - MapFragment.MAP_SIZE, chunk.getVoxelSize());
+			nn = world.getOrGenerateMapFragment(wx - ((wx & MapFragment.MAP_MASK) <= 8 ? MapFragment.MAP_SIZE : 0), wz - MapFragment.MAP_SIZE, chunk.getVoxelSize());
+			pn = world.getOrGenerateMapFragment(wx + ((wx & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth() ? MapFragment.MAP_SIZE : 0), wz - MapFragment.MAP_SIZE, chunk.getVoxelSize());
 		}
 		if((wz & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth()) {
-			op = world.getMapFragment(wx, wz + MapFragment.MAP_SIZE, chunk.getVoxelSize());
-			np = world.getMapFragment(wx - ((wx & MapFragment.MAP_MASK) <= 8 ? MapFragment.MAP_SIZE : 0), wz + MapFragment.MAP_SIZE, chunk.getVoxelSize());
-			pp = world.getMapFragment(wx + ((wx & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth() ? MapFragment.MAP_SIZE : 0), wz + MapFragment.MAP_SIZE, chunk.getVoxelSize());
+			op = world.getOrGenerateMapFragment(wx, wz + MapFragment.MAP_SIZE, chunk.getVoxelSize());
+			np = world.getOrGenerateMapFragment(wx - ((wx & MapFragment.MAP_MASK) <= 8 ? MapFragment.MAP_SIZE : 0), wz + MapFragment.MAP_SIZE, chunk.getVoxelSize());
+			pp = world.getOrGenerateMapFragment(wx + ((wx & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth() ? MapFragment.MAP_SIZE : 0), wz + MapFragment.MAP_SIZE, chunk.getVoxelSize());
 		}
 		int stepSize = Math.max(1, chunk.voxelSize/2);
 		for(int px = 0; px < chunk.getWidth() + 16; px += stepSize) {
