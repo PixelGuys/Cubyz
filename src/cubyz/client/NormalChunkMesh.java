@@ -81,12 +81,37 @@ public class NormalChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 	public static int loc_fog_color;
 	public static int loc_fog_density;
 
+	public static class TransparentUniforms {
+		public static int loc_projectionMatrix;
+		public static int loc_viewMatrix;
+		public static int loc_texture_sampler;
+		public static int loc_break_sampler;
+		public static int loc_ambientLight;
+		public static int loc_directionalLight;
+		public static int loc_modelPosition;
+		public static int loc_selectedIndex;
+		public static int loc_fog_activ;
+		public static int loc_fog_color;
+		public static int loc_fog_density;
+		public static int loc_waterFog_activ;
+		public static int loc_waterFog_color;
+		public static int loc_waterFog_density;
+		public static int loc_positionBuffer;
+		public static int loc_colorBuffer;
+		public static int loc_windowSize;
+		public static int loc_drawFrontFace;
+	}
+
 	public static ShaderProgram shader;
+	public static ShaderProgram transparentShader;
 
 	public static void init(String shaderFolder) throws Exception {
 		shader = new ShaderProgram(Utils.loadResource(shaderFolder + "/block_vertex.vs"),
 				Utils.loadResource(shaderFolder + "/block_fragment.fs"),
 				NormalChunkMesh.class);
+		transparentShader = new ShaderProgram(Utils.loadResource(shaderFolder + "/transparent_vertex.vs"),
+				Utils.loadResource(shaderFolder + "/transparent_fragment.fs"),
+				TransparentUniforms.class);
 	}
 
 	/**
@@ -107,6 +132,31 @@ public class NormalChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 
 		shader.setUniform(loc_ambientLight, ambient);
 		shader.setUniform(loc_directionalLight, directional);
+	}
+
+	/**
+	 * Also updates the uniforms.
+	 * @param ambient
+	 * @param directional
+	 */
+	public static void bindTransparentShader(Vector3f ambient, Vector3f directional) {
+		transparentShader.bind();
+
+		transparentShader.setUniform(TransparentUniforms.loc_fog_activ, Cubyz.fog.isActive());
+		transparentShader.setUniform(TransparentUniforms.loc_fog_color, Cubyz.fog.getColor());
+		transparentShader.setUniform(TransparentUniforms.loc_fog_density, Cubyz.fog.getDensity());
+		transparentShader.setUniform(TransparentUniforms.loc_projectionMatrix, Window.getProjectionMatrix());
+		transparentShader.setUniform(TransparentUniforms.loc_texture_sampler, 0);
+		transparentShader.setUniform(TransparentUniforms.loc_break_sampler, 2);
+		transparentShader.setUniform(TransparentUniforms.loc_viewMatrix, Camera.getViewMatrix());
+
+		transparentShader.setUniform(TransparentUniforms.loc_ambientLight, ambient);
+		transparentShader.setUniform(TransparentUniforms.loc_directionalLight, directional);
+
+		glUniform2f(TransparentUniforms.loc_windowSize, Window.getWidth(), Window.getHeight());
+
+		transparentShader.setUniform(TransparentUniforms.loc_colorBuffer, 3);
+		transparentShader.setUniform(TransparentUniforms.loc_positionBuffer, 4);
 	}
 	
 	protected int vaoId;
@@ -325,7 +375,7 @@ public class NormalChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 	public void renderTransparent(Vector3d playerPosition) {
 		if(transparentVaoId == -1) return;
 
-		glUniform3f(loc_modelPosition, (float)(wx - playerPosition.x), (float)(wy - playerPosition.y), (float)(wz - playerPosition.z));
+		glUniform3f(TransparentUniforms.loc_modelPosition, (float)(wx - playerPosition.x), (float)(wy - playerPosition.y), (float)(wz - playerPosition.z));
 
 		glBindVertexArray(transparentVaoId);
 		glDrawElements(GL_TRIANGLES, transparentVertexCount, GL_UNSIGNED_INT, 0);

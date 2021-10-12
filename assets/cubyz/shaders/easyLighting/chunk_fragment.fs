@@ -23,7 +23,7 @@ vec4 calcFog(vec3 pos, vec4 color, Fog fog) {
 	float fogFactor = 1.0/exp((distance*fog.density)*(distance*fog.density));
 	fogFactor = clamp(fogFactor, 0.0, 1.0);
 	vec3 resultColor = mix(fog.color, color.xyz, fogFactor);
-	return vec4(resultColor.xyz, color.w);
+	return vec4(resultColor.xyz, color.w + 1 - fogFactor);
 }
 
 void main()

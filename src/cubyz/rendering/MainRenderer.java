@@ -71,12 +71,26 @@ public class MainRenderer {
 		public static int loc_texPosZ;
 		public static int loc_texNegZ;
 	}
+	public static class DeferredUniforms {
+		public static int loc_position;
+		public static int loc_color;
+	}
+	public static class FogUniforms {
+		public static int loc_fog_activ;
+		public static int loc_fog_color;
+		public static int loc_fog_density;
+
+		public static int loc_position;
+		public static int loc_color;
+	}
 	
 	/**The number of milliseconds after which no more chunk meshes are created. This allows the game to run smoother on movement.*/
 	private static int maximumMeshTime = 8;
 
 	private ShaderProgram entityShader; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 	private ShaderProgram blockDropShader;
+	private ShaderProgram fogShader;
+	private ShaderProgram deferredRenderPassShader;
 
 	public static final float Z_NEAR = 0.1f;
 	public static final float Z_FAR = 10000.0f;
@@ -93,6 +107,8 @@ public class MainRenderer {
 	private Vector3f ambient = new Vector3f();
 	private Vector4f clearColor = new Vector4f(0.1f, 0.7f, 0.7f, 1f);
 	private DirectionalLight light = new DirectionalLight(new Vector3f(1.0f, 1.0f, 1.0f), new Vector3f(0.0f, 1.0f, 0.0f).mul(0.1f));
+
+	private BufferManager buffers;
 
 	public Spatial[] worldSpatialList;
 	
@@ -129,8 +145,23 @@ public class MainRenderer {
 		blockDropShader = new ShaderProgram(Utils.loadResource(shaders + "/block_drop.vs"),
 				Utils.loadResource(shaders + "/block_drop.fs"),
 				BlockDropUniforms.class);
+		fogShader = new ShaderProgram(Utils.loadResource(shaders + "/fog_vertex.vs"),
+				Utils.loadResource(shaders + "/fog_fragment.fs"),
+				FogUniforms.class);
+		deferredRenderPassShader = new ShaderProgram(Utils.loadResource(shaders + "/deferred_render_pass.vs"),
+				Utils.loadResource(shaders + "/deferred_render_pass.fs"),
+				DeferredUniforms.class);
+		
+		ReducedChunkMesh.init(shaders);
+		NormalChunkMesh.init(shaders);
 		
 		System.gc();
+	}
+
+	private void createFrameBuffer() {
+		glGenFramebuffers();
+
+		buffers = new BufferManager();
 	}
 
 	public void init() throws Exception {
@@ -138,9 +169,7 @@ public class MainRenderer {
 		Transformation.updateProjectionMatrix(Window.getProjectionMatrix(), (float)Math.toRadians(ClientSettings.FOV),
 		Window.getWidth(), Window.getHeight(), Z_NEAR, Z_FAR);
 		loadShaders();
-		ReducedChunkMesh.init(shaders);
-		NormalChunkMesh.init(shaders);
-
+		createFrameBuffer();
 		inited = true;
 	}
 	
@@ -192,7 +221,9 @@ public class MainRenderer {
 			Window.getWidth(), Window.getHeight(), Z_NEAR, Z_FAR);
 			// Use a projection matrix that prevent z-fighting:
 			Transformation.updateProjectionMatrix(ReducedChunkMesh.projMatrix, (float)Math.toRadians(ClientSettings.FOV),
-				Window.getWidth(), Window.getHeight(), 2.0f, 16384.0f);
+			    Window.getWidth(), Window.getHeight(), 2.0f, 16384.0f);
+			
+			buffers.updateBufferSize();
 		}
 		
 		if(Cubyz.world != null) {
@@ -235,14 +266,7 @@ public class MainRenderer {
 				Cubyz.fog.setActive(true);
 			}
 			Cubyz.fog.setDensity(1 / (ClientSettings.EFFECTIVE_RENDER_DISTANCE*ClientSettings.FOG_COEFFICIENT));
-			Player player = Cubyz.player;
-			Block bi = Cubyz.world.getBlock((int)Math.round(player.getPosition().x), (int)(player.getPosition().y)+3, (int)Math.round(player.getPosition().z));
-			if(bi != null && !bi.isSolid()) {
-				int absorption = bi.getAbsorption();
-				ambient.x *= 1.0f - Math.pow(((absorption >>> 16) & 255)/255.0f, 0.25);
-				ambient.y *= 1.0f - Math.pow(((absorption >>> 8) & 255)/255.0f, 0.25);
-				ambient.z *= 1.0f - Math.pow(((absorption >>> 0) & 255)/255.0f, 0.25);
-			}
+			
 			light.setColor(clearColor);
 			
 			float lightY = (((float)Cubyz.world.getGameTime() % ServerWorld.DAY_CYCLE) / (float) (ServerWorld.DAY_CYCLE/2)) - 1f;
@@ -280,6 +304,8 @@ public class MainRenderer {
 	public void render(Vector3f ambientLight, DirectionalLight directionalLight, Block[] blocks, ClientEntity[] entities, Spatial[] spatials, Player localPlayer) {
 		if (!doRender)
 			return;
+		buffers.bind();
+		buffers.clearAndBind(Window.getClearColor());
 		long startTime = System.currentTimeMillis();
 		// Clean up old chunk meshes:
 		Meshes.cleanUp();
@@ -475,7 +501,7 @@ public class MainRenderer {
 			}
 			
 			// Render transparent chunk meshes:
-			NormalChunkMesh.bindShader(ambientLight, directionalLight.getDirection());
+			NormalChunkMesh.bindTransparentShader(ambientLight, directionalLight.getDirection());
 			
 			// Activate first texture bank
 			glActiveTexture(GL_TEXTURE0);
@@ -495,18 +521,60 @@ public class MainRenderer {
 				glBindTexture(GL_TEXTURE_2D, GameLauncher.logic.breakAnimations[0].getId());
 			}
 
+			buffers.bindTextures();
+
+			Fog waterFog = new Fog(true, new Vector3f(0.0f, 0.1f, 0.1f), 0.1f);
+			NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_waterFog_activ, waterFog.isActive());
+			NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_waterFog_color, waterFog.getColor());
+			NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_waterFog_density, waterFog.getDensity());
+
 			NormalChunkMesh[] meshes = sortChunks(visibleChunks.toArray(), x0/NormalChunk.chunkSize - 0.5f, y0/NormalChunk.chunkSize - 0.5f, z0/NormalChunk.chunkSize - 0.5f);
 			for (NormalChunkMesh mesh : meshes) {
 				
 				if(selected != null && selected.source == mesh.getChunk()) {
-					NormalChunkMesh.shader.setUniform(NormalChunkMesh.loc_selectedIndex, selected.renderIndex);
+					NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_selectedIndex, selected.renderIndex);
 				} else {
-					NormalChunkMesh.shader.setUniform(NormalChunkMesh.loc_selectedIndex, -1);
+					NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_selectedIndex, -1);
 				}
-				
-				mesh.renderTransparent(playerPosition);		
+				NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_drawFrontFace, false);
+				glCullFace(GL_FRONT);
+				mesh.renderTransparent(playerPosition);
+
+				NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_drawFrontFace, true);
+				glCullFace(GL_BACK);
+				mesh.renderTransparent(playerPosition);
+			}
+
+			fogShader.bind();
+			// Draw the water fog if the player is underwater:
+			Player player = Cubyz.player;
+			Block block = Cubyz.world.getBlock((int)Math.round(player.getPosition().x), (int)(player.getPosition().y + player.height), (int)Math.round(player.getPosition().z));
+			if(block != null && !block.isSolid()) {
+				if(block.getRegistryID().toString().equals("cubyz:water")) {
+					fogShader.setUniform(FogUniforms.loc_fog_activ, waterFog.isActive());
+					fogShader.setUniform(FogUniforms.loc_fog_color, waterFog.getColor());
+					fogShader.setUniform(FogUniforms.loc_fog_density, waterFog.getDensity());
+					glUniform1i(FogUniforms.loc_color, 3);
+					glUniform1i(FogUniforms.loc_position, 4);
+
+					glBindVertexArray(Graphics.rectVAO);
+					glDisable(GL_DEPTH_TEST);
+					glDisable(GL_CULL_FACE);
+					glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+				}
 			}
 		}
+		buffers.unbind();
+		buffers.bindTextures();
+		deferredRenderPassShader.bind();
+		glUniform1i(DeferredUniforms.loc_color, 4);
+		glUniform1i(DeferredUniforms.loc_position, 3);
+
+		glBindVertexArray(Graphics.rectVAO);
+		glDisable(GL_DEPTH_TEST);
+		glDisable(GL_CULL_FACE);
+		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
 	}
 
 	public void cleanup() {

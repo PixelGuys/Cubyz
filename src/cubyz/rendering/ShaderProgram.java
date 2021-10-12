@@ -40,7 +40,8 @@ public class ShaderProgram {
 			createVertexShader(vertexCode);
 			createFragmentShader(fragmentCode);
 			link();
-			storeUniforms(uniformLocations);
+			if(uniformLocations != null)
+				storeUniforms(uniformLocations);
 		} catch(Exception e) {
 			Logger.error(e);
 		}
@@ -132,7 +133,7 @@ public class ShaderProgram {
 
 		glValidateProgram(programId);
 		if (glGetProgrami(programId, GL_VALIDATE_STATUS) == 0) {
-			System.err.println("Warning validating shader code: " + glGetProgramInfoLog(programId, 1024));
+			Logger.warning("Warning validating shader code: " + glGetProgramInfoLog(programId, 1024));
 		}
 	}
 
