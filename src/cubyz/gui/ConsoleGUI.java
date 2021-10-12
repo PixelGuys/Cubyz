@@ -29,7 +29,6 @@ import cubyz.rendering.text.TextLine;
 
 public class ConsoleGUI extends MenuGUI {
 
-	//Textinput
 	TextInput input;
 	
 	//Basic console properties
@@ -48,14 +47,15 @@ public class ConsoleGUI extends MenuGUI {
 
 	//Storage and pointer for searching in commands
 	private static final CommandBase[] COMMANDS = CubyzRegistries.COMMAND_REGISTRY.registered(new CommandBase[0]);
-	private static ArrayList<CommandBase> possibleCommands = new ArrayList<>();
-	private static CommandBase command;
-	private static int bestGuessIndex;
-	private static boolean searchmode;
-	private static String text;
-
-	//Iterater for arguments of commands
-	private static int arg;
+	private static final int NORMAL = -1;
+	private static final int AUTOCOMPLETE = -2;
+	private static final int ARGUMENTS = 0;
+	private static final int HISTORY = 1;
+	private static int mode = NORMAL;
+	private static final ArrayList<CommandBase> possibleCommands = new ArrayList<>();
+	private static int commandSelection = 0;
+	private static String[] expectedArgs = new String[0];
+	private static int argument;
 
 	//Textline for showing autocomplete suggestions and expected arguments of commands
 	private static final String COMPLETION_COLOR = "#606060";
@@ -64,7 +64,6 @@ public class ConsoleGUI extends MenuGUI {
 	@Override
 	public void init() {
 		input = new TextInput();
-		text = "";
 		input.setBounds(0, 0, CONSOLE_WIDTH, CONSOLE_HEIGHT, Component.ALIGN_TOP_LEFT);
 
 		input.setFontSize(CONSOLE_HEIGHT - 2);
@@ -72,10 +71,8 @@ public class ConsoleGUI extends MenuGUI {
 		input.setFocused(true);
 		Mouse.setGrabbed(false);
 
-		searchmode = false;
+		mode = NORMAL;
 		textLine.updateText("");
-		bestGuessIndex = -1;
-		command = null;
 
 		if (!gotData) {
 			try {
@@ -96,75 +93,160 @@ public class ConsoleGUI extends MenuGUI {
 			gotData = true;
 		}
 		current = end;
-		arg = -1;
+	}
+
+	public void update() {
+		if (mode == NORMAL) {
+			// Normal user input
+			if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_TAB)) {
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_TAB, false);
+				updatePossibleCommands();
+				if(possibleCommands.size() == 0) {
+					mode = NORMAL;
+				} else if(input.getText().contains("\\s+")) {
+					findArguments();
+					if(argument != -1) {
+						mode = ARGUMENTS;
+
+						showNextArgument();
+
+						argument++;
+					}
+				} else if (possibleCommands.size() == 1) {
+					input.setText(possibleCommands.get(0).getCommandName());
+					expectedArgs = possibleCommands.get(0).getExpectedArgs();
+					if(expectedArgs.length != 0) {
+						mode = ARGUMENTS;
+						argument = 0;
+						showNextArgument();
+						argument++;
+					}
+				} else {
+					mode = AUTOCOMPLETE;
+				}
+			} else if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_ENTER)) {
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_ENTER, false);
+				execute();
+			} else if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_UP)) {
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_UP, false);
+				if (!("".equals(consoleArray[(SIZE + current - 1) % SIZE]))) {
+					mode = HISTORY;
+					current = (SIZE + current - 1) % SIZE;
+				}
+			} 
+		} else if (mode == AUTOCOMPLETE) {
+			// Autcomplete command
+			if(Keyboard.hasCharSequence()) {
+				if(Keyboard.getCharSequence()[0] == ' ') {
+					completeCommand();
+				} else {
+					mode = NORMAL;
+				}
+			} else if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_TAB) || Keyboard.isKeyPressed(GLFW.GLFW_KEY_ENTER)) {
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_TAB, false);
+				completeCommand();
+			} else if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_UP)) {
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_UP, false);
+				commandSelection = (commandSelection + 1) % possibleCommands.size();
+			} else if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_DOWN)) {
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_DOWN, false);
+				commandSelection = (possibleCommands.size() + commandSelection - 1) % possibleCommands.size();
+			}
+		} else if (mode == ARGUMENTS) {
+			// Argument selection
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_BACKSPACE)) {
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_BACKSPACE, false);
+				if (argument == (input.getText() + "foo").split("(\\s)+").length) {
+					mode = NORMAL;
+				}
+			} else if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_TAB) || Keyboard.isKeyPressed(GLFW.GLFW_KEY_ENTER)) {
+				if (argument < expectedArgs.length) {
+
+					showNextArgument();
+
+					argument++;
+				} else {
+					if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_ENTER)) {
+						execute();
+					}
+				}
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_TAB, false);
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_ENTER, false);
+			}
+		} else if (mode == HISTORY) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_UP) || Keyboard.isKeyPressed(GLFW.GLFW_KEY_TAB)) {
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_UP, false);
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_TAB, false);
+				if (!("".equals(consoleArray[(SIZE + current - 1) % SIZE]))) {
+					current = (SIZE + current - 1) % SIZE;
+				}
+			} else if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_DOWN)) {
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_DOWN, false);
+				if (!("".equals(consoleArray[current]))) {
+					current = (current + 1) % SIZE;
+				}
+			} else if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_ENTER)) {
+				findArguments();
+				if(argument != -1) {
+					Keyboard.setKeyPressed(GLFW.GLFW_KEY_ENTER, false);
+					mode = ARGUMENTS;
+					showNextArgument();
+					argument++;
+				} else {
+					mode = NORMAL;
+				}
+			} else if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_BACKSPACE) || Keyboard.hasCharSequence()) {
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_BACKSPACE, false);
+				mode = NORMAL;
+			}
+		}
+	}
+
+	private void showNextArgument() {
+		input.setText(input.getText() + " ");
+		float startSelection = input.textLine.getTextWidth() + 10;
+		input.setText(input.getText() + expectedArgs[argument]);
+		input.textLine.startSelection(startSelection);
+		input.textLine.endSelection(input.textLine.getTextWidth());
 	}
 
 	@Override
 	public void render() {
-		input.render();
-		text = input.getText();
-		if (searchmode) {
-			//Updates suggestions in case of new chars
-			if (Keyboard.hasCharSequence()) {
-				updatePossibleCommands();	
+		update();
+		String text = input.getText();
+		if (mode == NORMAL) {
+			textLine.updateText("");
+		} else if (mode == AUTOCOMPLETE) {
+			textLine.updateText(COMPLETION_COLOR+possibleCommands.get(commandSelection).getCommandName().substring(text.length()));
+		} else if (mode == ARGUMENTS) {
+			String s = "";
+			for (int i = argument; i < expectedArgs.length; i++) {
+				s += " " + expectedArgs[i];
 			}
-			//Updates suggestions in case of deletion of chars
-			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_BACKSPACE)) {
-				Keyboard.setKeyPressed(GLFW.GLFW_KEY_BACKSPACE, false);
-				if (command == null) {
-					updatePossibleCommands();
-				} else if (text.startsWith(command.getCommandName())) {
-					command = null;
-					arg = -1;
-					textLine.updateText("");
-				}
-			}
+			textLine.updateText(COMPLETION_COLOR+s);
+		} else if (mode == HISTORY) {
+			input.setText(consoleArray[current]);		
+			input.textLine.endSelection(CONSOLE_WIDTH);
 		}
+		input.render();
 		textLine.render(input.textLine.getTextWidth() + 4, 0);
-		//Autocompletes commands and arguments when pressing enter
-		if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_ENTER)) {
-			Keyboard.setKeyPressed(GLFW.GLFW_KEY_ENTER, false);
-			//Autocompletes command if in searchmode and there is a possible command
-			if (searchmode && command == null && bestGuessIndex != -1) {
-				command = possibleCommands.get(bestGuessIndex);
-				text = command.getCommandName();
-				input.setText(text);
-			}
-			if (command == null) {
-				for (int i = 0; i < COMMANDS.length; i++) {
-					if (COMMANDS[i].getCommandName().equals(text)) {
-						command = COMMANDS[i];
-					}
-				}
-			}
-			//Executes command and puts it in history if there is no argument or all arguments are set
-			if (text != "" && (!searchmode || command == null || (command != null && command.getExpectedArgs().length == 0 || (arg > -1 && arg + 1 == command.getExpectedArgs().length)))) {
-				consoleArray[end] = text;
-				end = (end + 1) % SIZE;
-				current = end;
-				consoleArray[current] = "";
-				CommandExecutor.execute(text, Cubyz.player);
-				textLine.updateText("");
-				input.setText("");
-				arg = -1;
-				command = null;
-				searchmode = false;
-			//Sets arguments
-			} else if(searchmode && command != null && command.getExpectedArgs().length != 0){
-				arg++;
-				text += " ";
-				input.setText(text);
-				float startSelection = input.textLine.getTextWidth() + 10;
-				text += command.getExpectedArgs()[arg];
-				input.setText(text);
-				input.textLine.startSelection(startSelection);
-				input.textLine.endSelection(input.textLine.getTextWidth());
-				String s = "";
-				for (int i = arg + 1; i < command.getExpectedArgs().length; i++) {
-					s += " " + command.getExpectedArgs()[i];
-				}
-				textLine.updateText(s);
-			}
+	}
+
+	private void execute() {
+		//Adds to history
+		String text = input.getText();
+		if (text != "") {
+			consoleArray[end] = text;
+			end = (end + 1) % SIZE;
+			current = end;
+			consoleArray[current] = "";
+			//Executes
+			CommandExecutor.execute(text, Cubyz.player);
+			//Resets
+			textLine.updateText("");
+			input.setText("");
+			mode = NORMAL;
+			//Saves history
 			try {
 				ObjectOutputStream oS = new ObjectOutputStream(new FileOutputStream(PATH));
 				oS.writeObject(consoleArray);
@@ -173,87 +255,65 @@ public class ConsoleGUI extends MenuGUI {
 			} catch (IOException e) {
 				Logger.error(e);
 			}
+		}
+	}
+	
+	//Finds commands a sorted arraylist of commands starting with the userinput
+	private void updatePossibleCommands() {
+		String command = input.getText().split("\\s+")[0];
+		possibleCommands.clear();
+		for (int i = 0; i < COMMANDS.length; i++) {
+			if (COMMANDS[i].getCommandName().startsWith(command)) {
+				possibleCommands.add(COMMANDS[i]);
+			}
+		}
+		possibleCommands.sort(
+			new Comparator<CommandBase>() {
+				@Override
+				public int compare(CommandBase cb1, CommandBase cb2) {
+					return cb1.getCommandName().compareTo(cb2.getCommandName());
+				}
+			}
+		);
+		commandSelection = 0;
+	}
 
-		}
-		//Cycles back/up in history/suggestions
-		if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_UP)) {
-			Keyboard.setKeyPressed(GLFW.GLFW_KEY_UP, false);
-			if (searchmode) {
-				if (possibleCommands.size()>0) {
-					bestGuessIndex = (bestGuessIndex + 1) % possibleCommands.size();
-					textLine.updateText(COMPLETION_COLOR+possibleCommands.get(bestGuessIndex).getCommandName().substring(text.length()));
-				}
-			} else {
-				if (!("".equals(consoleArray[(SIZE + current - 1) % SIZE]))) {
-					current = (SIZE + current - 1) % SIZE;
-					input.setText(consoleArray[current]);
-					input.textLine.endSelection(CONSOLE_WIDTH);
-				}
+	private void completeCommand() {
+		CommandBase command = possibleCommands.get(commandSelection);
+		input.setText(command.getCommandName());
+		expectedArgs = command.getExpectedArgs();
+		if(expectedArgs.length == 0) {
+			mode = NORMAL;
+			if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_ENTER)) {
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_ENTER, false);
+				execute();
 			}
-		}
-		//Cycles forward/down in history/suggestions
-		if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_DOWN)) {
-			Keyboard.setKeyPressed(GLFW.GLFW_KEY_DOWN, false);
-			if (searchmode) {
-				if (possibleCommands.size() > 0) {
-					bestGuessIndex = (possibleCommands.size() + bestGuessIndex - 1) % possibleCommands.size();
-					textLine.updateText(COMPLETION_COLOR+possibleCommands.get(bestGuessIndex).getCommandName().substring(text.length()));
-				}
-			} else {
-				if (!("".equals(consoleArray[current]))) {
-					current = (current + 1) % SIZE;
-					input.setText(consoleArray[current]);
-					input.textLine.endSelection(CONSOLE_WIDTH);
-				}
-			}
-		}
-		//Starts autocompletion by tab and if active cycles through
-		if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_TAB)) {
-			Keyboard.setKeyPressed(GLFW.GLFW_KEY_TAB, false);
-			if (command == null) {
-				if (searchmode) {
-					if (possibleCommands.size() > 0) {
-						bestGuessIndex = (bestGuessIndex + 1) % possibleCommands.size();
-						textLine.updateText(COMPLETION_COLOR + possibleCommands.get(bestGuessIndex).getCommandName().substring(text.length()));
-					}
-				} else {
-					searchmode = true;
-					updatePossibleCommands();
-				}
-			}
-			
+		} else {
+			mode = ARGUMENTS;
+			argument = 0;
+			showNextArgument();
+			argument++;
 		}
 	}
 
-	//Finds commands a sorted arraylist of commands starting with the userinput
-	private void updatePossibleCommands() {
-		if (searchmode && command == null) {
-			possibleCommands.clear();
-			for (int i = 0; i < COMMANDS.length; i++) {
-				if (COMMANDS[i].getCommandName().startsWith(text)) {
-					possibleCommands.add(COMMANDS[i]);
-				}
-			}
-			possibleCommands.sort(
-				new Comparator<CommandBase>() {
-					@Override
-					public int compare(CommandBase cb1, CommandBase cb2) {
-						return cb1.getCommandName().compareTo(cb2.getCommandName());
-					}
-				}
-			);
-			if (possibleCommands.size() == 0) {
-				bestGuessIndex = -1;
-			} else {
-				bestGuessIndex = 0;
-			}
-			if (bestGuessIndex>-1) {
-				textLine.updateText(COMPLETION_COLOR+possibleCommands.get(bestGuessIndex).getCommandName().substring(text.length()));
-			} else {
-				textLine.updateText("");
+	private void findArguments() {
+		String[] commandAndArgs = input.getText().split("\\s+");
+		CommandBase command = null;
+		for (int i = 0; i < COMMANDS.length; i++) {
+			if (COMMANDS[i].getCommandName().equals(commandAndArgs[0])) {
+				command = COMMANDS[i];
+				break;
 			}
 		}
-		
+		if (command == null) {
+			argument = -1;
+			return;
+		}
+		expectedArgs = command.getExpectedArgs();
+		argument = commandAndArgs.length - 1;
+		if(argument >= expectedArgs.length) {
+			argument = -1;
+		}
 	}
 
 	@Override
