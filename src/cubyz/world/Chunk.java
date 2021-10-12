@@ -1,7 +1,7 @@
 package cubyz.world;
 
 import cubyz.world.blocks.Block;
-import cubyz.world.generator.SurfaceGenerator;
+import cubyz.world.terrain.worldgenerators.SurfaceGenerator;
 
 public abstract class Chunk extends ChunkData {
 	public Chunk(int wx, int wy, int wz, int voxelSize) {

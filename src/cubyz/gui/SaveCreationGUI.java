@@ -16,7 +16,7 @@ import cubyz.utils.translate.TextKey;
 import cubyz.world.CustomObject;
 import cubyz.world.ServerWorld;
 import cubyz.world.blocks.Block;
-import cubyz.world.generator.SurfaceGenerator;
+import cubyz.world.terrain.worldgenerators.SurfaceGenerator;
 
 /**
  * GUI shown when creating a new world in a new world file.<br>

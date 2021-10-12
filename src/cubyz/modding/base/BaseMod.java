@@ -14,16 +14,16 @@ import cubyz.command.GameTimeCycleCommand;
 import cubyz.command.GiveCommand;
 import cubyz.command.TPCommand;
 import cubyz.command.TimeCommand;
-import cubyz.world.cubyzgenerators.biomes.Biome;
 import cubyz.world.entity.EntityType;
 import cubyz.world.entity.Pig;
 import cubyz.world.entity.PlayerEntity;
-import cubyz.world.generator.FlatlandGenerator;
-import cubyz.world.generator.LifelandGenerator;
-import cubyz.world.generator.SurfaceGenerator;
 import cubyz.world.items.tools.Modifier;
 import cubyz.world.items.tools.modifiers.FallingApart;
 import cubyz.world.items.tools.modifiers.Regrowth;
+import cubyz.world.terrain.biomes.Biome;
+import cubyz.world.terrain.worldgenerators.FlatlandGenerator;
+import cubyz.world.terrain.worldgenerators.LifelandGenerator;
+import cubyz.world.terrain.worldgenerators.SurfaceGenerator;
 
 /**
  * Mod adding Cubyz default content, which is not added by addon files.

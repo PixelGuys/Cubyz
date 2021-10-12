@@ -1,4 +1,4 @@
-package cubyz.world.cubyzgenerators.biomes;
+package cubyz.world.terrain.biomes;
 
 import java.util.Random;
 
@@ -21,6 +21,7 @@ public class SimpleVegetation extends StructureModel {
 	}
 	@Override
 	public void generate(int x, int z, int h, Chunk chunk, MapFragment map, Random rand) {
+		if(chunk.getVoxelSize() > 2 && (x / chunk.getVoxelSize() * chunk.getVoxelSize() != x || z / chunk.getVoxelSize() * chunk.getVoxelSize() != z)) return;
 		int y = chunk.getWorldY();
 		if(chunk.liesInChunk(x, h-y, z)) {
 			int height = height0;

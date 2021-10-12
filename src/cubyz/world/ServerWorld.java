@@ -27,32 +27,30 @@ import cubyz.world.blocks.CrystalTextureProvider;
 import cubyz.world.blocks.CustomBlock;
 import cubyz.world.blocks.Ore;
 import cubyz.world.blocks.OreTextureProvider;
-import cubyz.world.cubyzgenerators.CrystalCavernGenerator;
-import cubyz.world.cubyzgenerators.biomes.Biome;
 import cubyz.world.entity.ChunkEntityManager;
 import cubyz.world.entity.Entity;
 import cubyz.world.entity.ItemEntityManager;
 import cubyz.world.entity.Player;
-import cubyz.world.generator.LifelandGenerator;
-import cubyz.world.generator.SurfaceGenerator;
 import cubyz.world.handler.PlaceBlockHandler;
 import cubyz.world.handler.RemoveBlockHandler;
 import cubyz.world.items.BlockDrop;
 import cubyz.world.items.ItemStack;
 import cubyz.world.save.WorldIO;
 import cubyz.world.terrain.MapFragment;
+import cubyz.world.terrain.MapFragmentCompare;
+import cubyz.world.terrain.biomes.Biome;
+import cubyz.world.terrain.generators.CrystalCavernGenerator;
+import cubyz.world.terrain.worldgenerators.LifelandGenerator;
+import cubyz.world.terrain.worldgenerators.SurfaceGenerator;
 
 public class ServerWorld {
 	public static final int DAY_CYCLE = 12000; // Length of one in-game day in 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
 	public static final float GRAVITY = 9.81F*1.5F;
 
-	private MapFragment[] maps;
 	private HashMap<HashMapKey3D, MetaChunk> metaChunks = new HashMap<HashMapKey3D, MetaChunk>();
 	private NormalChunk[] chunks = new NormalChunk[0];
 	private ChunkEntityManager[] entityManagers = new ChunkEntityManager[0];
 	private int lastX = Integer.MAX_VALUE, lastY = Integer.MAX_VALUE, lastZ = Integer.MAX_VALUE; // Chunk coordinates of the last chunk update.
-	private int lastRegX = Integer.MAX_VALUE, lastRegZ = Integer.MAX_VALUE; // Region coordinates of the last chunk update.
-	private int regDRD; // double renderdistance of Region.
 	private ArrayList<Entity> entities = new ArrayList<>();
 	
 	private Block[] blocks;
@@ -83,7 +81,25 @@ public class ServerWorld {
 
 	// There will be at most 1 GB of reduced chunks in here.
 	private static final int CHUNK_CACHE_MASK = 8191;
-	private Cache<ReducedChunk> reducedChunkCache = new Cache<ReducedChunk>(new ReducedChunk[CHUNK_CACHE_MASK+1][4]);
+	private final Cache<ReducedChunk> reducedChunkCache = new Cache<ReducedChunk>(new ReducedChunk[CHUNK_CACHE_MASK+1][4]);
+	// There will be at most 1 GB of map data in here.
+	private static final int[] MAP_CACHE_MASK = {
+		7, // 256 MB // 4(1 in best-case) maps are needed at most for each player. So 32 will be enough for 8(32 in best case) player groups.
+		31, // 256 MB
+		63, // 128 MB
+		255, // 128 MB
+		511, // 64 MB
+		2047, // 64 MB
+	};
+	@SuppressWarnings("unchecked")
+	private final Cache<MapFragment>[] mapCache = new Cache[] {
+	    new Cache<MapFragment>(new MapFragment[MAP_CACHE_MASK[0] + 1][4]),
+	    new Cache<MapFragment>(new MapFragment[MAP_CACHE_MASK[1] + 1][4]),
+	    new Cache<MapFragment>(new MapFragment[MAP_CACHE_MASK[2] + 1][4]),
+	    new Cache<MapFragment>(new MapFragment[MAP_CACHE_MASK[3] + 1][4]),
+	    new Cache<MapFragment>(new MapFragment[MAP_CACHE_MASK[4] + 1][4]),
+	    new Cache<MapFragment>(new MapFragment[MAP_CACHE_MASK[5] + 1][4]),
+	};
 	
 	public final Class<?> chunkProvider;
 	
@@ -135,7 +151,6 @@ public class ServerWorld {
 				!chunkProvider.getConstructors()[0].getParameterTypes()[2].equals(Integer.class) ||
 				!chunkProvider.getConstructors()[0].getParameterTypes()[3].equals(ServerWorld.class))
 			throw new IllegalArgumentException("Chunk provider "+chunkProvider+" is invalid! It needs to be a subclass of NormalChunk and MUST contain a single constructor with parameters (Integer, Integer, Integer, ServerWorld)");
-		maps = new MapFragment[0];
 		
 		wio = new WorldIO(this, new File("saves/" + name));
 		String generatorId = "cubyz:lifeland";
@@ -209,7 +224,7 @@ public class ServerWorld {
 				if(isValidSpawnLocation(dx, dz))
 					break;
 			}
-			int startY = (int)getMapFragment((int)dx, (int)dz, 1).getHeight(dx, dz);
+			int startY = (int)getOrGenerateMapFragment((int)dx, (int)dz, 1).getHeight(dx, dz);
 			seek((int)dx, startY, (int)dz, ClientSettings.RENDER_DISTANCE, ClientSettings.EFFECTIVE_RENDER_DISTANCE*NormalChunk.chunkSize*2);
 			player.setPosition(new Vector3i(dx, startY+2, dz));
 			Logger.info("OK!");
@@ -283,10 +298,13 @@ public class ServerWorld {
 			if(chunk != null) chunk.save();
 		}
 		wio.saveWorldData();
-		for(MapFragment map : maps) {
-			if(map != null)
+		for(Cache<MapFragment> cache : mapCache) {
+			cache.foreach((map) -> {
 				map.mapIO.saveData();
+			});
+			cache.clear();
 		}
+		
 	}
 	
 	public void addEntity(Entity ent) {
@@ -523,49 +541,13 @@ public class ServerWorld {
 		int xOld = x;
 		int yOld = y;
 		int zOld = z;
-		// Care about the Regions:
-		regionRenderDistance = (regionRenderDistance + MapFragment.MAP_SIZE - 1)/MapFragment.MAP_SIZE;
-		int local = x & MapFragment.MAP_MASK;
-		x >>= MapFragment.MAP_SHIFT;
-		x += regionRenderDistance;
-		if(local >= MapFragment.MAP_SIZE/2)
-			x++;
-		local = z & MapFragment.MAP_MASK;
-		z >>= MapFragment.MAP_SHIFT;
-		z += regionRenderDistance;
-		if(local >= MapFragment.MAP_SIZE/2)
-			z++;
-		int regionDRD = regionRenderDistance << 1;
-		if(x != lastRegX || z != lastRegZ || regionDRD != regDRD) {
-			MapFragment[] newMaps = new MapFragment[regionDRD*regionDRD];
-			// Go through the old regions and put them in the new array:
-			for(int i = 0; i < maps.length; i++) {
-				if(maps[i] != null) {
-					int dx = (maps[i].wx >> MapFragment.MAP_SHIFT) - (x-regionDRD);
-					int dz = (maps[i].wz >> MapFragment.MAP_SHIFT) - (z-regionDRD);
-					if(dx >= 0 && dx < regionDRD && dz >= 0 && dz < regionDRD) {
-						int index = dx*regionDRD + dz;
-						newMaps[index] = maps[i];
-					} else {
-						maps[i].mapIO.saveData();
-					}
-				}
-			}
-			maps = newMaps;
-			lastRegX = x;
-			lastRegZ = z;
-			regDRD = regionDRD;
-		}
 		
 		// Care about the metaChunks:
-		if(xOld != lastX || yOld != lastY || zOld != lastZ) {
+		if(x != lastX || y != lastY || z != lastZ) {
 			ArrayList<NormalChunk> chunkList = new ArrayList<>();
 			ArrayList<ChunkEntityManager> managers = new ArrayList<>();
 			HashMap<HashMapKey3D, MetaChunk> newMetaChunks = new HashMap<HashMapKey3D, MetaChunk>();
 			int metaRenderDistance = (int)Math.ceil(renderDistance/(float)(MetaChunk.metaChunkSize*NormalChunk.chunkSize));
-			x = xOld;
-			y = yOld;
-			z = zOld;
 			int x0 = x/(MetaChunk.metaChunkSize*NormalChunk.chunkSize);
 			int y0 = y/(MetaChunk.metaChunkSize*NormalChunk.chunkSize);
 			int z0 = z/(MetaChunk.metaChunkSize*NormalChunk.chunkSize);
@@ -594,39 +576,40 @@ public class ServerWorld {
 		}
 	}
 
-	public MapFragment getMapFragment(int wx, int wz, int voxelSize) {
+	public MapFragment getOrGenerateMapFragment(int wx, int wz, int voxelSize) {
 		wx &= ~MapFragment.MAP_MASK;
 		wz &= ~MapFragment.MAP_MASK;
-		int x = wx >> MapFragment.MAP_SHIFT;
-		int z = wz >> MapFragment.MAP_SHIFT;
-		// Test if the chunk can be found in the list of visible chunks:
-		int dx = x - (lastRegX - regDRD/2) + regDRD/2;
-		int dz = z - (lastRegZ - regDRD/2) + regDRD/2;
-		if(dx >= 0 && dx < regDRD && dz >= 0 && dz < regDRD) {
-			int index = dx*regDRD + dz;
-			synchronized(maps) {
-				MapFragment ret = maps[index];
-				
-				if (ret != null) {
-					ret.ensureResolution(getSeed(), registries, voxelSize);
-					return ret;
-				} else {
-					MapFragment map = new MapFragment(wx, wz, seed, this, registries, wio, voxelSize);
-					maps[index] = map;
-					return map;
-				}
-			}
+
+		MapFragmentCompare data = new MapFragmentCompare(wx, wz, voxelSize);
+		int index = CubyzMath.binaryLog(voxelSize);
+		int hash = data.hashCode() & MAP_CACHE_MASK[index];
+
+		MapFragment res = mapCache[index].find(data, hash);
+		if(res != null) return res;
+
+		synchronized(mapCache[index].cache[hash]) {
+			res = mapCache[index].find(data, hash);
+			if(res != null) return res;
+
+			// Generate a new map fragment:
+			res = new MapFragment(wx, wz, seed, this, registries, wio, voxelSize);
+			MapFragment old = mapCache[index].addToCache(res, hash);
+			if(old != null)
+				old.mapIO.saveData();
 		}
-		return new MapFragment(wx, wz, seed, this, registries, wio, voxelSize);
+		return res;
 	}
 	
-	public MapFragment getNoGenerateRegion(int wx, int wy) {
-		for(MapFragment map : maps) {
-			if(map.wx == wx && map.wz == wy) {
-				return map;
-			}
-		}
-		return null;
+	public MapFragment getNoGenerateRegion(int wx, int wz, int voxelSize) {
+		wx &= ~MapFragment.MAP_MASK;
+		wz &= ~MapFragment.MAP_MASK;
+
+		MapFragmentCompare data = new MapFragmentCompare(wx, wz, voxelSize);
+		int index = CubyzMath.binaryLog(voxelSize);
+		int hash = data.hashCode() & MAP_CACHE_MASK[index];
+
+		MapFragment res = mapCache[index].find(data, hash);
+		return res;
 	}
 
 	/**
@@ -751,7 +734,7 @@ public class ServerWorld {
 	}
 	
 	public int getHeight(int wx, int wz) {
-		return (int)getMapFragment(wx, wz, 1).getHeight(wx, wz);
+		return (int)getOrGenerateMapFragment(wx, wz, 1).getHeight(wx, wz);
 	}
 
 	public void cleanup() {
@@ -776,7 +759,7 @@ public class ServerWorld {
 	}
 
 	public Biome getBiome(int wx, int wz) {
-		MapFragment reg = getMapFragment(wx, wz, 1);
+		MapFragment reg = getOrGenerateMapFragment(wx, wz, 1);
 		return reg.getBiome(wx, wz);
 	}
 

@@ -1,4 +1,4 @@
-package cubyz.world.cubyzgenerators;
+package cubyz.world.terrain.generators;
 
 import java.util.Random;
 

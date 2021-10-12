@@ -40,10 +40,10 @@ import cubyz.utils.datastructures.PixelUtils;
 import cubyz.world.*;
 import cubyz.world.blocks.Block;
 import cubyz.world.blocks.CustomBlock;
-import cubyz.world.generator.LifelandGenerator;
 import cubyz.world.items.CustomItem;
 import cubyz.world.items.Inventory;
 import cubyz.world.items.Item;
+import cubyz.world.terrain.worldgenerators.LifelandGenerator;
 
 /**
  * A complex class that holds everything together.<br>

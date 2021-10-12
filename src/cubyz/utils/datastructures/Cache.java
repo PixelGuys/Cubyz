@@ -1,5 +1,7 @@
 package cubyz.utils.datastructures;
 
+import java.util.function.Consumer;
+
 /** 
 * Implements a simple set associative cache with LRU replacement strategy.
 */
@@ -53,10 +55,22 @@ public class Cache<T> {
 	 * Adds a new object into the cache.
 	 * @param t
 	 * @param index the hash that is fit within cache.length
+	 * @return the object that got kicked out of the cache if any.
 	 */
-	public void addToCache(T t, int index) {
-		if(cache[index][cache[index].length - 1] != null) lost++;
+	public T addToCache(T t, int index) {
+		T previous = cache[index][cache[index].length - 1];
+		if(previous != null) lost++;
 		System.arraycopy(cache[index], 0, cache[index], 1, cache[index].length - 1);
 		cache[index][0] = t;
+		return previous;
+	}
+
+	public void foreach(Consumer<T> consumer) {
+		for(T[] array : cache) {
+			for(T obj : array) {
+				if(obj != null)
+					consumer.accept(obj);
+			}
+		}
 	}
 }

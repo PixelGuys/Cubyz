@@ -24,17 +24,17 @@ import cubyz.utils.math.CubyzMath;
 import cubyz.world.blocks.Block;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.Ore;
-import cubyz.world.cubyzgenerators.biomes.Biome;
-import cubyz.world.cubyzgenerators.biomes.BlockStructure;
-import cubyz.world.cubyzgenerators.biomes.GroundPatch;
-import cubyz.world.cubyzgenerators.biomes.SimpleTreeModel;
-import cubyz.world.cubyzgenerators.biomes.SimpleVegetation;
-import cubyz.world.cubyzgenerators.biomes.StructureModel;
 import cubyz.world.items.BlockDrop;
 import cubyz.world.items.Consumable;
 import cubyz.world.items.Item;
 import cubyz.world.items.ItemBlock;
 import cubyz.world.items.Recipe;
+import cubyz.world.terrain.biomes.Biome;
+import cubyz.world.terrain.biomes.BlockStructure;
+import cubyz.world.terrain.biomes.GroundPatch;
+import cubyz.world.terrain.biomes.SimpleTreeModel;
+import cubyz.world.terrain.biomes.SimpleVegetation;
+import cubyz.world.terrain.biomes.StructureModel;
 
 /**
  * Mod used to support add-ons: simple "mods" without any sort of coding required.<br>

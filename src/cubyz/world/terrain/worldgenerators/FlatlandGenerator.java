@@ -1,4 +1,4 @@
-package cubyz.world.generator;
+package cubyz.world.terrain.worldgenerators;
 
 import cubyz.api.CubyzRegistries;
 import cubyz.api.Resource;

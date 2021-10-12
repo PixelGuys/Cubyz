@@ -18,7 +18,7 @@ With the exception of global constants(`static final`):<br>
 - Spaces in type casting: `(int) var`
 # `{}`
 - `{` at the end of the line with a space before it
-- `}` in an extra line
+- `} else {` and `} catch {`
 - `{}` may be removed if it encapsulates only a single statement
 # Others
 - Tabs for Indentation, Spaces for alignment.
