@@ -11,7 +11,7 @@ import java.util.Random;
  */
 public class TextureGenerator {
 	/** Used to translate between grid and pixel coordinates. */
-	private static final int[] GRID_CENTERS_X = new int[] {
+	static final int[] GRID_CENTERS_X = new int[] {
 		2, 5, 8, 11, 14,
 		2, 5, 8, 11, 14,
 		2, 5, 8, 11, 14,
@@ -19,7 +19,7 @@ public class TextureGenerator {
 		2, 5, 8, 11, 14,
 	};
 	/** Used to translate between grid and pixel coordinates. */
-	private static final int[] GRID_CENTERS_Y = new int[] {
+	static final int[] GRID_CENTERS_Y = new int[] {
 		2, 2, 2, 2, 2,
 		5, 5, 5, 5, 5,
 		8, 8, 8, 8, 8,

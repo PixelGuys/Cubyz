@@ -15,22 +15,48 @@ public class ToolPhysics {
 	 * Uses a quite simple algorithm:
 	 * It just simply takes the lowest, right-most 2×2 grid of filled pixels.
 	 * @param tool
+	 * @return whether the handle is good or not.
 	 */
-	private static void findHandle(Tool tool) {
-		for(int y = 14; y >= 0; y--) {
-			for(int x = 14; x >= 0; x--) {
-				// Check the 2×2 grid at this location:
-				if(tool.materialGrid[x][y] != null &&
-				   tool.materialGrid[x][y + 1] != null &&
-				   tool.materialGrid[x + 1][y] != null &&
-				   tool.materialGrid[x + 1][y + 1] != null) {
-					
-					tool.handlePosition.x = x + 0.5f;
-					tool.handlePosition.y = y + 0.5f;
-					return;
+	private static boolean findHandle(Tool tool) {
+		// A handle is a piece of the tool that is normally on the bottom row and has at most one neighbor:
+		// Find the bottom row:
+		int y = 20;
+		outer:
+		for(; y >= 0; y -= 5) {
+			for(int x = 0; x < 5; x++) {
+				if(tool.craftingGrid[y + x] != null) {
+					break outer;
 				}
 			}
 		}
+		// Find a valid handle:
+		// Goes from right to left.
+		// TODO: Add left-hander setting that mirrors the x axis of the tools and the crafting grid
+		for(int x = 0; x < 5; x++) {
+			if(tool.craftingGrid[y + x] != null) {
+				tool.handlePosition.x = TextureGenerator.GRID_CENTERS_X[x + y] - 0.5f;
+				tool.handlePosition.y = TextureGenerator.GRID_CENTERS_Y[x + y] - 0.5f;
+				// Count the neighbors to determine whether it's a good handle:
+				int neighbors = 0;
+				if(x != 0 && tool.craftingGrid[y + x - 1] != null)
+					neighbors++;
+				if(x != 4 && tool.craftingGrid[y + x + 1] != null)
+					neighbors++;
+				if(y != 0) {
+					if(tool.craftingGrid[y - 5 + x] != null)
+						neighbors++;
+					if(x != 0 && tool.craftingGrid[y - 5 + x - 1] != null)
+						neighbors++;
+					if(x != 4 && tool.craftingGrid[y - 5 + x + 1] != null)
+						neighbors++;
+				}
+				if(neighbors <= 1) {
+					return true;
+				}
+			}
+		}
+		// No good handle was found on the bottom row.
+		return false;
 	}
 
 	/**
@@ -168,7 +194,7 @@ public class ToolPhysics {
 		// But when the pickaxe does get heaier 2 things happen:
 		// 1. The player needs to lift a bigger weight, so the tool speed gets reduced(caclulated elsewhere).
 		// 2. When travelling down the tool also gets additional energy from gravity, so the force is increased by m·g.
-		impactEnergy *= tool.materialGrid[collisionPoint.x][collisionPoint.y].material.power + tool.mass / 128;
+		impactEnergy *= tool.materialGrid[collisionPoint.x][collisionPoint.y].material.power + tool.mass / 256;
 
 		return impactEnergy; // TODO: Balancing
 	}
@@ -300,7 +326,7 @@ public class ToolPhysics {
 				area += sandPiles[x][y];
 			}
 		}
-		area /= 512; // TODO: Balancing
+		area /= 1024; // TODO: Balancing
 		return area*calculateImpactEnergy(tool, collisionPoint);
 	}
 
@@ -310,7 +336,7 @@ public class ToolPhysics {
 	 * @param tool
 	 */
 	public static void evaluateTool(Tool tool) {
-		findHandle(tool);
+		boolean hasGoodHandle = findHandle(tool);
 		calculateDurability(tool);
 		determineInertia(tool);
 		Vector3i leftCollisionPointLower = new Vector3i();
@@ -335,7 +361,9 @@ public class ToolPhysics {
 		// It takes longer to swing a heavy tool.
 		tool.swingTime = (tool.mass + tool.inertiaHandle/8)/256; // TODO: Balancing
 
-		// TODO: Evaluate handle.
+		if(hasGoodHandle) { // Good handles make tools easier to handle.
+			tool.swingTime /= 2.0f;
+		}
 
 		// TODO: Swords and throwing weapons.
 
