@@ -30,6 +30,8 @@ public class SoundManager {
 	private final Map<String, SoundSource> soundSourceMap;
 	private final Matrix4f cameraMatrix;
 
+	private boolean inited = false;
+
 	public SoundManager() {
 		soundBufferList = new ArrayList<>();
 		soundSourceMap = new HashMap<>();
@@ -48,10 +50,12 @@ public class SoundManager {
 		}
 		alcMakeContextCurrent(context);
 		AL.createCapabilities(deviceCaps);
+		inited = true;
 	}
 	
 	public void dispose() throws Exception {
-		alcCloseDevice(device);
+		if(inited)
+			alcCloseDevice(device);
 	}
 
 	public SoundListener getListener() {
@@ -60,6 +64,10 @@ public class SoundManager {
 
 	public void setListener(SoundListener listener) {
 		this.listener = listener;
+	}
+
+	public boolean wasInitedCorrectly() {
+		return inited;
 	}
 
 }

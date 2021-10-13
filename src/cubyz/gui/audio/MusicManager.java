@@ -37,6 +37,9 @@ public class MusicManager {
 
 	public static void init(SoundManager manager) {
 		MusicManager.manager = manager;
+		if(!manager.wasInitedCorrectly())
+			return;
+		
 		if (ResourceManager.lookupPath("cubyz/sound") != null) {
 			source = new SoundSource(true, true);
 		} else {
@@ -91,6 +94,9 @@ public class MusicManager {
 	}
 	
 	public static void update(ServerWorld world) {
+		if(!manager.wasInitedCorrectly())
+			return;
+		
 		if (!source.isPlaying()) {
 			silenceStart = System.currentTimeMillis();
 			positions.put(currentMusic, 0.0f);
