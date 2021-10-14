@@ -22,7 +22,7 @@ public class ToolPhysics {
 		// Find the bottom row:
 		int y = 20;
 		outer:
-		for(; y >= 0; y -= 5) {
+		for(; y > 0; y -= 5) {
 			for(int x = 0; x < 5; x++) {
 				if(tool.craftingGrid[y + x] != null) {
 					break outer;
@@ -32,7 +32,7 @@ public class ToolPhysics {
 		// Find a valid handle:
 		// Goes from right to left.
 		// TODO: Add left-hander setting that mirrors the x axis of the tools and the crafting grid
-		for(int x = 0; x < 5; x++) {
+		for(int x = 4; x >= 0; x--) {
 			if(tool.craftingGrid[y + x] != null) {
 				tool.handlePosition.x = TextureGenerator.GRID_CENTERS_X[x + y] - 0.5f;
 				tool.handlePosition.y = TextureGenerator.GRID_CENTERS_Y[x + y] - 0.5f;
