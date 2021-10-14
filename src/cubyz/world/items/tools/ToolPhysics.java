@@ -180,7 +180,8 @@ public class ToolPhysics {
 				}
 			}
 		}
-		tool.durability = tool.maxDurability = (int)(durability); // TODO: Balancing.
+		// Smaller tools are faster to swing. To balance that smaller tools get a lower durability.
+		tool.durability = tool.maxDurability = Math.max(1, (int)Math.pow(durability/8, 1.7f));
 	}
 
 	/**
