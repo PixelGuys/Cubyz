@@ -32,6 +32,7 @@ public class CaveGenerator implements Generator {
 	
 	@Override
 	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, MapFragment map, ServerWorld world) {
+		if(chunk.getVoxelSize() > 2) return;
 		Random rand = new Random(seed);
 		int rand1 = rand.nextInt() | 1;
 		int rand2 = rand.nextInt() | 1;
@@ -39,10 +40,11 @@ public class CaveGenerator implements Generator {
 		int cx = wx >> NormalChunk.chunkShift;
 		int cy = wy >> NormalChunk.chunkShift;
 		int cz = wz >> NormalChunk.chunkShift;
+		int size = chunk.getWidth() >> NormalChunk.chunkShift;
 		// Generate caves from all nearby chunks:
-		for(int x = cx - range; x <= cx + range; ++x) {
-			for(int y = cy - range; y <= cy + range; ++y) {
-				for(int z = cz - range; z <= cz + range; ++z) {
+		for(int x = cx - range; x < cx + size + range; ++x) {
+			for(int y = cy - range; y < cy + size + range; ++y) {
+				for(int z = cz - range; z < cz + size + range; ++z) {
 					int randX = x*rand1;
 					int randY = y*rand2;
 					int randZ = z*rand3;
@@ -56,44 +58,44 @@ public class CaveGenerator implements Generator {
 	private void createJunctionRoom(long localSeed, int wx, int wy, int wz, Chunk chunk, double worldX, double worldY, double worldZ, Random rand) {
 		// The junction room is just one single room roughly twice as wide as high.
 		float size = 1 + rand.nextFloat()*6;
-		double cwx = wx + NormalChunk.chunkSize/2;
-		double cwz = wz + NormalChunk.chunkSize/2;
+		double cwx = wx + chunk.getWidth()/2;
+		double cwz = wz + chunk.getWidth()/2;
 		
 		// Determine width and height:
 		double xzScale = 1.5 + size;
 		// Vary the height/width ratio within 04 and 0.6 to add more variety:
 		double yScale = xzScale*(rand.nextFloat()*0.2f + 0.4f);
 		// Only care about it if it is inside the current chunk:
-		if(worldX >= cwx - NormalChunk.chunkSize - xzScale*2 && worldZ >= cwz - NormalChunk.chunkSize - xzScale*2 && worldX <= cwx + NormalChunk.chunkSize + xzScale*2 && worldZ <= cwz + NormalChunk.chunkSize + xzScale*2) {
+		if(worldX >= cwx - chunk.getWidth() - xzScale*2 && worldZ >= cwz - chunk.getWidth() - xzScale*2 && worldX <= cwx + chunk.getWidth() + xzScale*2 && worldZ <= cwz + chunk.getWidth() + xzScale*2) {
 			Random localRand = new Random(localSeed);
 			// Determine min and max of the current cave segment in all directions.
-			int xMin = (int)(worldX - xzScale) - wx - 1;
+			int xMin = chunk.startIndex((int)(worldX - xzScale) - wx - 1);
 			int xMax = (int)(worldX + xzScale) - wx + 1;
-			int yMin = (int)(worldY - 0.7*yScale) - wy; // Make also sure the ground of the cave is kind of flat, so the player can easily walk through.
+			int yMin = chunk.startIndex((int)(worldY - 0.7*yScale) - wy); // Make also sure the ground of the cave is kind of flat, so the player can easily walk through.
 			int yMax = (int)(worldY + yScale) - wy + 1;
-			int zMin = (int)(worldZ - xzScale) - wz - 1;
+			int zMin = chunk.startIndex((int)(worldZ - xzScale) - wz - 1);
 			int zMax = (int)(worldZ + xzScale) - wz + 1;
 			if (xMin < 0)
 				xMin = 0;
-			if (xMax > NormalChunk.chunkSize)
-				xMax = NormalChunk.chunkSize;
+			if (xMax > chunk.getWidth())
+				xMax = chunk.getWidth();
 			if (yMin < 0)
 				yMin = 0;
-			if (yMax > NormalChunk.chunkSize)
-				yMax = NormalChunk.chunkSize;
+			if (yMax > chunk.getWidth())
+				yMax = chunk.getWidth();
 			if (zMin < 0)
 				zMin = 0;
-			if (zMax > NormalChunk.chunkSize)
-				zMax = NormalChunk.chunkSize;
+			if (zMax > chunk.getWidth())
+				zMax = chunk.getWidth();
 			// Go through all blocks within range of the cave center and remove them if they
 			// are within range of the center.
-			for(int curX = xMin; curX < xMax; ++curX) {
+			for(int curX = xMin; curX < xMax; curX += chunk.getVoxelSize()) {
 				double distToCenterX = ((double) (curX + wx) - worldX) / xzScale;
 				
-				for(int curZ = zMin; curZ < zMax; ++curZ) {
+				for(int curZ = zMin; curZ < zMax; curZ += chunk.getVoxelSize()) {
 					double distToCenterZ = ((double) (curZ + wz) - worldZ) / xzScale;
 					if(distToCenterX * distToCenterX + distToCenterZ * distToCenterZ < 1.0) {
-						for(int curY = yMax - 1; curY >= yMin; --curY) {
+						for(int curY = yMin; curY < yMax; curY += chunk.getVoxelSize()) {
 							double distToCenterY = ((double) (curY + wy) - worldY) / yScale;
 							double distToCenter = distToCenterX*distToCenterX + distToCenterY*distToCenterY + distToCenterZ*distToCenterZ;
 							if(distToCenter < 1.0) {
@@ -109,8 +111,8 @@ public class CaveGenerator implements Generator {
 		}
 	}
 	private void generateCave(long random, int wx, int wy, int wz, Chunk chunk, double worldX, double worldY, double worldZ, float size, float direction, float slope, int curStep, int caveLength, double caveHeightModifier) {
-		double cwx = (double) (wx + NormalChunk.chunkSize/2);
-		double cwz = (double) (wz + NormalChunk.chunkSize/2);
+		double cwx = (double) (wx + chunk.getWidth()/2);
+		double cwz = (double) (wz + chunk.getWidth()/2);
 		float directionModifier = 0.0F;
 		float slopeModifier = 0.0F;
 		Random localRand = new Random(random);
@@ -165,36 +167,36 @@ public class CaveGenerator implements Generator {
 				}
 
 				// Only care about it if it is inside the current chunk:
-				if(worldX >= cwx - NormalChunk.chunkSize/2 - xzScale && worldZ >= cwz - NormalChunk.chunkSize/2 - xzScale && worldX <= cwx + NormalChunk.chunkSize/2 + xzScale && worldZ <= cwz + NormalChunk.chunkSize/2 + xzScale) {
+				if(worldX >= cwx - chunk.getWidth()/2 - xzScale && worldZ >= cwz - chunk.getWidth()/2 - xzScale && worldX <= cwx + chunk.getWidth()/2 + xzScale && worldZ <= cwz + chunk.getWidth()/2 + xzScale) {
 					// Determine min and max of the current cave segment in all directions.
-					int xMin = (int)(worldX - xzScale) - wx - 1;
+					int xMin = chunk.startIndex((int)(worldX - xzScale) - wx - 1);
 					int xMax = (int)(worldX + xzScale) - wx + 1;
-					int yMin = (int)(worldY - 0.7*yScale) - wy; // Make also sure the ground of the cave is kind of flat, so the player can easily walk through.
+					int yMin = chunk.startIndex((int)(worldY - 0.7*yScale) - wy); // Make also sure the ground of the cave is kind of flat, so the player can easily walk through.
 					int yMax = (int)(worldY + yScale) - wy + 1;
-					int zMin = (int)(worldZ - xzScale) - wz - 1;
+					int zMin = chunk.startIndex((int)(worldZ - xzScale) - wz - 1);
 					int zMax = (int)(worldZ + xzScale) - wz + 1;
 					if (xMin < 0)
 						xMin = 0;
-					if (xMax > NormalChunk.chunkSize)
-						xMax = NormalChunk.chunkSize;
+					if (xMax > chunk.getWidth())
+						xMax = chunk.getWidth();
 					if (yMin < 0)
 						yMin = 0;
-					if (yMax > NormalChunk.chunkSize)
-						yMax = NormalChunk.chunkSize;
+					if (yMax > chunk.getWidth())
+						yMax = chunk.getWidth();
 					if (zMin < 0)
 						zMin = 0;
-					if (zMax > NormalChunk.chunkSize)
-						zMax = NormalChunk.chunkSize;
+					if (zMax > chunk.getWidth())
+						zMax = chunk.getWidth();
 
 					// Go through all blocks within range of the cave center and remove them if they
 					// are within range of the center.
-					for(int curX = xMin; curX < xMax; ++curX) {
+					for(int curX = xMin; curX < xMax; curX += chunk.getVoxelSize()) {
 						double distToCenterX = ((double) (curX + wx) - worldX) / xzScale;
 						
-						for(int curZ = zMin; curZ < zMax; ++curZ) {
+						for(int curZ = zMin; curZ < zMax; curZ += chunk.getVoxelSize()) {
 							double distToCenterZ = ((double) (curZ + wz) - worldZ) / xzScale;
 							if(distToCenterX * distToCenterX + distToCenterZ * distToCenterZ < 1.0) {
-								for(int curY = yMax - 1; curY >= yMin; --curY) {
+								for(int curY = yMin; curY < yMax; curY += chunk.getVoxelSize()) {
 									double distToCenterH = ((double) (curY + wy) - worldY) / yScale;
 									if(distToCenterX*distToCenterX + distToCenterH*distToCenterH + distToCenterZ*distToCenterZ < 1.0 && !water.equals(chunk.getBlock(curX, curY, curZ)) && !ice.equals(chunk.getBlock(curX, curY, curZ))) {
 										chunk.updateBlock(curX, curY, curZ, null);
