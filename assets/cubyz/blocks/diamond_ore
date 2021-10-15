@@ -1,5 +1,6 @@
 class stone
 hardness 80
+breakingPower 10
 veins 1
 size 10
 height -100

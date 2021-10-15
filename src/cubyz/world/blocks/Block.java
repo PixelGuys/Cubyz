@@ -35,6 +35,8 @@ public class Block implements RegistryElement {
 	private Resource id = Resource.EMPTY;
 	/**Time in seconds to break this block by hand.*/
 	private float hardness;
+	/**Minimum pickaxe/axe/shovel power required.*/
+	private float breakingPower;
 	private boolean solid = true;
 	private boolean selectable = true;
 	private BlockDrop[] blockDrops;
@@ -55,17 +57,19 @@ public class Block implements RegistryElement {
 		blockDrops = new BlockDrop[0];
 	}
 	
-	public Block(String id, float hardness, BlockClass bc) {
+	public Block(String id, float hardness, float breakingPower, BlockClass bc) {
 		setID(id);
 		blockClass = bc;
 		ItemBlock bd = new ItemBlock(this);
 		blockDrops = new BlockDrop[1];
 		blockDrops[0] = new BlockDrop(bd, 1);
 		this.hardness = hardness;
+		this.breakingPower = breakingPower;
 	}
 	
 	public Block(Resource id, Properties props, String bc) {
 		this.id = id;
+		breakingPower = Float.parseFloat(props.getProperty("breakingPower", "0"));
 		hardness = Float.parseFloat(props.getProperty("hardness", "1"));
 		blockClass = BlockClass.valueOf(bc);
 		light = Integer.decode(props.getProperty("emittedLight", "0"));
@@ -182,6 +186,14 @@ public class Block implements RegistryElement {
 	
 	public void setHardness(float hardness) {
 		this.hardness = hardness;
+	}
+	
+	public float getBreakingPower() {
+		return breakingPower;
+	}
+	
+	public void setBreakingPower(float breakingPower) {
+		this.breakingPower = breakingPower;
 	}
 	
 	public int getLight() {

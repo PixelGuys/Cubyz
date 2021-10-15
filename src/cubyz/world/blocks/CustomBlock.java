@@ -222,6 +222,7 @@ public class CustomBlock extends Block implements CustomObject {
 		elasticity += factor;
 		density += factor;
 
+		block.setBreakingPower(mohsHardness);
 		block.setHardness(elasticity*density);
 		return block;
 	}

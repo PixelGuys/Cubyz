@@ -111,13 +111,13 @@ public class Tool extends Item {
 			case LEAF:
 				return 1; // TODO
 			case SAND:
-				return shovelPower/swingTime;
+				return shovelPower;
 			case STONE:
-				return pickaxePower/swingTime;
+				return pickaxePower;
 			case UNBREAKABLE:
 				return 0;
 			case WOOD:
-				return axePower/swingTime;
+				return axePower;
 			default:
 				return 0;
 		}

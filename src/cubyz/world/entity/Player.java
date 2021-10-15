@@ -87,25 +87,37 @@ public class Player extends Entity implements CommandSource {
 		return json;
 	}
 	
-	private void calculateBreakTime(BlockInstance bi, int slot) {
+	private boolean calculateBreakTime(BlockInstance bi, int slot) {
 		if(bi == null || bi.getBlock().getBlockClass() == BlockClass.UNBREAKABLE) {
-			return;
+			return false;
 		}
-		timeStarted = System.currentTimeMillis();
-		maxTime = (int)(Math.round(bi.getBlock().getHardness()*200));
+		float power = 0;
+		float swingTime = 1;
 		if(inv.getItem(slot) instanceof Tool) {
 			Tool tool = (Tool)inv.getItem(slot);
-			float power = tool.getPower(bi.getBlock());
-			maxTime = (int)(maxTime/power);
+			power = tool.getPower(bi.getBlock());
+			swingTime = tool.swingTime;
 		}
+		if(power >= bi.getBlock().getBreakingPower()) {
+			timeStarted = System.currentTimeMillis();
+			maxTime = (int)(Math.round(bi.getBlock().getHardness()*200));
+			if(power != 0) {
+				maxTime = (int)(maxTime*swingTime/power);
+			}
+			return true;
+		}
+		return false;
 	}
 
 	public void breaking(BlockInstance bi, int slot, ServerWorld world) {
 		if(bi != toBreak || breakingSlot != slot) {
-			resetBlockBreaking(); // Make sure block breaking animation is reset.
-			toBreak = bi;
-			breakingSlot = slot;
-			calculateBreakTime(bi, slot);
+			if(calculateBreakTime(bi, slot)) {
+				resetBlockBreaking(); // Make sure block breaking animation is reset.
+				toBreak = bi;
+				breakingSlot = slot;
+			} else {
+				return;
+			}
 		}
 		if(bi == null || bi.getBlock().getBlockClass() == BlockClass.UNBREAKABLE)
 			return;
