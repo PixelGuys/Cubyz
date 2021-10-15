@@ -232,7 +232,7 @@ public class ServerWorld {
 		wio.saveWorldData();
 		blocks = blockList.toArray(new Block[0]);
 		LifelandGenerator.initOres(registries.oreRegistry.registered(new Ore[0]));
-		for (int i = 0; i < Runtime.getRuntime().availableProcessors(); i++) {
+		for (int i = 0; i < Runtime.getRuntime().availableProcessors() - 1; i++) {
 			ChunkGenerationThread thread = new ChunkGenerationThread();
 			thread.setName("Local-Chunk-Thread-" + i);
 			thread.setDaemon(true);
