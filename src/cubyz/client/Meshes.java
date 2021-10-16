@@ -19,6 +19,7 @@ import cubyz.rendering.models.Model;
 import cubyz.utils.ResourceUtilities;
 import cubyz.utils.ResourceUtilities.EntityModel;
 import cubyz.utils.datastructures.BinaryMaxHeap;
+import cubyz.world.ChunkData;
 import cubyz.world.blocks.Block;
 import cubyz.world.entity.EntityType;
 
@@ -42,7 +43,7 @@ public class Meshes {
 	public static final ArrayList<ChunkMesh> removableMeshes = new ArrayList<>();
 
 	/** List of meshes that need to be (re-)generated. */
-	private static final BinaryMaxHeap<ChunkMesh> updateQueue = new BinaryMaxHeap<ChunkMesh>(new ChunkMesh[16]);
+	private static final BinaryMaxHeap<ChunkData> updateQueue = new BinaryMaxHeap<ChunkData>(new ChunkMesh[16]);
 	
 	/**
 	 * Cleans all meshes scheduled for removal.
@@ -84,7 +85,7 @@ public class Meshes {
 	}
 
 	public static ChunkMesh getNextQueuedMesh() {
-		return updateQueue.extractMax();
+		return (ChunkMesh) updateQueue.extractMax();
 	}
 	
 	public static void initMeshCreators() {

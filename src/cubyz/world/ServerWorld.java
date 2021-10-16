@@ -3,10 +3,7 @@ package cubyz.world;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Random;
-import java.util.concurrent.BlockingDeque;
-import java.util.concurrent.LinkedBlockingDeque;
 
 import org.joml.Vector3d;
 import org.joml.Vector3f;
@@ -59,7 +56,7 @@ public class ServerWorld {
 	
 	private WorldIO wio;
 	
-	private List<ChunkGenerationThread> generatorThreads = new ArrayList<>();
+	private final ChunkGenerationThreadPool threadPool;
 	private boolean generated;
 
 	private long gameTime;
@@ -75,9 +72,6 @@ public class ServerWorld {
 	
 	float ambientLight = 0f;
 	Vector4f clearColor = new Vector4f(0, 0, 0, 1.0f);
-	
-	// synchronized common list for chunk generation
-	private volatile BlockingDeque<ChunkData> loadList = new LinkedBlockingDeque<>();
 
 	// There will be at most 1 GB of reduced chunks in here.
 	private static final int CHUNK_CACHE_MASK = 8191;
@@ -112,32 +106,6 @@ public class ServerWorld {
 
 	private ArrayList<CustomBlock> customBlocks = new ArrayList<>();
 	
-	private class ChunkGenerationThread extends Thread {
-		volatile boolean running = true;
-		public void run() {
-			while (running) {
-				ChunkData popped = null;
-				try {
-					popped = loadList.take();
-				} catch (InterruptedException e) {
-					break;
-				}
-				try {
-					synchronousGenerate(popped);
-				} catch (Exception e) {
-					Logger.error("Could not generate " + popped.voxelSize + "-chunk " + popped.wx + ", " + popped.wy + ", " + popped.wz + " !");
-					Logger.error(e);
-				}
-			}
-		}
-		
-		@Override
-		public void interrupt() {
-			running = false; // Make sure the Thread stops in all cases.
-			super.interrupt();
-		}
-	}
-	
 	public ServerWorld(String name, Class<?> chunkProvider) {
 		this.name = name;
 		registries = new CurrentWorldRegistries();
@@ -166,6 +134,8 @@ public class ServerWorld {
 			seed = new Random().nextInt();
 			wio.saveWorldData();
 		}
+
+		threadPool = new ChunkGenerationThreadPool(this, Runtime.getRuntime().availableProcessors() - 1);
 	}
 	
 	public void setGenerator(String generatorId) {
@@ -232,13 +202,6 @@ public class ServerWorld {
 		wio.saveWorldData();
 		blocks = blockList.toArray(new Block[0]);
 		LifelandGenerator.initOres(registries.oreRegistry.registered(new Ore[0]));
-		for (int i = 0; i < Runtime.getRuntime().availableProcessors() - 1; i++) {
-			ChunkGenerationThread thread = new ChunkGenerationThread();
-			thread.setName("Local-Chunk-Thread-" + i);
-			thread.setDaemon(true);
-			thread.start();
-			generatorThreads.add(thread);
-		}
 		generated = true;
 		return blocks;
 	}
@@ -326,17 +289,6 @@ public class ServerWorld {
 		// Just make sure there is a forest nearby, so the player will always be able to get the resources needed to start properly.
 		// TODO!
 		return true;
-	}
-	
-	public void synchronousGenerate(ChunkData ch) {
-		if(ch instanceof NormalChunk) {
-			((NormalChunk)ch).generateFrom(generator);
-			((NormalChunk)ch).load();
-		} else {
-			ReducedChunkVisibilityData visibilityData = new ReducedChunkVisibilityData(this, ch.wx, ch.wy, ch.wz, ch.voxelSize);
-			visibilityData.setMeshListener(ch.meshListener);
-			ch.meshListener.accept(visibilityData);
-		}
 	}
 	
 	public void removeBlock(int x, int y, int z) {
@@ -522,19 +474,15 @@ public class ServerWorld {
 	}
 
 	public void queueChunk(ChunkData ch) {
-		try {
-			loadList.put(ch);
-		} catch (InterruptedException e) {
-			System.err.println("Interrupted while queuing chunk. This is unexpected.");
-		}
+		threadPool.queueChunk(ch);
 	}
 	
 	public void unQueueChunk(ChunkData ch) {
-		loadList.remove(ch);
+		threadPool.unQueueChunk(ch);
 	}
 	
 	public int getChunkQueueSize() {
-		return loadList.size();
+		return threadPool.getChunkQueueSize();
 	}
 	
 	public void seek(int x, int y, int z, int renderDistance, int regionRenderDistance) {
@@ -741,12 +689,8 @@ public class ServerWorld {
 		// Be sure to dereference and finalize the maximum of things
 		try {
 			forceSave();
-			
-			for (Thread thread : generatorThreads) {
-				thread.interrupt();
-				thread.join();
-			}
-			generatorThreads = new ArrayList<>();
+
+			threadPool.cleanup();
 			
 			metaChunks = null;
 		} catch (Exception e) {
