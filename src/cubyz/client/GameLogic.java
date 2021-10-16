@@ -43,6 +43,7 @@ import cubyz.world.blocks.CustomBlock;
 import cubyz.world.items.CustomItem;
 import cubyz.world.items.Inventory;
 import cubyz.world.items.Item;
+import cubyz.world.terrain.noise.StaticBlueNoise;
 import cubyz.world.terrain.worldgenerators.LifelandGenerator;
 
 /**
@@ -237,6 +238,14 @@ public class GameLogic implements ClientConnection {
 			System.gc();
 		});
 		lt.start();
+
+		// Load some other resources in the background:
+		new Thread(new Runnable() {
+			@Override
+			public void run() {
+				StaticBlueNoise.load();
+			}
+		}).start();
 	}
 	
 	@Override
