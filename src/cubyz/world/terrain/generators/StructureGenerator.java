@@ -78,8 +78,8 @@ public class StructureGenerator implements Generator {
 			// Uses a blue noise pattern for all structure that shouldn't touch.
 			int[] blueNoise = StaticBlueNoise.getRegionData(chunk.wx - 8, chunk.wz - 8, chunk.getWidth() + 16, chunk.getWidth() + 16);
 			for(int coordinatePair : blueNoise) {
-				int px = (coordinatePair >>> 16) + 8;
-				int pz = (coordinatePair & 0xffff) + 8;
+				int px = coordinatePair >>> 16;
+				int pz = coordinatePair & 0xffff;
 				int wpx = px - 8 + wx;
 				int wpz = pz - 8 + wz;
 				rand.setSeed((wpx*rand1 << 32) ^ wpz*rand2 ^ seed);

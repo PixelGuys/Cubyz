@@ -68,15 +68,15 @@ public final class StaticBlueNoise {
 	 * Takes a subregion of the grid. Corrdinates are returned relative to x and y compressed into 16 bits each.
 	 * @param x
 	 * @param y
-	 * @param width < 2^16
-	 * @param height < 2^16
+	 * @param width < 2¹⁶ - 8
+	 * @param height < 2¹⁶ - 8
 	 * @return (x << 16 | y)
 	 */
 	public static final int[] getRegionData(int x, int y, int width, int height) {
-		int xMin = ((x & ~FEATURE_MASK) - FEATURE_SIZE) >>> FEATURE_SHIFT;
-		int yMin = ((y & ~FEATURE_MASK) - FEATURE_SIZE) >>> FEATURE_SHIFT;
-		int xMax = (x + width & ~FEATURE_MASK) >>> FEATURE_SHIFT;
-		int yMax = (y + height & ~FEATURE_MASK) >>> FEATURE_SHIFT;
+		int xMin = ((x & ~FEATURE_MASK) - FEATURE_SIZE) >> FEATURE_SHIFT;
+		int yMin = ((y & ~FEATURE_MASK) - FEATURE_SIZE) >> FEATURE_SHIFT;
+		int xMax = (x + width & ~FEATURE_MASK) >> FEATURE_SHIFT;
+		int yMax = (y + height & ~FEATURE_MASK) >> FEATURE_SHIFT;
 		int[] result = new int[(xMax - xMin + 1) * (yMax - yMin + 1)];
 		int index = 0;
 		for(int xMap = xMin; xMap <= xMax; xMap++) {
