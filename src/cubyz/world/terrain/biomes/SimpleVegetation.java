@@ -2,6 +2,9 @@ package cubyz.world.terrain.biomes;
 
 import java.util.Random;
 
+import cubyz.api.CubyzRegistries;
+import cubyz.api.Resource;
+import cubyz.utils.json.JsonObject;
 import cubyz.world.Chunk;
 import cubyz.world.blocks.Block;
 import cubyz.world.terrain.MapFragment;
@@ -13,12 +16,20 @@ import cubyz.world.terrain.MapFragment;
 public class SimpleVegetation extends StructureModel {
 	Block block;
 	int height0, deltaHeight;
-	public SimpleVegetation(Block block, float chance, int h0, int dh) {
-		super(chance);
-		this.block = block;
-		height0 = h0;
-		deltaHeight = dh;
+
+	public SimpleVegetation() {
+		super(new Resource("cubyz", "simple_vegetation"), 0);
+		this.block = null;
+		height0 = 0;
+		deltaHeight = 0;
 	}
+	public SimpleVegetation(JsonObject json) {
+		super(new Resource("cubyz", "simple_vegetation"), json.getFloat("chance", 0.5f));
+		this.block = CubyzRegistries.BLOCK_REGISTRY.getByID(json.getString("block", "cubyz:grass"));
+		height0 = json.getInt("height", 1);
+		deltaHeight = json.getInt("height_variation", 0);
+	}
+	
 	@Override
 	public void generate(int x, int z, int h, Chunk chunk, MapFragment map, Random rand) {
 		if(chunk.getVoxelSize() > 2 && (x / chunk.getVoxelSize() * chunk.getVoxelSize() != x || z / chunk.getVoxelSize() * chunk.getVoxelSize() != z)) return;
@@ -33,5 +44,10 @@ public class SimpleVegetation extends StructureModel {
 				}
 			}
 		}
+	}
+
+	@Override
+	public StructureModel loadStructureModel(JsonObject json) {
+		return new SimpleVegetation(json);
 	}
 }

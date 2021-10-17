@@ -12,6 +12,7 @@ import cubyz.world.items.Item;
 import cubyz.world.items.Recipe;
 import cubyz.world.items.tools.Modifier;
 import cubyz.world.terrain.biomes.BiomeRegistry;
+import cubyz.world.terrain.biomes.StructureModel;
 import cubyz.world.terrain.worldgenerators.SurfaceGenerator;
 
 /**
@@ -28,6 +29,7 @@ public class CubyzRegistries {
 	public static final Registry<CommandBase>            COMMAND_REGISTRY        = new Registry<CommandBase>();
 	public static final Registry<Modifier>               TOOL_MODIFIER_REGISTRY  = new Registry<Modifier>();
 	public static final BiomeRegistry                    BIOME_REGISTRY          = new BiomeRegistry();
+	public static final Registry<StructureModel>         STRUCTURE_REGISTRY      = new Registry<StructureModel>();
 	public static final Registry<RotationMode>           ROTATION_MODE_REGISTRY  = new Registry<RotationMode>();
 	public static final Registry<EntityModel>            ENTITY_MODEL_REGISTRY   = new Registry<EntityModel>();
 

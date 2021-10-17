@@ -1,0 +1,22 @@
+{
+	"type" : "DESERT",
+	"minHeight" : 2,
+	"maxHeight" : 40,
+	
+	"hills" : 20,
+	
+	"music" : "EasternThought",
+	
+	"ground_structure" : [
+		"3 to 4 cubyz:sand"
+	],
+	"structures" : [
+		{
+			"id" : "cubyz:simple_vegetation",
+			"block" : "cubyz:cactus",
+			"chance" : 0.01,
+			"height" : 2,
+			"height_variation" : 3
+		}
+	]
+}

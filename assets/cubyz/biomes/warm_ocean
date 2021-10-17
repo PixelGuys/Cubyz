@@ -1,8 +1,0 @@
-type WARM_OCEAN
-height -100 to -2
-ground_structure 2 to 4 cubyz:sand
-roughness 10
-hills 20
-
-structures:
-	cubyz:ground_patch cubyz:gravel 0.002 6 2 2 0.2

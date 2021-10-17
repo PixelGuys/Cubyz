@@ -23,6 +23,10 @@ public class FastList<T> {
 		this(10, type);
 	}
 
+	public FastList(T[] initialArray) {
+		array = initialArray;
+	}
+
 	@SuppressWarnings("unchecked")
 	public void increaseSize(int increment) {
 		T[] newArray = (T[])Array.newInstance(array.getClass().getComponentType(), array.length + increment);

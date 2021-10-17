@@ -5,6 +5,10 @@ import java.util.function.Consumer;
 import cubyz.api.RegistryElement;
 import cubyz.api.Resource;
 import cubyz.utils.datastructures.ChanceObject;
+import cubyz.utils.datastructures.FastList;
+import cubyz.utils.json.JsonArray;
+import cubyz.utils.json.JsonElement;
+import cubyz.utils.json.JsonObject;
 
 /**
  * A climate region with special ground, plants and structures.
@@ -58,11 +62,13 @@ public class Biome extends ChanceObject implements RegistryElement {
 	public final float mountains;
 	public final Resource identifier;
 	public final BlockStructure struct;
-	public final boolean supportsRivers; // Whether the starting point of a river can be in this biome. If false rivers will be able to flow through this biome anyways.
-	public final StructureModel[] vegetationModels; // The first members in this array will get prioritized.
+	/** Whether the starting point of a river can be in this biome. If false rivers will be able to flow through this biome anyways. */
+	public final boolean supportsRivers;
+	/** The first members in this array will get prioritized. */
+	public final StructureModel[] vegetationModels;
 	public Biome[] upperReplacements = new Biome[0];
 	public Biome[] lowerReplacements = new Biome[0];
-	public String preferredMusic = null;
+	public final String preferredMusic;
 	
 	public Biome(Resource id, String type, float min, float max, float roughness, float hills, float mountains, float chance, String music, BlockStructure str, boolean rivers, StructureModel ... models) {
 		super(chance);
@@ -77,6 +83,33 @@ public class Biome extends ChanceObject implements RegistryElement {
 		supportsRivers = rivers;
 		vegetationModels = models;
 		preferredMusic = music;
+	}
+
+	public Biome(Resource id, JsonObject json) {
+		super(json.getFloat("chance", 1));
+		this.type = Type.valueOf(json.getString("type", "grassland").toUpperCase());
+		identifier = id;
+		this.roughness = json.getFloat("roughness", 0);
+		this.hills = json.getFloat("hills", 0);
+		this.mountains = json.getFloat("mountains", 0);
+		minHeight = json.getFloat("minHeight", 0);
+		maxHeight = json.getFloat("maxHeight", 1);
+		supportsRivers = json.getBool("rivers", false);
+		preferredMusic = json.getString("music", null);
+
+		String[] blockStructure = json.getArrayNoNull("ground_structure").getStrings();
+		struct = new BlockStructure(blockStructure);
+
+		JsonArray structures = json.getArrayNoNull("structures");
+		FastList<StructureModel> vegetation = new FastList<StructureModel>(new StructureModel[structures.array.size()]);
+		for(JsonElement elem : structures.array) {
+			if(elem instanceof JsonObject) {
+				StructureModel model = StructureModel.loadStructure((JsonObject) elem);
+				if(model != null)
+					vegetation.add(model);
+			}
+		}
+		vegetationModels = vegetation.toArray();
 	}
 	
 	@Override

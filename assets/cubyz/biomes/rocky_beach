@@ -1,8 +1,0 @@
-type ARCTIC_OCEAN
-height -4 to 6
-ground_structure 2 to 3 cubyz:cobblestone
-chance 0
-
-structures:
-	cubyz:ground_patch cubyz:mossy_cobblestone 0.004 6 2 2 0.2
-	cubyz:ground_patch cubyz:gravel 0.002 6 2 2 0.2

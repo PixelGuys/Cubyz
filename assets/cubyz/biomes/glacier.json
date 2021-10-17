@@ -1,0 +1,16 @@
+{
+	"type" : "GLACIER",
+	"minHeight" : 60,
+	"maxHeight" : 256,
+	
+	"roughness" : 50,
+	"mountains" : 50,
+	"hills" : 50,
+	
+	"ground_structure" : [
+		"3 to 5 cubyz:snow",
+		"2 to 3 cubyz:ice",
+		"0 to 1 cubyz:gravel",
+		"0 to 1 cubyz:cobblestone"
+	],
+}

@@ -1,9 +1,0 @@
-type ARCTIC_OCEAN
-height -100 to -2
-ground_structure 1 to 2 cubyz:cobblestone
-roughness 20
-hills 10
-
-structures:
-	cubyz:ground_patch cubyz:mossy_cobblestone 0.004 6 2 2 0.2
-	cubyz:ground_patch cubyz:gravel 0.002 6 2 2 0.2

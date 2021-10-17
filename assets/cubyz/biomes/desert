@@ -1,8 +1,0 @@
-type DESERT
-height 2 to 40
-ground_structure 3 to 4 cubyz:sand
-hills 20
-music EasternThought
-
-structures:
-	cubyz:simple_vegetation cubyz:cactus 0.01 2 3

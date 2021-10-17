@@ -21,6 +21,9 @@ import cubyz.world.items.tools.Modifier;
 import cubyz.world.items.tools.modifiers.FallingApart;
 import cubyz.world.items.tools.modifiers.Regrowth;
 import cubyz.world.terrain.biomes.Biome;
+import cubyz.world.terrain.biomes.GroundPatch;
+import cubyz.world.terrain.biomes.SimpleTreeModel;
+import cubyz.world.terrain.biomes.SimpleVegetation;
 import cubyz.world.terrain.worldgenerators.FlatlandGenerator;
 import cubyz.world.terrain.worldgenerators.LifelandGenerator;
 import cubyz.world.terrain.worldgenerators.SurfaceGenerator;
@@ -56,6 +59,10 @@ public class BaseMod {
 	@EventHandler(type = "preInit")
 	public void preInit() {
 		registerModifiers(CubyzRegistries.TOOL_MODIFIER_REGISTRY);
+
+		CubyzRegistries.STRUCTURE_REGISTRY.register(new SimpleTreeModel());
+		CubyzRegistries.STRUCTURE_REGISTRY.register(new SimpleVegetation());
+		CubyzRegistries.STRUCTURE_REGISTRY.register(new GroundPatch());
 		
 		// Pre-Init proxy
 		proxy.preInit();

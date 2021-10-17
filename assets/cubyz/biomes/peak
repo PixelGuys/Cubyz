@@ -1,6 +1,0 @@
-type PEAK
-height 120 to 256
-mountains 600
-music DarkTimes
-
-ground_structure 1 to 2 cubyz:snow, 0 to 1 cubyz:ice, 0 to 2 cubyz:cobblestone

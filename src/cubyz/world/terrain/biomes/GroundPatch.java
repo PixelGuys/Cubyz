@@ -2,6 +2,9 @@ package cubyz.world.terrain.biomes;
 
 import java.util.Random;
 
+import cubyz.api.CubyzRegistries;
+import cubyz.api.Resource;
+import cubyz.utils.json.JsonObject;
 import cubyz.world.Chunk;
 import cubyz.world.blocks.Block;
 import cubyz.world.terrain.MapFragment;
@@ -13,14 +16,23 @@ import cubyz.world.terrain.MapFragment;
 public class GroundPatch extends StructureModel {
 	private final Block newGround;
 	private final float width, variation, depth, smoothness;
+
+	public GroundPatch() {
+		super(new Resource("cubyz", "ground_patch"), 0);
+		this.newGround = null;
+		this.width = 0;
+		this.variation = 0;
+		this.depth = 0;
+		this.smoothness = 0;
+	}
 	
-	public GroundPatch(Block newGround, float chance, float width, float variation, float depth, float smoothness) {
-		super(chance);
-		this.newGround = newGround;
-		this.width = width;
-		this.variation = variation;
-		this.depth = depth;
-		this.smoothness = smoothness;
+	public GroundPatch(JsonObject json) {
+		super(new Resource("cubyz", "ground_patch"), json.getFloat("chance", 0.5f));
+		this.newGround = CubyzRegistries.BLOCK_REGISTRY.getByID(json.getString("block", "cubyz:soil"));
+		this.width      = json.getFloat("width", 5);
+		this.variation  = json.getFloat("variation", 1);
+		this.depth      = json.getFloat("depth", 2);
+		this.smoothness = json.getFloat("smoothness", 0);
 	}
 
 	@Override
@@ -61,5 +73,10 @@ public class GroundPatch extends StructureModel {
 				}
 			}
 		}
+	}
+
+	@Override
+	public StructureModel loadStructureModel(JsonObject json) {
+		return new GroundPatch(json);
 	}
 }

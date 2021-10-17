@@ -150,10 +150,11 @@ public class GameLogic implements ClientConnection {
 		ArrayList<BufferedImage> blockTextures = new ArrayList<>();
 		ArrayList<String> blockIDs = new ArrayList<>();
 		for(Block block : blocks) {
-			ResourceUtilities.loadBlockTexturesToBufferedImage(block, blockTextures, blockIDs);
 			if(block instanceof CustomBlock) {
 				CustomBlock ore = (CustomBlock)block;
 				ore.textureProvider.generateTexture(ore, blockTextures, blockIDs);
+			} else {
+				ResourceUtilities.loadBlockTexturesToBufferedImage(block, blockTextures, blockIDs);
 			}
 		}
 		Cubyz.world = world;

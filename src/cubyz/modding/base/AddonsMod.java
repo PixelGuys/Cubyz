@@ -30,11 +30,6 @@ import cubyz.world.items.Item;
 import cubyz.world.items.ItemBlock;
 import cubyz.world.items.Recipe;
 import cubyz.world.terrain.biomes.Biome;
-import cubyz.world.terrain.biomes.BlockStructure;
-import cubyz.world.terrain.biomes.GroundPatch;
-import cubyz.world.terrain.biomes.SimpleTreeModel;
-import cubyz.world.terrain.biomes.SimpleVegetation;
-import cubyz.world.terrain.biomes.StructureModel;
 
 /**
  * Mod used to support add-ons: simple "mods" without any sort of coding required.<br>
@@ -125,7 +120,6 @@ public class AddonsMod {
 	@EventHandler(type = "register:block")
 	public void registerBlocks(Registry<Block> registry) {
 		readAllJsonObjects("blocks", (json, id) -> {
-			System.out.println(id);
 			Block block = new Block(id, json);
 
 			// Ores:
@@ -145,25 +139,27 @@ public class AddonsMod {
 
 			// Block drops:
 			String[] blockDrops = json.getArrayNoNull("drops").getStrings();
-			for(String blockDrop : blockDrops) {
+			for (String blockDrop : blockDrops) {
 				blockDrop = blockDrop.trim();
 				String[] data = blockDrop.split("\\s+");
 				float amount = 1;
 				String name = data[0];
-				if(data.length == 2) {
+				if (data.length == 2) {
 					amount = Float.parseFloat(data[0]);
 					name = data[1];
 				}
-				if(name.equals("auto")) {
+				if (name.equals("auto")) {
 					ItemBlock itemBlock = new ItemBlock(block);
 					block.addBlockDrop(new BlockDrop(itemBlock, amount));
 					items.add(itemBlock);
-				} else if(!name.equals("none")) {
+				} else if (!name.equals("none")) {
 					missingDropsBlock.add(block);
 					missingDropsAmount.add(amount);
 					missingDropsItem.add(name);
 				}
 			}
+
+			// block entities:
 			if (json.has("blockEntity")) {
 				try {
 					block.blockEntity = Class.forName(json.getString("blockEntity", "")).asSubclass(BlockEntity.class);
@@ -176,108 +172,10 @@ public class AddonsMod {
 	}
 	@EventHandler(type = "register:biome")
 	public void registerBiomes(Registry<Biome> reg) {
-		for (File addon : addons) {
-			File biomes = new File(addon, "biomes");
-			if (biomes.exists()) {
-				for (File file : biomes.listFiles()) {
-					if(file.isDirectory()) continue;
-					String id = file.getName();
-					if(id.contains("."))
-						id = id.substring(0, id.indexOf('.'));
-					Resource res = new Resource(addon.getName(), id);
-					ArrayList<BlockStructure.BlockStack> underground = new ArrayList<>();
-					ArrayList<StructureModel> vegetation = new ArrayList<>();
-					
-					float roughness = 0;
-					float hills = 0;
-					float mountains = 0;
-					float minHeight = 0, maxHeight = 1;
-					float chance = 1.0f;
-					boolean supportsRivers = false;
-					String type = "ETERNAL_DARKNESS";
-					String preferredMusic = null;
-					
-					boolean startedStructures = false;
-					try {
-						BufferedReader buf = new BufferedReader(new FileReader(file));
-						String line;
-						int lineNumber = 0;
-						while((line = buf.readLine()) != null) {
-							lineNumber++;
-							line = line.replaceAll("//.*", ""); // Ignore comments with "//".
-							line = line.trim(); // Remove whitespaces before and after the word starts.
-							if(line.length() == 0) continue;
-							if(startedStructures) {
-								// TODO: Proper registry of vegetational and other structures.
-								if(line.startsWith("cubyz:simple_vegetation")) {
-									String [] arguments = line.substring("cubyz:simple_vegetation".length()).trim().split("\\s+");
-									vegetation.add(new SimpleVegetation(CubyzRegistries.BLOCK_REGISTRY.getByID(arguments[0]), Float.parseFloat(arguments[1]), Integer.parseInt(arguments[2]), Integer.parseInt(arguments[3])));
-								} else if(line.startsWith("cubyz:simple_tree")) {
-									String [] arguments = line.substring("cubyz:simple_tree".length()).trim().split("\\s+");
-									vegetation.add(new SimpleTreeModel(CubyzRegistries.BLOCK_REGISTRY.getByID(arguments[0]), CubyzRegistries.BLOCK_REGISTRY.getByID(arguments[1]), CubyzRegistries.BLOCK_REGISTRY.getByID(arguments[2]), Float.parseFloat(arguments[3]), Integer.parseInt(arguments[4]), Integer.parseInt(arguments[5]), arguments[6].toUpperCase()));
-								} else if(line.startsWith("cubyz:ground_patch")) {
-									String [] arguments = line.substring("cubyz:ground_patch".length()).trim().split("\\s+");
-									vegetation.add(new GroundPatch(CubyzRegistries.BLOCK_REGISTRY.getByID(arguments[0]), Float.parseFloat(arguments[1]), Float.parseFloat(arguments[2]), Float.parseFloat(arguments[3]), Float.parseFloat(arguments[4]), Float.parseFloat(arguments[5])));
-								} else {
-									Logger.warning("Could not find structure \"" + line.split("\\s+")[0] + "\" specified in line " + lineNumber + " in file " + file.getPath());
-								}
-							} else {
-								if(line.startsWith("roughness")) {
-									roughness = Float.parseFloat(line.substring(9));
-								} else if(line.startsWith("hills")) {
-									hills = Float.parseFloat(line.substring(5));
-								} else if(line.startsWith("mountains")) {
-									mountains = Float.parseFloat(line.substring(9));
-								} else if(line.startsWith("height")) {
-									String[] heightArguments = line.substring(6).split("to");
-									minHeight = Float.parseFloat(heightArguments[0].trim());
-									maxHeight = Float.parseFloat(heightArguments[1].trim());
-								} else if(line.startsWith("type")) {
-									type = line.substring(4).trim();
-								} else if(line.startsWith("chance")) {
-									chance = Float.parseFloat(line.substring(6).trim());
-								} else if(line.startsWith("rivers")) {
-									supportsRivers = true;
-								} else if(line.startsWith("ground_structure")) {
-									String[] blocks = line.substring(16).split(",");
-									for(int i = 0; i < blocks.length; i++) {
-										String[] parts = blocks[i].trim().split("\\s+");
-										int min = 1;
-										int max = 1;
-										String blockString = parts[0];
-										if(parts.length == 2) {
-											min = max = Integer.parseInt(parts[0]);
-											blockString = parts[1];
-										} else if(parts.length == 4 && parts[1].equalsIgnoreCase("to")) {
-											min = Integer.parseInt(parts[0]);
-											max = Integer.parseInt(parts[2]);
-											blockString = parts[3];
-										}
-										Block block = CubyzRegistries.BLOCK_REGISTRY.getByID(blockString);
-										if(block != null) {
-											underground.add(new BlockStructure.BlockStack(block, min, max));
-										}
-									}
-								} else if (line.startsWith("music")) {
-									preferredMusic = line.substring(6);
-								} else if(line.startsWith("structures:")) {
-									startedStructures = true;
-								} else {
-									Logger.warning("Could not find argument \"" + line.split("\\s+")[0] + "\" specified in line " + lineNumber + " in file " + file.getPath());
-								}
-							}
-						}
-						
-						Biome biome = new Biome(res, type, minHeight, maxHeight, roughness, hills, mountains, chance, preferredMusic, new BlockStructure(underground.toArray(new BlockStructure.BlockStack[0])), supportsRivers, vegetation.toArray(new StructureModel[0]));
-						reg.register(biome);
-						
-						buf.close();
-					} catch(IOException e) {
-						Logger.error(e);
-					}
-				}
-			}
-		}
+		readAllJsonObjects("biomes", (json, id) -> {
+			Biome biome = new Biome(id, json);
+			reg.register(biome);
+		});
 	}
 	
 	public void registerMissingStuff() {

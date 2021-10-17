@@ -2,6 +2,9 @@ package cubyz.world.terrain.biomes;
 
 import java.util.Random;
 
+import cubyz.api.CubyzRegistries;
+import cubyz.api.Resource;
+import cubyz.utils.json.JsonObject;
 import cubyz.world.Chunk;
 import cubyz.world.blocks.Block;
 import cubyz.world.terrain.MapFragment;
@@ -21,14 +24,24 @@ public class SimpleTreeModel extends StructureModel {
 	Block leaves, wood, topWood;
 	int height0, deltaHeight;
 	
-	public SimpleTreeModel(Block leaves, Block wood, Block topWood, float chance, int h0, int dh, String type) {
-		super(chance);
-		this.leaves = leaves;
-		this.wood = wood;
-		this.topWood = topWood;
-		height0 = h0;
-		deltaHeight = dh;
-		this.type = Type.valueOf(type);
+	public SimpleTreeModel() {
+		super(new Resource("cubyz", "simple_tree"), 0);
+		leaves = null;
+		wood = null;
+		topWood = null;
+		height0 = 0;
+		deltaHeight = 0;
+		type = Type.ROUND;
+	}
+
+	public SimpleTreeModel(JsonObject json) {
+		super(new Resource("cubyz", "simple_tree"), json.getFloat("chance", 0.5f));
+		leaves = CubyzRegistries.BLOCK_REGISTRY.getByID(json.getString("leaves", "cubyz:oak_leaves"));
+		wood = CubyzRegistries.BLOCK_REGISTRY.getByID(json.getString("log", "cubyz:oak_log"));
+		topWood = CubyzRegistries.BLOCK_REGISTRY.getByID(json.getString("top", "cubyz:oak_top"));
+		height0 = json.getInt("height", 6);
+		deltaHeight = json.getInt("height_variation", 3);
+		type = Type.valueOf(json.getString("type", "round").toUpperCase());
 	}
 
 	@Override
@@ -52,7 +65,7 @@ public class SimpleTreeModel extends StructureModel {
 			switch(type) {
 				case PYRAMID: {
 					if(chunk.getVoxelSize() <= 2) {
-						for(int py = chunk.startIndex(h); py < h+height; py += chunk.getVoxelSize()) {
+						for(int py = chunk.startIndex(h); py < h + height; py += chunk.getVoxelSize()) {
 							if(chunk.liesInChunk(x, py, z)) {
 								chunk.updateBlockIfDegradable(x, py, z, (py == h + height-1) ? topWood : wood);
 							}
@@ -73,7 +86,7 @@ public class SimpleTreeModel extends StructureModel {
 				}
 				case ROUND: {
 					if(chunk.getVoxelSize() <= 2) {
-						for(int py = chunk.startIndex(h); py < h+height; py += chunk.getVoxelSize()) {
+						for(int py = chunk.startIndex(h); py < h + height; py += chunk.getVoxelSize()) {
 							if(chunk.liesInChunk(x, py, z)) {
 								chunk.updateBlockIfDegradable(x, py, z, (py == h + height-1) ? topWood : wood);
 							}
@@ -127,5 +140,10 @@ public class SimpleTreeModel extends StructureModel {
 				}
 			}
 		}
+	}
+
+	@Override
+	public StructureModel loadStructureModel(JsonObject json) {
+		return new SimpleTreeModel(json);
 	}
 }

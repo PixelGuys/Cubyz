@@ -1,0 +1,14 @@
+{
+	"type" : "TUNDRA",
+	"minHeight" : 2,
+	"maxHeight" : 40,
+	
+	"roughness" : 10,
+	"hills" : 15,
+	"mountains" : 20,
+	
+	"ground_structure" : [
+		"0 to 1 cubyz:grass",
+		"0 to 1 cubyz:gravel"
+	]
+}

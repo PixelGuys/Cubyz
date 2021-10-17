@@ -1,8 +1,0 @@
-type TAIGA
-height 2 to 40
-ground_structure 0 to 1 cubyz:grass, 2 to 3 cubyz:soil
-roughness 10
-hills 10
-
-structures:
-	cubyz:simple_tree cubyz:oak_leaves cubyz:oak_log cubyz:oak_top 0.05 8 5 pyramid

@@ -79,7 +79,7 @@ public class ModLoader {
 			Class<?> cl = mod.getClass();
 			LoadOrder[] orders = cl.getAnnotationsByType(LoadOrder.class);
 			for (LoadOrder order : orders) {
-				if (order.order() == Order.AFTER) {
+				if (order.order() == Order.AFTER && i < mods.indexOf(modIds.get(order.id()))) {
 					mods.remove(i);
 					mods.add(mods.indexOf(modIds.get(order.id()))+1, mod);
 				}

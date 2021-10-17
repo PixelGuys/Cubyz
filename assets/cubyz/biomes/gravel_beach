@@ -1,7 +1,0 @@
-type OCEAN
-height -4 to 6
-ground_structure 2 to 3 cubyz:gravel
-chance 0
-
-structures:
-	cubyz:ground_patch cubyz:mossy_cobblestone 0.001 6 2 2 0.5
