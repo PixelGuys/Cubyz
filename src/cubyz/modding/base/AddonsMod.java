@@ -32,8 +32,7 @@ import cubyz.world.items.Recipe;
 import cubyz.world.terrain.biomes.Biome;
 
 /**
- * Mod used to support add-ons: simple "mods" without any sort of coding required.<br>
- * TODO: Add more comments and maybe make a uniform parser for everything.
+ * Mod used to support add-ons: simple "mods" without any sort of coding required.
  */
 
 @Mod(id = "addons-loader", name = "Addons Loader")
@@ -178,6 +177,9 @@ public class AddonsMod {
 		});
 	}
 	
+	/**
+	 * Takes care of all missing references.
+	 */
 	public void registerMissingStuff() {
 		for(int i = 0; i < missingDropsBlock.size(); i++) {
 			missingDropsBlock.get(i).addBlockDrop(new BlockDrop(CubyzRegistries.ITEM_REGISTRY.getByID(missingDropsItem.get(i)), missingDropsAmount.get(i)));
@@ -198,6 +200,9 @@ public class AddonsMod {
 	}
 	
 	public void registerRecipes(NoIDRegistry<Recipe> recipeRegistry) {
+		// Recipes use a custom parser, that allows for 2 things:
+		// 1. shortcut declaration with "x = y" syntax
+		// 2. Recipes with 2d shapes or shapeless.
 		for (File addon : addons) {
 			File recipes = new File(addon, "recipes");
 			if (recipes.exists()) {
@@ -217,6 +222,7 @@ public class AddonsMod {
 							line = line.replaceAll("//.*", ""); // Ignore comments with "//".
 							line = line.trim(); // Remove whitespaces before and after the word starts.
 							if(line.length() == 0) continue;
+							// shortcuts:
 							if(line.contains("=")) {
 								String[] parts = line.split("=");
 								Item item = CubyzRegistries.ITEM_REGISTRY.getByID(parts[1].replaceAll("\\s",""));
@@ -226,16 +232,19 @@ public class AddonsMod {
 									shortCuts.put(parts[0].replaceAll("\\s",""), CubyzRegistries.ITEM_REGISTRY.getByID(parts[1].replaceAll("\\s",""))); // Remove all whitespaces, wherever they might be. Not necessarily the most robust way, but it should work.
 								}
 							} else if(line.startsWith("shaped")) {
+								// Start of a shaped pattern
 								shaped = true;
 								startedRecipe = true;
 								items.clear();
 								itemsPerRow.clear();
 							} else if(line.startsWith("shapeless")) {
+								// Start of a shapeless pattern
 								shaped = false;
 								startedRecipe = true;
 								items.clear();
 								itemsPerRow.clear();
 							} else if(line.startsWith("result") && startedRecipe && itemsPerRow.size() != 0) {
+								// Parse the result, which is made up of `amount*shortcut`.
 								startedRecipe = false;
 								String result = line.substring(6).replaceAll("\\s", ""); // Remove "result" and all space-likes.
 								int number = 1;
@@ -270,6 +279,7 @@ public class AddonsMod {
 									}
 								}
 							} else if(startedRecipe) {
+								// Parse the actual recipe:
 								String[] words = line.split("\\s+"); // Split into sections that are divided by any number of whitespace characters.
 								itemsPerRow.add(words.length);
 								for(int i = 0; i < words.length; i++) {
