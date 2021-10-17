@@ -1,7 +1,5 @@
 package cubyz.world.blocks;
 
-import java.util.Properties;
-
 import org.joml.Vector3i;
 
 import cubyz.Logger;
@@ -9,6 +7,7 @@ import cubyz.api.CubyzRegistries;
 import cubyz.api.RegistryElement;
 import cubyz.api.Resource;
 import cubyz.client.ClientOnly;
+import cubyz.utils.json.JsonObject;
 import cubyz.world.ServerWorld;
 import cubyz.world.items.BlockDrop;
 import cubyz.world.items.Inventory;
@@ -66,22 +65,22 @@ public class Block implements RegistryElement {
 		this.hardness = hardness;
 		this.breakingPower = breakingPower;
 	}
-	
-	public Block(Resource id, Properties props, String bc) {
+
+	public Block(Resource id, JsonObject json) {
 		this.id = id;
-		breakingPower = Float.parseFloat(props.getProperty("breakingPower", "0"));
-		hardness = Float.parseFloat(props.getProperty("hardness", "1"));
-		blockClass = BlockClass.valueOf(bc);
-		light = Integer.decode(props.getProperty("emittedLight", "0"));
-		absorption = Integer.decode(props.getProperty("absorbedLight", "0"));
-		lightingTransparent = props.getProperty("absorbedLight", "").length() != 0;
-		degradable = props.getProperty("degradable", "no").equalsIgnoreCase("yes");
-		selectable = props.getProperty("selectable", "yes").equalsIgnoreCase("yes");
-		solid = props.getProperty("solid", "yes").equalsIgnoreCase("yes");
-		gui = props.getProperty("GUI", null);
-		mode = CubyzRegistries.ROTATION_MODE_REGISTRY.getByID(props.getProperty("rotation", "cubyz:no_rotation"));
-		transparent = props.getProperty("transparent", "no").equalsIgnoreCase("yes");
-		viewThrough = props.getProperty("viewThrough", "no").equalsIgnoreCase("yes") || transparent;
+		breakingPower = json.getFloat("breakingPower", 0);
+		hardness = json.getFloat("hardness", 1);
+		blockClass = BlockClass.valueOf(json.getString("class", "STONE").toUpperCase());
+		light = json.getInt("emittedLight", 0);
+		absorption = json.getInt("absorbedLight", 0);
+		lightingTransparent = json.has("absorbedLight");
+		degradable = json.getBool("degradable", false);
+		selectable = json.getBool("selectable", true);
+		solid = json.getBool("solid", true);
+		gui = json.getString("GUI", null);
+		mode = CubyzRegistries.ROTATION_MODE_REGISTRY.getByID(json.getString("rotation", "cubyz:no_rotation"));
+		transparent = json.getBool("transparent", false);
+		viewThrough = json.getBool("viewThrough", false) || transparent;
 		blockDrops = new BlockDrop[0];
 	}
 	

@@ -1,0 +1,12 @@
+{
+	"class" : "wood",
+	"hardness" : 7.5,
+	"drops" : [
+		"auto"
+	],
+	"GUI" : "cubyz:workbench",
+	"model" : "cubyz:block.obj",
+	"texture" : "cubyz:workbench_side",
+	"texture_top" : "cubyz:workbench_top",
+	"texture_bottom" : "cubyz:workbench_top"
+}

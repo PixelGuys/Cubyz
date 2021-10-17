@@ -1,6 +1,0 @@
-class stone
-hardness 25
-drop auto
-
-model cubyz:block.obj
-texture cubyz:cobblestone

@@ -1,0 +1,11 @@
+{
+	"class" : "sand",
+	"hardness" : 6.5,
+	"drops" : [
+		"auto"
+	],
+	"rotation" : "cubyz:stackable",
+	"model" : "cubyz:block.obj",
+	"texture" : "cubyz:snow",
+	"blockEntity" : "cubyz.modding.base.MeltableBlockEntity"
+}

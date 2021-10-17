@@ -2,11 +2,9 @@ package cubyz.utils;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Properties;
 
 import javax.imageio.ImageIO;
 
@@ -56,18 +54,8 @@ public class ResourceUtilities {
 	
 	// TODO: Take care about Custom Blocks.
 	public static void loadBlockTexturesToBufferedImage(Block block, ArrayList<BufferedImage> textures, ArrayList<String> ids) {
-		String path = "assets/"+block.getRegistryID().getMod()+"/blocks/" + block.getRegistryID().getID();
-		File file = new File(path);
-		if(!file.exists()) return;
-		Properties props = new Properties();
-		try {
-			FileReader reader = new FileReader(file);
-			props.load(reader);
-			reader.close();
-		} catch (IOException e) {
-			Logger.error(e);
-			return;
-		}
+		String path = "assets/"+block.getRegistryID().getMod()+"/blocks/" + block.getRegistryID().getID() + ".json";
+		JsonObject json = JsonParser.parseObjectFromFile(path);
 		String[] sideNames = new String[6];
 		sideNames[Neighbors.DIR_DOWN] = "bottom";
 		sideNames[Neighbors.DIR_UP] = "top";
@@ -77,7 +65,7 @@ public class ResourceUtilities {
 		sideNames[Neighbors.DIR_NEG_Z] = "back";
 		outer:
 		for(int i = 0; i < 6; i++) {
-			String resource = props.getProperty("texture_"+sideNames[i], null);
+			String resource = json.getString("texture_"+sideNames[i], null);
 			if(resource != null) {
 				Resource texture = new Resource(resource);
 				path = "assets/" + texture.getMod() + "/blocks/textures/" + texture.getID() + ".png";
@@ -101,13 +89,9 @@ public class ResourceUtilities {
 				block.textureIndices[i] = -1;
 			}
 		}
-		String resource = props.getProperty("texture", null); // Use this resource on every remaining side.
-		if(resource != null) {
-			Resource texture = new Resource(resource);
-			path = "assets/" + texture.getMod() + "/blocks/textures/" + texture.getID() + ".png";
-		} else {
-			path = "assets/cubyz/blocks/textures/undefined.png";
-		}
+		Resource resource = new Resource(json.getString("texture", "cubyz:undefined")); // Use this resource on every remaining side.
+		path = "assets/" + resource.getMod() + "/blocks/textures/" + resource.getID() + ".png";
+
 		// Test if it's already in the list:
 		for(int j = 0; j < ids.size(); j++) {
 			if(ids.get(j).equals(path)) {

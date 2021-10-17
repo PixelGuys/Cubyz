@@ -1,0 +1,9 @@
+{
+	"class" : "wood",
+	"hardness" : 7,
+	"drops" : [
+		"auto"
+	],
+	"model" : "cubyz:block.obj",
+	"texture" : "cubyz:oak_planks"
+}

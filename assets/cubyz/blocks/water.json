@@ -1,0 +1,12 @@
+{
+	"class" : "fluid",
+	"drops" : [
+		"auto"
+	],
+	"selectable" : false,
+	"solid" : false,
+	"transparent" : true,
+	"absorbedLight" : 0x17171100, 
+	"model" : "cubyz:block.obj",
+	"texture" : "cubyz:water"
+}

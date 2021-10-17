@@ -1,0 +1,19 @@
+{
+	"class" : "stone",
+	"hardness" : 40,
+	"breakingPower" : 1,
+	"ore" : {
+		"veins" : 10,
+		"size" : 100,
+		"height" : 128,
+		"density" : 1.0,
+		"sources" : [
+			"cubyz:stone"
+		]
+	},
+	"drops" : [
+		"cubyz:coal"
+	],
+	"model" : "cubyz:block.obj",
+	"texture" : "cubyz:coal_ore"
+}

@@ -59,6 +59,16 @@ public class JsonArray implements JsonElement {
 			defaultValues[i] = array.get(i).getStringValue(defaultValues[i]);
 		}
 	}
+	/**
+	 * Fills a new array with values. Only works if the type of `this` is JSON_ARRAY.
+	 */
+	public String[] getStrings() {
+		String[] stringArray = new String[array.size()];
+		for(int i = 0; i < array.size(); i++) {
+			stringArray[i] = array.get(i).getStringValue("");
+		}
+		return stringArray;
+	}
 
 	/**
 	 * Adds the given array into `this`.

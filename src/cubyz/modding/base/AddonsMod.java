@@ -6,7 +6,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Properties;
+import java.util.function.BiConsumer;
 
 import cubyz.Logger;
 import cubyz.api.CubyzRegistries;
@@ -78,101 +78,101 @@ public class AddonsMod {
 			}
 		}
 	}
-	
-	@EventHandler(type = "register:item")
-	public void registerItems(Registry<Item> registry) {
-		for (File addon : addons) {
-			File items = new File(addon, "items");
-			if (items.exists()) {
-				for (File file : items.listFiles()) {
-					if(file.isDirectory()) continue;
-					JsonObject json = JsonParser.parseObjectFromFile(file.getPath());
-					
-					String id = file.getName();
-					if(id.contains("."))
-						id = id.substring(0, id.indexOf('.'));
-					id = addon.getName() + ":" + id;
 
-					Item item;
-					if(json.map.containsKey("food")) {
-						item = new Consumable(new Resource(id), json);
-					} else {
-						item = new Item(new Resource(id), json);
-					}
-					item.setTexture(json.getString("texture", "default.png"), addon.getName());
-					registry.register(item);
+	/**
+	 * Reads all json files inside the `folder` in every addon.
+	 * @param folder
+	 * @param consumer function that is called for all objects found.
+	 */
+	public void readAllJsonObjects(String folder, BiConsumer<JsonObject, Resource> consumer) {
+		// Go through all mods:
+		for (File addon : addons) {
+			// Find the subfolder:
+			File subfolder = new File(addon, folder);
+			if (subfolder.exists()) {
+				// Go through all files in the subfolder:
+				for (File file : subfolder.listFiles()) {
+					if (file.isDirectory()) continue;
+					JsonObject json = JsonParser.parseObjectFromFile(file.getPath());
+					// Determine the ID from the file names:
+					String fileName = file.getName();
+					if (fileName.contains("."))
+						fileName = fileName.substring(0, fileName.lastIndexOf('.'));
+					Resource id = new Resource(addon.getName(), fileName);
+
+					consumer.accept(json, id);
 				}
 			}
 		}
+	}
+	
+	@EventHandler(type = "register:item")
+	public void registerItems(Registry<Item> registry) {
+		readAllJsonObjects("items", (json, id) -> {
+			Item item;
+			if (json.map.containsKey("food")) {
+				item = new Consumable(id, json);
+			} else {
+				item = new Item(id, json);
+			}
+			item.setTexture(json.getString("texture", "default.png"), id.getMod());
+			registry.register(item);
+		});
+		// Register the block items:
 		registry.registerAll(items);
 	}
 	
 	@EventHandler(type = "register:block")
 	public void registerBlocks(Registry<Block> registry) {
-		for (File addon : addons) {
-			File blocks = new File(addon, "blocks");
-			if (blocks.exists()) {
-				for (File file : blocks.listFiles()) {
-					if(file.isDirectory()) continue;
-					Properties props = new Properties();
-					try {
-						FileReader reader = new FileReader(file);
-						props.load(reader);
-						reader.close();
-					} catch (IOException e) {
-						Logger.error(e);
-					}
-					
-					Block block;
-					String id = file.getName();
-					if(id.contains("."))
-						id = id.substring(0, id.indexOf('.'));
-					String blockClass = props.getProperty("class", "STONE").toUpperCase();
-					String oreProperties = props.getProperty("ore");
-					block = new Block(new Resource(addon.getName(), id), props, blockClass);
-					if(oreProperties != null) { // Ores:
-						// Extract the ids:
-						String[] oreIDs = oreProperties.split(" ");
-						float veins = Float.parseFloat(props.getProperty("veins", "0"));
-						float size = Float.parseFloat(props.getProperty("size", "0"));
-						int height = Integer.parseInt(props.getProperty("height", "0"));
-						float density = Float.parseFloat(props.getProperty("density", "0.5"));
-						Ore ore = new Ore(block, new Block[oreIDs.length], height, veins, size, density);
-						ores.add(ore);
-						CubyzRegistries.ORE_REGISTRY.register(ore);
-						oreContainers.add(oreIDs);
-					}
-					String blockDrops = props.getProperty("drop", "none").toLowerCase();
-					for(String blockDrop : blockDrops.split(",")) {
-						blockDrop = blockDrop.trim();
-						String[] data = blockDrop.split("\\s+");
-						float amount = 1;
-						String name = data[0];
-						if(data.length == 2) {
-							amount = Float.parseFloat(data[0]);
-							name = data[1];
-						}
-						if(name.equals("auto")) {
-							ItemBlock itemBlock = new ItemBlock(block);
-							block.addBlockDrop(new BlockDrop(itemBlock, amount));
-							items.add(itemBlock);
-						} else if(!name.equals("none")) {
-							missingDropsBlock.add(block);
-							missingDropsAmount.add(amount);
-							missingDropsItem.add(name);
-						}
-					}
-					if (props.containsKey("blockEntity")) {
-						try {
-							block.blockEntity = Class.forName(props.getProperty("blockEntity")).asSubclass(BlockEntity.class);
-						} catch (ClassNotFoundException e) {
-							Logger.error(e);
-						}
-					}
-					registry.register(block);
+		readAllJsonObjects("blocks", (json, id) -> {
+			System.out.println(id);
+			Block block = new Block(id, json);
+
+			// Ores:
+			JsonObject oreProperties = json.getObject("ore");
+			if (oreProperties != null) {
+				// Extract the ids:
+				String[] oreIDs = oreProperties.getArrayNoNull("sources").getStrings();
+				float veins = json.getFloat("veins", 0);
+				float size = json.getFloat("size", 0);
+				int height = json.getInt("height", 0);
+				float density = json.getFloat("density", 0.5f);
+				Ore ore = new Ore(block, new Block[oreIDs.length], height, veins, size, density);
+				ores.add(ore);
+				CubyzRegistries.ORE_REGISTRY.register(ore);
+				oreContainers.add(oreIDs);
+			}
+
+			// Block drops:
+			String[] blockDrops = json.getArrayNoNull("drops").getStrings();
+			for(String blockDrop : blockDrops) {
+				blockDrop = blockDrop.trim();
+				String[] data = blockDrop.split("\\s+");
+				float amount = 1;
+				String name = data[0];
+				if(data.length == 2) {
+					amount = Float.parseFloat(data[0]);
+					name = data[1];
+				}
+				if(name.equals("auto")) {
+					ItemBlock itemBlock = new ItemBlock(block);
+					block.addBlockDrop(new BlockDrop(itemBlock, amount));
+					items.add(itemBlock);
+				} else if(!name.equals("none")) {
+					missingDropsBlock.add(block);
+					missingDropsAmount.add(amount);
+					missingDropsItem.add(name);
 				}
 			}
-		}
+			if (json.has("blockEntity")) {
+				try {
+					block.blockEntity = Class.forName(json.getString("blockEntity", "")).asSubclass(BlockEntity.class);
+				} catch (ClassNotFoundException e) {
+					Logger.error(e);
+				}
+			}
+			registry.register(block);
+		});
 	}
 	@EventHandler(type = "register:biome")
 	public void registerBiomes(Registry<Biome> reg) {
