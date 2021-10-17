@@ -96,7 +96,8 @@ public class Registry<T extends RegistryElement> {
 	public T getByID(String id) {
 		T obj = hashMap.get(id);
 		if(obj == null) {
-			Logger.warning("Couldn't find registry element with name: "+id);
+			if(!id.equals("empty:empty") && !id.equals("null")) // Don't warn if it was intentional.
+				Logger.warning("Couldn't find registry element with name: "+id);
 		}
 		return obj;
 	}
@@ -104,7 +105,8 @@ public class Registry<T extends RegistryElement> {
 	public T getByID(Resource id) {
 		T obj = hashMap.get(id.toString());
 		if(obj == null) {
-			Logger.warning("Couldn't find registry element with name: "+id);
+			if(!id.equals(new Resource("empty", "empty"))) // Don't warn if it was intentional.
+				Logger.warning("Couldn't find registry element with name: "+id);
 		}
 		return obj;
 	}
