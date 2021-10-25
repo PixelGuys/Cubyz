@@ -39,19 +39,17 @@ void main()
 
 	// Only draw faces that are inside the bounds. The others will be clipped using GL_CLIP_DISTANCE0:
 	vec3 globalPosition = vec3(x, y, z) + modelPosition;
-	globalPosition -= normals[normal]*0.5; // Prevent showing faces that are outside this chunkpiece.
-	if(globalPosition.x < lowerBounds.x || globalPosition.x > upperBounds.x
-			|| globalPosition.y < lowerBounds.y || globalPosition.y > upperBounds.y
-			|| globalPosition.z < lowerBounds.z || globalPosition.z > upperBounds.z) {
-		gl_ClipDistance[0] = -1/0.0;
-	} else {
-		gl_ClipDistance[0] = 1;
-	}
-	
-	globalPosition = vec3(x, y, z) + modelPosition;
 	
 	vec4 mvPos = viewMatrix*vec4(globalPosition, 1);
 	gl_Position = projectionMatrix*mvPos;
 	outNormal = normals[normal];
     mvVertexPos = mvPos.xyz;
+    
+    // Check if this vertex is outside the bounds that should be rendered:
+	globalPosition -= normals[normal]*0.5; // Prevent showing faces that are outside this chunkpiece.
+	if(globalPosition.x < lowerBounds.x || globalPosition.x > upperBounds.x
+			|| globalPosition.y < lowerBounds.y || globalPosition.y > upperBounds.y
+			|| globalPosition.z < lowerBounds.z || globalPosition.z > upperBounds.z) {
+		gl_Position.z = -1/0.0;
+	}
 }

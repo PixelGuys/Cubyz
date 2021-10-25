@@ -2,7 +2,6 @@ package cubyz.rendering;
 
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL13.*;
-import static org.lwjgl.opengl.GL30.*;
 import static org.lwjgl.system.MemoryStack.stackPush;
 import static org.lwjgl.system.MemoryUtil.NULL;
 
@@ -276,7 +275,6 @@ public abstract class Window {
 		glCullFace(GL_BACK);
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		glEnable(GL_CLIP_DISTANCE0);
 		// TODO use OpenGL multisampling: https://www.khronos.org/opengl/wiki/Multisampling or GLFW_SAMPLES
 	}
 	
