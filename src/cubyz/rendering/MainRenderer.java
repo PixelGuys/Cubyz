@@ -13,7 +13,6 @@ import org.joml.Vector3f;
 import org.joml.Vector4f;
 
 import cubyz.Logger;
-import cubyz.api.CubyzRegistries;
 import cubyz.client.ChunkMesh;
 import cubyz.client.ClientSettings;
 import cubyz.client.Cubyz;
@@ -26,14 +25,10 @@ import cubyz.gui.input.Keyboard;
 import cubyz.utils.Utils;
 import cubyz.utils.datastructures.FastList;
 import cubyz.world.ServerWorld;
-import cubyz.world.Neighbors;
 import cubyz.world.NormalChunk;
 import cubyz.world.blocks.Block;
 import cubyz.world.blocks.BlockInstance;
-import cubyz.world.entity.ChunkEntityManager;
-import cubyz.world.entity.ItemEntityManager;
 import cubyz.world.entity.Player;
-import cubyz.world.items.ItemBlock;
 
 /**
  * Renderer that should be used when easyLighting is enabled.
@@ -41,21 +36,6 @@ import cubyz.world.items.ItemBlock;
  */
 
 public class MainRenderer {
-	public static class BlockDropUniforms {
-		public static int loc_projectionMatrix;
-		public static int loc_viewMatrix;
-		public static int loc_texture_sampler;
-		public static int loc_fog_activ;
-		public static int loc_fog_color;
-		public static int loc_fog_density;
-		public static int loc_light;
-		public static int loc_texPosX;
-		public static int loc_texNegX;
-		public static int loc_texPosY;
-		public static int loc_texNegY;
-		public static int loc_texPosZ;
-		public static int loc_texNegZ;
-	}
 	public static class DeferredUniforms {
 		public static int loc_position;
 		public static int loc_color;
@@ -72,7 +52,6 @@ public class MainRenderer {
 	/**The number of milliseconds after which no more chunk meshes are created. This allows the game to run smoother on movement.*/
 	private static int maximumMeshTime = 8;
 
-	private ShaderProgram blockDropShader;
 	private ShaderProgram fogShader;
 	private ShaderProgram deferredRenderPassShader;
 
@@ -115,11 +94,6 @@ public class MainRenderer {
 	}
 
 	public void loadShaders() throws Exception {
-		if(blockDropShader != null)
-			blockDropShader.cleanup();
-		blockDropShader = new ShaderProgram(Utils.loadResource(shaders + "/block_drop.vs"),
-				Utils.loadResource(shaders + "/block_drop.fs"),
-				BlockDropUniforms.class);
 		if(fogShader != null)
 			fogShader.cleanup();
 		fogShader = new ShaderProgram(Utils.loadResource(shaders + "/fog_vertex.vs"),
@@ -134,6 +108,7 @@ public class MainRenderer {
 		ReducedChunkMesh.init(shaders);
 		NormalChunkMesh.init(shaders);
 		EntityRenderer.init(shaders);
+		BlockDropRenderer.init(shaders);
 		
 		System.gc();
 	}
@@ -369,55 +344,7 @@ public class MainRenderer {
 			
 			EntityRenderer.render(ambientLight, directionalLight, localPlayer, playerPosition);
 
-			// Render item entities:
-			Meshes.blockTextureArray.bind();
-			blockDropShader.bind();
-			blockDropShader.setUniform(BlockDropUniforms.loc_fog_activ, Cubyz.fog.isActive());
-			blockDropShader.setUniform(BlockDropUniforms.loc_fog_color, Cubyz.fog.getColor());
-			blockDropShader.setUniform(BlockDropUniforms.loc_fog_density, Cubyz.fog.getDensity());
-			blockDropShader.setUniform(BlockDropUniforms.loc_projectionMatrix, Window.getProjectionMatrix());
-			blockDropShader.setUniform(BlockDropUniforms.loc_texture_sampler, 0);
-			for(ChunkEntityManager chManager : Cubyz.world.getEntityManagers()) {
-				NormalChunk chunk = chManager.chunk;
-				Vector3d min = chunk.getMin().sub(playerPosition);
-				Vector3d max = chunk.getMax().sub(playerPosition);
-				if (!chunk.isLoaded() || !frustumInt.testAab((float)min.x, (float)min.y, (float)min.z, (float)max.x, (float)max.y, (float)max.z))
-					continue;
-				ItemEntityManager manager = chManager.itemEntityManager;
-				for(int i = 0; i < manager.size; i++) {
-					int index = i;
-					int index3 = 3*i;
-					int x = (int)(manager.posxyz[index3] + 1.0f);
-					int y = (int)(manager.posxyz[index3+1] + 1.0f);
-					int z = (int)(manager.posxyz[index3+2] + 1.0f);
-					Mesh mesh = null;
-					Block block;
-					if(manager.itemStacks[i].getItem() instanceof ItemBlock) {
-						block = ((ItemBlock)manager.itemStacks[i].getItem()).getBlock();
-						mesh = Meshes.blockMeshes.get(block);
-						mesh.getMaterial().setTexture(null);
-					} else {
-						block = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:diamond_ore");
-						mesh = Meshes.blockMeshes.get(block);
-						mesh.getMaterial().setTexture(null);
-					}
-					blockDropShader.setUniform(BlockDropUniforms.loc_texNegX, block.textureIndices[Neighbors.DIR_NEG_X]);
-					blockDropShader.setUniform(BlockDropUniforms.loc_texPosX, block.textureIndices[Neighbors.DIR_POS_X]);
-					blockDropShader.setUniform(BlockDropUniforms.loc_texNegY, block.textureIndices[Neighbors.DIR_DOWN]);
-					blockDropShader.setUniform(BlockDropUniforms.loc_texPosY, block.textureIndices[Neighbors.DIR_UP]);
-					blockDropShader.setUniform(BlockDropUniforms.loc_texNegZ, block.textureIndices[Neighbors.DIR_NEG_Z]);
-					blockDropShader.setUniform(BlockDropUniforms.loc_texPosZ, block.textureIndices[Neighbors.DIR_POS_Z]);
-					if(mesh != null) {
-						blockDropShader.setUniform(BlockDropUniforms.loc_light, Cubyz.world.getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
-						
-						mesh.renderOne(() -> {
-							Vector3d position = manager.getPosition(index);
-							Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(new Vector3f((float)position.x, (float)position.y, (float)position.z), manager.getRotation(index), ItemEntityManager.diameter), Camera.getViewMatrix());
-							blockDropShader.setUniform(BlockDropUniforms.loc_viewMatrix, modelViewMatrix);
-						});
-					}
-				}
-			}
+			BlockDropRenderer.render(frustumInt, ambientLight, directionalLight, blocks, playerPosition);
 			
 			NormalChunkMesh.shader.bind();
 			NormalChunkMesh.shader.setUniform(NormalChunkMesh.loc_fog_activ, 0); // manually disable the fog

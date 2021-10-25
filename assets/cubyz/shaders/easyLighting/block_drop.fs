@@ -2,6 +2,7 @@
 
 in vec3 outTexCoord;
 in vec3 mvVertexPos;
+in vec3 outLight;
 
 out vec4 fragColor;
 
@@ -13,7 +14,6 @@ struct Fog {
 
 uniform sampler2DArray texture_sampler;
 uniform Fog fog;
-uniform vec3 light;
 
 vec4 ambientC;
 
@@ -32,7 +32,7 @@ vec4 calcFog(vec3 pos, vec4 color, Fog fog) {
 void main() {
 	setupColors(outTexCoord);
 	
-	fragColor = ambientC*vec4(light, 1);
+	fragColor = ambientC*vec4(outLight, 1);
 	
 	if (fog.activ) {
 		fragColor = calcFog(mvVertexPos, fragColor, fog);

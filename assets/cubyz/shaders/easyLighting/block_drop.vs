@@ -7,9 +7,14 @@ layout (location=2)  in vec3 vertexNormal;
 out vec3 outTexCoord;
 out vec3 mvVertexPos;
 out float outSelected;
+out vec3 outLight;
 
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
+
+uniform int light;
+uniform vec3 ambientLight;
+uniform vec3 directionalLight;
 
 uniform int texPosX;
 uniform int texNegX;
@@ -17,6 +22,18 @@ uniform int texPosY;
 uniform int texNegY;
 uniform int texPosZ;
 uniform int texNegZ;
+
+vec3 calcLight(int srgb) {
+	float s = (srgb >> 24) & 255;
+	float r = (srgb >> 16) & 255;
+	float g = (srgb >> 8) & 255;
+	float b = (srgb >> 0) & 255;
+	s = s*(1 - dot(directionalLight, vertexNormal));
+	r = max(s*ambientLight.x, r);
+	g = max(s*ambientLight.y, g);
+	b = max(s*ambientLight.z, b);
+	return vec3(r, g, b);
+}
 
 void main()
 {
@@ -38,6 +55,7 @@ void main()
 	} else {
 		texture = texNegX;
 	}
+	outLight = calcLight(light)/255;
     outTexCoord = vec3(texCoord, float(texture));
     mvVertexPos = mvPos.xyz;
 }
