@@ -80,7 +80,6 @@ public class Game {
 		renderThread.setPriority(Thread.MAX_PRIORITY);
 		loop();
 		GameLauncher.logic.cleanup();
-		GameLauncher.renderer.cleanup();
 	}
 	
 	public void exit() {

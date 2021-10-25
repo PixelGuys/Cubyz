@@ -106,9 +106,13 @@ public class NormalChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 	public static ShaderProgram transparentShader;
 
 	public static void init(String shaderFolder) throws Exception {
+		if(shader != null)
+			shader.cleanup();
 		shader = new ShaderProgram(Utils.loadResource(shaderFolder + "/block_vertex.vs"),
 				Utils.loadResource(shaderFolder + "/block_fragment.fs"),
 				NormalChunkMesh.class);
+		if(transparentShader != null)
+			transparentShader.cleanup();
 		transparentShader = new ShaderProgram(Utils.loadResource(shaderFolder + "/transparent_vertex.vs"),
 				Utils.loadResource(shaderFolder + "/transparent_fragment.fs"),
 				TransparentUniforms.class);

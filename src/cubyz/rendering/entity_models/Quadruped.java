@@ -9,7 +9,7 @@ import org.joml.Vector3f;
 import cubyz.api.Resource;
 import cubyz.client.Cubyz;
 import cubyz.client.entity.ClientEntity;
-import cubyz.rendering.MainRenderer;
+import cubyz.rendering.EntityRenderer;
 import cubyz.rendering.Material;
 import cubyz.rendering.Mesh;
 import cubyz.rendering.ShaderProgram;
@@ -416,7 +416,7 @@ public class Quadruped implements EntityModel {
 		pos.y += legHeight/2; // Adjust the body position by the height of the legs.
 		body.renderOne(() -> {
 			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(new Vector3f((float)pos.x, (float)pos.y, (float)pos.z), rotation, 1), viewMatrix);
-			((ShaderProgram)entityShader).setUniform(MainRenderer.EntityUniforms.loc_viewMatrix, modelViewMatrix);
+			((ShaderProgram)entityShader).setUniform(EntityRenderer.loc_viewMatrix, modelViewMatrix);
 		});
 		double xNorm = ent.velocity.x/Math.sqrt(ent.velocity.x*ent.velocity.x + ent.velocity.z*ent.velocity.z);
 		double zNorm = ent.velocity.z/Math.sqrt(ent.velocity.x*ent.velocity.x + ent.velocity.z*ent.velocity.z);
@@ -442,7 +442,7 @@ public class Quadruped implements EntityModel {
 		rotation.z = legAngle1;
 		leg.renderOne(() -> {
 			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(new Vector3f((float)pos.x, (float)pos.y, (float)pos.z), rotation, 1), viewMatrix);
-			((ShaderProgram)entityShader).setUniform(MainRenderer.EntityUniforms.loc_viewMatrix, modelViewMatrix);
+			((ShaderProgram)entityShader).setUniform(EntityRenderer.loc_viewMatrix, modelViewMatrix);
 		});
 		// Front side2:
 		pos.x += zNorm*width;
@@ -450,7 +450,7 @@ public class Quadruped implements EntityModel {
 		rotation.z = movementPattern == MovementPattern.STABLE ? legAngle2 : legAngle1;
 		leg.renderOne(() -> {
 			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(new Vector3f((float)pos.x, (float)pos.y, (float)pos.z), rotation, 1), viewMatrix);
-			((ShaderProgram)entityShader).setUniform(MainRenderer.EntityUniforms.loc_viewMatrix, modelViewMatrix);
+			((ShaderProgram)entityShader).setUniform(EntityRenderer.loc_viewMatrix, modelViewMatrix);
 		});
 		// Back side2:
 		pos.x += -xNorm*length;
@@ -458,7 +458,7 @@ public class Quadruped implements EntityModel {
 		rotation.z = movementPattern == MovementPattern.STABLE ? legAngle1 : legAngle2;
 		leg.renderOne(() -> {
 			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(new Vector3f((float)pos.x, (float)pos.y, (float)pos.z), rotation, 1), viewMatrix);
-			((ShaderProgram)entityShader).setUniform(MainRenderer.EntityUniforms.loc_viewMatrix, modelViewMatrix);
+			((ShaderProgram)entityShader).setUniform(EntityRenderer.loc_viewMatrix, modelViewMatrix);
 		});
 		// Back side1:
 		pos.x += -zNorm*width;
@@ -466,7 +466,7 @@ public class Quadruped implements EntityModel {
 		rotation.z = legAngle2;
 		leg.renderOne(() -> {
 			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(new Vector3f((float)pos.x, (float)pos.y, (float)pos.z), rotation, 1), viewMatrix);
-			((ShaderProgram)entityShader).setUniform(MainRenderer.EntityUniforms.loc_viewMatrix, modelViewMatrix);
+			((ShaderProgram)entityShader).setUniform(EntityRenderer.loc_viewMatrix, modelViewMatrix);
 		});
 		
 		// Head:
@@ -475,7 +475,7 @@ public class Quadruped implements EntityModel {
 		pos.z += zNorm*length + zNorm*headLength/2 - xNorm*width/2;
 		head.renderOne(() -> {
 			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(new Vector3f((float)pos.x, (float)pos.y, (float)pos.z), rotation, 1), viewMatrix);
-			((ShaderProgram)entityShader).setUniform(MainRenderer.EntityUniforms.loc_viewMatrix, modelViewMatrix);
+			((ShaderProgram)entityShader).setUniform(EntityRenderer.loc_viewMatrix, modelViewMatrix);
 		});
 		
 	}

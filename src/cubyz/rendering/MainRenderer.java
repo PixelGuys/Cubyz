@@ -21,8 +21,7 @@ import cubyz.client.GameLauncher;
 import cubyz.client.Meshes;
 import cubyz.client.NormalChunkMesh;
 import cubyz.client.ReducedChunkMesh;
-import cubyz.client.entity.ClientEntity;
-import cubyz.client.entity.ClientEntityManager;
+import cubyz.client.entity.ClientPlayer;
 import cubyz.gui.input.Keyboard;
 import cubyz.utils.Utils;
 import cubyz.utils.datastructures.FastList;
@@ -32,10 +31,8 @@ import cubyz.world.NormalChunk;
 import cubyz.world.blocks.Block;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.entity.ChunkEntityManager;
-import cubyz.world.entity.CustomMeshProvider;
 import cubyz.world.entity.ItemEntityManager;
 import cubyz.world.entity.Player;
-import cubyz.world.entity.CustomMeshProvider.MeshType;
 import cubyz.world.items.ItemBlock;
 
 /**
@@ -44,18 +41,6 @@ import cubyz.world.items.ItemBlock;
  */
 
 public class MainRenderer {
-	public static class EntityUniforms {
-		public static int loc_projectionMatrix;
-		public static int loc_viewMatrix;
-		public static int loc_texture_sampler;
-		public static int loc_materialHasTexture;
-		public static int loc_fog_activ;
-		public static int loc_fog_color;
-		public static int loc_fog_density;
-		public static int loc_light;
-		public static int loc_ambientLight;
-		public static int loc_directionalLight;
-	}
 	public static class BlockDropUniforms {
 		public static int loc_projectionMatrix;
 		public static int loc_viewMatrix;
@@ -87,7 +72,6 @@ public class MainRenderer {
 	/**The number of milliseconds after which no more chunk meshes are created. This allows the game to run smoother on movement.*/
 	private static int maximumMeshTime = 8;
 
-	private ShaderProgram entityShader; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 	private ShaderProgram blockDropShader;
 	private ShaderProgram fogShader;
 	private ShaderProgram deferredRenderPassShader;
@@ -126,34 +110,30 @@ public class MainRenderer {
 		this.shaders = shaders;
 	}
 
-	public void unloadShaders() throws Exception {
-		entityShader.cleanup();
-		entityShader = null;
-		blockDropShader.cleanup();
-		blockDropShader = null;
-		System.gc();
-	}
-
 	public void setDoRender(boolean doRender) {
 		this.doRender = doRender;
 	}
 
 	public void loadShaders() throws Exception {
-		entityShader = new ShaderProgram(Utils.loadResource(shaders + "/entity_vertex.vs"),
-				Utils.loadResource(shaders + "/entity_fragment.fs"),
-				EntityUniforms.class);
+		if(blockDropShader != null)
+			blockDropShader.cleanup();
 		blockDropShader = new ShaderProgram(Utils.loadResource(shaders + "/block_drop.vs"),
 				Utils.loadResource(shaders + "/block_drop.fs"),
 				BlockDropUniforms.class);
+		if(fogShader != null)
+			fogShader.cleanup();
 		fogShader = new ShaderProgram(Utils.loadResource(shaders + "/fog_vertex.vs"),
 				Utils.loadResource(shaders + "/fog_fragment.fs"),
 				FogUniforms.class);
+		if(deferredRenderPassShader != null)
+			deferredRenderPassShader.cleanup();
 		deferredRenderPassShader = new ShaderProgram(Utils.loadResource(shaders + "/deferred_render_pass.vs"),
 				Utils.loadResource(shaders + "/deferred_render_pass.fs"),
 				DeferredUniforms.class);
 		
 		ReducedChunkMesh.init(shaders);
 		NormalChunkMesh.init(shaders);
+		EntityRenderer.init(shaders);
 		
 		System.gc();
 	}
@@ -275,7 +255,7 @@ public class MainRenderer {
 			// Set intensity:
 			light.setDirection(light.getDirection().mul(0.1f*Cubyz.world.getGlobalLighting()/light.getDirection().length()));
 			Window.setClearColor(clearColor);
-			render(ambient, light, Cubyz.world.getBlocks(), ClientEntityManager.getEntities(), worldSpatialList, Cubyz.player);
+			render(ambient, light, Cubyz.world.getBlocks(), worldSpatialList, Cubyz.player);
 		} else {
 			clearColor.y = clearColor.z = 0.7f;
 			clearColor.x = 0.1f;
@@ -301,7 +281,7 @@ public class MainRenderer {
 	 * @param spatials the special objects to render (that are neither entity, neither blocks, like sun and moon, or rain)
 	 * @param localPlayer The world's local player
 	 */
-	public void render(Vector3f ambientLight, DirectionalLight directionalLight, Block[] blocks, ClientEntity[] entities, Spatial[] spatials, Player localPlayer) {
+	public void render(Vector3f ambientLight, DirectionalLight directionalLight, Block[] blocks, Spatial[] spatials, ClientPlayer localPlayer) {
 		if (!doRender)
 			return;
 		buffers.bind();
@@ -387,54 +367,8 @@ public class MainRenderer {
 			}
 			glDepthRangef(0, 0.05f);
 			
-			// Render entities:
-			
-			entityShader.bind();
-			entityShader.setUniform(EntityUniforms.loc_fog_activ, Cubyz.fog.isActive());
-			entityShader.setUniform(EntityUniforms.loc_fog_color, Cubyz.fog.getColor());
-			entityShader.setUniform(EntityUniforms.loc_fog_density, Cubyz.fog.getDensity());
-			entityShader.setUniform(EntityUniforms.loc_projectionMatrix, Window.getProjectionMatrix());
-			entityShader.setUniform(EntityUniforms.loc_texture_sampler, 0);
-			entityShader.setUniform(EntityUniforms.loc_ambientLight, ambient);
-			entityShader.setUniform(EntityUniforms.loc_directionalLight, directionalLight.getDirection());
+			EntityRenderer.render(ambientLight, directionalLight, localPlayer, playerPosition);
 
-			for (int i = 0; i < entities.length; i++) {
-				ClientEntity ent = entities[i];
-				int x = (int)(ent.position.x + 1.0f);
-				int y = (int)(ent.position.y + 1.0f);
-				int z = (int)(ent.position.z + 1.0f);
-				if (ent != null && ent.id != localPlayer.id) { // don't render local player
-					Mesh mesh = null;
-					if(ent.type.model != null) {
-						entityShader.setUniform(EntityUniforms.loc_materialHasTexture, true);
-						entityShader.setUniform(EntityUniforms.loc_light, Cubyz.world.getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
-						ent.type.model.render(Camera.getViewMatrix(), entityShader, ent);
-						continue;
-					}
-					if (ent instanceof CustomMeshProvider) {
-						CustomMeshProvider provider = (CustomMeshProvider) ent;
-						MeshType type = provider.getMeshType();
-						if (type == MeshType.ENTITY) {
-							ClientEntity e = (ClientEntity) provider.getMeshId();
-							mesh = Meshes.entityMeshes.get(e.type);
-						}
-					} else {
-						mesh = Meshes.entityMeshes.get(ent.type);
-					}
-					
-					if (mesh != null) {
-						entityShader.setUniform(EntityUniforms.loc_materialHasTexture, mesh.getMaterial().isTextured());
-						entityShader.setUniform(EntityUniforms.loc_light, Cubyz.world.getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
-						
-						mesh.renderOne(() -> {
-							Vector3d position = ent.getRenderPosition().sub(playerPosition);
-							Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(new Vector3f((float)position.x, (float)position.y, (float)position.z), ent.rotation, 1), Camera.getViewMatrix());
-							entityShader.setUniform(EntityUniforms.loc_viewMatrix, modelViewMatrix);
-						});
-					}
-				}
-			}
-			
 			// Render item entities:
 			Meshes.blockTextureArray.bind();
 			blockDropShader.bind();
@@ -490,13 +424,13 @@ public class MainRenderer {
 			for (int i = 0; i < spatials.length; i++) {
 				Spatial spatial = spatials[i];
 				Mesh mesh = spatial.getMesh();
-				entityShader.setUniform(EntityUniforms.loc_light, new Vector3f(1, 1, 1));
-				entityShader.setUniform(EntityUniforms.loc_materialHasTexture, mesh.getMaterial().isTextured());
+				EntityRenderer.entityShader.setUniform(EntityRenderer.loc_light, new Vector3f(1, 1, 1));
+				EntityRenderer.entityShader.setUniform(EntityRenderer.loc_materialHasTexture, mesh.getMaterial().isTextured());
 				mesh.renderOne(() -> {
 					Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(
 							Transformation.getModelMatrix(spatial.getPosition(), spatial.getRotation(), spatial.getScale()),
 							Camera.getViewMatrix());
-					entityShader.setUniform(EntityUniforms.loc_viewMatrix, modelViewMatrix);
+					EntityRenderer.entityShader.setUniform(EntityRenderer.loc_viewMatrix, modelViewMatrix);
 				});
 			}
 			
@@ -577,19 +511,11 @@ public class MainRenderer {
 
 	}
 
-	public void cleanup() {
-		if (entityShader != null) {
-			entityShader.cleanup();
-			entityShader = null;
-		}
-	}
-
 	public void setPath(String dataName, String path) {
 		if (dataName.equals("shaders") || dataName.equals("shadersFolder")) {
 			if (inited) {
 				try {
 					doRender = false;
-					unloadShaders();
 					shaders = path;
 					loadShaders();
 					doRender = true;

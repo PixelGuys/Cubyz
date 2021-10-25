@@ -66,6 +66,8 @@ public class ReducedChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 	public static ShaderProgram shader;
 	
 	public static void init(String shaderFolder) throws Exception {
+		if(shader != null)
+			shader.cleanup();
 		shader = new ShaderProgram(Utils.loadResource(shaderFolder + "/chunk_vertex.vs"),
 				Utils.loadResource(shaderFolder + "/chunk_fragment.fs"),
 				ReducedChunkMesh.class);
