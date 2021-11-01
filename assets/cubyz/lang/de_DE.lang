@@ -28,19 +28,25 @@ lang.name=Deutsch
 # Blocks
 block.cubyz.cactus.name=Kaktus
 block.cubyz.soil.name=Erde
-block.cubyz.gravel.name=kies
+block.cubyz.grass.name=Gras
+block.cubyz.gravel.name=Kies
 block.cubyz.ice.name=Eis
 block.cubyz.sand.name=Sand
 block.cubyz.snow.name=Schnee
 block.cubyz.mossy_cobblestone.name=moosiger Bruchstein
 block.cubyz.cobblestone.name=Bruchstein
+block.cubyz.stone.name=Stein
 block.cubyz.oak_log.name=Eichen Stamm
 block.cubyz.oak_top.name=Eichen Spitze
 block.cubyz.oak_planks.name=Eichenbretter
+block.cubyz.oak_fence.name=Eichenzaun
 block.cubyz.oak_leaves.name=Eichenblätter
 block.cubyz.torch.name=Fackel
 block.cubyz.workbench.name=Werkbank
+block.cubyz.water.name=Wasser
+block.cubyz.coal_ore.name=Kohleerz
 block.cubyz.iron_ore.name=Eisenerz
+block.cubyz.diamond_ore.name=Diamanterz
 
 # Items
 item.cubyz.stick.name=Stock
