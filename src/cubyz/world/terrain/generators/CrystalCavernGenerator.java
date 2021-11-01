@@ -3,6 +3,7 @@ package cubyz.world.terrain.generators;
 import java.util.Random;
 
 import cubyz.api.CubyzRegistries;
+import cubyz.api.Registry;
 import cubyz.api.Resource;
 import cubyz.world.Chunk;
 import cubyz.world.ServerWorld;
@@ -16,7 +17,12 @@ import cubyz.world.terrain.MapFragment;
 
 public class CrystalCavernGenerator implements Generator {
 	
-	private static Block glowCrystal, crystalOre;
+	private static final String[] COLORS = new String[] {
+		"red", "orange", "yellow", "green", "cyan", "blue", "violet", "purple", // 8 Base colors
+		"dark_red", "dark_green", "light_blue", "brown", // 4 darker colors
+		"white", "gray", "dark_gray", "black", // 4 grayscale colors
+	};
+	private static final Block[] glowCrystals = new Block[COLORS.length], glowOres = new Block[COLORS.length];
 	
 	private static ThreadLocal<int[][]> crystalDataArray = new ThreadLocal<int[][]>() {
 		@Override
@@ -25,9 +31,14 @@ public class CrystalCavernGenerator implements Generator {
 		}
 	};
 	
-	public static void init(Block crystal, Block ore) {
-		glowCrystal = crystal;
-		crystalOre = ore;
+	public static void init(Registry<Block> blocks) {
+		// Find all the glow crystal ores:
+		for(int i = 0; i < COLORS.length; i++) {
+			String color = COLORS[i];
+			String oreID = "cubyz:glow_crystal/"+color;
+			glowCrystals[i] = blocks.getByID(oreID);
+			glowOres[i] = blocks.getByID("cubyz:stone");
+		}
 	}
 	
 	
@@ -182,12 +193,13 @@ public class CrystalCavernGenerator implements Generator {
 		return x*x+y*y+z*z;
 	}
 	
-	private void considerCrystal(int wx, int wy, int wz, int[] xyz, Chunk chunk, long seed, boolean useNeedles) {
+	private void considerCrystal(int wx, int wy, int wz, int[] xyz, Chunk chunk, long seed, boolean useNeedles, int[] types) {
 		if(xyz[0] >= wx-32 && xyz[0] <= wx+32+chunk.getWidth() && xyz[1] >= wy-32 && xyz[1] <= wy+32+chunk.getWidth() && xyz[2] >= wz-32 && xyz[2] <= wz+32+chunk.getWidth()) {
 			int x = xyz[0] - wx;
 			int y = xyz[1] - wy;
 			int z = xyz[2] - wz;
 			Random rand = new Random(seed);
+			int type = types[rand.nextInt(types.length)];
 			// Make some crystal spikes in random directions:
 			int spikes = 4;
 			if(useNeedles) spikes++;
@@ -222,9 +234,9 @@ public class CrystalCavernGenerator implements Generator {
 				        		if(dist <= size*size) {
 						        	if(x3 >= 0 && x3 < chunk.getWidth() && y3 >= 0 && y3 < chunk.getWidth() && z3 >= 0 && z3 < chunk.getWidth()) {
 						        		if(chunk.getBlock((int)x3, (int)y3, (int)z3) == null || chunk.getBlock((int)x3, (int)y3, (int)z3).isDegradable() || chunk.getBlock((int)x3, (int)y3, (int)z3).getBlockClass() == BlockClass.FLUID) {
-						        			chunk.updateBlock((int)x3, (int)y3, (int)z3, glowCrystal);
+						        			chunk.updateBlock((int)x3, (int)y3, (int)z3, glowCrystals[type]);
 						        		} else if(chunk.getBlock((int)x3, (int)y3, (int)z3) == stone) {
-						        			chunk.updateBlock((int)x3, (int)y3, (int)z3, crystalOre); // When the crystal goes through stone, generate the corresponding ore at that position.
+						        			chunk.updateBlock((int)x3, (int)y3, (int)z3, glowOres[type]); // When the crystal goes through stone, generate the corresponding ore at that position.
 						        		}
 						        	}
 				        		}
@@ -257,9 +269,20 @@ public class CrystalCavernGenerator implements Generator {
 		boolean useNeedles = rand.nextBoolean(); // Different crystal type.
 		generateCave(rand.nextLong(), wx, wy, wz, chunk, worldX, worldY, worldZ, size, direction, slope, 0, 0.75, crystalSpawns, index);
 
+		// Determine crystal colors:
+		int differentColors = 1;
+		if(rand.nextInt(8) == 0) {
+			// Add a small chance for multi color crystal caverns:
+			differentColors = 1 + rand.nextInt(COLORS.length);
+		}
+		int[] colors = new int[differentColors];
+		for(int i = 0; i < differentColors; i++) {
+			colors[i] = rand.nextInt(COLORS.length);
+		}
+
 		// Generate the crystals:
 		for(int i = 0; i < index[0]; i++) {
-			considerCrystal(wx, wy, wz, crystalSpawns[i], chunk, crystalSpawns[i][0]*rand1 + crystalSpawns[i][1]*rand2 + crystalSpawns[i][2]*rand3, useNeedles);
+			considerCrystal(wx, wy, wz, crystalSpawns[i], chunk, crystalSpawns[i][0]*rand1 + crystalSpawns[i][1]*rand2 + crystalSpawns[i][2]*rand3, useNeedles, colors);
 		}
 	}
 

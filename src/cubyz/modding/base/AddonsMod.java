@@ -74,6 +74,30 @@ public class AddonsMod {
 	}
 
 	/**
+	 * Reads json files recursively from all subfolders.
+	 * @param addonName
+	 * @param file
+	 * @param consumer
+	 */
+	public void readAllJsonFilesInFolder(String addonName, String subPath, File file, BiConsumer<JsonObject, Resource> consumer) {
+		if(file.isDirectory()) {
+			for(File subFile : file.listFiles()) {
+				readAllJsonFilesInFolder(addonName, subPath+(subFile.isDirectory() ? subFile.getName()+"/" : ""), subFile, consumer);
+			}
+		} else {
+			if(file.getName().endsWith(".json")) {
+				JsonObject json = JsonParser.parseObjectFromFile(file.getPath());
+				// Determine the ID from the file names:
+				String fileName = file.getName();
+				fileName = fileName.substring(0, fileName.lastIndexOf('.'));
+				Resource id = new Resource(addonName, subPath+fileName);
+
+				consumer.accept(json, id);
+			}
+		}
+	}
+
+	/**
 	 * Reads all json files inside the `folder` in every addon.
 	 * @param folder
 	 * @param consumer function that is called for all objects found.
@@ -84,18 +108,7 @@ public class AddonsMod {
 			// Find the subfolder:
 			File subfolder = new File(addon, folder);
 			if (subfolder.exists()) {
-				// Go through all files in the subfolder:
-				for (File file : subfolder.listFiles()) {
-					if (file.isDirectory()) continue;
-					JsonObject json = JsonParser.parseObjectFromFile(file.getPath());
-					// Determine the ID from the file names:
-					String fileName = file.getName();
-					if (fileName.contains("."))
-						fileName = fileName.substring(0, fileName.lastIndexOf('.'));
-					Resource id = new Resource(addon.getName(), fileName);
-
-					consumer.accept(json, id);
-				}
+				readAllJsonFilesInFolder(addon.getName(), "", subfolder, consumer);
 			}
 		}
 	}

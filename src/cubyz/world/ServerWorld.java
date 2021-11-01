@@ -20,7 +20,6 @@ import cubyz.utils.datastructures.HashMapKey3D;
 import cubyz.utils.math.CubyzMath;
 import cubyz.world.blocks.Block;
 import cubyz.world.blocks.BlockEntity;
-import cubyz.world.blocks.CrystalTextureProvider;
 import cubyz.world.blocks.CustomBlock;
 import cubyz.world.blocks.Ore;
 import cubyz.world.blocks.OreTextureProvider;
@@ -222,29 +221,8 @@ public class ServerWorld {
 			registries.blockRegistry.register(block);
 		}
 
-		// Create the crystal ore for the CrystalCaverns:
-		CustomBlock glowCrystalOre = CustomBlock.random(rand, registries, new OreTextureProvider());
-		glowCrystalOre.makeGlow(); // Make sure it glows.
-		customBlocks.add(glowCrystalOre);
-		blockList.add(glowCrystalOre);
-		glowCrystalOre.ID = ID++;
-		registries.blockRegistry.register(glowCrystalOre);
-		i++;
-		// Create the crystal block for the CrystalCaverns:
-		CustomBlock crystalBlock = new CustomBlock(new CrystalTextureProvider());
-		crystalBlock.setID(glowCrystalOre.getRegistryID().toString()+"_glow_crystal");
-		crystalBlock.setHardness(40);
-		crystalBlock.addBlockDrop(new BlockDrop(glowCrystalOre.getBlockDrops()[0].item, 4));
-		crystalBlock.setLight(glowCrystalOre.color);
-		crystalBlock.color = glowCrystalOre.color;
-		crystalBlock.seed = glowCrystalOre.seed;
-		customBlocks.add(crystalBlock);
-		blockList.add(crystalBlock);
-		crystalBlock.ID = ID++;
-		registries.blockRegistry.register(crystalBlock);
-		i++;
-		// Init crystal caverns with those two blocks:
-		CrystalCavernGenerator.init(crystalBlock, glowCrystalOre);
+		// Init crystal caverns:
+		CrystalCavernGenerator.init(registries.blockRegistry);
 
 		wio.loadWorldData(); // load data here in order for entities to also be loaded.
 		
