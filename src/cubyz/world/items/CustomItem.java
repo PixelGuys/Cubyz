@@ -1,5 +1,6 @@
 package cubyz.world.items;
 
+import cubyz.api.Resource;
 import cubyz.utils.translate.TextKey;
 import cubyz.world.blocks.CustomBlock;
 
@@ -33,7 +34,7 @@ public class CustomItem extends Item {
 		} else {
 			item.type = GEM;
 		}
-		item.setID(block.getRegistryID());
+		item.setID(new Resource(block.getRegistryID().toString().replace("_ore", "")));
 		item.setName(TextKey.createTextKey(block.getName()));
 		return item;
 	}

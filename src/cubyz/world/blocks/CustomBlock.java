@@ -12,6 +12,7 @@ import cubyz.utils.Utilities;
 import cubyz.world.CustomObject;
 import cubyz.world.items.BlockDrop;
 import cubyz.world.items.CustomItem;
+import cubyz.world.items.ItemBlock;
 import cubyz.world.items.tools.Material;
 
 /**
@@ -163,7 +164,7 @@ public class CustomBlock extends Block implements CustomObject {
 		if(rand.nextInt(4) == 0) { // Make some ores glow.
 			block.makeGlow();
 		}
-		block.makeBlockDrop(registries, rand);
+		block.makeItems(registries, rand);
 		/* 	A little reasoning behind the choice of material properties:
 			There are some important concepts when looking at the hardness of a material:
 			1. mohs-hardness scale which determines how easy it is to scratch a material.
@@ -242,7 +243,11 @@ public class CustomBlock extends Block implements CustomObject {
 		return ore;
 	}*/
 	
-	private void makeBlockDrop(CurrentWorldRegistries registries, Random rand) {
+	private void makeItems(CurrentWorldRegistries registries, Random rand) {
+		// Create creative inventory item:
+		ItemBlock self = new ItemBlock(this);
+		registries.itemRegistry.register(self);
+		// Create blockdrop:
 		CustomItem bd = CustomItem.fromOre(this);
 		registries.itemRegistry.register(bd);
 		bd.setID(getRegistryID());

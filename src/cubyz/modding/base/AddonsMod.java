@@ -138,6 +138,8 @@ public class AddonsMod {
 
 			// Block drops:
 			String[] blockDrops = json.getArrayNoNull("drops").getStrings();
+			ItemBlock self = new ItemBlock(block);
+			items.add(self); // Add each block as an item, so it gets displayed in the creative inventory.
 			for (String blockDrop : blockDrops) {
 				blockDrop = blockDrop.trim();
 				String[] data = blockDrop.split("\\s+");
@@ -148,9 +150,7 @@ public class AddonsMod {
 					name = data[1];
 				}
 				if (name.equals("auto")) {
-					ItemBlock itemBlock = new ItemBlock(block);
-					block.addBlockDrop(new BlockDrop(itemBlock, amount));
-					items.add(itemBlock);
+					block.addBlockDrop(new BlockDrop(self, amount));
 				} else if (!name.equals("none")) {
 					missingDropsBlock.add(block);
 					missingDropsAmount.add(amount);
