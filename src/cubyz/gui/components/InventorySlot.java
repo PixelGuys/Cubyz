@@ -17,15 +17,17 @@ import cubyz.world.items.ItemBlock;
 import cubyz.world.items.ItemStack;
 import cubyz.world.items.tools.Tool;
 
+import static cubyz.client.ClientSettings.GUI_SCALE;
+
 /**
  * GUI for an inventory slot referencing an ItemStack.
  */
 
 
 public class InventorySlot extends Component {
-	public static final int SLOT_SIZE = 64;
+	public static final int SLOT_SIZE = 20;
 	public static Texture SLOT_IMAGE = Texture.loadFromFile("assets/cubyz/guis/inventory/inventory_slot.png");
-	static float FONT_SIZE = 16;
+	static float FONT_SIZE = 8;
 
 	/**State of mouse buttons if the mouse is in the area.*/
 	private boolean pressedLeft = false, pressedRight = false;
@@ -42,9 +44,9 @@ public class InventorySlot extends Component {
 	public InventorySlot(ItemStack ref, int x, int y, byte align, boolean takeOnly) {
 		reference = ref;
 		inv = new Label();
-		inv.setFontSize(FONT_SIZE);
+		inv.setFontSize(FONT_SIZE * GUI_SCALE);
 		inv.setTextAlign(Component.ALIGN_CENTER);
-		setBounds(x, y, SLOT_SIZE, SLOT_SIZE, align);
+		setBounds(x, y, SLOT_SIZE * GUI_SCALE, SLOT_SIZE * GUI_SCALE, align);
 		this.takeOnly = takeOnly;
 	}
 	public InventorySlot(ItemStack ref, int x, int y, byte align) {
@@ -81,17 +83,17 @@ public class InventorySlot extends Component {
 				TextLine[] textLines = new TextLine[lines.length];
 				float textWidth = 0;
 				for(int i = 0; i < lines.length; i++) {
-					textLines[i] = new TextLine(Fonts.PIXEL_FONT, "#ffffff"+lines[i], FONT_SIZE, false);
+					textLines[i] = new TextLine(Fonts.PIXEL_FONT, "#ffffff"+lines[i], FONT_SIZE * GUI_SCALE, false);
 					textWidth = Math.max(textWidth, textLines[i].getWidth());
 				}
-				float textHeight = lines.length*FONT_SIZE;
+				float textHeight = lines.length * FONT_SIZE * GUI_SCALE;
 				
 				Graphics.setColor(0x141414);
 				Graphics.fillRect(x, y, textWidth + 1, textHeight + 1);
 				Graphics.setColor(0x7F7F7F);
 				Graphics.drawRect((int)x, (int)y, (int)textWidth + 1, (int)textHeight + 1);
 				for(int i = 0; i < textLines.length; i++) {
-					textLines[i].render(x, y + i*FONT_SIZE);
+					textLines[i].render(x, y + i * FONT_SIZE * GUI_SCALE);
 				}
 			}
 		}
@@ -197,16 +199,16 @@ public class InventorySlot extends Component {
 					item.setImage(Texture.loadFromFile(item.getTexture()));
 				}
 			}
-			Graphics.drawImage(item.getImage(), x + 4, y + 4, width - 8, height - 8);
+			Graphics.drawImage(item.getImage(), x + 2 * GUI_SCALE, y + 2 * GUI_SCALE, width - 4 * GUI_SCALE, height - 4 * GUI_SCALE);
 			if(item instanceof Tool) {
 				Tool tool = (Tool)item;
 				int durab = tool.durability*255/tool.maxDurability;
 				Graphics.setColor((255 - durab) << 16 | durab << 8 | 0);
-				Graphics.fillRect(x + 8, y + 56, 48.0f/255.0f*durab, 4);
+				Graphics.fillRect(x + 2 * GUI_SCALE, y + 18 * GUI_SCALE, 16.0f / 255.0f * durab * GUI_SCALE, 2 * GUI_SCALE);
 				Graphics.setColor(0xffffff);
 			}
 			inv.setText("" + reference.getAmount());
-			inv.render(x + 50, y + 48);
+			inv.render(x + 16 * GUI_SCALE, y + 16 * GUI_SCALE);
 		}
 	}
 

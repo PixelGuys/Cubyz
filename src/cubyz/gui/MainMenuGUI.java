@@ -18,6 +18,8 @@ import cubyz.utils.DiscordIntegration;
 import cubyz.utils.ResourceManager;
 import cubyz.utils.translate.TextKey;
 
+import static cubyz.client.ClientSettings.GUI_SCALE;
+
 public class MainMenuGUI extends MenuGUI {
 	
 	private Button exit = new Button();
@@ -37,17 +39,12 @@ public class MainMenuGUI extends MenuGUI {
 	public MainMenuGUI() {
 		DiscordIntegration.setStatus("Main Menu");
 
-		settings.setBounds(20, 60, 100, 27, Component.ALIGN_BOTTOM_LEFT);
 		settings.setText(TextKey.createTextKey("gui.cubyz.mainmenu.settings"));
-		settings.setFontSize(16f);
 
-		exit.setBounds(120, 60, 100, 27, Component.ALIGN_BOTTOM_RIGHT);
 		exit.setText(TextKey.createTextKey("gui.cubyz.mainmenu.exit"));
-		exit.setFontSize(16f);
 		
 		titleLabel.setTextAlign(Component.ALIGN_CENTER);
 		titleLabel.setText("Cubyz");
-		titleLabel.setBounds(0, 50, 0, 74, Component.ALIGN_TOP);
 		
 		exit.setOnAction(() -> {
 			GameLauncher.instance.exit();
@@ -56,6 +53,18 @@ public class MainMenuGUI extends MenuGUI {
 		settings.setOnAction(() -> {
 			Cubyz.gameUI.setMenu(new SettingsGUI());
 		});
+
+		updateGUIScale();
+	}
+
+	public void updateGUIScale() {
+		settings.setBounds(20 * GUI_SCALE, 60 * GUI_SCALE, 100 * GUI_SCALE, 27 * GUI_SCALE, Component.ALIGN_BOTTOM_LEFT);
+		settings.setFontSize(16f * GUI_SCALE);
+
+		exit.setBounds(120 * GUI_SCALE, 60 * GUI_SCALE, 100 * GUI_SCALE, 27 * GUI_SCALE, Component.ALIGN_BOTTOM_RIGHT);
+		exit.setFontSize(16f * GUI_SCALE);
+
+		titleLabel.setBounds(0 * GUI_SCALE, 50 * GUI_SCALE, 0 * GUI_SCALE, 74 * GUI_SCALE, Component.ALIGN_TOP);
 	}
 	
 	void launchSingleplayer() {
@@ -93,7 +102,7 @@ public class MainMenuGUI extends MenuGUI {
 				(int) (Window.getHeight() - spImageHeight + spImageHeight * (1 - spSize) / 2),
 				(int) (spImageWidth * spSize), (int) (spImageHeight * spSize));
 		Graphics.drawImage(spImage, spImageBox.x, spImageBox.y, spImageBox.width, spImageBox.height);
-		spLabel.setBounds((int) -spImageWidth / 2, (int) (Window.getHeight() / 2 - spImageHeight / 2), 200, 24, Component.ALIGN_CENTER);
+		spLabel.setBounds((int) -spImageWidth / 2, (int) (Window.getHeight() / 2 - spImageHeight / 2), 200 * GUI_SCALE, 24 * GUI_SCALE, Component.ALIGN_CENTER);
 		spLabel.render();
 		
 		float mpImageWidth = Window.getWidth() / 2;
@@ -103,7 +112,7 @@ public class MainMenuGUI extends MenuGUI {
 				(int) (Window.getHeight() - mpImageHeight + mpImageHeight * (1 - mpSize) / 2),
 				(int) (mpImageWidth * mpSize), (int) (mpImageHeight * mpSize));
 		Graphics.drawImage(mpImage, mpImageBox.x, mpImageBox.y, mpImageBox.width, mpImageBox.height);
-		mpLabel.setBounds((int) spImageWidth / 2, (int) (Window.getHeight() / 2 - mpImageHeight / 2), 200, 24, Component.ALIGN_CENTER);
+		mpLabel.setBounds((int) spImageWidth / 2, (int) (Window.getHeight() / 2 - mpImageHeight / 2), 200 * GUI_SCALE, 24 * GUI_SCALE, Component.ALIGN_CENTER);
 		mpLabel.render();
 		
 		settings.render();

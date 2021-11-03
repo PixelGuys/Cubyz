@@ -14,6 +14,8 @@ import cubyz.utils.translate.ContextualTextKey;
 import cubyz.utils.translate.LanguageLoader;
 import cubyz.utils.translate.TextKey;
 
+import static cubyz.client.ClientSettings.GUI_SCALE;
+
 public class SettingsGUI extends MenuGUI {
 
 	private final Button done = new Button();
@@ -50,34 +52,22 @@ public class SettingsGUI extends MenuGUI {
 		}
 		languages = languageFiles.toArray(new String[0]);
 		
-		done.setBounds(-125, 75, 250, 50, Component.ALIGN_BOTTOM);
 		done.setText(TextKey.createTextKey("gui.cubyz.settings.done"));
-		done.setFontSize(32f);
-		
 		done.setOnAction(() -> {
 			Cubyz.gameUI.back();
 		});
 		
-		graphics.setBounds(-125, 75, 250, 50, Component.ALIGN_TOP);
 		graphics.setText(TextKey.createTextKey("gui.cubyz.settings.graphics"));
-		graphics.setFontSize(32f);
-		
 		graphics.setOnAction(() -> {
 			Cubyz.gameUI.setMenu(new GraphicsGUI());
 		});
 
-		bindings.setBounds(-125, 300, 250, 50, Component.ALIGN_TOP);
 		bindings.setText(TextKey.createTextKey("gui.cubyz.settings.keybindings"));
-		bindings.setFontSize(32f);
-		
 		bindings.setOnAction(() -> {
 			Cubyz.gameUI.setMenu(new KeybindingsGUI());
 		});
 
-		language.setBounds(-125, 150, 250, 50, Component.ALIGN_TOP);
 		language.setText(langKey);
-		language.setFontSize(32f);
-		
 		language.setOnAction(() -> {
 			int index = -1;
 			for (int i = 0; i < languages.length; i++) {
@@ -90,9 +80,6 @@ public class SettingsGUI extends MenuGUI {
 			if (index >= languages.length) index = 0;
 			Settings.setLanguage(LanguageLoader.load(languages[index]));
 		});
-
-		rpc.setBounds(-125, 225, 250, 45, Component.ALIGN_TOP);
-		rpc.setFontSize(32f);
 		
 		rpc.setOnAction(() -> {
 			if (DiscordIntegration.isEnabled()) {
@@ -102,6 +89,25 @@ public class SettingsGUI extends MenuGUI {
 			}
 		});
 		
+		updateGUIScale();
+	}
+
+	@Override
+	public void updateGUIScale() {
+		done.setBounds(-125 * GUI_SCALE, 40 * GUI_SCALE, 250 * GUI_SCALE, 25 * GUI_SCALE, Component.ALIGN_BOTTOM);
+		done.setFontSize(16f * GUI_SCALE);
+		
+		graphics.setBounds(-125 * GUI_SCALE, 40 * GUI_SCALE, 250 * GUI_SCALE, 25 * GUI_SCALE, Component.ALIGN_TOP);
+		graphics.setFontSize(16f * GUI_SCALE);
+
+		bindings.setBounds(-125 * GUI_SCALE, 160 * GUI_SCALE, 250 * GUI_SCALE, 25 * GUI_SCALE, Component.ALIGN_TOP);
+		bindings.setFontSize(16f * GUI_SCALE);
+
+		language.setBounds(-125 * GUI_SCALE, 80 * GUI_SCALE, 250 * GUI_SCALE, 25 * GUI_SCALE, Component.ALIGN_TOP);
+		language.setFontSize(16f * GUI_SCALE);
+
+		rpc.setBounds(-125 * GUI_SCALE, 120 * GUI_SCALE, 250 * GUI_SCALE, 25 * GUI_SCALE, Component.ALIGN_TOP);
+		rpc.setFontSize(16f * GUI_SCALE);
 	}
 
 	@Override

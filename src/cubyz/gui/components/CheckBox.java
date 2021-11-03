@@ -6,6 +6,8 @@ import cubyz.gui.input.Mouse;
 import cubyz.rendering.Graphics;
 import cubyz.utils.translate.TextKey;
 
+import static cubyz.client.ClientSettings.GUI_SCALE;
+
 /**
  * A simple checkbox which fires an event on change.
  */
@@ -74,10 +76,10 @@ public class CheckBox extends Component {
 		}
 		if (selected) {
 			Graphics.setColor(0x32A832);
-			Graphics.fillRect(x + 3, y + 3, width - 6, height - 6);
+			Graphics.fillRect(x + 2 * GUI_SCALE, y + 2 * GUI_SCALE, width - 4 * GUI_SCALE, height - 4 * GUI_SCALE);
 		}
 		if (label != null) {
-			label.render(x + width + 5, y + height/2);
+			label.render(x + width + 4 * GUI_SCALE + 1, y + height/2);
 		}
 	}
 }

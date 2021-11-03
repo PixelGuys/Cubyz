@@ -9,6 +9,8 @@ import cubyz.gui.input.Keyboard;
 import cubyz.gui.input.Mouse;
 import cubyz.gui.settings.SettingsGUI;
 
+import static cubyz.client.ClientSettings.GUI_SCALE;
+
 /**
  * GUI shown when pressing escape while in a world.
  */
@@ -57,14 +59,19 @@ public class PauseGUI extends MenuGUI {
 			});
 		});
 
-		exit.setBounds(-100, 200, 200, 50, Component.ALIGN_BOTTOM);
-		exit.setFontSize(32);
-		resume.setBounds(-100, 100, 200, 50, Component.ALIGN_TOP);
-		resume.setFontSize(32);
-		reload.setBounds(-100, 300, 200, 50, Component.ALIGN_BOTTOM);
-		reload.setFontSize(32);
-		settings.setBounds(-100, 200, 200, 50, Component.ALIGN_TOP);
-		settings.setFontSize(32);
+		updateGUIScale();
+	}
+
+	@Override
+	public void updateGUIScale() {
+		exit.setBounds(-50 * GUI_SCALE, 100 * GUI_SCALE, 100 * GUI_SCALE, 25 * GUI_SCALE, Component.ALIGN_BOTTOM);
+		exit.setFontSize(16 * GUI_SCALE);
+		resume.setBounds(-50 * GUI_SCALE, 50 * GUI_SCALE, 100 * GUI_SCALE, 25 * GUI_SCALE, Component.ALIGN_TOP);
+		resume.setFontSize(16 * GUI_SCALE);
+		reload.setBounds(-50 * GUI_SCALE, 150 * GUI_SCALE, 100 * GUI_SCALE, 25 * GUI_SCALE, Component.ALIGN_BOTTOM);
+		reload.setFontSize(16 * GUI_SCALE);
+		settings.setBounds(-50 * GUI_SCALE, 100 * GUI_SCALE, 100 * GUI_SCALE, 25 * GUI_SCALE, Component.ALIGN_TOP);
+		settings.setFontSize(16 * GUI_SCALE);
 	}
 
 	@Override

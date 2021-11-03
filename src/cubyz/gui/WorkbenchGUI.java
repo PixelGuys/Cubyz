@@ -8,6 +8,8 @@ import cubyz.world.items.Inventory;
 import cubyz.world.items.Item;
 import cubyz.world.items.tools.Tool;
 
+import static cubyz.client.ClientSettings.GUI_SCALE;
+
 /**
  * The GUI that appears when opening the workbench.
  */
@@ -25,8 +27,10 @@ public class WorkbenchGUI extends GeneralInventory {
 	
 	@Override
 	protected void positionSlots() {
-		width = 576;
-		height = 704;
+		width = 180 * GUI_SCALE;
+		height = 240 * GUI_SCALE;
+		if(in != null)
+			setInventory(in);
 	}
 
 	@Override
@@ -53,48 +57,48 @@ public class WorkbenchGUI extends GeneralInventory {
 		inv = new InventorySlot[58];
 		Inventory inventory = Cubyz.player.getInventory();
 		for(int i = 0; i < 8; i++) {
-			inv[i] = new InventorySlot(inventory.getStack(i), i*64 - 256, 64, Component.ALIGN_BOTTOM);
+			inv[i] = new InventorySlot(inventory.getStack(i), (i - 4) * 20 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_BOTTOM);
 		}
 		for(int i = 0; i < 8; i++) {
-			inv[i + 8] = new InventorySlot(inventory.getStack(i + 8), i*64 - 256, 192, Component.ALIGN_BOTTOM);
+			inv[i + 8] = new InventorySlot(inventory.getStack(i + 8), (i - 4) * 20 * GUI_SCALE, 80 * GUI_SCALE, Component.ALIGN_BOTTOM);
 		}
 		for(int i = 0; i < 8; i++) {
-			inv[i + 16] = new InventorySlot(inventory.getStack(i + 16), i*64 - 256, 256, Component.ALIGN_BOTTOM);
+			inv[i + 16] = new InventorySlot(inventory.getStack(i + 16), (i - 4) * 20 * GUI_SCALE, 100 * GUI_SCALE, Component.ALIGN_BOTTOM);
 		}
 		for(int i = 0; i < 8; i++) {
-			inv[i + 24] = new InventorySlot(inventory.getStack(i + 24), i*64 - 256, 320, Component.ALIGN_BOTTOM);
+			inv[i + 24] = new InventorySlot(inventory.getStack(i + 24), (i - 4) * 20 * GUI_SCALE, 120 * GUI_SCALE, Component.ALIGN_BOTTOM);
 		}
-		inv[32] = new InventorySlot(in.getStack(0), -192, 672, Component.ALIGN_BOTTOM);
-		inv[33] = new InventorySlot(in.getStack(1), -128, 672, Component.ALIGN_BOTTOM);
-		inv[34] = new InventorySlot(in.getStack(2), -64, 672, Component.ALIGN_BOTTOM);
-		inv[35] = new InventorySlot(in.getStack(3), 0, 672, Component.ALIGN_BOTTOM);
-		inv[36] = new InventorySlot(in.getStack(4), 64, 672, Component.ALIGN_BOTTOM);
+		inv[32] = new InventorySlot(in.getStack(0), -60 * GUI_SCALE, 230 * GUI_SCALE, Component.ALIGN_BOTTOM);
+		inv[33] = new InventorySlot(in.getStack(1), -40 * GUI_SCALE, 230 * GUI_SCALE, Component.ALIGN_BOTTOM);
+		inv[34] = new InventorySlot(in.getStack(2), -20 * GUI_SCALE, 230 * GUI_SCALE, Component.ALIGN_BOTTOM);
+		inv[35] = new InventorySlot(in.getStack(3), 0 * GUI_SCALE, 230 * GUI_SCALE, Component.ALIGN_BOTTOM);
+		inv[36] = new InventorySlot(in.getStack(4), 20 * GUI_SCALE, 230 * GUI_SCALE, Component.ALIGN_BOTTOM);
 
-		inv[37] = new InventorySlot(in.getStack(5), -192, 608, Component.ALIGN_BOTTOM);
-		inv[38] = new InventorySlot(in.getStack(6), -128, 608, Component.ALIGN_BOTTOM);
-		inv[39] = new InventorySlot(in.getStack(7), -64, 608, Component.ALIGN_BOTTOM);
-		inv[40] = new InventorySlot(in.getStack(8), 0, 608, Component.ALIGN_BOTTOM);
-		inv[41] = new InventorySlot(in.getStack(9), 64, 608, Component.ALIGN_BOTTOM);
+		inv[37] = new InventorySlot(in.getStack(5), -60 * GUI_SCALE, 210 * GUI_SCALE, Component.ALIGN_BOTTOM);
+		inv[38] = new InventorySlot(in.getStack(6), -40 * GUI_SCALE, 210 * GUI_SCALE, Component.ALIGN_BOTTOM);
+		inv[39] = new InventorySlot(in.getStack(7), -20 * GUI_SCALE, 210 * GUI_SCALE, Component.ALIGN_BOTTOM);
+		inv[40] = new InventorySlot(in.getStack(8), 0 * GUI_SCALE, 210 * GUI_SCALE, Component.ALIGN_BOTTOM);
+		inv[41] = new InventorySlot(in.getStack(9), 20 * GUI_SCALE, 210 * GUI_SCALE, Component.ALIGN_BOTTOM);
 
-		inv[42] = new InventorySlot(in.getStack(10), -192, 544, Component.ALIGN_BOTTOM);
-		inv[43] = new InventorySlot(in.getStack(11), -128, 544, Component.ALIGN_BOTTOM);
-		inv[44] = new InventorySlot(in.getStack(12), -64, 544, Component.ALIGN_BOTTOM);
-		inv[45] = new InventorySlot(in.getStack(13), 0, 544, Component.ALIGN_BOTTOM);
-		inv[46] = new InventorySlot(in.getStack(14), 64, 544, Component.ALIGN_BOTTOM);
+		inv[42] = new InventorySlot(in.getStack(10), -60 * GUI_SCALE, 190 * GUI_SCALE, Component.ALIGN_BOTTOM);
+		inv[43] = new InventorySlot(in.getStack(11), -40 * GUI_SCALE, 190 * GUI_SCALE, Component.ALIGN_BOTTOM);
+		inv[44] = new InventorySlot(in.getStack(12), -20 * GUI_SCALE, 190 * GUI_SCALE, Component.ALIGN_BOTTOM);
+		inv[45] = new InventorySlot(in.getStack(13), 0 * GUI_SCALE, 190 * GUI_SCALE, Component.ALIGN_BOTTOM);
+		inv[46] = new InventorySlot(in.getStack(14), 20 * GUI_SCALE, 190 * GUI_SCALE, Component.ALIGN_BOTTOM);
 
-		inv[47] = new InventorySlot(in.getStack(15), -192, 480, Component.ALIGN_BOTTOM);
-		inv[48] = new InventorySlot(in.getStack(16), -128, 480, Component.ALIGN_BOTTOM);
-		inv[49] = new InventorySlot(in.getStack(17), -64, 480, Component.ALIGN_BOTTOM);
-		inv[50] = new InventorySlot(in.getStack(18), 0, 480, Component.ALIGN_BOTTOM);
-		inv[51] = new InventorySlot(in.getStack(19), 64, 480, Component.ALIGN_BOTTOM);
+		inv[47] = new InventorySlot(in.getStack(15), -60 * GUI_SCALE, 170 * GUI_SCALE, Component.ALIGN_BOTTOM);
+		inv[48] = new InventorySlot(in.getStack(16), -40 * GUI_SCALE, 170 * GUI_SCALE, Component.ALIGN_BOTTOM);
+		inv[49] = new InventorySlot(in.getStack(17), -20 * GUI_SCALE, 170 * GUI_SCALE, Component.ALIGN_BOTTOM);
+		inv[50] = new InventorySlot(in.getStack(18), 0 * GUI_SCALE, 170 * GUI_SCALE, Component.ALIGN_BOTTOM);
+		inv[51] = new InventorySlot(in.getStack(19), 20 * GUI_SCALE, 170 * GUI_SCALE, Component.ALIGN_BOTTOM);
 
-		inv[52] = new InventorySlot(in.getStack(20), -192, 416, Component.ALIGN_BOTTOM);
-		inv[53] = new InventorySlot(in.getStack(21), -128, 416, Component.ALIGN_BOTTOM);
-		inv[54] = new InventorySlot(in.getStack(22), -64, 416, Component.ALIGN_BOTTOM);
-		inv[55] = new InventorySlot(in.getStack(23), 0, 416, Component.ALIGN_BOTTOM);
-		inv[56] = new InventorySlot(in.getStack(24), 64, 416, Component.ALIGN_BOTTOM);
+		inv[52] = new InventorySlot(in.getStack(20), -60 * GUI_SCALE, 150 * GUI_SCALE, Component.ALIGN_BOTTOM);
+		inv[53] = new InventorySlot(in.getStack(21), -40 * GUI_SCALE, 150 * GUI_SCALE, Component.ALIGN_BOTTOM);
+		inv[54] = new InventorySlot(in.getStack(22), -20 * GUI_SCALE, 150 * GUI_SCALE, Component.ALIGN_BOTTOM);
+		inv[55] = new InventorySlot(in.getStack(23), 0 * GUI_SCALE, 150 * GUI_SCALE, Component.ALIGN_BOTTOM);
+		inv[56] = new InventorySlot(in.getStack(24), 20 * GUI_SCALE, 150 * GUI_SCALE, Component.ALIGN_BOTTOM);
 
-		inv[57] = new InventorySlot(in.getStack(25), 192, 544, Component.ALIGN_BOTTOM, true); // crafting result
+		inv[57] = new InventorySlot(in.getStack(25), 60 * GUI_SCALE, 190 * GUI_SCALE, Component.ALIGN_BOTTOM, true); // crafting result
 
 		checkCrafting();
 	}

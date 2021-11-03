@@ -10,6 +10,8 @@ import cubyz.rendering.Window;
 import cubyz.rendering.text.Fonts;
 import cubyz.world.entity.Player;
 
+import static cubyz.client.ClientSettings.GUI_SCALE;
+
 /**
  * This is the F3 debug menu
  * @author zenith391
@@ -25,14 +27,14 @@ public class DebugOverlay extends MenuGUI {
 	@Override
 	public void render() {
 		if(GameLauncher.input.clientShowDebug) {
-			Graphics.setFont(Fonts.PIXEL_FONT, 16.0F);
+			Graphics.setFont(Fonts.PIXEL_FONT, 8.0F * GUI_SCALE);
 			Graphics.setColor(0xFFFFFF);
-			Graphics.drawText(0, 0, GameLogic.getFPS() + " fps" + (Window.isVSyncEnabled() ? " (vsync)" : ""));
-			Graphics.drawText(120, 0, GameLauncher.instance.getUPS() + " ups");
-			Graphics.drawText(0, 20, "Branded \"" + Constants.GAME_BRAND + "\", version " + Constants.GAME_VERSION);
-			Graphics.drawText(0, 40, "Windowed (" + Window.getWidth() + "x" + Window.getHeight() + ")");
-			Graphics.drawText(0, 60, "Java " + javaVersion);
-			Graphics.drawText(0, 200, "Memory: " + (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory())/1024/1024
+			Graphics.drawText(0 * GUI_SCALE, 0 * GUI_SCALE, GameLogic.getFPS() + " fps" + (Window.isVSyncEnabled() ? " (vsync)" : ""));
+			Graphics.drawText(60 * GUI_SCALE, 0 * GUI_SCALE, GameLauncher.instance.getUPS() + " ups");
+			Graphics.drawText(0 * GUI_SCALE, 10 * GUI_SCALE, "Branded \"" + Constants.GAME_BRAND + "\", version " + Constants.GAME_VERSION);
+			Graphics.drawText(0 * GUI_SCALE, 20 * GUI_SCALE, "Windowed (" + Window.getWidth() + "x" + Window.getHeight() + ")");
+			Graphics.drawText(0 * GUI_SCALE, 30 * GUI_SCALE, "Java " + javaVersion);
+			Graphics.drawText(0 * GUI_SCALE, 100 * GUI_SCALE, "Memory: " + (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory())/1024/1024
 					+ "/" + (Runtime.getRuntime().totalMemory()/1024/1024) + "MiB (max " + (Runtime.getRuntime().maxMemory()/1024/1024) + "MiB)");
 			
 			if(Cubyz.world != null) {
@@ -41,25 +43,25 @@ public class DebugOverlay extends MenuGUI {
 				double y = p.getPosition().y;
 				double z = p.getPosition().z;
 				
-				Graphics.drawText(0, 80, "XYZ: " + x + ", " + y + ", " + z);
-				Graphics.drawText(0, 100, "Loaded Chunks: " + Cubyz.world.getChunks().length);
-				Graphics.drawText(0, 120, "Render Distance: " + ClientSettings.RENDER_DISTANCE);
-				Graphics.drawText(0, 140, "Game Time: " + Cubyz.world.getGameTime());
-				Graphics.drawText(0, 160, "Chunk Queue Size: " + Cubyz.world.getChunkQueueSize());
-				Graphics.drawText(0, 180, "Biome: " + Cubyz.world.getBiome((int)p.getPosition().x, (int)p.getPosition().z).getRegistryID());
+				Graphics.drawText(0 * GUI_SCALE, 40 * GUI_SCALE, "XYZ: " + x + ", " + y + ", " + z);
+				Graphics.drawText(0 * GUI_SCALE, 50 * GUI_SCALE, "Loaded Chunks: " + Cubyz.world.getChunks().length);
+				Graphics.drawText(0 * GUI_SCALE, 60 * GUI_SCALE, "Render Distance: " + ClientSettings.RENDER_DISTANCE);
+				Graphics.drawText(0 * GUI_SCALE, 70 * GUI_SCALE, "Game Time: " + Cubyz.world.getGameTime());
+				Graphics.drawText(0 * GUI_SCALE, 80 * GUI_SCALE, "Chunk Queue Size: " + Cubyz.world.getChunkQueueSize());
+				Graphics.drawText(0 * GUI_SCALE, 90 * GUI_SCALE, "Biome: " + Cubyz.world.getBiome((int)p.getPosition().x, (int)p.getPosition().z).getRegistryID());
 				
 				if(p.getRemainingBreakTime() > 0) {
-					Graphics.drawText(0, 200, "Remaining Breaking Time: " + p.getRemainingBreakTime());
+					Graphics.drawText(0 * GUI_SCALE, 100 * GUI_SCALE, "Remaining Breaking Time: " + p.getRemainingBreakTime());
 				}
 			}
 			
 			int h = Window.getHeight();
-			Graphics.drawText(0, h - 20, "00 fps \\_");
-			Graphics.drawText(0, h - 50, "30 fps \\_");
-			Graphics.drawText(0, h - 80, "60 fps \\_");
+			Graphics.drawText(0 * GUI_SCALE, h - 10 * GUI_SCALE, "00 fps \\_");
+			Graphics.drawText(0 * GUI_SCALE, h - 25 * GUI_SCALE, "30 fps \\_");
+			Graphics.drawText(0 * GUI_SCALE, h - 40 * GUI_SCALE, "60 fps \\_");
 			for(int i = 0; i < lastFps.length; i++) {
 				if(lastFps[i] != 0) {
-					Graphics.fillRect(i*4, h - lastFps[i], 4, lastFps[i]);
+					Graphics.fillRect(i*4 * GUI_SCALE, h - lastFps[i] * GUI_SCALE / 2, 4 * GUI_SCALE, lastFps[i] * GUI_SCALE / 2);
 				}
 			}
 			
@@ -84,5 +86,8 @@ public class DebugOverlay extends MenuGUI {
 
 	@Override
 	public void init() {}
+
+	@Override
+	public void updateGUIScale() {}
 
 }

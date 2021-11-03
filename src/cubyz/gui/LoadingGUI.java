@@ -8,6 +8,8 @@ import cubyz.rendering.Texture;
 import cubyz.rendering.Window;
 import cubyz.utils.ResourceManager;
 
+import static cubyz.client.ClientSettings.GUI_SCALE;
+
 /**
  * A GUI showing the progress of the loading phase.
  */
@@ -33,6 +35,8 @@ public class LoadingGUI extends MenuGUI {
 	public LoadingGUI() {
 		step.setTextAlign(Component.ALIGN_CENTER);
 		step2.setTextAlign(Component.ALIGN_CENTER);
+
+		updateGUIScale();
 	}
 	
 	public void finishLoading() {
@@ -73,6 +77,12 @@ public class LoadingGUI extends MenuGUI {
 		pb1.setMaxValue(5);
 	}
 
+	@Override
+	public void updateGUIScale() {
+		step.setFontSize(16f * GUI_SCALE);
+		step2.setFontSize(16f * GUI_SCALE);
+	}
+
 	void setPosition(float x, float y, Component c) {
 		c.setPosition((int)(x*Window.getWidth()), (int)(y*Window.getHeight()), Component.ALIGN_TOP_LEFT);
 	}
@@ -91,7 +101,7 @@ public class LoadingGUI extends MenuGUI {
 		Graphics.fillRect(0, 0, Window.getWidth(), Window.getHeight());
 		Graphics.setColor(0xFFFFFF, alpha);
 		Graphics.fillRect(0, 0, Window.getWidth(), Window.getHeight());
-		Graphics.drawImage(splash, Window.getWidth()/2-100, (int)(0.1f*Window.getHeight()), 200, 200);
+		Graphics.drawImage(splash, Window.getWidth()/2-100 * GUI_SCALE, (int)(0.1f*Window.getHeight()), 200 * GUI_SCALE, 200 * GUI_SCALE);
 		if (isLastStep && currentStepCompleted) {
 			if (alpha > 0) {
 				alpha -= 4;

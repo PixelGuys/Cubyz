@@ -14,6 +14,8 @@ import cubyz.world.items.Item;
 import cubyz.world.items.ItemStack;
 import cubyz.world.items.Recipe;
 
+import static cubyz.client.ClientSettings.GUI_SCALE;
+
 /**
  * GUI of the normal inventory(when pressing 'I')
  */
@@ -67,30 +69,29 @@ public class InventoryGUI extends GeneralInventory {
 
 	@Override
 	protected void positionSlots() {
-		if(inv == null) {
-			playerInventorySize = Cubyz.player.getInventory().getCapacity();
-			inv = new InventorySlot[playerInventorySize + 5];
-			Inventory inventory = Cubyz.player.getInventory();
-			for(int i = 0; i < 8; i++) {
-				inv[i] = new InventorySlot(inventory.getStack(i), i*64 - 256, 64, Component.ALIGN_BOTTOM);
-			}
-			for(int i = 0; i < 8; i++) {
-				inv[i + 8] = new InventorySlot(inventory.getStack(i + 8), i*64 - 256, 256, Component.ALIGN_BOTTOM);
-			}
-			for(int i = 0; i < 8; i++) {
-				inv[i + 16] = new InventorySlot(inventory.getStack(i + 16), i*64 - 256, 320, Component.ALIGN_BOTTOM);
-			}
-			for(int i = 0; i < 8; i++) {
-				inv[i + 24] = new InventorySlot(inventory.getStack(i + 24), i*64 - 256, 384, Component.ALIGN_BOTTOM);
-			}
-			inv[playerInventorySize] = new InventorySlot(new ItemStack(), 0, 544, Component.ALIGN_BOTTOM);
-			inv[playerInventorySize+1] = new InventorySlot(new ItemStack(), 64, 544, Component.ALIGN_BOTTOM);
-			inv[playerInventorySize+2] = new InventorySlot(new ItemStack(), 0, 480, Component.ALIGN_BOTTOM);
-			inv[playerInventorySize+3] = new InventorySlot(new ItemStack(), 64, 480, Component.ALIGN_BOTTOM);
-			inv[playerInventorySize+4] = new InventorySlot(new ItemStack(), 192, 512, Component.ALIGN_BOTTOM, true);
+		playerInventorySize = Cubyz.player.getInventory().getCapacity();
+		inv = new InventorySlot[playerInventorySize + 5];
+		Inventory inventory = Cubyz.player.getInventory();
+		for(int i = 0; i < 8; i++) {
+			inv[i] = new InventorySlot(inventory.getStack(i), (i - 4) * 20 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_BOTTOM);
 		}
-		width = 576;
-		height = 576;
+		for(int i = 0; i < 8; i++) {
+			inv[i + 8] = new InventorySlot(inventory.getStack(i + 8), (i - 4) * 20 * GUI_SCALE, 80 * GUI_SCALE, Component.ALIGN_BOTTOM);
+		}
+		for(int i = 0; i < 8; i++) {
+			inv[i + 16] = new InventorySlot(inventory.getStack(i + 16), (i - 4) * 20 * GUI_SCALE, 100 * GUI_SCALE, Component.ALIGN_BOTTOM);
+		}
+		for(int i = 0; i < 8; i++) {
+			inv[i + 24] = new InventorySlot(inventory.getStack(i + 24), (i - 4) * 20 * GUI_SCALE, 120 * GUI_SCALE, Component.ALIGN_BOTTOM);
+		}
+		inv[playerInventorySize] = new InventorySlot(new ItemStack(), 0 * GUI_SCALE, 180 * GUI_SCALE, Component.ALIGN_BOTTOM);
+		inv[playerInventorySize+1] = new InventorySlot(new ItemStack(), 20 * GUI_SCALE, 180 * GUI_SCALE, Component.ALIGN_BOTTOM);
+		inv[playerInventorySize+2] = new InventorySlot(new ItemStack(), 0 * GUI_SCALE, 160 * GUI_SCALE, Component.ALIGN_BOTTOM);
+		inv[playerInventorySize+3] = new InventorySlot(new ItemStack(), 20 * GUI_SCALE, 160 * GUI_SCALE, Component.ALIGN_BOTTOM);
+		inv[playerInventorySize+4] = new InventorySlot(new ItemStack(), 60 * GUI_SCALE, 170 * GUI_SCALE, Component.ALIGN_BOTTOM, true);
+
+		width = 180 * GUI_SCALE;
+		height = 190 * GUI_SCALE;
 	}
 
 	@Override

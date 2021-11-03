@@ -20,6 +20,8 @@ import cubyz.world.CustomObject;
 import cubyz.world.ServerWorld;
 import cubyz.world.blocks.Block;
 
+import static cubyz.client.ClientSettings.GUI_SCALE;
+
 /**
  * GUI used to select the world to play.
  */
@@ -33,7 +35,6 @@ public class SaveSelectorGUI extends MenuGUI {
 	
 	@Override
 	public void init() {
-		int y = 10;
 		// Find all save folders that currently exist:
 		File folder = new File("saves");
 		if (!folder.exists()) {
@@ -46,8 +47,6 @@ public class SaveSelectorGUI extends MenuGUI {
 			String name = listOfFiles[i].getName();
 			ContextualTextKey tk = new ContextualTextKey("gui.cubyz.saves.play", name);
 			Button b = new Button(tk);
-			b.setBounds(10, y, 400, 40, Component.ALIGN_TOP_LEFT);
-			b.setFontSize(32);
 			b.setOnAction(() -> {
 				ServerWorld world = new ServerWorld(name, VisibleChunk.class);
 				Block[] blocks = world.generate();
@@ -61,8 +60,6 @@ public class SaveSelectorGUI extends MenuGUI {
 			});
 			saveButtons[i] = b;
 			b = new Button(TextKey.createTextKey("gui.cubyz.saves.delete"));
-			b.setBounds(420, y, 100, 40, Component.ALIGN_TOP_LEFT);
-			b.setFontSize(32);
 			int index = i;
 			Path path = listOfFiles[i].toPath();
 			b.setOnAction(new Runnable() {
@@ -104,22 +101,35 @@ public class SaveSelectorGUI extends MenuGUI {
 					init(); // re-init to re-order
 				}
 			});
-			y += 60;
 			deleteButtons[i] = b;
 		}
-		y += 60;
 		createNew = new Button(TextKey.createTextKey("gui.cubyz.saves.create"));
-		createNew.setBounds(10, 50, 300, 40, Component.ALIGN_BOTTOM_LEFT);
-		createNew.setFontSize(32);
 		createNew.setOnAction(() -> {
 			Cubyz.gameUI.setMenu(new SaveCreationGUI());
 		});
 		back = new Button(TextKey.createTextKey("gui.cubyz.general.back"));
-		back.setBounds(110, 50, 100, 40, Component.ALIGN_BOTTOM_RIGHT);
-		back.setFontSize(32);
 		back.setOnAction(() -> {
 			Cubyz.gameUI.back();
 		});
+
+		updateGUIScale();
+	}
+
+	@Override
+	public void updateGUIScale() {
+		int y = 10;
+		for (int i = 0; i < saveButtons.length; i++) {
+			saveButtons[i].setBounds(10 * GUI_SCALE, y * GUI_SCALE, 200 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_TOP_LEFT);
+			saveButtons[i].setFontSize(16 * GUI_SCALE);
+			deleteButtons[i].setBounds(220 * GUI_SCALE, y * GUI_SCALE, 50 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_TOP_LEFT);
+			deleteButtons[i].setFontSize(16 * GUI_SCALE);
+			y += 30;
+		}
+		createNew.setBounds(10 * GUI_SCALE, 30 * GUI_SCALE, 150 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_BOTTOM_LEFT);
+		createNew.setFontSize(16 * GUI_SCALE);
+
+		back.setBounds(60 * GUI_SCALE, 30 * GUI_SCALE, 50 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_BOTTOM_RIGHT);
+		back.setFontSize(16 * GUI_SCALE);
 	}
 
 	@Override

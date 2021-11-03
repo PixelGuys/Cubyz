@@ -9,6 +9,8 @@ import cubyz.rendering.text.Fonts;
 import cubyz.rendering.text.TextLine;
 import cubyz.world.items.Inventory;
 
+import static cubyz.client.ClientSettings.GUI_SCALE;
+
 /**
  * Basic overlay while in-game.<br>
  * Contains hotbar, hunger bars, and crosshair.
@@ -24,7 +26,7 @@ public class GameOverlay extends MenuGUI {
 	long lastPlayerHurtMs; // stored here and not in Player for easier multiplayer integration
 	float lastPlayerHealth;
 
-	private InventorySlot inv [] = new InventorySlot[8];
+	private final InventorySlot inv [] = new InventorySlot[8];
 	
 	@Override
 	public void init() {
@@ -48,18 +50,24 @@ public class GameOverlay extends MenuGUI {
 		hungerBar[5] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_mid_half.png");
 		hungerBar[6] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_mid_full.png");
 		hungerBar[7] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_icon.png");
+		
+		updateGUIScale();
+	}
+
+	@Override
+	public void updateGUIScale() {
 		Inventory inventory = Cubyz.player.getInventory();
 		for(int i = 0; i < 8; i++) {
-			inv[i] = new InventorySlot(inventory.getStack(i), i*64 - 256, 64, Component.ALIGN_BOTTOM);
+			inv[i] = new InventorySlot(inventory.getStack(i), (i - 4) * 20 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_BOTTOM);
 		}
 	}
 
 	@Override
 	public void render() {
 		Graphics.setColor(0xFFFFFF);
-		Graphics.drawImage(crosshair, Window.getWidth()/2 - 16, Window.getHeight()/2 - 16, 32, 32);
+		Graphics.drawImage(crosshair, Window.getWidth()/2 - 8 * GUI_SCALE, Window.getHeight()/2 - 8 * GUI_SCALE, 16 * GUI_SCALE, 16 * GUI_SCALE);
 		if(!(Cubyz.gameUI.getMenuGUI() instanceof GeneralInventory)) {
-			Graphics.drawImage(selection, Window.getWidth()/2 - 254 + Cubyz.inventorySelection*64, Window.getHeight() - 62, 60, 60);
+			Graphics.drawImage(selection, Window.getWidth()/2 - 79 * GUI_SCALE + Cubyz.inventorySelection*20 * GUI_SCALE, Window.getHeight() - 19 * GUI_SCALE, 18 * GUI_SCALE, 18 * GUI_SCALE);
 			for(int i = 0; i < 8; i++) {
 				inv[i].reference = Cubyz.player.getInventory().getStack(i); // without it, if moved in inventory, stack won't refresh
 				inv[i].render();
@@ -79,10 +87,10 @@ public class GameOverlay extends MenuGUI {
 			Graphics.fillRect(0, 0, Window.getWidth(), Window.getHeight());
 		}
 		Graphics.setColor(0xFFFFFF);
-		TextLine text = new TextLine(Fonts.PIXEL_FONT, Math.round(health*10)/10.0f + "/" + Math.round(maxHealth) + " HP", 16, false);
+		TextLine text = new TextLine(Fonts.PIXEL_FONT, Math.round(health*10)/10.0f + "/" + Math.round(maxHealth) + " HP", 16 * GUI_SCALE, false);
 		float width = text.getWidth();
-		Graphics.drawImage(healthBar[7], (int)(Window.getWidth() - maxHealth*12 - 40 - width), 6, 24, 24);
-		text.render(Window.getWidth() - maxHealth*12 - 10 - width, 9);
+		Graphics.drawImage(healthBar[7], (int)(Window.getWidth() - (maxHealth*8 + 40) * GUI_SCALE) - width, 4 * GUI_SCALE, 16 * GUI_SCALE, 16 * GUI_SCALE);
+		text.render(Window.getWidth() - (maxHealth*8 + 10) * GUI_SCALE - width, 5 * GUI_SCALE);
 		for(int i = 0; i < maxHealth; i += 2) {
 			boolean half = i + 1 == health;
 			boolean empty = i >= health;
@@ -93,17 +101,17 @@ public class GameOverlay extends MenuGUI {
 			} else if(i == maxHealth-2) { // end
 				idx = i + 1 >= health ? 2 : 3;
 			} else {
-				idx = empty ? 4 : (half ? 5 : 6); // if empty = 4, half = 5, full = 6
+				idx = empty ? 4 : (half ? 5 : 6); // if empty => 4, half => 5, full => 6
 			}
-			Graphics.drawImage(healthBar[idx], (int)(i*12 + Window.getWidth() - maxHealth*12 - 4), 6, 24, 24);
+			Graphics.drawImage(healthBar[idx], (int)(i*8 * GUI_SCALE + Window.getWidth() - (maxHealth*8 + 4) * GUI_SCALE), 4 * GUI_SCALE, 16 * GUI_SCALE, 16 * GUI_SCALE);
 		}
 		// Draw the hunger bar:
 		float maxHunger = Cubyz.player.maxHunger;
 		float hunger = Cubyz.player.hunger;
-		text = new TextLine(Fonts.PIXEL_FONT, Math.round(hunger*10)/10.0f + "/" + Math.round(maxHunger) + " HP", 16, false);
+		text = new TextLine(Fonts.PIXEL_FONT, Math.round(hunger*10)/10.0f + "/" + Math.round(maxHunger) + " HP", 16 * GUI_SCALE, false);
 		width = text.getWidth();
-		Graphics.drawImage(hungerBar[7], (int)(Window.getWidth() - maxHunger*12 - 40 - width), 36, 24, 24);
-		text.render(Window.getWidth() - maxHealth*12 - 10 - width, 39);
+		Graphics.drawImage(hungerBar[7], (int)(Window.getWidth() - (maxHunger*8 + 40) * GUI_SCALE - width), 24 * GUI_SCALE, 16 * GUI_SCALE, 16 * GUI_SCALE);
+		text.render(Window.getWidth() - (maxHealth*8 + 10) * GUI_SCALE - width, 25 * GUI_SCALE);
 		for(int i = 0; i < maxHunger; i += 2) {
 			boolean half = i + 1 == hunger;
 			boolean empty = i >= hunger;
@@ -114,9 +122,9 @@ public class GameOverlay extends MenuGUI {
 			} else if(i == maxHunger-2) { // end
 				idx = i + 1 >= hunger ? 2 : 3;
 			} else {
-				idx = empty ? 4 : (half ? 5 : 6); // if empty = 4, half = 5, full = 6
+				idx = empty ? 4 : (half ? 5 : 6); // if empty => 4, half => 5, full => 6
 			}
-			Graphics.drawImage(hungerBar[idx], (int)(i*12 + Window.getWidth() - maxHunger*12 - 4), 36, 24, 24);
+			Graphics.drawImage(hungerBar[idx], (int)(i*8 * GUI_SCALE + Window.getWidth() - (maxHunger*8 + 4) * GUI_SCALE), 24 * GUI_SCALE, 16 * GUI_SCALE, 16 * GUI_SCALE);
 		}
 	}
 

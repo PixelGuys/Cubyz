@@ -16,6 +16,7 @@ import java.util.ArrayList;
 
 import org.lwjgl.glfw.GLFW;
 
+import cubyz.client.ClientSettings;
 import cubyz.gui.input.Keyboard;
 import cubyz.gui.input.Mouse;
 import cubyz.rendering.Graphics;
@@ -33,7 +34,6 @@ public class UISystem {
 	private ArrayList<MenuGUI> overlays = new ArrayList<>();
 	private ArrayDeque<MenuGUI> menuQueue = new ArrayDeque<>();
 	
-	public static float guiScale = 1f;
 	private Transition curTransition;
 	private long lastAnimTime = System.currentTimeMillis();
 	private float transitionTime;
@@ -136,6 +136,18 @@ public class UISystem {
 			glEnable(GL_BLEND);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 			glActiveTexture(GL_TEXTURE0);
+			int guiScale = Math.min(Window.getWidth()/480, Window.getHeight()/270);
+			guiScale = Math.max(1, guiScale);
+			if(guiScale != ClientSettings.GUI_SCALE) {
+				ClientSettings.GUI_SCALE = guiScale;
+				gui.updateGUIScale();
+				for(MenuGUI gui : overlays) {
+					gui.updateGUIScale();
+				}
+				for(MenuGUI gui : menuQueue) {
+					gui.updateGUIScale();
+				}
+			}
 			transitionTime += System.currentTimeMillis() - lastAnimTime;
 			lastAnimTime = System.currentTimeMillis();
 			Graphics.setGlobalAlphaMultiplier(1);

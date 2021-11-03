@@ -5,13 +5,15 @@ import cubyz.gui.input.Mouse;
 import cubyz.rendering.Graphics;
 import cubyz.rendering.text.Fonts;
 
+import static cubyz.client.ClientSettings.GUI_SCALE;
+
 /**
  * A slider.
  */
 
 public class Slider extends Component {
 	
-	private static final int initialXOffset = 5, yOffset = 5; // How far away the slider is from the borders.
+	private static final int initialXOffset = 1, yOffset = 1; // How far away the slider is from the borders.
 	
 	private int minValue, maxValue, curValue;
 	private int xOffset;
@@ -51,7 +53,7 @@ public class Slider extends Component {
 
 	public void setFontSize(float fontSize) {
 		this.fontSize = fontSize;
-		xOffset = (int)(initialXOffset + height/2 - fontSize/2 - yOffset);
+		xOffset = (int)(initialXOffset*GUI_SCALE + height/2 - fontSize/2 - yOffset*GUI_SCALE);
 	}
 
 	public void setOnAction(Runnable run) {
@@ -65,7 +67,7 @@ public class Slider extends Component {
 	@Override
 	public void setBounds(int x, int y, int width, int height, byte align) {
 		super.setBounds(x, y, width, height, align);
-		xOffset = (int)(initialXOffset + height/2 - fontSize/2 - yOffset);
+		xOffset = (int)(initialXOffset*GUI_SCALE + height/2 - fontSize/2 - yOffset*GUI_SCALE);
 	}
 
 	@Override
@@ -88,11 +90,11 @@ public class Slider extends Component {
 		Graphics.setColor(0x7F7FA0);
 		Graphics.fillRect(x, y, width, height);
 		Graphics.setColor(0xA0A0C8);
-		Graphics.fillRect(x + initialXOffset, y + yOffset + fontSize, width - 2*initialXOffset, height - 2*yOffset - fontSize);
+		Graphics.fillRect(x + initialXOffset*GUI_SCALE, y + yOffset*GUI_SCALE + fontSize, width - 2*initialXOffset*GUI_SCALE, height - 2*yOffset*GUI_SCALE - fontSize);
 		Graphics.setColor(0xC8C8F0);
-		Graphics.fillCircle(x + xOffset + (float)(curValue - minValue)/(maxValue-minValue)*(width - 2*xOffset), y + height/2 + fontSize/2, height/2 - fontSize/2 - yOffset);
+		Graphics.fillCircle(x + xOffset + (float)(curValue - minValue)/(maxValue-minValue)*(width - 2*xOffset), y + height/2 + fontSize/2, height/2 - fontSize/2 - yOffset*GUI_SCALE);
 		Graphics.setColor(0xffffff);
 		Graphics.setFont(Fonts.PIXEL_FONT, fontSize);
-		Graphics.drawText(x + initialXOffset, y + yOffset, text + (customValues != null ? customValues[curValue] : curValue));
+		Graphics.drawText(x + initialXOffset*GUI_SCALE, y + yOffset*GUI_SCALE, text + (customValues != null ? customValues[curValue] : curValue));
 	}
 }

@@ -12,6 +12,8 @@ import cubyz.rendering.Window;
 import cubyz.world.items.Item;
 import cubyz.world.items.ItemStack;
 
+import static cubyz.client.ClientSettings.GUI_SCALE;
+
 /**
  * A class containing common functionality from all Inventory GUIs(tooltips, inventory slot movement, inventory slot drawing).
  */
@@ -50,6 +52,12 @@ public abstract class GeneralInventory extends MenuGUI {
 	}
 
 	@Override
+	public void updateGUIScale() {
+		positionSlots();
+		carried = new InventorySlot(carriedStack);
+	}
+
+	@Override
 	public void render() {
 		if(carried == null) {
 			carried = new InventorySlot(carriedStack);
@@ -72,7 +80,7 @@ public abstract class GeneralInventory extends MenuGUI {
 			int x = (int)Mouse.getCurrentPos().x;
 			int y = (int)Mouse.getCurrentPos().y;
 			Graphics.setColor(0xFFFFFF);
-			carried.setPosition(x-32, y-32, Component.ALIGN_TOP_LEFT);
+			carried.setPosition(x - 16 * GUI_SCALE, y - 16 * GUI_SCALE, Component.ALIGN_TOP_LEFT);
 			carried.render();
 		}
 		// Draw tooltips, when the nothing is carried.

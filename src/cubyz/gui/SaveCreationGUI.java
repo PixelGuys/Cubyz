@@ -18,6 +18,8 @@ import cubyz.world.ServerWorld;
 import cubyz.world.blocks.Block;
 import cubyz.world.terrain.worldgenerators.SurfaceGenerator;
 
+import static cubyz.client.ClientSettings.GUI_SCALE;
+
 /**
  * GUI shown when creating a new world in a new world file.<br>
  * TODO: world seed and other related settings.
@@ -87,6 +89,23 @@ public class SaveCreationGUI extends MenuGUI {
 		cancel.setOnAction(() -> {
 			Cubyz.gameUI.back();
 		});
+
+		updateGUIScale();
+	}
+
+	@Override
+	public void updateGUIScale() {
+		name.setBounds(-120 * GUI_SCALE, 50 * GUI_SCALE, 250 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_TOP);
+		name.setFont(Fonts.PIXEL_FONT, 16 * GUI_SCALE);
+		
+		generator.setBounds(-120 * GUI_SCALE, 80 * GUI_SCALE, 200 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_TOP);
+		generator.setFontSize(16 * GUI_SCALE);
+
+		create.setBounds(10 * GUI_SCALE, 30 * GUI_SCALE, 150 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_BOTTOM_LEFT);
+		create.setFontSize(16 * GUI_SCALE);
+
+		cancel.setBounds(60 * GUI_SCALE, 30 * GUI_SCALE, 50 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_BOTTOM_RIGHT);
+		cancel.setFontSize(16 * GUI_SCALE);
 	}
 
 	@Override

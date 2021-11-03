@@ -8,6 +8,8 @@ import cubyz.world.items.Inventory;
 import cubyz.world.items.Item;
 import cubyz.world.items.ItemStack;
 
+import static cubyz.client.ClientSettings.GUI_SCALE;
+
 /**
  * The GUI that appears when opening the creative menu
  */
@@ -25,8 +27,10 @@ public class CreativeGUI extends GeneralInventory {
 
 	@Override
 	protected void positionSlots() {
-		width = 576;
-		height = 576;
+		width = 180 * GUI_SCALE;
+		height = 180 * GUI_SCALE;
+		if(inv != null)
+			setInventory(null);
 	}
 
 	@Override
@@ -45,29 +49,31 @@ public class CreativeGUI extends GeneralInventory {
 	public void setInventory(Inventory in) {
 		Inventory inventory = Cubyz.player.getInventory();
 		for(int i = 0; i < 8; i++) {
-			inv[i] = new InventorySlot(inventory.getStack(i), i*64 - 256, 64, Component.ALIGN_BOTTOM);
+			inv[i] = new InventorySlot(inventory.getStack(i), (i - 4) * 20 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_BOTTOM);
 		}
 		for(int i = 0; i < 8; i++) {
-			inv[i + 8] = new InventorySlot(inventory.getStack(i + 8), i*64 - 256, 192, Component.ALIGN_BOTTOM);
+			inv[i + 8] = new InventorySlot(inventory.getStack(i + 8), (i - 4) * 20 * GUI_SCALE, 80 * GUI_SCALE, Component.ALIGN_BOTTOM);
 		}
 		for(int i = 0; i < 8; i++) {
-			inv[i + 16] = new InventorySlot(inventory.getStack(i + 16), i*64 - 256, 256, Component.ALIGN_BOTTOM);
+			inv[i + 16] = new InventorySlot(inventory.getStack(i + 16), (i - 4) * 20 * GUI_SCALE, 100 * GUI_SCALE, Component.ALIGN_BOTTOM);
 		}
 		for(int i = 0; i < 8; i++) {
-			inv[i + 24] = new InventorySlot(inventory.getStack(i + 24), i*64 - 256, 320, Component.ALIGN_BOTTOM);
+			inv[i + 24] = new InventorySlot(inventory.getStack(i + 24), (i - 4) * 20 * GUI_SCALE, 120 * GUI_SCALE, Component.ALIGN_BOTTOM);
 		}
 		
 		Item[] items = Cubyz.world.registries.itemRegistry.registered(new Item[0]);
-		int x = -256;
-		int y = 408 + (items.length / 8) * 64;
+		int x = -80 * GUI_SCALE;
+		int y = 150 + (items.length / 8) * 20;
+		height = (y + 10) * GUI_SCALE;
+		y *= GUI_SCALE;
 		for (int i = 0; i < items.length; i++) {
 			Item item = items[i];
 			inv[32 + i] = new InventorySlot(
 					new ItemStack(item, 64), x, y, Component.ALIGN_BOTTOM);
-			x += 64;
-			if (x > 192) {
-				x = -256;
-				y -= 64;
+			x += 20 * GUI_SCALE;
+			if (x > 60 * GUI_SCALE) {
+				x = -80 * GUI_SCALE;
+				y -= 20 * GUI_SCALE;
 			}
 		}
 	}

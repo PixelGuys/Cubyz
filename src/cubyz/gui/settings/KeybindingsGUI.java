@@ -15,11 +15,15 @@ import cubyz.rendering.Window;
 import cubyz.utils.Utilities;
 import cubyz.utils.translate.TextKey;
 
+import static cubyz.client.ClientSettings.GUI_SCALE;
+
 public class KeybindingsGUI extends MenuGUI {
 
 	private ScrollingContainer container;
 	private Button done;
 	private String listen;
+	private Label[] labels;
+	private Button[] buttons;
 	
 	@Override
 	public void init() {
@@ -93,13 +97,13 @@ public class KeybindingsGUI extends MenuGUI {
 		
 		done = new Button();
 		done.setText(TextKey.createTextKey("gui.cubyz.settings.done"));
-		done.setBounds(270, 65, 250, 45, Component.ALIGN_BOTTOM_RIGHT);
-		done.setFontSize(32);
 		done.setOnAction(() -> {
 			Cubyz.gameUI.back();
 		});
 		
-		int y = 30;
+		buttons = new Button[Keybindings.keyNames.length];
+		labels = new Label[Keybindings.keyNames.length];
+		int i = 0;
 		for (String name : Keybindings.keyNames) {
 			Label label = new Label();
 			Button button = new Button();
@@ -113,22 +117,40 @@ public class KeybindingsGUI extends MenuGUI {
 			button.setText(text);
 			label.setText(Utilities.capitalize(name));
 			
-			button.setBounds(160, y, 250, 25, Component.ALIGN_TOP_LEFT);
-			button.setFontSize(16);
 			button.setOnAction(() -> {
 				if (listen == null) {
 					listen = name;
 					button.setText("Click or press any key");
 				}
 			});
-			label.setBounds(20, y, 0, 24, Component.ALIGN_TOP_LEFT);
 			label.setTextAlign(Component.ALIGN_TOP_LEFT);
 			container.add(label);
 			container.add(button);
+
+			buttons[i] = button;
+			labels[i] = label;
 			
-			y += 40;
+			i++;
 		}
 		
+		updateGUIScale();
+	}
+
+	@Override
+	public void updateGUIScale() {
+		done.setBounds(100 * GUI_SCALE, 30 * GUI_SCALE, 80 * GUI_SCALE, 25 * GUI_SCALE, Component.ALIGN_BOTTOM_RIGHT);
+		done.setFontSize(16 * GUI_SCALE);
+		
+		int y = 10;
+		for (int i = 0; i < buttons.length; i++) {
+			buttons[i].setBounds(160 * GUI_SCALE, y * GUI_SCALE, 250 * GUI_SCALE, 25 * GUI_SCALE, Component.ALIGN_TOP_LEFT);
+			buttons[i].setFontSize(16 * GUI_SCALE);
+
+			labels[i].setBounds(20 * GUI_SCALE, (y + 4) * GUI_SCALE, 0 * GUI_SCALE, 24 * GUI_SCALE, Component.ALIGN_TOP_LEFT);
+			labels[i].setFontSize(16 * GUI_SCALE);
+
+			y += 30;
+		}
 	}
 
 	@Override
@@ -153,7 +175,7 @@ public class KeybindingsGUI extends MenuGUI {
 			}
 		}
 		
-		container.setBounds(0, 0, Window.getWidth(), Window.getHeight() - 70, Component.ALIGN_TOP_LEFT);
+		container.setBounds(0, 0, Window.getWidth(), Window.getHeight() - 70 * GUI_SCALE, Component.ALIGN_TOP_LEFT);
 		
 		container.render();
 		done.render();

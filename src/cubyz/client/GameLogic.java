@@ -69,7 +69,6 @@ public class GameLogic implements ClientConnection {
 	public boolean isOnlineServerOpened = false;
 
 	public GameLogic() {
-		Window.setSize(800, 600);
 		Window.setTitle("Cubyz " + Constants.GAME_BUILD_TYPE + " " + Constants.GAME_VERSION);
 	}
 

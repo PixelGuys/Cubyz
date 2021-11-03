@@ -21,6 +21,8 @@ import cubyz.gui.input.Mouse;
 import cubyz.rendering.text.Fonts;
 import cubyz.rendering.text.TextLine;
 
+import static cubyz.client.ClientSettings.GUI_SCALE;
+
 // (the console GUI is different from chat GUI)
 
 /**
@@ -32,12 +34,12 @@ public class ConsoleGUI extends MenuGUI {
 	TextInput input;
 	
 	//Basic console properties
-	private static final int CONSOLE_HEIGHT = 40; //TODO Changeable via Options
-	private static final int CONSOLE_WIDTH = 400; //TODO Changeable via Options
-	private static final int SIZE = 128;
+	private static final int CONSOLE_HEIGHT = 20;
+	private static final int CONSOLE_WIDTH = 200;
 
-	//Storage and pionter for managing console-history
-	private static String[] consoleArray = new String[SIZE];
+	//Storage and pointer for managing console-history
+	private static final int HISTORY_SIZE = 128;
+	private static String[] consoleArray = new String[HISTORY_SIZE];
 	private static int end;
 	private static int current;
 
@@ -64,15 +66,15 @@ public class ConsoleGUI extends MenuGUI {
 	@Override
 	public void init() {
 		input = new TextInput();
-		input.setBounds(0, 0, CONSOLE_WIDTH, CONSOLE_HEIGHT, Component.ALIGN_TOP_LEFT);
 
-		input.setFontSize(CONSOLE_HEIGHT - 2);
 		input.textLine.endSelection(0);
 		input.setFocused(true);
 		Mouse.setGrabbed(false);
 
 		mode = NORMAL;
 		textLine.updateText("");
+
+		updateGUIScale();
 
 		if (!gotData) {
 			try {
@@ -82,7 +84,7 @@ public class ConsoleGUI extends MenuGUI {
 				iS.close();
 			} catch (IOException ioE) {
 				//Creates new history if cant read file(wrong format; doesnt exist; damaged)
-				for (int i = 0; i < SIZE; i++) {
+				for (int i = 0; i < HISTORY_SIZE; i++) {
 					consoleArray[i] = "";
 				}
 				end = 0;
@@ -93,6 +95,12 @@ public class ConsoleGUI extends MenuGUI {
 			gotData = true;
 		}
 		current = end;
+	}
+
+	@Override
+	public void updateGUIScale() {
+		input.setBounds(0 * GUI_SCALE, 0 * GUI_SCALE, CONSOLE_WIDTH * GUI_SCALE, CONSOLE_HEIGHT * GUI_SCALE, Component.ALIGN_TOP_LEFT);
+		input.setFontSize((CONSOLE_HEIGHT - 4) * GUI_SCALE);
 	}
 
 	public void update() {
@@ -129,9 +137,9 @@ public class ConsoleGUI extends MenuGUI {
 				execute();
 			} else if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_UP)) {
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_UP, false);
-				if (!("".equals(consoleArray[(SIZE + current - 1) % SIZE]))) {
+				if (!("".equals(consoleArray[(HISTORY_SIZE + current - 1) % HISTORY_SIZE]))) {
 					mode = HISTORY;
-					current = (SIZE + current - 1) % SIZE;
+					current = (HISTORY_SIZE + current - 1) % HISTORY_SIZE;
 				}
 			} 
 		} else if (mode == AUTOCOMPLETE) {
@@ -177,13 +185,13 @@ public class ConsoleGUI extends MenuGUI {
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_UP) || Keyboard.isKeyPressed(GLFW.GLFW_KEY_TAB)) {
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_UP, false);
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_TAB, false);
-				if (!("".equals(consoleArray[(SIZE + current - 1) % SIZE]))) {
-					current = (SIZE + current - 1) % SIZE;
+				if (!("".equals(consoleArray[(HISTORY_SIZE + current - 1) % HISTORY_SIZE]))) {
+					current = (HISTORY_SIZE + current - 1) % HISTORY_SIZE;
 				}
 			} else if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_DOWN)) {
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_DOWN, false);
 				if (!("".equals(consoleArray[current]))) {
-					current = (current + 1) % SIZE;
+					current = (current + 1) % HISTORY_SIZE;
 				}
 			} else if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_ENTER)) {
 				findArguments();
@@ -237,7 +245,7 @@ public class ConsoleGUI extends MenuGUI {
 		String text = input.getText();
 		if (text != "") {
 			consoleArray[end] = text;
-			end = (end + 1) % SIZE;
+			end = (end + 1) % HISTORY_SIZE;
 			current = end;
 			consoleArray[current] = "";
 			//Executes

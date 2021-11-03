@@ -35,6 +35,8 @@ public class ClientSettings {
 	public static float FOV = 70.0f;
 	
 	public static boolean easyLighting = true; // Enables the easy-lighting system.
+
+	public static int GUI_SCALE = 2;
 	
 
 	/**Not actually a setting, but stored here anyways.*/

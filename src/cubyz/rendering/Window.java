@@ -27,7 +27,7 @@ import cubyz.gui.input.Keyboard;
 public abstract class Window {
 
 	private static long handle;
-	private static int width, height;
+	private static int width = 1280, height = 720;
 	private static boolean resized = true;
 	private static final Matrix4f projectionMatrix = new Matrix4f();
 	private static boolean fullscreen = false;
@@ -158,7 +158,7 @@ public abstract class Window {
 		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // allow to use newer versions (if available) at the price of having deprecated features possibly removed
 		glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
 
-		handle = glfwCreateWindow(640, 480, "Cubyz", monitorID, NULL);
+		handle = glfwCreateWindow(width, height, "Cubyz", monitorID, NULL);
 		if (handle == NULL) {
 			int err = glfwGetError(PointerBuffer.allocateDirect(1));
 			if (err == 65543 || err == 65540) { // we want a too much recent version
@@ -168,7 +168,7 @@ public abstract class Window {
 				glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_ANY_PROFILE);
 				glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_FALSE);
 				// so let's use the minimum version
-				handle = glfwCreateWindow(640, 480, "Cubyz", monitorID, NULL);
+				handle = glfwCreateWindow(width, height, "Cubyz", monitorID, NULL);
 				if (handle == NULL) {
 					throw new RuntimeException("Failed to create the GLFW window (code = " + err + ")");
 				}

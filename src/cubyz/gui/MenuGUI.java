@@ -19,6 +19,7 @@ public abstract class MenuGUI implements RegistryElement {
 	}
 	
 	public abstract void init();
+	public abstract void updateGUIScale();
 	public abstract void render();
 	
 	public abstract boolean doesPauseGame();
