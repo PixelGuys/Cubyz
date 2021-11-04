@@ -1,4 +1,4 @@
-package cubyz.gui;
+package cubyz.gui.menu;
 
 import java.io.File;
 import java.io.IOException;
@@ -12,7 +12,9 @@ import cubyz.Logger;
 import cubyz.client.ClientOnly;
 import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
+import cubyz.gui.MenuGUI;
 import cubyz.gui.components.Button;
+import cubyz.gui.components.Component;
 import cubyz.rendering.VisibleChunk;
 import cubyz.utils.translate.ContextualTextKey;
 import cubyz.utils.translate.TextKey;

@@ -1,7 +1,8 @@
-package cubyz.gui;
+package cubyz.gui.game.inventory;
 
 import cubyz.api.Resource;
 import cubyz.client.Cubyz;
+import cubyz.gui.components.Component;
 import cubyz.gui.components.InventorySlot;
 import cubyz.rendering.Window;
 import cubyz.world.items.Inventory;

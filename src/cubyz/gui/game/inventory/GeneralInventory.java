@@ -1,9 +1,11 @@
-package cubyz.gui;
+package cubyz.gui.game.inventory;
 
 import org.joml.Vector3f;
 
 import cubyz.api.Resource;
 import cubyz.client.Cubyz;
+import cubyz.gui.MenuGUI;
+import cubyz.gui.components.Component;
 import cubyz.gui.components.InventorySlot;
 import cubyz.gui.components.Label;
 import cubyz.gui.input.Mouse;

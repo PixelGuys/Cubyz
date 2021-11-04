@@ -1,7 +1,10 @@
-package cubyz.gui;
+package cubyz.gui.game;
 
 import cubyz.client.Cubyz;
+import cubyz.gui.MenuGUI;
+import cubyz.gui.components.Component;
 import cubyz.gui.components.InventorySlot;
+import cubyz.gui.game.inventory.GeneralInventory;
 import cubyz.rendering.Graphics;
 import cubyz.rendering.Texture;
 import cubyz.rendering.Window;

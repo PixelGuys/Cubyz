@@ -1,6 +1,5 @@
 package cubyz.gui.components;
 
-import cubyz.gui.Component;
 import cubyz.rendering.text.CubyzFont;
 import cubyz.rendering.text.Fonts;
 import cubyz.rendering.text.TextLine;

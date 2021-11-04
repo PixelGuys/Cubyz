@@ -1,5 +1,7 @@
-package cubyz.gui;
+package cubyz.gui.menu;
 
+import cubyz.gui.MenuGUI;
+import cubyz.gui.ToastManager;
 import cubyz.gui.ToastManager.Toast;
 import cubyz.rendering.Graphics;
 import cubyz.rendering.Window;

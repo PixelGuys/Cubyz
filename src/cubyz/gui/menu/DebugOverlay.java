@@ -1,10 +1,11 @@
-package cubyz.gui;
+package cubyz.gui.menu;
 
 import cubyz.Constants;
 import cubyz.client.ClientSettings;
 import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
 import cubyz.client.GameLogic;
+import cubyz.gui.MenuGUI;
 import cubyz.rendering.Graphics;
 import cubyz.rendering.Window;
 import cubyz.rendering.text.Fonts;

@@ -1,11 +1,11 @@
-package cubyz.gui.settings;
+package cubyz.gui.menu.settings;
 
 import cubyz.client.ClientSettings;
 import cubyz.client.Cubyz;
-import cubyz.gui.Component;
 import cubyz.gui.MenuGUI;
 import cubyz.gui.components.Button;
 import cubyz.gui.components.CheckBox;
+import cubyz.gui.components.Component;
 import cubyz.gui.components.Label;
 import cubyz.gui.components.Slider;
 import cubyz.rendering.Window;

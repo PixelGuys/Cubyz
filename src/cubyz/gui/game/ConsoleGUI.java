@@ -1,4 +1,4 @@
-package cubyz.gui;
+package cubyz.gui.game;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -15,6 +15,8 @@ import cubyz.api.CubyzRegistries;
 import cubyz.client.Cubyz;
 import cubyz.command.CommandBase;
 import cubyz.command.CommandExecutor;
+import cubyz.gui.MenuGUI;
+import cubyz.gui.components.Component;
 import cubyz.gui.components.TextInput;
 import cubyz.gui.input.Keyboard;
 import cubyz.gui.input.Mouse;

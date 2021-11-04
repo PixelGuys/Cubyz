@@ -1,6 +1,8 @@
-package cubyz.gui;
+package cubyz.gui.menu;
 
 import cubyz.client.Cubyz;
+import cubyz.gui.MenuGUI;
+import cubyz.gui.components.Component;
 import cubyz.gui.components.Label;
 import cubyz.gui.components.ProgressBar;
 import cubyz.rendering.Graphics;

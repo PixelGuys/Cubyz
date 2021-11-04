@@ -1,6 +1,5 @@
 package cubyz.gui.components;
 
-import cubyz.gui.Component;
 import cubyz.gui.input.Keyboard;
 import cubyz.gui.input.Mouse;
 import cubyz.rendering.Graphics;

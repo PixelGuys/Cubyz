@@ -5,7 +5,6 @@ import java.awt.Rectangle;
 import org.joml.Vector2d;
 
 import cubyz.client.GameLauncher;
-import cubyz.gui.Component;
 import cubyz.gui.input.Mouse;
 import cubyz.rendering.Graphics;
 import cubyz.rendering.Texture;

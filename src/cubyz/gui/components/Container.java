@@ -2,8 +2,6 @@ package cubyz.gui.components;
 
 import java.util.ArrayList;
 
-import cubyz.gui.Component;
-
 /**
  * A Component that contains other Components.
  */

@@ -1,13 +1,13 @@
-package cubyz.gui.settings;
+package cubyz.gui.menu.settings;
 
 import java.io.File;
 import java.util.ArrayList;
 
 import cubyz.Settings;
 import cubyz.client.Cubyz;
-import cubyz.gui.Component;
 import cubyz.gui.MenuGUI;
 import cubyz.gui.components.Button;
+import cubyz.gui.components.Component;
 import cubyz.utils.DiscordIntegration;
 import cubyz.utils.ResourceManager;
 import cubyz.utils.translate.ContextualTextKey;

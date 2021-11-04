@@ -1,6 +1,5 @@
 package cubyz.gui.components;
 
-import cubyz.gui.Component;
 import cubyz.rendering.Graphics;
 
 /**

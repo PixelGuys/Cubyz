@@ -1,11 +1,11 @@
-package cubyz.gui.settings;
+package cubyz.gui.menu.settings;
 
 import org.lwjgl.glfw.GLFW;
 
 import cubyz.client.Cubyz;
-import cubyz.gui.Component;
 import cubyz.gui.MenuGUI;
 import cubyz.gui.components.Button;
+import cubyz.gui.components.Component;
 import cubyz.gui.components.Label;
 import cubyz.gui.components.ScrollingContainer;
 import cubyz.gui.input.Keybindings;

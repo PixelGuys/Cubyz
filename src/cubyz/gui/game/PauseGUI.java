@@ -1,13 +1,17 @@
-package cubyz.gui;
+package cubyz.gui.game;
 
 import cubyz.Logger;
 import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
+import cubyz.gui.MenuGUI;
+import cubyz.gui.Transition;
 import cubyz.gui.components.Button;
+import cubyz.gui.components.Component;
 import cubyz.gui.input.Keybindings;
 import cubyz.gui.input.Keyboard;
 import cubyz.gui.input.Mouse;
-import cubyz.gui.settings.SettingsGUI;
+import cubyz.gui.menu.MainMenuGUI;
+import cubyz.gui.menu.settings.SettingsGUI;
 
 import static cubyz.client.ClientSettings.GUI_SCALE;
 

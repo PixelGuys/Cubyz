@@ -1,4 +1,4 @@
-package cubyz.gui;
+package cubyz.gui.menu;
 
 import java.awt.Rectangle;
 
@@ -7,10 +7,12 @@ import org.joml.Vector2d;
 import cubyz.Logger;
 import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
+import cubyz.gui.MenuGUI;
 import cubyz.gui.components.Button;
+import cubyz.gui.components.Component;
 import cubyz.gui.components.Label;
 import cubyz.gui.input.Mouse;
-import cubyz.gui.settings.SettingsGUI;
+import cubyz.gui.menu.settings.SettingsGUI;
 import cubyz.rendering.Graphics;
 import cubyz.rendering.Texture;
 import cubyz.rendering.Window;

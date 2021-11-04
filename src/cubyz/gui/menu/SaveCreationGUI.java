@@ -1,4 +1,4 @@
-package cubyz.gui;
+package cubyz.gui.menu;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -8,7 +8,9 @@ import cubyz.api.Resource;
 import cubyz.client.ClientOnly;
 import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
+import cubyz.gui.MenuGUI;
 import cubyz.gui.components.Button;
+import cubyz.gui.components.Component;
 import cubyz.gui.components.TextInput;
 import cubyz.rendering.VisibleChunk;
 import cubyz.rendering.text.Fonts;

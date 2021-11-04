@@ -19,7 +19,7 @@ import cubyz.client.ClientOnly;
 import cubyz.client.ClientSettings;
 import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
-import cubyz.gui.LoadingGUI;
+import cubyz.gui.menu.LoadingGUI;
 import cubyz.modding.ModLoader;
 import cubyz.modding.base.AddonsMod;
 import cubyz.modding.base.BaseMod;

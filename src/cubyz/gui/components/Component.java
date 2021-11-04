@@ -1,4 +1,4 @@
-package cubyz.gui;
+package cubyz.gui.components;
 
 import java.awt.Rectangle;
 
