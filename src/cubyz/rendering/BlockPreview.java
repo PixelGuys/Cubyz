@@ -1,6 +1,7 @@
 package cubyz.rendering;
 
 import static org.lwjgl.opengl.GL11.GL_DEPTH_TEST;
+import static org.lwjgl.opengl.GL11.GL_CULL_FACE;
 import static org.lwjgl.opengl.GL11.glDisable;
 import static org.lwjgl.opengl.GL11.glEnable;
 import static org.lwjgl.opengl.GL11C.GL_COLOR_BUFFER_BIT;
@@ -74,6 +75,7 @@ public abstract class BlockPreview {
 	
 	public static FrameBuffer generateBuffer(Vector3f ambientLight, Block block) {
 		glEnable(GL_DEPTH_TEST);
+		glEnable(GL_CULL_FACE);
 		FrameBuffer buffer = new FrameBuffer();
 		buffer.genColorTexture(64, 64);
 		buffer.genRenderbuffer(64, 64);
@@ -86,7 +88,7 @@ public abstract class BlockPreview {
 		
 		glViewport(0, 0, 64, 64);
 		Matrix4f projectionMatrix = new Matrix4f();
-		Transformation.updateProjectionMatrix(projectionMatrix, 0.013f, 1f, 1f, 0.1f, 10000.0f);
+		Transformation.updateProjectionMatrix(projectionMatrix, 0.013f, 1f, 1f, 60f, 200.0f);
 		clear();
 		Matrix4f viewMatrix = transformation.getViewMatrix(new Vector3f(64, 90.3f, 64), new Vector3f(3*(float)Math.PI/4, 3*(float)Math.PI/4, 0));
 
@@ -115,6 +117,7 @@ public abstract class BlockPreview {
 		glViewport(0, 0, Window.getWidth(), Window.getHeight());
 		
 		Window.setRenderTarget(null);
+		glDisable(GL_CULL_FACE);
 		glDisable(GL_DEPTH_TEST);
 		return buffer;
 	}

@@ -1,7 +1,6 @@
 #version 330
 
 in vec3 outTexCoord;
-in vec3 mvVertexPos;
 in vec3 mvVertexNormal;
 
 out vec4 fragColor;

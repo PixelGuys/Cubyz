@@ -5,7 +5,6 @@ layout (location=1)  in vec2 texCoord;
 layout (location=2)  in vec3 vertexNormal;
 
 out vec3 outTexCoord;
-out vec3 mvVertexPos;
 out vec3 mvVertexNormal;
 
 uniform mat4 projectionMatrix;
@@ -40,5 +39,4 @@ void main()
 		texture = texNegX;
 	}
     outTexCoord = vec3(texCoord, float(texture));
-    mvVertexPos = mvPos.xyz;
 }
