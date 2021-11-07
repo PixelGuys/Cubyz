@@ -1,11 +1,9 @@
 package cubyz.client;
 
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Properties;
 
 import cubyz.Logger;
 import cubyz.api.Registry;
@@ -19,8 +17,11 @@ import cubyz.rendering.models.Model;
 import cubyz.utils.ResourceUtilities;
 import cubyz.utils.ResourceUtilities.EntityModel;
 import cubyz.utils.datastructures.BinaryMaxHeap;
+import cubyz.utils.json.JsonObject;
+import cubyz.utils.json.JsonParser;
 import cubyz.world.ChunkData;
 import cubyz.world.blocks.Block;
+import cubyz.world.blocks.CustomBlock;
 import cubyz.world.entity.EntityType;
 
 /**
@@ -92,23 +93,14 @@ public class Meshes {
 		ClientOnly.createBlockMesh = (block) -> {
 			Resource rsc = block.getRegistryID();
 			Texture tex = null;
-			String model = null;
 			// Try loading it from the assets:
-			String path = "assets/"+rsc.getMod()+"/blocks/" + rsc.getID();
-			File file = new File(path);
-			if(file.exists()) {
-				Properties props = new Properties();
-				try {
-					FileReader reader = new FileReader(file);
-					props.load(reader);
-					reader.close();
-				} catch (IOException e) {
-					Logger.warning(e);
-				}
-				model = props.getProperty("model", null);
-			}
-			if(model == null) {
+			String model;
+			if(block instanceof CustomBlock) {
 				model = "cubyz:block.obj";
+			} else {
+				String path = "assets/"+rsc.getMod()+"/blocks/" + rsc.getID()+".json";
+				JsonObject json = JsonParser.parseObjectFromFile(path);
+				model = json.getString("model", "cubyz:block.obj");
 			}
 			
 			// Cached meshes

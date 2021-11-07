@@ -5,6 +5,6 @@
 		"auto"
 	],
 	"rotation" : "cubyz:fence",
-	"model" : "cubyz:block.obj",
+	"model" : "cubyz:fence.obj",
 	"texture" : "cubyz:oak_planks"
 }
