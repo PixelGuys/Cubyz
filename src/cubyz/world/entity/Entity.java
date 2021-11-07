@@ -41,7 +41,7 @@ public class Entity {
 	/**
 	 * Used as hitbox.
 	 */
-	public double width = 0.25f, height = 1.8f;
+	public double width = 0.25, height = 1.8;
 	
 	/**
 	 * @param type
@@ -97,7 +97,7 @@ public class Entity {
 					for(int z = minZ; z <= maxZ; z++) {
 						if(checkBlock(minX2, y, z, change)) {
 							change.x = 0;
-							position.x = minX2 + 1.001f + width;
+							position.x = minX2 + 1.001 + width;
 							break outer;
 						}
 					}
@@ -117,7 +117,7 @@ public class Entity {
 					for(int z = minZ; z <= maxZ; z++) {
 						if(checkBlock(maxX2, y, z, change)) {
 							change.x = 0;
-							position.x = maxX2 - 0.001f - width;
+							position.x = maxX2 - 0.001 - width;
 							break outer;
 						}
 					}
@@ -148,7 +148,7 @@ public class Entity {
 					for(int z = minZ; z <= maxZ; z++) {
 						if(checkBlock(x, minY2, z, change)) {
 							change.y = 0;
-							position.y = minY2 + 1.001f;
+							position.y = minY2 + 1.001;
 							break outer;
 						}
 					}
@@ -168,7 +168,7 @@ public class Entity {
 					for(int z = minZ; z <= maxZ; z++) {
 						if(checkBlock(x, maxY2, z, change)) {
 							change.y = 0;
-							position.y = maxY2 - 0.001f - height;
+							position.y = maxY2 - 0.001 - height;
 							break outer;
 						}
 					}
@@ -199,7 +199,7 @@ public class Entity {
 					for(int y = minY; y <= maxY; y++) {
 						if(checkBlock(x, y, minZ2, change)) {
 							change.z = 0;
-							position.z = minZ2 + 1.001f + width;
+							position.z = minZ2 + 1.001 + width;
 							break outer;
 						}
 					}
@@ -219,7 +219,7 @@ public class Entity {
 					for(int y = minY; y <= maxY; y++) {
 						if(checkBlock(x, y, maxZ2, change)) {
 							change.z = 0;
-							position.z = maxZ2 - 0.001f - width;
+							position.z = maxZ2 - 0.001 - width;
 							break outer;
 						}
 					}
