@@ -110,6 +110,8 @@ public class ClientSettings {
 		LOD_FACTOR = settings.getFloat("farDistanceFactor", LOD_FACTOR);
 		
 		FOV = settings.getFloat("fieldOfView", FOV);
+
+		EFFECTIVE_RENDER_DISTANCE = (RENDER_DISTANCE + ((((int)(RENDER_DISTANCE*LOD_FACTOR) & ~1) << HIGHEST_LOD)));
 	}
 	
 }
