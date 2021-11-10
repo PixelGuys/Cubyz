@@ -3,8 +3,8 @@ package cubyz.client.entity;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
-import cubyz.client.GameLauncher;
 import cubyz.world.entity.EntityType;
+import server.Server;
 
 public class ClientEntity {
 	public Vector3d[] lastPosition = new Vector3d[8];
@@ -55,12 +55,12 @@ public class ClientEntity {
 		Vector3d nextPosition = new Vector3d(); // Position in 1 update.
 		float timeStep = 0;
 		if(currentIndex == frontIndex) {
-			timeStep = (float)GameLauncher.instance.secsPerUpdate - timeInCurrentFrame;
+			timeStep = Server.UPDATES_TIME_S - timeInCurrentFrame;
 			nextPosition.set(lastPosition[currentIndex]);
 			// The local version is too fast!
 			timeFactor *= 0.99f;
 		} else {
-			timeStep = (float)GameLauncher.instance.secsPerUpdate;
+			timeStep = Server.UPDATES_TIME_S;
 			int nextIndex = (currentIndex + 1)%lastPosition.length;
 			nextPosition.x = lastPosition[nextIndex].x*timeInCurrentFrame/timeStep
 							+ lastPosition[currentIndex].x*(timeStep - timeInCurrentFrame)/timeStep;
@@ -76,7 +76,7 @@ public class ClientEntity {
 			position.set(nextPosition);
 			velocity.set(0);
 		} // Only update when the game is not lagging behind:
-		else if(timeInCurrentFrame < GameLauncher.instance.secsPerUpdate) {
+		else if(timeInCurrentFrame < Server.UPDATES_TIME_S) {
 			// (v(t + timeStep) + v(t))/2 = (nextPosition.x - position.x)/timeStep
 			// a(t)*timeStep = (nextPosition.x - position.x)/timeStep
 			// Δv = Δt/timeStep*(2*dist/timeStep - 2*v(t))
@@ -95,8 +95,8 @@ public class ClientEntity {
 
 			timeInCurrentFrame += deltaTime;
 		}
-		while(timeInCurrentFrame > GameLauncher.instance.secsPerUpdate && currentIndex != frontIndex) {
-			timeInCurrentFrame -= GameLauncher.instance.secsPerUpdate;
+		while(timeInCurrentFrame > Server.UPDATES_TIME_S && currentIndex != frontIndex) {
+			timeInCurrentFrame -= Server.UPDATES_TIME_S;
 			currentIndex = (currentIndex + 1)%lastPosition.length;
 		}
 

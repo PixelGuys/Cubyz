@@ -31,7 +31,7 @@ public class DebugOverlay extends MenuGUI {
 			Graphics.setFont(Fonts.PIXEL_FONT, 8.0F * GUI_SCALE);
 			Graphics.setColor(0xFFFFFF);
 			Graphics.drawText(0 * GUI_SCALE, 0 * GUI_SCALE, GameLogic.getFPS() + " fps" + (Window.isVSyncEnabled() ? " (vsync)" : ""));
-			Graphics.drawText(60 * GUI_SCALE, 0 * GUI_SCALE, GameLauncher.instance.getUPS() + " ups");
+			//TODO: tick speed
 			Graphics.drawText(0 * GUI_SCALE, 10 * GUI_SCALE, "Branded \"" + Constants.GAME_BRAND + "\", version " + Constants.GAME_VERSION);
 			Graphics.drawText(0 * GUI_SCALE, 20 * GUI_SCALE, "Windowed (" + Window.getWidth() + "x" + Window.getHeight() + ")");
 			Graphics.drawText(0 * GUI_SCALE, 30 * GUI_SCALE, "Java " + javaVersion);

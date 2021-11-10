@@ -19,6 +19,7 @@ import cubyz.world.CustomObject;
 import cubyz.world.ServerWorld;
 import cubyz.world.blocks.Block;
 import cubyz.world.terrain.worldgenerators.SurfaceGenerator;
+import server.Server;
 
 import static cubyz.client.ClientSettings.GUI_SCALE;
 
@@ -73,6 +74,7 @@ public class SaveCreationGUI extends MenuGUI {
 		create.setText(TextKey.createTextKey("gui.cubyz.saves.create"));
 		create.setFontSize(32);
 		create.setOnAction(() -> {
+			new Thread(() -> Server.main(new String[0]), "Server Thread").start();
 			ServerWorld world = new ServerWorld(name.getText(), VisibleChunk.class);
 			world.setGenerator(generators[(int) generator.getUserObject()].toString());
 			Block[] blocks = world.generate();

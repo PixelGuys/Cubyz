@@ -21,6 +21,7 @@ import cubyz.utils.translate.TextKey;
 import cubyz.world.CustomObject;
 import cubyz.world.ServerWorld;
 import cubyz.world.blocks.Block;
+import server.Server;
 
 import static cubyz.client.ClientSettings.GUI_SCALE;
 
@@ -50,6 +51,7 @@ public class SaveSelectorGUI extends MenuGUI {
 			ContextualTextKey tk = new ContextualTextKey("gui.cubyz.saves.play", name);
 			Button b = new Button(tk);
 			b.setOnAction(() -> {
+				new Thread(() -> Server.main(new String[0]), "Server Thread").start();
 				ServerWorld world = new ServerWorld(name, VisibleChunk.class);
 				Block[] blocks = world.generate();
 				for(Block bl : blocks) {

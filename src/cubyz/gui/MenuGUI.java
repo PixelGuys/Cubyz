@@ -22,7 +22,7 @@ public abstract class MenuGUI implements RegistryElement {
 	public abstract void updateGUIScale();
 	public abstract void render();
 	
-	public abstract boolean doesPauseGame();
+	public abstract boolean doesPauseGame(); // TODO: Find a good way to use without bugs in singleplayer only.
 	
 	public boolean ungrabsMouse() {
 		return false;

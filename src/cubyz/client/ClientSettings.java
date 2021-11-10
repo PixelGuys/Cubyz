@@ -106,7 +106,7 @@ public class ClientSettings {
 		RENDER_DISTANCE = settings.getInt("renderDistance", RENDER_DISTANCE);
 
 		HIGHEST_LOD = settings.getInt("highestLOD", HIGHEST_LOD);
-
+		
 		LOD_FACTOR = settings.getFloat("farDistanceFactor", LOD_FACTOR);
 		
 		FOV = settings.getFloat("fieldOfView", FOV);

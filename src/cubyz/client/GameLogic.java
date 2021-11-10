@@ -18,7 +18,6 @@ import cubyz.*;
 import cubyz.api.ClientConnection;
 import cubyz.api.ClientRegistries;
 import cubyz.api.Side;
-import cubyz.client.entity.ClientEntityManager;
 import cubyz.client.entity.ClientPlayer;
 import cubyz.client.loading.LoadThread;
 import cubyz.gui.MenuGUI;
@@ -45,6 +44,7 @@ import cubyz.world.items.Inventory;
 import cubyz.world.items.Item;
 import cubyz.world.terrain.noise.StaticBlueNoise;
 import cubyz.world.terrain.worldgenerators.LifelandGenerator;
+import server.Server;
 
 /**
  * A complex class that holds everything together.<br>
@@ -86,6 +86,7 @@ public class GameLogic implements ClientConnection {
 	}
 	
 	public void quitWorld() {
+		Server.running = false;
 		for (MenuGUI overlay : Cubyz.gameUI.getOverlays()) {
 			if (overlay instanceof GameOverlay) {
 				Cubyz.gameUI.removeOverlay(overlay);
@@ -262,21 +263,14 @@ public class GameLogic implements ClientConnection {
 		return BlockPreview.generateBuffer(new Vector3f(1, 1, 1), b);
 	}	
 	
-	public void update(float interval) {
-		if(!Cubyz.gameUI.doesGUIPauseGame() && Cubyz.world != null) {
-			NormalChunk ch = Cubyz.world.getChunk((int)Cubyz.player.getPosition().x >> NormalChunk.chunkShift, (int)Cubyz.player.getPosition().y >> NormalChunk.chunkShift, (int)Cubyz.player.getPosition().z >> NormalChunk.chunkShift);
-			if (ch != null && ch.isLoaded()) {
-				Cubyz.world.update();
-				MusicManager.update(Cubyz.world);
-			}
-			Cubyz.world.seek((int)Cubyz.player.getPosition().x, (int)Cubyz.player.getPosition().y, (int)Cubyz.player.getPosition().z, ClientSettings.RENDER_DISTANCE, ClientSettings.EFFECTIVE_RENDER_DISTANCE*NormalChunk.chunkSize*2);
+	public void clientUpdate() {
+		if(Cubyz.world != null) {
+			MusicManager.update(Cubyz.world);
 			Cubyz.chunkTree.update((int)Cubyz.player.getPosition().x, (int)Cubyz.player.getPosition().y, (int)Cubyz.player.getPosition().z, ClientSettings.RENDER_DISTANCE, ClientSettings.HIGHEST_LOD, ClientSettings.LOD_FACTOR);
+			// TODO: Get this in the server ping or something.
 			float lightAngle = (float)Math.PI/2 + (float)Math.PI*(((float)Cubyz.world.getGameTime() % ServerWorld.DAY_CYCLE)/(ServerWorld.DAY_CYCLE/2));
 			skySun.setPositionRaw((float)Math.cos(lightAngle)*500, (float)Math.sin(lightAngle)*500, 0);
 			skySun.setRotation(0, 0, -lightAngle);
-
-			// TODO: Send entities to clients:
-			ClientEntityManager.serverUpdate(Cubyz.world.getEntities());
 		}
 	}
 
