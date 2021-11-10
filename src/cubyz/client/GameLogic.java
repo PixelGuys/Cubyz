@@ -265,10 +265,10 @@ public class GameLogic implements ClientConnection {
 	
 	public void clientUpdate() {
 		if(Cubyz.world != null) {
-			MusicManager.update(Cubyz.world);
+			MusicManager.update();
 			Cubyz.chunkTree.update((int)Cubyz.player.getPosition().x, (int)Cubyz.player.getPosition().y, (int)Cubyz.player.getPosition().z, ClientSettings.RENDER_DISTANCE, ClientSettings.HIGHEST_LOD, ClientSettings.LOD_FACTOR);
 			// TODO: Get this in the server ping or something.
-			float lightAngle = (float)Math.PI/2 + (float)Math.PI*(((float)Cubyz.world.getGameTime() % ServerWorld.DAY_CYCLE)/(ServerWorld.DAY_CYCLE/2));
+			float lightAngle = (float)Math.PI/2 + (float)Math.PI*(((float)Cubyz.gameTime % ServerWorld.DAY_CYCLE)/(ServerWorld.DAY_CYCLE/2));
 			skySun.setPositionRaw((float)Math.cos(lightAngle)*500, (float)Math.sin(lightAngle)*500, 0);
 			skySun.setRotation(0, 0, -lightAngle);
 		}
@@ -285,5 +285,11 @@ public class GameLogic implements ClientConnection {
 			Logger.warning(e);
 		}
 		return null;
+	}
+
+	@Override
+	public void serverPing(long gameTime, String biome) {
+		Cubyz.biome = Cubyz.world.getCurrentRegistries().biomeRegistry.getByID(biome);
+		Cubyz.gameTime = gameTime;
 	}
 }

@@ -224,8 +224,8 @@ public class MainRenderer {
 			
 			light.setColor(clearColor);
 			
-			float lightY = (((float)Cubyz.world.getGameTime() % ServerWorld.DAY_CYCLE) / (float) (ServerWorld.DAY_CYCLE/2)) - 1f;
-			float lightX = (((float)Cubyz.world.getGameTime() % ServerWorld.DAY_CYCLE) / (float) (ServerWorld.DAY_CYCLE/2)) - 1f;
+			float lightY = (((float)Cubyz.gameTime % ServerWorld.DAY_CYCLE) / (float) (ServerWorld.DAY_CYCLE/2)) - 1f;
+			float lightX = (((float)Cubyz.gameTime % ServerWorld.DAY_CYCLE) / (float) (ServerWorld.DAY_CYCLE/2)) - 1f;
 			light.getDirection().set(lightY, 0, lightX);
 			// Set intensity:
 			light.setDirection(light.getDirection().mul(0.1f*Cubyz.world.getGlobalLighting()/light.getDirection().length()));

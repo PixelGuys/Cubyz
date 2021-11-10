@@ -12,9 +12,11 @@ import org.joml.Vector4f;
 
 import cubyz.Logger;
 import cubyz.Settings;
+import cubyz.api.ClientConnection;
 import cubyz.api.CubyzRegistries;
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.client.ClientSettings;
+import cubyz.client.GameLauncher;
 import cubyz.utils.datastructures.Cache;
 import cubyz.utils.datastructures.HashMapKey3D;
 import cubyz.utils.math.CubyzMath;
@@ -68,6 +70,8 @@ public class ServerWorld {
 	private final String name;
 
 	private Player player;
+
+	public ClientConnection clientConnection = GameLauncher.logic;
 	
 	float ambientLight = 0f;
 	Vector4f clearColor = new Vector4f(0, 0, 0, 1.0f);

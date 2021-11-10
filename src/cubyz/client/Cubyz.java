@@ -10,6 +10,7 @@ import cubyz.gui.UISystem;
 import cubyz.rendering.Fog;
 import cubyz.rendering.RenderOctTree;
 import cubyz.world.ServerWorld;
+import cubyz.world.terrain.biomes.Biome;
 
 /**
  * A simple data holder for all static data that is needed for basic game functionality.
@@ -24,6 +25,8 @@ public class Cubyz {
 	// World related stuff:
 	public static ServerWorld world;
 	public static ClientPlayer player;
+	public static Biome biome;
+	public static long gameTime;
 	
 	// Other:
 	public static Vector3f playerInc = new Vector3f();

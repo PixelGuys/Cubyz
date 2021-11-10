@@ -8,4 +8,12 @@ import cubyz.world.items.Inventory;
 
 public interface ClientConnection {
 	public void openGUI(String name, Inventory inv);
+	
+	/**
+	 * Sends a regurlar signal after each update.
+	 * Used to send some basic data.
+	 * @param gameTime
+	 * @param biome
+	 */
+	public void serverPing(long gameTime, String biome);
 }

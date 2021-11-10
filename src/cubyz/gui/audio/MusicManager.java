@@ -5,7 +5,6 @@ import java.util.HashMap;
 import cubyz.Logger;
 import cubyz.client.Cubyz;
 import cubyz.utils.ResourceManager;
-import cubyz.world.ServerWorld;
 import cubyz.world.terrain.biomes.Biome;
 
 public class MusicManager {
@@ -91,9 +90,11 @@ public class MusicManager {
 				source.stop();
 			}
 		}
+		oldMusic = "None";
+		currentMusic = "None";
 	}
 	
-	public static void update(ServerWorld world) {
+	public static void update() {
 		if(!manager.wasInitedCorrectly())
 			return;
 		
@@ -131,11 +132,9 @@ public class MusicManager {
 			source.setGain(gain * 0.3f);
 		}
 		
-		int x = (int) Cubyz.player.getPosition().x;
-		int z = (int) Cubyz.player.getPosition().z;
-		Biome biome = world.getBiome(x, z);
+		Biome biome = Cubyz.biome;
 		String targetMusic = "GymnopedieNo1";
-		if (biome.preferredMusic != null) {
+		if (biome != null && biome.preferredMusic != null) {
 			targetMusic = biome.preferredMusic;
 		}
 		
