@@ -49,8 +49,8 @@ public class Item implements RegistryElement {
 		this.name = key;
 	}
 	
-	public void setTexture(String texturePath, String addon) {
-		this.texturePath = "assets/" + addon + "/items/textures/" + texturePath;
+	public void setTexture(String texturePath) {
+		this.texturePath = texturePath;
 	}
 	
 	/**

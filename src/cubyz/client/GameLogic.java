@@ -3,10 +3,8 @@ package cubyz.client;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.*;
 
-import javax.imageio.ImageIO;
 import javax.swing.JOptionPane;
 
 import org.joml.Vector3f;
@@ -35,13 +33,9 @@ import cubyz.rendering.Texture;
 import cubyz.rendering.TextureArray;
 import cubyz.rendering.Window;
 import cubyz.utils.*;
-import cubyz.utils.datastructures.PixelUtils;
 import cubyz.world.*;
 import cubyz.world.blocks.Block;
-import cubyz.world.blocks.CustomBlock;
-import cubyz.world.items.CustomItem;
 import cubyz.world.items.Inventory;
-import cubyz.world.items.Item;
 import cubyz.world.terrain.noise.StaticBlueNoise;
 import cubyz.world.terrain.worldgenerators.LifelandGenerator;
 import server.Server;
@@ -123,25 +117,9 @@ public class GameLogic implements ClientConnection {
 		DiscordIntegration.setStatus("Playing");
 		Cubyz.gameUI.addOverlay(new GameOverlay());
 		
-		for (Item reg : world.getCurrentRegistries().itemRegistry.registered(new Item[0])) {
-			if(!(reg instanceof CustomItem)) continue;
-			CustomItem item = (CustomItem)reg;
-			BufferedImage canvas;
-			if(item.isGem())
-				canvas = getImage("assets/cubyz/items/textures/materials/templates/"+"gem1"+".png"); // TODO: More gem types.
-			else
-				canvas = getImage("assets/cubyz/items/textures/materials/templates/"+"crystal1"+".png"); // TODO: More crystal types.
-			PixelUtils.convertTemplate(canvas, item.getColor());
-			InputStream is = TextureConverter.fromBufferedImage(canvas);
-			Texture tex = new Texture(is);
-			try {
-				is.close();
-			} catch (IOException e) {
-				Logger.warning(e);
-			}
-			item.setImage(tex);
-		}
-		// Generate the texture atlas for this world's truly transparent blocks:
+		Cubyz.world = world;
+
+		// Generate the texture atlas for this world's blocks:
 		ArrayList<Block> blocks = new ArrayList<>();
 		for(Block block : world.getCurrentRegistries().blockRegistry.registered(new Block[0])) {
 			blocks.add(block);
@@ -150,14 +128,10 @@ public class GameLogic implements ClientConnection {
 		ArrayList<BufferedImage> blockTextures = new ArrayList<>();
 		ArrayList<String> blockIDs = new ArrayList<>();
 		for(Block block : blocks) {
-			if(block instanceof CustomBlock) {
-				CustomBlock ore = (CustomBlock)block;
-				ore.textureProvider.generateTexture(ore, blockTextures, blockIDs);
-			} else {
-				ResourceUtilities.loadBlockTexturesToBufferedImage(block, blockTextures, blockIDs);
-			}
+			ResourceUtilities.loadBlockTexturesToBufferedImage(block, blockTextures, blockIDs);
+			// Also generate the mesh if that didn't happen yet:
+			ClientOnly.createBlockMesh.accept(block);
 		}
-		Cubyz.world = world;
 		// Put the textures into the atlas
 		TextureArray textures = Meshes.blockTextureArray;
 		textures.clear();
@@ -276,15 +250,6 @@ public class GameLogic implements ClientConnection {
 
 	public static int getFPS() {
 		return GameLauncher.instance.getFPS();
-	}
-	
-	public static BufferedImage getImage(String fileName) {
-		try {
-			return ImageIO.read(new File(fileName));
-		} catch(Exception e) {
-			Logger.warning(e);
-		}
-		return null;
 	}
 
 	@Override

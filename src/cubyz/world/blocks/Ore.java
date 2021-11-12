@@ -19,6 +19,14 @@ public class Ore {
 
 	public final Block[] sources;
 
+	/**
+	 * @param block
+	 * @param sources
+	 * @param maxHeight
+	 * @param veins
+	 * @param size
+	 * @param density
+	 */
 	public Ore(Block block, Block[] sources, int maxHeight, float veins, float size, float density) {
 		this.block = block;
 		this.sources = sources;
@@ -33,5 +41,9 @@ public class Ore {
 			if(src == block) return true;
 		}
 		return false;
+	}
+
+	public String toString() {
+		return block.getRegistryID().toString()+": "+density+", "+size+", "+veins+", "+maxHeight+"\n";
 	}
 }

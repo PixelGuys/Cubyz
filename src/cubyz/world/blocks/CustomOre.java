@@ -1,25 +1,26 @@
 package cubyz.world.blocks;
 
+import java.awt.image.BufferedImage;
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Random;
 
+import javax.imageio.ImageIO;
+
 import cubyz.Logger;
-import cubyz.api.CurrentWorldRegistries;
 import cubyz.utils.Utilities;
-import cubyz.world.CustomObject;
-import cubyz.world.items.BlockDrop;
-import cubyz.world.items.CustomItem;
-import cubyz.world.items.ItemBlock;
-import cubyz.world.items.tools.Material;
+import cubyz.utils.datastructures.PixelUtils;
+import cubyz.utils.json.JsonArray;
+import cubyz.utils.json.JsonObject;
 
 /**
  * A randomly generated ore type.
  */
 
-public class CustomBlock extends Block implements CustomObject {
+public class CustomOre {
 	// Nodes and leaf to generate tree structure for random ore name generator.
 	private static class Node {
 		byte value;
@@ -55,7 +56,6 @@ public class CustomBlock extends Block implements CustomObject {
 	}
 	
 	public int color;
-	private String name;
 	public long seed; // The seed used to generate the texture.
 	public float shinyness;
 	public final TextureProvider textureProvider;
@@ -68,9 +68,9 @@ public class CustomBlock extends Block implements CustomObject {
 	
 	private static void readOreData() {
 		try {
-			InputStream ois = CustomBlock.class.getClassLoader().getResourceAsStream("cubyz/storage/custom_ore_names.dat");
+			InputStream ois = CustomOre.class.getClassLoader().getResourceAsStream("cubyz/storage/custom_ore_names.dat");
 			if (ois == null)
-				ois = CustomBlock.class.getClassLoader().getResourceAsStream("classes/cubyz/storage/custom_ore_names.dat");
+				ois = CustomOre.class.getClassLoader().getResourceAsStream("classes/cubyz/storage/custom_ore_names.dat");
 			DataInputStream is = new DataInputStream(new BufferedInputStream(ois));
 			tree = new Node(is, 4);
 			is.close();
@@ -79,16 +79,11 @@ public class CustomBlock extends Block implements CustomObject {
 		}
 	}
 
-	public CustomBlock(TextureProvider texProvider) {
+	public CustomOre(TextureProvider texProvider) {
 		this.textureProvider = texProvider;
-		super.blockClass = BlockClass.STONE;
 	}
 	
-	public String getName() {
-		return name;
-	}
-	
-	public void makeGlow() {
+	public void makeGlow(JsonObject json) {
 		// Make the ore glow at 25% of its color:
 		int r = color >>> 16;
 		int g = (color >>> 8) & 255;
@@ -97,7 +92,7 @@ public class CustomBlock extends Block implements CustomObject {
 		g /= 4;
 		b /= 4;
 		int light = (r << 16) | (g << 8) | b;
-		setLight(light);
+		json.put("emittedLight", light);
 	}
 	
 	private static char choose(char c1, char c2, char c3, Random rand, int length) {
@@ -149,22 +144,37 @@ public class CustomBlock extends Block implements CustomObject {
 			return sb.toString();
 	}
 	
-	public static CustomBlock random(Random rand, CurrentWorldRegistries registries, TextureProvider texProvider) {
+	public static void random(Random rand, File assets, String mod) {
+		JsonObject json = new JsonObject();
+		json.put("class", "stone");
+
 		String name = randomName(rand);
+		json.put("model", "cubyz:block.obj");
+		json.put("texture", "cubyz:"+name+"_ore");
 		// Use a seed based on the name, so if the same ore gets generated twice in the giant world, it will have the same properties.
 		// This fact could also allow an interactive wiki which displays an ores property with knowledge of only the name(TODO).
 		rand = new Random(Utilities.hash(name));
-		CustomBlock block = new CustomBlock(texProvider);
-		Ore ore = new Ore(block, new Block[]{registries.blockRegistry.getByID("cubyz:stone")}, rand.nextInt(200) - 100, (1+rand.nextFloat()*15)/2, 1+rand.nextFloat()*9, rand.nextFloat());
-		registries.oreRegistry.register(ore);
-		block.name = name;
+
+		// Generate the ore data:
+		JsonObject ore = new JsonObject();
+		ore.put("veins", 1 + rand.nextFloat() * 7.5);
+		ore.put("size", 1 + rand.nextFloat() * 9);
+		ore.put("height", rand.nextInt(200) - 100);
+		ore.put("density", rand.nextFloat());
+		JsonArray oreSources = new JsonArray();
+		oreSources.addStrings("cubyz:stone");
+		ore.put("sources", oreSources);
+		json.put("ore", ore);
+		
+		// Generate the basic block, for further processing:
+		CustomOre block = new CustomOre(new OreTextureProvider());
 		block.color = rand.nextInt(0xFFFFFF);
 		block.seed = rand.nextLong();
-		block.setID("cubyz:" + block.name.toLowerCase() + "_ore");
 		if(rand.nextInt(4) == 0) { // Make some ores glow.
-			block.makeGlow();
+			block.makeGlow(json);
 		}
-		block.makeItems(registries, rand);
+		// Create item drop:
+		json.put("drops", block.makeItem(rand, assets, mod, name));
 		/* 	A little reasoning behind the choice of material properties:
 			There are some important concepts when looking at the hardness of a material:
 			1. mohs-hardness scale which determines how easy it is to scratch a material.
@@ -205,7 +215,7 @@ public class CustomBlock extends Block implements CustomObject {
 				usefulness ~ 1/(1 + rareness)
 			*/
 		// For now mohs-hardness is limited to 2-10 and elasticity and density have a similar magnitude, so the total usefulness will be limited to 20, so the rareness needs to be mapped to 0-20:
-		float usefulness = 20.0f/(ore.size*ore.veins/32 + 1);
+		float usefulness = 20.0f/(ore.getFloat("size", 0)*ore.getFloat("veins", 0)/32 + 1);
 		float mohsHardness = 2 + rand.nextFloat()*8;
 		usefulness -= mohsHardness;
 		// Density should be bigger than 1. Anything else would be strange.
@@ -223,9 +233,20 @@ public class CustomBlock extends Block implements CustomObject {
 		elasticity += factor;
 		density += factor;
 
-		block.setBreakingPower(mohsHardness);
-		block.setHardness(elasticity*density);
-		return block;
+		json.put("breakingPower", mohsHardness);
+		json.put("hardness", elasticity*density);
+		try {
+			Utilities.writeFile(new File(assets.getAbsolutePath() + "/blocks/" + name + "_ore.json"), json.toString());
+		} catch(Exception e) {
+			Logger.error(e);
+		}
+
+		BufferedImage img = new OreTextureProvider().generateTexture(block);
+		try {
+			ImageIO.write(img, "png", new File(assets.getAbsolutePath() + "/blocks/textures/" + name + "_ore.png"));
+		} catch(Exception e) {
+			Logger.warning(e);
+		}
 	}
 	
 	/*public static CustomOre fromNDT(NDTContainer ndt) {
@@ -243,31 +264,49 @@ public class CustomBlock extends Block implements CustomObject {
 		return ore;
 	}*/
 	
-	private void makeItems(CurrentWorldRegistries registries, Random rand) {
-		// Create creative inventory item:
-		ItemBlock self = new ItemBlock(this);
-		registries.itemRegistry.register(self);
-		// Create blockdrop:
-		CustomItem bd = CustomItem.fromOre(this);
-		registries.itemRegistry.register(bd);
-		bd.setID(getRegistryID());
-		// TODO: Don't add materials for all custom blocks.
-		bd.material = new Material(1 + rand.nextFloat(), 1 + rand.nextFloat(), 1 + rand.nextFloat(), rand.nextFloat(), TextureProvider.createColorPalette(this, 5, 100, 16));
-		addBlockDrop(new BlockDrop(bd, 1)); // TODO: custom amounts for different ores.
+	private JsonArray makeItem(Random rand, File assets, String mod, String name) {
+		JsonArray items = new JsonArray();
+		items.addStrings(mod+":"+name);
+		JsonObject json = new JsonObject();
+		json.put("texture", name + ".png");
+		json.put("translationId", name);
+		JsonObject material = new JsonObject();
+		material.put("density", 1 + rand.nextFloat());
+		material.put("resistance", 1 + rand.nextFloat());
+		material.put("power", 1 + rand.nextFloat());
+		material.put("roughness", rand.nextFloat());
+		JsonArray colors = new JsonArray();
+		colors.addInts(TextureProvider.createColorPalette(this, 5, 100, 16));
+		material.put("colors", colors);
+		json.put("material", material);
+		try {
+			Utilities.writeFile(new File(assets.getAbsolutePath() + "/items/" + name + ".json"), json.toString());
+		} catch(Exception e) {
+			Logger.error(e);
+		}
+		// Create the item texture:
+		BufferedImage canvas;
+		if(name.endsWith("ite"))
+			canvas = getImage("assets/cubyz/items/textures/materials/templates/"+"gem1"+".png"); // TODO: More gem types.
+		else
+			canvas = getImage("assets/cubyz/items/textures/materials/templates/"+"crystal1"+".png"); // TODO: More crystal types.
+		PixelUtils.convertTemplate(canvas, color);
+		try {
+			ImageIO.write(canvas, "png", new File(assets.getAbsolutePath() + "/items/textures/" + name + ".png"));
+		} catch(Exception e) {
+			Logger.warning(e);
+		}
+		return items;
 	}
 	
-	/*public NDTContainer toNDT() {
-		NDTContainer ndt = new NDTContainer();
-		ndt.setInteger("color", color);
-		ndt.setInteger("maxHeight", maxHeight);
-		ndt.setLong("seed", seed);
-		ndt.setFloat("veins", veins);
-		ndt.setFloat("size", size);
-		ndt.setString("name", name);
-		ndt.setFloat("hardness", getHardness());
-		ndt.setString("id", getRegistryID().getID());
-		return ndt;
-	}*/
+	public static BufferedImage getImage(String fileName) {
+		try {
+			return ImageIO.read(new File(fileName));
+		} catch(Exception e) {
+			Logger.warning(e);
+		}
+		return null;
+	}
 	
 	public boolean generatesModelAtRuntime() {
 		return true;

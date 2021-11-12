@@ -2,6 +2,7 @@ package cubyz.utils;
 
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.HashMap;
@@ -32,6 +33,13 @@ public class Utilities {
 		}
 		reader.close();
 		return txt;
+	}
+	
+	public static void writeFile(File file, String content) throws IOException {
+		file.getParentFile().mkdirs();
+		FileWriter writer = new FileWriter(file);
+		writer.write(content);
+		writer.close();
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })

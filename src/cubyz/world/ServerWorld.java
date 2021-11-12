@@ -22,9 +22,7 @@ import cubyz.utils.datastructures.HashMapKey3D;
 import cubyz.utils.math.CubyzMath;
 import cubyz.world.blocks.Block;
 import cubyz.world.blocks.BlockEntity;
-import cubyz.world.blocks.CustomBlock;
 import cubyz.world.blocks.Ore;
-import cubyz.world.blocks.OreTextureProvider;
 import cubyz.world.entity.ChunkEntityManager;
 import cubyz.world.entity.Entity;
 import cubyz.world.entity.ItemEntityManager;
@@ -106,12 +104,10 @@ public class ServerWorld {
 	Integer[] liquids = new Integer[0];
 	
 	public CurrentWorldRegistries registries;
-
-	private ArrayList<CustomBlock> customBlocks = new ArrayList<>();
 	
 	public ServerWorld(String name, Class<?> chunkProvider) {
 		this.name = name;
-		registries = new CurrentWorldRegistries();
+		registries = new CurrentWorldRegistries(this);
 		this.chunkProvider = chunkProvider;
 		// Check if the chunkProvider is valid:
 		if(!NormalChunk.class.isAssignableFrom(chunkProvider) ||
@@ -158,7 +154,7 @@ public class ServerWorld {
 	// Returns the blocks, so their meshes can be created and stored.
 	public Block[] generate() {
 		ArrayList<Block> blockList = new ArrayList<>();
-		// Set the IDs again every time a new world is loaded. This is necessary, because the random block creation would otherwise mess with it.
+		// Set the IDs again every time a new world is loaded. This is necessary, because updates would otherwise mess with it.
 		int ID = 0;
 		for (Block b : CubyzRegistries.BLOCK_REGISTRY.registered(new Block[0])) {
 			if(!b.isTransparent()) {
@@ -214,17 +210,6 @@ public class ServerWorld {
 	}
 	
 	private int generate(ArrayList<Block> blockList, int ID) {
-		Random rand = new Random(seed);
-		int randomAmount = 9 + rand.nextInt(3); // TODO
-		int i = 0;
-		for(i = 0; i < randomAmount; i++) {
-			CustomBlock block = CustomBlock.random(rand, registries, new OreTextureProvider());
-			customBlocks.add(block);
-			blockList.add(block);
-			block.ID = ID++;
-			registries.blockRegistry.register(block);
-		}
-
 		// Init crystal caverns:
 		CrystalCavernGenerator.init(registries.blockRegistry);
 
@@ -645,10 +630,6 @@ public class ServerWorld {
 		Chunk ck = _getNoGenerateChunk(bi.getX() >> NormalChunk.chunkShift, bi.getZ() >> NormalChunk.chunkShift);
 		return ck.blockEntities().get(bi);*/
 		return null; // TODO: Work on BlockEntities!
-	}
-	
-	public ArrayList<CustomBlock> getCustomBlocks() {
-		return customBlocks;
 	}
 
 	public NormalChunk[] getChunks() {

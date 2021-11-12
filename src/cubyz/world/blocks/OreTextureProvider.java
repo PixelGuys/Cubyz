@@ -1,7 +1,6 @@
 package cubyz.world.blocks;
 
 import java.awt.image.BufferedImage;
-import java.util.ArrayList;
 import java.util.Random;
 
 public class OreTextureProvider implements TextureProvider {
@@ -10,7 +9,7 @@ public class OreTextureProvider implements TextureProvider {
 		
 	}
 	// Procedurally generated ore textures:
-	public void generateTexture(CustomBlock block, ArrayList<BufferedImage> textures, ArrayList<String> ids) {
+	public BufferedImage generateTexture(CustomOre block) {
 		BufferedImage stone = TextureProvider.getImage("assets/cubyz/blocks/textures/stone.png");
 		BufferedImage canvas = new BufferedImage(16, 16, BufferedImage.TYPE_INT_RGB);
 		Random rand = new Random(block.seed);
@@ -102,10 +101,6 @@ public class OreTextureProvider implements TextureProvider {
 
 			}
 		}
-		for(int i = 0; i < 6; i++) {
-			block.textureIndices[i] = textures.size();
-		}
-		textures.add(canvas);
-		ids.add(block.getRegistryID().toString());
+		return canvas;
 	}
 }

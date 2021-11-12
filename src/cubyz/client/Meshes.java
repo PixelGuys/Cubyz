@@ -21,7 +21,6 @@ import cubyz.utils.json.JsonObject;
 import cubyz.utils.json.JsonParser;
 import cubyz.world.ChunkData;
 import cubyz.world.blocks.Block;
-import cubyz.world.blocks.CustomBlock;
 import cubyz.world.entity.EntityType;
 
 /**
@@ -94,14 +93,9 @@ public class Meshes {
 			Resource rsc = block.getRegistryID();
 			Texture tex = null;
 			// Try loading it from the assets:
-			String model;
-			if(block instanceof CustomBlock) {
-				model = "cubyz:block.obj";
-			} else {
-				String path = "assets/"+rsc.getMod()+"/blocks/" + rsc.getID()+".json";
-				JsonObject json = JsonParser.parseObjectFromFile(path);
-				model = json.getString("model", "cubyz:block.obj");
-			}
+			String path = "assets/"+rsc.getMod()+"/blocks/" + rsc.getID()+".json";
+			JsonObject json = JsonParser.parseObjectFromFile(path);
+			String model = json.getString("model", "cubyz:block.obj");
 			
 			// Cached meshes
 			Mesh mesh = null;

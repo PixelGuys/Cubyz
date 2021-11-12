@@ -38,39 +38,52 @@ import cubyz.world.terrain.biomes.Biome;
 @Mod(id = "addons-loader", name = "Addons Loader")
 @LoadOrder(order = Order.AFTER, id = "cubyz")
 public class AddonsMod {
+	public static AddonsMod instance;
 	
 	@Proxy(clientProxy = "cubyz.modding.base.AddonsClientProxy", serverProxy = "cubyz.modding.base.AddonsCommonProxy")
-	private AddonsCommonProxy proxy;
+	private static AddonsCommonProxy proxy;
 	
-	public ArrayList<File> addons = new ArrayList<>();
-	private ArrayList<Item> items = new ArrayList<>();
+	public static ArrayList<File> addons = new ArrayList<>();
+	private static ArrayList<Item> items = new ArrayList<>();
 	
 	// Used to fetch block drops that aren't loaded during block loading.
-	private ArrayList<Block> missingDropsBlock = new ArrayList<>();
-	private ArrayList<String> missingDropsItem = new ArrayList<>();
-	private ArrayList<Float> missingDropsAmount = new ArrayList<>();
+	private static ArrayList<Block> missingDropsBlock = new ArrayList<>();
+	private static ArrayList<String> missingDropsItem = new ArrayList<>();
+	private static ArrayList<Float> missingDropsAmount = new ArrayList<>();
 
-	private ArrayList<Ore> ores = new ArrayList<Ore>();
-	private ArrayList<String[]> oreContainers = new ArrayList<String[]>();
+	private static ArrayList<Ore> ores = new ArrayList<Ore>();
+	private static ArrayList<String[]> oreContainers = new ArrayList<String[]>();
+
+	public AddonsMod() {
+		instance = this;
+	}
 	
 	@EventHandler(type = "init")
 	public void init() {
+		init(CubyzRegistries.ITEM_REGISTRY, CubyzRegistries.BLOCK_REGISTRY, CubyzRegistries.RECIPE_REGISTRY);
+	}
+	public void init(Registry<Item> itemRegistry, Registry<Block> blockRegistry, NoIDRegistry<Recipe> recipeRegistry) {
 		proxy.init(this);
-		registerMissingStuff();
-		registerRecipes(CubyzRegistries.RECIPE_REGISTRY);
+		registerMissingStuff(itemRegistry, blockRegistry);
+		registerRecipes(recipeRegistry);
 	}
 
-	@EventHandler(type = "preInit")
-	public void preInit() {
-		File dir = new File("assets");
-		if (!dir.exists()) {
-			dir.mkdir();
+	public void preInit(File assets) {
+		addons.clear();
+		items.clear();
+		if (!assets.exists()) {
+			assets.mkdir();
 		}
-		for (File addonDir : dir.listFiles()) {
+		for (File addonDir : assets.listFiles()) {
 			if (addonDir.isDirectory()) {
 				addons.add(addonDir);
 			}
 		}
+	}
+
+	@EventHandler(type = "preInit")
+	public void preInit() {
+		preInit(new File("assets"));
 	}
 
 	/**
@@ -112,9 +125,8 @@ public class AddonsMod {
 			}
 		}
 	}
-	
-	@EventHandler(type = "register:item")
-	public void registerItems(Registry<Item> registry) {
+
+	public void registerItems(Registry<Item> registry, String texturePathPrefix) {
 		readAllJsonObjects("items", (json, id) -> {
 			Item item;
 			if (json.map.containsKey("food")) {
@@ -122,15 +134,19 @@ public class AddonsMod {
 			} else {
 				item = new Item(id, json);
 			}
-			item.setTexture(json.getString("texture", "default.png"), id.getMod());
+			item.setTexture(texturePathPrefix + id.getMod() + "/items/textures/" + json.getString("texture", "default.png"));
 			registry.register(item);
 		});
 		// Register the block items:
 		registry.registerAll(items);
 	}
 	
-	@EventHandler(type = "register:block")
-	public void registerBlocks(Registry<Block> registry) {
+	@EventHandler(type = "register:item")
+	public void registerItems(Registry<Item> registry) {
+		registerItems(registry, "assets/");
+	}
+	
+	public void registerBlocks(Registry<Block> registry, NoIDRegistry<Ore> oreRegistry) {
 		readAllJsonObjects("blocks", (json, id) -> {
 			Block block = new Block(id, json);
 
@@ -139,13 +155,13 @@ public class AddonsMod {
 			if (oreProperties != null) {
 				// Extract the ids:
 				String[] oreIDs = oreProperties.getArrayNoNull("sources").getStrings();
-				float veins = json.getFloat("veins", 0);
-				float size = json.getFloat("size", 0);
-				int height = json.getInt("height", 0);
-				float density = json.getFloat("density", 0.5f);
+				float veins = oreProperties.getFloat("veins", 0);
+				float size = oreProperties.getFloat("size", 0);
+				int height = oreProperties.getInt("height", 0);
+				float density = oreProperties.getFloat("density", 0.5f);
 				Ore ore = new Ore(block, new Block[oreIDs.length], height, veins, size, density);
 				ores.add(ore);
-				CubyzRegistries.ORE_REGISTRY.register(ore);
+				oreRegistry.register(ore);
 				oreContainers.add(oreIDs);
 			}
 
@@ -182,6 +198,10 @@ public class AddonsMod {
 			registry.register(block);
 		});
 	}
+	@EventHandler(type = "register:block")
+	public void registerBlocks(Registry<Block> registry) {
+		registerBlocks(registry, CubyzRegistries.ORE_REGISTRY);
+	}
 	@EventHandler(type = "register:biome")
 	public void registerBiomes(Registry<Biome> reg) {
 		readAllJsonObjects("biomes", (json, id) -> {
@@ -193,13 +213,13 @@ public class AddonsMod {
 	/**
 	 * Takes care of all missing references.
 	 */
-	public void registerMissingStuff() {
+	public void registerMissingStuff(Registry<Item> itemRegistry, Registry<Block> blockRegistry) {
 		for(int i = 0; i < missingDropsBlock.size(); i++) {
-			missingDropsBlock.get(i).addBlockDrop(new BlockDrop(CubyzRegistries.ITEM_REGISTRY.getByID(missingDropsItem.get(i)), missingDropsAmount.get(i)));
+			missingDropsBlock.get(i).addBlockDrop(new BlockDrop(itemRegistry.getByID(missingDropsItem.get(i)), missingDropsAmount.get(i)));
 		}
 		for(int i = 0; i < ores.size(); i++) {
 			for(int j = 0; j < oreContainers.get(i).length; j++) {
-				ores.get(i).sources[j] = CubyzRegistries.BLOCK_REGISTRY.getByID(oreContainers.get(i)[j]);
+				ores.get(i).sources[j] = blockRegistry.getByID(oreContainers.get(i)[j]);
 				if(ores.get(i).sources[j] == null) {
 					Logger.error("Couldn't find source block "+oreContainers.get(i)[j]+" for ore "+ores.get(i).block);
 				}

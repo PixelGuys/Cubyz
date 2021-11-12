@@ -10,6 +10,7 @@ import javax.imageio.ImageIO;
 
 import cubyz.Logger;
 import cubyz.api.Resource;
+import cubyz.client.Cubyz;
 import cubyz.utils.json.JsonObject;
 import cubyz.utils.json.JsonParser;
 import cubyz.world.Neighbors;
@@ -55,6 +56,14 @@ public class ResourceUtilities {
 	// TODO: Take care about Custom Blocks.
 	public static void loadBlockTexturesToBufferedImage(Block block, ArrayList<BufferedImage> textures, ArrayList<String> ids) {
 		String path = "assets/"+block.getRegistryID().getMod()+"/blocks/" + block.getRegistryID().getID() + ".json";
+		String prefix = "assets/";
+		if(!new File(path).exists()) {
+			if(Cubyz.world != null) {
+				// TODO: Seperate path for remote.
+				path = "saves/"+Cubyz.world.getName()+"/"+path;
+				prefix = "saves/"+Cubyz.world.getName()+"/"+prefix;
+			}
+		}
 		JsonObject json = JsonParser.parseObjectFromFile(path);
 		String[] sideNames = new String[6];
 		sideNames[Neighbors.DIR_DOWN] = "bottom";
@@ -68,7 +77,7 @@ public class ResourceUtilities {
 			String resource = json.getString("texture_"+sideNames[i], null);
 			if(resource != null) {
 				Resource texture = new Resource(resource);
-				path = "assets/" + texture.getMod() + "/blocks/textures/" + texture.getID() + ".png";
+				path = prefix + texture.getMod() + "/blocks/textures/" + texture.getID() + ".png";
 				// Test if it's already in the list:
 				for(int j = 0; j < ids.size(); j++) {
 					if(ids.get(j).equals(path)) {
@@ -90,7 +99,7 @@ public class ResourceUtilities {
 			}
 		}
 		Resource resource = new Resource(json.getString("texture", "cubyz:undefined")); // Use this resource on every remaining side.
-		path = "assets/" + resource.getMod() + "/blocks/textures/" + resource.getID() + ".png";
+		path = prefix + resource.getMod() + "/blocks/textures/" + resource.getID() + ".png";
 
 		// Test if it's already in the list:
 		for(int j = 0; j < ids.size(); j++) {
