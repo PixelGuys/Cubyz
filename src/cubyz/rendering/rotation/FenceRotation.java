@@ -12,6 +12,7 @@ import cubyz.rendering.models.Model;
 import cubyz.utils.datastructures.IntWrapper;
 import cubyz.utils.datastructures.FloatFastList;
 import cubyz.utils.datastructures.IntFastList;
+import cubyz.world.Neighbors;
 import cubyz.world.NormalChunk;
 import cubyz.world.ServerWorld;
 import cubyz.world.blocks.Blocks;
@@ -30,20 +31,20 @@ public class FenceRotation implements RotationMode {
 	public boolean generateData(ServerWorld world, int x, int y, int z, Vector3d relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, IntWrapper currentData, boolean blockPlacing) {
 		if(!blockPlacing) return false;
 		NormalChunk chunk = world.getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift);
-		int data = (byte)1;
+		int data = 0;
 		// Get all neighbors and set the corresponding bits:
 		int[] neighbors = chunk.getNeighbors(x, y ,z);
-		if(neighbors[0] != 0 && Blocks.solid(neighbors[0])) {
-			data |= 0b00010;
+		if(Blocks.solid(neighbors[Neighbors.DIR_NEG_X])) {
+			data |= 1 << Neighbors.DIR_NEG_X;
 		}
-		if(neighbors[1] != 0 && Blocks.solid(neighbors[1])) {
-			data |= 0b00100;
+		if(Blocks.solid(neighbors[Neighbors.DIR_POS_X])) {
+			data |= 1 << Neighbors.DIR_POS_X;
 		}
-		if(neighbors[2] != 0 && Blocks.solid(neighbors[2])) {
-			data |= 0b01000;
+		if(Blocks.solid(neighbors[Neighbors.DIR_NEG_Z])) {
+			data |= 1 << Neighbors.DIR_NEG_Z;
 		}
-		if(neighbors[3] != 0 && Blocks.solid(neighbors[3])) {
-			data |= 0b10000;
+		if(Blocks.solid(neighbors[Neighbors.DIR_POS_Z])) {
+			data |= 1 << Neighbors.DIR_POS_Z;
 		}
 		currentData.data = (currentData.data & Blocks.TYPE_MASK) | (data << 16);
 		return true;
@@ -56,11 +57,11 @@ public class FenceRotation implements RotationMode {
 
 	@Override
 	public int updateData(int block, int dir, int newNeighbor) {
-		if(dir == 4 | dir == 5) return block;
-		byte mask = (byte)(1 << (dir + 1));
-		block &= ~mask << 16 | Blocks.TYPE_MASK;
-		if(newNeighbor != 0 && Blocks.solid(newNeighbor))
-			block |= mask << 16;
+		if(dir == Neighbors.DIR_DOWN || dir == Neighbors.DIR_UP) return block;
+		int mask = 1 << (16 + dir);
+		block &= ~mask;
+		if(Blocks.solid(newNeighbor))
+			block |= mask;
 		return block;
 	}
 
@@ -71,7 +72,7 @@ public class FenceRotation implements RotationMode {
 
 	@Override
 	public int getNaturalStandard(int block) {
-		return block | 0x10000;
+		return block;
 	}
 
 	@Override
@@ -87,18 +88,18 @@ public class FenceRotation implements RotationMode {
 		float zOffset = 0;
 		float zLen = 1;
 		int data = bi.getBlock() >>> 16;
-		if((data & 0b00010) == 0) {
+		if((data & (1 << Neighbors.DIR_NEG_X)) == 0) {
 			xOffset += 0.5f;
 			xLen -= 0.5f;
 		}
-		if((data & 0b00100) == 0) {
+		if((data & (1 << Neighbors.DIR_POS_X)) == 0) {
 			xLen -= 0.5f;
 		}
-		if((data & 0b01000) == 0) {
+		if((data & (1 << Neighbors.DIR_NEG_Z)) == 0) {
 			zOffset += 0.5f;
 			zLen -= 0.5f;
 		}
-		if((data & 0b10000) == 0) {
+		if((data & (1 << Neighbors.DIR_POS_Z)) == 0) {
 			zLen -= 0.5f;
 		}
 		min.z += zOffset;
@@ -146,18 +147,18 @@ public class FenceRotation implements RotationMode {
 		float xLen = 1;
 		float zOffset = 0;
 		float zLen = 1;
-		if((blockData & 0b00010) == 0) {
+		if((blockData & (1 << Neighbors.DIR_NEG_X)) == 0) {
 			xOffset += 0.5f;
 			xLen -= 0.5f;
 		}
-		if((blockData & 0b00100) == 0) {
+		if((blockData & (1 << Neighbors.DIR_POS_X)) == 0) {
 			xLen -= 0.5f;
 		}
-		if((blockData & 0b01000) == 0) {
+		if((blockData & (1 << Neighbors.DIR_NEG_Z)) == 0) {
 			zOffset += 0.5f;
 			zLen -= 0.5f;
 		}
-		if((blockData & 0b10000) == 0) {
+		if((blockData & (1 << Neighbors.DIR_POS_Z)) == 0) {
 			zLen -= 0.5f;
 		}
 		
@@ -174,10 +175,10 @@ public class FenceRotation implements RotationMode {
 		int z = bi.getZ() & NormalChunk.chunkMask;
 		int[] textureIndices = Blocks.textureIndices(bi.getBlock());
 		int blockData = bi.getBlock() >>> 16;
-		boolean negX = (blockData & 0b00010) == 0;
-		boolean posX = (blockData & 0b00100) == 0;
-		boolean negZ = (blockData & 0b01000) == 0;
-		boolean posZ = (blockData & 0b10000) == 0;
+		boolean negX = (blockData & (1 << Neighbors.DIR_NEG_X)) == 0;
+		boolean posX = (blockData & (1 << Neighbors.DIR_POS_X)) == 0;
+		boolean negZ = (blockData & (1 << Neighbors.DIR_NEG_Z)) == 0;
+		boolean posZ = (blockData & (1 << Neighbors.DIR_POS_Z)) == 0;
 		
 		// Simply copied the code from model and move all vertices to the center that touch an edge that isn't connected to another fence.
 		int indexOffset = vertices.size/3;

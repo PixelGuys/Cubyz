@@ -243,7 +243,7 @@ public class NormalChunk extends Chunk {
 						if(newBlock == 0) {
 							world.removeBlock(nx, ny, nz);
 							break; // Break here to prevent making stuff with non-existent blocks.
-						} else if(newBlock != b) {
+						} else if(newBlock != neighbors[i]) {
 							world.updateBlock(nx, ny, nz, newBlock);
 							// TODO: Eventual item drops.
 						}
