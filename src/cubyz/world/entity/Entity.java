@@ -7,7 +7,7 @@ import org.joml.Vector4d;
 
 import cubyz.utils.json.JsonObject;
 import cubyz.world.ServerWorld;
-import cubyz.world.blocks.Block;
+import cubyz.world.blocks.Blocks;
 import cubyz.world.items.Inventory;
 import cubyz.world.items.tools.Tool;
 
@@ -261,10 +261,10 @@ public class Entity {
 	}
 	
 	public boolean checkBlock(int x, int y, int z, Vector4d displacement) {
-		Block b = getBlock(x, y, z);
-		if(b != null && b.isSolid()) {
-			if(b.mode.changesHitbox()) {
-				return b.mode.checkEntityAndDoCollision(this, displacement, x, y, z, getBlockData(x, y, z));
+		int b = getBlock(x, y, z);
+		if(b != 0 && Blocks.solid(b)) {
+			if(Blocks.mode(b).changesHitbox()) {
+				return Blocks.mode(b).checkEntityAndDoCollision(this, displacement, x, y, z, b);
 			}
 			// Check for stepping:
 			if(y + 1 - position.y > 0 && y + 1 - position.y <= stepHeight) {
@@ -276,18 +276,15 @@ public class Entity {
 		return false;
 	}
 
-	protected Block getBlock(int x, int y, int z) {
+	protected int getBlock(int x, int y, int z) {
 		return world.getBlock(x, y, z);
-	}
-	protected byte getBlockData(int x, int y, int z) {
-		return world.getBlockData(x, y, z);
 	}
 	
 	public boolean checkBlock(int x, int y, int z) {
-		Block b = getBlock(x, y, z);
-		if(b != null && b.isSolid()) {
-			if(b.mode.changesHitbox()) {
-				return b.mode.checkEntity(position, width, height, x, y, z, getBlockData(x, y, z));
+		int b = getBlock(x, y, z);
+		if(b != 0 && Blocks.solid(b)) {
+			if(Blocks.mode(b).changesHitbox()) {
+				return Blocks.mode(b).checkEntity(position, width, height, x, y, z, b);
 			}
 			return true;
 		}
@@ -493,7 +490,7 @@ public class Entity {
 	 * @param blockData
 	 * @return
 	 */
-	public void aabCollision(Vector4d vel, double x0, double y0, double z0, double w, double h, double d, byte blockData) {
+	public void aabCollision(Vector4d vel, double x0, double y0, double z0, double w, double h, double d, int block) {
 		// check if the displacement is inside the box:
 		if(aabCollision(position.x - width + vel.x, position.y + vel.y, position.z - width + vel.z, width*2, height, width*2, x0, y0, z0, w, h, d)) {
 			// Check if the entity can step on it:

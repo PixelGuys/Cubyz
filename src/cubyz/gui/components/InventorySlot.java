@@ -10,7 +10,6 @@ import cubyz.rendering.Graphics;
 import cubyz.rendering.Texture;
 import cubyz.rendering.text.Fonts;
 import cubyz.rendering.text.TextLine;
-import cubyz.world.blocks.Block;
 import cubyz.world.items.Item;
 import cubyz.world.items.ItemBlock;
 import cubyz.world.items.ItemStack;
@@ -186,7 +185,7 @@ public class InventorySlot extends Component {
 			if(item.getImage() == null) {
 				if (item instanceof ItemBlock) {
 					ItemBlock ib = (ItemBlock) item;
-					Block b = ib.getBlock();
+					int b = ib.getBlock();
 					if (item.getTexture() != null) {
 						item.setImage(Texture.loadFromFile(item.getTexture()));
 					} else {

@@ -9,7 +9,6 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 
 import cubyz.Logger;
-import cubyz.client.ClientOnly;
 import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
 import cubyz.gui.MenuGUI;
@@ -18,9 +17,7 @@ import cubyz.gui.components.Component;
 import cubyz.rendering.VisibleChunk;
 import cubyz.utils.translate.ContextualTextKey;
 import cubyz.utils.translate.TextKey;
-import cubyz.world.CustomObject;
 import cubyz.world.ServerWorld;
-import cubyz.world.blocks.Block;
 import server.Server;
 
 import static cubyz.client.ClientSettings.GUI_SCALE;
@@ -53,12 +50,6 @@ public class SaveSelectorGUI extends MenuGUI {
 			b.setOnAction(() -> {
 				new Thread(() -> Server.main(new String[0]), "Server Thread").start();
 				ServerWorld world = new ServerWorld(name, VisibleChunk.class);
-				Block[] blocks = world.generate();
-				for(Block bl : blocks) {
-					if (bl instanceof CustomObject) {
-						ClientOnly.createBlockMesh.accept(bl);
-					}
-				}
 				Cubyz.gameUI.setMenu(null, false); // hide from UISystem.back()
 				GameLauncher.logic.loadWorld(world);
 			});

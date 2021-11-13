@@ -11,22 +11,20 @@ import cubyz.world.ServerWorld;
 
 public class BlockInstance {
 
-	private Block block;
+	private int block;
 	public final int x, y, z;
 	private ServerWorld world;
 	private boolean[] neighbors;
-	private byte blockData;
 	public final int[] light;
 	public final NormalChunk source;
 	public int renderIndex = 0;
 	
-	public BlockInstance(Block block, byte data, Vector3i position, NormalChunk source) {
+	public BlockInstance(int block, Vector3i position, NormalChunk source) {
 		this.source = source;
 		this.block = block;
 		x = position.x;
 		y = position.y;
 		z = position.z;
-		blockData = data;
 		light = new int[27];
 		neighbors = new boolean[6];
 	}
@@ -50,10 +48,6 @@ public class BlockInstance {
 		this.world = world;
 	}
 	
-	public int getID() {
-		return block.ID;
-	}
-	
 	public Vector3i getPosition() {
 		return new Vector3i(x, y, z);
 	}
@@ -70,20 +64,12 @@ public class BlockInstance {
 		return z;
 	}
 	
-	public Block getBlock() {
+	public int getBlock() {
 		return block;
 	}
 	
-	public void setBlock(Block b) {
+	public void setBlock(int b) {
 		block = b;
-	}
-	
-	public byte getData() {
-		return blockData;
-	}
-	
-	public void setData(byte data) {
-		blockData = data;
 	}
 	
 	public int[] updateLighting(int worldSizeX, int worldSizeZ, NormalChunk chunk) {

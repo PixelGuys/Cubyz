@@ -1,7 +1,6 @@
 package cubyz.api;
 
 import cubyz.command.CommandBase;
-import cubyz.world.blocks.Block;
 import cubyz.world.blocks.Ore;
 import cubyz.world.blocks.RotationMode;
 import cubyz.world.entity.EntityModel;
@@ -21,7 +20,7 @@ import cubyz.world.terrain.worldgenerators.SurfaceGenerator;
 
 public class CubyzRegistries {
 
-	public static final Registry<Block>                  BLOCK_REGISTRY          = new Registry<Block>();
+	public static final Registry<DataOrientedRegistry>   BLOCK_REGISTRIES        = new Registry<DataOrientedRegistry>();
 	public static final NoIDRegistry<Ore>                ORE_REGISTRY            = new NoIDRegistry<Ore>();
 	public static final Registry<Item>                   ITEM_REGISTRY           = new Registry<Item>();
 	public static final NoIDRegistry<Recipe>             RECIPE_REGISTRY         = new NoIDRegistry<Recipe>();
@@ -39,5 +38,10 @@ public class CubyzRegistries {
 	
 	// world generation
 	public static final Registry<SurfaceGenerator>       STELLAR_TORUS_GENERATOR_REGISTRY = new Registry<SurfaceGenerator>();
+
+	/**
+	 * How many blocks were loaded before the world specific blocks.
+	 */
+	public static int blocksBeforeWorld = 0;
 	
 }

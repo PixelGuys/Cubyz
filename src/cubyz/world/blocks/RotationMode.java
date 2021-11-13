@@ -7,7 +7,7 @@ import org.joml.Vector3i;
 import org.joml.Vector4d;
 
 import cubyz.api.RegistryElement;
-import cubyz.utils.datastructures.ByteWrapper;
+import cubyz.utils.datastructures.IntWrapper;
 import cubyz.utils.datastructures.FloatFastList;
 import cubyz.utils.datastructures.IntFastList;
 import cubyz.world.ServerWorld;
@@ -46,7 +46,7 @@ public interface RotationMode extends RegistryElement {
 	 * @param blockPlacing true if the position of the block was previously empty/nonsolid.
 	 * @return true if the placing was successful, false otherwise.
 	 */
-	public boolean generateData(ServerWorld world, int x, int y, int z, Vector3d relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDir, ByteWrapper currentData, boolean blockPlacing);
+	public boolean generateData(ServerWorld world, int x, int y, int z, Vector3d relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDir, IntWrapper currentData, boolean blockPlacing);
 
 	/**
 	 * @return if the block should be destroyed or changed when a certain neighbor is removed.
@@ -60,19 +60,19 @@ public interface RotationMode extends RegistryElement {
 	 * @param removedDir given as neighbor index (See NormalChunk.)
 	 * @return new data
 	 */
-	public Byte updateData(byte oldData, int removedDir, Block newNeighbor);
+	public int updateData(int oldBlock, int removedDir, int newNeighbor);
 	
 	/**
 	 * A RotationMode may even alter the blocks transparency. Here is where it's done.
 	 * @param data The blocks data
 	 * @param relativeDir the relative direction of the other block. Given as difference of the indices in the Chunk array. 100% unintuitive to use, maybe I'll add an automatic transformation later.
 	 */
-	public boolean checkTransparency(byte data, int relativeDir);
+	public boolean checkTransparency(int block, int relativeDir);
 	
 	/**
 	 * @return standard data for natural generation.
 	 */
-	public byte getNaturalStandard();
+	public int getNaturalStandard(int block);
 	
 	/**
 	 * @return Whether this RotationMode changes this blocks hitbox for player collision or block selection.
@@ -100,7 +100,7 @@ public interface RotationMode extends RegistryElement {
 	 * @param data block data
 	 * @return Whether the entity and block hitboxes overlap.
 	 */
-	public boolean checkEntity(Vector3d pos, double width, double height, int x, int y, int z, byte blockData);
+	public boolean checkEntity(Vector3d pos, double width, double height, int x, int y, int z, int block);
 	
 	/**
 	 * Check if the entity would collide with the block, if its position was changed by `vel`.
@@ -113,5 +113,5 @@ public interface RotationMode extends RegistryElement {
 	 * @param data block data
 	 * @return Returns true if the block behaves like a normal block and therefor needs to be handled like a normal block in the specified direction. Returns false if everything has been handled already in here.
 	 */
-	public boolean checkEntityAndDoCollision(Entity ent, Vector4d vel, int x, int y, int z, byte blockData);
+	public boolean checkEntityAndDoCollision(Entity ent, Vector4d vel, int x, int y, int z, int block);
 }

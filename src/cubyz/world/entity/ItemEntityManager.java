@@ -9,7 +9,7 @@ import cubyz.Logger;
 import cubyz.utils.math.Bits;
 import cubyz.world.NormalChunk;
 import cubyz.world.ServerWorld;
-import cubyz.world.blocks.Block;
+import cubyz.world.blocks.Blocks;
 import cubyz.world.items.Item;
 import cubyz.world.items.ItemStack;
 import cubyz.world.save.Palette;
@@ -290,16 +290,15 @@ public class ItemEntityManager {
 		x -= chunk.getWorldX();
 		y -= chunk.getWorldY();
 		z -= chunk.getWorldZ();
-		Block block = chunk.getBlockUnbound(x, y, z);
-		if(block == null) return;
-		byte data = chunk.getDataUnbound(x, y, z);
+		int block = chunk.getBlockUnbound(x, y, z);
+		if(block == 0) return;
 		// Check if the item entity is inside the block:
 		boolean isInside = true;
-		if(block.mode.changesHitbox()) {
-			isInside = block.mode.checkEntity(new Vector3d(posxyz[index3], posxyz[index3+1]+radius, posxyz[index3+2]), radius, diameter, x, y, z, data);
+		if(Blocks.mode(block).changesHitbox()) {
+			isInside = Blocks.mode(block).checkEntity(new Vector3d(posxyz[index3], posxyz[index3+1]+radius, posxyz[index3+2]), radius, diameter, x, y, z, block);
 		}
 		if(isInside) {
-			if(block.isSolid()) {
+			if(Blocks.solid(block)) {
 				velxyz[index3] = velxyz[index3+1] = velxyz[index3+2] = 0;
 				// TODO: Prevent item entities from getting stuck in a block.
 			} else {

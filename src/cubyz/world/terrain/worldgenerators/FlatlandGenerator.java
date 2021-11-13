@@ -1,10 +1,9 @@
 package cubyz.world.terrain.worldgenerators;
 
-import cubyz.api.CubyzRegistries;
 import cubyz.api.Resource;
 import cubyz.world.Chunk;
 import cubyz.world.ServerWorld;
-import cubyz.world.blocks.Block;
+import cubyz.world.blocks.Blocks;
 
 /**
  * Simple generator that does flat worlds with 3 layers.
@@ -15,8 +14,8 @@ import cubyz.world.blocks.Block;
 
 public class FlatlandGenerator extends SurfaceGenerator {
 
-	private static Block grass = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:grass");
-	private static Block soil = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:soil");
+	private static int grass = Blocks.getByID("cubyz:grass");
+	private static int soil = Blocks.getByID("cubyz:soil");
 	
 	@Override
 	public void generate(Chunk chunk, ServerWorld world) {
@@ -25,13 +24,13 @@ public class FlatlandGenerator extends SurfaceGenerator {
 				for (int y = 0; y < chunk.getWidth(); y += chunk.getVoxelSize()) {
 					int wy = y + chunk.getWorldY();
 					if(wy > 0) continue;
-					Block b = null;
+					int b = 0;
 					if (wy == 0) {
 						b = grass;
 					} else {
 						b = soil;
 					}
-					chunk.updateBlock(x, y, z, b);
+					chunk.updateBlockInGeneration(x, y, z, b);
 				}
 			}
 		}

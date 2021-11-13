@@ -15,9 +15,9 @@ public class Ore {
 	/**maximum height this ore can be generated*/
 	public final int maxHeight;
 
-	public final Block block;
+	public final int block;
 
-	public final Block[] sources;
+	public final int[] sources;
 
 	/**
 	 * @param block
@@ -27,7 +27,7 @@ public class Ore {
 	 * @param size
 	 * @param density
 	 */
-	public Ore(Block block, Block[] sources, int maxHeight, float veins, float size, float density) {
+	public Ore(int block, int[] sources, int maxHeight, float veins, float size, float density) {
 		this.block = block;
 		this.sources = sources;
 		this.maxHeight = maxHeight;
@@ -36,14 +36,14 @@ public class Ore {
 		this.density = Math.max(0.05f, Math.min(density, 1));
 	}
 
-	public boolean canCreateVeinInBlock(Block block) {
-		for(Block src : sources) {
+	public boolean canCreateVeinInBlock(int block) {
+		for(int src : sources) {
 			if(src == block) return true;
 		}
 		return false;
 	}
 
 	public String toString() {
-		return block.getRegistryID().toString()+": "+density+", "+size+", "+veins+", "+maxHeight+"\n";
+		return Blocks.id(block).toString()+": "+density+", "+size+", "+veins+", "+maxHeight+"\n";
 	}
 }

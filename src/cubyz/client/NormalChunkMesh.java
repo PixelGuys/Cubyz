@@ -24,6 +24,7 @@ import cubyz.utils.datastructures.IntFastList;
 import cubyz.world.ChunkData;
 import cubyz.world.NormalChunk;
 import cubyz.world.blocks.BlockInstance;
+import cubyz.world.blocks.Blocks;
 
 /**
  * Used to create chunk meshes for normal chunks.
@@ -409,10 +410,10 @@ public class NormalChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 		int index = 0;
 		for(int i = 0; i < visibles.size; i++) {
 			BlockInstance bi = visibles.array[i];
-			if(!bi.getBlock().isTransparent()) {
+			if(!Blocks.transparent(bi.getBlock())) {
 				bi.updateLighting(chunk.getWorldX(), chunk.getWorldZ(), chunk);
 				bi.renderIndex = index;
-				index = bi.getBlock().mode.generateChunkMesh(bi, vertices, normals, faces, lighting, texture, renderIndices, index);
+				index = Blocks.mode(bi.getBlock()).generateChunkMesh(bi, vertices, normals, faces, lighting, texture, renderIndices, index);
 			}
 		}
 	}
@@ -423,10 +424,10 @@ public class NormalChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 		int index = 0;
 		for(int i = 0; i < visibles.size; i++) {
 			BlockInstance bi = visibles.array[i];
-			if(bi.getBlock().isTransparent()) {
+			if(Blocks.transparent(bi.getBlock())) {
 				bi.updateLighting(chunk.getWorldX(), chunk.getWorldZ(), chunk);
 				bi.renderIndex = index;
-				index = bi.getBlock().mode.generateChunkMesh(bi, vertices, normals, faces, lighting, texture, renderIndices, index);
+				index = Blocks.mode(bi.getBlock()).generateChunkMesh(bi, vertices, normals, faces, lighting, texture, renderIndices, index);
 			}
 		}
 	}

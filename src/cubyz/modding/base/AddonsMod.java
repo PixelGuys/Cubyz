@@ -10,6 +10,7 @@ import java.util.function.BiConsumer;
 
 import cubyz.Logger;
 import cubyz.api.CubyzRegistries;
+import cubyz.api.DataOrientedRegistry;
 import cubyz.api.EventHandler;
 import cubyz.api.LoadOrder;
 import cubyz.api.Mod;
@@ -18,11 +19,12 @@ import cubyz.api.Order;
 import cubyz.api.Proxy;
 import cubyz.api.Registry;
 import cubyz.api.Resource;
+import cubyz.utils.datastructures.IntFastList;
 import cubyz.utils.json.JsonObject;
 import cubyz.utils.json.JsonParser;
 import cubyz.utils.math.CubyzMath;
-import cubyz.world.blocks.Block;
 import cubyz.world.blocks.BlockEntity;
+import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.Ore;
 import cubyz.world.items.BlockDrop;
 import cubyz.world.items.Consumable;
@@ -47,7 +49,7 @@ public class AddonsMod {
 	private static ArrayList<Item> items = new ArrayList<>();
 	
 	// Used to fetch block drops that aren't loaded during block loading.
-	private static ArrayList<Block> missingDropsBlock = new ArrayList<>();
+	private static IntFastList missingDropsBlock = new IntFastList();
 	private static ArrayList<String> missingDropsItem = new ArrayList<>();
 	private static ArrayList<Float> missingDropsAmount = new ArrayList<>();
 
@@ -60,11 +62,11 @@ public class AddonsMod {
 	
 	@EventHandler(type = "init")
 	public void init() {
-		init(CubyzRegistries.ITEM_REGISTRY, CubyzRegistries.BLOCK_REGISTRY, CubyzRegistries.RECIPE_REGISTRY);
+		init(CubyzRegistries.ITEM_REGISTRY, CubyzRegistries.BLOCK_REGISTRIES, CubyzRegistries.RECIPE_REGISTRY);
 	}
-	public void init(Registry<Item> itemRegistry, Registry<Block> blockRegistry, NoIDRegistry<Recipe> recipeRegistry) {
+	public void init(Registry<Item> itemRegistry, Registry<DataOrientedRegistry> blockRegistries, NoIDRegistry<Recipe> recipeRegistry) {
 		proxy.init(this);
-		registerMissingStuff(itemRegistry, blockRegistry);
+		registerMissingStuff(itemRegistry, blockRegistries);
 		registerRecipes(recipeRegistry);
 	}
 
@@ -146,9 +148,12 @@ public class AddonsMod {
 		registerItems(registry, "assets/");
 	}
 	
-	public void registerBlocks(Registry<Block> registry, NoIDRegistry<Ore> oreRegistry) {
+	public void registerBlocks(Registry<DataOrientedRegistry> registries, NoIDRegistry<Ore> oreRegistry) {
 		readAllJsonObjects("blocks", (json, id) -> {
-			Block block = new Block(id, json);
+			int block = 0;
+			for(DataOrientedRegistry reg : registries.registered(new DataOrientedRegistry[0])) {
+				block = reg.register(id, json);
+			}
 
 			// Ores:
 			JsonObject oreProperties = json.getObject("ore");
@@ -159,7 +164,7 @@ public class AddonsMod {
 				float size = oreProperties.getFloat("size", 0);
 				int height = oreProperties.getInt("height", 0);
 				float density = oreProperties.getFloat("density", 0.5f);
-				Ore ore = new Ore(block, new Block[oreIDs.length], height, veins, size, density);
+				Ore ore = new Ore(block, new int[oreIDs.length], height, veins, size, density);
 				ores.add(ore);
 				oreRegistry.register(ore);
 				oreContainers.add(oreIDs);
@@ -179,7 +184,7 @@ public class AddonsMod {
 					name = data[1];
 				}
 				if (name.equals("auto")) {
-					block.addBlockDrop(new BlockDrop(self, amount));
+					Blocks.addBlockDrop(block, new BlockDrop(self, amount));
 				} else if (!name.equals("none")) {
 					missingDropsBlock.add(block);
 					missingDropsAmount.add(amount);
@@ -190,17 +195,16 @@ public class AddonsMod {
 			// block entities:
 			if (json.has("blockEntity")) {
 				try {
-					block.blockEntity = Class.forName(json.getString("blockEntity", "")).asSubclass(BlockEntity.class);
+					Blocks.setBlockEntity(block, Class.forName(json.getString("blockEntity", "")).asSubclass(BlockEntity.class));
 				} catch (ClassNotFoundException e) {
 					Logger.error(e);
 				}
 			}
-			registry.register(block);
 		});
 	}
 	@EventHandler(type = "register:block")
-	public void registerBlocks(Registry<Block> registry) {
-		registerBlocks(registry, CubyzRegistries.ORE_REGISTRY);
+	public void registerBlocks(Registry<DataOrientedRegistry> registries) {
+		registerBlocks(registries, CubyzRegistries.ORE_REGISTRY);
 	}
 	@EventHandler(type = "register:biome")
 	public void registerBiomes(Registry<Biome> reg) {
@@ -213,15 +217,15 @@ public class AddonsMod {
 	/**
 	 * Takes care of all missing references.
 	 */
-	public void registerMissingStuff(Registry<Item> itemRegistry, Registry<Block> blockRegistry) {
-		for(int i = 0; i < missingDropsBlock.size(); i++) {
-			missingDropsBlock.get(i).addBlockDrop(new BlockDrop(itemRegistry.getByID(missingDropsItem.get(i)), missingDropsAmount.get(i)));
+	public void registerMissingStuff(Registry<Item> itemRegistry, Registry<DataOrientedRegistry> blockRegistry) {
+		for(int i = 0; i < missingDropsBlock.size; i++) {
+			Blocks.addBlockDrop(missingDropsBlock.array[i], new BlockDrop(itemRegistry.getByID(missingDropsItem.get(i)), missingDropsAmount.get(i)));
 		}
 		for(int i = 0; i < ores.size(); i++) {
 			for(int j = 0; j < oreContainers.get(i).length; j++) {
-				ores.get(i).sources[j] = blockRegistry.getByID(oreContainers.get(i)[j]);
-				if(ores.get(i).sources[j] == null) {
-					Logger.error("Couldn't find source block "+oreContainers.get(i)[j]+" for ore "+ores.get(i).block);
+				ores.get(i).sources[j] = Blocks.getByID(oreContainers.get(i)[j]);
+				if(ores.get(i).sources[j] == 0) {
+					Logger.error("Couldn't find source block "+oreContainers.get(i)[j]+" for ore "+Blocks.id(ores.get(i).block));
 				}
 			}
 		}

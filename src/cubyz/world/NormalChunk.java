@@ -8,12 +8,12 @@ import org.joml.Vector3i;
 import cubyz.utils.Utilities;
 import cubyz.utils.datastructures.FastList;
 import cubyz.utils.math.Bits;
-import cubyz.world.blocks.Block;
+import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.BlockInstance;
-import cubyz.world.blocks.Block.BlockClass;
+import cubyz.world.blocks.Blocks.BlockClass;
 import cubyz.world.save.BlockChange;
-import cubyz.world.save.Palette;
+import cubyz.world.save.BlockPalette;
 import cubyz.world.terrain.MapFragment;
 import cubyz.world.terrain.worldgenerators.SurfaceGenerator;
 
@@ -34,9 +34,7 @@ public class NormalChunk extends Chunk {
 	public static final int arraySize = chunkSize*chunkSize*chunkSize;
 
 	/**Due to having powers of 2 as dimensions it is more efficient to use a one-dimensional array.*/
-	protected Block[] blocks;
-	/**Important data used to store rotation. Will be used later for water levels and stuff like that.*/
-	protected byte[] blockData;
+	protected int[] blocks;
 	/**Stores all visible BlockInstances. Can be faster accessed using coordinates.*/
 	protected BlockInstance[] inst;
 	/**Stores the local index of the block.*/
@@ -59,8 +57,7 @@ public class NormalChunk extends Chunk {
 	public NormalChunk(int cx, int cy, int cz, ServerWorld world) {
 		super(cx << chunkShift, cy << chunkShift, cz << chunkShift, 1);
 		inst = new BlockInstance[arraySize];
-		blocks = new Block[arraySize];
-		blockData = new byte[arraySize];
+		blocks = new int[arraySize];
 		this.cx = cx;
 		this.cy = cy;
 		this.cz = cz;
@@ -102,17 +99,34 @@ public class NormalChunk extends Chunk {
 	 * @param z
 	 * @param b
 	 * @param data
+	 * ghueiwoav????
 	 */
-	private void setBlock(int x, int y, int z, Block b, byte data) {
+	@Deprecated
+	private void setBlock(int x, int y, int z, int b) {
 		int index = getIndex(x, y, z);
 		blocks[index] = b;
-		blockData[index] = data;
 		setUpdated();
 	}
 	
-	public void setBlockData(int x, int y, int z, byte data) {
+	/**
+	 * Updates the block without changing visibility.
+	 * @param x relative to this
+	 * @param y relative to this
+	 * @param z relative to this
+	 * @param block
+	 */
+	@Override
+	public void updateBlockInGeneration(int x, int y, int z, int b) {
 		int index = getIndex(x, y, z);
-		if(blockData[index] != data) {
+		if (Blocks.blockClass(b) == BlockClass.FLUID) {
+			liquids.add(index);
+		}
+		blocks[index] = b;
+	}
+
+	public void updateBlock(int x, int y, int z, int b) {
+		int index = getIndex(x, y, z);
+		if(blocks[index] != b) {
 			// Registers blockChange:
 			int bcIndex = -1; // Checks if it is already in the list
 			for(int i = 0; i < changes.size(); i++) {
@@ -123,23 +137,21 @@ public class NormalChunk extends Chunk {
 				}
 			}
 			if(bcIndex == -1) { // Creates a new object if the block wasn't changed before
-				changes.add(new BlockChange(-1, blocks[index].ID, index, blockData[index], data));
-			} else if(blocks[index].ID == changes.get(bcIndex).oldType && data == changes.get(bcIndex).oldData) { // Removes the object if the block reverted to it's original state.
+				changes.add(new BlockChange(0, b, index));
+			} else if(b == changes.get(bcIndex).oldType) { // Removes the object if the block reverted to it's original state.
 				changes.remove(bcIndex);
 			} else {
-				changes.get(bcIndex).newData = data;
+				changes.get(bcIndex).newType = b;
 			}
-			blockData[index] = data;
+			blocks[index] = b;
 			// Update the instance:
 			if(inst[index] != null)
-				inst[index].setData(data);
+				inst[index].setBlock(b);
+		}
+		if (Blocks.blockClass(b) == BlockClass.FLUID) {
+			liquids.add(index);
 		}
 		setUpdated();
-	}
-	
-	public byte getBlockData(int x, int y, int z) {
-		int index = getIndex(x, y, z);
-		return blockData[index];
 	}
 	
 	/**
@@ -147,8 +159,7 @@ public class NormalChunk extends Chunk {
 	 */
 	@Deprecated
 	public void createBlocksForOverlay() {
-		blocks = new Block[arraySize];
-		blockData = new byte[arraySize];
+		blocks = new int[arraySize];
 	}
 	
 	
@@ -161,19 +172,19 @@ public class NormalChunk extends Chunk {
 	 * @param z global
 	 * @param considerPrevious If the degradability of the block which was there before should be considered.
 	 */
-	public void addBlockPossiblyOutside(Block b, byte data, int x, int y, int z, boolean considerPrevious) {
+	public void addBlockPossiblyOutside(int b, int x, int y, int z, boolean considerPrevious) {
 		// Make the boundary checks:
-		if (b == null) return;
+		if (b == 0) return;
 		int rx = x - wx;
 		int ry = y - wy;
 		int rz = z - wz;
 		if(rx < 0 || rx >= chunkSize || ry < 0 || ry >= chunkSize || rz < 0 || rz >= chunkSize) {
 			if (world.getChunk(cx + (rx >> chunkShift), cy + (ry >> chunkShift), cz + (rz >> chunkShift)) == null)
 				return;
-			world.getChunk(cx + (rx >> chunkShift), cy + (ry >> chunkShift), cz + (rz >> chunkShift)).addBlock(b, data, x & chunkMask, y & chunkMask, z & chunkMask, considerPrevious);
+			world.getChunk(cx + (rx >> chunkShift), cy + (ry >> chunkShift), cz + (rz >> chunkShift)).addBlock(b, x & chunkMask, y & chunkMask, z & chunkMask, considerPrevious);
 			return;
 		} else {
-			addBlock(b, data, rx, ry, rz, considerPrevious);
+			addBlock(b, rx, ry, rz, considerPrevious);
 		}
 	}
 	
@@ -187,40 +198,39 @@ public class NormalChunk extends Chunk {
 	 * @param registerBlockChange
 	 * @param considerPrevious If the degradability of the block which was there before should be considered.
 	 */
-	public void addBlock(Block b, byte data, int x, int y, int z, boolean considerPrevious) {
-		Block b2 = getBlock(x, y, z);
-		if(b2 != null) {
-			if((!b2.isDegradable() || b.isDegradable()) && considerPrevious) {
+	public void addBlock(int b, int x, int y, int z, boolean considerPrevious) {
+		int b2 = getBlock(x, y, z);
+		if(b2 != 0) {
+			if((!Blocks.degradable(b2) || Blocks.degradable(b)) && considerPrevious) {
 				return;
 			}
 			removeBlockAt(x, y, z, false);
 		}
-		setBlock(x, y, z, b, data);
-		if (b.hasBlockEntity()) {
+		setBlock(x, y, z, b);
+		if (Blocks.blockEntity(b) != null) {
 			Vector3i pos = new Vector3i(wx+x, wy+y, wz+z);
-			blockEntities.add(b.createBlockEntity(world, pos));
+			blockEntities.add(Blocks.createBlockEntity(b, world, pos));
 		}
-		if (b.getBlockClass() == BlockClass.FLUID) {
+		if (Blocks.blockClass(b) == BlockClass.FLUID) {
 			liquids.add(getIndex(x, y, z));
 			updatingLiquids.add(getIndex(x, y, z));
 		}
 		if(generated) {
-			byte[] dataN = new byte[6];
 			int[] indices = new int[6];
-			Block[] neighbors = getNeighbors(x, y ,z, dataN, indices);
+			int[] neighbors = getNeighbors(x, y ,z, indices);
 			BlockInstance[] visibleNeighbors = getVisibleNeighbors(x + wx, y + wy, z + wz);
 			for(int k = 0; k < 6; k++) {
-				if(visibleNeighbors[k] != null) visibleNeighbors[k].updateNeighbor(k ^ 1, blocksBlockNot(b, neighbors[k], data, (getIndex(x, y, z) - indices[k])));
+				if(visibleNeighbors[k] != null) visibleNeighbors[k].updateNeighbor(k ^ 1, blocksBlockNot(b, neighbors[k], (getIndex(x, y, z) - indices[k])));
 			}
 			
 			for (int i = 0; i < neighbors.length; i++) {
-				if (blocksBlockNot(neighbors[i], b, dataN[i], (getIndex(x, y, z) - indices[i]))) {
+				if (blocksBlockNot(neighbors[i], b, (getIndex(x, y, z) - indices[i]))) {
 					revealBlock(x & chunkMask, y & chunkMask, z & chunkMask);
 					break;
 				}
 			}
 			for (int i = 0; i < neighbors.length; i++) {
-				if(neighbors[i] != null) {
+				if(neighbors[i] != 0) {
 					int x2 = x+Neighbors.REL_X[i];
 					int y2 = y+Neighbors.REL_Y[i];
 					int z2 = z+Neighbors.REL_Z[i];
@@ -228,24 +238,22 @@ public class NormalChunk extends Chunk {
 					int ny = y2 + wy;
 					int nz = z2 + wz;
 					NormalChunk ch = getChunk(nx, ny, nz);
-					if(neighbors[i].mode.dependsOnNeightbors()) {
-						byte oldData = ch.getBlockData(nx & chunkMask, ny & chunkMask, nz & chunkMask);
-						Byte newData = neighbors[i].mode.updateData(oldData, i ^ 1, b);
-						if(newData == null) {
+					if(Blocks.mode(neighbors[i]).dependsOnNeightbors()) {
+						int newBlock = Blocks.mode(neighbors[i]).updateData(neighbors[i], i ^ 1, b);
+						if(newBlock == 0) {
 							world.removeBlock(nx, ny, nz);
 							break; // Break here to prevent making stuff with non-existent blocks.
-						} else if(newData.byteValue() != oldData) {
-							world.updateBlockData(nx, ny, nz, newData);
+						} else if(newBlock != b) {
+							world.updateBlock(nx, ny, nz, newBlock);
 							// TODO: Eventual item drops.
 						}
 					}
 					if (ch.contains(x2 & chunkMask, y2 & chunkMask, z2 & chunkMask)) {
-						byte[] dataN1 = new byte[6];
 						int[] indices1 = new int[6];
-						Block[] neighbors1 = ch.getNeighbors(x2 & chunkMask, y2 & chunkMask, z2 & chunkMask, dataN1, indices1);
+						int[] neighbors1 = ch.getNeighbors(x2 & chunkMask, y2 & chunkMask, z2 & chunkMask, indices1);
 						boolean vis = true;
 						for (int j = 0; j < neighbors1.length; j++) {
-							if (blocksBlockNot(neighbors1[j], neighbors[i], dataN1[j], indices[i] - indices1[j])) {
+							if (blocksBlockNot(neighbors1[j], neighbors[i], indices[i] - indices1[j])) {
 								vis = false;
 								break;
 							}
@@ -254,7 +262,7 @@ public class NormalChunk extends Chunk {
 							ch.hideBlock(x2 & chunkMask, y2 & chunkMask, z2 & chunkMask);
 						}
 					}
-					if (neighbors[i].getBlockClass() == BlockClass.FLUID) {
+					if (Blocks.blockClass(neighbors[i]) == BlockClass.FLUID) {
 						int index = getIndex(x2 & chunkMask, y2 & chunkMask, z2 & chunkMask);
 						if (!updatingLiquids.contains(index))
 							updatingLiquids.add(index);
@@ -274,12 +282,11 @@ public class NormalChunk extends Chunk {
 			}
 		}
 		if(index == -1) { // Creates a new object if the block wasn't changed before
-			changes.add(new BlockChange(-1, b.ID, blockIndex, (byte)0, data));
-		} else if(b.ID == changes.get(index).oldType && data == changes.get(index).oldData) { // Removes the object if the block reverted to it's original state.
+			changes.add(new BlockChange(0, b, blockIndex));
+		} else if(b == changes.get(index).oldType) { // Removes the object if the block reverted to it's original state.
 			changes.remove(index);
 		} else {
-			changes.get(index).newType = b.ID;
-			changes.get(index).newData = data;
+			changes.get(index).newType = b;
 		}
 		if(startedloading)
 			lightUpdate(x, y, z);
@@ -290,18 +297,16 @@ public class NormalChunk extends Chunk {
 	 */
 	public void applyBlockChanges() {
 		for(BlockChange bc : changes) {
-			bc.oldType = blocks[bc.index] == null ? -1 : blocks[bc.index].ID;
-			bc.oldData = blockData[bc.index];
-			Block b = bc.newType == -1 ? null : world.getBlocks()[bc.newType];
-			if (b != null && b.hasBlockEntity()) {
+			bc.oldType = blocks[bc.index];
+			int b = bc.newType;
+			if (Blocks.blockEntity(b) != null) {
 				int z = bc.index & chunkMask;
 				int x = (bc.index >>> chunkShift) & chunkMask;
 				int y = (bc.index >>> chunkShift2) & chunkMask;
 				Vector3i pos = new Vector3i(wx+x, wy+y, wz+z);
-				blockEntities.add(b.createBlockEntity(world, pos));
+				blockEntities.add(Blocks.createBlockEntity(b, world, pos));
 			}
 			blocks[bc.index] = b;
-			blockData[bc.index] = bc.newData;
 		}
 		setUpdated();
 	}
@@ -314,8 +319,8 @@ public class NormalChunk extends Chunk {
 	 * @param direction
 	 * @return
 	 */
-	public boolean blocksBlockNot(Block blocker, Block blocked, byte blockerData, int direction) {
-		return blocker == null || blocker.mode.checkTransparency(blockerData, direction) || (blocker != blocked && blocker.isViewThrough(blockerData));
+	public boolean blocksBlockNot(int blocker, int blocked, int direction) {
+		return blocker == 0 || Blocks.mode(blocker).checkTransparency(blocker, direction) || (blocker != blocked && Blocks.viewThrough(blocker));
 	}
 	
 	public void hideBlock(int x, int y, int z) {
@@ -340,13 +345,12 @@ public class NormalChunk extends Chunk {
 	 */
 	public synchronized void revealBlock(int x, int y, int z) {
 		int index = getIndex(x, y, z);
-		Block b = blocks[index];
-		BlockInstance bi = new BlockInstance(b, blockData[index], new Vector3i(x + wx, y + wy, z + wz), this);
-		byte[] data = new byte[6];
+		int b = blocks[index];
+		BlockInstance bi = new BlockInstance(b, new Vector3i(x + wx, y + wy, z + wz), this);
 		int[] indices = new int[6];
-		Block[] neighbors = getNeighbors(x, y ,z, data, indices);
+		int[] neighbors = getNeighbors(x, y ,z, indices);
 		for(int k = 0; k < 6; k++) {
-			bi.updateNeighbor(k, blocksBlockNot(neighbors[k], b, data[k], index - indices[k]));
+			bi.updateNeighbor(k, blocksBlockNot(neighbors[k], b, index - indices[k]));
 		}
 		bi.setWorld(world);
 		visibles.add(bi);
@@ -367,14 +371,14 @@ public class NormalChunk extends Chunk {
 	 * @param registerBlockChange
 	 */
 	public void removeBlockAt(int x, int y, int z, boolean registerBlockChange) {
-		Block block = getBlock(x, y, z);
-		if(block == null)
+		int block = getBlock(x, y, z);
+		if(block == 0)
 			return;
 		hideBlock(x, y, z);
-		if (block.getBlockClass() == BlockClass.FLUID) {
+		if (Blocks.blockClass(block) == BlockClass.FLUID) {
 			liquids.remove((Object) getIndex(x, y, z));
 		}
-		if (block.hasBlockEntity()) {
+		if (Blocks.blockEntity(block) != null) {
 			//blockEntities.remove(block);
 			// TODO : be more efficient (maybe have a reference to block entity in BlockInstance?, but it would have yet another big memory footprint)
 			for (BlockEntity be : blockEntities) {
@@ -385,45 +389,43 @@ public class NormalChunk extends Chunk {
 				}
 			}
 		}
-		setBlock(x, y, z, null, (byte)0);
+		setBlock(x, y, z, 0);
 		BlockInstance[] visibleNeighbors = getVisibleNeighbors(x, y, z);
 		for(int k = 0; k < 6; k++) {
 			if(visibleNeighbors[k] != null) visibleNeighbors[k].updateNeighbor(k ^ 1, true);
 		}
 		if(startedloading)
 			lightUpdate(x, y, z);
-		Block[] neighbors = getNeighbors(x, y, z);
+		int[] neighbors = getNeighbors(x, y, z);
 		for (int i = 0; i < neighbors.length; i++) {
-			Block neighbor = neighbors[i];
-			if (neighbor != null) {
+			int neighbor = neighbors[i];
+			if (neighbor != 0) {
 				int nx = x + Neighbors.REL_X[i] + wx;
 				int ny = y + Neighbors.REL_Y[i] + wy;
 				int nz = z + Neighbors.REL_Z[i] + wz;
 				NormalChunk ch = getChunk(nx, ny, nz);
 				// Check if the block is structurally depending on the removed block:
-				if(neighbor.mode.dependsOnNeightbors()) {
-					byte oldData = ch.getBlockData(nx & chunkMask, ny & chunkMask, nz & chunkMask);
-					Byte newData = neighbor.mode.updateData(oldData, i ^ 1, null);
-					if(newData == null) {
+				if(Blocks.mode(neighbor).dependsOnNeightbors()) {
+					int newBlock = Blocks.mode(neighbor).updateData(neighbor, i ^ 1, 0);
+					if(newBlock == 0) {
 						world.removeBlock(nx, ny, nz);
 						break; // Break here to prevent making a non-existent block visible.
-					} else if(newData.byteValue() != oldData) {
-						world.updateBlockData(nx, ny, nz, newData);
+					} else if(newBlock != neighbor) {
+						world.updateBlock(nx, ny, nz, newBlock);
 						// TODO: Eventual item drops.
 					}
 				}
 				if (!ch.contains(nx, ny, nz)) {
 					ch.revealBlock(x+Neighbors.REL_X[i] & chunkMask, y+Neighbors.REL_Y[i] & chunkMask, z+Neighbors.REL_Z[i] & chunkMask);
 				}
-				if (neighbor.getBlockClass() == BlockClass.FLUID) {
+				if (Blocks.blockClass(neighbor) == BlockClass.FLUID) {
 					int index = getIndex(x+Neighbors.REL_X[i] & chunkMask, y+Neighbors.REL_Y[i] & chunkMask, z+Neighbors.REL_Z[i] & chunkMask);
 					if (!updatingLiquids.contains(index))
 						updatingLiquids.add(index);
 				}
 			}
 		}
-		byte oldData = getBlockData(x, y, z);
-		setBlock(x, y, z, null, (byte)0); // TODO: Investigate why this is called twice.
+		setBlock(x, y, z, 0); // TODO: Investigate why this is called twice.
 
 		if(registerBlockChange) {
 			int blockIndex = getIndex(x & chunkMask, y & chunkMask, z & chunkMask);
@@ -437,11 +439,11 @@ public class NormalChunk extends Chunk {
 				}
 			}
 			if(index == -1) { // Creates a new object if the block wasn't changed before
-				changes.add(new BlockChange(block.ID, -1, blockIndex, oldData, (byte)0));
-			} else if(changes.get(index).oldType == -1) { // Removes the object if the block reverted to it's original state(air).
+				changes.add(new BlockChange(block, 0, blockIndex));
+			} else if(changes.get(index).oldType == 0) { // Removes the object if the block reverted to it's original state(air).
 				changes.remove(index);
 			} else {
-				changes.get(index).newType = -1;
+				changes.get(index).newType = 0;
 			}
 		}
 		
@@ -464,14 +466,14 @@ public class NormalChunk extends Chunk {
 	 * @param blockPalette
 	 * @return chunk data as byte[]
 	 */
-	public byte[] save(Palette<Block> blockPalette) {
-		byte[] data = new byte[16 + (changes.size()*9)];
+	public byte[] save(BlockPalette blockPalette) {
+		byte[] data = new byte[16 + (changes.size()*8)];
 		Bits.putInt(data, 0, cx);
 		Bits.putInt(data, 4, cy);
 		Bits.putInt(data, 8, cz);
 		Bits.putInt(data, 12, changes.size());
 		for(int i = 0; i < changes.size(); i++) {
-			changes.get(i).save(data, 16 + i*9, blockPalette);
+			changes.get(i).save(data, 16 + i*8, blockPalette);
 		}
 		return data;
 	}
@@ -500,8 +502,8 @@ public class NormalChunk extends Chunk {
 		return this;
 	}
 	
-	public Block[] getNeighbors(int x, int y, int z) {
-		Block[] neighbors = new Block[6];
+	public int[] getNeighbors(int x, int y, int z) {
+		int[] neighbors = new int[6];
 		x &= chunkMask;
 		y &= chunkMask;
 		z &= chunkMask;
@@ -520,8 +522,8 @@ public class NormalChunk extends Chunk {
 		return neighbors;
 	}
 	
-	public Block[] getNeighbors(int x, int y, int z, byte[] data, int[] indices) {
-		Block[] neighbors = new Block[6];
+	public int[] getNeighbors(int x, int y, int z, int[] indices) {
+		int[] neighbors = new int[6];
 		x &= chunkMask;
 		y &= chunkMask;
 		z &= chunkMask;
@@ -532,14 +534,12 @@ public class NormalChunk extends Chunk {
 			if(xi == (xi & chunkMask) && yi == (yi & chunkMask) && zi == (zi & chunkMask)) { // Simple double-bound test for coordinates.
 				int index = getIndex(xi, yi, zi);
 				neighbors[i] = getBlock(xi, yi, zi);
-				data[i] = blockData[index];
 				indices[i] = index;
 			} else {
 				NormalChunk ch = world.getChunk((xi >> chunkShift) + cx, (yi >> chunkShift) + cy, (zi >> chunkShift) + cz);
 				if(ch != null) {
 					int index = getIndex(xi & chunkMask, yi & chunkMask, zi & chunkMask);
 					neighbors[i] = ch.getBlock(xi & chunkMask, yi & chunkMask, zi & chunkMask);
-					data[i] = ch.blockData[index];
 					indices[i] = index;
 				}
 			}
@@ -585,7 +585,7 @@ public class NormalChunk extends Chunk {
 		return inst;
 	}
 	
-	public Block getNeighbor(int i, int x, int y, int z) {
+	public int getNeighbor(int i, int x, int y, int z) {
 		int xi = x+Neighbors.REL_X[i];
 		int yi = y+Neighbors.REL_Y[i];
 		int zi = z+Neighbors.REL_Z[i];
@@ -604,11 +604,11 @@ public class NormalChunk extends Chunk {
 	 * @return block at the coordinates x+wx, y, z+wz
 	 */
 	@Override
-	public Block getBlock(int x, int y, int z) {
+	public int getBlock(int x, int y, int z) {
 		return blocks[getIndex(x, y, z)];
 	}
 	
-	public Block getBlockAtIndex(int index) {
+	public int getBlockAtIndex(int index) {
 		return blocks[index];
 	}
 	
@@ -624,33 +624,14 @@ public class NormalChunk extends Chunk {
 	 * @param z
 	 * @return block at the coordinates x+wx, y+wy, z+wz
 	 */
-	public Block getBlockUnbound(int x, int y, int z) {
-		if(!generated) return null;
-		if(x < 0 || x >= chunkSize || y < 0 || y >= chunkSize || z < 0 || z >= chunkSize) {
-			NormalChunk chunk = world.getChunk(cx + (x >> chunkShift), cy + (y >> chunkShift), cz + (z >> chunkShift));
-			if(chunk != null && chunk.isGenerated()) return chunk.getBlockUnbound(x & chunkMask, y & chunkMask, z & chunkMask);
-			return null;
-		}
-		return blocks[getIndex(x, y, z)];
-	}
-
-
-	
-	/**
-	 * Uses relative coordinates. Correctly works for blocks outside this chunk.
-	 * @param x
-	 * @param y
-	 * @param z
-	 * @return blockdata at the coordinates x+wx, y+wy, z+wz
-	 */
-	public byte getDataUnbound(int x, int y, int z) {
+	public int getBlockUnbound(int x, int y, int z) {
 		if(!generated) return 0;
 		if(x < 0 || x >= chunkSize || y < 0 || y >= chunkSize || z < 0 || z >= chunkSize) {
 			NormalChunk chunk = world.getChunk(cx + (x >> chunkShift), cy + (y >> chunkShift), cz + (z >> chunkShift));
-			if(chunk != null && chunk.isGenerated()) return chunk.getDataUnbound(x & chunkMask, y & chunkMask, z & chunkMask);
-			return 0; // Let the lighting engine think this region is blocked.
+			if(chunk != null && chunk.isGenerated()) return chunk.getBlockUnbound(x & chunkMask, y & chunkMask, z & chunkMask);
+			return 0;
 		}
-		return blockData[getIndex(x, y, z)];
+		return blocks[getIndex(x, y, z)];
 	}
 
 	/**
@@ -754,32 +735,15 @@ public class NormalChunk extends Chunk {
 	// Implementations of interface Chunk:
 
 	@Override
-	public void updateBlockIfDegradable(int x, int y, int z, Block newBlock) {
+	public void updateBlockIfDegradable(int x, int y, int z, int newBlock) {
 		int index = getIndex(x, y, z);
-		if(blocks[index] == null || blocks[index].isDegradable()) {
-			if (newBlock != null && newBlock.getBlockClass() == BlockClass.FLUID) {
+		if(Blocks.degradable(blocks[index])) {
+			if (Blocks.blockClass(newBlock) == BlockClass.FLUID) {
 				liquids.add(index);
 			}
-			blocks[index] = newBlock;
-			blockData[index] = newBlock == null ? 0 : newBlock.mode.getNaturalStandard();
+			blocks[index] = Blocks.mode(newBlock).getNaturalStandard(newBlock);
 			setUpdated();
 		}
-	}
-	
-	@Override
-	public void updateBlock(int x, int y, int z, Block newBlock) {
-		updateBlock(x, y, z, newBlock, newBlock == null ? 0 : newBlock.mode.getNaturalStandard());
-	}
-
-	@Override
-	public void updateBlock(int x, int y, int z, Block newBlock, byte data) {
-		int index = getIndex(x, y, z);
-		if (newBlock != null && newBlock.getBlockClass() == BlockClass.FLUID) {
-			liquids.add(index);
-		}
-		blocks[index] = newBlock;
-		blockData[index] = data;
-		setUpdated();
 	}
 
 	@Override

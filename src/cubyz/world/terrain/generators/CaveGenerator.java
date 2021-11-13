@@ -2,12 +2,11 @@ package cubyz.world.terrain.generators;
 
 import java.util.Random;
 
-import cubyz.api.CubyzRegistries;
 import cubyz.api.Resource;
 import cubyz.world.Chunk;
 import cubyz.world.NormalChunk;
 import cubyz.world.ServerWorld;
-import cubyz.world.blocks.Block;
+import cubyz.world.blocks.Blocks;
 import cubyz.world.terrain.MapFragment;
 
 /**
@@ -27,8 +26,8 @@ public class CaveGenerator implements Generator {
 	}
 	
 	private static final int range = 8;
-	private static Block water = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:water");
-	private static Block ice = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:ice");
+	private static int water = Blocks.getByID("cubyz:water");
+	private static int ice = Blocks.getByID("cubyz:ice");
 	
 	@Override
 	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, MapFragment map, ServerWorld world) {
@@ -100,8 +99,8 @@ public class CaveGenerator implements Generator {
 							double distToCenter = distToCenterX*distToCenterX + distToCenterY*distToCenterY + distToCenterZ*distToCenterZ;
 							if(distToCenter < 1.0) {
 								// Add a small roughness parameter to make walls look a bit rough by filling only 5/6 of the blocks at the walls with air:
-								if((distToCenter <= 0.9 || localRand.nextInt(6) != 0) && !water.equals(chunk.getBlock(curX, curY, curZ)) && !ice.equals(chunk.getBlock(curX, curY, curZ))) {
-									chunk.updateBlock(curX, curY, curZ, null);
+								if((distToCenter <= 0.9 || localRand.nextInt(6) != 0) && water != chunk.getBlock(curX, curY, curZ) && ice != chunk.getBlock(curX, curY, curZ)) {
+									chunk.updateBlockInGeneration(curX, curY, curZ, 0);
 								}
 							}
 						}
@@ -198,8 +197,8 @@ public class CaveGenerator implements Generator {
 							if(distToCenterX * distToCenterX + distToCenterZ * distToCenterZ < 1.0) {
 								for(int curY = yMin; curY < yMax; curY += chunk.getVoxelSize()) {
 									double distToCenterH = ((double) (curY + wy) - worldY) / yScale;
-									if(distToCenterX*distToCenterX + distToCenterH*distToCenterH + distToCenterZ*distToCenterZ < 1.0 && !water.equals(chunk.getBlock(curX, curY, curZ)) && !ice.equals(chunk.getBlock(curX, curY, curZ))) {
-										chunk.updateBlock(curX, curY, curZ, null);
+									if(distToCenterX*distToCenterX + distToCenterH*distToCenterH + distToCenterZ*distToCenterZ < 1.0 && water != chunk.getBlock(curX, curY, curZ) && ice != chunk.getBlock(curX, curY, curZ)) {
+										chunk.updateBlockInGeneration(curX, curY, curZ, 0);
 									}
 								}
 							}

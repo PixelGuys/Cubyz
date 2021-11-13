@@ -1,7 +1,5 @@
 package cubyz.world.items;
 
-import cubyz.world.blocks.Block;
-
 /**
  * A stack of items, used for storage in inventories.
  */
@@ -77,13 +75,13 @@ public class ItemStack {
 		return item;
 	}
 	
-	public Block getBlock() {
+	public int getBlock() {
 		if(item == null)
-			return null;
+			return 0;
 		if (item instanceof ItemBlock)
 			return ((ItemBlock) item).getBlock();
 		else
-			return null;
+			return 0;
 	}
 	
 	public int getAmount() {

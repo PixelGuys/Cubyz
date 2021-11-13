@@ -106,7 +106,7 @@ public class ModLoader {
 			Registry<?> reg = null;
 			switch (type) {
 			case "block":
-				reg = CubyzRegistries.BLOCK_REGISTRY;
+				reg = CubyzRegistries.BLOCK_REGISTRIES;
 				break;
 			case "item":
 				reg = CubyzRegistries.ITEM_REGISTRY;

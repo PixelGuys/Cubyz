@@ -2,13 +2,11 @@ package cubyz.world.terrain.generators;
 
 import java.util.Random;
 
-import cubyz.api.CubyzRegistries;
-import cubyz.api.Registry;
 import cubyz.api.Resource;
 import cubyz.world.Chunk;
 import cubyz.world.ServerWorld;
-import cubyz.world.blocks.Block;
-import cubyz.world.blocks.Block.BlockClass;
+import cubyz.world.blocks.Blocks;
+import cubyz.world.blocks.Blocks.BlockClass;
 import cubyz.world.terrain.MapFragment;
 
 /**
@@ -22,7 +20,7 @@ public class CrystalCavernGenerator implements Generator {
 		"dark_red", "dark_green", "light_blue", "brown", // 4 darker colors
 		"white", "gray", "dark_gray", "black", // 4 grayscale colors
 	};
-	private static final Block[] glowCrystals = new Block[COLORS.length], glowOres = new Block[COLORS.length];
+	private static final int[] glowCrystals = new int[COLORS.length], glowOres = new int[COLORS.length];
 	
 	private static ThreadLocal<int[][]> crystalDataArray = new ThreadLocal<int[][]>() {
 		@Override
@@ -31,13 +29,13 @@ public class CrystalCavernGenerator implements Generator {
 		}
 	};
 	
-	public static void init(Registry<Block> blocks) {
+	public static void init() {
 		// Find all the glow crystal ores:
 		for(int i = 0; i < COLORS.length; i++) {
 			String color = COLORS[i];
 			String oreID = "cubyz:glow_crystal/"+color;
-			glowCrystals[i] = blocks.getByID(oreID);
-			glowOres[i] = blocks.getByID("cubyz:stone");
+			glowCrystals[i] = Blocks.getByID(oreID);
+			glowOres[i] = Blocks.getByID("cubyz:stone");
 		}
 	}
 	
@@ -53,9 +51,9 @@ public class CrystalCavernGenerator implements Generator {
 	}
 	
 	private static final int range = 3;
-	private Block water = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:water");
-	private Block ice = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:ice");
-	private Block stone = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:stone");
+	private int water = Blocks.getByID("cubyz:water");
+	private int ice = Blocks.getByID("cubyz:ice");
+	private int stone = Blocks.getByID("cubyz:stone");
 	
 	private static final int CRYSTAL_CHUNK_SIZE = 256;
 
@@ -160,7 +158,7 @@ public class CrystalCavernGenerator implements Generator {
 							for(int curY = yMax - 1; curY >= yMin; --curY) {
 								double distToCenterY = ((double) (curY + wy) - worldY) / (yScale);
 								if(distToCenterX*distToCenterX + distToCenterY*distToCenterY + distToCenterZ*distToCenterZ < 1.0 && water != chunk.getBlock(curX, curY, curZ) && ice != chunk.getBlock(curX, curY, curZ)) {
-									chunk.updateBlock(curX, curY, curZ, null);
+									chunk.updateBlockInGeneration(curX, curY, curZ, 0);
 								}
 							}
 						}
@@ -233,10 +231,10 @@ public class CrystalCavernGenerator implements Generator {
 				        		double dist = distSqr(x3-x2, y3-y2, z3-z2);
 				        		if(dist <= size*size) {
 						        	if(x3 >= 0 && x3 < chunk.getWidth() && y3 >= 0 && y3 < chunk.getWidth() && z3 >= 0 && z3 < chunk.getWidth()) {
-						        		if(chunk.getBlock((int)x3, (int)y3, (int)z3) == null || chunk.getBlock((int)x3, (int)y3, (int)z3).isDegradable() || chunk.getBlock((int)x3, (int)y3, (int)z3).getBlockClass() == BlockClass.FLUID) {
-						        			chunk.updateBlock((int)x3, (int)y3, (int)z3, glowCrystals[type]);
+						        		if(chunk.getBlock((int)x3, (int)y3, (int)z3) == 0 || Blocks.degradable(chunk.getBlock((int)x3, (int)y3, (int)z3)) || Blocks.blockClass(chunk.getBlock((int)x3, (int)y3, (int)z3)) == BlockClass.FLUID) {
+						        			chunk.updateBlockInGeneration((int)x3, (int)y3, (int)z3, glowCrystals[type]);
 						        		} else if(chunk.getBlock((int)x3, (int)y3, (int)z3) == stone) {
-						        			chunk.updateBlock((int)x3, (int)y3, (int)z3, glowOres[type]); // When the crystal goes through stone, generate the corresponding ore at that position.
+						        			chunk.updateBlockInGeneration((int)x3, (int)y3, (int)z3, glowOres[type]); // When the crystal goes through stone, generate the corresponding ore at that position.
 						        		}
 						        	}
 				        		}

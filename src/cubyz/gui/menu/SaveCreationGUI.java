@@ -5,7 +5,6 @@ import java.util.ArrayList;
 
 import cubyz.api.CubyzRegistries;
 import cubyz.api.Resource;
-import cubyz.client.ClientOnly;
 import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
 import cubyz.gui.MenuGUI;
@@ -15,9 +14,7 @@ import cubyz.gui.components.TextInput;
 import cubyz.rendering.VisibleChunk;
 import cubyz.rendering.text.Fonts;
 import cubyz.utils.translate.TextKey;
-import cubyz.world.CustomObject;
 import cubyz.world.ServerWorld;
-import cubyz.world.blocks.Block;
 import cubyz.world.terrain.worldgenerators.SurfaceGenerator;
 import server.Server;
 
@@ -77,12 +74,7 @@ public class SaveCreationGUI extends MenuGUI {
 			new Thread(() -> Server.main(new String[0]), "Server Thread").start();
 			ServerWorld world = new ServerWorld(name.getText(), VisibleChunk.class);
 			world.setGenerator(generators[(int) generator.getUserObject()].toString());
-			Block[] blocks = world.generate();
-			for(Block bl : blocks) {
-				if (bl instanceof CustomObject) {
-					ClientOnly.createBlockMesh.accept(bl);
-				}
-			}
+
 			Cubyz.gameUI.setMenu(null, false); // hide from UISystem.back()
 			GameLauncher.logic.loadWorld(world);
 		});

@@ -67,12 +67,12 @@ public class MapIO {
 		ArrayList<BlockChange> list = new ArrayList<BlockChange>(size);
 		for (int i = 0; i < size; i++) {
 			try {
-				list.add(new BlockChange(data, 16 + i*9, wio.blockPalette));
+				list.add(new BlockChange(data, 16 + i*8, wio.blockPalette));
 			} catch (MissingBlockException e) {
 				// If the block is missing, we replace it by nothing
-				int off = 16 + i*9;
+				int off = 16 + i*8;
 				int index = Bits.getInt(data, off + 0);
-				list.add(new BlockChange(-2, -1, index, (byte)0, (byte)0));
+				list.add(new BlockChange(-2, 0, index));
 			}
 		}
 		return list;

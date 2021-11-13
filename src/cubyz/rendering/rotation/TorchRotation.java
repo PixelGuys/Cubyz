@@ -10,13 +10,13 @@ import org.joml.Vector4d;
 import cubyz.api.Resource;
 import cubyz.client.Meshes;
 import cubyz.rendering.models.Model;
-import cubyz.utils.datastructures.ByteWrapper;
+import cubyz.utils.datastructures.IntWrapper;
 import cubyz.utils.datastructures.FloatFastList;
 import cubyz.utils.datastructures.IntFastList;
 import cubyz.world.NormalChunk;
 import cubyz.world.ServerWorld;
-import cubyz.world.blocks.Block;
 import cubyz.world.blocks.BlockInstance;
+import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.RotationMode;
 import cubyz.world.entity.Entity;
 
@@ -39,16 +39,16 @@ public class TorchRotation implements RotationMode {
 	}
 
 	@Override
-	public boolean generateData(ServerWorld world, int x, int y, int z, Vector3d relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, ByteWrapper currentData, boolean blockPlacing) {
-		byte data = (byte)0;
-		if(relativeDirection.x == 1) data = (byte)0b1;
-		if(relativeDirection.x == -1) data = (byte)0b10;
-		if(relativeDirection.y == -1) data = (byte)0b10000;
-		if(relativeDirection.z == 1) data = (byte)0b100;
-		if(relativeDirection.z == -1) data = (byte)0b1000;
-		data |= currentData.data;
-		if(data == currentData.data) return false;
-		currentData.data = data;
+	public boolean generateData(ServerWorld world, int x, int y, int z, Vector3d relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, IntWrapper currentData, boolean blockPlacing) {
+		int data = 0;
+		if(relativeDirection.x == 1) data = 0b1;
+		if(relativeDirection.x == -1) data = 0b10;
+		if(relativeDirection.y == -1) data = 0b10000;
+		if(relativeDirection.z == 1) data = 0b100;
+		if(relativeDirection.z == -1) data = 0b1000;
+		data |= currentData.data >>> 16;
+		if(data == currentData.data >>> 16) return false;
+		currentData.data = (currentData.data & Blocks.TYPE_MASK) | data << 16;
 		return true;
 	}
 
@@ -58,7 +58,8 @@ public class TorchRotation implements RotationMode {
 	}
 
 	@Override
-	public Byte updateData(byte data, int dir, Block newNeighbor) {
+	public int updateData(int block, int dir, int newNeighbor) {
+		int data = block >>> 16;
 		switch(dir) {
 			case 0: {
 				data &= ~0b10;
@@ -85,18 +86,18 @@ public class TorchRotation implements RotationMode {
 			}
 		}
 		// Torches are removed when they have no contact to another block.
-		if(data == 0) return null;
-		return data;
+		if(data == 0) return 0;
+		return (block & Blocks.TYPE_MASK) | data << 16;
 	}
 
 	@Override
-	public boolean checkTransparency(byte data, int dir) {
+	public boolean checkTransparency(int block, int dir) {
 		return false;
 	}
 
 	@Override
-	public byte getNaturalStandard() {
-		return 1;
+	public int getNaturalStandard(int block) {
+		return block | 0x10000;
 	}
 
 	@Override
@@ -110,37 +111,37 @@ public class TorchRotation implements RotationMode {
 	}
 
 	@Override
-	public boolean checkEntity(Vector3d pos, double width, double height, int x, int y, int z, byte blockData) {
+	public boolean checkEntity(Vector3d pos, double width, double height, int x, int y, int z, int block) {
 		return false;
 	}
 
 	@Override
-	public boolean checkEntityAndDoCollision(Entity arg0, Vector4d arg1, int x, int y, int z, byte arg2) {
+	public boolean checkEntityAndDoCollision(Entity arg0, Vector4d arg1, int x, int y, int z, int block) {
 		return true;
 	}
 	
 	@Override
 	public int generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
-		byte data = bi.getData();
-		Model model = Meshes.blockMeshes.get(bi.getBlock()).model;
+		int data = bi.getBlock() >>> 16;
+		Model model = Meshes.blockMeshes.get(bi.getBlock() & Blocks.TYPE_MASK).model;
 		if((data & 0b1) != 0) {
-			model.addToChunkMeshRotation((bi.x & NormalChunk.chunkMask) + 0.9f, (bi.y & NormalChunk.chunkMask) + 0.7f, (bi.z & NormalChunk.chunkMask) + 0.5f, POS_X, bi.getBlock().textureIndices, bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
+			model.addToChunkMeshRotation((bi.x & NormalChunk.chunkMask) + 0.9f, (bi.y & NormalChunk.chunkMask) + 0.7f, (bi.z & NormalChunk.chunkMask) + 0.5f, POS_X, Blocks.textureIndices(bi.getBlock()), bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
 			renderIndex++;
 		}
 		if((data & 0b10) != 0) {
-			model.addToChunkMeshRotation((bi.x & NormalChunk.chunkMask) + 0.1f, (bi.y & NormalChunk.chunkMask) + 0.7f, (bi.z & NormalChunk.chunkMask) + 0.5f, NEG_X, bi.getBlock().textureIndices, bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
+			model.addToChunkMeshRotation((bi.x & NormalChunk.chunkMask) + 0.1f, (bi.y & NormalChunk.chunkMask) + 0.7f, (bi.z & NormalChunk.chunkMask) + 0.5f, NEG_X, Blocks.textureIndices(bi.getBlock()), bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
 			renderIndex++;
 		}
 		if((data & 0b100) != 0) {
-			model.addToChunkMeshRotation((bi.x & NormalChunk.chunkMask) + 0.5f, (bi.y & NormalChunk.chunkMask) + 0.7f, (bi.z & NormalChunk.chunkMask) + 0.9f, POS_Z, bi.getBlock().textureIndices, bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
+			model.addToChunkMeshRotation((bi.x & NormalChunk.chunkMask) + 0.5f, (bi.y & NormalChunk.chunkMask) + 0.7f, (bi.z & NormalChunk.chunkMask) + 0.9f, POS_Z, Blocks.textureIndices(bi.getBlock()), bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
 			renderIndex++;
 		}
 		if((data & 0b1000) != 0) {
-			model.addToChunkMeshRotation((bi.x & NormalChunk.chunkMask) + 0.5f, (bi.y & NormalChunk.chunkMask) + 0.7f, (bi.z & NormalChunk.chunkMask) + 0.1f, NEG_Z, bi.getBlock().textureIndices, bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
+			model.addToChunkMeshRotation((bi.x & NormalChunk.chunkMask) + 0.5f, (bi.y & NormalChunk.chunkMask) + 0.7f, (bi.z & NormalChunk.chunkMask) + 0.1f, NEG_Z, Blocks.textureIndices(bi.getBlock()), bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
 			renderIndex++;
 		}
 		if((data & 0b10000) != 0) {
-			model.addToChunkMeshRotation((bi.x & NormalChunk.chunkMask) + 0.5f, (bi.y & NormalChunk.chunkMask) + 0.5f, (bi.z & NormalChunk.chunkMask) + 0.5f, null, bi.getBlock().textureIndices, bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
+			model.addToChunkMeshRotation((bi.x & NormalChunk.chunkMask) + 0.5f, (bi.y & NormalChunk.chunkMask) + 0.5f, (bi.z & NormalChunk.chunkMask) + 0.5f, null, Blocks.textureIndices(bi.getBlock()), bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
 			renderIndex++;
 		}
 		return renderIndex;

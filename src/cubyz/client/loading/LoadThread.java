@@ -27,7 +27,7 @@ import cubyz.rendering.Mesh;
 import cubyz.rendering.ModelLoader;
 import cubyz.utils.ResourceContext;
 import cubyz.utils.ResourceManager;
-import cubyz.world.blocks.Block;
+import cubyz.world.blocks.Blocks;
 import cubyz.world.entity.EntityType;
 
 /**
@@ -137,10 +137,9 @@ public class LoadThread extends Thread {
 			public void run() {
 				i++;
 				boolean finishedMeshes = false;
-				if(i < CubyzRegistries.BLOCK_REGISTRY.size() || i < CubyzRegistries.ENTITY_REGISTRY.size()) {
-					if(i < CubyzRegistries.BLOCK_REGISTRY.size()) {
-						Block b = CubyzRegistries.BLOCK_REGISTRY.registered(new Block[0])[i];
-						ClientOnly.createBlockMesh.accept(b);
+				if(i < Blocks.size() || i < CubyzRegistries.ENTITY_REGISTRY.size()) {
+					if(i < Blocks.size()) {
+						ClientOnly.createBlockMesh.accept(i);
 					}
 					if(i < CubyzRegistries.ENTITY_REGISTRY.size()) {
 						EntityType e = CubyzRegistries.ENTITY_REGISTRY.registered(new EntityType[0])[i];
@@ -148,9 +147,9 @@ public class LoadThread extends Thread {
 							ClientOnly.createEntityMesh.accept(e);
 						}
 					}
-					if(i < CubyzRegistries.BLOCK_REGISTRY.size()-1 || i < CubyzRegistries.ENTITY_REGISTRY.size()-1) {
+					if(i < Blocks.size()-1 || i < CubyzRegistries.ENTITY_REGISTRY.size()-1) {
 						Cubyz.renderDeque.add(run);
-						l.setStep(4, i+1, CubyzRegistries.BLOCK_REGISTRY.size());
+						l.setStep(4, i+1, Blocks.size());
 					} else {
 						finishedMeshes = true;
 						synchronized (lock) {
@@ -189,6 +188,8 @@ public class LoadThread extends Thread {
 			ModLoader.postInit(mod);
 		}
 		l.finishLoading();
+
+		CubyzRegistries.blocksBeforeWorld = Blocks.size();
 		
 		for (Runnable r : runnables) {
 			r.run();

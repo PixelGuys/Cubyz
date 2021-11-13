@@ -4,7 +4,7 @@ package cubyz.world;
 import org.joml.Vector3f;
 
 import cubyz.client.Cubyz;
-import cubyz.world.blocks.Block;
+import cubyz.world.blocks.Blocks;
 import cubyz.world.terrain.worldgenerators.SurfaceGenerator;
 
 /**
@@ -22,7 +22,7 @@ public class ReducedChunk extends Chunk {
 	/**If ((x & resolutionMask) == 0), a block can be considered to be visible.*/
 	public final int resolutionMask;
 	public final int size;
-	public final Block[] blocks;
+	public final int[] blocks;
 	public boolean generated = false;
 	public final int width;
 	/** =log₂(width)*/
@@ -36,7 +36,7 @@ public class ReducedChunk extends Chunk {
 		widthShift = NormalChunk.chunkShift + resolutionShift;
 		width = 1 << widthShift;
 		size = (width >>> resolutionShift)*(width >> resolutionShift)*(width >> resolutionShift);
-		blocks = new Block[size];
+		blocks = new int[size];
 	}
 	
 	public void applyBlockChanges() {
@@ -57,28 +57,32 @@ public class ReducedChunk extends Chunk {
 	}
 	
 	@Override
-	public void updateBlockIfDegradable(int x, int y, int z, Block newBlock) {
+	public void updateBlockIfDegradable(int x, int y, int z, int newBlock) {
 		x >>= resolutionShift;
 		y >>= resolutionShift;
 		z >>= resolutionShift;
 		int index = (x << (widthShift - resolutionShift)) | (y << 2*(widthShift - resolutionShift)) | z;
-		if(blocks[index] == null || blocks[index].isDegradable()) {
+		if(blocks[index] == 0 || Blocks.degradable(blocks[index])) {
 			blocks[index] = newBlock;
 		}
 	}
 	
 	@Override
-	public void updateBlock(int x, int y, int z, Block newBlock) {
+	public void updateBlock(int x, int y, int z, int newBlock) {
 		x >>= resolutionShift;
 		y >>= resolutionShift;
 		z >>= resolutionShift;
 		int index = (x << (widthShift - resolutionShift)) | (y << 2*(widthShift - resolutionShift)) | z;
 		blocks[index] = newBlock;
 	}
-
+	
 	@Override
-	public void updateBlock(int x, int y, int z, Block newBlock, byte data) {
-		updateBlock(x, y, z, newBlock);
+	public void updateBlockInGeneration(int x, int y, int z, int newBlock) {
+		x >>= resolutionShift;
+		y >>= resolutionShift;
+		z >>= resolutionShift;
+		int index = (x << (widthShift - resolutionShift)) | (y << 2*(widthShift - resolutionShift)) | z;
+		blocks[index] = newBlock;
 	}
 	
 	public void generateFrom(SurfaceGenerator gen) {
@@ -124,7 +128,7 @@ public class ReducedChunk extends Chunk {
 	}
 
 	@Override
-	public Block getBlock(int x, int y, int z) {
+	public int getBlock(int x, int y, int z) {
 		x >>= resolutionShift;
 		y >>= resolutionShift;
 		z >>= resolutionShift;

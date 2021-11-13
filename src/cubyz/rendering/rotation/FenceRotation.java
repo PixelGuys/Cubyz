@@ -9,12 +9,12 @@ import org.joml.Vector4d;
 import cubyz.api.Resource;
 import cubyz.client.Meshes;
 import cubyz.rendering.models.Model;
-import cubyz.utils.datastructures.ByteWrapper;
+import cubyz.utils.datastructures.IntWrapper;
 import cubyz.utils.datastructures.FloatFastList;
 import cubyz.utils.datastructures.IntFastList;
 import cubyz.world.NormalChunk;
 import cubyz.world.ServerWorld;
-import cubyz.world.blocks.Block;
+import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.RotationMode;
 import cubyz.world.entity.Entity;
@@ -27,24 +27,25 @@ public class FenceRotation implements RotationMode {
 	}
 
 	@Override
-	public boolean generateData(ServerWorld world, int x, int y, int z, Vector3d relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, ByteWrapper currentData, boolean blockPlacing) {
+	public boolean generateData(ServerWorld world, int x, int y, int z, Vector3d relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, IntWrapper currentData, boolean blockPlacing) {
 		if(!blockPlacing) return false;
 		NormalChunk chunk = world.getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift);
-		currentData.data = (byte)1;
+		int data = (byte)1;
 		// Get all neighbors and set the corresponding bits:
-		Block[] neighbors = chunk.getNeighbors(x, y ,z);
-		if(neighbors[0] != null && neighbors[0].isSolid()) {
-			currentData.data |= 0b00010;
+		int[] neighbors = chunk.getNeighbors(x, y ,z);
+		if(neighbors[0] != 0 && Blocks.solid(neighbors[0])) {
+			data |= 0b00010;
 		}
-		if(neighbors[1] != null && neighbors[1].isSolid()) {
-			currentData.data |= 0b00100;
+		if(neighbors[1] != 0 && Blocks.solid(neighbors[1])) {
+			data |= 0b00100;
 		}
-		if(neighbors[2] != null && neighbors[2].isSolid()) {
-			currentData.data |= 0b01000;
+		if(neighbors[2] != 0 && Blocks.solid(neighbors[2])) {
+			data |= 0b01000;
 		}
-		if(neighbors[3] != null && neighbors[3].isSolid()) {
-			currentData.data |= 0b10000;
+		if(neighbors[3] != 0 && Blocks.solid(neighbors[3])) {
+			data |= 0b10000;
 		}
+		currentData.data = (currentData.data & Blocks.TYPE_MASK) | (data << 16);
 		return true;
 	}
 
@@ -54,23 +55,23 @@ public class FenceRotation implements RotationMode {
 	}
 
 	@Override
-	public Byte updateData(byte data, int dir, Block newNeighbor) {
-		if(dir == 4 | dir == 5) return data;
+	public int updateData(int block, int dir, int newNeighbor) {
+		if(dir == 4 | dir == 5) return block;
 		byte mask = (byte)(1 << (dir + 1));
-		data &= ~mask;
-		if(newNeighbor != null && newNeighbor.isSolid())
-			data |= mask;
-		return data;
+		block &= ~mask << 16 | Blocks.TYPE_MASK;
+		if(newNeighbor != 0 && Blocks.solid(newNeighbor))
+			block |= mask << 16;
+		return block;
 	}
 
 	@Override
-	public boolean checkTransparency(byte data, int dir) {
+	public boolean checkTransparency(int block, int dir) {
 		return true;
 	}
 
 	@Override
-	public byte getNaturalStandard() {
-		return 1;
+	public int getNaturalStandard(int block) {
+		return block | 0x10000;
 	}
 
 	@Override
@@ -85,18 +86,19 @@ public class FenceRotation implements RotationMode {
 		float xLen = 1;
 		float zOffset = 0;
 		float zLen = 1;
-		if((bi.getData() & 0b00010) == 0) {
+		int data = bi.getBlock() >>> 16;
+		if((data & 0b00010) == 0) {
 			xOffset += 0.5f;
 			xLen -= 0.5f;
 		}
-		if((bi.getData() & 0b00100) == 0) {
+		if((data & 0b00100) == 0) {
 			xLen -= 0.5f;
 		}
-		if((bi.getData() & 0b01000) == 0) {
+		if((data & 0b01000) == 0) {
 			zOffset += 0.5f;
 			zLen -= 0.5f;
 		}
-		if((bi.getData() & 0b10000) == 0) {
+		if((data & 0b10000) == 0) {
 			zLen -= 0.5f;
 		}
 		min.z += zOffset;
@@ -114,7 +116,7 @@ public class FenceRotation implements RotationMode {
 	}
 
 	@Override
-	public boolean checkEntity(Vector3d pos, double width, double height, int x, int y, int z, byte blockData) {
+	public boolean checkEntity(Vector3d pos, double width, double height, int x, int y, int z, int block) {
 		// Hit area is just a simple + with a width of 0.25:
 		return y >= pos.y
 				&& y <= pos.y + height
@@ -137,8 +139,9 @@ public class FenceRotation implements RotationMode {
 	}
 
 	@Override
-	public boolean checkEntityAndDoCollision(Entity ent, Vector4d vel, int x, int y, int z, byte blockData) {
+	public boolean checkEntityAndDoCollision(Entity ent, Vector4d vel, int x, int y, int z, int block) {
 		// Hit area is just a simple + with a width of 0.25:
+		int blockData = block >>> 16;
 		float xOffset = 0;
 		float xLen = 1;
 		float zOffset = 0;
@@ -158,22 +161,23 @@ public class FenceRotation implements RotationMode {
 			zLen -= 0.5f;
 		}
 		
-		ent.aabCollision(vel, x + xOffset, y, z + 0.375f, xLen, 1, 0.25f, blockData);
-		ent.aabCollision(vel, x + 0.375f, y, z + zOffset, 0.35f, 1, zLen, blockData);
+		ent.aabCollision(vel, x + xOffset, y, z + 0.375f, xLen, 1, 0.25f, block);
+		ent.aabCollision(vel, x + 0.375f, y, z + zOffset, 0.35f, 1, zLen, block);
 		return false;
 	}
 	
 	@Override
 	public int generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
-		Model model = Meshes.blockMeshes.get(bi.getBlock()).model;
+		Model model = Meshes.blockMeshes.get(bi.getBlock() & Blocks.TYPE_MASK).model;
 		int x = bi.getX() & NormalChunk.chunkMask;
 		int y = bi.getY() & NormalChunk.chunkMask;
 		int z = bi.getZ() & NormalChunk.chunkMask;
-		int[] textureIndices = bi.getBlock().textureIndices;
-		boolean negX = (bi.getData() & 0b00010) == 0;
-		boolean posX = (bi.getData() & 0b00100) == 0;
-		boolean negZ = (bi.getData() & 0b01000) == 0;
-		boolean posZ = (bi.getData() & 0b10000) == 0;
+		int[] textureIndices = Blocks.textureIndices(bi.getBlock());
+		int blockData = bi.getBlock() >>> 16;
+		boolean negX = (blockData & 0b00010) == 0;
+		boolean posX = (blockData & 0b00100) == 0;
+		boolean negZ = (blockData & 0b01000) == 0;
+		boolean posZ = (blockData & 0b10000) == 0;
 		
 		// Simply copied the code from model and move all vertices to the center that touch an edge that isn't connected to another fence.
 		int indexOffset = vertices.size/3;

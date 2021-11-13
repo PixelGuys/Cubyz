@@ -2,11 +2,10 @@ package cubyz.world.terrain.generators;
 
 import java.util.Random;
 
-import cubyz.api.CubyzRegistries;
 import cubyz.api.Resource;
 import cubyz.world.Chunk;
 import cubyz.world.ServerWorld;
-import cubyz.world.blocks.Block;
+import cubyz.world.blocks.Blocks;
 import cubyz.world.terrain.MapFragment;
 import cubyz.world.terrain.biomes.Biome;
 
@@ -26,11 +25,11 @@ public class TerrainGenerator implements Generator {
 		return new Resource("cubyz", "lifeland_terrain");
 	}
 	
-	private static Block ice = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:ice");
-	private static Block stone = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:stone");
+	private static int ice = Blocks.getByID("cubyz:ice");
+	private static int stone = Blocks.getByID("cubyz:stone");
 
 	// Liquid
-	private static Block water = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:water");
+	private static int water = Blocks.getByID("cubyz:water");
 
 	@Override
 	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, MapFragment map, ServerWorld world) {
@@ -48,9 +47,9 @@ public class TerrainGenerator implements Generator {
 				// Add water between 0 and the terrain height:
 				for(; j >= Math.max(y+1, endY); j -= chunk.getVoxelSize()) {
 					if(map.getBiome(wx + x, wz + z).type == Biome.Type.ARCTIC_OCEAN && j == 0) {
-						chunk.updateBlock(x, j - wy, z, ice);
+						chunk.updateBlockInGeneration(x, j - wy, z, ice);
 					} else {
-						chunk.updateBlock(x, j - wy, z, water);
+						chunk.updateBlockInGeneration(x, j - wy, z, water);
 					}
 				}
 				// Add the biomes surface structure:
@@ -60,7 +59,7 @@ public class TerrainGenerator implements Generator {
 				}
 				// Add the underground:
 				for(; j >= endY; j -= chunk.getVoxelSize()) {
-					chunk.updateBlock(x, j - wy, z, stone);
+					chunk.updateBlockInGeneration(x, j - wy, z, stone);
 				}
 			}
 		}

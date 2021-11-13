@@ -18,7 +18,7 @@ import cubyz.Logger;
 import cubyz.client.Meshes;
 import cubyz.utils.Utils;
 import cubyz.world.Neighbors;
-import cubyz.world.blocks.Block;
+import cubyz.world.blocks.Blocks;
 
 /**
  * Used for rendering block preview images in the inventory.
@@ -73,7 +73,7 @@ public abstract class BlockPreview {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	}
 	
-	public static FrameBuffer generateBuffer(Vector3f ambientLight, Block block) {
+	public static FrameBuffer generateBuffer(Vector3f ambientLight, int block) {
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_CULL_FACE);
 		FrameBuffer buffer = new FrameBuffer();
@@ -83,7 +83,7 @@ public abstract class BlockPreview {
 		Window.setRenderTarget(buffer);
 		Window.setClearColor(new Vector4f(0f, 0f, 0f, 0f));
 		
-		Mesh mesh = Meshes.blockMeshes.get(block);
+		Mesh mesh = Meshes.blockMeshes.get(block & Blocks.TYPE_MASK);
 		Spatial spatial = new Spatial(mesh);
 		
 		glViewport(0, 0, 64, 64);
@@ -100,12 +100,12 @@ public abstract class BlockPreview {
 		shader.setUniform(loc_light, new Vector3f(1, 1, 1));
 		Meshes.blockTextureArray.bind();
 		mesh.getMaterial().setTexture(null);
-		shader.setUniform(loc_texNegX, block.textureIndices[Neighbors.DIR_NEG_X]);
-		shader.setUniform(loc_texPosX, block.textureIndices[Neighbors.DIR_POS_X]);
-		shader.setUniform(loc_texNegY, block.textureIndices[Neighbors.DIR_DOWN]);
-		shader.setUniform(loc_texPosY, block.textureIndices[Neighbors.DIR_UP]);
-		shader.setUniform(loc_texNegZ, block.textureIndices[Neighbors.DIR_NEG_Z]);
-		shader.setUniform(loc_texPosZ, block.textureIndices[Neighbors.DIR_POS_Z]);
+		shader.setUniform(loc_texNegX, Blocks.textureIndices(block)[Neighbors.DIR_NEG_X]);
+		shader.setUniform(loc_texPosX, Blocks.textureIndices(block)[Neighbors.DIR_POS_X]);
+		shader.setUniform(loc_texNegY, Blocks.textureIndices(block)[Neighbors.DIR_DOWN]);
+		shader.setUniform(loc_texPosY, Blocks.textureIndices(block)[Neighbors.DIR_UP]);
+		shader.setUniform(loc_texNegZ, Blocks.textureIndices(block)[Neighbors.DIR_NEG_Z]);
+		shader.setUniform(loc_texPosZ, Blocks.textureIndices(block)[Neighbors.DIR_POS_Z]);
 		mesh.renderOne(() -> {
 			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(
 					Transformation.getModelMatrix(spatial.getPosition(), spatial.getRotation(), spatial.getScale()),

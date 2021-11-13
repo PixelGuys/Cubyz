@@ -2,7 +2,6 @@ package cubyz.world.items;
 
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.utils.json.JsonObject;
-import cubyz.world.blocks.Block;
 import cubyz.world.items.tools.Tool;
 
 /**
@@ -43,7 +42,7 @@ public class Inventory {
 		}
 	}
 	
-	public Block getBlock(int slot) {
+	public int getBlock(int slot) {
 		return items[slot].getBlock();
 	}
 	

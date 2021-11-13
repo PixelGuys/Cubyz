@@ -34,7 +34,7 @@ import cubyz.rendering.TextureArray;
 import cubyz.rendering.Window;
 import cubyz.utils.*;
 import cubyz.world.*;
-import cubyz.world.blocks.Block;
+import cubyz.world.blocks.Blocks;
 import cubyz.world.items.Inventory;
 import cubyz.world.terrain.noise.StaticBlueNoise;
 import cubyz.world.terrain.worldgenerators.LifelandGenerator;
@@ -112,6 +112,7 @@ public class GameLogic implements ClientConnection {
 			skyMoon.setPositionRaw(100, 1, 0);
 			GameLauncher.renderer.worldSpatialList = new Spatial[] {skySun/*, skyMoon*/};
 		}
+		world.generate();
 		Cubyz.player = new ClientPlayer(world.getLocalPlayer());
 		// Make sure the world is null until the player position is known.
 		DiscordIntegration.setStatus("Playing");
@@ -120,14 +121,9 @@ public class GameLogic implements ClientConnection {
 		Cubyz.world = world;
 
 		// Generate the texture atlas for this world's blocks:
-		ArrayList<Block> blocks = new ArrayList<>();
-		for(Block block : world.getCurrentRegistries().blockRegistry.registered(new Block[0])) {
-			blocks.add(block);
-		}
-		// Get the textures for those blocks:
 		ArrayList<BufferedImage> blockTextures = new ArrayList<>();
 		ArrayList<String> blockIDs = new ArrayList<>();
-		for(Block block : blocks) {
+		for(int block = 1; block < Blocks.size(); block++) {
 			ResourceUtilities.loadBlockTexturesToBufferedImage(block, blockTextures, blockIDs);
 			// Also generate the mesh if that didn't happen yet:
 			ClientOnly.createBlockMesh.accept(block);
@@ -233,7 +229,7 @@ public class GameLogic implements ClientConnection {
 		gui.setInventory(inv);
 	}
 	
-	public FrameBuffer blockPreview(Block b) {
+	public FrameBuffer blockPreview(int b) {
 		return BlockPreview.generateBuffer(new Vector3f(1, 1, 1), b);
 	}	
 	

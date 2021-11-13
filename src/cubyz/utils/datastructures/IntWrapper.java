@@ -4,9 +4,9 @@ package cubyz.utils.datastructures;
  * A simple wrapper for byte.
  */
 
-public class ByteWrapper {
-	public byte data;
-	public ByteWrapper(byte data) {
+public class IntWrapper {
+	public int data;
+	public IntWrapper(int data) {
 		this.data = data;
 	}
 }

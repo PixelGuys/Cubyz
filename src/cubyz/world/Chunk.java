@@ -1,6 +1,5 @@
 package cubyz.world;
 
-import cubyz.world.blocks.Block;
 import cubyz.world.terrain.worldgenerators.SurfaceGenerator;
 
 public abstract class Chunk extends ChunkData {
@@ -26,7 +25,7 @@ public abstract class Chunk extends ChunkData {
 	 * @param z relative z without considering resolution.
 	 * @param newBlock
 	 */
-	public abstract void updateBlockIfDegradable(int x, int y, int z, Block newBlock);
+	public abstract void updateBlockIfDegradable(int x, int y, int z, int newBlock);
 	
 	/**
 	 * Updates a block if it is inside this chunk.<br>
@@ -36,7 +35,17 @@ public abstract class Chunk extends ChunkData {
 	 * @param z relative z without considering resolution.
 	 * @param newBlock
 	 */
-	public abstract void updateBlock(int x, int y, int z, Block newBlock);
+	public abstract void updateBlock(int x, int y, int z, int newBlock);
+	
+	/**
+	 * Updates a block if it is inside this chunk. Should be used in generation to prevent accidently storing these as changes.<br>
+	 * Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
+	 * @param x relative x without considering resolution.
+	 * @param y relative y without considering resolution.
+	 * @param z relative z without considering resolution.
+	 * @param newBlock
+	 */
+	public abstract void updateBlockInGeneration(int x, int y, int z, int newBlock);
 	
 	/**
 	 * Updates a block if it is inside this chunk.<br>
@@ -46,18 +55,7 @@ public abstract class Chunk extends ChunkData {
 	 * @param z relative z without considering resolution.
 	 * @return block at x y z
 	 */
-	public abstract Block getBlock(int x, int y, int z);
-	
-	/**
-	 * Updates a block if it is inside this chunk and sets its block data to the specified value(if blockdata is supported).<br>
-	 * Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
-	 * @param x relative x without considering resolution.
-	 * @param y relative y without considering resolution.
-	 * @param z relative z without considering resolution.
-	 * @param newBlock
-	 * @param data block data.
-	 */
-	public abstract void updateBlock(int x, int y, int z, Block newBlock, byte data);
+	public abstract int getBlock(int x, int y, int z);
 	
 	/**
 	 * Generates this chunk.

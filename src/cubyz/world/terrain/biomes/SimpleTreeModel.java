@@ -2,11 +2,10 @@ package cubyz.world.terrain.biomes;
 
 import java.util.Random;
 
-import cubyz.api.CubyzRegistries;
 import cubyz.api.Resource;
 import cubyz.utils.json.JsonObject;
 import cubyz.world.Chunk;
-import cubyz.world.blocks.Block;
+import cubyz.world.blocks.Blocks;
 import cubyz.world.terrain.MapFragment;
 
 /**
@@ -21,14 +20,14 @@ public class SimpleTreeModel extends StructureModel {
 		BUSH,
 	}
 	Type type;
-	Block leaves, wood, topWood;
+	int leaves, wood, topWood;
 	int height0, deltaHeight;
 	
 	public SimpleTreeModel() {
 		super(new Resource("cubyz", "simple_tree"), 0);
-		leaves = null;
-		wood = null;
-		topWood = null;
+		leaves = 0;
+		wood = 0;
+		topWood = 0;
 		height0 = 0;
 		deltaHeight = 0;
 		type = Type.ROUND;
@@ -36,9 +35,9 @@ public class SimpleTreeModel extends StructureModel {
 
 	public SimpleTreeModel(JsonObject json) {
 		super(new Resource("cubyz", "simple_tree"), json.getFloat("chance", 0.5f));
-		leaves = CubyzRegistries.BLOCK_REGISTRY.getByID(json.getString("leaves", "cubyz:oak_leaves"));
-		wood = CubyzRegistries.BLOCK_REGISTRY.getByID(json.getString("log", "cubyz:oak_log"));
-		topWood = CubyzRegistries.BLOCK_REGISTRY.getByID(json.getString("top", "cubyz:oak_top"));
+		leaves = Blocks.getByID(json.getString("leaves", "cubyz:oak_leaves"));
+		wood = Blocks.getByID(json.getString("log", "cubyz:oak_log"));
+		topWood = Blocks.getByID(json.getString("top", "cubyz:oak_top"));
 		height0 = json.getInt("height", 6);
 		deltaHeight = json.getInt("height_variation", 3);
 		type = Type.valueOf(json.getString("type", "round").toUpperCase());

@@ -3,8 +3,8 @@ package cubyz.world;
 import java.util.ArrayList;
 
 import cubyz.Logger;
-import cubyz.world.blocks.Block;
 import cubyz.world.blocks.BlockEntity;
+import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.Updateable;
 import cubyz.world.entity.ChunkEntityManager;
 
@@ -73,14 +73,14 @@ public class MetaChunk {
 				int size = ch.getUpdatingLiquids().size();
 				ch.getUpdatingLiquids().clear();
 				for (int j = 0; j < size; j++) {
-					Block block = ch.getBlockAtIndex(liquids[j]);
+					int block = ch.getBlockAtIndex(liquids[j]);
 					int bx = (liquids[j] >> NormalChunk.chunkShift) & NormalChunk.chunkMask;
 					int by = liquids[j] >> NormalChunk.chunkShift2;
 					int bz = liquids[j] & NormalChunk.chunkMask;
-					Block[] neighbors = ch.getNeighbors(bx, by, bz);
+					int[] neighbors = ch.getNeighbors(bx, by, bz);
 					for (int i = 0; i < 5; i++) {
-						Block b = neighbors[i];
-						if (b == null) {
+						int b = neighbors[i];
+						if (b == 0) {
 							int dx = 0, dy = 0, dz = 0;
 							switch (i) {
 								case 0: // at x -1
@@ -102,8 +102,8 @@ public class MetaChunk {
 									System.err.println("(LocalWorld/Liquids) More than 6 nullable neighbors!");
 									break;
 							}
-							if(dy == -1 || (neighbors[4] != null && neighbors[4].getBlockClass() != Block.BlockClass.FLUID)) {
-								ch.addBlockPossiblyOutside(block, (byte)0, wx+bx+dx, by+dy, wz+bz+dz, true);
+							if(dy == -1 || (neighbors[4] != 0 && Blocks.blockClass(neighbors[4]) != Blocks.BlockClass.FLUID)) {
+								ch.addBlockPossiblyOutside(block, wx+bx+dx, by+dy, wz+bz+dz, true);
 							}
 						}
 					}

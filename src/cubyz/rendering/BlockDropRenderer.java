@@ -7,14 +7,13 @@ import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
-import cubyz.api.CubyzRegistries;
 import cubyz.client.ClientSettings;
 import cubyz.client.Cubyz;
 import cubyz.client.Meshes;
 import cubyz.utils.Utils;
 import cubyz.world.Neighbors;
 import cubyz.world.NormalChunk;
-import cubyz.world.blocks.Block;
+import cubyz.world.blocks.Blocks;
 import cubyz.world.entity.ChunkEntityManager;
 import cubyz.world.entity.ItemEntityManager;
 import cubyz.world.items.ItemBlock;
@@ -47,7 +46,7 @@ public class BlockDropRenderer {
 				BlockDropRenderer.class);
 	}
 	
-	public static void render(FrustumIntersection frustumInt, Vector3f ambientLight, DirectionalLight directionalLight, Block[] blocks, Vector3d playerPosition) {
+	public static void render(FrustumIntersection frustumInt, Vector3f ambientLight, DirectionalLight directionalLight, Vector3d playerPosition) {
 		Meshes.blockTextureArray.bind();
 		shader.bind();
 		shader.setUniform(loc_fog_activ, Cubyz.fog.isActive());
@@ -71,22 +70,22 @@ public class BlockDropRenderer {
 				int y = (int)(manager.posxyz[index3+1] + 1.0f);
 				int z = (int)(manager.posxyz[index3+2] + 1.0f);
 				Mesh mesh = null;
-				Block block;
+				int block;
 				if(manager.itemStacks[i].getItem() instanceof ItemBlock) {
 					block = ((ItemBlock)manager.itemStacks[i].getItem()).getBlock();
-					mesh = Meshes.blockMeshes.get(block);
+					mesh = Meshes.blockMeshes.get(block & Blocks.TYPE_MASK);
 					mesh.getMaterial().setTexture(null);
 				} else {
-					block = CubyzRegistries.BLOCK_REGISTRY.getByID("cubyz:diamond_ore");
-					mesh = Meshes.blockMeshes.get(block);
+					block = Blocks.getByID("cubyz:diamond_ore");
+					mesh = Meshes.blockMeshes.get(block & Blocks.TYPE_MASK);
 					mesh.getMaterial().setTexture(null);
 				}
-				shader.setUniform(loc_texNegX, block.textureIndices[Neighbors.DIR_NEG_X]);
-				shader.setUniform(loc_texPosX, block.textureIndices[Neighbors.DIR_POS_X]);
-				shader.setUniform(loc_texNegY, block.textureIndices[Neighbors.DIR_DOWN]);
-				shader.setUniform(loc_texPosY, block.textureIndices[Neighbors.DIR_UP]);
-				shader.setUniform(loc_texNegZ, block.textureIndices[Neighbors.DIR_NEG_Z]);
-				shader.setUniform(loc_texPosZ, block.textureIndices[Neighbors.DIR_POS_Z]);
+				shader.setUniform(loc_texNegX, Blocks.textureIndices(block)[Neighbors.DIR_NEG_X]);
+				shader.setUniform(loc_texPosX, Blocks.textureIndices(block)[Neighbors.DIR_POS_X]);
+				shader.setUniform(loc_texNegY, Blocks.textureIndices(block)[Neighbors.DIR_DOWN]);
+				shader.setUniform(loc_texPosY, Blocks.textureIndices(block)[Neighbors.DIR_UP]);
+				shader.setUniform(loc_texNegZ, Blocks.textureIndices(block)[Neighbors.DIR_NEG_Z]);
+				shader.setUniform(loc_texPosZ, Blocks.textureIndices(block)[Neighbors.DIR_POS_Z]);
 				if(mesh != null) {
 					shader.setUniform(loc_light, Cubyz.world.getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
 					

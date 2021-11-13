@@ -20,7 +20,7 @@ import cubyz.client.GameLauncher;
 import cubyz.utils.datastructures.Cache;
 import cubyz.utils.datastructures.HashMapKey3D;
 import cubyz.utils.math.CubyzMath;
-import cubyz.world.blocks.Block;
+import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.Ore;
 import cubyz.world.entity.ChunkEntityManager;
@@ -48,8 +48,6 @@ public class ServerWorld {
 	private ChunkEntityManager[] entityManagers = new ChunkEntityManager[0];
 	private int lastX = Integer.MAX_VALUE, lastY = Integer.MAX_VALUE, lastZ = Integer.MAX_VALUE; // Chunk coordinates of the last chunk update.
 	private ArrayList<Entity> entities = new ArrayList<>();
-	
-	private Block[] blocks;
 	
 	private SurfaceGenerator generator;
 	
@@ -152,33 +150,23 @@ public class ServerWorld {
 	}
 
 	// Returns the blocks, so their meshes can be created and stored.
-	public Block[] generate() {
-		ArrayList<Block> blockList = new ArrayList<>();
-		// Set the IDs again every time a new world is loaded. This is necessary, because updates would otherwise mess with it.
-		int ID = 0;
-		for (Block b : CubyzRegistries.BLOCK_REGISTRY.registered(new Block[0])) {
-			if(!b.isTransparent()) {
-				b.ID = ID;
-				blockList.add(b);
-				ID++;
-			}
-		}
-		// Generate the random ores:
-		generate(blockList, ID);
+	public void generate() {
+		// Init crystal caverns:
+		CrystalCavernGenerator.init();
 
-		// Put the truly transparent blocks at the end of the list to make sure the renderer calls the last.
-		for (Block b : CubyzRegistries.BLOCK_REGISTRY.registered(new Block[0])) {
-			if(b.isTransparent()) {
-				b.ID = ID;
-				blockList.add(b);
-				ID++;
-			}
+		wio.loadWorldData(); // load data here in order for entities to also be loaded.
+		
+		if(generated) {
+			wio.saveWorldData();
 		}
+		generated = true;
+
 		for (Entity ent : getEntities()) {
 			if (ent instanceof Player) {
 				player = (Player) ent;
 			}
 		}
+		
 		if (player == null) {
 			player = (Player) CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player").newEntity(this);
 			addEntity(player);
@@ -199,27 +187,11 @@ public class ServerWorld {
 			Logger.info("OK!");
 		}
 		wio.saveWorldData();
-		blocks = blockList.toArray(new Block[0]);
 		LifelandGenerator.initOres(registries.oreRegistry.registered(new Ore[0]));
-		generated = true;
-		return blocks;
 	}
 
 	public Player getLocalPlayer() {
 		return player;
-	}
-	
-	private int generate(ArrayList<Block> blockList, int ID) {
-		// Init crystal caverns:
-		CrystalCavernGenerator.init(registries.blockRegistry);
-
-		wio.loadWorldData(); // load data here in order for entities to also be loaded.
-		
-		if(generated) {
-			wio.saveWorldData();
-		}
-		generated = true;
-		return ID;
 	}
 
 	
@@ -261,13 +233,13 @@ public class ServerWorld {
 	public void removeBlock(int x, int y, int z) {
 		NormalChunk ch = getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift);
 		if (ch != null) {
-			Block b = ch.getBlock(x & NormalChunk.chunkMask, y & NormalChunk.chunkMask, z & NormalChunk.chunkMask);
+			int b = ch.getBlock(x & NormalChunk.chunkMask, y & NormalChunk.chunkMask, z & NormalChunk.chunkMask);
 			ch.removeBlockAt(x & NormalChunk.chunkMask, y & NormalChunk.chunkMask, z & NormalChunk.chunkMask, true);
 			for (RemoveBlockHandler hand : CubyzRegistries.REMOVE_HANDLER_REGISTRY.registered(new RemoveBlockHandler[0])) {
 				hand.onBlockRemoved(this, b, x, y, z);
 			}
 			// Fetch block drops:
-			for(BlockDrop drop : b.getBlockDrops()) {
+			for(BlockDrop drop : Blocks.blockDrops(b)) {
 				int amount = (int)(drop.amount);
 				float randomPart = drop.amount - amount;
 				if(Math.random() < randomPart) amount++;
@@ -279,10 +251,10 @@ public class ServerWorld {
 		}
 	}
 	
-	public void placeBlock(int x, int y, int z, Block b, byte data) {
+	public void placeBlock(int x, int y, int z, int b) {
 		NormalChunk ch = getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift);
 		if (ch != null) {
-			ch.addBlock(b, data, x & NormalChunk.chunkMask, y & NormalChunk.chunkMask, z & NormalChunk.chunkMask, false);
+			ch.addBlock(b, x & NormalChunk.chunkMask, y & NormalChunk.chunkMask, z & NormalChunk.chunkMask, false);
 			for (PlaceBlockHandler hand : CubyzRegistries.PLACE_HANDLER_REGISTRY.registered(new PlaceBlockHandler[0])) {
 				hand.onBlockPlaced(this, b, x, y, z);
 			}
@@ -294,10 +266,10 @@ public class ServerWorld {
 		manager.add(pos.x, pos.y, pos.z, dir.x*velocity, dir.y*velocity, dir.z*velocity, stack, 30*300 /*5 minutes at normal update speed.*/);
 	}
 	
-	public void updateBlockData(int x, int y, int z, byte data) {
+	public void updateBlock(int x, int y, int z, int block) {
 		NormalChunk ch = getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift);
 		if (ch != null) {
-			ch.setBlockData(x & NormalChunk.chunkMask, y & NormalChunk.chunkMask, z & NormalChunk.chunkMask, data);
+			ch.updateBlock(x & NormalChunk.chunkMask, y & NormalChunk.chunkMask, z & NormalChunk.chunkMask, block);
 		}
 	}
 
@@ -590,20 +562,11 @@ public class ServerWorld {
 		return entityManagers;
 	}
 
-	public Block getBlock(int x, int y, int z) {
+	public int getBlock(int x, int y, int z) {
 		NormalChunk ch = getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift);
 		if (ch != null && ch.isGenerated()) {
-			Block b = ch.getBlock(x & NormalChunk.chunkMask, y & NormalChunk.chunkMask, z & NormalChunk.chunkMask);
+			int b = ch.getBlock(x & NormalChunk.chunkMask, y & NormalChunk.chunkMask, z & NormalChunk.chunkMask);
 			return b;
-		} else {
-			return null;
-		}
-	}
-	
-	public byte getBlockData(int x, int y, int z) {
-		NormalChunk ch = getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift);
-		if (ch != null && ch.isGenerated()) {
-			return ch.getBlockData(x & NormalChunk.chunkMask, y & NormalChunk.chunkMask, z & NormalChunk.chunkMask);
 		} else {
 			return 0;
 		}
@@ -634,10 +597,6 @@ public class ServerWorld {
 
 	public NormalChunk[] getChunks() {
 		return chunks;
-	}
-
-	public Block[] getBlocks() {
-		return blocks;
 	}
 	
 	public Entity[] getEntities() {
@@ -678,9 +637,9 @@ public class ServerWorld {
 	}
 
 	public void getLight(NormalChunk ch, int x, int y, int z, int[] array) {
-		Block block = getBlock(x, y, z);
-		if(block == null) return;
-		int selfLight = block.getLight();
+		int block = getBlock(x, y, z);
+		if(block == 0) return;
+		int selfLight = Blocks.light(block);
 		x--;
 		y--;
 		z--;

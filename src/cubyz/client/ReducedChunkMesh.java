@@ -22,7 +22,7 @@ import cubyz.world.ChunkData;
 import cubyz.world.Neighbors;
 import cubyz.world.NormalChunk;
 import cubyz.world.ReducedChunkVisibilityData;
-import cubyz.world.blocks.Block;
+import cubyz.world.blocks.Blocks;
 
 /**
  * Used to create chunk meshes for reduced chunks.
@@ -262,7 +262,7 @@ public class ReducedChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 		final int Y_Add = 1 << 6;
 		final int Z_Add = 1 << 12;
 		for(int i = 0; i < chunkVisibilityData.size; i++) {
-			Block block = chunkVisibilityData.visibleBlocks[i];
+			int block = chunkVisibilityData.visibleBlocks[i];
 			int x = chunkVisibilityData.x[i];
 			int y = chunkVisibilityData.y[i];
 			int z = chunkVisibilityData.z[i];
@@ -271,7 +271,7 @@ public class ReducedChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 			if ((neighbors & Neighbors.BIT_MASK[Neighbors.DIR_NEG_X]) != 0) {
 				int normal = 0;
 				int vertexValue = x | y << 6 | z << 12 | voxelSize << 18;
-				int colorNormal = block.textureIndices[Neighbors.DIR_NEG_X] | (normal << 24);
+				int colorNormal = Blocks.textureIndices(block)[Neighbors.DIR_NEG_X] | (normal << 24);
 				int i000 = addVertex(vertices, colorsAndNormals, vertexValue, colorNormal | CORD01);
 				int i001 = addVertex(vertices, colorsAndNormals, vertexValue + Z_Add, colorNormal | CORD11);
 				int i010 = addVertex(vertices, colorsAndNormals, vertexValue + Y_Add, colorNormal | CORD00);
@@ -287,7 +287,7 @@ public class ReducedChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 			if ((neighbors & Neighbors.BIT_MASK[Neighbors.DIR_POS_X]) != 0) {
 				int normal = 1;
 				int vertexValue = x + 1 | y << 6 | z << 12 | voxelSize << 18;
-				int colorNormal = block.textureIndices[Neighbors.DIR_POS_X] | (normal << 24);
+				int colorNormal = Blocks.textureIndices(block)[Neighbors.DIR_POS_X] | (normal << 24);
 				int i100 = addVertex(vertices, colorsAndNormals, vertexValue, colorNormal | CORD11);
 				int i101 = addVertex(vertices, colorsAndNormals, vertexValue + Z_Add, colorNormal | CORD01);
 				int i110 = addVertex(vertices, colorsAndNormals, vertexValue + Y_Add, colorNormal | CORD10);
@@ -303,7 +303,7 @@ public class ReducedChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 			if ((neighbors & Neighbors.BIT_MASK[Neighbors.DIR_DOWN]) != 0) {
 				int normal = 4;
 				int vertexValue = x | y << 6 | z << 12 | voxelSize << 18;
-				int colorNormal = block.textureIndices[Neighbors.DIR_DOWN] | (normal << 24);
+				int colorNormal = Blocks.textureIndices(block)[Neighbors.DIR_DOWN] | (normal << 24);
 				int i000 = addVertex(vertices, colorsAndNormals, vertexValue, colorNormal | CORD11);
 				int i001 = addVertex(vertices, colorsAndNormals, vertexValue + Z_Add, colorNormal | CORD10);
 				int i100 = addVertex(vertices, colorsAndNormals, vertexValue + X_Add, colorNormal | CORD01);
@@ -319,7 +319,7 @@ public class ReducedChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 			if ((neighbors & Neighbors.BIT_MASK[Neighbors.DIR_UP]) != 0) {
 				int normal = 5;
 				int vertexValue = x | (y + 1) << 6 | z << 12 | voxelSize << 18;
-				int colorNormal = block.textureIndices[Neighbors.DIR_UP] | (normal << 24);
+				int colorNormal = Blocks.textureIndices(block)[Neighbors.DIR_UP] | (normal << 24);
 				int i010 = addVertex(vertices, colorsAndNormals, vertexValue, colorNormal | CORD01);
 				int i011 = addVertex(vertices, colorsAndNormals, vertexValue + Z_Add, colorNormal | CORD00);
 				int i110 = addVertex(vertices, colorsAndNormals, vertexValue + X_Add, colorNormal | CORD11);
@@ -335,7 +335,7 @@ public class ReducedChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 			if ((neighbors & Neighbors.BIT_MASK[Neighbors.DIR_NEG_Z]) != 0) {
 				int normal = 2;
 				int vertexValue = x | y << 6 | z << 12 | voxelSize << 18;
-				int colorNormal = block.textureIndices[Neighbors.DIR_NEG_Z] | (normal << 24);
+				int colorNormal = Blocks.textureIndices(block)[Neighbors.DIR_NEG_Z] | (normal << 24);
 				int i000 = addVertex(vertices, colorsAndNormals, vertexValue, colorNormal | CORD11);
 				int i010 = addVertex(vertices, colorsAndNormals, vertexValue + Y_Add, colorNormal | CORD10);
 				int i100 = addVertex(vertices, colorsAndNormals, vertexValue + X_Add, colorNormal | CORD01);
@@ -351,7 +351,7 @@ public class ReducedChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 			if ((neighbors & Neighbors.BIT_MASK[Neighbors.DIR_POS_Z]) != 0) {
 				int normal = 3;
 				int vertexValue = x | y << 6 | (z + 1) << 12 | voxelSize << 18;
-				int colorNormal = block.textureIndices[Neighbors.DIR_POS_Z] | (normal << 24);
+				int colorNormal = Blocks.textureIndices(block)[Neighbors.DIR_POS_Z] | (normal << 24);
 				int i001 = addVertex(vertices, colorsAndNormals, vertexValue, colorNormal | CORD01);
 				int i011 = addVertex(vertices, colorsAndNormals, vertexValue + Y_Add, colorNormal | CORD00);
 				int i101 = addVertex(vertices, colorsAndNormals, vertexValue + X_Add, colorNormal | CORD11);

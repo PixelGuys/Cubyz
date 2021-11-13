@@ -59,7 +59,7 @@ public class Block implements RegistryElement {
 	public Block(String id, float hardness, float breakingPower, BlockClass bc) {
 		setID(id);
 		blockClass = bc;
-		ItemBlock bd = new ItemBlock(this);
+		ItemBlock bd = new ItemBlock(0);
 		blockDrops = new BlockDrop[1];
 		blockDrops[0] = new BlockDrop(bd, 1);
 		this.hardness = hardness;

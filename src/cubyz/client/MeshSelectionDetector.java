@@ -5,12 +5,12 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 
-import cubyz.utils.datastructures.ByteWrapper;
+import cubyz.utils.datastructures.IntWrapper;
 import cubyz.utils.math.CubyzMath;
 import cubyz.world.NormalChunk;
 import cubyz.world.ServerWorld;
-import cubyz.world.blocks.Block;
 import cubyz.world.blocks.BlockInstance;
+import cubyz.world.blocks.Blocks;
 import cubyz.world.entity.Entity;
 import cubyz.world.entity.Player;
 import cubyz.world.items.Inventory;
@@ -68,7 +68,7 @@ public class MeshSelectionDetector {
 					BlockInstance bi = array[i];
 					if(bi == null)
 						break;
-					if(!bi.getBlock().isSolid())
+					if(!Blocks.solid(bi.getBlock()))
 						continue;
 					min.set(new Vector3f(bi.getX(), bi.getY(), bi.getZ()));
 					min.sub(pos);
@@ -79,8 +79,8 @@ public class MeshSelectionDetector {
 					// Because of the huge number of different BlockInstances that will be tested, it is more efficient to use RayAabIntersection and determine the distance separately:
 					if (intersection.test(minf.x, minf.y, minf.z, maxf.x, maxf.y, maxf.z)) {
 						double distance;
-						if(bi.getBlock().mode.changesHitbox()) {
-							distance = bi.getBlock().mode.getRayIntersection(intersection, bi, minf, maxf, new Vector3f());
+						if(Blocks.mode(bi.getBlock()).changesHitbox()) {
+							distance = Blocks.mode(bi.getBlock()).getRayIntersection(intersection, bi, minf, maxf, new Vector3f());
 						} else {
 							distance = minf.length();
 						}
@@ -116,16 +116,16 @@ public class MeshSelectionDetector {
 	public void placeBlock(Inventory inv, int selectedSlot, ServerWorld world) {
 		if(selectedSpatial != null && selectedSpatial instanceof BlockInstance) {
 			BlockInstance bi = (BlockInstance)selectedSpatial;
-			ByteWrapper data = new ByteWrapper(bi.getData());
+			IntWrapper block = new IntWrapper(bi.getBlock());
 			Vector3d relativePos = new Vector3d(pos);
 			relativePos.sub(bi.x, bi.y, bi.z);
-			Block b = inv.getBlock(selectedSlot);
-			if (b != null) {
+			int b = inv.getBlock(selectedSlot);
+			if (b != 0) {
 				Vector3i neighborDir = new Vector3i();
 				// Check if stuff can be added to the block itself:
 				if(b == bi.getBlock()) {
-					if(b.mode.generateData(Cubyz.world, bi.x, bi.y, bi.z, relativePos, dir, neighborDir, data, false)) {
-						world.updateBlockData(bi.x, bi.y, bi.z, data.data);
+					if(Blocks.mode(b).generateData(Cubyz.world, bi.x, bi.y, bi.z, relativePos, dir, neighborDir, block, false)) {
+						world.updateBlock(bi.x, bi.y, bi.z, block.data);
 						inv.getStack(selectedSlot).add(-1);
 						return;
 					}
@@ -137,14 +137,15 @@ public class MeshSelectionDetector {
 				relativePos.sub(neighbor.x, neighbor.y, neighbor.z);
 				boolean dataOnlyUpdate = world.getBlock(neighbor.x, neighbor.y, neighbor.z) == b;
 				if(dataOnlyUpdate) {
-					data.data = world.getBlockData(neighbor.x, neighbor.y, neighbor.z);
-					if(b.mode.generateData(Cubyz.world, neighbor.x, neighbor.y, neighbor.z, relativePos, dir, neighborDir, data, false)) {
-						world.updateBlockData(neighbor.x, neighbor.y, neighbor.z, data.data);
+					block.data = world.getBlock(neighbor.x, neighbor.y, neighbor.z);
+					if(Blocks.mode(b).generateData(Cubyz.world, neighbor.x, neighbor.y, neighbor.z, relativePos, dir, neighborDir, block, false)) {
+						world.updateBlock(neighbor.x, neighbor.y, neighbor.z, block.data);
 						inv.getStack(selectedSlot).add(-1);
 					}
 				} else {
-					if(b.mode.generateData(Cubyz.world, neighbor.x, neighbor.y, neighbor.z, relativePos, dir, neighborDir, data, true)) {
-						world.placeBlock(neighbor.x, neighbor.y, neighbor.z, b, data.data);
+					block.data = b;
+					if(Blocks.mode(b).generateData(Cubyz.world, neighbor.x, neighbor.y, neighbor.z, relativePos, dir, neighborDir, block, true)) {
+						world.placeBlock(neighbor.x, neighbor.y, neighbor.z, block.data);
 						inv.getStack(selectedSlot).add(-1);
 					}
 				}

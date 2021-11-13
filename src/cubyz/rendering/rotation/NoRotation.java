@@ -8,13 +8,13 @@ import org.joml.Vector4d;
 
 import cubyz.api.Resource;
 import cubyz.client.Meshes;
-import cubyz.utils.datastructures.ByteWrapper;
+import cubyz.utils.datastructures.IntWrapper;
 import cubyz.utils.datastructures.FloatFastList;
 import cubyz.utils.datastructures.IntFastList;
 import cubyz.world.NormalChunk;
 import cubyz.world.ServerWorld;
-import cubyz.world.blocks.Block;
 import cubyz.world.blocks.BlockInstance;
+import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.RotationMode;
 import cubyz.world.entity.Entity;
 
@@ -30,9 +30,8 @@ public class NoRotation implements RotationMode {
 	}
 
 	@Override
-	public boolean generateData(ServerWorld world, int x, int y, int z, Vector3d relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, ByteWrapper currentData, boolean blockPlacing) {
+	public boolean generateData(ServerWorld world, int x, int y, int z, Vector3d relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, IntWrapper currentData, boolean blockPlacing) {
 		if(!blockPlacing) return false;
-		currentData.data = 0;
 		return true;
 	}
 
@@ -42,18 +41,18 @@ public class NoRotation implements RotationMode {
 	}
 
 	@Override
-	public Byte updateData(byte data, int dir, Block newNeighbor) {
-		return 0;
+	public int updateData(int block, int dir, int newNeighbor) {
+		return block;
 	}
 
 	@Override
-	public boolean checkTransparency(byte data, int dir) {
+	public boolean checkTransparency(int block, int dir) {
 		return false;
 	}
 
 	@Override
-	public byte getNaturalStandard() {
-		return 0;
+	public int getNaturalStandard(int block) {
+		return block;
 	}
 
 	@Override
@@ -67,18 +66,18 @@ public class NoRotation implements RotationMode {
 	}
 
 	@Override
-	public boolean checkEntity(Vector3d pos, double width, double height, int x, int y, int z, byte blockData) {
+	public boolean checkEntity(Vector3d pos, double width, double height, int x, int y, int z, int block) {
 		return false;
 	}
 
 	@Override
-	public boolean checkEntityAndDoCollision(Entity arg0, Vector4d arg1, int x, int y, int z, byte arg2) {
+	public boolean checkEntityAndDoCollision(Entity arg0, Vector4d arg1, int x, int y, int z, int block) {
 		return true;
 	}
 	
 	@Override
 	public int generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
-		Meshes.blockMeshes.get(bi.getBlock()).model.addToChunkMesh(bi.x & NormalChunk.chunkMask, bi.y & NormalChunk.chunkMask, bi.z & NormalChunk.chunkMask, bi.getBlock().textureIndices, bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
+		Meshes.blockMeshes.get(bi.getBlock() & Blocks.TYPE_MASK).model.addToChunkMesh(bi.x & NormalChunk.chunkMask, bi.y & NormalChunk.chunkMask, bi.z & NormalChunk.chunkMask, Blocks.textureIndices(bi.getBlock()), bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
 		return renderIndex + 1;
 	}
 }

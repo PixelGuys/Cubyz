@@ -13,14 +13,14 @@ import cubyz.api.Resource;
 import cubyz.client.Meshes;
 import cubyz.rendering.models.CubeModel;
 import cubyz.rendering.models.Model;
-import cubyz.utils.datastructures.ByteWrapper;
+import cubyz.utils.datastructures.IntWrapper;
 import cubyz.utils.datastructures.FloatFastList;
 import cubyz.utils.datastructures.IntFastList;
 import cubyz.world.Neighbors;
 import cubyz.world.NormalChunk;
 import cubyz.world.ServerWorld;
-import cubyz.world.blocks.Block;
 import cubyz.world.blocks.BlockInstance;
+import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.RotationMode;
 import cubyz.world.entity.Entity;
 
@@ -37,9 +37,9 @@ public class StackableRotation implements RotationMode {
 	}
 
 	@Override
-	public boolean generateData(ServerWorld world, int x, int y, int z, Vector3d relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, ByteWrapper currentData, boolean blockPlacing) {
+	public boolean generateData(ServerWorld world, int x, int y, int z, Vector3d relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, IntWrapper currentData, boolean blockPlacing) {
 		if(blockPlacing) {
-			currentData.data = 1;
+			currentData.data |= 0x10000;
 			return true;
 		}
 		Vector3d dir = new Vector3d(playerDirection);
@@ -51,14 +51,14 @@ public class StackableRotation implements RotationMode {
 			// Check if the ray is going through the top layer and going the right direction:
 			min.y = max.y - 0.0001f;
 			if(playerDirection.y < 0 && Intersectiond.intersectRayAab(relativePlayerPosition, dir, min, max, result)) {
-				if(currentData.data == 16) return false;
-				currentData.data++;
+				if(currentData.data >>> 16 == 16) return false;
+				currentData.data += 0x10000;
 				return true;
 			}
 			return false;
 		} else {
-			if(currentData.data == 16) return false;
-			currentData.data++;
+			if(currentData.data >>> 16 == 16) return false;
+			currentData.data += 0x10000;
 			return true;
 		}
 	}
@@ -69,21 +69,21 @@ public class StackableRotation implements RotationMode {
 	}
 
 	@Override
-	public Byte updateData(byte data, int dir, Block newNeighbor) {
-		return data;
+	public int updateData(int block, int dir, int newNeighbor) {
+		return block;
 	}
 
 	@Override
-	public boolean checkTransparency(byte data, int dir) {
-		if(data < 16) {//TODO: && ((dir & 1) != 0 || (dir & 512) == 0)) {
+	public boolean checkTransparency(int block, int dir) {
+		if(block >>> 16 < 16) {//TODO: && ((dir & 1) != 0 || (dir & 512) == 0)) {
 			return true;
 		}
 		return false;
 	}
 
 	@Override
-	public byte getNaturalStandard() {
-		return 16;
+	public int getNaturalStandard(int block) {
+		return block | (16 << 16);
 	}
 
 	@Override
@@ -93,18 +93,19 @@ public class StackableRotation implements RotationMode {
 
 	@Override
 	public float getRayIntersection(RayAabIntersection intersection, BlockInstance bi, Vector3f min, Vector3f max, Vector3f transformedPosition) {
-		max.add(0, bi.getData()/16.0f - 1.0f, 0);
+		int data = bi.getBlock() >>> 16;
+		max.add(0, data/16.0f - 1.0f, 0);
 		// Because of the huge number of different BlockInstances that will be tested, it is more efficient to use RayAabIntersection and determine the distance seperately:
 		if (intersection.test(min.x, min.y, min.z, max.x, max.y, max.z)) {
-			return min.add(0.5f, bi.getData()/32.0f, 0.5f).sub(transformedPosition).length();
+			return min.add(0.5f, data/32.0f, 0.5f).sub(transformedPosition).length();
 		} else {
 			return Float.MAX_VALUE;
 		}
 	}
 
 	@Override
-	public boolean checkEntity(Vector3d pos, double width, double height, int x, int y, int z, byte blockData) {
-		return 	   y + blockData/16.0f >= pos.y
+	public boolean checkEntity(Vector3d pos, double width, double height, int x, int y, int z, int block) {
+		return 	   y + (block >>> 16)/16.0f >= pos.y
 				&& y     <= pos.y + height
 				&& x + 1 >= pos.x - width
 				&& x     <= pos.x + width
@@ -113,30 +114,31 @@ public class StackableRotation implements RotationMode {
 	}
 
 	@Override
-	public boolean checkEntityAndDoCollision(Entity ent, Vector4d vel, int x, int y, int z, byte data) {
+	public boolean checkEntityAndDoCollision(Entity ent, Vector4d vel, int x, int y, int z, int block) {
 		// Check if the player can step onto this:
-		if(y + data/16.0f - ent.getPosition().y > 0 && y + data/16.0f - ent.getPosition().y <= ent.stepHeight) {
-			vel.w = Math.max(vel.w, y + data/16.0f - ent.getPosition().y);
+		float yOffset = (block >>> 16)/16.0f;
+		if(y + yOffset - ent.getPosition().y > 0 && y + yOffset - ent.getPosition().y <= ent.stepHeight) {
+			vel.w = Math.max(vel.w, y + yOffset - ent.getPosition().y);
 			return false;
 		}
 		if(vel.y == 0) {
-			return	   y + data/16.0f >= ent.getPosition().y
+			return	   y + yOffset >= ent.getPosition().y
 					&& y <= ent.getPosition().y + ent.height;
 		}
 		if(vel.y >= 0) {
 			return true;
 		}
-		if(y + data/16.0f >= ent.getPosition().y + vel.y) {
-			vel.y = y + data/16.0f + 0.01f - ent.getPosition().y;
+		if(y + yOffset >= ent.getPosition().y + vel.y) {
+			vel.y = y + yOffset + 0.01f - ent.getPosition().y;
 		}
 		return false;
 	}
 	
 	@Override
 	public int generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
-		Model model = Meshes.blockMeshes.get(bi.getBlock()).model;
+		Model model = Meshes.blockMeshes.get(bi.getBlock() & Blocks.TYPE_MASK).model;
 		if(!(model instanceof CubeModel)) {
-			Logger.error("Unsupported model "+model.getRegistryID()+" in block "+bi.getBlock().getRegistryID()+" for stackable block type. Skipping block.");
+			Logger.error("Unsupported model "+model.getRegistryID()+" in block "+Blocks.id(bi.getBlock())+" for stackable block type. Skipping block.");
 			return renderIndex;
 		}
 		int x = bi.getX() & NormalChunk.chunkMask;
@@ -144,12 +146,12 @@ public class StackableRotation implements RotationMode {
 		int z = bi.getZ() & NormalChunk.chunkMask;
 		boolean[] neighbors = bi.getNeighbors();
 		int[] light = bi.light;
-		int[] textureIndices = bi.getBlock().textureIndices;
+		int[] textureIndices = Blocks.textureIndices(bi.getBlock());
 		
 		// Copies code from CubeModel and applies height transformation to it:
 		int indexOffset = vertices.size/3;
 		int size = model.positions.length/3;
-		float factor = bi.getData()/16.0f;
+		float factor = (bi.getBlock() >>> 16)/16.0f;
 		IntFastList indexesAdded = new IntFastList(24);
 		for(int i = 0; i < size; i++) {
 			int i2 = i*2;

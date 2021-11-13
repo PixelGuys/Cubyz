@@ -26,8 +26,8 @@ import cubyz.utils.Utils;
 import cubyz.utils.datastructures.FastList;
 import cubyz.world.ServerWorld;
 import cubyz.world.NormalChunk;
-import cubyz.world.blocks.Block;
 import cubyz.world.blocks.BlockInstance;
+import cubyz.world.blocks.Blocks;
 import cubyz.world.entity.Player;
 
 /**
@@ -230,7 +230,7 @@ public class MainRenderer {
 			// Set intensity:
 			light.setDirection(light.getDirection().mul(0.1f*Cubyz.world.getGlobalLighting()/light.getDirection().length()));
 			Window.setClearColor(clearColor);
-			render(ambient, light, Cubyz.world.getBlocks(), worldSpatialList, Cubyz.player);
+			render(ambient, light, worldSpatialList, Cubyz.player);
 		} else {
 			clearColor.y = clearColor.z = 0.7f;
 			clearColor.x = 0.1f;
@@ -256,7 +256,7 @@ public class MainRenderer {
 	 * @param spatials the special objects to render (that are neither entity, neither blocks, like sun and moon, or rain)
 	 * @param localPlayer The world's local player
 	 */
-	public void render(Vector3f ambientLight, DirectionalLight directionalLight, Block[] blocks, Spatial[] spatials, ClientPlayer localPlayer) {
+	public void render(Vector3f ambientLight, DirectionalLight directionalLight, Spatial[] spatials, ClientPlayer localPlayer) {
 		if (!doRender)
 			return;
 		buffers.bind();
@@ -344,7 +344,7 @@ public class MainRenderer {
 			
 			EntityRenderer.render(ambientLight, directionalLight, localPlayer, playerPosition);
 
-			BlockDropRenderer.render(frustumInt, ambientLight, directionalLight, blocks, playerPosition);
+			BlockDropRenderer.render(frustumInt, ambientLight, directionalLight, playerPosition);
 			
 			NormalChunkMesh.shader.bind();
 			NormalChunkMesh.shader.setUniform(NormalChunkMesh.loc_fog_activ, 0); // manually disable the fog
@@ -409,9 +409,9 @@ public class MainRenderer {
 			fogShader.bind();
 			// Draw the water fog if the player is underwater:
 			Player player = Cubyz.player;
-			Block block = Cubyz.world.getBlock((int)Math.round(player.getPosition().x), (int)(player.getPosition().y + player.height), (int)Math.round(player.getPosition().z));
-			if(block != null && !block.isSolid()) {
-				if(block.getRegistryID().toString().equals("cubyz:water")) {
+			int block = Cubyz.world.getBlock((int)Math.round(player.getPosition().x), (int)(player.getPosition().y + player.height), (int)Math.round(player.getPosition().z));
+			if(block != 0 && !Blocks.solid(block)) {
+				if(Blocks.id(block).toString().equals("cubyz:water")) {
 					fogShader.setUniform(FogUniforms.loc_fog_activ, waterFog.isActive());
 					fogShader.setUniform(FogUniforms.loc_fog_color, waterFog.getColor());
 					fogShader.setUniform(FogUniforms.loc_fog_density, waterFog.getDensity());

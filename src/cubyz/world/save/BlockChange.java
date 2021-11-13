@@ -1,8 +1,6 @@
 package cubyz.world.save;
 
-import cubyz.api.CubyzRegistries;
 import cubyz.utils.math.Bits;
-import cubyz.world.blocks.Block;
 
 /**
  * Used to store the difference between the generated world and the player-edited world for easier storage.
@@ -10,58 +8,37 @@ import cubyz.world.blocks.Block;
 
 public class BlockChange {
 	public int oldType, newType; // IDs of the blocks. -1 = air
-	public byte oldData, newData; // Data of the blocks. Mostly used for storing rotation and flow data.
 	public int index; // Coordinates as index in the block array of the chunk.
 	
-	public BlockChange(int ot, int nt, int index, byte od, byte nd) {
+	public BlockChange(int ot, int nt, int index) {
 		oldType = ot;
 		newType = nt;
-		oldData = od;
-		newData = nd;
 		this.index = index;
 	}
 	
-	public BlockChange(byte[] data, int off, Palette<Block> blockPalette) {
+	public BlockChange(byte[] data, int off, BlockPalette blockPalette) {
 		index = Bits.getInt(data, off + 0);
-		newData = data[off + 4];
 		
 		// Convert the palette (world-specific) ID to the runtime ID
-		int palId = Bits.getInt(data, off + 5);
+		int palId = Bits.getInt(data, off + 4);
 		int runtimeId = -1;
-		if (palId != -1) {
-			Block b = blockPalette.getElement(palId);
-			if(b == null) {
-				throw new MissingBlockException();
-			}
-			runtimeId = b.ID;
+		int b = blockPalette.getElement(palId);
+		if(b == 0) {
+			throw new MissingBlockException();
 		}
+		runtimeId = b;
 		newType = runtimeId;
 		oldType = -2;
 	}
 	
 	/**
 	 * Save BlockChange to array data at offset off.
-	 * Data Length: 17 bytes
+	 * Data Length: 8 bytes
 	 * @param data
 	 * @param off
 	 */
-	public void save(byte[] data, int off, Palette<Block> blockPalette) {
+	public void save(byte[] data, int off, BlockPalette blockPalette) {
 		Bits.putInt(data, off, index);
-		data[off + 4] = newData;
-		if (newType == -1) {
-			Bits.putInt(data, off + 5, -1);
-		} else {
-			Block b = null;
-			for (Block block : CubyzRegistries.BLOCK_REGISTRY.registered(new Block[0])) {
-				b = block;
-				if (b.ID == newType) {
-					break;
-				}
-			}
-			if (b == null) {
-				throw new RuntimeException("newType is invalid: " + newType);
-			}
-			Bits.putInt(data, off + 5, blockPalette.getIndex(b));
-		}
+		Bits.putInt(data, off + 4, blockPalette.getIndex(newType));
 	}
 }

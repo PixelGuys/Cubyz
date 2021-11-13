@@ -14,6 +14,7 @@ import cubyz.command.GameTimeCycleCommand;
 import cubyz.command.GiveCommand;
 import cubyz.command.TPCommand;
 import cubyz.command.TimeCommand;
+import cubyz.world.blocks.Blocks;
 import cubyz.world.entity.EntityType;
 import cubyz.world.entity.Pig;
 import cubyz.world.entity.PlayerEntity;
@@ -63,6 +64,8 @@ public class BaseMod {
 		CubyzRegistries.STRUCTURE_REGISTRY.register(new SimpleTreeModel());
 		CubyzRegistries.STRUCTURE_REGISTRY.register(new SimpleVegetation());
 		CubyzRegistries.STRUCTURE_REGISTRY.register(new GroundPatch());
+		
+		CubyzRegistries.BLOCK_REGISTRIES.register(new Blocks());
 		
 		// Pre-Init proxy
 		proxy.preInit();

@@ -1,7 +1,7 @@
 package cubyz.world.items;
 
 import cubyz.utils.translate.TextKey;
-import cubyz.world.blocks.Block;
+import cubyz.world.blocks.Blocks;
 
 /**
  * Item that corresponds to a block and places that block on use.
@@ -9,24 +9,24 @@ import cubyz.world.blocks.Block;
 
 public class ItemBlock extends Item {
 
-	private Block block;
+	private int block;
 	
 	public ItemBlock() {
 		
 	}
 	
-	public ItemBlock(Block block) {
+	public ItemBlock(int block) {
 		setBlock(block);
 	}
 	
-	public Block getBlock() {
+	public int getBlock() {
 		return block;
 	}
 	
-	public void setBlock(Block block) {
+	public void setBlock(int block) {
 		this.block = block;
-		setID(block.getRegistryID());
-		this.setName(TextKey.createTextKey("block." + block.getRegistryID().getMod() + "." + block.getRegistryID().getID() + ".name"));
+		setID(Blocks.id(block));
+		this.setName(TextKey.createTextKey("block." + Blocks.id(block).getMod() + "." + Blocks.id(block).getID() + ".name"));
 	}
 	
 }

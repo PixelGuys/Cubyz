@@ -2,9 +2,8 @@ package cubyz.world.terrain.biomes;
 
 import java.util.Random;
 
-import cubyz.api.CubyzRegistries;
 import cubyz.world.Chunk;
-import cubyz.world.blocks.Block;
+import cubyz.world.blocks.Blocks;
 
 /**
  * Stores the vertical ground structure of a biome from top to bottom.<br>
@@ -30,7 +29,7 @@ public class BlockStructure {
 				max = Integer.parseInt(parts[2]);
 				blockString = parts[3];
 			}
-			Block block = CubyzRegistries.BLOCK_REGISTRY.getByID(blockString);
+			int block = Blocks.getByID(blockString);
 			structure[i] = new BlockStructure.BlockStack(block, min, max);
 		}
 	}
@@ -40,12 +39,13 @@ public class BlockStructure {
 		for(int i = 0; i < structure.length; i++) {
 			int total = structure[i].min + rand.nextInt(1 + structure[i].max - structure[i].min);
 			for(int j = 0; j < total; j++) {
-				byte data = structure[i].block.mode.getNaturalStandard();
-				if(i == 0 && j == 0 && structure[i].block.mode.getRegistryID().toString().equals("cubyz:stackable")) {
-					data = (byte)highResDepth;
+				int block = structure[i].block;
+				block = Blocks.mode(block).getNaturalStandard(block);
+				if(i == 0 && j == 0 && Blocks.mode(block).getRegistryID().toString().equals("cubyz:stackable")) {
+					block = (block & Blocks.TYPE_MASK) | (highResDepth << 16);
 				}
 				if(chunk.liesInChunk(x, depth - chunk.getWorldY(), z)) {
-					chunk.updateBlock(x, depth - chunk.getWorldY(), z, structure[i].block, data);
+					chunk.updateBlockInGeneration(x, depth - chunk.getWorldY(), z, block);
 				}
 				depth -= chunk.getVoxelSize();
 			}
@@ -55,10 +55,10 @@ public class BlockStructure {
 	}
 	
 	public static class BlockStack {
-		private final Block block;
+		private final int block;
 		private final int min;
 		private final int max;
-		public BlockStack(Block block, int min, int max) {
+		public BlockStack(int block, int min, int max) {
 			this.block = block;
 			this.min = min;
 			this.max = max;

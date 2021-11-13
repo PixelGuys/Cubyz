@@ -2,17 +2,15 @@ package cubyz.world;
 
 import java.util.Arrays;
 
-import cubyz.world.blocks.Block;
-
 public class ReducedChunkVisibilityData extends ChunkData {
 	private static final int INITIAL_CAPACITY = 128;
-	public Block[] visibleBlocks = new Block[INITIAL_CAPACITY];
+	public int[] visibleBlocks = new int[INITIAL_CAPACITY];
 	public byte[] x = new byte[INITIAL_CAPACITY], y = new byte[INITIAL_CAPACITY], z = new byte[INITIAL_CAPACITY];
 	public byte[] neighbors = new byte[INITIAL_CAPACITY];
 	public int size;
 	public int capacity = INITIAL_CAPACITY;
 
-	private void addBlock(byte x, byte y, byte z, byte neighbors, Block block) {
+	private void addBlock(byte x, byte y, byte z, byte neighbors, int block) {
 		if(size == capacity)
 			increaseCapacity();
 		visibleBlocks[size] = block;
@@ -32,7 +30,7 @@ public class ReducedChunkVisibilityData extends ChunkData {
 		neighbors = Arrays.copyOf(neighbors, capacity);
 	}
 
-	private Block getBlock(ReducedChunk[] chunks, int x, int y, int z) {
+	private int getBlock(ReducedChunk[] chunks, int x, int y, int z) {
 		x += (wx - chunks[0].wx)/voxelSize;
 		y += (wy - chunks[0].wy)/voxelSize;
 		z += (wz - chunks[0].wz)/voxelSize;
@@ -63,8 +61,8 @@ public class ReducedChunkVisibilityData extends ChunkData {
 		for(byte x = 0; x < NormalChunk.chunkSize; x++) {
 			for(byte y = 0; y < NormalChunk.chunkSize; y++) {
 				for(byte z = 0; z < NormalChunk.chunkSize; z++) {
-					Block block = getBlock(chunks, x, y, z);
-					if(block == null) continue;
+					int block = getBlock(chunks, x, y, z);
+					if(block == 0) continue;
 					// Check all neighbors:
 					byte neighborVisibility = 0;
 					for(byte i = 0; i < Neighbors.NEIGHBORS; i++) {
@@ -72,8 +70,8 @@ public class ReducedChunkVisibilityData extends ChunkData {
 						int y2 = y + Neighbors.REL_Y[i];
 						int z2 = z + Neighbors.REL_Z[i];
 						boolean isVisible = false;
-						Block neighbor = getBlock(chunks, x2, y2, z2);
-						isVisible = neighbor == null;
+						int neighbor = getBlock(chunks, x2, y2, z2);
+						isVisible = neighbor == 0;
 						if(!isVisible) {
 							// If the chunk is at a border, more neighbors need to be checked to prevent cracks at LOD changes:
 							if((x & halfMask) == ((x2 & halfMask) ^ halfMask) || (y & halfMask) == ((y2 & halfMask) ^ halfMask) || (z & halfMask) == ((z2 & halfMask) ^ halfMask)) {
@@ -83,7 +81,7 @@ public class ReducedChunkVisibilityData extends ChunkData {
 									int y3 = y2 + Neighbors.REL_Y[j];
 									int z3 = z2 + Neighbors.REL_Z[j];
 									neighbor = getBlock(chunks, x3, y3, z3);
-									if(neighbor == null) {
+									if(neighbor == 0) {
 										isVisible = true;
 										break;
 									}

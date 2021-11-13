@@ -14,7 +14,7 @@ import cubyz.client.Cubyz;
 import cubyz.utils.json.JsonObject;
 import cubyz.utils.json.JsonParser;
 import cubyz.world.Neighbors;
-import cubyz.world.blocks.Block;
+import cubyz.world.blocks.Blocks;
 
 public class ResourceUtilities {
 	
@@ -54,8 +54,8 @@ public class ResourceUtilities {
 	}
 	
 	// TODO: Take care about Custom Blocks.
-	public static void loadBlockTexturesToBufferedImage(Block block, ArrayList<BufferedImage> textures, ArrayList<String> ids) {
-		String path = "assets/"+block.getRegistryID().getMod()+"/blocks/" + block.getRegistryID().getID() + ".json";
+	public static void loadBlockTexturesToBufferedImage(int block, ArrayList<BufferedImage> textures, ArrayList<String> ids) {
+		String path = "assets/"+Blocks.id(block).getMod()+"/blocks/" + Blocks.id(block).getID() + ".json";
 		String prefix = "assets/";
 		if(!new File(path).exists()) {
 			if(Cubyz.world != null) {
@@ -81,21 +81,21 @@ public class ResourceUtilities {
 				// Test if it's already in the list:
 				for(int j = 0; j < ids.size(); j++) {
 					if(ids.get(j).equals(path)) {
-						block.textureIndices[i] = j;
+						Blocks.textureIndices(block)[i] = j;
 						continue outer;
 					}
 				}
 				// Otherwise read it into the list:
-				block.textureIndices[i] = textures.size();
+				Blocks.textureIndices(block)[i] = textures.size();
 				try {
 					textures.add(ImageIO.read(new File(path)));
 				} catch(Exception e) {
-					block.textureIndices[i] = -1;
-					Logger.warning("Could not read " + sideNames[i] + " image from Block "+block.getRegistryID());
+					Blocks.textureIndices(block)[i] = -1;
+					Logger.warning("Could not read " + sideNames[i] + " image from Block "+Blocks.id(block));
 					Logger.warning(e);
 				}
 			} else {
-				block.textureIndices[i] = -1;
+				Blocks.textureIndices(block)[i] = -1;
 			}
 		}
 		Resource resource = new Resource(json.getString("texture", "cubyz:undefined")); // Use this resource on every remaining side.
@@ -105,21 +105,21 @@ public class ResourceUtilities {
 		for(int j = 0; j < ids.size(); j++) {
 			if(ids.get(j).equals(path)) {
 				for(int i = 0; i < 6; i++) {
-					if(block.textureIndices[i] == -1)
-						block.textureIndices[i] = j;
+					if(Blocks.textureIndices(block)[i] == -1)
+					Blocks.textureIndices(block)[i] = j;
 				}
 				break;
 			}
 		}
 		// Otherwise read it into the list:
 		for(int i = 0; i < 6; i++) {
-			if(block.textureIndices[i] == -1)
-				block.textureIndices[i] = textures.size();
+			if(Blocks.textureIndices(block)[i] == -1)
+				Blocks.textureIndices(block)[i] = textures.size();
 		}
 		try {
 			textures.add(ImageIO.read(new File(path)));
 		} catch(Exception e) {
-			Logger.warning("Could not read main image from Block "+block.getRegistryID());
+			Logger.warning("Could not read main image from Block "+Blocks.id(block));
 			Logger.warning(e);
 		}
 	}

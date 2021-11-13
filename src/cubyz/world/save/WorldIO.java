@@ -10,7 +10,6 @@ import cubyz.utils.json.JsonArray;
 import cubyz.utils.json.JsonObject;
 import cubyz.utils.json.JsonParser;
 import cubyz.world.ServerWorld;
-import cubyz.world.blocks.Block;
 import cubyz.world.entity.Entity;
 import cubyz.world.items.Item;
 
@@ -19,7 +18,7 @@ public class WorldIO {
 
 	final File dir;
 	private ServerWorld world;
-	public Palette<Block> blockPalette = new Palette<Block>(null, null);
+	public BlockPalette blockPalette = new BlockPalette(null);
 	public Palette<Item> itemPalette = new Palette<Item>(null, null);
 
 	public WorldIO(ServerWorld world, File directory) {
@@ -67,7 +66,7 @@ public class WorldIO {
 			if(worldData.getInt("version", -1) != WORLD_DATA_VERSION) {
 				throw new IOException("Cannot read version " + worldData.getInt("version", -1));
 			}
-			blockPalette = new Palette<Block>(worldData.getObject("blockPalette"), world.registries.blockRegistry);
+			blockPalette = new BlockPalette(worldData.getObject("blockPalette"));
 			itemPalette = new Palette<Item>(worldData.getObject("itemPalette"), world.registries.itemRegistry);
 
 			JsonArray entityJson = worldData.getArrayNoNull("entities");

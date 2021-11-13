@@ -7,7 +7,8 @@ import cubyz.command.CommandSource;
 import cubyz.utils.json.JsonObject;
 import cubyz.world.ServerWorld;
 import cubyz.world.blocks.BlockInstance;
-import cubyz.world.blocks.Block.BlockClass;
+import cubyz.world.blocks.Blocks;
+import cubyz.world.blocks.Blocks.BlockClass;
 import cubyz.world.items.Inventory;
 import cubyz.world.items.tools.Tool;
 
@@ -88,7 +89,7 @@ public class Player extends Entity implements CommandSource {
 	}
 	
 	private boolean calculateBreakTime(BlockInstance bi, int slot) {
-		if(bi == null || bi.getBlock().getBlockClass() == BlockClass.UNBREAKABLE) {
+		if(bi == null || Blocks.blockClass(bi.getBlock()) == BlockClass.UNBREAKABLE) {
 			return false;
 		}
 		float power = 0;
@@ -98,9 +99,9 @@ public class Player extends Entity implements CommandSource {
 			power = tool.getPower(bi.getBlock());
 			swingTime = tool.swingTime;
 		}
-		if(power >= bi.getBlock().getBreakingPower()) {
+		if(power >= Blocks.breakingPower(bi.getBlock())) {
 			timeStarted = System.currentTimeMillis();
-			maxTime = (int)(Math.round(bi.getBlock().getHardness()*200));
+			maxTime = (int)(Math.round(Blocks.hardness(bi.getBlock())*200));
 			if(power != 0) {
 				maxTime = (int)(maxTime*swingTime/power);
 			}
@@ -119,7 +120,7 @@ public class Player extends Entity implements CommandSource {
 				return;
 			}
 		}
-		if(bi == null || bi.getBlock().getBlockClass() == BlockClass.UNBREAKABLE)
+		if(bi == null || Blocks.blockClass(bi.getBlock()) == BlockClass.UNBREAKABLE)
 			return;
 		long deltaTime = System.currentTimeMillis() - timeStarted;
 		bi.setBreakingAnimation((float) deltaTime / (float) maxTime);

@@ -8,7 +8,7 @@ import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Registry;
 import cubyz.utils.json.JsonArray;
 import cubyz.utils.json.JsonObject;
-import cubyz.world.blocks.Block;
+import cubyz.world.blocks.Blocks;
 import cubyz.world.items.Item;
 
 public class Tool extends Item {
@@ -104,8 +104,8 @@ public class Tool extends Item {
 		return damage;
 	}
 
-	public float getPower(Block block) {
-		switch(block.getBlockClass()) {
+	public float getPower(int block) {
+		switch(Blocks.blockClass(block)) {
 			case FLUID:
 				return 0;
 			case LEAF:

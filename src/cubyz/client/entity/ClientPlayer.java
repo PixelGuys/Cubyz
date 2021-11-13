@@ -5,9 +5,9 @@ import cubyz.gui.input.Keybindings;
 import cubyz.rendering.Camera;
 import cubyz.world.NormalChunk;
 import cubyz.world.ServerWorld;
-import cubyz.world.blocks.Block;
+import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.BlockInstance;
-import cubyz.world.blocks.Block.BlockClass;
+import cubyz.world.blocks.Blocks.BlockClass;
 import cubyz.world.entity.Entity;
 import cubyz.world.entity.Player;
 import cubyz.world.items.ItemBlock;
@@ -63,7 +63,7 @@ public class ClientPlayer extends Player {
 					if (breakCooldown == 0) {
 						breakCooldown = 7;
 						Object bi = Cubyz.msd.getSelected();
-						if (bi != null && bi instanceof BlockInstance && ((BlockInstance)bi).getBlock().getBlockClass() != BlockClass.UNBREAKABLE) {
+						if (bi != null && bi instanceof BlockInstance && Blocks.blockClass(((BlockInstance)bi).getBlock()) != BlockClass.UNBREAKABLE) {
 							Cubyz.world.removeBlock(((BlockInstance)bi).getX(), ((BlockInstance)bi).getY(), ((BlockInstance)bi).getZ());
 						}
 					}
@@ -83,7 +83,7 @@ public class ClientPlayer extends Player {
 				resetBlockBreaking();
 			}
 			if (Keybindings.isPressed("place/use") && buildCooldown <= 0) {
-				if((Cubyz.msd.getSelected() instanceof BlockInstance) && ((BlockInstance)Cubyz.msd.getSelected()).getBlock().onClick(Cubyz.world, ((BlockInstance)Cubyz.msd.getSelected()).getPosition())) {
+				if((Cubyz.msd.getSelected() instanceof BlockInstance) && Blocks.onClick(((BlockInstance)Cubyz.msd.getSelected()).getBlock(), Cubyz.world, ((BlockInstance)Cubyz.msd.getSelected()).getPosition())) {
 					// Interact with block(potentially do a hand animation, in the future).
 				} else if(getInventory().getItem(Cubyz.inventorySelection) instanceof ItemBlock) {
 					// Build block:
@@ -106,12 +106,8 @@ public class ClientPlayer extends Player {
 	}
 
 	@Override
-	protected Block getBlock(int x, int y, int z) {
+	protected int getBlock(int x, int y, int z) {
 		return Cubyz.world.getBlock(x, y, z);
-	}
-	@Override
-	protected byte getBlockData(int x, int y, int z) {
-		return Cubyz.world.getBlockData(x, y, z);
 	}
 
 	@Override

@@ -20,7 +20,7 @@ import cubyz.utils.datastructures.BinaryMaxHeap;
 import cubyz.utils.json.JsonObject;
 import cubyz.utils.json.JsonParser;
 import cubyz.world.ChunkData;
-import cubyz.world.blocks.Block;
+import cubyz.world.blocks.Blocks;
 import cubyz.world.entity.EntityType;
 
 /**
@@ -29,7 +29,7 @@ import cubyz.world.entity.EntityType;
 
 public class Meshes {
 
-	public static final HashMap<Block, Mesh> blockMeshes = new HashMap<>();
+	public static final HashMap<Integer, Mesh> blockMeshes = new HashMap<>();
 	public static final HashMap<EntityType, Mesh> entityMeshes = new HashMap<>();
 	
 	public static final TextureArray blockTextureArray = new TextureArray();
@@ -90,7 +90,7 @@ public class Meshes {
 	
 	public static void initMeshCreators() {
 		ClientOnly.createBlockMesh = (block) -> {
-			Resource rsc = block.getRegistryID();
+			Resource rsc = Blocks.id(block);
 			Texture tex = null;
 			// Try loading it from the assets:
 			String path = "assets/"+rsc.getMod()+"/blocks/" + rsc.getID()+".json";
@@ -112,7 +112,6 @@ public class Meshes {
 				mesh.setMaterial(material);
 				cachedDefaultModels.put(model, mesh);
 			}
-			
 			Meshes.blockMeshes.put(block, mesh);
 		};
 		
