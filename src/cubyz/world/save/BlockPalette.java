@@ -28,19 +28,21 @@ public class BlockPalette {
 		return json;
 	}
 
-	public int getElement(int index) {
-		return intToT[index];
+	public int getElement(int block) {
+		return (block & ~Blocks.TYPE_MASK) | intToT[block & Blocks.TYPE_MASK];
 	}
-	public int getIndex(int t) {
-		if(TToInt.containsKey(t)) {
-			return TToInt.get(t);
+	public int getIndex(int block) {
+		int data = block & ~Blocks.TYPE_MASK;
+		int index = block & Blocks.TYPE_MASK;
+		if(TToInt.containsKey(index)) {
+			return TToInt.get(index) | data;
 		} else {
 			// Create a value:
-			int index = intToT.length;
-			intToT = Arrays.copyOf(intToT, index+1);
-			intToT[index] = t;
-			TToInt.put(t, index);
-			return index;
+			int newIndex = intToT.length;
+			intToT = Arrays.copyOf(intToT, newIndex+1);
+			intToT[newIndex] = index;
+			TToInt.put(index, newIndex);
+			return newIndex | data;
 		}
 	}
 }
