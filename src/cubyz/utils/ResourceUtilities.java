@@ -1,20 +1,11 @@
 package cubyz.utils;
 
-import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 
-import javax.imageio.ImageIO;
-
-import cubyz.Logger;
 import cubyz.api.Resource;
-import cubyz.client.Cubyz;
 import cubyz.utils.json.JsonObject;
 import cubyz.utils.json.JsonParser;
-import cubyz.world.Neighbors;
-import cubyz.world.blocks.Blocks;
 
 public class ResourceUtilities {
 	
@@ -51,77 +42,5 @@ public class ResourceUtilities {
 		}
 		
 		return model;
-	}
-	
-	// TODO: Take care about Custom Blocks.
-	public static void loadBlockTexturesToBufferedImage(int block, ArrayList<BufferedImage> textures, ArrayList<String> ids) {
-		String path = "assets/"+Blocks.id(block).getMod()+"/blocks/" + Blocks.id(block).getID() + ".json";
-		String prefix = "assets/";
-		if(!new File(path).exists()) {
-			if(Cubyz.world != null) {
-				// TODO: Seperate path for remote.
-				path = "saves/"+Cubyz.world.getName()+"/"+path;
-				prefix = "saves/"+Cubyz.world.getName()+"/"+prefix;
-			}
-		}
-		JsonObject json = JsonParser.parseObjectFromFile(path);
-		String[] sideNames = new String[6];
-		sideNames[Neighbors.DIR_DOWN] = "bottom";
-		sideNames[Neighbors.DIR_UP] = "top";
-		sideNames[Neighbors.DIR_POS_X] = "right";
-		sideNames[Neighbors.DIR_NEG_X] = "left";
-		sideNames[Neighbors.DIR_POS_Z] = "front";
-		sideNames[Neighbors.DIR_NEG_Z] = "back";
-		outer:
-		for(int i = 0; i < 6; i++) {
-			String resource = json.getString("texture_"+sideNames[i], null);
-			if(resource != null) {
-				Resource texture = new Resource(resource);
-				path = prefix + texture.getMod() + "/blocks/textures/" + texture.getID() + ".png";
-				// Test if it's already in the list:
-				for(int j = 0; j < ids.size(); j++) {
-					if(ids.get(j).equals(path)) {
-						Blocks.textureIndices(block)[i] = j;
-						continue outer;
-					}
-				}
-				// Otherwise read it into the list:
-				Blocks.textureIndices(block)[i] = textures.size();
-				try {
-					textures.add(ImageIO.read(new File(path)));
-				} catch(Exception e) {
-					Blocks.textureIndices(block)[i] = -1;
-					Logger.warning("Could not read " + sideNames[i] + " image from Block "+Blocks.id(block));
-					Logger.warning(e);
-				}
-			} else {
-				Blocks.textureIndices(block)[i] = -1;
-			}
-		}
-		Resource resource = new Resource(json.getString("texture", "cubyz:undefined")); // Use this resource on every remaining side.
-		path = prefix + resource.getMod() + "/blocks/textures/" + resource.getID() + ".png";
-
-		// Test if it's already in the list:
-		for(int j = 0; j < ids.size(); j++) {
-			if(ids.get(j).equals(path)) {
-				for(int i = 0; i < 6; i++) {
-					if(Blocks.textureIndices(block)[i] == -1)
-					Blocks.textureIndices(block)[i] = j;
-				}
-				break;
-			}
-		}
-		// Otherwise read it into the list:
-		for(int i = 0; i < 6; i++) {
-			if(Blocks.textureIndices(block)[i] == -1)
-				Blocks.textureIndices(block)[i] = textures.size();
-		}
-		try {
-			textures.add(ImageIO.read(new File(path)));
-		} catch(Exception e) {
-			Logger.warning("Could not read main image from Block "+Blocks.id(block));
-			Logger.warning(e);
-		}
-	}
-	
+	}	
 }

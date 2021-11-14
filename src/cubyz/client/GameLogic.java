@@ -1,6 +1,5 @@
 package cubyz.client;
 
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
@@ -30,11 +29,9 @@ import cubyz.rendering.Material;
 import cubyz.rendering.Mesh;
 import cubyz.rendering.Spatial;
 import cubyz.rendering.Texture;
-import cubyz.rendering.TextureArray;
 import cubyz.rendering.Window;
 import cubyz.utils.*;
 import cubyz.world.*;
-import cubyz.world.blocks.Blocks;
 import cubyz.world.items.Inventory;
 import cubyz.world.terrain.noise.StaticBlueNoise;
 import cubyz.world.terrain.worldgenerators.LifelandGenerator;
@@ -121,19 +118,7 @@ public class GameLogic implements ClientConnection {
 		Cubyz.world = world;
 
 		// Generate the texture atlas for this world's blocks:
-		ArrayList<BufferedImage> blockTextures = new ArrayList<>();
-		ArrayList<String> blockIDs = new ArrayList<>();
-		for(int block = 1; block < Blocks.size(); block++) {
-			ResourceUtilities.loadBlockTexturesToBufferedImage(block, blockTextures, blockIDs);
-		}
-		// Put the textures into the atlas
-		TextureArray textures = Meshes.blockTextureArray;
-		textures.clear();
-		for(int i = 0; i < blockTextures.size(); i++) {
-			BufferedImage img = blockTextures.get(i);
-			textures.addTexture(img);
-		}
-		textures.generate();
+		BlockMeshes.generateTextureArray();
 		
 		MusicManager.init(sound);
 		MusicManager.start();

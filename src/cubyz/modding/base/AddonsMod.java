@@ -56,6 +56,8 @@ public class AddonsMod {
 	private static ArrayList<Ore> ores = new ArrayList<Ore>();
 	private static ArrayList<String[]> oreContainers = new ArrayList<String[]>();
 
+	private static String assetPath;
+
 	public AddonsMod() {
 		instance = this;
 	}
@@ -70,9 +72,11 @@ public class AddonsMod {
 		registerRecipes(recipeRegistry);
 	}
 
-	public void preInit(File assets) {
+	public void preInit(String assetPath) {
 		addons.clear();
 		items.clear();
+		File assets = new File(assetPath);
+		AddonsMod.assetPath = assetPath;
 		if (!assets.exists()) {
 			assets.mkdir();
 		}
@@ -85,7 +89,7 @@ public class AddonsMod {
 
 	@EventHandler(type = "preInit")
 	public void preInit() {
-		preInit(new File("assets"));
+		preInit("assets/");
 	}
 
 	/**
@@ -152,7 +156,7 @@ public class AddonsMod {
 		readAllJsonObjects("blocks", (json, id) -> {
 			int block = 0;
 			for(DataOrientedRegistry reg : registries.registered(new DataOrientedRegistry[0])) {
-				block = reg.register(id, json);
+				block = reg.register(assetPath, id, json);
 			}
 
 			// Ores:

@@ -50,7 +50,6 @@ public class Blocks implements DataOrientedRegistry {
 	private static boolean[] viewThrough = new boolean[MAX_BLOCK_COUNT];
 	private static BlockClass[] blockClass = new BlockClass[MAX_BLOCK_COUNT];
 	private static int[] light = new int[MAX_BLOCK_COUNT];
-	private static int[][] textureIndices = new int[MAX_BLOCK_COUNT][6];
 	/**How much light this block absorbs if it is transparent.*/
 	private static int[] absorption = new int[MAX_BLOCK_COUNT];
 	/**GUI that is opened on click.*/
@@ -121,9 +120,6 @@ public class Blocks implements DataOrientedRegistry {
 	}
 	public static int light(int block) {
 		return light[block & TYPE_MASK];
-	}
-	public static int[] textureIndices(int block) {
-		return textureIndices[block & TYPE_MASK];
 	}
 	/**How much light this block absorbs if it is transparent.*/
 	public static int absorption(int block) {
@@ -206,7 +202,7 @@ public class Blocks implements DataOrientedRegistry {
 	}
 
 	@Override
-	public int register(Resource id, JsonObject json) {
+	public int register(String assetPath, Resource id, JsonObject json) {
 		if(reverseIndices.containsKey(id.toString())) {
 			Logger.error("Attempted to register block with id "+id+" twice!");
 			return reverseIndices.get(id.toString());

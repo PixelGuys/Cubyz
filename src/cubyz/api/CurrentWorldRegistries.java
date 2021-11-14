@@ -33,20 +33,21 @@ public class CurrentWorldRegistries {
 	 * Loads the world specific assets, such as procedural ores.
 	 */
 	public CurrentWorldRegistries(ServerWorld world) {
-		File assets = new File("saves/" + world.getName() + "/assets");
+		String assetPath = "saves/" + world.getName() + "/assets/";
+		File assets = new File(assetPath);
 		if(!assets.exists()) {
 			generateAssets(assets, world);
 		}
 		for(DataOrientedRegistry reg : blockRegistries.registered(new DataOrientedRegistry[0])) {
 			reg.reset(CubyzRegistries.blocksBeforeWorld);
 		}
-		loadWorldAssets(assets);
+		loadWorldAssets(assetPath);
 	}
 
-	public void loadWorldAssets(File assets) {
-		AddonsMod.instance.preInit(assets);
+	public void loadWorldAssets(String assetPath) {
+		AddonsMod.instance.preInit(assetPath);
 		AddonsMod.instance.registerBlocks(blockRegistries, oreRegistry);
-		AddonsMod.instance.registerItems(itemRegistry, assets.getAbsolutePath()+"/");
+		AddonsMod.instance.registerItems(itemRegistry, assetPath);
 		AddonsMod.instance.registerBiomes(biomeRegistry);
 		AddonsMod.instance.init(itemRegistry, blockRegistries, recipeRegistry);
 	}

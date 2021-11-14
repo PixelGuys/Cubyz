@@ -81,12 +81,12 @@ public class BlockDropRenderer {
 					mesh = BlockMeshes.mesh(block & Blocks.TYPE_MASK);
 					mesh.getMaterial().setTexture(null);
 				}
-				shader.setUniform(loc_texNegX, Blocks.textureIndices(block)[Neighbors.DIR_NEG_X]);
-				shader.setUniform(loc_texPosX, Blocks.textureIndices(block)[Neighbors.DIR_POS_X]);
-				shader.setUniform(loc_texNegY, Blocks.textureIndices(block)[Neighbors.DIR_DOWN]);
-				shader.setUniform(loc_texPosY, Blocks.textureIndices(block)[Neighbors.DIR_UP]);
-				shader.setUniform(loc_texNegZ, Blocks.textureIndices(block)[Neighbors.DIR_NEG_Z]);
-				shader.setUniform(loc_texPosZ, Blocks.textureIndices(block)[Neighbors.DIR_POS_Z]);
+				shader.setUniform(loc_texNegX, BlockMeshes.textureIndices(block)[Neighbors.DIR_NEG_X]);
+				shader.setUniform(loc_texPosX, BlockMeshes.textureIndices(block)[Neighbors.DIR_POS_X]);
+				shader.setUniform(loc_texNegY, BlockMeshes.textureIndices(block)[Neighbors.DIR_DOWN]);
+				shader.setUniform(loc_texPosY, BlockMeshes.textureIndices(block)[Neighbors.DIR_UP]);
+				shader.setUniform(loc_texNegZ, BlockMeshes.textureIndices(block)[Neighbors.DIR_NEG_Z]);
+				shader.setUniform(loc_texPosZ, BlockMeshes.textureIndices(block)[Neighbors.DIR_POS_Z]);
 				if(mesh != null) {
 					shader.setUniform(loc_light, Cubyz.world.getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
 					

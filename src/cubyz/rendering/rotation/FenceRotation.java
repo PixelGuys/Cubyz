@@ -173,7 +173,7 @@ public class FenceRotation implements RotationMode {
 		int x = bi.getX() & NormalChunk.chunkMask;
 		int y = bi.getY() & NormalChunk.chunkMask;
 		int z = bi.getZ() & NormalChunk.chunkMask;
-		int[] textureIndices = Blocks.textureIndices(bi.getBlock());
+		int[] textureIndices = BlockMeshes.textureIndices(bi.getBlock());
 		int blockData = bi.getBlock() >>> 16;
 		boolean negX = (blockData & (1 << Neighbors.DIR_NEG_X)) == 0;
 		boolean posX = (blockData & (1 << Neighbors.DIR_POS_X)) == 0;

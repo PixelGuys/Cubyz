@@ -146,7 +146,7 @@ public class StackableRotation implements RotationMode {
 		int z = bi.getZ() & NormalChunk.chunkMask;
 		boolean[] neighbors = bi.getNeighbors();
 		int[] light = bi.light;
-		int[] textureIndices = Blocks.textureIndices(bi.getBlock());
+		int[] textureIndices = BlockMeshes.textureIndices(bi.getBlock());
 		
 		// Copies code from CubeModel and applies height transformation to it:
 		int indexOffset = vertices.size/3;

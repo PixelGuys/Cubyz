@@ -101,12 +101,12 @@ public abstract class BlockPreview {
 		shader.setUniform(loc_light, new Vector3f(1, 1, 1));
 		Meshes.blockTextureArray.bind();
 		mesh.getMaterial().setTexture(null);
-		shader.setUniform(loc_texNegX, Blocks.textureIndices(block)[Neighbors.DIR_NEG_X]);
-		shader.setUniform(loc_texPosX, Blocks.textureIndices(block)[Neighbors.DIR_POS_X]);
-		shader.setUniform(loc_texNegY, Blocks.textureIndices(block)[Neighbors.DIR_DOWN]);
-		shader.setUniform(loc_texPosY, Blocks.textureIndices(block)[Neighbors.DIR_UP]);
-		shader.setUniform(loc_texNegZ, Blocks.textureIndices(block)[Neighbors.DIR_NEG_Z]);
-		shader.setUniform(loc_texPosZ, Blocks.textureIndices(block)[Neighbors.DIR_POS_Z]);
+		shader.setUniform(loc_texNegX, BlockMeshes.textureIndices(block)[Neighbors.DIR_NEG_X]);
+		shader.setUniform(loc_texPosX, BlockMeshes.textureIndices(block)[Neighbors.DIR_POS_X]);
+		shader.setUniform(loc_texNegY, BlockMeshes.textureIndices(block)[Neighbors.DIR_DOWN]);
+		shader.setUniform(loc_texPosY, BlockMeshes.textureIndices(block)[Neighbors.DIR_UP]);
+		shader.setUniform(loc_texNegZ, BlockMeshes.textureIndices(block)[Neighbors.DIR_NEG_Z]);
+		shader.setUniform(loc_texPosZ, BlockMeshes.textureIndices(block)[Neighbors.DIR_POS_Z]);
 		mesh.renderOne(() -> {
 			Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(
 					Transformation.getModelMatrix(spatial.getPosition(), spatial.getRotation(), spatial.getScale()),

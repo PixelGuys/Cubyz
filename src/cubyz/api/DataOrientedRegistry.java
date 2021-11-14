@@ -9,7 +9,7 @@ public interface DataOrientedRegistry extends RegistryElement {
 	 * @param json
 	 * @return index
 	 */
-	int register(Resource id, JsonObject json);
+	int register(String assetFolder, Resource id, JsonObject json);
 
 	/**
 	 * Resets all worls specific objects.

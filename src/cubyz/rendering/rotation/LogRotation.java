@@ -123,7 +123,7 @@ public class LogRotation implements RotationMode {
 			}
 		}
 		
-		BlockMeshes.mesh(bi.getBlock() & Blocks.TYPE_MASK).model.addToChunkMeshSimpleRotation(bi.x & NormalChunk.chunkMask, bi.y & NormalChunk.chunkMask, bi.z & NormalChunk.chunkMask, directionMap, directionInversion, Blocks.textureIndices(bi.getBlock()), bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
+		BlockMeshes.mesh(bi.getBlock() & Blocks.TYPE_MASK).model.addToChunkMeshSimpleRotation(bi.x & NormalChunk.chunkMask, bi.y & NormalChunk.chunkMask, bi.z & NormalChunk.chunkMask, directionMap, directionInversion, BlockMeshes.textureIndices(bi.getBlock()), bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
 		return renderIndex + 1;
 	}
 }
