@@ -13,6 +13,7 @@ import org.joml.Vector3f;
 import org.joml.Vector4f;
 
 import cubyz.Logger;
+import cubyz.client.BlockMeshes;
 import cubyz.client.ChunkMesh;
 import cubyz.client.ClientSettings;
 import cubyz.client.Cubyz;
@@ -180,6 +181,8 @@ public class MainRenderer {
 			
 			buffers.updateBufferSize();
 		}
+
+		BlockMeshes.loadMeshes(); // Loads all meshes that weren't loaded yet.
 		
 		if(Cubyz.world != null) {
 			if(Cubyz.playerInc.x != 0 || Cubyz.playerInc.z != 0) { // while walking

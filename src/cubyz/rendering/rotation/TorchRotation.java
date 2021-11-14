@@ -8,7 +8,7 @@ import org.joml.Vector3i;
 import org.joml.Vector4d;
 
 import cubyz.api.Resource;
-import cubyz.client.Meshes;
+import cubyz.client.BlockMeshes;
 import cubyz.rendering.models.Model;
 import cubyz.utils.datastructures.IntWrapper;
 import cubyz.utils.datastructures.FloatFastList;
@@ -123,7 +123,7 @@ public class TorchRotation implements RotationMode {
 	@Override
 	public int generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
 		int data = bi.getBlock() >>> 16;
-		Model model = Meshes.blockMeshes.get(bi.getBlock() & Blocks.TYPE_MASK).model;
+		Model model = BlockMeshes.mesh(bi.getBlock() & Blocks.TYPE_MASK).model;
 		if((data & 0b1) != 0) {
 			model.addToChunkMeshRotation((bi.x & NormalChunk.chunkMask) + 0.9f, (bi.y & NormalChunk.chunkMask) + 0.7f, (bi.z & NormalChunk.chunkMask) + 0.5f, POS_X, Blocks.textureIndices(bi.getBlock()), bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
 			renderIndex++;

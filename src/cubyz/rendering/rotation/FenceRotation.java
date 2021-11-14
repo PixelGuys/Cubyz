@@ -7,7 +7,7 @@ import org.joml.Vector3i;
 import org.joml.Vector4d;
 
 import cubyz.api.Resource;
-import cubyz.client.Meshes;
+import cubyz.client.BlockMeshes;
 import cubyz.rendering.models.Model;
 import cubyz.utils.datastructures.IntWrapper;
 import cubyz.utils.datastructures.FloatFastList;
@@ -169,7 +169,7 @@ public class FenceRotation implements RotationMode {
 	
 	@Override
 	public int generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
-		Model model = Meshes.blockMeshes.get(bi.getBlock() & Blocks.TYPE_MASK).model;
+		Model model = BlockMeshes.mesh(bi.getBlock() & Blocks.TYPE_MASK).model;
 		int x = bi.getX() & NormalChunk.chunkMask;
 		int y = bi.getY() & NormalChunk.chunkMask;
 		int z = bi.getZ() & NormalChunk.chunkMask;

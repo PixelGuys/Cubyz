@@ -15,6 +15,7 @@ import org.joml.Vector3f;
 import org.joml.Vector4f;
 
 import cubyz.Logger;
+import cubyz.client.BlockMeshes;
 import cubyz.client.Meshes;
 import cubyz.utils.Utils;
 import cubyz.world.Neighbors;
@@ -83,7 +84,7 @@ public abstract class BlockPreview {
 		Window.setRenderTarget(buffer);
 		Window.setClearColor(new Vector4f(0f, 0f, 0f, 0f));
 		
-		Mesh mesh = Meshes.blockMeshes.get(block & Blocks.TYPE_MASK);
+		Mesh mesh = BlockMeshes.mesh(block & Blocks.TYPE_MASK);
 		Spatial spatial = new Spatial(mesh);
 		
 		glViewport(0, 0, 64, 64);

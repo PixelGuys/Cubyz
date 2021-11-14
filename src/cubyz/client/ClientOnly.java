@@ -11,16 +11,9 @@ import cubyz.world.entity.EntityType;
 
 public class ClientOnly {
 
-	public static Consumer<Integer> createBlockMesh;
 	public static Consumer<EntityType> createEntityMesh;
 	
 	// I didn't know where else to put it.
 	public static ClientConnection client;
-	
-	static {
-		createBlockMesh = (b) -> {
-			throw new UnsupportedOperationException("createBlockMesh");
-		};
-	}
 	
 }

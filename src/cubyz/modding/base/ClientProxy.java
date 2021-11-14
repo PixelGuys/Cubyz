@@ -3,6 +3,7 @@ package cubyz.modding.base;
 import cubyz.api.ClientRegistries;
 import cubyz.api.CubyzRegistries;
 import cubyz.api.Registry;
+import cubyz.client.BlockMeshes;
 import cubyz.gui.game.inventory.CreativeGUI;
 import cubyz.gui.game.inventory.WorkbenchGUI;
 import cubyz.rendering.entity_models.*;
@@ -27,6 +28,8 @@ public class ClientProxy extends CommonProxy {
 		registerRotationModes(CubyzRegistries.ROTATION_MODE_REGISTRY);
 		registerEntityModels(CubyzRegistries.ENTITY_MODEL_REGISTRY);
 		CubeModel.registerCubeModels();
+
+		CubyzRegistries.BLOCK_REGISTRIES.register(new BlockMeshes());
 	}
 
 	private void registerRotationModes(Registry<RotationMode> reg) {

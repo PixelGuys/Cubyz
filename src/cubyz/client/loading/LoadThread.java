@@ -137,10 +137,7 @@ public class LoadThread extends Thread {
 			public void run() {
 				i++;
 				boolean finishedMeshes = false;
-				if(i < Blocks.size() || i < CubyzRegistries.ENTITY_REGISTRY.size()) {
-					if(i < Blocks.size()) {
-						ClientOnly.createBlockMesh.accept(i);
-					}
+				if(i < CubyzRegistries.ENTITY_REGISTRY.size()) {
 					if(i < CubyzRegistries.ENTITY_REGISTRY.size()) {
 						EntityType e = CubyzRegistries.ENTITY_REGISTRY.registered(new EntityType[0])[i];
 						if (!e.useDynamicEntityModel()) {

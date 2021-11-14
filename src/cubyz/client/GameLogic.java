@@ -125,8 +125,6 @@ public class GameLogic implements ClientConnection {
 		ArrayList<String> blockIDs = new ArrayList<>();
 		for(int block = 1; block < Blocks.size(); block++) {
 			ResourceUtilities.loadBlockTexturesToBufferedImage(block, blockTextures, blockIDs);
-			// Also generate the mesh if that didn't happen yet:
-			ClientOnly.createBlockMesh.accept(block);
 		}
 		// Put the textures into the atlas
 		TextureArray textures = Meshes.blockTextureArray;

@@ -7,6 +7,7 @@ import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
+import cubyz.client.BlockMeshes;
 import cubyz.client.ClientSettings;
 import cubyz.client.Cubyz;
 import cubyz.client.Meshes;
@@ -73,11 +74,11 @@ public class BlockDropRenderer {
 				int block;
 				if(manager.itemStacks[i].getItem() instanceof ItemBlock) {
 					block = ((ItemBlock)manager.itemStacks[i].getItem()).getBlock();
-					mesh = Meshes.blockMeshes.get(block & Blocks.TYPE_MASK);
+					mesh = BlockMeshes.mesh(block & Blocks.TYPE_MASK);
 					mesh.getMaterial().setTexture(null);
 				} else {
 					block = Blocks.getByID("cubyz:diamond_ore");
-					mesh = Meshes.blockMeshes.get(block & Blocks.TYPE_MASK);
+					mesh = BlockMeshes.mesh(block & Blocks.TYPE_MASK);
 					mesh.getMaterial().setTexture(null);
 				}
 				shader.setUniform(loc_texNegX, Blocks.textureIndices(block)[Neighbors.DIR_NEG_X]);

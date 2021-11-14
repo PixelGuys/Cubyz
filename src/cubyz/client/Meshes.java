@@ -17,10 +17,7 @@ import cubyz.rendering.models.Model;
 import cubyz.utils.ResourceUtilities;
 import cubyz.utils.ResourceUtilities.EntityModel;
 import cubyz.utils.datastructures.BinaryMaxHeap;
-import cubyz.utils.json.JsonObject;
-import cubyz.utils.json.JsonParser;
 import cubyz.world.ChunkData;
-import cubyz.world.blocks.Blocks;
 import cubyz.world.entity.EntityType;
 
 /**
@@ -28,8 +25,6 @@ import cubyz.world.entity.EntityType;
  */
 
 public class Meshes {
-
-	public static final HashMap<Integer, Mesh> blockMeshes = new HashMap<>();
 	public static final HashMap<EntityType, Mesh> entityMeshes = new HashMap<>();
 	
 	public static final TextureArray blockTextureArray = new TextureArray();
@@ -40,7 +35,7 @@ public class Meshes {
 	public static final Registry<Model> models = new Registry<>();
 	
 	/** List of meshes that need to be cleaned. */
-	public static final ArrayList<ChunkMesh> removableMeshes = new ArrayList<>();
+	public static final ArrayList<Object> removableMeshes = new ArrayList<>();
 
 	/** List of meshes that need to be (re-)generated. */
 	private static final BinaryMaxHeap<ChunkData> updateQueue = new BinaryMaxHeap<ChunkData>(new ChunkMesh[16]);
@@ -51,8 +46,14 @@ public class Meshes {
 	 */
 	public static void cleanUp() {
 		synchronized(removableMeshes) {
-			for(ChunkMesh mesh : removableMeshes) {
-				mesh.cleanUp();
+			for(Object mesh : removableMeshes) {
+				if(mesh instanceof ChunkMesh) {
+					((ChunkMesh)mesh).cleanUp();
+				} else if(mesh instanceof Mesh) {
+					((Mesh)mesh).cleanUp();
+				} else {
+					Logger.warning("Someone put weird stuff into Meshes.deleteMesh(): "+mesh.getClass()+": "+mesh.toString());
+				}
 			}
 			removableMeshes.clear();
 		}
@@ -62,7 +63,7 @@ public class Meshes {
 	 * Schedules a mesh to be cleaned in the near future.
 	 * @param mesh
 	 */
-	public static void deleteMesh(ChunkMesh mesh) {
+	public static void deleteMesh(Object mesh) {
 		if(mesh == null) return;
 		synchronized(removableMeshes) {
 			removableMeshes.add(mesh);
@@ -88,33 +89,7 @@ public class Meshes {
 		return (ChunkMesh) updateQueue.extractMax();
 	}
 	
-	public static void initMeshCreators() {
-		ClientOnly.createBlockMesh = (block) -> {
-			Resource rsc = Blocks.id(block);
-			Texture tex = null;
-			// Try loading it from the assets:
-			String path = "assets/"+rsc.getMod()+"/blocks/" + rsc.getID()+".json";
-			JsonObject json = JsonParser.parseObjectFromFile(path);
-			String model = json.getString("model", "cubyz:block.obj");
-			
-			// Cached meshes
-			Mesh mesh = null;
-			for (String key : cachedDefaultModels.keySet()) {
-				if (key.equals(model)) {
-					mesh = cachedDefaultModels.get(key);
-				}
-			}
-			if (mesh == null) {
-				Resource rs = new Resource(model);
-				mesh = new Mesh(ModelLoader.loadModel(rs, "assets/" + rs.getMod() + "/models/3d/" + rs.getID()));
-				//defaultMesh = StaticMeshesLoader.loadInstanced("assets/" + rs.getMod() + "/models/3d/" + rs.getID(), "assets/" + rs.getMod() + "/models/3d/")[0];
-				Material material = new Material(tex, 0.6F);
-				mesh.setMaterial(material);
-				cachedDefaultModels.put(model, mesh);
-			}
-			Meshes.blockMeshes.put(block, mesh);
-		};
-		
+	public static void initMeshCreators() {		
 		ClientOnly.createEntityMesh = (type) -> {
 			Resource rsc = type.getRegistryID();
 
