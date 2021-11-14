@@ -24,7 +24,7 @@ import static cubyz.client.ClientSettings.GUI_SCALE;
 
 public class InventorySlot extends Component {
 	public static final int SLOT_SIZE = 20;
-	public static Texture SLOT_IMAGE = Texture.loadFromFile("assets/cubyz/guis/inventory/inventory_slot.png");
+	public static final Texture SLOT_IMAGE = Texture.loadFromFile("assets/cubyz/guis/inventory/inventory_slot.png");
 	static float FONT_SIZE = 8;
 
 	/**State of mouse buttons if the mouse is in the area.*/

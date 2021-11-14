@@ -164,11 +164,11 @@ public class NormalChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 		transparentShader.setUniform(TransparentUniforms.loc_positionBuffer, 4);
 	}
 	
-	protected int vaoId;
+	protected int vaoId = -1;
 
 	protected ArrayList<Integer> vboIdList = new ArrayList<>();
 	
-	protected int transparentVaoId;
+	protected int transparentVaoId = -1;
 
 	protected ArrayList<Integer> transparentVboIdList = new ArrayList<>();
 
@@ -374,6 +374,7 @@ public class NormalChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 		glUniform3f(loc_modelPosition, (float)(wx - playerPosition.x), (float)(wy - playerPosition.y), (float)(wz - playerPosition.z));
 
 		glBindVertexArray(vaoId);
+
 		glDrawElements(GL_TRIANGLES, vertexCount, GL_UNSIGNED_INT, 0);
 	}
 

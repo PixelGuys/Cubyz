@@ -22,7 +22,6 @@ public class Texture {
 	protected int width, height;
 	protected int pixelFormat;
 	protected int internalFormat;
-	protected InputStream is;
 	
 	public static Texture loadFromFile(String path) {
 		try {
@@ -55,8 +54,7 @@ public class Texture {
 	}
 
 	public Texture(InputStream is) {
-		this.is = is;
-		create();
+		create(is);
 	}
 
 	public Texture(int id) {
@@ -79,8 +77,8 @@ public class Texture {
 	
 	public void updateTexture(BufferedImage img) {
 		cleanup();
-		is = TextureConverter.fromBufferedImage(img);
-		create();
+		InputStream is = TextureConverter.fromBufferedImage(img);
+		create(is);
 	}
 	
 	public void setWrapMode(int wrap) {
@@ -89,9 +87,10 @@ public class Texture {
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap);
 	}
 	
-	public void create() {
+	public void create(InputStream is) {
 		try {
 			id = loadTexture(is);
+			is.close();
 		} catch (Exception e) {
 			Logger.error(e);
 		}
@@ -146,6 +145,7 @@ public class Texture {
 		if (ClientSettings.MIPMAPPING) {
 			glGenerateMipmap(GL_TEXTURE_2D);
 		}
+		glBindTexture(GL_TEXTURE_2D, 0);
 		return textureId;
 	}
 
