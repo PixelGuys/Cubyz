@@ -151,8 +151,9 @@ public class ServerWorld {
 
 	// Returns the blocks, so their meshes can be created and stored.
 	public void generate() {
-		// Init crystal caverns:
+		// Init generators:
 		CrystalCavernGenerator.init();
+		LifelandGenerator.initOres(registries.oreRegistry.registered(new Ore[0]));
 
 		wio.loadWorldData(); // load data here in order for entities to also be loaded.
 		
@@ -166,7 +167,7 @@ public class ServerWorld {
 				player = (Player) ent;
 			}
 		}
-		
+
 		if (player == null) {
 			player = (Player) CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player").newEntity(this);
 			addEntity(player);
@@ -187,7 +188,6 @@ public class ServerWorld {
 			Logger.info("OK!");
 		}
 		wio.saveWorldData();
-		LifelandGenerator.initOres(registries.oreRegistry.registered(new Ore[0]));
 	}
 
 	public Player getLocalPlayer() {
