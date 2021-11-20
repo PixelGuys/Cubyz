@@ -39,22 +39,23 @@ public class RenderOctTree {
 		}
 		public void update(int px, int py, int pz, int renderDistance, int maxRD, int minHeight, int maxHeight, int nearRenderDistance) {
 			synchronized(this) {
+				// Calculate the minimum distance between this chunk and the player:
 				double dx = Math.abs(x + size/2 - px);
 				double dy = Math.abs(y + size/2 - py);
 				double dz = Math.abs(z + size/2 - pz);
+				dx = Math.max(0, dx - size/2);
+				dy = Math.max(0, dy - size/2);
+				dz = Math.max(0, dz - size/2);
+				double minDist = dx*dx + dy*dy + dz*dz;
 				// Check if this chunk is outside the nearRenderDistance or outside the height limits:
 				if(y + size <= Cubyz.world.getOrGenerateMapFragment(x, z, 32).getMinHeight() || y > Cubyz.world.getOrGenerateMapFragment(x, z, 32).getMaxHeight()) {
-					int dx2 = (int)Math.max(0, dx - size/2);
-					int dy2 = (int)Math.max(0, dy - size/2);
-					int dz2 = (int)Math.max(0, dz - size/2);
-					if(dx2*dx2 + dy2*dy2 + dz2*dz2 > nearRenderDistance*nearRenderDistance) return;
+					if(minDist > nearRenderDistance*nearRenderDistance) return;
 				}
 				
-				double dist = dx*dx + dy*dy + dz*dz;
 				// Check if this chunk has reached the smallest possible size:
 				if(size == NormalChunk.chunkSize) {
 					// Check if this is a normal or a reduced chunk:
-					if(dist < renderDistance*renderDistance) {
+					if(minDist < renderDistance*renderDistance) {
 						if(mesh.getChunk() == null) {
 							((NormalChunkMesh)mesh).updateChunk(Cubyz.world.getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift));
 						}
@@ -65,11 +66,6 @@ public class RenderOctTree {
 					}
 					return;
 				}
-				// Calculate the minimum distance between the next nodes and the player:
-				dx = Math.max(0, dx - size/4);
-				dy = Math.max(0, dy - size/4);
-				dz = Math.max(0, dz - size/4);
-				double minDist = dx*dx + dy*dy + dz*dz;
 				// Check if parts of this OctTree require using normal chunks:
 				if(size == NormalChunk.chunkSize*2 && minDist < renderDistance*renderDistance) {
 					if(nextNodes == null) {
@@ -144,7 +140,7 @@ public class RenderOctTree {
 		int LODShift = highestLOD + NormalChunk.chunkShift;
 		int LODSize = NormalChunk.chunkSize << highestLOD;
 		int LODMask = LODSize - 1;
-		int minX = (px - maxRenderDistance) & ~LODMask;
+		int minX = (px - maxRenderDistance - LODMask) & ~LODMask;
 		int maxX = (px + maxRenderDistance + LODMask) & ~LODMask;
 		// The LOD chunks are offset from grid to make generation easier.
 		minX += LODSize/2 - NormalChunk.chunkSize;
@@ -152,7 +148,7 @@ public class RenderOctTree {
 		HashMap<HashMapKey3D, OctTreeNode> newMap = new HashMap<HashMapKey3D, OctTreeNode>();
 		for(int x = minX; x <= maxX; x += LODSize) {
 			int maxYRenderDistance = (int)Math.ceil(Math.sqrt(maxRenderDistance*maxRenderDistance - (x - px)*(x - px)));
-			int minY = (py - maxYRenderDistance) & ~LODMask;
+			int minY = (py - maxYRenderDistance - LODMask) & ~LODMask;
 			int maxY = (py + maxYRenderDistance + LODMask) & ~LODMask;
 			// The LOD chunks are offset from grid to make generation easier.
 			minY += LODSize/2 - NormalChunk.chunkSize;
@@ -160,7 +156,7 @@ public class RenderOctTree {
 			
 			for(int y = minY; y <= maxY; y += LODSize) {
 				int maxZRenderDistance = (int)Math.ceil(Math.sqrt(maxYRenderDistance*maxYRenderDistance - (y - py)*(y - py)));
-				int minZ = (pz - maxZRenderDistance) & ~LODMask;
+				int minZ = (pz - maxZRenderDistance - LODMask) & ~LODMask;
 				int maxZ = (pz + maxZRenderDistance + LODMask) & ~LODMask;
 				// The LOD chunks are offset from grid to make generation easier.
 				minZ += LODSize/2 - NormalChunk.chunkSize;
