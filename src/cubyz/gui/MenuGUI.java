@@ -25,7 +25,7 @@ public abstract class MenuGUI implements RegistryElement {
 	public abstract boolean doesPauseGame(); // TODO: Find a good way to use without bugs in singleplayer only.
 	
 	public boolean ungrabsMouse() {
-		return false;
+		return true;
 	}
 	
 	/**

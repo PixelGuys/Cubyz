@@ -10,6 +10,7 @@ import cubyz.client.Cubyz;
 import cubyz.gui.Transition;
 import cubyz.gui.game.ConsoleGUI;
 import cubyz.gui.game.PauseGUI;
+import cubyz.gui.game.inventory.GeneralInventory;
 import cubyz.gui.game.inventory.InventoryGUI;
 import cubyz.rendering.BackgroundScene;
 import cubyz.rendering.Camera;
@@ -40,104 +41,115 @@ public class Input {
 			});
 			Keyboard.setKeyPressed(GLFW.GLFW_KEY_F11, false);
 		}
-		if(!Cubyz.gameUI.doesGUIBlockInput() && Cubyz.world != null) {
-			if(Keybindings.isPressed("forward")) {
-				if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT_CONTROL)) {
-					if(Cubyz.player.isFlying()) {
-						Cubyz.playerInc.z = -32;
+		if(Cubyz.world != null) {
+			if(!Cubyz.gameUI.doesGUIBlockInput()) {
+				if(Keybindings.isPressed("forward")) {
+					if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT_CONTROL)) {
+						if(Cubyz.player.isFlying()) {
+							Cubyz.playerInc.z = -32;
+						} else {
+							Cubyz.playerInc.z = -8;
+						}
 					} else {
-						Cubyz.playerInc.z = -8;
+						Cubyz.playerInc.z = -4;
 					}
-				} else {
-					Cubyz.playerInc.z = -4;
 				}
-			}
-			if(Keybindings.isPressed("backward")) {
-				Cubyz.playerInc.z = 4;
-			}
-			if(Keybindings.isPressed("left")) {
-				Cubyz.playerInc.x = -4;
-			}
-			if(Keybindings.isPressed("right")) {
-				Cubyz.playerInc.x = 4;
-			}
-			if(Keybindings.isPressed("jump")) {
-				if(Cubyz.player.isFlying()) {
-					Cubyz.player.vy = 5.45F;
-				} else if(Cubyz.player.isOnGround()) {
-					Cubyz.player.vy = 5.45F;
+				if(Keybindings.isPressed("backward")) {
+					Cubyz.playerInc.z = 4;
 				}
-			}
-			if(Keybindings.isPressed("fall")) {
-				if(Cubyz.player.isFlying()) {
-					Cubyz.player.vy = -5;
+				if(Keybindings.isPressed("left")) {
+					Cubyz.playerInc.x = -4;
 				}
-			}
-			if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_F)) {
-				Cubyz.player.setFlying(!Cubyz.player.isFlying());
-				Keyboard.setKeyPressed(GLFW.GLFW_KEY_F, false);
-			}
-			if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_P)) {
-				// debug: spawn a pig
-				Vector3d pos = new Vector3d(Cubyz.player.getPosition());
-				EntityType pigType = CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:pig");
-				if (pigType == null) return;
-				Entity pig = pigType.newEntity(Cubyz.world);
-				pig.setPosition(pos);
-				Cubyz.world.addEntity(pig);
-				Keyboard.setKeyPressed(GLFW.GLFW_KEY_P, false);
-			}
-			if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_T)) {
-				if(Cubyz.gameUI.getMenuGUI() == null) {
-					Keyboard.release();
-					Keyboard.release();
-					Cubyz.gameUI.setMenu(new ConsoleGUI());
+				if(Keybindings.isPressed("right")) {
+					Cubyz.playerInc.x = 4;
 				}
+				if(Keybindings.isPressed("jump")) {
+					if(Cubyz.player.isFlying()) {
+						Cubyz.player.vy = 5.45F;
+					} else if(Cubyz.player.isOnGround()) {
+						Cubyz.player.vy = 5.45F;
+					}
+				}
+				if(Keybindings.isPressed("fall")) {
+					if(Cubyz.player.isFlying()) {
+						Cubyz.player.vy = -5;
+					}
+				}
+				if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_F)) {
+					Cubyz.player.setFlying(!Cubyz.player.isFlying());
+					Keyboard.setKeyPressed(GLFW.GLFW_KEY_F, false);
+				}
+				if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_P)) {
+					// debug: spawn a pig
+					Vector3d pos = new Vector3d(Cubyz.player.getPosition());
+					EntityType pigType = CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:pig");
+					if (pigType == null) return;
+					Entity pig = pigType.newEntity(Cubyz.world);
+					pig.setPosition(pos);
+					Cubyz.world.addEntity(pig);
+					Keyboard.setKeyPressed(GLFW.GLFW_KEY_P, false);
+				}
+				if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_T)) {
+					if(Cubyz.gameUI.getMenuGUI() == null) {
+						Keyboard.release();
+						Keyboard.release();
+						Cubyz.gameUI.setMenu(new ConsoleGUI());
+					}
+				}
+				if((Mouse.isLeftButtonPressed() || Mouse.isRightButtonPressed()) && !Mouse.isGrabbed() && Cubyz.gameUI.getMenuGUI() == null) {
+					Mouse.setGrabbed(true);
+					Mouse.clearDelta();
+				}
+			
+				// inventory related
+				Cubyz.inventorySelection = (Cubyz.inventorySelection - (int) Mouse.getScrollOffset()) & 7;
+				if(Keybindings.isPressed("hotbar 1")) {
+					Cubyz.inventorySelection = 0;
+				}
+				if(Keybindings.isPressed("hotbar 2")) {
+					Cubyz.inventorySelection = 1;
+				}
+				if(Keybindings.isPressed("hotbar 3")) {
+					Cubyz.inventorySelection = 2;
+				}
+				if(Keybindings.isPressed("hotbar 4")) {
+					Cubyz.inventorySelection = 3;
+				}
+				if(Keybindings.isPressed("hotbar 5")) {
+					Cubyz.inventorySelection = 4;
+				}
+				if(Keybindings.isPressed("hotbar 6")) {
+					Cubyz.inventorySelection = 5;
+				}
+				if(Keybindings.isPressed("hotbar 7")) {
+					Cubyz.inventorySelection = 6;
+				}
+				if(Keybindings.isPressed("hotbar 8")) {
+					Cubyz.inventorySelection = 7;
+				}
+
+				Cubyz.msd.selectSpatial(Cubyz.world.getChunks(), Cubyz.player.getPosition(), Camera.getViewMatrix().positiveZ(Cubyz.dir).negate(), Cubyz.player, Cubyz.world);
 			}
 			if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_C)) {
 				if(Cubyz.gameUI.getMenuGUI() == null) {
 					ClientOnly.client.openGUI("cubyz:creative", new Inventory(0));
+				} else if(Cubyz.gameUI.getMenuGUI().getRegistryID().toString().equals("cubyz:creative")) {
+					Cubyz.gameUI.back();
 				}
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_C, false);
 			}
 			if(Keybindings.isPressed("inventory")) {
-				Cubyz.gameUI.setMenu(new InventoryGUI());
+				if(Cubyz.gameUI.getMenuGUI() == null) {
+					Cubyz.gameUI.setMenu(new InventoryGUI());
+				} else if(Cubyz.gameUI.getMenuGUI() instanceof GeneralInventory) {
+					Cubyz.gameUI.back();
+				}
 				Keyboard.setKeyPressed(Keybindings.getKeyCode("inventory"), false);
-			}
-			if((Mouse.isLeftButtonPressed() || Mouse.isRightButtonPressed()) && !Mouse.isGrabbed() && Cubyz.gameUI.getMenuGUI() == null) {
-				Mouse.setGrabbed(true);
-				Mouse.clearDelta();
 			}
 			
 			if(Mouse.isGrabbed()) {
 				Camera.moveRotation(Mouse.getDeltaX()*0.0089F, Mouse.getDeltaY()*0.0089F);
 				Mouse.clearDelta();
-			}
-			
-			// inventory related
-			Cubyz.inventorySelection = (Cubyz.inventorySelection - (int) Mouse.getScrollOffset()) & 7;
-			if(Keybindings.isPressed("hotbar 1")) {
-				Cubyz.inventorySelection = 0;
-			}
-			if(Keybindings.isPressed("hotbar 2")) {
-				Cubyz.inventorySelection = 1;
-			}
-			if(Keybindings.isPressed("hotbar 3")) {
-				Cubyz.inventorySelection = 2;
-			}
-			if(Keybindings.isPressed("hotbar 4")) {
-				Cubyz.inventorySelection = 3;
-			}
-			if(Keybindings.isPressed("hotbar 5")) {
-				Cubyz.inventorySelection = 4;
-			}
-			if(Keybindings.isPressed("hotbar 6")) {
-				Cubyz.inventorySelection = 5;
-			}
-			if(Keybindings.isPressed("hotbar 7")) {
-				Cubyz.inventorySelection = 6;
-			}
-			if(Keybindings.isPressed("hotbar 8")) {
-				Cubyz.inventorySelection = 7;
 			}
 			
 			// render distance
@@ -152,7 +164,13 @@ public class Input {
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_EQUAL, false);
 				System.gc();
 			}
-			Cubyz.msd.selectSpatial(Cubyz.world.getChunks(), Cubyz.player.getPosition(), Camera.getViewMatrix().positiveZ(Cubyz.dir).negate(), Cubyz.player, Cubyz.world);
+		}
+		if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_ESCAPE)) {
+			if(Cubyz.gameUI.getMenuGUI() != null) {
+				// Return to the previous screen if escape was pressed:
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_ESCAPE, false);
+				Cubyz.gameUI.back();
+			}
 		}
 		if(Cubyz.world != null) {
 			if(Keybindings.isPressed("menu")) {

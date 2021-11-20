@@ -88,7 +88,7 @@ public class UISystem {
 		if (this.gui != null && addQueue) {
 			menuQueue.add(this.gui);
 		}
-		if (this.gui != null && this.gui.ungrabsMouse() && (gui == null ? true : !gui.ungrabsMouse())) {
+		if (this.gui != null && this.gui.ungrabsMouse() && (gui == null || !gui.ungrabsMouse())) {
 			Mouse.setGrabbed(true);
 		}
 		if(this.gui != null) {
@@ -96,11 +96,15 @@ public class UISystem {
 		}
 		if (gui != null) {
 			gui.init();
+		} else {
+			// Delete the queue if null is set as menu.
+			// This prevents issues in game.
+			menuQueue.clear();
 		}
-		this.gui = gui;
-		if (gui != null && gui.ungrabsMouse() && (this.gui == null ? true : !this.gui.ungrabsMouse())) {
+		if (gui != null && gui.ungrabsMouse() && (this.gui == null || !this.gui.ungrabsMouse())) {
 			Mouse.setGrabbed(false);
 		}
+		this.gui = gui;
 	}
 	
 	public MenuGUI getMenuGUI() {
@@ -122,13 +126,6 @@ public class UISystem {
 		if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_F1)) {
 			Keyboard.setKeyPressed(GLFW.GLFW_KEY_F1, false);
 			showOverlay = !showOverlay;
-		}
-		if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_ESCAPE)) {
-			// Return to the previous screen if escape was pressed:
-			if(!menuQueue.isEmpty()) {
-				Keyboard.setKeyPressed(GLFW.GLFW_KEY_ESCAPE, false);
-				back();
-			}
 		}
 		if(showOverlay) {
 			glDisable(GL_DEPTH_TEST);
