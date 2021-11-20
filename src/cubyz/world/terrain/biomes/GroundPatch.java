@@ -27,7 +27,8 @@ public class GroundPatch extends StructureModel {
 	
 	public GroundPatch(JsonObject json) {
 		super(new Resource("cubyz", "ground_patch"), json.getFloat("chance", 0.5f));
-		this.newGround  = Blocks.getByID(json.getString("block", "cubyz:soil"));
+		int block = Blocks.getByID(json.getString("block", "cubyz:soil"));
+		this.newGround  = Blocks.mode(block).getNaturalStandard(block);
 		this.width      = json.getFloat("width", 5);
 		this.variation  = json.getFloat("variation", 1);
 		this.depth      = json.getFloat("depth", 2);
