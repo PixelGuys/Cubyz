@@ -387,7 +387,7 @@ public class MainRenderer {
 
 			buffers.bindTextures();
 
-			Fog waterFog = new Fog(true, new Vector3f(0.0f, 0.1f, 0.1f), 0.1f);
+			Fog waterFog = new Fog(true, new Vector3f(0.0f, 0.1f, 0.2f), 0.1f);
 			NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_waterFog_activ, waterFog.isActive());
 			NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_waterFog_color, waterFog.getColor());
 			NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_waterFog_density, waterFog.getDensity());

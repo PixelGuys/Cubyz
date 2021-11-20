@@ -17,7 +17,7 @@ struct Fog {
 uniform sampler2DArray texture_sampler;
 uniform sampler2D break_sampler;
 uniform Fog fog;
-uniform Fog blockFog;
+uniform Fog waterFog; // TODO: Select fog from texture
 uniform int selectedIndex;
 uniform vec2 windowSize;
 uniform vec3 ambientLight;
@@ -53,14 +53,10 @@ void main() {
 
 		// Underwater fog:
 		if(drawFrontFace) { // There is only fog betwen front and back face of the same volume.
-			Fog blockFog; // TODO: Select fog from texture or uniform.
-			blockFog.activ = true;
-			blockFog.color = vec3(0.1, 0.5, 0)*ambientLight;
-			blockFog.density = 0.1;
 			vec2 frameBufferPos = gl_FragCoord.xy/windowSize;
 			vec4 oldColor = texture(colorBuffer, frameBufferPos);
 			vec3 oldPosition = texture(positionBuffer, frameBufferPos).xyz;
-			oldColor = calcFog(oldPosition - mvVertexPos, oldColor, blockFog);
+			oldColor = calcFog(oldPosition - mvVertexPos, oldColor, waterFog);
 			fragColor = vec4((1 - fragColor.a) * oldColor.xyz + fragColor.a * fragColor.xyz, 1);
 		}
 	}
