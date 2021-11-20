@@ -20,6 +20,8 @@ public abstract class Mouse {
 	private static boolean rightButtonPressed = false;
 
 	private static boolean grabbed = false;
+
+	private static boolean ignoreDataAfterRecentGrab = false;
 	
 	private static int lastScroll = 0, curScroll = 0, scrollOffset = 0;
 
@@ -52,7 +54,7 @@ public abstract class Mouse {
 				glfwSetInputMode(Window.getWindowHandle(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 				if(glfwRawMouseMotionSupported())
 					glfwSetInputMode(Window.getWindowHandle(), GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
-
+				ignoreDataAfterRecentGrab = true;
 			}
 			grabbed = grab;
 		}
@@ -72,8 +74,11 @@ public abstract class Mouse {
 
 	public static void init() {
 		glfwSetCursorPosCallback(Window.getWindowHandle(), (windowHandle, x, y) -> {
-			deltaX[deltaBufferPosition] += x - currentPos.x;
-			deltaY[deltaBufferPosition] += y - currentPos.y;
+			if(grabbed && !ignoreDataAfterRecentGrab) {
+				deltaX[deltaBufferPosition] += x - currentPos.x;
+				deltaY[deltaBufferPosition] += y - currentPos.y;
+			}
+			ignoreDataAfterRecentGrab = false;
 			currentPos.x = x;
 			currentPos.y = y;
 		});
