@@ -49,7 +49,15 @@ public class RenderOctTree {
 				double minDist = dx*dx + dy*dy + dz*dz;
 				// Check if this chunk is outside the nearRenderDistance or outside the height limits:
 				if(y + size <= Cubyz.world.getOrGenerateMapFragment(x, z, 32).getMinHeight() || y > Cubyz.world.getOrGenerateMapFragment(x, z, 32).getMaxHeight()) {
-					if(minDist > nearRenderDistance*nearRenderDistance) return;
+					if(minDist > nearRenderDistance*nearRenderDistance) {
+						if(nextNodes != null) {
+							for(int i = 0; i < 8; i++) {
+								nextNodes[i].cleanup();
+							}
+							nextNodes = null;
+						}
+						return;
+					}
 				}
 				
 				// Check if this chunk has reached the smallest possible size:
