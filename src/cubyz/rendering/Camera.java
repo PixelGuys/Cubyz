@@ -24,6 +24,14 @@ public abstract class Camera {
 		return position;
 	}
 
+	/**
+	 * The direction the camera is facing in.
+	 * @return
+	 */
+	public static Vector3f getDirection() {
+		return new Vector3f(0, 0, -1).rotateX(rotation.x).rotateY(rotation.y);
+	}
+
 	public static void setPosition(float x, float y, float z) {
 		position.x = x;
 		position.y = y;

@@ -18,6 +18,8 @@ import cubyz.rendering.Window;
 import cubyz.world.entity.Entity;
 import cubyz.world.entity.EntityType;
 import cubyz.world.items.Inventory;
+import cubyz.world.items.ItemStack;
+import server.Server;
 
 /**
  * Handles all the inputs.
@@ -126,6 +128,15 @@ public class Input {
 				}
 				if(Keybindings.isPressed("hotbar 8")) {
 					Cubyz.inventorySelection = 7;
+				}
+
+				if(Keybindings.isPressed("drop")) {
+					ItemStack stack = Cubyz.player.getInventory().getStack(Cubyz.inventorySelection);
+					if(!stack.empty()) {
+						ItemStack droppedStack = new ItemStack(stack);
+						stack.clear();
+						Cubyz.world.drop(droppedStack, Cubyz.player.getPosition(), Camera.getDirection(), 1, Server.UPDATES_PER_SEC*5 /*5 seconds cooldown before being able to pick it up again.*/);
+					}
 				}
 
 				Cubyz.msd.selectSpatial(Cubyz.world.getChunks(), Cubyz.player.getPosition(), Camera.getViewMatrix().positiveZ(Cubyz.dir).negate(), Cubyz.player, Cubyz.world);

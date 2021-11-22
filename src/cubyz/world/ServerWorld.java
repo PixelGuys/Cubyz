@@ -38,6 +38,7 @@ import cubyz.world.terrain.biomes.Biome;
 import cubyz.world.terrain.generators.CrystalCavernGenerator;
 import cubyz.world.terrain.worldgenerators.LifelandGenerator;
 import cubyz.world.terrain.worldgenerators.SurfaceGenerator;
+import server.Server;
 
 public class ServerWorld {
 	public static final int DAY_CYCLE = 12000; // Length of one in-game day in 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
@@ -261,9 +262,13 @@ public class ServerWorld {
 		}
 	}
 	
-	public void drop(ItemStack stack, Vector3d pos, Vector3f dir, float velocity) {
+	public void drop(ItemStack stack, Vector3d pos, Vector3f dir, float velocity, int pickupCooldown) {
 		ItemEntityManager manager = this.getEntityManagerAt((int)pos.x & ~NormalChunk.chunkMask, (int)pos.y & ~NormalChunk.chunkMask, (int)pos.z & ~NormalChunk.chunkMask).itemEntityManager;
-		manager.add(pos.x, pos.y, pos.z, dir.x*velocity, dir.y*velocity, dir.z*velocity, stack, 30*300 /*5 minutes at normal update speed.*/);
+		manager.add(pos.x, pos.y, pos.z, dir.x*velocity, dir.y*velocity, dir.z*velocity, stack, Server.UPDATES_PER_SEC*300 /*5 minutes at normal update speed.*/, pickupCooldown);
+	}
+	
+	public void drop(ItemStack stack, Vector3d pos, Vector3f dir, float velocity) {
+		drop(stack, pos, dir, velocity, 0);
 	}
 	
 	public void updateBlock(int x, int y, int z, int block) {

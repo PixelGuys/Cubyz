@@ -174,14 +174,14 @@ public class CrystalCavernGenerator implements Generator {
 				for(int i = 0; i < amount; i++) {
 					// Choose a random point on the surface of the surrounding spheroid to generate a crystal there:
 					double theta = 2*Math.PI*rand.nextDouble();
-			        double phi = Math.acos(1 - 2*rand.nextDouble());
-			        double x = Math.sin(phi)*Math.cos(theta);
-			        double y = Math.sin(phi)*Math.sin(theta);
-			        double z = Math.cos(phi);
-			        // Check if the crystal touches the wall:
-			        if(Math.abs(delX*x+yUnit*y+delZ*z) < 0.05) {
-				        crystalSpawns[index[0]++] = new int[] {(int)(worldX + x*xzScale), (int)(worldY + y*yScale), (int)(worldZ + z*xzScale)};
-			        }
+					double phi = Math.acos(1 - 2*rand.nextDouble());
+					double x = Math.sin(phi)*Math.cos(theta);
+					double y = Math.sin(phi)*Math.sin(theta);
+					double z = Math.cos(phi);
+					// Check if the crystal touches the wall:
+					if(Math.abs(delX*x+yUnit*y+delZ*z) < 0.05) {
+						crystalSpawns[index[0]++] = new int[] {(int)(worldX + x*xzScale), (int)(worldY + y*yScale), (int)(worldZ + z*xzScale)};
+					}
 				}
 			}
 		}
@@ -206,45 +206,45 @@ public class CrystalCavernGenerator implements Generator {
 				int length = rand.nextInt(24)+8;
 				// Choose a random direction:
 				double theta = 2*Math.PI*rand.nextDouble();
-		        double phi = Math.acos(1 - 2*rand.nextDouble());
-		        double delX = Math.sin(phi)*Math.cos(theta);
-		        double delY = Math.sin(phi)*Math.sin(theta);
-		        double delZ = Math.cos(phi);
-		        for(double j = 0; j < length;) {
-		        	double x2 = x + delX*j;
-		        	double y2 = y + delY*j;
-		        	double z2 = z + delZ*j;
-		        	double size;
-		        	if(useNeedles)
-		        		size = 0.7;
-		        	else
-		        		size = 12*(length-j)/length/spikes;
-		        	int xMin = (int)(x2-size);
-		        	int xMax = (int)(x2+size);
-		        	int yMin = (int)(y2-size);
-		        	int yMax = (int)(y2+size);
-		        	int zMin = (int)(z2-size);
-		        	int zMax = (int)(z2+size);
-		        	for(int x3 = xMin; x3 <= xMax; x3++) {
-			        	for(int y3 = yMin; y3 <= yMax; y3++) {
-				        	for(int z3 = zMin; z3 <= zMax; z3++) {
-				        		double dist = distSqr(x3-x2, y3-y2, z3-z2);
-				        		if(dist <= size*size) {
-						        	if(x3 >= 0 && x3 < chunk.getWidth() && y3 >= 0 && y3 < chunk.getWidth() && z3 >= 0 && z3 < chunk.getWidth()) {
-						        		if(chunk.getBlock((int)x3, (int)y3, (int)z3) == 0 || Blocks.degradable(chunk.getBlock((int)x3, (int)y3, (int)z3)) || Blocks.blockClass(chunk.getBlock((int)x3, (int)y3, (int)z3)) == BlockClass.FLUID) {
-						        			chunk.updateBlockInGeneration((int)x3, (int)y3, (int)z3, glowCrystals[type]);
-						        		} else if(chunk.getBlock((int)x3, (int)y3, (int)z3) == stone) {
-						        			chunk.updateBlockInGeneration((int)x3, (int)y3, (int)z3, glowOres[type]); // When the crystal goes through stone, generate the corresponding ore at that position.
-						        		}
-						        	}
-				        		}
-				        	}
-			        	}
-		        	}
-		        	if(size > 2) size = 2;
-		        	j += size/2; // Make sure there are no crystal bits floating in the air.
-		        	if(size < 0.5) break; // Also preventing floating crystal bits.
-		        }
+				double phi = Math.acos(1 - 2*rand.nextDouble());
+				double delX = Math.sin(phi)*Math.cos(theta);
+				double delY = Math.sin(phi)*Math.sin(theta);
+				double delZ = Math.cos(phi);
+				for(double j = 0; j < length;) {
+					double x2 = x + delX*j;
+					double y2 = y + delY*j;
+					double z2 = z + delZ*j;
+					double size;
+					if(useNeedles)
+						size = 0.7;
+					else
+						size = 12*(length-j)/length/spikes;
+					int xMin = (int)(x2-size);
+					int xMax = (int)(x2+size);
+					int yMin = (int)(y2-size);
+					int yMax = (int)(y2+size);
+					int zMin = (int)(z2-size);
+					int zMax = (int)(z2+size);
+					for(int x3 = xMin; x3 <= xMax; x3++) {
+						for(int y3 = yMin; y3 <= yMax; y3++) {
+							for(int z3 = zMin; z3 <= zMax; z3++) {
+								double dist = distSqr(x3-x2, y3-y2, z3-z2);
+								if(dist <= size*size) {
+									if(x3 >= 0 && x3 < chunk.getWidth() && y3 >= 0 && y3 < chunk.getWidth() && z3 >= 0 && z3 < chunk.getWidth()) {
+										if(chunk.getBlock((int)x3, (int)y3, (int)z3) == 0 || Blocks.degradable(chunk.getBlock((int)x3, (int)y3, (int)z3)) || Blocks.blockClass(chunk.getBlock((int)x3, (int)y3, (int)z3)) == BlockClass.FLUID) {
+											chunk.updateBlockInGeneration((int)x3, (int)y3, (int)z3, glowCrystals[type]);
+										} else if(chunk.getBlock((int)x3, (int)y3, (int)z3) == stone) {
+											chunk.updateBlockInGeneration((int)x3, (int)y3, (int)z3, glowOres[type]); // When the crystal goes through stone, generate the corresponding ore at that position.
+										}
+									}
+								}
+							}
+						}
+					}
+					if(size > 2) size = 2;
+					j += size/2; // Make sure there are no crystal bits floating in the air.
+					if(size < 0.5) break; // Also preventing floating crystal bits.
+				}
 			}
 		}
 	}

@@ -7,7 +7,7 @@ import cubyz.client.entity.ClientEntityManager;
 import cubyz.world.NormalChunk;
 
 public class Server {
-	public static final int UPDATES_PER_SEC = 10;
+	public static final int UPDATES_PER_SEC = 20;
 	public static final int UPDATES_TIME_NS = 1_000_000_000 / UPDATES_PER_SEC;
 	public static final float UPDATES_TIME_S = UPDATES_TIME_NS / 10e9f;
 	public static boolean running;
