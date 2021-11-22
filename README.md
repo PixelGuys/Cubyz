@@ -50,3 +50,12 @@ Cubyz is tested to compile and run with maven and eclipse.
 ## Requirements
 Vary a lot depending on your render distance.
 All you need is a computer that runs java.
+
+# Contributing
+## Textures
+If you want to add new textures, make sure they fit the style of the game.
+If any of the following points are ignored, your texture will be rejected:
+1. The size of block and item textures must be 16×16 Pixels.
+2. There must be at most 16 different colors in the entire texture.
+3. Textures should be shaded with hue shifting instead of darkening only.\
+If you are not sure how to use hue shifting, [here](https://www.youtube.com/watch?v=PNtMAxYaGyg) is a good video explaining it.
