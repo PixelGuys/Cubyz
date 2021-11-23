@@ -48,6 +48,23 @@ block.cubyz.coal_ore.name=Coal Ore
 block.cubyz.iron_ore.name=Iron Ore
 block.cubyz.diamond_ore.name=Diamond Ore
 
+block.cubyz.glow_crystal/red.name=Red Glow Crystal
+block.cubyz.glow_crystal/dark_green.name=Dark Green Glow Crystal
+block.cubyz.glow_crystal/dark_gray.name=Dark Gray Glow Crystal
+block.cubyz.glow_crystal/blue.name=Blue Glow Crystal
+block.cubyz.glow_crystal/light_blue.name=Light Blue Glow Crystal
+block.cubyz.glow_crystal/gray.name=Gray Glow Crystal
+block.cubyz.glow_crystal/yellow.name=Yellow Glow Crystal
+block.cubyz.glow_crystal/cyan.name=Cyan Glow Crystal
+block.cubyz.glow_crystal/brown.name=Brown Glow Crystal
+block.cubyz.glow_crystal/dark_red.name=Dark Red Glow Crystal
+block.cubyz.glow_crystal/purple.name=Purple Glow Crystal
+block.cubyz.glow_crystal/black.name=Black Glow Crystal
+block.cubyz.glow_crystal/white.name=White Glow Crystal
+block.cubyz.glow_crystal/green.name=Green Glow Crystal
+block.cubyz.glow_crystal/violet.name=Violet Glow Crystal
+block.cubyz.glow_crystal/orange.name=Orange Glow Crystal
+
 # Items
 item.cubyz.stick.name=Stick
 item.cubyz.diamond.name=Diamond

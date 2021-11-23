@@ -48,6 +48,23 @@ block.cubyz.coal_ore.name=Kohleerz
 block.cubyz.iron_ore.name=Eisenerz
 block.cubyz.diamond_ore.name=Diamanterz
 
+block.cubyz.glow_crystal/red.name=Roter Leuchtkristall
+block.cubyz.glow_crystal/dark_green.name=Dunkelgrüner Leuchtkristall
+block.cubyz.glow_crystal/dark_gray.name=Funkelgrauer Leuchtkristall
+block.cubyz.glow_crystal/blue.name=Blauer Leuchtkristall
+block.cubyz.glow_crystal/light_blue.name=Hellblauer Leuchtkristall
+block.cubyz.glow_crystal/gray.name=Grauer Leuchtkristall
+block.cubyz.glow_crystal/yellow.name=Gelber Leuchtkristall
+block.cubyz.glow_crystal/cyan.name=Cyaner Leuchtkristall
+block.cubyz.glow_crystal/brown.name=Brauner Leuchtkristall
+block.cubyz.glow_crystal/dark_red.name=Dunkelroter Leuchtkristall
+block.cubyz.glow_crystal/purple.name=Purpurner Leuchtkristall
+block.cubyz.glow_crystal/black.name=Schwarzer Leuchtkristall
+block.cubyz.glow_crystal/white.name=Weißer Leuchtkristall
+block.cubyz.glow_crystal/green.name=Grüner Leuchtkristall
+block.cubyz.glow_crystal/violet.name=Violetter Leuchtkristall
+block.cubyz.glow_crystal/orange.name=Oranger Leuchtkristall
+
 # Items
 item.cubyz.stick.name=Stock
 item.cubyz.diamond.name=Diamant
