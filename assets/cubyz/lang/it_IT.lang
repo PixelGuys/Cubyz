@@ -1,0 +1,86 @@
+gui.cubyz.mainmenu.singleplayer=Giocatore singolo
+gui.cubyz.mainmenu.multiplayer=Multigiocatore
+gui.cubyz.mainmenu.exit=Esci dal gioco
+gui.cubyz.mainmenu.settings=Opzioni
+gui.cubyz.settings.done=Finito
+gui.cubyz.general.on=Attivato
+gui.cubyz.general.off=Disattivato
+gui.cubyz.general.back=Indietro
+gui.cubyz.general.cancel=Cancella
+gui.cubyz.settings.language=Lingua: {0}
+gui.cubyz.settings.discord=Integrazione con Discord: {0}
+gui.cubyz.settings.keybindings=Comandi
+gui.cubyz.settings.graphics=Grafica
+gui.cubyz.settings.fog.med=Nebbia: Media
+gui.cubyz.settings.fog.far=Nebbia: Lontana
+gui.cubyz.settings.fog.near=Nebbia: Vicina
+gui.cubyz.settings.fog.off=Nebbia: Disattivata
+gui.cubyz.settings.easylighting=Easy Lighting
+gui.cubyz.settings.vsync=Sincronizzazione Verticale
+gui.cubyz.pause.exit=Torna al menù principale
+gui.cubyz.pause.resume=Riprendi
+gui.cubyz.debug.reload=Ricarica
+gui.cubyz.saves.play=Gioca {0}
+gui.cubyz.saves.delete=Elimina
+gui.cubyz.saves.create=Crea un nuovo mondo!
+lang.name=Italiano
+
+# Blocks
+block.cubyz.cactus.name=Cactus
+block.cubyz.soil.name=Terra
+block.cubyz.grass.name=Erba
+block.cubyz.gravel.name=Ghiaia
+block.cubyz.ice.name=Ghiaccio
+block.cubyz.sand.name=Sabbia
+block.cubyz.snow.name=Neve
+block.cubyz.mossy_cobblestone.name=Pietrisco muschioso
+block.cubyz.cobblestone.name=Pietrisco
+block.cubyz.stone.name=Pietra
+block.cubyz.oak_log.name=Tronco di quercia
+block.cubyz.oak_top.name=Superficie di quercia
+block.cubyz.oak_planks.name=Assi di quercia
+block.cubyz.oak_fence.name=Cancello di quercia
+block.cubyz.oak_leaves.name=Foglie 
+block.cubyz.torch.name=Torcia
+block.cubyz.workbench.name=Banco da lavoro
+block.cubyz.water.name=Acqua
+block.cubyz.coal_ore.name=Carbone grezzo
+block.cubyz.iron_ore.name=Ferro grezzo
+block.cubyz.diamond_ore.name=Diamante grezzo
+
+block.cubyz.glow_crystal/red.name=Cristallo luminoso rosso
+block.cubyz.glow_crystal/dark_green.name=Cristallo luminoso verde scuro
+block.cubyz.glow_crystal/dark_gray.name=Cristallo luminoso grigio scuro
+block.cubyz.glow_crystal/blue.name=Cristallo luminoso blu
+block.cubyz.glow_crystal/light_blue.name=Cristallo luminoso azzurro
+block.cubyz.glow_crystal/gray.name=Cristallo luminoso grigio
+block.cubyz.glow_crystal/yellow.name=Cristallo luminoso giallo
+block.cubyz.glow_crystal/cyan.name=Cristallo luminoso ciano
+block.cubyz.glow_crystal/brown.name=Cristallo luminoso marrone
+block.cubyz.glow_crystal/dark_red.name=Cristallo luminoso rosso scuro
+block.cubyz.glow_crystal/purple.name=Cristallo luminoso porpora
+block.cubyz.glow_crystal/black.name=Cristallo luminoso nero
+block.cubyz.glow_crystal/white.name=Cristallo luminoso bianco
+block.cubyz.glow_crystal/green.name=Cristallo luminoso verde
+block.cubyz.glow_crystal/violet.name=Cristallo luminoso viola
+block.cubyz.glow_crystal/orange.name=Cristallo luminoso arancione
+
+# Items
+item.cubyz.stick.name=Bastone
+item.cubyz.diamond.name=Diamante
+item.cubyz.coal.name=Carbone
+item.cubyz.raw_meat.name=Carne cruda
+item.cubyz.apple.name=Mela
+
+# Tools
+cubyz.grammar.tool_material={1} {0}
+cubyz.tools.materials.wood=di legno
+cubyz.tools.materials.stone=di pietra
+cubyz.tools.names.axe=Ascia
+cubyz.tools.names.pickaxe=Piccone
+cubyz.tools.names.shovel=Pala
+cubyz.tools.names.sword=Spada
+
+# Misc
+generator.cubyz.lifeland.name=Terraferma
+generator.cubyz.flatland.name=Pianura
