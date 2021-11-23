@@ -133,7 +133,7 @@ public class MusicManager {
 		}
 		
 		Biome biome = Cubyz.biome;
-		String targetMusic = "GymnopedieNo1";
+		String targetMusic = "cubyz";
 		if (biome != null && biome.preferredMusic != null) {
 			targetMusic = biome.preferredMusic;
 		}

@@ -6,6 +6,8 @@
 	"roughness" : 2,
 	"hills" : 2,
 	
+	"music" : "leaves",
+	
 	"ground_structure" : [
 		"0 to 1 cubyz:grass",
 		"0 to 1 cubyz:water",

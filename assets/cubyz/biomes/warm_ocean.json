@@ -5,6 +5,8 @@
 	
 	"roughness" : 10,
 	"hills" : 20,
+
+	"music" : "GymnopedieNo1",
 	
 	"ground_structure" : [
 		"2 to 4 cubyz:sand"

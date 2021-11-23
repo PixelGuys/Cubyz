@@ -6,6 +6,8 @@
 	"roughness" : 10,
 	"hills" : 10,
 	
+	"music" : "leaves",
+	
 	"ground_structure" : [
 		"cubyz:grass",
 		"2 to 3 cubyz:soil"

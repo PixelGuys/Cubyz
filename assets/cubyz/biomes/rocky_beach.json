@@ -3,6 +3,8 @@
 	"type" : "ARCTIC_OCEAN",
 	"minHeight" : -4,
 	"maxHeight" : 6,
+
+	"music" : "GymnopedieNo1",
 	
 	"ground_structure" : [
 		"2 to 3 cubyz:cobblestone"
