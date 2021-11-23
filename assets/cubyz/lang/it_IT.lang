@@ -48,6 +48,23 @@ block.cubyz.coal_ore.name=Carbone grezzo
 block.cubyz.iron_ore.name=Ferro grezzo
 block.cubyz.diamond_ore.name=Diamante grezzo
 
+block.cubyz.glow_crystal/red.name=Cristallo luminoso rosso
+block.cubyz.glow_crystal/dark_green.name=Cristallo luminoso verde scuro
+block.cubyz.glow_crystal/dark_gray.name=Cristallo luminoso grigio scuro
+block.cubyz.glow_crystal/blue.name=Cristallo luminoso blu
+block.cubyz.glow_crystal/light_blue.name=Cristallo luminoso azzurro
+block.cubyz.glow_crystal/gray.name=Cristallo luminoso grigio
+block.cubyz.glow_crystal/yellow.name=Cristallo luminoso giallo
+block.cubyz.glow_crystal/cyan.name=Cristallo luminoso ciano
+block.cubyz.glow_crystal/brown.name=Cristallo luminoso marrone
+block.cubyz.glow_crystal/dark_red.name=Cristallo luminoso rosso scuro
+block.cubyz.glow_crystal/purple.name=Cristallo luminoso porpora
+block.cubyz.glow_crystal/black.name=Cristallo luminoso nero
+block.cubyz.glow_crystal/white.name=Cristallo luminoso bianco
+block.cubyz.glow_crystal/green.name=Cristallo luminoso verde
+block.cubyz.glow_crystal/violet.name=Cristallo luminoso viola
+block.cubyz.glow_crystal/orange.name=Cristallo luminoso arancione
+
 # Items
 item.cubyz.stick.name=Bastone
 item.cubyz.diamond.name=Diamante
