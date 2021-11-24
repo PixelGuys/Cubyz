@@ -120,9 +120,6 @@ public class GameLogic implements ClientConnection {
 		// Generate the texture atlas for this world's blocks:
 		BlockMeshes.generateTextureArray();
 		
-		MusicManager.init(sound);
-		MusicManager.start();
-		
 		// Call mods for this new world. Mods sometimes need to do extra stuff for the specific world.
 		ModLoader.postWorldGen(world.getCurrentRegistries());
 	}
@@ -175,6 +172,8 @@ public class GameLogic implements ClientConnection {
 			} catch (Exception e) {
 				Logger.error(e);
 			}
+			MusicManager.init(sound);
+			MusicManager.start();
 		});
 		Cubyz.renderDeque.add(() -> {
 			File[] list = new File("assets/cubyz/textures/breaking").listFiles();
@@ -217,8 +216,8 @@ public class GameLogic implements ClientConnection {
 	}	
 	
 	public void clientUpdate() {
+		MusicManager.update();
 		if(Cubyz.world != null) {
-			MusicManager.update();
 			Cubyz.chunkTree.update((int)Cubyz.player.getPosition().x, (int)Cubyz.player.getPosition().y, (int)Cubyz.player.getPosition().z, ClientSettings.RENDER_DISTANCE, ClientSettings.HIGHEST_LOD, ClientSettings.LOD_FACTOR);
 			// TODO: Get this in the server ping or something.
 			float lightAngle = (float)Math.PI/2 + (float)Math.PI*(((float)Cubyz.gameTime % ServerWorld.DAY_CYCLE)/(ServerWorld.DAY_CYCLE/2));

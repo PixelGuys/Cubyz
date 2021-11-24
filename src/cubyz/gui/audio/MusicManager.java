@@ -95,7 +95,7 @@ public class MusicManager {
 	}
 	
 	public static void update() {
-		if(!manager.wasInitedCorrectly())
+		if(manager == null || !manager.wasInitedCorrectly())
 			return;
 		
 		if (!source.isPlaying()) {
@@ -132,10 +132,15 @@ public class MusicManager {
 			source.setGain(gain * 0.3f);
 		}
 		
-		Biome biome = Cubyz.biome;
-		String targetMusic = "cubyz";
-		if (biome != null && biome.preferredMusic != null) {
-			targetMusic = biome.preferredMusic;
+		String targetMusic = "GymnopedieNo1";
+		
+		if (Cubyz.world != null) {
+			Biome biome = Cubyz.biome;
+			if (biome != null && biome.preferredMusic != null) {
+				targetMusic = biome.preferredMusic;
+			}
+		} else {
+			targetMusic = "cubyz"; // main menu music
 		}
 		
 		if (!currentMusic.equals(targetMusic)) {
