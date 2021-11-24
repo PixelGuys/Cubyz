@@ -121,12 +121,13 @@ public class MetaChunk {
 		int edSquare = entityDistance*entityDistance << NormalChunk.chunkShift2;
 		edSquare = Math.min(rdSquare, edSquare);
 		for(int px = 0; px < metaChunkSize; px++) {
-			long dx = px*NormalChunk.chunkSize + wx - x;
+			long dx = Math.max(0, Math.abs(px*NormalChunk.chunkSize + wx - x) - NormalChunk.chunkSize/2);
 			long distX = dx*dx;
 			for(int py = 0; py < metaChunkSize; py++) {
-				long distY = (long)(py*NormalChunk.chunkSize + wy - y)*(py*NormalChunk.chunkSize + wy - y);
+				long dy = Math.max(0, Math.abs(py*NormalChunk.chunkSize + wy - y) - NormalChunk.chunkSize/2);
+				long distY = dy*dy;
 				for(int pz = 0; pz < metaChunkSize; pz++) {
-					long dz = pz*NormalChunk.chunkSize + wz - z;
+					long dz = Math.max(0, Math.abs(pz*NormalChunk.chunkSize + wz - z) - NormalChunk.chunkSize/2);
 					long distZ = dz*dz;
 					long dist = distX + distY + distZ;
 					int index = (px << metaChunkShift) | (py <<  metaChunkShift2) | pz;
