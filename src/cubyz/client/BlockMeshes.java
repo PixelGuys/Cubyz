@@ -118,11 +118,11 @@ public class BlockMeshes implements DataOrientedRegistry {
 	@Override
 	public void reset(int len) {
 		for(int i = len; i < size; i++) {
-			Meshes.deleteMesh(meshes[i]);
 			meshes[i] = null;
 			models[i] = null;
 		}
 		size = len;
+		loadedMeshes = len;
 	}
 
 	public static void loadMeshes() {
