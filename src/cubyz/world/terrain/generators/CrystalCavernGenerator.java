@@ -250,7 +250,8 @@ public class CrystalCavernGenerator implements Generator {
 	}
 
 	private void considerCoordinates(int x, int y, int z, int wx, int wy, int wz, Chunk chunk, Random rand) {
-		if(rand.nextInt(3) != 0) return; // This should be pretty rare(mostly because it is so huge).
+		float chance = 0.33f + 0.33f*(-y*CRYSTAL_CHUNK_SIZE/1024.0f); // Higher chance at bigger depth, reaching maximum at 2048 blocks.
+		if(rand.nextFloat() > chance) return;
 		// Choose some in world coordinates to start generating:
 		double worldX = (x + rand.nextFloat())*CRYSTAL_CHUNK_SIZE;
 		double worldY = (y + rand.nextFloat())*CRYSTAL_CHUNK_SIZE;
@@ -269,9 +270,11 @@ public class CrystalCavernGenerator implements Generator {
 
 		// Determine crystal colors:
 		int differentColors = 1;
-		if(rand.nextInt(8) == 0) {
-			// Add a small chance for multi color crystal caverns:
-			differentColors = 1 + rand.nextInt(COLORS.length);
+		if(rand.nextBoolean()) {
+			// ¹⁄₄ Chance that a cave has multiple crystals.
+			while(rand.nextBoolean() && differentColors < 32) {
+				differentColors++; // Exponentially diminishing chance to have multiple crystals per cavern.
+			}
 		}
 		int[] colors = new int[differentColors];
 		for(int i = 0; i < differentColors; i++) {
