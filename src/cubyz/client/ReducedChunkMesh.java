@@ -61,6 +61,9 @@ public class ReducedChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 	public static int loc_upperBounds;
 	public static int loc_voxelSize;
 	public static int loc_texture_sampler;
+	public static int loc_waterFog_activ;
+	public static int loc_waterFog_color;
+	public static int loc_waterFog_density;
 
 	public static ShaderProgram shader;
 	

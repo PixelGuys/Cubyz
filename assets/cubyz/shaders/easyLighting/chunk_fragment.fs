@@ -17,6 +17,7 @@ struct Fog {
 };
 
 uniform Fog fog;
+uniform Fog waterFog; // TODO: Select fog from texture
 
 vec4 calcFog(vec3 pos, vec4 color, Fog fog) {
 	float distance = length(pos);
@@ -30,7 +31,11 @@ void main()
 {
     fragColor = texture(texture_sampler, outTexCoord)*vec4((1 - dot(directionalLight, outNormal))*ambientLight, 1);
 	if(fragColor.a <= 0.1f) discard;
-	else fragColor.a = 1;
+	if(fog.activ) {
+
+		// Underwater fog in lod(assumes that the fog is maximal):
+		fragColor = vec4((1 - fragColor.a) * waterFog.color.xyz + fragColor.a * fragColor.xyz, 1);
+	}
     
     if(fog.activ) {
         fragColor = calcFog(mvVertexPos, fragColor, fog);
