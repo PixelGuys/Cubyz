@@ -122,10 +122,12 @@ public class ServerWorld {
 		if (wio.hasWorldData()) {
 			seed = wio.loadWorldSeed();
 			generated = true;
+			registries = new CurrentWorldRegistries(this);
 		} else {
 			seed = new Random().nextInt();
+			registries = new CurrentWorldRegistries(this);
+			wio.saveWorldData();
 		}
-		registries = new CurrentWorldRegistries(this);
 		String generatorId = "cubyz:lifeland";
 		if (wio.hasWorldData()) {
 			generatorId = wio.loadWorldGenerator();
@@ -133,7 +135,6 @@ public class ServerWorld {
 		setGenerator(generatorId);
 
 		threadPool = new ChunkGenerationThreadPool(this, Runtime.getRuntime().availableProcessors() - 1);
-		wio.saveWorldData();
 	}
 	
 	public void setGenerator(String generatorId) {
