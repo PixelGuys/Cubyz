@@ -150,7 +150,7 @@ public class CustomOre {
 
 		String name = randomName(rand);
 		json.put("model", "cubyz:block.obj");
-		json.put("texture", "cubyz:"+name+"_ore");
+		json.put("texture", "cubyz:"+name.replace(' ', '_')+"_ore");
 		// Use a seed based on the name, so if the same ore gets generated twice in the giant world, it will have the same properties.
 		// This fact could also allow an interactive wiki which displays an ores property with knowledge of only the name(TODO).
 		rand = new Random(Utilities.hash(name));

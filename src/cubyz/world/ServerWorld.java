@@ -106,7 +106,6 @@ public class ServerWorld {
 	
 	public ServerWorld(String name, Class<?> chunkProvider) {
 		this.name = name;
-		registries = new CurrentWorldRegistries(this);
 		this.chunkProvider = chunkProvider;
 		// Check if the chunkProvider is valid:
 		if(!NormalChunk.class.isAssignableFrom(chunkProvider) ||
@@ -119,21 +118,22 @@ public class ServerWorld {
 			throw new IllegalArgumentException("Chunk provider "+chunkProvider+" is invalid! It needs to be a subclass of NormalChunk and MUST contain a single constructor with parameters (Integer, Integer, Integer, ServerWorld)");
 		
 		wio = new WorldIO(this, new File("saves/" + name));
-		String generatorId = "cubyz:lifeland";
-		if (wio.hasWorldData()) {
-			generatorId = wio.loadWorldGenerator();
-		}
-		setGenerator(generatorId);
 		milliTime = System.currentTimeMillis();
 		if (wio.hasWorldData()) {
 			seed = wio.loadWorldSeed();
 			generated = true;
 		} else {
 			seed = new Random().nextInt();
-			wio.saveWorldData();
 		}
+		registries = new CurrentWorldRegistries(this);
+		String generatorId = "cubyz:lifeland";
+		if (wio.hasWorldData()) {
+			generatorId = wio.loadWorldGenerator();
+		}
+		setGenerator(generatorId);
 
 		threadPool = new ChunkGenerationThreadPool(this, Runtime.getRuntime().availableProcessors() - 1);
+		wio.saveWorldData();
 	}
 	
 	public void setGenerator(String generatorId) {
