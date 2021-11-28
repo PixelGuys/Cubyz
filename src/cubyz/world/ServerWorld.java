@@ -17,6 +17,7 @@ import cubyz.api.CubyzRegistries;
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.client.ClientSettings;
 import cubyz.client.GameLauncher;
+import cubyz.modding.ModLoader;
 import cubyz.utils.datastructures.Cache;
 import cubyz.utils.datastructures.HashMapKey3D;
 import cubyz.utils.math.CubyzMath;
@@ -126,6 +127,7 @@ public class ServerWorld {
 		} else {
 			seed = new Random().nextInt();
 			registries = new CurrentWorldRegistries(this);
+			setGenerator("cubyz:lifeland");
 			wio.saveWorldData();
 		}
 		String generatorId = "cubyz:lifeland";
@@ -133,6 +135,9 @@ public class ServerWorld {
 			generatorId = wio.loadWorldGenerator();
 		}
 		setGenerator(generatorId);
+		
+		// Call mods for this new world. Mods sometimes need to do extra stuff for the specific world.
+		ModLoader.postWorldGen(registries);
 
 		threadPool = new ChunkGenerationThreadPool(this, Runtime.getRuntime().availableProcessors() - 1);
 	}

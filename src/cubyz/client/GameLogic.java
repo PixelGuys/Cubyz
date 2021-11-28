@@ -119,9 +119,6 @@ public class GameLogic implements ClientConnection {
 
 		// Generate the texture atlas for this world's blocks:
 		BlockMeshes.generateTextureArray();
-		
-		// Call mods for this new world. Mods sometimes need to do extra stuff for the specific world.
-		ModLoader.postWorldGen(world.getCurrentRegistries());
 	}
 
 	public void init() throws Exception {
