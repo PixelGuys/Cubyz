@@ -6,6 +6,8 @@
 	"roughness" : 1,
 	"hills" : 5,
 	
+	"music" : "sunrise",
+	
 	"ground_structure" : [
 		"cubyz:grass",
 		"2 to 3 cubyz:soil"
