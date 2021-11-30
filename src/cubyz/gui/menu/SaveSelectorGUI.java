@@ -18,7 +18,7 @@ import cubyz.rendering.VisibleChunk;
 import cubyz.utils.translate.ContextualTextKey;
 import cubyz.utils.translate.TextKey;
 import cubyz.world.ServerWorld;
-import server.Server;
+import cubyz.server.Server;
 
 import static cubyz.client.ClientSettings.GUI_SCALE;
 

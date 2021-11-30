@@ -98,7 +98,7 @@ public class MusicManager {
 		if(manager == null || !manager.wasInitedCorrectly())
 			return;
 		
-		if (!source.isPlaying()) {
+		if (source == null || !source.isPlaying()) {
 			silenceStart = System.currentTimeMillis();
 			positions.put(currentMusic, 0.0f);
 			if (currentMusicStarted) {
