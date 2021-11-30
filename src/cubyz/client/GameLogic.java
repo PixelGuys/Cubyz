@@ -77,7 +77,7 @@ public class GameLogic implements ClientConnection {
 	}
 	
 	public void quitWorld() {
-		Server.running = false;
+		Server.stop();;
 		for (MenuGUI overlay : Cubyz.gameUI.getOverlays()) {
 			if (overlay instanceof GameOverlay) {
 				Cubyz.gameUI.removeOverlay(overlay);
