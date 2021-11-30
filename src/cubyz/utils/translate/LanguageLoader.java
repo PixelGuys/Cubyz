@@ -7,7 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.Properties;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.utils.ResourceManager;
 
 /**

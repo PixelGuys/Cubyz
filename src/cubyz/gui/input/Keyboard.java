@@ -2,7 +2,7 @@ package cubyz.gui.input;
 
 import java.util.ArrayList;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 
 public class Keyboard {
 

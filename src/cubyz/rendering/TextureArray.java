@@ -7,7 +7,7 @@ import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.utils.math.CubyzMath;
 
 public class TextureArray {

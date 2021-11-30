@@ -2,7 +2,7 @@ package cubyz.world.terrain.noise;
 
 import java.util.Random;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.utils.math.CubyzMath;
 
 public class PerlinNoise {

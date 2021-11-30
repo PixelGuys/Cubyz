@@ -3,7 +3,7 @@ package cubyz.world.save;
 import java.util.Arrays;
 import java.util.HashMap;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.api.Registry;
 import cubyz.api.RegistryElement;
 import cubyz.utils.json.JsonObject;

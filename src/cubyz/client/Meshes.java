@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.api.Registry;
 import cubyz.api.Resource;
 import cubyz.rendering.Material;

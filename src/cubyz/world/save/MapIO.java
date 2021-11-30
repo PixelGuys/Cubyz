@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.InflaterInputStream;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.utils.math.Bits;
 import cubyz.world.NormalChunk;
 import cubyz.world.ServerWorld;

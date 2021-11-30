@@ -4,7 +4,7 @@ import java.util.HashMap;
 
 import org.joml.Vector3i;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.api.CubyzRegistries;
 import cubyz.api.DataOrientedRegistry;
 import cubyz.api.Resource;

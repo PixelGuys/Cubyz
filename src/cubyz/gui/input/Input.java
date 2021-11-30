@@ -19,7 +19,7 @@ import cubyz.world.entity.Entity;
 import cubyz.world.entity.EntityType;
 import cubyz.world.items.Inventory;
 import cubyz.world.items.ItemStack;
-import server.Server;
+import cubyz.server.Server;
 
 /**
  * Handles all the inputs.

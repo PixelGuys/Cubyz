@@ -2,7 +2,7 @@ package cubyz.world.blocks;
 
 import org.joml.Vector3i;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.api.CubyzRegistries;
 import cubyz.api.RegistryElement;
 import cubyz.api.Resource;

@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.function.BiConsumer;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.api.CubyzRegistries;
 import cubyz.api.DataOrientedRegistry;
 import cubyz.api.EventHandler;

@@ -10,7 +10,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.client.ClientSettings;
 import cubyz.utils.TextureConverter;
 

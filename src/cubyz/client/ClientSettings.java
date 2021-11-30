@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.Settings;
 import cubyz.gui.input.Keybindings;
 import cubyz.rendering.Window;

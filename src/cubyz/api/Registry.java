@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 
 /**
  * A registry that uses registry IDs to avoid duplicate entries.

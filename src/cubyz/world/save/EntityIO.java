@@ -2,7 +2,7 @@ package cubyz.world.save;
 
 import java.io.IOException;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.utils.json.JsonObject;
 import cubyz.world.ServerWorld;
 import cubyz.world.entity.Entity;

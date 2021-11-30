@@ -7,8 +7,6 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.HashMap;
 
-import cubyz.Logger;
-
 /**
  * Contains functions that don't really fit anywhere else.
  */

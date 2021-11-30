@@ -12,7 +12,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.rendering.Texture;
 
 public class CubyzFont {

@@ -10,7 +10,7 @@ import java.util.Random;
 
 import javax.imageio.ImageIO;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.utils.Utilities;
 import cubyz.utils.datastructures.PixelUtils;
 import cubyz.utils.json.JsonArray;

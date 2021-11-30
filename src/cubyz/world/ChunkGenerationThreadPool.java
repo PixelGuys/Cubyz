@@ -1,6 +1,6 @@
 package cubyz.world;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.utils.datastructures.BlockingMaxHeap;
 
 public class ChunkGenerationThreadPool {

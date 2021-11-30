@@ -1,6 +1,6 @@
 package cubyz.gui.components;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.gui.input.Mouse;
 import cubyz.rendering.Graphics;
 import cubyz.utils.translate.TextKey;

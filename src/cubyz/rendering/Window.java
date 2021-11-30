@@ -21,7 +21,7 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.system.Library;
 import org.lwjgl.system.MemoryStack;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.gui.input.Keyboard;
 
 public abstract class Window {

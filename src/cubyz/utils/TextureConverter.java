@@ -14,7 +14,6 @@ import javax.imageio.ImageIO;
 
 import org.lwjgl.system.MemoryUtil;
 
-import cubyz.Logger;
 import cubyz.utils.datastructures.PixelUtils;
 
 /**

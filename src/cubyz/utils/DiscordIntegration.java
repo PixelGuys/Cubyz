@@ -4,7 +4,6 @@ import java.util.Random;
 
 import club.minnced.discord.rpc.DiscordEventHandlers;
 import club.minnced.discord.rpc.DiscordEventHandlers.OnReady;
-import cubyz.Logger;
 import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
 import cubyz.gui.ToastManager;

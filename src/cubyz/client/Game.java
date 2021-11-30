@@ -1,6 +1,6 @@
 package cubyz.client;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.rendering.Window;
 
 public class Game {

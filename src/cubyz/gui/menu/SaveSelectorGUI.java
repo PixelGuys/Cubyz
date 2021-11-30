@@ -8,7 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
 import cubyz.gui.MenuGUI;
@@ -18,7 +18,7 @@ import cubyz.rendering.VisibleChunk;
 import cubyz.utils.translate.ContextualTextKey;
 import cubyz.utils.translate.TextKey;
 import cubyz.world.ServerWorld;
-import server.Server;
+import cubyz.server.Server;
 
 import static cubyz.client.ClientSettings.GUI_SCALE;
 

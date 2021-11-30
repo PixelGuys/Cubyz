@@ -6,7 +6,7 @@ import java.util.ArrayList;
 
 import javax.imageio.ImageIO;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.api.DataOrientedRegistry;
 import cubyz.api.Resource;
 import cubyz.rendering.Material;

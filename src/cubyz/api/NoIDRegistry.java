@@ -3,7 +3,7 @@ package cubyz.api;
 import java.util.ArrayList;
 import java.util.List;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 
 /**
  * A registry type that doesn't use any ID, but instead uses the T.equals() function.

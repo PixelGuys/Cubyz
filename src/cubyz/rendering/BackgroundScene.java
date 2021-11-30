@@ -13,7 +13,7 @@ import javax.imageio.ImageIO;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.client.ClientSettings;
 import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;

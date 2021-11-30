@@ -22,7 +22,6 @@ import cubyz.gui.audio.MusicManager;
 import cubyz.gui.audio.SoundManager;
 import cubyz.gui.game.GameOverlay;
 import cubyz.gui.menu.LoadingGUI;
-import cubyz.modding.ModLoader;
 import cubyz.rendering.BlockPreview;
 import cubyz.rendering.FrameBuffer;
 import cubyz.rendering.Material;
@@ -35,7 +34,7 @@ import cubyz.world.*;
 import cubyz.world.items.Inventory;
 import cubyz.world.terrain.noise.StaticBlueNoise;
 import cubyz.world.terrain.worldgenerators.LifelandGenerator;
-import server.Server;
+import cubyz.server.Server;
 
 /**
  * A complex class that holds everything together.<br>
@@ -77,7 +76,7 @@ public class GameLogic implements ClientConnection {
 	}
 	
 	public void quitWorld() {
-		Server.running = false;
+		Server.stop();;
 		for (MenuGUI overlay : Cubyz.gameUI.getOverlays()) {
 			if (overlay instanceof GameOverlay) {
 				Cubyz.gameUI.removeOverlay(overlay);

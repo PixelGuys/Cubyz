@@ -4,7 +4,7 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 import cubyz.world.entity.EntityType;
-import server.Server;
+import cubyz.server.Server;
 
 public class ClientEntity {
 	public Vector3d[] lastPosition = new Vector3d[8];

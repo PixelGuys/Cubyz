@@ -14,7 +14,7 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.client.BlockMeshes;
 import cubyz.client.Meshes;
 import cubyz.utils.Utils;
