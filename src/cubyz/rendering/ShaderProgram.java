@@ -11,7 +11,7 @@ import org.joml.Vector4f;
 import static org.lwjgl.opengl.GL20.*;
 import org.lwjgl.system.MemoryStack;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 
 public class ShaderProgram {
 

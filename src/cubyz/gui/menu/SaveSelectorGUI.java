@@ -8,7 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
 import cubyz.gui.MenuGUI;

@@ -2,7 +2,7 @@ package cubyz.world;
 
 import java.util.ArrayList;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.Updateable;

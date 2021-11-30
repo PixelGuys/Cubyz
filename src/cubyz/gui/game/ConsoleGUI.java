@@ -10,7 +10,7 @@ import java.util.Comparator;
 
 import org.lwjgl.glfw.GLFW;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.api.CubyzRegistries;
 import cubyz.client.Cubyz;
 import cubyz.command.CommandBase;

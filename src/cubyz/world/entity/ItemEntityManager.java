@@ -5,7 +5,7 @@ import java.util.Arrays;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.utils.math.Bits;
 import cubyz.world.NormalChunk;
 import cubyz.world.ServerWorld;

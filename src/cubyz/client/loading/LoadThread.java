@@ -10,7 +10,7 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
 import cubyz.Constants;
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.api.CubyzRegistries;
 import cubyz.api.Mod;
 import cubyz.api.Resource;

@@ -2,7 +2,7 @@ package cubyz.utils.translate;
 
 import java.util.HashMap;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 
 /**
  * A translation of all cubyz texts to a certain language.

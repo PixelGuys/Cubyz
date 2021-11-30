@@ -5,7 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 
 public abstract class JsonParser {
 	public static JsonObject parseObjectFromFile(String path) {

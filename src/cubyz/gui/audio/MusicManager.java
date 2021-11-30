@@ -2,7 +2,7 @@ package cubyz.gui.audio;
 
 import java.util.HashMap;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.client.Cubyz;
 import cubyz.utils.ResourceManager;
 import cubyz.world.terrain.biomes.Biome;

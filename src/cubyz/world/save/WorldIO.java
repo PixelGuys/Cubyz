@@ -5,7 +5,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.utils.json.JsonArray;
 import cubyz.utils.json.JsonObject;
 import cubyz.utils.json.JsonParser;

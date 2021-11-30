@@ -1,6 +1,6 @@
 package cubyz.gui.game;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
 import cubyz.gui.MenuGUI;

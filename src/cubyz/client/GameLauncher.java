@@ -1,6 +1,6 @@
 package cubyz.client;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.gui.input.Input;
 import cubyz.rendering.MainRenderer;
 import cubyz.rendering.Window;

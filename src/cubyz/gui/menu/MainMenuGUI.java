@@ -4,7 +4,7 @@ import java.awt.Rectangle;
 
 import org.joml.Vector2d;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
 import cubyz.gui.MenuGUI;

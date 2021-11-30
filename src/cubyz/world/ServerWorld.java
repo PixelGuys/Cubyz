@@ -10,7 +10,7 @@ import org.joml.Vector3f;
 import org.joml.Vector3i;
 import org.joml.Vector4f;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 import cubyz.Settings;
 import cubyz.api.ClientConnection;
 import cubyz.api.CubyzRegistries;

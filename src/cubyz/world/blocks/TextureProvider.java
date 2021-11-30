@@ -6,7 +6,7 @@ import java.util.Random;
 
 import javax.imageio.ImageIO;
 
-import cubyz.Logger;
+import cubyz.utils.Logger;
 
 public interface TextureProvider {
 	BufferedImage generateTexture(CustomOre block);
