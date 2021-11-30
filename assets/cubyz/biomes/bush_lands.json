@@ -2,9 +2,13 @@
 	"type" : "SHRUBLAND",
 	"minHeight" : 4,
 	"maxHeight" : 60,
+	
 	"roughness" : 20,
 	"hills" : 10,
 	"rivers" : true,
+	
+	"music" : "sunrise",
+
 	"ground_structure" : [
 		"cubyz:grass",
 		"2 cubyz:soil"

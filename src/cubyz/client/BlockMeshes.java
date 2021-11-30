@@ -47,6 +47,61 @@ public class BlockMeshes implements DataOrientedRegistry {
 		return textureIndices[block & Blocks.TYPE_MASK];
 	}
 
+	public static void getTextureIndices(JsonObject json, String assetFolder, int[] textureIndices) {
+		outer:
+		for(int i = 0; i < 6; i++) {
+			String resource = json.getString("texture_"+sideNames[i], null);
+			if(resource != null) {
+				Resource texture = new Resource(resource);
+				String path = assetFolder + texture.getMod() + "/blocks/textures/" + texture.getID() + ".png";
+				// Test if it's already in the list:
+				for(int j = 0; j < textureIDs.size(); j++) {
+					if(textureIDs.get(j).equals(path)) {
+						textureIndices[i] = j;
+						continue outer;
+					}
+				}
+				// Otherwise read it into the list:
+				textureIndices[i] = blockTextures.size();
+				try {
+					blockTextures.add(ImageIO.read(new File(path)));
+					textureIDs.add(path);
+				} catch(Exception e) {
+					textureIndices[i] = -1;
+					Logger.warning("Could not read " + sideNames[i] + " image from Block "+Blocks.id(size));
+					Logger.warning(e);
+				}
+			} else {
+				textureIndices[i] = -1;
+			}
+		}
+		Resource resource = new Resource(json.getString("texture", "cubyz:undefined")); // Use this resource on every remaining side.
+		String path = assetFolder + resource.getMod() + "/blocks/textures/" + resource.getID() + ".png";
+
+		// Test if it's already in the list:
+		for(int j = 0; j < textureIDs.size(); j++) {
+			if(textureIDs.get(j).equals(path)) {
+				for(int i = 0; i < 6; i++) {
+					if(textureIndices[i] == -1)
+						textureIndices[i] = j;
+				}
+				break;
+			}
+		}
+		// Otherwise read it into the list:
+		for(int i = 0; i < 6; i++) {
+			if(textureIndices[i] == -1)
+				textureIndices[i] = blockTextures.size();
+		}
+		try {
+			blockTextures.add(ImageIO.read(new File(path)));
+			textureIDs.add(path);
+		} catch(Exception e) {
+			Logger.warning("Could not read main image from Block " + Blocks.id(size));
+			Logger.warning(e);
+		}
+	}
+
 	@Override
 	public Resource getRegistryID() {
 		return new Resource("cubyz:block_meshes");
@@ -59,58 +114,7 @@ public class BlockMeshes implements DataOrientedRegistry {
 		// The actual model is loaded later, in the rendering thread.
 		// But textures can be loaded here:
 
-		outer:
-		for(int i = 0; i < 6; i++) {
-			String resource = json.getString("texture_"+sideNames[i], null);
-			if(resource != null) {
-				Resource texture = new Resource(resource);
-				String path = assetFolder + texture.getMod() + "/blocks/textures/" + texture.getID() + ".png";
-				// Test if it's already in the list:
-				for(int j = 0; j < textureIDs.size(); j++) {
-					if(textureIDs.get(j).equals(path)) {
-						textureIndices[size][i] = j;
-						continue outer;
-					}
-				}
-				// Otherwise read it into the list:
-				textureIndices[size][i] = blockTextures.size();
-				try {
-					blockTextures.add(ImageIO.read(new File(path)));
-					textureIDs.add(path);
-				} catch(Exception e) {
-					textureIndices[size][i] = -1;
-					Logger.warning("Could not read " + sideNames[i] + " image from Block "+Blocks.id(size));
-					Logger.warning(e);
-				}
-			} else {
-				textureIndices[size][i] = -1;
-			}
-		}
-		Resource resource = new Resource(json.getString("texture", "cubyz:undefined")); // Use this resource on every remaining side.
-		String path = assetFolder + resource.getMod() + "/blocks/textures/" + resource.getID() + ".png";
-
-		// Test if it's already in the list:
-		for(int j = 0; j < textureIDs.size(); j++) {
-			if(textureIDs.get(j).equals(path)) {
-				for(int i = 0; i < 6; i++) {
-					if(textureIndices[size][i] == -1)
-						textureIndices[size][i] = j;
-				}
-				break;
-			}
-		}
-		// Otherwise read it into the list:
-		for(int i = 0; i < 6; i++) {
-			if(textureIndices[size][i] == -1)
-				textureIndices[size][i] = blockTextures.size();
-		}
-		try {
-			blockTextures.add(ImageIO.read(new File(path)));
-			textureIDs.add(path);
-		} catch(Exception e) {
-			Logger.warning("Could not read main image from Block " + Blocks.id(size));
-			Logger.warning(e);
-		}
+		getTextureIndices(json, assetFolder, textureIndices[size]);
 
 		return size++;
 	}
@@ -118,11 +122,11 @@ public class BlockMeshes implements DataOrientedRegistry {
 	@Override
 	public void reset(int len) {
 		for(int i = len; i < size; i++) {
-			Meshes.deleteMesh(meshes[i]);
 			meshes[i] = null;
 			models[i] = null;
 		}
 		size = len;
+		loadedMeshes = len;
 	}
 
 	public static void loadMeshes() {

@@ -279,6 +279,8 @@ public class MainRenderer {
 
 		frustumInt.set(prjViewMatrix);
 		if(localPlayer != null) {
+			Fog waterFog = new Fog(true, new Vector3f(0.0f, 0.1f, 0.2f), 0.1f);
+
 			Vector3d playerPosition = localPlayer.getPosition(); // Use a constant copy of the player position for the whole rendering to prevent graphics bugs on player movement.
 			 // Update the uniforms. The uniforms are needed to render the replacement meshes.
 			ReducedChunkMesh.bindShader(ambientLight, directionalLight.getDirection());
@@ -338,6 +340,9 @@ public class MainRenderer {
 			// Render the far away ReducedChunks:
 			glDepthRangef(0.05f, 1.0f); // ← Used to fix z-fighting.
 			ReducedChunkMesh.bindShader(ambientLight, directionalLight.getDirection());
+			ReducedChunkMesh.shader.setUniform(ReducedChunkMesh.loc_waterFog_activ, waterFog.isActive());
+			ReducedChunkMesh.shader.setUniform(ReducedChunkMesh.loc_waterFog_color, waterFog.getColor());
+			ReducedChunkMesh.shader.setUniform(ReducedChunkMesh.loc_waterFog_density, waterFog.getDensity());
 			
 			for(int i = 0; i < visibleReduced.size; i++) {
 				ReducedChunkMesh mesh = visibleReduced.array[i];
@@ -387,7 +392,6 @@ public class MainRenderer {
 
 			buffers.bindTextures();
 
-			Fog waterFog = new Fog(true, new Vector3f(0.0f, 0.1f, 0.2f), 0.1f);
 			NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_waterFog_activ, waterFog.isActive());
 			NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_waterFog_color, waterFog.getColor());
 			NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_waterFog_density, waterFog.getDensity());

@@ -17,6 +17,7 @@ import cubyz.api.CubyzRegistries;
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.client.ClientSettings;
 import cubyz.client.GameLauncher;
+import cubyz.modding.ModLoader;
 import cubyz.utils.datastructures.Cache;
 import cubyz.utils.datastructures.HashMapKey3D;
 import cubyz.utils.math.CubyzMath;
@@ -106,7 +107,6 @@ public class ServerWorld {
 	
 	public ServerWorld(String name, Class<?> chunkProvider) {
 		this.name = name;
-		registries = new CurrentWorldRegistries(this);
 		this.chunkProvider = chunkProvider;
 		// Check if the chunkProvider is valid:
 		if(!NormalChunk.class.isAssignableFrom(chunkProvider) ||
@@ -119,19 +119,25 @@ public class ServerWorld {
 			throw new IllegalArgumentException("Chunk provider "+chunkProvider+" is invalid! It needs to be a subclass of NormalChunk and MUST contain a single constructor with parameters (Integer, Integer, Integer, ServerWorld)");
 		
 		wio = new WorldIO(this, new File("saves/" + name));
+		milliTime = System.currentTimeMillis();
+		if (wio.hasWorldData()) {
+			seed = wio.loadWorldSeed();
+			generated = true;
+			registries = new CurrentWorldRegistries(this);
+		} else {
+			seed = new Random().nextInt();
+			registries = new CurrentWorldRegistries(this);
+			setGenerator("cubyz:lifeland");
+			wio.saveWorldData();
+		}
 		String generatorId = "cubyz:lifeland";
 		if (wio.hasWorldData()) {
 			generatorId = wio.loadWorldGenerator();
 		}
 		setGenerator(generatorId);
-		milliTime = System.currentTimeMillis();
-		if (wio.hasWorldData()) {
-			seed = wio.loadWorldSeed();
-			generated = true;
-		} else {
-			seed = new Random().nextInt();
-			wio.saveWorldData();
-		}
+		
+		// Call mods for this new world. Mods sometimes need to do extra stuff for the specific world.
+		ModLoader.postWorldGen(registries);
 
 		threadPool = new ChunkGenerationThreadPool(this, Runtime.getRuntime().availableProcessors() - 1);
 	}

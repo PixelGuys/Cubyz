@@ -150,7 +150,7 @@ public class CustomOre {
 
 		String name = randomName(rand);
 		json.put("model", "cubyz:block.obj");
-		json.put("texture", "cubyz:"+name+"_ore");
+		json.put("texture", "cubyz:"+name.replace(' ', '_')+"_ore");
 		// Use a seed based on the name, so if the same ore gets generated twice in the giant world, it will have the same properties.
 		// This fact could also allow an interactive wiki which displays an ores property with knowledge of only the name(TODO).
 		rand = new Random(Utilities.hash(name));
@@ -236,14 +236,14 @@ public class CustomOre {
 		json.put("breakingPower", mohsHardness);
 		json.put("hardness", elasticity*density);
 		try {
-			Utilities.writeFile(new File(assets.getAbsolutePath() + "/blocks/" + name + "_ore.json"), json.toString());
+			Utilities.writeFile(new File(assets.getAbsolutePath() + "/blocks/" + name.replace(' ', '_') + "_ore.json"), json.toString());
 		} catch(Exception e) {
 			Logger.error(e);
 		}
 
 		BufferedImage img = new OreTextureProvider().generateTexture(block);
 		try {
-			ImageIO.write(img, "png", new File(assets.getAbsolutePath() + "/blocks/textures/" + name + "_ore.png"));
+			ImageIO.write(img, "png", new File(assets.getAbsolutePath() + "/blocks/textures/" + name.replace(' ', '_') + "_ore.png"));
 		} catch(Exception e) {
 			Logger.warning(e);
 		}
@@ -266,10 +266,10 @@ public class CustomOre {
 	
 	private JsonArray makeItem(Random rand, File assets, String mod, String name) {
 		JsonArray items = new JsonArray();
-		items.addStrings(mod+":"+name);
+		items.addStrings(mod+":"+name.replace(' ', '_'));
 		JsonObject json = new JsonObject();
-		json.put("texture", name + ".png");
-		json.put("translationId", name);
+		json.put("texture", name.replace(' ', '_') + ".png");
+		json.put("translationId", name.replace(' ', '_'));
 		JsonObject material = new JsonObject();
 		material.put("density", 1 + rand.nextFloat());
 		material.put("resistance", 1 + rand.nextFloat());
@@ -280,7 +280,7 @@ public class CustomOre {
 		material.put("colors", colors);
 		json.put("material", material);
 		try {
-			Utilities.writeFile(new File(assets.getAbsolutePath() + "/items/" + name + ".json"), json.toString());
+			Utilities.writeFile(new File(assets.getAbsolutePath() + "/items/" + name.replace(' ', '_') + ".json"), json.toString());
 		} catch(Exception e) {
 			Logger.error(e);
 		}
@@ -292,7 +292,7 @@ public class CustomOre {
 			canvas = getImage("assets/cubyz/items/textures/materials/templates/"+"crystal1"+".png"); // TODO: More crystal types.
 		PixelUtils.convertTemplate(canvas, color);
 		try {
-			ImageIO.write(canvas, "png", new File(assets.getAbsolutePath() + "/items/textures/" + name + ".png"));
+			ImageIO.write(canvas, "png", new File(assets.getAbsolutePath() + "/items/textures/" + name.replace(' ', '_') + ".png"));
 		} catch(Exception e) {
 			Logger.warning(e);
 		}

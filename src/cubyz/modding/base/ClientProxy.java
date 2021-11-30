@@ -30,6 +30,10 @@ public class ClientProxy extends CommonProxy {
 		CubeModel.registerCubeModels();
 
 		CubyzRegistries.BLOCK_REGISTRIES.register(new BlockMeshes());
+
+		MultiTexture multiTexture = new MultiTexture();
+		CubyzRegistries.ROTATION_MODE_REGISTRY.register(multiTexture);
+		CubyzRegistries.BLOCK_REGISTRIES.register(multiTexture);
 	}
 
 	private void registerRotationModes(Registry<RotationMode> reg) {
