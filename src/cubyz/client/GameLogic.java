@@ -22,7 +22,6 @@ import cubyz.gui.audio.MusicManager;
 import cubyz.gui.audio.SoundManager;
 import cubyz.gui.game.GameOverlay;
 import cubyz.gui.menu.LoadingGUI;
-import cubyz.modding.ModLoader;
 import cubyz.rendering.BlockPreview;
 import cubyz.rendering.FrameBuffer;
 import cubyz.rendering.Material;
