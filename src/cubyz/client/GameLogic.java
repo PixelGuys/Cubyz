@@ -34,7 +34,7 @@ import cubyz.world.*;
 import cubyz.world.items.Inventory;
 import cubyz.world.terrain.noise.StaticBlueNoise;
 import cubyz.world.terrain.worldgenerators.LifelandGenerator;
-import server.Server;
+import cubyz.server.Server;
 
 /**
  * A complex class that holds everything together.<br>
