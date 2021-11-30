@@ -1,4 +1,4 @@
-package server;
+package cubyz.server;
 
 import org.joml.Vector3d;
 import org.joml.Vector3f;
