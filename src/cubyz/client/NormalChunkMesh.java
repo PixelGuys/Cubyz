@@ -81,6 +81,7 @@ public class NormalChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 	public static int loc_fog_activ;
 	public static int loc_fog_color;
 	public static int loc_fog_density;
+	public static int loc_time;
 
 	public static class TransparentUniforms {
 		public static int loc_projectionMatrix;
@@ -101,6 +102,7 @@ public class NormalChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 		public static int loc_colorBuffer;
 		public static int loc_windowSize;
 		public static int loc_drawFrontFace;
+		public static int loc_time;
 	}
 
 	public static ShaderProgram shader;
@@ -124,7 +126,7 @@ public class NormalChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 	 * @param ambient
 	 * @param directional
 	 */
-	public static void bindShader(Vector3f ambient, Vector3f directional) {
+	public static void bindShader(Vector3f ambient, Vector3f directional, int time) {
 		shader.bind();
 
 		shader.setUniform(loc_fog_activ, Cubyz.fog.isActive());
@@ -137,6 +139,8 @@ public class NormalChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 
 		shader.setUniform(loc_ambientLight, ambient);
 		shader.setUniform(loc_directionalLight, directional);
+
+		shader.setUniform(loc_time, time);
 	}
 
 	/**
@@ -144,7 +148,7 @@ public class NormalChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 	 * @param ambient
 	 * @param directional
 	 */
-	public static void bindTransparentShader(Vector3f ambient, Vector3f directional) {
+	public static void bindTransparentShader(Vector3f ambient, Vector3f directional, int time) {
 		transparentShader.bind();
 
 		transparentShader.setUniform(TransparentUniforms.loc_fog_activ, Cubyz.fog.isActive());
@@ -162,6 +166,8 @@ public class NormalChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 
 		transparentShader.setUniform(TransparentUniforms.loc_colorBuffer, 3);
 		transparentShader.setUniform(TransparentUniforms.loc_positionBuffer, 4);
+
+		transparentShader.setUniform(TransparentUniforms.loc_time, time);
 	}
 	
 	protected int vaoId = -1;

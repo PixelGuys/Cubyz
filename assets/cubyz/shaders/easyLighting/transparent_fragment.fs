@@ -1,6 +1,7 @@
-#version 330
+#version 430
 
-in vec3 outTexCoord;
+in vec2 outTexCoord;
+flat in float textureIndex;
 in vec3 outColor;
 in vec3 mvVertexPos;
 flat in int selectionIndex;
@@ -43,7 +44,7 @@ vec4 calcFog(vec3 pos, vec4 color, Fog fog) {
 }
 
 void main() {
-	setupColors(outTexCoord);
+	setupColors(vec3(outTexCoord, textureIndex));
 	if(ambientC.a == 1) discard;
 
 	fragColor = ambientC*vec4(outColor, 1);

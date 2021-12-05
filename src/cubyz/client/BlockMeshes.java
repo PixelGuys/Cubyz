@@ -2,11 +2,13 @@ package cubyz.client;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 
 import javax.imageio.ImageIO;
 
 import cubyz.utils.Logger;
+import cubyz.utils.datastructures.IntFastList;
 import cubyz.api.DataOrientedRegistry;
 import cubyz.api.Resource;
 import cubyz.rendering.Material;
@@ -14,9 +16,13 @@ import cubyz.rendering.Mesh;
 import cubyz.rendering.ModelLoader;
 import cubyz.rendering.Texture;
 import cubyz.rendering.TextureArray;
+import cubyz.utils.json.JsonElement;
 import cubyz.utils.json.JsonObject;
+import cubyz.utils.json.JsonString;
 import cubyz.world.Neighbors;
 import cubyz.world.blocks.Blocks;
+
+import static org.lwjgl.opengl.GL43.*;
 
 public class BlockMeshes implements DataOrientedRegistry {
 
@@ -28,9 +34,15 @@ public class BlockMeshes implements DataOrientedRegistry {
 	private static int loadedMeshes = 1;
 
 	private static ArrayList<BufferedImage> blockTextures = new ArrayList<BufferedImage>();
+	private static IntFastList animationFrames = new IntFastList(8192);
+	private static IntFastList animationTimes = new IntFastList(8192);
 	private static ArrayList<String> textureIDs = new ArrayList<String>();
 
 	private static final String[] sideNames = new String[6];
+
+	public static int animationTimesSSBO;
+	private static int animationFramesSSBO;
+
 	static {
 		sideNames[Neighbors.DIR_DOWN] = "bottom";
 		sideNames[Neighbors.DIR_UP] = "top";
@@ -38,6 +50,11 @@ public class BlockMeshes implements DataOrientedRegistry {
 		sideNames[Neighbors.DIR_NEG_X] = "left";
 		sideNames[Neighbors.DIR_POS_Z] = "front";
 		sideNames[Neighbors.DIR_NEG_Z] = "back";
+
+		readTexture(new JsonString("cubyz:undefined"), "assets/");
+
+		animationTimesSSBO = glGenBuffers();
+		animationFramesSSBO = glGenBuffers();
 	}
 
 	public static Mesh mesh(int block) {
@@ -47,58 +64,77 @@ public class BlockMeshes implements DataOrientedRegistry {
 		return textureIndices[block & Blocks.TYPE_MASK];
 	}
 
-	public static void getTextureIndices(JsonObject json, String assetFolder, int[] textureIndices) {
-		outer:
-		for(int i = 0; i < 6; i++) {
-			String resource = json.getString("texture_"+sideNames[i], null);
+	public static int readTexture(JsonElement textureInfo, String assetFolder) {
+		int result = -1;
+		if(textureInfo instanceof JsonString) {
+			String resource = textureInfo.getStringValue(null);
 			if(resource != null) {
 				Resource texture = new Resource(resource);
 				String path = assetFolder + texture.getMod() + "/blocks/textures/" + texture.getID() + ".png";
 				// Test if it's already in the list:
 				for(int j = 0; j < textureIDs.size(); j++) {
 					if(textureIDs.get(j).equals(path)) {
-						textureIndices[i] = j;
-						continue outer;
+						result = j;
+						return result;
 					}
 				}
 				// Otherwise read it into the list:
-				textureIndices[i] = blockTextures.size();
+				result = blockTextures.size();
 				try {
 					blockTextures.add(ImageIO.read(new File(path)));
 					textureIDs.add(path);
-				} catch(Exception e) {
-					textureIndices[i] = -1;
-					Logger.warning("Could not read " + sideNames[i] + " image from Block "+Blocks.id(size));
+					animationFrames.add(1);
+					animationTimes.add(1);
+				} catch(IOException e) {
+					result = -1;
+					Logger.warning("Could not read image "+texture+" from Block "+Blocks.id(size));
 					Logger.warning(e);
 				}
-			} else {
-				textureIndices[i] = -1;
 			}
-		}
-		Resource resource = new Resource(json.getString("texture", "cubyz:undefined")); // Use this resource on every remaining side.
-		String path = assetFolder + resource.getMod() + "/blocks/textures/" + resource.getID() + ".png";
-
-		// Test if it's already in the list:
-		for(int j = 0; j < textureIDs.size(); j++) {
-			if(textureIDs.get(j).equals(path)) {
-				for(int i = 0; i < 6; i++) {
-					if(textureIndices[i] == -1)
-						textureIndices[i] = j;
+		} else if(textureInfo instanceof JsonObject) {
+			int animationTime = textureInfo.getInt("time", 500);
+			String[] textures = textureInfo.getArrayNoNull("textures").getStrings();
+			// Add the new textures into the list. Since this is an animation all textures that weren't found need to be replaced with undefined.
+			result = blockTextures.size();
+			for(int i = 0; i < textures.length; i++) {
+				if(i == 0) {
+					animationFrames.add(textures.length);
+					animationTimes.add(animationTime);
+				} else {
+					animationFrames.add(1);
+					animationTimes.add(1);
 				}
-				break;
+				Resource texture = new Resource(textures[i]);
+				try {
+					String path = assetFolder + texture.getMod() + "/blocks/textures/" + texture.getID() + ".png";
+					blockTextures.add(ImageIO.read(new File(path)));
+					if(i == 0) {
+						textureIDs.add(path);
+					} else {
+						textureIDs.add("animation:animation");
+					}
+				} catch(IOException e) {
+					Logger.warning("Could not read image "+texture+" from Block "+Blocks.id(size));
+					Logger.warning(e);
+					blockTextures.add(blockTextures.get(0));
+					textureIDs.add(textureIDs.get(0));
+				}
 			}
 		}
-		// Otherwise read it into the list:
+		return result;
+	}
+
+	public static void getTextureIndices(JsonObject json, String assetFolder, int[] textureIndices) {
+		for(int i = 0; i < 6; i++) {
+			JsonElement textureInfo = json.get("texture_"+sideNames[i]);
+			textureIndices[i] = readTexture(textureInfo, assetFolder);
+		}
+
+		int remainingIndex = readTexture(json.get("texture"), assetFolder);
+		if(remainingIndex == -1) remainingIndex = 0;
 		for(int i = 0; i < 6; i++) {
 			if(textureIndices[i] == -1)
-				textureIndices[i] = blockTextures.size();
-		}
-		try {
-			blockTextures.add(ImageIO.read(new File(path)));
-			textureIDs.add(path);
-		} catch(Exception e) {
-			Logger.warning("Could not read main image from Block " + Blocks.id(size));
-			Logger.warning(e);
+				textureIndices[i] = remainingIndex;
 		}
 	}
 
@@ -152,6 +188,21 @@ public class BlockMeshes implements DataOrientedRegistry {
 			textures.addTexture(img);
 		}
 		textures.generate();
+
+
+		// Also generate additional buffers:
+		animationTimes.trimToSize();
+		animationFrames.trimToSize();
+
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, animationTimesSSBO);
+		glBufferData(GL_SHADER_STORAGE_BUFFER, animationTimes.array, GL_STATIC_DRAW);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, animationTimesSSBO);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, animationFramesSSBO);
+		glBufferData(GL_SHADER_STORAGE_BUFFER, animationFrames.array, GL_STATIC_DRAW);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, animationFramesSSBO);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 	}
 	
 }

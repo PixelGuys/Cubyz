@@ -1,10 +1,11 @@
-#version 330
+#version 430
 
 layout (location=0)  in int positionAndNormals;
 layout (location=1)  in int texCoordAndNormals;
 
 out vec3 mvVertexPos;
-out vec3 outTexCoord;
+out vec2 outTexCoord;
+flat out float textureIndex;
 out vec3 outNormal;
 
 
@@ -14,6 +15,17 @@ uniform vec3 modelPosition;
 uniform vec3 lowerBounds;
 uniform vec3 upperBounds;
 uniform float voxelSize;
+
+layout(std430, binding = 0) buffer _animationTimes
+{
+    int animationTimes[];
+};
+layout(std430, binding = 1) buffer _animationFrames
+{
+    int animationFrames[];
+};
+
+uniform int time;
 
 const vec3[6] normals = vec3[6](
 	vec3(-1, 0, 0),
@@ -27,7 +39,10 @@ const vec3[6] normals = vec3[6](
 void main()
 {
 	int normal = (texCoordAndNormals >> 24) & 7;
-	outTexCoord = vec3(float(texCoordAndNormals>>17 & 1)*voxelSize, float(texCoordAndNormals>>16 & 1)*voxelSize, float(texCoordAndNormals & 65535));
+	outTexCoord = texCoord.xy;
+	int texCoordz = texCoordAndNormals & 65535;
+	textureIndex = texCoord.z + time / animationTimes[texCoordz] % animationFrames[texCoordz];
+	outTexCoord = vec2(float(texCoordAndNormals>>17 & 1)*voxelSize, float(texCoordAndNormals>>16 & 1)*voxelSize);
 	
 	int voxelSize = positionAndNormals >> 18;
 	int x = positionAndNormals & 63;

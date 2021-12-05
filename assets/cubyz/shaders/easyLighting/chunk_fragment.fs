@@ -1,7 +1,8 @@
 #version 330
 
 in vec3 mvVertexPos;
-in vec3 outTexCoord;
+in vec2 outTexCoord;
+flat in float textureIndex;
 in vec3 outNormal;
 
 uniform vec3 directionalLight;
@@ -29,7 +30,7 @@ vec4 calcFog(vec3 pos, vec4 color, Fog fog) {
 
 void main()
 {
-    fragColor = texture(texture_sampler, outTexCoord)*vec4((1 - dot(directionalLight, outNormal))*ambientLight, 1);
+    fragColor = texture(texture_sampler, vec3(outTexCoord, textureIndex))*vec4((1 - dot(directionalLight, outNormal))*ambientLight, 1);
 	if(fragColor.a <= 0.1f) discard;
 	if(fog.activ) {
 

@@ -1,4 +1,4 @@
-#version 330
+#version 430
 
 layout (location=0)  in vec3 position;
 layout (location=1)  in vec3 texCoord;
@@ -6,7 +6,8 @@ layout (location=2)  in vec3 vertexNormal;
 layout (location=3)  in int easyLight;
 layout (location=4)  in int renderIndex;
 
-out vec3 outTexCoord;
+out vec2 outTexCoord;
+flat out float textureIndex;
 out vec3 mvVertexPos;
 out vec3 outColor;
 flat out int selectionIndex;
@@ -16,6 +17,17 @@ uniform vec3 ambientLight;
 uniform vec3 directionalLight;
 uniform mat4 viewMatrix;
 uniform vec3 modelPosition;
+
+layout(std430, binding = 0) buffer _animationTimes
+{
+    int animationTimes[];
+};
+layout(std430, binding = 1) buffer _animationFrames
+{
+    int animationFrames[];
+};
+
+uniform int time;
 
 vec3 calcLight(int srgb) {
 	float s = (srgb >> 24) & 255;
@@ -34,6 +46,7 @@ void main() {
 	outColor = calcLight(easyLight)*0.003890625;
 	vec4 mvPos = viewMatrix*vec4(position + modelPosition, 1);
 	gl_Position = projectionMatrix*mvPos;
-	outTexCoord = texCoord;
+	outTexCoord = texCoord.xy;
+	textureIndex = texCoord.z + time / animationTimes[int(texCoord.z)] % animationFrames[int(texCoord.z)];
 	mvVertexPos = mvPos.xyz;
 }
