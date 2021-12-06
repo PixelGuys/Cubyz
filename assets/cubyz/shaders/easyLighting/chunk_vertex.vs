@@ -40,7 +40,7 @@ void main()
 {
 	int normal = (texCoordAndNormals >> 24) & 7;
 	int texCoordz = texCoordAndNormals & 65535;
-	textureIndex = texCoord.z + time / animationTimes[texCoordz] % animationFrames[texCoordz];
+	textureIndex = texCoordz + time / animationTimes[texCoordz] % animationFrames[texCoordz];
 	outTexCoord = vec2(float(texCoordAndNormals>>17 & 1)*voxelSize, float(texCoordAndNormals>>16 & 1)*voxelSize);
 	
 	int voxelSize = positionAndNormals >> 18;
