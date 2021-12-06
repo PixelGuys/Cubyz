@@ -39,7 +39,6 @@ const vec3[6] normals = vec3[6](
 void main()
 {
 	int normal = (texCoordAndNormals >> 24) & 7;
-	outTexCoord = texCoord.xy;
 	int texCoordz = texCoordAndNormals & 65535;
 	textureIndex = texCoord.z + time / animationTimes[texCoordz] % animationFrames[texCoordz];
 	outTexCoord = vec2(float(texCoordAndNormals>>17 & 1)*voxelSize, float(texCoordAndNormals>>16 & 1)*voxelSize);
