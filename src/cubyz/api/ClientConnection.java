@@ -1,5 +1,7 @@
 package cubyz.api;
 
+import cubyz.world.NormalChunk;
+import cubyz.world.ReducedChunkVisibilityData;
 import cubyz.world.items.Inventory;
 
 /**
@@ -16,4 +18,8 @@ public interface ClientConnection {
 	 * @param biome
 	 */
 	public void serverPing(long gameTime, String biome);
+
+	public void updateChunkMesh(NormalChunk mesh);
+
+	public void updateChunkMesh(ReducedChunkVisibilityData mesh);
 }

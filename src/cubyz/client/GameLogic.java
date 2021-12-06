@@ -231,4 +231,14 @@ public class GameLogic implements ClientConnection {
 		Cubyz.biome = Cubyz.world.getCurrentRegistries().biomeRegistry.getByID(biome);
 		Cubyz.gameTime = gameTime;
 	}
+
+	@Override
+	public void updateChunkMesh(NormalChunk mesh) {
+		Cubyz.chunkTree.updateChunkMesh(mesh);
+	}
+
+	@Override
+	public void updateChunkMesh(ReducedChunkVisibilityData mesh) {
+		Cubyz.chunkTree.updateChunkMesh(mesh);
+	}
 }

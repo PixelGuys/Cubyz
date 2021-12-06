@@ -421,6 +421,15 @@ public class ServerWorld {
 			}
 			//Profiler.printProfileTime("liquid-update");
 		}
+
+		// Send updates to the player:
+		// TODO: Multiplayer
+		for(NormalChunk ch : chunks) {
+			if(ch.updated && ch.generated) {
+				ch.updated = false;
+				clientConnection.updateChunkMesh(ch);
+			}
+		}
 	}
 
 	public void queueChunk(ChunkData ch) {

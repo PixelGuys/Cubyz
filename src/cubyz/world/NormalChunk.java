@@ -45,14 +45,16 @@ public class NormalChunk extends Chunk {
 	private final ArrayList<BlockChange> changes;
 	private FastList<BlockInstance> visibles = new FastList<BlockInstance>(50, BlockInstance.class);
 	protected final int cx, cy, cz;
-	protected boolean generated;
-	protected boolean startedloading;
-	protected boolean loaded;
+	protected boolean generated = false;
+	protected boolean startedloading = false;
+	protected boolean loaded = false;
 	private ArrayList<BlockEntity> blockEntities = new ArrayList<>();
 	
 	protected final ServerWorld world;
 	
 	public final MapFragment map;
+
+	public boolean updated;
 	
 	public NormalChunk(int cx, int cy, int cz, ServerWorld world) {
 		super(cx << chunkShift, cy << chunkShift, cz << chunkShift, 1);
@@ -515,8 +517,11 @@ public class NormalChunk extends Chunk {
 				neighbors[i] = getBlock(xi, yi, zi);
 			} else {
 				NormalChunk ch = world.getChunk((xi >> chunkShift) + cx, (yi >> chunkShift) + cy, (zi >> chunkShift) +cz);
-				if(ch != null)
+				if(ch != null) {
 					neighbors[i] = ch.getBlock(xi & chunkMask, yi & chunkMask, zi & chunkMask);
+				} else {
+					neighbors[i] = 1; // Some solid replacement, in case the chunk isn't loaded. TODO: Properly choose a solid block.
+				}
 			}
 		}
 		return neighbors;
@@ -537,10 +542,12 @@ public class NormalChunk extends Chunk {
 				indices[i] = index;
 			} else {
 				NormalChunk ch = world.getChunk((xi >> chunkShift) + cx, (yi >> chunkShift) + cy, (zi >> chunkShift) + cz);
-				if(ch != null) {
+				if(ch != null && ch.startedloading) {
 					int index = getIndex(xi & chunkMask, yi & chunkMask, zi & chunkMask);
 					neighbors[i] = ch.getBlock(xi & chunkMask, yi & chunkMask, zi & chunkMask);
 					indices[i] = index;
+				} else {
+					neighbors[i] = 1; // Some solid replacement, in case the chunk isn't loaded. TODO: Properly choose a solid block.
 				}
 			}
 		}
@@ -718,7 +725,7 @@ public class NormalChunk extends Chunk {
 	}
 	
 	public void setUpdated() {
-		if(meshListener != null) meshListener.accept(this);
+		updated = true;
 	}
 	
 	public int startIndex(int start) {

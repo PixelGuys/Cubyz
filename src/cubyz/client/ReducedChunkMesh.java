@@ -7,7 +7,6 @@ import static org.lwjgl.opengl.GL30.*;
 
 import java.nio.IntBuffer;
 import java.util.ArrayList;
-import java.util.function.Consumer;
 
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
@@ -27,7 +26,7 @@ import cubyz.world.ReducedChunkVisibilityData;
  * Used to create chunk meshes for reduced chunks.
  */
 
-public class ReducedChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
+public class ReducedChunkMesh extends ChunkMesh {
 	// ThreadLocal lists, to prevent (re-)allocating tons of memory.
 	public static ThreadLocal<IntFastList> localVertices = new ThreadLocal<IntFastList>() {
 		@Override
@@ -116,13 +115,12 @@ public class ReducedChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 		super(replacement, wx, wy, wz, size);
 	}
 
-	@Override
-	public void accept(ChunkData data) {
+	public void updateChunk(ReducedChunkVisibilityData data) {
 		synchronized(this) {
-			if(data instanceof ReducedChunkVisibilityData) {
+			chunkVisibilityData = data;
+			if(!needsUpdate) {
 				needsUpdate = true;
 				Meshes.queueMesh(this);
-				chunkVisibilityData = (ReducedChunkVisibilityData)data;
 			}
 		}
 	}

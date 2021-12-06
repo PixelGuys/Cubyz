@@ -13,6 +13,7 @@ import cubyz.client.ReducedChunkMesh;
 import cubyz.utils.datastructures.HashMapKey3D;
 import cubyz.world.ChunkData;
 import cubyz.world.NormalChunk;
+import cubyz.world.ReducedChunkVisibilityData;
 
 public class RenderOctTree {
 	private int lastX, lastY, lastZ, lastRD, lastLOD;
@@ -23,7 +24,7 @@ public class RenderOctTree {
 		public final int x, y, z, size;
 		//public Chunk chunk;
 		public ChunkMesh mesh;
-		public OctTreeNode(ReducedChunkMesh replacement, int x, int y, int z, int size) {
+		public OctTreeNode(ReducedChunkMesh replacement, int x, int y, int z, int size, ArrayList<ChunkData> meshRequests) {
 			this.x = x;
 			this.y = y;
 			this.z = z;
@@ -32,12 +33,10 @@ public class RenderOctTree {
 				mesh = new NormalChunkMesh(replacement, x, y, z, size);
 			} else {
 				mesh = new ReducedChunkMesh(replacement, x, y, z, size);
-				ChunkData data = new ChunkData(x, y, z, size/NormalChunk.chunkSize);
-				data.setMeshListener((ReducedChunkMesh)mesh);
-				Cubyz.world.queueChunk(data);
+				meshRequests.add(new ChunkData(x, y, z, mesh.voxelSize));
 			}
 		}
-		public void update(int px, int py, int pz, int renderDistance, int maxRD, int minHeight, int maxHeight, int nearRenderDistance) {
+		public void update(int px, int py, int pz, int renderDistance, int maxRD, int minHeight, int maxHeight, int nearRenderDistance, ArrayList<ChunkData> meshRequests) {
 			synchronized(this) {
 				// Calculate the minimum distance between this chunk and the player:
 				double dx = Math.abs(x + size/2 - px);
@@ -79,22 +78,22 @@ public class RenderOctTree {
 					if(nextNodes == null) {
 						nextNodes = new OctTreeNode[8];
 						for(int i = 0; i < 8; i++) {
-							nextNodes[i] = new OctTreeNode((ReducedChunkMesh)mesh, x + ((i & 1) == 0 ? 0 : size/2), y + ((i & 2) == 0 ? 0 : size/2), z + ((i & 4) == 0 ? 0 : size/2), size/2);
+							nextNodes[i] = new OctTreeNode((ReducedChunkMesh)mesh, x + ((i & 1) == 0 ? 0 : size/2), y + ((i & 2) == 0 ? 0 : size/2), z + ((i & 4) == 0 ? 0 : size/2), size/2, meshRequests);
 						}
 					}
 					for(int i = 0; i < 8; i++) {
-						nextNodes[i].update(px, py, pz, renderDistance, maxRD/2, minHeight, maxHeight, nearRenderDistance);
+						nextNodes[i].update(px, py, pz, renderDistance, maxRD/2, minHeight, maxHeight, nearRenderDistance, meshRequests);
 					}
 				// Check if parts of this OctTree require a higher resolution:
 				} else if(minDist < maxRD*maxRD/4 && size > NormalChunk.chunkSize*2) {
 					if(nextNodes == null) {
 						nextNodes = new OctTreeNode[8];
 						for(int i = 0; i < 8; i++) {
-							nextNodes[i] = new OctTreeNode((ReducedChunkMesh)mesh, x + ((i & 1) == 0 ? 0 : size/2), y + ((i & 2) == 0 ? 0 : size/2), z + ((i & 4) == 0 ? 0 : size/2), size/2);
+							nextNodes[i] = new OctTreeNode((ReducedChunkMesh)mesh, x + ((i & 1) == 0 ? 0 : size/2), y + ((i & 2) == 0 ? 0 : size/2), z + ((i & 4) == 0 ? 0 : size/2), size/2, meshRequests);
 						}
 					}
 					for(int i = 0; i < 8; i++) {
-						nextNodes[i].update(px, py, pz, renderDistance, maxRD/2, minHeight, maxHeight, nearRenderDistance);
+						nextNodes[i].update(px, py, pz, renderDistance, maxRD/2, minHeight, maxHeight, nearRenderDistance, meshRequests);
 					}
 				// This OctTree doesn't require higher resolution:
 				} else {
@@ -154,6 +153,7 @@ public class RenderOctTree {
 		minX += LODSize/2 - NormalChunk.chunkSize;
 		maxX += LODSize/2 - NormalChunk.chunkSize;
 		HashMap<HashMapKey3D, OctTreeNode> newMap = new HashMap<HashMapKey3D, OctTreeNode>();
+		ArrayList<ChunkData> meshRequests = new ArrayList<ChunkData>();
 		for(int x = minX; x <= maxX; x += LODSize) {
 			int maxYRenderDistance = (int)Math.ceil(Math.sqrt(maxRenderDistance*maxRenderDistance - (x - px)*(x - px)));
 			int minY = (py - maxYRenderDistance - LODMask) & ~LODMask;
@@ -185,7 +185,7 @@ public class RenderOctTree {
 					HashMapKey3D key = new HashMapKey3D(rootX, rootY, rootZ);
 					OctTreeNode node = roots.get(key);
 					if(node == null) {
-						node = new OctTreeNode(null, x, y, z, LODSize);
+						node = new OctTreeNode(null, x, y, z, LODSize, meshRequests);
 						// Mark this node to be potentially removed in the next update:
 						node.shouldBeRemoved = true;
 					} else {
@@ -193,7 +193,7 @@ public class RenderOctTree {
 						node.shouldBeRemoved = false;
 					}
 					newMap.put(key, node);
-					node.update(px, py, pz, renderDistance*NormalChunk.chunkSize, maxRenderDistance, Cubyz.world.getOrGenerateMapFragment(x, z, 32).getMinHeight(), Cubyz.world.getOrGenerateMapFragment(x, z, 32).getMaxHeight(), nearRenderDistance);
+					node.update(px, py, pz, renderDistance*NormalChunk.chunkSize, maxRenderDistance, Cubyz.world.getOrGenerateMapFragment(x, z, 32).getMinHeight(), Cubyz.world.getOrGenerateMapFragment(x, z, 32).getMaxHeight(), nearRenderDistance, meshRequests);
 				}
 			}
 		}
@@ -213,7 +213,53 @@ public class RenderOctTree {
 		lastRD = renderDistance;
 		lastLOD = highestLOD;
 		lastFactor = LODFactor;
-		
+		// Make requests AFTER updating the list, to avoid concurrency issues:
+		for(ChunkData data : meshRequests) {
+			Cubyz.world.queueChunk(data);
+		}
+	}
+
+	public OctTreeNode findNode(ChunkData chunkData) {
+		int LODShift = lastLOD + NormalChunk.chunkShift;
+		int LODSize = 1 << LODShift;
+		int rootX = (chunkData.wx - LODSize/2 + NormalChunk.chunkSize) >> LODShift;
+		int rootY = (chunkData.wy - LODSize/2 + NormalChunk.chunkSize) >> LODShift;
+		int rootZ = (chunkData.wz - LODSize/2 + NormalChunk.chunkSize) >> LODShift;
+
+		HashMapKey3D key = new HashMapKey3D(rootX, rootY, rootZ);
+
+		OctTreeNode node = roots.get(key);
+		if(node == null) return null;
+
+		outer:
+		while(node.mesh.voxelSize != chunkData.voxelSize) {
+			if(node.nextNodes == null) return null;
+			for(int i = 0; i < 8; i++) {
+				if(node.nextNodes[i].x <= chunkData.wx && node.nextNodes[i].x + node.nextNodes[i].size > chunkData.wx
+				        && node.nextNodes[i].y <= chunkData.wy && node.nextNodes[i].y + node.nextNodes[i].size > chunkData.wy
+				        && node.nextNodes[i].z <= chunkData.wz && node.nextNodes[i].z + node.nextNodes[i].size > chunkData.wz) {
+					node = node.nextNodes[i];
+					continue outer;
+				}
+			}
+			return null;
+		}
+
+		return node;
+	}
+
+	public void updateChunkMesh(NormalChunk mesh) {
+		OctTreeNode node = findNode(mesh);
+		if(node != null) {
+			((NormalChunkMesh)node.mesh).updateChunk(mesh);
+		}
+	}
+
+	public void updateChunkMesh(ReducedChunkVisibilityData mesh) {
+		OctTreeNode node = findNode(mesh);
+		if(node != null) {
+			((ReducedChunkMesh)node.mesh).updateChunk(mesh);
+		}
 	}
 	
 	public ChunkMesh[] getRenderChunks(FrustumIntersection frustumInt, double x0, double y0, double z0) {

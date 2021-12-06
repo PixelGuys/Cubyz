@@ -77,10 +77,10 @@ public class ChunkGenerationThreadPool {
 		if(ch instanceof NormalChunk) {
 			((NormalChunk) ch).generateFrom(world.getGenerator());
 			((NormalChunk) ch).load();
+			world.clientConnection.updateChunkMesh((NormalChunk) ch);
 		} else {
 			ReducedChunkVisibilityData visibilityData = new ReducedChunkVisibilityData(world, ch.wx, ch.wy, ch.wz, ch.voxelSize);
-			visibilityData.setMeshListener(ch.meshListener);
-			ch.meshListener.accept(visibilityData);
+			world.clientConnection.updateChunkMesh(visibilityData);
 		}
 	}
 

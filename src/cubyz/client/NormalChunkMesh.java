@@ -8,7 +8,6 @@ import static org.lwjgl.opengl.GL30.*;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
-import java.util.function.Consumer;
 
 import org.joml.Vector3d;
 import org.joml.Vector3f;
@@ -30,7 +29,7 @@ import cubyz.world.blocks.Blocks;
  * Used to create chunk meshes for normal chunks.
  */
 
-public class NormalChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
+public class NormalChunkMesh extends ChunkMesh {
 	// ThreadLocal lists, to prevent (re-)allocating tons of memory.
 	public static ThreadLocal<FloatFastList> localVertices = new ThreadLocal<FloatFastList>() {
 		@Override
@@ -189,16 +188,6 @@ public class NormalChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 	public NormalChunkMesh(ReducedChunkMesh replacement, int wx, int wy, int wz, int size) {
 		super(replacement, wx, wy, wz, size);
 	}
-
-	@Override
-	public void accept(ChunkData data) {
-		synchronized(this) {
-			if(!needsUpdate) {
-				needsUpdate = true;
-				Meshes.queueMesh(this);
-			}
-		}
-	}
 	
 	@Override
 	public void regenerateMesh() {
@@ -342,17 +331,13 @@ public class NormalChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 	}
 
 	public void updateChunk(NormalChunk chunk) {
-		if(chunk != this.chunk) {
-			synchronized(this) {
-				if(this.chunk != null)
-					this.chunk.setMeshListener(null);
-				this.chunk = chunk;
-				if(chunk != null)
-					chunk.setMeshListener(this);
-				accept(null);
-				if(chunk == null) {
-					generated = false;
-				}
+		synchronized(this) {
+			this.chunk = chunk;
+			if(chunk == null)
+				generated = false;
+			if(!needsUpdate) {
+				needsUpdate = true;
+				Meshes.queueMesh(this);
 			}
 		}
 	}
