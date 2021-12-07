@@ -455,9 +455,9 @@ public class ServerWorld {
 			ArrayList<ChunkEntityManager> managers = new ArrayList<>();
 			HashMap<HashMapKey3D, MetaChunk> newMetaChunks = new HashMap<HashMapKey3D, MetaChunk>();
 			int metaRenderDistance = (int)Math.ceil(renderDistance/(float)(MetaChunk.metaChunkSize*NormalChunk.chunkSize));
-			int x0 = x/(MetaChunk.metaChunkSize*NormalChunk.chunkSize);
-			int y0 = y/(MetaChunk.metaChunkSize*NormalChunk.chunkSize);
-			int z0 = z/(MetaChunk.metaChunkSize*NormalChunk.chunkSize);
+			int x0 = x >> (MetaChunk.metaChunkShift + NormalChunk.chunkShift);
+			int y0 = y >> (MetaChunk.metaChunkShift + NormalChunk.chunkShift);
+			int z0 = z >> (MetaChunk.metaChunkShift + NormalChunk.chunkShift);
 			for(int metaX = x0 - metaRenderDistance; metaX <= x0 + metaRenderDistance + 1; metaX++) {
 				for(int metaY = y0 - metaRenderDistance; metaY <= y0 + metaRenderDistance + 1; metaY++) {
 					for(int metaZ = z0 - metaRenderDistance; metaZ <= z0 + metaRenderDistance + 1; metaZ++) {
