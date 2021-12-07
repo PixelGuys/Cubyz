@@ -356,7 +356,7 @@ public class MainRenderer {
 
 			BlockDropRenderer.render(frustumInt, ambientLight, directionalLight, playerPosition);
 			
-			NormalChunkMesh.shader.bind();
+			/*NormalChunkMesh.shader.bind();
 			NormalChunkMesh.shader.setUniform(NormalChunkMesh.loc_fog_activ, 0); // manually disable the fog
 			for (int i = 0; i < spatials.length; i++) {
 				Spatial spatial = spatials[i];
@@ -369,7 +369,7 @@ public class MainRenderer {
 							Camera.getViewMatrix());
 					EntityRenderer.entityShader.setUniform(EntityRenderer.loc_viewMatrix, modelViewMatrix);
 				});
-			}
+			}*/ // TODO: Draw the sun.
 			
 			// Render transparent chunk meshes:
 			NormalChunkMesh.bindTransparentShader(ambientLight, directionalLight.getDirection(), time);
