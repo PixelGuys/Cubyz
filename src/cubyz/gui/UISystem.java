@@ -137,7 +137,8 @@ public class UISystem {
 			guiScale = Math.max(1, guiScale);
 			if(guiScale != ClientSettings.GUI_SCALE) {
 				ClientSettings.GUI_SCALE = guiScale;
-				gui.updateGUIScale();
+				if(gui != null)
+					gui.updateGUIScale();
 				for(MenuGUI gui : overlays) {
 					gui.updateGUIScale();
 				}
