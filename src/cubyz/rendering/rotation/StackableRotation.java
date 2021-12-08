@@ -151,7 +151,7 @@ public class StackableRotation implements RotationMode {
 		// Copies code from CubeModel and applies height transformation to it:
 		int indexOffset = vertices.size/3;
 		int size = model.positions.length/3;
-		float factor = Math.max(1, (bi.getBlock() >>> 16)/16.0f);
+		float factor = Math.min(1, (bi.getBlock() >>> 16)/16.0f);
 		IntFastList indexesAdded = new IntFastList(24);
 		for(int i = 0; i < size; i++) {
 			int i2 = i*2;
