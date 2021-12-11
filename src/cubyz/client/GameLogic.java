@@ -172,17 +172,18 @@ public class GameLogic implements ClientConnection {
 			MusicManager.start();
 		});
 		Cubyz.renderDeque.add(() -> {
-			File[] list = new File("assets/cubyz/textures/breaking").listFiles();
 			ArrayList<Texture> breakingAnims = new ArrayList<>();
-			for (File file : list) {
+			for (int i = 0; true; i++) {
 				try {
-					Texture tex = new Texture(file);
+					Texture tex = new Texture(new File("assets/cubyz/textures/breaking/"+i+".png"));
 					tex.setWrapMode(GL12.GL_REPEAT);
 					breakingAnims.add(tex);
 				} catch (IOException e) {
-					Logger.warning(e);
+					break;
 				}
 			}
+			if(breakingAnims.size() == 0)
+				Logger.error("Couldn't find the breaking animations. Without breaking animations the game might crash.");
 			breakAnimations = breakingAnims.toArray(new Texture[breakingAnims.size()]);
 			System.gc();
 		});
