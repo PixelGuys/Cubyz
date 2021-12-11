@@ -28,19 +28,42 @@ lang.name=Português
 # Blocks
 block.cubyz.cactus.name=Cacto
 block.cubyz.soil.name=Solo
+block.cubyz.grass.name=Erva
 block.cubyz.gravel.name=Gravilha
 block.cubyz.ice.name=Gelo
 block.cubyz.sand.name=Areia
 block.cubyz.snow.name=Neve
 block.cubyz.mossy_cobblestone.name=Pedregulho com Musgo
 block.cubyz.cobblestone.name=Pedregulho
+block.cubyz.stone.name=Pedra
 block.cubyz.oak_log.name=Tronco de Carvalho
 block.cubyz.oak_top.name=Topo de Carvalho
 block.cubyz.oak_planks.name=Tábuas de Carvalho
+block.cubyz.oak_fence.name=Cerca de Carvalho
 block.cubyz.oak_leaves.name=Folhas de Carvalho
 block.cubyz.torch.name=Tocha
 block.cubyz.workbench.name=Mesa de Trabalho
+block.cubyz.water.name=Água
 block.cubyz.iron_ore.name=Minério de Ferro
+block.cubyz.coal_ore.name=Minério de Carvão
+block.cubyz.diamond_ore.name=Minério de Diamante
+
+block.cubyz.glow_crystal/red.name=Cristal Brilhante Vermelho
+block.cubyz.glow_crystal/dark_green.name=Cristal Brilhante Verde Escuro
+block.cubyz.glow_crystal/dark_gray.name=Cristal Brilhante Cizento Escuro
+block.cubyz.glow_crystal/blue.name=Cristal Brilhante Azul
+block.cubyz.glow_crystal/light_blue.name=Cristal Brilhante Azul Claro
+block.cubyz.glow_crystal/gray.name=Cristal Brilhante Cinzento
+block.cubyz.glow_crystal/yellow.name=Cristal Brilhante Amarelo
+block.cubyz.glow_crystal/cyan.name=Cristal Brilhante Ciano
+block.cubyz.glow_crystal/brown.name=Cristal Brilhante Castanho
+block.cubyz.glow_crystal/dark_red.name=Cristal Brilhante Vermelho Escuro
+block.cubyz.glow_crystal/purple.name=Cristal Brilhante Roxo
+block.cubyz.glow_crystal/black.name=Cristal Brilhante Preto
+block.cubyz.glow_crystal/white.name=Cristal Brilhante Branco
+block.cubyz.glow_crystal/green.name=Cristal Brilhante Verde
+block.cubyz.glow_crystal/violet.name=Cristal Brilhante Lilas
+block.cubyz.glow_crystal/orange.name=Cristal Brilhante Laranja
 
 # Items
 item.cubyz.stick.name=Pau
