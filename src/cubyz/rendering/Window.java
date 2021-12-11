@@ -195,9 +195,7 @@ public abstract class Window {
 		});
 		
 		glfwSetKeyCallback(handle, (window, key, scancode, action, mods) -> {
-			Keyboard.setKeyPressed(key, action != GLFW_RELEASE);
-			Keyboard.setKeyMods(mods);
-			Keyboard.pushKeyCode(key);
+			Keyboard.glfwKeyCallback(key, scancode, action, mods);
 		});
 		
 		glfwSetFramebufferSizeCallback(handle, (window, width, height) -> {
