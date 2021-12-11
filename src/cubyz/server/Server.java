@@ -12,7 +12,7 @@ public class Server extends Pacer{
 	public static final int UPDATES_TIME_NS = 1_000_000_000 / UPDATES_PER_SEC;
 	public static final float UPDATES_TIME_S = UPDATES_TIME_NS / 10e9f;
 
-	private	static Server server = new Server();
+	private	static final Server server = new Server();
 
 	public static void main(String[] args) {
 		try {
@@ -34,6 +34,13 @@ public class Server extends Pacer{
 	private Server(){
 		super("Server");
 	}
+
+	@Override
+	public void start() throws InterruptedException {
+		running = true;
+		super.start();
+	}
+
 	@Override
 	public void update() {
 		Cubyz.world.update();

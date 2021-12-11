@@ -121,4 +121,8 @@ public class Meshes {
 			Meshes.entityMeshes.put(type, mesh);
 		};
 	}
+
+	public static void clearMeshQueue() {
+		updateQueue.clear();
+	}
 }

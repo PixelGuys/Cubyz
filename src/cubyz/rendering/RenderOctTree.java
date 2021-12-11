@@ -23,7 +23,7 @@ public class RenderOctTree {
 		public OctTreeNode[] nextNodes = null;
 		public final int x, y, z, size;
 		//public Chunk chunk;
-		public ChunkMesh mesh;
+		public final ChunkMesh mesh;
 		public OctTreeNode(ReducedChunkMesh replacement, int x, int y, int z, int size, ArrayList<ChunkData> meshRequests) {
 			this.x = x;
 			this.y = y;
@@ -129,7 +129,6 @@ public class RenderOctTree {
 				Meshes.deleteMesh(mesh);
 				if(Cubyz.world != null)
 					Cubyz.world.unQueueChunk(mesh.getChunk());
-				mesh = null;
 			}
 			if(nextNodes != null) {
 				for(int i = 0; i < 8; i++) {
@@ -278,6 +277,7 @@ public class RenderOctTree {
 			node.cleanup();
 		}
 		roots.clear();
+		Meshes.clearMeshQueue();
 	}
 	
 }
