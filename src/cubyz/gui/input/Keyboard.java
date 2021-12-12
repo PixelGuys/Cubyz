@@ -4,14 +4,14 @@ import java.util.ArrayList;
 
 import cubyz.utils.Logger;
 
+import static org.lwjgl.glfw.GLFW.*;
+
 public class Keyboard {
 
 	static ArrayList<Integer> pressedKeys = new ArrayList<Integer>();
 	private static int bufferLen = 256;
 	static final char[] charBuffer = new char[bufferLen]; // Pseudo-circular buffer of the last chars, to avoid problems if the user is a fast typer or uses macros or compose key.
 	private static int lastStart = 0, lastEnd = 0, current = 0;
-	static int currentKeyCode;
-	static boolean hasKeyCode;
 	static int keyMods;
 	
 	/**
@@ -32,6 +32,11 @@ public class Keyboard {
 	public static boolean hasCharSequence() {
 		return lastStart != lastEnd;
 	}
+
+	public static void glfwKeyCallback(int key, int scancode, int action, int mods) {
+		setKeyPressed(key, action != GLFW_RELEASE);
+		setKeyMods(mods);
+	}
 	
 	/**
 	 * Returns the last chars input by the user.
@@ -46,41 +51,12 @@ public class Keyboard {
 		return sequence;
 	}
 	
-	public static void pushKeyCode(int keyCode) {
-		currentKeyCode = keyCode;
-		hasKeyCode = true;
-	}
-	
-	public static boolean hasKeyCode() {
-		return hasKeyCode;
-	}
-	
 	/**
 	 * Resets buffers.
 	 */
 	public static void release() {
-		releaseKeyCode();
 		lastStart = lastEnd;
 		lastEnd = current;
-	}
-	
-	/**
-	 * Reads key code, keeps it on buffer.
-	 * @return key code
-	 */
-	public static int getKeyCode() {
-		return currentKeyCode;
-	}
-	
-	/**
-	 * Reads key code, does not keep it on buffer.
-	 * @return key code
-	 */
-	public static int releaseKeyCode() {
-		int kc = currentKeyCode;
-		currentKeyCode = 0;
-		hasKeyCode = false;
-		return kc;
 	}
 	
 	public static boolean isKeyPressed(int key) {

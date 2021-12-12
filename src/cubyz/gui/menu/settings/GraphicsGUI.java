@@ -20,7 +20,7 @@ public class GraphicsGUI extends MenuGUI {
 	private CheckBox vsync = new CheckBox();
 	private Label effectiveRenderDistance = new Label();
 	private final Slider renderDistance = new Slider(1, 12, ClientSettings.RENDER_DISTANCE);
-	private final Slider highestLOD = new Slider(ClientSettings.HIGHEST_LOD, new String[] {"1", "2", "4", "8", "16", "32"});
+	//private final Slider highestLOD = new Slider(ClientSettings.HIGHEST_LOD, new String[] {"1", "2", "4", "8", "16", "32"});
 	private final Slider LODFactor = new Slider(Math.round(ClientSettings.LOD_FACTOR*2) - 1, new String[] {"0.5", "1.0", "1.5", "2.0", "2.5", "3.0", "3.5", "4.0", "4.5", "5.0"});
 
 	private void recalculateERD() {
@@ -45,11 +45,11 @@ public class GraphicsGUI extends MenuGUI {
 			recalculateERD();
 		});
 
-		highestLOD.setText("Maximum LOD: ");
+		/*highestLOD.setText("Maximum LOD: ");
 		highestLOD.setOnAction(() -> {
 			ClientSettings.HIGHEST_LOD = highestLOD.getValue();
 			recalculateERD();
-		});
+		});*/
 
 		LODFactor.setText("LOD Factor: ");
 		LODFactor.setOnAction(() -> {
@@ -107,8 +107,8 @@ public class GraphicsGUI extends MenuGUI {
 		renderDistance.setBounds(-125 * GUI_SCALE, 40 * GUI_SCALE, 250 * GUI_SCALE, 30 * GUI_SCALE, Component.ALIGN_TOP);
 		renderDistance.setFontSize(16 * GUI_SCALE);
 
-		highestLOD.setBounds(-125 * GUI_SCALE, 80 * GUI_SCALE, 250 * GUI_SCALE, 30 * GUI_SCALE, Component.ALIGN_TOP);
-		highestLOD.setFontSize(16 * GUI_SCALE);
+		//highestLOD.setBounds(-125 * GUI_SCALE, 80 * GUI_SCALE, 250 * GUI_SCALE, 30 * GUI_SCALE, Component.ALIGN_TOP);
+		//highestLOD.setFontSize(16 * GUI_SCALE);
 
 		LODFactor.setBounds(-125 * GUI_SCALE, 120 * GUI_SCALE, 250 * GUI_SCALE, 30 * GUI_SCALE, Component.ALIGN_TOP);
 		LODFactor.setFontSize(16 * GUI_SCALE);
@@ -129,7 +129,7 @@ public class GraphicsGUI extends MenuGUI {
 	@Override
 	public void render() {
 		renderDistance.render();
-		highestLOD.render();
+		//highestLOD.render();
 		LODFactor.render();
 		effectiveRenderDistance.render();
 		done.render();

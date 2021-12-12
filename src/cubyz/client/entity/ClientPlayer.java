@@ -45,7 +45,11 @@ public class ClientPlayer extends Player {
 				|| Cubyz.world.hasReducedChunk((int)px, (int)py, (int)pz, 8)
 				|| Cubyz.world.hasReducedChunk((int)px, (int)py, (int)pz, 4)
 				|| Cubyz.world.hasReducedChunk((int)px, (int)py, (int)pz, 2);
-		if(ch == null || !ch.isGenerated() || inReduced) return;
+		if(ch == null || !ch.isGenerated() || inReduced) {
+			if(ch != null)
+				Cubyz.world.queueChunk(ch); // Seems like the chunk didn't get loaded correctly.
+			return;
+		}
 		if(Cubyz.gameUI.doesGUIPauseGame() || Cubyz.world == null) {
 			return;
 		}

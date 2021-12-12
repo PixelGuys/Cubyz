@@ -93,7 +93,7 @@ public class StackableRotation implements RotationMode {
 
 	@Override
 	public float getRayIntersection(RayAabIntersection intersection, BlockInstance bi, Vector3f min, Vector3f max, Vector3f transformedPosition) {
-		int data = bi.getBlock() >>> 16;
+		int data = Math.max(16, bi.getBlock() >>> 16);
 		max.add(0, data/16.0f - 1.0f, 0);
 		// Because of the huge number of different BlockInstances that will be tested, it is more efficient to use RayAabIntersection and determine the distance seperately:
 		if (intersection.test(min.x, min.y, min.z, max.x, max.y, max.z)) {
@@ -105,7 +105,7 @@ public class StackableRotation implements RotationMode {
 
 	@Override
 	public boolean checkEntity(Vector3d pos, double width, double height, int x, int y, int z, int block) {
-		return 	   y + (block >>> 16)/16.0f >= pos.y
+		return 	   y + Math.max(1, (block >>> 16)/16.0f) >= pos.y
 				&& y     <= pos.y + height
 				&& x + 1 >= pos.x - width
 				&& x     <= pos.x + width
@@ -116,7 +116,7 @@ public class StackableRotation implements RotationMode {
 	@Override
 	public boolean checkEntityAndDoCollision(Entity ent, Vector4d vel, int x, int y, int z, int block) {
 		// Check if the player can step onto this:
-		float yOffset = (block >>> 16)/16.0f;
+		float yOffset = Math.max(1, (block >>> 16)/16.0f);
 		if(y + yOffset - ent.getPosition().y > 0 && y + yOffset - ent.getPosition().y <= ent.stepHeight) {
 			vel.w = Math.max(vel.w, y + yOffset - ent.getPosition().y);
 			return false;
@@ -151,7 +151,7 @@ public class StackableRotation implements RotationMode {
 		// Copies code from CubeModel and applies height transformation to it:
 		int indexOffset = vertices.size/3;
 		int size = model.positions.length/3;
-		float factor = (bi.getBlock() >>> 16)/16.0f;
+		float factor = Math.min(1, (bi.getBlock() >>> 16)/16.0f);
 		IntFastList indexesAdded = new IntFastList(24);
 		for(int i = 0; i < size; i++) {
 			int i2 = i*2;

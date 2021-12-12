@@ -143,6 +143,17 @@ public class MeshSelectionDetector {
 						inv.getStack(selectedSlot).add(-1);
 					}
 				} else {
+					// Check if the block can actually be placed at that point. There might be entities or other blocks in the way.
+					if(Blocks.solid(world.getBlock(neighbor.x, neighbor.y, neighbor.z)))
+						return;
+					for(Entity ent : world.getEntities()) {
+						Vector3d pos = ent.getPosition();
+						// Check if the block is inside:
+						if(neighbor.x < pos.x + ent.width && neighbor.x + 1 > pos.x - ent.width
+						        && neighbor.z < pos.z + ent.width && neighbor.z + 1 > pos.z - ent.width
+						        && neighbor.y < pos.y + ent.height && neighbor.y + 1 > pos.y - ent.height)
+							return;
+					}
 					block.data = b;
 					if(Blocks.mode(b).generateData(Cubyz.world, neighbor.x, neighbor.y, neighbor.z, relativePos, dir, neighborDir, block, true)) {
 						world.placeBlock(neighbor.x, neighbor.y, neighbor.z, block.data);

@@ -4,7 +4,7 @@ import static org.lwjgl.opengl.GL11.GL_TEXTURE_2D;
 import static org.lwjgl.opengl.GL11.glBindTexture;
 import static org.lwjgl.opengl.GL13.GL_TEXTURE0;
 import static org.lwjgl.opengl.GL13.glActiveTexture;
-import static org.lwjgl.opengl.GL41.*;
+import static org.lwjgl.opengl.GL43.*;
 
 import org.joml.FrustumIntersection;
 import org.joml.Matrix4f;
@@ -278,15 +278,17 @@ public class MainRenderer {
 		prjViewMatrix.mul(Camera.getViewMatrix());
 
 		frustumInt.set(prjViewMatrix);
+
+		int time = (int) (System.currentTimeMillis() & Integer.MAX_VALUE);
 		if(localPlayer != null) {
 			Fog waterFog = new Fog(true, new Vector3f(0.0f, 0.1f, 0.2f), 0.1f);
 
 			Vector3d playerPosition = localPlayer.getPosition(); // Use a constant copy of the player position for the whole rendering to prevent graphics bugs on player movement.
 			 // Update the uniforms. The uniforms are needed to render the replacement meshes.
-			ReducedChunkMesh.bindShader(ambientLight, directionalLight.getDirection());
+			ReducedChunkMesh.bindShader(ambientLight, directionalLight.getDirection(), time);
 			ReducedChunkMesh.shader.setUniform(ReducedChunkMesh.loc_projectionMatrix, Window.getProjectionMatrix()); // Use the same matrix for replacement meshes.
 
-			NormalChunkMesh.bindShader(ambientLight, directionalLight.getDirection());
+			NormalChunkMesh.bindShader(ambientLight, directionalLight.getDirection(), time);
 			
 			// Activate first texture bank
 			glActiveTexture(GL_TEXTURE0);
@@ -339,7 +341,7 @@ public class MainRenderer {
 			
 			// Render the far away ReducedChunks:
 			glDepthRangef(0.05f, 1.0f); // ← Used to fix z-fighting.
-			ReducedChunkMesh.bindShader(ambientLight, directionalLight.getDirection());
+			ReducedChunkMesh.bindShader(ambientLight, directionalLight.getDirection(), time);
 			ReducedChunkMesh.shader.setUniform(ReducedChunkMesh.loc_waterFog_activ, waterFog.isActive());
 			ReducedChunkMesh.shader.setUniform(ReducedChunkMesh.loc_waterFog_color, waterFog.getColor());
 			ReducedChunkMesh.shader.setUniform(ReducedChunkMesh.loc_waterFog_density, waterFog.getDensity());
@@ -354,7 +356,7 @@ public class MainRenderer {
 
 			BlockDropRenderer.render(frustumInt, ambientLight, directionalLight, playerPosition);
 			
-			NormalChunkMesh.shader.bind();
+			/*NormalChunkMesh.shader.bind();
 			NormalChunkMesh.shader.setUniform(NormalChunkMesh.loc_fog_activ, 0); // manually disable the fog
 			for (int i = 0; i < spatials.length; i++) {
 				Spatial spatial = spatials[i];
@@ -367,10 +369,10 @@ public class MainRenderer {
 							Camera.getViewMatrix());
 					EntityRenderer.entityShader.setUniform(EntityRenderer.loc_viewMatrix, modelViewMatrix);
 				});
-			}
+			}*/ // TODO: Draw the sun.
 			
 			// Render transparent chunk meshes:
-			NormalChunkMesh.bindTransparentShader(ambientLight, directionalLight.getDirection());
+			NormalChunkMesh.bindTransparentShader(ambientLight, directionalLight.getDirection(), time);
 			
 			// Activate first texture bank
 			glActiveTexture(GL_TEXTURE0);

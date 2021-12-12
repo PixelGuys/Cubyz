@@ -16,7 +16,7 @@ import cubyz.rendering.text.Fonts;
 import cubyz.utils.translate.TextKey;
 import cubyz.world.ServerWorld;
 import cubyz.world.terrain.worldgenerators.SurfaceGenerator;
-import server.Server;
+import cubyz.server.Server;
 
 import static cubyz.client.ClientSettings.GUI_SCALE;
 

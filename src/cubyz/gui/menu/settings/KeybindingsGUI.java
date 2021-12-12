@@ -15,6 +15,7 @@ import cubyz.rendering.Window;
 import cubyz.utils.Utilities;
 import cubyz.utils.translate.TextKey;
 
+import static org.lwjgl.glfw.GLFW.*;
 import static cubyz.client.ClientSettings.GUI_SCALE;
 
 public class KeybindingsGUI extends MenuGUI {
@@ -120,6 +121,9 @@ public class KeybindingsGUI extends MenuGUI {
 			button.setOnAction(() -> {
 				if (listen == null) {
 					listen = name;
+					glfwSetKeyCallback(Window.getWindowHandle(), (window, key, scancode, action, mods) -> {
+						glfwKeyCallback(key, scancode, action, mods);
+					});
 					button.setText("Click or press any key");
 				}
 			});
@@ -153,25 +157,34 @@ public class KeybindingsGUI extends MenuGUI {
 		}
 	}
 
+	public void endListen(int keyCode) {
+		Keybindings.setKeyCode(listen, keyCode);
+		initUI();
+		listen = null;
+		glfwSetKeyCallback(Window.getWindowHandle(), (window, key, scancode, action, mods) -> {
+			Keyboard.glfwKeyCallback(key, scancode, action, mods);
+		});
+	}
+
+	public void glfwKeyCallback(int key, int scancode, int action, int mods) {
+		endListen(key);
+	}
+
+	@Override
+	public void close() {
+		if(listen != null)
+			endListen(Keybindings.getKeyCode(listen));
+	}
+
 	@Override
 	public void render() {
 		if(listen != null) {
-			if(Keyboard.hasKeyCode()) {
-				Keybindings.setKeyCode(listen, Keyboard.getKeyCode());
-				initUI();
-				listen = null;
-			} else if(Mouse.isLeftButtonPressed()) {
-				Keybindings.setKeyCode(listen, Keybindings.MOUSE_LEFT_CLICK);
-				initUI();
-				listen = null;
+			if(Mouse.isLeftButtonPressed()) {
+				endListen(Keybindings.MOUSE_LEFT_CLICK);
 			} else if(Mouse.isMiddleButtonPressed()) {
-				Keybindings.setKeyCode(listen, Keybindings.MOUSE_MIDDLE_CLICK);
-				initUI();
-				listen = null;
+				endListen(Keybindings.MOUSE_MIDDLE_CLICK);
 			} else if(Mouse.isRightButtonPressed()) {
-				Keybindings.setKeyCode(listen, Keybindings.MOUSE_RIGHT_CLICK);
-				initUI();
-				listen = null;
+				endListen(Keybindings.MOUSE_RIGHT_CLICK);
 			}
 		}
 		

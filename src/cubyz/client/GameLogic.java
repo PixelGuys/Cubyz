@@ -34,7 +34,7 @@ import cubyz.world.*;
 import cubyz.world.items.Inventory;
 import cubyz.world.terrain.noise.StaticBlueNoise;
 import cubyz.world.terrain.worldgenerators.LifelandGenerator;
-import server.Server;
+import cubyz.server.Server;
 
 /**
  * A complex class that holds everything together.<br>
@@ -172,17 +172,18 @@ public class GameLogic implements ClientConnection {
 			MusicManager.start();
 		});
 		Cubyz.renderDeque.add(() -> {
-			File[] list = new File("assets/cubyz/textures/breaking").listFiles();
 			ArrayList<Texture> breakingAnims = new ArrayList<>();
-			for (File file : list) {
+			for (int i = 0; true; i++) {
 				try {
-					Texture tex = new Texture(file);
+					Texture tex = new Texture(new File("assets/cubyz/textures/breaking/"+i+".png"));
 					tex.setWrapMode(GL12.GL_REPEAT);
 					breakingAnims.add(tex);
 				} catch (IOException e) {
-					Logger.warning(e);
+					break;
 				}
 			}
+			if(breakingAnims.size() == 0)
+				Logger.error("Couldn't find the breaking animations. Without breaking animations the game might crash.");
 			breakAnimations = breakingAnims.toArray(new Texture[breakingAnims.size()]);
 			System.gc();
 		});
@@ -230,5 +231,15 @@ public class GameLogic implements ClientConnection {
 	public void serverPing(long gameTime, String biome) {
 		Cubyz.biome = Cubyz.world.getCurrentRegistries().biomeRegistry.getByID(biome);
 		Cubyz.gameTime = gameTime;
+	}
+
+	@Override
+	public void updateChunkMesh(NormalChunk mesh) {
+		Cubyz.chunkTree.updateChunkMesh(mesh);
+	}
+
+	@Override
+	public void updateChunkMesh(ReducedChunkVisibilityData mesh) {
+		Cubyz.chunkTree.updateChunkMesh(mesh);
 	}
 }

@@ -39,7 +39,7 @@ import cubyz.world.terrain.biomes.Biome;
 import cubyz.world.terrain.generators.CrystalCavernGenerator;
 import cubyz.world.terrain.worldgenerators.LifelandGenerator;
 import cubyz.world.terrain.worldgenerators.SurfaceGenerator;
-import server.Server;
+import cubyz.server.Server;
 
 public class ServerWorld {
 	public static final int DAY_CYCLE = 12000; // Length of one in-game day in 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
@@ -421,6 +421,15 @@ public class ServerWorld {
 			}
 			//Profiler.printProfileTime("liquid-update");
 		}
+
+		// Send updates to the player:
+		// TODO: Multiplayer
+		for(NormalChunk ch : chunks) {
+			if(ch.updated && ch.generated) {
+				ch.updated = false;
+				clientConnection.updateChunkMesh(ch);
+			}
+		}
 	}
 
 	public void queueChunk(ChunkData ch) {
@@ -446,9 +455,9 @@ public class ServerWorld {
 			ArrayList<ChunkEntityManager> managers = new ArrayList<>();
 			HashMap<HashMapKey3D, MetaChunk> newMetaChunks = new HashMap<HashMapKey3D, MetaChunk>();
 			int metaRenderDistance = (int)Math.ceil(renderDistance/(float)(MetaChunk.metaChunkSize*NormalChunk.chunkSize));
-			int x0 = x/(MetaChunk.metaChunkSize*NormalChunk.chunkSize);
-			int y0 = y/(MetaChunk.metaChunkSize*NormalChunk.chunkSize);
-			int z0 = z/(MetaChunk.metaChunkSize*NormalChunk.chunkSize);
+			int x0 = x >> (MetaChunk.metaChunkShift + NormalChunk.chunkShift);
+			int y0 = y >> (MetaChunk.metaChunkShift + NormalChunk.chunkShift);
+			int z0 = z >> (MetaChunk.metaChunkShift + NormalChunk.chunkShift);
 			for(int metaX = x0 - metaRenderDistance; metaX <= x0 + metaRenderDistance + 1; metaX++) {
 				for(int metaY = y0 - metaRenderDistance; metaY <= y0 + metaRenderDistance + 1; metaY++) {
 					for(int metaZ = z0 - metaRenderDistance; metaZ <= z0 + metaRenderDistance + 1; metaZ++) {

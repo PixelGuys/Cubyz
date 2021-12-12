@@ -8,7 +8,6 @@ import static org.lwjgl.opengl.GL30.*;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
-import java.util.function.Consumer;
 
 import org.joml.Vector3d;
 import org.joml.Vector3f;
@@ -30,7 +29,7 @@ import cubyz.world.blocks.Blocks;
  * Used to create chunk meshes for normal chunks.
  */
 
-public class NormalChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
+public class NormalChunkMesh extends ChunkMesh {
 	// ThreadLocal lists, to prevent (re-)allocating tons of memory.
 	public static ThreadLocal<FloatFastList> localVertices = new ThreadLocal<FloatFastList>() {
 		@Override
@@ -81,6 +80,7 @@ public class NormalChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 	public static int loc_fog_activ;
 	public static int loc_fog_color;
 	public static int loc_fog_density;
+	public static int loc_time;
 
 	public static class TransparentUniforms {
 		public static int loc_projectionMatrix;
@@ -101,6 +101,7 @@ public class NormalChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 		public static int loc_colorBuffer;
 		public static int loc_windowSize;
 		public static int loc_drawFrontFace;
+		public static int loc_time;
 	}
 
 	public static ShaderProgram shader;
@@ -124,7 +125,7 @@ public class NormalChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 	 * @param ambient
 	 * @param directional
 	 */
-	public static void bindShader(Vector3f ambient, Vector3f directional) {
+	public static void bindShader(Vector3f ambient, Vector3f directional, int time) {
 		shader.bind();
 
 		shader.setUniform(loc_fog_activ, Cubyz.fog.isActive());
@@ -137,6 +138,8 @@ public class NormalChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 
 		shader.setUniform(loc_ambientLight, ambient);
 		shader.setUniform(loc_directionalLight, directional);
+
+		shader.setUniform(loc_time, time);
 	}
 
 	/**
@@ -144,7 +147,7 @@ public class NormalChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 	 * @param ambient
 	 * @param directional
 	 */
-	public static void bindTransparentShader(Vector3f ambient, Vector3f directional) {
+	public static void bindTransparentShader(Vector3f ambient, Vector3f directional, int time) {
 		transparentShader.bind();
 
 		transparentShader.setUniform(TransparentUniforms.loc_fog_activ, Cubyz.fog.isActive());
@@ -162,6 +165,8 @@ public class NormalChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 
 		transparentShader.setUniform(TransparentUniforms.loc_colorBuffer, 3);
 		transparentShader.setUniform(TransparentUniforms.loc_positionBuffer, 4);
+
+		transparentShader.setUniform(TransparentUniforms.loc_time, time);
 	}
 	
 	protected int vaoId = -1;
@@ -182,16 +187,6 @@ public class NormalChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 
 	public NormalChunkMesh(ReducedChunkMesh replacement, int wx, int wy, int wz, int size) {
 		super(replacement, wx, wy, wz, size);
-	}
-
-	@Override
-	public void accept(ChunkData data) {
-		synchronized(this) {
-			if(!needsUpdate) {
-				needsUpdate = true;
-				Meshes.queueMesh(this);
-			}
-		}
 	}
 	
 	@Override
@@ -336,17 +331,13 @@ public class NormalChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 	}
 
 	public void updateChunk(NormalChunk chunk) {
-		if(chunk != this.chunk) {
-			synchronized(this) {
-				if(this.chunk != null)
-					this.chunk.setMeshListener(null);
-				this.chunk = chunk;
-				if(chunk != null)
-					chunk.setMeshListener(this);
-				accept(null);
-				if(chunk == null) {
-					generated = false;
-				}
+		synchronized(this) {
+			this.chunk = chunk;
+			if(chunk == null)
+				generated = false;
+			if(!needsUpdate) {
+				needsUpdate = true;
+				Meshes.queueMesh(this);
 			}
 		}
 	}

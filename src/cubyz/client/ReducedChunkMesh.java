@@ -7,7 +7,6 @@ import static org.lwjgl.opengl.GL30.*;
 
 import java.nio.IntBuffer;
 import java.util.ArrayList;
-import java.util.function.Consumer;
 
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
@@ -27,7 +26,7 @@ import cubyz.world.ReducedChunkVisibilityData;
  * Used to create chunk meshes for reduced chunks.
  */
 
-public class ReducedChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
+public class ReducedChunkMesh extends ChunkMesh {
 	// ThreadLocal lists, to prevent (re-)allocating tons of memory.
 	public static ThreadLocal<IntFastList> localVertices = new ThreadLocal<IntFastList>() {
 		@Override
@@ -64,6 +63,7 @@ public class ReducedChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 	public static int loc_waterFog_activ;
 	public static int loc_waterFog_color;
 	public static int loc_waterFog_density;
+	public static int loc_time;
 
 	public static ShaderProgram shader;
 	
@@ -82,7 +82,7 @@ public class ReducedChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 	 * @param ambient
 	 * @param directional
 	 */
-	public static void bindShader(Vector3f ambient, Vector3f directional) {
+	public static void bindShader(Vector3f ambient, Vector3f directional, int time) {
 		shader.bind();
 
 		shader.setUniform(loc_fog_activ, Cubyz.fog.isActive());
@@ -97,6 +97,8 @@ public class ReducedChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 
 		shader.setUniform(loc_ambientLight, ambient);
 		shader.setUniform(loc_directionalLight, directional);
+
+		shader.setUniform(loc_time, time);
 	}
 	
 	protected int vaoId;
@@ -113,13 +115,12 @@ public class ReducedChunkMesh extends ChunkMesh implements Consumer<ChunkData> {
 		super(replacement, wx, wy, wz, size);
 	}
 
-	@Override
-	public void accept(ChunkData data) {
+	public void updateChunk(ReducedChunkVisibilityData data) {
 		synchronized(this) {
-			if(data instanceof ReducedChunkVisibilityData) {
+			chunkVisibilityData = data;
+			if(!needsUpdate) {
 				needsUpdate = true;
 				Meshes.queueMesh(this);
-				chunkVisibilityData = (ReducedChunkVisibilityData)data;
 			}
 		}
 	}

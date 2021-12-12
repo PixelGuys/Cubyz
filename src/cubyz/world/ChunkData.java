@@ -1,11 +1,8 @@
 package cubyz.world;
 
-import java.util.function.Consumer;
-
 import cubyz.world.entity.Player;
 
 public class ChunkData implements Comparable<ChunkData> {
-	protected Consumer<ChunkData> meshListener;
 	public final int wx, wy, wz;
 	public final int voxelSize;
 	protected float priority;
@@ -15,14 +12,6 @@ public class ChunkData implements Comparable<ChunkData> {
 		this.wy = wy;
 		this.wz = wz;
 		this.voxelSize = voxelSize;
-	}
-
-	/**
-	 * The mesh listener will be notified every time the mesh should change.
-	 * @param listener
-	 */
-	public void setMeshListener(Consumer<ChunkData> listener) {
-		meshListener = listener;
 	}
 
 	@Override

@@ -8,5 +8,12 @@
 	"transparent" : true,
 	"absorbedLight" : 0x17171100, 
 	"model" : "cubyz:block.obj",
-	"texture" : "cubyz:water"
+	"texture" : {
+		"time" : 500,
+		"textures": [
+			"cubyz:water",
+			"cubyz:water_1",
+			"cubyz:water_2"
+		]
+	}
 }
