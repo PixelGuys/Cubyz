@@ -71,21 +71,25 @@ public abstract class Component {
 		return isInside((int) vec.x, (int) vec.y);
 	}
 
-	public void render() {
-		// Calculate coordinates in the window:
+	public final void render() {
+		renderInContainer(0, 0, Window.getWidth(), Window.getHeight());
+	}
+
+	public final void renderInContainer(int containerX, int containerY, int width, int height) {
+		// Calculate coordinates in the container:
 		if((align & ALIGN_LEFT) != 0) {
-			lastRenderX = x;
+			lastRenderX = x + containerX;
 		} else if((align & ALIGN_RIGHT) != 0) {
-			lastRenderX = Window.getWidth() - x;
+			lastRenderX = width - x + containerX;
 		} else {
-			lastRenderX = Window.getWidth()/2 + x;
+			lastRenderX = width/2 + x + containerX;
 		}
 		if((align & ALIGN_TOP) != 0) {
-			lastRenderY = y;
+			lastRenderY = y + containerY;
 		} else if((align & ALIGN_BOTTOM) != 0) {
-			lastRenderY = Window.getHeight() - y;
+			lastRenderY = height - y + containerY;
 		} else {
-			lastRenderY = Window.getHeight()/2 + y;
+			lastRenderY = height/2 + y + containerY;
 		}
 		// Call the subclass render function:
 		render(lastRenderX, lastRenderY);

@@ -22,6 +22,7 @@ import org.lwjgl.system.Library;
 import org.lwjgl.system.MemoryStack;
 
 import cubyz.utils.Logger;
+import cubyz.client.Cubyz;
 import cubyz.gui.input.Keyboard;
 
 public abstract class Window {
@@ -202,6 +203,7 @@ public abstract class Window {
 			Window.width = width;
 			Window.height = height;
 			Window.setResized(true);
+			Cubyz.gameUI.updateGUIScale();
 		});
 		
 		glfwSetWindowFocusCallback(handle, (window, focused) -> {

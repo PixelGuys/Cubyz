@@ -14,7 +14,9 @@ import cubyz.client.GameLauncher;
 import cubyz.gui.MenuGUI;
 import cubyz.gui.components.Button;
 import cubyz.gui.components.Component;
+import cubyz.gui.components.ScrollingContainer;
 import cubyz.rendering.VisibleChunk;
+import cubyz.rendering.Window;
 import cubyz.utils.translate.ContextualTextKey;
 import cubyz.utils.translate.TextKey;
 import cubyz.world.ServerWorld;
@@ -32,9 +34,13 @@ public class SaveSelectorGUI extends MenuGUI {
 	private Button[] deleteButtons;
 	private Button createNew;
 	private Button back;
+
+	private ScrollingContainer container;
 	
 	@Override
 	public void init() {
+		container = new ScrollingContainer();
+
 		// Find all save folders that currently exist:
 		File folder = new File("saves");
 		if (!folder.exists()) {
@@ -54,6 +60,7 @@ public class SaveSelectorGUI extends MenuGUI {
 				GameLauncher.logic.loadWorld(world);
 			});
 			saveButtons[i] = b;
+			container.add(b);
 			b = new Button(TextKey.createTextKey("gui.cubyz.saves.delete"));
 			int index = i;
 			Path path = listOfFiles[i].toPath();
@@ -97,6 +104,7 @@ public class SaveSelectorGUI extends MenuGUI {
 				}
 			});
 			deleteButtons[i] = b;
+			container.add(b);
 		}
 		createNew = new Button(TextKey.createTextKey("gui.cubyz.saves.create"));
 		createNew.setOnAction(() -> {
@@ -112,11 +120,12 @@ public class SaveSelectorGUI extends MenuGUI {
 
 	@Override
 	public void updateGUIScale() {
-		int y = 10;
+		container.setBounds(10 * GUI_SCALE, 10 * GUI_SCALE, Window.getWidth() - 20, Window.getHeight() - 70 * GUI_SCALE, Component.ALIGN_TOP_LEFT);
+		int y = 0;
 		for (int i = 0; i < saveButtons.length; i++) {
-			saveButtons[i].setBounds(10 * GUI_SCALE, y * GUI_SCALE, 200 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_TOP_LEFT);
+			saveButtons[i].setBounds(0, y * GUI_SCALE, 200 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_TOP_LEFT);
 			saveButtons[i].setFontSize(16 * GUI_SCALE);
-			deleteButtons[i].setBounds(220 * GUI_SCALE, y * GUI_SCALE, 50 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_TOP_LEFT);
+			deleteButtons[i].setBounds(210 * GUI_SCALE, y * GUI_SCALE, 50 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_TOP_LEFT);
 			deleteButtons[i].setFontSize(16 * GUI_SCALE);
 			y += 30;
 		}
@@ -129,14 +138,7 @@ public class SaveSelectorGUI extends MenuGUI {
 
 	@Override
 	public void render() {
-		for (Button b : saveButtons) {
-			if(b != null)
-				b.render();
-		}
-		for (Button b : deleteButtons) {
-			if(b != null)
-				b.render();
-		}
+		container.render();
 		if(createNew == null) init();
 		createNew.render();
 		back.render();

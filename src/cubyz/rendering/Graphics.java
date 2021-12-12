@@ -1,26 +1,10 @@
 package cubyz.rendering;
 
-import static org.lwjgl.opengl.GL11.GL_FLOAT;
-import static org.lwjgl.opengl.GL11.GL_LINE_LOOP;
-import static org.lwjgl.opengl.GL11.GL_LINE_STRIP;
-import static org.lwjgl.opengl.GL11.GL_TRIANGLE_STRIP;
-import static org.lwjgl.opengl.GL11.glDrawArrays;
-import static org.lwjgl.opengl.GL13.GL_TEXTURE0;
-import static org.lwjgl.opengl.GL13.glActiveTexture;
-import static org.lwjgl.opengl.GL15.GL_ARRAY_BUFFER;
-import static org.lwjgl.opengl.GL15.GL_STATIC_DRAW;
-import static org.lwjgl.opengl.GL15.glBindBuffer;
-import static org.lwjgl.opengl.GL15.glBufferData;
-import static org.lwjgl.opengl.GL15.glGenBuffers;
-import static org.lwjgl.opengl.GL20.glEnableVertexAttribArray;
-import static org.lwjgl.opengl.GL20.glUniform1f;
-import static org.lwjgl.opengl.GL20.glUniform1i;
-import static org.lwjgl.opengl.GL20.glUniform2f;
-import static org.lwjgl.opengl.GL20.glVertexAttribPointer;
-import static org.lwjgl.opengl.GL30.glBindVertexArray;
-import static org.lwjgl.opengl.GL30.glGenVertexArrays;
+import static org.lwjgl.opengl.GL32.*;
 
 import java.io.IOException;
+
+import org.joml.Vector4i;
 
 import cubyz.rendering.text.CubyzFont;
 import cubyz.rendering.text.TextLine;
@@ -36,6 +20,8 @@ public class Graphics {
 	private static int color;
 	
 	private static float globalAlphaMultiplier = 1;
+
+	private static Vector4i clip = null;
 	
 	/**
 	 * Sets a new color using the hexcode. The alpha channel is given seperately.
@@ -60,6 +46,48 @@ public class Graphics {
 	public static void setGlobalAlphaMultiplier(float multiplier) {
 		globalAlphaMultiplier = multiplier;
 		TextLine.setGlobalAlphaMultiplier(multiplier);
+	}
+
+	/**
+	 * @param newClip not null
+	 * @return the previous clipping rect to restore it later.
+	 */
+	public static Vector4i setClip(Vector4i newClip) {
+		if(clip != null) {
+			if(newClip.x < clip.x) {
+				newClip.z -= (clip.x - newClip.x);
+				newClip.x += (clip.x - newClip.x);
+			}
+			if(newClip.y < clip.y) {
+				newClip.w -= (clip.y - newClip.y);
+				newClip.y += (clip.y - newClip.y);
+			}
+			if(newClip.x + newClip.z > clip.x + clip.z) {
+				newClip.z -= (newClip.x + newClip.z) - (clip.x + clip.z);
+			}
+			if(newClip.y + newClip.w > clip.y + clip.w) {
+				newClip.w -= (newClip.y + newClip.w) - (clip.y + clip.w);
+			}
+		} else {
+			glEnable(GL_SCISSOR_TEST);
+		}
+		Vector4i oldClip = clip;
+		clip = newClip;
+		glScissor(clip.x, clip.y, clip.z, clip.w);
+		return oldClip;
+	}
+
+	/**
+	 * Should be used to restore the old clip when leaving the render function.
+	 * @param previousClip
+	 */
+	public static void restoreClip(Vector4i previousClip) {
+		clip = previousClip;
+		if(clip == null) {
+			glDisable(GL_SCISSOR_TEST);
+		} else {
+			glScissor(clip.x, clip.y, clip.z, clip.w);
+		}
 	}
 	
 

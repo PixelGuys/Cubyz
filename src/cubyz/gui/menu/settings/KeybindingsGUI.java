@@ -155,6 +155,8 @@ public class KeybindingsGUI extends MenuGUI {
 
 			y += 30;
 		}
+		
+		container.setBounds(0, 0, Window.getWidth(), Window.getHeight() - 70 * GUI_SCALE, Component.ALIGN_TOP_LEFT);
 	}
 
 	public void endListen(int keyCode) {
@@ -187,8 +189,6 @@ public class KeybindingsGUI extends MenuGUI {
 				endListen(Keybindings.MOUSE_RIGHT_CLICK);
 			}
 		}
-		
-		container.setBounds(0, 0, Window.getWidth(), Window.getHeight() - 70 * GUI_SCALE, Component.ALIGN_TOP_LEFT);
 		
 		container.render();
 		done.render();
