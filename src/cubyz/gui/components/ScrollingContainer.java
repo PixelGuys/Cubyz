@@ -1,7 +1,10 @@
 package cubyz.gui.components;
 
+import org.joml.Vector4i;
+
 import cubyz.gui.input.Mouse;
 import cubyz.rendering.Graphics;
+import cubyz.rendering.Window;
 
 public class ScrollingContainer extends Container {
 
@@ -13,14 +16,14 @@ public class ScrollingContainer extends Container {
 	
 	@Override
 	public void render(int x, int y) {
+		Vector4i oldClip = Graphics.setClip(new Vector4i(x, Window.getHeight() - y - height, width, height));
 		maxY = 0;
 		for (Component child : childrens) {
 			maxY = Math.max(maxY, child.getY()+child.getHeight());
-			child.setY(child.getY() - scrollY);
-			child.render();
-			child.setY(child.getY() + scrollY);
+			child.renderInContainer(x, y - scrollY, width, height);
 		}
-		if (maxY > height) {
+		maxY -= height;
+		if (maxY > 0) {
 			Graphics.setColor(0x000000);
 			Graphics.fillRect(x + width - scrollBarWidth, y, scrollBarWidth, height);
 			Graphics.setColor(0xffffff);
@@ -46,6 +49,7 @@ public class ScrollingContainer extends Container {
 			scrollY = 0;
 		}
 		scrollY = Math.min(maxY, scrollY);
+		Graphics.restoreClip(oldClip);
 	}
 	
 }

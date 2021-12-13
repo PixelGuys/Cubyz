@@ -2,6 +2,11 @@ package cubyz.gui.components;
 
 import java.util.ArrayList;
 
+import org.joml.Vector4i;
+
+import cubyz.rendering.Graphics;
+import cubyz.rendering.Window;
+
 /**
  * A Component that contains other Components.
  */
@@ -28,10 +33,12 @@ public abstract class Container extends Component {
 	}
 
 	@Override
-	public void render() {
+	public void render(int x, int y) {
+		Vector4i oldClip = Graphics.setClip(new Vector4i(x, Window.getHeight() - y - height, width, height));
 		for (Component child : childrens) {
-			child.render();
+			child.renderInContainer(x, y, width, height);
 		}
+		Graphics.restoreClip(oldClip);
 	}
 	
 }

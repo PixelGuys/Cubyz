@@ -122,6 +122,20 @@ public class UISystem {
 		return gui == null ? false : gui.doesPauseGame();
 	}
 
+	public void updateGUIScale() {
+		int guiScale = Math.min(Window.getWidth()/480, Window.getHeight()/270);
+		guiScale = Math.max(1, guiScale);
+		ClientSettings.GUI_SCALE = guiScale;
+		if(gui != null)
+			gui.updateGUIScale();
+		for(MenuGUI gui : overlays) {
+			gui.updateGUIScale();
+		}
+		for(MenuGUI gui : menuQueue) {
+			gui.updateGUIScale();
+		}
+	}
+
 	public void render() {
 		if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_F1)) {
 			Keyboard.setKeyPressed(GLFW.GLFW_KEY_F1, false);
@@ -133,19 +147,6 @@ public class UISystem {
 			glEnable(GL_BLEND);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 			glActiveTexture(GL_TEXTURE0);
-			int guiScale = Math.min(Window.getWidth()/480, Window.getHeight()/270);
-			guiScale = Math.max(1, guiScale);
-			if(guiScale != ClientSettings.GUI_SCALE) {
-				ClientSettings.GUI_SCALE = guiScale;
-				if(gui != null)
-					gui.updateGUIScale();
-				for(MenuGUI gui : overlays) {
-					gui.updateGUIScale();
-				}
-				for(MenuGUI gui : menuQueue) {
-					gui.updateGUIScale();
-				}
-			}
 			transitionTime += System.currentTimeMillis() - lastAnimTime;
 			lastAnimTime = System.currentTimeMillis();
 			Graphics.setGlobalAlphaMultiplier(1);
