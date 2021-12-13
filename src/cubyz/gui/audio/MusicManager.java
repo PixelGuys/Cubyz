@@ -129,7 +129,8 @@ public class MusicManager {
 					if (DEBUG) Logger.debug("Start silence");
 				}
 			}
-			source.setGain(gain * 0.3f);
+			if(source==null)
+				source.setGain(gain * 0.3f);
 		}
 		
 		String targetMusic = "GymnopedieNo1";
