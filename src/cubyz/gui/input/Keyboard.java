@@ -21,7 +21,7 @@ public class Keyboard {
 	
 	public static void pushChar(char ch) {
 		int next = (current+1)%bufferLen;
-		if(next == lastStart) {
+		if (next == lastStart) {
 			Logger.warning("Char buffer is full. Ignoring char '"+ch+"'.");
 			return;
 		}
@@ -77,7 +77,7 @@ public class Keyboard {
 	
 	public static void setKeyPressed(int key, boolean press) {
 		if (press) {
-			if(activeComponent != null)
+			if (activeComponent != null)
 				activeComponent.onKeyPress(key);
 			if (!pressedKeys.contains(key)) {
 				pressedKeys.add(key);

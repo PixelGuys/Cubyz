@@ -40,17 +40,17 @@ void main()
 	vec4 mvPos = viewMatrix * vec4(position, 1);
 	gl_Position = projectionMatrix * mvPos;
 	int texture = 0;
-	if(vertexNormal == vec3(1, 0, 0)) {
+	if (vertexNormal == vec3(1, 0, 0)) {
 		texture = texPosX;
-	} else if(vertexNormal == vec3(-1, 0, 0)) {
+	} else if (vertexNormal == vec3(-1, 0, 0)) {
 		texture = texNegX;
-	} else if(vertexNormal == vec3(0, 1, 0)) {
+	} else if (vertexNormal == vec3(0, 1, 0)) {
 		texture = texPosY;
-	} else if(vertexNormal == vec3(0, -1, 0)) {
+	} else if (vertexNormal == vec3(0, -1, 0)) {
 		texture = texNegY;
-	} else if(vertexNormal == vec3(0, 0, 1)) {
+	} else if (vertexNormal == vec3(0, 0, 1)) {
 		texture = texPosZ;
-	} else if(vertexNormal == vec3(0, 0, -1)) {
+	} else if (vertexNormal == vec3(0, 0, -1)) {
 		texture = texNegZ;
 	} else {
 		texture = texNegX;

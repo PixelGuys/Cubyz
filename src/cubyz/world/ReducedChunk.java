@@ -62,7 +62,7 @@ public class ReducedChunk extends Chunk {
 		y >>= resolutionShift;
 		z >>= resolutionShift;
 		int index = (x << (widthShift - resolutionShift)) | (y << 2*(widthShift - resolutionShift)) | z;
-		if(blocks[index] == 0 || Blocks.degradable(blocks[index])) {
+		if (blocks[index] == 0 || Blocks.degradable(blocks[index])) {
 			blocks[index] = newBlock;
 		}
 	}

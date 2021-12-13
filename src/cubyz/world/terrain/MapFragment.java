@@ -37,16 +37,16 @@ public class MapFragment extends MapFragmentCompare {
 		Biome getFittingReplacement(float height) {
 			// Check if the existing Biome fits and if not choose a fitting replacement:
 			Biome biome = this.biome;
-			if(height < biome.minHeight) {
+			if (height < biome.minHeight) {
 				Random rand = new Random(seed ^ 654295489239294L);
-				while(height < biome.minHeight) {
-					if(biome.lowerReplacements.length == 0) break;
+				while (height < biome.minHeight) {
+					if (biome.lowerReplacements.length == 0) break;
 					biome = biome.lowerReplacements[rand.nextInt(biome.lowerReplacements.length)];
 				}
-			} else if(height > biome.maxHeight) {
+			} else if (height > biome.maxHeight) {
 				Random rand = new Random(seed ^ 56473865395165948L);
-				while(height > biome.maxHeight) {
-					if(biome.upperReplacements.length == 0) break;
+				while (height > biome.maxHeight) {
+					if (biome.upperReplacements.length == 0) break;
 					biome = biome.upperReplacements[rand.nextInt(biome.upperReplacements.length)];
 				}
 			}
@@ -133,12 +133,12 @@ public class MapFragment extends MapFragmentCompare {
 						dist /= scaledBiomeSize;
 						float maxNorm = biomePositions[x0][z0].maxNorm(x, z)/scaledBiomeSize;
 						// There are cases where this point is further away than 1 unit from all nearby biomes. For that case the euclidian distance function is interpolated to the max-norm for higher distances.
-						if(dist > 0.9f && maxNorm < 1) {
+						if (dist > 0.9f && maxNorm < 1) {
 							float borderMax = 0.9f*maxNorm/dist;
 							float scale = 1/(1 - borderMax);
 							dist = dist*(1 - maxNorm)*scale + scale*(maxNorm - borderMax)*maxNorm;
 						}
-						if(dist <= 1) {
+						if (dist <= 1) {
 							float weight = (1 - dist);
 							// smooth the interpolation with the s-curve:
 							weight = weight*weight*(3 - 2*weight);
@@ -174,7 +174,7 @@ public class MapFragment extends MapFragmentCompare {
 				for(int x0 = xBiome; x0 <= xBiome+2; x0++) {
 					for(int z0 = zBiome; z0 <= zBiome+2; z0++) {
 						float distSquare = biomePositions[x0][z0].distSquare(updatedX, updatedZ);
-						if(distSquare < shortestDist) {
+						if (distSquare < shortestDist) {
 							shortestDist = distSquare;
 							shortestBiome = biomePositions[x0][z0];
 						}

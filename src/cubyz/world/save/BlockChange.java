@@ -23,7 +23,7 @@ public class BlockChange {
 		int palId = Bits.getInt(data, off + 4);
 		int runtimeId = -1;
 		int b = blockPalette.getElement(palId);
-		if(b == 0) {
+		if (b == 0) {
 			throw new MissingBlockException();
 		}
 		runtimeId = b;

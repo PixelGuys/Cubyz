@@ -13,8 +13,8 @@ public class JsonString implements JsonElement {
 	public String toString() {
 		//TODO: might want to escape the string
 		return '\"'+value
-				.replace("\n","\\\n") //escaping new line
-				.replace("\"","\\\"") //escaping new "
+				.replace("\n", "\\\n") //escaping new line
+				.replace("\"", "\\\"") //escaping new "
 				+'\"';
 	}
 }

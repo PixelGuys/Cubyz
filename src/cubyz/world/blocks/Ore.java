@@ -38,7 +38,7 @@ public class Ore {
 
 	public boolean canCreateVeinInBlock(int block) {
 		for(int src : sources) {
-			if(src == block) return true;
+			if (src == block) return true;
 		}
 		return false;
 	}

@@ -35,7 +35,7 @@ public class CurrentWorldRegistries {
 	public CurrentWorldRegistries(ServerWorld world) {
 		String assetPath = "saves/" + world.getName() + "/assets/";
 		File assets = new File(assetPath);
-		if(!assets.exists()) {
+		if (!assets.exists()) {
 			generateAssets(assets, world);
 		}
 		for(DataOrientedRegistry reg : blockRegistries.registered(new DataOrientedRegistry[0])) {

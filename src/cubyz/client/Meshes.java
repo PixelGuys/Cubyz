@@ -47,9 +47,9 @@ public class Meshes {
 	public static void cleanUp() {
 		synchronized(removableMeshes) {
 			for(Object mesh : removableMeshes) {
-				if(mesh instanceof ChunkMesh) {
+				if (mesh instanceof ChunkMesh) {
 					((ChunkMesh)mesh).cleanUp();
-				} else if(mesh instanceof Mesh) {
+				} else if (mesh instanceof Mesh) {
 					((Mesh)mesh).cleanUp();
 				} else {
 					Logger.warning("Someone put weird stuff into Meshes.deleteMesh(): "+mesh.getClass()+": "+mesh.toString());
@@ -64,7 +64,7 @@ public class Meshes {
 	 * @param mesh
 	 */
 	public static void deleteMesh(Object mesh) {
-		if(mesh == null) return;
+		if (mesh == null) return;
 		synchronized(removableMeshes) {
 			removableMeshes.add(mesh);
 		}

@@ -95,12 +95,12 @@ public class MainRenderer {
 	}
 
 	public void loadShaders() throws Exception {
-		if(fogShader != null)
+		if (fogShader != null)
 			fogShader.cleanup();
 		fogShader = new ShaderProgram(Utils.loadResource(shaders + "/fog_vertex.vs"),
 				Utils.loadResource(shaders + "/fog_fragment.fs"),
 				FogUniforms.class);
-		if(deferredRenderPassShader != null)
+		if (deferredRenderPassShader != null)
 			deferredRenderPassShader.cleanup();
 		deferredRenderPassShader = new ShaderProgram(Utils.loadResource(shaders + "/deferred_render_pass.vs"),
 				Utils.loadResource(shaders + "/deferred_render_pass.fs"),
@@ -146,7 +146,7 @@ public class MainRenderer {
 		// Insert sort them:
 		for(int i = 1; i < output.length; i++) {
 			for(int j = i-1; j >= 0; j--) {
-				if(distances[j] < distances[j+1]) {
+				if (distances[j] < distances[j+1]) {
 					// Swap them:
 					distances[j] += distances[j+1];
 					distances[j+1] = distances[j] - distances[j+1];
@@ -167,7 +167,7 @@ public class MainRenderer {
 	 * @param window
 	 */
 	public void render() {
-		if(Window.shouldClose()) {
+		if (Window.shouldClose()) {
 			GameLauncher.instance.exit();
 		}
 		if (Window.isResized()) {
@@ -184,41 +184,41 @@ public class MainRenderer {
 
 		BlockMeshes.loadMeshes(); // Loads all meshes that weren't loaded yet.
 		
-		if(Cubyz.world != null) {
-			if(Cubyz.playerInc.x != 0 || Cubyz.playerInc.z != 0) { // while walking
-				if(bobbingUp) {
+		if (Cubyz.world != null) {
+			if (Cubyz.playerInc.x != 0 || Cubyz.playerInc.z != 0) { // while walking
+				if (bobbingUp) {
 					playerBobbing += 0.005f;
-					if(playerBobbing >= 0.05f) {
+					if (playerBobbing >= 0.05f) {
 						bobbingUp = false;
 					}
 				} else {
 					playerBobbing -= 0.005f;
-					if(playerBobbing <= -0.05f) {
+					if (playerBobbing <= -0.05f) {
 						bobbingUp = true;
 					}
 				}
 			}
-			if(Cubyz.playerInc.y != 0) {
+			if (Cubyz.playerInc.y != 0) {
 				Cubyz.player.vy = Cubyz.playerInc.y;
 			}
-			if(Cubyz.playerInc.x != 0) {
+			if (Cubyz.playerInc.x != 0) {
 				Cubyz.player.vx = Cubyz.playerInc.x;
 			}
 			Camera.setPosition(0, Player.cameraHeight + playerBobbing, 0);
 		}
 		
-		while(!Cubyz.renderDeque.isEmpty()) {
+		while (!Cubyz.renderDeque.isEmpty()) {
 			Cubyz.renderDeque.pop().run();
 		}
-		if(Cubyz.world != null) {
+		if (Cubyz.world != null) {
 			// TODO: Handle colors and sun position in the world.
 			ambient.x = ambient.y = ambient.z = Cubyz.world.getGlobalLighting();
-			if(ambient.x < 0.1f) ambient.x = 0.1f;
-			if(ambient.y < 0.1f) ambient.y = 0.1f;
-			if(ambient.z < 0.1f) ambient.z = 0.1f;
+			if (ambient.x < 0.1f) ambient.x = 0.1f;
+			if (ambient.y < 0.1f) ambient.y = 0.1f;
+			if (ambient.z < 0.1f) ambient.z = 0.1f;
 			clearColor = Cubyz.world.getClearColor();
 			Cubyz.fog.setColor(clearColor);
-			if(ClientSettings.FOG_COEFFICIENT == 0) {
+			if (ClientSettings.FOG_COEFFICIENT == 0) {
 				Cubyz.fog.setActive(false);
 			} else {
 				Cubyz.fog.setActive(true);
@@ -280,7 +280,7 @@ public class MainRenderer {
 		frustumInt.set(prjViewMatrix);
 
 		int time = (int) (System.currentTimeMillis() & Integer.MAX_VALUE);
-		if(localPlayer != null) {
+		if (localPlayer != null) {
 			Fog waterFog = new Fog(true, new Vector3f(0.0f, 0.1f, 0.2f), 0.1f);
 
 			Vector3d playerPosition = localPlayer.getPosition(); // Use a constant copy of the player position for the whole rendering to prevent graphics bugs on player movement.
@@ -296,12 +296,12 @@ public class MainRenderer {
 			Meshes.blockTextureArray.bind();
 
 			BlockInstance selected = null;
-			if(Cubyz.msd.getSelected() instanceof BlockInstance) {
+			if (Cubyz.msd.getSelected() instanceof BlockInstance) {
 				selected = (BlockInstance)Cubyz.msd.getSelected();
 				breakAnim = selected.getBreakingAnim();
 			}
 			
-			if(breakAnim > 0f && breakAnim < 1f) {
+			if (breakAnim > 0f && breakAnim < 1f) {
 				int breakStep = (int)(breakAnim*(GameLauncher.logic.breakAnimations.length - 1)) + 1;
 				glActiveTexture(GL_TEXTURE2);
 				glBindTexture(GL_TEXTURE_2D, GameLauncher.logic.breakAnimations[breakStep].getId());
@@ -314,9 +314,9 @@ public class MainRenderer {
 			double y0 = playerPosition.y;
 			double z0 = playerPosition.z;
 			// Update meshes:
-			while(System.currentTimeMillis() - startTime <= maximumMeshTime) {
+			while (System.currentTimeMillis() - startTime <= maximumMeshTime) {
 				ChunkMesh mesh = Meshes.getNextQueuedMesh();
-				if(mesh == null) break;
+				if (mesh == null) break;
 				mesh.regenerateMesh();
 			}
 
@@ -325,16 +325,16 @@ public class MainRenderer {
 			FastList<NormalChunkMesh> visibleChunks = new FastList<NormalChunkMesh>(NormalChunkMesh.class);
 			FastList<ReducedChunkMesh> visibleReduced = new FastList<ReducedChunkMesh>(ReducedChunkMesh.class);
 			for (ChunkMesh mesh : Cubyz.chunkTree.getRenderChunks(frustumInt, x0, y0, z0)) {
-				if(mesh instanceof NormalChunkMesh) {
+				if (mesh instanceof NormalChunkMesh) {
 					visibleChunks.add((NormalChunkMesh)mesh);
 					
-					if(selected != null && selected.source == mesh.getChunk()) {
+					if (selected != null && selected.source == mesh.getChunk()) {
 						NormalChunkMesh.shader.setUniform(NormalChunkMesh.loc_selectedIndex, selected.renderIndex);
 					} else {
 						NormalChunkMesh.shader.setUniform(NormalChunkMesh.loc_selectedIndex, -1);
 					}
 					mesh.render(playerPosition);
-				} else if(mesh instanceof ReducedChunkMesh) {
+				} else if (mesh instanceof ReducedChunkMesh) {
 					visibleReduced.add((ReducedChunkMesh)mesh);
 				}
 			}
@@ -378,12 +378,12 @@ public class MainRenderer {
 			glActiveTexture(GL_TEXTURE0);
 			// Bind the texture
 			Meshes.blockTextureArray.bind();
-			if(Cubyz.msd.getSelected() instanceof BlockInstance) {
+			if (Cubyz.msd.getSelected() instanceof BlockInstance) {
 				selected = (BlockInstance)Cubyz.msd.getSelected();
 				breakAnim = selected.getBreakingAnim();
 			}
 			
-			if(breakAnim > 0f && breakAnim < 1f) {
+			if (breakAnim > 0f && breakAnim < 1f) {
 				int breakStep = (int)(breakAnim*(GameLauncher.logic.breakAnimations.length - 1)) + 1;
 				glActiveTexture(GL_TEXTURE2);
 				glBindTexture(GL_TEXTURE_2D, GameLauncher.logic.breakAnimations[breakStep].getId());
@@ -401,7 +401,7 @@ public class MainRenderer {
 			NormalChunkMesh[] meshes = sortChunks(visibleChunks.toArray(), x0/NormalChunk.chunkSize - 0.5f, y0/NormalChunk.chunkSize - 0.5f, z0/NormalChunk.chunkSize - 0.5f);
 			for (NormalChunkMesh mesh : meshes) {
 				
-				if(selected != null && selected.source == mesh.getChunk()) {
+				if (selected != null && selected.source == mesh.getChunk()) {
 					NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_selectedIndex, selected.renderIndex);
 				} else {
 					NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_selectedIndex, -1);
@@ -419,8 +419,8 @@ public class MainRenderer {
 			// Draw the water fog if the player is underwater:
 			Player player = Cubyz.player;
 			int block = Cubyz.world.getBlock((int)Math.round(player.getPosition().x), (int)(player.getPosition().y + player.height), (int)Math.round(player.getPosition().z));
-			if(block != 0 && !Blocks.solid(block)) {
-				if(Blocks.id(block).toString().equals("cubyz:water")) {
+			if (block != 0 && !Blocks.solid(block)) {
+				if (Blocks.id(block).toString().equals("cubyz:water")) {
 					fogShader.setUniform(FogUniforms.loc_fog_activ, waterFog.isActive());
 					fogShader.setUniform(FogUniforms.loc_fog_color, waterFog.getColor());
 					fogShader.setUniform(FogUniforms.loc_fog_density, waterFog.getDensity());

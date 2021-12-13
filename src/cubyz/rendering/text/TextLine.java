@@ -78,7 +78,7 @@ public class TextLine implements KeyListener {
 	 * @param text
 	 */
 	public void updateText(String text) {
-		if(cursorPosition != null)
+		if (cursorPosition != null)
 			cursorPosition = TextHitInfo.trailing(-1);
 		_updateText(text);
 	}
@@ -88,9 +88,9 @@ public class TextLine implements KeyListener {
 	 * @param text
 	 */
 	private void _updateText(String text) {
-		if(text == null) text = "";
+		if (text == null) text = "";
 		this.text = text;
-		if(text.length() == 0) {
+		if (text.length() == 0) {
 			layout = null;
 			glyphs.clear();
 			textWidth = 0;
@@ -121,7 +121,7 @@ public class TextLine implements KeyListener {
 	private TextHitInfo selectionStart;
 	
 	private TextHitInfo getCursorPosition(float mouseX) {
-		if(layout == null) {
+		if (layout == null) {
 			return TextHitInfo.trailing(-1);
 		} else {
 			// Do the hit-test using an overestimated bound.
@@ -140,14 +140,14 @@ public class TextLine implements KeyListener {
 	
 	public void endSelection(float mouseX) {
 		cursorPosition = getCursorPosition(mouseX);
-		if(cursorPosition.equals(selectionStart))
+		if (cursorPosition.equals(selectionStart))
 			selectionStart = null;
 		Keyboard.activeComponent = this; // Register as key listener.
 	}
 	
 	public void unselect() {
 		cursorPosition = selectionStart = null;
-		if(Keyboard.activeComponent == this) { // Unregister as key listener.
+		if (Keyboard.activeComponent == this) { // Unregister as key listener.
 			Keyboard.activeComponent = null;
 		}
 	}
@@ -158,9 +158,9 @@ public class TextLine implements KeyListener {
 	 * @return
 	 */
 	private TextHitInfo fixEdge(TextHitInfo position) {
-		if(position == null || layout == null) return position;
-		if(text.length() == 0) return TextHitInfo.trailing(-1);
-		if(layout.getNextLeftHit(position) != null) {
+		if (position == null || layout == null) return position;
+		if (text.length() == 0) return TextHitInfo.trailing(-1);
+		if (layout.getNextLeftHit(position) != null) {
 			position = layout.getNextLeftHit(position);
 			position = layout.getNextRightHit(position);
 		} else {
@@ -176,8 +176,8 @@ public class TextLine implements KeyListener {
 	 * @param cursorPosition
 	 */
 	public void addText(String addition) {
-		if(cursorPosition == null) return;
-		if(selectionStart != null) deleteTextAtCursor(true); // overwrite selected text.
+		if (cursorPosition == null) return;
+		if (selectionStart != null) deleteTextAtCursor(true); // overwrite selected text.
 		int insertionIndex = cursorPosition.getInsertionIndex();
 		text = text.substring(0, insertionIndex)+addition+text.substring(insertionIndex);
 		_updateText(text);
@@ -191,22 +191,22 @@ public class TextLine implements KeyListener {
 	 * @param offset
 	 */
 	public void moveCursor(int offset) {
-		if(text.length() == 0) {
+		if (text.length() == 0) {
 			cursorPosition = TextHitInfo.trailing(-1);
 			return;
 		}
-		if(offset < 0) {
-			while(offset++ < 0) {
+		if (offset < 0) {
+			while (offset++ < 0) {
 				TextHitInfo newPosition = layout.getNextLeftHit(cursorPosition);
-				if(newPosition != null) {
+				if (newPosition != null) {
 					cursorPosition = newPosition;
 					break;
 				}
 			}
-		} else if(offset > 0) {
-			while(offset-- > 0) {
+		} else if (offset > 0) {
+			while (offset-- > 0) {
 				TextHitInfo newPosition = layout.getNextRightHit(cursorPosition);
-				if(newPosition != null) {
+				if (newPosition != null) {
 					cursorPosition = newPosition;
 					break;
 				}
@@ -223,17 +223,17 @@ public class TextLine implements KeyListener {
 	 * @param isRightDelete on which side the character should be removed.
 	 */
 	public void deleteTextAtCursor(boolean isRightDelete) {
-		if(cursorPosition != null && layout != null) {
+		if (cursorPosition != null && layout != null) {
 			boolean isLeading = cursorPosition.isLeadingEdge();
 			int oldPositionIndex = cursorPosition.getCharIndex();
 			// Make a selection to determine which character should be removed:
-			if(selectionStart == null) { // If nothing is selected.
-				if(isRightDelete) {
+			if (selectionStart == null) { // If nothing is selected.
+				if (isRightDelete) {
 					selectionStart = layout.getNextRightHit(cursorPosition);
 				} else {
 					selectionStart = layout.getNextLeftHit(cursorPosition);
 				}
-				if(selectionStart == null) {
+				if (selectionStart == null) {
 					return;
 				}
 			}
@@ -246,19 +246,19 @@ public class TextLine implements KeyListener {
 				deleteTextRange(start, end);
 				// Go through other indices and shift them:
 				for(int j = i + 2; j < selection.length; j += 2) {
-					if(selection[j] >= end) {
+					if (selection[j] >= end) {
 						selection[j] -= end - start;
 						selection[j+1] -= end - start;
 					}
 				}
 				// Also move the current cursor location:
-				if(oldPositionIndex >= end || (oldPositionIndex == end-1 && !isLeading)) {
+				if (oldPositionIndex >= end || (oldPositionIndex == end-1 && !isLeading)) {
 					oldPositionIndex -= end - start;
 				}
 			}
 			_updateText(text);
 			// Update cursor:
-			if(isLeading)
+			if (isLeading)
 				cursorPosition = TextHitInfo.leading(oldPositionIndex);
 			else
 				cursorPosition = TextHitInfo.trailing(oldPositionIndex);
@@ -280,34 +280,34 @@ public class TextLine implements KeyListener {
 			isMovementKey = false;
 			break;
 		}
-		if(selectionStart == null && isMovementKey &&
+		if (selectionStart == null && isMovementKey &&
 				(Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT_SHIFT) || Keyboard.isKeyPressed(GLFW.GLFW_KEY_RIGHT_SHIFT))) {
 			// Start a selection if the shift key was pressed and the user moved in the text:
 			selectionStart = cursorPosition;
 		}
-		if(code == GLFW.GLFW_KEY_BACKSPACE) {
+		if (code == GLFW.GLFW_KEY_BACKSPACE) {
 			deleteTextAtCursor(false);
-		} else if(code == GLFW.GLFW_KEY_DELETE) {
+		} else if (code == GLFW.GLFW_KEY_DELETE) {
 			deleteTextAtCursor(true);
-		} else if(code == GLFW.GLFW_KEY_LEFT) {
+		} else if (code == GLFW.GLFW_KEY_LEFT) {
 			moveCursor(-1);
-		} else if(code == GLFW.GLFW_KEY_RIGHT) {
+		} else if (code == GLFW.GLFW_KEY_RIGHT) {
 			moveCursor(1);
-		} else if(code == GLFW.GLFW_KEY_END) {
+		} else if (code == GLFW.GLFW_KEY_END) {
 			cursorPosition = fixEdge(TextHitInfo.leading(text.length()));
-		} else if(code == GLFW.GLFW_KEY_HOME) {
+		} else if (code == GLFW.GLFW_KEY_HOME) {
 			cursorPosition = fixEdge(TextHitInfo.trailing(-1));
-		} else if(code == GLFW.GLFW_KEY_C && // copy
+		} else if (code == GLFW.GLFW_KEY_C && // copy
 				(Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT_CONTROL) || Keyboard.isKeyPressed(GLFW.GLFW_KEY_RIGHT_CONTROL))) {
 			copyText();
-		} else if(code == GLFW.GLFW_KEY_X && // cut
+		} else if (code == GLFW.GLFW_KEY_X && // cut
 				(Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT_CONTROL) || Keyboard.isKeyPressed(GLFW.GLFW_KEY_RIGHT_CONTROL))) {
 			cutText();
-		} else if(code == GLFW.GLFW_KEY_V && // paste
+		} else if (code == GLFW.GLFW_KEY_V && // paste
 				(Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT_CONTROL) || Keyboard.isKeyPressed(GLFW.GLFW_KEY_RIGHT_CONTROL))) {
 			pasteText();
 		}
-		if(selectionStart != null && isMovementKey &&
+		if (selectionStart != null && isMovementKey &&
 				!Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT_SHIFT) &&
 				!Keyboard.isKeyPressed(GLFW.GLFW_KEY_RIGHT_SHIFT)) {
 			// End the selection if the shift key wasn't pressed and the user moved in the text:
@@ -319,7 +319,7 @@ public class TextLine implements KeyListener {
 	 * Copies selected text to clipboard.
 	 */
 	public void copyText() {
-		if(selectionStart == null) return; // Don't copy if nothing is selected.
+		if (selectionStart == null) return; // Don't copy if nothing is selected.
 		int[] selections = layout.getLogicalRangesForVisualSelection(cursorPosition, selectionStart);
 		String result = "";
 		for(int i = 0; i < selections.length; i += 2) {
@@ -345,9 +345,9 @@ public class TextLine implements KeyListener {
 		} catch(Exception e) {
 			return;
 		}
-		if(pasted.length() == 0) return;
+		if (pasted.length() == 0) return;
 		// Delete the current selection and replace it with the inserted value:
-		if(selectionStart != null) {
+		if (selectionStart != null) {
 			deleteTextAtCursor(true);
 		}
 		addText(pasted);
@@ -358,7 +358,7 @@ public class TextLine implements KeyListener {
 	 */
 	public void cutText() {
 		copyText();
-		if(selectionStart != null)
+		if (selectionStart != null)
 			deleteTextAtCursor(true);
 	}
 	
@@ -418,7 +418,7 @@ public class TextLine implements KeyListener {
 	 * @return
 	 */
 	private float getCursorX(TextHitInfo cursorPosition) {
-		if(cursorPosition == null || layout == null) return 0;
+		if (cursorPosition == null || layout == null) return 0;
 		Point2D.Float cursorPos = new Point2D.Float();
 		layout.hitToPoint(cursorPosition, cursorPos);
 		return cursorPos.x;
@@ -440,12 +440,12 @@ public class TextLine implements KeyListener {
 		x -= xOffset;
 		
 		// Draw the cursor and selected region:
-		if(cursorPosition != null) {
+		if (cursorPosition != null) {
 			float cursorX = getCursorX(cursorPosition);
 			Graphics.setColor(0xff000000);
 			Graphics.drawLine((x + cursorX)*ratio, y*ratio, (x + cursorX)*ratio, y*ratio + height);
 			
-			if(selectionStart != null) {
+			if (selectionStart != null) {
 				float startX = x + cursorX;
 				float selectionStartX = getCursorX(selectionStart);
 				float endX = x + selectionStartX;
@@ -457,7 +457,7 @@ public class TextLine implements KeyListener {
 		textShader.bind();
 
 		glActiveTexture(GL_TEXTURE0);
-		if(font.getTexture() != null) {
+		if (font.getTexture() != null) {
 			font.getTexture().bind();
 			glUniform2f(TextUniforms.loc_fontSize, font.getTexture().getWidth(), font.getTexture().getHeight());
 		}
@@ -475,8 +475,8 @@ public class TextLine implements KeyListener {
 		for (int i = 0; i < glyphs.size(); i++) {
 			Glyph glyph = glyphs.get(i);
 			// Check if new markers are active:
-			if(textMarkingInfo != null) {
-				while(markerIndex < textMarkingInfo.length && glyph.charIndex >= textMarkingInfo[markerIndex].charPosition) {
+			if (textMarkingInfo != null) {
+				while (markerIndex < textMarkingInfo.length && glyph.charIndex >= textMarkingInfo[markerIndex].charPosition) {
 					switch(textMarkingInfo[markerIndex].type) {
 						case TextMarker.TYPE_BOLD:
 						case TextMarker.TYPE_ITALIC:
@@ -493,12 +493,12 @@ public class TextLine implements KeyListener {
 				}
 			}
 			Rectangle textureBounds = font.getGlyph(glyph.codepoint);
-			if((activeFontEffects & TextMarker.TYPE_BOLD) != 0) {
+			if ((activeFontEffects & TextMarker.TYPE_BOLD) != 0) {
 				// Increase the texture size for the bold shadering to work.
 				textureBounds = new Rectangle(textureBounds.x, textureBounds.y-1, textureBounds.width, textureBounds.height+1);
 				y -= 1; // Make sure that the glyph stays leveled.
 			}
-			if(isControlCharacter[i]) {
+			if (isControlCharacter[i]) {
 				// Control characters are drawn using a gray color and without font effects, to make them stand out.
 				glUniform1i(TextUniforms.loc_fontEffects, 0x007f7f7f);
 			} else {
@@ -510,18 +510,18 @@ public class TextLine implements KeyListener {
 			
 			
 			glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-			if((activeFontEffects & TextMarker.TYPE_BOLD) != 0 && !isControlCharacter[i]) {
+			if ((activeFontEffects & TextMarker.TYPE_BOLD) != 0 && !isControlCharacter[i]) {
 				// Just draw another thing on top in x direction. y-direction is handled in the shader.
 				glUniform2f(TextUniforms.loc_offset, glyph.x + x + 0.5f, glyph.y + y);
 				glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 			}
 			
-			if((activeFontEffects & TextMarker.TYPE_BOLD) != 0) {
+			if ((activeFontEffects & TextMarker.TYPE_BOLD) != 0) {
 				y += 1; // Revert the previous transformation.
 			}
 		}
 
-		if(font.getTexture() != null) {
+		if (font.getTexture() != null) {
 			font.getTexture().unbind();
 		}
 		textShader.unbind();

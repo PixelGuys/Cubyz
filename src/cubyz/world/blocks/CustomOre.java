@@ -27,7 +27,7 @@ public class CustomOre {
 		Node[] next;
 		public Node(DataInputStream is, int depth) throws IOException {
 			value = is.readByte();
-			if(depth == 0) return;
+			if (depth == 0) return;
 			next = new Node[is.readByte()];
 			for(int i = 0; i < next.length; i++) {
 				next[i] = new Node(is, depth-1);
@@ -35,7 +35,7 @@ public class CustomOre {
 		}
 		Node get(byte b) {
 			for(Node n: next) {
-				if(n.value == b) {
+				if (n.value == b) {
 					return n;
 				}
 			}
@@ -43,13 +43,13 @@ public class CustomOre {
 		}
 	}
 	static int getIndex(char c) {
-		if(c == ' ') return 0;
-		if('a' <= c && c <= 'z') return 1+c-'a';
+		if (c == ' ') return 0;
+		if ('a' <= c && c <= 'z') return 1+c-'a';
 		return -1;
 	}
 	static char getChar(int i) {
-		if(i == 0) return ' ';
-		if(i <= 26) return (char)('a'+i-1);
+		if (i == 0) return ' ';
+		if (i <= 26) return (char)('a'+i-1);
 		System.err.println("Unknown "+i);
 		System.exit(1);
 		return '0';
@@ -114,10 +114,10 @@ public class CustomOre {
 		char c1 = ' ', c2 = ' ', c3 = ' ', c4 = choose(c1, c2, c3, rand, 0);
 		sb.append((char)(c4+'A'-'a'));
 		int i = 0;
-		while(true) {
+		while (true) {
 			char c5 = choose(c2, c3, c4, rand, ++i);
-			if(c4 == ' ') {
-				if(c5 == ' ') {
+			if (c4 == ' ') {
+				if (c5 == ' ') {
 					break;
 				}
 				sb.append(c4);
@@ -126,19 +126,19 @@ public class CustomOre {
 			c2 = c3;
 			c3 = c4;
 			c4 = c5;
-			if(c5 != ' ')
+			if (c5 != ' ')
 				sb.append(c5);
 		}
 		String[] words = sb.toString().split(" ");
 		boolean wrongSize = false;
 		for(i = 0; i < words.length; i++) {
-			if(words[i].length() > 10)
+			if (words[i].length() > 10)
 				wrongSize = true;
 			// The first word should not be to small.
-			if(words[i].length() < 5 && i == 0)
+			if (words[i].length() < 5 && i == 0)
 				wrongSize = true;
 		}
-		if(wrongSize)
+		if (wrongSize)
 			return randomName(rand); // Repeat until a long enough name is generated.
 		else
 			return sb.toString();
@@ -170,7 +170,7 @@ public class CustomOre {
 		CustomOre block = new CustomOre(new OreTextureProvider());
 		block.color = rand.nextInt(0xFFFFFF);
 		block.seed = rand.nextLong();
-		if(rand.nextInt(4) == 0) { // Make some ores glow.
+		if (rand.nextInt(4) == 0) { // Make some ores glow.
 			block.makeGlow(json);
 		}
 		// Create item drop:
@@ -222,7 +222,7 @@ public class CustomOre {
 		float density = 1;
 		float elasticity = 0;
 		usefulness -= 1;
-		if(usefulness < 0) {
+		if (usefulness < 0) {
 			density -= usefulness;
 		} else {
 			elasticity += usefulness;
@@ -286,7 +286,7 @@ public class CustomOre {
 		}
 		// Create the item texture:
 		BufferedImage canvas;
-		if(name.endsWith("ite"))
+		if (name.endsWith("ite"))
 			canvas = getImage("assets/cubyz/items/textures/materials/templates/"+"gem1"+".png"); // TODO: More gem types.
 		else
 			canvas = getImage("assets/cubyz/items/textures/materials/templates/"+"crystal1"+".png"); // TODO: More crystal types.

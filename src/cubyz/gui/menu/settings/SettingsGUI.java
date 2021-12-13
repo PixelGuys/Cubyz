@@ -37,14 +37,14 @@ public class SettingsGUI extends MenuGUI {
 		ArrayList<String> languageFiles = new ArrayList<>();
 		for (File assetFolder : assetsFolders) {
 			File langFolder = ResourceManager.lookup(assetFolder.getName() + "/lang");
-			if(langFolder == null) continue;
+			if (langFolder == null) continue;
 			iteratingLangFiles:
 			for(File langFile : langFolder.listFiles()) {
-				if(langFile.getName().endsWith(".lang")) {
+				if (langFile.getName().endsWith(".lang")) {
 					String name = langFile.getName().replace(".lang", "");
 					// Check if this language is already in the list:
 					for(String alreadyListed : languageFiles) {
-						if(alreadyListed.equals(name)) continue iteratingLangFiles;
+						if (alreadyListed.equals(name)) continue iteratingLangFiles;
 					}
 					languageFiles.add(name);
 				}

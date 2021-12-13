@@ -17,7 +17,7 @@ public class JsonObject implements JsonElement {
 	@Override
 	public int getInt(String key, int defaultValue) {
 		JsonElement object = map.get(key);
-		if(object != null)
+		if (object != null)
 			return object.getInt(defaultValue);
 		return defaultValue;
 	}
@@ -25,7 +25,7 @@ public class JsonObject implements JsonElement {
 	@Override
 	public long getLong(String key, long defaultValue) {
 		JsonElement object = map.get(key);
-		if(object != null)
+		if (object != null)
 			return object.getLong(defaultValue);
 		return defaultValue;
 	}
@@ -33,7 +33,7 @@ public class JsonObject implements JsonElement {
 	@Override
 	public float getFloat(String key, float defaultValue) {
 		JsonElement object = map.get(key);
-		if(object != null)
+		if (object != null)
 			return object.getFloat(defaultValue);
 		return defaultValue;
 	}
@@ -41,7 +41,7 @@ public class JsonObject implements JsonElement {
 	@Override
 	public double getDouble(String key, double defaultValue) {
 		JsonElement object = map.get(key);
-		if(object != null)
+		if (object != null)
 			return object.getDouble(defaultValue);
 		return defaultValue;
 	}
@@ -49,7 +49,7 @@ public class JsonObject implements JsonElement {
 	@Override
 	public boolean getBool(String key, boolean defaultValue) {
 		JsonElement object = map.get(key);
-		if(object != null)
+		if (object != null)
 			return object.getBool(defaultValue);
 		return defaultValue;
 	}
@@ -57,7 +57,7 @@ public class JsonObject implements JsonElement {
 	@Override
 	public String getString(String key, String defaultValue) {
 		JsonElement object = map.get(key);
-		if(object != null)
+		if (object != null)
 			return object.getStringValue(defaultValue);
 		return defaultValue;
 	}
@@ -65,7 +65,7 @@ public class JsonObject implements JsonElement {
 	@Override
 	public JsonArray getArray(String key) {
 		JsonElement object = map.get(key);
-		if(object instanceof JsonArray)
+		if (object instanceof JsonArray)
 			return (JsonArray)object;
 		return null;
 	}
@@ -73,7 +73,7 @@ public class JsonObject implements JsonElement {
 	@Override
 	public JsonArray getArrayNoNull(String key) {
 		JsonElement object = map.get(key);
-		if(object instanceof JsonArray)
+		if (object instanceof JsonArray)
 			return (JsonArray)object;
 		return JsonArray.EMPTY_ARRAY;
 	}
@@ -85,14 +85,14 @@ public class JsonObject implements JsonElement {
 
 	public JsonObject getObject(String key) {
 		JsonElement object = map.get(key);
-		if(object instanceof JsonObject)
+		if (object instanceof JsonObject)
 			return (JsonObject)object;
 		return null;
 	}
 
 	public JsonObject getObjectOrNew(String key) {
 		JsonElement object = map.get(key);
-		if(object instanceof JsonObject)
+		if (object instanceof JsonObject)
 			return (JsonObject)object;
 		return null;
 	}

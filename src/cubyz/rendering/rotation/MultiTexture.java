@@ -37,14 +37,14 @@ public class MultiTexture implements RotationMode, DataOrientedRegistry {
 
 	@Override
 	public int register(String assetFolder, Resource id, JsonObject json) {
-		if(json.getString("rotation", "cubyz:no_rotation").equals(this.id.toString())) {
+		if (json.getString("rotation", "cubyz:no_rotation").equals(this.id.toString())) {
 			JsonArray variants = json.getArray("multi_texture_variants");
-			if(variants != null && variants.array.size() != 0) {
+			if (variants != null && variants.array.size() != 0) {
 				int[][] indices = new int[variants.array.size()][6];
 				textureIndicesVariants[size] = indices;
 				for(int i = 0; i < variants.array.size(); i++) {
 					JsonElement el = variants.array.get(i);
-					if(el instanceof JsonObject) {
+					if (el instanceof JsonObject) {
 						BlockMeshes.getTextureIndices((JsonObject) el, assetFolder, indices[i]);
 					}
 				}
@@ -74,7 +74,7 @@ public class MultiTexture implements RotationMode, DataOrientedRegistry {
 
 	@Override
 	public boolean generateData(ServerWorld world, int x, int y, int z, Vector3d relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, IntWrapper currentData, boolean blockPlacing) {
-		if(!blockPlacing) return false;
+		if (!blockPlacing) return false;
 		return true;
 	}
 

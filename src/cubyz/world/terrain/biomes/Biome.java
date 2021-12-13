@@ -103,9 +103,9 @@ public class Biome extends ChanceObject implements RegistryElement {
 		JsonArray structures = json.getArrayNoNull("structures");
 		FastList<StructureModel> vegetation = new FastList<StructureModel>(new StructureModel[structures.array.size()]);
 		for(JsonElement elem : structures.array) {
-			if(elem instanceof JsonObject) {
+			if (elem instanceof JsonObject) {
 				StructureModel model = StructureModel.loadStructure((JsonObject) elem);
-				if(model != null)
+				if (model != null)
 					vegetation.add(model);
 			}
 		}

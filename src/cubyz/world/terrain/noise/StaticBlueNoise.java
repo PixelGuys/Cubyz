@@ -42,13 +42,13 @@ public final class StaticBlueNoise {
 					// Go through all neighbors and check validity:
 					for(int dx = -2; dx <= 2; dx++) {
 						for(int dy = -2; dy <= 2; dy++) {
-							if(dx == 0 && dy == 0) continue; // Don't compare with itself!
+							if (dx == 0 && dy == 0) continue; // Don't compare with itself!
 							int neighbor = (x + dx & SIZE_MASK) << SIZE_SHIFT | (y + dy & SIZE_MASK);
 							byte neighborPos = pattern[neighbor];
 							int nx = (neighborPos >>> 3) + (dx << FEATURE_SHIFT);
 							int ny = (neighborPos & 7) + (dy << FEATURE_SHIFT);
 							int distSqr = (nx - xOffset) * (nx - xOffset) + (ny - yOffset) * (ny - yOffset);
-							if(distSqr < DIST_SQUARE_LIMIT) {
+							if (distSqr < DIST_SQUARE_LIMIT) {
 								continue outer;
 							}
 						}
@@ -86,7 +86,7 @@ public final class StaticBlueNoise {
 				xRes += val >>> 3;
 				int yRes = (yMap - yMin) << FEATURE_SHIFT;
 				yRes += val & 7;
-				if(xRes >= 0 && xRes < width && yRes >= 0 && yRes < height)
+				if (xRes >= 0 && xRes < width && yRes >= 0 && yRes < height)
 					result[index++] = xRes << 16 | yRes;
 			}
 		}

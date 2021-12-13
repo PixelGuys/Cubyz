@@ -75,14 +75,14 @@ public class FastList<T> {
 	
 	public void remove(T t) {
 		for(int i = size-1; i >= 0; i--) {
-			if(array[i] == t)
+			if (array[i] == t)
 				remove(i); // Don't break here in case of multiple occurrence.
 		}
 	}
 	
 	public boolean contains(T t) {
 		for(int i = size-1; i >= 0; i--) {
-			if(array[i] == t)
+			if (array[i] == t)
 				return true;
 		}
 		return false;
@@ -94,7 +94,7 @@ public class FastList<T> {
 	 */
 	public int indexOf(T t) {
 		for(int i = size-1; i >= 0; i--) {
-			if(array[i] == t)
+			if (array[i] == t)
 				return i;
 		}
 		return -1;
@@ -121,7 +121,7 @@ public class FastList<T> {
 	 * @param r index of the right-most element in the to sorting area.
 	 */
 	public void sort(Comparator<T> comp, int l, int r) {
-		if(l >= r) return;
+		if (l >= r) return;
 		int i = l, j = r;
 		
 		T x = array[(l+r)/2];

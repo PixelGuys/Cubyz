@@ -23,14 +23,14 @@ public class MultiplayerJoinGui extends MenuGUI {
     private class TextInputWithLabel{
         private TextInput textInput     =  new TextInput();
         private Label label             = new Label();
-        private int x,y,labelWidth,inputTextWidth,height;
+        private int x, y, labelWidth, inputTextWidth, height;
 
-        public void setText(String stringLabel,String stringTextInput){
+        public void setText(String stringLabel, String stringTextInput){
             updateGUIScale();
             label.setText(stringLabel);
             textInput.setText(stringTextInput);
         }
-        public void setText(TextKey stringLabel,String stringTextInput){
+        public void setText(TextKey stringLabel, String stringTextInput){
             updateGUIScale();
             label.setText(stringLabel);
             textInput.setText(stringTextInput);
@@ -38,7 +38,7 @@ public class MultiplayerJoinGui extends MenuGUI {
         public String getText(){
             return textInput.getText();
         }
-        public void setBounds(int x,int y,int labelWidth,int inputTextWidth,int height){
+        public void setBounds(int x, int y, int labelWidth, int inputTextWidth, int height){
             this.x = x;
             this.y = y;
             this.labelWidth = labelWidth;
@@ -74,20 +74,20 @@ public class MultiplayerJoinGui extends MenuGUI {
     @Override
     public void init() {
         DiscordIntegration.setStatus("Multiplayer");
-        guiIPAdress.setBounds(-250,100,150,250,20);
-        guiIPAdress.setText("IP adress","localhost:42069");
+        guiIPAdress.setBounds(-250, 100, 150, 250, 20);
+        guiIPAdress.setText("IP adress", "localhost:42069");
 
-        /* TODO: Until we have a logIn server or something like that,the user can enter any name.
+        /* TODO: Until we have a logIn server or something like that, the user can enter any name.
         *   This can be exploited very easly. Might be good to change this in the future.*/
-        guiName.setBounds(-250,140,150,250,20);
-        guiName.setText(TextKey.createTextKey("gui.cubyz.multiplayer.displayname"),"TheLegend27");
+        guiName.setBounds(-250, 140, 150, 250, 20);
+        guiName.setText(TextKey.createTextKey("gui.cubyz.multiplayer.displayname"), "TheLegend27");
 
         guiJoin.setBounds(10, 60, 400, 50, Component.ALIGN_BOTTOM_LEFT);
         guiJoin.setText(TextKey.createTextKey("gui.cubyz.multiplayer.join"));
         guiJoin.setFontSize(32);
         guiJoin.setOnAction(() -> {
             new Thread(() -> Server.main(new String[0]), "Server Thread").start();
-            serverConnection = new ServerConnection(guiIPAdress.getText(),guiName.getText());
+            serverConnection = new ServerConnection(guiIPAdress.getText(), guiName.getText());
             /*ServerWorld world = new ServerWorld(name.getText(), VisibleChunk.class);
             world.setGenerator(generators[(int) generator.getUserObject()].toString());
 

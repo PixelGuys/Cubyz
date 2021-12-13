@@ -11,7 +11,7 @@ public class ReducedChunkVisibilityData extends ChunkData {
 	public int capacity = INITIAL_CAPACITY;
 
 	private void addBlock(byte x, byte y, byte z, byte neighbors, int block) {
-		if(size == capacity)
+		if (size == capacity)
 			increaseCapacity();
 		visibleBlocks[size] = block;
 		this.x[size] = x;
@@ -62,7 +62,7 @@ public class ReducedChunkVisibilityData extends ChunkData {
 			for(byte y = 0; y < NormalChunk.chunkSize; y++) {
 				for(byte z = 0; z < NormalChunk.chunkSize; z++) {
 					int block = getBlock(chunks, x, y, z);
-					if(block == 0) continue;
+					if (block == 0) continue;
 					// Check all neighbors:
 					byte neighborVisibility = 0;
 					for(byte i = 0; i < Neighbors.NEIGHBORS; i++) {
@@ -72,16 +72,16 @@ public class ReducedChunkVisibilityData extends ChunkData {
 						boolean isVisible = false;
 						int neighbor = getBlock(chunks, x2, y2, z2);
 						isVisible = neighbor == 0;
-						if(!isVisible) {
+						if (!isVisible) {
 							// If the chunk is at a border, more neighbors need to be checked to prevent cracks at LOD changes:
-							if((x & halfMask) == ((x2 & halfMask) ^ halfMask) || (y & halfMask) == ((y2 & halfMask) ^ halfMask) || (z & halfMask) == ((z2 & halfMask) ^ halfMask)) {
+							if ((x & halfMask) == ((x2 & halfMask) ^ halfMask) || (y & halfMask) == ((y2 & halfMask) ^ halfMask) || (z & halfMask) == ((z2 & halfMask) ^ halfMask)) {
 								for(byte j = 0; j < Neighbors.NEIGHBORS; j++) {
-									if(i == (j ^ 1)) continue; // Don't check the source block twice.
+									if (i == (j ^ 1)) continue; // Don't check the source block twice.
 									int x3 = x2 + Neighbors.REL_X[j];
 									int y3 = y2 + Neighbors.REL_Y[j];
 									int z3 = z2 + Neighbors.REL_Z[j];
 									neighbor = getBlock(chunks, x3, y3, z3);
-									if(neighbor == 0) {
+									if (neighbor == 0) {
 										isVisible = true;
 										break;
 									}
@@ -89,11 +89,11 @@ public class ReducedChunkVisibilityData extends ChunkData {
 							}
 						}
 
-						if(isVisible) {
+						if (isVisible) {
 							neighborVisibility |= Neighbors.BIT_MASK[i];
 						}
 					}
-					if(neighborVisibility != 0) {
+					if (neighborVisibility != 0) {
 						addBlock(x, y, z, neighborVisibility, block);
 					}
 				}

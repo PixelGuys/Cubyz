@@ -109,7 +109,7 @@ public class ServerWorld {
 		this.name = name;
 		this.chunkProvider = chunkProvider;
 		// Check if the chunkProvider is valid:
-		if(!NormalChunk.class.isAssignableFrom(chunkProvider) ||
+		if (!NormalChunk.class.isAssignableFrom(chunkProvider) ||
 				chunkProvider.getConstructors().length != 1 ||
 				chunkProvider.getConstructors()[0].getParameterTypes().length != 4 ||
 				!chunkProvider.getConstructors()[0].getParameterTypes()[0].equals(Integer.class) ||
@@ -164,7 +164,7 @@ public class ServerWorld {
 
 		wio.loadWorldData(); // load data here in order for entities to also be loaded.
 		
-		if(generated) {
+		if (generated) {
 			wio.saveWorldData();
 		}
 		generated = true;
@@ -186,7 +186,7 @@ public class ServerWorld {
 				dx = rnd.nextInt(65536);
 				dz = rnd.nextInt(65536);
 				Logger.info("Trying " + dx + " ? " + dz);
-				if(isValidSpawnLocation(dx, dz))
+				if (isValidSpawnLocation(dx, dz))
 					break;
 			}
 			int startY = (int)getOrGenerateMapFragment((int)dx, (int)dz, 1).getHeight(dx, dz);
@@ -204,7 +204,7 @@ public class ServerWorld {
 	
 	public void forceSave() {
 		for(MetaChunk chunk : metaChunks.values()) {
-			if(chunk != null) chunk.save();
+			if (chunk != null) chunk.save();
 		}
 		wio.saveWorldData();
 		for(Cache<MapFragment> cache : mapCache) {
@@ -249,8 +249,8 @@ public class ServerWorld {
 			for(BlockDrop drop : Blocks.blockDrops(b)) {
 				int amount = (int)(drop.amount);
 				float randomPart = drop.amount - amount;
-				if(Math.random() < randomPart) amount++;
-				if(amount > 0) {
+				if (Math.random() < randomPart) amount++;
+				if (amount > 0) {
 					ItemEntityManager manager = this.getEntityManagerAt(x & ~NormalChunk.chunkMask, y & ~NormalChunk.chunkMask, z & ~NormalChunk.chunkMask).itemEntityManager;
 					manager.add(x, y, z, 0, 0, 0, new ItemStack(drop.item, amount), 30*300 /*5 minutes at normal update speed.*/);
 				}
@@ -323,30 +323,30 @@ public class ServerWorld {
 		// Ambient light
 		{
 			int dayTime = Math.abs((int)(gameTime % dayCycle) - (dayCycle >> 1));
-			if(dayTime < (dayCycle >> 2)-(dayCycle >> 4)) {
+			if (dayTime < (dayCycle >> 2)-(dayCycle >> 4)) {
 				ambientLight = 0.1f;
 				clearColor.x = clearColor.y = clearColor.z = 0;
-			} else if(dayTime > (dayCycle >> 2)+(dayCycle >> 4)) {
+			} else if (dayTime > (dayCycle >> 2)+(dayCycle >> 4)) {
 				ambientLight = 0.7f;
 				clearColor.x = clearColor.y = 0.8f;
 				clearColor.z = 1.0f;
 			} else {
 				//b:
-				if(dayTime > (dayCycle >> 2)) {
+				if (dayTime > (dayCycle >> 2)) {
 					clearColor.z = 1.0f*(dayTime-(dayCycle >> 2))/(dayCycle >> 4);
 				} else {
 					clearColor.z = 0.0f;
 				}
 				//g:
-				if(dayTime > (dayCycle >> 2)+(dayCycle >> 5)) {
+				if (dayTime > (dayCycle >> 2)+(dayCycle >> 5)) {
 					clearColor.y = 0.8f;
-				} else if(dayTime > (dayCycle >> 2)-(dayCycle >> 5)) {
+				} else if (dayTime > (dayCycle >> 2)-(dayCycle >> 5)) {
 					clearColor.y = 0.8f+0.8f*(dayTime-(dayCycle >> 2)-(dayCycle >> 5))/(dayCycle >> 4);
 				} else {
 					clearColor.y = 0.0f;
 				}
 				//r:
-				if(dayTime > (dayCycle >> 2)) {
+				if (dayTime > (dayCycle >> 2)) {
 					clearColor.x = 0.8f;
 				} else {
 					clearColor.x = 0.8f+0.8f*(dayTime-(dayCycle >> 2))/(dayCycle >> 4);
@@ -361,45 +361,45 @@ public class ServerWorld {
 			Entity en = entities.get(i);
 			en.update(deltaTime);
 			// Check item entities:
-			if(en.getInventory() != null) {
+			if (en.getInventory() != null) {
 				int x0 = (int)(en.getPosition().x - en.width) & ~NormalChunk.chunkMask;
 				int y0 = (int)(en.getPosition().y - en.width) & ~NormalChunk.chunkMask;
 				int z0 = (int)(en.getPosition().z - en.width) & ~NormalChunk.chunkMask;
 				int x1 = (int)(en.getPosition().x + en.width) & ~NormalChunk.chunkMask;
 				int y1 = (int)(en.getPosition().y + en.width) & ~NormalChunk.chunkMask;
 				int z1 = (int)(en.getPosition().z + en.width) & ~NormalChunk.chunkMask;
-				if(getEntityManagerAt(x0, y0, z0) != null)
+				if (getEntityManagerAt(x0, y0, z0) != null)
 					getEntityManagerAt(x0, y0, z0).itemEntityManager.checkEntity(en);
-				if(x0 != x1) {
-					if(getEntityManagerAt(x1, y0, z0) != null)
+				if (x0 != x1) {
+					if (getEntityManagerAt(x1, y0, z0) != null)
 						getEntityManagerAt(x1, y0, z0).itemEntityManager.checkEntity(en);
-					if(y0 != y1) {
-						if(getEntityManagerAt(x0, y1, z0) != null)
+					if (y0 != y1) {
+						if (getEntityManagerAt(x0, y1, z0) != null)
 							getEntityManagerAt(x0, y1, z0).itemEntityManager.checkEntity(en);
-						if(getEntityManagerAt(x1, y1, z0) != null)
+						if (getEntityManagerAt(x1, y1, z0) != null)
 							getEntityManagerAt(x1, y1, z0).itemEntityManager.checkEntity(en);
-						if(z0 != z1) {
-							if(getEntityManagerAt(x0, y0, z1) != null)
+						if (z0 != z1) {
+							if (getEntityManagerAt(x0, y0, z1) != null)
 								getEntityManagerAt(x0, y0, z1).itemEntityManager.checkEntity(en);
-							if(getEntityManagerAt(x1, y0, z1) != null)
+							if (getEntityManagerAt(x1, y0, z1) != null)
 								getEntityManagerAt(x1, y0, z1).itemEntityManager.checkEntity(en);
-							if(getEntityManagerAt(x0, y1, z1) != null)
+							if (getEntityManagerAt(x0, y1, z1) != null)
 								getEntityManagerAt(x0, y1, z1).itemEntityManager.checkEntity(en);
-							if(getEntityManagerAt(x1, y1, z1) != null)
+							if (getEntityManagerAt(x1, y1, z1) != null)
 								getEntityManagerAt(x1, y1, z1).itemEntityManager.checkEntity(en);
 						}
 					}
-				} else if(y0 != y1) {
-					if(getEntityManagerAt(x0, y1, z0) != null)
+				} else if (y0 != y1) {
+					if (getEntityManagerAt(x0, y1, z0) != null)
 						getEntityManagerAt(x0, y1, z0).itemEntityManager.checkEntity(en);
-					if(z0 != z1) {
-						if(getEntityManagerAt(x0, y0, z1) != null)
+					if (z0 != z1) {
+						if (getEntityManagerAt(x0, y0, z1) != null)
 							getEntityManagerAt(x0, y0, z1).itemEntityManager.checkEntity(en);
-						if(getEntityManagerAt(x0, y1, z1) != null)
+						if (getEntityManagerAt(x0, y1, z1) != null)
 							getEntityManagerAt(x0, y1, z1).itemEntityManager.checkEntity(en);
 					}
-				} else if(z0 != z1) {
-					if(getEntityManagerAt(x0, y0, z1) != null)
+				} else if (z0 != z1) {
+					if (getEntityManagerAt(x0, y0, z1) != null)
 						getEntityManagerAt(x0, y0, z1).itemEntityManager.checkEntity(en);
 				}
 			}
@@ -425,7 +425,7 @@ public class ServerWorld {
 		// Send updates to the player:
 		// TODO: Multiplayer
 		for(NormalChunk ch : chunks) {
-			if(ch.updated && ch.generated) {
+			if (ch.updated && ch.generated) {
 				ch.updated = false;
 				clientConnection.updateChunkMesh(ch);
 			}
@@ -450,7 +450,7 @@ public class ServerWorld {
 		int zOld = z;
 		
 		// Care about the metaChunks:
-		if(x != lastX || y != lastY || z != lastZ) {
+		if (x != lastX || y != lastY || z != lastZ) {
 			ArrayList<NormalChunk> chunkList = new ArrayList<>();
 			ArrayList<ChunkEntityManager> managers = new ArrayList<>();
 			HashMap<HashMapKey3D, MetaChunk> newMetaChunks = new HashMap<HashMapKey3D, MetaChunk>();
@@ -466,7 +466,7 @@ public class ServerWorld {
 						HashMapKey3D key = new HashMapKey3D(xReal, metaY, zReal);
 						// Check if it already exists:
 						MetaChunk metaChunk = metaChunks.get(key);
-						if(metaChunk == null) {
+						if (metaChunk == null) {
 							metaChunk = new MetaChunk(xReal*(MetaChunk.metaChunkSize*NormalChunk.chunkSize), metaY*(MetaChunk.metaChunkSize*NormalChunk.chunkSize), zReal*(MetaChunk.metaChunkSize*NormalChunk.chunkSize), this);
 						}
 						newMetaChunks.put(key, metaChunk);
@@ -492,16 +492,16 @@ public class ServerWorld {
 		int hash = data.hashCode() & MAP_CACHE_MASK[index];
 
 		MapFragment res = mapCache[index].find(data, hash);
-		if(res != null) return res;
+		if (res != null) return res;
 
 		synchronized(mapCache[index].cache[hash]) {
 			res = mapCache[index].find(data, hash);
-			if(res != null) return res;
+			if (res != null) return res;
 
 			// Generate a new map fragment:
 			res = new MapFragment(wx, wz, seed, this, registries, wio, voxelSize);
 			MapFragment old = mapCache[index].addToCache(res, hash);
-			if(old != null)
+			if (old != null)
 				old.mapIO.saveData();
 		}
 		return res;
@@ -531,10 +531,10 @@ public class ServerWorld {
 		ChunkData data = new ChunkData(wx, wy, wz, voxelSize);
 		int hash = data.hashCode() & CHUNK_CACHE_MASK;
 		ReducedChunk res = reducedChunkCache.find(data, hash);
-		if(res != null) return res;
+		if (res != null) return res;
 		synchronized(reducedChunkCache.cache[hash]) {
 			res = reducedChunkCache.find(data, hash);
-			if(res != null) return res;
+			if (res != null) return res;
 			// Generate a new chunk:
 			res = new ReducedChunk(wx, wy, wz, CubyzMath.binaryLog(voxelSize));
 			res.generateFrom(generator);
@@ -561,7 +561,7 @@ public class ServerWorld {
 	
 	public NormalChunk getChunk(int cx, int cy, int cz) {
 		MetaChunk meta = getMetaChunk(cx, cy, cz);
-		if(meta != null) {
+		if (meta != null) {
 			return meta.getChunk(cx, cy, cz);
 		}
 		return null;
@@ -572,7 +572,7 @@ public class ServerWorld {
 		int cy = wy >> NormalChunk.chunkShift;
 		int cz = wz >> NormalChunk.chunkShift;
 		MetaChunk meta = getMetaChunk(cx, cy, cz);
-		if(meta != null) {
+		if (meta != null) {
 			return meta.getEntityManager(cx, cy, cz);
 		}
 		return null;
@@ -651,14 +651,14 @@ public class ServerWorld {
 
 	public int getLight(int x, int y, int z, Vector3f sunLight, boolean easyLighting) {
 		NormalChunk ch = getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift);
-		if(ch == null || !ch.isLoaded() || !easyLighting)
+		if (ch == null || !ch.isLoaded() || !easyLighting)
 			return 0xffffffff;
 		return ch.getLight(x & NormalChunk.chunkMask, y & NormalChunk.chunkMask, z & NormalChunk.chunkMask);
 	}
 
 	public void getLight(NormalChunk ch, int x, int y, int z, int[] array) {
 		int block = getBlock(x, y, z);
-		if(block == 0) return;
+		if (block == 0) return;
 		int selfLight = Blocks.light(block);
 		x--;
 		y--;
@@ -673,16 +673,16 @@ public class ServerWorld {
 	}
 	
 	private int getLight(NormalChunk ch, int x, int y, int z, int minLight) {
-		if(x - ch.wx != (x & NormalChunk.chunkMask) || y - ch.wy != (y & NormalChunk.chunkMask) || z - ch.wz != (z & NormalChunk.chunkMask))
+		if (x - ch.wx != (x & NormalChunk.chunkMask) || y - ch.wy != (y & NormalChunk.chunkMask) || z - ch.wz != (z & NormalChunk.chunkMask))
 			ch = getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift);
-		if(ch == null || !ch.isLoaded())
+		if (ch == null || !ch.isLoaded())
 			return 0xff000000;
 		int light = ch.getLight(x & NormalChunk.chunkMask, y & NormalChunk.chunkMask, z & NormalChunk.chunkMask);
 		// Make sure all light channels are at least as big as the minimum:
-		if((light & 0xff000000) >>> 24 < (minLight & 0xff000000) >>> 24) light = (light & 0x00ffffff) | (minLight & 0xff000000);
-		if((light & 0x00ff0000) < (minLight & 0x00ff0000)) light = (light & 0xff00ffff) | (minLight & 0x00ff0000);
-		if((light & 0x0000ff00) < (minLight & 0x0000ff00)) light = (light & 0xffff00ff) | (minLight & 0x0000ff00);
-		if((light & 0x000000ff) < (minLight & 0x000000ff)) light = (light & 0xffffff00) | (minLight & 0x000000ff);
+		if ((light & 0xff000000) >>> 24 < (minLight & 0xff000000) >>> 24) light = (light & 0x00ffffff) | (minLight & 0xff000000);
+		if ((light & 0x00ff0000) < (minLight & 0x00ff0000)) light = (light & 0xff00ffff) | (minLight & 0x00ff0000);
+		if ((light & 0x0000ff00) < (minLight & 0x0000ff00)) light = (light & 0xffff00ff) | (minLight & 0x0000ff00);
+		if ((light & 0x000000ff) < (minLight & 0x000000ff)) light = (light & 0xffffff00) | (minLight & 0x000000ff);
 		return light;
 	}
 }

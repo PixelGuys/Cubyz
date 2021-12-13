@@ -32,15 +32,15 @@ public class LogRotation implements RotationMode {
 
 	@Override
 	public boolean generateData(ServerWorld world, int x, int y, int z, Vector3d relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, IntWrapper currentData, boolean blockPlacing) {
-		if(!blockPlacing) return false;
+		if (!blockPlacing) return false;
 		int data = -1;
-		if(relativeDirection.x == 1) data = (byte)0b10;
-		if(relativeDirection.x == -1) data = (byte)0b11;
-		if(relativeDirection.y == -1) data = (byte)0b0;
-		if(relativeDirection.y == 1) data = (byte)0b1;
-		if(relativeDirection.z == 1) data = (byte)0b100;
-		if(relativeDirection.z == -1) data = (byte)0b101;
-		if(data == -1) return false;
+		if (relativeDirection.x == 1) data = (byte)0b10;
+		if (relativeDirection.x == -1) data = (byte)0b11;
+		if (relativeDirection.y == -1) data = (byte)0b0;
+		if (relativeDirection.y == 1) data = (byte)0b1;
+		if (relativeDirection.z == 1) data = (byte)0b100;
+		if (relativeDirection.z == -1) data = (byte)0b101;
+		if (data == -1) return false;
 		currentData.data = (currentData.data & Blocks.TYPE_MASK) | data << 16;
 		return true;
 	}

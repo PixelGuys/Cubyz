@@ -26,7 +26,7 @@ public class BiomeRegistry extends Registry<Biome> {
 	
 	@Override
 	public boolean register(Biome biome) {
-		if(super.register(biome)) {
+		if (super.register(biome)) {
 			byTypeBiomes.get(biome.type).add(biome);
 			return true;
 		}

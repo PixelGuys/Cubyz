@@ -46,14 +46,14 @@ public class TerrainGenerator implements Generator {
 				int j = startY;
 				// Add water between 0 and the terrain height:
 				for(; j >= Math.max(y+1, endY); j -= chunk.getVoxelSize()) {
-					if(map.getBiome(wx + x, wz + z).type == Biome.Type.ARCTIC_OCEAN && j == 0) {
+					if (map.getBiome(wx + x, wz + z).type == Biome.Type.ARCTIC_OCEAN && j == 0) {
 						chunk.updateBlockInGeneration(x, j - wy, z, ice);
 					} else {
 						chunk.updateBlockInGeneration(x, j - wy, z, water);
 					}
 				}
 				// Add the biomes surface structure:
-				if(j <= y) {
+				if (j <= y) {
 					rand.setSeed((seedX*(wx + x) << 32) ^ seedZ*(wz + z));
 					j = Math.min(map.getBiome(wx + x, wz + z).struct.addSubTerranian(chunk, y, x, z, yOff, rand), j);
 				}

@@ -66,14 +66,14 @@ public class BooleanFastList {
 	
 	public void remove(boolean t) {
 		for(int i = size-1; i >= 0; i--) {
-			if(array[i] == t)
+			if (array[i] == t)
 				remove(i); // Don't break here in case of multiple occurrence.
 		}
 	}
 	
 	public boolean contains(boolean t) {
 		for(int i = size-1; i >= 0; i--) {
-			if(array[i] == t)
+			if (array[i] == t)
 				return true;
 		}
 		return false;
@@ -85,7 +85,7 @@ public class BooleanFastList {
 	 */
 	public int indexOf(boolean t) {
 		for(int i = size-1; i >= 0; i--) {
-			if(array[i] == t)
+			if (array[i] == t)
 				return i;
 		}
 		return -1;
@@ -112,7 +112,7 @@ public class BooleanFastList {
 	 * @param r index of the right-most element in the to sorting area.
 	 */
 	public void sort(Comparator comp, int l, int r) {
-		if(l >= r) return;
+		if (l >= r) return;
 		int i = l, j = r;
 		
 		boolean x = array[(l+r)/2];

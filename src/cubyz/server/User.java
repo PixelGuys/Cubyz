@@ -26,17 +26,17 @@ public class User {
         out = new PrintWriter(clientSocket.getOutputStream(), true);
         in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 
-        while(!clientSocket.isClosed()) {
+        while (!clientSocket.isClosed()) {
             receiveJSON(JsonParser.parseObjectFromStream(in));
         }
     }
     public void receiveJSON(JsonObject json){
-        String type = json.getString("type","unknown type");
-        if(type.equals("clientinformation")){
-            String name     = json.getString("name","unnamed");
-            String version  =  json.getString("version","unknown");
+        String type = json.getString("type", "unknown type");
+        if (type.equals("clientinformation")){
+            String name     = json.getString("name", "unnamed");
+            String version  =  json.getString("version", "unknown");
 
-            Logger.info("User joined: "+name+",who is using version: "+version);
+            Logger.info("User joined: "+name+", who is using version: "+version);
         }
     }
     public void dispose() throws IOException {

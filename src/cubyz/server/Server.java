@@ -20,7 +20,7 @@ public class Server extends Pacer{
 		userManager.start();
 
 		try {
-			while(Cubyz.world == null) {
+			while (Cubyz.world == null) {
 				// TODO: Init world here.
 				Thread.sleep(10);
 			}

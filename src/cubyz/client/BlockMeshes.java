@@ -66,14 +66,14 @@ public class BlockMeshes implements DataOrientedRegistry {
 
 	public static int readTexture(JsonElement textureInfo, String assetFolder) {
 		int result = -1;
-		if(textureInfo instanceof JsonString) {
+		if (textureInfo instanceof JsonString) {
 			String resource = textureInfo.getStringValue(null);
-			if(resource != null) {
+			if (resource != null) {
 				Resource texture = new Resource(resource);
 				String path = assetFolder + texture.getMod() + "/blocks/textures/" + texture.getID() + ".png";
 				// Test if it's already in the list:
 				for(int j = 0; j < textureIDs.size(); j++) {
-					if(textureIDs.get(j).equals(path)) {
+					if (textureIDs.get(j).equals(path)) {
 						result = j;
 						return result;
 					}
@@ -91,13 +91,13 @@ public class BlockMeshes implements DataOrientedRegistry {
 					Logger.warning(e);
 				}
 			}
-		} else if(textureInfo instanceof JsonObject) {
+		} else if (textureInfo instanceof JsonObject) {
 			int animationTime = textureInfo.getInt("time", 500);
 			String[] textures = textureInfo.getArrayNoNull("textures").getStrings();
 			// Add the new textures into the list. Since this is an animation all textures that weren't found need to be replaced with undefined.
 			result = blockTextures.size();
 			for(int i = 0; i < textures.length; i++) {
-				if(i == 0) {
+				if (i == 0) {
 					animationFrames.add(textures.length);
 					animationTimes.add(animationTime);
 				} else {
@@ -108,7 +108,7 @@ public class BlockMeshes implements DataOrientedRegistry {
 				try {
 					String path = assetFolder + texture.getMod() + "/blocks/textures/" + texture.getID() + ".png";
 					blockTextures.add(ImageIO.read(new File(path)));
-					if(i == 0) {
+					if (i == 0) {
 						textureIDs.add(path);
 					} else {
 						textureIDs.add("animation:animation");
@@ -131,9 +131,9 @@ public class BlockMeshes implements DataOrientedRegistry {
 		}
 
 		int remainingIndex = readTexture(json.get("texture"), assetFolder);
-		if(remainingIndex == -1) remainingIndex = 0;
+		if (remainingIndex == -1) remainingIndex = 0;
 		for(int i = 0; i < 6; i++) {
-			if(textureIndices[i] == -1)
+			if (textureIndices[i] == -1)
 				textureIndices[i] = remainingIndex;
 		}
 	}
@@ -168,9 +168,9 @@ public class BlockMeshes implements DataOrientedRegistry {
 	public static void loadMeshes() {
 		// Goes through all meshes that were newly added:
 		for(; loadedMeshes < size; loadedMeshes++) {
-			if(meshes[loadedMeshes] == null) {
+			if (meshes[loadedMeshes] == null) {
 				meshes[loadedMeshes] = Meshes.cachedDefaultModels.get(models[loadedMeshes]);
-				if(meshes[loadedMeshes] == null) {
+				if (meshes[loadedMeshes] == null) {
 					Resource rs = new Resource(models[loadedMeshes]);
 					meshes[loadedMeshes] = new Mesh(ModelLoader.loadModel(rs, "assets/" + rs.getMod() + "/models/3d/" + rs.getID()));
 					meshes[loadedMeshes].setMaterial(new Material((Texture)null, 0.6f));

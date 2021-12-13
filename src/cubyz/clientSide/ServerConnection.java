@@ -17,16 +17,16 @@ public class ServerConnection {
     private PrintWriter out;
     private BufferedReader in;
 
-    public ServerConnection(String fullip,String name){
+    public ServerConnection(String fullip, String name){
         String ip = "localhost";
         int port = 42069;
 
-        if(fullip.indexOf(':')==-1)
+        if (fullip.indexOf(':')==-1)
             //"ip"
             ip = fullip;
         else{
             //"ip:port"
-            fullip.substring(0,fullip.indexOf(':'));
+            fullip.substring(0, fullip.indexOf(':'));
             fullip.substring(fullip.indexOf(':')+1);
         }
 
@@ -42,9 +42,9 @@ public class ServerConnection {
 
         try {
             JsonObject jsonObject = new JsonObject();
-            jsonObject.put("type","clientinformation");
+            jsonObject.put("type", "clientinformation");
             jsonObject.put("version", Constants.GAME_VERSION);
-            jsonObject.put("name",name);
+            jsonObject.put("name", name);
 
             jsonObject.writeObjectToStream(out);
         } catch (Exception e) {

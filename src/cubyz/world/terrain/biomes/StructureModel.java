@@ -35,7 +35,7 @@ public abstract class StructureModel implements RegistryElement {
 	}
 
 	public static StructureModel loadStructure(JsonObject json) {
-		if(!json.has("id")) return null;
+		if (!json.has("id")) return null;
 		return CubyzRegistries.STRUCTURE_REGISTRY.getByID(json.getString("id", "???")).loadStructureModel(json);
 	}
 }

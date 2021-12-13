@@ -58,11 +58,11 @@ public class CheckBox extends Component {
 	public void render(int x, int y) {
 		Graphics.setColor(0x000000);
 		Graphics.drawRect(x, y, width, height);
-		if(Mouse.isLeftButtonPressed() && isInside(Mouse.getCurrentPos())) {
-			if(canRepress) {
+		if (Mouse.isLeftButtonPressed() && isInside(Mouse.getCurrentPos())) {
+			if (canRepress) {
 				selected = !selected;
 				canRepress = false;
-				if(onAction != null) {
+				if (onAction != null) {
 					try {
 						onAction.run();
 					} catch(Exception e) {

@@ -52,8 +52,8 @@ public class TextInput extends Component {
 		Graphics.setFont(Fonts.PIXEL_FONT, 16);
 		
 		if (Mouse.isLeftButtonPressed()) {
-			if(isInside(Mouse.getCurrentPos()) || hasPressed) {
-				if(!hasPressed) { // Started pressing
+			if (isInside(Mouse.getCurrentPos()) || hasPressed) {
+				if (!hasPressed) { // Started pressing
 					hasPressed = true;
 					textLine.startSelection((float)Mouse.getX() - x);
 				} else { // Is pressing

@@ -45,15 +45,15 @@ vec4 calcFog(vec3 pos, vec4 color, Fog fog) {
 
 void main() {
 	setupColors(vec3(outTexCoord, textureIndex));
-	if(ambientC.a == 1) discard;
+	if (ambientC.a == 1) discard;
 
 	fragColor = ambientC*vec4(outColor, 1);
 
-	if(fog.activ) {
+	if (fog.activ) {
 		fragColor = calcFog(mvVertexPos, fragColor, fog);
 
 		// Underwater fog:
-		if(drawFrontFace) { // There is only fog betwen front and back face of the same volume.
+		if (drawFrontFace) { // There is only fog betwen front and back face of the same volume.
 			vec2 frameBufferPos = gl_FragCoord.xy/windowSize;
 			vec4 oldColor = texture(colorBuffer, frameBufferPos);
 			vec3 oldPosition = texture(positionBuffer, frameBufferPos).xyz;

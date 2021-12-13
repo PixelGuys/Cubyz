@@ -53,21 +53,21 @@ public class Quadruped implements EntityModel {
 		String[] lines = data.split("\n");
 		for(String line : lines) {
 			String[] parts = line.replaceAll("\\s", "").split(":");
-			if(parts[0].equals("body")) {
+			if (parts[0].equals("body")) {
 				String[] arguments = parts[1].split("x");
 				bodyWidth = Integer.parseInt(arguments[0])/16.0f;
 				bodyLength = Integer.parseInt(arguments[1])/16.0f;
 				bodyHeight = Integer.parseInt(arguments[2])/16.0f;
-			} else if(parts[0].equals("head")) {
+			} else if (parts[0].equals("head")) {
 				String[] arguments = parts[1].split("x");
 				headWidth = Integer.parseInt(arguments[0])/16.0f;
 				headLength = Integer.parseInt(arguments[1])/16.0f;
 				headHeight = Integer.parseInt(arguments[2])/16.0f;
-			} else if(parts[0].equals("leg")) {
+			} else if (parts[0].equals("leg")) {
 				String[] arguments = parts[1].split("x");
 				legWidth = Integer.parseInt(arguments[0])/16.0f;
 				legHeight = Integer.parseInt(arguments[1])/16.0f;
-			} else if(parts[0].equals("movement")) {
+			} else if (parts[0].equals("movement")) {
 				movementPattern = MovementPattern.valueOf(parts[1].toUpperCase());
 			}
 		}
@@ -420,7 +420,7 @@ public class Quadruped implements EntityModel {
 		});
 		double xNorm = ent.velocity.x/Math.sqrt(ent.velocity.x*ent.velocity.x + ent.velocity.z*ent.velocity.z);
 		double zNorm = ent.velocity.z/Math.sqrt(ent.velocity.x*ent.velocity.x + ent.velocity.z*ent.velocity.z);
-		if(xNorm != xNorm) {
+		if (xNorm != xNorm) {
 			xNorm = 1;
 			zNorm = 0;
 		}
@@ -429,7 +429,7 @@ public class Quadruped implements EntityModel {
 		float width = bodyWidth - legWidth - 0.01f;
 		float legAngle1 = ent.movementAnimation;
 		float legAngle2 = legAngle1 - legHeight;
-		if(legAngle1 >= legHeight) {
+		if (legAngle1 >= legHeight) {
 			legAngle1 = 2*legHeight - legAngle1;
 		} else {
 			legAngle2 = -legAngle2;

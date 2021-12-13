@@ -79,16 +79,16 @@ public class Label extends Component {
 		line.updateText(text.getTranslation());
 		this.width = (int)line.getWidth();
 		// Calculate text alignment:
-		if((textAlign & ALIGN_LEFT) != 0) {
+		if ((textAlign & ALIGN_LEFT) != 0) {
 			// x = x;
-		} else if((textAlign & ALIGN_RIGHT) != 0) {
+		} else if ((textAlign & ALIGN_RIGHT) != 0) {
 			x -= width;
 		} else {
 			x -= width/2;
 		}
-		if((textAlign & ALIGN_TOP) != 0) {
+		if ((textAlign & ALIGN_TOP) != 0) {
 			// y = y;
-		} else if((textAlign & ALIGN_BOTTOM) != 0) {
+		} else if ((textAlign & ALIGN_BOTTOM) != 0) {
 			y -= height;
 		} else {
 			y -= height/2;

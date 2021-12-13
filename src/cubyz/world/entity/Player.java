@@ -89,20 +89,20 @@ public class Player extends Entity implements CommandSource {
 	}
 	
 	private boolean calculateBreakTime(BlockInstance bi, int slot) {
-		if(bi == null || Blocks.blockClass(bi.getBlock()) == BlockClass.UNBREAKABLE) {
+		if (bi == null || Blocks.blockClass(bi.getBlock()) == BlockClass.UNBREAKABLE) {
 			return false;
 		}
 		float power = 0;
 		float swingTime = 1;
-		if(inv.getItem(slot) instanceof Tool) {
+		if (inv.getItem(slot) instanceof Tool) {
 			Tool tool = (Tool)inv.getItem(slot);
 			power = tool.getPower(bi.getBlock());
 			swingTime = tool.swingTime;
 		}
-		if(power >= Blocks.breakingPower(bi.getBlock())) {
+		if (power >= Blocks.breakingPower(bi.getBlock())) {
 			timeStarted = System.currentTimeMillis();
 			maxTime = (int)(Math.round(Blocks.hardness(bi.getBlock())*200));
-			if(power != 0) {
+			if (power != 0) {
 				maxTime = (int)(maxTime*swingTime/power);
 			}
 			return true;
@@ -111,8 +111,8 @@ public class Player extends Entity implements CommandSource {
 	}
 
 	public void breaking(BlockInstance bi, int slot, ServerWorld world) {
-		if(bi != toBreak || breakingSlot != slot) {
-			if(calculateBreakTime(bi, slot)) {
+		if (bi != toBreak || breakingSlot != slot) {
+			if (calculateBreakTime(bi, slot)) {
 				resetBlockBreaking(); // Make sure block breaking animation is reset.
 				toBreak = bi;
 				breakingSlot = slot;
@@ -120,13 +120,13 @@ public class Player extends Entity implements CommandSource {
 				return;
 			}
 		}
-		if(bi == null || Blocks.blockClass(bi.getBlock()) == BlockClass.UNBREAKABLE)
+		if (bi == null || Blocks.blockClass(bi.getBlock()) == BlockClass.UNBREAKABLE)
 			return;
 		long deltaTime = System.currentTimeMillis() - timeStarted;
 		bi.setBreakingAnimation((float) deltaTime / (float) maxTime);
 		if (deltaTime > maxTime) {
-			if(inv.getItem(slot) instanceof Tool) {
-				if(((Tool)inv.getItem(slot)).onUse()) {
+			if (inv.getItem(slot) instanceof Tool) {
+				if (((Tool)inv.getItem(slot)).onUse()) {
 					inv.getStack(slot).clear();
 				}
 			}
@@ -135,7 +135,7 @@ public class Player extends Entity implements CommandSource {
 	}
 
 	public void resetBlockBreaking() {
-		if(toBreak != null) {
+		if (toBreak != null) {
 			toBreak.setBreakingAnimation(0);
 			toBreak = null;
 		}

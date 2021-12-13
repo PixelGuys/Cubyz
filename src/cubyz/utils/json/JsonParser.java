@@ -26,7 +26,7 @@ public abstract class JsonParser {
 	public static JsonObject parseObjectFromString(String text) throws Exception {
 		char[] characters = text.trim().toCharArray(); // Remove leading and trailing spaces and convert to char array.
 
-		if(characters[0] != '{') {
+		if (characters[0] != '{') {
 			throw new Exception("Expected the json data to start with an object.");
 		}
 		int[] index = new int[] {1};
@@ -57,14 +57,14 @@ public abstract class JsonParser {
 		// Determine the line:
 		int line = 1;
 		for(int i = 0; i < index; i++) {
-			if(chars[i] == '\n') line++;
+			if (chars[i] == '\n') line++;
 		}
 		Logger.warning("Syntax error reading json file \"" + filePathForErrorHandling + "\" in line " + line + ": " + message);
 	}
 
 	private static void skipWhitespaces(char[] chars, int[] index) {
 		for(; index[0] < chars.length; index[0]++) {
-			if(!Character.isWhitespace(chars[index[0]])) break;
+			if (!Character.isWhitespace(chars[index[0]])) break;
 		}
 	}
 
@@ -72,10 +72,10 @@ public abstract class JsonParser {
 		JsonArray jsonArray = new JsonArray();
 		ArrayList<JsonElement> array = jsonArray.array;
 		for(; index[0] < chars.length; index[0]++) {
-			if(Character.isWhitespace(chars[index[0]])) continue;
-			if(chars[index[0]] == ',') {
+			if (Character.isWhitespace(chars[index[0]])) continue;
+			if (chars[index[0]] == ',') {
 				// Just ignore it. I don't care if someone puts multiple or none in there.
-			} else if(chars[index[0]] == ']') {
+			} else if (chars[index[0]] == ']') {
 				break;
 			} else {
 				JsonElement element = parseValue(chars, index);
@@ -90,17 +90,17 @@ public abstract class JsonParser {
 		JsonObject object = new JsonObject();
 		// Parse all entries for this  object.
 		for(; index[0] < chars.length; index[0]++) {
-			if(Character.isWhitespace(chars[index[0]])) continue;
-			if(chars[index[0]] == ',') continue; // Just ignore it. I don't care if someone puts multiple or none in there.
+			if (Character.isWhitespace(chars[index[0]])) continue;
+			if (chars[index[0]] == ',') continue; // Just ignore it. I don't care if someone puts multiple or none in there.
 
-			if(chars[index[0]] == '}') break;
-			if(chars[index[0]] == '\"') { // Beginning of a new expression.
+			if (chars[index[0]] == '}') break;
+			if (chars[index[0]] == '\"') { // Beginning of a new expression.
 				index[0]++;
 				String key = parseString(chars, index);
 				// Parse the ":":
 				skipWhitespaces(chars, index);
 				// Complain about other characters if present:
-				while(chars[index[0]++] != ':') {
+				while (chars[index[0]++] != ':') {
 					printError(index[0], chars, "Unexpected character while parsing object parameter: "+chars[index[0]]+". Expected \':\'.");
 				}
 				skipWhitespaces(chars, index);
@@ -135,7 +135,7 @@ public abstract class JsonParser {
 				// Find the end:
 				int end = index[0]+1;
 				boolean isFloat = false;
-				while(!Character.isWhitespace(chars[end]) && chars[end] != ',' && chars[end] != '}' && chars[end] != ']') {
+				while (!Character.isWhitespace(chars[end]) && chars[end] != ',' && chars[end] != '}' && chars[end] != ']') {
 					switch(chars[end]) {
 					case '0':
 					case '1':
@@ -161,7 +161,7 @@ public abstract class JsonParser {
 					end++;
 				}
 				try {
-					if(isFloat) {
+					if (isFloat) {
 						value = new JsonFloat(Double.parseDouble(new String(chars, index[0], end - index[0])));
 					} else {
 						value = new JsonInt(Long.decode(new String(chars, index[0], end - index[0])));
@@ -174,14 +174,14 @@ public abstract class JsonParser {
 				index[0] = end-1;
 				break;
 			case 't': // Only true would be valid here.
-				if(chars[index[0]+1] != 'r' && chars[index[0]+2] != 'u' && chars[index[0]+3] != 'e') {
+				if (chars[index[0]+1] != 'r' && chars[index[0]+2] != 'u' && chars[index[0]+3] != 'e') {
 					printError(index[0], chars, "Unexpected value: "+new String(chars, index[0], chars.length - index[0]).replaceAll("\\s*", "")+".");
 				}
 				index[0] += 4-1;
 				value = new JsonOthers(false, true);
 				break;
 			case 'f': // Only false would be valid here.
-				if(chars[index[0]+1] != 'a' && chars[index[0]+2] != 'l' && chars[index[0]+3] != 's' && chars[index[0]+4] != 'e') {
+				if (chars[index[0]+1] != 'a' && chars[index[0]+2] != 'l' && chars[index[0]+3] != 's' && chars[index[0]+4] != 'e') {
 					printError(index[0], chars, "Unexpected value: "+new String(chars, index[0], chars.length - index[0]).replaceAll("\\s*", "")+".");
 				}
 				index[0] += 5-1;
@@ -192,7 +192,7 @@ public abstract class JsonParser {
 				value = new JsonString(parseString(chars, index));
 				break;
 			case 'n': // Only null would be valid here.
-				if(chars[index[0]+1] != 'u' && chars[index[0]+2] != 'l' && chars[index[0]+3] != 'l') {
+				if (chars[index[0]+1] != 'u' && chars[index[0]+2] != 'l' && chars[index[0]+3] != 'l') {
 					printError(index[0], chars, "Unexpected value: "+new String(chars, index[0], chars.length - index[0]).replaceAll("\\s*", "")+".");
 				}
 				index[0] += 4-1;
@@ -216,13 +216,13 @@ public abstract class JsonParser {
 	private static String parseString(char[] chars, int[] index) {
 		StringBuilder builder = new StringBuilder();
 		for(; index[0] < chars.length; index[0]++) {
-			if(chars[index[0]] == '\"') {
+			if (chars[index[0]] == '\"') {
 				index[0]++;
 				return builder.toString();
 			}
-			if(chars[index[0]] == '\\') {
+			if (chars[index[0]] == '\\') {
 				index[0]++;
-				if(index[0] == chars.length) break;
+				if (index[0] == chars.length) break;
 				switch(chars[index[0]]) {
 					case 'b':
 						builder.append('\b');
@@ -240,7 +240,7 @@ public abstract class JsonParser {
 						builder.append('\f');
 						break;
 					case 'u':
-						if(index[0]+4 >= chars.length) break;
+						if (index[0]+4 >= chars.length) break;
 						builder.append((char)Short.parseShort("0x"+chars[++index[0]]+chars[++index[0]]+chars[++index[0]]+chars[++index[0]]));
 						break;
 					default:

@@ -15,7 +15,7 @@ import java.nio.file.Path;
  */
 public class TemplateToPrimitive {
 	public static void main(String[] args) {
-		if(args.length < 2) {
+		if (args.length < 2) {
 			System.out.println("Usage: \njava TemplateToPrimitive <file> <primitive>");
 			System.exit(1);
 		}
@@ -47,7 +47,7 @@ public class TemplateToPrimitive {
 	
 	// Hardcoded one specific function of the FastList.
 	public static String removeAnnoyingStuff(String file, String primitive) {
-		while(file.contains("Array.newInstance(")) {
+		while (file.contains("Array.newInstance(")) {
 			int index = file.indexOf("Array.newInstance(");
 			int depth = 0;
 			boolean through = false;
@@ -56,23 +56,23 @@ public class TemplateToPrimitive {
 			file = file.substring(0, index);
 			file += "new "+primitive+"[";
 			for(int i = index; i < chars.length; i++) {
-				if(through) {
+				if (through) {
 					file += chars[i];
 				} else {
-					if(chars[i] == ')') {
+					if (chars[i] == ')') {
 						depth--;
-						if(depth == 0) {
+						if (depth == 0) {
 							file += "]";
 							through = true;
 							inRegion = false;
 						}
 					}
-					if(inRegion) {
+					if (inRegion) {
 						file += chars[i];
 					}
-					if(chars[i] == '(') {
+					if (chars[i] == '(') {
 						depth++;
-					} else if(chars[i] == ',' && depth == 1) {
+					} else if (chars[i] == ',' && depth == 1) {
 						inRegion = true;
 					}
 				}

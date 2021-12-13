@@ -23,7 +23,7 @@ public class FlatlandGenerator extends SurfaceGenerator {
 			for (int z = 0; z < chunk.getWidth(); z += chunk.getVoxelSize()) {
 				for (int y = 0; y < chunk.getWidth(); y += chunk.getVoxelSize()) {
 					int wy = y + chunk.getWorldY();
-					if(wy > 0) continue;
+					if (wy > 0) continue;
 					int b = 0;
 					if (wy == 0) {
 						b = grass;

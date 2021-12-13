@@ -21,10 +21,10 @@ public class BlockStructure {
 			int min = 1;
 			int max = 1;
 			String blockString = parts[0];
-			if(parts.length == 2) {
+			if (parts.length == 2) {
 				min = max = Integer.parseInt(parts[0]);
 				blockString = parts[1];
-			} else if(parts.length == 4 && parts[1].equalsIgnoreCase("to")) {
+			} else if (parts.length == 4 && parts[1].equalsIgnoreCase("to")) {
 				min = Integer.parseInt(parts[0]);
 				max = Integer.parseInt(parts[2]);
 				blockString = parts[3];
@@ -41,16 +41,16 @@ public class BlockStructure {
 			for(int j = 0; j < total; j++) {
 				int block = structure[i].block;
 				block = Blocks.mode(block).getNaturalStandard(block);
-				if(i == 0 && j == 0 && Blocks.mode(block).getRegistryID().toString().equals("cubyz:stackable")) {
+				if (i == 0 && j == 0 && Blocks.mode(block).getRegistryID().toString().equals("cubyz:stackable")) {
 					block = (block & Blocks.TYPE_MASK) | (highResDepth << 16);
 				}
-				if(chunk.liesInChunk(x, depth - chunk.getWorldY(), z)) {
+				if (chunk.liesInChunk(x, depth - chunk.getWorldY(), z)) {
 					chunk.updateBlockInGeneration(x, depth - chunk.getWorldY(), z, block);
 				}
 				depth -= chunk.getVoxelSize();
 			}
 		}
-		if(depth == startingDepth) return depth;
+		if (depth == startingDepth) return depth;
 		return depth + 1;
 	}
 	

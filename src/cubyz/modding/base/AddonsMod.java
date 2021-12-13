@@ -99,12 +99,12 @@ public class AddonsMod {
 	 * @param consumer
 	 */
 	public void readAllJsonFilesInFolder(String addonName, String subPath, File file, BiConsumer<JsonObject, Resource> consumer) {
-		if(file.isDirectory()) {
+		if (file.isDirectory()) {
 			for(File subFile : file.listFiles()) {
 				readAllJsonFilesInFolder(addonName, subPath+(subFile.isDirectory() ? subFile.getName()+"/" : ""), subFile, consumer);
 			}
 		} else {
-			if(file.getName().endsWith(".json")) {
+			if (file.getName().endsWith(".json")) {
 				JsonObject json = JsonParser.parseObjectFromFile(file.getPath());
 				// Determine the ID from the file names:
 				String fileName = file.getName();
@@ -228,7 +228,7 @@ public class AddonsMod {
 		for(int i = 0; i < ores.size(); i++) {
 			for(int j = 0; j < oreContainers.get(i).length; j++) {
 				ores.get(i).sources[j] = Blocks.getByID(oreContainers.get(i)[j]);
-				if(ores.get(i).sources[j] == 0) {
+				if (ores.get(i).sources[j] == 0) {
 					Logger.error("Couldn't find source block "+oreContainers.get(i)[j]+" for ore "+Blocks.id(ores.get(i).block));
 				}
 			}
@@ -248,7 +248,7 @@ public class AddonsMod {
 			File recipes = new File(addon, "recipes");
 			if (recipes.exists()) {
 				for (File file : recipes.listFiles()) {
-					if(file.isDirectory()) continue;
+					if (file.isDirectory()) continue;
 					HashMap<String, Item> shortCuts = new HashMap<String, Item>();
 					ArrayList<Item> items = new ArrayList<>();
 					ArrayList<Integer> itemsPerRow = new ArrayList<>();
@@ -258,52 +258,52 @@ public class AddonsMod {
 						BufferedReader buf = new BufferedReader(new FileReader(file));
 						String line;
 						int lineNumber = 0;
-						while((line = buf.readLine())!= null) {
+						while ((line = buf.readLine())!= null) {
 							lineNumber++;
 							line = line.replaceAll("//.*", ""); // Ignore comments with "//".
 							line = line.trim(); // Remove whitespaces before and after the word starts.
-							if(line.length() == 0) continue;
+							if (line.length() == 0) continue;
 							// shortcuts:
-							if(line.contains("=")) {
+							if (line.contains("=")) {
 								String[] parts = line.split("=");
-								Item item = CubyzRegistries.ITEM_REGISTRY.getByID(parts[1].replaceAll("\\s",""));
-								if(item == null) {
-									Logger.warning("Skipping unknown item \"" + parts[1].replaceAll("\\s","") + "\" in line " + lineNumber + " in \"" + file.getPath()+"\".");
+								Item item = CubyzRegistries.ITEM_REGISTRY.getByID(parts[1].replaceAll("\\s", ""));
+								if (item == null) {
+									Logger.warning("Skipping unknown item \"" + parts[1].replaceAll("\\s", "") + "\" in line " + lineNumber + " in \"" + file.getPath()+"\".");
 								} else {
-									shortCuts.put(parts[0].replaceAll("\\s",""), CubyzRegistries.ITEM_REGISTRY.getByID(parts[1].replaceAll("\\s",""))); // Remove all whitespaces, wherever they might be. Not necessarily the most robust way, but it should work.
+									shortCuts.put(parts[0].replaceAll("\\s", ""), CubyzRegistries.ITEM_REGISTRY.getByID(parts[1].replaceAll("\\s", ""))); // Remove all whitespaces, wherever they might be. Not necessarily the most robust way, but it should work.
 								}
-							} else if(line.startsWith("shaped")) {
+							} else if (line.startsWith("shaped")) {
 								// Start of a shaped pattern
 								shaped = true;
 								startedRecipe = true;
 								items.clear();
 								itemsPerRow.clear();
-							} else if(line.startsWith("shapeless")) {
+							} else if (line.startsWith("shapeless")) {
 								// Start of a shapeless pattern
 								shaped = false;
 								startedRecipe = true;
 								items.clear();
 								itemsPerRow.clear();
-							} else if(line.startsWith("result") && startedRecipe && itemsPerRow.size() != 0) {
+							} else if (line.startsWith("result") && startedRecipe && itemsPerRow.size() != 0) {
 								// Parse the result, which is made up of `amount*shortcut`.
 								startedRecipe = false;
 								String result = line.substring(6).replaceAll("\\s", ""); // Remove "result" and all space-likes.
 								int number = 1;
-								if(result.contains("*")) {
+								if (result.contains("*")) {
 									String[] parts = result.split("\\*");
 									result = parts[1];
 									number = Integer.parseInt(parts[0]);
 								}
 								Item item;
-								if(shortCuts.containsKey(result)) {
+								if (shortCuts.containsKey(result)) {
 									item = shortCuts.get(result);
 								} else {
 									item = CubyzRegistries.ITEM_REGISTRY.getByID(result);
 								}
-								if(item == null) {
+								if (item == null) {
 									Logger.warning("Skipping recipe with unknown item \"" + result + "\" in line " + lineNumber + " in \"" + file.getPath()+"\".");
 								} else {
-									if(shaped) {
+									if (shaped) {
 										int x = CubyzMath.max(itemsPerRow);
 										int y = itemsPerRow.size();
 										Item[] array = new Item[x*y];
@@ -319,19 +319,19 @@ public class AddonsMod {
 										recipeRegistry.register(new Recipe(items.toArray(new Item[0]), number, item));
 									}
 								}
-							} else if(startedRecipe) {
+							} else if (startedRecipe) {
 								// Parse the actual recipe:
 								String[] words = line.split("\\s+"); // Split into sections that are divided by any number of whitespace characters.
 								itemsPerRow.add(words.length);
 								for(int i = 0; i < words.length; i++) {
 									Item item;
-									if(words[i].equals("0")) {
+									if (words[i].equals("0")) {
 										item = null;
-									} else if(shortCuts.containsKey(words[i])) {
+									} else if (shortCuts.containsKey(words[i])) {
 										item = shortCuts.get(words[i]);
 									} else {
 										item = CubyzRegistries.ITEM_REGISTRY.getByID(words[i]);
-										if(item == null) {
+										if (item == null) {
 											startedRecipe = false; // Skip unknown recipes.
 											Logger.warning("Skipping recipe with unknown item \"" + words[i] + "\" in line " + lineNumber + " in \"" + file.getPath()+"\".");
 										}

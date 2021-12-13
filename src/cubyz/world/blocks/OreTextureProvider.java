@@ -38,7 +38,7 @@ public class OreTextureProvider implements TextureProvider {
 		int tries = 0;
 		outer:
 		for(int i = 0; i < spawns; i++) {
-			if(!isCrystal) { // Just some rotated oval shape.
+			if (!isCrystal) { // Just some rotated oval shape.
 				double actualSize = size - rand.nextDouble()*variation;
 				double actualSizeSmall = actualSize*(1 - (standard2+variation2*(rand.nextDouble() - 0.5)));
 				// Rotate the oval by a random angle:
@@ -59,16 +59,16 @@ public class OreTextureProvider implements TextureProvider {
 				// Make sure this ellipse doesn't come too close to another one:
 				for(int px = xMin-1; px <= xMax+1; px++) {
 					for(int py = yMin-1; py <= yMax+1; py++) {
-						if(px == -1 || px == 16 || py == -1 || py == 16) continue;
+						if (px == -1 || px == 16 || py == -1 || py == 16) continue;
 						double deltaX = px-x;
 						double deltaY = py-y;
 						double distMain = deltaX*xMain+deltaY*yMain;
 						double distSecn = deltaX*xSecn+deltaY*ySecn;
-						if(distMain*distMain+distSecn*distSecn < 1.3) {
-							if(stone.getRGB(px, py) != canvas.getRGB(px, py)) {
+						if (distMain*distMain+distSecn*distSecn < 1.3) {
+							if (stone.getRGB(px, py) != canvas.getRGB(px, py)) {
 								// Give 3 tries to create the oval coordinates, then move on to the next spawn, yo the program cannot get stuck in an infinite loop.
 								tries++;
-								if(tries < 3)
+								if (tries < 3)
 									i--;
 								continue outer;
 							}
@@ -84,14 +84,14 @@ public class OreTextureProvider implements TextureProvider {
 						double distMain = deltaX*xMain + deltaY*yMain;
 						double distSecn = deltaX*xSecn + deltaY*ySecn;
 						double dist = distMain*distMain + distSecn*distSecn;
-						if(dist < 1) {
+						if (dist < 1) {
 							// Light is determined as how far to the upper left the current pixel is relative to the center.
 							double light = (-(distMain*xMain*actualSize + distSecn*xSecn*actualSizeSmall)*Math.sqrt(0.5) - (distMain*yMain*actualSize + distSecn*ySecn*actualSizeSmall)*Math.sqrt(0.5));
 							light += (rand.nextFloat()-.5f)*roughness/4; // Randomly shift the lighting to get a more rough appearance.
 							// Determine the index in the color palette that fits the pseudo-lighting conditions:
 							int lightIndex = (int)Math.round((3 + light*8.0/3)*differentColors/6);
-							if(lightIndex < 0) lightIndex = 0;
-							if(lightIndex >= differentColors) lightIndex = differentColors-1;
+							if (lightIndex < 0) lightIndex = 0;
+							if (lightIndex >= differentColors) lightIndex = differentColors-1;
 							int bestColor = colors[lightIndex];
 							canvas.setRGB(px, py, 0xff000000 | bestColor);
 						}

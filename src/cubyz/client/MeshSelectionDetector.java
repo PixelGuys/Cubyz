@@ -66,9 +66,9 @@ public class MeshSelectionDetector {
 				BlockInstance[] array = ch.getVisibles().array;
 				for (int i = 0; i < ch.getVisibles().size; i++) {
 					BlockInstance bi = array[i];
-					if(bi == null)
+					if (bi == null)
 						break;
-					if(!Blocks.solid(bi.getBlock()))
+					if (!Blocks.solid(bi.getBlock()))
 						continue;
 					min.set(new Vector3f(bi.getX(), bi.getY(), bi.getZ()));
 					min.sub(pos);
@@ -79,12 +79,12 @@ public class MeshSelectionDetector {
 					// Because of the huge number of different BlockInstances that will be tested, it is more efficient to use RayAabIntersection and determine the distance separately:
 					if (intersection.test(minf.x, minf.y, minf.z, maxf.x, maxf.y, maxf.z)) {
 						double distance;
-						if(Blocks.mode(bi.getBlock()).changesHitbox()) {
+						if (Blocks.mode(bi.getBlock()).changesHitbox()) {
 							distance = Blocks.mode(bi.getBlock()).getRayIntersection(intersection, bi, minf, maxf, new Vector3f());
 						} else {
 							distance = minf.length();
 						}
-						if(distance < closestDistance) {
+						if (distance < closestDistance) {
 							closestDistance = distance;
 							newSpatial = bi;
 						}
@@ -94,15 +94,15 @@ public class MeshSelectionDetector {
 		}
 		// Test entities:
 		for(Entity ent : world.getEntities()) {
-			if(ent.getType().model != null) {
+			if (ent.getType().model != null) {
 				double dist = ent.getType().model.getCollisionDistance(pos, dir, ent);
-				if(dist < closestDistance) {
+				if (dist < closestDistance) {
 					closestDistance = dist;
 					newSpatial = ent;
 				}
 			}
 		}
-		if(newSpatial == selectedSpatial)
+		if (newSpatial == selectedSpatial)
 			return;
 		selectedSpatial = newSpatial;
 	}
@@ -114,7 +114,7 @@ public class MeshSelectionDetector {
 	 * @param world
 	 */
 	public void placeBlock(Inventory inv, int selectedSlot, ServerWorld world) {
-		if(selectedSpatial != null && selectedSpatial instanceof BlockInstance) {
+		if (selectedSpatial != null && selectedSpatial instanceof BlockInstance) {
 			BlockInstance bi = (BlockInstance)selectedSpatial;
 			IntWrapper block = new IntWrapper(bi.getBlock());
 			Vector3d relativePos = new Vector3d(pos);
@@ -123,8 +123,8 @@ public class MeshSelectionDetector {
 			if (b != 0) {
 				Vector3i neighborDir = new Vector3i();
 				// Check if stuff can be added to the block itself:
-				if(b == bi.getBlock()) {
-					if(Blocks.mode(b).generateData(Cubyz.world, bi.x, bi.y, bi.z, relativePos, dir, neighborDir, block, false)) {
+				if (b == bi.getBlock()) {
+					if (Blocks.mode(b).generateData(Cubyz.world, bi.x, bi.y, bi.z, relativePos, dir, neighborDir, block, false)) {
 						world.updateBlock(bi.x, bi.y, bi.z, block.data);
 						inv.getStack(selectedSlot).add(-1);
 						return;
@@ -136,26 +136,26 @@ public class MeshSelectionDetector {
 				relativePos.set(pos);
 				relativePos.sub(neighbor.x, neighbor.y, neighbor.z);
 				boolean dataOnlyUpdate = world.getBlock(neighbor.x, neighbor.y, neighbor.z) == b;
-				if(dataOnlyUpdate) {
+				if (dataOnlyUpdate) {
 					block.data = world.getBlock(neighbor.x, neighbor.y, neighbor.z);
-					if(Blocks.mode(b).generateData(Cubyz.world, neighbor.x, neighbor.y, neighbor.z, relativePos, dir, neighborDir, block, false)) {
+					if (Blocks.mode(b).generateData(Cubyz.world, neighbor.x, neighbor.y, neighbor.z, relativePos, dir, neighborDir, block, false)) {
 						world.updateBlock(neighbor.x, neighbor.y, neighbor.z, block.data);
 						inv.getStack(selectedSlot).add(-1);
 					}
 				} else {
 					// Check if the block can actually be placed at that point. There might be entities or other blocks in the way.
-					if(Blocks.solid(world.getBlock(neighbor.x, neighbor.y, neighbor.z)))
+					if (Blocks.solid(world.getBlock(neighbor.x, neighbor.y, neighbor.z)))
 						return;
 					for(Entity ent : world.getEntities()) {
 						Vector3d pos = ent.getPosition();
 						// Check if the block is inside:
-						if(neighbor.x < pos.x + ent.width && neighbor.x + 1 > pos.x - ent.width
+						if (neighbor.x < pos.x + ent.width && neighbor.x + 1 > pos.x - ent.width
 						        && neighbor.z < pos.z + ent.width && neighbor.z + 1 > pos.z - ent.width
 						        && neighbor.y < pos.y + ent.height && neighbor.y + 1 > pos.y - ent.height)
 							return;
 					}
 					block.data = b;
-					if(Blocks.mode(b).generateData(Cubyz.world, neighbor.x, neighbor.y, neighbor.z, relativePos, dir, neighborDir, block, true)) {
+					if (Blocks.mode(b).generateData(Cubyz.world, neighbor.x, neighbor.y, neighbor.z, relativePos, dir, neighborDir, block, true)) {
 						world.placeBlock(neighbor.x, neighbor.y, neighbor.z, block.data);
 						inv.getStack(selectedSlot).add(-1);
 					}

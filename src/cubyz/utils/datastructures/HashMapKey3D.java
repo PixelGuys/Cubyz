@@ -19,7 +19,7 @@ public class HashMapKey3D {
 	
 	@Override
 	public boolean equals(Object other) {
-		if(other instanceof HashMapKey3D) {
+		if (other instanceof HashMapKey3D) {
 			return ((HashMapKey3D)other).x == x & ((HashMapKey3D)other).y == y & ((HashMapKey3D)other).z == z;
 		}
 		return false;

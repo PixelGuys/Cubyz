@@ -77,16 +77,16 @@ public abstract class Component {
 
 	public final void renderInContainer(int containerX, int containerY, int width, int height) {
 		// Calculate coordinates in the container:
-		if((align & ALIGN_LEFT) != 0) {
+		if ((align & ALIGN_LEFT) != 0) {
 			lastRenderX = x + containerX;
-		} else if((align & ALIGN_RIGHT) != 0) {
+		} else if ((align & ALIGN_RIGHT) != 0) {
 			lastRenderX = width - x + containerX;
 		} else {
 			lastRenderX = width/2 + x + containerX;
 		}
-		if((align & ALIGN_TOP) != 0) {
+		if ((align & ALIGN_TOP) != 0) {
 			lastRenderY = y + containerY;
-		} else if((align & ALIGN_BOTTOM) != 0) {
+		} else if ((align & ALIGN_BOTTOM) != 0) {
 			lastRenderY = height - y + containerY;
 		} else {
 			lastRenderY = height/2 + y + containerY;

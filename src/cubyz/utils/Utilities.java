@@ -16,7 +16,7 @@ public class Utilities {
 	public static String capitalize(String str) {
 		char[] chars = str.toCharArray();
 		for (int i = 0; i < chars.length; i++) {
-			if((i == 0 || chars[i - 1] == ' ') && chars[i] >= 'a' && chars[i] <= 'z') {
+			if ((i == 0 || chars[i - 1] == ' ') && chars[i] >= 'a' && chars[i] <= 'z') {
 				chars[i] += 'A'-'a';
 			}
 		}

@@ -59,7 +59,7 @@ public class CrystalCavernGenerator implements Generator {
 
 	@Override
 	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, MapFragment map, ServerWorld world) {
-		if(chunk.voxelSize > 2) return;
+		if (chunk.voxelSize > 2) return;
 		int ccx = wx/CRYSTAL_CHUNK_SIZE;
 		int ccy = wy/CRYSTAL_CHUNK_SIZE;
 		int ccz = wz/CRYSTAL_CHUNK_SIZE;
@@ -105,7 +105,7 @@ public class CrystalCavernGenerator implements Generator {
 			worldY += yUnit;
 			worldZ += Math.sin(direction)*xzUnit;
 
-			if(highSlope) {
+			if (highSlope) {
 				slope *= 0.92F;
 			} else {
 				slope *= 0.7F;
@@ -122,12 +122,12 @@ public class CrystalCavernGenerator implements Generator {
 			double stepsLeft = (double)(caveLength - curStep);
 			double maxLength = (double)(size + 8);
 			// Abort if the cave is getting to far away from this chunk:
-			if(deltaX*deltaX + deltaZ*deltaZ - stepsLeft*stepsLeft > maxLength*maxLength) {
+			if (deltaX*deltaX + deltaZ*deltaZ - stepsLeft*stepsLeft > maxLength*maxLength) {
 				return;
 			}
 			
 			// Only care about it if it is inside the current chunk:
-			if(worldX >= cwx - chunk.getWidth()/2 - xzScale && worldZ >= cwz - chunk.getWidth()/2 - xzScale && worldX <= cwx + chunk.getWidth()/2 + xzScale && worldZ <= cwz + chunk.getWidth()/2 + xzScale) {
+			if (worldX >= cwx - chunk.getWidth()/2 - xzScale && worldZ >= cwz - chunk.getWidth()/2 - xzScale && worldX <= cwx + chunk.getWidth()/2 + xzScale && worldZ <= cwz + chunk.getWidth()/2 + xzScale) {
 				// Determine min and max of the current cave segment in all directions.
 				int xMin = (int)(worldX - xzScale) - wx - 1;
 				int xMax = (int)(worldX + xzScale) - wx + 1;
@@ -154,10 +154,10 @@ public class CrystalCavernGenerator implements Generator {
 					
 					for(int curZ = zMin; curZ < zMax; ++curZ) {
 						double distToCenterZ = ((double) (curZ + wz) - worldZ) / xzScale;
-						if(distToCenterX * distToCenterX + distToCenterZ * distToCenterZ < 1.0) {
+						if (distToCenterX * distToCenterX + distToCenterZ * distToCenterZ < 1.0) {
 							for(int curY = yMax - 1; curY >= yMin; --curY) {
 								double distToCenterY = ((double) (curY + wy) - worldY) / (yScale);
-								if(distToCenterX*distToCenterX + distToCenterY*distToCenterY + distToCenterZ*distToCenterZ < 1.0 && water != chunk.getBlock(curX, curY, curZ) && ice != chunk.getBlock(curX, curY, curZ)) {
+								if (distToCenterX*distToCenterX + distToCenterY*distToCenterY + distToCenterZ*distToCenterZ < 1.0 && water != chunk.getBlock(curX, curY, curZ) && ice != chunk.getBlock(curX, curY, curZ)) {
 									chunk.updateBlockInGeneration(curX, curY, curZ, 0);
 								}
 							}
@@ -167,7 +167,7 @@ public class CrystalCavernGenerator implements Generator {
 			}
 			long seed = localRand.nextLong();
 			// Only let crystals spawn when they are close enough to the chunk.
-			if(worldX >= cwx - 32 - chunk.getWidth()/2 && worldY >= cwy - 32 - chunk.getWidth()/2 && worldZ >= cwz - 32 - chunk.getWidth()/2 && worldX <= cwx + 32 + chunk.getWidth()/2 && worldY <= cwy + 32 + chunk.getWidth()/2 && worldZ <= cwz + 32 + chunk.getWidth()/2) {
+			if (worldX >= cwx - 32 - chunk.getWidth()/2 && worldY >= cwy - 32 - chunk.getWidth()/2 && worldZ >= cwz - 32 - chunk.getWidth()/2 && worldX <= cwx + 32 + chunk.getWidth()/2 && worldY <= cwy + 32 + chunk.getWidth()/2 && worldZ <= cwz + 32 + chunk.getWidth()/2) {
 				// Consider a good amount of crystal spawns in the region.
 				Random rand = new Random(seed);
 				int amount = (int)(1+20*xzScale*yScale/size/size);
@@ -179,7 +179,7 @@ public class CrystalCavernGenerator implements Generator {
 					double y = Math.sin(phi)*Math.sin(theta);
 					double z = Math.cos(phi);
 					// Check if the crystal touches the wall:
-					if(Math.abs(delX*x+yUnit*y+delZ*z) < 0.05) {
+					if (Math.abs(delX*x+yUnit*y+delZ*z) < 0.05) {
 						crystalSpawns[index[0]++] = new int[] {(int)(worldX + x*xzScale), (int)(worldY + y*yScale), (int)(worldZ + z*xzScale)};
 					}
 				}
@@ -192,7 +192,7 @@ public class CrystalCavernGenerator implements Generator {
 	}
 	
 	private void considerCrystal(int wx, int wy, int wz, int[] xyz, Chunk chunk, long seed, boolean useNeedles, int[] types) {
-		if(xyz[0] >= wx-32 && xyz[0] <= wx+32+chunk.getWidth() && xyz[1] >= wy-32 && xyz[1] <= wy+32+chunk.getWidth() && xyz[2] >= wz-32 && xyz[2] <= wz+32+chunk.getWidth()) {
+		if (xyz[0] >= wx-32 && xyz[0] <= wx+32+chunk.getWidth() && xyz[1] >= wy-32 && xyz[1] <= wy+32+chunk.getWidth() && xyz[2] >= wz-32 && xyz[2] <= wz+32+chunk.getWidth()) {
 			int x = xyz[0] - wx;
 			int y = xyz[1] - wy;
 			int z = xyz[2] - wz;
@@ -200,7 +200,7 @@ public class CrystalCavernGenerator implements Generator {
 			int type = types[rand.nextInt(types.length)];
 			// Make some crystal spikes in random directions:
 			int spikes = 4;
-			if(useNeedles) spikes++;
+			if (useNeedles) spikes++;
 			spikes += rand.nextInt(spikes); // Use somewhat between spikes and 2*spikes spikes.
 			for(int i = 0; i < spikes; i++) {
 				int length = rand.nextInt(24)+8;
@@ -215,7 +215,7 @@ public class CrystalCavernGenerator implements Generator {
 					double y2 = y + delY*j;
 					double z2 = z + delZ*j;
 					double size;
-					if(useNeedles)
+					if (useNeedles)
 						size = 0.7;
 					else
 						size = 12*(length-j)/length/spikes;
@@ -229,11 +229,11 @@ public class CrystalCavernGenerator implements Generator {
 						for(int y3 = yMin; y3 <= yMax; y3++) {
 							for(int z3 = zMin; z3 <= zMax; z3++) {
 								double dist = distSqr(x3-x2, y3-y2, z3-z2);
-								if(dist <= size*size) {
-									if(x3 >= 0 && x3 < chunk.getWidth() && y3 >= 0 && y3 < chunk.getWidth() && z3 >= 0 && z3 < chunk.getWidth()) {
-										if(chunk.getBlock((int)x3, (int)y3, (int)z3) == 0 || Blocks.degradable(chunk.getBlock((int)x3, (int)y3, (int)z3)) || Blocks.blockClass(chunk.getBlock((int)x3, (int)y3, (int)z3)) == BlockClass.FLUID) {
+								if (dist <= size*size) {
+									if (x3 >= 0 && x3 < chunk.getWidth() && y3 >= 0 && y3 < chunk.getWidth() && z3 >= 0 && z3 < chunk.getWidth()) {
+										if (chunk.getBlock((int)x3, (int)y3, (int)z3) == 0 || Blocks.degradable(chunk.getBlock((int)x3, (int)y3, (int)z3)) || Blocks.blockClass(chunk.getBlock((int)x3, (int)y3, (int)z3)) == BlockClass.FLUID) {
 											chunk.updateBlockInGeneration((int)x3, (int)y3, (int)z3, glowCrystals[type]);
-										} else if(chunk.getBlock((int)x3, (int)y3, (int)z3) == stone) {
+										} else if (chunk.getBlock((int)x3, (int)y3, (int)z3) == stone) {
 											chunk.updateBlockInGeneration((int)x3, (int)y3, (int)z3, glowOres[type]); // When the crystal goes through stone, generate the corresponding ore at that position.
 										}
 									}
@@ -241,9 +241,9 @@ public class CrystalCavernGenerator implements Generator {
 							}
 						}
 					}
-					if(size > 2) size = 2;
+					if (size > 2) size = 2;
 					j += size/2; // Make sure there are no crystal bits floating in the air.
-					if(size < 0.5) break; // Also preventing floating crystal bits.
+					if (size < 0.5) break; // Also preventing floating crystal bits.
 				}
 			}
 		}
@@ -251,11 +251,11 @@ public class CrystalCavernGenerator implements Generator {
 
 	private void considerCoordinates(int x, int y, int z, int wx, int wy, int wz, Chunk chunk, Random rand) {
 		float chance = 0.33f + 0.33f*(-y*CRYSTAL_CHUNK_SIZE/1024.0f); // Higher chance at bigger depth, reaching maximum at 2048 blocks.
-		if(rand.nextFloat() > chance) return;
+		if (rand.nextFloat() > chance) return;
 		// Choose some in world coordinates to start generating:
 		double worldX = (x + rand.nextFloat())*CRYSTAL_CHUNK_SIZE;
 		double worldY = (y + rand.nextFloat())*CRYSTAL_CHUNK_SIZE;
-		if(worldY > -128) return; // crystal caverns not generate close to the surface!
+		if (worldY > -128) return; // crystal caverns not generate close to the surface!
 		double worldZ = (z + rand.nextFloat())*CRYSTAL_CHUNK_SIZE;
 		float direction = rand.nextFloat()*(float)Math.PI*2.0F;
 		float slope = (rand.nextFloat() - 0.5F)/4.0F;
@@ -270,9 +270,9 @@ public class CrystalCavernGenerator implements Generator {
 
 		// Determine crystal colors:
 		int differentColors = 1;
-		if(rand.nextBoolean()) {
+		if (rand.nextBoolean()) {
 			// ¹⁄₄ Chance that a cave has multiple crystals.
-			while(rand.nextBoolean() && differentColors < 32) {
+			while (rand.nextBoolean() && differentColors < 32) {
 				differentColors++; // Exponentially diminishing chance to have multiple crystals per cavern.
 			}
 		}

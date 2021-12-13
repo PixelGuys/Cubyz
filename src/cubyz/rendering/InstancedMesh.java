@@ -220,18 +220,18 @@ public class InstancedMesh extends Mesh {
 			Spatial spatial = spatials[i+startIndex];
 			Matrix4f modelMatrix = spatial.modelViewMatrix;
 			modelMatrix.get4x3Transposed(INSTANCE_SIZE_FLOATS * i, instanceDataBuffer);
-			if(modelMatrix.m03() != 0 || modelMatrix.m13() != 0 || modelMatrix.m23() != 0 || modelMatrix.m33() != 1)
+			if (modelMatrix.m03() != 0 || modelMatrix.m13() != 0 || modelMatrix.m23() != 0 || modelMatrix.m33() != 1)
 			System.out.println(modelMatrix);
 			BlockInstance bi = ((BlockSpatial) spatial).getBlockInstance();
 			if (bi.getBreakingAnim() == 0f) {
 				int breakAnimInfo = (int)(spatial.isSelected() ? 1 : 0) << 24;
-				if(useTextureAtlas) {
+				if (useTextureAtlas) {
 					breakAnimInfo |= ((BlockSpatial)spatial).getBlockInstance().getBlock().atlasX << 8 | ((BlockSpatial)spatial).getBlockInstance().getBlock().atlasY;
 				}
 				instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 20, Float.intBitsToFloat(breakAnimInfo));
 			} else {
 				int breakAnimInfo = (int)(bi.getBreakingAnim()*255) << 24;
-				if(useTextureAtlas) {
+				if (useTextureAtlas) {
 					breakAnimInfo |= (((BlockSpatial)spatial).getBlockInstance().getBlock().atlasX & 255) << 8 | (((BlockSpatial)spatial).getBlockInstance().getBlock().atlasY & 255);
 				}
 				instanceDataBuffer.put(INSTANCE_SIZE_FLOATS * i + 20, Float.intBitsToFloat(breakAnimInfo));

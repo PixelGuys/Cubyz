@@ -38,11 +38,11 @@ vec4 calcFog(vec3 pos, vec4 color, Fog fog) {
 
 void main() {
 	setupColors(vec3(outTexCoord, textureIndex));
-	if(ambientC.a != 1) discard;
+	if (ambientC.a != 1) discard;
 
 	fragColor = ambientC*vec4(outColor, 1);
 
-	if(fog.activ) {
+	if (fog.activ) {
 		fragColor = calcFog(mvVertexPos, fragColor, fog);
 	}
 	position = vec4(mvVertexPos, 1);

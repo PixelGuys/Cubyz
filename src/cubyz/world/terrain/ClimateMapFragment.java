@@ -44,7 +44,7 @@ public class ClimateMapFragment {
 		// Make non-ocean regions more flat:
 		for(int x = 0; x < heightMap.length; x++) {
 			for(int y = 0; y < heightMap[0].length; y++) {
-				if(heightMap[x][y] >= OCEAN_THRESHOLD)
+				if (heightMap[x][y] >= OCEAN_THRESHOLD)
 					heightMap[x][y] = (float)(OCEAN_THRESHOLD + (1 - OCEAN_THRESHOLD)*Math.pow((heightMap[x][y] - OCEAN_THRESHOLD)/(1 - OCEAN_THRESHOLD), MOUNTAIN_POWER));
 			}
 		}
@@ -74,10 +74,10 @@ public class ClimateMapFragment {
 					nextX += windX*WIND_SPEED;
 					nextZ += windZ*WIND_SPEED;
 					// Make sure the bounds are ok:
-					if(nextX < -map.length || nextX > 2*map.length - 1) {
+					if (nextX < -map.length || nextX > 2*map.length - 1) {
 						break;
 					}
-					if(nextZ < -map.length || nextZ > 2*map.length - 1) {
+					if (nextZ < -map.length || nextZ > 2*map.length - 1) {
 						break;
 					}
 					// Find the local temperature and humidity:
@@ -98,7 +98,7 @@ public class ClimateMapFragment {
 	}
 	
 	private float getInitialHumidity(double x, double z, float height) {
-		if(height < OCEAN_THRESHOLD) return 1;
+		if (height < OCEAN_THRESHOLD) return 1;
 		x = x + (wx >> MapFragment.BIOME_SHIFT);
 		z = z + (wz >> MapFragment.BIOME_SHIFT);
 		double distance = Math.sqrt(x*x + z*z)/RING_SIZE;
@@ -107,7 +107,7 @@ public class ClimateMapFragment {
 		// Interpolating through this data resulted in this function:
 		// 1 - 2916/125*x² - 16038/125*x⁴ + 268272/125*x⁶ - 629856/125*x⁸
 		
-		if(distance >= 0.5f) distance -= 1;
+		if (distance >= 0.5f) distance -= 1;
 		// Now calculate the function:
 		x = distance*distance;
 		x = 1 - 2916.0f/125.0f*x - 16038.0f/125.0f*x*x + 268272.0f/125.0f*x*x*x - 629856.0f/125.0f*x*x*x*x;
@@ -120,7 +120,7 @@ public class ClimateMapFragment {
 		z = z + (wz >> MapFragment.BIOME_SHIFT);
 		double temp = Math.sqrt(x*x + z*z)/RING_SIZE%1;
 		// Uses a simple triangle function:
-		if(temp > 0.5f) {
+		if (temp > 0.5f) {
 			temp = 1 - temp;
 		}
 		temp = 4*temp - 1;
@@ -146,45 +146,45 @@ public class ClimateMapFragment {
 	}
 	
 	private static Biome.Type findClimate(float height, float humid, float temp) {
-		if(height < OCEAN_THRESHOLD) {
-			if(temp <= FROST_POINT) {
+		if (height < OCEAN_THRESHOLD) {
+			if (temp <= FROST_POINT) {
 				return Biome.Type.ARCTIC_OCEAN;
-			} else if(temp < HOT_POINT) {
+			} else if (temp < HOT_POINT) {
 				return Biome.Type.OCEAN;
 			} else {
 				return Biome.Type.WARM_OCEAN;
 			}
-		} else if(height < (1.0f - OCEAN_THRESHOLD)*(1 - MOUNTAIN_RATIO) + OCEAN_THRESHOLD) {
-			if(temp <= FROST_POINT) {
-				if(temp <= ICE_POINT) {
+		} else if (height < (1.0f - OCEAN_THRESHOLD)*(1 - MOUNTAIN_RATIO) + OCEAN_THRESHOLD) {
+			if (temp <= FROST_POINT) {
+				if (temp <= ICE_POINT) {
 					return Biome.Type.GLACIER;
-				} else if(humid < WET_POINT) {
+				} else if (humid < WET_POINT) {
 					return Biome.Type.TAIGA;
 				} else {
 					return Biome.Type.TUNDRA;
 				}
-			} else if(temp < HOT_POINT) {
-				if(humid <= DRY_POINT) {
+			} else if (temp < HOT_POINT) {
+				if (humid <= DRY_POINT) {
 					return Biome.Type.GRASSLAND;
-				} else if(humid < WET_POINT) {
+				} else if (humid < WET_POINT) {
 					return Biome.Type.FOREST;
 				} else {
 					return Biome.Type.SWAMP;
 				}
 			} else {
-				if(humid <= DRY_POINT) {
+				if (humid <= DRY_POINT) {
 					return Biome.Type.DESERT;
-				} else if(humid < WET_POINT) {
+				} else if (humid < WET_POINT) {
 					return Biome.Type.SHRUBLAND;
 				} else {
 					return Biome.Type.RAINFOREST;
 				}
 			}
 		} else {
-			if(temp <= FROST_POINT) {
+			if (temp <= FROST_POINT) {
 				return Biome.Type.PEAK;
 			} else {
-				if(humid <= WET_POINT) {
+				if (humid <= WET_POINT) {
 					return Biome.Type.MOUNTAIN_GRASSLAND;
 				} else {
 					return Biome.Type.MOUNTAIN_FOREST;

@@ -22,7 +22,7 @@ public class TPCommand extends CommandBase {
 
 	@Override
 	public void commandExecute(CommandSource source, String[] args) {
-		if(args.length < 4) {
+		if (args.length < 4) {
 			source.feedback("Usage: tp <x> <y> <z>");
 			return;
 		}

@@ -19,7 +19,7 @@ public class UserManager extends Thread{
     public void run() {
         try {
             serverSocket = new ServerSocket(port);
-            while(running){
+            while (running){
                 try {
                     User user = new User(serverSocket.accept());
                 } catch (IOException e) {

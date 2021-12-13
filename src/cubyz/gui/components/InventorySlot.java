@@ -61,12 +61,12 @@ public class InventorySlot extends Component {
 	
 	public void drawTooltip(int width, int height) {
 		Item item = reference.getItem();
-		if(item != null) {
-			if(isInside(Mouse.getCurrentPos(), width, height)) {
+		if (item != null) {
+			if (isInside(Mouse.getCurrentPos(), width, height)) {
 				float x = (float)Mouse.getX() + 10;
 				float y = (float)Mouse.getY() + 10;
 				String tooltip;
-				if(item instanceof Tool) {
+				if (item instanceof Tool) {
 					tooltip = item.getName() == null ? "???" : item.getName().getTranslation();
 					Tool tool = (Tool) item;
 					tooltip += "\nTime to swing: "+tool.swingTime+" s";
@@ -98,16 +98,16 @@ public class InventorySlot extends Component {
 	}
 	
 	public boolean grabWithMouse(ItemStack carried, int width, int height) {
-		if(!isInside(Mouse.getCurrentPos(), width, height)) {
-			if(!pressedLeft && !pressedRight)
+		if (!isInside(Mouse.getCurrentPos(), width, height)) {
+			if (!pressedLeft && !pressedRight)
 				return false;
 			// If the right button was pressed above this, put one item down as soon as the mouse is outside:
-			if(pressedRight && carried.getItem() != null) {
-				if(reference.getItem() == carried.getItem()) {
-					if(reference.add(1) != 0)
+			if (pressedRight && carried.getItem() != null) {
+				if (reference.getItem() == carried.getItem()) {
+					if (reference.add(1) != 0)
 						carried.add(-1);
 				}
-				if(reference.getItem() == null) {
+				if (reference.getItem() == null) {
 					reference.setItem(carried.getItem());
 					reference.setAmount(1);
 					carried.add(-1);
@@ -117,39 +117,39 @@ public class InventorySlot extends Component {
 			}
 		}
 		// Only do something when the button is released:
-		if(Mouse.isLeftButtonPressed()) {
+		if (Mouse.isLeftButtonPressed()) {
 			pressedLeft = true;
 			return false;
 		}
-		if(Mouse.isRightButtonPressed()) {
+		if (Mouse.isRightButtonPressed()) {
 			pressedRight = true;
 			return false;
 		}
-		if(!pressedLeft && !pressedRight)
+		if (!pressedLeft && !pressedRight)
 			return false;
 		
-		if(takeOnly) {
+		if (takeOnly) {
 			pressedRight = pressedLeft = false;
 			// Take all items from this slot if possible, no matter what button is pressed:
-			if(carried.getItem() == null) {
-				if(reference.getItem() == null) return true;
+			if (carried.getItem() == null) {
+				if (reference.getItem() == null) return true;
 				carried.setItem(reference.getItem());
-			} else if(carried.getItem() != reference.getItem()) {
+			} else if (carried.getItem() != reference.getItem()) {
 				return false; // Cannot pick it up.
 			}
-			if(carried.canAddAll(reference.getAmount())) {
+			if (carried.canAddAll(reference.getAmount())) {
 				carried.add(reference.getAmount());
 				reference.clear();
 				return true;
 			}
 			return false;
 		}
-		if(pressedRight && carried.getItem() != null) {
-			if(reference.getItem() == carried.getItem()) {
-				if(reference.add(1) != 0)
+		if (pressedRight && carried.getItem() != null) {
+			if (reference.getItem() == carried.getItem()) {
+				if (reference.add(1) != 0)
 					carried.add(-1);
 			}
-			if(reference.getItem() == null) {
+			if (reference.getItem() == null) {
 				reference.setItem(carried.getItem());
 				reference.setAmount(1);
 				carried.add(-1);
@@ -162,8 +162,8 @@ public class InventorySlot extends Component {
 		// Remove the ItemStack from this slot and replace with the one carried by the mouse.
 		// Actual replacement in the inventory is done elsewhere.
 		pressedLeft = false;
-		if(reference.getItem() == carried.getItem()) {
-			if(reference.getItem() == null) return false;
+		if (reference.getItem() == carried.getItem()) {
+			if (reference.getItem() == null) return false;
 			carried.add(-reference.add(carried.getAmount()));
 			return true;
 		}
@@ -178,11 +178,11 @@ public class InventorySlot extends Component {
 
 	@Override
 	public void render(int x, int y) {
-		if(renderFrame)
+		if (renderFrame)
 			Graphics.drawImage(SLOT_IMAGE, x, y, width, height);
 		Item item = reference.getItem();
-		if(item != null) {
-			if(item.getImage() == null) {
+		if (item != null) {
+			if (item.getImage() == null) {
 				if (item instanceof ItemBlock) {
 					ItemBlock ib = (ItemBlock) item;
 					int b = ib.getBlock();
@@ -198,7 +198,7 @@ public class InventorySlot extends Component {
 				}
 			}
 			Graphics.drawImage(item.getImage(), x + 2 * GUI_SCALE, y + 2 * GUI_SCALE, width - 4 * GUI_SCALE, height - 4 * GUI_SCALE);
-			if(item instanceof Tool) {
+			if (item instanceof Tool) {
 				Tool tool = (Tool)item;
 				int durab = tool.durability*255/tool.maxDurability;
 				Graphics.setColor((255 - durab) << 16 | durab << 8 | 0);

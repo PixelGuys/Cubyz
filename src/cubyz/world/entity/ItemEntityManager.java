@@ -64,7 +64,7 @@ public class ItemEntityManager {
 		int length = Bits.getInt(data, index);
 		index += 4;
 		// Check if the length is right:
-		if(data.length-index != length*(4*3 + 8*6)) {
+		if (data.length-index != length*(4*3 + 8*6)) {
 			Logger.warning("Save file is corrupted. Skipping item entites for chunk "+chunk.getWorldX()+" "+chunk.getWorldY()+" "+chunk.getWorldZ());
 			length = 0;
 		}
@@ -145,15 +145,15 @@ public class ItemEntityManager {
 			posxyz[index3+1] += velxyz[index3+1]*deltaTime;
 			posxyz[index3+2] += velxyz[index3+2]*deltaTime;
 			// Check if it's still inside this chunk:
-			if(!chunk.isInside(posxyz[index3], posxyz[index3 + 1], posxyz[index3 + 2])) {
+			if (!chunk.isInside(posxyz[index3], posxyz[index3 + 1], posxyz[index3 + 2])) {
 				// Move it to another manager:
 				ChunkEntityManager other = world.getEntityManagerAt(((int)posxyz[index3]) & ~NormalChunk.chunkMask, ((int)posxyz[index3+1]) & ~NormalChunk.chunkMask, ((int)posxyz[index3+2]) & ~NormalChunk.chunkMask);
-				if(other == null) {
+				if (other == null) {
 					// TODO: Append it to the right file.
 					posxyz[index3] -= velxyz[index3]*deltaTime;
 					posxyz[index3+1] -= velxyz[index3+1]*deltaTime;
 					posxyz[index3+2] -= velxyz[index3+2]*deltaTime;
-				} else if(other.itemEntityManager != this) {
+				} else if (other.itemEntityManager != this) {
 					other.itemEntityManager.add(posxyz[index3], posxyz[index3+1], posxyz[index3+2], velxyz[index3], velxyz[index3+1], velxyz[index3+2], rotxyz[index3], rotxyz[index3+1], rotxyz[index3+2], itemStacks[i], despawnTime[i], pickupCooldown[i]);
 					remove(i);
 					i--;
@@ -162,7 +162,7 @@ public class ItemEntityManager {
 			}
 			pickupCooldown[i]--;
 			despawnTime[i]--;
-			if(despawnTime[i] < 0) {
+			if (despawnTime[i] < 0) {
 				remove(i);
 				i--;
 			}
@@ -172,10 +172,10 @@ public class ItemEntityManager {
 	public void checkEntity(Entity ent) {
 		for(int i = 0; i < size; i++) {
 			int index3 = 3*i;
-			if(pickupCooldown[i] >= 0) continue; // Item cannot be picked up yet.
-			if(Math.abs(ent.position.x - posxyz[index3]) < ent.width + pickupRange && Math.abs(ent.position.y + ent.height/2 - posxyz[index3+1]) < ent.height + pickupRange && Math.abs(ent.position.z - posxyz[index3+2]) < ent.width + pickupRange) {
+			if (pickupCooldown[i] >= 0) continue; // Item cannot be picked up yet.
+			if (Math.abs(ent.position.x - posxyz[index3]) < ent.width + pickupRange && Math.abs(ent.position.y + ent.height/2 - posxyz[index3+1]) < ent.height + pickupRange && Math.abs(ent.position.z - posxyz[index3+2]) < ent.width + pickupRange) {
 				int newAmount = ent.getInventory().addItem(itemStacks[i].getItem(), itemStacks[i].getAmount());
-				if(newAmount != 0) {
+				if (newAmount != 0) {
 					itemStacks[i].setAmount(newAmount);
 				} else {
 					remove(i);
@@ -195,7 +195,7 @@ public class ItemEntityManager {
 	}
 	
 	public void add(double x, double y, double z, double vx, double vy, double vz, float rotX, float rotY, float rotZ, ItemStack itemStack, int despawnTime, int pickupCooldown) {
-		if(size == capacity) {
+		if (size == capacity) {
 			increaseCapacity();
 		}
 		int index3 = 3 * size;
@@ -262,32 +262,32 @@ public class ItemEntityManager {
 		int y0 = (int)y;
 		int z0 = (int)z;
 		checkBlock(index3, x0, y0, z0);
-		if(x - x0 + diameter >= 1) {
+		if (x - x0 + diameter >= 1) {
 			checkBlock(index3, x0+1, y0, z0);
-			if(y - y0 + diameter >= 1) {
+			if (y - y0 + diameter >= 1) {
 				checkBlock(index3, x0, y0+1, z0);
 				checkBlock(index3, x0+1, y0+1, z0);
-				if(z - z0 + diameter >= 1) {
+				if (z - z0 + diameter >= 1) {
 					checkBlock(index3, x0, y0, z0+1);
 					checkBlock(index3, x0+1, y0, z0+1);
 					checkBlock(index3, x0, y0+1, z0+1);
 					checkBlock(index3, x0+1, y0+1, z0+1);
 				}
 			} else {
-				if(z - z0 + diameter >= 1) {
+				if (z - z0 + diameter >= 1) {
 					checkBlock(index3, x0, y0, z0+1);
 					checkBlock(index3, x0+1, y0, z0+1);
 				}
 			}
 		} else {
-			if(y - y0 + diameter >= 1) {
+			if (y - y0 + diameter >= 1) {
 				checkBlock(index3, x0, y0+1, z0);
-				if(z - z0 + diameter >= 1) {
+				if (z - z0 + diameter >= 1) {
 					checkBlock(index3, x0, y0, z0+1);
 					checkBlock(index3, x0, y0+1, z0+1);
 				}
 			} else {
-				if(z - z0 + diameter >= 1) {
+				if (z - z0 + diameter >= 1) {
 					checkBlock(index3, x0, y0, z0+1);
 				}
 			}
@@ -300,14 +300,14 @@ public class ItemEntityManager {
 		y -= chunk.getWorldY();
 		z -= chunk.getWorldZ();
 		int block = chunk.getBlockUnbound(x, y, z);
-		if(block == 0) return;
+		if (block == 0) return;
 		// Check if the item entity is inside the block:
 		boolean isInside = true;
-		if(Blocks.mode(block).changesHitbox()) {
+		if (Blocks.mode(block).changesHitbox()) {
 			isInside = Blocks.mode(block).checkEntity(new Vector3d(posxyz[index3], posxyz[index3+1]+radius, posxyz[index3+2]), radius, diameter, x, y, z, block);
 		}
-		if(isInside) {
-			if(Blocks.solid(block)) {
+		if (isInside) {
+			if (Blocks.solid(block)) {
 				velxyz[index3] = velxyz[index3+1] = velxyz[index3+2] = 0;
 				// TODO: Prevent item entities from getting stuck in a block.
 			} else {
