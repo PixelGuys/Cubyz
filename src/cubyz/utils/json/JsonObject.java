@@ -1,5 +1,6 @@
 package cubyz.utils.json;
 
+import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.Map.Entry;
 
@@ -7,6 +8,10 @@ public class JsonObject implements JsonElement {
 	public HashMap<String, JsonElement> map;
 	public JsonObject() {
 		map = new HashMap<>();
+	}
+
+	public void writeObjectToStream(PrintWriter out){
+		out.println(toString()+"\n"); //having an empty line at the end to indicate the end of the jsonobject
 	}
 
 	@Override

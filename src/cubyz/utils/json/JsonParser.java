@@ -1,6 +1,8 @@
 package cubyz.utils.json;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -8,7 +10,30 @@ import java.util.ArrayList;
 import cubyz.utils.Logger;
 
 public abstract class JsonParser {
-	public static JsonObject parseObjectFromFile(String path) {
+	public static JsonObject parseObjectFromStream(BufferedReader in) throws IOException {
+		//try to gather the full message (end indicated by a emptyline)
+		String fullmessage = "", message = "";
+		while (!(message = in.readLine()).isEmpty()) {
+			fullmessage += message;
+		}
+		try {
+			return JsonParser.parseObjectFromString(fullmessage);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return new JsonObject();
+	}
+	public static JsonObject parseObjectFromString(String text) throws Exception {
+		char[] characters = text.trim().toCharArray(); // Remove leading and trailing spaces and convert to char array.
+
+		if(characters[0] != '{') {
+			throw new Exception("Expected the json data to start with an object.");
+		}
+		int[] index = new int[] {1};
+		JsonObject head = parseObject(characters, index);
+		return head;
+	}
+	public static JsonObject parseObjectFromFile(String path){
 		String text = "";
 		try {
 			text = new String(Files.readAllBytes(Paths.get(path)));
@@ -16,14 +41,14 @@ public abstract class JsonParser {
 			Logger.error(e);
 			return new JsonObject();
 		}
-		char[] characters = text.trim().toCharArray(); // Remove leading and trailing spaces and convert to char array.
+		/*TODO: filePathForErrorHandling is a static variable. Might cause weired behavior in the future (especially with multithreading) */
 		filePathForErrorHandling = path;
-		if(characters[0] != '{') {
+		try {
+			return parseObjectFromString(text);
+		} catch (Exception e) {
 			Logger.warning("Expected the json file to start with an object: "+path);
 		}
-		int[] index = new int[] {1};
-		JsonObject head = parseObject(characters, index);
-		return head;
+		return new JsonObject();
 	}
 
 	private static String filePathForErrorHandling;
