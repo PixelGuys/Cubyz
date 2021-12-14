@@ -17,7 +17,6 @@ import cubyz.utils.Logger;
 import cubyz.client.ClientSettings;
 import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
-import cubyz.client.ReducedChunkMesh;
 import cubyz.utils.Utils;
 
 /**
@@ -131,18 +130,12 @@ public class BackgroundScene {
 
 		// Change the viewport and the matrices to render 4 cube faces:
 
-		glViewport(0, 0, SIZE, SIZE);
+		GameLauncher.renderer.updateViewport(SIZE, SIZE, 90.0f);
 
 		FrameBuffer buffer = new FrameBuffer();
 		buffer.genColorTexture(SIZE, SIZE);
 		buffer.genRenderbuffer(SIZE, SIZE);
-		buffer.bind();
-
-		Transformation.updateProjectionMatrix(Window.getProjectionMatrix(), (float)Math.toRadians(90),
-		SIZE, SIZE, MainRenderer.Z_NEAR, MainRenderer.Z_FAR);
-		// Use a projection matrix that prevent z-fighting:
-		Transformation.updateProjectionMatrix(ReducedChunkMesh.projMatrix, (float)Math.toRadians(90),
-			SIZE, SIZE, 2.0f, 16384.0f);
+		Window.setRenderTarget(buffer);
 
 		Vector3f cameraRotation = Camera.getRotation();
 		Vector3f rotationCopy = new Vector3f(cameraRotation);
@@ -159,6 +152,7 @@ public class BackgroundScene {
 			// Draw to frame buffer.
 			GameLauncher.renderer.render();
 			// Copy the pixels directly from openGL
+			buffer.bind();
 			glReadPixels(0, 0, SIZE, SIZE, GL_RGB, GL_UNSIGNED_BYTE, fb);
 
 			// convert bytes to integer array
@@ -175,20 +169,16 @@ public class BackgroundScene {
 			image.setRGB(i*SIZE, 0, SIZE, SIZE, pixels, 0, SIZE);
 		}
 
-		try {//Try to screate image, else show exception.
+		Window.setRenderTarget(null);
+
+		try {//Try to create image, else show exception.
 			ImageIO.write(image, "png", new File("assets/backgrounds/"+Cubyz.world.getName()+"_"+Cubyz.world.getGameTime()+".png"));
 		}
 		catch (Exception e) {
-			System.out.println("ScreenShot() exception: " +e);
+			Logger.error(e);
 		}
 
-		// Reset state:
-		buffer.unbind();
-		glViewport(0, 0, Window.getWidth(), Window.getHeight());
-		Transformation.updateProjectionMatrix(Window.getProjectionMatrix(), (float)Math.toRadians(ClientSettings.FOV),
-		Window.getWidth(), Window.getHeight(), MainRenderer.Z_NEAR, MainRenderer.Z_FAR);
-		Transformation.updateProjectionMatrix(ReducedChunkMesh.projMatrix, (float)Math.toRadians(ClientSettings.FOV),
-			Window.getWidth(), Window.getHeight(), 2.0f, 16384.0f);
+		GameLauncher.renderer.updateViewport(Window.getWidth(), Window.getHeight(), ClientSettings.FOV);
 		Logger.debug("Made background image.");
 		cameraRotation.set(rotationCopy);
 		Cubyz.gameUI.showOverlay = showOverlay;
