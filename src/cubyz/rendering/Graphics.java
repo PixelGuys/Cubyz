@@ -53,19 +53,19 @@ public class Graphics {
 	 * @return the previous clipping rect to restore it later.
 	 */
 	public static Vector4i setClip(Vector4i newClip) {
-		if(clip != null) {
-			if(newClip.x < clip.x) {
+		if (clip != null) {
+			if (newClip.x < clip.x) {
 				newClip.z -= (clip.x - newClip.x);
 				newClip.x += (clip.x - newClip.x);
 			}
-			if(newClip.y < clip.y) {
+			if (newClip.y < clip.y) {
 				newClip.w -= (clip.y - newClip.y);
 				newClip.y += (clip.y - newClip.y);
 			}
-			if(newClip.x + newClip.z > clip.x + clip.z) {
+			if (newClip.x + newClip.z > clip.x + clip.z) {
 				newClip.z -= (newClip.x + newClip.z) - (clip.x + clip.z);
 			}
-			if(newClip.y + newClip.w > clip.y + clip.w) {
+			if (newClip.y + newClip.w > clip.y + clip.w) {
 				newClip.w -= (newClip.y + newClip.w) - (clip.y + clip.w);
 			}
 		} else {
@@ -83,7 +83,7 @@ public class Graphics {
 	 */
 	public static void restoreClip(Vector4i previousClip) {
 		clip = previousClip;
-		if(clip == null) {
+		if (clip == null) {
 			glDisable(GL_SCISSOR_TEST);
 		} else {
 			glScissor(clip.x, clip.y, clip.z, clip.w);
@@ -325,7 +325,7 @@ public class Graphics {
 	 * @param height height of the on-screen region
 	 */
 	public static void drawImage(Texture texture, float x, float y, float width, float height) {
-		if(texture == null) return;
+		if (texture == null) return;
 		
 		imageShader.bind();
 		glActiveTexture(GL_TEXTURE0);

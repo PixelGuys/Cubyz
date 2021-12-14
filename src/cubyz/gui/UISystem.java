@@ -91,7 +91,7 @@ public class UISystem {
 		if (this.gui != null && this.gui.ungrabsMouse() && (gui == null || !gui.ungrabsMouse())) {
 			Mouse.setGrabbed(true);
 		}
-		if(this.gui != null) {
+		if (this.gui != null) {
 			this.gui.close();
 		}
 		if (gui != null) {
@@ -126,7 +126,7 @@ public class UISystem {
 		int guiScale = Math.min(Window.getWidth()/480, Window.getHeight()/270);
 		guiScale = Math.max(1, guiScale);
 		ClientSettings.GUI_SCALE = guiScale;
-		if(gui != null)
+		if (gui != null)
 			gui.updateGUIScale();
 		for(MenuGUI gui : overlays) {
 			gui.updateGUIScale();
@@ -137,11 +137,11 @@ public class UISystem {
 	}
 
 	public void render() {
-		if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_F1)) {
+		if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_F1)) {
 			Keyboard.setKeyPressed(GLFW.GLFW_KEY_F1, false);
 			showOverlay = !showOverlay;
 		}
-		if(showOverlay) {
+		if (showOverlay) {
 			glDisable(GL_DEPTH_TEST);
 			glDisable(GL_CULL_FACE);
 			glEnable(GL_BLEND);

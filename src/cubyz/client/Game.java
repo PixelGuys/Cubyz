@@ -53,7 +53,7 @@ public class Game {
 			render();
 			handleInput();
 			GameLauncher.logic.clientUpdate(); // TODO: Maybe move this to an extra thread.
-			if(Cubyz.player != null)
+			if (Cubyz.player != null)
 				Cubyz.player.update();
 			++frames;
 		}

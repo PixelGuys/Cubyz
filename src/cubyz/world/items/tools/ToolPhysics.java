@@ -24,7 +24,7 @@ public class ToolPhysics {
 		outer:
 		for(; y > 0; y -= 5) {
 			for(int x = 0; x < 5; x++) {
-				if(tool.craftingGrid[y + x] != null) {
+				if (tool.craftingGrid[y + x] != null) {
 					break outer;
 				}
 			}
@@ -33,24 +33,24 @@ public class ToolPhysics {
 		// Goes from right to left.
 		// TODO: Add left-hander setting that mirrors the x axis of the tools and the crafting grid
 		for(int x = 4; x >= 0; x--) {
-			if(tool.craftingGrid[y + x] != null) {
+			if (tool.craftingGrid[y + x] != null) {
 				tool.handlePosition.x = TextureGenerator.GRID_CENTERS_X[x + y] - 0.5f;
 				tool.handlePosition.y = TextureGenerator.GRID_CENTERS_Y[x + y] - 0.5f;
 				// Count the neighbors to determine whether it's a good handle:
 				int neighbors = 0;
-				if(x != 0 && tool.craftingGrid[y + x - 1] != null)
+				if (x != 0 && tool.craftingGrid[y + x - 1] != null)
 					neighbors++;
-				if(x != 4 && tool.craftingGrid[y + x + 1] != null)
+				if (x != 4 && tool.craftingGrid[y + x + 1] != null)
 					neighbors++;
-				if(y != 0) {
-					if(tool.craftingGrid[y - 5 + x] != null)
+				if (y != 0) {
+					if (tool.craftingGrid[y - 5 + x] != null)
 						neighbors++;
-					if(x != 0 && tool.craftingGrid[y - 5 + x - 1] != null)
+					if (x != 0 && tool.craftingGrid[y - 5 + x - 1] != null)
 						neighbors++;
-					if(x != 4 && tool.craftingGrid[y - 5 + x + 1] != null)
+					if (x != 4 && tool.craftingGrid[y - 5 + x + 1] != null)
 						neighbors++;
 				}
-				if(neighbors <= 1) {
+				if (neighbors <= 1) {
 					return true;
 				}
 			}
@@ -70,7 +70,7 @@ public class ToolPhysics {
 		double mass = 0;
 		for(int x = 0; x < 16; x++) {
 			for(int y = 0; y < 16; y++) {
-				if(tool.materialGrid[x][y] == null) continue;
+				if (tool.materialGrid[x][y] == null) continue;
 
 				double localMass = tool.materialGrid[x][y].material.density;
 				centerMassX += localMass*(x + 0.5);
@@ -86,7 +86,7 @@ public class ToolPhysics {
 		double inertia = 0;
 		for(int x = 0; x < 16; x++) {
 			for(int y = 0; y < 16; y++) {
-				if(tool.materialGrid[x][y] == null) continue;
+				if (tool.materialGrid[x][y] == null) continue;
 				
 				double localMass = tool.materialGrid[x][y].material.density;
 				double dx = x + 0.5 - tool.centerOfMass.x;
@@ -117,7 +117,7 @@ public class ToolPhysics {
 				float distance = (float) Math.cos(angle) * center.distance(x + 0.5f, y + 0.5f);
 				float deltaAngle = Math.abs(angle - originalAngle);
 				float deltaDist = Math.abs(distance - originalDistance);
-				if(deltaAngle <= 0.2 && deltaDist <= 0.7f) {
+				if (deltaAngle <= 0.2 && deltaDist <= 0.7f) {
 					numOfSmoothPixels++;
 				}
 			}
@@ -145,19 +145,19 @@ public class ToolPhysics {
 		float frontCollisionDistance = 0;
 		for(int x = 0; x < 16; x++) {
 			for(int y = 0; y < 16; y++) {
-				if(tool.materialGrid[x][y] == null) continue;
+				if (tool.materialGrid[x][y] == null) continue;
 
 				float angle = (float) Math.atan2(y + 0.5f - center.y, x + 0.5f - center.x) - initialAngle;
 				float distance = (float) Math.cos(angle) * center.distance(x + 0.5f, y + 0.5f);
-				if(angle < leftCollisionAngle) {
+				if (angle < leftCollisionAngle) {
 					leftCollisionAngle = angle;
 					leftCollisionPoint.set(x, y, 0);
 				}
-				if(angle > rightCollisionAngle) {
+				if (angle > rightCollisionAngle) {
 					rightCollisionAngle = angle;
 					rightCollisionPoint.set(x, y, 0);
 				}
-				if(distance > frontCollisionDistance) {
+				if (distance > frontCollisionDistance) {
 					frontCollisionDistance = angle;
 					frontCollisionPoint.set(x, y, 0);
 				}
@@ -175,7 +175,7 @@ public class ToolPhysics {
 		float durability = 0;
 		for(int x = 0; x < 16; x++) {
 			for(int y = 0; y < 16; y++) {
-				if(tool.materialGrid[x][y] != null) {
+				if (tool.materialGrid[x][y] != null) {
 					durability += tool.materialGrid[x][y].material.resistance;
 				}
 			}
@@ -214,9 +214,9 @@ public class ToolPhysics {
 		int neighborsLower = 0;
 		for(int x = -1; x <= 1; x++) {
 			for(int y = -1; y <= 1; y++) {
-				if(x + collisionPointLower.x >= 0 && x + collisionPointLower.x < 16) {
-					if(y + collisionPointLower.y >= 0 && y + collisionPointLower.y < 16) {
-						if(tool.materialGrid[x + collisionPointLower.x][y + collisionPointLower.y] != null)
+				if (x + collisionPointLower.x >= 0 && x + collisionPointLower.x < 16) {
+					if (y + collisionPointLower.y >= 0 && y + collisionPointLower.y < 16) {
+						if (tool.materialGrid[x + collisionPointLower.x][y + collisionPointLower.y] != null)
 							neighborsLower++;
 					}
 				}
@@ -226,9 +226,9 @@ public class ToolPhysics {
 		Vector2i dirUpper = new Vector2i();
 		for(int x = -1; x <= 1; x++) {
 			for(int y = -1; y <= 1; y++) {
-				if(x + collisionPointUpper.x >= 0 && x + collisionPointUpper.x < 16) {
-					if(y + collisionPointUpper.y >= 0 && y + collisionPointUpper.y < 16) {
-						if(tool.materialGrid[x + collisionPointUpper.x][y + collisionPointUpper.y] != null) {
+				if (x + collisionPointUpper.x >= 0 && x + collisionPointUpper.x < 16) {
+					if (y + collisionPointUpper.y >= 0 && y + collisionPointUpper.y < 16) {
+						if (tool.materialGrid[x + collisionPointUpper.x][y + collisionPointUpper.y] != null) {
 							neighborsUpper++;
 							dirUpper.x += x;
 							dirUpper.y += y;
@@ -237,10 +237,10 @@ public class ToolPhysics {
 				}
 			}
 		}
-		if(neighborsLower > 3 && neighborsUpper > 3) return 0;
+		if (neighborsLower > 3 && neighborsUpper > 3) return 0;
 
 		// A pickaxe never points upwards:
-		if(neighborsUpper == 3 && dirUpper.y == 2) {
+		if (neighborsUpper == 3 && dirUpper.y == 2) {
 			return 0;
 		}
 
@@ -277,43 +277,43 @@ public class ToolPhysics {
 		for(int x = 0; x < 16; x++) {
 			for(int y = 0; y < 16; y++) {
 				sandPiles[x][y] = Integer.MAX_VALUE;
-				if(tool.materialGrid[x][y] == null) {
+				if (tool.materialGrid[x][y] == null) {
 					sandPiles[x][y] = 0;
 					xStack.push(x);
 					yStack.push(y);
-				} else if(x == 0 || x == 15 || y == 0 || y == 15) {
+				} else if (x == 0 || x == 15 || y == 0 || y == 15) {
 					sandPiles[x][y] = 1;
 					xStack.push(x);
 					yStack.push(y);
 				}
 			}
 		}
-		while(!xStack.isEmpty()) {
+		while (!xStack.isEmpty()) {
 			int x = xStack.pop();
 			int y = yStack.pop();
-			if(x - 1 >= 0 && y - 1 >= 0 && tool.materialGrid[x - 1][y - 1] != null) {
-				if(sandPiles[x - 1][y - 1] > sandPiles[x][y] + 1) {
+			if (x - 1 >= 0 && y - 1 >= 0 && tool.materialGrid[x - 1][y - 1] != null) {
+				if (sandPiles[x - 1][y - 1] > sandPiles[x][y] + 1) {
 					sandPiles[x - 1][y - 1] = sandPiles[x][y] + 1;
 					xStack.push(x - 1);
 					yStack.push(y - 1);
 				}
 			}
-			if(x - 1 >= 0 && y + 1 < 16 && tool.materialGrid[x - 1][y + 1] != null) {
-				if(sandPiles[x - 1][y + 1] > sandPiles[x][y] + 1) {
+			if (x - 1 >= 0 && y + 1 < 16 && tool.materialGrid[x - 1][y + 1] != null) {
+				if (sandPiles[x - 1][y + 1] > sandPiles[x][y] + 1) {
 					sandPiles[x - 1][y + 1] = sandPiles[x][y] + 1;
 					xStack.push(x - 1);
 					yStack.push(y + 1);
 				}
 			}
-			if(x + 1 < 16 && y - 1 >= 0 && tool.materialGrid[x + 1][y - 1] != null) {
-				if(sandPiles[x + 1][y - 1] > sandPiles[x][y] + 1) {
+			if (x + 1 < 16 && y - 1 >= 0 && tool.materialGrid[x + 1][y - 1] != null) {
+				if (sandPiles[x + 1][y - 1] > sandPiles[x][y] + 1) {
 					sandPiles[x + 1][y - 1] = sandPiles[x][y] + 1;
 					xStack.push(x + 1);
 					yStack.push(y - 1);
 				}
 			}
-			if(x + 1 < 16 && y + 1 < 16 && tool.materialGrid[x + 1][y + 1] != null) {
-				if(sandPiles[x + 1][y + 1] > sandPiles[x][y] + 1) {
+			if (x + 1 < 16 && y + 1 < 16 && tool.materialGrid[x + 1][y + 1] != null) {
+				if (sandPiles[x + 1][y + 1] > sandPiles[x][y] + 1) {
 					sandPiles[x + 1][y + 1] = sandPiles[x][y] + 1;
 					xStack.push(x + 1);
 					yStack.push(y + 1);
@@ -362,7 +362,7 @@ public class ToolPhysics {
 		// It takes longer to swing a heavy tool.
 		tool.swingTime = (tool.mass + tool.inertiaHandle/8)/256; // TODO: Balancing
 
-		if(hasGoodHandle) { // Good handles make tools easier to handle.
+		if (hasGoodHandle) { // Good handles make tools easier to handle.
 			tool.swingTime /= 2.0f;
 		}
 

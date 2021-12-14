@@ -45,15 +45,15 @@ public class ItemStack {
 	
 	public int add(int number) {
 		this.amount += number;
-		if(this.amount < 0) {
+		if (this.amount < 0) {
 			number = number-this.amount;
 			this.amount = 0;
 		}
-		else if(this.amount > item.stackSize) {
+		else if (this.amount > item.stackSize) {
 			number = number-this.amount+item.stackSize;
 			this.amount = item.stackSize;
 		}
-		if(empty()) {
+		if (empty()) {
 			clear();
 		}
 		return number;
@@ -76,7 +76,7 @@ public class ItemStack {
 	}
 	
 	public int getBlock() {
-		if(item == null)
+		if (item == null)
 			return 0;
 		if (item instanceof ItemBlock)
 			return ((ItemBlock) item).getBlock();

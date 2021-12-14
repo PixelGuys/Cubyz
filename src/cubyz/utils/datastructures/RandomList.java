@@ -68,7 +68,7 @@ public class RandomList<T extends ChanceObject> {
 	public T getRandomly(Random rand) {
 		long value = rangedRandomLong(rand, sum);
 		for(int i = 0; i < size; i++) {
-			if(value < array[i].chance)
+			if (value < array[i].chance)
 				return (T)array[i];
 			value -= array[i].chance;
 		}
@@ -81,7 +81,7 @@ public class RandomList<T extends ChanceObject> {
 		do {
 			out = rand.nextLong();
 			out &= and;
-		} while(out >= max);
+		} while (out >= max);
 		return out;
 	}
 }

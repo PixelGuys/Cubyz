@@ -83,7 +83,7 @@ public class ClientSettings {
 		settings = JsonParser.parseObjectFromFile("settings.json");
 		
 		JsonObject keyBindings = settings.getObject("keybindings");
-		if(keyBindings != null) {
+		if (keyBindings != null) {
 			for (String name : keyBindings.map.keySet()) {
 				Keybindings.setKeyCode(name, keyBindings.getInt(name, Keybindings.getKeyCode(name)));
 			}
@@ -91,7 +91,7 @@ public class ClientSettings {
 		
 		Settings.setLanguage(LanguageLoader.load(settings.getString("language", "en_US")));
 		
-		if(settings.getBool("discordIntegration", false)) {
+		if (settings.getBool("discordIntegration", false)) {
 			DiscordIntegration.startRPC();
 		}
 		

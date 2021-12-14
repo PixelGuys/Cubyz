@@ -32,9 +32,9 @@ public class InventoryGUI extends GeneralInventory {
 		super.close();
 		 // Place the crafting slots in an empty slot or throw them out.
 		for(int i = playerInventorySize; i < playerInventorySize + 5; i++) {
-			if(inv[i].reference.empty()) continue;
+			if (inv[i].reference.empty()) continue;
 			inv[i].reference.setAmount(Cubyz.player.getInventory().addItem(inv[i].reference.getItem(), inv[i].reference.getAmount()));
-			if(inv[i].reference.empty()) continue;
+			if (inv[i].reference.empty()) continue;
 			Cubyz.world.drop(inv[i].reference, Cubyz.player.getPosition(), new Vector3f(), 0);
 		}
 	}
@@ -47,17 +47,17 @@ public class InventoryGUI extends GeneralInventory {
 		Item[] ar = new Item[4];
 		for(int i = 0; i < 4; i++) {
 			ar[i] = inv[playerInventorySize + i].reference.getItem();
-			if(ar[i] != null)
+			if (ar[i] != null)
 				num++;
 		}
 		Recipe[] recipes = CubyzRegistries.RECIPE_REGISTRY.registered(new Recipe[0]);
 		// Find a fitting recipe:
 		Item item = null;
 		for(Recipe rec : recipes) {
-			if(rec.getNum() != num)
+			if (rec.getNum() != num)
 				continue;
 			item = rec.canCraft(ar, 2);
-			if(item != null) {
+			if (item != null) {
 				
 				inv[playerInventorySize+4].reference.setItem(item);
 				inv[playerInventorySize+4].reference.add(rec.getNumRet());
@@ -97,7 +97,7 @@ public class InventoryGUI extends GeneralInventory {
 	protected void mouseAction() {
 		boolean notNull = inv[playerInventorySize+4].reference.getItem() != null;
 		for(int i = 0; i < inv.length; i++) {
-			if(inv[i].grabWithMouse(carriedStack, Window.getWidth()/2, Window.getHeight())) {
+			if (inv[i].grabWithMouse(carriedStack, Window.getWidth()/2, Window.getHeight())) {
 				if (i == playerInventorySize+4 && notNull) {
 					// Remove items in the crafting grid.
 					for(int j = playerInventorySize; j < playerInventorySize+4; j++) {
@@ -105,7 +105,7 @@ public class InventoryGUI extends GeneralInventory {
 					}
 				}
 			}
-			if(i >= playerInventorySize) {
+			if (i >= playerInventorySize) {
 				checkCrafting();
 			}
 		}

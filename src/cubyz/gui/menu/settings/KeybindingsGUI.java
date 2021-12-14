@@ -174,18 +174,18 @@ public class KeybindingsGUI extends MenuGUI {
 
 	@Override
 	public void close() {
-		if(listen != null)
+		if (listen != null)
 			endListen(Keybindings.getKeyCode(listen));
 	}
 
 	@Override
 	public void render() {
-		if(listen != null) {
-			if(Mouse.isLeftButtonPressed()) {
+		if (listen != null) {
+			if (Mouse.isLeftButtonPressed()) {
 				endListen(Keybindings.MOUSE_LEFT_CLICK);
-			} else if(Mouse.isMiddleButtonPressed()) {
+			} else if (Mouse.isMiddleButtonPressed()) {
 				endListen(Keybindings.MOUSE_MIDDLE_CLICK);
-			} else if(Mouse.isRightButtonPressed()) {
+			} else if (Mouse.isRightButtonPressed()) {
 				endListen(Keybindings.MOUSE_RIGHT_CLICK);
 			}
 		}

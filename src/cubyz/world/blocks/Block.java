@@ -233,7 +233,7 @@ public class Block implements RegistryElement {
 	 * @return if the block did something on click.
 	 */
 	public boolean onClick(ServerWorld world, Vector3i pos) {
-		if(gui != null) {
+		if (gui != null) {
 			ClientOnly.client.openGUI("cubyz:workbench", new Inventory(26)); // TODO: Care about the inventory.
 			return true;
 		}

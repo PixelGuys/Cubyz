@@ -30,7 +30,7 @@ public class ChunkGenerationThreadPool {
 				// TODO: Make this more efficient. For example by using a better datastructure.
 				ChunkData[] array = loadList.toArray();
 				for(ChunkData element : array) {
-					if(element != null) {
+					if (element != null) {
 						element.updatePriority(world.getLocalPlayer());
 					}
 				}
@@ -74,7 +74,7 @@ public class ChunkGenerationThreadPool {
 	}
 	
 	public void synchronousGenerate(ChunkData ch) {
-		if(ch instanceof NormalChunk) {
+		if (ch instanceof NormalChunk) {
 			((NormalChunk) ch).generateFrom(world.getGenerator());
 			((NormalChunk) ch).load();
 			world.clientConnection.updateChunkMesh((NormalChunk) ch);

@@ -137,14 +137,14 @@ public class LoadThread extends Thread {
 			public void run() {
 				i++;
 				boolean finishedMeshes = false;
-				if(i < CubyzRegistries.ENTITY_REGISTRY.size()) {
-					if(i < CubyzRegistries.ENTITY_REGISTRY.size()) {
+				if (i < CubyzRegistries.ENTITY_REGISTRY.size()) {
+					if (i < CubyzRegistries.ENTITY_REGISTRY.size()) {
 						EntityType e = CubyzRegistries.ENTITY_REGISTRY.registered(new EntityType[0])[i];
 						if (!e.useDynamicEntityModel()) {
 							ClientOnly.createEntityMesh.accept(e);
 						}
 					}
-					if(i < Blocks.size()-1 || i < CubyzRegistries.ENTITY_REGISTRY.size()-1) {
+					if (i < Blocks.size()-1 || i < CubyzRegistries.ENTITY_REGISTRY.size()-1) {
 						Cubyz.renderDeque.add(run);
 						l.setStep(4, i+1, Blocks.size());
 					} else {
@@ -159,7 +159,7 @@ public class LoadThread extends Thread {
 						lock.notifyAll();
 					}
 				}
-				if(finishedMeshes) {
+				if (finishedMeshes) {
 					try {
 						GameLauncher.logic.skyBodyMesh = new Mesh(ModelLoader.loadModel(new Resource("cubyz:sky_body.obj"), ResourceManager.lookupPath(ResourceManager.contextToLocal(ResourceContext.MODEL3D, new Resource("cubyz:sky_body.obj")))));
 					} catch (Exception e) {
@@ -205,14 +205,14 @@ public class LoadThread extends Thread {
 	
 			while (e.hasMoreElements()) {
 			    JarEntry je = e.nextElement();
-			    if(je.isDirectory() || !je.getName().endsWith(".class") || je.getName().contains("module-info")){
+			    if (je.isDirectory() || !je.getName().endsWith(".class") || je.getName().contains("module-info")){
 			        continue;
 			    }
 			    // -6 because of .class
-			    String className = je.getName().substring(0,je.getName().length()-6);
+			    String className = je.getName().substring(0, je.getName().length()-6);
 			    className = className.replace('/', '.');
 			    Class<?> c = cl.loadClass(className);
-			    if(c.isAnnotationPresent(Mod.class)) modClasses.add(c);
+			    if (c.isAnnotationPresent(Mod.class)) modClasses.add(c);
 	
 			}
 			jarFile.close();

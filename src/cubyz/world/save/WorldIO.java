@@ -37,7 +37,7 @@ public class WorldIO {
 	public long loadWorldSeed() {
 		try {
 			JsonObject worldData = JsonParser.parseObjectFromFile(dir+"/world.dat");
-			if(worldData.getInt("version", -1) != WORLD_DATA_VERSION) {
+			if (worldData.getInt("version", -1) != WORLD_DATA_VERSION) {
 				throw new IOException("Cannot read version " + worldData.getInt("version", -1));
 			}
 			return worldData.getLong("seed", -1);
@@ -50,7 +50,7 @@ public class WorldIO {
 	public String loadWorldGenerator() {
 		try {
 			JsonObject worldData = JsonParser.parseObjectFromFile(dir+"/world.dat");
-			if(worldData.getInt("version", -1) != WORLD_DATA_VERSION) {
+			if (worldData.getInt("version", -1) != WORLD_DATA_VERSION) {
 				throw new IOException("Cannot read version " + worldData.getInt("version", -1));
 			}
 			return worldData.getString("generator", "cubyz:lifeland");
@@ -63,7 +63,7 @@ public class WorldIO {
 	public void loadWorldData() {
 		try {
 			JsonObject worldData = JsonParser.parseObjectFromFile(dir+"/world.dat");
-			if(worldData.getInt("version", -1) != WORLD_DATA_VERSION) {
+			if (worldData.getInt("version", -1) != WORLD_DATA_VERSION) {
 				throw new IOException("Cannot read version " + worldData.getInt("version", -1));
 			}
 			blockPalette = new BlockPalette(worldData.getObject("blockPalette"));
@@ -102,7 +102,7 @@ public class WorldIO {
 			worldData.put("entities", entityData);
 			if (world != null) {
 				for (Entity ent : world.getEntities()) {
-					if(ent != null)
+					if (ent != null)
 						entityData.add(ent.save());
 				}
 			}

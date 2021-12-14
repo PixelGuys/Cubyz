@@ -61,7 +61,7 @@ void main()
     
     // Check if this vertex is outside the bounds that should be rendered:
 	globalPosition -= normals[normal]*0.5; // Prevent showing faces that are outside this chunkpiece.
-	if(globalPosition.x < lowerBounds.x || globalPosition.x > upperBounds.x
+	if (globalPosition.x < lowerBounds.x || globalPosition.x > upperBounds.x
 			|| globalPosition.y < lowerBounds.y || globalPosition.y > upperBounds.y
 			|| globalPosition.z < lowerBounds.z || globalPosition.z > upperBounds.z) {
 		gl_Position.z = -1/0.0;

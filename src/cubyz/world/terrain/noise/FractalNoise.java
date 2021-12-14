@@ -32,7 +32,7 @@ public class FractalNoise {
 		for(int px = 0; px < width; px++) {
 			for(int py = 0; py < height; py++) {
 				map[x0 + px][z0 + py] = bigMap[(wx&and)+px][(wz&and)+py];
-				if(map[x0 + px][z0 + py] >= 1.0f) {
+				if (map[x0 + px][z0 + py] >= 1.0f) {
 					map[x0 + px][z0 + py] = 0.9999f;
 				}
 			}
@@ -68,8 +68,8 @@ public class FractalNoise {
 				for(int y = res; y+res < max; y += res<<1) {
 					rand.setSeed(getSeed(x, y, offsetX, offsetZ, seed, res, maxResolution));
 					bigMap[x][y] = (bigMap[x][y-res]+bigMap[x][y+res])/2 + (rand.nextFloat()-0.5f)*res/scale;
-					if(bigMap[x][y] > upperLimit) bigMap[x][y] = upperLimit;
-					if(bigMap[x][y] < lowerLimit) bigMap[x][y] = lowerLimit;
+					if (bigMap[x][y] > upperLimit) bigMap[x][y] = upperLimit;
+					if (bigMap[x][y] < lowerLimit) bigMap[x][y] = lowerLimit;
 				}
 			}
 			// y coordinate on the grid:
@@ -77,8 +77,8 @@ public class FractalNoise {
 				for(int y = 0; y < max; y += res<<1) {
 					rand.setSeed(getSeed(x, y, offsetX, offsetZ, seed, res, maxResolution));
 					bigMap[x][y] = (bigMap[x-res][y]+bigMap[x+res][y])/2 + (rand.nextFloat()-0.5f)*res/scale;
-					if(bigMap[x][y] > upperLimit) bigMap[x][y] = upperLimit;
-					if(bigMap[x][y] < lowerLimit) bigMap[x][y] = lowerLimit;
+					if (bigMap[x][y] > upperLimit) bigMap[x][y] = upperLimit;
+					if (bigMap[x][y] < lowerLimit) bigMap[x][y] = lowerLimit;
 				}
 			}
 			// No coordinate on the grid:
@@ -86,8 +86,8 @@ public class FractalNoise {
 				for(int y = res; y+res < max; y += res<<1) {
 					rand.setSeed(getSeed(x, y, offsetX, offsetZ, seed, res, maxResolution));
 					bigMap[x][y] = (bigMap[x-res][y-res]+bigMap[x+res][y-res]+bigMap[x-res][y+res]+bigMap[x+res][y+res])/4 + (rand.nextFloat()-0.5f)*res/scale;
-					if(bigMap[x][y] > upperLimit) bigMap[x][y] = upperLimit;
-					if(bigMap[x][y] < lowerLimit) bigMap[x][y] = lowerLimit;
+					if (bigMap[x][y] > upperLimit) bigMap[x][y] = upperLimit;
+					if (bigMap[x][y] < lowerLimit) bigMap[x][y] = lowerLimit;
 				}
 			}
 		}

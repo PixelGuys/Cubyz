@@ -51,14 +51,14 @@ public class TextureConverter {
 	public static BufferedImage compose(String[] paths) {
 		try {
 			BufferedImage out;
-			if(paths[0].contains("|"))
+			if (paths[0].contains("|"))
 				out = convertTemplate(paths[0]);
 			else
 				out = ImageIO.read(new File(paths[0]));
 			Graphics2D g2d = out.createGraphics();
 			for(int i = 1; i < paths.length; i++) {
 				BufferedImage img;
-				if(paths[i].contains("|"))
+				if (paths[i].contains("|"))
 					img = convertTemplate(paths[i]);
 				else
 					img = ImageIO.read(new File(paths[i]));

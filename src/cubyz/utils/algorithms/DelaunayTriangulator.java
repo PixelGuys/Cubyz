@@ -31,7 +31,7 @@ public class DelaunayTriangulator {
 	static private final int INCOMPLETE = 2;
 
 	/** Triangulates the given point cloud to a list of triangle indices that make up the Delaunay triangulation.
-	 * @param points x,y pairs describing points. Duplicate points will result in undefined behavior.
+	 * @param points x, y pairs describing points. Duplicate points will result in undefined behavior.
 	 * @param sorted If false, the points will be sorted by the x coordinate, which is required by the triangulation algorithm. If
 	 *           sorting is done the input array is not modified, the returned indices are for the input array, and count*2
 	 *           additional working memory is needed.
@@ -90,7 +90,7 @@ public class DelaunayTriangulator {
 		for (int pointIndex = offset; pointIndex < end; pointIndex += 2) {
 			float x = points[pointIndex], y = points[pointIndex + 1];
 
-			// If x,y lies inside the circumcircle of a triangle, the edges are stored and the triangle removed.
+			// If x, y lies inside the circumcircle of a triangle, the edges are stored and the triangle removed.
 			int[] trianglesArray = triangles.array;
 			boolean[] completeArray = complete.array;
 			for (int triangleIndex = triangles.size - 1; triangleIndex >= 0; triangleIndex -= 3) {
@@ -178,7 +178,7 @@ public class DelaunayTriangulator {
 		for (int i = 0, n = triangles.size; i < n; i++)
 			trianglesArray[i] = (short)(originalIndices[trianglesArray[i] / 2] * 2);
 
-		// Adjust triangles to start from zero and count by 1, not by vertex x,y coordinate pairs.
+		// Adjust triangles to start from zero and count by 1, not by vertex x, y coordinate pairs.
 		if (offset == 0) {
 			for (int i = 0, n = triangles.size; i < n; i++)
 				trianglesArray[i] = (short)(trianglesArray[i] / 2);
@@ -190,7 +190,7 @@ public class DelaunayTriangulator {
 		return triangles.toArray();
 	}
 
-	/** Returns INSIDE if point xp,yp is inside the circumcircle made up of the points x1,y1, x2,y2, x3,y3. Returns COMPLETE if xp
+	/** Returns INSIDE if point xp, yp is inside the circumcircle made up of the points x1, y1, x2, y2, x3, y3. Returns COMPLETE if xp
 	 * is to the right of the entire circumcircle. Otherwise returns INCOMPLETE. Note: a point on the circumcircle edge is
 	 * considered inside. */
 	private static int circumCircle (float xp, float yp, float x1, float y1, float x2, float y2, float x3, float y3) {
@@ -231,7 +231,7 @@ public class DelaunayTriangulator {
 		return xp > xc && dx > rsqr ? COMPLETE : INCOMPLETE;
 	}
 
-	/** Sorts x,y pairs of values by the x value.
+	/** Sorts x, y pairs of values by the x value.
 	 * @param count Number of indices, must be even. */
 	private static void sort (int[] values, int[] originalIndices, int count) {
 		int pointCount = count / 2;

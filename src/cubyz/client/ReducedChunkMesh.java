@@ -68,7 +68,7 @@ public class ReducedChunkMesh extends ChunkMesh {
 	public static ShaderProgram shader;
 	
 	public static void init(String shaderFolder) throws Exception {
-		if(shader != null)
+		if (shader != null)
 			shader.cleanup();
 		shader = new ShaderProgram(Utils.loadResource(shaderFolder + "/chunk_vertex.vs"),
 				Utils.loadResource(shaderFolder + "/chunk_fragment.fs"),
@@ -118,7 +118,7 @@ public class ReducedChunkMesh extends ChunkMesh {
 	public void updateChunk(ReducedChunkVisibilityData data) {
 		synchronized(this) {
 			chunkVisibilityData = data;
-			if(!needsUpdate) {
+			if (!needsUpdate) {
 				needsUpdate = true;
 				Meshes.queueMesh(this);
 			}
@@ -131,10 +131,10 @@ public class ReducedChunkMesh extends ChunkMesh {
 		ReducedChunkVisibilityData chunkVisibilityData;
 		synchronized(this) {
 			chunkVisibilityData = this.chunkVisibilityData;
-			if(!needsUpdate)
+			if (!needsUpdate)
 				return;
 			needsUpdate = false;
-			if(chunkVisibilityData == null)
+			if (chunkVisibilityData == null)
 				return;
 		}
 		generated = true;
@@ -151,7 +151,7 @@ public class ReducedChunkMesh extends ChunkMesh {
 		IntBuffer colorAndNormalBuffer = null;
 		try {
 			vertexCount = faces.size;
-			if(vertexCount == 0)
+			if (vertexCount == 0)
 				return;
 			
 			vboIdList.clear();
@@ -210,17 +210,17 @@ public class ReducedChunkMesh extends ChunkMesh {
 
 	@Override
 	public void render(Vector3d playerPosition) {
-		if(chunkVisibilityData == null || !generated) {
+		if (chunkVisibilityData == null || !generated) {
 			glUniform3f(ReducedChunkMesh.loc_lowerBounds, (float)(wx - playerPosition.x - 0.001), (float)(wy - playerPosition.y - 0.001), (float)(wz - playerPosition.z - 0.001));
 			glUniform3f(ReducedChunkMesh.loc_upperBounds, (float)(wx + size - playerPosition.x + 0.001), (float)(wy + size - playerPosition.y + 0.001), (float)(wz + size - playerPosition.z + 0.001));
-			if(replacement != null) {
+			if (replacement != null) {
 				replacement.render(playerPosition);
 			}
 			glUniform3f(loc_lowerBounds, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY);
 			glUniform3f(loc_upperBounds, Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY);
 			return;
 		}
-		if(vaoId == -1) return;
+		if (vaoId == -1) return;
 		glUniform3f(loc_modelPosition, (float)(wx - playerPosition.x), (float)(wy - playerPosition.y), (float)(wz - playerPosition.z));
 		glUniform1f(loc_voxelSize, (float)(size/NormalChunk.chunkSize));
 		

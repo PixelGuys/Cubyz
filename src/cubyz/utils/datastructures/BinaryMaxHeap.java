@@ -24,11 +24,11 @@ public class BinaryMaxHeap<T extends Comparable<T>> {
 	 * @param i
 	 */
 	private void siftDown(int i) {
-		while(i*2 + 2 < size) {
+		while (i*2 + 2 < size) {
 			int biggest = array[i*2 + 1].compareTo(array[i*2 + 2]) > 0 ? i*2 + 1 : i*2 + 2;
 			biggest = array[biggest].compareTo(array[i]) > 0 ? biggest : i;
 			// Break if all childs are smaller.
-			if(biggest == i) return;
+			if (biggest == i) return;
 			// Swap it:
 			T local = array[biggest];
 			array[biggest] = array[i];
@@ -45,7 +45,7 @@ public class BinaryMaxHeap<T extends Comparable<T>> {
 	private void siftUp(int i) {
 		int parentIndex = (i-1)/2;
 		// Go through the parents, until the child is smaller and swap.
-		while(array[parentIndex].compareTo(array[i]) < 0 && i > 0) {
+		while (array[parentIndex].compareTo(array[i]) < 0 && i > 0) {
 			T local = array[parentIndex];
 			array[parentIndex] = array[i];
 			array[i] = local;
@@ -60,7 +60,7 @@ public class BinaryMaxHeap<T extends Comparable<T>> {
 	 */
 	public void add(T element) {
 		synchronized(this) {
-			if(size == array.length) {
+			if (size == array.length) {
 				increaseCapacity(size*2);
 			}
 			array[size] = element;
@@ -75,7 +75,7 @@ public class BinaryMaxHeap<T extends Comparable<T>> {
 	 */
 	public T extractMax() {
 		synchronized(this) {
-			if(size == 0) return null;
+			if (size == 0) return null;
 			T ret = array[0];
 			array[0] = array[--size];
 			array[size] = null;
@@ -88,7 +88,7 @@ public class BinaryMaxHeap<T extends Comparable<T>> {
 	 */
 	public void clear() {
 		synchronized(this) {
-			while(--size >= 0) {
+			while (--size >= 0) {
 				array[size] = null;
 			}
 			size = 0;

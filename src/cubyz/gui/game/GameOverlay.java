@@ -69,7 +69,7 @@ public class GameOverlay extends MenuGUI {
 	public void render() {
 		Graphics.setColor(0xFFFFFF);
 		Graphics.drawImage(crosshair, Window.getWidth()/2 - 8 * GUI_SCALE, Window.getHeight()/2 - 8 * GUI_SCALE, 16 * GUI_SCALE, 16 * GUI_SCALE);
-		if(!(Cubyz.gameUI.getMenuGUI() instanceof GeneralInventory)) {
+		if (!(Cubyz.gameUI.getMenuGUI() instanceof GeneralInventory)) {
 			Graphics.drawImage(selection, Window.getWidth()/2 - 79 * GUI_SCALE + Cubyz.inventorySelection*20 * GUI_SCALE, Window.getHeight() - 19 * GUI_SCALE, 18 * GUI_SCALE, 18 * GUI_SCALE);
 			for(int i = 0; i < 8; i++) {
 				inv[i].reference = Cubyz.player.getInventory().getStack(i); // without it, if moved in inventory, stack won't refresh
@@ -79,8 +79,8 @@ public class GameOverlay extends MenuGUI {
 		// Draw the health bar:
 		float maxHealth = Cubyz.player.maxHealth;
 		float health = Cubyz.player.health;
-		if(lastPlayerHealth != health) {
-			if(lastPlayerHealth > health) {
+		if (lastPlayerHealth != health) {
+			if (lastPlayerHealth > health) {
 				lastPlayerHurtMs = System.currentTimeMillis();
 			}
 			lastPlayerHealth = health;
@@ -99,9 +99,9 @@ public class GameOverlay extends MenuGUI {
 			boolean empty = i >= health;
 			
 			int idx = 0;
-			if(i == 0) { // beggining
+			if (i == 0) { // beggining
 				idx = empty ? 0 : 1;
-			} else if(i == maxHealth-2) { // end
+			} else if (i == maxHealth-2) { // end
 				idx = i + 1 >= health ? 2 : 3;
 			} else {
 				idx = empty ? 4 : (half ? 5 : 6); // if empty => 4, half => 5, full => 6
@@ -120,9 +120,9 @@ public class GameOverlay extends MenuGUI {
 			boolean empty = i >= hunger;
 			
 			int idx = 0;
-			if(i == 0) { // beggining
+			if (i == 0) { // beggining
 				idx = empty ? 0 : 1;
-			} else if(i == maxHunger-2) { // end
+			} else if (i == maxHunger-2) { // end
 				idx = i + 1 >= hunger ? 2 : 3;
 			} else {
 				idx = empty ? 4 : (half ? 5 : 6); // if empty => 4, half => 5, full => 6

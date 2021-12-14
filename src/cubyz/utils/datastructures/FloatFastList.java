@@ -71,14 +71,14 @@ public class FloatFastList {
 	
 	public void remove(float t) {
 		for(int i = size-1; i >= 0; i--) {
-			if(array[i] == t)
+			if (array[i] == t)
 				remove(i); // Don't break here in case of multiple occurrence.
 		}
 	}
 	
 	public boolean contains(float t) {
 		for(int i = size-1; i >= 0; i--) {
-			if(array[i] == t)
+			if (array[i] == t)
 				return true;
 		}
 		return false;
@@ -90,7 +90,7 @@ public class FloatFastList {
 	 */
 	public int indexOf(float t) {
 		for(int i = size-1; i >= 0; i--) {
-			if(array[i] == t)
+			if (array[i] == t)
 				return i;
 		}
 		return -1;
@@ -117,7 +117,7 @@ public class FloatFastList {
 	 * @param r index of the right-most element in the to sorting area.
 	 */
 	public void sort(Comparator comp, int l, int r) {
-		if(l >= r) return;
+		if (l >= r) return;
 		int i = l, j = r;
 		
 		float x = array[(l+r)/2];

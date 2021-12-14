@@ -49,7 +49,7 @@ public class Pig extends EntityType {
 				ent.targetVX = directionRandom.nextFloat() * 0.2f - 0.1f;
 				ent.targetVZ = directionRandom.nextFloat() * 0.2f - 0.1f;
 				double xzAngle = Math.atan(ent.targetVZ/ent.targetVX);
-				if(ent.targetVX > 0) xzAngle += Math.PI;
+				if (ent.targetVX > 0) xzAngle += Math.PI;
 				ent.setRotation(new Vector3f(0, (float)xzAngle, 0));
 			}
 			

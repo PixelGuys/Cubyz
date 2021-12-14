@@ -16,7 +16,7 @@ public class Palette <T extends RegistryElement> {
 	private final HashMap<T, Integer> TToInt = new HashMap<T, Integer>();
 	private Object[] intToT = new Object[0];
 	public Palette(JsonObject json, Registry<T> registry) {
-		if(json == null) return;
+		if (json == null) return;
 		for (String key : json.map.keySet()) {
 			T t = registry.getByID(key);
 			if (t != null) {
@@ -42,7 +42,7 @@ public class Palette <T extends RegistryElement> {
 		return (T)intToT[index];
 	}
 	public int getIndex(T t) {
-		if(TToInt.containsKey(t)) {
+		if (TToInt.containsKey(t)) {
 			return TToInt.get(t);
 		} else {
 			// Create a value:

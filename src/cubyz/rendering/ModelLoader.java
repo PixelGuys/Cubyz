@@ -23,7 +23,7 @@ public class ModelLoader {
 	
 	public static Model loadModel(Resource id, String filePath) {
 		Model model = Meshes.models.getByID(id);
-		if(model != null) return model;
+		if (model != null) return model;
 		model = loadUnregisteredModel(id, filePath);
 		Meshes.models.register(model);
 		return model;

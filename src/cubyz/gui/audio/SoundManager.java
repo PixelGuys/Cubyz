@@ -54,7 +54,7 @@ public class SoundManager {
 	}
 	
 	public void dispose() throws Exception {
-		if(inited)
+		if (inited)
 			alcCloseDevice(device);
 	}
 

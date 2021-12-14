@@ -26,7 +26,7 @@ public class Item implements RegistryElement {
 	public Item(Resource id, JsonObject json) {
 		this.id = id;
 		name = TextKey.createTextKey(json.getString("translationId", id.getID()));
-		if(json.map.containsKey("material")) {
+		if (json.map.containsKey("material")) {
 			material = new Material(json.getObject("material"));
 		} else {
 			material = null;

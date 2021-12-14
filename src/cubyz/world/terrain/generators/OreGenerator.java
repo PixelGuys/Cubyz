@@ -33,7 +33,7 @@ public class OreGenerator implements Generator {
 	// Works basically similar to cave generation, but considers a lot less chunks and has a few other differences.
 	@Override
 	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, MapFragment map, ServerWorld world) {
-		if(!(chunk instanceof NormalChunk)) return;
+		if (!(chunk instanceof NormalChunk)) return;
 		Random rand = new Random(seed);
 		int rand1 = rand.nextInt() | 1;
 		int rand2 = rand.nextInt() | 1;
@@ -57,12 +57,12 @@ public class OreGenerator implements Generator {
 	private void considerCoordinates(int x, int y, int z, int cx, int cy, int cz, Chunk chunk, long seed) {
 		Random rand = new Random();
 		for(int i = 0; i < ores.length; i++) {
-			if(ores[i].maxHeight <= y << NormalChunk.chunkShift) continue;
+			if (ores[i].maxHeight <= y << NormalChunk.chunkShift) continue;
 			// Compose the seeds from some random stats of the ore. They generally shouldn't be the same for two different ores.
 			rand.setSeed(seed^(ores[i].maxHeight)^(Float.floatToIntBits(ores[i].size))^Blocks.id(ores[i].block).getID().charAt(0)^Float.floatToIntBits(Blocks.hardness(ores[i].block)));
 			// Determine how many veins of this type start in this chunk. The number depends on parameters set for the specific ore:
 			int veins = (int)ores[i].veins;
-			if(ores[i].veins - veins >= rand.nextFloat()) veins++;
+			if (ores[i].veins - veins >= rand.nextFloat()) veins++;
 			for(int j = 0; j < veins; ++j) {
 				// Choose some in world coordinates to start generating:
 				double relX = (x-cx << NormalChunk.chunkShift) + rand.nextFloat()*NormalChunk.chunkSize;
@@ -105,8 +105,8 @@ public class OreGenerator implements Generator {
 					xPoint += relX;
 					yPoint += relY;
 					zPoint += relZ;
-					if(xPoint >= 0 && xPoint < NormalChunk.chunkSize && yPoint >= 0 && yPoint < NormalChunk.chunkSize && zPoint >= 0 && zPoint < NormalChunk.chunkSize) { // Bound check.
-						if(ores[i].canCreateVeinInBlock(chunk.getBlock((int)xPoint, (int)yPoint, (int)zPoint))) {
+					if (xPoint >= 0 && xPoint < NormalChunk.chunkSize && yPoint >= 0 && yPoint < NormalChunk.chunkSize && zPoint >= 0 && zPoint < NormalChunk.chunkSize) { // Bound check.
+						if (ores[i].canCreateVeinInBlock(chunk.getBlock((int)xPoint, (int)yPoint, (int)zPoint))) {
 							chunk.updateBlockInGeneration((int)xPoint, (int)yPoint, (int)zPoint, ores[i].block);
 						}
 					}

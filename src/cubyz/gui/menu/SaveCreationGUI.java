@@ -51,7 +51,7 @@ public class SaveCreationGUI extends MenuGUI {
 		name.setFont(Fonts.PIXEL_FONT, 32);
 		
 		int num = 1;
-		while(new File("saves/Save "+num).exists()) {
+		while (new File("saves/Save "+num).exists()) {
 			num++;
 		}
 		name.setText("Save " + num);

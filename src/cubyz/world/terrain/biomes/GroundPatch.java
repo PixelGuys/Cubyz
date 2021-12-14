@@ -49,23 +49,23 @@ public class GroundPatch extends StructureModel {
 		float xSecn = ellipseParam*(float)Math.cos(orientation)/width;
 		float zSecn = -ellipseParam*(float)Math.sin(orientation)/width;
 		int xMin = (int)(x - width);
-		if(xMin < 0) xMin = 0;
+		if (xMin < 0) xMin = 0;
 		int xMax = (int)(x + width);
-		if(xMax >= chunk.getWidth()) xMax = chunk.getWidth() - 1;
+		if (xMax >= chunk.getWidth()) xMax = chunk.getWidth() - 1;
 		int zMin = (int)(z - width);
-		if(zMin < 0) zMin = 0;
+		if (zMin < 0) zMin = 0;
 		int zMax = (int)(z + width);
-		if(zMax >= chunk.getWidth()) zMax = chunk.getWidth() - 1;
+		if (zMax >= chunk.getWidth()) zMax = chunk.getWidth() - 1;
 		for(int px = chunk.startIndex(xMin); px <= xMax; px++) {
 			for(int pz = chunk.startIndex(zMin); pz <= zMax; pz++) {
 				float main = xMain*(x - px) + zMain*(z - pz);
 				float secn = xSecn*(x - px) + zSecn*(z - pz);
 				float dist = main*main + secn*secn;
-				if(dist <= 1) {
+				if (dist <= 1) {
 					int startHeight = (int)map.getHeight(px + chunk.getWorldX(), pz + chunk.getWorldZ());
 					for(int py = chunk.startIndex((int)(startHeight - depth + 1)); py <= startHeight; py += chunk.getVoxelSize()) {
-						if(dist <= smoothness || (dist - smoothness)/(1 - smoothness) < rand.nextFloat()) {
-							if(chunk.liesInChunk(px, py-y, pz)) {
+						if (dist <= smoothness || (dist - smoothness)/(1 - smoothness) < rand.nextFloat()) {
+							if (chunk.liesInChunk(px, py-y, pz)) {
 								chunk.updateBlockInGeneration(px, py-y, pz, newGround);
 							}
 						}

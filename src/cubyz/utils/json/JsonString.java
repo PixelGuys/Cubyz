@@ -1,5 +1,7 @@
 package cubyz.utils.json;
 
+import cubyz.utils.algorithms.StringOperation;
+
 public class JsonString implements JsonElement {
 	public String value;
 	public JsonString(String value) {
@@ -11,6 +13,7 @@ public class JsonString implements JsonElement {
 	}
 	
 	public String toString() {
-		return '\"'+value+'\"';
+		//TODO: might want to escape the string
+		return '\"'+ StringOperation.escape(value) +'\"';
 	}
 }

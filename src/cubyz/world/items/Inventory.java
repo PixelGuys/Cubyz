@@ -12,21 +12,21 @@ public class Inventory {
 	private ItemStack[] items; // First 8 item stacks are the hotbar
 	
 	public int addItem(Item i, int amount) {
-		if(i == null || amount == 0)
+		if (i == null || amount == 0)
 			return 0;
 		for(int j = 0; j < items.length; j++) {
-			if(!items[j].empty() && items[j].getItem() == i && !items[j].filled()) {
+			if (!items[j].empty() && items[j].getItem() == i && !items[j].filled()) {
 				amount -= items[j].add(amount);
-				if(amount == 0) {
+				if (amount == 0) {
 					return 0;
 				}
 			}
 		}
 		for(int j = 0; j < items.length; j++) {
-			if(items[j].empty()) {
+			if (items[j].empty()) {
 				items[j].setItem(i);
 				amount -= items[j].add(amount);
-				if(amount == 0) {
+				if (amount == 0) {
 					return 0;
 				}
 			}
@@ -71,7 +71,7 @@ public class Inventory {
 			if (stack.getItem() != null) {
 				stackJson.put("item", stack.getItem().getRegistryID().toString());
 				stackJson.put("amount", stack.getAmount());
-				if(stack.getItem() instanceof Tool) {
+				if (stack.getItem() instanceof Tool) {
 					Tool tool = (Tool)stack.getItem();
 					stackJson.put("tool", tool.save());
 				}
@@ -85,12 +85,12 @@ public class Inventory {
 		items = new ItemStack[json.getInt("capacity", 0)];
 		for(int i = 0; i < items.length; i++) {
 			JsonObject stackJson = json.getObject(String.valueOf(i));
-			if(stackJson != null) {
+			if (stackJson != null) {
 				Item item = registries.itemRegistry.getByID(stackJson.getString("item", "null"));
 				if (item == null) {
 					// Check if it is a tool:
 					JsonObject tool = stackJson.getObject("tool");
-					if(tool != null) {
+					if (tool != null) {
 						item = new Tool(tool, registries);
 					} else {
 						// item not existant in this version of the game. Can't do much so ignore it.

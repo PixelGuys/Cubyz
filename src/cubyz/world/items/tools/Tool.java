@@ -79,7 +79,7 @@ public class Tool extends Item {
 		JsonArray array = new JsonArray();
 		String[] ids = new String[craftingGrid.length];
 		for(int i = 0; i < craftingGrid.length; i++) {
-			if(craftingGrid[i] != null) {
+			if (craftingGrid[i] != null) {
 				ids[i] = craftingGrid[i].getRegistryID().toString();
 			}
 		}
@@ -93,7 +93,7 @@ public class Tool extends Item {
 	public int hashCode() {
 		int hash = 0;
 		for(Item item : craftingGrid) {
-			if(item != null) {
+			if (item != null) {
 				hash = 33 * hash + item.material.hashCode();
 			}
 		}

@@ -34,7 +34,7 @@ public class BlockInstance {
 	}
 	
 	public void updateNeighbor(int i, boolean value) {
-		if(neighbors[i] != value) {
+		if (neighbors[i] != value) {
 			neighbors[i] = value;
 		}
 		source.setUpdated();
@@ -73,7 +73,7 @@ public class BlockInstance {
 	}
 	
 	public int[] updateLighting(int worldSizeX, int worldSizeZ, NormalChunk chunk) {
-		if(chunk != null) {
+		if (chunk != null) {
 			world.getLight(chunk, x, y, z, light);
 		}
 		return light;

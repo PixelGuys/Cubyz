@@ -6,7 +6,7 @@ import cubyz.world.ServerWorld;
 import cubyz.world.terrain.MapFragment;
 
 /**
- * Some interface to access all different generators(caves,terrain,…) through one simple function.
+ * Some interface to access all different generators(caves, terrain, …) through one simple function.
  */
 
 public interface Generator extends RegistryElement {

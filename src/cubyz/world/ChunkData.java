@@ -16,7 +16,7 @@ public class ChunkData implements Comparable<ChunkData> {
 
 	@Override
 	public boolean equals(Object other) {
-		if(other instanceof ChunkData) {
+		if (other instanceof ChunkData) {
 			ChunkData data = (ChunkData) other;
 			return wx == data.wx && wy == data.wy && wz == data.wz && voxelSize == data.voxelSize;
 		}

@@ -10,7 +10,7 @@ public class ClimateMap {
 	private static final Cache<ClimateMapFragment> cache = new Cache<ClimateMapFragment>(new ClimateMapFragment[CACHE_SIZE][ASSOCIATIVITY]);
 	private static long seed = 0;
 	public static Biome.Type[][] getBiomeMap(long seed, int wx, int wz, int width, int height) {
-		if(seed != ClimateMap.seed) {
+		if (seed != ClimateMap.seed) {
 			cache.clear(); // Clear the cache if the world changed!
 			ClimateMap.seed = seed;
 		}
@@ -29,10 +29,10 @@ public class ClimateMap {
 				// Go through all indices in the mapPiece:
 				for(int lx = 0; lx < mapPiece.map.length; lx++) {
 					int resultX = lx + xOffset;
-					if(resultX < 0 || resultX >= map.length) continue;
+					if (resultX < 0 || resultX >= map.length) continue;
 					for(int lz = 0; lz < mapPiece.map[0].length; lz++) {
 						int resultZ = lz + zOffset;
-						if(resultZ < 0 || resultZ >= map.length) continue;
+						if (resultZ < 0 || resultZ >= map.length) continue;
 						map[resultX][resultZ] = mapPiece.map[lx][lz];
 					}
 				}
@@ -49,7 +49,7 @@ public class ClimateMap {
 		}
 		@Override
 		public boolean equals(Object other) {
-			if(other instanceof ClimateMapFragment) {
+			if (other instanceof ClimateMapFragment) {
 				return ((ClimateMapFragment)other).wx == wx && ((ClimateMapFragment)other).wz == wz;
 			}
 			return false;
@@ -59,11 +59,11 @@ public class ClimateMap {
 	public static ClimateMapFragment getOrGenerateFragment(long seed, int wx, int wz) {
 		int hash = ClimateMapFragment.hashCode(wx, wz) & CACHE_MASK;
 		ClimateMapFragment ret = cache.find(new ClimateMapFragmentComparator(wx, wz), hash);
-		if(ret != null) return ret;
+		if (ret != null) return ret;
 		synchronized(cache.cache[hash]) {
 			// Try again in case it was already generated in another thread:
 			ret = cache.find(new ClimateMapFragmentComparator(wx, wz), hash);
-			if(ret != null) return ret;
+			if (ret != null) return ret;
 			ret = new ClimateMapFragment(seed, wx, wz);
 			cache.addToCache(ret, ret.hashCode() & CACHE_MASK);
 			return ret;

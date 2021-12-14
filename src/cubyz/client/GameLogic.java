@@ -63,7 +63,7 @@ public class GameLogic implements ClientConnection {
 	}
 
 	public void cleanup() {
-		if(Cubyz.world != null) quitWorld();
+		if (Cubyz.world != null) quitWorld();
 		ClientSettings.save();
 		DiscordIntegration.closeRPC();
 		if (sound != null) {
@@ -76,7 +76,7 @@ public class GameLogic implements ClientConnection {
 	}
 	
 	public void quitWorld() {
-		Server.stop();;
+		Server.stop();
 		for (MenuGUI overlay : Cubyz.gameUI.getOverlays()) {
 			if (overlay instanceof GameOverlay) {
 				Cubyz.gameUI.removeOverlay(overlay);
@@ -182,7 +182,7 @@ public class GameLogic implements ClientConnection {
 					break;
 				}
 			}
-			if(breakingAnims.size() == 0)
+			if (breakingAnims.size() == 0)
 				Logger.error("Couldn't find the breaking animations. Without breaking animations the game might crash.");
 			breakAnimations = breakingAnims.toArray(new Texture[breakingAnims.size()]);
 			System.gc();
@@ -214,7 +214,7 @@ public class GameLogic implements ClientConnection {
 	
 	public void clientUpdate() {
 		MusicManager.update();
-		if(Cubyz.world != null) {
+		if (Cubyz.world != null) {
 			Cubyz.chunkTree.update((int)Cubyz.player.getPosition().x, (int)Cubyz.player.getPosition().y, (int)Cubyz.player.getPosition().z, ClientSettings.RENDER_DISTANCE, ClientSettings.HIGHEST_LOD, ClientSettings.LOD_FACTOR);
 			// TODO: Get this in the server ping or something.
 			float lightAngle = (float)Math.PI/2 + (float)Math.PI*(((float)Cubyz.gameTime % ServerWorld.DAY_CYCLE)/(ServerWorld.DAY_CYCLE/2));

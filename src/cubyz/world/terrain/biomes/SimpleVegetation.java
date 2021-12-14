@@ -31,14 +31,14 @@ public class SimpleVegetation extends StructureModel {
 	
 	@Override
 	public void generate(int x, int z, int h, Chunk chunk, MapFragment map, Random rand) {
-		if(chunk.getVoxelSize() > 2 && (x / chunk.getVoxelSize() * chunk.getVoxelSize() != x || z / chunk.getVoxelSize() * chunk.getVoxelSize() != z)) return;
+		if (chunk.getVoxelSize() > 2 && (x / chunk.getVoxelSize() * chunk.getVoxelSize() != x || z / chunk.getVoxelSize() * chunk.getVoxelSize() != z)) return;
 		int y = chunk.getWorldY();
-		if(chunk.liesInChunk(x, h-y, z)) {
+		if (chunk.liesInChunk(x, h-y, z)) {
 			int height = height0;
-			if(deltaHeight != 0)
+			if (deltaHeight != 0)
 				height += rand.nextInt(deltaHeight);
 			for(int py = chunk.startIndex(h); py < h + height; py += chunk.getVoxelSize()) {
-				if(chunk.liesInChunk(x, py-y, z)) {
+				if (chunk.liesInChunk(x, py-y, z)) {
 					chunk.updateBlockIfDegradable(x, py-y, z, block);
 				}
 			}

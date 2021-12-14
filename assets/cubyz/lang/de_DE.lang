@@ -25,6 +25,9 @@ gui.cubyz.saves.delete=Löschen
 gui.cubyz.saves.create=Neues Spiel erstellen!
 lang.name=Deutsch
 
+gui.cubyz.multiplayer.displayname=Anzeigename
+gui.cubyz.multiplayer.join=Beitreten
+
 # Blocks
 block.cubyz.cactus.name=Kaktus
 block.cubyz.soil.name=Erde

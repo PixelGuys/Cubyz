@@ -15,8 +15,12 @@ public class Server extends Pacer{
 	private	static final Server server = new Server();
 
 	public static void main(String[] args) {
+
+		UserManager userManager = new UserManager();
+		userManager.start();
+
 		try {
-			while(Cubyz.world == null) {
+			while (Cubyz.world == null) {
 				// TODO: Init world here.
 				Thread.sleep(10);
 			}

@@ -9,17 +9,17 @@ import java.util.ArrayList;
 public class CubyzMath {
 	
 	public static int max(ArrayList<Integer> numbers) {
-		if(numbers.size() == 0) return 0;
+		if (numbers.size() == 0) return 0;
 		int max = Integer.MIN_VALUE;
 		for(Integer value : numbers) {
-			if(value > max) max = value;
+			if (value > max) max = value;
 		}
 		return max;
 	}
 	
 	public static float floorMod(float input, float modulo) {
 		float result = input % modulo;
-		if(result < 0) result += modulo;
+		if (result < 0) result += modulo;
 		return result;
 	}
 	
@@ -29,23 +29,23 @@ public class CubyzMath {
 	
 	public static int binaryLog(int in) {
 		int log = 0;
-		if((in & (0b11111111_11111111_00000000_00000000)) != 0) {
+		if ((in & (0b11111111_11111111_00000000_00000000)) != 0) {
 			log += 16;
 			in >>= 16;
 		}
-		if((in & (0b11111111_00000000)) != 0) {
+		if ((in & (0b11111111_00000000)) != 0) {
 			log += 8;
 			in >>= 8;
 		}
-		if((in & (0b11110000)) != 0) {
+		if ((in & (0b11110000)) != 0) {
 			log += 4;
 			in >>= 4;
 		}
-		if((in & (0b1100)) != 0) {
+		if ((in & (0b1100)) != 0) {
 			log += 2;
 			in >>= 2;
 		}
-		if((in & (0b10)) != 0) {
+		if ((in & (0b10)) != 0) {
 			log += 1;
 		}
 		return log;
@@ -53,27 +53,27 @@ public class CubyzMath {
 	
 	public static int binaryLog(long in) {
 		int log = 0;
-		if((in & (0b11111111_11111111_11111111_11111111_00000000_00000000_00000000_00000000L)) != 0) {
+		if ((in & (0b11111111_11111111_11111111_11111111_00000000_00000000_00000000_00000000L)) != 0) {
 			log += 16;
 			in >>= 16;
 		}
-		if((in & (0b11111111_11111111_00000000_00000000L)) != 0) {
+		if ((in & (0b11111111_11111111_00000000_00000000L)) != 0) {
 			log += 16;
 			in >>= 16;
 		}
-		if((in & (0b11111111_00000000L)) != 0) {
+		if ((in & (0b11111111_00000000L)) != 0) {
 			log += 8;
 			in >>= 8;
 		}
-		if((in & (0b11110000L)) != 0) {
+		if ((in & (0b11110000L)) != 0) {
 			log += 4;
 			in >>= 4;
 		}
-		if((in & (0b1100L)) != 0) {
+		if ((in & (0b1100L)) != 0) {
 			log += 2;
 			in >>= 2;
 		}
-		if((in & (0b10L)) != 0) {
+		if ((in & (0b10L)) != 0) {
 			log += 1;
 		}
 		return log;
@@ -98,7 +98,7 @@ public class CubyzMath {
 	 */
 	public static int nonZeroSign(float in) {
 		in = Math.signum(in);
-		if(in == 0) in = 1;
+		if (in == 0) in = 1;
 		return (int)in;
 	}
 }

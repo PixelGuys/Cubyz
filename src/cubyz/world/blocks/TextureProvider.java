@@ -20,7 +20,7 @@ public interface TextureProvider {
 			int b = (block.color >>> 0) & 255;
 			// Add a brightness value to the color:
 			int brightness = (int)(-brightnessScale*(differentColors/2.0-i)/differentColors);
-			if(brightness > 0) {
+			if (brightness > 0) {
 				brightness *= block.shinyness+1;
 			}
 			r += brightness;
@@ -28,13 +28,13 @@ public interface TextureProvider {
 			b += brightness;
 			// make sure that once a color channel is satured the others get increased further:
 			int totalDif = 0;
-			if(r > 255) {
+			if (r > 255) {
 				totalDif += r-255;
 			}
-			if(g > 255) {
+			if (g > 255) {
 				totalDif += g-255;
 			}
-			if(b > 255) {
+			if (b > 255) {
 				totalDif += b-255;
 			}
 			totalDif = totalDif*3/2;
@@ -46,12 +46,12 @@ public interface TextureProvider {
 			g += rand.nextInt(randomAdditive*2) - randomAdditive;
 			b += rand.nextInt(randomAdditive*2) - randomAdditive;
 			// Bound checks:
-			if(r > 255) r = 255;
-			if(r < 0) r = 0;
-			if(g > 255) g = 255;
-			if(g < 0) g = 0;
-			if(b > 255) b = 255;
-			if(b < 0) b = 0;
+			if (r > 255) r = 255;
+			if (r < 0) r = 0;
+			if (g > 255) g = 255;
+			if (g < 0) g = 0;
+			if (b > 255) b = 255;
+			if (b < 0) b = 0;
 			colors[i] = (r << 16) | (g << 8) | b | 0xff000000;
 		}
 		return colors;

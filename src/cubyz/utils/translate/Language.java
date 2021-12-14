@@ -34,7 +34,7 @@ public class Language {
 			key.translation = keyValues.get(key.getTranslateKey());
 			return;
 		}
-		if(key.getTranslateKey().contains("."))
+		if (key.getTranslateKey().contains("."))
 			Logger.warning("Unable to translate key "+key.getTranslateKey()+" in language "+locale+".");
 		key.translation = key.getTranslateKey();
 	}

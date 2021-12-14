@@ -81,7 +81,7 @@ public class Utils {
 	}
 
 	public static float[] listToArray(List<Float> list) {
-		if(list == null)
+		if (list == null)
 			return new float[0];
 		int size = list.size();
 		float[] floatArr = new float[size];
@@ -92,7 +92,7 @@ public class Utils {
 	}
 	
 	public static int[] listIntToArray(List<Integer> list) {
-		if(list == null)
+		if (list == null)
 			return new int[0];
 		int size = list.size();
 		int[] intArr = new int[size];

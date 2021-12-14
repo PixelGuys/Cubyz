@@ -18,7 +18,7 @@ public class ClientEntityManager {
 		outer:
 		for(int i = 0; i < serverEntities.length; i++) {
 			for(int j = 0; j < entities.length; j++) {
-				if(entities[j].id == serverEntities[i].id) {
+				if (entities[j].id == serverEntities[i].id) {
 					newEntities[i] = entities[j];
 					newEntities[i].updatePosition(serverEntities[i].getPosition(), serverEntities[i].getRotation());
 					continue outer;

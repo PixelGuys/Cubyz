@@ -38,7 +38,7 @@ public class StackableRotation implements RotationMode {
 
 	@Override
 	public boolean generateData(ServerWorld world, int x, int y, int z, Vector3d relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, IntWrapper currentData, boolean blockPlacing) {
-		if(blockPlacing) {
+		if (blockPlacing) {
 			currentData.data |= 0x10000;
 			return true;
 		}
@@ -47,17 +47,17 @@ public class StackableRotation implements RotationMode {
 		Vector3d max = new Vector3d(1, currentData.data/16.0f, 1);
 		Vector2d result = new Vector2d();
 		// Check if the ray is going through the block:
-		if(Intersectiond.intersectRayAab(relativePlayerPosition, dir, min, max, result)) {
+		if (Intersectiond.intersectRayAab(relativePlayerPosition, dir, min, max, result)) {
 			// Check if the ray is going through the top layer and going the right direction:
 			min.y = max.y - 0.0001f;
-			if(playerDirection.y < 0 && Intersectiond.intersectRayAab(relativePlayerPosition, dir, min, max, result)) {
-				if(currentData.data >>> 16 == 16) return false;
+			if (playerDirection.y < 0 && Intersectiond.intersectRayAab(relativePlayerPosition, dir, min, max, result)) {
+				if (currentData.data >>> 16 == 16) return false;
 				currentData.data += 0x10000;
 				return true;
 			}
 			return false;
 		} else {
-			if(currentData.data >>> 16 == 16) return false;
+			if (currentData.data >>> 16 == 16) return false;
 			currentData.data += 0x10000;
 			return true;
 		}
@@ -75,7 +75,7 @@ public class StackableRotation implements RotationMode {
 
 	@Override
 	public boolean checkTransparency(int block, int dir) {
-		if(block >>> 16 < 16) {//TODO: && ((dir & 1) != 0 || (dir & 512) == 0)) {
+		if (block >>> 16 < 16) {//TODO: && ((dir & 1) != 0 || (dir & 512) == 0)) {
 			return true;
 		}
 		return false;
@@ -117,18 +117,18 @@ public class StackableRotation implements RotationMode {
 	public boolean checkEntityAndDoCollision(Entity ent, Vector4d vel, int x, int y, int z, int block) {
 		// Check if the player can step onto this:
 		float yOffset = Math.max(1, (block >>> 16)/16.0f);
-		if(y + yOffset - ent.getPosition().y > 0 && y + yOffset - ent.getPosition().y <= ent.stepHeight) {
+		if (y + yOffset - ent.getPosition().y > 0 && y + yOffset - ent.getPosition().y <= ent.stepHeight) {
 			vel.w = Math.max(vel.w, y + yOffset - ent.getPosition().y);
 			return false;
 		}
-		if(vel.y == 0) {
+		if (vel.y == 0) {
 			return	   y + yOffset >= ent.getPosition().y
 					&& y <= ent.getPosition().y + ent.height;
 		}
-		if(vel.y >= 0) {
+		if (vel.y >= 0) {
 			return true;
 		}
-		if(y + yOffset >= ent.getPosition().y + vel.y) {
+		if (y + yOffset >= ent.getPosition().y + vel.y) {
 			vel.y = y + yOffset + 0.01f - ent.getPosition().y;
 		}
 		return false;
@@ -137,7 +137,7 @@ public class StackableRotation implements RotationMode {
 	@Override
 	public int generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
 		Model model = BlockMeshes.mesh(bi.getBlock() & Blocks.TYPE_MASK).model;
-		if(!(model instanceof CubeModel)) {
+		if (!(model instanceof CubeModel)) {
 			Logger.error("Unsupported model "+model.getRegistryID()+" in block "+Blocks.id(bi.getBlock())+" for stackable block type. Skipping block.");
 			return renderIndex;
 		}
@@ -159,14 +159,14 @@ public class StackableRotation implements RotationMode {
 			float nx = model.normals[i3];
 			float ny = model.normals[i3+1];
 			float nz = model.normals[i3+2];
-			if(nx == -1 && neighbors[Neighbors.DIR_NEG_X] ||
+			if (nx == -1 && neighbors[Neighbors.DIR_NEG_X] ||
 			   nx == 1 && neighbors[Neighbors.DIR_POS_X] ||
 			   nz == -1 && neighbors[Neighbors.DIR_NEG_Z] ||
 			   nz == 1 && neighbors[Neighbors.DIR_POS_Z] ||
 			   ny == -1 && (neighbors[Neighbors.DIR_DOWN] || factor == 1) ||
 			   ny == 1 && neighbors[Neighbors.DIR_UP]) {
 				vertices.add(model.positions[i3] + x);
-				if(ny != -1)
+				if (ny != -1)
 					vertices.add(model.positions[i3+1]*factor + y);
 				else
 					vertices.add(model.positions[i3+1] + y);
@@ -179,7 +179,7 @@ public class StackableRotation implements RotationMode {
 				renderIndices.add(renderIndex);
 
 				texture.add(model.textCoords[i2]);
-				if(ny == 0)
+				if (ny == 0)
 					texture.add(model.textCoords[i2+1]*factor);
 				else
 					texture.add(model.textCoords[i2+1]);
@@ -190,7 +190,7 @@ public class StackableRotation implements RotationMode {
 		}
 		
 		for(int i = 0; i < model.indices.length; i += 3) {
-			if(indexesAdded.contains(model.indices[i]) && indexesAdded.contains(model.indices[i+1]) && indexesAdded.contains(model.indices[i+2])) {
+			if (indexesAdded.contains(model.indices[i]) && indexesAdded.contains(model.indices[i+1]) && indexesAdded.contains(model.indices[i+2])) {
 				faces.add(indexesAdded.indexOf(model.indices[i]) + indexOffset, indexesAdded.indexOf(model.indices[i+1]) + indexOffset, indexesAdded.indexOf(model.indices[i+2]) + indexOffset);
 			}
 		}

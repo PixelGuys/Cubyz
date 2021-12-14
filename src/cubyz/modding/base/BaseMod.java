@@ -94,14 +94,14 @@ public class BaseMod {
 			// Check lower replacements:
 			// Check if there are replacement biomes of the same type:
 			registries.biomeRegistry.byTypeBiomes.get(biome.type).forEach(replacement -> {
-				if(replacement.maxHeight > biome.minHeight && replacement.minHeight < biome.minHeight) {
+				if (replacement.maxHeight > biome.minHeight && replacement.minHeight < biome.minHeight) {
 					replacements.add(replacement);
 				}
 			});
 			// If that doesn't work, check for the next smaller height region:
-			if(replacements.size() == 0) {
+			if (replacements.size() == 0) {
 				Biome.checkLowerTypesInRegistry(biome.type, replacement -> {
-					if(replacement.maxHeight > biome.minHeight && replacement.minHeight < biome.minHeight) {
+					if (replacement.maxHeight > biome.minHeight && replacement.minHeight < biome.minHeight) {
 						replacements.add(replacement);
 					}
 				}, registries.biomeRegistry);
@@ -112,14 +112,14 @@ public class BaseMod {
 			// Check upper replacements:
 			// Check if there are replacement biomes of the same type:
 			registries.biomeRegistry.byTypeBiomes.get(biome.type).forEach(replacement -> {
-				if(replacement.minHeight < biome.maxHeight && replacement.maxHeight > biome.maxHeight) {
+				if (replacement.minHeight < biome.maxHeight && replacement.maxHeight > biome.maxHeight) {
 					replacements.add(replacement);
 				}
 			});
 			// If that doesn't work, check for the next smaller height region:
-			if(replacements.size() == 0) {
+			if (replacements.size() == 0) {
 				Biome.checkHigherTypesInRegistry(biome.type, replacement -> {
-					if(replacement.minHeight < biome.maxHeight && replacement.maxHeight > biome.maxHeight) {
+					if (replacement.minHeight < biome.maxHeight && replacement.maxHeight > biome.maxHeight) {
 						replacements.add(replacement);
 					}
 				}, registries.biomeRegistry);

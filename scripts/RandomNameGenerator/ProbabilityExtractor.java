@@ -4,16 +4,16 @@ import java.io.*;
 
 public class ProbabilityExtractor {
 	static int getIndex(char c) {
-		if(c == ' ') return 0;
-		if('a' <= c && c <= 'z') return 1+c-'a';
-		if('A' <= c && c <= 'Z') return 1+c-'A';
+		if (c == ' ') return 0;
+		if ('a' <= c && c <= 'z') return 1+c-'a';
+		if ('A' <= c && c <= 'Z') return 1+c-'A';
 		System.err.println("Unknown \'"+c+"\'"+" "+(int)c);
 		System.exit(1);
 		return 0;
 	}
 	static char getChar(int i) {
-		if(i == 0) return ' ';
-		if(i <= 26) return (char)('a'+i-1);
+		if (i == 0) return ' ';
+		if (i <= 26) return (char)('a'+i-1);
 		System.err.println("Unknown "+i);
 		System.exit(1);
 		return '0';
@@ -23,7 +23,7 @@ public class ProbabilityExtractor {
 		try (BufferedReader br = new BufferedReader(new FileReader("./"+args[0]+".txt"))) {
 			String line;
 			while ((line = br.readLine()) != null) {
-				if(line.charAt(0) == '#') continue; // Comments:
+				if (line.charAt(0) == '#') continue; // Comments:
 				char c1 = ' ', c2 = ' ', c3 = ' ', c4 = ' ';
 				for(char c : line.toCharArray()) {
 					c1 = c2;
@@ -47,7 +47,7 @@ public class ProbabilityExtractor {
 			for(byte j = 0; j < 27; j++) {
 				for(byte k = 0; k < 27; k++) {
 					for(byte l = 0; l < 27; l++) { // pre-loop to get the length
-						if(number[i*27*27*27 + j*27*27 + k*27 + l] != 0) {
+						if (number[i*27*27*27 + j*27*27 + k*27 + l] != 0) {
 							n++;
 							continue outer;
 						}
@@ -63,14 +63,14 @@ public class ProbabilityExtractor {
 			for(byte j = 0; j < 27; j++) {
 				for(byte k = 0; k < 27; k++) {
 					for(byte l = 0; l < 27; l++) { // pre-loop to get the length
-						if(number[i*27*27*27 + j*27*27 + k*27 + l] != 0) {
+						if (number[i*27*27*27 + j*27*27 + k*27 + l] != 0) {
 							used = true;
 							break outer2;
 						}
 					}
 				}
 			}
-			if(!used) continue;
+			if (!used) continue;
 			os.writeByte(i);
 			// pre-loop to get the length:
 			n = 0;
@@ -78,7 +78,7 @@ public class ProbabilityExtractor {
 			for(byte j = 0; j < 27; j++) {
 				for(byte k = 0; k < 27; k++) {
 					for(byte l = 0; l < 27; l++) { // pre-loop to get the length
-						if(number[i*27*27*27 + j*27*27 + k*27 + l] != 0) {
+						if (number[i*27*27*27 + j*27*27 + k*27 + l] != 0) {
 							n++;
 							continue outer3;
 						}
@@ -92,20 +92,20 @@ public class ProbabilityExtractor {
 				outer4:
 				for(byte k = 0; k < 27; k++) {
 					for(byte l = 0; l < 27; l++) { // pre-loop to get the length
-						if(number[i*27*27*27 + j*27*27 + k*27 + l] != 0) {
+						if (number[i*27*27*27 + j*27*27 + k*27 + l] != 0) {
 							used = true;
 							break outer4;
 						}
 					}
 				}
-				if(!used) continue;
+				if (!used) continue;
 				os.writeByte(j);
 				// pre-loop to get the length:
 				n = 0;
 				outer5:
 				for(byte k = 0; k < 27; k++) {
 					for(byte l = 0; l < 27; l++) { // pre-loop to get the length
-						if(number[i*27*27*27 + j*27*27 + k*27 + l] != 0) {
+						if (number[i*27*27*27 + j*27*27 + k*27 + l] != 0) {
 							n++;
 							continue outer5;
 						}
@@ -116,25 +116,25 @@ public class ProbabilityExtractor {
 					// pre-loop to see if it is actually used:
 					used = false;
 					for(byte l = 0; l < 27; l++) { // pre-loop to get the length
-						if(number[i*27*27*27 + j*27*27 + k*27 + l] != 0) {
+						if (number[i*27*27*27 + j*27*27 + k*27 + l] != 0) {
 							used = true;
 							break;
 						}
 					}
-					if(!used) continue;
+					if (!used) continue;
 					os.writeByte(k);
 					// pre-loop to get the length:
 					n = 0;
 					int total = 0;
 					for(byte l = 0; l < 27; l++) { // pre-loop to get the length
-						if(number[i*27*27*27 + j*27*27 + k*27 + l] != 0) {
+						if (number[i*27*27*27 + j*27*27 + k*27 + l] != 0) {
 							total += number[i*27*27*27 + j*27*27 + k*27 + l];
 							n++;
 						}
 					}
 					os.writeByte(n);
 					for(byte l = 0; l < 27; l++) {
-						if(number[i*27*27*27 + j*27*27 + k*27 + l] != 0) {
+						if (number[i*27*27*27 + j*27*27 + k*27 + l] != 0) {
 							os.writeByte(l);
 						}
 					}

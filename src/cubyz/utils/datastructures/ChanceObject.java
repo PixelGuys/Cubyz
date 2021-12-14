@@ -13,9 +13,9 @@ public abstract class ChanceObject {
 	 * @param chance ≥ 0
 	 */
 	public ChanceObject(float chance) {
-		if(chance < 0) throw new IllegalArgumentException("chance must be bigger than or equal to 0!");
+		if (chance < 0) throw new IllegalArgumentException("chance must be bigger than or equal to 0!");
 		int intChance = (int)(chance*10000);
-		if(intChance < 0) intChance = Integer.MAX_VALUE;
+		if (intChance < 0) intChance = Integer.MAX_VALUE;
 		this.chance = intChance;
 	}
 	/**
@@ -23,7 +23,7 @@ public abstract class ChanceObject {
 	 * @param chance ≥ 0
 	 */
 	public ChanceObject(int chance) {
-		if(chance < 0) throw new IllegalArgumentException("chance must be bigger than or equal to 0!");
+		if (chance < 0) throw new IllegalArgumentException("chance must be bigger than or equal to 0!");
 		this.chance = chance;
 	}
 }

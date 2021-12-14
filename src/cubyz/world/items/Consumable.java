@@ -19,7 +19,7 @@ public class Consumable extends Item {
 	
 	@Override
 	public boolean onUse(Entity user) {
-		if((user.hunger >= user.maxHunger - Math.min(user.maxHunger*0.1, 0.5) && foodValue > 0) || (user.hunger == 0 && foodValue < 0)) return false;
+		if ((user.hunger >= user.maxHunger - Math.min(user.maxHunger*0.1, 0.5) && foodValue > 0) || (user.hunger == 0 && foodValue < 0)) return false;
 		user.hunger = Math.min(user.maxHunger, user.hunger+foodValue);
 		return true;
 	}

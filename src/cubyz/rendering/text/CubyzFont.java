@@ -55,7 +55,7 @@ public class CubyzFont {
 	// As of now, this is only used for creating a TextLayout object
 	// however it is incapable of handling the case where a character isn't
 	// in the font and the fallback font is used.
-	// Once the todo in cubyz.rendering.text.PrettyText is fixed, this should be removed 
+	// Once the todo in cubyz.rendering.text.PrettyText is fixed, this should be removed
 	public Font getFont() {
 		return font;
 	}
@@ -67,7 +67,7 @@ public class CubyzFont {
 	 */
 	public Rectangle getGlyph(int letterCode) {
 		//does the glyph already exist?
-		if(glyphs.containsKey(letterCode))
+		if (glyphs.containsKey(letterCode))
 			return glyphs.get(letterCode);
 		
 		Font usedFont = font;
@@ -97,15 +97,15 @@ public class CubyzFont {
 		fontGraphics = newFontTexture.createGraphics();
 		
 		//drawing the old stuff
-		fontGraphics.drawImage(fontTexture,0,0,null);
+		fontGraphics.drawImage(fontTexture, 0, 0, null);
 		//drawing the new letter
 		fontGraphics.setFont(usedFont);
 		fontGraphics.setColor(Color.white);
-		fontGraphics.drawGlyphVector(glyphVector, glyph.x-bounds.x,-bounds.y);
+		fontGraphics.drawGlyphVector(glyphVector, glyph.x-bounds.x, -bounds.y);
 		
 		fontTexture = newFontTexture;
 		
-		if(texture==null)
+		if (texture==null)
 			texture = Texture.loadFromImage(fontTexture);
 		else
 			texture.updateTexture(fontTexture);
@@ -116,7 +116,7 @@ public class CubyzFont {
 	    return glyph;
 	}
 	public void bind() {
-		if(texture != null) {
+		if (texture != null) {
 			texture.bind();
 		}
 	}

@@ -108,12 +108,12 @@ public class NormalChunkMesh extends ChunkMesh {
 	public static ShaderProgram transparentShader;
 
 	public static void init(String shaderFolder) throws Exception {
-		if(shader != null)
+		if (shader != null)
 			shader.cleanup();
 		shader = new ShaderProgram(Utils.loadResource(shaderFolder + "/block_vertex.vs"),
 				Utils.loadResource(shaderFolder + "/block_fragment.fs"),
 				NormalChunkMesh.class);
-		if(transparentShader != null)
+		if (transparentShader != null)
 			transparentShader.cleanup();
 		transparentShader = new ShaderProgram(Utils.loadResource(shaderFolder + "/transparent_vertex.vs"),
 				Utils.loadResource(shaderFolder + "/transparent_fragment.fs"),
@@ -195,10 +195,10 @@ public class NormalChunkMesh extends ChunkMesh {
 		NormalChunk chunk;
 		synchronized(this) {
 			chunk = this.chunk;
-			if(!needsUpdate)
+			if (!needsUpdate)
 				return;
 			needsUpdate = false;
-			if(chunk == null)
+			if (chunk == null)
 				return;
 		}
 		FloatFastList vertices = localVertices.get();
@@ -230,7 +230,7 @@ public class NormalChunkMesh extends ChunkMesh {
 	}
 	
 	public int bufferData(FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, ArrayList<Integer> vboIdList) {
-		if(faces.size == 0) {
+		if (faces.size == 0) {
 			return -1;
 		}
 		generated = true;
@@ -333,9 +333,9 @@ public class NormalChunkMesh extends ChunkMesh {
 	public void updateChunk(NormalChunk chunk) {
 		synchronized(this) {
 			this.chunk = chunk;
-			if(chunk == null)
+			if (chunk == null)
 				generated = false;
-			if(!needsUpdate) {
+			if (!needsUpdate) {
 				needsUpdate = true;
 				Meshes.queueMesh(this);
 			}
@@ -349,11 +349,11 @@ public class NormalChunkMesh extends ChunkMesh {
 
 	@Override
 	public void render(Vector3d playerPosition) {
-		if(chunk == null || !generated) {
+		if (chunk == null || !generated) {
 			ReducedChunkMesh.shader.bind();
 			glUniform3f(ReducedChunkMesh.loc_lowerBounds, (float)(wx - playerPosition.x - 0.001), (float)(wy - playerPosition.y - 0.001), (float)(wz - playerPosition.z - 0.001));
 			glUniform3f(ReducedChunkMesh.loc_upperBounds, (float)(wx + size - playerPosition.x + 0.001), (float)(wy + size - playerPosition.y + 0.001), (float)(wz + size - playerPosition.z + 0.001));
-			if(replacement != null) {
+			if (replacement != null) {
 				replacement.render(playerPosition);
 			}
 			glUniform3f(ReducedChunkMesh.loc_lowerBounds, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY);
@@ -361,7 +361,7 @@ public class NormalChunkMesh extends ChunkMesh {
 			shader.bind();
 			return;
 		}
-		if(vaoId == -1) return;
+		if (vaoId == -1) return;
 		glUniform3f(loc_modelPosition, (float)(wx - playerPosition.x), (float)(wy - playerPosition.y), (float)(wz - playerPosition.z));
 
 		glBindVertexArray(vaoId);
@@ -370,7 +370,7 @@ public class NormalChunkMesh extends ChunkMesh {
 	}
 
 	public void renderTransparent(Vector3d playerPosition) {
-		if(transparentVaoId == -1) return;
+		if (transparentVaoId == -1) return;
 
 		glUniform3f(TransparentUniforms.loc_modelPosition, (float)(wx - playerPosition.x), (float)(wy - playerPosition.y), (float)(wz - playerPosition.z));
 
@@ -402,7 +402,7 @@ public class NormalChunkMesh extends ChunkMesh {
 		int index = 0;
 		for(int i = 0; i < visibles.size; i++) {
 			BlockInstance bi = visibles.array[i];
-			if(!Blocks.transparent(bi.getBlock())) {
+			if (!Blocks.transparent(bi.getBlock())) {
 				bi.updateLighting(chunk.getWorldX(), chunk.getWorldZ(), chunk);
 				bi.renderIndex = index;
 				index = Blocks.mode(bi.getBlock()).generateChunkMesh(bi, vertices, normals, faces, lighting, texture, renderIndices, index);
@@ -416,7 +416,7 @@ public class NormalChunkMesh extends ChunkMesh {
 		int index = 0;
 		for(int i = 0; i < visibles.size; i++) {
 			BlockInstance bi = visibles.array[i];
-			if(Blocks.transparent(bi.getBlock())) {
+			if (Blocks.transparent(bi.getBlock())) {
 				bi.updateLighting(chunk.getWorldX(), chunk.getWorldZ(), chunk);
 				bi.renderIndex = index;
 				index = Blocks.mode(bi.getBlock()).generateChunkMesh(bi, vertices, normals, faces, lighting, texture, renderIndices, index);

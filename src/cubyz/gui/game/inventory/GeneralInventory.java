@@ -37,9 +37,9 @@ public abstract class GeneralInventory extends MenuGUI {
 	@Override
 	public void close() {
 		 // Place the last stack carried by the mouse in an empty slot.
-		if(!carriedStack.empty()) {
+		if (!carriedStack.empty()) {
 			carriedStack.setAmount(Cubyz.player.getInventory().addItem(carriedStack.getItem(), carriedStack.getAmount()));
-			if(!carriedStack.empty()) {
+			if (!carriedStack.empty()) {
 				Cubyz.world.drop(carriedStack, Cubyz.player.getPosition(), new Vector3f(), 0);
 			}
 		}
@@ -61,7 +61,7 @@ public abstract class GeneralInventory extends MenuGUI {
 
 	@Override
 	public void render() {
-		if(carried == null) {
+		if (carried == null) {
 			carried = new InventorySlot(carriedStack);
 			carried.renderFrame = false;
 		}
@@ -78,7 +78,7 @@ public abstract class GeneralInventory extends MenuGUI {
 		
 		// Draw the stack carried by the mouse:
 		Item item = carriedStack.getItem();
-		if(item != null) {
+		if (item != null) {
 			int x = (int)Mouse.getCurrentPos().x;
 			int y = (int)Mouse.getCurrentPos().y;
 			Graphics.setColor(0xFFFFFF);
@@ -86,7 +86,7 @@ public abstract class GeneralInventory extends MenuGUI {
 			carried.render();
 		}
 		// Draw tooltips, when the nothing is carried.
-		if(item == null) {
+		if (item == null) {
 			for(int i = 0; i < inv.length; i++) { // tooltips
 				inv[i].drawTooltip(Window.getWidth() / 2, Window.getHeight());
 			}

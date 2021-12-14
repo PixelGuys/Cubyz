@@ -41,13 +41,13 @@ public class TorchRotation implements RotationMode {
 	@Override
 	public boolean generateData(ServerWorld world, int x, int y, int z, Vector3d relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, IntWrapper currentData, boolean blockPlacing) {
 		int data = 0;
-		if(relativeDirection.x == 1) data = 0b1;
-		if(relativeDirection.x == -1) data = 0b10;
-		if(relativeDirection.y == -1) data = 0b10000;
-		if(relativeDirection.z == 1) data = 0b100;
-		if(relativeDirection.z == -1) data = 0b1000;
+		if (relativeDirection.x == 1) data = 0b1;
+		if (relativeDirection.x == -1) data = 0b10;
+		if (relativeDirection.y == -1) data = 0b10000;
+		if (relativeDirection.z == 1) data = 0b100;
+		if (relativeDirection.z == -1) data = 0b1000;
 		data |= currentData.data >>> 16;
-		if(data == currentData.data >>> 16) return false;
+		if (data == currentData.data >>> 16) return false;
 		currentData.data = (currentData.data & Blocks.TYPE_MASK) | data << 16;
 		return true;
 	}
@@ -86,7 +86,7 @@ public class TorchRotation implements RotationMode {
 			}
 		}
 		// Torches are removed when they have no contact to another block.
-		if(data == 0) return 0;
+		if (data == 0) return 0;
 		return (block & Blocks.TYPE_MASK) | data << 16;
 	}
 
@@ -124,23 +124,23 @@ public class TorchRotation implements RotationMode {
 	public int generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
 		int data = bi.getBlock() >>> 16;
 		Model model = BlockMeshes.mesh(bi.getBlock() & Blocks.TYPE_MASK).model;
-		if((data & 0b1) != 0) {
+		if ((data & 0b1) != 0) {
 			model.addToChunkMeshRotation((bi.x & NormalChunk.chunkMask) + 0.9f, (bi.y & NormalChunk.chunkMask) + 0.7f, (bi.z & NormalChunk.chunkMask) + 0.5f, POS_X, BlockMeshes.textureIndices(bi.getBlock()), bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
 			renderIndex++;
 		}
-		if((data & 0b10) != 0) {
+		if ((data & 0b10) != 0) {
 			model.addToChunkMeshRotation((bi.x & NormalChunk.chunkMask) + 0.1f, (bi.y & NormalChunk.chunkMask) + 0.7f, (bi.z & NormalChunk.chunkMask) + 0.5f, NEG_X, BlockMeshes.textureIndices(bi.getBlock()), bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
 			renderIndex++;
 		}
-		if((data & 0b100) != 0) {
+		if ((data & 0b100) != 0) {
 			model.addToChunkMeshRotation((bi.x & NormalChunk.chunkMask) + 0.5f, (bi.y & NormalChunk.chunkMask) + 0.7f, (bi.z & NormalChunk.chunkMask) + 0.9f, POS_Z, BlockMeshes.textureIndices(bi.getBlock()), bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
 			renderIndex++;
 		}
-		if((data & 0b1000) != 0) {
+		if ((data & 0b1000) != 0) {
 			model.addToChunkMeshRotation((bi.x & NormalChunk.chunkMask) + 0.5f, (bi.y & NormalChunk.chunkMask) + 0.7f, (bi.z & NormalChunk.chunkMask) + 0.1f, NEG_Z, BlockMeshes.textureIndices(bi.getBlock()), bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
 			renderIndex++;
 		}
-		if((data & 0b10000) != 0) {
+		if ((data & 0b10000) != 0) {
 			model.addToChunkMeshRotation((bi.x & NormalChunk.chunkMask) + 0.5f, (bi.y & NormalChunk.chunkMask) + 0.5f, (bi.z & NormalChunk.chunkMask) + 0.5f, null, BlockMeshes.textureIndices(bi.getBlock()), bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
 			renderIndex++;
 		}

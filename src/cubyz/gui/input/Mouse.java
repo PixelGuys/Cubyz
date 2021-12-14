@@ -52,7 +52,7 @@ public abstract class Mouse {
 				glfwSetInputMode(Window.getWindowHandle(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 			} else {
 				glfwSetInputMode(Window.getWindowHandle(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-				if(glfwRawMouseMotionSupported())
+				if (glfwRawMouseMotionSupported())
 					glfwSetInputMode(Window.getWindowHandle(), GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
 				ignoreDataAfterRecentGrab = true;
 			}
@@ -74,7 +74,7 @@ public abstract class Mouse {
 
 	public static void init() {
 		glfwSetCursorPosCallback(Window.getWindowHandle(), (windowHandle, x, y) -> {
-			if(grabbed && !ignoreDataAfterRecentGrab) {
+			if (grabbed && !ignoreDataAfterRecentGrab) {
 				deltaX[deltaBufferPosition] += x - currentPos.x;
 				deltaY[deltaBufferPosition] += y - currentPos.y;
 			}

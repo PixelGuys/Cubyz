@@ -29,21 +29,21 @@ public class FenceRotation implements RotationMode {
 
 	@Override
 	public boolean generateData(ServerWorld world, int x, int y, int z, Vector3d relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, IntWrapper currentData, boolean blockPlacing) {
-		if(!blockPlacing) return false;
+		if (!blockPlacing) return false;
 		NormalChunk chunk = world.getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift);
 		int data = 0;
 		// Get all neighbors and set the corresponding bits:
-		int[] neighbors = chunk.getNeighbors(x, y ,z);
-		if(Blocks.solid(neighbors[Neighbors.DIR_NEG_X])) {
+		int[] neighbors = chunk.getNeighbors(x, y , z);
+		if (Blocks.solid(neighbors[Neighbors.DIR_NEG_X])) {
 			data |= 1 << Neighbors.DIR_NEG_X;
 		}
-		if(Blocks.solid(neighbors[Neighbors.DIR_POS_X])) {
+		if (Blocks.solid(neighbors[Neighbors.DIR_POS_X])) {
 			data |= 1 << Neighbors.DIR_POS_X;
 		}
-		if(Blocks.solid(neighbors[Neighbors.DIR_NEG_Z])) {
+		if (Blocks.solid(neighbors[Neighbors.DIR_NEG_Z])) {
 			data |= 1 << Neighbors.DIR_NEG_Z;
 		}
-		if(Blocks.solid(neighbors[Neighbors.DIR_POS_Z])) {
+		if (Blocks.solid(neighbors[Neighbors.DIR_POS_Z])) {
 			data |= 1 << Neighbors.DIR_POS_Z;
 		}
 		currentData.data = (currentData.data & Blocks.TYPE_MASK) | (data << 16);
@@ -57,10 +57,10 @@ public class FenceRotation implements RotationMode {
 
 	@Override
 	public int updateData(int block, int dir, int newNeighbor) {
-		if(dir == Neighbors.DIR_DOWN || dir == Neighbors.DIR_UP) return block;
+		if (dir == Neighbors.DIR_DOWN || dir == Neighbors.DIR_UP) return block;
 		int mask = 1 << (16 + dir);
 		block &= ~mask;
-		if(Blocks.solid(newNeighbor))
+		if (Blocks.solid(newNeighbor))
 			block |= mask;
 		return block;
 	}
@@ -88,28 +88,28 @@ public class FenceRotation implements RotationMode {
 		float zOffset = 0;
 		float zLen = 1;
 		int data = bi.getBlock() >>> 16;
-		if((data & (1 << Neighbors.DIR_NEG_X)) == 0) {
+		if ((data & (1 << Neighbors.DIR_NEG_X)) == 0) {
 			xOffset += 0.5f;
 			xLen -= 0.5f;
 		}
-		if((data & (1 << Neighbors.DIR_POS_X)) == 0) {
+		if ((data & (1 << Neighbors.DIR_POS_X)) == 0) {
 			xLen -= 0.5f;
 		}
-		if((data & (1 << Neighbors.DIR_NEG_Z)) == 0) {
+		if ((data & (1 << Neighbors.DIR_NEG_Z)) == 0) {
 			zOffset += 0.5f;
 			zLen -= 0.5f;
 		}
-		if((data & (1 << Neighbors.DIR_POS_Z)) == 0) {
+		if ((data & (1 << Neighbors.DIR_POS_Z)) == 0) {
 			zLen -= 0.5f;
 		}
 		min.z += zOffset;
 		max.z = min.z + zLen;
-		if(!intersection.test(min.x + 0.375f, min.y, min.z, max.x - 0.375f, max.y, max.z)) {
+		if (!intersection.test(min.x + 0.375f, min.y, min.z, max.x - 0.375f, max.y, max.z)) {
 			min.z -= zOffset;
 			max.z = min.z + 1;
 			min.x += xOffset;
 			max.x = min.x + xLen;
-			if(!intersection.test(min.x, min.y, min.z + 0.375f, max.x, max.y, max.z - 0.375f)) {
+			if (!intersection.test(min.x, min.y, min.z + 0.375f, max.x, max.y, max.z - 0.375f)) {
 				return Float.MAX_VALUE;
 			}
 		}
@@ -147,18 +147,18 @@ public class FenceRotation implements RotationMode {
 		float xLen = 1;
 		float zOffset = 0;
 		float zLen = 1;
-		if((blockData & (1 << Neighbors.DIR_NEG_X)) == 0) {
+		if ((blockData & (1 << Neighbors.DIR_NEG_X)) == 0) {
 			xOffset += 0.5f;
 			xLen -= 0.5f;
 		}
-		if((blockData & (1 << Neighbors.DIR_POS_X)) == 0) {
+		if ((blockData & (1 << Neighbors.DIR_POS_X)) == 0) {
 			xLen -= 0.5f;
 		}
-		if((blockData & (1 << Neighbors.DIR_NEG_Z)) == 0) {
+		if ((blockData & (1 << Neighbors.DIR_NEG_Z)) == 0) {
 			zOffset += 0.5f;
 			zLen -= 0.5f;
 		}
-		if((blockData & (1 << Neighbors.DIR_POS_Z)) == 0) {
+		if ((blockData & (1 << Neighbors.DIR_POS_Z)) == 0) {
 			zLen -= 0.5f;
 		}
 		
@@ -185,13 +185,13 @@ public class FenceRotation implements RotationMode {
 		int[] light = bi.light;
 		for(int i = 0; i < model.positions.length; i += 3) {
 			float newX = model.positions[i];
-			if(newX == 0 && negX) newX = 0.5f;
-			if(newX == 1 && posX) newX = 0.5f;
+			if (newX == 0 && negX) newX = 0.5f;
+			if (newX == 1 && posX) newX = 0.5f;
 			newX += x;
 			float newY = model.positions[i+1] + y;
 			float newZ = model.positions[i+2];
-			if(newZ == 0 && negZ) newZ = 0.5f;
-			if(newZ == 1 && posZ) newZ = 0.5f;
+			if (newZ == 0 && negZ) newZ = 0.5f;
+			if (newZ == 1 && posZ) newZ = 0.5f;
 			newZ += z;
 			vertices.add(newX);
 			vertices.add(newY);

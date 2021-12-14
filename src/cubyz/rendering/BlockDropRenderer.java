@@ -40,7 +40,7 @@ public class BlockDropRenderer {
 	private static ShaderProgram shader;
 
 	public static void init(String shaders) throws IOException {
-		if(shader != null)
+		if (shader != null)
 		shader.cleanup();
 		shader = new ShaderProgram(Utils.loadResource(shaders + "/block_drop.vs"),
 				Utils.loadResource(shaders + "/block_drop.fs"),
@@ -72,7 +72,7 @@ public class BlockDropRenderer {
 				int z = (int)(manager.posxyz[index3+2] + 1.0f);
 				Mesh mesh = null;
 				int block;
-				if(manager.itemStacks[i].getItem() instanceof ItemBlock) {
+				if (manager.itemStacks[i].getItem() instanceof ItemBlock) {
 					block = ((ItemBlock)manager.itemStacks[i].getItem()).getBlock();
 					mesh = BlockMeshes.mesh(block & Blocks.TYPE_MASK);
 					mesh.getMaterial().setTexture(null);
@@ -87,7 +87,7 @@ public class BlockDropRenderer {
 				shader.setUniform(loc_texPosY, BlockMeshes.textureIndices(block)[Neighbors.DIR_UP]);
 				shader.setUniform(loc_texNegZ, BlockMeshes.textureIndices(block)[Neighbors.DIR_NEG_Z]);
 				shader.setUniform(loc_texPosZ, BlockMeshes.textureIndices(block)[Neighbors.DIR_POS_Z]);
-				if(mesh != null) {
+				if (mesh != null) {
 					shader.setUniform(loc_light, Cubyz.world.getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
 					
 					mesh.renderOne(() -> {

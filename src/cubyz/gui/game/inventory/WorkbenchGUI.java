@@ -30,14 +30,14 @@ public class WorkbenchGUI extends GeneralInventory {
 	protected void positionSlots() {
 		width = 180 * GUI_SCALE;
 		height = 240 * GUI_SCALE;
-		if(in != null)
+		if (in != null)
 			setInventory(in);
 	}
 
 	@Override
 	protected void mouseAction() {
 		for(int i = 0; i < inv.length; i++) {
-			if(inv[i].grabWithMouse(carriedStack, Window.getWidth()/2, Window.getHeight())) {
+			if (inv[i].grabWithMouse(carriedStack, Window.getWidth()/2, Window.getHeight())) {
 				if (i == inv.length-1 && carriedStack.getItem() != null) {
 					// Remove one of each of the items in the crafting grid.
 					for(int j = 32; j < inv.length-1; j++) {
@@ -45,7 +45,7 @@ public class WorkbenchGUI extends GeneralInventory {
 					}
 				}
 			}
-			if(i >= 32) {
+			if (i >= 32) {
 				// If one of the crafting slots was changed, check if the recipe is changed, too.
 				checkCrafting();
 			}
@@ -114,16 +114,16 @@ public class WorkbenchGUI extends GeneralInventory {
 		Item[] items = new Item[25];
 		int num = 0;
 		for(int i = 0; i < 25; i++) {
-			if(inv[32 + i].reference.getItem() != null && inv[32 + i].reference.getItem().material != null) {
+			if (inv[32 + i].reference.getItem() != null && inv[32 + i].reference.getItem().material != null) {
 				items[i] = inv[32 + i].reference.getItem();
 				num++;
 			}
 		}
-		if(num != 0) {
+		if (num != 0) {
 			item = new Tool(items);
 		}
 
-		if(item != null) {
+		if (item != null) {
 			inv[inv.length - 1].reference.setItem(item);
 			inv[inv.length - 1].reference.add(1);
 		}

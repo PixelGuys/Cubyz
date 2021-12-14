@@ -56,22 +56,22 @@ public class Model implements RegistryElement {
 	}
 
 	public static int normalToNeighbor(float nx, float ny, float nz) {
-		if(nx == -1) {
+		if (nx == -1) {
 			return Neighbors.DIR_NEG_X;
 		}
-		if(nx == 1) {
+		if (nx == 1) {
 			return Neighbors.DIR_POS_X;
 		}
-		if(nz == -1) {
+		if (nz == -1) {
 			return Neighbors.DIR_NEG_Z;
 		}
-		if(nz == 1) {
+		if (nz == 1) {
 			return Neighbors.DIR_POS_Z;
 		}
-		if(ny == -1) {
+		if (ny == -1) {
 			return Neighbors.DIR_DOWN;
 		}
-		if(ny == 1) {
+		if (ny == 1) {
 			return Neighbors.DIR_UP;
 		}
 		return 0;
@@ -194,7 +194,7 @@ public class Model implements RegistryElement {
 		for(int i = 0; i < positions.length; i += 3) {
 			Vector3f pos = new Vector3f(positions[i], positions[i+1], positions[i+2]);
 			Vector3f normal = new Vector3f(this.normals[i], this.normals[i+1], this.normals[i+2]);
-			if(rotationMatrix != null) {
+			if (rotationMatrix != null) {
 				pos = pos.mul(rotationMatrix);
 				normal = normal.mul(rotationMatrix);
 			}

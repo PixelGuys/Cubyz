@@ -139,7 +139,7 @@ public class SaveSelectorGUI extends MenuGUI {
 	@Override
 	public void render() {
 		container.render();
-		if(createNew == null) init();
+		if (createNew == null) init();
 		createNew.render();
 		back.render();
 	}

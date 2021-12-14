@@ -27,7 +27,7 @@ public class DebugOverlay extends MenuGUI {
 	
 	@Override
 	public void render() {
-		if(GameLauncher.input.clientShowDebug) {
+		if (GameLauncher.input.clientShowDebug) {
 			Graphics.setFont(Fonts.PIXEL_FONT, 8.0F * GUI_SCALE);
 			Graphics.setColor(0xFFFFFF);
 			Graphics.drawText(0 * GUI_SCALE, 0 * GUI_SCALE, GameLogic.getFPS() + " fps" + (Window.isVSyncEnabled() ? " (vsync)" : ""));
@@ -38,7 +38,7 @@ public class DebugOverlay extends MenuGUI {
 			Graphics.drawText(0 * GUI_SCALE, 100 * GUI_SCALE, "Memory: " + (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory())/1024/1024
 					+ "/" + (Runtime.getRuntime().totalMemory()/1024/1024) + "MiB (max " + (Runtime.getRuntime().maxMemory()/1024/1024) + "MiB)");
 			
-			if(Cubyz.world != null) {
+			if (Cubyz.world != null) {
 				Player p = Cubyz.player;
 				double x = p.getPosition().x;
 				double y = p.getPosition().y;
@@ -51,7 +51,7 @@ public class DebugOverlay extends MenuGUI {
 				Graphics.drawText(0 * GUI_SCALE, 80 * GUI_SCALE, "Chunk Queue Size: " + Cubyz.world.getChunkQueueSize());
 				Graphics.drawText(0 * GUI_SCALE, 90 * GUI_SCALE, "Biome: " + (Cubyz.biome == null ? "null" : Cubyz.biome.getRegistryID()));
 				
-				if(p.getRemainingBreakTime() > 0) {
+				if (p.getRemainingBreakTime() > 0) {
 					Graphics.drawText(0 * GUI_SCALE, 100 * GUI_SCALE, "Remaining Breaking Time: " + p.getRemainingBreakTime());
 				}
 			}
@@ -61,16 +61,16 @@ public class DebugOverlay extends MenuGUI {
 			Graphics.drawText(0 * GUI_SCALE, h - 25 * GUI_SCALE, "30 fps \\_");
 			Graphics.drawText(0 * GUI_SCALE, h - 40 * GUI_SCALE, "60 fps \\_");
 			for(int i = 0; i < lastFps.length; i++) {
-				if(lastFps[i] != 0) {
+				if (lastFps[i] != 0) {
 					Graphics.fillRect(i*4 * GUI_SCALE, h - lastFps[i] * GUI_SCALE / 2, 4 * GUI_SCALE, lastFps[i] * GUI_SCALE / 2);
 				}
 			}
 			
-			if(System.currentTimeMillis() > lastFpsCount + 1000) {
+			if (System.currentTimeMillis() > lastFpsCount + 1000) {
 				lastFpsCount = System.currentTimeMillis();
 				for(int i = 0; i < lastFps.length; i++) { // shift the array to left by 1
 					int val = lastFps[i];
-					if(i - 1 >= 0) {
+					if (i - 1 >= 0) {
 						lastFps[i - 1] = val;
 					}
 				}

@@ -9,7 +9,7 @@ public class SampleTester {
 		Node[] next;
 		public Node(DataInputStream is, int depth) throws Exception {
 			value = is.readByte();
-			if(depth == 0) return;
+			if (depth == 0) return;
 			next = new Node[is.readByte()];
 			for(int i = 0; i < next.length; i++) {
 				next[i] = new Node(is, depth-1);
@@ -17,7 +17,7 @@ public class SampleTester {
 		}
 		Node get(byte b) {
 			for(Node n: next) {
-				if(n.value == b) {
+				if (n.value == b) {
 					return n;
 				}
 			}
@@ -25,13 +25,13 @@ public class SampleTester {
 		}
 	}
 	static int getIndex(char c) {
-		if(c == ' ') return 0;
-		if('a' <= c && c <= 'z') return 1+c-'a';
+		if (c == ' ') return 0;
+		if ('a' <= c && c <= 'z') return 1+c-'a';
 		return -1;
 	}
 	static char getChar(int i) {
-		if(i == 0) return ' ';
-		if(i <= 26) return (char)('a'+i-1);
+		if (i == 0) return ' ';
+		if (i <= 26) return (char)('a'+i-1);
 		System.err.println("Unknown "+i);
 		System.exit(1);
 		return '0';
@@ -73,10 +73,10 @@ public class SampleTester {
 		char c1 = ' ', c2 = ' ', c3 = ' ', c4 = choose(c1, c2, c3, rand, 0);
 		sb.append((char)(c4+'A'-'a'));
 		int i = 0;
-		while(true) {
+		while (true) {
 			char c5 = choose(c2, c3, c4, rand, ++i);
-			if(c4 == ' ') {
-				if(c5 == ' ') {
+			if (c4 == ' ') {
+				if (c5 == ' ') {
 					break;
 				}
 				sb.append(c4);
@@ -85,19 +85,19 @@ public class SampleTester {
 			c2 = c3;
 			c3 = c4;
 			c4 = c5;
-			if(c5 != ' ')
+			if (c5 != ' ')
 				sb.append(c5);
 		}
 		String[] words = sb.toString().split(" ");
 		boolean wrongSize = false;
 		for(i = 0; i < words.length; i++) {
-			if(words[i].length() > 10)
+			if (words[i].length() > 10)
 				wrongSize = true;
 			// The first word should not be to small.
-			if(words[i].length() < 5 && i == 0)
+			if (words[i].length() < 5 && i == 0)
 				wrongSize = true;
 		}
-		if(wrongSize)
+		if (wrongSize)
 			return randomName(rand); // Repeat until a long enough name is generated.
 		else
 			return sb.toString();
@@ -110,13 +110,13 @@ public class SampleTester {
 		Node[] list = tree.get((byte)i1).get((byte)i2).get((byte)i3).next;
 		for(int i = 0; i < list.length; i++) {
 			char c4 = getChar(list[i].value);
-			if(c3 == ' ' && c4 == ' ') {
-				if(depth >= 5) {
+			if (c3 == ' ' && c4 == ' ') {
+				if (depth >= 5) {
 					System.out.println(current.toString().trim());
 				}
-			} else if(depth <= 10) {
+			} else if (depth <= 10) {
 				StringBuilder sb = new StringBuilder(current);
-				if(c3 == ' ') {
+				if (c3 == ' ') {
 					sb.append((char)(c4+'A'-'a'));
 				} else {
 					sb.append(c4);
@@ -132,11 +132,11 @@ public class SampleTester {
 	
 	public static void main(String[] args) {
 		readData(args[0]);
-		if(args.length == 1) {
+		if (args.length == 1) {
 			for(int i = 0; i < 100; i++) {
 				System.out.println(randomName(new Random()));
 			}
-		} else if(args[1].equals("all")) {
+		} else if (args[1].equals("all")) {
 			generateAll();
 		} else {
 			for(int i = 0; i < Integer.parseInt(args[1]); i++) {

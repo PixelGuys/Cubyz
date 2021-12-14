@@ -61,9 +61,9 @@ public class TextureArray {
 			bSum += b[i]*b[i];
 		}
 		aSum = (int)Math.round(Math.sqrt(aSum))/2;
-		if(!isTransparent) {
+		if (!isTransparent) {
 			// If the source image isn't transparent then the mipmapped version shouldn't do that either. In case of uncertainty an opaque version gets used.
-			if(aSum < 128) {
+			if (aSum < 128) {
 				aSum = 0;
 			} else {
 				aSum = 255;
@@ -72,19 +72,19 @@ public class TextureArray {
 		rSum = (int)Math.round(Math.sqrt(rSum))/2;
 		gSum = (int)Math.round(Math.sqrt(gSum))/2;
 		bSum = (int)Math.round(Math.sqrt(bSum))/2;
-		if(aSum > 0xFF) {
+		if (aSum > 0xFF) {
 			Logger.warning("@IntegratedQuantum: color out of range");
 			aSum = 0xFF;
 		}
-		if(rSum > 0xFF) {
+		if (rSum > 0xFF) {
 			Logger.warning("@IntegratedQuantum: color out of range");
 			rSum = 0xFF;
 		}
-		if(gSum > 0xFF) {
+		if (gSum > 0xFF) {
 			Logger.warning("@IntegratedQuantum: color out of range");
 			gSum = 0xFF;
 		}
-		if(bSum > 0xFF) {
+		if (bSum > 0xFF) {
 			Logger.warning("@IntegratedQuantum: color out of range");
 			bSum = 0xFF;
 		}
@@ -103,10 +103,10 @@ public class TextureArray {
 		}
 
 		// Make sure the width and height use a power of 2:
-		if((maxWidth-1 & maxWidth) != 0) {
+		if ((maxWidth-1 & maxWidth) != 0) {
 			maxWidth = 2 << CubyzMath.binaryLog(maxWidth);
 		}
-		if((maxHeight-1 & maxHeight) != 0) {
+		if ((maxHeight-1 & maxHeight) != 0) {
 			maxHeight = 2 << CubyzMath.binaryLog(maxHeight);
 		}
 
@@ -130,7 +130,7 @@ public class TextureArray {
 			for(int x = 0; x < img.getWidth(); x++) {
 				for(int y = 0; y < img.getHeight(); y++) {
 					int a = img.getRGB(x, y) & 0xff000000;
-					if(a != 0 && a != 0xff000000) {
+					if (a != 0 && a != 0xff000000) {
 						isTransparent[i] = true;
 						break;
 					}
@@ -151,7 +151,7 @@ public class TextureArray {
 			for(int lod = 0; lod < maxLOD; lod++) {
 				int curWidth = maxWidth >> lod;
 				int curHeight = maxHeight >> lod;
-				if(lod != 0) {
+				if (lod != 0) {
 					for(int x = 0; x < curWidth; x++) {
 						for(int y = 0; y < curHeight; y++) {
 							int index = x + y*curWidth;

@@ -26,7 +26,7 @@ public class Logger {
 	static {
 		try {
 			File logsFolder = new File("logs");
-			if(!logsFolder.exists()) {
+			if (!logsFolder.exists()) {
 				logsFolder.mkdirs();
 			}
 			
@@ -122,9 +122,9 @@ public class Logger {
 		}
 
 		ANSIColor = "\033[0m" + ANSIColor;
-		if(supportsANSI) sb.insert(0, ANSIColor);
+		if (supportsANSI) sb.insert(0, ANSIColor);
 
-		if(ANSIColor.contains("31") || ANSIColor.contains("33"))
+		if (ANSIColor.contains("31") || ANSIColor.contains("33"))
 			System.err.print(sb.toString());
 		else
 			System.out.print(sb.toString());
@@ -132,7 +132,7 @@ public class Logger {
 	
 	
 	private static String toString(Object object) {
-		if(object instanceof Throwable) {
+		if (object instanceof Throwable) {
 
 			StringWriter sw = new StringWriter();
 			PrintWriter pw = new PrintWriter(sw);

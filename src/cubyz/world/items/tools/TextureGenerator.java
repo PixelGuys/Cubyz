@@ -34,11 +34,11 @@ public class TextureGenerator {
 		public int maxNeighbors = -1;
 		public ArrayList<Item> items = new ArrayList<>();
 		public void add(Item item, int neighbors) {
-			if(neighbors > maxNeighbors) {
+			if (neighbors > maxNeighbors) {
 				maxNeighbors = neighbors;
 				items.clear();
 			}
-			if(neighbors == maxNeighbors) {
+			if (neighbors == maxNeighbors) {
 				items.add(item);
 			}
 		}
@@ -52,28 +52,28 @@ public class TextureGenerator {
 	private static int countNeighbors(Item[] offsetGrid) {
 		int neighbors = 0;
 		// direct neighbors count 1.5 times as much.
-		if(offsetGrid[7] != null) {
+		if (offsetGrid[7] != null) {
 			neighbors += 3;
 		}
-		if(offsetGrid[11] != null) {
+		if (offsetGrid[11] != null) {
 			neighbors += 3;
 		}
-		if(offsetGrid[13] != null) {
+		if (offsetGrid[13] != null) {
 			neighbors += 3;
 		}
-		if(offsetGrid[17] != null) {
+		if (offsetGrid[17] != null) {
 			neighbors += 3;
 		}
-		if(offsetGrid[6] != null) {
+		if (offsetGrid[6] != null) {
 			neighbors += 2;
 		}
-		if(offsetGrid[8] != null) {
+		if (offsetGrid[8] != null) {
 			neighbors += 2;
 		}
-		if(offsetGrid[16] != null) {
+		if (offsetGrid[16] != null) {
 			neighbors += 2;
 		}
-		if(offsetGrid[18] != null) {
+		if (offsetGrid[18] != null) {
 			neighbors += 2;
 		}
 		return neighbors;
@@ -89,32 +89,32 @@ public class TextureGenerator {
 	 */
 	private static void drawRegion(Item[] offsetGrid, int[] neighborCount, int x, int y, PixelData[][] pixels) {
 		Item item = offsetGrid[12];
-		if(item != null) {
+		if (item != null) {
 			// Count diagonal and straight neighbors:
 			int diagonalNeighbors = 0;
 			int straighNeighbors = 0;
-			if(offsetGrid[7] != null) {
+			if (offsetGrid[7] != null) {
 				straighNeighbors++;
 			}
-			if(offsetGrid[11] != null) {
+			if (offsetGrid[11] != null) {
 				straighNeighbors++;
 			}
-			if(offsetGrid[13] != null) {
+			if (offsetGrid[13] != null) {
 				straighNeighbors++;
 			}
-			if(offsetGrid[17] != null) {
+			if (offsetGrid[17] != null) {
 				straighNeighbors++;
 			}
-			if(offsetGrid[6] != null) {
+			if (offsetGrid[6] != null) {
 				diagonalNeighbors++;
 			}
-			if(offsetGrid[8] != null) {
+			if (offsetGrid[8] != null) {
 				diagonalNeighbors++;
 			}
-			if(offsetGrid[16] != null) {
+			if (offsetGrid[16] != null) {
 				diagonalNeighbors++;
 			}
-			if(offsetGrid[18] != null) {
+			if (offsetGrid[18] != null) {
 				diagonalNeighbors++;
 			}
 			int neighbors = diagonalNeighbors + straighNeighbors;
@@ -125,111 +125,111 @@ public class TextureGenerator {
 			pixels[x + 2][y + 2].add(item, neighborCount[12]);
 
 			// Checkout straight neighbors:
-			if(offsetGrid[7] != null) {
-				if(neighborCount[7] >= neighborCount[12]) {
+			if (offsetGrid[7] != null) {
+				if (neighborCount[7] >= neighborCount[12]) {
 					pixels[x + 1][y].add(item, neighborCount[12]);
 					pixels[x + 2][y].add(item, neighborCount[12]);
 				}
-				if(offsetGrid[1] != null && offsetGrid[16] == null && straighNeighbors <= 1) {
+				if (offsetGrid[1] != null && offsetGrid[16] == null && straighNeighbors <= 1) {
 					pixels[x + 2][y + 3].add(item, neighborCount[12]);
 				}
-				if(offsetGrid[3] != null && offsetGrid[18] == null && straighNeighbors <= 1) {
+				if (offsetGrid[3] != null && offsetGrid[18] == null && straighNeighbors <= 1) {
 					pixels[x + 1][y + 3].add(item, neighborCount[12]);
 				}
 			}
-			if(offsetGrid[11] != null) {
-				if(neighborCount[11] >= neighborCount[12]) {
+			if (offsetGrid[11] != null) {
+				if (neighborCount[11] >= neighborCount[12]) {
 					pixels[x][y + 1].add(item, neighborCount[12]);
 					pixels[x][y + 2].add(item, neighborCount[12]);
 				}
-				if(offsetGrid[5] != null && offsetGrid[8] == null && straighNeighbors <= 1) {
+				if (offsetGrid[5] != null && offsetGrid[8] == null && straighNeighbors <= 1) {
 					pixels[x + 3][y + 2].add(item, neighborCount[12]);
 				}
-				if(offsetGrid[15] != null && offsetGrid[18] == null && straighNeighbors <= 1) {
+				if (offsetGrid[15] != null && offsetGrid[18] == null && straighNeighbors <= 1) {
 					pixels[x + 3][y + 1].add(item, neighborCount[12]);
 				}
 			}
-			if(offsetGrid[13] != null) {
-				if(neighborCount[13] >= neighborCount[12]) {
+			if (offsetGrid[13] != null) {
+				if (neighborCount[13] >= neighborCount[12]) {
 					pixels[x + 3][y + 1].add(item, neighborCount[12]);
 					pixels[x + 3][y + 2].add(item, neighborCount[12]);
 				}
-				if(offsetGrid[9] != null && offsetGrid[6] == null && straighNeighbors <= 1) {
+				if (offsetGrid[9] != null && offsetGrid[6] == null && straighNeighbors <= 1) {
 					pixels[x][y + 2].add(item, neighborCount[12]);
 				}
-				if(offsetGrid[19] != null && offsetGrid[16] == null && straighNeighbors <= 1) {
+				if (offsetGrid[19] != null && offsetGrid[16] == null && straighNeighbors <= 1) {
 					pixels[x][y + 1].add(item, neighborCount[12]);
 				}
 			}
-			if(offsetGrid[17] != null) {
-				if(neighborCount[17] >= neighborCount[12]) {
+			if (offsetGrid[17] != null) {
+				if (neighborCount[17] >= neighborCount[12]) {
 					pixels[x + 1][y + 3].add(item, neighborCount[12]);
 					pixels[x + 2][y + 3].add(item, neighborCount[12]);
 				}
-				if(offsetGrid[21] != null && offsetGrid[6] == null && straighNeighbors <= 1) {
+				if (offsetGrid[21] != null && offsetGrid[6] == null && straighNeighbors <= 1) {
 					pixels[x + 2][y].add(item, neighborCount[12]);
 				}
-				if(offsetGrid[23] != null && offsetGrid[8] == null && straighNeighbors <= 1) {
+				if (offsetGrid[23] != null && offsetGrid[8] == null && straighNeighbors <= 1) {
 					pixels[x + 1][y].add(item, neighborCount[12]);
 				}
 			}
 
 			// Checkout diagonal neighbors:
-			if(offsetGrid[6] != null) {
-				if(neighborCount[6] >= neighborCount[12]) {
+			if (offsetGrid[6] != null) {
+				if (neighborCount[6] >= neighborCount[12]) {
 					pixels[x][y].add(item, neighborCount[12]);
 				}
 				pixels[x + 1][y].add(item, neighborCount[12]);
 				pixels[x][y + 1].add(item, neighborCount[12]);
-				if(offsetGrid[1] != null && offsetGrid[7] == null && neighbors <= 2) {
+				if (offsetGrid[1] != null && offsetGrid[7] == null && neighbors <= 2) {
 					pixels[x + 3][y + 2].add(item, neighborCount[12]);
 				}
-				if(offsetGrid[5] != null && offsetGrid[11] == null && neighbors <= 2) {
+				if (offsetGrid[5] != null && offsetGrid[11] == null && neighbors <= 2) {
 					pixels[x + 2][y + 3].add(item, neighborCount[12]);
 				}
 			}
-			if(offsetGrid[8] != null) {
-				if(neighborCount[8] >= neighborCount[12]) {
+			if (offsetGrid[8] != null) {
+				if (neighborCount[8] >= neighborCount[12]) {
 					pixels[x + 3][y].add(item, neighborCount[12]);
 				}
 				pixels[x + 2][y].add(item, neighborCount[12]);
 				pixels[x + 3][y + 1].add(item, neighborCount[12]);
-				if(offsetGrid[3] != null && offsetGrid[7] == null && neighbors <= 2) {
+				if (offsetGrid[3] != null && offsetGrid[7] == null && neighbors <= 2) {
 					pixels[x][y + 2].add(item, neighborCount[12]);
 				}
-				if(offsetGrid[9] != null && offsetGrid[13] == null && neighbors <= 2) {
+				if (offsetGrid[9] != null && offsetGrid[13] == null && neighbors <= 2) {
 					pixels[x + 1][y + 3].add(item, neighborCount[12]);
 				}
 			}
-			if(offsetGrid[16] != null) {
-				if(neighborCount[16] >= neighborCount[12]) {
+			if (offsetGrid[16] != null) {
+				if (neighborCount[16] >= neighborCount[12]) {
 					pixels[x][y + 3].add(item, neighborCount[12]);
 				}
 				pixels[x][y + 2].add(item, neighborCount[12]);
 				pixels[x + 1][y + 3].add(item, neighborCount[12]);
-				if(offsetGrid[21] != null && offsetGrid[17] == null && neighbors <= 2) {
+				if (offsetGrid[21] != null && offsetGrid[17] == null && neighbors <= 2) {
 					pixels[x + 3][y + 1].add(item, neighborCount[12]);
 				}
-				if(offsetGrid[15] != null && offsetGrid[11] == null && neighbors <= 2) {
+				if (offsetGrid[15] != null && offsetGrid[11] == null && neighbors <= 2) {
 					pixels[x + 2][y].add(item, neighborCount[12]);
 				}
 			}
-			if(offsetGrid[18] != null) {
-				if(neighborCount[18] >= neighborCount[12]) {
+			if (offsetGrid[18] != null) {
+				if (neighborCount[18] >= neighborCount[12]) {
 					pixels[x + 3][y + 3].add(item, neighborCount[12]);
 				}
 				pixels[x + 2][y + 3].add(item, neighborCount[12]);
 				pixels[x + 3][y + 2].add(item, neighborCount[12]);
-				if(offsetGrid[23] != null && offsetGrid[17] == null && neighbors <= 2) {
+				if (offsetGrid[23] != null && offsetGrid[17] == null && neighbors <= 2) {
 					pixels[x][y + 1].add(item, neighborCount[12]);
 				}
-				if(offsetGrid[19] != null && offsetGrid[13] == null && neighbors <= 2) {
+				if (offsetGrid[19] != null && offsetGrid[13] == null && neighbors <= 2) {
 					pixels[x + 1][y].add(item, neighborCount[12]);
 				}
 			}
 
 			// Make stuff more round when there is many incoming connections:
-			if(diagonalNeighbors >= 3 || straighNeighbors == 4) {
+			if (diagonalNeighbors >= 3 || straighNeighbors == 4) {
 				pixels[x + 0][y + 1].add(item, neighborCount[12]);
 				pixels[x + 0][y + 2].add(item, neighborCount[12]);
 				pixels[x + 3][y + 1].add(item, neighborCount[12]);
@@ -239,22 +239,22 @@ public class TextureGenerator {
 				pixels[x + 2][y + 0].add(item, neighborCount[12]);
 				pixels[x + 2][y + 3].add(item, neighborCount[12]);
 				// Check which of the neighbors was empty:
-				if(offsetGrid[6] == null) {
+				if (offsetGrid[6] == null) {
 					pixels[x + 0][y + 0].add(item, neighborCount[12]);
 					pixels[x + 2][y - 1].add(item, neighborCount[12]);
 					pixels[x - 1][y + 2].add(item, neighborCount[12]);
 				}
-				if(offsetGrid[8] == null) {
+				if (offsetGrid[8] == null) {
 					pixels[x + 3][y + 0].add(item, neighborCount[12]);
 					pixels[x + 1][y - 1].add(item, neighborCount[12]);
 					pixels[x + 4][y + 2].add(item, neighborCount[12]);
 				}
-				if(offsetGrid[16] == null) {
+				if (offsetGrid[16] == null) {
 					pixels[x + 0][y + 3].add(item, neighborCount[12]);
 					pixels[x + 2][y + 4].add(item, neighborCount[12]);
 					pixels[x - 1][y + 1].add(item, neighborCount[12]);
 				}
-				if(offsetGrid[18] == null) {
+				if (offsetGrid[18] == null) {
 					pixels[x + 3][y + 3].add(item, neighborCount[12]);
 					pixels[x + 1][y + 4].add(item, neighborCount[12]);
 					pixels[x + 4][y + 1].add(item, neighborCount[12]);
@@ -272,30 +272,30 @@ public class TextureGenerator {
 				Item oneItem = itemGrid[x == 0 ? x : x-1][y == 0 ? y : y-1];
 				boolean hasDifferentItems = false;
 				for(int dx = -1; dx <= 0; dx++) {
-					if(x + dx < 0 || x + dx >= 16) continue;
+					if (x + dx < 0 || x + dx >= 16) continue;
 					for(int dy = -1; dy <= 0; dy++) {
-						if(y + dy < 0 || y + dy >= 16) continue;
+						if (y + dy < 0 || y + dy >= 16) continue;
 
 						heightMap[x][y] += itemGrid[x + dx][y + dy] != null ? (1 + (4 * rand.nextFloat() - 2) * itemGrid[x + dx][y + dy].material.roughness) : 0;
-						if(itemGrid[x + dx][y + dy] != oneItem)
+						if (itemGrid[x + dx][y + dy] != oneItem)
 							hasDifferentItems = true;
 					}
 				}
 
 				// If there is multiple items at this junction, make it go inward to make embedded parts stick out more:
-				if(hasDifferentItems) {
+				if (hasDifferentItems) {
 					heightMap[x][y]--;
 				}
 				
 				// Take into account further neighbors with lower priority:
 
 				for(int dx = -2; dx <= 1; dx++) {
-					if(x + dx < 0 || x + dx >= 16) continue;
+					if (x + dx < 0 || x + dx >= 16) continue;
 					for(int dy = -2; dy <= 1; dy++) {
-						if(y + dy < 0 || y + dy >= 16) continue;
+						if (y + dy < 0 || y + dy >= 16) continue;
 
 						heightMap[x][y] += itemGrid[x + dx][y + dy] != null ? 1.0f/((dx + 0.5f)*(dx + 0.5f) + (dy + 0.5f)*(dy + 0.5f)) : 0;
-						if(itemGrid[x + dx][y + dy] != oneItem)
+						if (itemGrid[x + dx][y + dy] != oneItem)
 							hasDifferentItems = true;
 					}
 				}
@@ -322,8 +322,8 @@ public class TextureGenerator {
 				Item[] offsetGrid = new Item[25];
 				for(int dx = -2; dx <= 2; dx++) {
 					for(int dy = -2; dy <= 2; dy++) {
-						if(x + dx >= 0 && x + dx < 5) {
-							if(y + dy >= 0 && y + dy < 5) {
+						if (x + dx >= 0 && x + dx < 5) {
+							if (y + dy >= 0 && y + dy < 5) {
 								int index = x + dx + 5 * (y + dy);
 								int offsetIndex = 2 + dx + 5 * (2 + dy);
 								offsetGrid[offsetIndex] = tool.craftingGrid[index];
@@ -344,8 +344,8 @@ public class TextureGenerator {
 				int[] offsetNeighborCount = new int[25];
 				for(int dx = -2; dx <= 2; dx++) {
 					for(int dy = -2; dy <= 2; dy++) {
-						if(x + dx >= 0 && x + dx < 5) {
-							if(y + dy >= 0 && y + dy < 5) {
+						if (x + dx >= 0 && x + dx < 5) {
+							if (y + dy >= 0 && y + dy < 5) {
 								int index = x + dx + 5 * (y + dy);
 								int offsetIndex = 2 + dx + 5 * (2 + dy);
 								offsetGrid[offsetIndex] = tool.craftingGrid[index];
@@ -362,7 +362,7 @@ public class TextureGenerator {
 		Item[][] itemGrid = tool.materialGrid;
 		for(int x = 0; x < 16; x++) {
 			for(int y = 0; y < 16; y++) {
-				if(pixelMaterials[x][y].items.size() != 0) {
+				if (pixelMaterials[x][y].items.size() != 0) {
 					// Choose a random material at conflict zones:
 					itemGrid[x][y] = pixelMaterials[x][y].items.get(rand.nextInt(pixelMaterials[x][y].items.size()));
 				}
@@ -373,7 +373,7 @@ public class TextureGenerator {
 		for(int x = 0; x < 16; x++) {
 			for(int y = 0; y < 16; y++) {
 				Item mat = itemGrid[x][y];
-				if(mat == null) continue;
+				if (mat == null) continue;
 
 				// Calculate the lighting based on the nearest free space:
 				float lightTL = heightMap[x][y] - heightMap[x + 1][y + 1];

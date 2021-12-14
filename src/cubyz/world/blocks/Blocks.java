@@ -109,7 +109,7 @@ public class Blocks implements DataOrientedRegistry {
 		return degradable[block & TYPE_MASK];
 	}
 	public static boolean viewThrough(int block) {
-		if(mode[block & TYPE_MASK] == null) {
+		if (mode[block & TYPE_MASK] == null) {
 			Logger.debug(block);
 			System.exit(1);
 		}
@@ -153,7 +153,7 @@ public class Blocks implements DataOrientedRegistry {
 	}
 
 	public static int getByID(String id) {
-		if(!reverseIndices.containsKey(id)) {
+		if (!reverseIndices.containsKey(id)) {
 			Logger.error("Couldn't find block "+id+". Replacing it with air...");
 			return 0;
 		}
@@ -167,7 +167,7 @@ public class Blocks implements DataOrientedRegistry {
 	 * @return if the block did something on click.
 	 */
 	public static boolean onClick(int block, ServerWorld world, Vector3i pos) {
-		if(gui[block & TYPE_MASK] != null) {
+		if (gui[block & TYPE_MASK] != null) {
 			ClientOnly.client.openGUI("cubyz:workbench", new Inventory(26)); // TODO: Care about the inventory.
 			return true;
 		}
@@ -203,7 +203,7 @@ public class Blocks implements DataOrientedRegistry {
 
 	@Override
 	public int register(String assetPath, Resource id, JsonObject json) {
-		if(reverseIndices.containsKey(id.toString())) {
+		if (reverseIndices.containsKey(id.toString())) {
 			Logger.error("Attempted to register block with id "+id+" twice!");
 			return reverseIndices.get(id.toString());
 		}

@@ -48,13 +48,13 @@ public class ClientEntity {
 		long time = System.nanoTime();
 		float deltaTime = (time - lastUpdate)/1e9f*timeFactor;
 		lastUpdate = time;
-		if(deltaTime > 0.5f) {
+		if (deltaTime > 0.5f) {
 			// Skip the first call and lag spikes.
 			return;
 		}
 		Vector3d nextPosition = new Vector3d(); // Position in 1 update.
 		float timeStep = 0;
-		if(currentIndex == frontIndex) {
+		if (currentIndex == frontIndex) {
 			timeStep = Server.UPDATES_TIME_S - timeInCurrentFrame;
 			nextPosition.set(lastPosition[currentIndex]);
 			// The local version is too fast!
@@ -71,12 +71,12 @@ public class ClientEntity {
 		}
 
 
-		if(nextPosition.distance(position) > 2 || timeStep == 0) {
+		if (nextPosition.distance(position) > 2 || timeStep == 0) {
 			// Teleport if it's too far away.
 			position.set(nextPosition);
 			velocity.set(0);
 		} // Only update when the game is not lagging behind:
-		else if(timeInCurrentFrame < Server.UPDATES_TIME_S) {
+		else if (timeInCurrentFrame < Server.UPDATES_TIME_S) {
 			// (v(t + timeStep) + v(t))/2 = (nextPosition.x - position.x)/timeStep
 			// a(t)*timeStep = (nextPosition.x - position.x)/timeStep
 			// Δv = Δt/timeStep*(2*dist/timeStep - 2*v(t))
@@ -88,19 +88,19 @@ public class ClientEntity {
 			velocity.mul(0.99f);
 			position.fma(deltaTime, velocity);
 
-			if(frontIndex != currentIndex && (currentIndex + 1)%lastPosition.length != frontIndex) {
+			if (frontIndex != currentIndex && (currentIndex + 1)%lastPosition.length != frontIndex) {
 				// The local version is too slow!
 				timeFactor *= 1.01f;
 			}
 
 			timeInCurrentFrame += deltaTime;
 		}
-		while(timeInCurrentFrame > Server.UPDATES_TIME_S && currentIndex != frontIndex) {
+		while (timeInCurrentFrame > Server.UPDATES_TIME_S && currentIndex != frontIndex) {
 			timeInCurrentFrame -= Server.UPDATES_TIME_S;
 			currentIndex = (currentIndex + 1)%lastPosition.length;
 		}
 
-		if(type.model != null)
+		if (type.model != null)
 			type.model.update(this, deltaTime);
 	}
 }

@@ -24,7 +24,7 @@ public class Tree<Key, Value> {
 		TreeNode node = root;
 		for(int i = 0; i < keys.length-1; i++) {
 			TreeNode nextNode = node.nextNodes.get(keys[i]);
-			if(nextNode == null) {
+			if (nextNode == null) {
 				nextNode = new TreeNode();
 				node.nextNodes.put(keys[i], nextNode);
 			}
@@ -36,7 +36,7 @@ public class Tree<Key, Value> {
 		TreeNode node = root;
 		for(int i = 0; i < keys.length-1; i++) {
 			node = node.nextNodes.get(keys[i]);
-			if(node == null) {
+			if (node == null) {
 				return null;
 			}
 		}
@@ -46,14 +46,14 @@ public class Tree<Key, Value> {
 		TreeNode node = root;
 		for(int i = 0; i < keys.length-1; i++) {
 			TreeNode nextNode = node.nextNodes.get(keys[i]);
-			if(nextNode == null) {
+			if (nextNode == null) {
 				nextNode = new TreeNode();
 				node.nextNodes.put(keys[i], nextNode);
 			}
 			node = nextNode;
 		}
 		Value ret = node.leaves.get(keys[keys.length-1]);
-		if(ret != null) return ret;
+		if (ret != null) return ret;
 		ret = constructor.get();
 		node.leaves.put(keys[keys.length-1], ret);
 		return ret;

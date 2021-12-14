@@ -28,18 +28,18 @@ public class StructureGenerator implements Generator {
 	}
 
 	private static MapFragment getMapFragment(MapFragment map, MapFragment nn, MapFragment np, MapFragment pn, MapFragment pp, MapFragment no, MapFragment po, MapFragment on, MapFragment op, int px, int pz, int width) {
-		if(px < 8) {
-			if(pz < 8) return nn;
-			if(width + 16 - pz <= 8) return np;
+		if (px < 8) {
+			if (pz < 8) return nn;
+			if (width + 16 - pz <= 8) return np;
 			return no;
 		}
-		if(width + 16 - px <= 8) {
-			if(pz < 8) return pn;
-			if(width + 16 - pz <= 8) return pp;
+		if (width + 16 - px <= 8) {
+			if (pz < 8) return pn;
+			if (width + 16 - pz <= 8) return pp;
 			return po;
 		}
-		if(pz < 8) return on;
-		if(width + 16 - pz <= 8) return op;
+		if (pz < 8) return on;
+		if (width + 16 - pz <= 8) return op;
 		return map;
 	}
 
@@ -57,24 +57,24 @@ public class StructureGenerator implements Generator {
 		MapFragment po = map;
 		MapFragment on = map;
 		MapFragment op = map;
-		if((wx & MapFragment.MAP_MASK) <= 8) {
+		if ((wx & MapFragment.MAP_MASK) <= 8) {
 			no = nn = np = world.getOrGenerateMapFragment(wx - MapFragment.MAP_SIZE, wz, chunk.getVoxelSize());
 		}
-		if((wx & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth()) {
+		if ((wx & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth()) {
 			po = pn = pp = world.getOrGenerateMapFragment(wx + MapFragment.MAP_SIZE, wz, chunk.getVoxelSize());
 		}
-		if((wz & MapFragment.MAP_MASK) <= 8) {
+		if ((wz & MapFragment.MAP_MASK) <= 8) {
 			on = world.getOrGenerateMapFragment(wx, wz - MapFragment.MAP_SIZE, chunk.getVoxelSize());
 			nn = world.getOrGenerateMapFragment(wx - ((wx & MapFragment.MAP_MASK) <= 8 ? MapFragment.MAP_SIZE : 0), wz - MapFragment.MAP_SIZE, chunk.getVoxelSize());
 			pn = world.getOrGenerateMapFragment(wx + ((wx & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth() ? MapFragment.MAP_SIZE : 0), wz - MapFragment.MAP_SIZE, chunk.getVoxelSize());
 		}
-		if((wz & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth()) {
+		if ((wz & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth()) {
 			op = world.getOrGenerateMapFragment(wx, wz + MapFragment.MAP_SIZE, chunk.getVoxelSize());
 			np = world.getOrGenerateMapFragment(wx - ((wx & MapFragment.MAP_MASK) <= 8 ? MapFragment.MAP_SIZE : 0), wz + MapFragment.MAP_SIZE, chunk.getVoxelSize());
 			pp = world.getOrGenerateMapFragment(wx + ((wx & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth() ? MapFragment.MAP_SIZE : 0), wz + MapFragment.MAP_SIZE, chunk.getVoxelSize());
 		}
 		int stepSize = chunk.voxelSize;
-		if(stepSize < 4) {
+		if (stepSize < 4) {
 			// Uses a blue noise pattern for all structure that shouldn't touch.
 			int[] blueNoise = StaticBlueNoise.getRegionData(chunk.wx - 8, chunk.wz - 8, chunk.getWidth() + 16, chunk.getWidth() + 16);
 			for(int coordinatePair : blueNoise) {
@@ -92,7 +92,7 @@ public class StructureGenerator implements Generator {
 				Biome biome = cur.getBiome(wpx, wpz);
 				for(StructureModel model : biome.vegetationModels) {
 					float adaptedChance = model.getChance() * 16;
-					if(adaptedChance > randomValue) {
+					if (adaptedChance > randomValue) {
 						model.generate(px - 8, pz - 8, (int)cur.getHeight(wpx, wpz) + 1, chunk, map, rand);
 						break;
 					} else {
@@ -116,11 +116,11 @@ public class StructureGenerator implements Generator {
 					Biome biome = cur.getBiome(wpx, wpz);
 					for(StructureModel model : biome.vegetationModels) {
 						float adaptedChance = model.getChance();
-						if(stepSize != 1) {
+						if (stepSize != 1) {
 							// Increase chance if there are less spawn points considered. Messes up positions, but at that distance density matters more.
 							adaptedChance = 1 - (float)Math.pow(1 - adaptedChance, stepSize*stepSize);
 						}
-						if(adaptedChance > randomValue) {
+						if (adaptedChance > randomValue) {
 							model.generate(px - 8, pz - 8, (int)cur.getHeight(wpx, wpz) + 1, chunk, map, rand);
 							break;
 						} else {

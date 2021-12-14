@@ -12,7 +12,7 @@ public class MapFragmentCompare {
 
 	@Override
 	public boolean equals(Object other) {
-		if(other instanceof MapFragment) {
+		if (other instanceof MapFragment) {
 			MapFragment map = (MapFragment) other;
 			return wx == map.wx && wz == map.wz && voxelSize == map.voxelSize;
 		}

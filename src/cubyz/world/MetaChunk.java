@@ -33,18 +33,18 @@ public class MetaChunk {
 	
 	public void save() {
 		for(NormalChunk chunk : chunks) {
-			if(chunk != null)
+			if (chunk != null)
 				chunk.map.mapIO.saveChunk(chunk);
 		}
 		for(ChunkEntityManager manager : entityManagers) {
-			if(manager != null)
+			if (manager != null)
 				manager.chunk.map.mapIO.saveItemEntities(manager.itemEntityManager);
 		}
 	}
 	
 	public void updateBlockEntities() {
 		for (NormalChunk ch : chunks) {
-			if(ch != null && ch.isLoaded() && ch.getBlockEntities().size() > 0) {
+			if (ch != null && ch.isLoaded() && ch.getBlockEntities().size() > 0) {
 				BlockEntity[] blockEntities = ch.getBlockEntities().toArray(new BlockEntity[0]);
 				for (BlockEntity be : blockEntities) {
 					if (be == null) break; // end of array
@@ -65,7 +65,7 @@ public class MetaChunk {
 	
 	public void liquidUpdate() {
 		for (NormalChunk ch : chunks) {
-			if(ch == null) continue;
+			if (ch == null) continue;
 			int wx = ch.getX() << NormalChunk.chunkShift;
 			int wz = ch.getZ() << NormalChunk.chunkShift;
 			if (ch.isLoaded() && ch.getLiquids().size() > 0) {
@@ -102,7 +102,7 @@ public class MetaChunk {
 									System.err.println("(LocalWorld/Liquids) More than 6 nullable neighbors!");
 									break;
 							}
-							if(dy == -1 || (neighbors[4] != 0 && Blocks.blockClass(neighbors[4]) != Blocks.BlockClass.FLUID)) {
+							if (dy == -1 || (neighbors[4] != 0 && Blocks.blockClass(neighbors[4]) != Blocks.BlockClass.FLUID)) {
 								ch.addBlockPossiblyOutside(block, wx+bx+dx, by+dy, wz+bz+dz, true);
 							}
 						}
@@ -132,15 +132,15 @@ public class MetaChunk {
 					long dist = distX + distY + distZ;
 					int index = (px << metaChunkShift) | (py <<  metaChunkShift2) | pz;
 					NormalChunk chunk = chunks[index];
-					if(dist > rdSquare) {
-						if(chunk != null) {
-							if(chunk.isGenerated())
+					if (dist > rdSquare) {
+						if (chunk != null) {
+							if (chunk.isGenerated())
 								chunk.map.mapIO.saveChunk(chunk); // Only needs to be stored if it was ever generated.
 							else
 								world.unQueueChunk(chunk);
 							chunks[index] = null;
 						}
-					} else if(chunk == null) {
+					} else if (chunk == null) {
 						try {
 							chunk = (NormalChunk)world.chunkProvider.getDeclaredConstructors()[0].newInstance((wx >> NormalChunk.chunkShift) + px, (wy >> NormalChunk.chunkShift) + py, (wz >> NormalChunk.chunkShift) + pz, world);
 							chunks[index] = chunk;
@@ -153,12 +153,12 @@ public class MetaChunk {
 						chunksList.add(chunk);
 					}
 					ChunkEntityManager manager = entityManagers[index];
-					if(dist > edSquare) {
-						if(manager != null) {
+					if (dist > edSquare) {
+						if (manager != null) {
 							manager.chunk.map.mapIO.saveItemEntities(manager.itemEntityManager);
 							entityManagers[index] = null;
 						}
-					} else if(manager == null) {
+					} else if (manager == null) {
 						manager = new ChunkEntityManager(world, chunk);
 						entityManagers[index] = manager;
 						managers.add(manager);

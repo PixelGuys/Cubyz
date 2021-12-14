@@ -28,12 +28,12 @@ public class Slider extends Component {
 	 * @param startingValue
 	 */
 	public Slider(int min, int max, int startingValue) {
-		if(min > max) throw new IllegalArgumentException("min has to be smaller than max!");
+		if (min > max) throw new IllegalArgumentException("min has to be smaller than max!");
 		minValue = min;
 		maxValue = max;
 		curValue = startingValue;
-		if(curValue < min) curValue = min;
-		if(curValue > max) curValue = max;
+		if (curValue < min) curValue = min;
+		if (curValue > max) curValue = max;
 	}
 	
 	/**
@@ -78,10 +78,10 @@ public class Slider extends Component {
 			dx *= maxValue - minValue;
 			dx += minValue;
 			int newValue = (int)dx;
-			if(curValue != newValue) {
+			if (curValue != newValue) {
 				curValue = newValue;
-				if(curValue < minValue) curValue = minValue;
-				if(curValue > maxValue) curValue = maxValue;
+				if (curValue < minValue) curValue = minValue;
+				if (curValue > maxValue) curValue = maxValue;
 				run.run();
 			}
 		}

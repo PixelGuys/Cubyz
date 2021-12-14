@@ -62,16 +62,16 @@ public class Spatial {
 
 	// Does take player position into account.
 	public void setPosition(float x, float y, float z, Player p, int worldSizeX, int worldSizeZ) {
-		if(p.getPosition().x < worldSizeX/4 && x > 3*worldSizeX/4) {
+		if (p.getPosition().x < worldSizeX/4 && x > 3*worldSizeX/4) {
 	        this.position.x = x - worldSizeX;
-		} else if(p.getPosition().x > 3*worldSizeX/4 && x < worldSizeX/4) {
+		} else if (p.getPosition().x > 3*worldSizeX/4 && x < worldSizeX/4) {
 	        this.position.x = x + worldSizeX;
 		} else {
 			this.position.x = x;
 		}
-		if(p.getPosition().z < worldSizeZ/4 && z >= 3*worldSizeZ/4) {
+		if (p.getPosition().z < worldSizeZ/4 && z >= 3*worldSizeZ/4) {
 	        this.position.z = z - worldSizeZ;
-		} else if(p.getPosition().z >= 3*worldSizeZ/4 && z < worldSizeZ/4) {
+		} else if (p.getPosition().z >= 3*worldSizeZ/4 && z < worldSizeZ/4) {
 	        this.position.z = z + worldSizeZ;
 		} else {
 			this.position.z = z;

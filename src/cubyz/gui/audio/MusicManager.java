@@ -36,7 +36,7 @@ public class MusicManager {
 
 	public static void init(SoundManager manager) {
 		MusicManager.manager = manager;
-		if(!manager.wasInitedCorrectly())
+		if (!manager.wasInitedCorrectly())
 			return;
 		
 		if (ResourceManager.lookupPath("cubyz/sound") != null) {
@@ -95,7 +95,7 @@ public class MusicManager {
 	}
 	
 	public static void update() {
-		if(manager == null || !manager.wasInitedCorrectly())
+		if (manager == null || !manager.wasInitedCorrectly())
 			return;
 		
 		if ((source == null || !source.isPlaying()) && !currentMusic.equals("None")) {
@@ -129,7 +129,8 @@ public class MusicManager {
 					if (DEBUG) Logger.debug("Start silence");
 				}
 			}
-			source.setGain(gain * 0.3f);
+			if (source!=null)
+				source.setGain(gain * 0.3f);
 		}
 		
 		String targetMusic = "GymnopedieNo1";

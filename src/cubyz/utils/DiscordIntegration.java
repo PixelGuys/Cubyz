@@ -78,7 +78,7 @@ public class DiscordIntegration {
 		
 		
 		worker = new Thread(() -> {
-            while(!Thread.currentThread().isInterrupted()) {
+            while (!Thread.currentThread().isInterrupted()) {
                 lib.Discord_RunCallbacks();
                 try {
                     Thread.sleep(2000);
@@ -99,11 +99,11 @@ public class DiscordIntegration {
 	}
 	
 	public static void updateState() {
-		if(Cubyz.world != null) {
-			if(GameLauncher.logic.isIntegratedServer) {
+		if (Cubyz.world != null) {
+			if (GameLauncher.logic.isIntegratedServer) {
 				presence.details = "Singleplayer";
 			} else {
-				if(GameLauncher.logic.isOnlineServerOpened) {
+				if (GameLauncher.logic.isOnlineServerOpened) {
 					presence.details = "Join me ;)";
 					presence.partyMax = 50; // temporary
 				} else {
@@ -118,7 +118,7 @@ public class DiscordIntegration {
 	}
 	
 	public static void setStatus(String status) {
-		if(isEnabled()) {
+		if (isEnabled()) {
 			presence.state = status;
 			updateState();
 		}
@@ -126,7 +126,7 @@ public class DiscordIntegration {
 	
 	public static void closeRPC() {
 		DiscordRPC lib = DiscordRPC.INSTANCE;
-		if(worker != null)
+		if (worker != null)
 			worker.interrupt();
 		worker = null;
 		lib.Discord_Shutdown();

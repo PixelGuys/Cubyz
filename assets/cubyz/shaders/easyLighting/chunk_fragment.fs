@@ -31,14 +31,14 @@ vec4 calcFog(vec3 pos, vec4 color, Fog fog) {
 void main()
 {
     fragColor = texture(texture_sampler, vec3(outTexCoord, textureIndex))*vec4((1 - dot(directionalLight, outNormal))*ambientLight, 1);
-	if(fragColor.a <= 0.1f) discard;
-	if(fog.activ) {
+	if (fragColor.a <= 0.1f) discard;
+	if (fog.activ) {
 
 		// Underwater fog in lod(assumes that the fog is maximal):
 		fragColor = vec4((1 - fragColor.a) * waterFog.color.xyz + fragColor.a * fragColor.xyz, 1);
 	}
     
-    if(fog.activ) {
+    if (fog.activ) {
         fragColor = calcFog(mvVertexPos, fragColor, fog);
     }
 }

@@ -93,7 +93,7 @@ public class BackgroundScene {
 			}
 		});
 		// Choose a random image if available.
-		if(images.length != 0) {
+		if (images.length != 0) {
 			texture = Texture.loadFromFile(images[(int)(Math.random()*images.length)]);
 		} else {
 			texture = null;
@@ -101,7 +101,7 @@ public class BackgroundScene {
 		}
 	}
 	public static void renderBackground() {
-		if(texture == null) return;
+		if (texture == null) return;
 
 		glDisable(GL_CULL_FACE); // I'm not sure if my triangles are rotated correctly, and there are no triangles facing away from the player anyways.
 

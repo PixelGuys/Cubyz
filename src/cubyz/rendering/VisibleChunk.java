@@ -20,7 +20,7 @@ public class VisibleChunk extends NormalChunk {
 	
 	public VisibleChunk(Integer cx, Integer cy, Integer cz, ServerWorld world) {
 		super(cx, cy, cz, world);
-		if(ClientSettings.easyLighting) {
+		if (ClientSettings.easyLighting) {
 			light = new int[arraySize];
 		}
 	}
@@ -36,7 +36,7 @@ public class VisibleChunk extends NormalChunk {
 	 */
 	@Override
 	public void load() {
-		if(startedloading) {
+		if (startedloading) {
 			// Empty the list, so blocks won't get added twice. This will also be important, when there is a manual chunk reloading.
 			clear();
 		}
@@ -69,9 +69,9 @@ public class VisibleChunk extends NormalChunk {
 				for(int  z = 0; z < chunkSize; z++) {
 					int index = (x << chunkShift) | (y << chunkShift2) | z;
 					int b = blocks[index];
-					if(b != 0) {
+					if (b != 0) {
 						int[] indices = new int[6];
-						int[] neighbors = getNeighbors(x, y ,z, indices);
+						int[] neighbors = getNeighbors(x, y , z, indices);
 						for (int i = 0; i < neighbors.length; i++) {
 							if (blocksBlockNot(neighbors[i], b, index - indices[i])
 														&& (y != 0 || i != Neighbors.DIR_DOWN || chy0)
@@ -84,20 +84,20 @@ public class VisibleChunk extends NormalChunk {
 								break;
 							}
 						}
-						if(ClientSettings.easyLighting && Blocks.light(b) != 0) { // Process light sources
+						if (ClientSettings.easyLighting && Blocks.light(b) != 0) { // Process light sources
 							lightSources.add(index);
 						}
 					}
 				}
 			}
 		}
-		if(ClientSettings.easyLighting) {
+		if (ClientSettings.easyLighting) {
 			// Update the sun channel:
 			for(int x = 0; x < chunkSize; x++) {
 				for(int z = 0; z < chunkSize; z++) {
 					int startHeight = map.mapIO.getHeight(x+wx, z+wz, map);
 					startHeight -= wy;
-					if(startHeight < chunkSize) {
+					if (startHeight < chunkSize) {
 						propagateSunLight(getIndex(x, chunkMask, z));
 					}
 				}
@@ -129,12 +129,12 @@ public class VisibleChunk extends NormalChunk {
 						BlockInstance inst = ch.getBlockInstanceAt(indexOther);
 						int block = ch.blocks[indexOther];
 						// Update neighbor information:
-						if(inst != null) {
+						if (inst != null) {
 							inst.updateNeighbor(chunkIndices[k] ^ 1, blocksBlockNot(blocks[indexThis], block, indexThis - indexOther));
 							continue;
 						}
 						// Update visibility:
-						if(block == 0) {
+						if (block == 0) {
 							continue;
 						}
 						if (blocksBlockNot(blocks[indexThis], block, indexThis - indexOther)) {
@@ -154,18 +154,18 @@ public class VisibleChunk extends NormalChunk {
 	 * @param index
 	 */
 	public void propagateSunLight(int index) {
-		if(blocks[index] != 0 && (!Blocks.lightingTransparent(blocks[index]) || (Blocks.absorption(blocks[index]) & 0xff000000) != 0)) {
+		if (blocks[index] != 0 && (!Blocks.lightingTransparent(blocks[index]) || (Blocks.absorption(blocks[index]) & 0xff000000) != 0)) {
 			int x = index>>chunkShift & chunkMask;
 			int y = index>>chunkShift2 & chunkMask;
 			int z = index & chunkMask;
 			map.mapIO.setHeight(x+wx, z+wz, y+wy, map);
 			return;
-		} else if((light[index] & 0xff000000) != 0xff000000) {
+		} else if ((light[index] & 0xff000000) != 0xff000000) {
 			constructiveLightUpdate(index, 255+8, 24);
 			// y-1:
-			if((index & chunkMask<<chunkShift2) == 0) { // if(y == 0)
+			if ((index & chunkMask<<chunkShift2) == 0) { // if (y == 0)
 				VisibleChunk neighborChunk = (VisibleChunk)world.getChunk(cx, cy-1, cz);
-				if(neighborChunk != null) {
+				if (neighborChunk != null) {
 					neighborChunk.propagateSunLight(index ^ chunkMask<<chunkShift2);
 				}
 			} else {
@@ -184,10 +184,10 @@ public class VisibleChunk extends NormalChunk {
 		int r = (blockColor >>> 16) & 255;
 		int g = (blockColor >>> 8) & 255;
 		int b = blockColor & 255;
-		if(s != 0) constructiveLightUpdate(index, s, 24);
-		if(r != 0) constructiveLightUpdate(index, r, 16);
-		if(g != 0) constructiveLightUpdate(index, g, 8);
-		if(b != 0) constructiveLightUpdate(index, b, 0);
+		if (s != 0) constructiveLightUpdate(index, s, 24);
+		if (r != 0) constructiveLightUpdate(index, r, 16);
+		if (g != 0) constructiveLightUpdate(index, g, 8);
+		if (b != 0) constructiveLightUpdate(index, b, 0);
 	}
 
 	/**
@@ -199,10 +199,10 @@ public class VisibleChunk extends NormalChunk {
 		int r = (color >>> 16) & 255;
 		int g = (color >>> 8) & 255;
 		int b = color & 255;
-		if(s != 0) constructiveLightUpdate(index, s, 24);
-		if(r != 0) constructiveLightUpdate(index, r, 16);
-		if(g != 0) constructiveLightUpdate(index, g, 8);
-		if(b != 0) constructiveLightUpdate(index, b, 0);
+		if (s != 0) constructiveLightUpdate(index, s, 24);
+		if (r != 0) constructiveLightUpdate(index, r, 16);
+		if (g != 0) constructiveLightUpdate(index, g, 8);
+		if (b != 0) constructiveLightUpdate(index, b, 0);
 	}
 	
 	/**
@@ -212,15 +212,15 @@ public class VisibleChunk extends NormalChunk {
 	 * @param channelShift
 	 */
 	public void constructiveLightUpdate(int index, int lightValue, int channelShift) {
-		if(!startedloading) return;
-		if(!Blocks.lightingTransparent(blocks[index]) && ((Blocks.light(blocks[index]) >>> channelShift) & 255) != lightValue) return;
+		if (!startedloading) return;
+		if (!Blocks.lightingTransparent(blocks[index]) && ((Blocks.light(blocks[index]) >>> channelShift) & 255) != lightValue) return;
 		lightValue = propagateLight(blocks[index], lightValue, channelShift);
-		if(blocks[index] != 0)
+		if (blocks[index] != 0)
 			lightValue = Math.max(lightValue, ((Blocks.light(blocks[index]) >>> channelShift) & 255));
 		int prevValue = (light[index] >>> channelShift) & 255;
 		setUpdated();
-		if(lightValue <= prevValue) return;
-		if(channelShift == 24 && lightValue == 255) { // Update the sun height map.
+		if (lightValue <= prevValue) return;
+		if (channelShift == 24 && lightValue == 255) { // Update the sun height map.
 			int x = index>>chunkShift & chunkMask;
 			int y = index>>chunkShift2 & chunkMask;
 			int z = index & chunkMask;
@@ -229,54 +229,54 @@ public class VisibleChunk extends NormalChunk {
 		light[index] = (~(255 << channelShift) & light[index]) | (lightValue << channelShift);
 		// Go through all neighbors:
 		// z-1:
-		if((index & chunkMask) == 0) { // if(z == 0)
+		if ((index & chunkMask) == 0) { // if (z == 0)
 			VisibleChunk neighborChunk = (VisibleChunk)world.getChunk(cx, cy, cz-1);
-			if(neighborChunk != null) {
+			if (neighborChunk != null) {
 				neighborChunk.constructiveLightUpdate(index^0x000f, lightValue, channelShift);
 			}
 		} else {
 			constructiveLightUpdate(index-1, lightValue, channelShift);
 		}
 		// z+1:
-		if((index & chunkMask) == chunkMask) { // if(z == chunkSize-1)
+		if ((index & chunkMask) == chunkMask) { // if (z == chunkSize-1)
 			VisibleChunk neighborChunk = (VisibleChunk)world.getChunk(cx, cy, cz+1);
-			if(neighborChunk != null) {
+			if (neighborChunk != null) {
 				neighborChunk.constructiveLightUpdate(index ^ chunkMask, lightValue, channelShift);
 			}
 		} else {
 			constructiveLightUpdate(index+1, lightValue, channelShift);
 		}
 		// x-1:
-		if((index & chunkMask<<chunkShift) == 0) { // if(x == 0)
+		if ((index & chunkMask<<chunkShift) == 0) { // if (x == 0)
 			VisibleChunk neighborChunk = (VisibleChunk)world.getChunk(cx-1, cy, cz);
-			if(neighborChunk != null) {
+			if (neighborChunk != null) {
 				neighborChunk.constructiveLightUpdate(index ^ chunkMask<<chunkShift, lightValue, channelShift);
 			}
 		} else {
 			constructiveLightUpdate(index-(1 << chunkShift), lightValue, channelShift);
 		}
 		// x+1:
-		if((index & chunkMask<<chunkShift) == chunkMask<<chunkShift) { // if(x == chunkSize-1)
+		if ((index & chunkMask<<chunkShift) == chunkMask<<chunkShift) { // if (x == chunkSize-1)
 			VisibleChunk neighborChunk = (VisibleChunk)world.getChunk(cx+1, cy, cz);
-			if(neighborChunk != null) {
+			if (neighborChunk != null) {
 				neighborChunk.constructiveLightUpdate(index ^ chunkMask<<chunkShift, lightValue, channelShift);
 			}
 		} else {
 			constructiveLightUpdate(index+(1 << chunkShift), lightValue, channelShift);
 		}
 		// y-1:
-		if((index & chunkMask<<chunkShift2) == 0) { // if(y == 0)
+		if ((index & chunkMask<<chunkShift2) == 0) { // if (y == 0)
 			VisibleChunk neighborChunk = (VisibleChunk)world.getChunk(cx, cy-1, cz);
-			if(neighborChunk != null) {
+			if (neighborChunk != null) {
 				neighborChunk.constructiveLightUpdate(index ^ chunkMask<<chunkShift2, lightValue + (channelShift == 24 && lightValue == 255 ? 8 : 0), channelShift);
 			}
 		} else {
 			constructiveLightUpdate(index-(1 << chunkShift2), lightValue + (channelShift == 24 && lightValue == 255 ? 8 : 0), channelShift);
 		}
 		// y+1:
-		if((index & chunkMask<<chunkShift2) == chunkMask<<chunkShift2) { // if(y == chunkSize-1)
+		if ((index & chunkMask<<chunkShift2) == chunkMask<<chunkShift2) { // if (y == chunkSize-1)
 			VisibleChunk neighborChunk = (VisibleChunk)world.getChunk(cx, cy+1, cz);
-			if(neighborChunk != null) {
+			if (neighborChunk != null) {
 				neighborChunk.constructiveLightUpdate(index ^ chunkMask<<chunkShift2, lightValue, channelShift);
 			}
 		} else {
@@ -312,60 +312,60 @@ public class VisibleChunk extends NormalChunk {
 	 * @param channelShift
 	 */
 	public void lightUpdateInternal(int index, int channelShift) {
-		if(!startedloading) return;
+		if (!startedloading) return;
 		int newValue = 0;
-		if(blocks[index] != 0) newValue = (Blocks.light(blocks[index]) >>> channelShift) & 255;
+		if (blocks[index] != 0) newValue = (Blocks.light(blocks[index]) >>> channelShift) & 255;
 		int prevValue = (light[index] >>> channelShift) & 255;
 		// Go through all neighbors and check if the old value comes from them:
 		// z-1:
-		if((index & chunkMask) == 0) { // if(z == 0)
+		if ((index & chunkMask) == 0) { // if (z == 0)
 			VisibleChunk neighborChunk = (VisibleChunk)world.getChunk(cx, cy, cz-1);
-			if(neighborChunk != null) {
+			if (neighborChunk != null) {
 				newValue = Math.max(newValue, propagateLight(blocks[index], (neighborChunk.light[index ^ chunkMask] >>> channelShift) & 255, channelShift));
 			}
 		} else {
 			newValue = Math.max(newValue, propagateLight(blocks[index], (light[index - 1] >>> channelShift) & 255, channelShift));
 		}
 		// z+1:
-		if((index & chunkMask) == chunkMask) { // if(z == chunkSize-1)
+		if ((index & chunkMask) == chunkMask) { // if (z == chunkSize-1)
 			VisibleChunk neighborChunk = (VisibleChunk)world.getChunk(cx, cy, cz+1);
-			if(neighborChunk != null) {
+			if (neighborChunk != null) {
 				newValue = Math.max(newValue, propagateLight(blocks[index], (neighborChunk.light[index ^ chunkMask] >>> channelShift) & 255, channelShift));
 			}
 		} else {
 			newValue = Math.max(newValue, propagateLight(blocks[index], (light[index + 1] >>> channelShift) & 255, channelShift));
 		}
 		// x-1:
-		if((index & chunkMask<<chunkShift) == 0) { // if(x == 0)
+		if ((index & chunkMask<<chunkShift) == 0) { // if (x == 0)
 			VisibleChunk neighborChunk = (VisibleChunk)world.getChunk(cx-1, cy, cz);
-			if(neighborChunk != null) {
+			if (neighborChunk != null) {
 				newValue = Math.max(newValue, propagateLight(blocks[index], (neighborChunk.light[index ^ chunkMask<<chunkShift] >>> channelShift) & 255, channelShift));
 			}
 		} else {
 			newValue = Math.max(newValue, propagateLight(blocks[index], (light[index-(1 << chunkShift)] >>> channelShift) & 255, channelShift));
 		}
 		// x+1:
-		if((index & chunkMask<<chunkShift) == chunkMask<<chunkShift) { // if(x == chunkSIze-1)
+		if ((index & chunkMask<<chunkShift) == chunkMask<<chunkShift) { // if (x == chunkSIze-1)
 			VisibleChunk neighborChunk = (VisibleChunk)world.getChunk(cx+1, cy, cz);
-			if(neighborChunk != null) {
+			if (neighborChunk != null) {
 				newValue = Math.max(newValue, propagateLight(blocks[index], (neighborChunk.light[index ^ chunkMask<<chunkShift] >>> channelShift) & 255, channelShift));
 			}
 		} else {
 			newValue = Math.max(newValue, propagateLight(blocks[index], (light[index+(1 << chunkShift)] >>> channelShift) & 255, channelShift));
 		}
 		// y-1:
-		if((index & chunkMask<<chunkShift2) == 0) { // if(y == 0)
+		if ((index & chunkMask<<chunkShift2) == 0) { // if (y == 0)
 			VisibleChunk neighborChunk = (VisibleChunk)world.getChunk(cx, cy-1, cz);
-			if(neighborChunk != null) {
+			if (neighborChunk != null) {
 				newValue = Math.max(newValue, propagateLight(blocks[index], ((neighborChunk.light[index ^ chunkMask<<chunkShift2] >>> channelShift) & 255), channelShift));
 			}
 		} else {
 			newValue = Math.max(newValue, propagateLight(blocks[index], ((light[index-(1 << chunkShift2)] >>> channelShift) & 255), channelShift));
 		}
 		// y+1:
-		if((index & chunkMask<<chunkShift2) == chunkMask<<chunkShift2) { // if(y == chunkSize-1)
+		if ((index & chunkMask<<chunkShift2) == chunkMask<<chunkShift2) { // if (y == chunkSize-1)
 			VisibleChunk neighborChunk = (VisibleChunk)world.getChunk(cx, cy+1, cz);
-			if(neighborChunk != null) {
+			if (neighborChunk != null) {
 				int lightValue = ((neighborChunk.light[index ^ chunkMask<<chunkShift2] >>> channelShift) & 255);
 				newValue = Math.max(newValue, propagateLight(blocks[index], lightValue + (channelShift == 24 && lightValue == 255 ? 8 : 0), channelShift));
 			}
@@ -375,16 +375,16 @@ public class VisibleChunk extends NormalChunk {
 		}
 		
 		// Insert the new value and update neighbors:
-		if(newValue == prevValue) return;
-		if(newValue >= prevValue) {
-			if(channelShift == 24 && newValue == 255) {
+		if (newValue == prevValue) return;
+		if (newValue >= prevValue) {
+			if (channelShift == 24 && newValue == 255) {
 				propagateSunLight(index);
 			} else {
 				constructiveLightUpdate(index, newValue - propagateLight(blocks[index], 0, channelShift), channelShift);
 			}
 				return;
 		}
-		if(channelShift == 24 && prevValue == 255) { // Update the sun height map.
+		if (channelShift == 24 && prevValue == 255) { // Update the sun height map.
 			int x = index>>chunkShift & chunkMask;
 			int y = index>>chunkShift2 & chunkMask;
 			int z = index & chunkMask;
@@ -394,54 +394,54 @@ public class VisibleChunk extends NormalChunk {
 		light[index] = (light[index] & ~(255 << channelShift)) | (newValue << channelShift);
 		// Go through all neighbors and update them:
 		// z-1:
-		if((index & chunkMask) == 0) { // if(z == 0)
+		if ((index & chunkMask) == 0) { // if (z == 0)
 			VisibleChunk neighborChunk = (VisibleChunk)world.getChunk(cx, cy, cz-1);
-			if(neighborChunk != null) {
+			if (neighborChunk != null) {
 				neighborChunk.lightUpdateInternal(index ^ chunkMask, channelShift);
 			}
 		} else {
 			lightUpdateInternal(index-1, channelShift);
 		}
 		// z+1:
-		if((index & chunkMask) == chunkMask) { // if(z == chunkSize-1)
+		if ((index & chunkMask) == chunkMask) { // if (z == chunkSize-1)
 			VisibleChunk neighborChunk = (VisibleChunk)world.getChunk(cx, cy, cz+1);
-			if(neighborChunk != null) {
+			if (neighborChunk != null) {
 				neighborChunk.lightUpdateInternal(index ^ chunkMask, channelShift);
 			}
 		} else {
 			lightUpdateInternal(index+1, channelShift);
 		}
 		// x-1:
-		if((index & chunkMask<<chunkShift) == 0) { // if(x == 0)
+		if ((index & chunkMask<<chunkShift) == 0) { // if (x == 0)
 			VisibleChunk neighborChunk = (VisibleChunk)world.getChunk(cx-1, cy, cz);
-			if(neighborChunk != null) {
+			if (neighborChunk != null) {
 				neighborChunk.lightUpdateInternal(index ^ chunkMask<<chunkShift, channelShift);
 			}
 		} else {
 			lightUpdateInternal(index-(1 << chunkShift), channelShift);
 		}
 		// x+1:
-		if((index & chunkMask<<chunkShift) == chunkMask<<chunkShift) { // if(x == chunkSize-1)
+		if ((index & chunkMask<<chunkShift) == chunkMask<<chunkShift) { // if (x == chunkSize-1)
 			VisibleChunk neighborChunk = (VisibleChunk)world.getChunk(cx+1, cy, cz);
-			if(neighborChunk != null) {
+			if (neighborChunk != null) {
 				neighborChunk.lightUpdateInternal(index ^ chunkMask<<chunkShift, channelShift);
 			}
 		} else {
 			lightUpdateInternal(index+(1 << chunkShift), channelShift);
 		}
 		// y-1:
-		if((index & chunkMask<<chunkShift2) == 0) { // if(y == 0)
+		if ((index & chunkMask<<chunkShift2) == 0) { // if (y == 0)
 			VisibleChunk neighborChunk = (VisibleChunk)world.getChunk(cx, cy-1, cz);
-			if(neighborChunk != null) {
+			if (neighborChunk != null) {
 				neighborChunk.lightUpdateInternal(index ^ chunkMask<<chunkShift2, channelShift);
 			}
 		} else {
 			lightUpdateInternal(index-(1 << chunkShift2), channelShift);
 		}
 		// y+1:
-		if((index & chunkMask<<chunkShift2) == chunkMask<<chunkShift2) { // if(y == chunkSize-1)
+		if ((index & chunkMask<<chunkShift2) == chunkMask<<chunkShift2) { // if (y == chunkSize-1)
 			VisibleChunk neighborChunk = (VisibleChunk)world.getChunk(cx, cy+1, cz);
-			if(neighborChunk != null) {
+			if (neighborChunk != null) {
 				neighborChunk.lightUpdateInternal(index ^ chunkMask<<chunkShift2, channelShift);
 			}
 		} else {
@@ -450,7 +450,7 @@ public class VisibleChunk extends NormalChunk {
 	}
 	
 	private int propagateLight(int block, int previousValue, int channelShift) {
-		if(!Blocks.lightingTransparent(block)) return 0;
+		if (!Blocks.lightingTransparent(block)) return 0;
 		int transparencyFactor = 8;
 		transparencyFactor += (Blocks.absorption(block) >>> channelShift) & 255;
 		return previousValue - transparencyFactor;

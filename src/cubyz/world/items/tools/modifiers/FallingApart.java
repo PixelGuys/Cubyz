@@ -18,7 +18,7 @@ public class FallingApart extends Modifier {
 	public void onUse(Tool tool) {
 		/*tool.setSpeed(tool.getSpeed()*(1 - DECAY_RATE)*strength);
 		tool.setMaxDurability((int) Math.round(tool.getMaxDurability()*(1 - DECAY_RATE)*strength)); // Yes, even durability is affected
-		if(tool.getDurability() > tool.getMaxDurability()) {
+		if (tool.getDurability() > tool.getMaxDurability()) {
 			tool.setDurability(tool.getMaxDurability());
 		}
 		tool.setDamage(tool.getDamage()*(1 - DECAY_RATE)*strength);*/ // TODO: Implement modifiers into the new tool system.

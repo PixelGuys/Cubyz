@@ -108,14 +108,14 @@ public class ConsoleGUI extends MenuGUI {
 	public void update() {
 		if (mode == NORMAL) {
 			// Normal user input
-			if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_TAB)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_TAB)) {
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_TAB, false);
 				updatePossibleCommands();
-				if(possibleCommands.size() == 0) {
+				if (possibleCommands.size() == 0) {
 					mode = NORMAL;
-				} else if(input.getText().contains("\\s+")) {
+				} else if (input.getText().contains("\\s+")) {
 					findArguments();
-					if(argument != -1) {
+					if (argument != -1) {
 						mode = ARGUMENTS;
 
 						showNextArgument();
@@ -125,7 +125,7 @@ public class ConsoleGUI extends MenuGUI {
 				} else if (possibleCommands.size() == 1) {
 					input.setText(possibleCommands.get(0).getCommandName());
 					expectedArgs = possibleCommands.get(0).getExpectedArgs();
-					if(expectedArgs.length != 0) {
+					if (expectedArgs.length != 0) {
 						mode = ARGUMENTS;
 						argument = 0;
 						showNextArgument();
@@ -146,8 +146,8 @@ public class ConsoleGUI extends MenuGUI {
 			} 
 		} else if (mode == AUTOCOMPLETE) {
 			// Autcomplete command
-			if(Keyboard.hasCharSequence()) {
-				if(Keyboard.getCharSequence()[0] == ' ') {
+			if (Keyboard.hasCharSequence()) {
+				if (Keyboard.getCharSequence()[0] == ' ') {
 					completeCommand();
 				} else {
 					mode = NORMAL;
@@ -176,7 +176,7 @@ public class ConsoleGUI extends MenuGUI {
 
 					argument++;
 				} else {
-					if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_ENTER)) {
+					if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_ENTER)) {
 						execute();
 					}
 				}
@@ -197,7 +197,7 @@ public class ConsoleGUI extends MenuGUI {
 				}
 			} else if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_ENTER)) {
 				findArguments();
-				if(argument != -1) {
+				if (argument != -1) {
 					Keyboard.setKeyPressed(GLFW.GLFW_KEY_ENTER, false);
 					mode = ARGUMENTS;
 					showNextArgument();
@@ -292,9 +292,9 @@ public class ConsoleGUI extends MenuGUI {
 		CommandBase command = possibleCommands.get(commandSelection);
 		input.setText(command.getCommandName());
 		expectedArgs = command.getExpectedArgs();
-		if(expectedArgs.length == 0) {
+		if (expectedArgs.length == 0) {
 			mode = NORMAL;
-			if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_ENTER)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_ENTER)) {
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_ENTER, false);
 				execute();
 			}
@@ -321,7 +321,7 @@ public class ConsoleGUI extends MenuGUI {
 		}
 		expectedArgs = command.getExpectedArgs();
 		argument = commandAndArgs.length - 1;
-		if(argument >= expectedArgs.length) {
+		if (argument >= expectedArgs.length) {
 			argument = -1;
 		}
 	}
