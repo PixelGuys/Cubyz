@@ -33,11 +33,15 @@ import cubyz.world.handler.RemoveBlockHandler;
 import cubyz.world.items.BlockDrop;
 import cubyz.world.items.ItemStack;
 import cubyz.world.save.WorldIO;
+import cubyz.world.terrain.ClimateMapGenerator;
 import cubyz.world.terrain.MapFragment;
 import cubyz.world.terrain.MapFragmentCompare;
+import cubyz.world.terrain.MapGenerator;
 import cubyz.world.terrain.biomes.Biome;
 import cubyz.world.terrain.generators.CrystalCavernGenerator;
 import cubyz.world.terrain.worldgenerators.LifelandGenerator;
+import cubyz.world.terrain.worldgenerators.NoisyVoronoi;
+import cubyz.world.terrain.worldgenerators.PolarCircles;
 import cubyz.world.terrain.worldgenerators.SurfaceGenerator;
 import cubyz.server.Server;
 
@@ -52,6 +56,10 @@ public class ServerWorld {
 	private ArrayList<Entity> entities = new ArrayList<>();
 	
 	private SurfaceGenerator generator;
+
+	private final MapGenerator mapFragmentGenerator;
+
+	public final ClimateMapGenerator climateGenerator;
 	
 	private WorldIO wio;
 	
@@ -135,7 +143,8 @@ public class ServerWorld {
 			generatorId = wio.loadWorldGenerator();
 		}
 		setGenerator(generatorId);
-		
+		mapFragmentGenerator = new NoisyVoronoi();
+		climateGenerator = new PolarCircles();
 		// Call mods for this new world. Mods sometimes need to do extra stuff for the specific world.
 		ModLoader.postWorldGen(registries);
 
@@ -499,7 +508,8 @@ public class ServerWorld {
 			if (res != null) return res;
 
 			// Generate a new map fragment:
-			res = new MapFragment(wx, wz, seed, this, registries, wio, voxelSize);
+			res = new MapFragment(wx, wz, this, wio, voxelSize);
+			mapFragmentGenerator.generateMapFragment(res);
 			MapFragment old = mapCache[index].addToCache(res, hash);
 			if (old != null)
 				old.mapIO.saveData();
