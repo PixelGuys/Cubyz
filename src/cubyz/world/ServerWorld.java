@@ -327,7 +327,7 @@ public class ServerWorld {
 				ambientLight = 0.1f;
 				clearColor.x = clearColor.y = clearColor.z = 0;
 			} else if (dayTime > (dayCycle >> 2)+(dayCycle >> 4)) {
-				ambientLight = 0.7f;
+				ambientLight = 1.0f;
 				clearColor.x = clearColor.y = 0.8f;
 				clearColor.z = 1.0f;
 			} else {
@@ -353,7 +353,7 @@ public class ServerWorld {
 				}
 				dayTime -= (dayCycle >> 2);
 				dayTime <<= 3;
-				ambientLight = 0.4f + 0.3f*dayTime/(dayCycle >> 1);
+				ambientLight = 0.55f + 0.45f*dayTime/(dayCycle >> 1);
 			}
 		}
 		// Entities
