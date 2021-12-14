@@ -13,29 +13,33 @@ import cubyz.rendering.Window;
 
 public abstract class Container extends Component {
 
-	protected ArrayList<Component> childrens;
+	protected ArrayList<Component> children;
 	
 	public Container() {
-		childrens = new ArrayList<>();
+		children = new ArrayList<>();
 	}
 	
 	public void add(Component comp) {
 		if (comp == this) throw new IllegalArgumentException("comp == this");
-		childrens.add(comp);
+		children.add(comp);
 	}
 	
 	public void remove(Component comp) {
-		childrens.remove(comp);
+		children.remove(comp);
 	}
 	
 	public void remove(int index) {
-		childrens.remove(index);
+		children.remove(index);
+	}
+
+	public void clear() {
+		children.clear();
 	}
 
 	@Override
 	public void render(int x, int y) {
 		Vector4i oldClip = Graphics.setClip(new Vector4i(x, Window.getHeight() - y - height, width, height));
-		for (Component child : childrens) {
+		for (Component child : children) {
 			child.renderInContainer(x, y, width, height);
 		}
 		Graphics.restoreClip(oldClip);

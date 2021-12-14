@@ -20,7 +20,7 @@ import static cubyz.client.ClientSettings.GUI_SCALE;
 
 public class KeybindingsGUI extends MenuGUI {
 
-	private ScrollingContainer container;
+	private final ScrollingContainer container = new ScrollingContainer();
 	private Button done;
 	private String listen;
 	private Label[] labels;
@@ -94,7 +94,7 @@ public class KeybindingsGUI extends MenuGUI {
 	}
 	
 	public void initUI() {
-		container = new ScrollingContainer();
+		container.clear();
 		
 		done = new Button();
 		done.setText(TextKey.createTextKey("gui.cubyz.settings.done"));
