@@ -129,7 +129,7 @@ public class MusicManager {
 					if (DEBUG) Logger.debug("Start silence");
 				}
 			}
-			if (source==null)
+			if (source!=null)
 				source.setGain(gain * 0.3f);
 		}
 		
