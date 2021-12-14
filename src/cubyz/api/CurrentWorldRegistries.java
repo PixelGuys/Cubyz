@@ -19,7 +19,7 @@ import cubyz.world.terrain.worldgenerators.SurfaceGenerator;
 
 public class CurrentWorldRegistries {
 
-	public final Registry<DataOrientedRegistry> blockRegistries = new Registry<DataOrientedRegistry>(CubyzRegistries.BLOCK_REGISTRIES);
+	public final Registry<RegistryElement> blockRegistries = new Registry<RegistryElement>(CubyzRegistries.BLOCK_REGISTRIES);
 	public final NoIDRegistry<Ore>              oreRegistry     = new NoIDRegistry<Ore>(CubyzRegistries.ORE_REGISTRY);
 	public final Registry<Item>                 itemRegistry    = new Registry<Item>(CubyzRegistries.ITEM_REGISTRY);
 	public final NoIDRegistry<Recipe>           recipeRegistry  = new NoIDRegistry<Recipe>(CubyzRegistries.RECIPE_REGISTRY);
@@ -38,8 +38,9 @@ public class CurrentWorldRegistries {
 		if (!assets.exists()) {
 			generateAssets(assets, world);
 		}
-		for(DataOrientedRegistry reg : blockRegistries.registered(new DataOrientedRegistry[0])) {
-			reg.reset(CubyzRegistries.blocksBeforeWorld);
+		for(RegistryElement reg : blockRegistries.registered(new RegistryElement[0])) {
+			if(reg instanceof DataOrientedRegistry)
+				((DataOrientedRegistry) reg).reset(CubyzRegistries.blocksBeforeWorld);
 		}
 		loadWorldAssets(assetPath);
 	}

@@ -8,17 +8,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.function.BiConsumer;
 
+import cubyz.api.*;
 import cubyz.utils.Logger;
-import cubyz.api.CubyzRegistries;
-import cubyz.api.DataOrientedRegistry;
-import cubyz.api.EventHandler;
-import cubyz.api.LoadOrder;
-import cubyz.api.Mod;
-import cubyz.api.NoIDRegistry;
-import cubyz.api.Order;
-import cubyz.api.Proxy;
-import cubyz.api.Registry;
-import cubyz.api.Resource;
 import cubyz.utils.datastructures.IntFastList;
 import cubyz.utils.json.JsonObject;
 import cubyz.utils.json.JsonParser;
@@ -66,7 +57,7 @@ public class AddonsMod {
 	public void init() {
 		init(CubyzRegistries.ITEM_REGISTRY, CubyzRegistries.BLOCK_REGISTRIES, CubyzRegistries.RECIPE_REGISTRY);
 	}
-	public void init(Registry<Item> itemRegistry, Registry<DataOrientedRegistry> blockRegistries, NoIDRegistry<Recipe> recipeRegistry) {
+	public void init(Registry<Item> itemRegistry, Registry<RegistryElement> blockRegistries, NoIDRegistry<Recipe> recipeRegistry) {
 		proxy.init(this);
 		registerMissingStuff(itemRegistry, blockRegistries);
 		registerRecipes(recipeRegistry);
@@ -152,11 +143,12 @@ public class AddonsMod {
 		registerItems(registry, "assets/");
 	}
 	
-	public void registerBlocks(Registry<DataOrientedRegistry> registries, NoIDRegistry<Ore> oreRegistry) {
+	public void registerBlocks(Registry<RegistryElement> registries, NoIDRegistry<Ore> oreRegistry) {
 		readAllJsonObjects("blocks", (json, id) -> {
 			int block = 0;
-			for(DataOrientedRegistry reg : registries.registered(new DataOrientedRegistry[0])) {
-				block = reg.register(assetPath, id, json);
+			for(RegistryElement reg : registries.registered(new RegistryElement[0])) {
+				if(reg instanceof DataOrientedRegistry)
+					block = ((DataOrientedRegistry) reg).register(assetPath, id, json);
 			}
 
 			// Ores:
@@ -207,7 +199,7 @@ public class AddonsMod {
 		});
 	}
 	@EventHandler(type = "register:block")
-	public void registerBlocks(Registry<DataOrientedRegistry> registries) {
+	public void registerBlocks(Registry<RegistryElement> registries) {
 		registerBlocks(registries, CubyzRegistries.ORE_REGISTRY);
 	}
 	@EventHandler(type = "register:biome")
@@ -221,7 +213,7 @@ public class AddonsMod {
 	/**
 	 * Takes care of all missing references.
 	 */
-	public void registerMissingStuff(Registry<Item> itemRegistry, Registry<DataOrientedRegistry> blockRegistry) {
+	public void registerMissingStuff(Registry<Item> itemRegistry, Registry<RegistryElement> blockRegistry) {
 		for(int i = 0; i < missingDropsBlock.size; i++) {
 			Blocks.addBlockDrop(missingDropsBlock.array[i], new BlockDrop(itemRegistry.getByID(missingDropsItem.get(i)), missingDropsAmount.get(i)));
 		}

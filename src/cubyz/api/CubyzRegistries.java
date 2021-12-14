@@ -20,7 +20,7 @@ import cubyz.world.terrain.worldgenerators.SurfaceGenerator;
 
 public class CubyzRegistries {
 
-	public static final Registry<DataOrientedRegistry>   BLOCK_REGISTRIES        = new Registry<DataOrientedRegistry>();
+	public static final Registry<RegistryElement>   BLOCK_REGISTRIES        = new Registry<RegistryElement>();
 	public static final NoIDRegistry<Ore>                ORE_REGISTRY            = new NoIDRegistry<Ore>();
 	public static final Registry<Item>                   ITEM_REGISTRY           = new Registry<Item>();
 	public static final NoIDRegistry<Recipe>             RECIPE_REGISTRY         = new NoIDRegistry<Recipe>();
