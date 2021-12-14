@@ -198,7 +198,7 @@ public class NormalChunkMesh extends ChunkMesh {
 			if (!needsUpdate)
 				return;
 			needsUpdate = false;
-			if (chunk == null)
+			if (chunk == null || !chunk.isLoaded())
 				return;
 		}
 		FloatFastList vertices = localVertices.get();
@@ -230,10 +230,11 @@ public class NormalChunkMesh extends ChunkMesh {
 	}
 	
 	public int bufferData(FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, ArrayList<Integer> vboIdList) {
+		
+		generated = true;
 		if (faces.size == 0) {
 			return -1;
 		}
-		generated = true;
 
 		FloatBuffer posBuffer = null;
 		FloatBuffer textureBuffer = null;
