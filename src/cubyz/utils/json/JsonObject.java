@@ -1,5 +1,7 @@
 package cubyz.utils.json;
 
+import cubyz.utils.algorithms.StringOperation;
+
 import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.Map.Entry;
@@ -144,7 +146,7 @@ public class JsonObject implements JsonElement {
 		out.append('{');
 		for(Entry<String, JsonElement> entries : map.entrySet()) {
 			out.append("\"");
-			out.append(entries.getKey());
+			out.append(StringOperation.escape(entries.getKey()));
 			out.append("\":");
 			out.append(entries.getValue().toString());
 			out.append(',');//TODO: Consider removing it.
