@@ -4,6 +4,7 @@ import org.joml.Vector3d;
 import org.lwjgl.glfw.GLFW;
 
 import cubyz.api.CubyzRegistries;
+import cubyz.client.BlockMeshes;
 import cubyz.client.ClientOnly;
 import cubyz.client.ClientSettings;
 import cubyz.client.Cubyz;
@@ -27,15 +28,26 @@ import cubyz.server.Server;
 
 public class Input {
 	public boolean clientShowDebug = false;
+
+	private boolean executedF3Shortcut = false;
 	
 	public void init() {
 		Mouse.init();
 	}
 	
 	public void update() {
-		if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_F3)) {
-			clientShowDebug = !clientShowDebug;
-			Keyboard.setKeyPressed(GLFW.GLFW_KEY_F3, false);
+		if (Keyboard.isKeyReleased(GLFW.GLFW_KEY_F3)) {
+			if(!executedF3Shortcut) {
+				clientShowDebug = !clientShowDebug;
+			}
+			executedF3Shortcut = false;
+		}
+		if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_F3)) {
+			if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_T)) {
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_T, false);
+				BlockMeshes.reloadTextures();
+				executedF3Shortcut = true;
+			}
 		}
 		if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_F11)) {
 			Cubyz.renderDeque.push(() -> {
