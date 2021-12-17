@@ -25,6 +25,8 @@ gui.cubyz.debug.reload=Reload
 gui.cubyz.saves.play=Play {0}
 gui.cubyz.saves.delete=Delete
 gui.cubyz.saves.create=Create a new game!
+gui.cubyz.saves.create.mapgen=Map Generator: {0}
+gui.cubyz.saves.create.climategen=Climate Generator: {0}
 lang.name=English
 
 gui.cubyz.multiplayer.displayname=Displayname
@@ -77,15 +79,7 @@ item.cubyz.coal.name=Coal
 item.cubyz.raw_meat.name=Raw meat
 item.cubyz.apple.name=Apple
 
-# Tools
-cubyz.grammar.tool_material={0} {1}
-cubyz.tools.materials.wood=Wooden
-cubyz.tools.materials.stone=Stone
-cubyz.tools.names.axe=Axe
-cubyz.tools.names.pickaxe=Pickaxe
-cubyz.tools.names.shovel=Shovel
-cubyz.tools.names.sword=Sword
-
-# Misc
-generator.cubyz.lifeland.name=Lifeland
-generator.cubyz.flatland.name=Flatland
+# World Generation
+generator.map.cubyz.mapgen_v1=Version 1
+generator.climate.cubyz.flatland=Flatland
+generator.climate.cubyz.polar_circles=Polar Circles

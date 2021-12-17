@@ -1,7 +1,5 @@
 package cubyz.world;
 
-import cubyz.world.terrain.worldgenerators.SurfaceGenerator;
-
 public abstract class Chunk extends ChunkData {
 	public Chunk(int wx, int wy, int wz, int voxelSize) {
 		super(wx, wy, wz, voxelSize);
@@ -61,7 +59,7 @@ public abstract class Chunk extends ChunkData {
 	 * Generates this chunk.
 	 * @param gen
 	 */
-	public abstract void generateFrom(SurfaceGenerator gen);
+	public abstract void generateFrom(ChunkManager gen);
 	
 	/**
 	 * Checks if the given <b>relative</b> coordinates lie within the bounds of this chunk.

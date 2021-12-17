@@ -42,7 +42,6 @@ public class Button extends Component {
 	private boolean canRepress = true;
 	private Runnable onAction;
 	private Label textLabel = new Label(Fonts.PIXEL_FONT, 240);
-	private Object userObject;
 	
 	public Button() {}
 	
@@ -56,14 +55,6 @@ public class Button extends Component {
 	
 	public TextKey getText() {
 		return textLabel.getText();
-	}
-	
-	public Object getUserObject() {
-		return userObject;
-	}
-	
-	public void setUserObject(Object obj) {
-		userObject = obj;
 	}
 
 	public void setText(String text) {

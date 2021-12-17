@@ -2,10 +2,12 @@ package cubyz.world.terrain.generators;
 
 import java.util.Random;
 
+import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Resource;
+import cubyz.utils.json.JsonObject;
 import cubyz.world.Chunk;
 import cubyz.world.NormalChunk;
-import cubyz.world.ServerWorld;
+import cubyz.world.ChunkManager;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.Ore;
 import cubyz.world.terrain.MapFragment;
@@ -26,13 +28,17 @@ public class OreGenerator implements Generator {
 		return 32768; // Somewhere before cave generation.
 	}
 
-	public static Ore[] ores;
-	public OreGenerator() {}
+	private Ore[] ores;
+
+	@Override
+	public void init(JsonObject parameters, CurrentWorldRegistries registries) {
+		ores = registries.oreRegistry.registered(new Ore[0]);
+	}
 
 
 	// Works basically similar to cave generation, but considers a lot less chunks and has a few other differences.
 	@Override
-	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, MapFragment map, ServerWorld world) {
+	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, MapFragment map, ChunkManager generator) {
 		if (!(chunk instanceof NormalChunk)) return;
 		Random rand = new Random(seed);
 		int rand1 = rand.nextInt() | 1;

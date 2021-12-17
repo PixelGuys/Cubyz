@@ -96,7 +96,7 @@ public class JsonObject implements JsonElement {
 		JsonElement object = map.get(key);
 		if (object instanceof JsonObject)
 			return (JsonObject)object;
-		return null;
+		return new JsonObject();
 	}
 
 	/**

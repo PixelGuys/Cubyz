@@ -33,7 +33,6 @@ import cubyz.utils.*;
 import cubyz.world.*;
 import cubyz.world.items.Inventory;
 import cubyz.world.terrain.noise.StaticBlueNoise;
-import cubyz.world.terrain.worldgenerators.LifelandGenerator;
 import cubyz.server.Server;
 
 /**
@@ -160,8 +159,6 @@ public class GameLogic implements ClientConnection {
 		LoadThread lt = new LoadThread();
 		
 		LoadThread.addOnLoadFinished(() -> {
-			LifelandGenerator.init();
-			
 			sound = new SoundManager();
 			try {
 				sound.init();

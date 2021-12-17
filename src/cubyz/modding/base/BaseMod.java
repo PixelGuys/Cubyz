@@ -24,9 +24,14 @@ import cubyz.world.terrain.biomes.Biome;
 import cubyz.world.terrain.biomes.GroundPatch;
 import cubyz.world.terrain.biomes.SimpleTreeModel;
 import cubyz.world.terrain.biomes.SimpleVegetation;
-import cubyz.world.terrain.worldgenerators.FlatlandGenerator;
-import cubyz.world.terrain.worldgenerators.LifelandGenerator;
-import cubyz.world.terrain.worldgenerators.SurfaceGenerator;
+import cubyz.world.terrain.generators.CaveGenerator;
+import cubyz.world.terrain.generators.CrystalCavernGenerator;
+import cubyz.world.terrain.generators.OreGenerator;
+import cubyz.world.terrain.generators.StructureGenerator;
+import cubyz.world.terrain.generators.TerrainGenerator;
+import cubyz.world.terrain.worldgenerators.FlatLand;
+import cubyz.world.terrain.worldgenerators.MapGenV1;
+import cubyz.world.terrain.worldgenerators.PolarCircles;
 
 /**
  * Mod adding Cubyz default content, which is not added by addon files.
@@ -52,8 +57,6 @@ public class BaseMod implements Mod {
 	public void init() {
 		// Both commands and recipes don't have any attributed EventHandler
 		// As they are independent to other (the correct order for others is block -> item (for item blocks and other items) -> entity)
-		registerWorldGenerators(CubyzRegistries.STELLAR_TORUS_GENERATOR_REGISTRY);
-		
 		CubyzRegistries.COMMAND_REGISTRY.register(new GameTimeCycleCommand());
 		CubyzRegistries.COMMAND_REGISTRY.register(new GiveCommand());
 		CubyzRegistries.COMMAND_REGISTRY.register(new ClearCommand());
@@ -72,6 +75,17 @@ public class BaseMod implements Mod {
 		CubyzRegistries.STRUCTURE_REGISTRY.register(new SimpleTreeModel());
 		CubyzRegistries.STRUCTURE_REGISTRY.register(new SimpleVegetation());
 		CubyzRegistries.STRUCTURE_REGISTRY.register(new GroundPatch());
+
+		CubyzRegistries.GENERATORS.registerAll(new TerrainGenerator());
+		CubyzRegistries.GENERATORS.registerAll(new OreGenerator());
+		CubyzRegistries.GENERATORS.registerAll(new CaveGenerator());
+		CubyzRegistries.GENERATORS.registerAll(new CrystalCavernGenerator());
+		CubyzRegistries.GENERATORS.registerAll(new StructureGenerator());
+
+		CubyzRegistries.CLIMATE_GENERATOR_REGISTRY.register(new PolarCircles());
+		CubyzRegistries.CLIMATE_GENERATOR_REGISTRY.register(new FlatLand());
+
+		CubyzRegistries.MAP_GENERATOR_REGISTRY.register(new MapGenV1());
 		
 		CubyzRegistries.BLOCK_REGISTRIES.register(new Blocks());
 		
@@ -83,10 +97,6 @@ public class BaseMod implements Mod {
 	public void registerEntities(Registry<EntityType> reg) {
 		reg.register(new Pig());
 		reg.register(new PlayerEntity());
-	}
-	
-	public void registerWorldGenerators(Registry<SurfaceGenerator> reg) {
-		reg.registerAll(new LifelandGenerator(), new FlatlandGenerator());
 	}
 	
 	public void registerModifiers(Registry<Modifier> reg) {

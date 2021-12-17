@@ -65,7 +65,7 @@ public class ClimateMap {
 			ret = cache.find(new ClimateMapFragmentComparator(wx, wz), hash);
 			if (ret != null) return ret;
 			ret = new ClimateMapFragment(world, wx, wz);
-			world.climateGenerator.generateMapFragment(ret);
+			world.chunkManager.climateGenerator.generateMapFragment(ret);
 			cache.addToCache(ret, ret.hashCode() & CACHE_MASK);
 			return ret;
 		}

@@ -2,7 +2,9 @@ package cubyz.world.terrain.worldgenerators;
 
 import java.util.Random;
 
+import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Resource;
+import cubyz.utils.json.JsonObject;
 import cubyz.world.terrain.BiomePoint;
 import cubyz.world.terrain.ClimateMap;
 import cubyz.world.terrain.MapFragment;
@@ -12,12 +14,17 @@ import cubyz.world.terrain.noise.PerlinNoise;
 
 import static cubyz.world.terrain.MapFragment.*;
 
-public class NoisyVoronoi implements MapGenerator {
+public class MapGenV1 implements MapGenerator {
+
+	@Override
+	public void init(JsonObject parameters, CurrentWorldRegistries registries) {
+		
+	}
 
 	@Override
 	public Resource getRegistryID() {
 		// TODO Auto-generated method stub
-		return new Resource("cubyz:noisy_voronoi");
+		return new Resource("cubyz:mapgen_v1");
 	}
 	
 	private static ThreadLocal<PerlinNoise> threadLocalNoise = new ThreadLocal<PerlinNoise>() {

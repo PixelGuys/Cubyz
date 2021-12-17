@@ -11,6 +11,8 @@ gui.cubyz.settings.language=Sprache: {0}
 gui.cubyz.settings.discord=Discord Integration: {0}
 gui.cubyz.settings.keybindings=Tastaturbelegungen
 gui.cubyz.settings.graphics=Graphik
+gui.cubyz.settings.sound=Sound
+gui.cubyz.settings.musicOnOff=Musik An/Aus
 gui.cubyz.settings.fog.med=Nebel: Mittel
 gui.cubyz.settings.fog.far=Nebel: Fern
 gui.cubyz.settings.fog.near=Nebel: Nah
@@ -23,6 +25,8 @@ gui.cubyz.debug.reload=Neu laden
 gui.cubyz.saves.play=Spiele {0}
 gui.cubyz.saves.delete=Löschen
 gui.cubyz.saves.create=Neues Spiel erstellen!
+gui.cubyz.saves.create.mapgen=Kartengenerator: {0}
+gui.cubyz.saves.create.climategen=Klimagenerator: {0}
 lang.name=Deutsch
 
 gui.cubyz.multiplayer.displayname=Anzeigename
@@ -75,11 +79,7 @@ item.cubyz.coal.name=Kohle
 item.cubyz.raw_meat.name=Rohes Fleisch
 item.cubyz.apple.name=Apfel
 
-# Tools
-cubyz.grammar.tool_material={0} {1}
-cubyz.tools.materials.wood=Holz
-cubyz.tools.materials.stone=Stein
-cubyz.tools.names.axe=Axt
-cubyz.tools.names.pickaxe=Spitzhacke
-cubyz.tools.names.shovel=Schaufel
-cubyz.tools.names.sword=Schwert
+# World Generation
+generator.map.cubyz.mapgen_v1=Version 1
+generator.climate.cubyz.flatland=Flachland
+generator.climate.cubyz.polar_circles=Polarkreise

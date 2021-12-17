@@ -1,6 +1,8 @@
 package cubyz.world.terrain.worldgenerators;
 
+import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Resource;
+import cubyz.utils.json.JsonObject;
 import cubyz.world.terrain.BiomePoint;
 import cubyz.world.terrain.ClimateMapFragment;
 import cubyz.world.terrain.ClimateMapGenerator;
@@ -30,6 +32,11 @@ public class PolarCircles implements ClimateMapGenerator {
 	static final float RING_SIZE = 64;
 	static final float WIND_SPEED = 1;
 	static final float WIND_INFLUENCE = 0.1f;
+	
+	@Override
+	public void init(JsonObject parameters, CurrentWorldRegistries registries) {
+		
+	}
 
 	@Override
 	public Resource getRegistryID() {
