@@ -2,6 +2,7 @@ package cubyz.gui.audio;
 
 import java.util.HashMap;
 
+import cubyz.client.ClientSettings;
 import cubyz.utils.Logger;
 import cubyz.client.Cubyz;
 import cubyz.utils.ResourceManager;
@@ -95,7 +96,7 @@ public class MusicManager {
 	}
 	
 	public static void update() {
-		if (manager == null || !manager.wasInitedCorrectly())
+		if (manager == null || !manager.wasInitedCorrectly() || !ClientSettings.musicOnOff)
 			return;
 		
 		if ((source == null || !source.isPlaying()) && !currentMusic.equals("None")) {
