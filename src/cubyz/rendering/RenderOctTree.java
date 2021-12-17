@@ -22,8 +22,8 @@ public class RenderOctTree {
 		boolean shouldBeRemoved;
 		public OctTreeNode[] nextNodes = null;
 		public final int x, y, z, size;
-		//public Chunk chunk;
 		public final ChunkMesh mesh;
+		
 		public OctTreeNode(ReducedChunkMesh replacement, int x, int y, int z, int size, ArrayList<ChunkData> meshRequests) {
 			this.x = x;
 			this.y = y;
