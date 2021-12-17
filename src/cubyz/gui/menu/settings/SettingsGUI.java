@@ -20,6 +20,7 @@ public class SettingsGUI extends MenuGUI {
 
 	private final Button done = new Button();
 	private final Button graphics = new Button();
+	private final Button sound = new Button();
 	private final Button language = new Button();
 	private final Button rpc = new Button();
 	private final Button bindings = new Button();
@@ -62,6 +63,11 @@ public class SettingsGUI extends MenuGUI {
 			Cubyz.gameUI.setMenu(new GraphicsGUI());
 		});
 
+		sound.setText(TextKey.createTextKey("gui.cubyz.settings.sound"));
+		sound.setOnAction(() -> {
+			Cubyz.gameUI.setMenu(new SoundGUI());
+		});
+
 		bindings.setText(TextKey.createTextKey("gui.cubyz.settings.keybindings"));
 		bindings.setOnAction(() -> {
 			Cubyz.gameUI.setMenu(new KeybindingsGUI());
@@ -100,13 +106,16 @@ public class SettingsGUI extends MenuGUI {
 		graphics.setBounds(-125 * GUI_SCALE, 40 * GUI_SCALE, 250 * GUI_SCALE, 25 * GUI_SCALE, Component.ALIGN_TOP);
 		graphics.setFontSize(16f * GUI_SCALE);
 
-		bindings.setBounds(-125 * GUI_SCALE, 160 * GUI_SCALE, 250 * GUI_SCALE, 25 * GUI_SCALE, Component.ALIGN_TOP);
+		sound.setBounds(-125 * GUI_SCALE, 80 * GUI_SCALE, 250 * GUI_SCALE, 25 * GUI_SCALE, Component.ALIGN_TOP);
+		sound.setFontSize(16f * GUI_SCALE);
+
+		bindings.setBounds(-125 * GUI_SCALE, 200 * GUI_SCALE, 250 * GUI_SCALE, 25 * GUI_SCALE, Component.ALIGN_TOP);
 		bindings.setFontSize(16f * GUI_SCALE);
 
-		language.setBounds(-125 * GUI_SCALE, 80 * GUI_SCALE, 250 * GUI_SCALE, 25 * GUI_SCALE, Component.ALIGN_TOP);
+		language.setBounds(-125 * GUI_SCALE, 120 * GUI_SCALE, 250 * GUI_SCALE, 25 * GUI_SCALE, Component.ALIGN_TOP);
 		language.setFontSize(16f * GUI_SCALE);
 
-		rpc.setBounds(-125 * GUI_SCALE, 120 * GUI_SCALE, 250 * GUI_SCALE, 25 * GUI_SCALE, Component.ALIGN_TOP);
+		rpc.setBounds(-125 * GUI_SCALE, 160 * GUI_SCALE, 250 * GUI_SCALE, 25 * GUI_SCALE, Component.ALIGN_TOP);
 		rpc.setFontSize(16f * GUI_SCALE);
 	}
 
@@ -116,6 +125,7 @@ public class SettingsGUI extends MenuGUI {
 
 		done.render();
 		graphics.render();
+		sound.render();
 		language.render();
 		rpc.render();
 		bindings.render();
