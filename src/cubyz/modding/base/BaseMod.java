@@ -4,7 +4,6 @@ import java.util.ArrayList;
 
 import cubyz.api.CubyzRegistries;
 import cubyz.api.CurrentWorldRegistries;
-import cubyz.api.EventHandler;
 import cubyz.api.Mod;
 import cubyz.api.Proxy;
 import cubyz.api.Registry;
@@ -32,15 +31,24 @@ import cubyz.world.terrain.worldgenerators.SurfaceGenerator;
 /**
  * Mod adding Cubyz default content, which is not added by addon files.
  */
-@Mod(id = "cubyz", name = "Cubyz")
-public class BaseMod {
+public class BaseMod implements Mod {
+
+	@Override
+	public String id() {
+		return "cubyz";
+	}
+
+	@Override
+	public String name() {
+		return "Cubyz";
+	}
 	
 	// Client Proxy is defined in cubyz-client, a normal mod would define it in the same mod of course.
 	// Proxies are injected at runtime.
 	@Proxy(clientProxy = "cubyz.modding.base.ClientProxy", serverProxy = "cubyz.modding.base.CommonProxy")
 	static CommonProxy proxy;
 	
-	@EventHandler(type = "init")
+	@Override
 	public void init() {
 		// Both commands and recipes don't have any attributed EventHandler
 		// As they are independent to other (the correct order for others is block -> item (for item blocks and other items) -> entity)
@@ -57,7 +65,7 @@ public class BaseMod {
 		proxy.init();
 	}
 
-	@EventHandler(type = "preInit")
+	@Override
 	public void preInit() {
 		registerModifiers(CubyzRegistries.TOOL_MODIFIER_REGISTRY);
 
@@ -71,7 +79,7 @@ public class BaseMod {
 		proxy.preInit();
 	}
 	
-	@EventHandler(type = "register:entity")
+	@Override
 	public void registerEntities(Registry<EntityType> reg) {
 		reg.register(new Pig());
 		reg.register(new PlayerEntity());
@@ -86,7 +94,7 @@ public class BaseMod {
 		reg.register(new Regrowth());
 	}
 
-	@EventHandler(type = "postWorldGen")
+	@Override
 	public void postWorldGen(CurrentWorldRegistries registries) {
 		// Get a list of replacement biomes for each biome:
 		for(Biome biome : registries.biomeRegistry.registered(new Biome[0])) {

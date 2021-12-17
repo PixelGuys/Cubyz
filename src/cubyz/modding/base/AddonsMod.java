@@ -11,7 +11,6 @@ import java.util.function.BiConsumer;
 import cubyz.utils.Logger;
 import cubyz.api.CubyzRegistries;
 import cubyz.api.DataOrientedRegistry;
-import cubyz.api.EventHandler;
 import cubyz.api.LoadOrder;
 import cubyz.api.Mod;
 import cubyz.api.NoIDRegistry;
@@ -32,14 +31,14 @@ import cubyz.world.items.Item;
 import cubyz.world.items.ItemBlock;
 import cubyz.world.items.Recipe;
 import cubyz.world.terrain.biomes.Biome;
+import cubyz.world.terrain.biomes.BiomeRegistry;
 
 /**
  * Mod used to support add-ons: simple "mods" without any sort of coding required.
  */
 
-@Mod(id = "addons-loader", name = "Addons Loader")
 @LoadOrder(order = Order.AFTER, id = "cubyz")
-public class AddonsMod {
+public class AddonsMod implements Mod {
 	public static AddonsMod instance;
 	
 	@Proxy(clientProxy = "cubyz.modding.base.AddonsClientProxy", serverProxy = "cubyz.modding.base.AddonsCommonProxy")
@@ -61,8 +60,18 @@ public class AddonsMod {
 	public AddonsMod() {
 		instance = this;
 	}
+
+	@Override
+	public String id() {
+		return "addons-loader";
+	}
+
+	@Override
+	public String name() {
+		return "Addons Loader";
+	}
 	
-	@EventHandler(type = "init")
+	@Override
 	public void init() {
 		init(CubyzRegistries.ITEM_REGISTRY, CubyzRegistries.BLOCK_REGISTRIES, CubyzRegistries.RECIPE_REGISTRY);
 	}
@@ -87,7 +96,7 @@ public class AddonsMod {
 		}
 	}
 
-	@EventHandler(type = "preInit")
+	@Override
 	public void preInit() {
 		preInit("assets/");
 	}
@@ -147,7 +156,7 @@ public class AddonsMod {
 		registry.registerAll(items);
 	}
 	
-	@EventHandler(type = "register:item")
+	@Override
 	public void registerItems(Registry<Item> registry) {
 		registerItems(registry, "assets/");
 	}
@@ -206,12 +215,12 @@ public class AddonsMod {
 			}
 		});
 	}
-	@EventHandler(type = "register:block")
+	@Override
 	public void registerBlocks(Registry<DataOrientedRegistry> registries) {
 		registerBlocks(registries, CubyzRegistries.ORE_REGISTRY);
 	}
-	@EventHandler(type = "register:biome")
-	public void registerBiomes(Registry<Biome> reg) {
+	@Override
+	public void registerBiomes(BiomeRegistry reg) {
 		readAllJsonObjects("biomes", (json, id) -> {
 			Biome biome = new Biome(id, json);
 			reg.register(biome);
