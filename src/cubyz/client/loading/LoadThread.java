@@ -88,7 +88,7 @@ public class LoadThread extends Thread {
 		for (Class<?> cl : allClasses) {
 			Logger.info("Mod class present: " + cl.getName());
 			try {
-				ModLoader.mods.add(cl.getConstructor().newInstance());
+				ModLoader.mods.add((Mod)cl.getConstructor().newInstance());
 			} catch (Exception e) {
 				Logger.error("Error while loading mod:");
 				Logger.error(e);
@@ -100,7 +100,7 @@ public class LoadThread extends Thread {
 		l.setStep(2, 0, ModLoader.mods.size());
 		for (int i = 0; i < ModLoader.mods.size(); i++) {
 			l.setStep(2, i+1, ModLoader.mods.size());
-			Object mod = ModLoader.mods.get(i);
+			Mod mod = ModLoader.mods.get(i);
 			Logger.info("Pre-initiating " + mod);
 			ModLoader.preInit(mod, Side.CLIENT);
 		}
@@ -109,27 +109,27 @@ public class LoadThread extends Thread {
 		l.setStep(3, 0, ModLoader.mods.size());
 		
 		for (int i = 0; i < ModLoader.mods.size(); i++) {
-			Object mod = ModLoader.mods.get(i);
+			Mod mod = ModLoader.mods.get(i);
 			ModLoader.registerEntries(mod, "block");
 		}
 		for (int i = 0; i < ModLoader.mods.size(); i++) {
-			Object mod = ModLoader.mods.get(i);
+			Mod mod = ModLoader.mods.get(i);
 			ModLoader.registerEntries(mod, "item");
 		}
 		for (int i = 0; i < ModLoader.mods.size(); i++) {
-			Object mod = ModLoader.mods.get(i);
+			Mod mod = ModLoader.mods.get(i);
 			ModLoader.registerEntries(mod, "entity");
 		}
 		for (int i = 0; i < ModLoader.mods.size(); i++) {
-			Object mod = ModLoader.mods.get(i);
+			Mod mod = ModLoader.mods.get(i);
 			ModLoader.registerEntries(mod, "biome");
 		}
 		
 		for (int i = 0; i < ModLoader.mods.size(); i++) {
 			l.setStep(3, i+1, ModLoader.mods.size());
-			Object mod = ModLoader.mods.get(i);
+			Mod mod = ModLoader.mods.get(i);
 			Logger.info("Initiating " + mod);
-			ModLoader.init(mod);
+			mod.init();
 		}
 		
 		Object lock = new Object();
@@ -180,9 +180,9 @@ public class LoadThread extends Thread {
 		l.setStep(5, 0, ModLoader.mods.size());
 		for (int i = 0; i < ModLoader.mods.size(); i++) {
 			l.setStep(5, i+1, ModLoader.mods.size());
-			Object mod = ModLoader.mods.get(i);
+			Mod mod = ModLoader.mods.get(i);
 			Logger.info("Post-initiating " + mod);
-			ModLoader.postInit(mod);
+			mod.postInit();
 		}
 		l.finishLoading();
 
@@ -212,7 +212,7 @@ public class LoadThread extends Thread {
 			    String className = je.getName().substring(0, je.getName().length()-6);
 			    className = className.replace('/', '.');
 			    Class<?> c = cl.loadClass(className);
-			    if (c.isAnnotationPresent(Mod.class)) modClasses.add(c);
+			    if (c.isAssignableFrom(Mod.class)) modClasses.add(c);
 	
 			}
 			jarFile.close();

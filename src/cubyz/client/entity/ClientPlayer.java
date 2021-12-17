@@ -40,11 +40,11 @@ public class ClientPlayer extends Player {
 		double py = Cubyz.player.getPosition().y;
 		double pz = Cubyz.player.getPosition().z;
 		NormalChunk ch = Cubyz.world.getChunk((int) px >> NormalChunk.chunkShift, (int) py >> NormalChunk.chunkShift, (int) pz >> NormalChunk.chunkShift);
-		boolean inReduced =
-				   Cubyz.world.hasReducedChunk((int)px, (int)py, (int)pz, 16)
-				|| Cubyz.world.hasReducedChunk((int)px, (int)py, (int)pz, 8)
-				|| Cubyz.world.hasReducedChunk((int)px, (int)py, (int)pz, 4)
-				|| Cubyz.world.hasReducedChunk((int)px, (int)py, (int)pz, 2);
+		boolean inReduced = false;
+		//		   Cubyz.world.hasReducedChunk((int)px, (int)py, (int)pz, 16) // TODO: Implement this properly, to work with the RenderOcttree.
+		//		|| Cubyz.world.hasReducedChunk((int)px, (int)py, (int)pz, 8)
+		//		|| Cubyz.world.hasReducedChunk((int)px, (int)py, (int)pz, 4)
+		//		|| Cubyz.world.hasReducedChunk((int)px, (int)py, (int)pz, 2);
 		if (ch == null || !ch.isGenerated() || inReduced) {
 			if (ch != null)
 				Cubyz.world.queueChunk(ch); // Seems like the chunk didn't get loaded correctly.

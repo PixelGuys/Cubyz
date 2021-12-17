@@ -37,6 +37,8 @@ public class ClientSettings {
 	public static boolean easyLighting = true; // Enables the easy-lighting system.
 
 	public static int GUI_SCALE = 2;
+
+	public static boolean musicOnOff = true; //Turn on or off the music
 	
 
 	/**Not actually a setting, but stored here anyways.*/
@@ -63,7 +65,8 @@ public class ClientSettings {
 		settings.put("highestLOD", ClientSettings.HIGHEST_LOD);
 		settings.put("farDistanceFactor", ClientSettings.LOD_FACTOR);
 		settings.put("fieldOfView", ClientSettings.FOV);
-		
+		settings.put("musicOnOff", ClientSettings.musicOnOff);
+
 		try {
 			FileWriter writer = new FileWriter("settings.json");
 			writer.append(settings.toString());
@@ -112,6 +115,8 @@ public class ClientSettings {
 		FOV = settings.getFloat("fieldOfView", FOV);
 
 		EFFECTIVE_RENDER_DISTANCE = (RENDER_DISTANCE + ((((int)(RENDER_DISTANCE*LOD_FACTOR) & ~1) << HIGHEST_LOD)));
+
+		musicOnOff = settings.getBool("musicOnOff", musicOnOff);
 	}
 	
 }

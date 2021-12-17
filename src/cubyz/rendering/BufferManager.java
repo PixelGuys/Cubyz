@@ -25,7 +25,7 @@ public class BufferManager {
 
 		positionTexture = glGenTextures();
 
-		updateBufferSize();
+		updateBufferSize(Window.getWidth(), Window.getHeight());
 
 		glBindFramebuffer(GL_FRAMEBUFFER, buffer);
 
@@ -43,25 +43,25 @@ public class BufferManager {
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, positionTexture, 0);
 	}
 
-	private void regenTexture(int texture, int internalFormat, int format) {
+	private void regenTexture(int texture, int internalFormat, int format, int width, int height) {
 		glBindTexture(GL_TEXTURE_2D, texture);
 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		
-		glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, Window.getWidth(), Window.getHeight(), 0, format, GL_UNSIGNED_BYTE, (ByteBuffer) null);
+		glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, (ByteBuffer) null);
 
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 
-	public void updateBufferSize() {
+	public void updateBufferSize(int width, int height) {
 		glBindFramebuffer(GL_FRAMEBUFFER, buffer);
 
-		regenTexture(colorTexture, GL_RGBA8, GL_RGBA);
-		regenTexture(positionTexture, GL_RGB16F, GL_RGB);
+		regenTexture(colorTexture, GL_RGBA8, GL_RGBA, width, height);
+		regenTexture(positionTexture, GL_RGB16F, GL_RGB, width, height);
 
 		glBindRenderbuffer(GL_RENDERBUFFER, depthBuffer);
-		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, Window.getWidth(), Window.getHeight());
+		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
 		glBindRenderbuffer(GL_RENDERBUFFER, 0);
 
 		glDrawBuffers(new int[]{GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1});

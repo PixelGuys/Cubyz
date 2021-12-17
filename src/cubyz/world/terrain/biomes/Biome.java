@@ -60,7 +60,7 @@ public class Biome extends ChanceObject implements RegistryElement {
 	public final float roughness;
 	public final float hills;
 	public final float mountains;
-	public final Resource identifier;
+	private final Resource identifier;
 	public final BlockStructure struct;
 	/** Whether the starting point of a river can be in this biome. If false rivers will be able to flow through this biome anyways. */
 	public final boolean supportsRivers;

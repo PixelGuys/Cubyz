@@ -2,9 +2,11 @@ package cubyz.world.terrain.generators;
 
 import java.util.Random;
 
+import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Resource;
+import cubyz.utils.json.JsonObject;
 import cubyz.world.Chunk;
-import cubyz.world.ServerWorld;
+import cubyz.world.ChunkManager;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.Blocks.BlockClass;
 import cubyz.world.terrain.MapFragment;
@@ -15,12 +17,12 @@ import cubyz.world.terrain.MapFragment;
 
 public class CrystalCavernGenerator implements Generator {
 	
-	private static final String[] COLORS = new String[] {
+	private String[] COLORS = new String[] {
 		"red", "orange", "yellow", "green", "cyan", "blue", "violet", "purple", // 8 Base colors
 		"dark_red", "dark_green", "light_blue", "brown", // 4 darker colors
 		"white", "gray", "dark_gray", "black", // 4 grayscale colors
 	};
-	private static final int[] glowCrystals = new int[COLORS.length], glowOres = new int[COLORS.length];
+	private int[] glowCrystals = new int[COLORS.length], glowOres = new int[COLORS.length];
 	
 	private static ThreadLocal<int[][]> crystalDataArray = new ThreadLocal<int[][]>() {
 		@Override
@@ -29,7 +31,24 @@ public class CrystalCavernGenerator implements Generator {
 		}
 	};
 	
-	public static void init() {
+	private static final int range = 3;
+	private static final int CRYSTAL_CHUNK_SIZE = 256;
+
+	private int water;
+	private int ice;
+	private int stone;
+	
+
+	public CrystalCavernGenerator() {
+		water = ice = stone = 0;
+	}
+
+	@Override
+	public void init(JsonObject parameters, CurrentWorldRegistries registries) {
+		water = Blocks.getByID("cubyz:water");
+		ice = Blocks.getByID("cubyz:ice");
+		stone = Blocks.getByID("cubyz:stone");
+		
 		// Find all the glow crystal ores:
 		for(int i = 0; i < COLORS.length; i++) {
 			String color = COLORS[i];
@@ -49,16 +68,9 @@ public class CrystalCavernGenerator implements Generator {
 	public int getPriority() {
 		return 65537; // Directly after normal caves.
 	}
-	
-	private static final int range = 3;
-	private int water = Blocks.getByID("cubyz:water");
-	private int ice = Blocks.getByID("cubyz:ice");
-	private int stone = Blocks.getByID("cubyz:stone");
-	
-	private static final int CRYSTAL_CHUNK_SIZE = 256;
 
 	@Override
-	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, MapFragment map, ServerWorld world) {
+	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, MapFragment map, ChunkManager generator) {
 		if (chunk.voxelSize > 2) return;
 		int ccx = wx/CRYSTAL_CHUNK_SIZE;
 		int ccy = wy/CRYSTAL_CHUNK_SIZE;

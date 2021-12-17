@@ -47,7 +47,7 @@ public class RenderOctTree {
 				dz = Math.max(0, dz - size/2);
 				double minDist = dx*dx + dy*dy + dz*dz;
 				// Check if this chunk is outside the nearRenderDistance or outside the height limits:
-				if (y + size <= Cubyz.world.getOrGenerateMapFragment(x, z, 32).getMinHeight() || y > Cubyz.world.getOrGenerateMapFragment(x, z, 32).getMaxHeight()) {
+				if (y + size <= Cubyz.world.chunkManager.getOrGenerateMapFragment(x, z, 32).getMinHeight() || y > Cubyz.world.chunkManager.getOrGenerateMapFragment(x, z, 32).getMaxHeight()) {
 					if (minDist > nearRenderDistance*nearRenderDistance) {
 						if (nextNodes != null) {
 							for(int i = 0; i < 8; i++) {
@@ -171,7 +171,7 @@ public class RenderOctTree {
 				
 				for(int z = minZ; z <= maxZ; z += LODSize) {
 					// Make sure underground chunks are only generated if they are close to the player.
-					if (y + LODSize <= Cubyz.world.getOrGenerateMapFragment(x, z, 32).getMinHeight() || y > Cubyz.world.getOrGenerateMapFragment(x, z, 32).getMaxHeight()) {
+					if (y + LODSize <= Cubyz.world.chunkManager.getOrGenerateMapFragment(x, z, 32).getMinHeight() || y > Cubyz.world.chunkManager.getOrGenerateMapFragment(x, z, 32).getMaxHeight()) {
 						int dx = Math.max(0, Math.abs(x + LODSize/2 - px) - LODSize/2);
 						int dy = Math.max(0, Math.abs(y + LODSize/2 - py) - LODSize/2);
 						int dz = Math.max(0, Math.abs(z + LODSize/2 - pz) - LODSize/2);
@@ -192,7 +192,7 @@ public class RenderOctTree {
 						node.shouldBeRemoved = false;
 					}
 					newMap.put(key, node);
-					node.update(px, py, pz, renderDistance*NormalChunk.chunkSize, maxRenderDistance, Cubyz.world.getOrGenerateMapFragment(x, z, 32).getMinHeight(), Cubyz.world.getOrGenerateMapFragment(x, z, 32).getMaxHeight(), nearRenderDistance, meshRequests);
+					node.update(px, py, pz, renderDistance*NormalChunk.chunkSize, maxRenderDistance, Cubyz.world.chunkManager.getOrGenerateMapFragment(x, z, 32).getMinHeight(), Cubyz.world.chunkManager.getOrGenerateMapFragment(x, z, 32).getMaxHeight(), nearRenderDistance, meshRequests);
 				}
 			}
 		}

@@ -2,10 +2,12 @@ package cubyz.world.terrain.generators;
 
 import java.util.Random;
 
+import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Resource;
+import cubyz.utils.json.JsonObject;
 import cubyz.world.Chunk;
 import cubyz.world.NormalChunk;
-import cubyz.world.ServerWorld;
+import cubyz.world.ChunkManager;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.terrain.MapFragment;
 
@@ -14,6 +16,16 @@ import cubyz.world.terrain.MapFragment;
  */
 
 public class CaveGenerator implements Generator {
+	
+	private static final int range = 8;
+	private int water;
+	private int ice;
+
+	@Override
+	public void init(JsonObject parameters, CurrentWorldRegistries registries) {
+		water = Blocks.getByID("cubyz:water");
+		ice = Blocks.getByID("cubyz:ice");
+	}
 	
 	@Override
 	public Resource getRegistryID() {
@@ -25,12 +37,8 @@ public class CaveGenerator implements Generator {
 		return 65536;
 	}
 	
-	private static final int range = 8;
-	private static int water = Blocks.getByID("cubyz:water");
-	private static int ice = Blocks.getByID("cubyz:ice");
-	
 	@Override
-	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, MapFragment map, ServerWorld world) {
+	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, MapFragment map, ChunkManager generator) {
 		if (chunk.getVoxelSize() > 2) return;
 		Random rand = new Random(seed);
 		int rand1 = rand.nextInt() | 1;

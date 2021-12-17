@@ -4,7 +4,6 @@ import java.util.ArrayList;
 
 import cubyz.api.CubyzRegistries;
 import cubyz.api.CurrentWorldRegistries;
-import cubyz.api.EventHandler;
 import cubyz.api.Mod;
 import cubyz.api.Proxy;
 import cubyz.api.Registry;
@@ -25,27 +24,39 @@ import cubyz.world.terrain.biomes.Biome;
 import cubyz.world.terrain.biomes.GroundPatch;
 import cubyz.world.terrain.biomes.SimpleTreeModel;
 import cubyz.world.terrain.biomes.SimpleVegetation;
-import cubyz.world.terrain.worldgenerators.FlatlandGenerator;
-import cubyz.world.terrain.worldgenerators.LifelandGenerator;
-import cubyz.world.terrain.worldgenerators.SurfaceGenerator;
+import cubyz.world.terrain.generators.CaveGenerator;
+import cubyz.world.terrain.generators.CrystalCavernGenerator;
+import cubyz.world.terrain.generators.OreGenerator;
+import cubyz.world.terrain.generators.StructureGenerator;
+import cubyz.world.terrain.generators.TerrainGenerator;
+import cubyz.world.terrain.worldgenerators.FlatLand;
+import cubyz.world.terrain.worldgenerators.MapGenV1;
+import cubyz.world.terrain.worldgenerators.PolarCircles;
 
 /**
  * Mod adding Cubyz default content, which is not added by addon files.
  */
-@Mod(id = "cubyz", name = "Cubyz")
-public class BaseMod {
+public class BaseMod implements Mod {
+
+	@Override
+	public String id() {
+		return "cubyz";
+	}
+
+	@Override
+	public String name() {
+		return "Cubyz";
+	}
 	
 	// Client Proxy is defined in cubyz-client, a normal mod would define it in the same mod of course.
 	// Proxies are injected at runtime.
 	@Proxy(clientProxy = "cubyz.modding.base.ClientProxy", serverProxy = "cubyz.modding.base.CommonProxy")
 	static CommonProxy proxy;
 	
-	@EventHandler(type = "init")
+	@Override
 	public void init() {
 		// Both commands and recipes don't have any attributed EventHandler
 		// As they are independent to other (the correct order for others is block -> item (for item blocks and other items) -> entity)
-		registerWorldGenerators(CubyzRegistries.STELLAR_TORUS_GENERATOR_REGISTRY);
-		
 		CubyzRegistries.COMMAND_REGISTRY.register(new GameTimeCycleCommand());
 		CubyzRegistries.COMMAND_REGISTRY.register(new GiveCommand());
 		CubyzRegistries.COMMAND_REGISTRY.register(new ClearCommand());
@@ -57,13 +68,24 @@ public class BaseMod {
 		proxy.init();
 	}
 
-	@EventHandler(type = "preInit")
+	@Override
 	public void preInit() {
 		registerModifiers(CubyzRegistries.TOOL_MODIFIER_REGISTRY);
 
 		CubyzRegistries.STRUCTURE_REGISTRY.register(new SimpleTreeModel());
 		CubyzRegistries.STRUCTURE_REGISTRY.register(new SimpleVegetation());
 		CubyzRegistries.STRUCTURE_REGISTRY.register(new GroundPatch());
+
+		CubyzRegistries.GENERATORS.registerAll(new TerrainGenerator());
+		CubyzRegistries.GENERATORS.registerAll(new OreGenerator());
+		CubyzRegistries.GENERATORS.registerAll(new CaveGenerator());
+		CubyzRegistries.GENERATORS.registerAll(new CrystalCavernGenerator());
+		CubyzRegistries.GENERATORS.registerAll(new StructureGenerator());
+
+		CubyzRegistries.CLIMATE_GENERATOR_REGISTRY.register(new PolarCircles());
+		CubyzRegistries.CLIMATE_GENERATOR_REGISTRY.register(new FlatLand());
+
+		CubyzRegistries.MAP_GENERATOR_REGISTRY.register(new MapGenV1());
 		
 		CubyzRegistries.BLOCK_REGISTRIES.register(new Blocks());
 		
@@ -71,14 +93,10 @@ public class BaseMod {
 		proxy.preInit();
 	}
 	
-	@EventHandler(type = "register:entity")
+	@Override
 	public void registerEntities(Registry<EntityType> reg) {
 		reg.register(new Pig());
 		reg.register(new PlayerEntity());
-	}
-	
-	public void registerWorldGenerators(Registry<SurfaceGenerator> reg) {
-		reg.registerAll(new LifelandGenerator(), new FlatlandGenerator());
 	}
 	
 	public void registerModifiers(Registry<Modifier> reg) {
@@ -86,7 +104,7 @@ public class BaseMod {
 		reg.register(new Regrowth());
 	}
 
-	@EventHandler(type = "postWorldGen")
+	@Override
 	public void postWorldGen(CurrentWorldRegistries registries) {
 		// Get a list of replacement biomes for each biome:
 		for(Biome biome : registries.biomeRegistry.registered(new Biome[0])) {

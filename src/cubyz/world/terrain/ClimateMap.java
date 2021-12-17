@@ -1,28 +1,28 @@
 package cubyz.world.terrain;
 
 import cubyz.utils.datastructures.Cache;
-import cubyz.world.terrain.biomes.Biome;
+import cubyz.world.ServerWorld;
 
 public class ClimateMap {
 	private static final int CACHE_SIZE = 1 << 8; // Must be a power of 2!
 	private static final int CACHE_MASK = CACHE_SIZE - 1;
 	private static final int ASSOCIATIVITY = 4;
 	private static final Cache<ClimateMapFragment> cache = new Cache<ClimateMapFragment>(new ClimateMapFragment[CACHE_SIZE][ASSOCIATIVITY]);
-	private static long seed = 0;
-	public static Biome.Type[][] getBiomeMap(long seed, int wx, int wz, int width, int height) {
-		if (seed != ClimateMap.seed) {
+	private static ServerWorld world = null;
+	public static BiomePoint[][] getBiomeMap(ServerWorld world, int wx, int wz, int width, int height) {
+		if (world != ClimateMap.world) {
 			cache.clear(); // Clear the cache if the world changed!
-			ClimateMap.seed = seed;
+			ClimateMap.world = world;
 		}
 		
-		Biome.Type[][] map = new Biome.Type[width/MapFragment.BIOME_SIZE][height/MapFragment.BIOME_SIZE];
+		BiomePoint[][] map = new BiomePoint[width/MapFragment.BIOME_SIZE][height/MapFragment.BIOME_SIZE];
 		int wxStart = wx & ~ClimateMapFragment.MAP_MASK;
 		int wzStart = wz & ~ClimateMapFragment.MAP_MASK;
 		int wxEnd = wx+width & ~ClimateMapFragment.MAP_MASK;
 		int wzEnd = wz+height & ~ClimateMapFragment.MAP_MASK;
 		for(int x = wxStart; x <= wxEnd; x += ClimateMapFragment.MAP_SIZE) {
 			for(int z = wzStart; z <= wzEnd; z += ClimateMapFragment.MAP_SIZE) {
-				ClimateMapFragment mapPiece = getOrGenerateFragment(seed, x, z);
+				ClimateMapFragment mapPiece = getOrGenerateFragment(world, x, z);
 				// Offset of the indices in the result map:
 				int xOffset = (x - wx) >> MapFragment.BIOME_SHIFT;
 				int zOffset = (z - wz) >> MapFragment.BIOME_SHIFT;
@@ -56,7 +56,7 @@ public class ClimateMap {
 		}
 	}
 	
-	public static ClimateMapFragment getOrGenerateFragment(long seed, int wx, int wz) {
+	public static ClimateMapFragment getOrGenerateFragment(ServerWorld world, int wx, int wz) {
 		int hash = ClimateMapFragment.hashCode(wx, wz) & CACHE_MASK;
 		ClimateMapFragment ret = cache.find(new ClimateMapFragmentComparator(wx, wz), hash);
 		if (ret != null) return ret;
@@ -64,7 +64,8 @@ public class ClimateMap {
 			// Try again in case it was already generated in another thread:
 			ret = cache.find(new ClimateMapFragmentComparator(wx, wz), hash);
 			if (ret != null) return ret;
-			ret = new ClimateMapFragment(seed, wx, wz);
+			ret = new ClimateMapFragment(world, wx, wz);
+			world.chunkManager.climateGenerator.generateMapFragment(ret);
 			cache.addToCache(ret, ret.hashCode() & CACHE_MASK);
 			return ret;
 		}

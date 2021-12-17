@@ -122,10 +122,9 @@ public class MainRenderer {
 
 	public void init() throws Exception {
 		transformation = new Transformation();
-		Transformation.updateProjectionMatrix(Window.getProjectionMatrix(), (float)Math.toRadians(ClientSettings.FOV),
-		Window.getWidth(), Window.getHeight(), Z_NEAR, Z_FAR);
 		loadShaders();
 		createFrameBuffer();
+		updateViewport(Window.getWidth(), Window.getHeight(), ClientSettings.FOV);
 		inited = true;
 	}
 	
@@ -161,6 +160,15 @@ public class MainRenderer {
 		}
 		return output;
 	}
+
+	public void updateViewport(int width, int height, float fov) {
+		glViewport(0, 0, width, height);
+		Transformation.updateProjectionMatrix(Window.getProjectionMatrix(), (float)Math.toRadians(fov), width, height, Z_NEAR, Z_FAR);
+		// Use a projection matrix that prevent z-fighting:
+		Transformation.updateProjectionMatrix(ReducedChunkMesh.projMatrix, (float)Math.toRadians(fov), width, height, 2.0f, 16384.0f);
+		
+		buffers.updateBufferSize(width, height);
+	}
 	
 	/**
 	 * Render the current world.
@@ -171,15 +179,8 @@ public class MainRenderer {
 			GameLauncher.instance.exit();
 		}
 		if (Window.isResized()) {
-			glViewport(0, 0, Window.getWidth(), Window.getHeight());
 			Window.setResized(false);
-			Transformation.updateProjectionMatrix(Window.getProjectionMatrix(), (float)Math.toRadians(ClientSettings.FOV),
-			Window.getWidth(), Window.getHeight(), Z_NEAR, Z_FAR);
-			// Use a projection matrix that prevent z-fighting:
-			Transformation.updateProjectionMatrix(ReducedChunkMesh.projMatrix, (float)Math.toRadians(ClientSettings.FOV),
-			    Window.getWidth(), Window.getHeight(), 2.0f, 16384.0f);
-			
-			buffers.updateBufferSize();
+			updateViewport(Window.getWidth(), Window.getHeight(), ClientSettings.FOV);
 		}
 
 		BlockMeshes.loadMeshes(); // Loads all meshes that weren't loaded yet.
@@ -440,11 +441,16 @@ public class MainRenderer {
 		glUniform1i(DeferredUniforms.loc_color, 4);
 		glUniform1i(DeferredUniforms.loc_position, 3);
 
+		if(Window.getRenderTarget() != null)
+			Window.getRenderTarget().bind();
+
 		glBindVertexArray(Graphics.rectVAO);
 		glDisable(GL_DEPTH_TEST);
 		glDisable(GL_CULL_FACE);
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
+		if(Window.getRenderTarget() != null)
+			Window.getRenderTarget().unbind();
 	}
 
 	public void setPath(String dataName, String path) {

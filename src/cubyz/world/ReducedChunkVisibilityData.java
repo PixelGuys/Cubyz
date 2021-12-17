@@ -52,7 +52,7 @@ public class ReducedChunkVisibilityData extends ChunkData {
 		for(int x = 0; x <= 1; x++) {
 			for(int y = 0; y <= 1; y++) {
 				for(int z = 0; z <= 1; z++) {
-					chunks[x*4 + y*2 + z] = world.getOrGenerateReducedChunk((wx & ~chunkMask) + x*chunkSize, (wy & ~chunkMask) + y*chunkSize, (wz & ~chunkMask) + z*chunkSize, voxelSize);
+					chunks[x*4 + y*2 + z] = world.chunkManager.getOrGenerateReducedChunk((wx & ~chunkMask) + x*chunkSize, (wy & ~chunkMask) + y*chunkSize, (wz & ~chunkMask) + z*chunkSize, voxelSize);
 				}
 			}
 		}

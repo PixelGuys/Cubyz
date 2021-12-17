@@ -46,19 +46,6 @@ public class WorldIO {
 			return -1;
 		}
 	}
-	
-	public String loadWorldGenerator() {
-		try {
-			JsonObject worldData = JsonParser.parseObjectFromFile(dir+"/world.dat");
-			if (worldData.getInt("version", -1) != WORLD_DATA_VERSION) {
-				throw new IOException("Cannot read version " + worldData.getInt("version", -1));
-			}
-			return worldData.getString("generator", "cubyz:lifeland");
-		} catch (IOException e) {
-			Logger.error(e);
-			return "cubyz:lifeland";
-		}
-	}
 
 	public void loadWorldData() {
 		try {
@@ -92,7 +79,6 @@ public class WorldIO {
 			JsonObject worldData = new JsonObject();
 			worldData.put("version", WORLD_DATA_VERSION);
 			worldData.put("seed", world.getSeed());
-			worldData.put("generator", world.getGenerator().getRegistryID().toString());
 			worldData.put("doGameTimeCycle", world.shouldDoGameTimeCycle());
 			worldData.put("gameTime", world.getGameTime());
 			worldData.put("entityCount", world == null ? 0 : world.getEntities().length);

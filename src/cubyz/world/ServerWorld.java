@@ -18,12 +18,11 @@ import cubyz.api.CurrentWorldRegistries;
 import cubyz.client.ClientSettings;
 import cubyz.client.GameLauncher;
 import cubyz.modding.ModLoader;
-import cubyz.utils.datastructures.Cache;
 import cubyz.utils.datastructures.HashMapKey3D;
-import cubyz.utils.math.CubyzMath;
+import cubyz.utils.json.JsonObject;
+import cubyz.utils.json.JsonParser;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.BlockEntity;
-import cubyz.world.blocks.Ore;
 import cubyz.world.entity.ChunkEntityManager;
 import cubyz.world.entity.Entity;
 import cubyz.world.entity.ItemEntityManager;
@@ -34,11 +33,7 @@ import cubyz.world.items.BlockDrop;
 import cubyz.world.items.ItemStack;
 import cubyz.world.save.WorldIO;
 import cubyz.world.terrain.MapFragment;
-import cubyz.world.terrain.MapFragmentCompare;
 import cubyz.world.terrain.biomes.Biome;
-import cubyz.world.terrain.generators.CrystalCavernGenerator;
-import cubyz.world.terrain.worldgenerators.LifelandGenerator;
-import cubyz.world.terrain.worldgenerators.SurfaceGenerator;
 import cubyz.server.Server;
 
 public class ServerWorld {
@@ -51,11 +46,9 @@ public class ServerWorld {
 	private int lastX = Integer.MAX_VALUE, lastY = Integer.MAX_VALUE, lastZ = Integer.MAX_VALUE; // Chunk coordinates of the last chunk update.
 	private ArrayList<Entity> entities = new ArrayList<>();
 	
-	private SurfaceGenerator generator;
+	final WorldIO wio;
 	
-	private WorldIO wio;
-	
-	private final ChunkGenerationThreadPool threadPool;
+	public final ChunkManager chunkManager;
 	private boolean generated;
 
 	private long gameTime;
@@ -73,28 +66,6 @@ public class ServerWorld {
 	
 	float ambientLight = 0f;
 	Vector4f clearColor = new Vector4f(0, 0, 0, 1.0f);
-
-	// There will be at most 1 GB of reduced chunks in here.
-	private static final int CHUNK_CACHE_MASK = 8191;
-	private final Cache<ReducedChunk> reducedChunkCache = new Cache<ReducedChunk>(new ReducedChunk[CHUNK_CACHE_MASK+1][4]);
-	// There will be at most 1 GB of map data in here.
-	private static final int[] MAP_CACHE_MASK = {
-		7, // 256 MB // 4(1 in best-case) maps are needed at most for each player. So 32 will be enough for 8(32 in best case) player groups.
-		31, // 256 MB
-		63, // 128 MB
-		255, // 128 MB
-		511, // 64 MB
-		2047, // 64 MB
-	};
-	@SuppressWarnings("unchecked")
-	private final Cache<MapFragment>[] mapCache = new Cache[] {
-	    new Cache<MapFragment>(new MapFragment[MAP_CACHE_MASK[0] + 1][4]),
-	    new Cache<MapFragment>(new MapFragment[MAP_CACHE_MASK[1] + 1][4]),
-	    new Cache<MapFragment>(new MapFragment[MAP_CACHE_MASK[2] + 1][4]),
-	    new Cache<MapFragment>(new MapFragment[MAP_CACHE_MASK[3] + 1][4]),
-	    new Cache<MapFragment>(new MapFragment[MAP_CACHE_MASK[4] + 1][4]),
-	    new Cache<MapFragment>(new MapFragment[MAP_CACHE_MASK[5] + 1][4]),
-	};
 	
 	public final Class<?> chunkProvider;
 	
@@ -105,7 +76,14 @@ public class ServerWorld {
 	
 	public CurrentWorldRegistries registries;
 	
-	public ServerWorld(String name, Class<?> chunkProvider) {
+	public ServerWorld(String name, JsonObject generatorSettings, Class<?> chunkProvider) {
+		if(generatorSettings == null) {
+			generatorSettings = JsonParser.parseObjectFromFile("saves/" + name + "/generatorSettings.json");
+		} else {
+			// Store generator settings:
+			Logger.debug("Store");
+			JsonParser.storeToFile(generatorSettings, "saves/" + name + "/generatorSettings.json");
+		}
 		this.name = name;
 		this.chunkProvider = chunkProvider;
 		// Check if the chunkProvider is valid:
@@ -127,40 +105,16 @@ public class ServerWorld {
 		} else {
 			seed = new Random().nextInt();
 			registries = new CurrentWorldRegistries(this);
-			setGenerator("cubyz:lifeland");
 			wio.saveWorldData();
 		}
-		String generatorId = "cubyz:lifeland";
-		if (wio.hasWorldData()) {
-			generatorId = wio.loadWorldGenerator();
-		}
-		setGenerator(generatorId);
-		
 		// Call mods for this new world. Mods sometimes need to do extra stuff for the specific world.
 		ModLoader.postWorldGen(registries);
 
-		threadPool = new ChunkGenerationThreadPool(this, Runtime.getRuntime().availableProcessors() - 1);
-	}
-	
-	public void setGenerator(String generatorId) {
-		generator = registries.worldGeneratorRegistry.getByID(generatorId);
-		if (generator == null) {
-			throw new IllegalArgumentException("The world uses unsupported generator " + generatorId);
-		}
-		if (generator instanceof LifelandGenerator) {
-			((LifelandGenerator) generator).sortGenerators();
-		}
-	}
-	
-	public SurfaceGenerator getGenerator() {
-		return generator;
+		chunkManager = new ChunkManager(this, generatorSettings, Runtime.getRuntime().availableProcessors() - 1);
 	}
 
 	// Returns the blocks, so their meshes can be created and stored.
 	public void generate() {
-		// Init generators:
-		CrystalCavernGenerator.init();
-		LifelandGenerator.initOres(registries.oreRegistry.registered(new Ore[0]));
 
 		wio.loadWorldData(); // load data here in order for entities to also be loaded.
 		
@@ -189,7 +143,7 @@ public class ServerWorld {
 				if (isValidSpawnLocation(dx, dz))
 					break;
 			}
-			int startY = (int)getOrGenerateMapFragment((int)dx, (int)dz, 1).getHeight(dx, dz);
+			int startY = (int)chunkManager.getOrGenerateMapFragment((int)dx, (int)dz, 1).getHeight(dx, dz);
 			seek((int)dx, startY, (int)dz, ClientSettings.RENDER_DISTANCE, ClientSettings.EFFECTIVE_RENDER_DISTANCE*NormalChunk.chunkSize*2);
 			player.setPosition(new Vector3i(dx, startY+2, dz));
 			Logger.info("OK!");
@@ -207,13 +161,7 @@ public class ServerWorld {
 			if (chunk != null) chunk.save();
 		}
 		wio.saveWorldData();
-		for(Cache<MapFragment> cache : mapCache) {
-			cache.foreach((map) -> {
-				map.mapIO.saveData();
-			});
-			cache.clear();
-		}
-		
+		chunkManager.forceSave();
 	}
 	
 	public void addEntity(Entity ent) {
@@ -327,7 +275,7 @@ public class ServerWorld {
 				ambientLight = 0.1f;
 				clearColor.x = clearColor.y = clearColor.z = 0;
 			} else if (dayTime > (dayCycle >> 2)+(dayCycle >> 4)) {
-				ambientLight = 0.7f;
+				ambientLight = 1.0f;
 				clearColor.x = clearColor.y = 0.8f;
 				clearColor.z = 1.0f;
 			} else {
@@ -353,7 +301,7 @@ public class ServerWorld {
 				}
 				dayTime -= (dayCycle >> 2);
 				dayTime <<= 3;
-				ambientLight = 0.4f + 0.3f*dayTime/(dayCycle >> 1);
+				ambientLight = 0.55f + 0.45f*dayTime/(dayCycle >> 1);
 			}
 		}
 		// Entities
@@ -433,15 +381,15 @@ public class ServerWorld {
 	}
 
 	public void queueChunk(ChunkData ch) {
-		threadPool.queueChunk(ch);
+		chunkManager.queueChunk(ch);
 	}
 	
 	public void unQueueChunk(ChunkData ch) {
-		threadPool.unQueueChunk(ch);
+		chunkManager.unQueueChunk(ch);
 	}
 	
 	public int getChunkQueueSize() {
-		return threadPool.getChunkQueueSize();
+		return chunkManager.getChunkQueueSize();
 	}
 	
 	public void seek(int x, int y, int z, int renderDistance, int regionRenderDistance) {
@@ -481,73 +429,6 @@ public class ServerWorld {
 			lastY = yOld;
 			lastZ = zOld;
 		}
-	}
-
-	public MapFragment getOrGenerateMapFragment(int wx, int wz, int voxelSize) {
-		wx &= ~MapFragment.MAP_MASK;
-		wz &= ~MapFragment.MAP_MASK;
-
-		MapFragmentCompare data = new MapFragmentCompare(wx, wz, voxelSize);
-		int index = CubyzMath.binaryLog(voxelSize);
-		int hash = data.hashCode() & MAP_CACHE_MASK[index];
-
-		MapFragment res = mapCache[index].find(data, hash);
-		if (res != null) return res;
-
-		synchronized(mapCache[index].cache[hash]) {
-			res = mapCache[index].find(data, hash);
-			if (res != null) return res;
-
-			// Generate a new map fragment:
-			res = new MapFragment(wx, wz, seed, this, registries, wio, voxelSize);
-			MapFragment old = mapCache[index].addToCache(res, hash);
-			if (old != null)
-				old.mapIO.saveData();
-		}
-		return res;
-	}
-	
-	public MapFragment getNoGenerateRegion(int wx, int wz, int voxelSize) {
-		wx &= ~MapFragment.MAP_MASK;
-		wz &= ~MapFragment.MAP_MASK;
-
-		MapFragmentCompare data = new MapFragmentCompare(wx, wz, voxelSize);
-		int index = CubyzMath.binaryLog(voxelSize);
-		int hash = data.hashCode() & MAP_CACHE_MASK[index];
-
-		MapFragment res = mapCache[index].find(data, hash);
-		return res;
-	}
-
-	/**
-	 * Only for internal use. Generates a reduced chunk at a given location, or if possible gets it from the cache.
-	 * @param wx
-	 * @param wy
-	 * @param wz
-	 * @param voxelSize
-	 * @return
-	 */
-	public ReducedChunk getOrGenerateReducedChunk(int wx, int wy, int wz, int voxelSize) {
-		ChunkData data = new ChunkData(wx, wy, wz, voxelSize);
-		int hash = data.hashCode() & CHUNK_CACHE_MASK;
-		ReducedChunk res = reducedChunkCache.find(data, hash);
-		if (res != null) return res;
-		synchronized(reducedChunkCache.cache[hash]) {
-			res = reducedChunkCache.find(data, hash);
-			if (res != null) return res;
-			// Generate a new chunk:
-			res = new ReducedChunk(wx, wy, wz, CubyzMath.binaryLog(voxelSize));
-			res.generateFrom(generator);
-			reducedChunkCache.addToCache(res, hash);
-		}
-		return res;
-	}
-	
-	public boolean hasReducedChunk(int wx, int wy, int wz, int voxelSize) {
-		ChunkData data = new ChunkData(wx, wy, wz, voxelSize);
-		int hash = data.hashCode() & CHUNK_CACHE_MASK;
-		ReducedChunk res = reducedChunkCache.find(data, hash);
-		return res != null;
 	}
 	
 	public MetaChunk getMetaChunk(int cx, int cy, int cz) {
@@ -624,7 +505,7 @@ public class ServerWorld {
 	}
 	
 	public int getHeight(int wx, int wz) {
-		return (int)getOrGenerateMapFragment(wx, wz, 1).getHeight(wx, wz);
+		return (int)chunkManager.getOrGenerateMapFragment(wx, wz, 1).getHeight(wx, wz);
 	}
 
 	public void cleanup() {
@@ -632,7 +513,7 @@ public class ServerWorld {
 		try {
 			forceSave();
 
-			threadPool.cleanup();
+			chunkManager.cleanup();
 			
 			metaChunks = null;
 		} catch (Exception e) {
@@ -645,7 +526,7 @@ public class ServerWorld {
 	}
 
 	public Biome getBiome(int wx, int wz) {
-		MapFragment reg = getOrGenerateMapFragment(wx, wz, 1);
+		MapFragment reg = chunkManager.getOrGenerateMapFragment(wx, wz, 1);
 		return reg.getBiome(wx, wz);
 	}
 

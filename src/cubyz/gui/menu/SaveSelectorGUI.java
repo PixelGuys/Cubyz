@@ -55,7 +55,7 @@ public class SaveSelectorGUI extends MenuGUI {
 			Button b = new Button(tk);
 			b.setOnAction(() -> {
 				new Thread(() -> Server.main(new String[0]), "Server Thread").start();
-				ServerWorld world = new ServerWorld(name, VisibleChunk.class);
+				ServerWorld world = new ServerWorld(name, null, VisibleChunk.class);
 				Cubyz.gameUI.setMenu(null, false); // hide from UISystem.back()
 				GameLauncher.logic.loadWorld(world);
 			});

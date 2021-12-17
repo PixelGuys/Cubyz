@@ -18,7 +18,7 @@ public class ScrollingContainer extends Container {
 	public void render(int x, int y) {
 		Vector4i oldClip = Graphics.setClip(new Vector4i(x, Window.getHeight() - y - height, width, height));
 		maxY = 0;
-		for (Component child : childrens) {
+		for (Component child : children) {
 			maxY = Math.max(maxY, child.getY()+child.getHeight());
 			child.renderInContainer(x, y - scrollY, width, height);
 		}
@@ -51,5 +51,8 @@ public class ScrollingContainer extends Container {
 		scrollY = Math.min(maxY, scrollY);
 		Graphics.restoreClip(oldClip);
 	}
-	
+
+    public void scrollToEnd(){
+        scrollY = height;
+    }
 }

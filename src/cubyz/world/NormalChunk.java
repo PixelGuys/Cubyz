@@ -15,7 +15,6 @@ import cubyz.world.blocks.Blocks.BlockClass;
 import cubyz.world.save.BlockChange;
 import cubyz.world.save.BlockPalette;
 import cubyz.world.terrain.MapFragment;
-import cubyz.world.terrain.worldgenerators.SurfaceGenerator;
 
 /**
  * 32³ chunk of the world.
@@ -64,12 +63,12 @@ public class NormalChunk extends Chunk {
 		this.cy = cy;
 		this.cz = cz;
 		this.world = world;
-		this.map = world.getOrGenerateMapFragment(wx, wz, 1);
+		this.map = world.chunkManager.getOrGenerateMapFragment(wx, wz, 1);
 		changes = map.mapIO.getBlockChanges(cx, cy, cz);
 	}
 	
-	public void generateFrom(SurfaceGenerator gen) {
-		gen.generate(this, world);
+	public void generateFrom(ChunkManager gen) {
+		gen.generate(this);
 		applyBlockChanges();
 		generated = true;
 	}

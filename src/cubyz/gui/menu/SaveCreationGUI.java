@@ -13,9 +13,12 @@ import cubyz.gui.components.Component;
 import cubyz.gui.components.TextInput;
 import cubyz.rendering.VisibleChunk;
 import cubyz.rendering.text.Fonts;
+import cubyz.utils.json.JsonObject;
+import cubyz.utils.translate.ContextualTextKey;
 import cubyz.utils.translate.TextKey;
 import cubyz.world.ServerWorld;
-import cubyz.world.terrain.worldgenerators.SurfaceGenerator;
+import cubyz.world.terrain.ClimateMapGenerator;
+import cubyz.world.terrain.MapGenerator;
 import cubyz.server.Server;
 
 import static cubyz.client.ClientSettings.GUI_SCALE;
@@ -30,25 +33,20 @@ public class SaveCreationGUI extends MenuGUI {
 	private Button create;
 	private Button cancel;
 	private TextInput name;
-	private Button generator;
-	private Resource[] generators;
+	private Button mapGenerator;
+	private int selectedMapGenerator;
+	private Button climateGenerator;
+	private int selectedClimateGenerator;
+	private Resource[] mapGenerators;
+	private Resource[] climateGenerators;
 	
 	@Override
 	public void init() {
 		name = new TextInput();
 		create = new Button();
 		cancel = new Button();
-		generator = new Button();
-		
-		SurfaceGenerator[] gen = CubyzRegistries.STELLAR_TORUS_GENERATOR_REGISTRY.registered(new SurfaceGenerator[0]);
-		ArrayList<Resource> generatorsName = new ArrayList<>();
-		for (SurfaceGenerator g : gen) {
-			generatorsName.add(g.getRegistryID());
-		}
-		generators = generatorsName.toArray(new Resource[0]);
-		
-		name.setBounds(-250, 100, 500, 40, Component.ALIGN_TOP);
-		name.setFont(Fonts.PIXEL_FONT, 32);
+		mapGenerator = new Button();
+		climateGenerator = new Button();
 		
 		int num = 1;
 		while (new File("saves/Save "+num).exists()) {
@@ -56,32 +54,54 @@ public class SaveCreationGUI extends MenuGUI {
 		}
 		name.setText("Save " + num);
 		
-		generator.setBounds(-250, 160, 400, 40, Component.ALIGN_TOP);
-		generator.setFontSize(16);
-		generator.setText("Generator: " + TextKey.createTextKey("generator.cubyz.lifeland.name").getTranslation());
-		generator.setUserObject(1);
-		generator.setOnAction(() -> {
-			int index = ((Integer) generator.getUserObject() + 1) % generators.length;
-			generator.setUserObject(index);
-			Resource id = generators[index];
-			generator.setText("Generator: " + TextKey.createTextKey("generator." + id.getMod() + "." + id.getID() + ".name").getTranslation());
+		
+		// TODO: Implement a "select" component for that.
+		MapGenerator[] mapGen = CubyzRegistries.MAP_GENERATOR_REGISTRY.registered(new MapGenerator[0]);
+		ArrayList<Resource> generatorsName = new ArrayList<>();
+		selectedMapGenerator = 0;
+		for (MapGenerator g : mapGen) {
+			generatorsName.add(g.getRegistryID());
+		}
+		mapGenerators = generatorsName.toArray(new Resource[0]);
+		
+		mapGenerator.setText(new ContextualTextKey("gui.cubyz.saves.create.mapgen",
+		                     "generator.map." + mapGen[selectedMapGenerator].getRegistryID().getMod() + "."
+		                     + mapGen[selectedMapGenerator].getRegistryID().getID()).getTranslation());
+		mapGenerator.setOnAction(() -> {
+			selectedMapGenerator = (selectedMapGenerator + 1) % mapGenerators.length;
+			Resource id = mapGenerators[selectedMapGenerator];
+			mapGenerator.setText(new ContextualTextKey("gui.cubyz.saves.create.mapgen", "generator.map." + id.getMod() + "." + id.getID()).getTranslation());
 		});
 
-		create.setBounds(10, 60, 200, 50, Component.ALIGN_BOTTOM_LEFT);
+		ClimateMapGenerator[] climateGen = CubyzRegistries.CLIMATE_GENERATOR_REGISTRY.registered(new ClimateMapGenerator[0]);
+		generatorsName.clear();
+		selectedClimateGenerator = 0;
+		for (int i = 0; i < climateGen.length; i++) {
+			generatorsName.add(climateGen[i].getRegistryID());
+			if(climateGen[i].getRegistryID().getID().equals("polar_circles"))
+				selectedClimateGenerator = i; // Select polar circles as default.
+		}
+		climateGenerators = generatorsName.toArray(new Resource[0]);
+		
+		climateGenerator.setText(new ContextualTextKey("gui.cubyz.saves.create.climategen",
+		                         "generator.climate." + climateGen[selectedClimateGenerator].getRegistryID().getMod() + "."
+		                         + climateGen[selectedClimateGenerator].getRegistryID().getID()).getTranslation());
+		climateGenerator.setOnAction(() -> {
+			selectedClimateGenerator = (selectedClimateGenerator + 1) % climateGenerators.length;
+			Resource id = climateGenerators[selectedClimateGenerator];
+			climateGenerator.setText(new ContextualTextKey("gui.cubyz.saves.create.climategen", "generator.climate." + id.getMod() + "." + id.getID()).getTranslation());
+		});
+
 		create.setText(TextKey.createTextKey("gui.cubyz.saves.create"));
-		create.setFontSize(32);
 		create.setOnAction(() -> {
 			new Thread(() -> Server.main(new String[0]), "Server Thread").start();
-			ServerWorld world = new ServerWorld(name.getText(), VisibleChunk.class);
-			world.setGenerator(generators[(int) generator.getUserObject()].toString());
+			ServerWorld world = new ServerWorld(name.getText(), generateSettings(), VisibleChunk.class);
 
 			Cubyz.gameUI.setMenu(null, false); // hide from UISystem.back()
 			GameLauncher.logic.loadWorld(world);
 		});
 
-		cancel.setBounds(110, 60, 100, 50, Component.ALIGN_BOTTOM_RIGHT);
 		cancel.setText(TextKey.createTextKey("gui.cubyz.general.cancel"));
-		cancel.setFontSize(32);
 		cancel.setOnAction(() -> {
 			Cubyz.gameUI.back();
 		});
@@ -89,13 +109,28 @@ public class SaveCreationGUI extends MenuGUI {
 		updateGUIScale();
 	}
 
+	private JsonObject generateSettings() {
+		JsonObject settings = new JsonObject();
+		JsonObject mapGeneratorJson = new JsonObject();
+		mapGeneratorJson.put("id", mapGenerators[selectedMapGenerator].toString());
+		settings.put("mapGenerator", mapGeneratorJson);
+		JsonObject climateGeneratorJson = new JsonObject();
+		climateGeneratorJson.put("id", climateGenerators[selectedClimateGenerator].toString());
+		settings.put("climateGenerator", climateGeneratorJson);
+
+		return settings;
+	}
+
 	@Override
 	public void updateGUIScale() {
 		name.setBounds(-120 * GUI_SCALE, 50 * GUI_SCALE, 250 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_TOP);
 		name.setFont(Fonts.PIXEL_FONT, 16 * GUI_SCALE);
 		
-		generator.setBounds(-120 * GUI_SCALE, 80 * GUI_SCALE, 200 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_TOP);
-		generator.setFontSize(16 * GUI_SCALE);
+		mapGenerator.setBounds(-120 * GUI_SCALE, 80 * GUI_SCALE, 200 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_TOP);
+		mapGenerator.setFontSize(16 * GUI_SCALE);
+		
+		climateGenerator.setBounds(-120 * GUI_SCALE, 110 * GUI_SCALE, 200 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_TOP);
+		climateGenerator.setFontSize(16 * GUI_SCALE);
 
 		create.setBounds(10 * GUI_SCALE, 30 * GUI_SCALE, 150 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_BOTTOM_LEFT);
 		create.setFontSize(16 * GUI_SCALE);
@@ -107,7 +142,8 @@ public class SaveCreationGUI extends MenuGUI {
 	@Override
 	public void render() {
 		name.render();
-		generator.render();
+		mapGenerator.render();
+		climateGenerator.render();
 		create.render();
 		cancel.render();
 	}

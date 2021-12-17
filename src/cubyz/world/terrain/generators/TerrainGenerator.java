@@ -2,9 +2,11 @@ package cubyz.world.terrain.generators;
 
 import java.util.Random;
 
+import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Resource;
+import cubyz.utils.json.JsonObject;
 import cubyz.world.Chunk;
-import cubyz.world.ServerWorld;
+import cubyz.world.ChunkManager;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.terrain.MapFragment;
 import cubyz.world.terrain.biomes.Biome;
@@ -15,6 +17,18 @@ import cubyz.world.terrain.biomes.Biome;
 
 public class TerrainGenerator implements Generator {
 	
+	private int ice;
+	private int stone;
+
+	private int water;
+
+	@Override
+	public void init(JsonObject parameters, CurrentWorldRegistries registries) {
+		water = Blocks.getByID("cubyz:water");
+		ice = Blocks.getByID("cubyz:ice");
+		stone = Blocks.getByID("cubyz:stone");
+	}
+	
 	@Override
 	public int getPriority() {
 		return 1024; // Within Cubyz the first to be executed, but mods might want to come before that for whatever reason.
@@ -24,15 +38,9 @@ public class TerrainGenerator implements Generator {
 	public Resource getRegistryID() {
 		return new Resource("cubyz", "lifeland_terrain");
 	}
-	
-	private static int ice = Blocks.getByID("cubyz:ice");
-	private static int stone = Blocks.getByID("cubyz:stone");
-
-	// Liquid
-	private static int water = Blocks.getByID("cubyz:water");
 
 	@Override
-	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, MapFragment map, ServerWorld world) {
+	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, MapFragment map, ChunkManager generator) {
 		Random rand = new Random(seed);
 		int seedX = rand.nextInt() | 1;
 		int seedZ = rand.nextInt() | 1;

@@ -3,9 +3,7 @@ package cubyz.world;
 
 import org.joml.Vector3f;
 
-import cubyz.client.Cubyz;
 import cubyz.world.blocks.Blocks;
-import cubyz.world.terrain.worldgenerators.SurfaceGenerator;
 
 /**
  * A chunk with smaller resolution(2 blocks, 4 blocks, 8 blocks or 16 blocks). Used to work out the far-distance map of cubyz terrain.<br>
@@ -85,8 +83,8 @@ public class ReducedChunk extends Chunk {
 		blocks[index] = newBlock;
 	}
 	
-	public void generateFrom(SurfaceGenerator gen) {
-		gen.generate(this, Cubyz.world);
+	public void generateFrom(ChunkManager gen) {
+		gen.generate(this);
 		applyBlockChanges();
 		generated = true;
 	}

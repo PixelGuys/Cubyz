@@ -2,9 +2,11 @@ package cubyz.world.terrain.generators;
 
 import java.util.Random;
 
+import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Resource;
+import cubyz.utils.json.JsonObject;
 import cubyz.world.Chunk;
-import cubyz.world.ServerWorld;
+import cubyz.world.ChunkManager;
 import cubyz.world.terrain.MapFragment;
 import cubyz.world.terrain.biomes.Biome;
 import cubyz.world.terrain.biomes.StructureModel;
@@ -16,6 +18,11 @@ import cubyz.world.terrain.noise.StaticBlueNoise;
  */
 
 public class StructureGenerator implements Generator {
+
+	@Override
+	public void init(JsonObject parameters, CurrentWorldRegistries registries) {
+		
+	}
 	
 	@Override
 	public Resource getRegistryID() {
@@ -44,7 +51,7 @@ public class StructureGenerator implements Generator {
 	}
 
 	@Override
-	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, MapFragment map, ServerWorld world) {
+	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, MapFragment map, ChunkManager generator) {
 		Random rand = new Random(seed + 3*(seed + 1 & Integer.MAX_VALUE));
 		long rand1 = rand.nextInt() | 1;
 		long rand2 = rand.nextInt() | 1;
@@ -58,20 +65,20 @@ public class StructureGenerator implements Generator {
 		MapFragment on = map;
 		MapFragment op = map;
 		if ((wx & MapFragment.MAP_MASK) <= 8) {
-			no = nn = np = world.getOrGenerateMapFragment(wx - MapFragment.MAP_SIZE, wz, chunk.getVoxelSize());
+			no = nn = np = generator.getOrGenerateMapFragment(wx - MapFragment.MAP_SIZE, wz, chunk.getVoxelSize());
 		}
 		if ((wx & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth()) {
-			po = pn = pp = world.getOrGenerateMapFragment(wx + MapFragment.MAP_SIZE, wz, chunk.getVoxelSize());
+			po = pn = pp = generator.getOrGenerateMapFragment(wx + MapFragment.MAP_SIZE, wz, chunk.getVoxelSize());
 		}
 		if ((wz & MapFragment.MAP_MASK) <= 8) {
-			on = world.getOrGenerateMapFragment(wx, wz - MapFragment.MAP_SIZE, chunk.getVoxelSize());
-			nn = world.getOrGenerateMapFragment(wx - ((wx & MapFragment.MAP_MASK) <= 8 ? MapFragment.MAP_SIZE : 0), wz - MapFragment.MAP_SIZE, chunk.getVoxelSize());
-			pn = world.getOrGenerateMapFragment(wx + ((wx & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth() ? MapFragment.MAP_SIZE : 0), wz - MapFragment.MAP_SIZE, chunk.getVoxelSize());
+			on = generator.getOrGenerateMapFragment(wx, wz - MapFragment.MAP_SIZE, chunk.getVoxelSize());
+			nn = generator.getOrGenerateMapFragment(wx - ((wx & MapFragment.MAP_MASK) <= 8 ? MapFragment.MAP_SIZE : 0), wz - MapFragment.MAP_SIZE, chunk.getVoxelSize());
+			pn = generator.getOrGenerateMapFragment(wx + ((wx & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth() ? MapFragment.MAP_SIZE : 0), wz - MapFragment.MAP_SIZE, chunk.getVoxelSize());
 		}
 		if ((wz & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth()) {
-			op = world.getOrGenerateMapFragment(wx, wz + MapFragment.MAP_SIZE, chunk.getVoxelSize());
-			np = world.getOrGenerateMapFragment(wx - ((wx & MapFragment.MAP_MASK) <= 8 ? MapFragment.MAP_SIZE : 0), wz + MapFragment.MAP_SIZE, chunk.getVoxelSize());
-			pp = world.getOrGenerateMapFragment(wx + ((wx & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth() ? MapFragment.MAP_SIZE : 0), wz + MapFragment.MAP_SIZE, chunk.getVoxelSize());
+			op = generator.getOrGenerateMapFragment(wx, wz + MapFragment.MAP_SIZE, chunk.getVoxelSize());
+			np = generator.getOrGenerateMapFragment(wx - ((wx & MapFragment.MAP_MASK) <= 8 ? MapFragment.MAP_SIZE : 0), wz + MapFragment.MAP_SIZE, chunk.getVoxelSize());
+			pp = generator.getOrGenerateMapFragment(wx + ((wx & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth() ? MapFragment.MAP_SIZE : 0), wz + MapFragment.MAP_SIZE, chunk.getVoxelSize());
 		}
 		int stepSize = chunk.voxelSize;
 		if (stepSize < 4) {

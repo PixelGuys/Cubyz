@@ -111,7 +111,7 @@ public class BlockMeshes implements DataOrientedRegistry {
 					if (i == 0) {
 						textureIDs.add(path);
 					} else {
-						textureIDs.add("animation:animation");
+						textureIDs.add(path+":animation");
 					}
 				} catch(IOException e) {
 					Logger.warning("Could not read image "+texture+" from Block "+Blocks.id(size));
@@ -163,6 +163,19 @@ public class BlockMeshes implements DataOrientedRegistry {
 		}
 		size = len;
 		loadedMeshes = len;
+	}
+
+	public static void reloadTextures() {
+		for(int i = 0; i < blockTextures.size(); i++) {
+			try {
+				blockTextures.set(i, ImageIO.read(new File(textureIDs.get(i).replace(":animation", ""))));
+			} catch(IOException e) {
+				Logger.warning("Could not read image from path "+textureIDs.get(i));
+				Logger.warning(e);
+				blockTextures.set(i, blockTextures.get(0));
+			}
+		}
+		generateTextureArray();
 	}
 
 	public static void loadMeshes() {

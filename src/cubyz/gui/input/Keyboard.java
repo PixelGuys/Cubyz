@@ -9,6 +9,7 @@ import static org.lwjgl.glfw.GLFW.*;
 public class Keyboard {
 
 	static ArrayList<Integer> pressedKeys = new ArrayList<Integer>();
+	static ArrayList<Integer> releasedKeys = new ArrayList<Integer>();
 	private static int bufferLen = 256;
 	static final char[] charBuffer = new char[bufferLen]; // Pseudo-circular buffer of the last chars, to avoid problems if the user is a fast typer or uses macros or compose key.
 	private static int lastStart = 0, lastEnd = 0, current = 0;
@@ -36,6 +37,9 @@ public class Keyboard {
 	public static void glfwKeyCallback(int key, int scancode, int action, int mods) {
 		setKeyPressed(key, action != GLFW_RELEASE);
 		setKeyMods(mods);
+		if(action == GLFW_RELEASE) {
+			releasedKeys.add(key);
+		}
 	}
 	
 	/**
@@ -57,10 +61,15 @@ public class Keyboard {
 	public static void release() {
 		lastStart = lastEnd;
 		lastEnd = current;
+		releasedKeys.clear();
 	}
 	
 	public static boolean isKeyPressed(int key) {
 		return pressedKeys.contains(key);
+	}
+	
+	public static boolean isKeyReleased(int key) {
+		return releasedKeys.contains(key);
 	}
 	
 	/**

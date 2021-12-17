@@ -10,12 +10,10 @@ import java.util.HashMap;
 import cubyz.utils.Logger;
 import cubyz.api.CubyzRegistries;
 import cubyz.api.CurrentWorldRegistries;
-import cubyz.api.EventHandler;
 import cubyz.api.LoadOrder;
 import cubyz.api.Mod;
 import cubyz.api.Order;
 import cubyz.api.Proxy;
-import cubyz.api.Registry;
 import cubyz.api.Side;
 import cubyz.api.SideOnly;
 
@@ -23,7 +21,7 @@ import cubyz.api.SideOnly;
  * Most methods should ALWAYS be found as if it were on Side.SERVER
  */
 public class ModLoader {
-	public static final ArrayList<Object> mods = new ArrayList<Object>();
+	public static final ArrayList<Mod> mods = new ArrayList<Mod>();
 	
 	public static boolean isCorrectSide(Side currentSide, Method method) {
 		boolean haveAnnot = false;
@@ -42,40 +40,13 @@ public class ModLoader {
 		return false;
 	}
 	
-	public static Method eventHandlerMethodSided(Object mod, String eventType, Side side) {
-		Class<?> cl = mod.getClass();
-		for (Method m : cl.getMethods()) {
-			if (m.isAnnotationPresent(EventHandler.class)) {
-				if (isCorrectSide(side, m)) {
-					if (m.getAnnotation(EventHandler.class).type().equals(eventType)) {
-						return m;
-					}
-				}
-			}
-		}
-		return null;
-	}
-	
-	public static Method eventHandlerMethod(Object mod, String eventType) {
-		Class<?> cl = mod.getClass();
-		for (Method m : cl.getMethods()) {
-			if (m.isAnnotationPresent(EventHandler.class)) {
-				if (m.getAnnotation(EventHandler.class).type().equals(eventType)) {
-					return m;
-				}
-			}
-		}
-		return null;
-	}
-	
 	public static void sortMods() {
-		HashMap<String, Object> modIds = new HashMap<>();
-		for (Object mod : mods) {
-			Mod annot = mod.getClass().getAnnotation(Mod.class);
-			modIds.put(annot.id(), mod);
+		HashMap<String, Mod> modIds = new HashMap<>();
+		for (Mod mod : mods) {
+			modIds.put(mod.id(), mod);
 		}
 		for (int i = 0; i < mods.size(); i++) {
-			Object mod = mods.get(i);
+			Mod mod = mods.get(i);
 			Class<?> cl = mod.getClass();
 			LoadOrder[] orders = cl.getAnnotationsByType(LoadOrder.class);
 			for (LoadOrder order : orders) {
@@ -87,45 +58,26 @@ public class ModLoader {
 		}
 	}
 	
-	public static void preInit(Object mod, Side side) {
+	public static void preInit(Mod mod, Side side) {
 		injectProxy(mod, side);
-		Method m = eventHandlerMethodSided(mod, "preInit", Side.SERVER);
-		if (m != null)
-			safeMethodInvoke(true, m, mod);
+		mod.preInit();
 	}
 	
-	public static void init(Object mod) {
-		Method m = eventHandlerMethodSided(mod, "init", Side.SERVER);
-		if (m != null)
-			safeMethodInvoke(true, m, mod);
-	}
-	
-	public static void registerEntries(Object mod, String type) {
-		Method method = eventHandlerMethod(mod, "register:" + type);
-		if (method != null) {
-			Registry<?> reg = null;
-			switch (type) {
-			case "block":
-				reg = CubyzRegistries.BLOCK_REGISTRIES;
-				break;
-			case "item":
-				reg = CubyzRegistries.ITEM_REGISTRY;
-				break;
-			case "entity":
-				reg = CubyzRegistries.ENTITY_REGISTRY;
-				break;
-			case "biome":
-				reg = CubyzRegistries.BIOME_REGISTRY;
-				break;
-			}
-			safeMethodInvoke(true, method, mod, reg);
+	public static void registerEntries(Mod mod, String type) {
+		switch (type) {
+		case "block":
+			mod.registerBlocks(CubyzRegistries.BLOCK_REGISTRIES);
+			break;
+		case "item":
+			mod.registerItems(CubyzRegistries.ITEM_REGISTRY);
+			break;
+		case "entity":
+			mod.registerEntities(CubyzRegistries.ENTITY_REGISTRY);
+			break;
+		case "biome":
+			mod.registerBiomes(CubyzRegistries.BIOME_REGISTRY);
+			break;
 		}
-	}
-	
-	public static void postInit(Object mod) {
-		Method m = eventHandlerMethodSided(mod, "postInit", Side.SERVER);
-		if (m != null)
-			safeMethodInvoke(true, m, mod);
 	}
 	
 	/**
@@ -134,14 +86,12 @@ public class ModLoader {
 	 * @param reg registries of this world.
 	 */
 	public static void postWorldGen(CurrentWorldRegistries reg) {
-		for(Object mod : mods) {
-			Method m = eventHandlerMethodSided(mod, "postWorldGen", Side.SERVER);
-			if (m != null)
-				safeMethodInvoke(true, m, mod, reg);
+		for(Mod mod : mods) {
+			mod.postWorldGen(reg);
 		}
 	}
 	
-	static void injectProxy(Object mod, Side side) {
+	static void injectProxy(Mod mod, Side side) {
 		Class<?> cl = mod.getClass();
 		for (Field field : cl.getDeclaredFields()) {
 			field.setAccessible(true);
