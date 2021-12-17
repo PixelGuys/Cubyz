@@ -1,7 +1,5 @@
 package cubyz.utils;
 
-import cubyz.gui.ConsoleLog;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -33,9 +31,7 @@ public class Logger {
 			}
 			
 			latestLogOutput = new FileOutputStream("logs/latest.log");
-			String currentLogName = "logs/" + logFileFormat.format(Calendar.getInstance().getTime()) + ".log";
-			currentLogOutput = new FileOutputStream(currentLogName);
-			ConsoleLog.setLogFile(currentLogName);
+			currentLogOutput = new FileOutputStream("logs/" + logFileFormat.format(Calendar.getInstance().getTime()) + ".log");
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		}

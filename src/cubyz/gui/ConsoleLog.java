@@ -14,7 +14,6 @@ import static cubyz.client.ClientSettings.GUI_SCALE;
 
 public class ConsoleLog extends MenuGUI {
 
-    public static String currentLogPath = null;
     private final ScrollingContainer container = new ScrollingContainer();
 
     private final int DEBUG = 0xffffff;
@@ -63,31 +62,25 @@ public class ConsoleLog extends MenuGUI {
     }
 
     private void read() {
-        if (currentLogPath != null) {
-            try {
-                int lastLogLevel = DEBUG;
-                for (String line : Files.readAllLines(Paths.get(currentLogPath))) {
-                    if (line.contains("| warning |")) {
-                        lastLogLevel = WARN;
-                    } else if (line.contains("| error |") || line.contains("| crash |")) {
-                        lastLogLevel = ERROR;
-                    } else if (line.contains("| info |") || line.contains("| debug |")) {
-                        lastLogLevel = DEBUG;
-                    }
-                    log(line, lastLogLevel);
+        try {
+            int lastLogLevel = DEBUG;
+            for (String line : Files.readAllLines(Paths.get("./logs/latest.log"))) {
+                if (line.contains("| warning |")) {
+                    lastLogLevel = WARN;
+                } else if (line.contains("| error |") || line.contains("| crash |")) {
+                    lastLogLevel = ERROR;
+                } else if (line.contains("| info |") || line.contains("| debug |")) {
+                    lastLogLevel = DEBUG;
                 }
-            } catch (IOException e) {
-                e.printStackTrace();
+                log(line, lastLogLevel);
             }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
     private void log(String msg, int logLevel) {
         this.container.add(new LogLabel(msg, logLevel));
-    }
-
-    public static void setLogFile(String file) {
-        currentLogPath = file;
     }
 
     private static class LogLabel extends Component {
