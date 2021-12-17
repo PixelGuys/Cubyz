@@ -96,7 +96,7 @@ public class ConsoleLog extends MenuGUI {
         @Override
         public void render(int x, int y) {
             Graphics.setColor(color);
-            Graphics.setFont(Fonts.PIXEL_FONT, 16f * GUI_SCALE);
+            Graphics.setFont(Fonts.PIXEL_FONT, 8f * GUI_SCALE);
             Graphics.drawText(x, y, rawText);
         }
     }

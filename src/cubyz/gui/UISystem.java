@@ -14,8 +14,6 @@ import static org.lwjgl.opengl.GL13.glActiveTexture;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 
-import cubyz.client.Cubyz;
-import cubyz.gui.game.ConsoleGUI;
 import org.lwjgl.glfw.GLFW;
 
 import cubyz.client.ClientSettings;
@@ -35,8 +33,6 @@ public class UISystem {
 	private MenuGUI oldGui;
 	private ArrayList<MenuGUI> overlays = new ArrayList<>();
 	private ArrayDeque<MenuGUI> menuQueue = new ArrayDeque<>();
-
-	private final ConsoleLog consoleLog = new ConsoleLog();
 	
 	private Transition curTransition;
 	private long lastAnimTime = System.currentTimeMillis();
@@ -186,13 +182,6 @@ public class UISystem {
 			Graphics.setGlobalAlphaMultiplier(1f);
 			for(MenuGUI overlay : getOverlays()) {
 				overlay.render();
-			}
-		}
-		if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_F3)) {
-			if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_L)) {
-				if(getOverlays()[getOverlays().length-1] instanceof ConsoleLog)
-					Cubyz.gameUI.removeOverlay(consoleLog);
-				else Cubyz.gameUI.addOverlay(consoleLog);
 			}
 		}
 		Window.restoreState();

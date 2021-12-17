@@ -8,6 +8,7 @@ import cubyz.client.BlockMeshes;
 import cubyz.client.ClientOnly;
 import cubyz.client.ClientSettings;
 import cubyz.client.Cubyz;
+import cubyz.gui.ConsoleLog;
 import cubyz.gui.Transition;
 import cubyz.gui.game.ConsoleGUI;
 import cubyz.gui.game.PauseGUI;
@@ -30,6 +31,8 @@ public class Input {
 	public boolean clientShowDebug = false;
 
 	private boolean executedF3Shortcut = false;
+
+	private final ConsoleLog consoleLog = new ConsoleLog();
 	
 	public void init() {
 		Mouse.init();
@@ -46,6 +49,13 @@ public class Input {
 			if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_T)) {
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_T, false);
 				BlockMeshes.reloadTextures();
+				executedF3Shortcut = true;
+			}
+			if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_L)) {
+				Keyboard.setKeyPressed(GLFW.GLFW_KEY_L, false);
+				if(Cubyz.gameUI.getOverlays()[Cubyz.gameUI.getOverlays().length-1] instanceof ConsoleLog)
+					Cubyz.gameUI.removeOverlay(consoleLog);
+				else Cubyz.gameUI.addOverlay(consoleLog);
 				executedF3Shortcut = true;
 			}
 		}
