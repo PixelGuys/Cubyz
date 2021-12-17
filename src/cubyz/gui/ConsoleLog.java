@@ -69,7 +69,7 @@ public class ConsoleLog extends MenuGUI {
                 for (String line : Files.readAllLines(Paths.get(currentLogPath))) {
                     if (line.contains("| warning |")) {
                         lastLogLevel = WARN;
-                    } else if (line.contains("| error |")) {
+                    } else if (line.contains("| error |") || line.contains("| crash |")) {
                         lastLogLevel = ERROR;
                     } else if (line.contains("| info |") || line.contains("| debug |")) {
                         lastLogLevel = DEBUG;
@@ -103,7 +103,7 @@ public class ConsoleLog extends MenuGUI {
         @Override
         public void render(int x, int y) {
             Graphics.setColor(color);
-            Graphics.setFont(Fonts.PIXEL_FONT, 16f);
+            Graphics.setFont(Fonts.PIXEL_FONT, 16f * GUI_SCALE);
             Graphics.drawText(x, y, rawText);
         }
     }
