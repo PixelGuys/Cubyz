@@ -51,5 +51,8 @@ public class ScrollingContainer extends Container {
 		scrollY = Math.min(maxY, scrollY);
 		Graphics.restoreClip(oldClip);
 	}
-	
+
+    public void scrollToEnd(){
+        scrollY = height;
+    }
 }

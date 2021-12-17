@@ -1,6 +1,7 @@
 package cubyz.gui.components;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import org.joml.Vector4i;
 
@@ -44,5 +45,8 @@ public abstract class Container extends Component {
 		}
 		Graphics.restoreClip(oldClip);
 	}
-	
+
+	public List<Component> getChildren() {
+		return children;
+	}
 }
