@@ -188,8 +188,8 @@ public class UISystem {
 				overlay.render();
 			}
 		}
-		if(!(Cubyz.gameUI.getMenuGUI() instanceof ConsoleGUI)){
-			if (Keyboard.isKeyReleased(GLFW.GLFW_KEY_L)) {
+		if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_F3)) {
+			if(Keyboard.isKeyPressed(GLFW.GLFW_KEY_L)) {
 				if(getOverlays()[getOverlays().length-1] instanceof ConsoleLog)
 					Cubyz.gameUI.removeOverlay(consoleLog);
 				else Cubyz.gameUI.addOverlay(consoleLog);
