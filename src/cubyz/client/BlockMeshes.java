@@ -30,6 +30,8 @@ public class BlockMeshes implements DataOrientedRegistry {
 	private static final Mesh[] meshes = new Mesh[Blocks.MAX_BLOCK_COUNT];
 	private static final String[] models = new String[Blocks.MAX_BLOCK_COUNT];
 	private static final int[][] textureIndices = new int[Blocks.MAX_BLOCK_COUNT][6];
+	/** Stores the number of textures after each block was added. Used to clean additional textures when the world is switched.*/
+	private static final int[] maxTextureCount = new int[Blocks.MAX_BLOCK_COUNT];
 	/** Number of loaded meshes. Used to determine if an update is needed */
 	private static int loadedMeshes = 1;
 
@@ -151,6 +153,8 @@ public class BlockMeshes implements DataOrientedRegistry {
 		// But textures can be loaded here:
 
 		getTextureIndices(json, assetFolder, textureIndices[size]);
+		
+		maxTextureCount[size] = textureIDs.size();
 
 		return size++;
 	}
@@ -163,6 +167,10 @@ public class BlockMeshes implements DataOrientedRegistry {
 		}
 		size = len;
 		loadedMeshes = len;
+		for(int i = textureIDs.size() - 1; i >= maxTextureCount[size-1]; i--) {
+			textureIDs.remove(i);
+			blockTextures.remove(i);
+		}
 	}
 
 	public static void reloadTextures() {

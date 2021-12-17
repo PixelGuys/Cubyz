@@ -141,8 +141,10 @@ public class ChunkManager {
 	
 	public void synchronousGenerate(ChunkData ch) {
 		if (ch instanceof NormalChunk) {
-			((NormalChunk) ch).generateFrom(this);
-			((NormalChunk) ch).load();
+			if(!((NormalChunk)ch).isLoaded()) { // Prevent reloading.
+				((NormalChunk) ch).generateFrom(this);
+				((NormalChunk) ch).load();
+			}
 			world.clientConnection.updateChunkMesh((NormalChunk) ch);
 		} else {
 			ReducedChunkVisibilityData visibilityData = new ReducedChunkVisibilityData(world, ch.wx, ch.wy, ch.wz, ch.voxelSize);

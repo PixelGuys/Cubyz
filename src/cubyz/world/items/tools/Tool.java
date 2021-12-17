@@ -81,6 +81,8 @@ public class Tool extends Item {
 		for(int i = 0; i < craftingGrid.length; i++) {
 			if (craftingGrid[i] != null) {
 				ids[i] = craftingGrid[i].getRegistryID().toString();
+			} else {
+				ids[i] = "null";
 			}
 		}
 		array.addStrings(ids);
