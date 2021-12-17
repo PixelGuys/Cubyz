@@ -1,6 +1,7 @@
 package cubyz.world.terrain.worldgenerators;
 
 import cubyz.api.Resource;
+import cubyz.world.terrain.BiomePoint;
 import cubyz.world.terrain.ClimateMapFragment;
 import cubyz.world.terrain.ClimateMapGenerator;
 import cubyz.world.terrain.MapFragment;
@@ -8,6 +9,8 @@ import cubyz.world.terrain.biomes.Biome;
 import cubyz.world.terrain.noise.FractalNoise;
 
 import static cubyz.world.terrain.ClimateMapFragment.*;
+
+import java.util.Random;
 
 /**
  * Generates the climate map using a fluidynamics simulation, with a circular heat distribution.
@@ -66,6 +69,8 @@ public class PolarCircles implements ClimateMapGenerator {
 		// Then there are infinite poles with ring shapes and each ring will have an equal distance to the previous one.
 		// That's not perfectly realistic, but it's ok in the sense that following a compass will lead to one arctic
 		// and away from another.
+
+		Random rand = new Random();
 		
 		for (int x = 0; x < map.map.length; x++) {
 			for (int z = 0; z < map.map.length; z++) {
@@ -99,7 +104,14 @@ public class PolarCircles implements ClimateMapGenerator {
 					humidInfluence *= Math.pow(1 - heightMap[(int) nextX + map.map.length][(int) nextZ + map.map.length], 0.05);
 				}
 				// Insert the biome type:
-				map.map[x][z] = findClimate(heightMap[x + map.map.length][z + map.map.length], humid, temp);
+				rand.setSeed((x + map.wx)*65784967549L + (z + map.wz)*6758934659L + map.world.getSeed());
+				int wx = x*MapFragment.BIOME_SIZE + map.wx;
+				int wz = z*MapFragment.BIOME_SIZE + map.wz;
+				Biome.Type type = findClimate(heightMap[x + map.map.length][z + map.map.length], humid, temp);
+				Biome biome = map.world.getCurrentRegistries().biomeRegistry.byTypeBiomes.get(type).getRandomly(rand);
+				map.map[x][z] = new BiomePoint(biome, wx + rand.nextInt(MapFragment.BIOME_SIZE) - MapFragment.BIOME_SIZE/2,
+				                                      wz + rand.nextInt(MapFragment.BIOME_SIZE) - MapFragment.BIOME_SIZE/2,
+				                                      rand.nextFloat()*(biome.maxHeight - biome.minHeight) + biome.minHeight, rand.nextLong());
 			}
 		}
 	}

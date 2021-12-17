@@ -1,7 +1,6 @@
 package cubyz.world.terrain;
 
 import cubyz.world.ServerWorld;
-import cubyz.world.terrain.biomes.Biome;
 
 public class ClimateMapFragment {
 	public static final int MAP_SHIFT = 8 + MapFragment.BIOME_SHIFT;
@@ -9,13 +8,13 @@ public class ClimateMapFragment {
 	public static final int MAP_MASK = MAP_SIZE - 1;
 	public final int wx, wz;
 	public final ServerWorld world;
-	public final Biome.Type[][] map;
+	public final BiomePoint[][] map;
 	
 	public ClimateMapFragment(ServerWorld world, int wx, int wz) {
 		this.wx = wx;
 		this.wz = wz;
 		this.world = world;
-		map = new Biome.Type[MAP_SIZE/MapFragment.BIOME_SIZE][MAP_SIZE/MapFragment.BIOME_SIZE];
+		map = new BiomePoint[MAP_SIZE/MapFragment.BIOME_SIZE][MAP_SIZE/MapFragment.BIOME_SIZE];
 	}
 	
 	@Override

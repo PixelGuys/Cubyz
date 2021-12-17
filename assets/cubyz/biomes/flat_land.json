@@ -1,0 +1,10 @@
+{
+	"chance" : 0,
+	"type" : "GRASSLAND",
+	"minHeight" : 24,
+	"maxHeight" : 40,
+	"ground_structure" : [
+		"cubyz:grass",
+		"2 cubyz:soil"
+	]
+}

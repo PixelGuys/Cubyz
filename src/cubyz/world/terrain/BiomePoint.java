@@ -6,11 +6,11 @@ import cubyz.world.terrain.biomes.Biome;
 
 public class BiomePoint {
 	public final Biome biome;
-	public final float x;
-	public final float z;
+	public final int x;
+	public final int z;
 	public final float height;
 	public final long seed;
-	public BiomePoint(Biome biome, float x, float z, float height, long seed) {
+	public BiomePoint(Biome biome, int x, int z, float height, long seed) {
 		this.biome = biome;
 		this.x = x;
 		this.z = z;

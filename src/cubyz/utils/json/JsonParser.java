@@ -2,7 +2,6 @@ package cubyz.utils.json;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -23,11 +22,11 @@ public abstract class JsonParser {
 		}
 		return new JsonObject();
 	}
-	public static JsonObject parseObjectFromString(String text) throws Exception {
+	public static JsonObject parseObjectFromString(String text) {
 		char[] characters = text.trim().toCharArray(); // Remove leading and trailing spaces and convert to char array.
 
 		if (characters[0] != '{') {
-			throw new Exception("Expected the json data to start with an object.");
+			throw new IllegalArgumentException("Expected the json data to start with an object.");
 		}
 		int[] index = new int[] {1};
 		JsonObject head = parseObject(characters, index);

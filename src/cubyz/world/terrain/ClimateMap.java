@@ -2,7 +2,6 @@ package cubyz.world.terrain;
 
 import cubyz.utils.datastructures.Cache;
 import cubyz.world.ServerWorld;
-import cubyz.world.terrain.biomes.Biome;
 
 public class ClimateMap {
 	private static final int CACHE_SIZE = 1 << 8; // Must be a power of 2!
@@ -10,13 +9,13 @@ public class ClimateMap {
 	private static final int ASSOCIATIVITY = 4;
 	private static final Cache<ClimateMapFragment> cache = new Cache<ClimateMapFragment>(new ClimateMapFragment[CACHE_SIZE][ASSOCIATIVITY]);
 	private static ServerWorld world = null;
-	public static Biome.Type[][] getBiomeMap(ServerWorld world, int wx, int wz, int width, int height) {
+	public static BiomePoint[][] getBiomeMap(ServerWorld world, int wx, int wz, int width, int height) {
 		if (world != ClimateMap.world) {
 			cache.clear(); // Clear the cache if the world changed!
 			ClimateMap.world = world;
 		}
 		
-		Biome.Type[][] map = new Biome.Type[width/MapFragment.BIOME_SIZE][height/MapFragment.BIOME_SIZE];
+		BiomePoint[][] map = new BiomePoint[width/MapFragment.BIOME_SIZE][height/MapFragment.BIOME_SIZE];
 		int wxStart = wx & ~ClimateMapFragment.MAP_MASK;
 		int wzStart = wz & ~ClimateMapFragment.MAP_MASK;
 		int wxEnd = wx+width & ~ClimateMapFragment.MAP_MASK;

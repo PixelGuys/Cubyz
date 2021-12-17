@@ -7,7 +7,6 @@ import cubyz.world.terrain.BiomePoint;
 import cubyz.world.terrain.ClimateMap;
 import cubyz.world.terrain.MapFragment;
 import cubyz.world.terrain.MapGenerator;
-import cubyz.world.terrain.biomes.Biome;
 import cubyz.world.terrain.noise.FractalNoise;
 import cubyz.world.terrain.noise.PerlinNoise;
 
@@ -32,20 +31,9 @@ public class NoisyVoronoi implements MapGenerator {
 	public void generateMapFragment(MapFragment map) {
 		int scaledSize = MapFragment.MAP_SIZE/map.voxelSize;
 		// Create the biomes that will be placed on the map:
-		BiomePoint[][] biomePositions = new BiomePoint[MAP_SIZE/BIOME_SIZE + 3][MAP_SIZE/BIOME_SIZE + 3];
 		long seed = map.world.getSeed();
-		Biome.Type[][] typeMap = ClimateMap.getBiomeMap(map.world, map.wx - BIOME_SIZE, map.wz - BIOME_SIZE, MAP_SIZE + 3*BIOME_SIZE, MAP_SIZE + 3*BIOME_SIZE);
+		BiomePoint[][] biomePositions = ClimateMap.getBiomeMap(map.world, map.wx - BIOME_SIZE, map.wz - BIOME_SIZE, MAP_SIZE + 3*BIOME_SIZE, MAP_SIZE + 3*BIOME_SIZE);
 		Random rand = new Random();
-		for(int x = -BIOME_SIZE; x <= MAP_SIZE + BIOME_SIZE; x += BIOME_SIZE) {
-			for(int z = -BIOME_SIZE; z <= MAP_SIZE + BIOME_SIZE; z += BIOME_SIZE) {
-				rand.setSeed((x + map.wx)*65784967549L + (z + map.wz)*6758934659L + seed);
-				int xIndex = x/BIOME_SIZE + 1;
-				int zIndex = z/BIOME_SIZE + 1;
-				Biome.Type type = typeMap[xIndex][zIndex];
-				Biome biome = map.world.getCurrentRegistries().biomeRegistry.byTypeBiomes.get(type).getRandomly(rand);
-				biomePositions[xIndex][zIndex] = new BiomePoint(biome, (x + rand.nextInt(BIOME_SIZE) - BIOME_SIZE/2)/(float)map.voxelSize, (z + rand.nextInt(BIOME_SIZE) - BIOME_SIZE/2)/(float)map.voxelSize, rand.nextFloat()*(biome.maxHeight - biome.minHeight) + biome.minHeight, rand.nextLong());
-			}
-		}
 		int scaledBiomeSize = BIOME_SIZE/map.voxelSize;
 		float[][] xOffsetMap = new float[scaledSize][scaledSize];
 		float[][] zOffsetMap = new float[scaledSize][scaledSize];
@@ -73,11 +61,13 @@ public class NoisyVoronoi implements MapGenerator {
 				float mountains = 0;
 				int xBiome = (x + scaledBiomeSize/2)/scaledBiomeSize;
 				int zBiome = (z + scaledBiomeSize/2)/scaledBiomeSize;
+				int wx = x*map.voxelSize + map.wx;
+				int wz = z*map.voxelSize + map.wz;
 				for(int x0 = xBiome; x0 <= xBiome+2; x0++) {
 					for(int z0 = zBiome; z0 <= zBiome+2; z0++) {
-						float dist = (float)Math.sqrt(biomePositions[x0][z0].distSquare(x, z));
-						dist /= scaledBiomeSize;
-						float maxNorm = biomePositions[x0][z0].maxNorm(x, z)/scaledBiomeSize;
+						float dist = (float)Math.sqrt(biomePositions[x0][z0].distSquare(wx, wz));
+						dist /= BIOME_SIZE;
+						float maxNorm = biomePositions[x0][z0].maxNorm(wx, wz)/BIOME_SIZE;
 						// There are cases where this point is further away than 1 unit from all nearby biomes. For that case the euclidian distance function is interpolated to the max-norm for higher distances.
 						if (dist > 0.9f && maxNorm < 1) {
 							float borderMax = 0.9f*maxNorm/dist;
@@ -111,10 +101,10 @@ public class NoisyVoronoi implements MapGenerator {
 				
 
 				// Select a biome. The shape of the biome is randomized by applying noise (fractal noise and white noise) to the coordinates.
-				float updatedX = x + (rand.nextInt(8) - 3.5f)*scaledBiomeSize/128 + (xOffsetMap[x][z] - 0.5f)*scaledBiomeSize/2;
-				float updatedZ = z + (rand.nextInt(8) - 3.5f)*scaledBiomeSize/128 + (zOffsetMap[x][z] - 0.5f)*scaledBiomeSize/2;
-				xBiome = (int)(updatedX + scaledBiomeSize/2)/scaledBiomeSize;
-				zBiome = (int)(updatedZ + scaledBiomeSize/2)/scaledBiomeSize;
+				float updatedX = wx + (rand.nextInt(8) - 3.5f)*BIOME_SIZE/128 + (xOffsetMap[x][z] - 0.5f)*BIOME_SIZE/2;
+				float updatedZ = wz + (rand.nextInt(8) - 3.5f)*BIOME_SIZE/128 + (zOffsetMap[x][z] - 0.5f)*BIOME_SIZE/2;
+				xBiome = (int)((updatedX - map.wx)/map.voxelSize + scaledBiomeSize/2)/scaledBiomeSize;
+				zBiome = (int)((updatedZ - map.wz)/map.voxelSize + scaledBiomeSize/2)/scaledBiomeSize;
 				float shortestDist = Float.MAX_VALUE;
 				BiomePoint shortestBiome = null;
 				for(int x0 = xBiome; x0 <= xBiome+2; x0++) {
