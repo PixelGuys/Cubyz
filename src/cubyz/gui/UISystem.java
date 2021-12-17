@@ -15,6 +15,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 
 import cubyz.client.Cubyz;
+import cubyz.gui.game.ConsoleGUI;
 import org.lwjgl.glfw.GLFW;
 
 import cubyz.client.ClientSettings;
@@ -187,10 +188,12 @@ public class UISystem {
 				overlay.render();
 			}
 		}
-		if (Keyboard.isKeyReleased(GLFW.GLFW_KEY_L)) {
-			if(getOverlays()[getOverlays().length-1] instanceof ConsoleLog)
-				Cubyz.gameUI.removeOverlay(consoleLog);
-			else Cubyz.gameUI.addOverlay(consoleLog);
+		if(!(Cubyz.gameUI.getMenuGUI() instanceof ConsoleGUI)){
+			if (Keyboard.isKeyReleased(GLFW.GLFW_KEY_L)) {
+				if(getOverlays()[getOverlays().length-1] instanceof ConsoleLog)
+					Cubyz.gameUI.removeOverlay(consoleLog);
+				else Cubyz.gameUI.addOverlay(consoleLog);
+			}
 		}
 		Window.restoreState();
 	}
