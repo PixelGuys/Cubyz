@@ -255,7 +255,7 @@ public class ReducedChunkMesh extends ChunkMesh {
 		colorsAndNormals.add(colorNormal);
 		return vertices.size - 1;
 	}
-	static long totalTime = 0;
+
 	private static void generateModelData(ReducedChunkVisibilityData chunkVisibilityData, IntFastList vertices, IntFastList faces, IntFastList colorsAndNormals) {
 		final int CORD00 = 0b00 << 16;
 		final int CORD01 = 0b01 << 16;
