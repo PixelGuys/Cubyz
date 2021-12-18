@@ -151,7 +151,7 @@ public class MeshSelectionDetector {
 						// Check if the block is inside:
 						if (neighbor.x < pos.x + ent.width && neighbor.x + 1 > pos.x - ent.width
 						        && neighbor.z < pos.z + ent.width && neighbor.z + 1 > pos.z - ent.width
-						        && neighbor.y < pos.y + ent.height && neighbor.y + 1 > pos.y - ent.height)
+						        && neighbor.y < pos.y + ent.height && neighbor.y + 1 > pos.y)
 							return;
 					}
 					block.data = b;
