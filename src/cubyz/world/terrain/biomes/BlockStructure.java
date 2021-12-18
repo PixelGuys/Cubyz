@@ -51,7 +51,7 @@ public class BlockStructure {
 			}
 		}
 		if (depth == startingDepth) return depth;
-		return depth + 1;
+		return depth;
 	}
 	
 	public static class BlockStack {
