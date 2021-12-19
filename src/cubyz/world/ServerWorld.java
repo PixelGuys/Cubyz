@@ -401,6 +401,7 @@ public class ServerWorld {
 		if (x != lastX || y != lastY || z != lastZ) {
 			ArrayList<NormalChunk> chunkList = new ArrayList<>();
 			ArrayList<ChunkEntityManager> managers = new ArrayList<>();
+			HashMap<HashMapKey3D, MetaChunk> oldMetaChunks = new HashMap<HashMapKey3D, MetaChunk>(metaChunks);
 			HashMap<HashMapKey3D, MetaChunk> newMetaChunks = new HashMap<HashMapKey3D, MetaChunk>();
 			int metaRenderDistance = (int)Math.ceil(renderDistance/(float)(MetaChunk.metaChunkSize*NormalChunk.chunkSize));
 			int x0 = x >> (MetaChunk.metaChunkShift + NormalChunk.chunkShift);
@@ -413,7 +414,8 @@ public class ServerWorld {
 						int zReal = metaZ;
 						HashMapKey3D key = new HashMapKey3D(xReal, metaY, zReal);
 						// Check if it already exists:
-						MetaChunk metaChunk = metaChunks.get(key);
+						MetaChunk metaChunk = oldMetaChunks.get(key);
+						oldMetaChunks.remove(key);
 						if (metaChunk == null) {
 							metaChunk = new MetaChunk(xReal*(MetaChunk.metaChunkSize*NormalChunk.chunkSize), metaY*(MetaChunk.metaChunkSize*NormalChunk.chunkSize), zReal*(MetaChunk.metaChunkSize*NormalChunk.chunkSize), this);
 						}
@@ -422,6 +424,9 @@ public class ServerWorld {
 					}
 				}
 			}
+			oldMetaChunks.forEach((key, chunk) -> {
+				chunk.save();
+			});
 			chunks = chunkList.toArray(new NormalChunk[0]);
 			entityManagers = managers.toArray(new ChunkEntityManager[0]);
 			metaChunks = newMetaChunks;

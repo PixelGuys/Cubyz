@@ -37,4 +37,9 @@ public class ChunkData implements Comparable<ChunkData> {
 	public int compareTo(ChunkData other) {
 		return (int) Math.signum(priority - other.priority);
 	}
+	
+	@Override
+	public String toString() {
+		return "{("+wx+", "+wy+", "+wz+"), "+voxelSize+"}";
+	}
 }

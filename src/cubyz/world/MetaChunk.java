@@ -34,7 +34,7 @@ public class MetaChunk {
 	public void save() {
 		for(NormalChunk chunk : chunks) {
 			if (chunk != null)
-				chunk.map.mapIO.saveChunk(chunk);
+				chunk.save();
 		}
 		for(ChunkEntityManager manager : entityManagers) {
 			if (manager != null)
@@ -134,10 +134,7 @@ public class MetaChunk {
 					NormalChunk chunk = chunks[index];
 					if (dist > rdSquare) {
 						if (chunk != null) {
-							if (chunk.isGenerated())
-								chunk.map.mapIO.saveChunk(chunk); // Only needs to be stored if it was ever generated.
-							else
-								world.unQueueChunk(chunk);
+							chunk.save();
 							chunks[index] = null;
 						}
 					} else if (chunk == null) {
