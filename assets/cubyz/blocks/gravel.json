@@ -1,6 +1,6 @@
 {
 	"class" : "sand",
-	"hardness" : 25,
+	"hardness" : 11,
 	"drops" : [
 		"auto"
 	],

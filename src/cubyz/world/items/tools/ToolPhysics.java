@@ -327,7 +327,7 @@ public class ToolPhysics {
 				area += sandPiles[x][y];
 			}
 		}
-		area /= 1024; // TODO: Balancing
+		area /= 256; // TODO: Balancing
 		return area*calculateImpactEnergy(tool, collisionPoint);
 	}
 
