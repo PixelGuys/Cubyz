@@ -6,6 +6,8 @@
 	"mountains" : 600,
 	
 	"music" : "DarkTimes",
+
+	"validPlayerSpawn" : false,
 	
 	"ground_structure" : [
 		"1 to 2 cubyz:snow",
