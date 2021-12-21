@@ -52,7 +52,7 @@ public class Biome extends ChanceObject implements RegistryElement {
 		ARCTIC_OCEAN,
 		
 		/**deep ocean trench*/
-		TRENCH,
+		TRENCH;
 	}
 	
 	public final Type type;
@@ -69,8 +69,9 @@ public class Biome extends ChanceObject implements RegistryElement {
 	public Biome[] upperReplacements = new Biome[0];
 	public Biome[] lowerReplacements = new Biome[0];
 	public final String preferredMusic;
+	public final boolean isValidPlayerSpawn;
 	
-	public Biome(Resource id, String type, float min, float max, float roughness, float hills, float mountains, float chance, String music, BlockStructure str, boolean rivers, StructureModel ... models) {
+	public Biome(Resource id, String type, float min, float max, float roughness, float hills, float mountains, float chance, String music, BlockStructure str, boolean rivers, boolean isValidPlayerSpawn, StructureModel ... models) {
 		super(chance);
 		this.type = Type.valueOf(type);
 		identifier = id;
@@ -83,6 +84,7 @@ public class Biome extends ChanceObject implements RegistryElement {
 		supportsRivers = rivers;
 		vegetationModels = models;
 		preferredMusic = music;
+		this.isValidPlayerSpawn = isValidPlayerSpawn;
 	}
 
 	public Biome(Resource id, JsonObject json) {
@@ -96,6 +98,7 @@ public class Biome extends ChanceObject implements RegistryElement {
 		maxHeight = json.getFloat("maxHeight", 1);
 		supportsRivers = json.getBool("rivers", false);
 		preferredMusic = json.getString("music", null);
+		isValidPlayerSpawn = json.getBool("validPlayerSpawn", false);
 
 		String[] blockStructure = json.getArrayNoNull("ground_structure").getStrings();
 		struct = new BlockStructure(blockStructure);
