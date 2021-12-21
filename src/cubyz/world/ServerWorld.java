@@ -136,12 +136,14 @@ public class ServerWorld {
 			int dx = 0;
 			int dz = 0;
 			Logger.info("Finding position..");
-			while (true) {
+			int tryCount = 0;
+			while (tryCount < 1000) {
 				dx = rnd.nextInt(65536);
 				dz = rnd.nextInt(65536);
 				Logger.info("Trying " + dx + " ? " + dz);
 				if (isValidSpawnLocation(dx, dz))
 					break;
+				tryCount++;
 			}
 			int startY = (int)chunkManager.getOrGenerateMapFragment((int)dx, (int)dz, 1).getHeight(dx, dz);
 			seek((int)dx, startY, (int)dz, ClientSettings.RENDER_DISTANCE, ClientSettings.EFFECTIVE_RENDER_DISTANCE*NormalChunk.chunkSize*2);
@@ -180,8 +182,14 @@ public class ServerWorld {
 	}
 	
 	public boolean isValidSpawnLocation(int x, int z) {
-		Biome biome = chunkManager.getOrGenerateMapFragment(x, z, 1).getBiome(x, z);
-		return biome.type.validForSpawn;
+        int radius = 3;
+        boolean found = false;
+        for (int i = x - radius; i <= x + radius; i++) {
+            for (int j = z - radius; j <= z + radius; j++) {
+                found = chunkManager.getOrGenerateMapFragment(i, j, 1).getBiome(i, j).isValidPlayerSpawn;
+            }
+        }
+        return found;
 	}
 	
 	public void removeBlock(int x, int y, int z) {
