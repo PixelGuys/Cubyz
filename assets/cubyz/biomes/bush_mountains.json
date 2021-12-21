@@ -7,8 +7,6 @@
 	"mountains" : 400,
 	
 	"rivers" : true,
-
-	"validPlayerSpawn" : false,
 	
 	"ground_structure" : [
 		"0 to 1 cubyz:grass",

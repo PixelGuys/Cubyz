@@ -8,8 +8,6 @@
 
 	"music" : "under_the_water_sky",
 
-	"validPlayerSpawn" : false,
-	
 	"ground_structure" : [
 		"1 to 2 cubyz:cobblestone"
 	],

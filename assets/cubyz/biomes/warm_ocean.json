@@ -7,8 +7,6 @@
 	"hills" : 20,
 
 	"music" : "GymnopedieNo1",
-
-	"validPlayerSpawn" : false,
 	
 	"ground_structure" : [
 		"2 to 4 cubyz:sand"

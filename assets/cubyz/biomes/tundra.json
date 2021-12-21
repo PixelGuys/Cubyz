@@ -6,8 +6,6 @@
 	"roughness" : 10,
 	"hills" : 15,
 	"mountains" : 20,
-
-	"validPlayerSpawn" : false,
 	
 	"ground_structure" : [
 		"0 to 1 cubyz:grass",

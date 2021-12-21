@@ -98,7 +98,7 @@ public class Biome extends ChanceObject implements RegistryElement {
 		maxHeight = json.getFloat("maxHeight", 1);
 		supportsRivers = json.getBool("rivers", false);
 		preferredMusic = json.getString("music", null);
-		isValidPlayerSpawn = json.getBool("validPlayerSpawn", true);
+		isValidPlayerSpawn = json.getBool("validPlayerSpawn", false);
 
 		String[] blockStructure = json.getArrayNoNull("ground_structure").getStrings();
 		struct = new BlockStructure(blockStructure);

@@ -9,8 +9,6 @@
 	"rivers" : true,
 
 	"music" : "under_the_water_sky",
-
-	"validPlayerSpawn" : false,
 	
 	"ground_structure" : [
 		"2 to 3 cubyz:gravel"
