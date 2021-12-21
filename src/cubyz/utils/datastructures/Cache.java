@@ -33,7 +33,7 @@ public class Cache<T> {
 				if (i != 0) { // No need to put it up front when it already is on the front.
 					synchronized(cache[index]) {
 						System.arraycopy(cache[index], 0, cache[index], 1, i);
-						cache[index][i] = ret;
+						cache[index][0] = ret;
 					}
 				}
 				return ret;

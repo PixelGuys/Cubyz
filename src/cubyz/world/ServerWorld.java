@@ -31,6 +31,7 @@ import cubyz.world.handler.PlaceBlockHandler;
 import cubyz.world.handler.RemoveBlockHandler;
 import cubyz.world.items.BlockDrop;
 import cubyz.world.items.ItemStack;
+import cubyz.world.save.ChunkIO;
 import cubyz.world.save.WorldIO;
 import cubyz.world.terrain.MapFragment;
 import cubyz.world.terrain.biomes.Biome;
@@ -162,6 +163,7 @@ public class ServerWorld {
 		}
 		wio.saveWorldData();
 		chunkManager.forceSave();
+		ChunkIO.save();
 	}
 	
 	public void addEntity(Entity ent) {
@@ -519,6 +521,8 @@ public class ServerWorld {
 			forceSave();
 
 			chunkManager.cleanup();
+			
+			ChunkIO.clean();
 			
 			metaChunks = null;
 		} catch (Exception e) {

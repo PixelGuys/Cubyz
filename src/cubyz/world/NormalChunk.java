@@ -7,6 +7,7 @@ import org.joml.Vector3i;
 
 import cubyz.utils.Utilities;
 import cubyz.utils.datastructures.FastList;
+import cubyz.utils.math.Bits;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.BlockInstance;
@@ -65,7 +66,7 @@ public class NormalChunk extends Chunk {
 	}
 	
 	public void generateFrom(ChunkManager gen) {
-		if(!ChunkIO.loadChunkFromFile(this, blocks, world.wio.blockPalette)) {
+		if(!ChunkIO.loadChunkFromFile(world, this)) {
 			gen.generate(this);
 		}
 		generated = true;
@@ -391,17 +392,25 @@ public class NormalChunk extends Chunk {
 	
 	public void save() {
 		if(wasChanged) {
-			ChunkIO.storeChunkToFile(this, blocks, world.wio.blockPalette);
+			ChunkIO.storeChunkToFile(world, this);
 			wasChanged = false;
 		}
 	}
 	
-	public int[] getData() {
-		int[] data = new int[3];
-		data[0] = cx;
-		data[1] = cy;
-		data[2] = cz;
-		return data;
+	public void saveTo(byte[] data) {
+		for(int i = 0; i < blocks.length; i++) {
+			// Convert the runtime ID to the palette (world-specific) ID
+			int palId = world.wio.blockPalette.getIndex(blocks[i]);
+			Bits.putInt(data, i*4, palId);
+		}
+	}
+	
+	public void loadFrom(byte[] data) {
+		for(int i = 0; i < blocks.length; i++) {
+			// Convert the palette (world-specific) ID to the runtime ID
+			int palId = Bits.getInt(data, i*4);
+			blocks[i] = world.wio.blockPalette.getElement(palId);
+		}
 	}
 	
 	/**
