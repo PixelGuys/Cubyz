@@ -45,14 +45,23 @@ public class Biome extends ChanceObject implements RegistryElement {
 		
 
 		/**temperate ocean*/
-		OCEAN,
+		OCEAN(false),
 		/**tropical ocean(coral reefs and stuff)*/
-		WARM_OCEAN,
+		WARM_OCEAN(false),
 		/**arctic ocean(ice sheets)*/
-		ARCTIC_OCEAN,
+		ARCTIC_OCEAN(false),
 		
 		/**deep ocean trench*/
-		TRENCH,
+		TRENCH(false);
+
+		public boolean validForSpawn = true;
+
+		Type(boolean validForSpawn) {
+			this.validForSpawn = validForSpawn;
+		}
+
+		Type() {
+		}
 	}
 	
 	public final Type type;
