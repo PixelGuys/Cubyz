@@ -180,9 +180,8 @@ public class ServerWorld {
 	}
 	
 	public boolean isValidSpawnLocation(int x, int z) {
-		// Just make sure there is a forest nearby, so the player will always be able to get the resources needed to start properly.
-		// TODO!
-		return true;
+		Biome biome = chunkManager.getOrGenerateMapFragment(x, z, 1).getBiome(x, z);
+		return biome.type.validForSpawn;
 	}
 	
 	public void removeBlock(int x, int y, int z) {
