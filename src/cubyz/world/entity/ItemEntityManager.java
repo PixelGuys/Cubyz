@@ -7,6 +7,7 @@ import org.joml.Vector3f;
 
 import cubyz.utils.Logger;
 import cubyz.utils.math.Bits;
+import cubyz.world.Chunk;
 import cubyz.world.NormalChunk;
 import cubyz.world.ServerWorld;
 import cubyz.world.blocks.Blocks;
@@ -147,7 +148,7 @@ public class ItemEntityManager {
 			// Check if it's still inside this chunk:
 			if (!chunk.isInside(posxyz[index3], posxyz[index3 + 1], posxyz[index3 + 2])) {
 				// Move it to another manager:
-				ChunkEntityManager other = world.getEntityManagerAt(((int)posxyz[index3]) & ~NormalChunk.chunkMask, ((int)posxyz[index3+1]) & ~NormalChunk.chunkMask, ((int)posxyz[index3+2]) & ~NormalChunk.chunkMask);
+				ChunkEntityManager other = world.getEntityManagerAt(((int)posxyz[index3]) & ~Chunk.chunkMask, ((int)posxyz[index3+1]) & ~Chunk.chunkMask, ((int)posxyz[index3+2]) & ~Chunk.chunkMask);
 				if (other == null) {
 					// TODO: Append it to the right file.
 					posxyz[index3] -= velxyz[index3]*deltaTime;

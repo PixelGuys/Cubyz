@@ -219,7 +219,7 @@ public class ChunkManager {
 			res = reducedChunkCache.find(data, hash);
 			if (res != null) return res;
 			// Generate a new chunk:
-			res = new ReducedChunk(wx, wy, wz, CubyzMath.binaryLog(voxelSize));
+			res = new ReducedChunk(world, wx, wy, wz, CubyzMath.binaryLog(voxelSize));
 			res.generateFrom(this);
 			reducedChunkCache.addToCache(res, hash);
 		}

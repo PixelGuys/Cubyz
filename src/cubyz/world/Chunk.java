@@ -1,8 +1,23 @@
 package cubyz.world;
 
+import cubyz.utils.math.Bits;
+
 public abstract class Chunk extends ChunkData {
-	public Chunk(int wx, int wy, int wz, int voxelSize) {
+	
+	public static final int chunkShift = 5;
+	
+	public static final int chunkShift2 = 2*chunkShift;
+	
+	public static final int chunkSize = 1 << chunkShift;
+	
+	public static final int chunkMask = chunkSize - 1;
+	
+	protected final ServerWorld world;
+	protected final int[] blocks = new int[chunkSize*chunkSize*chunkSize];
+
+	public Chunk(ServerWorld world, int wx, int wy, int wz, int voxelSize) {
 		super(wx, wy, wz, voxelSize);
+		this.world = world;
 	}
 	/**
 	 * This is useful to convert for loops to work for reduced resolution:<br>
@@ -90,4 +105,32 @@ public abstract class Chunk extends ChunkData {
 	 * @return this chunks width.
 	 */
 	public abstract int getWidth();
+	
+	public void saveTo(byte[] data) {
+		for(int i = 0; i < blocks.length; i++) {
+			// Convert the runtime ID to the palette (world-specific) ID
+			int palId = world.wio.blockPalette.getIndex(blocks[i]);
+			Bits.putInt(data, i*4, palId);
+		}
+	}
+	
+	public void loadFrom(byte[] data) {
+		for(int i = 0; i < blocks.length; i++) {
+			// Convert the palette (world-specific) ID to the runtime ID
+			int palId = Bits.getInt(data, i*4);
+			blocks[i] = world.wio.blockPalette.getElement(palId);
+		}
+	}
+	
+	/**
+	 * Gets the index of a given position inside this chunk.
+	 * Use this as much as possible, so it gets inlined by the VM.
+	 * @param x 0 ≤ x < chunkSize
+	 * @param y 0 ≤ y < chunkSize
+	 * @param z 0 ≤ z < chunkSize
+	 * @return
+	 */
+	public static int getIndex(int x, int y, int z) {
+		return (x << chunkShift) | (y << chunkShift2) | z;
+	}
 }

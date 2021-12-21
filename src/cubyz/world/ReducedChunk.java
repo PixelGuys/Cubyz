@@ -19,22 +19,18 @@ public class ReducedChunk extends Chunk {
 	public final int resolution;
 	/**If ((x & resolutionMask) == 0), a block can be considered to be visible.*/
 	public final int resolutionMask;
-	public final int size;
-	public final int[] blocks;
 	public boolean generated = false;
 	public final int width;
 	/** =log₂(width)*/
 	public final int widthShift;
 	
-	public ReducedChunk(int wx, int wy, int wz, int resolutionShift) {
-		super(wx, wy, wz, 1 << resolutionShift);
+	public ReducedChunk(ServerWorld world, int wx, int wy, int wz, int resolutionShift) {
+		super(world, wx, wy, wz, 1 << resolutionShift);
 		this.resolutionShift = resolutionShift;
 		this.resolution = 1 << resolutionShift;
 		this.resolutionMask = resolution - 1;
-		widthShift = NormalChunk.chunkShift + resolutionShift;
+		widthShift = Chunk.chunkShift + resolutionShift;
 		width = 1 << widthShift;
-		size = (width >>> resolutionShift)*(width >> resolutionShift)*(width >> resolutionShift);
-		blocks = new int[size];
 	}
 	
 	public void applyBlockChanges() {

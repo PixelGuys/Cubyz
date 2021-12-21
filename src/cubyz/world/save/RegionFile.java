@@ -14,8 +14,8 @@ import java.util.zip.Inflater;
 import cubyz.client.Cubyz;
 import cubyz.utils.Logger;
 import cubyz.utils.math.Bits;
+import cubyz.world.Chunk;
 import cubyz.world.ChunkData;
-import cubyz.world.NormalChunk;
 import cubyz.world.ServerWorld;
 
 /**
@@ -25,19 +25,17 @@ public class RegionFile extends ChunkData {
 	private static final ThreadLocal<byte[]> threadLocalInputBuffer = new ThreadLocal<byte[]>() {
 		@Override
 		public byte[] initialValue() {
-			return new byte[4*NormalChunk.chunkSize*NormalChunk.chunkSize*NormalChunk.chunkSize];
+			return new byte[4*Chunk.chunkSize*Chunk.chunkSize*Chunk.chunkSize];
 		}
 	};
 	private static final ThreadLocal<byte[]> threadLocalOutputBuffer = new ThreadLocal<byte[]>() {
 		@Override
 		public byte[] initialValue() {
-			return new byte[4*NormalChunk.chunkSize*NormalChunk.chunkSize*NormalChunk.chunkSize];
+			return new byte[4*Chunk.chunkSize*Chunk.chunkSize*Chunk.chunkSize];
 		}
 	};
 	public static final int REGION_SHIFT = 2;
 	public static final int REGION_SIZE = 1 << REGION_SHIFT;
-	public static final int WORLD_SHIFT = REGION_SHIFT + NormalChunk.chunkShift;
-	public static final int WORLD_MASK = (1 << WORLD_SHIFT) - 1;
 	private byte[] data = new byte[0];
 	private boolean[] occupancy = new boolean[REGION_SIZE*REGION_SIZE*REGION_SIZE];
 	private int[] startingIndices = new int[REGION_SIZE*REGION_SIZE*REGION_SIZE + 1];
@@ -90,14 +88,14 @@ public class RegionFile extends ChunkData {
 		}
 	}
 	
-	private int getChunkIndex(NormalChunk ch) {
-		int chunkIndex = (ch.wx - wx) >> NormalChunk.chunkShift;
-		chunkIndex = chunkIndex << REGION_SHIFT | (ch.wy - wy) >> NormalChunk.chunkShift;
-		chunkIndex = chunkIndex << REGION_SHIFT | (ch.wz - wz) >> NormalChunk.chunkShift;
+	private int getChunkIndex(Chunk ch) {
+		int chunkIndex = (ch.wx - wx)/ch.getWidth();
+		chunkIndex = chunkIndex << REGION_SHIFT | (ch.wy - wy)/ch.getWidth();
+		chunkIndex = chunkIndex << REGION_SHIFT | (ch.wz - wz)/ch.getWidth();
 		return chunkIndex;
 	}
 	
-	public boolean loadChunk(NormalChunk ch) {
+	public boolean loadChunk(Chunk ch) {
 		int chunkIndex = getChunkIndex(ch);
 		
 		byte[] input = threadLocalInputBuffer.get();
@@ -121,7 +119,7 @@ public class RegionFile extends ChunkData {
 		return true;
 	}
 	
-	public void saveChunk(NormalChunk ch) {
+	public void saveChunk(Chunk ch) {
 		synchronized(this) {
 			wasChanged = true;
 			int chunkIndex = getChunkIndex(ch);
@@ -201,10 +199,11 @@ public class RegionFile extends ChunkData {
 	/**
 	 * Converts the world coordinate to the coordinate of the region file it lies in.
 	 * @param worldCoordinate
+	 * @param voxelSize
 	 * @return
 	 */
-	public static int findCoordinate(int worldCoordinate) {
-		return worldCoordinate & ~WORLD_MASK;
+	public static int findCoordinate(int worldCoordinate, int voxelSize) {
+		return worldCoordinate & ~(REGION_SIZE*voxelSize*Chunk.chunkSize - 1);
 	}
 	
 	@Override

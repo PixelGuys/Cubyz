@@ -7,7 +7,6 @@ import org.joml.Vector3i;
 
 import cubyz.utils.Utilities;
 import cubyz.utils.datastructures.FastList;
-import cubyz.utils.math.Bits;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.BlockInstance;
@@ -20,19 +19,7 @@ import cubyz.world.terrain.MapFragment;
  */
 
 public class NormalChunk extends Chunk {
-	
-	public static final int chunkShift = 5;
-	
-	public static final int chunkShift2 = 2*chunkShift;
-	
-	public static final int chunkSize = 1 << chunkShift;
-	
-	public static final int chunkMask = chunkSize - 1;
-	
-	public static final int arraySize = chunkSize*chunkSize*chunkSize;
 
-	/**Due to having powers of 2 as dimensions it is more efficient to use a one-dimensional array.*/
-	protected int[] blocks;
 	/**Stores all visible BlockInstances. Can be faster accessed using coordinates.*/
 	protected BlockInstance[] inst;
 	/**Stores the local index of the block.*/
@@ -46,22 +33,18 @@ public class NormalChunk extends Chunk {
 	protected boolean loaded = false;
 	private ArrayList<BlockEntity> blockEntities = new ArrayList<>();
 	
-	protected final ServerWorld world;
-	
 	public final MapFragment map;
 
 	public boolean updated;
 	
 	private boolean wasChanged;
 	
-	public NormalChunk(int cx, int cy, int cz, ServerWorld world) {
-		super(cx << chunkShift, cy << chunkShift, cz << chunkShift, 1);
-		inst = new BlockInstance[arraySize];
-		blocks = new int[arraySize];
+	public NormalChunk(ServerWorld world, int cx, int cy, int cz) {
+		super(world, cx << chunkShift, cy << chunkShift, cz << chunkShift, 1);
+		inst = new BlockInstance[blocks.length];
 		this.cx = cx;
 		this.cy = cy;
 		this.cz = cz;
-		this.world = world;
 		this.map = world.chunkManager.getOrGenerateMapFragment(wx, wz, 1);
 	}
 	
@@ -79,18 +62,6 @@ public class NormalChunk extends Chunk {
 	public void clear() {
 		visibles.clear();
 		Utilities.fillArray(inst, null);
-	}
-	
-	/**
-	 * Gets the index of a given position inside this chunk.
-	 * Use this as much as possible, so it gets inlined by the VM.
-	 * @param x 0 ≤ x < chunkSize
-	 * @param y 0 ≤ y < chunkSize
-	 * @param z 0 ≤ z < chunkSize
-	 * @return
-	 */
-	public static int getIndex(int x, int y, int z) {
-		return (x << chunkShift) | (y << chunkShift2) | z;
 	}
 	
 	/**
@@ -133,14 +104,6 @@ public class NormalChunk extends Chunk {
 			liquids.add(index);
 		}
 		setUpdated();
-	}
-	
-	/**
-	 * Internal "hack" method used for the overlay, DO NOT USE!
-	 */
-	@Deprecated
-	public void createBlocksForOverlay() {
-		blocks = new int[arraySize];
 	}
 	
 	
@@ -394,22 +357,6 @@ public class NormalChunk extends Chunk {
 		if(wasChanged) {
 			ChunkIO.storeChunkToFile(world, this);
 			wasChanged = false;
-		}
-	}
-	
-	public void saveTo(byte[] data) {
-		for(int i = 0; i < blocks.length; i++) {
-			// Convert the runtime ID to the palette (world-specific) ID
-			int palId = world.wio.blockPalette.getIndex(blocks[i]);
-			Bits.putInt(data, i*4, palId);
-		}
-	}
-	
-	public void loadFrom(byte[] data) {
-		for(int i = 0; i < blocks.length; i++) {
-			// Convert the palette (world-specific) ID to the runtime ID
-			int palId = Bits.getInt(data, i*4);
-			blocks[i] = world.wio.blockPalette.getElement(palId);
 		}
 	}
 	

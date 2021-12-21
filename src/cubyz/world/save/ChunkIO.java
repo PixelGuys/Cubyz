@@ -10,9 +10,9 @@ public class ChunkIO {
 	private static Cache<RegionFile> regionCache = new Cache<>(new RegionFile[HASH_MASK+1][4]);
 	
 	private static RegionFile getOrLoadRegionFile(ServerWorld world, int wx, int wy, int wz, int voxelSize) {
-		wx = RegionFile.findCoordinate(wx);
-		wy = RegionFile.findCoordinate(wy);
-		wz = RegionFile.findCoordinate(wz);
+		wx = RegionFile.findCoordinate(wx, voxelSize);
+		wy = RegionFile.findCoordinate(wy, voxelSize);
+		wz = RegionFile.findCoordinate(wz, voxelSize);
 		ChunkData data = new ChunkData(wx, wy, wz, voxelSize);
 		int hash = data.hashCode() & HASH_MASK;
 		RegionFile res = regionCache.find(data, hash);
