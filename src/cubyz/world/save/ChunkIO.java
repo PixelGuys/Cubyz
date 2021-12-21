@@ -1,8 +1,8 @@
 package cubyz.world.save;
 
 import cubyz.utils.datastructures.Cache;
+import cubyz.world.Chunk;
 import cubyz.world.ChunkData;
-import cubyz.world.NormalChunk;
 import cubyz.world.ServerWorld;
 
 public class ChunkIO {
@@ -30,11 +30,11 @@ public class ChunkIO {
 		}
 		return res;
 	}
-	public static boolean loadChunkFromFile(ServerWorld world, NormalChunk ch) {
+	public static boolean loadChunkFromFile(ServerWorld world, Chunk ch) {
 		RegionFile region = getOrLoadRegionFile(world, ch.wx, ch.wy, ch.wz, ch.voxelSize);
 		return region.loadChunk(ch);
 	}
-	public static void storeChunkToFile(ServerWorld world, NormalChunk ch) {
+	public static void storeChunkToFile(ServerWorld world, Chunk ch) {
 		RegionFile region = getOrLoadRegionFile(world, ch.wx, ch.wy, ch.wz, ch.voxelSize);
 		region.saveChunk(ch);
 	}

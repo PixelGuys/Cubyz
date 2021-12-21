@@ -1,6 +1,8 @@
 package cubyz.world;
 
+import cubyz.client.ClientSettings;
 import cubyz.utils.math.Bits;
+import cubyz.world.save.ChunkIO;
 
 public abstract class Chunk extends ChunkData {
 	
@@ -14,6 +16,9 @@ public abstract class Chunk extends ChunkData {
 	
 	protected final ServerWorld world;
 	protected final int[] blocks = new int[chunkSize*chunkSize*chunkSize];
+	
+	protected boolean wasChanged;
+	protected boolean generated = false;
 
 	public Chunk(ServerWorld world, int wx, int wy, int wz, int voxelSize) {
 		super(wx, wy, wz, voxelSize);
@@ -105,6 +110,18 @@ public abstract class Chunk extends ChunkData {
 	 * @return this chunks width.
 	 */
 	public abstract int getWidth();
+	
+	public void save() {
+		if(wasChanged) {
+			ChunkIO.storeChunkToFile(world, this);
+			wasChanged = false;
+			// Update the next lod chunk:
+			if(voxelSize != 1 << ClientSettings.HIGHEST_LOD) { // TODO: Store the highest LOD somewhere more accessible.
+				ReducedChunk chunk = world.chunkManager.getOrGenerateReducedChunk(wx, wy, wz, voxelSize*2);
+				chunk.updateFromLowerResolution(this);
+			}
+		}
+	}
 	
 	public void saveTo(byte[] data) {
 		for(int i = 0; i < blocks.length; i++) {

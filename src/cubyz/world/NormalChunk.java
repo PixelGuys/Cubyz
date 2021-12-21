@@ -28,7 +28,6 @@ public class NormalChunk extends Chunk {
 	private ArrayList<Integer> updatingLiquids = new ArrayList<>();
 	private FastList<BlockInstance> visibles = new FastList<BlockInstance>(50, BlockInstance.class);
 	protected final int cx, cy, cz;
-	protected boolean generated = false;
 	protected boolean startedloading = false;
 	protected boolean loaded = false;
 	private ArrayList<BlockEntity> blockEntities = new ArrayList<>();
@@ -36,8 +35,6 @@ public class NormalChunk extends Chunk {
 	public final MapFragment map;
 
 	public boolean updated;
-	
-	private boolean wasChanged;
 	
 	public NormalChunk(ServerWorld world, int cx, int cy, int cz) {
 		super(world, cx << chunkShift, cy << chunkShift, cz << chunkShift, 1);
@@ -351,13 +348,6 @@ public class NormalChunk extends Chunk {
 	 */
 	public boolean contains(int x, int y, int z) {
 		return inst[getIndex(x & chunkMask, y & chunkMask, z & chunkMask)] != null;
-	}
-	
-	public void save() {
-		if(wasChanged) {
-			ChunkIO.storeChunkToFile(world, this);
-			wasChanged = false;
-		}
 	}
 	
 	/**
