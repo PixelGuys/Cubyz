@@ -6,6 +6,8 @@
 	"roughness" : 50,
 	"mountains" : 50,
 	"hills" : 50,
+
+	"validPlayerSpawn" : false,
 	
 	"ground_structure" : [
 		"3 to 5 cubyz:snow",
