@@ -7,6 +7,7 @@ import cubyz.world.items.Inventory;
 public abstract class MenuGUI implements RegistryElement {
 	
 	protected float alphaMultiplier;
+	protected boolean renderCrosshair = true;
 	
 	protected final Resource id;
 	
@@ -27,12 +28,19 @@ public abstract class MenuGUI implements RegistryElement {
 	public boolean ungrabsMouse() {
 		return true;
 	}
-	
+
+	public boolean renderCrossHair(){
+		return renderCrosshair;
+	}
+
+	public void setRenderCrosshair(boolean value){
+		renderCrosshair = value;
+	}
+
 	/**
 	 * Is guaranteed to be called when this GUI is closed.
 	 */
 	public void close() {}
-	
 	// For those guis that count on a block inventory. Others can safely ignore this.
 	public void setInventory(Inventory inv) {}
 
@@ -40,5 +48,4 @@ public abstract class MenuGUI implements RegistryElement {
 	public Resource getRegistryID() {
 		return id;
 	}
-	
 }
