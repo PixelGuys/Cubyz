@@ -51,6 +51,7 @@ public abstract class GeneralInventory extends MenuGUI {
 		num = new Label();
 		num.setTextAlign(Component.ALIGN_CENTER);
 		positionSlots();
+		setRenderCrosshair(false);
 	}
 
 	@Override
