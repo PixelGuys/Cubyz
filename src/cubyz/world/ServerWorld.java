@@ -427,7 +427,7 @@ public class ServerWorld {
 				}
 			}
 			oldMetaChunks.forEach((key, chunk) -> {
-				chunk.save();
+				chunk.clean();
 			});
 			chunks = chunkList.toArray(new NormalChunk[0]);
 			entityManagers = managers.toArray(new ChunkEntityManager[0]);
@@ -518,7 +518,12 @@ public class ServerWorld {
 	public void cleanup() {
 		// Be sure to dereference and finalize the maximum of things
 		try {
-			forceSave();
+			for(MetaChunk chunk : metaChunks.values()) {
+				if (chunk != null) chunk.clean();
+			}
+			wio.saveWorldData();
+			chunkManager.forceSave();
+			ChunkIO.save();
 
 			chunkManager.cleanup();
 			

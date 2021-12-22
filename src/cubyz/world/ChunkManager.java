@@ -227,7 +227,7 @@ public class ChunkManager {
 			res.generateFrom(this);
 			ReducedChunk old = reducedChunkCache.addToCache(res, hash);
 			if(old != null)
-				old.save();
+				old.clean();
 		}
 		return res;
 	}
@@ -241,9 +241,6 @@ public class ChunkManager {
 		} catch(InterruptedException e) {
 			Logger.error(e);
 		}
-	}
-
-	public void forceSave() {
 		for(Cache<MapFragment> cache : mapCache) {
 			cache.foreach((map) -> {
 				map.mapIO.saveData();
@@ -251,10 +248,28 @@ public class ChunkManager {
 			cache.clear();
 		}
 		for(int i = 0; i < 5; i++) { // Saving one chunk may create and update a new lower resolution chunk.
+		
+			for(ReducedChunk[] array : reducedChunkCache.cache) {
+				array = Arrays.copyOf(array, array.length); // Make a copy to prevent issues if the cache gets resorted during cleanup.
+				for(ReducedChunk chunk : array) {
+					if (chunk != null)
+						chunk.clean();
+				}
+			}
+		}
+		reducedChunkCache.clear();
+	}
+
+	public void forceSave() {
+		for(Cache<MapFragment> cache : mapCache) {
+			cache.foreach((map) -> {
+				map.mapIO.saveData();
+			});
+		}
+		for(int i = 0; i < 5; i++) { // Saving one chunk may create and update a new lower resolution chunk.
 			reducedChunkCache.foreach((chunk) -> {
 				chunk.save();
 			});
 		}
-		reducedChunkCache.clear();
 	}
 }

@@ -42,6 +42,17 @@ public class MetaChunk {
 		}
 	}
 	
+	public void clean() {
+		for(NormalChunk chunk : chunks) {
+			if (chunk != null)
+				chunk.clean();
+		}
+		for(ChunkEntityManager manager : entityManagers) {
+			if (manager != null)
+				manager.chunk.map.mapIO.saveItemEntities(manager.itemEntityManager);
+		}
+	}
+	
 	public void updateBlockEntities() {
 		for (NormalChunk ch : chunks) {
 			if (ch != null && ch.isLoaded() && ch.getBlockEntities().size() > 0) {
@@ -134,7 +145,7 @@ public class MetaChunk {
 					NormalChunk chunk = chunks[index];
 					if (dist > rdSquare) {
 						if (chunk != null) {
-							chunk.save();
+							chunk.clean();
 							chunks[index] = null;
 						}
 					} else if (chunk == null) {

@@ -1,6 +1,7 @@
 package cubyz.world;
 
 import cubyz.client.ClientSettings;
+import cubyz.utils.Logger;
 import cubyz.utils.math.Bits;
 import cubyz.world.save.ChunkIO;
 
@@ -17,7 +18,7 @@ public abstract class Chunk extends ChunkData {
 	protected final ServerWorld world;
 	protected final int[] blocks = new int[chunkSize*chunkSize*chunkSize];
 	
-	protected boolean wasChanged;
+	private boolean wasChanged = false, wasCleaned = false;
 	protected boolean generated = false;
 
 	public Chunk(ServerWorld world, int wx, int wy, int wz, int voxelSize) {
@@ -111,6 +112,22 @@ public abstract class Chunk extends ChunkData {
 	 */
 	public abstract int getWidth();
 	
+	public void setChanged() {
+		wasChanged = true;
+		synchronized(this) {
+			if(wasCleaned) {
+				save();
+			}
+		}
+	}
+	
+	public void clean() {
+		synchronized(this) {
+			wasCleaned = true;
+			save();
+		}
+	}
+	
 	public void save() {
 		if(wasChanged) {
 			ChunkIO.storeChunkToFile(world, this);
@@ -149,5 +166,13 @@ public abstract class Chunk extends ChunkData {
 	 */
 	public static int getIndex(int x, int y, int z) {
 		return (x << chunkShift) | (y << chunkShift2) | z;
+	}
+	
+	@Override
+	public void finalize() {
+		if(wasChanged) {
+			Logger.crash("Unsaved chunk: "+wx+" "+wy+" "+wz+" "+voxelSize+" "+wasCleaned);
+			System.exit(1);
+		}
 	}
 }

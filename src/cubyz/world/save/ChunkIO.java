@@ -6,7 +6,8 @@ import cubyz.world.ChunkData;
 import cubyz.world.ServerWorld;
 
 public class ChunkIO {
-	private static final int HASH_MASK = 7;
+	// Region files generally seem to be less than 1 MB on disk. To be on the safe side the amount of cached region files is limited to 128.
+	private static final int HASH_MASK = 31;
 	private static Cache<RegionFile> regionCache = new Cache<>(new RegionFile[HASH_MASK+1][4]);
 	
 	private static RegionFile getOrLoadRegionFile(ServerWorld world, int wx, int wy, int wz, int voxelSize) {
@@ -24,8 +25,7 @@ public class ChunkIO {
 			res = new RegionFile(world, wx, wy, wz, voxelSize);
 			RegionFile old = regionCache.addToCache(res, hash);
 			if(old != null) {
-				old.store();
-				old.storeOnChange = true;
+				old.clean();
 			}
 		}
 		return res;
@@ -41,8 +41,7 @@ public class ChunkIO {
 	
 	public static void save() {
 		regionCache.foreach((region) -> {
-			region.store();
-			region.storeOnChange = true;
+			region.clean();
 		});
 	}
 	

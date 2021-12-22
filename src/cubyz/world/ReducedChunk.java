@@ -147,7 +147,7 @@ public class ReducedChunk extends Chunk {
 			}
 		}
 		
-		wasChanged = true;
+		setChanged();
 	}
 	
 	public void generateFrom(ChunkManager gen) {
@@ -155,7 +155,6 @@ public class ReducedChunk extends Chunk {
 			gen.generate(this);
 		}
 		generated = true;
-		wasChanged = false;
 	}
 
 	@Override

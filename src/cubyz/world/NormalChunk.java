@@ -50,7 +50,6 @@ public class NormalChunk extends Chunk {
 			gen.generate(this);
 		}
 		generated = true;
-		wasChanged = false;
 	}
 	
 	/**
@@ -95,7 +94,7 @@ public class NormalChunk extends Chunk {
 		int index = getIndex(x, y, z);
 		if (blocks[index] != b) {
 			// Registers blockChange:
-			wasChanged = true;
+			setChanged();
 		}
 		if (Blocks.blockClass(b) == BlockClass.FLUID) {
 			liquids.add(index);
@@ -213,7 +212,7 @@ public class NormalChunk extends Chunk {
 		}
 
 		// Registers blockChange:
-		wasChanged = true;
+		setChanged();
 	}
 	
 	/**
@@ -333,7 +332,7 @@ public class NormalChunk extends Chunk {
 		setBlock(x, y, z, 0); // TODO: Investigate why this is called twice.
 
 		if (registerBlockChange) {
-			wasChanged = true;
+			setChanged();
 		}
 		
 		updateNeighborChunks(x, y, z);

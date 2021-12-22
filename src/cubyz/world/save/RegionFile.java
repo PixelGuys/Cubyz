@@ -34,13 +34,13 @@ public class RegionFile extends ChunkData {
 			return new byte[4*Chunk.chunkSize*Chunk.chunkSize*Chunk.chunkSize];
 		}
 	};
-	public static final int REGION_SHIFT = 2;
+	public static final int REGION_SHIFT = 3;
 	public static final int REGION_SIZE = 1 << REGION_SHIFT;
 	private byte[] data = new byte[0];
 	private boolean[] occupancy = new boolean[REGION_SIZE*REGION_SIZE*REGION_SIZE];
 	private int[] startingIndices = new int[REGION_SIZE*REGION_SIZE*REGION_SIZE + 1];
 	private boolean wasChanged = false;
-	public boolean storeOnChange = false;
+	private boolean storeOnChange = false;
 
 	public RegionFile(ServerWorld world, int wx, int wy, int wz, int voxelSize) {
 		super(wx, wy, wz, voxelSize);
@@ -60,11 +60,12 @@ public class RegionFile extends ChunkData {
 				Logger.error("Unknown compression algorithm "+compressor+" for save file \""+file.getAbsolutePath()+"\".");
 				return;
 			}
-			long occupancyLong = Bits.getLong(data, offset);
-			offset += 8;
+			byte[] occupancyBytes = new byte[occupancy.length/8];
+			System.arraycopy(data, 4, occupancyBytes, 0, occupancyBytes.length);
+			offset += occupancyBytes.length;
 			int index = -1;
 			for(int i = 0; i < occupancy.length; i++) {
-				occupancy[i] = (occupancyLong & 1l << i) != 0;
+				occupancy[i] = (occupancyBytes[i >> 3] & 1l << (i & 7)) != 0;
 				if(occupancy[i]) {
 					startingIndices[i] = Bits.getInt(data, offset);
 					for(index++; index < i; index++) {
@@ -153,46 +154,57 @@ public class RegionFile extends ChunkData {
 				// This chunks wasn't in the list before:
 				occupancy[chunkIndex] = true;
 			}
+			if(storeOnChange)
+				unsynchronized_store();
 		}
-		if(storeOnChange)
-			store();
+	}
+	
+	private void unsynchronized_store() {
+		if(!wasChanged) return; // No need to save it.
+		File file = new File("saves/"+Cubyz.world.getName()+"/"+voxelSize+"/"+wx+"/"+wy+"/"+wz+".region");
+		file.getParentFile().mkdirs();
+		try (BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(file))) {
+			byte[] occupancyBytes = new byte[occupancy.length/8];
+			int numberOfChunks = 0;
+			for(int i = 0; i < occupancy.length; i++) {
+				if(occupancy[i]) {
+					occupancyBytes[i >> 3] |= 1l << (i & 7);
+					numberOfChunks++;
+				}
+			}
+			
+			byte[] metaData = new byte[4 + occupancyBytes.length + 4*numberOfChunks];
+			int offset = 0;
+			Bits.putInt(metaData, offset, 0); // compressor version
+			offset += 4;
+			System.arraycopy(occupancyBytes, 0, metaData, 4, occupancyBytes.length);
+			offset += occupancyBytes.length;
+			for(int i = 0; i < occupancy.length; i++) {
+				if(occupancy[i]) {
+					Bits.putInt(metaData, offset, startingIndices[i]);
+					offset += 4;
+				}
+			}
+			
+			out.write(metaData);
+			out.write(data);
+		} catch (IOException e) {
+			Logger.error("Unable to store chunk resources.");
+			Logger.error(e);
+		}
+		wasChanged = false;
+	}
+	
+	public void clean() {
+		synchronized(this) {
+			storeOnChange = true;
+			unsynchronized_store();
+		}
 	}
 	
 	public void store() {
 		synchronized(this) {
-			if(!wasChanged) return; // No need to save it.
-			File file = new File("saves/"+Cubyz.world.getName()+"/"+voxelSize+"/"+wx+"/"+wy+"/"+wz+".region");
-			file.getParentFile().mkdirs();
-			try (BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(file))) {
-				long occupancyLong = 0;
-				int numberOfChunks = 0;
-				for(int i = 0; i < occupancy.length; i++) {
-					if(occupancy[i]) {
-						occupancyLong |= 1l << i;
-						numberOfChunks++;
-					}
-				}
-				
-				byte[] metaData = new byte[4 + 8 + 4*numberOfChunks];
-				int offset = 0;
-				Bits.putInt(metaData, offset, 0); // compressor version
-				offset += 4;
-				Bits.putLong(metaData, offset, occupancyLong);
-				offset += 8;
-				for(int i = 0; i < occupancy.length; i++) {
-					if(occupancy[i]) {
-						Bits.putInt(metaData, offset, startingIndices[i]);
-						offset += 4;
-					}
-				}
-				
-				out.write(metaData);
-				out.write(data);
-			} catch (IOException e) {
-				Logger.error("Unable to store chunk resources.");
-				Logger.error(e);
-			}
-			wasChanged = false;
+			unsynchronized_store();
 		}
 	}
 
@@ -209,7 +221,7 @@ public class RegionFile extends ChunkData {
 	@Override
 	public void finalize() {
 		if(wasChanged) {
-			Logger.crash(wx+" "+wy+" "+wz);
+			Logger.crash(wx+" "+wy+" "+wz+" "+voxelSize);
 			System.exit(1);
 		}
 	}
