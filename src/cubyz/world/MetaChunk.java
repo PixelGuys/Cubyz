@@ -16,7 +16,7 @@ public class MetaChunk {
 	public static final int metaChunkShift = 4;
 	public static final int metaChunkShift2 = 2*metaChunkShift;
 	public static final int metaChunkSize = 1 << metaChunkShift;
-	public static final int worldShift = metaChunkShift + NormalChunk.chunkShift;
+	public static final int worldShift = metaChunkShift + Chunk.chunkShift;
 	public static final int worldMask = (1 << worldShift) - 1;
 	public final int wx, wy, wz;
 	public final NormalChunk[] chunks;
@@ -34,7 +34,18 @@ public class MetaChunk {
 	public void save() {
 		for(NormalChunk chunk : chunks) {
 			if (chunk != null)
-				chunk.map.mapIO.saveChunk(chunk);
+				chunk.save();
+		}
+		for(ChunkEntityManager manager : entityManagers) {
+			if (manager != null)
+				manager.chunk.map.mapIO.saveItemEntities(manager.itemEntityManager);
+		}
+	}
+	
+	public void clean() {
+		for(NormalChunk chunk : chunks) {
+			if (chunk != null)
+				chunk.clean();
 		}
 		for(ChunkEntityManager manager : entityManagers) {
 			if (manager != null)
@@ -66,17 +77,17 @@ public class MetaChunk {
 	public void liquidUpdate() {
 		for (NormalChunk ch : chunks) {
 			if (ch == null) continue;
-			int wx = ch.getX() << NormalChunk.chunkShift;
-			int wz = ch.getZ() << NormalChunk.chunkShift;
+			int wx = ch.getX() << Chunk.chunkShift;
+			int wz = ch.getZ() << Chunk.chunkShift;
 			if (ch.isLoaded() && ch.getLiquids().size() > 0) {
 				Integer[] liquids = ch.getUpdatingLiquids().toArray(new Integer[0]);
 				int size = ch.getUpdatingLiquids().size();
 				ch.getUpdatingLiquids().clear();
 				for (int j = 0; j < size; j++) {
 					int block = ch.getBlockAtIndex(liquids[j]);
-					int bx = (liquids[j] >> NormalChunk.chunkShift) & NormalChunk.chunkMask;
-					int by = liquids[j] >> NormalChunk.chunkShift2;
-					int bz = liquids[j] & NormalChunk.chunkMask;
+					int bx = (liquids[j] >> Chunk.chunkShift) & Chunk.chunkMask;
+					int by = liquids[j] >> Chunk.chunkShift2;
+					int bz = liquids[j] & Chunk.chunkMask;
 					int[] neighbors = ch.getNeighbors(bx, by, bz);
 					for (int i = 0; i < 5; i++) {
 						int b = neighbors[i];
@@ -114,35 +125,32 @@ public class MetaChunk {
 	
 	public void updatePlayer(int x, int y, int z, int renderDistance, int entityDistance, ArrayList<NormalChunk> chunksList, ArrayList<ChunkEntityManager> managers) {
 		// Shift the player position, so chunks are loaded once the center comes into render distance:
-		x -= NormalChunk.chunkSize/2;
-		y -= NormalChunk.chunkSize/2;
-		z -= NormalChunk.chunkSize/2;
-		int rdSquare = renderDistance*renderDistance << NormalChunk.chunkShift2;
-		int edSquare = entityDistance*entityDistance << NormalChunk.chunkShift2;
+		x -= Chunk.chunkSize/2;
+		y -= Chunk.chunkSize/2;
+		z -= Chunk.chunkSize/2;
+		int rdSquare = renderDistance*renderDistance << Chunk.chunkShift2;
+		int edSquare = entityDistance*entityDistance << Chunk.chunkShift2;
 		edSquare = Math.min(rdSquare, edSquare);
 		for(int px = 0; px < metaChunkSize; px++) {
-			long dx = Math.max(0, Math.abs(px*NormalChunk.chunkSize + wx - x) - NormalChunk.chunkSize/2);
+			long dx = Math.max(0, Math.abs(px*Chunk.chunkSize + wx - x) - Chunk.chunkSize/2);
 			long distX = dx*dx;
 			for(int py = 0; py < metaChunkSize; py++) {
-				long dy = Math.max(0, Math.abs(py*NormalChunk.chunkSize + wy - y) - NormalChunk.chunkSize/2);
+				long dy = Math.max(0, Math.abs(py*Chunk.chunkSize + wy - y) - Chunk.chunkSize/2);
 				long distY = dy*dy;
 				for(int pz = 0; pz < metaChunkSize; pz++) {
-					long dz = Math.max(0, Math.abs(pz*NormalChunk.chunkSize + wz - z) - NormalChunk.chunkSize/2);
+					long dz = Math.max(0, Math.abs(pz*Chunk.chunkSize + wz - z) - Chunk.chunkSize/2);
 					long distZ = dz*dz;
 					long dist = distX + distY + distZ;
 					int index = (px << metaChunkShift) | (py <<  metaChunkShift2) | pz;
 					NormalChunk chunk = chunks[index];
 					if (dist > rdSquare) {
 						if (chunk != null) {
-							if (chunk.isGenerated())
-								chunk.map.mapIO.saveChunk(chunk); // Only needs to be stored if it was ever generated.
-							else
-								world.unQueueChunk(chunk);
+							chunk.clean();
 							chunks[index] = null;
 						}
 					} else if (chunk == null) {
 						try {
-							chunk = (NormalChunk)world.chunkProvider.getDeclaredConstructors()[0].newInstance((wx >> NormalChunk.chunkShift) + px, (wy >> NormalChunk.chunkShift) + py, (wz >> NormalChunk.chunkShift) + pz, world);
+							chunk = (NormalChunk)world.chunkProvider.getDeclaredConstructors()[0].newInstance(world, (wx >> Chunk.chunkShift) + px, (wy >> Chunk.chunkShift) + py, (wz >> Chunk.chunkShift) + pz);
 							chunks[index] = chunk;
 							world.queueChunk(chunks[index]);
 							chunksList.add(chunks[index]);
@@ -171,17 +179,17 @@ public class MetaChunk {
 	}
 	
 	public NormalChunk getChunk(int cx, int cy, int cz) {
-		cx -= wx >> NormalChunk.chunkShift;
-		cy -= wy >> NormalChunk.chunkShift;
-		cz -= wz >> NormalChunk.chunkShift;
+		cx -= wx >> Chunk.chunkShift;
+		cy -= wy >> Chunk.chunkShift;
+		cz -= wz >> Chunk.chunkShift;
 		int index = (cx << metaChunkShift) | (cy <<  metaChunkShift2) | cz;
 		return chunks[index];
 	}
 	
 	public ChunkEntityManager getEntityManager(int cx, int cy, int cz) {
-		cx -= wx >> NormalChunk.chunkShift;
-		cy -= wy >> NormalChunk.chunkShift;
-		cz -= wz >> NormalChunk.chunkShift;
+		cx -= wx >> Chunk.chunkShift;
+		cy -= wy >> Chunk.chunkShift;
+		cz -= wz >> Chunk.chunkShift;
 		int index = (cx << metaChunkShift) | (cy <<  metaChunkShift2) | cz;
 		return entityManagers[index];
 	}

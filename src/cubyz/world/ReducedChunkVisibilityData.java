@@ -34,17 +34,17 @@ public class ReducedChunkVisibilityData extends ChunkData {
 		x += (wx - chunks[0].wx)/voxelSize;
 		y += (wy - chunks[0].wy)/voxelSize;
 		z += (wz - chunks[0].wz)/voxelSize;
-		ReducedChunk chunk = chunks[x/NormalChunk.chunkSize*4 + y/NormalChunk.chunkSize*2 + z/NormalChunk.chunkSize];
-		x &= NormalChunk.chunkMask;
-		y &= NormalChunk.chunkMask;
-		z &= NormalChunk.chunkMask;
-		return chunk.blocks[NormalChunk.getIndex(x, y, z)];
+		ReducedChunk chunk = chunks[x/Chunk.chunkSize*4 + y/Chunk.chunkSize*2 + z/Chunk.chunkSize];
+		x &= Chunk.chunkMask;
+		y &= Chunk.chunkMask;
+		z &= Chunk.chunkMask;
+		return chunk.blocks[Chunk.getIndex(x, y, z)];
 	}
 	
 	public ReducedChunkVisibilityData(ServerWorld world, int wx, int wy, int wz, int voxelSize) {
 		super(wx, wy, wz, voxelSize);
 
-		int chunkSize = voxelSize*NormalChunk.chunkSize;
+		int chunkSize = voxelSize*Chunk.chunkSize;
 		int chunkMask = chunkSize - 1;
 
 		// Get or generate the 8 surrounding chunks:
@@ -56,11 +56,11 @@ public class ReducedChunkVisibilityData extends ChunkData {
 				}
 			}
 		}
-		int halfMask = NormalChunk.chunkMask >> 1;
+		int halfMask = Chunk.chunkMask >> 1;
 		// Go through all blocks of this chunk:
-		for(byte x = 0; x < NormalChunk.chunkSize; x++) {
-			for(byte y = 0; y < NormalChunk.chunkSize; y++) {
-				for(byte z = 0; z < NormalChunk.chunkSize; z++) {
+		for(byte x = 0; x < Chunk.chunkSize; x++) {
+			for(byte y = 0; y < Chunk.chunkSize; y++) {
+				for(byte z = 0; z < Chunk.chunkSize; z++) {
 					int block = getBlock(chunks, x, y, z);
 					if (block == 0) continue;
 					// Check all neighbors:

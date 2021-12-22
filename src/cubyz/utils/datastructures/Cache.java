@@ -27,16 +27,16 @@ public class Cache<T> {
 	 */
 	public T find(Object compare, int index) {
 		cacheRequests++;
-		for(int i = 0; i < cache[index].length; i++) {
-			T ret = cache[index][i];
-			if (compare.equals(ret)) {
-				if (i != 0) { // No need to put it up front when it already is on the front.
-					synchronized(cache[index]) {
+		synchronized(cache[index]) {
+			for(int i = 0; i < cache[index].length; i++) {
+				T ret = cache[index][i];
+				if (compare.equals(ret)) {
+					if (i != 0) { // No need to put it up front when it already is on the front.
 						System.arraycopy(cache[index], 0, cache[index], 1, i);
-						cache[index][i] = ret;
+						cache[index][0] = ret;
 					}
+					return ret;
 				}
-				return ret;
 			}
 		}
 		cacheMisses++;

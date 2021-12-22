@@ -11,6 +11,7 @@ import cubyz.client.Meshes;
 import cubyz.client.NormalChunkMesh;
 import cubyz.client.ReducedChunkMesh;
 import cubyz.utils.datastructures.HashMapKey3D;
+import cubyz.world.Chunk;
 import cubyz.world.ChunkData;
 import cubyz.world.NormalChunk;
 import cubyz.world.ReducedChunkVisibilityData;
@@ -29,7 +30,7 @@ public class RenderOctTree {
 			this.y = y;
 			this.z = z;
 			this.size = size;
-			if (size == NormalChunk.chunkSize) {
+			if (size == Chunk.chunkSize) {
 				mesh = new NormalChunkMesh(replacement, x, y, z, size);
 			} else {
 				mesh = new ReducedChunkMesh(replacement, x, y, z, size);
@@ -60,11 +61,11 @@ public class RenderOctTree {
 				}
 				
 				// Check if this chunk has reached the smallest possible size:
-				if (size == NormalChunk.chunkSize) {
+				if (size == Chunk.chunkSize) {
 					// Check if this is a normal or a reduced chunk:
 					if (minDist < renderDistance*renderDistance) {
 						if (mesh.getChunk() == null) {
-							((NormalChunkMesh)mesh).updateChunk(Cubyz.world.getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift));
+							((NormalChunkMesh)mesh).updateChunk(Cubyz.world.getChunk(x >> Chunk.chunkShift, y >> Chunk.chunkShift, z >> Chunk.chunkShift));
 						}
 					} else {
 						if (mesh.getChunk() != null) {
@@ -74,7 +75,7 @@ public class RenderOctTree {
 					return;
 				}
 				// Check if parts of this OctTree require using normal chunks:
-				if (size == NormalChunk.chunkSize*2 && minDist < renderDistance*renderDistance) {
+				if (size == Chunk.chunkSize*2 && minDist < renderDistance*renderDistance) {
 					if (nextNodes == null) {
 						nextNodes = new OctTreeNode[8];
 						for(int i = 0; i < 8; i++) {
@@ -85,7 +86,7 @@ public class RenderOctTree {
 						nextNodes[i].update(px, py, pz, renderDistance, maxRD/2, minHeight, maxHeight, nearRenderDistance, meshRequests);
 					}
 				// Check if parts of this OctTree require a higher resolution:
-				} else if (minDist < maxRD*maxRD/4 && size > NormalChunk.chunkSize*2) {
+				} else if (minDist < maxRD*maxRD/4 && size > Chunk.chunkSize*2) {
 					if (nextNodes == null) {
 						nextNodes = new OctTreeNode[8];
 						for(int i = 0; i < 8; i++) {
@@ -141,16 +142,16 @@ public class RenderOctTree {
 	public void update(int px, int py, int pz, int renderDistance, int highestLOD, float LODFactor) {
 		//if (lastX == px && lastY == py && lastZ == pz && lastRD == renderDistance && lastLOD == highestLOD && lastFactor == LODFactor) return; TODO: Send a chunk request to the server for normalChunks as well, to prevent issues here.
 		
-		int maxRenderDistance = (int)Math.ceil((renderDistance << highestLOD)*LODFactor*NormalChunk.chunkSize);
-		int nearRenderDistance = renderDistance*NormalChunk.chunkSize; // Only render underground for nearby chunks. Otherwise the lag gets massive. TODO: render at least some ReducedChunks there.
-		int LODShift = highestLOD + NormalChunk.chunkShift;
-		int LODSize = NormalChunk.chunkSize << highestLOD;
+		int maxRenderDistance = (int)Math.ceil((renderDistance << highestLOD)*LODFactor*Chunk.chunkSize);
+		int nearRenderDistance = renderDistance*Chunk.chunkSize; // Only render underground for nearby chunks. Otherwise the lag gets massive. TODO: render at least some ReducedChunks there.
+		int LODShift = highestLOD + Chunk.chunkShift;
+		int LODSize = Chunk.chunkSize << highestLOD;
 		int LODMask = LODSize - 1;
 		int minX = (px - maxRenderDistance - LODMask) & ~LODMask;
 		int maxX = (px + maxRenderDistance + LODMask) & ~LODMask;
 		// The LOD chunks are offset from grid to make generation easier.
-		minX += LODSize/2 - NormalChunk.chunkSize;
-		maxX += LODSize/2 - NormalChunk.chunkSize;
+		minX += LODSize/2 - Chunk.chunkSize;
+		maxX += LODSize/2 - Chunk.chunkSize;
 		HashMap<HashMapKey3D, OctTreeNode> newMap = new HashMap<HashMapKey3D, OctTreeNode>();
 		ArrayList<ChunkData> meshRequests = new ArrayList<ChunkData>();
 		for(int x = minX; x <= maxX; x += LODSize) {
@@ -158,16 +159,16 @@ public class RenderOctTree {
 			int minY = (py - maxYRenderDistance - LODMask) & ~LODMask;
 			int maxY = (py + maxYRenderDistance + LODMask) & ~LODMask;
 			// The LOD chunks are offset from grid to make generation easier.
-			minY += LODSize/2 - NormalChunk.chunkSize;
-			maxY += LODSize/2 - NormalChunk.chunkSize;
+			minY += LODSize/2 - Chunk.chunkSize;
+			maxY += LODSize/2 - Chunk.chunkSize;
 			
 			for(int y = minY; y <= maxY; y += LODSize) {
 				int maxZRenderDistance = (int)Math.ceil(Math.sqrt(maxYRenderDistance*maxYRenderDistance - (y - py)*(y - py)));
 				int minZ = (pz - maxZRenderDistance - LODMask) & ~LODMask;
 				int maxZ = (pz + maxZRenderDistance + LODMask) & ~LODMask;
 				// The LOD chunks are offset from grid to make generation easier.
-				minZ += LODSize/2 - NormalChunk.chunkSize;
-				maxZ += LODSize/2 - NormalChunk.chunkSize;
+				minZ += LODSize/2 - Chunk.chunkSize;
+				maxZ += LODSize/2 - Chunk.chunkSize;
 				
 				for(int z = minZ; z <= maxZ; z += LODSize) {
 					// Make sure underground chunks are only generated if they are close to the player.
@@ -192,7 +193,7 @@ public class RenderOctTree {
 						node.shouldBeRemoved = false;
 					}
 					newMap.put(key, node);
-					node.update(px, py, pz, renderDistance*NormalChunk.chunkSize, maxRenderDistance, Cubyz.world.chunkManager.getOrGenerateMapFragment(x, z, 32).getMinHeight(), Cubyz.world.chunkManager.getOrGenerateMapFragment(x, z, 32).getMaxHeight(), nearRenderDistance, meshRequests);
+					node.update(px, py, pz, renderDistance*Chunk.chunkSize, maxRenderDistance, Cubyz.world.chunkManager.getOrGenerateMapFragment(x, z, 32).getMinHeight(), Cubyz.world.chunkManager.getOrGenerateMapFragment(x, z, 32).getMaxHeight(), nearRenderDistance, meshRequests);
 				}
 			}
 		}
@@ -219,11 +220,11 @@ public class RenderOctTree {
 	}
 
 	public OctTreeNode findNode(ChunkData chunkData) {
-		int LODShift = lastLOD + NormalChunk.chunkShift;
+		int LODShift = lastLOD + Chunk.chunkShift;
 		int LODSize = 1 << LODShift;
-		int rootX = (chunkData.wx - LODSize/2 + NormalChunk.chunkSize) >> LODShift;
-		int rootY = (chunkData.wy - LODSize/2 + NormalChunk.chunkSize) >> LODShift;
-		int rootZ = (chunkData.wz - LODSize/2 + NormalChunk.chunkSize) >> LODShift;
+		int rootX = (chunkData.wx - LODSize/2 + Chunk.chunkSize) >> LODShift;
+		int rootY = (chunkData.wy - LODSize/2 + Chunk.chunkSize) >> LODShift;
+		int rootZ = (chunkData.wz - LODSize/2 + Chunk.chunkSize) >> LODShift;
 
 		HashMapKey3D key = new HashMapKey3D(rootX, rootY, rootZ);
 

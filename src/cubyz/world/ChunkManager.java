@@ -211,6 +211,10 @@ public class ChunkManager {
 	 * @return
 	 */
 	public ReducedChunk getOrGenerateReducedChunk(int wx, int wy, int wz, int voxelSize) {
+		int chunkMask = ~(voxelSize*Chunk.chunkSize - 1);
+		wx &= chunkMask;
+		wy &= chunkMask;
+		wz &= chunkMask;
 		ChunkData data = new ChunkData(wx, wy, wz, voxelSize);
 		int hash = data.hashCode() & CHUNK_CACHE_MASK;
 		ReducedChunk res = reducedChunkCache.find(data, hash);
@@ -219,9 +223,11 @@ public class ChunkManager {
 			res = reducedChunkCache.find(data, hash);
 			if (res != null) return res;
 			// Generate a new chunk:
-			res = new ReducedChunk(wx, wy, wz, CubyzMath.binaryLog(voxelSize));
+			res = new ReducedChunk(world, wx, wy, wz, CubyzMath.binaryLog(voxelSize));
 			res.generateFrom(this);
-			reducedChunkCache.addToCache(res, hash);
+			ReducedChunk old = reducedChunkCache.addToCache(res, hash);
+			if(old != null)
+				old.clean();
 		}
 		return res;
 	}
@@ -235,6 +241,23 @@ public class ChunkManager {
 		} catch(InterruptedException e) {
 			Logger.error(e);
 		}
+		for(Cache<MapFragment> cache : mapCache) {
+			cache.foreach((map) -> {
+				map.mapIO.saveData();
+			});
+			cache.clear();
+		}
+		for(int i = 0; i < 5; i++) { // Saving one chunk may create and update a new lower resolution chunk.
+		
+			for(ReducedChunk[] array : reducedChunkCache.cache) {
+				array = Arrays.copyOf(array, array.length); // Make a copy to prevent issues if the cache gets resorted during cleanup.
+				for(ReducedChunk chunk : array) {
+					if (chunk != null)
+						chunk.clean();
+				}
+			}
+		}
+		reducedChunkCache.clear();
 	}
 
 	public void forceSave() {
@@ -242,7 +265,11 @@ public class ChunkManager {
 			cache.foreach((map) -> {
 				map.mapIO.saveData();
 			});
-			cache.clear();
+		}
+		for(int i = 0; i < 5; i++) { // Saving one chunk may create and update a new lower resolution chunk.
+			reducedChunkCache.foreach((chunk) -> {
+				chunk.save();
+			});
 		}
 	}
 }

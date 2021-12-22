@@ -17,7 +17,7 @@ import cubyz.utils.datastructures.IntWrapper;
 import cubyz.utils.datastructures.FloatFastList;
 import cubyz.utils.datastructures.IntFastList;
 import cubyz.world.Neighbors;
-import cubyz.world.NormalChunk;
+import cubyz.world.Chunk;
 import cubyz.world.ServerWorld;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.Blocks;
@@ -141,9 +141,9 @@ public class StackableRotation implements RotationMode {
 			Logger.error("Unsupported model "+model.getRegistryID()+" in block "+Blocks.id(bi.getBlock())+" for stackable block type. Skipping block.");
 			return renderIndex;
 		}
-		int x = bi.getX() & NormalChunk.chunkMask;
-		int y = bi.getY() & NormalChunk.chunkMask;
-		int z = bi.getZ() & NormalChunk.chunkMask;
+		int x = bi.getX() & Chunk.chunkMask;
+		int y = bi.getY() & Chunk.chunkMask;
+		int z = bi.getZ() & Chunk.chunkMask;
 		boolean[] neighbors = bi.getNeighbors();
 		int[] light = bi.light;
 		int[] textureIndices = BlockMeshes.textureIndices(bi.getBlock());

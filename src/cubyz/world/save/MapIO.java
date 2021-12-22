@@ -8,7 +8,6 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.InflaterInputStream;
 
@@ -24,8 +23,6 @@ import cubyz.world.terrain.MapFragment;
  */
 
 public class MapIO {
-	private ArrayList<byte[]> blockData;
-	private ArrayList<int[]> chunkData;
 	private final File dir;
 	private final WorldIO wio;
 	private int[][] heightMap;
@@ -62,81 +59,10 @@ public class MapIO {
 		}
 	}
 	
-	public ArrayList<BlockChange> transformData(byte[] data) {
-		int size = Bits.getInt(data, 12);
-		ArrayList<BlockChange> list = new ArrayList<BlockChange>(size);
-		for (int i = 0; i < size; i++) {
-			try {
-				list.add(new BlockChange(data, 16 + i*8, wio.blockPalette));
-			} catch (MissingBlockException e) {
-				// If the block is missing, we replace it by nothing
-				int off = 16 + i*8;
-				int index = Bits.getInt(data, off + 0);
-				list.add(new BlockChange(-2, 0, index));
-			}
-		}
-		return list;
-	}
-	
-	private void readFile() {
-		blockData = new ArrayList<>();
-		chunkData = new ArrayList<>();
-		if (dir.exists()) {
-			try {
-				InputStream in = new BufferedInputStream(new InflaterInputStream(new FileInputStream(dir+"/blocks.dat")));
-				// read block data
-				byte[] len = new byte[4];
-				in.read(len);
-				int l = Bits.getInt(len, 0);
-				for (int i = 0; i < l; i++) {
-					byte[] b = new byte[4];
-					in.read(b);
-					int ln = Bits.getInt(b, 0);
-					byte[] data = new byte[ln];
-					in.read(data);
-					blockData.add(data);
-					
-					int cx = Bits.getInt(data, 0);
-					int cy = Bits.getInt(data, 4);
-					int cz = Bits.getInt(data, 8);
-					int[] ckData = new int[] {cx, cy, cz};
-					chunkData.add(ckData);
-				}
-				in.close();
-			} catch (IOException e) {
-				Logger.error(e);
-			}
-		}
-	}
-	
 	public void saveData() {
-		if (blockData == null) return;
 		if (!dir.exists()) dir.mkdirs();
-		try {
-			BufferedOutputStream out = new BufferedOutputStream(new DeflaterOutputStream(new FileOutputStream(new File(dir, "blocks.dat"))));
-			synchronized (blockData) {
-				byte[] len = new byte[4];
-				int l = 0;
-				for (byte[] data : blockData)
-					if (data.length > 16)
-						l++;
-				Bits.putInt(len, 0, l);
-				out.write(len);
-				for (byte[] data : blockData) {
-					if (data.length > 16) { // Only write data if there is any data other than the chunk coordinates.
-						byte[] b = new byte[4];
-						Bits.putInt(b, 0, data.length);
-						out.write(b);
-						out.write(data);
-					}
-				}
-			}
-			out.close();
-		} catch (IOException e) {
-			Logger.error(e);
-		}
 		// Save height map:
-		if (dir.exists() && heightMap != null) {
+		if (heightMap != null) {
 			try {
 				BufferedOutputStream out = new BufferedOutputStream(new DeflaterOutputStream(new FileOutputStream(dir+"/height.dat")));
 				byte[] data = new byte[MapFragment.MAP_SIZE*MapFragment.MAP_SIZE*4];
@@ -151,52 +77,6 @@ public class MapIO {
 				out.close();
 			} catch (IOException e) {
 				Logger.error(e);
-			}
-		}
-	}
-	
-	public ArrayList<BlockChange> getBlockChanges(int cx, int cy, int cz) {
-		if (blockData == null) {
-			readFile();
-		}
-		int index = -1;
-		for(int i = 0; i < chunkData.size(); i++) {
-			int [] arr = chunkData.get(i);
-			if (arr[0] == cx && arr[1] == cy && arr[2] == cz) {
-				index = i;
-				break;
-			}
-		}
-		if (index == -1) {
-			byte[] dummy = new byte[16];
-			Bits.putInt(dummy, 0, cx);
-			Bits.putInt(dummy, 4, cy);
-			Bits.putInt(dummy, 8, cz);
-			Bits.putInt(dummy, 12, 0);
-			return transformData(dummy);
-		}
-		return transformData(blockData.get(index));
-	}
-
-	public void saveChunk(NormalChunk ch) {
-		byte[] cb = ch.save(wio.blockPalette);
-		int[] cd = ch.getData();
-		if (cb.length <= 16) return;
-		int index = -1;
-		synchronized (blockData) {
-			for (int i = 0; i < blockData.size(); i++) {
-				int[] cd2 = chunkData.get(i);
-				if (cd[0] == cd2[0] && cd[1] == cd2[1] && cd[2] == cd2[2]) {
-					index = i;
-					break;
-				}
-			}
-			if (index == -1) {
-				blockData.add(cb);
-				chunkData.add(cd);
-			} else {
-				blockData.set(index, cb);
-				chunkData.set(index, cd);
 			}
 		}
 	}

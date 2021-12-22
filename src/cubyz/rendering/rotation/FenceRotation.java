@@ -14,6 +14,7 @@ import cubyz.utils.datastructures.FloatFastList;
 import cubyz.utils.datastructures.IntFastList;
 import cubyz.world.Neighbors;
 import cubyz.world.NormalChunk;
+import cubyz.world.Chunk;
 import cubyz.world.ServerWorld;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.BlockInstance;
@@ -30,7 +31,7 @@ public class FenceRotation implements RotationMode {
 	@Override
 	public boolean generateData(ServerWorld world, int x, int y, int z, Vector3d relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, IntWrapper currentData, boolean blockPlacing) {
 		if (!blockPlacing) return false;
-		NormalChunk chunk = world.getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift);
+		NormalChunk chunk = world.getChunk(x >> Chunk.chunkShift, y >> Chunk.chunkShift, z >> Chunk.chunkShift);
 		int data = 0;
 		// Get all neighbors and set the corresponding bits:
 		int[] neighbors = chunk.getNeighbors(x, y , z);
@@ -170,9 +171,9 @@ public class FenceRotation implements RotationMode {
 	@Override
 	public int generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
 		Model model = BlockMeshes.mesh(bi.getBlock() & Blocks.TYPE_MASK).model;
-		int x = bi.getX() & NormalChunk.chunkMask;
-		int y = bi.getY() & NormalChunk.chunkMask;
-		int z = bi.getZ() & NormalChunk.chunkMask;
+		int x = bi.getX() & Chunk.chunkMask;
+		int y = bi.getY() & Chunk.chunkMask;
+		int z = bi.getZ() & Chunk.chunkMask;
 		int[] textureIndices = BlockMeshes.textureIndices(bi.getBlock());
 		int blockData = bi.getBlock() >>> 16;
 		boolean negX = (blockData & (1 << Neighbors.DIR_NEG_X)) == 0;

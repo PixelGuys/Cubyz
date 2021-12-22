@@ -27,7 +27,9 @@ public abstract class GameLauncher {
 			System.exit(0);
 		} catch(Exception e) {
 			Logger.crash(e);
-			throw e;
 		}
+		if(Cubyz.world != null)
+			Cubyz.world.cleanup();
+		System.exit(1);
 	}
 }
