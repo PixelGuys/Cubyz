@@ -130,7 +130,22 @@ public class ReducedChunk extends Chunk {
 			}
 		}
 		
-		// TODO: Send updated mesh to all clients in range.
+		// Create updated meshes and send to client:
+		for(int x = 0; x <= 2*xOffset; x += chunkSize) {
+			for(int y = 0; y <= 2*yOffset; y += chunkSize) {
+				for(int z = 0; z <= 2*zOffset; z += chunkSize) {
+					int wx = this.wx + x*voxelSize - Chunk.chunkSize;
+					int wy = this.wy + y*voxelSize - Chunk.chunkSize;
+					int wz = this.wz + z*voxelSize - Chunk.chunkSize;
+					if(voxelSize == 32) {
+						wx -= chunkSize*voxelSize/2;
+						wy -= chunkSize*voxelSize/2;
+						wz -= chunkSize*voxelSize/2;
+					}
+					world.queueChunk(new ChunkData(wx, wy, wz, voxelSize));
+				}
+			}
+		}
 		
 		wasChanged = true;
 	}
