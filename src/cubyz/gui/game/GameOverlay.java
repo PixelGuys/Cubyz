@@ -68,7 +68,7 @@ public class GameOverlay extends MenuGUI {
 	@Override
 	public void render() {
 		Graphics.setColor(0xFFFFFF);
-		if (Cubyz.gameUI.getMenuGUI() == null || Cubyz.gameUI.getMenuGUI().renderCrossHair()) {
+		if (Cubyz.gameUI.getMenuGUI() == null || !Cubyz.gameUI.getMenuGUI().ungrabsMouse()) {
 			Graphics.drawImage(crosshair, Window.getWidth()/2 - 8 * GUI_SCALE, Window.getHeight()/2 - 8 * GUI_SCALE, 16 * GUI_SCALE, 16 * GUI_SCALE);
 		}
 		if (!(Cubyz.gameUI.getMenuGUI() instanceof GeneralInventory)) {

@@ -64,7 +64,6 @@ public class PauseGUI extends MenuGUI {
 		});
 
 		updateGUIScale();
-		setRenderCrosshair(false);
 	}
 
 	@Override

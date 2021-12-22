@@ -7,8 +7,7 @@ import cubyz.world.items.Inventory;
 public abstract class MenuGUI implements RegistryElement {
 	
 	protected float alphaMultiplier;
-	protected boolean renderCrosshair = true;
-	
+
 	protected final Resource id;
 	
 	public MenuGUI() {
@@ -27,14 +26,6 @@ public abstract class MenuGUI implements RegistryElement {
 	
 	public boolean ungrabsMouse() {
 		return true;
-	}
-
-	public boolean renderCrossHair(){
-		return renderCrosshair;
-	}
-
-	public void setRenderCrosshair(boolean value){
-		renderCrosshair = value;
 	}
 
 	/**
