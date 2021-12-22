@@ -29,6 +29,9 @@ public class Server extends Pacer{
 		} catch (Exception e) {
 			Logger.crash(e);
 		}
+		if(Cubyz.world != null)
+			Cubyz.world.cleanup();
+		System.exit(1);
 	}
 	public static void stop(){
 		if (server != null)

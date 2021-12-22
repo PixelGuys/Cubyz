@@ -1,6 +1,7 @@
 package cubyz.world;
 
 import cubyz.client.ClientSettings;
+import cubyz.client.GameLauncher;
 import cubyz.utils.Logger;
 import cubyz.utils.math.Bits;
 import cubyz.world.save.ChunkIO;
@@ -172,7 +173,8 @@ public abstract class Chunk extends ChunkData {
 	public void finalize() {
 		if(wasChanged) {
 			Logger.crash("Unsaved chunk: "+wx+" "+wy+" "+wz+" "+voxelSize+" "+wasCleaned);
-			System.exit(1);
+			clean();
+			GameLauncher.instance.exit();
 		}
 	}
 }
