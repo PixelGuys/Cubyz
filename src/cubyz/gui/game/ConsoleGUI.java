@@ -137,6 +137,7 @@ public class ConsoleGUI extends MenuGUI {
 			} else if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_ENTER)) {
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_ENTER, false);
 				execute();
+				Cubyz.gameUI.back();
 			} else if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_UP)) {
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_UP, false);
 				if (!("".equals(consoleArray[(HISTORY_SIZE + current - 1) % HISTORY_SIZE]))) {
