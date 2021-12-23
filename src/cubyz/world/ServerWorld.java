@@ -36,7 +36,7 @@ import java.util.Random;
 
 public class ServerWorld extends World{
 	public ServerWorld(String name, JsonObject generatorSettings, Class<?> chunkProvider) {
-		super(name, generatorSettings, chunkProvider);
+		super(name, chunkProvider);
 
 		if(generatorSettings == null) {
 			generatorSettings = JsonParser.parseObjectFromFile("saves/" + name + "/generatorSettings.json");
@@ -46,18 +46,7 @@ public class ServerWorld extends World{
 			JsonParser.storeToFile(generatorSettings, "saves/" + name + "/generatorSettings.json");
 		}
 
-		// Check if the chunkProvider is valid:
-		if (!NormalChunk.class.isAssignableFrom(chunkProvider) ||
-				chunkProvider.getConstructors().length != 1 ||
-				chunkProvider.getConstructors()[0].getParameterTypes().length != 4 ||
-				!chunkProvider.getConstructors()[0].getParameterTypes()[0].equals(World.class) ||
-				!chunkProvider.getConstructors()[0].getParameterTypes()[1].equals(Integer.class) ||
-				!chunkProvider.getConstructors()[0].getParameterTypes()[2].equals(Integer.class) ||
-				!chunkProvider.getConstructors()[0].getParameterTypes()[3].equals(Integer.class))
-			throw new IllegalArgumentException("Chunk provider "+chunkProvider+" is invalid! It needs to be a subclass of NormalChunk and MUST contain a single constructor with parameters (ServerWorld, Integer, Integer, Integer)");
-
 		wio = new WorldIO(this, new File("saves/" + name));
-		milliTime = System.currentTimeMillis();
 		if (wio.hasWorldData()) {
 			seed = wio.loadWorldSeed();
 			generated = true;
@@ -67,6 +56,7 @@ public class ServerWorld extends World{
 			registries = new CurrentWorldRegistries(this);
 			wio.saveWorldData();
 		}
+
 		// Call mods for this new world. Mods sometimes need to do extra stuff for the specific world.
 		ModLoader.postWorldGen(registries);
 

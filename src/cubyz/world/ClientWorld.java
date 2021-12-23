@@ -1,6 +1,7 @@
 package cubyz.world;
 
 import cubyz.api.CurrentWorldRegistries;
+import cubyz.modding.ModLoader;
 import cubyz.utils.json.JsonObject;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.entity.ChunkEntityManager;
@@ -12,8 +13,15 @@ import org.joml.Vector3f;
 
 //TODO:
 public class ClientWorld extends World{
-	public ClientWorld(String name, JsonObject generatorSettings, Class<?> chunkProvider) {
-		super(name, generatorSettings, chunkProvider);
+	public ClientWorld(String name, Class<?> chunkProvider) {
+		super(name, chunkProvider);
+
+		//wio = new WorldIO(this, new File("saves/" + name));
+
+		// Call mods for this new world. Mods sometimes need to do extra stuff for the specific world.
+		ModLoader.postWorldGen(registries);
+
+
 	}
 
 	@Override

@@ -77,9 +77,21 @@ public abstract class World {
 	
 	public CurrentWorldRegistries registries;
 	
-	public World(String name, JsonObject generatorSettings, Class<?> chunkProvider) {
+	public World(String name, Class<?> chunkProvider) {
 		this.name = name;
 		this.chunkProvider = chunkProvider;
+
+		// Check if the chunkProvider is valid:
+		if (!NormalChunk.class.isAssignableFrom(chunkProvider) ||
+				chunkProvider.getConstructors().length != 1 ||
+				chunkProvider.getConstructors()[0].getParameterTypes().length != 4 ||
+				!chunkProvider.getConstructors()[0].getParameterTypes()[0].equals(World.class) ||
+				!chunkProvider.getConstructors()[0].getParameterTypes()[1].equals(Integer.class) ||
+				!chunkProvider.getConstructors()[0].getParameterTypes()[2].equals(Integer.class) ||
+				!chunkProvider.getConstructors()[0].getParameterTypes()[3].equals(Integer.class))
+			throw new IllegalArgumentException("Chunk provider "+chunkProvider+" is invalid! It needs to be a subclass of NormalChunk and MUST contain a single constructor with parameters (ServerWorld, Integer, Integer, Integer)");
+		milliTime = System.currentTimeMillis();
+
 	}
 	public Player getLocalPlayer() {
 		return player;

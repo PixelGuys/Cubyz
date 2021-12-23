@@ -1,13 +1,12 @@
 package cubyz.server;
 
+import cubyz.client.Cubyz;
 import cubyz.utils.Logger;
+import cubyz.utils.Zipper;
 import cubyz.utils.json.JsonObject;
 import cubyz.utils.json.JsonParser;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.Socket;
 
 /*
@@ -18,13 +17,17 @@ public class User {
 	private PrintWriter out;
 	private BufferedReader in;
 
-
+	private OutputStream outStream;
+	private InputStream  inStream;
 
 	public User(Socket clientSocket) throws IOException {
 		this.clientSocket = clientSocket;
 
-		out = new PrintWriter(clientSocket.getOutputStream(), true);
-		in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+		outStream = clientSocket.getOutputStream();
+		inStream = clientSocket.getInputStream();
+
+		out = new PrintWriter(outStream, true);
+		in = new BufferedReader(new InputStreamReader(inStream));
 
 		while (!clientSocket.isClosed()) {
 			receiveJSON(JsonParser.parseObjectFromStream(in));
@@ -32,13 +35,24 @@ public class User {
 	}
 	public void receiveJSON(JsonObject json){
 		String type = json.getString("type", "unknown type");
-		if (type.equals("clientinformation")){
+		if (type.equals("clientInformation")){
 			String name     = json.getString("name", "unnamed");
 			String version  =  json.getString("version", "unknown");
 
 			Logger.info("User joined: "+name+", who is using version: "+version);
 		}
+		json.writeObjectToStream(out);
 	}
+
+	public void sendWorldAssets(){
+		JsonObject head = new JsonObject();
+		head.put("type","worldAssets");
+		head.writeObjectToStream(out);
+
+		String assetPath = "saves/" + Cubyz.world.getName() + "/assets/";
+		Zipper.pack(assetPath,outStream); //potential bug: Stream doesnt know the file size
+	}
+
 	public void dispose() throws IOException {
 		in.close();
 		out.close();
