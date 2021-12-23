@@ -232,7 +232,7 @@ public class VisibleChunk extends NormalChunk {
 		if ((index & chunkMask) == 0) { // if (z == 0)
 			VisibleChunk neighborChunk = (VisibleChunk)world.getChunk(cx, cy, cz-1);
 			if (neighborChunk != null) {
-				neighborChunk.constructiveLightUpdate(index^0x000f, lightValue, channelShift);
+				neighborChunk.constructiveLightUpdate(index ^ chunkMask, lightValue, channelShift);
 			}
 		} else {
 			constructiveLightUpdate(index-1, lightValue, channelShift);
