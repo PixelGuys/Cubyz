@@ -28,6 +28,7 @@ public class TextInput extends Component {
 
 	public void setFocused(boolean focused) {
 		this.focused = focused;
+		this.hasPressed = true;
 	}
 	
 	public void setFontSize(float fontSize) {
