@@ -28,10 +28,10 @@ public class Server extends Pacer{
 			server.start();
 		} catch (Exception e) {
 			Logger.crash(e);
+			if(Cubyz.world != null)
+				Cubyz.world.cleanup();
+			System.exit(1);
 		}
-		if(Cubyz.world != null)
-			Cubyz.world.cleanup();
-		System.exit(1);
 	}
 	public static void stop(){
 		if (server != null)
