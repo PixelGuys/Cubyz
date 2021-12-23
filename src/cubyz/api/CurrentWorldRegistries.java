@@ -4,7 +4,7 @@ import java.io.File;
 import java.util.Random;
 
 import cubyz.modding.base.AddonsMod;
-import cubyz.world.ServerWorld;
+import cubyz.world.World;
 import cubyz.world.blocks.CustomOre;
 import cubyz.world.blocks.Ore;
 import cubyz.world.entity.EntityType;
@@ -28,7 +28,7 @@ public class CurrentWorldRegistries {
 	/**
 	 * Loads the world specific assets, such as procedural ores.
 	 */
-	public CurrentWorldRegistries(ServerWorld world) {
+	public CurrentWorldRegistries(World world) {
 		String assetPath = "saves/" + world.getName() + "/assets/";
 		File assets = new File(assetPath);
 		if (!assets.exists()) {
@@ -48,7 +48,7 @@ public class CurrentWorldRegistries {
 		AddonsMod.instance.init(itemRegistry, blockRegistries, recipeRegistry);
 	}
 
-	public void generateAssets(File assets, ServerWorld world) {
+	public void generateAssets(File assets, World world) {
 		assets = new File(assets, "cubyz");
 		assets.mkdirs();
 		new File(assets, "blocks/textures").mkdirs();

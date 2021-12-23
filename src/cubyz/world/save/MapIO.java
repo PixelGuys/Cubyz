@@ -14,7 +14,7 @@ import java.util.zip.InflaterInputStream;
 import cubyz.utils.Logger;
 import cubyz.utils.math.Bits;
 import cubyz.world.NormalChunk;
-import cubyz.world.ServerWorld;
+import cubyz.world.World;
 import cubyz.world.entity.ItemEntityManager;
 import cubyz.world.terrain.MapFragment;
 
@@ -81,7 +81,7 @@ public class MapIO {
 		}
 	}
 	
-	public ItemEntityManager readItemEntities(ServerWorld world, NormalChunk chunk) {
+	public ItemEntityManager readItemEntities(World world, NormalChunk chunk) {
 		File file = new File(dir, "itemEnt"+chunk.getWorldX()+" "+chunk.getWorldY()+" "+chunk.getWorldZ());
 		if (!file.exists()) return new ItemEntityManager(world, chunk, 1);
 		try {

@@ -13,7 +13,9 @@ import cubyz.rendering.text.Fonts;
 import cubyz.server.Server;
 import cubyz.utils.DiscordIntegration;
 import cubyz.utils.translate.TextKey;
+import cubyz.world.ClientWorld;
 import cubyz.world.ServerWorld;
+import cubyz.world.World;
 
 import static cubyz.client.ClientSettings.GUI_SCALE;
 
@@ -89,7 +91,7 @@ public class MultiplayerJoinGui extends MenuGUI {
 			new Thread(() -> Server.main(new String[0]), "Server Thread").start();
 			serverConnection = new ServerConnection(guiIPAdress.getText(), guiName.getText());
 
-			ServerWorld world = new ServerWorld("Server world", null, VisibleChunk.class);
+			World world = new ClientWorld("Server world", null, VisibleChunk.class);
 			Cubyz.gameUI.setMenu(null, false); // hide from UISystem.back()
 			GameLauncher.logic.loadWorld(world);
 		});

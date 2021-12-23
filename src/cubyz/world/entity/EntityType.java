@@ -2,7 +2,7 @@ package cubyz.world.entity;
 
 import cubyz.api.RegistryElement;
 import cubyz.api.Resource;
-import cubyz.world.ServerWorld;
+import cubyz.world.World;
 
 public abstract class EntityType implements RegistryElement {
 	
@@ -18,7 +18,7 @@ public abstract class EntityType implements RegistryElement {
 		return id;
 	}
 	
-	public abstract Entity newEntity(ServerWorld world);
+	public abstract Entity newEntity(World world);
 	
 	public boolean useDynamicEntityModel() {
 		return false;

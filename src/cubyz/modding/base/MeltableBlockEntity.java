@@ -2,7 +2,7 @@ package cubyz.modding.base;
 
 import org.joml.Vector3i;
 
-import cubyz.world.ServerWorld;
+import cubyz.world.World;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.Updateable;
 
@@ -15,7 +15,7 @@ public class MeltableBlockEntity extends BlockEntity implements Updateable {
 	
 	int heatCount;
 
-	public MeltableBlockEntity(ServerWorld world, Vector3i pos) {
+	public MeltableBlockEntity(World world, Vector3i pos) {
 		super(world, pos);
 	}
 

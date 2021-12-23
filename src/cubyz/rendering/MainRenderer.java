@@ -25,7 +25,7 @@ import cubyz.client.entity.ClientPlayer;
 import cubyz.gui.input.Keyboard;
 import cubyz.utils.Utils;
 import cubyz.utils.datastructures.FastList;
-import cubyz.world.ServerWorld;
+import cubyz.world.World;
 import cubyz.world.Chunk;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.Blocks;
@@ -228,8 +228,8 @@ public class MainRenderer {
 			
 			light.setColor(clearColor);
 			
-			float lightY = (((float)Cubyz.gameTime % ServerWorld.DAY_CYCLE) / (float) (ServerWorld.DAY_CYCLE/2)) - 1f;
-			float lightX = (((float)Cubyz.gameTime % ServerWorld.DAY_CYCLE) / (float) (ServerWorld.DAY_CYCLE/2)) - 1f;
+			float lightY = (((float)Cubyz.gameTime % World.DAY_CYCLE) / (float) (World.DAY_CYCLE/2)) - 1f;
+			float lightX = (((float)Cubyz.gameTime % World.DAY_CYCLE) / (float) (World.DAY_CYCLE/2)) - 1f;
 			light.getDirection().set(lightY, 0, lightX);
 			// Set intensity:
 			light.setDirection(light.getDirection().mul(0.1f*Cubyz.world.getGlobalLighting()/light.getDirection().length()));

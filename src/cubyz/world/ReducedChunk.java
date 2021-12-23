@@ -24,7 +24,7 @@ public class ReducedChunk extends Chunk {
 	/** =log₂(width)*/
 	public final int widthShift;
 	
-	public ReducedChunk(ServerWorld world, int wx, int wy, int wz, int resolutionShift) {
+	public ReducedChunk(World world, int wx, int wy, int wz, int resolutionShift) {
 		super(world, wx, wy, wz, 1 << resolutionShift);
 		this.resolutionShift = resolutionShift;
 		this.resolution = 1 << resolutionShift;

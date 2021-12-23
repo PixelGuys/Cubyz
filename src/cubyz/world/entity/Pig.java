@@ -6,7 +6,7 @@ import org.joml.Vector3f;
 
 import cubyz.api.CubyzRegistries;
 import cubyz.api.Resource;
-import cubyz.world.ServerWorld;
+import cubyz.world.World;
 import cubyz.world.items.Item;
 import cubyz.world.items.ItemStack;
 
@@ -22,7 +22,7 @@ public class Pig extends EntityType {
 	}
 
 	@Override
-	public Entity newEntity(ServerWorld world) {
+	public Entity newEntity(World world) {
 		Entity ent = new Entity(this, new PigAI(), world, 6, 10, 1);
 		ent.height = 1;
 		return ent;

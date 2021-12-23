@@ -3,7 +3,7 @@ package cubyz.world.blocks;
 import org.joml.Vector3i;
 
 import cubyz.world.NormalChunk;
-import cubyz.world.ServerWorld;
+import cubyz.world.World;
 
 /**
  * A block that will be used for rendering.
@@ -13,7 +13,7 @@ public class BlockInstance {
 
 	private int block;
 	public final int x, y, z;
-	private ServerWorld world;
+	private World world;
 	private boolean[] neighbors;
 	public final int[] light;
 	public final NormalChunk source;
@@ -40,11 +40,11 @@ public class BlockInstance {
 		source.setUpdated();
 	}
 	
-	public ServerWorld getWorld() {
+	public World getWorld() {
 		return world;
 	}
 	
-	public void setWorld(ServerWorld world) {
+	public void setWorld(World world) {
 		this.world = world;
 	}
 	

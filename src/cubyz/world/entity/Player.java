@@ -5,7 +5,7 @@ import org.joml.Vector3f;
 import cubyz.api.CubyzRegistries;
 import cubyz.command.CommandSource;
 import cubyz.utils.json.JsonObject;
-import cubyz.world.ServerWorld;
+import cubyz.world.World;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.Blocks.BlockClass;
@@ -28,7 +28,7 @@ public class Player extends Entity implements CommandSource {
 	private int maxTime = -1;
 	private int breakingSlot = -1; // Slot used to break the block. Slot change results in restart of block breaking.
 
-	public Player(ServerWorld world) {
+	public Player(World world) {
 		super(CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player"), null, world, 16, 16, 0.5f);
 	}
 	
@@ -110,7 +110,7 @@ public class Player extends Entity implements CommandSource {
 		return false;
 	}
 
-	public void breaking(BlockInstance bi, int slot, ServerWorld world) {
+	public void breaking(BlockInstance bi, int slot, World world) {
 		if (bi != toBreak || breakingSlot != slot) {
 			if (calculateBreakTime(bi, slot)) {
 				resetBlockBreaking(); // Make sure block breaking animation is reset.
@@ -142,7 +142,7 @@ public class Player extends Entity implements CommandSource {
 	}
 
 	@Override
-	public ServerWorld getWorld() {
+	public World getWorld() {
 		return world;
 	}
 	

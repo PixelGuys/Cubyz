@@ -16,13 +16,13 @@ public abstract class Chunk extends ChunkData {
 	
 	public static final int chunkMask = chunkSize - 1;
 	
-	protected final ServerWorld world;
+	protected final World world;
 	protected final int[] blocks = new int[chunkSize*chunkSize*chunkSize];
 	
 	private boolean wasChanged = false, wasCleaned = false;
 	protected boolean generated = false;
 
-	public Chunk(ServerWorld world, int wx, int wy, int wz, int voxelSize) {
+	public Chunk(World world, int wx, int wy, int wz, int voxelSize) {
 		super(wx, wy, wz, voxelSize);
 		this.world = world;
 	}

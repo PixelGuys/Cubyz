@@ -8,7 +8,7 @@ import org.joml.Vector3i;
 import cubyz.utils.datastructures.IntWrapper;
 import cubyz.utils.math.CubyzMath;
 import cubyz.world.NormalChunk;
-import cubyz.world.ServerWorld;
+import cubyz.world.World;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.entity.Entity;
@@ -42,7 +42,7 @@ public class MeshSelectionDetector {
 	 * @param worldSize
 	 * @param world
 	 */
-	public void selectSpatial(NormalChunk[] chunks, Vector3d position, Vector3f direction, Player localPlayer, ServerWorld world) {
+	public void selectSpatial(NormalChunk[] chunks, Vector3d position, Vector3f direction, Player localPlayer, World world) {
 		pos.set(position);
 		pos.y += Player.cameraHeight;
 		dir.set(direction);
@@ -113,7 +113,7 @@ public class MeshSelectionDetector {
 	 * @param selectedSlot
 	 * @param world
 	 */
-	public void placeBlock(Inventory inv, int selectedSlot, ServerWorld world) {
+	public void placeBlock(Inventory inv, int selectedSlot, World world) {
 		if (selectedSpatial != null && selectedSpatial instanceof BlockInstance) {
 			BlockInstance bi = (BlockInstance)selectedSpatial;
 			IntWrapper block = new IntWrapper(bi.getBlock());

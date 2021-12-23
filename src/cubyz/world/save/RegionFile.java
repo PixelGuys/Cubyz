@@ -17,7 +17,7 @@ import cubyz.utils.Logger;
 import cubyz.utils.math.Bits;
 import cubyz.world.Chunk;
 import cubyz.world.ChunkData;
-import cubyz.world.ServerWorld;
+import cubyz.world.World;
 
 /**
  * Multiple chunks are bundled up in regions to reduce disk reads/writes.
@@ -43,7 +43,7 @@ public class RegionFile extends ChunkData {
 	private boolean wasChanged = false;
 	private boolean storeOnChange = false;
 
-	public RegionFile(ServerWorld world, int wx, int wy, int wz, int voxelSize) {
+	public RegionFile(World world, int wx, int wy, int wz, int voxelSize) {
 		super(wx, wy, wz, voxelSize);
 		// Load data from file:
 		File file = new File("saves/"+world.getName()+"/"+voxelSize+"/"+wx+"/"+wy+"/"+wz+".region");

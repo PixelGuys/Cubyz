@@ -5,7 +5,7 @@ import cubyz.gui.input.Keybindings;
 import cubyz.rendering.Camera;
 import cubyz.world.Chunk;
 import cubyz.world.NormalChunk;
-import cubyz.world.ServerWorld;
+import cubyz.world.World;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.Blocks.BlockClass;
@@ -116,7 +116,7 @@ public class ClientPlayer extends Player {
 	}
 
 	@Override
-	public ServerWorld getWorld() {
+	public World getWorld() {
 		return Cubyz.world;
 	}
 }

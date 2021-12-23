@@ -36,7 +36,7 @@ public class NormalChunk extends Chunk {
 
 	public boolean updated;
 	
-	public NormalChunk(ServerWorld world, int cx, int cy, int cz) {
+	public NormalChunk(World world, int cx, int cy, int cz) {
 		super(world, cx << chunkShift, cy << chunkShift, cz << chunkShift, 1);
 		inst = new BlockInstance[blocks.length];
 		this.cx = cx;

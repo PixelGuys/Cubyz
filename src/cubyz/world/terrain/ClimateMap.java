@@ -1,15 +1,15 @@
 package cubyz.world.terrain;
 
 import cubyz.utils.datastructures.Cache;
-import cubyz.world.ServerWorld;
+import cubyz.world.World;
 
 public class ClimateMap {
 	private static final int CACHE_SIZE = 1 << 8; // Must be a power of 2!
 	private static final int CACHE_MASK = CACHE_SIZE - 1;
 	private static final int ASSOCIATIVITY = 4;
 	private static final Cache<ClimateMapFragment> cache = new Cache<ClimateMapFragment>(new ClimateMapFragment[CACHE_SIZE][ASSOCIATIVITY]);
-	private static ServerWorld world = null;
-	public static BiomePoint[][] getBiomeMap(ServerWorld world, int wx, int wz, int width, int height) {
+	private static World world = null;
+	public static BiomePoint[][] getBiomeMap(World world, int wx, int wz, int width, int height) {
 		if (world != ClimateMap.world) {
 			cache.clear(); // Clear the cache if the world changed!
 			ClimateMap.world = world;
@@ -56,7 +56,7 @@ public class ClimateMap {
 		}
 	}
 	
-	public static ClimateMapFragment getOrGenerateFragment(ServerWorld world, int wx, int wz) {
+	public static ClimateMapFragment getOrGenerateFragment(World world, int wx, int wz) {
 		int hash = ClimateMapFragment.hashCode(wx, wz) & CACHE_MASK;
 		ClimateMapFragment ret = cache.find(new ClimateMapFragmentComparator(wx, wz), hash);
 		if (ret != null) return ret;

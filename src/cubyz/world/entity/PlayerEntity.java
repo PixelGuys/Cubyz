@@ -2,7 +2,7 @@
 package cubyz.world.entity;
 
 import cubyz.api.Resource;
-import cubyz.world.ServerWorld;
+import cubyz.world.World;
 
 public class PlayerEntity extends EntityType {
 
@@ -11,7 +11,7 @@ public class PlayerEntity extends EntityType {
 	}
 
 	@Override
-	public Entity newEntity(ServerWorld world) {
+	public Entity newEntity(World world) {
 		return new Player(world);
 	}
 	

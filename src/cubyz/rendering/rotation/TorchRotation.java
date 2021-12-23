@@ -14,7 +14,7 @@ import cubyz.utils.datastructures.IntWrapper;
 import cubyz.utils.datastructures.FloatFastList;
 import cubyz.utils.datastructures.IntFastList;
 import cubyz.world.Chunk;
-import cubyz.world.ServerWorld;
+import cubyz.world.World;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.RotationMode;
@@ -39,7 +39,7 @@ public class TorchRotation implements RotationMode {
 	}
 
 	@Override
-	public boolean generateData(ServerWorld world, int x, int y, int z, Vector3d relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, IntWrapper currentData, boolean blockPlacing) {
+	public boolean generateData(World world, int x, int y, int z, Vector3d relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, IntWrapper currentData, boolean blockPlacing) {
 		int data = 0;
 		if (relativeDirection.x == 1) data = 0b1;
 		if (relativeDirection.x == -1) data = 0b10;

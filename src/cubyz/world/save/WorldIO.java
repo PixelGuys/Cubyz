@@ -9,7 +9,7 @@ import cubyz.utils.Logger;
 import cubyz.utils.json.JsonArray;
 import cubyz.utils.json.JsonObject;
 import cubyz.utils.json.JsonParser;
-import cubyz.world.ServerWorld;
+import cubyz.world.World;
 import cubyz.world.entity.Entity;
 import cubyz.world.items.Item;
 
@@ -17,11 +17,11 @@ public class WorldIO {
 	public static final int WORLD_DATA_VERSION = 1;
 
 	public final File dir;
-	private ServerWorld world;
+	private World world;
 	public BlockPalette blockPalette = new BlockPalette(null);
 	public Palette<Item> itemPalette = new Palette<Item>(null, null);
 
-	public WorldIO(ServerWorld world, File directory) {
+	public WorldIO(World world, File directory) {
 		dir = directory;
 		if (!dir.exists()) {
 			dir.mkdirs();

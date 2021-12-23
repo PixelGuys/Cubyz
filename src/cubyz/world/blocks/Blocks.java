@@ -10,7 +10,7 @@ import cubyz.api.DataOrientedRegistry;
 import cubyz.api.Resource;
 import cubyz.client.ClientOnly;
 import cubyz.utils.json.JsonObject;
-import cubyz.world.ServerWorld;
+import cubyz.world.World;
 import cubyz.world.items.BlockDrop;
 import cubyz.world.items.Inventory;
 
@@ -141,10 +141,10 @@ public class Blocks implements DataOrientedRegistry {
 		blockEntity[block & TYPE_MASK] = ent;
 	}
 	
-	public static BlockEntity createBlockEntity(int block, ServerWorld world, Vector3i pos) {
+	public static BlockEntity createBlockEntity(int block, World world, Vector3i pos) {
 		if (blockEntity != null) {
 			try {
-				return blockEntity[block & TYPE_MASK].getConstructor(ServerWorld.class, Vector3i.class).newInstance(world, pos);
+				return blockEntity[block & TYPE_MASK].getConstructor(World.class, Vector3i.class).newInstance(world, pos);
 			} catch (Exception e) {
 				Logger.error(e);
 			}
@@ -166,7 +166,7 @@ public class Blocks implements DataOrientedRegistry {
 	 * @param pos
 	 * @return if the block did something on click.
 	 */
-	public static boolean onClick(int block, ServerWorld world, Vector3i pos) {
+	public static boolean onClick(int block, World world, Vector3i pos) {
 		if (gui[block & TYPE_MASK] != null) {
 			ClientOnly.client.openGUI("cubyz:workbench", new Inventory(26)); // TODO: Care about the inventory.
 			return true;
