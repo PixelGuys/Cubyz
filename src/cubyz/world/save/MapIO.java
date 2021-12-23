@@ -34,7 +34,7 @@ public class MapIO {
 	
 	public void loadHeightMap(MapFragment map) {
 		heightMap = new int[MapFragment.MAP_SIZE][MapFragment.MAP_SIZE];
-		if (dir.exists()) {
+		if (dir.exists() && new File(dir+"/height.dat").exists()) {
 			try {
 				InputStream in = new BufferedInputStream(new InflaterInputStream(new FileInputStream(dir+"/height.dat")));
 				byte[] data = new byte[MapFragment.MAP_SIZE*MapFragment.MAP_SIZE*4];

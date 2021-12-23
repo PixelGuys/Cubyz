@@ -528,7 +528,6 @@ public class ServerWorld {
 			for(MetaChunk chunk : metaChunks.values()) {
 				if (chunk != null) chunk.clean();
 			}
-			wio.saveWorldData();
 			chunkManager.forceSave();
 			ChunkIO.save();
 
@@ -536,6 +535,7 @@ public class ServerWorld {
 			
 			ChunkIO.clean();
 			
+			wio.saveWorldData();
 			metaChunks = null;
 		} catch (Exception e) {
 			Logger.error(e);
