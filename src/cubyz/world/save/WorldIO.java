@@ -16,7 +16,7 @@ import cubyz.world.items.Item;
 public class WorldIO {
 	public static final int WORLD_DATA_VERSION = 1;
 
-	final File dir;
+	public final File dir;
 	private ServerWorld world;
 	public BlockPalette blockPalette = new BlockPalette(null);
 	public Palette<Item> itemPalette = new Palette<Item>(null, null);

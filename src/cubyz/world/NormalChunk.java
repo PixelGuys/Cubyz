@@ -7,13 +7,11 @@ import org.joml.Vector3i;
 
 import cubyz.utils.Utilities;
 import cubyz.utils.datastructures.FastList;
-import cubyz.utils.math.Bits;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.Blocks.BlockClass;
-import cubyz.world.save.BlockChange;
-import cubyz.world.save.BlockPalette;
+import cubyz.world.save.ChunkIO;
 import cubyz.world.terrain.MapFragment;
 
 /**
@@ -21,55 +19,36 @@ import cubyz.world.terrain.MapFragment;
  */
 
 public class NormalChunk extends Chunk {
-	
-	public static final int chunkShift = 5;
-	
-	public static final int chunkShift2 = 2*chunkShift;
-	
-	public static final int chunkSize = 1 << chunkShift;
-	
-	public static final int chunkMask = chunkSize - 1;
-	
-	public static final int arraySize = chunkSize*chunkSize*chunkSize;
 
-	/**Due to having powers of 2 as dimensions it is more efficient to use a one-dimensional array.*/
-	protected int[] blocks;
 	/**Stores all visible BlockInstances. Can be faster accessed using coordinates.*/
 	protected BlockInstance[] inst;
 	/**Stores the local index of the block.*/
 	private ArrayList<Integer> liquids = new ArrayList<>();
 	/**Liquids that should be updated at next frame. Stores the local index of the block.*/
 	private ArrayList<Integer> updatingLiquids = new ArrayList<>();
-	/**Reports block changes. Only those will be saved!*/
-	private final ArrayList<BlockChange> changes;
 	private FastList<BlockInstance> visibles = new FastList<BlockInstance>(50, BlockInstance.class);
 	protected final int cx, cy, cz;
-	protected boolean generated = false;
 	protected boolean startedloading = false;
 	protected boolean loaded = false;
 	private ArrayList<BlockEntity> blockEntities = new ArrayList<>();
-	
-	protected final ServerWorld world;
 	
 	public final MapFragment map;
 
 	public boolean updated;
 	
-	public NormalChunk(int cx, int cy, int cz, ServerWorld world) {
-		super(cx << chunkShift, cy << chunkShift, cz << chunkShift, 1);
-		inst = new BlockInstance[arraySize];
-		blocks = new int[arraySize];
+	public NormalChunk(ServerWorld world, int cx, int cy, int cz) {
+		super(world, cx << chunkShift, cy << chunkShift, cz << chunkShift, 1);
+		inst = new BlockInstance[blocks.length];
 		this.cx = cx;
 		this.cy = cy;
 		this.cz = cz;
-		this.world = world;
 		this.map = world.chunkManager.getOrGenerateMapFragment(wx, wz, 1);
-		changes = map.mapIO.getBlockChanges(cx, cy, cz);
 	}
 	
 	public void generateFrom(ChunkManager gen) {
-		gen.generate(this);
-		applyBlockChanges();
+		if(!ChunkIO.loadChunkFromFile(world, this)) {
+			gen.generate(this);
+		}
 		generated = true;
 	}
 	
@@ -82,25 +61,11 @@ public class NormalChunk extends Chunk {
 	}
 	
 	/**
-	 * Gets the index of a given position inside this chunk.
-	 * Use this as much as possible, so it gets inlined by the VM.
-	 * @param x 0 ≤ x < chunkSize
-	 * @param y 0 ≤ y < chunkSize
-	 * @param z 0 ≤ z < chunkSize
-	 * @return
-	 */
-	public static int getIndex(int x, int y, int z) {
-		return (x << chunkShift) | (y << chunkShift2) | z;
-	}
-	
-	/**
 	 * Function calls are faster than two pointer references, which would happen when using a 3D-array, and functions can additionally be inlined by the VM.
 	 * @param x
 	 * @param y
 	 * @param z
 	 * @param b
-	 * @param data
-	 * ghueiwoav????
 	 */
 	@Deprecated
 	private void setBlock(int x, int y, int z, int b) {
@@ -129,38 +94,12 @@ public class NormalChunk extends Chunk {
 		int index = getIndex(x, y, z);
 		if (blocks[index] != b) {
 			// Registers blockChange:
-			int bcIndex = -1; // Checks if it is already in the list
-			for(int i = 0; i < changes.size(); i++) {
-				BlockChange bc = changes.get(i);
-				if (bc.index == index) {
-					bcIndex = i;
-					break;
-				}
-			}
-			if (bcIndex == -1) { // Creates a new object if the block wasn't changed before
-				changes.add(new BlockChange(0, b, index));
-			} else if (b == changes.get(bcIndex).oldType) { // Removes the object if the block reverted to it's original state.
-				changes.remove(bcIndex);
-			} else {
-				changes.get(bcIndex).newType = b;
-			}
-			blocks[index] = b;
-			// Update the instance:
-			if (inst[index] != null)
-				inst[index].setBlock(b);
+			setChanged();
 		}
 		if (Blocks.blockClass(b) == BlockClass.FLUID) {
 			liquids.add(index);
 		}
 		setUpdated();
-	}
-	
-	/**
-	 * Internal "hack" method used for the overlay, DO NOT USE!
-	 */
-	@Deprecated
-	public void createBlocksForOverlay() {
-		blocks = new int[arraySize];
 	}
 	
 	
@@ -273,43 +212,7 @@ public class NormalChunk extends Chunk {
 		}
 
 		// Registers blockChange:
-		int blockIndex = getIndex(x & chunkMask, y & chunkMask, z & chunkMask);
-		int index = -1; // Checks if it is already in the list
-		for(int i = 0; i < changes.size(); i++) {
-			BlockChange bc = changes.get(i);
-			if (bc.index == blockIndex) {
-				index = i;
-				break;
-			}
-		}
-		if (index == -1) { // Creates a new object if the block wasn't changed before
-			changes.add(new BlockChange(0, b, blockIndex));
-		} else if (b == changes.get(index).oldType) { // Removes the object if the block reverted to it's original state.
-			changes.remove(index);
-		} else {
-			changes.get(index).newType = b;
-		}
-		if (startedloading)
-			lightUpdate(x, y, z);
-	}
-	
-	/**
-	 * Apply Block Changes loaded from file/stored in WorldIO. Must be called before loading.
-	 */
-	public void applyBlockChanges() {
-		for(BlockChange bc : changes) {
-			bc.oldType = blocks[bc.index];
-			int b = bc.newType;
-			if (Blocks.blockEntity(b) != null) {
-				int z = bc.index & chunkMask;
-				int x = (bc.index >>> chunkShift) & chunkMask;
-				int y = (bc.index >>> chunkShift2) & chunkMask;
-				Vector3i pos = new Vector3i(wx+x, wy+y, wz+z);
-				blockEntities.add(Blocks.createBlockEntity(b, world, pos));
-			}
-			blocks[bc.index] = b;
-		}
-		setUpdated();
+		setChanged();
 	}
 	
 	/**
@@ -429,23 +332,7 @@ public class NormalChunk extends Chunk {
 		setBlock(x, y, z, 0); // TODO: Investigate why this is called twice.
 
 		if (registerBlockChange) {
-			int blockIndex = getIndex(x & chunkMask, y & chunkMask, z & chunkMask);
-			// Registers blockChange:
-			int index = -1; // Checks if it is already in the list
-			for(int i = 0; i < changes.size(); i++) {
-				BlockChange bc = changes.get(i);
-				if (bc.index == blockIndex) {
-					index = i;
-					break;
-				}
-			}
-			if (index == -1) { // Creates a new object if the block wasn't changed before
-				changes.add(new BlockChange(block, 0, blockIndex));
-			} else if (changes.get(index).oldType == 0) { // Removes the object if the block reverted to it's original state(air).
-				changes.remove(index);
-			} else {
-				changes.get(index).newType = 0;
-			}
+			setChanged();
 		}
 		
 		updateNeighborChunks(x, y, z);
@@ -460,31 +347,6 @@ public class NormalChunk extends Chunk {
 	 */
 	public boolean contains(int x, int y, int z) {
 		return inst[getIndex(x & chunkMask, y & chunkMask, z & chunkMask)] != null;
-	}
-	
-	/**
-	 * Feed an empty block palette and it will be filled with all block types. 
-	 * @param blockPalette
-	 * @return chunk data as byte[]
-	 */
-	public byte[] save(BlockPalette blockPalette) {
-		byte[] data = new byte[16 + (changes.size()*8)];
-		Bits.putInt(data, 0, cx);
-		Bits.putInt(data, 4, cy);
-		Bits.putInt(data, 8, cz);
-		Bits.putInt(data, 12, changes.size());
-		for(int i = 0; i < changes.size(); i++) {
-			changes.get(i).save(data, 16 + i*8, blockPalette);
-		}
-		return data;
-	}
-	
-	public int[] getData() {
-		int[] data = new int[3];
-		data[0] = cx;
-		data[1] = cy;
-		data[2] = cz;
-		return data;
 	}
 	
 	/**

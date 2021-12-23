@@ -68,7 +68,9 @@ public class GameOverlay extends MenuGUI {
 	@Override
 	public void render() {
 		Graphics.setColor(0xFFFFFF);
-		Graphics.drawImage(crosshair, Window.getWidth()/2 - 8 * GUI_SCALE, Window.getHeight()/2 - 8 * GUI_SCALE, 16 * GUI_SCALE, 16 * GUI_SCALE);
+		if (Cubyz.gameUI.getMenuGUI() == null || !Cubyz.gameUI.getMenuGUI().ungrabsMouse()) {
+			Graphics.drawImage(crosshair, Window.getWidth()/2 - 8 * GUI_SCALE, Window.getHeight()/2 - 8 * GUI_SCALE, 16 * GUI_SCALE, 16 * GUI_SCALE);
+		}
 		if (!(Cubyz.gameUI.getMenuGUI() instanceof GeneralInventory)) {
 			Graphics.drawImage(selection, Window.getWidth()/2 - 79 * GUI_SCALE + Cubyz.inventorySelection*20 * GUI_SCALE, Window.getHeight() - 19 * GUI_SCALE, 18 * GUI_SCALE, 18 * GUI_SCALE);
 			for(int i = 0; i < 8; i++) {

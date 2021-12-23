@@ -2,8 +2,8 @@ package cubyz.client;
 
 import org.joml.Vector3d;
 
+import cubyz.world.Chunk;
 import cubyz.world.ChunkData;
-import cubyz.world.NormalChunk;
 
 /**
  * A chunk mesh contains all rendering data of a single chunk.
@@ -18,7 +18,7 @@ public abstract class ChunkMesh extends ChunkData {
 	protected boolean generated = false;
 
 	public ChunkMesh(ReducedChunkMesh replacement, int wx, int wy, int wz, int size) {
-		super(wx, wy, wz, size/NormalChunk.chunkSize);
+		super(wx, wy, wz, size/Chunk.chunkSize);
 		this.size = size;
 		this.replacement = replacement;
 	}

@@ -17,9 +17,9 @@ import cubyz.rendering.Camera;
 import cubyz.rendering.ShaderProgram;
 import cubyz.utils.Utils;
 import cubyz.utils.datastructures.IntFastList;
+import cubyz.world.Chunk;
 import cubyz.world.ChunkData;
 import cubyz.world.Neighbors;
-import cubyz.world.NormalChunk;
 import cubyz.world.ReducedChunkVisibilityData;
 
 /**
@@ -222,7 +222,7 @@ public class ReducedChunkMesh extends ChunkMesh {
 		}
 		if (vaoId == -1) return;
 		glUniform3f(loc_modelPosition, (float)(wx - playerPosition.x), (float)(wy - playerPosition.y), (float)(wz - playerPosition.z));
-		glUniform1f(loc_voxelSize, (float)(size/NormalChunk.chunkSize));
+		glUniform1f(loc_voxelSize, (float)(size/Chunk.chunkSize));
 		
 		glBindVertexArray(vaoId);
 		glDrawElements(GL_TRIANGLES, vertexCount, GL_UNSIGNED_INT, 0);
@@ -255,7 +255,7 @@ public class ReducedChunkMesh extends ChunkMesh {
 		colorsAndNormals.add(colorNormal);
 		return vertices.size - 1;
 	}
-	static long totalTime = 0;
+
 	private static void generateModelData(ReducedChunkVisibilityData chunkVisibilityData, IntFastList vertices, IntFastList faces, IntFastList colorsAndNormals) {
 		final int CORD00 = 0b00 << 16;
 		final int CORD01 = 0b01 << 16;

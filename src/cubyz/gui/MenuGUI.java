@@ -7,7 +7,7 @@ import cubyz.world.items.Inventory;
 public abstract class MenuGUI implements RegistryElement {
 	
 	protected float alphaMultiplier;
-	
+
 	protected final Resource id;
 	
 	public MenuGUI() {
@@ -27,12 +27,11 @@ public abstract class MenuGUI implements RegistryElement {
 	public boolean ungrabsMouse() {
 		return true;
 	}
-	
+
 	/**
 	 * Is guaranteed to be called when this GUI is closed.
 	 */
 	public void close() {}
-	
 	// For those guis that count on a block inventory. Others can safely ignore this.
 	public void setInventory(Inventory inv) {}
 
@@ -40,5 +39,4 @@ public abstract class MenuGUI implements RegistryElement {
 	public Resource getRegistryID() {
 		return id;
 	}
-	
 }

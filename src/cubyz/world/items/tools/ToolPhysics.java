@@ -181,7 +181,7 @@ public class ToolPhysics {
 			}
 		}
 		// Smaller tools are faster to swing. To balance that smaller tools get a lower durability.
-		tool.durability = tool.maxDurability = Math.max(1, (int)Math.pow(durability/8, 1.7f));
+		tool.durability = tool.maxDurability = Math.max(1, (int)Math.pow(durability/4, 1.5f));
 	}
 
 	/**
@@ -195,7 +195,7 @@ public class ToolPhysics {
 		// But when the pickaxe does get heaier 2 things happen:
 		// 1. The player needs to lift a bigger weight, so the tool speed gets reduced(caclulated elsewhere).
 		// 2. When travelling down the tool also gets additional energy from gravity, so the force is increased by m·g.
-		impactEnergy *= tool.materialGrid[collisionPoint.x][collisionPoint.y].material.power + tool.mass / 256;
+		impactEnergy *= tool.materialGrid[collisionPoint.x][collisionPoint.y].material.power + tool.mass/256;
 
 		return impactEnergy; // TODO: Balancing
 	}
@@ -327,7 +327,7 @@ public class ToolPhysics {
 				area += sandPiles[x][y];
 			}
 		}
-		area /= 1024; // TODO: Balancing
+		area /= 256; // TODO: Balancing
 		return area*calculateImpactEnergy(tool, collisionPoint);
 	}
 

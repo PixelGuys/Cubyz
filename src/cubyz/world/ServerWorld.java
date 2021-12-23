@@ -31,6 +31,7 @@ import cubyz.world.handler.PlaceBlockHandler;
 import cubyz.world.handler.RemoveBlockHandler;
 import cubyz.world.items.BlockDrop;
 import cubyz.world.items.ItemStack;
+import cubyz.world.save.ChunkIO;
 import cubyz.world.save.WorldIO;
 import cubyz.world.terrain.MapFragment;
 import cubyz.world.terrain.biomes.Biome;
@@ -90,11 +91,11 @@ public class ServerWorld {
 		if (!NormalChunk.class.isAssignableFrom(chunkProvider) ||
 				chunkProvider.getConstructors().length != 1 ||
 				chunkProvider.getConstructors()[0].getParameterTypes().length != 4 ||
-				!chunkProvider.getConstructors()[0].getParameterTypes()[0].equals(Integer.class) ||
+				!chunkProvider.getConstructors()[0].getParameterTypes()[0].equals(ServerWorld.class) ||
 				!chunkProvider.getConstructors()[0].getParameterTypes()[1].equals(Integer.class) ||
 				!chunkProvider.getConstructors()[0].getParameterTypes()[2].equals(Integer.class) ||
-				!chunkProvider.getConstructors()[0].getParameterTypes()[3].equals(ServerWorld.class))
-			throw new IllegalArgumentException("Chunk provider "+chunkProvider+" is invalid! It needs to be a subclass of NormalChunk and MUST contain a single constructor with parameters (Integer, Integer, Integer, ServerWorld)");
+				!chunkProvider.getConstructors()[0].getParameterTypes()[3].equals(Integer.class))
+			throw new IllegalArgumentException("Chunk provider "+chunkProvider+" is invalid! It needs to be a subclass of NormalChunk and MUST contain a single constructor with parameters (ServerWorld, Integer, Integer, Integer)");
 		
 		wio = new WorldIO(this, new File("saves/" + name));
 		milliTime = System.currentTimeMillis();
@@ -136,15 +137,17 @@ public class ServerWorld {
 			int dx = 0;
 			int dz = 0;
 			Logger.info("Finding position..");
-			while (true) {
+			int tryCount = 0;
+			while (tryCount < 1000) {
 				dx = rnd.nextInt(65536);
 				dz = rnd.nextInt(65536);
 				Logger.info("Trying " + dx + " ? " + dz);
 				if (isValidSpawnLocation(dx, dz))
 					break;
+				tryCount++;
 			}
 			int startY = (int)chunkManager.getOrGenerateMapFragment((int)dx, (int)dz, 1).getHeight(dx, dz);
-			seek((int)dx, startY, (int)dz, ClientSettings.RENDER_DISTANCE, ClientSettings.EFFECTIVE_RENDER_DISTANCE*NormalChunk.chunkSize*2);
+			seek((int)dx, startY, (int)dz, ClientSettings.RENDER_DISTANCE, ClientSettings.EFFECTIVE_RENDER_DISTANCE*Chunk.chunkSize*2);
 			player.setPosition(new Vector3i(dx, startY+2, dz));
 			Logger.info("OK!");
 		}
@@ -162,6 +165,7 @@ public class ServerWorld {
 		}
 		wio.saveWorldData();
 		chunkManager.forceSave();
+		ChunkIO.save();
 	}
 	
 	public void addEntity(Entity ent) {
@@ -180,16 +184,21 @@ public class ServerWorld {
 	}
 	
 	public boolean isValidSpawnLocation(int x, int z) {
-		// Just make sure there is a forest nearby, so the player will always be able to get the resources needed to start properly.
-		// TODO!
-		return true;
+        int radius = 3;
+        boolean found = false;
+        for (int i = x - radius; i <= x + radius; i++) {
+            for (int j = z - radius; j <= z + radius; j++) {
+                found = chunkManager.getOrGenerateMapFragment(i, j, 1).getBiome(i, j).isValidPlayerSpawn;
+            }
+        }
+        return found;
 	}
 	
 	public void removeBlock(int x, int y, int z) {
-		NormalChunk ch = getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift);
+		NormalChunk ch = getChunk(x >> Chunk.chunkShift, y >> Chunk.chunkShift, z >> Chunk.chunkShift);
 		if (ch != null) {
-			int b = ch.getBlock(x & NormalChunk.chunkMask, y & NormalChunk.chunkMask, z & NormalChunk.chunkMask);
-			ch.removeBlockAt(x & NormalChunk.chunkMask, y & NormalChunk.chunkMask, z & NormalChunk.chunkMask, true);
+			int b = ch.getBlock(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask);
+			ch.removeBlockAt(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask, true);
 			for (RemoveBlockHandler hand : CubyzRegistries.REMOVE_HANDLER_REGISTRY.registered(new RemoveBlockHandler[0])) {
 				hand.onBlockRemoved(this, b, x, y, z);
 			}
@@ -199,7 +208,7 @@ public class ServerWorld {
 				float randomPart = drop.amount - amount;
 				if (Math.random() < randomPart) amount++;
 				if (amount > 0) {
-					ItemEntityManager manager = this.getEntityManagerAt(x & ~NormalChunk.chunkMask, y & ~NormalChunk.chunkMask, z & ~NormalChunk.chunkMask).itemEntityManager;
+					ItemEntityManager manager = this.getEntityManagerAt(x & ~Chunk.chunkMask, y & ~Chunk.chunkMask, z & ~Chunk.chunkMask).itemEntityManager;
 					manager.add(x, y, z, 0, 0, 0, new ItemStack(drop.item, amount), 30*300 /*5 minutes at normal update speed.*/);
 				}
 			}
@@ -207,9 +216,9 @@ public class ServerWorld {
 	}
 	
 	public void placeBlock(int x, int y, int z, int b) {
-		NormalChunk ch = getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift);
+		NormalChunk ch = getChunk(x >> Chunk.chunkShift, y >> Chunk.chunkShift, z >> Chunk.chunkShift);
 		if (ch != null) {
-			ch.addBlock(b, x & NormalChunk.chunkMask, y & NormalChunk.chunkMask, z & NormalChunk.chunkMask, false);
+			ch.addBlock(b, x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask, false);
 			for (PlaceBlockHandler hand : CubyzRegistries.PLACE_HANDLER_REGISTRY.registered(new PlaceBlockHandler[0])) {
 				hand.onBlockPlaced(this, b, x, y, z);
 			}
@@ -217,7 +226,7 @@ public class ServerWorld {
 	}
 	
 	public void drop(ItemStack stack, Vector3d pos, Vector3f dir, float velocity, int pickupCooldown) {
-		ItemEntityManager manager = this.getEntityManagerAt((int)pos.x & ~NormalChunk.chunkMask, (int)pos.y & ~NormalChunk.chunkMask, (int)pos.z & ~NormalChunk.chunkMask).itemEntityManager;
+		ItemEntityManager manager = this.getEntityManagerAt((int)pos.x & ~Chunk.chunkMask, (int)pos.y & ~Chunk.chunkMask, (int)pos.z & ~Chunk.chunkMask).itemEntityManager;
 		manager.add(pos.x, pos.y, pos.z, dir.x*velocity, dir.y*velocity, dir.z*velocity, stack, Server.UPDATES_PER_SEC*300 /*5 minutes at normal update speed.*/, pickupCooldown);
 	}
 	
@@ -226,9 +235,9 @@ public class ServerWorld {
 	}
 	
 	public void updateBlock(int x, int y, int z, int block) {
-		NormalChunk ch = getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift);
+		NormalChunk ch = getChunk(x >> Chunk.chunkShift, y >> Chunk.chunkShift, z >> Chunk.chunkShift);
 		if (ch != null) {
-			ch.updateBlock(x & NormalChunk.chunkMask, y & NormalChunk.chunkMask, z & NormalChunk.chunkMask, block);
+			ch.updateBlock(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask, block);
 		}
 	}
 
@@ -310,12 +319,12 @@ public class ServerWorld {
 			en.update(deltaTime);
 			// Check item entities:
 			if (en.getInventory() != null) {
-				int x0 = (int)(en.getPosition().x - en.width) & ~NormalChunk.chunkMask;
-				int y0 = (int)(en.getPosition().y - en.width) & ~NormalChunk.chunkMask;
-				int z0 = (int)(en.getPosition().z - en.width) & ~NormalChunk.chunkMask;
-				int x1 = (int)(en.getPosition().x + en.width) & ~NormalChunk.chunkMask;
-				int y1 = (int)(en.getPosition().y + en.width) & ~NormalChunk.chunkMask;
-				int z1 = (int)(en.getPosition().z + en.width) & ~NormalChunk.chunkMask;
+				int x0 = (int)(en.getPosition().x - en.width) & ~Chunk.chunkMask;
+				int y0 = (int)(en.getPosition().y - en.width) & ~Chunk.chunkMask;
+				int z0 = (int)(en.getPosition().z - en.width) & ~Chunk.chunkMask;
+				int x1 = (int)(en.getPosition().x + en.width) & ~Chunk.chunkMask;
+				int y1 = (int)(en.getPosition().y + en.width) & ~Chunk.chunkMask;
+				int z1 = (int)(en.getPosition().z + en.width) & ~Chunk.chunkMask;
 				if (getEntityManagerAt(x0, y0, z0) != null)
 					getEntityManagerAt(x0, y0, z0).itemEntityManager.checkEntity(en);
 				if (x0 != x1) {
@@ -401,11 +410,12 @@ public class ServerWorld {
 		if (x != lastX || y != lastY || z != lastZ) {
 			ArrayList<NormalChunk> chunkList = new ArrayList<>();
 			ArrayList<ChunkEntityManager> managers = new ArrayList<>();
+			HashMap<HashMapKey3D, MetaChunk> oldMetaChunks = new HashMap<HashMapKey3D, MetaChunk>(metaChunks);
 			HashMap<HashMapKey3D, MetaChunk> newMetaChunks = new HashMap<HashMapKey3D, MetaChunk>();
-			int metaRenderDistance = (int)Math.ceil(renderDistance/(float)(MetaChunk.metaChunkSize*NormalChunk.chunkSize));
-			int x0 = x >> (MetaChunk.metaChunkShift + NormalChunk.chunkShift);
-			int y0 = y >> (MetaChunk.metaChunkShift + NormalChunk.chunkShift);
-			int z0 = z >> (MetaChunk.metaChunkShift + NormalChunk.chunkShift);
+			int metaRenderDistance = (int)Math.ceil(renderDistance/(float)(MetaChunk.metaChunkSize*Chunk.chunkSize));
+			int x0 = x >> (MetaChunk.metaChunkShift + Chunk.chunkShift);
+			int y0 = y >> (MetaChunk.metaChunkShift + Chunk.chunkShift);
+			int z0 = z >> (MetaChunk.metaChunkShift + Chunk.chunkShift);
 			for(int metaX = x0 - metaRenderDistance; metaX <= x0 + metaRenderDistance + 1; metaX++) {
 				for(int metaY = y0 - metaRenderDistance; metaY <= y0 + metaRenderDistance + 1; metaY++) {
 					for(int metaZ = z0 - metaRenderDistance; metaZ <= z0 + metaRenderDistance + 1; metaZ++) {
@@ -413,15 +423,19 @@ public class ServerWorld {
 						int zReal = metaZ;
 						HashMapKey3D key = new HashMapKey3D(xReal, metaY, zReal);
 						// Check if it already exists:
-						MetaChunk metaChunk = metaChunks.get(key);
+						MetaChunk metaChunk = oldMetaChunks.get(key);
+						oldMetaChunks.remove(key);
 						if (metaChunk == null) {
-							metaChunk = new MetaChunk(xReal*(MetaChunk.metaChunkSize*NormalChunk.chunkSize), metaY*(MetaChunk.metaChunkSize*NormalChunk.chunkSize), zReal*(MetaChunk.metaChunkSize*NormalChunk.chunkSize), this);
+							metaChunk = new MetaChunk(xReal*(MetaChunk.metaChunkSize*Chunk.chunkSize), metaY*(MetaChunk.metaChunkSize*Chunk.chunkSize), zReal*(MetaChunk.metaChunkSize*Chunk.chunkSize), this);
 						}
 						newMetaChunks.put(key, metaChunk);
 						metaChunk.updatePlayer(xOld, yOld, zOld, renderDistance, Settings.entityDistance, chunkList, managers);
 					}
 				}
 			}
+			oldMetaChunks.forEach((key, chunk) -> {
+				chunk.clean();
+			});
 			chunks = chunkList.toArray(new NormalChunk[0]);
 			entityManagers = managers.toArray(new ChunkEntityManager[0]);
 			metaChunks = newMetaChunks;
@@ -449,9 +463,9 @@ public class ServerWorld {
 	}
 
 	public ChunkEntityManager getEntityManagerAt(int wx, int wy, int wz) {
-		int cx = wx >> NormalChunk.chunkShift;
-		int cy = wy >> NormalChunk.chunkShift;
-		int cz = wz >> NormalChunk.chunkShift;
+		int cx = wx >> Chunk.chunkShift;
+		int cy = wy >> Chunk.chunkShift;
+		int cz = wz >> Chunk.chunkShift;
 		MetaChunk meta = getMetaChunk(cx, cy, cz);
 		if (meta != null) {
 			return meta.getEntityManager(cx, cy, cz);
@@ -464,9 +478,9 @@ public class ServerWorld {
 	}
 
 	public int getBlock(int x, int y, int z) {
-		NormalChunk ch = getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift);
+		NormalChunk ch = getChunk(x >> Chunk.chunkShift, y >> Chunk.chunkShift, z >> Chunk.chunkShift);
 		if (ch != null && ch.isGenerated()) {
-			int b = ch.getBlock(x & NormalChunk.chunkMask, y & NormalChunk.chunkMask, z & NormalChunk.chunkMask);
+			int b = ch.getBlock(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask);
 			return b;
 		} else {
 			return 0;
@@ -511,9 +525,16 @@ public class ServerWorld {
 	public void cleanup() {
 		// Be sure to dereference and finalize the maximum of things
 		try {
-			forceSave();
+			for(MetaChunk chunk : metaChunks.values()) {
+				if (chunk != null) chunk.clean();
+			}
+			wio.saveWorldData();
+			chunkManager.forceSave();
+			ChunkIO.save();
 
 			chunkManager.cleanup();
+			
+			ChunkIO.clean();
 			
 			metaChunks = null;
 		} catch (Exception e) {
@@ -531,10 +552,10 @@ public class ServerWorld {
 	}
 
 	public int getLight(int x, int y, int z, Vector3f sunLight, boolean easyLighting) {
-		NormalChunk ch = getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift);
+		NormalChunk ch = getChunk(x >> Chunk.chunkShift, y >> Chunk.chunkShift, z >> Chunk.chunkShift);
 		if (ch == null || !ch.isLoaded() || !easyLighting)
 			return 0xffffffff;
-		return ch.getLight(x & NormalChunk.chunkMask, y & NormalChunk.chunkMask, z & NormalChunk.chunkMask);
+		return ch.getLight(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask);
 	}
 
 	public void getLight(NormalChunk ch, int x, int y, int z, int[] array) {
@@ -554,11 +575,11 @@ public class ServerWorld {
 	}
 	
 	private int getLight(NormalChunk ch, int x, int y, int z, int minLight) {
-		if (x - ch.wx != (x & NormalChunk.chunkMask) || y - ch.wy != (y & NormalChunk.chunkMask) || z - ch.wz != (z & NormalChunk.chunkMask))
-			ch = getChunk(x >> NormalChunk.chunkShift, y >> NormalChunk.chunkShift, z >> NormalChunk.chunkShift);
+		if (x - ch.wx != (x & Chunk.chunkMask) || y - ch.wy != (y & Chunk.chunkMask) || z - ch.wz != (z & Chunk.chunkMask))
+			ch = getChunk(x >> Chunk.chunkShift, y >> Chunk.chunkShift, z >> Chunk.chunkShift);
 		if (ch == null || !ch.isLoaded())
 			return 0xff000000;
-		int light = ch.getLight(x & NormalChunk.chunkMask, y & NormalChunk.chunkMask, z & NormalChunk.chunkMask);
+		int light = ch.getLight(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask);
 		// Make sure all light channels are at least as big as the minimum:
 		if ((light & 0xff000000) >>> 24 < (minLight & 0xff000000) >>> 24) light = (light & 0x00ffffff) | (minLight & 0xff000000);
 		if ((light & 0x00ff0000) < (minLight & 0x00ff0000)) light = (light & 0xff00ffff) | (minLight & 0x00ff0000);

@@ -18,10 +18,10 @@ public class VisibleChunk extends NormalChunk {
 	/**Stores sun r g b channels of each light channel in one integer. This makes it easier to store and to access.*/
 	private int[] light;
 	
-	public VisibleChunk(Integer cx, Integer cy, Integer cz, ServerWorld world) {
-		super(cx, cy, cz, world);
+	public VisibleChunk(ServerWorld world, Integer cx, Integer cy, Integer cz) {
+		super(world, cx, cy, cz);
 		if (ClientSettings.easyLighting) {
-			light = new int[arraySize];
+			light = new int[blocks.length];
 		}
 	}
 

@@ -29,12 +29,17 @@ public class ChunkData implements Comparable<ChunkData> {
 	}
 
 	public void updatePriority(Player source) {
-		int halfWidth = voxelSize * NormalChunk.chunkSize / 2;
+		int halfWidth = voxelSize * Chunk.chunkSize / 2;
 		priority = -(float) source.getPosition().distance(wx + halfWidth, wy + halfWidth, wz + halfWidth) / voxelSize;
 	}
 
 	@Override
 	public int compareTo(ChunkData other) {
 		return (int) Math.signum(priority - other.priority);
+	}
+	
+	@Override
+	public String toString() {
+		return "{("+wx+", "+wy+", "+wz+"), "+voxelSize+"}";
 	}
 }
