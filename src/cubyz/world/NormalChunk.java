@@ -94,6 +94,10 @@ public class NormalChunk extends Chunk {
 		int index = getIndex(x, y, z);
 		if (blocks[index] != b) {
 			// Registers blockChange:
+			blocks[index] = b;
+			// Update the instance:
+			if (inst[index] != null)
+				inst[index].setBlock(b);
 			setChanged();
 		}
 		if (Blocks.blockClass(b) == BlockClass.FLUID) {
@@ -210,6 +214,8 @@ public class NormalChunk extends Chunk {
 				}
 			}
 		}
+		if (startedloading)
+			lightUpdate(x, y, z);
 
 		// Registers blockChange:
 		setChanged();
