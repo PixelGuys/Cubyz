@@ -28,7 +28,9 @@ public class User {
 
 		out = new PrintWriter(outStream, true);
 		in = new BufferedReader(new InputStreamReader(inStream));
-
+		
+		doHandShake();
+		
 		while (!clientSocket.isClosed()) {
 			receiveJSON(JsonParser.parseObjectFromStream(in));
 		}
@@ -41,7 +43,22 @@ public class User {
 
 			Logger.info("User joined: "+name+", who is using version: "+version);
 		}
-		json.writeObjectToStream(out);
+	}
+	
+	private void doHandShake() {
+		try {
+            JsonObject json = JsonParser.parseObjectFromStream(in);
+			String type = json.getString("type", "unknown type");
+			if (type.equals("clientInformation")){
+				String name     = json.getString("name", "unnamed");
+				String version  =  json.getString("version", "unknown");
+	
+				Logger.info("User joined: "+name+", who is using version: "+version);
+			}
+			sendWorldAssets();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 	public void sendWorldAssets(){

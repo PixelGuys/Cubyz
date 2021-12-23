@@ -1,8 +1,8 @@
 package cubyz.world;
 
 import cubyz.api.CurrentWorldRegistries;
+import cubyz.clientSide.ServerConnection;
 import cubyz.modding.ModLoader;
-import cubyz.utils.json.JsonObject;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.entity.ChunkEntityManager;
 import cubyz.world.entity.Entity;
@@ -13,10 +13,15 @@ import org.joml.Vector3f;
 
 //TODO:
 public class ClientWorld extends World{
-	public ClientWorld(String name, Class<?> chunkProvider) {
-		super(name, chunkProvider);
+	private ServerConnection serverConnection;
+	
+	public ClientWorld(String ip, String playerName, Class<?> chunkProvider) {
+		super("server", chunkProvider);
 
 		//wio = new WorldIO(this, new File("saves/" + name));
+		serverConnection = new ServerConnection(ip, playerName, getName());
+		
+		registries = new CurrentWorldRegistries(this, "serverAssets");
 
 		// Call mods for this new world. Mods sometimes need to do extra stuff for the specific world.
 		ModLoader.postWorldGen(registries);

@@ -2,7 +2,6 @@ package cubyz.gui.menu;
 
 import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
-import cubyz.clientSide.ServerConnection;
 import cubyz.gui.MenuGUI;
 import cubyz.gui.components.Button;
 import cubyz.gui.components.Component;
@@ -10,17 +9,14 @@ import cubyz.gui.components.Label;
 import cubyz.gui.components.TextInput;
 import cubyz.rendering.VisibleChunk;
 import cubyz.rendering.text.Fonts;
-import cubyz.server.Server;
 import cubyz.utils.DiscordIntegration;
 import cubyz.utils.translate.TextKey;
 import cubyz.world.ClientWorld;
-import cubyz.world.ServerWorld;
 import cubyz.world.World;
 
 import static cubyz.client.ClientSettings.GUI_SCALE;
 
 public class MultiplayerJoinGui extends MenuGUI {
-	ServerConnection serverConnection;
 
 	private class TextInputWithLabel{
 		private TextInput textInput	 = new TextInput();
@@ -89,9 +85,8 @@ public class MultiplayerJoinGui extends MenuGUI {
 		guiJoin.setFontSize(32);
 		guiJoin.setOnAction(() -> {
 			//new Thread(() -> Server.main(new String[0]), "Server Thread").start();
-			serverConnection = new ServerConnection(guiIPAdress.getText(), guiName.getText());
 
-			World world = new ClientWorld("server",VisibleChunk.class);
+			World world = new ClientWorld(guiIPAdress.getText(), guiName.getText(), VisibleChunk.class);
 			Cubyz.gameUI.setMenu(null, false); // hide from UISystem.back()
 			GameLauncher.logic.loadWorld(world);
 		});

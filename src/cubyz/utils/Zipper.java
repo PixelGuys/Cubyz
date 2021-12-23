@@ -21,7 +21,7 @@ public class Zipper {
 							Files.copy(p, zipoutput);
 							zipoutput.closeEntry();
 						} catch (IOException e) {
-							System.err.println(e);
+							Logger.error(e);
 						}
 					});
 		}catch(IOException exception){
@@ -41,6 +41,7 @@ public class Zipper {
 				String filePath = outputFolder.getAbsolutePath() + File.separator + entry.getName();
 				if (!entry.isDirectory()) {
 					// if the entry is a file, extract it
+					new File(filePath).getParentFile().mkdirs();
 					BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(filePath));
 					byte[] bytesIn = new byte[4096];
 					int read = 0;

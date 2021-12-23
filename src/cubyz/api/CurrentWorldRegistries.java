@@ -28,8 +28,8 @@ public class CurrentWorldRegistries {
 	/**
 	 * Loads the world specific assets, such as procedural ores.
 	 */
-	public CurrentWorldRegistries(World world) {
-		String assetPath = "saves/" + world.getName() + "/assets/";
+	public CurrentWorldRegistries(World world, String saveFolder) {
+		String assetPath = saveFolder + "/" + world.getName() + "/assets/";
 		File assets = new File(assetPath);
 		if (!assets.exists()) {
 			generateAssets(assets, world);

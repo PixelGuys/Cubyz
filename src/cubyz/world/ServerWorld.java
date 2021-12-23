@@ -50,10 +50,10 @@ public class ServerWorld extends World{
 		if (wio.hasWorldData()) {
 			seed = wio.loadWorldSeed();
 			generated = true;
-			registries = new CurrentWorldRegistries(this);
+			registries = new CurrentWorldRegistries(this, "saves");
 		} else {
 			seed = new Random().nextInt();
-			registries = new CurrentWorldRegistries(this);
+			registries = new CurrentWorldRegistries(this, "saves");
 			wio.saveWorldData();
 		}
 
