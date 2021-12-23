@@ -186,7 +186,7 @@ public class NormalChunk extends Chunk {
 						int newBlock = Blocks.mode(neighbors[i]).updateData(neighbors[i], i ^ 1, b);
 						if (newBlock == 0) {
 							world.removeBlock(nx, ny, nz);
-							break; // Break here to prevent making stuff with non-existent blocks.
+							continue; // Prevent making stuff with non-existent blocks.
 						} else if (newBlock != neighbors[i]) {
 							world.updateBlock(nx, ny, nz, newBlock);
 							// TODO: Eventual item drops.
@@ -319,7 +319,7 @@ public class NormalChunk extends Chunk {
 					int newBlock = Blocks.mode(neighbor).updateData(neighbor, i ^ 1, 0);
 					if (newBlock == 0) {
 						world.removeBlock(nx, ny, nz);
-						break; // Break here to prevent making a non-existent block visible.
+						continue; // Prevent making a non-existent block visible.
 					} else if (newBlock != neighbor) {
 						world.updateBlock(nx, ny, nz, newBlock);
 						// TODO: Eventual item drops.

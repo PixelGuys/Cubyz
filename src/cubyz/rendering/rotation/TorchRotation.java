@@ -14,6 +14,7 @@ import cubyz.utils.datastructures.IntWrapper;
 import cubyz.utils.datastructures.FloatFastList;
 import cubyz.utils.datastructures.IntFastList;
 import cubyz.world.Chunk;
+import cubyz.world.Neighbors;
 import cubyz.world.ServerWorld;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.Blocks;
@@ -61,23 +62,23 @@ public class TorchRotation implements RotationMode {
 	public int updateData(int block, int dir, int newNeighbor) {
 		int data = block >>> 16;
 		switch(dir) {
-			case 0: {
+			case Neighbors.DIR_NEG_X: {
 				data &= ~0b10;
 				break;
 			}
-			case 1: {
+			case Neighbors.DIR_POS_X: {
 				data &= ~0b1;
 				break;
 			}
-			case 2: {
+			case Neighbors.DIR_NEG_Z: {
 				data &= ~0b1000;
 				break;
 			}
-			case 3: {
+			case Neighbors.DIR_POS_Z: {
 				data &= ~0b100;
 				break;
 			}
-			case 4: {
+			case Neighbors.DIR_DOWN: {
 				data &= ~0b10000;
 				break;
 			}
