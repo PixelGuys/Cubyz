@@ -88,11 +88,10 @@ public class MultiplayerJoinGui extends MenuGUI {
 		guiJoin.setOnAction(() -> {
 			new Thread(() -> Server.main(new String[0]), "Server Thread").start();
 			serverConnection = new ServerConnection(guiIPAdress.getText(), guiName.getText());
-			/*ServerWorld world = new ServerWorld(name.getText(), VisibleChunk.class);
-			world.setGenerator(generators[(int) generator.getUserObject()].toString());
 
+			ServerWorld world = new ServerWorld("Server world", null, VisibleChunk.class);
 			Cubyz.gameUI.setMenu(null, false); // hide from UISystem.back()
-			GameLauncher.logic.loadWorld(world);*/
+			GameLauncher.logic.loadWorld(world);
 		});
 		updateGUIScale();
 	}

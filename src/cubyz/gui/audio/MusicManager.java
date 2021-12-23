@@ -49,6 +49,7 @@ public class MusicManager {
 	
 	public static void loadMusic(String musicName) {
 		if (currentMusic != "None") {
+			if(source!=null)
 			positions.put(currentMusic, source.getPlaybackPosition());
 		}
 		try {
