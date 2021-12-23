@@ -12,7 +12,7 @@ import cubyz.utils.translate.TextKey;
  */
 
 public class Button extends Component {
-	
+
 	private static final int[] button = {
 		156, 166, 191, // center
 		166, 176, 204, // top
@@ -20,7 +20,7 @@ public class Button extends Component {
 		145, 154, 179, // bottom
 		151, 161, 186, // left
 	};
-	
+
 	private static final int[] buttonPressed = {
 		146, 154, 179, // center
 		135, 143, 166, // top
@@ -28,7 +28,7 @@ public class Button extends Component {
 		156, 165, 191, // bottom
 		150, 159, 184, // left
 	};
-	
+
 	private static final int[] buttonHovered = {
 		156, 166, 221, // center
 		166, 176, 234, // top
@@ -38,21 +38,19 @@ public class Button extends Component {
 	};
 
 	private boolean pressed;
-	private boolean hovered;
-	private boolean canRepress = true;
 	private Runnable onAction;
 	private Label textLabel = new Label(Fonts.PIXEL_FONT, 240);
-	
+
 	public Button() {}
-	
+
 	public Button(TextKey key) {
 		setText(key);
 	}
-	
+
 	public Button(String text) {
 		setText(text);
 	}
-	
+
 	public TextKey getText() {
 		return textLabel.getText();
 	}
@@ -60,7 +58,7 @@ public class Button extends Component {
 	public void setText(String text) {
 		textLabel.setText(text);
 	}
-	
+
 	public void setText(TextKey text) {
 		textLabel.setText(text);
 	}
@@ -68,7 +66,7 @@ public class Button extends Component {
 	public void setOnAction(Runnable onAction) {
 		this.onAction = onAction;
 	}
-	
+
 	public float getFontSize() {
 		return textLabel.getHeight();
 	}
@@ -76,7 +74,7 @@ public class Button extends Component {
 	public void setFontSize(float fontSize) {
 		textLabel.setFontSize(fontSize);
 	}
-	
+
 	private void drawTexture(int[] texture, int x, int y) {
 		Graphics.setColor(texture[0]<<16 | texture[1]<<8 | texture[2]);
 		Graphics.fillRect(x+5, y+5, width-10, height-10);
@@ -96,37 +94,28 @@ public class Button extends Component {
 
 	@Override
 	public void render(int x, int y) {
-		if (Mouse.isLeftButtonPressed() && canRepress && isInside(Mouse.getCurrentPos())) {
-			pressed = true;
-			canRepress = false;
-		} else if (isInside(Mouse.getCurrentPos())) {
-			hovered = true;
-		} else {
-			hovered = false;
-		}
-		if (!canRepress && !Mouse.isLeftButtonPressed()) {
-			pressed = false;
-			canRepress = true;
-			if (isInside(Mouse.getCurrentPos())) {
-				if (onAction != null) {
-					try {
-						onAction.run();
-					} catch(Exception e) {
-						Logger.error(e);
-					}
+		boolean hovered = isInside(Mouse.getCurrentPos());
+		boolean toggled = Mouse.isLeftButtonPressed() != pressed;
+		pressed = pressed ^ toggled;
+		if (!pressed && toggled && hovered) {
+			if (onAction != null) {
+				try {
+					onAction.run();
+				} catch(Exception e) {
+					Logger.error(e);
 				}
 			}
 		}
-		if (pressed) {
-			drawTexture(buttonPressed, x, y);
-		} else {
-			if (hovered) {
-				drawTexture(buttonHovered, x, y);
+		if (hovered) {
+			if (pressed) {
+				drawTexture(buttonPressed, x, y);
 			} else {
-				drawTexture(button, x, y);
+				drawTexture(buttonHovered, x, y);
 			}
+		} else{
+			drawTexture(button, x, y);
 		}
 		textLabel.render(x + width/2, y + height/2);
 	}
-	
+
 }
