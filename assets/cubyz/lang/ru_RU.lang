@@ -1,0 +1,85 @@
+gui.cubyz.mainmenu.singleplayer=Одиночная игра
+gui.cubyz.mainmenu.multiplayer=Мультиплеер
+gui.cubyz.mainmenu.exit=Выход
+gui.cubyz.mainmenu.settings=Настройки
+gui.cubyz.settings.done=Готово
+gui.cubyz.general.on=Вкл.
+gui.cubyz.general.off=Выкл.
+gui.cubyz.general.back=Назад
+gui.cubyz.general.cancel=Отмена
+gui.cubyz.settings.language=Язык: {0}
+gui.cubyz.settings.discord=Интеграция Discord: {0}
+gui.cubyz.settings.keybindings=Управление
+gui.cubyz.settings.graphics=Графика
+gui.cubyz.settings.sound=Звуки
+gui.cubyz.settings.musicOnOff=Вкл/Выкл музыку
+gui.cubyz.settings.fog.med=Туман: Средний
+gui.cubyz.settings.fog.far=Туман: Далёкий
+gui.cubyz.settings.fog.near=Туман: Близкий
+gui.cubyz.settings.fog.off=Туман: Выкл.
+gui.cubyz.settings.easylighting=Простое освещение
+gui.cubyz.settings.vsync=Вертикальная синхронизация
+gui.cubyz.pause.exit=Назад в главное меню
+gui.cubyz.pause.resume=Продолжить
+gui.cubyz.debug.reload=Обновить
+gui.cubyz.saves.play=Играть {0}
+gui.cubyz.saves.delete=Удалить
+gui.cubyz.saves.create=Создать новую игру!
+gui.cubyz.saves.create.mapgen=Тип ландшафта: {0}
+gui.cubyz.saves.create.climategen=Тип климата: {0}
+lang.name=Русский
+
+gui.cubyz.multiplayer.displayname=Ник
+gui.cubyz.multiplayer.join=Присоединиться
+
+# Blocks
+block.cubyz.cactus.name=Кактус
+block.cubyz.soil.name=Дёрн
+block.cubyz.grass.name=Трава
+block.cubyz.gravel.name=Гравий
+block.cubyz.ice.name=Лёд
+block.cubyz.sand.name=Песок
+block.cubyz.snow.name=Снег
+block.cubyz.mossy_cobblestone.name=Замшелый булыжник
+block.cubyz.cobblestone.name=Булыжник
+block.cubyz.stone.name=Камень
+block.cubyz.oak_log.name=Дуб
+block.cubyz.oak_top.name=Верхушка дуба
+block.cubyz.oak_planks.name=Дубовые доски
+block.cubyz.oak_fence.name=Дубовый забор
+block.cubyz.oak_leaves.name=Дубовые листья
+block.cubyz.torch.name=Факел
+block.cubyz.workbench.name=Рабочий стол
+block.cubyz.water.name=Вода
+block.cubyz.coal_ore.name=Угольная руда
+block.cubyz.iron_ore.name=Железная руда
+block.cubyz.diamond_ore.name=Алмазная руда
+
+block.cubyz.glow_crystal/red.name=Красный светящийся кристал
+block.cubyz.glow_crystal/dark_green.name=Тёмно-зелёный светящийся кристал
+block.cubyz.glow_crystal/dark_gray.name=Тёмно-серый светящийся кристал
+block.cubyz.glow_crystal/blue.name=Синий светящийся кристал
+block.cubyz.glow_crystal/light_blue.name=Светло-синий светящийся кристал
+block.cubyz.glow_crystal/gray.name=Серый светящийся кристал
+block.cubyz.glow_crystal/yellow.name=Жёлтый светящийся кристал
+block.cubyz.glow_crystal/cyan.name=Бирюзовый светящийся кристал
+block.cubyz.glow_crystal/brown.name=Коричневый светящийся кристал
+block.cubyz.glow_crystal/dark_red.name=Тёмно-красный светящийся кристал
+block.cubyz.glow_crystal/purple.name=Пурпурный светящийся кристал
+block.cubyz.glow_crystal/black.name=Чёрный светящийся кристал
+block.cubyz.glow_crystal/white.name=Белый светящийся кристал
+block.cubyz.glow_crystal/green.name=Зелёный светящийся кристал
+block.cubyz.glow_crystal/violet.name=Фиолетовый светящийся кристал
+block.cubyz.glow_crystal/orange.name=Оранжевый светящийся кристал
+
+# Items
+item.cubyz.stick.name=Палка
+item.cubyz.diamond.name=Алмаз
+item.cubyz.coal.name=Уголь
+item.cubyz.raw_meat.name=Сырое мясо
+item.cubyz.apple.name=Яблоко
+
+# World Generation
+generator.map.cubyz.mapgen_v1=Версия 1
+generator.climate.cubyz.flatland=Плоский
+generator.climate.cubyz.polar_circles=Полярные круги
