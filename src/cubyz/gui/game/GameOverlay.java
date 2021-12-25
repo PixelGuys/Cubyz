@@ -92,10 +92,9 @@ public class GameOverlay extends MenuGUI {
 			Graphics.fillRect(0, 0, Window.getWidth(), Window.getHeight());
 		}
 		Graphics.setColor(0xFFFFFF);
-		TextLine text = new TextLine(Fonts.PIXEL_FONT, Math.round(health*10)/10.0f + "/" + Math.round(maxHealth) + " HP", 16 * GUI_SCALE, false);
+		TextLine text = new TextLine(Fonts.PIXEL_FONT, Math.round(health*10)/10.0f + "/" + Math.round(maxHealth) + " HP", 8 * GUI_SCALE, false);
 		float width = text.getWidth();
-		Graphics.drawImage(healthBar[7], (int)(Window.getWidth() - (maxHealth*8 + 40) * GUI_SCALE) - width, 4 * GUI_SCALE, 16 * GUI_SCALE, 16 * GUI_SCALE);
-		text.render(Window.getWidth() - (maxHealth*8 + 10) * GUI_SCALE - width, 5 * GUI_SCALE);
+		Graphics.drawImage(healthBar[7], (int)(Window.getWidth() - (maxHealth*6 + 12) * GUI_SCALE), 4 * GUI_SCALE, 12 * GUI_SCALE, 12 * GUI_SCALE);
 		for(int i = 0; i < maxHealth; i += 2) {
 			boolean half = i + 1 == health;
 			boolean empty = i >= health;
@@ -108,15 +107,15 @@ public class GameOverlay extends MenuGUI {
 			} else {
 				idx = empty ? 4 : (half ? 5 : 6); // if empty => 4, half => 5, full => 6
 			}
-			Graphics.drawImage(healthBar[idx], (int)(i*8 * GUI_SCALE + Window.getWidth() - (maxHealth*8 + 4) * GUI_SCALE), 4 * GUI_SCALE, 16 * GUI_SCALE, 16 * GUI_SCALE);
+			Graphics.drawImage(healthBar[idx], (int)(i*6 * GUI_SCALE + Window.getWidth() - (maxHealth*6 + 4) * GUI_SCALE), 4 * GUI_SCALE, 12 * GUI_SCALE, 12 * GUI_SCALE);
 		}
+		text.render((maxHealth / 2) * 6 * GUI_SCALE + Window.getWidth() - (maxHealth*6 + 4) * GUI_SCALE - width / 2, 7 * GUI_SCALE);
 		// Draw the hunger bar:
 		float maxHunger = Cubyz.player.maxHunger;
 		float hunger = Cubyz.player.hunger;
-		text = new TextLine(Fonts.PIXEL_FONT, Math.round(hunger*10)/10.0f + "/" + Math.round(maxHunger) + " HP", 16 * GUI_SCALE, false);
+		text = new TextLine(Fonts.PIXEL_FONT, Math.round(hunger*10)/10.0f + "/" + Math.round(maxHunger) + " HP", 8 * GUI_SCALE, false);
 		width = text.getWidth();
-		Graphics.drawImage(hungerBar[7], (int)(Window.getWidth() - (maxHunger*8 + 40) * GUI_SCALE - width), 24 * GUI_SCALE, 16 * GUI_SCALE, 16 * GUI_SCALE);
-		text.render(Window.getWidth() - (maxHealth*8 + 10) * GUI_SCALE - width, 25 * GUI_SCALE);
+		Graphics.drawImage(hungerBar[7], (int)(Window.getWidth() - (maxHunger*6 + 12) * GUI_SCALE), 20 * GUI_SCALE, 12 * GUI_SCALE, 12 * GUI_SCALE);
 		for(int i = 0; i < maxHunger; i += 2) {
 			boolean half = i + 1 == hunger;
 			boolean empty = i >= hunger;
@@ -129,8 +128,9 @@ public class GameOverlay extends MenuGUI {
 			} else {
 				idx = empty ? 4 : (half ? 5 : 6); // if empty => 4, half => 5, full => 6
 			}
-			Graphics.drawImage(hungerBar[idx], (int)(i*8 * GUI_SCALE + Window.getWidth() - (maxHunger*8 + 4) * GUI_SCALE), 24 * GUI_SCALE, 16 * GUI_SCALE, 16 * GUI_SCALE);
+			Graphics.drawImage(hungerBar[idx], (int)(i*6 * GUI_SCALE + Window.getWidth() - (maxHunger*6 + 4) * GUI_SCALE), 20 * GUI_SCALE, 12 * GUI_SCALE, 12 * GUI_SCALE);
 		}
+		text.render((maxHunger / 2) * 6 * GUI_SCALE + Window.getWidth() - (maxHealth*6 + 4) * GUI_SCALE - width / 2, 23 * GUI_SCALE);
 	}
 
 	@Override
