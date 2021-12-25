@@ -32,6 +32,10 @@ public class GiveCommand extends CommandBase {
 			source.feedback("Usage: give <item id> [amount]");
 			return;
 		}
+		// Append the game id in the begging if the source doesn't supply the game id
+		if (!args[1].contains(":")) {
+			args[1] = "cubyz:".concat(args[1]);
+		}
 		if (items.getByID(args[1]) == null) {
 			source.feedback("No such item: " + args[1]);
 			return;
