@@ -27,7 +27,7 @@ public class TPCommand extends CommandBase {
 			return;
 		}
 		if (!(source instanceof Player)) {
-			source.feedback("'clear' must be executed by a player");
+			source.feedback("'tp' must be executed by a player");
 			return;
 		}
 		Player player = (Player)source;
