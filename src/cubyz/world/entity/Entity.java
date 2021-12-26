@@ -368,11 +368,6 @@ public class Entity {
 			health += healing;
 			hunger -= healing;
 		}
-		// Eat into health when the hunger bar is empty:
-		if (hunger < 0) {
-			health += hunger;
-			hunger = 0;
-		}
 	}
 	
 	protected void updateVelocity(float deltaTime) {
