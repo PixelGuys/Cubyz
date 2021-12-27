@@ -1,5 +1,4 @@
 # GUI
-
 gui.cubyz.mainmenu.singleplayer=Singleplayer
 gui.cubyz.mainmenu.multiplayer=Multiplayer
 gui.cubyz.mainmenu.exit=Închide Jocul
@@ -9,7 +8,7 @@ gui.cubyz.general.on=Activată
 gui.cubyz.general.off=Dezactivată
 gui.cubyz.general.back=Înapoi
 gui.cubyz.general.cancel=Anulează
-gui.cubyz.settings.language=Limba: {0}
+gui.cubyz.settings.language=Limba jocului: {0}
 gui.cubyz.settings.discord=Integrare Discord: {0}
 gui.cubyz.settings.keybindings=Controale
 gui.cubyz.settings.graphics=Setări video
@@ -18,32 +17,61 @@ gui.cubyz.settings.fog.far=Ceață: La Distanță Mare
 gui.cubyz.settings.fog.near=Ceață: La Distanță Mică
 gui.cubyz.settings.fog.off=Ceață: Dezactivată
 gui.cubyz.settings.easylighting=Lumină Optimizată
-gui.cubyz.settings.vsync=Folosiți VSync
-gui.cubyz.pause.exit=Ieșire la meniul principal
+gui.cubyz.settings.vsync=Folosiți V-Sync
+gui.cubyz.pause.exit=Ieși la meniul principal
 gui.cubyz.pause.resume=Reia
 gui.cubyz.debug.reload=Reîmprospătare
 gui.cubyz.saves.play=Joacă pe lumea "{0}"
 gui.cubyz.saves.delete=Șterge
-gui.cubyz.saves.create=Creează o nouă salvare de joc!
+gui.cubyz.saves.create=Creează o nouă lume
+gui.cubyz.settings.sound=Sunet
+gui.cubyz.settings.musicOnOff=Opriți/Porniți muzica
+gui.cubyz.saves.create.mapgen=Versiunea: {0}
+gui.cubyz.saves.create.climategen=Generator climat: {0}
+gui.cubyz.multiplayer.displayname: Numele jucătorului
+gui.cubyz.multiplayer.join: Intră pe server
 
 # Blocks
-
 block.cubyz.cactus.name=Cactus
 block.cubyz.gravel.name=Pietriș
 block.cubyz.soil.name=Pământ
 block.cubyz.ice.name=Ghiață
 block.cubyz.sand.name=Nisip
 block.cubyz.snow.name=Zăpadă
-block.cubyz.mossy_cobblestone.name=Piatră Spartă cu Mușchi
-block.cubyz.cobblestone.name=Piatră Spartă
-block.cubyz.oak_log.name=Butucă de Stejar
-block.cubyz.oak_top.name=Butucă de Stejar cioplită
-block.cubyz.oak_planks.name=Scândură de Stejar
-block.cubyz.oak_leaves.name=Frunze de Stejar
+block.cubyz.mossy_cobblestone.name=Pietruială cu mușchi
+block.cubyz.cobblestone.name=Pietruială
+block.cubyz.oak_log.name=Butucă de stejar
+block.cubyz.oak_top.name=Butucă de stejar cioplită
+block.cubyz.oak_planks.name=Scândură de stejar
+block.cubyz.oak_leaves.name=Frunze de stejar
 block.cubyz.torch.name=Torță
 block.cubyz.workbench.name=Stație de lucru
 block.cubyz.iron_ore.name=Minereu de fier
-block.cubyz.oak_fence.name=Gard de Stejar
+block.cubyz.oak_fence.name=Gard de stejar
+block.cubyz.stone.name=Piatră
+block.cubyz.water.name=Apă
+block.cubyz.grass.name=Iarbă
+block.cubyz.coal_ore.name=Minereu de cărbune
+block.cubyz.iron_ore.name=Minereu de fier
+block.cubyz.diamond_ore.name=Minereu de diamant
+
+# Glow Crystals (This translation is so scuffed. I'll try improving the grammar later but I doubt I can do better than this.)
+block.cubyz.glow_crystal/red.name=Cristal roșu strălucitor
+block.cubyz.glow_crystal/dark_green.name=Cristal verde închis strălucitor
+block.cubyz.glow_crystal/dark_gray.name=Cristal gri închis strălucitor
+block.cubyz.glow_crystal/blue.name=Cristal albastru strălucitor
+block.cubyz.glow_crystal/light_blue.name=Cristal albastru deschis strălucitor
+block.cubyz.glow_crystal/gray.name=Cristal gri strălucitor
+block.cubyz.glow_crystal/yellow.name=Cristal galben strălucitor
+block.cubyz.glow_crystal/cyan.name=Cristal cyan strălucitor
+block.cubyz.glow_crystal/brown.name=Cristal maro strălucitor
+block.cubyz.glow_crystal/dark_red.name=Cristal roșu închis strălucitor
+block.cubyz.glow_crystal/purple.name=Cristal violet închis strălucitor
+block.cubyz.glow_crystal/black.name=Cristal negru strălucitor
+block.cubyz.glow_crystal/white.name=Cristal alb strălucitor
+block.cubyz.glow_crystal/green.name=Cristal verde strălucitor
+block.cubyz.glow_crystal/violet.name=Cristal violet strălucitor
+block.cubyz.glow_crystal/orange.name=Cristal oranj strălucitor
 
 # Items
 
@@ -54,7 +82,6 @@ item.cubyz.raw_meat.name=Carne crudă
 item.cubyz.apple.name=Măr
 
 # Tools
-
 cubyz.grammar.tool_material={1} {0}
 cubyz.tools.materials.wood=Lemn
 cubyz.tools.materials.stone=Piatră
@@ -63,6 +90,10 @@ cubyz.tools.names.pickaxe=Târnăcop de
 cubyz.tools.names.shovel=Lopată de
 cubyz.tools.names.sword=Sabie de
 
-# General
+# World Generation
+generator.map.cubyz.mapgen_v1=1.0
+generator.climate.cubyz.flatland=Sol plat
+generator.climate.cubyz.polar_circles=Cercuri polare
 
+# General
 lang.name=Română
