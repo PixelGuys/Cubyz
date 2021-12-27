@@ -24,8 +24,8 @@ import cubyz.world.terrain.biomes.Biome;
 import cubyz.world.terrain.biomes.GroundPatch;
 import cubyz.world.terrain.biomes.SimpleTreeModel;
 import cubyz.world.terrain.biomes.SimpleVegetation;
-import cubyz.world.terrain.generators.CaveGenerator;
 import cubyz.world.terrain.generators.CrystalCavernGenerator;
+import cubyz.world.terrain.generators.FractalCaveGenerator;
 import cubyz.world.terrain.generators.OreGenerator;
 import cubyz.world.terrain.generators.StructureGenerator;
 import cubyz.world.terrain.generators.TerrainGenerator;
@@ -76,11 +76,11 @@ public class BaseMod implements Mod {
 		CubyzRegistries.STRUCTURE_REGISTRY.register(new SimpleVegetation());
 		CubyzRegistries.STRUCTURE_REGISTRY.register(new GroundPatch());
 
-		CubyzRegistries.GENERATORS.registerAll(new TerrainGenerator());
-		CubyzRegistries.GENERATORS.registerAll(new OreGenerator());
-		CubyzRegistries.GENERATORS.registerAll(new CaveGenerator());
-		CubyzRegistries.GENERATORS.registerAll(new CrystalCavernGenerator());
-		CubyzRegistries.GENERATORS.registerAll(new StructureGenerator());
+		CubyzRegistries.GENERATORS.register(new TerrainGenerator());
+		CubyzRegistries.GENERATORS.register(new OreGenerator());
+		CubyzRegistries.GENERATORS.register(new FractalCaveGenerator());
+		CubyzRegistries.GENERATORS.register(new CrystalCavernGenerator());
+		CubyzRegistries.GENERATORS.register(new StructureGenerator());
 
 		CubyzRegistries.CLIMATE_GENERATOR_REGISTRY.register(new PolarCircles());
 		CubyzRegistries.CLIMATE_GENERATOR_REGISTRY.register(new FlatLand());
