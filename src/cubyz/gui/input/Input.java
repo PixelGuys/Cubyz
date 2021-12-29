@@ -89,7 +89,7 @@ public class Input {
 				}
 				if (Keybindings.isPressed("jump")) {
 					if (Cubyz.player.isFlying()) {
-						Cubyz.player.vy = 5.45F;
+						Cubyz.player.vy = Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT_CONTROL) ? 29.45F : 5.45F;
 					} else if (Cubyz.player.isOnGround()) {
 						Cubyz.player.vy = 5.45F;
 					}
