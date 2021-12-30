@@ -96,7 +96,7 @@ public class Input {
 				}
 				if (Keybindings.isPressed("fall")) {
 					if (Cubyz.player.isFlying()) {
-						Cubyz.player.vy = -5;
+						Cubyz.player.vy = Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT_CONTROL) ? -29F : -5F;
 					}
 				}
 				if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_F)) {
