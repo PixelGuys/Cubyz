@@ -11,7 +11,6 @@ import cubyz.client.Cubyz;
 import cubyz.client.Meshes;
 import cubyz.client.entity.ClientEntity;
 import cubyz.client.entity.ClientEntityManager;
-import cubyz.client.entity.ClientPlayer;
 import cubyz.utils.Utils;
 import cubyz.world.entity.CustomMeshProvider;
 import cubyz.world.entity.CustomMeshProvider.MeshType;
@@ -39,7 +38,7 @@ public class EntityRenderer {
 				EntityRenderer.class);
 	}
 
-	public static void render(Vector3f ambientLight, DirectionalLight directionalLight, ClientPlayer localPlayer, Vector3d playerPosition) {
+	public static void render(Vector3f ambientLight, DirectionalLight directionalLight, Vector3d playerPosition) {
 		ClientEntity[] entities = ClientEntityManager.getEntities();
 		entityShader.bind();
 		entityShader.setUniform(loc_fog_activ, Cubyz.fog.isActive());
@@ -55,7 +54,7 @@ public class EntityRenderer {
 			int x = (int)(ent.position.x + 1.0f);
 			int y = (int)(ent.position.y + 1.0f);
 			int z = (int)(ent.position.z + 1.0f);
-			if (ent != null && ent.id != localPlayer.id) { // don't render local player
+			if (ent != null && ent.id != Cubyz.player.id) { // don't render local player
 				Mesh mesh = null;
 				if (ent.type.model != null) {
 					entityShader.setUniform(loc_materialHasTexture, true);

@@ -283,7 +283,7 @@ public class MainRenderer {
 		frustumInt.set(prjViewMatrix);
 
 		int time = (int) (System.currentTimeMillis() & Integer.MAX_VALUE);
-		if (localPlayer != null) {
+		if (playerPosition != null) {
 			Fog waterFog = new Fog(true, new Vector3f(0.0f, 0.1f, 0.2f), 0.1f);
 
 			 // Update the uniforms. The uniforms are needed to render the replacement meshes.
@@ -354,7 +354,7 @@ public class MainRenderer {
 			}
 			glDepthRangef(0, 0.05f);
 			
-			EntityRenderer.render(ambientLight, directionalLight, localPlayer, playerPosition);
+			EntityRenderer.render(ambientLight, directionalLight, playerPosition);
 
 			BlockDropRenderer.render(frustumInt, ambientLight, directionalLight, playerPosition);
 			

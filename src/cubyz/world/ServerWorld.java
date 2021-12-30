@@ -184,14 +184,7 @@ public class ServerWorld {
 	}
 	
 	public boolean isValidSpawnLocation(int x, int z) {
-        int radius = 3;
-        boolean found = false;
-        for (int i = x - radius; i <= x + radius; i++) {
-            for (int j = z - radius; j <= z + radius; j++) {
-                found = chunkManager.getOrGenerateMapFragment(i, j, 1).getBiome(i, j).isValidPlayerSpawn;
-            }
-        }
-        return found;
+		return chunkManager.getOrGenerateMapFragment(x, z, 32).getBiome(x, z).isValidPlayerSpawn;
 	}
 	
 	public void removeBlock(int x, int y, int z) {
