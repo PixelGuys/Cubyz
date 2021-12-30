@@ -6,8 +6,6 @@ import org.joml.Vector3f;
 public abstract class Camera {
 	private static final float PI_HALF = (float)(Math.PI/2);
 
-	private static final Vector3f position = new Vector3f();
-
 	private static final Vector3f rotation = new Vector3f();
 	
 	private static Matrix4f viewMatrix = new Matrix4f().identity();
@@ -20,22 +18,12 @@ public abstract class Camera {
 		Camera.viewMatrix = viewMatrix;
 	}
 
-	public static Vector3f getPosition() {
-		return position;
-	}
-
 	/**
 	 * The direction the camera is facing in.
 	 * @return
 	 */
 	public static Vector3f getDirection() {
 		return new Vector3f(0, 0, -1).rotateX(rotation.x).rotateY(rotation.y);
-	}
-
-	public static void setPosition(float x, float y, float z) {
-		position.x = x;
-		position.y = y;
-		position.z = z;
 	}
 
 	public static Vector3f getRotation() {

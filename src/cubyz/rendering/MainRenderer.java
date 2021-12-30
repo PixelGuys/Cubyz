@@ -21,7 +21,6 @@ import cubyz.client.GameLauncher;
 import cubyz.client.Meshes;
 import cubyz.client.NormalChunkMesh;
 import cubyz.client.ReducedChunkMesh;
-import cubyz.client.entity.ClientPlayer;
 import cubyz.gui.input.Keyboard;
 import cubyz.utils.Utils;
 import cubyz.utils.datastructures.FastList;
@@ -184,8 +183,11 @@ public class MainRenderer {
 		}
 
 		BlockMeshes.loadMeshes(); // Loads all meshes that weren't loaded yet.
+		Vector3d playerPosition = null;
+		if(Cubyz.player != null)
+			playerPosition = new Vector3d(Cubyz.player.getPosition());
 		
-		if (Cubyz.world != null) {
+		if (Cubyz.player != null) {
 			if (Cubyz.playerInc.x != 0 || Cubyz.playerInc.z != 0) { // while walking
 				if (bobbingUp) {
 					playerBobbing += 0.005f;
@@ -205,7 +207,7 @@ public class MainRenderer {
 			if (Cubyz.playerInc.x != 0) {
 				Cubyz.player.vx = Cubyz.playerInc.x;
 			}
-			Camera.setPosition(0, Player.cameraHeight + playerBobbing, 0);
+			playerPosition.y += Player.cameraHeight + playerBobbing;
 		}
 		
 		while (!Cubyz.renderDeque.isEmpty()) {
@@ -234,7 +236,7 @@ public class MainRenderer {
 			// Set intensity:
 			light.setDirection(light.getDirection().mul(0.1f*Cubyz.world.getGlobalLighting()/light.getDirection().length()));
 			Window.setClearColor(clearColor);
-			render(ambient, light, worldSpatialList, Cubyz.player);
+			render(ambient, light, worldSpatialList, playerPosition);
 		} else {
 			clearColor.y = clearColor.z = 0.7f;
 			clearColor.x = 0.1f;
@@ -260,7 +262,7 @@ public class MainRenderer {
 	 * @param spatials the special objects to render (that are neither entity, neither blocks, like sun and moon, or rain)
 	 * @param localPlayer The world's local player
 	 */
-	public void render(Vector3f ambientLight, DirectionalLight directionalLight, Spatial[] spatials, ClientPlayer localPlayer) {
+	public void render(Vector3f ambientLight, DirectionalLight directionalLight, Spatial[] spatials, Vector3d playerPosition) {
 		if (!doRender)
 			return;
 		buffers.bind();
@@ -269,7 +271,7 @@ public class MainRenderer {
 		// Clean up old chunk meshes:
 		Meshes.cleanUp();
 		
-		Camera.setViewMatrix(transformation.getViewMatrix(Camera.getPosition(), Camera.getRotation()));
+		Camera.setViewMatrix(transformation.getViewMatrix(new Vector3f(), Camera.getRotation()));
 		
 		float breakAnim = 0;
 		
@@ -284,7 +286,6 @@ public class MainRenderer {
 		if (localPlayer != null) {
 			Fog waterFog = new Fog(true, new Vector3f(0.0f, 0.1f, 0.2f), 0.1f);
 
-			Vector3d playerPosition = localPlayer.getPosition(); // Use a constant copy of the player position for the whole rendering to prevent graphics bugs on player movement.
 			 // Update the uniforms. The uniforms are needed to render the replacement meshes.
 			ReducedChunkMesh.bindShader(ambientLight, directionalLight.getDirection(), time);
 			ReducedChunkMesh.shader.setUniform(ReducedChunkMesh.loc_projectionMatrix, Window.getProjectionMatrix()); // Use the same matrix for replacement meshes.

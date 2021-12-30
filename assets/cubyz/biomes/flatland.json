@@ -3,6 +3,9 @@
 	"type" : "GRASSLAND",
 	"minHeight" : 24,
 	"maxHeight" : 40,
+
+	"validPlayerSpawn" : true,
+	
 	"ground_structure" : [
 		"cubyz:grass",
 		"2 cubyz:soil"
