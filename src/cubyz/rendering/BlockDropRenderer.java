@@ -301,12 +301,11 @@ public class BlockDropRenderer {
 					shader.setUniform(loc_texPosZ, BlockMeshes.textureIndices(block)[Neighbors.DIR_POS_Z]);
 					if (mesh != null) {
 						shader.setUniform(loc_light, Cubyz.world.getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
-						
-						mesh.renderOne(() -> {
-							Vector3d position = manager.getPosition(index).sub(playerPosition);
-							Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(new Vector3f((float)position.x, (float)position.y, (float)position.z), manager.getRotation(index), ItemEntityManager.diameter), Camera.getViewMatrix());
-							shader.setUniform(loc_viewMatrix, modelViewMatrix);
-						});
+						Vector3d position = manager.getPosition(index).sub(playerPosition);
+						Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(new Vector3f((float)position.x, (float)position.y, (float)position.z), manager.getRotation(index), ItemEntityManager.diameter), Camera.getViewMatrix());
+						shader.setUniform(loc_viewMatrix, modelViewMatrix);
+						glBindVertexArray(mesh.vaoId);
+						mesh.render();
 					}
 				}
 			}

@@ -66,6 +66,10 @@ public class Mesh implements Cloneable {
 
 			vaoId = glGenVertexArrays();
 			glBindVertexArray(vaoId);
+			glEnableVertexAttribArray(0);
+			glEnableVertexAttribArray(1);
+			if (hasNormals)
+				glEnableVertexAttribArray(2);
 
 			// Position VBO
 			int vboId = glGenBuffers();
@@ -163,18 +167,9 @@ public class Mesh implements Cloneable {
 
 		// Draw the mesh
 		glBindVertexArray(vaoId);
-		glEnableVertexAttribArray(0);
-		glEnableVertexAttribArray(1);
-		if (hasNormals)
-			glEnableVertexAttribArray(2);
 	}
 
 	protected void endRender() {
-		// Restore state
-		glDisableVertexAttribArray(0);
-		glDisableVertexAttribArray(1);
-		if (hasNormals)
-			glDisableVertexAttribArray(2);
 		glBindVertexArray(0);
 
 		glBindTexture(GL_TEXTURE_2D, 0);
