@@ -14,6 +14,7 @@ import cubyz.api.Resource;
 import cubyz.rendering.Material;
 import cubyz.rendering.Mesh;
 import cubyz.rendering.ModelLoader;
+import cubyz.rendering.SSBO;
 import cubyz.rendering.Texture;
 import cubyz.rendering.TextureArray;
 import cubyz.utils.json.JsonElement;
@@ -21,8 +22,6 @@ import cubyz.utils.json.JsonObject;
 import cubyz.utils.json.JsonString;
 import cubyz.world.Neighbors;
 import cubyz.world.blocks.Blocks;
-
-import static org.lwjgl.opengl.GL43.*;
 
 public class BlockMeshes implements DataOrientedRegistry {
 
@@ -42,8 +41,8 @@ public class BlockMeshes implements DataOrientedRegistry {
 
 	private static final String[] sideNames = new String[6];
 
-	public static int animationTimesSSBO;
-	private static int animationFramesSSBO;
+	private static SSBO animationTimesSSBO;
+	private static SSBO animationFramesSSBO;
 
 	static {
 		sideNames[Neighbors.DIR_DOWN] = "bottom";
@@ -55,8 +54,8 @@ public class BlockMeshes implements DataOrientedRegistry {
 
 		readTexture(new JsonString("cubyz:undefined"), "assets/");
 
-		animationTimesSSBO = glGenBuffers();
-		animationFramesSSBO = glGenBuffers();
+		animationTimesSSBO = new SSBO(0);
+		animationFramesSSBO = new SSBO(1);
 	}
 
 	public static Mesh mesh(int block) {
@@ -213,17 +212,10 @@ public class BlockMeshes implements DataOrientedRegistry {
 
 		// Also generate additional buffers:
 		animationTimes.trimToSize();
+		animationTimesSSBO.bufferData(animationTimes.array);
+		
 		animationFrames.trimToSize();
-
-		glBindBuffer(GL_SHADER_STORAGE_BUFFER, animationTimesSSBO);
-		glBufferData(GL_SHADER_STORAGE_BUFFER, animationTimes.array, GL_STATIC_DRAW);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, animationTimesSSBO);
-		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-
-		glBindBuffer(GL_SHADER_STORAGE_BUFFER, animationFramesSSBO);
-		glBufferData(GL_SHADER_STORAGE_BUFFER, animationFrames.array, GL_STATIC_DRAW);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, animationFramesSSBO);
-		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+		animationFramesSSBO.bufferData(animationFrames.array);
 	}
 	
 }
