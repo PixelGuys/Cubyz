@@ -164,7 +164,7 @@ public class FractalCaveGenerator implements Generator {
 			// No more branches below that level to avoid crowded caves.
 			generateCaveBetween(rand.nextLong(), chunk, startwx, startwy, startwz, endwx, endwy, endwz, biasx, biasy, biasz, startRadius, endRadius, randomness);
 			// Small chance to branch off:
-			if(!isStart && rand.nextFloat() < BRANCH_CHANCE) {
+			if(!isStart && rand.nextFloat() < BRANCH_CHANCE && branchLength > 8) {
 				endwx = startwx + branchLength*(2*rand.nextFloat() - 1);
 				endwy = startwy + branchLength*(2*rand.nextFloat() - 1);
 				endwz = startwz + branchLength*(2*rand.nextFloat() - 1);

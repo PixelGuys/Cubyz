@@ -42,6 +42,7 @@ public class BlockPalette {
 			intToT = Arrays.copyOf(intToT, newIndex+1);
 			intToT[newIndex] = index;
 			TToInt.put(index, newIndex);
+			// TODO: Store block palette on each change here!
 			return newIndex | data;
 		}
 	}
