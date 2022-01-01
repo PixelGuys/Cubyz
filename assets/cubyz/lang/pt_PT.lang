@@ -80,3 +80,13 @@ cubyz.tools.names.axe=Machado
 cubyz.tools.names.pickaxe=Picareta
 cubyz.tools.names.shovel=Pá
 cubyz.tools.names.sword=Espada
+
+gui.cubyz.settings.sound=Som
+gui.cubyz.settings.musicOnOff=Música
+gui.cubyz.saves.create.mapgen=Gerador do Mapa: {0}
+gui.cubyz.saves.create.climategen=Gerador do Clima: {0}
+gui.cubyz.multiplayer.displayname=Nome de jogador
+gui.cubyz.multiplayer.join=Entrar
+generator.map.cubyz.mapgen_v1=Versão 1
+generator.climate.cubyz.flatland=Mundo Plano
+generator.climate.cubyz.polar_circles=Circulos Polares
