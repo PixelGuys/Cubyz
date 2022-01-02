@@ -11,7 +11,6 @@ import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.Blocks.BlockClass;
-import cubyz.world.save.ChunkIO;
 import cubyz.world.terrain.MapFragment;
 
 /**
@@ -43,13 +42,6 @@ public class NormalChunk extends Chunk {
 		this.cy = cy;
 		this.cz = cz;
 		this.map = world.chunkManager.getOrGenerateMapFragment(wx, wz, 1);
-	}
-	
-	public void generateFrom(ChunkManager gen) {
-		if(!ChunkIO.loadChunkFromFile(world, this)) {
-			gen.generate(this);
-		}
-		generated = true;
 	}
 	
 	/**
@@ -597,35 +589,5 @@ public class NormalChunk extends Chunk {
 			blocks[index] = Blocks.mode(newBlock).getNaturalStandard(newBlock);
 			setUpdated();
 		}
-	}
-
-	@Override
-	public boolean liesInChunk(int x, int y, int z) {
-		return x >= 0 && x < chunkSize && y >= 0 && y < chunkSize && z >= 0 && z < chunkSize;
-	}
-
-	@Override
-	public int getVoxelSize() {
-		return 1;
-	}
-
-	@Override
-	public int getWorldX() {
-		return wx;
-	}
-
-	@Override
-	public int getWorldY() {
-		return wy;
-	}
-
-	@Override
-	public int getWorldZ() {
-		return wz;
-	}
-	
-	@Override
-	public int getWidth() {
-		return chunkSize;
 	}
 }

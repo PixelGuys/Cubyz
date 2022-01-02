@@ -4,7 +4,6 @@ package cubyz.world;
 import org.joml.Vector3f;
 
 import cubyz.world.blocks.Blocks;
-import cubyz.world.save.ChunkIO;
 
 /**
  * A chunk with smaller resolution(2 blocks, 4 blocks, 8 blocks or 16 blocks). Used to work out the far-distance map of cubyz terrain.<br>
@@ -18,7 +17,6 @@ public class ReducedChunk extends Chunk {
 	public final int voxelSizeShift;
 	/**If ((x & voxelSizeMask) == 0), a block can be considered to be visible.*/
 	public final int voxelSizeMask;
-	public final int width;
 	/** =log₂(width)*/
 	public final int widthShift;
 	
@@ -27,7 +25,6 @@ public class ReducedChunk extends Chunk {
 		this.voxelSizeShift = resolutionShift;
 		this.voxelSizeMask = voxelSize - 1;
 		widthShift = Chunk.chunkShift + resolutionShift;
-		width = 1 << widthShift;
 	}
 	
 	public Vector3f getMin() {
@@ -145,48 +142,6 @@ public class ReducedChunk extends Chunk {
 		}
 		
 		setChanged();
-	}
-	
-	public void generateFrom(ChunkManager gen) {
-		if(!ChunkIO.loadChunkFromFile(world, this)) {
-			gen.generate(this);
-		}
-		generated = true;
-	}
-
-	@Override
-	public boolean liesInChunk(int x, int y, int z) {
-		return x >= 0
-				&& x < width
-				&& y >= 0
-				&& y < width
-				&& z >= 0
-				&& z < width;
-	}
-
-	@Override
-	public int getVoxelSize() {
-		return voxelSize;
-	}
-
-	@Override
-	public int getWorldX() {
-		return wx;
-	}
-
-	@Override
-	public int getWorldY() {
-		return wy;
-	}
-
-	@Override
-	public int getWorldZ() {
-		return wz;
-	}
-	
-	@Override
-	public int getWidth() {
-		return width;
 	}
 
 	@Override

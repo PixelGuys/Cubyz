@@ -44,16 +44,16 @@ public class TerrainGenerator implements Generator {
 		Random rand = new Random(seed);
 		int seedX = rand.nextInt() | 1;
 		int seedZ = rand.nextInt() | 1;
-		for(int x = 0; x < chunk.getWidth(); x += chunk.getVoxelSize()) {
-			for(int z = 0; z < chunk.getWidth(); z += chunk.getVoxelSize()) {
-				int y = chunk.startIndex((int)map.getHeight(wx + x, wz + z) - chunk.getVoxelSize() + 1);
+		for(int x = 0; x < chunk.getWidth(); x += chunk.voxelSize) {
+			for(int z = 0; z < chunk.getWidth(); z += chunk.voxelSize) {
+				int y = chunk.startIndex((int)map.getHeight(wx + x, wz + z) - chunk.voxelSize + 1);
 				int yOff = 1 + (int)((map.getHeight(wx + x, wz + z) - y)*16);
 				int startY = y > 0 ? y : 0;
-				startY = chunk.startIndex(Math.min(startY, wy + chunk.getWidth() - chunk.getVoxelSize()));
+				startY = chunk.startIndex(Math.min(startY, wy + chunk.getWidth() - chunk.voxelSize));
 				int endY = wy;
 				int j = startY;
 				// Add water between 0 and the terrain height:
-				for(; j >= Math.max(y+1, endY); j -= chunk.getVoxelSize()) {
+				for(; j >= Math.max(y+1, endY); j -= chunk.voxelSize) {
 					if (map.getBiome(wx + x, wz + z).type == Biome.Type.ARCTIC_OCEAN && j == 0) {
 						chunk.updateBlockInGeneration(x, j - wy, z, ice);
 					} else {
@@ -66,7 +66,7 @@ public class TerrainGenerator implements Generator {
 					j = Math.min(map.getBiome(wx + x, wz + z).struct.addSubTerranian(chunk, y, x, z, yOff, rand), j);
 				}
 				// Add the underground:
-				for(; j >= endY; j -= chunk.getVoxelSize()) {
+				for(; j >= endY; j -= chunk.voxelSize) {
 					chunk.updateBlockInGeneration(x, j - wy, z, stone);
 				}
 			}

@@ -37,7 +37,7 @@ public class GroundPatch extends StructureModel {
 
 	@Override
 	public void generate(int x, int z, int height, Chunk chunk, MapFragment map, Random rand) {
-		int y = chunk.getWorldY();
+		int y = chunk.wy;
 		float width = this.width + (rand.nextFloat() - 0.5f)*this.variation;
 		float orientation = 2*(float)Math.PI*rand.nextFloat();
 		float ellipseParam = 1 + rand.nextFloat(); 
@@ -62,8 +62,8 @@ public class GroundPatch extends StructureModel {
 				float secn = xSecn*(x - px) + zSecn*(z - pz);
 				float dist = main*main + secn*secn;
 				if (dist <= 1) {
-					int startHeight = (int)map.getHeight(px + chunk.getWorldX(), pz + chunk.getWorldZ());
-					for(int py = chunk.startIndex((int)(startHeight - depth + 1)); py <= startHeight; py += chunk.getVoxelSize()) {
+					int startHeight = (int)map.getHeight(px + chunk.wx, pz + chunk.wz);
+					for(int py = chunk.startIndex((int)(startHeight - depth + 1)); py <= startHeight; py += chunk.voxelSize) {
 						if (dist <= smoothness || (dist - smoothness)/(1 - smoothness) < rand.nextFloat()) {
 							if (chunk.liesInChunk(px, py-y, pz)) {
 								chunk.updateBlockInGeneration(px, py-y, pz, newGround);

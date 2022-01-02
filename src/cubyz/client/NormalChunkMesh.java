@@ -404,7 +404,7 @@ public class NormalChunkMesh extends ChunkMesh {
 		for(int i = 0; i < visibles.size; i++) {
 			BlockInstance bi = visibles.array[i];
 			if (!Blocks.transparent(bi.getBlock())) {
-				bi.updateLighting(chunk.getWorldX(), chunk.getWorldZ(), chunk);
+				bi.updateLighting(chunk.wx, chunk.wz, chunk);
 				bi.renderIndex = index;
 				index = Blocks.mode(bi.getBlock()).generateChunkMesh(bi, vertices, normals, faces, lighting, texture, renderIndices, index);
 			}
@@ -418,7 +418,7 @@ public class NormalChunkMesh extends ChunkMesh {
 		for(int i = 0; i < visibles.size; i++) {
 			BlockInstance bi = visibles.array[i];
 			if (Blocks.transparent(bi.getBlock())) {
-				bi.updateLighting(chunk.getWorldX(), chunk.getWorldZ(), chunk);
+				bi.updateLighting(chunk.wx, chunk.wz, chunk);
 				bi.renderIndex = index;
 				index = Blocks.mode(bi.getBlock()).generateChunkMesh(bi, vertices, normals, faces, lighting, texture, renderIndices, index);
 			}

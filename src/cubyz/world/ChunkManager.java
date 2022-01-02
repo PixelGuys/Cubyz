@@ -153,12 +153,12 @@ public class ChunkManager {
 	}
 
 	public void generate(Chunk chunk) {
-		int wx = chunk.getWorldX();
-		int wy = chunk.getWorldY();
-		int wz = chunk.getWorldZ();
+		int wx = chunk.wx;
+		int wy = chunk.wy;
+		int wz = chunk.wz;
 		long seed = world.getSeed();
 		
-		MapFragment containing = getOrGenerateMapFragment(wx, wz, chunk.getVoxelSize());
+		MapFragment containing = getOrGenerateMapFragment(wx, wz, chunk.voxelSize);
 		
 		for (Generator g : generators) {
 			g.generate(seed ^ g.getGeneratorSeed(), wx, wy, wz, chunk, containing, this);

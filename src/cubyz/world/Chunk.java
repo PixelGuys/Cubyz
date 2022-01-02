@@ -23,10 +23,13 @@ public abstract class Chunk extends ChunkData {
 	/** When a chunk is cleaned, it won't be saved by the ChunkMamanger anymore, so following changes need to be saved directly. */
 	private boolean wasCleaned = false;
 	protected boolean generated = false;
+	
+	public final int width;
 
 	public Chunk(World world, int wx, int wy, int wz, int voxelSize) {
 		super(wx, wy, wz, voxelSize);
 		this.world = world;
+		width = voxelSize*chunkSize;
 	}
 	/**
 	 * This is useful to convert for loops to work for reduced resolution:<br>
@@ -81,9 +84,15 @@ public abstract class Chunk extends ChunkData {
 	
 	/**
 	 * Generates this chunk.
+	 * If the chunk was already saved it is loaded from file instead.
 	 * @param gen
 	 */
-	public abstract void generateFrom(ChunkManager gen);
+	public void generateFrom(ChunkManager gen) {
+		if(!ChunkIO.loadChunkFromFile(world, this)) {
+			gen.generate(this);
+		}
+		generated = true;
+	}
 	
 	/**
 	 * Checks if the given <b>relative</b> coordinates lie within the bounds of this chunk.
@@ -91,29 +100,21 @@ public abstract class Chunk extends ChunkData {
 	 * @param z
 	 * @return
 	 */
-	public abstract boolean liesInChunk(int x, int y, int z);
+	public boolean liesInChunk(int x, int y, int z) {
+		return x >= 0
+				&& x < width
+				&& y >= 0
+				&& y < width
+				&& z >= 0
+				&& z < width;
+	}
 	
-	/**
-	 * @return The size of one voxel unit inside the given Chunk.
-	 */
-	public abstract int getVoxelSize();
-	
-	/**
-	 * @return starting x coordinate of this chunk.
-	 */
-	public abstract int getWorldX();
-	/**
-	 * @return starting y coordinate of this chunk.
-	 */
-	public abstract int getWorldY();
-	/**
-	 * @return starting z coordinate of this chunk.
-	 */
-	public abstract int getWorldZ();
 	/**
 	 * @return this chunks width.
 	 */
-	public abstract int getWidth();
+	public int getWidth() {
+		return width;
+	}
 	
 	public void setChanged() {
 		wasChanged = true;
@@ -131,6 +132,9 @@ public abstract class Chunk extends ChunkData {
 		}
 	}
 	
+	/**
+	 * Saves this chunk.
+	 */
 	public void save() {
 		if(wasChanged) {
 			ChunkIO.storeChunkToFile(world, this);
@@ -143,6 +147,10 @@ public abstract class Chunk extends ChunkData {
 		}
 	}
 	
+	/**
+	 * Saves all the data of the chunk into the given byte array using the blockPalette.
+	 * @param data data.length = blocks.length*4
+	 */
 	public void saveTo(byte[] data) {
 		for(int i = 0; i < blocks.length; i++) {
 			// Convert the runtime ID to the palette (world-specific) ID
@@ -151,6 +159,10 @@ public abstract class Chunk extends ChunkData {
 		}
 	}
 	
+	/**
+	 * Loads all the data of the chunk from the given byte array using the blockPalette.
+	 * @param data data.length = blocks.length*4
+	 */
 	public void loadFrom(byte[] data) {
 		for(int i = 0; i < blocks.length; i++) {
 			// Convert the palette (world-specific) ID to the runtime ID

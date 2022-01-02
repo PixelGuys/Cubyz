@@ -12,9 +12,9 @@ public class ChunkEntityManager {
 	public final NormalChunk chunk;
 	public final ItemEntityManager itemEntityManager;
 	public ChunkEntityManager(World world, NormalChunk chunk) {
-		wx = chunk.getWorldX();
-		wy = chunk.getWorldY();
-		wz = chunk.getWorldZ();
+		wx = chunk.wx;
+		wy = chunk.wy;
+		wz = chunk.wz;
 		this.chunk = chunk;
 		itemEntityManager = chunk.map.mapIO.readItemEntities(world, chunk);
 	}

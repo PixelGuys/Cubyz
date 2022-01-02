@@ -82,7 +82,7 @@ public class MapIO {
 	}
 	
 	public ItemEntityManager readItemEntities(World world, NormalChunk chunk) {
-		File file = new File(dir, "itemEnt"+chunk.getWorldX()+" "+chunk.getWorldY()+" "+chunk.getWorldZ());
+		File file = new File(dir, "itemEnt"+chunk.wx+" "+chunk.wy+" "+chunk.wz);
 		if (!file.exists()) return new ItemEntityManager(world, chunk, 1);
 		try {
 			byte[] data = new byte[(int) file.length()];
@@ -98,7 +98,7 @@ public class MapIO {
 	
 	public void saveItemEntities(ItemEntityManager manager) {
 		if (manager.size == 0) return;
-		File file = new File(dir, "itemEnt"+manager.chunk.getWorldX()+" "+manager.chunk.getWorldY()+" "+manager.chunk.getWorldZ());
+		File file = new File(dir, "itemEnt"+manager.chunk.wx+" "+manager.chunk.wy+" "+manager.chunk.wz);
 		if (!dir.exists()) dir.mkdirs();
 		try {
 			BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(file));

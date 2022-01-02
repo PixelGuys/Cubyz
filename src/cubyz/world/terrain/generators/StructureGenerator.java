@@ -65,20 +65,20 @@ public class StructureGenerator implements Generator {
 		MapFragment on = map;
 		MapFragment op = map;
 		if ((wx & MapFragment.MAP_MASK) <= 8) {
-			no = nn = np = generator.getOrGenerateMapFragment(wx - MapFragment.MAP_SIZE, wz, chunk.getVoxelSize());
+			no = nn = np = generator.getOrGenerateMapFragment(wx - MapFragment.MAP_SIZE, wz, chunk.voxelSize);
 		}
 		if ((wx & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth()) {
-			po = pn = pp = generator.getOrGenerateMapFragment(wx + MapFragment.MAP_SIZE, wz, chunk.getVoxelSize());
+			po = pn = pp = generator.getOrGenerateMapFragment(wx + MapFragment.MAP_SIZE, wz, chunk.voxelSize);
 		}
 		if ((wz & MapFragment.MAP_MASK) <= 8) {
-			on = generator.getOrGenerateMapFragment(wx, wz - MapFragment.MAP_SIZE, chunk.getVoxelSize());
-			nn = generator.getOrGenerateMapFragment(wx - ((wx & MapFragment.MAP_MASK) <= 8 ? MapFragment.MAP_SIZE : 0), wz - MapFragment.MAP_SIZE, chunk.getVoxelSize());
-			pn = generator.getOrGenerateMapFragment(wx + ((wx & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth() ? MapFragment.MAP_SIZE : 0), wz - MapFragment.MAP_SIZE, chunk.getVoxelSize());
+			on = generator.getOrGenerateMapFragment(wx, wz - MapFragment.MAP_SIZE, chunk.voxelSize);
+			nn = generator.getOrGenerateMapFragment(wx - ((wx & MapFragment.MAP_MASK) <= 8 ? MapFragment.MAP_SIZE : 0), wz - MapFragment.MAP_SIZE, chunk.voxelSize);
+			pn = generator.getOrGenerateMapFragment(wx + ((wx & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth() ? MapFragment.MAP_SIZE : 0), wz - MapFragment.MAP_SIZE, chunk.voxelSize);
 		}
 		if ((wz & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth()) {
-			op = generator.getOrGenerateMapFragment(wx, wz + MapFragment.MAP_SIZE, chunk.getVoxelSize());
-			np = generator.getOrGenerateMapFragment(wx - ((wx & MapFragment.MAP_MASK) <= 8 ? MapFragment.MAP_SIZE : 0), wz + MapFragment.MAP_SIZE, chunk.getVoxelSize());
-			pp = generator.getOrGenerateMapFragment(wx + ((wx & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth() ? MapFragment.MAP_SIZE : 0), wz + MapFragment.MAP_SIZE, chunk.getVoxelSize());
+			op = generator.getOrGenerateMapFragment(wx, wz + MapFragment.MAP_SIZE, chunk.voxelSize);
+			np = generator.getOrGenerateMapFragment(wx - ((wx & MapFragment.MAP_MASK) <= 8 ? MapFragment.MAP_SIZE : 0), wz + MapFragment.MAP_SIZE, chunk.voxelSize);
+			pp = generator.getOrGenerateMapFragment(wx + ((wx & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth() ? MapFragment.MAP_SIZE : 0), wz + MapFragment.MAP_SIZE, chunk.voxelSize);
 		}
 		int stepSize = chunk.voxelSize;
 		if (stepSize < 4) {
@@ -91,8 +91,8 @@ public class StructureGenerator implements Generator {
 				int wpz = pz - 8 + wz;
 				rand.setSeed((wpx*rand1 << 32) ^ wpz*rand2 ^ seed);
 				// Make sure the coordinates are inside the resolution grid of the Regions internal array:
-				wpx = wpx & ~(chunk.getVoxelSize() - 1);
-				wpz = wpz & ~(chunk.getVoxelSize() - 1);
+				wpx = wpx & ~(chunk.voxelSize - 1);
+				wpz = wpz & ~(chunk.voxelSize - 1);
 
 				float randomValue = rand.nextFloat();
 				MapFragment cur = getMapFragment(map, nn, np, pn, pp, no, po, on, op, px, pz, chunk.getWidth());
@@ -115,8 +115,8 @@ public class StructureGenerator implements Generator {
 					int wpz = pz - 8 + wz;
 					rand.setSeed((wpx*rand1 << 32) ^ wpz*rand2 ^ seed);
 					// Make sure the coordinates are inside the resolution grid of the Regions internal array:
-					wpx = wpx & ~(chunk.getVoxelSize() - 1);
-					wpz = wpz & ~(chunk.getVoxelSize() - 1);
+					wpx = wpx & ~(chunk.voxelSize - 1);
+					wpz = wpz & ~(chunk.voxelSize - 1);
 					
 					float randomValue = rand.nextFloat();
 					MapFragment cur = getMapFragment(map, nn, np, pn, pp, no, po, on, op, px, pz, chunk.getWidth());

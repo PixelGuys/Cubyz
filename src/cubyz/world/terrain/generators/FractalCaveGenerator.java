@@ -55,7 +55,7 @@ public class FractalCaveGenerator implements Generator {
 	
 	@Override
 	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, MapFragment map, ChunkManager generator) {
-		if (chunk.getVoxelSize() > 2) return;
+		if (chunk.voxelSize > 2) return;
 		Random3D rand = new Random3D(seed);
 		int cx = wx >> Chunk.chunkShift;
 		int cy = wy >> Chunk.chunkShift;
@@ -85,20 +85,20 @@ public class FractalCaveGenerator implements Generator {
 		xMin = Math.max(xMin, 0);
 		xMax = Math.min(xMax, chunk.getWidth());
 		yMin = Math.max(yMin, 0);
-		yMax = Math.min(yMax, chunk.getWidth() - chunk.getVoxelSize());
+		yMax = Math.min(yMax, chunk.getWidth() - chunk.voxelSize);
 		zMin = Math.max(zMin, 0);
 		zMax = Math.min(zMax, chunk.getWidth());
 		if(xMin >= xMax || yMin >= yMax || zMin >= zMax) {
 			return;
 		}
 		// Go through all blocks within range of the sphere center and remove them.
-		for(int curX = xMin; curX < xMax; curX += chunk.getVoxelSize()) {
+		for(int curX = xMin; curX < xMax; curX += chunk.voxelSize) {
 			double distToCenterX = (curX - wx)/radius;
-			for(int curZ = zMin; curZ < zMax; curZ += chunk.getVoxelSize()) {
+			for(int curZ = zMin; curZ < zMax; curZ += chunk.voxelSize) {
 				double distToCenterZ = (curZ - wz)/radius;
 				if (distToCenterX*distToCenterX + distToCenterZ*distToCenterZ < 1.0) {
 					int curY = yMax;
-					for(; curY >= yMin; curY -= chunk.getVoxelSize()) {
+					for(; curY >= yMin; curY -= chunk.voxelSize) {
 						double distToCenterY = (curY - wy)/radius;
 						double distToCenter = distToCenterX*distToCenterX + distToCenterY*distToCenterY + distToCenterZ*distToCenterZ;
 						if (distToCenter < 1.0) {
@@ -143,7 +143,7 @@ public class FractalCaveGenerator implements Generator {
 		&& zMin < chunk.wz + chunk.getWidth() && zMax > chunk.wz) { // Only divide further if the cave may go through ther considered chunk.
 			Random rand = new Random(seed);
 			// If the lowest level is reached carve out the cave:
-			if(distance < chunk.getVoxelSize()) {
+			if(distance < chunk.voxelSize) {
 				generateSphere(rand, chunk, startwx, startwy, startwz, startRadius);
 			} else { // Otherwise go to the next fractal level:
 				double midwx = (startwx + endwx)/2 + maxFractalShift*((2*rand.nextFloat() - 1)) + biasx/4;

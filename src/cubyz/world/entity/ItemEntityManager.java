@@ -66,7 +66,7 @@ public class ItemEntityManager {
 		index += 4;
 		// Check if the length is right:
 		if (data.length-index != length*(4*3 + 8*6)) {
-			Logger.warning("Save file is corrupted. Skipping item entites for chunk "+chunk.getWorldX()+" "+chunk.getWorldY()+" "+chunk.getWorldZ());
+			Logger.warning("Save file is corrupted. Skipping item entites for chunk "+chunk.wx+" "+chunk.wy+" "+chunk.wz);
 			length = 0;
 		}
 		// Init variables:
@@ -297,9 +297,9 @@ public class ItemEntityManager {
 	
 	private void checkBlock(int index3, int x, int y, int z) {
 		// Transform to chunk-relative coordinates:
-		x -= chunk.getWorldX();
-		y -= chunk.getWorldY();
-		z -= chunk.getWorldZ();
+		x -= chunk.wx;
+		y -= chunk.wy;
+		z -= chunk.wz;
 		int block = chunk.getBlockPossiblyOutside(x, y, z);
 		if (block == 0) return;
 		// Check if the item entity is inside the block:

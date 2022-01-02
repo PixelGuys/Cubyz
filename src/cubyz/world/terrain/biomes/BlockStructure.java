@@ -44,10 +44,10 @@ public class BlockStructure {
 				if (i == 0 && j == 0 && Blocks.mode(block).getRegistryID().toString().equals("cubyz:stackable")) {
 					block = (block & Blocks.TYPE_MASK) | (highResDepth << 16);
 				}
-				if (chunk.liesInChunk(x, depth - chunk.getWorldY(), z)) {
-					chunk.updateBlockInGeneration(x, depth - chunk.getWorldY(), z, block);
+				if (chunk.liesInChunk(x, depth - chunk.wy, z)) {
+					chunk.updateBlockInGeneration(x, depth - chunk.wy, z, block);
 				}
-				depth -= chunk.getVoxelSize();
+				depth -= chunk.voxelSize;
 			}
 		}
 		if (depth == startingDepth) return depth;
