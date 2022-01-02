@@ -25,9 +25,11 @@ public class ServerConnection extends Thread{
 			ip = fullip; //"ip"
 		else{
 			//"ip:port"
-			fullip.substring(0, fullip.indexOf(':'));
-			fullip.substring(fullip.indexOf(':')+1);
+			ip = fullip.substring(0, fullip.indexOf(':'));
+			port = Integer.parseInt(fullip.substring(fullip.indexOf(':')+1));
 		}
+		
+		Logger.debug(ip+":"+port);
 
 		//connect
 		try {
