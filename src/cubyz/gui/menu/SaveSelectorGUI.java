@@ -20,6 +20,7 @@ import cubyz.rendering.Window;
 import cubyz.utils.translate.ContextualTextKey;
 import cubyz.utils.translate.TextKey;
 import cubyz.world.ServerWorld;
+import cubyz.world.World;
 import cubyz.server.Server;
 
 import static cubyz.client.ClientSettings.GUI_SCALE;
@@ -55,7 +56,7 @@ public class SaveSelectorGUI extends MenuGUI {
 			Button b = new Button(tk);
 			b.setOnAction(() -> {
 				new Thread(() -> Server.main(new String[0]), "Server Thread").start();
-				ServerWorld world = new ServerWorld(name, null, VisibleChunk.class);
+				World world = new ServerWorld(name, null, VisibleChunk.class);
 				Cubyz.gameUI.setMenu(null, false); // hide from UISystem.back()
 				GameLauncher.logic.loadWorld(world);
 			});

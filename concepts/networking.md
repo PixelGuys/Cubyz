@@ -11,6 +11,7 @@ and received via:
 \
 The attribute **"type"** of the JSON Object indicates how it should be interpreted:
 
-|type|interpretation|
-|---|---|
-|clientinformation|initial message, contains clientinformations|
+|type|interpretation|attachment|
+|---|---|---|
+|clientInformation|initial message, contains clientinformations|
+|worldAssets|world specific assets|binary zip file|

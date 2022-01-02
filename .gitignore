@@ -33,9 +33,11 @@ dependency-reduced-pom.xml
 target/
 logs/
 saves/
+serverAssets/
 cache/
 saves/World/world.dat
 settings.json
 ConsoleHistory
 
 .idea
+/Cubyz.iml

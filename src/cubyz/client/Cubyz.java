@@ -9,7 +9,7 @@ import cubyz.client.entity.ClientPlayer;
 import cubyz.gui.UISystem;
 import cubyz.rendering.Fog;
 import cubyz.rendering.RenderOctTree;
-import cubyz.world.ServerWorld;
+import cubyz.world.World;
 import cubyz.world.terrain.biomes.Biome;
 
 /**
@@ -23,7 +23,7 @@ public class Cubyz {
 	public static RenderOctTree chunkTree = new RenderOctTree();
 	
 	// World related stuff:
-	public static ServerWorld world;
+	public static World world;
 	public static ClientPlayer player;
 	public static Biome biome;
 	public static long gameTime;

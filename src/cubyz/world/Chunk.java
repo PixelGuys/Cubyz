@@ -16,13 +16,15 @@ public abstract class Chunk extends ChunkData {
 	
 	public static final int chunkMask = chunkSize - 1;
 	
-	protected final ServerWorld world;
+	protected final World world;
 	protected final int[] blocks = new int[chunkSize*chunkSize*chunkSize];
 	
-	private boolean wasChanged = false, wasCleaned = false;
+	private boolean wasChanged = false;
+	/** When a chunk is cleaned, it won't be saved by the ChunkMamanger anymore, so following changes need to be saved directly. */
+	private boolean wasCleaned = false;
 	protected boolean generated = false;
 
-	public Chunk(ServerWorld world, int wx, int wy, int wz, int voxelSize) {
+	public Chunk(World world, int wx, int wy, int wz, int voxelSize) {
 		super(wx, wy, wz, voxelSize);
 		this.world = world;
 	}

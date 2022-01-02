@@ -21,8 +21,8 @@ public class MetaChunk {
 	public final int wx, wy, wz;
 	public final NormalChunk[] chunks;
 	public final ChunkEntityManager[] entityManagers;
-	public final ServerWorld world;
-	public MetaChunk(int wx, int wy, int wz, ServerWorld world) {
+	public final World world;
+	public MetaChunk(int wx, int wy, int wz, World world) {
 		this.wx = wx;
 		this.wy = wy;
 		this.wz = wz;

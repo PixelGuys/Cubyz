@@ -17,6 +17,7 @@ import cubyz.utils.json.JsonObject;
 import cubyz.utils.translate.ContextualTextKey;
 import cubyz.utils.translate.TextKey;
 import cubyz.world.ServerWorld;
+import cubyz.world.World;
 import cubyz.world.terrain.ClimateMapGenerator;
 import cubyz.world.terrain.MapGenerator;
 import cubyz.server.Server;
@@ -95,7 +96,7 @@ public class SaveCreationGUI extends MenuGUI {
 		create.setText(TextKey.createTextKey("gui.cubyz.saves.create"));
 		create.setOnAction(() -> {
 			new Thread(() -> Server.main(new String[0]), "Server Thread").start();
-			ServerWorld world = new ServerWorld(name.getText(), generateSettings(), VisibleChunk.class);
+			World world = new ServerWorld(name.getText(), generateSettings(), VisibleChunk.class);
 
 			Cubyz.gameUI.setMenu(null, false); // hide from UISystem.back()
 			GameLauncher.logic.loadWorld(world);

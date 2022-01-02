@@ -10,7 +10,7 @@ import cubyz.api.RegistryElement;
 import cubyz.utils.datastructures.IntWrapper;
 import cubyz.utils.datastructures.FloatFastList;
 import cubyz.utils.datastructures.IntFastList;
-import cubyz.world.ServerWorld;
+import cubyz.world.World;
 import cubyz.world.entity.Entity;
 
 /**
@@ -46,7 +46,7 @@ public interface RotationMode extends RegistryElement {
 	 * @param blockPlacing true if the position of the block was previously empty/nonsolid.
 	 * @return true if the placing was successful, false otherwise.
 	 */
-	public boolean generateData(ServerWorld world, int x, int y, int z, Vector3d relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDir, IntWrapper currentData, boolean blockPlacing);
+	public boolean generateData(World world, int x, int y, int z, Vector3d relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDir, IntWrapper currentData, boolean blockPlacing);
 
 	/**
 	 * @return if the block should be destroyed or changed when a certain neighbor is removed.

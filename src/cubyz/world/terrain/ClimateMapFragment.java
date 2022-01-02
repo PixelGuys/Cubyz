@@ -1,16 +1,16 @@
 package cubyz.world.terrain;
 
-import cubyz.world.ServerWorld;
+import cubyz.world.World;
 
 public class ClimateMapFragment {
 	public static final int MAP_SHIFT = 8 + MapFragment.BIOME_SHIFT;
 	public static final int MAP_SIZE = 1 << MAP_SHIFT;
 	public static final int MAP_MASK = MAP_SIZE - 1;
 	public final int wx, wz;
-	public final ServerWorld world;
+	public final World world;
 	public final BiomePoint[][] map;
 	
-	public ClimateMapFragment(ServerWorld world, int wx, int wz) {
+	public ClimateMapFragment(World world, int wx, int wz) {
 		this.wx = wx;
 		this.wz = wz;
 		this.world = world;

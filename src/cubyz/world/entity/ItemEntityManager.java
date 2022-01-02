@@ -9,7 +9,7 @@ import cubyz.utils.Logger;
 import cubyz.utils.math.Bits;
 import cubyz.world.Chunk;
 import cubyz.world.NormalChunk;
-import cubyz.world.ServerWorld;
+import cubyz.world.World;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.items.Item;
 import cubyz.world.items.ItemStack;
@@ -39,12 +39,12 @@ public class ItemEntityManager {
 	public int[] pickupCooldown;
 
 	public final NormalChunk chunk;
-	private final ServerWorld world;
+	private final World world;
 	private float gravity;
 	public int size;
 	private int capacity;
 	
-	public ItemEntityManager(ServerWorld world, NormalChunk chunk, int minCapacity) {
+	public ItemEntityManager(World world, NormalChunk chunk, int minCapacity) {
 		// Always use a multiple of 64 as the capacity.
 		capacity = (minCapacity+63) & ~63;
 		posxyz = new double[3 * capacity];
@@ -56,10 +56,10 @@ public class ItemEntityManager {
 		
 		this.world = world;
 		this.chunk = chunk;
-		gravity = ServerWorld.GRAVITY;
+		gravity = World.GRAVITY;
 	}
 	
-	public ItemEntityManager(ServerWorld world, NormalChunk chunk, byte[] data, Palette<Item> itemPalette) {
+	public ItemEntityManager(World world, NormalChunk chunk, byte[] data, Palette<Item> itemPalette) {
 		// Read the length:
 		int index = 0;
 		int length = Bits.getInt(data, index);
@@ -80,7 +80,7 @@ public class ItemEntityManager {
 		
 		this.world = world;
 		this.chunk = chunk;
-		gravity = ServerWorld.GRAVITY;
+		gravity = World.GRAVITY;
 		// Read the data:
 		for(int i = 0; i < length; i++) {
 			double x = Bits.getDouble(data, index);
@@ -300,7 +300,7 @@ public class ItemEntityManager {
 		x -= chunk.getWorldX();
 		y -= chunk.getWorldY();
 		z -= chunk.getWorldZ();
-		int block = chunk.getBlockUnbound(x, y, z);
+		int block = chunk.getBlockPossiblyOutside(x, y, z);
 		if (block == 0) return;
 		// Check if the item entity is inside the block:
 		boolean isInside = true;

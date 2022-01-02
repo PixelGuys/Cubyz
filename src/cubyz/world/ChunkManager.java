@@ -23,7 +23,7 @@ public class ChunkManager {
 	
 	// synchronized common list for chunk generation
 	private final BlockingMaxHeap<ChunkData> loadList;
-	private final ServerWorld world;
+	private final World world;
 	private final Thread[] threads;
 
 	public final MapGenerator mapFragmentGenerator;
@@ -87,7 +87,7 @@ public class ChunkManager {
 		}
 	}
 
-	public ChunkManager(ServerWorld world, JsonObject settings, int numberOfThreads) {
+	public ChunkManager(World world, JsonObject settings, int numberOfThreads) {
 		loadList = new BlockingMaxHeap<>(new ChunkData[1024], numberOfThreads);
 		this.world = world;
 		

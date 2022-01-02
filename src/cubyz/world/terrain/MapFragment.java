@@ -1,6 +1,6 @@
 package cubyz.world.terrain;
 
-import cubyz.world.ServerWorld;
+import cubyz.world.World;
 import cubyz.world.save.MapIO;
 import cubyz.world.save.WorldIO;
 import cubyz.world.terrain.biomes.Biome;
@@ -16,7 +16,7 @@ public class MapFragment extends MapFragmentCompare {
 	public static final int MAP_SIZE = 1 << MAP_SHIFT;
 	public static final int MAP_MASK = MAP_SIZE - 1;
 	
-	public final ServerWorld world;
+	public final World world;
 	public final float[][] heightMap;
 	public final Biome[][] biomeMap;
 	public final MapIO mapIO;
@@ -24,7 +24,7 @@ public class MapFragment extends MapFragmentCompare {
 	public int minHeight = Integer.MAX_VALUE;
 	public int maxHeight = 0;
 	
-	public MapFragment(int wx, int wz, ServerWorld world, WorldIO tio, int voxelSize) {
+	public MapFragment(int wx, int wz, World world, WorldIO tio, int voxelSize) {
 		super(wx, wz, voxelSize);
 		heightMap = new float[MAP_SIZE / voxelSize][MAP_SIZE / voxelSize];
 		biomeMap = new Biome[MAP_SIZE / voxelSize][MAP_SIZE / voxelSize];

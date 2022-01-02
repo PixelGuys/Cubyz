@@ -20,14 +20,14 @@ import cubyz.world.terrain.MapFragment;
 
 public class NormalChunk extends Chunk {
 
-	/**Stores all visible BlockInstances. Can be faster accessed using coordinates.*/
+	/**Stores all visible blocks. Can be faster accessed using coordinates.*/
 	protected BlockInstance[] inst;
 	/**Stores the local index of the block.*/
 	private ArrayList<Integer> liquids = new ArrayList<>();
 	/**Liquids that should be updated at next frame. Stores the local index of the block.*/
 	private ArrayList<Integer> updatingLiquids = new ArrayList<>();
 	private FastList<BlockInstance> visibles = new FastList<BlockInstance>(50, BlockInstance.class);
-	protected final int cx, cy, cz;
+	protected final int cx, cy, cz; // world coords divided by 32
 	protected boolean startedloading = false;
 	protected boolean loaded = false;
 	private ArrayList<BlockEntity> blockEntities = new ArrayList<>();
@@ -36,7 +36,7 @@ public class NormalChunk extends Chunk {
 
 	public boolean updated;
 	
-	public NormalChunk(ServerWorld world, int cx, int cy, int cz) {
+	public NormalChunk(World world, int cx, int cy, int cz) {
 		super(world, cx << chunkShift, cy << chunkShift, cz << chunkShift, 1);
 		inst = new BlockInstance[blocks.length];
 		this.cx = cx;
@@ -452,26 +452,15 @@ public class NormalChunk extends Chunk {
 	 * @return
 	 */
 	public BlockInstance[] getVisibleNeighbors(int x, int y, int z) {
-		BlockInstance[] inst = new BlockInstance[6];
-		for(int i = 0; i < 6; i++) {
-			inst[i] = getVisibleUnbound(x+Neighbors.REL_X[i], y+Neighbors.REL_Y[i], z+Neighbors.REL_Z[i]);
+		BlockInstance[] inst = new BlockInstance[Neighbors.NEIGHBORS];
+		for(int i = 0; i < Neighbors.NEIGHBORS; i++) {
+			inst[i] = getVisiblePossiblyOutside(x+Neighbors.REL_X[i], y+Neighbors.REL_Y[i], z+Neighbors.REL_Z[i]);
 		}
 		return inst;
 	}
 	
-	public int getNeighbor(int i, int x, int y, int z) {
-		int xi = x+Neighbors.REL_X[i];
-		int yi = y+Neighbors.REL_Y[i];
-		int zi = z+Neighbors.REL_Z[i];
-		if (xi == (xi & chunkMask) && yi == (yi & chunkMask) && zi == (zi & chunkMask)) { // Simple double-bound test for coordinates.
-			return getBlock(xi, yi, zi);
-		} else {
-			return world.getBlock(xi + wx, yi + wy, zi + wz);
-		}
-	}
-	
 	/**
-	 * Uses relative coordinates and doesnt do any bound checks!
+	 * Uses relative coordinates and doesn't do any bound checks!
 	 * @param x
 	 * @param y
 	 * @param z
@@ -498,11 +487,11 @@ public class NormalChunk extends Chunk {
 	 * @param z
 	 * @return block at the coordinates x+wx, y+wy, z+wz
 	 */
-	public int getBlockUnbound(int x, int y, int z) {
+	public int getBlockPossiblyOutside(int x, int y, int z) {
 		if (!generated) return 0;
 		if (x < 0 || x >= chunkSize || y < 0 || y >= chunkSize || z < 0 || z >= chunkSize) {
 			NormalChunk chunk = world.getChunk(cx + (x >> chunkShift), cy + (y >> chunkShift), cz + (z >> chunkShift));
-			if (chunk != null && chunk.isGenerated()) return chunk.getBlockUnbound(x & chunkMask, y & chunkMask, z & chunkMask);
+			if (chunk != null && chunk.isGenerated()) return chunk.getBlockPossiblyOutside(x & chunkMask, y & chunkMask, z & chunkMask);
 			return 0;
 		}
 		return blocks[getIndex(x, y, z)];
@@ -515,29 +504,18 @@ public class NormalChunk extends Chunk {
 	 * @param z
 	 * @return BlockInstance at the coordinates x+wx, y+wy, z+wz
 	 */
-	private BlockInstance getVisibleUnbound(int x, int y, int z) {
+	private BlockInstance getVisiblePossiblyOutside(int x, int y, int z) {
 		if (!generated) return null;
 		if (x < 0 || x >= chunkSize || y < 0 || y >= chunkSize || z < 0 || z >= chunkSize) {
 			NormalChunk chunk = world.getChunk(cx + (x >> chunkShift), cy + (y >> chunkShift), cz + (z >> chunkShift));
-			if (chunk != null) return chunk.getVisibleUnbound(x & chunkMask, y & chunkMask, z & chunkMask);
+			if (chunk != null) return chunk.getVisiblePossiblyOutside(x & chunkMask, y & chunkMask, z & chunkMask);
 			return null;
 		}
 		return inst[getIndex(x, y, z)];
 	}
 	
 	/**
-	 * Checks if a given coordinate is inside this chunk.
-	 * @param x
-	 * @param y
-	 * @param z
-	 * @return
-	 */
-	public boolean isInside(float x, float y, float z) {
-		return (x - wx) >= 0 && (x - wx) < chunkSize && (y - wy) >= 0 && (y - wy) < chunkSize && (z - wz) >= 0 && (z - wz) < chunkSize;
-	}
-	
-	/**
-	 * Checks if a given coordinate is inside this chunk.
+	 * Checks if a given world coordinate is inside this chunk.
 	 * @param x
 	 * @param y
 	 * @param z
@@ -595,6 +573,7 @@ public class NormalChunk extends Chunk {
 		updated = true;
 	}
 	
+	@Override
 	public int startIndex(int start) {
 		return start;
 	}

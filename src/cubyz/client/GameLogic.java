@@ -90,7 +90,7 @@ public class GameLogic implements ClientConnection {
 		System.gc();
 	}
 	
-	public void loadWorld(ServerWorld world) { // TODO: Seperate all the things out that are generated for the current world.
+	public void loadWorld(World world) { // TODO: Seperate all the things out that are generated for the current world.
 		if (Cubyz.world != null) {
 			quitWorld();
 		}
@@ -214,7 +214,7 @@ public class GameLogic implements ClientConnection {
 		if (Cubyz.world != null) {
 			Cubyz.chunkTree.update((int)Cubyz.player.getPosition().x, (int)Cubyz.player.getPosition().y, (int)Cubyz.player.getPosition().z, ClientSettings.RENDER_DISTANCE, ClientSettings.HIGHEST_LOD, ClientSettings.LOD_FACTOR);
 			// TODO: Get this in the server ping or something.
-			float lightAngle = (float)Math.PI/2 + (float)Math.PI*(((float)Cubyz.gameTime % ServerWorld.DAY_CYCLE)/(ServerWorld.DAY_CYCLE/2));
+			float lightAngle = (float)Math.PI/2 + (float)Math.PI*(((float)Cubyz.gameTime % World.DAY_CYCLE)/(World.DAY_CYCLE/2));
 			skySun.setPositionRaw((float)Math.cos(lightAngle)*500, (float)Math.sin(lightAngle)*500, 0);
 			skySun.setRotation(0, 0, -lightAngle);
 		}

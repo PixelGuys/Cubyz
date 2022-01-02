@@ -2,54 +2,89 @@ package cubyz.clientSide;
 
 import cubyz.Constants;
 import cubyz.utils.Logger;
+import cubyz.utils.Zipper;
 import cubyz.utils.json.JsonObject;
 import cubyz.utils.json.JsonParser;
-import cubyz.utils.json.JsonString;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.Socket;
 
-public class ServerConnection {
-    private Socket clientSocket;
-    private PrintWriter out;
-    private BufferedReader in;
+public class ServerConnection extends Thread{
+	private Socket clientSocket;
+	private PrintWriter out;
+	private BufferedReader in;
 
-    public ServerConnection(String fullip, String name){
-        String ip = "localhost";
-        int port = 42069;
+	private OutputStream outStream;
+	private InputStream inStream;
 
-        if (fullip.indexOf(':')==-1)
-            //"ip"
-            ip = fullip;
-        else{
-            //"ip:port"
-            fullip.substring(0, fullip.indexOf(':'));
-            fullip.substring(fullip.indexOf(':')+1);
-        }
+	public ServerConnection(String fullip, String name, String serverName){
+		String ip = "localhost";
+		int port = 42069;
 
-        //connect
-        try {
-            //TODO: Might want to use SSL or something similar to encode the message
-            clientSocket = new Socket(ip, port);
-            out = new PrintWriter(clientSocket.getOutputStream(), true);
-            in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-        } catch (IOException e) {
-            Logger.error(e);
-        }
+		if (fullip.indexOf(':')==-1)
+			ip = fullip; //"ip"
+		else{
+			//"ip:port"
+			ip = fullip.substring(0, fullip.indexOf(':'));
+			port = Integer.parseInt(fullip.substring(fullip.indexOf(':')+1));
+		}
+		
+		Logger.debug(ip+":"+port);
 
-        try {
-            JsonObject jsonObject = new JsonObject();
-            jsonObject.put("type", "clientinformation");
-            jsonObject.put("version", Constants.GAME_VERSION);
-            jsonObject.put("name", name);
+		//connect
+		try {
+			//TODO: Might want to use SSL or something similar to encode the message
+			clientSocket = new Socket(ip, port);
 
-            jsonObject.writeObjectToStream(out);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+			outStream = clientSocket.getOutputStream();
+			inStream = clientSocket.getInputStream();
 
-    }
+			out = new PrintWriter(outStream, true);
+			in = new BufferedReader(new InputStreamReader(inStream));
+		} catch (IOException e) {
+			Logger.error(e);
+		}
+		
+		doHandShake(name, serverName);
+
+		start();
+	}
+	
+	@Override
+	public void run(){
+		try {
+			while (!clientSocket.isClosed()) {
+				receiveJSON(JsonParser.parseObjectFromStream(in));
+			}
+		} catch (IOException e) {
+			Logger.error(e);
+		}
+	}
+	
+	private void doHandShake(String name, String serverName) {
+		try {
+			JsonObject jsonObject = new JsonObject();
+			jsonObject.put("type", "clientInformation");
+			jsonObject.put("version", Constants.GAME_VERSION);
+			jsonObject.put("name", name);
+
+			jsonObject.writeObjectToStream(out);
+
+            JsonObject json = JsonParser.parseObjectFromStream(in);
+            String type = json.getString("type", "unknown type");
+            if (type.equals("worldAssets")){
+                Zipper.unpack("serverAssets/"+serverName+"/assets/", inStream);
+                Logger.info("Server World Assets received");
+            } else {
+                Logger.error("Invalid handshake\n"+json);
+            }
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	private void receiveJSON(JsonObject json){
+		String type = json.getString("type", "unknown type");
+		
+	}
 }

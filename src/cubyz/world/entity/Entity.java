@@ -6,7 +6,7 @@ import org.joml.Vector3i;
 import org.joml.Vector4d;
 
 import cubyz.utils.json.JsonObject;
-import cubyz.world.ServerWorld;
+import cubyz.world.World;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.items.Inventory;
 import cubyz.world.items.tools.Tool;
@@ -17,7 +17,7 @@ import cubyz.world.items.tools.Tool;
 
 public class Entity {
 
-	protected ServerWorld world;
+	protected World world;
 
 	protected Vector3d position = new Vector3d();
 	protected Vector3f rotation = new Vector3f();
@@ -51,7 +51,7 @@ public class Entity {
 	 * @param maxHunger
 	 * @param stepHeight height the entity can move upwards without jumping.
 	 */
-	public Entity(EntityType type, EntityAI ai, ServerWorld world, float maxHealth, float maxHunger, float stepHeight) {
+	public Entity(EntityType type, EntityAI ai, World world, float maxHealth, float maxHunger, float stepHeight) {
 		this.type = type;
 		this.world = world;
 		this.maxHealth = health = maxHealth;
@@ -353,7 +353,7 @@ public class Entity {
 		oldVY = vy;
 		
 		// Stepping: Consider potential energy of the step taken V = m·g·h
-		hunger -= ServerWorld.GRAVITY*step/900;
+		hunger -= World.GRAVITY*step/900;
 		
 		// Examples:
 		// At 3 blocks/second(player base speed) the cost of movement is about twice as high as the passive consumption.
@@ -374,7 +374,7 @@ public class Entity {
 		// TODO: Use the entities mass, force and ground structure to calculate a realistic velocity change.
 		vx += (targetVX-vx)/5*deltaTime;
 		vz += (targetVZ-vz)/5*deltaTime;
-		vy -= ServerWorld.GRAVITY*deltaTime;
+		vy -= World.GRAVITY*deltaTime;
 	}
 	
 	// NDT related
@@ -435,7 +435,7 @@ public class Entity {
 		return type;
 	}
 	
-	public ServerWorld getWorld() {
+	public World getWorld() {
 		return world;
 	}
 	

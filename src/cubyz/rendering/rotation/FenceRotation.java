@@ -15,7 +15,7 @@ import cubyz.utils.datastructures.IntFastList;
 import cubyz.world.Neighbors;
 import cubyz.world.NormalChunk;
 import cubyz.world.Chunk;
-import cubyz.world.ServerWorld;
+import cubyz.world.World;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.RotationMode;
@@ -29,7 +29,7 @@ public class FenceRotation implements RotationMode {
 	}
 
 	@Override
-	public boolean generateData(ServerWorld world, int x, int y, int z, Vector3d relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, IntWrapper currentData, boolean blockPlacing) {
+	public boolean generateData(World world, int x, int y, int z, Vector3d relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, IntWrapper currentData, boolean blockPlacing) {
 		if (!blockPlacing) return false;
 		NormalChunk chunk = world.getChunk(x >> Chunk.chunkShift, y >> Chunk.chunkShift, z >> Chunk.chunkShift);
 		int data = 0;

@@ -4,12 +4,12 @@ import java.io.IOException;
 
 import cubyz.utils.Logger;
 import cubyz.utils.json.JsonObject;
-import cubyz.world.ServerWorld;
+import cubyz.world.World;
 import cubyz.world.entity.Entity;
 import cubyz.world.entity.EntityType;
 
 public class EntityIO {	
-	public static Entity loadEntity(JsonObject json, ServerWorld world) throws IOException {
+	public static Entity loadEntity(JsonObject json, World world) throws IOException {
 		String id = json.getString("id", "");
 		Entity ent;
 		EntityType type = world.getCurrentRegistries().entityRegistry.getByID(id);

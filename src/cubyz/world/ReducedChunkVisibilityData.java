@@ -41,7 +41,7 @@ public class ReducedChunkVisibilityData extends ChunkData {
 		return chunk.blocks[Chunk.getIndex(x, y, z)];
 	}
 	
-	public ReducedChunkVisibilityData(ServerWorld world, int wx, int wy, int wz, int voxelSize) {
+	public ReducedChunkVisibilityData(World world, int wx, int wy, int wz, int voxelSize) {
 		super(wx, wy, wz, voxelSize);
 
 		int chunkSize = voxelSize*Chunk.chunkSize;

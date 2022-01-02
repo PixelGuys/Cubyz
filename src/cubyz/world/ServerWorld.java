@@ -1,28 +1,17 @@
 package cubyz.world;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Random;
-
-import org.joml.Vector3d;
-import org.joml.Vector3f;
-import org.joml.Vector3i;
-import org.joml.Vector4f;
-
-import cubyz.utils.Logger;
 import cubyz.Settings;
-import cubyz.api.ClientConnection;
 import cubyz.api.CubyzRegistries;
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.client.ClientSettings;
-import cubyz.client.GameLauncher;
 import cubyz.modding.ModLoader;
+import cubyz.server.Server;
+import cubyz.utils.Logger;
 import cubyz.utils.datastructures.HashMapKey3D;
 import cubyz.utils.json.JsonObject;
 import cubyz.utils.json.JsonParser;
-import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.BlockEntity;
+import cubyz.world.blocks.Blocks;
 import cubyz.world.entity.ChunkEntityManager;
 import cubyz.world.entity.Entity;
 import cubyz.world.entity.ItemEntityManager;
@@ -35,49 +24,20 @@ import cubyz.world.save.ChunkIO;
 import cubyz.world.save.WorldIO;
 import cubyz.world.terrain.MapFragment;
 import cubyz.world.terrain.biomes.Biome;
-import cubyz.server.Server;
+import org.joml.Vector3d;
+import org.joml.Vector3f;
+import org.joml.Vector3i;
+import org.joml.Vector4f;
 
-public class ServerWorld {
-	public static final int DAY_CYCLE = 12000; // Length of one in-game day in 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
-	public static final float GRAVITY = 9.81F*1.5F;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Random;
 
-	private HashMap<HashMapKey3D, MetaChunk> metaChunks = new HashMap<HashMapKey3D, MetaChunk>();
-	private NormalChunk[] chunks = new NormalChunk[0];
-	private ChunkEntityManager[] entityManagers = new ChunkEntityManager[0];
-	private int lastX = Integer.MAX_VALUE, lastY = Integer.MAX_VALUE, lastZ = Integer.MAX_VALUE; // Chunk coordinates of the last chunk update.
-	private ArrayList<Entity> entities = new ArrayList<>();
-	
-	final WorldIO wio;
-	
-	public final ChunkManager chunkManager;
-	private boolean generated;
-
-	private long gameTime;
-	private long milliTime;
-	private long lastUpdateTime = System.currentTimeMillis();
-	private boolean doGameTimeCycle = true;
-	
-	private final long seed;
-
-	private final String name;
-
-	private Player player;
-
-	public ClientConnection clientConnection = GameLauncher.logic;
-	
-	float ambientLight = 0f;
-	Vector4f clearColor = new Vector4f(0, 0, 0, 1.0f);
-	
-	public final Class<?> chunkProvider;
-	
-	boolean liquidUpdate;
-	
-	BlockEntity[] blockEntities = new BlockEntity[0];
-	Integer[] liquids = new Integer[0];
-	
-	public CurrentWorldRegistries registries;
-	
+public class ServerWorld extends World{
 	public ServerWorld(String name, JsonObject generatorSettings, Class<?> chunkProvider) {
+		super(name, chunkProvider);
+
 		if(generatorSettings == null) {
 			generatorSettings = JsonParser.parseObjectFromFile("saves/" + name + "/generatorSettings.json");
 		} else {
@@ -85,29 +45,18 @@ public class ServerWorld {
 			Logger.debug("Store");
 			JsonParser.storeToFile(generatorSettings, "saves/" + name + "/generatorSettings.json");
 		}
-		this.name = name;
-		this.chunkProvider = chunkProvider;
-		// Check if the chunkProvider is valid:
-		if (!NormalChunk.class.isAssignableFrom(chunkProvider) ||
-				chunkProvider.getConstructors().length != 1 ||
-				chunkProvider.getConstructors()[0].getParameterTypes().length != 4 ||
-				!chunkProvider.getConstructors()[0].getParameterTypes()[0].equals(ServerWorld.class) ||
-				!chunkProvider.getConstructors()[0].getParameterTypes()[1].equals(Integer.class) ||
-				!chunkProvider.getConstructors()[0].getParameterTypes()[2].equals(Integer.class) ||
-				!chunkProvider.getConstructors()[0].getParameterTypes()[3].equals(Integer.class))
-			throw new IllegalArgumentException("Chunk provider "+chunkProvider+" is invalid! It needs to be a subclass of NormalChunk and MUST contain a single constructor with parameters (ServerWorld, Integer, Integer, Integer)");
-		
+
 		wio = new WorldIO(this, new File("saves/" + name));
-		milliTime = System.currentTimeMillis();
 		if (wio.hasWorldData()) {
 			seed = wio.loadWorldSeed();
 			generated = true;
-			registries = new CurrentWorldRegistries(this);
+			registries = new CurrentWorldRegistries(this, "saves");
 		} else {
 			seed = new Random().nextInt();
-			registries = new CurrentWorldRegistries(this);
+			registries = new CurrentWorldRegistries(this, "saves");
 			wio.saveWorldData();
 		}
+
 		// Call mods for this new world. Mods sometimes need to do extra stuff for the specific world.
 		ModLoader.postWorldGen(registries);
 
@@ -115,10 +64,11 @@ public class ServerWorld {
 	}
 
 	// Returns the blocks, so their meshes can be created and stored.
+	@Override
 	public void generate() {
 
 		wio.loadWorldData(); // load data here in order for entities to also be loaded.
-		
+
 		if (generated) {
 			wio.saveWorldData();
 		}
@@ -154,11 +104,12 @@ public class ServerWorld {
 		wio.saveWorldData();
 	}
 
+	@Override
 	public Player getLocalPlayer() {
 		return player;
 	}
 
-	
+	@Override
 	public void forceSave() {
 		for(MetaChunk chunk : metaChunks.values()) {
 			if (chunk != null) chunk.save();
@@ -167,26 +118,27 @@ public class ServerWorld {
 		chunkManager.forceSave();
 		ChunkIO.save();
 	}
-	
+	@Override
 	public void addEntity(Entity ent) {
 		entities.add(ent);
 	}
-	
+	@Override
 	public void removeEntity(Entity ent) {
 		entities.remove(ent);
 	}
-	
+	@Override
 	public void setEntities(Entity[] arr) {
 		entities = new ArrayList<>(arr.length);
 		for (Entity e : arr) {
 			entities.add(e);
 		}
 	}
-	
+	@Override
 	public boolean isValidSpawnLocation(int x, int z) {
 		return chunkManager.getOrGenerateMapFragment(x, z, 32).getBiome(x, z).isValidPlayerSpawn;
 	}
 	
+	@Override
 	public void removeBlock(int x, int y, int z) {
 		NormalChunk ch = getChunk(x >> Chunk.chunkShift, y >> Chunk.chunkShift, z >> Chunk.chunkShift);
 		if (ch != null) {
@@ -207,7 +159,7 @@ public class ServerWorld {
 			}
 		}
 	}
-	
+	@Override
 	public void placeBlock(int x, int y, int z, int b) {
 		NormalChunk ch = getChunk(x >> Chunk.chunkShift, y >> Chunk.chunkShift, z >> Chunk.chunkShift);
 		if (ch != null) {
@@ -217,41 +169,41 @@ public class ServerWorld {
 			}
 		}
 	}
-	
+	@Override
 	public void drop(ItemStack stack, Vector3d pos, Vector3f dir, float velocity, int pickupCooldown) {
 		ItemEntityManager manager = this.getEntityManagerAt((int)pos.x & ~Chunk.chunkMask, (int)pos.y & ~Chunk.chunkMask, (int)pos.z & ~Chunk.chunkMask).itemEntityManager;
 		manager.add(pos.x, pos.y, pos.z, dir.x*velocity, dir.y*velocity, dir.z*velocity, stack, Server.UPDATES_PER_SEC*300 /*5 minutes at normal update speed.*/, pickupCooldown);
 	}
-	
+	@Override
 	public void drop(ItemStack stack, Vector3d pos, Vector3f dir, float velocity) {
 		drop(stack, pos, dir, velocity, 0);
 	}
-	
+	@Override
 	public void updateBlock(int x, int y, int z, int block) {
 		NormalChunk ch = getChunk(x >> Chunk.chunkShift, y >> Chunk.chunkShift, z >> Chunk.chunkShift);
 		if (ch != null) {
 			ch.updateBlock(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask, block);
 		}
 	}
-
+	@Override
 	public void setGameTime(long time) {
 		gameTime = time;
 	}
-
+	@Override
 	public long getGameTime() {
 		return gameTime;
 	}
-	
+	@Override
 	public void setGameTimeCycle(boolean value)
 	{
 		doGameTimeCycle = value;
 	}
-	
+	@Override
 	public boolean shouldDoGameTimeCycle()
 	{
 		return doGameTimeCycle;
 	}
-	
+	@Override
 	public void update() {
 		long newTime = System.currentTimeMillis();
 		float deltaTime = (newTime - lastUpdateTime)/1000.0f;
@@ -260,7 +212,7 @@ public class ServerWorld {
 			Logger.warning("Update time is getting too high. It's already at "+deltaTime+" s!");
 			deltaTime = 0.3f;
 		}
-		
+
 		if (milliTime + 100 < newTime) {
 			milliTime += 100;
 			if (doGameTimeCycle) gameTime++; // gameTime is measured in 100ms.
@@ -269,7 +221,7 @@ public class ServerWorld {
 			Logger.warning("Behind update schedule by " + (newTime - milliTime) / 1000.0f + "s!");
 			milliTime = newTime - 1000; // so we don't accumulate too much time to catch
 		}
-		int dayCycle = ServerWorld.DAY_CYCLE;
+		int dayCycle = World.DAY_CYCLE;
 		// Ambient light
 		{
 			int dayTime = Math.abs((int)(gameTime % dayCycle) - (dayCycle >> 1));
@@ -362,7 +314,7 @@ public class ServerWorld {
 		for(MetaChunk chunk : metaChunks.values()) {
 			chunk.updateBlockEntities();
 		}
-		
+
 		// Liquids
 		if (gameTime % 3 == 0) {
 			//Profiler.startProfiling();
@@ -381,24 +333,24 @@ public class ServerWorld {
 			}
 		}
 	}
-
+	@Override
 	public void queueChunk(ChunkData ch) {
 		chunkManager.queueChunk(ch);
 	}
-	
+	@Override
 	public void unQueueChunk(ChunkData ch) {
 		chunkManager.unQueueChunk(ch);
 	}
-	
+	@Override
 	public int getChunkQueueSize() {
 		return chunkManager.getChunkQueueSize();
 	}
-	
+	@Override
 	public void seek(int x, int y, int z, int renderDistance, int regionRenderDistance) {
 		int xOld = x;
 		int yOld = y;
 		int zOld = z;
-		
+
 		// Care about the metaChunks:
 		if (x != lastX || y != lastY || z != lastZ) {
 			ArrayList<NormalChunk> chunkList = new ArrayList<>();
@@ -437,7 +389,7 @@ public class ServerWorld {
 			lastZ = zOld;
 		}
 	}
-	
+	@Override
 	public MetaChunk getMetaChunk(int cx, int cy, int cz) {
 		// Test if the metachunk exists:
 		int metaX = cx >> (MetaChunk.metaChunkShift);
@@ -446,7 +398,7 @@ public class ServerWorld {
 		HashMapKey3D key = new HashMapKey3D(metaX, metaY, metaZ);
 		return metaChunks.get(key);
 	}
-	
+	@Override
 	public NormalChunk getChunk(int cx, int cy, int cz) {
 		MetaChunk meta = getMetaChunk(cx, cy, cz);
 		if (meta != null) {
@@ -454,7 +406,7 @@ public class ServerWorld {
 		}
 		return null;
 	}
-
+	@Override
 	public ChunkEntityManager getEntityManagerAt(int wx, int wy, int wz) {
 		int cx = wx >> Chunk.chunkShift;
 		int cy = wy >> Chunk.chunkShift;
@@ -465,11 +417,11 @@ public class ServerWorld {
 		}
 		return null;
 	}
-	
+	@Override
 	public ChunkEntityManager[] getEntityManagers() {
 		return entityManagers;
 	}
-
+	@Override
 	public int getBlock(int x, int y, int z) {
 		NormalChunk ch = getChunk(x >> Chunk.chunkShift, y >> Chunk.chunkShift, z >> Chunk.chunkShift);
 		if (ch != null && ch.isGenerated()) {
@@ -479,42 +431,42 @@ public class ServerWorld {
 			return 0;
 		}
 	}
-	
+	@Override
 	public long getSeed() {
 		return seed;
 	}
-	
+	@Override
 	public float getGlobalLighting() {
 		return ambientLight;
 	}
-
+	@Override
 	public Vector4f getClearColor() {
 		return clearColor;
 	}
-
+	@Override
 	public String getName() {
 		return name;
 	}
-
+	@Override
 	public BlockEntity getBlockEntity(int x, int y, int z) {
 		/*BlockInstance bi = getBlockInstance(x, y, z);
 		Chunk ck = _getNoGenerateChunk(bi.getX() >> NormalChunk.chunkShift, bi.getZ() >> NormalChunk.chunkShift);
 		return ck.blockEntities().get(bi);*/
 		return null; // TODO: Work on BlockEntities!
 	}
-
+	@Override
 	public NormalChunk[] getChunks() {
 		return chunks;
 	}
-	
+	@Override
 	public Entity[] getEntities() {
 		return entities.toArray(new Entity[entities.size()]);
 	}
-	
+	@Override
 	public int getHeight(int wx, int wz) {
 		return (int)chunkManager.getOrGenerateMapFragment(wx, wz, 1).getHeight(wx, wz);
 	}
-
+	@Override
 	public void cleanup() {
 		// Be sure to dereference and finalize the maximum of things
 		try {
@@ -525,7 +477,7 @@ public class ServerWorld {
 			ChunkIO.save();
 
 			chunkManager.cleanup();
-			
+
 			ChunkIO.clean();
 			
 			wio.saveWorldData();
@@ -534,23 +486,23 @@ public class ServerWorld {
 			Logger.error(e);
 		}
 	}
-
+	@Override
 	public CurrentWorldRegistries getCurrentRegistries() {
 		return registries;
 	}
-
+	@Override
 	public Biome getBiome(int wx, int wz) {
 		MapFragment reg = chunkManager.getOrGenerateMapFragment(wx, wz, 1);
 		return reg.getBiome(wx, wz);
 	}
-
+	@Override
 	public int getLight(int x, int y, int z, Vector3f sunLight, boolean easyLighting) {
 		NormalChunk ch = getChunk(x >> Chunk.chunkShift, y >> Chunk.chunkShift, z >> Chunk.chunkShift);
 		if (ch == null || !ch.isLoaded() || !easyLighting)
 			return 0xffffffff;
 		return ch.getLight(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask);
 	}
-
+	@Override
 	public void getLight(NormalChunk ch, int x, int y, int z, int[] array) {
 		int block = getBlock(x, y, z);
 		if (block == 0) return;
@@ -566,8 +518,8 @@ public class ServerWorld {
 			}
 		}
 	}
-	
-	private int getLight(NormalChunk ch, int x, int y, int z, int minLight) {
+	@Override
+	protected int getLight(NormalChunk ch, int x, int y, int z, int minLight) {
 		if (x - ch.wx != (x & Chunk.chunkMask) || y - ch.wy != (y & Chunk.chunkMask) || z - ch.wz != (z & Chunk.chunkMask))
 			ch = getChunk(x >> Chunk.chunkShift, y >> Chunk.chunkShift, z >> Chunk.chunkShift);
 		if (ch == null || !ch.isLoaded())

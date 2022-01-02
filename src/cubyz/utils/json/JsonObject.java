@@ -3,6 +3,7 @@ package cubyz.utils.json;
 import cubyz.utils.algorithms.StringOperation;
 
 import java.io.PrintWriter;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map.Entry;
 
@@ -12,10 +13,9 @@ public class JsonObject implements JsonElement {
 		map = new HashMap<>();
 	}
 
-	public void writeObjectToStream(PrintWriter out){
-		out.println(toString()+"\n"); //having an empty line at the end to indicate the end of the jsonobject
+	public void writeObjectToStream(PrintWriter out) {
+		out.println(toString() + "\n"); //having an empty line at the end to indicate the end of the jsonobject
 	}
-
 	@Override
 	public int getInt(String key, int defaultValue) {
 		JsonElement object = map.get(key);
