@@ -300,7 +300,7 @@ public class ItemEntityManager {
 		x -= chunk.getWorldX();
 		y -= chunk.getWorldY();
 		z -= chunk.getWorldZ();
-		int block = chunk.getBlockUnbound(x, y, z);
+		int block = chunk.getBlockPossiblyOutside(x, y, z);
 		if (block == 0) return;
 		// Check if the item entity is inside the block:
 		boolean isInside = true;

@@ -14,21 +14,18 @@ import cubyz.world.save.ChunkIO;
  */
 
 public class ReducedChunk extends Chunk {
-	/**1 << resolutionShift = resolution*/
-	public final int resolutionShift;
-	/**How many blocks each voxel is wide.*/
-	public final int resolution;
-	/**If ((x & resolutionMask) == 0), a block can be considered to be visible.*/
-	public final int resolutionMask;
+	/**1 << voxelSizeShift = voxelSize*/
+	public final int voxelSizeShift;
+	/**If ((x & voxelSizeMask) == 0), a block can be considered to be visible.*/
+	public final int voxelSizeMask;
 	public final int width;
 	/** =log₂(width)*/
 	public final int widthShift;
 	
 	public ReducedChunk(World world, int wx, int wy, int wz, int resolutionShift) {
 		super(world, wx, wy, wz, 1 << resolutionShift);
-		this.resolutionShift = resolutionShift;
-		this.resolution = 1 << resolutionShift;
-		this.resolutionMask = resolution - 1;
+		this.voxelSizeShift = resolutionShift;
+		this.voxelSizeMask = voxelSize - 1;
 		widthShift = Chunk.chunkShift + resolutionShift;
 		width = 1 << widthShift;
 	}
@@ -43,15 +40,15 @@ public class ReducedChunk extends Chunk {
 	
 	@Override
 	public int startIndex(int start) {
-		return start+resolutionMask & ~resolutionMask;
+		return start+voxelSizeMask & ~voxelSizeMask; // Rounds up to the nearest valid voxel coordinate.
 	}
 	
 	@Override
 	public void updateBlockIfDegradable(int x, int y, int z, int newBlock) {
-		x >>= resolutionShift;
-		y >>= resolutionShift;
-		z >>= resolutionShift;
-		int index = (x << (widthShift - resolutionShift)) | (y << 2*(widthShift - resolutionShift)) | z;
+		x >>= voxelSizeShift;
+		y >>= voxelSizeShift;
+		z >>= voxelSizeShift;
+		int index = (x << (widthShift - voxelSizeShift)) | (y << 2*(widthShift - voxelSizeShift)) | z;
 		if (blocks[index] == 0 || Blocks.degradable(blocks[index])) {
 			blocks[index] = newBlock;
 		}
@@ -59,19 +56,19 @@ public class ReducedChunk extends Chunk {
 	
 	@Override
 	public void updateBlock(int x, int y, int z, int newBlock) {
-		x >>= resolutionShift;
-		y >>= resolutionShift;
-		z >>= resolutionShift;
-		int index = (x << (widthShift - resolutionShift)) | (y << 2*(widthShift - resolutionShift)) | z;
+		x >>= voxelSizeShift;
+		y >>= voxelSizeShift;
+		z >>= voxelSizeShift;
+		int index = (x << (widthShift - voxelSizeShift)) | (y << 2*(widthShift - voxelSizeShift)) | z;
 		blocks[index] = newBlock;
 	}
 	
 	@Override
 	public void updateBlockInGeneration(int x, int y, int z, int newBlock) {
-		x >>= resolutionShift;
-		y >>= resolutionShift;
-		z >>= resolutionShift;
-		int index = (x << (widthShift - resolutionShift)) | (y << 2*(widthShift - resolutionShift)) | z;
+		x >>= voxelSizeShift;
+		y >>= voxelSizeShift;
+		z >>= voxelSizeShift;
+		int index = (x << (widthShift - voxelSizeShift)) | (y << 2*(widthShift - voxelSizeShift)) | z;
 		blocks[index] = newBlock;
 	}
 
@@ -169,7 +166,7 @@ public class ReducedChunk extends Chunk {
 
 	@Override
 	public int getVoxelSize() {
-		return resolution;
+		return voxelSize;
 	}
 
 	@Override
@@ -194,10 +191,10 @@ public class ReducedChunk extends Chunk {
 
 	@Override
 	public int getBlock(int x, int y, int z) {
-		x >>= resolutionShift;
-		y >>= resolutionShift;
-		z >>= resolutionShift;
-		int index = (x << (widthShift - resolutionShift)) | (y << 2*(widthShift - resolutionShift)) | z;
+		x >>= voxelSizeShift;
+		y >>= voxelSizeShift;
+		z >>= voxelSizeShift;
+		int index = (x << (widthShift - voxelSizeShift)) | (y << 2*(widthShift - voxelSizeShift)) | z;
 		return blocks[index];
 	}
 }

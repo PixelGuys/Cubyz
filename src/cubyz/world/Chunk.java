@@ -19,7 +19,9 @@ public abstract class Chunk extends ChunkData {
 	protected final World world;
 	protected final int[] blocks = new int[chunkSize*chunkSize*chunkSize];
 	
-	private boolean wasChanged = false, wasCleaned = false;
+	private boolean wasChanged = false;
+	/** When a chunk is cleaned, it won't be saved by the ChunkMamanger anymore, so following changes need to be saved directly. */
+	private boolean wasCleaned = false;
 	protected boolean generated = false;
 
 	public Chunk(World world, int wx, int wy, int wz, int voxelSize) {
