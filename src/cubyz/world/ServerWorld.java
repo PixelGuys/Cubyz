@@ -140,7 +140,7 @@ public class ServerWorld extends World{
 	
 	@Override
 	public void removeBlock(int x, int y, int z) {
-		NormalChunk ch = getChunk(x >> Chunk.chunkShift, y >> Chunk.chunkShift, z >> Chunk.chunkShift);
+		NormalChunk ch = getChunk(x, y, z);
 		if (ch != null) {
 			int b = ch.getBlock(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask);
 			ch.removeBlockAt(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask, true);
@@ -161,7 +161,7 @@ public class ServerWorld extends World{
 	}
 	@Override
 	public void placeBlock(int x, int y, int z, int b) {
-		NormalChunk ch = getChunk(x >> Chunk.chunkShift, y >> Chunk.chunkShift, z >> Chunk.chunkShift);
+		NormalChunk ch = getChunk(x, y, z);
 		if (ch != null) {
 			ch.addBlock(b, x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask, false);
 			for (PlaceBlockHandler hand : CubyzRegistries.PLACE_HANDLER_REGISTRY.registered(new PlaceBlockHandler[0])) {
@@ -180,7 +180,7 @@ public class ServerWorld extends World{
 	}
 	@Override
 	public void updateBlock(int x, int y, int z, int block) {
-		NormalChunk ch = getChunk(x >> Chunk.chunkShift, y >> Chunk.chunkShift, z >> Chunk.chunkShift);
+		NormalChunk ch = getChunk(x, y, z);
 		if (ch != null) {
 			ch.updateBlock(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask, block);
 		}
@@ -390,30 +390,27 @@ public class ServerWorld extends World{
 		}
 	}
 	@Override
-	public MetaChunk getMetaChunk(int cx, int cy, int cz) {
+	public MetaChunk getMetaChunk(int wx, int wy, int wz) {
 		// Test if the metachunk exists:
-		int metaX = cx >> (MetaChunk.metaChunkShift);
-		int metaY = cy >> (MetaChunk.metaChunkShift);
-		int metaZ = cz >> (MetaChunk.metaChunkShift);
+		int metaX = wx >> (MetaChunk.metaChunkShift + Chunk.chunkShift);
+		int metaY = wy >> (MetaChunk.metaChunkShift + Chunk.chunkShift);
+		int metaZ = wz >> (MetaChunk.metaChunkShift + Chunk.chunkShift);
 		HashMapKey3D key = new HashMapKey3D(metaX, metaY, metaZ);
 		return metaChunks.get(key);
 	}
 	@Override
-	public NormalChunk getChunk(int cx, int cy, int cz) {
-		MetaChunk meta = getMetaChunk(cx, cy, cz);
+	public NormalChunk getChunk(int wx, int wy, int wz) {
+		MetaChunk meta = getMetaChunk(wx, wy, wz);
 		if (meta != null) {
-			return meta.getChunk(cx, cy, cz);
+			return meta.getChunk(wx, wy, wz);
 		}
 		return null;
 	}
 	@Override
 	public ChunkEntityManager getEntityManagerAt(int wx, int wy, int wz) {
-		int cx = wx >> Chunk.chunkShift;
-		int cy = wy >> Chunk.chunkShift;
-		int cz = wz >> Chunk.chunkShift;
-		MetaChunk meta = getMetaChunk(cx, cy, cz);
+		MetaChunk meta = getMetaChunk(wx, wy, wz);
 		if (meta != null) {
-			return meta.getEntityManager(cx, cy, cz);
+			return meta.getEntityManager(wx, wy, wz);
 		}
 		return null;
 	}
@@ -423,7 +420,7 @@ public class ServerWorld extends World{
 	}
 	@Override
 	public int getBlock(int x, int y, int z) {
-		NormalChunk ch = getChunk(x >> Chunk.chunkShift, y >> Chunk.chunkShift, z >> Chunk.chunkShift);
+		NormalChunk ch = getChunk(x, y, z);
 		if (ch != null && ch.isGenerated()) {
 			int b = ch.getBlock(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask);
 			return b;
@@ -497,7 +494,7 @@ public class ServerWorld extends World{
 	}
 	@Override
 	public int getLight(int x, int y, int z, Vector3f sunLight, boolean easyLighting) {
-		NormalChunk ch = getChunk(x >> Chunk.chunkShift, y >> Chunk.chunkShift, z >> Chunk.chunkShift);
+		NormalChunk ch = getChunk(x, y, z);
 		if (ch == null || !ch.isLoaded() || !easyLighting)
 			return 0xffffffff;
 		return ch.getLight(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask);
@@ -521,7 +518,7 @@ public class ServerWorld extends World{
 	@Override
 	protected int getLight(NormalChunk ch, int x, int y, int z, int minLight) {
 		if (x - ch.wx != (x & Chunk.chunkMask) || y - ch.wy != (y & Chunk.chunkMask) || z - ch.wz != (z & Chunk.chunkMask))
-			ch = getChunk(x >> Chunk.chunkShift, y >> Chunk.chunkShift, z >> Chunk.chunkShift);
+			ch = getChunk(x, y, z);
 		if (ch == null || !ch.isLoaded())
 			return 0xff000000;
 		int light = ch.getLight(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask);

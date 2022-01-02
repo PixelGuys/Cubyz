@@ -31,7 +31,7 @@ public class FenceRotation implements RotationMode {
 	@Override
 	public boolean generateData(World world, int x, int y, int z, Vector3d relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, IntWrapper currentData, boolean blockPlacing) {
 		if (!blockPlacing) return false;
-		NormalChunk chunk = world.getChunk(x >> Chunk.chunkShift, y >> Chunk.chunkShift, z >> Chunk.chunkShift);
+		NormalChunk chunk = world.getChunk(x, y, z);
 		int data = 0;
 		// Get all neighbors and set the corresponding bits:
 		int[] neighbors = chunk.getNeighbors(x, y , z);

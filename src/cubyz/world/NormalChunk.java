@@ -26,7 +26,6 @@ public class NormalChunk extends Chunk {
 	/**Liquids that should be updated at next frame. Stores the local index of the block.*/
 	private ArrayList<Integer> updatingLiquids = new ArrayList<>();
 	private FastList<BlockInstance> visibles = new FastList<BlockInstance>(50, BlockInstance.class);
-	protected final int cx, cy, cz; // world coords divided by 32
 	protected boolean startedloading = false;
 	protected boolean loaded = false;
 	private ArrayList<BlockEntity> blockEntities = new ArrayList<>();
@@ -35,12 +34,9 @@ public class NormalChunk extends Chunk {
 
 	public boolean updated;
 	
-	public NormalChunk(World world, int cx, int cy, int cz) {
-		super(world, cx << chunkShift, cy << chunkShift, cz << chunkShift, 1);
+	public NormalChunk(World world, int wx, int wy, int wz) {
+		super(world, wx, wy, wz, 1);
 		inst = new BlockInstance[blocks.length];
-		this.cx = cx;
-		this.cy = cy;
-		this.cz = cz;
 		this.map = world.chunkManager.getOrGenerateMapFragment(wx, wz, 1);
 	}
 	
@@ -115,9 +111,9 @@ public class NormalChunk extends Chunk {
 		int ry = y - wy;
 		int rz = z - wz;
 		if (rx < 0 || rx >= chunkSize || ry < 0 || ry >= chunkSize || rz < 0 || rz >= chunkSize) {
-			if (world.getChunk(cx + (rx >> chunkShift), cy + (ry >> chunkShift), cz + (rz >> chunkShift)) == null)
+			if (world.getChunk(wx + rx, wy + ry, wz + rz) == null)
 				return;
-			world.getChunk(cx + (rx >> chunkShift), cy + (ry >> chunkShift), cz + (rz >> chunkShift)).addBlock(b, x & chunkMask, y & chunkMask, z & chunkMask, considerPrevious);
+			world.getChunk(wx + rx, wy + ry, wz + rz).addBlock(b, x & chunkMask, y & chunkMask, z & chunkMask, considerPrevious);
 			return;
 		} else {
 			addBlock(b, rx, ry, rz, considerPrevious);
@@ -356,10 +352,7 @@ public class NormalChunk extends Chunk {
 	 * @return
 	 */
 	public NormalChunk getChunk(int x, int y, int z) {
-		x >>= chunkShift;
-		y >>= chunkShift;
-		z >>= chunkShift;
-		if (cx != x || cy != y || cz != z)
+		if(!this.liesInChunk(x, y, z))
 			return world.getChunk(x, y, z);
 		return this;
 	}
@@ -376,7 +369,7 @@ public class NormalChunk extends Chunk {
 			if (xi == (xi & chunkMask) && yi == (yi & chunkMask) && zi == (zi & chunkMask)) { // Simple double-bound test for coordinates.
 				neighbors[i] = getBlock(xi, yi, zi);
 			} else {
-				NormalChunk ch = world.getChunk((xi >> chunkShift) + cx, (yi >> chunkShift) + cy, (zi >> chunkShift) +cz);
+				NormalChunk ch = world.getChunk(xi + wx, yi + wy, zi + wz);
 				if (ch != null) {
 					neighbors[i] = ch.getBlock(xi & chunkMask, yi & chunkMask, zi & chunkMask);
 				} else {
@@ -401,7 +394,7 @@ public class NormalChunk extends Chunk {
 				neighbors[i] = getBlock(xi, yi, zi);
 				indices[i] = index;
 			} else {
-				NormalChunk ch = world.getChunk((xi >> chunkShift) + cx, (yi >> chunkShift) + cy, (zi >> chunkShift) + cz);
+				NormalChunk ch = world.getChunk(xi + wx, yi + wy, zi + wz);
 				if (ch != null && ch.startedloading) {
 					int index = getIndex(xi & chunkMask, yi & chunkMask, zi & chunkMask);
 					neighbors[i] = ch.getBlock(xi & chunkMask, yi & chunkMask, zi & chunkMask);
@@ -429,7 +422,7 @@ public class NormalChunk extends Chunk {
 			int yi = y+Neighbors.REL_Y[i];
 			int zi = z+Neighbors.REL_Z[i];
 			if (xi != (xi & chunkMask) || yi != (yi & chunkMask) || zi != (zi & chunkMask)) { // Simple double-bound test for coordinates.
-				NormalChunk ch = world.getChunk((xi >> chunkShift) + cx, (yi >> chunkShift) + cy, (zi >> chunkShift) + cz);
+				NormalChunk ch = world.getChunk(xi + wx, yi + wy, zi + wz);
 				if (ch != null)
 					ch.setUpdated();
 			}
@@ -483,7 +476,7 @@ public class NormalChunk extends Chunk {
 	public int getBlockPossiblyOutside(int x, int y, int z) {
 		if (!generated) return 0;
 		if (x < 0 || x >= chunkSize || y < 0 || y >= chunkSize || z < 0 || z >= chunkSize) {
-			NormalChunk chunk = world.getChunk(cx + (x >> chunkShift), cy + (y >> chunkShift), cz + (z >> chunkShift));
+			NormalChunk chunk = world.getChunk(wx + x, wy + y, wz + z);
 			if (chunk != null && chunk.isGenerated()) return chunk.getBlockPossiblyOutside(x & chunkMask, y & chunkMask, z & chunkMask);
 			return 0;
 		}
@@ -500,7 +493,7 @@ public class NormalChunk extends Chunk {
 	private BlockInstance getVisiblePossiblyOutside(int x, int y, int z) {
 		if (!generated) return null;
 		if (x < 0 || x >= chunkSize || y < 0 || y >= chunkSize || z < 0 || z >= chunkSize) {
-			NormalChunk chunk = world.getChunk(cx + (x >> chunkShift), cy + (y >> chunkShift), cz + (z >> chunkShift));
+			NormalChunk chunk = world.getChunk(wx + x, wy + y, wz + z);
 			if (chunk != null) return chunk.getVisiblePossiblyOutside(x & chunkMask, y & chunkMask, z & chunkMask);
 			return null;
 		}
@@ -524,18 +517,6 @@ public class NormalChunk extends Chunk {
 	
 	public Vector3d getMax() {
 		return new Vector3d(wx + chunkSize, wy + chunkSize, wz + chunkSize);
-	}
-	
-	public int getX() {
-		return cx;
-	}
-	
-	public int getY() {
-		return cy;
-	}
-	
-	public int getZ() {
-		return cz;
 	}
 	
 	public ArrayList<Integer> getLiquids() {

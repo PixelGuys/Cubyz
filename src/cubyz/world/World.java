@@ -169,9 +169,9 @@ public abstract class World {
 	
 	public abstract void seek(int x, int y, int z, int renderDistance, int regionRenderDistance);
 	
-	public abstract MetaChunk getMetaChunk(int cx, int cy, int cz);
+	public abstract MetaChunk getMetaChunk(int wx, int wy, int wz);
 	
-	public abstract NormalChunk getChunk(int cx, int cy, int cz);
+	public abstract NormalChunk getChunk(int wx, int wy, int wz);
 
 	public abstract ChunkEntityManager getEntityManagerAt(int wx, int wy, int wz);
 	

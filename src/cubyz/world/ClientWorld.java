@@ -110,12 +110,12 @@ public class ClientWorld extends World{
 	}
 
 	@Override
-	public MetaChunk getMetaChunk(int cx, int cy, int cz) {
+	public MetaChunk getMetaChunk(int wx, int wy, int wz) {
 		return null;
 	}
 
 	@Override
-	public NormalChunk getChunk(int cx, int cy, int cz) {
+	public NormalChunk getChunk(int wx, int wy, int wz) {
 		return null;
 	}
 

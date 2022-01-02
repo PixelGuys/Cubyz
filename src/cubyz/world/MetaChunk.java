@@ -116,13 +116,16 @@ public class MetaChunk {
 		int edSquare = entityDistance*entityDistance << Chunk.chunkShift2;
 		edSquare = Math.min(rdSquare, edSquare);
 		for(int px = 0; px < metaChunkSize; px++) {
-			long dx = Math.max(0, Math.abs(px*Chunk.chunkSize + wx - x) - Chunk.chunkSize/2);
+			int wx = px*Chunk.chunkSize + this.wx;
+			long dx = Math.max(0, Math.abs(wx - x) - Chunk.chunkSize/2);
 			long distX = dx*dx;
 			for(int py = 0; py < metaChunkSize; py++) {
-				long dy = Math.max(0, Math.abs(py*Chunk.chunkSize + wy - y) - Chunk.chunkSize/2);
+				int wy = py*Chunk.chunkSize + this.wy;
+				long dy = Math.max(0, Math.abs(wy - y) - Chunk.chunkSize/2);
 				long distY = dy*dy;
 				for(int pz = 0; pz < metaChunkSize; pz++) {
-					long dz = Math.max(0, Math.abs(pz*Chunk.chunkSize + wz - z) - Chunk.chunkSize/2);
+					int wz = pz*Chunk.chunkSize + this.wz;
+					long dz = Math.max(0, Math.abs(wz - z) - Chunk.chunkSize/2);
 					long distZ = dz*dz;
 					long dist = distX + distY + distZ;
 					int index = (px << metaChunkShift) | (py <<  metaChunkShift2) | pz;
@@ -134,7 +137,7 @@ public class MetaChunk {
 						}
 					} else if (chunk == null) {
 						try {
-							chunk = (NormalChunk)world.chunkProvider.getDeclaredConstructors()[0].newInstance(world, (wx >> Chunk.chunkShift) + px, (wy >> Chunk.chunkShift) + py, (wz >> Chunk.chunkShift) + pz);
+							chunk = (NormalChunk)world.chunkProvider.getDeclaredConstructors()[0].newInstance(world, wx, wy, wz);
 							chunks[index] = chunk;
 							world.queueChunk(chunks[index]);
 							chunksList.add(chunks[index]);
@@ -162,18 +165,18 @@ public class MetaChunk {
 		}
 	}
 	
-	public NormalChunk getChunk(int cx, int cy, int cz) {
-		cx -= wx >> Chunk.chunkShift;
-		cy -= wy >> Chunk.chunkShift;
-		cz -= wz >> Chunk.chunkShift;
+	public NormalChunk getChunk(int wx, int wy, int wz) {
+		int cx = (wx - this.wx) >> Chunk.chunkShift;
+		int cy = (wy - this.wy) >> Chunk.chunkShift;
+		int cz = (wz - this.wz) >> Chunk.chunkShift;
 		int index = (cx << metaChunkShift) | (cy <<  metaChunkShift2) | cz;
 		return chunks[index];
 	}
 	
-	public ChunkEntityManager getEntityManager(int cx, int cy, int cz) {
-		cx -= wx >> Chunk.chunkShift;
-		cy -= wy >> Chunk.chunkShift;
-		cz -= wz >> Chunk.chunkShift;
+	public ChunkEntityManager getEntityManager(int wx, int wy, int wz) {
+		int cx = (wx - this.wx) >> Chunk.chunkShift;
+		int cy = (wy - this.wy) >> Chunk.chunkShift;
+		int cz = (wz - this.wz) >> Chunk.chunkShift;
 		int index = (cx << metaChunkShift) | (cy <<  metaChunkShift2) | cz;
 		return entityManagers[index];
 	}

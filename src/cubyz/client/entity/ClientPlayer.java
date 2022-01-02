@@ -3,7 +3,6 @@ package cubyz.client.entity;
 import cubyz.client.Cubyz;
 import cubyz.gui.input.Keybindings;
 import cubyz.rendering.Camera;
-import cubyz.world.Chunk;
 import cubyz.world.NormalChunk;
 import cubyz.world.World;
 import cubyz.world.blocks.Blocks;
@@ -40,7 +39,7 @@ public class ClientPlayer extends Player {
 		double px = Cubyz.player.getPosition().x;
 		double py = Cubyz.player.getPosition().y;
 		double pz = Cubyz.player.getPosition().z;
-		NormalChunk ch = Cubyz.world.getChunk((int) px >> Chunk.chunkShift, (int) py >> Chunk.chunkShift, (int) pz >> Chunk.chunkShift);
+		NormalChunk ch = Cubyz.world.getChunk((int) px, (int) py, (int) pz);
 		boolean inReduced = false;
 		//		   Cubyz.world.hasReducedChunk((int)px, (int)py, (int)pz, 16) // TODO: Implement this properly, to work with the RenderOcttree.
 		//		|| Cubyz.world.hasReducedChunk((int)px, (int)py, (int)pz, 8)
