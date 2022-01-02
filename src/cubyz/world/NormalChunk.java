@@ -174,6 +174,7 @@ public class NormalChunk extends Chunk {
 					int ny = y2 + wy;
 					int nz = z2 + wz;
 					NormalChunk ch = getChunk(nx, ny, nz);
+					if(ch == null) continue;
 					if (Blocks.mode(neighbors[i]).dependsOnNeightbors()) {
 						int newBlock = Blocks.mode(neighbors[i]).updateData(neighbors[i], i ^ 1, b);
 						if (newBlock == 0) {

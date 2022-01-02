@@ -77,8 +77,9 @@ public class MetaChunk {
 	public void liquidUpdate() {
 		for (NormalChunk ch : chunks) {
 			if (ch == null) continue;
-			int wx = ch.getX() << Chunk.chunkShift;
-			int wz = ch.getZ() << Chunk.chunkShift;
+			int wx = ch.wx;
+			int wy = ch.wy;
+			int wz = ch.wz;
 			if (ch.isLoaded() && ch.getLiquids().size() > 0) {
 				Integer[] liquids = ch.getUpdatingLiquids().toArray(new Integer[0]);
 				int size = ch.getUpdatingLiquids().size();
@@ -89,32 +90,15 @@ public class MetaChunk {
 					int by = liquids[j] >> Chunk.chunkShift2;
 					int bz = liquids[j] & Chunk.chunkMask;
 					int[] neighbors = ch.getNeighbors(bx, by, bz);
-					for (int i = 0; i < 5; i++) {
+					for (int i = 0; i < 6; i++) {
+						if(i == Neighbors.DIR_UP) continue;
 						int b = neighbors[i];
 						if (b == 0) {
-							int dx = 0, dy = 0, dz = 0;
-							switch (i) {
-								case 0: // at x -1
-									dx = -1;
-								break;
-								case 1: // at x +1
-									dx = 1;
-									break;
-								case 2:  // at z -1
-									dz = -1;
-									break;
-								case 3: // at z +1
-									dz = 1;
-									break;
-								case 4: // at y -1
-									dy = -1;
-									break;
-								default:
-									System.err.println("(LocalWorld/Liquids) More than 6 nullable neighbors!");
-									break;
-							}
-							if (dy == -1 || (neighbors[4] != 0 && Blocks.blockClass(neighbors[4]) != Blocks.BlockClass.FLUID)) {
-								ch.addBlockPossiblyOutside(block, wx+bx+dx, by+dy, wz+bz+dz, true);
+							int dx = Neighbors.REL_X[i];
+							int dy = Neighbors.REL_Y[i];
+							int dz = Neighbors.REL_Z[i];
+							if (dy == -1 || (neighbors[Neighbors.DIR_DOWN] != 0 && Blocks.blockClass(neighbors[Neighbors.DIR_DOWN]) != Blocks.BlockClass.FLUID)) {
+								ch.addBlockPossiblyOutside(block, wx+bx+dx, wy+by+dy, wz+bz+dz, true);
 							}
 						}
 					}
