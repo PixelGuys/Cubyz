@@ -3,6 +3,14 @@ package cubyz.world;
 import java.util.Arrays;
 
 public class ReducedChunkVisibilityData extends ChunkData {
+	/*
+		(Equivalent C++ code)
+		std::vector<struct{
+			int visibleBlocks; //short innerInformations,short id
+			byte x,y,z;
+			byte neighbors;
+		}>
+	*/
 	private static final int INITIAL_CAPACITY = 128;
 	public int[] visibleBlocks = new int[INITIAL_CAPACITY];
 	public byte[] x = new byte[INITIAL_CAPACITY], y = new byte[INITIAL_CAPACITY], z = new byte[INITIAL_CAPACITY];
@@ -30,6 +38,14 @@ public class ReducedChunkVisibilityData extends ChunkData {
 		neighbors = Arrays.copyOf(neighbors, capacity);
 	}
 
+	/**
+	 * Finds a block in the surrounding 8 chunks using relative corrdinates.
+	 * @param chunks
+	 * @param x
+	 * @param y
+	 * @param z
+	 * @return
+	 */
 	private int getBlock(ReducedChunk[] chunks, int x, int y, int z) {
 		x += (wx - chunks[0].wx)/voxelSize;
 		y += (wy - chunks[0].wy)/voxelSize;
@@ -69,9 +85,8 @@ public class ReducedChunkVisibilityData extends ChunkData {
 						int x2 = x + Neighbors.REL_X[i];
 						int y2 = y + Neighbors.REL_Y[i];
 						int z2 = z + Neighbors.REL_Z[i];
-						boolean isVisible = false;
 						int neighbor = getBlock(chunks, x2, y2, z2);
-						isVisible = neighbor == 0;
+						boolean isVisible = neighbor == 0;
 						if (!isVisible) {
 							// If the chunk is at a border, more neighbors need to be checked to prevent cracks at LOD changes:
 							if ((x & halfMask) == ((x2 & halfMask) ^ halfMask) || (y & halfMask) == ((y2 & halfMask) ^ halfMask) || (z & halfMask) == ((z2 & halfMask) ^ halfMask)) {

@@ -189,18 +189,6 @@ public class ChunkManager {
 		}
 		return res;
 	}
-	
-	public MapFragment getNoGenerateRegion(int wx, int wz, int voxelSize) {
-		wx &= ~MapFragment.MAP_MASK;
-		wz &= ~MapFragment.MAP_MASK;
-
-		MapFragmentCompare data = new MapFragmentCompare(wx, wz, voxelSize);
-		int index = CubyzMath.binaryLog(voxelSize);
-		int hash = data.hashCode() & MAP_CACHE_MASK[index];
-
-		MapFragment res = mapCache[index].find(data, hash);
-		return res;
-	}
 
 	/**
 	 * Only for internal use. Generates a reduced chunk at a given location, or if possible gets it from the cache.
