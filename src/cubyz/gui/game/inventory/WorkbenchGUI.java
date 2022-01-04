@@ -37,7 +37,7 @@ public class WorkbenchGUI extends GeneralInventory {
 	@Override
 	protected void mouseAction() {
 		for(int i = 0; i < inv.length; i++) {
-			if (inv[i].grabWithMouse(carriedStack, Window.getWidth()/2, Window.getHeight())) {
+			if (inv[i].grabWithMouse(carriedStack, Window.getWidth()/2, Window.getHeight()/2+height/2)) {
 				if (i == inv.length-1 && carriedStack.getItem() != null) {
 					// Remove one of each of the items in the crafting grid.
 					for(int j = 32; j < inv.length-1; j++) {
