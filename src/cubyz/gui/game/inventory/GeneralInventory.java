@@ -22,14 +22,14 @@ import static cubyz.client.ClientSettings.GUI_SCALE;
 
 public abstract class GeneralInventory extends MenuGUI {
 	protected InventorySlot inv [] = null;
-	
+
 	/** ItemStack carried by the mouse.*/
 	protected ItemStack carriedStack = new ItemStack();
 	protected InventorySlot carried = null;
 	private Label num;
-	
+
 	protected int width, height;
-	
+
 	public GeneralInventory(Resource id) {
 		super(id);
 	}
@@ -67,15 +67,15 @@ public abstract class GeneralInventory extends MenuGUI {
 		}
 
 		Graphics.setColor(0xDFDFDF);
-		Graphics.fillRect(Window.getWidth()/2f-width/2f, Window.getHeight()-height, width, height);
+		Graphics.fillRect(Window.getWidth()/2f-width/2f, Window.getHeight()/2f-height/2f, width, height);
 		Graphics.setColor(0xFFFFFF);
 		for(int i = 0; i < inv.length; i++) {
-			inv[i].render();
+			inv[i].renderInContainer(Window.getWidth()/2-width/2, Window.getHeight()/2-height/2, width, height);
 		}
 		Graphics.setColor(0x000000);
 		// Check if the mouse takes up a new ItemStack/sets one down.
 		mouseAction();
-		
+
 		// Draw the stack carried by the mouse:
 		Item item = carriedStack.getItem();
 		if (item != null) {
@@ -88,7 +88,7 @@ public abstract class GeneralInventory extends MenuGUI {
 		// Draw tooltips, when the nothing is carried.
 		if (item == null) {
 			for(int i = 0; i < inv.length; i++) { // tooltips
-				inv[i].drawTooltip(Window.getWidth() / 2, Window.getHeight());
+				inv[i].drawTooltip(Window.getWidth() / 2, Window.getHeight()/2+height/2);
 			}
 		}
 	}
@@ -97,8 +97,8 @@ public abstract class GeneralInventory extends MenuGUI {
 	public boolean doesPauseGame() {
 		return false;
 	}
-	
+
 	protected abstract void positionSlots();
-	
+
 	protected abstract void mouseAction();
 }
