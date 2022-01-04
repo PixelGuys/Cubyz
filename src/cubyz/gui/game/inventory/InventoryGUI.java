@@ -72,7 +72,7 @@ public class InventoryGUI extends GeneralInventory {
 		inv = new InventorySlot[playerInventorySize + 5];
 		Inventory inventory = Cubyz.player.getInventory();
 		for(int i = 0; i < 8; i++) {
-			inv[i] = new InventorySlot(inventory.getStack(i), (i - 4) * 20 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_BOTTOM);
+			inv[i] = new InventorySlot(inventory.getStack(i), (i - 4) * 20 * GUI_SCALE, 30 * GUI_SCALE, Component.ALIGN_BOTTOM);
 		}
 		for(int i = 0; i < 8; i++) {
 			inv[i + 8] = new InventorySlot(inventory.getStack(i + 8), (i - 4) * 20 * GUI_SCALE, 80 * GUI_SCALE, Component.ALIGN_BOTTOM);
