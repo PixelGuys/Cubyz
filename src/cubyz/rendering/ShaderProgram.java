@@ -57,8 +57,10 @@ public class ShaderProgram {
 				Field f = uniformLocations.getDeclaredField("loc_"+uniformName.replace('.', '_'));
 				f.setInt(null, glGetUniformLocation(programId, uniformName));
 			} catch(Exception e) {
-				Logger.warning("Could not find variable \"loc_"+uniformName.replace('.', '_')+"\" in class \""+uniformLocations.getName()+"\" to store uniform location.");
-				Logger.warning(e);
+				if(!uniformName.startsWith("gl_")) { // No warning for uniforms assigned by opengl.
+					Logger.warning("Could not find variable \"loc_"+uniformName.replace('.', '_')+"\" in class \""+uniformLocations.getName()+"\" to store uniform location.");
+					Logger.warning(e);
+				}
 			}
 		}
 	}
