@@ -37,7 +37,7 @@ public class CreativeGUI extends GeneralInventory {
 	@Override
 	protected void mouseAction() {
 		for(int i = 0; i < inv.length; i++) {
-			if (inv[i].grabWithMouse(carriedStack, Window.getWidth()/2, Window.getHeight())) {
+			if (inv[i].grabWithMouse(carriedStack, Window.getWidth()/2, Window.getHeight()/2+height/2)) {
 				if (i >= 32) {
 					Item[] items = Cubyz.world.registries.itemRegistry.registered(new Item[0]);
 					inv[i].reference = new ItemStack(items[i - 32], 64);
@@ -50,7 +50,7 @@ public class CreativeGUI extends GeneralInventory {
 	public void setInventory(Inventory in) {
 		Inventory inventory = Cubyz.player.getInventory();
 		for(int i = 0; i < 8; i++) {
-			inv[i] = new InventorySlot(inventory.getStack(i), (i - 4) * 20 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_BOTTOM);
+			inv[i] = new InventorySlot(inventory.getStack(i), (i - 4) * 20 * GUI_SCALE, 30 * GUI_SCALE, Component.ALIGN_BOTTOM);
 		}
 		for(int i = 0; i < 8; i++) {
 			inv[i + 8] = new InventorySlot(inventory.getStack(i + 8), (i - 4) * 20 * GUI_SCALE, 80 * GUI_SCALE, Component.ALIGN_BOTTOM);

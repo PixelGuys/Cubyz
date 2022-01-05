@@ -72,7 +72,7 @@ public class InventoryGUI extends GeneralInventory {
 		inv = new InventorySlot[playerInventorySize + 5];
 		Inventory inventory = Cubyz.player.getInventory();
 		for(int i = 0; i < 8; i++) {
-			inv[i] = new InventorySlot(inventory.getStack(i), (i - 4) * 20 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_BOTTOM);
+			inv[i] = new InventorySlot(inventory.getStack(i), (i - 4) * 20 * GUI_SCALE, 30 * GUI_SCALE, Component.ALIGN_BOTTOM);
 		}
 		for(int i = 0; i < 8; i++) {
 			inv[i + 8] = new InventorySlot(inventory.getStack(i + 8), (i - 4) * 20 * GUI_SCALE, 80 * GUI_SCALE, Component.ALIGN_BOTTOM);
@@ -97,7 +97,7 @@ public class InventoryGUI extends GeneralInventory {
 	protected void mouseAction() {
 		boolean notNull = inv[playerInventorySize+4].reference.getItem() != null;
 		for(int i = 0; i < inv.length; i++) {
-			if (inv[i].grabWithMouse(carriedStack, Window.getWidth()/2, Window.getHeight())) {
+			if (inv[i].grabWithMouse(carriedStack, Window.getWidth()/2, Window.getHeight()/2+height/2)) {
 				if (i == playerInventorySize+4 && notNull) {
 					// Remove items in the crafting grid.
 					for(int j = playerInventorySize; j < playerInventorySize+4; j++) {
