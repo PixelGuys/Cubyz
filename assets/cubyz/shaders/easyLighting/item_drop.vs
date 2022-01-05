@@ -29,9 +29,9 @@ void main() {
 	size.z = voxelModels[voxelModelIndex++];
 	voxelModel = voxelModelIndex;
 	
-	startPosition.x = size.x*0.999*x;
-	startPosition.y = size.y*0.999*y;
-	startPosition.z = size.z*0.999*z;
+	startPosition.x = float(size.x)*0.999*x;
+	startPosition.y = float(size.y)*0.999*y;
+	startPosition.z = float(size.z)*0.999*z;
 	
 	vec4 worldSpace = modelMatrix*vec4(vec3(x*size.x, y*size.y, z*size.z)*sizeScale + sizeScale/2, 1);
 	direction = (transpose(mat3(modelMatrix))*worldSpace.xyz).xyz;
