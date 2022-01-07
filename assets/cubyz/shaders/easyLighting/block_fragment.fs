@@ -4,7 +4,6 @@ in vec2 outTexCoord;
 flat in float textureIndex;
 in vec3 outColor;
 in vec3 mvVertexPos;
-flat in int selectionIndex;
 
 layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec4 position;
@@ -16,16 +15,13 @@ struct Fog {
 };
 
 uniform sampler2DArray texture_sampler;
-uniform sampler2D break_sampler;
 uniform Fog fog;
 uniform int selectedIndex;
 
 vec4 ambientC;
 
 void setupColors(vec3 textCoord) {
-	vec4 bg = texture(texture_sampler, textCoord);
-	ambientC = texture(break_sampler, fract(textCoord.xy))*float(selectedIndex == selectionIndex);
-	ambientC = vec4(mix(vec3(bg), vec3(ambientC), ambientC.a), bg.a);
+	ambientC = texture(texture_sampler, textCoord);
 }
 
 vec4 calcFog(vec3 pos, vec4 color, Fog fog) {

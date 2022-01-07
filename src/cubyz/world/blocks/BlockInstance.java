@@ -12,6 +12,7 @@ import cubyz.world.World;
 public class BlockInstance {
 
 	private int block;
+	/** world coordinates */
 	public final int x, y, z;
 	private World world;
 	private boolean[] neighbors;

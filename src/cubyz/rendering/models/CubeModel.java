@@ -13,7 +13,7 @@ public class CubeModel extends Model {
 	}
 
 	@Override
-	public void addToChunkMesh(int x, int y, int z, int[] textureIndices, int[] light, boolean[] neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
+	public void addToChunkMesh(int x, int y, int z, int[] textureIndices, int[] light, boolean[] neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
 		// Being a cube it is possible to optimize neighbor data:
 		int indexOffset = vertices.size/3;
 		int size = positions.length/3;
@@ -39,7 +39,6 @@ public class CubeModel extends Model {
 				normals.add(nz);
 				
 				lighting.add(Model.interpolateLight(positions[i3], positions[i3+1], positions[i3+2], super.normals[i3], super.normals[i3+1], super.normals[i3+2], light));
-				renderIndices.add(renderIndex);
 				
 				texture.add(textCoords[i2]);
 				texture.add(textCoords[i2+1]);
@@ -58,7 +57,7 @@ public class CubeModel extends Model {
 	}
 
 	@Override
-	public void addToChunkMeshSimpleRotation(int x, int y, int z, int[] directionMap, boolean[] directionInversion, int[] textureIndices, int[] light, boolean[] neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
+	public void addToChunkMeshSimpleRotation(int x, int y, int z, int[] directionMap, boolean[] directionInversion, int[] textureIndices, int[] light, boolean[] neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
 		// Being a cube it is possible to optimize neighbor data:
 		int indexOffset = vertices.size/3;
 		int size = positions.length/3;
@@ -88,7 +87,6 @@ public class CubeModel extends Model {
 												conditionalInversion(positions[i3+directionMap[1]], directionInversion[1]),
 												conditionalInversion(positions[i3+directionMap[2]], directionInversion[2]),
 												nx, ny, nz, light));
-				renderIndices.add(renderIndex);
 				
 				texture.add(textCoords[i2]);
 				texture.add(textCoords[i2+1]);

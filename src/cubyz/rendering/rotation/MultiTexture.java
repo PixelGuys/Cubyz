@@ -119,13 +119,12 @@ public class MultiTexture implements RotationMode, DataOrientedRegistry {
 	}
 	
 	@Override
-	public int generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
+	public void generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
 		long seed = bi.getX()*4835871844237932163L ^ bi.getY()*80268680099511559L ^ bi.getZ()*2595762606481225891L ^ bi.getBlock();
 		rand.setSeed(seed);
 		int randomIndex = rand.nextInt(textureIndicesVariants[bi.getBlock() & Blocks.TYPE_MASK].length);
 		int[] indices = textureIndicesVariants[bi.getBlock() & Blocks.TYPE_MASK][randomIndex % textureIndicesVariants[bi.getBlock() & Blocks.TYPE_MASK].length];
-		BlockMeshes.mesh(bi.getBlock() & Blocks.TYPE_MASK).model.addToChunkMesh(bi.x & Chunk.chunkMask, bi.y & Chunk.chunkMask, bi.z & Chunk.chunkMask, indices, bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture, renderIndices, renderIndex);
-		return renderIndex + 1;
+		BlockMeshes.mesh(bi.getBlock() & Blocks.TYPE_MASK).model.addToChunkMesh(bi.x & Chunk.chunkMask, bi.y & Chunk.chunkMask, bi.z & Chunk.chunkMask, indices, bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture);
 	}
 }
 

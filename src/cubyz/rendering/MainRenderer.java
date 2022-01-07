@@ -1,9 +1,5 @@
 package cubyz.rendering;
 
-import static org.lwjgl.opengl.GL11.GL_TEXTURE_2D;
-import static org.lwjgl.opengl.GL11.glBindTexture;
-import static org.lwjgl.opengl.GL13.GL_TEXTURE0;
-import static org.lwjgl.opengl.GL13.glActiveTexture;
 import static org.lwjgl.opengl.GL43.*;
 
 import org.joml.FrustumIntersection;
@@ -109,6 +105,7 @@ public class MainRenderer {
 		NormalChunkMesh.init(shaders);
 		EntityRenderer.init(shaders);
 		BlockDropRenderer.init(shaders);
+		BlockBreakingRenderer.init(shaders);
 		
 		System.gc();
 	}
@@ -273,8 +270,6 @@ public class MainRenderer {
 		
 		Camera.setViewMatrix(transformation.getViewMatrix(new Vector3f(), Camera.getRotation()));
 		
-		float breakAnim = 0;
-		
 		
 		// Uses FrustumCulling on the chunks.
 		prjViewMatrix.set(Window.getProjectionMatrix());
@@ -300,16 +295,6 @@ public class MainRenderer {
 			BlockInstance selected = null;
 			if (Cubyz.msd.getSelected() instanceof BlockInstance) {
 				selected = (BlockInstance)Cubyz.msd.getSelected();
-				breakAnim = selected.getBreakingAnim();
-			}
-			
-			if (breakAnim > 0f && breakAnim < 1f) {
-				int breakStep = (int)(breakAnim*(GameLauncher.logic.breakAnimations.length - 1)) + 1;
-				glActiveTexture(GL_TEXTURE2);
-				glBindTexture(GL_TEXTURE_2D, GameLauncher.logic.breakAnimations[breakStep].getId());
-			} else {
-				glActiveTexture(GL_TEXTURE2);
-				glBindTexture(GL_TEXTURE_2D, GameLauncher.logic.breakAnimations[0].getId());
 			}
 			
 			double x0 = playerPosition.x;
@@ -330,15 +315,14 @@ public class MainRenderer {
 				if (mesh instanceof NormalChunkMesh) {
 					visibleChunks.add((NormalChunkMesh)mesh);
 					
-					if (selected != null && selected.source == mesh.getChunk()) {
-						NormalChunkMesh.shader.setUniform(NormalChunkMesh.loc_selectedIndex, selected.renderIndex);
-					} else {
-						NormalChunkMesh.shader.setUniform(NormalChunkMesh.loc_selectedIndex, -1);
-					}
 					mesh.render(playerPosition);
 				} else if (mesh instanceof ReducedChunkMesh) {
 					visibleReduced.add((ReducedChunkMesh)mesh);
 				}
+			}
+			if(selected != null && !Blocks.transparent(selected.getBlock())) {
+				BlockBreakingRenderer.render(selected, playerPosition);
+				Meshes.blockTextureArray.bind();
 			}
 			
 			// Render the far away ReducedChunks:
@@ -375,24 +359,6 @@ public class MainRenderer {
 			
 			// Render transparent chunk meshes:
 			NormalChunkMesh.bindTransparentShader(ambientLight, directionalLight.getDirection(), time);
-			
-			// Activate first texture bank
-			glActiveTexture(GL_TEXTURE0);
-			// Bind the texture
-			Meshes.blockTextureArray.bind();
-			if (Cubyz.msd.getSelected() instanceof BlockInstance) {
-				selected = (BlockInstance)Cubyz.msd.getSelected();
-				breakAnim = selected.getBreakingAnim();
-			}
-			
-			if (breakAnim > 0f && breakAnim < 1f) {
-				int breakStep = (int)(breakAnim*(GameLauncher.logic.breakAnimations.length - 1)) + 1;
-				glActiveTexture(GL_TEXTURE2);
-				glBindTexture(GL_TEXTURE_2D, GameLauncher.logic.breakAnimations[breakStep].getId());
-			} else {
-				glActiveTexture(GL_TEXTURE2);
-				glBindTexture(GL_TEXTURE_2D, GameLauncher.logic.breakAnimations[0].getId());
-			}
 
 			buffers.bindTextures();
 
@@ -402,12 +368,6 @@ public class MainRenderer {
 
 			NormalChunkMesh[] meshes = sortChunks(visibleChunks.toArray(), x0/Chunk.chunkSize - 0.5f, y0/Chunk.chunkSize - 0.5f, z0/Chunk.chunkSize - 0.5f);
 			for (NormalChunkMesh mesh : meshes) {
-				
-				if (selected != null && selected.source == mesh.getChunk()) {
-					NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_selectedIndex, selected.renderIndex);
-				} else {
-					NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_selectedIndex, -1);
-				}
 				NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_drawFrontFace, false);
 				glCullFace(GL_FRONT);
 				mesh.renderTransparent(playerPosition);
@@ -415,6 +375,11 @@ public class MainRenderer {
 				NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_drawFrontFace, true);
 				glCullFace(GL_BACK);
 				mesh.renderTransparent(playerPosition);
+			}
+
+			if(selected != null && Blocks.transparent(selected.getBlock())) {
+				BlockBreakingRenderer.render(selected, playerPosition);
+				Meshes.blockTextureArray.bind();
 			}
 
 			fogShader.bind();

@@ -135,11 +135,11 @@ public class StackableRotation implements RotationMode {
 	}
 	
 	@Override
-	public int generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
+	public void generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
 		Model model = BlockMeshes.mesh(bi.getBlock() & Blocks.TYPE_MASK).model;
 		if (!(model instanceof CubeModel)) {
 			Logger.error("Unsupported model "+model.getRegistryID()+" in block "+Blocks.id(bi.getBlock())+" for stackable block type. Skipping block.");
-			return renderIndex;
+			return;
 		}
 		int x = bi.getX() & Chunk.chunkMask;
 		int y = bi.getY() & Chunk.chunkMask;
@@ -176,7 +176,6 @@ public class StackableRotation implements RotationMode {
 				normals.add(nz);
 				
 				lighting.add(Model.interpolateLight(model.positions[i3], ny != -1 ? model.positions[i3+1]*factor : model.positions[i3+1], model.positions[i3+2], model.normals[i3], model.normals[i3+1], model.normals[i3+2], light));
-				renderIndices.add(renderIndex);
 
 				texture.add(model.textCoords[i2]);
 				if (ny == 0)
@@ -194,6 +193,5 @@ public class StackableRotation implements RotationMode {
 				faces.add(indexesAdded.indexOf(model.indices[i]) + indexOffset, indexesAdded.indexOf(model.indices[i+1]) + indexOffset, indexesAdded.indexOf(model.indices[i+2]) + indexOffset);
 			}
 		}
-		return renderIndex + 1;
 	}
 }

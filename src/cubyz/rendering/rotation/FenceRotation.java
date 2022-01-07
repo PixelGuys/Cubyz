@@ -169,7 +169,7 @@ public class FenceRotation implements RotationMode {
 	}
 	
 	@Override
-	public int generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, IntFastList renderIndices, int renderIndex) {
+	public void generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
 		Model model = BlockMeshes.mesh(bi.getBlock() & Blocks.TYPE_MASK).model;
 		int x = bi.getX() & Chunk.chunkMask;
 		int y = bi.getY() & Chunk.chunkMask;
@@ -199,7 +199,6 @@ public class FenceRotation implements RotationMode {
 			vertices.add(newZ);
 			
 			lighting.add(Model.interpolateLight(model.positions[i], model.positions[i+1], model.positions[i+2], model.normals[i], model.normals[i+1], model.normals[i+2], light));
-			renderIndices.add(renderIndex);
 		}
 		
 		for(int i = 0; i < model.indices.length; i++) {
@@ -214,6 +213,5 @@ public class FenceRotation implements RotationMode {
 		}
 		
 		normals.add(model.normals);
-		return renderIndex + 1;
 	}
 }
