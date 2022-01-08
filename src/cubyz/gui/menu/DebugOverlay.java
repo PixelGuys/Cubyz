@@ -22,8 +22,13 @@ public class DebugOverlay extends MenuGUI {
 
 	String javaVersion = System.getProperty("java.version");
 	
-	int[] lastFps = new int[50];
-	long lastFpsCount = System.currentTimeMillis();
+	private static float[] lastFrameTime = new float[2048];
+	private static int index = 0;
+	
+	public static void addFrameTime(float deltaTime) {
+		lastFrameTime[index] = deltaTime;
+		index = (index + 1)%lastFrameTime.length;
+	}
 	
 	@Override
 	public void render() {
@@ -57,25 +62,13 @@ public class DebugOverlay extends MenuGUI {
 			}
 			
 			int h = Window.getHeight();
-			Graphics.drawText(0 * GUI_SCALE, h - 10 * GUI_SCALE, "00 fps \\_");
-			Graphics.drawText(0 * GUI_SCALE, h - 25 * GUI_SCALE, "30 fps \\_");
-			Graphics.drawText(0 * GUI_SCALE, h - 40 * GUI_SCALE, "60 fps \\_");
-			for(int i = 0; i < lastFps.length; i++) {
-				if (lastFps[i] != 0) {
-					Graphics.fillRect(i*4 * GUI_SCALE, h - lastFps[i] * GUI_SCALE / 2, 4 * GUI_SCALE, lastFps[i] * GUI_SCALE / 2);
-				}
-			}
-			
-			if (System.currentTimeMillis() > lastFpsCount + 1000) {
-				lastFpsCount = System.currentTimeMillis();
-				for(int i = 0; i < lastFps.length; i++) { // shift the array to left by 1
-					int val = lastFps[i];
-					if (i - 1 >= 0) {
-						lastFps[i - 1] = val;
-					}
-				}
-				
-				lastFps[lastFps.length - 1] = GameLogic.getFPS(); // set new fps value
+			Graphics.drawText(0 * GUI_SCALE, h - 10 * GUI_SCALE, "00 ms \\_");
+			Graphics.drawText(0 * GUI_SCALE, h - 26 * GUI_SCALE, "16 ms \\_");
+			Graphics.drawText(0 * GUI_SCALE, h - 42 * GUI_SCALE, "32 ms \\_");
+			for(int i = 1; i < lastFrameTime.length; i++) {
+				float deltaTime = lastFrameTime[(i - 1 + index)%lastFrameTime.length];
+				float deltaTimeNext = lastFrameTime[(i + index)%lastFrameTime.length];
+				Graphics.drawLine((i - 1)*GUI_SCALE/8, h - 10 - deltaTime*GUI_SCALE, i*GUI_SCALE/8, h - 10 - deltaTimeNext*GUI_SCALE);
 			}
 		}
 	}

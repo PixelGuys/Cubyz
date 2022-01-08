@@ -24,6 +24,7 @@ import org.lwjgl.system.MemoryStack;
 import cubyz.utils.Logger;
 import cubyz.client.Cubyz;
 import cubyz.gui.input.Keyboard;
+import cubyz.gui.menu.DebugOverlay;
 
 public abstract class Window {
 
@@ -282,11 +283,16 @@ public abstract class Window {
 		glfwShowWindow(handle);
 	}
 	
+	private static long lastTime = System.nanoTime();
 	public static void render() {
 		glfwMakeContextCurrent(handle);
 		glfwSwapBuffers(handle);
 		glfwPollEvents();
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+		long newTime = System.nanoTime();
+		float deltaTime = (newTime - lastTime)/1e6f;
+		DebugOverlay.addFrameTime(deltaTime);
+		lastTime = newTime;
 	}
 	
 }
