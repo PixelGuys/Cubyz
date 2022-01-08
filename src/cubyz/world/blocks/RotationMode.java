@@ -64,9 +64,9 @@ public interface RotationMode extends RegistryElement {
 	/**
 	 * A RotationMode may even alter the blocks transparency. Here is where it's done.
 	 * @param data The blocks data
-	 * @param relativeDir the relative direction of the other block. Given as difference of the indices in the Chunk array. 100% unintuitive to use, maybe I'll add an automatic transformation later.
+	 * @param neighbor the inverted(!) neighbor index(see Neighbors.java).
 	 */
-	public boolean checkTransparency(int block, int relativeDir);
+	public boolean checkTransparency(int block, int neighbor);
 	
 	/**
 	 * @return standard data for natural generation.

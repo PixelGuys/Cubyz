@@ -23,7 +23,6 @@ public class MapGenV1 implements MapGenerator {
 
 	@Override
 	public Resource getRegistryID() {
-		// TODO Auto-generated method stub
 		return new Resource("cubyz:mapgen_v1");
 	}
 	

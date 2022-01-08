@@ -24,7 +24,6 @@ public class FlatLand implements ClimateMapGenerator {
 
 	@Override
 	public Resource getRegistryID() {
-		// TODO Auto-generated method stub
 		return new Resource("cubyz:flatland");
 	}
 

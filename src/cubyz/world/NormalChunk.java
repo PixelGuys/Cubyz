@@ -148,20 +148,19 @@ public class NormalChunk extends Chunk {
 			updatingLiquids.add(getIndex(x, y, z));
 		}
 		if (generated) {
-			int[] indices = new int[6];
-			int[] neighbors = getNeighbors(x, y , z, indices);
+			int[] neighbors = getNeighbors(x, y , z);
 			BlockInstance[] visibleNeighbors = getVisibleNeighbors(x + wx, y + wy, z + wz);
-			for(int k = 0; k < 6; k++) {
-				if (visibleNeighbors[k] != null) visibleNeighbors[k].updateNeighbor(k ^ 1, blocksBlockNot(b, neighbors[k], (getIndex(x, y, z) - indices[k])));
+			for(int k = 0; k < Neighbors.NEIGHBORS; k++) {
+				if (visibleNeighbors[k] != null) visibleNeighbors[k].updateNeighbor(k ^ 1, blocksBlockNot(b, neighbors[k], k));
 			}
 			
-			for (int i = 0; i < neighbors.length; i++) {
-				if (blocksBlockNot(neighbors[i], b, (getIndex(x, y, z) - indices[i]))) {
+			for (int i = 0; i < Neighbors.NEIGHBORS; i++) {
+				if (blocksBlockNot(neighbors[i], b, i)) {
 					revealBlock(x & chunkMask, y & chunkMask, z & chunkMask);
 					break;
 				}
 			}
-			for (int i = 0; i < neighbors.length; i++) {
+			for (int i = 0; i < Neighbors.NEIGHBORS; i++) {
 				if (neighbors[i] != 0) {
 					int x2 = x+Neighbors.REL_X[i];
 					int y2 = y+Neighbors.REL_Y[i];
@@ -182,11 +181,10 @@ public class NormalChunk extends Chunk {
 						}
 					}
 					if (ch.contains(x2 & chunkMask, y2 & chunkMask, z2 & chunkMask)) {
-						int[] indices1 = new int[6];
-						int[] neighbors1 = ch.getNeighbors(x2 & chunkMask, y2 & chunkMask, z2 & chunkMask, indices1);
+						int[] neighbors1 = ch.getNeighbors(x2 & chunkMask, y2 & chunkMask, z2 & chunkMask);
 						boolean vis = true;
-						for (int j = 0; j < neighbors1.length; j++) {
-							if (blocksBlockNot(neighbors1[j], neighbors[i], indices[i] - indices1[j])) {
+						for (int j = 0; j < Neighbors.NEIGHBORS; j++) {
+							if (blocksBlockNot(neighbors1[j], neighbors[i], j)) {
 								vis = false;
 								break;
 							}
@@ -218,8 +216,8 @@ public class NormalChunk extends Chunk {
 	 * @param direction
 	 * @return
 	 */
-	public boolean blocksBlockNot(int blocker, int blocked, int direction) {
-		return blocker == 0 || Blocks.mode(blocker).checkTransparency(blocker, direction) || (blocker != blocked && Blocks.viewThrough(blocker));
+	public boolean blocksBlockNot(int blocker, int blocked, int neighbor) {
+		return blocker == 0 || Blocks.mode(blocker).checkTransparency(blocker, neighbor) || (blocker != blocked && Blocks.viewThrough(blocker));
 	}
 	
 	public void hideBlock(int x, int y, int z) {
@@ -246,10 +244,9 @@ public class NormalChunk extends Chunk {
 		int index = getIndex(x, y, z);
 		int b = blocks[index];
 		BlockInstance bi = new BlockInstance(b, new Vector3i(x + wx, y + wy, z + wz), this, world);
-		int[] indices = new int[6];
-		int[] neighbors = getNeighbors(x, y , z, indices);
+		int[] neighbors = getNeighbors(x, y , z);
 		for(int k = 0; k < 6; k++) {
-			bi.updateNeighbor(k, blocksBlockNot(neighbors[k], b, index - indices[k]));
+			bi.updateNeighbor(k, blocksBlockNot(neighbors[k], b, k));
 		}
 		visibles.add(bi);
 		inst[index] = bi;
@@ -289,7 +286,7 @@ public class NormalChunk extends Chunk {
 		}
 		setBlock(x, y, z, 0);
 		BlockInstance[] visibleNeighbors = getVisibleNeighbors(x, y, z);
-		for(int k = 0; k < 6; k++) {
+		for(int k = 0; k < Neighbors.NEIGHBORS; k++) {
 			if (visibleNeighbors[k] != null) visibleNeighbors[k].updateNeighbor(k ^ 1, true);
 		}
 		if (startedloading)
@@ -357,11 +354,11 @@ public class NormalChunk extends Chunk {
 	}
 	
 	public int[] getNeighbors(int x, int y, int z) {
-		int[] neighbors = new int[6];
+		int[] neighbors = new int[Neighbors.NEIGHBORS];
 		x &= chunkMask;
 		y &= chunkMask;
 		z &= chunkMask;
-		for(int i = 0; i < 6; i++) {
+		for(int i = 0; i < Neighbors.NEIGHBORS; i++) {
 			int xi = x+Neighbors.REL_X[i];
 			int yi = y+Neighbors.REL_Y[i];
 			int zi = z+Neighbors.REL_Z[i];
@@ -371,33 +368,6 @@ public class NormalChunk extends Chunk {
 				NormalChunk ch = world.getChunk(xi + wx, yi + wy, zi + wz);
 				if (ch != null) {
 					neighbors[i] = ch.getBlock(xi & chunkMask, yi & chunkMask, zi & chunkMask);
-				} else {
-					neighbors[i] = 1; // Some solid replacement, in case the chunk isn't loaded. TODO: Properly choose a solid block.
-				}
-			}
-		}
-		return neighbors;
-	}
-	
-	public int[] getNeighbors(int x, int y, int z, int[] indices) {
-		int[] neighbors = new int[6];
-		x &= chunkMask;
-		y &= chunkMask;
-		z &= chunkMask;
-		for(int i = 0; i < 6; i++) {
-			int xi = x+Neighbors.REL_X[i];
-			int yi = y+Neighbors.REL_Y[i];
-			int zi = z+Neighbors.REL_Z[i];
-			if (xi == (xi & chunkMask) && yi == (yi & chunkMask) && zi == (zi & chunkMask)) { // Simple double-bound test for coordinates.
-				int index = getIndex(xi, yi, zi);
-				neighbors[i] = getBlock(xi, yi, zi);
-				indices[i] = index;
-			} else {
-				NormalChunk ch = world.getChunk(xi + wx, yi + wy, zi + wz);
-				if (ch != null && ch.startedloading) {
-					int index = getIndex(xi & chunkMask, yi & chunkMask, zi & chunkMask);
-					neighbors[i] = ch.getBlock(xi & chunkMask, yi & chunkMask, zi & chunkMask);
-					indices[i] = index;
 				} else {
 					neighbors[i] = 1; // Some solid replacement, in case the chunk isn't loaded. TODO: Properly choose a solid block.
 				}

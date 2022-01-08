@@ -71,10 +71,9 @@ public class VisibleChunk extends NormalChunk {
 					int index = (x << chunkShift) | (y << chunkShift2) | z;
 					int b = blocks[index];
 					if (b != 0) {
-						int[] indices = new int[6];
-						int[] neighbors = getNeighbors(x, y , z, indices);
-						for (int i = 0; i < neighbors.length; i++) {
-							if (blocksBlockNot(neighbors[i], b, index - indices[i])
+						int[] neighbors = getNeighbors(x, y , z);
+						for (int i = 0; i < Neighbors.NEIGHBORS; i++) {
+							if (blocksBlockNot(neighbors[i], b, i)
 														&& (y != 0 || i != Neighbors.DIR_DOWN || chy0)
 														&& (y != chunkMask || i != Neighbors.DIR_UP || chy1)
 														&& (x != 0 || i != Neighbors.DIR_NEG_X || chx0)
