@@ -96,7 +96,6 @@ public abstract class JsonParser {
 				array.add(element);
 			}
 		}
-		index[0]++;
 		return jsonArray;
 	}
 
@@ -111,6 +110,7 @@ public abstract class JsonParser {
 			if (chars[index[0]] == '\"') { // Beginning of a new expression.
 				index[0]++;
 				String key = parseString(chars, index);
+				index[0]++;
 				// Parse the ":":
 				skipWhitespaces(chars, index);
 				// Complain about other characters if present:
@@ -126,7 +126,6 @@ public abstract class JsonParser {
 				printError(index[0], chars, "Unexpected character while parsing object parameter: "+chars[index[0]]+". Expected \" or \'}\'.");
 			}
 		}
-		index[0]++;
 		return object;
 	}
 
@@ -231,7 +230,6 @@ public abstract class JsonParser {
 		StringBuilder builder = new StringBuilder();
 		for(; index[0] < chars.length; index[0]++) {
 			if (chars[index[0]] == '\"') {
-				index[0]++;
 				return builder.toString();
 			}
 			if (chars[index[0]] == '\\') {

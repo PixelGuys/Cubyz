@@ -120,7 +120,10 @@ public class JsonArray implements JsonElement {
 		out.append('[');
 		for(int i = 0; i < array.size(); i++) {
 			out.append(array.get(i).toString());
-			out.append(',');//TODO: Consider removing it.
+			out.append(',');
+		}
+		if(!array.isEmpty()) { // Remove the last comma.
+			out.delete(out.length() - 1, out.length());
 		}
 		out.append(']');
 		return out.toString();

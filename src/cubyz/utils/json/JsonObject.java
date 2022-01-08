@@ -3,7 +3,6 @@ package cubyz.utils.json;
 import cubyz.utils.algorithms.StringOperation;
 
 import java.io.PrintWriter;
-import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map.Entry;
 
@@ -149,7 +148,10 @@ public class JsonObject implements JsonElement {
 			out.append(StringOperation.escape(entries.getKey()));
 			out.append("\":");
 			out.append(entries.getValue().toString());
-			out.append(',');//TODO: Consider removing it.
+			out.append(',');
+		}
+		if(!map.isEmpty()) { // Remove the last comma.
+			out.delete(out.length() - 1, out.length());
 		}
 		out.append('}');
 		return out.toString();
