@@ -14,8 +14,8 @@ import cubyz.world.World;
 import cubyz.world.entity.Entity;
 
 /**
- * Each block gets 8 bit of additional storage(apart from the reference to the block type).<br>
- * These 8 bits are accessed and interpreted by the `RotationMode`.<br>
+ * Each block gets 16 bit of additional storage(apart from the reference to the block type).<br>
+ * These 16 bits are accessed and interpreted by the `RotationMode`.<br>
  * With the `RotationMode` interface there is almost no limit to what can be done with those 8 bit.
  */
 

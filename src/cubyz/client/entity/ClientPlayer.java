@@ -68,7 +68,7 @@ public class ClientPlayer extends Player {
 						breakCooldown = 7;
 						Object bi = Cubyz.msd.getSelected();
 						if (bi != null && bi instanceof BlockInstance && Blocks.blockClass(((BlockInstance)bi).getBlock()) != BlockClass.UNBREAKABLE) {
-							Cubyz.world.removeBlock(((BlockInstance)bi).getX(), ((BlockInstance)bi).getY(), ((BlockInstance)bi).getZ());
+							Cubyz.world.removeBlock(((BlockInstance)bi).x, ((BlockInstance)bi).y, ((BlockInstance)bi).z);
 						}
 					}
 				}

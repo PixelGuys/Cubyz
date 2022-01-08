@@ -13,7 +13,7 @@ public class CubeModel extends Model {
 	}
 
 	@Override
-	public void addToChunkMesh(int x, int y, int z, int[] textureIndices, int[] light, boolean[] neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
+	public void addToChunkMesh(int x, int y, int z, int[] textureIndices, int[] light, byte neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
 		// Being a cube it is possible to optimize neighbor data:
 		int indexOffset = vertices.size/3;
 		int size = positions.length/3;
@@ -25,12 +25,12 @@ public class CubeModel extends Model {
 			float nx = super.normals[i3];
 			float ny = super.normals[i3+1];
 			float nz = super.normals[i3+2];
-			if (nx == -1 && neighbors[Neighbors.DIR_NEG_X] ||
-			   nx == 1 && neighbors[Neighbors.DIR_POS_X] ||
-			   nz == -1 && neighbors[Neighbors.DIR_NEG_Z] ||
-			   nz == 1 && neighbors[Neighbors.DIR_POS_Z] ||
-			   ny == -1 && neighbors[Neighbors.DIR_DOWN] ||
-			   ny == 1 && neighbors[Neighbors.DIR_UP]) {
+			if (nx == -1 && (neighbors & Neighbors.BIT_MASK[Neighbors.DIR_NEG_X]) != 0 ||
+			   nx == 1 && (neighbors & Neighbors.BIT_MASK[Neighbors.DIR_POS_X]) != 0 ||
+			   nz == -1 && (neighbors & Neighbors.BIT_MASK[Neighbors.DIR_NEG_Z]) != 0 ||
+			   nz == 1 && (neighbors & Neighbors.BIT_MASK[Neighbors.DIR_POS_Z]) != 0 ||
+			   ny == -1 && (neighbors & Neighbors.BIT_MASK[Neighbors.DIR_DOWN]) != 0 ||
+			   ny == 1 && (neighbors & Neighbors.BIT_MASK[Neighbors.DIR_UP]) != 0) {
 				vertices.add(positions[i3] + x);
 				vertices.add(positions[i3+1] + y);
 				vertices.add(positions[i3+2] + z);
@@ -57,7 +57,7 @@ public class CubeModel extends Model {
 	}
 
 	@Override
-	public void addToChunkMeshSimpleRotation(int x, int y, int z, int[] directionMap, boolean[] directionInversion, int[] textureIndices, int[] light, boolean[] neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
+	public void addToChunkMeshSimpleRotation(int x, int y, int z, int[] directionMap, boolean[] directionInversion, int[] textureIndices, int[] light, byte neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
 		// Being a cube it is possible to optimize neighbor data:
 		int indexOffset = vertices.size/3;
 		int size = positions.length/3;
@@ -69,12 +69,12 @@ public class CubeModel extends Model {
 			float nx = conditionalInversion(super.normals[i3+directionMap[0]]*0.5f + 0.5f, directionInversion[0])*2 - 1;
 			float ny = conditionalInversion(super.normals[i3+directionMap[1]]*0.5f + 0.5f, directionInversion[1])*2 - 1;
 			float nz = conditionalInversion(super.normals[i3+directionMap[2]]*0.5f + 0.5f, directionInversion[2])*2 - 1;
-			if (nx == -1 && neighbors[Neighbors.DIR_NEG_X] ||
-			   nx == 1 && neighbors[Neighbors.DIR_POS_X] ||
-			   nz == -1 && neighbors[Neighbors.DIR_NEG_Z] ||
-			   nz == 1 && neighbors[Neighbors.DIR_POS_Z] ||
-			   ny == -1 && neighbors[Neighbors.DIR_DOWN] ||
-			   ny == 1 && neighbors[Neighbors.DIR_UP]) {
+			if (nx == -1 && (neighbors & Neighbors.BIT_MASK[Neighbors.DIR_NEG_X]) != 0 ||
+			   nx == 1 && (neighbors & Neighbors.BIT_MASK[Neighbors.DIR_POS_X]) != 0 ||
+			   nz == -1 && (neighbors & Neighbors.BIT_MASK[Neighbors.DIR_NEG_Z]) != 0 ||
+			   nz == 1 && (neighbors & Neighbors.BIT_MASK[Neighbors.DIR_POS_Z]) != 0 ||
+			   ny == -1 && (neighbors & Neighbors.BIT_MASK[Neighbors.DIR_DOWN]) != 0 ||
+			   ny == 1 && (neighbors & Neighbors.BIT_MASK[Neighbors.DIR_UP]) != 0) {
 				vertices.add(conditionalInversion(positions[i3+directionMap[0]], directionInversion[0]) + x);
 				vertices.add(conditionalInversion(positions[i3+directionMap[1]], directionInversion[1]) + y);
 				vertices.add(conditionalInversion(positions[i3+directionMap[2]], directionInversion[2]) + z);

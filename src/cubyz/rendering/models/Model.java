@@ -94,7 +94,7 @@ public class Model implements RegistryElement {
 	 * @param renderIndices
 	 * @param renderIndex
 	 */
-	public void addToChunkMesh(int x, int y, int z, int[] textureIndices, int[] light, boolean[] neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
+	public void addToChunkMesh(int x, int y, int z, int[] textureIndices, int[] light, byte neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
 		int indexOffset = vertices.size/3;
 		for(int i = 0; i < positions.length; i += 3) {
 			vertices.add(positions[i] + x);
@@ -141,7 +141,7 @@ public class Model implements RegistryElement {
 	 * @param renderIndices
 	 * @param renderIndex
 	 */
-	public void addToChunkMeshSimpleRotation(int x, int y, int z, int[] directionMap, boolean[] directionInversion, int[] textureIndices, int[] light, boolean[] neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
+	public void addToChunkMeshSimpleRotation(int x, int y, int z, int[] directionMap, boolean[] directionInversion, int[] textureIndices, int[] light, byte neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
 		int indexOffset = vertices.size/3;
 		for(int i = 0; i < positions.length; i += 3) {
 			vertices.add(conditionalInversion(positions[i+directionMap[0]], directionInversion[0]) + x);
@@ -187,7 +187,7 @@ public class Model implements RegistryElement {
 	 * @param renderIndices
 	 * @param renderIndex
 	 */
-	public void addToChunkMeshRotation(float x, float y, float z, Matrix3f rotationMatrix, int[] textureIndices, int[] light, boolean[] neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
+	public void addToChunkMeshRotation(float x, float y, float z, Matrix3f rotationMatrix, int[] textureIndices, int[] light, byte neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
 		int indexOffset = vertices.size/3;
 		for(int i = 0; i < positions.length; i += 3) {
 			Vector3f pos = new Vector3f(positions[i], positions[i+1], positions[i+2]);

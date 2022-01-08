@@ -2,6 +2,7 @@ package cubyz.world.blocks;
 
 import org.joml.Vector3i;
 
+import cubyz.world.Neighbors;
 import cubyz.world.NormalChunk;
 import cubyz.world.World;
 
@@ -14,55 +15,38 @@ public class BlockInstance {
 	private int block;
 	/** world coordinates */
 	public final int x, y, z;
-	private World world;
-	private boolean[] neighbors;
+	private final World world;
+	private byte neighbors;
 	public final int[] light;
 	public final NormalChunk source;
-	public int renderIndex = 0;
+	public float breakAnim = 0f;
 	
-	public BlockInstance(int block, Vector3i position, NormalChunk source) {
+	public BlockInstance(int block, Vector3i position, NormalChunk source, World world) {
 		this.source = source;
 		this.block = block;
 		x = position.x;
 		y = position.y;
 		z = position.z;
 		light = new int[27];
-		neighbors = new boolean[6];
+		this.world = world;
 	}
 	
-	public boolean[] getNeighbors() {
+	public byte getNeighbors() {
 		return neighbors;
 	}
 	
 	public void updateNeighbor(int i, boolean value) {
-		if (neighbors[i] != value) {
-			neighbors[i] = value;
+		byte mask = Neighbors.BIT_MASK[i];
+		if(value) {
+			neighbors |= mask;
+		} else {
+			neighbors &= ~mask;
 		}
 		source.setUpdated();
 	}
 	
-	public World getWorld() {
-		return world;
-	}
-	
-	public void setWorld(World world) {
-		this.world = world;
-	}
-	
 	public Vector3i getPosition() {
 		return new Vector3i(x, y, z);
-	}
-	
-	public int getX() {
-		return x;
-	}
-	
-	public int getY() {
-		return y;
-	}
-	
-	public int getZ() {
-		return z;
 	}
 	
 	public int getBlock() {
@@ -78,15 +62,6 @@ public class BlockInstance {
 			world.getLight(chunk, x, y, z, light);
 		}
 		return light;
-	}
-
-	float breakAnim = 0f;
-	public void setBreakingAnimation(float f) { // 0 <= f < 1
-		breakAnim = f;
-	}
-	
-	public float getBreakingAnim() {
-		return breakAnim;
 	}
 	
 }

@@ -37,7 +37,7 @@ public class BlockBreakingRenderer {
 		shader.setUniform(loc_texture_sampler, 0);
 		shader.setUniform(loc_viewMatrix, Camera.getViewMatrix());
 		
-		float breakAnim = selected.getBreakingAnim();
+		float breakAnim = selected.breakAnim;
 		glActiveTexture(GL_TEXTURE0);
 		if (breakAnim > 0f && breakAnim < 1f) {
 			int breakStep = (int)(breakAnim*(GameLauncher.logic.breakAnimations.length - 1)) + 1;

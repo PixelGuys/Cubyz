@@ -245,13 +245,12 @@ public class NormalChunk extends Chunk {
 	public synchronized void revealBlock(int x, int y, int z) {
 		int index = getIndex(x, y, z);
 		int b = blocks[index];
-		BlockInstance bi = new BlockInstance(b, new Vector3i(x + wx, y + wy, z + wz), this);
+		BlockInstance bi = new BlockInstance(b, new Vector3i(x + wx, y + wy, z + wz), this, world);
 		int[] indices = new int[6];
 		int[] neighbors = getNeighbors(x, y , z, indices);
 		for(int k = 0; k < 6; k++) {
 			bi.updateNeighbor(k, blocksBlockNot(neighbors[k], b, index - indices[k]));
 		}
-		bi.setWorld(world);
 		visibles.add(bi);
 		inst[index] = bi;
 		/*if (world != null) {

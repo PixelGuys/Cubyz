@@ -171,9 +171,9 @@ public class FenceRotation implements RotationMode {
 	@Override
 	public void generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
 		Model model = BlockMeshes.mesh(bi.getBlock() & Blocks.TYPE_MASK).model;
-		int x = bi.getX() & Chunk.chunkMask;
-		int y = bi.getY() & Chunk.chunkMask;
-		int z = bi.getZ() & Chunk.chunkMask;
+		int x = bi.x & Chunk.chunkMask;
+		int y = bi.y & Chunk.chunkMask;
+		int z = bi.z & Chunk.chunkMask;
 		int[] textureIndices = BlockMeshes.textureIndices(bi.getBlock());
 		int blockData = bi.getBlock() >>> 16;
 		boolean negX = (blockData & (1 << Neighbors.DIR_NEG_X)) == 0;

@@ -123,20 +123,20 @@ public class Player extends Entity implements CommandSource {
 		if (bi == null || Blocks.blockClass(bi.getBlock()) == BlockClass.UNBREAKABLE)
 			return;
 		long deltaTime = System.currentTimeMillis() - timeStarted;
-		bi.setBreakingAnimation((float) deltaTime / (float) maxTime);
+		bi.breakAnim = (float) deltaTime / (float) maxTime;
 		if (deltaTime > maxTime) {
 			if (inv.getItem(slot) instanceof Tool) {
 				if (((Tool)inv.getItem(slot)).onUse()) {
 					inv.getStack(slot).clear();
 				}
 			}
-			world.removeBlock(bi.getX(), bi.getY(), bi.getZ());
+			world.removeBlock(bi.x, bi.y, bi.z);
 		}
 	}
 
 	public void resetBlockBreaking() {
 		if (toBreak != null) {
-			toBreak.setBreakingAnimation(0);
+			toBreak.breakAnim = 0;
 			toBreak = null;
 		}
 	}

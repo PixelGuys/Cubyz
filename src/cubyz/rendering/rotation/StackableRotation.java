@@ -141,10 +141,10 @@ public class StackableRotation implements RotationMode {
 			Logger.error("Unsupported model "+model.getRegistryID()+" in block "+Blocks.id(bi.getBlock())+" for stackable block type. Skipping block.");
 			return;
 		}
-		int x = bi.getX() & Chunk.chunkMask;
-		int y = bi.getY() & Chunk.chunkMask;
-		int z = bi.getZ() & Chunk.chunkMask;
-		boolean[] neighbors = bi.getNeighbors();
+		int x = bi.x & Chunk.chunkMask;
+		int y = bi.y & Chunk.chunkMask;
+		int z = bi.z & Chunk.chunkMask;
+		byte neighbors = bi.getNeighbors();
 		int[] light = bi.light;
 		int[] textureIndices = BlockMeshes.textureIndices(bi.getBlock());
 		
@@ -159,12 +159,12 @@ public class StackableRotation implements RotationMode {
 			float nx = model.normals[i3];
 			float ny = model.normals[i3+1];
 			float nz = model.normals[i3+2];
-			if (nx == -1 && neighbors[Neighbors.DIR_NEG_X] ||
-			   nx == 1 && neighbors[Neighbors.DIR_POS_X] ||
-			   nz == -1 && neighbors[Neighbors.DIR_NEG_Z] ||
-			   nz == 1 && neighbors[Neighbors.DIR_POS_Z] ||
-			   ny == -1 && (neighbors[Neighbors.DIR_DOWN] || factor == 1) ||
-			   ny == 1 && neighbors[Neighbors.DIR_UP]) {
+			if (nx == -1 && (neighbors & Neighbors.BIT_MASK[Neighbors.DIR_NEG_X]) != 0 ||
+			   nx == 1 && (neighbors & Neighbors.BIT_MASK[Neighbors.DIR_POS_X]) != 0 ||
+			   nz == -1 && (neighbors & Neighbors.BIT_MASK[Neighbors.DIR_NEG_Z]) != 0 ||
+			   nz == 1 && (neighbors & Neighbors.BIT_MASK[Neighbors.DIR_POS_Z]) != 0 ||
+			   ny == -1 && ((neighbors & Neighbors.BIT_MASK[Neighbors.DIR_DOWN]) != 0 || factor == 1) ||
+			   ny == 1 && (neighbors & Neighbors.BIT_MASK[Neighbors.DIR_UP]) != 0) {
 				vertices.add(model.positions[i3] + x);
 				if (ny != -1)
 					vertices.add(model.positions[i3+1]*factor + y);

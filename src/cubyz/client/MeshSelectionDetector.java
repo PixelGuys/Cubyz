@@ -70,7 +70,7 @@ public class MeshSelectionDetector {
 						break;
 					if (!Blocks.solid(bi.getBlock()))
 						continue;
-					min.set(new Vector3f(bi.getX(), bi.getY(), bi.getZ()));
+					min.set(new Vector3f(bi.x, bi.y, bi.z));
 					min.sub(pos);
 					max.set(min);
 					max.add(1, 1, 1); // scale, scale, scale
