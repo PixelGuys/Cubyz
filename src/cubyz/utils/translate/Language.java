@@ -2,6 +2,7 @@ package cubyz.utils.translate;
 
 import java.util.HashMap;
 
+import cubyz.api.CurrentWorldRegistries;
 import cubyz.utils.Logger;
 
 /**
@@ -32,6 +33,10 @@ public class Language {
 	public void translate(TextKey key) {
 		if (keyValues.containsKey(key.getTranslateKey())) {
 			key.translation = keyValues.get(key.getTranslateKey());
+			return;
+		}
+		if(CurrentWorldRegistries.oreLang != null && CurrentWorldRegistries.oreLang.keyValues.containsKey(key.getTranslateKey())) {
+			key.translation = CurrentWorldRegistries.oreLang.get(key.getTranslateKey());
 			return;
 		}
 		if (key.getTranslateKey().contains("."))
