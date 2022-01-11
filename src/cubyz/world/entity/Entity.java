@@ -41,7 +41,7 @@ public class Entity {
 	/**
 	 * Used as hitbox.
 	 */
-	public double width = 0.25, height = 1.8;
+	public double width = 0.35, height = 2.7;
 	
 	/**
 	 * @param type

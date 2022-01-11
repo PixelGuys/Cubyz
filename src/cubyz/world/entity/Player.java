@@ -18,7 +18,7 @@ import cubyz.world.items.tools.Tool;
  */
 
 public class Player extends Entity implements CommandSource {
-	public static final float cameraHeight = 1.7f;
+	public static final float cameraHeight = 2.65f;
 	
 
 	private boolean flying = false;

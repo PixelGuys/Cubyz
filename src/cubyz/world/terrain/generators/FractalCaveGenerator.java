@@ -26,8 +26,8 @@ public class FractalCaveGenerator implements Generator {
 	private static final float SPLIT_FACTOR_Y = SPLIT_FACTOR*0.5f; // Slightly reduced to reduce splits in y-direction
 	private static final float MAX_SPLIT_LENGTH = 128;
 	private static final float BRANCH_CHANCE = 0.4f;
-	private static final float MIN_RADIUS = 1.5f;
-	private static final float MAX_INITIAL_RADIUS = 3;
+	private static final float MIN_RADIUS = 2.0f;
+	private static final float MAX_INITIAL_RADIUS = 5;
 	private static final float HEIGHT_VARIANCE = 0.15f;
 	private static final int MAX_CAVE_HEIGHT = 128;
 	private static final int CAVE_HEIGHT_WITH_MAX_DENSITY = -512;
