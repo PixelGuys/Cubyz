@@ -6,6 +6,7 @@ import java.io.DataInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Properties;
 import java.util.Random;
 
 import javax.imageio.ImageIO;
@@ -144,7 +145,7 @@ public class CustomOre {
 			return sb.toString();
 	}
 	
-	public static void random(Random rand, File assets, String mod) {
+	public static void random(Random rand, File assets, String mod, Properties oreLang) {
 		JsonObject json = new JsonObject();
 		json.put("class", "stone");
 
@@ -247,6 +248,8 @@ public class CustomOre {
 		} catch(Exception e) {
 			Logger.warning(e);
 		}
+
+		oreLang.put("block.cubyz." + name.replace(" ", "_") + "_ore.name", name + " Ore");
 	}
 	
 	/*public static CustomOre fromNDT(NDTContainer ndt) {
