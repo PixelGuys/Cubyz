@@ -53,11 +53,20 @@ public class CurrentWorldRegistries {
 		assets.mkdirs();
 		new File(assets, "blocks/textures").mkdirs();
 		new File(assets, "items/textures").mkdirs();
+		new File(assets, "lang").mkdirs();
+		Properties oreLang = new Properties();
 		Random rand = new Random(world.getSeed());
 		int randomAmount = 9 + rand.nextInt(3); // TODO
 		int i = 0;
 		for(i = 0; i < randomAmount; i++) {
-			CustomOre.random(rand, assets, "cubyz");
+			CustomOre.random(rand, assets, "cubyz", oreLang);
+		}
+		try {
+			FileOutputStream oreLangFile = new FileOutputStream(new File(assets, "lang/en_ore.lang"));
+			oreLang.store(oreLangFile, "Contains all the translated names for the generated ores.");
+			oreLangFile.close();
+		} catch (IOException e) {
+			Logger.error(e.getMessage());
 		}
 	}
 }
