@@ -149,7 +149,7 @@ public class NormalChunk extends Chunk {
 		}
 		if (generated) {
 			int[] neighbors = getNeighbors(x, y , z);
-			BlockInstance[] visibleNeighbors = getVisibleNeighbors(x + wx, y + wy, z + wz);
+			BlockInstance[] visibleNeighbors = getVisibleNeighbors(x, y, z);
 			for(int k = 0; k < Neighbors.NEIGHBORS; k++) {
 				if (visibleNeighbors[k] != null) visibleNeighbors[k].updateNeighbor(k ^ 1, blocksBlockNot(b, neighbors[k], k));
 			}
