@@ -22,24 +22,33 @@ public class LanguageLoader {
 		Language lang = new Language(locale);
 		for (File assetFolder : assetsFolders) {
 			File langFile = ResourceManager.lookup(assetFolder.getName() + "/lang/" + locale + ".lang");
-			if (langFile != null) {
-				Properties props = new Properties();
-				try {
-					FileReader reader = new FileReader(langFile, StandardCharsets.UTF_8);
-					props.load(reader);
-					for (Object key : props.keySet()) {
-						lang.add(key.toString(), props.getProperty(key.toString()));
-					}
-					reader.close();
-				} catch (IOException e) {
-					Logger.error("Could not open language file " + locale + " for mod " + assetFolder.getName());
-					Logger.error(e);
-				}
-			} else if (assetFolder.getName().equals("cubyz")) {
-				Logger.warning("Language \"" + locale + "\" not found");
-			}
+			loadLangFile(assetFolder, lang, langFile);
 		}
 		return lang;
 	}
-	
+
+	public static Language loadOreLang(String worldAssetPath) {
+		Language lang = new Language("en_ore");
+		loadLangFile(new File(worldAssetPath), lang, new File(worldAssetPath + "cubyz/lang/en_ore.lang"));
+		return lang;
+	}
+
+	private static void loadLangFile(File assetFolder, Language lang, File langFile) {
+		if (langFile != null) {
+			Properties props = new Properties();
+			try {
+				FileReader reader = new FileReader(langFile, StandardCharsets.UTF_8);
+				props.load(reader);
+				for (Object key : props.keySet()) {
+					lang.add(key.toString(), props.getProperty(key.toString()));
+				}
+				reader.close();
+			} catch (IOException e) {
+				Logger.error("Could not open language file " + lang.getLocale() + " for mod " + assetFolder.getName());
+				Logger.error(e);
+			}
+		} else if (assetFolder.getName().equals("cubyz")) {
+			Logger.warning("Language \"" + lang.getLocale() + "\" not found");
+		}
+	}
 }
