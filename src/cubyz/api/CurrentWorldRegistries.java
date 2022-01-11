@@ -31,7 +31,7 @@ public class CurrentWorldRegistries {
 	public final Registry<EntityType>           entityRegistry  = new Registry<EntityType>(CubyzRegistries.ENTITY_REGISTRY);
 	public final BiomeRegistry                  biomeRegistry   = new BiomeRegistry(CubyzRegistries.BIOME_REGISTRY);
 
-	public static Language oreLang;
+	public static Language fallbackLang;
 
 	/**
 	 * Loads the world specific assets, such as procedural ores.
@@ -49,12 +49,12 @@ public class CurrentWorldRegistries {
 	}
 
 	public void loadWorldAssets(String assetPath) {
+		fallbackLang = LanguageLoader.loadFallbackLang(assetPath);
 		AddonsMod.instance.preInit(assetPath);
 		AddonsMod.instance.registerBlocks(blockRegistries, oreRegistry);
 		AddonsMod.instance.registerItems(itemRegistry, assetPath);
 		AddonsMod.instance.registerBiomes(biomeRegistry);
 		AddonsMod.instance.init(itemRegistry, blockRegistries, recipeRegistry);
-		oreLang = LanguageLoader.loadOreLang(assetPath);
 	}
 
 	public void generateAssets(File assets, World world) {
@@ -63,17 +63,17 @@ public class CurrentWorldRegistries {
 		new File(assets, "blocks/textures").mkdirs();
 		new File(assets, "items/textures").mkdirs();
 		new File(assets, "lang").mkdirs();
-		Properties oreLang = new Properties();
+		Properties fallbackLang = new Properties();
 		Random rand = new Random(world.getSeed());
 		int randomAmount = 9 + rand.nextInt(3); // TODO
 		int i = 0;
 		for(i = 0; i < randomAmount; i++) {
-			CustomOre.random(rand, assets, "cubyz", oreLang);
+			CustomOre.random(rand, assets, "cubyz", fallbackLang);
 		}
 		try {
-			FileOutputStream oreLangFile = new FileOutputStream(new File(assets, "lang/en_ore.lang"));
-			oreLang.store(oreLangFile, "Contains all the translated names for the generated ores.");
-			oreLangFile.close();
+			FileOutputStream fallbackLangFile = new FileOutputStream(new File(assets, "lang/fallback.lang"));
+			fallbackLang.store(fallbackLangFile, "Contains all the translated names for the generated ores.");
+			fallbackLangFile.close();
 		} catch (IOException e) {
 			Logger.error(e.getMessage());
 		}

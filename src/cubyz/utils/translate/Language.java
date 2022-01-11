@@ -35,8 +35,8 @@ public class Language {
 			key.translation = keyValues.get(key.getTranslateKey());
 			return;
 		}
-		if(CurrentWorldRegistries.oreLang != null && CurrentWorldRegistries.oreLang.keyValues.containsKey(key.getTranslateKey())) {
-			key.translation = CurrentWorldRegistries.oreLang.get(key.getTranslateKey());
+		if(CurrentWorldRegistries.fallbackLang != null && CurrentWorldRegistries.fallbackLang.keyValues.containsKey(key.getTranslateKey())) {
+			key.translation = CurrentWorldRegistries.fallbackLang.get(key.getTranslateKey());
 			return;
 		}
 		if (key.getTranslateKey().contains("."))

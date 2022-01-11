@@ -145,7 +145,7 @@ public class CustomOre {
 			return sb.toString();
 	}
 	
-	public static void random(Random rand, File assets, String mod, Properties oreLang) {
+	public static void random(Random rand, File assets, String mod, Properties fallbackLang) {
 		JsonObject json = new JsonObject();
 		json.put("class", "stone");
 
@@ -249,7 +249,7 @@ public class CustomOre {
 			Logger.warning(e);
 		}
 
-		oreLang.put("block.cubyz." + name.replace(" ", "_") + "_ore.name", name + " Ore");
+		fallbackLang.put("block.cubyz." + name.replace(" ", "_") + "_ore.name", name + " Ore");
 	}
 	
 	/*public static CustomOre fromNDT(NDTContainer ndt) {

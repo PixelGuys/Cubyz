@@ -27,9 +27,9 @@ public class LanguageLoader {
 		return lang;
 	}
 
-	public static Language loadOreLang(String worldAssetPath) {
-		Language lang = new Language("en_ore");
-		loadLangFile(new File(worldAssetPath), lang, new File(worldAssetPath + "cubyz/lang/en_ore.lang"));
+	public static Language loadFallbackLang(String worldAssetPath) {
+		Language lang = new Language("fallback");
+		loadLangFile(new File(worldAssetPath), lang, new File(worldAssetPath + "cubyz/lang/fallback.lang"));
 		return lang;
 	}
 
