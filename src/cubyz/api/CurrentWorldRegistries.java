@@ -1,9 +1,15 @@
 package cubyz.api;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.Properties;
 import java.util.Random;
 
 import cubyz.modding.base.AddonsMod;
+import cubyz.utils.Logger;
+import cubyz.utils.translate.Language;
+import cubyz.utils.translate.LanguageLoader;
 import cubyz.world.World;
 import cubyz.world.blocks.CustomOre;
 import cubyz.world.blocks.Ore;
@@ -24,6 +30,8 @@ public class CurrentWorldRegistries {
 	public final NoIDRegistry<Recipe>           recipeRegistry  = new NoIDRegistry<Recipe>(CubyzRegistries.RECIPE_REGISTRY);
 	public final Registry<EntityType>           entityRegistry  = new Registry<EntityType>(CubyzRegistries.ENTITY_REGISTRY);
 	public final BiomeRegistry                  biomeRegistry   = new BiomeRegistry(CubyzRegistries.BIOME_REGISTRY);
+
+	public static Language oreLang;
 
 	/**
 	 * Loads the world specific assets, such as procedural ores.
@@ -46,6 +54,7 @@ public class CurrentWorldRegistries {
 		AddonsMod.instance.registerItems(itemRegistry, assetPath);
 		AddonsMod.instance.registerBiomes(biomeRegistry);
 		AddonsMod.instance.init(itemRegistry, blockRegistries, recipeRegistry);
+		oreLang = LanguageLoader.loadOreLang(assetPath);
 	}
 
 	public void generateAssets(File assets, World world) {
