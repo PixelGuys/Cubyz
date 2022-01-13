@@ -43,7 +43,10 @@ public class Button extends Component {
     private Runnable onAction;
     private Label textLabel = new Label(Fonts.PIXEL_FONT, 240);
 
-    private float scrollDir;
+    private float scrollDir = .7f;
+    private float stopTime = 10f, stopTimer;
+
+    private float xFloat, vx;
 
     public Button() {
     }
@@ -123,21 +126,9 @@ public class Button extends Component {
         }
         if (textLabel.width > this.width) {
             textLabel.setTextAlign(Component.ALIGN_LEFT);
-            Vector4i old = Graphics.setClip(new Vector4i(x + 10, Window.getHeight() - y - height, this.width - 10, this.height));
-            textLabel.render(this.textLabel.getX(), y + height / 2);
+            Vector4i old = Graphics.setClip(new Vector4i(x, Window.getHeight() - y - height, this.width, this.height));
+            textLabel.render(textLabel.getX(), y + height / 2);
             Graphics.restoreClip(old);
-
-            Graphics.setColor(0xffff00);
-            Graphics.fillRect((textLabel.getX() + textLabel.width), textLabel.getY(), 10, 10);
-
-            Graphics.setColor(0x00ff00);
-            Graphics.fillRect(textLabel.getX(), textLabel.getY(), 10, 10);
-
-            Graphics.setColor(0x00ffff);
-            Graphics.fillRect(x, textLabel.getY(), 10, 10);
-
-            Graphics.setColor(0x0000ff);
-            Graphics.fillRect(x + width, textLabel.getY(), 10, 10);
 
             float textX = this.textLabel.getX();
             float btnX = x;
@@ -145,15 +136,42 @@ public class Button extends Component {
             float btnLeft = x + width;
 
             boolean isMostLeft = textLeft > btnLeft;
-            boolean isLessStart = textX < x;
-            boolean isGreaterStart = textX > x;
+            boolean isLessStart = textX <= btnX;
+            boolean isGreaterStart = textX > btnX;
+
+            Graphics.setColor(0xffff00);
+            Graphics.fillRect(textLeft, 10, 10, 10);
+
+            Graphics.setColor(0x00ff00);
+            Graphics.fillRect(textX, 10, 10, 10);
+
+            Graphics.setColor(0x00ffff);
+            Graphics.fillRect(btnX, textLabel.getY(), 10, 10);
+
+            Graphics.setColor(0x0000ff);
+            Graphics.fillRect(btnLeft, textLabel.getY(), 10, 10);
 
             if (isMostLeft && isGreaterStart) {
-                scrollDir = -0.5f;
+                if(stopTimer < stopTime) {
+                    stopTimer += 0.2f;
+                    scrollDir = 0f;
+                } else  {
+                    scrollDir = -.7f;
+                    stopTimer = 0f;
+                }
             } else if(isLessStart && !isMostLeft) {
-                scrollDir = 0.5f;
+                if(stopTimer < stopTime) {
+                    stopTimer += 0.2f;
+                    scrollDir = 0f;
+                } else  {
+                    scrollDir = .7f;
+                    stopTimer = 0f;
+                }
             }
-            textLabel.setBounds((int)(textLabel.getX() + scrollDir), textLabel.getY(), textLabel.width, textLabel.height, Component.ALIGN_LEFT);
+
+            xFloat += scrollDir;
+
+            textLabel.setBounds((int)(xFloat), textLabel.getY(), textLabel.width, textLabel.height, Component.ALIGN_LEFT);
         } else {
             textLabel.setTextAlign(Component.ALIGN_CENTER);
             textLabel.render(x + width / 2, y + height / 2);
