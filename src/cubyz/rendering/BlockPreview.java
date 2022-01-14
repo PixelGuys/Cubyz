@@ -74,7 +74,7 @@ public abstract class BlockPreview {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	}
 	
-	public static FrameBuffer generateBuffer(Vector3f ambientLight, int block) {
+	public static Texture generateTexture(int block) {
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_CULL_FACE);
 		FrameBuffer buffer = new FrameBuffer();
@@ -120,7 +120,7 @@ public abstract class BlockPreview {
 		Window.setRenderTarget(null);
 		glDisable(GL_CULL_FACE);
 		glDisable(GL_DEPTH_TEST);
-		return buffer;
+		return buffer.getColorTexture();
 	}
 
 	public static void cleanup() {

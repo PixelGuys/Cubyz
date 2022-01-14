@@ -6,7 +6,6 @@ import java.util.*;
 
 import javax.swing.JOptionPane;
 
-import org.joml.Vector3f;
 import org.joml.Vector4f;
 import org.lwjgl.Version;
 import org.lwjgl.opengl.GL12;
@@ -23,7 +22,6 @@ import cubyz.gui.audio.SoundManager;
 import cubyz.gui.game.GameOverlay;
 import cubyz.gui.menu.LoadingGUI;
 import cubyz.rendering.BlockPreview;
-import cubyz.rendering.FrameBuffer;
 import cubyz.rendering.Material;
 import cubyz.rendering.Mesh;
 import cubyz.rendering.Spatial;
@@ -86,6 +84,8 @@ public class GameLogic implements ClientConnection {
 		Cubyz.world = null;
 		Cubyz.chunkTree.cleanup();
 		MusicManager.stop();
+		
+		ItemTextures.clear();
 		
 		System.gc();
 	}
@@ -204,10 +204,6 @@ public class GameLogic implements ClientConnection {
 		Cubyz.gameUI.setMenu(gui);
 		gui.setInventory(inv);
 	}
-	
-	public FrameBuffer blockPreview(int b) {
-		return BlockPreview.generateBuffer(new Vector3f(1, 1, 1), b);
-	}	
 	
 	public void clientUpdate() {
 		MusicManager.update();

@@ -2,7 +2,6 @@ package cubyz.world.items;
 
 import cubyz.api.RegistryElement;
 import cubyz.api.Resource;
-import cubyz.rendering.Texture; //#line CLIENTONLY
 import cubyz.utils.json.JsonObject;
 import cubyz.utils.translate.TextKey;
 import cubyz.world.entity.Entity;
@@ -16,12 +15,11 @@ public class Item implements RegistryElement {
 	
 	protected String texturePath;
 	protected String modelPath;
-	protected String fullTexturePath;
-	protected Resource id = Resource.EMPTY;
+	protected final Resource id;
 	private TextKey name;
 	protected final int stackSize;
 
-	public Material material;
+	public final Material material;
 
 	public Item(Resource id, JsonObject json) {
 		this.id = id;
@@ -35,7 +33,9 @@ public class Item implements RegistryElement {
 	}
 	
 	protected Item(int stackSize) {
+		id = Resource.EMPTY;
 		this.stackSize = stackSize;
+		material = null;
 	}
 	
 	public String getTexture() {
@@ -55,15 +55,6 @@ public class Item implements RegistryElement {
 	}
 	
 	public void update() {}
-	
-	public Item setID(String id) {
-		return setID(new Resource(id));
-	}
-	
-	public Item setID(Resource res) {
-		id = res;
-		return this;
-	}
 
 	@Override
 	public Resource getRegistryID() {
@@ -78,25 +69,4 @@ public class Item implements RegistryElement {
 	public boolean onUse(Entity user) {
 		return false;
 	}
-
-	
-	//#start CLIENTONLY ----------------------
-	private Texture image = null;
-
-	/**
-	 * This is used for rendering only.
-	 * @param image image id
-	 */
-	public void setImage(Texture image) {
-		this.image = image;
-	}
-	
-	/**
-	 * This is used for rendering only.
-	 * @return image id
-	 */
-	public Texture getImage() {
-		return image;
-	}
-	//#end -----------------------------------
 }

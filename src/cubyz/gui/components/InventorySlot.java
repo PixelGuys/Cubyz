@@ -4,14 +4,13 @@ import java.awt.Rectangle;
 
 import org.joml.Vector2d;
 
-import cubyz.client.GameLauncher;
+import cubyz.client.ItemTextures;
 import cubyz.gui.input.Mouse;
 import cubyz.rendering.Graphics;
 import cubyz.rendering.Texture;
 import cubyz.rendering.text.Fonts;
 import cubyz.rendering.text.TextLine;
 import cubyz.world.items.Item;
-import cubyz.world.items.ItemBlock;
 import cubyz.world.items.ItemStack;
 import cubyz.world.items.tools.Tool;
 
@@ -182,22 +181,7 @@ public class InventorySlot extends Component {
 			Graphics.drawImage(SLOT_IMAGE, x, y, width, height);
 		Item item = reference.getItem();
 		if (item != null) {
-			if (item.getImage() == null) {
-				if (item instanceof ItemBlock) {
-					ItemBlock ib = (ItemBlock) item;
-					int b = ib.getBlock();
-					if (item.getTexture() != null) {
-						item.setImage(Texture.loadFromFile(item.getTexture()));
-					} else {
-						item.setImage(GameLauncher.logic.blockPreview(b).getColorTexture());
-					}
-				} else if (item instanceof Tool) {
-					item.setImage(Texture.loadFromImage(((Tool)item).texture));
-				} else {
-					item.setImage(Texture.loadFromFile(item.getTexture()));
-				}
-			}
-			Graphics.drawImage(item.getImage(), x + 2 * GUI_SCALE, y + 2 * GUI_SCALE, width - 4 * GUI_SCALE, height - 4 * GUI_SCALE);
+			Graphics.drawImage(ItemTextures.getTexture(item), x + 2 * GUI_SCALE, y + 2 * GUI_SCALE, width - 4 * GUI_SCALE, height - 4 * GUI_SCALE);
 			if (item instanceof Tool) {
 				Tool tool = (Tool)item;
 				int durab = tool.durability*255/tool.maxDurability;
