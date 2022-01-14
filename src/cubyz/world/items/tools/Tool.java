@@ -48,6 +48,7 @@ public class Tool extends Item {
 	 * @param craftingGrid must be a 5×5 grid with only material items in it.
 	 */
 	public Tool(Item[] craftingGrid) {
+		super(1);
 		this.craftingGrid = craftingGrid;
 		// Produce the tool and its textures:
 		// The material grid, which comes from texture generation, is needed on both server and client, to generate the tool properties.

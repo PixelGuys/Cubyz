@@ -19,7 +19,7 @@ public class Item implements RegistryElement {
 	protected String fullTexturePath;
 	protected Resource id = Resource.EMPTY;
 	private TextKey name;
-	protected int stackSize = 64;
+	protected final int stackSize;
 
 	public Material material;
 
@@ -31,9 +31,12 @@ public class Item implements RegistryElement {
 		} else {
 			material = null;
 		}
+		stackSize = json.getInt("stackSize", 64);
 	}
 	
-	protected Item() {}
+	protected Item(int stackSize) {
+		this.stackSize = stackSize;
+	}
 	
 	public String getTexture() {
 		return texturePath;
@@ -51,27 +54,7 @@ public class Item implements RegistryElement {
 		this.texturePath = texturePath;
 	}
 	
-	/**
-	 * Sets the maximum stack size of an item.<br/>
-	 * Should be between <i>1</i> and <i>64</i>
-	 * @param NOINAS
-	 */
-	protected void setStackSize(int stackSize) {
-		if (stackSize < 1 || stackSize > 64) {
-			throw new IllegalArgumentException("stackSize out of bounds");
-		}
-		this.stackSize = stackSize;
-	}
-	
 	public void update() {}
-	
-	/**
-	 * Returns the Number of Items allowed in a single Item stack
-	 * @return NOINAS
-	 */
-	public int getStackSize() {
-		return stackSize;
-	}
 	
 	public Item setID(String id) {
 		return setID(new Resource(id));

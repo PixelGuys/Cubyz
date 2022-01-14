@@ -205,8 +205,10 @@ public class InventorySlot extends Component {
 				Graphics.fillRect(x + 2 * GUI_SCALE, y + 18 * GUI_SCALE, 16.0f / 255.0f * durab * GUI_SCALE, 2 * GUI_SCALE);
 				Graphics.setColor(0xffffff);
 			}
-			inv.setText("" + reference.getAmount());
-			inv.render(x + 16 * GUI_SCALE, y + 16 * GUI_SCALE);
+			if(reference.getAmount() != 1) {
+				inv.setText("" + reference.getAmount());
+				inv.render(x + 16 * GUI_SCALE, y + 16 * GUI_SCALE);
+			}
 		}
 	}
 
