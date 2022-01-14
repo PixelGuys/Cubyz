@@ -40,7 +40,7 @@ public class BufferManager {
 
 		bufferClearPositon = glGenFramebuffers();
 		glBindFramebuffer(GL_FRAMEBUFFER, bufferClearPositon);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, positionTexture, 0);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, positionTexture, 0);
 	}
 
 	private void regenTexture(int texture, int internalFormat, int format, int width, int height) {

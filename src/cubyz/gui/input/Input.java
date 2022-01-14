@@ -8,6 +8,7 @@ import cubyz.client.BlockMeshes;
 import cubyz.client.ClientOnly;
 import cubyz.client.ClientSettings;
 import cubyz.client.Cubyz;
+import cubyz.client.GameLauncher;
 import cubyz.gui.ConsoleLog;
 import cubyz.gui.Transition;
 import cubyz.gui.game.ConsoleGUI;
@@ -22,6 +23,7 @@ import cubyz.world.entity.EntityType;
 import cubyz.world.items.Inventory;
 import cubyz.world.items.ItemStack;
 import cubyz.server.Server;
+import cubyz.utils.Logger;
 
 /**
  * Handles all the inputs.
@@ -57,6 +59,13 @@ public class Input {
 					Cubyz.gameUI.removeOverlay(consoleLog);
 				else Cubyz.gameUI.addOverlay(consoleLog);
 				executedF3Shortcut = true;
+			}
+		}
+		if (Keyboard.isKeyReleased(GLFW.GLFW_KEY_F5)) {
+			try {
+				GameLauncher.renderer.init();
+			} catch (Exception e) {
+				Logger.error(e);
 			}
 		}
 		if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_F11)) {
