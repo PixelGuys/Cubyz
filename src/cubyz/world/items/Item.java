@@ -32,10 +32,8 @@ public class Item implements RegistryElement {
 			material = null;
 		}
 	}
-
-	public Item() {
-		material = null;
-	}
+	
+	protected Item() {}
 	
 	public String getTexture() {
 		return texturePath;

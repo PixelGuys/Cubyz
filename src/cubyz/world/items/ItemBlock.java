@@ -1,5 +1,6 @@
 package cubyz.world.items;
 
+import cubyz.utils.json.JsonObject;
 import cubyz.utils.translate.TextKey;
 import cubyz.world.blocks.Blocks;
 
@@ -9,24 +10,16 @@ import cubyz.world.blocks.Blocks;
 
 public class ItemBlock extends Item {
 
-	private int block;
+	private final int block;
 	
-	public ItemBlock() {
-		
-	}
-	
-	public ItemBlock(int block) {
-		setBlock(block);
+	public ItemBlock(int block, JsonObject json) {
+		super(Blocks.id(block), json);
+		this.block = block;
+		this.setName(TextKey.createTextKey("block." + Blocks.id(block).getMod() + "." + Blocks.id(block).getID() + ".name"));
 	}
 	
 	public int getBlock() {
 		return block;
-	}
-	
-	public void setBlock(int block) {
-		this.block = block;
-		setID(Blocks.id(block));
-		this.setName(TextKey.createTextKey("block." + Blocks.id(block).getMod() + "." + Blocks.id(block).getID() + ".name"));
 	}
 	
 }

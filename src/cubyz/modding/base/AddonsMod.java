@@ -185,7 +185,7 @@ public class AddonsMod implements Mod {
 
 			// Block drops:
 			String[] blockDrops = json.getArrayNoNull("drops").getStrings();
-			ItemBlock self = new ItemBlock(block);
+			ItemBlock self = new ItemBlock(block, json.getObjectOrNew("item"));
 			items.add(self); // Add each block as an item, so it gets displayed in the creative inventory.
 			for (String blockDrop : blockDrops) {
 				blockDrop = blockDrop.trim();
