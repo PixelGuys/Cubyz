@@ -11,8 +11,6 @@ import org.joml.Vector4f;
  */
 public class BufferManager {
 	private int buffer;
-	private int bufferClearColor;
-	private int bufferClearPositon;
 	private int colorTexture = -1;
 	private int positionTexture = -1;
 	private int depthBuffer = -1;
@@ -33,14 +31,6 @@ public class BufferManager {
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, positionTexture, 0);
 		
 		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, depthBuffer);
-
-		bufferClearColor = glGenFramebuffers();
-		glBindFramebuffer(GL_FRAMEBUFFER, bufferClearColor);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorTexture, 0);
-
-		bufferClearPositon = glGenFramebuffers();
-		glBindFramebuffer(GL_FRAMEBUFFER, bufferClearPositon);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, positionTexture, 0);
 	}
 
 	private void regenTexture(int texture, int internalFormat, int format, int width, int height) {
@@ -87,11 +77,9 @@ public class BufferManager {
 	public void clearAndBind(Vector4f clearColor) {
 		glBindFramebuffer(GL_FRAMEBUFFER, buffer);
 		glClearColor(clearColor.x, clearColor.y, clearColor.z, 1);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-		// Clears the position seperately to prevent issues with default value.
-		glBindFramebuffer(GL_FRAMEBUFFER, bufferClearPositon);
-		glClearColor(0, 0, -1000, 1);
-		glClear(GL_COLOR_BUFFER_BIT);
+		glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+		// Clears the position separately to prevent issues with default value.
+		glClearBufferfv(GL_COLOR, 1, new float[] {0, 0, 6.55e4f, 1}); // z value corresponds to the highest 16-bit float value.
 
 		glBindFramebuffer(GL_FRAMEBUFFER, buffer);
 	}
