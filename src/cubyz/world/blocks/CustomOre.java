@@ -1,11 +1,10 @@
 package cubyz.world.blocks;
 
 import java.awt.image.BufferedImage;
-import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
+import java.io.FileInputStream;
 import java.util.Properties;
 import java.util.Random;
 
@@ -69,10 +68,7 @@ public class CustomOre {
 	
 	private static void readOreData() {
 		try {
-			InputStream ois = CustomOre.class.getClassLoader().getResourceAsStream("cubyz/storage/custom_ore_names.dat");
-			if (ois == null)
-				ois = CustomOre.class.getClassLoader().getResourceAsStream("classes/cubyz/storage/custom_ore_names.dat");
-			DataInputStream is = new DataInputStream(new BufferedInputStream(ois));
+			DataInputStream is = new DataInputStream(new FileInputStream(new File("assets/cubyz/procedural/custom_ore_names.dat")));
 			tree = new Node(is, 4);
 			is.close();
 		} catch (IOException e) {

@@ -41,15 +41,6 @@
 				</configuration>
 			</plugin>
 		</plugins>
-	
-		<!-- Move the storage folder manually to target. -->
-		<resources>
-			<resource>
-				<filtering>true</filtering><!-- if it is neccessary -->
-				<directory>src/cubyz/storage</directory><!-- from -->
-				<targetPath>./cubyz/storage</targetPath><!-- to -->
-			</resource>
-		</resources>
 	</build>
 	
 	<repositories>
