@@ -54,9 +54,14 @@
 	
 	<repositories>
 		<repository>
-			<id>jcenter</id>
-			<url>https://jcenter.bintray.com</url>
-			<name>jcenter-bintray</name>
+			<id>maven.central</id>
+			<url>https://repo.maven.apache.org/maven2</url>
+			<name>maven-central</name>
+		</repository>
+		<repository>
+			<id>cubyz</id>
+			<url>https://raw.githubusercontent.com/PixelGuys/Cubyz-Dependencies/master/</url>
+			<name>cubyz</name>
 		</repository>
 	</repositories>
 	

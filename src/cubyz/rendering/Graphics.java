@@ -358,8 +358,6 @@ public class Graphics {
 	 * @param texture
 	 * @param x left
 	 * @param y top
-	 * @param width
-	 * @param height
 	 */
 	public static void drawText(float x, float y, String text) {
 		text = String.format("#%06x", (0xffffff & color)) + text; // Add the coloring information.
