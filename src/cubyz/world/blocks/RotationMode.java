@@ -8,7 +8,7 @@ import org.joml.Vector4d;
 
 import cubyz.api.RegistryElement;
 import cubyz.utils.datastructures.IntWrapper;
-import cubyz.utils.datastructures.FloatFastList;
+import cubyz.utils.VertexAttribList;
 import cubyz.utils.datastructures.IntFastList;
 import cubyz.world.World;
 import cubyz.world.entity.Entity;
@@ -30,7 +30,7 @@ public interface RotationMode extends RegistryElement {
 	 * @param texture
 	 * @return incremented renderIndex
 	 */
-	public void generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture);
+	public void generateChunkMesh(BlockInstance bi, VertexAttribList vertices, IntFastList faces);
 	
 	/**
 	 * Update or place a block.

@@ -3,9 +3,11 @@ package cubyz.rendering.models;
 import cubyz.api.Resource;
 import cubyz.client.Meshes;
 import cubyz.rendering.ModelLoader;
-import cubyz.utils.datastructures.FloatFastList;
+import cubyz.utils.VertexAttribList;
 import cubyz.utils.datastructures.IntFastList;
 import cubyz.world.Neighbors;
+
+import static cubyz.client.NormalChunkMesh.*;
 
 public class CubeModel extends Model {
 	protected CubeModel(Resource id, Model template) {
@@ -13,9 +15,9 @@ public class CubeModel extends Model {
 	}
 
 	@Override
-	public void addToChunkMesh(int x, int y, int z, int[] textureIndices, int[] light, byte neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
+	public void addToChunkMesh(int x, int y, int z, int[] textureIndices, int[] light, byte neighbors, VertexAttribList vertices, IntFastList faces) {
 		// Being a cube it is possible to optimize neighbor data:
-		int indexOffset = vertices.size/3;
+		int indexOffset = vertices.currentVertex();
 		int size = positions.length/3;
 		int[] indicesAdded = new int[size];
 		int position = 0;
@@ -31,18 +33,20 @@ public class CubeModel extends Model {
 			   nz == 1 && (neighbors & Neighbors.BIT_MASK[Neighbors.DIR_POS_Z]) != 0 ||
 			   ny == -1 && (neighbors & Neighbors.BIT_MASK[Neighbors.DIR_DOWN]) != 0 ||
 			   ny == 1 && (neighbors & Neighbors.BIT_MASK[Neighbors.DIR_UP]) != 0) {
-				vertices.add(positions[i3] + x);
-				vertices.add(positions[i3+1] + y);
-				vertices.add(positions[i3+2] + z);
-				normals.add(nx);
-				normals.add(ny);
-				normals.add(nz);
+				vertices.add(POSITION_X, positions[i3] + x);
+				vertices.add(POSITION_Y, positions[i3+1] + y);
+				vertices.add(POSITION_Z, positions[i3+2] + z);
+				vertices.add(NORMAL_X, nx);
+				vertices.add(NORMAL_Y, ny);
+				vertices.add(NORMAL_Z, nz);
 				
-				lighting.add(Model.interpolateLight(positions[i3], positions[i3+1], positions[i3+2], super.normals[i3], super.normals[i3+1], super.normals[i3+2], light));
+				vertices.add(LIGHTING, Model.interpolateLight(positions[i3], positions[i3+1], positions[i3+2], super.normals[i3], super.normals[i3+1], super.normals[i3+2], light));
 				
-				texture.add(textCoords[i2]);
-				texture.add(textCoords[i2+1]);
-				texture.add((float)textureIndices[normalToNeighbor(this.normals[i3], this.normals[i3+1], this.normals[i3+2])]);
+				vertices.add(TEXTURE_X, textCoords[i2]);
+				vertices.add(TEXTURE_Y, textCoords[i2+1]);
+				vertices.add(TEXTURE_Z, (float)textureIndices[normalToNeighbor(this.normals[i3], this.normals[i3+1], this.normals[i3+2])]);
+				
+				vertices.endVertex();
 				indicesAdded[i] = position++;
 			} else {
 				indicesAdded[i] = -1;
@@ -57,9 +61,9 @@ public class CubeModel extends Model {
 	}
 
 	@Override
-	public void addToChunkMeshSimpleRotation(int x, int y, int z, int[] directionMap, boolean[] directionInversion, int[] textureIndices, int[] light, byte neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
+	public void addToChunkMeshSimpleRotation(int x, int y, int z, int[] directionMap, boolean[] directionInversion, int[] textureIndices, int[] light, byte neighbors, VertexAttribList vertices, IntFastList faces) {
 		// Being a cube it is possible to optimize neighbor data:
-		int indexOffset = vertices.size/3;
+		int indexOffset = vertices.currentVertex();
 		int size = positions.length/3;
 		int[] indicesAdded = new int[size];
 		int position = 0;
@@ -75,22 +79,24 @@ public class CubeModel extends Model {
 			   nz == 1 && (neighbors & Neighbors.BIT_MASK[Neighbors.DIR_POS_Z]) != 0 ||
 			   ny == -1 && (neighbors & Neighbors.BIT_MASK[Neighbors.DIR_DOWN]) != 0 ||
 			   ny == 1 && (neighbors & Neighbors.BIT_MASK[Neighbors.DIR_UP]) != 0) {
-				vertices.add(conditionalInversion(positions[i3+directionMap[0]], directionInversion[0]) + x);
-				vertices.add(conditionalInversion(positions[i3+directionMap[1]], directionInversion[1]) + y);
-				vertices.add(conditionalInversion(positions[i3+directionMap[2]], directionInversion[2]) + z);
-				normals.add(nx);
-				normals.add(ny);
-				normals.add(nz);
+				vertices.add(POSITION_X, conditionalInversion(positions[i3+directionMap[0]], directionInversion[0]) + x);
+				vertices.add(POSITION_Y, conditionalInversion(positions[i3+directionMap[1]], directionInversion[1]) + y);
+				vertices.add(POSITION_Z, conditionalInversion(positions[i3+directionMap[2]], directionInversion[2]) + z);
+				vertices.add(NORMAL_X, nx);
+				vertices.add(NORMAL_Y, ny);
+				vertices.add(NORMAL_Z, nz);
 
 				
-				lighting.add(interpolateLight(	conditionalInversion(positions[i3+directionMap[0]], directionInversion[0]),
-												conditionalInversion(positions[i3+directionMap[1]], directionInversion[1]),
-												conditionalInversion(positions[i3+directionMap[2]], directionInversion[2]),
-												nx, ny, nz, light));
+				vertices.add(LIGHTING, interpolateLight(conditionalInversion(positions[i3+directionMap[0]], directionInversion[0]),
+				                                        conditionalInversion(positions[i3+directionMap[1]], directionInversion[1]),
+				                                        conditionalInversion(positions[i3+directionMap[2]], directionInversion[2]),
+				                                        nx, ny, nz, light));
+
+				vertices.add(TEXTURE_X, textCoords[i2]);
+				vertices.add(TEXTURE_Y, textCoords[i2+1]);
+				vertices.add(TEXTURE_Z, (float)textureIndices[normalToNeighbor(this.normals[i3], this.normals[i3+1], this.normals[i3+2])]);
 				
-				texture.add(textCoords[i2]);
-				texture.add(textCoords[i2+1]);
-				texture.add((float)textureIndices[normalToNeighbor(this.normals[i3], this.normals[i3+1], this.normals[i3+2])]);
+				vertices.endVertex();
 
 				indicesAdded[i] = position++;
 			} else {

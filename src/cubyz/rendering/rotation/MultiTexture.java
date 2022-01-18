@@ -9,6 +9,7 @@ import org.joml.Vector3i;
 import org.joml.Vector4d;
 
 import cubyz.utils.Logger;
+import cubyz.utils.VertexAttribList;
 import cubyz.api.DataOrientedRegistry;
 import cubyz.api.Resource;
 import cubyz.client.BlockMeshes;
@@ -16,7 +17,6 @@ import cubyz.utils.datastructures.IntWrapper;
 import cubyz.utils.json.JsonArray;
 import cubyz.utils.json.JsonElement;
 import cubyz.utils.json.JsonObject;
-import cubyz.utils.datastructures.FloatFastList;
 import cubyz.utils.datastructures.IntFastList;
 import cubyz.world.Chunk;
 import cubyz.world.World;
@@ -119,12 +119,12 @@ public class MultiTexture implements RotationMode, DataOrientedRegistry {
 	}
 	
 	@Override
-	public void generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
+	public void generateChunkMesh(BlockInstance bi, VertexAttribList vertices, IntFastList faces) {
 		long seed = bi.x*4835871844237932163L ^ bi.y*80268680099511559L ^ bi.z*2595762606481225891L ^ bi.getBlock();
 		rand.setSeed(seed);
 		int randomIndex = rand.nextInt(textureIndicesVariants[bi.getBlock() & Blocks.TYPE_MASK].length);
 		int[] indices = textureIndicesVariants[bi.getBlock() & Blocks.TYPE_MASK][randomIndex % textureIndicesVariants[bi.getBlock() & Blocks.TYPE_MASK].length];
-		BlockMeshes.mesh(bi.getBlock() & Blocks.TYPE_MASK).model.addToChunkMesh(bi.x & Chunk.chunkMask, bi.y & Chunk.chunkMask, bi.z & Chunk.chunkMask, indices, bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture);
+		BlockMeshes.mesh(bi.getBlock() & Blocks.TYPE_MASK).model.addToChunkMesh(bi.x & Chunk.chunkMask, bi.y & Chunk.chunkMask, bi.z & Chunk.chunkMask, indices, bi.light, bi.getNeighbors(), vertices, faces);
 	}
 }
 

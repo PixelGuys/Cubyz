@@ -9,7 +9,7 @@ import org.joml.Vector4d;
 import cubyz.api.Resource;
 import cubyz.client.BlockMeshes;
 import cubyz.utils.datastructures.IntWrapper;
-import cubyz.utils.datastructures.FloatFastList;
+import cubyz.utils.VertexAttribList;
 import cubyz.utils.datastructures.IntFastList;
 import cubyz.world.Chunk;
 import cubyz.world.World;
@@ -76,7 +76,7 @@ public class NoRotation implements RotationMode {
 	}
 	
 	@Override
-	public void generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
-		BlockMeshes.mesh(bi.getBlock() & Blocks.TYPE_MASK).model.addToChunkMesh(bi.x & Chunk.chunkMask, bi.y & Chunk.chunkMask, bi.z & Chunk.chunkMask, BlockMeshes.textureIndices(bi.getBlock()), bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture);
+	public void generateChunkMesh(BlockInstance bi, VertexAttribList vertices, IntFastList faces) {
+		BlockMeshes.mesh(bi.getBlock() & Blocks.TYPE_MASK).model.addToChunkMesh(bi.x & Chunk.chunkMask, bi.y & Chunk.chunkMask, bi.z & Chunk.chunkMask, BlockMeshes.textureIndices(bi.getBlock()), bi.light, bi.getNeighbors(), vertices, faces);
 	}
 }

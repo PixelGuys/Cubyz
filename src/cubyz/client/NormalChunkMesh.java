@@ -5,7 +5,6 @@ import static org.lwjgl.opengl.GL15.*;
 import static org.lwjgl.opengl.GL20.*;
 import static org.lwjgl.opengl.GL30.*;
 
-import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 
@@ -17,8 +16,8 @@ import cubyz.rendering.Camera;
 import cubyz.rendering.ShaderProgram;
 import cubyz.rendering.Window;
 import cubyz.utils.Utils;
+import cubyz.utils.VertexAttribList;
 import cubyz.utils.datastructures.FastList;
-import cubyz.utils.datastructures.FloatFastList;
 import cubyz.utils.datastructures.IntFastList;
 import cubyz.world.ChunkData;
 import cubyz.world.NormalChunk;
@@ -31,36 +30,30 @@ import cubyz.world.blocks.Blocks;
 
 public class NormalChunkMesh extends ChunkMesh {
 	// ThreadLocal lists, to prevent (re-)allocating tons of memory.
-	public static ThreadLocal<FloatFastList> localVertices = new ThreadLocal<FloatFastList>() {
+	private static final ThreadLocal<VertexAttribList> localVertices = new ThreadLocal<VertexAttribList>() {
 		@Override
-		protected FloatFastList initialValue() {
-			return new FloatFastList(50000);
+		protected VertexAttribList initialValue() {
+			return new VertexAttribList(SIZEOF_VERTEX);
 		}
 	};
-	public static ThreadLocal<FloatFastList> localNormals = new ThreadLocal<FloatFastList>() {
-		@Override
-		protected FloatFastList initialValue() {
-			return new FloatFastList(50000);
-		}
-	};
-	public static ThreadLocal<IntFastList> localFaces = new ThreadLocal<IntFastList>() {
+	private static final ThreadLocal<IntFastList> localFaces = new ThreadLocal<IntFastList>() {
 		@Override
 		protected IntFastList initialValue() {
 			return new IntFastList(30000);
 		}
 	};
-	public static ThreadLocal<IntFastList> localLighting = new ThreadLocal<IntFastList>() {
-		@Override
-		protected IntFastList initialValue() {
-			return new IntFastList(20000);
-		}
-	};
-	public static ThreadLocal<FloatFastList> localTexture = new ThreadLocal<FloatFastList>() {
-		@Override
-		protected FloatFastList initialValue() {
-			return new FloatFastList(40000);
-		}
-	};
+	
+	public static final int POSITION_X = 0;
+	public static final int POSITION_Y = 1;
+	public static final int POSITION_Z = 2;
+	public static final int TEXTURE_X = 3;
+	public static final int TEXTURE_Y = 4;
+	public static final int TEXTURE_Z = 5;
+	public static final int NORMAL_X = 6;
+	public static final int NORMAL_Y = 7;
+	public static final int NORMAL_Z = 8;
+	public static final int LIGHTING = 9;
+	private static final int SIZEOF_VERTEX = 10;
 
 	// Shader stuff:
 	public static int loc_projectionMatrix;
@@ -74,7 +67,7 @@ public class NormalChunkMesh extends ChunkMesh {
 	public static int loc_fog_density;
 	public static int loc_time;
 
-	public static class TransparentUniforms {
+	public static abstract class TransparentUniforms {
 		public static int loc_projectionMatrix;
 		public static int loc_viewMatrix;
 		public static int loc_texture_sampler;
@@ -189,43 +182,31 @@ public class NormalChunkMesh extends ChunkMesh {
 			if (chunk == null || !chunk.isLoaded())
 				return;
 		}
-		FloatFastList vertices = localVertices.get();
-		FloatFastList normals = localNormals.get();
+		VertexAttribList vertices = localVertices.get();
 		IntFastList faces = localFaces.get();
-		IntFastList lighting = localLighting.get();
-		FloatFastList texture = localTexture.get();
-		normals.clear();
 		vertices.clear();
 		faces.clear();
-		lighting.clear();
-		texture.clear();
-		generateModelData(chunk, vertices, normals, faces, lighting, texture);
+		generateModelData(chunk, vertices, faces);
 		vertexCount = faces.size;
 		vboIdList.clear();
-		vaoId = bufferData(vertices, normals, faces, lighting, texture, vboIdList);
-		normals.clear();
+		vaoId = bufferData(vertices, faces, vboIdList);
 		vertices.clear();
 		faces.clear();
-		lighting.clear();
-		texture.clear();
-		generateTransparentModelData(chunk, vertices, normals, faces, lighting, texture);
+		generateTransparentModelData(chunk, vertices, faces);
 		transparentVertexCount = faces.size;
 		transparentVboIdList.clear();
-		transparentVaoId = bufferData(vertices, normals, faces, lighting, texture, transparentVboIdList);
+		transparentVaoId = bufferData(vertices, faces, transparentVboIdList);
 	}
 	
-	public int bufferData(FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture, ArrayList<Integer> vboIdList) {
+	public int bufferData(VertexAttribList vertices, IntFastList faces, ArrayList<Integer> vboIdList) {
 		
 		generated = true;
 		if (faces.size == 0) {
 			return -1;
 		}
 
-		FloatBuffer posBuffer = null;
-		FloatBuffer textureBuffer = null;
-		FloatBuffer normalBuffer = null;
+		IntBuffer vertexBuffer = null;
 		IntBuffer indexBuffer = null;
-		IntBuffer lightingBuffer = null;
 		try {
 			int vaoId = glGenVertexArrays();
 			glBindVertexArray(vaoId);
@@ -238,39 +219,14 @@ public class NormalChunkMesh extends ChunkMesh {
 			// Position VBO
 			int vboId = glGenBuffers();
 			vboIdList.add(vboId);
-			posBuffer = MemoryUtil.memAllocFloat(vertices.size);
-			posBuffer.put(vertices.toArray()).flip();
+			vertexBuffer = MemoryUtil.memAllocInt(vertices.size());
+			vertexBuffer.put(vertices.toArray()).flip();
 			glBindBuffer(GL_ARRAY_BUFFER, vboId);
-			glBufferData(GL_ARRAY_BUFFER, posBuffer, GL_STATIC_DRAW);
-			glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, 0);
-
-			// Texture VBO
-			vboId = glGenBuffers();
-			vboIdList.add(vboId);
-			textureBuffer = MemoryUtil.memAllocFloat(texture.size);
-			textureBuffer.put(texture.toArray()).flip();
-			glBindBuffer(GL_ARRAY_BUFFER, vboId);
-			glBufferData(GL_ARRAY_BUFFER, textureBuffer, GL_STATIC_DRAW);
-			glVertexAttribPointer(1, 3, GL_FLOAT, false, 0, 0);
-
-
-			// Normal VBO
-			vboId = glGenBuffers();
-			vboIdList.add(vboId);
-			normalBuffer = MemoryUtil.memAllocFloat(normals.size);
-			normalBuffer.put(normals.toArray()).flip();
-			glBindBuffer(GL_ARRAY_BUFFER, vboId);
-			glBufferData(GL_ARRAY_BUFFER, normalBuffer, GL_STATIC_DRAW);
-			glVertexAttribPointer(2, 3, GL_FLOAT, false, 0, 0);
-
-			// lighting VBO
-			vboId = glGenBuffers();
-			vboIdList.add(vboId);
-			lightingBuffer = MemoryUtil.memAllocInt(lighting.size);
-			lightingBuffer.put(lighting.toArray()).flip();
-			glBindBuffer(GL_ARRAY_BUFFER, vboId);
-			glBufferData(GL_ARRAY_BUFFER, lightingBuffer, GL_STATIC_DRAW);
-			glVertexAttribPointer(3, 1, GL_FLOAT, false, 0, 0);
+			glBufferData(GL_ARRAY_BUFFER, vertexBuffer, GL_STATIC_DRAW);
+			glVertexAttribPointer(0, 3, GL_FLOAT, false, SIZEOF_VERTEX*4, POSITION_X*4);
+			glVertexAttribPointer(1, 3, GL_FLOAT, false, SIZEOF_VERTEX*4, TEXTURE_X*4);
+			glVertexAttribPointer(2, 3, GL_FLOAT, false, SIZEOF_VERTEX*4, NORMAL_X*4);
+			glVertexAttribPointer(3, 1, GL_FLOAT, false, SIZEOF_VERTEX*4, LIGHTING*4);
 
 			// Index VBO
 			vboId = glGenBuffers();
@@ -284,20 +240,8 @@ public class NormalChunkMesh extends ChunkMesh {
 			glBindVertexArray(0);
 			return vaoId;
 		} finally {
-			if (posBuffer != null) {
-				MemoryUtil.memFree(posBuffer);
-			}
-			if (indexBuffer != null) {
-				MemoryUtil.memFree(indexBuffer);
-			}
-			if (normalBuffer != null) {
-				MemoryUtil.memFree(normalBuffer);
-			}
-			if (textureBuffer != null) {
-				MemoryUtil.memFree(textureBuffer);
-			}
-			if (lightingBuffer != null) {
-				MemoryUtil.memFree(lightingBuffer);
+			if (vertexBuffer != null) {
+				MemoryUtil.memFree(vertexBuffer);
 			}
 		}
 	}
@@ -368,26 +312,26 @@ public class NormalChunkMesh extends ChunkMesh {
 		vaoId = transparentVaoId = -1;
 	}
 	
-	private static void generateModelData(NormalChunk chunk, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
+	private static void generateModelData(NormalChunk chunk, VertexAttribList vertices, IntFastList faces) {
 		// Go through all blocks and check their neighbors:
 		FastList<BlockInstance> visibles = chunk.getVisibles();
 		for(int i = 0; i < visibles.size; i++) {
 			BlockInstance bi = visibles.array[i];
 			if (!Blocks.transparent(bi.getBlock())) {
 				bi.updateLighting(chunk.wx, chunk.wz, chunk);
-				Blocks.mode(bi.getBlock()).generateChunkMesh(bi, vertices, normals, faces, lighting, texture);
+				Blocks.mode(bi.getBlock()).generateChunkMesh(bi, vertices, faces);
 			}
 		}
 	}
 	
-	private static void generateTransparentModelData(NormalChunk chunk, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
+	private static void generateTransparentModelData(NormalChunk chunk, VertexAttribList vertices, IntFastList faces) {
 		// Go through all blocks and check their neighbors:
 		FastList<BlockInstance> visibles = chunk.getVisibles();
 		for(int i = 0; i < visibles.size; i++) {
 			BlockInstance bi = visibles.array[i];
 			if (Blocks.transparent(bi.getBlock())) {
 				bi.updateLighting(chunk.wx, chunk.wz, chunk);
-				Blocks.mode(bi.getBlock()).generateChunkMesh(bi, vertices, normals, faces, lighting, texture);
+				Blocks.mode(bi.getBlock()).generateChunkMesh(bi, vertices, faces);
 			}
 		}
 	}

@@ -11,7 +11,7 @@ import cubyz.api.Resource;
 import cubyz.client.BlockMeshes;
 import cubyz.rendering.models.Model;
 import cubyz.utils.datastructures.IntWrapper;
-import cubyz.utils.datastructures.FloatFastList;
+import cubyz.utils.VertexAttribList;
 import cubyz.utils.datastructures.IntFastList;
 import cubyz.world.Chunk;
 import cubyz.world.Neighbors;
@@ -122,23 +122,23 @@ public class TorchRotation implements RotationMode {
 	}
 	
 	@Override
-	public void generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
+	public void generateChunkMesh(BlockInstance bi, VertexAttribList vertices, IntFastList faces) {
 		int data = bi.getBlock() >>> 16;
 		Model model = BlockMeshes.mesh(bi.getBlock() & Blocks.TYPE_MASK).model;
 		if ((data & 0b1) != 0) {
-			model.addToChunkMeshRotation((bi.x & Chunk.chunkMask) + 0.9f, (bi.y & Chunk.chunkMask) + 0.7f, (bi.z & Chunk.chunkMask) + 0.5f, POS_X, BlockMeshes.textureIndices(bi.getBlock()), bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture);
+			model.addToChunkMeshRotation((bi.x & Chunk.chunkMask) + 0.9f, (bi.y & Chunk.chunkMask) + 0.7f, (bi.z & Chunk.chunkMask) + 0.5f, POS_X, BlockMeshes.textureIndices(bi.getBlock()), bi.light, bi.getNeighbors(), vertices, faces);
 		}
 		if ((data & 0b10) != 0) {
-			model.addToChunkMeshRotation((bi.x & Chunk.chunkMask) + 0.1f, (bi.y & Chunk.chunkMask) + 0.7f, (bi.z & Chunk.chunkMask) + 0.5f, NEG_X, BlockMeshes.textureIndices(bi.getBlock()), bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture);
+			model.addToChunkMeshRotation((bi.x & Chunk.chunkMask) + 0.1f, (bi.y & Chunk.chunkMask) + 0.7f, (bi.z & Chunk.chunkMask) + 0.5f, NEG_X, BlockMeshes.textureIndices(bi.getBlock()), bi.light, bi.getNeighbors(), vertices, faces);
 		}
 		if ((data & 0b100) != 0) {
-			model.addToChunkMeshRotation((bi.x & Chunk.chunkMask) + 0.5f, (bi.y & Chunk.chunkMask) + 0.7f, (bi.z & Chunk.chunkMask) + 0.9f, POS_Z, BlockMeshes.textureIndices(bi.getBlock()), bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture);
+			model.addToChunkMeshRotation((bi.x & Chunk.chunkMask) + 0.5f, (bi.y & Chunk.chunkMask) + 0.7f, (bi.z & Chunk.chunkMask) + 0.9f, POS_Z, BlockMeshes.textureIndices(bi.getBlock()), bi.light, bi.getNeighbors(), vertices, faces);
 		}
 		if ((data & 0b1000) != 0) {
-			model.addToChunkMeshRotation((bi.x & Chunk.chunkMask) + 0.5f, (bi.y & Chunk.chunkMask) + 0.7f, (bi.z & Chunk.chunkMask) + 0.1f, NEG_Z, BlockMeshes.textureIndices(bi.getBlock()), bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture);
+			model.addToChunkMeshRotation((bi.x & Chunk.chunkMask) + 0.5f, (bi.y & Chunk.chunkMask) + 0.7f, (bi.z & Chunk.chunkMask) + 0.1f, NEG_Z, BlockMeshes.textureIndices(bi.getBlock()), bi.light, bi.getNeighbors(), vertices, faces);
 		}
 		if ((data & 0b10000) != 0) {
-			model.addToChunkMeshRotation((bi.x & Chunk.chunkMask) + 0.5f, (bi.y & Chunk.chunkMask) + 0.5f, (bi.z & Chunk.chunkMask) + 0.5f, null, BlockMeshes.textureIndices(bi.getBlock()), bi.light, bi.getNeighbors(), vertices, normals, faces, lighting, texture);
+			model.addToChunkMeshRotation((bi.x & Chunk.chunkMask) + 0.5f, (bi.y & Chunk.chunkMask) + 0.5f, (bi.z & Chunk.chunkMask) + 0.5f, null, BlockMeshes.textureIndices(bi.getBlock()), bi.light, bi.getNeighbors(), vertices, faces);
 		}
 	}
 }

@@ -13,9 +13,11 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.lwjgl.system.MemoryUtil;
 
+import cubyz.gui.menu.DebugOverlay;
 import cubyz.rendering.Camera;
 import cubyz.rendering.ShaderProgram;
 import cubyz.utils.Utils;
+import cubyz.utils.VertexAttribList;
 import cubyz.utils.datastructures.IntFastList;
 import cubyz.world.Chunk;
 import cubyz.world.ChunkData;
@@ -28,24 +30,20 @@ import cubyz.world.ReducedChunkVisibilityData;
 
 public class ReducedChunkMesh extends ChunkMesh {
 	// ThreadLocal lists, to prevent (re-)allocating tons of memory.
-	public static ThreadLocal<IntFastList> localVertices = new ThreadLocal<IntFastList>() {
+	private static final ThreadLocal<VertexAttribList> localVertices = new ThreadLocal<VertexAttribList>() {
 		@Override
-		protected IntFastList initialValue() {
-			return new IntFastList(20000);
+		protected VertexAttribList initialValue() {
+			return new VertexAttribList(2);
 		}
 	};
-	public static ThreadLocal<IntFastList> localFaces = new ThreadLocal<IntFastList>() {
+	private static final ThreadLocal<IntFastList> localFaces = new ThreadLocal<IntFastList>() {
 		@Override
 		protected IntFastList initialValue() {
 			return new IntFastList(30000);
 		}
 	};
-	public static ThreadLocal<IntFastList> localTexCoordsAndNormals = new ThreadLocal<IntFastList>() {
-		@Override
-		protected IntFastList initialValue() {
-			return new IntFastList(20000);
-		}
-	};
+	
+	public static final int POSITION = 0, TEXTURE = 1;
 
 	// Shader stuff:
 	public static int loc_projectionMatrix;
@@ -139,13 +137,11 @@ public class ReducedChunkMesh extends ChunkMesh {
 		}
 		generated = true;
 
-		IntFastList vertices = localVertices.get();
+		VertexAttribList vertices = localVertices.get();
 		IntFastList faces = localFaces.get();
-		IntFastList texCoordsAndNormals = localTexCoordsAndNormals.get();
 		vertices.clear();
 		faces.clear();
-		texCoordsAndNormals.clear();
-		generateModelData(chunkVisibilityData, vertices, faces, texCoordsAndNormals);
+		generateModelData(chunkVisibilityData, vertices, faces);
 		IntBuffer posBuffer = null;
 		IntBuffer indexBuffer = null;
 		IntBuffer colorAndNormalBuffer = null;
@@ -165,20 +161,12 @@ public class ReducedChunkMesh extends ChunkMesh {
 			// Position and normal VBO
 			int vboId = glGenBuffers();
 			vboIdList.add(vboId);
-			posBuffer = MemoryUtil.memAllocInt(vertices.size);
+			posBuffer = MemoryUtil.memAllocInt(vertices.size());
 			posBuffer.put(vertices.toArray()).flip();
 			glBindBuffer(GL_ARRAY_BUFFER, vboId);
 			glBufferData(GL_ARRAY_BUFFER, posBuffer, GL_STATIC_DRAW);
-			glVertexAttribPointer(0, 1, GL_FLOAT, false, 0, 0);
-
-			// texture and normal VBO
-			vboId = glGenBuffers();
-			vboIdList.add(vboId);
-			colorAndNormalBuffer = MemoryUtil.memAllocInt(texCoordsAndNormals.size);
-			colorAndNormalBuffer.put(texCoordsAndNormals.toArray()).flip();
-			glBindBuffer(GL_ARRAY_BUFFER, vboId);
-			glBufferData(GL_ARRAY_BUFFER, colorAndNormalBuffer, GL_STATIC_DRAW);
-			glVertexAttribPointer(1, 1, GL_FLOAT, false, 0, 0);
+			glVertexAttribPointer(0, 1, GL_FLOAT, false, 4*2, 4*POSITION);
+			glVertexAttribPointer(1, 1, GL_FLOAT, false, 4*2, 4*TEXTURE);
 
 			// Index VBO
 			vboId = glGenBuffers();
@@ -250,13 +238,15 @@ public class ReducedChunkMesh extends ChunkMesh {
 	 * @param z
 	 * @return
 	 */
-	private static int addVertex(IntFastList vertices, IntFastList colorsAndNormals, int vertexValue, int colorNormal) {
-		vertices.add(vertexValue);
-		colorsAndNormals.add(colorNormal);
-		return vertices.size - 1;
+	private static int addVertex(VertexAttribList vertices, int position, int textureNormal) {
+		vertices.add(POSITION, position);
+		vertices.add(TEXTURE, textureNormal);
+		int ret = vertices.currentVertex();
+		vertices.endVertex();
+		return ret;
 	}
 
-	private static void generateModelData(ReducedChunkVisibilityData chunkVisibilityData, IntFastList vertices, IntFastList faces, IntFastList colorsAndNormals) {
+	private static void generateModelData(ReducedChunkVisibilityData chunkVisibilityData, VertexAttribList vertices, IntFastList faces) {
 		final int CORD00 = 0b00 << 16;
 		final int CORD01 = 0b01 << 16;
 		final int CORD10 = 0b10 << 16;
@@ -273,12 +263,12 @@ public class ReducedChunkMesh extends ChunkMesh {
 			byte neighbors = chunkVisibilityData.neighbors[i];
 			if ((neighbors & Neighbors.BIT_MASK[Neighbors.DIR_NEG_X]) != 0) {
 				int normal = 0;
-				int vertexValue = x | y << 6 | z << 12 | voxelSize << 18;
-				int colorNormal = BlockMeshes.textureIndices(block)[Neighbors.DIR_NEG_X] | (normal << 24);
-				int i000 = addVertex(vertices, colorsAndNormals, vertexValue, colorNormal | CORD01);
-				int i001 = addVertex(vertices, colorsAndNormals, vertexValue + Z_Add, colorNormal | CORD11);
-				int i010 = addVertex(vertices, colorsAndNormals, vertexValue + Y_Add, colorNormal | CORD00);
-				int i011 = addVertex(vertices, colorsAndNormals, vertexValue + Y_Add + Z_Add, colorNormal | CORD10);
+				int position = x | y << 6 | z << 12 | voxelSize << 18;
+				int textureNormal = BlockMeshes.textureIndices(block)[Neighbors.DIR_NEG_X] | (normal << 24);
+				int i000 = addVertex(vertices, position, textureNormal | CORD01);
+				int i001 = addVertex(vertices, position + Z_Add, textureNormal | CORD11);
+				int i010 = addVertex(vertices, position + Y_Add, textureNormal | CORD00);
+				int i011 = addVertex(vertices, position + Y_Add + Z_Add, textureNormal | CORD10);
 				faces.add(i000);
 				faces.add(i001);
 				faces.add(i011);
@@ -289,12 +279,12 @@ public class ReducedChunkMesh extends ChunkMesh {
 			}
 			if ((neighbors & Neighbors.BIT_MASK[Neighbors.DIR_POS_X]) != 0) {
 				int normal = 1;
-				int vertexValue = x + 1 | y << 6 | z << 12 | voxelSize << 18;
-				int colorNormal = BlockMeshes.textureIndices(block)[Neighbors.DIR_POS_X] | (normal << 24);
-				int i100 = addVertex(vertices, colorsAndNormals, vertexValue, colorNormal | CORD11);
-				int i101 = addVertex(vertices, colorsAndNormals, vertexValue + Z_Add, colorNormal | CORD01);
-				int i110 = addVertex(vertices, colorsAndNormals, vertexValue + Y_Add, colorNormal | CORD10);
-				int i111 = addVertex(vertices, colorsAndNormals, vertexValue + Y_Add + Z_Add, colorNormal | CORD00);
+				int position = x + 1 | y << 6 | z << 12 | voxelSize << 18;
+				int textureNormal = BlockMeshes.textureIndices(block)[Neighbors.DIR_POS_X] | (normal << 24);
+				int i100 = addVertex(vertices, position, textureNormal | CORD11);
+				int i101 = addVertex(vertices, position + Z_Add, textureNormal | CORD01);
+				int i110 = addVertex(vertices, position + Y_Add, textureNormal | CORD10);
+				int i111 = addVertex(vertices, position + Y_Add + Z_Add, textureNormal | CORD00);
 				faces.add(i100);
 				faces.add(i111);
 				faces.add(i101);
@@ -305,12 +295,12 @@ public class ReducedChunkMesh extends ChunkMesh {
 			}
 			if ((neighbors & Neighbors.BIT_MASK[Neighbors.DIR_DOWN]) != 0) {
 				int normal = 4;
-				int vertexValue = x | y << 6 | z << 12 | voxelSize << 18;
-				int colorNormal = BlockMeshes.textureIndices(block)[Neighbors.DIR_DOWN] | (normal << 24);
-				int i000 = addVertex(vertices, colorsAndNormals, vertexValue, colorNormal | CORD11);
-				int i001 = addVertex(vertices, colorsAndNormals, vertexValue + Z_Add, colorNormal | CORD10);
-				int i100 = addVertex(vertices, colorsAndNormals, vertexValue + X_Add, colorNormal | CORD01);
-				int i101 = addVertex(vertices, colorsAndNormals, vertexValue + X_Add + Z_Add, colorNormal | CORD00);
+				int position = x | y << 6 | z << 12 | voxelSize << 18;
+				int textureNormal = BlockMeshes.textureIndices(block)[Neighbors.DIR_DOWN] | (normal << 24);
+				int i000 = addVertex(vertices, position, textureNormal | CORD11);
+				int i001 = addVertex(vertices, position + Z_Add, textureNormal | CORD10);
+				int i100 = addVertex(vertices, position + X_Add, textureNormal | CORD01);
+				int i101 = addVertex(vertices, position + X_Add + Z_Add, textureNormal | CORD00);
 				faces.add(i000);
 				faces.add(i101);
 				faces.add(i001);
@@ -321,12 +311,12 @@ public class ReducedChunkMesh extends ChunkMesh {
 			}
 			if ((neighbors & Neighbors.BIT_MASK[Neighbors.DIR_UP]) != 0) {
 				int normal = 5;
-				int vertexValue = x | (y + 1) << 6 | z << 12 | voxelSize << 18;
-				int colorNormal = BlockMeshes.textureIndices(block)[Neighbors.DIR_UP] | (normal << 24);
-				int i010 = addVertex(vertices, colorsAndNormals, vertexValue, colorNormal | CORD01);
-				int i011 = addVertex(vertices, colorsAndNormals, vertexValue + Z_Add, colorNormal | CORD00);
-				int i110 = addVertex(vertices, colorsAndNormals, vertexValue + X_Add, colorNormal | CORD11);
-				int i111 = addVertex(vertices, colorsAndNormals, vertexValue + X_Add + Z_Add, colorNormal | CORD10);
+				int position = x | (y + 1) << 6 | z << 12 | voxelSize << 18;
+				int textureNormal = BlockMeshes.textureIndices(block)[Neighbors.DIR_UP] | (normal << 24);
+				int i010 = addVertex(vertices, position, textureNormal | CORD01);
+				int i011 = addVertex(vertices, position + Z_Add, textureNormal | CORD00);
+				int i110 = addVertex(vertices, position + X_Add, textureNormal | CORD11);
+				int i111 = addVertex(vertices, position + X_Add + Z_Add, textureNormal | CORD10);
 				faces.add(i010);
 				faces.add(i011);
 				faces.add(i111);
@@ -337,12 +327,12 @@ public class ReducedChunkMesh extends ChunkMesh {
 			}
 			if ((neighbors & Neighbors.BIT_MASK[Neighbors.DIR_NEG_Z]) != 0) {
 				int normal = 2;
-				int vertexValue = x | y << 6 | z << 12 | voxelSize << 18;
-				int colorNormal = BlockMeshes.textureIndices(block)[Neighbors.DIR_NEG_Z] | (normal << 24);
-				int i000 = addVertex(vertices, colorsAndNormals, vertexValue, colorNormal | CORD11);
-				int i010 = addVertex(vertices, colorsAndNormals, vertexValue + Y_Add, colorNormal | CORD10);
-				int i100 = addVertex(vertices, colorsAndNormals, vertexValue + X_Add, colorNormal | CORD01);
-				int i110 = addVertex(vertices, colorsAndNormals, vertexValue + Y_Add + X_Add, colorNormal | CORD00);
+				int position = x | y << 6 | z << 12 | voxelSize << 18;
+				int textureNormal = BlockMeshes.textureIndices(block)[Neighbors.DIR_NEG_Z] | (normal << 24);
+				int i000 = addVertex(vertices, position, textureNormal | CORD11);
+				int i010 = addVertex(vertices, position + Y_Add, textureNormal | CORD10);
+				int i100 = addVertex(vertices, position + X_Add, textureNormal | CORD01);
+				int i110 = addVertex(vertices, position + Y_Add + X_Add, textureNormal | CORD00);
 				faces.add(i000);
 				faces.add(i110);
 				faces.add(i100);
@@ -353,12 +343,12 @@ public class ReducedChunkMesh extends ChunkMesh {
 			}
 			if ((neighbors & Neighbors.BIT_MASK[Neighbors.DIR_POS_Z]) != 0) {
 				int normal = 3;
-				int vertexValue = x | y << 6 | (z + 1) << 12 | voxelSize << 18;
-				int colorNormal = BlockMeshes.textureIndices(block)[Neighbors.DIR_POS_Z] | (normal << 24);
-				int i001 = addVertex(vertices, colorsAndNormals, vertexValue, colorNormal | CORD01);
-				int i011 = addVertex(vertices, colorsAndNormals, vertexValue + Y_Add, colorNormal | CORD00);
-				int i101 = addVertex(vertices, colorsAndNormals, vertexValue + X_Add, colorNormal | CORD11);
-				int i111 = addVertex(vertices, colorsAndNormals, vertexValue + Y_Add + X_Add, colorNormal | CORD10);
+				int position = x | y << 6 | (z + 1) << 12 | voxelSize << 18;
+				int textureNormal = BlockMeshes.textureIndices(block)[Neighbors.DIR_POS_Z] | (normal << 24);
+				int i001 = addVertex(vertices, position, textureNormal | CORD01);
+				int i011 = addVertex(vertices, position + Y_Add, textureNormal | CORD00);
+				int i101 = addVertex(vertices, position + X_Add, textureNormal | CORD11);
+				int i111 = addVertex(vertices, position + Y_Add + X_Add, textureNormal | CORD10);
 				faces.add(i001);
 				faces.add(i101);
 				faces.add(i111);

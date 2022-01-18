@@ -9,12 +9,12 @@ import org.joml.Vector3i;
 import org.joml.Vector4d;
 
 import cubyz.utils.Logger;
+import cubyz.utils.VertexAttribList;
 import cubyz.api.Resource;
 import cubyz.client.BlockMeshes;
 import cubyz.rendering.models.CubeModel;
 import cubyz.rendering.models.Model;
 import cubyz.utils.datastructures.IntWrapper;
-import cubyz.utils.datastructures.FloatFastList;
 import cubyz.utils.datastructures.IntFastList;
 import cubyz.world.Neighbors;
 import cubyz.world.Chunk;
@@ -23,6 +23,8 @@ import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.RotationMode;
 import cubyz.world.entity.Entity;
+
+import static cubyz.client.NormalChunkMesh.*;
 
 /**
  * For stackable partial blocks, like snow.
@@ -135,7 +137,7 @@ public class StackableRotation implements RotationMode {
 	}
 	
 	@Override
-	public void generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
+	public void generateChunkMesh(BlockInstance bi, VertexAttribList vertices, IntFastList faces) {
 		Model model = BlockMeshes.mesh(bi.getBlock() & Blocks.TYPE_MASK).model;
 		if (!(model instanceof CubeModel)) {
 			Logger.error("Unsupported model "+model.getRegistryID()+" in block "+Blocks.id(bi.getBlock())+" for stackable block type. Skipping block.");
@@ -149,7 +151,7 @@ public class StackableRotation implements RotationMode {
 		int[] textureIndices = BlockMeshes.textureIndices(bi.getBlock());
 		
 		// Copies code from CubeModel and applies height transformation to it:
-		int indexOffset = vertices.size/3;
+		int indexOffset = vertices.currentVertex();
 		int size = model.positions.length/3;
 		float factor = Math.min(1, (bi.getBlock() >>> 16)/16.0f);
 		IntFastList indexesAdded = new IntFastList(24);
@@ -165,26 +167,28 @@ public class StackableRotation implements RotationMode {
 			   nz == 1 && (neighbors & Neighbors.BIT_MASK[Neighbors.DIR_POS_Z]) != 0 ||
 			   ny == -1 && ((neighbors & Neighbors.BIT_MASK[Neighbors.DIR_DOWN]) != 0 || factor == 1) ||
 			   ny == 1 && (neighbors & Neighbors.BIT_MASK[Neighbors.DIR_UP]) != 0) {
-				vertices.add(model.positions[i3] + x);
+				vertices.add(POSITION_X, model.positions[i3] + x);
 				if (ny != -1)
-					vertices.add(model.positions[i3+1]*factor + y);
+					vertices.add(POSITION_Y, model.positions[i3+1]*factor + y);
 				else
-					vertices.add(model.positions[i3+1] + y);
-				vertices.add(model.positions[i3+2] + z);
-				normals.add(nx);
-				normals.add(ny);
-				normals.add(nz);
+					vertices.add(POSITION_Y, model.positions[i3+1] + y);
+				vertices.add(POSITION_Z, model.positions[i3+2] + z);
+				vertices.add(NORMAL_X, nx);
+				vertices.add(NORMAL_Y, ny);
+				vertices.add(NORMAL_Z, nz);
 				
-				lighting.add(Model.interpolateLight(model.positions[i3], ny != -1 ? model.positions[i3+1]*factor : model.positions[i3+1], model.positions[i3+2], model.normals[i3], model.normals[i3+1], model.normals[i3+2], light));
+				vertices.add(LIGHTING, Model.interpolateLight(model.positions[i3], ny != -1 ? model.positions[i3+1]*factor : model.positions[i3+1], model.positions[i3+2], model.normals[i3], model.normals[i3+1], model.normals[i3+2], light));
 
-				texture.add(model.textCoords[i2]);
-				if (ny == 0)
-					texture.add(model.textCoords[i2+1]*factor);
-				else
-					texture.add(model.textCoords[i2+1]);
+				vertices.add(TEXTURE_X, model.textCoords[i2]);
+				if (ny == 0) {
+					vertices.add(TEXTURE_Y, model.textCoords[i2+1]*factor);
+				} else {
+					vertices.add(TEXTURE_Y, model.textCoords[i2+1]);
+				}
 
-				texture.add((float)textureIndices[Model.normalToNeighbor(model.normals[i3], model.normals[i3+1], model.normals[i3+2])]);
+				vertices.add(TEXTURE_Z, (float)textureIndices[Model.normalToNeighbor(model.normals[i3], model.normals[i3+1], model.normals[i3+2])]);
 				indexesAdded.add(i);
+				vertices.endVertex();
 			}
 		}
 		

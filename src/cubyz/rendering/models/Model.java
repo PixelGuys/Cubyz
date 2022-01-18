@@ -5,9 +5,11 @@ import org.joml.Vector3f;
 
 import cubyz.api.RegistryElement;
 import cubyz.api.Resource;
-import cubyz.utils.datastructures.FloatFastList;
+import cubyz.utils.VertexAttribList;
 import cubyz.utils.datastructures.IntFastList;
 import cubyz.world.Neighbors;
+
+import static cubyz.client.NormalChunkMesh.*;
 
 /**
  * A simple data holder for the indexed model data.
@@ -94,28 +96,30 @@ public class Model implements RegistryElement {
 	 * @param renderIndices
 	 * @param renderIndex
 	 */
-	public void addToChunkMesh(int x, int y, int z, int[] textureIndices, int[] light, byte neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
-		int indexOffset = vertices.size/3;
-		for(int i = 0; i < positions.length; i += 3) {
-			vertices.add(positions[i] + x);
-			vertices.add(positions[i+1] + y);
-			vertices.add(positions[i+2] + z);
+	public void addToChunkMesh(int x, int y, int z, int[] textureIndices, int[] light, byte neighbors, VertexAttribList vertices, IntFastList faces) {
+		int indexOffset = vertices.currentVertex();
+		for(int i3 = 0; i3 < positions.length; i3 += 3) {
+			int i2 = i3*2/3;
+			vertices.add(POSITION_X, positions[i3] + x);
+			vertices.add(POSITION_Y, positions[i3+1] + y);
+			vertices.add(POSITION_Z, positions[i3+2] + z);
 			
-			lighting.add(interpolateLight(positions[i], positions[i+1], positions[i+2], this.normals[i], this.normals[i+1], this.normals[i+2], light));
+			vertices.add(LIGHTING, interpolateLight(positions[i3], positions[i3+1], positions[i3+2], this.normals[i3], this.normals[i3+1], this.normals[i3+2], light));
+			
+			vertices.add(TEXTURE_X, textCoords[i2]);
+			vertices.add(TEXTURE_Y, textCoords[i2+1]);
+			vertices.add(TEXTURE_Z, (float)textureIndices[normalToNeighbor(this.normals[i3], this.normals[i3+1], this.normals[i3+2])]);
+			
+			vertices.add(NORMAL_X, this.normals[i3]);
+			vertices.add(NORMAL_Y, this.normals[i3+1]);
+			vertices.add(NORMAL_Z, this.normals[i3+2]);
+			
+			vertices.endVertex();
 		}
 		
 		for(int i = 0; i < indices.length; i++) {
 			faces.add(indices[i] + indexOffset);
 		}
-		
-		for(int i = 0; i < textCoords.length; i += 2) {
-			int i3 = i/2*3;
-			texture.add(textCoords[i]);
-			texture.add(textCoords[i+1]);
-			texture.add((float)textureIndices[normalToNeighbor(this.normals[i3], this.normals[i3+1], this.normals[i3+2])]);
-		}
-		
-		normals.add(this.normals);
 	}
 	
 	protected static float conditionalInversion(float coord, boolean inverse) {
@@ -141,31 +145,33 @@ public class Model implements RegistryElement {
 	 * @param renderIndices
 	 * @param renderIndex
 	 */
-	public void addToChunkMeshSimpleRotation(int x, int y, int z, int[] directionMap, boolean[] directionInversion, int[] textureIndices, int[] light, byte neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
-		int indexOffset = vertices.size/3;
-		for(int i = 0; i < positions.length; i += 3) {
-			vertices.add(conditionalInversion(positions[i+directionMap[0]], directionInversion[0]) + x);
-			vertices.add(conditionalInversion(positions[i+directionMap[1]], directionInversion[1]) + y);
-			vertices.add(conditionalInversion(positions[i+directionMap[2]], directionInversion[2]) + z);
+	public void addToChunkMeshSimpleRotation(int x, int y, int z, int[] directionMap, boolean[] directionInversion, int[] textureIndices, int[] light, byte neighbors, VertexAttribList vertices, IntFastList faces) {
+		int indexOffset = vertices.currentVertex();
+		for(int i3 = 0; i3 < positions.length; i3 += 3) {
+			int i2 = i3*2/3;
+			vertices.add(POSITION_X, conditionalInversion(positions[i3+directionMap[0]], directionInversion[0]) + x);
+			vertices.add(POSITION_Y, conditionalInversion(positions[i3+directionMap[1]], directionInversion[1]) + y);
+			vertices.add(POSITION_Z, conditionalInversion(positions[i3+directionMap[2]], directionInversion[2]) + z);
 			
-			lighting.add(interpolateLight(	conditionalInversion(positions[i+directionMap[0]], directionInversion[0]),
-											conditionalInversion(positions[i+directionMap[1]], directionInversion[1]),
-											conditionalInversion(positions[i+directionMap[2]], directionInversion[2]),
-											this.normals[i], this.normals[i+1], this.normals[i+2], light));
+			vertices.add(LIGHTING, interpolateLight(conditionalInversion(positions[i3+directionMap[0]], directionInversion[0]),
+			                                        conditionalInversion(positions[i3+directionMap[1]], directionInversion[1]),
+			                                        conditionalInversion(positions[i3+directionMap[2]], directionInversion[2]),
+			                                        this.normals[i3], this.normals[i3+1], this.normals[i3+2], light));
+			
+			vertices.add(TEXTURE_X, textCoords[i2]);
+			vertices.add(TEXTURE_Y, textCoords[i2+1]);
+			vertices.add(TEXTURE_Z, (float)textureIndices[normalToNeighbor(this.normals[i3], this.normals[i3+1], this.normals[i3+2])]);
+			
+			vertices.add(NORMAL_X, this.normals[i3]);
+			vertices.add(NORMAL_Y, this.normals[i3+1]);
+			vertices.add(NORMAL_Z, this.normals[i3+2]);
+			
+			vertices.endVertex();
 		}
 		
 		for(int i = 0; i < indices.length; i++) {
 			faces.add(indices[i] + indexOffset);
 		}
-		
-		for(int i = 0; i < textCoords.length; i += 2) {
-			int i3 = i/2*3;
-			texture.add(textCoords[i]);
-			texture.add(textCoords[i+1]);
-			texture.add((float)textureIndices[normalToNeighbor(this.normals[i3], this.normals[i3+1], this.normals[i3+2])]);
-		}
-		
-		normals.add(this.normals);
 	}
 	
 	/**
@@ -187,34 +193,34 @@ public class Model implements RegistryElement {
 	 * @param renderIndices
 	 * @param renderIndex
 	 */
-	public void addToChunkMeshRotation(float x, float y, float z, Matrix3f rotationMatrix, int[] textureIndices, int[] light, byte neighbors, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
-		int indexOffset = vertices.size/3;
-		for(int i = 0; i < positions.length; i += 3) {
-			Vector3f pos = new Vector3f(positions[i], positions[i+1], positions[i+2]);
-			Vector3f normal = new Vector3f(this.normals[i], this.normals[i+1], this.normals[i+2]);
+	public void addToChunkMeshRotation(float x, float y, float z, Matrix3f rotationMatrix, int[] textureIndices, int[] light, byte neighbors, VertexAttribList vertices, IntFastList faces) {
+		int indexOffset = vertices.currentVertex();
+		for(int i3 = 0; i3 < positions.length; i3 += 3) {
+			Vector3f pos = new Vector3f(positions[i3], positions[i3+1], positions[i3+2]);
+			Vector3f normal = new Vector3f(this.normals[i3], this.normals[i3+1], this.normals[i3+2]);
 			if (rotationMatrix != null) {
 				pos = pos.mul(rotationMatrix);
 				normal = normal.mul(rotationMatrix);
 			}
-			vertices.add(pos.x + x);
-			vertices.add(pos.y + y);
-			vertices.add(pos.z + z);
-			normals.add(normal.x);
-			normals.add(normal.y);
-			normals.add(normal.z);
+			vertices.add(POSITION_X, pos.x + x);
+			vertices.add(POSITION_Y, pos.y + y);
+			vertices.add(POSITION_Z, pos.z + z);
+			vertices.add(NORMAL_X, normal.x);
+			vertices.add(NORMAL_Y, normal.y);
+			vertices.add(NORMAL_Z, normal.z);
 			
-			lighting.add(interpolateLight(pos.x, pos.y, pos.z, normal.x, normal.y, normal.z, light));
+			int i2 = i3*2/3;
+			vertices.add(TEXTURE_X, textCoords[i2]);
+			vertices.add(TEXTURE_Y, textCoords[i2+1]);
+			vertices.add(TEXTURE_Z, (float)textureIndices[normalToNeighbor(this.normals[i3], this.normals[i3+1], this.normals[i3+2])]);
+			
+			vertices.add(LIGHTING, interpolateLight(pos.x, pos.y, pos.z, normal.x, normal.y, normal.z, light));
+			
+			vertices.endVertex();
 		}
 		
 		for(int i = 0; i < indices.length; i++) {
 			faces.add(indices[i] + indexOffset);
-		}
-		
-		for(int i = 0; i < textCoords.length; i += 2) {
-			int i3 = i/2*3;
-			texture.add(textCoords[i]);
-			texture.add(textCoords[i+1]);
-			texture.add((float)textureIndices[normalToNeighbor(this.normals[i3], this.normals[i3+1], this.normals[i3+2])]);
 		}
 	}
 

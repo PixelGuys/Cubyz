@@ -10,7 +10,7 @@ import cubyz.api.Resource;
 import cubyz.client.BlockMeshes;
 import cubyz.rendering.models.Model;
 import cubyz.utils.datastructures.IntWrapper;
-import cubyz.utils.datastructures.FloatFastList;
+import cubyz.utils.VertexAttribList;
 import cubyz.utils.datastructures.IntFastList;
 import cubyz.world.Neighbors;
 import cubyz.world.NormalChunk;
@@ -20,6 +20,8 @@ import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.RotationMode;
 import cubyz.world.entity.Entity;
+
+import static cubyz.client.NormalChunkMesh.*;
 
 public class FenceRotation implements RotationMode {
 	Resource id = new Resource("cubyz", "fence");
@@ -169,7 +171,7 @@ public class FenceRotation implements RotationMode {
 	}
 	
 	@Override
-	public void generateChunkMesh(BlockInstance bi, FloatFastList vertices, FloatFastList normals, IntFastList faces, IntFastList lighting, FloatFastList texture) {
+	public void generateChunkMesh(BlockInstance bi, VertexAttribList vertices, IntFastList faces) {
 		Model model = BlockMeshes.mesh(bi.getBlock() & Blocks.TYPE_MASK).model;
 		int x = bi.x & Chunk.chunkMask;
 		int y = bi.y & Chunk.chunkMask;
@@ -182,36 +184,38 @@ public class FenceRotation implements RotationMode {
 		boolean posZ = (blockData & (1 << Neighbors.DIR_POS_Z)) == 0;
 		
 		// Simply copied the code from model and move all vertices to the center that touch an edge that isn't connected to another fence.
-		int indexOffset = vertices.size/3;
+		int indexOffset = vertices.currentVertex();
 		int[] light = bi.light;
-		for(int i = 0; i < model.positions.length; i += 3) {
-			float newX = model.positions[i];
+		for(int i3 = 0; i3 < model.positions.length; i3 += 3) {
+			int i2 = i3*2/3;
+			float newX = model.positions[i3];
 			if (newX == 0 && negX) newX = 0.5f;
 			if (newX == 1 && posX) newX = 0.5f;
 			newX += x;
-			float newY = model.positions[i+1] + y;
-			float newZ = model.positions[i+2];
+			float newY = model.positions[i3+1] + y;
+			float newZ = model.positions[i3+2];
 			if (newZ == 0 && negZ) newZ = 0.5f;
 			if (newZ == 1 && posZ) newZ = 0.5f;
 			newZ += z;
-			vertices.add(newX);
-			vertices.add(newY);
-			vertices.add(newZ);
+			vertices.add(POSITION_X, newX);
+			vertices.add(POSITION_Y, newY);
+			vertices.add(POSITION_Z, newZ);
 			
-			lighting.add(Model.interpolateLight(model.positions[i], model.positions[i+1], model.positions[i+2], model.normals[i], model.normals[i+1], model.normals[i+2], light));
+			vertices.add(LIGHTING, Model.interpolateLight(model.positions[i3], model.positions[i3+1], model.positions[i3+2], model.normals[i3], model.normals[i3+1], model.normals[i3+2], light));
+			
+			vertices.add(TEXTURE_X, model.textCoords[i2]);
+			vertices.add(TEXTURE_Y, model.textCoords[i2+1]);
+			vertices.add(TEXTURE_Z, (float)textureIndices[Model.normalToNeighbor(model.normals[i3], model.normals[i3+1], model.normals[i3+2])]);
+			
+			vertices.add(NORMAL_X, model.normals[i3]);
+			vertices.add(NORMAL_Y, model.normals[i3+1]);
+			vertices.add(NORMAL_Z, model.normals[i3+2]);
+			
+			vertices.endVertex();
 		}
 		
 		for(int i = 0; i < model.indices.length; i++) {
 			faces.add(model.indices[i] + indexOffset);
 		}
-		
-		for(int i = 0; i < model.textCoords.length; i += 2) {
-			int i3 = i/2*3;
-			texture.add(model.textCoords[i]);
-			texture.add(model.textCoords[i+1]);
-			texture.add((float)textureIndices[Model.normalToNeighbor(model.normals[i3], model.normals[i3+1], model.normals[i3+2])]);
-		}
-		
-		normals.add(model.normals);
 	}
 }
