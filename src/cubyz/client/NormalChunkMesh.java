@@ -226,7 +226,6 @@ public class NormalChunkMesh extends ChunkMesh {
 		FloatBuffer normalBuffer = null;
 		IntBuffer indexBuffer = null;
 		IntBuffer lightingBuffer = null;
-		IntBuffer renderIndexBuffer = null;
 		try {
 			int vaoId = glGenVertexArrays();
 			glBindVertexArray(vaoId);
@@ -299,9 +298,6 @@ public class NormalChunkMesh extends ChunkMesh {
 			}
 			if (lightingBuffer != null) {
 				MemoryUtil.memFree(lightingBuffer);
-			}
-			if (renderIndexBuffer != null) {
-				MemoryUtil.memFree(renderIndexBuffer);
 			}
 		}
 	}

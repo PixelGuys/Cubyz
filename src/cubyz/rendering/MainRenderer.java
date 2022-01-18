@@ -46,7 +46,7 @@ public class MainRenderer {
 	}
 	
 	/**The number of milliseconds after which no more chunk meshes are created. This allows the game to run smoother on movement.*/
-	private static int maximumMeshTime = 8;
+	private static int maximumMeshTime = 12;
 
 	private ShaderProgram fogShader;
 	private ShaderProgram deferredRenderPassShader;
@@ -171,6 +171,7 @@ public class MainRenderer {
 	 * @param window
 	 */
 	public void render() {
+		long startTime = System.currentTimeMillis();
 		if (Window.shouldClose()) {
 			GameLauncher.instance.exit();
 		}
@@ -234,6 +235,15 @@ public class MainRenderer {
 			light.setDirection(light.getDirection().mul(0.1f*Cubyz.world.getGlobalLighting()/light.getDirection().length()));
 			Window.setClearColor(clearColor);
 			render(ambient, light, worldSpatialList, playerPosition);
+			
+			// Update meshes:
+			// The meshes need to be updated after everything is rendered. Otherwise the vbos get corrupted on some hardware.
+			// See https://cdn.discordapp.com/attachments/574185221939789855/931591596175147038/unknown.png for an example.
+			do { // A do while loop is used so even when the framerate is low at least one mesh gets updated per frame.
+				ChunkMesh mesh = Meshes.getNextQueuedMesh();
+				if (mesh == null) break;
+				mesh.regenerateMesh();
+			} while (System.currentTimeMillis() - startTime <= maximumMeshTime);
 		} else {
 			clearColor.y = clearColor.z = 0.7f;
 			clearColor.x = 0.1f;
@@ -264,7 +274,6 @@ public class MainRenderer {
 			return;
 		buffers.bind();
 		buffers.clearAndBind(Window.getClearColor());
-		long startTime = System.currentTimeMillis();
 		// Clean up old chunk meshes:
 		Meshes.cleanUp();
 		
@@ -300,12 +309,6 @@ public class MainRenderer {
 			double x0 = playerPosition.x;
 			double y0 = playerPosition.y;
 			double z0 = playerPosition.z;
-			// Update meshes:
-			while (System.currentTimeMillis() - startTime <= maximumMeshTime) {
-				ChunkMesh mesh = Meshes.getNextQueuedMesh();
-				if (mesh == null) break;
-				mesh.regenerateMesh();
-			}
 
 			glDepthRangef(0, 0.05f);
 
