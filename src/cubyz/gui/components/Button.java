@@ -1,10 +1,12 @@
 package cubyz.gui.components;
 
+import cubyz.rendering.Window;
 import cubyz.utils.Logger;
 import cubyz.gui.input.Mouse;
 import cubyz.rendering.Graphics;
 import cubyz.rendering.text.Fonts;
 import cubyz.utils.translate.TextKey;
+import org.joml.Vector4i;
 
 /**
  * A pressable button which fires an event on press.<br>
@@ -40,6 +42,10 @@ public class Button extends Component {
 	private boolean pressed;
 	private Runnable onAction;
 	private Label textLabel = new Label(Fonts.PIXEL_FONT, 240);
+
+	private float scrollDir = -.7f;
+	private float xFloat;
+	private float stopTimer, stopTime = 10f;
 
 	public Button() {}
 
@@ -101,6 +107,7 @@ public class Button extends Component {
 			if (onAction != null) {
 				try {
 					onAction.run();
+					textLabel.setBounds(x, textLabel.getY(), textLabel.width, textLabel.height, Component.ALIGN_LEFT);
 				} catch(Exception e) {
 					Logger.error(e);
 				}
@@ -115,7 +122,49 @@ public class Button extends Component {
 		} else{
 			drawTexture(button, x, y);
 		}
-		textLabel.render(x + width/2, y + height/2);
+
+		if(textLabel.getWidth() > width) {
+
+			if(textLabel.getX() == 0){
+				xFloat = x;
+				textLabel.setBounds(x, textLabel.getY(), textLabel.width, textLabel.height, Component.ALIGN_LEFT);
+			}
+
+			textLabel.setTextAlign(Component.ALIGN_LEFT);
+			Vector4i old = Graphics.setClip(new Vector4i(x, Window.getHeight() - y - height, width, height));
+			textLabel.render(textLabel.getX(), y + height / 2);
+			Graphics.restoreClip(old);
+
+			float pad = 10f;
+			float textLeftX = textLabel.getX() + this.textLabel.getWidth() + pad;
+			float btnLeft = x + width;
+
+			if(textLeftX > btnLeft && textLabel.getX() > x + pad) {
+				if(stopTimer < stopTime) {
+					stopTimer += .2f;
+					scrollDir = 0;
+				} else {
+					scrollDir = -.7f;
+					stopTimer = 0f;
+				}
+			} else if(textLabel.getX() < x && textLeftX < btnLeft) {
+				if(stopTimer < stopTime) {
+					stopTimer += .2f;
+					scrollDir = 0;
+				} else {
+					scrollDir = .7f;
+					stopTimer = 0f;
+				}
+			}
+
+			xFloat += scrollDir;
+
+			textLabel.setBounds((int)xFloat, textLabel.getY(), textLabel.getWidth(), textLabel.getHeight(), Component.ALIGN_LEFT);
+
+		} else  {
+			textLabel.setTextAlign(Component.ALIGN_CENTER);
+			textLabel.render(x + width/2, y + height/2);
+		}
 	}
 
 }
