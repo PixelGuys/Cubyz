@@ -206,7 +206,7 @@ public class ConsoleGUI extends MenuGUI {
 				} else {
 					mode = NORMAL;
 				}
-			} else if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_BACKSPACE) || Keyboard.hasCharSequence()) {
+			} else if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_BACKSPACE) || Keyboard.hasCharSequence() || Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT) || Keyboard.isKeyPressed(GLFW.GLFW_KEY_HOME)) {
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_BACKSPACE, false);
 				mode = NORMAL;
 			}
@@ -247,8 +247,11 @@ public class ConsoleGUI extends MenuGUI {
 		//Adds to history
 		String text = input.getText();
 		if (text != "") {
-			consoleArray[end] = text;
-			end = (end + 1) % HISTORY_SIZE;
+			//Prevents multiple entries of the same command in history
+			if (!text.equals(consoleArray[(HISTORY_SIZE + end - 1) % HISTORY_SIZE])) {
+				consoleArray[end] = text;
+				end = (end + 1) % HISTORY_SIZE;
+			}
 			current = end;
 			consoleArray[current] = "";
 			//Executes
