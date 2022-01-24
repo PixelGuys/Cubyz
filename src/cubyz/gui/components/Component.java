@@ -22,8 +22,9 @@ public abstract class Component {
 								ALIGN_BOTTOM		= 0b1000,
 								ALIGN_BOTTOM_RIGHT	= 0b1010;
 
-	private int x, y, lastRenderX, lastRenderY;
-	private byte align;
+	protected int x, y;
+	private int lastRenderX, lastRenderY;
+	protected byte align;
 
 	protected int width, height;
 	

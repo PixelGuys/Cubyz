@@ -25,8 +25,8 @@ gui.cubyz.debug.reload=Reload
 gui.cubyz.saves.play=Play {0}
 gui.cubyz.saves.delete=Delete
 gui.cubyz.saves.create=Create a new game!
-gui.cubyz.saves.create.mapgen=Map Generator: {0}
-gui.cubyz.saves.create.climategen=Climate Generator: {0}
+gui.cubyz.saves.create.mapgen=Map: {0}
+gui.cubyz.saves.create.climategen=Climate: {0}
 lang.name=English
 
 gui.cubyz.multiplayer.displayname=Displayname

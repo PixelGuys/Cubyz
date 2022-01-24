@@ -1,12 +1,11 @@
 package cubyz.gui.components;
 
-import cubyz.rendering.Window;
 import cubyz.utils.Logger;
 import cubyz.gui.input.Mouse;
 import cubyz.rendering.Graphics;
+import cubyz.rendering.Window;
 import cubyz.rendering.text.Fonts;
 import cubyz.utils.translate.TextKey;
-import org.joml.Vector4i;
 
 /**
  * A pressable button which fires an event on press.<br>
@@ -42,10 +41,9 @@ public class Button extends Component {
 	private boolean pressed;
 	private Runnable onAction;
 	private Label textLabel = new Label(Fonts.PIXEL_FONT, 240);
-
-	private float scrollDir = -.7f;
-	private float xFloat;
-	private float stopTimer, stopTime = 10f;
+	
+	private int maxResizeWidth;
+	private byte resizeAlignment;
 
 	public Button() {}
 
@@ -80,6 +78,23 @@ public class Button extends Component {
 	public void setFontSize(float fontSize) {
 		textLabel.setFontSize(fontSize);
 	}
+	
+	/**
+	 * If the contained text is bigger than the button, the button will be resized until it hits this width limit.
+	 * @param maxWidth
+	 * @param resizeAlignment what part of the button (left right or center) should stay constant on resize.
+	 */
+	public void setMaxResizeWidth(int maxWidth, byte resizeAlignment) {
+		maxResizeWidth = maxWidth;
+		this.resizeAlignment = resizeAlignment;
+	}
+	
+	@Override
+	public void setBounds(int x, int y, int width, int height, byte align) {
+		super.setBounds(x, y, width, height, align);
+		maxResizeWidth = Window.getWidth(); // Allow arbitrary resizing unless specified otherwise.
+		resizeAlignment = super.align; // Default to the button alignment.
+	}
 
 	private void drawTexture(int[] texture, int x, int y) {
 		Graphics.setColor(texture[0]<<16 | texture[1]<<8 | texture[2]);
@@ -107,7 +122,6 @@ public class Button extends Component {
 			if (onAction != null) {
 				try {
 					onAction.run();
-					textLabel.setBounds(x, textLabel.getY(), textLabel.width, textLabel.height, Component.ALIGN_LEFT);
 				} catch(Exception e) {
 					Logger.error(e);
 				}
@@ -122,48 +136,31 @@ public class Button extends Component {
 		} else{
 			drawTexture(button, x, y);
 		}
-
-		if(textLabel.getWidth() > width) {
-
-			if(textLabel.getX() == 0){
-				xFloat = x;
-				textLabel.setBounds(x, textLabel.getY(), textLabel.width, textLabel.height, Component.ALIGN_LEFT);
+		textLabel.render(x + width/2, y + height/2);
+		if(textLabel.getWidth() + 10 > this.width) {
+			// Resize the button:
+			int oldWidth = this.width;
+			this.width = textLabel.getWidth() + 10;
+			if(this.width > maxResizeWidth) {
+				setFontSize(getFontSize()*maxResizeWidth/this.width); // Make font smaller if the button can't be resized.
+				this.width = maxResizeWidth;
 			}
-
-			textLabel.setTextAlign(Component.ALIGN_LEFT);
-			Vector4i old = Graphics.setClip(new Vector4i(x, Window.getHeight() - y - height, width, height));
-			textLabel.render(textLabel.getX(), y + height / 2);
-			Graphics.restoreClip(old);
-
-			float pad = 10f;
-			float textLeftX = textLabel.getX() + this.textLabel.getWidth() + pad;
-			float btnLeft = x + width;
-
-			if(textLeftX > btnLeft && textLabel.getX() > x + pad) {
-				if(stopTimer < stopTime) {
-					stopTimer += .2f;
-					scrollDir = 0;
+			// Update position to keep alignment:
+			if((resizeAlignment & ALIGN_LEFT) != 0) {
+				
+			} else if((resizeAlignment & ALIGN_RIGHT) != 0) {
+				if((super.align & ALIGN_RIGHT) != 0) {
+					super.x += this.width - oldWidth;
 				} else {
-					scrollDir = -.7f;
-					stopTimer = 0f;
+					super.x -= this.width - oldWidth;
 				}
-			} else if(textLabel.getX() < x && textLeftX < btnLeft) {
-				if(stopTimer < stopTime) {
-					stopTimer += .2f;
-					scrollDir = 0;
+			} else {
+				if((super.align & ALIGN_RIGHT) != 0) {
+					super.x += (this.width - oldWidth)/2;
 				} else {
-					scrollDir = .7f;
-					stopTimer = 0f;
+					super.x -= (this.width - oldWidth)/2;
 				}
 			}
-
-			xFloat += scrollDir;
-
-			textLabel.setBounds((int)xFloat, textLabel.getY(), textLabel.getWidth(), textLabel.getHeight(), Component.ALIGN_LEFT);
-
-		} else  {
-			textLabel.setTextAlign(Component.ALIGN_CENTER);
-			textLabel.render(x + width/2, y + height/2);
 		}
 	}
 

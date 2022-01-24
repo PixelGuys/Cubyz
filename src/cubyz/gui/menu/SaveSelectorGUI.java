@@ -125,6 +125,7 @@ public class SaveSelectorGUI extends MenuGUI {
 		int y = 0;
 		for (int i = 0; i < saveButtons.length; i++) {
 			saveButtons[i].setBounds(0, y * GUI_SCALE, 200 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_TOP_LEFT);
+			saveButtons[i].setMaxResizeWidth(200*GUI_SCALE, Component.ALIGN_LEFT);
 			saveButtons[i].setFontSize(16 * GUI_SCALE);
 			deleteButtons[i].setBounds(210 * GUI_SCALE, y * GUI_SCALE, 50 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_TOP_LEFT);
 			deleteButtons[i].setFontSize(16 * GUI_SCALE);

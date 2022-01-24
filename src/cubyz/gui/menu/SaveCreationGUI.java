@@ -124,13 +124,13 @@ public class SaveCreationGUI extends MenuGUI {
 
 	@Override
 	public void updateGUIScale() {
-		name.setBounds(-120 * GUI_SCALE, 50 * GUI_SCALE, 250 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_TOP);
+		name.setBounds(-125 * GUI_SCALE, 50 * GUI_SCALE, 250 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_TOP);
 		name.setFont(Fonts.PIXEL_FONT, 16 * GUI_SCALE);
 		
-		mapGenerator.setBounds(-120 * GUI_SCALE, 80 * GUI_SCALE, 200 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_TOP);
+		mapGenerator.setBounds(-125 * GUI_SCALE, 80 * GUI_SCALE, 250 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_TOP);
 		mapGenerator.setFontSize(16 * GUI_SCALE);
 		
-		climateGenerator.setBounds(-120 * GUI_SCALE, 110 * GUI_SCALE, 200 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_TOP);
+		climateGenerator.setBounds(-125 * GUI_SCALE, 110 * GUI_SCALE, 250 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_TOP);
 		climateGenerator.setFontSize(16 * GUI_SCALE);
 
 		create.setBounds(10 * GUI_SCALE, 30 * GUI_SCALE, 150 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_BOTTOM_LEFT);
