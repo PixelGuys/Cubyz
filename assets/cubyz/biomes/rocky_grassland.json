@@ -1,0 +1,27 @@
+{
+	"chance" : 0.04,
+	"type" : "GRASSLAND",
+	"minHeight" : 10,
+	"maxHeight" : 40,
+	
+	"mountains" : 30,
+	
+	"music" : "sunrise",
+	
+	"ground_structure" : [
+		"cubyz:grass",
+		"0 to 1 cubyz:soil"
+	],
+	"structures" : [
+		{
+			"id" : "cubyz:simple_tree",
+			"leaves" : "cubyz:oak_leaves",
+			"log" : "cubyz:oak_log",
+			"top" : "cubyz:oak_top",
+			"chance" : 0.001,
+			"type" : "round",
+			"height" : 6,
+			"height_variation" : 3
+		}
+	]
+}
