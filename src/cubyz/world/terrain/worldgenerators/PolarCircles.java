@@ -78,15 +78,20 @@ public class PolarCircles implements ClimateMapGenerator {
 		// and away from another.
 
 		Random rand = new Random();
+
+		Biome[][] biomeMap = new Biome[map.map.length + 2][map.map.length + 2];
 		
-		for (int x = 0; x < map.map.length; x++) {
-			for (int z = 0; z < map.map.length; z++) {
+		for (int x = -1; x < map.map.length + 1; x++) {
+			for (int z = -1; z < map.map.length + 1; z++) {
+				rand.setSeed((x + map.wx)*65784967549L + (z + map.wz)*6758934659L + map.world.getSeed());
+				float xOffset = rand.nextFloat() - 0.5f;
+				float zOffset = rand.nextFloat() - 0.5f;
 				float humid = getInitialHumidity(map, x, z, heightMap[x + map.map.length][z + map.map.length]);
 				float temp = getInitialTemperature(map, x, z, heightMap[x + map.map.length][z + map.map.length]);
 				float humidInfluence = WIND_INFLUENCE;
 				float tempInfluence = WIND_INFLUENCE;
-				float nextX = x;
-				float nextZ = z;
+				float nextX = x + xOffset;
+				float nextZ = z + zOffset;
 				for (int i = 0; i < 50; i++) {
 					float windX = windXMap[(int) nextX + map.map.length][(int) nextZ + map.map.length];
 					float windZ = windXMap[(int) nextX + map.map.length][(int) nextZ + map.map.length];
@@ -111,14 +116,39 @@ public class PolarCircles implements ClimateMapGenerator {
 					humidInfluence *= Math.pow(1 - heightMap[(int) nextX + map.map.length][(int) nextZ + map.map.length], 0.05);
 				}
 				// Insert the biome type:
-				rand.setSeed((x + map.wx)*65784967549L + (z + map.wz)*6758934659L + map.world.getSeed());
+				Biome.Type type = findClimate(heightMap[x + map.map.length][z + map.map.length], humid, temp);
+				biomeMap[x+1][z+1] = map.world.getCurrentRegistries().biomeRegistry.byTypeBiomes.get(type).getRandomly(rand);
+			}
+		}
+		for (int x = 0; x < map.map.length; x++) {
+			for (int z = 0; z < map.map.length; z++) {
+				Biome biome = biomeMap[x+1][z+1];
+				// Check the surrounding heights to avoid sudden changes:
+				float maxMinHeight = -Float.MAX_VALUE;
+				float minMaxHeight = Float.MAX_VALUE;
+				for(int dx = -1; dx <= 1; dx++) {
+					for(int dz = -1; dz <= 1; dz++) {
+						maxMinHeight = Math.max(maxMinHeight, biomeMap[x+dx+1][z+dz+1].minHeight);
+						minMaxHeight = Math.min(minMaxHeight, biomeMap[x+dx+1][z+dz+1].maxHeight);
+					}
+				}
+				rand.setSeed((x + map.wx)*675893674893L + (z + map.wz)*2895478591L + map.world.getSeed());
+				float xOffset = rand.nextFloat() - 0.5f;
+				float zOffset = rand.nextFloat() - 0.5f;
+				float height = rand.nextFloat();
+				if(maxMinHeight > biome.maxHeight - (biome.maxHeight - biome.minHeight)/4) {
+					height = height*0.25f + 0.75f;
+				}
+				if(minMaxHeight < biome.minHeight + (biome.maxHeight - biome.minHeight)/4) {
+					height = height*0.25f;
+				}
+				height = height*(biome.maxHeight - biome.minHeight) + biome.minHeight;
+
 				int wx = x*MapFragment.BIOME_SIZE + map.wx;
 				int wz = z*MapFragment.BIOME_SIZE + map.wz;
-				Biome.Type type = findClimate(heightMap[x + map.map.length][z + map.map.length], humid, temp);
-				Biome biome = map.world.getCurrentRegistries().biomeRegistry.byTypeBiomes.get(type).getRandomly(rand);
-				map.map[x][z] = new BiomePoint(biome, wx + rand.nextInt(MapFragment.BIOME_SIZE) - MapFragment.BIOME_SIZE/2,
-				                                      wz + rand.nextInt(MapFragment.BIOME_SIZE) - MapFragment.BIOME_SIZE/2,
-				                                      rand.nextFloat()*(biome.maxHeight - biome.minHeight) + biome.minHeight, rand.nextLong());
+				map.map[x][z] = new BiomePoint(biome, wx + (int)(xOffset*MapFragment.BIOME_SIZE),
+				                                      wz + (int)(zOffset*MapFragment.BIOME_SIZE),
+				                                      height, rand.nextLong());
 			}
 		}
 	}
