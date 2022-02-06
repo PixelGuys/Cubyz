@@ -4,7 +4,7 @@
 	"maxHeight" : 256,
 	
 	"roughness" : 10,
-	"mountains" : 400,
+	"mountains" : 100,
 	
 	"rivers" : true,
 	

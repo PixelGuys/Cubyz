@@ -11,6 +11,7 @@ import cubyz.world.terrain.MapFragment;
 import cubyz.world.terrain.MapGenerator;
 import cubyz.world.terrain.noise.FractalNoise;
 import cubyz.world.terrain.noise.PerlinNoise;
+import cubyz.world.terrain.noise.RandomlyWeightedFractalNoise;
 
 import static cubyz.world.terrain.MapFragment.*;
 
@@ -48,7 +49,8 @@ public class MapGenV1 implements MapGenerator {
 		FractalNoise.generateSparseFractalTerrain(map.wx, map.wz, MAP_SIZE, MAP_SIZE, BIOME_SIZE/2, seed^543864367373859L, zOffsetMap, map.voxelSize);
 
 		// A ridgid noise map to generate interesting mountains.
-		float[][] mountainMap = threadLocalNoise.get().generateRidgidNoise(map.wx, map.wz, MAP_SIZE, MAP_SIZE, 1024, 16, seed ^ 6758947592930535L, map.voxelSize, 0.5f);
+		float[][] mountainMap = new float[scaledSize][scaledSize];
+		RandomlyWeightedFractalNoise.generateSparseFractalTerrain(map.wx, map.wz, MAP_SIZE, MAP_SIZE, 64, seed ^ -6758947592930535L, mountainMap, map.voxelSize);
 		
 		// A smooth map for smaller hills.
 		float[][] hillMap = threadLocalNoise.get().generateSmoothNoise(map.wx, map.wz, MAP_SIZE, MAP_SIZE, 128, 32, seed ^ -157839765839495820L, map.voxelSize, 0.5f);
