@@ -39,5 +39,8 @@ saves/World/world.dat
 settings.json
 ConsoleHistory
 
+# release output
+release
+
 .idea
 /Cubyz.iml

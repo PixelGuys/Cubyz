@@ -29,7 +29,8 @@
 							<classpathPrefix>lib/</classpathPrefix>
 							<mainClass>cubyz.client.GameLauncher</mainClass>
 						</manifest>
-						</archive>
+					</archive>
+					<finalName>Cubyz</finalName>
 				</configuration>
 			</plugin>
 			<plugin>
