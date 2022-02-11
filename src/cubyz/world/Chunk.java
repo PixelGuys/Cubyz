@@ -88,6 +88,7 @@ public abstract class Chunk extends ChunkData {
 	 * @param gen
 	 */
 	public void generateFrom(ChunkManager gen) {
+		assert(!generated) : "Seriously, why would you generate this chunk twice???";
 		if(!ChunkIO.loadChunkFromFile(world, this)) {
 			gen.generate(this);
 		}
@@ -180,6 +181,7 @@ public abstract class Chunk extends ChunkData {
 	 * @return
 	 */
 	public static int getIndex(int x, int y, int z) {
+		assert((x & chunkMask) == x && (y & chunkMask) == y && (z & chunkMask) == z) : "Your coordinates are outside this chunk. You should be happy this assertion caught it.";
 		return (x << chunkShift) | (y << chunkShift2) | z;
 	}
 	

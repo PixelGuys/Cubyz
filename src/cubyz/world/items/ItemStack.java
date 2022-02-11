@@ -7,7 +7,7 @@ package cubyz.world.items;
 public class ItemStack {
 
 	private Item item;
-	int amount = 0;
+	private int amount = 0;
 	
 	public ItemStack() {
 		item = null;
@@ -18,6 +18,7 @@ public class ItemStack {
 	}
 	
 	public ItemStack(Item item, int amount) {
+		assert(amount >= 0) : "Did you ever see a negative amount of objects?";
 		this.item = item;
 		this.amount = amount;
 	}
@@ -93,6 +94,7 @@ public class ItemStack {
 	 * @param a new amount
 	 */
 	public void setAmount(int a) {
+		assert(a >= 0) : "Did you ever see a negative amount of objects?";
 		amount = a;
 	}
 	

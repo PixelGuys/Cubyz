@@ -20,7 +20,7 @@ import cubyz.world.terrain.MapFragment;
 public class NormalChunk extends Chunk {
 
 	/**Stores all visible blocks. Can be faster accessed using coordinates.*/
-	protected BlockInstance[] inst;
+	protected final BlockInstance[] inst;
 	/**Stores the local index of the block.*/
 	private ArrayList<Integer> liquids = new ArrayList<>();
 	/**Liquids that should be updated at next frame. Stores the local index of the block.*/
@@ -71,6 +71,7 @@ public class NormalChunk extends Chunk {
 	 */
 	@Override
 	public void updateBlockInGeneration(int x, int y, int z, int b) {
+		assert(!generated):"It's literally called updateBlockInGENERATION";
 		int index = getIndex(x, y, z);
 		if (Blocks.blockClass(b) == BlockClass.FLUID) {
 			liquids.add(index);
@@ -320,7 +321,6 @@ public class NormalChunk extends Chunk {
 				}
 			}
 		}
-		setBlock(x, y, z, 0); // TODO: Investigate why this is called twice.
 
 		if (registerBlockChange) {
 			setChanged();

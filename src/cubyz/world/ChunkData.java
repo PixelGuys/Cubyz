@@ -8,6 +8,8 @@ public class ChunkData implements Comparable<ChunkData> {
 	protected float priority;
 
 	public ChunkData(int wx, int wy, int wz, int voxelSize) {
+		assert((voxelSize - 1 & voxelSize) == 0) : "the voxel size must be a power of 2.";
+		assert(wx % voxelSize == 0 && wy % voxelSize == 0 && wz % voxelSize == 0) : "The coordinates are misaligned. They need to be aligned to the voxel size grid.";
 		this.wx = wx;
 		this.wy = wy;
 		this.wz = wz;
