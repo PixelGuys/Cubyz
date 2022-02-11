@@ -45,7 +45,7 @@ public class ReducedChunk extends Chunk {
 		x >>= voxelSizeShift;
 		y >>= voxelSizeShift;
 		z >>= voxelSizeShift;
-		int index = (x << (widthShift - voxelSizeShift)) | (y << 2*(widthShift - voxelSizeShift)) | z;
+		int index = getIndex(x, y, z);
 		if (blocks[index] == 0 || Blocks.degradable(blocks[index])) {
 			blocks[index] = newBlock;
 		}
@@ -56,7 +56,7 @@ public class ReducedChunk extends Chunk {
 		x >>= voxelSizeShift;
 		y >>= voxelSizeShift;
 		z >>= voxelSizeShift;
-		int index = (x << (widthShift - voxelSizeShift)) | (y << 2*(widthShift - voxelSizeShift)) | z;
+		int index = getIndex(x, y, z);
 		blocks[index] = newBlock;
 	}
 	
@@ -65,7 +65,7 @@ public class ReducedChunk extends Chunk {
 		x >>= voxelSizeShift;
 		y >>= voxelSizeShift;
 		z >>= voxelSizeShift;
-		int index = (x << (widthShift - voxelSizeShift)) | (y << 2*(widthShift - voxelSizeShift)) | z;
+		int index = getIndex(x, y, z);
 		blocks[index] = newBlock;
 	}
 
@@ -149,7 +149,7 @@ public class ReducedChunk extends Chunk {
 		x >>= voxelSizeShift;
 		y >>= voxelSizeShift;
 		z >>= voxelSizeShift;
-		int index = (x << (widthShift - voxelSizeShift)) | (y << 2*(widthShift - voxelSizeShift)) | z;
+		int index = getIndex(x, y, z);
 		return blocks[index];
 	}
 }

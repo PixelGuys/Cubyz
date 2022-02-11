@@ -86,9 +86,9 @@ public class MetaChunk {
 				ch.getUpdatingLiquids().clear();
 				for (int j = 0; j < size; j++) {
 					int block = ch.getBlockAtIndex(liquids[j]);
-					int bx = (liquids[j] >> Chunk.chunkShift) & Chunk.chunkMask;
-					int by = liquids[j] >> Chunk.chunkShift2;
-					int bz = liquids[j] & Chunk.chunkMask;
+					int bx = liquids[j]/Chunk.getIndex(1, 0, 0) & Chunk.chunkMask;
+					int by = liquids[j]/Chunk.getIndex(0, 1, 0) & Chunk.chunkMask;
+					int bz = liquids[j]/Chunk.getIndex(0, 0, 1) & Chunk.chunkMask;
 					int[] neighbors = ch.getNeighbors(bx, by, bz);
 					for (int i = 0; i < 6; i++) {
 						if(i == Neighbors.DIR_UP) continue;

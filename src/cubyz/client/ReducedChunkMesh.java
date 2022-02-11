@@ -13,7 +13,6 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.lwjgl.system.MemoryUtil;
 
-import cubyz.gui.menu.DebugOverlay;
 import cubyz.rendering.Camera;
 import cubyz.rendering.ShaderProgram;
 import cubyz.utils.Utils;
