@@ -8,8 +8,8 @@ import cubyz.utils.json.JsonObject;
 import cubyz.world.Chunk;
 import cubyz.world.ChunkManager;
 import cubyz.world.blocks.Blocks;
+import cubyz.world.terrain.CaveMap;
 import cubyz.world.terrain.MapFragment;
-import cubyz.world.terrain.biomes.Biome;
 
 /**
  * Generates the basic terrain(stone, dirt, sand, ...).
@@ -17,15 +17,12 @@ import cubyz.world.terrain.biomes.Biome;
 
 public class TerrainGenerator implements Generator {
 	
-	private int ice;
 	private int stone;
-
 	private int water;
 
 	@Override
 	public void init(JsonObject parameters, CurrentWorldRegistries registries) {
 		water = Blocks.getByID("cubyz:water");
-		ice = Blocks.getByID("cubyz:ice");
 		stone = Blocks.getByID("cubyz:stone");
 	}
 	
@@ -43,31 +40,33 @@ public class TerrainGenerator implements Generator {
 	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, MapFragment map, ChunkManager generator) {
 		Random rand = new Random(seed);
 		int seedX = rand.nextInt() | 1;
+		int seedY = rand.nextInt() | 1;
 		int seedZ = rand.nextInt() | 1;
+		CaveMap caveMap = new CaveMap(chunk.world, chunk); // TODO: Take this as a function parameter.
 		for(int x = 0; x < chunk.getWidth(); x += chunk.voxelSize) {
 			for(int z = 0; z < chunk.getWidth(); z += chunk.voxelSize) {
-				int y = chunk.startIndex((int)map.getHeight(wx + x, wz + z) - chunk.voxelSize + 1);
-				int yOff = 1 + (int)((map.getHeight(wx + x, wz + z) - y)*16);
-				int startY = y > 0 ? y : 0;
-				startY = chunk.startIndex(Math.min(startY, wy + chunk.getWidth() - chunk.voxelSize));
-				int endY = wy;
-				int j = startY;
-				// Add water between 0 and the terrain height:
-				for(; j >= Math.max(y+1, endY); j -= chunk.voxelSize) {
-					if (map.getBiome(wx + x, wz + z).type == Biome.Type.ARCTIC_OCEAN && j == 0) {
-						chunk.updateBlockInGeneration(x, j - wy, z, ice);
+				int heightData = caveMap.getHeightData(x, z);
+				boolean makeSurfaceStructure = true;
+				for(int y = chunk.getWidth() - chunk.voxelSize; y >= 0; y -= chunk.voxelSize) {
+					int mask = 1 << y/chunk.voxelSize;
+					if((heightData & mask) != 0) {
+						if(makeSurfaceStructure) {
+							int surfaceBlock = caveMap.findTerrainChangeAbove(x, z, y) - chunk.voxelSize;
+							rand.setSeed((seedX*(wx + x) << 32) ^ seedY*(wy + y) ^ seedZ*(wz + z));
+							// Add the biomes surface structure:
+							y = Math.min(y + chunk.voxelSize, map.getBiome(wx + x, wz + z).struct.addSubTerranian(chunk, surfaceBlock, caveMap.findTerrainChangeBelow(x, z, surfaceBlock), x, z, rand));
+							makeSurfaceStructure = false;
+						} else {
+							chunk.updateBlockInGeneration(x, y, z, stone);
+						}
 					} else {
-						chunk.updateBlockInGeneration(x, j - wy, z, water);
+						if(y + wy < 0 && y + wy >= (int)map.getHeight(x + wx, z + wz) - (chunk.voxelSize - 1)) {
+							chunk.updateBlockInGeneration(x, y, z, water);
+						} else {
+							chunk.updateBlockInGeneration(x, y, z, 0);
+						}
+						makeSurfaceStructure = true;
 					}
-				}
-				// Add the biomes surface structure:
-				if (j <= y) {
-					rand.setSeed((seedX*(wx + x) << 32) ^ seedZ*(wz + z));
-					j = Math.min(map.getBiome(wx + x, wz + z).struct.addSubTerranian(chunk, y, x, z, yOff, rand), j);
-				}
-				// Add the underground:
-				for(; j >= endY; j -= chunk.voxelSize) {
-					chunk.updateBlockInGeneration(x, j - wy, z, stone);
 				}
 			}
 		}

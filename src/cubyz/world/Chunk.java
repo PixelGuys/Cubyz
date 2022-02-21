@@ -16,7 +16,7 @@ public abstract class Chunk extends ChunkData {
 	
 	public static final int chunkMask = chunkSize - 1;
 	
-	protected final World world;
+	public final World world;
 	protected final int[] blocks = new int[chunkSize*chunkSize*chunkSize];
 	
 	private boolean wasChanged = false;

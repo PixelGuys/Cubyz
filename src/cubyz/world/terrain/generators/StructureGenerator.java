@@ -7,6 +7,7 @@ import cubyz.api.Resource;
 import cubyz.utils.json.JsonObject;
 import cubyz.world.Chunk;
 import cubyz.world.ChunkManager;
+import cubyz.world.terrain.CaveMap;
 import cubyz.world.terrain.MapFragment;
 import cubyz.world.terrain.biomes.Biome;
 import cubyz.world.terrain.biomes.StructureModel;
@@ -55,6 +56,8 @@ public class StructureGenerator implements Generator {
 		Random rand = new Random(seed + 3*(seed + 1 & Integer.MAX_VALUE));
 		long rand1 = rand.nextInt() | 1;
 		long rand2 = rand.nextInt() | 1;
+		long rand3 = rand.nextInt() | 1;
+		CaveMap caveMap = new CaveMap(chunk.world, chunk);
 		// Get the regions for the surrounding regions:
 		MapFragment nn = map;
 		MapFragment np = map;
@@ -85,30 +88,38 @@ public class StructureGenerator implements Generator {
 			// Uses a blue noise pattern for all structure that shouldn't touch.
 			int[] blueNoise = StaticBlueNoise.getRegionData(chunk.wx - 8, chunk.wz - 8, chunk.getWidth() + 16, chunk.getWidth() + 16);
 			for(int coordinatePair : blueNoise) {
-				int px = coordinatePair >>> 16;
-				int pz = coordinatePair & 0xffff;
-				int wpx = px - 8 + wx;
-				int wpz = pz - 8 + wz;
-				rand.setSeed((wpx*rand1 << 32) ^ wpz*rand2 ^ seed);
-				// Make sure the coordinates are inside the resolution grid of the Regions internal array:
-				wpx = wpx & ~(chunk.voxelSize - 1);
-				wpz = wpz & ~(chunk.voxelSize - 1);
+				int px = (coordinatePair >>> 16) - 8;
+				int pz = (coordinatePair & 0xffff) - 8;
+				int wpx = px + wx;
+				int wpz = pz + wz;
 
-				float randomValue = rand.nextFloat();
-				MapFragment cur = getMapFragment(map, nn, np, pn, pp, no, po, on, op, px, pz, chunk.getWidth());
-				Biome biome = cur.getBiome(wpx, wpz);
-				for(StructureModel model : biome.vegetationModels) {
-					float adaptedChance = model.getChance() * 16;
-					if (adaptedChance > randomValue) {
-						model.generate(px - 8, pz - 8, (int)cur.getHeight(wpx, wpz) + 1, chunk, map, rand);
-						break;
+				MapFragment cur = getMapFragment(map, nn, np, pn, pp, no, po, on, op, px + 8, pz + 8, chunk.getWidth());
+				Biome biome = cur.getBiome(wpx & ~(chunk.voxelSize - 1), wpz & ~(chunk.voxelSize - 1));
+				for(int py = -32; py <= chunk.getWidth(); py += 32) {
+					int wpy = py + wy;
+					rand.setSeed((wpx*rand1 << 32) ^ wpz*rand2 ^ wpy*rand3 ^ seed);
+					int relY = py + 16;
+
+					if(caveMap.isSolid(px, relY, pz)) {
+						relY = caveMap.findTerrainChangeAbove(px, pz, relY);
 					} else {
-						// Make sure that after the first one was considered all others get the correct chances.
-						randomValue = (randomValue - adaptedChance)/(1 - adaptedChance);
+						relY = caveMap.findTerrainChangeBelow(px, pz, relY) + chunk.voxelSize;
+					}
+					if(relY < py || relY >= py + 32) continue;
+					float randomValue = rand.nextFloat();
+					for(StructureModel model : biome.vegetationModels) {
+						float adaptedChance = model.getChance() * 16;
+						if (adaptedChance > randomValue) {
+							model.generate(px, pz, relY, chunk, caveMap, rand);
+							break;
+						} else {
+							// Make sure that after the first one was considered all others get the correct chances.
+							randomValue = (randomValue - adaptedChance)/(1 - adaptedChance);
+						}
 					}
 				}
 			}
-		} else {
+		} else { // TODO: Make this case work with cave-structures. Low priority because caves aren't even generated this far out.
 			for(int px = 0; px < chunk.getWidth() + 16; px += stepSize) {
 				for(int pz = 0; pz < chunk.getWidth() + 16; pz += stepSize) {
 					int wpx = px - 8 + wx;
@@ -128,7 +139,7 @@ public class StructureGenerator implements Generator {
 							adaptedChance = 1 - (float)Math.pow(1 - adaptedChance, stepSize*stepSize);
 						}
 						if (adaptedChance > randomValue) {
-							model.generate(px - 8, pz - 8, (int)cur.getHeight(wpx, wpz) + 1, chunk, map, rand);
+							model.generate(px - 8, pz - 8, (int)cur.getHeight(wpx, wpz) - wy, chunk, caveMap, rand);
 							break;
 						} else {
 							// Make sure that after the first one was considered all others get the correct chances.

@@ -34,24 +34,23 @@ public class BlockStructure {
 		}
 	}
 	
-	public int addSubTerranian(Chunk chunk, int depth, int x, int z, int highResDepth, Random rand) {
+	public int addSubTerranian(Chunk chunk, int depth, int minDepth, int x, int z, Random rand) {
 		int startingDepth = depth;
 		for(int i = 0; i < structure.length; i++) {
 			int total = structure[i].min + rand.nextInt(1 + structure[i].max - structure[i].min);
 			for(int j = 0; j < total; j++) {
 				int block = structure[i].block;
 				block = Blocks.mode(block).getNaturalStandard(block);
-				if (i == 0 && j == 0 && Blocks.mode(block).getRegistryID().toString().equals("cubyz:stackable")) {
-					block = (block & Blocks.TYPE_MASK) | (highResDepth << 16);
-				}
-				if (chunk.liesInChunk(x, depth - chunk.wy, z)) {
-					chunk.updateBlockInGeneration(x, depth - chunk.wy, z, block);
+				if (chunk.liesInChunk(x, depth, z)) {
+					chunk.updateBlockInGeneration(x, depth, z, block);
 				}
 				depth -= chunk.voxelSize;
+				if(depth <= minDepth)
+					return depth + chunk.voxelSize;
 			}
 		}
 		if (depth == startingDepth) return depth;
-		return depth;
+		return depth + chunk.voxelSize;
 	}
 	
 	public static class BlockStack {

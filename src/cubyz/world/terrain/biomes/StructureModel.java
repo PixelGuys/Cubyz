@@ -7,7 +7,7 @@ import cubyz.api.RegistryElement;
 import cubyz.api.Resource;
 import cubyz.utils.json.JsonObject;
 import cubyz.world.Chunk;
-import cubyz.world.terrain.MapFragment;
+import cubyz.world.terrain.CaveMap;
 
 /**
  * A simple model that describes how smaller structures like vegetation should be generated.
@@ -22,7 +22,16 @@ public abstract class StructureModel implements RegistryElement {
 		this.chance = chance;
 	}
 
-	public abstract void generate(int x, int z, int h, Chunk chunk, MapFragment map, Random rand);
+	/**
+	 * 
+	 * @param x relative
+	 * @param z relative
+	 * @param y relative
+	 * @param chunk
+	 * @param map
+	 * @param rand
+	 */
+	public abstract void generate(int x, int z, int y, Chunk chunk, CaveMap map, Random rand);
 	public abstract StructureModel loadStructureModel(JsonObject json);
 
 	public float getChance() {

@@ -6,7 +6,7 @@ import cubyz.api.Resource;
 import cubyz.utils.json.JsonObject;
 import cubyz.world.Chunk;
 import cubyz.world.blocks.Blocks;
-import cubyz.world.terrain.MapFragment;
+import cubyz.world.terrain.CaveMap;
 
 /**
  * One position vegetation, like grass or cactus.
@@ -30,16 +30,17 @@ public class SimpleVegetation extends StructureModel {
 	}
 	
 	@Override
-	public void generate(int x, int z, int h, Chunk chunk, MapFragment map, Random rand) {
+	public void generate(int x, int z, int y, Chunk chunk, CaveMap map, Random rand) {
 		if (chunk.voxelSize > 2 && (x / chunk.voxelSize * chunk.voxelSize != x || z / chunk.voxelSize * chunk.voxelSize != z)) return;
-		int y = chunk.wy;
-		if (chunk.liesInChunk(x, h-y, z)) {
+		if (chunk.liesInChunk(x, y, z)) {
 			int height = height0;
 			if (deltaHeight != 0)
 				height += rand.nextInt(deltaHeight);
-			for(int py = chunk.startIndex(h); py < h + height; py += chunk.voxelSize) {
-				if (chunk.liesInChunk(x, py-y, z)) {
-					chunk.updateBlockIfDegradable(x, py-y, z, block);
+			if(y + height >= map.findTerrainChangeAbove(x, z, y)) // Space is too small.
+				return;
+			for(int py = chunk.startIndex(y); py < y + height; py += chunk.voxelSize) {
+				if (chunk.liesInChunk(x, py, z)) {
+					chunk.updateBlockIfDegradable(x, py, z, block);
 				}
 			}
 		}

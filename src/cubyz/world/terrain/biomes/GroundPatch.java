@@ -6,7 +6,7 @@ import cubyz.api.Resource;
 import cubyz.utils.json.JsonObject;
 import cubyz.world.Chunk;
 import cubyz.world.blocks.Blocks;
-import cubyz.world.terrain.MapFragment;
+import cubyz.world.terrain.CaveMap;
 
 /**
  * A small oval of different ground terrain.
@@ -36,8 +36,7 @@ public class GroundPatch extends StructureModel {
 	}
 
 	@Override
-	public void generate(int x, int z, int height, Chunk chunk, MapFragment map, Random rand) {
-		int y = chunk.wy;
+	public void generate(int x, int z, int y, Chunk chunk, CaveMap map, Random rand) {
 		float width = this.width + (rand.nextFloat() - 0.5f)*this.variation;
 		float orientation = 2*(float)Math.PI*rand.nextFloat();
 		float ellipseParam = 1 + rand.nextFloat(); 
@@ -62,11 +61,17 @@ public class GroundPatch extends StructureModel {
 				float secn = xSecn*(x - px) + zSecn*(z - pz);
 				float dist = main*main + secn*secn;
 				if (dist <= 1) {
-					int startHeight = (int)map.getHeight(px + chunk.wx, pz + chunk.wz);
+					int startHeight = y;
+
+					if(map.isSolid(px, startHeight, pz)) {
+						startHeight = map.findTerrainChangeAbove(px, pz, startHeight) - 1;
+					} else {
+						startHeight = map.findTerrainChangeBelow(px, pz, startHeight);
+					}
 					for(int py = chunk.startIndex((int)(startHeight - depth + 1)); py <= startHeight; py += chunk.voxelSize) {
 						if (dist <= smoothness || (dist - smoothness)/(1 - smoothness) < rand.nextFloat()) {
-							if (chunk.liesInChunk(px, py-y, pz)) {
-								chunk.updateBlockInGeneration(px, py-y, pz, newGround);
+							if (chunk.liesInChunk(px, py, pz)) {
+								chunk.updateBlockInGeneration(px, py, pz, newGround);
 							}
 						}
 					}

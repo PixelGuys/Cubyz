@@ -6,7 +6,7 @@ import cubyz.api.Resource;
 import cubyz.utils.json.JsonObject;
 import cubyz.world.Chunk;
 import cubyz.world.blocks.Blocks;
-import cubyz.world.terrain.MapFragment;
+import cubyz.world.terrain.CaveMap;
 
 /**
  * Creates a variety of different tree shapes.<br>
@@ -44,36 +44,37 @@ public class SimpleTreeModel extends StructureModel {
 	}
 
 	@Override
-	public void generate(int x, int z, int h, Chunk chunk, MapFragment map, Random rand) {
-		int y = chunk.wy;
-		h -= y;
+	public void generate(int x, int z, int y, Chunk chunk, CaveMap map, Random rand) {
 		int height = height0 + rand.nextInt(deltaHeight);
+
+		if(y + height >= map.findTerrainChangeAbove(x, z, y)) // Space is too small.
+			return;
 		
 		if (chunk.voxelSize >= 16) {
 			// Ensures that even at lowest resolution some leaves are rendered for smaller trees.
-			if (chunk.liesInChunk(x, h, z)) {
-				chunk.updateBlockIfDegradable(x, h, z, leaves);
+			if (chunk.liesInChunk(x, y, z)) {
+				chunk.updateBlockIfDegradable(x, y, z, leaves);
 			}
-			if (chunk.liesInChunk(x, h + chunk.voxelSize, z)) {
-				chunk.updateBlockIfDegradable(x, h + chunk.voxelSize, z, leaves);
+			if (chunk.liesInChunk(x, y + chunk.voxelSize, z)) {
+				chunk.updateBlockIfDegradable(x, y + chunk.voxelSize, z, leaves);
 			}
 			return;
 		}
 		
-		if (h < chunk.getWidth()) {
+		if (y < chunk.getWidth()) {
 			switch(type) {
 				case PYRAMID: {
 					if (chunk.voxelSize <= 2) {
-						for(int py = chunk.startIndex(h); py < h + height; py += chunk.voxelSize) {
+						for(int py = chunk.startIndex(y); py < y + height; py += chunk.voxelSize) {
 							if (chunk.liesInChunk(x, py, z)) {
-								chunk.updateBlockIfDegradable(x, py, z, (py == h + height-1) ? topWood : wood);
+								chunk.updateBlockIfDegradable(x, py, z, (py == y + height-1) ? topWood : wood);
 							}
 						}
 					}
 					// Position of the first block of leaves
 					height = 3*height >> 1;
-					for(int py = chunk.startIndex(h + height/3); py < h + height; py += chunk.voxelSize) {
-						int j = (height - (py - h))/2;
+					for(int py = chunk.startIndex(y + height/3); py < y + height; py += chunk.voxelSize) {
+						int j = (height - (py - y))/2;
 						for(int px = chunk.startIndex(x + 1 - j); px < x + j; px += chunk.voxelSize) {
 							for(int pz = chunk.startIndex(z + 1 - j); pz < z + j; pz += chunk.voxelSize) {
 								if (chunk.liesInChunk(px, py, pz))
@@ -85,9 +86,9 @@ public class SimpleTreeModel extends StructureModel {
 				}
 				case ROUND: {
 					if (chunk.voxelSize <= 2) {
-						for(int py = chunk.startIndex(h); py < h + height; py += chunk.voxelSize) {
+						for(int py = chunk.startIndex(y); py < y + height; py += chunk.voxelSize) {
 							if (chunk.liesInChunk(x, py, z)) {
-								chunk.updateBlockIfDegradable(x, py, z, (py == h + height-1) ? topWood : wood);
+								chunk.updateBlockIfDegradable(x, py, z, (py == y + height-1) ? topWood : wood);
 							}
 						}
 					}
@@ -95,7 +96,7 @@ public class SimpleTreeModel extends StructureModel {
 					
 					int leafRadius = 1 + height/2;
 					float floatLeafRadius = leafRadius - rand.nextFloat();
-					int center = h + height;
+					int center = y + height;
 					for(int py = chunk.startIndex(center - leafRadius); py < center + leafRadius; py += chunk.voxelSize) {
 						for(int px = chunk.startIndex(x - leafRadius); px <= x + leafRadius; px += chunk.voxelSize) {
 							for(int pz = chunk.startIndex(z - leafRadius); pz <= z + leafRadius; pz += chunk.voxelSize) {
@@ -113,16 +114,16 @@ public class SimpleTreeModel extends StructureModel {
 					if (height > 2) height = 2; // Make sure the stem of the bush stays small.
 
 					if (chunk.voxelSize <= 2) {
-						for(int py = chunk.startIndex(h); py < h + height; py += chunk.voxelSize) {
+						for(int py = chunk.startIndex(y); py < y + height; py += chunk.voxelSize) {
 							if (chunk.liesInChunk(x, py, z)) {
-								chunk.updateBlockIfDegradable(x, py, z, (py == h + height-1) ? topWood : wood);
+								chunk.updateBlockIfDegradable(x, py, z, (py == y + height-1) ? topWood : wood);
 							}
 						}
 					}
 					
 					int leafRadius = oldHeight/2 + 1;
 					float floatLeafRadius = leafRadius - rand.nextFloat();
-					int center = h + height;
+					int center = y + height;
 					for (int py = chunk.startIndex(center - leafRadius); py < center + leafRadius; py += chunk.voxelSize) {
 						for (int px = chunk.startIndex(x - leafRadius); px <= x + leafRadius; px += chunk.voxelSize) {
 							for (int pz = chunk.startIndex(z - leafRadius/2); pz <= z + leafRadius/2; pz += chunk.voxelSize) {
