@@ -79,8 +79,9 @@ public class BlockDropRenderer {
 				Utils.loadResource(shaders + "/item_drop.fs"),
 				ItemDropUniforms.class);
 		if(itemModelSSBO == null) {
-			itemModelSSBO = new SSBO(2);
+			itemModelSSBO = new SSBO();
 			itemModelSSBO.bufferData(new int[] {1, 1, 1});
+			itemModelSSBO.bind(2);
 		}
 		if(itemVAO == -1) {
 			int[] position = new int[] {

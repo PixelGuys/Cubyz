@@ -31,7 +31,7 @@ public abstract class ChunkMesh extends ChunkData {
 	 * Removes all data from the GPU.
 	 * MUST BE CALLED BEFORE GETTING RID OF THE OBJECT!
 	 */
-	public abstract void cleanUp();
+	public abstract void delete();
 	
 	/**
 	 * Updates the Mesh based on changes of the chunk.

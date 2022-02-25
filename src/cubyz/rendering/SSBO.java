@@ -1,27 +1,33 @@
 package cubyz.rendering;
 
-import cubyz.utils.datastructures.IntFastList;
-
 import static org.lwjgl.opengl.GL43.*;
 
 public class SSBO {
-	private static IntFastList usedBindings = new IntFastList();
-	private final int binding;
 	private final int bufferID;
-	public SSBO(int binding) {
-		synchronized(usedBindings) {
-			if(usedBindings.contains(binding))
-				throw new IllegalArgumentException("Binding "+binding+" is already in use.");
-			usedBindings.add(binding);
-		}
-		this.binding = binding;
+	private boolean wasDeleted = false;
+	public SSBO() {
 		bufferID = glGenBuffers();
+	}
+
+	public void bind(int binding) {
+		assert(!wasDeleted) : "The buffer of this SSBO was already deleted.";
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, bufferID);
 	}
 	
 	public void bufferData(int[] data) {
+		assert(!wasDeleted) : "The buffer of this SSBO was already deleted.";
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, bufferID);
 		glBufferData(GL_SHADER_STORAGE_BUFFER, data, GL_STATIC_DRAW);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, bufferID);
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+	}
+
+	public void delete() {
+		glDeleteBuffers(bufferID);
+		wasDeleted = true;
+	}
+
+	@Override
+	public void finalize() { // TODO: Don't use finalize for that. There is an alternative in modern java.
+		//assert(wasDeleted) : "Resource leak in ssbo.";
 	}
 }

@@ -54,8 +54,10 @@ public class BlockMeshes implements DataOrientedRegistry {
 
 		readTexture(new JsonString("cubyz:undefined"), "assets/");
 
-		animationTimesSSBO = new SSBO(0);
-		animationFramesSSBO = new SSBO(1);
+		animationTimesSSBO = new SSBO();
+		animationTimesSSBO.bind(0);
+		animationFramesSSBO = new SSBO();
+		animationFramesSSBO.bind(1);
 	}
 
 	public static Mesh mesh(int block) {

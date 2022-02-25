@@ -1,8 +1,5 @@
 #version 430
 
-layout (location=0)  in int positionAndNormals;
-layout (location=1)  in int texCoordAndNormals;
-
 out vec3 mvVertexPos;
 out vec2 outTexCoord;
 flat out float textureIndex;
@@ -18,11 +15,19 @@ uniform float voxelSize;
 
 layout(std430, binding = 0) buffer _animationTimes
 {
-    int animationTimes[];
+	int animationTimes[];
 };
 layout(std430, binding = 1) buffer _animationFrames
 {
-    int animationFrames[];
+	int animationFrames[];
+};
+struct FaceData {
+	int encodedPosition;
+	int texCoordAndNormals;
+};
+layout(std430, binding = 3) buffer _faceData
+{
+	FaceData faceData[];
 };
 
 uniform int time;
@@ -35,24 +40,44 @@ const vec3[6] normals = vec3[6](
 	vec3(0, -1, 0),
 	vec3(0, 1, 0)
 );
+const ivec3[6] textureX = ivec3[6](
+	ivec3(0, 0, 1),
+	ivec3(0, 0, -1),
+	ivec3(-1, 0, 0),
+	ivec3(1, 0, 0),
+	ivec3(-1, 0, 0),
+	ivec3(1, 0, 0)
+);
+const ivec3[6] textureY = ivec3[6](
+	ivec3(0, -1, 0),
+	ivec3(0, -1, 0),
+	ivec3(0, -1, 0),
+	ivec3(0, -1, 0),
+	ivec3(0, 0, 1),
+	ivec3(0, 0, 1)
+);
 
 void main()
 {
+	int faceID = gl_VertexID/4;
+	int vertexID = gl_VertexID%4;
+	int encodedPosition = faceData[faceID].encodedPosition;
+	int texCoordAndNormals = faceData[faceID].texCoordAndNormals;
 	int normal = (texCoordAndNormals >> 24) & 7;
 	int texCoordz = texCoordAndNormals & 65535;
 	textureIndex = texCoordz + time / animationTimes[texCoordz] % animationFrames[texCoordz];
-	outTexCoord = vec2(float(texCoordAndNormals>>17 & 1)*voxelSize, float(texCoordAndNormals>>16 & 1)*voxelSize);
+	outTexCoord = vec2(float(vertexID>>1 & 1)*voxelSize, float(vertexID & 1)*voxelSize);
 	
-	int voxelSize = positionAndNormals >> 18;
-	int x = positionAndNormals & 63;
-	int y = positionAndNormals >> 6 & 63;
-	int z = positionAndNormals >> 12 & 63;
-	x *= voxelSize;
-	y *= voxelSize;
-	z *= voxelSize;
+	vec3 position = vec3(
+		encodedPosition & 63,
+		encodedPosition >> 6 & 63,
+		encodedPosition >> 12 & 63
+	);
+	position += vec3(equal(textureX[normal], ivec3(-1, -1, -1))) + (vertexID>>1 & 1)*textureX[normal];
+	position += vec3(equal(textureY[normal], ivec3(-1, -1, -1))) + (vertexID & 1)*textureY[normal];
 
 	// Only draw faces that are inside the bounds. The others will be clipped using GL_CLIP_DISTANCE0:
-	vec3 globalPosition = vec3(x, y, z) + modelPosition;
+	vec3 globalPosition = position*voxelSize + modelPosition;
 	
 	vec4 mvPos = viewMatrix*vec4(globalPosition, 1);
 	gl_Position = projectionMatrix*mvPos;

@@ -172,7 +172,7 @@ public class NormalChunkMesh extends ChunkMesh {
 	
 	@Override
 	public void regenerateMesh() {
-		cleanUp();
+		delete();
 		NormalChunk chunk;
 		synchronized(this) {
 			chunk = this.chunk;
@@ -295,7 +295,7 @@ public class NormalChunkMesh extends ChunkMesh {
 	}
 
 	@Override
-	public void cleanUp() {
+	public void delete() {
 		// Delete the VBOs
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		for (int vboId : vboIdList) {

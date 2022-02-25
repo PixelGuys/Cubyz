@@ -48,7 +48,7 @@ public class Meshes {
 		synchronized(removableMeshes) {
 			for(Object mesh : removableMeshes) {
 				if (mesh instanceof ChunkMesh) {
-					((ChunkMesh)mesh).cleanUp();
+					((ChunkMesh)mesh).delete();
 				} else if (mesh instanceof Mesh) {
 					((Mesh)mesh).cleanUp();
 				} else {
