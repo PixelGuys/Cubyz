@@ -42,8 +42,12 @@ public class ClientSettings {
 	
 
 	/**Not actually a setting, but stored here anyways.*/
-	public static int EFFECTIVE_RENDER_DISTANCE = (ClientSettings.RENDER_DISTANCE + ((((int)(ClientSettings.RENDER_DISTANCE*ClientSettings.LOD_FACTOR) & ~1) << ClientSettings.HIGHEST_LOD)));
+	public static int EFFECTIVE_RENDER_DISTANCE = calculatedEffectiveRenderDistance();
 	
+	public static int calculatedEffectiveRenderDistance() {
+		return (RENDER_DISTANCE + ((((int)(RENDER_DISTANCE*LOD_FACTOR) & ~1) << HIGHEST_LOD)));
+	}
+
 	public static void save() {
 		JsonObject settings = new JsonObject();
 		JsonObject keyBindings = new JsonObject();
@@ -114,7 +118,7 @@ public class ClientSettings {
 		
 		FOV = settings.getFloat("fieldOfView", FOV);
 
-		EFFECTIVE_RENDER_DISTANCE = (RENDER_DISTANCE + ((((int)(RENDER_DISTANCE*LOD_FACTOR) & ~1) << HIGHEST_LOD)));
+		EFFECTIVE_RENDER_DISTANCE = calculatedEffectiveRenderDistance();
 
 		musicOnOff = settings.getBool("musicOnOff", musicOnOff);
 	}

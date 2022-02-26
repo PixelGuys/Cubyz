@@ -97,7 +97,7 @@ public class ServerWorld extends World{
 				tryCount++;
 			}
 			int startY = (int)chunkManager.getOrGenerateMapFragment((int)dx, (int)dz, 1).getHeight(dx, dz);
-			seek((int)dx, startY, (int)dz, ClientSettings.RENDER_DISTANCE, ClientSettings.EFFECTIVE_RENDER_DISTANCE*Chunk.chunkSize*2);
+			seek((int)dx, startY, (int)dz, ClientSettings.RENDER_DISTANCE);
 			player.setPosition(new Vector3i(dx, startY+2, dz));
 			Logger.info("OK!");
 		}
@@ -154,7 +154,7 @@ public class ServerWorld extends World{
 				if (Math.random() < randomPart) amount++;
 				if (amount > 0) {
 					ItemEntityManager manager = this.getEntityManagerAt(x & ~Chunk.chunkMask, y & ~Chunk.chunkMask, z & ~Chunk.chunkMask).itemEntityManager;
-					manager.add(x, y, z, 0, 0, 0, new ItemStack(drop.item, amount), 30*300 /*5 minutes at normal update speed.*/);
+					manager.add(x, y, z, 0, 0, 0, new ItemStack(drop.item, amount), 30*300);
 				}
 			}
 		}
@@ -172,7 +172,7 @@ public class ServerWorld extends World{
 	@Override
 	public void drop(ItemStack stack, Vector3d pos, Vector3f dir, float velocity, int pickupCooldown) {
 		ItemEntityManager manager = this.getEntityManagerAt((int)pos.x & ~Chunk.chunkMask, (int)pos.y & ~Chunk.chunkMask, (int)pos.z & ~Chunk.chunkMask).itemEntityManager;
-		manager.add(pos.x, pos.y, pos.z, dir.x*velocity, dir.y*velocity, dir.z*velocity, stack, Server.UPDATES_PER_SEC*300 /*5 minutes at normal update speed.*/, pickupCooldown);
+		manager.add(pos.x, pos.y, pos.z, dir.x*velocity, dir.y*velocity, dir.z*velocity, stack, Server.UPDATES_PER_SEC*300, pickupCooldown);
 	}
 	@Override
 	public void drop(ItemStack stack, Vector3d pos, Vector3f dir, float velocity) {
@@ -346,7 +346,7 @@ public class ServerWorld extends World{
 		return chunkManager.getChunkQueueSize();
 	}
 	@Override
-	public void seek(int x, int y, int z, int renderDistance, int regionRenderDistance) {
+	public void seek(int x, int y, int z, int renderDistance) {
 		int xOld = x;
 		int yOld = y;
 		int zOld = z;

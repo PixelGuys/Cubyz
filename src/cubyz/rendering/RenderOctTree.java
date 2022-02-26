@@ -139,7 +139,10 @@ public class RenderOctTree {
 		}
 	}
 	HashMap<HashMapKey3D, OctTreeNode> roots = new HashMap<HashMapKey3D, OctTreeNode>();
-	public void update(int px, int py, int pz, int renderDistance, int highestLOD, float LODFactor) {
+	public void update(int renderDistance, int highestLOD, float LODFactor) {
+		int px = (int)Cubyz.player.getPosition().x;
+		int py = (int)Cubyz.player.getPosition().y;
+		int pz = (int)Cubyz.player.getPosition().z;
 		//if (lastX == px && lastY == py && lastZ == pz && lastRD == renderDistance && lastLOD == highestLOD && lastFactor == LODFactor) return; TODO: Send a chunk request to the server for normalChunks as well, to prevent issues here.
 		
 		int maxRenderDistance = (int)Math.ceil((renderDistance << highestLOD)*LODFactor*Chunk.chunkSize);

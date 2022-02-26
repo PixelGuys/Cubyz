@@ -22,11 +22,11 @@ import cubyz.world.save.Palette;
 
 public class ItemEntityManager {
 	/**Radius of all item entities hitboxes as a unit sphere of the max-norm (cube).*/
-	public static final float radius = 0.1f;
+	public static final float RADIUS = 0.1f;
 	/**Diameter of all item entities hitboxes as a unit sphere of the max-norm (cube).*/
-	public static final float diameter = 2*radius;
+	public static final float DIAMETER = 2*RADIUS;
 	
-	public static final float pickupRange = 1;
+	public static final float PICKUP_RANGE = 1;
 	
 	private static final int capacityIncrease = 64;
 	
@@ -136,26 +136,26 @@ public class ItemEntityManager {
 	
 	public void update(float deltaTime) {
 		for(int i = 0; i < size; i++) {
-			int index3 = i*3;
+			int i3 = i*3;
 			// Update gravity:
-			velxyz[index3+1] -= gravity*deltaTime;
+			velxyz[i3 + 1] -= gravity*deltaTime;
 			// Check collision with blocks:
-			checkBlocks(index3);
+			checkBlocks(i3);
 			// Update position:
-			posxyz[index3] += velxyz[index3]*deltaTime;
-			posxyz[index3+1] += velxyz[index3+1]*deltaTime;
-			posxyz[index3+2] += velxyz[index3+2]*deltaTime;
+			posxyz[i3] += velxyz[i3]*deltaTime;
+			posxyz[i3 + 1] += velxyz[i3 + 1]*deltaTime;
+			posxyz[i3 + 2] += velxyz[i3 + 2]*deltaTime;
 			// Check if it's still inside this chunk:
-			if (!chunk.isInside(posxyz[index3], posxyz[index3 + 1], posxyz[index3 + 2])) {
+			if (!chunk.isInside(posxyz[i3], posxyz[i3 + 1], posxyz[i3 + 2])) {
 				// Move it to another manager:
-				ChunkEntityManager other = world.getEntityManagerAt(((int)posxyz[index3]) & ~Chunk.chunkMask, ((int)posxyz[index3+1]) & ~Chunk.chunkMask, ((int)posxyz[index3+2]) & ~Chunk.chunkMask);
+				ChunkEntityManager other = world.getEntityManagerAt(((int)posxyz[i3]) & ~Chunk.chunkMask, ((int)posxyz[i3 + 1]) & ~Chunk.chunkMask, ((int)posxyz[i3 + 2]) & ~Chunk.chunkMask);
 				if (other == null) {
 					// TODO: Append it to the right file.
-					posxyz[index3] -= velxyz[index3]*deltaTime;
-					posxyz[index3+1] -= velxyz[index3+1]*deltaTime;
-					posxyz[index3+2] -= velxyz[index3+2]*deltaTime;
+					posxyz[i3] -= velxyz[i3]*deltaTime;
+					posxyz[i3 + 1] -= velxyz[i3 + 1]*deltaTime;
+					posxyz[i3 + 2] -= velxyz[i3 + 2]*deltaTime;
 				} else if (other.itemEntityManager != this) {
-					other.itemEntityManager.add(posxyz[index3], posxyz[index3+1], posxyz[index3+2], velxyz[index3], velxyz[index3+1], velxyz[index3+2], rotxyz[index3], rotxyz[index3+1], rotxyz[index3+2], itemStacks[i], despawnTime[i], pickupCooldown[i]);
+					other.itemEntityManager.add(posxyz[i3], posxyz[i3 + 1], posxyz[i3 + 2], velxyz[i3], velxyz[i3 + 1], velxyz[i3 + 2], rotxyz[i3], rotxyz[i3 + 1], rotxyz[i3 + 2], itemStacks[i], despawnTime[i], pickupCooldown[i]);
 					remove(i);
 					i--;
 				}
@@ -172,9 +172,9 @@ public class ItemEntityManager {
 	
 	public void checkEntity(Entity ent) {
 		for(int i = 0; i < size; i++) {
-			int index3 = 3*i;
+			int i3 = 3*i;
 			if (pickupCooldown[i] >= 0) continue; // Item cannot be picked up yet.
-			if (Math.abs(ent.position.x - posxyz[index3]) < ent.width + pickupRange && Math.abs(ent.position.y + ent.height/2 - posxyz[index3+1]) < ent.height + pickupRange && Math.abs(ent.position.z - posxyz[index3+2]) < ent.width + pickupRange) {
+			if (Math.abs(ent.position.x - posxyz[i3]) < ent.width + PICKUP_RANGE && Math.abs(ent.position.y + ent.height/2 - posxyz[i3 + 1]) < ent.height + PICKUP_RANGE && Math.abs(ent.position.z - posxyz[i3 + 2]) < ent.width + PICKUP_RANGE) {
 				int newAmount = ent.getInventory().addItem(itemStacks[i].getItem(), itemStacks[i].getAmount());
 				if (newAmount != 0) {
 					itemStacks[i].setAmount(newAmount);
@@ -256,39 +256,39 @@ public class ItemEntityManager {
 	}
 	
 	private void checkBlocks(int index3) {
-		double x = posxyz[index3] - radius;
-		double y = posxyz[index3+1] - radius;
-		double z = posxyz[index3+2] - radius;
+		double x = posxyz[index3] - RADIUS;
+		double y = posxyz[index3+1] - RADIUS;
+		double z = posxyz[index3+2] - RADIUS;
 		int x0 = (int)x;
 		int y0 = (int)y;
 		int z0 = (int)z;
 		checkBlock(index3, x0, y0, z0);
-		if (x - x0 + diameter >= 1) {
+		if (x - x0 + DIAMETER >= 1) {
 			checkBlock(index3, x0+1, y0, z0);
-			if (y - y0 + diameter >= 1) {
+			if (y - y0 + DIAMETER >= 1) {
 				checkBlock(index3, x0, y0+1, z0);
 				checkBlock(index3, x0+1, y0+1, z0);
-				if (z - z0 + diameter >= 1) {
+				if (z - z0 + DIAMETER >= 1) {
 					checkBlock(index3, x0, y0, z0+1);
 					checkBlock(index3, x0+1, y0, z0+1);
 					checkBlock(index3, x0, y0+1, z0+1);
 					checkBlock(index3, x0+1, y0+1, z0+1);
 				}
 			} else {
-				if (z - z0 + diameter >= 1) {
+				if (z - z0 + DIAMETER >= 1) {
 					checkBlock(index3, x0, y0, z0+1);
 					checkBlock(index3, x0+1, y0, z0+1);
 				}
 			}
 		} else {
-			if (y - y0 + diameter >= 1) {
+			if (y - y0 + DIAMETER >= 1) {
 				checkBlock(index3, x0, y0+1, z0);
-				if (z - z0 + diameter >= 1) {
+				if (z - z0 + DIAMETER >= 1) {
 					checkBlock(index3, x0, y0, z0+1);
 					checkBlock(index3, x0, y0+1, z0+1);
 				}
 			} else {
-				if (z - z0 + diameter >= 1) {
+				if (z - z0 + DIAMETER >= 1) {
 					checkBlock(index3, x0, y0, z0+1);
 				}
 			}
@@ -305,7 +305,7 @@ public class ItemEntityManager {
 		// Check if the item entity is inside the block:
 		boolean isInside = true;
 		if (Blocks.mode(block).changesHitbox()) {
-			isInside = Blocks.mode(block).checkEntity(new Vector3d(posxyz[index3], posxyz[index3+1]+radius, posxyz[index3+2]), radius, diameter, x, y, z, block);
+			isInside = Blocks.mode(block).checkEntity(new Vector3d(posxyz[index3], posxyz[index3+1]+RADIUS, posxyz[index3+2]), RADIUS, DIAMETER, x, y, z, block);
 		}
 		if (isInside) {
 			if (Blocks.solid(block)) {

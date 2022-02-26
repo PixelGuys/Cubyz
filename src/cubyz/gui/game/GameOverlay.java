@@ -72,7 +72,11 @@ public class GameOverlay extends MenuGUI {
 			Graphics.drawImage(crosshair, Window.getWidth()/2 - 8 * GUI_SCALE, Window.getHeight()/2 - 8 * GUI_SCALE, 16 * GUI_SCALE, 16 * GUI_SCALE);
 		}
 		if (!(Cubyz.gameUI.getMenuGUI() instanceof GeneralInventory)) {
-			Graphics.drawImage(selection, Window.getWidth()/2 - 79 * GUI_SCALE + Cubyz.inventorySelection*20 * GUI_SCALE, Window.getHeight() - 19 * GUI_SCALE, 18 * GUI_SCALE, 18 * GUI_SCALE);
+			Graphics.drawImage(
+				selection,
+				Window.getWidth()/2 - 79 * GUI_SCALE + Cubyz.inventorySelection*20 * GUI_SCALE,
+				Window.getHeight() - 19 * GUI_SCALE, 18 * GUI_SCALE, 18 * GUI_SCALE
+			);
 			for(int i = 0; i < 8; i++) {
 				inv[i].reference = Cubyz.player.getInventory().getStack(i); // without it, if moved in inventory, stack won't refresh
 				inv[i].render();

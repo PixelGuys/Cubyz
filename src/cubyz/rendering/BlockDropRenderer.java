@@ -235,7 +235,7 @@ public class BlockDropRenderer {
 		itemShader.setUniform(ItemDropUniforms.loc_ambientLight, ambientLight);
 		itemShader.setUniform(ItemDropUniforms.loc_directionalLight, directionalLight.getDirection());
 		itemShader.setUniform(ItemDropUniforms.loc_viewMatrix, Camera.getViewMatrix());
-		itemShader.setUniform(ItemDropUniforms.loc_sizeScale, ItemEntityManager.diameter/4);
+		itemShader.setUniform(ItemDropUniforms.loc_sizeScale, ItemEntityManager.DIAMETER/4);
 		for(ChunkEntityManager chManager : Cubyz.world.getEntityManagers()) {
 			NormalChunk chunk = chManager.chunk;
 			Vector3d min = chunk.getMin().sub(playerPosition);
@@ -303,7 +303,8 @@ public class BlockDropRenderer {
 					if (mesh != null) {
 						shader.setUniform(loc_light, Cubyz.world.getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
 						Vector3d position = manager.getPosition(index).sub(playerPosition);
-						Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(new Vector3f((float)position.x, (float)position.y, (float)position.z), manager.getRotation(index), ItemEntityManager.diameter), Camera.getViewMatrix());
+						Matrix4f modelMatrix = Transformation.getModelMatrix(new Vector3f((float)position.x, (float)position.y, (float)position.z), manager.getRotation(index), ItemEntityManager.DIAMETER);
+						Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(modelMatrix, Camera.getViewMatrix());
 						shader.setUniform(loc_viewMatrix, modelViewMatrix);
 						glBindVertexArray(mesh.vaoId);
 						mesh.render();

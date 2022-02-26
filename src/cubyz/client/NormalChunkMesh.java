@@ -267,8 +267,18 @@ public class NormalChunkMesh extends ChunkMesh {
 	public void render(Vector3d playerPosition) {
 		if (chunk == null || !generated) {
 			ReducedChunkMesh.shader.bind();
-			glUniform3f(ReducedChunkMesh.loc_lowerBounds, (float)(wx - playerPosition.x - 0.001), (float)(wy - playerPosition.y - 0.001), (float)(wz - playerPosition.z - 0.001));
-			glUniform3f(ReducedChunkMesh.loc_upperBounds, (float)(wx + size - playerPosition.x + 0.001), (float)(wy + size - playerPosition.y + 0.001), (float)(wz + size - playerPosition.z + 0.001));
+			glUniform3f(
+				ReducedChunkMesh.loc_lowerBounds,
+				(float)(wx - playerPosition.x - 0.001),
+				(float)(wy - playerPosition.y - 0.001),
+				(float)(wz - playerPosition.z - 0.001)
+			);
+			glUniform3f(
+				ReducedChunkMesh.loc_upperBounds,
+				(float)(wx + size - playerPosition.x + 0.001),
+				(float)(wy + size - playerPosition.y + 0.001),
+				(float)(wz + size - playerPosition.z + 0.001)
+			);
 			if (replacement != null) {
 				replacement.render(playerPosition);
 			}

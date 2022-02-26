@@ -10,6 +10,7 @@ import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.Blocks.BlockClass;
 import cubyz.world.entity.Entity;
 import cubyz.world.entity.Player;
+import cubyz.world.items.Item;
 import cubyz.world.items.ItemBlock;
 import cubyz.world.items.tools.Tool;
 
@@ -63,35 +64,35 @@ public class ClientPlayer extends Player {
 			}
 			if (Keybindings.isPressed("destroy")) {
 				//Breaking Blocks
+				Object selected = Cubyz.msd.getSelected();
 				if (isFlying()) { // Ignore hardness when in flying.
 					if (breakCooldown == 0) {
 						breakCooldown = 7;
-						Object bi = Cubyz.msd.getSelected();
-						if (bi != null && bi instanceof BlockInstance && Blocks.blockClass(((BlockInstance)bi).getBlock()) != BlockClass.UNBREAKABLE) {
-							Cubyz.world.removeBlock(((BlockInstance)bi).x, ((BlockInstance)bi).y, ((BlockInstance)bi).z);
+						if (selected instanceof BlockInstance && Blocks.blockClass(((BlockInstance)selected).getBlock()) != BlockClass.UNBREAKABLE) {
+							Cubyz.world.removeBlock(((BlockInstance)selected).x, ((BlockInstance)selected).y, ((BlockInstance)selected).z);
 						}
 					}
 				}
 				else {
-					Object selected = Cubyz.msd.getSelected();
 					if (selected instanceof BlockInstance) {
 						breaking((BlockInstance)selected, Cubyz.inventorySelection, Cubyz.world);
 					}
 				}
 				// Hit entities:
-				Object selected = Cubyz.msd.getSelected();
 				if (selected instanceof Entity) {
-					((Entity)selected).hit(getInventory().getItem(Cubyz.inventorySelection) instanceof Tool ? (Tool)getInventory().getItem(Cubyz.inventorySelection) : null, Camera.getViewMatrix().positiveZ(Cubyz.dir).negate());
+					Item heldItem = getInventory().getItem(Cubyz.inventorySelection);
+					((Entity)selected).hit(heldItem instanceof Tool ? (Tool)heldItem : null, Camera.getViewMatrix().positiveZ(Cubyz.dir).negate());
 				}
 			} else {
 				resetBlockBreaking();
 			}
 			if (Keybindings.isPressed("place/use") && buildCooldown <= 0) {
-				if ((Cubyz.msd.getSelected() instanceof BlockInstance) && Blocks.onClick(((BlockInstance)Cubyz.msd.getSelected()).getBlock(), Cubyz.world, ((BlockInstance)Cubyz.msd.getSelected()).getPosition())) {
+				Object selected = Cubyz.msd.getSelected();
+				if ((selected instanceof BlockInstance) && Blocks.onClick(((BlockInstance)selected).getBlock(), Cubyz.world, ((BlockInstance)selected).getPosition())) {
 					// Interact with block(potentially do a hand animation, in the future).
 				} else if (getInventory().getItem(Cubyz.inventorySelection) instanceof ItemBlock) {
 					// Build block:
-					if (Cubyz.msd.getSelected() != null) {
+					if (selected != null) {
 						buildCooldown = 10;
 						Cubyz.msd.placeBlock(getInventory(), Cubyz.inventorySelection, Cubyz.world);
 					}

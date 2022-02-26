@@ -40,8 +40,10 @@ public class DebugOverlay extends MenuGUI {
 			Graphics.drawText(0 * GUI_SCALE, 10 * GUI_SCALE, "Branded \"" + Constants.GAME_BRAND + "\", version " + Constants.GAME_VERSION);
 			Graphics.drawText(0 * GUI_SCALE, 20 * GUI_SCALE, "Windowed (" + Window.getWidth() + "x" + Window.getHeight() + ")");
 			Graphics.drawText(0 * GUI_SCALE, 30 * GUI_SCALE, "Java " + javaVersion);
-			Graphics.drawText(0 * GUI_SCALE, 100 * GUI_SCALE, "Memory: " + (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory())/1024/1024
-					+ "/" + (Runtime.getRuntime().totalMemory()/1024/1024) + "MiB (max " + (Runtime.getRuntime().maxMemory()/1024/1024) + "MiB)");
+			long totalMemory = Runtime.getRuntime().totalMemory()/1024/1024;
+			long freeMemory = Runtime.getRuntime().freeMemory()/1024/1024;
+			long maxMemory = Runtime.getRuntime().maxMemory()/1024/1024;
+			Graphics.drawText(0 * GUI_SCALE, 100 * GUI_SCALE, "Memory: " + (totalMemory - freeMemory) + "/" + totalMemory + "MiB (max " + maxMemory + "MiB)");
 			
 			if (Cubyz.world != null) {
 				Player p = Cubyz.player;

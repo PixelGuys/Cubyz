@@ -28,6 +28,6 @@ public class SSBO {
 
 	@Override
 	public void finalize() { // TODO: Don't use finalize for that. There is an alternative in modern java.
-		//assert(wasDeleted) : "Resource leak in ssbo.";
+		assert(wasDeleted) : "Resource leak in ssbo.";
 	}
 }

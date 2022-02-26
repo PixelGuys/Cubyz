@@ -105,7 +105,7 @@ public class ClientWorld extends World{
 	}
 
 	@Override
-	public void seek(int x, int y, int z, int renderDistance, int regionRenderDistance) {
+	public void seek(int x, int y, int z, int renderDistance) {
 
 	}
 

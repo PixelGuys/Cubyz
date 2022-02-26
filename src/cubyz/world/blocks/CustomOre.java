@@ -248,21 +248,6 @@ public class CustomOre {
 		fallbackLang.put("block.cubyz." + name.replace(" ", "_") + "_ore.name", name + " Ore");
 	}
 	
-	/*public static CustomOre fromNDT(NDTContainer ndt) {
-		CustomOre ore = new CustomOre();
-		ore.color = ndt.getInteger("color");
-		ore.height = ndt.getInteger("height");
-		ore.spawns = ndt.getFloat("spawnRate");
-		ore.maxLength = ndt.getFloat("maxLength");
-		ore.maxSize = ndt.getFloat("maxSize");
-		ore.name = ndt.getString("name");
-		ore.template = ndt.getInteger("template");
-		ore.setHardness(ndt.getFloat("hardness"));
-		ore.setID(ndt.getString("id"));
-		ore.makeBlockDrop();
-		return ore;
-	}*/
-	
 	private JsonArray makeItem(Random rand, File assets, String mod, String name) {
 		JsonArray items = new JsonArray();
 		items.addStrings(mod+":"+name.replace(' ', '_'));
@@ -305,9 +290,5 @@ public class CustomOre {
 			Logger.warning(e);
 		}
 		return null;
-	}
-	
-	public boolean generatesModelAtRuntime() {
-		return true;
 	}
 }

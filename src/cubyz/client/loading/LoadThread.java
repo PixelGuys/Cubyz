@@ -161,7 +161,9 @@ public class LoadThread extends Thread {
 				}
 				if (finishedMeshes) {
 					try {
-						GameLauncher.logic.skyBodyMesh = new Mesh(ModelLoader.loadModel(new Resource("cubyz:sky_body.obj"), ResourceManager.lookupPath(ResourceManager.contextToLocal(ResourceContext.MODEL3D, new Resource("cubyz:sky_body.obj")))));
+						Resource res = new Resource("cubyz:sky_body.obj");
+						String path = ResourceManager.lookupPath(ResourceManager.contextToLocal(ResourceContext.MODEL3D, res));
+						GameLauncher.logic.skyBodyMesh = new Mesh(ModelLoader.loadModel(res, path));
 					} catch (Exception e) {
 						Logger.warning(e);
 					}

@@ -206,7 +206,12 @@ public class ConsoleGUI extends MenuGUI {
 				} else {
 					mode = NORMAL;
 				}
-			} else if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_BACKSPACE) || Keyboard.hasCharSequence() || Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT) || Keyboard.isKeyPressed(GLFW.GLFW_KEY_HOME)) {
+			} else if (
+				Keyboard.isKeyPressed(GLFW.GLFW_KEY_BACKSPACE)
+				|| Keyboard.hasCharSequence()
+				|| Keyboard.isKeyPressed(GLFW.GLFW_KEY_LEFT)
+				|| Keyboard.isKeyPressed(GLFW.GLFW_KEY_HOME)
+			) {
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_BACKSPACE, false);
 				mode = NORMAL;
 			}

@@ -79,7 +79,8 @@ public class EntityRenderer {
 					
 					mesh.renderOne(() -> {
 						Vector3d position = ent.getRenderPosition().sub(playerPosition);
-						Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(Transformation.getModelMatrix(new Vector3f((float)position.x, (float)position.y, (float)position.z), ent.rotation, 1), Camera.getViewMatrix());
+						Matrix4f modelMatrix = Transformation.getModelMatrix(new Vector3f((float)position.x, (float)position.y, (float)position.z), ent.rotation, 1);
+						Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(modelMatrix, Camera.getViewMatrix());
 						entityShader.setUniform(loc_viewMatrix, modelViewMatrix);
 					});
 				}

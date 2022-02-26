@@ -70,22 +70,6 @@ public class Biome extends ChanceObject implements RegistryElement {
 	public Biome[] lowerReplacements = new Biome[0];
 	public final String preferredMusic;
 	public final boolean isValidPlayerSpawn;
-	
-	public Biome(Resource id, String type, float min, float max, float roughness, float hills, float mountains, float chance, String music, BlockStructure str, boolean rivers, boolean isValidPlayerSpawn, StructureModel ... models) {
-		super(chance);
-		this.type = Type.valueOf(type);
-		identifier = id;
-		this.roughness = roughness;
-		this.hills = hills;
-		this.mountains = mountains;
-		minHeight = min;
-		maxHeight = max;
-		struct = str;
-		supportsRivers = rivers;
-		vegetationModels = models;
-		preferredMusic = music;
-		this.isValidPlayerSpawn = isValidPlayerSpawn;
-	}
 
 	public Biome(Resource id, JsonObject json) {
 		super(json.getFloat("chance", 1));

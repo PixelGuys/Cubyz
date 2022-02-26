@@ -167,7 +167,7 @@ public abstract class World {
 	
 	public abstract int getChunkQueueSize();
 	
-	public abstract void seek(int x, int y, int z, int renderDistance, int regionRenderDistance);
+	public abstract void seek(int x, int y, int z, int renderDistance);
 	
 	public abstract MetaChunk getMetaChunk(int wx, int wy, int wz);
 	

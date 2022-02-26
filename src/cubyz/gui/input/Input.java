@@ -166,7 +166,7 @@ public class Input {
 					if (!stack.empty()) {
 						ItemStack droppedStack = new ItemStack(stack);
 						stack.clear();
-						Cubyz.world.drop(droppedStack, Cubyz.player.getPosition(), Camera.getDirection(), 1, Server.UPDATES_PER_SEC*5 /*5 seconds cooldown before being able to pick it up again.*/);
+						Cubyz.world.drop(droppedStack, Cubyz.player.getPosition(), Camera.getDirection(), 1, Server.UPDATES_PER_SEC*5);
 					}
 				}
 

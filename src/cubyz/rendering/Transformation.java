@@ -104,8 +104,6 @@ public class Transformation {
 	}
 	
 	public static Matrix4f getModelViewMatrix(Matrix4f modelMatrix, Matrix4f viewMatrix) {
-		//Matrix4f viewCurr = new Matrix4f(viewMatrix);
-		//return viewCurr.mul(modelMatrix);
-		return modelMatrix.mulLocal(viewMatrix); // seems to work, and doesn't allocate a new Matrix4f
+		return modelMatrix.mulLocal(viewMatrix);
 	}
 }
