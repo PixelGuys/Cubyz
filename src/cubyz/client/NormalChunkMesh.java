@@ -314,6 +314,8 @@ public class NormalChunkMesh extends ChunkMesh {
 		for (int vboId : transparentVboIdList) {
 			glDeleteBuffers(vboId);
 		}
+		vboIdList.clear();
+		transparentVboIdList.clear();
 
 		// Delete the VAO
 		glBindVertexArray(0);
