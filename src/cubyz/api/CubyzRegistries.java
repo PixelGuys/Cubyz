@@ -14,6 +14,7 @@ import cubyz.world.terrain.ClimateMapGenerator;
 import cubyz.world.terrain.MapGenerator;
 import cubyz.world.terrain.biomes.BiomeRegistry;
 import cubyz.world.terrain.biomes.StructureModel;
+import cubyz.world.terrain.cavegenerators.CaveGenerator;
 import cubyz.world.terrain.generators.Generator;
 
 /**
@@ -41,6 +42,7 @@ public class CubyzRegistries {
 	public static final Registry<StructureModel>         STRUCTURE_REGISTRY         = new Registry<StructureModel>();
 	public static final Registry<ClimateMapGenerator>    CLIMATE_GENERATOR_REGISTRY = new Registry<ClimateMapGenerator>();
 	public static final Registry<MapGenerator>           MAP_GENERATOR_REGISTRY     = new Registry<MapGenerator>();
+	public static final Registry<CaveGenerator>          CAVE_GENERATORS            = new Registry<CaveGenerator>();
 	public static final Registry<Generator>              GENERATORS                 = new Registry<Generator>();
 
 	/**

@@ -52,12 +52,11 @@ public class StructureGenerator implements Generator {
 	}
 
 	@Override
-	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, MapFragment map, ChunkManager generator) {
+	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, CaveMap caveMap, MapFragment map, ChunkManager generator) {
 		Random rand = new Random(seed + 3*(seed + 1 & Integer.MAX_VALUE));
 		long rand1 = rand.nextInt() | 1;
 		long rand2 = rand.nextInt() | 1;
 		long rand3 = rand.nextInt() | 1;
-		CaveMap caveMap = new CaveMap(chunk.world, chunk);
 		// Get the regions for the surrounding regions:
 		MapFragment nn = map;
 		MapFragment np = map;

@@ -9,10 +9,13 @@ import cubyz.utils.datastructures.BlockingMaxHeap;
 import cubyz.utils.datastructures.Cache;
 import cubyz.utils.json.JsonObject;
 import cubyz.utils.math.CubyzMath;
+import cubyz.world.terrain.CaveMap;
+import cubyz.world.terrain.CaveMapFragment;
 import cubyz.world.terrain.ClimateMapGenerator;
 import cubyz.world.terrain.MapFragment;
 import cubyz.world.terrain.MapFragmentCompare;
 import cubyz.world.terrain.MapGenerator;
+import cubyz.world.terrain.cavegenerators.CaveGenerator;
 import cubyz.world.terrain.generators.Generator;
 
 /**
@@ -28,6 +31,7 @@ public class ChunkManager {
 
 	public final MapGenerator mapFragmentGenerator;
 	public final ClimateMapGenerator climateGenerator;
+	public final CaveGenerator[] caveGenerators;
 	public final Generator[] generators;
 
 	// There will be at most 1 GB of reduced chunks in here.
@@ -115,6 +119,23 @@ public class ChunkManager {
 			}
 		});
 
+		caveGenerators = CubyzRegistries.CAVE_GENERATORS.registered(new CaveGenerator[0]);
+		for(int i = 0; i < caveGenerators.length; i++) {
+			caveGenerators[i].init(null, world.getCurrentRegistries());
+		}
+		Arrays.sort(caveGenerators, new Comparator<CaveGenerator>() {
+			@Override
+			public int compare(CaveGenerator a, CaveGenerator b) {
+				if (a.getPriority() > b.getPriority()) {
+					return 1;
+				} else if (a.getPriority() < b.getPriority()) {
+					return -1;
+				} else {
+					return 0;
+				}
+			}
+		});
+
 		threads = new Thread[numberOfThreads];
 		for (int i = 0; i < numberOfThreads; i++) {
 			ChunkGenerationThread thread = new ChunkGenerationThread();
@@ -159,9 +180,16 @@ public class ChunkManager {
 		long seed = world.getSeed();
 		
 		MapFragment containing = getOrGenerateMapFragment(wx, wz, chunk.voxelSize);
+		CaveMap caveMap = new CaveMap(chunk.world, chunk);
 		
 		for (Generator g : generators) {
-			g.generate(seed ^ g.getGeneratorSeed(), wx, wy, wz, chunk, containing, this);
+			g.generate(seed ^ g.getGeneratorSeed(), wx, wy, wz, chunk, caveMap, containing, this);
+		}
+	}
+
+	public void generateCaveMapFragment(CaveMapFragment caveMap) {
+		for (CaveGenerator g : caveGenerators) {
+			g.generate(world.getSeed() ^ g.getGeneratorSeed(), caveMap);
 		}
 	}
 

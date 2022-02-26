@@ -3,7 +3,6 @@ package cubyz.world.terrain;
 import cubyz.utils.math.CubyzMath;
 import cubyz.world.ChunkData;
 import cubyz.world.World;
-import cubyz.world.terrain.cavegenerators.FractalCaveGenerator;
 
 /**
  * Cave data represented in a 1-Bit per block format, where 0 means empty and 1 means not empty.
@@ -30,7 +29,7 @@ public class CaveMapFragment extends ChunkData {
 				}
 			}
 		}
-		new FractalCaveGenerator().generate(world.getSeed() ^ new FractalCaveGenerator().getGeneratorSeed(), this);
+		world.chunkManager.generateCaveMapFragment(this);
 	}
 
 	private static int getIndex(int x, int z) {

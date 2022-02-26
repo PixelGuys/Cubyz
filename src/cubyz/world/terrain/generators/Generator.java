@@ -5,6 +5,7 @@ import cubyz.api.RegistryElement;
 import cubyz.utils.json.JsonObject;
 import cubyz.world.Chunk;
 import cubyz.world.ChunkManager;
+import cubyz.world.terrain.CaveMap;
 import cubyz.world.terrain.MapFragment;
 
 /**
@@ -21,7 +22,7 @@ public interface Generator extends RegistryElement {
 	abstract void init(JsonObject parameters, CurrentWorldRegistries registries);
 	
 	abstract int getPriority(); // Used to prioritize certain generators(like map generation) over others(like vegetation generation).
-	abstract void generate(long seed, int wx, int wy, int wz, Chunk chunk, MapFragment map, ChunkManager generator);
+	abstract void generate(long seed, int wx, int wy, int wz, Chunk chunk, CaveMap caveMap, MapFragment map, ChunkManager generator);
 	
 	/**
 	 * To avoid duplicate seeds in similar generation algorithms, the SurfaceGenerator xors the world-seed with the generator specific seed.

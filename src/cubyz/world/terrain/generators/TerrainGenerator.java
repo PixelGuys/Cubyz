@@ -37,12 +37,11 @@ public class TerrainGenerator implements Generator {
 	}
 
 	@Override
-	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, MapFragment map, ChunkManager generator) {
+	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, CaveMap caveMap, MapFragment map, ChunkManager generator) {
 		Random rand = new Random(seed);
 		int seedX = rand.nextInt() | 1;
 		int seedY = rand.nextInt() | 1;
 		int seedZ = rand.nextInt() | 1;
-		CaveMap caveMap = new CaveMap(chunk.world, chunk); // TODO: Take this as a function parameter.
 		for(int x = 0; x < chunk.getWidth(); x += chunk.voxelSize) {
 			for(int z = 0; z < chunk.getWidth(); z += chunk.voxelSize) {
 				int heightData = caveMap.getHeightData(x, z);

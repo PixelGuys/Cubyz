@@ -10,6 +10,7 @@ import cubyz.world.NormalChunk;
 import cubyz.world.ChunkManager;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.Ore;
+import cubyz.world.terrain.CaveMap;
 import cubyz.world.terrain.MapFragment;
 
 /**
@@ -38,7 +39,7 @@ public class OreGenerator implements Generator {
 
 	// Works basically similar to cave generation, but considers a lot less chunks and has a few other differences.
 	@Override
-	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, MapFragment map, ChunkManager generator) {
+	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, CaveMap caveMap, MapFragment map, ChunkManager generator) {
 		if (!(chunk instanceof NormalChunk)) return;
 		Random rand = new Random(seed);
 		int rand1 = rand.nextInt() | 1;
