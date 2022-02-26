@@ -190,7 +190,7 @@ public class ReducedChunkMesh extends ChunkMesh {
 		faceData.bind(3);
 		glDrawElements(GL_TRIANGLES, vertexCount, GL_UNSIGNED_INT, 0);
 
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, 0);
 	}
 
 	@Override
