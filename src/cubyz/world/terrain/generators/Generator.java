@@ -22,7 +22,7 @@ public interface Generator extends RegistryElement {
 	abstract void init(JsonObject parameters, CurrentWorldRegistries registries);
 	
 	abstract int getPriority(); // Used to prioritize certain generators(like map generation) over others(like vegetation generation).
-	abstract void generate(long seed, int wx, int wy, int wz, Chunk chunk, CaveMap caveMap, MapFragment map, ChunkManager generator);
+	abstract void generate(long seed, int wx, int wy, int wz, Chunk chunk, CaveMap caveMap, MapFragment map);
 	
 	/**
 	 * To avoid duplicate seeds in similar generation algorithms, the SurfaceGenerator xors the world-seed with the generator specific seed.

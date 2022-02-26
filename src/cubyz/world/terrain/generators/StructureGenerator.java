@@ -52,7 +52,7 @@ public class StructureGenerator implements Generator {
 	}
 
 	@Override
-	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, CaveMap caveMap, MapFragment map, ChunkManager generator) {
+	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, CaveMap caveMap, MapFragment map) {
 		Random rand = new Random(seed + 3*(seed + 1 & Integer.MAX_VALUE));
 		long rand1 = rand.nextInt() | 1;
 		long rand2 = rand.nextInt() | 1;
@@ -66,21 +66,22 @@ public class StructureGenerator implements Generator {
 		MapFragment po = map;
 		MapFragment on = map;
 		MapFragment op = map;
+		ChunkManager manager = chunk.world.chunkManager;
 		if ((wx & MapFragment.MAP_MASK) <= 8) {
-			no = nn = np = generator.getOrGenerateMapFragment(wx - MapFragment.MAP_SIZE, wz, chunk.voxelSize);
+			no = nn = np = manager.getOrGenerateMapFragment(wx - MapFragment.MAP_SIZE, wz, chunk.voxelSize);
 		}
 		if ((wx & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth()) {
-			po = pn = pp = generator.getOrGenerateMapFragment(wx + MapFragment.MAP_SIZE, wz, chunk.voxelSize);
+			po = pn = pp = manager.getOrGenerateMapFragment(wx + MapFragment.MAP_SIZE, wz, chunk.voxelSize);
 		}
 		if ((wz & MapFragment.MAP_MASK) <= 8) {
-			on = generator.getOrGenerateMapFragment(wx, wz - MapFragment.MAP_SIZE, chunk.voxelSize);
-			nn = generator.getOrGenerateMapFragment(wx - ((wx & MapFragment.MAP_MASK) <= 8 ? MapFragment.MAP_SIZE : 0), wz - MapFragment.MAP_SIZE, chunk.voxelSize);
-			pn = generator.getOrGenerateMapFragment(wx + ((wx & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth() ? MapFragment.MAP_SIZE : 0), wz - MapFragment.MAP_SIZE, chunk.voxelSize);
+			on = manager.getOrGenerateMapFragment(wx, wz - MapFragment.MAP_SIZE, chunk.voxelSize);
+			nn = manager.getOrGenerateMapFragment(wx - ((wx & MapFragment.MAP_MASK) <= 8 ? MapFragment.MAP_SIZE : 0), wz - MapFragment.MAP_SIZE, chunk.voxelSize);
+			pn = manager.getOrGenerateMapFragment(wx + ((wx & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth() ? MapFragment.MAP_SIZE : 0), wz - MapFragment.MAP_SIZE, chunk.voxelSize);
 		}
 		if ((wz & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth()) {
-			op = generator.getOrGenerateMapFragment(wx, wz + MapFragment.MAP_SIZE, chunk.voxelSize);
-			np = generator.getOrGenerateMapFragment(wx - ((wx & MapFragment.MAP_MASK) <= 8 ? MapFragment.MAP_SIZE : 0), wz + MapFragment.MAP_SIZE, chunk.voxelSize);
-			pp = generator.getOrGenerateMapFragment(wx + ((wx & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth() ? MapFragment.MAP_SIZE : 0), wz + MapFragment.MAP_SIZE, chunk.voxelSize);
+			op = manager.getOrGenerateMapFragment(wx, wz + MapFragment.MAP_SIZE, chunk.voxelSize);
+			np = manager.getOrGenerateMapFragment(wx - ((wx & MapFragment.MAP_MASK) <= 8 ? MapFragment.MAP_SIZE : 0), wz + MapFragment.MAP_SIZE, chunk.voxelSize);
+			pp = manager.getOrGenerateMapFragment(wx + ((wx & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth() ? MapFragment.MAP_SIZE : 0), wz + MapFragment.MAP_SIZE, chunk.voxelSize);
 		}
 		int stepSize = chunk.voxelSize;
 		if (stepSize < 4) {

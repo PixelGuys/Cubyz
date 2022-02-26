@@ -1,26 +1,18 @@
 package cubyz.world;
 
 import java.util.Arrays;
-import java.util.Comparator;
 
-import cubyz.api.CubyzRegistries;
 import cubyz.utils.Logger;
 import cubyz.utils.datastructures.BlockingMaxHeap;
 import cubyz.utils.datastructures.Cache;
 import cubyz.utils.json.JsonObject;
 import cubyz.utils.math.CubyzMath;
-import cubyz.world.terrain.CaveMap;
-import cubyz.world.terrain.CaveMapFragment;
-import cubyz.world.terrain.ClimateMapGenerator;
 import cubyz.world.terrain.MapFragment;
 import cubyz.world.terrain.MapFragmentCompare;
-import cubyz.world.terrain.MapGenerator;
-import cubyz.world.terrain.cavegenerators.CaveGenerator;
-import cubyz.world.terrain.generators.Generator;
+import cubyz.world.terrain.TerrainGenerationProfile;
 
 /**
  * Responsible for loading and storing the chunks of the world.
- * Also contains all the info for generation(like what Generators are used).
  */
 public class ChunkManager {
 	
@@ -29,10 +21,7 @@ public class ChunkManager {
 	private final World world;
 	private final Thread[] threads;
 
-	public final MapGenerator mapFragmentGenerator;
-	public final ClimateMapGenerator climateGenerator;
-	public final CaveGenerator[] caveGenerators;
-	public final Generator[] generators;
+	public final TerrainGenerationProfile terrainGenerationProfile;
 
 	// There will be at most 1 GB of reduced chunks in here.
 	private static final int CHUNK_CACHE_MASK = 8191;
@@ -94,47 +83,8 @@ public class ChunkManager {
 	public ChunkManager(World world, JsonObject settings, int numberOfThreads) {
 		loadList = new BlockingMaxHeap<>(new ChunkData[1024], numberOfThreads);
 		this.world = world;
-		
-		JsonObject generator = settings.getObjectOrNew("mapGenerator");
-		mapFragmentGenerator = CubyzRegistries.MAP_GENERATOR_REGISTRY.getByID(generator.getString("id", "cubyz:mapgen_v1"));
-		mapFragmentGenerator.init(generator, world.getCurrentRegistries());
-		generator = settings.getObjectOrNew("climateGenerator");
-		climateGenerator = CubyzRegistries.CLIMATE_GENERATOR_REGISTRY.getByID(generator.getString("id", "cubyz:polar_circles"));
-		climateGenerator.init(generator, world.getCurrentRegistries());
 
-		generators = CubyzRegistries.GENERATORS.registered(new Generator[0]);
-		for(int i = 0; i < generators.length; i++) {
-			generators[i].init(null, world.getCurrentRegistries());
-		}
-		Arrays.sort(generators, new Comparator<Generator>() {
-			@Override
-			public int compare(Generator a, Generator b) {
-				if (a.getPriority() > b.getPriority()) {
-					return 1;
-				} else if (a.getPriority() < b.getPriority()) {
-					return -1;
-				} else {
-					return 0;
-				}
-			}
-		});
-
-		caveGenerators = CubyzRegistries.CAVE_GENERATORS.registered(new CaveGenerator[0]);
-		for(int i = 0; i < caveGenerators.length; i++) {
-			caveGenerators[i].init(null, world.getCurrentRegistries());
-		}
-		Arrays.sort(caveGenerators, new Comparator<CaveGenerator>() {
-			@Override
-			public int compare(CaveGenerator a, CaveGenerator b) {
-				if (a.getPriority() > b.getPriority()) {
-					return 1;
-				} else if (a.getPriority() < b.getPriority()) {
-					return -1;
-				} else {
-					return 0;
-				}
-			}
-		});
+		terrainGenerationProfile = new TerrainGenerationProfile(settings, world.getCurrentRegistries());
 
 		threads = new Thread[numberOfThreads];
 		for (int i = 0; i < numberOfThreads; i++) {
@@ -163,33 +113,13 @@ public class ChunkManager {
 	public void synchronousGenerate(ChunkData ch) {
 		if (ch instanceof NormalChunk) {
 			if(!((NormalChunk)ch).isLoaded()) { // Prevent reloading.
-				((NormalChunk) ch).generateFrom(this);
+				((NormalChunk) ch).generate();
 				((NormalChunk) ch).load();
 			}
 			world.clientConnection.updateChunkMesh((NormalChunk) ch);
 		} else {
 			ReducedChunkVisibilityData visibilityData = new ReducedChunkVisibilityData(world, ch.wx, ch.wy, ch.wz, ch.voxelSize);
 			world.clientConnection.updateChunkMesh(visibilityData);
-		}
-	}
-
-	public void generate(Chunk chunk) {
-		int wx = chunk.wx;
-		int wy = chunk.wy;
-		int wz = chunk.wz;
-		long seed = world.getSeed();
-		
-		MapFragment containing = getOrGenerateMapFragment(wx, wz, chunk.voxelSize);
-		CaveMap caveMap = new CaveMap(chunk.world, chunk);
-		
-		for (Generator g : generators) {
-			g.generate(seed ^ g.getGeneratorSeed(), wx, wy, wz, chunk, caveMap, containing, this);
-		}
-	}
-
-	public void generateCaveMapFragment(CaveMapFragment caveMap) {
-		for (CaveGenerator g : caveGenerators) {
-			g.generate(world.getSeed() ^ g.getGeneratorSeed(), caveMap);
 		}
 	}
 
@@ -210,7 +140,7 @@ public class ChunkManager {
 
 			// Generate a new map fragment:
 			res = new MapFragment(wx, wz, world, world.wio, voxelSize);
-			mapFragmentGenerator.generateMapFragment(res);
+			terrainGenerationProfile.mapFragmentGenerator.generateMapFragment(res);
 			MapFragment old = mapCache[index].addToCache(res, hash);
 			if (old != null)
 				old.mapIO.saveData();
@@ -240,7 +170,7 @@ public class ChunkManager {
 			if (res != null) return res;
 			// Generate a new chunk:
 			res = new ReducedChunk(world, wx, wy, wz, CubyzMath.binaryLog(voxelSize));
-			res.generateFrom(this);
+			res.generate();
 			ReducedChunk old = reducedChunkCache.addToCache(res, hash);
 			if(old != null)
 				old.clean();

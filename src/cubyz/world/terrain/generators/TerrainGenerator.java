@@ -6,7 +6,6 @@ import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Resource;
 import cubyz.utils.json.JsonObject;
 import cubyz.world.Chunk;
-import cubyz.world.ChunkManager;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.terrain.CaveMap;
 import cubyz.world.terrain.MapFragment;
@@ -37,7 +36,7 @@ public class TerrainGenerator implements Generator {
 	}
 
 	@Override
-	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, CaveMap caveMap, MapFragment map, ChunkManager generator) {
+	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, CaveMap caveMap, MapFragment map) {
 		Random rand = new Random(seed);
 		int seedX = rand.nextInt() | 1;
 		int seedY = rand.nextInt() | 1;

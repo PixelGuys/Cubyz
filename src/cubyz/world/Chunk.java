@@ -5,6 +5,9 @@ import cubyz.client.GameLauncher;
 import cubyz.utils.Logger;
 import cubyz.utils.math.Bits;
 import cubyz.world.save.ChunkIO;
+import cubyz.world.terrain.CaveMap;
+import cubyz.world.terrain.MapFragment;
+import cubyz.world.terrain.generators.Generator;
 
 public abstract class Chunk extends ChunkData {
 	
@@ -87,10 +90,15 @@ public abstract class Chunk extends ChunkData {
 	 * If the chunk was already saved it is loaded from file instead.
 	 * @param gen
 	 */
-	public void generateFrom(ChunkManager gen) {
+	public void generate() {
 		assert(!generated) : "Seriously, why would you generate this chunk twice???";
 		if(!ChunkIO.loadChunkFromFile(world, this)) {
-			gen.generate(this);
+			MapFragment containing = world.chunkManager.getOrGenerateMapFragment(wx, wz, voxelSize);
+			CaveMap caveMap = new CaveMap(world, this);
+			
+			for (Generator g : world.chunkManager.terrainGenerationProfile.generators) {
+				g.generate(world.getSeed() ^ g.getGeneratorSeed(), wx, wy, wz, this, caveMap, containing);
+			}
 		}
 		generated = true;
 	}
