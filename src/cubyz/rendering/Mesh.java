@@ -1,7 +1,5 @@
 package cubyz.rendering;
 
-import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -13,7 +11,6 @@ import static org.lwjgl.opengl.GL20.*;
 import static org.lwjgl.opengl.GL30.*;
 
 import org.joml.Vector4f;
-import org.lwjgl.system.MemoryUtil;
 
 import cubyz.rendering.models.Model;
 import cubyz.utils.datastructures.FastList;
@@ -55,73 +52,47 @@ public class Mesh implements Cloneable {
 
 	public Mesh(Model model) {
 		this.model = model;
-		FloatBuffer posBuffer = null;
-		FloatBuffer textCoordsBuffer = null;
-		FloatBuffer vecNormalsBuffer = null;
-		IntBuffer indicesBuffer = null;
 		hasNormals = model.normals.length > 0 || true;
-		try {
-			vertexCount = model.indices.length;
-			vboIdList = new ArrayList<>();
 
-			vaoId = glGenVertexArrays();
-			glBindVertexArray(vaoId);
-			glEnableVertexAttribArray(0);
-			glEnableVertexAttribArray(1);
-			if (hasNormals)
-				glEnableVertexAttribArray(2);
+		vertexCount = model.indices.length;
+		vboIdList = new ArrayList<>();
 
-			// Position VBO
-			int vboId = glGenBuffers();
-			vboIdList.add(vboId);
-			posBuffer = MemoryUtil.memAllocFloat(model.positions.length);
-			posBuffer.put(model.positions).flip();
-			glBindBuffer(GL_ARRAY_BUFFER, vboId);
-			glBufferData(GL_ARRAY_BUFFER, posBuffer, GL_STATIC_DRAW);
-			glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, 0);
+		vaoId = glGenVertexArrays();
+		glBindVertexArray(vaoId);
+		glEnableVertexAttribArray(0);
+		glEnableVertexAttribArray(1);
+		if (hasNormals)
+			glEnableVertexAttribArray(2);
 
-			// Texture coordinates VBO
-			vboId = glGenBuffers();
-			vboIdList.add(vboId);
-			textCoordsBuffer = MemoryUtil.memAllocFloat(model.textCoords.length);
-			textCoordsBuffer.put(model.textCoords).flip();
-			glBindBuffer(GL_ARRAY_BUFFER, vboId);
-			glBufferData(GL_ARRAY_BUFFER, textCoordsBuffer, GL_STATIC_DRAW);
-			glVertexAttribPointer(1, 2, GL_FLOAT, false, 0, 0);
+		// Position VBO
+		int vboId = glGenBuffers();
+		vboIdList.add(vboId);
+		glBindBuffer(GL_ARRAY_BUFFER, vboId);
+		glBufferData(GL_ARRAY_BUFFER, model.positions, GL_STATIC_DRAW);
+		glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, 0);
 
-			// Vertex normals VBO
-			vboId = glGenBuffers();
-			vboIdList.add(vboId);
-			vecNormalsBuffer = MemoryUtil.memAllocFloat(model.normals.length);
-			vecNormalsBuffer.put(model.normals).flip();
-			glBindBuffer(GL_ARRAY_BUFFER, vboId);
-			glBufferData(GL_ARRAY_BUFFER, vecNormalsBuffer, GL_STATIC_DRAW);
-			glVertexAttribPointer(2, 3, GL_FLOAT, false, 0, 0);
+		// Texture coordinates VBO
+		vboId = glGenBuffers();
+		vboIdList.add(vboId);
+		glBindBuffer(GL_ARRAY_BUFFER, vboId);
+		glBufferData(GL_ARRAY_BUFFER, model.textCoords, GL_STATIC_DRAW);
+		glVertexAttribPointer(1, 2, GL_FLOAT, false, 0, 0);
 
-			// Index VBO
-			vboId = glGenBuffers();
-			vboIdList.add(vboId);
-			indicesBuffer = MemoryUtil.memAllocInt(model.indices.length);
-			indicesBuffer.put(model.indices).flip();
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboId);
-			glBufferData(GL_ELEMENT_ARRAY_BUFFER, indicesBuffer, GL_STATIC_DRAW);
+		// Vertex normals VBO
+		vboId = glGenBuffers();
+		vboIdList.add(vboId);
+		glBindBuffer(GL_ARRAY_BUFFER, vboId);
+		glBufferData(GL_ARRAY_BUFFER, model.normals, GL_STATIC_DRAW);
+		glVertexAttribPointer(2, 3, GL_FLOAT, false, 0, 0);
 
-			glBindBuffer(GL_ARRAY_BUFFER, 0);
-			glBindVertexArray(0);
-		} finally {
-			if (posBuffer != null) {
-				MemoryUtil.memFree(posBuffer);
-			}
-			if (textCoordsBuffer != null) {
-				MemoryUtil.memFree(textCoordsBuffer);
-			}
-			if (vecNormalsBuffer != null) {
-				MemoryUtil.memFree(vecNormalsBuffer);
-			}
-			if (indicesBuffer != null) {
-				MemoryUtil.memFree(indicesBuffer);
-			}
-		}
+		// Index VBO
+		vboId = glGenBuffers();
+		vboIdList.add(vboId);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboId);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, model.indices, GL_STATIC_DRAW);
+
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindVertexArray(0);
 	}
 
 	protected Mesh(int vao, int count, List<Integer> vboId, Model model) {

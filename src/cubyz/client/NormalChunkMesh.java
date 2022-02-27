@@ -5,12 +5,10 @@ import static org.lwjgl.opengl.GL15.*;
 import static org.lwjgl.opengl.GL20.*;
 import static org.lwjgl.opengl.GL30.*;
 
-import java.nio.IntBuffer;
 import java.util.ArrayList;
 
 import org.joml.Vector3d;
 import org.joml.Vector3f;
-import org.lwjgl.system.MemoryUtil;
 
 import cubyz.rendering.Camera;
 import cubyz.rendering.ShaderProgram;
@@ -205,45 +203,33 @@ public class NormalChunkMesh extends ChunkMesh {
 			return -1;
 		}
 
-		IntBuffer vertexBuffer = null;
-		IntBuffer indexBuffer = null;
-		try {
-			int vaoId = glGenVertexArrays();
-			glBindVertexArray(vaoId);
-			// Enable vertex arrays once.
-			glEnableVertexAttribArray(0);
-			glEnableVertexAttribArray(1);
-			glEnableVertexAttribArray(2);
-			glEnableVertexAttribArray(3);
+		int vaoId = glGenVertexArrays();
+		glBindVertexArray(vaoId);
+		// Enable vertex arrays once.
+		glEnableVertexAttribArray(0);
+		glEnableVertexAttribArray(1);
+		glEnableVertexAttribArray(2);
+		glEnableVertexAttribArray(3);
 
-			// Position VBO
-			int vboId = glGenBuffers();
-			vboIdList.add(vboId);
-			vertexBuffer = MemoryUtil.memAllocInt(vertices.size());
-			vertexBuffer.put(vertices.toArray()).flip();
-			glBindBuffer(GL_ARRAY_BUFFER, vboId);
-			glBufferData(GL_ARRAY_BUFFER, vertexBuffer, GL_STATIC_DRAW);
-			glVertexAttribPointer(0, 3, GL_FLOAT, false, SIZEOF_VERTEX*4, POSITION_X*4);
-			glVertexAttribPointer(1, 3, GL_FLOAT, false, SIZEOF_VERTEX*4, TEXTURE_X*4);
-			glVertexAttribPointer(2, 3, GL_FLOAT, false, SIZEOF_VERTEX*4, NORMAL_X*4);
-			glVertexAttribPointer(3, 1, GL_FLOAT, false, SIZEOF_VERTEX*4, LIGHTING*4);
+		// Position VBO
+		int vboId = glGenBuffers();
+		vboIdList.add(vboId);
+		glBindBuffer(GL_ARRAY_BUFFER, vboId);
+		glBufferData(GL_ARRAY_BUFFER, vertices.toArray(), GL_STATIC_DRAW);
+		glVertexAttribPointer(0, 3, GL_FLOAT, false, SIZEOF_VERTEX*4, POSITION_X*4);
+		glVertexAttribPointer(1, 3, GL_FLOAT, false, SIZEOF_VERTEX*4, TEXTURE_X*4);
+		glVertexAttribPointer(2, 3, GL_FLOAT, false, SIZEOF_VERTEX*4, NORMAL_X*4);
+		glVertexAttribPointer(3, 1, GL_FLOAT, false, SIZEOF_VERTEX*4, LIGHTING*4);
 
-			// Index VBO
-			vboId = glGenBuffers();
-			vboIdList.add(vboId);
-			indexBuffer = MemoryUtil.memAllocInt(faces.size);
-			indexBuffer.put(faces.toArray()).flip();
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboId);
-			glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexBuffer, GL_STATIC_DRAW);
+		// Index VBO
+		vboId = glGenBuffers();
+		vboIdList.add(vboId);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboId);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, faces.toArray(), GL_STATIC_DRAW);
 
-			glBindBuffer(GL_ARRAY_BUFFER, 0);
-			glBindVertexArray(0);
-			return vaoId;
-		} finally {
-			if (vertexBuffer != null) {
-				MemoryUtil.memFree(vertexBuffer);
-			}
-		}
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindVertexArray(0);
+		return vaoId;
 	}
 
 	public void updateChunk(NormalChunk chunk) {
