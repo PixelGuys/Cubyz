@@ -2,6 +2,7 @@ package cubyz.gui.input;
 
 import org.joml.Vector2d;
 
+import cubyz.client.ClientSettings;
 import cubyz.rendering.Window;
 
 import static org.lwjgl.glfw.GLFW.*;
@@ -75,8 +76,8 @@ public abstract class Mouse {
 	public static void init() {
 		glfwSetCursorPosCallback(Window.getWindowHandle(), (windowHandle, x, y) -> {
 			if (grabbed && !ignoreDataAfterRecentGrab) {
-				deltaX[deltaBufferPosition] += x - currentPos.x;
-				deltaY[deltaBufferPosition] += y - currentPos.y;
+				deltaX[deltaBufferPosition] += (x - currentPos.x)*ClientSettings.mouseSensitivity;
+				deltaY[deltaBufferPosition] += (y - currentPos.y)*ClientSettings.mouseSensitivity;
 			}
 			ignoreDataAfterRecentGrab = false;
 			currentPos.x = x;

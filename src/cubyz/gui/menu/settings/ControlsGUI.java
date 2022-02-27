@@ -2,12 +2,14 @@ package cubyz.gui.menu.settings;
 
 import org.lwjgl.glfw.GLFW;
 
+import cubyz.client.ClientSettings;
 import cubyz.client.Cubyz;
 import cubyz.gui.MenuGUI;
 import cubyz.gui.components.Button;
 import cubyz.gui.components.Component;
 import cubyz.gui.components.Label;
 import cubyz.gui.components.ScrollingContainer;
+import cubyz.gui.components.Slider;
 import cubyz.gui.input.Keybindings;
 import cubyz.gui.input.Keyboard;
 import cubyz.gui.input.Mouse;
@@ -18,13 +20,14 @@ import cubyz.utils.translate.TextKey;
 import static org.lwjgl.glfw.GLFW.*;
 import static cubyz.client.ClientSettings.GUI_SCALE;
 
-public class KeybindingsGUI extends MenuGUI {
+public class ControlsGUI extends MenuGUI {
 
 	private final ScrollingContainer container = new ScrollingContainer();
 	private Button done;
 	private String listen;
 	private Label[] labels;
 	private Button[] buttons;
+	private Slider mouseSensitivity;
 	
 	@Override
 	public void init() {
@@ -101,6 +104,16 @@ public class KeybindingsGUI extends MenuGUI {
 		done.setOnAction(() -> {
 			Cubyz.gameUI.back();
 		});
+
+		String[] sensitivityValues = new String[401];
+		for(int i = 0; i < sensitivityValues.length; i++) {
+			sensitivityValues[i] = i+"%";
+		}
+		mouseSensitivity = new Slider(Math.round(ClientSettings.mouseSensitivity*100), sensitivityValues);
+		mouseSensitivity.setText("Mouse Sensitivity:");
+		mouseSensitivity.setOnAction(() -> {
+			ClientSettings.mouseSensitivity = mouseSensitivity.getValue()/100.0f;
+		});
 		
 		buttons = new Button[Keybindings.keyNames.length];
 		labels = new Label[Keybindings.keyNames.length];
@@ -144,6 +157,9 @@ public class KeybindingsGUI extends MenuGUI {
 	public void updateGUIScale() {
 		done.setBounds(100 * GUI_SCALE, 30 * GUI_SCALE, 80 * GUI_SCALE, 25 * GUI_SCALE, Component.ALIGN_BOTTOM_RIGHT);
 		done.setFontSize(16 * GUI_SCALE);
+
+		mouseSensitivity.setBounds(160 * GUI_SCALE, 10 * GUI_SCALE, 250 * GUI_SCALE, 25 * GUI_SCALE, Component.ALIGN_TOP_LEFT);
+		mouseSensitivity.setFontSize(16 * GUI_SCALE);
 		
 		int y = 10;
 		for (int i = 0; i < buttons.length; i++) {
@@ -155,8 +171,10 @@ public class KeybindingsGUI extends MenuGUI {
 
 			y += 30;
 		}
+
+
 		
-		container.setBounds(0, 0, Window.getWidth(), Window.getHeight() - 70 * GUI_SCALE, Component.ALIGN_TOP_LEFT);
+		container.setBounds(0, 30 * GUI_SCALE, Window.getWidth(), Window.getHeight() - 70 * GUI_SCALE, Component.ALIGN_TOP_LEFT);
 	}
 
 	public void endListen(int keyCode) {
@@ -191,6 +209,7 @@ public class KeybindingsGUI extends MenuGUI {
 		}
 		
 		container.render();
+		mouseSensitivity.render();
 		done.render();
 	}
 	

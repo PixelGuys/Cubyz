@@ -10,7 +10,7 @@ gui.cubyz.general.cancel=Annuler
 gui.cubyz.settings.language=Langue: {0}
 # The "e" at the end is intentional and is about names's genders
 gui.cubyz.settings.discord=Intégration Discord: {0}e
-gui.cubyz.settings.keybindings=Contrôles..
+gui.cubyz.settings.controls=Contrôles..
 gui.cubyz.settings.graphics=Options vidéo..
 gui.cubyz.settings.fog.med=Brouillard: Moyen
 gui.cubyz.settings.fog.far=Brouillard: Loin

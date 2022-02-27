@@ -68,9 +68,9 @@ public class SettingsGUI extends MenuGUI {
 			Cubyz.gameUI.setMenu(new SoundGUI());
 		});
 
-		bindings.setText(TextKey.createTextKey("gui.cubyz.settings.keybindings"));
+		bindings.setText(TextKey.createTextKey("gui.cubyz.settings.controls"));
 		bindings.setOnAction(() -> {
-			Cubyz.gameUI.setMenu(new KeybindingsGUI());
+			Cubyz.gameUI.setMenu(new ControlsGUI());
 		});
 
 		language.setText(langKey);

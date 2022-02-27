@@ -39,6 +39,8 @@ public class ClientSettings {
 	public static int GUI_SCALE = 2;
 
 	public static boolean musicOnOff = true; //Turn on or off the music
+
+	public static float mouseSensitivity = 1;
 	
 
 	/**Not actually a setting, but stored here anyways.*/
@@ -70,6 +72,7 @@ public class ClientSettings {
 		settings.put("farDistanceFactor", ClientSettings.LOD_FACTOR);
 		settings.put("fieldOfView", ClientSettings.FOV);
 		settings.put("musicOnOff", ClientSettings.musicOnOff);
+		settings.put("mouseSensitivity", ClientSettings.mouseSensitivity);
 
 		try {
 			FileWriter writer = new FileWriter("settings.json");
@@ -121,6 +124,8 @@ public class ClientSettings {
 		EFFECTIVE_RENDER_DISTANCE = calculatedEffectiveRenderDistance();
 
 		musicOnOff = settings.getBool("musicOnOff", musicOnOff);
+
+		mouseSensitivity = settings.getFloat("mouseSensitivity", mouseSensitivity);
 	}
 	
 }
