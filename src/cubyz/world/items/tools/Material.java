@@ -1,7 +1,7 @@
 package cubyz.world.items.tools;
 
-import cubyz.utils.json.JsonArray;
-import cubyz.utils.json.JsonObject;
+import pixelguys.json.JsonArray;
+import pixelguys.json.JsonObject;
 
 /**
  * Holds the basic properties of a tool crafting material.

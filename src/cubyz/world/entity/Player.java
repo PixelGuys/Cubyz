@@ -4,13 +4,13 @@ import org.joml.Vector3f;
 
 import cubyz.api.CubyzRegistries;
 import cubyz.command.CommandSource;
-import cubyz.utils.json.JsonObject;
 import cubyz.world.World;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.Blocks.BlockClass;
 import cubyz.world.items.Inventory;
 import cubyz.world.items.tools.Tool;
+import pixelguys.json.JsonObject;
 
 /**
  * Base class for both implementation and MP version of Player.

@@ -5,9 +5,9 @@ import java.util.Random;
 import cubyz.api.CubyzRegistries;
 import cubyz.api.RegistryElement;
 import cubyz.api.Resource;
-import cubyz.utils.json.JsonObject;
 import cubyz.world.Chunk;
 import cubyz.world.terrain.CaveMap;
+import pixelguys.json.JsonObject;
 
 /**
  * A simple model that describes how smaller structures like vegetation should be generated.

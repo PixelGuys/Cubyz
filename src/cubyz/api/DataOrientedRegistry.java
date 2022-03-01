@@ -1,6 +1,6 @@
 package cubyz.api;
 
-import cubyz.utils.json.JsonObject;
+import pixelguys.json.JsonObject;
 
 public interface DataOrientedRegistry extends RegistryElement {
 	/**

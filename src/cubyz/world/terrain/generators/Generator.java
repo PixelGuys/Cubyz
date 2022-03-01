@@ -2,10 +2,10 @@ package cubyz.world.terrain.generators;
 
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.RegistryElement;
-import cubyz.utils.json.JsonObject;
 import cubyz.world.Chunk;
 import cubyz.world.terrain.CaveMap;
 import cubyz.world.terrain.MapFragment;
+import pixelguys.json.JsonObject;
 
 /**
  * Some interface to access all different generators(caves, terrain, …) through one simple function.

@@ -3,8 +3,8 @@ package cubyz.clientSide;
 import cubyz.Constants;
 import cubyz.utils.Logger;
 import cubyz.utils.Zipper;
-import cubyz.utils.json.JsonObject;
-import cubyz.utils.json.JsonParser;
+import pixelguys.json.JsonObject;
+import pixelguys.json.JsonParser;
 
 import java.io.*;
 import java.net.Socket;

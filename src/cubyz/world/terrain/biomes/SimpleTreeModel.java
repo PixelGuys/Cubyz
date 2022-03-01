@@ -3,10 +3,10 @@ package cubyz.world.terrain.biomes;
 import java.util.Random;
 
 import cubyz.api.Resource;
-import cubyz.utils.json.JsonObject;
 import cubyz.world.Chunk;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.terrain.CaveMap;
+import pixelguys.json.JsonObject;
 
 /**
  * Creates a variety of different tree shapes.<br>

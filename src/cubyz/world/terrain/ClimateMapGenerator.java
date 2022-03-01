@@ -2,7 +2,7 @@ package cubyz.world.terrain;
 
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.RegistryElement;
-import cubyz.utils.json.JsonObject;
+import pixelguys.json.JsonObject;
 
 /**
  * Generates the climate(aka Biome) map, which is a rough representation of the world.

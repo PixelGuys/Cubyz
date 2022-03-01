@@ -19,8 +19,6 @@ import cubyz.client.ClientSettings;
 import cubyz.client.GameLauncher;
 import cubyz.modding.ModLoader;
 import cubyz.utils.datastructures.HashMapKey3D;
-import cubyz.utils.json.JsonObject;
-import cubyz.utils.json.JsonParser;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.entity.ChunkEntityManager;

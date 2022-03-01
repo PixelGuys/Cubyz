@@ -2,13 +2,13 @@ package cubyz.world.terrain.worldgenerators;
 
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Resource;
-import cubyz.utils.json.JsonObject;
 import cubyz.world.terrain.BiomePoint;
 import cubyz.world.terrain.ClimateMapFragment;
 import cubyz.world.terrain.ClimateMapGenerator;
 import cubyz.world.terrain.MapFragment;
 import cubyz.world.terrain.biomes.Biome;
 import cubyz.world.terrain.noise.FractalNoise;
+import pixelguys.json.JsonObject;
 
 import static cubyz.world.terrain.ClimateMapFragment.*;
 

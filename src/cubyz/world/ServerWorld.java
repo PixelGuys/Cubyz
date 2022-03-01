@@ -8,8 +8,6 @@ import cubyz.modding.ModLoader;
 import cubyz.server.Server;
 import cubyz.utils.Logger;
 import cubyz.utils.datastructures.HashMapKey3D;
-import cubyz.utils.json.JsonObject;
-import cubyz.utils.json.JsonParser;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.entity.ChunkEntityManager;
@@ -24,6 +22,9 @@ import cubyz.world.save.ChunkIO;
 import cubyz.world.save.WorldIO;
 import cubyz.world.terrain.MapFragment;
 import cubyz.world.terrain.biomes.Biome;
+import pixelguys.json.JsonObject;
+import pixelguys.json.JsonParser;
+
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector3i;

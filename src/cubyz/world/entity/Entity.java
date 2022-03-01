@@ -5,11 +5,11 @@ import org.joml.Vector3f;
 import org.joml.Vector3i;
 import org.joml.Vector4d;
 
-import cubyz.utils.json.JsonObject;
 import cubyz.world.World;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.items.Inventory;
 import cubyz.world.items.tools.Tool;
+import pixelguys.json.JsonObject;
 
 /**
  * Anything that's not a block or a particle.

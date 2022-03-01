@@ -17,11 +17,11 @@ import cubyz.rendering.ModelLoader;
 import cubyz.rendering.SSBO;
 import cubyz.rendering.Texture;
 import cubyz.rendering.TextureArray;
-import cubyz.utils.json.JsonElement;
-import cubyz.utils.json.JsonObject;
-import cubyz.utils.json.JsonString;
 import cubyz.world.Neighbors;
 import cubyz.world.blocks.Blocks;
+import pixelguys.json.JsonElement;
+import pixelguys.json.JsonObject;
+import pixelguys.json.JsonString;
 
 public class BlockMeshes implements DataOrientedRegistry {
 
@@ -70,7 +70,7 @@ public class BlockMeshes implements DataOrientedRegistry {
 	public static int readTexture(JsonElement textureInfo, String assetFolder) {
 		int result = -1;
 		if (textureInfo instanceof JsonString) {
-			String resource = textureInfo.getStringValue(null);
+			String resource = textureInfo.asString(null);
 			if (resource != null) {
 				Resource texture = new Resource(resource);
 				String path = assetFolder + texture.getMod() + "/blocks/textures/" + texture.getID() + ".png";

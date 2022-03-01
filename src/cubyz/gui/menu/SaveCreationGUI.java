@@ -13,13 +13,13 @@ import cubyz.gui.components.Component;
 import cubyz.gui.components.TextInput;
 import cubyz.rendering.VisibleChunk;
 import cubyz.rendering.text.Fonts;
-import cubyz.utils.json.JsonObject;
 import cubyz.utils.translate.ContextualTextKey;
 import cubyz.utils.translate.TextKey;
 import cubyz.world.ServerWorld;
 import cubyz.world.World;
 import cubyz.world.terrain.ClimateMapGenerator;
 import cubyz.world.terrain.MapGenerator;
+import pixelguys.json.JsonObject;
 import cubyz.server.Server;
 
 import static cubyz.client.ClientSettings.GUI_SCALE;

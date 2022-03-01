@@ -3,8 +3,8 @@ package cubyz.world.save;
 import java.util.Arrays;
 import java.util.HashMap;
 
-import cubyz.utils.json.JsonObject;
 import cubyz.world.blocks.Blocks;
+import pixelguys.json.JsonObject;
 
 public class BlockPalette {
 	private final HashMap<Integer, Integer> TToInt = new HashMap<Integer, Integer>();

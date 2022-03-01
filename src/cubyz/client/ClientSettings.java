@@ -9,9 +9,9 @@ import cubyz.Settings;
 import cubyz.gui.input.Keybindings;
 import cubyz.rendering.Window;
 import cubyz.utils.DiscordIntegration;
-import cubyz.utils.json.JsonObject;
-import cubyz.utils.json.JsonParser;
 import cubyz.utils.translate.LanguageLoader;
+import pixelguys.json.JsonObject;
+import pixelguys.json.JsonParser;
 
 /**
  * Stores are variables that can be modified in the settings.<br>

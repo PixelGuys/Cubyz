@@ -5,11 +5,11 @@ import java.util.Arrays;
 import cubyz.utils.Logger;
 import cubyz.utils.datastructures.BlockingMaxHeap;
 import cubyz.utils.datastructures.Cache;
-import cubyz.utils.json.JsonObject;
 import cubyz.utils.math.CubyzMath;
 import cubyz.world.terrain.MapFragment;
 import cubyz.world.terrain.MapFragmentCompare;
 import cubyz.world.terrain.TerrainGenerationProfile;
+import pixelguys.json.JsonObject;
 
 /**
  * Responsible for loading and storing the chunks of the world.

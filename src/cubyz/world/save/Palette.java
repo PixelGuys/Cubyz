@@ -4,9 +4,9 @@ import java.util.Arrays;
 import java.util.HashMap;
 
 import cubyz.utils.Logger;
+import pixelguys.json.JsonObject;
 import cubyz.api.Registry;
 import cubyz.api.RegistryElement;
-import cubyz.utils.json.JsonObject;
 
 /**
  * Basically a bi-directional map.

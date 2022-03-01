@@ -9,10 +9,10 @@ import cubyz.api.CubyzRegistries;
 import cubyz.api.DataOrientedRegistry;
 import cubyz.api.Resource;
 import cubyz.client.ClientOnly;
-import cubyz.utils.json.JsonObject;
 import cubyz.world.World;
 import cubyz.world.items.BlockDrop;
 import cubyz.world.items.Inventory;
+import pixelguys.json.JsonObject;
 
 public class Blocks implements DataOrientedRegistry {
 	public static enum BlockClass {

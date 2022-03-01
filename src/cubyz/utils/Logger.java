@@ -10,6 +10,8 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 
+import pixelguys.json.Json;
+
 /**
  * A simple Logger, that logs to a file and to the console.
  * Uses ANSI-codes if possible.
@@ -35,6 +37,7 @@ public class Logger {
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		}
+		Json.setErrorHandler((error) -> Logger.warning(error));
 	}
 	
 	

@@ -6,12 +6,12 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 import cubyz.utils.Logger;
-import cubyz.utils.json.JsonArray;
-import cubyz.utils.json.JsonObject;
-import cubyz.utils.json.JsonParser;
 import cubyz.world.World;
 import cubyz.world.entity.Entity;
 import cubyz.world.items.Item;
+import pixelguys.json.JsonArray;
+import pixelguys.json.JsonObject;
+import pixelguys.json.JsonParser;
 
 public class WorldIO {
 	public static final int WORLD_DATA_VERSION = 1;

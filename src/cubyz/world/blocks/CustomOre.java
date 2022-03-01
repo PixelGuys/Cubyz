@@ -13,8 +13,8 @@ import javax.imageio.ImageIO;
 import cubyz.utils.Logger;
 import cubyz.utils.Utilities;
 import cubyz.utils.datastructures.PixelUtils;
-import cubyz.utils.json.JsonArray;
-import cubyz.utils.json.JsonObject;
+import pixelguys.json.JsonArray;
+import pixelguys.json.JsonObject;
 
 /**
  * A randomly generated ore type.

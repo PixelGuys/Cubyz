@@ -4,7 +4,6 @@ import java.util.Random;
 
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Resource;
-import cubyz.utils.json.JsonObject;
 import cubyz.world.terrain.BiomePoint;
 import cubyz.world.terrain.ClimateMap;
 import cubyz.world.terrain.MapFragment;
@@ -12,6 +11,7 @@ import cubyz.world.terrain.MapGenerator;
 import cubyz.world.terrain.noise.FractalNoise;
 import cubyz.world.terrain.noise.PerlinNoise;
 import cubyz.world.terrain.noise.RandomlyWeightedFractalNoise;
+import pixelguys.json.JsonObject;
 
 import static cubyz.world.terrain.MapFragment.*;
 

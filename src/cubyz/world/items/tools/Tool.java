@@ -6,10 +6,10 @@ import org.joml.Vector2f;
 
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Registry;
-import cubyz.utils.json.JsonArray;
-import cubyz.utils.json.JsonObject;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.items.Item;
+import pixelguys.json.JsonArray;
+import pixelguys.json.JsonObject;
 
 public class Tool extends Item {
 	public final Item[] craftingGrid;

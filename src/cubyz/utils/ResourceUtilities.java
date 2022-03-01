@@ -4,8 +4,8 @@ import java.io.IOException;
 import java.util.HashMap;
 
 import cubyz.api.Resource;
-import cubyz.utils.json.JsonObject;
-import cubyz.utils.json.JsonParser;
+import pixelguys.json.JsonObject;
+import pixelguys.json.JsonParser;
 
 public class ResourceUtilities {
 	

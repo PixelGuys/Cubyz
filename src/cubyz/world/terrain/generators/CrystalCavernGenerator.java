@@ -4,12 +4,12 @@ import java.util.Random;
 
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Resource;
-import cubyz.utils.json.JsonObject;
 import cubyz.world.Chunk;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.Blocks.BlockClass;
 import cubyz.world.terrain.CaveMap;
 import cubyz.world.terrain.MapFragment;
+import pixelguys.json.JsonObject;
 
 /**
  * Generates a special cavern that contains giant crystals.

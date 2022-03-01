@@ -1,8 +1,8 @@
 package cubyz.world.items;
 
 import cubyz.api.CurrentWorldRegistries;
-import cubyz.utils.json.JsonObject;
 import cubyz.world.items.tools.Tool;
+import pixelguys.json.JsonObject;
 
 /**
  * A storage container for Items.

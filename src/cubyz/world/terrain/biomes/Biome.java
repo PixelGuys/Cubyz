@@ -6,9 +6,9 @@ import cubyz.api.RegistryElement;
 import cubyz.api.Resource;
 import cubyz.utils.datastructures.ChanceObject;
 import cubyz.utils.datastructures.FastList;
-import cubyz.utils.json.JsonArray;
-import cubyz.utils.json.JsonElement;
-import cubyz.utils.json.JsonObject;
+import pixelguys.json.JsonArray;
+import pixelguys.json.JsonElement;
+import pixelguys.json.JsonObject;
 
 /**
  * A climate region with special ground, plants and structures.

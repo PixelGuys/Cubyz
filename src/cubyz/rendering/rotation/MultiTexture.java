@@ -14,9 +14,6 @@ import cubyz.api.DataOrientedRegistry;
 import cubyz.api.Resource;
 import cubyz.client.BlockMeshes;
 import cubyz.utils.datastructures.IntWrapper;
-import cubyz.utils.json.JsonArray;
-import cubyz.utils.json.JsonElement;
-import cubyz.utils.json.JsonObject;
 import cubyz.utils.datastructures.IntFastList;
 import cubyz.world.Chunk;
 import cubyz.world.World;
@@ -24,6 +21,9 @@ import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.RotationMode;
 import cubyz.world.entity.Entity;
+import pixelguys.json.JsonArray;
+import pixelguys.json.JsonElement;
+import pixelguys.json.JsonObject;
 
 /**
  * The default RotationMode that places the block in the grid without translation or rotation.

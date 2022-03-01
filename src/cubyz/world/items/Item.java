@@ -2,10 +2,10 @@ package cubyz.world.items;
 
 import cubyz.api.RegistryElement;
 import cubyz.api.Resource;
-import cubyz.utils.json.JsonObject;
 import cubyz.utils.translate.TextKey;
 import cubyz.world.entity.Entity;
 import cubyz.world.items.tools.Material;
+import pixelguys.json.JsonObject;
 
 /**
  * "Thing" the player can store in their inventory.

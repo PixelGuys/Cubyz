@@ -3,12 +3,12 @@ package cubyz.world.terrain.worldgenerators;
 import cubyz.api.CubyzRegistries;
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Resource;
-import cubyz.utils.json.JsonObject;
 import cubyz.world.terrain.BiomePoint;
 import cubyz.world.terrain.ClimateMapFragment;
 import cubyz.world.terrain.ClimateMapGenerator;
 import cubyz.world.terrain.MapFragment;
 import cubyz.world.terrain.biomes.Biome;
+import pixelguys.json.JsonObject;
 
 /**
  * Generates a flat land filled with grass, dirt and stone.

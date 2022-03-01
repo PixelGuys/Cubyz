@@ -19,8 +19,6 @@ import cubyz.api.Proxy;
 import cubyz.api.Registry;
 import cubyz.api.Resource;
 import cubyz.utils.datastructures.IntFastList;
-import cubyz.utils.json.JsonObject;
-import cubyz.utils.json.JsonParser;
 import cubyz.utils.math.CubyzMath;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.Blocks;
@@ -32,6 +30,8 @@ import cubyz.world.items.ItemBlock;
 import cubyz.world.items.Recipe;
 import cubyz.world.terrain.biomes.Biome;
 import cubyz.world.terrain.biomes.BiomeRegistry;
+import pixelguys.json.JsonObject;
+import pixelguys.json.JsonParser;
 
 /**
  * Mod used to support add-ons: simple "mods" without any sort of coding required.

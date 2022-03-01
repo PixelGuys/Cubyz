@@ -7,8 +7,8 @@ import org.joml.Vector3d;
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Resource;
 import cubyz.utils.Random3D;
-import cubyz.utils.json.JsonObject;
 import cubyz.world.terrain.CaveMapFragment;
+import pixelguys.json.JsonObject;
 
 /**
  * Generates cave system using a fractal algorithm.

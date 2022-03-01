@@ -2,8 +2,8 @@ package cubyz.world.terrain.cavegenerators;
 
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.RegistryElement;
-import cubyz.utils.json.JsonObject;
 import cubyz.world.terrain.CaveMapFragment;
+import pixelguys.json.JsonObject;
 
 /**
  * A generator for the cave map.

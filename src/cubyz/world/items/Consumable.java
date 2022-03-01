@@ -1,8 +1,8 @@
 package cubyz.world.items;
 
 import cubyz.api.Resource;
-import cubyz.utils.json.JsonObject;
 import cubyz.world.entity.Entity;
+import pixelguys.json.JsonObject;
 
 /**
  * Things the player can eat, drink, or otherwise use once.

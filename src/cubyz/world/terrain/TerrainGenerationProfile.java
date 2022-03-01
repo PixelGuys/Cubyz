@@ -5,9 +5,9 @@ import java.util.Comparator;
 
 import cubyz.api.CubyzRegistries;
 import cubyz.api.CurrentWorldRegistries;
-import cubyz.utils.json.JsonObject;
 import cubyz.world.terrain.cavegenerators.CaveGenerator;
 import cubyz.world.terrain.generators.Generator;
+import pixelguys.json.JsonObject;
 
 /**
  * Lists all the Generators and Biomes that should be used for a given world.

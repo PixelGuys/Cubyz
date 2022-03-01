@@ -1,8 +1,8 @@
 package cubyz.world.items;
 
-import cubyz.utils.json.JsonObject;
 import cubyz.utils.translate.TextKey;
 import cubyz.world.blocks.Blocks;
+import pixelguys.json.JsonObject;
 
 /**
  * Item that corresponds to a block and places that block on use.
