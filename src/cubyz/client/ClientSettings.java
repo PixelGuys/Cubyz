@@ -27,7 +27,7 @@ public class ClientSettings {
 	public static int RENDER_DISTANCE = 4;
 	
 	/**maximum quality reduction.*/
-	public static int HIGHEST_LOD = 5;
+	public static final int HIGHEST_LOD = 5;
 	
 	/**Scaling factor that scales the size of the LOD region and by that scaling the effective render distance.*/
 	public static float LOD_FACTOR = 2.0f;

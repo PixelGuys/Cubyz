@@ -1,5 +1,7 @@
 package cubyz.world;
 
+import org.joml.Vector3d;
+
 import cubyz.client.ClientSettings;
 import cubyz.client.GameLauncher;
 import cubyz.utils.Logger;
@@ -7,9 +9,10 @@ import cubyz.utils.math.Bits;
 import cubyz.world.save.ChunkIO;
 import cubyz.world.terrain.CaveMap;
 import cubyz.world.terrain.MapFragment;
+import cubyz.world.terrain.TerrainGenerationProfile;
 import cubyz.world.terrain.generators.Generator;
 
-public abstract class Chunk extends ChunkData {
+public abstract class Chunk extends SavableChunk {
 	
 	public static final int chunkShift = 5;
 	
@@ -90,14 +93,14 @@ public abstract class Chunk extends ChunkData {
 	 * If the chunk was already saved it is loaded from file instead.
 	 * @param gen
 	 */
-	public void generate() {
+	public void generate(long seed, TerrainGenerationProfile terrainGenerationProfile) {
 		assert(!generated) : "Seriously, why would you generate this chunk twice???";
 		if(!ChunkIO.loadChunkFromFile(world, this)) {
 			MapFragment containing = world.chunkManager.getOrGenerateMapFragment(wx, wz, voxelSize);
 			CaveMap caveMap = new CaveMap(world, this);
 			
-			for (Generator g : world.chunkManager.terrainGenerationProfile.generators) {
-				g.generate(world.getSeed() ^ g.getGeneratorSeed(), wx, wy, wz, this, caveMap, containing);
+			for (Generator g : terrainGenerationProfile.generators) {
+				g.generate(seed ^ g.getGeneratorSeed(), wx, wy, wz, this, caveMap, containing);
 			}
 		}
 		generated = true;
@@ -118,9 +121,7 @@ public abstract class Chunk extends ChunkData {
 				&& z < width;
 	}
 	
-	/**
-	 * @return this chunks width.
-	 */
+	@Override
 	public int getWidth() {
 		return width;
 	}
@@ -141,6 +142,14 @@ public abstract class Chunk extends ChunkData {
 		}
 	}
 	
+	public Vector3d getMin() {
+		return new Vector3d(wx, wy, wz);
+	}
+	
+	public Vector3d getMax() {
+		return new Vector3d(wx + width, (wy) + width, wz + width);
+	}
+	
 	/**
 	 * Saves this chunk.
 	 */
@@ -156,28 +165,30 @@ public abstract class Chunk extends ChunkData {
 		}
 	}
 	
-	/**
-	 * Saves all the data of the chunk into the given byte array using the blockPalette.
-	 * @param data data.length = blocks.length*4
-	 */
-	public void saveTo(byte[] data) {
+	@Override
+	public byte[] saveToByteArray() {
+		byte[] data = new byte[4*blocks.length];
 		for(int i = 0; i < blocks.length; i++) {
 			// Convert the runtime ID to the palette (world-specific) ID
 			int palId = world.wio.blockPalette.getIndex(blocks[i]);
 			Bits.putInt(data, i*4, palId);
 		}
+		return data;
 	}
 	
-	/**
-	 * Loads all the data of the chunk from the given byte array using the blockPalette.
-	 * @param data data.length = blocks.length*4
-	 */
-	public void loadFrom(byte[] data) {
+	@Override
+	public void loadFromByteArray(byte[] data, int outputLength) {
+		assert(outputLength == 4*blocks.length) : "Chunk is corrupted : "+toString();
 		for(int i = 0; i < blocks.length; i++) {
 			// Convert the palette (world-specific) ID to the runtime ID
 			int palId = Bits.getInt(data, i*4);
 			blocks[i] = world.wio.blockPalette.getElement(palId);
 		}
+	}
+
+	@Override
+	public String fileEnding() {
+		return "region";
 	}
 	
 	/**

@@ -1,8 +1,5 @@
 package cubyz.world;
 
-
-import org.joml.Vector3f;
-
 import cubyz.world.blocks.Blocks;
 
 /**
@@ -25,14 +22,6 @@ public class ReducedChunk extends Chunk {
 		this.voxelSizeShift = resolutionShift;
 		this.voxelSizeMask = voxelSize - 1;
 		widthShift = Chunk.chunkShift + resolutionShift;
-	}
-	
-	public Vector3f getMin() {
-		return new Vector3f(wx, wy, wz);
-	}
-	
-	public Vector3f getMax() {
-		return new Vector3f(wx + width, (wy) + width, wz + width);
 	}
 	
 	@Override

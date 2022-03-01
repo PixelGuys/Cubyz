@@ -17,6 +17,7 @@ import cubyz.utils.Logger;
 import cubyz.utils.math.Bits;
 import cubyz.world.Chunk;
 import cubyz.world.ChunkData;
+import cubyz.world.SavableChunk;
 import cubyz.world.World;
 
 /**
@@ -26,13 +27,13 @@ public class RegionFile extends ChunkData {
 	private static final ThreadLocal<byte[]> threadLocalInputBuffer = new ThreadLocal<byte[]>() {
 		@Override
 		public byte[] initialValue() {
-			return new byte[4*Chunk.chunkSize*Chunk.chunkSize*Chunk.chunkSize];
+			return new byte[4096];
 		}
 	};
 	private static final ThreadLocal<byte[]> threadLocalOutputBuffer = new ThreadLocal<byte[]>() {
 		@Override
 		public byte[] initialValue() {
-			return new byte[4*Chunk.chunkSize*Chunk.chunkSize*Chunk.chunkSize];
+			return new byte[4 << Chunk.chunkShift*3];
 		}
 	};
 	public static final int REGION_SHIFT = 3;
@@ -42,11 +43,15 @@ public class RegionFile extends ChunkData {
 	private int[] startingIndices = new int[REGION_SIZE*REGION_SIZE*REGION_SIZE + 1];
 	private boolean wasChanged = false;
 	private boolean storeOnChange = false;
+	private final Class<?> type;
+	private final String fileEnding;
 
-	public RegionFile(World world, int wx, int wy, int wz, int voxelSize) {
+	public RegionFile(World world, int wx, int wy, int wz, int voxelSize, Class<?> type, String fileEnding) {
 		super(wx, wy, wz, voxelSize);
+		this.type = type;
+		this.fileEnding = fileEnding;
 		// Load data from file:
-		File file = new File("saves/"+world.getName()+"/"+voxelSize+"/"+wx+"/"+wy+"/"+wz+".region");
+		File file = new File("saves/"+world.getName()+"/"+voxelSize+"/"+wx+"/"+wy+"/"+wz+"."+fileEnding);
 		if(!file.exists()) {
 			return;
 		}
@@ -90,26 +95,36 @@ public class RegionFile extends ChunkData {
 		}
 	}
 	
-	private int getChunkIndex(Chunk ch) {
+	private int getChunkIndex(SavableChunk ch) {
 		int chunkIndex = (ch.wx - wx)/ch.getWidth();
 		chunkIndex = chunkIndex << REGION_SHIFT | (ch.wy - wy)/ch.getWidth();
 		chunkIndex = chunkIndex << REGION_SHIFT | (ch.wz - wz)/ch.getWidth();
 		return chunkIndex;
 	}
 	
-	public boolean loadChunk(Chunk ch) {
+	public boolean loadChunk(SavableChunk ch) {
 		int chunkIndex = getChunkIndex(ch);
 		
-		byte[] input = threadLocalInputBuffer.get();
-		byte[] output = threadLocalOutputBuffer.get();
 		int inputLength = startingIndices[chunkIndex + 1] - startingIndices[chunkIndex];
 		if(inputLength == 0) return false;
+		byte[] input = threadLocalInputBuffer.get();
+		if(inputLength > input.length) {
+			input = new byte[inputLength];
+			threadLocalInputBuffer.set(input);
+		}
+		byte[] output = threadLocalOutputBuffer.get();
 		System.arraycopy(data, startingIndices[chunkIndex], input, 0, inputLength);
 		
 		Inflater decompresser = new Inflater();
 		decompresser.setInput(input, 0, inputLength);
+		int outputLength = 0;
 		try {
-			decompresser.inflate(output);
+			outputLength = decompresser.inflate(output);
+			while(!decompresser.finished()) {
+				output = Arrays.copyOf(output, output.length*2);
+				threadLocalOutputBuffer.set(output);
+				outputLength += decompresser.inflate(output, outputLength, output.length - outputLength);
+			}
 		} catch (DataFormatException e) {
 			Logger.error("Unable to load chunk data. Corrupt chunk file "+this.toString());
 			Logger.error(e);
@@ -117,17 +132,16 @@ public class RegionFile extends ChunkData {
 		}
 		decompresser.end();
 		
-		ch.loadFrom(output);
+		ch.loadFromByteArray(output, outputLength);
 		return true;
 	}
 	
-	public void saveChunk(Chunk ch) {
+	public void saveChunk(SavableChunk ch) {
 		synchronized(this) {
 			wasChanged = true;
 			int chunkIndex = getChunkIndex(ch);
-			byte[] input = threadLocalInputBuffer.get();
 			byte[] output = threadLocalOutputBuffer.get();
-			ch.saveTo(input);
+			byte[] input = ch.saveToByteArray();
 			
 			Deflater compressor = new Deflater();
 			compressor.setInput(input);
@@ -136,6 +150,7 @@ public class RegionFile extends ChunkData {
 			
 			while(!compressor.needsInput()) { // The buffer was too small. Switching to a bigger buffer.
 				output = Arrays.copyOf(output, output.length*2);
+				threadLocalOutputBuffer.set(output);
 				dataLength += compressor.deflate(output, output.length/2, output.length/2);
 			}
 			compressor.end();
@@ -162,7 +177,7 @@ public class RegionFile extends ChunkData {
 	
 	private void unsynchronized_store() {
 		if(!wasChanged) return; // No need to save it.
-		File file = new File("saves/"+Cubyz.world.getName()+"/"+voxelSize+"/"+wx+"/"+wy+"/"+wz+".region");
+		File file = new File("saves/"+Cubyz.world.getName()+"/"+voxelSize+"/"+wx+"/"+wy+"/"+wz+"."+fileEnding);
 		file.getParentFile().mkdirs();
 		try (BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(file))) {
 			byte[] occupancyBytes = new byte[occupancy.length/8];
@@ -226,5 +241,19 @@ public class RegionFile extends ChunkData {
 			clean();
 			GameLauncher.instance.exit();
 		}
+	}
+
+	public static int hashCode(int hash, Class<?> type) {
+		return hash ^ type.hashCode();
+	}
+
+	@Override
+	public int hashCode() {
+		return hashCode(super.hashCode(), type);
+	}
+
+	@Override
+	public boolean equals(Object other) {
+		return super.equals(other) && type == ((RegionFile)other).type;
 	}
 }

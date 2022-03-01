@@ -113,7 +113,7 @@ public class ChunkManager {
 	public void synchronousGenerate(ChunkData ch) {
 		if (ch instanceof NormalChunk) {
 			if(!((NormalChunk)ch).isLoaded()) { // Prevent reloading.
-				((NormalChunk) ch).generate();
+				((NormalChunk) ch).generate(world.getSeed(), terrainGenerationProfile);
 				((NormalChunk) ch).load();
 			}
 			world.clientConnection.updateChunkMesh((NormalChunk) ch);
@@ -170,7 +170,7 @@ public class ChunkManager {
 			if (res != null) return res;
 			// Generate a new chunk:
 			res = new ReducedChunk(world, wx, wy, wz, CubyzMath.binaryLog(voxelSize));
-			res.generate();
+			res.generate(world.getSeed(), terrainGenerationProfile);
 			ReducedChunk old = reducedChunkCache.addToCache(res, hash);
 			if(old != null)
 				old.clean();
