@@ -24,11 +24,9 @@ import cubyz.world.terrain.MapFragment;
 
 public class MapIO {
 	private final File dir;
-	private final WorldIO wio;
 	private int[][] heightMap;
 	
 	public MapIO(MapFragment map, WorldIO wio) {
-		this.wio = wio;
 		dir = new File(wio.dir.getAbsolutePath()+"/"+map.wx+","+map.wz);
 	}
 	
@@ -78,35 +76,6 @@ public class MapIO {
 			} catch (IOException e) {
 				Logger.error(e);
 			}
-		}
-	}
-	
-	public ItemEntityManager readItemEntities(World world, NormalChunk chunk) {
-		File file = new File(dir, "itemEnt"+chunk.wx+" "+chunk.wy+" "+chunk.wz);
-		if (!file.exists()) return new ItemEntityManager(world, chunk, 1);
-		try {
-			byte[] data = new byte[(int) file.length()];
-			DataInputStream stream = new DataInputStream(new FileInputStream(file));
-			stream.readFully(data);
-			stream.close();
-			return new ItemEntityManager(world, chunk, data, wio.itemPalette);
-		} catch (IOException e) {
-			Logger.error(e);
-		}
-		return new ItemEntityManager(world, chunk, 1);
-	}
-	
-	public void saveItemEntities(ItemEntityManager manager) {
-		if (manager.size == 0) return;
-		File file = new File(dir, "itemEnt"+manager.chunk.wx+" "+manager.chunk.wy+" "+manager.chunk.wz);
-		if (!dir.exists()) dir.mkdirs();
-		try {
-			BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(file));
-			byte[] data = manager.store(wio.itemPalette);
-			out.write(data);
-			out.close();
-		} catch (IOException e) {
-			Logger.error(e);
 		}
 	}
 	

@@ -38,7 +38,7 @@ public class MetaChunk {
 		}
 		for(ChunkEntityManager manager : entityManagers) {
 			if (manager != null)
-				manager.chunk.map.mapIO.saveItemEntities(manager.itemEntityManager);
+				manager.save();
 		}
 	}
 	
@@ -49,7 +49,7 @@ public class MetaChunk {
 		}
 		for(ChunkEntityManager manager : entityManagers) {
 			if (manager != null)
-				manager.chunk.map.mapIO.saveItemEntities(manager.itemEntityManager);
+				manager.save();
 		}
 	}
 	
@@ -150,7 +150,7 @@ public class MetaChunk {
 					ChunkEntityManager manager = entityManagers[index];
 					if (dist > edSquare) {
 						if (manager != null) {
-							manager.chunk.map.mapIO.saveItemEntities(manager.itemEntityManager);
+							manager.save();
 							entityManagers[index] = null;
 						}
 					} else if (manager == null) {

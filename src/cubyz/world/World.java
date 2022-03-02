@@ -45,7 +45,7 @@ public abstract class World {
 	protected int lastX = Integer.MAX_VALUE, lastY = Integer.MAX_VALUE, lastZ = Integer.MAX_VALUE; // Chunk coordinates of the last chunk update.
 	protected ArrayList<Entity> entities = new ArrayList<>();
 	
-	WorldIO wio;
+	public WorldIO wio;
 	
 	public ChunkManager chunkManager;
 	protected boolean generated;

@@ -25,11 +25,11 @@ public class ItemEntityManager {
 	public static final float RADIUS = 0.1f;
 	/**Diameter of all item entities hitboxes as a unit sphere of the max-norm (cube).*/
 	public static final float DIAMETER = 2*RADIUS;
-	
+
 	public static final float PICKUP_RANGE = 1;
-	
+
 	private static final int capacityIncrease = 64;
-	
+
 	public double[] posxyz;
 	public double[] velxyz;
 	public float[] rotxyz;
@@ -43,7 +43,7 @@ public class ItemEntityManager {
 	private float gravity;
 	public int size;
 	private int capacity;
-	
+
 	public ItemEntityManager(World world, NormalChunk chunk, int minCapacity) {
 		// Always use a multiple of 64 as the capacity.
 		capacity = (minCapacity+63) & ~63;
@@ -53,19 +53,20 @@ public class ItemEntityManager {
 		itemStacks = new ItemStack[capacity];
 		despawnTime = new int[capacity];
 		pickupCooldown = new int[capacity];
-		
+
 		this.world = world;
 		this.chunk = chunk;
 		gravity = World.GRAVITY;
 	}
-	
-	public ItemEntityManager(World world, NormalChunk chunk, byte[] data, Palette<Item> itemPalette) {
+
+
+	void loadFromByteArray(byte[] data, int len, Palette<Item> itemPalette) {
 		// Read the length:
 		int index = 0;
 		int length = Bits.getInt(data, index);
 		index += 4;
 		// Check if the length is right:
-		if (data.length-index != length*(4*3 + 8*6)) {
+		if (len - index < length*(4*3 + 8*6)) {
 			Logger.warning("Save file is corrupted. Skipping item entites for chunk "+chunk.wx+" "+chunk.wy+" "+chunk.wz);
 			length = 0;
 		}
@@ -77,9 +78,7 @@ public class ItemEntityManager {
 		itemStacks = new ItemStack[capacity];
 		despawnTime = new int[capacity];
 		pickupCooldown = new int[capacity];
-		
-		this.world = world;
-		this.chunk = chunk;
+
 		gravity = World.GRAVITY;
 		// Read the data:
 		for(int i = 0; i < length; i++) {
@@ -104,7 +103,7 @@ public class ItemEntityManager {
 			add(x, y, z, vx, vy, vz, new ItemStack(item, itemAmount), despawnTime, 0);
 		}
 	}
-	
+
 	public byte[] store(Palette<Item> itemPalette) {
 		byte[] data = new byte[size*(4*3 + 8*6) + 4];
 		int index = 0;
@@ -133,7 +132,7 @@ public class ItemEntityManager {
 		}
 		return data;
 	}
-	
+
 	public void update(float deltaTime) {
 		for(int i = 0; i < size; i++) {
 			int i3 = i*3;
@@ -169,7 +168,7 @@ public class ItemEntityManager {
 			}
 		}
 	}
-	
+
 	public void checkEntity(Entity ent) {
 		for(int i = 0; i < size; i++) {
 			int i3 = 3*i;
@@ -186,15 +185,15 @@ public class ItemEntityManager {
 			}
 		}
 	}
-	
+
 	public void add(int x, int y, int z, double vx, double vy, double vz, ItemStack itemStack, int despawnTime) {
 		add(x + Math.random(), y + Math.random(), z + Math.random(), vx, vy, vz, (float)(2*Math.random()*Math.PI), (float)(2*Math.random()*Math.PI), (float)(2*Math.random()*Math.PI), itemStack, despawnTime, 0);
 	}
-	
+
 	public void add(double x, double y, double z, double vx, double vy, double vz, ItemStack itemStack, int despawnTime, int pickupCooldown) {
 		add(x, y, z, vx, vy, vz, (float)(2*Math.random()*Math.PI), (float)(2*Math.random()*Math.PI), (float)(2*Math.random()*Math.PI), itemStack, despawnTime, pickupCooldown);
 	}
-	
+
 	public void add(double x, double y, double z, double vx, double vy, double vz, float rotX, float rotY, float rotZ, ItemStack itemStack, int despawnTime, int pickupCooldown) {
 		if (size == capacity) {
 			increaseCapacity();
@@ -214,7 +213,7 @@ public class ItemEntityManager {
 		this.pickupCooldown[size] = pickupCooldown;
 		size++;
 	}
-	
+
 	public void remove(int index) {
 		size--;
 		// Put the stuff at the last index to the removed index:
@@ -234,17 +233,17 @@ public class ItemEntityManager {
 		despawnTime[index] = despawnTime[size];
 		pickupCooldown[index] = pickupCooldown[size];
 	}
-	
+
 	public Vector3d getPosition(int index) {
 		index *= 3;
 		return new Vector3d(posxyz[index], posxyz[index+1], posxyz[index+2]);
 	}
-	
+
 	public Vector3f getRotation(int index) {
 		index *= 3;
 		return new Vector3f(rotxyz[index], rotxyz[index+1], rotxyz[index+2]);
 	}
-	
+
 	private void increaseCapacity() {
 		capacity += capacityIncrease;
 		posxyz = Arrays.copyOf(posxyz, capacity*3);
@@ -254,7 +253,7 @@ public class ItemEntityManager {
 		despawnTime = Arrays.copyOf(despawnTime, capacity);
 		pickupCooldown = Arrays.copyOf(pickupCooldown, capacity);
 	}
-	
+
 	private void checkBlocks(int index3) {
 		double x = posxyz[index3] - RADIUS;
 		double y = posxyz[index3+1] - RADIUS;
@@ -294,7 +293,7 @@ public class ItemEntityManager {
 			}
 		}
 	}
-	
+
 	private void checkBlock(int index3, int x, int y, int z) {
 		// Transform to chunk-relative coordinates:
 		x -= chunk.wx;

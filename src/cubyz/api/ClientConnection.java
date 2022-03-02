@@ -10,7 +10,7 @@ import cubyz.world.items.Inventory;
 
 public interface ClientConnection {
 	void openGUI(String name, Inventory inv);
-	
+
 	/**
 	 * Sends a regurlar signal after each update.
 	 * Used to send some basic data.
