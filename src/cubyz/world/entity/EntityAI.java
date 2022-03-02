@@ -5,5 +5,5 @@ package cubyz.world.entity;
  */
 
 public interface EntityAI {
-	public void update(Entity ent);
+	void update(Entity ent);
 }

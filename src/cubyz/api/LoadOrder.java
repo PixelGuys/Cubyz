@@ -10,7 +10,7 @@ import java.lang.annotation.Target;
 @Target(TYPE)
 public @interface LoadOrder {
 
-	public Order order();
-	public String id();
+	Order order();
+	String id();
 	
 }

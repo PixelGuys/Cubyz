@@ -123,7 +123,7 @@ public class ReducedChunkMesh extends ChunkMesh {
 	}
 
 	public void updateChunk(ReducedChunkVisibilityData data) {
-		assert(!wasDeleted) : "This mesh is already deleted...";
+		assert !wasDeleted : "This mesh is already deleted...";
 		synchronized(this) {
 			chunkVisibilityData = data;
 			if (!needsUpdate) {
@@ -162,7 +162,7 @@ public class ReducedChunkMesh extends ChunkMesh {
 
 	@Override
 	public void render(Vector3d playerPosition) {
-		assert(!wasDeleted) : "This mesh is already deleted...";
+		assert !wasDeleted : "This mesh is already deleted...";
 		if (chunkVisibilityData == null || !generated) {
 			glUniform3f(
 				ReducedChunkMesh.loc_lowerBounds,
@@ -195,14 +195,14 @@ public class ReducedChunkMesh extends ChunkMesh {
 
 	@Override
 	public void delete() {
-		assert(!wasDeleted) : "This mesh is already deleted...";
+		assert !wasDeleted : "This mesh is already deleted...";
 		wasDeleted = true;
 		faceData.delete();
 	}
 
 	@Override
 	public void finalize() {
-		assert(wasDeleted) : "Memory leak.";
+		assert wasDeleted : "Memory leak.";
 	}
 
 	private static void generateSimpleModelData(ReducedChunkVisibilityData chunkVisibilityData, IntFastList faces) {

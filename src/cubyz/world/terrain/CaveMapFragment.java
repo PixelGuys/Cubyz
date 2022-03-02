@@ -71,7 +71,7 @@ public class CaveMapFragment extends ChunkData {
 		relZ >>= voxelShift;
 		start >>= voxelShift;
 		end >>= voxelShift;
-		assert(relX >= 0 && relX < WIDTH && relZ >= 0 && relZ < WIDTH) : "Coordinates out of range. Please provide correct relative coordinates.";
+		assert relX >= 0 && relX < WIDTH && relZ >= 0 && relZ < WIDTH : "Coordinates out of range. Please provide correct relative coordinates.";
 		data[getIndex(relX, relZ)] |= ~getMask(start, end);
 	}
 
@@ -85,14 +85,14 @@ public class CaveMapFragment extends ChunkData {
 		relZ >>= voxelShift;
 		start >>= voxelShift;
 		end >>= voxelShift;
-		assert(relX >= 0 && relX < WIDTH && relZ >= 0 && relZ < WIDTH) : "Coordinates out of range. Please provide correct relative coordinates.";
+		assert relX >= 0 && relX < WIDTH && relZ >= 0 && relZ < WIDTH : "Coordinates out of range. Please provide correct relative coordinates.";
 		data[getIndex(relX, relZ)] &= getMask(start, end);
 	}
 
 	public long getHeightData(int relX, int relZ) {
 		relX >>= voxelShift;
 		relZ >>= voxelShift;
-		assert(relX >= 0 && relX < WIDTH && relZ >= 0 && relZ < WIDTH) : "Coordinates out of range. Please provide correct relative coordinates.";
+		assert relX >= 0 && relX < WIDTH && relZ >= 0 && relZ < WIDTH : "Coordinates out of range. Please provide correct relative coordinates.";
 		return data[getIndex(relX, relZ)];
 	}
 

@@ -36,7 +36,7 @@ public class MapGenV1 implements MapGenerator {
 
 	@Override
 	public void generateMapFragment(MapFragment map) {
-		int scaledSize = MapFragment.MAP_SIZE/map.voxelSize;
+		int scaledSize = MAP_SIZE/map.voxelSize;
 		// Create the biomes that will be placed on the map:
 		long seed = map.world.getSeed();
 		BiomePoint[][] biomePositions = ClimateMap.getBiomeMap(map.world, map.wx - BIOME_SIZE, map.wz - BIOME_SIZE, MAP_SIZE + 3*BIOME_SIZE, MAP_SIZE + 3*BIOME_SIZE);
@@ -83,7 +83,7 @@ public class MapGenV1 implements MapGenerator {
 							dist = dist*(1 - maxNorm)*scale + scale*(maxNorm - borderMax)*maxNorm;
 						}
 						if (dist <= 1) {
-							float weight = (1 - dist);
+							float weight = 1 - dist;
 							// smooth the interpolation with the s-curve:
 							weight = weight*weight*(3 - 2*weight);
 							height += biomePositions[x0][z0].height*weight;

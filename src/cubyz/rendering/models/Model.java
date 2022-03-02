@@ -50,10 +50,10 @@ public class Model implements RegistryElement {
 		addWeightedLight((1 - dx)*(1 - dy)*dz      , srgb, light[x0		+ y0*3		+ (z0+1)*9]);
 		addWeightedLight((1 - dx)*dy      *(1 - dz), srgb, light[x0		+ (y0+1)*3		+ z0*9]);
 		addWeightedLight((1 - dx)*dy      *dz      , srgb, light[x0		+ (y0+1)*3		+ (z0+1)*9]);
-		addWeightedLight(dx      *(1 - dy)*(1 - dz), srgb, light[(x0+1)	+ y0*3		+ z0*9]);
-		addWeightedLight(dx      *(1 - dy)*dz      , srgb, light[(x0+1)	+ y0*3		+ (z0+1)*9]);
-		addWeightedLight(dx      *dy      *(1 - dz), srgb, light[(x0+1)	+ (y0+1)*3		+ z0*9]);
-		addWeightedLight(dx      *dy      *dz      , srgb, light[(x0+1)	+ (y0+1)*3		+ (z0+1)*9]);
+		addWeightedLight(dx      *(1 - dy)*(1 - dz), srgb, light[x0+1	+ y0*3		+ z0*9]);
+		addWeightedLight(dx      *(1 - dy)*dz      , srgb, light[x0+1	+ y0*3		+ (z0+1)*9]);
+		addWeightedLight(dx      *dy      *(1 - dz), srgb, light[x0+1	+ (y0+1)*3		+ z0*9]);
+		addWeightedLight(dx      *dy      *dz      , srgb, light[x0+1	+ (y0+1)*3		+ (z0+1)*9]);
 		return (int)(srgb[0])<<24 | (int)(srgb[1])<<16 | (int)(srgb[2])<<8 | (int)(srgb[3]);
 	}
 

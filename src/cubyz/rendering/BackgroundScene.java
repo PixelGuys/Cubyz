@@ -160,9 +160,9 @@ public class BackgroundScene {
 				int i3 = j*3;
 				// The resulting image needs to be turned upside down. This is done by simply changing the index in the output array:
 				pixels[j%SIZE + (SIZE - 1 - j/SIZE)*SIZE] =
-					((fb.get(i3) << 16)) +
-					((fb.get(i3+1) << 8)) +
-					((fb.get(i3+2) << 0));
+					(fb.get(i3) << 16) +
+					(fb.get(i3+1) << 8) +
+					(fb.get(i3+2) << 0);
 			}
 
 			// Draw it to the BufferedImage:

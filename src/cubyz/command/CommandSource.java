@@ -9,7 +9,7 @@ import cubyz.world.World;
 
 public interface CommandSource {
 	
-	public void feedback(String feedback);
-	public World getWorld();
+	void feedback(String feedback);
+	World getWorld();
 	
 }

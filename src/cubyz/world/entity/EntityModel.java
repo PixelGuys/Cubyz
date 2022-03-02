@@ -12,11 +12,11 @@ import cubyz.client.entity.ClientEntity;
  */
 
 public interface EntityModel extends RegistryElement {
-	public void render(Matrix4f viewMatrix, Object shaderProgram, ClientEntity ent);
-	public EntityModel createInstance(String data, EntityType source);
-	public void update(ClientEntity ent, float deltaTime);
+	void render(Matrix4f viewMatrix, Object shaderProgram, ClientEntity ent);
+	EntityModel createInstance(String data, EntityType source);
+	void update(ClientEntity ent, float deltaTime);
 	/**
 	 * Should return Double.MAX_VALUE if no collision happens.
 	 */
-	public double getCollisionDistance(Vector3d playerPosition, Vector3f direction, Entity ent);
+	double getCollisionDistance(Vector3d playerPosition, Vector3f direction, Entity ent);
 }

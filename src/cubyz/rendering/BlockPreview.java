@@ -1,14 +1,6 @@
 package cubyz.rendering;
 
-import static org.lwjgl.opengl.GL11.GL_DEPTH_TEST;
-import static org.lwjgl.opengl.GL11.GL_CULL_FACE;
-import static org.lwjgl.opengl.GL11.glDisable;
-import static org.lwjgl.opengl.GL11.glEnable;
-import static org.lwjgl.opengl.GL11C.GL_COLOR_BUFFER_BIT;
-import static org.lwjgl.opengl.GL11C.GL_DEPTH_BUFFER_BIT;
-import static org.lwjgl.opengl.GL11C.GL_STENCIL_BUFFER_BIT;
-import static org.lwjgl.opengl.GL11C.glClear;
-import static org.lwjgl.opengl.GL11C.glViewport;
+import static org.lwjgl.opengl.GL43.*;
 
 import org.joml.Matrix4f;
 import org.joml.Vector3f;

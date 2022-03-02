@@ -55,12 +55,12 @@ public class Graphics {
 	public static Vector4i setClip(Vector4i newClip) {
 		if (clip != null) {
 			if (newClip.x < clip.x) {
-				newClip.z -= (clip.x - newClip.x);
-				newClip.x += (clip.x - newClip.x);
+				newClip.z -= clip.x - newClip.x;
+				newClip.x += clip.x - newClip.x;
 			}
 			if (newClip.y < clip.y) {
-				newClip.w -= (clip.y - newClip.y);
-				newClip.y += (clip.y - newClip.y);
+				newClip.w -= clip.y - newClip.y;
+				newClip.y += clip.y - newClip.y;
 			}
 			if (newClip.x + newClip.z > clip.x + clip.z) {
 				newClip.z -= (newClip.x + newClip.z) - (clip.x + clip.z);
@@ -360,7 +360,7 @@ public class Graphics {
 	 * @param y top
 	 */
 	public static void drawText(float x, float y, String text) {
-		text = String.format("#%06x", (0xffffff & color)) + text; // Add the coloring information.
+		text = String.format("#%06x", 0xffffff & color) + text; // Add the coloring information.
 		TextLine line = new TextLine(font, text, fontSize, false);
 		line.render(x, y);
 	}

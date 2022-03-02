@@ -70,7 +70,7 @@ public class NormalChunk extends Chunk {
 	 */
 	@Override
 	public void updateBlockInGeneration(int x, int y, int z, int b) {
-		assert(!generated):"It's literally called updateBlockInGENERATION";
+		assert !generated : "It's literally called updateBlockInGENERATION";
 		int index = getIndex(x, y, z);
 		if (Blocks.blockClass(b) == BlockClass.FLUID) {
 			liquids.add(index);

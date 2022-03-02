@@ -56,10 +56,10 @@ public class PerlinNoise {
 	    // Compute the dot-product
 		float gx = getGradientX(ix, iy);
 		float gy = getGradientY(ix, iy);
-		float gr = (float)Math.sqrt((gx*gx+gy*gy));
+		float gr = (float)Math.sqrt(gx*gx + gy*gy);
 		gx /= gr;
 		gy /= gr;
-	    return (dx*gx + dy*gy);
+	    return dx*gx + dy*gy;
 	}
 
 	// Compute Perlin noise at coordinates x, y

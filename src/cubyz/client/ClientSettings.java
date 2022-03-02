@@ -47,7 +47,7 @@ public class ClientSettings {
 	public static int EFFECTIVE_RENDER_DISTANCE = calculatedEffectiveRenderDistance();
 	
 	public static int calculatedEffectiveRenderDistance() {
-		return (RENDER_DISTANCE + ((((int)(RENDER_DISTANCE*LOD_FACTOR) & ~1) << HIGHEST_LOD)));
+		return RENDER_DISTANCE + (((int)(RENDER_DISTANCE*LOD_FACTOR) & ~1) << HIGHEST_LOD);
 	}
 
 	public static void save() {

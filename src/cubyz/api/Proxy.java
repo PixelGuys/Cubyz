@@ -10,7 +10,7 @@ import java.lang.annotation.Target;
 @Target(FIELD)
 public @interface Proxy {
 
-	public String clientProxy();
-	public String serverProxy();
+	String clientProxy();
+	String serverProxy();
 	
 }

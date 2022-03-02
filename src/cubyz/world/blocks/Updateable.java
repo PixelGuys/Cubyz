@@ -2,7 +2,7 @@ package cubyz.world.blocks;
 
 public interface Updateable {
 
-	public boolean randomUpdates();
-	public void update(boolean isRandomUpdate);
+	boolean randomUpdates();
+	void update(boolean isRandomUpdate);
 	
 }

@@ -86,7 +86,7 @@ public class OreTextureProvider implements TextureProvider {
 						double dist = distMain*distMain + distSecn*distSecn;
 						if (dist < 1) {
 							// Light is determined as how far to the upper left the current pixel is relative to the center.
-							double light = (-(distMain*xMain*actualSize + distSecn*xSecn*actualSizeSmall)*Math.sqrt(0.5) - (distMain*yMain*actualSize + distSecn*ySecn*actualSizeSmall)*Math.sqrt(0.5));
+							double light = -(distMain*xMain*actualSize + distSecn*xSecn*actualSizeSmall)*Math.sqrt(0.5) - (distMain*yMain*actualSize + distSecn*ySecn*actualSizeSmall)*Math.sqrt(0.5);
 							light += (rand.nextFloat()-.5f)*roughness/4; // Randomly shift the lighting to get a more rough appearance.
 							// Determine the index in the color palette that fits the pseudo-lighting conditions:
 							int lightIndex = (int)Math.round((3 + light*8.0/3)*differentColors/6);

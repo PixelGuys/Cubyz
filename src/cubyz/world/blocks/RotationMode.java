@@ -30,7 +30,7 @@ public interface RotationMode extends RegistryElement {
 	 * @param texture
 	 * @return incremented renderIndex
 	 */
-	public void generateChunkMesh(BlockInstance bi, VertexAttribList vertices, IntFastList faces);
+	void generateChunkMesh(BlockInstance bi, VertexAttribList vertices, IntFastList faces);
 	
 	/**
 	 * Update or place a block.
@@ -45,12 +45,12 @@ public interface RotationMode extends RegistryElement {
 	 * @param blockPlacing true if the position of the block was previously empty/nonsolid.
 	 * @return true if the placing was successful, false otherwise.
 	 */
-	public boolean generateData(World world, int x, int y, int z, Vector3d relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDir, IntWrapper currentData, boolean blockPlacing);
+	boolean generateData(World world, int x, int y, int z, Vector3d relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDir, IntWrapper currentData, boolean blockPlacing);
 
 	/**
 	 * @return if the block should be destroyed or changed when a certain neighbor is removed.
 	 */
-	public boolean dependsOnNeightbors();
+	boolean dependsOnNeightbors();
 	
 	/**
 	 * Updates data of a placed block if the RotationMode dependsOnNeighbors().
@@ -59,24 +59,24 @@ public interface RotationMode extends RegistryElement {
 	 * @param removedDir given as neighbor index (See NormalChunk.)
 	 * @return new data
 	 */
-	public int updateData(int oldBlock, int removedDir, int newNeighbor);
+	int updateData(int oldBlock, int removedDir, int newNeighbor);
 	
 	/**
 	 * A RotationMode may even alter the blocks transparency. Here is where it's done.
 	 * @param data The blocks data
 	 * @param neighbor the inverted(!) neighbor index(see Neighbors.java).
 	 */
-	public boolean checkTransparency(int block, int neighbor);
+	boolean checkTransparency(int block, int neighbor);
 	
 	/**
 	 * @return standard data for natural generation.
 	 */
-	public int getNaturalStandard(int block);
+	int getNaturalStandard(int block);
 	
 	/**
 	 * @return Whether this RotationMode changes this blocks hitbox for player collision or block selection.
 	 */
-	public boolean changesHitbox();
+	boolean changesHitbox();
 	
 	/**
 	 * 
@@ -86,7 +86,7 @@ public interface RotationMode extends RegistryElement {
 	 * @param max maximal point of the surrounding block. May be overwritten.
 	 * @return
 	 */
-	public float getRayIntersection(RayAabIntersection intersection, BlockInstance bi, Vector3f min, Vector3f max, Vector3f transformedPosition);
+	float getRayIntersection(RayAabIntersection intersection, BlockInstance bi, Vector3f min, Vector3f max, Vector3f transformedPosition);
 
 	/**
 	 * Check if the entity would collide with the block.
@@ -99,7 +99,7 @@ public interface RotationMode extends RegistryElement {
 	 * @param data block data
 	 * @return Whether the entity and block hitboxes overlap.
 	 */
-	public boolean checkEntity(Vector3d pos, double width, double height, int x, int y, int z, int block);
+	boolean checkEntity(Vector3d pos, double width, double height, int x, int y, int z, int block);
 	
 	/**
 	 * Check if the entity would collide with the block, if its position was changed by `vel`.
@@ -112,5 +112,5 @@ public interface RotationMode extends RegistryElement {
 	 * @param data block data
 	 * @return Returns true if the block behaves like a normal block and therefor needs to be handled like a normal block in the specified direction. Returns false if everything has been handled already in here.
 	 */
-	public boolean checkEntityAndDoCollision(Entity ent, Vector4d vel, int x, int y, int z, int block);
+	boolean checkEntityAndDoCollision(Entity ent, Vector4d vel, int x, int y, int z, int block);
 }

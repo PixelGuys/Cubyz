@@ -1,15 +1,6 @@
 package cubyz.gui;
 
-import static org.lwjgl.opengl.GL11.GL_BLEND;
-import static org.lwjgl.opengl.GL11.GL_CULL_FACE;
-import static org.lwjgl.opengl.GL11.GL_DEPTH_TEST;
-import static org.lwjgl.opengl.GL11.GL_ONE_MINUS_SRC_ALPHA;
-import static org.lwjgl.opengl.GL11.GL_SRC_ALPHA;
-import static org.lwjgl.opengl.GL11.glBlendFunc;
-import static org.lwjgl.opengl.GL11.glDisable;
-import static org.lwjgl.opengl.GL11.glEnable;
-import static org.lwjgl.opengl.GL13.GL_TEXTURE0;
-import static org.lwjgl.opengl.GL13.glActiveTexture;
+import static org.lwjgl.opengl.GL43.*;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -119,7 +110,7 @@ public class UISystem {
 	}
 	
 	public boolean doesGUIPauseGame() {
-		return gui == null ? false : gui.doesPauseGame();
+		return gui != null && gui.doesPauseGame();
 	}
 
 	public void updateGUIScale() {

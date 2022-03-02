@@ -10,9 +10,9 @@ import cubyz.world.terrain.biomes.BiomeRegistry;
  */
 public interface Mod {
 
-	public String id();
+	String id();
 
-	public String name();
+	String name();
 	
 	default void preInit() {}
 

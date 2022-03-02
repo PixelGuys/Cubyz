@@ -276,7 +276,7 @@ public class TextureGenerator {
 					for(int dy = -1; dy <= 0; dy++) {
 						if (y + dy < 0 || y + dy >= 16) continue;
 
-						heightMap[x][y] += itemGrid[x + dx][y + dy] != null ? (1 + (4 * rand.nextFloat() - 2) * itemGrid[x + dx][y + dy].material.roughness) : 0;
+						heightMap[x][y] += itemGrid[x + dx][y + dy] != null ? 1 + (4 * rand.nextFloat() - 2) * itemGrid[x + dx][y + dy].material.roughness : 0;
 						if (itemGrid[x + dx][y + dy] != oneItem)
 							hasDifferentItems = true;
 					}

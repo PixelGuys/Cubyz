@@ -254,7 +254,7 @@ public class ServerWorld extends World{
 				} else {
 					clearColor.x = 0.8f+0.8f*(dayTime-(dayCycle >> 2))/(dayCycle >> 4);
 				}
-				dayTime -= (dayCycle >> 2);
+				dayTime -= dayCycle >> 2;
 				dayTime <<= 3;
 				ambientLight = 0.55f + 0.45f*dayTime/(dayCycle >> 1);
 			}

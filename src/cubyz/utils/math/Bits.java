@@ -19,7 +19,7 @@ public class Bits {
 	}
 
 	public static int getInt(byte[] b, int off) {
-		return ((b[off + 3] & 0xFF)) + ((b[off + 2] & 0xFF) << 8) + ((b[off + 1] & 0xFF) << 16) + ((b[off]) << 24);
+		return (b[off + 3] & 0xFF) + ((b[off + 2] & 0xFF) << 8) + ((b[off + 1] & 0xFF) << 16) + ((b[off]) << 24);
 	}
 
 	public static float getFloat(byte[] b, int off) {
@@ -27,7 +27,7 @@ public class Bits {
 	}
 
 	public static long getLong(byte[] b, int off) {
-		return ((b[off + 7] & 0xFFL)) + ((b[off + 6] & 0xFFL) << 8) + ((b[off + 5] & 0xFFL) << 16)
+		return (b[off + 7] & 0xFFL) + ((b[off + 6] & 0xFFL) << 8) + ((b[off + 5] & 0xFFL) << 16)
 				+ ((b[off + 4] & 0xFFL) << 24) + ((b[off + 3] & 0xFFL) << 32) + ((b[off + 2] & 0xFFL) << 40)
 				+ ((b[off + 1] & 0xFFL) << 48) + (((long) b[off]) << 56);
 	}

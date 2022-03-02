@@ -16,15 +16,15 @@ public interface CaveGenerator extends RegistryElement {
 	 * @param parameters
 	 * @param registries
 	 */
-	abstract void init(JsonObject parameters, CurrentWorldRegistries registries);
+	void init(JsonObject parameters, CurrentWorldRegistries registries);
 	
-	abstract int getPriority(); // Used to prioritize certain generators over others.
-	abstract void generate(long seed, CaveMapFragment map);
+	int getPriority(); // Used to prioritize certain generators over others.
+	void generate(long seed, CaveMapFragment map);
 	
 	/**
 	 * To avoid duplicate seeds in similar generation algorithms, the SurfaceGenerator xors the world-seed with the generator specific seed.
 	 * @return The seed of this generator. Should be unique
 	 */
-	abstract long getGeneratorSeed();
+	long getGeneratorSeed();
 	
 }

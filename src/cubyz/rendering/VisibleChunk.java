@@ -216,7 +216,7 @@ public class VisibleChunk extends NormalChunk {
 		if (!Blocks.lightingTransparent(blocks[index]) && ((Blocks.light(blocks[index]) >>> channelShift) & 255) != lightValue) return;
 		lightValue = propagateLight(blocks[index], lightValue, channelShift);
 		if (blocks[index] != 0)
-			lightValue = Math.max(lightValue, ((Blocks.light(blocks[index]) >>> channelShift) & 255));
+			lightValue = Math.max(lightValue, (Blocks.light(blocks[index]) >>> channelShift) & 255);
 		int prevValue = (light[index] >>> channelShift) & 255;
 		setUpdated();
 		if (lightValue <= prevValue) return;
@@ -357,20 +357,20 @@ public class VisibleChunk extends NormalChunk {
 		if ((index & getIndex(0, chunkMask, 0)) == 0) { // if (y == 0)
 			VisibleChunk neighborChunk = (VisibleChunk)world.getChunk(wx, wy - Chunk.chunkSize, wz);
 			if (neighborChunk != null) {
-				newValue = Math.max(newValue, propagateLight(blocks[index], ((neighborChunk.light[index ^ getIndex(0, chunkMask, 0)] >>> channelShift) & 255), channelShift));
+				newValue = Math.max(newValue, propagateLight(blocks[index], (neighborChunk.light[index ^ getIndex(0, chunkMask, 0)] >>> channelShift) & 255, channelShift));
 			}
 		} else {
-			newValue = Math.max(newValue, propagateLight(blocks[index], ((light[index - getIndex(0, 1, 0)] >>> channelShift) & 255), channelShift));
+			newValue = Math.max(newValue, propagateLight(blocks[index], (light[index - getIndex(0, 1, 0)] >>> channelShift) & 255, channelShift));
 		}
 		// y+1:
 		if ((index & getIndex(0, chunkMask, 0)) == getIndex(0, chunkMask, 0)) { // if (y == chunkSize-1)
 			VisibleChunk neighborChunk = (VisibleChunk)world.getChunk(wx, wy + Chunk.chunkSize, wz);
 			if (neighborChunk != null) {
-				int lightValue = ((neighborChunk.light[index ^ getIndex(0, chunkMask, 0)] >>> channelShift) & 255);
+				int lightValue = (neighborChunk.light[index ^ getIndex(0, chunkMask, 0)] >>> channelShift) & 255;
 				newValue = Math.max(newValue, propagateLight(blocks[index], lightValue + (channelShift == 24 && lightValue == 255 ? 8 : 0), channelShift));
 			}
 		} else {
-			int lightValue = ((light[index + getIndex(0, 1, 0)] >>> channelShift) & 255);
+			int lightValue = (light[index + getIndex(0, 1, 0)] >>> channelShift) & 255;
 			newValue = Math.max(newValue, propagateLight(blocks[index], lightValue + (channelShift == 24 && lightValue == 255 ? 8 : 0), channelShift));
 		}
 		

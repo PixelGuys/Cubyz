@@ -9,7 +9,7 @@ import cubyz.world.items.Inventory;
  */
 
 public interface ClientConnection {
-	public void openGUI(String name, Inventory inv);
+	void openGUI(String name, Inventory inv);
 	
 	/**
 	 * Sends a regurlar signal after each update.
@@ -17,9 +17,9 @@ public interface ClientConnection {
 	 * @param gameTime
 	 * @param biome
 	 */
-	public void serverPing(long gameTime, String biome);
+	void serverPing(long gameTime, String biome);
 
-	public void updateChunkMesh(NormalChunk mesh);
+	void updateChunkMesh(NormalChunk mesh);
 
-	public void updateChunkMesh(ReducedChunkVisibilityData mesh);
+	void updateChunkMesh(ReducedChunkVisibilityData mesh);
 }

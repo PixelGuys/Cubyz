@@ -94,7 +94,7 @@ public abstract class Chunk extends SavableChunk {
 	 * @param gen
 	 */
 	public void generate(long seed, TerrainGenerationProfile terrainGenerationProfile) {
-		assert(!generated) : "Seriously, why would you generate this chunk twice???";
+		assert !generated : "Seriously, why would you generate this chunk twice???";
 		if(!ChunkIO.loadChunkFromFile(world, this)) {
 			MapFragment containing = world.chunkManager.getOrGenerateMapFragment(wx, wz, voxelSize);
 			CaveMap caveMap = new CaveMap(world, this);
@@ -147,7 +147,7 @@ public abstract class Chunk extends SavableChunk {
 	}
 	
 	public Vector3d getMax() {
-		return new Vector3d(wx + width, (wy) + width, wz + width);
+		return new Vector3d(wx + width, wy + width, wz + width);
 	}
 	
 	/**
@@ -178,7 +178,7 @@ public abstract class Chunk extends SavableChunk {
 	
 	@Override
 	public void loadFromByteArray(byte[] data, int outputLength) {
-		assert(outputLength == 4*blocks.length) : "Chunk is corrupted : "+toString();
+		assert outputLength == 4*blocks.length : "Chunk is corrupted : "+toString();
 		for(int i = 0; i < blocks.length; i++) {
 			// Convert the palette (world-specific) ID to the runtime ID
 			int palId = Bits.getInt(data, i*4);
@@ -200,7 +200,7 @@ public abstract class Chunk extends SavableChunk {
 	 * @return
 	 */
 	public static int getIndex(int x, int y, int z) {
-		assert((x & chunkMask) == x && (y & chunkMask) == y && (z & chunkMask) == z) : "Your coordinates are outside this chunk. You should be happy this assertion caught it.";
+		assert (x & chunkMask) == x && (y & chunkMask) == y && (z & chunkMask) == z : "Your coordinates are outside this chunk. You should be happy this assertion caught it.";
 		return (x << chunkShift) | (y << chunkShift2) | z;
 	}
 	

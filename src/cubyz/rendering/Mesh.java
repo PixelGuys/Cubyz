@@ -4,11 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
-import static org.lwjgl.opengl.GL11.*;
-import static org.lwjgl.opengl.GL13.*;
-import static org.lwjgl.opengl.GL15.*;
-import static org.lwjgl.opengl.GL20.*;
-import static org.lwjgl.opengl.GL30.*;
+import static org.lwjgl.opengl.GL43.*;
 
 import org.joml.Vector4f;
 

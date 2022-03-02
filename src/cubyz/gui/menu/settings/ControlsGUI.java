@@ -17,7 +17,6 @@ import cubyz.rendering.Window;
 import cubyz.utils.Utilities;
 import cubyz.utils.translate.TextKey;
 
-import static org.lwjgl.glfw.GLFW.*;
 import static cubyz.client.ClientSettings.GUI_SCALE;
 
 public class ControlsGUI extends MenuGUI {
@@ -134,7 +133,7 @@ public class ControlsGUI extends MenuGUI {
 			button.setOnAction(() -> {
 				if (listen == null) {
 					listen = name;
-					glfwSetKeyCallback(Window.getWindowHandle(), (window, key, scancode, action, mods) -> {
+					GLFW.glfwSetKeyCallback(Window.getWindowHandle(), (window, key, scancode, action, mods) -> {
 						glfwKeyCallback(key, scancode, action, mods);
 					});
 					button.setText("Click or press any key");
@@ -181,7 +180,7 @@ public class ControlsGUI extends MenuGUI {
 		Keybindings.setKeyCode(listen, keyCode);
 		initUI();
 		listen = null;
-		glfwSetKeyCallback(Window.getWindowHandle(), (window, key, scancode, action, mods) -> {
+		GLFW.glfwSetKeyCallback(Window.getWindowHandle(), (window, key, scancode, action, mods) -> {
 			Keyboard.glfwKeyCallback(key, scancode, action, mods);
 		});
 	}

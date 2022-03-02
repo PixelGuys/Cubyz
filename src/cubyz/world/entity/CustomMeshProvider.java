@@ -9,13 +9,13 @@ public interface CustomMeshProvider {
 	 * a {@link cubyz.world.entity.EntityType}.
 	 * @return an object that have a mesh linked
 	 */
-	public Object getMeshId();
+	Object getMeshId();
 	
 	/**
 	 * The type (registry) in which to search the model returned by {@link #getMeshId()}.
 	 * @return mesh type
 	 */
-	public MeshType getMeshType();
+	MeshType getMeshType();
 	
 	
 	public static enum MeshType {

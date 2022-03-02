@@ -11,7 +11,7 @@ public class BiomePoint {
 	public final float height;
 	public final long seed;
 	public BiomePoint(Biome biome, int x, int z, float height, long seed) {
-		assert(biome != null) : "NullPointerException: biome is null";
+		assert biome != null : "NullPointerException: biome is null";
 		this.biome = biome;
 		this.x = x;
 		this.z = z;

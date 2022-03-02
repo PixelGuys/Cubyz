@@ -12,12 +12,12 @@ public interface ServerConnection {
 	 * The server is free to not generate the mesh.
 	 * @param data
 	 */
-	abstract void requestChunk(ChunkData data);
+	void requestChunk(ChunkData data);
 	/**
 	 * Gets the server name. Is cached for a remote connection.
 	 * @return name
 	 */
-	abstract String getName();
+	String getName();
 
 	/**
 	 * Drops an item on the ground.
@@ -26,5 +26,5 @@ public interface ServerConnection {
 	 * @param dir
 	 * @param velocity
 	 */
-	abstract void drop(ItemStack stack, Vector3d pos, Vector3f dir, float velocity);
+	void drop(ItemStack stack, Vector3d pos, Vector3f dir, float velocity);
 }

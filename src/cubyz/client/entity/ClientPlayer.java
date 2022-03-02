@@ -88,7 +88,7 @@ public class ClientPlayer extends Player {
 			}
 			if (Keybindings.isPressed("place/use") && buildCooldown <= 0) {
 				Object selected = Cubyz.msd.getSelected();
-				if ((selected instanceof BlockInstance) && Blocks.onClick(((BlockInstance)selected).getBlock(), Cubyz.world, ((BlockInstance)selected).getPosition())) {
+				if (selected instanceof BlockInstance && Blocks.onClick(((BlockInstance)selected).getBlock(), Cubyz.world, ((BlockInstance)selected).getPosition())) {
 					// Interact with block(potentially do a hand animation, in the future).
 				} else if (getInventory().getItem(Cubyz.inventorySelection) instanceof ItemBlock) {
 					// Build block:
