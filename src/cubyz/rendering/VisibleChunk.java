@@ -13,6 +13,7 @@ import cubyz.world.blocks.BlockInstance;
 
 /**
  * The client version of a chunk that handles all the features that are related to rendering and therefore not needed on servers.
+ * TODO: Optimize and use for LOD chunks as well.
  */
 
 public class VisibleChunk extends NormalChunk {
@@ -95,7 +96,7 @@ public class VisibleChunk extends NormalChunk {
 			// Update the sun channel:
 			for(int x = 0; x < chunkSize; x++) {
 				for(int z = 0; z < chunkSize; z++) {
-					int startHeight = map.mapIO.getHeight(x+wx, z+wz, map);
+					int startHeight = 8 + (int)map.getHeight(x+wx, z+wz);
 					startHeight -= wy;
 					if (startHeight < chunkSize) {
 						propagateSunLight(getIndex(x, chunkMask, z));
@@ -155,10 +156,6 @@ public class VisibleChunk extends NormalChunk {
 	 */
 	public void propagateSunLight(int index) {
 		if (blocks[index] != 0 && (!Blocks.lightingTransparent(blocks[index]) || (Blocks.absorption(blocks[index]) & 0xff000000) != 0)) {
-			int x = index>>chunkShift & chunkMask;
-			int y = index>>chunkShift2 & chunkMask;
-			int z = index & chunkMask;
-			map.mapIO.setHeight(x+wx, z+wz, y+wy, map);
 			return;
 		} else if ((light[index] & 0xff000000) != 0xff000000) {
 			constructiveLightUpdate(index, 255+8, 24);
@@ -184,6 +181,7 @@ public class VisibleChunk extends NormalChunk {
 		int r = (blockColor >>> 16) & 255;
 		int g = (blockColor >>> 8) & 255;
 		int b = blockColor & 255;
+		if(s == 255) s += 8;
 		if (s != 0) constructiveLightUpdate(index, s, 24);
 		if (r != 0) constructiveLightUpdate(index, r, 16);
 		if (g != 0) constructiveLightUpdate(index, g, 8);
@@ -199,6 +197,7 @@ public class VisibleChunk extends NormalChunk {
 		int r = (color >>> 16) & 255;
 		int g = (color >>> 8) & 255;
 		int b = color & 255;
+		if(s == 255) s += 8;
 		if (s != 0) constructiveLightUpdate(index, s, 24);
 		if (r != 0) constructiveLightUpdate(index, r, 16);
 		if (g != 0) constructiveLightUpdate(index, g, 8);
@@ -208,7 +207,6 @@ public class VisibleChunk extends NormalChunk {
 	/**
 	 * Updates one specific light channel of this block <b>constructively</b>.
 	 * @param index
-	 * @param channelMask
 	 * @param channelShift
 	 */
 	public void constructiveLightUpdate(int index, int lightValue, int channelShift) {
@@ -220,12 +218,6 @@ public class VisibleChunk extends NormalChunk {
 		int prevValue = (light[index] >>> channelShift) & 255;
 		setUpdated();
 		if (lightValue <= prevValue) return;
-		if (channelShift == 24 && lightValue == 255) { // Update the sun height map.
-			int x = index/getIndex(chunkMask, 0, 0) & chunkMask;
-			int y = index/getIndex(0, chunkMask, 0) & chunkMask;
-			int z = index/getIndex(0, 0, chunkMask) & chunkMask;
-			map.mapIO.setHeight(x+wx, z+wz, Math.min(y+wy-1, map.mapIO.getHeight(x+wx, z+wz, map)), map);
-		}
 		light[index] = (~(255 << channelShift) & light[index]) | (lightValue << channelShift);
 		// Go through all neighbors:
 		// z-1:
@@ -308,7 +300,6 @@ public class VisibleChunk extends NormalChunk {
 	/**
 	 * Updates one specific light channel of this block <b>destructively</b>. This means that the engine tries to remove lighting and re-add it if it was falsely removed.
 	 * @param index
-	 * @param channelMask
 	 * @param channelShift
 	 */
 	public void lightUpdateInternal(int index, int channelShift) {
@@ -383,12 +374,6 @@ public class VisibleChunk extends NormalChunk {
 				constructiveLightUpdate(index, newValue - propagateLight(blocks[index], 0, channelShift), channelShift);
 			}
 				return;
-		}
-		if (channelShift == 24 && prevValue == 255) { // Update the sun height map.
-			int x = index/getIndex(chunkMask, 0, 0) & chunkMask;
-			int y = index/getIndex(0, chunkMask, 0) & chunkMask;
-			int z = index/getIndex(0, 0, chunkMask) & chunkMask;
-			map.mapIO.setHeight(x+wx, z+wz, Math.max(y+wy, map.mapIO.getHeight(x+wx, z+wz, map)), map);
 		}
 		setUpdated();
 		light[index] = (light[index] & ~(255 << channelShift)) | (newValue << channelShift);

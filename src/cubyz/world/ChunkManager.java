@@ -139,11 +139,9 @@ public class ChunkManager {
 			if (res != null) return res;
 
 			// Generate a new map fragment:
-			res = new MapFragment(wx, wz, world, world.wio, voxelSize);
+			res = new MapFragment(wx, wz, world, voxelSize);
 			terrainGenerationProfile.mapFragmentGenerator.generateMapFragment(res);
-			MapFragment old = mapCache[index].addToCache(res, hash);
-			if (old != null)
-				old.mapIO.saveData();
+			mapCache[index].addToCache(res, hash);
 		}
 		return res;
 	}
@@ -188,9 +186,6 @@ public class ChunkManager {
 			Logger.error(e);
 		}
 		for(Cache<MapFragment> cache : mapCache) {
-			cache.foreach((map) -> {
-				map.mapIO.saveData();
-			});
 			cache.clear();
 		}
 		for(int i = 0; i < 5; i++) { // Saving one chunk may create and update a new lower resolution chunk.
@@ -207,11 +202,6 @@ public class ChunkManager {
 	}
 
 	public void forceSave() {
-		for(Cache<MapFragment> cache : mapCache) {
-			cache.foreach((map) -> {
-				map.mapIO.saveData();
-			});
-		}
 		for(int i = 0; i < 5; i++) { // Saving one chunk may create and update a new lower resolution chunk.
 			reducedChunkCache.foreach((chunk) -> {
 				chunk.save();
