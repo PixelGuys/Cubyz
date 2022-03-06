@@ -27,20 +27,6 @@ import cubyz.world.blocks.Blocks;
  */
 
 public class NormalChunkMesh extends ChunkMesh {
-	// ThreadLocal lists, to prevent (re-)allocating tons of memory.
-	private static final ThreadLocal<VertexAttribList> localVertices = new ThreadLocal<VertexAttribList>() {
-		@Override
-		protected VertexAttribList initialValue() {
-			return new VertexAttribList(SIZEOF_VERTEX);
-		}
-	};
-	private static final ThreadLocal<IntFastList> localFaces = new ThreadLocal<IntFastList>() {
-		@Override
-		protected IntFastList initialValue() {
-			return new IntFastList(30000);
-		}
-	};
-	
 	public static final int POSITION_X = 0;
 	public static final int POSITION_Y = 1;
 	public static final int POSITION_Z = 2;
@@ -52,6 +38,10 @@ public class NormalChunkMesh extends ChunkMesh {
 	public static final int NORMAL_Z = 8;
 	public static final int LIGHTING = 9;
 	private static final int SIZEOF_VERTEX = 10;
+
+	// ThreadLocal lists, to prevent (re-)allocating tons of memory.
+	private static final ThreadLocal<VertexAttribList> localVertices = ThreadLocal.withInitial(() -> new VertexAttribList(SIZEOF_VERTEX));
+	private static final ThreadLocal<IntFastList> localFaces = ThreadLocal.withInitial(() -> new IntFastList(30000));
 
 	// Shader stuff:
 	public static int loc_projectionMatrix;

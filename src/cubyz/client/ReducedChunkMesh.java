@@ -25,12 +25,7 @@ import cubyz.world.ReducedChunkVisibilityData;
 
 public class ReducedChunkMesh extends ChunkMesh {
 	// ThreadLocal lists, to prevent (re-)allocating tons of memory.
-	private static final ThreadLocal<IntFastList> localFaces = new ThreadLocal<IntFastList>() {
-		@Override
-		protected IntFastList initialValue() {
-			return new IntFastList(30000);
-		}
-	};
+	private static final ThreadLocal<IntFastList> localFaces = ThreadLocal.withInitial(() -> new IntFastList(30000));
 
 	// Shader stuff:
 	public static int loc_projectionMatrix;

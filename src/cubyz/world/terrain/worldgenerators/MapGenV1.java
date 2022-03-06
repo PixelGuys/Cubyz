@@ -27,12 +27,7 @@ public class MapGenV1 implements MapGenerator {
 		return new Resource("cubyz:mapgen_v1");
 	}
 	
-	private static ThreadLocal<PerlinNoise> threadLocalNoise = new ThreadLocal<PerlinNoise>() {
-		@Override
-		protected PerlinNoise initialValue() {
-			return new PerlinNoise();
-		}
-	};
+	private static final ThreadLocal<PerlinNoise> threadLocalNoise = ThreadLocal.withInitial(PerlinNoise::new);
 
 	@Override
 	public void generateMapFragment(MapFragment map) {

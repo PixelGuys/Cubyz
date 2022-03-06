@@ -17,19 +17,14 @@ import pixelguys.json.JsonObject;
 
 public class CrystalCavernGenerator implements Generator {
 	
-	private String[] COLORS = new String[] {
+	private final String[] COLORS = new String[] {
 		"red", "orange", "yellow", "green", "cyan", "blue", "violet", "purple", // 8 Base colors
 		"dark_red", "dark_green", "light_blue", "brown", // 4 darker colors
 		"white", "gray", "dark_gray", "black", // 4 grayscale colors
 	};
-	private int[] glowCrystals = new int[COLORS.length], glowOres = new int[COLORS.length];
+	private final int[] glowCrystals = new int[COLORS.length], glowOres = new int[COLORS.length];
 	
-	private static ThreadLocal<int[][]> crystalDataArray = new ThreadLocal<int[][]>() {
-		@Override
-		public int[][] initialValue() {
-			return new int[2048][3]; // TODO: Properly evaluate the maximum number of crystal spawns per crystal cavern.
-		}
-	};
+	private static final ThreadLocal<int[][]> crystalDataArray = ThreadLocal.withInitial(() -> new int[2048][3]); // TODO: Properly evaluate the maximum number of crystal spawns per crystal cavern.
 	
 	private static final int range = 3;
 	private static final int CRYSTAL_CHUNK_SIZE = 256;
@@ -94,7 +89,7 @@ public class CrystalCavernGenerator implements Generator {
 		}
 	}
 	
-	private void generateCave(long random, int wx, int wy, int wz, Chunk chunk, double worldX, double worldY, double worldZ, float size, float direction, float slope, int curStep, double caveHeightModifier, int[][] crystalSpawns, int[] index) {
+	private void generateCave(long random, int wx, int wy, int wz, Chunk chunk, double worldX, double worldY, double worldZ, float size, float direction, float slope, double caveHeightModifier, int[][] crystalSpawns, int[] index) {
 		double cwx = (double) (wx + chunk.getWidth()/2);
 		double cwy = (double) (wy + chunk.getWidth()/2);
 		double cwz = (double) (wz + chunk.getWidth()/2);
@@ -105,6 +100,7 @@ public class CrystalCavernGenerator implements Generator {
 		int local = (range - 1)*CRYSTAL_CHUNK_SIZE;
 		int caveLength = local - localRand.nextInt(local / 4);
 
+		int curStep = 0;
 		for(boolean highSlope = localRand.nextInt(6) == 0; curStep < caveLength; ++curStep) {
 			double xzScale = 6.0 + Math.sin(curStep*Math.PI/caveLength)*size;
 			double yScale = xzScale*caveHeightModifier;
@@ -278,7 +274,7 @@ public class CrystalCavernGenerator implements Generator {
 		long rand2 = rand.nextLong();
 		long rand3 = rand.nextLong();
 		boolean useNeedles = rand.nextBoolean(); // Different crystal type.
-		generateCave(rand.nextLong(), wx, wy, wz, chunk, worldX, worldY, worldZ, size, direction, slope, 0, 0.75, crystalSpawns, index);
+		generateCave(rand.nextLong(), wx, wy, wz, chunk, worldX, worldY, worldZ, size, direction, slope, 0.75, crystalSpawns, index);
 
 		// Determine crystal colors:
 		int differentColors = 1;

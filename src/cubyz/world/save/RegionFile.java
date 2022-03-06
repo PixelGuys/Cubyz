@@ -24,23 +24,13 @@ import cubyz.world.World;
  * Multiple chunks are bundled up in regions to reduce disk reads/writes.
  */
 public class RegionFile extends ChunkData {
-	private static final ThreadLocal<byte[]> threadLocalInputBuffer = new ThreadLocal<byte[]>() {
-		@Override
-		public byte[] initialValue() {
-			return new byte[4096];
-		}
-	};
-	private static final ThreadLocal<byte[]> threadLocalOutputBuffer = new ThreadLocal<byte[]>() {
-		@Override
-		public byte[] initialValue() {
-			return new byte[4 << Chunk.chunkShift*3];
-		}
-	};
+	private static final ThreadLocal<byte[]> threadLocalInputBuffer = ThreadLocal.withInitial(() -> new byte[4096]);
+	private static final ThreadLocal<byte[]> threadLocalOutputBuffer = ThreadLocal.withInitial(() -> new byte[4 << Chunk.chunkShift*3]);
 	public static final int REGION_SHIFT = 3;
 	public static final int REGION_SIZE = 1 << REGION_SHIFT;
 	private byte[] data = new byte[0];
-	private boolean[] occupancy = new boolean[REGION_SIZE*REGION_SIZE*REGION_SIZE];
-	private int[] startingIndices = new int[REGION_SIZE*REGION_SIZE*REGION_SIZE + 1];
+	private final boolean[] occupancy = new boolean[REGION_SIZE*REGION_SIZE*REGION_SIZE];
+	private final int[] startingIndices = new int[REGION_SIZE*REGION_SIZE*REGION_SIZE + 1];
 	private boolean wasChanged = false;
 	private boolean storeOnChange = false;
 	private final Class<?> type;
@@ -117,7 +107,7 @@ public class RegionFile extends ChunkData {
 		
 		Inflater decompresser = new Inflater();
 		decompresser.setInput(input, 0, inputLength);
-		int outputLength = 0;
+		int outputLength;
 		try {
 			outputLength = decompresser.inflate(output);
 			while(!decompresser.finished()) {
@@ -126,7 +116,7 @@ public class RegionFile extends ChunkData {
 				outputLength += decompresser.inflate(output, outputLength, output.length - outputLength);
 			}
 		} catch (DataFormatException e) {
-			Logger.error("Unable to load chunk data. Corrupt chunk file "+this.toString());
+			Logger.error("Unable to load chunk data. Corrupt chunk file " + this);
 			Logger.error(e);
 			return false;
 		}
