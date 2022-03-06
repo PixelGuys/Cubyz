@@ -77,7 +77,7 @@ public class RandomList<T extends ChanceObject> {
 	
 	private static long rangedRandomLong(Random rand, long max) {
 		long and = CubyzMath.fillBits(max);
-		long out = 0;
+		long out;
 		do {
 			out = rand.nextLong();
 			out &= and;

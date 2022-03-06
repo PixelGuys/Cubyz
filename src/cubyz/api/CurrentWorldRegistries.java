@@ -67,7 +67,7 @@ public class CurrentWorldRegistries {
 		Random rand = new Random(world.getSeed());
 		int randomAmount = 9 + rand.nextInt(3); // TODO
 		int i = 0;
-		for(i = 0; i < randomAmount; i++) {
+		for(; i < randomAmount; i++) {
 			CustomOre.random(rand, assets, "cubyz", fallbackLang);
 		}
 		try {

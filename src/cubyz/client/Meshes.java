@@ -93,7 +93,7 @@ public class Meshes {
 		ClientOnly.createEntityMesh = (type) -> {
 			Resource rsc = type.getRegistryID();
 
-			EntityModel model = null;
+			EntityModel model;
 			try {
 				model = ResourceUtilities.loadEntityModel(rsc);
 			} catch (IOException e) {

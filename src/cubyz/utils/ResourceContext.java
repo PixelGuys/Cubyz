@@ -6,6 +6,6 @@ public enum ResourceContext {
 	MODEL3D,
 	MODEL_BLOCK,
 	MODEL_ENTITY,
-	MODEL_ITEM;
+	MODEL_ITEM
 	
 }

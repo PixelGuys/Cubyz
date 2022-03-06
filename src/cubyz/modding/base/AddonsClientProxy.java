@@ -14,7 +14,7 @@ public class AddonsClientProxy extends AddonsCommonProxy {
 		pack.name = "Add-Ons Resource Pack"; // used for path like: testaddon/models/thing.json
 		pack.path = new File("assets");
 		ResourceManager.packs.add(pack);
-		for (File addon : mod.addons) {
+		for (File addon : AddonsMod.addons) {
 			pack = new ResourcePack();
 			pack.name = "Add-On: " + Utilities.capitalize(addon.getName()); // used for languages like: lang/en_US.lang
 			pack.path = addon;

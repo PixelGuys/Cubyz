@@ -12,7 +12,7 @@ import java.util.Arrays;
 public class BlockingMaxHeap<T extends Comparable<T>> {
 	private int size;
 	private T[] array;
-	private Object[] waitingThreads;
+	private final Object[] waitingThreads;
 	private int waitingThreadCount = 0;
 	/**
 	 * @param initialCapacity

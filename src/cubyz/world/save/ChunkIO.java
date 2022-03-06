@@ -40,9 +40,7 @@ public class ChunkIO {
 	}
 	
 	public static void save() {
-		regionCache.foreach((region) -> {
-			region.clean();
-		});
+		regionCache.foreach(RegionFile::clean);
 	}
 	
 	public static void clean() {

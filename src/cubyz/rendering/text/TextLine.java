@@ -372,7 +372,7 @@ public class TextLine implements KeyListener {
 			e.printStackTrace();
 		}
 		// vertex buffer
-		float rawdata[] = { 
+		float[] rawdata = {
 			0, 0,		0, 0,
 			0, -1,		0, 1,
 			1, 0,		1, 0,
@@ -409,7 +409,7 @@ public class TextLine implements KeyListener {
 	
 	public void render(float x, float y) {
 		// Correct by the height of the font:
-		float ratio = (float)height/font.getSize();
+		float ratio = height/font.getSize();
 		y += 0.01f; // Prevents artifact on pixel borders.
 		
 		// Draw the lines:

@@ -133,7 +133,7 @@ public abstract class World {
 	}
 
 	public Entity[] getEntities() {
-		return entities.toArray(new Entity[entities.size()]);
+		return entities.toArray(new Entity[0]);
 	}
 
 	// Returns the blocks, so their meshes can be created and stored.

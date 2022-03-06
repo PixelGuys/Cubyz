@@ -17,7 +17,7 @@ import pixelguys.json.JsonObject;
 public class Blocks implements DataOrientedRegistry {
 	public static enum BlockClass {
 		WOOD, STONE, SAND, UNBREAKABLE, LEAF, FLUID, AIR
-	};
+	}
 	/**
 	 * The total maximum of different block types.
 	 * 65536 might not seem like much, but the actual number of different models is a lot higher thanks to RotationModes.

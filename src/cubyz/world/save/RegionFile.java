@@ -61,7 +61,7 @@ public class RegionFile extends ChunkData {
 			offset += occupancyBytes.length;
 			int index = -1;
 			for(int i = 0; i < occupancy.length; i++) {
-				occupancy[i] = (occupancyBytes[i >> 3] & 1l << (i & 7)) != 0;
+				occupancy[i] = (occupancyBytes[i >> 3] & 1L << (i & 7)) != 0;
 				if(occupancy[i]) {
 					startingIndices[i] = Bits.getInt(data, offset);
 					for(index++; index < i; index++) {
@@ -174,7 +174,7 @@ public class RegionFile extends ChunkData {
 			int numberOfChunks = 0;
 			for(int i = 0; i < occupancy.length; i++) {
 				if(occupancy[i]) {
-					occupancyBytes[i >> 3] |= 1l << (i & 7);
+					occupancyBytes[i >> 3] |= 1L << (i & 7);
 					numberOfChunks++;
 				}
 			}

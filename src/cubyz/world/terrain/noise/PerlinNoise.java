@@ -125,8 +125,6 @@ public class PerlinNoise {
 		
 		xGrid[numX][numY] = generateGradient(x0+1, y0+1, 0, l1, l2, l3, resolutionShift);
 		yGrid[numX][numY] = generateGradient(x0+1, y0+1, 1, l1, l2, l3, resolutionShift);
-		numY++;
-		numX++;
 		xGridPoints = xGrid;
 		yGridPoints = yGrid;
 	}
@@ -140,8 +138,6 @@ public class PerlinNoise {
 	 * @param scale wavelength of lowest frequency layer. Must be a power of 2!
 	 * @param minScale wavelength of highest frequency layer. Must be a power of 2!
 	 * @param seed
-	 * @param worldSizeX
-	 * @param worldSizeZ
 	 * @param voxelSize size of each unit in the indexing of the output map
 	 * @param reductionFactor amplitude reduction for each frequency increase.
 	 * @return
@@ -155,14 +151,13 @@ public class PerlinNoise {
 		float fac = 1/((1 - (float)Math.pow(reductionFactor, CubyzMath.binaryLog(scale/minScale)+1))/(1 - reductionFactor)); // geometric series.
 		for(; scale >= minScale; scale >>= 1) {
 			calculateGridPoints(x, y, width, height, scale, l1, l2, l3);
-			int resolution = scale;
-			int resolution2 = resolution-1;
-			int x0 = x & ~resolution2;
-			int y0 = y & ~resolution2;
+			int scaleMask = scale - 1;
+			int x0 = x & ~scaleMask;
+			int y0 = y & ~scaleMask;
 				
 			for (int x1 = x; x1 < width + x; x1 += voxelSize) {
 				for (int y1 = y; y1 < height + y; y1 += voxelSize) {
-					map[(x1 - x)/voxelSize][(y1 - y)/voxelSize] += (1 - Math.abs(perlin(x1-x0, y1-y0, resolution, resolution2)))*fac;
+					map[(x1 - x)/voxelSize][(y1 - y)/voxelSize] += (1 - Math.abs(perlin(x1-x0, y1-y0, scale, scaleMask)))*fac;
 				}
 			}
 			fac *= reductionFactor;
@@ -179,8 +174,6 @@ public class PerlinNoise {
 	 * @param scale wavelength of lowest frequency layer. Must be a power of 2!
 	 * @param minScale wavelength of highest frequency layer. Must be a power of 2!
 	 * @param seed
-	 * @param worldSizeX
-	 * @param worldSizeZ
 	 * @param voxelSize size of each unit in the indexing of the output map
 	 * @param reductionFactor amplitude reduction for each frequency increase.
 	 * @return
@@ -194,14 +187,13 @@ public class PerlinNoise {
 		float fac = 1/((1 - (float)Math.pow(reductionFactor, CubyzMath.binaryLog(scale/minScale)+1))/(1 - reductionFactor)); // geometric series.
 		for(; scale >= minScale; scale >>= 1) {
 			calculateGridPoints(x, y, width, height, scale, l1, l2, l3);
-			int resolution = scale;
-			int resolution2 = resolution-1;
-			int x0 = x & ~resolution2;
-			int y0 = y & ~resolution2;
+			int scaleMask = scale -1;
+			int x0 = x & ~scaleMask;
+			int y0 = y & ~scaleMask;
 				
 			for (int x1 = x; x1 < width + x; x1 += voxelSize) {
 				for (int y1 = y; y1 < height + y; y1 += voxelSize) {
-					map[(x1 - x)/voxelSize][(y1 - y)/voxelSize] += perlin(x1-x0, y1-y0, resolution, resolution2)*fac;
+					map[(x1 - x)/voxelSize][(y1 - y)/voxelSize] += perlin(x1-x0, y1-y0, scale, scaleMask)*fac;
 				}
 			}
 			fac *= reductionFactor;

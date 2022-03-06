@@ -28,8 +28,6 @@ public class LoadingGUI extends MenuGUI {
 	private boolean currentStepCompleted = false;
 	private ProgressBar pb1 = new ProgressBar();
 	private ProgressBar pb2 = new ProgressBar();
-	//private int alpha = 0;
-	//boolean alphaDecrease = false;
 	private int alpha = 255;
 	private boolean alphaDecrease = true;
 	private static Texture splash;

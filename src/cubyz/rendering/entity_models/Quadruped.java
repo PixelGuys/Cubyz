@@ -29,7 +29,7 @@ import cubyz.world.entity.Player;
 public class Quadruped implements EntityModel {
 	private enum MovementPattern {
 		STABLE, FAST,
-	};
+	}
 	// Registry stuff:
 	Resource id = new Resource("cuybz:quadruped");
 	public Quadruped() {}

@@ -18,7 +18,7 @@ import static cubyz.client.ClientSettings.GUI_SCALE;
 
 public class MultiplayerJoinGui extends MenuGUI {
 
-	private class TextInputWithLabel{
+	private static class TextInputWithLabel{
 		private TextInput textInput	 = new TextInput();
 		private Label label			 = new Label();
 		private int x, y, labelWidth, inputTextWidth, height;

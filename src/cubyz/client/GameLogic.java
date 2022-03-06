@@ -119,7 +119,7 @@ public class GameLogic implements ClientConnection {
 		BlockMeshes.generateTextureArray();
 	}
 
-	public void init() throws Exception {
+	public void init() {
 		if (!new File("assets").exists()) {
 			Logger.error("Assets not found.");
 			JOptionPane.showMessageDialog(null, "Cubyz could not detect its assets.\nDid you forgot to extract the game?", "Error", JOptionPane.ERROR_MESSAGE);
@@ -181,18 +181,13 @@ public class GameLogic implements ClientConnection {
 			}
 			if (breakingAnims.size() == 0)
 				Logger.error("Couldn't find the breaking animations. Without breaking animations the game might crash.");
-			breakAnimations = breakingAnims.toArray(new Texture[breakingAnims.size()]);
+			breakAnimations = breakingAnims.toArray(new Texture[0]);
 			System.gc();
 		});
 		lt.start();
 
 		// Load some other resources in the background:
-		new Thread(new Runnable() {
-			@Override
-			public void run() {
-				StaticBlueNoise.load();
-			}
-		}).start();
+		new Thread(StaticBlueNoise::load).start();
 	}
 	
 	@Override

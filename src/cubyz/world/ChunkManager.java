@@ -49,7 +49,7 @@ public class ChunkManager {
 		volatile boolean running = true;
 		public void run() {
 			while (running) {
-				ChunkData popped = null;
+				ChunkData popped;
 				try {
 					popped = loadList.extractMax();
 				} catch (InterruptedException e) {
@@ -203,9 +203,7 @@ public class ChunkManager {
 
 	public void forceSave() {
 		for(int i = 0; i < 5; i++) { // Saving one chunk may create and update a new lower resolution chunk.
-			reducedChunkCache.foreach((chunk) -> {
-				chunk.save();
-			});
+			reducedChunkCache.foreach(Chunk::save);
 		}
 	}
 }

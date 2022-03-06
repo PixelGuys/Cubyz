@@ -52,11 +52,10 @@ public class InventoryGUI extends GeneralInventory {
 		}
 		Recipe[] recipes = CubyzRegistries.RECIPE_REGISTRY.registered(new Recipe[0]);
 		// Find a fitting recipe:
-		Item item = null;
 		for(Recipe rec : recipes) {
 			if (rec.getNum() != num)
 				continue;
-			item = rec.canCraft(ar, 2);
+			Item item = rec.canCraft(ar, 2);
 			if (item != null) {
 				
 				inv[playerInventorySize+4].reference.setItem(item);

@@ -44,7 +44,7 @@ public class Zipper {
 					new File(filePath).getParentFile().mkdirs();
 					BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(filePath));
 					byte[] bytesIn = new byte[4096];
-					int read = 0;
+					int read;
 					while ((read = zipIn.read(bytesIn)) != -1) {
 						bos.write(bytesIn, 0, read);
 					}

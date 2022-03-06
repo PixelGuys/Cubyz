@@ -23,7 +23,7 @@ public class BlockPalette {
 	public JsonObject save() {
 		JsonObject json = new JsonObject();
 		for (Integer t : TToInt.keySet()) {
-			json.put(Blocks.id(t).toString(), (int)TToInt.get(t));
+			json.put(Blocks.id(t).toString(), TToInt.get(t));
 		}
 		return json;
 	}

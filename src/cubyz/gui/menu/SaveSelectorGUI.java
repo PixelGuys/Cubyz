@@ -72,7 +72,7 @@ public class SaveSelectorGUI extends MenuGUI {
 						Files.walkFileTree(path, new FileVisitor<Path>() {
 	
 							@Override
-							public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+							public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
 								return FileVisitResult.CONTINUE;
 							}
 	
@@ -83,7 +83,7 @@ public class SaveSelectorGUI extends MenuGUI {
 							}
 	
 							@Override
-							public FileVisitResult visitFileFailed(Path file, IOException e) throws IOException {
+							public FileVisitResult visitFileFailed(Path file, IOException e) {
 								Logger.error(e);
 								return FileVisitResult.TERMINATE;
 							}

@@ -295,8 +295,6 @@ public class TextureGenerator {
 						if (y + dy < 0 || y + dy >= 16) continue;
 
 						heightMap[x][y] += itemGrid[x + dx][y + dy] != null ? 1.0f/((dx + 0.5f)*(dx + 0.5f) + (dy + 0.5f)*(dy + 0.5f)) : 0;
-						if (itemGrid[x + dx][y + dy] != oneItem)
-							hasDifferentItems = true;
 					}
 				}
 			}
@@ -378,7 +376,7 @@ public class TextureGenerator {
 				// Calculate the lighting based on the nearest free space:
 				float lightTL = heightMap[x][y] - heightMap[x + 1][y + 1];
 				float lightTR = heightMap[x + 1][y] - heightMap[x][y + 1];
-				int light = 2 - (int) Math.round((lightTL * 2 + lightTR) / 6);
+				int light = 2 - Math.round((lightTL * 2 + lightTR) / 6);
 				light = Math.max(Math.min(light, 4), 0);
 				img.setRGB(x, y, mat.material.colorPalette[light]);
 			}

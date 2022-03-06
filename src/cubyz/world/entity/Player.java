@@ -101,7 +101,7 @@ public class Player extends Entity implements CommandSource {
 		}
 		if (power >= Blocks.breakingPower(bi.getBlock())) {
 			timeStarted = System.currentTimeMillis();
-			maxTime = (int)(Math.round(Blocks.hardness(bi.getBlock())*200));
+			maxTime = Math.round(Blocks.hardness(bi.getBlock())*200);
 			if (power != 0) {
 				maxTime = (int)(maxTime*swingTime/power);
 			}

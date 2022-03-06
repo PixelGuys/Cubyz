@@ -9,12 +9,12 @@ import cubyz.world.entity.EntityType;
 import pixelguys.json.JsonObject;
 
 public class EntityIO {	
-	public static Entity loadEntity(JsonObject json, World world) throws IOException {
+	public static Entity loadEntity(JsonObject json, World world) {
 		String id = json.getString("id", "");
 		Entity ent;
 		EntityType type = world.getCurrentRegistries().entityRegistry.getByID(id);
 		if (type == null) {
-			Logger.warning("Could not load entity with id " + id.toString());
+			Logger.warning("Could not load entity with id " + id);
 			return null;
 		}
 		ent = type.newEntity(world);

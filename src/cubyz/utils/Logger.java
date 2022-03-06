@@ -5,6 +5,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -37,7 +38,7 @@ public class Logger {
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		}
-		Json.setErrorHandler((error) -> Logger.warning(error));
+		Json.setErrorHandler(Logger::warning);
 	}
 	
 	
@@ -111,14 +112,14 @@ public class Logger {
 		
 		if (latestLogOutput != null) {
 			try {
-				latestLogOutput.write(sb.toString().getBytes("UTF-8"));
+				latestLogOutput.write(sb.toString().getBytes(StandardCharsets.UTF_8));
 			} catch (Exception e) {
 				throw new Error(e);
 			}
 		}
 		if (currentLogOutput != null) {
 			try {
-				currentLogOutput.write(sb.toString().getBytes("UTF-8"));
+				currentLogOutput.write(sb.toString().getBytes(StandardCharsets.UTF_8));
 			} catch (Exception e) {
 				throw new Error(e);
 			}

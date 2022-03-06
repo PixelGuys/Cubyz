@@ -52,7 +52,7 @@ public class Biome extends ChanceObject implements RegistryElement {
 		ARCTIC_OCEAN,
 		
 		/**deep ocean trench*/
-		TRENCH;
+		TRENCH
 	}
 	
 	public final Type type;

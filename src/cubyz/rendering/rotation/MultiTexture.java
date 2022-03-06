@@ -74,8 +74,7 @@ public class MultiTexture implements RotationMode, DataOrientedRegistry {
 
 	@Override
 	public boolean generateData(World world, int x, int y, int z, Vector3d relativePlayerPosition, Vector3f playerDirection, Vector3i relativeDirection, IntWrapper currentData, boolean blockPlacing) {
-		if (!blockPlacing) return false;
-		return true;
+		return blockPlacing;
 	}
 
 	@Override

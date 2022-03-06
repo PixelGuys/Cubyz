@@ -86,11 +86,7 @@ public class BackgroundScene {
 
 		// Load a random texture from the backgrounds folder. The player may make their own pictures which have a chance of getting shown aswell.
 		File bgs = new File("assets/backgrounds");
-		File[] images = bgs.listFiles(new FileFilter() {
-			public boolean accept(File file) {
-				return file.isFile() && file.getName().toLowerCase().endsWith(".png");
-			}
-		});
+		File[] images = bgs.listFiles(file -> file.isFile() && file.getName().toLowerCase().endsWith(".png"));
 		// Choose a random image if available.
 		if (images.length != 0) {
 			texture = Texture.loadFromFile(images[(int)(Math.random()*images.length)]);

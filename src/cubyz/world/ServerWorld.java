@@ -97,8 +97,8 @@ public class ServerWorld extends World{
 					break;
 				tryCount++;
 			}
-			int startY = (int)chunkManager.getOrGenerateMapFragment((int)dx, (int)dz, 1).getHeight(dx, dz);
-			seek((int)dx, startY, (int)dz, ClientSettings.RENDER_DISTANCE);
+			int startY = (int)chunkManager.getOrGenerateMapFragment(dx, dz, 1).getHeight(dx, dz);
+			seek(dx, startY, dz, ClientSettings.RENDER_DISTANCE);
 			player.setPosition(new Vector3i(dx, startY+2, dz));
 			Logger.info("OK!");
 		}
@@ -348,9 +348,6 @@ public class ServerWorld extends World{
 	}
 	@Override
 	public void seek(int x, int y, int z, int renderDistance) {
-		int xOld = x;
-		int yOld = y;
-		int zOld = z;
 
 		// Care about the metaChunks:
 		if (x != lastX || y != lastY || z != lastZ) {
@@ -365,17 +362,15 @@ public class ServerWorld extends World{
 			for(int metaX = x0 - metaRenderDistance; metaX <= x0 + metaRenderDistance + 1; metaX++) {
 				for(int metaY = y0 - metaRenderDistance; metaY <= y0 + metaRenderDistance + 1; metaY++) {
 					for(int metaZ = z0 - metaRenderDistance; metaZ <= z0 + metaRenderDistance + 1; metaZ++) {
-						int xReal = metaX;
-						int zReal = metaZ;
-						HashMapKey3D key = new HashMapKey3D(xReal, metaY, zReal);
+						HashMapKey3D key = new HashMapKey3D(metaX, metaY, metaZ);
 						// Check if it already exists:
 						MetaChunk metaChunk = oldMetaChunks.get(key);
 						oldMetaChunks.remove(key);
 						if (metaChunk == null) {
-							metaChunk = new MetaChunk(xReal*(MetaChunk.metaChunkSize*Chunk.chunkSize), metaY*(MetaChunk.metaChunkSize*Chunk.chunkSize), zReal*(MetaChunk.metaChunkSize*Chunk.chunkSize), this);
+							metaChunk = new MetaChunk(metaX *(MetaChunk.metaChunkSize*Chunk.chunkSize), metaY*(MetaChunk.metaChunkSize*Chunk.chunkSize), metaZ *(MetaChunk.metaChunkSize*Chunk.chunkSize), this);
 						}
 						newMetaChunks.put(key, metaChunk);
-						metaChunk.updatePlayer(xOld, yOld, zOld, renderDistance, Settings.entityDistance, chunkList, managers);
+						metaChunk.updatePlayer(x, y, z, renderDistance, Settings.entityDistance, chunkList, managers);
 					}
 				}
 			}
@@ -385,9 +380,9 @@ public class ServerWorld extends World{
 			chunks = chunkList.toArray(new NormalChunk[0]);
 			entityManagers = managers.toArray(new ChunkEntityManager[0]);
 			metaChunks = newMetaChunks;
-			lastX = xOld;
-			lastY = yOld;
-			lastZ = zOld;
+			lastX = x;
+			lastY = y;
+			lastZ = z;
 		}
 	}
 	@Override
@@ -423,8 +418,7 @@ public class ServerWorld extends World{
 	public int getBlock(int x, int y, int z) {
 		NormalChunk ch = getChunk(x, y, z);
 		if (ch != null && ch.isGenerated()) {
-			int b = ch.getBlock(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask);
-			return b;
+			return ch.getBlock(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask);
 		} else {
 			return 0;
 		}
@@ -458,7 +452,7 @@ public class ServerWorld extends World{
 	}
 	@Override
 	public Entity[] getEntities() {
-		return entities.toArray(new Entity[entities.size()]);
+		return entities.toArray(new Entity[0]);
 	}
 	@Override
 	public int getHeight(int wx, int wz) {

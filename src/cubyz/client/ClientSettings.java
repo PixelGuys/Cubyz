@@ -89,8 +89,7 @@ public class ClientSettings {
 			return;
 		}
 		
-		JsonObject settings = null;
-		settings = JsonParser.parseObjectFromFile("settings.json");
+		JsonObject settings = JsonParser.parseObjectFromFile("settings.json");
 		
 		JsonObject keyBindings = settings.getObject("keybindings");
 		if (keyBindings != null) {

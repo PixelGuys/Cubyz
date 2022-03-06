@@ -34,10 +34,7 @@ public class ModLoader {
 				}
 			}
 		}
-		if (!haveAnnot) {
-			return true;
-		}
-		return false;
+		return !haveAnnot;
 	}
 	
 	public static void sortMods() {

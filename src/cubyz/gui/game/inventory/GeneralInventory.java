@@ -21,7 +21,7 @@ import static cubyz.client.ClientSettings.GUI_SCALE;
  */
 
 public abstract class GeneralInventory extends MenuGUI {
-	protected InventorySlot inv [] = null;
+	protected InventorySlot[] inv = null;
 
 	/** ItemStack carried by the mouse.*/
 	protected ItemStack carriedStack = new ItemStack();

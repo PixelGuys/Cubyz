@@ -63,7 +63,7 @@ public class TextInput extends Component {
 			} else {
 				textLine.unselect();
 			}
-		} else if (!Mouse.isLeftButtonPressed()) {
+		} else {
 			if (hasPressed) { // just released left button
 				focused = true;
 				hasPressed = false;

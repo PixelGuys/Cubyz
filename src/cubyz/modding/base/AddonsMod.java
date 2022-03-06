@@ -77,7 +77,7 @@ public class AddonsMod implements Mod {
 	}
 	public void init(Registry<Item> itemRegistry, Registry<DataOrientedRegistry> blockRegistries, NoIDRegistry<Recipe> recipeRegistry) {
 		proxy.init(this);
-		registerMissingStuff(itemRegistry, blockRegistries);
+		registerMissingStuff(itemRegistry);
 		registerRecipes(recipeRegistry);
 	}
 
@@ -230,7 +230,7 @@ public class AddonsMod implements Mod {
 	/**
 	 * Takes care of all missing references.
 	 */
-	public void registerMissingStuff(Registry<Item> itemRegistry, Registry<DataOrientedRegistry> blockRegistry) {
+	public void registerMissingStuff(Registry<Item> itemRegistry) {
 		for(int i = 0; i < missingDropsBlock.size; i++) {
 			Blocks.addBlockDrop(missingDropsBlock.array[i], new BlockDrop(itemRegistry.getByID(missingDropsItem.get(i)), missingDropsAmount.get(i)));
 		}

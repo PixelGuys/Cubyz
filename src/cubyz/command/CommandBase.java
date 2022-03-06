@@ -31,7 +31,7 @@ public abstract class CommandBase implements RegistryElement {
 	}
 
 	public Permission[] getRequiredPermissions() {
-		return perms.toArray(new Permission[perms.size()]); // convert list to an array
+		return perms.toArray(new Permission[0]); // convert list to an array
 	}
 	
 }

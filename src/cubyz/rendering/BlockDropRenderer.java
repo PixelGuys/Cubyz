@@ -58,7 +58,7 @@ public class BlockDropRenderer {
 		public static int loc_fog_density;
 		public static int loc_modelIndex;
 		public static int loc_sizeScale;
-	};
+	}
 
 	private static ShaderProgram shader;
 	private static ShaderProgram itemShader;

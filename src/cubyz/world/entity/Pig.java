@@ -38,7 +38,7 @@ public class Pig extends EntityType {
 	
 	static final Random directionRandom = new Random();
 	
-	private class PigAI implements EntityAI {
+	private static class PigAI implements EntityAI {
 		// AI part:
 		long directionTimer = 0;
 		long nerfTimer = 0;

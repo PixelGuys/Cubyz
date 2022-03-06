@@ -1,9 +1,6 @@
 package cubyz.client;
 
-import static org.lwjgl.opengl.GL11.*;
-import static org.lwjgl.opengl.GL15.*;
-import static org.lwjgl.opengl.GL20.*;
-import static org.lwjgl.opengl.GL30.*;
+import static org.lwjgl.opengl.GL43.*;
 
 import java.util.ArrayList;
 
@@ -306,7 +303,7 @@ public class NormalChunkMesh extends ChunkMesh {
 		for(int i = 0; i < visibles.size; i++) {
 			BlockInstance bi = visibles.array[i];
 			if (!Blocks.transparent(bi.getBlock())) {
-				bi.updateLighting(chunk.wx, chunk.wz, chunk);
+				bi.updateLighting(chunk);
 				Blocks.mode(bi.getBlock()).generateChunkMesh(bi, vertices, faces);
 			}
 		}
@@ -318,7 +315,7 @@ public class NormalChunkMesh extends ChunkMesh {
 		for(int i = 0; i < visibles.size; i++) {
 			BlockInstance bi = visibles.array[i];
 			if (Blocks.transparent(bi.getBlock())) {
-				bi.updateLighting(chunk.wx, chunk.wz, chunk);
+				bi.updateLighting(chunk);
 				Blocks.mode(bi.getBlock()).generateChunkMesh(bi, vertices, faces);
 			}
 		}

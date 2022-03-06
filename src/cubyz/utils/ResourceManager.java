@@ -53,7 +53,7 @@ public class ResourceManager {
 				}
 			}
 		}
-		return files.toArray(new File[files.size()]);
+		return files.toArray(new File[0]);
 	}
 	
 	/**

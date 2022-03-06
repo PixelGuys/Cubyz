@@ -68,7 +68,7 @@ public class CustomOre {
 	
 	private static void readOreData() {
 		try {
-			DataInputStream is = new DataInputStream(new FileInputStream(new File("assets/cubyz/procedural/custom_ore_names.dat")));
+			DataInputStream is = new DataInputStream(new FileInputStream("assets/cubyz/procedural/custom_ore_names.dat"));
 			tree = new Node(is, 4);
 			is.close();
 		} catch (IOException e) {
@@ -224,7 +224,6 @@ public class CustomOre {
 		} else {
 			elasticity += usefulness;
 		}
-		usefulness = 0;
 		// Now elasticity and density can be changed by a random factor:
 		float factor = rand.nextFloat()*10;
 		elasticity += factor;

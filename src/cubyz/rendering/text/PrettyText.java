@@ -15,7 +15,7 @@ public class PrettyText {
 
 	/**
 	 * Parses the formatting hints of the text.
-	 * @param text
+	 * @param textLine
 	 */
 	public static void parse(TextLine textLine) {
 		char[] chars = textLine.text.toCharArray();
@@ -83,29 +83,23 @@ public class PrettyText {
 					break;
 				case '#':
 					// 1 specifies a single color, 2 starts an animation. Syntax errors for colors will be interpreted as '0'.
+					int[] index;
 					if (chars[i+1] == '#') {
-						int[] index = new int[]{i+2};
+						index = new int[]{i+2};
 						Animation animation = new Animation(index, chars);
 						markers.add(new TextMarker(TextMarker.TYPE_COLOR_ANIMATION, reducedString.length(), animation));
-						if (textLine.isEditable) {
-							reducedString.append(chars, i, Math.min(index[0], chars.length) - i);
-							for(int j = i; j < Math.min(index[0], chars.length); j++) {
-								textLine.isControlCharacter[j] = true;
-							}
-						}
-						i = index[0]-1;
 					} else {
-						int[] index = new int[]{i+1};
+						index = new int[]{i+1};
 						int color = parseColor(index, chars);
 						markers.add(new TextMarker(TextMarker.TYPE_COLOR, reducedString.length(), color));
-						if (textLine.isEditable) {
-							reducedString.append(chars, i, Math.min(index[0], chars.length) - i);
-							for(int j = i; j < Math.min(index[0], chars.length); j++) {
-								textLine.isControlCharacter[j] = true;
-							}
-						}
-						i = index[0]-1;
 					}
+					if (textLine.isEditable) {
+						reducedString.append(chars, i, Math.min(index[0], chars.length) - i);
+						for(int j = i; j < Math.min(index[0], chars.length); j++) {
+							textLine.isControlCharacter[j] = true;
+						}
+					}
+					i = index[0]-1;
 					break;
 				default:
 					reducedString.append(chars[i]);
@@ -195,11 +189,9 @@ public class PrettyText {
 		position = (int)textLine.layout.getBounds().getWidth();
 		if (overlineStart != -1) {
 			lines.add(new LineSegment(overlineStart, position-overlineStart, true, isBold, colorInfo, textLine));
-			overlineStart = position;
 		}
 		if (underlineStart != -1) {
 			lines.add(new LineSegment(underlineStart, position-underlineStart, false, isBold, colorInfo, textLine));
-			underlineStart = position;
 		}
 		textLine.lines = lines.toArray(new LineSegment[0]);
 	}

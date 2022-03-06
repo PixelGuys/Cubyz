@@ -41,7 +41,7 @@ public abstract class BlockPreview {
 		BlockPreview.shaders = shaders;
 	}
 
-	public static void unloadShader() throws Exception {
+	public static void unloadShader() {
 		shader.cleanup();
 		shader = null;
 		System.gc();

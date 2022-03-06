@@ -29,7 +29,7 @@ public class GameOverlay extends MenuGUI {
 	long lastPlayerHurtMs; // stored here and not in Player for easier multiplayer integration
 	float lastPlayerHealth;
 
-	private final InventorySlot inv [] = new InventorySlot[8];
+	private final InventorySlot[] inv = new InventorySlot[8];
 	
 	@Override
 	public void init() {
@@ -103,7 +103,7 @@ public class GameOverlay extends MenuGUI {
 			boolean half = i + 1 == health;
 			boolean empty = i >= health;
 			
-			int idx = 0;
+			int idx;
 			if (i == 0) { // beggining
 				idx = empty ? 0 : 1;
 			} else if (i == maxHealth-2) { // end
@@ -124,7 +124,7 @@ public class GameOverlay extends MenuGUI {
 			boolean half = i + 1 == hunger;
 			boolean empty = i >= hunger;
 			
-			int idx = 0;
+			int idx;
 			if (i == 0) { // beggining
 				idx = empty ? 0 : 1;
 			} else if (i == maxHunger-2) { // end

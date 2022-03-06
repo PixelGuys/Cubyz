@@ -24,7 +24,7 @@ public class GameTimeCycleCommand extends CommandBase {
 		if (args.length == 1) {
 			source.feedback(String.valueOf(source.getWorld().shouldDoGameTimeCycle()));
 		} else {
-			source.getWorld().setGameTimeCycle(Boolean.valueOf(args[1]));
+			source.getWorld().setGameTimeCycle(Boolean.parseBoolean(args[1]));
 			source.feedback("doGameTimeCycle set to " + args[1]);
 		}
 	}

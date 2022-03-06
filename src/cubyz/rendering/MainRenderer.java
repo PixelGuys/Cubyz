@@ -168,7 +168,6 @@ public class MainRenderer {
 	
 	/**
 	 * Render the current world.
-	 * @param window
 	 */
 	public void render() {
 		long startTime = System.currentTimeMillis();
@@ -219,11 +218,7 @@ public class MainRenderer {
 			if (ambient.z < 0.1f) ambient.z = 0.1f;
 			clearColor = Cubyz.world.getClearColor();
 			Cubyz.fog.setColor(clearColor);
-			if (ClientSettings.FOG_COEFFICIENT == 0) {
-				Cubyz.fog.setActive(false);
-			} else {
-				Cubyz.fog.setActive(true);
-			}
+			Cubyz.fog.setActive(ClientSettings.FOG_COEFFICIENT != 0);
 			Cubyz.fog.setDensity(1 / (ClientSettings.EFFECTIVE_RENDER_DISTANCE*ClientSettings.FOG_COEFFICIENT));
 			
 			light.setColor(clearColor);

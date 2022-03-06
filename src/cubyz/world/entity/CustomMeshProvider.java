@@ -19,7 +19,7 @@ public interface CustomMeshProvider {
 	
 	
 	public static enum MeshType {
-		ENTITY;
+		ENTITY
 	}
 	
 }

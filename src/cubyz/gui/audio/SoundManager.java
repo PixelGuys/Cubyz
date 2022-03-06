@@ -38,7 +38,7 @@ public class SoundManager {
 		cameraMatrix = new Matrix4f();
 	}
 
-	public void init() throws Exception {
+	public void init() {
 		this.device = alcOpenDevice((ByteBuffer) null);
 		if (device == NULL) {
 			throw new IllegalStateException("Failed to open the default OpenAL device.");
@@ -53,7 +53,7 @@ public class SoundManager {
 		inited = true;
 	}
 	
-	public void dispose() throws Exception {
+	public void dispose() {
 		if (inited)
 			alcCloseDevice(device);
 	}

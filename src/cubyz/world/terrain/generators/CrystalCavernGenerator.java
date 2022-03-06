@@ -90,9 +90,9 @@ public class CrystalCavernGenerator implements Generator {
 	}
 	
 	private void generateCave(long random, int wx, int wy, int wz, Chunk chunk, double worldX, double worldY, double worldZ, float size, float direction, float slope, double caveHeightModifier, int[][] crystalSpawns, int[] index) {
-		double cwx = (double) (wx + chunk.getWidth()/2);
-		double cwy = (double) (wy + chunk.getWidth()/2);
-		double cwz = (double) (wz + chunk.getWidth()/2);
+		double cwx = wx + chunk.getWidth()/2;
+		double cwy = wy + chunk.getWidth()/2;
+		double cwz = wz + chunk.getWidth()/2;
 		float directionModifier = 0.0F;
 		float slopeModifier = 0.0F;
 		Random localRand = new Random(random);
@@ -127,8 +127,8 @@ public class CrystalCavernGenerator implements Generator {
 			directionModifier += (localRand.nextFloat() - localRand.nextFloat())*localRand.nextFloat()*4;
 			double deltaX = worldX - cwx;
 			double deltaZ = worldZ - cwz;
-			double stepsLeft = (double)(caveLength - curStep);
-			double maxLength = (double)(size + 8);
+			double stepsLeft = caveLength - curStep;
+			double maxLength = size + 8;
 			// Abort if the cave is getting to far away from this chunk:
 			if (deltaX*deltaX + deltaZ*deltaZ - stepsLeft*stepsLeft > maxLength*maxLength) {
 				return;
@@ -239,10 +239,10 @@ public class CrystalCavernGenerator implements Generator {
 								double dist = distSqr(x3-x2, y3-y2, z3-z2);
 								if (dist <= size*size) {
 									if (x3 >= 0 && x3 < chunk.getWidth() && y3 >= 0 && y3 < chunk.getWidth() && z3 >= 0 && z3 < chunk.getWidth()) {
-										if (chunk.getBlock((int)x3, (int)y3, (int)z3) == 0 || Blocks.degradable(chunk.getBlock((int)x3, (int)y3, (int)z3)) || Blocks.blockClass(chunk.getBlock((int)x3, (int)y3, (int)z3)) == BlockClass.FLUID) {
-											chunk.updateBlockInGeneration((int)x3, (int)y3, (int)z3, glowCrystals[type]);
-										} else if (chunk.getBlock((int)x3, (int)y3, (int)z3) == stone) {
-											chunk.updateBlockInGeneration((int)x3, (int)y3, (int)z3, glowOres[type]); // When the crystal goes through stone, generate the corresponding ore at that position.
+										if (chunk.getBlock(x3, y3, z3) == 0 || Blocks.degradable(chunk.getBlock(x3, y3, z3)) || Blocks.blockClass(chunk.getBlock(x3, y3, z3)) == BlockClass.FLUID) {
+											chunk.updateBlockInGeneration(x3, y3, z3, glowCrystals[type]);
+										} else if (chunk.getBlock(x3, y3, z3) == stone) {
+											chunk.updateBlockInGeneration(x3, y3, z3, glowOres[type]); // When the crystal goes through stone, generate the corresponding ore at that position.
 										}
 									}
 								}

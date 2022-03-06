@@ -10,10 +10,10 @@ import org.joml.Vector4f;
  * Manages the frame buffers that need to be drawn.
  */
 public class BufferManager {
-	private int buffer;
-	private int colorTexture = -1;
-	private int positionTexture = -1;
-	private int depthBuffer = -1;
+	private final int buffer;
+	private final int colorTexture;
+	private final int positionTexture;
+	private final int depthBuffer;
 	public BufferManager() {
 		buffer = glGenFramebuffers();
 

@@ -33,7 +33,7 @@ public class Palette <T extends RegistryElement> {
 	public JsonObject save() {
 		JsonObject json = new JsonObject();
 		for (T t : TToInt.keySet()) {
-			json.put(t.getRegistryID().toString(), (int)TToInt.get(t));
+			json.put(t.getRegistryID().toString(), TToInt.get(t));
 		}
 		return json;
 	}

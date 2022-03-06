@@ -41,7 +41,6 @@ public class CaveMap {
 		int wx = relX + reference.wx;
 		int wy = relY + reference.wy;
 		int wz = relZ + reference.wz;
-		relY /= reference.voxelSize;
 		int index = 0;
 		if(wx - fragments[0].wx >= CaveMapFragment.WIDTH*reference.voxelSize) {
 			index += 4;

@@ -77,10 +77,7 @@ public class StackableRotation implements RotationMode {
 
 	@Override
 	public boolean checkTransparency(int block, int dir) {
-		if (block >>> 16 < 16 && dir != Neighbors.DIR_UP) {
-			return true;
-		}
-		return false;
+		return block >>> 16 < 16 && dir != Neighbors.DIR_UP;
 	}
 
 	@Override

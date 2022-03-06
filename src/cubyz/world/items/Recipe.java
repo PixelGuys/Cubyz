@@ -7,11 +7,11 @@ package cubyz.world.items;
 
 public class Recipe {
 	
-	private int x, y; // Size of the shaped figure. If zero: shapeless.
-	private Item [] pattern; // Pattern of all items in the recipe. An entry is null when no item should be placed there.
-	private Item result;
-	private int num = 0; // Number of items needed. Used to faster search for recipes.
-	private int numRet = 0; // Number of items returned after applying this recipe.
+	private final int x, y; // Size of the shaped figure. If zero: shapeless.
+	private final Item [] pattern; // Pattern of all items in the recipe. An entry is null when no item should be placed there.
+	private final Item result;
+	private final int num; // Number of items needed. Used to faster search for recipes.
+	private final int numRet; // Number of items returned after applying this recipe.
 	
 	public Recipe(int x, int y, Item[] pattern, int numRet, Item result) {
 		this.x = x;
@@ -21,11 +21,13 @@ public class Recipe {
 		this.result = result;
 		if (pattern.length != x*y)
 			throw new IllegalArgumentException("Size and pattern don't fit.");
+		int num = 0;
 		for(int i = 0; i < pattern.length; i++) {
 			if (pattern[i] != null) {
 				num++;
 			}
 		}
+		this.num = num;
 	}
 	public Recipe(Item[] pattern, int numRet, Item result) {
 		x = y = 0;

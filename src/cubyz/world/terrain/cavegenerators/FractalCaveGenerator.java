@@ -213,9 +213,9 @@ public class FractalCaveGenerator implements CaveGenerator {
 
 	private void considerCoordinates(int x, int y, int z, CaveMapFragment map, Random3D rand) {
 		// Choose some in world coordinates to start generating:
-		double startwx = (double)((x << CHUNK_SHIFT) + rand.nextInt(CHUNK_SIZE));
-		double startwy = (double)((y << CHUNK_SHIFT) + rand.nextInt(CHUNK_SIZE));
-		double startwz = (double)((z << CHUNK_SHIFT) + rand.nextInt(CHUNK_SIZE));
+		double startwx = (x << CHUNK_SHIFT) + rand.nextInt(CHUNK_SIZE);
+		double startwy = (y << CHUNK_SHIFT) + rand.nextInt(CHUNK_SIZE);
+		double startwz = (z << CHUNK_SHIFT) + rand.nextInt(CHUNK_SIZE);
 		
 		// At y = CAVE_HEIGHT_WITH_MAX_DENSITY blocks the chance is saturated, while at MAX_CAVE_HEIGTH the chance gets 0:
 		if(rand.nextFloat() >= MAX_CAVE_DENSITY*Math.min(1, (MAX_CAVE_HEIGHT - startwy)/(MAX_CAVE_HEIGHT - CAVE_HEIGHT_WITH_MAX_DENSITY))) return;
@@ -226,9 +226,9 @@ public class FractalCaveGenerator implements CaveGenerator {
 			int endY = y + rand.nextInt(2*RANGE - 2) - (RANGE - 1);
 			int endZ = z + rand.nextInt(2*RANGE - 2) - (RANGE - 1);
 			rand.setSeed(endX, endY, endZ); // Every chunk has the same start/destination position, to increase cave connectivity.
-			double endwx = (double)((endX << CHUNK_SHIFT) + rand.nextInt(CHUNK_SIZE));
-			double endwy = (double)((endY << CHUNK_SHIFT) + rand.nextInt(CHUNK_SIZE));
-			double endwz = (double)((endZ << CHUNK_SHIFT) + rand.nextInt(CHUNK_SIZE));
+			double endwx = (endX << CHUNK_SHIFT) + rand.nextInt(CHUNK_SIZE);
+			double endwy = (endY << CHUNK_SHIFT) + rand.nextInt(CHUNK_SIZE);
+			double endwz = (endZ << CHUNK_SHIFT) + rand.nextInt(CHUNK_SIZE);
 			double startRadius = rand.nextFloat()*MAX_INITIAL_RADIUS + 2*MIN_RADIUS;
 			double endRadius = rand.nextFloat()*MAX_INITIAL_RADIUS + 2*MIN_RADIUS;
 			double caveLength = Vector3d.distance(startwx, startwy, startwz, endwx, endwy, endwz);

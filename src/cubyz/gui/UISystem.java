@@ -22,8 +22,8 @@ public class UISystem {
 	private MenuGUI gui;
 	/** kept only for transition effect */
 	private MenuGUI oldGui;
-	private ArrayList<MenuGUI> overlays = new ArrayList<>();
-	private ArrayDeque<MenuGUI> menuQueue = new ArrayDeque<>();
+	private final ArrayList<MenuGUI> overlays = new ArrayList<>();
+	private final ArrayDeque<MenuGUI> menuQueue = new ArrayDeque<>();
 	
 	private Transition curTransition;
 	private long lastAnimTime = System.currentTimeMillis();
@@ -143,14 +143,6 @@ public class UISystem {
 			Graphics.setGlobalAlphaMultiplier(1);
 			Graphics.setColor(0x000000);
 			if (curTransition != null) {
-//				float fadeSpeed = 250f;
-//				float fadeSpeedHalf = fadeSpeed / 2f;
-//				if (transitionTime >= fadeSpeed) {
-//					curTransition = null;
-//					oldGui = null;
-//				}
-//				float alpha1 = Math.min(Math.max(((float) transitionTime-fadeSpeedHalf)/fadeSpeedHalf, 0f), 1f);
-//				float alpha2 = Math.min(Math.max(1f - (float) transitionTime/fadeSpeedHalf, 0f), 1f);
 				float alpha1 = curTransition.getCurrentGuiOpacity(transitionTime / curTransition.getDuration());
 				float alpha2 = curTransition.getOldGuiOpacity(transitionTime / curTransition.getDuration());
 				if (transitionTime >= curTransition.duration) {

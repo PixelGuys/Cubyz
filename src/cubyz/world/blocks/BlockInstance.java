@@ -57,11 +57,10 @@ public class BlockInstance {
 		block = b;
 	}
 	
-	public int[] updateLighting(int worldSizeX, int worldSizeZ, NormalChunk chunk) {
+	public void updateLighting(NormalChunk chunk) {
 		if (chunk != null) {
 			world.getLight(chunk, x, y, z, light);
 		}
-		return light;
 	}
 	
 }

@@ -1,5 +1,6 @@
 package cubyz.utils.datastructures;
 
+import java.util.Arrays;
 import java.util.function.Consumer;
 
 /** 
@@ -45,9 +46,7 @@ public class Cache<T> {
 	
 	public void clear() {
 		for(T[] line : cache) {
-			for(int i = 0; i < line.length; i++) {
-				line[i] = null;
-			}
+			Arrays.fill(line, null);
 		}
 	}
 	public static int lost = 0;
