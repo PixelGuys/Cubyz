@@ -188,7 +188,7 @@ public class Blocks implements DataOrientedRegistry {
 		mode[0] = null;
 		transparent[0] = true;
 		viewThrough[0] = true;
-		blockDrops[0] = null;
+		blockDrops[0] = new BlockDrop[0];
 	}
 
 	@Override
