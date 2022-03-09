@@ -10,7 +10,7 @@ public abstract class SavableChunk extends ChunkData {
 
 	public abstract byte[] saveToByteArray();
 
-	public abstract void loadFromByteArray(byte[] array, int len);
+	public abstract boolean loadFromByteArray(byte[] array, int len);
 
 	public abstract int getWidth();
 

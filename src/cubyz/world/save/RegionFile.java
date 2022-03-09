@@ -122,8 +122,7 @@ public class RegionFile extends ChunkData {
 		}
 		decompresser.end();
 		
-		ch.loadFromByteArray(output, outputLength);
-		return true;
+		return ch.loadFromByteArray(output, outputLength);
 	}
 	
 	public void saveChunk(SavableChunk ch) {

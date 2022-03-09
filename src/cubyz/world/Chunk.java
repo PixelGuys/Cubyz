@@ -177,13 +177,17 @@ public abstract class Chunk extends SavableChunk {
 	}
 	
 	@Override
-	public void loadFromByteArray(byte[] data, int outputLength) {
-		assert outputLength == 4*blocks.length : "Chunk is corrupted : "+toString();
+	public boolean loadFromByteArray(byte[] data, int outputLength) {
+		if(outputLength != 4*blocks.length) {
+			Logger.error("Chunk is corrupted : " + this);
+			return false;
+		}
 		for(int i = 0; i < blocks.length; i++) {
 			// Convert the palette (world-specific) ID to the runtime ID
 			int palId = Bits.getInt(data, i*4);
 			blocks[i] = world.wio.blockPalette.getElement(palId);
 		}
+		return true;
 	}
 
 	@Override

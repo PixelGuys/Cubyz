@@ -33,8 +33,9 @@ public class ChunkEntityManager extends SavableChunk {
 	}
 
 	@Override
-	public void loadFromByteArray(byte[] array, int len) {
+	public boolean loadFromByteArray(byte[] array, int len) {
 		itemEntityManager.loadFromByteArray(array, len, chunk.world.wio.itemPalette);
+		return true;
 	}
 
 	@Override
