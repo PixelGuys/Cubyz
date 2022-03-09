@@ -21,7 +21,7 @@ public class FractalCaveGenerator implements CaveGenerator {
 	private static final int BRANCH_LENGTH = 64;
 	private static final float SPLITTING_CHANCE = 0.4f;
 	private static final float SPLIT_FACTOR = 1.0f;
-	private static final float SPLIT_FACTOR_Y = SPLIT_FACTOR*0.5f; // Slightly reduced to reduce splits in y-direction
+	private static final float Y_SPLIT_REDUCTION = 0.5f; // To reduce splitting in y-direction.
 	private static final float MAX_SPLIT_LENGTH = 128;
 	private static final float BRANCH_CHANCE = 0.4f;
 	private static final float MIN_RADIUS = 2.0f;
@@ -148,12 +148,12 @@ public class FractalCaveGenerator implements CaveGenerator {
 		}
 	}
 	
-	private void generateBranchingCaveBetween(long seed, CaveMapFragment map, double startwx, double startwy, double startwz, double endwx, double endwy, double endwz, double biasx, double biasy, double biasz, double startRadius, double endRadius, int centerwx, int centerwy, int centerwz, double branchLength, float randomness, boolean isStart, boolean isEnd) {
+	private void generateBranchingCaveBetween(long seed, CaveMapFragment map, double startwx, double startwy, double startwz, double endwx, double endwy, double endwz, double biasX, double biasY, double biasZ, double startRadius, double endRadius, int centerwx, int centerwy, int centerwz, double branchLength, float randomness, boolean isStart, boolean isEnd) {
 		double distance = Vector3d.distance(startwx, startwy, startwz, endwx, endwy, endwz);
 		Random rand = new Random(seed);
 		if(distance < 32) {
 			// No more branches below that level to avoid crowded caves.
-			generateCaveBetween(rand.nextLong(), map, startwx, startwy, startwz, endwx, endwy, endwz, biasx, biasy, biasz, startRadius, endRadius, randomness);
+			generateCaveBetween(rand.nextLong(), map, startwx, startwy, startwz, endwx, endwy, endwz, biasX, biasY, biasZ, startRadius, endRadius, randomness);
 			// Small chance to branch off:
 			if(!isStart && rand.nextFloat() < BRANCH_CHANCE && branchLength > 8) {
 				endwx = startwx + branchLength*(2*rand.nextFloat() - 1);
@@ -167,10 +167,10 @@ public class FractalCaveGenerator implements CaveGenerator {
 					endwz = centerwz + (endwz - centerwz)/distanceToSeedPoint*((RANGE - 1)*CHUNK_SIZE);
 				}
 				startRadius = (startRadius - MIN_RADIUS)*rand.nextFloat() + MIN_RADIUS;
-				biasx = branchLength*(rand.nextDouble()*2 - 1);
-				biasy = branchLength*(rand.nextDouble() - 0.5);
-				biasz = branchLength*(rand.nextDouble()*2 - 1);
-				generateBranchingCaveBetween(rand.nextLong(), map, startwx, startwy, startwz, endwx, endwy, endwz, biasx, biasy, biasz, startRadius, MIN_RADIUS, centerwx, centerwy, centerwz, branchLength/2, Math.min(0.5f, randomness + randomness*rand.nextFloat()*rand.nextFloat()), true, true);
+				biasX = branchLength*(rand.nextDouble()*2 - 1);
+				biasY = branchLength*(rand.nextDouble() - 0.5);
+				biasZ = branchLength*(rand.nextDouble()*2 - 1);
+				generateBranchingCaveBetween(rand.nextLong(), map, startwx, startwy, startwz, endwx, endwy, endwz, biasX, biasY, biasZ, startRadius, MIN_RADIUS, centerwx, centerwy, centerwz, branchLength/2, Math.min(0.5f, randomness + randomness*rand.nextFloat()*rand.nextFloat()), true, true);
 			}
 			return;
 		}
@@ -182,33 +182,46 @@ public class FractalCaveGenerator implements CaveGenerator {
 		double w2 = weight*weight;
 		// Small chance to generate a split:
 		if(!isStart && !isEnd && distance < MAX_SPLIT_LENGTH && rand.nextFloat() < SPLITTING_CHANCE) {
-			biasx += distance*SPLIT_FACTOR*(rand.nextFloat() - 0.5);
-			biasy += distance*SPLIT_FACTOR_Y*(rand.nextFloat() - 0.5);
-			biasz += distance*SPLIT_FACTOR*(rand.nextFloat() - 0.5);
+			// Find a random direction perpendicular to the current cave direction:
+			double splitX = rand.nextFloat() - 0.5f;
+			double splitY = Y_SPLIT_REDUCTION*(rand.nextFloat() - 0.5f);
+			// Normalize
+			double splitLength = (float)Math.sqrt(splitX*splitX + splitY*splitY);
+			splitX /= splitLength;
+			splitY /= splitLength;
+			// Calculate bias offsets:
+			double biasLength = Math.sqrt(biasX*biasX + biasY*biasY + biasZ*biasZ);
+			double offsetY = splitY*SPLIT_FACTOR*distance;
+			double offsetX = splitX*SPLIT_FACTOR*distance * biasZ/biasLength;
+			double offsetZ = -splitX*SPLIT_FACTOR*distance * biasX/biasLength;
+
+			biasX += offsetX;
+			biasY += offsetY;
+			biasZ += offsetZ;
 			
-			double midwx = startwx*weight + endwx*(1 - weight) + maxFractalShift*(2*rand.nextFloat() - 1) + biasx*weight*(1 - weight);
-			double midwy = startwy*weight + endwy*(1 - weight) + maxFractalShift*(2*rand.nextFloat() - 1) + biasy*weight*(1 - weight);
-			double midwz = startwz*weight + endwz*(1 - weight) + maxFractalShift*(2*rand.nextFloat() - 1) + biasz*weight*(1 - weight);
+			double midwx = startwx*weight + endwx*(1 - weight) + maxFractalShift*(2*rand.nextFloat() - 1) + biasX*weight*(1 - weight);
+			double midwy = startwy*weight + endwy*(1 - weight) + maxFractalShift*(2*rand.nextFloat() - 1) + biasY*weight*(1 - weight);
+			double midwz = startwz*weight + endwz*(1 - weight) + maxFractalShift*(2*rand.nextFloat() - 1) + biasZ*weight*(1 - weight);
 			double midRadius = (startRadius + endRadius)/2 + maxFractalShift*(2*rand.nextFloat() - 1)*HEIGHT_VARIANCE;
 			midRadius = Math.max(midRadius, MIN_RADIUS);
-			generateBranchingCaveBetween(rand.nextLong(), map, startwx, startwy, startwz, midwx, midwy, midwz, biasx*w1, biasy*w1, biasz*w1, startRadius, midRadius, centerwx, centerwy, centerwz, branchLength, randomness, isStart, false);
-			generateBranchingCaveBetween(rand.nextLong(), map, midwx, midwy, midwz, endwx, endwy, endwz, biasx*w2, biasy*w2, biasz*w2, midRadius, endRadius, centerwx, centerwy, centerwz, branchLength, randomness, false, isEnd);
+			generateBranchingCaveBetween(rand.nextLong(), map, startwx, startwy, startwz, midwx, midwy, midwz, biasX*w1, biasY*w1, biasZ*w1, startRadius, midRadius, centerwx, centerwy, centerwz, branchLength, randomness, isStart, false);
+			generateBranchingCaveBetween(rand.nextLong(), map, midwx, midwy, midwz, endwx, endwy, endwz, biasX*w2, biasY*w2, biasZ*w2, midRadius, endRadius, centerwx, centerwy, centerwz, branchLength, randomness, false, isEnd);
 			
 			// Do some tweaking to the variables before making the second part:
-			biasx = -biasx;
-			biasy = -biasy;
-			biasz = -biasz;
+			biasX -= 2*offsetX;
+			biasY -= 2*offsetY;
+			biasZ -= 2*offsetZ;
 			startRadius = (startRadius - MIN_RADIUS)*rand.nextFloat() + MIN_RADIUS;
 			endRadius = (startRadius - MIN_RADIUS)*rand.nextFloat() + MIN_RADIUS;
 		}
 		// Divide it into smaller segments and slightly randomize them:
-		double midwx = startwx*weight + endwx*(1 - weight) + maxFractalShift*(2*rand.nextFloat() - 1) + biasx*weight*(1 - weight);
-		double midwy = startwy*weight + endwy*(1 - weight) + maxFractalShift*(2*rand.nextFloat() - 1) + biasy*weight*(1 - weight);
-		double midwz = startwz*weight + endwz*(1 - weight) + maxFractalShift*(2*rand.nextFloat() - 1) + biasz*weight*(1 - weight);
+		double midwx = startwx*weight + endwx*(1 - weight) + maxFractalShift*(2*rand.nextFloat() - 1) + biasX*weight*(1 - weight);
+		double midwy = startwy*weight + endwy*(1 - weight) + maxFractalShift*(2*rand.nextFloat() - 1) + biasY*weight*(1 - weight);
+		double midwz = startwz*weight + endwz*(1 - weight) + maxFractalShift*(2*rand.nextFloat() - 1) + biasZ*weight*(1 - weight);
 		double midRadius = (startRadius + endRadius)/2 + maxFractalShift*(2*rand.nextFloat() - 2)*HEIGHT_VARIANCE;
 		midRadius = Math.max(midRadius, MIN_RADIUS);
-		generateBranchingCaveBetween(rand.nextLong(), map, startwx, startwy, startwz, midwx, midwy, midwz, biasx*w1, biasy*w1, biasz*w1, startRadius, midRadius, centerwx, centerwy, centerwz, branchLength, randomness, isStart, false);
-		generateBranchingCaveBetween(rand.nextLong(), map, midwx, midwy, midwz, endwx, endwy, endwz, biasx*w2, biasy*w2, biasz*w2, midRadius, endRadius, centerwx, centerwy, centerwz, branchLength, randomness, false, isEnd);
+		generateBranchingCaveBetween(rand.nextLong(), map, startwx, startwy, startwz, midwx, midwy, midwz, biasX*w1, biasY*w1, biasZ*w1, startRadius, midRadius, centerwx, centerwy, centerwz, branchLength, randomness, isStart, false);
+		generateBranchingCaveBetween(rand.nextLong(), map, midwx, midwy, midwz, endwx, endwy, endwz, biasX*w2, biasY*w2, biasZ*w2, midRadius, endRadius, centerwx, centerwy, centerwz, branchLength, randomness, false, isEnd);
 	}
 
 	private void considerCoordinates(int x, int y, int z, CaveMapFragment map, Random3D rand) {
