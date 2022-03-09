@@ -236,16 +236,18 @@ public class RenderOctTree {
 
 		outer:
 		while (node.mesh.voxelSize != chunkData.voxelSize) {
-			if (node.nextNodes == null) return null;
-			for(int i = 0; i < 8; i++) {
-				if (node.nextNodes[i].x <= chunkData.wx && node.nextNodes[i].x + node.nextNodes[i].size > chunkData.wx
-				        && node.nextNodes[i].y <= chunkData.wy && node.nextNodes[i].y + node.nextNodes[i].size > chunkData.wy
-				        && node.nextNodes[i].z <= chunkData.wz && node.nextNodes[i].z + node.nextNodes[i].size > chunkData.wz) {
-					node = node.nextNodes[i];
-					continue outer;
+			synchronized(node) {
+				if (node.nextNodes == null) return null;
+				for (int i = 0; i < 8; i++) {
+					if (node.nextNodes[i].x <= chunkData.wx && node.nextNodes[i].x + node.nextNodes[i].size > chunkData.wx
+							&& node.nextNodes[i].y <= chunkData.wy && node.nextNodes[i].y + node.nextNodes[i].size > chunkData.wy
+							&& node.nextNodes[i].z <= chunkData.wz && node.nextNodes[i].z + node.nextNodes[i].size > chunkData.wz) {
+						node = node.nextNodes[i];
+						continue outer;
+					}
 				}
+				return null;
 			}
-			return null;
 		}
 
 		return node;
