@@ -57,7 +57,7 @@ public class CrystalCavernGenerator implements Generator {
 	
 	@Override
 	public Resource getRegistryID() {
-		return new Resource("cubyz", "lifeland_crystal_cavern");
+		return new Resource("cubyz", "crystal_cavern");
 	}
 	
 	@Override

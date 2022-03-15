@@ -5,10 +5,8 @@ import java.util.Random;
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Resource;
 import cubyz.world.Chunk;
-import cubyz.world.ChunkManager;
 import cubyz.world.terrain.CaveBiomeMap;
 import cubyz.world.terrain.CaveMap;
-import cubyz.world.terrain.MapFragment;
 import cubyz.world.terrain.biomes.Biome;
 import cubyz.world.terrain.biomes.StructureModel;
 import cubyz.world.terrain.noise.StaticBlueNoise;
@@ -28,7 +26,7 @@ public class StructureGenerator implements Generator {
 	
 	@Override
 	public Resource getRegistryID() {
-		return new Resource("cubyz", "lifeland_vegetation");
+		return new Resource("cubyz", "vegetation");
 	}
 	
 	@Override

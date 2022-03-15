@@ -148,7 +148,8 @@ public class Blocks implements DataOrientedRegistry {
 			Logger.error("Couldn't find block "+id+". Replacing it with air...");
 			return 0;
 		}
-		return reverseIndices.getOrDefault(id, 0);
+		int result = reverseIndices.getOrDefault(id, 0);
+		return Blocks.mode(result).getNaturalStandard(result);
 	}
 
 	/**

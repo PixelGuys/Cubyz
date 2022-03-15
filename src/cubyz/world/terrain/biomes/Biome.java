@@ -6,6 +6,7 @@ import cubyz.api.RegistryElement;
 import cubyz.api.Resource;
 import cubyz.utils.datastructures.ChanceObject;
 import cubyz.utils.datastructures.FastList;
+import cubyz.world.blocks.Blocks;
 import pixelguys.json.JsonArray;
 import pixelguys.json.JsonElement;
 import pixelguys.json.JsonObject;
@@ -60,6 +61,7 @@ public class Biome extends ChanceObject implements RegistryElement {
 	public final float roughness;
 	public final float hills;
 	public final float mountains;
+	public final int stoneBlock;
 	private final Resource identifier;
 	public final BlockStructure struct;
 	/** Whether the starting point of a river can be in this biome. If false rivers will be able to flow through this biome anyways. */
@@ -75,6 +77,7 @@ public class Biome extends ChanceObject implements RegistryElement {
 		super(json.getFloat("chance", 1));
 		this.type = Type.valueOf(json.getString("type", "grassland").toUpperCase());
 		identifier = id;
+		stoneBlock = Blocks.getByID(json.getString("stoneBlock", "cubyz:stone"));
 		this.roughness = json.getFloat("roughness", 0);
 		this.hills = json.getFloat("hills", 0);
 		this.mountains = json.getFloat("mountains", 0);

@@ -21,7 +21,7 @@ public class OreGenerator implements Generator {
 	
 	@Override
 	public Resource getRegistryID() {
-		return new Resource("cubyz", "lifeland_ore");
+		return new Resource("cubyz", "ore");
 	}
 	
 	@Override

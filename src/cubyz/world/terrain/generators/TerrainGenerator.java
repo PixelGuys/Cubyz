@@ -8,7 +8,6 @@ import cubyz.world.Chunk;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.terrain.CaveBiomeMap;
 import cubyz.world.terrain.CaveMap;
-import cubyz.world.terrain.MapFragment;
 import cubyz.world.terrain.biomes.Biome;
 import pixelguys.json.JsonObject;
 
@@ -17,14 +16,11 @@ import pixelguys.json.JsonObject;
  */
 
 public class TerrainGenerator implements Generator {
-	
-	private int stone;
 	private int water;
 
 	@Override
 	public void init(JsonObject parameters, CurrentWorldRegistries registries) {
 		water = Blocks.getByID("cubyz:water");
-		stone = Blocks.getByID("cubyz:stone");
 	}
 	
 	@Override
@@ -34,15 +30,15 @@ public class TerrainGenerator implements Generator {
 	
 	@Override
 	public Resource getRegistryID() {
-		return new Resource("cubyz", "lifeland_terrain");
+		return new Resource("cubyz", "terrain");
 	}
 
 	@Override
 	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, CaveMap caveMap, CaveBiomeMap biomeMap) {
 		Random rand = new Random(seed);
-		int seedX = rand.nextInt() | 1;
-		int seedY = rand.nextInt() | 1;
-		int seedZ = rand.nextInt() | 1;
+		long seedX = rand.nextInt() | 1;
+		long seedY = rand.nextInt() | 1;
+		long seedZ = rand.nextInt() | 1;
 		for(int x = 0; x < chunk.getWidth(); x += chunk.voxelSize) {
 			for(int z = 0; z < chunk.getWidth(); z += chunk.voxelSize) {
 				int heightData = caveMap.getHeightData(x, z);
@@ -60,7 +56,7 @@ public class TerrainGenerator implements Generator {
 							makeSurfaceStructure = false;
 						} else {
 							Biome biome = biomeMap.getBiome(x, y, z);
-							chunk.updateBlockInGeneration(x, y, z, stone);
+							chunk.updateBlockInGeneration(x, y, z, biome.stoneBlock);
 						}
 					} else {
 						if(y + wy < 0 && y + wy >= (int)biomeMap.getSurfaceHeight(x + wx, z + wz) - (chunk.voxelSize - 1)) {

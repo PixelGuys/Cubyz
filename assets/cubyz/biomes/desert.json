@@ -18,5 +18,6 @@
 			"height" : 2,
 			"height_variation" : 3
 		}
-	]
+	],
+	"stoneBlock" : "cubyz:sandstone"
 }

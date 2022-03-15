@@ -11,9 +11,10 @@
 	"validPlayerSpawn" : true,
 	
 	"ground_structure" : [
-		"cubyz:grass",
-		"2 to 3 cubyz:soil"
+		"cubyz:grass"
 	],
+	"stoneBlock" : "cubyz:soil",
+
 	"structures" : [
 		{
 			"id" : "cubyz:simple_tree",
