@@ -6,6 +6,7 @@ import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Resource;
 import cubyz.world.Chunk;
 import cubyz.world.ChunkManager;
+import cubyz.world.terrain.CaveBiomeMap;
 import cubyz.world.terrain.CaveMap;
 import cubyz.world.terrain.MapFragment;
 import cubyz.world.terrain.biomes.Biome;
@@ -84,6 +85,7 @@ public class StructureGenerator implements Generator {
 			pp = manager.getOrGenerateMapFragment(wx + ((wx & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth() ? MapFragment.MAP_SIZE : 0), wz + MapFragment.MAP_SIZE, chunk.voxelSize);
 		}
 		int stepSize = chunk.voxelSize;
+		CaveBiomeMap biomeMap = new CaveBiomeMap(chunk.world, chunk);
 		if (stepSize < 4) {
 			// Uses a blue noise pattern for all structure that shouldn't touch.
 			int[] blueNoise = StaticBlueNoise.getRegionData(chunk.wx - 8, chunk.wz - 8, chunk.getWidth() + 16, chunk.getWidth() + 16);
@@ -94,7 +96,7 @@ public class StructureGenerator implements Generator {
 				int wpz = pz + wz;
 
 				MapFragment cur = getMapFragment(map, nn, np, pn, pp, no, po, on, op, px + 8, pz + 8, chunk.getWidth());
-				Biome biome = cur.getBiome(wpx & ~(chunk.voxelSize - 1), wpz & ~(chunk.voxelSize - 1));
+				//Biome biome = cur.getBiome(wpx & ~(chunk.voxelSize - 1), wpz & ~(chunk.voxelSize - 1));
 				for(int py = -32; py <= chunk.getWidth(); py += 32) {
 					int wpy = py + wy;
 					rand.setSeed((wpx*rand1 << 32) ^ wpz*rand2 ^ wpy*rand3 ^ seed);
@@ -106,6 +108,7 @@ public class StructureGenerator implements Generator {
 						relY = caveMap.findTerrainChangeBelow(px, pz, relY) + chunk.voxelSize;
 					}
 					if(relY < py || relY >= py + 32) continue;
+					Biome biome = biomeMap.getBiome(px, relY, pz);
 					float randomValue = rand.nextFloat();
 					for(StructureModel model : biome.vegetationModels) {
 						float adaptedChance = model.getChance() * 16;
@@ -132,6 +135,7 @@ public class StructureGenerator implements Generator {
 					float randomValue = rand.nextFloat();
 					MapFragment cur = getMapFragment(map, nn, np, pn, pp, no, po, on, op, px, pz, chunk.getWidth());
 					Biome biome = cur.getBiome(wpx, wpz);
+					//Biome biome = biomeMap.getBiome(px, (int)cur.getHeight(wpx, wpz) - wy, pz);
 					for(StructureModel model : biome.vegetationModels) {
 						float adaptedChance = model.getChance();
 						if (stepSize != 1) {

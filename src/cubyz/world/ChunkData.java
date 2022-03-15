@@ -27,7 +27,8 @@ public class ChunkData implements Comparable<ChunkData> {
 
 	@Override
 	public int hashCode() {
-		return (((wx >> Integer.numberOfTrailingZeros(wx)) * 31 + (wy >> Integer.numberOfTrailingZeros(wy))) * 31 + (wz >> Integer.numberOfTrailingZeros(wz))) * 31 + voxelSize;
+		int shift = Math.min(Integer.numberOfTrailingZeros(wx), Math.min(Integer.numberOfTrailingZeros(wy), Integer.numberOfTrailingZeros(wz)));
+		return (((wx >> shift) * 31 + (wy >> shift)) * 31 + (wz >> shift)) * 31 + voxelSize;
 	}
 
 	public void updatePriority(Player source) {

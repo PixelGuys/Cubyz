@@ -6,8 +6,10 @@ import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Resource;
 import cubyz.world.Chunk;
 import cubyz.world.blocks.Blocks;
+import cubyz.world.terrain.CaveBiomeMap;
 import cubyz.world.terrain.CaveMap;
 import cubyz.world.terrain.MapFragment;
+import cubyz.world.terrain.biomes.Biome;
 import pixelguys.json.JsonObject;
 
 /**
@@ -41,6 +43,7 @@ public class TerrainGenerator implements Generator {
 		int seedX = rand.nextInt() | 1;
 		int seedY = rand.nextInt() | 1;
 		int seedZ = rand.nextInt() | 1;
+		CaveBiomeMap biomeMap = new CaveBiomeMap(chunk.world, chunk);
 		for(int x = 0; x < chunk.getWidth(); x += chunk.voxelSize) {
 			for(int z = 0; z < chunk.getWidth(); z += chunk.voxelSize) {
 				int heightData = caveMap.getHeightData(x, z);
@@ -52,9 +55,12 @@ public class TerrainGenerator implements Generator {
 							int surfaceBlock = caveMap.findTerrainChangeAbove(x, z, y) - chunk.voxelSize;
 							rand.setSeed((seedX*(wx + x) << 32) ^ seedY*(wy + y) ^ seedZ*(wz + z));
 							// Add the biomes surface structure:
-							y = Math.min(y + chunk.voxelSize, map.getBiome(wx + x, wz + z).struct.addSubTerranian(chunk, surfaceBlock, caveMap.findTerrainChangeBelow(x, z, surfaceBlock), x, z, rand));
+							//Biome biome = map.getBiome(wx + x, wz + z);
+							Biome biome = biomeMap.getBiome(x, y, z);
+							y = Math.min(y + chunk.voxelSize, biome.struct.addSubTerranian(chunk, surfaceBlock, caveMap.findTerrainChangeBelow(x, z, surfaceBlock), x, z, rand));
 							makeSurfaceStructure = false;
 						} else {
+							Biome biome = biomeMap.getBiome(x, y, z);
 							chunk.updateBlockInGeneration(x, y, z, stone);
 						}
 					} else {

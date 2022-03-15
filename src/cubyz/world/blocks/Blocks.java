@@ -2,6 +2,7 @@ package cubyz.world.blocks;
 
 import java.util.HashMap;
 
+import cubyz.rendering.rotation.NoRotation;
 import org.joml.Vector3i;
 
 import cubyz.utils.Logger;
@@ -185,7 +186,7 @@ public class Blocks implements DataOrientedRegistry {
 		selectable[0] = false;
 		solid[0] = false;
 		gui[0] = null;
-		mode[0] = null;
+		mode[0] = new NoRotation();
 		transparent[0] = true;
 		viewThrough[0] = true;
 		blockDrops[0] = new BlockDrop[0];
