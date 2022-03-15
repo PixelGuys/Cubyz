@@ -3,6 +3,7 @@ package cubyz.world.terrain.generators;
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.RegistryElement;
 import cubyz.world.Chunk;
+import cubyz.world.terrain.CaveBiomeMap;
 import cubyz.world.terrain.CaveMap;
 import cubyz.world.terrain.MapFragment;
 import pixelguys.json.JsonObject;
@@ -21,7 +22,7 @@ public interface Generator extends RegistryElement {
 	void init(JsonObject parameters, CurrentWorldRegistries registries);
 	
 	int getPriority(); // Used to prioritize certain generators(like map generation) over others(like vegetation generation).
-	void generate(long seed, int wx, int wy, int wz, Chunk chunk, CaveMap caveMap, MapFragment map);
+	void generate(long seed, int wx, int wy, int wz, Chunk chunk, CaveMap caveMap, CaveBiomeMap biomeMap);
 	
 	/**
 	 * To avoid duplicate seeds in similar generation algorithms, the SurfaceGenerator xors the world-seed with the generator specific seed.

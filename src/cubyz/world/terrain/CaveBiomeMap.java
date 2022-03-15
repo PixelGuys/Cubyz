@@ -62,6 +62,17 @@ public class CaveBiomeMap {
 		return surfaceFragments[index].getBiome(wx, wz);
 	}
 
+	public float getSurfaceHeight(int wx, int wz) {
+		int index = 0;
+		if(wx - surfaceFragments[0].wx >= MapFragment.MAP_SIZE) {
+			index += 2;
+		}
+		if(wz - surfaceFragments[0].wz >= MapFragment.MAP_SIZE) {
+			index += 1;
+		}
+		return surfaceFragments[index].getHeight(wx, wz);
+	}
+
 	public Biome getBiome(int relX, int relY, int relZ) {
 		// TODO: return surface biome if close to surface.
 		assert relX >= -32 && relX < reference.getWidth() + 32 : "x coordinate out of bounds: " + relX;

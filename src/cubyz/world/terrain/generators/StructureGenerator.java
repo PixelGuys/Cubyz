@@ -36,56 +36,13 @@ public class StructureGenerator implements Generator {
 		return 131072; // Comes somewhere after cave generation.
 	}
 
-	private static MapFragment getMapFragment(MapFragment map, MapFragment nn, MapFragment np, MapFragment pn, MapFragment pp, MapFragment no, MapFragment po, MapFragment on, MapFragment op, int px, int pz, int width) {
-		if (px < 8) {
-			if (pz < 8) return nn;
-			if (width + 16 - pz <= 8) return np;
-			return no;
-		}
-		if (width + 16 - px <= 8) {
-			if (pz < 8) return pn;
-			if (width + 16 - pz <= 8) return pp;
-			return po;
-		}
-		if (pz < 8) return on;
-		if (width + 16 - pz <= 8) return op;
-		return map;
-	}
-
 	@Override
-	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, CaveMap caveMap, MapFragment map) {
+	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, CaveMap caveMap, CaveBiomeMap biomeMap) {
 		Random rand = new Random(seed + 3*(seed + 1 & Integer.MAX_VALUE));
 		long rand1 = rand.nextInt() | 1;
 		long rand2 = rand.nextInt() | 1;
 		long rand3 = rand.nextInt() | 1;
-		// Get the regions for the surrounding regions:
-		MapFragment nn = map;
-		MapFragment np = map;
-		MapFragment pn = map;
-		MapFragment pp = map;
-		MapFragment no = map;
-		MapFragment po = map;
-		MapFragment on = map;
-		MapFragment op = map;
-		ChunkManager manager = chunk.world.chunkManager;
-		if ((wx & MapFragment.MAP_MASK) <= 8) {
-			no = nn = np = manager.getOrGenerateMapFragment(wx - MapFragment.MAP_SIZE, wz, chunk.voxelSize);
-		}
-		if ((wx & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth()) {
-			po = pn = pp = manager.getOrGenerateMapFragment(wx + MapFragment.MAP_SIZE, wz, chunk.voxelSize);
-		}
-		if ((wz & MapFragment.MAP_MASK) <= 8) {
-			on = manager.getOrGenerateMapFragment(wx, wz - MapFragment.MAP_SIZE, chunk.voxelSize);
-			nn = manager.getOrGenerateMapFragment(wx - ((wx & MapFragment.MAP_MASK) <= 8 ? MapFragment.MAP_SIZE : 0), wz - MapFragment.MAP_SIZE, chunk.voxelSize);
-			pn = manager.getOrGenerateMapFragment(wx + ((wx & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth() ? MapFragment.MAP_SIZE : 0), wz - MapFragment.MAP_SIZE, chunk.voxelSize);
-		}
-		if ((wz & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth()) {
-			op = manager.getOrGenerateMapFragment(wx, wz + MapFragment.MAP_SIZE, chunk.voxelSize);
-			np = manager.getOrGenerateMapFragment(wx - ((wx & MapFragment.MAP_MASK) <= 8 ? MapFragment.MAP_SIZE : 0), wz + MapFragment.MAP_SIZE, chunk.voxelSize);
-			pp = manager.getOrGenerateMapFragment(wx + ((wx & MapFragment.MAP_MASK) >= MapFragment.MAP_SIZE - 8 - chunk.getWidth() ? MapFragment.MAP_SIZE : 0), wz + MapFragment.MAP_SIZE, chunk.voxelSize);
-		}
 		int stepSize = chunk.voxelSize;
-		CaveBiomeMap biomeMap = new CaveBiomeMap(chunk.world, chunk);
 		if (stepSize < 4) {
 			// Uses a blue noise pattern for all structure that shouldn't touch.
 			int[] blueNoise = StaticBlueNoise.getRegionData(chunk.wx - 8, chunk.wz - 8, chunk.getWidth() + 16, chunk.getWidth() + 16);
@@ -95,8 +52,6 @@ public class StructureGenerator implements Generator {
 				int wpx = px + wx;
 				int wpz = pz + wz;
 
-				MapFragment cur = getMapFragment(map, nn, np, pn, pp, no, po, on, op, px + 8, pz + 8, chunk.getWidth());
-				//Biome biome = cur.getBiome(wpx & ~(chunk.voxelSize - 1), wpz & ~(chunk.voxelSize - 1));
 				for(int py = -32; py <= chunk.getWidth(); py += 32) {
 					int wpy = py + wy;
 					rand.setSeed((wpx*rand1 << 32) ^ wpz*rand2 ^ wpy*rand3 ^ seed);
@@ -127,15 +82,16 @@ public class StructureGenerator implements Generator {
 				for(int pz = 0; pz < chunk.getWidth() + 16; pz += stepSize) {
 					int wpx = px - 8 + wx;
 					int wpz = pz - 8 + wz;
-					rand.setSeed((wpx*rand1 << 32) ^ wpz*rand2 ^ seed);
 					// Make sure the coordinates are inside the resolution grid of the Regions internal array:
 					wpx = wpx & ~(chunk.voxelSize - 1);
 					wpz = wpz & ~(chunk.voxelSize - 1);
+
+					int relY = (int)biomeMap.getSurfaceHeight(wpx, wpz) - wy;
+					if(relY < -32 || relY >= chunk.getWidth() + 32) continue;
 					
+					rand.setSeed((wpx*rand1 << 32) ^ wpz*rand2 ^ seed);
 					float randomValue = rand.nextFloat();
-					MapFragment cur = getMapFragment(map, nn, np, pn, pp, no, po, on, op, px, pz, chunk.getWidth());
-					Biome biome = cur.getBiome(wpx, wpz);
-					//Biome biome = biomeMap.getBiome(px, (int)cur.getHeight(wpx, wpz) - wy, pz);
+					Biome biome = biomeMap.getBiome(px, relY, pz);
 					for(StructureModel model : biome.vegetationModels) {
 						float adaptedChance = model.getChance();
 						if (stepSize != 1) {
@@ -143,7 +99,7 @@ public class StructureGenerator implements Generator {
 							adaptedChance = 1 - (float)Math.pow(1 - adaptedChance, stepSize*stepSize);
 						}
 						if (adaptedChance > randomValue) {
-							model.generate(px - 8, pz - 8, (int)cur.getHeight(wpx, wpz) - wy, chunk, caveMap, rand);
+							model.generate(px - 8, pz - 8, relY, chunk, caveMap, rand);
 							break;
 						} else {
 							// Make sure that after the first one was considered all others get the correct chances.

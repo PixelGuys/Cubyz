@@ -7,6 +7,7 @@ import cubyz.api.Resource;
 import cubyz.world.Chunk;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.Blocks.BlockClass;
+import cubyz.world.terrain.CaveBiomeMap;
 import cubyz.world.terrain.CaveMap;
 import cubyz.world.terrain.MapFragment;
 import pixelguys.json.JsonObject;
@@ -65,7 +66,7 @@ public class CrystalCavernGenerator implements Generator {
 	}
 
 	@Override
-	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, CaveMap caveMap, MapFragment map) {
+	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, CaveMap caveMap, CaveBiomeMap biomeMap) {
 		if (chunk.voxelSize > 2) return;
 		int ccx = wx/CRYSTAL_CHUNK_SIZE;
 		int ccy = wy/CRYSTAL_CHUNK_SIZE;

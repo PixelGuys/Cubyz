@@ -1,5 +1,6 @@
 package cubyz.world;
 
+import cubyz.world.terrain.CaveBiomeMap;
 import org.joml.Vector3d;
 
 import cubyz.client.ClientSettings;
@@ -43,7 +44,7 @@ public abstract class Chunk extends SavableChunk {
 	 * for(int x = start; x < end; x++)<br>
 	 * for(int x = chunk.startIndex(start); x < end; x += chunk.getVoxelSize())<br>
 	 * should be used to only activate those voxels that are used in Cubyz's downscaling technique.
-	 * @param index The normal starting index(for normal generation).
+	 * @param start The normal starting index(for normal generation).
 	 * @return the next higher index that is inside the grid of this chunk.
 	 */
 	public abstract int startIndex(int start);
@@ -91,16 +92,17 @@ public abstract class Chunk extends SavableChunk {
 	/**
 	 * Generates this chunk.
 	 * If the chunk was already saved it is loaded from file instead.
-	 * @param gen
+	 * @param seed
+	 * @param terrainGenerationProfile
 	 */
 	public void generate(long seed, TerrainGenerationProfile terrainGenerationProfile) {
 		assert !generated : "Seriously, why would you generate this chunk twice???";
 		if(!ChunkIO.loadChunkFromFile(world, this)) {
-			MapFragment containing = world.chunkManager.getOrGenerateMapFragment(wx, wz, voxelSize);
 			CaveMap caveMap = new CaveMap(world, this);
+			CaveBiomeMap biomeMap = new CaveBiomeMap(world, this);
 			
 			for (Generator g : terrainGenerationProfile.generators) {
-				g.generate(seed ^ g.getGeneratorSeed(), wx, wy, wz, this, caveMap, containing);
+				g.generate(seed ^ g.getGeneratorSeed(), wx, wy, wz, this, caveMap, biomeMap);
 			}
 		}
 		generated = true;

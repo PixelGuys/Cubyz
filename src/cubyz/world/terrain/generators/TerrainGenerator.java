@@ -38,12 +38,11 @@ public class TerrainGenerator implements Generator {
 	}
 
 	@Override
-	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, CaveMap caveMap, MapFragment map) {
+	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, CaveMap caveMap, CaveBiomeMap biomeMap) {
 		Random rand = new Random(seed);
 		int seedX = rand.nextInt() | 1;
 		int seedY = rand.nextInt() | 1;
 		int seedZ = rand.nextInt() | 1;
-		CaveBiomeMap biomeMap = new CaveBiomeMap(chunk.world, chunk);
 		for(int x = 0; x < chunk.getWidth(); x += chunk.voxelSize) {
 			for(int z = 0; z < chunk.getWidth(); z += chunk.voxelSize) {
 				int heightData = caveMap.getHeightData(x, z);
@@ -64,7 +63,7 @@ public class TerrainGenerator implements Generator {
 							chunk.updateBlockInGeneration(x, y, z, stone);
 						}
 					} else {
-						if(y + wy < 0 && y + wy >= (int)map.getHeight(x + wx, z + wz) - (chunk.voxelSize - 1)) {
+						if(y + wy < 0 && y + wy >= (int)biomeMap.getSurfaceHeight(x + wx, z + wz) - (chunk.voxelSize - 1)) {
 							chunk.updateBlockInGeneration(x, y, z, water);
 						} else {
 							chunk.updateBlockInGeneration(x, y, z, 0);
