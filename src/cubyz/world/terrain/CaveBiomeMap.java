@@ -18,6 +18,8 @@ public class CaveBiomeMap {
 
 	private final CaveBiomeMapFragment[] fragments = new CaveBiomeMapFragment[8];
 
+	private final MapFragment[] surfaceFragments = new MapFragment[4];
+
 	private final Cached3DFractalNoise noiseX, noiseY, noiseZ;
 
 	public CaveBiomeMap(World world, Chunk chunk) {
@@ -41,6 +43,23 @@ public class CaveBiomeMap {
 		fragments[5] = getOrGenerateFragment(world, chunk.wx + CaveBiomeMapFragment.CAVE_BIOME_MAP_SIZE/2, chunk.wy - CaveBiomeMapFragment.CAVE_BIOME_MAP_SIZE/2, chunk.wz + CaveBiomeMapFragment.CAVE_BIOME_MAP_SIZE/2);
 		fragments[6] = getOrGenerateFragment(world, chunk.wx + CaveBiomeMapFragment.CAVE_BIOME_MAP_SIZE/2, chunk.wy + CaveBiomeMapFragment.CAVE_BIOME_MAP_SIZE/2, chunk.wz - CaveBiomeMapFragment.CAVE_BIOME_MAP_SIZE/2);
 		fragments[7] = getOrGenerateFragment(world, chunk.wx + CaveBiomeMapFragment.CAVE_BIOME_MAP_SIZE/2, chunk.wy + CaveBiomeMapFragment.CAVE_BIOME_MAP_SIZE/2, chunk.wz + CaveBiomeMapFragment.CAVE_BIOME_MAP_SIZE/2);
+		surfaceFragments[0] = world.chunkManager.getOrGenerateMapFragment(chunk.wx - 32, chunk.wz - 32, chunk.voxelSize);
+		surfaceFragments[1] = world.chunkManager.getOrGenerateMapFragment(chunk.wx - 32, chunk.wz + chunk.getWidth() + 32, chunk.voxelSize);
+		surfaceFragments[2] = world.chunkManager.getOrGenerateMapFragment(chunk.wx + chunk.getWidth() + 32, chunk.wz - 32, chunk.voxelSize);
+		surfaceFragments[3] = world.chunkManager.getOrGenerateMapFragment(chunk.wx + chunk.getWidth() + 32, chunk.wz + chunk.getWidth() + 32, chunk.voxelSize);
+	}
+
+	private Biome checkSurfaceBiome(int wx, int wy, int wz) {
+		int index = 0;
+		if(wx - surfaceFragments[0].wx >= MapFragment.MAP_SIZE) {
+			index += 2;
+		}
+		if(wz - surfaceFragments[0].wz >= MapFragment.MAP_SIZE) {
+			index += 1;
+		}
+		float height = surfaceFragments[index].getHeight(wx, wz);
+		if(wy < height -32 || wy > height + 128) return null;
+		return surfaceFragments[index].getBiome(wx, wz);
 	}
 
 	public Biome getBiome(int relX, int relY, int relZ) {
@@ -51,6 +70,8 @@ public class CaveBiomeMap {
 		int wx = relX + reference.wx;
 		int wy = relY + reference.wy;
 		int wz = relZ + reference.wz;
+		Biome check = checkSurfaceBiome(wx, wy, wz);
+		if(check != null) return check;
 		if(noiseX != null) {
 			//                                                  ↓ intentionally cycled the noises to get different seeds.
 			float valueX = noiseX.getValue(wx, wy, wz)*0.5f + noiseY.getRandomValue(wx, wy, wz)*8;
