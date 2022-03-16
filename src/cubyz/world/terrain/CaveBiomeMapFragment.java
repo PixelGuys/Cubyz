@@ -1,5 +1,6 @@
 package cubyz.world.terrain;
 
+import cubyz.utils.datastructures.RandomList;
 import cubyz.world.ChunkData;
 import cubyz.world.World;
 import cubyz.world.terrain.biomes.Biome;
@@ -28,10 +29,9 @@ public class CaveBiomeMapFragment extends ChunkData {
 		long rand2 = rand.nextLong() | 1;
 		long rand3 = rand.nextLong() | 1;
 		rand.setSeed(wx*rand1 ^ wy*rand2 ^ wz*rand3);
-		// TODO: Proper biome registry.
-		Biome[] biomes = world.registries.biomeRegistry.registered(new Biome[0]);
+		RandomList<Biome> biomes = world.registries.biomeRegistry.byTypeBiomes.get(Biome.Type.CAVE);
 		for(int i = 0; i < biomeMap.length; i++) {
-			biomeMap[i] = biomes[rand.nextInt(biomes.length)];
+			biomeMap[i] = biomes.getRandomly(rand);
 		}
 	}
 

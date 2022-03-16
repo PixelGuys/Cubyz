@@ -52,8 +52,8 @@ public class Biome extends ChanceObject implements RegistryElement {
 		/**arctic ocean(ice sheets)*/
 		ARCTIC_OCEAN,
 		
-		/**deep ocean trench*/
-		TRENCH
+		/**underground caves*/
+		CAVE
 	}
 	
 	public final Type type;
@@ -133,11 +133,6 @@ public class Biome extends ChanceObject implements RegistryElement {
 			case PEAK:
 				reg.byTypeBiomes.get(Type.TUNDRA).forEach(consumer);
 				break;
-			case WARM_OCEAN:
-			case OCEAN:
-			case ARCTIC_OCEAN:
-				reg.byTypeBiomes.get(Type.TRENCH).forEach(consumer);
-				break;
 			default:
 				break;
 		}
@@ -177,12 +172,6 @@ public class Biome extends ChanceObject implements RegistryElement {
 			case ARCTIC_OCEAN:
 				reg.byTypeBiomes.get(Type.GLACIER).forEach(consumer);
 				reg.byTypeBiomes.get(Type.TUNDRA).forEach(consumer);
-				break;
-				
-			case TRENCH:
-				reg.byTypeBiomes.get(Type.ARCTIC_OCEAN).forEach(consumer);
-				reg.byTypeBiomes.get(Type.OCEAN).forEach(consumer);
-				reg.byTypeBiomes.get(Type.WARM_OCEAN).forEach(consumer);
 				break;
 			default:
 				break;

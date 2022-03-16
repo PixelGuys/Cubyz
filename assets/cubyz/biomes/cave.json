@@ -1,0 +1,12 @@
+{
+	"type" : "CAVE",
+	"minHeight" : 2147483647,
+	"maxHeight" : -2147483648,
+
+	"music" : "leaves",
+
+	"ground_structure" : [
+		"0 to 1 cubyz:gravel",
+		"cubyz:stone"
+	]
+}
