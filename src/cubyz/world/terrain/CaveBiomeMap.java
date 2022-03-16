@@ -7,6 +7,8 @@ import cubyz.world.World;
 import cubyz.world.terrain.biomes.Biome;
 import cubyz.world.terrain.noise.Cached3DFractalNoise;
 
+import java.util.Random;
+
 public class CaveBiomeMap {
 	private static final int CACHE_SIZE = 1 << 8; // Must be a power of 2!
 	private static final int CACHE_MASK = CACHE_SIZE - 1;
@@ -93,18 +95,32 @@ public class CaveBiomeMap {
 			wz += valueZ;
 		}
 
-		int gridPointX = (wx + CaveBiomeMapFragment.CAVE_BIOME_SIZE) & ~CaveBiomeMapFragment.CAVE_BIOME_MASK & ~CaveBiomeMapFragment.CAVE_BIOME_SIZE;
-		int gridPointY = (wy + CaveBiomeMapFragment.CAVE_BIOME_SIZE) & ~CaveBiomeMapFragment.CAVE_BIOME_MASK & ~CaveBiomeMapFragment.CAVE_BIOME_SIZE;
-		int gridPointZ = (wz + CaveBiomeMapFragment.CAVE_BIOME_SIZE) & ~CaveBiomeMapFragment.CAVE_BIOME_MASK & ~CaveBiomeMapFragment.CAVE_BIOME_SIZE;
+		int gridPointX = (wx + CaveBiomeMapFragment.CAVE_BIOME_SIZE) & ~CaveBiomeMapFragment.CAVE_BIOME_MASK;
+		int gridPointY = (wy + CaveBiomeMapFragment.CAVE_BIOME_SIZE) & ~CaveBiomeMapFragment.CAVE_BIOME_MASK;
+		int gridPointZ = (wz + CaveBiomeMapFragment.CAVE_BIOME_SIZE) & ~CaveBiomeMapFragment.CAVE_BIOME_MASK;
 		int distanceX = wx - gridPointX;
 		int distanceY = wy - gridPointY;
 		int distanceZ = wz - gridPointZ;
 		int totalDistance = Math.abs(distanceX) + Math.abs(distanceY) + Math.abs(distanceZ);
-		if(totalDistance > CaveBiomeMapFragment.CAVE_BIOME_SIZE*3/2) {
+		if(totalDistance > CaveBiomeMapFragment.CAVE_BIOME_SIZE*3/4) {
 			// Or with 1 to prevent errors if the value is 0.
-			gridPointX += Math.signum(distanceX | 1)*CaveBiomeMapFragment.CAVE_BIOME_SIZE;
-			gridPointY += Math.signum(distanceY | 1)*CaveBiomeMapFragment.CAVE_BIOME_SIZE;
-			gridPointZ += Math.signum(distanceZ | 1)*CaveBiomeMapFragment.CAVE_BIOME_SIZE;
+			gridPointX += Math.signum(distanceX | 1)*CaveBiomeMapFragment.CAVE_BIOME_SIZE/2;
+			gridPointY += Math.signum(distanceY | 1)*CaveBiomeMapFragment.CAVE_BIOME_SIZE/2;
+			gridPointZ += Math.signum(distanceZ | 1)*CaveBiomeMapFragment.CAVE_BIOME_SIZE/2;
+			// Go to a random gridpoint:
+			Random rand = new Random(world.getSeed());
+			rand.setSeed(rand.nextLong() ^ gridPointX);
+			rand.setSeed(rand.nextLong() ^ gridPointY);
+			rand.setSeed(rand.nextLong() ^ gridPointZ);
+			if(rand.nextBoolean()) {
+				gridPointX += CaveBiomeMapFragment.CAVE_BIOME_SIZE/2;
+			}
+			if(rand.nextBoolean()) {
+				gridPointY += CaveBiomeMapFragment.CAVE_BIOME_SIZE/2;
+			}
+			if(rand.nextBoolean()) {
+				gridPointZ += CaveBiomeMapFragment.CAVE_BIOME_SIZE/2;
+			}
 		}
 
 		return _getBiome(gridPointX, gridPointY, gridPointZ);
