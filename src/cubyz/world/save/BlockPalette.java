@@ -9,7 +9,9 @@ import pixelguys.json.JsonObject;
 public class BlockPalette {
 	private final HashMap<Integer, Integer> TToInt = new HashMap<Integer, Integer>();
 	private int[] intToT = new int[0];
-	public BlockPalette(JsonObject json) {
+	private WorldIO wio;
+	public BlockPalette(JsonObject json, WorldIO wio) {
+		this.wio = wio;
 		if (json == null) return;
 		for (String key : json.map.keySet()) {
 			int t = Blocks.getByID(key);
@@ -42,7 +44,7 @@ public class BlockPalette {
 			intToT = Arrays.copyOf(intToT, newIndex+1);
 			intToT[newIndex] = index;
 			TToInt.put(index, newIndex);
-			// TODO: Store block palette on each change here!
+			wio.saveWorldData();
 			return newIndex | data;
 		}
 	}
