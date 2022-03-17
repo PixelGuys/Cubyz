@@ -95,9 +95,9 @@ public class CaveBiomeMap {
 			wz += valueZ;
 		}
 
-		int gridPointX = (wx + CaveBiomeMapFragment.CAVE_BIOME_SIZE) & ~CaveBiomeMapFragment.CAVE_BIOME_MASK;
-		int gridPointY = (wy + CaveBiomeMapFragment.CAVE_BIOME_SIZE) & ~CaveBiomeMapFragment.CAVE_BIOME_MASK;
-		int gridPointZ = (wz + CaveBiomeMapFragment.CAVE_BIOME_SIZE) & ~CaveBiomeMapFragment.CAVE_BIOME_MASK;
+		int gridPointX = (wx + CaveBiomeMapFragment.CAVE_BIOME_SIZE/2) & ~CaveBiomeMapFragment.CAVE_BIOME_MASK;
+		int gridPointY = (wy + CaveBiomeMapFragment.CAVE_BIOME_SIZE/2) & ~CaveBiomeMapFragment.CAVE_BIOME_MASK;
+		int gridPointZ = (wz + CaveBiomeMapFragment.CAVE_BIOME_SIZE/2) & ~CaveBiomeMapFragment.CAVE_BIOME_MASK;
 		int distanceX = wx - gridPointX;
 		int distanceY = wy - gridPointY;
 		int distanceZ = wz - gridPointZ;

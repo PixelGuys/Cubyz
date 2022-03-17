@@ -27,7 +27,7 @@ public abstract class Chunk extends SavableChunk {
 	protected final int[] blocks = new int[chunkSize*chunkSize*chunkSize];
 	
 	private boolean wasChanged = false;
-	/** When a chunk is cleaned, it won't be saved by the ChunkMamanger anymore, so following changes need to be saved directly. */
+	/** When a chunk is cleaned, it won't be saved by the ChunkManager anymore, so following changes need to be saved directly. */
 	private boolean wasCleaned = false;
 	protected boolean generated = false;
 	
