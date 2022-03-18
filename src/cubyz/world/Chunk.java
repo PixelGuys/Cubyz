@@ -181,7 +181,7 @@ public abstract class Chunk extends SavableChunk {
 	@Override
 	public boolean loadFromByteArray(byte[] data, int outputLength) {
 		if(outputLength != 4*blocks.length) {
-			Logger.error("Chunk is corrupted : " + this);
+			Logger.error("Chunk is corrupted(invalid data length "+outputLength+") : " + this);
 			return false;
 		}
 		for(int i = 0; i < blocks.length; i++) {

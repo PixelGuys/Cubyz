@@ -16,14 +16,13 @@ import cubyz.client.GameLauncher;
 import cubyz.utils.Logger;
 import cubyz.utils.math.Bits;
 import cubyz.world.Chunk;
-import cubyz.world.ChunkData;
 import cubyz.world.SavableChunk;
 import cubyz.world.World;
 
 /**
  * Multiple chunks are bundled up in regions to reduce disk reads/writes.
  */
-public class RegionFile extends ChunkData {
+public class RegionFile extends RegionFileCompare {
 	private static final ThreadLocal<byte[]> threadLocalInputBuffer = ThreadLocal.withInitial(() -> new byte[4096]);
 	private static final ThreadLocal<byte[]> threadLocalOutputBuffer = ThreadLocal.withInitial(() -> new byte[4 << Chunk.chunkShift*3]);
 	public static final int REGION_SHIFT = 3;
@@ -33,13 +32,9 @@ public class RegionFile extends ChunkData {
 	private final int[] startingIndices = new int[REGION_SIZE*REGION_SIZE*REGION_SIZE + 1];
 	private boolean wasChanged = false;
 	private boolean storeOnChange = false;
-	private final Class<?> type;
-	private final String fileEnding;
 
-	public RegionFile(World world, int wx, int wy, int wz, int voxelSize, Class<?> type, String fileEnding) {
-		super(wx, wy, wz, voxelSize);
-		this.type = type;
-		this.fileEnding = fileEnding;
+	public RegionFile(World world, int wx, int wy, int wz, int voxelSize, String fileEnding) {
+		super(wx, wy, wz, voxelSize, fileEnding);
 		// Load data from file:
 		File file = new File("saves/"+world.getName()+"/"+voxelSize+"/"+wx+"/"+wy+"/"+wz+"."+fileEnding);
 		if(!file.exists()) {
@@ -93,6 +88,7 @@ public class RegionFile extends ChunkData {
 	}
 	
 	public boolean loadChunk(SavableChunk ch) {
+		assert ch.fileEnding().equals(fileEnding) : "Wrong RegionFile: Uses file ending ."+fileEnding+"  instead of ."+ch.fileEnding();
 		int chunkIndex = getChunkIndex(ch);
 		
 		int inputLength = startingIndices[chunkIndex + 1] - startingIndices[chunkIndex];
@@ -126,6 +122,7 @@ public class RegionFile extends ChunkData {
 	}
 	
 	public void saveChunk(SavableChunk ch) {
+		assert ch.fileEnding().equals(fileEnding) : "Wrong RegionFile: Uses file ending ."+fileEnding+"  instead of ."+ch.fileEnding();
 		synchronized(this) {
 			wasChanged = true;
 			int chunkIndex = getChunkIndex(ch);
@@ -230,19 +227,5 @@ public class RegionFile extends ChunkData {
 			clean();
 			GameLauncher.instance.exit();
 		}
-	}
-
-	public static int hashCode(int hash, Class<?> type) {
-		return hash ^ type.hashCode();
-	}
-
-	@Override
-	public int hashCode() {
-		return hashCode(super.hashCode(), type);
-	}
-
-	@Override
-	public boolean equals(Object other) {
-		return super.equals(other) && type == ((RegionFile)other).type;
 	}
 }
