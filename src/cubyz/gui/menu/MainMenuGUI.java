@@ -27,15 +27,16 @@ public class MainMenuGUI extends MenuGUI {
 	private Button exit = new Button();
 	private Button settings = new Button();
 	private Label titleLabel = new Label();
-	
-	private Texture spImage;
-	private Texture mpImage;
+
+	private static boolean loadedTextures = false;
+	private static Texture spImage;
+	private static Texture mpImage;
+
 	private Label spLabel = new Label(TextKey.createTextKey("gui.cubyz.mainmenu.singleplayer"));
 	private Label mpLabel = new Label(TextKey.createTextKey("gui.cubyz.mainmenu.multiplayer"));
 	private float spSize = 0.9f;
 	private float mpSize = 0.9f;
-	
-	private boolean loadedTextures = false;
+
 	private boolean mousePressed = false;
 	
 	public MainMenuGUI() {

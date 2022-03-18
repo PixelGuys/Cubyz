@@ -18,10 +18,9 @@ import static org.lwjgl.opengl.GL30.*;
 
 public class Texture {
 
-	protected int id = Integer.MIN_VALUE;
+	private boolean wasDeleted = false;
+	private final int id;
 	protected int width, height;
-	protected int pixelFormat;
-	protected int internalFormat;
 	
 	public static Texture loadFromFile(String path) {
 		try {
@@ -54,11 +53,12 @@ public class Texture {
 	}
 
 	public Texture(InputStream is) {
+		this.id = glGenTextures();
 		create(is);
 	}
 
-	public Texture(int id) {
-		this.id = id;
+	public Texture() {
+		this.id = glGenTextures();
 	}
 	
 	
@@ -76,20 +76,22 @@ public class Texture {
 	}
 	
 	public void updateTexture(BufferedImage img) {
-		cleanup();
+		assert !wasDeleted : "Texture was already deleted!";
 		InputStream is = TextureConverter.fromBufferedImage(img);
 		create(is);
 	}
 	
 	public void setWrapMode(int wrap) {
+		assert !wasDeleted : "Texture was already deleted!";
 		glBindTexture(GL_TEXTURE_2D, id);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap);
 	}
 	
 	public void create(InputStream is) {
+		assert !wasDeleted : "Texture was already deleted!";
 		try {
-			id = loadTexture(is);
+			loadTexture(is);
 			is.close();
 		} catch (Exception e) {
 			Logger.error(e);
@@ -97,6 +99,7 @@ public class Texture {
 	}
 	
 	public void bind() {
+		assert !wasDeleted : "Texture was already deleted!";
 		glBindTexture(GL_TEXTURE_2D, id);
 	}
 	
@@ -105,6 +108,7 @@ public class Texture {
 	}
 
 	public int getId() {
+		assert !wasDeleted : "Texture was already deleted!";
 		return id;
 	}
 
@@ -116,7 +120,8 @@ public class Texture {
 		return height;
 	}
 
-	private int loadTexture(InputStream is) throws Exception {
+	private void loadTexture(InputStream is) throws Exception {
+		assert !wasDeleted : "Texture was already deleted!";
 		// Load Texture file
 		PNGDecoder decoder = new PNGDecoder(is);
 
@@ -127,10 +132,8 @@ public class Texture {
 		decoder.decode(buf, width << 2, Format.RGBA);
 		buf.flip();
 
-		// Create a new OpenGL texture
-		int textureId = glGenTextures();
 		// Bind the texture
-		glBindTexture(GL_TEXTURE_2D, textureId);
+		glBindTexture(GL_TEXTURE_2D, id);
 
 		// Tell OpenGL how to unpack the RGBA bytes. Each component is 1 byte size
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -139,17 +142,25 @@ public class Texture {
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
 		// Upload the texture data
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, decoder.getWidth(), decoder.getHeight(), 0, GL_RGBA, GL_UNSIGNED_BYTE,
-				buf);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, decoder.getWidth(), decoder.getHeight(), 0, GL_RGBA, GL_UNSIGNED_BYTE, buf);
 
 		if (ClientSettings.MIPMAPPING) {
 			glGenerateMipmap(GL_TEXTURE_2D);
 		}
 		glBindTexture(GL_TEXTURE_2D, 0);
-		return textureId;
 	}
 
 	public void cleanup() {
-		glDeleteTextures(id);
+		if(!wasDeleted) {
+			glDeleteTextures(id);
+			wasDeleted = true;
+		}
+	}
+
+	@Override
+	protected void finalize() {
+		if(!wasDeleted) {
+			Logger.error("Texture leaked!");
+		}
 	}
 }

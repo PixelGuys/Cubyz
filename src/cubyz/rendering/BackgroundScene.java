@@ -4,7 +4,6 @@ import static org.lwjgl.opengl.GL30.*;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.FileFilter;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -30,9 +29,9 @@ public class BackgroundScene {
 	public static int loc_viewMatrix;
 	public static int loc_projectionMatrix;
 
-	private static int vao;
+	private static final int vao;
 
-	private static Texture texture;
+	private static final Texture texture;
 
 	private static float angle = 0;
 	private static long lastTime = System.nanoTime();
@@ -130,7 +129,7 @@ public class BackgroundScene {
 
 		FrameBuffer buffer = new FrameBuffer();
 		buffer.genColorTexture(SIZE, SIZE);
-		buffer.genRenderbuffer(SIZE, SIZE);
+		buffer.genRenderBuffer(SIZE, SIZE);
 		Window.setRenderTarget(buffer);
 
 		Vector3f cameraRotation = Camera.getRotation();
@@ -166,6 +165,7 @@ public class BackgroundScene {
 		}
 
 		Window.setRenderTarget(null);
+		buffer.delete();
 
 		try {//Try to create image, else show exception.
 			ImageIO.write(image, "png", new File("assets/backgrounds/"+Cubyz.world.getName()+"_"+Cubyz.world.getGameTime()+".png"));

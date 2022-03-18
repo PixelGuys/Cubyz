@@ -71,7 +71,7 @@ public abstract class BlockPreview {
 		glEnable(GL_CULL_FACE);
 		FrameBuffer buffer = new FrameBuffer();
 		buffer.genColorTexture(64, 64);
-		buffer.genRenderbuffer(64, 64);
+		buffer.genRenderBuffer(64, 64);
 		buffer.bind();
 		Window.setRenderTarget(buffer);
 		Window.setClearColor(new Vector4f(0f, 0f, 0f, 0f));
@@ -112,7 +112,9 @@ public abstract class BlockPreview {
 		Window.setRenderTarget(null);
 		glDisable(GL_CULL_FACE);
 		glDisable(GL_DEPTH_TEST);
-		return buffer.getColorTexture();
+		Texture result = buffer.getColorTextureAndTakeResponsibilityToDeleteIt();
+		buffer.delete();
+		return result;
 	}
 
 	public static void cleanup() {

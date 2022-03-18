@@ -21,10 +21,10 @@ import static cubyz.client.ClientSettings.GUI_SCALE;
 
 public class GameOverlay extends MenuGUI {
 
-	Texture crosshair;
-	Texture selection;
-	Texture[] healthBar;
-	Texture[] hungerBar;
+	private static Texture crosshair;
+	private static Texture selection;
+	private static Texture[] healthBar;
+	private static Texture[] hungerBar;
 	
 	long lastPlayerHurtMs; // stored here and not in Player for easier multiplayer integration
 	float lastPlayerHealth;
@@ -33,26 +33,28 @@ public class GameOverlay extends MenuGUI {
 	
 	@Override
 	public void init() {
-		crosshair = Texture.loadFromFile("assets/cubyz/textures/crosshair.png");
-		selection = Texture.loadFromFile("assets/cubyz/guis/inventory/selected_slot.png");
-		healthBar = new Texture[8];
-		healthBar[0] = Texture.loadFromFile("assets/cubyz/textures/health_bar_beg_empty.png");
-		healthBar[1] = Texture.loadFromFile("assets/cubyz/textures/health_bar_beg_full.png");
-		healthBar[2] = Texture.loadFromFile("assets/cubyz/textures/health_bar_end_empty.png");
-		healthBar[3] = Texture.loadFromFile("assets/cubyz/textures/health_bar_end_full.png");
-		healthBar[4] = Texture.loadFromFile("assets/cubyz/textures/health_bar_mid_empty.png");
-		healthBar[5] = Texture.loadFromFile("assets/cubyz/textures/health_bar_mid_half.png");
-		healthBar[6] = Texture.loadFromFile("assets/cubyz/textures/health_bar_mid_full.png");
-		healthBar[7] = Texture.loadFromFile("assets/cubyz/textures/health_bar_icon.png");
-		hungerBar = new Texture[8];
-		hungerBar[0] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_beg_empty.png");
-		hungerBar[1] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_beg_full.png");
-		hungerBar[2] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_end_empty.png");
-		hungerBar[3] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_end_full.png");
-		hungerBar[4] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_mid_empty.png");
-		hungerBar[5] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_mid_half.png");
-		hungerBar[6] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_mid_full.png");
-		hungerBar[7] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_icon.png");
+		if(crosshair == null) {
+			crosshair = Texture.loadFromFile("assets/cubyz/textures/crosshair.png");
+			selection = Texture.loadFromFile("assets/cubyz/guis/inventory/selected_slot.png");
+			healthBar = new Texture[8];
+			healthBar[0] = Texture.loadFromFile("assets/cubyz/textures/health_bar_beg_empty.png");
+			healthBar[1] = Texture.loadFromFile("assets/cubyz/textures/health_bar_beg_full.png");
+			healthBar[2] = Texture.loadFromFile("assets/cubyz/textures/health_bar_end_empty.png");
+			healthBar[3] = Texture.loadFromFile("assets/cubyz/textures/health_bar_end_full.png");
+			healthBar[4] = Texture.loadFromFile("assets/cubyz/textures/health_bar_mid_empty.png");
+			healthBar[5] = Texture.loadFromFile("assets/cubyz/textures/health_bar_mid_half.png");
+			healthBar[6] = Texture.loadFromFile("assets/cubyz/textures/health_bar_mid_full.png");
+			healthBar[7] = Texture.loadFromFile("assets/cubyz/textures/health_bar_icon.png");
+			hungerBar = new Texture[8];
+			hungerBar[0] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_beg_empty.png");
+			hungerBar[1] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_beg_full.png");
+			hungerBar[2] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_end_empty.png");
+			hungerBar[3] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_end_full.png");
+			hungerBar[4] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_mid_empty.png");
+			hungerBar[5] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_mid_half.png");
+			hungerBar[6] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_mid_full.png");
+			hungerBar[7] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_icon.png");
+		}
 		
 		updateGUIScale();
 	}

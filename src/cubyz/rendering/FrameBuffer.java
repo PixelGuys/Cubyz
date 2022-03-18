@@ -2,20 +2,23 @@ package cubyz.rendering;
 
 import static org.lwjgl.opengl.GL30.*;
 
+import cubyz.utils.Logger;
 import org.lwjgl.system.MemoryUtil;
 
 public class FrameBuffer {
 	
-	protected int id;
+	protected final int id;
+	private boolean wasDeleted = false;
+	private boolean responsibleOfColorTexture = true;
 	protected Texture texture;
-	protected Texture depthTexture;
 	protected int renderBuffer = -1;
 	
 	public FrameBuffer() {
-		create();
+		id = glGenFramebuffers();
 	}
 	
-	public void genRenderbuffer(int width, int height) {
+	public void genRenderBuffer(int width, int height) {
+		assert !wasDeleted : "Frame buffer was already deleted!";
 		glBindFramebuffer(GL_FRAMEBUFFER, id);
 		if (renderBuffer != -1) {
 			glDeleteRenderbuffers(renderBuffer);
@@ -27,58 +30,43 @@ public class FrameBuffer {
 				GL_RENDERBUFFER, renderBuffer);
 	}
 	
-	public void genDepthTexture(int width, int height) {
-		glBindFramebuffer(GL_FRAMEBUFFER, id);
-		if (depthTexture != null) {
-			depthTexture.cleanup();
-		}
-		depthTexture = new Texture(width, height, GL_DEPTH_COMPONENT);
-		
-		// disable color buffer
-		glDrawBuffer(GL_NONE);
-		glReadBuffer(GL_NONE);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthTexture.getId(), 0);
-	}
-	
 	public void genColorTexture(int width, int height) {
+		assert !wasDeleted : "Frame buffer was already deleted!";
 		glBindFramebuffer(GL_FRAMEBUFFER, id);
 		if (texture != null) {
 			texture.cleanup();
 		}
-		int tId = glGenTextures();
+		texture = new Texture();
+		int tId = texture.getId();
 		glBindTexture(GL_TEXTURE_2D, tId);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
 				GL_RGBA, GL_UNSIGNED_BYTE, MemoryUtil.NULL);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tId, 0);
-		texture = new Texture(tId);
-		texture.width = width; texture.height = height;
+		texture.width = width;
+		texture.height = height;
 	}
 	
-	public Texture getColorTexture() {
+	public Texture getColorTextureAndTakeResponsibilityToDeleteIt() {
+		responsibleOfColorTexture = false;
 		return texture;
 	}
 	
-	public Texture getDepthTexture() {
-		return depthTexture;
-	}
-	
-	public void create() {
-		id = glGenFramebuffers();
-		glBindFramebuffer(GL_FRAMEBUFFER, id);
-	}
-	
-	public void validate() throws FrameBufferException {
+	public boolean validate() {
+		assert !wasDeleted : "Frame buffer was already deleted!";
 		glBindFramebuffer(GL_FRAMEBUFFER, id);
 		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
-			throw new FrameBufferException("Frame Buffer Object error: " + glCheckFramebufferStatus(GL_FRAMEBUFFER));
+			Logger.error("Frame Buffer Object error: " + glCheckFramebufferStatus(GL_FRAMEBUFFER));
+			return false;
 		}
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		return true;
 	}
 	
 	public void bind() {
+		assert !wasDeleted : "Frame buffer was already deleted!";
 		glBindFramebuffer(GL_FRAMEBUFFER, id);
 	}
 	
@@ -86,16 +74,21 @@ public class FrameBuffer {
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 	
-	public void cleanup() {
-		glDeleteFramebuffers(id);
-		id = -1;
+	public void delete() {
+		if(!wasDeleted) {
+			glDeleteFramebuffers(id);
+			glDeleteRenderbuffers(renderBuffer);
+			if(responsibleOfColorTexture) {
+				texture.cleanup();
+			}
+			wasDeleted = true;
+		}
 	}
 
-	public static class FrameBufferException extends Exception {
-		private static final long serialVersionUID = 1L;
-
-		public FrameBufferException(String s) { super(s); }
-		
+	@Override
+	protected void finalize() {
+		if(!wasDeleted) {
+			Logger.error("Frame Buffer leaked!");
+		}
 	}
-	
 }
