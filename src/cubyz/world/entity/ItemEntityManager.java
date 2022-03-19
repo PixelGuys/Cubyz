@@ -28,6 +28,8 @@ public class ItemEntityManager {
 
 	public static final float PICKUP_RANGE = 1;
 
+	private static final float MAX_AIR_SPEED_GRAVITY = 10;
+
 	private static final int capacityIncrease = 64;
 
 	public double[] posxyz;
@@ -40,7 +42,8 @@ public class ItemEntityManager {
 
 	public final NormalChunk chunk;
 	private final World world;
-	private float gravity;
+	private final float gravity;
+	private final float airDragFactor;
 	public int size;
 	private int capacity;
 
@@ -57,6 +60,10 @@ public class ItemEntityManager {
 		this.world = world;
 		this.chunk = chunk;
 		gravity = World.GRAVITY;
+		// Assuming linear drag → air is a viscous fluid :D
+		// a = d*v → d = a/v
+		// a - acceleration(gravity), d - airDragFactor, v - MAX_AIR_SPEED_GRAVITY
+		airDragFactor = gravity/MAX_AIR_SPEED_GRAVITY;
 	}
 
 
@@ -79,7 +86,6 @@ public class ItemEntityManager {
 		despawnTime = new int[capacity];
 		pickupCooldown = new int[capacity];
 
-		gravity = World.GRAVITY;
 		// Read the data:
 		for(int i = 0; i < length; i++) {
 			double x = Bits.getDouble(data, index);
@@ -137,13 +143,9 @@ public class ItemEntityManager {
 		for(int i = 0; i < size; i++) {
 			int i3 = i*3;
 			// Update gravity:
-			velxyz[i3 + 1] -= gravity*deltaTime;
+			velxyz[i3 + 1] = velxyz[i3+1] - gravity*deltaTime;
 			// Check collision with blocks:
-			checkBlocks(i3);
-			// Update position:
-			posxyz[i3] += velxyz[i3]*deltaTime;
-			posxyz[i3 + 1] += velxyz[i3 + 1]*deltaTime;
-			posxyz[i3 + 2] += velxyz[i3 + 2]*deltaTime;
+			updateEnt(i3, deltaTime);
 			// Check if it's still inside this chunk:
 			if (!chunk.isInside(posxyz[i3], posxyz[i3 + 1], posxyz[i3 + 2])) {
 				// Move it to another manager:
@@ -187,7 +189,7 @@ public class ItemEntityManager {
 	}
 
 	public void add(int x, int y, int z, double vx, double vy, double vz, ItemStack itemStack, int despawnTime) {
-		add(x + Math.random(), y + Math.random(), z + Math.random(), vx, vy, vz, (float)(2*Math.random()*Math.PI), (float)(2*Math.random()*Math.PI), (float)(2*Math.random()*Math.PI), itemStack, despawnTime, 0);
+		add(x + RADIUS + (1 - DIAMETER)*Math.random(), y + RADIUS + (1 - DIAMETER)*Math.random(), z + RADIUS + (1 - DIAMETER)*Math.random(), vx, vy, vz, (float)(2*Math.random()*Math.PI), (float)(2*Math.random()*Math.PI), (float)(2*Math.random()*Math.PI), itemStack, despawnTime, 0);
 	}
 
 	public void add(double x, double y, double z, double vx, double vy, double vz, ItemStack itemStack, int despawnTime, int pickupCooldown) {
@@ -254,53 +256,123 @@ public class ItemEntityManager {
 		pickupCooldown = Arrays.copyOf(pickupCooldown, capacity);
 	}
 
-	private void checkBlocks(int index3) {
+	private void updateEnt(int index3, float deltaTime) {
+		deltaTime *= 0.1f;
+		boolean startedInABlock = checkBlocks(index3);
+		if(startedInABlock) {
+			fixStuckInBlock(index3, deltaTime);
+			return;
+		}
+		float drag = airDragFactor;
+		for(int i = 0; i < 3; i++) { // Change one coordinate at a time and see if it would collide.
+			double old = posxyz[index3 + i];
+			posxyz[index3 + i] += velxyz[index3 + i]*deltaTime;
+			if(checkBlocks(index3)) {
+				posxyz[index3 + i] = old;
+				velxyz[index3 + i] *= 0.5; // Half it to effectively perform asynchronous binary search for the collision boundary.
+			}
+			drag += 0.5; // TODO: Calculate drag from block properties and add buoyancy.
+		}
+		// Apply drag:
+		for(int i = 0; i < 3; i++) {
+			velxyz[index3 + i] *= Math.max(0, 1 - drag*deltaTime);
+		}
+	}
+
+	private void fixStuckInBlock(int index3, float deltaTime) {
+		double x = posxyz[index3] - 0.5;
+		double y = posxyz[index3+1] - 0.5;
+		double z = posxyz[index3+2] - 0.5;
+		int x0 = (int)x;
+		int y0 = (int)y;
+		int z0 = (int)z;
+		// Find the closest non-solid block and go there:
+		int closestDx = -1;
+		int closestDy = -1;
+		int closestDz = -1;
+		double closestDist = Double.MAX_VALUE;
+		for(int dx = 0; dx <= 1; dx++) {
+			for(int dy = 0; dy <= 1; dy++) {
+				for(int dz = 0; dz <= 1; dz++) {
+					boolean isBlockSolid = checkBlock(index3, x0 + dx, y0 + dy, z0 + dz);
+					if(!isBlockSolid) {
+						double dist = (x0 + dx - x)*(x0 + dx - x) + (y0 + dy - y)*(y0 + dy - y) + (z0 + dz - z)*(z0 + dz - z);
+						if(dist < closestDist) {
+							closestDist = dist;
+							closestDx = dx;
+							closestDy = dy;
+							closestDz = dz;
+						}
+					}
+				}
+			}
+		}
+		velxyz[index3] = 0;
+		velxyz[index3+1] = 0;
+		velxyz[index3+2] = 0;
+		final double factor = 1;
+		if(closestDist == Double.MAX_VALUE) {
+			// Surrounded by solid blocks → move upwards
+			velxyz[index3+1] = factor;
+			posxyz[index3+1] += velxyz[index3+1]*deltaTime;
+		} else {
+			velxyz[index3] = factor*(x0 + closestDx - x);
+			velxyz[index3+1] = factor*(y0 + closestDy - y);
+			velxyz[index3+2] = factor*(z0 + closestDz - z);
+			posxyz[index3] += velxyz[index3]*deltaTime;
+			posxyz[index3+1] += velxyz[index3+1]*deltaTime;
+			posxyz[index3+2] += velxyz[index3+2]*deltaTime;
+		}
+	}
+
+	private boolean checkBlocks(int index3) {
 		double x = posxyz[index3] - RADIUS;
 		double y = posxyz[index3+1] - RADIUS;
 		double z = posxyz[index3+2] - RADIUS;
 		int x0 = (int)x;
 		int y0 = (int)y;
 		int z0 = (int)z;
-		checkBlock(index3, x0, y0, z0);
+		boolean isSolid = checkBlock(index3, x0, y0, z0);
 		if (x - x0 + DIAMETER >= 1) {
-			checkBlock(index3, x0+1, y0, z0);
+			isSolid |= checkBlock(index3, x0+1, y0, z0);
 			if (y - y0 + DIAMETER >= 1) {
-				checkBlock(index3, x0, y0+1, z0);
-				checkBlock(index3, x0+1, y0+1, z0);
+				isSolid |= checkBlock(index3, x0, y0+1, z0);
+				isSolid |= checkBlock(index3, x0+1, y0+1, z0);
 				if (z - z0 + DIAMETER >= 1) {
-					checkBlock(index3, x0, y0, z0+1);
-					checkBlock(index3, x0+1, y0, z0+1);
-					checkBlock(index3, x0, y0+1, z0+1);
-					checkBlock(index3, x0+1, y0+1, z0+1);
+					isSolid |= checkBlock(index3, x0, y0, z0+1);
+					isSolid |= checkBlock(index3, x0+1, y0, z0+1);
+					isSolid |= checkBlock(index3, x0, y0+1, z0+1);
+					isSolid |= checkBlock(index3, x0+1, y0+1, z0+1);
 				}
 			} else {
 				if (z - z0 + DIAMETER >= 1) {
-					checkBlock(index3, x0, y0, z0+1);
-					checkBlock(index3, x0+1, y0, z0+1);
+					isSolid |= checkBlock(index3, x0, y0, z0+1);
+					isSolid |= checkBlock(index3, x0+1, y0, z0+1);
 				}
 			}
 		} else {
 			if (y - y0 + DIAMETER >= 1) {
-				checkBlock(index3, x0, y0+1, z0);
+				isSolid |= checkBlock(index3, x0, y0+1, z0);
 				if (z - z0 + DIAMETER >= 1) {
-					checkBlock(index3, x0, y0, z0+1);
-					checkBlock(index3, x0, y0+1, z0+1);
+					isSolid |= checkBlock(index3, x0, y0, z0+1);
+					isSolid |= checkBlock(index3, x0, y0+1, z0+1);
 				}
 			} else {
 				if (z - z0 + DIAMETER >= 1) {
-					checkBlock(index3, x0, y0, z0+1);
+					isSolid |= checkBlock(index3, x0, y0, z0+1);
 				}
 			}
 		}
+		return isSolid;
 	}
 
-	private void checkBlock(int index3, int x, int y, int z) {
+	private boolean checkBlock(int index3, int x, int y, int z) {
 		// Transform to chunk-relative coordinates:
 		x -= chunk.wx;
 		y -= chunk.wy;
 		z -= chunk.wz;
 		int block = chunk.getBlockPossiblyOutside(x, y, z);
-		if (block == 0) return;
+		if (block == 0) return false;
 		// Check if the item entity is inside the block:
 		boolean isInside = true;
 		if (Blocks.mode(block).changesHitbox()) {
@@ -308,11 +380,9 @@ public class ItemEntityManager {
 		}
 		if (isInside) {
 			if (Blocks.solid(block)) {
-				velxyz[index3] = velxyz[index3+1] = velxyz[index3+2] = 0;
-				// TODO: Prevent item entities from getting stuck in a block.
-			} else {
-				// TODO: Add buoyancy and drag.
+				return true;
 			}
 		}
+		return false;
 	}
 }
