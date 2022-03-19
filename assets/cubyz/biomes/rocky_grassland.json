@@ -22,6 +22,13 @@
 			"type" : "round",
 			"height" : 6,
 			"height_variation" : 3
+		},
+		{
+			"id" : "cubyz:boulder",
+			"chance" : 0.001,
+			"block" : "cubyz:cobblestone",
+			"size" : 5,
+			"size_variance" : 4
 		}
 	]
 }
