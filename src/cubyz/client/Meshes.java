@@ -8,7 +8,6 @@ import java.util.HashMap;
 import cubyz.utils.Logger;
 import cubyz.api.Registry;
 import cubyz.api.Resource;
-import cubyz.rendering.Material;
 import cubyz.rendering.Mesh;
 import cubyz.rendering.ModelLoader;
 import cubyz.rendering.Texture;
@@ -116,9 +115,8 @@ public final class Meshes {
 			}
 			
 			Texture tex = Texture.loadFromFile("assets/" + texResource.getMod() + "/textures/entities/" + texture + ".png");
-			
-			Material material = new Material(tex, 1.0F);
-			mesh.setMaterial(material);
+
+			mesh.setTexture(tex);
 			
 			Meshes.entityMeshes.put(type, mesh);
 		};

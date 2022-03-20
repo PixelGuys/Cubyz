@@ -150,7 +150,7 @@ public class Texture {
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 
-	public void cleanup() {
+	public void delete() {
 		if(!wasDeleted) {
 			glDeleteTextures(id);
 			wasDeleted = true;

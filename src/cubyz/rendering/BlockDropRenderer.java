@@ -295,7 +295,7 @@ public final class BlockDropRenderer {
 					int z = (int)(manager.posxyz[index3+2] + 1.0f);
 					int block = ((ItemBlock)manager.itemStacks[i].getItem()).getBlock();
 					Mesh mesh = BlockMeshes.mesh(block & Blocks.TYPE_MASK);
-					mesh.getMaterial().setTexture(null);
+					mesh.setTexture(null);
 					shader.setUniform(loc_texNegX, BlockMeshes.textureIndices(block)[Neighbors.DIR_NEG_X]);
 					shader.setUniform(loc_texPosX, BlockMeshes.textureIndices(block)[Neighbors.DIR_POS_X]);
 					shader.setUniform(loc_texNegY, BlockMeshes.textureIndices(block)[Neighbors.DIR_DOWN]);

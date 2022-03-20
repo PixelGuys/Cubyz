@@ -11,11 +11,9 @@ import cubyz.utils.Logger;
 import cubyz.utils.datastructures.IntFastList;
 import cubyz.api.DataOrientedRegistry;
 import cubyz.api.Resource;
-import cubyz.rendering.Material;
 import cubyz.rendering.Mesh;
 import cubyz.rendering.ModelLoader;
 import cubyz.rendering.SSBO;
-import cubyz.rendering.Texture;
 import cubyz.rendering.TextureArray;
 import cubyz.world.Neighbors;
 import cubyz.world.blocks.Blocks;
@@ -195,7 +193,6 @@ public class BlockMeshes implements DataOrientedRegistry {
 				if (meshes[loadedMeshes] == null) {
 					Resource rs = new Resource(models[loadedMeshes]);
 					meshes[loadedMeshes] = new Mesh(ModelLoader.loadModel(rs, "assets/" + rs.getMod() + "/models/3d/" + rs.getID()));
-					meshes[loadedMeshes].setMaterial(new Material((Texture)null, 0.6f));
 					Meshes.cachedDefaultModels.put(models[loadedMeshes], meshes[loadedMeshes]);
 				}
 			}

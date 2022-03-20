@@ -34,7 +34,7 @@ public class FrameBuffer {
 		assert !wasDeleted : "Frame buffer was already deleted!";
 		glBindFramebuffer(GL_FRAMEBUFFER, id);
 		if (texture != null) {
-			texture.cleanup();
+			texture.delete();
 		}
 		texture = new Texture();
 		int tId = texture.getId();
@@ -79,7 +79,7 @@ public class FrameBuffer {
 			glDeleteFramebuffers(id);
 			glDeleteRenderbuffers(renderBuffer);
 			if(responsibleOfColorTexture) {
-				texture.cleanup();
+				texture.delete();
 			}
 			wasDeleted = true;
 		}

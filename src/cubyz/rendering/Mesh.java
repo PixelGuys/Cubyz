@@ -6,8 +6,6 @@ import java.util.function.Consumer;
 
 import static org.lwjgl.opengl.GL43.*;
 
-import org.joml.Vector4f;
-
 import cubyz.rendering.models.Model;
 import cubyz.utils.datastructures.FastList;
 
@@ -19,36 +17,12 @@ public class Mesh implements Cloneable {
 
 	protected final int vertexCount;
 
-	protected Material material;
-
-	protected boolean frustum = true;
-	protected boolean cullFace = true;
-
-	protected boolean hasNormals;
+	protected Texture texture;
 	
 	public final Model model;
 
-	public static final Vector4f DEFAULT_COLOR = new Vector4f(0.75f, 0.75f, 0.75f, 1.f);
-
-	public boolean supportsFrustumCulling() {
-		return frustum;
-	}
-
-	public void setSupportsFrustum(boolean bool) {
-		frustum = bool;
-	}
-
-	public void setSupportsCullFace(boolean bool) {
-		cullFace = bool;
-	}
-	
-	public boolean isInstanced() {
-		return false;
-	}
-
 	public Mesh(Model model) {
 		this.model = model;
-		hasNormals = model.normals.length > 0 || true;
 
 		vertexCount = model.indices.length;
 		vboIdList = new ArrayList<>();
@@ -57,8 +31,7 @@ public class Mesh implements Cloneable {
 		glBindVertexArray(vaoId);
 		glEnableVertexAttribArray(0);
 		glEnableVertexAttribArray(1);
-		if (hasNormals)
-			glEnableVertexAttribArray(2);
+		glEnableVertexAttribArray(2);
 
 		// Position VBO
 		int vboId = glGenBuffers();
@@ -99,8 +72,8 @@ public class Mesh implements Cloneable {
 	}
 
 	public Mesh clone() {
-		Mesh clone = cloneNoMaterial();
-		clone.material = material;
+		Mesh clone = cloneNoTexture();
+		clone.texture = texture;
 		return clone;
 	}
 
@@ -108,23 +81,19 @@ public class Mesh implements Cloneable {
 	 * Very useful method for meshes with only material (mostly texture) being
 	 * different
 	 */
-	public Mesh cloneNoMaterial() {
-		Mesh clone = new Mesh(vaoId, vertexCount, vboIdList, model);
-		clone.cullFace = cullFace;
-		clone.frustum = frustum;
-		return clone;
+	public Mesh cloneNoTexture() {
+		return new Mesh(vaoId, vertexCount, vboIdList, model);
 	}
 
-	public Material getMaterial() {
-		return material;
+	public Texture getTexture() {
+		return texture;
 	}
 
-	public void setMaterial(Material material) {
-		this.material = material;
+	public void setTexture(Texture texture) {
+		this.texture = texture;
 	}
 
 	protected void initRender() {
-		Texture texture = material.getTexture();
 		if (texture != null) {
 			// Activate first texture bank
 			glActiveTexture(GL_TEXTURE0);
@@ -150,64 +119,31 @@ public class Mesh implements Cloneable {
 		if (spatials.isEmpty())
 			return;
 		initRender();
-		boolean wasEnabled = false; // avoid having a GPU call (glIsEnabled) if useless later (not having
-		// cull face is optional)
-		if (!cullFace) {
-			wasEnabled = glIsEnabled(GL_CULL_FACE);
-			if (wasEnabled) {
-				glDisable(GL_CULL_FACE);
-			}
-		}
 		
 		for (int i = 0; i < spatials.size; i++) {
 			consumer.accept(spatials.array[i]);
 			render();
 		}
-		
-		if (wasEnabled) {
-			glEnable(GL_CULL_FACE);
-		}
+
 		endRender();
 	}
 	
 	public void renderOne(Runnable run) {
 		initRender();
-		boolean wasEnabled = false; // avoid having a GPU call (glIsEnabled) if useless later (not having
-		// cull face is optional)
-		if (!cullFace) {
-			wasEnabled = glIsEnabled(GL_CULL_FACE);
-			if (wasEnabled) {
-				glDisable(GL_CULL_FACE);
-			}
-		}
 		
 		run.run();
 		render();
-		
-		if (wasEnabled) {
-			glEnable(GL_CULL_FACE);
-		}
+
 		endRender();
 	}
 
 	public void cleanUp() {
-		glDisableVertexAttribArray(0);
-
-		// Delete the VBOs
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		for (int vboId : vboIdList) {
-			glDeleteBuffers(vboId);
-		}
+		deleteBuffers();
 
 		// Delete the texture
-		Texture texture = material.getTexture();
 		if (texture != null) {
-			texture.cleanup();
+			texture.delete();
 		}
-
-		// Delete the VAO
-		glBindVertexArray(0);
-		glDeleteVertexArrays(vaoId);
 	}
 
 	public void deleteBuffers() {

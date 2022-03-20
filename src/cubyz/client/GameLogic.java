@@ -22,7 +22,6 @@ import cubyz.gui.audio.SoundManager;
 import cubyz.gui.game.GameOverlay;
 import cubyz.gui.menu.LoadingGUI;
 import cubyz.rendering.BlockPreview;
-import cubyz.rendering.Material;
 import cubyz.rendering.Mesh;
 import cubyz.rendering.Spatial;
 import cubyz.rendering.Texture;
@@ -95,13 +94,12 @@ public class GameLogic implements ClientConnection {
 			quitWorld();
 		}
 		if (skySun == null || skyMoon == null) {
-			Mesh sunMesh = skyBodyMesh.cloneNoMaterial();
-			sunMesh.setMaterial(new Material(new Vector4f(1f, 1f, 0f, 1f), 1f)); // TODO: use textures for sun and moon
+			// TODO: use textures for sun and moon
+			Mesh sunMesh = skyBodyMesh.cloneNoTexture();
 			skySun = new Spatial(sunMesh);
 			skySun.setScale(50f); // TODO: Make the scale dependent on the actual distance to that star.
 			skySun.setPositionRaw(-100, 1, 0);
-			Mesh moonMesh = skyBodyMesh.cloneNoMaterial();
-			moonMesh.setMaterial(new Material(new Vector4f(0.3f, 0.3f, 0.3f, 1f), 0.9f));
+			Mesh moonMesh = skyBodyMesh.cloneNoTexture();
 			skyMoon = new Spatial(moonMesh);
 			skyMoon.setScale(100f);
 			skyMoon.setPositionRaw(100, 1, 0);

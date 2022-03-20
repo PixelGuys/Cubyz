@@ -76,7 +76,7 @@ public final class EntityRenderer {
 				}
 				
 				if (mesh != null) {
-					entityShader.setUniform(loc_materialHasTexture, mesh.getMaterial().isTextured());
+					entityShader.setUniform(loc_materialHasTexture, mesh.getTexture() != null);
 					entityShader.setUniform(loc_light, Cubyz.world.getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
 					
 					mesh.renderOne(() -> {

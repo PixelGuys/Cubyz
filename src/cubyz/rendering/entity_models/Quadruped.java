@@ -10,7 +10,6 @@ import cubyz.api.Resource;
 import cubyz.client.Cubyz;
 import cubyz.client.entity.ClientEntity;
 import cubyz.rendering.EntityRenderer;
-import cubyz.rendering.Material;
 import cubyz.rendering.Mesh;
 import cubyz.rendering.ShaderProgram;
 import cubyz.rendering.Texture;
@@ -397,13 +396,13 @@ public class Quadruped implements EntityModel {
 		Cubyz.renderDeque.add(new Runnable() {
 			@Override
 			public void run() {
-				Material mat = new Material(Texture.loadFromFile("assets/" + source.getRegistryID().getMod() + "/entities/textures/" + source.getRegistryID().getID() + ".png"));
+				Texture tex = Texture.loadFromFile("assets/" + source.getRegistryID().getMod() + "/entities/textures/" + source.getRegistryID().getID() + ".png");
 				leg = new Mesh(new Model(source.getRegistryID(), legPositions, legTextCoords, legNormals, legIndices));
-				leg.setMaterial(mat);
+				leg.setTexture(tex);
 				body = new Mesh(new Model(source.getRegistryID(), bodyPositions, bodyTextCoords, bodyNormals, bodyIndices));
-				body.setMaterial(mat);
+				body.setTexture(tex);
 				head = new Mesh(new Model(source.getRegistryID(), headPositions, headTextCoords, headNormals, headIndices));
-				head.setMaterial(mat);
+				head.setTexture(tex);
 			}
 			
 		});

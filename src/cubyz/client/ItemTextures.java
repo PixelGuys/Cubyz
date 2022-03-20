@@ -47,7 +47,7 @@ public final class ItemTextures {
 	 */
 	public static void clear() {
 		storedTextures.forEach((item, texture) -> {
-			texture.cleanup();
+			texture.delete();
 		});
 		storedTextures.clear();
 	}
