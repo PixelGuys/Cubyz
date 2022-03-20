@@ -9,7 +9,7 @@ import org.joml.Vector4d;
 import cubyz.api.RegistryElement;
 import cubyz.utils.datastructures.IntWrapper;
 import cubyz.utils.VertexAttribList;
-import cubyz.utils.datastructures.IntFastList;
+import cubyz.utils.datastructures.IntSimpleList;
 import cubyz.world.World;
 import cubyz.world.entity.Entity;
 
@@ -24,13 +24,10 @@ public interface RotationMode extends RegistryElement {
 	 * Called when generating the chunk mesh.
 	 * @param bi
 	 * @param vertices
-	 * @param normals
 	 * @param faces
-	 * @param lighting
-	 * @param texture
 	 * @return incremented renderIndex
 	 */
-	void generateChunkMesh(BlockInstance bi, VertexAttribList vertices, IntFastList faces);
+	void generateChunkMesh(BlockInstance bi, VertexAttribList vertices, IntSimpleList faces);
 	
 	/**
 	 * Update or place a block.
@@ -55,7 +52,7 @@ public interface RotationMode extends RegistryElement {
 	/**
 	 * Updates data of a placed block if the RotationMode dependsOnNeighbors().
 	 * If the returned value is null, then the block will be removed instead of only updating the data.
-	 * @param oldData
+	 * @param oldBlock
 	 * @param removedDir given as neighbor index (See NormalChunk.)
 	 * @return new data
 	 */
@@ -63,7 +60,7 @@ public interface RotationMode extends RegistryElement {
 	
 	/**
 	 * A RotationMode may even alter the blocks transparency. Here is where it's done.
-	 * @param data The blocks data
+	 * @param block The blocks data
 	 * @param neighbor the inverted(!) neighbor index(see Neighbors.java).
 	 */
 	boolean checkTransparency(int block, int neighbor);
@@ -96,7 +93,7 @@ public interface RotationMode extends RegistryElement {
 	 * @param x x-coordinate of the block.
 	 * @param y y-coordinate of the block.
 	 * @param z z-coordinate of the block.
-	 * @param data block data
+	 * @param block block data
 	 * @return Whether the entity and block hitboxes overlap.
 	 */
 	boolean checkEntity(Vector3d pos, double width, double height, int x, int y, int z, int block);
@@ -109,7 +106,7 @@ public interface RotationMode extends RegistryElement {
 	 * @param x x-coordinate of the block.
 	 * @param y y-coordinate of the block.
 	 * @param z z-coordinate of the block.
-	 * @param data block data
+	 * @param block block data
 	 * @return Returns true if the block behaves like a normal block and therefor needs to be handled like a normal block in the specified direction. Returns false if everything has been handled already in here.
 	 */
 	boolean checkEntityAndDoCollision(Entity ent, Vector4d vel, int x, int y, int z, int block);

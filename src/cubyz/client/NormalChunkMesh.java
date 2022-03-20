@@ -4,6 +4,7 @@ import static org.lwjgl.opengl.GL43.*;
 
 import java.util.ArrayList;
 
+import cubyz.utils.datastructures.SimpleList;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
@@ -12,8 +13,7 @@ import cubyz.rendering.ShaderProgram;
 import cubyz.rendering.Window;
 import cubyz.utils.Utils;
 import cubyz.utils.VertexAttribList;
-import cubyz.utils.datastructures.FastList;
-import cubyz.utils.datastructures.IntFastList;
+import cubyz.utils.datastructures.IntSimpleList;
 import cubyz.world.ChunkData;
 import cubyz.world.NormalChunk;
 import cubyz.world.blocks.BlockInstance;
@@ -38,7 +38,7 @@ public class NormalChunkMesh extends ChunkMesh {
 
 	// ThreadLocal lists, to prevent (re-)allocating tons of memory.
 	private static final ThreadLocal<VertexAttribList> localVertices = ThreadLocal.withInitial(() -> new VertexAttribList(SIZEOF_VERTEX));
-	private static final ThreadLocal<IntFastList> localFaces = ThreadLocal.withInitial(() -> new IntFastList(30000));
+	private static final ThreadLocal<IntSimpleList> localFaces = ThreadLocal.withInitial(() -> new IntSimpleList(30000));
 
 	// Shader stuff:
 	public static int loc_projectionMatrix;
@@ -168,7 +168,7 @@ public class NormalChunkMesh extends ChunkMesh {
 				return;
 		}
 		VertexAttribList vertices = localVertices.get();
-		IntFastList faces = localFaces.get();
+		IntSimpleList faces = localFaces.get();
 		vertices.clear();
 		faces.clear();
 		generateModelData(chunk, vertices, faces);
@@ -183,7 +183,7 @@ public class NormalChunkMesh extends ChunkMesh {
 		transparentVaoId = bufferData(vertices, faces, transparentVboIdList);
 	}
 	
-	public int bufferData(VertexAttribList vertices, IntFastList faces, ArrayList<Integer> vboIdList) {
+	public int bufferData(VertexAttribList vertices, IntSimpleList faces, ArrayList<Integer> vboIdList) {
 		
 		generated = true;
 		if (faces.size == 0) {
@@ -297,9 +297,9 @@ public class NormalChunkMesh extends ChunkMesh {
 		vaoId = transparentVaoId = -1;
 	}
 	
-	private static void generateModelData(NormalChunk chunk, VertexAttribList vertices, IntFastList faces) {
+	private static void generateModelData(NormalChunk chunk, VertexAttribList vertices, IntSimpleList faces) {
 		// Go through all blocks and check their neighbors:
-		FastList<BlockInstance> visibles = chunk.getVisibles();
+		SimpleList<BlockInstance> visibles = chunk.getVisibles();
 		for(int i = 0; i < visibles.size; i++) {
 			BlockInstance bi = visibles.array[i];
 			if (!Blocks.transparent(bi.getBlock())) {
@@ -309,9 +309,9 @@ public class NormalChunkMesh extends ChunkMesh {
 		}
 	}
 	
-	private static void generateTransparentModelData(NormalChunk chunk, VertexAttribList vertices, IntFastList faces) {
+	private static void generateTransparentModelData(NormalChunk chunk, VertexAttribList vertices, IntSimpleList faces) {
 		// Go through all blocks and check their neighbors:
-		FastList<BlockInstance> visibles = chunk.getVisibles();
+		SimpleList<BlockInstance> visibles = chunk.getVisibles();
 		for(int i = 0; i < visibles.size; i++) {
 			BlockInstance bi = visibles.array[i];
 			if (Blocks.transparent(bi.getBlock())) {

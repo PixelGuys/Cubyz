@@ -12,7 +12,7 @@ import cubyz.client.BlockMeshes;
 import cubyz.rendering.models.Model;
 import cubyz.utils.datastructures.IntWrapper;
 import cubyz.utils.VertexAttribList;
-import cubyz.utils.datastructures.IntFastList;
+import cubyz.utils.datastructures.IntSimpleList;
 import cubyz.world.Chunk;
 import cubyz.world.Neighbors;
 import cubyz.world.World;
@@ -122,7 +122,7 @@ public class TorchRotation implements RotationMode {
 	}
 	
 	@Override
-	public void generateChunkMesh(BlockInstance bi, VertexAttribList vertices, IntFastList faces) {
+	public void generateChunkMesh(BlockInstance bi, VertexAttribList vertices, IntSimpleList faces) {
 		int data = bi.getBlock() >>> 16;
 		Model model = BlockMeshes.mesh(bi.getBlock() & Blocks.TYPE_MASK).model;
 		if ((data & 0b1) != 0) {

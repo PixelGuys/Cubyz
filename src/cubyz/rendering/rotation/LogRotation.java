@@ -10,7 +10,7 @@ import cubyz.api.Resource;
 import cubyz.client.BlockMeshes;
 import cubyz.utils.datastructures.IntWrapper;
 import cubyz.utils.VertexAttribList;
-import cubyz.utils.datastructures.IntFastList;
+import cubyz.utils.datastructures.IntSimpleList;
 import cubyz.world.Chunk;
 import cubyz.world.World;
 import cubyz.world.blocks.Blocks;
@@ -86,7 +86,7 @@ public class LogRotation implements RotationMode {
 	}
 	
 	@Override
-	public void generateChunkMesh(BlockInstance bi, VertexAttribList vertices, IntFastList faces) {
+	public void generateChunkMesh(BlockInstance bi, VertexAttribList vertices, IntSimpleList faces) {
 		
 		boolean[] directionInversion;
 		int[] directionMap;

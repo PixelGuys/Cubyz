@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import javax.imageio.ImageIO;
 
 import cubyz.utils.Logger;
-import cubyz.utils.datastructures.IntFastList;
+import cubyz.utils.datastructures.IntSimpleList;
 import cubyz.api.DataOrientedRegistry;
 import cubyz.api.Resource;
 import cubyz.rendering.Mesh;
@@ -33,8 +33,8 @@ public class BlockMeshes implements DataOrientedRegistry {
 	private static int loadedMeshes = 1;
 
 	private static ArrayList<BufferedImage> blockTextures = new ArrayList<BufferedImage>();
-	private static IntFastList animationFrames = new IntFastList(8192);
-	private static IntFastList animationTimes = new IntFastList(8192);
+	private static IntSimpleList animationFrames = new IntSimpleList(8192);
+	private static IntSimpleList animationTimes = new IntSimpleList(8192);
 	private static ArrayList<String> textureIDs = new ArrayList<String>();
 
 	private static final String[] sideNames = new String[6];

@@ -5,7 +5,7 @@ import java.util.function.Consumer;
 import cubyz.api.RegistryElement;
 import cubyz.api.Resource;
 import cubyz.utils.datastructures.ChanceObject;
-import cubyz.utils.datastructures.FastList;
+import cubyz.utils.datastructures.SimpleList;
 import cubyz.world.blocks.Blocks;
 import pixelguys.json.JsonArray;
 import pixelguys.json.JsonElement;
@@ -91,7 +91,7 @@ public class Biome extends ChanceObject implements RegistryElement {
 		struct = new BlockStructure(blockStructure);
 
 		JsonArray structures = json.getArrayNoNull("structures");
-		FastList<StructureModel> vegetation = new FastList<StructureModel>(new StructureModel[structures.array.size()]);
+		SimpleList<StructureModel> vegetation = new SimpleList<StructureModel>(new StructureModel[structures.array.size()]);
 		for(JsonElement elem : structures.array) {
 			if (elem instanceof JsonObject) {
 				StructureModel model = StructureModel.loadStructure((JsonObject) elem);

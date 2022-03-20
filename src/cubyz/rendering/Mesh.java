@@ -7,7 +7,7 @@ import java.util.function.Consumer;
 import static org.lwjgl.opengl.GL43.*;
 
 import cubyz.rendering.models.Model;
-import cubyz.utils.datastructures.FastList;
+import cubyz.utils.datastructures.SimpleList;
 
 public class Mesh implements Cloneable {
 
@@ -115,7 +115,7 @@ public class Mesh implements Cloneable {
 		glDrawElements(GL_TRIANGLES, vertexCount, GL_UNSIGNED_INT, 0);
 	}
 	
-	public void renderList(FastList<Spatial> spatials, Consumer<Spatial> consumer) {
+	public void renderList(SimpleList<Spatial> spatials, Consumer<Spatial> consumer) {
 		if (spatials.isEmpty())
 			return;
 		initRender();

@@ -10,7 +10,7 @@ import cubyz.rendering.Camera;
 import cubyz.rendering.SSBO;
 import cubyz.rendering.ShaderProgram;
 import cubyz.utils.Utils;
-import cubyz.utils.datastructures.IntFastList;
+import cubyz.utils.datastructures.IntSimpleList;
 import cubyz.world.Chunk;
 import cubyz.world.ChunkData;
 import cubyz.world.Neighbors;
@@ -22,7 +22,7 @@ import cubyz.world.ReducedChunkVisibilityData;
 
 public class ReducedChunkMesh extends ChunkMesh {
 	// ThreadLocal lists, to prevent (re-)allocating tons of memory.
-	private static final ThreadLocal<IntFastList> localFaces = ThreadLocal.withInitial(() -> new IntFastList(30000));
+	private static final ThreadLocal<IntSimpleList> localFaces = ThreadLocal.withInitial(() -> new IntSimpleList(30000));
 
 	// Shader stuff:
 	public static int loc_projectionMatrix;
@@ -137,7 +137,7 @@ public class ReducedChunkMesh extends ChunkMesh {
 		}
 		generated = true;
 
-		IntFastList faces = localFaces.get();
+		IntSimpleList faces = localFaces.get();
 
 		faces.clear();
 		generateSimpleModelData(chunkVisibilityData, faces);
@@ -195,7 +195,7 @@ public class ReducedChunkMesh extends ChunkMesh {
 		assert wasDeleted : "Memory leak.";
 	}
 
-	private static void generateSimpleModelData(ReducedChunkVisibilityData chunkVisibilityData, IntFastList faces) {
+	private static void generateSimpleModelData(ReducedChunkVisibilityData chunkVisibilityData, IntSimpleList faces) {
 		for(int i = 0; i < chunkVisibilityData.size; i++) {
 			int block = chunkVisibilityData.visibleBlocks[i];
 			int x = chunkVisibilityData.x[i];

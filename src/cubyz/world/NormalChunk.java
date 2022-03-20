@@ -2,10 +2,10 @@ package cubyz.world;
 
 import java.util.ArrayList;
 
+import cubyz.utils.datastructures.SimpleList;
 import org.joml.Vector3i;
 
 import cubyz.utils.Utilities;
-import cubyz.utils.datastructures.FastList;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.BlockInstance;
@@ -24,7 +24,7 @@ public class NormalChunk extends Chunk {
 	private ArrayList<Integer> liquids = new ArrayList<>();
 	/**Liquids that should be updated at next frame. Stores the local index of the block.*/
 	private ArrayList<Integer> updatingLiquids = new ArrayList<>();
-	private FastList<BlockInstance> visibles = new FastList<BlockInstance>(50, BlockInstance.class);
+	private SimpleList<BlockInstance> visibles = new SimpleList<BlockInstance>(new BlockInstance[64]);
 	protected boolean startedloading = false;
 	protected boolean loaded = false;
 	private ArrayList<BlockEntity> blockEntities = new ArrayList<>();
@@ -66,7 +66,7 @@ public class NormalChunk extends Chunk {
 	 * @param x relative to this
 	 * @param y relative to this
 	 * @param z relative to this
-	 * @param block
+	 * @param b block
 	 */
 	@Override
 	public void updateBlockInGeneration(int x, int y, int z, int b) {
@@ -123,11 +123,9 @@ public class NormalChunk extends Chunk {
 	/**
 	 * Does not check bounds!
 	 * @param b
-	 * @param data
 	 * @param x Relative to this Chunk.
 	 * @param y Relative to this Chunk.
 	 * @param z Relative to this Chunk.
-	 * @param registerBlockChange
 	 * @param considerPrevious If the degradability of the block which was there before should be considered.
 	 */
 	public void addBlock(int b, int x, int y, int z, boolean considerPrevious) {
@@ -212,8 +210,7 @@ public class NormalChunk extends Chunk {
 	 * Returns true if <i>blocker</i> does not block <i>blocked</i>.
 	 * @param blocker
 	 * @param blocked
-	 * @param blockerData
-	 * @param direction
+	 * @param neighbor →direction
 	 * @return
 	 */
 	public boolean blocksBlockNot(int blocker, int blocked, int neighbor) {
@@ -487,7 +484,7 @@ public class NormalChunk extends Chunk {
 		return updatingLiquids;
 	}
 	
-	public FastList<BlockInstance> getVisibles() {
+	public SimpleList<BlockInstance> getVisibles() {
 		return visibles;
 	}
 	

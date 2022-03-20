@@ -6,7 +6,7 @@ import org.joml.Vector3f;
 import cubyz.api.RegistryElement;
 import cubyz.api.Resource;
 import cubyz.utils.VertexAttribList;
-import cubyz.utils.datastructures.IntFastList;
+import cubyz.utils.datastructures.IntSimpleList;
 import cubyz.world.Neighbors;
 
 import static cubyz.client.NormalChunkMesh.*;
@@ -96,7 +96,7 @@ public class Model implements RegistryElement {
 	 * @param renderIndices
 	 * @param renderIndex
 	 */
-	public void addToChunkMesh(int x, int y, int z, int[] textureIndices, int[] light, byte neighbors, VertexAttribList vertices, IntFastList faces) {
+	public void addToChunkMesh(int x, int y, int z, int[] textureIndices, int[] light, byte neighbors, VertexAttribList vertices, IntSimpleList faces) {
 		int indexOffset = vertices.currentVertex();
 		for(int i3 = 0; i3 < positions.length; i3 += 3) {
 			int i2 = i3*2/3;
@@ -145,7 +145,7 @@ public class Model implements RegistryElement {
 	 * @param renderIndices
 	 * @param renderIndex
 	 */
-	public void addToChunkMeshSimpleRotation(int x, int y, int z, int[] directionMap, boolean[] directionInversion, int[] textureIndices, int[] light, byte neighbors, VertexAttribList vertices, IntFastList faces) {
+	public void addToChunkMeshSimpleRotation(int x, int y, int z, int[] directionMap, boolean[] directionInversion, int[] textureIndices, int[] light, byte neighbors, VertexAttribList vertices, IntSimpleList faces) {
 		int indexOffset = vertices.currentVertex();
 		for(int i3 = 0; i3 < positions.length; i3 += 3) {
 			int i2 = i3*2/3;
@@ -193,7 +193,7 @@ public class Model implements RegistryElement {
 	 * @param renderIndices
 	 * @param renderIndex
 	 */
-	public void addToChunkMeshRotation(float x, float y, float z, Matrix3f rotationMatrix, int[] textureIndices, int[] light, byte neighbors, VertexAttribList vertices, IntFastList faces) {
+	public void addToChunkMeshRotation(float x, float y, float z, Matrix3f rotationMatrix, int[] textureIndices, int[] light, byte neighbors, VertexAttribList vertices, IntSimpleList faces) {
 		int indexOffset = vertices.currentVertex();
 		for(int i3 = 0; i3 < positions.length; i3 += 3) {
 			Vector3f pos = new Vector3f(positions[i3], positions[i3+1], positions[i3+2]);

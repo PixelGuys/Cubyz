@@ -15,7 +15,7 @@ import cubyz.client.Cubyz;
 import cubyz.client.Meshes;
 import cubyz.utils.Utils;
 import cubyz.utils.datastructures.Cache;
-import cubyz.utils.datastructures.IntFastList;
+import cubyz.utils.datastructures.IntSimpleList;
 import cubyz.world.Neighbors;
 import cubyz.world.NormalChunk;
 import cubyz.world.blocks.Blocks;
@@ -129,7 +129,7 @@ public final class BlockDropRenderer {
 		}
 	}
 	
-	private static final IntFastList modelData = new IntFastList();
+	private static final IntSimpleList modelData = new IntSimpleList();
 	private static final ArrayList<ItemVoxelModel> freeIndices = new ArrayList<>();
 	
 	private static class ItemVoxelModel {

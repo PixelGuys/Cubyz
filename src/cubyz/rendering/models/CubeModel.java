@@ -4,7 +4,7 @@ import cubyz.api.Resource;
 import cubyz.client.Meshes;
 import cubyz.rendering.ModelLoader;
 import cubyz.utils.VertexAttribList;
-import cubyz.utils.datastructures.IntFastList;
+import cubyz.utils.datastructures.IntSimpleList;
 import cubyz.world.Neighbors;
 
 import static cubyz.client.NormalChunkMesh.*;
@@ -15,7 +15,7 @@ public class CubeModel extends Model {
 	}
 
 	@Override
-	public void addToChunkMesh(int x, int y, int z, int[] textureIndices, int[] light, byte neighbors, VertexAttribList vertices, IntFastList faces) {
+	public void addToChunkMesh(int x, int y, int z, int[] textureIndices, int[] light, byte neighbors, VertexAttribList vertices, IntSimpleList faces) {
 		// Being a cube it is possible to optimize neighbor data:
 		int indexOffset = vertices.currentVertex();
 		int size = positions.length/3;
@@ -61,7 +61,7 @@ public class CubeModel extends Model {
 	}
 
 	@Override
-	public void addToChunkMeshSimpleRotation(int x, int y, int z, int[] directionMap, boolean[] directionInversion, int[] textureIndices, int[] light, byte neighbors, VertexAttribList vertices, IntFastList faces) {
+	public void addToChunkMeshSimpleRotation(int x, int y, int z, int[] directionMap, boolean[] directionInversion, int[] textureIndices, int[] light, byte neighbors, VertexAttribList vertices, IntSimpleList faces) {
 		// Being a cube it is possible to optimize neighbor data:
 		int indexOffset = vertices.currentVertex();
 		int size = positions.length/3;

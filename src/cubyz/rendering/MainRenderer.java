@@ -2,6 +2,7 @@ package cubyz.rendering;
 
 import static org.lwjgl.opengl.GL43.*;
 
+import cubyz.utils.datastructures.SimpleList;
 import org.joml.FrustumIntersection;
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
@@ -19,7 +20,6 @@ import cubyz.client.NormalChunkMesh;
 import cubyz.client.ReducedChunkMesh;
 import cubyz.gui.input.Keyboard;
 import cubyz.utils.Utils;
-import cubyz.utils.datastructures.FastList;
 import cubyz.world.World;
 import cubyz.world.Chunk;
 import cubyz.world.blocks.BlockInstance;
@@ -253,16 +253,10 @@ public class MainRenderer {
 	
 	/**
 	 * Renders a Cubyz world.
-	 * @param window the window to render in
-	 * @param ctx the Context object (will soon be replaced)
 	 * @param ambientLight the ambient light to use
 	 * @param directionalLight the directional light to use
-	 * @param chunks the chunks being displayed
-	 * @param reducedChunks the low-resolution far distance chunks to be displayed.
-	 * @param blocks the type of blocks used (or available) in the displayed chunks
-	 * @param entities the entities to render
 	 * @param spatials the special objects to render (that are neither entity, neither blocks, like sun and moon, or rain)
-	 * @param localPlayer The world's local player
+	 * @param playerPosition The world's local player
 	 */
 	public void render(Vector3f ambientLight, DirectionalLight directionalLight, Spatial[] spatials, Vector3d playerPosition) {
 		if (!doRender)
@@ -307,8 +301,8 @@ public class MainRenderer {
 
 			glDepthRangef(0, 0.05f);
 
-			FastList<NormalChunkMesh> visibleChunks = new FastList<NormalChunkMesh>(NormalChunkMesh.class);
-			FastList<ReducedChunkMesh> visibleReduced = new FastList<ReducedChunkMesh>(ReducedChunkMesh.class);
+			SimpleList<NormalChunkMesh> visibleChunks = new SimpleList<NormalChunkMesh>(new NormalChunkMesh[64]);
+			SimpleList<ReducedChunkMesh> visibleReduced = new SimpleList<ReducedChunkMesh>(new ReducedChunkMesh[64]);
 			for (ChunkMesh mesh : Cubyz.chunkTree.getRenderChunks(frustumInt, x0, y0, z0)) {
 				if (mesh instanceof NormalChunkMesh) {
 					visibleChunks.add((NormalChunkMesh)mesh);

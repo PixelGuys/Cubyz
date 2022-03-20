@@ -15,7 +15,7 @@ import cubyz.client.BlockMeshes;
 import cubyz.rendering.models.CubeModel;
 import cubyz.rendering.models.Model;
 import cubyz.utils.datastructures.IntWrapper;
-import cubyz.utils.datastructures.IntFastList;
+import cubyz.utils.datastructures.IntSimpleList;
 import cubyz.world.Neighbors;
 import cubyz.world.Chunk;
 import cubyz.world.World;
@@ -134,7 +134,7 @@ public class StackableRotation implements RotationMode {
 	}
 	
 	@Override
-	public void generateChunkMesh(BlockInstance bi, VertexAttribList vertices, IntFastList faces) {
+	public void generateChunkMesh(BlockInstance bi, VertexAttribList vertices, IntSimpleList faces) {
 		Model model = BlockMeshes.mesh(bi.getBlock() & Blocks.TYPE_MASK).model;
 		if (!(model instanceof CubeModel)) {
 			Logger.error("Unsupported model "+model.getRegistryID()+" in block "+Blocks.id(bi.getBlock())+" for stackable block type. Skipping block.");
@@ -151,7 +151,7 @@ public class StackableRotation implements RotationMode {
 		int indexOffset = vertices.currentVertex();
 		int size = model.positions.length/3;
 		float factor = Math.min(1, (bi.getBlock() >>> 16)/16.0f);
-		IntFastList indexesAdded = new IntFastList(24);
+		IntSimpleList indicesAdded = new IntSimpleList(24);
 		for(int i = 0; i < size; i++) {
 			int i2 = i*2;
 			int i3 = i*3;
@@ -184,14 +184,14 @@ public class StackableRotation implements RotationMode {
 				}
 
 				vertices.add(TEXTURE_Z, (float)textureIndices[Model.normalToNeighbor(model.normals[i3], model.normals[i3+1], model.normals[i3+2])]);
-				indexesAdded.add(i);
+				indicesAdded.add(i);
 				vertices.endVertex();
 			}
 		}
 		
 		for(int i = 0; i < model.indices.length; i += 3) {
-			if (indexesAdded.contains(model.indices[i]) && indexesAdded.contains(model.indices[i+1]) && indexesAdded.contains(model.indices[i+2])) {
-				faces.add(indexesAdded.indexOf(model.indices[i]) + indexOffset, indexesAdded.indexOf(model.indices[i+1]) + indexOffset, indexesAdded.indexOf(model.indices[i+2]) + indexOffset);
+			if (indicesAdded.contains(model.indices[i]) && indicesAdded.contains(model.indices[i+1]) && indicesAdded.contains(model.indices[i+2])) {
+				faces.add(indicesAdded.indexOf(model.indices[i]) + indexOffset, indicesAdded.indexOf(model.indices[i+1]) + indexOffset, indicesAdded.indexOf(model.indices[i+2]) + indexOffset);
 			}
 		}
 	}

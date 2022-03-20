@@ -19,7 +19,7 @@ import cubyz.api.Order;
 import cubyz.api.Proxy;
 import cubyz.api.Registry;
 import cubyz.api.Resource;
-import cubyz.utils.datastructures.IntFastList;
+import cubyz.utils.datastructures.IntSimpleList;
 import cubyz.utils.math.CubyzMath;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.Blocks;
@@ -49,7 +49,7 @@ public class AddonsMod implements Mod {
 	private static ArrayList<Item> items = new ArrayList<>();
 	
 	// Used to fetch block drops that aren't loaded during block loading.
-	private static IntFastList missingDropsBlock = new IntFastList();
+	private static IntSimpleList missingDropsBlock = new IntSimpleList();
 	private static ArrayList<String> missingDropsItem = new ArrayList<>();
 	private static ArrayList<Float> missingDropsAmount = new ArrayList<>();
 

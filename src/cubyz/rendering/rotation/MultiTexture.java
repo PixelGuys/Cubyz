@@ -14,7 +14,7 @@ import cubyz.api.DataOrientedRegistry;
 import cubyz.api.Resource;
 import cubyz.client.BlockMeshes;
 import cubyz.utils.datastructures.IntWrapper;
-import cubyz.utils.datastructures.IntFastList;
+import cubyz.utils.datastructures.IntSimpleList;
 import cubyz.world.Chunk;
 import cubyz.world.World;
 import cubyz.world.blocks.BlockInstance;
@@ -118,7 +118,7 @@ public class MultiTexture implements RotationMode, DataOrientedRegistry {
 	}
 	
 	@Override
-	public void generateChunkMesh(BlockInstance bi, VertexAttribList vertices, IntFastList faces) {
+	public void generateChunkMesh(BlockInstance bi, VertexAttribList vertices, IntSimpleList faces) {
 		long seed = bi.x*4835871844237932163L ^ bi.y*80268680099511559L ^ bi.z*2595762606481225891L ^ bi.getBlock();
 		rand.setSeed(seed);
 		int randomIndex = rand.nextInt(textureIndicesVariants[bi.getBlock() & Blocks.TYPE_MASK].length);
