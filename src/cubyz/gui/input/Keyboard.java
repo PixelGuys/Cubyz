@@ -6,7 +6,8 @@ import cubyz.utils.Logger;
 
 import static org.lwjgl.glfw.GLFW.*;
 
-public class Keyboard {
+public final class Keyboard {
+	private Keyboard() {} // No instances allowed.
 
 	static ArrayList<Integer> pressedKeys = new ArrayList<Integer>();
 	static ArrayList<Integer> releasedKeys = new ArrayList<Integer>();

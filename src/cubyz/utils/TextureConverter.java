@@ -21,7 +21,8 @@ import cubyz.utils.datastructures.PixelUtils;
  * laying textures on top of each other, converting the color and converting image to stream or buffer.
  */
 
-public class TextureConverter {
+public final class TextureConverter {
+	private TextureConverter() {} // No instances allowed.
 
 	public static ByteBuffer byteBuffer(BufferedImage img) {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();

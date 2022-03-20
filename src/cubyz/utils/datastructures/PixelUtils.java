@@ -6,8 +6,9 @@ import java.awt.image.BufferedImage;
  * Some useful methods for generating graphics.
  */
 
-public class PixelUtils {
-	
+public final class PixelUtils {
+	private PixelUtils() {} // No instances allowed.
+
 	/**
 	 * Colors a template image.
 	 * @param template

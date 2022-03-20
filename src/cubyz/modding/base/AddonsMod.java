@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.function.BiConsumer;
@@ -264,14 +265,14 @@ public class AddonsMod implements Mod {
 					boolean shaped = false;
 					boolean startedRecipe = false;
 					try {
-						BufferedReader buf = new BufferedReader(new FileReader(file));
+						BufferedReader buf = new BufferedReader(new FileReader(file, StandardCharsets.UTF_8));
 						String line;
 						int lineNumber = 0;
 						while ((line = buf.readLine())!= null) {
 							lineNumber++;
 							line = line.replaceAll("//.*", ""); // Ignore comments with "//".
 							line = line.trim(); // Remove whitespaces before and after the word starts.
-							if (line.length() == 0) continue;
+							if (line.isEmpty()) continue;
 							// shortcuts:
 							if (line.contains("=")) {
 								String[] parts = line.split("=");
@@ -293,7 +294,7 @@ public class AddonsMod implements Mod {
 								startedRecipe = true;
 								items.clear();
 								itemsPerRow.clear();
-							} else if (line.startsWith("result") && startedRecipe && itemsPerRow.size() != 0) {
+							} else if (line.startsWith("result") && startedRecipe && !itemsPerRow.isEmpty()) {
 								// Parse the result, which is made up of `amount*shortcut`.
 								startedRecipe = false;
 								String result = line.substring(6).replaceAll("\\s", ""); // Remove "result" and all space-likes.

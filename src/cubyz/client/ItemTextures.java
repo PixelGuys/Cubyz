@@ -11,7 +11,8 @@ import cubyz.world.items.tools.Tool;
 /**
  * Stores and manages all the item textures.
  */
-public class ItemTextures {
+public final class ItemTextures {
+	private ItemTextures() {} // No instances allowed.
 
 	private static final HashMap<Item, Texture> storedTextures = new HashMap<>();
 	

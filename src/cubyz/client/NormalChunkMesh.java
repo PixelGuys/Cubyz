@@ -52,7 +52,7 @@ public class NormalChunkMesh extends ChunkMesh {
 	public static int loc_fog_density;
 	public static int loc_time;
 
-	public static abstract class TransparentUniforms {
+	public static final class TransparentUniforms {
 		public static int loc_projectionMatrix;
 		public static int loc_viewMatrix;
 		public static int loc_texture_sampler;

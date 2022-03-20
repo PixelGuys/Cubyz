@@ -5,13 +5,16 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 
 /**
  * Contains functions that don't really fit anywhere else.
  */
 
-public class Utilities {
+public final class Utilities {
+	private Utilities() {} // No instances allowed.
+
 
 	public static String capitalize(String str) {
 		char[] chars = str.toCharArray();
@@ -25,7 +28,7 @@ public class Utilities {
 	
 	public static String readFile(File file) throws IOException {
 		String txt = "";
-		FileReader reader = new FileReader(file);
+		FileReader reader = new FileReader(file, StandardCharsets.UTF_8);
 		while (reader.ready()) {
 			txt += (char) reader.read();
 		}
@@ -35,7 +38,7 @@ public class Utilities {
 	
 	public static void writeFile(File file, String content) throws IOException {
 		file.getParentFile().mkdirs();
-		FileWriter writer = new FileWriter(file);
+		FileWriter writer = new FileWriter(file, StandardCharsets.UTF_8);
 		writer.write(content);
 		writer.close();
 	}

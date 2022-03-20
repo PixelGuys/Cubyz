@@ -18,7 +18,9 @@ import pixelguys.json.Json;
  * Uses ANSI-codes if possible.
  */
 
-public class Logger {
+public final class Logger {
+	private Logger() {} // No instances allowed.
+
 	private static DateFormat format = new SimpleDateFormat("dd/MM/yy HH:mm:ss");
 	private static DateFormat logFileFormat = new SimpleDateFormat("YYYY-MM-dd-HH-mm-ss");
 	

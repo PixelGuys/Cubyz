@@ -97,18 +97,18 @@ public class Button extends Component {
 	}
 
 	private void drawTexture(int[] texture, int x, int y) {
-		Graphics.setColor(texture[0]<<16 | texture[1]<<8 | texture[2]);
+		Graphics.setColor(texture[0], texture[1], texture[2]);
 		Graphics.fillRect(x+5, y+5, width-10, height-10);
-		Graphics.setColor(texture[3]<<16 | texture[4]<<8 | texture[5]);
+		Graphics.setColor(texture[3], texture[4], texture[5]);
 		for(int i = 0; i < 5; i++)
 			Graphics.fillRect(x+i+1, y+i, width-2*i-1, 1);
-		Graphics.setColor(texture[6]<<16 | texture[7]<<8 | texture[8]);
+		Graphics.setColor(texture[6], texture[7], texture[8]);
 		for(int i = 0; i < 5; i++)
 			Graphics.fillRect(x+width-i-1, y+i+1, 1, height-2*i-1);
-		Graphics.setColor(texture[9]<<16 | texture[10]<<8 | texture[11]);
+		Graphics.setColor(texture[9], texture[10], texture[11]);
 		for(int i = 0; i < 5; i++)
 			Graphics.fillRect(x+i, y+height-i-1, width-2*i-1, 1);
-		Graphics.setColor(texture[12]<<16 | texture[13]<<8 | texture[14]);
+		Graphics.setColor(texture[12], texture[13], texture[14]);
 		for(int i = 0; i < 5; i++)
 			Graphics.fillRect(x+i, y+i, 1, height-2*i-1);
 	}

@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 
 import cubyz.utils.Logger;
 import cubyz.world.World;
@@ -92,7 +93,7 @@ public class WorldIO {
 						entityData.add(ent.save());
 				}
 			}
-			out.write(worldData.toString().getBytes());
+			out.write(worldData.toString().getBytes(StandardCharsets.UTF_8));
 			out.close();
 		} catch (IOException e) {
 			Logger.error(e);

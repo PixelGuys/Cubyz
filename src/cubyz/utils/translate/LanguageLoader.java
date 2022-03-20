@@ -14,7 +14,7 @@ import cubyz.utils.ResourceManager;
  * Loads a language file based on locale.
  */
 
-public class LanguageLoader {
+public final class LanguageLoader {
 
 	public static Language load(String locale) {
 		locale = Objects.requireNonNull(locale);

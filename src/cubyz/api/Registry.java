@@ -68,8 +68,7 @@ public class Registry<T extends RegistryElement> {
 			if (alwaysError) {
 				throw new IllegalArgumentException(element.getClass().getName() + " does not have any ID set!");
 			}
-			System.err.println(element.getClass().getName() + " does not have any ID set. Skipping!");
-			System.err.flush();
+			Logger.error(element.getClass().getName() + " does not have any ID set. Skipping!");
 			return false;
 		}
 		hashMap.put(element.getRegistryID().toString(), element);

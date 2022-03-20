@@ -378,11 +378,6 @@ public class ItemEntityManager {
 		if (Blocks.mode(block).changesHitbox()) {
 			isInside = Blocks.mode(block).checkEntity(new Vector3d(posxyz[index3], posxyz[index3+1]+RADIUS, posxyz[index3+2]), RADIUS, DIAMETER, x, y, z, block);
 		}
-		if (isInside) {
-			if (Blocks.solid(block)) {
-				return true;
-			}
-		}
-		return false;
+		return isInside && Blocks.solid(block);
 	}
 }

@@ -55,7 +55,7 @@ public class MetaChunk {
 	
 	public void updateBlockEntities() {
 		for (NormalChunk ch : chunks) {
-			if (ch != null && ch.isLoaded() && ch.getBlockEntities().size() > 0) {
+			if (ch != null && ch.isLoaded() && !ch.getBlockEntities().isEmpty()) {
 				BlockEntity[] blockEntities = ch.getBlockEntities().toArray(new BlockEntity[0]);
 				for (BlockEntity be : blockEntities) {
 					if (be == null) break; // end of array
@@ -80,7 +80,7 @@ public class MetaChunk {
 			int wx = ch.wx;
 			int wy = ch.wy;
 			int wz = ch.wz;
-			if (ch.isLoaded() && ch.getLiquids().size() > 0) {
+			if (ch.isLoaded() && !ch.getLiquids().isEmpty()) {
 				Integer[] liquids = ch.getUpdatingLiquids().toArray(new Integer[0]);
 				int size = ch.getUpdatingLiquids().size();
 				ch.getUpdatingLiquids().clear();

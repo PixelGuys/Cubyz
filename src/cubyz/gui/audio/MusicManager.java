@@ -8,7 +8,7 @@ import cubyz.client.Cubyz;
 import cubyz.utils.ResourceManager;
 import cubyz.world.terrain.biomes.Biome;
 
-public class MusicManager {
+public final class MusicManager {
 	
 	private static SoundManager manager;
 	private static SoundSource source;
@@ -50,7 +50,7 @@ public class MusicManager {
 	public static void loadMusic(String musicName) {
 		if (currentMusic != "None") {
 			if(source!=null)
-			positions.put(currentMusic, source.getPlaybackPosition());
+				positions.put(currentMusic, source.getPlaybackPosition());
 		}
 		try {
 			if (!buffers.containsKey(musicName)) {

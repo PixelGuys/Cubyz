@@ -12,7 +12,7 @@ import club.minnced.discord.rpc.DiscordRPC;
 import club.minnced.discord.rpc.DiscordRichPresence;
 import club.minnced.discord.rpc.DiscordUser;
 
-public class DiscordIntegration {
+public final class DiscordIntegration {
 
 	static DiscordRichPresence presence;
 	static Thread worker;
@@ -29,7 +29,7 @@ public class DiscordIntegration {
 
 			@Override
 			public void accept(int errorCode, String message) {
-				System.err.println(errorCode + ": " + message);
+				Logger.error(errorCode + ": " + message);
 				ToastManager.queuedToasts.push(new Toast("Discord Integration", "An error occured: " + message));
 			}
 			
@@ -38,14 +38,14 @@ public class DiscordIntegration {
 			@Override
 			public void accept(DiscordUser user) {
 				ToastManager.queuedToasts.push(new Toast("Discord Integration", "Hello " + user.username + " !"));
-				System.out.println("Linked!");
+				Logger.info("Linked!");
 			}
 			
 		};
 		handlers.joinGame = (secret) -> {
 			String serverIP = secret.split(":")[0];
 			int serverPort = Integer.parseInt(secret.split(":")[1]);
-			System.out.println("Attempting to join server " + serverIP + " at port " + serverPort);
+			Logger.info("Attempting to join server " + serverIP + " at port " + serverPort);
 			//GameLauncher.logic.requestJoin(serverIP, serverPort);
 		};
 		

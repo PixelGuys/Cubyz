@@ -116,7 +116,7 @@ public class BaseMod implements Mod {
 				}
 			});
 			// If that doesn't work, check for the next smaller height region:
-			if (replacements.size() == 0) {
+			if (replacements.isEmpty()) {
 				Biome.checkLowerTypesInRegistry(biome.type, replacement -> {
 					if (replacement.maxHeight > biome.minHeight && replacement.minHeight < biome.minHeight) {
 						replacements.add(replacement);
@@ -134,7 +134,7 @@ public class BaseMod implements Mod {
 				}
 			});
 			// If that doesn't work, check for the next smaller height region:
-			if (replacements.size() == 0) {
+			if (replacements.isEmpty()) {
 				Biome.checkHigherTypesInRegistry(biome.type, replacement -> {
 					if (replacement.minHeight < biome.maxHeight && replacement.maxHeight > biome.maxHeight) {
 						replacements.add(replacement);

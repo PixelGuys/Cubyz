@@ -24,7 +24,9 @@ import cubyz.world.entity.EntityType;
  * Used to store active meshes and used to init mesh related lambda functions stored in ClientOnly.
  */
 
-public class Meshes {
+public final class Meshes {
+	private Meshes() {} // No instances allowed.
+
 	public static final HashMap<EntityType, Mesh> entityMeshes = new HashMap<>();
 	
 	public static final TextureArray blockTextureArray = new TextureArray();

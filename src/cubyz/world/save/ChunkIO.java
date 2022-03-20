@@ -1,11 +1,12 @@
 package cubyz.world.save;
 
 import cubyz.utils.datastructures.Cache;
-import cubyz.world.ChunkData;
 import cubyz.world.SavableChunk;
 import cubyz.world.World;
 
-public class ChunkIO {
+public final class ChunkIO {
+	private ChunkIO() {} // No instances allowed.
+
 	// Region files generally seem to be less than 1 MB on disk. To be on the safe side the amount of cached region files is limited to 128.
 	private static final int HASH_MASK = 31;
 	private static final Cache<RegionFile> regionCache = new Cache<>(new RegionFile[HASH_MASK+1][4]);

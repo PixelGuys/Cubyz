@@ -32,11 +32,11 @@ import cubyz.world.entity.Player;
  */
 
 public class MainRenderer {
-	public static class DeferredUniforms {
+	public static final class DeferredUniforms {
 		public static int loc_position;
 		public static int loc_color;
 	}
-	public static class FogUniforms {
+	public static final class FogUniforms {
 		public static int loc_fog_activ;
 		public static int loc_fog_color;
 		public static int loc_fog_density;

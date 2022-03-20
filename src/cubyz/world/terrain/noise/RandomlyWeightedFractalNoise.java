@@ -30,7 +30,9 @@ So the rightmost column and the bottom row are already part of the next map piec
 One other important thing in the implementation of this algorithm is that the relative height change has to decrease in every iteration. Otherwise the terrain would look noisy.
 
  */
-public class RandomlyWeightedFractalNoise {
+public final class RandomlyWeightedFractalNoise {
+	private RandomlyWeightedFractalNoise() {} // No instances allowed.
+
 	private static long getSeed(int x, int z, int offsetX, int offsetZ, long seed, int scale, int maxResolution) {
 		Random rand = new Random(seed*(scale*maxResolution | 1));
 		long l1 = rand.nextLong() | 1;

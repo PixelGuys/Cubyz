@@ -5,6 +5,7 @@ import cubyz.gui.components.ScrollingContainer;
 import cubyz.rendering.Graphics;
 import cubyz.rendering.Window;
 import cubyz.rendering.text.Fonts;
+import cubyz.utils.Logger;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -16,9 +17,9 @@ public class ConsoleLog extends MenuGUI {
 
     private final ScrollingContainer container = new ScrollingContainer();
 
-    private final int DEBUG = 0xffffff;
-    private final int WARN = 0xffff00;
-    private final int ERROR = 0xff0000;
+    private static final int DEBUG = 0xffffff;
+    private static final int WARN = 0xffff00;
+    private static final int ERROR = 0xff0000;
 
     @Override
     public void init() {
@@ -75,7 +76,7 @@ public class ConsoleLog extends MenuGUI {
                 log(line, lastLogLevel);
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            Logger.error(e);
         }
     }
 

@@ -15,6 +15,7 @@ import java.awt.geom.Rectangle2D;
 import java.io.IOException;
 import java.util.ArrayList;
 
+import cubyz.utils.Logger;
 import org.lwjgl.glfw.GLFW;
 
 import cubyz.gui.input.KeyListener;
@@ -73,7 +74,7 @@ public class TextLine implements KeyListener {
 	private void _updateText(String text) {
 		if (text == null) text = "";
 		this.text = text;
-		if (text.length() == 0) {
+		if (text.isEmpty()) {
 			layout = null;
 			glyphs.clear();
 			textWidth = 0;
@@ -142,7 +143,7 @@ public class TextLine implements KeyListener {
 	 */
 	private TextHitInfo fixEdge(TextHitInfo position) {
 		if (position == null || layout == null) return position;
-		if (text.length() == 0) return TextHitInfo.trailing(-1);
+		if (text.isEmpty()) return TextHitInfo.trailing(-1);
 		if (layout.getNextLeftHit(position) != null) {
 			position = layout.getNextLeftHit(position);
 			position = layout.getNextRightHit(position);
@@ -174,7 +175,7 @@ public class TextLine implements KeyListener {
 	 * @param offset
 	 */
 	public void moveCursor(int offset) {
-		if (text.length() == 0) {
+		if (text.isEmpty()) {
 			cursorPosition = TextHitInfo.trailing(-1);
 			return;
 		}
@@ -328,7 +329,7 @@ public class TextLine implements KeyListener {
 		} catch(Exception e) {
 			return;
 		}
-		if (pasted.length() == 0) return;
+		if (pasted.isEmpty()) return;
 		// Delete the current selection and replace it with the inserted value:
 		if (selectionStart != null) {
 			deleteTextAtCursor(true);
@@ -350,7 +351,7 @@ public class TextLine implements KeyListener {
 	// Rendering stuff:
 
 	// Shader stuff:
-	public static class TextUniforms {
+	public static final class TextUniforms {
 		public static int loc_texture_rect;
 		public static int loc_scene;
 		public static int loc_offset;
@@ -369,7 +370,7 @@ public class TextLine implements KeyListener {
 			textShader = new ShaderProgram(Utils.loadResource("assets/cubyz/shaders/graphics/Text.vs"),
 					Utils.loadResource("assets/cubyz/shaders/graphics/Text.fs"), TextUniforms.class);
 		} catch (IOException e) {
-			e.printStackTrace();
+			Logger.error(e);
 		}
 		// vertex buffer
 		float[] rawdata = {

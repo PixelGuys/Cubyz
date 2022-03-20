@@ -9,7 +9,9 @@ import org.joml.Vector3i;
 /**
  * Determines the physical properties of a tool to caclulate in-game parameters such as durability and speed.
  */
-public class ToolPhysics {
+public final class ToolPhysics {
+	private ToolPhysics() {} // No instances allowed.
+
 	/**
 	 * Finds the handle of the tool.
 	 * Uses a quite simple algorithm:

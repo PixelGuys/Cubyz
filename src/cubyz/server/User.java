@@ -8,6 +8,7 @@ import pixelguys.json.JsonParser;
 
 import java.io.*;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 
 /*
 *   A User
@@ -26,8 +27,8 @@ public class User {
 		outStream = clientSocket.getOutputStream();
 		inStream = clientSocket.getInputStream();
 
-		out = new PrintWriter(outStream, true);
-		in = new BufferedReader(new InputStreamReader(inStream));
+		out = new PrintWriter(outStream, true, StandardCharsets.UTF_8);
+		in = new BufferedReader(new InputStreamReader(inStream, StandardCharsets.UTF_8));
 		
 		doHandShake();
 		
@@ -57,7 +58,7 @@ public class User {
 			}
 			sendWorldAssets();
 		} catch (Exception e) {
-			e.printStackTrace();
+			Logger.error(e);
 		}
 	}
 

@@ -3,6 +3,7 @@ package cubyz.client;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 import cubyz.utils.Logger;
 import cubyz.Settings;
@@ -18,7 +19,8 @@ import pixelguys.json.JsonParser;
  * Also handles saving and loading them.
  */
 
-public class ClientSettings {
+public final class ClientSettings {
+	private ClientSettings() {} // No instances allowed.
 
 	public static float FOG_COEFFICIENT = 10f;
 	
@@ -75,7 +77,7 @@ public class ClientSettings {
 		settings.put("mouseSensitivity", ClientSettings.mouseSensitivity);
 
 		try {
-			FileWriter writer = new FileWriter("settings.json");
+			FileWriter writer = new FileWriter("settings.json", StandardCharsets.UTF_8);
 			writer.append(settings.toString());
 			writer.close();
 		} catch (IOException e) {

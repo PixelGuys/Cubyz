@@ -2,7 +2,9 @@ package cubyz.client.entity;
 
 import cubyz.world.entity.Entity;
 
-public class ClientEntityManager {
+public final class ClientEntityManager {
+	private ClientEntityManager() {} // No instances allowed.
+
 	private static ClientEntity[] entities = new ClientEntity[0];
 
 	public static ClientEntity[] getEntities() {

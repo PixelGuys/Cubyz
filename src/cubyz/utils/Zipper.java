@@ -8,7 +8,9 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
-public class Zipper {
+public final class Zipper {
+	private Zipper() {} // No instances allowed.
+
 	public static void pack(String sourceDirPath, OutputStream outputstream){
 		try (ZipOutputStream zipoutput = new ZipOutputStream(outputstream)) {
 			Path path = Paths.get(sourceDirPath);

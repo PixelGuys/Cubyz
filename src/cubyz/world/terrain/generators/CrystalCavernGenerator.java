@@ -9,7 +9,6 @@ import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.Blocks.BlockClass;
 import cubyz.world.terrain.CaveBiomeMap;
 import cubyz.world.terrain.CaveMap;
-import cubyz.world.terrain.MapFragment;
 import pixelguys.json.JsonObject;
 
 /**

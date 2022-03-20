@@ -5,7 +5,6 @@ import cubyz.api.RegistryElement;
 import cubyz.world.Chunk;
 import cubyz.world.terrain.CaveBiomeMap;
 import cubyz.world.terrain.CaveMap;
-import cubyz.world.terrain.MapFragment;
 import pixelguys.json.JsonObject;
 
 /**

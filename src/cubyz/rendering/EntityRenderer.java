@@ -15,7 +15,9 @@ import cubyz.utils.Utils;
 import cubyz.world.entity.CustomMeshProvider;
 import cubyz.world.entity.CustomMeshProvider.MeshType;
 
-public class EntityRenderer {
+public final class EntityRenderer {
+	private EntityRenderer() {} // No instances allowed.
+
 	public static int loc_projectionMatrix;
 	public static int loc_viewMatrix;
 	public static int loc_texture_sampler;

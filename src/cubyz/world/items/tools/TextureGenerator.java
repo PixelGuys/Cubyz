@@ -9,7 +9,9 @@ import java.util.Random;
 /**
  * Generates the texture of a Tool using the material information.
  */
-public class TextureGenerator {
+public final class TextureGenerator {
+	private TextureGenerator() {} // No instances allowed.
+
 	/** Used to translate between grid and pixel coordinates. */
 	static final int[] GRID_CENTERS_X = new int[] {
 		2, 5, 8, 11, 14,
@@ -360,7 +362,7 @@ public class TextureGenerator {
 		Item[][] itemGrid = tool.materialGrid;
 		for(int x = 0; x < 16; x++) {
 			for(int y = 0; y < 16; y++) {
-				if (pixelMaterials[x][y].items.size() != 0) {
+				if (!pixelMaterials[x][y].items.isEmpty()) {
 					// Choose a random material at conflict zones:
 					itemGrid[x][y] = pixelMaterials[x][y].items.get(rand.nextInt(pixelMaterials[x][y].items.size()));
 				}

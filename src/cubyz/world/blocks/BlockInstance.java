@@ -19,7 +19,7 @@ public class BlockInstance {
 	private byte neighbors;
 	public final int[] light;
 	public final NormalChunk source;
-	public float breakAnim = 0f;
+	public float breakAnim = 0;
 	
 	public BlockInstance(int block, Vector3i position, NormalChunk source, World world) {
 		this.source = source;

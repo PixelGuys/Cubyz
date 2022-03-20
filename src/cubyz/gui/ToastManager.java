@@ -8,7 +8,8 @@ import java.util.Deque;
  * TODO: Icons
  */
 
-public class ToastManager {
+public final class ToastManager {
+	private ToastManager() {} // No instances allowed.
 
 	public static Deque<Toast> queuedToasts = new ArrayDeque<>();
 	

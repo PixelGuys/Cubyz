@@ -22,7 +22,8 @@ import cubyz.utils.Utils;
  * Renders the background landscape you see in the menu.
  */
 
-public class BackgroundScene {
+public final class BackgroundScene {
+	private BackgroundScene() {} // No instances allowed.
 	static ShaderProgram cubeShader;
 
 	public static int loc_image;
@@ -41,7 +42,7 @@ public class BackgroundScene {
 			cubeShader = new ShaderProgram(Utils.loadResource("assets/cubyz/shaders/background/vertex.vs"),
 					Utils.loadResource("assets/cubyz/shaders/background/fragment.fs"), BackgroundScene.class);
 		} catch (IOException e) {
-			e.printStackTrace();
+			Logger.error(e);
 		}
 
 		// 4 sides of a simple cube with some panorama texture on it.

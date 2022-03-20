@@ -45,25 +45,23 @@ public class ReducedChunkMesh extends ChunkMesh {
 	public static ShaderProgram shader;
 
 	private final SSBO faceData = new SSBO(); // TODO: delete after usage.
-	private static int emptyVAO = -1;
+	private static final int emptyVAO;
 
 
 	static {
-		if(emptyVAO == -1) {
-			emptyVAO = glGenVertexArrays();
-			glBindVertexArray(emptyVAO);
-			int vboId = glGenBuffers();
-			//vboIdList.add(vboId);
-			int[] buffer = new int[6*3 << 15]; // 6 vertices per face, maximum 3 faces/block
-			int[] lut = new int[]{0, 1, 2, 2, 1, 3};
-			for(int i = 0; i < buffer.length; i++) {
-				buffer[i] = i/6*4 + lut[i%6];
-			}
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboId);
-			glBufferData(GL_ELEMENT_ARRAY_BUFFER, buffer, GL_STATIC_DRAW);
-			glBindBuffer(GL_ARRAY_BUFFER, 0);
-			glBindVertexArray(0);
+		emptyVAO = glGenVertexArrays();
+		glBindVertexArray(emptyVAO);
+		int vboId = glGenBuffers();
+		//vboIdList.add(vboId);
+		int[] buffer = new int[6*3 << 15]; // 6 vertices per face, maximum 3 faces/block
+		int[] lut = new int[]{0, 1, 2, 2, 1, 3};
+		for(int i = 0; i < buffer.length; i++) {
+			buffer[i] = i/6*4 + lut[i%6];
 		}
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboId);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, buffer, GL_STATIC_DRAW);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindVertexArray(0);
 	}
 	
 	public static void init(String shaderFolder) throws Exception {

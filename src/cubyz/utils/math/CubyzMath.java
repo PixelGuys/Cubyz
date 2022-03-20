@@ -6,10 +6,11 @@ import java.util.ArrayList;
  * A collection of special math functions used by Cubyz.
  */
 
-public class CubyzMath {
-	
+public final class CubyzMath {
+	private CubyzMath () {} // No instances allowed.
+
 	public static int max(ArrayList<Integer> numbers) {
-		if (numbers.size() == 0) return 0;
+		if (numbers.isEmpty()) return 0;
 		int max = Integer.MIN_VALUE;
 		for(Integer value : numbers) {
 			if (value > max) max = value;

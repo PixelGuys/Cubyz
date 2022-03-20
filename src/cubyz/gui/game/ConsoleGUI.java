@@ -111,7 +111,7 @@ public class ConsoleGUI extends MenuGUI {
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_TAB)) {
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_TAB, false);
 				updatePossibleCommands();
-				if (possibleCommands.size() == 0) {
+				if (possibleCommands.isEmpty()) {
 					mode = NORMAL;
 				} else if (input.getText().contains("\\s+")) {
 					findArguments();

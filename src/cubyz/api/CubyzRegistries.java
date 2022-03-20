@@ -21,7 +21,8 @@ import cubyz.world.terrain.generators.Generator;
  * A list of registries that are used on both server and client.
  */
 
-public class CubyzRegistries {
+public final class CubyzRegistries {
+	private CubyzRegistries() {} // No instances allowed.
 
 	public static final Registry<DataOrientedRegistry>   BLOCK_REGISTRIES           = new Registry<DataOrientedRegistry>();
 	public static final NoIDRegistry<Ore>                ORE_REGISTRY               = new NoIDRegistry<Ore>();

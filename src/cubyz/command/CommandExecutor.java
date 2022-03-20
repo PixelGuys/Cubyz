@@ -3,7 +3,8 @@ package cubyz.command;
 import cubyz.api.CubyzRegistries;
 import cubyz.api.Registry;
 
-public class CommandExecutor {
+public final class CommandExecutor {
+	private CommandExecutor() {} // No instances allowed.
 
 	public static void execute(String cmd, CommandSource source) {
 		Registry<CommandBase> commandRegistry = CubyzRegistries.COMMAND_REGISTRY;

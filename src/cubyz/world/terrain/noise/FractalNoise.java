@@ -5,7 +5,9 @@ import java.util.Random;
 /**
  * Uses a fractal algorithm to generate a noise map.
  */
-public class FractalNoise {
+public final class FractalNoise {
+	private FractalNoise() {} // No instances allowed.
+
 	private static long getSeed(int x, int z, int offsetX, int offsetZ, long seed, int scale, int maxResolution) {
 		Random rand = new Random(seed*(scale*maxResolution | 1));
 		long l1 = rand.nextLong() | 1;

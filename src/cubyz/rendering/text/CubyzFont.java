@@ -41,7 +41,6 @@ public class CubyzFont {
 			font = fallbackFont;
 			Logger.warning("Failed to load font " + file.getPath());
 			Logger.warning(e);
-			e.printStackTrace();
 		}
 		
 		this.font = font;

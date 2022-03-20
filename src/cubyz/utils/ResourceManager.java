@@ -5,7 +5,9 @@ import java.util.ArrayList;
 
 import cubyz.api.Resource;
 
-public class ResourceManager {
+public final class ResourceManager {
+	private ResourceManager() {} // No instances allowed.
+
 
 	public static ArrayList<ResourcePack> packs = new ArrayList<>();
 	

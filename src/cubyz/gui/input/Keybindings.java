@@ -7,8 +7,9 @@ import static org.lwjgl.glfw.GLFW.*;
  * TODO: Integrate this into ClientSettings for consistency.
  */
 
-public class Keybindings {
-	
+public final class Keybindings {
+	private Keybindings() {} // No instances allowed.
+
 	public static final int MOUSE_LEFT_CLICK = 78945;
 	public static final int MOUSE_MIDDLE_CLICK = 78946;
 	public static final int MOUSE_RIGHT_CLICK = 78947;

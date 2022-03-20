@@ -28,7 +28,9 @@ import cubyz.world.items.tools.Tool;
 
 import static org.lwjgl.opengl.GL43.*;
 
-public class BlockDropRenderer {
+public final class BlockDropRenderer {
+	private BlockDropRenderer() {} // No instances allowed.
+
 	// uniform locations:
 	public static int loc_projectionMatrix;
 	public static int loc_viewMatrix;
@@ -46,7 +48,7 @@ public class BlockDropRenderer {
 	public static int loc_texPosZ;
 	public static int loc_texNegZ;
 	
-	public static class ItemDropUniforms {
+	public static final class ItemDropUniforms {
 		public static int loc_modelMatrix;
 		public static int loc_projectionMatrix;
 		public static int loc_viewMatrix;

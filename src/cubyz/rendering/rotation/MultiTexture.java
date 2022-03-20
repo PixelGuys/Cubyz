@@ -39,7 +39,7 @@ public class MultiTexture implements RotationMode, DataOrientedRegistry {
 	public int register(String assetFolder, Resource id, JsonObject json) {
 		if (json.getString("rotation", "cubyz:no_rotation").equals(this.id.toString())) {
 			JsonArray variants = json.getArray("multi_texture_variants");
-			if (variants != null && variants.array.size() != 0) {
+			if (variants != null && !variants.array.isEmpty()) {
 				int[][] indices = new int[variants.array.size()][6];
 				textureIndicesVariants[size] = indices;
 				for(int i = 0; i < variants.array.size(); i++) {

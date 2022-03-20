@@ -8,6 +8,7 @@ import pixelguys.json.JsonParser;
 
 import java.io.*;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 
 public class ServerConnection extends Thread{
 	private Socket clientSocket;
@@ -39,8 +40,8 @@ public class ServerConnection extends Thread{
 			outStream = clientSocket.getOutputStream();
 			inStream = clientSocket.getInputStream();
 
-			out = new PrintWriter(outStream, true);
-			in = new BufferedReader(new InputStreamReader(inStream));
+			out = new PrintWriter(outStream, true, StandardCharsets.UTF_8);
+			in = new BufferedReader(new InputStreamReader(inStream, StandardCharsets.UTF_8));
 		} catch (IOException e) {
 			Logger.error(e);
 		}
@@ -79,7 +80,7 @@ public class ServerConnection extends Thread{
                 Logger.error("Invalid handshake\n"+json);
             }
 		} catch (Exception e) {
-			e.printStackTrace();
+			Logger.error(e);
 		}
 	}
 	

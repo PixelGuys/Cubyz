@@ -77,7 +77,7 @@ public class CaveMap {
 		relZ = wz - fragments[index].wz;
 		long height = fragments[index].getHeightData(relX, relZ);
 		if(deltaY == 0) {
-			return (int)(height & 0xffffffff);
+			return (int)height;
 		} else {
 			return (int)(height >>> 32);
 		}
@@ -146,7 +146,7 @@ public class CaveMap {
 			height = fragments[index+2].getHeightData(relX, relZ) << 63-relativeY;
 			startFilled = (height & 1L<<63) != 0;
 			if(startFilled) {
-				height = ~height & -1 << 63-relativeY;
+				height = ~height & -1L << 63-relativeY;
 			}
 			relativeY += CaveMapFragment.HEIGHT;
 		}

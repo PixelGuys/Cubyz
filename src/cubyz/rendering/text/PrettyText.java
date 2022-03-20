@@ -11,7 +11,8 @@ import cubyz.rendering.Graphics;
 /**
  * Parses and shows text in a pretty format with colors and stuff.
  */
-public class PrettyText {
+public final class PrettyText {
+	private PrettyText() {} // No instances allowed.
 
 	/**
 	 * Parses the formatting hints of the text.
@@ -106,7 +107,7 @@ public class PrettyText {
 			}
 		}
 		String actualText = reducedString.toString();
-		if (actualText.length() == 0)
+		if (actualText.isEmpty())
 			actualText = " ";
 		if (!textLine.isEditable) {
 			// There are no control characters shown in non-editable text.

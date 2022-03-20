@@ -10,6 +10,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SeekableByteChannel;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -18,7 +19,8 @@ import java.util.List;
 
 import org.lwjgl.BufferUtils;
 
-public class Utils {
+public final class Utils {
+	private Utils() {} // No instances allowed.
 
 	public static boolean existsResourceFile(String fileName) {
 		boolean result;
@@ -105,7 +107,7 @@ public class Utils {
 	public static List<String> readAllLines(String fileName) throws Exception {
 		List<String> list = new ArrayList<>();
 		try (BufferedReader br = new BufferedReader(
-				new InputStreamReader(Class.forName(Utils.class.getName()).getResourceAsStream(fileName)))) {
+				new InputStreamReader(Class.forName(Utils.class.getName()).getResourceAsStream(fileName), StandardCharsets.UTF_8))) {
 			String line;
 			while ((line = br.readLine()) != null) {
 				list.add(line);

@@ -17,8 +17,10 @@ import cubyz.client.Meshes;
 import cubyz.rendering.models.Model;
 import cubyz.utils.Utils;
 
-public class ModelLoader {
-	
+public final class ModelLoader {
+	private ModelLoader() {} // No instances allowed.
+
+
 	private static final int flags = aiProcess_JoinIdenticalVertices | aiProcess_Triangulate;
 	
 	public static Model loadModel(Resource id, String filePath) {

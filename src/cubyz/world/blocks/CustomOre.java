@@ -50,8 +50,7 @@ public class CustomOre {
 	static char getChar(int i) {
 		if (i == 0) return ' ';
 		if (i <= 26) return (char)('a'+i-1);
-		System.err.println("Unknown "+i);
-		System.exit(1);
+		Logger.error("Unknown letter "+i);
 		return '0';
 	}
 	

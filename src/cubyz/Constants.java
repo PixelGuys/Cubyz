@@ -8,7 +8,8 @@ import cubyz.api.Side;
  * A set of constant like version or math.
  */
 
-public class Constants {
+public final class Constants {
+	private Constants() {} // No instances allowed.
 
 	public static final String CHARSET_NAME = "UTF-8";
 	public static final Charset CHARSET = Charset.forName(CHARSET_NAME);

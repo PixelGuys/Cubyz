@@ -179,7 +179,7 @@ public class GameLogic implements ClientConnection {
 					break;
 				}
 			}
-			if (breakingAnims.size() == 0)
+			if (breakingAnims.isEmpty())
 				Logger.error("Couldn't find the breaking animations. Without breaking animations the game might crash.");
 			breakAnimations = breakingAnims.toArray(new Texture[0]);
 			System.gc();

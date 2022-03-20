@@ -1,14 +1,14 @@
 package cubyz.world.save;
 
-import java.io.IOException;
-
 import cubyz.utils.Logger;
 import cubyz.world.World;
 import cubyz.world.entity.Entity;
 import cubyz.world.entity.EntityType;
 import pixelguys.json.JsonObject;
 
-public class EntityIO {	
+public final class EntityIO {
+	private EntityIO() {} // No instances allowed.
+
 	public static Entity loadEntity(JsonObject json, World world) {
 		String id = json.getString("id", "");
 		Entity ent;

@@ -4,6 +4,7 @@ import static org.lwjgl.opengl.GL32.*;
 
 import java.io.IOException;
 
+import cubyz.utils.Logger;
 import org.joml.Vector4i;
 
 import cubyz.rendering.text.CubyzFont;
@@ -14,7 +15,9 @@ import cubyz.utils.Utils;
 /**
  * Contains some standard 2D graphic functions, such as Text, Rectangles, lines and images.
  */
-public class Graphics {
+public final class Graphics {
+	private Graphics() {} // No instances allowed.
+
 	// ----------------------------------------------------------------------------
 	// Common stuff:
 	private static int color;
@@ -37,6 +40,10 @@ public class Graphics {
 	 */
 	public static void setColor(int rgb) {
 		setColor(rgb, 255);
+	}
+
+	public static void setColor(int r, int g, int b) {
+		setColor(r << 16 | g << 8 | b);
 	}
 	
 	/**
@@ -94,7 +101,7 @@ public class Graphics {
 	// ----------------------------------------------------------------------------
 	// Stuff for fillRect:
 	
-	static class RectUniforms {
+	static final class RectUniforms {
 		static int loc_screen;
 		static int loc_start;
 		static int loc_size;
@@ -108,7 +115,7 @@ public class Graphics {
 			rectShader = new ShaderProgram(Utils.loadResource("assets/cubyz/shaders/graphics/Rect.vs"),
 					Utils.loadResource("assets/cubyz/shaders/graphics/Rect.fs"), RectUniforms.class);
 		} catch (IOException e) {
-			e.printStackTrace();
+			Logger.error(e);
 		}
 
 		float[] rawdata = new float[] {
@@ -151,7 +158,7 @@ public class Graphics {
 	// ----------------------------------------------------------------------------
 	// Stuff for drawLine:
 	
-	static class LineUniforms {
+	static final class LineUniforms {
 		static int loc_screen;
 		static int loc_start;
 		static int loc_direction;
@@ -166,7 +173,7 @@ public class Graphics {
 			lineShader = new ShaderProgram(Utils.loadResource("assets/cubyz/shaders/graphics/Line.vs"),
 					Utils.loadResource("assets/cubyz/shaders/graphics/Line.fs"), LineUniforms.class);
 		} catch (IOException e) {
-			e.printStackTrace();
+			Logger.error(e);
 		}
 
 		float[] rawdata = new float[]{ 
@@ -242,7 +249,7 @@ public class Graphics {
 	// ----------------------------------------------------------------------------
 	// Stuff for fillCircle:
 	
-	static class CircleUniforms {
+	static final class CircleUniforms {
 		static int loc_screen;
 		static int loc_center;
 		static int loc_radius;
@@ -256,7 +263,7 @@ public class Graphics {
 			circleShader = new ShaderProgram(Utils.loadResource("assets/cubyz/shaders/graphics/Circle.vs"),
 					Utils.loadResource("assets/cubyz/shaders/graphics/Circle.fs"), CircleUniforms.class);
 		} catch (IOException e) {
-			e.printStackTrace();
+			Logger.error(e);
 		}
 
 		float[] rawdata = new float[] {
@@ -298,7 +305,7 @@ public class Graphics {
 	// ----------------------------------------------------------------------------
 	// Stuff for drawImage:
 	// Luckily the vao of the regular rect can used.
-	static class ImageUniforms {
+	static final class ImageUniforms {
 		static int loc_screen;
 		static int loc_start;
 		static int loc_size;
@@ -312,7 +319,7 @@ public class Graphics {
 			imageShader = new ShaderProgram(Utils.loadResource("assets/cubyz/shaders/graphics/Image.vs"),
 					Utils.loadResource("assets/cubyz/shaders/graphics/Image.fs"), ImageUniforms.class);
 		} catch (IOException e) {
-			e.printStackTrace();
+			Logger.error(e);
 		}
 	}
 	

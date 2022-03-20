@@ -9,7 +9,6 @@ import cubyz.utils.Logger;
 import cubyz.utils.math.Bits;
 import cubyz.world.save.ChunkIO;
 import cubyz.world.terrain.CaveMap;
-import cubyz.world.terrain.MapFragment;
 import cubyz.world.terrain.TerrainGenerationProfile;
 import cubyz.world.terrain.generators.Generator;
 

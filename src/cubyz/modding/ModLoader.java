@@ -20,7 +20,9 @@ import cubyz.api.SideOnly;
 /**
  * Most methods should ALWAYS be found as if it were on Side.SERVER
  */
-public class ModLoader {
+public final class ModLoader {
+	private ModLoader() {} // No instances allowed.
+
 	public static final ArrayList<Mod> mods = new ArrayList<Mod>();
 	
 	public static boolean isCorrectSide(Side currentSide, Method method) {
@@ -104,24 +106,25 @@ public class ModLoader {
 						| InvocationTargetException | NoSuchMethodException | SecurityException
 						| ClassNotFoundException e) {
 					Logger.warning("Could not inject Proxy!");
-					e.printStackTrace();
+					Logger.warning(e);
 				}
 				break;
 			}
 		}
 	}
 	
-	static void safeMethodInvoke(boolean imp /* is it important (e.g. at init) */, Method m, Object o, Object... args) {
+	static void safeMethodInvoke(boolean isImportant /* → exits on error */, Method m, Object o, Object... args) {
 		try {
 			m.invoke(o, args);
-		} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-			if (e instanceof InvocationTargetException) {
-				Logger.warning("Error while invoking mod method (" + m + "):");
-				e.getCause().printStackTrace();
-			} else {
-				e.printStackTrace();
+		} catch(InvocationTargetException e) {
+			Logger.warning("Error while invoking mod method (" + m + "):");
+			Logger.warning(e.getCause());
+			if (isImportant) {
+				System.exit(1);
 			}
-			if (imp) {
+		} catch (IllegalAccessException | IllegalArgumentException e) {
+			Logger.error(e);
+			if (isImportant) {
 				System.exit(1);
 			}
 		}

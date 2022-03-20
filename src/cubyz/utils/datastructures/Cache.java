@@ -49,7 +49,6 @@ public class Cache<T> {
 			Arrays.fill(line, null);
 		}
 	}
-	public static int lost = 0;
 	/**
 	 * Adds a new object into the cache.
 	 * @param t
@@ -58,7 +57,6 @@ public class Cache<T> {
 	 */
 	public T addToCache(T t, int index) {
 		T previous = cache[index][cache[index].length - 1];
-		if (previous != null) lost++;
 		System.arraycopy(cache[index], 0, cache[index], 1, cache[index].length - 1);
 		cache[index][0] = t;
 		return previous;

@@ -66,7 +66,7 @@ public class LoadThread extends Thread {
 			for (File mod : sp.listFiles()) {
 				if (mod.isFile()) {
 					modPaths.add(mod.getAbsolutePath());
-					System.out.println("- Add " + mod.getName());
+					Logger.info("- Add " + mod.getName());
 				}
 			}
 		}

@@ -13,7 +13,9 @@ import static org.lwjgl.opengl.GL43.*;
 /**
  * Draws the block breaking/selection texture on top of a block.
  */
-public class BlockBreakingRenderer {
+public final class BlockBreakingRenderer {
+	private BlockBreakingRenderer() {} // No instances allowed.
+
 	// Shader stuff:
 	public static int loc_projectionMatrix;
 	public static int loc_viewMatrix;
@@ -39,7 +41,7 @@ public class BlockBreakingRenderer {
 		
 		float breakAnim = selected.breakAnim;
 		glActiveTexture(GL_TEXTURE0);
-		if (breakAnim > 0f && breakAnim < 1f) {
+		if (breakAnim > 0 && breakAnim < 1) {
 			int breakStep = (int)(breakAnim*(GameLauncher.logic.breakAnimations.length - 1)) + 1;
 			glBindTexture(GL_TEXTURE_2D, GameLauncher.logic.breakAnimations[breakStep].getId());
 		} else {

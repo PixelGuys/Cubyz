@@ -3,7 +3,9 @@ package cubyz.world.terrain;
 import cubyz.utils.datastructures.Cache;
 import cubyz.world.World;
 
-public class ClimateMap {
+public final class ClimateMap {
+	private ClimateMap() {} // No instances allowed.
+
 	private static final int CACHE_SIZE = 1 << 8; // Must be a power of 2!
 	private static final int CACHE_MASK = CACHE_SIZE - 1;
 	private static final int ASSOCIATIVITY = 4;

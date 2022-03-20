@@ -185,7 +185,7 @@ public class InventorySlot extends Component {
 			if (item instanceof Tool) {
 				Tool tool = (Tool)item;
 				int durab = tool.durability*255/tool.maxDurability;
-				Graphics.setColor((255 - durab) << 16 | durab << 8 | 0);
+				Graphics.setColor(255 - durab, durab, 0);
 				Graphics.fillRect(x + 2 * GUI_SCALE, y + 18 * GUI_SCALE, 16.0f / 255.0f * durab * GUI_SCALE, 2 * GUI_SCALE);
 				Graphics.setColor(0xffffff);
 			}

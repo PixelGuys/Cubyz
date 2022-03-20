@@ -5,7 +5,9 @@ package cubyz.world;
  * Every piece of code in Cubyz should use this!
  */
 
-public class Neighbors {
+public final class Neighbors {
+	private Neighbors() {} // No instances allowed.
+
 	/** How many neighbors there are. */
 	public static final int NEIGHBORS = 6;
 	/** Directions → Index */

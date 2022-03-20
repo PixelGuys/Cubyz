@@ -15,7 +15,9 @@ import cubyz.world.terrain.biomes.Biome;
 /**
  * A simple data holder for all static data that is needed for basic game functionality.
  */
-public class Cubyz {
+public final class Cubyz {
+	private Cubyz() {} // No instances allowed.
+
 	// stuff for rendering:
 	public static Fog fog = new Fog(true, new Vector3f(0.5f, 0.5f, 0.5f), 0.025f);
 	public static UISystem gameUI = new UISystem();

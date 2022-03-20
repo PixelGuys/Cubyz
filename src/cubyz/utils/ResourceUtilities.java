@@ -7,8 +7,10 @@ import cubyz.api.Resource;
 import pixelguys.json.JsonObject;
 import pixelguys.json.JsonParser;
 
-public class ResourceUtilities {
-	
+public final class ResourceUtilities {
+	private ResourceUtilities() {} // No instances allowed.
+
+
 	public static class EntityModelAnimation {
 		// TODO
 	}

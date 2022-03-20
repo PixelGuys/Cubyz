@@ -52,8 +52,7 @@ public class NoIDRegistry<T> {
 			Logger.info("Registered " + getType(element.getClass()) + " as " + element.toString());
 		}
 	}
-	
-	@SuppressWarnings("unchecked")
+
 	public void registerAll(T... elements) {
 		for (T elem : elements) {
 			register(elem);
