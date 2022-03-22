@@ -57,7 +57,7 @@ public class ChunkManager {
 				}
 				try {
 					synchronousGenerate(popped);
-				} catch (Exception e) {
+				} catch (Throwable e) {
 					Logger.error("Could not generate " + popped.voxelSize + "-chunk " + popped.wx + ", " + popped.wy + ", " + popped.wz + " !");
 					Logger.error(e);
 				}

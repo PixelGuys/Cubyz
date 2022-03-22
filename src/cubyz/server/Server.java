@@ -25,7 +25,7 @@ public class Server extends Pacer{
 			}
 			server.setFrequency(UPDATES_PER_SEC);
 			server.start();
-		} catch (Exception e) {
+		} catch (Throwable e) {
 			Logger.crash(e);
 			if(Cubyz.world != null)
 				Cubyz.world.cleanup();

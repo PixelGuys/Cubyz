@@ -25,7 +25,7 @@ public abstract class GameLauncher {
 			instance.start();
 			Logger.info("Stopped!");
 			System.exit(0);
-		} catch(Exception e) {
+		} catch(Throwable e) {
 			Logger.crash(e);
 		}
 		if(Cubyz.world != null)
