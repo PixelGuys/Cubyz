@@ -76,7 +76,6 @@ public class CaveBiomeMap {
 	}
 
 	public Biome getBiome(int relX, int relY, int relZ) {
-		// TODO: return surface biome if close to surface.
 		assert relX >= -32 && relX < reference.getWidth() + 32 : "x coordinate out of bounds: " + relX;
 		assert relY >= -32 && relY < reference.getWidth() + 32 : "y coordinate out of bounds: " + relY;
 		assert relZ >= -32 && relZ < reference.getWidth() + 32 : "z coordinate out of bounds: " + relZ;

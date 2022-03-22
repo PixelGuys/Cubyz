@@ -22,7 +22,7 @@ public class CrystalCavernGenerator implements Generator {
 		"dark_red", "dark_green", "light_blue", "brown", // 4 darker colors
 		"white", "gray", "dark_gray", "black", // 4 grayscale colors
 	};
-	private final int[] glowCrystals = new int[COLORS.length], glowOres = new int[COLORS.length];
+	private final int[] glowCrystals = new int[COLORS.length];
 	
 	private static final ThreadLocal<int[][]> crystalDataArray = ThreadLocal.withInitial(() -> new int[2048][3]); // TODO: Properly evaluate the maximum number of crystal spawns per crystal cavern.
 	
@@ -49,7 +49,6 @@ public class CrystalCavernGenerator implements Generator {
 			String color = COLORS[i];
 			String oreID = "cubyz:glow_crystal/"+color;
 			glowCrystals[i] = Blocks.getByID(oreID);
-			glowOres[i] = Blocks.getByID("cubyz:stone");
 		}
 	}
 	
@@ -241,8 +240,6 @@ public class CrystalCavernGenerator implements Generator {
 									if (x3 >= 0 && x3 < chunk.getWidth() && y3 >= 0 && y3 < chunk.getWidth() && z3 >= 0 && z3 < chunk.getWidth()) {
 										if (chunk.getBlock(x3, y3, z3) == 0 || Blocks.degradable(chunk.getBlock(x3, y3, z3)) || Blocks.blockClass(chunk.getBlock(x3, y3, z3)) == BlockClass.FLUID) {
 											chunk.updateBlockInGeneration(x3, y3, z3, glowCrystals[type]);
-										} else if (chunk.getBlock(x3, y3, z3) == stone) {
-											chunk.updateBlockInGeneration(x3, y3, z3, glowOres[type]); // When the crystal goes through stone, generate the corresponding ore at that position.
 										}
 									}
 								}

@@ -201,7 +201,7 @@ public class GameLogic implements ClientConnection {
 	public void clientUpdate() {
 		MusicManager.update();
 		if (Cubyz.world != null) {
-			Cubyz.chunkTree.update(ClientSettings.RENDER_DISTANCE, ClientSettings.HIGHEST_LOD, ClientSettings.LOD_FACTOR);
+			Cubyz.chunkTree.update(ClientSettings.RENDER_DISTANCE, ClientSettings.LOD_FACTOR);
 			// TODO: Get this in the server ping or something.
 			float lightAngle = (float)Math.PI/2 + (float)Math.PI*(((float)Cubyz.gameTime % World.DAY_CYCLE)/(World.DAY_CYCLE/2));
 			skySun.setPositionRaw((float)Math.cos(lightAngle)*500, (float)Math.sin(lightAngle)*500, 0);

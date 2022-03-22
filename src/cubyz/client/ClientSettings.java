@@ -5,6 +5,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
+import cubyz.Constants;
 import cubyz.utils.Logger;
 import cubyz.Settings;
 import cubyz.gui.input.Keybindings;
@@ -28,9 +29,6 @@ public final class ClientSettings {
 	
 	public static int RENDER_DISTANCE = 4;
 	
-	/**maximum quality reduction.*/
-	public static final int HIGHEST_LOD = 5;
-	
 	/**Scaling factor that scales the size of the LOD region and by that scaling the effective render distance.*/
 	public static float LOD_FACTOR = 2.0f;
 	
@@ -49,7 +47,7 @@ public final class ClientSettings {
 	public static int EFFECTIVE_RENDER_DISTANCE = calculatedEffectiveRenderDistance();
 	
 	public static int calculatedEffectiveRenderDistance() {
-		return RENDER_DISTANCE + (((int)(RENDER_DISTANCE*LOD_FACTOR) & ~1) << HIGHEST_LOD);
+		return RENDER_DISTANCE + (((int)(RENDER_DISTANCE*LOD_FACTOR) & ~1) << Constants.HIGHEST_LOD);
 	}
 
 	public static void save() {
@@ -70,7 +68,6 @@ public final class ClientSettings {
 		settings.put("antiAliasSamples", Window.getAntialiasSamples());
 		settings.put("easyLighting", ClientSettings.easyLighting);
 		settings.put("renderDistance", ClientSettings.RENDER_DISTANCE);
-		settings.put("highestLOD", ClientSettings.HIGHEST_LOD);
 		settings.put("farDistanceFactor", ClientSettings.LOD_FACTOR);
 		settings.put("fieldOfView", ClientSettings.FOV);
 		settings.put("musicOnOff", ClientSettings.musicOnOff);

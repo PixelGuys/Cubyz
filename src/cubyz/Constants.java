@@ -20,6 +20,9 @@ public final class Constants {
 	public static final String GAME_VERSION = "0.10.1";
 	public static final int GAME_PROTOCOL_VERSION = 1;
 	public static final String GAME_BRAND = "cubyz";
+
+	/**maximum quality reduction.*/
+	public static final int HIGHEST_LOD = 5;
 	
 	/**float math constants*/
 	public static final float	PI = (float)Math.PI,

@@ -3,6 +3,7 @@ package cubyz.rendering;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import cubyz.Constants;
 import org.joml.FrustumIntersection;
 
 import cubyz.client.ChunkMesh;
@@ -17,7 +18,7 @@ import cubyz.world.NormalChunk;
 import cubyz.world.ReducedChunkVisibilityData;
 
 public class RenderOctTree {
-	private int lastX, lastY, lastZ, lastRD, lastLOD;
+	private int lastX, lastY, lastZ, lastRD;
 	private float lastFactor;
 	public static class OctTreeNode {
 		boolean shouldBeRemoved;
@@ -139,16 +140,16 @@ public class RenderOctTree {
 		}
 	}
 	HashMap<HashMapKey3D, OctTreeNode> roots = new HashMap<HashMapKey3D, OctTreeNode>();
-	public void update(int renderDistance, int highestLOD, float LODFactor) {
+	public void update(int renderDistance, float LODFactor) {
 		int px = (int)Cubyz.player.getPosition().x;
 		int py = (int)Cubyz.player.getPosition().y;
 		int pz = (int)Cubyz.player.getPosition().z;
-		//if (lastX == px && lastY == py && lastZ == pz && lastRD == renderDistance && lastLOD == highestLOD && lastFactor == LODFactor) return; TODO: Send a chunk request to the server for normalChunks as well, to prevent issues here.
+		//if (lastX == px && lastY == py && lastZ == pz && lastRD == renderDistance && lastFactor == LODFactor) return; TODO: Send a chunk request to the server for normalChunks as well, to prevent issues here.
 		
-		int maxRenderDistance = (int)Math.ceil((renderDistance << highestLOD)*LODFactor*Chunk.chunkSize);
+		int maxRenderDistance = (int)Math.ceil((renderDistance << Constants.HIGHEST_LOD)*LODFactor*Chunk.chunkSize);
 		int nearRenderDistance = renderDistance*Chunk.chunkSize; // Only render underground for nearby chunks. Otherwise the lag gets massive. TODO: render at least some ReducedChunks there.
-		int LODShift = highestLOD + Chunk.chunkShift;
-		int LODSize = Chunk.chunkSize << highestLOD;
+		int LODShift = Constants.HIGHEST_LOD + Chunk.chunkShift;
+		int LODSize = Chunk.chunkSize << Constants.HIGHEST_LOD;
 		int LODMask = LODSize - 1;
 		int minX = (px - maxRenderDistance - LODMask) & ~LODMask;
 		int maxX = (px + maxRenderDistance + LODMask) & ~LODMask;
@@ -214,7 +215,6 @@ public class RenderOctTree {
 		lastY = py;
 		lastZ = pz;
 		lastRD = renderDistance;
-		lastLOD = highestLOD;
 		lastFactor = LODFactor;
 		// Make requests AFTER updating the list, to avoid concurrency issues:
 		for(ChunkData data : meshRequests) {
@@ -223,7 +223,7 @@ public class RenderOctTree {
 	}
 
 	public OctTreeNode findNode(ChunkData chunkData) {
-		int LODShift = lastLOD + Chunk.chunkShift;
+		int LODShift = Constants.HIGHEST_LOD + Chunk.chunkShift;
 		int LODSize = 1 << LODShift;
 		int rootX = (chunkData.wx - LODSize/2 + Chunk.chunkSize) >> LODShift;
 		int rootY = (chunkData.wy - LODSize/2 + Chunk.chunkSize) >> LODShift;

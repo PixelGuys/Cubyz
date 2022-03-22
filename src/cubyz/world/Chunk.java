@@ -1,5 +1,6 @@
 package cubyz.world;
 
+import cubyz.Constants;
 import cubyz.world.terrain.CaveBiomeMap;
 import org.joml.Vector3d;
 
@@ -159,7 +160,7 @@ public abstract class Chunk extends SavableChunk {
 			ChunkIO.storeChunkToFile(world, this);
 			wasChanged = false;
 			// Update the next lod chunk:
-			if(voxelSize != 1 << ClientSettings.HIGHEST_LOD) { // TODO: Store the highest LOD somewhere more accessible.
+			if(voxelSize != 1 << Constants.HIGHEST_LOD) {
 				ReducedChunk chunk = world.chunkManager.getOrGenerateReducedChunk(wx, wy, wz, voxelSize*2);
 				chunk.updateFromLowerResolution(this);
 			}

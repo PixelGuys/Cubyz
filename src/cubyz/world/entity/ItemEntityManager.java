@@ -257,7 +257,6 @@ public class ItemEntityManager {
 	}
 
 	private void updateEnt(int index3, float deltaTime) {
-		deltaTime *= 0.1f;
 		boolean startedInABlock = checkBlocks(index3);
 		if(startedInABlock) {
 			fixStuckInBlock(index3, deltaTime);
