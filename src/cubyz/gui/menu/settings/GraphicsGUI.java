@@ -8,6 +8,7 @@ import cubyz.gui.components.CheckBox;
 import cubyz.gui.components.Component;
 import cubyz.gui.components.Label;
 import cubyz.gui.components.Slider;
+import cubyz.rendering.Graphics;
 import cubyz.rendering.Window;
 import cubyz.utils.translate.TextKey;
 
@@ -121,6 +122,8 @@ public class GraphicsGUI extends MenuGUI {
 		renderDistance.render();
 		//highestLOD.render();
 		LODFactor.render();
+		Graphics.setColor(0x7F7FA0);
+		Graphics.fillRect(Window.getWidth()/2 - effectiveRenderDistance.getWidth()/2 - 2, 20 * GUI_SCALE - effectiveRenderDistance.getHeight()/2, effectiveRenderDistance.getWidth() + 4, effectiveRenderDistance.getHeight());
 		effectiveRenderDistance.render();
 		done.render();
 		fog.render();

@@ -56,8 +56,10 @@ public class CheckBox extends Component {
 
 	@Override
 	public void render(int x, int y) {
+		Graphics.setColor(0x7F7FA0);
+		Graphics.fillRect(x, y - 2*GUI_SCALE, width + 6*GUI_SCALE + label.getWidth(), height + 4*GUI_SCALE);
 		Graphics.setColor(0x000000);
-		Graphics.drawRect(x, y, width, height);
+		Graphics.drawRect(x + 2*GUI_SCALE, y, width, height);
 		if (Mouse.isLeftButtonPressed() && isInside(Mouse.getCurrentPos())) {
 			if (canRepress) {
 				selected = !selected;
@@ -75,7 +77,7 @@ public class CheckBox extends Component {
 		}
 		if (selected) {
 			Graphics.setColor(0x32A832);
-			Graphics.fillRect(x + 2 * GUI_SCALE, y + 2 * GUI_SCALE, width - 4 * GUI_SCALE, height - 4 * GUI_SCALE);
+			Graphics.fillRect(x + 4*GUI_SCALE, y + 2*GUI_SCALE, width - 4*GUI_SCALE, height - 4*GUI_SCALE);
 		}
 		if (label != null) {
 			label.render(x + width + 4 * GUI_SCALE + 1, y + height/2);

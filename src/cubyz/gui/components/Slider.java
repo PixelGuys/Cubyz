@@ -14,7 +14,8 @@ public class Slider extends Component {
 	
 	private static final int initialXOffset = 1, yOffset = 1; // How far away the slider is from the borders.
 	
-	private int minValue, maxValue, curValue;
+	private final int minValue, maxValue;
+	private int curValue;
 	private int xOffset;
 	private Runnable run;
 	String text = "";
@@ -92,7 +93,7 @@ public class Slider extends Component {
 		Graphics.fillRect(x + initialXOffset*GUI_SCALE, y + yOffset*GUI_SCALE + fontSize, width - 2*initialXOffset*GUI_SCALE, height - 2*yOffset*GUI_SCALE - fontSize);
 		Graphics.setColor(0xC8C8F0);
 		Graphics.fillCircle(x + xOffset + (float)(curValue - minValue)/(maxValue-minValue)*(width - 2*xOffset), y + height/2 + fontSize/2, height/2 - fontSize/2 - yOffset*GUI_SCALE);
-		Graphics.setColor(0xffffff);
+		Graphics.setColor(0x000000);
 		Graphics.setFont(Fonts.PIXEL_FONT, fontSize);
 		Graphics.drawText(x + initialXOffset*GUI_SCALE, y + yOffset*GUI_SCALE, text + (customValues != null ? customValues[curValue] : curValue));
 	}
