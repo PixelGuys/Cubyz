@@ -53,12 +53,13 @@ public class MainRenderer {
 
 	public static final float Z_NEAR = 0.1f;
 	public static final float Z_FAR = 10000.0f;
+	public static final float Z_FAR_LOD = 65536.0f;
 	private boolean inited = false;
 	private boolean doRender = true;
 	private Transformation transformation;
 	private String shaders = "";
-	private Matrix4f prjViewMatrix = new Matrix4f();
-	private FrustumIntersection frustumInt = new FrustumIntersection();
+	private final Matrix4f frustumProjectionMatrix = new Matrix4f();
+	private final FrustumIntersection frustumInt = new FrustumIntersection();
 	
 	private float playerBobbing;
 	private boolean bobbingUp;
@@ -161,7 +162,8 @@ public class MainRenderer {
 		glViewport(0, 0, width, height);
 		Transformation.updateProjectionMatrix(Window.getProjectionMatrix(), (float)Math.toRadians(fov), width, height, Z_NEAR, Z_FAR);
 		// Use a projection matrix that prevent z-fighting:
-		Transformation.updateProjectionMatrix(ReducedChunkMesh.projMatrix, (float)Math.toRadians(fov), width, height, 2.0f, 16384.0f);
+		Transformation.updateProjectionMatrix(ReducedChunkMesh.projMatrix, (float)Math.toRadians(fov), width, height, 2.0f, Z_FAR_LOD);
+		Transformation.updateProjectionMatrix(frustumProjectionMatrix, (float)Math.toRadians(fov), width, height, Z_NEAR, Z_FAR_LOD); // Need to combine both for frustum intersection
 		
 		buffers.updateBufferSize(width, height);
 	}
@@ -270,10 +272,10 @@ public class MainRenderer {
 		
 		
 		// Uses FrustumCulling on the chunks.
-		prjViewMatrix.set(Window.getProjectionMatrix());
-		prjViewMatrix.mul(Camera.getViewMatrix());
-
-		frustumInt.set(prjViewMatrix);
+		Matrix4f frustumMatrix = new Matrix4f();
+		frustumMatrix.set(frustumProjectionMatrix);
+		frustumMatrix.mul(Camera.getViewMatrix());
+		frustumInt.set(frustumMatrix);
 
 		int time = (int) (System.currentTimeMillis() & Integer.MAX_VALUE);
 		if (playerPosition != null) {

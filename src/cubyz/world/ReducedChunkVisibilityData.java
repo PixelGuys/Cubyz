@@ -30,7 +30,7 @@ public class ReducedChunkVisibilityData extends ChunkData {
 	}
 
 	private void increaseCapacity() {
-		capacity *= 2;
+		capacity += capacity/2;
 		visibleBlocks = Arrays.copyOf(visibleBlocks, capacity);
 		x = Arrays.copyOf(x, capacity);
 		y = Arrays.copyOf(y, capacity);

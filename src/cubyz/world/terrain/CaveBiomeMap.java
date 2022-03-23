@@ -143,7 +143,7 @@ public class CaveBiomeMap {
 		return fragments[index].biomeMap[indexInArray];
 	}
 
-	public static CaveBiomeMapFragment getOrGenerateFragment(World world, int wx, int wy, int wz) {
+	private static CaveBiomeMapFragment getOrGenerateFragment(World world, int wx, int wy, int wz) {
 		wx &= ~CaveBiomeMapFragment.CAVE_BIOME_MAP_MASK;
 		wy &= ~CaveBiomeMapFragment.CAVE_BIOME_MAP_MASK;
 		wz &= ~CaveBiomeMapFragment.CAVE_BIOME_MAP_MASK;

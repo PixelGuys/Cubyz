@@ -13,8 +13,8 @@ import cubyz.world.World;
 public class CaveMap {
 	private static final int CACHE_SIZE = 1 << 7; // Must be a power of 2!
 	private static final int CACHE_MASK = CACHE_SIZE - 1;
-	private static final int ASSOCIATIVITY = 8;
-	private static final Cache<CaveMapFragment> cache = new Cache<CaveMapFragment>(new CaveMapFragment[CACHE_SIZE][ASSOCIATIVITY]);
+	private static final int ASSOCIATIVITY = 8; // 512 MiB Cache size
+	private static final Cache<CaveMapFragment> cache = new Cache<>(new CaveMapFragment[CACHE_SIZE][ASSOCIATIVITY]);
 	private static World world = null;
 
 	private final Chunk reference;
@@ -166,7 +166,7 @@ public class CaveMap {
 		return result*reference.voxelSize + fragments[0].wy - reference.wy;
 	}
 	
-	public static CaveMapFragment getOrGenerateFragment(World world, int wx, int wy, int wz, int voxelSize) {
+	private static CaveMapFragment getOrGenerateFragment(World world, int wx, int wy, int wz, int voxelSize) {
 		wx &= ~(CaveMapFragment.WIDTH_MASK*voxelSize | voxelSize-1);
 		wy &= ~(CaveMapFragment.HEIGHT_MASK*voxelSize | voxelSize-1);
 		wz &= ~(CaveMapFragment.WIDTH_MASK*voxelSize | voxelSize-1);

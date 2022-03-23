@@ -23,17 +23,17 @@ public class ChunkManager {
 
 	public final TerrainGenerationProfile terrainGenerationProfile;
 
-	// There will be at most 1 GB of reduced chunks in here.
-	private static final int CHUNK_CACHE_MASK = 8191;
+	// There will be at most 1 GiB of reduced chunks in here.
+	private static final int CHUNK_CACHE_MASK = 2047;
 	private final Cache<ReducedChunk> reducedChunkCache = new Cache<ReducedChunk>(new ReducedChunk[CHUNK_CACHE_MASK+1][4]);
-	// There will be at most 1 GB of map data in here.
+	// There will be at most 1 GiB of map data in here.
 	private static final int[] MAP_CACHE_MASK = {
-		7, // 256 MB // 4(1 in best-case) maps are needed at most for each player. So 32 will be enough for 8(32 in best case) player groups.
-		31, // 256 MB
-		63, // 128 MB
-		255, // 128 MB
-		511, // 64 MB
-		2047, // 64 MB
+		7, // 256 MiB // 4(1 in best-case) maps are needed at most for each player. So 32 will be enough for 8(32 in best case) player groups.
+		31, // 256 MiB
+		63, // 128 MiB
+		255, // 128 MiB
+		511, // 64 MiB
+		2047, // 64 MiB
 	};
 	@SuppressWarnings("unchecked")
 	private final Cache<MapFragment>[] mapCache = new Cache[] {
