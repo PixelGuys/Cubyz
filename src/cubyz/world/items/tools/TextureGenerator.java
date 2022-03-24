@@ -313,7 +313,7 @@ public final class TextureGenerator {
 			}
 		}
 
-		Random rand = new Random(tool.hashCode());
+		Random rand = new Random(tool.seed);
 		
 		// Count all neighbors:
 		int[] neighborCount = new int[25];

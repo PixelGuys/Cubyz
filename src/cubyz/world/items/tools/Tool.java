@@ -15,6 +15,7 @@ public class Tool extends Item {
 	public final Item[] craftingGrid;
 	public final Item[][] materialGrid = new Item[16][16];
 	public final BufferedImage texture = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
+	final int seed;
 
 	/** Reduction factor to block breaking time. */
 	public float pickaxePower;
@@ -47,8 +48,9 @@ public class Tool extends Item {
 	 * Creates a new tool from contents of the crafting grid.
 	 * @param craftingGrid must be a 5×5 grid with only material items in it.
 	 */
-	public Tool(Item[] craftingGrid) {
+	public Tool(Item[] craftingGrid, int seed) {
 		super(1);
+		this.seed = seed;
 		this.craftingGrid = craftingGrid;
 		// Produce the tool and its textures:
 		// The material grid, which comes from texture generation, is needed on both server and client, to generate the tool properties.
@@ -57,11 +59,11 @@ public class Tool extends Item {
 	}
 	/**
 	 * Loads a tool from a json file.
-	 * @param items
+	 * @param json
 	 * @param registries
 	 */
 	public Tool(JsonObject json, CurrentWorldRegistries registries) {
-		this(extractItemsFromJson(json.getArrayNoNull("grid"), registries.itemRegistry));
+		this(extractItemsFromJson(json.getArrayNoNull("grid"), registries.itemRegistry), json.getInt("seed", 0));
 		durability = json.getInt("durability", maxDurability);
 	}
 
@@ -89,6 +91,7 @@ public class Tool extends Item {
 		array.addStrings(ids);
 		json.put("grid", array);
 		json.put("durability", durability);
+		json.put("seed", seed);
 		return json;
 	}
 

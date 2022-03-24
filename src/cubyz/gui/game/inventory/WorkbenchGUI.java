@@ -9,6 +9,8 @@ import cubyz.world.items.Inventory;
 import cubyz.world.items.Item;
 import cubyz.world.items.tools.Tool;
 
+import java.util.Random;
+
 import static cubyz.client.ClientSettings.GUI_SCALE;
 
 /**
@@ -20,6 +22,8 @@ public class WorkbenchGUI extends GeneralInventory {
 	Inventory in;
 	
 	public static WorkbenchGUI activeGUI;
+
+	private static int seed = new Random().nextInt();
 	
 	public WorkbenchGUI() {
 		super(new Resource("cubyz:workbench"));
@@ -43,6 +47,8 @@ public class WorkbenchGUI extends GeneralInventory {
 					for(int j = 32; j < inv.length-1; j++) {
 						inv[j].reference.add(-1);
 					}
+					// Create a new seed, so the player won't craft the exact same item twice:
+					seed = new Random().nextInt();
 				}
 			}
 			if (i >= 32) {
@@ -120,7 +126,7 @@ public class WorkbenchGUI extends GeneralInventory {
 			}
 		}
 		if (num != 0) {
-			item = new Tool(items);
+			item = new Tool(items, seed);
 		}
 
 		if (item != null) {
