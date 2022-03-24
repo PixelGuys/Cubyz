@@ -98,6 +98,17 @@ public class ChunkManager {
 	}
 
 	public void queueChunk(ChunkData ch) {
+		if(ch.voxelSize == 1 && !(ch instanceof NormalChunk)) {
+			// Special case: Normal chunk is queued
+			// If the chunk doesn't exist yet, nothing is done.
+			// If the chunk isn't generated yet, nothing is done.
+			// If the chunk is already fully generated, it is returned.
+			NormalChunk chunk = world.getChunk(ch.wx, ch.wy, ch.wz);
+			if(chunk != null && chunk.isLoaded()) {
+				world.clientConnection.updateChunkMesh(chunk);
+			}
+			return;
+		}
 		ch.updatePriority(world.getLocalPlayer());
 		loadList.add(ch);
 	}

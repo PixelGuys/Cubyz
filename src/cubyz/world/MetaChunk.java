@@ -132,6 +132,7 @@ public class MetaChunk {
 					NormalChunk chunk = chunks[index];
 					if (dist > rdSquare) {
 						if (chunk != null) {
+							world.unQueueChunk(chunk);
 							chunk.clean();
 							chunks[index] = null;
 						}

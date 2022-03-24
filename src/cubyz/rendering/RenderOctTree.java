@@ -66,7 +66,7 @@ public class RenderOctTree {
 					// Check if this is a normal or a reduced chunk:
 					if (minDist < renderDistance*renderDistance) {
 						if (mesh.getChunk() == null) {
-							((NormalChunkMesh)mesh).updateChunk(Cubyz.world.getChunk(x, y, z));
+							meshRequests.add(new ChunkData(x, y, z, mesh.voxelSize));
 						}
 					} else {
 						if (mesh.getChunk() != null) {
