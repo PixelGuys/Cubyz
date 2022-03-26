@@ -22,6 +22,7 @@ import cubyz.world.items.tools.modifiers.FallingApart;
 import cubyz.world.items.tools.modifiers.Regrowth;
 import cubyz.world.terrain.biomes.*;
 import cubyz.world.terrain.cavegenerators.FractalCaveGenerator;
+import cubyz.world.terrain.cavegenerators.NoiseCaveGenerator;
 import cubyz.world.terrain.generators.CrystalCavernGenerator;
 import cubyz.world.terrain.generators.OreGenerator;
 import cubyz.world.terrain.generators.StructureGenerator;
@@ -80,6 +81,7 @@ public class BaseMod implements Mod {
 		CubyzRegistries.GENERATORS.register(new StructureGenerator());
 
 		CubyzRegistries.CAVE_GENERATORS.register(new FractalCaveGenerator());
+		CubyzRegistries.CAVE_GENERATORS.register(new NoiseCaveGenerator());
 
 		CubyzRegistries.CLIMATE_GENERATOR_REGISTRY.register(new PolarCircles());
 		CubyzRegistries.CLIMATE_GENERATOR_REGISTRY.register(new FlatLand());
