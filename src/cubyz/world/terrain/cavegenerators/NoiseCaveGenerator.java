@@ -28,10 +28,6 @@ public class NoiseCaveGenerator implements CaveGenerator {
 	public int getPriority() {
 		return 65536;
 	}
-
-	private static float s(float val) {
-		return 3*val*val - 2*val*val*val;
-	}
 	
 	@Override
 	public void generate(long seed, CaveMapFragment map) {
@@ -64,10 +60,12 @@ public class NoiseCaveGenerator implements CaveGenerator {
 							}
 						}
 					} else {
+						// Uses trilinear interpolation for the details.
+						// Luckily due to the blocky nature of the game there is no visible artifacts from it.
 						for(int dx = 0; dx < outerSize; dx += map.voxelSize) {
 							for(int dz = 0; dz < outerSize; dz += map.voxelSize) {
-								float ix = s(dx/(float)outerSize);
-								float iz = s(dz/(float)outerSize);
+								float ix = dx/(float)outerSize;
+								float iz = dz/(float)outerSize;
 								float lowerVal = (
 									+ (1 - ix)*(1 - iz)*val000
 									+ (1 - ix)*iz*val001
@@ -90,7 +88,7 @@ public class NoiseCaveGenerator implements CaveGenerator {
 								} else {
 									// Could be probably more efficient, but I'm lazy right now and I'll just go through the entire range:
 									for(int dy = 0; dy < outerSize; dy += map.voxelSize) {
-										float iy = s(dy/(float)outerSize);
+										float iy = dy/(float)outerSize;
 										float val = (1 - iy)*lowerVal + iy*upperVal;
 										if(val > 0)
 											map.removeRange(x + dx, z + dz, y + dy, y + dy + map.voxelSize);
