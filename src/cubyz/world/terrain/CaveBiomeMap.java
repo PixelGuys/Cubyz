@@ -14,7 +14,7 @@ public class CaveBiomeMap {
 	private static final int CACHE_MASK = CACHE_SIZE - 1;
 	private static final int ASSOCIATIVITY = 8;
 	private static final Cache<CaveBiomeMapFragment> cache = new Cache<>(new CaveBiomeMapFragment[CACHE_SIZE][ASSOCIATIVITY]);
-	private static World world = null;
+	static World world = null;
 
 	private final Chunk reference;
 
@@ -143,7 +143,7 @@ public class CaveBiomeMap {
 		return fragments[index].biomeMap[indexInArray];
 	}
 
-	private static CaveBiomeMapFragment getOrGenerateFragment(World world, int wx, int wy, int wz) {
+	static CaveBiomeMapFragment getOrGenerateFragment(World world, int wx, int wy, int wz) {
 		wx &= ~CaveBiomeMapFragment.CAVE_BIOME_MAP_MASK;
 		wy &= ~CaveBiomeMapFragment.CAVE_BIOME_MAP_MASK;
 		wz &= ~CaveBiomeMapFragment.CAVE_BIOME_MAP_MASK;

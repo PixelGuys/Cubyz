@@ -3,6 +3,7 @@ package cubyz.world.terrain.cavegenerators;
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Resource;
 import cubyz.world.terrain.CaveMapFragment;
+import cubyz.world.terrain.InterpolatableCaveBiomeMap;
 import cubyz.world.terrain.noise.Cached3DFractalNoise;
 import pixelguys.json.JsonObject;
 
@@ -12,7 +13,6 @@ import pixelguys.json.JsonObject;
 
 public class NoiseCaveGenerator implements CaveGenerator {
 	private static final int SCALE = 64;
-	private static final float CUTOFF = 0.75f;
 	private static final int INTERPOLATED_PART = 4;
 
 	@Override
@@ -28,24 +28,28 @@ public class NoiseCaveGenerator implements CaveGenerator {
 	public int getPriority() {
 		return 65536;
 	}
+
+	private float getValue(Cached3DFractalNoise noise, InterpolatableCaveBiomeMap map, int wx, int wy, int wz) {
+		return noise.getValue(wx, wy, wz) + map.interpolateValue(wx, wy, wz)*SCALE;
+	}
 	
 	@Override
 	public void generate(long seed, CaveMapFragment map) {
 		if (map.voxelSize > 2) return;
-		float cutOff = SCALE*CUTOFF;
+		InterpolatableCaveBiomeMap biomeMap = new InterpolatableCaveBiomeMap(map);
 		int outerSize = Math.max(map.voxelSize, INTERPOLATED_PART);
 		Cached3DFractalNoise noise = new Cached3DFractalNoise(map.wx, map.wy & ~(CaveMapFragment.WIDTH*map.voxelSize - 1), map.wz, outerSize, map.voxelSize*CaveMapFragment.WIDTH, seed, SCALE);
 		for(int x = 0; x < map.voxelSize*CaveMapFragment.WIDTH; x += outerSize) {
 			for(int y = 0; y < map.voxelSize*CaveMapFragment.HEIGHT; y += outerSize) {
 				for(int z = 0; z < map.voxelSize*CaveMapFragment.WIDTH; z += outerSize) {
-					float val000 = noise.getValue(x + map.wx, y + map.wy, z + map.wz) - cutOff;
-					float val001 = noise.getValue(x + map.wx, y + map.wy, z + map.wz + outerSize) - cutOff;
-					float val010 = noise.getValue(x + map.wx, y + map.wy + outerSize, z + map.wz) - cutOff;
-					float val011 = noise.getValue(x + map.wx, y + map.wy + outerSize, z + map.wz + outerSize) - cutOff;
-					float val100 = noise.getValue(x + map.wx + outerSize, y + map.wy, z + map.wz) - cutOff;
-					float val101 = noise.getValue(x + map.wx + outerSize, y + map.wy, z + map.wz + outerSize) - cutOff;
-					float val110 = noise.getValue(x + map.wx + outerSize, y + map.wy + outerSize, z + map.wz) - cutOff;
-					float val111 = noise.getValue(x + map.wx + outerSize, y + map.wy + outerSize, z + map.wz + outerSize) - cutOff;
+					float val000 = getValue(noise, biomeMap, x + map.wx, y + map.wy, z + map.wz);
+					float val001 = getValue(noise, biomeMap, x + map.wx, y + map.wy, z + map.wz + outerSize);
+					float val010 = getValue(noise, biomeMap, x + map.wx, y + map.wy + outerSize, z + map.wz);
+					float val011 = getValue(noise, biomeMap, x + map.wx, y + map.wy + outerSize, z + map.wz + outerSize);
+					float val100 = getValue(noise, biomeMap, x + map.wx + outerSize, y + map.wy, z + map.wz);
+					float val101 = getValue(noise, biomeMap, x + map.wx + outerSize, y + map.wy, z + map.wz + outerSize);
+					float val110 = getValue(noise, biomeMap, x + map.wx + outerSize, y + map.wy + outerSize, z + map.wz);
+					float val111 = getValue(noise, biomeMap, x + map.wx + outerSize, y + map.wy + outerSize, z + map.wz + outerSize);
 					// Test if they are all inside or all outside the cave to skip these cases:
 					float measureForEquality = Math.signum(val000) + Math.signum(val001) + Math.signum(val010) + Math.signum(val011) + Math.signum(val100) + Math.signum(val101) + Math.signum(val110) + Math.signum(val111);
 					if(measureForEquality == -8) {

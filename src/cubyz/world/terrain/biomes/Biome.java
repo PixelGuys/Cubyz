@@ -61,6 +61,7 @@ public class Biome extends ChanceObject implements RegistryElement {
 	public final float roughness;
 	public final float hills;
 	public final float mountains;
+	public final float caves;
 	public final int stoneBlock;
 	private final Resource identifier;
 	public final BlockStructure struct;
@@ -81,6 +82,7 @@ public class Biome extends ChanceObject implements RegistryElement {
 		this.roughness = json.getFloat("roughness", 0);
 		this.hills = json.getFloat("hills", 0);
 		this.mountains = json.getFloat("mountains", 0);
+		this.caves = json.getFloat("caves", -0.75f);
 		minHeight = json.getFloat("minHeight", 0);
 		maxHeight = json.getFloat("maxHeight", 1);
 		supportsRivers = json.getBool("rivers", false);
