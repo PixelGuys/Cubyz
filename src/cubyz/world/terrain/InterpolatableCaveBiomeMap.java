@@ -9,7 +9,7 @@ import cubyz.world.terrain.biomes.Biome;
 
 public class InterpolatableCaveBiomeMap {
 
-	private final CaveBiomeMapFragment[] fragments = new CaveBiomeMapFragment[8];
+	protected final CaveBiomeMapFragment[] fragments = new CaveBiomeMapFragment[8];
 
 	public InterpolatableCaveBiomeMap(ChunkData chunk) {
 		fragments[0] = CaveBiomeMap.getOrGenerateFragment(CaveBiomeMap.world, chunk.wx - CaveBiomeMapFragment.CAVE_BIOME_MAP_SIZE/2, chunk.wy - CaveBiomeMapFragment.CAVE_BIOME_MAP_SIZE/2, chunk.wz - CaveBiomeMapFragment.CAVE_BIOME_MAP_SIZE/2);
@@ -37,7 +37,7 @@ public class InterpolatableCaveBiomeMap {
 		for(int dx = 0; dx <= 1; dx++) {
 			for(int dy = 0; dy <= 1; dy++) {
 				for(int dz = 0; dz <= 1; dz++) {
-					Biome biome = getBiome(gridPointX + dx*CaveBiomeMapFragment.CAVE_BIOME_SIZE, gridPointY + dy*CaveBiomeMapFragment.CAVE_BIOME_SIZE, gridPointZ + dz*CaveBiomeMapFragment.CAVE_BIOME_SIZE);
+					Biome biome = _getBiome(gridPointX + dx*CaveBiomeMapFragment.CAVE_BIOME_SIZE, gridPointY + dy*CaveBiomeMapFragment.CAVE_BIOME_SIZE, gridPointZ + dz*CaveBiomeMapFragment.CAVE_BIOME_SIZE);
 					val += biome.caves*Math.abs(interpX - dx)*Math.abs(interpY - dy)*Math.abs(interpZ - dz);
 				}
 			}
@@ -45,7 +45,7 @@ public class InterpolatableCaveBiomeMap {
 		return val;
 	}
 
-	private Biome getBiome(int wx, int wy, int wz) {
+	protected final Biome _getBiome(int wx, int wy, int wz) {
 		int index = 0;
 		if(wx - fragments[0].wx >= CaveBiomeMapFragment.CAVE_BIOME_MAP_SIZE) {
 			index += 4;

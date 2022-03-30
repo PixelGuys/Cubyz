@@ -23,10 +23,7 @@ import cubyz.world.items.tools.modifiers.Regrowth;
 import cubyz.world.terrain.biomes.*;
 import cubyz.world.terrain.cavegenerators.FractalCaveGenerator;
 import cubyz.world.terrain.cavegenerators.NoiseCaveGenerator;
-import cubyz.world.terrain.generators.CrystalCavernGenerator;
-import cubyz.world.terrain.generators.OreGenerator;
-import cubyz.world.terrain.generators.StructureGenerator;
-import cubyz.world.terrain.generators.TerrainGenerator;
+import cubyz.world.terrain.generators.*;
 import cubyz.world.terrain.worldgenerators.FlatLand;
 import cubyz.world.terrain.worldgenerators.MapGenV1;
 import cubyz.world.terrain.worldgenerators.PolarCircles;
@@ -77,8 +74,8 @@ public class BaseMod implements Mod {
 
 		CubyzRegistries.GENERATORS.register(new TerrainGenerator());
 		CubyzRegistries.GENERATORS.register(new OreGenerator());
-		CubyzRegistries.GENERATORS.register(new CrystalCavernGenerator());
 		CubyzRegistries.GENERATORS.register(new StructureGenerator());
+		CubyzRegistries.GENERATORS.register(new CrystalGenerator());
 
 		CubyzRegistries.CAVE_GENERATORS.register(new FractalCaveGenerator());
 		CubyzRegistries.CAVE_GENERATORS.register(new NoiseCaveGenerator());

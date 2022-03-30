@@ -1,0 +1,29 @@
+{
+	"type" : "CAVE",
+	"minHeight" : 2147483647, // TODO: Make min/max height work for cave biomes.
+	"maxHeight" : -2147483648,
+
+	"chance" : 0.2,
+
+	"caves" : 0.0,
+	"crystals" : 32,
+
+	"music" : "leaves",
+	"stoneBlock" : "cubyz:stone",
+	"structures" : [
+		{
+			"id" : "cubyz:boulder",
+			"chance" : 0.001,
+			"block" : "cubyz:cobblestone",
+			"size" : 5,
+			"size_variance" : 3
+		},
+		{
+			"id" : "cubyz:boulder",
+			"chance" : 0.001,
+			"block" : "cubyz:stone",
+			"size" : 4,
+			"size_variance" : 2
+		}
+	]
+}

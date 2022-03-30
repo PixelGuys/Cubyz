@@ -16,7 +16,7 @@ import pixelguys.json.JsonObject;
  */
 
 public class Biome extends ChanceObject implements RegistryElement {
-	public static enum Type {		
+	public static enum Type {
 		/**hot, wet, lowland*/
 		RAINFOREST,
 		/**hot, medium, lowland*/
@@ -62,6 +62,7 @@ public class Biome extends ChanceObject implements RegistryElement {
 	public final float hills;
 	public final float mountains;
 	public final float caves;
+	public final int crystals;
 	public final int stoneBlock;
 	private final Resource identifier;
 	public final BlockStructure struct;
@@ -83,6 +84,7 @@ public class Biome extends ChanceObject implements RegistryElement {
 		this.hills = json.getFloat("hills", 0);
 		this.mountains = json.getFloat("mountains", 0);
 		this.caves = json.getFloat("caves", -0.75f);
+		this.crystals = json.getInt("crystals", 0);
 		minHeight = json.getFloat("minHeight", 0);
 		maxHeight = json.getFloat("maxHeight", 1);
 		supportsRivers = json.getBool("rivers", false);
