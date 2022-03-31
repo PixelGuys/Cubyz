@@ -4,6 +4,8 @@ import cubyz.utils.datastructures.RandomList;
 import cubyz.world.ChunkData;
 import cubyz.world.World;
 import cubyz.world.terrain.biomes.Biome;
+import cubyz.world.terrain.cavebiomegenerators.CaveBiomeGenerator;
+import cubyz.world.terrain.cavegenerators.CaveGenerator;
 
 import java.util.Random;
 
@@ -24,14 +26,8 @@ public class CaveBiomeMapFragment extends ChunkData {
 	public CaveBiomeMapFragment(int wx, int wy, int wz, World world) {
 		super(wx, wy, wz, CAVE_BIOME_SIZE);
 		assert (wx & CAVE_BIOME_MAP_SIZE-1) == 0 && (wy & CAVE_BIOME_MAP_SIZE-1) == 0 && (wz & CAVE_BIOME_MAP_SIZE-1) == 0;
-		Random rand = new Random(world.getSeed());
-		long rand1 = rand.nextLong() | 1;
-		long rand2 = rand.nextLong() | 1;
-		long rand3 = rand.nextLong() | 1;
-		rand.setSeed(wx*rand1 ^ wy*rand2 ^ wz*rand3);
-		RandomList<Biome> biomes = world.registries.biomeRegistry.byTypeBiomes.get(Biome.Type.CAVE);
-		for(int i = 0; i < biomeMap.length; i++) {
-			biomeMap[i] = biomes.getRandomly(rand);
+		for (CaveBiomeGenerator g : world.chunkManager.terrainGenerationProfile.caveBiomeGenerators) {
+			g.generate(world.getSeed() ^ g.getGeneratorSeed(), this);
 		}
 	}
 

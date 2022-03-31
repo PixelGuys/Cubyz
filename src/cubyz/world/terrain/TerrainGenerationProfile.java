@@ -5,6 +5,7 @@ import java.util.Comparator;
 
 import cubyz.api.CubyzRegistries;
 import cubyz.api.CurrentWorldRegistries;
+import cubyz.world.terrain.cavebiomegenerators.CaveBiomeGenerator;
 import cubyz.world.terrain.cavegenerators.CaveGenerator;
 import cubyz.world.terrain.generators.Generator;
 import pixelguys.json.JsonObject;
@@ -17,6 +18,7 @@ import pixelguys.json.JsonObject;
 public class TerrainGenerationProfile {
 	public final MapGenerator mapFragmentGenerator;
 	public final ClimateMapGenerator climateGenerator;
+	public final CaveBiomeGenerator[] caveBiomeGenerators;
 	public final CaveGenerator[] caveGenerators;
 	public final Generator[] generators;
 	
@@ -52,6 +54,23 @@ public class TerrainGenerationProfile {
 		Arrays.sort(caveGenerators, new Comparator<CaveGenerator>() {
 			@Override
 			public int compare(CaveGenerator a, CaveGenerator b) {
+				if (a.getPriority() > b.getPriority()) {
+					return 1;
+				} else if (a.getPriority() < b.getPriority()) {
+					return -1;
+				} else {
+					return 0;
+				}
+			}
+		});
+
+		caveBiomeGenerators = CubyzRegistries.CAVE_BIOME_GENERATORS.registered(new CaveBiomeGenerator[0]);
+		for(int i = 0; i < caveBiomeGenerators.length; i++) {
+			caveBiomeGenerators[i].init(null, registries);
+		}
+		Arrays.sort(caveBiomeGenerators, new Comparator<CaveBiomeGenerator>() {
+			@Override
+			public int compare(CaveBiomeGenerator a, CaveBiomeGenerator b) {
 				if (a.getPriority() > b.getPriority()) {
 					return 1;
 				} else if (a.getPriority() < b.getPriority()) {

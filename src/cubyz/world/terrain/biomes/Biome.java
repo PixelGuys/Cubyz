@@ -4,6 +4,7 @@ import java.util.function.Consumer;
 
 import cubyz.api.RegistryElement;
 import cubyz.api.Resource;
+import cubyz.utils.Logger;
 import cubyz.utils.datastructures.ChanceObject;
 import cubyz.utils.datastructures.SimpleList;
 import cubyz.world.blocks.Blocks;
@@ -57,7 +58,7 @@ public class Biome extends ChanceObject implements RegistryElement {
 	}
 	
 	public final Type type;
-	public final float minHeight, maxHeight;
+	public final int minHeight, maxHeight;
 	public final float roughness;
 	public final float hills;
 	public final float mountains;
@@ -85,8 +86,9 @@ public class Biome extends ChanceObject implements RegistryElement {
 		this.mountains = json.getFloat("mountains", 0);
 		this.caves = json.getFloat("caves", -0.75f);
 		this.crystals = json.getInt("crystals", 0);
-		minHeight = json.getFloat("minHeight", 0);
-		maxHeight = json.getFloat("maxHeight", 1);
+		minHeight = json.getInt("minHeight", Integer.MIN_VALUE);
+		maxHeight = json.getInt("maxHeight", Integer.MAX_VALUE);
+		if(minHeight > maxHeight) Logger.warning("Biome "+id+" has invalid height range ("+minHeight+", "+maxHeight+")");
 		supportsRivers = json.getBool("rivers", false);
 		preferredMusic = json.getString("music", null);
 		isValidPlayerSpawn = json.getBool("validPlayerSpawn", false);

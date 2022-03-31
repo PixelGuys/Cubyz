@@ -1,7 +1,6 @@
 {
 	"type" : "CAVE",
-	"minHeight" : 2147483647, // TODO: Make min/max height work for cave biomes.
-	"maxHeight" : -2147483648,
+	"maxHeight" : -1000,
 
 	"chance" : 0.2,
 

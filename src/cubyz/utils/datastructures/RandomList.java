@@ -75,7 +75,8 @@ public class RandomList<T extends ChanceObject> {
 		throw new IllegalStateException("Seems like someone made changes to the code without thinking. Report this immediately!");
 	}
 	
-	private static long rangedRandomLong(Random rand, long max) {
+	public static long rangedRandomLong(Random rand, long max) {
+		assert(max > 0) : "max must be bigger than 0 for this function to work.";
 		long and = CubyzMath.fillBits(max);
 		long out;
 		do {
