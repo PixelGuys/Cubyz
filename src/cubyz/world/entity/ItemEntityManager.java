@@ -282,9 +282,9 @@ public class ItemEntityManager {
 		double x = posxyz[index3] - 0.5;
 		double y = posxyz[index3+1] - 0.5;
 		double z = posxyz[index3+2] - 0.5;
-		int x0 = (int)x;
-		int y0 = (int)y;
-		int z0 = (int)z;
+		int x0 = (int)Math.floor(x);
+		int y0 = (int)Math.floor(y);
+		int z0 = (int)Math.floor(z);
 		// Find the closest non-solid block and go there:
 		int closestDx = -1;
 		int closestDy = -1;
@@ -328,9 +328,9 @@ public class ItemEntityManager {
 		double x = posxyz[index3] - RADIUS;
 		double y = posxyz[index3+1] - RADIUS;
 		double z = posxyz[index3+2] - RADIUS;
-		int x0 = (int)x;
-		int y0 = (int)y;
-		int z0 = (int)z;
+		int x0 = (int)Math.floor(x);
+		int y0 = (int)Math.floor(y);
+		int z0 = (int)Math.floor(z);
 		boolean isSolid = checkBlock(index3, x0, y0, z0);
 		if (x - x0 + DIAMETER >= 1) {
 			isSolid |= checkBlock(index3, x0+1, y0, z0);
@@ -367,15 +367,12 @@ public class ItemEntityManager {
 
 	private boolean checkBlock(int index3, int x, int y, int z) {
 		// Transform to chunk-relative coordinates:
-		x -= chunk.wx;
-		y -= chunk.wy;
-		z -= chunk.wz;
-		int block = chunk.getBlockPossiblyOutside(x, y, z);
+		int block = chunk.getBlockPossiblyOutside(x - chunk.wx, y - chunk.wy, z - chunk.wz);
 		if (block == 0) return false;
 		// Check if the item entity is inside the block:
 		boolean isInside = true;
 		if (Blocks.mode(block).changesHitbox()) {
-			isInside = Blocks.mode(block).checkEntity(new Vector3d(posxyz[index3], posxyz[index3+1]+RADIUS, posxyz[index3+2]), RADIUS, DIAMETER, x, y, z, block);
+			isInside = Blocks.mode(block).checkEntity(new Vector3d(posxyz[index3], posxyz[index3+1]-RADIUS, posxyz[index3+2]), RADIUS, DIAMETER, x, y, z, block);
 		}
 		return isInside && Blocks.solid(block);
 	}
