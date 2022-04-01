@@ -9,14 +9,9 @@ public final class ClimateMap {
 	private static final int CACHE_SIZE = 1 << 8; // Must be a power of 2!
 	private static final int CACHE_MASK = CACHE_SIZE - 1;
 	private static final int ASSOCIATIVITY = 4;
-	private static final Cache<ClimateMapFragment> cache = new Cache<ClimateMapFragment>(new ClimateMapFragment[CACHE_SIZE][ASSOCIATIVITY]);
-	private static World world = null;
+	private static final Cache<ClimateMapFragment> cache = new Cache<>(new ClimateMapFragment[CACHE_SIZE][ASSOCIATIVITY]);
+
 	public static BiomePoint[][] getBiomeMap(World world, int wx, int wz, int width, int height) {
-		if (world != ClimateMap.world) {
-			cache.clear(); // Clear the cache if the world changed!
-			ClimateMap.world = world;
-		}
-		
 		BiomePoint[][] map = new BiomePoint[width/MapFragment.BIOME_SIZE][height/MapFragment.BIOME_SIZE];
 		int wxStart = wx & ~ClimateMapFragment.MAP_MASK;
 		int wzStart = wz & ~ClimateMapFragment.MAP_MASK;
@@ -43,7 +38,7 @@ public final class ClimateMap {
 		return map;
 	}
 	
-	private static class ClimateMapFragmentComparator {
+	private static final class ClimateMapFragmentComparator {
 		private final int wx, wz;
 		private ClimateMapFragmentComparator(int wx, int wz) {
 			this.wx = wx;
@@ -71,5 +66,9 @@ public final class ClimateMap {
 			cache.addToCache(ret, ret.hashCode() & CACHE_MASK);
 			return ret;
 		}
+	}
+
+	public static void cleanup() {
+		cache.clear();
 	}
 }

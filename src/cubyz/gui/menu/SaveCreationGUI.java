@@ -1,6 +1,9 @@
 package cubyz.gui.menu;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 
 import cubyz.api.CubyzRegistries;
@@ -13,6 +16,7 @@ import cubyz.gui.components.Component;
 import cubyz.gui.components.TextInput;
 import cubyz.rendering.VisibleChunk;
 import cubyz.rendering.text.Fonts;
+import cubyz.utils.Logger;
 import cubyz.utils.translate.ContextualTextKey;
 import cubyz.utils.translate.TextKey;
 import cubyz.world.ServerWorld;
@@ -95,11 +99,17 @@ public class SaveCreationGUI extends MenuGUI {
 
 		create.setText(TextKey.createTextKey("gui.cubyz.saves.create"));
 		create.setOnAction(() -> {
-			new Thread(() -> Server.main(new String[0]), "Server Thread").start();
-			World world = new ServerWorld(name.getText(), generateSettings(), VisibleChunk.class);
+			generateSettings(name.getText());
+			new Thread(() -> Server.main(new String[]{name.getText()}), "Server Thread").start();
+			//World world = new ServerWorld(name.getText(), generateSettings(), VisibleChunk.class);
 
 			Cubyz.gameUI.setMenu(null, false); // hide from UISystem.back()
-			GameLauncher.logic.loadWorld(world);
+			while(Server.world == null) {
+				try {
+					Thread.sleep(10);
+				} catch(InterruptedException e) {}
+			}
+			GameLauncher.logic.loadWorld(Server.world);
 		});
 
 		cancel.setText(TextKey.createTextKey("gui.cubyz.general.cancel"));
@@ -110,7 +120,7 @@ public class SaveCreationGUI extends MenuGUI {
 		updateGUIScale();
 	}
 
-	private JsonObject generateSettings() {
+	private void generateSettings(String name) {
 		JsonObject settings = new JsonObject();
 		JsonObject mapGeneratorJson = new JsonObject();
 		mapGeneratorJson.put("id", mapGenerators[selectedMapGenerator].toString());
@@ -118,8 +128,15 @@ public class SaveCreationGUI extends MenuGUI {
 		JsonObject climateGeneratorJson = new JsonObject();
 		climateGeneratorJson.put("id", climateGenerators[selectedClimateGenerator].toString());
 		settings.put("climateGenerator", climateGeneratorJson);
-
-		return settings;
+		try {
+			File file = new File("saves/" + name + "/generatorSettings.json");
+			file.getParentFile().mkdirs();
+			PrintWriter writer = new PrintWriter(new FileOutputStream(file));
+			settings.writeObjectToStream(writer);
+			writer.close();
+		} catch(FileNotFoundException e) {
+			Logger.error(e);
+		}
 	}
 
 	@Override

@@ -55,10 +55,14 @@ public class SaveSelectorGUI extends MenuGUI {
 			ContextualTextKey tk = new ContextualTextKey("gui.cubyz.saves.play", name);
 			Button b = new Button(tk);
 			b.setOnAction(() -> {
-				new Thread(() -> Server.main(new String[0]), "Server Thread").start();
-				World world = new ServerWorld(name, null, VisibleChunk.class);
+				new Thread(() -> Server.main(new String[] {name}), "Server Thread").start();
 				Cubyz.gameUI.setMenu(null, false); // hide from UISystem.back()
-				GameLauncher.logic.loadWorld(world);
+				while(Server.world == null) {
+					try {
+						Thread.sleep(10);
+					} catch(InterruptedException e) {}
+				}
+				GameLauncher.logic.loadWorld(Server.world);
 			});
 			saveButtons[i] = b;
 			container.add(b);

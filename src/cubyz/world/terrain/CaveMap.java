@@ -15,17 +15,12 @@ public class CaveMap {
 	private static final int CACHE_MASK = CACHE_SIZE - 1;
 	private static final int ASSOCIATIVITY = 8; // 512 MiB Cache size
 	private static final Cache<CaveMapFragment> cache = new Cache<>(new CaveMapFragment[CACHE_SIZE][ASSOCIATIVITY]);
-	private static World world = null;
 
 	private final Chunk reference;
 
 	private final CaveMapFragment[] fragments = new CaveMapFragment[8];
 
 	public CaveMap(World world, Chunk chunk) {
-		if (world != CaveMap.world) {
-			cache.clear(); // Clear the cache if the world changed!
-			CaveMap.world = world;
-		}
 		reference = chunk;
 		fragments[0] = getOrGenerateFragment(world, chunk.wx - chunk.getWidth(), chunk.wy - chunk.getWidth(), chunk.wz - chunk.getWidth(), chunk.voxelSize);
 		fragments[1] = getOrGenerateFragment(world, chunk.wx - chunk.getWidth(), chunk.wy - chunk.getWidth(), chunk.wz + chunk.getWidth(), chunk.voxelSize);
@@ -182,5 +177,9 @@ public class CaveMap {
 			cache.addToCache(ret, hash & CACHE_MASK);
 			return ret;
 		}
+	}
+
+	public static void cleanup() {
+		cache.clear();
 	}
 }

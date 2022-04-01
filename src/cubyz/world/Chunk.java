@@ -4,7 +4,6 @@ import cubyz.Constants;
 import cubyz.world.terrain.CaveBiomeMap;
 import org.joml.Vector3d;
 
-import cubyz.client.ClientSettings;
 import cubyz.client.GameLauncher;
 import cubyz.utils.Logger;
 import cubyz.utils.math.Bits;
@@ -99,7 +98,7 @@ public abstract class Chunk extends SavableChunk {
 		assert !generated : "Seriously, why would you generate this chunk twice???";
 		if(!ChunkIO.loadChunkFromFile(world, this)) {
 			CaveMap caveMap = new CaveMap(world, this);
-			CaveBiomeMap biomeMap = new CaveBiomeMap(world, this);
+			CaveBiomeMap biomeMap = new CaveBiomeMap(this);
 			
 			for (Generator g : terrainGenerationProfile.generators) {
 				g.generate(seed ^ g.getGeneratorSeed(), wx, wy, wz, this, caveMap, biomeMap);

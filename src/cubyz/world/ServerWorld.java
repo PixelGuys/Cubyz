@@ -62,6 +62,7 @@ public class ServerWorld extends World{
 		ModLoader.postWorldGen(registries);
 
 		chunkManager = new ChunkManager(this, generatorSettings, Runtime.getRuntime().availableProcessors() - 1);
+		generate();
 	}
 
 	// Returns the blocks, so their meshes can be created and stored.

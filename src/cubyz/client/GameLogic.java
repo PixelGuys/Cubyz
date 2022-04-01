@@ -90,22 +90,6 @@ public class GameLogic implements ClientConnection {
 	}
 	
 	public void loadWorld(World world) { // TODO: Seperate all the things out that are generated for the current world.
-		if (Cubyz.world != null) {
-			quitWorld();
-		}
-		if (skySun == null || skyMoon == null) {
-			// TODO: use textures for sun and moon
-			Mesh sunMesh = skyBodyMesh.cloneNoTexture();
-			skySun = new Spatial(sunMesh);
-			skySun.setScale(50f); // TODO: Make the scale dependent on the actual distance to that star.
-			skySun.setPositionRaw(-100, 1, 0);
-			Mesh moonMesh = skyBodyMesh.cloneNoTexture();
-			skyMoon = new Spatial(moonMesh);
-			skyMoon.setScale(100f);
-			skyMoon.setPositionRaw(100, 1, 0);
-			GameLauncher.renderer.worldSpatialList = new Spatial[] {skySun/*, skyMoon*/};
-		}
-		world.generate();
 		Cubyz.player = new ClientPlayer(world.getLocalPlayer());
 		// Make sure the world is null until the player position is known.
 		DiscordIntegration.setStatus("Playing");
@@ -157,6 +141,18 @@ public class GameLogic implements ClientConnection {
 		LoadThread lt = new LoadThread();
 		
 		LoadThread.addOnLoadFinished(() -> {
+			// TODO: use textures for sun and moon
+			Mesh sunMesh = skyBodyMesh.cloneNoTexture();
+			skySun = new Spatial(sunMesh);
+			skySun.setScale(50f); // TODO: Make the scale dependent on the actual distance to that star.
+			skySun.setPositionRaw(-100, 1, 0);
+			Mesh moonMesh = skyBodyMesh.cloneNoTexture();
+			skyMoon = new Spatial(moonMesh);
+			skyMoon.setScale(100f);
+			skyMoon.setPositionRaw(100, 1, 0);
+			GameLauncher.renderer.worldSpatialList = new Spatial[] {skySun/*, skyMoon*/};
+
+
 			sound = new SoundManager();
 			try {
 				sound.init();
@@ -180,6 +176,7 @@ public class GameLogic implements ClientConnection {
 			if (breakingAnims.isEmpty())
 				Logger.error("Couldn't find the breaking animations. Without breaking animations the game might crash.");
 			breakAnimations = breakingAnims.toArray(new Texture[0]);
+
 			System.gc();
 		});
 		lt.start();
