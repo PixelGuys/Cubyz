@@ -6,6 +6,7 @@ import cubyz.utils.Logger;
 import cubyz.utils.datastructures.BlockingMaxHeap;
 import cubyz.utils.datastructures.Cache;
 import cubyz.utils.math.CubyzMath;
+import cubyz.world.save.ChunkIO;
 import cubyz.world.terrain.*;
 import pixelguys.json.JsonObject;
 
@@ -214,6 +215,7 @@ public class ChunkManager {
 		CaveMap.cleanup();
 		ClimateMap.cleanup();
 		reducedChunkCache.clear();
+		ChunkIO.clean();
 	}
 
 	public void forceSave() {

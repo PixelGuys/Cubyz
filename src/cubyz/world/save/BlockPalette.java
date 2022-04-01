@@ -39,13 +39,19 @@ public class BlockPalette {
 		if (TToInt.containsKey(index)) {
 			return TToInt.get(index) | data;
 		} else {
-			// Create a value:
-			int newIndex = intToT.length;
-			intToT = Arrays.copyOf(intToT, newIndex+1);
-			intToT[newIndex] = index;
-			TToInt.put(index, newIndex);
-			wio.saveWorldData();
-			return newIndex | data;
+			synchronized(this) { // Might be accessed from multiple threads at the same time.
+				if (TToInt.containsKey(index)) { // Check again in case it was just added.
+					return TToInt.get(index) | data;
+				} else {
+					// Create a value:
+					int newIndex = intToT.length;
+					intToT = Arrays.copyOf(intToT, newIndex + 1);
+					intToT[newIndex] = index;
+					TToInt.put(index, newIndex);
+					wio.saveWorldData();
+					return newIndex | data;
+				}
+			}
 		}
 	}
 }
