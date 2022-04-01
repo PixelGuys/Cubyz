@@ -18,7 +18,7 @@ import pixelguys.json.JsonObject;
  */
 
 public class Player extends Entity implements CommandSource {
-	public static final float cameraHeight = 2.65f;
+	public static final float cameraHeight = 1.75f;
 	
 
 	private boolean flying = false;
