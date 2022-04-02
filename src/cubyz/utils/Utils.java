@@ -116,4 +116,37 @@ public final class Utils {
 		return list;
 	}
 
+	public static String escapeFolderName(String name) {
+		StringBuilder result = new StringBuilder(name.length()*3/2);
+		for(char ch : name.toCharArray()) {
+			if(Character.isLetterOrDigit(ch)) {
+				result.append(ch);
+			} else { // Escape all other characters using underscore and the hex code:
+				result.append('_');
+				result.append(String.format("%04x", (int)ch));
+			}
+		}
+		return result.toString();
+	}
+
+	public static String parseEscapedFolderName(String name) {
+		StringBuilder result = new StringBuilder(name.length());
+		char[] characters = name.toCharArray();
+		for(int i = 0; i < characters.length; i++) {
+			if(characters[i] == '_') {
+				int val = 0;
+				for(int j = 0; j < 4; j++) {
+					i++;
+					if(i < characters.length) {
+						val = val*16 + Character.digit(characters[i], 16);
+					}
+				}
+				result.append((char)val);
+			} else {
+				result.append(characters[i]);
+			}
+		}
+		return result.toString();
+	}
+
 }

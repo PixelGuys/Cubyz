@@ -14,13 +14,11 @@ import cubyz.gui.MenuGUI;
 import cubyz.gui.components.Button;
 import cubyz.gui.components.Component;
 import cubyz.gui.components.TextInput;
-import cubyz.rendering.VisibleChunk;
 import cubyz.rendering.text.Fonts;
 import cubyz.utils.Logger;
+import cubyz.utils.Utils;
 import cubyz.utils.translate.ContextualTextKey;
 import cubyz.utils.translate.TextKey;
-import cubyz.world.ServerWorld;
-import cubyz.world.World;
 import cubyz.world.terrain.ClimateMapGenerator;
 import cubyz.world.terrain.MapGenerator;
 import pixelguys.json.JsonObject;
@@ -99,8 +97,9 @@ public class SaveCreationGUI extends MenuGUI {
 
 		create.setText(TextKey.createTextKey("gui.cubyz.saves.create"));
 		create.setOnAction(() -> {
-			generateSettings(name.getText());
-			new Thread(() -> Server.main(new String[]{name.getText()}), "Server Thread").start();
+			String path = Utils.escapeFolderName(name.getText());
+			generateSettings(path);
+			new Thread(() -> Server.main(new String[]{path}), "Server Thread").start();
 			//World world = new ServerWorld(name.getText(), generateSettings(), VisibleChunk.class);
 
 			Cubyz.gameUI.setMenu(null, false); // hide from UISystem.back()

@@ -17,6 +17,7 @@ import cubyz.gui.components.Component;
 import cubyz.gui.components.ScrollingContainer;
 import cubyz.rendering.VisibleChunk;
 import cubyz.rendering.Window;
+import cubyz.utils.Utils;
 import cubyz.utils.translate.ContextualTextKey;
 import cubyz.utils.translate.TextKey;
 import cubyz.world.ServerWorld;
@@ -52,7 +53,7 @@ public class SaveSelectorGUI extends MenuGUI {
 		deleteButtons = new Button[listOfFiles.length];
 		for (int i = 0; i < saveButtons.length; i++) {
 			String name = listOfFiles[i].getName();
-			ContextualTextKey tk = new ContextualTextKey("gui.cubyz.saves.play", name);
+			ContextualTextKey tk = new ContextualTextKey("gui.cubyz.saves.play", Utils.parseEscapedFolderName(name));
 			Button b = new Button(tk);
 			b.setOnAction(() -> {
 				new Thread(() -> Server.main(new String[] {name}), "Server Thread").start();
