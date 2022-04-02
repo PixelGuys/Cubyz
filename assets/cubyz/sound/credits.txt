@@ -9,7 +9,11 @@ under_the_water_sky.ogg
 
 
 
-Kevin MacLeod - Syncerely
+Kevin MacLeod
+
+Syncerely by Kevin MacLeod
+Link: https://incompetech.filmmusic.io/song/5033-sincerely
+License: https://filmmusic.io/standard-license
 
 Gymnopedie No. 1 by Kevin MacLeod
 Link: https://incompetech.filmmusic.io/song/3837-gymnopedie-no-1
@@ -21,4 +25,12 @@ License: https://filmmusic.io/standard-license
 
 Eastern Thought by Kevin MacLeod
 Link: https://incompetech.filmmusic.io/song/3692-eastern-thought
+License: https://filmmusic.io/standard-license
+
+Mana Two Part 2 by Kevin MacLeod
+Link: https://incompetech.filmmusic.io/song/5713-mana-two-part-2
+License: https://filmmusic.io/standard-license
+
+Heart of the Beast by Kevin MacLeod
+Link: https://incompetech.filmmusic.io/song/3862-heart-of-the-beast
 License: https://filmmusic.io/standard-license

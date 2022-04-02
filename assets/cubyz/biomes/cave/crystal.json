@@ -1,0 +1,28 @@
+{
+	"type" : "CAVE",
+	"maxHeight" : -512,
+
+	"chance" : 0.2,
+
+	"caves" : 0.0,
+	"crystals" : 32,
+
+	"music" : "mana-two-part-2",
+	"stoneBlock" : "cubyz:stone",
+	"structures" : [
+		{
+			"id" : "cubyz:boulder",
+			"chance" : 0.001,
+			"block" : "cubyz:cobblestone",
+			"size" : 5,
+			"size_variance" : 3
+		},
+		{
+			"id" : "cubyz:boulder",
+			"chance" : 0.001,
+			"block" : "cubyz:stone",
+			"size" : 4,
+			"size_variance" : 2
+		}
+	]
+}

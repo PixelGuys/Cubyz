@@ -69,7 +69,7 @@ public final class Server extends Pacer{
 		world.update();
 		// TODO: Adjust for multiple players:
 
-		world.clientConnection.serverPing(world.getGameTime(), world.getBiome((int) Cubyz.player.getPosition().x, (int) Cubyz.player.getPosition().z).getRegistryID().toString());
+		world.clientConnection.serverPing(world.getGameTime(), world.getBiome((int)Cubyz.player.getPosition().x, (int)Cubyz.player.getPosition().y, (int)Cubyz.player.getPosition().z).getRegistryID().toString());
 		// TODO: Move this to the client, or generalize this for multiplayer.
 
 		world.seek((int) Cubyz.player.getPosition().x, (int) Cubyz.player.getPosition().y, (int) Cubyz.player.getPosition().z, ClientSettings.RENDER_DISTANCE);

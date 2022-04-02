@@ -36,7 +36,7 @@ public class NoiseCaveGenerator implements CaveGenerator {
 	@Override
 	public void generate(long seed, CaveMapFragment map) {
 		if (map.voxelSize > 2) return;
-		InterpolatableCaveBiomeMap biomeMap = new InterpolatableCaveBiomeMap(map);
+		InterpolatableCaveBiomeMap biomeMap = new InterpolatableCaveBiomeMap(map, CaveMapFragment.WIDTH*map.voxelSize);
 		int outerSize = Math.max(map.voxelSize, INTERPOLATED_PART);
 		Cached3DFractalNoise noise = new Cached3DFractalNoise(map.wx, map.wy & ~(CaveMapFragment.WIDTH*map.voxelSize - 1), map.wz, outerSize, map.voxelSize*CaveMapFragment.WIDTH, seed, SCALE);
 		for(int x = 0; x < map.voxelSize*CaveMapFragment.WIDTH; x += outerSize) {

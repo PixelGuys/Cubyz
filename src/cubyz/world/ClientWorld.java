@@ -150,7 +150,7 @@ public class ClientWorld extends World{
 	}
 
 	@Override
-	public Biome getBiome(int wx, int wz) {
+	public Biome getBiome(int wx, int wy, int wz) {
 		return null;
 	}
 

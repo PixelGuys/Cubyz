@@ -20,7 +20,8 @@ import cubyz.world.items.BlockDrop;
 import cubyz.world.items.ItemStack;
 import cubyz.world.save.ChunkIO;
 import cubyz.world.save.WorldIO;
-import cubyz.world.terrain.MapFragment;
+import cubyz.world.terrain.CaveBiomeMapFragment;
+import cubyz.world.terrain.InterpolatableCaveBiomeMap;
 import cubyz.world.terrain.biomes.Biome;
 import pixelguys.json.JsonObject;
 import pixelguys.json.JsonParser;
@@ -484,9 +485,12 @@ public class ServerWorld extends World{
 		return registries;
 	}
 	@Override
-	public Biome getBiome(int wx, int wz) {
-		MapFragment reg = chunkManager.getOrGenerateMapFragment(wx, wz, 1);
-		return reg.getBiome(wx, wz);
+	public Biome getBiome(int wx, int wy, int wz) {
+		return new InterpolatableCaveBiomeMap(new ChunkData(
+			wx & ~CaveBiomeMapFragment.CAVE_BIOME_MASK,
+			wy & ~CaveBiomeMapFragment.CAVE_BIOME_MASK,
+			wz & ~CaveBiomeMapFragment.CAVE_BIOME_MASK, 1
+		), 0).getRoughBiome(wx, wy, wz, null, true);
 	}
 	@Override
 	public int getLight(int x, int y, int z, Vector3f sunLight, boolean easyLighting) {

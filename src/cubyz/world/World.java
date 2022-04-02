@@ -188,7 +188,7 @@ public abstract class World {
 
 	public abstract CurrentWorldRegistries getCurrentRegistries();
 
-	public abstract Biome getBiome(int wx, int wz);
+	public abstract Biome getBiome(int wx, int wy, int wz);
 
 	public abstract int getLight(int x, int y, int z, Vector3f sunLight, boolean easyLighting);
 
