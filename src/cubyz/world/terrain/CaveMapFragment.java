@@ -8,7 +8,7 @@ import cubyz.world.terrain.cavegenerators.CaveGenerator;
  * Cave data represented in a 1-Bit per block format, where 0 means empty and 1 means not empty.
  */
 public class CaveMapFragment extends ChunkData {
-	public static final int WIDTH = 1 << 8;
+	public static final int WIDTH = 1 << 6;
 	public static final int WIDTH_MASK = WIDTH - 1;
 	public static final int HEIGHT = 64; // Size of long
 	public static final int HEIGHT_MASK = HEIGHT - 1;

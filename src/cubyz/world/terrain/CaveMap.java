@@ -10,7 +10,7 @@ import cubyz.world.ChunkData;
  */
 
 public class CaveMap {
-	private static final int CACHE_SIZE = 1 << 7; // Must be a power of 2!
+	private static final int CACHE_SIZE = 1 << 9; // Must be a power of 2!
 	private static final int CACHE_MASK = CACHE_SIZE - 1;
 	private static final int ASSOCIATIVITY = 8; // 512 MiB Cache size
 	private static final Cache<CaveMapFragment> cache = new Cache<>(new CaveMapFragment[CACHE_SIZE][ASSOCIATIVITY]);
