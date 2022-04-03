@@ -7,13 +7,13 @@ import cubyz.world.ChunkData;
 import cubyz.world.terrain.biomes.Biome;
 import cubyz.world.terrain.noise.Cached3DFractalNoise;
 
-import java.util.Random;
-
 public class CaveBiomeMap extends InterpolatableCaveBiomeMap {
 	private static final int CACHE_SIZE = 1 << 8; // Must be a power of 2!
 	private static final int CACHE_MASK = CACHE_SIZE - 1;
 	private static final int ASSOCIATIVITY = 8;
 	private static final Cache<CaveBiomeMapFragment> cache = new Cache<>(new CaveBiomeMapFragment[CACHE_SIZE][ASSOCIATIVITY]);
+
+	private static TerrainGenerationProfile profile;
 
 	private final Chunk reference;
 
@@ -88,7 +88,7 @@ public class CaveBiomeMap extends InterpolatableCaveBiomeMap {
 			// Try again in case it was already generated in another thread:
 			ret = cache.find(new ChunkData(wx, wy, wz, 1), hash);
 			if (ret != null) return ret;
-			ret = new CaveBiomeMapFragment(wx, wy, wz, Server.world);
+			ret = new CaveBiomeMapFragment(wx, wy, wz, profile);
 			cache.addToCache(ret, hash & CACHE_MASK);
 			return ret;
 		}
@@ -96,5 +96,9 @@ public class CaveBiomeMap extends InterpolatableCaveBiomeMap {
 
 	public static void cleanup() {
 		cache.clear();
+	}
+
+	public static void init(TerrainGenerationProfile profile) {
+		CaveBiomeMap.profile = profile;
 	}
 }

@@ -1,7 +1,6 @@
 package cubyz.world.terrain;
 
 import cubyz.utils.datastructures.Cache;
-import cubyz.world.World;
 
 public final class ClimateMap {
 	private ClimateMap() {} // No instances allowed.
@@ -11,7 +10,9 @@ public final class ClimateMap {
 	private static final int ASSOCIATIVITY = 4;
 	private static final Cache<ClimateMapFragment> cache = new Cache<>(new ClimateMapFragment[CACHE_SIZE][ASSOCIATIVITY]);
 
-	public static BiomePoint[][] getBiomeMap(World world, int wx, int wz, int width, int height) {
+	private static TerrainGenerationProfile profile;
+
+	public static BiomePoint[][] getBiomeMap(int wx, int wz, int width, int height) {
 		BiomePoint[][] map = new BiomePoint[width/MapFragment.BIOME_SIZE][height/MapFragment.BIOME_SIZE];
 		int wxStart = wx & ~ClimateMapFragment.MAP_MASK;
 		int wzStart = wz & ~ClimateMapFragment.MAP_MASK;
@@ -19,7 +20,7 @@ public final class ClimateMap {
 		int wzEnd = wz+height & ~ClimateMapFragment.MAP_MASK;
 		for(int x = wxStart; x <= wxEnd; x += ClimateMapFragment.MAP_SIZE) {
 			for(int z = wzStart; z <= wzEnd; z += ClimateMapFragment.MAP_SIZE) {
-				ClimateMapFragment mapPiece = getOrGenerateFragment(world, x, z);
+				ClimateMapFragment mapPiece = getOrGenerateFragment(x, z);
 				// Offset of the indices in the result map:
 				int xOffset = (x - wx) >> MapFragment.BIOME_SHIFT;
 				int zOffset = (z - wz) >> MapFragment.BIOME_SHIFT;
@@ -53,7 +54,7 @@ public final class ClimateMap {
 		}
 	}
 	
-	public static ClimateMapFragment getOrGenerateFragment(World world, int wx, int wz) {
+	public static ClimateMapFragment getOrGenerateFragment(int wx, int wz) {
 		int hash = ClimateMapFragment.hashCode(wx, wz) & CACHE_MASK;
 		ClimateMapFragment ret = cache.find(new ClimateMapFragmentComparator(wx, wz), hash);
 		if (ret != null) return ret;
@@ -61,8 +62,8 @@ public final class ClimateMap {
 			// Try again in case it was already generated in another thread:
 			ret = cache.find(new ClimateMapFragmentComparator(wx, wz), hash);
 			if (ret != null) return ret;
-			ret = new ClimateMapFragment(world, wx, wz);
-			world.chunkManager.terrainGenerationProfile.climateGenerator.generateMapFragment(ret);
+			ret = new ClimateMapFragment(wx, wz);
+			profile.climateGenerator.generateMapFragment(ret, profile.seed);
 			cache.addToCache(ret, ret.hashCode() & CACHE_MASK);
 			return ret;
 		}
@@ -70,5 +71,9 @@ public final class ClimateMap {
 
 	public static void cleanup() {
 		cache.clear();
+	}
+
+	public static void init(TerrainGenerationProfile profile) {
+		ClimateMap.profile = profile;
 	}
 }

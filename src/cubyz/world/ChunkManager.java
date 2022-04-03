@@ -83,7 +83,11 @@ public class ChunkManager {
 		loadList = new BlockingMaxHeap<>(new ChunkData[1024], numberOfThreads);
 		this.world = world;
 
-		terrainGenerationProfile = new TerrainGenerationProfile(settings, world.getCurrentRegistries());
+		terrainGenerationProfile = new TerrainGenerationProfile(settings, world.getCurrentRegistries(), world.getSeed());
+
+		CaveBiomeMap.init(terrainGenerationProfile);
+		CaveMap.init(terrainGenerationProfile);
+		ClimateMap.init(terrainGenerationProfile);
 
 		threads = new Thread[numberOfThreads];
 		for (int i = 0; i < numberOfThreads; i++) {
@@ -149,8 +153,8 @@ public class ChunkManager {
 			if (res != null) return res;
 
 			// Generate a new map fragment:
-			res = new MapFragment(wx, wz, world, voxelSize);
-			terrainGenerationProfile.mapFragmentGenerator.generateMapFragment(res);
+			res = new MapFragment(wx, wz, voxelSize);
+			terrainGenerationProfile.mapFragmentGenerator.generateMapFragment(res, world.getSeed());
 			mapCache[index].addToCache(res, hash);
 		}
 		return res;

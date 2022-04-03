@@ -16,5 +16,5 @@ public interface ClimateMapGenerator extends RegistryElement {
 	 */
 	void init(JsonObject parameters, CurrentWorldRegistries registries);
 
-	void generateMapFragment(ClimateMapFragment fragment);
+	void generateMapFragment(ClimateMapFragment fragment, long seed);
 }

@@ -4,7 +4,6 @@ import java.util.Random;
 
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Resource;
-import cubyz.utils.Logger;
 import cubyz.world.Chunk;
 import cubyz.world.NormalChunk;
 import cubyz.world.blocks.Blocks;

@@ -97,7 +97,7 @@ public abstract class Chunk extends SavableChunk {
 	public void generate(long seed, TerrainGenerationProfile terrainGenerationProfile) {
 		assert !generated : "Seriously, why would you generate this chunk twice???";
 		if(!ChunkIO.loadChunkFromFile(world, this)) {
-			CaveMap caveMap = new CaveMap(world, this);
+			CaveMap caveMap = new CaveMap(this);
 			CaveBiomeMap biomeMap = new CaveBiomeMap(this);
 			
 			for (Generator g : terrainGenerationProfile.generators) {

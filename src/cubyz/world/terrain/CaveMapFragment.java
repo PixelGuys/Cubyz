@@ -2,7 +2,6 @@ package cubyz.world.terrain;
 
 import cubyz.utils.math.CubyzMath;
 import cubyz.world.ChunkData;
-import cubyz.world.World;
 import cubyz.world.terrain.cavegenerators.CaveGenerator;
 
 /**
@@ -17,21 +16,11 @@ public class CaveMapFragment extends ChunkData {
 	private final long[] data = new long[WIDTH*WIDTH];
 	private final int voxelShift;
 
-	public CaveMapFragment(int wx, int wy, int wz, int voxelSize, World world) {
+	public CaveMapFragment(int wx, int wy, int wz, int voxelSize, TerrainGenerationProfile profile) {
 		super(wx, wy, wz, voxelSize);
 		voxelShift = CubyzMath.binaryLog(voxelSize);
-		for(int x0 = 0; x0 < WIDTH*voxelSize; x0 += MapFragment.MAP_SIZE) {
-			for(int z0 = 0; z0 < WIDTH*voxelSize; z0 += MapFragment.MAP_SIZE) {
-				MapFragment mapFragment = world.chunkManager.getOrGenerateMapFragment(wx + x0, wz + z0, voxelSize);
-				for(int x = 0; x < Math.min(WIDTH*voxelSize, MapFragment.MAP_SIZE); x += voxelSize) {
-					for(int z = 0; z < Math.min(WIDTH*voxelSize, MapFragment.MAP_SIZE); z += voxelSize) {
-						addRange(x0 + x, z0 + z, 0, (int)mapFragment.getHeight(wx + x + x0, wz + z + z0) - wy);
-					}
-				}
-			}
-		}
-		for (CaveGenerator g : world.chunkManager.terrainGenerationProfile.caveGenerators) {
-			g.generate(world.getSeed() ^ g.getGeneratorSeed(), this);
+		for (CaveGenerator g : profile.caveGenerators) {
+			g.generate(profile.seed ^ g.getGeneratorSeed(), this);
 		}
 	}
 

@@ -24,6 +24,7 @@ import cubyz.world.terrain.biomes.*;
 import cubyz.world.terrain.cavebiomegenerators.RandomBiomeDistribution;
 import cubyz.world.terrain.cavegenerators.FractalCaveGenerator;
 import cubyz.world.terrain.cavegenerators.NoiseCaveGenerator;
+import cubyz.world.terrain.cavegenerators.SurfaceGenerator;
 import cubyz.world.terrain.generators.*;
 import cubyz.world.terrain.worldgenerators.FlatLand;
 import cubyz.world.terrain.worldgenerators.MapGenV1;
@@ -78,6 +79,7 @@ public class BaseMod implements Mod {
 		CubyzRegistries.GENERATORS.register(new StructureGenerator());
 		CubyzRegistries.GENERATORS.register(new CrystalGenerator());
 
+		CubyzRegistries.CAVE_GENERATORS.register(new SurfaceGenerator());
 		CubyzRegistries.CAVE_GENERATORS.register(new FractalCaveGenerator());
 		CubyzRegistries.CAVE_GENERATORS.register(new NoiseCaveGenerator());
 

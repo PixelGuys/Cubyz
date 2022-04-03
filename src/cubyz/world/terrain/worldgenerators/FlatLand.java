@@ -28,7 +28,7 @@ public class FlatLand implements ClimateMapGenerator {
 	}
 
 	@Override
-	public void generateMapFragment(ClimateMapFragment map) {
+	public void generateMapFragment(ClimateMapFragment map, long seed) {
 		for (int x = 0; x < map.map.length; x++) {
 			for (int z = 0; z < map.map[0].length; z++) {
 				map.map[x][z] = new BiomePoint(FLATLAND, map.wx + x*MapFragment.BIOME_SIZE, map.wz + z*MapFragment.BIOME_SIZE, 32, 0);

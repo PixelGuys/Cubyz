@@ -32,10 +32,12 @@ public class PolarCircles implements ClimateMapGenerator {
 	static final float RING_SIZE = 64;
 	static final float WIND_SPEED = 1;
 	static final float WIND_INFLUENCE = 0.1f;
+
+	private CurrentWorldRegistries registries;
 	
 	@Override
 	public void init(JsonObject parameters, CurrentWorldRegistries registries) {
-		
+		this.registries = registries;
 	}
 
 	@Override
@@ -44,19 +46,19 @@ public class PolarCircles implements ClimateMapGenerator {
 	}
 
 	@Override
-	public void generateMapFragment(ClimateMapFragment map) {
+	public void generateMapFragment(ClimateMapFragment map, long seed) {
 		// Create the surrounding height and wind maps needed for wind propagation:
 		float[][] heightMap = new float[3 * MAP_SIZE / MapFragment.BIOME_SIZE][3 * MAP_SIZE / MapFragment.BIOME_SIZE];
 		FractalNoise.generateSparseFractalTerrain(map.wx - MAP_SIZE, map.wz - MAP_SIZE, 3 * MAP_SIZE, 3 * MAP_SIZE,
-				MAP_SIZE / 16, map.world.getSeed() ^ 92786504683290654L, heightMap, MapFragment.BIOME_SIZE);
+				MAP_SIZE / 16, seed ^ 92786504683290654L, heightMap, MapFragment.BIOME_SIZE);
 		
 		float[][] windXMap = new float[3 * MAP_SIZE / MapFragment.BIOME_SIZE][3 * MAP_SIZE / MapFragment.BIOME_SIZE];
 		FractalNoise.generateSparseFractalTerrain(map.wx - MAP_SIZE, map.wz - MAP_SIZE, 3 * MAP_SIZE, 3 * MAP_SIZE,
-				MAP_SIZE / 8, map.world.getSeed() ^ 4382905640235972L, windXMap, MapFragment.BIOME_SIZE);
+				MAP_SIZE / 8, seed ^ 4382905640235972L, windXMap, MapFragment.BIOME_SIZE);
 		
 		float[][] windZMap = new float[3 * MAP_SIZE / MapFragment.BIOME_SIZE][3 * MAP_SIZE / MapFragment.BIOME_SIZE];
 		FractalNoise.generateSparseFractalTerrain(map.wx - MAP_SIZE, map.wz - MAP_SIZE, 3 * MAP_SIZE, 3 * MAP_SIZE,
-				MAP_SIZE / 8, map.world.getSeed() ^ 532985472894530L, windZMap, MapFragment.BIOME_SIZE);
+				MAP_SIZE / 8, seed ^ 532985472894530L, windZMap, MapFragment.BIOME_SIZE);
 		
 		// Make non-ocean regions more flat:
 		for (int x = 0; x < heightMap.length; x++) {
@@ -83,7 +85,7 @@ public class PolarCircles implements ClimateMapGenerator {
 		
 		for (int x = -1; x < map.map.length + 1; x++) {
 			for (int z = -1; z < map.map.length + 1; z++) {
-				rand.setSeed((x + map.wx)*65784967549L + (z + map.wz)*6758934659L + map.world.getSeed());
+				rand.setSeed((x + map.wx)*65784967549L + (z + map.wz)*6758934659L + seed);
 				float xOffset = rand.nextFloat() - 0.5f;
 				float zOffset = rand.nextFloat() - 0.5f;
 				float humid = getInitialHumidity(map, x, z, heightMap[x + map.map.length][z + map.map.length]);
@@ -117,7 +119,7 @@ public class PolarCircles implements ClimateMapGenerator {
 				}
 				// Insert the biome type:
 				Biome.Type type = findClimate(heightMap[x + map.map.length][z + map.map.length], humid, temp);
-				biomeMap[x+1][z+1] = map.world.getCurrentRegistries().biomeRegistry.byTypeBiomes.get(type).getRandomly(rand);
+				biomeMap[x+1][z+1] = registries.biomeRegistry.byTypeBiomes.get(type).getRandomly(rand);
 			}
 		}
 		for (int x = 0; x < map.map.length; x++) {
@@ -132,7 +134,7 @@ public class PolarCircles implements ClimateMapGenerator {
 						minMaxHeight = Math.min(minMaxHeight, biomeMap[x+dx+1][z+dz+1].maxHeight);
 					}
 				}
-				rand.setSeed((x + map.wx)*675893674893L + (z + map.wz)*2895478591L + map.world.getSeed());
+				rand.setSeed((x + map.wx)*675893674893L + (z + map.wz)*2895478591L + seed);
 				float xOffset = rand.nextFloat() - 0.5f;
 				float zOffset = rand.nextFloat() - 0.5f;
 				float height = rand.nextFloat();

@@ -16,5 +16,5 @@ public interface MapGenerator extends RegistryElement {
 	 */
 	void init(JsonObject parameters, CurrentWorldRegistries registries);
 
-	void generateMapFragment(MapFragment fragment);
+	void generateMapFragment(MapFragment fragment, long seed);
 }

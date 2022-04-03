@@ -21,8 +21,10 @@ public class TerrainGenerationProfile {
 	public final CaveBiomeGenerator[] caveBiomeGenerators;
 	public final CaveGenerator[] caveGenerators;
 	public final Generator[] generators;
+	public final long seed;
 	
-	public TerrainGenerationProfile(JsonObject settings, CurrentWorldRegistries registries) {
+	public TerrainGenerationProfile(JsonObject settings, CurrentWorldRegistries registries, long seed) {
+		this.seed = seed;
 		JsonObject generator = settings.getObjectOrNew("mapGenerator");
 		mapFragmentGenerator = CubyzRegistries.MAP_GENERATOR_REGISTRY.getByID(generator.getString("id", "cubyz:mapgen_v1"));
 		mapFragmentGenerator.init(generator, registries);

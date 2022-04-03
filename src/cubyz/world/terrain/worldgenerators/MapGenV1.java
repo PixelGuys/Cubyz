@@ -30,11 +30,10 @@ public class MapGenV1 implements MapGenerator {
 	private static final ThreadLocal<PerlinNoise> threadLocalNoise = ThreadLocal.withInitial(PerlinNoise::new);
 
 	@Override
-	public void generateMapFragment(MapFragment map) {
+	public void generateMapFragment(MapFragment map, long seed) {
 		int scaledSize = MAP_SIZE/map.voxelSize;
 		// Create the biomes that will be placed on the map:
-		long seed = map.world.getSeed();
-		BiomePoint[][] biomePositions = ClimateMap.getBiomeMap(map.world, map.wx - BIOME_SIZE, map.wz - BIOME_SIZE, MAP_SIZE + 3*BIOME_SIZE, MAP_SIZE + 3*BIOME_SIZE);
+		BiomePoint[][] biomePositions = ClimateMap.getBiomeMap(map.wx - BIOME_SIZE, map.wz - BIOME_SIZE, MAP_SIZE + 3*BIOME_SIZE, MAP_SIZE + 3*BIOME_SIZE);
 		Random rand = new Random();
 		int scaledBiomeSize = BIOME_SIZE/map.voxelSize;
 		float[][] xOffsetMap = new float[scaledSize][scaledSize];

@@ -3,7 +3,6 @@ package cubyz.world.terrain;
 import cubyz.utils.datastructures.Cache;
 import cubyz.world.Chunk;
 import cubyz.world.ChunkData;
-import cubyz.world.World;
 
 /**
  * Stores cave data (whether a block is solid or not).
@@ -16,20 +15,22 @@ public class CaveMap {
 	private static final int ASSOCIATIVITY = 8; // 512 MiB Cache size
 	private static final Cache<CaveMapFragment> cache = new Cache<>(new CaveMapFragment[CACHE_SIZE][ASSOCIATIVITY]);
 
+	private static TerrainGenerationProfile profile;
+
 	private final Chunk reference;
 
 	private final CaveMapFragment[] fragments = new CaveMapFragment[8];
 
-	public CaveMap(World world, Chunk chunk) {
+	public CaveMap(Chunk chunk) {
 		reference = chunk;
-		fragments[0] = getOrGenerateFragment(world, chunk.wx - chunk.getWidth(), chunk.wy - chunk.getWidth(), chunk.wz - chunk.getWidth(), chunk.voxelSize);
-		fragments[1] = getOrGenerateFragment(world, chunk.wx - chunk.getWidth(), chunk.wy - chunk.getWidth(), chunk.wz + chunk.getWidth(), chunk.voxelSize);
-		fragments[2] = getOrGenerateFragment(world, chunk.wx - chunk.getWidth(), chunk.wy + chunk.getWidth(), chunk.wz - chunk.getWidth(), chunk.voxelSize);
-		fragments[3] = getOrGenerateFragment(world, chunk.wx - chunk.getWidth(), chunk.wy + chunk.getWidth(), chunk.wz + chunk.getWidth(), chunk.voxelSize);
-		fragments[4] = getOrGenerateFragment(world, chunk.wx + chunk.getWidth(), chunk.wy - chunk.getWidth(), chunk.wz - chunk.getWidth(), chunk.voxelSize);
-		fragments[5] = getOrGenerateFragment(world, chunk.wx + chunk.getWidth(), chunk.wy - chunk.getWidth(), chunk.wz + chunk.getWidth(), chunk.voxelSize);
-		fragments[6] = getOrGenerateFragment(world, chunk.wx + chunk.getWidth(), chunk.wy + chunk.getWidth(), chunk.wz - chunk.getWidth(), chunk.voxelSize);
-		fragments[7] = getOrGenerateFragment(world, chunk.wx + chunk.getWidth(), chunk.wy + chunk.getWidth(), chunk.wz + chunk.getWidth(), chunk.voxelSize);
+		fragments[0] = getOrGenerateFragment(chunk.wx - chunk.getWidth(), chunk.wy - chunk.getWidth(), chunk.wz - chunk.getWidth(), chunk.voxelSize);
+		fragments[1] = getOrGenerateFragment(chunk.wx - chunk.getWidth(), chunk.wy - chunk.getWidth(), chunk.wz + chunk.getWidth(), chunk.voxelSize);
+		fragments[2] = getOrGenerateFragment(chunk.wx - chunk.getWidth(), chunk.wy + chunk.getWidth(), chunk.wz - chunk.getWidth(), chunk.voxelSize);
+		fragments[3] = getOrGenerateFragment(chunk.wx - chunk.getWidth(), chunk.wy + chunk.getWidth(), chunk.wz + chunk.getWidth(), chunk.voxelSize);
+		fragments[4] = getOrGenerateFragment(chunk.wx + chunk.getWidth(), chunk.wy - chunk.getWidth(), chunk.wz - chunk.getWidth(), chunk.voxelSize);
+		fragments[5] = getOrGenerateFragment(chunk.wx + chunk.getWidth(), chunk.wy - chunk.getWidth(), chunk.wz + chunk.getWidth(), chunk.voxelSize);
+		fragments[6] = getOrGenerateFragment(chunk.wx + chunk.getWidth(), chunk.wy + chunk.getWidth(), chunk.wz - chunk.getWidth(), chunk.voxelSize);
+		fragments[7] = getOrGenerateFragment(chunk.wx + chunk.getWidth(), chunk.wy + chunk.getWidth(), chunk.wz + chunk.getWidth(), chunk.voxelSize);
 	}
 
 	public boolean isSolid(int relX, int relY, int relZ) {
@@ -161,7 +162,7 @@ public class CaveMap {
 		return result*reference.voxelSize + fragments[0].wy - reference.wy;
 	}
 	
-	private static CaveMapFragment getOrGenerateFragment(World world, int wx, int wy, int wz, int voxelSize) {
+	private static CaveMapFragment getOrGenerateFragment(int wx, int wy, int wz, int voxelSize) {
 		wx &= ~(CaveMapFragment.WIDTH_MASK*voxelSize | voxelSize-1);
 		wy &= ~(CaveMapFragment.HEIGHT_MASK*voxelSize | voxelSize-1);
 		wz &= ~(CaveMapFragment.WIDTH_MASK*voxelSize | voxelSize-1);
@@ -173,7 +174,7 @@ public class CaveMap {
 			// Try again in case it was already generated in another thread:
 			ret = cache.find(new ChunkData(wx, wy, wz, voxelSize), hash);
 			if (ret != null) return ret;
-			ret = new CaveMapFragment(wx, wy, wz, voxelSize, world);
+			ret = new CaveMapFragment(wx, wy, wz, voxelSize, profile);
 			cache.addToCache(ret, hash & CACHE_MASK);
 			return ret;
 		}
@@ -181,5 +182,9 @@ public class CaveMap {
 
 	public static void cleanup() {
 		cache.clear();
+	}
+
+	public static void init(TerrainGenerationProfile profile) {
+		CaveMap.profile = profile;
 	}
 }
