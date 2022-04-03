@@ -55,7 +55,7 @@ public class ServerConnection extends Thread{
 	public void run(){
 		try {
 			while (!clientSocket.isClosed()) {
-				receiveJSON(JsonParser.parseObjectFromStream(in));
+				receiveJSON(JsonParser.parseObjectFromBufferedReader(in, ""));
 			}
 		} catch (IOException e) {
 			Logger.error(e);
@@ -71,7 +71,7 @@ public class ServerConnection extends Thread{
 
 			jsonObject.writeObjectToStream(out);
 
-            JsonObject json = JsonParser.parseObjectFromStream(in);
+            JsonObject json = JsonParser.parseObjectFromBufferedReader(in, "");
             String type = json.getString("type", "unknown type");
             if (type.equals("worldAssets")){
                 Zipper.unpack("serverAssets/"+serverName+"/assets/", inStream);

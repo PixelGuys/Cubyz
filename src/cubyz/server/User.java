@@ -33,7 +33,7 @@ public class User {
 		doHandShake();
 		
 		while (!clientSocket.isClosed()) {
-			receiveJSON(JsonParser.parseObjectFromStream(in));
+			receiveJSON(JsonParser.parseObjectFromBufferedReader(in, ""));
 		}
 	}
 	public void receiveJSON(JsonObject json){
@@ -48,7 +48,7 @@ public class User {
 	
 	private void doHandShake() {
 		try {
-            JsonObject json = JsonParser.parseObjectFromStream(in);
+            JsonObject json = JsonParser.parseObjectFromBufferedReader(in, "");
 			String type = json.getString("type", "unknown type");
 			if (type.equals("clientInformation")){
 				String name     = json.getString("name", "unnamed");
