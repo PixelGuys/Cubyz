@@ -11,8 +11,8 @@ import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
 
-import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
+import cubyz.server.Server;
 import cubyz.utils.Logger;
 import cubyz.utils.math.Bits;
 import cubyz.world.Chunk;
@@ -163,7 +163,7 @@ public class RegionFile extends RegionFileCompare {
 	
 	private void unsynchronized_store() {
 		if(!wasChanged) return; // No need to save it.
-		File file = new File("saves/"+Cubyz.world.getName()+"/"+voxelSize+"/"+wx+"/"+wy+"/"+wz+"."+fileEnding);
+		File file = new File("saves/"+ Server.world.getName()+"/"+voxelSize+"/"+wx+"/"+wy+"/"+wz+"."+fileEnding);
 		file.getParentFile().mkdirs();
 		try (BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(file))) {
 			byte[] occupancyBytes = new byte[occupancy.length/8];

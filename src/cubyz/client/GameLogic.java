@@ -78,7 +78,6 @@ public class GameLogic implements ClientConnection {
 				Cubyz.gameUI.removeOverlay(overlay);
 			}
 		}
-		Cubyz.world.cleanup();
 		Cubyz.player = null;
 		Cubyz.world = null;
 		Cubyz.chunkTree.cleanup();

@@ -191,17 +191,10 @@ public class ChunkManager {
 	}
 
 	public void cleanup() {
-		try {
-			for (Thread thread : threads) {
-				thread.interrupt();
-				thread.join();
-			}
-		} catch(InterruptedException e) {
-			Logger.error(e);
-		}
 		for(Cache<MapFragment> cache : mapCache) {
 			cache.clear();
 		}
+		loadList.clear();
 		for(int i = 0; i < 5; i++) { // Saving one chunk may create and update a new lower resolution chunk.
 		
 			for(ReducedChunk[] array : reducedChunkCache.cache) {
@@ -214,6 +207,14 @@ public class ChunkManager {
 		}
 		for(Cache<MapFragment> cache : mapCache) {
 			cache.clear();
+		}
+		try {
+			for (Thread thread : threads) {
+				thread.interrupt();
+				thread.join();
+			}
+		} catch(InterruptedException e) {
+			Logger.error(e);
 		}
 		CaveBiomeMap.cleanup();
 		CaveMap.cleanup();
