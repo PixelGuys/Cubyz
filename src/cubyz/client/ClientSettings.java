@@ -24,6 +24,8 @@ public final class ClientSettings {
 	private ClientSettings() {} // No instances allowed.
 
 	public static float FOG_COEFFICIENT = 10f;
+
+	public static boolean BLOOM = true;
 	
 	public static boolean MIPMAPPING = false;
 	
@@ -33,7 +35,7 @@ public final class ClientSettings {
 	public static float LOD_FACTOR = 2.0f;
 	
 	public static float FOV = 70.0f;
-	
+
 	public static boolean easyLighting = true; // Enables the easy-lighting system.
 
 	public static int GUI_SCALE = 2;
@@ -63,6 +65,7 @@ public final class ClientSettings {
 		settings.put("language", Settings.getLanguage().getLocale());
 		settings.put("discordIntegration", DiscordIntegration.isEnabled());
 		settings.put("fogCoefficient", ClientSettings.FOG_COEFFICIENT);
+		settings.put("bloom", ClientSettings.BLOOM);
 		settings.put("useMipmaps", ClientSettings.MIPMAPPING);
 		settings.put("vsync", Window.isVSyncEnabled());
 		settings.put("antiAliasSamples", Window.getAntialiasSamples());
@@ -102,8 +105,10 @@ public final class ClientSettings {
 		if (settings.getBool("discordIntegration", false)) {
 			DiscordIntegration.startRPC();
 		}
-		
+
 		FOG_COEFFICIENT = settings.getFloat("fogCoefficient", FOG_COEFFICIENT);
+
+		BLOOM = settings.getBool("fogCoefficient", BLOOM);
 		
 		MIPMAPPING = settings.getBool("useMipmaps", MIPMAPPING);
 

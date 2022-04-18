@@ -17,7 +17,7 @@ import static cubyz.client.ClientSettings.GUI_SCALE;
 public class GraphicsGUI extends MenuGUI {
 	private Button done = new Button();
 	private Button fog = new Button();
-	private CheckBox easyLighting = new CheckBox();
+	private CheckBox bloom = new CheckBox();
 	private CheckBox vsync = new CheckBox();
 	private Label effectiveRenderDistance = new Label();
 	private final Slider renderDistance = new Slider(1, 12, ClientSettings.RENDER_DISTANCE);
@@ -76,12 +76,10 @@ public class GraphicsGUI extends MenuGUI {
 			}
 		});
 
-		easyLighting.setLabel(TextKey.createTextKey("gui.cubyz.settings.easylighting"));
-		easyLighting.setSelected(ClientSettings.easyLighting);
-		easyLighting.setOnAction(() -> {
-			//ClientSettings.easyLighting = easyLighting.isSelected();
-			easyLighting.setSelected(true);
-			throw new UnsupportedOperationException("Only easy lighting is supported for now.");
+		bloom.setLabel(TextKey.createTextKey("gui.cubyz.settings.bloom"));
+		bloom.setSelected(ClientSettings.BLOOM);
+		bloom.setOnAction(() -> {
+			ClientSettings.BLOOM = bloom.isSelected();
 		});
 		
 		vsync.setLabel(TextKey.createTextKey("gui.cubyz.settings.vsync"));
@@ -109,8 +107,8 @@ public class GraphicsGUI extends MenuGUI {
 		fog.setBounds(-125 * GUI_SCALE, 160 * GUI_SCALE, 250 * GUI_SCALE, 25 * GUI_SCALE, Component.ALIGN_TOP);
 		fog.setFontSize(16f * GUI_SCALE);
 
-		easyLighting.setBounds(-125 * GUI_SCALE, 200 * GUI_SCALE, 16 * GUI_SCALE, 16 * GUI_SCALE, Component.ALIGN_TOP);
-		easyLighting.getLabel().setFontSize(16f * GUI_SCALE);
+		bloom.setBounds(-125 * GUI_SCALE, 200 * GUI_SCALE, 16 * GUI_SCALE, 16 * GUI_SCALE, Component.ALIGN_TOP);
+		bloom.getLabel().setFontSize(16f * GUI_SCALE);
 		
 		vsync.setBounds(-125 * GUI_SCALE, 240 * GUI_SCALE, 16 * GUI_SCALE, 16 * GUI_SCALE, Component.ALIGN_TOP);
 		vsync.getLabel().setFontSize(16f * GUI_SCALE);
@@ -127,7 +125,7 @@ public class GraphicsGUI extends MenuGUI {
 		effectiveRenderDistance.render();
 		done.render();
 		fog.render();
-		easyLighting.render();
+		bloom.render();
 		vsync.render();
 	}
 	

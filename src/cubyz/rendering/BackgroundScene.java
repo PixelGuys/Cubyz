@@ -129,7 +129,7 @@ public final class BackgroundScene {
 		GameLauncher.renderer.updateViewport(SIZE, SIZE, 90.0f);
 
 		FrameBuffer buffer = new FrameBuffer();
-		buffer.genColorTexture(SIZE, SIZE);
+		buffer.genColorTexture(SIZE, SIZE, GL_NEAREST);
 		buffer.genRenderBuffer(SIZE, SIZE);
 		Window.setRenderTarget(buffer);
 

@@ -107,6 +107,7 @@ public class MainRenderer {
 		EntityRenderer.init(shaders);
 		BlockDropRenderer.init(shaders);
 		BlockBreakingRenderer.init(shaders);
+		BloomRenderer.init(shaders);
 		
 		System.gc();
 	}
@@ -394,6 +395,9 @@ public class MainRenderer {
 					glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 				}
 			}
+		}
+		if(ClientSettings.BLOOM) {
+			BloomRenderer.render(buffers, Window.getWidth(), Window.getHeight()); // TODO: Use true width/height
 		}
 		buffers.unbind();
 		buffers.bindTextures();
