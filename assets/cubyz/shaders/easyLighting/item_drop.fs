@@ -115,5 +115,6 @@ void main() {
 	if (fog.activ) {
 		fragColor = calcFog(modifiedCameraSpacePos, color, fog);
 	}
+	fragColor.rgb /= 4;
 	position = vec4(modifiedCameraSpacePos, 1);
 }

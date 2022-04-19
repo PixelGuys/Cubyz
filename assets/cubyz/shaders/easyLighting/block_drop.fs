@@ -37,4 +37,5 @@ void main() {
 	if (fog.activ) {
 		fragColor = calcFog(mvVertexPos, fragColor, fog);
 	}
+	fragColor.rgb /= 4;
 }

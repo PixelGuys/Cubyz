@@ -8,4 +8,5 @@ uniform sampler2D position;
 
 void main() {
 	fragColor = texture(color, texCoords);
+	fragColor.rgb *= 4;
 }
