@@ -8,6 +8,6 @@ layout(location = 0, binding = 3) uniform sampler2D color;
 
 void main() {
 	vec3 bufferData = texture(color, texCoords).rgb;
-	float bloomFactor = min(max(max(bufferData.x, max(bufferData.y, bufferData.z)) - 251.0/1023.0, 0)*1023.0/4.0, 0.5);
+	float bloomFactor = max(max(bufferData.x, max(bufferData.y, bufferData.z))*4 - 1.0, 0);
 	fragColor = vec4(bufferData*bloomFactor, 1);
 }

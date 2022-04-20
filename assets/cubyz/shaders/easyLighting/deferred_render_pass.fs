@@ -8,5 +8,6 @@ uniform sampler2D position;
 
 void main() {
 	fragColor = texture(color, texCoords);
-	fragColor.rgb *= 4;
+	float maxColor = max(0.25, max(fragColor.r, max(fragColor.g, fragColor.b)));
+	fragColor.rgb = fragColor.rgb/maxColor;
 }

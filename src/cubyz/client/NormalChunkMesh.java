@@ -44,6 +44,7 @@ public class NormalChunkMesh extends ChunkMesh {
 	public static int loc_projectionMatrix;
 	public static int loc_viewMatrix;
 	public static int loc_texture_sampler;
+	public static int loc_emissionSampler;
 	public static int loc_ambientLight;
 	public static int loc_directionalLight;
 	public static int loc_modelPosition;
@@ -56,6 +57,7 @@ public class NormalChunkMesh extends ChunkMesh {
 		public static int loc_projectionMatrix;
 		public static int loc_viewMatrix;
 		public static int loc_texture_sampler;
+		public static int loc_emissionSampler;
 		public static int loc_ambientLight;
 		public static int loc_directionalLight;
 		public static int loc_modelPosition;
@@ -101,6 +103,7 @@ public class NormalChunkMesh extends ChunkMesh {
 		shader.setUniform(loc_fog_density, Cubyz.fog.getDensity());
 		shader.setUniform(loc_projectionMatrix, Window.getProjectionMatrix());
 		shader.setUniform(loc_texture_sampler, 0);
+		shader.setUniform(loc_emissionSampler, 1);
 		shader.setUniform(loc_viewMatrix, Camera.getViewMatrix());
 
 		shader.setUniform(loc_ambientLight, ambient);
@@ -122,6 +125,7 @@ public class NormalChunkMesh extends ChunkMesh {
 		transparentShader.setUniform(TransparentUniforms.loc_fog_density, Cubyz.fog.getDensity());
 		transparentShader.setUniform(TransparentUniforms.loc_projectionMatrix, Window.getProjectionMatrix());
 		transparentShader.setUniform(TransparentUniforms.loc_texture_sampler, 0);
+		transparentShader.setUniform(TransparentUniforms.loc_emissionSampler, 1);
 		transparentShader.setUniform(TransparentUniforms.loc_viewMatrix, Camera.getViewMatrix());
 
 		transparentShader.setUniform(TransparentUniforms.loc_ambientLight, ambient);

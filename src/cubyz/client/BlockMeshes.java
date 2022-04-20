@@ -32,15 +32,16 @@ public class BlockMeshes implements DataOrientedRegistry {
 	/** Number of loaded meshes. Used to determine if an update is needed */
 	private static int loadedMeshes = 1;
 
-	private static ArrayList<BufferedImage> blockTextures = new ArrayList<BufferedImage>();
-	private static IntSimpleList animationFrames = new IntSimpleList(8192);
-	private static IntSimpleList animationTimes = new IntSimpleList(8192);
-	private static ArrayList<String> textureIDs = new ArrayList<String>();
+	private static final ArrayList<BufferedImage> blockTextures = new ArrayList<>();
+	private static final ArrayList<BufferedImage> emissionTextures = new ArrayList<>();
+	private static final IntSimpleList animationFrames = new IntSimpleList(8192);
+	private static final IntSimpleList animationTimes = new IntSimpleList(8192);
+	private static final ArrayList<String> textureIDs = new ArrayList<>();
 
 	private static final String[] sideNames = new String[6];
 
-	private static SSBO animationTimesSSBO;
-	private static SSBO animationFramesSSBO;
+	private static final SSBO animationTimesSSBO;
+	private static final SSBO animationFramesSSBO;
 
 	static {
 		sideNames[Neighbors.DIR_DOWN] = "bottom";
@@ -83,6 +84,11 @@ public class BlockMeshes implements DataOrientedRegistry {
 				result = blockTextures.size();
 				try {
 					blockTextures.add(ImageIO.read(new File(path)));
+					File file = new File(path+"_emission.png");
+					if(file.exists())
+						emissionTextures.add(ImageIO.read(file));
+					else
+						emissionTextures.add(new BufferedImage(16, 16, BufferedImage.TYPE_INT_RGB));
 					textureIDs.add(path);
 					animationFrames.add(1);
 					animationTimes.add(1);
@@ -109,6 +115,11 @@ public class BlockMeshes implements DataOrientedRegistry {
 				try {
 					String path = assetFolder + texture.getMod() + "/blocks/textures/" + texture.getID() + ".png";
 					blockTextures.add(ImageIO.read(new File(path)));
+					File file = new File(path+"_emission.png");
+					if(file.exists())
+						emissionTextures.add(ImageIO.read(file));
+					else
+						emissionTextures.add(new BufferedImage(16, 16, BufferedImage.TYPE_INT_RGB));
 					if (i == 0) {
 						textureIDs.add(path);
 					} else {
@@ -118,6 +129,7 @@ public class BlockMeshes implements DataOrientedRegistry {
 					Logger.warning("Could not read image "+texture+" from Block "+Blocks.id(size));
 					Logger.warning(e);
 					blockTextures.add(blockTextures.get(0));
+					emissionTextures.add(emissionTextures.get(0));
 					textureIDs.add(textureIDs.get(0));
 				}
 			}
@@ -204,6 +216,14 @@ public class BlockMeshes implements DataOrientedRegistry {
 		textures.clear();
 		for(int i = 0; i < blockTextures.size(); i++) {
 			BufferedImage img = blockTextures.get(i);
+			textures.addTexture(img);
+		}
+		textures.generate();
+		// Generate emission texture array:
+		textures = Meshes.emissionTextureArray;
+		textures.clear();
+		for(int i = 0; i < emissionTextures.size(); i++) {
+			BufferedImage img = emissionTextures.get(i);
 			textures.addTexture(img);
 		}
 		textures.generate();

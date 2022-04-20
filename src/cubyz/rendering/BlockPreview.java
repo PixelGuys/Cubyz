@@ -91,7 +91,10 @@ public abstract class BlockPreview {
 		shader.setUniform(loc_dirLight, new Vector3f(2, -2, 1.5f).normalize());
 		
 		shader.setUniform(loc_light, new Vector3f(1, 1, 1));
+		glActiveTexture(GL_TEXTURE0);
 		Meshes.blockTextureArray.bind();
+		glActiveTexture(GL_TEXTURE1);
+		Meshes.emissionTextureArray.bind();
 		mesh.setTexture(null);
 		shader.setUniform(loc_texNegX, BlockMeshes.textureIndices(block)[Neighbors.DIR_NEG_X]);
 		shader.setUniform(loc_texPosX, BlockMeshes.textureIndices(block)[Neighbors.DIR_POS_X]);

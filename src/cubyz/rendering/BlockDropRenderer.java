@@ -35,6 +35,7 @@ public final class BlockDropRenderer {
 	public static int loc_projectionMatrix;
 	public static int loc_viewMatrix;
 	public static int loc_texture_sampler;
+	public static int loc_emissionSampler;
 	public static int loc_fog_activ;
 	public static int loc_fog_color;
 	public static int loc_fog_density;
@@ -270,13 +271,17 @@ public final class BlockDropRenderer {
 	}
 	
 	private static void renderBlockDrops(FrustumIntersection frustumInt, Vector3f ambientLight, DirectionalLight directionalLight, Vector3d playerPosition) {
+		glActiveTexture(GL_TEXTURE0);
 		Meshes.blockTextureArray.bind();
+		glActiveTexture(GL_TEXTURE1);
+		Meshes.emissionTextureArray.bind();
 		shader.bind();
 		shader.setUniform(loc_fog_activ, Cubyz.fog.isActive());
 		shader.setUniform(loc_fog_color, Cubyz.fog.getColor());
 		shader.setUniform(loc_fog_density, Cubyz.fog.getDensity());
 		shader.setUniform(loc_projectionMatrix, Window.getProjectionMatrix());
 		shader.setUniform(loc_texture_sampler, 0);
+		shader.setUniform(loc_emissionSampler, 1);
 		shader.setUniform(loc_ambientLight, ambientLight);
 		shader.setUniform(loc_directionalLight, directionalLight.getDirection());
 		for(ChunkEntityManager chManager : Cubyz.world.getEntityManagers()) {

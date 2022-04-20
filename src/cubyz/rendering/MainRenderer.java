@@ -287,11 +287,11 @@ public class MainRenderer {
 			ReducedChunkMesh.shader.setUniform(ReducedChunkMesh.loc_projectionMatrix, Window.getProjectionMatrix()); // Use the same matrix for replacement meshes.
 
 			NormalChunkMesh.bindShader(ambientLight, directionalLight.getDirection(), time);
-			
-			// Activate first texture bank
+
 			glActiveTexture(GL_TEXTURE0);
-			// Bind the texture
 			Meshes.blockTextureArray.bind();
+			glActiveTexture(GL_TEXTURE1);
+			Meshes.emissionTextureArray.bind();
 
 			BlockInstance selected = null;
 			if (Cubyz.msd.getSelected() instanceof BlockInstance) {
@@ -317,7 +317,10 @@ public class MainRenderer {
 			}
 			if(selected != null && !Blocks.transparent(selected.getBlock())) {
 				BlockBreakingRenderer.render(selected, playerPosition);
+				glActiveTexture(GL_TEXTURE0);
 				Meshes.blockTextureArray.bind();
+				glActiveTexture(GL_TEXTURE1);
+				Meshes.emissionTextureArray.bind();
 			}
 			
 			// Render the far away ReducedChunks:
@@ -374,7 +377,10 @@ public class MainRenderer {
 
 			if(selected != null && Blocks.transparent(selected.getBlock())) {
 				BlockBreakingRenderer.render(selected, playerPosition);
+				glActiveTexture(GL_TEXTURE0);
 				Meshes.blockTextureArray.bind();
+				glActiveTexture(GL_TEXTURE1);
+				Meshes.emissionTextureArray.bind();
 			}
 
 			fogShader.bind();
