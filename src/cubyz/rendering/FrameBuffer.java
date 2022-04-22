@@ -30,7 +30,7 @@ public class FrameBuffer {
 				GL_RENDERBUFFER, renderBuffer);
 	}
 	
-	public void genColorTexture(int width, int height) {
+	public void genColorTexture(int width, int height, int filter, int wrap) {
 		assert !wasDeleted : "Frame buffer was already deleted!";
 		glBindFramebuffer(GL_FRAMEBUFFER, id);
 		if (texture != null) {
@@ -39,10 +39,12 @@ public class FrameBuffer {
 		texture = new Texture();
 		int tId = texture.getId();
 		glBindTexture(GL_TEXTURE_2D, tId);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0,
 				GL_RGBA, GL_UNSIGNED_BYTE, MemoryUtil.NULL);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap);
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tId, 0);
 		texture.width = width;
 		texture.height = height;
@@ -57,8 +59,8 @@ public class FrameBuffer {
 		assert !wasDeleted : "Frame buffer was already deleted!";
 		glBindFramebuffer(GL_FRAMEBUFFER, id);
 		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 			Logger.error("Frame Buffer Object error: " + glCheckFramebufferStatus(GL_FRAMEBUFFER));
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 			return false;
 		}
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);

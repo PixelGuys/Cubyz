@@ -10,6 +10,7 @@ uniform sampler2D texture_sampler;
 
 void main() {
 	fragColor = texture(texture_sampler, outTexCoord);
+	fragColor.rgb /= 4;
 
 	position = vec4(mvVertexPos, 1);
 }

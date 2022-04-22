@@ -37,6 +37,7 @@ public class ReducedChunkMesh extends ChunkMesh {
 	public static int loc_upperBounds;
 	public static int loc_voxelSize;
 	public static int loc_texture_sampler;
+	public static int loc_emissionSampler;
 	public static int loc_waterFog_activ;
 	public static int loc_waterFog_color;
 	public static int loc_waterFog_density;
@@ -91,6 +92,7 @@ public class ReducedChunkMesh extends ChunkMesh {
 		shader.setUniform(loc_projectionMatrix, projMatrix);
 		
 		shader.setUniform(loc_texture_sampler, 0);
+		shader.setUniform(loc_emissionSampler, 1);
 		
 		shader.setUniform(loc_viewMatrix, Camera.getViewMatrix());
 

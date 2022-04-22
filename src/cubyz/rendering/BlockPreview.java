@@ -22,6 +22,7 @@ public abstract class BlockPreview {
 	public static int loc_projectionMatrix;
 	public static int loc_viewMatrix;
 	public static int loc_texture_sampler;
+	public static int loc_emissionSampler;
 	public static int loc_light;
 	public static int loc_dirLight;
 	public static int loc_texPosX;
@@ -70,7 +71,7 @@ public abstract class BlockPreview {
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_CULL_FACE);
 		FrameBuffer buffer = new FrameBuffer();
-		buffer.genColorTexture(64, 64);
+		buffer.genColorTexture(64, 64, GL_NEAREST, GL_REPEAT);
 		buffer.genRenderBuffer(64, 64);
 		buffer.bind();
 		Window.setRenderTarget(buffer);
@@ -88,10 +89,14 @@ public abstract class BlockPreview {
 		shader.bind();
 		shader.setUniform(loc_projectionMatrix, projectionMatrix);
 		shader.setUniform(loc_texture_sampler, 0);
+		shader.setUniform(loc_emissionSampler, 1);
 		shader.setUniform(loc_dirLight, new Vector3f(2, -2, 1.5f).normalize());
 		
 		shader.setUniform(loc_light, new Vector3f(1, 1, 1));
+		glActiveTexture(GL_TEXTURE0);
 		Meshes.blockTextureArray.bind();
+		glActiveTexture(GL_TEXTURE1);
+		Meshes.emissionTextureArray.bind();
 		mesh.setTexture(null);
 		shader.setUniform(loc_texNegX, BlockMeshes.textureIndices(block)[Neighbors.DIR_NEG_X]);
 		shader.setUniform(loc_texPosX, BlockMeshes.textureIndices(block)[Neighbors.DIR_POS_X]);

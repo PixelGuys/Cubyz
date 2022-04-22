@@ -4,6 +4,7 @@ import static org.lwjgl.opengl.GL41.*;
 
 import java.nio.ByteBuffer;
 
+import cubyz.client.ClientSettings;
 import org.joml.Vector4f;
 
 /**
@@ -47,7 +48,7 @@ public class BufferManager {
 	public void updateBufferSize(int width, int height) {
 		glBindFramebuffer(GL_FRAMEBUFFER, buffer);
 
-		regenTexture(colorTexture, GL_RGBA8, GL_RGBA, width, height);
+		regenTexture(colorTexture, GL_RGB10, GL_RGB, width, height);
 		regenTexture(positionTexture, GL_RGB16F, GL_RGB, width, height);
 
 		glBindRenderbuffer(GL_RENDERBUFFER, depthBuffer);

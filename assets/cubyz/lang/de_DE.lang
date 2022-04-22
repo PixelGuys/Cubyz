@@ -17,6 +17,7 @@ gui.cubyz.settings.fog.med=Nebel: Mittel
 gui.cubyz.settings.fog.far=Nebel: Fern
 gui.cubyz.settings.fog.near=Nebel: Nah
 gui.cubyz.settings.fog.off=Nebel: Aus
+gui.cubyz.settings.bloom=Bloom
 gui.cubyz.settings.easylighting=Einfaches Licht
 gui.cubyz.settings.vsync=Vertikale Synchronisation
 gui.cubyz.pause.exit=Zurück zum Hauptmenü

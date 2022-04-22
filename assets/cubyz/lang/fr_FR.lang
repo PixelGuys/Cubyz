@@ -16,6 +16,7 @@ gui.cubyz.settings.fog.med=Brouillard: Moyen
 gui.cubyz.settings.fog.far=Brouillard: Loin
 gui.cubyz.settings.fog.near=Brouillard: Proche
 gui.cubyz.settings.fog.off=Brouillard: Désactivé
+gui.cubyz.settings.bloom=Flou lumineux
 gui.cubyz.settings.easylighting=Système de lumière fluide
 gui.cubyz.settings.vsync=Synchronization verticale
 gui.cubyz.pause.exit=Quitter vers le menu

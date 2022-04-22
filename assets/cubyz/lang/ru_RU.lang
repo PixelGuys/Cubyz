@@ -17,6 +17,7 @@ gui.cubyz.settings.fog.med=Туман: Средний
 gui.cubyz.settings.fog.far=Туман: Далёкий
 gui.cubyz.settings.fog.near=Туман: Близкий
 gui.cubyz.settings.fog.off=Туман: Выкл.
+gui.cubyz.settings.bloom=Bloom
 gui.cubyz.settings.easylighting=Простое освещение
 gui.cubyz.settings.vsync=Вертикальная синхронизация
 gui.cubyz.pause.exit=Назад в главное меню

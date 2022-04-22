@@ -27,8 +27,10 @@ public final class Meshes {
 	private Meshes() {} // No instances allowed.
 
 	public static final HashMap<EntityType, Mesh> entityMeshes = new HashMap<>();
-	
+
 	public static final TextureArray blockTextureArray = new TextureArray();
+
+	public static final TextureArray emissionTextureArray = new TextureArray();
 	
 
 	public static final HashMap<String, Mesh> cachedDefaultModels = new HashMap<>();

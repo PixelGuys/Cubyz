@@ -52,11 +52,13 @@ void main() {
 		if (drawFrontFace) { // There is only fog betwen front and back face of the same volume.
 			vec2 frameBufferPos = gl_FragCoord.xy/windowSize;
 			vec4 oldColor = texture(colorBuffer, frameBufferPos);
+			oldColor.rgb *= 4;
 			vec3 oldPosition = texture(positionBuffer, frameBufferPos).xyz;
 			oldColor = calcFog(oldPosition - mvVertexPos, oldColor, waterFog);
 			fragColor = vec4((1 - fragColor.a) * oldColor.xyz + fragColor.a * fragColor.xyz, 1);
 		}
 	}
+	fragColor.rgb /= 4;
 
 	position = vec4(mvVertexPos, 1);
 }

@@ -107,6 +107,7 @@ public class MainRenderer {
 		EntityRenderer.init(shaders);
 		BlockDropRenderer.init(shaders);
 		BlockBreakingRenderer.init(shaders);
+		BloomRenderer.init(shaders);
 		
 		System.gc();
 	}
@@ -218,7 +219,7 @@ public class MainRenderer {
 			if (ambient.x < 0.1f) ambient.x = 0.1f;
 			if (ambient.y < 0.1f) ambient.y = 0.1f;
 			if (ambient.z < 0.1f) ambient.z = 0.1f;
-			clearColor = Cubyz.world.getClearColor();
+			clearColor = Cubyz.world.getClearColor().mul(0.25f, new Vector4f());
 			Cubyz.fog.setColor(clearColor);
 			Cubyz.fog.setActive(ClientSettings.FOG_COEFFICIENT != 0);
 			Cubyz.fog.setDensity(1 / (ClientSettings.EFFECTIVE_RENDER_DISTANCE*ClientSettings.FOG_COEFFICIENT));
@@ -286,11 +287,11 @@ public class MainRenderer {
 			ReducedChunkMesh.shader.setUniform(ReducedChunkMesh.loc_projectionMatrix, Window.getProjectionMatrix()); // Use the same matrix for replacement meshes.
 
 			NormalChunkMesh.bindShader(ambientLight, directionalLight.getDirection(), time);
-			
-			// Activate first texture bank
+
 			glActiveTexture(GL_TEXTURE0);
-			// Bind the texture
 			Meshes.blockTextureArray.bind();
+			glActiveTexture(GL_TEXTURE1);
+			Meshes.emissionTextureArray.bind();
 
 			BlockInstance selected = null;
 			if (Cubyz.msd.getSelected() instanceof BlockInstance) {
@@ -316,7 +317,10 @@ public class MainRenderer {
 			}
 			if(selected != null && !Blocks.transparent(selected.getBlock())) {
 				BlockBreakingRenderer.render(selected, playerPosition);
+				glActiveTexture(GL_TEXTURE0);
 				Meshes.blockTextureArray.bind();
+				glActiveTexture(GL_TEXTURE1);
+				Meshes.emissionTextureArray.bind();
 			}
 			
 			// Render the far away ReducedChunks:
@@ -373,7 +377,10 @@ public class MainRenderer {
 
 			if(selected != null && Blocks.transparent(selected.getBlock())) {
 				BlockBreakingRenderer.render(selected, playerPosition);
+				glActiveTexture(GL_TEXTURE0);
 				Meshes.blockTextureArray.bind();
+				glActiveTexture(GL_TEXTURE1);
+				Meshes.emissionTextureArray.bind();
 			}
 
 			fogShader.bind();
@@ -394,6 +401,9 @@ public class MainRenderer {
 					glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 				}
 			}
+		}
+		if(ClientSettings.BLOOM) {
+			BloomRenderer.render(buffers, Window.getWidth(), Window.getHeight()); // TODO: Use true width/height
 		}
 		buffers.unbind();
 		buffers.bindTextures();

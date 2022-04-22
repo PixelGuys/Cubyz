@@ -15,6 +15,7 @@ struct Fog {
 };
 
 uniform sampler2DArray texture_sampler;
+uniform sampler2DArray emissionSampler;
 uniform Fog fog;
 uniform int selectedIndex;
 
@@ -37,9 +38,11 @@ void main() {
 	if (ambientC.a != 1) discard;
 
 	fragColor = ambientC*vec4(outColor, 1);
+	fragColor.rgb += texture(emissionSampler, vec3(outTexCoord, textureIndex)).rgb;
 
 	if (fog.activ) {
 		fragColor = calcFog(mvVertexPos, fragColor, fog);
 	}
+	fragColor.rgb /= 4;
 	position = vec4(mvVertexPos, 1);
 }
