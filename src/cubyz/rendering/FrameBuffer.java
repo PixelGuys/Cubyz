@@ -30,7 +30,7 @@ public class FrameBuffer {
 				GL_RENDERBUFFER, renderBuffer);
 	}
 	
-	public void genColorTexture(int width, int height, int filter) {
+	public void genColorTexture(int width, int height, int filter, int wrap) {
 		assert !wasDeleted : "Frame buffer was already deleted!";
 		glBindFramebuffer(GL_FRAMEBUFFER, id);
 		if (texture != null) {
@@ -43,6 +43,8 @@ public class FrameBuffer {
 				GL_RGBA, GL_UNSIGNED_BYTE, MemoryUtil.NULL);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap);
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tId, 0);
 		texture.width = width;
 		texture.height = height;

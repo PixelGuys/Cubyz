@@ -71,7 +71,7 @@ public abstract class BlockPreview {
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_CULL_FACE);
 		FrameBuffer buffer = new FrameBuffer();
-		buffer.genColorTexture(64, 64, GL_NEAREST);
+		buffer.genColorTexture(64, 64, GL_NEAREST, GL_REPEAT);
 		buffer.genRenderBuffer(64, 64);
 		buffer.bind();
 		Window.setRenderTarget(buffer);

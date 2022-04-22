@@ -128,9 +128,9 @@ public class BloomRenderer {
 
 	public static void render(BufferManager buffer, int width, int height) {
 		if(width != BloomRenderer.width || height != BloomRenderer.height) {
-			buffer1.genColorTexture(width/2, height/2, GL_LINEAR);
-			buffer2.genColorTexture(width/2, height/2, GL_LINEAR);
-			extractedBuffer.genColorTexture(width, height, GL_LINEAR);
+			buffer1.genColorTexture(width/2, height/2, GL_LINEAR, GL_CLAMP_TO_EDGE);
+			buffer2.genColorTexture(width/2, height/2, GL_LINEAR, GL_CLAMP_TO_EDGE);
+			extractedBuffer.genColorTexture(width, height, GL_LINEAR, GL_CLAMP_TO_EDGE);
 			texture1 = buffer1.texture;
 			texture2 = buffer2.texture;
 			extractedTexture = extractedBuffer.texture;
