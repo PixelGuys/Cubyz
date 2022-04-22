@@ -15,6 +15,7 @@ gui.cubyz.settings.fog.med=Nevoeiro: Médio
 gui.cubyz.settings.fog.far=Nevoeiro: Longe
 gui.cubyz.settings.fog.near=Nevoeiro: Perto
 gui.cubyz.settings.fog.off=Nevoeiro: Desligado
+gui.cubyz.settings.bloom=Bloom
 gui.cubyz.settings.easylighting=Easy Lighting
 gui.cubyz.settings.vsync=Vertical Synchronization
 gui.cubyz.pause.exit=Voltar para o menu principal
