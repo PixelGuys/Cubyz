@@ -1,17 +1,15 @@
 package cubyz.rendering;
 
-import cubyz.utils.Logger;
 import cubyz.utils.Utils;
 
 import java.io.IOException;
 
 import static org.lwjgl.opengl.GL30.*;
 
-public class BloomRenderer {
+public final class BloomRenderer {
 	private static final FrameBuffer buffer1, buffer2, extractedBuffer;
 	private static Texture texture1, texture2, extractedTexture;
-	//private static final int framebuffer;
-	//private static final int texture;
+	public static int loc_color;
 	private static int width = -1;
 	private static int height = -1;
 	private static ShaderProgram firstPassShader;
@@ -19,30 +17,10 @@ public class BloomRenderer {
 	private static ShaderProgram colorExtractShader;
 	private static ShaderProgram scaleShader;
 
-	static double gauss(double r, double i) {
-		return 1/r/Math.sqrt(2*Math.PI)*Math.exp(-1/2.0*i*i/r/r);
-	}
-
 	static {
 		buffer1 = new FrameBuffer();
 		buffer2 = new FrameBuffer();
 		extractedBuffer = new FrameBuffer();
-		//framebuffer = glGenFramebuffers();
-		//texture = glGenTextures();
-		int n = 32;
-		double r = 10;
-		double integral = 0;
-		for(int i = 0; i < n; i++) {
-			integral += gauss(r, i);
-		}
-		String array = "float weights["+n+"] = float[] (";
-		for(int i = 0; i < n; i++) {
-			if(i != 0)
-				array += ", ";
-			array += gauss(r, i)/integral;
-		}
-		array += ");";
-		System.out.println(array);
 	}
 
 	public static void init(String shaders) throws IOException {
@@ -79,8 +57,6 @@ public class BloomRenderer {
 				BloomRenderer.class
 		);
 	}
-
-	static long total, n;
 
 	private static void extractImageData(BufferManager buffer) {
 		colorExtractShader.bind();
