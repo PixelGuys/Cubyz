@@ -20,7 +20,7 @@ public class WorldIO {
 	public final File dir;
 	private World world;
 	public BlockPalette blockPalette = new BlockPalette(null, this);
-	public Palette<Item> itemPalette = new Palette<Item>(null, null);
+	public Palette<Item> itemPalette = new Palette<>(null, null, this);
 
 	public WorldIO(World world, File directory) {
 		dir = directory;
@@ -55,7 +55,7 @@ public class WorldIO {
 				throw new IOException("Cannot read version " + worldData.getInt("version", -1));
 			}
 			blockPalette = new BlockPalette(worldData.getObject("blockPalette"), this);
-			itemPalette = new Palette<Item>(worldData.getObject("itemPalette"), world.registries.itemRegistry);
+			itemPalette = new Palette<>(worldData.getObject("itemPalette"), world.registries.itemRegistry, this);
 
 			JsonArray entityJson = worldData.getArrayNoNull("entities");
 			

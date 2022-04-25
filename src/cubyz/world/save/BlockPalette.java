@@ -9,7 +9,7 @@ import pixelguys.json.JsonObject;
 public class BlockPalette {
 	private final HashMap<Integer, Integer> TToInt = new HashMap<Integer, Integer>();
 	private int[] intToT = new int[0];
-	private WorldIO wio;
+	private final WorldIO wio;
 	public BlockPalette(JsonObject json, WorldIO wio) {
 		this.wio = wio;
 		if (json == null) return;

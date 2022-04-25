@@ -15,7 +15,9 @@ import cubyz.api.RegistryElement;
 public class Palette <T extends RegistryElement> {
 	private final HashMap<T, Integer> TToInt = new HashMap<T, Integer>();
 	private Object[] intToT = new Object[0];
-	public Palette(JsonObject json, Registry<T> registry) {
+	private final WorldIO wio;
+	public Palette(JsonObject json, Registry<T> registry, WorldIO wio) {
+		this.wio = wio;
 		if (json == null) return;
 		for (String key : json.map.keySet()) {
 			T t = registry.getByID(key);
@@ -45,12 +47,19 @@ public class Palette <T extends RegistryElement> {
 		if (TToInt.containsKey(t)) {
 			return TToInt.get(t);
 		} else {
-			// Create a value:
-			int index = intToT.length;
-			intToT = Arrays.copyOf(intToT, index+1);
-			intToT[index] = t;
-			TToInt.put(t, index);
-			return index;
+			synchronized(this) { // Might be accessed from multiple threads at the same time.
+				if (TToInt.containsKey(t)) { // Check again in case it was just added.
+					return TToInt.get(t);
+				} else {
+					// Create a value:
+					int index = intToT.length;
+					intToT = Arrays.copyOf(intToT, index+1);
+					intToT[index] = t;
+					TToInt.put(t, index);
+					wio.saveWorldData();
+					return index;
+				}
+			}
 		}
 	}
 }
