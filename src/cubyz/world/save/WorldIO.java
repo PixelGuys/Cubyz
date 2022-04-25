@@ -18,11 +18,12 @@ public class WorldIO {
 	public static final int WORLD_DATA_VERSION = 1;
 
 	public final File dir;
-	private World world;
+	private final World world;
 	public BlockPalette blockPalette = new BlockPalette(null, this);
 	public Palette<Item> itemPalette = new Palette<>(null, null, this);
 
 	public WorldIO(World world, File directory) {
+		assert world != null;
 		dir = directory;
 		if (!dir.exists()) {
 			dir.mkdirs();
@@ -64,9 +65,7 @@ public class WorldIO {
 				// TODO: Only load entities that are in loaded chunks.
 				entities[i] = EntityIO.loadEntity((JsonObject)entityJson.array.get(i), world);
 			}
-			if (world != null) {
-				world.setEntities(entities);
-			}
+			world.setEntities(entities);
 			world.setGameTimeCycle(worldData.getBool("doGameTimeCycle", true));
 			world.setGameTime(worldData.getLong("gameTime", 0));
 		} catch (IOException e) {
@@ -76,27 +75,29 @@ public class WorldIO {
 	
 	public void saveWorldData() {
 		try {
+			Logger.debug("Started saving");
 			OutputStream out = new FileOutputStream(new File(dir, "world.dat"));
 			JsonObject worldData = new JsonObject();
 			worldData.put("version", WORLD_DATA_VERSION);
 			worldData.put("seed", world.getSeed());
 			worldData.put("doGameTimeCycle", world.shouldDoGameTimeCycle());
 			worldData.put("gameTime", world.getGameTime());
-			worldData.put("entityCount", world == null ? 0 : world.getEntities().length);
+			worldData.put("entityCount", world.getEntities().length);
 			worldData.put("blockPalette", blockPalette.save());
 			worldData.put("itemPalette", itemPalette.save());
 			JsonArray entityData = new JsonArray();
 			worldData.put("entities", entityData);
-			if (world != null) { // TODO: Store entities per chunk.
-				for (Entity ent : world.getEntities()) {
-					if (ent != null)
-						entityData.add(ent.save());
-				}
+			// TODO: Store entities per chunk.
+			for (Entity ent : world.getEntities()) {
+				if (ent != null)
+					entityData.add(ent.save());
 			}
 			out.write(worldData.toString().getBytes(StandardCharsets.UTF_8));
+			Logger.debug(worldData.toString());
 			out.close();
 		} catch (IOException e) {
 			Logger.error(e);
+			saveWorldData();
 		}
 	}
 
