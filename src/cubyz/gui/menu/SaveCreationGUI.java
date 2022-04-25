@@ -52,7 +52,7 @@ public class SaveCreationGUI extends MenuGUI {
 		climateGenerator = new Button();
 		
 		int num = 1;
-		while (new File("saves/Save "+num).exists()) {
+		while (new File("saves/" + Utils.escapeFolderName("Save "+num)).exists()) {
 			num++;
 		}
 		name.setText("Save " + num);
