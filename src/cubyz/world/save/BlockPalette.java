@@ -14,7 +14,7 @@ public class BlockPalette {
 		this.wio = wio;
 		if (json == null) return;
 		for (String key : json.map.keySet()) {
-			int t = Blocks.getByID(key);
+			int t = Blocks.getByID(key) & Blocks.TYPE_MASK;
 			TToInt.put(t, json.getInt(key, 0));
 		}
 		intToT = new int[TToInt.size()];
@@ -24,8 +24,8 @@ public class BlockPalette {
 	}
 	public JsonObject save() {
 		JsonObject json = new JsonObject();
-		for (Integer t : TToInt.keySet()) {
-			json.put(Blocks.id(t).toString(), TToInt.get(t));
+		for(int index = 0; index < intToT.length; index++) {
+			json.put(Blocks.id(intToT[index]).toString(), index);
 		}
 		return json;
 	}

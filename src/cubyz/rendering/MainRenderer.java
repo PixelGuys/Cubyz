@@ -234,10 +234,8 @@ public class MainRenderer {
 			light.setDirection(light.getDirection().mul(0.1f*Cubyz.world.getGlobalLighting()/light.getDirection().length()));
 			Window.setClearColor(clearColor);
 			render(ambient, light, worldSpatialList, playerPosition);
-			
+
 			// Update meshes:
-			// The meshes need to be updated after everything is rendered. Otherwise the vbos get corrupted on some hardware.
-			// See https://cdn.discordapp.com/attachments/574185221939789855/931591596175147038/unknown.png for an example.
 			do { // A do while loop is used so even when the framerate is low at least one mesh gets updated per frame.
 				ChunkMesh mesh = Meshes.getNextQueuedMesh();
 				if (mesh == null) break;

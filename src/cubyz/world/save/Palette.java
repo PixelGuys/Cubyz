@@ -14,7 +14,7 @@ import cubyz.api.RegistryElement;
 
 public class Palette <T extends RegistryElement> {
 	private final HashMap<T, Integer> TToInt = new HashMap<T, Integer>();
-	private Object[] intToT = new Object[0];
+	private RegistryElement[] intToT = new RegistryElement[0];
 	private final WorldIO wio;
 	public Palette(JsonObject json, Registry<T> registry, WorldIO wio) {
 		this.wio = wio;
@@ -27,15 +27,15 @@ public class Palette <T extends RegistryElement> {
 				Logger.warning("A block with ID " + key + " is used in world but isn't available.");
 			}
 		}
-		intToT = new Object[TToInt.size()];
+		intToT = new RegistryElement[TToInt.size()];
 		for(T t : TToInt.keySet()) {
 			intToT[TToInt.get(t)] = t;
 		}
 	}
 	public JsonObject save() {
 		JsonObject json = new JsonObject();
-		for (T t : TToInt.keySet()) {
-			json.put(t.getRegistryID().toString(), TToInt.get(t));
+		for(int index = 0; index < intToT.length; index++) {
+			json.put(intToT[index].getRegistryID().toString(), index);
 		}
 		return json;
 	}
