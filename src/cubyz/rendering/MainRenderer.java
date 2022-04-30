@@ -219,10 +219,11 @@ public class MainRenderer {
 			if (ambient.x < 0.1f) ambient.x = 0.1f;
 			if (ambient.y < 0.1f) ambient.y = 0.1f;
 			if (ambient.z < 0.1f) ambient.z = 0.1f;
-			clearColor = Cubyz.world.getClearColor().mul(0.25f, new Vector4f());
+			clearColor = Cubyz.world.getClearColor();
 			Cubyz.fog.setColor(clearColor);
 			Cubyz.fog.setActive(ClientSettings.FOG_COEFFICIENT != 0);
 			Cubyz.fog.setDensity(1 / (ClientSettings.EFFECTIVE_RENDER_DISTANCE*ClientSettings.FOG_COEFFICIENT));
+			clearColor = clearColor.mul(0.25f, new Vector4f());
 			
 			light.setColor(clearColor);
 			
