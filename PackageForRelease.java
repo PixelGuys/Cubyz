@@ -5,8 +5,6 @@ import java.io.FileOutputStream;
 import java.lang.ProcessBuilder.Redirect;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -16,24 +14,6 @@ import java.nio.file.Path;
  * - remove assert statements (they can prevent inlining when left in the code)
  */
 public class PackageForRelease {
-	public static void zipDir(File folder, File zip) throws Exception {
-		try (ZipOutputStream zipOutputStream = new ZipOutputStream(Files.newOutputStream(zip.toPath()))) {
-			if (Files.isDirectory(folder.toPath())) {
-				Files.walk(folder.toPath()).filter(path -> !Files.isDirectory(path)).forEach(path -> {
-					ZipEntry zipEntry = new ZipEntry(folder.toPath().relativize(path).toString());
-					try {
-						zipOutputStream.putNextEntry(zipEntry);
-						if (Files.isRegularFile(path)) {
-							Files.copy(path, zipOutputStream);
-						}
-						zipOutputStream.closeEntry();
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
-				});
-			}
-		}
-	}
 
 	public static void copy(Path source, Path dest) throws Exception {
 		Files.copy(source, dest);
@@ -160,7 +140,6 @@ public class PackageForRelease {
 		File output = new File("release");
 		deleteDir(output);
 		output.mkdirs();
-		zipDir(new File("assets"), new File("release/assets.zip"));
 		copy(Path.of("pom.xml"), Path.of("release/pom.xml"));
 		copyAndRemoveAssertions(new File("src"), new File("release/src")); // Removes assertions from release code because they may cause performance problems.
 		mavenCompilePackage(output);
