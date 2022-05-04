@@ -40,7 +40,7 @@ void main()
 		fragColor = vec4((1 - fragColor.a) * waterFog.color.xyz + fragColor.a * fragColor.xyz, 1);
 	}
 	fragColor.rgb += texture(emissionSampler, vec3(outTexCoord, textureIndex)).rgb;
-	
+
 	if (fog.activ) {
 		fragColor = calcFog(mvVertexPos, fragColor, fog);
 	}

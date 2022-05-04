@@ -11,7 +11,6 @@ import cubyz.rendering.SSBO;
 import cubyz.rendering.ShaderProgram;
 import cubyz.utils.Utils;
 import cubyz.utils.datastructures.IntSimpleList;
-import cubyz.world.Chunk;
 import cubyz.world.ChunkData;
 import cubyz.world.Neighbors;
 import cubyz.world.ReducedChunkVisibilityData;
@@ -35,7 +34,6 @@ public class ReducedChunkMesh extends ChunkMesh {
 	public static int loc_fog_density;
 	public static int loc_lowerBounds;
 	public static int loc_upperBounds;
-	public static int loc_voxelSize;
 	public static int loc_texture_sampler;
 	public static int loc_emissionSampler;
 	public static int loc_waterFog_activ;
@@ -53,7 +51,6 @@ public class ReducedChunkMesh extends ChunkMesh {
 		emptyVAO = glGenVertexArrays();
 		glBindVertexArray(emptyVAO);
 		int vboId = glGenBuffers();
-		//vboIdList.add(vboId);
 		int[] buffer = new int[6*3 << 15]; // 6 vertices per face, maximum 3 faces/block
 		int[] lut = new int[]{0, 1, 2, 2, 1, 3};
 		for(int i = 0; i < buffer.length; i++) {
@@ -100,6 +97,16 @@ public class ReducedChunkMesh extends ChunkMesh {
 		shader.setUniform(loc_directionalLight, directional);
 
 		shader.setUniform(loc_time, time);
+
+		glBindVertexArray(emptyVAO);
+	}
+
+	/**
+	 * Does all the binding, when it's used as a replacement mesh.
+	 */
+	static void bindAsReplacement() {
+		shader.bind();
+		glBindVertexArray(emptyVAO);
 	}
 
 	protected int vertexCount;
@@ -142,8 +149,9 @@ public class ReducedChunkMesh extends ChunkMesh {
 		IntSimpleList faces = localFaces.get();
 
 		faces.clear();
+		faces.add(chunkVisibilityData.voxelSize);
 		generateSimpleModelData(chunkVisibilityData, faces);
-		vertexCount = 6*faces.size/2;
+		vertexCount = 6*(faces.size - 1)/2;
 		faceData.bufferData(faces.toArray());
 	}
 
@@ -156,6 +164,7 @@ public class ReducedChunkMesh extends ChunkMesh {
 	public void render(Vector3d playerPosition) {
 		assert !wasDeleted : "This mesh is already deleted...";
 		if (chunkVisibilityData == null || !generated) {
+			if(replacement == null) return;
 			glUniform3f(
 				ReducedChunkMesh.loc_lowerBounds,
 				(float)(wx - playerPosition.x - 0.001),
@@ -168,21 +177,16 @@ public class ReducedChunkMesh extends ChunkMesh {
 				(float)(wy + size - playerPosition.y + 0.001),
 				(float)(wz + size - playerPosition.z + 0.001)
 			);
-			if (replacement != null) {
-				replacement.render(playerPosition);
-			}
+			replacement.render(playerPosition);
+
 			glUniform3f(loc_lowerBounds, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY);
 			glUniform3f(loc_upperBounds, Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY);
 			return;
 		}
 		glUniform3f(loc_modelPosition, (float)(wx - playerPosition.x), (float)(wy - playerPosition.y), (float)(wz - playerPosition.z));
-		glUniform1f(loc_voxelSize, (float)(size/Chunk.chunkSize));
-		
-		glBindVertexArray(emptyVAO);
+
 		faceData.bind(3);
 		glDrawElements(GL_TRIANGLES, vertexCount, GL_UNSIGNED_INT, 0);
-
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, 0);
 	}
 
 	@Override

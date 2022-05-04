@@ -11,7 +11,6 @@ uniform mat4 viewMatrix;
 uniform vec3 modelPosition;
 uniform vec3 lowerBounds;
 uniform vec3 upperBounds;
-uniform float voxelSize;
 
 layout(std430, binding = 0) buffer _animationTimes
 {
@@ -27,6 +26,7 @@ struct FaceData {
 };
 layout(std430, binding = 3) buffer _faceData
 {
+	int voxelSize;
 	FaceData faceData[];
 };
 
@@ -67,7 +67,7 @@ void main()
 	int texCoordz = texCoordAndNormals & 65535;
 	textureIndex = texCoordz + time / animationTimes[texCoordz] % animationFrames[texCoordz];
 	outTexCoord = vec2(float(vertexID>>1 & 1)*voxelSize, float(vertexID & 1)*voxelSize);
-	
+
 	vec3 position = vec3(
 		encodedPosition & 63,
 		encodedPosition >> 6 & 63,
@@ -78,13 +78,13 @@ void main()
 
 	// Only draw faces that are inside the bounds. The others will be clipped using GL_CLIP_DISTANCE0:
 	vec3 globalPosition = position*voxelSize + modelPosition;
-	
+
 	vec4 mvPos = viewMatrix*vec4(globalPosition, 1);
 	gl_Position = projectionMatrix*mvPos;
 	outNormal = normals[normal];
-    mvVertexPos = mvPos.xyz;
-    
-    // Check if this vertex is outside the bounds that should be rendered:
+	mvVertexPos = mvPos.xyz;
+
+	// Check if this vertex is outside the bounds that should be rendered:
 	globalPosition -= normals[normal]*0.5; // Prevent showing faces that are outside this chunkpiece.
 	if (globalPosition.x < lowerBounds.x || globalPosition.x > upperBounds.x
 			|| globalPosition.y < lowerBounds.y || globalPosition.y > upperBounds.y
