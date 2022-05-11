@@ -11,6 +11,8 @@ gui.cubyz.settings.language=Lenguaje: {0}
 gui.cubyz.settings.discord=Integración con Discord: {0}
 gui.cubyz.settings.controls=Config. teclado
 gui.cubyz.settings.graphics=Gráficos
+gui.cubyz.settings.sound=Sonidos
+gui.cubyz.settings.musicOnOff=Activar/Desactivar música
 gui.cubyz.settings.fog.med=Niebla: Moderada
 gui.cubyz.settings.fog.far=Niebla: Lejana
 gui.cubyz.settings.fog.near=Niebla: Cerca
@@ -23,24 +25,51 @@ gui.cubyz.debug.reload=Recargar
 gui.cubyz.saves.play=Jugar {0}
 gui.cubyz.saves.delete=Borrar
 gui.cubyz.saves.create=¡Crea un nuevo mundo!
+gui.cubyz.saves.create.mapgen=Mapa: {0}
+gui.cubyz.saves.create.climategen=Clima: {0}
 lang.name=Español
 
 # Blocks
 block.cubyz.cactus.name=Cactus
 block.cubyz.soil.name=Tierra
+block.cubyz.grass.name=Hierba
 block.cubyz.gravel.name=Grava
 block.cubyz.ice.name=Hielo
 block.cubyz.sand.name=Arena
 block.cubyz.snow.name=Nieve
 block.cubyz.mossy_cobblestone.name=Adoquín con musgo
 block.cubyz.cobblestone.name=Adoquín
+block.cubyz.stone.name=Piedra
 block.cubyz.oak_log.name=Tronco de roble
 block.cubyz.oak_top.name=Tapa de roble
 block.cubyz.oak_planks.name=Tablones de roble
 block.cubyz.oak_leaves.name=Hojas de roble
 block.cubyz.torch.name=Antorcha
 block.cubyz.workbench.name=Mesa de trabajo
+block.cubyz.water.name=Agua
+block.cubyz.coal_ore.name=Mineral de carbón
 block.cubyz.iron_ore.name=Mineral de hierro
+block.cubyz.diamond_ore.name=Mineral de diamante
+
+# Didn't know how to call them, so I called them Shining/Glowing Crystal +  Color. My grammar isn't perfect either, so sorry if there's any mistake! I've tried my best D:
+# If you want, you can change it to "Cristal de brillo" + Color, which is similar to the Italien one
+
+block.cubyz.glow_crystal/red.name=Cristal brillante rojo
+block.cubyz.glow_crystal/dark_green.name=Cristal brillante verde oscuro
+block.cubyz.glow_crystal/dark_gray.name=Cristal brillante gris oscuro
+block.cubyz.glow_crystal/blue.name=Cristal brillante azul
+block.cubyz.glow_crystal/light_blue.name=Cristal brillante azul claro
+block.cubyz.glow_crystal/gray.name=Cristal brillante gris
+block.cubyz.glow_crystal/yellow.name=Cristal brillante amarillo
+block.cubyz.glow_crystal/cyan.name=Cristal brillante cyan
+block.cubyz.glow_crystal/brown.name=Cristal brillante marrón
+block.cubyz.glow_crystal/dark_red.name=Cristal brillante rojo oscuro
+block.cubyz.glow_crystal/purple.name=Cristal brillante morado
+block.cubyz.glow_crystal/black.name=Cristal brillante negro
+block.cubyz.glow_crystal/white.name=Cristal brillante blanco
+block.cubyz.glow_crystal/green.name=Cristal brillante verde
+block.cubyz.glow_crystal/violet.name=Cristal brillante morado
+block.cubyz.glow_crystal/orange.name=Cristal brillante naranja
 
 # Items
 item.cubyz.stick.name=Palo
@@ -57,3 +86,8 @@ cubyz.tools.names.axe=Hacha
 cubyz.tools.names.pickaxe=Pico
 cubyz.tools.names.shovel=Pala
 cubyz.tools.names.sword=Espada
+
+# World Generation
+generator.map.cubyz.mapgen_v1=Versión 1
+generator.climate.cubyz.flatland=Tierra plana
+generator.climate.cubyz.polar_circles=Círculos polares
