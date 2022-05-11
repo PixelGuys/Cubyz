@@ -1,15 +1,11 @@
 package cubyz.gui.menu.settings;
 
+import cubyz.gui.components.*;
 import org.lwjgl.glfw.GLFW;
 
 import cubyz.client.ClientSettings;
 import cubyz.client.Cubyz;
 import cubyz.gui.MenuGUI;
-import cubyz.gui.components.Button;
-import cubyz.gui.components.Component;
-import cubyz.gui.components.Label;
-import cubyz.gui.components.ScrollingContainer;
-import cubyz.gui.components.Slider;
 import cubyz.gui.input.Keybindings;
 import cubyz.gui.input.Keyboard;
 import cubyz.gui.input.Mouse;
@@ -25,6 +21,7 @@ public class ControlsGUI extends MenuGUI {
 	private Button done;
 	private String listen;
 	private Label[] labels;
+	private RectangleComponent[] labelBackgrounds;
 	private Button[] buttons;
 	private Slider mouseSensitivity;
 	
@@ -116,9 +113,11 @@ public class ControlsGUI extends MenuGUI {
 		
 		buttons = new Button[Keybindings.keyNames.length];
 		labels = new Label[Keybindings.keyNames.length];
+		labelBackgrounds = new RectangleComponent[Keybindings.keyNames.length];
 		int i = 0;
 		for (String name : Keybindings.keyNames) {
 			Label label = new Label();
+			RectangleComponent background = new RectangleComponent(0x7F7FA0);
 			Button button = new Button();
 			String text = null;
 			if (Keybindings.getKeyCode(name) < 1000) {
@@ -140,11 +139,13 @@ public class ControlsGUI extends MenuGUI {
 				}
 			});
 			label.setTextAlign(Component.ALIGN_TOP_LEFT);
+			container.add(background);
 			container.add(label);
 			container.add(button);
 
 			buttons[i] = button;
 			labels[i] = label;
+			labelBackgrounds[i] = background;
 			
 			i++;
 		}
@@ -167,6 +168,8 @@ public class ControlsGUI extends MenuGUI {
 
 			labels[i].setBounds(20 * GUI_SCALE, (y + 4) * GUI_SCALE, 0 * GUI_SCALE, 24 * GUI_SCALE, Component.ALIGN_TOP_LEFT);
 			labels[i].setFontSize(16 * GUI_SCALE);
+
+			labelBackgrounds[i].setBounds(16 * GUI_SCALE, (y + 2) * GUI_SCALE, 200, 20 * GUI_SCALE, Component.ALIGN_TOP_LEFT);
 
 			y += 30;
 		}
