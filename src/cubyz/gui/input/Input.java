@@ -174,7 +174,7 @@ public class Input {
 			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_C)) {
 				if (Cubyz.gameUI.getMenuGUI() == null) {
-					ClientOnly.client.openGUI("cubyz:creative", new Inventory(0));
+					GameLauncher.logic.openGUI("cubyz:creative", new Inventory(0));
 				} else if (Cubyz.gameUI.getMenuGUI().getRegistryID().toString().equals("cubyz:creative")) {
 					Cubyz.gameUI.back();
 				}

@@ -49,7 +49,7 @@ public class RenderOctTree {
 				dz = Math.max(0, dz - size/2);
 				double minDist = dx*dx + dy*dy + dz*dz;
 				// Check if this chunk is outside the nearRenderDistance or outside the height limits:
-				if (y + size <= Cubyz.world.chunkManager.getOrGenerateMapFragment(x, z, 32).getMinHeight() || y > Cubyz.world.chunkManager.getOrGenerateMapFragment(x, z, 32).getMaxHeight()) {
+				if (y + size <= 0/*Cubyz.world.chunkManager.getOrGenerateMapFragment(x, z, 32).getMinHeight()*/ || y > 1024/*Cubyz.world.chunkManager.getOrGenerateMapFragment(x, z, 32).getMaxHeight()*/) {
 					if (minDist > nearRenderDistance*nearRenderDistance) {
 						if (nextNodes != null) {
 							for(int i = 0; i < 8; i++) {
@@ -66,7 +66,7 @@ public class RenderOctTree {
 					// Check if this is a normal or a reduced chunk:
 					if (minDist < renderDistance*renderDistance) {
 						if (mesh.getChunk() == null) {
-							meshRequests.add(new ChunkData(x, y, z, mesh.voxelSize));
+							// meshRequests.add(new ChunkData(x, y, z, mesh.voxelSize)); TODO: Investigate if this has any impact.
 						}
 					} else {
 						if (mesh.getChunk() != null) {
@@ -176,7 +176,7 @@ public class RenderOctTree {
 				
 				for(int z = minZ; z <= maxZ; z += LODSize) {
 					// Make sure underground chunks are only generated if they are close to the player.
-					if (y + LODSize <= Cubyz.world.chunkManager.getOrGenerateMapFragment(x, z, 32).getMinHeight() || y > Cubyz.world.chunkManager.getOrGenerateMapFragment(x, z, 32).getMaxHeight()) {
+					if (y + LODSize <= 0/*Cubyz.world.chunkManager.getOrGenerateMapFragment(x, z, 32).getMinHeight()*/ || y > 1024/*Cubyz.world.chunkManager.getOrGenerateMapFragment(x, z, 32).getMaxHeight()*/) {
 						int dx = Math.max(0, Math.abs(x + LODSize/2 - px) - LODSize/2);
 						int dy = Math.max(0, Math.abs(y + LODSize/2 - py) - LODSize/2);
 						int dz = Math.max(0, Math.abs(z + LODSize/2 - pz) - LODSize/2);
@@ -197,7 +197,7 @@ public class RenderOctTree {
 						node.shouldBeRemoved = false;
 					}
 					newMap.put(key, node);
-					node.update(px, py, pz, renderDistance*Chunk.chunkSize, maxRenderDistance, Cubyz.world.chunkManager.getOrGenerateMapFragment(x, z, 32).getMinHeight(), Cubyz.world.chunkManager.getOrGenerateMapFragment(x, z, 32).getMaxHeight(), nearRenderDistance, meshRequests);
+					node.update(px, py, pz, renderDistance*Chunk.chunkSize, maxRenderDistance, 0/*Cubyz.world.chunkManager.getOrGenerateMapFragment(x, z, 32).getMinHeight()*/, 1024/*Cubyz.world.chunkManager.getOrGenerateMapFragment(x, z, 32).getMaxHeight()*/, nearRenderDistance, meshRequests);
 				}
 			}
 		}

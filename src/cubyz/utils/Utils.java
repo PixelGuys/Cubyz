@@ -11,9 +11,8 @@ import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -147,6 +146,39 @@ public final class Utils {
 			}
 		}
 		return result.toString();
+	}
+
+	public static void deleteDirectory(Path path) {
+		try {
+			Files.walkFileTree(path, new FileVisitor<>() {
+
+				@Override
+				public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+					return FileVisitResult.CONTINUE;
+				}
+
+				@Override
+				public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+					Files.delete(file);
+					return FileVisitResult.CONTINUE;
+				}
+
+				@Override
+				public FileVisitResult visitFileFailed(Path file, IOException e) {
+					Logger.error(e);
+					return FileVisitResult.TERMINATE;
+				}
+
+				@Override
+				public FileVisitResult postVisitDirectory(Path dir, IOException e) throws IOException {
+					Files.delete(dir);
+					return FileVisitResult.CONTINUE;
+				}
+
+			});
+		} catch (IOException e) {
+			Logger.error(e);
+		}
 	}
 
 }

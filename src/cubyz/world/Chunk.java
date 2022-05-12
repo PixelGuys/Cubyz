@@ -160,8 +160,12 @@ public abstract class Chunk extends SavableChunk {
 			wasChanged = false;
 			// Update the next lod chunk:
 			if(voxelSize != 1 << Constants.HIGHEST_LOD) {
-				ReducedChunk chunk = world.chunkManager.getOrGenerateReducedChunk(wx, wy, wz, voxelSize*2);
-				chunk.updateFromLowerResolution(this);
+				if(world instanceof ServerWorld) {
+					ReducedChunk chunk = ((ServerWorld)world).chunkManager.getOrGenerateReducedChunk(wx, wy, wz, voxelSize*2);
+					chunk.updateFromLowerResolution(this);
+				} else {
+					Logger.error("Not implemented: "+new Exception());
+				}
 			}
 		}
 	}

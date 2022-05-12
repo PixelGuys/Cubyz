@@ -1,8 +1,11 @@
 package cubyz.server;
 
 import cubyz.client.Cubyz;
+import cubyz.multiplayer.Protocols;
+import cubyz.multiplayer.UDPConnection;
 import cubyz.utils.Logger;
 import cubyz.utils.Zipper;
+import cubyz.world.entity.Entity;
 import pixelguys.json.JsonObject;
 import pixelguys.json.JsonParser;
 
@@ -13,30 +16,13 @@ import java.nio.charset.StandardCharsets;
 /*
 *   A User
 * */
-public class User {
-	private Socket clientSocket;
-	private PrintWriter out;
-	private BufferedReader in;
+public class User extends UDPConnection {
 
-	private OutputStream outStream;
-	private InputStream  inStream;
-
-	public User(Socket clientSocket) throws IOException {
-		this.clientSocket = clientSocket;
-
-		outStream = clientSocket.getOutputStream();
-		inStream = clientSocket.getInputStream();
-
-		out = new PrintWriter(outStream, true, StandardCharsets.UTF_8);
-		in = new BufferedReader(new InputStreamReader(inStream, StandardCharsets.UTF_8));
-		
+	public User(String ip, int sendPort, int receivePort) throws IOException {
+		super(ip, sendPort, receivePort);
 		doHandShake();
-		
-		while (!clientSocket.isClosed()) {
-			receiveJSON(JsonParser.parseObjectFromBufferedReader(in, ""));
-		}
 	}
-	public void receiveJSON(JsonObject json){
+	/*public void receiveJSON(JsonObject json){
 		String type = json.getString("type", "unknown type");
 		if (type.equals("clientInformation")){
 			String name     = json.getString("name", "unnamed");
@@ -44,10 +30,11 @@ public class User {
 
 			Logger.info("User joined: "+name+", who is using version: "+version);
 		}
-	}
+	}*/
 	
 	private void doHandShake() {
-		try {
+		Protocols.HANDSHAKE.serverSide(this);
+		/*try {
             JsonObject json = JsonParser.parseObjectFromBufferedReader(in, "");
 			String type = json.getString("type", "unknown type");
 			if (type.equals("clientInformation")){
@@ -57,23 +44,31 @@ public class User {
 				Logger.info("User joined: "+name+", who is using version: "+version);
 			}
 			sendWorldAssets();
+			sendInitialPlayerData();
 		} catch (Exception e) {
 			Logger.error(e);
-		}
+		}*/
 	}
 
 	public void sendWorldAssets(){
-		JsonObject head = new JsonObject();
+		/*JsonObject head = new JsonObject();
 		head.put("type","worldAssets");
 		head.writeObjectToStream(out);
 
-		String assetPath = "saves/" + Cubyz.world.getName() + "/assets/";
+		String assetPath = "saves/" + Server.world.getName() + "/assets/";
 		Zipper.pack(assetPath,outStream); //potential bug: Stream doesnt know the file size
+		try {
+			outStream.write(0);
+		} catch(IOException e) {
+			Logger.error(e);
+		}*/
 	}
 
-	public void dispose() throws IOException {
-		in.close();
-		out.close();
-		clientSocket.close();
+	public void sendInitialPlayerData(){
+		/*JsonObject head = new JsonObject();
+		head.put("type","initialPlayerData");
+		head.put("position", Entity.saveVector(Server.world.player.getPosition()));
+		head.put("inventory", Server.world.player.getInventory().save());
+		head.writeObjectToStream(out);*/
 	}
 }

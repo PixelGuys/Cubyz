@@ -54,9 +54,9 @@ public class DebugOverlay extends MenuGUI {
 				Graphics.drawText(0 * GUI_SCALE, 40 * GUI_SCALE, "XYZ: " + x + ", " + y + ", " + z);
 				Graphics.drawText(0 * GUI_SCALE, 50 * GUI_SCALE, "Loaded Chunks: " + Cubyz.world.getChunks().length);
 				Graphics.drawText(0 * GUI_SCALE, 60 * GUI_SCALE, "Render Distance: " + ClientSettings.RENDER_DISTANCE);
-				Graphics.drawText(0 * GUI_SCALE, 70 * GUI_SCALE, "Game Time: " + Cubyz.gameTime);
+				Graphics.drawText(0 * GUI_SCALE, 70 * GUI_SCALE, "Game Time: " + Cubyz.world.getGameTime());
 				Graphics.drawText(0 * GUI_SCALE, 80 * GUI_SCALE, "Chunk Queue Size: " + Cubyz.world.getChunkQueueSize());
-				Graphics.drawText(0 * GUI_SCALE, 90 * GUI_SCALE, "Biome: " + (Cubyz.biome == null ? "null" : Cubyz.biome.getRegistryID()));
+				// TODO: Graphics.drawText(0 * GUI_SCALE, 90 * GUI_SCALE, "Biome: " + (Cubyz.biome == null ? "null" : Cubyz.biome.getRegistryID()));
 				
 				if (p.getRemainingBreakTime() > 0) {
 					Graphics.drawText(0 * GUI_SCALE, 100 * GUI_SCALE, "Remaining Breaking Time: " + p.getRemainingBreakTime());

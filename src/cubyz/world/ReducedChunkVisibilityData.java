@@ -1,5 +1,7 @@
 package cubyz.world;
 
+import cubyz.utils.Logger;
+
 import java.util.Arrays;
 
 public class ReducedChunkVisibilityData extends ChunkData {
@@ -56,8 +58,19 @@ public class ReducedChunkVisibilityData extends ChunkData {
 		z &= Chunk.chunkMask;
 		return chunk.blocks[Chunk.getIndex(x, y, z)];
 	}
+
+	public ReducedChunkVisibilityData(int wx, int wy, int wz, int voxelSize, byte[] x, byte[] y, byte[] z, byte[] neighbors, int[] visibleBlocks) {
+		super(wx, wy, wz, voxelSize);
+		assert x.length == y.length && y.length == z.length && z.length == neighbors.length && neighbors.length == visibleBlocks.length : "Size of input parameters doesn't match.";
+		this.x = x;
+		this.y = y;
+		this.z = z;
+		this.neighbors = neighbors;
+		this.visibleBlocks = visibleBlocks;
+		capacity = size = x.length;
+	}
 	
-	public ReducedChunkVisibilityData(World world, int wx, int wy, int wz, int voxelSize) {
+	public ReducedChunkVisibilityData(ServerWorld world, int wx, int wy, int wz, int voxelSize) {
 		super(wx, wy, wz, voxelSize);
 
 		int chunkSize = voxelSize*Chunk.chunkSize;

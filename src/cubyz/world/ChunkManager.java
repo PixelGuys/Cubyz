@@ -2,6 +2,10 @@ package cubyz.world;
 
 import java.util.Arrays;
 
+import cubyz.client.Cubyz;
+import cubyz.multiplayer.Protocols;
+import cubyz.server.Server;
+import cubyz.server.User;
 import cubyz.utils.Logger;
 import cubyz.utils.datastructures.BlockingMaxHeap;
 import cubyz.utils.datastructures.Cache;
@@ -17,7 +21,7 @@ public class ChunkManager {
 	
 	// synchronized common list for chunk generation
 	private final BlockingMaxHeap<ChunkData> loadList;
-	private final World world;
+	private final ServerWorld world;
 	private final Thread[] threads;
 
 	public final TerrainGenerationProfile terrainGenerationProfile;
@@ -65,7 +69,7 @@ public class ChunkManager {
 				ChunkData[] array = loadList.toArray();
 				for(ChunkData element : array) {
 					if (element != null) {
-						element.updatePriority(world.getLocalPlayer());
+						element.updatePriority(world.player);
 					}
 				}
 				loadList.updatePriority();
@@ -79,7 +83,7 @@ public class ChunkManager {
 		}
 	}
 
-	public ChunkManager(World world, JsonObject settings, int numberOfThreads) {
+	public ChunkManager(ServerWorld world, JsonObject settings, int numberOfThreads) {
 		loadList = new BlockingMaxHeap<>(new ChunkData[1024], numberOfThreads);
 		this.world = world;
 
@@ -108,11 +112,14 @@ public class ChunkManager {
 			// If the chunk is already fully generated, it is returned.
 			NormalChunk chunk = world.getChunk(ch.wx, ch.wy, ch.wz);
 			if(chunk != null && chunk.isLoaded()) {
-				world.clientConnection.updateChunkMesh(chunk);
+				//Cubyz.chunkTree.updateChunkMesh(chunk); // TODO: Do this over the network.
+				for(User user : Server.userManager.users) {
+					Protocols.CHUNK_TRANSMISSION.sendChunk(user, ch);
+				}
 			}
 			return;
 		}
-		ch.updatePriority(world.getLocalPlayer());
+		ch.updatePriority(world.player);
 		loadList.add(ch);
 	}
 	
@@ -130,10 +137,15 @@ public class ChunkManager {
 				((NormalChunk) ch).generate(world.getSeed(), terrainGenerationProfile);
 				((NormalChunk) ch).load();
 			}
-			world.clientConnection.updateChunkMesh((NormalChunk) ch);
+			//Cubyz.chunkTree.updateChunkMesh((NormalChunk) ch); // TODO: Do this over the network.
+			for(User user : Server.userManager.users) {
+				Protocols.CHUNK_TRANSMISSION.sendChunk(user, ch);
+			}
 		} else {
 			ReducedChunkVisibilityData visibilityData = new ReducedChunkVisibilityData(world, ch.wx, ch.wy, ch.wz, ch.voxelSize);
-			world.clientConnection.updateChunkMesh(visibilityData);
+			for(User user : Server.userManager.users) {
+				Protocols.CHUNK_TRANSMISSION.sendChunk(user, visibilityData);
+			}
 		}
 	}
 

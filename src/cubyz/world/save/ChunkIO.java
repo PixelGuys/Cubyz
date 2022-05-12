@@ -1,11 +1,21 @@
 package cubyz.world.save;
 
+import cubyz.utils.Logger;
 import cubyz.utils.datastructures.Cache;
+import cubyz.world.Chunk;
 import cubyz.world.SavableChunk;
 import cubyz.world.World;
 
+import java.util.Arrays;
+import java.util.zip.DataFormatException;
+import java.util.zip.Deflater;
+import java.util.zip.Inflater;
+
 public final class ChunkIO {
 	private ChunkIO() {} // No instances allowed.
+
+	private static final ThreadLocal<byte[]> threadLocalInputBuffer = ThreadLocal.withInitial(() -> new byte[4096]);
+	private static final ThreadLocal<byte[]> threadLocalOutputBuffer = ThreadLocal.withInitial(() -> new byte[4 << Chunk.chunkShift*3]);
 
 	// Region files generally seem to be less than 1 MB on disk. To be on the safe side the amount of cached region files is limited to 128.
 	private static final int HASH_MASK = 31;
@@ -47,5 +57,54 @@ public final class ChunkIO {
 	public static void clean() {
 		save();
 		regionCache.clear();
+	}
+
+	public static byte[] compressChunk(SavableChunk ch) {
+		byte[] output = threadLocalOutputBuffer.get();
+		byte[] input = ch.saveToByteArray();
+
+		Deflater compressor = new Deflater();
+		compressor.setInput(input);
+		compressor.finish();
+		int dataLength = compressor.deflate(output);
+
+		while(!compressor.needsInput()) { // The buffer was too small. Switching to a bigger buffer.
+			output = Arrays.copyOf(output, output.length*2);
+			threadLocalOutputBuffer.set(output);
+			dataLength += compressor.deflate(output, output.length/2, output.length/2);
+		}
+		compressor.end();
+
+		return Arrays.copyOf(output, dataLength);
+	}
+
+	public static byte[] decompressChunk(byte[] in, int offset, int length) {
+		byte[] input = threadLocalInputBuffer.get();
+		if(length > input.length) {
+			input = new byte[length];
+			threadLocalInputBuffer.set(input);
+		}
+		byte[] output = threadLocalOutputBuffer.get();
+		System.arraycopy(in, offset, input, 0, length);
+
+		Inflater decompresser = new Inflater();
+		decompresser.setInput(input, 0, length);
+		int outputLength;
+		try {
+			outputLength = decompresser.inflate(output);
+			while(!decompresser.finished()) {
+				output = Arrays.copyOf(output, output.length*2);
+				threadLocalOutputBuffer.set(output);
+				outputLength += decompresser.inflate(output, outputLength, output.length - outputLength);
+			}
+		} catch (DataFormatException e) {
+			Logger.error(e);
+			return null;
+		}
+		decompresser.end();
+
+		byte[] out = new byte[outputLength]; // TODO(post-valhalla): return an offset byte array.
+		System.arraycopy(output, 0, out, 0, outputLength);
+		return out;
 	}
 }

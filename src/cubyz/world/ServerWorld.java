@@ -4,7 +4,9 @@ import cubyz.Settings;
 import cubyz.api.CubyzRegistries;
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.client.ClientSettings;
+import cubyz.client.Cubyz;
 import cubyz.modding.ModLoader;
+import cubyz.rendering.RenderOctTree;
 import cubyz.server.Server;
 import cubyz.utils.Logger;
 import cubyz.utils.datastructures.HashMapKey3D;
@@ -37,6 +39,8 @@ import java.util.HashMap;
 import java.util.Random;
 
 public class ServerWorld extends World{
+	public ChunkManager chunkManager;
+
 	public ServerWorld(String name, JsonObject generatorSettings, Class<?> chunkProvider) {
 		super(name, chunkProvider);
 
@@ -52,17 +56,17 @@ public class ServerWorld extends World{
 		if (wio.hasWorldData()) {
 			seed = wio.loadWorldSeed();
 			generated = true;
-			registries = new CurrentWorldRegistries(this, "saves");
+			registries = new CurrentWorldRegistries(this, "saves/" + name + "/assets/");
 		} else {
 			seed = new Random().nextInt();
-			registries = new CurrentWorldRegistries(this, "saves");
+			registries = new CurrentWorldRegistries(this, "saves/" + name + "/assets/");
 			wio.saveWorldData();
 		}
 
 		// Call mods for this new world. Mods sometimes need to do extra stuff for the specific world.
 		ModLoader.postWorldGen(registries);
 
-		chunkManager = new ChunkManager(this, generatorSettings, Runtime.getRuntime().availableProcessors() - 1);
+		chunkManager = new ChunkManager(this, generatorSettings, Math.max(1, Runtime.getRuntime().availableProcessors() - 2));
 		generate();
 	}
 
@@ -105,11 +109,6 @@ public class ServerWorld extends World{
 			Logger.info("OK!");
 		}
 		wio.saveWorldData();
-	}
-
-	@Override
-	public Player getLocalPlayer() {
-		return player;
 	}
 
 	@Override
@@ -224,43 +223,6 @@ public class ServerWorld extends World{
 			Logger.warning("Behind update schedule by " + (newTime - milliTime) / 1000.0f + "s!");
 			milliTime = newTime - 1000; // so we don't accumulate too much time to catch
 		}
-		int dayCycle = World.DAY_CYCLE;
-		// Ambient light
-		{
-			int dayTime = Math.abs((int)(gameTime % dayCycle) - (dayCycle >> 1));
-			if (dayTime < (dayCycle >> 2)-(dayCycle >> 4)) {
-				ambientLight = 0.1f;
-				clearColor.x = clearColor.y = clearColor.z = 0;
-			} else if (dayTime > (dayCycle >> 2)+(dayCycle >> 4)) {
-				ambientLight = 1.0f;
-				clearColor.x = clearColor.y = 0.8f;
-				clearColor.z = 1.0f;
-			} else {
-				//b:
-				if (dayTime > (dayCycle >> 2)) {
-					clearColor.z = 1.0f*(dayTime-(dayCycle >> 2))/(dayCycle >> 4);
-				} else {
-					clearColor.z = 0.0f;
-				}
-				//g:
-				if (dayTime > (dayCycle >> 2)+(dayCycle >> 5)) {
-					clearColor.y = 0.8f;
-				} else if (dayTime > (dayCycle >> 2)-(dayCycle >> 5)) {
-					clearColor.y = 0.8f+0.8f*(dayTime-(dayCycle >> 2)-(dayCycle >> 5))/(dayCycle >> 4);
-				} else {
-					clearColor.y = 0.0f;
-				}
-				//r:
-				if (dayTime > (dayCycle >> 2)) {
-					clearColor.x = 0.8f;
-				} else {
-					clearColor.x = 0.8f+0.8f*(dayTime-(dayCycle >> 2))/(dayCycle >> 4);
-				}
-				dayTime -= dayCycle >> 2;
-				dayTime <<= 3;
-				ambientLight = 0.55f + 0.45f*dayTime/(dayCycle >> 1);
-			}
-		}
 		// Entities
 		for (int i = 0; i < entities.size(); i++) {
 			Entity en = entities.get(i);
@@ -332,7 +294,7 @@ public class ServerWorld extends World{
 		for(NormalChunk ch : chunks) {
 			if (ch.updated && ch.generated) {
 				ch.updated = false;
-				clientConnection.updateChunkMesh(ch);
+				Cubyz.chunkTree.updateChunkMesh(ch); // TODO: Do this over the network.
 			}
 		}
 	}
@@ -428,14 +390,6 @@ public class ServerWorld extends World{
 	@Override
 	public long getSeed() {
 		return seed;
-	}
-	@Override
-	public float getGlobalLighting() {
-		return ambientLight;
-	}
-	@Override
-	public Vector4f getClearColor() {
-		return clearColor;
 	}
 	@Override
 	public String getName() {

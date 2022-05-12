@@ -14,11 +14,13 @@ import cubyz.gui.MenuGUI;
 import cubyz.gui.components.Button;
 import cubyz.gui.components.Component;
 import cubyz.gui.components.TextInput;
+import cubyz.rendering.VisibleChunk;
 import cubyz.rendering.text.Fonts;
 import cubyz.utils.Logger;
 import cubyz.utils.Utils;
 import cubyz.utils.translate.ContextualTextKey;
 import cubyz.utils.translate.TextKey;
+import cubyz.world.ClientWorld;
 import cubyz.world.terrain.ClimateMapGenerator;
 import cubyz.world.terrain.MapGenerator;
 import pixelguys.json.JsonObject;
@@ -108,7 +110,7 @@ public class SaveCreationGUI extends MenuGUI {
 					Thread.sleep(10);
 				} catch(InterruptedException e) {}
 			}
-			GameLauncher.logic.loadWorld(Server.world);
+			GameLauncher.logic.loadWorld(new ClientWorld("127.0.0.1", "name", VisibleChunk.class)); // TODO: Don't go over the local network in singleplayer.
 		});
 
 		cancel.setText(TextKey.createTextKey("gui.cubyz.general.cancel"));

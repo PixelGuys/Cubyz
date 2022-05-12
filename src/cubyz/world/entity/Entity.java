@@ -378,30 +378,30 @@ public class Entity {
 	}
 	
 	// NDT related
-	
-	private Vector3f loadVector3f(JsonObject json) {
+
+	public static Vector3f loadVector3f(JsonObject json) {
 		float x = json.getFloat("x", 0);
 		float y = json.getFloat("y", 0);
 		float z = json.getFloat("z", 0);
 		return new Vector3f(x, y, z);
 	}
-	
-	private Vector3d loadVector3d(JsonObject json) {
+
+	public static Vector3d loadVector3d(JsonObject json) {
 		double x = json.getDouble("x", 0);
 		double y = json.getDouble("y", 0);
 		double z = json.getDouble("z", 0);
 		return new Vector3d(x, y, z);
 	}
 	
-	private JsonObject saveVector(Vector3f vec) {
+	public static JsonObject saveVector(Vector3f vec) {
 		JsonObject json = new JsonObject();
 		json.put("x", vec.x);
 		json.put("y", vec.y);
 		json.put("z", vec.z);
 		return json;
 	}
-	
-	private JsonObject saveVector(Vector3d vec) {
+
+	public static JsonObject saveVector(Vector3d vec) {
 		JsonObject json = new JsonObject();
 		json.put("x", vec.x);
 		json.put("y", vec.y);

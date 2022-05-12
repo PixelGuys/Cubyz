@@ -131,13 +131,15 @@ public final class Logger {
 		if (supportsANSI) sb.insert(0, ANSIColor);
 
 		if (ANSIColor.contains("31") || ANSIColor.contains("33"))
-			System.err.print(sb.toString());
+			System.err.print(sb);
 		else
-			System.out.print(sb.toString());
+			System.out.print(sb);
 	}
 	
 	
 	private static String toString(Object object) {
+		if(object == null)
+			return "null";
 		if (object instanceof Throwable) {
 
 			StringWriter sw = new StringWriter();

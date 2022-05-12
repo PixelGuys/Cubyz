@@ -23,8 +23,6 @@ import cubyz.world.World;
  * Multiple chunks are bundled up in regions to reduce disk reads/writes.
  */
 public class RegionFile extends RegionFileCompare {
-	private static final ThreadLocal<byte[]> threadLocalInputBuffer = ThreadLocal.withInitial(() -> new byte[4096]);
-	private static final ThreadLocal<byte[]> threadLocalOutputBuffer = ThreadLocal.withInitial(() -> new byte[4 << Chunk.chunkShift*3]);
 	public static final int REGION_SHIFT = 3;
 	public static final int REGION_SIZE = 1 << REGION_SHIFT;
 	private byte[] data = new byte[0];
@@ -93,32 +91,12 @@ public class RegionFile extends RegionFileCompare {
 		
 		int inputLength = startingIndices[chunkIndex + 1] - startingIndices[chunkIndex];
 		if(inputLength == 0) return false;
-		byte[] input = threadLocalInputBuffer.get();
-		if(inputLength > input.length) {
-			input = new byte[inputLength];
-			threadLocalInputBuffer.set(input);
-		}
-		byte[] output = threadLocalOutputBuffer.get();
-		System.arraycopy(data, startingIndices[chunkIndex], input, 0, inputLength);
 		
-		Inflater decompresser = new Inflater();
-		decompresser.setInput(input, 0, inputLength);
-		int outputLength;
-		try {
-			outputLength = decompresser.inflate(output);
-			while(!decompresser.finished()) {
-				output = Arrays.copyOf(output, output.length*2);
-				threadLocalOutputBuffer.set(output);
-				outputLength += decompresser.inflate(output, outputLength, output.length - outputLength);
-			}
-		} catch (DataFormatException e) {
-			Logger.error("Unable to load chunk data. Corrupt chunk file " + this);
-			Logger.error(e);
-			return false;
-		}
-		decompresser.end();
+		byte[] out = ChunkIO.decompressChunk(data, startingIndices[chunkIndex], inputLength);
+
+		if(out == null) return false;
 		
-		return ch.loadFromByteArray(output, outputLength);
+		return ch.loadFromByteArray(out, out.length);
 	}
 	
 	public void saveChunk(SavableChunk ch) {
@@ -126,31 +104,20 @@ public class RegionFile extends RegionFileCompare {
 		synchronized(this) {
 			wasChanged = true;
 			int chunkIndex = getChunkIndex(ch);
-			byte[] output = threadLocalOutputBuffer.get();
-			byte[] input = ch.saveToByteArray();
-			
-			Deflater compressor = new Deflater();
-			compressor.setInput(input);
-			compressor.finish();
-			int dataLength = compressor.deflate(output);
-			
-			while(!compressor.needsInput()) { // The buffer was too small. Switching to a bigger buffer.
-				output = Arrays.copyOf(output, output.length*2);
-				threadLocalOutputBuffer.set(output);
-				dataLength += compressor.deflate(output, output.length/2, output.length/2);
-			}
-			compressor.end();
 			
 			int dataInsertionIndex = startingIndices[chunkIndex];
 			int oldDataLength = startingIndices[chunkIndex + 1] - dataInsertionIndex;
-			byte[] newData = new byte[data.length + dataLength - oldDataLength];
+
+			byte[] output = ChunkIO.compressChunk(ch);
+
+			byte[] newData = new byte[data.length + output.length - oldDataLength];
 			System.arraycopy(data, 0, newData, 0, dataInsertionIndex);
-			System.arraycopy(output, 0, newData, dataInsertionIndex, dataLength);
-			System.arraycopy(data, startingIndices[chunkIndex + 1], newData, dataInsertionIndex + dataLength, data.length - startingIndices[chunkIndex + 1]);
+			System.arraycopy(output, 0, newData, dataInsertionIndex, output.length);
+			System.arraycopy(data, startingIndices[chunkIndex + 1], newData, dataInsertionIndex + output.length, data.length - startingIndices[chunkIndex + 1]);
 			data = newData;
 			
 			for(int i = chunkIndex + 1; i < startingIndices.length; i++) {
-				startingIndices[i] += dataLength - oldDataLength;
+				startingIndices[i] += output.length - oldDataLength;
 			}
 			if(oldDataLength == 0) {
 				// This chunks wasn't in the list before:

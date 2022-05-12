@@ -1,6 +1,9 @@
 package cubyz.utils;
 
 import java.io.*;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.DatagramSocketImpl;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -12,7 +15,8 @@ public final class Zipper {
 	private Zipper() {} // No instances allowed.
 
 	public static void pack(String sourceDirPath, OutputStream outputstream){
-		try (ZipOutputStream zipoutput = new ZipOutputStream(outputstream)) {
+		try {
+			ZipOutputStream zipoutput = new ZipOutputStream(outputstream);
 			Path path = Paths.get(sourceDirPath);
 			Files.walk(path)
 					.filter(p -> !Files.isDirectory(p)) // potential bug
@@ -59,7 +63,6 @@ public final class Zipper {
 				zipIn.closeEntry();
 				entry = zipIn.getNextEntry();
 			}
-			zipIn.close();
 		}catch (Exception e){
 			Logger.error(e);
 		}

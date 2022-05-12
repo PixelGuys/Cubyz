@@ -2,6 +2,7 @@ package cubyz.world;
 
 import java.util.ArrayList;
 
+import cubyz.utils.Logger;
 import cubyz.utils.datastructures.SimpleList;
 import org.joml.Vector3i;
 
@@ -36,7 +37,12 @@ public class NormalChunk extends Chunk {
 	public NormalChunk(World world, int wx, int wy, int wz) {
 		super(world, wx, wy, wz, 1);
 		inst = new BlockInstance[blocks.length];
-		this.map = world.chunkManager.getOrGenerateMapFragment(wx, wz, 1);
+		if(world instanceof ServerWorld) {
+			this.map = ((ServerWorld)world).chunkManager.getOrGenerateMapFragment(wx, wz, 1);
+		} else {
+			Logger.error("Not implemented: " + new Exception());
+			this.map = null;
+		}
 	}
 	
 	/**

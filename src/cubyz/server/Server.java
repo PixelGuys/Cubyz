@@ -20,6 +20,7 @@ public final class Server extends Pacer{
 	private	static final Server server = new Server();
 
 	public static ServerWorld world = null;
+	public static UserManager userManager = null;
 
 	public static void main(String[] args) {
 		if (world != null) {
@@ -27,7 +28,7 @@ public final class Server extends Pacer{
 			world.cleanup();
 		}
 
-		UserManager userManager = new UserManager();
+		userManager = new UserManager();
 		userManager.start();
 
 		Server.world = new ServerWorld(args[0], null, VisibleChunk.class);
@@ -48,6 +49,8 @@ public final class Server extends Pacer{
 		if(world != null)
 			world.cleanup();
 		world = null;
+		userManager.dispose();
+		userManager = null;
 	}
 	public static void stop(){
 		if (server != null)
@@ -69,7 +72,7 @@ public final class Server extends Pacer{
 		world.update();
 		// TODO: Adjust for multiple players:
 
-		world.clientConnection.serverPing(world.getGameTime(), world.getBiome((int)Cubyz.player.getPosition().x, (int)Cubyz.player.getPosition().y, (int)Cubyz.player.getPosition().z).getRegistryID().toString());
+		// TODO: world.clientConnection.serverPing(world.getGameTime(), world.getBiome((int)Cubyz.player.getPosition().x, (int)Cubyz.player.getPosition().y, (int)Cubyz.player.getPosition().z).getRegistryID().toString());
 		// TODO: Move this to the client, or generalize this for multiplayer.
 
 		world.seek((int) Cubyz.player.getPosition().x, (int) Cubyz.player.getPosition().y, (int) Cubyz.player.getPosition().z, ClientSettings.RENDER_DISTANCE);

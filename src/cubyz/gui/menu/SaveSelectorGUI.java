@@ -20,6 +20,7 @@ import cubyz.rendering.Window;
 import cubyz.utils.Utils;
 import cubyz.utils.translate.ContextualTextKey;
 import cubyz.utils.translate.TextKey;
+import cubyz.world.ClientWorld;
 import cubyz.world.ServerWorld;
 import cubyz.world.World;
 import cubyz.server.Server;
@@ -63,7 +64,7 @@ public class SaveSelectorGUI extends MenuGUI {
 						Thread.sleep(10);
 					} catch(InterruptedException e) {}
 				}
-				GameLauncher.logic.loadWorld(Server.world);
+				GameLauncher.logic.loadWorld(new ClientWorld("127.0.0.1", "name", VisibleChunk.class)); // TODO: Don't go over the local network in singleplayer.
 			});
 			saveButtons[i] = b;
 			container.add(b);
@@ -72,37 +73,7 @@ public class SaveSelectorGUI extends MenuGUI {
 			Path path = listOfFiles[i].toPath();
 			b.setOnAction(new Runnable() {
 				public void run() {
-					// Delete the folder
-					try {
-						Files.walkFileTree(path, new FileVisitor<Path>() {
-	
-							@Override
-							public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
-								return FileVisitResult.CONTINUE;
-							}
-	
-							@Override
-							public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-								Files.delete(file);
-								return FileVisitResult.CONTINUE;
-							}
-	
-							@Override
-							public FileVisitResult visitFileFailed(Path file, IOException e) {
-								Logger.error(e);
-								return FileVisitResult.TERMINATE;
-							}
-	
-							@Override
-							public FileVisitResult postVisitDirectory(Path dir, IOException e) throws IOException {
-								Files.delete(dir);
-								return FileVisitResult.CONTINUE;
-							}
-							
-						});
-					} catch (IOException e) {
-						Logger.error(e);
-					}
+					Utils.deleteDirectory(path);
 					// Remove the buttons:
 					saveButtons[index] = null;
 					deleteButtons[index] = null;

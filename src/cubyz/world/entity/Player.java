@@ -80,6 +80,11 @@ public class Player extends Entity implements CommandSource {
 		super.loadFrom(json);
 		inv.loadFrom(json.getObjectOrNew("inventory"), world.getCurrentRegistries());
 	}
+
+	public void loadFrom(JsonObject json, World world) {
+		super.loadFrom(json);
+		inv.loadFrom(json.getObjectOrNew("inventory"), world.getCurrentRegistries());
+	}
 	
 	@Override
 	public JsonObject save() {

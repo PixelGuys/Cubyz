@@ -2,6 +2,7 @@ package cubyz.world.blocks;
 
 import java.util.HashMap;
 
+import cubyz.client.GameLauncher;
 import cubyz.rendering.rotation.NoRotation;
 import org.joml.Vector3i;
 
@@ -160,7 +161,7 @@ public class Blocks implements DataOrientedRegistry {
 	 */
 	public static boolean onClick(int block, World world, Vector3i pos) {
 		if (gui[block & TYPE_MASK] != null) {
-			ClientOnly.client.openGUI("cubyz:workbench", new Inventory(26)); // TODO: Care about the inventory.
+			GameLauncher.logic.openGUI("cubyz:workbench", new Inventory(26)); // TODO: Care about the inventory. TODO: Make this work over the network.
 			return true;
 		}
 		return false;

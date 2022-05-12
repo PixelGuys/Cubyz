@@ -3,6 +3,7 @@ package cubyz.client;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
+import cubyz.world.ClientWorld;
 import org.joml.Vector3f;
 
 import cubyz.client.entity.ClientPlayer;
@@ -25,10 +26,8 @@ public final class Cubyz {
 	public static RenderOctTree chunkTree = new RenderOctTree();
 	
 	// World related stuff:
-	public static World world;
+	public static ClientWorld world;
 	public static ClientPlayer player;
-	public static Biome biome;
-	public static long gameTime;
 	
 	// Other:
 	public static Vector3f playerInc = new Vector3f();

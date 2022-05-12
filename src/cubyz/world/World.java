@@ -12,7 +12,6 @@ import org.joml.Vector4f;
 
 import cubyz.utils.Logger;
 import cubyz.Settings;
-import cubyz.api.ClientConnection;
 import cubyz.api.CubyzRegistries;
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.client.ClientSettings;
@@ -46,8 +45,7 @@ public abstract class World {
 	protected ArrayList<Entity> entities = new ArrayList<>();
 	
 	public WorldIO wio;
-	
-	public ChunkManager chunkManager;
+
 	protected boolean generated;
 
 	protected long gameTime;
@@ -59,12 +57,7 @@ public abstract class World {
 
 	protected final String name;
 
-	protected Player player;
-
-	public ClientConnection clientConnection = GameLauncher.logic;
-	
-	float ambientLight = 0f;
-	Vector4f clearColor = new Vector4f(0, 0, 0, 1.0f);
+	public Player player;
 	
 	public final Class<?> chunkProvider;
 	
@@ -91,9 +84,6 @@ public abstract class World {
 		milliTime = System.currentTimeMillis();
 
 	}
-	public Player getLocalPlayer() {
-		return player;
-	}
 	public void setGameTime(long time) {
 		gameTime = time;
 	}
@@ -115,14 +105,6 @@ public abstract class World {
 	}
 	public long getSeed() {
 		return seed;
-	}
-
-	public float getGlobalLighting() {
-		return ambientLight;
-	}
-
-	public Vector4f getClearColor() {
-		return clearColor;
 	}
 
 	public String getName() {

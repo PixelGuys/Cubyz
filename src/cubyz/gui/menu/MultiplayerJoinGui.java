@@ -86,7 +86,7 @@ public class MultiplayerJoinGui extends MenuGUI {
 		guiJoin.setOnAction(() -> {
 			//new Thread(() -> Server.main(new String[0]), "Server Thread").start();
 
-			World world = new ClientWorld(guiIPAdress.getText(), guiName.getText(), VisibleChunk.class);
+			ClientWorld world = new ClientWorld(guiIPAdress.getText(), guiName.getText(), VisibleChunk.class);
 			Cubyz.gameUI.setMenu(null, false); // hide from UISystem.back()
 			GameLauncher.logic.loadWorld(world);
 		});

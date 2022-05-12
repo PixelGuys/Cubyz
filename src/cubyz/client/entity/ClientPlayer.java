@@ -21,11 +21,9 @@ public class ClientPlayer extends Player {
 	private long lastUpdateTime = 0;
 
 
-	public ClientPlayer(Player player) {
+	public ClientPlayer(int id) {
 		super(null);
-		this.id = player.id;
-		this.setInventory(player.getInventory());
-		this.position.set(player.getPosition());
+		this.id = id;
 	}
 	
 	public void update() {
