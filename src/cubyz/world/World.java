@@ -145,10 +145,6 @@ public abstract class World {
 
 	public abstract void queueChunk(ChunkData ch);
 	
-	public abstract void unQueueChunk(ChunkData ch);
-	
-	public abstract int getChunkQueueSize();
-	
 	public abstract void seek(int x, int y, int z, int renderDistance);
 	
 	public abstract MetaChunk getMetaChunk(int wx, int wy, int wz);
@@ -156,11 +152,15 @@ public abstract class World {
 	public abstract NormalChunk getChunk(int wx, int wy, int wz);
 
 	public abstract ChunkEntityManager getEntityManagerAt(int wx, int wy, int wz);
-	
 
-
-	public abstract int getBlock(int x, int y, int z) ;
-
+	public final int getBlock(int x, int y, int z) {
+		NormalChunk ch = getChunk(x, y, z);
+		if (ch != null && ch.isGenerated()) {
+			return ch.getBlock(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask);
+		} else {
+			return 0;
+		}
+	}
 
 	public abstract BlockEntity getBlockEntity(int x, int y, int z);
 

@@ -163,20 +163,6 @@ public class ClientWorld extends World {
 	}
 
 	@Override
-	@Deprecated
-	public void unQueueChunk(ChunkData ch) {
-		// TODO!
-		Logger.error("Use of unimplemented function ClientWorld.unQueueChunk()");
-	}
-
-	@Override
-	public int getChunkQueueSize() {
-		// TODO!
-		Logger.error("Use of unimplemented function ClientWorld.getChunkQueueSize()");
-		return 0;
-	}
-
-	@Override
 	public void seek(int x, int y, int z, int renderDistance) {
 		throw new IllegalArgumentException("a");
 	}
@@ -188,20 +174,15 @@ public class ClientWorld extends World {
 
 	@Override
 	public NormalChunk getChunk(int wx, int wy, int wz) {
-		Logger.error("Use of unimplemented function ClientWorld.getChunk()");
-		return Server.world.getChunk(wx, wy, wz);
+		ChunkData chunk = Cubyz.chunkTree.findNode(new ChunkData(wx, wy, wz, 1)).mesh.getChunk();
+		if(chunk instanceof NormalChunk)
+			return (NormalChunk)chunk;
+		return null;
 	}
 
 	@Override
 	public ChunkEntityManager getEntityManagerAt(int wx, int wy, int wz) {
 		throw new IllegalArgumentException("a");
-	}
-
-	@Override
-	public int getBlock(int x, int y, int z) {
-		// TODO!
-		Logger.error("Use of unimplemented function ClientWorld.getBlock()");
-		return 0;
 	}
 
 	@Override

@@ -3,13 +3,12 @@ package cubyz.rendering;
 import java.util.ArrayList;
 
 import cubyz.client.ClientSettings;
+import cubyz.utils.Logger;
 import cubyz.utils.Utilities;
-import cubyz.world.Chunk;
-import cubyz.world.Neighbors;
-import cubyz.world.NormalChunk;
-import cubyz.world.World;
+import cubyz.world.*;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.BlockInstance;
+import cubyz.world.terrain.MapFragment;
 
 /**
  * The client version of a chunk that handles all the features that are related to rendering and therefore not needed on servers.
@@ -91,6 +90,14 @@ public class VisibleChunk extends NormalChunk {
 					}
 				}
 			}
+		}
+		MapFragment map;
+		if(world instanceof ServerWorld) {
+			map = ((ServerWorld)world).chunkManager.getOrGenerateMapFragment(wx, wz, 1);
+		} else {
+			Logger.error("Not implemented: ");
+			Logger.error(new Exception());
+			map = null;
 		}
 		if (ClientSettings.easyLighting) {
 			// Update the sun channel:

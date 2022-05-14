@@ -303,11 +303,9 @@ public class ServerWorld extends World{
 	public void queueChunk(ChunkData ch) {
 		chunkManager.queueChunk(ch);
 	}
-	@Override
 	public void unQueueChunk(ChunkData ch) {
 		chunkManager.unQueueChunk(ch);
 	}
-	@Override
 	public int getChunkQueueSize() {
 		return chunkManager.getChunkQueueSize();
 	}
@@ -378,15 +376,6 @@ public class ServerWorld extends World{
 	@Override
 	public ChunkEntityManager[] getEntityManagers() {
 		return entityManagers;
-	}
-	@Override
-	public int getBlock(int x, int y, int z) {
-		NormalChunk ch = getChunk(x, y, z);
-		if (ch != null && ch.isGenerated()) {
-			return ch.getBlock(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask);
-		} else {
-			return 0;
-		}
 	}
 	@Override
 	public long getSeed() {

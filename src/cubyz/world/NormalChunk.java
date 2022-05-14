@@ -29,21 +29,12 @@ public class NormalChunk extends Chunk {
 	protected boolean startedloading = false;
 	protected boolean loaded = false;
 	private final ArrayList<BlockEntity> blockEntities = new ArrayList<>();
-	
-	public final MapFragment map;
 
 	public boolean updated;
 	
 	public NormalChunk(World world, int wx, int wy, int wz) {
 		super(world, wx, wy, wz, 1);
 		inst = new BlockInstance[blocks.length];
-		if(world instanceof ServerWorld) {
-			this.map = ((ServerWorld)world).chunkManager.getOrGenerateMapFragment(wx, wz, 1);
-		} else {
-			Logger.error("Not implemented: ");
-			Logger.error(new Exception());
-			this.map = null;
-		}
 	}
 	
 	/**

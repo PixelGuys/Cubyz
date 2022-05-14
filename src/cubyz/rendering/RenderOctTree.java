@@ -129,8 +129,7 @@ public class RenderOctTree {
 		public void cleanup() {
 			if (mesh != null) {
 				Meshes.deleteMesh(mesh);
-				if (Cubyz.world != null)
-					Cubyz.world.unQueueChunk(mesh.getChunk());
+				// TODO: Look into unqueue-ing the chunk when it isn't needed anymore. Maybe that could be done server-side?
 			}
 			if (nextNodes != null) {
 				for(int i = 0; i < 8; i++) {
