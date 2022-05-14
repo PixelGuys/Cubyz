@@ -40,7 +40,8 @@ public class NormalChunk extends Chunk {
 		if(world instanceof ServerWorld) {
 			this.map = ((ServerWorld)world).chunkManager.getOrGenerateMapFragment(wx, wz, 1);
 		} else {
-			Logger.error("Not implemented: " + new Exception());
+			Logger.error("Not implemented: ");
+			Logger.error(new Exception());
 			this.map = null;
 		}
 	}

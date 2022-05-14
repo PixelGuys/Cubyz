@@ -6,7 +6,6 @@ import cubyz.api.CurrentWorldRegistries;
 import cubyz.client.ClientSettings;
 import cubyz.client.Cubyz;
 import cubyz.modding.ModLoader;
-import cubyz.rendering.RenderOctTree;
 import cubyz.server.Server;
 import cubyz.utils.Logger;
 import cubyz.utils.datastructures.HashMapKey3D;
@@ -20,6 +19,7 @@ import cubyz.world.handler.PlaceBlockHandler;
 import cubyz.world.handler.RemoveBlockHandler;
 import cubyz.world.items.BlockDrop;
 import cubyz.world.items.ItemStack;
+import cubyz.world.save.BlockPalette;
 import cubyz.world.save.ChunkIO;
 import cubyz.world.save.WorldIO;
 import cubyz.world.terrain.CaveBiomeMapFragment;
@@ -31,7 +31,6 @@ import pixelguys.json.JsonParser;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
-import org.joml.Vector4f;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -53,15 +52,17 @@ public class ServerWorld extends World{
 		}
 
 		wio = new WorldIO(this, new File("saves/" + name));
+		blockPalette = new BlockPalette(JsonParser.parseObjectFromFile("saves/" + name + "/palette.json").getObjectOrNew("blocks"));
 		if (wio.hasWorldData()) {
 			seed = wio.loadWorldSeed();
 			generated = true;
-			registries = new CurrentWorldRegistries(this, "saves/" + name + "/assets/");
+			registries = new CurrentWorldRegistries(this, "saves/" + name + "/assets/", blockPalette);
 		} else {
 			seed = new Random().nextInt();
-			registries = new CurrentWorldRegistries(this, "saves/" + name + "/assets/");
+			registries = new CurrentWorldRegistries(this, "saves/" + name + "/assets/", blockPalette);
 			wio.saveWorldData();
 		}
+		JsonParser.storeToFile(blockPalette.save(), "saves/" + name + "/palette.json");
 
 		// Call mods for this new world. Mods sometimes need to do extra stuff for the specific world.
 		ModLoader.postWorldGen(registries);

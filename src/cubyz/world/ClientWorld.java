@@ -12,10 +12,12 @@ import cubyz.world.blocks.BlockEntity;
 import cubyz.world.entity.ChunkEntityManager;
 import cubyz.world.entity.Entity;
 import cubyz.world.items.ItemStack;
+import cubyz.world.save.BlockPalette;
 import cubyz.world.terrain.biomes.Biome;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
+import pixelguys.json.JsonObject;
 
 //TODO:
 public class ClientWorld extends World {
@@ -31,9 +33,16 @@ public class ClientWorld extends World {
 		serverConnection = new ServerConnection(ip, 5679, 5678, playerName);
 
 		player = new ClientPlayer(0);
-		player.loadFrom(serverConnection.doHandShake(playerName).getObjectOrNew("player"), this);
+		JsonObject handshakeResult = serverConnection.doHandShake(playerName);
+		blockPalette = new BlockPalette(handshakeResult.getObjectOrNew("blockPalette"));
+		player.loadFrom(handshakeResult.getObjectOrNew("player"), this);
 
-		registries = new CurrentWorldRegistries(this, "serverAssets");
+		if(Server.world != null) {
+			// Share the registries of the local server:
+			registries = Server.world.getCurrentRegistries();
+		} else {
+			registries = new CurrentWorldRegistries(this, "serverAssets/", blockPalette);
+		}
 
 		// Call mods for this new world. Mods sometimes need to do extra stuff for the specific world.
 		ModLoader.postWorldGen(registries);

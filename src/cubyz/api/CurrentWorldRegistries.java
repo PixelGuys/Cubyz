@@ -16,6 +16,7 @@ import cubyz.world.blocks.Ore;
 import cubyz.world.entity.EntityType;
 import cubyz.world.items.Item;
 import cubyz.world.items.Recipe;
+import cubyz.world.save.BlockPalette;
 import cubyz.world.terrain.biomes.BiomeRegistry;
 
 /**
@@ -27,33 +28,34 @@ public class CurrentWorldRegistries {
 	public final Registry<DataOrientedRegistry> blockRegistries = new Registry<DataOrientedRegistry>(CubyzRegistries.BLOCK_REGISTRIES);
 	public final NoIDRegistry<Ore>              oreRegistry     = new NoIDRegistry<Ore>(CubyzRegistries.ORE_REGISTRY);
 	public final Registry<Item>                 itemRegistry    = new Registry<Item>(CubyzRegistries.ITEM_REGISTRY);
-	public final NoIDRegistry<Recipe>           recipeRegistry  = new NoIDRegistry<Recipe>(CubyzRegistries.RECIPE_REGISTRY);
+	public final NoIDRegistry<Recipe>           recipeRegistry  = new NoIDRegistry<Recipe>();
 	public final Registry<EntityType>           entityRegistry  = new Registry<EntityType>(CubyzRegistries.ENTITY_REGISTRY);
-	public final BiomeRegistry                  biomeRegistry   = new BiomeRegistry(CubyzRegistries.BIOME_REGISTRY);
+	public final BiomeRegistry                  biomeRegistry   = new BiomeRegistry();
 
 	public static Language fallbackLang;
 
 	/**
 	 * Loads the world specific assets, such as procedural ores.
 	 */
-	public CurrentWorldRegistries(World world, String assetPath) {
+	public CurrentWorldRegistries(World world, String assetPath, BlockPalette palette) {
 		File assets = new File(assetPath);
 		if (!assets.exists()) {
 			generateAssets(assets, world);
 		}
 		for(DataOrientedRegistry reg : blockRegistries.registered(new DataOrientedRegistry[0])) {
-			reg.reset(CubyzRegistries.blocksBeforeWorld);
+			reg.reset();
 		}
-		loadWorldAssets(assetPath);
+		loadWorldAssets(assetPath, palette);
 	}
 
-	public void loadWorldAssets(String assetPath) {
+	public void loadWorldAssets(String assetPath, BlockPalette palette) {
 		fallbackLang = LanguageLoader.loadFallbackLang(assetPath);
 		AddonsMod.instance.preInit(assetPath);
-		AddonsMod.instance.registerBlocks(blockRegistries, oreRegistry);
+		AddonsMod.instance.registerBlocks(blockRegistries, oreRegistry, palette);
 		AddonsMod.instance.registerItems(itemRegistry, assetPath);
 		AddonsMod.instance.registerBiomes(biomeRegistry);
-		AddonsMod.instance.init(itemRegistry, blockRegistries, recipeRegistry);
+		AddonsMod.instance.init(itemRegistry);
+		AddonsMod.instance.registerRecipes(recipeRegistry, itemRegistry);
 	}
 
 	public void generateAssets(File assets, World world) {

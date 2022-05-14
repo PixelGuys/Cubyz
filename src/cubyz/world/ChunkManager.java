@@ -99,8 +99,13 @@ public class ChunkManager {
 			thread.setName("Local-Chunk-Thread-" + i);
 			thread.setPriority(Thread.MIN_PRIORITY);
 			thread.setDaemon(true);
-			thread.start();
 			threads[i] = thread;
+		}
+	}
+
+	public void startThreads() {
+		for(Thread thread : threads) {
+			thread.start();
 		}
 	}
 
@@ -114,7 +119,7 @@ public class ChunkManager {
 			if(chunk != null && chunk.isLoaded()) {
 				//Cubyz.chunkTree.updateChunkMesh(chunk); // TODO: Do this over the network.
 				for(User user : Server.userManager.users) {
-					Protocols.CHUNK_TRANSMISSION.sendChunk(user, ch);
+					Protocols.CHUNK_TRANSMISSION.sendChunk(user, chunk);
 				}
 			}
 			return;

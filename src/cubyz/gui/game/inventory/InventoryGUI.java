@@ -50,7 +50,7 @@ public class InventoryGUI extends GeneralInventory {
 			if (ar[i] != null)
 				num++;
 		}
-		Recipe[] recipes = CubyzRegistries.RECIPE_REGISTRY.registered(new Recipe[0]);
+		Recipe[] recipes = Cubyz.world.registries.recipeRegistry.registered(new Recipe[0]);
 		// Find a fitting recipe:
 		for(Recipe rec : recipes) {
 			if (rec.getNum() != num)

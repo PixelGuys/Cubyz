@@ -64,17 +64,11 @@ public final class ModLoader {
 	
 	public static void registerEntries(Mod mod, String type) {
 		switch (type) {
-		case "block":
-			mod.registerBlocks(CubyzRegistries.BLOCK_REGISTRIES);
-			break;
 		case "item":
 			mod.registerItems(CubyzRegistries.ITEM_REGISTRY);
 			break;
 		case "entity":
 			mod.registerEntities(CubyzRegistries.ENTITY_REGISTRY);
-			break;
-		case "biome":
-			mod.registerBiomes(CubyzRegistries.BIOME_REGISTRY);
 			break;
 		}
 	}

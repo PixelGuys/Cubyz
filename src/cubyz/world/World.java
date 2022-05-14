@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Random;
 
+import cubyz.world.save.BlockPalette;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
@@ -43,6 +44,7 @@ public abstract class World {
 	protected ChunkEntityManager[] entityManagers = new ChunkEntityManager[0];
 	protected int lastX = Integer.MAX_VALUE, lastY = Integer.MAX_VALUE, lastZ = Integer.MAX_VALUE; // Chunk coordinates of the last chunk update.
 	protected ArrayList<Entity> entities = new ArrayList<>();
+	public BlockPalette blockPalette;
 	
 	public WorldIO wio;
 

@@ -19,7 +19,6 @@ public class WorldIO {
 
 	public final File dir;
 	private final World world;
-	public BlockPalette blockPalette = new BlockPalette(null, this);
 	public Palette<Item> itemPalette = new Palette<>(null, null, this);
 
 	public WorldIO(World world, File directory) {
@@ -55,7 +54,6 @@ public class WorldIO {
 			if (worldData.getInt("version", -1) != WORLD_DATA_VERSION) {
 				throw new IOException("Cannot read version " + worldData.getInt("version", -1));
 			}
-			blockPalette = new BlockPalette(worldData.getObject("blockPalette"), this);
 			itemPalette = new Palette<>(worldData.getObject("itemPalette"), world.registries.itemRegistry, this);
 
 			JsonArray entityJson = worldData.getArrayNoNull("entities");
@@ -83,7 +81,6 @@ public class WorldIO {
 			worldData.put("doGameTimeCycle", world.shouldDoGameTimeCycle());
 			worldData.put("gameTime", world.getGameTime());
 			worldData.put("entityCount", world.getEntities().length);
-			worldData.put("blockPalette", blockPalette.save());
 			worldData.put("itemPalette", itemPalette.save());
 			JsonArray entityData = new JsonArray();
 			worldData.put("entities", entityData);

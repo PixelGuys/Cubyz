@@ -1,57 +1,47 @@
 package cubyz.world.save;
 
-import java.util.Arrays;
-import java.util.HashMap;
+import java.util.Map;
 
-import cubyz.world.blocks.Blocks;
+import cubyz.api.Resource;
+import cubyz.utils.datastructures.SimpleList;
+import pixelguys.json.JsonElement;
 import pixelguys.json.JsonObject;
 
-public class BlockPalette {
-	private final HashMap<Integer, Integer> TToInt = new HashMap<Integer, Integer>();
-	private int[] intToT = new int[0];
-	private final WorldIO wio;
-	public BlockPalette(JsonObject json, WorldIO wio) {
-		this.wio = wio;
-		if (json == null) return;
-		for (String key : json.map.keySet()) {
-			int t = Blocks.getByID(key) & Blocks.TYPE_MASK;
-			TToInt.put(t, json.getInt(key, 0));
+public final class BlockPalette {
+	private final SimpleList<Resource> palette;
+	public BlockPalette(JsonObject json) {
+		if(json.map.size() == 0) {
+			json.put("cubyz:air", 0);
 		}
-		intToT = new int[TToInt.size()];
-		for(Integer t : TToInt.keySet()) {
-			intToT[TToInt.get(t)] = t;
+		Resource[] palette = new Resource[json.map.size()];
+		for (Map.Entry<String, JsonElement> entry : json.map.entrySet()) {
+			palette[entry.getValue().asInt(-1)] = new Resource(entry.getKey());
 		}
+		for(int i = 0; i < palette.length; i++) {
+			assert palette[i] != null : "Missing key in palette: " + i;
+		}
+		assert palette[0].equals(new Resource("cubyz:air")) : "First element should always be air (for internal reasons)!";
+		this.palette = new SimpleList<>(palette);
+		this.palette.size = palette.length;
 	}
 	public JsonObject save() {
 		JsonObject json = new JsonObject();
-		for(int index = 0; index < intToT.length; index++) {
-			json.put(Blocks.id(intToT[index]).toString(), index);
+		for(int index = 0; index < palette.size; index++) {
+			json.put(palette.array[index].toString(), index);
 		}
 		return json;
 	}
 
-	public int getElement(int block) {
-		return (block & ~Blocks.TYPE_MASK) | intToT[block & Blocks.TYPE_MASK];
+	public Resource getResource(int index) {
+		return palette.array[index];
 	}
-	public int getIndex(int block) {
-		int data = block & ~Blocks.TYPE_MASK;
-		int index = block & Blocks.TYPE_MASK;
-		if (TToInt.containsKey(index)) {
-			return TToInt.get(index) | data;
-		} else {
-			synchronized(this) { // Might be accessed from multiple threads at the same time.
-				if (TToInt.containsKey(index)) { // Check again in case it was just added.
-					return TToInt.get(index) | data;
-				} else {
-					// Create a value:
-					int newIndex = intToT.length;
-					intToT = Arrays.copyOf(intToT, newIndex + 1);
-					intToT[newIndex] = index;
-					TToInt.put(index, newIndex);
-					wio.saveWorldData();
-					return newIndex | data;
-				}
-			}
-		}
+
+	public int addResource(Resource resource) {
+		palette.add(resource);
+		return palette.size - 1;
+	}
+
+	public int size() {
+		return palette.size;
 	}
 }

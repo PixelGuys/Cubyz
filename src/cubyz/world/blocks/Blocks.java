@@ -28,7 +28,7 @@ public class Blocks implements DataOrientedRegistry {
 	public static final int MAX_BLOCK_COUNT = 65536;
 	public static final int TYPE_MASK = 0xffff;
 
-	private static int size = 1; // Start at 1 to account for air.
+	private static int size = 0;
 
 
 	private static boolean[] lightingTransparent = new boolean[MAX_BLOCK_COUNT];
@@ -101,10 +101,6 @@ public class Blocks implements DataOrientedRegistry {
 		return degradable[block & TYPE_MASK];
 	}
 	public static boolean viewThrough(int block) {
-		if (mode[block & TYPE_MASK] == null) {
-			Logger.debug(block);
-			System.exit(1);
-		}
 		return viewThrough[block & TYPE_MASK] || mode[block & TYPE_MASK].checkTransparency(block, 0);
 	}
 	public static BlockClass blockClass(int block) {
@@ -176,29 +172,10 @@ public class Blocks implements DataOrientedRegistry {
 		return new Resource("cubyz:blocks");
 	}
 
-	public Blocks() {
-		id[0] = new Resource("cubyz:air");
-		breakingPower[0] = 0;
-		hardness[0] = 0;
-		blockClass[0] = BlockClass.AIR;
-		light[0] = 0;
-		absorption[0] = 0;
-		lightingTransparent[0] = true;
-		degradable[0] = true;
-		selectable[0] = false;
-		solid[0] = false;
-		gui[0] = null;
-		mode[0] = new NoRotation();
-		transparent[0] = true;
-		viewThrough[0] = true;
-		blockDrops[0] = new BlockDrop[0];
-	}
-
 	@Override
-	public int register(String assetPath, Resource id, JsonObject json) {
+	public void register(String assetPath, Resource id, JsonObject json) {
 		if (reverseIndices.containsKey(id.toString())) {
-			Logger.error("Attempted to register block with id "+id+" twice!");
-			return reverseIndices.get(id.toString());
+			Logger.error("Registered block with id "+id+" twice!");
 		}
 		reverseIndices.put(id.toString(), size);
 		Blocks.id[size] = id;
@@ -216,13 +193,13 @@ public class Blocks implements DataOrientedRegistry {
 		transparent[size] = json.getBool("transparent", false);
 		viewThrough[size] = json.getBool("viewThrough", false) || transparent[size];
 		blockDrops[size] = new BlockDrop[0];
-		return size++;
+		size++;
 	}
 
 	@Override
-	public void reset(int len) {
+	public void reset() {
 		// null all references to allow garbage collect.
-		for(int i = len; i < size; i++) {
+		for(int i = 0; i < size; i++) {
 			reverseIndices.remove(id[i].toString());
 			id[i] = null;
 			blockDrops[i] = null;
@@ -230,7 +207,7 @@ public class Blocks implements DataOrientedRegistry {
 			mode[i] = null;
 			blockEntity[i] = null;
 		}
-		size = len;
+		size = 0;
 	}
 	
 }

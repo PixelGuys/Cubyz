@@ -107,11 +107,9 @@ public class LoadThread extends Thread {
 		
 		// Between pre-init and init code
 		l.setStep(3, 0, ModLoader.mods.size());
-		
-		for (int i = 0; i < ModLoader.mods.size(); i++) {
-			Mod mod = ModLoader.mods.get(i);
-			ModLoader.registerEntries(mod, "block");
-		}
+
+		AddonsMod.instance.readBlocks();
+		AddonsMod.instance.readBiomes();
 		for (int i = 0; i < ModLoader.mods.size(); i++) {
 			Mod mod = ModLoader.mods.get(i);
 			ModLoader.registerEntries(mod, "item");
@@ -119,10 +117,6 @@ public class LoadThread extends Thread {
 		for (int i = 0; i < ModLoader.mods.size(); i++) {
 			Mod mod = ModLoader.mods.get(i);
 			ModLoader.registerEntries(mod, "entity");
-		}
-		for (int i = 0; i < ModLoader.mods.size(); i++) {
-			Mod mod = ModLoader.mods.get(i);
-			ModLoader.registerEntries(mod, "biome");
 		}
 		
 		for (int i = 0; i < ModLoader.mods.size(); i++) {
@@ -187,8 +181,6 @@ public class LoadThread extends Thread {
 			mod.postInit();
 		}
 		l.finishLoading();
-
-		CubyzRegistries.blocksBeforeWorld = Blocks.size();
 		
 		for (Runnable r : runnables) {
 			r.run();

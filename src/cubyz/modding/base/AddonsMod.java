@@ -7,19 +7,15 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 
+import cubyz.api.*;
 import cubyz.utils.Logger;
-import cubyz.api.CubyzRegistries;
-import cubyz.api.DataOrientedRegistry;
-import cubyz.api.LoadOrder;
-import cubyz.api.Mod;
-import cubyz.api.NoIDRegistry;
-import cubyz.api.Order;
-import cubyz.api.Proxy;
-import cubyz.api.Registry;
-import cubyz.api.Resource;
+import cubyz.utils.Utils;
 import cubyz.utils.datastructures.IntSimpleList;
+import cubyz.utils.datastructures.SimpleList;
 import cubyz.utils.math.CubyzMath;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.Blocks;
@@ -29,6 +25,7 @@ import cubyz.world.items.Consumable;
 import cubyz.world.items.Item;
 import cubyz.world.items.ItemBlock;
 import cubyz.world.items.Recipe;
+import cubyz.world.save.BlockPalette;
 import cubyz.world.terrain.biomes.Biome;
 import cubyz.world.terrain.biomes.BiomeRegistry;
 import pixelguys.json.JsonObject;
@@ -44,6 +41,10 @@ public class AddonsMod implements Mod {
 	
 	@Proxy(clientProxy = "cubyz.modding.base.AddonsClientProxy", serverProxy = "cubyz.modding.base.AddonsCommonProxy")
 	private static AddonsCommonProxy proxy;
+
+	private static final HashMap<Resource, JsonObject> commonBlocks = new HashMap<>();
+	private static final HashMap<Resource, JsonObject> commonBiomes = new HashMap<>();
+	private static final ArrayList<String[]> commonRecipes = new ArrayList<>();
 	
 	public static ArrayList<File> addons = new ArrayList<>();
 	private static ArrayList<Item> items = new ArrayList<>();
@@ -53,7 +54,7 @@ public class AddonsMod implements Mod {
 	private static ArrayList<String> missingDropsItem = new ArrayList<>();
 	private static ArrayList<Float> missingDropsAmount = new ArrayList<>();
 
-	private static ArrayList<Ore> ores = new ArrayList<Ore>();
+	private static ArrayList<Ore> ores = new ArrayList<>();
 	private static ArrayList<String[]> oreContainers = new ArrayList<String[]>();
 
 	private static String assetPath;
@@ -74,12 +75,12 @@ public class AddonsMod implements Mod {
 	
 	@Override
 	public void init() {
-		init(CubyzRegistries.ITEM_REGISTRY, CubyzRegistries.BLOCK_REGISTRIES, CubyzRegistries.RECIPE_REGISTRY);
+		init(CubyzRegistries.ITEM_REGISTRY);
 	}
-	public void init(Registry<Item> itemRegistry, Registry<DataOrientedRegistry> blockRegistries, NoIDRegistry<Recipe> recipeRegistry) {
+	public void init(Registry<Item> itemRegistry) {
 		proxy.init(this);
 		registerMissingStuff(itemRegistry);
-		registerRecipes(recipeRegistry);
+		readRecipes(commonRecipes);
 	}
 
 	public void preInit(String assetPath) {
@@ -161,67 +162,97 @@ public class AddonsMod implements Mod {
 	public void registerItems(Registry<Item> registry) {
 		registerItems(registry, "assets/");
 	}
-	
-	public void registerBlocks(Registry<DataOrientedRegistry> registries, NoIDRegistry<Ore> oreRegistry) {
+
+	public void readBlocks() {
 		readAllJsonObjects("blocks", (json, id) -> {
-			int block = 0;
-			for(DataOrientedRegistry reg : registries.registered(new DataOrientedRegistry[0])) {
-				block = reg.register(assetPath, id, json);
-			}
-
-			// Ores:
-			JsonObject oreProperties = json.getObject("ore");
-			if (oreProperties != null) {
-				// Extract the ids:
-				String[] oreIDs = oreProperties.getArrayNoNull("sources").getStrings();
-				float veins = oreProperties.getFloat("veins", 0);
-				float size = oreProperties.getFloat("size", 0);
-				int height = oreProperties.getInt("height", 0);
-				float density = oreProperties.getFloat("density", 0.5f);
-				Ore ore = new Ore(block, new int[oreIDs.length], height, veins, size, density);
-				ores.add(ore);
-				oreRegistry.register(ore);
-				oreContainers.add(oreIDs);
-			}
-
-			// Block drops:
-			String[] blockDrops = json.getArrayNoNull("drops").getStrings();
-			ItemBlock self = new ItemBlock(block, json.getObjectOrNew("item"));
-			items.add(self); // Add each block as an item, so it gets displayed in the creative inventory.
-			for (String blockDrop : blockDrops) {
-				blockDrop = blockDrop.trim();
-				String[] data = blockDrop.split("\\s+");
-				float amount = 1;
-				String name = data[0];
-				if (data.length == 2) {
-					amount = Float.parseFloat(data[0]);
-					name = data[1];
-				}
-				if (name.equals("auto")) {
-					Blocks.addBlockDrop(block, new BlockDrop(self, amount));
-				} else if (!name.equals("none")) {
-					missingDropsBlock.add(block);
-					missingDropsAmount.add(amount);
-					missingDropsItem.add(name);
-				}
-			}
-
-			// block entities:
-			if (json.has("blockEntity")) {
-				try {
-					Blocks.setBlockEntity(block, Class.forName(json.getString("blockEntity", "")).asSubclass(BlockEntity.class));
-				} catch (ClassNotFoundException e) {
-					Logger.error(e);
-				}
-			}
+			commonBlocks.put(id, json);
 		});
 	}
-	@Override
-	public void registerBlocks(Registry<DataOrientedRegistry> registries) {
-		registerBlocks(registries, CubyzRegistries.ORE_REGISTRY);
+
+	private void registerBlock(int block, Resource id, JsonObject json, Registry<DataOrientedRegistry>  registries, NoIDRegistry<Ore> oreRegistry) {
+		for(DataOrientedRegistry reg : registries.registered(new DataOrientedRegistry[0])) {
+			reg.register(assetPath, id, json);
+		}
+
+		// Ores:
+		JsonObject oreProperties = json.getObject("ore");
+		if (oreProperties != null) {
+			// Extract the ids:
+			String[] oreIDs = oreProperties.getArrayNoNull("sources").getStrings();
+			float veins = oreProperties.getFloat("veins", 0);
+			float size = oreProperties.getFloat("size", 0);
+			int height = oreProperties.getInt("height", 0);
+			float density = oreProperties.getFloat("density", 0.5f);
+			Ore ore = new Ore(block, new int[oreIDs.length], height, veins, size, density);
+			ores.add(ore);
+			oreRegistry.register(ore);
+			oreContainers.add(oreIDs);
+		}
+
+		// Block drops:
+		String[] blockDrops = json.getArrayNoNull("drops").getStrings();
+		ItemBlock self = new ItemBlock(block, json.getObjectOrNew("item"));
+		items.add(self); // Add each block as an item, so it gets displayed in the creative inventory.
+		for (String blockDrop : blockDrops) {
+			blockDrop = blockDrop.trim();
+			String[] data = blockDrop.split("\\s+");
+			float amount = 1;
+			String name = data[0];
+			if (data.length == 2) {
+				amount = Float.parseFloat(data[0]);
+				name = data[1];
+			}
+			if (name.equals("auto")) {
+				Blocks.addBlockDrop(block, new BlockDrop(self, amount));
+			} else if (!name.equals("none")) {
+				missingDropsBlock.add(block);
+				missingDropsAmount.add(amount);
+				missingDropsItem.add(name);
+			}
+		}
+
+		// block entities:
+		if (json.has("blockEntity")) {
+			try {
+				Blocks.setBlockEntity(block, Class.forName(json.getString("blockEntity", "")).asSubclass(BlockEntity.class));
+			} catch (ClassNotFoundException e) {
+				Logger.error(e);
+			}
+		}
 	}
-	@Override
+	
+	public void registerBlocks(Registry<DataOrientedRegistry> registries, NoIDRegistry<Ore> oreRegistry, BlockPalette palette) {
+		HashMap<Resource, JsonObject> perWorldBlocks = new HashMap<>(commonBlocks);
+		readAllJsonObjects("blocks", (json, id) -> {
+			perWorldBlocks.put(id, json);
+		});
+		int block = 0;
+		for(; block < palette.size(); block++) {
+			Resource id = palette.getResource(block);
+			JsonObject json = perWorldBlocks.remove(id);
+			if(json == null) {
+				Logger.error("Missing block: " + id + ". Replacing it with default block.");
+				json = new JsonObject();
+			}
+			registerBlock(block, id, json, registries, oreRegistry);
+		}
+		for(Map.Entry<Resource, JsonObject> entry : perWorldBlocks.entrySet()) {
+			registerBlock(block, entry.getKey(), entry.getValue(), registries, oreRegistry);
+			block++;
+		}
+	}
+
+	public void readBiomes() {
+		readAllJsonObjects("biomes", (json, id) -> {
+			commonBiomes.put(id, json);
+		});
+	}
+
 	public void registerBiomes(BiomeRegistry reg) {
+		commonBiomes.forEach((id, json) -> {
+			Biome biome = new Biome(id, json);
+			reg.register(biome);
+		});
 		readAllJsonObjects("biomes", (json, id) -> {
 			Biome biome = new Biome(id, json);
 			reg.register(biome);
@@ -249,113 +280,129 @@ public class AddonsMod implements Mod {
 		missingDropsItem.clear();
 		missingDropsAmount.clear();
 	}
-	
-	public void registerRecipes(NoIDRegistry<Recipe> recipeRegistry) {
-		// Recipes use a custom parser, that allows for 2 things:
-		// 1. shortcut declaration with "x = y" syntax
-		// 2. Recipes with 2d shapes or shapeless.
+
+	public void readRecipes(ArrayList<String[]> recipesList) {
+		SimpleList<String> lines = new SimpleList<>(new String[1024]);
 		for (File addon : addons) {
 			File recipes = new File(addon, "recipes");
 			if (recipes.exists()) {
 				for (File file : recipes.listFiles()) {
 					if (file.isDirectory()) continue;
-					HashMap<String, Item> shortCuts = new HashMap<String, Item>();
-					ArrayList<Item> items = new ArrayList<>();
-					ArrayList<Integer> itemsPerRow = new ArrayList<>();
-					boolean shaped = false;
-					boolean startedRecipe = false;
+					lines.clear();
 					try {
 						BufferedReader buf = new BufferedReader(new FileReader(file, StandardCharsets.UTF_8));
 						String line;
-						int lineNumber = 0;
 						while ((line = buf.readLine())!= null) {
-							lineNumber++;
 							line = line.replaceAll("//.*", ""); // Ignore comments with "//".
 							line = line.trim(); // Remove whitespaces before and after the word starts.
 							if (line.isEmpty()) continue;
-							// shortcuts:
-							if (line.contains("=")) {
-								String[] parts = line.split("=");
-								Item item = CubyzRegistries.ITEM_REGISTRY.getByID(parts[1].replaceAll("\\s", ""));
-								if (item == null) {
-									Logger.warning("Skipping unknown item \"" + parts[1].replaceAll("\\s", "") + "\" in line " + lineNumber + " in \"" + file.getPath()+"\".");
-								} else {
-									shortCuts.put(parts[0].replaceAll("\\s", ""), CubyzRegistries.ITEM_REGISTRY.getByID(parts[1].replaceAll("\\s", ""))); // Remove all whitespaces, wherever they might be. Not necessarily the most robust way, but it should work.
-								}
-							} else if (line.startsWith("shaped")) {
-								// Start of a shaped pattern
-								shaped = true;
-								startedRecipe = true;
-								items.clear();
-								itemsPerRow.clear();
-							} else if (line.startsWith("shapeless")) {
-								// Start of a shapeless pattern
-								shaped = false;
-								startedRecipe = true;
-								items.clear();
-								itemsPerRow.clear();
-							} else if (line.startsWith("result") && startedRecipe && !itemsPerRow.isEmpty()) {
-								// Parse the result, which is made up of `amount*shortcut`.
-								startedRecipe = false;
-								String result = line.substring(6).replaceAll("\\s", ""); // Remove "result" and all space-likes.
-								int number = 1;
-								if (result.contains("*")) {
-									String[] parts = result.split("\\*");
-									result = parts[1];
-									number = Integer.parseInt(parts[0]);
-								}
-								Item item;
-								if (shortCuts.containsKey(result)) {
-									item = shortCuts.get(result);
-								} else {
-									item = CubyzRegistries.ITEM_REGISTRY.getByID(result);
-								}
-								if (item == null) {
-									Logger.warning("Skipping recipe with unknown item \"" + result + "\" in line " + lineNumber + " in \"" + file.getPath()+"\".");
-								} else {
-									if (shaped) {
-										int x = CubyzMath.max(itemsPerRow);
-										int y = itemsPerRow.size();
-										Item[] array = new Item[x*y];
-										int index = 0;
-										for(int iy = 0; iy < itemsPerRow.size(); iy++) {
-											for(int ix = 0; ix < itemsPerRow.get(iy); ix++) {
-												array[iy*x + ix] = items.get(index);
-												index++;
-											}
-										}
-										recipeRegistry.register(new Recipe(x, y, array, number, item));
-									} else {
-										recipeRegistry.register(new Recipe(items.toArray(new Item[0]), number, item));
-									}
-								}
-							} else if (startedRecipe) {
-								// Parse the actual recipe:
-								String[] words = line.split("\\s+"); // Split into sections that are divided by any number of whitespace characters.
-								itemsPerRow.add(words.length);
-								for(int i = 0; i < words.length; i++) {
-									Item item;
-									if (words[i].equals("0")) {
-										item = null;
-									} else if (shortCuts.containsKey(words[i])) {
-										item = shortCuts.get(words[i]);
-									} else {
-										item = CubyzRegistries.ITEM_REGISTRY.getByID(words[i]);
-										if (item == null) {
-											startedRecipe = false; // Skip unknown recipes.
-											Logger.warning("Skipping recipe with unknown item \"" + words[i] + "\" in line " + lineNumber + " in \"" + file.getPath()+"\".");
-										}
-									}
-									items.add(item);
-								}
-							}
+							lines.add(line);
 						}
 						buf.close();
 					} catch(IOException e) {
 						Logger.error(e);
 					}
+					recipesList.add(lines.toArray());
 				}
 			}
+		}
+	}
+
+	private void registerRecipe(String[] recipe, NoIDRegistry<Recipe> recipeRegistry, Registry<Item> itemRegistry) {
+		HashMap<String, Item> shortCuts = new HashMap<>();
+		ArrayList<Item> items = new ArrayList<>();
+		ArrayList<Integer> itemsPerRow = new ArrayList<>();
+		boolean shaped = false;
+		boolean startedRecipe = false;
+		for (int i = 0; i < recipe.length; i++) {
+			String line = recipe[i];
+			// shortcuts:
+			if (line.contains("=")) {
+				String[] parts = line.split("=");
+				Item item = itemRegistry.getByID(parts[1].replaceAll("\\s", ""));
+				if (item == null) {
+					Logger.warning("Skipping unknown item \"" + parts[1].replaceAll("\\s", "") + "\" in recipe parsing.");
+				} else {
+					shortCuts.put(parts[0].replaceAll("\\s", ""), CubyzRegistries.ITEM_REGISTRY.getByID(parts[1].replaceAll("\\s", ""))); // Remove all whitespaces, wherever they might be. Not necessarily the most robust way, but it should work.
+				}
+			} else if (line.startsWith("shaped")) {
+				// Start of a shaped pattern
+				shaped = true;
+				startedRecipe = true;
+				items.clear();
+				itemsPerRow.clear();
+			} else if (line.startsWith("shapeless")) {
+				// Start of a shapeless pattern
+				shaped = false;
+				startedRecipe = true;
+				items.clear();
+				itemsPerRow.clear();
+			} else if (line.startsWith("result") && startedRecipe && !itemsPerRow.isEmpty()) {
+				// Parse the result, which is made up of `amount*shortcut`.
+				startedRecipe = false;
+				String result = line.substring(6).replaceAll("\\s", ""); // Remove "result" and all space-likes.
+				int number = 1;
+				if (result.contains("*")) {
+					String[] parts = result.split("\\*");
+					result = parts[1];
+					number = Integer.parseInt(parts[0]);
+				}
+				Item item;
+				if (shortCuts.containsKey(result)) {
+					item = shortCuts.get(result);
+				} else {
+					item = CubyzRegistries.ITEM_REGISTRY.getByID(result);
+				}
+				if (item == null) {
+					Logger.warning("Skipping recipe with unknown item \"" + result + "\" in recipe parsing.");
+				} else {
+					if (shaped) {
+						int x = CubyzMath.max(itemsPerRow);
+						int y = itemsPerRow.size();
+						Item[] array = new Item[x*y];
+						int index = 0;
+						for(int iy = 0; iy < itemsPerRow.size(); iy++) {
+							for(int ix = 0; ix < itemsPerRow.get(iy); ix++) {
+								array[iy*x + ix] = items.get(index);
+								index++;
+							}
+						}
+						recipeRegistry.register(new Recipe(x, y, array, number, item));
+					} else {
+						recipeRegistry.register(new Recipe(items.toArray(new Item[0]), number, item));
+					}
+				}
+			} else if (startedRecipe) {
+				// Parse the actual recipe:
+				String[] words = line.split("\\s+"); // Split into sections that are divided by any number of whitespace characters.
+				itemsPerRow.add(words.length);
+				for(int j = 0; j < words.length; j++) {
+					Item item;
+					if (words[j].equals("0")) {
+						item = null;
+					} else if (shortCuts.containsKey(words[j])) {
+						item = shortCuts.get(words[j]);
+					} else {
+						item = CubyzRegistries.ITEM_REGISTRY.getByID(words[j]);
+						if (item == null) {
+							startedRecipe = false; // Skip unknown recipes.
+							Logger.warning("Skipping recipe with unknown item \"" + words[j] + "\" in recipe parsing.");
+						}
+					}
+					items.add(item);
+				}
+			}
+		}
+	}
+	
+	public void registerRecipes(NoIDRegistry<Recipe> recipeRegistry, Registry<Item> itemRegistry) {
+		for(String[] recipe : commonRecipes) {
+			registerRecipe(recipe, recipeRegistry, itemRegistry);
+		}
+		ArrayList<String[]> worldSpecificRecipes = new ArrayList<>();
+		readRecipes(worldSpecificRecipes);
+		for(String[] recipe : worldSpecificRecipes) {
+			registerRecipe(recipe, recipeRegistry, itemRegistry);
 		}
 	}
 }

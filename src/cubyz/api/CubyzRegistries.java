@@ -28,7 +28,6 @@ public final class CubyzRegistries {
 	public static final Registry<DataOrientedRegistry>   BLOCK_REGISTRIES           = new Registry<DataOrientedRegistry>();
 	public static final NoIDRegistry<Ore>                ORE_REGISTRY               = new NoIDRegistry<Ore>();
 	public static final Registry<Item>                   ITEM_REGISTRY              = new Registry<Item>();
-	public static final NoIDRegistry<Recipe>             RECIPE_REGISTRY            = new NoIDRegistry<Recipe>();
 	public static final Registry<EntityType>             ENTITY_REGISTRY            = new Registry<EntityType>();
 	public static final Registry<CommandBase>            COMMAND_REGISTRY           = new Registry<CommandBase>();
 	public static final Registry<Modifier>               TOOL_MODIFIER_REGISTRY     = new Registry<Modifier>();
@@ -40,17 +39,11 @@ public final class CubyzRegistries {
 	public static final NoIDRegistry<PlaceBlockHandler>  PLACE_HANDLER_REGISTRY     = new NoIDRegistry<PlaceBlockHandler>();
 	
 	// world generation
-	public static final BiomeRegistry                    BIOME_REGISTRY             = new BiomeRegistry();
 	public static final Registry<StructureModel>         STRUCTURE_REGISTRY         = new Registry<>();
 	public static final Registry<ClimateMapGenerator>    CLIMATE_GENERATOR_REGISTRY = new Registry<>();
 	public static final Registry<MapGenerator>           MAP_GENERATOR_REGISTRY     = new Registry<>();
 	public static final Registry<CaveGenerator>          CAVE_GENERATORS            = new Registry<>();
 	public static final Registry<CaveBiomeGenerator>     CAVE_BIOME_GENERATORS      = new Registry<>();
 	public static final Registry<Generator>              GENERATORS                 = new Registry<>();
-
-	/**
-	 * How many blocks were loaded before the world specific blocks.
-	 */
-	public static int blocksBeforeWorld = 0;
 	
 }

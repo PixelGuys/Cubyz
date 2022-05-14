@@ -45,6 +45,7 @@ public class HandshakeProtocol extends Protocol {
 
 					JsonObject jsonObject = new JsonObject();
 					jsonObject.put("player", Server.world.player.save());
+					jsonObject.put("blockPalette", Server.world.blockPalette.save());
 					byte[] string = jsonObject.toString().getBytes(StandardCharsets.UTF_8);
 					byte[] outData = new byte[string.length + 1];
 					outData[0] = STEP_SERVER_DATA;

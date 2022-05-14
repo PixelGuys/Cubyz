@@ -28,10 +28,11 @@ public final class Server extends Pacer{
 			world.cleanup();
 		}
 
+		Server.world = new ServerWorld(args[0], null, VisibleChunk.class);
+		Server.world.chunkManager.startThreads();
+
 		userManager = new UserManager();
 		userManager.start();
-
-		Server.world = new ServerWorld(args[0], null, VisibleChunk.class);
 
 		try {
 			while (Cubyz.world == null) {

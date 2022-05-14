@@ -23,14 +23,14 @@ import pixelguys.json.JsonString;
 
 public class BlockMeshes implements DataOrientedRegistry {
 
-	private static int size = 1;
+	private static int size = 0;
 	private static final Mesh[] meshes = new Mesh[Blocks.MAX_BLOCK_COUNT];
 	private static final String[] models = new String[Blocks.MAX_BLOCK_COUNT];
 	private static final int[][] textureIndices = new int[Blocks.MAX_BLOCK_COUNT][6];
 	/** Stores the number of textures after each block was added. Used to clean additional textures when the world is switched.*/
 	private static final int[] maxTextureCount = new int[Blocks.MAX_BLOCK_COUNT];
 	/** Number of loaded meshes. Used to determine if an update is needed */
-	private static int loadedMeshes = 1;
+	private static int loadedMeshes = 0;
 
 	private static final ArrayList<BufferedImage> blockTextures = new ArrayList<>();
 	private static final ArrayList<BufferedImage> emissionTextures = new ArrayList<>();
@@ -80,13 +80,17 @@ public class BlockMeshes implements DataOrientedRegistry {
 						return result;
 					}
 				}
+				File file = new File(path);
+				if(!file.exists()) {
+					file = new File("assets/" + texture.getMod() + "/blocks/textures/" + texture.getID() + ".png");
+				}
 				// Otherwise read it into the list:
 				result = blockTextures.size();
 				try {
-					blockTextures.add(ImageIO.read(new File(path)));
-					File file = new File(path+"_emission.png");
-					if(file.exists())
-						emissionTextures.add(ImageIO.read(file));
+					blockTextures.add(ImageIO.read(file));
+					File emission = new File(path+"_emission.png");
+					if(emission.exists())
+						emissionTextures.add(ImageIO.read(emission));
 					else
 						emissionTextures.add(new BufferedImage(16, 16, BufferedImage.TYPE_INT_RGB));
 					textureIDs.add(path);
@@ -94,7 +98,7 @@ public class BlockMeshes implements DataOrientedRegistry {
 					animationTimes.add(1);
 				} catch(IOException e) {
 					result = -1;
-					Logger.warning("Could not read image "+texture+" from Block "+Blocks.id(size));
+					Logger.warning("Could not read image "+texture+" from Block "+Blocks.id(size)+" "+path);
 					Logger.warning(e);
 				}
 			}
@@ -114,10 +118,15 @@ public class BlockMeshes implements DataOrientedRegistry {
 				Resource texture = new Resource(textures[i]);
 				try {
 					String path = assetFolder + texture.getMod() + "/blocks/textures/" + texture.getID() + ".png";
-					blockTextures.add(ImageIO.read(new File(path)));
-					File file = new File(path+"_emission.png");
-					if(file.exists())
-						emissionTextures.add(ImageIO.read(file));
+					File file = new File(path);
+					if(!file.exists()) {
+						path = "assets/" + texture.getMod() + "/blocks/textures/" + texture.getID() + ".png";
+						file = new File(path);
+					}
+					blockTextures.add(ImageIO.read(file));
+					File emission = new File(path+"_emission.png");
+					if(emission.exists())
+						emissionTextures.add(ImageIO.read(emission));
 					else
 						emissionTextures.add(new BufferedImage(16, 16, BufferedImage.TYPE_INT_RGB));
 					if (i == 0) {
@@ -157,7 +166,7 @@ public class BlockMeshes implements DataOrientedRegistry {
 	}
 
 	@Override
-	public int register(String assetFolder, Resource id, JsonObject json) {
+	public void register(String assetFolder, Resource id, JsonObject json) {
 		models[size] = json.getString("model", "cubyz:block.obj");
 
 		// The actual model is loaded later, in the rendering thread.
@@ -167,18 +176,18 @@ public class BlockMeshes implements DataOrientedRegistry {
 		
 		maxTextureCount[size] = textureIDs.size();
 
-		return size++;
+		size++;
 	}
 
 	@Override
-	public void reset(int len) {
-		for(int i = len; i < size; i++) {
+	public void reset() {
+		for(int i = 0; i < size; i++) {
 			meshes[i] = null;
 			models[i] = null;
 		}
-		size = len;
-		loadedMeshes = len;
-		for(int i = textureIDs.size() - 1; i >= maxTextureCount[size-1]; i--) {
+		size = 0;
+		loadedMeshes = 0;
+		for(int i = textureIDs.size() - 1; i >= 0; i--) {
 			textureIDs.remove(i);
 			blockTextures.remove(i);
 		}
@@ -203,6 +212,8 @@ public class BlockMeshes implements DataOrientedRegistry {
 			if (meshes[loadedMeshes] == null) {
 				meshes[loadedMeshes] = Meshes.cachedDefaultModels.get(models[loadedMeshes]);
 				if (meshes[loadedMeshes] == null) {
+					if(models[loadedMeshes].isEmpty())
+						continue;
 					Resource rs = new Resource(models[loadedMeshes]);
 					meshes[loadedMeshes] = new Mesh(ModelLoader.loadModel(rs, "assets/" + rs.getMod() + "/models/3d/" + rs.getID()));
 					Meshes.cachedDefaultModels.put(models[loadedMeshes], meshes[loadedMeshes]);
