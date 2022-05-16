@@ -6,9 +6,11 @@ import cubyz.client.entity.ClientPlayer;
 import cubyz.clientSide.ServerConnection;
 import cubyz.modding.ModLoader;
 import cubyz.multiplayer.Protocols;
+import cubyz.rendering.RenderOctTree;
 import cubyz.server.Server;
 import cubyz.utils.Logger;
 import cubyz.world.blocks.BlockEntity;
+import cubyz.world.blocks.Blocks;
 import cubyz.world.entity.ChunkEntityManager;
 import cubyz.world.entity.Entity;
 import cubyz.world.items.ItemStack;
@@ -18,6 +20,8 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 import pixelguys.json.JsonObject;
+
+import java.util.Arrays;
 
 //TODO:
 public class ClientWorld extends World {
@@ -174,7 +178,10 @@ public class ClientWorld extends World {
 
 	@Override
 	public NormalChunk getChunk(int wx, int wy, int wz) {
-		ChunkData chunk = Cubyz.chunkTree.findNode(new ChunkData(wx, wy, wz, 1)).mesh.getChunk();
+		RenderOctTree.OctTreeNode node = Cubyz.chunkTree.findNode(new ChunkData(wx, wy, wz, 1));
+		if(node == null)
+			return null;
+		ChunkData chunk = node.mesh.getChunk();
 		if(chunk instanceof NormalChunk)
 			return (NormalChunk)chunk;
 		return null;
@@ -212,16 +219,39 @@ public class ClientWorld extends World {
 
 	@Override
 	public int getLight(int x, int y, int z, Vector3f sunLight, boolean easyLighting) {
-		throw new IllegalArgumentException("a");
+		NormalChunk ch = getChunk(x, y, z);
+		if (ch == null || !ch.isLoaded() || !easyLighting)
+			return 0xffffffff;
+		return ch.getLight(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask);
 	}
-
 	@Override
 	public void getLight(NormalChunk ch, int x, int y, int z, int[] array) {
-		throw new IllegalArgumentException("a");
+		int block = getBlock(x, y, z);
+		if (block == 0) return;
+		int selfLight = Blocks.light(block);
+		x--;
+		y--;
+		z--;
+		for(int ix = 0; ix < 3; ix++) {
+			for(int iy = 0; iy < 3; iy++) {
+				for(int iz = 0; iz < 3; iz++) {
+					array[ix + iy*3 + iz*9] = getLight(ch, x+ix, y+iy, z+iz, selfLight);
+				}
+			}
+		}
 	}
-
 	@Override
 	protected int getLight(NormalChunk ch, int x, int y, int z, int minLight) {
-		throw new IllegalArgumentException("a");
+		if (x - ch.wx != (x & Chunk.chunkMask) || y - ch.wy != (y & Chunk.chunkMask) || z - ch.wz != (z & Chunk.chunkMask))
+			ch = getChunk(x, y, z);
+		if (ch == null || !ch.isLoaded())
+			return 0xff000000;
+		int light = ch.getLight(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask);
+		// Make sure all light channels are at least as big as the minimum:
+		if ((light & 0xff000000) >>> 24 < (minLight & 0xff000000) >>> 24) light = (light & 0x00ffffff) | (minLight & 0xff000000);
+		if ((light & 0x00ff0000) < (minLight & 0x00ff0000)) light = (light & 0xff00ffff) | (minLight & 0x00ff0000);
+		if ((light & 0x0000ff00) < (minLight & 0x0000ff00)) light = (light & 0xffff00ff) | (minLight & 0x0000ff00);
+		if ((light & 0x000000ff) < (minLight & 0x000000ff)) light = (light & 0xffffff00) | (minLight & 0x000000ff);
+		return light;
 	}
 }

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 import cubyz.Constants;
+import cubyz.world.*;
 import org.joml.FrustumIntersection;
 
 import cubyz.client.ChunkMesh;
@@ -12,10 +13,6 @@ import cubyz.client.Meshes;
 import cubyz.client.NormalChunkMesh;
 import cubyz.client.ReducedChunkMesh;
 import cubyz.utils.datastructures.HashMapKey3D;
-import cubyz.world.Chunk;
-import cubyz.world.ChunkData;
-import cubyz.world.NormalChunk;
-import cubyz.world.ReducedChunkVisibilityData;
 
 public class RenderOctTree {
 	private int lastX, lastY, lastZ, lastRD;
@@ -252,7 +249,7 @@ public class RenderOctTree {
 		return node;
 	}
 
-	public void updateChunkMesh(NormalChunk mesh) {
+	public void updateChunkMesh(VisibleChunk mesh) {
 		OctTreeNode node = findNode(mesh);
 		if (node != null) {
 			((NormalChunkMesh)node.mesh).updateChunk(mesh);

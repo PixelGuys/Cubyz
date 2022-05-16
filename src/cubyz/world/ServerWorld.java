@@ -4,9 +4,10 @@ import cubyz.Settings;
 import cubyz.api.CubyzRegistries;
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.client.ClientSettings;
-import cubyz.client.Cubyz;
 import cubyz.modding.ModLoader;
+import cubyz.multiplayer.Protocols;
 import cubyz.server.Server;
+import cubyz.server.User;
 import cubyz.utils.Logger;
 import cubyz.utils.datastructures.HashMapKey3D;
 import cubyz.world.blocks.BlockEntity;
@@ -295,7 +296,9 @@ public class ServerWorld extends World{
 		for(NormalChunk ch : chunks) {
 			if (ch.updated && ch.generated) {
 				ch.updated = false;
-				Cubyz.chunkTree.updateChunkMesh(ch); // TODO: Do this over the network.
+				for(User user : Server.userManager.users) {
+					Protocols.CHUNK_TRANSMISSION.sendChunk(user, ch);
+				}
 			}
 		}
 	}
@@ -392,7 +395,6 @@ public class ServerWorld extends World{
 		return ck.blockEntities().get(bi);*/
 		return null; // TODO: Work on BlockEntities!
 	}
-	@Override
 	public NormalChunk[] getChunks() {
 		return chunks;
 	}
@@ -437,6 +439,7 @@ public class ServerWorld extends World{
 		), 0).getRoughBiome(wx, wy, wz, null, true);
 	}
 	@Override
+	@Deprecated
 	public int getLight(int x, int y, int z, Vector3f sunLight, boolean easyLighting) {
 		NormalChunk ch = getChunk(x, y, z);
 		if (ch == null || !ch.isLoaded() || !easyLighting)
@@ -444,6 +447,7 @@ public class ServerWorld extends World{
 		return ch.getLight(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask);
 	}
 	@Override
+	@Deprecated
 	public void getLight(NormalChunk ch, int x, int y, int z, int[] array) {
 		int block = getBlock(x, y, z);
 		if (block == 0) return;
@@ -460,6 +464,7 @@ public class ServerWorld extends World{
 		}
 	}
 	@Override
+	@Deprecated
 	protected int getLight(NormalChunk ch, int x, int y, int z, int minLight) {
 		if (x - ch.wx != (x & Chunk.chunkMask) || y - ch.wy != (y & Chunk.chunkMask) || z - ch.wz != (z & Chunk.chunkMask))
 			ch = getChunk(x, y, z);

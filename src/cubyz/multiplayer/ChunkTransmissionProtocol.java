@@ -1,7 +1,7 @@
 package cubyz.multiplayer;
 
 import cubyz.client.Cubyz;
-import cubyz.server.Server;
+import cubyz.rendering.VisibleChunk;
 import cubyz.utils.Logger;
 import cubyz.utils.math.Bits;
 import cubyz.world.ChunkData;
@@ -28,8 +28,9 @@ public class ChunkTransmissionProtocol extends Protocol {
 			byte[] chunkData = ChunkIO.decompressChunk(data, offset, length);
 			if(chunkData == null)
 				return;
-			NormalChunk ch = new NormalChunk(Cubyz.world, wx, wy, wz);
+			VisibleChunk ch = new VisibleChunk(Cubyz.world, wx, wy, wz);
 			ch.loadFromByteArray(chunkData, chunkData.length);
+			ch.load();
 			Cubyz.chunkTree.updateChunkMesh(ch);
 		} else {
 			int size = length/8;

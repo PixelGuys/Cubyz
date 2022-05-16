@@ -1,5 +1,6 @@
 package cubyz.client;
 
+import cubyz.rendering.VisibleChunk;
 import org.joml.RayAabIntersection;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
@@ -37,12 +38,11 @@ public class MeshSelectionDetector {
 	 * Select the block or entity the player is looking at.
 	 * @param chunks
 	 * @param position player position
-	 * @param dir camera direction
+	 * @param direction camera direction
 	 * @param localPlayer
-	 * @param worldSize
 	 * @param world
 	 */
-	public void selectSpatial(NormalChunk[] chunks, Vector3d position, Vector3f direction, Player localPlayer, World world) {
+	public void selectSpatial(VisibleChunk[] chunks, Vector3d position, Vector3f direction, Player localPlayer, World world) {
 		pos.set(position);
 		pos.y += Player.cameraHeight;
 		dir.set(direction);
@@ -51,7 +51,7 @@ public class MeshSelectionDetector {
 		double closestDistance = 6f; // selection now limited
 		Object newSpatial = null;
 		intersection.set(0, 0, 0, dir.x, dir.y, dir.z);
-		for (NormalChunk ch : chunks) {
+		for (VisibleChunk ch : chunks) {
 			min.set(ch.getMin());
 			max.set(ch.getMax());
 			// Sadly RayAabIntersection doesn't work with double, so we have to convert to relative distances before testing:

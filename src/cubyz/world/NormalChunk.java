@@ -18,14 +18,10 @@ import cubyz.world.terrain.MapFragment;
  */
 
 public class NormalChunk extends Chunk {
-
-	/**Stores all visible blocks. Can be faster accessed using coordinates.*/
-	protected final BlockInstance[] inst;
 	/**Stores the local index of the block.*/
 	private final ArrayList<Integer> liquids = new ArrayList<>();
 	/**Liquids that should be updated at next frame. Stores the local index of the block.*/
 	private final ArrayList<Integer> updatingLiquids = new ArrayList<>();
-	private final SimpleList<BlockInstance> visibles = new SimpleList<>(new BlockInstance[64]);
 	protected boolean startedloading = false;
 	protected boolean loaded = false;
 	private final ArrayList<BlockEntity> blockEntities = new ArrayList<>();
@@ -34,15 +30,12 @@ public class NormalChunk extends Chunk {
 	
 	public NormalChunk(World world, int wx, int wy, int wz) {
 		super(world, wx, wy, wz, 1);
-		inst = new BlockInstance[blocks.length];
 	}
-	
+
 	/**
 	 * Clears the data structures which are used for visible blocks.
 	 */
 	public void clear() {
-		visibles.clear();
-		Utilities.fillArray(inst, null);
 	}
 	
 	/**
@@ -62,13 +55,13 @@ public class NormalChunk extends Chunk {
 		blocks[index] = b;
 	}
 
+	protected void updateVisibleBlock(int index, int b) {}
+
 	public void updateBlock(int x, int y, int z, int b) {
 		int index = getIndex(x, y, z);
 		if (blocks[index] != b) {
 			blocks[index] = b;
-			// Update the instance:
-			if (inst[index] != null)
-				inst[index].setBlock(b);
+			updateVisibleBlock(index, b);
 			setChanged();
 		}
 		if (Blocks.blockClass(b) == BlockClass.FLUID) {
@@ -128,17 +121,6 @@ public class NormalChunk extends Chunk {
 		}
 		if (generated) {
 			int[] neighbors = getNeighbors(x, y , z);
-			BlockInstance[] visibleNeighbors = getVisibleNeighbors(x, y, z);
-			for(int k = 0; k < Neighbors.NEIGHBORS; k++) {
-				if (visibleNeighbors[k] != null) visibleNeighbors[k].updateNeighbor(k ^ 1, blocksBlockNot(b, neighbors[k], k));
-			}
-			
-			for (int i = 0; i < Neighbors.NEIGHBORS; i++) {
-				if (blocksBlockNot(neighbors[i], b, i)) {
-					revealBlock(x & chunkMask, y & chunkMask, z & chunkMask);
-					break;
-				}
-			}
 			for (int i = 0; i < Neighbors.NEIGHBORS; i++) {
 				if (neighbors[i] != 0) {
 					int nx = x + Neighbors.REL_X[i] + wx;
@@ -159,19 +141,6 @@ public class NormalChunk extends Chunk {
 					nx &= chunkMask;
 					ny &= chunkMask;
 					nz &= chunkMask;
-					if (ch.containsInstance(nx, ny, nz)) {
-						int[] neighbors1 = ch.getNeighbors(nx, ny, nz);
-						boolean vis = true;
-						for (int j = 0; j < Neighbors.NEIGHBORS; j++) {
-							if (blocksBlockNot(neighbors1[j], neighbors[i], j)) {
-								vis = false;
-								break;
-							}
-						}
-						if (vis) {
-							ch.hideBlock(nx, ny, nz);
-						}
-					}
 					if (Blocks.blockClass(neighbors[i]) == BlockClass.FLUID) {
 						int index = getIndex(nx, ny, nz);
 						if (!updatingLiquids.contains(index))
@@ -199,11 +168,6 @@ public class NormalChunk extends Chunk {
 	}
 	
 	public void hideBlock(int x, int y, int z) {
-		// Search for the BlockInstance in visibles:
-		BlockInstance res = inst[getIndex(x, y, z)];
-		if (res == null) return;
-		visibles.remove(res);
-		inst[getIndex(x, y, z)] = null;
 		/*if (world != null) {
 			for (BlockVisibilityChangeHandler handler : world.visibHandlers) {
 				if (res != null) handler.onBlockHide(res.getBlock(), res.getX(), res.getY(), res.getZ());
@@ -219,15 +183,6 @@ public class NormalChunk extends Chunk {
 	 * @param z
 	 */
 	public synchronized void revealBlock(int x, int y, int z) {
-		int index = getIndex(x, y, z);
-		int b = blocks[index];
-		BlockInstance bi = new BlockInstance(b, new Vector3i(x + wx, y + wy, z + wz), this, world);
-		int[] neighbors = getNeighbors(x, y , z);
-		for(int k = 0; k < 6; k++) {
-			bi.updateNeighbor(k, blocksBlockNot(neighbors[k], b, k));
-		}
-		visibles.add(bi);
-		inst[index] = bi;
 		/*if (world != null) {
 			for (BlockVisibilityChangeHandler handler : world.visibHandlers) {
 				if (bi != null) handler.onBlockAppear(bi.getBlock(), bi.getX(), bi.getY(), bi.getZ());
@@ -263,10 +218,6 @@ public class NormalChunk extends Chunk {
 			}
 		}
 		blocks[getIndex(x, y, z)] = 0;
-		BlockInstance[] visibleNeighbors = getVisibleNeighbors(x, y, z);
-		for(int k = 0; k < Neighbors.NEIGHBORS; k++) {
-			if (visibleNeighbors[k] != null) visibleNeighbors[k].updateNeighbor(k ^ 1, true);
-		}
 		if (startedloading)
 			lightUpdate(x, y, z);
 		int[] neighbors = getNeighbors(x, y, z);
@@ -291,9 +242,6 @@ public class NormalChunk extends Chunk {
 				nx &= chunkMask;
 				ny &= chunkMask;
 				nz &= chunkMask;
-				if (!ch.containsInstance(nx, ny, nz)) {
-					ch.revealBlock(nx, ny, nz);
-				}
 				if (Blocks.blockClass(neighbor) == BlockClass.FLUID) {
 					int index = getIndex(nx, ny, nz);
 					if (!updatingLiquids.contains(index))
@@ -309,17 +257,6 @@ public class NormalChunk extends Chunk {
 		updateNeighborChunks(x, y, z);
 	}
 
-	/**
-	 * Doesn't make any bound checks!
-	 * @param x
-	 * @param y
-	 * @param z
-	 * @return
-	 */
-	private boolean containsInstance(int x, int y, int z) {
-		return inst[getIndex(x, y, z)] != null;
-	}
-	
 	/**
 	 * This function is here because it is mostly used by addBlock, where the neighbors to the added block usually are in the same chunk.
 	 * @param x
@@ -380,21 +317,6 @@ public class NormalChunk extends Chunk {
 	}
 	
 	/**
-	 * Returns the corresponding BlockInstance for all visible neighbors of this block.
-	 * @param x
-	 * @param y
-	 * @param z
-	 * @return
-	 */
-	public BlockInstance[] getVisibleNeighbors(int x, int y, int z) {
-		BlockInstance[] inst = new BlockInstance[Neighbors.NEIGHBORS];
-		for(int i = 0; i < Neighbors.NEIGHBORS; i++) {
-			inst[i] = getVisiblePossiblyOutside(x+Neighbors.REL_X[i], y+Neighbors.REL_Y[i], z+Neighbors.REL_Z[i]);
-		}
-		return inst;
-	}
-	
-	/**
 	 * Uses relative coordinates and doesn't do any bound checks!
 	 * @param x
 	 * @param y
@@ -408,10 +330,6 @@ public class NormalChunk extends Chunk {
 	
 	public int getBlockAtIndex(int index) {
 		return blocks[index];
-	}
-	
-	public BlockInstance getBlockInstanceAt(int index) {
-		return inst[index];
 	}
 
 	
@@ -433,23 +351,6 @@ public class NormalChunk extends Chunk {
 	}
 
 	/**
-	 * Uses relative coordinates. Correctly works for blocks outside this chunk.
-	 * @param x
-	 * @param y
-	 * @param z
-	 * @return BlockInstance at the coordinates x+wx, y+wy, z+wz
-	 */
-	private BlockInstance getVisiblePossiblyOutside(int x, int y, int z) {
-		if (!generated) return null;
-		if (x < 0 || x >= chunkSize || y < 0 || y >= chunkSize || z < 0 || z >= chunkSize) {
-			NormalChunk chunk = world.getChunk(wx + x, wy + y, wz + z);
-			if (chunk != null) return chunk.getVisiblePossiblyOutside(x & chunkMask, y & chunkMask, z & chunkMask);
-			return null;
-		}
-		return inst[getIndex(x, y, z)];
-	}
-	
-	/**
 	 * Checks if a given world coordinate is inside this chunk.
 	 * @param x
 	 * @param y
@@ -466,10 +367,6 @@ public class NormalChunk extends Chunk {
 	
 	public ArrayList<Integer> getUpdatingLiquids() {
 		return updatingLiquids;
-	}
-	
-	public SimpleList<BlockInstance> getVisibles() {
-		return visibles;
 	}
 	
 	public ArrayList<BlockEntity> getBlockEntities() {

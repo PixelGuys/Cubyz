@@ -1,5 +1,6 @@
 package cubyz.world.blocks;
 
+import cubyz.world.ClientWorld;
 import org.joml.Vector3i;
 
 import cubyz.world.Neighbors;

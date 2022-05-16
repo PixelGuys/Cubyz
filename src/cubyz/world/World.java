@@ -112,9 +112,6 @@ public abstract class World {
 	public String getName() {
 		return name;
 	}
-	public NormalChunk[] getChunks() {
-		return chunks;
-	}
 
 	public Entity[] getEntities() {
 		return entities.toArray(new Entity[0]);

@@ -1,14 +1,17 @@
 package cubyz.rendering;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import cubyz.client.ClientSettings;
 import cubyz.utils.Logger;
 import cubyz.utils.Utilities;
+import cubyz.utils.datastructures.SimpleList;
 import cubyz.world.*;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.terrain.MapFragment;
+import org.joml.Vector3i;
 
 /**
  * The client version of a chunk that handles all the features that are related to rendering and therefore not needed on servers.
@@ -16,19 +19,23 @@ import cubyz.world.terrain.MapFragment;
  */
 
 public class VisibleChunk extends NormalChunk {
+	/**Stores all visible blocks. Can be faster accessed using coordinates.*/
+	private final BlockInstance[] inst;
+	private final SimpleList<BlockInstance> visibles = new SimpleList<>(new BlockInstance[64]);
 	/**Stores sun r g b channels of each light channel in one integer. This makes it easier to store and to access.*/
-	private int[] light;
+	private final int[] light;
 	
 	public VisibleChunk(World world, Integer wx, Integer wy, Integer wz) {
 		super(world, wx, wy, wz);
-		if (ClientSettings.easyLighting) {
-			light = new int[blocks.length];
-		}
+		inst = new BlockInstance[blocks.length];
+		light = new int[blocks.length];
 	}
 
 	@Override
 	public void clear() {
 		super.clear();
+		visibles.clear();
+		Utilities.fillArray(inst, null);
 		Utilities.fillArray(light, 0);
 	}
 	
@@ -91,19 +98,19 @@ public class VisibleChunk extends NormalChunk {
 				}
 			}
 		}
-		MapFragment map;
+		/*MapFragment map;
 		if(world instanceof ServerWorld) {
 			map = ((ServerWorld)world).chunkManager.getOrGenerateMapFragment(wx, wz, 1);
 		} else {
 			Logger.error("Not implemented: ");
 			Logger.error(new Exception());
 			map = null;
-		}
+		}*/
 		if (ClientSettings.easyLighting) {
 			// Update the sun channel:
 			for(int x = 0; x < chunkSize; x++) {
 				for(int z = 0; z < chunkSize; z++) {
-					int startHeight = 8 + (int)map.getHeight(x+wx, z+wz);
+					int startHeight = 0;// TODO: 8 + (int)map.getHeight(x+wx, z+wz);
 					startHeight -= wy;
 					if (startHeight < chunkSize) {
 						propagateSunLight(getIndex(x, chunkMask, z));
@@ -155,6 +162,163 @@ public class VisibleChunk extends NormalChunk {
 			}
 		}
 		loaded = true;
+	}
+
+	@Override
+	protected void updateVisibleBlock(int index, int b) {
+		super.updateVisibleBlock(index, b);
+		if (inst[index] != null)
+			inst[index].setBlock(b);
+	}
+
+	@Override
+	public void hideBlock(int x, int y, int z) {
+		// Search for the BlockInstance in visibles:
+		BlockInstance res = inst[getIndex(x, y, z)];
+		if (res == null) return;
+		visibles.remove(res);
+		inst[getIndex(x, y, z)] = null;
+		super.hideBlock(x, y, z);
+	}
+
+	@Override
+	public void revealBlock(int x, int y, int z) {
+		if(containsInstance(x, y, z)) return;
+		int index = getIndex(x, y, z);
+		int b = blocks[index];
+		BlockInstance bi = new BlockInstance(b, new Vector3i(x + wx, y + wy, z + wz), this, world);
+		int[] neighbors = getNeighbors(x, y , z);
+		for(int k = 0; k < 6; k++) {
+			bi.updateNeighbor(k, blocksBlockNot(neighbors[k], b, k));
+		}
+		visibles.add(bi);
+		inst[index] = bi;
+		super.revealBlock(x, y, z);
+	}
+
+	@Override
+	public void removeBlockAt(int x, int y, int z, boolean registerBlockChange) {
+		super.removeBlockAt(x, y, z, registerBlockChange);
+		BlockInstance[] visibleNeighbors = getVisibleNeighbors(x, y, z);
+		for(int k = 0; k < Neighbors.NEIGHBORS; k++) {
+			if (visibleNeighbors[k] != null) visibleNeighbors[k].updateNeighbor(k ^ 1, true);
+		}
+		if (startedloading)
+			lightUpdate(x, y, z);
+		int[] neighbors = getNeighbors(x, y, z);
+		for (int i = 0; i < neighbors.length; i++) {
+			int neighbor = neighbors[i];
+			if (neighbor != 0) {
+				int nx = x + Neighbors.REL_X[i] + wx;
+				int ny = y + Neighbors.REL_Y[i] + wy;
+				int nz = z + Neighbors.REL_Z[i] + wz;
+				VisibleChunk ch = (VisibleChunk)getChunk(nx, ny, nz);
+				if(ch == null) continue;
+				nx &= chunkMask;
+				ny &= chunkMask;
+				nz &= chunkMask;
+				if (!ch.containsInstance(nx, ny, nz)) {
+					ch.revealBlock(nx, ny, nz);
+				}
+			}
+		}
+	}
+
+	@Override
+	public void addBlock(int b, int x, int y, int z, boolean considerPrevious) {
+		super.addBlock(b, x, y, z, considerPrevious);
+		if (generated) {
+			int[] neighbors = getNeighbors(x, y , z);
+			BlockInstance[] visibleNeighbors = getVisibleNeighbors(x, y, z);
+			for(int k = 0; k < Neighbors.NEIGHBORS; k++) {
+				if (visibleNeighbors[k] != null) visibleNeighbors[k].updateNeighbor(k ^ 1, blocksBlockNot(b, neighbors[k], k));
+			}
+
+			for (int i = 0; i < Neighbors.NEIGHBORS; i++) {
+				if (blocksBlockNot(neighbors[i], b, i)) {
+					revealBlock(x & chunkMask, y & chunkMask, z & chunkMask);
+					break;
+				}
+			}
+			for (int i = 0; i < Neighbors.NEIGHBORS; i++) {
+				if (neighbors[i] != 0) {
+					int nx = x + Neighbors.REL_X[i] + wx;
+					int ny = y + Neighbors.REL_Y[i] + wy;
+					int nz = z + Neighbors.REL_Z[i] + wz;
+					VisibleChunk ch = (VisibleChunk)getChunk(nx, ny, nz);
+					if(ch == null) continue;
+					nx &= chunkMask;
+					ny &= chunkMask;
+					nz &= chunkMask;
+					if (ch.containsInstance(nx, ny, nz)) {
+						int[] neighbors1 = ch.getNeighbors(nx, ny, nz);
+						boolean vis = true;
+						for (int j = 0; j < Neighbors.NEIGHBORS; j++) {
+							if (blocksBlockNot(neighbors1[j], neighbors[i], j)) {
+								vis = false;
+								break;
+							}
+						}
+						if (vis) {
+							ch.hideBlock(nx, ny, nz);
+						}
+					}
+				}
+			}
+		}
+		if (startedloading)
+			lightUpdate(x, y, z);
+	}
+
+	public BlockInstance getBlockInstanceAt(int index) {
+		return inst[index];
+	}
+
+	/**
+	 * Returns the corresponding BlockInstance for all visible neighbors of this block.
+	 * @param x
+	 * @param y
+	 * @param z
+	 * @return
+	 */
+	public BlockInstance[] getVisibleNeighbors(int x, int y, int z) {
+		BlockInstance[] inst = new BlockInstance[Neighbors.NEIGHBORS];
+		for(int i = 0; i < Neighbors.NEIGHBORS; i++) {
+			inst[i] = getVisiblePossiblyOutside(x+Neighbors.REL_X[i], y+Neighbors.REL_Y[i], z+Neighbors.REL_Z[i]);
+		}
+		return inst;
+	}
+
+	/**
+	 * Uses relative coordinates. Correctly works for blocks outside this chunk.
+	 * @param x
+	 * @param y
+	 * @param z
+	 * @return BlockInstance at the coordinates x+wx, y+wy, z+wz
+	 */
+	private BlockInstance getVisiblePossiblyOutside(int x, int y, int z) {
+		if (!generated) return null;
+		if (x < 0 || x >= chunkSize || y < 0 || y >= chunkSize || z < 0 || z >= chunkSize) {
+			VisibleChunk chunk = (VisibleChunk)world.getChunk(wx + x, wy + y, wz + z);
+			if (chunk != null) return chunk.getVisiblePossiblyOutside(x & chunkMask, y & chunkMask, z & chunkMask);
+			return null;
+		}
+		return inst[getIndex(x, y, z)];
+	}
+
+	public SimpleList<BlockInstance> getVisibles() {
+		return visibles;
+	}
+
+	/**
+	 * Doesn't make any bound checks!
+	 * @param x
+	 * @param y
+	 * @param z
+	 * @return
+	 */
+	private boolean containsInstance(int x, int y, int z) {
+		return inst[getIndex(x, y, z)] != null;
 	}
 	
 	/**

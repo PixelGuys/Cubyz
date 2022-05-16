@@ -189,6 +189,7 @@ public abstract class Chunk extends SavableChunk {
 		for(int i = 0; i < blocks.length; i++) {
 			blocks[i] = Bits.getInt(data, i*4);
 		}
+		generated = true;
 		return true;
 	}
 
