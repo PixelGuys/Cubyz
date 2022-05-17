@@ -7,6 +7,7 @@ import java.util.*;
 import javax.swing.JOptionPane;
 
 import cubyz.api.ClientRegistries;
+import cubyz.multiplayer.Protocols;
 import org.lwjgl.Version;
 import org.lwjgl.opengl.GL12;
 
@@ -197,6 +198,7 @@ public class GameLogic {
 			float lightAngle = (float)Math.PI/2 + (float)Math.PI*(((float)Cubyz.world.getGameTime() % World.DAY_CYCLE)/(World.DAY_CYCLE/2));
 			skySun.setPositionRaw((float)Math.cos(lightAngle)*500, (float)Math.sin(lightAngle)*500, 0);
 			skySun.setRotation(0, 0, -lightAngle);
+			Protocols.PLAYER_POSITION.send(Cubyz.world.serverConnection, Cubyz.player.getPosition()); // TODO: Optimization: Don't send this every frame.
 		}
 	}
 

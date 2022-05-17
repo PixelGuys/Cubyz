@@ -25,7 +25,7 @@ import java.util.Arrays;
 
 //TODO:
 public class ClientWorld extends World {
-	private ServerConnection serverConnection;
+	public final ServerConnection serverConnection;
 	private ClientPlayer player;
 	float ambientLight = 0f;
 	Vector4f clearColor = new Vector4f(0, 0, 0, 1.0f);

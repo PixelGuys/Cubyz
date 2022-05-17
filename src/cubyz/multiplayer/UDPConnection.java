@@ -11,7 +11,7 @@ import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class UDPConnection extends Thread {
-	private static final int MAX_PACKAGE_SIZE = 65536;
+	private static final int MAX_PACKET_SIZE = 65507; // max udp packet size
 	private static final int IMPORTANT_HEADER_SIZE = 6;
 	private static final int MAX_IMPORTANT_PACKAGE_SIZE = 1500 - 20 - 8 - IMPORTANT_HEADER_SIZE; // Ethernet MTU minus IP header minus udp header minus header size
 
@@ -84,7 +84,7 @@ public class UDPConnection extends Thread {
 				length -= packageData.length - IMPORTANT_HEADER_SIZE;
 			}
 		} else {
-			assert(length + 1 < MAX_PACKAGE_SIZE) : "Package is too big. Please split it into smaller packages.";
+			assert(length + 1 < MAX_PACKET_SIZE) : "Package is too big. Please split it into smaller packages.";
 			byte[] fullData = new byte[length + 1];
 			fullData[0] = source.id;
 			System.arraycopy(data, offset, fullData, 1, length);
@@ -124,8 +124,8 @@ public class UDPConnection extends Thread {
 			for(var packets : receivedPackets) {
 				dataLength += packets.size;
 			}
-			if(dataLength + 9 >= 65536/4) {
-				dataLength = (65536 - 9)/4;
+			if(dataLength + 9 >= MAX_PACKET_SIZE/4) {
+				dataLength = (MAX_PACKET_SIZE - 9)/4;
 			}
 			data = new byte[dataLength*4 + 8];
 			Bits.putInt(data, 0, lastKeepAliveSent++);
@@ -159,33 +159,33 @@ public class UDPConnection extends Thread {
 	private void collectMultiPackets() {
 		byte[] data;
 		byte protocol;
-		synchronized(lastReceivedPackets) {
-			int id = lastIncompletePackage;
-			int len = 0;
-			if(lastReceivedPackets[id & 65535] == null)
-				return;
-			while(id != lastIncompletePackage + 65536) {
+		while(true) {
+			synchronized(lastReceivedPackets) {
+				int id = lastIncompletePackage;
+				int len = 0;
 				if(lastReceivedPackets[id & 65535] == null)
 					return;
-				len += lastReceivedPackets[id & 65535].packet.length - IMPORTANT_HEADER_SIZE;
-				if(lastReceivedPackets[id & 65535].isEnd)
-					break;
+				while(id != lastIncompletePackage + 65536) {
+					if(lastReceivedPackets[id & 65535] == null)
+						return;
+					len += lastReceivedPackets[id & 65535].packet.length - IMPORTANT_HEADER_SIZE;
+					if(lastReceivedPackets[id & 65535].isEnd)
+						break;
+					id++;
+				}
 				id++;
+				data = new byte[len];
+				int offset = 0;
+				protocol = lastReceivedPackets[lastIncompletePackage & 65535].packet[0];
+				for(; lastIncompletePackage != id; lastIncompletePackage++) {
+					byte[] packet = lastReceivedPackets[lastIncompletePackage & 65535].packet;
+					System.arraycopy(packet, IMPORTANT_HEADER_SIZE, data, offset, packet.length - IMPORTANT_HEADER_SIZE);
+					offset += packet.length - IMPORTANT_HEADER_SIZE;
+					lastReceivedPackets[lastIncompletePackage & 65535] = null;
+				}
 			}
-			id++;
-			data = new byte[len];
-			int offset = 0;
-			protocol = lastReceivedPackets[lastIncompletePackage & 65535].packet[0];
-			for(; lastIncompletePackage != id; lastIncompletePackage++) {
-				byte[] packet = lastReceivedPackets[lastIncompletePackage & 65535].packet;
-				System.arraycopy(packet, IMPORTANT_HEADER_SIZE, data, offset, packet.length - IMPORTANT_HEADER_SIZE);
-				offset += packet.length - IMPORTANT_HEADER_SIZE;
-				lastReceivedPackets[lastIncompletePackage & 65535] = null;
-			}
+			Protocols.list[protocol].receive(this, data, 0, data.length);
 		}
-		//Logger.warning(protocol);
-		Protocols.list[protocol].receive(this, data, 0, data.length);
-		collectMultiPackets();
 	}
 
 	@Override
