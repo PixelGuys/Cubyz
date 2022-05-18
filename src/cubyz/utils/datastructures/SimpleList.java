@@ -52,8 +52,8 @@ public class SimpleList<T> {
 	
 	public void remove(int index) {
 		System.arraycopy(array, index+1, array, index, size-index-1);
+		array[size-1] = null;
 		size--;
-		array[size] = null;
 	}
 	
 	public void remove(T t) {

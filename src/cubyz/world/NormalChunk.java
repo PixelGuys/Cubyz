@@ -2,16 +2,11 @@ package cubyz.world;
 
 import java.util.ArrayList;
 
-import cubyz.utils.Logger;
-import cubyz.utils.datastructures.SimpleList;
 import org.joml.Vector3i;
 
-import cubyz.utils.Utilities;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.BlockEntity;
-import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.Blocks.BlockClass;
-import cubyz.world.terrain.MapFragment;
 
 /**
  * 32³ chunk of the world.
@@ -28,7 +23,7 @@ public class NormalChunk extends Chunk {
 
 	public boolean updated;
 	
-	public NormalChunk(World world, int wx, int wy, int wz) {
+	public NormalChunk(World world, Integer wx, Integer wy, Integer wz) {
 		super(world, wx, wy, wz, 1);
 	}
 
@@ -382,7 +377,9 @@ public class NormalChunk extends Chunk {
 	}
 	
 	public void setUpdated() {
-		updated = true;
+		synchronized(this) {
+			updated = true;
+		}
 	}
 	
 	@Override

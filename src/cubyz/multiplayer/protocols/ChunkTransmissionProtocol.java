@@ -4,7 +4,9 @@ import cubyz.client.Cubyz;
 import cubyz.multiplayer.Protocol;
 import cubyz.multiplayer.UDPConnection;
 import cubyz.rendering.VisibleChunk;
+import cubyz.server.Server;
 import cubyz.utils.Logger;
+import cubyz.utils.ThreadPool;
 import cubyz.utils.math.Bits;
 import cubyz.world.ChunkData;
 import cubyz.world.NormalChunk;
@@ -32,8 +34,7 @@ public class ChunkTransmissionProtocol extends Protocol {
 				return;
 			VisibleChunk ch = new VisibleChunk(Cubyz.world, wx, wy, wz);
 			ch.loadFromByteArray(chunkData, chunkData.length);
-			ch.load();
-			Cubyz.chunkTree.updateChunkMesh(ch);
+			ThreadPool.addTask(new ChunkLoadTask(ch));
 		} else {
 			int size = length/8;
 			byte[] x = Arrays.copyOfRange(data, offset, offset + size);
@@ -78,5 +79,21 @@ public class ChunkTransmissionProtocol extends Protocol {
 		Bits.putInt(data, 8, ch.wz);
 		Bits.putInt(data, 12, ch.voxelSize);
 		conn.send(this, data);
+	}
+
+	private static class ChunkLoadTask extends ThreadPool.Task {
+		private final VisibleChunk ch;
+		public ChunkLoadTask(VisibleChunk ch) {
+			this.ch = ch;
+		}
+		@Override
+		public float getPriority() {
+			return ch.getPriority(Cubyz.player);
+		}
+
+		@Override
+		public void run() {
+			ch.load();
+		}
 	}
 }

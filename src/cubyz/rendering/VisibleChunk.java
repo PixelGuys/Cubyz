@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import cubyz.client.ClientSettings;
+import cubyz.client.Cubyz;
 import cubyz.utils.Logger;
 import cubyz.utils.Utilities;
 import cubyz.utils.datastructures.SimpleList;
@@ -51,24 +52,28 @@ public class VisibleChunk extends NormalChunk {
 		
 		startedloading = true;
 		VisibleChunk [] chunks = new VisibleChunk[6];
-		VisibleChunk ch = (VisibleChunk)world.getChunk(wx - Chunk.chunkSize, wy, wz);
-		chunks[Neighbors.DIR_NEG_X] = ch;
-		boolean chx0 = ch != null && ch.startedloading;
-		ch = (VisibleChunk)world.getChunk(wx + Chunk.chunkSize, wy, wz);
-		chunks[Neighbors.DIR_POS_X] = ch;
-		boolean chx1 = ch != null && ch.startedloading;
-		ch = (VisibleChunk)world.getChunk(wx, wy, wz - Chunk.chunkSize);
-		chunks[Neighbors.DIR_NEG_Z] = ch;
-		boolean chz0 = ch != null && ch.startedloading;
-		ch = (VisibleChunk)world.getChunk(wx, wy, wz + Chunk.chunkSize);
-		chunks[Neighbors.DIR_POS_Z] = ch;
-		boolean chz1 = ch != null && ch.startedloading;
-		ch = (VisibleChunk)world.getChunk(wx, wy - Chunk.chunkSize, wz);
-		chunks[Neighbors.DIR_DOWN] = ch;
-		boolean chy0 = ch != null && ch.startedloading;
-		ch = (VisibleChunk)world.getChunk(wx, wy + Chunk.chunkSize, wz);
-		chunks[Neighbors.DIR_UP] = ch;
-		boolean chy1 = ch != null && ch.startedloading;
+		boolean chx0, chx1, chy0, chy1, chz0, chz1;
+		synchronized(Cubyz.chunkTree) {
+			VisibleChunk ch = (VisibleChunk)world.getChunk(wx - Chunk.chunkSize, wy, wz);
+			chunks[Neighbors.DIR_NEG_X] = ch;
+			chx0 = ch != null && ch.startedloading;
+			ch = (VisibleChunk)world.getChunk(wx + Chunk.chunkSize, wy, wz);
+			chunks[Neighbors.DIR_POS_X] = ch;
+			chx1 = ch != null && ch.startedloading;
+			ch = (VisibleChunk)world.getChunk(wx, wy, wz - Chunk.chunkSize);
+			chunks[Neighbors.DIR_NEG_Z] = ch;
+			chz0 = ch != null && ch.startedloading;
+			ch = (VisibleChunk)world.getChunk(wx, wy, wz + Chunk.chunkSize);
+			chunks[Neighbors.DIR_POS_Z] = ch;
+			chz1 = ch != null && ch.startedloading;
+			ch = (VisibleChunk)world.getChunk(wx, wy - Chunk.chunkSize, wz);
+			chunks[Neighbors.DIR_DOWN] = ch;
+			chy0 = ch != null && ch.startedloading;
+			ch = (VisibleChunk)world.getChunk(wx, wy + Chunk.chunkSize, wz);
+			chunks[Neighbors.DIR_UP] = ch;
+			chy1 = ch != null && ch.startedloading;
+			Cubyz.chunkTree.updateChunkMesh(this);
+		}
 		// Use lighting calculations that are done anyways if easyLighting is enabled to determine the maximum height inside this chunk.
 		ArrayList<Integer> lightSources = new ArrayList<>();
 		// Go through all blocks(which is more efficient than creating a block-list at generation time because about half of the blocks are non-air).
@@ -135,7 +140,7 @@ public class VisibleChunk extends NormalChunk {
 				int [] invdz = {i, i, 0, chunkMask, j, j};
 				for(int k = 0; k < chunks.length; k++) {
 					if (toCheck[k]) {
-						ch = chunks[chunkIndices[k]];
+						VisibleChunk ch = chunks[chunkIndices[k]];
 						// Load light from loaded chunks:
 						int indexThis = getIndex(invdx[k], invdy[k], invdz[k]);
 						int indexOther = getIndex(dx[k], dy[k], dz[k]);
@@ -162,6 +167,7 @@ public class VisibleChunk extends NormalChunk {
 			}
 		}
 		loaded = true;
+		Cubyz.chunkTree.updateChunkMesh(this);
 	}
 
 	@Override

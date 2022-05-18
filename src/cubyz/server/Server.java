@@ -1,15 +1,12 @@
 package cubyz.server;
 
-import cubyz.client.ItemTextures;
-import cubyz.gui.MenuGUI;
-import cubyz.gui.audio.MusicManager;
-import cubyz.gui.game.GameOverlay;
-import cubyz.rendering.VisibleChunk;
 import cubyz.utils.Logger;
 import cubyz.client.ClientSettings;
 import cubyz.client.Cubyz;
 import cubyz.client.entity.ClientEntityManager;
 import cubyz.utils.Pacer;
+import cubyz.utils.ThreadPool;
+import cubyz.world.NormalChunk;
 import cubyz.world.ServerWorld;
 
 public final class Server extends Pacer{
@@ -28,8 +25,8 @@ public final class Server extends Pacer{
 			world.cleanup();
 		}
 
-		Server.world = new ServerWorld(args[0], null, VisibleChunk.class);
-		Server.world.chunkManager.startThreads();
+		Server.world = new ServerWorld(args[0], null, NormalChunk.class);
+		ThreadPool.startThreads();
 
 		userManager = new UserManager();
 		userManager.start();

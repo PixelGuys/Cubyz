@@ -68,7 +68,7 @@ public class ServerWorld extends World{
 		// Call mods for this new world. Mods sometimes need to do extra stuff for the specific world.
 		ModLoader.postWorldGen(registries);
 
-		chunkManager = new ChunkManager(this, generatorSettings, Math.max(1, Runtime.getRuntime().availableProcessors() - 2));
+		chunkManager = new ChunkManager(this, generatorSettings);
 		generate();
 	}
 
@@ -305,12 +305,6 @@ public class ServerWorld extends World{
 	@Override
 	public void queueChunk(ChunkData ch) {
 		chunkManager.queueChunk(ch);
-	}
-	public void unQueueChunk(ChunkData ch) {
-		chunkManager.unQueueChunk(ch);
-	}
-	public int getChunkQueueSize() {
-		return chunkManager.getChunkQueueSize();
 	}
 	@Override
 	public void seek(int x, int y, int z, int renderDistance) {

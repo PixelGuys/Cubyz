@@ -9,13 +9,15 @@ import cubyz.world.ChunkData;
  * A chunk mesh contains all rendering data of a single chunk.
  */
 
-public abstract class ChunkMesh extends ChunkData {
+public abstract class ChunkMesh extends ChunkData implements Comparable<ChunkMesh> {
 
 	public final int size;
 
 	protected final ReducedChunkMesh replacement;
 
 	protected boolean generated = false;
+
+	protected float priority;
 
 	public ChunkMesh(ReducedChunkMesh replacement, int wx, int wy, int wz, int size) {
 		super(wx, wy, wz, size/Chunk.chunkSize);
@@ -25,6 +27,11 @@ public abstract class ChunkMesh extends ChunkData {
 
 	public void updatePriority(float priority) {
 		this.priority = priority;
+	}
+
+	@Override
+	public int compareTo(ChunkMesh other) {
+		return (int) Math.signum(priority - other.priority);
 	}
 
 	/**

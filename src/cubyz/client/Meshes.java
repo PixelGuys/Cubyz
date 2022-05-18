@@ -41,7 +41,7 @@ public final class Meshes {
 	public static final ArrayList<Object> removableMeshes = new ArrayList<>();
 
 	/** List of meshes that need to be (re-)generated. */
-	private static final BinaryMaxHeap<ChunkData> updateQueue = new BinaryMaxHeap<ChunkData>(new ChunkMesh[16]);
+	private static final BinaryMaxHeap<ChunkMesh> updateQueue = new BinaryMaxHeap<>(new ChunkMesh[16]);
 	
 	/**
 	 * Cleans all meshes scheduled for removal.

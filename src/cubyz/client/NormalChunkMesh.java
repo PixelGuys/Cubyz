@@ -227,9 +227,17 @@ public class NormalChunkMesh extends ChunkMesh {
 	public void updateChunk(VisibleChunk chunk) {
 		synchronized(this) {
 			this.chunk = chunk;
-			if (chunk == null)
+			if(chunk == null) {
 				generated = false;
-			if (!needsUpdate) {
+			} else {
+				synchronized(chunk) {
+					chunk.updated = false;
+				}
+				if(!chunk.isLoaded()) {
+					return;
+				}
+			}
+			if(!needsUpdate) {
 				needsUpdate = true;
 				Meshes.queueMesh(this);
 			}
@@ -243,6 +251,9 @@ public class NormalChunkMesh extends ChunkMesh {
 
 	@Override
 	public void render(Vector3d playerPosition) {
+		if(chunk != null && chunk.updated) {
+			this.updateChunk(chunk);
+		}
 		if (chunk == null || !generated) {
 			if(replacement == null) return;
 			ReducedChunkMesh.bindAsReplacement();

@@ -2,12 +2,10 @@ package cubyz.world;
 
 import java.util.Arrays;
 
-import cubyz.client.Cubyz;
 import cubyz.multiplayer.Protocols;
 import cubyz.server.Server;
 import cubyz.server.User;
-import cubyz.utils.Logger;
-import cubyz.utils.datastructures.BlockingMaxHeap;
+import cubyz.utils.ThreadPool;
 import cubyz.utils.datastructures.Cache;
 import cubyz.utils.math.CubyzMath;
 import cubyz.world.save.ChunkIO;
@@ -20,9 +18,7 @@ import pixelguys.json.JsonObject;
 public class ChunkManager {
 	
 	// synchronized common list for chunk generation
-	private final BlockingMaxHeap<ChunkData> loadList;
 	private final ServerWorld world;
-	private final Thread[] threads;
 
 	public final TerrainGenerationProfile terrainGenerationProfile;
 
@@ -48,43 +44,23 @@ public class ChunkManager {
 	    new Cache<MapFragment>(new MapFragment[MAP_CACHE_MASK[5] + 1][4]),
 	};
 
-	private class ChunkGenerationThread extends Thread {
-		volatile boolean running = true;
-		public void run() {
-			while (running) {
-				ChunkData popped;
-				try {
-					popped = loadList.extractMax();
-				} catch (InterruptedException e) {
-					break;
-				}
-				try {
-					synchronousGenerate(popped);
-				} catch (Throwable e) {
-					Logger.error("Could not generate " + popped.voxelSize + "-chunk " + popped.wx + ", " + popped.wy + ", " + popped.wz + " !");
-					Logger.error(e);
-				}
-				// Update the priority of all elements:
-				// TODO: Make this more efficient. For example by using a better datastructure.
-				ChunkData[] array = loadList.toArray();
-				for(ChunkData element : array) {
-					if (element != null) {
-						element.updatePriority(world.player);
-					}
-				}
-				loadList.updatePriority();
-			}
+	private class ChunkLoadTask extends ThreadPool.Task {
+		private final ChunkData ch;
+		public ChunkLoadTask(ChunkData ch) {
+			this.ch = ch;
 		}
-		
 		@Override
-		public void interrupt() {
-			running = false; // Make sure the Thread stops in all cases.
-			super.interrupt();
+		public float getPriority() {
+			return ch.getPriority(Server.world.player);
+		}
+
+		@Override
+		public void run() {
+			synchronousGenerate(ch);
 		}
 	}
 
-	public ChunkManager(ServerWorld world, JsonObject settings, int numberOfThreads) {
-		loadList = new BlockingMaxHeap<>(new ChunkData[1024], numberOfThreads);
+	public ChunkManager(ServerWorld world, JsonObject settings) {
 		this.world = world;
 
 		terrainGenerationProfile = new TerrainGenerationProfile(settings, world.getCurrentRegistries(), world.getSeed());
@@ -92,21 +68,6 @@ public class ChunkManager {
 		CaveBiomeMap.init(terrainGenerationProfile);
 		CaveMap.init(terrainGenerationProfile);
 		ClimateMap.init(terrainGenerationProfile);
-
-		threads = new Thread[numberOfThreads];
-		for (int i = 0; i < numberOfThreads; i++) {
-			ChunkGenerationThread thread = new ChunkGenerationThread();
-			thread.setName("Local-Chunk-Thread-" + i);
-			thread.setPriority(Thread.MIN_PRIORITY);
-			thread.setDaemon(true);
-			threads[i] = thread;
-		}
-	}
-
-	public void startThreads() {
-		for(Thread thread : threads) {
-			thread.start();
-		}
 	}
 
 	public void queueChunk(ChunkData ch) {
@@ -124,16 +85,7 @@ public class ChunkManager {
 			}
 			return;
 		}
-		ch.updatePriority(world.player);
-		loadList.add(ch);
-	}
-	
-	public void unQueueChunk(ChunkData ch) {
-		loadList.remove(ch);
-	}
-	
-	public int getChunkQueueSize() {
-		return loadList.size();
+		ThreadPool.addTask(new ChunkLoadTask(ch));
 	}
 	
 	public void synchronousGenerate(ChunkData ch) {
@@ -211,7 +163,7 @@ public class ChunkManager {
 		for(Cache<MapFragment> cache : mapCache) {
 			cache.clear();
 		}
-		loadList.clear();
+		ThreadPool.clearAndStopThreads();
 		for(int i = 0; i < 5; i++) { // Saving one chunk may create and update a new lower resolution chunk.
 		
 			for(ReducedChunk[] array : reducedChunkCache.cache) {
@@ -224,14 +176,6 @@ public class ChunkManager {
 		}
 		for(Cache<MapFragment> cache : mapCache) {
 			cache.clear();
-		}
-		try {
-			for (Thread thread : threads) {
-				thread.interrupt();
-				thread.join();
-			}
-		} catch(InterruptedException e) {
-			Logger.error(e);
 		}
 		CaveBiomeMap.cleanup();
 		CaveMap.cleanup();

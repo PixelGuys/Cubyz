@@ -10,6 +10,7 @@ import cubyz.rendering.Graphics;
 import cubyz.rendering.Window;
 import cubyz.rendering.text.Fonts;
 import cubyz.server.Server;
+import cubyz.utils.ThreadPool;
 import cubyz.world.entity.Player;
 import cubyz.world.terrain.biomes.Biome;
 
@@ -58,7 +59,7 @@ public class DebugOverlay extends MenuGUI {
 				Graphics.drawText(0 * GUI_SCALE, 60 * GUI_SCALE, "Render Distance: " + ClientSettings.RENDER_DISTANCE);
 				Graphics.drawText(0 * GUI_SCALE, 70 * GUI_SCALE, "Game Time: " + Cubyz.world.getGameTime());
 				if(Server.world != null) {
-					Graphics.drawText(0*GUI_SCALE, 80*GUI_SCALE, "Chunk Queue Size: " + Server.world.getChunkQueueSize());
+					Graphics.drawText(0*GUI_SCALE, 80*GUI_SCALE, "Queue Size: " + ThreadPool.getQueueSize());
 					Biome biome = Server.world.getBiome((int)Cubyz.player.getPosition().x, (int)Cubyz.player.getPosition().y, (int)Cubyz.player.getPosition().z);
 					Graphics.drawText(0 * GUI_SCALE, 90 * GUI_SCALE, "Biome: " + (biome == null ? "null" : biome.getRegistryID()));
 				}
