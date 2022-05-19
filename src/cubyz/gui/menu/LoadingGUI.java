@@ -69,6 +69,7 @@ public class LoadingGUI extends MenuGUI {
 			}
 		} else {
 			hasStep2 = false;
+			currentStepCompleted = true;
 		}
 	}
 	

@@ -13,7 +13,9 @@ import cubyz.command.GameTimeCycleCommand;
 import cubyz.command.GiveCommand;
 import cubyz.command.TPCommand;
 import cubyz.command.TimeCommand;
+import cubyz.rendering.rotation.*;
 import cubyz.world.blocks.Blocks;
+import cubyz.world.blocks.RotationMode;
 import cubyz.world.entity.EntityType;
 import cubyz.world.entity.Pig;
 import cubyz.world.entity.PlayerEntity;
@@ -69,6 +71,13 @@ public class BaseMod implements Mod {
 	public void preInit() {
 		registerModifiers(CubyzRegistries.TOOL_MODIFIER_REGISTRY);
 
+		CubyzRegistries.ROTATION_MODE_REGISTRY.register(new NoRotation());
+		CubyzRegistries.ROTATION_MODE_REGISTRY.register(new TorchRotation());
+		CubyzRegistries.ROTATION_MODE_REGISTRY.register(new LogRotation());
+		CubyzRegistries.ROTATION_MODE_REGISTRY.register(new StackableRotation());
+		CubyzRegistries.ROTATION_MODE_REGISTRY.register(new FenceRotation());
+		CubyzRegistries.ROTATION_MODE_REGISTRY.register(new MultiTexture());
+
 		CubyzRegistries.STRUCTURE_REGISTRY.register(new SimpleTreeModel());
 		CubyzRegistries.STRUCTURE_REGISTRY.register(new SimpleVegetation());
 		CubyzRegistries.STRUCTURE_REGISTRY.register(new GroundPatch());
@@ -98,7 +107,7 @@ public class BaseMod implements Mod {
 	
 	@Override
 	public void registerEntities(Registry<EntityType> reg) {
-		reg.register(new Pig());
+		// TODO: reg.register(new Pig());
 		reg.register(new PlayerEntity());
 	}
 	

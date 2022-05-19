@@ -25,23 +25,12 @@ public class ClientProxy extends CommonProxy {
 	}
 	
 	public void preInit() {
-		registerRotationModes(CubyzRegistries.ROTATION_MODE_REGISTRY);
 		registerEntityModels(CubyzRegistries.ENTITY_MODEL_REGISTRY);
 		CubeModel.registerCubeModels();
 
 		CubyzRegistries.BLOCK_REGISTRIES.register(new BlockMeshes());
 
-		MultiTexture multiTexture = new MultiTexture();
-		CubyzRegistries.ROTATION_MODE_REGISTRY.register(multiTexture);
-		CubyzRegistries.BLOCK_REGISTRIES.register(multiTexture);
-	}
-
-	private void registerRotationModes(Registry<RotationMode> reg) {
-		reg.register(new NoRotation());
-		reg.register(new TorchRotation());
-		reg.register(new LogRotation());
-		reg.register(new StackableRotation());
-		reg.register(new FenceRotation());
+		CubyzRegistries.BLOCK_REGISTRIES.register((MultiTexture)CubyzRegistries.ROTATION_MODE_REGISTRY.getByID("cubyz:multi_texture"));
 	}
 
 	private void registerEntityModels(Registry<EntityModel> reg) {

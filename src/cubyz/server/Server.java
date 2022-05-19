@@ -1,8 +1,9 @@
 package cubyz.server;
 
+import cubyz.api.Side;
+import cubyz.modding.ModLoader;
 import cubyz.utils.Logger;
 import cubyz.client.ClientSettings;
-import cubyz.client.Cubyz;
 import cubyz.client.entity.ClientEntityManager;
 import cubyz.utils.Pacer;
 import cubyz.utils.ThreadPool;
@@ -20,6 +21,9 @@ public final class Server extends Pacer{
 	public static UserManager userManager = null;
 
 	public static void main(String[] args) {
+		if(ModLoader.mods.isEmpty()) {
+			ModLoader.load(Side.SERVER);
+		}
 		if (world != null) {
 			stop();
 			world.cleanup();
@@ -32,10 +36,6 @@ public final class Server extends Pacer{
 		userManager.start();
 
 		try {
-			while (Cubyz.world == null) {
-				// TODO: Remove this when Server and Client are sufficiently untangled.
-				Thread.sleep(10);
-			}
 			server.setFrequency(UPDATES_PER_SEC);
 			server.start();
 		} catch (Throwable e) {
@@ -73,7 +73,7 @@ public final class Server extends Pacer{
 		// TODO: world.clientConnection.serverPing(world.getGameTime(), world.getBiome((int)Cubyz.player.getPosition().x, (int)Cubyz.player.getPosition().y, (int)Cubyz.player.getPosition().z).getRegistryID().toString());
 		// TODO: Move this to the client, or generalize this for multiplayer.
 
-		world.seek((int) Cubyz.player.getPosition().x, (int) Cubyz.player.getPosition().y, (int) Cubyz.player.getPosition().z, ClientSettings.RENDER_DISTANCE);
+		world.seek((int) world.player.getPosition().x, (int) world.player.getPosition().y, (int) world.player.getPosition().z, ClientSettings.RENDER_DISTANCE);
 		// TODO: Send this through the proper interface and to every player:
 		ClientEntityManager.serverUpdate(world.getEntities());
 	}
