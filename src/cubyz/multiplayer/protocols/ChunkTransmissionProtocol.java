@@ -4,7 +4,6 @@ import cubyz.client.Cubyz;
 import cubyz.multiplayer.Protocol;
 import cubyz.multiplayer.UDPConnection;
 import cubyz.rendering.VisibleChunk;
-import cubyz.server.Server;
 import cubyz.utils.Logger;
 import cubyz.utils.ThreadPool;
 import cubyz.utils.math.Bits;
@@ -82,9 +81,12 @@ public class ChunkTransmissionProtocol extends Protocol {
 	}
 
 	private static class ChunkLoadTask extends ThreadPool.Task {
+		private static float tasksCreated = 0, tasksRan = 0;
 		private final VisibleChunk ch;
 		public ChunkLoadTask(VisibleChunk ch) {
 			this.ch = ch;
+			tasksCreated++;
+			Logger.debug(tasksCreated+" "+tasksRan);
 		}
 		@Override
 		public float getPriority() {
@@ -92,8 +94,15 @@ public class ChunkTransmissionProtocol extends Protocol {
 		}
 
 		@Override
+		public boolean isStillNeeded() {
+			return Cubyz.chunkTree.findNode(ch) != null;
+		}
+
+		@Override
 		public void run() {
 			ch.load();
+			tasksRan++;
+			Logger.debug(tasksCreated+" "+tasksRan);
 		}
 	}
 }

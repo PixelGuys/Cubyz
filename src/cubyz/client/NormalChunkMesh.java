@@ -16,7 +16,6 @@ import cubyz.utils.Utils;
 import cubyz.utils.VertexAttribList;
 import cubyz.utils.datastructures.IntSimpleList;
 import cubyz.world.ChunkData;
-import cubyz.world.NormalChunk;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.Blocks;
 
@@ -318,7 +317,7 @@ public class NormalChunkMesh extends ChunkMesh {
 		SimpleList<BlockInstance> visibles = chunk.getVisibles();
 		for(int i = 0; i < visibles.size; i++) {
 			BlockInstance bi = visibles.array[i];
-			if (!Blocks.transparent(bi.getBlock())) {
+			if (bi != null && !Blocks.transparent(bi.getBlock())) {
 				bi.updateLighting(chunk);
 				Blocks.mode(bi.getBlock()).generateChunkMesh(bi, vertices, faces);
 			}
@@ -330,7 +329,7 @@ public class NormalChunkMesh extends ChunkMesh {
 		SimpleList<BlockInstance> visibles = chunk.getVisibles();
 		for(int i = 0; i < visibles.size; i++) {
 			BlockInstance bi = visibles.array[i];
-			if (Blocks.transparent(bi.getBlock())) {
+			if(bi != null && Blocks.transparent(bi.getBlock())) {
 				bi.updateLighting(chunk);
 				Blocks.mode(bi.getBlock()).generateChunkMesh(bi, vertices, faces);
 			}

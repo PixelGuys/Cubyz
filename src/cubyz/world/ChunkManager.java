@@ -55,6 +55,11 @@ public class ChunkManager {
 		}
 
 		@Override
+		public boolean isStillNeeded() {
+			return true; // TODO: Optimize that using the players render distance.
+		}
+
+		@Override
 		public void run() {
 			synchronousGenerate(ch);
 		}

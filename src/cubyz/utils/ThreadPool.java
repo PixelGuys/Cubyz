@@ -1,10 +1,11 @@
 package cubyz.utils;
 
 import cubyz.utils.datastructures.BlockingMaxHeap;
-import cubyz.world.ChunkData;
-import cubyz.world.ChunkManager;
 
 public final class ThreadPool {
+
+	private static final int REFRESH_TIME = 100; // The time after which all priorities get refreshed in milliseconds.
+
 	private static final Thread[] threads;
 	private static final BlockingMaxHeap<Task> loadList;
 
@@ -23,6 +24,7 @@ public final class ThreadPool {
 	}
 
 	private static void run() {
+		long lastUpdate = System.currentTimeMillis();
 		while (running) {
 			Task popped;
 			try {
@@ -36,15 +38,21 @@ public final class ThreadPool {
 				Logger.error("Could not run task " + popped + " !");
 				Logger.error(e);
 			}
-			// Update the priority of all elements:
-			// TODO: Make this more efficient. For example by using a better datastructure.
-			Task[] array = loadList.toArray();
-			for(Task element : array) {
-				if (element != null) {
-					element.cachedPriority = element.getPriority();
+			if(Thread.currentThread() == threads[0] && System.currentTimeMillis() - lastUpdate > REFRESH_TIME) { // Only update priorities on the first worker thread and after a specific amount of time.
+				lastUpdate = System.currentTimeMillis();
+				// Update the priority of all elements:
+				Task[] array = loadList.toArray();
+				for(Task element : array) {
+					if (element != null) {
+						if(!element.isStillNeeded()) {
+							loadList.remove(element);
+							continue;
+						}
+						element.cachedPriority = element.getPriority();
+					}
 				}
+				loadList.updatePriority();
 			}
-			loadList.updatePriority();
 		}
 	}
 
@@ -68,8 +76,10 @@ public final class ThreadPool {
 	}
 
 	public static void addTask(Task task) {
-		task.cachedPriority = task.getPriority();
-		loadList.add(task);
+		if(task.isStillNeeded()) {
+			task.cachedPriority = task.getPriority();
+			loadList.add(task);
+		}
 	}
 
 	public static int getQueueSize() {
@@ -84,5 +94,6 @@ public final class ThreadPool {
 		}
 
 		public abstract float getPriority();
+		public abstract boolean isStillNeeded();
 	}
 }
