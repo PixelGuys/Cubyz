@@ -377,9 +377,7 @@ public class NormalChunk extends Chunk {
 	}
 	
 	public void setUpdated() {
-		synchronized(this) {
-			updated = true;
-		}
+		updated = true;
 	}
 	
 	@Override
