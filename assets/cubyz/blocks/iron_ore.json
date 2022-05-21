@@ -6,7 +6,7 @@
 		"veins" : 4,
 		"size" : 20,
 		"height" : 20,
-		"density" : 0.5,
+		"density" : 0.25,
 		"sources" : [
 			"cubyz:stone"
 		]

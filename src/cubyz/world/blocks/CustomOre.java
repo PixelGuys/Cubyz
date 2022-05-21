@@ -156,7 +156,7 @@ public class CustomOre {
 		ore.put("veins", 1 + rand.nextFloat() * 7.5);
 		ore.put("size", 1 + rand.nextFloat() * 9);
 		ore.put("height", rand.nextInt(200) - 100);
-		ore.put("density", rand.nextFloat());
+		ore.put("density", rand.nextFloat()*rand.nextFloat());
 		JsonArray oreSources = new JsonArray();
 		oreSources.addStrings("cubyz:stone");
 		ore.put("sources", oreSources);
