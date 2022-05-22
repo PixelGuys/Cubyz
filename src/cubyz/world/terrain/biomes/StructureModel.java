@@ -1,10 +1,9 @@
 package cubyz.world.terrain.biomes;
 
-import java.util.Random;
-
 import cubyz.api.CubyzRegistries;
 import cubyz.api.RegistryElement;
 import cubyz.api.Resource;
+import cubyz.utils.FastRandom;
 import cubyz.world.Chunk;
 import cubyz.world.terrain.CaveMap;
 import pixelguys.json.JsonObject;
@@ -31,7 +30,7 @@ public abstract class StructureModel implements RegistryElement {
 	 * @param map
 	 * @param rand
 	 */
-	public abstract void generate(int x, int z, int y, Chunk chunk, CaveMap map, Random rand);
+	public abstract void generate(int x, int z, int y, Chunk chunk, CaveMap map, FastRandom rand);
 	public abstract StructureModel loadStructureModel(JsonObject json);
 
 	public float getChance() {

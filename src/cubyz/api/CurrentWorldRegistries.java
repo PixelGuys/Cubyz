@@ -4,9 +4,9 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Properties;
-import java.util.Random;
 
 import cubyz.modding.base.AddonsMod;
+import cubyz.utils.FastRandom;
 import cubyz.utils.Logger;
 import cubyz.utils.translate.Language;
 import cubyz.utils.translate.LanguageLoader;
@@ -65,7 +65,7 @@ public class CurrentWorldRegistries {
 		new File(assets, "items/textures").mkdirs();
 		new File(assets, "lang").mkdirs();
 		Properties fallbackLang = new Properties();
-		Random rand = new Random(world.getSeed());
+		FastRandom rand = new FastRandom(world.getSeed());
 		int randomAmount = 9 + rand.nextInt(3); // TODO
 		int i = 0;
 		for(; i < randomAmount; i++) {

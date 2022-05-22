@@ -1,9 +1,8 @@
 package cubyz.world.terrain.worldgenerators;
 
-import java.util.Random;
-
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Resource;
+import cubyz.utils.FastRandom;
 import cubyz.world.terrain.BiomePoint;
 import cubyz.world.terrain.ClimateMap;
 import cubyz.world.terrain.MapFragment;
@@ -34,7 +33,8 @@ public class MapGenV1 implements MapGenerator {
 		int scaledSize = MAP_SIZE/map.voxelSize;
 		// Create the biomes that will be placed on the map:
 		BiomePoint[][] biomePositions = ClimateMap.getBiomeMap(map.wx - BIOME_SIZE, map.wz - BIOME_SIZE, MAP_SIZE + 3*BIOME_SIZE, MAP_SIZE + 3*BIOME_SIZE);
-		Random rand = new Random();
+		FastRandom rand = new FastRandom(seed);
+		rand.setSeed((rand.nextLong() | 1)*map.wx ^ (rand.nextLong() | 1)*map.wz);
 		int scaledBiomeSize = BIOME_SIZE/map.voxelSize;
 		float[][] xOffsetMap = new float[scaledSize][scaledSize];
 		float[][] zOffsetMap = new float[scaledSize][scaledSize];

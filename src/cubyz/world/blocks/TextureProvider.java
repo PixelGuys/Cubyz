@@ -2,10 +2,10 @@ package cubyz.world.blocks;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.util.Random;
 
 import javax.imageio.ImageIO;
 
+import cubyz.utils.FastRandom;
 import cubyz.utils.Logger;
 
 public interface TextureProvider {
@@ -13,7 +13,7 @@ public interface TextureProvider {
 	
 	public static int[] createColorPalette(CustomOre block, int differentColors, int brightnessScale, int randomAdditive) {
 		int [] colors = new int[differentColors];
-		Random rand = new Random(block.seed);
+		FastRandom rand = new FastRandom(block.seed);
 		for(int i = 0; i < differentColors; i++) { //TODO: Make sure the contrast fits everywhere and maybe use hue-shifting.
 			int r = (block.color >>> 16) & 255;
 			int g = (block.color >>> 8) & 255;

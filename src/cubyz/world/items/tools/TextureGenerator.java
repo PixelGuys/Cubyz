@@ -1,10 +1,10 @@
 package cubyz.world.items.tools;
 
+import cubyz.utils.FastRandom;
 import cubyz.world.items.Item;
 
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
-import java.util.Random;
 
 /**
  * Generates the texture of a Tool using the material information.
@@ -265,7 +265,7 @@ public final class TextureGenerator {
 		}
 	}
 
-	private static float[][] generateHeightMap(Item[][] itemGrid, Random rand) {
+	private static float[][] generateHeightMap(Item[][] itemGrid, FastRandom rand) {
 		float[][] heightMap = new float[17][17];
 		for(int x = 0; x < 17; x++) {
 			for(int y = 0; y < 17; y++) {
@@ -313,7 +313,7 @@ public final class TextureGenerator {
 			}
 		}
 
-		Random rand = new Random(tool.seed);
+		FastRandom rand = new FastRandom(tool.seed);
 		
 		// Count all neighbors:
 		int[] neighborCount = new int[25];

@@ -1,11 +1,9 @@
 package cubyz.utils;
 
-import java.util.Random;
-
 /**
- * Basically java.util.Random with an additional 3d seed function, that is generated from the initial seed.
+ * Basically cubyz.utils.FastRandom with an additional 3d seed function, that is generated from the initial seed.
  */
-public class Random3D extends Random {
+public class Random3D extends FastRandom {
 	private final int rand1;
 	private final int rand2;
 	private final int rand3;

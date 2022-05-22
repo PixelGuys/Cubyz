@@ -1,8 +1,7 @@
 package cubyz.world.terrain.noise;
 
+import cubyz.utils.FastRandom;
 import cubyz.world.ChunkData;
-
-import java.util.Random;
 
 /**
  * Like FractalNoise.java, except in 3D and it generates values on demand and caches results, instead of generating everything at once.
@@ -11,7 +10,6 @@ public class Cached3DFractalNoise extends ChunkData {
 
 	private final float[][][] cache;
 	private final int voxelShift;
-	private final Random rand = new Random();
 	private final long seedX, seedY, seedZ;
 	private final int scale;
 
@@ -20,7 +18,7 @@ public class Cached3DFractalNoise extends ChunkData {
 		int maxSize = size/voxelSize;
 		voxelShift = Integer.numberOfTrailingZeros(voxelSize);
 		cache = new float[maxSize + 1][maxSize + 1][maxSize + 1];
-		rand.setSeed(seed);
+		FastRandom rand = new FastRandom(seed);
 		seedX = rand.nextInt();
 		seedY = rand.nextInt();
 		seedZ = rand.nextInt();
@@ -37,9 +35,7 @@ public class Cached3DFractalNoise extends ChunkData {
 	}
 
 	public float getRandomValue(int wx, int wy, int wz) {
-		// TODO: Find a better random function as this one takes a significant amount of time.
-		rand.setSeed(wx*seedX ^ wy*seedY ^ wz*seedZ);
-		return rand.nextFloat() - 0.5f;
+		return FastRandom.nextFloat(wx*seedX ^ wy*seedY ^ wz*seedZ) - 0.5f;
 	}
 
 	private float getGridValue(int relX, int relY, int relZ) {

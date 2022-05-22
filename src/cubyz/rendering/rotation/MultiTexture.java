@@ -1,7 +1,6 @@
 package cubyz.rendering.rotation;
 
-import java.util.Random;
-
+import cubyz.utils.FastRandom;
 import org.joml.RayAabIntersection;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
@@ -33,7 +32,6 @@ public class MultiTexture implements RotationMode, DataOrientedRegistry {
 
 	private int size = 1;
 	private int[][][] textureIndicesVariants = new int[Blocks.MAX_BLOCK_COUNT][][];
-	private Random rand = new Random();
 
 	@Override
 	public void register(String assetFolder, Resource id, JsonObject json) {
@@ -120,8 +118,7 @@ public class MultiTexture implements RotationMode, DataOrientedRegistry {
 	@Override
 	public void generateChunkMesh(BlockInstance bi, VertexAttribList vertices, IntSimpleList faces) {
 		long seed = bi.x*4835871844237932163L ^ bi.y*80268680099511559L ^ bi.z*2595762606481225891L ^ bi.getBlock();
-		rand.setSeed(seed);
-		int randomIndex = rand.nextInt(textureIndicesVariants[bi.getBlock() & Blocks.TYPE_MASK].length);
+		int randomIndex = FastRandom.nextInt(seed, textureIndicesVariants[bi.getBlock() & Blocks.TYPE_MASK].length);
 		int[] indices = textureIndicesVariants[bi.getBlock() & Blocks.TYPE_MASK][randomIndex % textureIndicesVariants[bi.getBlock() & Blocks.TYPE_MASK].length];
 		BlockMeshes.mesh(bi.getBlock() & Blocks.TYPE_MASK).model.addToChunkMesh(bi.x & Chunk.chunkMask, bi.y & Chunk.chunkMask, bi.z & Chunk.chunkMask, indices, bi.light, bi.getNeighbors(), vertices, faces);
 	}

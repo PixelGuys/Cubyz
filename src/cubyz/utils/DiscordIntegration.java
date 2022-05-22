@@ -1,7 +1,5 @@
 package cubyz.utils;
 
-import java.util.Random;
-
 import club.minnced.discord.rpc.DiscordEventHandlers;
 import club.minnced.discord.rpc.DiscordEventHandlers.OnReady;
 import cubyz.client.Cubyz;
@@ -18,7 +16,7 @@ public final class DiscordIntegration {
 	static Thread worker;
 	
 	public static String generatePartyID() {
-		return Integer.toHexString(new Random().nextInt());
+		return Integer.toHexString(new FastRandom(System.nanoTime()).nextInt());
 	}
 	
 	public static void startRPC() {

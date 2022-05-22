@@ -1,8 +1,7 @@
 package cubyz.world.terrain.biomes;
 
-import java.util.Random;
-
 import cubyz.api.Resource;
+import cubyz.utils.FastRandom;
 import cubyz.world.Chunk;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.terrain.CaveMap;
@@ -36,7 +35,7 @@ public class GroundPatch extends StructureModel {
 	}
 
 	@Override
-	public void generate(int x, int z, int y, Chunk chunk, CaveMap map, Random rand) {
+	public void generate(int x, int z, int y, Chunk chunk, CaveMap map, FastRandom rand) {
 		float width = this.width + (rand.nextFloat() - 0.5f)*this.variation;
 		float orientation = 2*(float)Math.PI*rand.nextFloat();
 		float ellipseParam = 1 + rand.nextFloat(); 

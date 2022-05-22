@@ -26,14 +26,14 @@ public class MapFragment extends MapFragmentCompare {
 	}
 	
 	public Biome getBiome(int wx, int wz) {
-		wx = (wx & MAP_MASK)/voxelSize;
-		wz = (wz & MAP_MASK)/voxelSize;
+		wx = (wx & MAP_MASK)>>voxelSizeShift;
+		wz = (wz & MAP_MASK)>>voxelSizeShift;
 		return biomeMap[wx][wz];
 	}
 	
 	public float getHeight(int wx, int wz) {
-		wx = (wx & MAP_MASK)/voxelSize;
-		wz = (wz & MAP_MASK)/voxelSize;
+		wx = (wx & MAP_MASK)>>voxelSizeShift;
+		wz = (wz & MAP_MASK)>>voxelSizeShift;
 		return heightMap[wx][wz];
 	}
 	

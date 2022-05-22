@@ -2,7 +2,7 @@ package cubyz.world.terrain;
 
 public class MapFragmentCompare {
 	public final int wx, wz;
-	public final int voxelSize;
+	public final int voxelSize, voxelSizeShift;
 
 	public MapFragmentCompare(int wx, int wz, int voxelSize) {
 		assert (voxelSize - 1 & voxelSize) == 0 : "the voxel size must be a power of 2.";
@@ -10,6 +10,8 @@ public class MapFragmentCompare {
 		this.wx = wx;
 		this.wz = wz;
 		this.voxelSize = voxelSize;
+		voxelSizeShift = 31 - Integer.numberOfLeadingZeros(voxelSize); // log2
+		assert(1 << voxelSizeShift == voxelSize);
 	}
 
 	@Override

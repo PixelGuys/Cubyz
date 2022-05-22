@@ -1,6 +1,6 @@
 package cubyz.world.terrain.noise;
 
-import java.util.Random;
+import cubyz.utils.FastRandom;
 
 /**
  * Uses a fractal algorithm to generate a noise map.
@@ -9,7 +9,7 @@ public final class FractalNoise {
 	private FractalNoise() {} // No instances allowed.
 
 	private static long getSeed(int x, int z, int offsetX, int offsetZ, long seed, int scale, int maxResolution) {
-		Random rand = new Random(seed*(scale*maxResolution | 1));
+		FastRandom rand = new FastRandom(seed*(scale*maxResolution | 1));
 		long l1 = rand.nextLong() | 1;
 		long l2 = rand.nextLong() | 1;
 		return ((offsetX + x)*maxResolution*l1) ^ seed ^ ((offsetZ + z)*maxResolution*l2);
@@ -20,7 +20,7 @@ public final class FractalNoise {
 		float[][] bigMap = new float[max][max];
 		int offsetX = wx&(~and);
 		int offsetY = wz&(~and);
-		Random rand = new Random();
+		FastRandom rand = new FastRandom(0);
 		// Generate the 4 corner points of this map using a coordinate-depending seed:
 		rand.setSeed(getSeed(0, 0, offsetX, offsetY, seed, scale, maxResolution));
 		bigMap[0][0] = rand.nextFloat();
@@ -63,7 +63,7 @@ public final class FractalNoise {
 			 One other important thing in the implementation of this algorithm is that the relative height change has to decrease the in every iteration. Otherwise the terrain would look really noisy.
 		 */
 		int max =startingScale+1;
-		Random rand = new Random(seed);
+		FastRandom rand = new FastRandom(seed);
 		for(int res = startingScale*2; res != 0; res >>>= 1) {
 			// x coordinate on the grid:
 			for(int x = 0; x < max; x += res<<1) {
@@ -102,8 +102,6 @@ public final class FractalNoise {
 	 * @param height
 	 * @param scale
 	 * @param seed
-	 * @param worldSizeX
-	 * @param worldSizeZ
 	 * @param map
 	 * @param maxResolution
 	 */
@@ -127,8 +125,6 @@ public final class FractalNoise {
 	 * @param height region size
 	 * @param scale size of the largest feature.
 	 * @param seed
-	 * @param worldSizeX
-	 * @param worldSizeZ
 	 * @return
 	 */
 	public static float[][] generateFractalTerrain(int wx, int wz, int width, int height, int scale, long seed) {

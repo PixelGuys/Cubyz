@@ -1,9 +1,8 @@
 package cubyz.world.terrain.generators;
 
-import java.util.Random;
-
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Resource;
+import cubyz.utils.FastRandom;
 import cubyz.world.Chunk;
 import cubyz.world.NormalChunk;
 import cubyz.world.blocks.Blocks;
@@ -57,7 +56,7 @@ public class CrystalGenerator implements Generator {
 	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, CaveMap caveMap, CaveBiomeMap biomeMap) {
 		if (chunk.voxelSize > 2) return;
 		int size = chunk.getWidth();
-		Random rand = new Random(seed);
+		FastRandom rand = new FastRandom(seed);
 		int rand1 = rand.nextInt() | 1;
 		int rand2 = rand.nextInt() | 1;
 		int rand3 = rand.nextInt() | 1;
@@ -79,7 +78,7 @@ public class CrystalGenerator implements Generator {
 		return x*x+y*y+z*z;
 	}
 
-	private void considerCrystal(int wx, int wy, int wz, int x, int y, int z, Chunk chunk, Random rand, boolean useNeedles, int[] types) {
+	private void considerCrystal(int wx, int wy, int wz, int x, int y, int z, Chunk chunk, FastRandom rand, boolean useNeedles, int[] types) {
 		x -= wx;
 		y -= wy;
 		z -= wz;
@@ -132,7 +131,7 @@ public class CrystalGenerator implements Generator {
 		}
 	}
 
-	private void considerCoordinates(int x, int y, int z, Chunk chunk, CaveMap caveMap, CaveBiomeMap biomeMap, Random rand) {
+	private void considerCoordinates(int x, int y, int z, Chunk chunk, CaveMap caveMap, CaveBiomeMap biomeMap, FastRandom rand) {
 		long[] biomeMapSeed = new long[1];
 		int crystalSpawns = biomeMap.getBiomeAndSeed(x + Chunk.chunkSize/2 - chunk.wx, y + Chunk.chunkSize/2 - chunk.wy, z + Chunk.chunkSize/2 - chunk.wz, biomeMapSeed).crystals;
 		long oldSeed = rand.nextLong();

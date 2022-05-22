@@ -1,7 +1,6 @@
 package cubyz.world.terrain.cavegenerators;
 
-import java.util.Random;
-
+import cubyz.utils.FastRandom;
 import org.joml.Vector3d;
 
 import cubyz.api.CurrentWorldRegistries;
@@ -63,7 +62,7 @@ public class FractalCaveGenerator implements CaveGenerator {
 		}
 	}
 	
-	private void generateSphere(Random rand, CaveMapFragment map, double wx, double wy, double wz, double radius) {
+	private void generateSphere(FastRandom rand, CaveMapFragment map, double wx, double wy, double wz, double radius) {
 		wx -= map.wx;
 		wy -= map.wy;
 		wz -= map.wz;
@@ -132,7 +131,7 @@ public class FractalCaveGenerator implements CaveGenerator {
 		if(xMin < map.wx + CaveMapFragment.WIDTH*map.voxelSize && xMax > map.wx
 		&& yMin < map.wy + CaveMapFragment.HEIGHT*map.voxelSize && yMax > map.wy
 		&& zMin < map.wz + CaveMapFragment.WIDTH*map.voxelSize && zMax > map.wz) { // Only divide further if the cave may go through ther considered chunk.
-			Random rand = new Random(seed);
+			FastRandom rand = new FastRandom(seed);
 			// If the lowest level is reached carve out the cave:
 			if(distance < map.voxelSize) {
 				generateSphere(rand, map, startwx, startwy, startwz, startRadius);
@@ -150,7 +149,7 @@ public class FractalCaveGenerator implements CaveGenerator {
 	
 	private void generateBranchingCaveBetween(long seed, CaveMapFragment map, double startwx, double startwy, double startwz, double endwx, double endwy, double endwz, double biasX, double biasY, double biasZ, double startRadius, double endRadius, int centerwx, int centerwy, int centerwz, double branchLength, float randomness, boolean isStart, boolean isEnd) {
 		double distance = Vector3d.distance(startwx, startwy, startwz, endwx, endwy, endwz);
-		Random rand = new Random(seed);
+		FastRandom rand = new FastRandom(seed);
 		if(distance < 32) {
 			// No more branches below that level to avoid crowded caves.
 			generateCaveBetween(rand.nextLong(), map, startwx, startwy, startwz, endwx, endwy, endwz, biasX, biasY, biasZ, startRadius, endRadius, randomness);

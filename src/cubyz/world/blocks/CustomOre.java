@@ -6,10 +6,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.FileInputStream;
 import java.util.Properties;
-import java.util.Random;
 
 import javax.imageio.ImageIO;
 
+import cubyz.utils.FastRandom;
 import cubyz.utils.Logger;
 import cubyz.utils.Utilities;
 import cubyz.utils.datastructures.PixelUtils;
@@ -91,7 +91,7 @@ public class CustomOre {
 		json.put("emittedLight", light);
 	}
 	
-	private static char choose(char c1, char c2, char c3, Random rand, int length) {
+	private static char choose(char c1, char c2, char c3, FastRandom rand, int length) {
 		try {
 			int i1 = getIndex(c1);
 			int i2 = getIndex(c2);
@@ -104,7 +104,7 @@ public class CustomOre {
 		}
 	}
 	
-	private static String randomName(Random rand) {
+	private static String randomName(FastRandom rand) {
 		StringBuilder sb = new StringBuilder();
 		
 		char c1 = ' ', c2 = ' ', c3 = ' ', c4 = choose(c1, c2, c3, rand, 0);
@@ -140,7 +140,7 @@ public class CustomOre {
 			return sb.toString();
 	}
 	
-	public static void random(Random rand, File assets, String mod, Properties fallbackLang) {
+	public static void random(FastRandom rand, File assets, String mod, Properties fallbackLang) {
 		JsonObject json = new JsonObject();
 		json.put("class", "stone");
 
@@ -149,7 +149,7 @@ public class CustomOre {
 		json.put("texture", "cubyz:"+name.replace(' ', '_')+"_ore");
 		// Use a seed based on the name, so if the same ore gets generated twice in the giant world, it will have the same properties.
 		// This fact could also allow an interactive wiki which displays an ores property with knowledge of only the name(TODO).
-		rand = new Random(Utilities.hash(name));
+		rand = new FastRandom(Utilities.hash(name));
 
 		// Generate the ore data:
 		JsonObject ore = new JsonObject();
@@ -246,7 +246,7 @@ public class CustomOre {
 		fallbackLang.put("block.cubyz." + name.replace(" ", "_") + "_ore.name", name + " Ore");
 	}
 	
-	private JsonArray makeItem(Random rand, File assets, String mod, String name) {
+	private JsonArray makeItem(FastRandom rand, File assets, String mod, String name) {
 		JsonArray items = new JsonArray();
 		items.addStrings(mod+":"+name.replace(' ', '_'));
 		JsonObject json = new JsonObject();

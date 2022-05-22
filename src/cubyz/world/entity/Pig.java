@@ -1,7 +1,6 @@
 package cubyz.world.entity;
 
-import java.util.Random;
-
+import cubyz.utils.FastRandom;
 import org.joml.Vector3f;
 
 import cubyz.api.CubyzRegistries;
@@ -36,7 +35,7 @@ public class Pig extends EntityType {
 		super.die(ent);
 	}
 	
-	static final Random directionRandom = new Random();
+	static final FastRandom directionRandom = new FastRandom(System.nanoTime());
 	
 	private static class PigAI implements EntityAI {
 		// AI part:

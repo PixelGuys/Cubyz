@@ -1,9 +1,8 @@
 package cubyz.world.terrain.generators;
 
-import java.util.Random;
-
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Resource;
+import cubyz.utils.FastRandom;
 import cubyz.world.Chunk;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.terrain.CaveBiomeMap;
@@ -35,7 +34,7 @@ public class TerrainGenerator implements Generator {
 
 	@Override
 	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, CaveMap caveMap, CaveBiomeMap biomeMap) {
-		Random rand = new Random(seed);
+		FastRandom rand = new FastRandom(seed);
 		long seedX = rand.nextInt() | 1;
 		long seedY = rand.nextInt() | 1;
 		long seedZ = rand.nextInt() | 1;

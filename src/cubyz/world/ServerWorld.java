@@ -8,6 +8,7 @@ import cubyz.modding.ModLoader;
 import cubyz.multiplayer.Protocols;
 import cubyz.server.Server;
 import cubyz.server.User;
+import cubyz.utils.FastRandom;
 import cubyz.utils.Logger;
 import cubyz.utils.datastructures.HashMapKey3D;
 import cubyz.world.blocks.BlockEntity;
@@ -36,7 +37,6 @@ import org.joml.Vector3i;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Random;
 
 public class ServerWorld extends World{
 	public ChunkManager chunkManager;
@@ -59,7 +59,7 @@ public class ServerWorld extends World{
 			generated = true;
 			registries = new CurrentWorldRegistries(this, "saves/" + name + "/assets/", blockPalette);
 		} else {
-			seed = new Random().nextInt();
+			seed = new FastRandom(System.nanoTime()).nextInt();
 			registries = new CurrentWorldRegistries(this, "saves/" + name + "/assets/", blockPalette);
 			wio.saveWorldData();
 		}
@@ -92,7 +92,7 @@ public class ServerWorld extends World{
 		if (player == null) {
 			player = (Player) CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player").newEntity(this);
 			addEntity(player);
-			Random rnd = new Random();
+			FastRandom rnd = new FastRandom(System.nanoTime());
 			int dx = 0;
 			int dz = 0;
 			Logger.info("Finding position..");

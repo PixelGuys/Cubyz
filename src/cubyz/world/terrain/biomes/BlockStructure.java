@@ -1,7 +1,6 @@
 package cubyz.world.terrain.biomes;
 
-import java.util.Random;
-
+import cubyz.utils.FastRandom;
 import cubyz.world.Chunk;
 import cubyz.world.blocks.Blocks;
 
@@ -34,7 +33,7 @@ public class BlockStructure {
 		}
 	}
 	
-	public int addSubTerranian(Chunk chunk, int depth, int minDepth, int x, int z, Random rand) {
+	public int addSubTerranian(Chunk chunk, int depth, int minDepth, int x, int z, FastRandom rand) {
 		int startingDepth = depth;
 		for(int i = 0; i < structure.length; i++) {
 			int total = structure[i].min + rand.nextInt(1 + structure[i].max - structure[i].min);

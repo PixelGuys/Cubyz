@@ -1,21 +1,17 @@
 package cubyz.world.terrain.noise;
 
-import java.util.Random;
-
+import cubyz.utils.FastRandom;
 import cubyz.utils.Logger;
 import cubyz.utils.math.CubyzMath;
 
 public class PerlinNoise {
-	private Random r = new Random();
-
 	private float[][] xGridPoints; // [x][y]
 	private float[][] yGridPoints; // [x][y]
 	// Calculate the gradient instead of storing it.
 	// This is inefficient(since it is called every time), but allows infinite chunk generation.
 	private float generateGradient(int x, int y, int i, long l1, long l2, long l3, int resolution) {
-		r.setSeed(l1*x+l2*y+l3*i+resolution);
-    	return 2 * r.nextFloat() - 1;
-    }
+		return 2*FastRandom.nextFloat(l1*x+l2*y+l3*i+resolution) - 1;
+	}
 	
 	private float getGradientX(int x, int y) {
 		try {
@@ -38,7 +34,7 @@ public class PerlinNoise {
 	 * Weight w should be in the range [0.0, 1.0]
 	 */
 	private static float lerp(float a0, float a1, float w) {
-	    return a0 + w*(a1 - a0);
+		return a0 + w*(a1 - a0);
 	}
 	
 	// s-curve
@@ -49,44 +45,44 @@ public class PerlinNoise {
 	// Computes the dot product of the distance and gradient vectors.
 	private float dotGridGradient(int ix, int iy, float x, float y, int resolution) {
 
-	    // Compute the distance vector
+		// Compute the distance vector
 		float dx = x/resolution - ix;
 		float dy = y/resolution - iy;
 
-	    // Compute the dot-product
+		// Compute the dot-product
 		float gx = getGradientX(ix, iy);
 		float gy = getGradientY(ix, iy);
 		float gr = (float)Math.sqrt(gx*gx + gy*gy);
 		gx /= gr;
 		gy /= gr;
-	    return dx*gx + dy*gy;
+		return dx*gx + dy*gy;
 	}
 
 	// Compute Perlin noise at coordinates x, y
 	private float perlin(int x, int y, int resolution, int resolution2) {
 
-	    // Determine grid cell coordinates
-	    int x0 = x/resolution;
-	    int x1 = x0 + 1;
-	    int y0 = y/resolution;
-	    int y1 = y0 + 1;
+		// Determine grid cell coordinates
+		int x0 = x/resolution;
+		int x1 = x0 + 1;
+		int y0 = y/resolution;
+		int y1 = y0 + 1;
 
-	    // Determine interpolation weights
-	    // Could also use higher order polynomial/s-curve here
-	    float sx = s((x&resolution2)/(float)resolution);
-	    float sy = s((y&resolution2)/(float)resolution);
+		// Determine interpolation weights
+		// Could also use higher order polynomial/s-curve here
+		float sx = s((x&resolution2)/(float)resolution);
+		float sy = s((y&resolution2)/(float)resolution);
 
-	    // Interpolate between grid point gradients
-	    float n0, n1, ix0, ix1;
+		// Interpolate between grid point gradients
+		float n0, n1, ix0, ix1;
 
-	    n0 = dotGridGradient(x0, y0, x, y, resolution);
-	    n1 = dotGridGradient(x1, y0, x, y, resolution);
-	    ix0 = lerp(n0, n1, sx);
+		n0 = dotGridGradient(x0, y0, x, y, resolution);
+		n1 = dotGridGradient(x1, y0, x, y, resolution);
+		ix0 = lerp(n0, n1, sx);
 
-	    n0 = dotGridGradient(x0, y1, x, y, resolution);
-	    n1 = dotGridGradient(x1, y1, x, y, resolution);
-	    ix1 = lerp(n0, n1, sx);
-	    return lerp(ix0, ix1, sy)*(float)Math.sqrt(2);
+		n0 = dotGridGradient(x0, y1, x, y, resolution);
+		n1 = dotGridGradient(x1, y1, x, y, resolution);
+		ix1 = lerp(n0, n1, sx);
+		return lerp(ix0, ix1, sy)*(float)Math.sqrt(2);
 	}
 	
 	// Calculate all grid points that will be needed to prevent double calculating them.
@@ -105,7 +101,7 @@ public class PerlinNoise {
 			x0 = ix >> resolutionShift;
 			int y0 = 0;
 			for(int iy = y; iy < y+height; iy += scale) {
-			    y0 = iy >> resolutionShift;
+				y0 = iy >> resolutionShift;
 				xGrid[numX][numY] = generateGradient(x0, y0, 0, l1, l2, l3, resolutionShift);
 				yGrid[numX][numY] = generateGradient(x0, y0, 1, l1, l2, l3, resolutionShift);
 				numY++;
@@ -117,7 +113,7 @@ public class PerlinNoise {
 		numY = 0;
 		int y0 = 0;
 		for(int iy = y; iy < y+height; iy += scale) {
-		    y0 = iy >> resolutionShift;
+			y0 = iy >> resolutionShift;
 			xGrid[numX][numY] = generateGradient(x0+1, y0, 0, l1, l2, l3, resolutionShift);
 			yGrid[numX][numY] = generateGradient(x0+1, y0, 1, l1, l2, l3, resolutionShift);
 			numY++;
@@ -144,7 +140,7 @@ public class PerlinNoise {
 	 */
 	public float[][] generateRidgidNoise(int x, int y, int width, int height, int scale, int minScale, long seed, int voxelSize, float reductionFactor) {
 		float[][] map = new float[width/voxelSize][height/voxelSize];
-		Random r = new Random(seed);
+		FastRandom r = new FastRandom(seed);
 		long l1 = r.nextLong();
 		long l2 = r.nextLong();
 		long l3 = r.nextLong();
@@ -180,7 +176,7 @@ public class PerlinNoise {
 	 */
 	public float[][] generateSmoothNoise(int x, int y, int width, int height, int scale, int minScale, long seed, int voxelSize, float reductionFactor) {
 		float[][] map = new float[width/voxelSize][height/voxelSize];
-		Random r = new Random(seed);
+		FastRandom r = new FastRandom(seed);
 		long l1 = r.nextLong();
 		long l2 = r.nextLong();
 		long l3 = r.nextLong();

@@ -1,10 +1,9 @@
 package cubyz.world.terrain;
 
 import cubyz.server.Server;
+import cubyz.utils.FastRandom;
 import cubyz.world.ChunkData;
 import cubyz.world.terrain.biomes.Biome;
-
-import java.util.Random;
 
 /**
  * Doesn't allow getting the biome at one point and instead is only useful for interpolating values between biomes.
@@ -110,7 +109,7 @@ public class InterpolatableCaveBiomeMap {
 			gridPointY += Math.signum(distanceY | 1)*CaveBiomeMapFragment.CAVE_BIOME_SIZE/2;
 			gridPointZ += Math.signum(distanceZ | 1)*CaveBiomeMapFragment.CAVE_BIOME_SIZE/2;
 			// Go to a random gridpoint:
-			Random rand = new Random(Server.world.getSeed());
+			FastRandom rand = new FastRandom(Server.world.getSeed());
 			rand.setSeed(rand.nextLong() ^ gridPointX);
 			rand.setSeed(rand.nextLong() ^ gridPointY);
 			rand.setSeed(rand.nextLong() ^ gridPointZ);

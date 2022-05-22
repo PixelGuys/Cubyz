@@ -1,7 +1,6 @@
 package cubyz.world.terrain;
 
-import java.util.Random;
-
+import cubyz.utils.FastRandom;
 import cubyz.world.terrain.biomes.Biome;
 
 public class BiomePoint {
@@ -28,13 +27,13 @@ public class BiomePoint {
 		// Check if the existing Biome fits and if not choose a fitting replacement:
 		Biome biome = this.biome;
 		if (height < biome.minHeight) {
-			Random rand = new Random(seed ^ 654295489239294L);
+			FastRandom rand = new FastRandom(seed ^ 654295489239294L);
 			while (height < biome.minHeight) {
 				if (biome.lowerReplacements.length == 0) break;
 				biome = biome.lowerReplacements[rand.nextInt(biome.lowerReplacements.length)];
 			}
 		} else if (height > biome.maxHeight) {
-			Random rand = new Random(seed ^ 56473865395165948L);
+			FastRandom rand = new FastRandom(seed ^ 56473865395165948L);
 			while (height > biome.maxHeight) {
 				if (biome.upperReplacements.length == 0) break;
 				biome = biome.upperReplacements[rand.nextInt(biome.upperReplacements.length)];

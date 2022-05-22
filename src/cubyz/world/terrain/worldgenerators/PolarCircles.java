@@ -2,6 +2,7 @@ package cubyz.world.terrain.worldgenerators;
 
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Resource;
+import cubyz.utils.FastRandom;
 import cubyz.world.terrain.BiomePoint;
 import cubyz.world.terrain.ClimateMapFragment;
 import cubyz.world.terrain.ClimateMapGenerator;
@@ -11,8 +12,6 @@ import cubyz.world.terrain.noise.FractalNoise;
 import pixelguys.json.JsonObject;
 
 import static cubyz.world.terrain.ClimateMapFragment.*;
-
-import java.util.Random;
 
 /**
  * Generates the climate map using a fluidynamics simulation, with a circular heat distribution.
@@ -79,7 +78,7 @@ public class PolarCircles implements ClimateMapGenerator {
 		// That's not perfectly realistic, but it's ok in the sense that following a compass will lead to one arctic
 		// and away from another.
 
-		Random rand = new Random();
+		FastRandom rand = new FastRandom(0);
 
 		Biome[][] biomeMap = new Biome[map.map.length + 2][map.map.length + 2];
 		

@@ -1,8 +1,8 @@
 package cubyz.utils.datastructures;
 
-import java.util.Random;
 import java.util.function.Consumer;
 
+import cubyz.utils.FastRandom;
 import cubyz.utils.math.CubyzMath;
 
 /**
@@ -65,7 +65,7 @@ public class RandomList<T extends ChanceObject> {
 	}
 	
 	@SuppressWarnings("unchecked")
-	public T getRandomly(Random rand) {
+	public T getRandomly(FastRandom rand) {
 		long value = rangedRandomLong(rand, sum);
 		for(int i = 0; i < size; i++) {
 			if (value < array[i].chance)
@@ -75,7 +75,7 @@ public class RandomList<T extends ChanceObject> {
 		throw new IllegalStateException("Seems like someone made changes to the code without thinking. Report this immediately!");
 	}
 	
-	public static long rangedRandomLong(Random rand, long max) {
+	public static long rangedRandomLong(FastRandom rand, long max) {
 		assert(max > 0) : "max must be bigger than 0 for this function to work.";
 		long and = CubyzMath.fillBits(max);
 		long out;

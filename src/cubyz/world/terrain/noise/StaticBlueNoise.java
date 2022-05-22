@@ -1,7 +1,9 @@
 package cubyz.world.terrain.noise;
 
+import cubyz.utils.FastRandom;
+import cubyz.utils.Logger;
+
 import java.util.Arrays;
-import java.util.Random;
 
 /**
  * Blue noise (aka Poisson Disk Sampling) is a pattern that ensures that all points have a minimum distance towards their neigbors.
@@ -22,7 +24,7 @@ public final class StaticBlueNoise {
 	 * Loads a pre-seeded noise map that is used for world generation.
 	 */
 	public static void load() {
-		Random rand = new Random(54095248685739L);
+		FastRandom rand = new FastRandom(54095248685739L);
 		final int DIST_SQUARE_LIMIT = 8;
 		final int REPETITIONS = 4;
 		final int ITERATIONS = 16;

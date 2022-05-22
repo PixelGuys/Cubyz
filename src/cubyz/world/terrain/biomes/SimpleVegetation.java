@@ -1,8 +1,7 @@
 package cubyz.world.terrain.biomes;
 
-import java.util.Random;
-
 import cubyz.api.Resource;
+import cubyz.utils.FastRandom;
 import cubyz.world.Chunk;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.terrain.CaveMap;
@@ -30,7 +29,7 @@ public class SimpleVegetation extends StructureModel {
 	}
 	
 	@Override
-	public void generate(int x, int z, int y, Chunk chunk, CaveMap map, Random rand) {
+	public void generate(int x, int z, int y, Chunk chunk, CaveMap map, FastRandom rand) {
 		if (chunk.voxelSize > 2 && (x / chunk.voxelSize * chunk.voxelSize != x || z / chunk.voxelSize * chunk.voxelSize != z)) return;
 		if (chunk.liesInChunk(x, y, z)) {
 			int height = height0;

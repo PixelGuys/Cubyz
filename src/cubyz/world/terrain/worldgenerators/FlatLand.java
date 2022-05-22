@@ -1,6 +1,5 @@
 package cubyz.world.terrain.worldgenerators;
 
-import cubyz.api.CubyzRegistries;
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Resource;
 import cubyz.world.terrain.BiomePoint;

@@ -1,16 +1,14 @@
 package cubyz.world.terrain.generators;
 
-import java.util.Random;
-
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Resource;
+import cubyz.utils.FastRandom;
 import cubyz.world.Chunk;
 import cubyz.world.NormalChunk;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.Ore;
 import cubyz.world.terrain.CaveBiomeMap;
 import cubyz.world.terrain.CaveMap;
-import cubyz.world.terrain.CaveMapFragment;
 import pixelguys.json.JsonObject;
 
 /**
@@ -41,7 +39,7 @@ public class OreGenerator implements Generator {
 	@Override
 	public void generate(long seed, int wx, int wy, int wz, Chunk chunk, CaveMap caveMap, CaveBiomeMap biomeMap) {
 		if (!(chunk instanceof NormalChunk)) return;
-		Random rand = new Random(seed);
+		FastRandom rand = new FastRandom(seed);
 		int rand1 = rand.nextInt() | 1;
 		int rand2 = rand.nextInt() | 1;
 		int rand3 = rand.nextInt() | 1;
@@ -62,7 +60,7 @@ public class OreGenerator implements Generator {
 	}
 
 	private void considerCoordinates(int x, int y, int z, int cx, int cy, int cz, Chunk chunk, long seed) {
-		Random rand = new Random();
+		FastRandom rand = new FastRandom(0);
 		for(Ore ore : ores) {
 			if(ore.maxHeight <= y << NormalChunk.chunkShift) continue;
 			// Compose the seeds from some random stats of the ore. They generally shouldn't be the same for two different ores.
@@ -87,7 +85,7 @@ public class OreGenerator implements Generator {
 				xMax = Math.min(xMax, Chunk.chunkSize*chunk.voxelSize);
 				zMin = Math.max(zMin, 0);
 				zMax = Math.min(zMax, Chunk.chunkSize*chunk.voxelSize);
-				Random noiseRand = new Random(rand.nextLong());
+				FastRandom noiseRand = new FastRandom(rand.nextLong());
 
 				for(int curX = xMin; curX < xMax; curX += chunk.voxelSize) {
 					double distToCenterX = (curX - relX)/radius;

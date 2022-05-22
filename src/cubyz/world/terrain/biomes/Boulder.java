@@ -1,12 +1,11 @@
 package cubyz.world.terrain.biomes;
 
 import cubyz.api.Resource;
+import cubyz.utils.FastRandom;
 import cubyz.world.Chunk;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.terrain.CaveMap;
 import pixelguys.json.JsonObject;
-
-import java.util.Random;
 
 /**
  * Generates stone boulders of various sizes.
@@ -30,7 +29,7 @@ public class Boulder extends StructureModel {
 	}
 
 	@Override
-	public void generate(int x, int z, int y, Chunk chunk, CaveMap map, Random rand) {
+	public void generate(int x, int z, int y, Chunk chunk, CaveMap map, FastRandom rand) {
 		float radius = size + sizeVariation*(rand.nextFloat()*2 - 1);
 		// My basic idea is to use a point cloud and a potential function to achieve somewhat smooth boulders without being a sphere.
 		final int numberOfPoints = 4;

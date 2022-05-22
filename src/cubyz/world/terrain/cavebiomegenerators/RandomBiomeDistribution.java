@@ -2,14 +2,13 @@ package cubyz.world.terrain.cavebiomegenerators;
 
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Resource;
+import cubyz.utils.FastRandom;
 import cubyz.utils.Logger;
 import cubyz.utils.datastructures.RandomList;
 import cubyz.utils.datastructures.SimpleList;
 import cubyz.world.terrain.CaveBiomeMapFragment;
 import cubyz.world.terrain.biomes.Biome;
 import pixelguys.json.JsonObject;
-
-import java.util.Random;
 
 public class RandomBiomeDistribution implements CaveBiomeGenerator {
 	private RandomList<Biome> caveBiomes;
@@ -48,7 +47,7 @@ public class RandomBiomeDistribution implements CaveBiomeGenerator {
 			validBiomes.add(caveBiomes.get(0));
 		}
 
-		Random rand = new Random(seed);
+		FastRandom rand = new FastRandom(seed);
 		long rand1 = rand.nextLong() | 1;
 		long rand2 = rand.nextLong() | 1;
 		long rand3 = rand.nextLong() | 1;

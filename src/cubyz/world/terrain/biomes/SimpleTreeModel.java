@@ -1,8 +1,7 @@
 package cubyz.world.terrain.biomes;
 
-import java.util.Random;
-
 import cubyz.api.Resource;
+import cubyz.utils.FastRandom;
 import cubyz.world.Chunk;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.terrain.CaveMap;
@@ -44,7 +43,7 @@ public class SimpleTreeModel extends StructureModel {
 	}
 
 	@Override
-	public void generate(int x, int z, int y, Chunk chunk, CaveMap map, Random rand) {
+	public void generate(int x, int z, int y, Chunk chunk, CaveMap map, FastRandom rand) {
 		int height = height0 + rand.nextInt(deltaHeight);
 
 		if(y + height >= map.findTerrainChangeAbove(x, z, y)) // Space is too small.

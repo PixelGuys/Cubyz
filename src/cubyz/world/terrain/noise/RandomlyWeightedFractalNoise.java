@@ -1,6 +1,6 @@
 package cubyz.world.terrain.noise;
 
-import java.util.Random;
+import cubyz.utils.FastRandom;
 
 /**
  * The same as fractal noise, but uses random weigths during interpolation phase.
@@ -34,7 +34,7 @@ public final class RandomlyWeightedFractalNoise {
 	private RandomlyWeightedFractalNoise() {} // No instances allowed.
 
 	private static long getSeed(int x, int z, int offsetX, int offsetZ, long seed, int scale, int maxResolution) {
-		Random rand = new Random(seed*(scale*maxResolution | 1));
+		FastRandom rand = new FastRandom(seed*(scale*maxResolution | 1));
 		long l1 = rand.nextLong() | 1;
 		long l2 = rand.nextLong() | 1;
 		return ((offsetX + x)*maxResolution*l1) ^ seed ^ ((offsetZ + z)*maxResolution*l2);
@@ -45,7 +45,7 @@ public final class RandomlyWeightedFractalNoise {
 		float[][] bigMap = new float[max][max];
 		int offsetX = wx&(~and);
 		int offsetY = wz&(~and);
-		Random rand = new Random();
+		FastRandom rand = new FastRandom(0);
 		// Generate the 4 corner points of this map using a coordinate-depending seed:
 		rand.setSeed(getSeed(0, 0, offsetX, offsetY, seed, scale, maxResolution));
 		bigMap[0][0] = rand.nextFloat();
@@ -68,7 +68,7 @@ public final class RandomlyWeightedFractalNoise {
 	
 	public static void generateInitializedFractalTerrain(int offsetX, int offsetZ, int scale, int startingScale, long seed, float[][] bigMap, float lowerLimit, float upperLimit, int maxResolution) {
 		int max =startingScale+1;
-		Random rand = new Random(seed);
+		FastRandom rand = new FastRandom(seed);
 		for(int res = startingScale*2; res != 0; res >>>= 1) {
 			// x coordinate on the grid:
 			for(int x = 0; x < max; x += res<<1) {
@@ -111,8 +111,6 @@ public final class RandomlyWeightedFractalNoise {
 	 * @param height
 	 * @param scale
 	 * @param seed
-	 * @param worldSizeX
-	 * @param worldSizeZ
 	 * @param map
 	 * @param maxResolution
 	 */

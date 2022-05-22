@@ -19,6 +19,7 @@ public class ReducedChunkVisibilityData extends ChunkData {
 	public byte[] neighbors = new byte[INITIAL_CAPACITY];
 	public int size;
 	public int capacity = INITIAL_CAPACITY;
+	private final int voxelSizeShift;
 
 	private void addBlock(byte x, byte y, byte z, byte neighbors, int block) {
 		if (size == capacity)
@@ -49,10 +50,10 @@ public class ReducedChunkVisibilityData extends ChunkData {
 	 * @return
 	 */
 	private int getBlock(ReducedChunk[] chunks, int x, int y, int z) {
-		x += (wx - chunks[0].wx)/voxelSize;
-		y += (wy - chunks[0].wy)/voxelSize;
-		z += (wz - chunks[0].wz)/voxelSize;
-		ReducedChunk chunk = chunks[x/Chunk.chunkSize*4 + y/Chunk.chunkSize*2 + z/Chunk.chunkSize];
+		x += (wx - chunks[0].wx) >> voxelSizeShift;
+		y += (wy - chunks[0].wy) >> voxelSizeShift;
+		z += (wz - chunks[0].wz) >> voxelSizeShift;
+		ReducedChunk chunk = chunks[(x >> Chunk.chunkShift)*4 + (y >> Chunk.chunkShift)*2 + (z >> Chunk.chunkShift)];
 		x &= Chunk.chunkMask;
 		y &= Chunk.chunkMask;
 		z &= Chunk.chunkMask;
@@ -61,6 +62,7 @@ public class ReducedChunkVisibilityData extends ChunkData {
 
 	public ReducedChunkVisibilityData(int wx, int wy, int wz, int voxelSize, byte[] x, byte[] y, byte[] z, byte[] neighbors, int[] visibleBlocks) {
 		super(wx, wy, wz, voxelSize);
+		voxelSizeShift = 31 - Integer.numberOfLeadingZeros(voxelSize); // log2
 		assert x.length == y.length && y.length == z.length && z.length == neighbors.length && neighbors.length == visibleBlocks.length : "Size of input parameters doesn't match.";
 		this.x = x;
 		this.y = y;
@@ -72,6 +74,7 @@ public class ReducedChunkVisibilityData extends ChunkData {
 	
 	public ReducedChunkVisibilityData(ServerWorld world, int wx, int wy, int wz, int voxelSize) {
 		super(wx, wy, wz, voxelSize);
+		voxelSizeShift = 31 - Integer.numberOfLeadingZeros(voxelSize); // log2
 
 		int chunkSize = voxelSize*Chunk.chunkSize;
 		int chunkMask = chunkSize - 1;

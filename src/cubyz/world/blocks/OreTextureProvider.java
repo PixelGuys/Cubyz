@@ -1,7 +1,8 @@
 package cubyz.world.blocks;
 
+import cubyz.utils.FastRandom;
+
 import java.awt.image.BufferedImage;
-import java.util.Random;
 
 public class OreTextureProvider implements TextureProvider {
 	BufferedImage stone;
@@ -12,7 +13,7 @@ public class OreTextureProvider implements TextureProvider {
 	public BufferedImage generateTexture(CustomOre block) {
 		BufferedImage stone = TextureProvider.getImage("assets/cubyz/blocks/textures/stone.png");
 		BufferedImage canvas = new BufferedImage(16, 16, BufferedImage.TYPE_INT_RGB);
-		Random rand = new Random(block.seed);
+		FastRandom rand = new FastRandom(block.seed);
 		// Init the canvas:
 		for(int px = 0; px < 16; px++) {
 			for(int py = 0; py < 16; py++) {
