@@ -237,6 +237,7 @@ public class AddonsMod implements Mod {
 			registerBlock(block, id, json, registries, oreRegistry);
 		}
 		for(Map.Entry<Resource, JsonObject> entry : perWorldBlocks.entrySet()) {
+			palette.addResource(entry.getKey());
 			registerBlock(block, entry.getKey(), entry.getValue(), registries, oreRegistry);
 			block++;
 		}

@@ -8,7 +8,6 @@ import cubyz.modding.ModLoader;
 import cubyz.multiplayer.Protocols;
 import cubyz.rendering.RenderOctTree;
 import cubyz.server.Server;
-import cubyz.utils.Logger;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.entity.ChunkEntityManager;
@@ -20,8 +19,6 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 import pixelguys.json.JsonObject;
-
-import java.util.Arrays;
 
 //TODO:
 public class ClientWorld extends World {

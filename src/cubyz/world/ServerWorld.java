@@ -308,7 +308,6 @@ public class ServerWorld extends World{
 	}
 	@Override
 	public void seek(int x, int y, int z, int renderDistance) {
-
 		// Care about the metaChunks:
 		if (x != lastX || y != lastY || z != lastZ) {
 			ArrayList<NormalChunk> chunkList = new ArrayList<>();

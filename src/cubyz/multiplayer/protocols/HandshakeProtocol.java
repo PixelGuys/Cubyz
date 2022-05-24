@@ -59,7 +59,7 @@ public class HandshakeProtocol extends Protocol {
 				case STEP_ASSETS:
 					Logger.info("Received assets.");
 					ByteArrayInputStream in = new ByteArrayInputStream(data, offset+1, length);
-					String serverAssets = "serverAssets/assets";
+					String serverAssets = "serverAssets";
 					Utils.deleteDirectory(new File(serverAssets).toPath());
 					Zipper.unpack(serverAssets, in);
 					break;

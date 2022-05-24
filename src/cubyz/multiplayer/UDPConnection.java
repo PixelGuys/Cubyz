@@ -199,11 +199,11 @@ public class UDPConnection extends Thread {
 					byte[] data = receivedPacket.getData();
 					int len = receivedPacket.getLength();
 					byte protocol = data[0];
+					if(Math.random() < 0.1) {
+						//Logger.debug("Dropped it :P");
+						continue; // Drop packet :P
+					}
 					if(Protocols.list[protocol & 0xff].isImportant) {
-						if(Math.random() < 0.1) {
-							//Logger.debug("Dropped it :P");
-							continue; // Drop packet :P
-						}
 						int id = Bits.getInt(data, 2);
 						if(id - lastIncompletePackage >= 65536) {
 							Logger.warning("Many incomplete packages. Cannot process any more packages for now.");

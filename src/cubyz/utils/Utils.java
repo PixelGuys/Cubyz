@@ -149,6 +149,7 @@ public final class Utils {
 	}
 
 	public static void deleteDirectory(Path path) {
+		if(!path.toFile().exists()) return;
 		try {
 			Files.walkFileTree(path, new FileVisitor<>() {
 
