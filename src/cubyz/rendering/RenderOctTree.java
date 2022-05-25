@@ -32,8 +32,8 @@ public class RenderOctTree {
 				mesh = new NormalChunkMesh(replacement, x, y, z, size);
 			} else {
 				mesh = new ReducedChunkMesh(replacement, x, y, z, size);
-				meshRequests.add(new ChunkData(x, y, z, mesh.voxelSize));
 			}
+			meshRequests.add(new ChunkData(x, y, z, mesh.voxelSize));
 		}
 		public void update(int px, int py, int pz, int renderDistance, int maxRD, int minHeight, int maxHeight, int nearRenderDistance, ArrayList<ChunkData> meshRequests) {
 			synchronized(this) {
@@ -56,21 +56,6 @@ public class RenderOctTree {
 						}
 						return;
 					}
-				}
-				
-				// Check if this chunk has reached the smallest possible size:
-				if (size == Chunk.chunkSize) {
-					// Check if this is a normal or a reduced chunk:
-					if (minDist < renderDistance*renderDistance) {
-						if (mesh.getChunk() == null) {
-							// meshRequests.add(new ChunkData(x, y, z, mesh.voxelSize)); TODO: Investigate if this has any impact.
-						}
-					} else {
-						if (mesh.getChunk() != null) {
-							((NormalChunkMesh)mesh).updateChunk(null);
-						}
-					}
-					return;
 				}
 				// Check if parts of this OctTree require using normal chunks:
 				if (size == Chunk.chunkSize*2 && minDist < renderDistance*renderDistance) {

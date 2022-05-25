@@ -83,25 +83,30 @@ public class ChunkManager {
 			// If the chunk is already fully generated, it is returned.
 			NormalChunk chunk = world.getChunk(ch.wx, ch.wy, ch.wz);
 			if(chunk != null && chunk.isLoaded()) {
-				//Cubyz.chunkTree.updateChunkMesh(chunk); // TODO: Do this over the network.
 				for(User user : Server.userManager.users) {
 					Protocols.CHUNK_TRANSMISSION.sendChunk(user, chunk);
 				}
+				return;
 			}
-			return;
 		}
 		ThreadPool.addTask(new ChunkLoadTask(ch));
 	}
 	
 	public void synchronousGenerate(ChunkData ch) {
-		if (ch instanceof NormalChunk) {
-			if(!((NormalChunk)ch).isLoaded()) { // Prevent reloading.
-				((NormalChunk) ch).generate(world.getSeed(), terrainGenerationProfile);
-				((NormalChunk) ch).load();
+		if (ch.voxelSize == 1) {
+			NormalChunk chunk;
+			if(ch instanceof NormalChunk) {
+				chunk = (NormalChunk)ch;
+			} else {
+				chunk = new NormalChunk(world, ch.wx, ch.wy, ch.wz); // TODO: Cache this.
+			}
+			if(!chunk.isLoaded()) { // Prevent reloading.
+				chunk.generate(world.getSeed(), terrainGenerationProfile);
+				chunk.load();
 			}
 			//Cubyz.chunkTree.updateChunkMesh((NormalChunk) ch); // TODO: Do this over the network.
 			for(User user : Server.userManager.users) {
-				Protocols.CHUNK_TRANSMISSION.sendChunk(user, ch);
+				Protocols.CHUNK_TRANSMISSION.sendChunk(user, chunk);
 			}
 		} else {
 			ReducedChunkVisibilityData visibilityData = new ReducedChunkVisibilityData(world, ch.wx, ch.wy, ch.wz, ch.voxelSize);

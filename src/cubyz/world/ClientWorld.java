@@ -8,6 +8,7 @@ import cubyz.modding.ModLoader;
 import cubyz.multiplayer.Protocols;
 import cubyz.rendering.RenderOctTree;
 import cubyz.server.Server;
+import cubyz.utils.ThreadPool;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.entity.ChunkEntityManager;
@@ -27,8 +28,20 @@ public class ClientWorld extends World {
 	float ambientLight = 0f;
 	Vector4f clearColor = new Vector4f(0, 0, 0, 1.0f);
 
+	public final Class<?> chunkProvider;
+
 	public ClientWorld(String ip, String playerName, Class<?> chunkProvider) {
-		super("server", chunkProvider);
+		super("server");
+		this.chunkProvider = chunkProvider;
+		// Check if the chunkProvider is valid:
+		if (!NormalChunk.class.isAssignableFrom(chunkProvider) ||
+				chunkProvider.getConstructors().length != 1 ||
+				chunkProvider.getConstructors()[0].getParameterTypes().length != 4 ||
+				!chunkProvider.getConstructors()[0].getParameterTypes()[0].equals(World.class) ||
+				!chunkProvider.getConstructors()[0].getParameterTypes()[1].equals(Integer.class) ||
+				!chunkProvider.getConstructors()[0].getParameterTypes()[2].equals(Integer.class) ||
+				!chunkProvider.getConstructors()[0].getParameterTypes()[3].equals(Integer.class))
+			throw new IllegalArgumentException("Chunk provider "+chunkProvider+" is invalid! It needs to be a subclass of NormalChunk and MUST contain a single constructor with parameters (ServerWorld, Integer, Integer, Integer)");
 
 		//wio = new WorldIO(this, new File("saves/" + name));
 		serverConnection = new ServerConnection(ip, 5679, 5678, playerName);
@@ -43,6 +56,7 @@ public class ClientWorld extends World {
 			registries = Server.world.getCurrentRegistries();
 		} else {
 			registries = new CurrentWorldRegistries(this, "serverAssets/", blockPalette);
+			ThreadPool.startThreads();
 		}
 
 		// Call mods for this new world. Mods sometimes need to do extra stuff for the specific world.

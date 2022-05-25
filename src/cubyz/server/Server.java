@@ -29,7 +29,7 @@ public final class Server extends Pacer{
 			world.cleanup();
 		}
 
-		Server.world = new ServerWorld(args[0], null, NormalChunk.class);
+		Server.world = new ServerWorld(args[0], null);
 		ThreadPool.startThreads();
 
 		userManager = new UserManager();
@@ -73,7 +73,7 @@ public final class Server extends Pacer{
 		// TODO: world.clientConnection.serverPing(world.getGameTime(), world.getBiome((int)Cubyz.player.getPosition().x, (int)Cubyz.player.getPosition().y, (int)Cubyz.player.getPosition().z).getRegistryID().toString());
 		// TODO: Move this to the client, or generalize this for multiplayer.
 
-		world.seek((int) world.player.getPosition().x, (int) world.player.getPosition().y, (int) world.player.getPosition().z, ClientSettings.RENDER_DISTANCE);
+		world.seek((int) world.player.getPosition().x, (int) world.player.getPosition().y, (int) world.player.getPosition().z, 2);
 		// TODO: Send this through the proper interface and to every player:
 		ClientEntityManager.serverUpdate(world.getEntities());
 	}

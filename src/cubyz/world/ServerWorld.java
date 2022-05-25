@@ -38,11 +38,13 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-public class ServerWorld extends World{
+public class ServerWorld extends World {
 	public ChunkManager chunkManager;
 
-	public ServerWorld(String name, JsonObject generatorSettings, Class<?> chunkProvider) {
-		super(name, chunkProvider);
+	public Player player;
+
+	public ServerWorld(String name, JsonObject generatorSettings) {
+		super(name);
 
 		if(generatorSettings == null) {
 			generatorSettings = JsonParser.parseObjectFromFile("saves/" + name + "/generatorSettings.json");

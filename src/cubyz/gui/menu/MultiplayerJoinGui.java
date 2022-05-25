@@ -12,7 +12,6 @@ import cubyz.rendering.text.Fonts;
 import cubyz.utils.DiscordIntegration;
 import cubyz.utils.translate.TextKey;
 import cubyz.world.ClientWorld;
-import cubyz.world.World;
 
 import static cubyz.client.ClientSettings.GUI_SCALE;
 
@@ -73,7 +72,7 @@ public class MultiplayerJoinGui extends MenuGUI {
 	public void init() {
 		DiscordIntegration.setStatus("Multiplayer");
 		guiIPAdress.setBounds(-250, 100, 150, 250, 20);
-		guiIPAdress.setText("IP adress", "localhost:42069");
+		guiIPAdress.setText("IP adress", "localhost");
 
 		/* TODO: Until we have a logIn server or something like that, the user can enter any name.
 		*   This can be exploited very easly. Might be good to change this in the future.*/

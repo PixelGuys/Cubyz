@@ -138,7 +138,7 @@ public class MetaChunk {
 						}
 					} else if (chunk == null) {
 						try {
-							chunk = (NormalChunk)world.chunkProvider.getDeclaredConstructors()[0].newInstance(world, wx, wy, wz);
+							chunk = new NormalChunk(world, wx, wy, wz);
 							chunks[index] = chunk;
 							world.queueChunk(chunks[index]);
 							chunksList.add(chunks[index]);

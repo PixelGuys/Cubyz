@@ -1,38 +1,20 @@
 package cubyz.world;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 
 import cubyz.world.save.BlockPalette;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
-import org.joml.Vector3i;
-import org.joml.Vector4f;
 
-import cubyz.utils.Logger;
-import cubyz.Settings;
-import cubyz.api.CubyzRegistries;
 import cubyz.api.CurrentWorldRegistries;
-import cubyz.client.ClientSettings;
-import cubyz.client.GameLauncher;
-import cubyz.modding.ModLoader;
 import cubyz.utils.datastructures.HashMapKey3D;
-import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.entity.ChunkEntityManager;
 import cubyz.world.entity.Entity;
-import cubyz.world.entity.ItemEntityManager;
-import cubyz.world.entity.Player;
-import cubyz.world.handler.PlaceBlockHandler;
-import cubyz.world.handler.RemoveBlockHandler;
-import cubyz.world.items.BlockDrop;
 import cubyz.world.items.ItemStack;
-import cubyz.world.save.ChunkIO;
 import cubyz.world.save.WorldIO;
-import cubyz.world.terrain.MapFragment;
 import cubyz.world.terrain.biomes.Biome;
-import cubyz.server.Server;
 
 public abstract class World {
 	public static final int DAY_CYCLE = 12000; // Length of one in-game day in 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
@@ -57,10 +39,6 @@ public abstract class World {
 	protected long seed;
 
 	protected final String name;
-
-	public Player player;
-	
-	public final Class<?> chunkProvider;
 	
 	boolean liquidUpdate;
 	
@@ -69,19 +47,9 @@ public abstract class World {
 	
 	public CurrentWorldRegistries registries;
 	
-	public World(String name, Class<?> chunkProvider) {
+	public World(String name) {
 		this.name = name;
-		this.chunkProvider = chunkProvider;
 
-		// Check if the chunkProvider is valid:
-		if (!NormalChunk.class.isAssignableFrom(chunkProvider) ||
-				chunkProvider.getConstructors().length != 1 ||
-				chunkProvider.getConstructors()[0].getParameterTypes().length != 4 ||
-				!chunkProvider.getConstructors()[0].getParameterTypes()[0].equals(World.class) ||
-				!chunkProvider.getConstructors()[0].getParameterTypes()[1].equals(Integer.class) ||
-				!chunkProvider.getConstructors()[0].getParameterTypes()[2].equals(Integer.class) ||
-				!chunkProvider.getConstructors()[0].getParameterTypes()[3].equals(Integer.class))
-			throw new IllegalArgumentException("Chunk provider "+chunkProvider+" is invalid! It needs to be a subclass of NormalChunk and MUST contain a single constructor with parameters (ServerWorld, Integer, Integer, Integer)");
 		milliTime = System.currentTimeMillis();
 
 	}

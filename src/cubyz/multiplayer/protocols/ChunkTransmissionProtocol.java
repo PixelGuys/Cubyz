@@ -4,7 +4,6 @@ import cubyz.client.Cubyz;
 import cubyz.multiplayer.Protocol;
 import cubyz.multiplayer.UDPConnection;
 import cubyz.rendering.VisibleChunk;
-import cubyz.utils.Logger;
 import cubyz.utils.ThreadPool;
 import cubyz.utils.math.Bits;
 import cubyz.world.ChunkData;
