@@ -15,6 +15,7 @@ import cubyz.world.entity.Entity;
 import cubyz.world.items.ItemStack;
 import cubyz.world.save.WorldIO;
 import cubyz.world.terrain.biomes.Biome;
+import org.joml.Vector3i;
 
 public abstract class World {
 	public static final int DAY_CYCLE = 12000; // Length of one in-game day in 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
@@ -46,6 +47,8 @@ public abstract class World {
 	Integer[] liquids = new Integer[0];
 	
 	public CurrentWorldRegistries registries;
+
+	public final Vector3i spawn = new Vector3i(0, Integer.MIN_VALUE, 0);
 	
 	public World(String name) {
 		this.name = name;

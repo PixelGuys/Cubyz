@@ -354,6 +354,7 @@ public class Entity {
 		
 		// Stepping: Consider potential energy of the step taken V = m·g·h
 		hunger -= World.GRAVITY*step/900;
+		hunger = Math.max(0, hunger);
 		
 		// Examples:
 		// At 3 blocks/second(player base speed) the cost of movement is about twice as high as the passive consumption.
@@ -482,7 +483,7 @@ public class Entity {
 	 * @param w width in x direction
 	 * @param h height in y direction
 	 * @param d depth in z direction
-	 * @param blockData
+	 * @param block
 	 * @return
 	 */
 	public void aabCollision(Vector4d vel, double x0, double y0, double z0, double w, double h, double d, int block) {

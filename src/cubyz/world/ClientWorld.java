@@ -46,9 +46,13 @@ public class ClientWorld extends World {
 		//wio = new WorldIO(this, new File("saves/" + name));
 		serverConnection = new ServerConnection(ip, 5679, 5678, playerName);
 
-		player = new ClientPlayer(0);
+		player = new ClientPlayer(this, 0);
 		JsonObject handshakeResult = serverConnection.doHandShake(playerName);
 		blockPalette = new BlockPalette(handshakeResult.getObjectOrNew("blockPalette"));
+		spawn.x = handshakeResult.getObjectOrNew("spawn").getInt("x", 0);
+		spawn.y = handshakeResult.getObjectOrNew("spawn").getInt("y", 0);
+		spawn.z = handshakeResult.getObjectOrNew("spawn").getInt("z", 0);
+
 		player.loadFrom(handshakeResult.getObjectOrNew("player"), this);
 
 		if(Server.world != null) {

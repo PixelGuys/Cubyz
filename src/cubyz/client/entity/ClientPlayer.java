@@ -21,8 +21,8 @@ public class ClientPlayer extends Player {
 	private long lastUpdateTime = 0;
 
 
-	public ClientPlayer(int id) {
-		super(null);
+	public ClientPlayer(World world, int id) {
+		super(world);
 		this.id = id;
 	}
 	

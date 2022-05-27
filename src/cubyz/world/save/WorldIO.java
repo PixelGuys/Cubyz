@@ -66,6 +66,10 @@ public class WorldIO {
 			world.setEntities(entities);
 			world.setGameTimeCycle(worldData.getBool("doGameTimeCycle", true));
 			world.setGameTime(worldData.getLong("gameTime", 0));
+			JsonObject spawnData = worldData.getObjectOrNew("spawn");
+			world.spawn.x = spawnData.getInt("x", 0);
+			world.spawn.y = spawnData.getInt("y", Integer.MIN_VALUE);
+			world.spawn.z = spawnData.getInt("z", 0);
 		} catch (IOException e) {
 			Logger.error(e);
 		}
@@ -82,6 +86,11 @@ public class WorldIO {
 			worldData.put("gameTime", world.getGameTime());
 			worldData.put("entityCount", world.getEntities().length);
 			worldData.put("itemPalette", itemPalette.save());
+			JsonObject spawnData = new JsonObject();
+			spawnData.put("x", world.spawn.x);
+			spawnData.put("y", world.spawn.y);
+			spawnData.put("z", world.spawn.z);
+			worldData.put("spawn", spawnData);
 			JsonArray entityData = new JsonArray();
 			worldData.put("entities", entityData);
 			// TODO: Store entities per chunk.

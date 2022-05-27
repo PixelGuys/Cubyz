@@ -104,7 +104,6 @@ public class ChunkManager {
 				chunk.generate(world.getSeed(), terrainGenerationProfile);
 				chunk.load();
 			}
-			//Cubyz.chunkTree.updateChunkMesh((NormalChunk) ch); // TODO: Do this over the network.
 			for(User user : Server.userManager.users) {
 				Protocols.CHUNK_TRANSMISSION.sendChunk(user, chunk);
 			}

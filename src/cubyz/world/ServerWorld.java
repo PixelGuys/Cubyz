@@ -91,25 +91,25 @@ public class ServerWorld extends World {
 			}
 		}
 
-		if (player == null) {
-			player = (Player) CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player").newEntity(this);
-			addEntity(player);
+		if (spawn.y == Integer.MIN_VALUE) {
 			FastRandom rnd = new FastRandom(System.nanoTime());
-			int dx = 0;
-			int dz = 0;
 			Logger.info("Finding position..");
 			int tryCount = 0;
 			while (tryCount < 1000) {
-				dx = rnd.nextInt(65536);
-				dz = rnd.nextInt(65536);
-				Logger.info("Trying " + dx + " ? " + dz);
-				if (isValidSpawnLocation(dx, dz))
+				spawn.x = rnd.nextInt(65536);
+				spawn.z = rnd.nextInt(65536);
+				Logger.info("Trying " + spawn.x + " ? " + spawn.z);
+				if (isValidSpawnLocation(spawn.x, spawn.z))
 					break;
 				tryCount++;
 			}
-			int startY = (int)chunkManager.getOrGenerateMapFragment(dx, dz, 1).getHeight(dx, dz);
-			seek(dx, startY, dz, ClientSettings.RENDER_DISTANCE);
-			player.setPosition(new Vector3i(dx, startY+2, dz));
+			spawn.y = (int)chunkManager.getOrGenerateMapFragment(spawn.x, spawn.z, 1).getHeight(spawn.x, spawn.z);
+		}
+		if(player == null) {
+			player = (Player) CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player").newEntity(this);
+			addEntity(player);
+			seek(spawn.x, spawn.y, spawn.z, ClientSettings.RENDER_DISTANCE);
+			player.setPosition(spawn);
 			Logger.info("OK!");
 		}
 		wio.saveWorldData();
