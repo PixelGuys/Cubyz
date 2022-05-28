@@ -3,6 +3,7 @@ package cubyz.server;
 import cubyz.client.Cubyz;
 import cubyz.multiplayer.Protocols;
 import cubyz.multiplayer.UDPConnection;
+import cubyz.multiplayer.UDPConnectionManager;
 import cubyz.utils.Logger;
 import cubyz.utils.Zipper;
 import cubyz.world.entity.Entity;
@@ -18,8 +19,8 @@ import java.nio.charset.StandardCharsets;
 * */
 public class User extends UDPConnection {
 
-	public User(String ip, int sendPort, int receivePort) throws IOException {
-		super(ip, sendPort, receivePort);
+	public User(UDPConnectionManager manager, String ip, int receivePort) {
+		super(manager, ip, receivePort);
 		doHandShake();
 	}
 	/*public void receiveJSON(JsonObject json){

@@ -32,7 +32,6 @@ import pixelguys.json.JsonParser;
 
 import org.joml.Vector3d;
 import org.joml.Vector3f;
-import org.joml.Vector3i;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -298,7 +297,7 @@ public class ServerWorld extends World {
 		for(NormalChunk ch : chunks) {
 			if (ch.updated && ch.generated) {
 				ch.updated = false;
-				for(User user : Server.userManager.users) {
+				for(User user : Server.users) {
 					Protocols.CHUNK_TRANSMISSION.sendChunk(user, ch);
 				}
 			}

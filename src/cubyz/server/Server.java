@@ -2,6 +2,7 @@ package cubyz.server;
 
 import cubyz.api.Side;
 import cubyz.modding.ModLoader;
+import cubyz.multiplayer.UDPConnectionManager;
 import cubyz.utils.Logger;
 import cubyz.client.ClientSettings;
 import cubyz.client.entity.ClientEntityManager;
@@ -9,6 +10,8 @@ import cubyz.utils.Pacer;
 import cubyz.utils.ThreadPool;
 import cubyz.world.NormalChunk;
 import cubyz.world.ServerWorld;
+
+import java.util.ArrayList;
 
 public final class Server extends Pacer{
 	public static final int UPDATES_PER_SEC = 20;
@@ -18,7 +21,8 @@ public final class Server extends Pacer{
 	private	static final Server server = new Server();
 
 	public static ServerWorld world = null;
-	public static UserManager userManager = null;
+	public final static ArrayList<User> users = new ArrayList<>();
+	private static UDPConnectionManager connectionManager = null;
 
 	public static void main(String[] args) {
 		if(ModLoader.mods.isEmpty()) {
@@ -32,8 +36,9 @@ public final class Server extends Pacer{
 		Server.world = new ServerWorld(args[0], null);
 		ThreadPool.startThreads();
 
-		userManager = new UserManager();
-		userManager.start();
+		connectionManager = new UDPConnectionManager(5678);
+		users.add(new User(connectionManager, "localhost", 5679));
+		connectionManager.addConnection(users.get(0));
 
 		try {
 			server.setFrequency(UPDATES_PER_SEC);
@@ -47,8 +52,9 @@ public final class Server extends Pacer{
 		if(world != null)
 			world.cleanup();
 		world = null;
-		userManager.dispose();
-		userManager = null;
+		connectionManager.cleanup();
+		connectionManager = null;
+		users.clear();
 	}
 	public static void stop(){
 		if (server != null)

@@ -83,7 +83,7 @@ public class ChunkManager {
 			// If the chunk is already fully generated, it is returned.
 			NormalChunk chunk = world.getChunk(ch.wx, ch.wy, ch.wz);
 			if(chunk != null && chunk.isLoaded()) {
-				for(User user : Server.userManager.users) {
+				for(User user : Server.users) {
 					Protocols.CHUNK_TRANSMISSION.sendChunk(user, chunk);
 				}
 				return;
@@ -104,12 +104,12 @@ public class ChunkManager {
 				chunk.generate(world.getSeed(), terrainGenerationProfile);
 				chunk.load();
 			}
-			for(User user : Server.userManager.users) {
+			for(User user : Server.users) {
 				Protocols.CHUNK_TRANSMISSION.sendChunk(user, chunk);
 			}
 		} else {
 			ReducedChunkVisibilityData visibilityData = new ReducedChunkVisibilityData(world, ch.wx, ch.wy, ch.wz, ch.voxelSize);
-			for(User user : Server.userManager.users) {
+			for(User user : Server.users) {
 				Protocols.CHUNK_TRANSMISSION.sendChunk(user, visibilityData);
 			}
 		}

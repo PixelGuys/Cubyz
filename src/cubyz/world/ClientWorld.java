@@ -6,6 +6,7 @@ import cubyz.client.entity.ClientPlayer;
 import cubyz.clientSide.ServerConnection;
 import cubyz.modding.ModLoader;
 import cubyz.multiplayer.Protocols;
+import cubyz.multiplayer.UDPConnectionManager;
 import cubyz.rendering.RenderOctTree;
 import cubyz.server.Server;
 import cubyz.utils.ThreadPool;
@@ -24,7 +25,8 @@ import pixelguys.json.JsonObject;
 //TODO:
 public class ClientWorld extends World {
 	public final ServerConnection serverConnection;
-	private ClientPlayer player;
+	private final UDPConnectionManager connectionManager;
+	private final ClientPlayer player;
 	float ambientLight = 0f;
 	Vector4f clearColor = new Vector4f(0, 0, 0, 1.0f);
 
@@ -44,7 +46,8 @@ public class ClientWorld extends World {
 			throw new IllegalArgumentException("Chunk provider "+chunkProvider+" is invalid! It needs to be a subclass of NormalChunk and MUST contain a single constructor with parameters (ServerWorld, Integer, Integer, Integer)");
 
 		//wio = new WorldIO(this, new File("saves/" + name));
-		serverConnection = new ServerConnection(ip, 5679, 5678, playerName);
+		connectionManager = new UDPConnectionManager(5679);
+		serverConnection = new ServerConnection(connectionManager, ip, 5678, playerName);
 
 		player = new ClientPlayer(this, 0);
 		JsonObject handshakeResult = serverConnection.doHandShake(playerName);
@@ -214,6 +217,7 @@ public class ClientWorld extends World {
 
 	@Override
 	public void cleanup() {
+		connectionManager.cleanup();
 		throw new IllegalArgumentException("a");
 	}
 

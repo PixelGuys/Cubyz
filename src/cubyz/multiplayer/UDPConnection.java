@@ -10,16 +10,15 @@ import java.net.*;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class UDPConnection extends Thread {
+public class UDPConnection {
 	private static final int MAX_PACKET_SIZE = 65507; // max udp packet size
 	private static final int IMPORTANT_HEADER_SIZE = 6;
 	private static final int MAX_IMPORTANT_PACKAGE_SIZE = 1500 - 20 - 8 - IMPORTANT_HEADER_SIZE; // Ethernet MTU minus IP header minus udp header minus header size
 
-	private final DatagramSocket socket;
-	private final DatagramPacket receivedPacket;
+	private final UDPConnectionManager manager;
 
-	private final InetAddress receiver;
-	private final int sendPort;
+	final InetAddress receiver;
+	private final int receivePort;
 
 	private final AtomicInteger messageID = new AtomicInteger(0);
 	private final SimpleList<UnconfirmedPackage> unconfirmedPackets = new SimpleList<>(new UnconfirmedPackage[1024]); // TODO: Consider using a hashmap/sorted list instead.
@@ -31,27 +30,21 @@ public class UDPConnection extends Thread {
 
 	int lastKeepAliveSent = 0, lastKeepAliveReceived = 0, otherKeepAliveReceived = 0;
 
-	public UDPConnection(String ip, int sendPort, int receivePort) {
+	public UDPConnection(UDPConnectionManager manager, String ip, int receivePort) {
 
-		Logger.debug(ip+":"+receivePort+" from :"+sendPort);
-		this.sendPort = sendPort;
+		Logger.debug(ip+":"+receivePort);
+		this.receivePort = receivePort;
+		this.manager = manager;
+		manager.addConnection(this);
 
 		//connect
-		DatagramSocket socket = null;
 		InetAddress receiver = null;
 		try {
-			//TODO: Might want to use SSL or something similar to encode the message
-			socket = new DatagramSocket(receivePort);
 			receiver = InetAddress.getByName(ip);
 		} catch (IOException e) {
 			Logger.error(e);
 		}
 		this.receiver = receiver;
-		this.socket = socket;
-
-		receivedPacket = new DatagramPacket(new byte[65536], 65536);
-
-		start();
 	}
 
 	public void send(Protocol source, byte[] data) {
@@ -74,11 +67,11 @@ public class UDPConnection extends Thread {
 				}
 				Bits.putInt(packageData, 2, startID);
 				System.arraycopy(data, offset, packageData, IMPORTANT_HEADER_SIZE, packageData.length - IMPORTANT_HEADER_SIZE);
-				DatagramPacket packet = new DatagramPacket(packageData, packageData.length, receiver, sendPort);
+				DatagramPacket packet = new DatagramPacket(packageData, packageData.length, receiver, receivePort);
 				synchronized(unconfirmedPackets) {
 					unconfirmedPackets.add(new UnconfirmedPackage(packet, lastKeepAliveSent, startID));
 				}
-				sendDirectly(packet);
+				manager.send(packet);
 				startID++;
 				offset += packageData.length - IMPORTANT_HEADER_SIZE;
 				length -= packageData.length - IMPORTANT_HEADER_SIZE;
@@ -88,15 +81,7 @@ public class UDPConnection extends Thread {
 			byte[] fullData = new byte[length + 1];
 			fullData[0] = source.id;
 			System.arraycopy(data, offset, fullData, 1, length);
-			sendDirectly(new DatagramPacket(fullData, fullData.length, receiver, sendPort));
-		}
-	}
-
-	private void sendDirectly(DatagramPacket packet) {
-		try {
-			socket.send(packet);
-		} catch(IOException e) {
-			Logger.error(e);
+			manager.send(new DatagramPacket(fullData, fullData.length, receiver, receivePort));
 		}
 	}
 
@@ -117,7 +102,7 @@ public class UDPConnection extends Thread {
 		Logger.debug("Unconfirmed: " + unconfirmedPackets.size);
 	}
 
-	private void sendKeepAlive() {
+	void sendKeepAlive() {
 		int dataLength = 0;
 		byte[] data;
 		synchronized(receivedPackets) {
@@ -149,7 +134,7 @@ public class UDPConnection extends Thread {
 			// Resend packets that didn't receive confirmation within the last 2 keep-alive signals.
 			for(int i = 0; i < unconfirmedPackets.size; i++) {
 				if(lastKeepAliveReceived - unconfirmedPackets.array[i].lastKeepAliveSentBefore >= 2) {
-					sendDirectly(unconfirmedPackets.array[i].packet);
+					manager.send(unconfirmedPackets.array[i].packet);
 					unconfirmedPackets.array[i].lastKeepAliveSentBefore = lastKeepAliveSent;
 				}
 			}
@@ -188,55 +173,32 @@ public class UDPConnection extends Thread {
 		}
 	}
 
-	@Override
-	public void run() {
-		try {
-			socket.setSoTimeout(100);
-			long lastTime = System.currentTimeMillis();
-			while (true) {
-				try {
-					socket.receive(receivedPacket);
-					byte[] data = receivedPacket.getData();
-					int len = receivedPacket.getLength();
-					byte protocol = data[0];
-					if(Math.random() < 0.1) {
-						//Logger.debug("Dropped it :P");
-						continue; // Drop packet :P
-					}
-					if(Protocols.list[protocol & 0xff].isImportant) {
-						int id = Bits.getInt(data, 2);
-						if(id - lastIncompletePackage >= 65536) {
-							Logger.warning("Many incomplete packages. Cannot process any more packages for now.");
-							continue;
-						}
-						synchronized(receivedPackets) {
-							receivedPackets[0].add(id);
-						}
-						synchronized(lastReceivedPackets) {
-							if(id - lastIncompletePackage < 0 || lastReceivedPackets[id & 65535] != null) {
-								Logger.warning("Already received it: "+id);
-								continue; // Already received the package in the past.
-							}
-							lastReceivedPackets[id & 65535] = new ReceivedPackage(Arrays.copyOf(data, len), data[1] != 0);
-							// Check if a message got completed:
-							collectMultiPackets();
-						}
-					} else {
-						Protocols.list[protocol & 0xff].receive(this, data, 1, len - 1);
-					}
-				} catch(SocketTimeoutException e) {
-					// No message within the last ~100 ms.
-					// TODO: Add a counter that breaks connection if there was no message for a longer time.
-				}
-
-				// Send a keep-alive packet roughly every 100 ms:
-				if(System.currentTimeMillis() - lastTime > 100) {
-					lastTime = System.currentTimeMillis();
-					sendKeepAlive();
-				}
+	public void receive(byte[] data, int len) {
+		byte protocol = data[0];
+		if(Math.random() < 0.1) {
+			//Logger.debug("Dropped it :P");
+			return; // Drop packet :P
+		}
+		if(Protocols.list[protocol & 0xff].isImportant) {
+			int id = Bits.getInt(data, 2);
+			if(id - lastIncompletePackage >= 65536) {
+				Logger.warning("Many incomplete packages. Cannot process any more packages for now.");
+				return;
 			}
-		} catch (Exception e) {
-			Logger.crash(e);
+			synchronized(receivedPackets) {
+				receivedPackets[0].add(id);
+			}
+			synchronized(lastReceivedPackets) {
+				if(id - lastIncompletePackage < 0 || lastReceivedPackets[id & 65535] != null) {
+					Logger.warning("Already received it: "+id);
+					return; // Already received the package in the past.
+				}
+				lastReceivedPackets[id & 65535] = new ReceivedPackage(Arrays.copyOf(data, len), data[1] != 0);
+				// Check if a message got completed:
+				collectMultiPackets();
+			}
+		} else {
+			Protocols.list[protocol & 0xff].receive(this, data, 1, len - 1);
 		}
 	}
 
