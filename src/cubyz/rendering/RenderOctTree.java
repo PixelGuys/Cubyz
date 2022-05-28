@@ -60,10 +60,11 @@ public class RenderOctTree {
 				// Check if parts of this OctTree require using normal chunks:
 				if (size == Chunk.chunkSize*2 && minDist < renderDistance*renderDistance) {
 					if (nextNodes == null) {
-						nextNodes = new OctTreeNode[8];
+						OctTreeNode[] nextNodes = new OctTreeNode[8];
 						for(int i = 0; i < 8; i++) {
 							nextNodes[i] = new OctTreeNode((ReducedChunkMesh)mesh, x + ((i & 1) == 0 ? 0 : size/2), y + ((i & 2) == 0 ? 0 : size/2), z + ((i & 4) == 0 ? 0 : size/2), size/2, meshRequests);
 						}
+						this.nextNodes = nextNodes;
 					}
 					for(int i = 0; i < 8; i++) {
 						nextNodes[i].update(px, py, pz, renderDistance, maxRD/2, minHeight, maxHeight, nearRenderDistance, meshRequests);
@@ -71,10 +72,11 @@ public class RenderOctTree {
 				// Check if parts of this OctTree require a higher resolution:
 				} else if (minDist < maxRD*maxRD/4 && size > Chunk.chunkSize*2) {
 					if (nextNodes == null) {
-						nextNodes = new OctTreeNode[8];
+						OctTreeNode[] nextNodes = new OctTreeNode[8];
 						for(int i = 0; i < 8; i++) {
 							nextNodes[i] = new OctTreeNode((ReducedChunkMesh)mesh, x + ((i & 1) == 0 ? 0 : size/2), y + ((i & 2) == 0 ? 0 : size/2), z + ((i & 4) == 0 ? 0 : size/2), size/2, meshRequests);
 						}
+						this.nextNodes = nextNodes;
 					}
 					for(int i = 0; i < 8; i++) {
 						nextNodes[i].update(px, py, pz, renderDistance, maxRD/2, minHeight, maxHeight, nearRenderDistance, meshRequests);
