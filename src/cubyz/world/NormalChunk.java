@@ -389,7 +389,9 @@ public class NormalChunk extends Chunk {
 	// TODO: Minimize them.
 	
 	protected void lightUpdate(int x, int y, int z) {}
-	public void load() {}
+	public void load() {
+		loaded = true;
+	}
 	public int getLight(int x, int y, int z) {return 0;}
 	
 	// Implementations of interface Chunk:

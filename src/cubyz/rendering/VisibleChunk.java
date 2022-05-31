@@ -1,17 +1,14 @@
 package cubyz.rendering;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 
 import cubyz.client.ClientSettings;
 import cubyz.client.Cubyz;
-import cubyz.utils.Logger;
 import cubyz.utils.Utilities;
 import cubyz.utils.datastructures.SimpleList;
 import cubyz.world.*;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.BlockInstance;
-import cubyz.world.terrain.MapFragment;
 import org.joml.Vector3i;
 
 /**

@@ -161,16 +161,18 @@ public class NormalChunkMesh extends ChunkMesh {
 	
 	@Override
 	public void regenerateMesh() {
-		delete();
 		VisibleChunk chunk;
 		synchronized(this) {
 			chunk = this.chunk;
 			if (!needsUpdate)
 				return;
 			needsUpdate = false;
-			if (chunk == null || !chunk.isLoaded())
-				return;
 		}
+		if(chunk != null && !chunk.isLoaded())
+			return;
+		delete();
+		if(chunk == null)
+			return;
 		VertexAttribList vertices = localVertices.get();
 		IntSimpleList faces = localFaces.get();
 		vertices.clear();
@@ -229,11 +231,11 @@ public class NormalChunkMesh extends ChunkMesh {
 			if(chunk == null) {
 				generated = false;
 			} else {
-				synchronized(chunk) {
-					chunk.updated = false;
-				}
 				if(!chunk.isLoaded()) {
 					return;
+				}
+				synchronized(chunk) {
+					chunk.updated = false;
 				}
 			}
 			if(!needsUpdate) {
@@ -250,7 +252,7 @@ public class NormalChunkMesh extends ChunkMesh {
 
 	@Override
 	public void render(Vector3d playerPosition) {
-		if(chunk != null && chunk.updated) {
+		if(chunk != null && chunk.updated && chunk.isLoaded()) {
 			this.updateChunk(chunk);
 		}
 		if (chunk == null || !generated) {
