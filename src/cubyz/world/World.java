@@ -24,7 +24,6 @@ public abstract class World {
 	protected HashMap<HashMapKey3D, MetaChunk> metaChunks = new HashMap<HashMapKey3D, MetaChunk>();
 	protected NormalChunk[] chunks = new NormalChunk[0];
 	protected ChunkEntityManager[] entityManagers = new ChunkEntityManager[0];
-	protected int lastX = Integer.MAX_VALUE, lastY = Integer.MAX_VALUE, lastZ = Integer.MAX_VALUE; // Chunk coordinates of the last chunk update.
 	protected ArrayList<Entity> entities = new ArrayList<>();
 	public BlockPalette blockPalette;
 	
@@ -111,8 +110,6 @@ public abstract class World {
 	public abstract void update();
 
 	public abstract void queueChunk(ChunkData ch);
-	
-	public abstract void seek(int x, int y, int z, int renderDistance);
 	
 	public abstract MetaChunk getMetaChunk(int wx, int wy, int wz);
 	

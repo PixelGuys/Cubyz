@@ -185,11 +185,6 @@ public class ClientWorld extends World {
 	}
 
 	@Override
-	public void seek(int x, int y, int z, int renderDistance) {
-		throw new IllegalArgumentException("a");
-	}
-
-	@Override
 	public MetaChunk getMetaChunk(int wx, int wy, int wz) {
 		throw new IllegalArgumentException("a");
 	}

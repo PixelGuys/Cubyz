@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import cubyz.utils.Logger;
 import cubyz.world.World;
 import cubyz.world.entity.Entity;
+import cubyz.world.entity.PlayerEntity;
 import cubyz.world.items.Item;
 import pixelguys.json.JsonArray;
 import pixelguys.json.JsonObject;
@@ -95,8 +96,9 @@ public class WorldIO {
 			worldData.put("entities", entityData);
 			// TODO: Store entities per chunk.
 			for (Entity ent : world.getEntities()) {
-				if (ent != null)
+				if (ent != null && ent.getType().getClass() != PlayerEntity.class) {
 					entityData.add(ent.save());
+				}
 			}
 			out.write(worldData.toString().getBytes(StandardCharsets.UTF_8));
 			Logger.debug(worldData.toString());

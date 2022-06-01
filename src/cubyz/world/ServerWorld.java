@@ -3,20 +3,17 @@ package cubyz.world;
 import cubyz.Settings;
 import cubyz.api.CubyzRegistries;
 import cubyz.api.CurrentWorldRegistries;
-import cubyz.client.ClientSettings;
 import cubyz.modding.ModLoader;
 import cubyz.multiplayer.Protocols;
 import cubyz.server.Server;
 import cubyz.server.User;
 import cubyz.utils.FastRandom;
 import cubyz.utils.Logger;
+import cubyz.utils.Utils;
 import cubyz.utils.datastructures.HashMapKey3D;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.Blocks;
-import cubyz.world.entity.ChunkEntityManager;
-import cubyz.world.entity.Entity;
-import cubyz.world.entity.ItemEntityManager;
-import cubyz.world.entity.Player;
+import cubyz.world.entity.*;
 import cubyz.world.handler.PlaceBlockHandler;
 import cubyz.world.handler.RemoveBlockHandler;
 import cubyz.world.items.BlockDrop;
@@ -34,13 +31,14 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 
 public class ServerWorld extends World {
 	public ChunkManager chunkManager;
-
-	public Player player;
 
 	public ServerWorld(String name, JsonObject generatorSettings) {
 		super(name);
@@ -84,12 +82,6 @@ public class ServerWorld extends World {
 		}
 		generated = true;
 
-		for (Entity ent : getEntities()) {
-			if (ent instanceof Player) {
-				player = (Player) ent;
-			}
-		}
-
 		if (spawn.y == Integer.MIN_VALUE) {
 			FastRandom rnd = new FastRandom(System.nanoTime());
 			Logger.info("Finding position..");
@@ -104,14 +96,34 @@ public class ServerWorld extends World {
 			}
 			spawn.y = (int)chunkManager.getOrGenerateMapFragment(spawn.x, spawn.z, 1).getHeight(spawn.x, spawn.z);
 		}
-		if(player == null) {
-			player = (Player) CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player").newEntity(this);
-			addEntity(player);
-			seek(spawn.x, spawn.y, spawn.z, ClientSettings.RENDER_DISTANCE);
-			player.setPosition(spawn);
-			Logger.info("OK!");
-		}
 		wio.saveWorldData();
+	}
+
+	public Player findPlayer(User user) {
+		JsonObject playerData = JsonParser.parseObjectFromFile("saves/" + name + "/players/" + Utils.escapeFolderName(user.name) + ".json");
+		Player player = new Player(this);
+		addEntity(player);
+		if(playerData.map.isEmpty()) {
+			// Generate a new player:
+			player.setPosition(spawn);
+		} else {
+			player.loadFrom(playerData);
+		}
+		return player;
+	}
+
+	private void savePlayers() {
+		for(User user : Server.users) {
+			try {
+				File file = new File("saves/" + name + "/players/" + Utils.escapeFolderName(user.name) + ".json");
+				file.getParentFile().mkdirs();
+				user.player.save().writeObjectToStream(
+					new PrintWriter(new FileOutputStream("saves/" + name + "/players/" + Utils.escapeFolderName(user.name) + ".json"))
+				);
+			} catch(FileNotFoundException e) {
+				Logger.error(e);
+			}
+		}
 	}
 
 	@Override
@@ -120,6 +132,7 @@ public class ServerWorld extends World {
 			if (chunk != null) chunk.save();
 		}
 		wio.saveWorldData();
+		savePlayers();
 		chunkManager.forceSave();
 		ChunkIO.save();
 	}
@@ -302,27 +315,29 @@ public class ServerWorld extends World {
 				}
 			}
 		}
+		seek();
 	}
 	@Override
 	public void queueChunk(ChunkData ch) {
 		chunkManager.queueChunk(ch);
 	}
-	@Override
-	public void seek(int x, int y, int z, int renderDistance) {
+
+	public void seek() {
 		// Care about the metaChunks:
-		if (x != lastX || y != lastY || z != lastZ) {
+		HashMap<HashMapKey3D, MetaChunk> oldMetaChunks = new HashMap<HashMapKey3D, MetaChunk>(metaChunks);
+		HashMap<HashMapKey3D, MetaChunk> newMetaChunks = new HashMap<HashMapKey3D, MetaChunk>();
+		for(User user : Server.users) {
 			ArrayList<NormalChunk> chunkList = new ArrayList<>();
 			ArrayList<ChunkEntityManager> managers = new ArrayList<>();
-			HashMap<HashMapKey3D, MetaChunk> oldMetaChunks = new HashMap<HashMapKey3D, MetaChunk>(metaChunks);
-			HashMap<HashMapKey3D, MetaChunk> newMetaChunks = new HashMap<HashMapKey3D, MetaChunk>();
-			int metaRenderDistance = (int)Math.ceil(renderDistance/(float)(MetaChunk.metaChunkSize*Chunk.chunkSize));
-			int x0 = x >> (MetaChunk.metaChunkShift + Chunk.chunkShift);
-			int y0 = y >> (MetaChunk.metaChunkShift + Chunk.chunkShift);
-			int z0 = z >> (MetaChunk.metaChunkShift + Chunk.chunkShift);
+			int metaRenderDistance = (int)Math.ceil(Settings.entityDistance/(float)(MetaChunk.metaChunkSize*Chunk.chunkSize));
+			int x0 = (int)user.player.getPosition().x >> (MetaChunk.metaChunkShift + Chunk.chunkShift);
+			int y0 = (int)user.player.getPosition().y >> (MetaChunk.metaChunkShift + Chunk.chunkShift);
+			int z0 = (int)user.player.getPosition().z >> (MetaChunk.metaChunkShift + Chunk.chunkShift);
 			for(int metaX = x0 - metaRenderDistance; metaX <= x0 + metaRenderDistance + 1; metaX++) {
 				for(int metaY = y0 - metaRenderDistance; metaY <= y0 + metaRenderDistance + 1; metaY++) {
 					for(int metaZ = z0 - metaRenderDistance; metaZ <= z0 + metaRenderDistance + 1; metaZ++) {
 						HashMapKey3D key = new HashMapKey3D(metaX, metaY, metaZ);
+						if(newMetaChunks.containsKey(key)) continue; // It was already updated from another players perspective.
 						// Check if it already exists:
 						MetaChunk metaChunk = oldMetaChunks.get(key);
 						oldMetaChunks.remove(key);
@@ -330,7 +345,7 @@ public class ServerWorld extends World {
 							metaChunk = new MetaChunk(metaX *(MetaChunk.metaChunkSize*Chunk.chunkSize), metaY*(MetaChunk.metaChunkSize*Chunk.chunkSize), metaZ *(MetaChunk.metaChunkSize*Chunk.chunkSize), this);
 						}
 						newMetaChunks.put(key, metaChunk);
-						metaChunk.updatePlayer(x, y, z, renderDistance, Settings.entityDistance, chunkList, managers);
+						metaChunk.update(Settings.entityDistance, chunkList, managers);
 					}
 				}
 			}
@@ -340,9 +355,6 @@ public class ServerWorld extends World {
 			chunks = chunkList.toArray(new NormalChunk[0]);
 			entityManagers = managers.toArray(new ChunkEntityManager[0]);
 			metaChunks = newMetaChunks;
-			lastX = x;
-			lastY = y;
-			lastZ = z;
 		}
 	}
 	@Override
@@ -415,6 +427,7 @@ public class ServerWorld extends World {
 			ChunkIO.clean();
 			
 			wio.saveWorldData();
+			savePlayers();
 			metaChunks = null;
 		} catch (Exception e) {
 			Logger.error(e);

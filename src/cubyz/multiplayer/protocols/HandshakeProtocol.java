@@ -5,6 +5,7 @@ import cubyz.clientSide.ServerConnection;
 import cubyz.multiplayer.Protocol;
 import cubyz.multiplayer.UDPConnection;
 import cubyz.server.Server;
+import cubyz.server.User;
 import cubyz.utils.Logger;
 import cubyz.utils.Utils;
 import cubyz.utils.Zipper;
@@ -46,7 +47,9 @@ public class HandshakeProtocol extends Protocol {
 					conn.send(this, out.toByteArray());
 
 					JsonObject jsonObject = new JsonObject();
-					jsonObject.put("player", Server.world.player.save());
+					((User)conn).name = name;
+					((User)conn).player = Server.world.findPlayer((User)conn);
+					jsonObject.put("player", ((User)conn).player.save());
 					jsonObject.put("blockPalette", Server.world.blockPalette.save());
 					JsonObject spawn = new JsonObject();
 					spawn.put("x", Server.world.spawn.x);
@@ -60,6 +63,9 @@ public class HandshakeProtocol extends Protocol {
 					state.put(conn, STEP_SERVER_DATA);
 					conn.send(this, outData);
 					state.remove(conn); // Handshake is done.
+					synchronized(conn) { // Notify the waiting server thread.
+						conn.notifyAll();
+					}
 					break;
 				case STEP_ASSETS:
 					Logger.info("Received assets.");
@@ -73,7 +79,7 @@ public class HandshakeProtocol extends Protocol {
 					json = JsonParser.parseObjectFromString(new String(data, offset+1, length - 1, StandardCharsets.UTF_8));
 					((ServerConnection)conn).handShakeResult = json;
 					state.remove(conn); // Handshake is done.
-					synchronized(conn) { // Notify the waiting client.
+					synchronized(conn) { // Notify the waiting client thread.
 						conn.notifyAll();
 					}
 					break;

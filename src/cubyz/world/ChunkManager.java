@@ -51,7 +51,11 @@ public class ChunkManager {
 		}
 		@Override
 		public float getPriority() {
-			return ch.getPriority(Server.world.player);
+			float priority = -Float.MAX_VALUE;
+			for(User user : Server.users) {
+				priority = Math.max(ch.getPriority(user.player), priority);
+			}
+			return priority;
 		}
 
 		@Override

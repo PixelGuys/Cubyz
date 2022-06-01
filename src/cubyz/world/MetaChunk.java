@@ -2,6 +2,8 @@ package cubyz.world;
 
 import java.util.ArrayList;
 
+import cubyz.server.Server;
+import cubyz.server.User;
 import cubyz.utils.Logger;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.Blocks;
@@ -17,7 +19,6 @@ public class MetaChunk {
 	public static final int metaChunkShift2 = 2*metaChunkShift;
 	public static final int metaChunkSize = 1 << metaChunkShift;
 	public static final int worldShift = metaChunkShift + Chunk.chunkShift;
-	public static final int worldMask = (1 << worldShift) - 1;
 	public final int wx, wy, wz;
 	public final NormalChunk[] chunks;
 	public final ChunkEntityManager[] entityManagers;
@@ -107,30 +108,29 @@ public class MetaChunk {
 		}
 	}
 	
-	public void updatePlayer(int x, int y, int z, int renderDistance, int entityDistance, ArrayList<NormalChunk> chunksList, ArrayList<ChunkEntityManager> managers) {
+	public void update(int entityDistance, ArrayList<NormalChunk> chunksList, ArrayList<ChunkEntityManager> managers) {
 		// Shift the player position, so chunks are loaded once the center comes into render distance:
-		x -= Chunk.chunkSize/2;
-		y -= Chunk.chunkSize/2;
-		z -= Chunk.chunkSize/2;
-		int rdSquare = renderDistance*renderDistance << Chunk.chunkShift2;
 		int edSquare = entityDistance*entityDistance << Chunk.chunkShift2;
-		edSquare = Math.min(rdSquare, edSquare);
 		for(int px = 0; px < metaChunkSize; px++) {
 			int wx = px*Chunk.chunkSize + this.wx;
-			long dx = Math.max(0, Math.abs(wx - x) - Chunk.chunkSize/2);
-			long distX = dx*dx;
 			for(int py = 0; py < metaChunkSize; py++) {
 				int wy = py*Chunk.chunkSize + this.wy;
-				long dy = Math.max(0, Math.abs(wy - y) - Chunk.chunkSize/2);
-				long distY = dy*dy;
 				for(int pz = 0; pz < metaChunkSize; pz++) {
 					int wz = pz*Chunk.chunkSize + this.wz;
-					long dz = Math.max(0, Math.abs(wz - z) - Chunk.chunkSize/2);
-					long distZ = dz*dz;
-					long dist = distX + distY + distZ;
+					boolean isNeeded = false;
+					for(User user : Server.users) {
+						long dx = Math.max(0, Math.abs(wx - (int)user.player.getPosition().x + Chunk.chunkSize/2) - Chunk.chunkSize/2);
+						long dy = Math.max(0, Math.abs(wy - (int)user.player.getPosition().y + Chunk.chunkSize/2) - Chunk.chunkSize/2);
+						long dz = Math.max(0, Math.abs(wz - (int)user.player.getPosition().z + Chunk.chunkSize/2) - Chunk.chunkSize/2);
+						long dist = dx*dx + dy*dy + dz*dz;
+						if(dist < edSquare) {
+							isNeeded = true;
+							break;
+						}
+					}
 					int index = (px << metaChunkShift) | (py <<  metaChunkShift2) | pz;
 					NormalChunk chunk = chunks[index];
-					if (dist > rdSquare) {
+					if (!isNeeded) {
 						if (chunk != null) {
 							// TODO: world.unQueueChunk(chunk);
 							chunk.clean();
@@ -149,7 +149,7 @@ public class MetaChunk {
 						chunksList.add(chunk);
 					}
 					ChunkEntityManager manager = entityManagers[index];
-					if (dist > edSquare) {
+					if (!isNeeded) {
 						if (manager != null) {
 							manager.save();
 							entityManagers[index] = null;

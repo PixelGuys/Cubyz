@@ -13,7 +13,7 @@ public final class Settings {
 
 	private static Language currentLanguage = null;
 	
-	public static int entityDistance = 5;
+	public static int entityDistance = 2;
 	
 	public static void setLanguage(Language lang) {
 		currentLanguage = lang;

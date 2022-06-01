@@ -38,7 +38,6 @@ public final class Server extends Pacer{
 
 		connectionManager = new UDPConnectionManager(5678);
 		users.add(new User(connectionManager, "localhost", 5679));
-		connectionManager.addConnection(users.get(0));
 
 		try {
 			server.setFrequency(UPDATES_PER_SEC);
@@ -77,9 +76,7 @@ public final class Server extends Pacer{
 		// TODO: Adjust for multiple players:
 
 		// TODO: world.clientConnection.serverPing(world.getGameTime(), world.getBiome((int)Cubyz.player.getPosition().x, (int)Cubyz.player.getPosition().y, (int)Cubyz.player.getPosition().z).getRegistryID().toString());
-		// TODO: Move this to the client, or generalize this for multiplayer.
 
-		world.seek((int) world.player.getPosition().x, (int) world.player.getPosition().y, (int) world.player.getPosition().z, 2);
 		// TODO: Send this through the proper interface and to every player:
 		ClientEntityManager.serverUpdate(world.getEntities());
 	}
