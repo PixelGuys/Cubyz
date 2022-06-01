@@ -17,8 +17,8 @@ public class UDPConnection {
 
 	private final UDPConnectionManager manager;
 
-	final InetAddress receiver;
-	private final int receivePort;
+	final InetAddress remoteAddress;
+	final int remotePort;
 
 	private final AtomicInteger messageID = new AtomicInteger(0);
 	private final SimpleList<UnconfirmedPackage> unconfirmedPackets = new SimpleList<>(new UnconfirmedPackage[1024]); // TODO: Consider using a hashmap/sorted list instead.
@@ -30,21 +30,21 @@ public class UDPConnection {
 
 	int lastKeepAliveSent = 0, lastKeepAliveReceived = 0, otherKeepAliveReceived = 0;
 
-	public UDPConnection(UDPConnectionManager manager, String ip, int receivePort) {
+	public UDPConnection(UDPConnectionManager manager, String ip, int remotePort) {
 
-		Logger.debug(ip+":"+receivePort);
-		this.receivePort = receivePort;
+		Logger.debug(ip+":"+remotePort);
+		this.remotePort = remotePort;
 		this.manager = manager;
 		manager.addConnection(this);
 
 		//connect
-		InetAddress receiver = null;
+		InetAddress remoteAddress = null;
 		try {
-			receiver = InetAddress.getByName(ip);
+			remoteAddress = InetAddress.getByName(ip);
 		} catch (IOException e) {
 			Logger.error(e);
 		}
-		this.receiver = receiver;
+		this.remoteAddress = remoteAddress;
 	}
 
 	public void send(Protocol source, byte[] data) {
@@ -67,7 +67,7 @@ public class UDPConnection {
 				}
 				Bits.putInt(packageData, 2, startID);
 				System.arraycopy(data, offset, packageData, IMPORTANT_HEADER_SIZE, packageData.length - IMPORTANT_HEADER_SIZE);
-				DatagramPacket packet = new DatagramPacket(packageData, packageData.length, receiver, receivePort);
+				DatagramPacket packet = new DatagramPacket(packageData, packageData.length, remoteAddress, remotePort);
 				synchronized(unconfirmedPackets) {
 					unconfirmedPackets.add(new UnconfirmedPackage(packet, lastKeepAliveSent, startID));
 				}
@@ -81,7 +81,7 @@ public class UDPConnection {
 			byte[] fullData = new byte[length + 1];
 			fullData[0] = source.id;
 			System.arraycopy(data, offset, fullData, 1, length);
-			manager.send(new DatagramPacket(fullData, fullData.length, receiver, receivePort));
+			manager.send(new DatagramPacket(fullData, fullData.length, remoteAddress, remotePort));
 		}
 	}
 

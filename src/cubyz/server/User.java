@@ -13,8 +13,8 @@ public class User extends UDPConnection {
 	public Player player;
 	public String name;
 
-	public User(UDPConnectionManager manager, String ip, int receivePort) {
-		super(manager, ip, receivePort);
+	public User(UDPConnectionManager manager, String ip, int remotePort) {
+		super(manager, ip, remotePort);
 		Protocols.HANDSHAKE.serverSide(this);
 		try {
 			synchronized(this) {

@@ -22,7 +22,7 @@ public final class Server extends Pacer{
 
 	public static ServerWorld world = null;
 	public final static ArrayList<User> users = new ArrayList<>();
-	private static UDPConnectionManager connectionManager = null;
+	public static UDPConnectionManager connectionManager = null;
 
 	public static void main(String[] args) {
 		if(ModLoader.mods.isEmpty()) {

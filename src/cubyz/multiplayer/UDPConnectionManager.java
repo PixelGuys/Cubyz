@@ -11,12 +11,12 @@ public final class UDPConnectionManager extends Thread {
 	private final DatagramPacket receivedPacket;
 	private final ArrayList<UDPConnection> connections = new ArrayList<>();
 
-	public UDPConnectionManager(int receivePort) {
+	public UDPConnectionManager(int localPort) {
 		// Connect
 		DatagramSocket socket = null;
 		try {
 			//TODO: Might want to use SSL or something similar to encode the message
-			socket = new DatagramSocket(receivePort);
+			socket = new DatagramSocket(localPort);
 		} catch (SocketException e) {
 			Logger.error(e);
 		}
@@ -55,13 +55,14 @@ public final class UDPConnectionManager extends Thread {
 		}
 	}
 
-	private UDPConnection findConnection(InetAddress addr) {
+	private UDPConnection findConnection(InetAddress addr, int port) {
 		for(UDPConnection connection : connections) {
-			if(connection.receiver.equals(addr)) {
+			if(connection.remoteAddress.equals(addr) && connection.remotePort == port) {
 				return connection;
 			}
 		}
-		throw new IllegalStateException("Unknown connection from address: " + addr);
+		Logger.error("Unknown connection from address: " + addr+":"+port);
+		return null;
 	}
 
 	@Override
@@ -75,7 +76,10 @@ public final class UDPConnectionManager extends Thread {
 					socket.receive(receivedPacket);
 					byte[] data = receivedPacket.getData();
 					int len = receivedPacket.getLength();
-					findConnection(receivedPacket.getAddress()).receive(data, len);
+					UDPConnection conn = findConnection(receivedPacket.getAddress(), receivedPacket.getPort());
+					if(conn != null) {
+						conn.receive(data, len);
+					}
 				} catch(SocketTimeoutException e) {
 					// No message within the last ~100 ms.
 					// TODO: Add a counter that breaks connection if there was no message for a longer time.

@@ -1,5 +1,6 @@
 package cubyz.gui.menu;
 
+import cubyz.Constants;
 import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
 import cubyz.gui.MenuGUI;
@@ -66,6 +67,7 @@ public class MultiplayerJoinGui extends MenuGUI {
 
 	private TextInputWithLabel guiIPAdress  = new TextInputWithLabel();
 	private TextInputWithLabel guiName	    = new TextInputWithLabel();
+	private TextInputWithLabel guiPort	    = new TextInputWithLabel();
 	private Button			   guiJoin	    = new Button();
 
 	@Override
@@ -79,13 +81,16 @@ public class MultiplayerJoinGui extends MenuGUI {
 		guiName.setBounds(-250, 140, 150, 250, 20);
 		guiName.setText(TextKey.createTextKey("gui.cubyz.multiplayer.displayname"), "TheLegend27");
 
+		guiPort.setBounds(-250, 180, 150, 250, 20);
+		guiPort.setText("local port", ""+Constants.DEFAULT_PORT);
+
 		guiJoin.setBounds(10, 60, 400, 50, Component.ALIGN_BOTTOM_LEFT);
 		guiJoin.setText(TextKey.createTextKey("gui.cubyz.multiplayer.join"));
 		guiJoin.setFontSize(32);
 		guiJoin.setOnAction(() -> {
 			//new Thread(() -> Server.main(new String[0]), "Server Thread").start();
 
-			ClientWorld world = new ClientWorld(guiIPAdress.getText(), guiName.getText(), VisibleChunk.class);
+			ClientWorld world = new ClientWorld(guiIPAdress.getText(), guiPort.getText(), guiName.getText(), VisibleChunk.class);
 			Cubyz.gameUI.setMenu(null, false); // hide from UISystem.back()
 			GameLauncher.logic.loadWorld(world);
 		});
@@ -101,6 +106,7 @@ public class MultiplayerJoinGui extends MenuGUI {
 	public void render() {
 		guiIPAdress.render();
 		guiName.render();
+		guiPort.render();
 		guiJoin.render();
 	}
 

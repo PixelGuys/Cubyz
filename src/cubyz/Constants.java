@@ -9,6 +9,7 @@ import cubyz.api.Side;
  */
 
 public final class Constants {
+
 	private Constants() {} // No instances allowed.
 
 	public static final String CHARSET_NAME = "UTF-8";
@@ -27,8 +28,10 @@ public final class Constants {
 	/**float math constants*/
 	public static final float	PI = (float)Math.PI,
 								PI_HALF = PI/2;
-	
-	
+
+
+	public static final int DEFAULT_PORT = 5678;
+
 	static Side currentSide = null;
 	
 	public static Side getGameSide() {

@@ -7,12 +7,7 @@ import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Mod;
 import cubyz.api.Proxy;
 import cubyz.api.Registry;
-import cubyz.command.ClearCommand;
-import cubyz.command.CureCommand;
-import cubyz.command.GameTimeCycleCommand;
-import cubyz.command.GiveCommand;
-import cubyz.command.TPCommand;
-import cubyz.command.TimeCommand;
+import cubyz.command.*;
 import cubyz.rendering.rotation.*;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.RotationMode;
@@ -58,6 +53,7 @@ public class BaseMod implements Mod {
 		// As they are independent to other (the correct order for others is block -> item (for item blocks and other items) -> entity)
 		CubyzRegistries.COMMAND_REGISTRY.register(new GameTimeCycleCommand());
 		CubyzRegistries.COMMAND_REGISTRY.register(new GiveCommand());
+		CubyzRegistries.COMMAND_REGISTRY.register(new InviteCommand());
 		CubyzRegistries.COMMAND_REGISTRY.register(new ClearCommand());
 		CubyzRegistries.COMMAND_REGISTRY.register(new CureCommand());
 		CubyzRegistries.COMMAND_REGISTRY.register(new TimeCommand());

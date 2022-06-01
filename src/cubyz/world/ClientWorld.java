@@ -1,5 +1,6 @@
 package cubyz.world;
 
+import cubyz.Constants;
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.client.Cubyz;
 import cubyz.client.entity.ClientPlayer;
@@ -33,6 +34,9 @@ public class ClientWorld extends World {
 	public final Class<?> chunkProvider;
 
 	public ClientWorld(String ip, String playerName, Class<?> chunkProvider) {
+		this(ip, null, playerName, chunkProvider);
+	}
+	public ClientWorld(String ip, String sendPort, String playerName, Class<?> chunkProvider) {
 		super("server");
 		this.chunkProvider = chunkProvider;
 		// Check if the chunkProvider is valid:
@@ -45,9 +49,15 @@ public class ClientWorld extends World {
 				!chunkProvider.getConstructors()[0].getParameterTypes()[3].equals(Integer.class))
 			throw new IllegalArgumentException("Chunk provider "+chunkProvider+" is invalid! It needs to be a subclass of NormalChunk and MUST contain a single constructor with parameters (ServerWorld, Integer, Integer, Integer)");
 
-		//wio = new WorldIO(this, new File("saves/" + name));
-		connectionManager = new UDPConnectionManager(5679);
-		serverConnection = new ServerConnection(connectionManager, ip, 5678, playerName);
+		//                                                               ↓ local port in singleplayer.
+		connectionManager = new UDPConnectionManager(sendPort == null ? 5679 : Integer.parseInt(sendPort));
+		String[] ipPort = ip.split(":");
+		String ipOnly = ipPort[0];
+		int remotePort = Constants.DEFAULT_PORT;
+		if(ipPort.length == 2) {
+			remotePort = Integer.parseInt(ipPort[1]);
+		}
+		serverConnection = new ServerConnection(connectionManager, ipOnly, remotePort, playerName);
 
 		player = new ClientPlayer(this, 0);
 		JsonObject handshakeResult = serverConnection.doHandShake(playerName);
