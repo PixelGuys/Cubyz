@@ -10,6 +10,7 @@ public final class UDPConnectionManager extends Thread {
 	private final DatagramSocket socket;
 	private final DatagramPacket receivedPacket;
 	private final ArrayList<UDPConnection> connections = new ArrayList<>();
+	private volatile boolean running = true;
 
 	public UDPConnectionManager(int localPort) {
 		// Connect
@@ -44,14 +45,18 @@ public final class UDPConnectionManager extends Thread {
 	}
 
 	public void cleanup() {
-		for(UDPConnection connection : connections) {
-			// TODO: Send a final message to the connected client: connection.cleanup();
+		while(!connections.isEmpty()) {
+			connections.get(0).disconnect();
 		}
-		interrupt();
-		try {
-			join();
-		} catch(InterruptedException e) {
-			Logger.error(e);
+		socket.close();
+		running = false;
+		if(Thread.currentThread() != this) {
+			interrupt();
+			try {
+				join();
+			} catch(InterruptedException e) {
+				Logger.error(e);
+			}
 		}
 	}
 
@@ -71,7 +76,7 @@ public final class UDPConnectionManager extends Thread {
 		try {
 			socket.setSoTimeout(100);
 			long lastTime = System.currentTimeMillis();
-			while (true) {
+			while (running) {
 				try {
 					socket.receive(receivedPacket);
 					byte[] data = receivedPacket.getData();

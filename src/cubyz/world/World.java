@@ -88,7 +88,6 @@ public abstract class World {
 
 	// Returns the blocks, so their meshes can be created and stored.
 	public abstract void generate();
-	public abstract void forceSave();
 	
 	public abstract void addEntity(Entity ent);
 	public abstract void removeEntity(Entity ent);

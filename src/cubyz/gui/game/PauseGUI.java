@@ -1,5 +1,6 @@
 package cubyz.gui.game;
 
+import cubyz.server.Server;
 import cubyz.utils.Logger;
 import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
@@ -29,8 +30,8 @@ public class PauseGUI extends MenuGUI {
 	@Override
 	public void init() {
 		Mouse.setGrabbed(false);
-		if (Cubyz.world != null) {
-			Cubyz.world.forceSave();
+		if (Server.world != null) {
+			Server.world.forceSave();
 		}
 		exit = new Button("gui.cubyz.pause.exit");
 		resume = new Button("gui.cubyz.pause.resume");

@@ -34,7 +34,6 @@ public final class Server extends Pacer{
 		}
 
 		Server.world = new ServerWorld(args[0], null);
-		ThreadPool.startThreads();
 
 		connectionManager = new UDPConnectionManager(5678);
 		users.add(new User(connectionManager, "localhost", 5679));
@@ -62,6 +61,11 @@ public final class Server extends Pacer{
 
 	private Server(){
 		super("Server");
+	}
+
+	public static void disconnect(User user) {
+		world.forceSave();
+		users.remove(user);
 	}
 
 	@Override

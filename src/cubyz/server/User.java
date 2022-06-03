@@ -24,4 +24,10 @@ public class User extends UDPConnection {
 			Logger.error(e);
 		}
 	}
+
+	@Override
+	public void disconnect() {
+		super.disconnect();
+		Server.disconnect(this);
+	}
 }

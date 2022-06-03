@@ -9,8 +9,6 @@ public final class ThreadPool {
 	private static final Thread[] threads;
 	private static final BlockingMaxHeap<Task> loadList;
 
-	private static volatile boolean running = false;
-
 	static {
 		threads = new Thread[Math.max(1, Runtime.getRuntime().availableProcessors() - 2)];
 		for (int i = 0; i < threads.length; i++) {
@@ -18,6 +16,7 @@ public final class ThreadPool {
 			thread.setName("Worker-Thread-" + (i+1));
 			thread.setPriority(Thread.MIN_PRIORITY);
 			thread.setDaemon(true);
+			thread.start();
 			threads[i] = thread;
 		}
 		loadList = new BlockingMaxHeap<>(new Task[1024], threads.length);
@@ -25,7 +24,7 @@ public final class ThreadPool {
 
 	private static void run() {
 		long lastUpdate = System.currentTimeMillis();
-		while (running) {
+		while (true) {
 			Task popped;
 			try {
 				popped = loadList.extractMax();
@@ -56,23 +55,8 @@ public final class ThreadPool {
 		}
 	}
 
-	public static void clearAndStopThreads() {
-		running = false;
-		try {
-			for (Thread thread : threads) {
-				thread.interrupt();
-				thread.join();
-			}
-		} catch(InterruptedException e) {
-			Logger.error(e);
-		}
-	}
-
-	public static void startThreads() {
-		running = true;
-		for(Thread thread : threads) {
-			thread.start();
-		}
+	public static void clear() {
+		loadList.clear();
 	}
 
 	public static void addTask(Task task) {

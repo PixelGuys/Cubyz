@@ -1,9 +1,6 @@
 package cubyz.multiplayer;
 
-import cubyz.multiplayer.protocols.ChunkRequestProtocol;
-import cubyz.multiplayer.protocols.ChunkTransmissionProtocol;
-import cubyz.multiplayer.protocols.HandshakeProtocol;
-import cubyz.multiplayer.protocols.PlayerPositionProtocol;
+import cubyz.multiplayer.protocols.*;
 
 public final class Protocols {
 	public static final Protocol[] list = new Protocol[256];
@@ -13,4 +10,5 @@ public final class Protocols {
 	public static final ChunkRequestProtocol CHUNK_REQUEST = new ChunkRequestProtocol();
 	public static final ChunkTransmissionProtocol CHUNK_TRANSMISSION = new ChunkTransmissionProtocol();
 	public static final PlayerPositionProtocol PLAYER_POSITION = new PlayerPositionProtocol();
+	public static final DisconnectProtocol DISCONNECT = new DisconnectProtocol();
 }

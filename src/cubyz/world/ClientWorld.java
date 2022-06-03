@@ -73,7 +73,6 @@ public class ClientWorld extends World {
 			registries = Server.world.getCurrentRegistries();
 		} else {
 			registries = new CurrentWorldRegistries(this, "serverAssets/", blockPalette);
-			ThreadPool.startThreads();
 		}
 
 		// Call mods for this new world. Mods sometimes need to do extra stuff for the specific world.
@@ -136,11 +135,6 @@ public class ClientWorld extends World {
 
 	@Override
 	public void generate() {
-		throw new IllegalArgumentException("a");
-	}
-
-	@Override
-	public void forceSave() {
 		throw new IllegalArgumentException("a");
 	}
 
@@ -223,7 +217,7 @@ public class ClientWorld extends World {
 	@Override
 	public void cleanup() {
 		connectionManager.cleanup();
-		throw new IllegalArgumentException("a");
+		ThreadPool.clear();
 	}
 
 	@Override

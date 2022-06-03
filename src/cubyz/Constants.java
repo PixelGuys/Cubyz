@@ -31,6 +31,7 @@ public final class Constants {
 
 
 	public static final int DEFAULT_PORT = 5678;
+	public static final int CONNECTION_TIMEOUT = 30000;
 
 	static Side currentSide = null;
 	

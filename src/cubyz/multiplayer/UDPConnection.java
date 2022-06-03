@@ -30,6 +30,8 @@ public class UDPConnection {
 
 	int lastKeepAliveSent = 0, lastKeepAliveReceived = 0, otherKeepAliveReceived = 0;
 
+	protected boolean disconnected = false;
+
 	public UDPConnection(UDPConnectionManager manager, String ip, int remotePort) {
 
 		Logger.debug(ip+":"+remotePort);
@@ -52,6 +54,7 @@ public class UDPConnection {
 	}
 
 	public void send(Protocol source, byte[] data, int offset, int length) {
+		if(disconnected) return;
 		if(source.isImportant) {
 			// Split it into smaller packages to reduce loss.
 			final int maxSizeMinusHeader = MAX_IMPORTANT_PACKAGE_SIZE;
@@ -200,6 +203,19 @@ public class UDPConnection {
 		} else {
 			Protocols.list[protocol & 0xff].receive(this, data, 1, len - 1);
 		}
+	}
+
+	public void disconnect() {
+		// Send 3 disconnect packages to the other side, just to be sure.
+		// If all of them don't get through then there is probably a network issue anyways which would lead to a timeout.
+		Protocols.DISCONNECT.disconnect(this);
+		try {Thread.sleep(10);} catch(Exception e) {}
+		Protocols.DISCONNECT.disconnect(this);
+		try {Thread.sleep(10);} catch(Exception e) {}
+		Protocols.DISCONNECT.disconnect(this);
+		disconnected = true;
+		manager.removeConnection(this);
+		Logger.info("Disconnected");
 	}
 
 	private static final class UnconfirmedPackage {

@@ -1,5 +1,6 @@
 package cubyz.clientSide;
 
+import cubyz.client.Cubyz;
 import cubyz.multiplayer.Protocols;
 import cubyz.multiplayer.UDPConnection;
 import cubyz.multiplayer.UDPConnectionManager;
@@ -14,5 +15,13 @@ public class ServerConnection extends UDPConnection {
 	public JsonObject doHandShake(String name) {
 		Protocols.HANDSHAKE.clientSide(this, name);
 		return handShakeResult;
+	}
+
+	@Override
+	public void disconnect() {
+		if(!disconnected) {
+			super.disconnect();
+			Cubyz.world.cleanup();
+		}
 	}
 }

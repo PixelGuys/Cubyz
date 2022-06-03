@@ -34,6 +34,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -117,16 +118,15 @@ public class ServerWorld extends World {
 			try {
 				File file = new File("saves/" + name + "/players/" + Utils.escapeFolderName(user.name) + ".json");
 				file.getParentFile().mkdirs();
-				user.player.save().writeObjectToStream(
-					new PrintWriter(new FileOutputStream("saves/" + name + "/players/" + Utils.escapeFolderName(user.name) + ".json"))
-				);
+				PrintWriter writer = new PrintWriter(new FileOutputStream("saves/" + name + "/players/" + Utils.escapeFolderName(user.name) + ".json"), false, StandardCharsets.UTF_8);
+				user.player.save().writeObjectToStream(writer);
+				writer.close();
 			} catch(FileNotFoundException e) {
 				Logger.error(e);
 			}
 		}
 	}
 
-	@Override
 	public void forceSave() {
 		for(MetaChunk chunk : metaChunks.values()) {
 			if (chunk != null) chunk.save();
