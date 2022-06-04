@@ -3,16 +3,13 @@ package cubyz.api;
 import cubyz.command.CommandBase;
 import cubyz.world.blocks.Ore;
 import cubyz.world.blocks.RotationMode;
-import cubyz.world.entity.EntityModel;
 import cubyz.world.entity.EntityType;
 import cubyz.world.handler.RemoveBlockHandler;
 import cubyz.world.handler.PlaceBlockHandler;
 import cubyz.world.items.Item;
-import cubyz.world.items.Recipe;
 import cubyz.world.items.tools.Modifier;
 import cubyz.world.terrain.ClimateMapGenerator;
 import cubyz.world.terrain.MapGenerator;
-import cubyz.world.terrain.biomes.BiomeRegistry;
 import cubyz.world.terrain.biomes.StructureModel;
 import cubyz.world.terrain.cavebiomegenerators.CaveBiomeGenerator;
 import cubyz.world.terrain.cavegenerators.CaveGenerator;
@@ -32,7 +29,6 @@ public final class CubyzRegistries {
 	public static final Registry<CommandBase>            COMMAND_REGISTRY           = new Registry<CommandBase>();
 	public static final Registry<Modifier>               TOOL_MODIFIER_REGISTRY     = new Registry<Modifier>();
 	public static final Registry<RotationMode>           ROTATION_MODE_REGISTRY     = new Registry<RotationMode>();
-	public static final Registry<EntityModel>            ENTITY_MODEL_REGISTRY      = new Registry<EntityModel>();
 
 	// block handlers
 	public static final NoIDRegistry<RemoveBlockHandler> REMOVE_HANDLER_REGISTRY    = new NoIDRegistry<RemoveBlockHandler>();

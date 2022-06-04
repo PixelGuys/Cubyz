@@ -17,7 +17,6 @@ public class Pig extends EntityType {
 	Item drop = CubyzRegistries.ITEM_REGISTRY.getByID("cubyz:raw_meat");
 	public Pig() {
 		super(new Resource("cubyz:pig"));
-		super.model = CubyzRegistries.ENTITY_MODEL_REGISTRY.getByID("cuybz:quadruped").createInstance("body:12x20x10 \n leg:4x8 \n head:10x6x8 \n movement:stable", this);
 	}
 
 	@Override

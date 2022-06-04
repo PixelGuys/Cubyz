@@ -41,7 +41,7 @@ public class ClientEntity {
 	public void updatePosition(Vector3d position, Vector3f rotation) {
 		frontIndex = (frontIndex + 1)%lastPosition.length;
 		lastPosition[frontIndex] = position;
-		rotation.set(rotation);
+		this.rotation.set(rotation);
 	}
 
 	public void update() {
@@ -99,8 +99,5 @@ public class ClientEntity {
 			timeInCurrentFrame -= Server.UPDATES_TIME_S;
 			currentIndex = (currentIndex + 1)%lastPosition.length;
 		}
-
-		if (type.model != null)
-			type.model.update(this, deltaTime);
 	}
 }

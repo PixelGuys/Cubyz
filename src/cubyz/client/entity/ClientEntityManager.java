@@ -1,6 +1,11 @@
 package cubyz.client.entity;
 
-import cubyz.world.entity.Entity;
+import cubyz.api.CubyzRegistries;
+import cubyz.utils.Logger;
+import org.joml.Vector3d;
+import org.joml.Vector3f;
+import pixelguys.json.JsonArray;
+import pixelguys.json.JsonElement;
 
 public final class ClientEntityManager {
 	private ClientEntityManager() {} // No instances allowed.
@@ -15,18 +20,30 @@ public final class ClientEntityManager {
 	}
 
 	// TODO: Use raw data.
-	public static void serverUpdate(Entity[] serverEntities) {
-		ClientEntity[] newEntities = new ClientEntity[serverEntities.length];
+	public static void serverUpdate(JsonArray serverEntities) {
+		ClientEntity[] newEntities = new ClientEntity[serverEntities.array.size()];
 		outer:
-		for(int i = 0; i < serverEntities.length; i++) {
+		for(int i = 0; i < serverEntities.array.size(); i++) {
+			JsonElement entity = serverEntities.array.get(i);
+			int id = entity.getInt("id", 0);
+			Vector3d position = new Vector3d(
+				entity.getDouble("x", 0),
+				entity.getDouble("y", 0),
+				entity.getDouble("z", 0)
+			);
+			Vector3f rotation = new Vector3f(
+					entity.getFloat("rot_x", 0),
+					entity.getFloat("rot_y", 0),
+					entity.getFloat("rot_z", 0)
+			);
 			for(int j = 0; j < entities.length; j++) {
-				if (entities[j].id == serverEntities[i].id) {
+				if (entities[j].id == id) {
 					newEntities[i] = entities[j];
-					newEntities[i].updatePosition(serverEntities[i].getPosition(), serverEntities[i].getRotation());
+					newEntities[i].updatePosition(position, rotation);
 					continue outer;
 				}
 			}
-			newEntities[i] = new ClientEntity(serverEntities[i].getPosition(), serverEntities[i].getRotation(), serverEntities[i].id, serverEntities[i].getType(), serverEntities[i].height);
+			newEntities[i] = new ClientEntity(position, rotation, id, CubyzRegistries.ENTITY_REGISTRY.getByID(entity.getString("type", null)), entity.getFloat("height", 2));
 		}
 		entities = newEntities;
 	}

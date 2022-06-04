@@ -1,7 +1,10 @@
 package cubyz.server;
 
+import cubyz.api.CubyzRegistries;
 import cubyz.api.Side;
+import cubyz.client.entity.ClientEntity;
 import cubyz.modding.ModLoader;
+import cubyz.multiplayer.Protocols;
 import cubyz.multiplayer.UDPConnectionManager;
 import cubyz.utils.Logger;
 import cubyz.client.ClientSettings;
@@ -10,6 +13,12 @@ import cubyz.utils.Pacer;
 import cubyz.utils.ThreadPool;
 import cubyz.world.NormalChunk;
 import cubyz.world.ServerWorld;
+import cubyz.world.entity.Entity;
+import org.joml.Vector3d;
+import org.joml.Vector3f;
+import pixelguys.json.JsonArray;
+import pixelguys.json.JsonElement;
+import pixelguys.json.JsonObject;
 
 import java.util.ArrayList;
 
@@ -82,6 +91,22 @@ public final class Server extends Pacer{
 		// TODO: world.clientConnection.serverPing(world.getGameTime(), world.getBiome((int)Cubyz.player.getPosition().x, (int)Cubyz.player.getPosition().y, (int)Cubyz.player.getPosition().z).getRegistryID().toString());
 
 		// TODO: Send this through the proper interface and to every player:
-		ClientEntityManager.serverUpdate(world.getEntities());
+		JsonArray entityData = new JsonArray();
+		for(Entity ent : world.getEntities()) {
+			JsonObject data = new JsonObject();
+			data.put("id", ent.id);
+			data.put("x", ent.getPosition().x);
+			data.put("y", ent.getPosition().y);
+			data.put("z", ent.getPosition().z);
+			data.put("rot_x", ent.getRotation().x);
+			data.put("rot_y", ent.getRotation().y);
+			data.put("rot_z", ent.getRotation().z);
+			data.put("type", ent.getType().getRegistryID().toString());
+			data.put("height", ent.height);
+			entityData.add(data);
+		}
+		for(User user : users) {
+			Protocols.ENTITY.send(user, entityData);
+		}
 	}
 }

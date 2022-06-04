@@ -2,6 +2,7 @@ package cubyz.rendering;
 
 import java.io.IOException;
 
+import cubyz.utils.Logger;
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
@@ -58,12 +59,6 @@ public final class EntityRenderer {
 			int z = (int)(ent.position.z + 1.0f);
 			if (ent != null && ent.id != Cubyz.player.id) { // don't render local player
 				Mesh mesh = null;
-				if (ent.type.model != null) {
-					entityShader.setUniform(loc_materialHasTexture, true);
-					entityShader.setUniform(loc_light, Cubyz.world.getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
-					ent.type.model.render(Camera.getViewMatrix(), entityShader, ent);
-					continue;
-				}
 				if (ent instanceof CustomMeshProvider) {
 					CustomMeshProvider provider = (CustomMeshProvider) ent;
 					MeshType type = provider.getMeshType();
@@ -73,6 +68,10 @@ public final class EntityRenderer {
 					}
 				} else {
 					mesh = Meshes.entityMeshes.get(ent.type);
+				}
+
+				if(mesh == null) {
+					mesh = Meshes.cachedDefaultModels.get("cubyz:block.obj");
 				}
 				
 				if (mesh != null) {

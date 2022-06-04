@@ -67,6 +67,7 @@ public class ClientWorld extends World {
 		spawn.z = handshakeResult.getObjectOrNew("spawn").getInt("z", 0);
 
 		player.loadFrom(handshakeResult.getObjectOrNew("player"), this);
+		player.id = handshakeResult.getInt("player_id", -1);
 
 		if(Server.world != null) {
 			// Share the registries of the local server:

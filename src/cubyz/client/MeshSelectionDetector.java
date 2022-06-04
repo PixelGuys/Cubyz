@@ -94,13 +94,7 @@ public class MeshSelectionDetector {
 		}
 		// Test entities:
 		for(Entity ent : world.getEntities()) {
-			if (ent.getType().model != null) {
-				double dist = ent.getType().model.getCollisionDistance(pos, dir, ent);
-				if (dist < closestDistance) {
-					closestDistance = dist;
-					newSpatial = ent;
-				}
-			}
+			// TODO!
 		}
 		if (newSpatial == selectedSpatial)
 			return;
