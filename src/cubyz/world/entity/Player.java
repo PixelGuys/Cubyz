@@ -28,8 +28,9 @@ public class Player extends Entity implements CommandSource {
 	private int maxTime = -1;
 	private int breakingSlot = -1; // Slot used to break the block. Slot change results in restart of block breaking.
 
-	public Player(World world) {
+	public Player(World world, String name) {
 		super(CubyzRegistries.ENTITY_REGISTRY.getByID("cubyz:player"), null, world, 16, 16, 0.5f);
+		this.name = name;
 	}
 	
 	public boolean isFlying() {

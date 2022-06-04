@@ -43,7 +43,12 @@ public final class ClientEntityManager {
 					continue outer;
 				}
 			}
-			newEntities[i] = new ClientEntity(position, rotation, id, CubyzRegistries.ENTITY_REGISTRY.getByID(entity.getString("type", null)), entity.getFloat("height", 2));
+			newEntities[i] = new ClientEntity(
+				position, rotation, id,
+				CubyzRegistries.ENTITY_REGISTRY.getByID(entity.getString("type", null)),
+				entity.getFloat("height", 2),
+				entity.getString("name", "")
+			);
 		}
 		entities = newEntities;
 	}

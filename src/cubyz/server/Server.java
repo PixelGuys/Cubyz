@@ -103,6 +103,9 @@ public final class Server extends Pacer{
 			data.put("rot_z", ent.getRotation().z);
 			data.put("type", ent.getType().getRegistryID().toString());
 			data.put("height", ent.height);
+			if(!ent.name.isEmpty()) {
+				data.put("name", ent.name);
+			}
 			entityData.add(data);
 		}
 		for(User user : users) {

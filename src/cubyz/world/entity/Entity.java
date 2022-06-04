@@ -36,6 +36,8 @@ public class Entity {
 
 	public int id;
 
+	public String name = "";
+
 	private static int currentID = 0;
 	
 	/**
@@ -418,6 +420,9 @@ public class Entity {
 		json.put("velocity", saveVector(new Vector3d(vx, vy, vz)));
 		json.put("health", health);
 		json.put("hunger", hunger);
+		if(!name.isEmpty()) {
+			json.put("name", name);
+		}
 		return json;
 	}
 	
@@ -430,6 +435,7 @@ public class Entity {
 		vz = velocity.z;
 		health = json.getFloat("health", maxHealth);
 		hunger = json.getFloat("hunger", maxHunger);
+		name = json.getString("name", "");
 	}
 	
 	public EntityType getType() {

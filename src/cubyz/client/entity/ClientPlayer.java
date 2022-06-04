@@ -22,7 +22,7 @@ public class ClientPlayer extends Player {
 
 
 	public ClientPlayer(World world, int id) {
-		super(world);
+		super(world, "");
 		this.id = id;
 	}
 	

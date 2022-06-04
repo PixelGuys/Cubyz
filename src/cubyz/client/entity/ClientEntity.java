@@ -29,13 +29,16 @@ public class ClientEntity {
 
 	private long lastUpdate;
 
-	public ClientEntity(Vector3d position, Vector3f rotation, int id, EntityType type, double height) {
+	public final String name;
+
+	public ClientEntity(Vector3d position, Vector3f rotation, int id, EntityType type, double height, String name) {
 		lastPosition[0] = position;
 		this.rotation.set(rotation);
 		this.position.set(position);
 		this.id = id;
 		this.type = type;
 		this.height = height;
+		this.name = name;
 	}
 
 	public void updatePosition(Vector3d position, Vector3f rotation) {

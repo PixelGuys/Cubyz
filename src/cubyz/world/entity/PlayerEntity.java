@@ -12,7 +12,7 @@ public class PlayerEntity extends EntityType {
 
 	@Override
 	public Entity newEntity(World world) {
-		return new Player(world);
+		return new Player(world, "");
 	}
 	
 	@Override

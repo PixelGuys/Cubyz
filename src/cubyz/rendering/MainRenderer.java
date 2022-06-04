@@ -420,6 +420,8 @@ public class MainRenderer {
 
 		if(Window.getRenderTarget() != null)
 			Window.getRenderTarget().unbind();
+
+		EntityRenderer.renderNames(playerPosition);
 	}
 
 	public void setPath(String dataName, String path) {
