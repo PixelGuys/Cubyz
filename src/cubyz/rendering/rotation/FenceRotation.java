@@ -84,13 +84,13 @@ public class FenceRotation implements RotationMode {
 	}
 
 	@Override
-	public float getRayIntersection(RayAabIntersection intersection, BlockInstance bi, Vector3f min, Vector3f max, Vector3f transformedPosition) {
+	public float getRayIntersection(RayAabIntersection intersection, int block, Vector3f min, Vector3f max, Vector3f transformedPosition) {
 		// Check the +. TODO: Check the actual model.
 		float xOffset = 0;
 		float xLen = 1;
 		float zOffset = 0;
 		float zLen = 1;
-		int data = bi.getBlock() >>> 16;
+		int data = block >>> 16;
 		if ((data & (1 << Neighbors.DIR_NEG_X)) == 0) {
 			xOffset += 0.5f;
 			xLen -= 0.5f;

@@ -78,12 +78,11 @@ public interface RotationMode extends RegistryElement {
 	/**
 	 * 
 	 * @param intersection
-	 * @param bi
 	 * @param min minimal point of the surrounding block. May be overwritten.
 	 * @param max maximal point of the surrounding block. May be overwritten.
 	 * @return
 	 */
-	float getRayIntersection(RayAabIntersection intersection, BlockInstance bi, Vector3f min, Vector3f max, Vector3f transformedPosition);
+	float getRayIntersection(RayAabIntersection intersection, int block, Vector3f min, Vector3f max, Vector3f transformedPosition);
 
 	/**
 	 * Check if the entity would collide with the block.

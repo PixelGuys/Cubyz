@@ -71,7 +71,7 @@ public class LogRotation implements RotationMode {
 	}
 
 	@Override
-	public float getRayIntersection(RayAabIntersection arg0, BlockInstance arg1, Vector3f min, Vector3f max, Vector3f transformedPosition) {
+	public float getRayIntersection(RayAabIntersection arg0, int arg1, Vector3f min, Vector3f max, Vector3f transformedPosition) {
 		return 0;
 	}
 

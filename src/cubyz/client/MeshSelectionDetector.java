@@ -1,6 +1,6 @@
 package cubyz.client;
 
-import cubyz.rendering.VisibleChunk;
+import cubyz.world.ClientWorld;
 import org.joml.RayAabIntersection;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
@@ -8,7 +8,6 @@ import org.joml.Vector3i;
 
 import cubyz.utils.datastructures.IntWrapper;
 import cubyz.utils.math.CubyzMath;
-import cubyz.world.NormalChunk;
 import cubyz.world.World;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.Blocks;
@@ -36,62 +35,82 @@ public class MeshSelectionDetector {
 	}
 	/**
 	 * Select the block or entity the player is looking at.
-	 * @param chunks
 	 * @param position player position
 	 * @param direction camera direction
 	 * @param localPlayer
 	 * @param world
 	 */
-	public void selectSpatial(VisibleChunk[] chunks, Vector3d position, Vector3f direction, Player localPlayer, World world) {
+	public void selectSpatial(Vector3d position, Vector3f direction, Player localPlayer, ClientWorld world) {
 		pos.set(position);
 		pos.y += Player.cameraHeight;
 		dir.set(direction);
+
+		intersection.set(0, 0, 0, dir.x, dir.y, dir.z);
 		
 		// Test blocks:
 		double closestDistance = 6f; // selection now limited
-		Object newSpatial = null;
-		intersection.set(0, 0, 0, dir.x, dir.y, dir.z);
-		for (VisibleChunk ch : chunks) {
-			min.set(ch.getMin());
-			max.set(ch.getMax());
-			// Sadly RayAabIntersection doesn't work with double, so we have to convert to relative distances before testing:
-			min.sub(pos);
-			max.sub(pos);
-			Vector3f minf = new Vector3f((float)min.x, (float)min.y, (float)min.z);
-			Vector3f maxf = new Vector3f((float)max.x, (float)max.y, (float)max.z);
-			// Check if the chunk is in view:
-			if (!intersection.test(minf.x-1, minf.y-1, minf.z-1, maxf.x+1, maxf.y+1, maxf.z+1)) // 1 is added/subtracted because chunk min-max don't align with the block min max.
-				continue;
-			synchronized (ch) {
-				BlockInstance[] array = ch.getVisibles().array;
-				for (int i = 0; i < ch.getVisibles().size; i++) {
-					BlockInstance bi = array[i];
-					if (bi == null)
-						break;
-					if (!Blocks.solid(bi.getBlock()))
-						continue;
-					min.set(new Vector3f(bi.x, bi.y, bi.z));
-					min.sub(pos);
-					max.set(min);
-					max.add(1, 1, 1); // scale, scale, scale
-					minf.set((float)min.x, (float)min.y, (float)min.z);
-					maxf.set((float)max.x, (float)max.y, (float)max.z);
-					// Because of the huge number of different BlockInstances that will be tested, it is more efficient to use RayAabIntersection and determine the distance separately:
-					if (intersection.test(minf.x, minf.y, minf.z, maxf.x, maxf.y, maxf.z)) {
-						double distance;
-						if (Blocks.mode(bi.getBlock()).changesHitbox()) {
-							distance = Blocks.mode(bi.getBlock()).getRayIntersection(intersection, bi, minf, maxf, new Vector3f());
-						} else {
-							distance = minf.length();
-						}
-						if (distance < closestDistance) {
-							closestDistance = distance;
-							newSpatial = bi;
-						}
-					}
+		// Implementation of "A Fast Voxel Traversal Algorithm for Ray Tracing"  http://www.cse.yorku.ca/~amana/research/grid.pdf
+		int stepX = (int)Math.signum(dir.x);
+		int stepY = (int)Math.signum(dir.y);
+		int stepZ = (int)Math.signum(dir.z);
+		double tDeltaX = Math.abs(1/dir.x);
+		double tDeltaY = Math.abs(1/dir.y);
+		double tDeltaZ = Math.abs(1/dir.z);
+		double tMaxX = (Math.floor(pos.x) - pos.x)/dir.x;
+		double tMaxY = (Math.floor(pos.y) - pos.y)/dir.y;
+		double tMaxZ = (Math.floor(pos.z) - pos.z)/dir.z;
+		tMaxX = Math.max(tMaxX, tMaxX + tDeltaX*stepX);
+		tMaxY = Math.max(tMaxY, tMaxY + tDeltaY*stepY);
+		tMaxZ = Math.max(tMaxZ, tMaxZ + tDeltaZ*stepZ);
+		if(dir.x == 0) tMaxX = Double.POSITIVE_INFINITY;
+		if(dir.y == 0) tMaxY = Double.POSITIVE_INFINITY;
+		if(dir.z == 0) tMaxZ = Double.POSITIVE_INFINITY;
+		int x = (int)Math.floor(pos.x);
+		int y = (int)Math.floor(pos.y);
+		int z = (int)Math.floor(pos.z);
+
+		int block = 0;
+		double total_tMax = 0;
+
+		while(total_tMax < closestDistance) {
+			block = world.getBlock(x, y, z);
+			if (Blocks.mode(block).changesHitbox()) {
+				Vector3d min = new Vector3d(x, y, z);
+				min.sub(pos);
+				Vector3d max = new Vector3d(min);
+				max.add(1, 1, 1);
+				Vector3f minf = new Vector3f((float)min.x, (float)min.y, (float)min.z);
+				Vector3f maxf = new Vector3f((float)max.x, (float)max.y, (float)max.z);
+				double distance = Blocks.mode(block).getRayIntersection(intersection, block, minf, maxf, new Vector3f());
+				if(distance > closestDistance) {
+					block = 0;
+				}
+			}
+			if(block != 0) break;
+			if(tMaxX < tMaxY) {
+				if(tMaxX < tMaxZ) {
+					x = x + stepX;
+					tMaxX = tMaxX + tDeltaX;
+					total_tMax = tMaxX;
+				} else {
+					z = z + stepZ;
+					tMaxZ = tMaxZ + tDeltaZ;
+					total_tMax = tMaxZ;
+				}
+			} else {
+				if(tMaxY < tMaxZ) {
+					y = y + stepY;
+					tMaxY = tMaxY + tDeltaY;
+					total_tMax = tMaxY;
+				} else {
+					z = z + stepZ;
+					tMaxZ = tMaxZ + tDeltaZ;
+					total_tMax = tMaxZ;
 				}
 			}
 		}
+
+		Object newSpatial = world.getBlockInstance(x, y, z);
 		// Test entities:
 		for(Entity ent : world.getEntities()) {
 			// TODO!

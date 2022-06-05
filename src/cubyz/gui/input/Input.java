@@ -169,9 +169,7 @@ public class Input {
 						Cubyz.world.drop(droppedStack, Cubyz.player.getPosition(), Camera.getDirection(), 1, Server.UPDATES_PER_SEC*5);
 					}
 				}
-				if((System.nanoTime() & 255) == 0)
-					Logger.error("Mesh selection isn't implemented yet.");
-				// TODO:Cubyz.msd.selectSpatial(Cubyz.world.getChunks(), Cubyz.player.getPosition(), Camera.getViewMatrix().positiveZ(Cubyz.dir).negate(), Cubyz.player, Cubyz.world);
+				Cubyz.msd.selectSpatial(Cubyz.player.getPosition(), Camera.getViewMatrix().positiveZ(Cubyz.dir).negate(), Cubyz.player, Cubyz.world);
 			}
 			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_C)) {
 				if (Cubyz.gameUI.getMenuGUI() == null) {

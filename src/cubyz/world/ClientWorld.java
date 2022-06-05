@@ -9,9 +9,11 @@ import cubyz.modding.ModLoader;
 import cubyz.multiplayer.Protocols;
 import cubyz.multiplayer.UDPConnectionManager;
 import cubyz.rendering.RenderOctTree;
+import cubyz.rendering.VisibleChunk;
 import cubyz.server.Server;
 import cubyz.utils.ThreadPool;
 import cubyz.world.blocks.BlockEntity;
+import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.entity.ChunkEntityManager;
 import cubyz.world.entity.Entity;
@@ -234,6 +236,15 @@ public class ClientWorld extends World {
 	@Override
 	public Biome getBiome(int wx, int wy, int wz) {
 		throw new IllegalArgumentException("a");
+	}
+
+	public final BlockInstance getBlockInstance(int x, int y, int z) {
+		VisibleChunk ch = (VisibleChunk)getChunk(x, y, z);
+		if (ch != null && ch.isLoaded()) {
+			return ch.getBlockInstanceAt(Chunk.getIndex(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask));
+		} else {
+			return null;
+		}
 	}
 
 	@Override

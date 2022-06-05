@@ -91,8 +91,8 @@ public class StackableRotation implements RotationMode {
 	}
 
 	@Override
-	public float getRayIntersection(RayAabIntersection intersection, BlockInstance bi, Vector3f min, Vector3f max, Vector3f transformedPosition) {
-		int data = Math.max(16, bi.getBlock() >>> 16);
+	public float getRayIntersection(RayAabIntersection intersection, int block, Vector3f min, Vector3f max, Vector3f transformedPosition) {
+		int data = Math.max(16, block >>> 16);
 		max.add(0, data/16.0f - 1.0f, 0);
 		// Because of the huge number of different BlockInstances that will be tested, it is more efficient to use RayAabIntersection and determine the distance seperately:
 		if (intersection.test(min.x, min.y, min.z, max.x, max.y, max.z)) {
