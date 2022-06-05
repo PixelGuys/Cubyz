@@ -59,9 +59,8 @@ public final class ChunkIO {
 		regionCache.clear();
 	}
 
-	public static byte[] compressChunk(SavableChunk ch) {
+	public static byte[] compressChunk(byte[] input) {
 		byte[] output = threadLocalOutputBuffer.get();
-		byte[] input = ch.saveToByteArray();
 
 		Deflater compressor = new Deflater();
 		compressor.setInput(input);
@@ -76,6 +75,10 @@ public final class ChunkIO {
 		compressor.end();
 
 		return Arrays.copyOf(output, dataLength);
+	}
+
+	public static byte[] compressChunk(SavableChunk ch) {
+		return compressChunk(ch.saveToByteArray());
 	}
 
 	public static byte[] decompressChunk(byte[] in, int offset, int length) {

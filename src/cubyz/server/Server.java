@@ -1,5 +1,6 @@
 package cubyz.server;
 
+import cubyz.Constants;
 import cubyz.api.CubyzRegistries;
 import cubyz.api.Side;
 import cubyz.client.entity.ClientEntity;
@@ -44,7 +45,7 @@ public final class Server extends Pacer{
 
 		Server.world = new ServerWorld(args[0], null);
 
-		connectionManager = new UDPConnectionManager(5678);
+		connectionManager = new UDPConnectionManager(Constants.DEFAULT_PORT);
 		users.add(new User(connectionManager, "localhost", 5679));
 
 		try {

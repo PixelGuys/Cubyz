@@ -4,6 +4,7 @@ import cubyz.multiplayer.protocols.*;
 
 public final class Protocols {
 	public static final Protocol[] list = new Protocol[256];
+	public static final int[] bytesReceived = new int[256];
 
 	public static final KeepAliveProtocol KEEP_ALIVE = new KeepAliveProtocol();
 	public static final HandshakeProtocol HANDSHAKE = new HandshakeProtocol();

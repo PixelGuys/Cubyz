@@ -6,6 +6,7 @@ import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
 import cubyz.client.GameLogic;
 import cubyz.gui.MenuGUI;
+import cubyz.multiplayer.Protocols;
 import cubyz.rendering.Graphics;
 import cubyz.rendering.Window;
 import cubyz.rendering.text.Fonts;
@@ -67,6 +68,13 @@ public class DebugOverlay extends MenuGUI {
 				
 				if (p.getRemainingBreakTime() > 0) {
 					Graphics.drawText(0 * GUI_SCALE, 100 * GUI_SCALE, "Remaining Breaking Time: " + p.getRemainingBreakTime());
+				}
+				int yText = 110;
+				for(int i = 0; i < Protocols.bytesReceived.length; i++) {
+					if(Protocols.list[i] != null) {
+						Graphics.drawText(0*GUI_SCALE, yText*GUI_SCALE, Protocols.list[i].getClass().getSimpleName() + ": " + (Protocols.bytesReceived[i] >> 10) + "kiB");
+						yText += 10;
+					}
 				}
 			}
 			

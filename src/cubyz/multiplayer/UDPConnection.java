@@ -182,6 +182,7 @@ public class UDPConnection {
 			//Logger.debug("Dropped it :P");
 			return; // Drop packet :P
 		}
+		Protocols.bytesReceived[protocol] += len + 20 + 8; // Including IP header and udp header
 		if(Protocols.list[protocol & 0xff].isImportant) {
 			int id = Bits.getInt(data, 2);
 			if(id - lastIncompletePackage >= 65536) {

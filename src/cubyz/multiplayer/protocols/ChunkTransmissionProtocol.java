@@ -34,6 +34,9 @@ public class ChunkTransmissionProtocol extends Protocol {
 			ch.loadFromByteArray(chunkData, chunkData.length);
 			ThreadPool.addTask(new ChunkLoadTask(ch));
 		} else {
+			data = ChunkIO.decompressChunk(data, offset, length);
+			length = data.length;
+			offset = 0;
 			int size = length/8;
 			byte[] x = Arrays.copyOfRange(data, offset, offset + size);
 			byte[] y = Arrays.copyOfRange(data, offset + size, offset + 2*size);
@@ -58,16 +61,19 @@ public class ChunkTransmissionProtocol extends Protocol {
 			System.arraycopy(compressedChunk, 0, data, 16, compressedChunk.length);
 		} else if(ch instanceof ReducedChunkVisibilityData) {
 			ReducedChunkVisibilityData visDat = (ReducedChunkVisibilityData)ch;
-			data = new byte[visDat.size*8 + 16];
-			System.arraycopy(visDat.x, 0, data, 16, visDat.size);
-			System.arraycopy(visDat.y, 0, data, 16 + visDat.size, visDat.size);
-			System.arraycopy(visDat.z, 0, data, 16 + 2*visDat.size, visDat.size);
-			System.arraycopy(visDat.neighbors, 0, data, 16 + 3*visDat.size, visDat.size);
-			int offset = 16 + 4*visDat.size;
+			data = new byte[visDat.size*8];
+			System.arraycopy(visDat.x, 0, data, 0, visDat.size);
+			System.arraycopy(visDat.y, 0, data, visDat.size, visDat.size);
+			System.arraycopy(visDat.z, 0, data, 2*visDat.size, visDat.size);
+			System.arraycopy(visDat.neighbors, 0, data, 3*visDat.size, visDat.size);
+			int offset = 4*visDat.size;
 			for(int i = 0; i < visDat.size; i++) {
 				Bits.putInt(data, offset, visDat.visibleBlocks[i]);
 				offset += 4;
 			}
+			byte[] compressedData = ChunkIO.compressChunk(data);
+			data = new byte[compressedData.length + 16];
+			System.arraycopy(compressedData, 0, data, 16, compressedData.length);
 		} else {
 			assert false: "Invalid chunk class to send over the network " + ch.getClass() + ".";
 			return;
