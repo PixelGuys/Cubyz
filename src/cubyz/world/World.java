@@ -96,10 +96,6 @@ public abstract class World {
 	
 	public abstract boolean isValidSpawnLocation(int x, int z);
 	
-	public abstract void removeBlock(int x, int y, int z);
-	
-	public abstract void placeBlock(int x, int y, int z, int b);
-	
 	public abstract void drop(ItemStack stack, Vector3d pos, Vector3f dir, float velocity, int pickupCooldown);
 	
 	public abstract void drop(ItemStack stack, Vector3d pos, Vector3f dir, float velocity);

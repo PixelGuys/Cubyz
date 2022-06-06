@@ -619,4 +619,9 @@ public class VisibleChunk extends NormalChunk {
 	public int getLight(int x, int y, int z) {
 		return light[getIndex(x, y, z)];
 	}
+
+	@Override
+	public void finalize() {
+		// Prevent the Chunk.finalize from caring about block changes and saving.
+	}
 }

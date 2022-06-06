@@ -1,7 +1,6 @@
 package cubyz.world;
 
 import cubyz.Settings;
-import cubyz.api.CubyzRegistries;
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.modding.ModLoader;
 import cubyz.multiplayer.Protocols;
@@ -14,9 +13,6 @@ import cubyz.utils.datastructures.HashMapKey3D;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.entity.*;
-import cubyz.world.handler.PlaceBlockHandler;
-import cubyz.world.handler.RemoveBlockHandler;
-import cubyz.world.items.BlockDrop;
 import cubyz.world.items.ItemStack;
 import cubyz.world.save.BlockPalette;
 import cubyz.world.save.ChunkIO;
@@ -155,38 +151,6 @@ public class ServerWorld extends World {
 	public boolean isValidSpawnLocation(int x, int z) {
 		return chunkManager.getOrGenerateMapFragment(x, z, 32).getBiome(x, z).isValidPlayerSpawn;
 	}
-	
-	@Override
-	public void removeBlock(int x, int y, int z) {
-		NormalChunk ch = getChunk(x, y, z);
-		if (ch != null) {
-			int b = ch.getBlock(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask);
-			ch.removeBlockAt(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask, true);
-			for (RemoveBlockHandler hand : CubyzRegistries.REMOVE_HANDLER_REGISTRY.registered(new RemoveBlockHandler[0])) {
-				hand.onBlockRemoved(this, b, x, y, z);
-			}
-			// Fetch block drops:
-			for(BlockDrop drop : Blocks.blockDrops(b)) {
-				int amount = (int)(drop.amount);
-				float randomPart = drop.amount - amount;
-				if (Math.random() < randomPart) amount++;
-				if (amount > 0) {
-					ItemEntityManager manager = this.getEntityManagerAt(x & ~Chunk.chunkMask, y & ~Chunk.chunkMask, z & ~Chunk.chunkMask).itemEntityManager;
-					manager.add(x, y, z, 0, 0, 0, new ItemStack(drop.item, amount), 30*300);
-				}
-			}
-		}
-	}
-	@Override
-	public void placeBlock(int x, int y, int z, int b) {
-		NormalChunk ch = getChunk(x, y, z);
-		if (ch != null) {
-			ch.addBlock(b, x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask, false);
-			for (PlaceBlockHandler hand : CubyzRegistries.PLACE_HANDLER_REGISTRY.registered(new PlaceBlockHandler[0])) {
-				hand.onBlockPlaced(this, b, x, y, z);
-			}
-		}
-	}
 	@Override
 	public void drop(ItemStack stack, Vector3d pos, Vector3f dir, float velocity, int pickupCooldown) {
 		ItemEntityManager manager = this.getEntityManagerAt((int)pos.x & ~Chunk.chunkMask, (int)pos.y & ~Chunk.chunkMask, (int)pos.z & ~Chunk.chunkMask).itemEntityManager;
@@ -197,10 +161,17 @@ public class ServerWorld extends World {
 		drop(stack, pos, dir, velocity, 0);
 	}
 	@Override
-	public void updateBlock(int x, int y, int z, int block) {
+	public void updateBlock(int x, int y, int z, int newBlock) {
 		NormalChunk ch = getChunk(x, y, z);
 		if (ch != null) {
-			ch.updateBlock(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask, block);
+			int old = ch.getBlock(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask);
+			if(old == newBlock) return;
+			Logger.error("Block drops aren't implemented in multiplayer yet");
+			ch.updateBlock(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask, newBlock);
+			// Send the block update to all players:
+			for(User user : Server.users) {
+				Protocols.BLOCK_UPDATE.send(user, x, y, z, newBlock);
+			}
 		}
 	}
 	@Override

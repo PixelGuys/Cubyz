@@ -136,7 +136,7 @@ public class Player extends Entity implements CommandSource {
 					inv.getStack(slot).clear();
 				}
 			}
-			world.removeBlock(bi.x, bi.y, bi.z);
+			world.updateBlock(bi.x, bi.y, bi.z, 0);
 		}
 	}
 

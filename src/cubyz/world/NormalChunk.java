@@ -53,16 +53,11 @@ public class NormalChunk extends Chunk {
 	protected void updateVisibleBlock(int index, int b) {}
 
 	public void updateBlock(int x, int y, int z, int b) {
-		int index = getIndex(x, y, z);
-		if (blocks[index] != b) {
-			blocks[index] = b;
-			updateVisibleBlock(index, b);
-			setChanged();
+		if(b == 0) {
+			removeBlockAt(x, y, z, true);
+		} else if(getBlock(x, y, z) == 0) {
+			addBlock(b, x, y, z, false);
 		}
-		if (Blocks.blockClass(b) == BlockClass.FLUID) {
-			liquids.add(index);
-		}
-		setUpdated();
 	}
 	
 	
@@ -126,7 +121,7 @@ public class NormalChunk extends Chunk {
 					if (Blocks.mode(neighbors[i]).dependsOnNeightbors()) {
 						int newBlock = Blocks.mode(neighbors[i]).updateData(neighbors[i], i ^ 1, b);
 						if (newBlock == 0) {
-							world.removeBlock(nx, ny, nz);
+							world.updateBlock(nx, ny, nz, 0);
 							continue; // Prevent making stuff with non-existent blocks.
 						} else if (newBlock != neighbors[i]) {
 							world.updateBlock(nx, ny, nz, newBlock);
@@ -227,7 +222,7 @@ public class NormalChunk extends Chunk {
 				if (Blocks.mode(neighbor).dependsOnNeightbors()) {
 					int newBlock = Blocks.mode(neighbor).updateData(neighbor, i ^ 1, 0);
 					if (newBlock == 0) {
-						world.removeBlock(nx, ny, nz);
+						world.updateBlock(nx, ny, nz, 0);
 						continue; // Prevent making a non-existent block visible.
 					} else if (newBlock != neighbor) {
 						world.updateBlock(nx, ny, nz, newBlock);

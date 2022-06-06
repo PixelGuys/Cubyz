@@ -13,4 +13,5 @@ public final class Protocols {
 	public static final PlayerPositionProtocol PLAYER_POSITION = new PlayerPositionProtocol();
 	public static final DisconnectProtocol DISCONNECT = new DisconnectProtocol();
 	public static final EntityProtocol ENTITY = new EntityProtocol();
+	public static final BlockUpdateProtocol BLOCK_UPDATE = new BlockUpdateProtocol();
 }

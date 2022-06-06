@@ -162,16 +162,6 @@ public class ClientWorld extends World {
 	}
 
 	@Override
-	public void removeBlock(int x, int y, int z) {
-		throw new IllegalArgumentException("a");
-	}
-
-	@Override
-	public void placeBlock(int x, int y, int z, int b) {
-		throw new IllegalArgumentException("a");
-	}
-
-	@Override
 	public void drop(ItemStack stack, Vector3d pos, Vector3f dir, float velocity, int pickupCooldown) {
 		throw new IllegalArgumentException("a");
 	}
@@ -182,8 +172,32 @@ public class ClientWorld extends World {
 	}
 
 	@Override
-	public void updateBlock(int x, int y, int z, int block) {
-		throw new IllegalArgumentException("a");
+	public void updateBlock(int x, int y, int z, int newBlock) {
+		NormalChunk ch = getChunk(x, y, z);
+		if (ch != null) {
+			int old = ch.getBlock(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask);
+			if(old != newBlock) {
+				ch.updateBlock(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask, newBlock);
+				Protocols.BLOCK_UPDATE.send(serverConnection, x, y, z, newBlock);
+			}
+		}
+	}
+
+	/**
+	 * Block update that came from the server. In this case there needs to be no update sent to the server.
+	 * @param x
+	 * @param y
+	 * @param z
+	 * @param newBlock
+	 */
+	public void remoteUpdateBlock(int x, int y, int z, int newBlock) {
+		NormalChunk ch = getChunk(x, y, z);
+		if (ch != null) {
+			int old = ch.getBlock(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask);
+			if(old != newBlock) {
+				ch.updateBlock(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask, newBlock);
+			}
+		}
 	}
 
 	@Override

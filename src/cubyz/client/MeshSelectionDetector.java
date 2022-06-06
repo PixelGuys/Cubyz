@@ -169,7 +169,7 @@ public class MeshSelectionDetector {
 					}
 					block.data = b;
 					if (Blocks.mode(b).generateData(Cubyz.world, neighbor.x, neighbor.y, neighbor.z, relativePos, dir, neighborDir, block, true)) {
-						world.placeBlock(neighbor.x, neighbor.y, neighbor.z, block.data);
+						world.updateBlock(neighbor.x, neighbor.y, neighbor.z, block.data);
 						inv.getStack(selectedSlot).add(-1);
 					}
 				}

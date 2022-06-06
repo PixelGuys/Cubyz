@@ -49,6 +49,7 @@ public final class BlockBreakingRenderer {
 		}
 		glUniform3f(loc_modelPosition, (float)(selected.x - playerPosition.x), (float)(selected.y - playerPosition.y), (float)(selected.z - playerPosition.z));
 		Mesh mesh = BlockMeshes.mesh(selected.getBlock());
+		if(mesh == null) return;
 		glBindVertexArray(mesh.vaoId);
 		glEnable(GL_POLYGON_OFFSET_FILL);
 		glPolygonOffset(0.0f, -1.0f);
