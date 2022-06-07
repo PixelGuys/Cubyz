@@ -21,7 +21,7 @@ public class NormalChunk extends Chunk {
 	protected boolean loaded = false;
 	private final ArrayList<BlockEntity> blockEntities = new ArrayList<>();
 
-	public boolean updated;
+	public boolean updated; // TODO: Move this over to VisibleChunk, the only place where it's actually used(I think).
 	
 	public NormalChunk(World world, Integer wx, Integer wy, Integer wz) {
 		super(world, wx, wy, wz, 1);

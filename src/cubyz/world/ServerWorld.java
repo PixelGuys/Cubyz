@@ -276,16 +276,6 @@ public class ServerWorld extends World {
 			//Profiler.printProfileTime("liquid-update");
 		}
 
-		// Send updates to the player:
-		// TODO: Multiplayer
-		for(NormalChunk ch : chunks) {
-			if (ch.updated && ch.generated) {
-				ch.updated = false;
-				for(User user : Server.users) {
-					Protocols.CHUNK_TRANSMISSION.sendChunk(user, ch);
-				}
-			}
-		}
 		seek();
 	}
 	@Override
