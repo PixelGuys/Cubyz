@@ -1,14 +1,8 @@
 package cubyz.gui.menu;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.FileVisitResult;
-import java.nio.file.FileVisitor;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.BasicFileAttributes;
 
-import cubyz.utils.Logger;
 import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
 import cubyz.gui.MenuGUI;
@@ -21,9 +15,7 @@ import cubyz.utils.Utils;
 import cubyz.utils.translate.ContextualTextKey;
 import cubyz.utils.translate.TextKey;
 import cubyz.world.ClientWorld;
-import cubyz.world.ServerWorld;
-import cubyz.world.World;
-import cubyz.server.Server;
+import cubyz.multiplayer.server.Server;
 
 import static cubyz.client.ClientSettings.GUI_SCALE;
 

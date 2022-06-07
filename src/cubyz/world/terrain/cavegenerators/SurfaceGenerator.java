@@ -2,7 +2,7 @@ package cubyz.world.terrain.cavegenerators;
 
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.Resource;
-import cubyz.server.Server;
+import cubyz.multiplayer.server.Server;
 import cubyz.world.terrain.CaveMapFragment;
 import cubyz.world.terrain.MapFragment;
 import pixelguys.json.JsonObject;

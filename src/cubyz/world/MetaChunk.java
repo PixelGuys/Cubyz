@@ -2,8 +2,8 @@ package cubyz.world;
 
 import java.util.ArrayList;
 
-import cubyz.server.Server;
-import cubyz.server.User;
+import cubyz.multiplayer.server.Server;
+import cubyz.multiplayer.server.User;
 import cubyz.utils.Logger;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.Blocks;

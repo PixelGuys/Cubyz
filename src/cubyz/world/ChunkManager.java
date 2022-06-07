@@ -3,8 +3,8 @@ package cubyz.world;
 import java.util.Arrays;
 
 import cubyz.multiplayer.Protocols;
-import cubyz.server.Server;
-import cubyz.server.User;
+import cubyz.multiplayer.server.Server;
+import cubyz.multiplayer.server.User;
 import cubyz.utils.ThreadPool;
 import cubyz.utils.datastructures.Cache;
 import cubyz.utils.math.CubyzMath;

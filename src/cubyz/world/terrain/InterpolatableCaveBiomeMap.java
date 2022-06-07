@@ -1,6 +1,6 @@
 package cubyz.world.terrain;
 
-import cubyz.server.Server;
+import cubyz.multiplayer.server.Server;
 import cubyz.utils.FastRandom;
 import cubyz.world.ChunkData;
 import cubyz.world.terrain.biomes.Biome;

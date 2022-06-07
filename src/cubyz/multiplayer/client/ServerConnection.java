@@ -1,4 +1,4 @@
-package cubyz.clientSide;
+package cubyz.multiplayer.client;
 
 import cubyz.client.Cubyz;
 import cubyz.multiplayer.Protocols;
@@ -8,7 +8,7 @@ import pixelguys.json.JsonObject;
 
 public class ServerConnection extends UDPConnection {
 	public JsonObject handShakeResult; // TODO: Find a cleaner way to do this.
-	public ServerConnection(UDPConnectionManager manager, String ip, int remotePort, String name){
+	public ServerConnection(UDPConnectionManager manager, String ip, int remotePort) {
 		super(manager, ip, remotePort);
 	}
 	

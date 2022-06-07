@@ -28,7 +28,7 @@ import cubyz.utils.*;
 import cubyz.world.*;
 import cubyz.world.items.Inventory;
 import cubyz.world.terrain.noise.StaticBlueNoise;
-import cubyz.server.Server;
+import cubyz.multiplayer.server.Server;
 
 /**
  * A complex class that holds everything together.<br>

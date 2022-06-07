@@ -5,7 +5,6 @@ import org.lwjgl.glfw.GLFW;
 
 import cubyz.api.CubyzRegistries;
 import cubyz.client.BlockMeshes;
-import cubyz.client.ClientOnly;
 import cubyz.client.ClientSettings;
 import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
@@ -22,7 +21,7 @@ import cubyz.world.entity.Entity;
 import cubyz.world.entity.EntityType;
 import cubyz.world.items.Inventory;
 import cubyz.world.items.ItemStack;
-import cubyz.server.Server;
+import cubyz.multiplayer.server.Server;
 import cubyz.utils.Logger;
 
 /**

@@ -1,11 +1,11 @@
 package cubyz.multiplayer.protocols;
 
 import cubyz.Constants;
-import cubyz.clientSide.ServerConnection;
+import cubyz.multiplayer.client.ServerConnection;
 import cubyz.multiplayer.Protocol;
 import cubyz.multiplayer.UDPConnection;
-import cubyz.server.Server;
-import cubyz.server.User;
+import cubyz.multiplayer.server.Server;
+import cubyz.multiplayer.server.User;
 import cubyz.utils.Logger;
 import cubyz.utils.Utils;
 import cubyz.utils.Zipper;

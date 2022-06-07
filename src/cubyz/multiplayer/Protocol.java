@@ -1,8 +1,5 @@
 package cubyz.multiplayer;
 
-import cubyz.server.Server;
-import cubyz.server.ServerConnection;
-
 public abstract class Protocol {
 	public final byte id;
 	public final boolean isImportant;

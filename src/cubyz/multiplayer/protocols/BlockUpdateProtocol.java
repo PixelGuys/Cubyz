@@ -3,8 +3,8 @@ package cubyz.multiplayer.protocols;
 import cubyz.client.Cubyz;
 import cubyz.multiplayer.Protocol;
 import cubyz.multiplayer.UDPConnection;
-import cubyz.server.Server;
-import cubyz.server.User;
+import cubyz.multiplayer.server.Server;
+import cubyz.multiplayer.server.User;
 import cubyz.utils.math.Bits;
 
 public class BlockUpdateProtocol extends Protocol {

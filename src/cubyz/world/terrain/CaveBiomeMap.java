@@ -1,6 +1,6 @@
 package cubyz.world.terrain;
 
-import cubyz.server.Server;
+import cubyz.multiplayer.server.Server;
 import cubyz.utils.datastructures.Cache;
 import cubyz.world.Chunk;
 import cubyz.world.ChunkData;

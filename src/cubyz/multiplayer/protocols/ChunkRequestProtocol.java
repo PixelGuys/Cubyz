@@ -2,7 +2,7 @@ package cubyz.multiplayer.protocols;
 
 import cubyz.multiplayer.Protocol;
 import cubyz.multiplayer.UDPConnection;
-import cubyz.server.Server;
+import cubyz.multiplayer.server.Server;
 import cubyz.utils.math.Bits;
 import cubyz.world.ChunkData;
 

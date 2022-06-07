@@ -1,4 +1,4 @@
-package cubyz.server;
+package cubyz.multiplayer.server;
 
 import cubyz.multiplayer.Protocols;
 import cubyz.multiplayer.UDPConnection;

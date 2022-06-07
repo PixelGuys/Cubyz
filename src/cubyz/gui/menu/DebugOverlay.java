@@ -10,7 +10,7 @@ import cubyz.multiplayer.Protocols;
 import cubyz.rendering.Graphics;
 import cubyz.rendering.Window;
 import cubyz.rendering.text.Fonts;
-import cubyz.server.Server;
+import cubyz.multiplayer.server.Server;
 import cubyz.utils.ThreadPool;
 import cubyz.world.entity.Player;
 import cubyz.world.terrain.biomes.Biome;

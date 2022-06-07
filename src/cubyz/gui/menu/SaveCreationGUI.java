@@ -24,7 +24,7 @@ import cubyz.world.ClientWorld;
 import cubyz.world.terrain.ClimateMapGenerator;
 import cubyz.world.terrain.MapGenerator;
 import pixelguys.json.JsonObject;
-import cubyz.server.Server;
+import cubyz.multiplayer.server.Server;
 
 import static cubyz.client.ClientSettings.GUI_SCALE;
 

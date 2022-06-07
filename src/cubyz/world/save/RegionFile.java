@@ -7,12 +7,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
-import java.util.zip.DataFormatException;
-import java.util.zip.Deflater;
-import java.util.zip.Inflater;
 
 import cubyz.client.GameLauncher;
-import cubyz.server.Server;
+import cubyz.multiplayer.server.Server;
 import cubyz.utils.Logger;
 import cubyz.utils.math.Bits;
 import cubyz.world.Chunk;

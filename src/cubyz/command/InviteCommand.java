@@ -2,8 +2,8 @@ package cubyz.command;
 
 import cubyz.Constants;
 import cubyz.api.Resource;
-import cubyz.server.Server;
-import cubyz.server.User;
+import cubyz.multiplayer.server.Server;
+import cubyz.multiplayer.server.User;
 import cubyz.utils.Logger;
 
 import java.util.Arrays;

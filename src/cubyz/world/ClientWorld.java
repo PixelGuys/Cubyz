@@ -4,13 +4,13 @@ import cubyz.Constants;
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.client.Cubyz;
 import cubyz.client.entity.ClientPlayer;
-import cubyz.clientSide.ServerConnection;
+import cubyz.multiplayer.client.ServerConnection;
 import cubyz.modding.ModLoader;
 import cubyz.multiplayer.Protocols;
 import cubyz.multiplayer.UDPConnectionManager;
 import cubyz.rendering.RenderOctTree;
 import cubyz.rendering.VisibleChunk;
-import cubyz.server.Server;
+import cubyz.multiplayer.server.Server;
 import cubyz.utils.ThreadPool;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.BlockInstance;
@@ -59,7 +59,7 @@ public class ClientWorld extends World {
 		if(ipPort.length == 2) {
 			remotePort = Integer.parseInt(ipPort[1]);
 		}
-		serverConnection = new ServerConnection(connectionManager, ipOnly, remotePort, playerName);
+		serverConnection = new ServerConnection(connectionManager, ipOnly, remotePort);
 
 		player = new ClientPlayer(this, 0);
 		JsonObject handshakeResult = serverConnection.doHandShake(playerName);
