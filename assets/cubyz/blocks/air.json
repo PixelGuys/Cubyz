@@ -11,6 +11,7 @@
 	"solid" : false,
 	"rotation" : "cubyz:no_rotation",
 	"degradable" : true,
+	"hasItem" : false,
 
 
 

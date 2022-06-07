@@ -191,8 +191,11 @@ public class AddonsMod implements Mod {
 
 		// Block drops:
 		String[] blockDrops = json.getArrayNoNull("drops").getStrings();
-		ItemBlock self = new ItemBlock(block, json.getObjectOrNew("item"));
-		items.add(self); // Add each block as an item, so it gets displayed in the creative inventory.
+		ItemBlock self = null;
+		if(json.getBool("hasItem", true)) {
+			self = new ItemBlock(block, json.getObjectOrNew("item"));
+			items.add(self); // Add each block as an item, so it gets displayed in the creative inventory.
+		}
 		for (String blockDrop : blockDrops) {
 			blockDrop = blockDrop.trim();
 			String[] data = blockDrop.split("\\s+");
@@ -203,7 +206,11 @@ public class AddonsMod implements Mod {
 				name = data[1];
 			}
 			if (name.equals("auto")) {
-				Blocks.addBlockDrop(block, new BlockDrop(self, amount));
+				if(self == null) {
+					Logger.error("Block "+id+" tried to drop itself(\"auto\"), but hasItem is false.");
+				} else {
+					Blocks.addBlockDrop(block, new BlockDrop(self, amount));
+				}
 			} else if (!name.equals("none")) {
 				missingDropsBlock.add(block);
 				missingDropsAmount.add(amount);
