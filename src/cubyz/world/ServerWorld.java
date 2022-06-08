@@ -36,6 +36,7 @@ import java.util.HashMap;
 
 public class ServerWorld extends World {
 	public ChunkManager chunkManager;
+	private long lastUnimportantDataSent = System.currentTimeMillis();
 
 	public ServerWorld(String name, JsonObject generatorSettings) {
 		super(name);
@@ -175,14 +176,6 @@ public class ServerWorld extends World {
 		}
 	}
 	@Override
-	public void setGameTime(long time) {
-		gameTime = time;
-	}
-	@Override
-	public long getGameTime() {
-		return gameTime;
-	}
-	@Override
 	public void setGameTimeCycle(boolean value)
 	{
 		doGameTimeCycle = value;
@@ -209,6 +202,12 @@ public class ServerWorld extends World {
 		if (milliTime < newTime - 1000) {
 			Logger.warning("Behind update schedule by " + (newTime - milliTime) / 1000.0f + "s!");
 			milliTime = newTime - 1000; // so we don't accumulate too much time to catch
+		}
+		if(lastUnimportantDataSent + 2000 < newTime) { // Send unimportant data every ~2s.
+			lastUnimportantDataSent = newTime;
+			for(User user : Server.users) {
+				Protocols.UNIMPORTANT.send(user, this);
+			}
 		}
 		// Entities
 		for (int i = 0; i < entities.size(); i++) {

@@ -196,7 +196,7 @@ public class GameLogic {
 			Cubyz.world.update();
 			Cubyz.chunkTree.update(ClientSettings.RENDER_DISTANCE, ClientSettings.LOD_FACTOR);
 			// TODO: Get this in the server ping or something.
-			float lightAngle = (float)Math.PI/2 + (float)Math.PI*(((float)Cubyz.world.getGameTime() % World.DAY_CYCLE)/(World.DAY_CYCLE/2));
+			float lightAngle = (float)Math.PI/2 + (float)Math.PI*(((float)Cubyz.world.gameTime % World.DAY_CYCLE)/(World.DAY_CYCLE/2));
 			skySun.setPositionRaw((float)Math.cos(lightAngle)*500, (float)Math.sin(lightAngle)*500, 0);
 			skySun.setRotation(0, 0, -lightAngle);
 			Protocols.PLAYER_POSITION.send(Cubyz.world.serverConnection, Cubyz.player); // TODO: Optimization: Don't send this every frame.

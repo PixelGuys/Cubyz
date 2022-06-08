@@ -24,16 +24,16 @@ public class TimeCommand extends CommandBase {
 	@Override
 	public void commandExecute(CommandSource source, String[] args) {
 		if (args.length == 1) {
-			source.feedback(String.valueOf(source.getWorld().getGameTime()));
+			source.feedback(String.valueOf(source.getWorld().gameTime));
 		} else {
 			try {
 				if (Objects.equals(args[1], "day")){
-					source.getWorld().setGameTime(0); //Set Day Time
+					source.getWorld().gameTime = 0; //Set Day Time
 				}
 				else if (Objects.equals(args[1], "night")) {
-					source.getWorld().setGameTime(52000); //Set Night Time
+					source.getWorld().gameTime = 52000; //Set Night Time
 				} else {
-					source.getWorld().setGameTime(Integer.parseInt(args[1])); //Parse Input as time
+					source.getWorld().gameTime = Integer.parseInt(args[1]); //Parse Input as time
 				}
 				source.feedback("Time set to " + args[1]);
 			} catch (NumberFormatException e) {

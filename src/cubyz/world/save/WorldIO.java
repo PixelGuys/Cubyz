@@ -66,7 +66,7 @@ public class WorldIO {
 			}
 			world.setEntities(entities);
 			world.setGameTimeCycle(worldData.getBool("doGameTimeCycle", true));
-			world.setGameTime(worldData.getLong("gameTime", 0));
+			world.gameTime = worldData.getLong("gameTime", 0);
 			JsonObject spawnData = worldData.getObjectOrNew("spawn");
 			world.spawn.x = spawnData.getInt("x", 0);
 			world.spawn.y = spawnData.getInt("y", Integer.MIN_VALUE);
@@ -84,7 +84,7 @@ public class WorldIO {
 			worldData.put("version", WORLD_DATA_VERSION);
 			worldData.put("seed", world.getSeed());
 			worldData.put("doGameTimeCycle", world.shouldDoGameTimeCycle());
-			worldData.put("gameTime", world.getGameTime());
+			worldData.put("gameTime", world.gameTime);
 			worldData.put("entityCount", world.getEntities().length);
 			worldData.put("itemPalette", itemPalette.save());
 			JsonObject spawnData = new JsonObject();

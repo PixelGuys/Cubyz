@@ -169,7 +169,7 @@ public final class BackgroundScene {
 		buffer.delete();
 
 		try {//Try to create image, else show exception.
-			ImageIO.write(image, "png", new File("assets/backgrounds/"+Cubyz.world.getName()+"_"+Cubyz.world.getGameTime()+".png"));
+			ImageIO.write(image, "png", new File("assets/backgrounds/"+Cubyz.world.getName()+"_"+Cubyz.world.gameTime+".png"));
 		}
 		catch (Exception e) {
 			Logger.error(e);

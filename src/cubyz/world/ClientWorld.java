@@ -35,6 +35,8 @@ public class ClientWorld extends World {
 
 	public final Class<?> chunkProvider;
 
+	public Biome playerBiome;
+
 	public ClientWorld(String ip, String playerName, Class<?> chunkProvider) {
 		this(ip, null, playerName, chunkProvider);
 	}

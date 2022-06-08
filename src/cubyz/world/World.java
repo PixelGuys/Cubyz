@@ -31,7 +31,7 @@ public abstract class World {
 
 	protected boolean generated;
 
-	protected long gameTime;
+	public long gameTime;
 	protected long milliTime;
 	protected long lastUpdateTime = System.currentTimeMillis();
 	protected boolean doGameTimeCycle = true;
@@ -55,13 +55,7 @@ public abstract class World {
 		milliTime = System.currentTimeMillis();
 
 	}
-	public void setGameTime(long time) {
-		gameTime = time;
-	}
 
-	public long getGameTime() {
-		return gameTime;
-	}
 	public void setGameTimeCycle(boolean value)
 	{
 		doGameTimeCycle = value;
