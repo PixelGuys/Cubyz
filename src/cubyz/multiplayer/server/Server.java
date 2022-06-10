@@ -48,12 +48,12 @@ public final class Server extends Pacer{
 				world.cleanup();
 			System.exit(1);
 		}
-		if(world != null)
-			world.cleanup();
-		world = null;
 		connectionManager.cleanup();
 		connectionManager = null;
 		users.clear();
+		if(world != null)
+			world.cleanup();
+		world = null;
 	}
 	public static void stop(){
 		if (server != null)
@@ -78,11 +78,7 @@ public final class Server extends Pacer{
 	@Override
 	public void update() {
 		world.update();
-		// TODO: Adjust for multiple players:
 
-		// TODO: world.clientConnection.serverPing(world.getGameTime(), world.getBiome((int)Cubyz.player.getPosition().x, (int)Cubyz.player.getPosition().y, (int)Cubyz.player.getPosition().z).getRegistryID().toString());
-
-		// TODO: Send this through the proper interface and to every player:
 		JsonArray entityData = new JsonArray();
 		for(Entity ent : world.getEntities()) {
 			JsonObject data = new JsonObject();

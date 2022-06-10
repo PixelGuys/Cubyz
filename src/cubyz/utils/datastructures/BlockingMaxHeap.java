@@ -159,6 +159,9 @@ public class BlockingMaxHeap<T extends Comparable<T>> {
 			}
 		}
 	}
+	public int waitingThreadCount() {
+		return waitingThreadCount;
+	}
 	/**
 	 * Removes all elements inside. Also fills them with nulls.
 	 */

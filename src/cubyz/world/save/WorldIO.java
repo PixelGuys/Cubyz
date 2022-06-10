@@ -78,7 +78,6 @@ public class WorldIO {
 	
 	public void saveWorldData() {
 		try {
-			Logger.debug("Started saving");
 			OutputStream out = new FileOutputStream(new File(dir, "world.dat"));
 			JsonObject worldData = new JsonObject();
 			worldData.put("version", WORLD_DATA_VERSION);
@@ -101,7 +100,6 @@ public class WorldIO {
 				}
 			}
 			out.write(worldData.toString().getBytes(StandardCharsets.UTF_8));
-			Logger.debug(worldData.toString());
 			out.close();
 		} catch (IOException e) {
 			Logger.error(e);

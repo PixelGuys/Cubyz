@@ -191,6 +191,8 @@ public class BlockMeshes implements DataOrientedRegistry {
 			textureIDs.remove(i);
 			blockTextures.remove(i);
 		}
+		animationFrames.clear();
+		animationTimes.clear();
 	}
 
 	public static void reloadTextures() {

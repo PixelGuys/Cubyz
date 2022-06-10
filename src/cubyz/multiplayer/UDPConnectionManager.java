@@ -37,18 +37,21 @@ public final class UDPConnectionManager extends Thread {
 	}
 
 	public void addConnection(UDPConnection connection) {
-		connections.add(connection);
+		synchronized(connections) {
+			connections.add(connection);
+		}
 	}
 
 	public void removeConnection(UDPConnection connection) {
-		connections.remove(connection);
+		synchronized(connections) {
+			connections.remove(connection);
+		}
 	}
 
 	public void cleanup() {
 		while(!connections.isEmpty()) {
 			connections.get(0).disconnect();
 		}
-		socket.close();
 		running = false;
 		if(Thread.currentThread() != this) {
 			interrupt();
@@ -58,6 +61,7 @@ public final class UDPConnectionManager extends Thread {
 				Logger.error(e);
 			}
 		}
+		socket.close();
 	}
 
 	private UDPConnection findConnection(InetAddress addr, int port) {

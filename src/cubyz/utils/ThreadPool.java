@@ -57,6 +57,12 @@ public final class ThreadPool {
 
 	public static void clear() {
 		loadList.clear();
+		// Wait until all in-progress tasks are done:
+		while(loadList.waitingThreadCount() < threads.length) {
+			try {
+				Thread.sleep(1);
+			} catch(Exception e) {}
+		}
 	}
 
 	public static void addTask(Task task) {

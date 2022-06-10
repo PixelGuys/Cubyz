@@ -102,7 +102,6 @@ public class UDPConnection {
 				}
 			}
 		}
-		Logger.debug("Unconfirmed: " + unconfirmedPackets.size);
 	}
 
 	void sendKeepAlive() {
