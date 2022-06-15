@@ -4,6 +4,7 @@ import cubyz.client.Cubyz;
 import cubyz.multiplayer.Protocol;
 import cubyz.multiplayer.UDPConnection;
 import cubyz.multiplayer.server.User;
+import cubyz.world.ClientWorld;
 import cubyz.world.ServerWorld;
 import pixelguys.json.JsonObject;
 import pixelguys.json.JsonParser;
@@ -21,10 +22,12 @@ public class UnimportantProtocol extends Protocol {
 
 	@Override
 	public void receive(UDPConnection conn, byte[] data, int offset, int length) {
+		ClientWorld world = Cubyz.world;
+		if(world == null) return;
 		String str = new String(data, offset, length, StandardCharsets.UTF_8);
 		JsonObject json = JsonParser.parseObjectFromString(str);
-		Cubyz.world.gameTime = json.getLong("time", 0);
-		Cubyz.world.playerBiome = Cubyz.world.registries.biomeRegistry.getByID(json.getString("biome", ""));
+		world.gameTime = json.getLong("time", 0);
+		world.playerBiome = world.registries.biomeRegistry.getByID(json.getString("biome", ""));
 	}
 
 	public void send(User user, ServerWorld world) {
