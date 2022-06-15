@@ -7,6 +7,7 @@ import cubyz.multiplayer.Protocols;
 import cubyz.multiplayer.UDPConnectionManager;
 import cubyz.utils.Logger;
 import cubyz.utils.Pacer;
+import cubyz.utils.datastructures.SimpleList;
 import cubyz.world.ServerWorld;
 import cubyz.world.entity.Entity;
 import pixelguys.json.JsonArray;
@@ -22,7 +23,8 @@ public final class Server extends Pacer{
 	private	static final Server server = new Server();
 
 	public static ServerWorld world = null;
-	public final static ArrayList<User> users = new ArrayList<>();
+	public static User[] users = new User[0];
+	private static final SimpleList<User> usersList = new SimpleList<>(new User[16]);
 	public static UDPConnectionManager connectionManager = null;
 
 	public static void main(String[] args) {
@@ -37,7 +39,8 @@ public final class Server extends Pacer{
 		Server.world = new ServerWorld(args[0], null);
 
 		connectionManager = new UDPConnectionManager(Constants.DEFAULT_PORT);
-		users.add(new User(connectionManager, "localhost", 5679));
+		User user = new User(connectionManager, "localhost", 5679);
+		connect(user);
 
 		try {
 			server.setFrequency(UPDATES_PER_SEC);
@@ -50,7 +53,7 @@ public final class Server extends Pacer{
 		}
 		connectionManager.cleanup();
 		connectionManager = null;
-		users.clear();
+		usersList.clear();
 		if(world != null)
 			world.cleanup();
 		world = null;
@@ -66,7 +69,17 @@ public final class Server extends Pacer{
 
 	public static void disconnect(User user) {
 		world.forceSave();
-		users.remove(user);
+		synchronized(usersList) {
+			usersList.remove(user);
+			users = usersList.toArray();
+		}
+	}
+
+	public static void connect(User user) {
+		synchronized(usersList) {
+			usersList.add(user);
+			users = usersList.toArray();
+		}
 	}
 
 	@Override

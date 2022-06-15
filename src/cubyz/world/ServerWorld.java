@@ -111,7 +111,7 @@ public class ServerWorld extends World {
 	}
 
 	private void savePlayers() {
-		for(User user : Server.users.toArray(new User[0])) {
+		for(User user : Server.users) {
 			try {
 				File file = new File("saves/" + name + "/players/" + Utils.escapeFolderName(user.name) + ".json");
 				file.getParentFile().mkdirs();

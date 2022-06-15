@@ -39,7 +39,7 @@ public class InviteCommand extends CommandBase {
 			}
 			new Thread(() -> {
 				try {
-					Server.users.add(new User(Server.connectionManager, ip, port));
+					Server.connect(new User(Server.connectionManager, ip, port));
 				} catch(Exception e) {
 					Logger.error(e);
 				}
