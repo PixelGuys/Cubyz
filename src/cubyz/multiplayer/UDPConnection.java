@@ -181,6 +181,17 @@ public class UDPConnection {
 			//Logger.debug("Dropped it :P");
 			return; // Drop packet :P
 		}
+		if(Math.random() < 0.02) {
+			// Delay the packet by up to 0.5 s:
+			byte[] newData = Arrays.copyOf(data, data.length);
+			new Thread(() -> {
+				try {
+					Thread.sleep((int)(Math.random()*500));
+				} catch(Exception e) {}
+				receive(newData, len);
+			}).start();
+			return;
+		}
 		Protocols.bytesReceived[protocol] += len + 20 + 8; // Including IP header and udp header
 		if(Protocols.list[protocol & 0xff].isImportant) {
 			int id = Bits.getInt(data, 2);

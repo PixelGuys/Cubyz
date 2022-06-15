@@ -13,8 +13,6 @@ import cubyz.world.entity.Entity;
 import pixelguys.json.JsonArray;
 import pixelguys.json.JsonObject;
 
-import java.util.ArrayList;
-
 public final class Server extends Pacer{
 	public static final int UPDATES_PER_SEC = 20;
 	public static final int UPDATES_TIME_NS = 1_000_000_000 / UPDATES_PER_SEC;
@@ -92,6 +90,9 @@ public final class Server extends Pacer{
 	public void update() {
 		world.update();
 
+		for(User user : users) {
+			user.update();
+		}
 		JsonArray entityData = new JsonArray();
 		for(Entity ent : world.getEntities()) {
 			JsonObject data = new JsonObject();
@@ -99,6 +100,9 @@ public final class Server extends Pacer{
 			data.put("x", ent.getPosition().x);
 			data.put("y", ent.getPosition().y);
 			data.put("z", ent.getPosition().z);
+			data.put("vx", ent.vx);
+			data.put("vy", ent.vy);
+			data.put("vz", ent.vz);
 			data.put("rot_x", ent.getRotation().x);
 			data.put("rot_y", ent.getRotation().y);
 			data.put("rot_z", ent.getRotation().z);

@@ -44,8 +44,6 @@ public class GameLogic {
 	private Spatial skySun;
 	private Spatial skyMoon;
 
-	public String serverIP = "localhost";
-	public int serverPort = 58961;
 	public int serverCapacity = 1;
 	public int serverOnline = 1;
 
@@ -199,7 +197,7 @@ public class GameLogic {
 			float lightAngle = (float)Math.PI/2 + (float)Math.PI*(((float)Cubyz.world.gameTime % World.DAY_CYCLE)/(World.DAY_CYCLE/2));
 			skySun.setPositionRaw((float)Math.cos(lightAngle)*500, (float)Math.sin(lightAngle)*500, 0);
 			skySun.setRotation(0, 0, -lightAngle);
-			Protocols.PLAYER_POSITION.send(Cubyz.world.serverConnection, Cubyz.player); // TODO: Optimization: Don't send this every frame.
+			Protocols.PLAYER_POSITION.send(Cubyz.world.serverConnection, Cubyz.player, (short)System.currentTimeMillis()); // TODO: Optimization: Don't send this every frame.
 		}
 	}
 

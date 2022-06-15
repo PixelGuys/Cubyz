@@ -43,6 +43,7 @@ public final class EntityRenderer {
 	}
 
 	public static void render(Vector3f ambientLight, DirectionalLight directionalLight, Vector3d playerPosition) {
+		ClientEntityManager.update();
 		ClientEntity[] entities = ClientEntityManager.getEntities();
 		entityShader.bind();
 		entityShader.setUniform(loc_fog_activ, Cubyz.fog.isActive());
