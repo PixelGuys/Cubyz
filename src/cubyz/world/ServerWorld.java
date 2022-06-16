@@ -100,13 +100,13 @@ public class ServerWorld extends World {
 	public Player findPlayer(User user) {
 		JsonObject playerData = JsonParser.parseObjectFromFile("saves/" + name + "/players/" + Utils.escapeFolderName(user.name) + ".json");
 		Player player = new Player(this, user.name);
-		addEntity(player);
 		if(playerData.map.isEmpty()) {
 			// Generate a new player:
 			player.setPosition(spawn);
 		} else {
 			player.loadFrom(playerData);
 		}
+		addEntity(player);
 		return player;
 	}
 

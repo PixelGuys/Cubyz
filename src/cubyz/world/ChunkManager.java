@@ -24,7 +24,7 @@ public class ChunkManager {
 
 	// There will be at most 1 GiB of reduced chunks in here.
 	private static final int CHUNK_CACHE_MASK = 2047;
-	private final Cache<ReducedChunk> reducedChunkCache = new Cache<ReducedChunk>(new ReducedChunk[CHUNK_CACHE_MASK+1][4]);
+	private final Cache<ReducedChunk> reducedChunkCache = new Cache<>(new ReducedChunk[CHUNK_CACHE_MASK+1][4]);
 	// There will be at most 1 GiB of map data in here.
 	private static final int[] MAP_CACHE_MASK = {
 		7, // 256 MiB // 4(1 in best-case) maps are needed at most for each player. So 32 will be enough for 8(32 in best case) player groups.
@@ -36,18 +36,20 @@ public class ChunkManager {
 	};
 	@SuppressWarnings("unchecked")
 	private final Cache<MapFragment>[] mapCache = new Cache[] {
-	    new Cache<MapFragment>(new MapFragment[MAP_CACHE_MASK[0] + 1][4]),
-	    new Cache<MapFragment>(new MapFragment[MAP_CACHE_MASK[1] + 1][4]),
-	    new Cache<MapFragment>(new MapFragment[MAP_CACHE_MASK[2] + 1][4]),
-	    new Cache<MapFragment>(new MapFragment[MAP_CACHE_MASK[3] + 1][4]),
-	    new Cache<MapFragment>(new MapFragment[MAP_CACHE_MASK[4] + 1][4]),
-	    new Cache<MapFragment>(new MapFragment[MAP_CACHE_MASK[5] + 1][4]),
+	    new Cache<>(new MapFragment[MAP_CACHE_MASK[0] + 1][4]),
+	    new Cache<>(new MapFragment[MAP_CACHE_MASK[1] + 1][4]),
+	    new Cache<>(new MapFragment[MAP_CACHE_MASK[2] + 1][4]),
+	    new Cache<>(new MapFragment[MAP_CACHE_MASK[3] + 1][4]),
+	    new Cache<>(new MapFragment[MAP_CACHE_MASK[4] + 1][4]),
+	    new Cache<>(new MapFragment[MAP_CACHE_MASK[5] + 1][4]),
 	};
 
 	private class ChunkLoadTask extends ThreadPool.Task {
 		private final ChunkData ch;
+		private final long creationTime;
 		public ChunkLoadTask(ChunkData ch) {
 			this.ch = ch;
+			creationTime = System.currentTimeMillis();
 		}
 		@Override
 		public float getPriority() {
@@ -60,7 +62,21 @@ public class ChunkManager {
 
 		@Override
 		public boolean isStillNeeded() {
-			return true; // TODO: Optimize that using the players render distance.
+			if(System.currentTimeMillis() - creationTime > 10000) { // Only remove stuff after 10 seconds to account for trouble when for example teleporting.
+				for(User user : Server.users) {
+					double minDistSquare = ch.getMinDistanceSquared(user.player.getPosition().x, user.player.getPosition().y, user.player.getPosition().z);
+					//                                                                   ↓ Margin for error. (diagonal of 1 chunk)
+					double targetRenderDistance = (user.renderDistance*Chunk.chunkSize + Chunk.chunkSize*Math.sqrt(3));//*Math.pow(user.LODFactor, Math.log(ch.voxelSize)/Math.log(2));
+					if(ch.voxelSize != 1) {
+						targetRenderDistance *= ch.voxelSize*user.LODFactor;
+					}
+					if(minDistSquare <= targetRenderDistance*targetRenderDistance) {
+						return true;
+					}
+				}
+				return false;
+			}
+			return true;
 		}
 
 		@Override

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 import cubyz.Constants;
+import cubyz.multiplayer.Protocols;
 import cubyz.world.*;
 import org.joml.FrustumIntersection;
 
@@ -20,33 +21,27 @@ public class RenderOctTree {
 	public static class OctTreeNode {
 		boolean shouldBeRemoved;
 		public OctTreeNode[] nextNodes = null;
-		public final int x, y, z, size;
+		public final int wx, wy, wz, size;
 		public final ChunkMesh mesh;
 		
-		public OctTreeNode(ReducedChunkMesh replacement, int x, int y, int z, int size, ArrayList<ChunkData> meshRequests) {
-			this.x = x;
-			this.y = y;
-			this.z = z;
+		public OctTreeNode(ReducedChunkMesh replacement, int wx, int wy, int wz, int size, ArrayList<ChunkData> meshRequests) {
+			this.wx = wx;
+			this.wy = wy;
+			this.wz = wz;
 			this.size = size;
 			if (size == Chunk.chunkSize) {
-				mesh = new NormalChunkMesh(replacement, x, y, z, size);
+				mesh = new NormalChunkMesh(replacement, wx, wy, wz, size);
 			} else {
-				mesh = new ReducedChunkMesh(replacement, x, y, z, size);
+				mesh = new ReducedChunkMesh(replacement, wx, wy, wz, size);
 			}
-			meshRequests.add(new ChunkData(x, y, z, mesh.voxelSize));
+			meshRequests.add(new ChunkData(wx, wy, wz, mesh.voxelSize));
 		}
 		public void update(int px, int py, int pz, int renderDistance, int maxRD, int minHeight, int maxHeight, int nearRenderDistance, ArrayList<ChunkData> meshRequests) {
 			synchronized(this) {
 				// Calculate the minimum distance between this chunk and the player:
-				double dx = Math.abs(x + size/2 - px);
-				double dy = Math.abs(y + size/2 - py);
-				double dz = Math.abs(z + size/2 - pz);
-				dx = Math.max(0, dx - size/2);
-				dy = Math.max(0, dy - size/2);
-				dz = Math.max(0, dz - size/2);
-				double minDist = dx*dx + dy*dy + dz*dz;
+				double minDist = mesh.getMinDistanceSquared(px, py, pz);
 				// Check if this chunk is outside the nearRenderDistance or outside the height limits:
-				if (y + size <= 0/*Cubyz.world.chunkManager.getOrGenerateMapFragment(x, z, 32).getMinHeight()*/ || y > 1024/*Cubyz.world.chunkManager.getOrGenerateMapFragment(x, z, 32).getMaxHeight()*/) {
+				if (wy + size <= 0/*Cubyz.world.chunkManager.getOrGenerateMapFragment(x, z, 32).getMinHeight()*/ || wy > 1024/*Cubyz.world.chunkManager.getOrGenerateMapFragment(x, z, 32).getMaxHeight()*/) {
 					if (minDist > nearRenderDistance*nearRenderDistance) {
 						if (nextNodes != null) {
 							for(int i = 0; i < 8; i++) {
@@ -62,7 +57,7 @@ public class RenderOctTree {
 					if (nextNodes == null) {
 						OctTreeNode[] nextNodes = new OctTreeNode[8];
 						for(int i = 0; i < 8; i++) {
-							nextNodes[i] = new OctTreeNode((ReducedChunkMesh)mesh, x + ((i & 1) == 0 ? 0 : size/2), y + ((i & 2) == 0 ? 0 : size/2), z + ((i & 4) == 0 ? 0 : size/2), size/2, meshRequests);
+							nextNodes[i] = new OctTreeNode((ReducedChunkMesh)mesh, wx + ((i & 1) == 0 ? 0 : size/2), wy + ((i & 2) == 0 ? 0 : size/2), wz + ((i & 4) == 0 ? 0 : size/2), size/2, meshRequests);
 						}
 						this.nextNodes = nextNodes;
 					}
@@ -74,7 +69,7 @@ public class RenderOctTree {
 					if (nextNodes == null) {
 						OctTreeNode[] nextNodes = new OctTreeNode[8];
 						for(int i = 0; i < 8; i++) {
-							nextNodes[i] = new OctTreeNode((ReducedChunkMesh)mesh, x + ((i & 1) == 0 ? 0 : size/2), y + ((i & 2) == 0 ? 0 : size/2), z + ((i & 4) == 0 ? 0 : size/2), size/2, meshRequests);
+							nextNodes[i] = new OctTreeNode((ReducedChunkMesh)mesh, wx + ((i & 1) == 0 ? 0 : size/2), wy + ((i & 2) == 0 ? 0 : size/2), wz + ((i & 4) == 0 ? 0 : size/2), size/2, meshRequests);
 						}
 						this.nextNodes = nextNodes;
 					}
@@ -107,7 +102,7 @@ public class RenderOctTree {
 		}
 		
 		public boolean testFrustum(FrustumIntersection frustumInt, double x0, double y0, double z0) {
-			return frustumInt.testAab((float)(x - x0), (float)(y - y0), (float)(z - z0), (float)(x + size - x0), (float)(y + size - y0), (float)(z + size - z0));
+			return frustumInt.testAab((float)(wx - x0), (float)(wy - y0), (float)(wz - z0), (float)(wx + size - x0), (float)(wy + size - y0), (float)(wz + size - z0));
 		}
 		
 		public void cleanup() {
@@ -122,8 +117,11 @@ public class RenderOctTree {
 			}
 		}
 	}
-	HashMap<HashMapKey3D, OctTreeNode> roots = new HashMap<HashMapKey3D, OctTreeNode>();
+	HashMap<HashMapKey3D, OctTreeNode> roots = new HashMap<>();
 	public void update(int renderDistance, float LODFactor) {
+		if(lastRD != renderDistance || lastFactor != LODFactor) {
+			Protocols.RENDER_DISTANCE.send(Cubyz.world.serverConnection, renderDistance, LODFactor);
+		}
 		int px = (int)Cubyz.player.getPosition().x;
 		int py = (int)Cubyz.player.getPosition().y;
 		int pz = (int)Cubyz.player.getPosition().z;
@@ -139,8 +137,8 @@ public class RenderOctTree {
 		// The LOD chunks are offset from grid to make generation easier.
 		minX += LODSize/2 - Chunk.chunkSize;
 		maxX += LODSize/2 - Chunk.chunkSize;
-		HashMap<HashMapKey3D, OctTreeNode> newMap = new HashMap<HashMapKey3D, OctTreeNode>();
-		ArrayList<ChunkData> meshRequests = new ArrayList<ChunkData>();
+		HashMap<HashMapKey3D, OctTreeNode> newMap = new HashMap<>();
+		ArrayList<ChunkData> meshRequests = new ArrayList<>();
 		for(int x = minX; x <= maxX; x += LODSize) {
 			int maxYRenderDistance = (int)Math.ceil(Math.sqrt(maxRenderDistance*maxRenderDistance - (x - px)*(x - px)));
 			int minY = (py - maxYRenderDistance - LODMask) & ~LODMask;
@@ -222,9 +220,9 @@ public class RenderOctTree {
 			OctTreeNode[] nextNodes = node.nextNodes;
 			if (nextNodes == null) return null;
 			for (int i = 0; i < 8; i++) {
-				if (nextNodes[i].x <= chunkData.wx && nextNodes[i].x + nextNodes[i].size > chunkData.wx
-						&& nextNodes[i].y <= chunkData.wy && nextNodes[i].y + nextNodes[i].size > chunkData.wy
-						&& nextNodes[i].z <= chunkData.wz && nextNodes[i].z + nextNodes[i].size > chunkData.wz) {
+				if (nextNodes[i].wx <= chunkData.wx && nextNodes[i].wx + nextNodes[i].size > chunkData.wx
+						&& nextNodes[i].wy <= chunkData.wy && nextNodes[i].wy + nextNodes[i].size > chunkData.wy
+						&& nextNodes[i].wz <= chunkData.wz && nextNodes[i].wz + nextNodes[i].size > chunkData.wz) {
 					node = nextNodes[i];
 					continue outer;
 				}

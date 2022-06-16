@@ -47,8 +47,7 @@ public class HandshakeProtocol extends Protocol {
 					conn.send(this, out.toByteArray());
 
 					JsonObject jsonObject = new JsonObject();
-					((User)conn).name = name;
-					((User)conn).player = Server.world.findPlayer((User)conn);
+					((User)conn).initPlayer(name);
 					jsonObject.put("player", ((User)conn).player.save());
 					jsonObject.put("player_id", ((User)conn).player.id);
 					jsonObject.put("blockPalette", Server.world.blockPalette.save());

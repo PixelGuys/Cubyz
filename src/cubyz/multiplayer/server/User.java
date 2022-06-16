@@ -20,6 +20,8 @@ public class User extends UDPConnection {
 	private final EntityInterpolation interpolation = new EntityInterpolation(new Vector3d(), new Vector3f());
 	private short lastTime;
 	public String name;
+	public int renderDistance;
+	public float LODFactor;
 
 	public User(UDPConnectionManager manager, String ip, int remotePort) {
 		super(manager, ip, remotePort);
@@ -37,6 +39,15 @@ public class User extends UDPConnection {
 	public void disconnect() {
 		super.disconnect();
 		Server.disconnect(this);
+	}
+
+	public void initPlayer(String name) {
+		this.name = name;
+		assert(player == null);
+		player = Server.world.findPlayer(this);
+		interpolation.position.set(player.getPosition());
+		interpolation.velocity.set(player.vx, player.vy, player.vz);
+		interpolation.rotation.set(player.getRotation());
 	}
 
 	public void update() {

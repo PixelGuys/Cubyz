@@ -34,6 +34,17 @@ public class ChunkData {
 		int halfWidth = voxelSize * Chunk.chunkSize / 2;
 		return -(float) source.getPosition().distance(wx + halfWidth, wy + halfWidth, wz + halfWidth) / voxelSize;
 	}
+
+	public double getMinDistanceSquared(double px, double py, double pz) {
+		int halfWidth = voxelSize * Chunk.chunkSize / 2;
+		double dx = Math.abs(wx + halfWidth - px);
+		double dy = Math.abs(wy + halfWidth - py);
+		double dz = Math.abs(wz + halfWidth - pz);
+		dx = Math.max(0, dx - halfWidth);
+		dy = Math.max(0, dy - halfWidth);
+		dz = Math.max(0, dz - halfWidth);
+		return dx*dx + dy*dy + dz*dz;
+	}
 	
 	@Override
 	public String toString() {
