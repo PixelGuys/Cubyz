@@ -1,7 +1,5 @@
 package cubyz.command;
 
-import cubyz.world.World;
-
 /**
  * Base interface for all entities that can execute commands.
  * @author zenith391
@@ -10,6 +8,5 @@ import cubyz.world.World;
 public interface CommandSource {
 	
 	void feedback(String feedback);
-	World getWorld();
 	
 }

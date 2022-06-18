@@ -1,8 +1,5 @@
 package cubyz.command;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import cubyz.api.RegistryElement;
 
 /**
@@ -14,7 +11,6 @@ public abstract class CommandBase implements RegistryElement {
 
 	protected String name;
 	protected String[] expectedArgs;
-	protected List<Permission> perms = new ArrayList<>();
 	
 	public abstract void commandExecute(CommandSource source, String[] args);
 	
@@ -28,10 +24,6 @@ public abstract class CommandBase implements RegistryElement {
 
 	public String[] getExpectedArgs() {
 		return expectedArgs;
-	}
-
-	public Permission[] getRequiredPermissions() {
-		return perms.toArray(new Permission[0]); // convert list to an array
 	}
 	
 }

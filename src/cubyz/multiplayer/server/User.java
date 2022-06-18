@@ -1,5 +1,6 @@
 package cubyz.multiplayer.server;
 
+import cubyz.command.CommandSource;
 import cubyz.multiplayer.Protocols;
 import cubyz.multiplayer.UDPConnection;
 import cubyz.multiplayer.UDPConnectionManager;
@@ -14,7 +15,7 @@ import org.joml.Vector3f;
 /*
 *   A User
 * */
-public class User extends UDPConnection {
+public class User extends UDPConnection implements CommandSource {
 	public Player player;
 	private final TimeDifference difference = new TimeDifference();
 	private final EntityInterpolation interpolation = new EntityInterpolation(new Vector3d(), new Vector3f());
@@ -81,5 +82,10 @@ public class User extends UDPConnection {
 		short time = Bits.getShort(data, offset + 60);
 		difference.addDataPoint(time);
 		interpolation.updatePosition(position, velocity, rotation, time);
+	}
+
+	@Override
+	public void feedback(String feedback) {
+		Protocols.CHAT.send(this, feedback);
 	}
 }

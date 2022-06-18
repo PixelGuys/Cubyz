@@ -12,7 +12,7 @@ import cubyz.world.items.ItemStack;
 public class ClearCommand extends CommandBase {
 
 	{
-		name = "clear";
+		name = "/clear";
 		expectedArgs = new String[0];
 	}
 	

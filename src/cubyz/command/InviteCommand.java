@@ -11,7 +11,7 @@ import java.util.Arrays;
 public class InviteCommand extends CommandBase {
 
 	{
-		name = "invite";
+		name = "/invite";
 		expectedArgs = new String[1];
 		expectedArgs[0] = "ip:port";
 	}

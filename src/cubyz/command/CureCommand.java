@@ -10,7 +10,7 @@ import cubyz.world.entity.Player;
 public class CureCommand extends CommandBase {
 
 	{
-		name = "cure";
+		name = "/cure";
 		expectedArgs = new String[0];
 	}
 	

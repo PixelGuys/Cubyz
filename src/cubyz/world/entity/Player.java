@@ -3,7 +3,6 @@ package cubyz.world.entity;
 import org.joml.Vector3f;
 
 import cubyz.api.CubyzRegistries;
-import cubyz.command.CommandSource;
 import cubyz.world.World;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.Blocks;
@@ -17,7 +16,7 @@ import pixelguys.json.JsonObject;
  * @author zenith391
  */
 
-public class Player extends Entity implements CommandSource {
+public class Player extends Entity {
 	public static final float cameraHeight = 1.75f;
 	
 
@@ -72,9 +71,6 @@ public class Player extends Entity implements CommandSource {
 	public void setInventory(Inventory inv) {
 		this.inv = inv;
 	}
-
-	@Override
-	public void feedback(String feedback) {}
 	
 	@Override
 	public void loadFrom(JsonObject json) {
@@ -145,11 +141,6 @@ public class Player extends Entity implements CommandSource {
 			toBreak.breakAnim = 0;
 			toBreak = null;
 		}
-	}
-
-	@Override
-	public World getWorld() {
-		return world;
 	}
 	
 }

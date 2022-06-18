@@ -1,6 +1,7 @@
 package cubyz.command;
 
 import cubyz.api.Resource;
+import cubyz.multiplayer.server.Server;
 
 import java.util.Objects;
 
@@ -11,7 +12,7 @@ import java.util.Objects;
 public class TimeCommand extends CommandBase {
 
 	public TimeCommand() {
-		name = "time";
+		name = "/time";
 		expectedArgs = new String[1];
 		expectedArgs[0] = "<time: time | day | night>";
 	}
@@ -24,16 +25,16 @@ public class TimeCommand extends CommandBase {
 	@Override
 	public void commandExecute(CommandSource source, String[] args) {
 		if (args.length == 1) {
-			source.feedback(String.valueOf(source.getWorld().gameTime));
+			source.feedback(String.valueOf(Server.world.gameTime));
 		} else {
 			try {
 				if (Objects.equals(args[1], "day")){
-					source.getWorld().gameTime = 0; //Set Day Time
+					Server.world.gameTime = 0; //Set Day Time
 				}
 				else if (Objects.equals(args[1], "night")) {
-					source.getWorld().gameTime = 52000; //Set Night Time
+					Server.world.gameTime = 52000; //Set Night Time
 				} else {
-					source.getWorld().gameTime = Integer.parseInt(args[1]); //Parse Input as time
+					Server.world.gameTime = Integer.parseInt(args[1]); //Parse Input as time
 				}
 				source.feedback("Time set to " + args[1]);
 			} catch (NumberFormatException e) {

@@ -8,7 +8,7 @@ import cubyz.world.entity.Player;
 public class TPCommand extends CommandBase {
 
 	{
-		name = "tp";
+		name = "/tp";
 		expectedArgs = new String[3];
 		expectedArgs[0] = "<x>";
 		expectedArgs[1] = "<y>";

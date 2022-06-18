@@ -10,7 +10,7 @@ import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
 import cubyz.gui.ConsoleLog;
 import cubyz.gui.Transition;
-import cubyz.gui.game.ConsoleGUI;
+import cubyz.gui.game.ChatGUI;
 import cubyz.gui.game.PauseGUI;
 import cubyz.gui.game.inventory.GeneralInventory;
 import cubyz.gui.game.inventory.InventoryGUI;
@@ -125,7 +125,7 @@ public class Input {
 					if (Cubyz.gameUI.getMenuGUI() == null) {
 						Keyboard.release();
 						Keyboard.release();
-						Cubyz.gameUI.setMenu(new ConsoleGUI());
+						Cubyz.gameUI.setMenu(new ChatGUI());
 					}
 				}
 				if ((Mouse.isLeftButtonPressed() || Mouse.isRightButtonPressed()) && !Mouse.isGrabbed() && Cubyz.gameUI.getMenuGUI() == null) {

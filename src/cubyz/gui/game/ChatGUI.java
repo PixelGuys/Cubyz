@@ -6,15 +6,14 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
-import java.util.Comparator;
 
+import cubyz.multiplayer.Protocols;
 import org.lwjgl.glfw.GLFW;
 
 import cubyz.utils.Logger;
 import cubyz.api.CubyzRegistries;
 import cubyz.client.Cubyz;
 import cubyz.command.CommandBase;
-import cubyz.command.CommandExecutor;
 import cubyz.gui.MenuGUI;
 import cubyz.gui.components.Component;
 import cubyz.gui.components.TextInput;
@@ -25,13 +24,11 @@ import cubyz.rendering.text.TextLine;
 
 import static cubyz.client.ClientSettings.GUI_SCALE;
 
-// (the console GUI is different from chat GUI)
-
 /**
- * A GUI to enter cheat commands.
+ * A GUI to enter chat messages and commands.
  */
 
-public class ConsoleGUI extends MenuGUI {
+public class ChatGUI extends MenuGUI {
 
 	TextInput input;
 	
@@ -63,7 +60,7 @@ public class ConsoleGUI extends MenuGUI {
 
 	//Textline for showing autocomplete suggestions and expected arguments of commands
 	private static final String COMPLETION_COLOR = "#606060";
-	private static TextLine textLine = new TextLine(Fonts.PIXEL_FONT, "", CONSOLE_HEIGHT - 2, false);
+	private static final TextLine textLine = new TextLine(Fonts.PIXEL_FONT, "", CONSOLE_HEIGHT - 2, false);
 
 	@Override
 	public void init() {
@@ -108,7 +105,8 @@ public class ConsoleGUI extends MenuGUI {
 	public void update() {
 		if (mode == NORMAL) {
 			// Normal user input
-			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_TAB)) {
+			if (Keyboard.isKeyPressed(GLFW.GLFW_KEY_TAB) && input.getText().startsWith("/")) {
+				Logger.info("slashtab");
 				Keyboard.setKeyPressed(GLFW.GLFW_KEY_TAB, false);
 				updatePossibleCommands();
 				if (possibleCommands.isEmpty()) {
@@ -251,7 +249,7 @@ public class ConsoleGUI extends MenuGUI {
 	private void execute() {
 		//Adds to history
 		String text = input.getText();
-		if (text != "") {
+		if (text.startsWith("/")) { // Only store commands in history.
 			//Prevents multiple entries of the same command in history
 			if (!text.equals(consoleArray[(HISTORY_SIZE + end - 1) % HISTORY_SIZE])) {
 				consoleArray[end] = text;
@@ -259,12 +257,6 @@ public class ConsoleGUI extends MenuGUI {
 			}
 			current = end;
 			consoleArray[current] = "";
-			//Executes
-			CommandExecutor.execute(text, Cubyz.player);
-			//Resets
-			textLine.updateText("");
-			input.setText("");
-			mode = NORMAL;
 			//Saves history
 			try {
 				ObjectOutputStream oS = new ObjectOutputStream(new FileOutputStream(PATH));
@@ -275,6 +267,12 @@ public class ConsoleGUI extends MenuGUI {
 				Logger.error(e);
 			}
 		}
+		//Executes
+		Protocols.CHAT.send(Cubyz.world.serverConnection, text);
+		//Resets
+		textLine.updateText("");
+		input.setText("");
+		mode = NORMAL;
 	}
 	
 	//Finds commands a sorted arraylist of commands starting with the userinput
@@ -287,12 +285,7 @@ public class ConsoleGUI extends MenuGUI {
 			}
 		}
 		possibleCommands.sort(
-			new Comparator<CommandBase>() {
-				@Override
-				public int compare(CommandBase cb1, CommandBase cb2) {
-					return cb1.getCommandName().compareTo(cb2.getCommandName());
-				}
-			}
+				(cb1, cb2) -> cb1.getCommandName().compareTo(cb2.getCommandName())
 		);
 		commandSelection = 0;
 	}

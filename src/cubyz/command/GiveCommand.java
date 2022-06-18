@@ -2,6 +2,7 @@ package cubyz.command;
 
 import cubyz.api.Registry;
 import cubyz.api.Resource;
+import cubyz.multiplayer.server.Server;
 import cubyz.world.entity.Player;
 import cubyz.world.items.Inventory;
 import cubyz.world.items.Item;
@@ -13,7 +14,7 @@ import cubyz.world.items.Item;
 public class GiveCommand extends CommandBase {
 
 	{
-		name = "give";
+		name = "/give";
 		expectedArgs = new String[2];
 		expectedArgs[0] = "<item id>";
 		expectedArgs[1] = "<optional: amount>";
@@ -27,7 +28,7 @@ public class GiveCommand extends CommandBase {
 	@Override
 	public void commandExecute(CommandSource source, String[] args) {
 		
-		Registry<Item> items = source.getWorld().getCurrentRegistries().itemRegistry;
+		Registry<Item> items = Server.world.getCurrentRegistries().itemRegistry;
 		if (args.length < 2) {
 			source.feedback("Usage: give <item id> [amount]");
 			return;
