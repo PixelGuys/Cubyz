@@ -277,9 +277,14 @@ public class ServerWorld extends World {
 
 		seek();
 	}
+
 	@Override
 	public void queueChunk(ChunkData ch) {
-		chunkManager.queueChunk(ch);
+		queueChunk(ch, null);
+	}
+
+	public void queueChunk(ChunkData ch, User source) {
+		chunkManager.queueChunk(ch, source);
 	}
 
 	public void seek() {

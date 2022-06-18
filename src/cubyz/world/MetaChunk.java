@@ -140,7 +140,7 @@ public class MetaChunk {
 						try {
 							chunk = new NormalChunk(world, wx, wy, wz);
 							chunks[index] = chunk;
-							world.queueChunk(chunks[index]);
+							world.queueChunk(chunks[index], null);
 							chunksList.add(chunks[index]);
 						} catch (Exception e) {
 							Logger.error(e);

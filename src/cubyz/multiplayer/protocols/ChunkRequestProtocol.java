@@ -3,6 +3,7 @@ package cubyz.multiplayer.protocols;
 import cubyz.multiplayer.Protocol;
 import cubyz.multiplayer.UDPConnection;
 import cubyz.multiplayer.server.Server;
+import cubyz.multiplayer.server.User;
 import cubyz.utils.math.Bits;
 import cubyz.world.ChunkData;
 
@@ -19,7 +20,7 @@ public class ChunkRequestProtocol extends Protocol {
 			Bits.getInt(data, offset + 8),
 			Bits.getInt(data, offset + 12)
 		);
-		Server.world.queueChunk(request);
+		Server.world.queueChunk(request, (User)conn);
 	}
 
 	public void sendRequest(UDPConnection conn, ChunkData request) {

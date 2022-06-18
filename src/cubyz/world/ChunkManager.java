@@ -47,8 +47,10 @@ public class ChunkManager {
 	private class ChunkLoadTask extends ThreadPool.Task {
 		private final ChunkData ch;
 		private final long creationTime;
-		public ChunkLoadTask(ChunkData ch) {
+		private final User source;
+		public ChunkLoadTask(ChunkData ch, User source) {
 			this.ch = ch;
+			this.source = source;
 			creationTime = System.currentTimeMillis();
 		}
 		@Override
@@ -62,6 +64,18 @@ public class ChunkManager {
 
 		@Override
 		public boolean isStillNeeded() {
+			if(source != null) {
+				boolean isConnected = false;
+				for(User user : Server.users) {
+					if(source == user) {
+						isConnected = true;
+						break;
+					}
+				}
+				if(!isConnected) {
+					return false;
+				}
+			}
 			if(System.currentTimeMillis() - creationTime > 10000) { // Only remove stuff after 10 seconds to account for trouble when for example teleporting.
 				for(User user : Server.users) {
 					double minDistSquare = ch.getMinDistanceSquared(user.player.getPosition().x, user.player.getPosition().y, user.player.getPosition().z);
@@ -81,7 +95,7 @@ public class ChunkManager {
 
 		@Override
 		public void run() {
-			synchronousGenerate(ch);
+			synchronousGenerate(ch, source);
 		}
 	}
 
@@ -95,7 +109,7 @@ public class ChunkManager {
 		ClimateMap.init(terrainGenerationProfile);
 	}
 
-	public void queueChunk(ChunkData ch) {
+	public void queueChunk(ChunkData ch, User source) {
 		if(ch.voxelSize == 1 && !(ch instanceof NormalChunk)) {
 			// Special case: Normal chunk is queued
 			// If the chunk doesn't exist yet, it is generated.
@@ -103,16 +117,20 @@ public class ChunkManager {
 			// If the chunk is already fully generated, it is returned.
 			NormalChunk chunk = world.getChunk(ch.wx, ch.wy, ch.wz);
 			if(chunk != null && chunk.isLoaded()) {
-				for(User user : Server.users) {
-					Protocols.CHUNK_TRANSMISSION.sendChunk(user, chunk);
+				if(source != null) {
+					Protocols.CHUNK_TRANSMISSION.sendChunk(source, chunk);
+				} else {
+					for(User user : Server.users) {
+						Protocols.CHUNK_TRANSMISSION.sendChunk(user, chunk);
+					}
 				}
 				return;
 			}
 		}
-		ThreadPool.addTask(new ChunkLoadTask(ch));
+		ThreadPool.addTask(new ChunkLoadTask(ch, source));
 	}
 	
-	public void synchronousGenerate(ChunkData ch) {
+	public void synchronousGenerate(ChunkData ch, User source) {
 		if (ch.voxelSize == 1) {
 			NormalChunk chunk;
 			if(ch instanceof NormalChunk) {
@@ -124,13 +142,21 @@ public class ChunkManager {
 				chunk.generate(world.getSeed(), terrainGenerationProfile);
 				chunk.load();
 			}
-			for(User user : Server.users) {
-				Protocols.CHUNK_TRANSMISSION.sendChunk(user, chunk);
+			if(source != null) {
+				Protocols.CHUNK_TRANSMISSION.sendChunk(source, chunk);
+			} else {
+				for(User user : Server.users) {
+					Protocols.CHUNK_TRANSMISSION.sendChunk(user, chunk);
+				}
 			}
 		} else {
 			ReducedChunkVisibilityData visibilityData = new ReducedChunkVisibilityData(world, ch.wx, ch.wy, ch.wz, ch.voxelSize);
-			for(User user : Server.users) {
-				Protocols.CHUNK_TRANSMISSION.sendChunk(user, visibilityData);
+			if(source != null) {
+				Protocols.CHUNK_TRANSMISSION.sendChunk(source, visibilityData);
+			} else {
+				for(User user : Server.users) {
+					Protocols.CHUNK_TRANSMISSION.sendChunk(user, visibilityData);
+				}
 			}
 		}
 	}
