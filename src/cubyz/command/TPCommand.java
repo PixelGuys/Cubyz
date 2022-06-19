@@ -1,9 +1,10 @@
 package cubyz.command;
 
+import cubyz.multiplayer.Protocols;
+import cubyz.multiplayer.server.User;
 import org.joml.Vector3d;
 
 import cubyz.api.Resource;
-import cubyz.world.entity.Player;
 
 public class TPCommand extends CommandBase {
 
@@ -26,11 +27,10 @@ public class TPCommand extends CommandBase {
 			source.feedback("Usage: tp <x> <y> <z>");
 			return;
 		}
-		if (!(source instanceof Player)) {
+		if (!(source instanceof User)) {
 			source.feedback("'tp' must be executed by a player");
 			return;
 		}
-		Player player = (Player)source;
-		player.setPosition(new Vector3d(Double.parseDouble(args[1]), Double.parseDouble(args[2]), Double.parseDouble(args[3])));
+		Protocols.GENERIC_UPDATE.sendTPCoordinates((User)source, new Vector3d(Double.parseDouble(args[1]), Double.parseDouble(args[2]), Double.parseDouble(args[3])));
 	}
 }

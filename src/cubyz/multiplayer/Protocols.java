@@ -15,6 +15,6 @@ public final class Protocols {
 	public static final EntityProtocol ENTITY = new EntityProtocol();
 	public static final BlockUpdateProtocol BLOCK_UPDATE = new BlockUpdateProtocol();
 	public static final UnimportantProtocol UNIMPORTANT = new UnimportantProtocol();
-	public static final RenderDistanceProtocol RENDER_DISTANCE = new RenderDistanceProtocol();
+	public static final GenericUpdateProtocol GENERIC_UPDATE = new GenericUpdateProtocol();
 	public static final ChatProtocol CHAT = new ChatProtocol();
 }

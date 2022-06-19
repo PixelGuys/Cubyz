@@ -120,7 +120,7 @@ public class RenderOctTree {
 	HashMap<HashMapKey3D, OctTreeNode> roots = new HashMap<>();
 	public void update(int renderDistance, float LODFactor) {
 		if(lastRD != renderDistance || lastFactor != LODFactor) {
-			Protocols.RENDER_DISTANCE.send(Cubyz.world.serverConnection, renderDistance, LODFactor);
+			Protocols.GENERIC_UPDATE.sendRenderDistance(Cubyz.world.serverConnection, renderDistance, LODFactor);
 		}
 		int px = (int)Cubyz.player.getPosition().x;
 		int py = (int)Cubyz.player.getPosition().y;
