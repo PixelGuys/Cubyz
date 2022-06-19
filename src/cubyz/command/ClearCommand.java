@@ -1,9 +1,8 @@
 package cubyz.command;
 
 import cubyz.api.Resource;
-import cubyz.world.entity.Player;
-import cubyz.world.items.Inventory;
-import cubyz.world.items.ItemStack;
+import cubyz.multiplayer.Protocols;
+import cubyz.multiplayer.server.User;
 
 /**
  * Clears the inventory of the local player.
@@ -23,17 +22,12 @@ public class ClearCommand extends CommandBase {
 
 	@Override
 	public void commandExecute(CommandSource source, String[] args) {
-		if (!(source instanceof Player)) {
+		if (!(source instanceof User)) {
 			source.feedback("'clear' must be executed by a player");
 			return;
 		}
-		Player player = (Player)source;
-		Inventory inv = player.getInventory();
-		for (int i = 0; i < inv.getCapacity(); i++) {
-			if (inv.hasStack(i)) {
-				inv.setStack(i, new ItemStack());
-			}
-		}
+		User user = (User)source;
+		Protocols.GENERIC_UPDATE.clearInventory(user);
 	}
 
 }

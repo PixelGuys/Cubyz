@@ -8,6 +8,7 @@ import cubyz.multiplayer.server.Server;
 import cubyz.multiplayer.server.User;
 import cubyz.utils.math.Bits;
 import cubyz.world.items.Inventory;
+import cubyz.world.items.ItemStack;
 import org.joml.Vector3d;
 import pixelguys.json.JsonObject;
 import pixelguys.json.JsonParser;
@@ -23,6 +24,7 @@ public class GenericUpdateProtocol extends Protocol {
 	private static final byte CURE = 2;
 	private static final byte INVENTORY_ADD = 3;
 	private static final byte INVENTORY_FULL = 4;
+	private static final byte INVENTORY_CLEAR = 5;
 	public GenericUpdateProtocol() {
 		super((byte)9, true);
 	}
@@ -64,6 +66,25 @@ public class GenericUpdateProtocol extends Protocol {
 				((User)conn).player.getInventory().loadFrom(json, Server.world.getCurrentRegistries());
 				break;
 			}
+			case INVENTORY_CLEAR: {
+				if(conn instanceof User) {
+					Inventory inv = ((User)conn).player.getInventory();
+					for (int i = 0; i < inv.getCapacity(); i++) {
+						if (inv.hasStack(i)) {
+							inv.setStack(i, new ItemStack());
+						}
+					}
+				} else {
+					Inventory inv = Cubyz.player.getInventory_AND_DONT_FORGET_TO_SEND_CHANGES_TO_THE_SERVER();
+					for (int i = 0; i < inv.getCapacity(); i++) {
+						if (inv.hasStack(i)) {
+							inv.setStack(i, new ItemStack());
+						}
+					}
+					clearInventory(conn); // Needs to send changes back to server, to ensure correct order.
+				}
+				break;
+			}
 		}
 	}
 
@@ -102,5 +123,9 @@ public class GenericUpdateProtocol extends Protocol {
 		headeredData[0] = INVENTORY_FULL;
 		System.arraycopy(data, 0, headeredData, 1, data.length);
 		conn.send(this, headeredData);
+	}
+
+	public void clearInventory(UDPConnection conn) {
+		conn.send(this, new byte[]{INVENTORY_CLEAR});
 	}
 }
