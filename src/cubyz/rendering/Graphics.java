@@ -45,7 +45,7 @@ public final class Graphics {
 	public static void setColor(int r, int g, int b) {
 		setColor(r << 16 | g << 8 | b);
 	}
-	
+
 	/**
 	 * Every alpha value will get multiplied by this multiplier.
 	 * @param multiplier
@@ -53,6 +53,14 @@ public final class Graphics {
 	public static void setGlobalAlphaMultiplier(float multiplier) {
 		globalAlphaMultiplier = multiplier;
 		TextLine.setGlobalAlphaMultiplier(multiplier);
+	}
+
+	/**
+	 * Every alpha value will get multiplied by this multiplier.
+	 * @return multiplier
+	 */
+	public static float getGlobalAlphaMultiplier() {
+		return globalAlphaMultiplier;
 	}
 
 	/**
@@ -227,8 +235,8 @@ public final class Graphics {
 	
 	/**
 	 * Draws the border of the same area that fillRect uses.
-	 * @param x1
-	 * @param y1
+	 * @param x
+	 * @param y
 	 * @param width
 	 * @param height
 	 */
@@ -362,9 +370,9 @@ public final class Graphics {
 	/**
 	 * Draws a given string.
 	 * Uses TextLine.
-	 * @param texture
 	 * @param x left
 	 * @param y top
+	 * @param text
 	 */
 	public static void drawText(float x, float y, String text) {
 		text = String.format("#%06x", 0xffffff & color) + text; // Add the coloring information.

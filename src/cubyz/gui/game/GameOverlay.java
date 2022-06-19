@@ -12,6 +12,8 @@ import cubyz.rendering.text.Fonts;
 import cubyz.rendering.text.TextLine;
 import cubyz.world.items.Inventory;
 
+import java.util.ArrayList;
+
 import static cubyz.client.ClientSettings.GUI_SCALE;
 
 /**
@@ -21,42 +23,54 @@ import static cubyz.client.ClientSettings.GUI_SCALE;
 
 public class GameOverlay extends MenuGUI {
 
-	private static Texture crosshair;
-	private static Texture selection;
-	private static Texture[] healthBar;
-	private static Texture[] hungerBar;
+	private static final Texture crosshair;
+	private static final Texture selection;
+	private static final Texture[] healthBar;
+	private static final Texture[] hungerBar;
 	
 	long lastPlayerHurtMs; // stored here and not in Player for easier multiplayer integration
 	float lastPlayerHealth;
 
 	private final InventorySlot[] inv = new InventorySlot[8];
+
+	private final ArrayList<String> chatMessages = new ArrayList<>();
+	private final ArrayList<Long> chatTimes = new ArrayList<>();
+	private static final int CHAT_TIMEOUT = 20000;
+	private static final int CHAT_FADEOUT = 1000;
+
+	static {
+		crosshair = Texture.loadFromFile("assets/cubyz/textures/crosshair.png");
+		selection = Texture.loadFromFile("assets/cubyz/guis/inventory/selected_slot.png");
+		healthBar = new Texture[8];
+		healthBar[0] = Texture.loadFromFile("assets/cubyz/textures/health_bar_beg_empty.png");
+		healthBar[1] = Texture.loadFromFile("assets/cubyz/textures/health_bar_beg_full.png");
+		healthBar[2] = Texture.loadFromFile("assets/cubyz/textures/health_bar_end_empty.png");
+		healthBar[3] = Texture.loadFromFile("assets/cubyz/textures/health_bar_end_full.png");
+		healthBar[4] = Texture.loadFromFile("assets/cubyz/textures/health_bar_mid_empty.png");
+		healthBar[5] = Texture.loadFromFile("assets/cubyz/textures/health_bar_mid_half.png");
+		healthBar[6] = Texture.loadFromFile("assets/cubyz/textures/health_bar_mid_full.png");
+		healthBar[7] = Texture.loadFromFile("assets/cubyz/textures/health_bar_icon.png");
+		hungerBar = new Texture[8];
+		hungerBar[0] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_beg_empty.png");
+		hungerBar[1] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_beg_full.png");
+		hungerBar[2] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_end_empty.png");
+		hungerBar[3] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_end_full.png");
+		hungerBar[4] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_mid_empty.png");
+		hungerBar[5] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_mid_half.png");
+		hungerBar[6] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_mid_full.png");
+		hungerBar[7] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_icon.png");
+	}
 	
 	@Override
 	public void init() {
-		if(crosshair == null) {
-			crosshair = Texture.loadFromFile("assets/cubyz/textures/crosshair.png");
-			selection = Texture.loadFromFile("assets/cubyz/guis/inventory/selected_slot.png");
-			healthBar = new Texture[8];
-			healthBar[0] = Texture.loadFromFile("assets/cubyz/textures/health_bar_beg_empty.png");
-			healthBar[1] = Texture.loadFromFile("assets/cubyz/textures/health_bar_beg_full.png");
-			healthBar[2] = Texture.loadFromFile("assets/cubyz/textures/health_bar_end_empty.png");
-			healthBar[3] = Texture.loadFromFile("assets/cubyz/textures/health_bar_end_full.png");
-			healthBar[4] = Texture.loadFromFile("assets/cubyz/textures/health_bar_mid_empty.png");
-			healthBar[5] = Texture.loadFromFile("assets/cubyz/textures/health_bar_mid_half.png");
-			healthBar[6] = Texture.loadFromFile("assets/cubyz/textures/health_bar_mid_full.png");
-			healthBar[7] = Texture.loadFromFile("assets/cubyz/textures/health_bar_icon.png");
-			hungerBar = new Texture[8];
-			hungerBar[0] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_beg_empty.png");
-			hungerBar[1] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_beg_full.png");
-			hungerBar[2] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_end_empty.png");
-			hungerBar[3] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_end_full.png");
-			hungerBar[4] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_mid_empty.png");
-			hungerBar[5] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_mid_half.png");
-			hungerBar[6] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_mid_full.png");
-			hungerBar[7] = Texture.loadFromFile("assets/cubyz/textures/hunger_bar_icon.png");
-		}
-		
 		updateGUIScale();
+	}
+
+	public void addChatMessage(String msg) {
+		synchronized(chatMessages) {
+			chatMessages.add(msg);
+			chatTimes.add(System.currentTimeMillis());
+		}
 	}
 
 	@Override
@@ -137,6 +151,45 @@ public class GameOverlay extends MenuGUI {
 			Graphics.drawImage(hungerBar[idx], (int)(i*6 * GUI_SCALE + Window.getWidth() - (maxHunger*6 + 4) * GUI_SCALE), 20 * GUI_SCALE, 12 * GUI_SCALE, 12 * GUI_SCALE);
 		}
 		text.render((maxHunger / 2) * 6 * GUI_SCALE + Window.getWidth() - (maxHealth*6 + 4) * GUI_SCALE - width / 2, 23 * GUI_SCALE);
+
+		// Draw the chat:
+		if(!(Cubyz.gameUI.getMenuGUI() instanceof ChatGUI)) {
+			synchronized(chatMessages) {
+				ArrayList<TextLine> textLines = new ArrayList<>();
+				ArrayList<Float> alphas = new ArrayList<>();
+				Graphics.setColor(255, 255, 255);
+				float maxWidth = 0;
+				for(int i = chatMessages.size() - 1; i >= 0; i--) {
+					String msg = chatMessages.get(i);
+					long time = System.currentTimeMillis() - chatTimes.get(i);
+					float alpha = 1;
+					if(time > CHAT_TIMEOUT + CHAT_FADEOUT) {
+						chatMessages.remove(i);
+						chatTimes.remove(i);
+						continue;
+					} else if(time > CHAT_TIMEOUT) {
+						alpha = 1.0f - (time - CHAT_TIMEOUT)/(float)CHAT_FADEOUT;
+					}
+
+					TextLine line = new TextLine(Fonts.PIXEL_FONT, msg, 16*GUI_SCALE, false);
+					maxWidth = Math.max(maxWidth, line.getTextWidth());
+					textLines.add(line);
+					alphas.add(alpha);
+				}
+				float oldAlpha = Graphics.getGlobalAlphaMultiplier();
+				int y = Window.getHeight() - 20*GUI_SCALE;
+				for(int i = 0; i < textLines.size(); i++) {
+					float alpha = alphas.get(i);
+					Graphics.setGlobalAlphaMultiplier(oldAlpha*alpha*0.5f);
+					Graphics.setColor(0);
+					Graphics.fillRect(0, y, maxWidth + 10, 20*GUI_SCALE);
+					Graphics.setGlobalAlphaMultiplier(oldAlpha*alpha);
+					textLines.get(i).render(GUI_SCALE, y);
+					y -= 20*GUI_SCALE;
+				}
+				Graphics.setGlobalAlphaMultiplier(oldAlpha);
+			}
+		}
 	}
 
 	@Override

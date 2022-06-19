@@ -25,6 +25,8 @@ import org.joml.Vector3f;
 import org.joml.Vector4f;
 import pixelguys.json.JsonObject;
 
+import java.util.ArrayList;
+
 //TODO:
 public class ClientWorld extends World {
 	public final ServerConnection serverConnection;
@@ -36,6 +38,7 @@ public class ClientWorld extends World {
 	public final Class<?> chunkProvider;
 
 	public Biome playerBiome;
+	public final ArrayList<String> chatHistory = new ArrayList<>();
 
 	public ClientWorld(String ip, String playerName, Class<?> chunkProvider) {
 		this(ip, null, playerName, chunkProvider);

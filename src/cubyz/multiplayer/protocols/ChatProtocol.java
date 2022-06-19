@@ -1,6 +1,9 @@
 package cubyz.multiplayer.protocols;
 
+import cubyz.client.Cubyz;
 import cubyz.command.CommandExecutor;
+import cubyz.gui.MenuGUI;
+import cubyz.gui.game.GameOverlay;
 import cubyz.multiplayer.Protocol;
 import cubyz.multiplayer.UDPConnection;
 import cubyz.multiplayer.server.Server;
@@ -22,11 +25,17 @@ public class ChatProtocol extends Protocol {
 			if(msg.startsWith("/")) {
 				CommandExecutor.execute(msg, user);
 			} else {
-				msg = "["+user.name+"] "+msg;
+				msg = "["+user.name+"#ffffff] "+msg;
 				sendToClients(msg);
 			}
 		} else {
-			Logger.log("chat", msg, "\033[0;36m");
+			msg = "#ffffff"+msg;
+			for(MenuGUI overlay : Cubyz.gameUI.getOverlays()) {
+				if(overlay instanceof GameOverlay) {
+					((GameOverlay)overlay).addChatMessage(msg);
+				}
+			}
+			Cubyz.world.chatHistory.add(msg);
 		}
 	}
 

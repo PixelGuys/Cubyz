@@ -8,6 +8,8 @@ import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 
 import cubyz.multiplayer.Protocols;
+import cubyz.rendering.Graphics;
+import cubyz.rendering.Window;
 import org.lwjgl.glfw.GLFW;
 
 import cubyz.utils.Logger;
@@ -98,7 +100,7 @@ public class ChatGUI extends MenuGUI {
 
 	@Override
 	public void updateGUIScale() {
-		input.setBounds(0 * GUI_SCALE, 0 * GUI_SCALE, CONSOLE_WIDTH * GUI_SCALE, CONSOLE_HEIGHT * GUI_SCALE, Component.ALIGN_TOP_LEFT);
+		input.setBounds(0 * GUI_SCALE, Window.getHeight() - CONSOLE_HEIGHT * GUI_SCALE, CONSOLE_WIDTH * GUI_SCALE, CONSOLE_HEIGHT * GUI_SCALE, Component.ALIGN_TOP_LEFT);
 		input.setFontSize((CONSOLE_HEIGHT - 4) * GUI_SCALE);
 	}
 
@@ -243,7 +245,28 @@ public class ChatGUI extends MenuGUI {
 			input.textLine.endSelection(CONSOLE_WIDTH);
 		}
 		input.render();
-		textLine.render(input.textLine.getTextWidth() + 4, 0);
+		textLine.render(input.textLine.getTextWidth() + 4, Window.getHeight() - CONSOLE_HEIGHT*GUI_SCALE);
+		// Render chat history:
+		ArrayList<TextLine> textLines = new ArrayList<>();
+		Graphics.setColor(255, 255, 255);
+		float maxWidth = 0;
+		for(int i = Cubyz.world.chatHistory.size() - 1; i >= 0; i--) {
+			String msg = Cubyz.world.chatHistory.get(i);
+			TextLine line = new TextLine(Fonts.PIXEL_FONT, msg, 16*GUI_SCALE, false);
+			maxWidth = Math.max(maxWidth, line.getTextWidth());
+			textLines.add(line);
+		}
+		float oldAlpha = Graphics.getGlobalAlphaMultiplier();
+		int y = Window.getHeight() - 20*GUI_SCALE - CONSOLE_HEIGHT*GUI_SCALE;
+		for(int i = 0; i < textLines.size(); i++) {
+			Graphics.setGlobalAlphaMultiplier(oldAlpha*0.5f);
+			Graphics.setColor(0);
+			Graphics.fillRect(0, y, maxWidth + 10, 20*GUI_SCALE);
+			Graphics.setGlobalAlphaMultiplier(oldAlpha);
+			textLines.get(i).render(GUI_SCALE, y);
+			y -= 20*GUI_SCALE;
+		}
+		Graphics.setGlobalAlphaMultiplier(1);
 	}
 
 	private void execute() {

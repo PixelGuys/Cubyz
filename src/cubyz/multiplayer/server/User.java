@@ -86,6 +86,6 @@ public class User extends UDPConnection implements CommandSource {
 
 	@Override
 	public void feedback(String feedback) {
-		Protocols.CHAT.send(this, feedback);
+		Protocols.CHAT.send(this, "#ffff00"+feedback);
 	}
 }
