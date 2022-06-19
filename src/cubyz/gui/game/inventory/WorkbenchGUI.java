@@ -47,7 +47,7 @@ public class WorkbenchGUI extends GeneralInventory {
 						inv[j].reference.add(-1);
 					}
 					// Create a new seed, so the player won't craft the exact same item twice:
-					seed = new FastRandom(seed).nextInt();
+					seed = FastRandom.nextInt((long)seed);
 				}
 			}
 			if (i >= 32) {
@@ -61,7 +61,7 @@ public class WorkbenchGUI extends GeneralInventory {
 	public void setInventory(Inventory in) {
 		this.in = in;
 		inv = new InventorySlot[58];
-		Inventory inventory = Cubyz.player.getInventory();
+		Inventory inventory = Cubyz.player.getInventory_AND_DONT_FORGET_TO_SEND_CHANGES_TO_THE_SERVER();
 		for(int i = 0; i < 8; i++) {
 			inv[i] = new InventorySlot(inventory.getStack(i), (i - 4) * 20 * GUI_SCALE, 30 * GUI_SCALE, Component.ALIGN_BOTTOM);
 		}

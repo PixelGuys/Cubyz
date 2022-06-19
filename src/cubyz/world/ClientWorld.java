@@ -73,15 +73,15 @@ public class ClientWorld extends World {
 		spawn.y = handshakeResult.getObjectOrNew("spawn").getInt("y", 0);
 		spawn.z = handshakeResult.getObjectOrNew("spawn").getInt("z", 0);
 
-		player.loadFrom(handshakeResult.getObjectOrNew("player"), this);
-		player.id = handshakeResult.getInt("player_id", -1);
-
 		if(Server.world != null) {
 			// Share the registries of the local server:
 			registries = Server.world.getCurrentRegistries();
 		} else {
 			registries = new CurrentWorldRegistries(this, "serverAssets/", blockPalette);
 		}
+
+		player.loadFrom(handshakeResult.getObjectOrNew("player"), this);
+		player.id = handshakeResult.getInt("player_id", -1);
 
 		// Call mods for this new world. Mods sometimes need to do extra stuff for the specific world.
 		ModLoader.postWorldGen(registries);

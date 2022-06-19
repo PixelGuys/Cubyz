@@ -68,6 +68,12 @@ public abstract class BlockPreview {
 	}
 	
 	public static Texture generateTexture(int block) {
+		Mesh mesh = BlockMeshes.mesh(block & Blocks.TYPE_MASK);
+		if(mesh == null) {
+			BlockMeshes.loadMeshes(); // Loads all meshes that weren't loaded yet.
+			mesh = BlockMeshes.mesh(block & Blocks.TYPE_MASK);
+		}
+
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_CULL_FACE);
 		FrameBuffer buffer = new FrameBuffer();
@@ -75,14 +81,13 @@ public abstract class BlockPreview {
 		buffer.genRenderBuffer(64, 64);
 		buffer.bind();
 		Window.setRenderTarget(buffer);
-		Window.setClearColor(new Vector4f(0f, 0f, 0f, 0f));
-		
-		Mesh mesh = BlockMeshes.mesh(block & Blocks.TYPE_MASK);
+		Window.setClearColor(new Vector4f(0, 0, 0, 0));
+
 		Spatial spatial = new Spatial(mesh);
 		
 		glViewport(0, 0, 64, 64);
 		Matrix4f projectionMatrix = new Matrix4f();
-		Transformation.updateProjectionMatrix(projectionMatrix, 0.013f, 1f, 1f, 60f, 200.0f);
+		Transformation.updateProjectionMatrix(projectionMatrix, 0.013f, 1, 1, 60, 200.0f);
 		clear();
 		Matrix4f viewMatrix = transformation.getViewMatrix(new Vector3f(64, 90.3f, 64), new Vector3f(3*(float)Math.PI/4, 3*(float)Math.PI/4, 0));
 

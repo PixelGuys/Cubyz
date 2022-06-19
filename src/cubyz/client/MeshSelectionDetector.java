@@ -1,6 +1,7 @@
 package cubyz.client;
 
 import cubyz.world.ClientWorld;
+import cubyz.world.items.ItemStack;
 import org.joml.RayAabIntersection;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
@@ -13,7 +14,6 @@ import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.entity.Entity;
 import cubyz.world.entity.Player;
-import cubyz.world.items.Inventory;
 
 /**
  * A class used to determine what mesh the player is looking at using ray intersection.
@@ -37,10 +37,9 @@ public class MeshSelectionDetector {
 	 * Select the block or entity the player is looking at.
 	 * @param position player position
 	 * @param direction camera direction
-	 * @param localPlayer
 	 * @param world
 	 */
-	public void selectSpatial(Vector3d position, Vector3f direction, Player localPlayer, ClientWorld world) {
+	public void selectSpatial(Vector3d position, Vector3f direction, ClientWorld world) {
 		pos.set(position);
 		pos.y += Player.cameraHeight;
 		dir.set(direction);
@@ -48,7 +47,7 @@ public class MeshSelectionDetector {
 		intersection.set(0, 0, 0, dir.x, dir.y, dir.z);
 		
 		// Test blocks:
-		double closestDistance = 6f; // selection now limited
+		double closestDistance = 6.0; // selection now limited
 		// Implementation of "A Fast Voxel Traversal Algorithm for Ray Tracing"  http://www.cse.yorku.ca/~amana/research/grid.pdf
 		int stepX = (int)Math.signum(dir.x);
 		int stepY = (int)Math.signum(dir.y);
@@ -69,11 +68,10 @@ public class MeshSelectionDetector {
 		int y = (int)Math.floor(pos.y);
 		int z = (int)Math.floor(pos.z);
 
-		int block = 0;
 		double total_tMax = 0;
 
 		while(total_tMax < closestDistance) {
-			block = world.getBlock(x, y, z);
+			int block = world.getBlock(x, y, z);
 			if (Blocks.mode(block).changesHitbox()) {
 				Vector3d min = new Vector3d(x, y, z);
 				min.sub(pos);
@@ -122,24 +120,23 @@ public class MeshSelectionDetector {
 	
 	/**
 	 * Places a block in the world.
-	 * @param inv
-	 * @param selectedSlot
+	 * @param stack
 	 * @param world
 	 */
-	public void placeBlock(Inventory inv, int selectedSlot, World world) {
+	public void placeBlock(ItemStack stack, World world) {
 		if (selectedSpatial != null && selectedSpatial instanceof BlockInstance) {
 			BlockInstance bi = (BlockInstance)selectedSpatial;
 			IntWrapper block = new IntWrapper(bi.getBlock());
 			Vector3d relativePos = new Vector3d(pos);
 			relativePos.sub(bi.x, bi.y, bi.z);
-			int b = inv.getBlock(selectedSlot);
+			int b = stack.getBlock();
 			if (b != 0) {
 				Vector3i neighborDir = new Vector3i();
 				// Check if stuff can be added to the block itself:
 				if (b == bi.getBlock()) {
 					if (Blocks.mode(b).generateData(Cubyz.world, bi.x, bi.y, bi.z, relativePos, dir, neighborDir, block, false)) {
 						world.updateBlock(bi.x, bi.y, bi.z, block.data);
-						inv.getStack(selectedSlot).add(-1);
+						stack.add(-1);
 						return;
 					}
 				}
@@ -153,7 +150,7 @@ public class MeshSelectionDetector {
 					block.data = world.getBlock(neighbor.x, neighbor.y, neighbor.z);
 					if (Blocks.mode(b).generateData(Cubyz.world, neighbor.x, neighbor.y, neighbor.z, relativePos, dir, neighborDir, block, false)) {
 						world.updateBlock(neighbor.x, neighbor.y, neighbor.z, block.data);
-						inv.getStack(selectedSlot).add(-1);
+						stack.add(-1);
 					}
 				} else {
 					// Check if the block can actually be placed at that point. There might be entities or other blocks in the way.
@@ -170,7 +167,7 @@ public class MeshSelectionDetector {
 					block.data = b;
 					if (Blocks.mode(b).generateData(Cubyz.world, neighbor.x, neighbor.y, neighbor.z, relativePos, dir, neighborDir, block, true)) {
 						world.updateBlock(neighbor.x, neighbor.y, neighbor.z, block.data);
-						inv.getStack(selectedSlot).add(-1);
+						stack.add(-1);
 					}
 				}
 			}

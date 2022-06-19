@@ -75,7 +75,7 @@ public class GameOverlay extends MenuGUI {
 
 	@Override
 	public void updateGUIScale() {
-		Inventory inventory = Cubyz.player.getInventory();
+		Inventory inventory = Cubyz.player.getInventory_AND_DONT_FORGET_TO_SEND_CHANGES_TO_THE_SERVER();
 		for(int i = 0; i < 8; i++) {
 			inv[i] = new InventorySlot(inventory.getStack(i), (i - 4) * 20 * GUI_SCALE, 20 * GUI_SCALE, Component.ALIGN_BOTTOM);
 		}
@@ -94,7 +94,7 @@ public class GameOverlay extends MenuGUI {
 				Window.getHeight() - 19 * GUI_SCALE, 18 * GUI_SCALE, 18 * GUI_SCALE
 			);
 			for(int i = 0; i < 8; i++) {
-				inv[i].reference = Cubyz.player.getInventory().getStack(i); // without it, if moved in inventory, stack won't refresh
+				inv[i].reference = Cubyz.player.getInventory_AND_DONT_FORGET_TO_SEND_CHANGES_TO_THE_SERVER().getStack(i); // without it, if moved in inventory, stack won't refresh
 				inv[i].render();
 			}
 		}

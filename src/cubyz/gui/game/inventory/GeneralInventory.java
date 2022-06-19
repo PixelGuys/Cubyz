@@ -1,5 +1,6 @@
 package cubyz.gui.game.inventory;
 
+import cubyz.multiplayer.Protocols;
 import org.joml.Vector3f;
 
 import cubyz.api.Resource;
@@ -7,7 +8,6 @@ import cubyz.client.Cubyz;
 import cubyz.gui.MenuGUI;
 import cubyz.gui.components.Component;
 import cubyz.gui.components.InventorySlot;
-import cubyz.gui.components.Label;
 import cubyz.gui.input.Mouse;
 import cubyz.rendering.Graphics;
 import cubyz.rendering.Window;
@@ -26,7 +26,6 @@ public abstract class GeneralInventory extends MenuGUI {
 	/** ItemStack carried by the mouse.*/
 	protected ItemStack carriedStack = new ItemStack();
 	protected InventorySlot carried = null;
-	private Label num;
 
 	protected int width, height;
 
@@ -38,18 +37,17 @@ public abstract class GeneralInventory extends MenuGUI {
 	public void close() {
 		 // Place the last stack carried by the mouse in an empty slot.
 		if (!carriedStack.empty()) {
-			carriedStack.setAmount(Cubyz.player.getInventory().addItem(carriedStack.getItem(), carriedStack.getAmount()));
+			carriedStack.setAmount(Cubyz.player.getInventory_AND_DONT_FORGET_TO_SEND_CHANGES_TO_THE_SERVER().addItem(carriedStack.getItem(), carriedStack.getAmount()));
 			if (!carriedStack.empty()) {
 				Cubyz.world.drop(carriedStack, Cubyz.player.getPosition(), new Vector3f(), 0);
 			}
 		}
+		Protocols.GENERIC_UPDATE.sendInventory_full(Cubyz.world.serverConnection, Cubyz.player.getInventory_AND_DONT_FORGET_TO_SEND_CHANGES_TO_THE_SERVER());
 	}
 
 	@Override
 	public void init() {
 		Mouse.setGrabbed(false);
-		num = new Label();
-		num.setTextAlign(Component.ALIGN_CENTER);
 		positionSlots();
 	}
 
@@ -67,10 +65,10 @@ public abstract class GeneralInventory extends MenuGUI {
 		}
 
 		Graphics.setColor(0xDFDFDF);
-		Graphics.fillRect(Window.getWidth()/2f-width/2f, Window.getHeight()/2f-height/2f, width, height);
+		Graphics.fillRect(Window.getWidth()/2 - width/2, Window.getHeight()/2 - height/2, width, height);
 		Graphics.setColor(0xFFFFFF);
 		for(int i = 0; i < inv.length; i++) {
-			inv[i].renderInContainer(Window.getWidth()/2-width/2, Window.getHeight()/2-height/2, width, height);
+			inv[i].renderInContainer(Window.getWidth()/2 - width/2, Window.getHeight()/2 - height/2, width, height);
 		}
 		Graphics.setColor(0x000000);
 		// Check if the mouse takes up a new ItemStack/sets one down.

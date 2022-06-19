@@ -48,7 +48,7 @@ public class CreativeGUI extends GeneralInventory {
 	
 	@Override
 	public void setInventory(Inventory in) {
-		Inventory inventory = Cubyz.player.getInventory();
+		Inventory inventory = Cubyz.player.getInventory_AND_DONT_FORGET_TO_SEND_CHANGES_TO_THE_SERVER();
 		for(int i = 0; i < 8; i++) {
 			inv[i] = new InventorySlot(inventory.getStack(i), (i - 4) * 20 * GUI_SCALE, 30 * GUI_SCALE, Component.ALIGN_BOTTOM);
 		}

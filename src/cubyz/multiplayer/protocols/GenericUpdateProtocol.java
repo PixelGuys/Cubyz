@@ -4,9 +4,15 @@ import cubyz.client.Cubyz;
 import cubyz.multiplayer.Protocol;
 import cubyz.multiplayer.UDPConnection;
 import cubyz.multiplayer.client.ServerConnection;
+import cubyz.multiplayer.server.Server;
 import cubyz.multiplayer.server.User;
 import cubyz.utils.math.Bits;
+import cubyz.world.items.Inventory;
 import org.joml.Vector3d;
+import pixelguys.json.JsonObject;
+import pixelguys.json.JsonParser;
+
+import java.nio.charset.StandardCharsets;
 
 /**
  * For stuff that rarely needs an update and therefor it would be a waste to create a new protocol for each of these.
@@ -15,6 +21,8 @@ public class GenericUpdateProtocol extends Protocol {
 	private static final byte RENDER_DISTANCE = 0;
 	private static final byte TELEPORT = 1;
 	private static final byte CURE = 2;
+	private static final byte INVENTORY_ADD = 3;
+	private static final byte INVENTORY_FULL = 4;
 	public GenericUpdateProtocol() {
 		super((byte)9, true);
 	}
@@ -43,6 +51,18 @@ public class GenericUpdateProtocol extends Protocol {
 			case CURE: {
 				Cubyz.player.health = Cubyz.player.maxHealth;
 				Cubyz.player.hunger = Cubyz.player.maxHunger;
+				break;
+			}
+			case INVENTORY_ADD: {
+				int slot = Bits.getInt(data, offset+1);
+				int amount = Bits.getInt(data, offset+5);
+				((User)conn).player.getInventory().getStack(slot).add(amount);
+				break;
+			}
+			case INVENTORY_FULL: {
+				JsonObject json = JsonParser.parseObjectFromString(new String(data, offset + 1, length - 1, StandardCharsets.UTF_8));
+				((User)conn).player.getInventory().loadFrom(json, Server.world.getCurrentRegistries());
+				break;
 			}
 		}
 	}
@@ -63,7 +83,24 @@ public class GenericUpdateProtocol extends Protocol {
 		Bits.putDouble(data, 17, position.z);
 		conn.send(this, data);
 	}
+
 	public void sendCure(User conn) {
 		conn.send(this, new byte[]{CURE});
+	}
+
+	public void sendInventory_ItemStack_add(ServerConnection conn, int slot, int amount) {
+		byte[] data = new byte[9];
+		data[0] = INVENTORY_ADD;
+		Bits.putInt(data, 1, slot);
+		Bits.putInt(data, 5, amount);
+		conn.send(this, data);
+	}
+
+	public void sendInventory_full(ServerConnection conn, Inventory inv) {
+		byte[] data = inv.save().toString().getBytes(StandardCharsets.UTF_8);
+		byte[] headeredData = new byte[data.length + 1];
+		headeredData[0] = INVENTORY_FULL;
+		System.arraycopy(data, 0, headeredData, 1, data.length);
+		conn.send(this, headeredData);
 	}
 }

@@ -30,6 +30,9 @@ public abstract class GameLauncher {
 		}
 		if(Cubyz.world != null)
 			Cubyz.world.cleanup();
+		if(Cubyz.gameUI.getMenuGUI() != null) {
+			Cubyz.gameUI.getMenuGUI().close();
+		}
 		System.exit(1);
 	}
 }

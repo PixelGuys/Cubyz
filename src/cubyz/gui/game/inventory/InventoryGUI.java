@@ -2,7 +2,6 @@ package cubyz.gui.game.inventory;
 
 import org.joml.Vector3f;
 
-import cubyz.api.CubyzRegistries;
 import cubyz.api.Resource;
 import cubyz.client.Cubyz;
 import cubyz.gui.components.Component;
@@ -29,14 +28,14 @@ public class InventoryGUI extends GeneralInventory {
 
 	@Override
 	public void close() {
-		super.close();
 		 // Place the crafting slots in an empty slot or throw them out.
 		for(int i = playerInventorySize; i < playerInventorySize + 5; i++) {
 			if (inv[i].reference.empty()) continue;
-			inv[i].reference.setAmount(Cubyz.player.getInventory().addItem(inv[i].reference.getItem(), inv[i].reference.getAmount()));
+			inv[i].reference.setAmount(Cubyz.player.getInventory_AND_DONT_FORGET_TO_SEND_CHANGES_TO_THE_SERVER().addItem(inv[i].reference.getItem(), inv[i].reference.getAmount()));
 			if (inv[i].reference.empty()) continue;
 			Cubyz.world.drop(inv[i].reference, Cubyz.player.getPosition(), new Vector3f(), 0);
 		}
+		super.close();
 	}
 	
 	private void checkCrafting() {
@@ -67,9 +66,9 @@ public class InventoryGUI extends GeneralInventory {
 
 	@Override
 	protected void positionSlots() {
-		playerInventorySize = Cubyz.player.getInventory().getCapacity();
+		playerInventorySize = Cubyz.player.getInventory_AND_DONT_FORGET_TO_SEND_CHANGES_TO_THE_SERVER().getCapacity();
 		inv = new InventorySlot[playerInventorySize + 5];
-		Inventory inventory = Cubyz.player.getInventory();
+		Inventory inventory = Cubyz.player.getInventory_AND_DONT_FORGET_TO_SEND_CHANGES_TO_THE_SERVER();
 		for(int i = 0; i < 8; i++) {
 			inv[i] = new InventorySlot(inventory.getStack(i), (i - 4) * 20 * GUI_SCALE, 30 * GUI_SCALE, Component.ALIGN_BOTTOM);
 		}
