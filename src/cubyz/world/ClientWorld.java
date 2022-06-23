@@ -2,6 +2,7 @@ package cubyz.world;
 
 import cubyz.Constants;
 import cubyz.api.CurrentWorldRegistries;
+import cubyz.client.ClientSettings;
 import cubyz.client.Cubyz;
 import cubyz.client.entity.ClientPlayer;
 import cubyz.multiplayer.client.ServerConnection;
@@ -40,10 +41,10 @@ public class ClientWorld extends World {
 	public Biome playerBiome;
 	public final ArrayList<String> chatHistory = new ArrayList<>();
 
-	public ClientWorld(String ip, String playerName, Class<?> chunkProvider) {
-		this(ip, null, playerName, chunkProvider);
+	public ClientWorld(String ip, Class<?> chunkProvider) {
+		this(ip, null, chunkProvider);
 	}
-	public ClientWorld(String ip, String sendPort, String playerName, Class<?> chunkProvider) {
+	public ClientWorld(String ip, String sendPort, Class<?> chunkProvider) {
 		super("server");
 		this.chunkProvider = chunkProvider;
 		// Check if the chunkProvider is valid:
@@ -67,7 +68,7 @@ public class ClientWorld extends World {
 		serverConnection = new ServerConnection(connectionManager, ipOnly, remotePort);
 
 		player = new ClientPlayer(this, 0);
-		JsonObject handshakeResult = serverConnection.doHandShake(playerName);
+		JsonObject handshakeResult = serverConnection.doHandShake(ClientSettings.playerName);
 		blockPalette = new BlockPalette(handshakeResult.getObjectOrNew("blockPalette"));
 		spawn.x = handshakeResult.getObjectOrNew("spawn").getInt("x", 0);
 		spawn.y = handshakeResult.getObjectOrNew("spawn").getInt("y", 0);

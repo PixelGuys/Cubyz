@@ -1,6 +1,7 @@
 package cubyz.gui.menu;
 
 import cubyz.Constants;
+import cubyz.client.ClientSettings;
 import cubyz.client.Cubyz;
 import cubyz.client.GameLauncher;
 import cubyz.gui.MenuGUI;
@@ -19,8 +20,8 @@ import static cubyz.client.ClientSettings.GUI_SCALE;
 public class MultiplayerJoinGui extends MenuGUI {
 
 	private static class TextInputWithLabel{
-		private TextInput textInput	 = new TextInput();
-		private Label label			 = new Label();
+		private final TextInput textInput	 = new TextInput();
+		private final Label label			 = new Label();
 		private int x, y, labelWidth, inputTextWidth, height;
 
 		public void setText(String stringLabel, String stringTextInput){
@@ -65,21 +66,15 @@ public class MultiplayerJoinGui extends MenuGUI {
 	}
 
 
-	private TextInputWithLabel guiIPAdress  = new TextInputWithLabel();
-	private TextInputWithLabel guiName	    = new TextInputWithLabel();
-	private TextInputWithLabel guiPort	    = new TextInputWithLabel();
-	private Button			   guiJoin	    = new Button();
+	private final TextInputWithLabel guiIPAddress = new TextInputWithLabel();
+	private final TextInputWithLabel guiPort      = new TextInputWithLabel();
+	private final Button             guiJoin      = new Button();
 
 	@Override
 	public void init() {
 		DiscordIntegration.setStatus("Multiplayer");
-		guiIPAdress.setBounds(-250, 100, 150, 250, 20);
-		guiIPAdress.setText("IP adress", "localhost");
-
-		/* TODO: Until we have a logIn server or something like that, the user can enter any name.
-		*   This can be exploited very easly. Might be good to change this in the future.*/
-		guiName.setBounds(-250, 140, 150, 250, 20);
-		guiName.setText(TextKey.createTextKey("gui.cubyz.multiplayer.displayname"), "TheLegend27");
+		guiIPAddress.setBounds(-250, 100, 150, 250, 20);
+		guiIPAddress.setText("IP adress", ClientSettings.lastUsedIPAddress);
 
 		guiPort.setBounds(-250, 180, 150, 250, 20);
 		guiPort.setText("local port", ""+Constants.DEFAULT_PORT);
@@ -88,9 +83,10 @@ public class MultiplayerJoinGui extends MenuGUI {
 		guiJoin.setText(TextKey.createTextKey("gui.cubyz.multiplayer.join"));
 		guiJoin.setFontSize(32);
 		guiJoin.setOnAction(() -> {
-			//new Thread(() -> Server.main(new String[0]), "Server Thread").start();
+			ClientSettings.lastUsedIPAddress = guiIPAddress.getText().trim();
+			ClientSettings.save();
 
-			ClientWorld world = new ClientWorld(guiIPAdress.getText().trim(), guiPort.getText(), guiName.getText(), VisibleChunk.class);
+			ClientWorld world = new ClientWorld(guiIPAddress.getText().trim(), guiPort.getText(), VisibleChunk.class);
 			Cubyz.gameUI.setMenu(null, false); // hide from UISystem.back()
 			GameLauncher.logic.loadWorld(world);
 		});
@@ -99,13 +95,12 @@ public class MultiplayerJoinGui extends MenuGUI {
 
 	@Override
 	public void updateGUIScale() {
-		guiIPAdress.updateGUIScale();
+		guiIPAddress.updateGUIScale();
 	}
 
 	@Override
 	public void render() {
-		guiIPAdress.render();
-		guiName.render();
+		guiIPAddress.render();
 		guiPort.render();
 		guiJoin.render();
 	}

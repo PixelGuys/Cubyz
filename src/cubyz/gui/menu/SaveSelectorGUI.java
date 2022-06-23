@@ -56,7 +56,7 @@ public class SaveSelectorGUI extends MenuGUI {
 						Thread.sleep(10);
 					} catch(InterruptedException e) {}
 				}
-				GameLauncher.logic.loadWorld(new ClientWorld("127.0.0.1", "name", VisibleChunk.class)); // TODO: Don't go over the local network in singleplayer.
+				GameLauncher.logic.loadWorld(new ClientWorld("127.0.0.1", VisibleChunk.class)); // TODO: Don't go over the local network in singleplayer.
 			});
 			saveButtons[i] = b;
 			container.add(b);

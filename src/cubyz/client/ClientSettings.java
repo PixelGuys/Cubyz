@@ -43,6 +43,10 @@ public final class ClientSettings {
 	public static boolean musicOnOff = true; //Turn on or off the music
 
 	public static float mouseSensitivity = 1;
+
+	public static String playerName = null;
+
+	public static String lastUsedIPAddress = "localhost";
 	
 
 	/**Not actually a setting, but stored here anyways.*/
@@ -75,6 +79,9 @@ public final class ClientSettings {
 		settings.put("fieldOfView", ClientSettings.FOV);
 		settings.put("musicOnOff", ClientSettings.musicOnOff);
 		settings.put("mouseSensitivity", ClientSettings.mouseSensitivity);
+		if(ClientSettings.playerName != null)
+			settings.put("playerName", ClientSettings.playerName);
+		settings.put("lastUsedIPAddress", ClientSettings.lastUsedIPAddress);
 
 		try {
 			FileWriter writer = new FileWriter("settings.json", StandardCharsets.UTF_8);
@@ -117,8 +124,6 @@ public final class ClientSettings {
 		easyLighting = settings.getBool("easyLighting", easyLighting);
 
 		RENDER_DISTANCE = settings.getInt("renderDistance", RENDER_DISTANCE);
-
-		//HIGHEST_LOD = settings.getInt("highestLOD", HIGHEST_LOD);
 		
 		LOD_FACTOR = settings.getFloat("farDistanceFactor", LOD_FACTOR);
 		
@@ -129,6 +134,10 @@ public final class ClientSettings {
 		musicOnOff = settings.getBool("musicOnOff", musicOnOff);
 
 		mouseSensitivity = settings.getFloat("mouseSensitivity", mouseSensitivity);
+
+		playerName = settings.getString("playerName", playerName);
+
+		lastUsedIPAddress = settings.getString("lastUsedIPAddress", lastUsedIPAddress);
 	}
 	
 }

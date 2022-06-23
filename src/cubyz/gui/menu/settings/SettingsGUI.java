@@ -24,6 +24,7 @@ public class SettingsGUI extends MenuGUI {
 	private final Button language = new Button();
 	private final Button rpc = new Button();
 	private final Button bindings = new Button();
+	private final Button name = new Button();
 	
 	private ContextualTextKey langKey = new ContextualTextKey("gui.cubyz.settings.language", "lang.name");
 	private ContextualTextKey rpcKeyOn = new ContextualTextKey("gui.cubyz.settings.discord", "gui.cubyz.general.on");
@@ -86,6 +87,11 @@ public class SettingsGUI extends MenuGUI {
 			if (index >= languages.length) index = 0;
 			Settings.setLanguage(LanguageLoader.load(languages[index]));
 		});
+
+		name.setText(TextKey.createTextKey("gui.cubyz.settings.name"));
+		name.setOnAction(() -> {
+			Cubyz.gameUI.setMenu(new NameSelectionGUI(false));
+		});
 		
 		rpc.setOnAction(() -> {
 			if (DiscordIntegration.isEnabled()) {
@@ -115,6 +121,9 @@ public class SettingsGUI extends MenuGUI {
 		language.setBounds(-125 * GUI_SCALE, 120 * GUI_SCALE, 250 * GUI_SCALE, 25 * GUI_SCALE, Component.ALIGN_TOP);
 		language.setFontSize(16f * GUI_SCALE);
 
+		name.setBounds(-125 * GUI_SCALE, 240 * GUI_SCALE, 250 * GUI_SCALE, 25 * GUI_SCALE, Component.ALIGN_TOP);
+		name.setFontSize(16f * GUI_SCALE);
+
 		rpc.setBounds(-125 * GUI_SCALE, 160 * GUI_SCALE, 250 * GUI_SCALE, 25 * GUI_SCALE, Component.ALIGN_TOP);
 		rpc.setFontSize(16f * GUI_SCALE);
 	}
@@ -127,6 +136,7 @@ public class SettingsGUI extends MenuGUI {
 		graphics.render();
 		sound.render();
 		language.render();
+		name.render();
 		rpc.render();
 		bindings.render();
 	}

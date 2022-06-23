@@ -1,10 +1,12 @@
 package cubyz.gui.menu;
 
+import cubyz.client.ClientSettings;
 import cubyz.client.Cubyz;
 import cubyz.gui.MenuGUI;
 import cubyz.gui.components.Component;
 import cubyz.gui.components.Label;
 import cubyz.gui.components.ProgressBar;
+import cubyz.gui.menu.settings.NameSelectionGUI;
 import cubyz.rendering.Graphics;
 import cubyz.rendering.Texture;
 import cubyz.rendering.Window;
@@ -45,8 +47,10 @@ public class LoadingGUI extends MenuGUI {
 				Thread.sleep(10);
 			} catch (InterruptedException e) {}
 		}
-		MainMenuGUI mmg = new MainMenuGUI();
-		Cubyz.gameUI.setMenu(mmg, false); // don't add itself to the back queue
+		Cubyz.gameUI.setMenu(new MainMenuGUI(), false); // don't add itself to the back queue
+		if(ClientSettings.playerName == null) {
+			Cubyz.gameUI.setMenu(new NameSelectionGUI(true));
+		}
 		Cubyz.gameUI.addOverlay(new DebugOverlay());
 		Cubyz.gameUI.addOverlay(new GeneralOverlay());
 	}
