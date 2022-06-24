@@ -1,69 +1,80 @@
 package cubyz.client.entity;
 
 import cubyz.api.CubyzRegistries;
+import cubyz.utils.Logger;
+import cubyz.utils.datastructures.SimpleList;
 import cubyz.utils.interpolation.TimeDifference;
+import cubyz.utils.math.Bits;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
-import pixelguys.json.JsonArray;
-import pixelguys.json.JsonElement;
+import pixelguys.json.JsonObject;
 
 public final class ClientEntityManager {
 	private static short lastTime;
 
-	private static ClientEntity[] entities = new ClientEntity[0];
+	private static final SimpleList<ClientEntity> entities = new SimpleList<>(new ClientEntity[16]);
 
 	private static final TimeDifference timeDifference = new TimeDifference();
 
 	public static ClientEntity[] getEntities() {
-		return entities;
+		return entities.toArray();
 	}
 
 	public static void update() {
 		short time = (short)(System.currentTimeMillis() - 200);
 		time -= timeDifference.difference;
-		for(ClientEntity ent : entities) {
+		for(ClientEntity ent : entities.toArray()) {
 			ent.update(time, lastTime);
 		}
 		lastTime = time;
 	}
 
-	// TODO: Use raw data.
-	public static void serverUpdate(JsonArray serverEntities, short time) {
+	public static void addEntity(JsonObject json) {
+		entities.add(new ClientEntity(
+			json.getInt("id", -1),
+			CubyzRegistries.ENTITY_REGISTRY.getByID(json.getString("type", null)),
+			json.getFloat("height", 2),
+			json.getString("name", "")
+		));
+	}
+
+	public static void removeEntity(int id) {
+		for(ClientEntity entity : entities.toArray()) {
+			if(entity.id == id) {
+				entities.remove(entity);
+			}
+		}
+	}
+
+	public static void serverUpdate(short time, byte[] data, int offset, int length) {
 		timeDifference.addDataPoint(time);
-		ClientEntity[] newEntities = new ClientEntity[serverEntities.array.size()];
-		outer:
-		for(int i = 0; i < serverEntities.array.size(); i++) {
-			JsonElement entity = serverEntities.array.get(i);
-			int id = entity.getInt("id", 0);
+		int num = length/(4+24+24+12);
+		for(int i = 0; i < num; i++) {
+			int id = Bits.getInt(data, offset);
+			offset += 4;
 			Vector3d position = new Vector3d(
-				entity.getDouble("x", 0),
-				entity.getDouble("y", 0),
-				entity.getDouble("z", 0)
+				Bits.getDouble(data, offset),
+				Bits.getDouble(data, offset + 8),
+				Bits.getDouble(data, offset + 16)
 			);
+			offset += 24;
 			Vector3d velocity = new Vector3d(
-				entity.getDouble("vx", 0),
-				entity.getDouble("vy", 0),
-				entity.getDouble("vz", 0)
+				Bits.getDouble(data, offset),
+				Bits.getDouble(data, offset + 8),
+				Bits.getDouble(data, offset + 16)
 			);
+			offset += 24;
 			Vector3f rotation = new Vector3f(
-				entity.getFloat("rot_x", 0),
-				entity.getFloat("rot_y", 0),
-				entity.getFloat("rot_z", 0)
+				Bits.getFloat(data, offset),
+				Bits.getFloat(data, offset + 4),
+				Bits.getFloat(data, offset + 8)
 			);
-			for(int j = 0; j < entities.length; j++) {
-				if (entities[j].id == id) {
-					newEntities[i] = entities[j];
-					newEntities[i].updatePosition(position, velocity, rotation, time);
-					continue outer;
+			offset += 12;
+			for(ClientEntity ent : entities.toArray()) {
+				if(ent.id == id) {
+					ent.updatePosition(position, velocity, rotation, time);
 				}
 			}
-			newEntities[i] = new ClientEntity(
-				position, rotation, id,
-				CubyzRegistries.ENTITY_REGISTRY.getByID(entity.getString("type", null)),
-				entity.getFloat("height", 2),
-				entity.getString("name", "")
-			);
 		}
-		entities = newEntities;
 	}
 }

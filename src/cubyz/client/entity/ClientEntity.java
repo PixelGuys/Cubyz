@@ -13,8 +13,8 @@ public class ClientEntity {
 	
 	public final EntityType type;
 
-	public final Vector3d position;
-	public final Vector3f rotation;
+	public final Vector3d position = new Vector3d();
+	public final Vector3f rotation = new Vector3f();
 	
 	public Vector3d getRenderPosition() { // default method for render pos
 		return new Vector3d(position.x, position.y + height/2, position.z);
@@ -24,10 +24,8 @@ public class ClientEntity {
 
 	public final String name;
 
-	public ClientEntity(Vector3d position, Vector3f rotation, int id, EntityType type, double height, String name) {
+	public ClientEntity(int id, EntityType type, double height, String name) {
 		interpolatedValues = new EntityInterpolation(position, rotation);
-		this.position = position;
-		this.rotation = rotation;
 		this.id = id;
 		this.type = type;
 		this.height = height;

@@ -23,6 +23,7 @@ public class User extends UDPConnection implements CommandSource {
 	public String name;
 	public int renderDistance;
 	public float LODFactor;
+	public boolean receivedFirstEntityData = false;
 
 	public User(UDPConnectionManager manager, String ip, int remotePort) {
 		super(manager, ip, remotePort);

@@ -69,6 +69,7 @@ public final class Server extends Pacer{
 		world.forceSave();
 		synchronized(usersList) {
 			usersList.remove(user);
+			world.removeEntity(user.player);
 			users = usersList.toArray();
 		}
 	}
@@ -86,6 +87,8 @@ public final class Server extends Pacer{
 		super.start();
 	}
 
+	private Entity[] lastSentEntities = new Entity[0];
+
 	@Override
 	public void update() {
 		world.update();
@@ -93,28 +96,8 @@ public final class Server extends Pacer{
 		for(User user : users) {
 			user.update();
 		}
-		JsonArray entityData = new JsonArray();
-		for(Entity ent : world.getEntities()) {
-			JsonObject data = new JsonObject();
-			data.put("id", ent.id);
-			data.put("x", ent.getPosition().x);
-			data.put("y", ent.getPosition().y);
-			data.put("z", ent.getPosition().z);
-			data.put("vx", ent.vx);
-			data.put("vy", ent.vy);
-			data.put("vz", ent.vz);
-			data.put("rot_x", ent.getRotation().x);
-			data.put("rot_y", ent.getRotation().y);
-			data.put("rot_z", ent.getRotation().z);
-			data.put("type", ent.getType().getRegistryID().toString());
-			data.put("height", ent.height);
-			if(!ent.name.isEmpty()) {
-				data.put("name", ent.name);
-			}
-			entityData.add(data);
-		}
-		for(User user : users) {
-			Protocols.ENTITY.send(user, entityData);
-		}
+		Entity[] entities = world.getEntities();
+		Protocols.ENTITY.sendToClients(entities, lastSentEntities);
+		lastSentEntities = entities;
 	}
 }

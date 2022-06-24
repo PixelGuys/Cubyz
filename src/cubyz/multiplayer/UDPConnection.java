@@ -143,6 +143,10 @@ public class UDPConnection {
 		}
 	}
 
+	public boolean isConnected() {
+		return otherKeepAliveReceived != 0;
+	}
+
 	private void collectMultiPackets() {
 		byte[] data;
 		byte protocol;
