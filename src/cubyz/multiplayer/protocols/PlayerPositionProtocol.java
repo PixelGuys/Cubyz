@@ -22,7 +22,13 @@ public class PlayerPositionProtocol extends Protocol {
 		((User)conn).receiveData(data, offset);
 	}
 
+	private short lastPositionSent = 0;
+
 	public void send(UDPConnection conn, Player player, short time) {
+		if(time - lastPositionSent < 50 && time - lastPositionSent >= 0) {
+			return; // Only send at most once every 50 ms.
+		}
+		lastPositionSent = time;
 		byte[] data = new byte[62];
 		Vector3d pos = player.getPosition();
 		Bits.putDouble(data, 0, pos.x);

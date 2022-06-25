@@ -10,8 +10,6 @@ import cubyz.utils.Pacer;
 import cubyz.utils.datastructures.SimpleList;
 import cubyz.world.ServerWorld;
 import cubyz.world.entity.Entity;
-import pixelguys.json.JsonArray;
-import pixelguys.json.JsonObject;
 
 public final class Server extends Pacer{
 	public static final int UPDATES_PER_SEC = 20;
