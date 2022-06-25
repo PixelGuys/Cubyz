@@ -68,6 +68,7 @@ public final class Server extends Pacer{
 	public static void disconnect(User user) {
 		world.forceSave();
 		synchronized(usersList) {
+			Protocols.CHAT.sendToClients(user.name+" #ffff00left");
 			usersList.remove(user);
 			world.removeEntity(user.player);
 			users = usersList.toArray();
@@ -76,6 +77,7 @@ public final class Server extends Pacer{
 
 	public static void connect(User user) {
 		synchronized(usersList) {
+			Protocols.CHAT.sendToClients(user.name+" #ffff00joined");
 			usersList.add(user);
 			users = usersList.toArray();
 		}
