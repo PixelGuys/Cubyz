@@ -18,8 +18,8 @@ import cubyz.world.items.ItemStack;
 import cubyz.world.items.tools.Tool;
 
 public class ClientPlayer extends Player {
-	private int breakCooldown = 10;
-	private int buildCooldown = 10;
+	private long nextBreak = System.currentTimeMillis();
+	private long nextBuild = System.currentTimeMillis();
 
 	private long lastUpdateTime = 0;
 
@@ -52,24 +52,17 @@ public class ClientPlayer extends Player {
 		}
 		if (!Cubyz.gameUI.doesGUIBlockInput()) {
 			move(Cubyz.playerInc, Camera.getRotation());
-			if (breakCooldown > 0) {
-				breakCooldown--;
-			}
-			if (buildCooldown > 0) {
-				buildCooldown--;
-			}
 			if (Keybindings.isPressed("destroy")) {
 				//Breaking Blocks
 				Object selected = Cubyz.msd.getSelected();
 				if (isFlying()) { // Ignore hardness when in flying.
-					if (breakCooldown == 0) {
-						breakCooldown = 7;
+					if(newTime - nextBreak > 0) {
+						nextBreak = newTime + 250;
 						if (selected instanceof BlockInstance && Blocks.blockClass(((BlockInstance)selected).getBlock()) != BlockClass.UNBREAKABLE) {
 							Cubyz.world.updateBlock(((BlockInstance)selected).x, ((BlockInstance)selected).y, ((BlockInstance)selected).z, 0);
 						}
 					}
-				}
-				else {
+				} else {
 					if (selected instanceof BlockInstance) {
 						breaking((BlockInstance)selected, Cubyz.inventorySelection, Cubyz.world);
 					}
@@ -82,14 +75,14 @@ public class ClientPlayer extends Player {
 			} else {
 				resetBlockBreaking();
 			}
-			if (Keybindings.isPressed("place/use") && buildCooldown <= 0) {
+			if (Keybindings.isPressed("place/use") && (newTime - nextBuild > 0)) {
 				Object selected = Cubyz.msd.getSelected();
 				if (selected instanceof BlockInstance && Blocks.onClick(((BlockInstance)selected).getBlock(), Cubyz.world, ((BlockInstance)selected).getPosition())) {
 					// Interact with block(potentially do a hand animation, in the future).
 				} else if (getInventory_AND_DONT_FORGET_TO_SEND_CHANGES_TO_THE_SERVER().getItem(Cubyz.inventorySelection) instanceof ItemBlock) {
 					// Build block:
 					if (selected != null) {
-						buildCooldown = 10;
+						nextBuild = newTime + 250;
 						ItemStack stack = getInventory_AND_DONT_FORGET_TO_SEND_CHANGES_TO_THE_SERVER().getStack(Cubyz.inventorySelection);
 						int oldAmount = stack.getAmount();
 						Cubyz.msd.placeBlock(stack, Cubyz.world);
@@ -102,7 +95,7 @@ public class ClientPlayer extends Player {
 					if (getInventory_AND_DONT_FORGET_TO_SEND_CHANGES_TO_THE_SERVER().getItem(Cubyz.inventorySelection).onUse(Cubyz.player)) {
 						getInventory_AND_DONT_FORGET_TO_SEND_CHANGES_TO_THE_SERVER().getStack(Cubyz.inventorySelection).add(-1);
 						Protocols.GENERIC_UPDATE.sendInventory_ItemStack_add(Cubyz.world.serverConnection, Cubyz.inventorySelection, -1);
-						buildCooldown = 10;
+						nextBuild = newTime + 250;
 					}
 				}
 			}
