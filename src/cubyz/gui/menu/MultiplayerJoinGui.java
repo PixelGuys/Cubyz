@@ -9,15 +9,25 @@ import cubyz.gui.components.Button;
 import cubyz.gui.components.Component;
 import cubyz.gui.components.Label;
 import cubyz.gui.components.TextInput;
+import cubyz.multiplayer.UDPConnectionManager;
 import cubyz.rendering.VisibleChunk;
 import cubyz.rendering.text.Fonts;
 import cubyz.utils.DiscordIntegration;
+import cubyz.utils.Logger;
 import cubyz.utils.translate.TextKey;
 import cubyz.world.ClientWorld;
+
+import java.awt.*;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.StringSelection;
 
 import static cubyz.client.ClientSettings.GUI_SCALE;
 
 public class MultiplayerJoinGui extends MenuGUI {
+
+	private UDPConnectionManager connection = null;
+
+	private final Thread backgroundThread;
 
 	private static class TextInputWithLabel{
 		private final TextInput textInput	 = new TextInput();
@@ -67,42 +77,81 @@ public class MultiplayerJoinGui extends MenuGUI {
 
 
 	private final TextInputWithLabel guiIPAddress = new TextInputWithLabel();
-	private final TextInputWithLabel guiPort      = new TextInputWithLabel();
-	private final Button             guiJoin      = new Button();
+	private final Button guiJoin = new Button();
+	private final Button copy = new Button();
+	private final Label ip = new Label();
+	private final Label prompt = new Label();
+
+	public MultiplayerJoinGui() {
+		backgroundThread = new Thread(() -> {
+			synchronized(this) {
+				connection = new UDPConnectionManager(Constants.DEFAULT_PORT);
+			}
+			ip.setText(connection.externalIPPort.replaceAll(":"+Constants.DEFAULT_PORT, ""));
+		});
+	}
 
 	@Override
 	public void init() {
 		DiscordIntegration.setStatus("Multiplayer");
 		guiIPAddress.setBounds(-250, 100, 150, 250, 20);
-		guiIPAddress.setText("IP adress", ClientSettings.lastUsedIPAddress);
+		guiIPAddress.setText("IP address", ClientSettings.lastUsedIPAddress);
 
-		guiPort.setBounds(-250, 180, 150, 250, 20);
-		guiPort.setText("local port", ""+Constants.DEFAULT_PORT);
+		prompt.setText(TextKey.createTextKey("gui.cubyz.multiplayer.prompt"));
+		prompt.setFont(Fonts.PIXEL_FONT);
 
-		guiJoin.setBounds(10, 60, 400, 50, Component.ALIGN_BOTTOM_LEFT);
+		ip.setFont(Fonts.PIXEL_FONT);
+
 		guiJoin.setText(TextKey.createTextKey("gui.cubyz.multiplayer.join"));
-		guiJoin.setFontSize(32);
 		guiJoin.setOnAction(() -> {
 			ClientSettings.lastUsedIPAddress = guiIPAddress.getText().trim();
 			ClientSettings.save();
+			try {
+				backgroundThread.join();
+			} catch(InterruptedException e) {
+				Logger.error(e);
+				return;
+			}
 
-			ClientWorld world = new ClientWorld(guiIPAddress.getText().trim(), guiPort.getText(), VisibleChunk.class);
+			ClientWorld world = new ClientWorld(guiIPAddress.getText().trim(), connection, VisibleChunk.class);
 			Cubyz.gameUI.setMenu(null, false); // hide from UISystem.back()
 			GameLauncher.logic.loadWorld(world);
 		});
+
+		copy.setText(TextKey.createTextKey("gui.cubyz.multiplayer.copy_ip"));
+		copy.setOnAction(() -> {
+			StringSelection selection = new StringSelection(ip.getText().getTranslateKey());
+			Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+			clipboard.setContents(selection, selection);
+		});
+
 		updateGUIScale();
+		backgroundThread.start();
 	}
 
 	@Override
 	public void updateGUIScale() {
 		guiIPAddress.updateGUIScale();
+		prompt.setBounds(0, 20*GUI_SCALE, 100*GUI_SCALE, 20*GUI_SCALE, Component.ALIGN_TOP);
+		prompt.setFontSize(12*GUI_SCALE);
+
+		ip.setBounds(0, 50*GUI_SCALE, 100*GUI_SCALE, 20*GUI_SCALE, Component.ALIGN_TOP);
+		ip.setFontSize(16*GUI_SCALE);
+
+		copy.setBounds(-50*GUI_SCALE, 60*GUI_SCALE, 100*GUI_SCALE, 20*GUI_SCALE, Component.ALIGN_TOP);
+		copy.setFontSize(16*GUI_SCALE);
+
+		guiJoin.setBounds(-50*GUI_SCALE, 200*GUI_SCALE, 100*GUI_SCALE, 20*GUI_SCALE, Component.ALIGN_TOP);
+		guiJoin.setFontSize(16*GUI_SCALE);
 	}
 
 	@Override
 	public void render() {
 		guiIPAddress.render();
-		guiPort.render();
 		guiJoin.render();
+		prompt.render();
+		ip.render();
+		copy.render();
 	}
 
 	@Override
@@ -113,5 +162,11 @@ public class MultiplayerJoinGui extends MenuGUI {
 	@Override
 	public boolean doesPauseGame() {
 		return true;
+	}
+
+	@Override
+	public void close() {
+		backgroundThread.interrupt();
+		connection = null;
 	}
 }

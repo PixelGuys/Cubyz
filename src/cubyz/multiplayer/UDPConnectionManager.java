@@ -5,27 +5,45 @@ import cubyz.utils.Logger;
 import java.io.IOException;
 import java.net.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public final class UDPConnectionManager extends Thread {
 	private final DatagramSocket socket;
 	private final DatagramPacket receivedPacket;
 	private final ArrayList<UDPConnection> connections = new ArrayList<>();
+	private final ArrayList<DatagramPacket> requests = new ArrayList<>();
 	private volatile boolean running = true;
+	public final String externalIPPort;
+	private InetAddress externalAddress = null;
+	private int externalPort = 0;
 
 	public UDPConnectionManager(int localPort) {
 		// Connect
 		DatagramSocket socket = null;
-		try {
-			//TODO: Might want to use SSL or something similar to encode the message
-			socket = new DatagramSocket(localPort);
-		} catch (SocketException e) {
-			Logger.error(e);
+		//TODO: Might want to use SSL or something similar to encode the message
+		while(socket == null) {
+			try {
+				socket = new DatagramSocket(localPort);
+			} catch(SocketException e) {
+				Logger.warning("Couldn't use port "+localPort+".");
+				localPort++;
+			}
 		}
 		this.socket = socket;
 
 		receivedPacket = new DatagramPacket(new byte[65536], 65536);
 
 		start();
+
+		externalIPPort = STUN.requestIPPort(this);
+		String[] ipPort = externalIPPort.split(":");
+		try {
+			externalAddress = InetAddress.getByName(ipPort[0]);
+		} catch(UnknownHostException e) {
+			Logger.error(e);
+			throw new IllegalArgumentException("externalIPPort is invalid.");
+		}
+		externalPort = Integer.parseInt(ipPort[1]);
 	}
 
 	public void send(DatagramPacket packet) {
@@ -33,6 +51,27 @@ public final class UDPConnectionManager extends Thread {
 			socket.send(packet);
 		} catch(IOException e) {
 			Logger.error(e);
+		}
+	}
+
+	public byte[] sendRequest(DatagramPacket packet, long timeout) {
+		send(packet);
+		byte[] request = packet.getData();
+		synchronized(requests) {
+			requests.add(packet);
+		}
+		synchronized(packet) {
+			try {
+				packet.wait(timeout);
+			} catch(InterruptedException e) {}
+		}
+		synchronized(requests) {
+			requests.remove(packet);
+		}
+		if(packet.getData() == request) {
+			return null;
+		} else {
+			return packet.getData();
 		}
 	}
 
@@ -64,14 +103,32 @@ public final class UDPConnectionManager extends Thread {
 		socket.close();
 	}
 
-	private UDPConnection findConnection(InetAddress addr, int port) {
+	private void onReceive() {
+		byte[] data = receivedPacket.getData();
+		int len = receivedPacket.getLength();
+		InetAddress addr = receivedPacket.getAddress();
+		int port = receivedPacket.getPort();
 		for(UDPConnection connection : connections) {
 			if(connection.remoteAddress.equals(addr) && connection.remotePort == port) {
-				return connection;
+				connection.receive(data, len);
+				return;
 			}
 		}
+		// Check if it's part of an active request:
+		synchronized(requests) {
+			for(DatagramPacket packet : requests) {
+				if(packet.getAddress().equals(addr) && packet.getPort() == port) {
+					packet.setData(Arrays.copyOf(data, len));
+					synchronized(packet) {
+						packet.notify();
+					}
+					return;
+				}
+			}
+		}
+		if(addr.equals(externalAddress) && port == externalPort) return;
 		Logger.error("Unknown connection from address: " + addr+":"+port);
-		return null;
+		Logger.debug("Message: "+Arrays.toString(Arrays.copyOf(data, len)));
 	}
 
 	@Override
@@ -83,12 +140,7 @@ public final class UDPConnectionManager extends Thread {
 			while (running) {
 				try {
 					socket.receive(receivedPacket);
-					byte[] data = receivedPacket.getData();
-					int len = receivedPacket.getLength();
-					UDPConnection conn = findConnection(receivedPacket.getAddress(), receivedPacket.getPort());
-					if(conn != null) {
-						conn.receive(data, len);
-					}
+					onReceive();
 				} catch(SocketTimeoutException e) {
 					// No message within the last ~100 ms.
 					// TODO: Add a counter that breaks connection if there was no message for a longer time.
@@ -99,6 +151,14 @@ public final class UDPConnectionManager extends Thread {
 					lastTime = System.currentTimeMillis();
 					for(UDPConnection connection : connections.toArray(new UDPConnection[0])) {
 						connection.sendKeepAlive();
+					}
+					if(connections.isEmpty() && externalAddress != null) {
+						// Send a message to external ip, to keep the port open:
+						DatagramPacket packet = new DatagramPacket(new byte[0], 0);
+						packet.setAddress(externalAddress);
+						packet.setPort(externalPort);
+						packet.setLength(0);
+						send(packet);
 					}
 				}
 			}

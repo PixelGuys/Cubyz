@@ -41,10 +41,7 @@ public class ClientWorld extends World {
 	public Biome playerBiome;
 	public final ArrayList<String> chatHistory = new ArrayList<>();
 
-	public ClientWorld(String ip, Class<?> chunkProvider) {
-		this(ip, null, chunkProvider);
-	}
-	public ClientWorld(String ip, String sendPort, Class<?> chunkProvider) {
+	public ClientWorld(String ip, UDPConnectionManager connectionManager, Class<?> chunkProvider) {
 		super("server");
 		this.chunkProvider = chunkProvider;
 		// Check if the chunkProvider is valid:
@@ -58,7 +55,7 @@ public class ClientWorld extends World {
 			throw new IllegalArgumentException("Chunk provider "+chunkProvider+" is invalid! It needs to be a subclass of NormalChunk and MUST contain a single constructor with parameters (ServerWorld, Integer, Integer, Integer)");
 
 		//                                                               ↓ local port in singleplayer.
-		connectionManager = new UDPConnectionManager(sendPort == null ? 5679 : Integer.parseInt(sendPort));
+		this.connectionManager = connectionManager;
 		String[] ipPort = ip.split(":");
 		String ipOnly = ipPort[0];
 		int remotePort = Constants.DEFAULT_PORT;

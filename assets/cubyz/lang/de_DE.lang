@@ -37,7 +37,8 @@ gui.cubyz.saves.create.mapgen=Karte: {0}
 gui.cubyz.saves.create.climategen=Klima: {0}
 lang.name=Deutsch
 
-gui.cubyz.multiplayer.displayname=Anzeigename
+gui.cubyz.multiplayer.prompt=Bitte sende deine IP an den Host des Spiels und gib die IP des Hosts unten ein.
+gui.cubyz.multiplayer.copy_ip=IP Kopieren
 gui.cubyz.multiplayer.join=Beitreten
 
 # Blocks
