@@ -167,6 +167,12 @@ public class MultiplayerJoinGui extends MenuGUI {
 	@Override
 	public void close() {
 		backgroundThread.interrupt();
+		try {
+			backgroundThread.join();
+		} catch(InterruptedException e) {
+			Logger.error(e);
+		}
+		connection.cleanup();
 		connection = null;
 	}
 }
