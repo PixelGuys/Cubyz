@@ -53,10 +53,20 @@ public class NormalChunk extends Chunk {
 	protected void updateVisibleBlock(int index, int b) {}
 
 	public void updateBlock(int x, int y, int z, int b) {
+		int index = getIndex(x, y, z);
 		if(b == 0) {
 			removeBlockAt(x, y, z, true);
-		} else if(getBlock(x, y, z) == 0) {
+		} else if(blocks[index] == 0) {
 			addBlock(b, x, y, z, false);
+		} else {
+			if((b & Blocks.TYPE_MASK) == (blocks[index] & Blocks.TYPE_MASK)) {
+				blocks[index] = b;
+				updateVisibleBlock(index, b);
+				setChanged();
+			} else {
+				removeBlockAt(x, y, z, true);
+				addBlock(b, x, y, z, false);
+			}
 		}
 	}
 	
