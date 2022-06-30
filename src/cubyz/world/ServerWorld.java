@@ -125,7 +125,7 @@ public class ServerWorld extends World {
 	}
 
 	public void forceSave() {
-		for(MetaChunk chunk : metaChunks.values()) {
+		for(MetaChunk chunk : metaChunks.values().toArray(new MetaChunk[0])) {
 			if (chunk != null) chunk.save();
 		}
 		wio.saveWorldData();
