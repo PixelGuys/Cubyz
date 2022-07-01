@@ -3,6 +3,7 @@ package cubyz.world;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import cubyz.world.entity.ItemEntityManager;
 import cubyz.world.save.BlockPalette;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
@@ -10,7 +11,6 @@ import org.joml.Vector3f;
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.utils.datastructures.HashMapKey3D;
 import cubyz.world.blocks.BlockEntity;
-import cubyz.world.entity.ChunkEntityManager;
 import cubyz.world.entity.Entity;
 import cubyz.world.items.ItemStack;
 import cubyz.world.save.WorldIO;
@@ -23,7 +23,7 @@ public abstract class World {
 
 	protected HashMap<HashMapKey3D, MetaChunk> metaChunks = new HashMap<HashMapKey3D, MetaChunk>();
 	protected NormalChunk[] chunks = new NormalChunk[0];
-	protected ChunkEntityManager[] entityManagers = new ChunkEntityManager[0];
+	public final ItemEntityManager itemEntityManager = new ItemEntityManager(this, 256);
 	protected ArrayList<Entity> entities = new ArrayList<>();
 	public BlockPalette blockPalette;
 	
@@ -65,9 +65,6 @@ public abstract class World {
 	{
 		return doGameTimeCycle;
 	}
-	public ChunkEntityManager[] getEntityManagers() {
-		return entityManagers;
-	}
 	public long getSeed() {
 		return seed;
 	}
@@ -103,8 +100,6 @@ public abstract class World {
 	public abstract MetaChunk getMetaChunk(int wx, int wy, int wz);
 	
 	public abstract NormalChunk getChunk(int wx, int wy, int wz);
-
-	public abstract ChunkEntityManager getEntityManagerAt(int wx, int wy, int wz);
 
 	public final int getBlock(int x, int y, int z) {
 		NormalChunk ch = getChunk(x, y, z);

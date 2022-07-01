@@ -13,6 +13,7 @@ import cubyz.utils.datastructures.HashMapKey3D;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.entity.*;
+import cubyz.world.items.BlockDrop;
 import cubyz.world.items.ItemStack;
 import cubyz.world.save.BlockPalette;
 import cubyz.world.save.ChunkIO;
@@ -67,6 +68,7 @@ public class ServerWorld extends World {
 
 		chunkManager = new ChunkManager(this, generatorSettings);
 		generate();
+		itemEntityManager.loadFrom(JsonParser.parseObjectFromFile("saves/" + name + "/items.json"));
 	}
 
 	// Returns the blocks, so their meshes can be created and stored.
@@ -132,6 +134,7 @@ public class ServerWorld extends World {
 		savePlayers();
 		chunkManager.forceSave();
 		ChunkIO.save();
+		JsonParser.storeToFile(itemEntityManager.store(), "saves/" + name + "/items.json");
 	}
 	@Override
 	public void addEntity(Entity ent) {
@@ -154,8 +157,7 @@ public class ServerWorld extends World {
 	}
 	@Override
 	public void drop(ItemStack stack, Vector3d pos, Vector3f dir, float velocity, int pickupCooldown) {
-		ItemEntityManager manager = this.getEntityManagerAt((int)pos.x & ~Chunk.chunkMask, (int)pos.y & ~Chunk.chunkMask, (int)pos.z & ~Chunk.chunkMask).itemEntityManager;
-		manager.add(pos.x, pos.y, pos.z, dir.x*velocity, dir.y*velocity, dir.z*velocity, stack, Server.UPDATES_PER_SEC*300, pickupCooldown);
+		itemEntityManager.add(pos.x, pos.y, pos.z, dir.x*velocity, dir.y*velocity, dir.z*velocity, stack, Server.UPDATES_PER_SEC*900, pickupCooldown);
 	}
 	@Override
 	public void drop(ItemStack stack, Vector3d pos, Vector3f dir, float velocity) {
@@ -172,6 +174,14 @@ public class ServerWorld extends World {
 			// Send the block update to all players:
 			for(User user : Server.users) {
 				Protocols.BLOCK_UPDATE.send(user, x, y, z, newBlock);
+			}
+			for(BlockDrop drop : Blocks.blockDrops(old)) {
+				int amount = (int)(drop.amount);
+				float randomPart = drop.amount - amount;
+				if (Math.random() < randomPart) amount++;
+				if (amount > 0) {
+					itemEntityManager.add(x, y, z, 0, 0, 0, new ItemStack(drop.item, amount), 30*900);
+				}
 			}
 		}
 	}
@@ -215,52 +225,11 @@ public class ServerWorld extends World {
 			en.update(deltaTime);
 			// Check item entities:
 			if (en.getInventory() != null) {
-				int x0 = (int)(en.getPosition().x - en.width) & ~Chunk.chunkMask;
-				int y0 = (int)(en.getPosition().y - en.width) & ~Chunk.chunkMask;
-				int z0 = (int)(en.getPosition().z - en.width) & ~Chunk.chunkMask;
-				int x1 = (int)(en.getPosition().x + en.width) & ~Chunk.chunkMask;
-				int y1 = (int)(en.getPosition().y + en.width) & ~Chunk.chunkMask;
-				int z1 = (int)(en.getPosition().z + en.width) & ~Chunk.chunkMask;
-				if (getEntityManagerAt(x0, y0, z0) != null)
-					getEntityManagerAt(x0, y0, z0).itemEntityManager.checkEntity(en);
-				if (x0 != x1) {
-					if (getEntityManagerAt(x1, y0, z0) != null)
-						getEntityManagerAt(x1, y0, z0).itemEntityManager.checkEntity(en);
-					if (y0 != y1) {
-						if (getEntityManagerAt(x0, y1, z0) != null)
-							getEntityManagerAt(x0, y1, z0).itemEntityManager.checkEntity(en);
-						if (getEntityManagerAt(x1, y1, z0) != null)
-							getEntityManagerAt(x1, y1, z0).itemEntityManager.checkEntity(en);
-						if (z0 != z1) {
-							if (getEntityManagerAt(x0, y0, z1) != null)
-								getEntityManagerAt(x0, y0, z1).itemEntityManager.checkEntity(en);
-							if (getEntityManagerAt(x1, y0, z1) != null)
-								getEntityManagerAt(x1, y0, z1).itemEntityManager.checkEntity(en);
-							if (getEntityManagerAt(x0, y1, z1) != null)
-								getEntityManagerAt(x0, y1, z1).itemEntityManager.checkEntity(en);
-							if (getEntityManagerAt(x1, y1, z1) != null)
-								getEntityManagerAt(x1, y1, z1).itemEntityManager.checkEntity(en);
-						}
-					}
-				} else if (y0 != y1) {
-					if (getEntityManagerAt(x0, y1, z0) != null)
-						getEntityManagerAt(x0, y1, z0).itemEntityManager.checkEntity(en);
-					if (z0 != z1) {
-						if (getEntityManagerAt(x0, y0, z1) != null)
-							getEntityManagerAt(x0, y0, z1).itemEntityManager.checkEntity(en);
-						if (getEntityManagerAt(x0, y1, z1) != null)
-							getEntityManagerAt(x0, y1, z1).itemEntityManager.checkEntity(en);
-					}
-				} else if (z0 != z1) {
-					if (getEntityManagerAt(x0, y0, z1) != null)
-						getEntityManagerAt(x0, y0, z1).itemEntityManager.checkEntity(en);
-				}
+				itemEntityManager.checkEntity(en);
 			}
 		}
 		// Item Entities
-		for(int i = 0; i < entityManagers.length; i++) {
-			entityManagers[i].itemEntityManager.update(deltaTime);
-		}
+		itemEntityManager.update(deltaTime);
 		// Block Entities
 		for(MetaChunk chunk : metaChunks.values()) {
 			chunk.updateBlockEntities();
@@ -289,11 +258,10 @@ public class ServerWorld extends World {
 
 	public void seek() {
 		// Care about the metaChunks:
-		HashMap<HashMapKey3D, MetaChunk> oldMetaChunks = new HashMap<HashMapKey3D, MetaChunk>(metaChunks);
-		HashMap<HashMapKey3D, MetaChunk> newMetaChunks = new HashMap<HashMapKey3D, MetaChunk>();
+		HashMap<HashMapKey3D, MetaChunk> oldMetaChunks = new HashMap<>(metaChunks);
+		HashMap<HashMapKey3D, MetaChunk> newMetaChunks = new HashMap<>();
 		for(User user : Server.users) {
 			ArrayList<NormalChunk> chunkList = new ArrayList<>();
-			ArrayList<ChunkEntityManager> managers = new ArrayList<>();
 			int metaRenderDistance = (int)Math.ceil(Settings.entityDistance/(float)(MetaChunk.metaChunkSize*Chunk.chunkSize));
 			int x0 = (int)user.player.getPosition().x >> (MetaChunk.metaChunkShift + Chunk.chunkShift);
 			int y0 = (int)user.player.getPosition().y >> (MetaChunk.metaChunkShift + Chunk.chunkShift);
@@ -310,7 +278,7 @@ public class ServerWorld extends World {
 							metaChunk = new MetaChunk(metaX *(MetaChunk.metaChunkSize*Chunk.chunkSize), metaY*(MetaChunk.metaChunkSize*Chunk.chunkSize), metaZ *(MetaChunk.metaChunkSize*Chunk.chunkSize), this);
 						}
 						newMetaChunks.put(key, metaChunk);
-						metaChunk.update(Settings.entityDistance, chunkList, managers);
+						metaChunk.update(Settings.entityDistance, chunkList);
 					}
 				}
 			}
@@ -318,7 +286,6 @@ public class ServerWorld extends World {
 				chunk.clean();
 			});
 			chunks = chunkList.toArray(new NormalChunk[0]);
-			entityManagers = managers.toArray(new ChunkEntityManager[0]);
 			metaChunks = newMetaChunks;
 		}
 	}
@@ -338,18 +305,6 @@ public class ServerWorld extends World {
 			return meta.getChunk(wx, wy, wz);
 		}
 		return null;
-	}
-	@Override
-	public ChunkEntityManager getEntityManagerAt(int wx, int wy, int wz) {
-		MetaChunk meta = getMetaChunk(wx, wy, wz);
-		if (meta != null) {
-			return meta.getEntityManager(wx, wy, wz);
-		}
-		return null;
-	}
-	@Override
-	public ChunkEntityManager[] getEntityManagers() {
-		return entityManagers;
 	}
 	@Override
 	public long getSeed() {
@@ -393,6 +348,7 @@ public class ServerWorld extends World {
 			
 			wio.saveWorldData();
 			savePlayers();
+			JsonParser.storeToFile(itemEntityManager.store(), "saves/" + name + "/items.json");
 			metaChunks = null;
 		} catch (Exception e) {
 			Logger.error(e);

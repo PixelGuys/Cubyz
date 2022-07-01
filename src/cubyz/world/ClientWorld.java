@@ -16,7 +16,6 @@ import cubyz.utils.ThreadPool;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.Blocks;
-import cubyz.world.entity.ChunkEntityManager;
 import cubyz.world.entity.Entity;
 import cubyz.world.items.ItemStack;
 import cubyz.world.save.BlockPalette;
@@ -222,11 +221,6 @@ public class ClientWorld extends World {
 		if(chunk instanceof NormalChunk)
 			return (NormalChunk)chunk;
 		return null;
-	}
-
-	@Override
-	public ChunkEntityManager getEntityManagerAt(int wx, int wy, int wz) {
-		throw new IllegalArgumentException("a");
 	}
 
 	@Override

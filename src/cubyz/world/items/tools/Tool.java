@@ -9,6 +9,7 @@ import cubyz.api.Registry;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.items.Item;
 import pixelguys.json.JsonArray;
+import pixelguys.json.JsonElement;
 import pixelguys.json.JsonObject;
 
 public class Tool extends Item {
@@ -62,7 +63,7 @@ public class Tool extends Item {
 	 * @param json
 	 * @param registries
 	 */
-	public Tool(JsonObject json, CurrentWorldRegistries registries) {
+	public Tool(JsonElement json, CurrentWorldRegistries registries) {
 		this(extractItemsFromJson(json.getArrayNoNull("grid"), registries.itemRegistry), json.getInt("seed", 0));
 		durability = json.getInt("durability", maxDurability);
 	}

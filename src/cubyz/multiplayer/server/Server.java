@@ -97,7 +97,7 @@ public final class Server extends Pacer{
 			user.update();
 		}
 		Entity[] entities = world.getEntities();
-		Protocols.ENTITY.sendToClients(entities, lastSentEntities);
+		Protocols.ENTITY.sendToClients(entities, lastSentEntities, world.itemEntityManager);
 		lastSentEntities = entities;
 	}
 }

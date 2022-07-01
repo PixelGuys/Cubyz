@@ -8,7 +8,6 @@ import cubyz.utils.Logger;
 import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.blocks.Updateable;
-import cubyz.world.entity.ChunkEntityManager;
 
 /**
  * A chunk of chunks.
@@ -21,14 +20,12 @@ public class MetaChunk {
 	public static final int worldShift = metaChunkShift + Chunk.chunkShift;
 	public final int wx, wy, wz;
 	public final NormalChunk[] chunks;
-	public final ChunkEntityManager[] entityManagers;
 	public final ServerWorld world;
 	public MetaChunk(int wx, int wy, int wz, ServerWorld world) {
 		this.wx = wx;
 		this.wy = wy;
 		this.wz = wz;
 		chunks = new NormalChunk[metaChunkSize*metaChunkSize*metaChunkSize];
-		entityManagers = new ChunkEntityManager[metaChunkSize*metaChunkSize*metaChunkSize];
 		this.world = world;
 	}
 	
@@ -37,20 +34,12 @@ public class MetaChunk {
 			if (chunk != null)
 				chunk.save();
 		}
-		for(ChunkEntityManager manager : entityManagers) {
-			if (manager != null)
-				manager.save();
-		}
 	}
 	
 	public void clean() {
 		for(NormalChunk chunk : chunks) {
 			if (chunk != null)
 				chunk.clean();
-		}
-		for(ChunkEntityManager manager : entityManagers) {
-			if (manager != null)
-				manager.save();
 		}
 	}
 	
@@ -108,7 +97,7 @@ public class MetaChunk {
 		}
 	}
 	
-	public void update(int entityDistance, ArrayList<NormalChunk> chunksList, ArrayList<ChunkEntityManager> managers) {
+	public void update(int entityDistance, ArrayList<NormalChunk> chunksList) {
 		// Shift the player position, so chunks are loaded once the center comes into render distance:
 		int edSquare = entityDistance*entityDistance << Chunk.chunkShift2;
 		for(int px = 0; px < metaChunkSize; px++) {
@@ -148,19 +137,6 @@ public class MetaChunk {
 					} else {
 						chunksList.add(chunk);
 					}
-					ChunkEntityManager manager = entityManagers[index];
-					if (!isNeeded) {
-						if (manager != null) {
-							manager.save();
-							entityManagers[index] = null;
-						}
-					} else if (manager == null) {
-						manager = new ChunkEntityManager(world, chunk);
-						entityManagers[index] = manager;
-						managers.add(manager);
-					} else {
-						managers.add(manager);
-					}
 				}
 			}
 		}
@@ -172,13 +148,5 @@ public class MetaChunk {
 		int cz = (wz - this.wz) >> Chunk.chunkShift;
 		int index = (cx << metaChunkShift) | (cy <<  metaChunkShift2) | cz;
 		return chunks[index];
-	}
-	
-	public ChunkEntityManager getEntityManager(int wx, int wy, int wz) {
-		int cx = (wx - this.wx) >> Chunk.chunkShift;
-		int cy = (wy - this.wy) >> Chunk.chunkShift;
-		int cz = (wz - this.wz) >> Chunk.chunkShift;
-		int index = (cx << metaChunkShift) | (cy <<  metaChunkShift2) | cz;
-		return entityManagers[index];
 	}
 }
