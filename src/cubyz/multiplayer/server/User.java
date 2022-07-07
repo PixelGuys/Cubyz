@@ -5,11 +5,10 @@ import cubyz.multiplayer.Protocols;
 import cubyz.multiplayer.UDPConnection;
 import cubyz.multiplayer.UDPConnectionManager;
 import cubyz.utils.Logger;
-import cubyz.utils.interpolation.EntityInterpolation;
+import cubyz.utils.interpolation.GenericInterpolation;
 import cubyz.utils.interpolation.TimeDifference;
 import cubyz.utils.math.Bits;
 import cubyz.world.entity.Player;
-import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 /*
@@ -18,7 +17,7 @@ import org.joml.Vector3f;
 public class User extends UDPConnection implements CommandSource {
 	public Player player;
 	private final TimeDifference difference = new TimeDifference();
-	private final EntityInterpolation interpolation = new EntityInterpolation(new Vector3d(), new Vector3f());
+	private final GenericInterpolation interpolation = new GenericInterpolation(new double[3]);
 	private short lastTime;
 	public String name;
 	public int renderDistance;
@@ -47,42 +46,47 @@ public class User extends UDPConnection implements CommandSource {
 		this.name = name;
 		assert(player == null);
 		player = Server.world.findPlayer(this);
-		interpolation.position.set(player.getPosition());
-		interpolation.velocity.set(player.vx, player.vy, player.vz);
-		interpolation.rotation.set(player.getRotation());
+		interpolation.outPosition[0] = player.getPosition().x;
+		interpolation.outPosition[1] = player.getPosition().y;
+		interpolation.outPosition[2] = player.getPosition().z;
+		interpolation.outVelocity[0] = player.vx;
+		interpolation.outVelocity[1] = player.vy;
+		interpolation.outVelocity[2] = player.vz;
 	}
 
 	public void update() {
 		short time = (short)(System.currentTimeMillis() - 200);
 		time -= difference.difference;
 		interpolation.update(time, lastTime);
-		player.getPosition().set(interpolation.position);
-		player.vx = interpolation.velocity.x;
-		player.vy = interpolation.velocity.y;
-		player.vz = interpolation.velocity.z;
-		player.getRotation().set(interpolation.rotation);
+		player.getPosition().x = interpolation.outPosition[0];
+		player.getPosition().y = interpolation.outPosition[1];
+		player.getPosition().z = interpolation.outPosition[2];
+		player.vx = interpolation.outVelocity[0];
+		player.vy = interpolation.outVelocity[1];
+		player.vz = interpolation.outVelocity[2];
 		lastTime = time;
 	}
 
 	public void receiveData(byte[] data, int offset) {
-		Vector3d position = new Vector3d(
+		double[] position = new double[] {
 			Bits.getDouble(data, offset),
 			Bits.getDouble(data, offset + 8),
 			Bits.getDouble(data, offset + 16)
-		);
-		Vector3d velocity = new Vector3d(
+		};
+		double[] velocity = new double[]{
 			Bits.getDouble(data, offset + 24),
 			Bits.getDouble(data, offset + 32),
 			Bits.getDouble(data, offset + 40)
-		);
+		};
 		Vector3f rotation = new Vector3f(
 			Bits.getFloat(data, offset + 48),
 			Bits.getFloat(data, offset + 52),
 			Bits.getFloat(data, offset + 56)
 		);
+		player.getRotation().set(rotation);
 		short time = Bits.getShort(data, offset + 60);
 		difference.addDataPoint(time);
-		interpolation.updatePosition(position, velocity, rotation, time);
+		interpolation.updatePosition(position, velocity, time);
 	}
 
 	@Override

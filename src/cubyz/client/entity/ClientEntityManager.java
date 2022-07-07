@@ -1,11 +1,9 @@
 package cubyz.client.entity;
 
 import cubyz.api.CubyzRegistries;
-import cubyz.utils.Logger;
 import cubyz.utils.datastructures.SimpleList;
 import cubyz.utils.interpolation.TimeDifference;
 import cubyz.utils.math.Bits;
-import org.joml.Vector3d;
 import org.joml.Vector3f;
 import pixelguys.json.JsonObject;
 
@@ -52,17 +50,17 @@ public final class ClientEntityManager {
 		for(int i = 0; i < num; i++) {
 			int id = Bits.getInt(data, offset);
 			offset += 4;
-			Vector3d position = new Vector3d(
+			double[] position = new double[]{
 				Bits.getDouble(data, offset),
 				Bits.getDouble(data, offset + 8),
 				Bits.getDouble(data, offset + 16)
-			);
+			};
 			offset += 24;
-			Vector3d velocity = new Vector3d(
+			double[] velocity = new double[]{
 				Bits.getDouble(data, offset),
 				Bits.getDouble(data, offset + 8),
 				Bits.getDouble(data, offset + 16)
-			);
+			};
 			offset += 24;
 			Vector3f rotation = new Vector3f(
 				Bits.getFloat(data, offset),

@@ -4,17 +4,19 @@ import cubyz.client.Cubyz;
 import cubyz.multiplayer.Protocols;
 import cubyz.multiplayer.UDPConnection;
 import cubyz.multiplayer.UDPConnectionManager;
+import cubyz.world.ClientWorld;
+import cubyz.world.World;
 import pixelguys.json.JsonObject;
 
 public class ServerConnection extends UDPConnection {
-	public JsonObject handShakeResult; // TODO: Find a cleaner way to do this.
-	public ServerConnection(UDPConnectionManager manager, String ip, int remotePort) {
+	public final ClientWorld world;
+	public ServerConnection(UDPConnectionManager manager, ClientWorld world, String ip, int remotePort) {
 		super(manager, ip, remotePort);
+		this.world = world;
 	}
 	
-	public JsonObject doHandShake(String name) {
+	public void doHandShake(String name) {
 		Protocols.HANDSHAKE.clientSide(this, name);
-		return handShakeResult;
 	}
 
 	@Override

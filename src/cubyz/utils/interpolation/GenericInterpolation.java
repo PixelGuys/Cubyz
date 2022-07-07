@@ -1,30 +1,33 @@
 package cubyz.utils.interpolation;
 
 import cubyz.utils.Logger;
-import org.joml.Vector3d;
-import org.joml.Vector3f;
 
-public class EntityInterpolation {
-	private final Vector3d[] lastPosition = new Vector3d[128];
-	private final Vector3d[] lastVelocity = new Vector3d[128];
+import java.util.Arrays;
+
+public class GenericInterpolation {
+	private final double[][] lastPosition = new double[128][];
+	private final double[][] lastVelocity = new double[128][];
 	private final short[] lastTimes = new short[128];
 	private int frontIndex = 0;
 	private int currentPoint = -1;
-	public final Vector3f rotation;
-	public final Vector3d position;
-	public final Vector3d velocity = new Vector3d();
+	public double[] outPosition;
+	public double[] outVelocity;
 
-	public EntityInterpolation(Vector3d initialPosition, Vector3f initialRotation) {
-		position = initialPosition;
-		rotation = initialRotation;
+	public GenericInterpolation(double[] initialPosition) {
+		outPosition = initialPosition;
+		outVelocity = new double[initialPosition.length];
 	}
 
-	public void updatePosition(Vector3d position, Vector3d velocity, Vector3f rotation, short time) {
+	public void updatePosition(double[] position, double[] velocity, short time) {
+		assert position.length == velocity.length;
 		frontIndex = (frontIndex + 1)%lastPosition.length;
 		lastPosition[frontIndex] = position;
 		lastVelocity[frontIndex] = velocity;
 		lastTimes[frontIndex] = time;
-		this.rotation.set(rotation);
+		if(position.length > outPosition.length) {
+			outPosition = Arrays.copyOf(outPosition, outPosition.length*2);
+			outVelocity = Arrays.copyOf(outVelocity, outVelocity.length*2);
+		}
 	}
 
 	private static double[] evaluateSplineAt(double t, double tScale, double p0, double m0, double p1, double m1) {
@@ -49,8 +52,8 @@ public class EntityInterpolation {
 		if(currentPoint != -1 && (short)(lastTimes[currentPoint] - time) <= 0) {
 			// Jump to the last used value and adjust the time to start at that point.
 			lastTime = lastTimes[currentPoint];
-			position.set(lastPosition[currentPoint]);
-			velocity.set(lastVelocity[currentPoint]);
+			System.arraycopy(outPosition, 0, lastPosition[currentPoint], 0, lastPosition[currentPoint].length);
+			System.arraycopy(outVelocity, 0, lastVelocity[currentPoint], 0, lastVelocity[currentPoint].length);
 			currentPoint = -1;
 		}
 
@@ -76,23 +79,23 @@ public class EntityInterpolation {
 		}
 
 		if(currentPoint == -1) {
-			// Just move on with the current velocity.
-			position.x += velocity.x*deltaTime;
-			position.y += velocity.y*deltaTime;
-			position.z += velocity.z*deltaTime;
-			// Add some drag to prevent moving far away on short connection loss.
-			velocity.x *= Math.pow(0.5, deltaTime);
-			velocity.y *= Math.pow(0.5, deltaTime);
-			velocity.z *= Math.pow(0.5, deltaTime);
+			for(int i = 0; i < outPosition.length; i++) {
+				// Just move on with the current velocity.
+				outPosition[i] += outVelocity[i]*deltaTime;
+				// Add some drag to prevent moving far away on short connection loss.
+				outVelocity[i] *= Math.pow(0.5, deltaTime);
+			}
 		} else {
 			// Interpolates using cubic splines.
 			double tScale = ((short)(lastTimes[currentPoint] - lastTime))/1000.0;
 			double t = ((short)(time - lastTime))/1000.0;
-			double[] newX = evaluateSplineAt(t, tScale, position.x, velocity.x, lastPosition[currentPoint].x, lastVelocity[currentPoint].x);
-			double[] newY = evaluateSplineAt(t, tScale, position.y, velocity.y, lastPosition[currentPoint].y, lastVelocity[currentPoint].y);
-			double[] newZ = evaluateSplineAt(t, tScale, position.z, velocity.z, lastPosition[currentPoint].z, lastVelocity[currentPoint].z);
-			position.set(newX[0], newY[0], newZ[0]);
-			velocity.set(newX[1], newY[1], newZ[1]);
+			for(int i = 0; i < lastPosition[currentPoint].length; i++) {
+				double[] newValue = evaluateSplineAt(t, tScale, outPosition[i], outVelocity[i], lastPosition[currentPoint][i], lastVelocity[currentPoint][i]);
+				// Just move on with the current velocity.
+				outPosition[i] = newValue[0];
+				// Add some drag to prevent moving far away on short connection loss.
+				outVelocity[i] = newValue[1];
+			}
 		}
 	}
 }

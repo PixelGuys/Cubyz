@@ -61,14 +61,17 @@ public class ClientWorld extends World {
 		if(ipPort.length == 2) {
 			remotePort = Integer.parseInt(ipPort[1]);
 		}
-		serverConnection = new ServerConnection(connectionManager, ipOnly, remotePort);
+		serverConnection = new ServerConnection(connectionManager, this, ipOnly, remotePort);
 
 		player = new ClientPlayer(this, 0);
-		JsonObject handshakeResult = serverConnection.doHandShake(ClientSettings.playerName);
-		blockPalette = new BlockPalette(handshakeResult.getObjectOrNew("blockPalette"));
-		spawn.x = handshakeResult.getObjectOrNew("spawn").getInt("x", 0);
-		spawn.y = handshakeResult.getObjectOrNew("spawn").getInt("y", 0);
-		spawn.z = handshakeResult.getObjectOrNew("spawn").getInt("z", 0);
+		serverConnection.doHandShake(ClientSettings.playerName);
+	}
+
+	public void finishHandshake(JsonObject json) {
+		blockPalette = new BlockPalette(json.getObjectOrNew("blockPalette"));
+		spawn.x = json.getObjectOrNew("spawn").getInt("x", 0);
+		spawn.y = json.getObjectOrNew("spawn").getInt("y", 0);
+		spawn.z = json.getObjectOrNew("spawn").getInt("z", 0);
 
 		if(Server.world != null) {
 			// Share the registries of the local server:
@@ -77,13 +80,13 @@ public class ClientWorld extends World {
 			registries = new CurrentWorldRegistries(this, "serverAssets/", blockPalette);
 		}
 
-		player.loadFrom(handshakeResult.getObjectOrNew("player"), this);
-		player.id = handshakeResult.getInt("player_id", -1);
+		player.loadFrom(json.getObjectOrNew("player"), this);
+		player.id = json.getInt("player_id", -1);
 
 		// Call mods for this new world. Mods sometimes need to do extra stuff for the specific world.
 		ModLoader.postWorldGen(registries);
 
-
+		Cubyz.world = this;
 	}
 
 	public ClientPlayer getLocalPlayer() {

@@ -114,6 +114,7 @@ public class MultiplayerJoinGui extends MenuGUI {
 			}
 
 			ClientWorld world = new ClientWorld(guiIPAddress.getText().trim(), connection, VisibleChunk.class);
+			connection = null;
 			Cubyz.gameUI.setMenu(null, false); // hide from UISystem.back()
 			GameLauncher.logic.loadWorld(world);
 		});
@@ -172,7 +173,9 @@ public class MultiplayerJoinGui extends MenuGUI {
 		} catch(InterruptedException e) {
 			Logger.error(e);
 		}
-		connection.cleanup();
+		if(connection != null) {
+			connection.cleanup();
+		}
 		connection = null;
 	}
 }

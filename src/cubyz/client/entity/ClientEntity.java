@@ -1,13 +1,13 @@
 package cubyz.client.entity;
 
-import cubyz.utils.interpolation.EntityInterpolation;
+import cubyz.utils.interpolation.GenericInterpolation;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 import cubyz.world.entity.EntityType;
 
 public class ClientEntity {
-	public final EntityInterpolation interpolatedValues;
+	public final GenericInterpolation interpolatedValues;
 
 	public final double height;
 	
@@ -25,20 +25,22 @@ public class ClientEntity {
 	public final String name;
 
 	public ClientEntity(int id, EntityType type, double height, String name) {
-		interpolatedValues = new EntityInterpolation(position, rotation);
+		interpolatedValues = new GenericInterpolation(new double[3]);
 		this.id = id;
 		this.type = type;
 		this.height = height;
 		this.name = name;
 	}
 
-	public void updatePosition(Vector3d position, Vector3d velocity, Vector3f rotation, short time) {
-		interpolatedValues.updatePosition(position, velocity, rotation, time);
+	public void updatePosition(double[] position, double[] velocity, Vector3f rotation, short time) {
+		this.rotation.set(rotation);
+		interpolatedValues.updatePosition(position, velocity, time);
 	}
 
 	public void update(short time, short lastTime) {
-		assert this.position == interpolatedValues.position;
-		assert this.rotation == interpolatedValues.rotation;
 		interpolatedValues.update(time, lastTime);
+		this.position.x = interpolatedValues.outPosition[0];
+		this.position.y = interpolatedValues.outPosition[1];
+		this.position.z = interpolatedValues.outPosition[2];
 	}
 }

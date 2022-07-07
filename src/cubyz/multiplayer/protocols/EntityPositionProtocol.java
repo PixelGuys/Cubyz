@@ -14,6 +14,7 @@ public class EntityPositionProtocol extends Protocol {
 
 	@Override
 	public void receive(UDPConnection conn, byte[] data, int offset, int length) {
+		if(Cubyz.world == null) return;
 		short time = Bits.getShort(data, offset+1);
 		if(data[offset] == ENTITY) {
 			offset += 3;
