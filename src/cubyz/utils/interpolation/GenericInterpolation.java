@@ -2,8 +2,6 @@ package cubyz.utils.interpolation;
 
 import cubyz.utils.Logger;
 
-import java.util.Arrays;
-
 public class GenericInterpolation {
 	private final double[][] lastPosition = new double[128][];
 	private final double[][] lastVelocity = new double[128][];
@@ -18,16 +16,17 @@ public class GenericInterpolation {
 		outVelocity = new double[initialPosition.length];
 	}
 
+	public GenericInterpolation(double[] initialPosition, double[] initialVelocity) {
+		outPosition = initialPosition;
+		outVelocity = initialVelocity;
+	}
+
 	public void updatePosition(double[] position, double[] velocity, short time) {
 		assert position.length == velocity.length;
 		frontIndex = (frontIndex + 1)%lastPosition.length;
 		lastPosition[frontIndex] = position;
 		lastVelocity[frontIndex] = velocity;
 		lastTimes[frontIndex] = time;
-		if(position.length > outPosition.length) {
-			outPosition = Arrays.copyOf(outPosition, outPosition.length*2);
-			outVelocity = Arrays.copyOf(outVelocity, outVelocity.length*2);
-		}
 	}
 
 	private static double[] evaluateSplineAt(double t, double tScale, double p0, double m0, double p1, double m1) {
@@ -43,23 +42,23 @@ public class GenericInterpolation {
 		double a3 = 2*p0 + m0 - 2*p1 + m1;
 		return new double[] {
 			a0 + a1*t + a2*t2 + a3*t3, // value
-			(a1 + 2*a2*t + 3*a3*t2)*tScale, // first derivative
+			(a1 + 2*a2*t + 3*a3*t2)/tScale, // first derivative
 		};
 	}
 
 	public void update(short time, short lastTime) {
-
 		if(currentPoint != -1 && (short)(lastTimes[currentPoint] - time) <= 0) {
 			// Jump to the last used value and adjust the time to start at that point.
 			lastTime = lastTimes[currentPoint];
-			System.arraycopy(outPosition, 0, lastPosition[currentPoint], 0, lastPosition[currentPoint].length);
-			System.arraycopy(outVelocity, 0, lastVelocity[currentPoint], 0, lastVelocity[currentPoint].length);
+			int length = Math.min(lastPosition[currentPoint].length, outPosition.length);
+			System.arraycopy(outPosition, 0, lastPosition[currentPoint], 0, length);
+			System.arraycopy(outVelocity, 0, lastVelocity[currentPoint], 0, length);
 			currentPoint = -1;
 		}
 
 		double deltaTime = ((short)(time - lastTime))/1000.0;
 		if(deltaTime < 0) {
-			Logger.error("Experienced time travel. Current time: "+time+" Last time: "+lastTime);
+			Logger.error("Experienced time travel. Current time: " + time + " Last time: " + lastTime);
 			deltaTime = 0;
 		}
 
@@ -89,7 +88,7 @@ public class GenericInterpolation {
 			// Interpolates using cubic splines.
 			double tScale = ((short)(lastTimes[currentPoint] - lastTime))/1000.0;
 			double t = ((short)(time - lastTime))/1000.0;
-			for(int i = 0; i < lastPosition[currentPoint].length; i++) {
+			for(int i = 0; i < Math.min(lastPosition[currentPoint].length, outPosition.length); i++) {
 				double[] newValue = evaluateSplineAt(t, tScale, outPosition[i], outVelocity[i], lastPosition[currentPoint][i], lastVelocity[currentPoint][i]);
 				// Just move on with the current velocity.
 				outPosition[i] = newValue[0];

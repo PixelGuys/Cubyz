@@ -4,6 +4,7 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.ArrayList;
 
+import cubyz.client.entity.InterpolatedItemEntityManager;
 import org.joml.FrustumIntersection;
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
@@ -306,6 +307,7 @@ public final class BlockDropRenderer {
 	}
 	
 	public static void render(FrustumIntersection frustumInt, Vector3f ambientLight, DirectionalLight directionalLight, Vector3d playerPosition) {
+		((InterpolatedItemEntityManager)Cubyz.world.itemEntityManager).updateInterpolationData();
 		renderBlockDrops(frustumInt, ambientLight, directionalLight, playerPosition);
 		renderItemDrops(frustumInt, ambientLight, directionalLight, playerPosition);
 	}

@@ -5,6 +5,7 @@ import cubyz.api.CurrentWorldRegistries;
 import cubyz.client.ClientSettings;
 import cubyz.client.Cubyz;
 import cubyz.client.entity.ClientPlayer;
+import cubyz.client.entity.InterpolatedItemEntityManager;
 import cubyz.multiplayer.client.ServerConnection;
 import cubyz.modding.ModLoader;
 import cubyz.multiplayer.Protocols;
@@ -17,6 +18,7 @@ import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.entity.Entity;
+import cubyz.world.entity.ItemEntityManager;
 import cubyz.world.items.ItemStack;
 import cubyz.world.save.BlockPalette;
 import cubyz.world.terrain.biomes.Biome;
@@ -42,6 +44,7 @@ public class ClientWorld extends World {
 
 	public ClientWorld(String ip, UDPConnectionManager connectionManager, Class<?> chunkProvider) {
 		super("server");
+		super.itemEntityManager = new InterpolatedItemEntityManager(this, 256);
 		this.chunkProvider = chunkProvider;
 		// Check if the chunkProvider is valid:
 		if (!NormalChunk.class.isAssignableFrom(chunkProvider) ||

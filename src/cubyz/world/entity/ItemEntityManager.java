@@ -120,27 +120,6 @@ public class ItemEntityManager {
 		return data;
 	}
 
-	public void readPosition(byte[] data, int offset, int length) {
-		assert length%(6*8) == 0 : "length must be a multiple of 6*8";
-		length += offset;
-		int i = 0;
-		while(offset < length) {
-			posxyz[3*i] = Bits.getDouble(data, offset);
-			offset += 8;
-			posxyz[3*i+1] = Bits.getDouble(data, offset);
-			offset += 8;
-			posxyz[3*i+2] = Bits.getDouble(data, offset);
-			offset += 8;
-			velxyz[3*i] = Bits.getDouble(data, offset);
-			offset += 8;
-			velxyz[3*i+1] = Bits.getDouble(data, offset);
-			offset += 8;
-			velxyz[3*i+2] = Bits.getDouble(data, offset);
-			offset += 8;
-			i++;
-		}
-	}
-
 	private JsonObject storeSingle(int i) {
 		int i3 = i*3;
 		JsonObject obj = new JsonObject();
@@ -176,8 +155,6 @@ public class ItemEntityManager {
 	public void update(float deltaTime) {
 		for(int i = 0; i < size; i++) {
 			int i3 = i*3;
-			// Update gravity:
-			velxyz[i3 + 1] = velxyz[i3+1] - gravity*deltaTime;
 			NormalChunk chunk = world.getChunk((int)posxyz[i3], (int)posxyz[i3+1], (int)posxyz[i3+2]);
 			if(chunk != null) {
 				// Check collision with blocks:
@@ -303,9 +280,11 @@ public class ItemEntityManager {
 			return;
 		}
 		float drag = airDragFactor;
+		float[] acceleration = new float[] {0, -gravity*deltaTime, 0};
+		// Update gravity:
 		for(int i = 0; i < 3; i++) { // Change one coordinate at a time and see if it would collide.
 			double old = posxyz[index3 + i];
-			posxyz[index3 + i] += velxyz[index3 + i]*deltaTime;
+			posxyz[index3 + i] += velxyz[index3 + i]*deltaTime + acceleration[i]*deltaTime;
 			if(checkBlocks(chunk, index3)) {
 				posxyz[index3 + i] = old;
 				velxyz[index3 + i] *= 0.5; // Half it to effectively perform asynchronous binary search for the collision boundary.
@@ -314,6 +293,7 @@ public class ItemEntityManager {
 		}
 		// Apply drag:
 		for(int i = 0; i < 3; i++) {
+			velxyz[index3 + i] += acceleration[i];
 			velxyz[index3 + i] *= Math.max(0, 1 - drag*deltaTime);
 		}
 	}

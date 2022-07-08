@@ -23,7 +23,7 @@ public abstract class World {
 
 	protected HashMap<HashMapKey3D, MetaChunk> metaChunks = new HashMap<HashMapKey3D, MetaChunk>();
 	protected NormalChunk[] chunks = new NormalChunk[0];
-	public final ItemEntityManager itemEntityManager = new ItemEntityManager(this, 256);
+	public ItemEntityManager itemEntityManager;
 	protected ArrayList<Entity> entities = new ArrayList<>();
 	public BlockPalette blockPalette;
 	
@@ -53,7 +53,6 @@ public abstract class World {
 		this.name = name;
 
 		milliTime = System.currentTimeMillis();
-
 	}
 
 	public void setGameTimeCycle(boolean value)

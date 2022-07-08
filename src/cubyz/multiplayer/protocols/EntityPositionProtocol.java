@@ -2,6 +2,7 @@ package cubyz.multiplayer.protocols;
 
 import cubyz.client.Cubyz;
 import cubyz.client.entity.ClientEntityManager;
+import cubyz.client.entity.InterpolatedItemEntityManager;
 import cubyz.multiplayer.Protocol;
 import cubyz.multiplayer.UDPConnection;
 import cubyz.utils.math.Bits;
@@ -23,7 +24,7 @@ public class EntityPositionProtocol extends Protocol {
 		} else if(data[offset] == ITEM) {
 			offset += 3;
 			length -= 3;
-			Cubyz.world.itemEntityManager.readPosition(data, offset, length);
+			((InterpolatedItemEntityManager)Cubyz.world.itemEntityManager).readPosition(data, offset, length, time);
 		}
 	}
 
