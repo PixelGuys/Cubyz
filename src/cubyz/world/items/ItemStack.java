@@ -1,5 +1,8 @@
 package cubyz.world.items;
 
+import cubyz.world.items.tools.Tool;
+import pixelguys.json.JsonObject;
+
 /**
  * A stack of items, used for storage in inventories.
  */
@@ -101,6 +104,19 @@ public class ItemStack {
 	public void clear() {
 		item = null;
 		amount = 0;
+	}
+
+	public JsonObject store() {
+		JsonObject json = new JsonObject();
+		if (item != null) {
+			json.put("item", item.getRegistryID().toString());
+			json.put("amount", amount);
+			if (item instanceof Tool) {
+				Tool tool = (Tool)item;
+				json.put("tool", tool.save());
+			}
+		}
+		return json;
 	}
 	
 }

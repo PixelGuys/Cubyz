@@ -1,10 +1,12 @@
 package cubyz.world.items;
 
+import cubyz.api.CurrentWorldRegistries;
 import cubyz.api.RegistryElement;
 import cubyz.api.Resource;
 import cubyz.utils.translate.TextKey;
 import cubyz.world.entity.Entity;
 import cubyz.world.items.tools.Material;
+import cubyz.world.items.tools.Tool;
 import pixelguys.json.JsonObject;
 
 /**
@@ -68,5 +70,19 @@ public class Item implements RegistryElement {
 	 */
 	public boolean onUse(Entity user) {
 		return false;
+	}
+
+	public static Item load(JsonObject json, CurrentWorldRegistries registries) {
+		Item item = registries.itemRegistry.getByID(json.getString("item", "null"));
+		if (item == null) {
+			// Check if it is a tool:
+			JsonObject tool = json.getObject("tool");
+			if (tool != null) {
+				item = new Tool(tool, registries);
+			} else {
+				// item not existant in this version of the game. Can't do much so ignore it.
+			}
+		}
+		return item;
 	}
 }

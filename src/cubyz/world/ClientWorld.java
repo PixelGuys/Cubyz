@@ -170,13 +170,8 @@ public class ClientWorld extends World {
 	}
 
 	@Override
-	public void drop(ItemStack stack, Vector3d pos, Vector3f dir, float velocity, int pickupCooldown) {
-		throw new IllegalArgumentException("a");
-	}
-
-	@Override
 	public void drop(ItemStack stack, Vector3d pos, Vector3f dir, float velocity) {
-		throw new IllegalArgumentException("a");
+		Protocols.GENERIC_UPDATE.itemStackDrop(serverConnection, stack, pos, dir, velocity);
 	}
 
 	@Override

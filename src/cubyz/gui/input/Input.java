@@ -167,7 +167,7 @@ public class Input {
 						Protocols.GENERIC_UPDATE.sendInventory_ItemStack_add(Cubyz.world.serverConnection, Cubyz.inventorySelection, stack.getAmount());
 						ItemStack droppedStack = new ItemStack(stack);
 						stack.clear();
-						Cubyz.world.drop(droppedStack, Cubyz.player.getPosition(), Camera.getDirection(), 1, Server.UPDATES_PER_SEC*5);
+						Cubyz.world.drop(droppedStack, Cubyz.player.getPosition(), Camera.getDirection(), 1);
 					}
 				}
 				Cubyz.msd.selectSpatial(Cubyz.player.getPosition(), Camera.getViewMatrix().positiveZ(Cubyz.dir).negate(), Cubyz.world);

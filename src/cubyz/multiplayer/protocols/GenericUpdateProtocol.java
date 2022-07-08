@@ -6,10 +6,13 @@ import cubyz.multiplayer.UDPConnection;
 import cubyz.multiplayer.client.ServerConnection;
 import cubyz.multiplayer.server.Server;
 import cubyz.multiplayer.server.User;
+import cubyz.rendering.Camera;
 import cubyz.utils.math.Bits;
 import cubyz.world.items.Inventory;
+import cubyz.world.items.Item;
 import cubyz.world.items.ItemStack;
 import org.joml.Vector3d;
+import org.joml.Vector3f;
 import pixelguys.json.JsonObject;
 import pixelguys.json.JsonParser;
 
@@ -25,6 +28,8 @@ public class GenericUpdateProtocol extends Protocol {
 	private static final byte INVENTORY_ADD = 3;
 	private static final byte INVENTORY_FULL = 4;
 	private static final byte INVENTORY_CLEAR = 5;
+	private static final byte ITEM_STACK_DROP = 6;
+	private static final byte ITEM_STACK_COLLECT = 7;
 	public GenericUpdateProtocol() {
 		super((byte)9, true);
 	}
@@ -85,6 +90,35 @@ public class GenericUpdateProtocol extends Protocol {
 				}
 				break;
 			}
+			case ITEM_STACK_DROP: {
+				JsonObject json = JsonParser.parseObjectFromString(new String(data, offset + 1, length - 1, StandardCharsets.UTF_8));
+				Item item = Item.load(json, Cubyz.world.registries);
+				if (item == null) {
+					break;
+				}
+				Server.world.drop(
+					new ItemStack(item, json.getInt("amount", 1)),
+					new Vector3d(json.getDouble("x", 0), json.getDouble("y", 0), json.getDouble("z", 0)),
+					new Vector3f(json.getFloat("dirX", 0), json.getFloat("dirY", 0), json.getFloat("dirZ", 0)),
+					json.getFloat("vel", 0),
+					Server.UPDATES_PER_SEC*5
+				);
+				break;
+			}
+			case ITEM_STACK_COLLECT: {
+				JsonObject json = JsonParser.parseObjectFromString(new String(data, offset + 1, length - 1, StandardCharsets.UTF_8));
+				Item item = Item.load(json, Cubyz.world.registries);
+				if (item == null) {
+					break;
+				}
+				int remaining = Cubyz.player.getInventory_AND_DONT_FORGET_TO_SEND_CHANGES_TO_THE_SERVER().addItem(item, json.getInt("amount", 1));
+				sendInventory_full(Cubyz.world.serverConnection, Cubyz.player.getInventory_AND_DONT_FORGET_TO_SEND_CHANGES_TO_THE_SERVER());
+				if(remaining != 0) {
+					// Couldn't collect everything → drop it again.
+					itemStackDrop(Cubyz.world.serverConnection, new ItemStack(item, remaining), Cubyz.player.getPosition(), Camera.getDirection(), 0);
+				}
+				break;
+			}
 		}
 	}
 
@@ -127,5 +161,29 @@ public class GenericUpdateProtocol extends Protocol {
 
 	public void clearInventory(UDPConnection conn) {
 		conn.send(this, new byte[]{INVENTORY_CLEAR});
+	}
+
+	public void itemStackDrop(ServerConnection conn, ItemStack stack, Vector3d pos, Vector3f dir, float vel) {
+		JsonObject json = stack.store();
+		json.put("x", pos.x);
+		json.put("y", pos.y);
+		json.put("z", pos.z);
+		json.put("dirX", dir.x);
+		json.put("dirY", dir.y);
+		json.put("dirZ", dir.z);
+		json.put("vel", vel);
+		byte[] data = json.toString().getBytes(StandardCharsets.UTF_8);
+		byte[] headeredData = new byte[data.length + 1];
+		headeredData[0] = ITEM_STACK_DROP;
+		System.arraycopy(data, 0, headeredData, 1, data.length);
+		conn.send(this, headeredData);
+	}
+
+	public void itemStackCollect(User user, ItemStack stack) {
+		byte[] data = stack.store().toString().getBytes(StandardCharsets.UTF_8);
+		byte[] headeredData = new byte[data.length + 1];
+		headeredData[0] = ITEM_STACK_COLLECT;
+		System.arraycopy(data, 0, headeredData, 1, data.length);
+		user.send(this, headeredData);
 	}
 }

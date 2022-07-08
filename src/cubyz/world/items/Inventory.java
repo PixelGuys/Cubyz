@@ -35,6 +35,16 @@ public class Inventory {
 		// Return the amount of items that didn't fit in the inventory:
 		return amount;
 	}
+
+	public boolean canCollect(Item type) {
+		for(int j = 0; j < items.length; j++) {
+			if(items[j].empty()) return true;
+			if(items[j].getItem() == type && !items[j].filled()) {
+				return true;
+			}
+		}
+		return false;
+	}
 	
 	public Inventory(int size) {
 		items = new ItemStack[size];
@@ -67,15 +77,8 @@ public class Inventory {
 		JsonObject json = new JsonObject();
 		json.put("capacity", items.length);
 		for (int i = 0; i < items.length; i++) {
-			JsonObject stackJson = new JsonObject();
-			ItemStack stack = items[i];
-			if (stack.getItem() != null) {
-				stackJson.put("item", stack.getItem().getRegistryID().toString());
-				stackJson.put("amount", stack.getAmount());
-				if (stack.getItem() instanceof Tool) {
-					Tool tool = (Tool)stack.getItem();
-					stackJson.put("tool", tool.save());
-				}
+			JsonObject stackJson = items[i].store();
+			if(!stackJson.map.isEmpty()) {
 				json.put(String.valueOf(i), stackJson);
 			}
 		}
@@ -87,17 +90,10 @@ public class Inventory {
 		for(int i = 0; i < items.length; i++) {
 			JsonObject stackJson = json.getObject(String.valueOf(i));
 			if (stackJson != null) {
-				Item item = registries.itemRegistry.getByID(stackJson.getString("item", "null"));
+				Item item = Item.load(stackJson, registries);
 				if (item == null) {
-					// Check if it is a tool:
-					JsonObject tool = stackJson.getObject("tool");
-					if (tool != null) {
-						item = new Tool(tool, registries);
-					} else {
-						// item not existant in this version of the game. Can't do much so ignore it.
-						items[i] = new ItemStack();
-						continue;
-					}
+					items[i] = new ItemStack();
+					continue;
 				}
 				ItemStack stack = new ItemStack(item);
 				stack.add(stackJson.getInt("amount", 1));

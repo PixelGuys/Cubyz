@@ -2,6 +2,9 @@ package cubyz.world.entity;
 
 import java.util.Arrays;
 
+import cubyz.multiplayer.Protocols;
+import cubyz.multiplayer.server.Server;
+import cubyz.multiplayer.server.User;
 import cubyz.utils.math.Bits;
 import cubyz.world.ServerWorld;
 import cubyz.world.items.tools.Tool;
@@ -174,13 +177,26 @@ public class ItemEntityManager {
 			int i3 = 3*i;
 			if (pickupCooldown[i] >= 0) continue; // Item cannot be picked up yet.
 			if (Math.abs(ent.position.x - posxyz[i3]) < ent.width + PICKUP_RANGE && Math.abs(ent.position.y + ent.height/2 - posxyz[i3 + 1]) < ent.height + PICKUP_RANGE && Math.abs(ent.position.z - posxyz[i3 + 2]) < ent.width + PICKUP_RANGE) {
-				int newAmount = ent.getInventory().addItem(itemStacks[i].getItem(), itemStacks[i].getAmount());
-				if (newAmount != 0) {
-					itemStacks[i].setAmount(newAmount);
-				} else {
-					remove(i);
-					i--;
-					continue;
+				if(ent.getInventory().canCollect(itemStacks[i].getItem())) {
+					if(ent instanceof Player) {
+						// Needs to go through the network.
+						for(User user : Server.users) {
+							if(user.player == ent) {
+								Protocols.GENERIC_UPDATE.itemStackCollect(user, itemStacks[i]);
+								remove(i);
+								i--;
+								break;
+							}
+						}
+					} else {
+						int newAmount = ent.getInventory().addItem(itemStacks[i].getItem(), itemStacks[i].getAmount());
+						if(newAmount != 0) {
+							itemStacks[i].setAmount(newAmount);
+						} else {
+							remove(i);
+							i--;
+						}
+					}
 				}
 			}
 		}

@@ -156,7 +156,7 @@ public class ServerWorld extends World {
 	public boolean isValidSpawnLocation(int x, int z) {
 		return chunkManager.getOrGenerateMapFragment(x, z, 32).getBiome(x, z).isValidPlayerSpawn;
 	}
-	@Override
+
 	public void drop(ItemStack stack, Vector3d pos, Vector3f dir, float velocity, int pickupCooldown) {
 		itemEntityManager.add(pos.x, pos.y, pos.z, dir.x*velocity, dir.y*velocity, dir.z*velocity, stack, Server.UPDATES_PER_SEC*900, pickupCooldown);
 	}
@@ -170,7 +170,6 @@ public class ServerWorld extends World {
 		if (ch != null) {
 			int old = ch.getBlock(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask);
 			if(old == newBlock) return;
-			Logger.error("Block drops aren't implemented in multiplayer yet");
 			ch.updateBlock(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask, newBlock);
 			// Send the block update to all players:
 			for(User user : Server.users) {
