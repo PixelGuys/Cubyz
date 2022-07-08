@@ -2,10 +2,11 @@ package cubyz.command;
 
 import cubyz.api.Registry;
 import cubyz.api.Resource;
+import cubyz.multiplayer.Protocols;
 import cubyz.multiplayer.server.Server;
-import cubyz.world.entity.Player;
-import cubyz.world.items.Inventory;
+import cubyz.multiplayer.server.User;
 import cubyz.world.items.Item;
+import cubyz.world.items.ItemStack;
 
 /**
  * Gives a certain item to the local player.
@@ -41,12 +42,11 @@ public class GiveCommand extends CommandBase {
 			source.feedback("No such item: " + args[1]);
 			return;
 		}
-		if (!(source instanceof Player)) {
+		if (!(source instanceof User)) {
 			source.feedback("'give' must be executed by a player");
 			return;
 		}
-		Player player = (Player)source;
-		Inventory inv = player.getInventory();
+		User user = (User)source;
 		int amount = 1;
 		if (args.length > 2) {
 			try {
@@ -56,7 +56,8 @@ public class GiveCommand extends CommandBase {
 				return;
 			}
 		}
-		inv.addItem(items.getByID(args[1]), amount);
+		ItemStack stack = new ItemStack(items.getByID(args[1]), amount);
+		Protocols.GENERIC_UPDATE.itemStackCollect(user, stack);
 	}
 	
 }
