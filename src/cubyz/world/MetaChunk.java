@@ -2,6 +2,7 @@ package cubyz.world;
 
 import java.util.ArrayList;
 
+import cubyz.multiplayer.Protocols;
 import cubyz.multiplayer.server.Server;
 import cubyz.multiplayer.server.User;
 import cubyz.utils.Logger;
@@ -89,6 +90,9 @@ public class MetaChunk {
 							int dz = Neighbors.REL_Z[i];
 							if (dy == -1 || (neighbors[Neighbors.DIR_DOWN] != 0 && Blocks.blockClass(neighbors[Neighbors.DIR_DOWN]) != Blocks.BlockClass.FLUID)) {
 								ch.addBlockPossiblyOutside(block, wx+bx+dx, wy+by+dy, wz+bz+dz, true);
+								for(User user : Server.users) { // Send the liquid update to all players:
+									Protocols.BLOCK_UPDATE.send(user, wx+bx+dx, wy+by+dy, wz+bz+dz, block);
+								}
 							}
 						}
 					}

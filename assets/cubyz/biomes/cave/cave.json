@@ -1,5 +1,6 @@
 {
 	"type" : "CAVE",
+	"maxHeight" : 0,
 
 	"music" : "heart-of-the-beast",
 
