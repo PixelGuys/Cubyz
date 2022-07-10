@@ -82,7 +82,8 @@ public class BlockMeshes implements DataOrientedRegistry {
 				}
 				File file = new File(path);
 				if(!file.exists()) {
-					file = new File("assets/" + texture.getMod() + "/blocks/textures/" + texture.getID() + ".png");
+					path = "assets/" + texture.getMod() + "/blocks/textures/" + texture.getID() + ".png";
+					file = new File(path);
 				}
 				// Otherwise read it into the list:
 				result = blockTextures.size();
@@ -190,6 +191,7 @@ public class BlockMeshes implements DataOrientedRegistry {
 		for(int i = textureIDs.size() - 1; i >= 0; i--) {
 			textureIDs.remove(i);
 			blockTextures.remove(i);
+			emissionTextures.remove(i);
 		}
 		animationFrames.clear();
 		animationTimes.clear();
