@@ -75,16 +75,12 @@ public class GenericUpdateProtocol extends Protocol {
 				if(conn instanceof User) {
 					Inventory inv = ((User)conn).player.getInventory();
 					for (int i = 0; i < inv.getCapacity(); i++) {
-						if (inv.hasStack(i)) {
-							inv.setStack(i, new ItemStack());
-						}
+						inv.getStack(i).clear();
 					}
 				} else {
 					Inventory inv = Cubyz.player.getInventory_AND_DONT_FORGET_TO_SEND_CHANGES_TO_THE_SERVER();
 					for (int i = 0; i < inv.getCapacity(); i++) {
-						if (inv.hasStack(i)) {
-							inv.setStack(i, new ItemStack());
-						}
+						inv.getStack(i).clear();
 					}
 					clearInventory(conn); // Needs to send changes back to server, to ensure correct order.
 				}

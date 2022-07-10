@@ -65,10 +65,6 @@ public class Inventory {
 		return items[slot];
 	}
 	
-	public boolean hasStack(int slot) {
-		return items[slot] != null;
-	}
-	
 	public int getAmount(int slot) {
 		return items[slot].getAmount();
 	}
@@ -86,29 +82,26 @@ public class Inventory {
 	}
 	
 	public void loadFrom(JsonObject json, CurrentWorldRegistries registries) {
-		items = new ItemStack[json.getInt("capacity", 0)];
-		for(int i = 0; i < items.length; i++) {
+		ItemStack[] newItems = new ItemStack[json.getInt("capacity", 0)];
+		for(int i = 0; i < newItems.length; i++) {
 			JsonObject stackJson = json.getObject(String.valueOf(i));
 			if (stackJson != null) {
 				Item item = Item.load(stackJson, registries);
 				if (item == null) {
-					items[i] = new ItemStack();
+					newItems[i] = new ItemStack();
 					continue;
 				}
 				ItemStack stack = new ItemStack(item);
 				stack.add(stackJson.getInt("amount", 1));
-				items[i] = stack;
+				newItems[i] = stack;
 			} else {
-				items[i] = new ItemStack();
+				newItems[i] = new ItemStack();
 			}
 		}
+		items = newItems;
 	}
 	
 	public int getCapacity() {
 		return items.length;
-	}
-	
-	public void setStack(int slot, ItemStack stack) {
-		items[slot] = stack;
 	}
 }
