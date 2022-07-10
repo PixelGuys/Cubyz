@@ -175,6 +175,7 @@ public class ServerWorld extends World {
 			for(User user : Server.users) {
 				Protocols.BLOCK_UPDATE.send(user, x, y, z, newBlock);
 			}
+			if((old & Blocks.TYPE_MASK) == (newBlock & Blocks.TYPE_MASK)) return;
 			for(BlockDrop drop : Blocks.blockDrops(old)) {
 				int amount = (int)(drop.amount);
 				float randomPart = drop.amount - amount;
