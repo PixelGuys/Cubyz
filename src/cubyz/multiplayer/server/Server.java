@@ -35,7 +35,7 @@ public final class Server extends Pacer{
 		Server.world = new ServerWorld(args[0], null);
 
 		connectionManager = new UDPConnectionManager(Constants.DEFAULT_PORT);
-		User user = new User(connectionManager, "localhost", 5679);
+		User user = new User(connectionManager, "localhost:5679");
 		connect(user);
 
 		try {

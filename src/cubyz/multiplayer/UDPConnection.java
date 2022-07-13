@@ -1,5 +1,6 @@
 package cubyz.multiplayer;
 
+import cubyz.Constants;
 import cubyz.utils.Logger;
 import cubyz.utils.datastructures.IntSimpleList;
 import cubyz.utils.datastructures.SimpleList;
@@ -18,7 +19,9 @@ public class UDPConnection {
 	private final UDPConnectionManager manager;
 
 	final InetAddress remoteAddress;
-	final int remotePort;
+	int remotePort;
+	boolean bruteforcingPort;
+	private int bruteForcedPortRange = 0;
 
 	private final AtomicInteger messageID = new AtomicInteger(0);
 	private final SimpleList<UnconfirmedPackage> unconfirmedPackets = new SimpleList<>(new UnconfirmedPackage[1024]); // TODO: Consider using a hashmap/sorted list instead.
@@ -32,17 +35,29 @@ public class UDPConnection {
 
 	protected boolean disconnected = false;
 
-	public UDPConnection(UDPConnectionManager manager, String ip, int remotePort) {
+	public UDPConnection(UDPConnectionManager manager, String ipPort) {
+		if(ipPort.contains("?")) {
+			bruteforcingPort = true;
+			ipPort = ipPort.replaceAll("\\?", "");
+		} else {
+			bruteforcingPort = false;
+		}
+		String[] ipPortSplit = ipPort.split(":");
+		String ipOnly = ipPortSplit[0];
+		if(ipPortSplit.length == 2) {
+			remotePort = Integer.parseInt(ipPortSplit[1]);
+		} else {
+			remotePort = Constants.DEFAULT_PORT;
+		}
 
-		Logger.debug(ip+":"+remotePort);
-		this.remotePort = remotePort;
+		Logger.debug(ipOnly+":"+remotePort);
 		this.manager = manager;
 		manager.addConnection(this);
 
 		//connect
 		InetAddress remoteAddress = null;
 		try {
-			remoteAddress = InetAddress.getByName(ip);
+			remoteAddress = InetAddress.getByName(ipOnly);
 		} catch (IOException e) {
 			Logger.error(e);
 		}
@@ -139,6 +154,20 @@ public class UDPConnection {
 					manager.send(unconfirmedPackets.array[i].packet);
 					unconfirmedPackets.array[i].lastKeepAliveSentBefore = lastKeepAliveSent;
 				}
+			}
+		}
+		if(bruteforcingPort) { // Brute force through some ports.
+			// This is called every 100 ms, so if I send 10 requests it shouldn't be too bad.
+			for(int i = 0; i < 5; i++) {
+				byte[] fullData = new byte[0];
+				//fullData[0] = Protocols.KEEP_ALIVE.id;
+				if(((remotePort + bruteForcedPortRange) & 65535) != 0) {
+					manager.send(new DatagramPacket(fullData, fullData.length, remoteAddress, (remotePort + bruteForcedPortRange) & 65535));
+				}
+				if(((remotePort - bruteForcedPortRange) & 65535) != 0) {
+					manager.send(new DatagramPacket(fullData, fullData.length, remoteAddress, (remotePort - bruteForcedPortRange) & 65535));
+				}
+				bruteForcedPortRange++;
 			}
 		}
 	}

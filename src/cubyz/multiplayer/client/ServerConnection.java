@@ -5,13 +5,11 @@ import cubyz.multiplayer.Protocols;
 import cubyz.multiplayer.UDPConnection;
 import cubyz.multiplayer.UDPConnectionManager;
 import cubyz.world.ClientWorld;
-import cubyz.world.World;
-import pixelguys.json.JsonObject;
 
 public class ServerConnection extends UDPConnection {
 	public final ClientWorld world;
-	public ServerConnection(UDPConnectionManager manager, ClientWorld world, String ip, int remotePort) {
-		super(manager, ip, remotePort);
+	public ServerConnection(UDPConnectionManager manager, ClientWorld world, String ipPort) {
+		super(manager, ipPort);
 		this.world = world;
 	}
 	

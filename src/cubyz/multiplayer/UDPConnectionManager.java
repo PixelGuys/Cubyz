@@ -36,7 +36,12 @@ public final class UDPConnectionManager extends Thread {
 		start();
 
 		externalIPPort = STUN.requestIPPort(this);
-		String[] ipPort = externalIPPort.split(":");
+		String[] ipPort;
+		if(externalIPPort.contains("?")) {
+			ipPort = externalIPPort.split(":\\?");
+		} else {
+			ipPort = externalIPPort.split(":");
+		}
 		try {
 			externalAddress = InetAddress.getByName(ipPort[0]);
 		} catch(UnknownHostException e) {
@@ -109,9 +114,15 @@ public final class UDPConnectionManager extends Thread {
 		InetAddress addr = receivedPacket.getAddress();
 		int port = receivedPacket.getPort();
 		for(UDPConnection connection : connections) {
-			if(connection.remoteAddress.equals(addr) && connection.remotePort == port) {
-				connection.receive(data, len);
-				return;
+			if(connection.remoteAddress.equals(addr)) {
+				if(connection.bruteforcingPort) { // brute-forcing the port was successful.
+					connection.remotePort = port;
+					connection.bruteforcingPort = false;
+				}
+				if(connection.remotePort == port) {
+					connection.receive(data, len);
+					return;
+				}
 			}
 		}
 		// Check if it's part of an active request:

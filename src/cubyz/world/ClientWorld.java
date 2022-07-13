@@ -1,6 +1,5 @@
 package cubyz.world;
 
-import cubyz.Constants;
 import cubyz.api.CurrentWorldRegistries;
 import cubyz.client.ClientSettings;
 import cubyz.client.Cubyz;
@@ -18,7 +17,6 @@ import cubyz.world.blocks.BlockEntity;
 import cubyz.world.blocks.BlockInstance;
 import cubyz.world.blocks.Blocks;
 import cubyz.world.entity.Entity;
-import cubyz.world.entity.ItemEntityManager;
 import cubyz.world.items.ItemStack;
 import cubyz.world.save.BlockPalette;
 import cubyz.world.terrain.biomes.Biome;
@@ -56,15 +54,8 @@ public class ClientWorld extends World {
 				!chunkProvider.getConstructors()[0].getParameterTypes()[3].equals(Integer.class))
 			throw new IllegalArgumentException("Chunk provider "+chunkProvider+" is invalid! It needs to be a subclass of NormalChunk and MUST contain a single constructor with parameters (ServerWorld, Integer, Integer, Integer)");
 
-		//                                                               ↓ local port in singleplayer.
 		this.connectionManager = connectionManager;
-		String[] ipPort = ip.split(":");
-		String ipOnly = ipPort[0];
-		int remotePort = Constants.DEFAULT_PORT;
-		if(ipPort.length == 2) {
-			remotePort = Integer.parseInt(ipPort[1]);
-		}
-		serverConnection = new ServerConnection(connectionManager, this, ipOnly, remotePort);
+		serverConnection = new ServerConnection(connectionManager, this, ip);
 
 		player = new ClientPlayer(this, 0);
 		serverConnection.doHandShake(ClientSettings.playerName);

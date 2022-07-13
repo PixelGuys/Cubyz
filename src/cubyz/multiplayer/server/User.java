@@ -24,8 +24,8 @@ public class User extends UDPConnection implements CommandSource {
 	public float LODFactor;
 	public boolean receivedFirstEntityData = false;
 
-	public User(UDPConnectionManager manager, String ip, int remotePort) {
-		super(manager, ip, remotePort);
+	public User(UDPConnectionManager manager, String ipPort) {
+		super(manager, ipPort);
 		Protocols.HANDSHAKE.serverSide(this);
 		try {
 			synchronized(this) {

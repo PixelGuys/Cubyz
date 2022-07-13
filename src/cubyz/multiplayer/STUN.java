@@ -38,6 +38,7 @@ public final class STUN {
 	}
 
 	public static String requestIPPort(UDPConnectionManager connection) {
+		String oldIPPort = null;
 
 		for(String server : ipServerList) {
 			byte[] data = null;
@@ -64,7 +65,14 @@ public final class STUN {
 					Logger.warning("Couldn't reach ip server: "+server);
 				} else {
 					verifyHeader(data, transactionID);
-					return findIPPort(data);
+					String newIPPort = findIPPort(data);
+					if(oldIPPort == null) {
+						oldIPPort = newIPPort;
+					} else if(oldIPPort.equals(newIPPort)) {
+						return oldIPPort;
+					} else {
+						return oldIPPort.replaceAll(":", ":?"); // client is behind a symmetric NAT.
+					}
 				}
 			} catch(UnknownHostException e) {
 				Logger.warning("Couldn't reach ip server: "+server);
