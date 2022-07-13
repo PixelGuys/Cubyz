@@ -88,27 +88,30 @@ public class MeshSelectionDetector {
 			if(tMaxX < tMaxY) {
 				if(tMaxX < tMaxZ) {
 					x = x + stepX;
-					tMaxX = tMaxX + tDeltaX;
 					total_tMax = tMaxX;
+					tMaxX = tMaxX + tDeltaX;
 				} else {
 					z = z + stepZ;
-					tMaxZ = tMaxZ + tDeltaZ;
 					total_tMax = tMaxZ;
+					tMaxZ = tMaxZ + tDeltaZ;
 				}
 			} else {
 				if(tMaxY < tMaxZ) {
 					y = y + stepY;
-					tMaxY = tMaxY + tDeltaY;
 					total_tMax = tMaxY;
+					tMaxY = tMaxY + tDeltaY;
 				} else {
 					z = z + stepZ;
-					tMaxZ = tMaxZ + tDeltaZ;
 					total_tMax = tMaxZ;
+					tMaxZ = tMaxZ + tDeltaZ;
 				}
 			}
 		}
 
-		Object newSpatial = world.getBlockInstance(x, y, z);
+		Object newSpatial = null;
+		if(total_tMax < closestDistance) {
+			newSpatial = world.getBlockInstance(x, y, z);
+		}
 		// Test entities:
 		for(Entity ent : world.getEntities()) {
 			// TODO!
