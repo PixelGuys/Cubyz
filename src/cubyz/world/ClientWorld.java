@@ -42,7 +42,7 @@ public class ClientWorld extends World {
 
 	public ClientWorld(String ip, UDPConnectionManager connectionManager, Class<?> chunkProvider) {
 		super("server");
-		super.itemEntityManager = new InterpolatedItemEntityManager(this, 256);
+		super.itemEntityManager = new InterpolatedItemEntityManager(this);
 		this.chunkProvider = chunkProvider;
 		// Check if the chunkProvider is valid:
 		if (!NormalChunk.class.isAssignableFrom(chunkProvider) ||

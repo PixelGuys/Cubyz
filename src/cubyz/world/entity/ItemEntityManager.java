@@ -1,7 +1,5 @@
 package cubyz.world.entity;
 
-import java.util.Arrays;
-
 import cubyz.multiplayer.Protocols;
 import cubyz.multiplayer.server.Server;
 import cubyz.multiplayer.server.User;
@@ -34,34 +32,29 @@ public class ItemEntityManager {
 
 	private static final float MAX_AIR_SPEED_GRAVITY = 10;
 
-	private static final int capacityIncrease = 64;
+	protected static final int MAX_CAPACITY = 65536;
 
-	public double[] posxyz;
-	public double[] velxyz;
-	public float[] rotxyz;
-	public ItemStack[] itemStacks;
-	public int[] despawnTime;
+	public final double[] posxyz = new double[3*MAX_CAPACITY];
+	public final double[] velxyz = new double[3*MAX_CAPACITY];
+	public final float[] rotxyz = new float[3*MAX_CAPACITY];
+	public final ItemStack[] itemStacks = new ItemStack[MAX_CAPACITY];
+	public final int[] despawnTime = new int[MAX_CAPACITY];
 	/** How long the item should stay on the ground before getting picked up again. */
-	public int[] pickupCooldown;
+	public final int[] pickupCooldown = new int[MAX_CAPACITY];
+
+	public final short[] indices = new short[MAX_CAPACITY];
+	public final short[] reverseIndices = new short[MAX_CAPACITY];
 
 	private final World world;
 	private final float gravity;
 	private final float airDragFactor;
 	public int size;
-	private int capacity;
+
+	private int lastAdded = 0;
 
 	public final JsonArray lastUpdates = new JsonArray();
 
-	public ItemEntityManager(World world, int minCapacity) {
-		// Always use a multiple of 64 as the capacity.
-		capacity = (minCapacity+63) & ~63;
-		posxyz = new double[3 * capacity];
-		velxyz = new double[3 * capacity];
-		rotxyz = new float[3 * capacity];
-		itemStacks = new ItemStack[capacity];
-		despawnTime = new int[capacity];
-		pickupCooldown = new int[capacity];
-
+	public ItemEntityManager(World world) {
 		this.world = world;
 		gravity = World.GRAVITY;
 		// Assuming linear drag → air is a viscous fluid :D
@@ -90,23 +83,42 @@ public class ItemEntityManager {
 				return;
 			}
 		}
-		add(
-			elem.getDouble("x", 0),
-			elem.getDouble("y", 0),
-			elem.getDouble("z", 0),
-			elem.getDouble("vx", 0),
-			elem.getDouble("vy", 0),
-			elem.getDouble("vz", 0),
-			new ItemStack(item, elem.getInt("amount", 1)),
-			elem.getInt("despawnTime", 60),
-			0
-		);
+		if(((JsonObject)elem).map.containsKey("i")) {
+			add(
+				elem.getInt("i", 0),
+				elem.getDouble("x", 0),
+				elem.getDouble("y", 0),
+				elem.getDouble("z", 0),
+				elem.getDouble("vx", 0),
+				elem.getDouble("vy", 0),
+				elem.getDouble("vz", 0),
+				new ItemStack(item, elem.getInt("amount", 1)),
+				elem.getInt("despawnTime", 60),
+				0
+			);
+		} else {
+			add(
+				elem.getDouble("x", 0),
+				elem.getDouble("y", 0),
+				elem.getDouble("z", 0),
+				elem.getDouble("vx", 0),
+				elem.getDouble("vy", 0),
+				elem.getDouble("vz", 0),
+				new ItemStack(item, elem.getInt("amount", 1)),
+				elem.getInt("despawnTime", 60),
+				0
+			);
+		}
+
 	}
 
 	public byte[] getPositionAndVelocityData() {
-		byte[] data = new byte[size*6*8];
+		byte[] data = new byte[size*(6*8 + 2)];
 		int offset = 0;
-		for(int i = 0; i < size; i++) {
+		for(int ii = 0; ii < size; ii++) {
+			int i = indices[ii] & 0xffff;
+			Bits.putShort(data, offset, (short)i);
+			offset += 2;
 			Bits.putDouble(data, offset, posxyz[3*i]);
 			offset += 8;
 			Bits.putDouble(data, offset, posxyz[3*i+1]);
@@ -126,6 +138,7 @@ public class ItemEntityManager {
 	private JsonObject storeSingle(int i) {
 		int i3 = i*3;
 		JsonObject obj = new JsonObject();
+		obj.put("i", i);
 		obj.put("x", posxyz[i3]);
 		obj.put("y", posxyz[i3 + 1]);
 		obj.put("z", posxyz[i3 + 2]);
@@ -145,8 +158,8 @@ public class ItemEntityManager {
 	public JsonObject store() {
 		synchronized(this) {
 			JsonArray items = new JsonArray();
-			for(int i = 0; i < size; i++) {
-				JsonObject obj = storeSingle(i);
+			for(int ii = 0; ii < size; ii++) {
+				JsonObject obj = storeSingle(indices[ii] & 0xffff);
 				items.add(obj);
 			}
 			JsonObject json = new JsonObject();
@@ -156,7 +169,8 @@ public class ItemEntityManager {
 	}
 
 	public void update(float deltaTime) {
-		for(int i = 0; i < size; i++) {
+		for(int ii = 0; ii < size; ii++) {
+			int i = indices[ii] & 0xffff;
 			int i3 = i*3;
 			NormalChunk chunk = world.getChunk((int)posxyz[i3], (int)posxyz[i3+1], (int)posxyz[i3+2]);
 			if(chunk != null) {
@@ -167,13 +181,14 @@ public class ItemEntityManager {
 			despawnTime[i]--;
 			if (despawnTime[i] < 0) {
 				remove(i);
-				i--;
+				ii--;
 			}
 		}
 	}
 
 	public void checkEntity(Entity ent) {
-		for(int i = 0; i < size; i++) {
+		for(int ii = 0; ii < size; ii++) {
+			int i = indices[ii] & 0xffff;
 			int i3 = 3*i;
 			if (pickupCooldown[i] >= 0) continue; // Item cannot be picked up yet.
 			if (Math.abs(ent.position.x - posxyz[i3]) < ent.width + PICKUP_RANGE && Math.abs(ent.position.y + ent.height/2 - posxyz[i3 + 1]) < ent.height + PICKUP_RANGE && Math.abs(ent.position.z - posxyz[i3 + 2]) < ent.width + PICKUP_RANGE) {
@@ -184,7 +199,7 @@ public class ItemEntityManager {
 							if(user.player == ent) {
 								Protocols.GENERIC_UPDATE.itemStackCollect(user, itemStacks[i]);
 								remove(i);
-								i--;
+								ii--;
 								break;
 							}
 						}
@@ -194,7 +209,7 @@ public class ItemEntityManager {
 							itemStacks[i].setAmount(newAmount);
 						} else {
 							remove(i);
-							i--;
+							ii--;
 						}
 					}
 				}
@@ -219,12 +234,33 @@ public class ItemEntityManager {
 		add(x, y, z, vx, vy, vz, (float)(2*Math.random()*Math.PI), (float)(2*Math.random()*Math.PI), (float)(2*Math.random()*Math.PI), itemStack, despawnTime, pickupCooldown);
 	}
 
+	public void add(int i, double x, double y, double z, double vx, double vy, double vz, ItemStack itemStack, int despawnTime, int pickupCooldown) {
+		add(
+			i, x, y, z,
+			vx, vy, vz,
+			(float)(2*Math.random()*Math.PI),
+			(float)(2*Math.random()*Math.PI),
+			(float)(2*Math.random()*Math.PI),
+			itemStack, despawnTime, pickupCooldown
+		);
+	}
 	public void add(double x, double y, double z, double vx, double vy, double vz, float rotX, float rotY, float rotZ, ItemStack itemStack, int despawnTime, int pickupCooldown) {
 		synchronized(this) {
-			if(size == capacity) {
-				increaseCapacity();
+			if(size == MAX_CAPACITY) {
+				Logger.error("capacity limit reached. Failed to add itemStack: "+itemStack.getAmount()+"×"+itemStack.getItem().getRegistryID());
+				return;
 			}
-			int index3 = 3*size;
+			while(itemStacks[lastAdded] != null) {
+				lastAdded = lastAdded+1 & 0xffff;
+			}
+			add(lastAdded, x, y, z, vx, vy, vz, rotX, rotY, rotZ, itemStack, despawnTime, pickupCooldown);
+		}
+	}
+
+	public void add(int i, double x, double y, double z, double vx, double vy, double vz, float rotX, float rotY, float rotZ, ItemStack itemStack, int despawnTime, int pickupCooldown) {
+		synchronized(this) {
+			assert itemStacks[i] == null : "some item entities were not cleared correctly";
+			int index3 = 3*i;
 			posxyz[index3] = x;
 			posxyz[index3 + 1] = y;
 			posxyz[index3 + 2] = z;
@@ -234,37 +270,28 @@ public class ItemEntityManager {
 			rotxyz[index3] = rotX;
 			rotxyz[index3 + 1] = rotY;
 			rotxyz[index3 + 2] = rotZ;
-			itemStacks[size] = itemStack;
-			this.despawnTime[size] = despawnTime;
-			this.pickupCooldown[size] = pickupCooldown;
+			itemStacks[i] = itemStack;
+			this.despawnTime[i] = despawnTime;
+			this.pickupCooldown[i] = pickupCooldown;
 			if(world instanceof ServerWorld) {
-				lastUpdates.add(storeSingle(size));
+				lastUpdates.add(storeSingle(i));
 			}
+			indices[size] = (short)i;
+			reverseIndices[i] = (short)size;
 			size++;
 		}
 	}
 
-	public void remove(int index) {
+	public void remove(int i) {
 		synchronized(this) {
 			size--;
 			// Put the stuff at the last index to the removed index:
-			int index3 = 3*index;
-			int size3 = size*3;
-			posxyz[index3] = posxyz[size3];
-			posxyz[index3 + 1] = posxyz[size3 + 1];
-			posxyz[index3 + 2] = posxyz[size3 + 2];
-			velxyz[index3] = velxyz[size3];
-			velxyz[index3 + 1] = velxyz[size3 + 1];
-			velxyz[index3 + 2] = velxyz[size3 + 2];
-			rotxyz[index3] = rotxyz[size3];
-			rotxyz[index3 + 1] = rotxyz[size3 + 1];
-			rotxyz[index3 + 2] = rotxyz[size3 + 2];
-			itemStacks[index] = itemStacks[size];
-			itemStacks[size] = null; // Allow it to be garbage collected.
-			despawnTime[index] = despawnTime[size];
-			pickupCooldown[index] = pickupCooldown[size];
+			int ii = reverseIndices[i] & 0xffff;
+			indices[ii] = indices[size];
+			reverseIndices[indices[ii] & 0xffff] = (short)ii;
+			itemStacks[i] = null; // Allow it to be garbage collected.
 			if(world instanceof ServerWorld) {
-				lastUpdates.add(new JsonInt(index));
+				lastUpdates.add(new JsonInt(i));
 			}
 		}
 	}
@@ -277,16 +304,6 @@ public class ItemEntityManager {
 	public Vector3f getRotation(int index) {
 		index *= 3;
 		return new Vector3f(rotxyz[index], rotxyz[index+1], rotxyz[index+2]);
-	}
-
-	private void increaseCapacity() {
-		capacity += capacityIncrease;
-		posxyz = Arrays.copyOf(posxyz, capacity*3);
-		velxyz = Arrays.copyOf(velxyz, capacity*3);
-		rotxyz = Arrays.copyOf(rotxyz, capacity*3);
-		itemStacks = Arrays.copyOf(itemStacks, capacity);
-		despawnTime = Arrays.copyOf(despawnTime, capacity);
-		pickupCooldown = Arrays.copyOf(pickupCooldown, capacity);
 	}
 
 	private void updateEnt(NormalChunk chunk, int index3, float deltaTime) {

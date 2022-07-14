@@ -12,18 +12,19 @@ public class InterpolatedItemEntityManager extends ItemEntityManager {
 	private short lastTime = (short)System.currentTimeMillis();
 	private final TimeDifference timeDifference = new TimeDifference();
 
-	public InterpolatedItemEntityManager(World world, int minCapacity) {
-		super(world, minCapacity);
+	public InterpolatedItemEntityManager(World world) {
+		super(world);
 	}
 
 	public void readPosition(byte[] data, int offset, int length, short time) {
-		assert length%(6*8) == 0 : "length must be a multiple of 6*8";
+		assert length%(6*8 + 2) == 0 : "length must be a multiple of 6*8 + 2";
 		timeDifference.addDataPoint(time);
-		double[] pos = new double[length];
-		double[] vel = new double[length];
+		double[] pos = new double[3*MAX_CAPACITY];
+		double[] vel = new double[3*MAX_CAPACITY];
 		length += offset;
-		int i = 0;
 		while(offset < length) {
+			int i = Bits.getShort(data, offset) & 0xffff;
+			offset += 2;
 			pos[3*i] = Bits.getDouble(data, offset);
 			offset += 8;
 			pos[3*i+1] = Bits.getDouble(data, offset);
@@ -36,7 +37,6 @@ public class InterpolatedItemEntityManager extends ItemEntityManager {
 			offset += 8;
 			vel[3*i+2] = Bits.getDouble(data, offset);
 			offset += 8;
-			i++;
 		}
 		interpolation.updatePosition(pos, vel, time);
 	}

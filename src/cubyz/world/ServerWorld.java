@@ -41,7 +41,7 @@ public class ServerWorld extends World {
 
 	public ServerWorld(String name, JsonObject generatorSettings) {
 		super(name);
-		super.itemEntityManager = new ItemEntityManager(this, 256);
+		super.itemEntityManager = new ItemEntityManager(this);
 
 		if(generatorSettings == null) {
 			generatorSettings = JsonParser.parseObjectFromFile("saves/" + name + "/generatorSettings.json");

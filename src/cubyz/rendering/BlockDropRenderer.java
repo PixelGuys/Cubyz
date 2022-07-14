@@ -239,7 +239,8 @@ public final class BlockDropRenderer {
 		itemShader.setUniform(ItemDropUniforms.loc_viewMatrix, Camera.getViewMatrix());
 		itemShader.setUniform(ItemDropUniforms.loc_sizeScale, ItemEntityManager.DIAMETER/4);
 		ItemEntityManager manager = Cubyz.world.itemEntityManager;
-		for(int i = 0; i < manager.size; i++) {
+		for(int ii = 0; ii < manager.size; ii++) {
+			int i = manager.indices[ii] & 0xffff;
 			Item item = manager.itemStacks[i].getItem();
 			if (!(item instanceof ItemBlock)) {
 				int index3 = 3*i;
@@ -277,7 +278,8 @@ public final class BlockDropRenderer {
 		shader.setUniform(loc_ambientLight, ambientLight);
 		shader.setUniform(loc_directionalLight, directionalLight.getDirection());
 		ItemEntityManager manager = Cubyz.world.itemEntityManager;
-		for(int i = 0; i < manager.size; i++) {
+		for(int ii = 0; ii < manager.size; ii++) {
+			int i = manager.indices[ii] & 0xffff;
 			if (manager.itemStacks[i].getItem() instanceof ItemBlock) {
 				int index = i;
 				int index3 = 3*i;
