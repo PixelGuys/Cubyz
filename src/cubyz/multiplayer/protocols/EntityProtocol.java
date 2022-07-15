@@ -100,11 +100,13 @@ public class EntityProtocol extends Protocol {
 					entityChanges.add(new JsonInt(ent.id));
 				}
 			}
-			entityChanges.add(new JsonOthers(true, false));
-			for(JsonElement elem : itemEntities.lastUpdates.array) {
-				entityChanges.add(elem);
+			if(!itemEntities.lastUpdates.array.isEmpty()) {
+				entityChanges.add(new JsonOthers(true, false));
+				for(JsonElement elem : itemEntities.lastUpdates.array) {
+					entityChanges.add(elem);
+				}
+				itemEntities.lastUpdates.array.clear();
 			}
-			itemEntities.lastUpdates.array.clear();
 
 			if(!entityChanges.array.isEmpty()) {
 				for(User user : Server.users) {
