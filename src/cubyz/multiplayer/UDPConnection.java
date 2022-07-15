@@ -28,7 +28,7 @@ public class UDPConnection {
 	private final IntSimpleList[] receivedPackets = new IntSimpleList[]{new IntSimpleList(), new IntSimpleList(), new IntSimpleList()}; // Resend the confirmation 3 times, to make sure the server doesn't need to resend stuff.
 	private final ReceivedPackage[] lastReceivedPackets = new ReceivedPackage[65536];
 
-	int lastIncompletePackage = 0;
+	int lastIncompletePacket = 0;
 
 
 	int lastKeepAliveSent = 0, lastKeepAliveReceived = 0, otherKeepAliveReceived = 0;
@@ -106,13 +106,15 @@ public class UDPConnection {
 	void receiveKeepAlive(byte[] data, int offset, int length) {
 		otherKeepAliveReceived = Bits.getInt(data, offset);
 		lastKeepAliveReceived = Bits.getInt(data, offset + 4);
-		for(int i = offset + 8; i + 4 <= offset + length; i += 4) {
-			int id = Bits.getInt(data, i);
+		for(int i = offset + 8; i + 8 <= offset + length; i += 8) {
+			int start = Bits.getInt(data, i);
+			int len = Bits.getInt(data, i + 4);
 			synchronized(unconfirmedPackets) {
 				for(int j = 0; j < unconfirmedPackets.size; j++) {
-					if(unconfirmedPackets.array[j].id == id) {
+					int diff = unconfirmedPackets.array[j].id - start;
+					if(diff >= 0 && diff < len) {
 						unconfirmedPackets.remove(j);
-						break; // There must not be any duplicates.
+						j--;
 					}
 				}
 			}
@@ -120,31 +122,61 @@ public class UDPConnection {
 	}
 
 	void sendKeepAlive() {
-		int dataLength = 0;
 		byte[] data;
 		synchronized(receivedPackets) {
+			IntSimpleList runLengthEncodingStarts = new IntSimpleList();
+			IntSimpleList runLengthEncodingLengths = new IntSimpleList();
 			for(var packets : receivedPackets) {
-				dataLength += packets.size;
-			}
-			if(dataLength + 9 >= MAX_PACKET_SIZE/4) {
-				dataLength = (MAX_PACKET_SIZE - 9)/4;
-			}
-			data = new byte[dataLength*4 + 8];
-			Bits.putInt(data, 0, lastKeepAliveSent++);
-			Bits.putInt(data, 4, otherKeepAliveReceived);
-			int cur = 8;
-			for(int i = receivedPackets.length - 1; i >= 0; i--) {
-				while(receivedPackets[i].size > 0 && cur < data.length) {
-					receivedPackets[i].size--;
-					int id = receivedPackets[i].array[receivedPackets[i].size];
-					Bits.putInt(data, cur, id);
-					cur += 4;
-					if(i != receivedPackets.length - 1) {
-						receivedPackets[i + 1].add(id);
+				outer:
+				for(int i = 0; i < packets.size; i++) {
+					int value = packets.array[i];
+					int leftRegion = -1;
+					int rightRegion = -1;
+					for(int reg = 0; reg < runLengthEncodingStarts.size; reg++) {
+						int diff = value - runLengthEncodingStarts.array[reg];
+						if(diff >= 0 && diff < runLengthEncodingLengths.array[reg]) {
+							continue outer; // Value is already in the list.
+						}
+						if(diff == runLengthEncodingLengths.array[reg]) {
+							leftRegion = reg;
+						}
+						if(diff == -1) {
+							rightRegion = reg;
+						}
+					}
+					if(leftRegion == -1) {
+						if(rightRegion == -1) {
+							runLengthEncodingStarts.add(value);
+							runLengthEncodingLengths.add(1);
+						} else {
+							runLengthEncodingStarts.array[rightRegion]--;
+							runLengthEncodingLengths.array[rightRegion]++;
+						}
+					} else if(rightRegion == -1) {
+						runLengthEncodingLengths.array[leftRegion]++;
+					} else {
+						// Needs to combine the regions:
+						runLengthEncodingLengths.array[leftRegion] += runLengthEncodingLengths.array[rightRegion] + 1;
+						runLengthEncodingStarts.removeIndex(rightRegion);
+						runLengthEncodingLengths.removeIndex(rightRegion);
 					}
 				}
 			}
-			assert(cur - 8 == dataLength*4);
+			IntSimpleList putBackToFront = receivedPackets[receivedPackets.length - 1];
+			System.arraycopy(receivedPackets, 0, receivedPackets, 1, receivedPackets.length - 1);
+			receivedPackets[0] = putBackToFront;
+			receivedPackets[0].clear();
+			data = new byte[runLengthEncodingStarts.size*8 + 8];
+			Bits.putInt(data, 0, lastKeepAliveSent++);
+			Bits.putInt(data, 4, otherKeepAliveReceived);
+			int cur = 8;
+			for(int i = 0; i < runLengthEncodingStarts.size; i++) {
+				Bits.putInt(data, cur, runLengthEncodingStarts.array[i]);
+				cur += 4;
+				Bits.putInt(data, cur, runLengthEncodingLengths.array[i]);
+				cur += 4;
+			}
+			assert(cur == data.length);
 		}
 		send(Protocols.KEEP_ALIVE, data);
 		synchronized(unconfirmedPackets) {
@@ -181,11 +213,11 @@ public class UDPConnection {
 		byte protocol;
 		while(true) {
 			synchronized(lastReceivedPackets) {
-				int id = lastIncompletePackage;
+				int id = lastIncompletePacket;
 				int len = 0;
 				if(lastReceivedPackets[id & 65535] == null)
 					return;
-				while(id != lastIncompletePackage + 65536) {
+				while(id != lastIncompletePacket + 65536) {
 					if(lastReceivedPackets[id & 65535] == null)
 						return;
 					len += lastReceivedPackets[id & 65535].packet.length - IMPORTANT_HEADER_SIZE;
@@ -196,12 +228,12 @@ public class UDPConnection {
 				id++;
 				data = new byte[len];
 				int offset = 0;
-				protocol = lastReceivedPackets[lastIncompletePackage & 65535].packet[0];
-				for(; lastIncompletePackage != id; lastIncompletePackage++) {
-					byte[] packet = lastReceivedPackets[lastIncompletePackage & 65535].packet;
+				protocol = lastReceivedPackets[lastIncompletePacket & 65535].packet[0];
+				for(; lastIncompletePacket != id; lastIncompletePacket++) {
+					byte[] packet = lastReceivedPackets[lastIncompletePacket & 65535].packet;
 					System.arraycopy(packet, IMPORTANT_HEADER_SIZE, data, offset, packet.length - IMPORTANT_HEADER_SIZE);
 					offset += packet.length - IMPORTANT_HEADER_SIZE;
-					lastReceivedPackets[lastIncompletePackage & 65535] = null;
+					lastReceivedPackets[lastIncompletePacket & 65535] = null;
 				}
 			}
 			Protocols.list[protocol].receive(this, data, 0, data.length);
@@ -228,7 +260,7 @@ public class UDPConnection {
 		Protocols.bytesReceived[protocol] += len + 20 + 8; // Including IP header and udp header
 		if(Protocols.list[protocol & 0xff].isImportant) {
 			int id = Bits.getInt(data, 2);
-			if(id - lastIncompletePackage >= 65536) {
+			if(id - lastIncompletePacket >= 65536) {
 				Logger.warning("Many incomplete packages. Cannot process any more packages for now.");
 				return;
 			}
@@ -236,7 +268,7 @@ public class UDPConnection {
 				receivedPackets[0].add(id);
 			}
 			synchronized(lastReceivedPackets) {
-				if(id - lastIncompletePackage < 0 || lastReceivedPackets[id & 65535] != null) {
+				if(id - lastIncompletePacket < 0 || lastReceivedPackets[id & 65535] != null) {
 					Logger.warning("Already received it: "+id);
 					return; // Already received the package in the past.
 				}
