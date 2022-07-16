@@ -17,15 +17,16 @@ public abstract class Pacer {
         updateCachedPeriodTimes();
     }
     public void start() throws InterruptedException {
-        while (running){
+        while(running) {
             update();
             // Sync:
-            if (System.nanoTime() - previousTime < cached_periodTimeNanoSec) {
-                Thread.sleep((cached_periodTimeNanoSec - (System.nanoTime() - previousTime))/1000000);
+            long currentTime = System.nanoTime();
+            if(currentTime - previousTime < cached_periodTimeNanoSec) {
+                Thread.sleep((cached_periodTimeNanoSec - (currentTime - previousTime))/1000000);
                 previousTime += cached_periodTimeNanoSec;
             } else {
                 Logger.warning(threadName.concat(" is lagging behind."));
-                previousTime = System.nanoTime();
+                previousTime = currentTime;
             }
         }
     }
