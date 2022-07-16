@@ -1,6 +1,8 @@
 package cubyz.multiplayer;
 
 import cubyz.Constants;
+import cubyz.multiplayer.server.Server;
+import cubyz.multiplayer.server.User;
 import cubyz.utils.Logger;
 import cubyz.utils.datastructures.IntSimpleList;
 import cubyz.utils.datastructures.SimpleList;
@@ -34,6 +36,7 @@ public class UDPConnection {
 	int lastKeepAliveSent = 0, lastKeepAliveReceived = 0, otherKeepAliveReceived = 0;
 
 	protected boolean disconnected = false;
+	public boolean handShakeComplete = false;
 
 	public UDPConnection(UDPConnectionManager manager, String ipPort) {
 		if(ipPort.contains("?")) {
@@ -242,6 +245,9 @@ public class UDPConnection {
 
 	public void receive(byte[] data, int len) {
 		byte protocol = data[0];
+		if(!handShakeComplete && protocol != Protocols.HANDSHAKE.id && protocol != Protocols.KEEP_ALIVE.id) {
+			return; // Reject all non-handshake packets until the handshake is done.
+		}
 		if(Math.random() < 0.1) {
 			//Logger.debug("Dropped it :P");
 			return; // Drop packet :P
@@ -260,6 +266,18 @@ public class UDPConnection {
 		Protocols.bytesReceived[protocol] += len + 20 + 8; // Including IP header and udp header
 		if(Protocols.list[protocol & 0xff].isImportant) {
 			int id = Bits.getInt(data, 2);
+			if(handShakeComplete && protocol == Protocols.HANDSHAKE.id && id == 0) { // Got a new "first" packet from client. So the client tries to reconnect, but we still think it's connected.
+				if(this instanceof User) {
+					Server.disconnect((User)this);
+					disconnected = true;
+					manager.removeConnection(this);
+					new Thread(() -> {
+						Server.connect(new User(manager, remoteAddress.getHostAddress()+":"+remotePort));
+					}).start();
+				} else {
+					throw new IllegalStateException("Server 'reconnected'? This makes no sense and the game can't handle that.");
+				}
+			}
 			if(id - lastIncompletePacket >= 65536) {
 				Logger.warning("Many incomplete packages. Cannot process any more packages for now.");
 				return;

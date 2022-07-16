@@ -9,7 +9,6 @@ import cubyz.multiplayer.server.User;
 import cubyz.utils.Logger;
 import cubyz.utils.Utils;
 import cubyz.utils.Zipper;
-import cubyz.world.ClientWorld;
 import pixelguys.json.JsonObject;
 import pixelguys.json.JsonParser;
 
@@ -64,6 +63,7 @@ public class HandshakeProtocol extends Protocol {
 					state.put(conn, STEP_SERVER_DATA);
 					conn.send(this, outData);
 					state.remove(conn); // Handshake is done.
+					conn.handShakeComplete = true;
 					synchronized(conn) { // Notify the waiting server thread.
 						conn.notifyAll();
 					}
@@ -80,6 +80,7 @@ public class HandshakeProtocol extends Protocol {
 					json = JsonParser.parseObjectFromString(new String(data, offset+1, length - 1, StandardCharsets.UTF_8));
 					((ServerConnection)conn).world.finishHandshake(json);
 					state.remove(conn); // Handshake is done.
+					conn.handShakeComplete = true;
 
 					synchronized(conn) { // Notify the waiting client thread.
 						conn.notifyAll();
