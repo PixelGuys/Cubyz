@@ -158,7 +158,7 @@ public final class UDPConnectionManager extends Thread {
 				}
 
 				// Send a keep-alive packet roughly every 100 ms:
-				if(System.currentTimeMillis() - lastTime > 100) {
+				if(System.currentTimeMillis() - lastTime > 100 && running) {
 					lastTime = System.currentTimeMillis();
 					for(UDPConnection connection : connections.toArray(new UDPConnection[0])) {
 						connection.sendKeepAlive();
