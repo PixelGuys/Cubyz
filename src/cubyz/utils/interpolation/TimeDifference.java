@@ -16,6 +16,10 @@ public class TimeDifference {
 		} else if((short)(timeDifference -  difference) < 0) {
 			difference--;
 		}
+	}
 
+	public void reset() {
+		difference = 0;
+		firstValue = true;
 	}
 }

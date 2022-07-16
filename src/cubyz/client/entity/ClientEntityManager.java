@@ -44,6 +44,11 @@ public final class ClientEntityManager {
 		}
 	}
 
+	public static void clear() {
+		entities.clear();
+		timeDifference.reset();
+	}
+
 	public static void serverUpdate(short time, byte[] data, int offset, int length) {
 		timeDifference.addDataPoint(time);
 		int num = length/(4+24+24+12);

@@ -7,6 +7,7 @@ import java.util.*;
 import javax.swing.JOptionPane;
 
 import cubyz.api.ClientRegistries;
+import cubyz.client.entity.ClientEntityManager;
 import cubyz.multiplayer.Protocols;
 import org.lwjgl.Version;
 import org.lwjgl.opengl.GL12;
@@ -78,6 +79,7 @@ public class GameLogic {
 		Cubyz.player = null;
 		Cubyz.world = null;
 		Cubyz.chunkTree.cleanup();
+		ClientEntityManager.clear();
 		MusicManager.stop();
 		
 		ItemTextures.clear();
