@@ -85,7 +85,7 @@ public class MultiplayerJoinGui extends MenuGUI {
 	public MultiplayerJoinGui() {
 		backgroundThread = new Thread(() -> {
 			synchronized(this) {
-				connection = new UDPConnectionManager(Constants.DEFAULT_PORT);
+				connection = new UDPConnectionManager(Constants.DEFAULT_PORT, true);
 			}
 			ip.setText(connection.externalIPPort.replaceAll(":"+Constants.DEFAULT_PORT, ""));
 		});

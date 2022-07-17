@@ -22,6 +22,9 @@ public class InviteCommand extends CommandBase {
 	public void commandExecute(CommandSource source, String[] args) {
 		if(Server.world != null && args.length == 2) {
 			new Thread(() -> {
+				if(!Server.connectionManager.online) {
+					Server.connectionManager.makeOnline();
+				}
 				try {
 					Server.connect(new User(Server.connectionManager, args[1]));
 				} catch(Exception e) {

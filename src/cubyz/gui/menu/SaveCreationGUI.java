@@ -111,7 +111,7 @@ public class SaveCreationGUI extends MenuGUI {
 					Thread.sleep(10);
 				} catch(InterruptedException e) {}
 			}
-			GameLauncher.logic.loadWorld(new ClientWorld("127.0.0.1", new UDPConnectionManager(Constants.DEFAULT_PORT+1), VisibleChunk.class)); // TODO: Don't go over the local network in singleplayer.
+			GameLauncher.logic.loadWorld(new ClientWorld("127.0.0.1", new UDPConnectionManager(Constants.DEFAULT_PORT+1, false), VisibleChunk.class)); // TODO: Don't go over the local network in singleplayer.
 		});
 
 		cancel.setText(TextKey.createTextKey("gui.cubyz.general.cancel"));

@@ -13,11 +13,12 @@ public final class UDPConnectionManager extends Thread {
 	private final ArrayList<UDPConnection> connections = new ArrayList<>();
 	private final ArrayList<DatagramPacket> requests = new ArrayList<>();
 	private volatile boolean running = true;
-	public final String externalIPPort;
+	public String externalIPPort = null;
 	private InetAddress externalAddress = null;
 	private int externalPort = 0;
+	public boolean online = false;
 
-	public UDPConnectionManager(int localPort) {
+	public UDPConnectionManager(int localPort, boolean online) {
 		// Connect
 		DatagramSocket socket = null;
 		//TODO: Might want to use SSL or something similar to encode the message
@@ -34,21 +35,29 @@ public final class UDPConnectionManager extends Thread {
 		receivedPacket = new DatagramPacket(new byte[65536], 65536);
 
 		start();
+		if(online) {
+			makeOnline();
+		}
+	}
 
-		externalIPPort = STUN.requestIPPort(this);
-		String[] ipPort;
-		if(externalIPPort.contains("?")) {
-			ipPort = externalIPPort.split(":\\?");
-		} else {
-			ipPort = externalIPPort.split(":");
+	public void makeOnline() {
+		if(!online) {
+			externalIPPort = STUN.requestIPPort(this);
+			String[] ipPort;
+			if(externalIPPort.contains("?")) {
+				ipPort = externalIPPort.split(":\\?");
+			} else {
+				ipPort = externalIPPort.split(":");
+			}
+			try {
+				externalAddress = InetAddress.getByName(ipPort[0]);
+			} catch(UnknownHostException e) {
+				Logger.error(e);
+				throw new IllegalArgumentException("externalIPPort is invalid.");
+			}
+			externalPort = Integer.parseInt(ipPort[1]);
+			online = true;
 		}
-		try {
-			externalAddress = InetAddress.getByName(ipPort[0]);
-		} catch(UnknownHostException e) {
-			Logger.error(e);
-			throw new IllegalArgumentException("externalIPPort is invalid.");
-		}
-		externalPort = Integer.parseInt(ipPort[1]);
 	}
 
 	public void send(DatagramPacket packet) {

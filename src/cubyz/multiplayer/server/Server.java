@@ -2,6 +2,7 @@ package cubyz.multiplayer.server;
 
 import cubyz.Constants;
 import cubyz.api.Side;
+import cubyz.client.GameLauncher;
 import cubyz.modding.ModLoader;
 import cubyz.multiplayer.Protocols;
 import cubyz.multiplayer.UDPConnectionManager;
@@ -11,7 +12,7 @@ import cubyz.utils.datastructures.SimpleList;
 import cubyz.world.ServerWorld;
 import cubyz.world.entity.Entity;
 
-public final class Server extends Pacer{
+public final class Server extends Pacer {
 	public static final int UPDATES_PER_SEC = 20;
 	public static final int UPDATES_TIME_NS = 1_000_000_000 / UPDATES_PER_SEC;
 	public static final float UPDATES_TIME_S = UPDATES_TIME_NS / 10e9f;
@@ -34,9 +35,13 @@ public final class Server extends Pacer{
 
 		Server.world = new ServerWorld(args[0], null);
 
-		connectionManager = new UDPConnectionManager(Constants.DEFAULT_PORT);
-		User user = new User(connectionManager, "localhost:5679");
-		connect(user);
+		if(GameLauncher.renderer == null) { // headless server
+			connectionManager = new UDPConnectionManager(Constants.DEFAULT_PORT, true);
+		} else { // Singleplayer
+			connectionManager = new UDPConnectionManager(Constants.DEFAULT_PORT, false);
+			User user = new User(connectionManager, "localhost:5679");
+			connect(user);
+		}
 
 		try {
 			server.setFrequency(UPDATES_PER_SEC);
