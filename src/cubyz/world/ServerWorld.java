@@ -249,8 +249,10 @@ public class ServerWorld extends World {
 	}
 
 	@Override
-	public void queueChunk(ChunkData ch) {
-		queueChunk(ch, null);
+	public void queueChunks(ChunkData[] chunks) {
+		for(ChunkData ch : chunks) {
+			queueChunk(ch, null);
+		}
 	}
 
 	public void queueChunk(ChunkData ch, User source) {

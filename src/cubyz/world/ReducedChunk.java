@@ -125,7 +125,7 @@ public class ReducedChunk extends Chunk {
 						wy -= chunkSize*voxelSize/2;
 						wz -= chunkSize*voxelSize/2;
 					}
-					world.queueChunk(new ChunkData(wx, wy, wz, voxelSize));
+					world.queueChunks(new ChunkData[] {new ChunkData(wx, wy, wz, voxelSize)});
 				}
 			}
 		}

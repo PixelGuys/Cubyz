@@ -195,8 +195,8 @@ public class ClientWorld extends World {
 	}
 
 	@Override
-	public void queueChunk(ChunkData ch) {
-		Protocols.CHUNK_REQUEST.sendRequest(serverConnection, ch);
+	public void queueChunks(ChunkData[] chunks) {
+		Protocols.CHUNK_REQUEST.sendRequest(serverConnection, chunks);
 	}
 
 	@Override

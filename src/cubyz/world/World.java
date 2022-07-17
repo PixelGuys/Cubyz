@@ -92,7 +92,7 @@ public abstract class World {
 
 	public abstract void update();
 
-	public abstract void queueChunk(ChunkData ch);
+	public abstract void queueChunks(ChunkData[] chunks);
 	
 	public abstract MetaChunk getMetaChunk(int wx, int wy, int wz);
 	

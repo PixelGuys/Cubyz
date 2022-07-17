@@ -197,10 +197,8 @@ public class RenderOctTree {
 		lastZ = pz;
 		lastRD = renderDistance;
 		lastFactor = LODFactor;
-		// Make requests AFTER updating the list, to avoid concurrency issues:
-		for(ChunkData data : meshRequests) {
-			Cubyz.world.queueChunk(data);
-		}
+		// Make requests after updating the list, to avoid concurrency issues and reduce number of requests:
+		Cubyz.world.queueChunks(meshRequests.toArray(new ChunkData[0]));
 	}
 
 	public OctTreeNode findNode(ChunkData chunkData) {

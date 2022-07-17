@@ -4,6 +4,7 @@ import cubyz.client.Cubyz;
 import cubyz.gui.input.Keybindings;
 import cubyz.multiplayer.Protocols;
 import cubyz.rendering.Camera;
+import cubyz.world.ChunkData;
 import cubyz.world.NormalChunk;
 import cubyz.world.World;
 import cubyz.world.blocks.Blocks;
@@ -44,7 +45,7 @@ public class ClientPlayer extends Player {
 		NormalChunk ch = Cubyz.world.getChunk((int) px, (int) py, (int) pz);
 		if (ch == null || !ch.isGenerated()) {
 			if (ch != null)
-				Cubyz.world.queueChunk(ch); // Seems like the chunk didn't get loaded correctly.
+				Cubyz.world.queueChunks(new ChunkData[] {ch}); // Seems like the chunk didn't get loaded correctly.
 			return;
 		}
 		if (Cubyz.gameUI.doesGUIPauseGame() || Cubyz.world == null) {
