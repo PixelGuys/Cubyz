@@ -7,6 +7,8 @@ import java.net.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import static cubyz.Constants.CONNECTION_TIMEOUT;
+
 public final class UDPConnectionManager extends Thread {
 	private final DatagramSocket socket;
 	private final DatagramPacket receivedPacket;
@@ -170,7 +172,13 @@ public final class UDPConnectionManager extends Thread {
 				if(System.currentTimeMillis() - lastTime > 100 && running) {
 					lastTime = System.currentTimeMillis();
 					for(UDPConnection connection : connections.toArray(new UDPConnection[0])) {
-						connection.sendKeepAlive();
+						if(lastTime - connection.lastConnection > CONNECTION_TIMEOUT && connection.isConnected()) {
+							Logger.info("timeout");
+							// Timeout a connection if it was connect at some point. New connections are not timed out because that could annoy players(having to restart the connection several times).
+							connection.disconnect();
+						} else {
+							connection.sendKeepAlive();
+						}
 					}
 					if(connections.isEmpty() && externalAddress != null) {
 						// Send a message to external ip, to keep the port open:

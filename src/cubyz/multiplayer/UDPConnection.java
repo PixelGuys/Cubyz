@@ -38,6 +38,8 @@ public class UDPConnection {
 	protected boolean disconnected = false;
 	public boolean handShakeComplete = false;
 
+	public long lastConnection = System.currentTimeMillis();
+
 	public UDPConnection(UDPConnectionManager manager, String ipPort) {
 		if(ipPort.contains("?")) {
 			bruteforcingPort = true;
@@ -263,6 +265,7 @@ public class UDPConnection {
 			}).start();
 			return;
 		}
+		lastConnection = System.currentTimeMillis();
 		Protocols.bytesReceived[protocol] += len + 20 + 8; // Including IP header and udp header
 		if(Protocols.list[protocol & 0xff].isImportant) {
 			int id = Bits.getInt(data, 2);
