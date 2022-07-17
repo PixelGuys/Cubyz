@@ -259,6 +259,8 @@ public class RenderOctTree {
 	}
 	
 	public void cleanup() {
+		lastRD = 0;
+		lastFactor = 0;
 		for(OctTreeNode node : roots.values()) {
 			node.cleanup();
 		}
