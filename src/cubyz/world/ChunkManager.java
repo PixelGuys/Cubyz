@@ -22,9 +22,11 @@ public class ChunkManager {
 
 	public final TerrainGenerationProfile terrainGenerationProfile;
 
-	// There will be at most 1 GiB of reduced chunks in here.
-	private static final int CHUNK_CACHE_MASK = 2047;
-	private final Cache<ReducedChunk> reducedChunkCache = new Cache<>(new ReducedChunk[CHUNK_CACHE_MASK+1][4]);
+	// There will be at most 1 GiB of reduced and 500 MB of normal chunks in here.
+	private static final int REDUCED_CHUNK_CACHE_MASK = 2047;
+	private static final int NORMAL_CHUNK_CACHE_MASK = 1023;
+	private final Cache<ReducedChunk> reducedChunkCache = new Cache<>(new ReducedChunk[REDUCED_CHUNK_CACHE_MASK+1][4]);
+	private final Cache<NormalChunk> normalChunkCache = new Cache<>(new NormalChunk[NORMAL_CHUNK_CACHE_MASK+1][4]);
 	// There will be at most 1 GiB of map data in here.
 	private static final int[] MAP_CACHE_MASK = {
 		7, // 256 MiB // 4(1 in best-case) maps are needed at most for each player. So 32 will be enough for 8(32 in best case) player groups.
@@ -115,7 +117,7 @@ public class ChunkManager {
 			// If the chunk doesn't exist yet, it is generated.
 			// If the chunk isn't generated yet, nothing is done.
 			// If the chunk is already fully generated, it is returned.
-			NormalChunk chunk = world.getChunk(ch.wx, ch.wy, ch.wz);
+			NormalChunk chunk = getNormalChunkFromCache(ch);
 			if(chunk != null && chunk.isLoaded()) {
 				if(source != null) {
 					Protocols.CHUNK_TRANSMISSION.sendChunk(source, chunk);
@@ -135,12 +137,12 @@ public class ChunkManager {
 			NormalChunk chunk;
 			if(ch instanceof NormalChunk) {
 				chunk = (NormalChunk)ch;
+				if(!chunk.isLoaded()) { // Prevent reloading.
+					chunk.generate(world.getSeed(), terrainGenerationProfile);
+					chunk.load();
+				}
 			} else {
-				chunk = new NormalChunk(world, ch.wx, ch.wy, ch.wz); // TODO: Cache this.
-			}
-			if(!chunk.isLoaded()) { // Prevent reloading.
-				chunk.generate(world.getSeed(), terrainGenerationProfile);
-				chunk.load();
+				chunk = getOrGenerateNormalChunk(ch);
 			}
 			if(source != null) {
 				Protocols.CHUNK_TRANSMISSION.sendChunk(source, chunk);
@@ -198,7 +200,7 @@ public class ChunkManager {
 		wy &= chunkMask;
 		wz &= chunkMask;
 		ChunkData data = new ChunkData(wx, wy, wz, voxelSize);
-		int hash = data.hashCode() & CHUNK_CACHE_MASK;
+		int hash = data.hashCode() & REDUCED_CHUNK_CACHE_MASK;
 		ReducedChunk res = reducedChunkCache.find(data, hash);
 		if (res != null) return res;
 		synchronized(reducedChunkCache.cache[hash]) {
@@ -212,6 +214,33 @@ public class ChunkManager {
 				old.clean();
 		}
 		return res;
+	}
+
+	/**
+	 * Only for internal use. Generates a normal chunk at a given location, or if possible gets it from the cache.
+	 * @param data
+	 * @return
+	 */
+	public NormalChunk getOrGenerateNormalChunk(ChunkData data) {
+		int hash = data.hashCode() & NORMAL_CHUNK_CACHE_MASK;
+		NormalChunk res = normalChunkCache.find(data, hash);
+		if (res != null) return res;
+		synchronized(normalChunkCache.cache[hash]) {
+			res = normalChunkCache.find(data, hash);
+			if (res != null) return res;
+			// Generate a new chunk:
+			res = new NormalChunk(world, data.wx, data.wy, data.wz);
+			res.generate(world.getSeed(), terrainGenerationProfile);
+			res.load();
+			NormalChunk old = normalChunkCache.addToCache(res, hash);
+			if(old != null)
+				old.clean();
+		}
+		return res;
+	}
+	public NormalChunk getNormalChunkFromCache(ChunkData data) {
+		int hash = data.hashCode() & NORMAL_CHUNK_CACHE_MASK;
+		return normalChunkCache.find(data, hash);
 	}
 
 	public void cleanup() {
