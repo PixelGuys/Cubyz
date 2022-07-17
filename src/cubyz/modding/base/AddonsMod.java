@@ -331,7 +331,7 @@ public class AddonsMod implements Mod {
 				if (item == null) {
 					Logger.warning("Skipping unknown item \"" + parts[1].replaceAll("\\s", "") + "\" in recipe parsing.");
 				} else {
-					shortCuts.put(parts[0].replaceAll("\\s", ""), CubyzRegistries.ITEM_REGISTRY.getByID(parts[1].replaceAll("\\s", ""))); // Remove all whitespaces, wherever they might be. Not necessarily the most robust way, but it should work.
+					shortCuts.put(parts[0].replaceAll("\\s", ""), itemRegistry.getByID(parts[1].replaceAll("\\s", ""))); // Remove all whitespaces, wherever they might be. Not necessarily the most robust way, but it should work.
 				}
 			} else if (line.startsWith("shaped")) {
 				// Start of a shaped pattern
@@ -359,7 +359,7 @@ public class AddonsMod implements Mod {
 				if (shortCuts.containsKey(result)) {
 					item = shortCuts.get(result);
 				} else {
-					item = CubyzRegistries.ITEM_REGISTRY.getByID(result);
+					item = itemRegistry.getByID(result);
 				}
 				if (item == null) {
 					Logger.warning("Skipping recipe with unknown item \"" + result + "\" in recipe parsing.");
@@ -391,7 +391,7 @@ public class AddonsMod implements Mod {
 					} else if (shortCuts.containsKey(words[j])) {
 						item = shortCuts.get(words[j]);
 					} else {
-						item = CubyzRegistries.ITEM_REGISTRY.getByID(words[j]);
+						item = itemRegistry.getByID(words[j]);
 						if (item == null) {
 							startedRecipe = false; // Skip unknown recipes.
 							Logger.warning("Skipping recipe with unknown item \"" + words[j] + "\" in recipe parsing.");

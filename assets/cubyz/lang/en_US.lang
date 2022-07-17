@@ -48,6 +48,7 @@ block.cubyz.grass.name=Grass
 block.cubyz.gravel.name=Gravel
 block.cubyz.ice.name=Ice
 block.cubyz.sand.name=Sand
+block.cubyz.sandstone.name=Sandstone
 block.cubyz.snow.name=Snow
 block.cubyz.mossy_cobblestone.name=Mossy Cobblestone
 block.cubyz.cobblestone.name=Cobblestone
