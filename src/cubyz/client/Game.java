@@ -1,20 +1,17 @@
 package cubyz.client;
 
+import cubyz.gui.menu.MainMenuGUI;
 import cubyz.utils.Logger;
 import cubyz.rendering.Window;
 
 public class Game {
 	protected volatile boolean running;
-	private Thread renderThread;
+	private volatile boolean shouldQuitWorld = false;
 	
 	private int fps;
 	
 	public int getFPS() {
 		return fps;
-	}
-
-	public Thread getRenderThread() {
-		return renderThread;
 	}
 
 	public void start() {
@@ -26,8 +23,7 @@ public class Game {
 		}
 		GameLauncher.input.init();
 		Window.show();
-		renderThread = Thread.currentThread();
-		renderThread.setPriority(Thread.MAX_PRIORITY);
+		Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
 		loop();
 		GameLauncher.logic.cleanup();
 	}
@@ -56,7 +52,18 @@ public class Game {
 			if (Cubyz.player != null)
 				Cubyz.player.update();
 			++frames;
+			if(shouldQuitWorld) {
+				shouldQuitWorld = false;
+				if(Cubyz.world != null) {
+					GameLauncher.logic.quitWorld();
+					Cubyz.gameUI.setMenu(new MainMenuGUI());
+				}
+			}
 		}
+	}
+
+	public void quitWorld() {
+		shouldQuitWorld = true;
 	}
 
 	public void handleInput() {

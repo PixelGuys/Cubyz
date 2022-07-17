@@ -1,6 +1,6 @@
 package cubyz.multiplayer.client;
 
-import cubyz.client.Cubyz;
+import cubyz.client.GameLauncher;
 import cubyz.multiplayer.Protocols;
 import cubyz.multiplayer.UDPConnection;
 import cubyz.multiplayer.UDPConnectionManager;
@@ -21,7 +21,7 @@ public class ServerConnection extends UDPConnection {
 	public void disconnect() {
 		if(!disconnected) {
 			super.disconnect();
-			Cubyz.world.cleanup();
+			GameLauncher.instance.quitWorld();
 		}
 	}
 }

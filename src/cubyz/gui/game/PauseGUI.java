@@ -11,7 +11,6 @@ import cubyz.gui.components.Component;
 import cubyz.gui.input.Keybindings;
 import cubyz.gui.input.Keyboard;
 import cubyz.gui.input.Mouse;
-import cubyz.gui.menu.MainMenuGUI;
 import cubyz.gui.menu.settings.SettingsGUI;
 
 import static cubyz.client.ClientSettings.GUI_SCALE;
@@ -48,8 +47,7 @@ public class PauseGUI extends MenuGUI {
 		});
 		
 		exit.setOnAction(() -> {
-			GameLauncher.logic.quitWorld();
-			Cubyz.gameUI.setMenu(new MainMenuGUI());
+			GameLauncher.instance.quitWorld();
 		});
 		
 		reload.setOnAction(() -> {
