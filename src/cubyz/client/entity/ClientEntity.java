@@ -25,14 +25,14 @@ public class ClientEntity {
 	public final String name;
 
 	public ClientEntity(int id, EntityType type, double height, String name) {
-		interpolatedValues = new GenericInterpolation(new double[3]);
+		interpolatedValues = new GenericInterpolation(new double[6]);
 		this.id = id;
 		this.type = type;
 		this.height = height;
 		this.name = name;
 	}
 
-	public void updatePosition(double[] position, double[] velocity, Vector3f rotation, short time) {
+	public void updatePosition(double[] position, double[] velocity, short time) {
 		this.rotation.set(rotation);
 		interpolatedValues.updatePosition(position, velocity, time);
 	}
@@ -42,5 +42,8 @@ public class ClientEntity {
 		this.position.x = interpolatedValues.outPosition[0];
 		this.position.y = interpolatedValues.outPosition[1];
 		this.position.z = interpolatedValues.outPosition[2];
+		this.rotation.x = (float)interpolatedValues.outPosition[3];
+		this.rotation.y = (float)interpolatedValues.outPosition[4];
+		this.rotation.z = (float)interpolatedValues.outPosition[5];
 	}
 }

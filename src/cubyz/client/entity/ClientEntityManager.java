@@ -4,7 +4,6 @@ import cubyz.api.CubyzRegistries;
 import cubyz.utils.datastructures.SimpleList;
 import cubyz.utils.interpolation.TimeDifference;
 import cubyz.utils.math.Bits;
-import org.joml.Vector3f;
 import pixelguys.json.JsonObject;
 
 public final class ClientEntityManager {
@@ -51,31 +50,29 @@ public final class ClientEntityManager {
 
 	public static void serverUpdate(short time, byte[] data, int offset, int length) {
 		timeDifference.addDataPoint(time);
-		int num = length/(4+24+24+12);
+		int num = length/(4+24+12+24);
 		for(int i = 0; i < num; i++) {
 			int id = Bits.getInt(data, offset);
 			offset += 4;
 			double[] position = new double[]{
 				Bits.getDouble(data, offset),
 				Bits.getDouble(data, offset + 8),
-				Bits.getDouble(data, offset + 16)
+				Bits.getDouble(data, offset + 16),
+				Bits.getFloat(data, offset + 24),
+				Bits.getFloat(data, offset + 28),
+				Bits.getFloat(data, offset + 32),
 			};
-			offset += 24;
+			offset += 36;
 			double[] velocity = new double[]{
 				Bits.getDouble(data, offset),
 				Bits.getDouble(data, offset + 8),
-				Bits.getDouble(data, offset + 16)
+				Bits.getDouble(data, offset + 16),
+				0, 0, 0,
 			};
 			offset += 24;
-			Vector3f rotation = new Vector3f(
-				Bits.getFloat(data, offset),
-				Bits.getFloat(data, offset + 4),
-				Bits.getFloat(data, offset + 8)
-			);
-			offset += 12;
 			for(ClientEntity ent : entities.toArray()) {
 				if(ent.id == id) {
-					ent.updatePosition(position, velocity, rotation, time);
+					ent.updatePosition(position, velocity, time);
 				}
 			}
 		}

@@ -85,15 +85,20 @@ public class GenericInterpolation {
 				outVelocity[i] *= Math.pow(0.5, deltaTime);
 			}
 		} else {
-			// Interpolates using cubic splines.
 			double tScale = ((short)(lastTimes[currentPoint] - lastTime))/1000.0;
 			double t = ((short)(time - lastTime))/1000.0;
 			for(int i = 0; i < Math.min(lastPosition[currentPoint].length, outPosition.length); i++) {
-				double[] newValue = evaluateSplineAt(t, tScale, outPosition[i], outVelocity[i], lastPosition[currentPoint][i], lastVelocity[currentPoint][i]);
-				// Just move on with the current velocity.
-				outPosition[i] = newValue[0];
-				// Add some drag to prevent moving far away on short connection loss.
-				outVelocity[i] = newValue[1];
+				if(outVelocity[i] == 0 && lastVelocity[currentPoint][i] == 0) {
+					// Use linear interpolation when velocity is zero to avoid wobbly movement.
+					outPosition[i] += (lastPosition[currentPoint][i] - outPosition[i])*t/tScale;
+				} else {
+					// Use cubic interpolation to interpolate the velocity as well.
+					double[] newValue = evaluateSplineAt(t, tScale, outPosition[i], outVelocity[i], lastPosition[currentPoint][i], lastVelocity[currentPoint][i]);
+					// Just move on with the current velocity.
+					outPosition[i] = newValue[0];
+					// Add some drag to prevent moving far away on short connection loss.
+					outVelocity[i] = newValue[1];
+				}
 			}
 		}
 	}

@@ -69,18 +69,18 @@ public class EntityProtocol extends Protocol {
 				offset += 8;
 				Bits.putDouble(data, offset, ent.getPosition().z);
 				offset += 8;
-				Bits.putDouble(data, offset, ent.vx);
-				offset += 8;
-				Bits.putDouble(data, offset, ent.vy);
-				offset += 8;
-				Bits.putDouble(data, offset, ent.vz);
-				offset += 8;
 				Bits.putFloat(data, offset, ent.getRotation().x);
 				offset += 4;
 				Bits.putFloat(data, offset, ent.getRotation().y);
 				offset += 4;
 				Bits.putFloat(data, offset, ent.getRotation().z);
 				offset += 4;
+				Bits.putDouble(data, offset, ent.vx);
+				offset += 8;
+				Bits.putDouble(data, offset, ent.vy);
+				offset += 8;
+				Bits.putDouble(data, offset, ent.vz);
+				offset += 8;
 				for(int i = 0; i < lastSentEntities.length; i++) {
 					if(lastSentEntities[i] == ent) {
 						lastSentEntities[i] = null;
