@@ -13,7 +13,7 @@ public class ServerConnection extends UDPConnection {
 		this.world = world;
 	}
 	
-	public void doHandShake(String name) {
+	public void doHandShake(String name) throws InterruptedException {
 		Protocols.HANDSHAKE.clientSide(this, name);
 	}
 

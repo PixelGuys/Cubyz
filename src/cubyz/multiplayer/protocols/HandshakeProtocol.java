@@ -98,7 +98,7 @@ public class HandshakeProtocol extends Protocol {
 		state.put(conn, STEP_START);
 	}
 
-	public void clientSide(UDPConnection conn, String name) {
+	public void clientSide(UDPConnection conn, String name) throws InterruptedException {
 		try {
 			Thread.sleep(10);
 		} catch(Exception e) {
@@ -115,11 +115,7 @@ public class HandshakeProtocol extends Protocol {
 		state.put(conn, STEP_USER_DATA);
 
 		synchronized(conn) {
-			try {
-				conn.wait();
-			} catch(InterruptedException e) {
-				Logger.error(e);
-			}
+			conn.wait();
 		}
 	}
 }

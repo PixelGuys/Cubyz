@@ -40,7 +40,7 @@ public class ClientWorld extends World {
 	public Biome playerBiome;
 	public final ArrayList<String> chatHistory = new ArrayList<>();
 
-	public ClientWorld(String ip, UDPConnectionManager connectionManager, Class<?> chunkProvider) {
+	public ClientWorld(String ip, UDPConnectionManager connectionManager, Class<?> chunkProvider) throws InterruptedException {
 		super("server");
 		super.itemEntityManager = new InterpolatedItemEntityManager(this);
 		this.chunkProvider = chunkProvider;

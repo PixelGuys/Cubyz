@@ -23,11 +23,11 @@ import java.awt.datatransfer.StringSelection;
 
 import static cubyz.client.ClientSettings.GUI_SCALE;
 
-public class MultiplayerJoinGui extends MenuGUI {
+public class MultiplayerJoinGUI extends MenuGUI {
 
 	private UDPConnectionManager connection = null;
 
-	private final Thread backgroundThread;
+	private Thread backgroundThread;
 
 	private static class TextInputWithLabel{
 		private final TextInput textInput	 = new TextInput();
@@ -78,17 +78,20 @@ public class MultiplayerJoinGui extends MenuGUI {
 
 	private final TextInputWithLabel guiIPAddress = new TextInputWithLabel();
 	private final Button guiJoin = new Button();
+	private final Button guiCancel = new Button();
 	private final Button copy = new Button();
 	private final Label ip = new Label();
 	private final Label prompt = new Label();
 
-	public MultiplayerJoinGui() {
+	private boolean tryingToConnect = false;
+
+	public MultiplayerJoinGUI() {
 		backgroundThread = new Thread(() -> {
 			synchronized(this) {
 				connection = new UDPConnectionManager(Constants.DEFAULT_PORT, true);
 			}
 			ip.setText(connection.externalIPPort.replaceAll(":"+Constants.DEFAULT_PORT, ""));
-		});
+		}, "Search for IP");
 	}
 
 	@Override
@@ -104,6 +107,7 @@ public class MultiplayerJoinGui extends MenuGUI {
 
 		guiJoin.setText(TextKey.createTextKey("gui.cubyz.multiplayer.join"));
 		guiJoin.setOnAction(() -> {
+			tryingToConnect = true;
 			ClientSettings.lastUsedIPAddress = guiIPAddress.getText().trim();
 			ClientSettings.save();
 			try {
@@ -112,11 +116,29 @@ public class MultiplayerJoinGui extends MenuGUI {
 				Logger.error(e);
 				return;
 			}
+			backgroundThread = new Thread(() -> {
+				ClientWorld world;
+				try {
+					world = new ClientWorld(guiIPAddress.getText().trim(), connection, VisibleChunk.class);
+				} catch(InterruptedException e) {
+					return;
+				}
+				connection = null;
+				Cubyz.gameUI.setMenu(null, false); // hide from UISystem.back()
+				GameLauncher.logic.loadWorld(world);
+			}, "Connecting...");
+			backgroundThread.start();
+		});
 
-			ClientWorld world = new ClientWorld(guiIPAddress.getText().trim(), connection, VisibleChunk.class);
-			connection = null;
-			Cubyz.gameUI.setMenu(null, false); // hide from UISystem.back()
-			GameLauncher.logic.loadWorld(world);
+		guiCancel.setText(TextKey.createTextKey("gui.cubyz.general.cancel"));
+		guiCancel.setOnAction(() -> {
+			tryingToConnect = false;
+			try {
+				backgroundThread.interrupt();
+				backgroundThread.join();
+			} catch(InterruptedException e) {
+				Logger.error(e);
+			}
 		});
 
 		copy.setText(TextKey.createTextKey("gui.cubyz.multiplayer.copy_ip"));
@@ -144,15 +166,22 @@ public class MultiplayerJoinGui extends MenuGUI {
 
 		guiJoin.setBounds(-50*GUI_SCALE, 200*GUI_SCALE, 100*GUI_SCALE, 20*GUI_SCALE, Component.ALIGN_TOP);
 		guiJoin.setFontSize(16*GUI_SCALE);
+
+		guiCancel.setBounds(-50*GUI_SCALE, 200*GUI_SCALE, 100*GUI_SCALE, 20*GUI_SCALE, Component.ALIGN_TOP);
+		guiCancel.setFontSize(16*GUI_SCALE);
 	}
 
 	@Override
 	public void render() {
 		guiIPAddress.render();
-		guiJoin.render();
 		prompt.render();
 		ip.render();
 		copy.render();
+		if(tryingToConnect) {
+			guiCancel.render();
+		} else {
+			guiJoin.render();
+		}
 	}
 
 	@Override
