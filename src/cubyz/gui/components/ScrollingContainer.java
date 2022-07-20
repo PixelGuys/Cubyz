@@ -13,12 +13,14 @@ public class ScrollingContainer extends Container {
 	int scrollBarWidth = 20;
 	
 	int mPickY = -1;
+
+	private byte interiorAlign = ALIGN_BOTTOM;
 	
 	@Override
 	public void render(int x, int y) {
 		Vector4i oldClip = Graphics.setClip(new Vector4i(x, Window.getHeight() - y - height, width, height));
 		maxY = 0;
-		for (Component child : children) {
+		for (Component child : children.toArray()) {
 			maxY = Math.max(maxY, child.getY()+child.getHeight());
 			child.renderInContainer(x, y - scrollY, width, height);
 		}
@@ -45,11 +47,21 @@ public class ScrollingContainer extends Container {
 			}
 			scrollY += -Mouse.getScrollOffset() * 40;
 			if (scrollY < 0) scrollY = 0;
+			scrollY = Math.min(maxY, scrollY);
 		} else {
-			scrollY = 0;
+			if((interiorAlign & ALIGN_TOP) != 0) {
+				scrollY = 0;
+			} else if((interiorAlign & ALIGN_BOTTOM) != 0) {
+				scrollY = maxY;
+			} else {
+				scrollY = maxY/2;
+			}
 		}
-		scrollY = Math.min(maxY, scrollY);
 		Graphics.restoreClip(oldClip);
+	}
+
+	public void setInteriorAlign(byte interiorAlign) {
+		this.interiorAlign = interiorAlign;
 	}
 
     public void scrollToEnd(){

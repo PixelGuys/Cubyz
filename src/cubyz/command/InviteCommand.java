@@ -27,10 +27,11 @@ public class InviteCommand extends CommandBase {
 				}
 				try {
 					Server.connect(new User(Server.connectionManager, args[1]));
+				} catch(InterruptedException e) {
 				} catch(Exception e) {
 					Logger.error(e);
 				}
-			}).start();
+			}, "Invite "+args[1]).start();
 		}
 	}
 

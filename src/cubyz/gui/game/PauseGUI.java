@@ -25,6 +25,7 @@ public class PauseGUI extends MenuGUI {
 	private Button resume;
 	private Button reload;
 	private Button settings;
+	private Button invite;
 	
 	@Override
 	public void init() {
@@ -36,9 +37,14 @@ public class PauseGUI extends MenuGUI {
 		resume = new Button("gui.cubyz.pause.resume");
 		reload = new Button("gui.cubyz.debug.reload");
 		settings = new Button("gui.cubyz.mainmenu.settings");
-		
+		invite = new Button("gui.cubyz.pause.play_with_friends");
+
 		settings.setOnAction(() -> {
 			Cubyz.gameUI.setMenu(new SettingsGUI());
+		});
+
+		invite.setOnAction(() -> {
+			Cubyz.gameUI.setMenu(new MultiplayerInviteGUI());
 		});
 		
 		resume.setOnAction(() -> {
@@ -75,6 +81,8 @@ public class PauseGUI extends MenuGUI {
 		reload.setFontSize(16 * GUI_SCALE);
 		settings.setBounds(-50 * GUI_SCALE, 100 * GUI_SCALE, 100 * GUI_SCALE, 25 * GUI_SCALE, Component.ALIGN_TOP);
 		settings.setFontSize(16 * GUI_SCALE);
+		invite.setBounds(-50 * GUI_SCALE, 150 * GUI_SCALE, 100 * GUI_SCALE, 25 * GUI_SCALE, Component.ALIGN_TOP);
+		invite.setFontSize(16 * GUI_SCALE);
 	}
 
 	@Override
@@ -88,6 +96,7 @@ public class PauseGUI extends MenuGUI {
 		exit.render();
 		resume.render();
 		settings.render();
+		invite.render();
 		if (GameLauncher.input.clientShowDebug) {
 			reload.render();
 		}

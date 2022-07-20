@@ -98,8 +98,6 @@ public abstract class Component {
 	
 	/**
 	 * Renders directly on the screen, without further considering alignment. Only call, if you know what you are doing.
-	 * @param nvg
-	 * @param src
 	 * @param x coordinate with alignment considered.
 	 * @param y coordinate with alignment considered.
 	 */

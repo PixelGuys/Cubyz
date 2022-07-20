@@ -30,7 +30,7 @@ import java.util.ArrayList;
 //TODO:
 public class ClientWorld extends World {
 	public final ServerConnection serverConnection;
-	private final UDPConnectionManager connectionManager;
+	public final UDPConnectionManager connectionManager;
 	private final ClientPlayer player;
 	float ambientLight = 0f;
 	Vector4f clearColor = new Vector4f(0, 0, 0, 1.0f);

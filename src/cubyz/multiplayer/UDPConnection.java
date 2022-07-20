@@ -275,7 +275,11 @@ public class UDPConnection {
 					disconnected = true;
 					manager.removeConnection(this);
 					new Thread(() -> {
-						Server.connect(new User(manager, remoteAddress.getHostAddress()+":"+remotePort));
+						try {
+							Server.connect(new User(manager, remoteAddress.getHostAddress() + ":" + remotePort));
+						} catch(Throwable e) {
+							Logger.error(e);
+						}
 					}).start();
 				} else {
 					throw new IllegalStateException("Server 'reconnected'? This makes no sense and the game can't handle that.");

@@ -29,6 +29,7 @@ gui.cubyz.settings.name.format.color=Even colors are possible, using the hexadec
 gui.cubyz.settings.name.format.color.examples=\\##ff0000ff#00000000#00000000#ff0000red#000000 \\##ff0000ff#00770077#00000000#ff7700orange#000000 \\##00000000#00ff00ff#00000000#00ff00green#000000 \\##00000000#00000000#0000ffff#0000ffblue
 gui.cubyz.pause.exit=Exit to main menu
 gui.cubyz.pause.resume=Resume
+gui.cubyz.pause.play_with_friends=Play with friends
 gui.cubyz.debug.reload=Reload
 gui.cubyz.saves.play=Play {0}
 gui.cubyz.saves.delete=Delete
@@ -40,6 +41,9 @@ lang.name=English
 gui.cubyz.multiplayer.prompt=Please send your IP to the host of the game and enter the host's IP below.
 gui.cubyz.multiplayer.copy_ip=Copy IP
 gui.cubyz.multiplayer.join=Join
+gui.cubyz.multiplayer.invite_prompt=Please send your IP to the other player and enter their IP below.
+gui.cubyz.multiplayer.invite=Invite
+gui.cubyz.multiplayer.kick=Kick
 
 # Blocks
 block.cubyz.cactus.name=Cactus

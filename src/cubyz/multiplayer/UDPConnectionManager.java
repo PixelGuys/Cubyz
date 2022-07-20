@@ -12,7 +12,7 @@ import static cubyz.Constants.CONNECTION_TIMEOUT;
 public final class UDPConnectionManager extends Thread {
 	private final DatagramSocket socket;
 	private final DatagramPacket receivedPacket;
-	private final ArrayList<UDPConnection> connections = new ArrayList<>();
+	public final ArrayList<UDPConnection> connections = new ArrayList<>();
 	private final ArrayList<DatagramPacket> requests = new ArrayList<>();
 	private volatile boolean running = true;
 	public String externalIPPort = null;

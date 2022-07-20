@@ -23,16 +23,18 @@ public class User extends UDPConnection implements CommandSource {
 	public int renderDistance;
 	public float LODFactor;
 	public boolean receivedFirstEntityData = false;
+	public final String ipPort;
 
-	public User(UDPConnectionManager manager, String ipPort) {
+	public Thread waitingThread = null;
+
+	public User(UDPConnectionManager manager, String ipPort) throws InterruptedException {
 		super(manager, ipPort);
+		this.ipPort = ipPort;
 		Protocols.HANDSHAKE.serverSide(this);
-		try {
-			synchronized(this) {
-				this.wait();
-			}
-		} catch(InterruptedException e) {
-			Logger.error(e);
+		synchronized(this) {
+			waitingThread = Thread.currentThread();
+			this.wait();
+			waitingThread = null;
 		}
 	}
 

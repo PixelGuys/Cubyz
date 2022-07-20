@@ -25,25 +25,25 @@ public final class Server extends Pacer {
 	public static UDPConnectionManager connectionManager = null;
 
 	public static void main(String[] args) {
-		if(ModLoader.mods.isEmpty()) {
-			ModLoader.load(Side.SERVER);
-		}
-		if (world != null) {
-			stop();
-			world.cleanup();
-		}
-
-		Server.world = new ServerWorld(args[0], null);
-
-		if(GameLauncher.renderer == null) { // headless server
-			connectionManager = new UDPConnectionManager(Constants.DEFAULT_PORT, true);
-		} else { // Singleplayer
-			connectionManager = new UDPConnectionManager(Constants.DEFAULT_PORT, false);
-			User user = new User(connectionManager, "localhost:5679");
-			connect(user);
-		}
-
 		try {
+			if(ModLoader.mods.isEmpty()) {
+				ModLoader.load(Side.SERVER);
+			}
+			if (world != null) {
+				stop();
+				world.cleanup();
+			}
+
+			Server.world = new ServerWorld(args[0], null);
+
+			if(GameLauncher.renderer == null) { // headless server
+				connectionManager = new UDPConnectionManager(Constants.DEFAULT_PORT, true);
+			} else { // Singleplayer
+				connectionManager = new UDPConnectionManager(Constants.DEFAULT_PORT, false);
+				User user = new User(connectionManager, "localhost:5679");
+				connect(user);
+			}
+
 			server.setFrequency(UPDATES_PER_SEC);
 			server.start();
 		} catch (Throwable e) {
@@ -71,7 +71,9 @@ public final class Server extends Pacer {
 	public static void disconnect(User user) {
 		world.forceSave();
 		synchronized(usersList) {
-			Protocols.CHAT.sendToClients(user.name+" #ffff00left");
+			if(user.name != null) {
+				Protocols.CHAT.sendToClients(user.name + " #ffff00left");
+			}
 			usersList.remove(user);
 			world.removeEntity(user.player);
 			users = usersList.toArray();

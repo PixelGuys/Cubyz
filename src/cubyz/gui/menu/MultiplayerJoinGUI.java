@@ -92,6 +92,7 @@ public class MultiplayerJoinGUI extends MenuGUI {
 			}
 			ip.setText(connection.externalIPPort.replaceAll(":"+Constants.DEFAULT_PORT, ""));
 		}, "Search for IP");
+		backgroundThread.start();
 	}
 
 	@Override
@@ -149,7 +150,6 @@ public class MultiplayerJoinGUI extends MenuGUI {
 		});
 
 		updateGUIScale();
-		backgroundThread.start();
 	}
 
 	@Override
