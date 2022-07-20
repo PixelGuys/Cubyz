@@ -1,5 +1,6 @@
 package cubyz.client.entity;
 
+import cubyz.Constants;
 import cubyz.utils.interpolation.GenericInterpolation;
 import cubyz.utils.interpolation.TimeDifference;
 import cubyz.utils.math.Bits;
@@ -47,7 +48,7 @@ public class InterpolatedItemEntityManager extends ItemEntityManager {
 	}
 
 	public void updateInterpolationData() {
-		short time = (short)(System.currentTimeMillis() - 200);
+		short time = (short)(System.currentTimeMillis() - Constants.ENTITY_LOOKBACK);
 		time -= timeDifference.difference;
 		interpolation.update(time, lastTime);
 		lastTime = time;

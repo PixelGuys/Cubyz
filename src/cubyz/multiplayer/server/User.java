@@ -1,5 +1,6 @@
 package cubyz.multiplayer.server;
 
+import cubyz.Constants;
 import cubyz.command.CommandSource;
 import cubyz.multiplayer.Protocols;
 import cubyz.multiplayer.UDPConnection;
@@ -56,7 +57,7 @@ public class User extends UDPConnection implements CommandSource {
 	}
 
 	public void update() {
-		short time = (short)(System.currentTimeMillis() - 200);
+		short time = (short)(System.currentTimeMillis() - Constants.ENTITY_LOOKBACK);
 		time -= difference.difference;
 		interpolation.update(time, lastTime);
 		player.getPosition().x = interpolation.outPosition[0];

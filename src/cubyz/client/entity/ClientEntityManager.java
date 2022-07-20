@@ -1,5 +1,6 @@
 package cubyz.client.entity;
 
+import cubyz.Constants;
 import cubyz.api.CubyzRegistries;
 import cubyz.utils.datastructures.SimpleList;
 import cubyz.utils.interpolation.TimeDifference;
@@ -18,7 +19,7 @@ public final class ClientEntityManager {
 	}
 
 	public static void update() {
-		short time = (short)(System.currentTimeMillis() - 200);
+		short time = (short)(System.currentTimeMillis() - Constants.ENTITY_LOOKBACK);
 		time -= timeDifference.difference;
 		for(ClientEntity ent : entities.toArray()) {
 			ent.update(time, lastTime);

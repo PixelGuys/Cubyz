@@ -32,6 +32,7 @@ public final class Constants {
 
 	public static final int DEFAULT_PORT = 5678;
 	public static final int CONNECTION_TIMEOUT = 30000;
+	public static final short ENTITY_LOOKBACK = 100;
 
 	static Side currentSide = null;
 	
