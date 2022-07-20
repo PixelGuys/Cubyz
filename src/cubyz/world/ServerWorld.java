@@ -206,13 +206,9 @@ public class ServerWorld extends World {
 			deltaTime = 0.3f;
 		}
 
-		if (milliTime + 100 < newTime) {
+		while(milliTime + 100 < newTime) {
 			milliTime += 100;
 			if (doGameTimeCycle) gameTime++; // gameTime is measured in 100ms.
-		}
-		if (milliTime < newTime - 1000) {
-			Logger.warning("Behind update schedule by " + (newTime - milliTime) / 1000.0f + "s!");
-			milliTime = newTime - 1000; // so we don't accumulate too much time to catch
 		}
 		if(lastUnimportantDataSent + 2000 < newTime) { // Send unimportant data every ~2s.
 			lastUnimportantDataSent = newTime;

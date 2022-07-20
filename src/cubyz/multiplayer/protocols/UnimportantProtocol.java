@@ -26,7 +26,14 @@ public class UnimportantProtocol extends Protocol {
 		if(world == null) return;
 		String str = new String(data, offset, length, StandardCharsets.UTF_8);
 		JsonObject json = JsonParser.parseObjectFromString(str);
-		world.gameTime = json.getLong("time", 0);
+		long gameTime = json.getLong("time", 0);
+		if(Math.abs(gameTime - world.gameTime) > 1000) {
+			world.gameTime = gameTime;
+		} else if(gameTime < world.gameTime) {
+			world.gameTime--;
+		} else if(gameTime > world.gameTime) {
+			world.gameTime++;
+		}
 		world.playerBiome = world.registries.biomeRegistry.getByID(json.getString("biome", ""));
 	}
 

@@ -96,6 +96,11 @@ public class ClientWorld extends World {
 	}
 
 	public void update() {
+		long newTime = System.currentTimeMillis();
+		while(milliTime + 100 < newTime) {
+			milliTime += 100;
+			if (doGameTimeCycle) gameTime++; // gameTime is measured in 100ms.
+		}
 		int dayCycle = World.DAY_CYCLE;
 		// Ambient light
 		{
