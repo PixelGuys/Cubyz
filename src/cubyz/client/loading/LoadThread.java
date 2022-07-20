@@ -1,28 +1,14 @@
 package cubyz.client.loading;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
 
-import cubyz.Constants;
+import cubyz.client.*;
 import cubyz.utils.Logger;
 import cubyz.api.CubyzRegistries;
-import cubyz.api.Mod;
 import cubyz.api.Resource;
 import cubyz.api.Side;
-import cubyz.client.ClientOnly;
-import cubyz.client.ClientSettings;
-import cubyz.client.Cubyz;
-import cubyz.client.GameLauncher;
 import cubyz.gui.menu.LoadingGUI;
 import cubyz.modding.ModLoader;
-import cubyz.modding.base.AddonsMod;
-import cubyz.modding.base.BaseMod;
 import cubyz.rendering.Mesh;
 import cubyz.rendering.ModelLoader;
 import cubyz.utils.ResourceContext;
@@ -55,40 +41,38 @@ public class LoadThread extends Thread {
 		ModLoader.load(Side.CLIENT);
 		
 		Object lock = new Object();
-		run = new Runnable() {
-			public void run() {
-				i++;
-				boolean finishedMeshes = false;
+		run = () -> {
+			i++;
+			boolean finishedMeshes = false;
+			if (i < CubyzRegistries.ENTITY_REGISTRY.size()) {
 				if (i < CubyzRegistries.ENTITY_REGISTRY.size()) {
-					if (i < CubyzRegistries.ENTITY_REGISTRY.size()) {
-						EntityType e = CubyzRegistries.ENTITY_REGISTRY.registered(new EntityType[0])[i];
-						if (!e.useDynamicEntityModel()) {
-							ClientOnly.createEntityMesh.accept(e);
-						}
+					EntityType e = CubyzRegistries.ENTITY_REGISTRY.registered(new EntityType[0])[i];
+					if (!e.useDynamicEntityModel()) {
+						Meshes.createEntityMesh(e);
 					}
-					if (i < Blocks.size()-1 || i < CubyzRegistries.ENTITY_REGISTRY.size()-1) {
-						Cubyz.renderDeque.add(run);
-						l.setStep(4, i+1, Blocks.size());
-					} else {
-						finishedMeshes = true;
-						synchronized (lock) {
-							lock.notifyAll();
-						}
-					}
+				}
+				if (i < Blocks.size()-1 || i < CubyzRegistries.ENTITY_REGISTRY.size()-1) {
+					Cubyz.renderDeque.add(run);
+					l.setStep(4, i+1, Blocks.size());
 				} else {
 					finishedMeshes = true;
 					synchronized (lock) {
 						lock.notifyAll();
 					}
 				}
-				if (finishedMeshes) {
-					try {
-						Resource res = new Resource("cubyz:sky_body.obj");
-						String path = ResourceManager.lookupPath(ResourceManager.contextToLocal(ResourceContext.MODEL3D, res));
-						GameLauncher.logic.skyBodyMesh = new Mesh(ModelLoader.loadModel(res, path));
-					} catch (Exception e) {
-						Logger.warning(e);
-					}
+			} else {
+				finishedMeshes = true;
+				synchronized (lock) {
+					lock.notifyAll();
+				}
+			}
+			if (finishedMeshes) {
+				try {
+					Resource res = new Resource("cubyz:sky_body.obj");
+					String path = ResourceManager.lookupPath(ResourceManager.contextToLocal(ResourceContext.MODEL3D, res));
+					GameLauncher.logic.skyBodyMesh = new Mesh(ModelLoader.loadModel(res, path));
+				} catch (Exception e) {
+					Logger.warning(e);
 				}
 			}
 		};

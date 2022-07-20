@@ -26,7 +26,7 @@ public class UDPConnection {
 	private int bruteForcedPortRange = 0;
 
 	private final AtomicInteger messageID = new AtomicInteger(0);
-	private final SimpleList<UnconfirmedPackage> unconfirmedPackets = new SimpleList<>(new UnconfirmedPackage[1024]); // TODO: Consider using a hashmap/sorted list instead.
+	private final SimpleList<UnconfirmedPackage> unconfirmedPackets = new SimpleList<>(new UnconfirmedPackage[1024]);
 	private final IntSimpleList[] receivedPackets = new IntSimpleList[]{new IntSimpleList(), new IntSimpleList(), new IntSimpleList()}; // Resend the confirmation 3 times, to make sure the server doesn't need to resend stuff.
 	private final ReceivedPackage[] lastReceivedPackets = new ReceivedPackage[65536];
 
@@ -294,7 +294,6 @@ public class UDPConnection {
 			}
 			synchronized(lastReceivedPackets) {
 				if(id - lastIncompletePacket < 0 || lastReceivedPackets[id & 65535] != null) {
-					Logger.warning("Already received it: "+id);
 					return; // Already received the package in the past.
 				}
 				lastReceivedPackets[id & 65535] = new ReceivedPackage(Arrays.copyOf(data, len), data[1] != 0);

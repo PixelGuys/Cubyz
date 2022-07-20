@@ -10,10 +10,8 @@ import cubyz.multiplayer.Protocols;
 import cubyz.rendering.Graphics;
 import cubyz.rendering.Window;
 import cubyz.rendering.text.Fonts;
-import cubyz.multiplayer.server.Server;
 import cubyz.utils.ThreadPool;
 import cubyz.world.entity.Player;
-import cubyz.world.terrain.biomes.Biome;
 
 import static cubyz.client.ClientSettings.GUI_SCALE;
 
@@ -56,17 +54,15 @@ public class DebugOverlay extends MenuGUI {
 				double z = p.getPosition().z;
 				
 				Graphics.drawText(0 * GUI_SCALE, 40 * GUI_SCALE, "XYZ: " + x + ", " + y + ", " + z);
-				// TODO: Graphics.drawText(0 * GUI_SCALE, 50 * GUI_SCALE, "Loaded Chunks: " + Cubyz.world.getChunks().length);
-				Graphics.drawText(0 * GUI_SCALE, 60 * GUI_SCALE, "Render Distance: " + ClientSettings.RENDER_DISTANCE);
-				Graphics.drawText(0 * GUI_SCALE, 70 * GUI_SCALE, "Game Time: " + Cubyz.world.gameTime);
-				Graphics.drawText(0*GUI_SCALE, 80*GUI_SCALE, "Queue Size: " + ThreadPool.getQueueSize());
-				Graphics.drawText(0 * GUI_SCALE, 90 * GUI_SCALE, "Biome: " + (Cubyz.world.playerBiome == null ? "null" : Cubyz.world.playerBiome.getRegistryID()));
-				// TODO: Graphics.drawText(0 * GUI_SCALE, 90 * GUI_SCALE, "Biome: " + (Cubyz.biome == null ? "null" : Cubyz.biome.getRegistryID()));
+				Graphics.drawText(0 * GUI_SCALE, 50 * GUI_SCALE, "Render Distance: " + ClientSettings.RENDER_DISTANCE);
+				Graphics.drawText(0 * GUI_SCALE, 60 * GUI_SCALE, "Game Time: " + Cubyz.world.gameTime);
+				Graphics.drawText(0*GUI_SCALE, 70*GUI_SCALE, "Queue Size: " + ThreadPool.getQueueSize());
+				Graphics.drawText(0 * GUI_SCALE, 80 * GUI_SCALE, "Biome: " + (Cubyz.world.playerBiome == null ? "null" : Cubyz.world.playerBiome.getRegistryID()));
 				
 				if (p.getRemainingBreakTime() > 0) {
-					Graphics.drawText(0 * GUI_SCALE, 100 * GUI_SCALE, "Remaining Breaking Time: " + p.getRemainingBreakTime());
+					Graphics.drawText(0 * GUI_SCALE, 90 * GUI_SCALE, "Remaining Breaking Time: " + p.getRemainingBreakTime());
 				}
-				int yText = 110;
+				int yText = 100;
 				for(int i = 0; i < Protocols.bytesReceived.length; i++) {
 					if(Protocols.list[i] != null) {
 						Graphics.drawText(0*GUI_SCALE, yText*GUI_SCALE, Protocols.list[i].getClass().getSimpleName() + ": " + (Protocols.bytesReceived[i] >> 10) + "kiB");

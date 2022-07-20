@@ -165,7 +165,6 @@ public final class UDPConnectionManager extends Thread {
 					onReceive();
 				} catch(SocketTimeoutException e) {
 					// No message within the last ~100 ms.
-					// TODO: Add a counter that breaks connection if there was no message for a longer time.
 				}
 
 				// Send a keep-alive packet roughly every 100 ms:

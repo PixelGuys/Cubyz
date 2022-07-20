@@ -3,14 +3,12 @@ package cubyz.world.blocks;
 import java.util.HashMap;
 
 import cubyz.client.GameLauncher;
-import cubyz.rendering.rotation.NoRotation;
 import org.joml.Vector3i;
 
 import cubyz.utils.Logger;
 import cubyz.api.CubyzRegistries;
 import cubyz.api.DataOrientedRegistry;
 import cubyz.api.Resource;
-import cubyz.client.ClientOnly;
 import cubyz.world.World;
 import cubyz.world.items.BlockDrop;
 import cubyz.world.items.Inventory;
@@ -157,7 +155,7 @@ public class Blocks implements DataOrientedRegistry {
 	 */
 	public static boolean onClick(int block, World world, Vector3i pos) {
 		if (gui[block & TYPE_MASK] != null) {
-			GameLauncher.logic.openGUI("cubyz:workbench", new Inventory(26)); // TODO: Care about the inventory. TODO: Make this work over the network.
+			GameLauncher.logic.openGUI("cubyz:workbench", new Inventory(26)); // TODO: Care about the inventory.
 			return true;
 		}
 		return false;

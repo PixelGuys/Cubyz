@@ -91,37 +91,38 @@ public final class Meshes {
 	public static ChunkMesh getNextQueuedMesh() {
 		return (ChunkMesh) updateQueue.extractMax();
 	}
-	
-	public static void initMeshCreators() {		
-		ClientOnly.createEntityMesh = (type) -> {
-			Resource rsc = type.getRegistryID();
 
-			EntityModel model;
-			try {
-				model = ResourceUtilities.loadEntityModel(rsc);
-			} catch (IOException e) {
-				Logger.warning(rsc + " entity model not found");
-				//Logger.throwable(e);
-				//model = ResourceUtilities.loadEntityModel(new Resource("cubyz:undefined")); // TODO: load a simple cube with the undefined texture
-				return;
-			}
-			
-			// Cached meshes
-			Resource rs = new Resource(model.model);
-			Mesh mesh = new Mesh(ModelLoader.loadModel(rs, "assets/" + rs.getMod() + "/models/3d/" + rs.getID()));
-			Resource texResource = new Resource(model.texture);
-			String texture = texResource.getID();
-			if (!new File("assets/" + texResource.getMod() + "/textures/entities/" + texture + ".png").exists()) {
-				Logger.warning(texResource + " texture not found");
-				texture = "blocks/undefined";
-			}
-			
-			Texture tex = Texture.loadFromFile("assets/" + texResource.getMod() + "/textures/entities/" + texture + ".png");
+	public static void createEntityMesh(EntityType type) {
+		Resource rsc = type.getRegistryID();
 
-			mesh.setTexture(tex);
-			
-			Meshes.entityMeshes.put(type, mesh);
-		};
+		EntityModel model;
+		try {
+			model = ResourceUtilities.loadEntityModel(rsc);
+		} catch (IOException e) {
+			Logger.warning(rsc + " entity model not found");
+			//Logger.throwable(e);
+			//model = ResourceUtilities.loadEntityModel(new Resource("cubyz:undefined")); // TODO: load a simple cube with the undefined texture
+			return;
+		}
+
+		// Cached meshes
+		Resource rs = new Resource(model.model);
+		Mesh mesh = new Mesh(ModelLoader.loadModel(rs, "assets/" + rs.getMod() + "/models/3d/" + rs.getID()));
+		Resource texResource = new Resource(model.texture);
+		String texture = texResource.getID();
+		if (!new File("assets/" + texResource.getMod() + "/textures/entities/" + texture + ".png").exists()) {
+			Logger.warning(texResource + " texture not found");
+			texture = "blocks/undefined";
+		}
+
+		Texture tex = Texture.loadFromFile("assets/" + texResource.getMod() + "/textures/entities/" + texture + ".png");
+
+		mesh.setTexture(tex);
+
+		Meshes.entityMeshes.put(type, mesh);
+	}
+
+	public static void initMeshCreators() {
 	}
 
 	public static void clearMeshQueue() {

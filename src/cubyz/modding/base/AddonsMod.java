@@ -9,11 +9,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
 
 import cubyz.api.*;
 import cubyz.utils.Logger;
-import cubyz.utils.Utils;
 import cubyz.utils.datastructures.IntSimpleList;
 import cubyz.utils.datastructures.SimpleList;
 import cubyz.utils.math.CubyzMath;
@@ -46,16 +44,16 @@ public class AddonsMod implements Mod {
 	private static final HashMap<Resource, JsonObject> commonBiomes = new HashMap<>();
 	private static final ArrayList<String[]> commonRecipes = new ArrayList<>();
 	
-	public static ArrayList<File> addons = new ArrayList<>();
-	private static ArrayList<Item> items = new ArrayList<>();
+	public static final ArrayList<File> addons = new ArrayList<>();
+	private static final ArrayList<Item> items = new ArrayList<>();
 	
 	// Used to fetch block drops that aren't loaded during block loading.
-	private static IntSimpleList missingDropsBlock = new IntSimpleList();
-	private static ArrayList<String> missingDropsItem = new ArrayList<>();
-	private static ArrayList<Float> missingDropsAmount = new ArrayList<>();
+	private static final IntSimpleList missingDropsBlock = new IntSimpleList();
+	private static final ArrayList<String> missingDropsItem = new ArrayList<>();
+	private static final ArrayList<Float> missingDropsAmount = new ArrayList<>();
 
-	private static ArrayList<Ore> ores = new ArrayList<>();
-	private static ArrayList<String[]> oreContainers = new ArrayList<String[]>();
+	private static final ArrayList<Ore> ores = new ArrayList<>();
+	private static final ArrayList<String[]> oreContainers = new ArrayList<>();
 
 	private static String assetPath;
 
@@ -322,7 +320,7 @@ public class AddonsMod implements Mod {
 		ArrayList<Integer> itemsPerRow = new ArrayList<>();
 		boolean shaped = false;
 		boolean startedRecipe = false;
-		for (int i = 0; i < recipe.length; i++) {
+		for(int i = 0; i < recipe.length; i++) {
 			String line = recipe[i];
 			// shortcuts:
 			if (line.contains("=")) {

@@ -87,7 +87,7 @@ public class GameLogic {
 		System.gc();
 	}
 	
-	public void loadWorld(ClientWorld world) { // TODO: Seperate all the things out that are generated for the current world.
+	public void loadWorld(ClientWorld world) {
 		Cubyz.player = world.getLocalPlayer();
 		Cubyz.world = world;
 
@@ -120,7 +120,7 @@ public class GameLogic {
 		GameLauncher.renderer.setShaderFolder(ResourceManager.lookupPath("cubyz/shaders/easyLighting"));
 		
 		BlockPreview.setShaderFolder(ResourceManager.lookupPath("cubyz/shaders/blockPreview"));
-		
+
 		Meshes.initMeshCreators();
 		
 		try {
@@ -195,11 +195,11 @@ public class GameLogic {
 		if (Cubyz.world != null) {
 			Cubyz.world.update();
 			Cubyz.chunkTree.update(ClientSettings.RENDER_DISTANCE, ClientSettings.LOD_FACTOR);
-			// TODO: Get this in the server ping or something.
+
 			float lightAngle = (float)Math.PI/2 + (float)Math.PI*(((float)Cubyz.world.gameTime % World.DAY_CYCLE)/(World.DAY_CYCLE/2));
 			skySun.setPositionRaw((float)Math.cos(lightAngle)*500, (float)Math.sin(lightAngle)*500, 0);
 			skySun.setRotation(0, 0, -lightAngle);
-			Protocols.PLAYER_POSITION.send(Cubyz.world.serverConnection, Cubyz.player, (short)System.currentTimeMillis()); // TODO: Optimization: Don't send this every frame.
+			Protocols.PLAYER_POSITION.send(Cubyz.world.serverConnection, Cubyz.player, (short)System.currentTimeMillis());
 		}
 	}
 

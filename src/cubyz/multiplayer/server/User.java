@@ -4,7 +4,6 @@ import cubyz.command.CommandSource;
 import cubyz.multiplayer.Protocols;
 import cubyz.multiplayer.UDPConnection;
 import cubyz.multiplayer.UDPConnectionManager;
-import cubyz.utils.Logger;
 import cubyz.utils.interpolation.GenericInterpolation;
 import cubyz.utils.interpolation.TimeDifference;
 import cubyz.utils.math.Bits;
@@ -25,7 +24,7 @@ public class User extends UDPConnection implements CommandSource {
 	public boolean receivedFirstEntityData = false;
 	public final String ipPort;
 
-	public Thread waitingThread = null;
+	public Thread waitingThread;
 
 	public User(UDPConnectionManager manager, String ipPort) throws InterruptedException {
 		super(manager, ipPort);
