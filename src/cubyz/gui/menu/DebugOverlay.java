@@ -45,7 +45,7 @@ public class DebugOverlay extends MenuGUI {
 			long totalMemory = Runtime.getRuntime().totalMemory()/1024/1024;
 			long freeMemory = Runtime.getRuntime().freeMemory()/1024/1024;
 			long maxMemory = Runtime.getRuntime().maxMemory()/1024/1024;
-			Graphics.drawText(0 * GUI_SCALE, 100 * GUI_SCALE, "Memory: " + (totalMemory - freeMemory) + "/" + totalMemory + "MiB (max " + maxMemory + "MiB)");
+			Graphics.drawText(0 * GUI_SCALE, 90 * GUI_SCALE, "Memory: " + (totalMemory - freeMemory) + "/" + totalMemory + "MiB (max " + maxMemory + "MiB)");
 			
 			if (Cubyz.world != null) {
 				Player p = Cubyz.player;
@@ -59,9 +59,6 @@ public class DebugOverlay extends MenuGUI {
 				Graphics.drawText(0*GUI_SCALE, 70*GUI_SCALE, "Queue Size: " + ThreadPool.getQueueSize());
 				Graphics.drawText(0 * GUI_SCALE, 80 * GUI_SCALE, "Biome: " + (Cubyz.world.playerBiome == null ? "null" : Cubyz.world.playerBiome.getRegistryID()));
 				
-				if (p.getRemainingBreakTime() > 0) {
-					Graphics.drawText(0 * GUI_SCALE, 90 * GUI_SCALE, "Remaining Breaking Time: " + p.getRemainingBreakTime());
-				}
 				int yText = 100;
 				for(int i = 0; i < Protocols.bytesReceived.length; i++) {
 					if(Protocols.list[i] != null) {
