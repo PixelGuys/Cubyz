@@ -79,8 +79,6 @@ public class ClientWorld extends World {
 
 		// Call mods for this new world. Mods sometimes need to do extra stuff for the specific world.
 		ModLoader.postWorldGen(registries);
-
-		Cubyz.world = this;
 	}
 
 	public ClientPlayer getLocalPlayer() {

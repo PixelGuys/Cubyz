@@ -85,6 +85,8 @@ public class MultiplayerJoinGUI extends MenuGUI {
 
 	private boolean tryingToConnect = false;
 
+	private volatile ClientWorld worldToLoad = null;
+
 	public MultiplayerJoinGUI() {
 		backgroundThread = new Thread(() -> {
 			synchronized(this) {
@@ -118,15 +120,9 @@ public class MultiplayerJoinGUI extends MenuGUI {
 				return;
 			}
 			backgroundThread = new Thread(() -> {
-				ClientWorld world;
 				try {
-					world = new ClientWorld(guiIPAddress.getText().trim(), connection, VisibleChunk.class);
-				} catch(InterruptedException e) {
-					return;
-				}
-				connection = null;
-				Cubyz.gameUI.setMenu(null, false); // hide from UISystem.back()
-				GameLauncher.logic.loadWorld(world);
+					worldToLoad = new ClientWorld(guiIPAddress.getText().trim(), connection, VisibleChunk.class);
+				} catch(InterruptedException e) {}
 			}, "Connecting...");
 			backgroundThread.start();
 		});
@@ -173,6 +169,12 @@ public class MultiplayerJoinGUI extends MenuGUI {
 
 	@Override
 	public void render() {
+		if(worldToLoad != null) {
+			connection = null;
+			GameLauncher.logic.loadWorld(worldToLoad);
+			worldToLoad = null;
+			Cubyz.gameUI.setMenu(null, false); // hide from UISystem.back()
+		}
 		guiIPAddress.render();
 		prompt.render();
 		ip.render();
