@@ -1,0 +1,5 @@
+logs/
+saves/
+zig-out/
+zig-cache/
+settings.json
