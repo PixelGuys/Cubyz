@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const graphics = @import("graphics.zig");
+
 pub const c = @cImport ({
 	@cInclude("glad/glad.h");
 	@cInclude("GLFW/glfw3.h");
@@ -99,7 +101,7 @@ pub const Window = struct {
 				return;
 			}
 			const vidMode = c.glfwGetVideoMode(monitor).?;
-			c.glfwSetWindowMonitor(window, monitor, 0, 0, vidMode.width, vidMode.height, c.GLFW_DONT_CARE);
+			c.glfwSetWindowMonitor(window, monitor, 0, 0, vidMode[0].width, vidMode[0].height, c.GLFW_DONT_CARE);
 		} else {
 			c.glfwSetWindowMonitor(window, null, oldX, oldY, oldWidth, oldHeight, c.GLFW_DONT_CARE);
 			c.glfwSetWindowAttrib(window, c.GLFW_DECORATED, c.GLFW_TRUE);
@@ -115,7 +117,16 @@ pub fn main() !void {
 	try Window.init();
 	defer Window.deinit();
 
+	graphics.init();
+	defer graphics.deinit();
+
 	while(c.glfwWindowShouldClose(Window.window) == 0) {
+		{ // Check opengl errors:
+			const err = c.glGetError();
+			if(err != 0) {
+				std.log.err("Got opengl error: {}", .{err});
+			}
+		}
 		c.glfwSwapBuffers(Window.window);
 		c.glfwPollEvents();
 		c.glViewport(0, 0, Window.width, Window.height);
