@@ -173,3 +173,7 @@ pub fn main() !void {
 
 	std.log.info("Hello zig.", .{});
 }
+
+test "abc" {
+	_ = @import("json.zig");
+}

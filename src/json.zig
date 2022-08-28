@@ -1,0 +1,558 @@
+const std = @import("std");
+const ArrayList = std.ArrayList;
+const Allocator = std.mem.Allocator;
+
+const OutOfMemory = Allocator.Error;
+
+pub const JsonType = enum(u32) {
+	JsonInt,
+	JsonFloat,
+	JsonString,
+	JsonStringOwned,
+	JsonBool,
+	JsonNull,
+	JsonArray,
+	JsonObject
+};
+pub const JsonElement = union(JsonType) {
+	JsonInt: i64,
+	JsonFloat: f64,
+	JsonString: []const u8,
+	JsonStringOwned: []const u8,
+	JsonBool: bool,
+	JsonNull: void,
+	JsonArray: *ArrayList(JsonElement),
+	JsonObject: *std.StringHashMap(JsonElement),
+
+	// TODO: Add simple array access.
+
+	pub fn get(self: *const JsonElement, comptime _type: type, key: []const u8, replacement: _type) @TypeOf(replacement) {
+		if(self.* != JsonType.JsonObject) {
+			return replacement;
+		} else {
+			if(self.JsonObject.get(key)) |elem| {
+				return elem.as(_type, replacement);
+			} else {
+				return replacement;
+			}
+		}
+	}
+
+	pub fn getChild(self: *const JsonElement, key: []const u8) JsonElement {
+		if(self.* != JsonType.JsonObject) {
+			return JsonElement{.JsonNull={}};
+		} else {
+			if(self.JsonObject.get(key)) |elem| {
+				return elem;
+			} else {
+				return JsonElement{.JsonNull={}};
+			}
+		}
+	}
+
+	pub fn as(self: *const JsonElement, comptime _type: type, replacement: _type) _type {
+		switch(@typeInfo(_type)) {
+			.Int => {
+				switch(self.*) {
+					JsonType.JsonInt => return std.math.cast(_type, self.JsonInt) catch replacement,
+					JsonType.JsonFloat => return std.math.lossyCast(_type, std.math.round(self.JsonFloat)),
+					else => return replacement,
+				}
+			},
+			.Float => {
+				switch(self.*) {
+					JsonType.JsonInt => return @intToFloat(_type, self.JsonInt),
+					JsonType.JsonFloat => return @floatCast(_type, self.JsonFloat),
+					else => return replacement,
+				}
+			},
+			else => {
+				switch(_type) {
+					[]const u8 => {
+						switch(self.*) {
+							JsonType.JsonString => return self.JsonString,
+							JsonType.JsonStringOwned => return self.JsonStringOwned,
+							else => return replacement,
+						}
+					},
+					bool => {
+						switch(self.*) {
+							JsonType.JsonBool => return self.JsonBool,
+							else => return replacement,
+						}
+					},
+					else => {
+						@compileError("Unsupported type '" ++ @typeName(_type) ++ "'.");
+					}
+				}
+			},
+		}
+	}
+
+	pub fn free(self: *JsonElement, allocator: Allocator) void {
+		switch(self.*) {
+			JsonType.JsonInt, JsonType.JsonFloat, JsonType.JsonBool, JsonType.JsonNull, JsonType.JsonString => return,
+			JsonType.JsonStringOwned => {
+				allocator.free(self.JsonStringOwned);
+			},
+			JsonType.JsonArray => {
+				for(self.JsonArray.items) |*elem| {
+					elem.free(allocator);
+				}
+				self.JsonArray.clearAndFree();
+				allocator.destroy(self.JsonArray);
+			},
+			JsonType.JsonObject => {
+				var iterator = self.JsonObject.iterator();
+				while(true) {
+					var elem = iterator.next() orelse break;
+					allocator.free(elem.key_ptr.*);
+					elem.value_ptr.free(allocator);
+				}
+				self.JsonObject.clearAndFree();
+				allocator.destroy(self.JsonObject);
+			},
+		}
+	}
+
+	pub fn isNull(self: *JsonElement) bool {
+		return self.* == JsonType.JsonNull;
+	}
+
+	// TODO: toString()
+};
+
+pub fn parseFromString(allocator: Allocator, string: []const u8) JsonElement {
+	var index: u32 = 0;
+	Parser.skipWhitespaces(string, &index);
+	return Parser.parseElement(allocator, string, &index) catch {
+		std.log.err("Out of memory while trying to parse json.", .{});
+		return JsonElement{.JsonNull={}};
+	};
+}
+
+const Parser = struct {
+	/// All whitespaces from unicode 14.
+	const whitespaces = [_][]const u8 {"\u{0009}", "\u{000A}", "\u{000B}", "\u{000C}", "\u{000D}", "\u{0020}", "\u{0085}", "\u{00A0}", "\u{1680}", "\u{2000}", "\u{2001}", "\u{2002}", "\u{2003}", "\u{2004}", "\u{2005}", "\u{2006}", "\u{2007}", "\u{2008}", "\u{2009}", "\u{200A}", "\u{2028}", "\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}"};
+
+	fn skipWhitespaces(chars: []const u8, index: *u32) void {
+		outerLoop:
+		while(index.* < chars.len) {
+			whitespaceLoop:
+			for(whitespaces) |whitespace| {
+				for(whitespace) |char, i| {
+					if(char != chars[index.* + i]) {
+						continue :whitespaceLoop;
+					}
+				}
+				index.* += @intCast(u32, whitespace.len);
+				continue :outerLoop;
+			}
+			// Next character is no whitespace.
+			return;
+		}
+	}
+
+	/// Assumes that the region starts with a number character ('+', '-', '.' or a digit).
+	fn parseNumber(chars: []const u8, index: *u32) JsonElement {
+		var sign: i2 = 1;
+		if(chars[index.*] == '-') {
+			sign = -1;
+			index.* += 1;
+		} else if(chars[index.*] == '+') {
+			index.* += 1;
+		}
+		var intPart: i64 = 0;
+		if(index.*+1 < chars.len and chars[index.*] == '0' and chars[index.*+1] == 'x') {
+			// Parse hex int
+			index.* += 2;
+			while(index.* < chars.len): (index.* += 1) {
+				switch(chars[index.*]) {
+					'0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => {
+						intPart = (chars[index.*] - '0') +% intPart*%16;
+					},
+					'a', 'b', 'c', 'd', 'e', 'f' => {
+						intPart = (chars[index.*] - 'a' + 10) +% intPart*%16;
+					},
+					'A', 'B', 'C', 'D', 'E', 'F' => {
+						intPart = (chars[index.*] - 'A' + 10) +% intPart*%16;
+					},
+					else => {
+						break;
+					}
+				}
+			}
+			return JsonElement{.JsonInt = sign*intPart};
+		}
+		while(index.* < chars.len): (index.* += 1) {
+			switch(chars[index.*]) {
+				'0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => {
+					intPart = (chars[index.*] - '0') +% intPart*%10;
+				},
+				else => {
+					break;
+				}
+			}
+		}
+		if(index.* >= chars.len or (chars[index.*] != '.' and chars[index.*] != 'e' and chars[index.*] != 'E')) { // This is an int
+			return JsonElement{.JsonInt = sign*intPart};
+		}
+		// So this is a float apparently.
+
+		var floatPart: f64 = 0;
+		var currentFactor: f64 = 0.1;
+		if(chars[index.*] == '.') {
+			index.* += 1;
+			while(index.* < chars.len): (index.* += 1) {
+				switch(chars[index.*]) {
+					'0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => {
+						floatPart += @intToFloat(f64, chars[index.*] - '0')*currentFactor;
+						currentFactor *= 0.1;
+					},
+					else => {
+						break;
+					}
+				}
+			}
+		}
+		var exponent: i64 = 0;
+		var exponentSign: i2 = 1;
+		if(index.* < chars.len and (chars[index.*] == 'e' or chars[index.*] == 'E')) {
+			index.* += 1;
+			if(index.* < chars.len and chars[index.*] == '-') {
+				exponentSign = -1;
+				index.* += 1;
+			} else if(index.* < chars.len and chars[index.*] == '+') {
+				index.* += 1;
+			}
+			while(index.* < chars.len): (index.* += 1) {
+				switch(chars[index.*]) {
+					'0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => {
+						exponent = (chars[index.*] - '0') +% exponent*%10;
+					},
+					else => {
+						break;
+					}
+				}
+			}
+		}
+		return JsonElement{.JsonFloat = @intToFloat(f64, sign)*(@intToFloat(f64, intPart) + floatPart)*std.math.pow(f64, 10, @intToFloat(f64, exponentSign*exponent))};
+	}
+
+	fn parseString(allocator: Allocator, chars: []const u8, index: *u32) OutOfMemory![]const u8 {
+		var builder: ArrayList(u8) = ArrayList(u8).init(allocator);
+		while(index.* < chars.len): (index.* += 1) {
+			if(chars[index.*] == '\"') {
+				index.* += 1;
+				break;
+			} else if(chars[index.*] == '\\') {
+				index.* += 1;
+				if(index.* >= chars.len)
+					break;
+				switch(chars[index.*]) {
+					't' => {
+						try builder.append('\t');
+					},
+					'n' => {
+						try builder.append('\n');
+					},
+					'r' => {
+						try builder.append('\r');
+					},
+					else => {
+						try builder.append(chars[index.*]);
+					}
+				}
+			} else {
+				try builder.append(chars[index.*]);
+			}
+		}
+		return builder.toOwnedSlice();
+	}
+
+	fn parseArray(allocator: Allocator, chars: []const u8, index: *u32) OutOfMemory!JsonElement {
+		const list: *ArrayList(JsonElement) = try allocator.create(ArrayList(JsonElement));
+		list.* = ArrayList(JsonElement).init(allocator);
+		while(index.* < chars.len) {
+			skipWhitespaces(chars, index);
+			if(index.* >= chars.len) break;
+			if(chars[index.*] == ']') {
+				index.* += 1;
+				return JsonElement{.JsonArray=list};
+			}
+			try list.append(try parseElement(allocator, chars, index));
+			skipWhitespaces(chars, index);
+			if(index.* < chars.len and chars[index.*] == ',') {
+				index.* += 1;
+			}
+		}
+		try printError(chars, index.*, "Unexpected end of file in array parsing.");
+		return JsonElement{.JsonArray=list};
+	}
+
+	fn parseObject(allocator: Allocator, chars: []const u8, index: *u32) OutOfMemory!JsonElement {
+		var map: *std.StringHashMap(JsonElement) = try allocator.create(std.StringHashMap(JsonElement));
+		map.* = std.StringHashMap(JsonElement).init(allocator);
+		while(index.* < chars.len) {
+			skipWhitespaces(chars, index);
+			if(index.* >= chars.len) break;
+			if(chars[index.*] == '}') {
+				index.* += 1;
+				return JsonElement{.JsonObject=map};
+			} else if(chars[index.*] != '\"') {
+				try printError(chars, index.*, "Unexpected character in object parsing.");
+				index.* += 1;
+				continue;
+			}
+			index.* += 1;
+			const key: []const u8 = try parseString(allocator, chars, index);
+			skipWhitespaces(chars, index);
+			while(index.* < chars.len and chars[index.*] != ':') {
+				try printError(chars, index.*, "Unexpected character in object parsing, expected ':'.");
+				index.* += 1;
+			}
+			index.* += 1;
+			skipWhitespaces(chars, index);
+			const value: JsonElement = try parseElement(allocator, chars, index);
+			map.putNoClobber(key, value) catch {
+				try printError(chars, index.*, "Duplicate key.");
+				allocator.free(key);
+			};
+			skipWhitespaces(chars, index);
+			if(index.* < chars.len and chars[index.*] == ',') {
+				index.* += 1;
+			}
+		}
+		try printError(chars, index.*, "Unexpected end of file in object parsing.");
+		return JsonElement{.JsonObject=map};
+	}
+
+	fn printError(chars: []const u8, index: u32, msg: []const u8) !void {
+		var lineNumber: u32 = 1;
+		var lineStart: u32 = 0;
+		var i: u32 = 0;
+		while(i < index and i < chars.len): (i += 1) {
+			if(chars[i] == '\n') {
+				lineNumber += 1;
+				lineStart = i;
+			}
+		}
+		while(i < chars.len): (i += 1) {
+			if(chars[i] == '\n') {
+				break;
+			}
+		}
+		var lineEnd: u32 = i;
+		std.log.warn("Error in line {}: {s}", .{lineNumber, msg});
+		std.log.warn("{s}", .{chars[lineStart..lineEnd-lineStart]});
+		// Mark the position:
+		var message: [512]u8 = undefined;
+		i = lineStart;
+		var outputI: u32 = 0;
+		while(i < index and i < chars.len): (i += 1) {
+			if((chars[i] & 128) != 0 and (chars[i] & 64) == 0) {
+				// Not the start of a utf8 character
+				continue;
+			}
+			if(chars[i] == '\t') {
+				message[outputI] = '\t';
+			} else {
+				message[outputI] = ' ';
+			}
+			outputI += 1;
+			if(outputI >= message.len) {
+				return; // 512 characters is too long for this output to be helpful.
+			}
+		}
+		message[outputI] = '^';
+		outputI += 1;
+		std.log.warn("{s}", .{message[0..outputI]});
+	}
+
+	/// Assumes that the region starts with a non-space character.
+	fn parseElement(allocator: Allocator, chars: []const u8, index: *u32) OutOfMemory!JsonElement {
+		if(index.* >= chars.len) {
+			try printError(chars, index.*, "Unexpected end of file.");
+			return JsonElement{.JsonNull={}};
+		}
+		switch(chars[index.*]) {
+			'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '-', '.' => {
+				return parseNumber(chars, index);
+			},
+			't' => { // Value can only be true.
+				if(index.* + 3 >= chars.len) {
+					try printError(chars, index.*, "Unexpected end of file.");
+				} else if(chars[index.*+1] != 'r' or chars[index.*+2] != 'u' or chars[index.*+3] != 'e') {
+					try printError(chars, index.*, "Unknown expression, interpreting as true.");
+				}
+				index.* += 4;
+				return JsonElement{.JsonBool=true};
+			},
+			'f' => { // Value can only be false.
+				if(index.* + 4 >= chars.len) {
+					try printError(chars, index.*, "Unexpected end of file.");
+				} else if(chars[index.*+1] != 'a' or chars[index.*+2] != 'l' or chars[index.*+3] != 's' or chars[index.*+4] != 'e') {
+					try printError(chars, index.*, "Unknown expression, interpreting as false.");
+				}
+				index.* += 4;
+				return JsonElement{.JsonBool=false};
+			},
+			'n' => { // Value can only be null.
+				if(index.* + 3 >= chars.len) {
+					try printError(chars, index.*, "Unexpected end of file.");
+				} else if(chars[index.*+1] != 'u' or chars[index.*+2] != 'l' or chars[index.*+3] != 'l') {
+					try printError(chars, index.*, "Unknown expression, interpreting as null.");
+				}
+				index.* += 3;
+				return JsonElement{.JsonNull={}};
+			},
+			'\"' => {
+				index.* += 1;
+				return JsonElement{.JsonStringOwned=try parseString(allocator, chars, index)};
+			},
+			'[' => {
+				index.* += 1;
+				return try parseArray(allocator, chars, index);
+			},
+			'{' => {
+				index.* += 1;
+				return try parseObject(allocator, chars, index);
+			},
+			else => {
+				try printError(chars, index.*, "Unexpected character.");
+				return JsonElement{.JsonNull={}};
+			}
+		}
+	}
+};
+
+
+
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+// TESTING
+// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+
+test "skipWhitespaces" {
+	var index: u32 = 0;
+	var testString: []const u8 = "  fbdn  ";
+	Parser.skipWhitespaces(testString, &index);
+	try std.testing.expectEqual(index, 2);
+	testString = "\nĦŊ@Λħŋ";
+	index = 0;
+	Parser.skipWhitespaces(testString, &index);
+	try std.testing.expectEqual(index, 1);
+	testString = "\tβρδ→øβν";
+	index = 0;
+	Parser.skipWhitespaces(testString, &index);
+	try std.testing.expectEqual(index, 1);
+	testString = "\t  \n \t  a lot of whitespaces";
+	index = 0;
+	Parser.skipWhitespaces(testString, &index);
+	try std.testing.expectEqual(index, 8);
+	testString = " unicode whitespace";
+	index = 0;
+	Parser.skipWhitespaces(testString, &index);
+	try std.testing.expectEqual(index, 3);
+	testString = "starting     in the middle";
+	index = 8;
+	Parser.skipWhitespaces(testString, &index);
+	try std.testing.expectEqual(index, 13);
+}
+
+test "number parsing" {
+	// Integers:
+	var index: u32 = 0;
+	try std.testing.expectEqual(Parser.parseNumber("0", &index), JsonElement{.JsonInt = 0});
+	index = 0;
+	try std.testing.expectEqual(Parser.parseNumber("+0", &index), JsonElement{.JsonInt = 0});
+	index = 0;
+	try std.testing.expectEqual(Parser.parseNumber("abcd", &index), JsonElement{.JsonInt = 0});
+	index = 0;
+	try std.testing.expectEqual(Parser.parseNumber("-0+1", &index), JsonElement{.JsonInt = 0});
+	index = 5;
+	try std.testing.expectEqual(Parser.parseNumber(" abcd185473896", &index), JsonElement{.JsonInt = 185473896});
+	index = 0;
+	try std.testing.expectEqual(Parser.parseNumber("0xff34786056.0", &index), JsonElement{.JsonInt = 0xff34786056});
+	// Floats:
+	index = 0;
+	try std.testing.expectEqual(Parser.parseNumber("0.0", &index), JsonElement{.JsonFloat = 0.0});
+	index = 0;
+	try std.testing.expectEqual(Parser.parseNumber("0e10e10", &index), JsonElement{.JsonFloat = 0.0});
+	index = 0;
+	try std.testing.expectEqual(Parser.parseNumber("-0.0.0", &index), JsonElement{.JsonFloat = 0.0});
+	index = 0;
+	try std.testing.expectEqual(Parser.parseNumber("0xabcd.0e10+-+-", &index), JsonElement{.JsonInt = 0xabcd});
+	index = 0;
+	try std.testing.expectApproxEqAbs(Parser.parseNumber("1.234589e10", &index).JsonFloat, 1.234589e10, 1.0);
+	index = 5;
+	try std.testing.expectApproxEqAbs(Parser.parseNumber("_____0.0000000000234589e10abcdfe", &index).JsonFloat, 0.234589, 1e-10);
+}
+
+test "element parsing" {
+	// Integers:
+	var index: u32 = 0;
+	try std.testing.expectEqual(Parser.parseElement(std.testing.allocator, "0", &index), JsonElement{.JsonInt = 0});
+	index = 0;
+	try std.testing.expectEqual(Parser.parseElement(std.testing.allocator, "0xff34786056.0, true", &index), JsonElement{.JsonInt = 0xff34786056});
+	// Floats:
+	index = 9;
+	try std.testing.expectEqual(Parser.parseElement(std.testing.allocator, "{\"abcd\": 0.0,}", &index), JsonElement{.JsonFloat = 0.0});
+	index = 0;
+	try std.testing.expectApproxEqAbs((try Parser.parseElement(std.testing.allocator, "1543.234589e10", &index)).JsonFloat, 1543.234589e10, 1.0);
+	index = 5;
+	try std.testing.expectApproxEqAbs((try Parser.parseElement(std.testing.allocator, "_____0.0000000000675849301354e10abcdfe", &index)).JsonFloat, 0.675849301354, 1e-10);
+	// Null:
+	index = 0;
+	try std.testing.expectEqual(Parser.parseElement(std.testing.allocator, "null", &index), JsonElement{.JsonNull={}});
+	// true:
+	index = 0;
+	try std.testing.expectEqual(Parser.parseElement(std.testing.allocator, "true", &index), JsonElement{.JsonBool=true});
+	// false:
+	index = 0;
+	try std.testing.expectEqual(Parser.parseElement(std.testing.allocator, "false", &index), JsonElement{.JsonBool=false});
+
+	// String:
+	index = 0;
+	var result: JsonElement = try Parser.parseElement(std.testing.allocator, "\"abcd\\\"\\\\ħσ→ ↑Φ∫€ ⌬ ε→Π\"", &index);
+	try std.testing.expectEqualStrings("abcd\"\\ħσ→ ↑Φ∫€ ⌬ ε→Π", result.as([]const u8, ""));
+	result.free(std.testing.allocator);
+	index = 0;
+	result = try Parser.parseElement(std.testing.allocator, "\"12345", &index);
+	try std.testing.expectEqualStrings("12345", result.as([]const u8, ""));
+	result.free(std.testing.allocator);
+
+	// Object:
+	index = 0;
+	result = try Parser.parseElement(std.testing.allocator, "{\"name\": 1}", &index);
+	try std.testing.expectEqual(JsonType.JsonObject, result);
+	try std.testing.expectEqual(result.JsonObject.get("name"), JsonElement{.JsonInt = 1});
+	result.free(std.testing.allocator);
+	index = 0;
+	result = try Parser.parseElement(std.testing.allocator, "{\"object\":{},}", &index);
+	try std.testing.expectEqual(JsonType.JsonObject, result);
+	try std.testing.expectEqual(JsonType.JsonObject, result.JsonObject.get("object") orelse JsonType.JsonNull);
+	result.free(std.testing.allocator);
+	index = 0;
+	result = try Parser.parseElement(std.testing.allocator, "{   \"object1\"   :   \"\"  \n, \"object2\"  :\t{\n},\"object3\"   :1.0e4\t,\"\nobject1\":{},\"\tobject1θ\":[],}", &index);
+	try std.testing.expectEqual(JsonType.JsonObject, result);
+	try std.testing.expectEqual(JsonType.JsonFloat, result.JsonObject.get("object3") orelse JsonType.JsonNull);
+	try std.testing.expectEqual(JsonType.JsonStringOwned, result.JsonObject.get("object1") orelse JsonType.JsonNull);
+	try std.testing.expectEqual(JsonType.JsonObject, result.JsonObject.get("\nobject1") orelse JsonType.JsonNull);
+	try std.testing.expectEqual(JsonType.JsonArray, result.JsonObject.get("\tobject1θ") orelse JsonType.JsonNull);
+	result.free(std.testing.allocator);
+
+	//Array:
+	index = 0;
+	result = try Parser.parseElement(std.testing.allocator, "[\"name\",1]", &index);
+	try std.testing.expectEqual(JsonType.JsonArray, result);
+	try std.testing.expectEqual(JsonType.JsonStringOwned, result.JsonArray.items[0]);
+	try std.testing.expectEqual(JsonElement{.JsonInt=1}, result.JsonArray.items[1]);
+	result.free(std.testing.allocator);
+	index = 0;
+	result = try Parser.parseElement(std.testing.allocator, "[   \"name\"\t1\n,    17.1]", &index);
+	try std.testing.expectEqual(JsonType.JsonArray, result);
+	try std.testing.expectEqual(JsonType.JsonStringOwned, result.JsonArray.items[0]);
+	try std.testing.expectEqual(JsonElement{.JsonInt=1}, result.JsonArray.items[1]);
+	try std.testing.expectEqual(JsonElement{.JsonFloat=17.1}, result.JsonArray.items[2]);
+	result.free(std.testing.allocator);
+}
