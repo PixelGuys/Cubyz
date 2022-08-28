@@ -2,6 +2,8 @@ const std = @import("std");
 
 const graphics = @import("graphics.zig");
 
+const Vec2f = @import("vec.zig").Vec2f;
+
 pub const c = @cImport ({
 	@cInclude("glad/glad.h");
 	@cInclude("GLFW/glfw3.h");
@@ -56,6 +58,12 @@ pub const Window = struct {
 			width = @intCast(u31, newWidth);
 			height = @intCast(u31, newHeight);
 		}
+		fn glDebugOutput(_: c_uint, typ: c_uint, _: c_uint, severity: c_uint, length: c_int, message: [*c]const u8, _: ?*const anyopaque) callconv(.C) void {
+			if(typ == c.GL_DEBUG_TYPE_ERROR or typ == c.GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR or typ == c.GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR or typ == c.GL_DEBUG_TYPE_PORTABILITY or typ == c.GL_DEBUG_TYPE_PERFORMANCE) {
+				std.log.err("OpenGL {}:{s}", .{severity, message[0..@intCast(usize, length)]});
+				@panic("OpenGL error");
+			}
+		}
 	};
 
 	fn init() !void {
@@ -65,6 +73,9 @@ pub const Window = struct {
 			return error.GLFWFailed;
 		}
 
+		if(@import("builtin").mode == .Debug) {
+			c.glfwWindowHint(c.GLFW_OPENGL_DEBUG_CONTEXT, 1);
+		}
 		c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MAJOR, 4);
 		c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MINOR, 3);
 
@@ -79,6 +90,13 @@ pub const Window = struct {
 			return error.GLADFailed;
 		}
 		c.glfwSwapInterval(1);
+
+		if(@import("builtin").mode == .Debug) {
+			c.glEnable(c.GL_DEBUG_OUTPUT);
+			c.glEnable(c.GL_DEBUG_OUTPUT_SYNCHRONOUS);
+			c.glDebugMessageCallback(GLFWCallbacks.glDebugOutput, null);
+			c.glDebugMessageControl(c.GL_DONT_CARE, c.GL_DONT_CARE, c.GL_DONT_CARE, 0, null, c.GL_TRUE);
+		}
 	}
 
 	fn deinit() void {
@@ -120,6 +138,11 @@ pub fn main() !void {
 	graphics.init();
 	defer graphics.deinit();
 
+	c.glEnable(c.GL_CULL_FACE);
+	c.glCullFace(c.GL_BACK);
+	c.glEnable(c.GL_BLEND);
+	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
+
 	while(c.glfwWindowShouldClose(Window.window) == 0) {
 		{ // Check opengl errors:
 			const err = c.glGetError();
@@ -130,6 +153,22 @@ pub fn main() !void {
 		c.glfwSwapBuffers(Window.window);
 		c.glfwPollEvents();
 		c.glViewport(0, 0, Window.width, Window.height);
+		c.glClearColor(1, 1, 0, 1);
+		c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
+		{ // Render the game
+			c.glEnable(c.GL_DEPTH_TEST);
+			// TODO
+		}
+
+		{ // Render the GUI
+			c.glDisable(c.GL_DEPTH_TEST);
+
+			graphics.Draw.setColor(0xff0000ff);
+			graphics.Draw.rect(Vec2f{.x = 100, .y = 100}, Vec2f{.x = 200, .y = 100});
+			graphics.Draw.circle(Vec2f{.x = 200, .y = 200}, 59);
+			graphics.Draw.setColor(0xffff00ff);
+			graphics.Draw.line(Vec2f{.x = 0, .y = 0}, Vec2f{.x = 1920, .y = 1080});
+		}
 	}
 
 	std.log.info("Hello zig.", .{});
