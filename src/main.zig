@@ -1,5 +1,6 @@
 const std = @import("std");
 
+const assets = @import("assets.zig");
 const graphics = @import("graphics.zig");
 
 const Vec2f = @import("vec.zig").Vec2f;
@@ -13,13 +14,10 @@ var logFile: std.fs.File = undefined;
 
 pub fn log(
 	comptime level: std.log.Level,
-	comptime scope: @Type(.EnumLiteral),
+	comptime _: @Type(.EnumLiteral),
 	comptime format: []const u8,
 	args: anytype,
 ) void {
-	if(scope != .default) {
-		@compileError("Scopes are not supported.");
-	}
 	const color = comptime switch (level) {
 		std.log.Level.err => "\x1b[31m",
 		std.log.Level.info => "",
@@ -138,6 +136,11 @@ pub fn main() !void {
 	graphics.init();
 	defer graphics.deinit();
 
+	try assets.init();
+	defer assets.deinit();
+
+	try assets.loadWorldAssets("saves");
+
 	c.glEnable(c.GL_CULL_FACE);
 	c.glCullFace(c.GL_BACK);
 	c.glEnable(c.GL_BLEND);
@@ -170,8 +173,6 @@ pub fn main() !void {
 			graphics.Draw.line(Vec2f{.x = 0, .y = 0}, Vec2f{.x = 1920, .y = 1080});
 		}
 	}
-
-	std.log.info("Hello zig.", .{});
 }
 
 test "abc" {

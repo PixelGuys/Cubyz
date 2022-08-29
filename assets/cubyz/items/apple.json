@@ -1,0 +1,5 @@
+{
+	"texture" : "food/apple.png",
+	"translationId" : "item.cubyz.apple.name",
+	"food" : 4
+}

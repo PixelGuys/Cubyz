@@ -1,0 +1,27 @@
+{
+	"type" : "MOUNTAIN_FOREST",
+	"minHeight" : 20,
+	"maxHeight" : 256,
+	
+	"roughness" : 10,
+	"mountains" : 100,
+	
+	"rivers" : true,
+	
+	"ground_structure" : [
+		"cubyz:grass",
+		"1 to 2 cubyz:soil"
+	],
+	"structures" : [
+		{
+			"id" : "cubyz:simple_tree",
+			"leaves" : "cubyz:oak_leaves",
+			"log" : "cubyz:oak_log",
+			"top" : "cubyz:oak_top",
+			"chance" : 0.05,
+			"type" : "round",
+			"height" : 3,
+			"height_variation" : 3
+		}
+	]
+}

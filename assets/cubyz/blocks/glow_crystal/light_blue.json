@@ -1,0 +1,10 @@
+{
+	"class" : "stone",
+	"hardness" : 2,
+	"drops" : [
+		"none"
+	],
+	"emittedLight" : 0x4040ff,
+	"model" : "cubyz:block.obj",
+	"texture" : "cubyz:glow_crystal/light_blue"
+}

@@ -1,0 +1,19 @@
+{
+	"class" : "stone",
+	"hardness" : 25,
+	"drops" : [
+		"auto"
+	],
+	"model" : "cubyz:block.obj",
+	"texture" : "cubyz:mossy_cobblestone",
+
+	"rotation" : "cubyz:multi_texture",
+	"multi_texture_variants" : [
+		{
+			"texture" : "cubyz:mossy_cobblestone"
+		},
+		{
+			"texture" : "cubyz:mossy_cobblestone_1"
+		}
+	]
+}

@@ -1,0 +1,32 @@
+{
+	"chance" : 0,
+	"type" : "ARCTIC_OCEAN",
+	"minHeight" : -4,
+	"maxHeight" : 6,
+
+	"music" : "GymnopedieNo1",
+	
+	"ground_structure" : [
+		"2 to 3 cubyz:cobblestone"
+	],
+	"structures" : [
+		{
+			"id" : "cubyz:ground_patch",
+			"block" : "cubyz:mossy_cobblestone",
+			"chance" : 0.004,
+			"width" : 6,
+			"variation" : 2,
+			"depth" : 2,
+			"smoothness" : 0.2
+		},
+		{
+			"id" : "cubyz:ground_patch",
+			"block" : "cubyz:gravel",
+			"chance" : 0.002,
+			"width" : 6,
+			"variation" : 2,
+			"depth" : 2,
+			"smoothness" : 0.2
+		}
+	]
+}

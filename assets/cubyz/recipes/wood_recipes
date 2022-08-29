@@ -1,0 +1,33 @@
+L = cubyz:oak_log
+T = cubyz:oak_top
+P = cubyz:oak_planks
+S = cubyz:stick
+C = cubyz:coal
+
+shapeless
+L
+result 4*P
+
+shapeless
+T
+result 3*P
+
+shaped
+P P
+P P
+result cubyz:workbench
+
+shaped
+P
+P
+result 4*S
+
+shaped
+C
+S
+result 8*cubyz:torch
+
+shaped
+S P S
+S P S
+result 6*cubyz:oak_fence

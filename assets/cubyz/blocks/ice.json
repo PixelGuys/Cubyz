@@ -1,0 +1,10 @@
+{
+	"class" : "stone",
+	"hardness" : 10,
+	"drops" : [
+		"auto"
+	],
+	"model" : "cubyz:block.obj",
+	"texture" : "cubyz:ice",
+	"blockEntity" : "cubyz.modding.base.MeltableBlockEntity"
+}

@@ -54,7 +54,7 @@ pub const JsonElement = union(JsonType) {
 		switch(@typeInfo(_type)) {
 			.Int => {
 				switch(self.*) {
-					JsonType.JsonInt => return std.math.cast(_type, self.JsonInt) catch replacement,
+					JsonType.JsonInt => return std.math.cast(_type, self.JsonInt) orelse replacement,
 					JsonType.JsonFloat => return std.math.lossyCast(_type, std.math.round(self.JsonFloat)),
 					else => return replacement,
 				}
@@ -344,7 +344,7 @@ const Parser = struct {
 		}
 		var lineEnd: u32 = i;
 		std.log.warn("Error in line {}: {s}", .{lineNumber, msg});
-		std.log.warn("{s}", .{chars[lineStart..lineEnd-lineStart]});
+		std.log.warn("{s}", .{chars[lineStart..lineEnd]});
 		// Mark the position:
 		var message: [512]u8 = undefined;
 		i = lineStart;
@@ -394,7 +394,7 @@ const Parser = struct {
 				} else if(chars[index.*+1] != 'a' or chars[index.*+2] != 'l' or chars[index.*+3] != 's' or chars[index.*+4] != 'e') {
 					try printError(chars, index.*, "Unknown expression, interpreting as false.");
 				}
-				index.* += 4;
+				index.* += 5;
 				return JsonElement{.JsonBool=false};
 			},
 			'n' => { // Value can only be null.

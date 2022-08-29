@@ -1,0 +1,9 @@
+{
+	"class" : "leaf",
+	"hardness" : 4,
+	"drops" : [
+		"auto"
+	],
+	"model" : "cubyz:block.obj",
+	"texture" : "cubyz:cactus"
+}

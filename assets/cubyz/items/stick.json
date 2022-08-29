@@ -1,0 +1,14 @@
+{
+	"texture" : "materials/stick.png",
+	"translationId" : "item.cubyz.stick.name",
+	
+	"material" : {
+		"density" : 1.0,
+		"resistance" : 1.0,
+		"power" : 0.2,
+		"roughness" : 0.7,
+		"colors" : [
+			0xff522e05, 0xff502c03, 0xff553204, 0xff67400e, 0xff784a12
+		]
+	}
+}

@@ -1,0 +1,20 @@
+{
+	"class" : "air",
+	"breakingPower" : 0,
+	"hardness" : 4,
+
+	"absorbtion" : 0,
+
+	"transparent" : true,
+	"lightingTransparent" : true,
+	"viewThrough" : true,
+	"solid" : false,
+	"rotation" : "cubyz:no_rotation",
+	"degradable" : true,
+	"hasItem" : false,
+
+
+
+	"drops" : [],
+	"model" : ""
+}

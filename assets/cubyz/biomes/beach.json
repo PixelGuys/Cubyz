@@ -1,0 +1,13 @@
+{
+	"chance" : 0,
+	"type" : "WARM_OCEAN",
+	"minHeight" : -4,
+	"maxHeight" : 6,
+
+	"music" : "Sincerely",
+	
+	"ground_structure" : [
+		"3 to 4 cubyz:sand",
+		"1 to 2 cubyz:sandstone"
+	]
+}

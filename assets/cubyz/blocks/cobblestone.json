@@ -1,0 +1,30 @@
+{
+	"class" : "stone",
+	"hardness" : 25,
+	"item" : {
+		"material" : {
+			"density" : 1.0,
+			"resistance" : 1.0,
+			"power" : 0.4,
+			"roughness" : 1.0,
+			"colors" : [
+				0xff222222, 0xff444444, 0xff666666, 0xff888888, 0xffaaaaaa
+			]
+		}
+	},
+	"drops" : [
+		"auto"
+	],
+	"model" : "cubyz:block.obj",
+	"texture" : "cubyz:cobblestone",
+
+	"rotation" : "cubyz:multi_texture",
+	"multi_texture_variants" : [
+		{
+			"texture" : "cubyz:cobblestone"
+		},
+		{
+			"texture" : "cubyz:cobblestone_1"
+		}
+	]
+}

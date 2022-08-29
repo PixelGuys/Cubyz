@@ -1,0 +1,25 @@
+{
+	"type" : "WARM_OCEAN",
+	"minHeight" : -100,
+	"maxHeight" : -2,
+	
+	"roughness" : 10,
+	"hills" : 20,
+
+	"music" : "GymnopedieNo1",
+	
+	"ground_structure" : [
+		"2 to 4 cubyz:sand"
+	],
+	"structures" : [
+		{
+			"id" : "cubyz:ground_patch",
+			"block" : "cubyz:gravel",
+			"chance" : 0.002,
+			"width" : 6,
+			"variation" : 2,
+			"depth" : 2,
+			"smoothness" : 0.2
+		}
+	]
+}

@@ -1,0 +1,27 @@
+{
+	"type" : "CAVE",
+	"maxHeight" : 0,
+
+	"music" : "heart-of-the-beast",
+
+	"ground_structure" : [
+		"0 to 1 cubyz:gravel",
+		"cubyz:stone"
+	],
+	"structures" : [
+		{
+			"id" : "cubyz:boulder",
+			"chance" : 0.001,
+			"block" : "cubyz:cobblestone",
+			"size" : 5,
+			"size_variance" : 3
+		},
+		{
+			"id" : "cubyz:boulder",
+			"chance" : 0.001,
+			"block" : "cubyz:stone",
+			"size" : 4,
+			"size_variance" : 2
+		}
+	]
+}

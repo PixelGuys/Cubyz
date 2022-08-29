@@ -1,0 +1,36 @@
+{
+	"type" : "GRASSLAND",
+	"minHeight" : 2,
+	"maxHeight" : 40,
+	
+	"roughness" : 1,
+	"hills" : 5,
+	
+	"music" : "sunrise",
+
+	"validPlayerSpawn" : true,
+	
+	"ground_structure" : [
+		"cubyz:grass",
+		"2 to 3 cubyz:soil"
+	],
+	"structures" : [
+		{
+			"id" : "cubyz:simple_tree",
+			"leaves" : "cubyz:oak_leaves",
+			"log" : "cubyz:oak_log",
+			"top" : "cubyz:oak_top",
+			"chance" : 0.001,
+			"type" : "round",
+			"height" : 6,
+			"height_variation" : 3
+		},
+		{
+			"id" : "cubyz:boulder",
+			"chance" : 0.00001,
+			"block" : "cubyz:stone",
+			"size" : 5,
+			"size_variance" : 1
+		}
+	]
+}

@@ -1,0 +1,37 @@
+{
+	"type" : "SHRUBLAND",
+	"minHeight" : 4,
+	"maxHeight" : 60,
+	
+	"roughness" : 20,
+	"hills" : 10,
+	"rivers" : true,
+	
+	"music" : "sunrise",
+
+	"ground_structure" : [
+		"cubyz:grass",
+		"2 cubyz:soil"
+	],
+	"structures" : [
+		{
+			"id" : "cubyz:simple_tree",
+			"leaves" : "cubyz:oak_leaves",
+			"log" : "cubyz:oak_log",
+			"top" : "cubyz:oak_top",
+			"chance" : 0.01,
+			"type" : "bush",
+			"height" : 4,
+			"height_variation" : 6
+		},
+		{
+			"id" : "cubyz:ground_patch",
+			"block" : "cubyz:soil",
+			"chance" : 0.001,
+			"width" : 12,
+			"variation" : 4,
+			"depth" : 2,
+			"smoothness" : 0.2
+		}
+	]
+}

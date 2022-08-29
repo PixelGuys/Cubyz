@@ -1,0 +1,30 @@
+{
+	"type" : "SWAMP",
+	"minHeight" : 2,
+	"maxHeight" : 40,
+	
+	"roughness" : 2,
+	"hills" : 2,
+	
+	"music" : "leaves",
+
+	"validPlayerSpawn" : true,
+	
+	"ground_structure" : [
+		"0 to 1 cubyz:grass",
+		"0 to 1 cubyz:water",
+		"2 to 3 cubyz:soil"
+	],
+	"structures" : [
+		{
+			"id" : "cubyz:simple_tree",
+			"leaves" : "cubyz:oak_leaves",
+			"log" : "cubyz:oak_log",
+			"top" : "cubyz:oak_top",
+			"chance" : 0.05,
+			"type" : "round",
+			"height" : 6,
+			"height_variation" : 3
+		}
+	]
+}

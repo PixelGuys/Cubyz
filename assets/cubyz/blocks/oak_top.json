@@ -1,0 +1,12 @@
+{
+	"class" : "wood",
+	"hardness" : 8,
+	"drops" : [
+		"auto"
+	],
+	"rotation" : "cubyz:log",
+	"model" : "cubyz:block.obj",
+	"texture" : "cubyz:oak_log_side",
+	"texture_top" : "cubyz:oak_log_top",
+	"texture_bottom" : "cubyz:oak_log_rings_bottom",
+}

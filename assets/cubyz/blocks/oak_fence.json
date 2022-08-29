@@ -1,0 +1,10 @@
+{
+	"class" : "wood",
+	"hardness" : 7,
+	"drops" : [
+		"auto"
+	],
+	"rotation" : "cubyz:fence",
+	"model" : "cubyz:fence.obj",
+	"texture" : "cubyz:oak_planks"
+}

@@ -1,0 +1,27 @@
+{
+	"type" : "TAIGA",
+	"minHeight" : 2,
+	"maxHeight" : 40,
+	
+	"roughness" : 10,
+	"hills" : 10,
+
+	"validPlayerSpawn" : true,
+	
+	"ground_structure" : [
+		"0 to 1 cubyz:grass",
+		"2 to 3 cubyz:soil"
+	],
+	"structures" : [
+		{
+			"id" : "cubyz:simple_tree",
+			"leaves" : "cubyz:oak_leaves",
+			"log" : "cubyz:oak_log",
+			"top" : "cubyz:oak_top",
+			"chance" : 0.05,
+			"type" : "pyramid",
+			"height" : 8,
+			"height_variation" : 5
+		}
+	]
+}

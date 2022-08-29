@@ -1,0 +1,13 @@
+{
+	"class" : "wood",
+	"hardness" : 0.3,
+	"drops" : [
+		"auto"
+	],
+	"solid" : false,
+	"emittedLight" : 0x00a09080,
+	"viewThrough" : true,
+	"rotation" : "cubyz:torch",
+	"model" : "cubyz:torch.obj",
+	"texture" : "cubyz:torch"
+}

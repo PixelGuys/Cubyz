@@ -1,0 +1,46 @@
+{
+	"type" : "MOUNTAIN_GRASSLAND",
+	"minHeight" : 60,
+	"maxHeight" : 256,
+	
+	"roughness" : 10,
+	"mountains" : 100,
+	
+	"rivers" : true,
+	
+	"ground_structure" : [
+		"0 to 1 cubyz:grass",
+		"0 to 1 cubyz:gravel",
+		"0 to 1 cubyz:cobblestone"
+	],
+	"structures" : [
+		{
+			"id" : "cubyz:simple_tree",
+			"leaves" : "cubyz:oak_leaves",
+			"log" : "cubyz:oak_log",
+			"top" : "cubyz:oak_top",
+			"chance" : 0.01,
+			"type" : "round",
+			"height" : 4,
+			"height_variation" : 1
+		},
+		{
+			"id" : "cubyz:ground_patch",
+			"block" : "cubyz:gravel",
+			"chance" : 0.003,
+			"width" : 6,
+			"variation" : 2,
+			"depth" : 3,
+			"smoothness" : 0.8
+		},
+		{
+			"id" : "cubyz:ground_patch",
+			"block" : "cubyz:snow",
+			"chance" : 0.002,
+			"width" : 6,
+			"variation" : 2,
+			"depth" : 3,
+			"smoothness" : 0.8
+		}
+	]
+}

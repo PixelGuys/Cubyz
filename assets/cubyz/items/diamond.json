@@ -1,0 +1,12 @@
+{
+	"texture" : "materials/diamond.png",
+	"material" : {
+		"density" : 1.0,
+		"resistance" : 1.0,
+		"power" : 1.0,
+		"roughness" : 0.3,
+		"colors" : [
+			0xff4a9494, 0xff53a5a5, 0xff59b3b3, 0xff59bbbb, 0xff7dcbcb
+		]
+	}
+}

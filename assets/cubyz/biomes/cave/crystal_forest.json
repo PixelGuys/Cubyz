@@ -1,0 +1,29 @@
+{
+	"type" : "CAVE",
+	"maxHeight" : -512,
+
+	"chance" : 0.01,
+
+	"caves" : 0.0,
+	"crystals" : 32,
+
+	"music" : "leaves",
+
+	"stoneBlock" : "cubyz:stone",
+	"ground_structure" : [
+		"cubyz:grass",
+		"2 to 3 cubyz:soil"
+	],
+	"structures" : [
+		{
+			"id" : "cubyz:simple_tree",
+			"leaves" : "cubyz:oak_leaves",
+			"log" : "cubyz:oak_log",
+			"top" : "cubyz:oak_top",
+			"chance" : 0.02,
+			"type" : "round",
+			"height" : 4,
+			"height_variation" : 2
+		}
+	]
+}
