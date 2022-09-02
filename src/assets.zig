@@ -89,8 +89,9 @@ pub fn init() !void {
 	try readAssets(arenaAllocator, gpaAllocator, "assets/", &commonBlocks, &commonBiomes);
 }
 
-pub fn registerBlock(id: []const u8, info: JsonElement) !void {
-	try blocks_zig.register(id, info); // TODO: Modded block registries
+pub fn registerBlock(assetFolder: []const u8, id: []const u8, info: JsonElement) !void {
+	try blocks_zig.register(assetFolder, id, info); // TODO: Modded block registries
+	try blocks_zig.meshes.register(assetFolder, id, info);
 
 //		TODO:
 //		// Ores:
@@ -165,7 +166,7 @@ pub fn loadWorldAssets(assetFolder: []const u8) !void {
 //		}
 	var iterator = commonBlocks.iterator();
 	while(iterator.next()) |entry| {
-		try registerBlock(entry.key_ptr.*, entry.value_ptr.*);
+		try registerBlock(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
 		block += 1;
 // TODO:
 //			palette.addResource(entry.getKey());

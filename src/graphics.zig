@@ -9,8 +9,12 @@ const Window = @import("main.zig").Window;
 
 const Allocator = std.mem.Allocator;
 
-const c = @cImport ({
+pub const c = @cImport ({
 	@cInclude("glad/glad.h");
+});
+
+pub const stb_image = @cImport ({
+	@cInclude("stb/stb_image.h");
 });
 
 fn fileToString(allocator: Allocator, path: []const u8) ![]u8 {
@@ -72,7 +76,7 @@ pub const Draw = struct {
 		rectColor: c_int,
 	} = undefined;
 	var rectShader: Shader = undefined;
-	var rectVAO: c_uint = undefined;
+	pub var rectVAO: c_uint = undefined;
 	var rectVBO: c_uint = undefined;
 
 	fn initRect() void {
@@ -392,5 +396,185 @@ pub const Shader = struct {
 
 	pub fn delete(self: *const Shader) void {
 		c.glDeleteProgram(self.id);
+	}
+};
+
+pub const SSBO = struct {
+	bufferID: c_uint,
+	pub fn init() SSBO {
+		var self = SSBO{.bufferID = undefined};
+		c.glGenBuffers(1, &self.bufferID);
+		return self;
+	}
+
+	pub fn deinit(self: SSBO) void {
+		c.glDeleteBuffers(1, &self.bufferID);
+	}
+
+	pub fn bind(self: SSBO, binding: c_uint) void {
+		c.glBindBufferBase(c.GL_SHADER_STORAGE_BUFFER, binding, self.bufferID);
+	}
+
+	pub fn bufferData(self: SSBO, T: type, data: []T) void {
+		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
+		c.glBufferData(c.GL_SHADER_STORAGE_BUFFER, data.len*@sizeOf(T), data.ptr, c.GL_STATIC_DRAW);
+		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
+	}
+};
+
+pub const TextureArray = struct {
+	textureID: c_uint,
+
+	pub fn init() TextureArray {
+		var self: TextureArray = undefined;
+		c.glGenTextures(1, &self.textureID);
+		return self;
+	}
+
+	pub fn deinit(self: TextureArray) void {
+		c.glDeleteTextures(1, &self.textureID);
+	}
+
+	pub fn bind(self: TextureArray) void {
+		c.glBindTexture(c.GL_TEXTURE_2D_ARRAY, self.textureID);
+	}
+
+	fn lodColorInterpolation(colors: [4]u32, isTransparent: bool) u32 {
+		var r: [4]u32 = undefined;
+		var g: [4]u32 = undefined;
+		var b: [4]u32 = undefined;
+		var a: [4]u32 = undefined;
+		for(colors) |_, i| {
+			r[i] = colors[i]>>24;
+			g[i] = colors[i]>>16 & 0xFF;
+			b[i] = colors[i]>>8 & 0xFF;
+			a[i] = colors[i] & 0xFF;
+		}
+		// Use gamma corrected average(https://stackoverflow.com/a/832314/13082649):
+		var aSum = 0;
+		var rSum = 0;
+		var gSum = 0;
+		var bSum = 0;
+		for(colors) |_, i| {
+			aSum += a[i]*a[i];
+			rSum += r[i]*r[i];
+			gSum += g[i]*g[i];
+			bSum += b[i]*b[i];
+		}
+		aSum = @floatToInt(u32, @round(@sqrt(@intToFloat(f32, aSum))));
+		if(!isTransparent) {
+			if(aSum < 128) {
+				aSum = 0;
+			} else {
+				aSum = 255;
+			}
+		}
+		rSum = @floatToInt(u32, @round(@sqrt(@intToFloat(f32, rSum))));
+		gSum = @floatToInt(u32, @round(@sqrt(@intToFloat(f32, gSum))));
+		bSum = @floatToInt(u32, @round(@sqrt(@intToFloat(f32, bSum))));
+		return rSum<<24 | gSum<<16 | bSum<<8 | aSum;
+	}
+
+	/// (Re-)Generates the GPU buffer.
+	pub fn generate(self: TextureArray, images: []Image) void {
+		var maxWidth: u32 = 0;
+		var maxHeight: u32 = 0;
+		for(images) |image| {
+			maxWidth = @maximum(maxWidth, image.width);
+			maxHeight = @maximum(maxHeight, image.height);
+		}
+		// Make sure the width and height use a power of 2:
+		if(maxWidth-1 & maxWidth != 0) {
+			maxWidth = 2 << std.math.log2_int(u32, maxWidth);
+		}
+		if(maxHeight-1 & maxHeight != 0) {
+			maxHeight = 2 << std.math.log2_int(u32, maxHeight);
+		}
+
+		std.log.debug("Creating Texture Array of size {}×{} with {} layers.", .{maxWidth, maxHeight, images.len});
+
+		self.bind();
+
+		const maxLOD = 1 + std.mat.log2_int(@minimum(maxWidth, maxHeight));
+		c.glTexStorage3D(c.GL_TEXTURE_2D_ARRAY, maxLOD, c.GL_RGBA8, maxWidth, maxHeight, images.len);
+		var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+		defer arena.deinit();
+		var lodBuffer: [][]u32 = try arena.allocator().alloc([]u32, maxLOD);
+		for(lodBuffer) |*buffer, i| {
+			buffer.* = try arena.allocator().alloc(u32, (maxWidth >> i)*(maxHeight >> i));
+		}
+		
+		for(images) |image, i| {
+			// Check if the image contains non-binary alpha values, which makes it transparent.
+			var isTransparent = false;
+			for(image.imageData) |color| {
+				if(color >> 24 != 0 or color >> 24 != 255) {
+					isTransparent[i] = true;
+					break;
+				}
+			}
+
+			// Fill the buffer using nearest sampling. Probably not the best solutions for all textures, but that's what happens when someone doesn't use power of 2 textures...
+			var x: u32 = 0;
+			while(x < maxWidth): (x += 1) {
+				var y: u32 = 0;
+				while(y < maxHeight): (y += 1) {
+					const index = x + y*maxWidth;
+					const imageIndex = (x*image.width)/maxWidth + image.width*(y*image.height)/maxHeight;
+					const argb = image.imageData[imageIndex];
+					const rgba = argb<<8 | argb>>24;
+					lodBuffer[0][index] = rgba;
+				}
+			}
+
+			// Calculate the mipmap levels:
+			for(lodBuffer) |_, lod| {
+				const curWidth = maxWidth >> lod;
+				const curHeight = maxHeight >> lod;
+				if(lod != 0) {
+					x = 0;
+					while(x < curWidth): (x += 1) {
+						var y: u32 = 0;
+						while(y < curHeight): (y += 1) {
+							const index = x + y*curWidth;
+							const index2 = 2*x + 2*y*2*curWidth;
+							const colors = [4]u32 {
+								lodBuffer[lod-1][index2],
+								lodBuffer[lod-1][index2 + 1],
+								lodBuffer[lod-1][index2 + curWidth*2],
+								lodBuffer[lod-1][index2 + curWidth*2 + 1],
+							};
+							lodBuffer[lod][index] = lodColorInterpolation(colors, isTransparent);
+						}
+					}
+				}
+				c.glTexSubImage3D(c.GL_TEXTURE_2D_ARRAY, lod, 0, 0, i, curWidth, curHeight, 1, c.GL_RGBA, c.GL_UNSIGNED_BYTE, &lodBuffer[lod]);
+			}
+		}
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAX_LOD, maxLOD);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_BASE_LEVEL, 5);
+		//glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
+		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST_MIPMAP_LINEAR);
+		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
+		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
+		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
+	}
+};
+
+pub const Image = struct {
+	width: u32,
+	height: u32,
+	imageData: []u32,
+	pub fn readFromFile(allocator: Allocator, path: []const u8) !Image {
+		var result: Image = undefined;
+		var channel: c_int = undefined;
+		var buffer: [1024]u8 = undefined;
+		const nullTerminatedPath = try std.fmt.bufPrintZ(&buffer, "{s}", .{path}); // TODO: Find a more zig-friendly image loading library.
+		const data = stb_image.stbi_load(nullTerminatedPath.ptr, @ptrCast([*c]c_int, &result.width), @ptrCast([*c]c_int, &result.height), &channel, 4) orelse {
+			return error.FileNotFound;
+		};
+		result.imageData = try allocator.dupe(u32, @ptrCast([*]u32, data)[0..result.width*result.height]);
+		stb_image.stbi_image_free(data);
+		return result;
 	}
 };

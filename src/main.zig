@@ -1,7 +1,10 @@
 const std = @import("std");
 
 const assets = @import("assets.zig");
+const blocks = @import("blocks.zig");
+const chunk = @import("chunk.zig");
 const graphics = @import("graphics.zig");
+const renderer = @import("renderer.zig");
 
 const Vec2f = @import("vec.zig").Vec2f;
 
@@ -55,6 +58,7 @@ pub const Window = struct {
 			std.log.info("Framebuffer: {}, {}", .{newWidth, newHeight});
 			width = @intCast(u31, newWidth);
 			height = @intCast(u31, newHeight);
+			renderer.updateViewport(width, height, 45);// TODO: Get fov from settings.
 		}
 		fn glDebugOutput(_: c_uint, typ: c_uint, _: c_uint, severity: c_uint, length: c_int, message: [*c]const u8, _: ?*const anyopaque) callconv(.C) void {
 			if(typ == c.GL_DEBUG_TYPE_ERROR or typ == c.GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR or typ == c.GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR or typ == c.GL_DEBUG_TYPE_PORTABILITY or typ == c.GL_DEBUG_TYPE_PERFORMANCE) {
@@ -139,6 +143,15 @@ pub fn main() !void {
 	try assets.init();
 	defer assets.deinit();
 
+	blocks.meshes.init();
+	defer blocks.meshes.deinit();
+
+	try chunk.meshing.init();
+	defer chunk.meshing.deinit();
+
+	try renderer.init();
+	defer renderer.deinit();
+
 	try assets.loadWorldAssets("saves");
 
 	c.glEnable(c.GL_CULL_FACE);
@@ -155,12 +168,9 @@ pub fn main() !void {
 		}
 		c.glfwSwapBuffers(Window.window);
 		c.glfwPollEvents();
-		c.glViewport(0, 0, Window.width, Window.height);
-		c.glClearColor(1, 1, 0, 1);
-		c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
 		{ // Render the game
 			c.glEnable(c.GL_DEPTH_TEST);
-			// TODO
+			renderer.render(.{.x = 0, .y = 0, .z = 0});
 		}
 
 		{ // Render the GUI

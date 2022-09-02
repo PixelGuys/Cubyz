@@ -37,7 +37,7 @@ pub fn build(b: *std.build.Builder) void {
 			std.log.err("Unsupported target: {}\n", .{ target.getOsTag() });
 		}
 	}
-	exe.addCSourceFiles(&[_][]const u8{"lib/glad.c"}, &[_][]const u8{"-gdwarf-4",});
+	exe.addCSourceFiles(&[_][]const u8{"lib/glad.c", "lib/stb_image.c"}, &[_][]const u8{"-gdwarf-4",});
 	exe.setTarget(target);
 	exe.setBuildMode(mode);
 	exe.install();
