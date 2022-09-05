@@ -5,6 +5,7 @@ const blocks = @import("blocks.zig");
 const chunk = @import("chunk.zig");
 const graphics = @import("graphics.zig");
 const renderer = @import("renderer.zig");
+const network = @import("network.zig");
 
 const Vec2f = @import("vec.zig").Vec2f;
 
@@ -12,6 +13,8 @@ pub const c = @cImport ({
 	@cInclude("glad/glad.h");
 	@cInclude("GLFW/glfw3.h");
 });
+
+pub threadlocal var threadAllocator: std.mem.Allocator = undefined;
 
 var logFile: std.fs.File = undefined;
 
@@ -27,15 +30,16 @@ pub fn log(
 		std.log.Level.warn => "\x1b[33m",
 		std.log.Level.debug => "\x1b[37;44m",
 	};
-	var buf: [4096]u8 = undefined;
 
 	std.debug.getStderrMutex().lock();
 	defer std.debug.getStderrMutex().unlock();
 
-	const fileMessage = std.fmt.bufPrint(&buf, "[" ++ level.asText() ++ "]" ++ ": " ++ format ++ "\n", args) catch return;
+	const fileMessage = std.fmt.allocPrint(threadAllocator, "[" ++ level.asText() ++ "]" ++ ": " ++ format ++ "\n", args) catch return;
+	defer threadAllocator.free(fileMessage);
 	logFile.writeAll(fileMessage) catch return;
 
-	const terminalMessage = std.fmt.bufPrint(&buf, color ++ format ++ "\x1b[0m\n", args) catch return;
+	const terminalMessage = std.fmt.allocPrint(threadAllocator, color ++ format ++ "\x1b[0m\n", args) catch return;
+	defer threadAllocator.free(terminalMessage);
 	nosuspend std.io.getStdErr().writeAll(terminalMessage) catch return;
 }
 
@@ -130,6 +134,12 @@ pub const Window = struct {
 };
 
 pub fn main() !void {
+	var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+	threadAllocator = gpa.allocator();
+	defer if(gpa.deinit()) {
+		@panic("Memory leak");
+	};
+
 	// init logging.
 	logFile = std.fs.cwd().createFile("logs/latest.log", .{}) catch unreachable;
 	defer logFile.close();
@@ -153,6 +163,9 @@ pub fn main() !void {
 	defer renderer.deinit();
 
 	try assets.loadWorldAssets("saves");
+
+	var conn = try network.ConnectionManager.init(12345, true);
+	defer conn.deinit();
 
 	c.glEnable(c.GL_CULL_FACE);
 	c.glCullFace(c.GL_BACK);
@@ -183,6 +196,9 @@ pub fn main() !void {
 			graphics.Draw.line(Vec2f{.x = 0, .y = 0}, Vec2f{.x = 1920, .y = 1080});
 		}
 	}
+
+	var conn2 = try network.Connection.init(conn, "127.0.0.1:12345");
+	conn2.deinit();
 }
 
 test "abc" {

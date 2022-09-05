@@ -2,10 +2,13 @@
 /// Also contains some basic 2d drawing stuff.
 
 const std = @import("std");
+
 const Vec4i = @import("vec.zig").Vec4i;
 const Vec2f = @import("vec.zig").Vec2f;
+const Vec3f = @import("vec.zig").Vec3f;
 
-const Window = @import("main.zig").Window;
+const main = @import("main.zig");
+const Window = main.Window;
 
 const Allocator = std.mem.Allocator;
 
@@ -329,11 +332,11 @@ pub const Shader = struct {
 	id: c_uint,
 	
 	fn addShader(self: *const Shader, filename: []const u8, shader_stage: c_uint) !void {
-		const source = fileToString(std.heap.page_allocator, filename) catch |err| {
+		const source = fileToString(main.threadAllocator, filename) catch |err| {
 			std.log.warn("Couldn't find file: {s}", .{filename});
 			return err;
 		};
-		defer std.heap.page_allocator.free(source);
+		defer main.threadAllocator.free(source);
 		const ref_buffer = [_] [*c]u8 {@ptrCast([*c]u8, source.ptr)};
 		const shader = c.glCreateShader(shader_stage);
 		defer c.glDeleteShader(shader);
@@ -568,8 +571,8 @@ pub const Image = struct {
 	pub fn readFromFile(allocator: Allocator, path: []const u8) !Image {
 		var result: Image = undefined;
 		var channel: c_int = undefined;
-		var buffer: [1024]u8 = undefined;
-		const nullTerminatedPath = try std.fmt.bufPrintZ(&buffer, "{s}", .{path}); // TODO: Find a more zig-friendly image loading library.
+		const nullTerminatedPath = try std.fmt.allocPrintZ(main.threadAllocator, "{s}", .{path}); // TODO: Find a more zig-friendly image loading library.
+		defer main.threadAllocator.free(nullTerminatedPath);
 		const data = stb_image.stbi_load(nullTerminatedPath.ptr, @ptrCast([*c]c_int, &result.width), @ptrCast([*c]c_int, &result.height), &channel, 4) orelse {
 			return error.FileNotFound;
 		};
@@ -577,4 +580,10 @@ pub const Image = struct {
 		stb_image.stbi_image_free(data);
 		return result;
 	}
+};
+
+pub const Fog = struct {
+	active: bool,
+	color: Vec3f,
+	density: f32,
 };

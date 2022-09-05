@@ -3,6 +3,8 @@ const std = @import("std");
 const vec = @import("vec.zig");
 const Vec3f = vec.Vec3f;
 const Mat4f = vec.Mat4f;
+const graphics = @import("graphics.zig");
+const Fog = graphics.Fog;
 
 pub const camera = struct {
 	var rotation: Vec3f = Vec3f{.x = 0, .y = 0, .z = 0};
@@ -33,3 +35,5 @@ pub var world: ?*World = &testWorld;
 
 pub var projectionMatrix: Mat4f = Mat4f.identity();
 pub var lodProjectionMatrix: Mat4f = Mat4f.identity();
+
+pub var fog = Fog{.active = true, .color=.{.x=0.5, .y=0.5, .z=0.5}, .density=0.025};

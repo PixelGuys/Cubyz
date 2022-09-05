@@ -3,6 +3,7 @@ const Allocator = std.mem.Allocator;
 
 const blocks = @import("blocks.zig");
 const Block = blocks.Block;
+const game = @import("game.zig");
 const graphics = @import("graphics.zig");
 const c = graphics.c;
 const Shader = graphics.Shader;
@@ -88,9 +89,9 @@ pub const Chunk = struct {
 	wasCleaned: bool = false,
 	generated: bool = false,
 
-	width: ChunkPosition,
+	width: ChunkCoordinate,
 	voxelSizeShift: u5,
-	voxelSizeMask: ChunkPosition,
+	voxelSizeMask: ChunkCoordinate,
 	widthShift: u5,
 	mutex: std.Thread.Mutex,
 
@@ -476,7 +477,7 @@ pub const ChunkVisibilityData = struct {
 
 pub const meshing = struct {
 	var shader: Shader = undefined;
-	var uniforms: struct {
+	pub var uniforms: struct {
 		projectionMatrix: c_int,
 		viewMatrix: c_int,
 		modelPosition: c_int,
@@ -497,8 +498,6 @@ pub const meshing = struct {
 	var vao: c_uint = undefined;
 	var vbo: c_uint = undefined;
 	var faces: std.ArrayList(u32) = undefined;
-
-// TODO: public static final Matrix4f projMatrix = new Matrix4f();
 
 	pub fn init() !void {
 		shader = try Shader.create("assets/cubyz/shaders/chunks/chunk_vertex.vs", "assets/cubyz/shaders/chunks/chunk_fragment.fs");
@@ -531,17 +530,16 @@ pub const meshing = struct {
 	pub fn bindShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, directional: Vec3f, time: u32) void {
 		shader.bind();
 
-// TODO:
-//		shader.setUniform(loc_fog_activ, Cubyz.fog.isActive());
-//		shader.setUniform(loc_fog_color, Cubyz.fog.getColor());
-//		shader.setUniform(loc_fog_density, Cubyz.fog.getDensity());
+		c.glUniform1i(uniforms.fog_activ, if(game.fog.active) 1 else 0);
+		c.glUniform3fv(uniforms.fog_color, 1, @ptrCast([*c]f32, &game.fog.color));
+		c.glUniform1f(uniforms.fog_density, game.fog.density);
 
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_FALSE, @ptrCast([*c]f32, &projMatrix));
 
-//		shader.setUniform(loc_texture_sampler, 0);
-//		shader.setUniform(loc_emissionSampler, 1);
-//		
-//		shader.setUniform(loc_viewMatrix, Camera.getViewMatrix());
+		c.glUniform1i(uniforms.texture_sampler, 0);
+		c.glUniform1i(uniforms.emissionSampler, 1);
+
+		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast([*c]f32, &game.camera.viewMatrix));
 
 		c.glUniform3f(uniforms.ambientLight, ambient.x, ambient.y, ambient.z);
 		c.glUniform3f(uniforms.directionalLight, directional.x, directional.y, directional.z);

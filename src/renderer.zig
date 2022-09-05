@@ -3,6 +3,7 @@ const std = @import("std");
 const blocks = @import("blocks.zig");
 const graphics = @import("graphics.zig");
 const c = graphics.c;
+const Fog = graphics.Fog;
 const Shader = graphics.Shader;
 const vec = @import("vec.zig");
 const Vec3f = vec.Vec3f;
@@ -224,7 +225,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, directionalLight: Vec3f, 
 //	frustumInt.set(frustumMatrix);
 
 	const time = @intCast(u32, std.time.milliTimestamp() & std.math.maxInt(u32));
-//TODO:	Fog waterFog = new Fog(true, new Vector3f(0.0f, 0.1f, 0.2f), 0.1f);
+	const waterFog = Fog{.active=true, .color=.{.x=0.0, .y=0.1, .z=0.2}, .density=0.1};
 
 	// Update the uniforms. The uniforms are needed to render the replacement meshes.
 	chunk.meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight, directionalLight, time);
@@ -242,78 +243,63 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, directionalLight: Vec3f, 
 //	}
 
 	c.glDepthRange(0, 0.05);
-//
-//		SimpleList<NormalChunkMesh> visibleChunks = new SimpleList<NormalChunkMesh>(new NormalChunkMesh[64]);
-//		SimpleList<ReducedChunkMesh> visibleReduced = new SimpleList<ReducedChunkMesh>(new ReducedChunkMesh[64]);
-//		for (ChunkMesh mesh : Cubyz.chunkTree.getRenderChunks(frustumInt, x0, y0, z0)) {
-//			if (mesh instanceof NormalChunkMesh) {
-//				visibleChunks.add((NormalChunkMesh)mesh);
-//				
-//				mesh.render(playerPosition);
-//			} else if (mesh instanceof ReducedChunkMesh) {
-//				visibleReduced.add((ReducedChunkMesh)mesh);
-//			}
+
+//	SimpleList<NormalChunkMesh> visibleChunks = new SimpleList<NormalChunkMesh>(new NormalChunkMesh[64]);
+//	SimpleList<ReducedChunkMesh> visibleReduced = new SimpleList<ReducedChunkMesh>(new ReducedChunkMesh[64]);
+//	for (ChunkMesh mesh : Cubyz.chunkTree.getRenderChunks(frustumInt, x0, y0, z0)) {
+//		if (mesh instanceof NormalChunkMesh) {
+//			visibleChunks.add((NormalChunkMesh)mesh);
+//			
+//			mesh.render(playerPosition);
+//		} else if (mesh instanceof ReducedChunkMesh) {
+//			visibleReduced.add((ReducedChunkMesh)mesh);
 //		}
-//		if(selected != null && !Blocks.transparent(selected.getBlock())) {
-//			BlockBreakingRenderer.render(selected, playerPosition);
-//			glActiveTexture(GL_TEXTURE0);
-//			Meshes.blockTextureArray.bind();
-//			glActiveTexture(GL_TEXTURE1);
-//			Meshes.emissionTextureArray.bind();
-//		}
-//		
-//		// Render the far away ReducedChunks:
-//		glDepthRangef(0.05f, 1.0f); // ← Used to fix z-fighting.
-//		ReducedChunkMesh.bindShader(ambientLight, directionalLight.getDirection(), time);
-//		ReducedChunkMesh.shader.setUniform(ReducedChunkMesh.loc_waterFog_activ, waterFog.isActive());
-//		ReducedChunkMesh.shader.setUniform(ReducedChunkMesh.loc_waterFog_color, waterFog.getColor());
-//		ReducedChunkMesh.shader.setUniform(ReducedChunkMesh.loc_waterFog_density, waterFog.getDensity());
-//		
+//	}
+//	if(selected != null && !Blocks.transparent(selected.getBlock())) {
+//		BlockBreakingRenderer.render(selected, playerPosition);
+		c.glActiveTexture(c.GL_TEXTURE0);
+		blocks.meshes.blockTextureArray.bind();
+		c.glActiveTexture(c.GL_TEXTURE1);
+		blocks.meshes.emissionTextureArray.bind();
+//	}
+
+	// Render the far away ReducedChunks:
+	c.glDepthRangef(0.05, 1.0); // ← Used to fix z-fighting.
+	chunk.meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight, directionalLight, time);
+	c.glUniform1i(chunk.meshing.uniforms.waterFog_activ, if(waterFog.active) 1 else 0);
+	c.glUniform3fv(chunk.meshing.uniforms.waterFog_color, 1, @ptrCast([*c]f32, &waterFog.color));
+	c.glUniform1f(chunk.meshing.uniforms.waterFog_density, waterFog.density);
+
 //		for(int i = 0; i < visibleReduced.size; i++) {
 //			ReducedChunkMesh mesh = visibleReduced.array[i];
 //			mesh.render(playerPosition);
 //		}
-//		glDepthRangef(0, 0.05f);
-//		
+	c.glDepthRangef(0, 0.05);
+
 //		EntityRenderer.render(ambientLight, directionalLight, playerPosition);
-//
+
 //		BlockDropRenderer.render(frustumInt, ambientLight, directionalLight, playerPosition);
-//		
-//		/*NormalChunkMesh.shader.bind();
-//		NormalChunkMesh.shader.setUniform(NormalChunkMesh.loc_fog_activ, 0); // manually disable the fog
-//		for (int i = 0; i < spatials.length; i++) {
-//			Spatial spatial = spatials[i];
-//			Mesh mesh = spatial.getMesh();
-//			EntityRenderer.entityShader.setUniform(EntityRenderer.loc_light, new Vector3f(1, 1, 1));
-//			EntityRenderer.entityShader.setUniform(EntityRenderer.loc_materialHasTexture, mesh.getMaterial().isTextured());
-//			mesh.renderOne(() -> {
-//				Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(
-//						Transformation.getModelMatrix(spatial.getPosition(), spatial.getRotation(), spatial.getScale()),
-//						Camera.getViewMatrix());
-//				EntityRenderer.entityShader.setUniform(EntityRenderer.loc_viewMatrix, modelViewMatrix);
-//			});
-//		}*/ // TODO: Draw the sun.
-//		
+
 //		// Render transparent chunk meshes:
 //		NormalChunkMesh.bindTransparentShader(ambientLight, directionalLight.getDirection(), time);
-//
-//		buffers.bindTextures();
-//
+
+	buffers.bindTextures();
+
 //		NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_waterFog_activ, waterFog.isActive());
 //		NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_waterFog_color, waterFog.getColor());
 //		NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_waterFog_density, waterFog.getDensity());
-//
+
 //		NormalChunkMesh[] meshes = sortChunks(visibleChunks.toArray(), x0/Chunk.chunkSize - 0.5f, y0/Chunk.chunkSize - 0.5f, z0/Chunk.chunkSize - 0.5f);
 //		for (NormalChunkMesh mesh : meshes) {
 //			NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_drawFrontFace, false);
 //			glCullFace(GL_FRONT);
 //			mesh.renderTransparent(playerPosition);
-//
+
 //			NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_drawFrontFace, true);
 //			glCullFace(GL_BACK);
 //			mesh.renderTransparent(playerPosition);
 //		}
-//
+
 //		if(selected != null && Blocks.transparent(selected.getBlock())) {
 //			BlockBreakingRenderer.render(selected, playerPosition);
 //			glActiveTexture(GL_TEXTURE0);
@@ -321,9 +307,9 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, directionalLight: Vec3f, 
 //			glActiveTexture(GL_TEXTURE1);
 //			Meshes.emissionTextureArray.bind();
 //		}
-//
-//		fogShader.bind();
-//		// Draw the water fog if the player is underwater:
+
+	fogShader.bind();
+	// Draw the water fog if the player is underwater:
 //		Player player = Cubyz.player;
 //		int block = Cubyz.world.getBlock((int)Math.round(player.getPosition().x), (int)(player.getPosition().y + player.height), (int)Math.round(player.getPosition().z));
 //		if (block != 0 && !Blocks.solid(block)) {
@@ -333,7 +319,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, directionalLight: Vec3f, 
 //				fogShader.setUniform(FogUniforms.loc_fog_density, waterFog.getDensity());
 //				glUniform1i(FogUniforms.loc_color, 3);
 //				glUniform1i(FogUniforms.loc_position, 4);
-//
+
 //				glBindVertexArray(Graphics.rectVAO);
 //				glDisable(GL_DEPTH_TEST);
 //				glDisable(GL_CULL_FACE);
@@ -343,22 +329,22 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, directionalLight: Vec3f, 
 //		if(ClientSettings.BLOOM) {
 //			BloomRenderer.render(buffers, Window.getWidth(), Window.getHeight()); // TODO: Use true width/height
 //		}
-		buffers.unbind();
-		buffers.bindTextures();
-		deferredRenderPassShader.bind();
-		c.glUniform1i(deferredUniforms.color, 3);
-		c.glUniform1i(deferredUniforms.position, 4);
+	buffers.unbind();
+	buffers.bindTextures();
+	deferredRenderPassShader.bind();
+	c.glUniform1i(deferredUniforms.color, 3);
+	c.glUniform1i(deferredUniforms.position, 4);
 
-//		if(Window.getRenderTarget() != null)
-//			Window.getRenderTarget().bind();
+//	if(Window.getRenderTarget() != null)
+//		Window.getRenderTarget().bind();
 
-		c.glBindVertexArray(graphics.Draw.rectVAO);
-		c.glDisable(c.GL_DEPTH_TEST);
-		c.glDisable(c.GL_CULL_FACE);
-		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+	c.glBindVertexArray(graphics.Draw.rectVAO);
+	c.glDisable(c.GL_DEPTH_TEST);
+	c.glDisable(c.GL_CULL_FACE);
+	c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 
-//		if(Window.getRenderTarget() != null)
-//			Window.getRenderTarget().unbind();
+//	if(Window.getRenderTarget() != null)
+//		Window.getRenderTarget().unbind();
 
 //TODO	EntityRenderer.renderNames(playerPosition);
 }

@@ -4,6 +4,7 @@ const Allocator = std.mem.Allocator;
 const json = @import("json.zig");
 const JsonElement = json.JsonElement;
 const blocks_zig = @import("blocks.zig");
+const main = @import("main.zig");
 
 var arena: std.heap.ArenaAllocator = undefined;
 var arenaAllocator: Allocator = undefined;
@@ -13,11 +14,6 @@ var commonRecipes: std.ArrayList([]const u8) = undefined;
 
 /// Reads json files recursively from all subfolders.
 pub fn readAllJsonFilesInAddons(externalAllocator: Allocator, addons: std.ArrayList(std.fs.Dir), addonNames: std.ArrayList([]const u8), subPath: []const u8, output: *std.StringHashMap(JsonElement)) !void {
-	var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-	defer if(gpa.deinit()) {
-		@panic("Memory leak");
-	};
-	var internalAllocator = gpa.allocator();
 	for(addons.items) |addon, addonIndex| {
 		var dir: std.fs.IterableDir = addon.openIterableDir(subPath, .{}) catch |err| {
 			if(err == error.FileNotFound) continue;
@@ -25,7 +21,7 @@ pub fn readAllJsonFilesInAddons(externalAllocator: Allocator, addons: std.ArrayL
 		};
 		defer dir.close();
 
-		var walker = try dir.walk(internalAllocator);
+		var walker = try dir.walk(main.threadAllocator);
 		defer walker.deinit();
 
 		while(try walker.next()) |entry| {
@@ -39,18 +35,18 @@ pub fn readAllJsonFilesInAddons(externalAllocator: Allocator, addons: std.ArrayL
 				std.log.info("ID: {s}", .{id});
 				var file = try dir.dir.openFile(entry.path, .{});
 				defer file.close();
-				const string = try file.readToEndAlloc(internalAllocator, std.math.maxInt(usize));
-				defer internalAllocator.free(string);
+				const string = try file.readToEndAlloc(main.threadAllocator, std.math.maxInt(usize));
+				defer main.threadAllocator.free(string);
 				try output.put(id, json.parseFromString(externalAllocator, string));
 			}
 		}
 	}
 }
 
-pub fn readAssets(externalAllocator: Allocator, temporaryAllocator: Allocator, assetPath: []const u8, blocks: *std.StringHashMap(JsonElement), biomes: *std.StringHashMap(JsonElement)) !void {
-	var addons = std.ArrayList(std.fs.Dir).init(temporaryAllocator);
+pub fn readAssets(externalAllocator: Allocator, assetPath: []const u8, blocks: *std.StringHashMap(JsonElement), biomes: *std.StringHashMap(JsonElement)) !void {
+	var addons = std.ArrayList(std.fs.Dir).init(main.threadAllocator);
 	defer addons.deinit();
-	var addonNames = std.ArrayList([]const u8).init(temporaryAllocator);
+	var addonNames = std.ArrayList([]const u8).init(main.threadAllocator);
 	defer addonNames.deinit();
 	
 	{ // Find all the sub-directories to the assets folder.
@@ -60,13 +56,13 @@ pub fn readAssets(externalAllocator: Allocator, temporaryAllocator: Allocator, a
 		while(try iterator.next()) |addon| {
 			if(addon.kind == .Directory) {
 				try addons.append(try dir.dir.openDir(addon.name, .{}));
-				try addonNames.append(try temporaryAllocator.dupe(u8, addon.name));
+				try addonNames.append(try main.threadAllocator.dupe(u8, addon.name));
 			}
 		}
 	}
 	defer for(addons.items) |*dir, idx| {
 		dir.close();
-		temporaryAllocator.free(addonNames.items[idx]);
+		main.threadAllocator.free(addonNames.items[idx]);
 	};
 
 	try readAllJsonFilesInAddons(externalAllocator, addons, addonNames, "blocks", blocks);
@@ -74,19 +70,13 @@ pub fn readAssets(externalAllocator: Allocator, temporaryAllocator: Allocator, a
 }
 
 pub fn init() !void {
-	var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-	var gpaAllocator = gpa.allocator();
-	defer if(gpa.deinit()) {
-		@panic("Memory leak");
-	};
-
 	arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
 	arenaAllocator = arena.allocator();
 	commonBlocks = std.StringHashMap(JsonElement).init(arenaAllocator);
 	commonBiomes = std.StringHashMap(JsonElement).init(arenaAllocator);
 	commonRecipes = std.ArrayList([]const u8).init(arenaAllocator);
 
-	try readAssets(arenaAllocator, gpaAllocator, "assets/", &commonBlocks, &commonBiomes);
+	try readAssets(arenaAllocator, "assets/", &commonBlocks, &commonBiomes);
 }
 
 pub fn registerBlock(assetFolder: []const u8, id: []const u8, info: JsonElement) !void {
@@ -140,18 +130,12 @@ pub fn registerBlock(assetFolder: []const u8, id: []const u8, info: JsonElement)
 }
 
 pub fn loadWorldAssets(assetFolder: []const u8) !void {
-	var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-	var gpaAllocator = gpa.allocator();
-	defer if(gpa.deinit()) {
-		@panic("Memory leak");
-	};
-
-	var blocks = try commonBlocks.cloneWithAllocator(gpaAllocator);
+	var blocks = try commonBlocks.cloneWithAllocator(main.threadAllocator);
 	defer blocks.clearAndFree();
-	var biomes = try commonBiomes.cloneWithAllocator(gpaAllocator);
+	var biomes = try commonBiomes.cloneWithAllocator(main.threadAllocator);
 	defer biomes.clearAndFree();
 
-	try readAssets(arenaAllocator, gpaAllocator, assetFolder, &blocks, &biomes);
+	try readAssets(arenaAllocator, assetFolder, &blocks, &biomes);
 
 	var block: u32 = 0;
 	// TODO:
