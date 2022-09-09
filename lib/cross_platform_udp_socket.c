@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
+#include <netdb.h>
 #include <arpa/inet.h>
 #endif
 
@@ -39,7 +40,7 @@ int init(unsigned short localPort) {
 	struct sockaddr_in bindingAddr;
 	bindingAddr.sin_family = AF_INET;
 	bindingAddr.sin_port = htons(localPort);
-	bindingAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	bindingAddr.sin_addr.s_addr = INADDR_ANY;
 	memset(&bindingAddr.sin_zero, 0, 8);
 	if(checkError(bind(socketID, (const struct sockaddr*)&bindingAddr, sizeof(bindingAddr))) == -1) {
 		close(socketID);
@@ -75,15 +76,29 @@ intptr_t receiveFrom(int socketID, char* buffer, uintptr_t size, int timeout, ui
 	if(result <= 0) return result;
 	struct sockaddr_in address;
 	uint32_t addrLen = sizeof(address);
-	result = checkError(recvfrom(socketID, buffer, size, 0, &address, &addrLen));
+	result = checkError(recvfrom(socketID, buffer, size, 0, (struct sockaddr *)&address, &addrLen));
 	
 	*resultIP = address.sin_addr.s_addr;
 	*resultPort = ntohs(address.sin_port);
 
 	return result;
 }
-uint32_t parseIP(const char* ip) {
-	return inet_addr(ip);
+uint32_t resolveIP(const char* address) {
+	struct addrinfo hints;
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_DGRAM;
+	hints.ai_protocol = IPPROTO_UDP;
+	struct addrinfo* res;
+	int result = getaddrinfo(address, NULL, &hints, &res);
+	if(result != 0) {
+		errno = result;
+		return 0xffffffff;
+	}
+
+	uint32_t ip = ((struct sockaddr_in *)res->ai_addr)->sin_addr.s_addr;
+	freeaddrinfo(res);
+	return ip;
 }
 
 int getError() {

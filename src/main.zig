@@ -164,16 +164,13 @@ pub fn main() !void {
 
 	try assets.loadWorldAssets("saves");
 
-	std.log.info("{}", .{threadAllocator});
-
 	network.init();
 
-	var conn = try network.ConnectionManager.init(12346, true);
+	var conn = try network.ConnectionManager.init(12347, true);
 	defer conn.deinit();
 
 	var conn2 = try network.Connection.init(conn, "127.0.0.1");
 	defer conn2.deinit();
-	std.log.info("{}", .{threadAllocator});
 
 	c.glEnable(c.GL_CULL_FACE);
 	c.glCullFace(c.GL_BACK);

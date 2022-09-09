@@ -37,8 +37,12 @@ const Socket = struct {
 		return buffer[0..length];
 	}
 
-	fn parseIP(ip: [:0]const u8) u32 {
-		return c.parseIP(ip.ptr);
+	fn resolveIP(ip: [:0]const u8) u32 {
+		const result: u32 = c.resolveIP(ip.ptr);
+		if(result == 0xffffffff) {
+			std.log.warn("Could not resolve address: {s} error: {}", .{ip, c.getError()});
+		}
+		return result;
 	}
 };
 
@@ -49,12 +53,252 @@ pub fn init() void {
 const Address = struct {
 	ip: u32,
 	port: u16,
+	isSymmetricNAT: bool = false,
 };
 
 const Request = struct {
 	address: Address,
 	data: []const u8,
 	requestNotifier: std.Thread.Condition = std.Thread.Condition{},
+};
+
+/// Implements parts of the STUN(Session Traversal Utilities for NAT) protocol to discover public IP+Port
+/// Reference: https://datatracker.ietf.org/doc/html/rfc5389
+const STUN = struct {
+	const ipServerList = [_][]const u8 {
+		"iphone-stun.strato-iphone.de:3478",
+		"stun.12connect.com:3478",
+		"stun.12voip.com:3478",
+		"stun.1und1.de:3478",
+		"stun.acrobits.cz:3478",
+		"stun.actionvoip.com:3478",
+		"stun.altar.com.pl:3478",
+		"stun.antisip.com:3478",
+		"stun.avigora.fr:3478",
+		"stun.bluesip.net:3478",
+		"stun.cablenet-as.net:3478",
+		"stun.callromania.ro:3478",
+		"stun.callwithus.com:3478",
+		"stun.cheapvoip.com:3478",
+		"stun.cloopen.com:3478",
+		"stun.commpeak.com:3478",
+		"stun.cope.es:3478",
+		"stun.counterpath.com:3478",
+		"stun.counterpath.net:3478",
+		"stun.dcalling.de:3478",
+		"stun.demos.ru:3478",
+		"stun.dus.net:3478",
+		"stun.easycall.pl:3478",
+		"stun.easyvoip.com:3478",
+		"stun.ekiga.net:3478",
+		"stun.epygi.com:3478",
+		"stun.etoilediese.fr:3478",
+		"stun.freecall.com:3478",
+		"stun.freeswitch.org:3478",
+		"stun.freevoipdeal.com:3478",
+		"stun.gmx.de:3478",
+		"stun.gmx.net:3478",
+		"stun.halonet.pl:3478",
+		"stun.hoiio.com:3478",
+		"stun.hosteurope.de:3478",
+		"stun.infra.net:3478",
+		"stun.internetcalls.com:3478",
+		"stun.intervoip.com:3478",
+		"stun.ipfire.org:3478",
+		"stun.ippi.fr:3478",
+		"stun.ipshka.com:3478",
+		"stun.it1.hr:3478",
+		"stun.ivao.aero:3478",
+		"stun.jumblo.com:3478",
+		"stun.justvoip.com:3478",
+		"stun.l.google.com:19302",
+		"stun.linphone.org:3478",
+		"stun.liveo.fr:3478",
+		"stun.lowratevoip.com:3478",
+		"stun.lundimatin.fr:3478",
+		"stun.mit.de:3478",
+		"stun.miwifi.com:3478",
+		"stun.myvoiptraffic.com:3478",
+		"stun.netappel.com:3478",
+		"stun.netgsm.com.tr:3478",
+		"stun.nfon.net:3478",
+		"stun.nonoh.net:3478",
+		"stun.nottingham.ac.uk:3478",
+		"stun.ooma.com:3478",
+		"stun.ozekiphone.com:3478",
+		"stun.pjsip.org:3478",
+		"stun.poivy.com:3478",
+		"stun.powervoip.com:3478",
+		"stun.ppdi.com:3478",
+		"stun.qq.com:3478",
+		"stun.rackco.com:3478",
+		"stun.rockenstein.de:3478",
+		"stun.rolmail.net:3478",
+		"stun.rynga.com:3478",
+		"stun.schlund.de:3478",
+		"stun.sigmavoip.com:3478",
+		"stun.sip.us:3478",
+		"stun.sipdiscount.com:3478",
+		"stun.sipgate.net:10000",
+		"stun.sipgate.net:3478",
+		"stun.siplogin.de:3478",
+		"stun.sipnet.net:3478",
+		"stun.sippeer.dk:3478",
+		"stun.siptraffic.com:3478",
+		"stun.smartvoip.com:3478",
+		"stun.smsdiscount.com:3478",
+		"stun.solcon.nl:3478",
+		"stun.solnet.ch:3478",
+		"stun.sonetel.com:3478",
+		"stun.sonetel.net:3478",
+		"stun.sovtest.ru:3478",
+		"stun.srce.hr:3478",
+		"stun.stunprotocol.org:3478",
+		"stun.t-online.de:3478",
+		"stun.tel.lu:3478",
+		"stun.telbo.com:3478",
+		"stun.tng.de:3478",
+		"stun.twt.it:3478",
+		"stun.uls.co.za:3478",
+		"stun.usfamily.net:3478",
+		"stun.vivox.com:3478",
+		"stun.vo.lu:3478",
+		"stun.voicetrading.com:3478",
+		"stun.voip.aebc.com:3478",
+		"stun.voip.blackberry.com:3478",
+		"stun.voip.eutelia.it:3478",
+		"stun.voipblast.com:3478",
+		"stun.voipbuster.com:3478",
+		"stun.voipbusterpro.com:3478",
+		"stun.voipcheap.co.uk:3478",
+		"stun.voipcheap.com:3478",
+		"stun.voipgain.com:3478",
+		"stun.voipgate.com:3478",
+		"stun.voipinfocenter.com:3478",
+		"stun.voipplanet.nl:3478",
+		"stun.voippro.com:3478",
+		"stun.voipraider.com:3478",
+		"stun.voipstunt.com:3478",
+		"stun.voipwise.com:3478",
+		"stun.voipzoom.com:3478",
+		"stun.voys.nl:3478",
+		"stun.voztele.com:3478",
+		"stun.webcalldirect.com:3478",
+		"stun.wifirst.net:3478",
+		"stun.zadarma.com:3478",
+		"stun1.l.google.com:19302",
+		"stun2.l.google.com:19302",
+		"stun3.l.google.com:19302",
+		"stun4.l.google.com:19302",
+		"stun.nextcloud.com:443",
+		"relay.webwormhole.io:3478",
+	};
+	const MAPPED_ADDRESS: u16 = 0x0001;
+	const XOR_MAPPED_ADDRESS: u16 = 0x0020;
+	const MAGIC_COOKIE = [_]u8 {0x21, 0x12, 0xA4, 0x42};
+
+	fn requestAddress(connection: *ConnectionManager) Address {
+		var oldAddress: ?Address = null;
+		var attempt: u32 = 0;
+		var seed = [_]u8 {0} ** std.rand.DefaultCsprng.secret_seed_length;
+		std.mem.writeIntNative(i128, seed[0..16], std.time.nanoTimestamp()); // Not the best seed, but it's not that important.
+		var random = std.rand.DefaultCsprng.init(seed);
+		while(attempt < 16): (attempt += 1) {
+			// Choose a somewhat random server, so we faster notice if any one of them stopped working.
+			const server = ipServerList[random.random().intRangeAtMost(usize, 0, ipServerList.len-1)];
+			var data = [_]u8 {
+				0x00, 0x01, // message type
+				0x00, 0x00, // message length
+				MAGIC_COOKIE[0], MAGIC_COOKIE[1], MAGIC_COOKIE[2], MAGIC_COOKIE[3], // "Magic cookie"
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // transaction ID
+			};
+			random.fill(data[8..]); // Fill the transaction ID.
+
+			var splitter = std.mem.split(u8, server, ":");
+			var nullTerminatedIP = main.threadAllocator.dupeZ(u8, splitter.first()) catch continue;
+			defer main.threadAllocator.free(nullTerminatedIP);
+			var serverAddress = Address{.ip=Socket.resolveIP(nullTerminatedIP), .port=std.fmt.parseUnsigned(u16, splitter.rest(), 10) catch 3478};
+			if(connection.sendRequest(connection.allocator, &data, serverAddress, 500*1000000) catch |err| {
+				std.log.warn("Encountered error: {s} while connecting to STUN server: {s}", .{@errorName(err), server});
+				continue;
+			}) |answer| {
+				defer connection.allocator.free(answer);
+				verifyHeader(answer, data[8..20]) catch |err| {
+					std.log.warn("Header verification failed with {s} for STUN server: {s} data: {any}", .{@errorName(err), server, answer});
+					continue;
+				};
+				var result = findIPPort(answer) catch |err| {
+					std.log.warn("Could not parse IP+Port: {s} for STUN server: {s} data: {any}", .{@errorName(err), server, answer});
+					continue;
+				};
+				if(oldAddress) |other| {
+					std.log.info("{}.{}.{}.{}:{}", .{result.ip & 255, result.ip >> 8 & 255, result.ip >> 16 & 255, result.ip >> 24, result.port});
+					if(other.ip == result.ip and other.port == result.port) {
+						return result;
+					} else {
+						result.isSymmetricNAT = true;
+						return result;
+					}
+				} else {
+					oldAddress = result;
+				}
+			} else {
+				std.log.warn("Couldn't reach STUN server: {s}", .{server});
+			}
+		}
+		return Address{.ip=Socket.resolveIP("127.0.0.1"), .port=settings.defaultPort}; // TODO: Return ip address in LAN.
+	}
+
+	fn findIPPort(_data: []const u8) !Address {
+		var data = _data[20..]; // Skip the header.
+		while(data.len > 0) {
+			const typ = std.mem.readIntBig(u16, data[0..2]);
+			const len = std.mem.readIntBig(u16, data[2..4]);
+			data = data[4..];
+			switch(typ) {
+				XOR_MAPPED_ADDRESS, MAPPED_ADDRESS => {
+					const xor = data[0];
+					if(typ == MAPPED_ADDRESS and xor != 0) return error.NonZeroXORForMappedAddress;
+					if(data[1] == 0x01) {
+						var addressData: [6]u8 = undefined;
+						std.mem.copy(u8, &addressData, data[2..8]);
+						if(typ == XOR_MAPPED_ADDRESS) {
+							addressData[0] ^= MAGIC_COOKIE[0];
+							addressData[1] ^= MAGIC_COOKIE[1];
+							addressData[2] ^= MAGIC_COOKIE[0];
+							addressData[3] ^= MAGIC_COOKIE[1];
+							addressData[4] ^= MAGIC_COOKIE[2];
+							addressData[5] ^= MAGIC_COOKIE[3];
+						}
+						return Address {
+							.port = std.mem.readIntBig(u16, addressData[0..2]),
+							.ip = std.mem.readIntNative(u32, addressData[2..6]), // Needs to stay in big endian → native.
+						};
+					} else if(data[1] == 0x02) {
+						data = data[(len + 3) & ~@as(usize, 3)..]; // Pad to 32 Bit.
+						continue; // I don't care about IPv6.
+					} else {
+						return error.UnknownAddressFamily;
+					}
+				},
+				else => {
+					data = data[(len + 3) & ~@as(usize, 3)..]; // Pad to 32 Bit.
+				},
+			}
+		}
+		return error.IpPortNotFound;
+	}
+
+	fn verifyHeader(data: []const u8, transactionID: []const u8) !void {
+		if(data[0] != 0x01 or data[1] != 0x01) return error.NotABinding;
+		if(@intCast(u16, data[2] & 0xff)*256 + (data[3] & 0xff) != data.len - 20) return error.BadSize;
+		for(MAGIC_COOKIE) |cookie, i| {
+			if(data[i + 4] != cookie) return error.WrongCookie;
+		}
+		for(transactionID) |_, i| {
+			if(data[i+8] != transactionID[i]) return error.WrongTransaction;
+		}
+	}
 };
 
 //	private volatile boolean running = true;
@@ -116,21 +360,7 @@ pub const ConnectionManager = struct {
 
 	pub fn makeOnline(self: *ConnectionManager) void {
 		if(!self.online) {
-			// TODO:
-//			externalIPPort = STUN.requestIPPort(this);
-//			String[] ipPort;
-//			if(externalIPPort.contains("?")) {
-//				ipPort = externalIPPort.split(":\\?");
-//			} else {
-//				ipPort = externalIPPort.split(":");
-//			}
-//			try {
-//				externalAddress = InetAddress.getByName(ipPort[0]);
-//			} catch(UnknownHostException e) {
-//				Logger.error(e);
-//				throw new IllegalArgumentException("externalIPPort is invalid.");
-//			}
-//			externalPort = Integer.parseInt(ipPort[1]);
+			self.externalAddress = STUN.requestAddress(self);
 			self.online = true;
 		}
 	}
@@ -139,18 +369,18 @@ pub const ConnectionManager = struct {
 		try self.socket.send(data, target);
 	}
 
-	pub fn sendRequest(self: *ConnectionManager, allocator: Allocator, data: []const u8, target: Address, timeout_ns: u64) ?[]const u8 {
-		self.send(data, target);
+	pub fn sendRequest(self: *ConnectionManager, allocator: Allocator, data: []const u8, target: Address, timeout_ns: u64) !?[]const u8 {
+		try self.send(data, target);
 		var request = Request{.address = target, .data = data};
 		{
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			self.requests.append(&request);
+			try self.requests.append(&request);
 
-			request.requestNotifier.timedWait(self.mutex, timeout_ns) catch {};
+			request.requestNotifier.timedWait(&self.mutex, timeout_ns) catch {};
 
 			for(self.requests.items) |req, i| {
-				if(req == request) {
+				if(req == &request) {
 					_ = self.requests.swapRemove(i);
 					break;
 				}
@@ -158,13 +388,13 @@ pub const ConnectionManager = struct {
 		}
 
 		// The request data gets modified when a result was received.
-		if(request.data == data) {
+		if(request.data.ptr == data.ptr) {
 			return null;
 		} else {
-			if(allocator == self.allocator) {
+			if(allocator.ptr == self.allocator.ptr) {
 				return request.data;
 			} else {
-				var result = allocator.dupe(request.data);
+				var result = try allocator.dupe(u8, request.data);
 				self.allocator.free(request.data);
 				return result;
 			}
@@ -261,7 +491,7 @@ pub const ConnectionManager = struct {
 				}
 				if(self.connections.items.len == 0 and self.externalAddress != null) {
 					// Send a message to external ip, to keep the port open:
-					var data: [0]u8 = undefined;
+					var data = [1]u8{0};
 					try self.send(&data, self.externalAddress.?);
 				}
 			}
@@ -340,9 +570,10 @@ pub const Connection = struct {
 		var splitter = std.mem.split(u8, ipPort, ":");
 		var nullTerminatedIP = try main.threadAllocator.dupeZ(u8, splitter.first());
 		defer main.threadAllocator.free(nullTerminatedIP);
-		result.remoteAddress.ip = Socket.parseIP(nullTerminatedIP);
+		result.remoteAddress.ip = Socket.resolveIP(nullTerminatedIP);
 		var port = splitter.rest();
 		if(port.len != 0 and port[0] == '?') {
+			result.remoteAddress.isSymmetricNAT = true;
 			result.bruteforcingPort = true;
 			port = port[1..];
 		}
@@ -532,7 +763,7 @@ pub const Connection = struct {
 			// This is called every 100 ms, so if I send 10 requests it shouldn't be too bad.
 			var i: u16 = 0;
 			while(i < 5): (i += 1) {
-				var data = [0]u8{};
+				var data = [1]u8{0};
 				if(self.remoteAddress.port +% self.bruteForcedPortRange != 0) {
 					try self.manager.send(&data, Address{.ip = self.remoteAddress.ip, .port = self.remoteAddress.port +% self.bruteForcedPortRange});
 				}
