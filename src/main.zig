@@ -164,8 +164,16 @@ pub fn main() !void {
 
 	try assets.loadWorldAssets("saves");
 
-	var conn = try network.ConnectionManager.init(12345, true);
+	std.log.info("{}", .{threadAllocator});
+
+	network.init();
+
+	var conn = try network.ConnectionManager.init(12346, true);
 	defer conn.deinit();
+
+	var conn2 = try network.Connection.init(conn, "127.0.0.1");
+	defer conn2.deinit();
+	std.log.info("{}", .{threadAllocator});
 
 	c.glEnable(c.GL_CULL_FACE);
 	c.glCullFace(c.GL_BACK);
@@ -196,9 +204,6 @@ pub fn main() !void {
 			graphics.Draw.line(Vec2f{.x = 0, .y = 0}, Vec2f{.x = 1920, .y = 1080});
 		}
 	}
-
-	var conn2 = try network.Connection.init(conn, "127.0.0.1:12345");
-	conn2.deinit();
 }
 
 test "abc" {

@@ -21,6 +21,7 @@ pub fn build(b: *std.build.Builder) void {
 			}, &[_][]const u8{"-gdwarf-4", "-std=c99", "-D_GLFW_WIN32"});
 			exe.linkSystemLibrary("gdi32");
 			exe.linkSystemLibrary("opengl32");
+			exe.linkSystemLibrary("ws2_32");
 		} else if(target.getOsTag() == .linux) {
 			// TODO: if(isWayland) {
 			//	exe.addCSourceFiles(&[_][]const u8 {
@@ -37,9 +38,10 @@ pub fn build(b: *std.build.Builder) void {
 			std.log.err("Unsupported target: {}\n", .{ target.getOsTag() });
 		}
 	}
-	exe.addCSourceFiles(&[_][]const u8{"lib/glad.c", "lib/stb_image.c"}, &[_][]const u8{"-gdwarf-4",});
+	exe.addCSourceFiles(&[_][]const u8{"lib/glad.c", "lib/stb_image.c", "lib/cross_platform_udp_socket.c"}, &[_][]const u8{"-gdwarf-4",});
 	exe.setTarget(target);
 	exe.setBuildMode(mode);
+	//exe.sanitize_thread = true;
 	exe.install();
 
 	const run_cmd = exe.run();
