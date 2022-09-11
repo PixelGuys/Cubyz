@@ -2,4 +2,5 @@ logs/
 saves/
 zig-out/
 zig-cache/
+serverAssets/
 settings.json

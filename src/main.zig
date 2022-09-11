@@ -6,6 +6,7 @@ const chunk = @import("chunk.zig");
 const graphics = @import("graphics.zig");
 const renderer = @import("renderer.zig");
 const network = @import("network.zig");
+const utils = @import("utils.zig");
 
 const Vec2f = @import("vec.zig").Vec2f;
 
@@ -171,6 +172,8 @@ pub fn main() !void {
 
 	var conn2 = try network.Connection.init(conn, "127.0.0.1");
 	defer conn2.deinit();
+
+	try network.Protocols.handShake.clientSide(conn2, "quanturmdoelvloper");
 
 	c.glEnable(c.GL_CULL_FACE);
 	c.glCullFace(c.GL_BACK);

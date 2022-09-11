@@ -1,6 +1,7 @@
 const std = @import("std");
 const ArrayList = std.ArrayList;
 const Allocator = std.mem.Allocator;
+const main = @import("main.zig");
 
 const OutOfMemory = Allocator.Error;
 
@@ -120,6 +121,104 @@ pub const JsonElement = union(JsonType) {
 	}
 
 	// TODO: toString()
+	fn escape(string: []const u8, allocator: Allocator) ![]const u8 {
+		var out = std.ArrayList(u8).init(allocator);
+		for(string) |char| {
+			switch(char) {
+				'\\' => try out.appendSlice("\\\\"),
+				'\n' => try out.appendSlice("\\n"),
+				'\"' => try out.appendSlice("\\\""),
+				'\t' => try out.appendSlice("\\t"),
+				else => try out.append(char),
+			}
+		}
+		return out.toOwnedSlice();
+	}
+	fn writeTabs(writer: std.ArrayList(u8).Writer, tabs: u32) !void {
+		var i: u32 = 0;
+		while(i < tabs): (i += 1) {
+			try writer.writeByte('\t');
+		}
+	}
+	fn recurseToString(json: JsonElement, writer: std.ArrayList(u8).Writer, tabs: u32, comptime visualCharacters: bool) !void {
+		switch(json) {
+			JsonType.JsonInt => |value| {
+				try std.fmt.formatInt(value, 10, .lower, .{}, writer);
+			},
+			JsonType.JsonFloat => |value| {
+				try std.fmt.formatFloatScientific(value, .{}, writer);
+			},
+			JsonType.JsonBool => |value| {
+				if(value) {
+					try writer.writeAll("true");
+				} else {
+					try writer.writeAll("false");
+				}
+			},
+			JsonType.JsonNull => {
+				try writer.writeAll("null");
+			},
+			JsonType.JsonString, JsonType.JsonStringOwned => |value| {
+				const escaped = try escape(value, main.threadAllocator);
+				try writer.writeByte('\"');
+				try writer.writeAll(escaped);
+				try writer.writeByte('\"');
+				main.threadAllocator.free(escaped);
+			},
+			JsonType.JsonArray => |array| {
+				try writer.writeByte('[');
+				for(array.items) |elem, i| {
+					if(i != 0) {
+						try writer.writeByte(',');
+					}
+					if(visualCharacters) try writer.writeByte('\n');
+					if(visualCharacters) try writeTabs(writer, tabs + 1);
+					try recurseToString(elem, writer, tabs + 1, visualCharacters);
+				}
+				if(visualCharacters) try writer.writeByte('\n');
+				if(visualCharacters) try writeTabs(writer, tabs);
+				try writer.writeByte(']');
+			},
+			JsonType.JsonObject => |obj| {
+				try writer.writeByte('{');
+				var iterator = obj.iterator();
+				var first: bool = true;
+				while(true) {
+					var elem = iterator.next() orelse break;
+					if(!first) {
+						try writer.writeByte(',');
+					}
+					if(visualCharacters) try writer.writeByte('\n');
+					if(visualCharacters) try writeTabs(writer, tabs + 1);
+					try writer.writeByte('\"');
+					try writer.writeAll(elem.key_ptr.*);
+					try writer.writeByte('\"');
+					if(visualCharacters) try writer.writeByte(' ');
+					try writer.writeByte(':');
+					if(visualCharacters) try writer.writeByte(' ');
+
+					try recurseToString(elem.value_ptr.*, writer, tabs + 1, visualCharacters);
+					first = false;
+				}
+				if(visualCharacters) try writer.writeByte('\n');
+				if(visualCharacters) try writeTabs(writer, tabs);
+				try writer.writeByte('}');
+			},
+		}
+	}
+	pub fn toString(json: JsonElement, allocator: Allocator) ![]const u8 {
+		var string = std.ArrayList(u8).init(allocator);
+		try recurseToString(json, string.writer(), 0, true);
+		return string.toOwnedSlice();
+	}
+
+	/// Ignores all the visual characters(spaces, tabs and newlines) and allows adding a custom prefix(which is for example required by networking).
+	pub fn toStringEfficient(json: JsonElement, allocator: Allocator, prefix: []const u8) ![]const u8 {
+		var string = std.ArrayList(u8).init(allocator);
+		try string.appendSlice(prefix);
+		try recurseToString(json, string.writer(), 0, false);
+		return string.toOwnedSlice();
+	}
 };
 
 pub fn parseFromString(allocator: Allocator, string: []const u8) JsonElement {
