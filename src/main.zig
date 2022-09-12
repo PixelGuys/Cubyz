@@ -16,6 +16,7 @@ pub const c = @cImport ({
 });
 
 pub threadlocal var threadAllocator: std.mem.Allocator = undefined;
+pub var threadPool: utils.ThreadPool = undefined;
 
 var logFile: std.fs.File = undefined;
 
@@ -144,6 +145,14 @@ pub fn main() !void {
 	// init logging.
 	logFile = std.fs.cwd().createFile("logs/latest.log", .{}) catch unreachable;
 	defer logFile.close();
+
+	var poolgpa = std.heap.GeneralPurposeAllocator(.{}){};
+	threadAllocator = gpa.allocator();
+	defer if(poolgpa.deinit()) {
+		@panic("Memory leak");
+	};
+	threadPool = try utils.ThreadPool.init(poolgpa.allocator(), 1 + ((std.Thread.getCpuCount() catch 4) -| 3));
+	defer threadPool.deinit();
 
 	try Window.init();
 	defer Window.deinit();
