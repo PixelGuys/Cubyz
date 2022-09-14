@@ -129,7 +129,61 @@ pub fn registerBlock(assetFolder: []const u8, id: []const u8, info: JsonElement)
 //		}
 }
 
-pub fn loadWorldAssets(assetFolder: []const u8) !void {
+pub const BlockPalette = struct {
+	palette: std.ArrayList([]const u8),
+	pub fn init(allocator: Allocator, jsonObject: JsonElement) !*BlockPalette {
+		var self = try allocator.create(BlockPalette);
+		self.* = BlockPalette {
+			.palette = std.ArrayList([]const u8).init(allocator),
+		};
+		errdefer self.deinit();
+		if(jsonObject != .JsonObject or jsonObject.JsonObject.count() == 0) {
+			try self.palette.append(try allocator.dupe(u8, "cubyz:air"));
+		} else {
+			var palette = try main.threadAllocator.alloc(?[]const u8, jsonObject.JsonObject.count());
+			for(palette) |*val| {
+				val.* = null;
+			}
+			defer main.threadAllocator.free(palette);
+			var iterator = jsonObject.JsonObject.iterator();
+			while(iterator.next()) |entry| {
+				palette[entry.value_ptr.as(usize, std.math.maxInt(usize))] = entry.key_ptr.*;
+			}
+			std.debug.assert(std.mem.eql(u8, palette[0].?, "cubyz:air"));
+			for(palette) |val| {
+				std.log.info("palette[{}]: {s}", .{self.palette.items.len, val.?});
+				try self.palette.append(try allocator.dupe(u8, val orelse return error.MissingKeyInPalette));
+			}
+		}
+		return self;
+	}
+
+	pub fn deinit(self: *BlockPalette) void {
+		for(self.palette.items) |item| {
+			self.palette.allocator.free(item);
+		}
+		var allocator = self.palette.allocator;
+		self.palette.deinit();
+		allocator.destroy(self);
+	}
+
+	pub fn add(self: *BlockPalette, id: []const u8) !void {
+		try self.palette.append(id);
+	}
+
+	pub fn save(self: *BlockPalette, allocator: Allocator) !JsonElement {
+		var jsonObject = JsonElement{
+			.JsonObject = std.StringHashMap(JsonElement).init(allocator),
+		};
+		errdefer jsonObject.free(allocator);
+		for(self.palette.items) |item, i| {
+			jsonObject.JsonObject.put(try allocator.dupe(u8, item), JsonElement{.JsonInt = @intCast(i64, i)});
+		}
+		return jsonObject;
+	}
+};
+
+pub fn loadWorldAssets(assetFolder: []const u8, palette: *BlockPalette) !void {
 	var blocks = try commonBlocks.cloneWithAllocator(main.threadAllocator);
 	defer blocks.clearAndFree();
 	var biomes = try commonBiomes.cloneWithAllocator(main.threadAllocator);
@@ -138,24 +192,28 @@ pub fn loadWorldAssets(assetFolder: []const u8) !void {
 	try readAssets(arenaAllocator, assetFolder, &blocks, &biomes);
 
 	var block: u32 = 0;
-	// TODO:
-//		for(; block < palette.size(); block++) {
-//			Resource id = palette.getResource(block);
-//			JsonObject json = perWorldBlocks.remove(id);
-//			if(json == null) {
-//				Logger.error("Missing block: " + id + ". Replacing it with default block.");
-//				json = new JsonObject();
-//			}
-//			registerBlock(block, id, json, registries, oreRegistry);
-//		}
-	var iterator = commonBlocks.iterator();
+	for(palette.palette.items) |id| {
+		var nullKeyValue = blocks.fetchRemove(id);
+		var jsonObject: JsonElement = undefined;
+		if(nullKeyValue) |keyValue| {
+			jsonObject = keyValue.value;
+		} else {
+			std.log.err("Missing block: {s}. Replacing it with default block.", .{id});
+			var map: *std.StringHashMap(JsonElement) = try main.threadAllocator.create(std.StringHashMap(JsonElement));
+			map.* = std.StringHashMap(JsonElement).init(main.threadAllocator);
+			jsonObject = JsonElement{.JsonObject=map};
+		}
+		defer if(nullKeyValue == null) jsonObject.free(main.threadAllocator);
+		try registerBlock(assetFolder, id, jsonObject);
+		block += 1;
+	}
+	var iterator = blocks.iterator();
 	while(iterator.next()) |entry| {
 		try registerBlock(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
+		try palette.palette.append(entry.key_ptr.*);
 		block += 1;
-// TODO:
-//			palette.addResource(entry.getKey());
 	}
-//	
+
 //	public void registerBlocks(Registry<DataOrientedRegistry> registries, NoIDRegistry<Ore> oreRegistry, BlockPalette palette) {
 //		HashMap<Resource, JsonObject> perWorldBlocks = new HashMap<>(commonBlocks);
 //		readAllJsonObjects("blocks", (json, id) -> {

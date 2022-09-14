@@ -1,12 +1,14 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
+const assets = @import("assets.zig");
 const chunk = @import("chunk.zig");
 const main = @import("main.zig");
 const game = @import("game.zig");
 const settings = @import("settings.zig");
 const json = @import("json.zig");
 const JsonElement = json.JsonElement;
+const renderer = @import("renderer.zig");
 const utils = @import("utils.zig");
 
 //TODO: Might want to use SSL or something similar to encode the message
@@ -321,6 +323,7 @@ pub const ConnectionManager = struct {
 	allocator: std.mem.Allocator = undefined,
 
 	mutex: std.Thread.Mutex = std.Thread.Mutex{},
+	waitingToFinishReceive: std.Thread.Condition = std.Thread.Condition{},
 
 	receiveBuffer: [Connection.maxPacketSize]u8 = undefined,
 
@@ -343,13 +346,13 @@ pub const ConnectionManager = struct {
 	}
 
 	pub fn deinit(self: *ConnectionManager) void {
-		self.running.store(false, .Monotonic);
-		self.thread.join();
-		Socket.deinit(self.socket);
-
 		for(self.connections.items) |conn| {
 			conn.disconnect() catch |err| {std.log.warn("Error while disconnecting: {s}", .{@errorName(err)});};
 		}
+
+		self.running.store(false, .Monotonic);
+		self.thread.join();
+		Socket.deinit(self.socket);
 		self.connections.deinit();
 		for(self.requests.items) |request| {
 			request.requestNotifier.signal();
@@ -413,6 +416,12 @@ pub const ConnectionManager = struct {
 		try self.connections.append(conn);
 	}
 
+	pub fn finishCurrentReceive(self: *ConnectionManager) void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+		self.waitingToFinishReceive.wait(&self.mutex);
+	}
+
 	pub fn removeConnection(self: *ConnectionManager, conn: *Connection) void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
@@ -459,7 +468,7 @@ pub const ConnectionManager = struct {
 
 	pub fn run(self: *ConnectionManager) !void {
 		self.threadId = std.Thread.getCurrentId();
-		var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+		var gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe=false}){};
 		main.threadAllocator = gpa.allocator();
 		defer if(gpa.deinit()) {
 			@panic("Memory leak");
@@ -467,6 +476,7 @@ pub const ConnectionManager = struct {
 
 		var lastTime = std.time.milliTimestamp();
 		while(self.running.load(.Monotonic)) {
+			self.waitingToFinishReceive.broadcast();
 			var source: Address = undefined;
 			if(self.socket.receive(&self.receiveBuffer, 100, &source)) |data| {
 				try self.onReceive(data, source);
@@ -598,6 +608,9 @@ pub const Protocols = blk: {
 							var jsonObject = json.parseFromString(main.threadAllocator, data[1..]);
 							defer jsonObject.free(main.threadAllocator);
 							// TODO: ((ServerConnection)conn).world.finishHandshake(json);
+							{// TODO: Move this into world loading finishHandshake().
+								game.blockPalette = try assets.BlockPalette.init(renderer.RenderOctree.allocator, jsonObject.getChild("blockPalette")); // TODO: Use the world allocator and free this.
+							}
 							conn.handShakeState = stepComplete;
 							conn.handShakeWaiting.broadcast(); // Notify the waiting client thread.
 						},
@@ -641,10 +654,10 @@ pub const Protocols = blk: {
 				var remaining = data[0..];
 				while(remaining.len >= 16) {
 					const request = chunk.ChunkPosition{
-						.wx = std.mem.readIntBig(chunk.ChunkCoordinate, data[0..4]),
-						.wy = std.mem.readIntBig(chunk.ChunkCoordinate, data[4..8]),
-						.wz = std.mem.readIntBig(chunk.ChunkCoordinate, data[8..12]),
-						.voxelSize = std.mem.readIntBig(chunk.ChunkCoordinate, data[12..16]),
+						.wx = std.mem.readIntBig(chunk.ChunkCoordinate, remaining[0..4]),
+						.wy = std.mem.readIntBig(chunk.ChunkCoordinate, remaining[4..8]),
+						.wz = std.mem.readIntBig(chunk.ChunkCoordinate, remaining[8..12]),
+						.voxelSize = @intCast(chunk.UChunkCoordinate, std.mem.readIntBig(chunk.ChunkCoordinate, remaining[12..16])),
 					};
 					_ = request;
 					_ = conn;
@@ -654,18 +667,127 @@ pub const Protocols = blk: {
 			}
 			pub fn sendRequest(conn: *Connection, requests: []chunk.ChunkPosition) !void {
 				if(requests.len == 0) return;
-				var data = main.threadAllocator.alloc(16*requests.len);
+				var data = try main.threadAllocator.alloc(u8, 16*requests.len);
 				defer main.threadAllocator.free(data);
 				var remaining = data;
 				for(requests) |req| {
-					std.mem.writeIntBig(chunk.ChunkCoordinate, data[0..4], req.wx);
-					std.mem.writeIntBig(chunk.ChunkCoordinate, data[4..8], req.wy);
-					std.mem.writeIntBig(chunk.ChunkCoordinate, data[8..12], req.wz);
-					std.mem.writeIntBig(chunk.ChunkCoordinate, data[12..16], req.voxelSize);
+					std.mem.writeIntBig(chunk.ChunkCoordinate, remaining[0..4], req.wx);
+					std.mem.writeIntBig(chunk.ChunkCoordinate, remaining[4..8], req.wy);
+					std.mem.writeIntBig(chunk.ChunkCoordinate, remaining[8..12], req.wz);
+					std.mem.writeIntBig(chunk.ChunkCoordinate, remaining[12..16], req.voxelSize);
+			std.log.info("Requested some chunk: {}", .{req.voxelSize});
 					remaining = remaining[16..];
 				}
-				conn.sendImportant(id, data);
+				try conn.sendImportant(id, data);
 			}
+		}),
+		chunkTransmission: type = addProtocol(&comptimeList, struct {
+			const id: u8 = 3;
+			fn receive(_: *Connection, _data: []const u8) !void {
+				var data = _data;
+				var pos = chunk.ChunkPosition{
+					.wx = std.mem.readIntBig(chunk.ChunkCoordinate, data[0..4]),
+					.wy = std.mem.readIntBig(chunk.ChunkCoordinate, data[4..8]),
+					.wz = std.mem.readIntBig(chunk.ChunkCoordinate, data[8..12]),
+					.voxelSize = @intCast(chunk.UChunkCoordinate, std.mem.readIntBig(chunk.ChunkCoordinate, data[12..16])),
+				};
+				data = data[16..];
+				if(pos.voxelSize == 1) {
+					// TODO:
+//			byte[] chunkData = ChunkIO.decompressChunk(data, offset, length);
+//			if(chunkData == null)
+//				return;
+//			VisibleChunk ch = new VisibleChunk(Cubyz.world, wx, wy, wz);
+//			ch.loadFromByteArray(chunkData, chunkData.length);
+//			ThreadPool.addTask(new ChunkLoadTask(ch));
+				} else {
+					data = try utils.Compression.inflate(main.threadAllocator, data);
+					defer main.threadAllocator.free(data);
+					var size = @divExact(data.len, 8);
+					var x = data[0..size];
+					var y = data[size..2*size];
+					var z = data[2*size..3*size];
+					var neighbors = data[3*size..4*size];
+					var visibleBlocks = data[4*size..];
+					var result = try renderer.RenderOctree.allocator.create(chunk.ChunkVisibilityData);
+					result.* = try chunk.ChunkVisibilityData.initEmpty(renderer.RenderOctree.allocator, pos, size);
+					for(x) |_, i| {
+						var block = result.visibles.addOneAssumeCapacity();
+						block.x = x[i];
+						block.y = y[i];
+						block.z = z[i];
+						block.neighbors = neighbors[i];
+						var blockTypeAndData = std.mem.readIntBig(u32, visibleBlocks[4*i..][0..4]);
+						block.block.typ = @intCast(u16, blockTypeAndData & 0xffff);
+						block.block.data = @intCast(u16, blockTypeAndData >> 16);
+					}
+					try renderer.RenderOctree.updateChunkMesh(result);
+				}
+			}
+			pub fn sendChunk(conn: *Connection, visData: chunk.ChunkVisibilityData) !void {
+				var data = try main.threadAllocator.alloc(u8, 16 + 8*visData.visibles.items.len);
+				defer main.threadAllocator.free(data);
+				std.mem.writeIntBig(chunk.ChunkCoordinate, data[0..4], visData.pos.wx);
+				std.mem.writeIntBig(chunk.ChunkCoordinate, data[4..8], visData.pos.wy);
+				std.mem.writeIntBig(chunk.ChunkCoordinate, data[8..12], visData.pos.wz);
+				std.mem.writeIntBig(chunk.ChunkCoordinate, data[12..16], visData.pos.voxelSize);
+				var size = visData.visibles.items.len;
+				var x = data[16..][0..size];
+				var y = data[16..][size..2*size];
+				var z = data[16..][2*size..3*size];
+				var neighbors = data[16..][3*size..4*size];
+				var visibleBlocks = data[16..][4*size..];
+				for(visData.visibles.items) |block, i| {
+					x[i] = block.x;
+					y[i] = block.y;
+					z[i] = block.z;
+					neighbors[i] = block.neighbors;
+					var blockTypeAndData = @as(u32, block.block.data) << 16 | block.block.typ;
+					std.mem.writeIntBig(u32, visibleBlocks[4*i..][0..4], blockTypeAndData);
+				}
+
+				var compressed = try utils.Compression.deflate(main.threadAllocator, data);
+				defer main.threadAllocator.free(compressed);
+				try conn.sendImportant(id, compressed);
+			}
+		// TODO:
+//	public void sendChunk(UDPConnection conn, ChunkData ch) {
+//		byte[] data;
+//		if(ch instanceof NormalChunk) {
+//			byte[] compressedChunk = ChunkIO.compressChunk((NormalChunk)ch);
+//			data = new byte[compressedChunk.length + 16];
+//			System.arraycopy(compressedChunk, 0, data, 16, compressedChunk.length);
+//		} else {
+//			assert false: "Invalid chunk class to send over the network " + ch.getClass() + ".";
+//			return;
+//		}
+//		Bits.putInt(data, 0, ch.wx);
+//		Bits.putInt(data, 4, ch.wy);
+//		Bits.putInt(data, 8, ch.wz);
+//		Bits.putInt(data, 12, ch.voxelSize);
+//		conn.sendImportant(this, data);
+//	}
+//
+//	private static class ChunkLoadTask extends ThreadPool.Task {
+//		private final VisibleChunk ch;
+//		public ChunkLoadTask(VisibleChunk ch) {
+//			this.ch = ch;
+//		}
+//		@Override
+//		public float getPriority() {
+//			return ch.getPriority(Cubyz.player);
+//		}
+//
+//		@Override
+//		public boolean isStillNeeded() {
+//			return Cubyz.chunkTree.findNode(ch) != null;
+//		}
+//
+//		@Override
+//		public void run() {
+//			ch.load();
+//		}
+//	}
 		}),
 		disconnect: type = addProtocol(&comptimeList, struct {
 			const id: u8 = 5;
@@ -779,6 +901,10 @@ pub const Connection = struct {
 
 	pub fn deinit(self: *Connection) void {
 		self.disconnect() catch |err| {std.log.warn("Error while disconnecting: {s}", .{@errorName(err)});};
+		self.manager.finishCurrentReceive(); // Wait until all currently received packets are done.
+		for(self.unconfirmedPackets.items) |packet| {
+			self.allocator.free(packet.data);
+		}
 		self.unconfirmedPackets.deinit();
 		self.receivedPackets[0].deinit();
 		self.receivedPackets[1].deinit();

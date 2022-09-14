@@ -13,7 +13,10 @@ const Mat4f = vec.Mat4f;
 const game = @import("game.zig");
 const World = game.World;
 const chunk = @import("chunk.zig");
-const Window = @import("main.zig").Window;
+const main = @import("main.zig");
+const network = @import("network.zig");
+const settings = @import("settings.zig");
+const Window = main.Window;
 
 /// The number of milliseconds after which no more chunk meshes are created. This allows the game to run smoother on movement.
 const maximumMeshTime = 12;
@@ -139,7 +142,7 @@ pub fn updateViewport(width: u31, height: u31, fov: f32) void {
 	buffers.updateBufferSize(width, height);
 }
 
-pub fn render(playerPosition: Vec3d) void {
+pub fn render(playerPosition: Vec3d) !void {
 	var startTime = std.time.milliTimestamp();
 //	TODO:	BlockMeshes.loadMeshes(); // Loads all meshes that weren't loaded yet
 //		if (Cubyz.player != null) {
@@ -188,18 +191,11 @@ pub fn render(playerPosition: Vec3d) void {
 //		// Set intensity:
 //		light.setDirection(light.getDirection().mul(0.1f*Cubyz.world.getGlobalLighting()/light.getDirection().length()));
 //		Window.setClearColor(clearColor);
-		renderWorld(world, Vec3f{.x=0, .y=0, .z=0}, Vec3f{.x=0, .y=1, .z=0.5}, playerPosition);
-//		TODO:
-		_ = startTime;
-//		// Update meshes:
-//		do { // A do while loop is used so even when the framerate is low at least one mesh gets updated per frame.
-//			ChunkMesh mesh = Meshes.getNextQueuedMesh();
-//			if (mesh == null) break;
-//			mesh.regenerateMesh();
-//		} while (System.currentTimeMillis() - startTime <= maximumMeshTime);
+		try renderWorld(world, Vec3f{.x=1, .y=1, .z=1}, Vec3f{.x=0.3, .y=-1, .z=0.5}, playerPosition);
+		try RenderOctree.updateMeshes(startTime + maximumMeshTime);
 	} else {
 //		clearColor.y = clearColor.z = 0.7f;
-//		clearColor.x = 0.1f;
+//		clearColor.x = 0.1f;@import("main.zig")
 //		
 //		Window.setClearColor(clearColor);
 //
@@ -209,9 +205,8 @@ pub fn render(playerPosition: Vec3d) void {
 //	Keyboard.release(); // TODO: Why is this called in the render thread???
 }
 
-pub fn renderWorld(world: *World, ambientLight: Vec3f, directionalLight: Vec3f, playerPosition: Vec3d) void {
+pub fn renderWorld(world: *World, ambientLight: Vec3f, directionalLight: Vec3f, playerPos: Vec3d) !void {
 	_ = world;
-	_ = playerPosition; // TODO
 	buffers.bind();
 	buffers.clearAndBind(Vec4f{.x=0, .y=1, .z=0.5, .w=1});
 //	TODO:// Clean up old chunk meshes:
@@ -228,7 +223,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, directionalLight: Vec3f, 
 	const waterFog = Fog{.active=true, .color=.{.x=0.0, .y=0.1, .z=0.2}, .density=0.1};
 
 	// Update the uniforms. The uniforms are needed to render the replacement meshes.
-	chunk.meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight, directionalLight, time);
+	chunk.meshing.bindShaderAndUniforms(game.lodProjectionMatrix, ambientLight, directionalLight, time);
 
 //TODO:	NormalChunkMesh.bindShader(ambientLight, directionalLight.getDirection(), time);
 
@@ -246,6 +241,9 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, directionalLight: Vec3f, 
 
 //	SimpleList<NormalChunkMesh> visibleChunks = new SimpleList<NormalChunkMesh>(new NormalChunkMesh[64]);
 //	SimpleList<ReducedChunkMesh> visibleReduced = new SimpleList<ReducedChunkMesh>(new ReducedChunkMesh[64]);
+	var meshes = std.ArrayList(*chunk.meshing.ChunkMesh).init(main.threadAllocator);
+	defer meshes.deinit();
+	try RenderOctree.getRenderChunks(playerPos, &meshes);
 //	for (ChunkMesh mesh : Cubyz.chunkTree.getRenderChunks(frustumInt, x0, y0, z0)) {
 //		if (mesh instanceof NormalChunkMesh) {
 //			visibleChunks.add((NormalChunkMesh)mesh);
@@ -269,6 +267,10 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, directionalLight: Vec3f, 
 	c.glUniform1i(chunk.meshing.uniforms.waterFog_activ, if(waterFog.active) 1 else 0);
 	c.glUniform3fv(chunk.meshing.uniforms.waterFog_color, 1, @ptrCast([*c]f32, &waterFog.color));
 	c.glUniform1f(chunk.meshing.uniforms.waterFog_density, waterFog.density);
+
+	for(meshes.items) |mesh| {
+		mesh.render(playerPos);
+	}
 
 //		for(int i = 0; i < visibleReduced.size; i++) {
 //			ReducedChunkMesh mesh = visibleReduced.array[i];
@@ -392,3 +394,318 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, directionalLight: Vec3f, 
 //		return output;
 //	}
 //}
+
+pub const RenderOctree = struct {
+	pub var allocator: std.mem.Allocator = undefined;
+	var gpa: std.heap.GeneralPurposeAllocator(.{}) = undefined;
+	pub const Node = struct {
+		shouldBeRemoved: bool = false,
+		children: ?[]*Node = null,
+		size: chunk.ChunkCoordinate,
+		mesh: chunk.meshing.ChunkMesh,
+		mutex: std.Thread.Mutex = std.Thread.Mutex{},
+
+		fn init(replacement: ?*chunk.meshing.ChunkMesh, pos: chunk.ChunkPosition, size: chunk.ChunkCoordinate, meshRequests: *std.ArrayList(chunk.ChunkPosition)) !*Node {
+			var self = try allocator.create(Node);
+			self.* = Node {
+				.size = size,
+				.mesh = chunk.meshing.ChunkMesh.init(pos, replacement),
+			};
+			try meshRequests.append(pos);
+			std.debug.assert(pos.voxelSize & pos.voxelSize-1 == 0);
+			return self;
+		}
+
+		fn deinit(self: *Node) void {
+			if(self.children) |children| {
+				for(children) |child| {
+					child.deinit();
+				}
+				allocator.free(children);
+			}
+			self.mesh.deinit();
+			allocator.destroy(self);
+		}
+
+		fn update(self: *Node, playerPos: Vec3d, renderDistance: i32, maxRD: i32, minHeight: i32, maxHeight: i32, nearRenderDistance: i32,  meshRequests: *std.ArrayList(chunk.ChunkPosition)) !void {
+			self.mutex.lock();
+			defer self.mutex.unlock();
+			// Calculate the minimum distance between this chunk and the player:
+			var minDist = self.mesh.pos.getMinDistanceSquared(playerPos);
+			// Check if this chunk is outside the nearRenderDistance or outside the height limits:
+			// if (wy + size <= Cubyz.world.chunkManager.getOrGenerateMapFragment(x, z, 32).getMinHeight() || wy > Cubyz.world.chunkManager.getOrGenerateMapFragment(x, z, 32).getMaxHeight()) {
+			if(self.mesh.pos.wy + self.size <= 0 or self.mesh.pos.wy > 1024) {
+				if(minDist > @intToFloat(f64, nearRenderDistance*nearRenderDistance)) {
+					if(self.children) |children| {
+						for(children) |child| {
+							child.deinit();
+						}
+						allocator.free(children);
+						self.children = null;
+					}
+					return;
+				}
+			}
+			// Check if parts of this OctTree require using normal chunks:
+			if(self.size == chunk.chunkSize*2 and minDist < @intToFloat(f64, renderDistance*renderDistance)) {
+				if(self.children == null) {
+					self.children = try allocator.alloc(*Node, 8);
+					for(self.children.?) |*child, i| {
+						child.* = try Node.init(&self.mesh, chunk.ChunkPosition{
+							.wx = self.mesh.pos.wx + (if(i & 1 == 0) 0 else @divFloor(self.size, 2)),
+							.wy = self.mesh.pos.wy + (if(i & 2 == 0) 0 else @divFloor(self.size, 2)),
+							.wz = self.mesh.pos.wz + (if(i & 4 == 0) 0 else @divFloor(self.size, 2)),
+							.voxelSize = @divFloor(self.mesh.pos.voxelSize, 2),
+						}, @divFloor(self.size, 2), meshRequests);
+					}
+				}
+				for(self.children.?) |child| {
+					try child.update(playerPos, renderDistance, @divFloor(maxRD, 2), minHeight, maxHeight, nearRenderDistance, meshRequests);
+				}
+			// Check if parts of this OctTree require a higher resolution:
+			} else if(minDist < @intToFloat(f64, maxRD*maxRD)/4 and self.size > chunk.chunkSize*2) {
+				if(self.children == null) {
+					self.children = try allocator.alloc(*Node, 8);
+					for(self.children.?) |*child, i| {
+						child.* = try Node.init(&self.mesh, chunk.ChunkPosition{
+							.wx = self.mesh.pos.wx + (if(i & 1 == 0) 0 else @divFloor(self.size, 2)),
+							.wy = self.mesh.pos.wy + (if(i & 2 == 0) 0 else @divFloor(self.size, 2)),
+							.wz = self.mesh.pos.wz + (if(i & 4 == 0) 0 else @divFloor(self.size, 2)),
+							.voxelSize = @divFloor(self.mesh.pos.voxelSize, 2),
+						}, @divFloor(self.size, 2), meshRequests);
+					}
+				}
+				for(self.children.?) |child| {
+					try child.update(playerPos, renderDistance, @divFloor(maxRD, 2), minHeight, maxHeight, nearRenderDistance, meshRequests);
+				}
+			// This OctTree doesn't require higher resolution:
+			} else {
+				if(self.children) |children| {
+					for(children) |child| {
+						child.deinit();
+					}
+					allocator.free(children);
+					self.children = null;
+				}
+			}
+		}
+
+		fn getChunks(self: *Node, playerPos: Vec3d, meshes: *std.ArrayList(*chunk.meshing.ChunkMesh)) !void {
+			self.mutex.lock();
+			defer self.mutex.unlock();
+			if(self.children) |children| {
+				for(children) |child| {
+					try child.getChunks(playerPos, meshes);
+				}
+			} else {
+				// TODO: if(testFrustum(frustumInt, x0, y0, z0)) {
+					try meshes.append(&self.mesh);
+				//}
+			}
+		}
+		// TODO:
+//		public boolean testFrustum(FrustumIntersection frustumInt, double x0, double y0, double z0) {
+//			return frustumInt.testAab((float)(wx - x0), (float)(wy - y0), (float)(wz - z0), (float)(wx + size - x0), (float)(wy + size - y0), (float)(wz + size - z0));
+//		}
+	};
+
+	const HashMapKey3D = struct {
+		x: chunk.ChunkCoordinate,
+		y: chunk.ChunkCoordinate,
+		z: chunk.ChunkCoordinate,
+
+		pub fn hash(_: anytype, key: HashMapKey3D) u64 {
+			return @bitCast(u32, ((key.x << 13) | (key.x >> 19)) ^ ((key.y << 7) | (key.y >> 25)) ^ ((key.z << 23) | (key.z >> 9))); // This should be a good hash for now. TODO: Test how good it really is and find a better one.
+		}
+
+		pub fn eql(_: anytype, key: HashMapKey3D, other: HashMapKey3D) bool {
+			return key.x == other.x and key.y == other.y and key.z == other.z;
+		}
+	};
+
+	var roots: std.HashMap(HashMapKey3D, *Node, HashMapKey3D, 80) = undefined;
+	var updatableList: std.ArrayList(*chunk.ChunkVisibilityData) = undefined;
+	var lastRD: i32 = 0;
+	var lastFactor: f32 = 0;
+	var mutex = std.Thread.Mutex{};
+
+	pub fn init() !void {
+		lastRD = 0;
+		lastFactor = 0;
+		gpa = std.heap.GeneralPurposeAllocator(.{}){};
+		allocator = gpa.allocator();
+		roots = std.HashMap(HashMapKey3D, *Node, HashMapKey3D, 80).initContext(allocator, undefined);
+		updatableList = std.ArrayList(*chunk.ChunkVisibilityData).init(allocator);
+	}
+
+	pub fn deinit() void {
+		var iterator = roots.valueIterator();
+		while(iterator.next()) |value| {
+			value.*.deinit();
+		}
+		roots.deinit();
+		for(updatableList.items) |updatable| {
+			updatable.visibles.deinit();
+			allocator.destroy(updatable);
+		}
+		updatableList.deinit();
+		game.blockPalette.deinit();
+		if(gpa.deinit()) {
+			@panic("Memory leak");
+		}
+	}
+
+	pub fn update(conn: *network.Connection, playerPos: Vec3d, renderDistance: i32, LODFactor: f32) !void {
+		if(lastRD != renderDistance and lastFactor != LODFactor) {
+			// TODO:
+//			Protocols.GENERIC_UPDATE.sendRenderDistance(Cubyz.world.serverConnection, renderDistance, LODFactor);
+		}
+		var px = @floatToInt(chunk.ChunkCoordinate, playerPos.x);
+		var py = @floatToInt(chunk.ChunkCoordinate, playerPos.y);
+		var pz = @floatToInt(chunk.ChunkCoordinate, playerPos.z);
+		var maxRenderDistance = @floatToInt(i32, @ceil(@intToFloat(f32, renderDistance*chunk.chunkSize << settings.highestLOD)*LODFactor));
+		var nearRenderDistance = renderDistance*chunk.chunkSize;
+		var LODShift = settings.highestLOD + chunk.chunkShift;
+		var LODSize = chunk.chunkSize << settings.highestLOD;
+		var LODMask = LODSize - 1;
+		var minX = (px - maxRenderDistance - LODMask) & ~LODMask;
+		var maxX = (px + maxRenderDistance + LODMask) & ~LODMask;
+		// The LOD chunks are offset from grid to make generation easier.
+		minX += @divExact(LODSize, 2) - chunk.chunkSize;
+		maxX += @divExact(LODSize, 2) - chunk.chunkSize;
+		var newMap = std.HashMap(HashMapKey3D, *Node, HashMapKey3D, 80).initContext(allocator, undefined);
+		var meshRequests = std.ArrayList(chunk.ChunkPosition).init(main.threadAllocator);
+		defer meshRequests.deinit();
+		var x = minX;
+			std.log.info("In the thing to request:{} {}", .{minX, maxX});
+		while(x <= maxX): (x += LODSize) {
+			var maxYRenderDistanceSquare = @intToFloat(f32, maxRenderDistance)*@intToFloat(f32, maxRenderDistance) - @intToFloat(f32, (x - px))*@intToFloat(f32, (x - px));
+			if(maxYRenderDistanceSquare < 0) continue;
+			var maxYRenderDistance = @floatToInt(i32, @ceil(@sqrt(maxYRenderDistanceSquare)));
+			var minY = (py - maxYRenderDistance - LODMask) & ~LODMask;
+			var maxY = (py + maxYRenderDistance + LODMask) & ~LODMask;
+			// The LOD chunks are offset from grid to make generation easier.
+			minY += @divFloor(LODSize, 2) - chunk.chunkSize;
+			maxY += @divFloor(LODSize, 2) - chunk.chunkSize;
+			var y = minY;
+			while(y <= maxY): (y += LODSize) {
+				var maxZRenderDistanceSquare = @intToFloat(f32, maxYRenderDistance)*@intToFloat(f32, maxYRenderDistance) - @intToFloat(f32, (y - py))*@intToFloat(f32, (y - py));
+				if(maxZRenderDistanceSquare < 0) continue;
+				var maxZRenderDistance = @floatToInt(i32, @ceil(@sqrt(maxZRenderDistanceSquare)));
+				var minZ = (pz - maxZRenderDistance - LODMask) & ~LODMask;
+				var maxZ = (pz + maxZRenderDistance + LODMask) & ~LODMask;
+				// The LOD chunks are offset from grid to make generation easier.
+				minZ += @divFloor(LODSize, 2) - chunk.chunkSize;
+				maxZ += @divFloor(LODSize, 2) - chunk.chunkSize;
+				var z = minZ;
+				while(z <= maxZ): (z += LODSize) {
+					if(y + LODSize <= 0 or y > 1024) {
+						var dx = @maximum(0, try std.math.absInt(x + @divFloor(LODSize, 2) - px) - @divFloor(LODSize, 2));
+						var dy = @maximum(0, try std.math.absInt(y + @divFloor(LODSize, 2) - py) - @divFloor(LODSize, 2));
+						var dz = @maximum(0, try std.math.absInt(z + @divFloor(LODSize, 2) - pz) - @divFloor(LODSize, 2));
+						if(dx*dx + dy*dy + dz*dz > nearRenderDistance*nearRenderDistance) continue;
+					}
+					var rootX = x >> LODShift;
+					var rootY = y >> LODShift;
+					var rootZ = z >> LODShift;
+
+					var key = HashMapKey3D{.x = rootX, .y = rootY, .z = rootZ};
+					var node = roots.get(key);
+					if(node) |_node| {
+						// Mark that this node should not be removed.
+						_node.shouldBeRemoved = false;
+					} else {
+						node = try Node.init(null, .{.wx=x, .wy=y, .wz=z, .voxelSize=@intCast(chunk.UChunkCoordinate, LODSize>>chunk.chunkShift)}, LODSize, &meshRequests);
+						// Mark this node to be potentially removed in the next update:
+						node.?.shouldBeRemoved = true;
+					}
+					try newMap.put(key, node.?);
+					try node.?.update(playerPos, renderDistance*chunk.chunkSize, maxRenderDistance, 0, 1024, nearRenderDistance, &meshRequests);
+				}
+			}
+		}
+		// Clean memory for unused nodes:
+		mutex.lock();
+		defer mutex.unlock();
+		var iterator = roots.valueIterator();
+		while(iterator.next()) |node| {
+			if(node.*.shouldBeRemoved) {
+				node.*.deinit();
+			} else {
+				node.*.shouldBeRemoved = true;
+			}
+		}
+		roots.deinit();
+		roots = newMap;
+		lastRD = renderDistance;
+		lastFactor = LODFactor;
+		// Make requests after updating the, to avoid concurrency issues and reduce the number of requests:
+		try network.Protocols.chunkRequest.sendRequest(conn, meshRequests.items);
+	}
+
+	fn findNode(pos: chunk.ChunkPosition) ?*Node {
+		var LODShift = settings.highestLOD + chunk.chunkShift;
+		var LODSize = @as(chunk.UChunkCoordinate, 1) << LODShift;
+		var key = HashMapKey3D{
+			.x = (pos.wx - LODSize/2 + chunk.chunkSize) >> LODShift,
+			.y = (pos.wy - LODSize/2 + chunk.chunkSize) >> LODShift,
+			.z = (pos.wz - LODSize/2 + chunk.chunkSize) >> LODShift,
+		};
+		const rootNode: *Node = roots.get(key) orelse return null;
+		rootNode.mutex.lock();
+		defer rootNode.mutex.unlock();
+
+		var node = rootNode;
+
+		while(node.mesh.pos.voxelSize != pos.voxelSize) {
+			var children = node.children orelse return null;
+			var i: u3 = 0;
+			if(pos.wx >= node.mesh.pos.wx + @divFloor(node.size, 2)) i += 1;
+			if(pos.wy >= node.mesh.pos.wy + @divFloor(node.size, 2)) i += 2;
+			if(pos.wz >= node.mesh.pos.wz + @divFloor(node.size, 2)) i += 4;
+			node = children[i];
+		}
+
+		return node;
+	}
+
+	pub fn updateMeshes(targetTime: i64) !void {
+		mutex.lock();
+		defer mutex.unlock();
+		while(updatableList.items.len != 0) {
+			std.log.info("Generating mesh.", .{});
+			const mesh = updatableList.pop();
+			const nullNode = findNode(mesh.pos);
+			if(nullNode) |node| {
+				node.mutex.lock();
+				defer node.mutex.unlock();
+				try node.mesh.regenerateMesh(mesh);
+			}
+			mesh.visibles.deinit();
+			allocator.destroy(mesh);
+			if(std.time.milliTimestamp() >= targetTime) break; // Update at least one mesh.
+		}
+	}
+
+	pub fn updateChunkMesh(mesh: *chunk.ChunkVisibilityData) !void {
+		mutex.lock();
+		defer mutex.unlock();
+		try updatableList.append(mesh);
+	}
+
+	pub fn getRenderChunks(playerPos: Vec3d, meshes: *std.ArrayList(*chunk.meshing.ChunkMesh)) !void {
+		mutex.lock();
+		defer mutex.unlock();
+		var iterator = roots.valueIterator();
+		while(iterator.next()) |node| {
+			try node.*.getChunks(playerPos, meshes);
+		}
+	}
+	// TODO:
+//	public void updateChunkMesh(VisibleChunk mesh) {
+//		OctTreeNode node = findNode(mesh);
+//		if (node != null) {
+//			((NormalChunkMesh)node.mesh).updateChunk(mesh);
+//		}
+//	}
+};

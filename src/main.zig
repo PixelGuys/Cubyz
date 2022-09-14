@@ -3,6 +3,7 @@ const std = @import("std");
 const assets = @import("assets.zig");
 const blocks = @import("blocks.zig");
 const chunk = @import("chunk.zig");
+const game = @import("game.zig");
 const graphics = @import("graphics.zig");
 const renderer = @import("renderer.zig");
 const network = @import("network.zig");
@@ -36,13 +37,9 @@ pub fn log(
 	std.debug.getStderrMutex().lock();
 	defer std.debug.getStderrMutex().unlock();
 
-	const fileMessage = std.fmt.allocPrint(threadAllocator, "[" ++ level.asText() ++ "]" ++ ": " ++ format ++ "\n", args) catch return;
-	defer threadAllocator.free(fileMessage);
-	logFile.writeAll(fileMessage) catch return;
+	logFile.writer().print("[" ++ level.asText() ++ "]" ++ ": " ++ format ++ "\n", args) catch {};
 
-	const terminalMessage = std.fmt.allocPrint(threadAllocator, color ++ format ++ "\x1b[0m\n", args) catch return;
-	defer threadAllocator.free(terminalMessage);
-	nosuspend std.io.getStdErr().writeAll(terminalMessage) catch return;
+	nosuspend std.io.getStdErr().writer().print(color ++ format ++ "\x1b[0m\n", args) catch {};
 }
 
 pub const Window = struct {
@@ -136,7 +133,7 @@ pub const Window = struct {
 };
 
 pub fn main() !void {
-	var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+	var gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe=false}){};
 	threadAllocator = gpa.allocator();
 	defer if(gpa.deinit()) {
 		@panic("Memory leak");
@@ -147,7 +144,6 @@ pub fn main() !void {
 	defer logFile.close();
 
 	var poolgpa = std.heap.GeneralPurposeAllocator(.{}){};
-	threadAllocator = gpa.allocator();
 	defer if(poolgpa.deinit()) {
 		@panic("Memory leak");
 	};
@@ -172,8 +168,6 @@ pub fn main() !void {
 	try renderer.init();
 	defer renderer.deinit();
 
-	try assets.loadWorldAssets("saves");
-
 	network.init();
 
 	var conn = try network.ConnectionManager.init(12347, true);
@@ -182,9 +176,15 @@ pub fn main() !void {
 	var conn2 = try network.Connection.init(conn, "127.0.0.1");
 	defer conn2.deinit();
 
+	try renderer.RenderOctree.init();
+	defer renderer.RenderOctree.deinit();
+
 	try network.Protocols.handShake.clientSide(conn2, "quanturmdoelvloper");
 
-	c.glEnable(c.GL_CULL_FACE);
+	try assets.loadWorldAssets("serverAssets", game.blockPalette);
+
+	try blocks.meshes.generateTextureArray();
+
 	c.glCullFace(c.GL_BACK);
 	c.glEnable(c.GL_BLEND);
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
@@ -198,19 +198,21 @@ pub fn main() !void {
 		}
 		c.glfwSwapBuffers(Window.window);
 		c.glfwPollEvents();
+		try renderer.RenderOctree.update(conn2, .{.x = 25, .y = 11, .z = -703}, 4, 2.0);
 		{ // Render the game
+			c.glEnable(c.GL_CULL_FACE);
 			c.glEnable(c.GL_DEPTH_TEST);
-			renderer.render(.{.x = 0, .y = 0, .z = 0});
+			try renderer.render(.{.x = 25, .y = 11, .z = -703});
 		}
 
 		{ // Render the GUI
 			c.glDisable(c.GL_DEPTH_TEST);
 
-			graphics.Draw.setColor(0xff0000ff);
-			graphics.Draw.rect(Vec2f{.x = 100, .y = 100}, Vec2f{.x = 200, .y = 100});
-			graphics.Draw.circle(Vec2f{.x = 200, .y = 200}, 59);
-			graphics.Draw.setColor(0xffff00ff);
-			graphics.Draw.line(Vec2f{.x = 0, .y = 0}, Vec2f{.x = 1920, .y = 1080});
+			//graphics.Draw.setColor(0xff0000ff);
+			//graphics.Draw.rect(Vec2f{.x = 100, .y = 100}, Vec2f{.x = 200, .y = 100});
+			//graphics.Draw.circle(Vec2f{.x = 200, .y = 200}, 59);
+			//graphics.Draw.setColor(0xffff00ff);
+			//graphics.Draw.line(Vec2f{.x = 0, .y = 0}, Vec2f{.x = 1920, .y = 1080});
 		}
 	}
 }

@@ -57,8 +57,7 @@ const ivec3[6] textureY = ivec3[6](
 	ivec3(0, 0, 1)
 );
 
-void main()
-{
+void main() {
 	int faceID = gl_VertexID/4;
 	int vertexID = gl_VertexID%4;
 	int encodedPosition = faceData[faceID].encodedPosition;

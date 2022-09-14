@@ -418,9 +418,9 @@ pub const SSBO = struct {
 		c.glBindBufferBase(c.GL_SHADER_STORAGE_BUFFER, binding, self.bufferID);
 	}
 
-	pub fn bufferData(self: SSBO, T: type, data: []T) void {
+	pub fn bufferData(self: SSBO, comptime T: type, data: []T) void {
 		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
-		c.glBufferData(c.GL_SHADER_STORAGE_BUFFER, data.len*@sizeOf(T), data.ptr, c.GL_STATIC_DRAW);
+		c.glBufferData(c.GL_SHADER_STORAGE_BUFFER, @intCast(c_long, data.len*@sizeOf(T)), data.ptr, c.GL_STATIC_DRAW);
 		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
 	}
 };
@@ -442,29 +442,29 @@ pub const TextureArray = struct {
 		c.glBindTexture(c.GL_TEXTURE_2D_ARRAY, self.textureID);
 	}
 
-	fn lodColorInterpolation(colors: [4]u32, isTransparent: bool) u32 {
+	fn lodColorInterpolation(colors: [4]Color, isTransparent: bool) Color {
 		var r: [4]u32 = undefined;
 		var g: [4]u32 = undefined;
 		var b: [4]u32 = undefined;
 		var a: [4]u32 = undefined;
 		for(colors) |_, i| {
-			r[i] = colors[i]>>24;
-			g[i] = colors[i]>>16 & 0xFF;
-			b[i] = colors[i]>>8 & 0xFF;
-			a[i] = colors[i] & 0xFF;
+			r[i] = colors[i].r;
+			g[i] = colors[i].g;
+			b[i] = colors[i].b;
+			a[i] = colors[i].a;
 		}
 		// Use gamma corrected average(https://stackoverflow.com/a/832314/13082649):
-		var aSum = 0;
-		var rSum = 0;
-		var gSum = 0;
-		var bSum = 0;
+		var aSum: u32 = 0;
+		var rSum: u32 = 0;
+		var gSum: u32 = 0;
+		var bSum: u32 = 0;
 		for(colors) |_, i| {
 			aSum += a[i]*a[i];
 			rSum += r[i]*r[i];
 			gSum += g[i]*g[i];
 			bSum += b[i]*b[i];
 		}
-		aSum = @floatToInt(u32, @round(@sqrt(@intToFloat(f32, aSum))));
+		aSum = @floatToInt(u32, @round(@sqrt(@intToFloat(f32, aSum)))/2);
 		if(!isTransparent) {
 			if(aSum < 128) {
 				aSum = 0;
@@ -472,47 +472,47 @@ pub const TextureArray = struct {
 				aSum = 255;
 			}
 		}
-		rSum = @floatToInt(u32, @round(@sqrt(@intToFloat(f32, rSum))));
-		gSum = @floatToInt(u32, @round(@sqrt(@intToFloat(f32, gSum))));
-		bSum = @floatToInt(u32, @round(@sqrt(@intToFloat(f32, bSum))));
-		return rSum<<24 | gSum<<16 | bSum<<8 | aSum;
+		rSum = @floatToInt(u32, @round(@sqrt(@intToFloat(f32, rSum)))/2);
+		gSum = @floatToInt(u32, @round(@sqrt(@intToFloat(f32, gSum)))/2);
+		bSum = @floatToInt(u32, @round(@sqrt(@intToFloat(f32, bSum)))/2);
+		return Color{.r=@intCast(u8, rSum), .g=@intCast(u8, gSum), .b=@intCast(u8, bSum), .a=@intCast(u8, aSum)};
 	}
 
 	/// (Re-)Generates the GPU buffer.
-	pub fn generate(self: TextureArray, images: []Image) void {
-		var maxWidth: u32 = 0;
-		var maxHeight: u32 = 0;
+	pub fn generate(self: TextureArray, images: []Image) !void {
+		var maxWidth: u31 = 0;
+		var maxHeight: u31 = 0;
 		for(images) |image| {
 			maxWidth = @maximum(maxWidth, image.width);
 			maxHeight = @maximum(maxHeight, image.height);
 		}
 		// Make sure the width and height use a power of 2:
 		if(maxWidth-1 & maxWidth != 0) {
-			maxWidth = 2 << std.math.log2_int(u32, maxWidth);
+			maxWidth = @as(u31, 2) << std.math.log2_int(u31, maxWidth);
 		}
 		if(maxHeight-1 & maxHeight != 0) {
-			maxHeight = 2 << std.math.log2_int(u32, maxHeight);
+			maxHeight = @as(u31, 2) << std.math.log2_int(u31, maxHeight);
 		}
 
 		std.log.debug("Creating Texture Array of size {}×{} with {} layers.", .{maxWidth, maxHeight, images.len});
 
 		self.bind();
 
-		const maxLOD = 1 + std.mat.log2_int(@minimum(maxWidth, maxHeight));
-		c.glTexStorage3D(c.GL_TEXTURE_2D_ARRAY, maxLOD, c.GL_RGBA8, maxWidth, maxHeight, images.len);
+		const maxLOD = 1 + std.math.log2_int(u31, @minimum(maxWidth, maxHeight));
+		c.glTexStorage3D(c.GL_TEXTURE_2D_ARRAY, maxLOD, c.GL_RGBA8, maxWidth, maxHeight, @intCast(c_int, images.len));
 		var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
 		defer arena.deinit();
-		var lodBuffer: [][]u32 = try arena.allocator().alloc([]u32, maxLOD);
+		var lodBuffer: [][]Color = try arena.allocator().alloc([]Color, maxLOD);
 		for(lodBuffer) |*buffer, i| {
-			buffer.* = try arena.allocator().alloc(u32, (maxWidth >> i)*(maxHeight >> i));
+			buffer.* = try arena.allocator().alloc(Color, (maxWidth >> @intCast(u5, i))*(maxHeight >> @intCast(u5, i)));
 		}
 		
 		for(images) |image, i| {
 			// Check if the image contains non-binary alpha values, which makes it transparent.
 			var isTransparent = false;
 			for(image.imageData) |color| {
-				if(color >> 24 != 0 or color >> 24 != 255) {
-					isTransparent[i] = true;
+				if(color.a != 0 or color.a != 255) {
+					isTransparent = true;
 					break;
 				}
 			}
@@ -524,14 +524,13 @@ pub const TextureArray = struct {
 				while(y < maxHeight): (y += 1) {
 					const index = x + y*maxWidth;
 					const imageIndex = (x*image.width)/maxWidth + image.width*(y*image.height)/maxHeight;
-					const argb = image.imageData[imageIndex];
-					const rgba = argb<<8 | argb>>24;
-					lodBuffer[0][index] = rgba;
+					lodBuffer[0][index] = image.imageData[imageIndex];
 				}
 			}
 
 			// Calculate the mipmap levels:
-			for(lodBuffer) |_, lod| {
+			for(lodBuffer) |_, _lod| {
+				const lod = @intCast(u5, _lod);
 				const curWidth = maxWidth >> lod;
 				const curHeight = maxHeight >> lod;
 				if(lod != 0) {
@@ -541,7 +540,7 @@ pub const TextureArray = struct {
 						while(y < curHeight): (y += 1) {
 							const index = x + y*curWidth;
 							const index2 = 2*x + 2*y*2*curWidth;
-							const colors = [4]u32 {
+							const colors = [4]Color {
 								lodBuffer[lod-1][index2],
 								lodBuffer[lod-1][index2 + 1],
 								lodBuffer[lod-1][index2 + curWidth*2],
@@ -551,7 +550,7 @@ pub const TextureArray = struct {
 						}
 					}
 				}
-				c.glTexSubImage3D(c.GL_TEXTURE_2D_ARRAY, lod, 0, 0, i, curWidth, curHeight, 1, c.GL_RGBA, c.GL_UNSIGNED_BYTE, &lodBuffer[lod]);
+				c.glTexSubImage3D(c.GL_TEXTURE_2D_ARRAY, lod, 0, 0, @intCast(c_int, i), curWidth, curHeight, 1, c.GL_RGBA, c.GL_UNSIGNED_BYTE, lodBuffer[lod].ptr);
 			}
 		}
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAX_LOD, maxLOD);
@@ -564,10 +563,17 @@ pub const TextureArray = struct {
 	}
 };
 
+pub const Color = packed struct(u32) {
+	r: u8,
+	g: u8,
+	b: u8,
+	a: u8
+};
+
 pub const Image = struct {
-	width: u32,
-	height: u32,
-	imageData: []u32,
+	width: u31,
+	height: u31,
+	imageData: []Color,
 	pub fn readFromFile(allocator: Allocator, path: []const u8) !Image {
 		var result: Image = undefined;
 		var channel: c_int = undefined;
@@ -576,7 +582,9 @@ pub const Image = struct {
 		const data = stb_image.stbi_load(nullTerminatedPath.ptr, @ptrCast([*c]c_int, &result.width), @ptrCast([*c]c_int, &result.height), &channel, 4) orelse {
 			return error.FileNotFound;
 		};
-		result.imageData = try allocator.dupe(u32, @ptrCast([*]u32, data)[0..result.width*result.height]);
+		std.log.info("Image sample direct: {} {} {} {}", .{data[0], data[1], data[2], data[3]});
+		result.imageData = try allocator.dupe(Color, @ptrCast([*]Color, data)[0..result.width*result.height]);
+		std.log.info("Image sample: {} {} {} {}", .{result.imageData[0].r, result.imageData[0].g, result.imageData[0].b, result.imageData[0].a});
 		stb_image.stbi_image_free(data);
 		return result;
 	}

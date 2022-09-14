@@ -4,6 +4,7 @@ const JsonElement = @import("json.zig").JsonElement;
 const Neighbors = @import("chunk.zig").Neighbors;
 const SSBO = @import("graphics.zig").SSBO;
 const Image = @import("graphics.zig").Image;
+const Color = @import("graphics.zig").Color;
 const TextureArray = @import("graphics.zig").TextureArray;
 
 pub const BlockClass = enum(u8) {
@@ -219,15 +220,18 @@ pub const meshes = struct {
 	pub var blockTextureArray: TextureArray = undefined;
 	pub var emissionTextureArray: TextureArray = undefined;
 
-	var undefinedTexture = [_]u32 {0xffff00ff, 0xff000000, 0xff000000, 0xffff00ff};
+	const black: Color = Color{.r=0, .g=0, .b=0, .a=255};
+	const magenta: Color = Color{.r=255, .g=0, .b=255, .a=255};
+	var undefinedTexture = [_]Color {magenta, black, black, magenta};
 	const undefinedImage = Image{.width = 2, .height = 2, .imageData = undefinedTexture[0..]};
-	var emptyTexture = [_]u32 {0};
+	var emptyTexture = [_]Color {black};
 	const emptyImage = Image{.width = 1, .height = 1, .imageData = emptyTexture[0..]};
 
 	pub fn init() void {
 		animationTimesSSBO = SSBO.init();
 		animationTimesSSBO.bind(0);
 		animationFramesSSBO = SSBO.init();
+		animationFramesSSBO.bind(1);
 		blockTextureArray = TextureArray.init();
 		emissionTextureArray = TextureArray.init();
 		arenaForArrayLists = std.heap.ArenaAllocator.init(std.heap.page_allocator);
@@ -276,7 +280,7 @@ pub const meshes = struct {
 			const mod = splitter.first();
 			const id = splitter.rest();
 			var buffer: [1024]u8 = undefined;
-			var path = try std.fmt.bufPrint(&buffer, "{s}{s}/blocks/textures/{s}.png", .{assetFolder, mod, id});
+			var path = try std.fmt.bufPrint(&buffer, "{s}/{s}/blocks/textures/{s}.png", .{assetFolder, mod, id});
 			// Test if it's already in the list:
 			for(textureIDs.items) |other, j| {
 				if(std.mem.eql(u8, other, path)) {
@@ -287,7 +291,10 @@ pub const meshes = struct {
 			var file = std.fs.cwd().openFile(path, .{}) catch |err| blk: {
 				if(err == error.FileNotFound) {
 					path = try std.fmt.bufPrint(&buffer, "assets/{s}/blocks/textures/{s}.png", .{mod, id}); // Default to global assets.
-					break :blk try std.fs.cwd().openFile(path, .{});
+					break :blk std.fs.cwd().openFile(path, .{}) catch |err2| {
+						std.log.err("File not found. Searched in \"{s}\" and also in the assetFolder \"{s}\"", .{path, assetFolder});
+						return err2;
+					};
 				} else {
 					return err;
 				}
@@ -324,11 +331,14 @@ pub const meshes = struct {
 				const mod = splitter.first();
 				const id = splitter.rest();
 				var buffer: [1024]u8 = undefined;
-				var path = try std.fmt.bufPrint(&buffer, "{s}{s}/blocks/textures/{s}.png", .{assetFolder, mod, id});
+				var path = try std.fmt.bufPrint(&buffer, "{s}/{s}/blocks/textures/{s}.png", .{assetFolder, mod, id});
 				var file = std.fs.cwd().openFile(path, .{}) catch |err| blk: {
 					if(err == error.FileNotFound) {
 						path = try std.fmt.bufPrint(&buffer, "assets/{s}/blocks/textures/{s}.png", .{mod, id}); // Default to global assets.
-						break :blk try std.fs.cwd().openFile(path, .{});
+						break :blk std.fs.cwd().openFile(path, .{}) catch |err2| {
+							std.log.err("File not found. Searched in \"{s}\" and also in the assetFolder \"{s}\"", .{path, assetFolder});
+							return err2;
+						};
 					} else {
 						return err;
 					}
@@ -402,12 +412,12 @@ pub const meshes = struct {
 //		}
 //	}
 
-	pub fn generateTextureArray() void {
-		blockTextureArray.generate(blockTextures.items);
-		emissionTextureArray.generate(emissionTextures.items);
+	pub fn generateTextureArray() !void {
+		try blockTextureArray.generate(blockTextures.items);
+		try emissionTextureArray.generate(emissionTextures.items);
 
 		// Also generate additional buffers:
-		animationTimesSSBO.bufferID(animationTimes.items);
-		animationFramesSSBO.bufferID(animationFrames.items);
+		animationTimesSSBO.bufferData(u32, animationTimes.items);
+		animationFramesSSBO.bufferData(u32, animationFrames.items);
 	}
 };

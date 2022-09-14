@@ -1,5 +1,6 @@
 const std = @import("std");
 
+const assets = @import("assets.zig");
 const vec = @import("vec.zig");
 const Vec3f = vec.Vec3f;
 const Mat4f = vec.Mat4f;
@@ -29,6 +30,7 @@ pub const camera = struct {
 	}
 };
 
+pub var blockPalette: *assets.BlockPalette = undefined;
 pub const World = u1; // TODO
 pub var testWorld: World = 0;
 pub var world: ?*World = &testWorld;

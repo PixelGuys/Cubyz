@@ -12,7 +12,8 @@ const Vec3f = @import("vec.zig").Vec3f;
 const Vec3d = @import("vec.zig").Vec3d;
 const Mat4f = @import("vec.zig").Mat4f;
 
-pub const ChunkCoordinate = u32;
+pub const ChunkCoordinate = i32;
+pub const UChunkCoordinate = u31;
 pub const chunkShift: u5 = 5;
 pub const chunkShift2: u5 = chunkShift*2;
 pub const chunkSize: ChunkCoordinate = 1 << chunkShift;
@@ -35,11 +36,11 @@ pub const Neighbors = struct {
 	/// Directions → Index
 	pub const dirNegZ: u32 = 5;
 	/// Index to relative position
-	pub const relX = [_]u32 {0, 0, 1, -1, 0, 0};
+	pub const relX = [_]i32 {0, 0, 1, -1, 0, 0};
 	/// Index to relative position
-	pub const relY = [_]u32 {1, -1, 0, 0, 0, 0};
+	pub const relY = [_]i32 {1, -1, 0, 0, 0, 0};
 	/// Index to relative position
-	pub const relZ = [_]u32 {0, 0, 0, 0, 1, -1};
+	pub const relZ = [_]i32 {0, 0, 0, 0, 1, -1};
 	/// Index to bitMask for bitmap direction data
 	pub const bitMask = [_]u6 {0x01, 0x02, 0x04, 0x08, 0x10, 0x20};
 	/// To iterate over all neighbors easily
@@ -56,7 +57,7 @@ pub const ChunkPosition = struct {
 	wx: ChunkCoordinate,
 	wy: ChunkCoordinate,
 	wz: ChunkCoordinate,
-	voxelSize: ChunkCoordinate,
+	voxelSize: UChunkCoordinate,
 	
 //	TODO(mabye?):
 //	public int hashCode() {
@@ -68,16 +69,17 @@ pub const ChunkPosition = struct {
 //		int halfWidth = voxelSize * Chunk.chunkSize / 2;
 //		return -(float) source.getPosition().distance(wx + halfWidth, wy + halfWidth, wz + halfWidth) / voxelSize;
 //	}
-//	public double getMinDistanceSquared(double px, double py, double pz) {
-//		int halfWidth = voxelSize * Chunk.chunkSize / 2;
-//		double dx = Math.abs(wx + halfWidth - px);
-//		double dy = Math.abs(wy + halfWidth - py);
-//		double dz = Math.abs(wz + halfWidth - pz);
-//		dx = Math.max(0, dx - halfWidth);
-//		dy = Math.max(0, dy - halfWidth);
-//		dz = Math.max(0, dz - halfWidth);
-//		return dx*dx + dy*dy + dz*dz;
-//	}
+
+	pub fn getMinDistanceSquared(self: ChunkPosition, playerPosition: Vec3d) f64 {
+		var halfWidth = @intToFloat(f64, self.voxelSize*@divExact(chunkSize, 2));
+		var dx = @fabs(@intToFloat(f64, self.wx) + halfWidth - playerPosition.x);
+		var dy = @fabs(@intToFloat(f64, self.wy) + halfWidth - playerPosition.y);
+		var dz = @fabs(@intToFloat(f64, self.wz) + halfWidth - playerPosition.z);
+		dx = @maximum(0, dx - halfWidth);
+		dy = @maximum(0, dy - halfWidth);
+		dz = @maximum(0, dz - halfWidth);
+		return dx*dx + dy*dy + dz*dz;
+	}
 };
 
 pub const Chunk = struct {
@@ -95,17 +97,18 @@ pub const Chunk = struct {
 	widthShift: u5,
 	mutex: std.Thread.Mutex,
 
-	pub fn init(wx: ChunkCoordinate, wy: ChunkCoordinate, wz: ChunkCoordinate, voxelSize: ChunkCoordinate) Chunk {
-		std.debug.assert((voxelSize - 1 & voxelSize) == 0, "the voxel size must be a power of 2.");
-		std.debug.assert(wx % voxelSize == 0 and wy % voxelSize == 0 and wz % voxelSize == 0);
+	pub fn init(wx: ChunkCoordinate, wy: ChunkCoordinate, wz: ChunkCoordinate, voxelSize: UChunkCoordinate) Chunk {
+		std.debug.assert((voxelSize - 1 & voxelSize) == 0);
+		std.debug.assert(@mod(wx, voxelSize) == 0 and @mod(wy, voxelSize) == 0 and @mod(wz, voxelSize) == 0);
+		const voxelSizeShift = @intCast(u5, std.math.log2_int(UChunkCoordinate, voxelSize));
 		return Chunk {
 			.pos = ChunkPosition {
 				.wx = wx, .wy = wy, .wz = wz, .voxelSize = voxelSize
 			},
 			.width = voxelSize*chunkSize,
-			.voxelSizeShift = @intCast(u5, std.math.log2_int(u32, voxelSize)),
+			.voxelSizeShift = voxelSizeShift,
 			.voxelSizeMask = voxelSize - 1,
-			.widthShift = .voxelSizeShift + chunkShift,
+			.widthShift = voxelSizeShift + chunkShift,
 			.mutex = std.Thread.Mutex{},
 		};
 	}
@@ -373,22 +376,30 @@ pub const ChunkVisibilityData = struct {
 	voxelSizeShift: u5,
 
 	/// Finds a block in the surrounding 8 chunks using relative corrdinates.
-	fn getBlock(self: ChunkVisibilityData, chunks: *const [8]Chunk, x: ChunkCoordinate, y: ChunkCoordinate, z: ChunkCoordinate) Block {
-		var relX = x + (self.pos.wx - chunks[0].pos.wx) >> self.voxelSizeShift;
-		var relY = y + (self.pos.wy - chunks[0].pos.wy) >> self.voxelSizeShift;
-		var relZ = z + (self.pos.wz - chunks[0].pos.wz) >> self.voxelSizeShift;
-		var chunk = &chunks[(x >> chunkShift)*4 + (y >> chunkShift)*2 + (z >> chunkShift)];
-		relX &= chunkMask;
-		relY &= chunkMask;
-		relZ &= chunkMask;
+	fn getBlock(self: ChunkVisibilityData, chunks: *const [8]Chunk, _x: ChunkCoordinate, _y: ChunkCoordinate, _z: ChunkCoordinate) Block {
+		var x = _x + (self.pos.wx - chunks[0].pos.wx) >> self.voxelSizeShift;
+		var y = _y + (self.pos.wy - chunks[0].pos.wy) >> self.voxelSizeShift;
+		var z = _z + (self.pos.wz - chunks[0].pos.wz) >> self.voxelSizeShift;
+		var chunk = &chunks[@intCast(usize, (x >> chunkShift)*4 + (y >> chunkShift)*2 + (z >> chunkShift))];
+		x &= chunkMask;
+		y &= chunkMask;
+		z &= chunkMask;
 		return chunk.blocks[getIndex(x, y, z)];
 	}
 
-	pub fn init(allocator: Allocator, pos: ChunkPosition) !ChunkVisibilityData {
+	pub fn initEmpty(allocator: Allocator, pos: ChunkPosition, initialCapacity: usize) !ChunkVisibilityData {
+		return ChunkVisibilityData {
+			.pos = pos,
+			.visibles = try std.ArrayList(VisibleBlock).initCapacity(allocator, initialCapacity),
+			.voxelSizeShift = std.math.log2_int(UChunkCoordinate, pos.voxelSize),
+		};
+	}
+
+	pub fn init(allocator: Allocator, pos: ChunkPosition, initialCapacity: usize) !ChunkVisibilityData {
 		var self = ChunkVisibilityData {
 			.pos = pos,
-			.visibles = std.ArrayList(VisibleBlock).init(allocator),
-			.voxelSizeShift = std.math.log2_int(pos.voxelSize),
+			.visibles = try std.ArrayList(VisibleBlock).initCapacity(allocator, initialCapacity),
+			.voxelSizeShift = std.math.log2_int(UChunkCoordinate, pos.voxelSize),
 		};
 
 		const width = pos.voxelSize*chunkSize;
@@ -415,7 +426,7 @@ pub const ChunkVisibilityData = struct {
 			while(y < chunkSize): (y += 1) {
 				var z: u8 = 0;
 				while(z < chunkSize): (z += 1) {
-					const block = self.getBlock(chunks, x, y, z);
+					const block = self.getBlock(&chunks, x, y, z);
 					if(block.typ == 0) continue;
 					// Check all neighbors:
 					var neighborVisibility: u8 = 0;
@@ -423,7 +434,7 @@ pub const ChunkVisibilityData = struct {
 						const x2 = x + Neighbors.relX[i];
 						const y2 = y + Neighbors.relY[i];
 						const z2 = z + Neighbors.relZ[i];
-						const neighborBlock = self.getBlock(chunks, x2, y2, z2);
+						const neighborBlock = self.getBlock(&chunks, x2, y2, z2);
 						var isVisible = neighborBlock.typ == 0;
 						if(!isVisible) {
 							// If the chunk is at a border, more neighbors need to be checked to prevent cracks at LOD changes:
@@ -433,7 +444,7 @@ pub const ChunkVisibilityData = struct {
 									const x3 = x2 + Neighbors.relX[j];
 									const y3 = y2 + Neighbors.relY[j];
 									const z3 = z2 + Neighbors.relZ[j];
-									if(self.getBlock(chunks, x3, y3, z3) == 0) {
+									if(self.getBlock(&chunks, x3, y3, z3).typ == 0) {
 										isVisible = true;
 										break;
 									}
@@ -559,7 +570,7 @@ pub const meshing = struct {
 		size: ChunkCoordinate,
 		replacement: ?*ChunkMesh,
 		faceData: SSBO,
-		vertexCount: u32,
+		vertexCount: c_int = 0,
 		generated: bool = false,
 
 		pub fn init(pos: ChunkPosition, replacement: ?*ChunkMesh) ChunkMesh {
@@ -575,11 +586,11 @@ pub const meshing = struct {
 			self.faceData.deinit();
 		}
 
-		pub fn regenerateMesh(self: *ChunkMesh, visDat: ChunkVisibilityData) void {
+		pub fn regenerateMesh(self: *ChunkMesh, visDat: *ChunkVisibilityData) !void {
 			self.generated = true;
 
 			faces.clearRetainingCapacity();
-			faces.add(visDat.voxelSizeShift);
+			try faces.append(visDat.pos.voxelSize);
 
 			for(visDat.visibles.items) |visible| {
 				const block = visible.block;
@@ -588,49 +599,49 @@ pub const meshing = struct {
 				const z = visible.z;
 				if(visible.neighbors & Neighbors.bitMask[Neighbors.dirNegX] != 0) {
 					const normal: u32 = 0;
-					const position: u32 = x | y << 6 | z << 12;
+					const position: u32 = @as(u32, x) | @as(u32, y) << 6 | @as(u32, z) << 12;
 					const textureNormal = blocks.meshes.textureIndices(block)[Neighbors.dirNegX] | (normal << 24);
 					try faces.append(position);
 					try faces.append(textureNormal);
 				}
 				if(visible.neighbors & Neighbors.bitMask[Neighbors.dirPosX] != 0) {
 					const normal: u32 = 1;
-					const position: u32 = x+1 | y << 6 | z << 12;
+					const position: u32 = @as(u32, x+1) | @as(u32, y) << 6 | @as(u32, z) << 12;
 					const textureNormal = blocks.meshes.textureIndices(block)[Neighbors.dirPosX] | (normal << 24);
 					try faces.append(position);
 					try faces.append(textureNormal);
 				}
 				if(visible.neighbors & Neighbors.bitMask[Neighbors.dirDown] != 0) {
 					const normal: u32 = 4;
-					const position: u32 = x | y << 6 | z << 12;
+					const position: u32 = @as(u32, x) | @as(u32, y) << 6 | @as(u32, z) << 12;
 					const textureNormal = blocks.meshes.textureIndices(block)[Neighbors.dirDown] | (normal << 24);
 					try faces.append(position);
 					try faces.append(textureNormal);
 				}
 				if(visible.neighbors & Neighbors.bitMask[Neighbors.dirUp] != 0) {
 					const normal: u32 = 5;
-					const position: u32 = x | (y+1) << 6 | z << 12;
+					const position: u32 = @as(u32, x) | @as(u32, y+1) << 6 | @as(u32, z) << 12;
 					const textureNormal = blocks.meshes.textureIndices(block)[Neighbors.dirUp] | (normal << 24);
 					try faces.append(position);
 					try faces.append(textureNormal);
 				}
 				if(visible.neighbors & Neighbors.bitMask[Neighbors.dirNegZ] != 0) {
 					const normal: u32 = 2;
-					const position: u32 = x | y << 6 | z << 12;
+					const position: u32 = @as(u32, x) | @as(u32, y) << 6 | @as(u32, z) << 12;
 					const textureNormal = blocks.meshes.textureIndices(block)[Neighbors.dirNegZ] | (normal << 24);
 					try faces.append(position);
 					try faces.append(textureNormal);
 				}
 				if(visible.neighbors & Neighbors.bitMask[Neighbors.dirPosZ] != 0) {
 					const normal: u32 = 3;
-					const position: u32 = x | y << 6 | (z + 1) << 12;
+					const position: u32 = @as(u32, x) | @as(u32, y) << 6 | @as(u32, z+1) << 12;
 					const textureNormal = blocks.meshes.textureIndices(block)[Neighbors.dirPosZ] | (normal << 24);
 					try faces.append(position);
 					try faces.append(textureNormal);
 				}
 			}
 
-			self.vertexCount = 6*(faces.size-1)/2;
+			self.vertexCount = @intCast(c_int, 6*(faces.items.len-1)/2);
 			self.faceData.bufferData(u32, faces.items);
 		}
 
@@ -639,15 +650,15 @@ pub const meshing = struct {
 				if(self.replacement == null) return;
 				c.glUniform3f(
 					uniforms.lowerBounds,
-					@floatCast(f32, self.pos.wx - playerPosition.x - 0.001),
-					@floatCast(f32, self.pos.wy - playerPosition.y - 0.001),
-					@floatCast(f32, self.pos.wz - playerPosition.z - 0.001)
+					@floatCast(f32, @intToFloat(f64, self.pos.wx) - playerPosition.x - 0.001),
+					@floatCast(f32, @intToFloat(f64, self.pos.wy) - playerPosition.y - 0.001),
+					@floatCast(f32, @intToFloat(f64, self.pos.wz) - playerPosition.z - 0.001)
 				);
 				c.glUniform3f(
 					uniforms.upperBounds,
-					@floatCast(f32, self.pos.wx + self.size - playerPosition.x + 0.001),
-					@floatCast(f32, self.pos.wy + self.size - playerPosition.y + 0.001),
-					@floatCast(f32, self.pos.wz + self.size - playerPosition.z + 0.001)
+					@floatCast(f32, @intToFloat(f64, self.pos.wx + self.size) - playerPosition.x + 0.001),
+					@floatCast(f32, @intToFloat(f64, self.pos.wy + self.size) - playerPosition.y + 0.001),
+					@floatCast(f32, @intToFloat(f64, self.pos.wz + self.size) - playerPosition.z + 0.001)
 				);
 
 				self.replacement.?.render(playerPosition);
@@ -656,11 +667,12 @@ pub const meshing = struct {
 				c.glUniform3f(uniforms.upperBounds, std.math.inf_f32, std.math.inf_f32, std.math.inf_f32);
 				return;
 			}
+			if(self.vertexCount == 0) return;
 			c.glUniform3f(
 				uniforms.modelPosition,
-				@floatCast(f32, self.pos.wx - playerPosition.x),
-				@floatCast(f32, self.pos.wy - playerPosition.y),
-				@floatCast(f32, self.pos.wz - playerPosition.z)
+				@floatCast(f32, @intToFloat(f64, self.pos.wx) - playerPosition.x),
+				@floatCast(f32, @intToFloat(f64, self.pos.wy) - playerPosition.y),
+				@floatCast(f32, @intToFloat(f64, self.pos.wz) - playerPosition.z)
 			);
 			self.faceData.bind(3);
 			c.glDrawElements(c.GL_TRIANGLES, self.vertexCount, c.GL_UNSIGNED_INT, null);

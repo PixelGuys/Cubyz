@@ -4,8 +4,24 @@ const Allocator = std.mem.Allocator;
 const main = @import("main.zig");
 
 pub const Compression = struct {
+	pub fn deflate(allocator: Allocator, data: []const u8) ![]u8 {
+		var result = std.ArrayList(u8).init(allocator);
+		var comp = try std.compress.deflate.compressor(main.threadAllocator, result.writer(), .{.level = .default_compression});
+		try comp.write(data);
+		try comp.close();
+		comp.deinit();
+		return result.toOwnedSlice();
+	}
+
+	pub fn inflate(allocator: Allocator, data: []const u8) ![]u8 {
+		var stream = std.io.fixedBufferStream(data);
+		var decomp = try std.compress.deflate.decompressor(main.threadAllocator, stream.reader(), null);
+		defer decomp.deinit();
+		return try decomp.reader().readAllAlloc(allocator, std.math.maxInt(usize));
+	}
+
 	pub fn pack(sourceDir: std.fs.IterableDir, writer: anytype) !void {
-		var comp = try std.compress.deflate.compressor(main.threadAllocator, writer, .{.level = .no_compression});
+		var comp = try std.compress.deflate.compressor(main.threadAllocator, writer, .{.level = .default_compression});
 		defer comp.deinit();
 		var walker = try sourceDir.walk(main.threadAllocator);
 		defer walker.deinit();
@@ -246,7 +262,7 @@ pub const ThreadPool = struct {
 
 	fn run(self: ThreadPool) void {
 		// In case any of the tasks wants to allocate memory:
-		var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+		var gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe=false}){};
 		main.threadAllocator = gpa.allocator();
 		defer if(gpa.deinit()) {
 			@panic("Memory leak");
