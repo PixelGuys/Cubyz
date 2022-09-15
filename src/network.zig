@@ -675,7 +675,6 @@ pub const Protocols = blk: {
 					std.mem.writeIntBig(chunk.ChunkCoordinate, remaining[4..8], req.wy);
 					std.mem.writeIntBig(chunk.ChunkCoordinate, remaining[8..12], req.wz);
 					std.mem.writeIntBig(chunk.ChunkCoordinate, remaining[12..16], req.voxelSize);
-			std.log.info("Requested some chunk: {}", .{req.voxelSize});
 					remaining = remaining[16..];
 				}
 				try conn.sendImportant(id, data);

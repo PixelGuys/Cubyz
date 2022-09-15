@@ -27,12 +27,11 @@ pub fn readAllJsonFilesInAddons(externalAllocator: Allocator, addons: std.ArrayL
 		while(try walker.next()) |entry| {
 			if(entry.kind == .File and std.ascii.endsWithIgnoreCase(entry.basename, ".json")) {
 				const folderName = addonNames.items[addonIndex];
-				var id: []u8 = try externalAllocator.alloc(u8, folderName.len + 1 + entry.basename.len - 5);
+				var id: []u8 = try externalAllocator.alloc(u8, folderName.len + 1 + entry.path.len - 5);
 				std.mem.copy(u8, id[0..], folderName);
 				id[folderName.len] = ':';
-				std.mem.copy(u8, id[folderName.len+1..], entry.basename[0..entry.basename.len-5]);
+				std.mem.copy(u8, id[folderName.len+1..], entry.path[0..entry.path.len-5]);
 
-				std.log.info("ID: {s}", .{id});
 				var file = try dir.dir.openFile(entry.path, .{});
 				defer file.close();
 				const string = try file.readToEndAlloc(main.threadAllocator, std.math.maxInt(usize));
@@ -168,7 +167,7 @@ pub const BlockPalette = struct {
 	}
 
 	pub fn add(self: *BlockPalette, id: []const u8) !void {
-		try self.palette.append(id);
+		try self.palette.append(try self.palette.allocator.dupe(u8, id));
 	}
 
 	pub fn save(self: *BlockPalette, allocator: Allocator) !JsonElement {
@@ -210,7 +209,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, palette: *BlockPalette) !void {
 	var iterator = blocks.iterator();
 	while(iterator.next()) |entry| {
 		try registerBlock(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
-		try palette.palette.append(entry.key_ptr.*);
+		try palette.add(entry.key_ptr.*);
 		block += 1;
 	}
 

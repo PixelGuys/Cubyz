@@ -261,9 +261,9 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, directionalLight: Vec3f, 
 	// Render the far away ReducedChunks:
 	c.glDepthRangef(0.05, 1.0); // ← Used to fix z-fighting.
 	chunk.meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight, directionalLight, time);
-	c.glUniform1i(chunk.meshing.uniforms.waterFog_activ, if(waterFog.active) 1 else 0);
-	c.glUniform3fv(chunk.meshing.uniforms.waterFog_color, 1, @ptrCast([*c]f32, &waterFog.color));
-	c.glUniform1f(chunk.meshing.uniforms.waterFog_density, waterFog.density);
+	c.glUniform1i(chunk.meshing.uniforms.@"waterFog.activ", if(waterFog.active) 1 else 0);
+	c.glUniform3fv(chunk.meshing.uniforms.@"waterFog.color", 1, @ptrCast([*c]f32, &waterFog.color));
+	c.glUniform1f(chunk.meshing.uniforms.@"waterFog.density", waterFog.density);
 
 	for(meshes.items) |mesh| {
 		mesh.render(playerPos);
@@ -618,7 +618,6 @@ pub const RenderOctree = struct {
 		var meshRequests = std.ArrayList(chunk.ChunkPosition).init(main.threadAllocator);
 		defer meshRequests.deinit();
 		var x = minX;
-			std.log.info("In the thing to request:{} {}", .{minX, maxX});
 		while(x <= maxX): (x += LODSize) {
 			var maxYRenderDistanceSquare = @intToFloat(f32, maxRenderDistance)*@intToFloat(f32, maxRenderDistance) - @intToFloat(f32, (x - px))*@intToFloat(f32, (x - px));
 			if(maxYRenderDistanceSquare < 0) continue;
@@ -714,7 +713,6 @@ pub const RenderOctree = struct {
 		mutex.lock();
 		defer mutex.unlock();
 		while(updatableList.items.len != 0) {
-			std.log.info("Generating mesh.", .{});
 			const mesh = updatableList.pop();
 			const nullNode = findNode(mesh.pos);
 			if(nullNode) |node| {

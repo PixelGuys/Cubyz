@@ -318,7 +318,7 @@ pub const meshes = struct {
 			const textures = textureInfo.getChild("textures");
 			if(textures != .JsonArray) return result;
 			// Add the new textures into the list. Since this is an animation all textures that weren't found need to be replaced with undefined.
-			result = @intCast(u31, textures.JsonArray.items.len);
+			result = @intCast(u31, blockTextures.items.len);
 			for(textures.JsonArray.items) |item, i| {
 				if(i == 0) {
 					try animationFrames.append(@intCast(u32, textures.JsonArray.items.len));

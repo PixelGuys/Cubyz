@@ -582,9 +582,7 @@ pub const Image = struct {
 		const data = stb_image.stbi_load(nullTerminatedPath.ptr, @ptrCast([*c]c_int, &result.width), @ptrCast([*c]c_int, &result.height), &channel, 4) orelse {
 			return error.FileNotFound;
 		};
-		std.log.info("Image sample direct: {} {} {} {}", .{data[0], data[1], data[2], data[3]});
 		result.imageData = try allocator.dupe(Color, @ptrCast([*]Color, data)[0..result.width*result.height]);
-		std.log.info("Image sample: {} {} {} {}", .{result.imageData[0].r, result.imageData[0].g, result.imageData[0].b, result.imageData[0].a});
 		stb_image.stbi_image_free(data);
 		return result;
 	}

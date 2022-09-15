@@ -38,4 +38,4 @@ pub var world: ?*World = &testWorld;
 pub var projectionMatrix: Mat4f = Mat4f.identity();
 pub var lodProjectionMatrix: Mat4f = Mat4f.identity();
 
-pub var fog = Fog{.active = true, .color=.{.x=0.5, .y=0.5, .z=0.5}, .density=0.025};
+pub var fog = Fog{.active = true, .color=.{.x=0, .y=1, .z=0.5}, .density=1.0/15.0/256.0};

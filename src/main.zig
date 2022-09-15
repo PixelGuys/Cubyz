@@ -171,14 +171,14 @@ pub fn main() !void {
 
 	network.init();
 
+	try renderer.RenderOctree.init();
+	defer renderer.RenderOctree.deinit();
+
 	var conn = try network.ConnectionManager.init(12347, true);
 	defer conn.deinit();
 
 	var conn2 = try network.Connection.init(conn, "127.0.0.1");
 	defer conn2.deinit();
-
-	try renderer.RenderOctree.init();
-	defer renderer.RenderOctree.deinit();
 
 	try network.Protocols.handShake.clientSide(conn2, "quanturmdoelvloper");
 
@@ -189,6 +189,7 @@ pub fn main() !void {
 	c.glCullFace(c.GL_BACK);
 	c.glEnable(c.GL_BLEND);
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
+	Window.GLFWCallbacks.framebufferSize(null, Window.width, Window.height);
 
 	while(c.glfwWindowShouldClose(Window.window) == 0) {
 		{ // Check opengl errors:

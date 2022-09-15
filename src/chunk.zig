@@ -494,16 +494,16 @@ pub const meshing = struct {
 		modelPosition: c_int,
 		ambientLight: c_int,
 		directionalLight: c_int,
-		fog_activ: c_int,
-		fog_color: c_int,
-		fog_density: c_int,
+		@"fog.activ": c_int,
+		@"fog.color": c_int,
+		@"fog.density": c_int,
 		lowerBounds: c_int,
 		upperBounds: c_int,
 		texture_sampler: c_int,
 		emissionSampler: c_int,
-		waterFog_activ: c_int,
-		waterFog_color: c_int,
-		waterFog_density: c_int,
+		@"waterFog.activ": c_int,
+		@"waterFog.color": c_int,
+		@"waterFog.density": c_int,
 		time: c_int,
 	} = undefined;
 	var vao: c_uint = undefined;
@@ -541,9 +541,9 @@ pub const meshing = struct {
 	pub fn bindShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, directional: Vec3f, time: u32) void {
 		shader.bind();
 
-		c.glUniform1i(uniforms.fog_activ, if(game.fog.active) 1 else 0);
-		c.glUniform3fv(uniforms.fog_color, 1, @ptrCast([*c]f32, &game.fog.color));
-		c.glUniform1f(uniforms.fog_density, game.fog.density);
+		c.glUniform1i(uniforms.@"fog.activ", if(game.fog.active) 1 else 0);
+		c.glUniform3fv(uniforms.@"fog.color", 1, @ptrCast([*c]f32, &game.fog.color));
+		c.glUniform1f(uniforms.@"fog.density", game.fog.density);
 
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_FALSE, @ptrCast([*c]f32, &projMatrix));
 
