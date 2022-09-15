@@ -141,10 +141,10 @@ pub const BlockPalette = struct {
 			try self.palette.append(try allocator.dupe(u8, "cubyz:air"));
 		} else {
 			var palette = try main.threadAllocator.alloc(?[]const u8, jsonObject.JsonObject.count());
+			defer main.threadAllocator.free(palette);
 			for(palette) |*val| {
 				val.* = null;
 			}
-			defer main.threadAllocator.free(palette);
 			var iterator = jsonObject.JsonObject.iterator();
 			while(iterator.next()) |entry| {
 				palette[entry.value_ptr.as(usize, std.math.maxInt(usize))] = entry.key_ptr.*;

@@ -8,25 +8,25 @@ const graphics = @import("graphics.zig");
 const Fog = graphics.Fog;
 
 pub const camera = struct {
-	var rotation: Vec3f = Vec3f{.x = 0, .y = 0, .z = 0};
-	var direction: Vec3f = Vec3f{0, 0, 0};
+	var rotation: Vec3f = Vec3f{.x=0, .y=0, .z=0};
+	var direction: Vec3f = Vec3f{.x=0, .y=0, .z=0};
 	pub var viewMatrix: Mat4f = Mat4f.identity();
 	pub fn moveRotation(mouseX: f32, mouseY: f32) void {
 		// Mouse movement along the x-axis rotates the image along the y-axis.
 		rotation.x += mouseY;
-		if(rotation.x > std.math.pi/2) {
-			rotation.x = std.math.pi/2;
-		} else if(rotation.x < -std.math.pi/2) {
-			rotation.x = -std.math.pi/2;
+		if(rotation.x > std.math.pi/2.0) {
+			rotation.x = std.math.pi/2.0;
+		} else if(rotation.x < -std.math.pi/2.0) {
+			rotation.x = -std.math.pi/2.0;
 		}
 		// Mouse movement along the y-axis rotates the image along the x-axis.
 		rotation.y += mouseX;
 
-		direction = Vec3f.rotateX(Vec3f{0, 0, -1}, rotation.x).rotateY(rotation.y);
+		direction = Vec3f.rotateX(Vec3f{.x=0, .y=0, .z=-1}, rotation.x).rotateY(rotation.y);
 	}
 
 	pub fn updateViewMatrix() void {
-		viewMatrix = Mat4f.rotationY(rotation.y).mul(Mat4f.rotationX(rotation.x));
+		viewMatrix = Mat4f.rotationX(rotation.x).mul(Mat4f.rotationY(rotation.y));
 	}
 };
 

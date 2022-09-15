@@ -7,6 +7,7 @@ const game = @import("game.zig");
 const graphics = @import("graphics.zig");
 const renderer = @import("renderer.zig");
 const network = @import("network.zig");
+const settings = @import("settings.zig");
 const utils = @import("utils.zig");
 
 const Vec2f = @import("vec.zig").Vec2f;
@@ -61,7 +62,7 @@ pub const Window = struct {
 			std.log.info("Framebuffer: {}, {}", .{newWidth, newHeight});
 			width = @intCast(u31, newWidth);
 			height = @intCast(u31, newHeight);
-			renderer.updateViewport(width, height, 45);// TODO: Get fov from settings.
+			renderer.updateViewport(width, height, settings.fov);
 		}
 		fn glDebugOutput(_: c_uint, typ: c_uint, _: c_uint, severity: c_uint, length: c_int, message: [*c]const u8, _: ?*const anyopaque) callconv(.C) void {
 			if(typ == c.GL_DEBUG_TYPE_ERROR or typ == c.GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR or typ == c.GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR or typ == c.GL_DEBUG_TYPE_PORTABILITY or typ == c.GL_DEBUG_TYPE_PERFORMANCE) {
@@ -196,6 +197,7 @@ pub fn main() !void {
 				std.log.err("Got opengl error: {}", .{err});
 			}
 		}
+		game.camera.moveRotation(0.01, 0);
 		c.glfwSwapBuffers(Window.window);
 		c.glfwPollEvents();
 		try renderer.RenderOctree.update(conn2, .{.x = 25, .y = 11, .z = -703}, 4, 2.0);

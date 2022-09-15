@@ -213,11 +213,8 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, directionalLight: Vec3f, 
 //	Meshes.cleanUp();
 	game.camera.updateViewMatrix();
 
-//TODO:	// Uses FrustumCulling on the chunks.
-//	Matrix4f frustumMatrix = new Matrix4f();
-//	frustumMatrix.set(frustumProjectionMatrix);
-//	frustumMatrix.mul(Camera.getViewMatrix());
-//	frustumInt.set(frustumMatrix);
+	// Uses FrustumCulling on the chunks.
+	var frustum = Frustum.init(Vec3f{.x=0, .y=0, .z=0}, game.camera.viewMatrix, settings.fov, zFarLOD, main.Window.width, main.Window.height);
 
 	const time = @intCast(u32, std.time.milliTimestamp() & std.math.maxInt(u32));
 	const waterFog = Fog{.active=true, .color=.{.x=0.0, .y=0.1, .z=0.2}, .density=0.1};
@@ -243,7 +240,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, directionalLight: Vec3f, 
 //	SimpleList<ReducedChunkMesh> visibleReduced = new SimpleList<ReducedChunkMesh>(new ReducedChunkMesh[64]);
 	var meshes = std.ArrayList(*chunk.meshing.ChunkMesh).init(main.threadAllocator);
 	defer meshes.deinit();
-	try RenderOctree.getRenderChunks(playerPos, &meshes);
+	try RenderOctree.getRenderChunks(playerPos, frustum, &meshes);
 //	for (ChunkMesh mesh : Cubyz.chunkTree.getRenderChunks(frustumInt, x0, y0, z0)) {
 //		if (mesh instanceof NormalChunkMesh) {
 //			visibleChunks.add((NormalChunkMesh)mesh);
@@ -351,9 +348,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, directionalLight: Vec3f, 
 //TODO	EntityRenderer.renderNames(playerPosition);
 }
 
-//	private final Matrix4f frustumProjectionMatrix = new Matrix4f();
-//	private final FrustumIntersection frustumInt = new FrustumIntersection();
-//	
 //	private float playerBobbing;
 //	private boolean bobbingUp;
 //	
@@ -394,6 +388,45 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, directionalLight: Vec3f, 
 //		return output;
 //	}
 //}
+
+pub const Frustum = struct {
+	const Plane = struct {
+		pos: Vec3f,
+		norm: Vec3f,
+	};
+	planes: [5]Plane, // Who cares about the near plane anyways?
+
+	pub fn init(cameraPos: Vec3f, rotationMatrix: Mat4f, fovY: f32, _zFar: f32, width: u31, height: u31) Frustum {
+		var invRotationMatrix = rotationMatrix.transpose();
+		var cameraDir = Vec3f.xyz(invRotationMatrix.mulVec(Vec4f{.x=0, .y=0, .z=1, .w=1}));
+		var cameraUp = Vec3f.xyz(invRotationMatrix.mulVec(Vec4f{.x=0, .y=1, .z=0, .w=1}));
+		var cameraRight = Vec3f.xyz(invRotationMatrix.mulVec(Vec4f{.x=1, .y=0, .z=0, .w=1}));
+
+		const halfVSide = _zFar*std.math.tan(std.math.degreesToRadians(f32, fovY)*0.5);
+		const halfHSide = halfVSide*@intToFloat(f32, width)/@intToFloat(f32, height);
+		const frontMultFar = cameraDir.mulScalar(_zFar);
+
+		var self: Frustum = undefined;
+		self.planes[0] = Plane{.pos = cameraPos.add(frontMultFar), .norm=cameraDir.mulScalar(-1)}; // far
+		self.planes[1] = Plane{.pos = cameraPos, .norm=cameraUp.cross(frontMultFar.add(cameraRight.mulScalar(halfHSide)))}; // right
+		self.planes[2] = Plane{.pos = cameraPos, .norm=frontMultFar.sub(cameraRight.mulScalar(halfHSide)).cross(cameraUp)}; // left
+		self.planes[3] = Plane{.pos = cameraPos, .norm=cameraRight.cross(frontMultFar.sub(cameraUp.mulScalar(halfVSide)))}; // top
+		self.planes[4] = Plane{.pos = cameraPos, .norm=frontMultFar.add(cameraUp.mulScalar(halfVSide)).cross(cameraRight)}; // bottom
+		return self;
+	}
+
+	pub fn testAAB(self: Frustum, pos: Vec3f, dim: Vec3f) bool {
+		inline for(self.planes) |plane| {
+			var dist: f32 = pos.sub(plane.pos).dot(plane.norm);
+			// Find the most positive corner:
+			dist += @maximum(0, dim.x*plane.norm.x);
+			dist += @maximum(0, dim.y*plane.norm.y);
+			dist += @maximum(0, dim.z*plane.norm.z);
+			if(dist < 128) return false;
+		}
+		return true;
+	}
+};
 
 pub const RenderOctree = struct {
 	pub var allocator: std.mem.Allocator = undefined;
@@ -490,17 +523,25 @@ pub const RenderOctree = struct {
 			}
 		}
 
-		fn getChunks(self: *Node, playerPos: Vec3d, meshes: *std.ArrayList(*chunk.meshing.ChunkMesh)) !void {
+		fn getChunks(self: *Node, playerPos: Vec3d, frustum: Frustum, meshes: *std.ArrayList(*chunk.meshing.ChunkMesh)) !void {
 			self.mutex.lock();
 			defer self.mutex.unlock();
 			if(self.children) |children| {
 				for(children) |child| {
-					try child.getChunks(playerPos, meshes);
+					try child.getChunks(playerPos, frustum, meshes);
 				}
 			} else {
-				// TODO: if(testFrustum(frustumInt, x0, y0, z0)) {
+				if(frustum.testAAB(Vec3f{
+					.x = @floatCast(f32, @intToFloat(f64, self.mesh.pos.wx) - playerPos.x),
+					.y = @floatCast(f32, @intToFloat(f64, self.mesh.pos.wy) - playerPos.y),
+					.z = @floatCast(f32, @intToFloat(f64, self.mesh.pos.wz) - playerPos.z),
+				}, Vec3f{
+					.x = @intToFloat(f32, self.size),
+					.y = @intToFloat(f32, self.size),
+					.z = @intToFloat(f32, self.size),
+				})) {
 					try meshes.append(&self.mesh);
-				//}
+				}
 			}
 		}
 		// TODO:
@@ -693,12 +734,12 @@ pub const RenderOctree = struct {
 		try updatableList.append(mesh);
 	}
 
-	pub fn getRenderChunks(playerPos: Vec3d, meshes: *std.ArrayList(*chunk.meshing.ChunkMesh)) !void {
+	pub fn getRenderChunks(playerPos: Vec3d, frustum: Frustum, meshes: *std.ArrayList(*chunk.meshing.ChunkMesh)) !void {
 		mutex.lock();
 		defer mutex.unlock();
 		var iterator = roots.valueIterator();
 		while(iterator.next()) |node| {
-			try node.*.getChunks(playerPos, meshes);
+			try node.*.getChunks(playerPos, frustum, meshes);
 		}
 	}
 	// TODO:

@@ -39,6 +39,18 @@ pub const Vec3f = extern struct {// This one gets a bit of extra functionality f
 			.z = self.z,
 		};
 	}
+
+	pub fn cross(self: @This(), other: @This()) @This() {
+		return @This() {
+			.x = self.y*other.z - self.z*other.y,
+			.y = self.z*other.x - self.x*other.z,
+			.z = self.x*other.y - self.y*other.x,
+		};
+	}
+
+	pub fn xyz(self: Vec4f) Vec3f {
+		return Vec3f{.x=self.x, .y=self.y, .z=self.z};
+	}
 };
 pub const Vec3d = GenericVector3(f64);
 pub const Vec4i = GenericVector4(i32);
@@ -67,6 +79,14 @@ fn GenericVectorMath(comptime Vec: type, comptime T: type) type {
 			var result: Vec = undefined;
 			inline for(@typeInfo(Vec).Struct.fields) |field| {
 				@field(result, field.name) = @field(self, field.name) * @field(other, field.name);
+			}
+			return result;
+		}
+
+		pub fn mulScalar(self: Vec, scalar: T) Vec {
+			var result: Vec = undefined;
+			inline for(@typeInfo(Vec).Struct.fields) |field| {
+				@field(result, field.name) = @field(self, field.name) * scalar;
 			}
 			return result;
 		}
@@ -114,6 +134,12 @@ fn GenericVectorMath(comptime Vec: type, comptime T: type) type {
 		pub fn mulEqual(self: *Vec, other: Vec) void {
 			inline for(@typeInfo(Vec).Struct.fields) |field| {
 				@field(self, field.name) *= @field(other, field.name);
+			}
+		}
+
+		pub fn mulEqualScalar(self: *Vec, scalar: T) Vec {
+			inline for(@typeInfo(Vec).Struct.fields) |field| {
+				@field(self, field.name) *= scalar;
 			}
 		}
 
@@ -249,6 +275,16 @@ pub const Mat4f = struct {
 			result.columns[col].z = transposeSelf.columns[2].dot(other.columns[col]);
 			result.columns[col].w = transposeSelf.columns[3].dot(other.columns[col]);
 		}
+		return result;
+	}
+
+	pub fn mulVec(self: Mat4f, vec: Vec4f) Vec4f {
+		var transposeSelf = self.transpose();
+		var result: Vec4f = undefined;
+		result.x = transposeSelf.columns[0].dot(vec);
+		result.y = transposeSelf.columns[1].dot(vec);
+		result.z = transposeSelf.columns[2].dot(vec);
+		result.w = transposeSelf.columns[3].dot(vec);
 		return result;
 	}
 };
