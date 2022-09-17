@@ -8,45 +8,9 @@ pub const Vec3f = extern struct {// This one gets a bit of extra functionality f
 	x: f32,
 	y: f32,
 	z: f32,
+	pub usingnamespace Vec3RotationMath(@This(), f32);
+	pub usingnamespace Vec3SpecificMath(@This(), f32);
 	pub usingnamespace GenericVectorMath(@This(), f32);
-	
-	pub fn rotateX(self: Vec3f, angle: f32) Vec3f {
-		const sin = @sin(angle);
-		const cos = @cos(angle); // TODO: Consider using sqrt here.
-		return Vec3f{
-			.x = self.x,
-			.y = self.y*cos - self.z*sin,
-			.z = self.y*sin + self.z*cos,
-		};
-	}
-	
-	pub fn rotateY(self: Vec3f, angle: f32) Vec3f {
-		const sin = @sin(angle);
-		const cos = @cos(angle); // TODO: Consider using sqrt here.
-		return Vec3f{
-			.x = self.x*cos + self.z*sin,
-			.y = self.y,
-			.z = -self.x*sin + self.z*cos,
-		};
-	}
-	
-	pub fn rotateZ(self: Vec3f, angle: f32) Vec3f {
-		const sin = @sin(angle);
-		const cos = @cos(angle); // TODO: Consider using sqrt here.
-		return Vec3f{
-			.x = self.x*cos - self.y*sin,
-			.y = self.x*sin + self.y*cos,
-			.z = self.z,
-		};
-	}
-
-	pub fn cross(self: @This(), other: @This()) @This() {
-		return @This() {
-			.x = self.y*other.z - self.z*other.y,
-			.y = self.z*other.x - self.x*other.z,
-			.z = self.x*other.y - self.y*other.x,
-		};
-	}
 
 	pub fn xyz(self: Vec4f) Vec3f {
 		return Vec3f{.x=self.x, .y=self.y, .z=self.z};
@@ -56,6 +20,57 @@ pub const Vec3d = GenericVector3(f64);
 pub const Vec4i = GenericVector4(i32);
 pub const Vec4f = GenericVector4(f32);
 pub const Vec4d = GenericVector4(f64);
+
+fn Vec3RotationMath(comptime Vec: type, comptime T: type) type {
+	if(@typeInfo(Vec).Struct.fields.len == 3 and @typeInfo(T) == .Float) {
+		return struct{
+			pub fn rotateX(self: Vec, angle: T) Vec {
+				const sin = @sin(angle);
+				const cos = @cos(angle); // TODO: Consider using sqrt here.
+				return Vec{
+					.x = self.x,
+					.y = self.y*cos - self.z*sin,
+					.z = self.y*sin + self.z*cos,
+				};
+			}
+			
+			pub fn rotateY(self: Vec, angle: T) Vec {
+				const sin = @sin(angle);
+				const cos = @cos(angle); // TODO: Consider using sqrt here.
+				return Vec{
+					.x = self.x*cos + self.z*sin,
+					.y = self.y,
+					.z = -self.x*sin + self.z*cos,
+				};
+			}
+			
+			pub fn rotateZ(self: Vec, angle: T) Vec {
+				const sin = @sin(angle);
+				const cos = @cos(angle); // TODO: Consider using sqrt here.
+				return Vec{
+					.x = self.x*cos - self.y*sin,
+					.y = self.x*sin + self.y*cos,
+					.z = self.z,
+				};
+			}
+		};
+	} else {
+		return struct{};
+	}
+}
+
+fn Vec3SpecificMath(comptime Vec: type, comptime T: type) type {
+	_ = T;
+	return struct {
+		pub fn cross(self: Vec, other: Vec) Vec {
+			return Vec {
+				.x = self.y*other.z - self.z*other.y,
+				.y = self.z*other.x - self.x*other.z,
+				.z = self.x*other.y - self.y*other.x,
+			};
+		}
+	};
+}
 
 fn GenericVectorMath(comptime Vec: type, comptime T: type) type {
 	return struct {
@@ -96,6 +111,18 @@ fn GenericVectorMath(comptime Vec: type, comptime T: type) type {
 				var result: Vec = undefined;
 				inline for(@typeInfo(Vec).Struct.fields) |field| {
 					@field(result, field.name) = @field(self, field.name) / @field(other, field.name);
+				}
+				return result;
+			} else {
+				@compileError("Not supported for integer types.");
+			}
+		}
+
+		pub fn divScalar(self: Vec, scalar: T) Vec {
+			if(@typeInfo(T) == .Float) {
+				var result: Vec = undefined;
+				inline for(@typeInfo(Vec).Struct.fields) |field| {
+					@field(result, field.name) = @field(self, field.name) / scalar;
 				}
 				return result;
 			} else {
@@ -153,6 +180,16 @@ fn GenericVectorMath(comptime Vec: type, comptime T: type) type {
 			}
 		}
 
+		pub fn divEqualScalar(self: *Vec, scalar: T) void {
+			if(@typeInfo(T) == .Float) {
+				inline for(@typeInfo(Vec).Struct.fields) |field| {
+					@field(self, field.name) /= scalar;
+				}
+			} else {
+				@compileError("Not supported for integer types.");
+			}
+		}
+
 		pub fn dot(self: Vec, other: Vec) T {
 			var result: T = 0;
 			inline for(@typeInfo(Vec).Struct.fields) |field| {
@@ -176,6 +213,8 @@ fn GenericVector3(comptime T: type) type {
 		x: T,
 		y: T,
 		z: T,
+		pub usingnamespace Vec3RotationMath(@This(), T);
+		pub usingnamespace Vec3SpecificMath(@This(), T);
 		pub usingnamespace GenericVectorMath(@This(), T);
 	};
 }

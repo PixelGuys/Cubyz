@@ -10,3 +10,5 @@ pub const highestLOD: u5 = 5;
 
 
 pub var fov: f32 = 45;
+
+pub var mouseSensitivity: f32 = 1;
