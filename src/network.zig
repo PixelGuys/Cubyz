@@ -10,6 +10,8 @@ const json = @import("json.zig");
 const JsonElement = json.JsonElement;
 const renderer = @import("renderer.zig");
 const utils = @import("utils.zig");
+const vec = @import("vec.zig");
+const Vec3d = vec.Vec3d;
 
 //TODO: Might want to use SSL or something similar to encode the message
 
@@ -788,6 +790,33 @@ pub const Protocols = blk: {
 //		}
 //	}
 		}),
+		playerPosition: type = addProtocol(&comptimeList, struct {
+			const id: u8 = 4;
+			fn receive(conn: *Connection, data: []const u8) !void {
+				_ = conn;
+				_ = data;
+				// TODO: ((User)conn).receiveData(data, offset);
+			}
+			var lastPositionSent: u16 = 0;
+			pub fn send(conn: *Connection, playerPos: Vec3d, playerVel: Vec3d, time: u16) !void {
+				if(time -% lastPositionSent < 50) {
+					return; // Only send at most once every 50 ms.
+				}
+				lastPositionSent = time;
+				var data: [62]u8 = undefined;
+				std.mem.writeIntBig(u64, data[0..8], @bitCast(u64, playerPos.x));
+				std.mem.writeIntBig(u64, data[8..16], @bitCast(u64, playerPos.y));
+				std.mem.writeIntBig(u64, data[16..24], @bitCast(u64, playerPos.z));
+				std.mem.writeIntBig(u64, data[24..32], @bitCast(u64, playerVel.x));
+				std.mem.writeIntBig(u64, data[32..40], @bitCast(u64, playerVel.y));
+				std.mem.writeIntBig(u64, data[40..48], @bitCast(u64, playerVel.z));
+				std.mem.writeIntBig(u32, data[48..52], @bitCast(u32, game.camera.rotation.x));
+				std.mem.writeIntBig(u32, data[52..56], @bitCast(u32, game.camera.rotation.y));
+				std.mem.writeIntBig(u32, data[56..60], @bitCast(u32, game.camera.rotation.z));
+				std.mem.writeIntBig(u16, data[60..62], time);
+				try conn.sendUnimportant(id, &data);
+			}
+		}),
 		disconnect: type = addProtocol(&comptimeList, struct {
 			const id: u8 = 5;
 			fn receive(conn: *Connection, _: []const u8) !void {
@@ -813,14 +842,6 @@ pub const Protocols = blk: {
 //	public static final GenericUpdateProtocol GENERIC_UPDATE = new GenericUpdateProtocol();
 //	public static final ChatProtocol CHAT = new ChatProtocol();
 //}
-
-const Protocol = struct {
-	id: u8,
-	const keepAlive: u8 = 0;
-	const important: u8 = 0xff;
-
-
-}; // TODO
 
 
 pub const Connection = struct {
@@ -923,7 +944,7 @@ pub const Connection = struct {
 	fn flush(self: *Connection) !void {
 		if(self.streamPosition == importantHeaderSize) return; // Don't send empty packets.
 		// Fill the header:
-		self.streamBuffer[0] = Protocol.important;
+		self.streamBuffer[0] = Protocols.important;
 		var id = self.messageID;
 		self.messageID += 1;
 		std.mem.writeIntBig(u32, self.streamBuffer[1..5], id); // TODO: Use little endian for better hardware support. Currently the aim is interoperability with the java version which uses big endian.
@@ -1063,7 +1084,7 @@ pub const Connection = struct {
 		}
 		var output = try main.threadAllocator.alloc(u8, runLengthEncodingStarts.items.len*8 + 9);
 		defer main.threadAllocator.free(output);
-		output[0] = Protocol.keepAlive;
+		output[0] = Protocols.keepAlive;
 		std.mem.writeIntBig(u32, output[1..5], self.lastKeepAliveSent);
 		self.lastKeepAliveSent += 1;
 		std.mem.writeIntBig(u32, output[5..9], self.otherKeepAliveReceived);
@@ -1183,7 +1204,7 @@ pub const Connection = struct {
 		self.lastConnection = std.time.milliTimestamp();
 		bytesReceived[protocol] += data.len + 20 + 8; // Including IP header and udp header;
 		packetsReceived[protocol] += 1;
-		if(protocol == Protocol.important) {
+		if(protocol == Protocols.important) {
 			var id = std.mem.readIntBig(u32, data[1..5]);
 			if(self.handShakeState == Protocols.handShake.stepComplete and id == 0) { // Got a new "first" packet from client. So the client tries to reconnect, but we still think it's connected.
 				// TODO:
@@ -1214,7 +1235,7 @@ pub const Connection = struct {
 			self.lastReceivedPackets[id & 65535] = try self.allocator.dupe(u8, data[importantHeaderSize..]);
 			// Check if a message got completed:
 			try self.collectPackets();
-		} else if(protocol == Protocol.keepAlive) {
+		} else if(protocol == Protocols.keepAlive) {
 			self.receiveKeepAlive(data[1..]);
 		} else {
 			if(Protocols.list[protocol]) |prot| {

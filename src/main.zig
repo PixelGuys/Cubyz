@@ -250,13 +250,13 @@ pub fn main() !void {
 	try renderer.RenderOctree.init();
 	defer renderer.RenderOctree.deinit();
 
-	var conn = try network.ConnectionManager.init(12347, true);
+	var manager = try network.ConnectionManager.init(12347, true);
+	defer manager.deinit();
+
+	var conn = try network.Connection.init(manager, "127.0.0.1");
 	defer conn.deinit();
 
-	var conn2 = try network.Connection.init(conn, "127.0.0.1");
-	defer conn2.deinit();
-
-	try network.Protocols.handShake.clientSide(conn2, "quanturmdoelvloper");
+	try network.Protocols.handShake.clientSide(conn, "quanturmdoelvloper");
 
 	Window.setMouseGrabbed(true);
 
@@ -282,12 +282,14 @@ pub fn main() !void {
 		var newTime = std.time.milliTimestamp();
 		var deltaTime = @intToFloat(f64, newTime -% lastTime)/1000.0;
 		lastTime = newTime;
+		var timeShort = @intCast(u16, lastTime & 65535);
 		game.update(deltaTime);
-		try renderer.RenderOctree.update(conn2, game.playerPos, 4, 2.0);
+		try renderer.RenderOctree.update(conn, game.playerPos, 4, 2.0);
 		{ // Render the game
 			c.glEnable(c.GL_CULL_FACE);
 			c.glEnable(c.GL_DEPTH_TEST);
 			try renderer.render(game.playerPos);
+			try network.Protocols.playerPosition.send(conn, game.playerPos, game.playerVel, timeShort);
 		}
 
 		{ // Render the GUI

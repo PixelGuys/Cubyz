@@ -11,8 +11,8 @@ const graphics = @import("graphics.zig");
 const Fog = graphics.Fog;
 
 pub const camera = struct {
-	var rotation: Vec3f = Vec3f{.x=0, .y=0, .z=0};
-	var direction: Vec3f = Vec3f{.x=0, .y=0, .z=0};
+	pub var rotation: Vec3f = Vec3f{.x=0, .y=0, .z=0};
+	pub var direction: Vec3f = Vec3f{.x=0, .y=0, .z=0};
 	pub var viewMatrix: Mat4f = Mat4f.identity();
 	pub fn moveRotation(mouseX: f32, mouseY: f32) void {
 		// Mouse movement along the x-axis rotates the image along the y-axis.
@@ -34,6 +34,7 @@ pub const camera = struct {
 };
 
 pub var playerPos: Vec3d = Vec3d{.x=0, .y=0, .z=0};
+pub var playerVel: Vec3d = Vec3d{.x=0, .y=0, .z=0};
 pub var isFlying: bool = true;
 
 pub var blockPalette: *assets.BlockPalette = undefined;
