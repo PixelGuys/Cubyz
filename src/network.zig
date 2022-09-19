@@ -626,7 +626,6 @@ pub const Protocols = blk: {
 				} else {
 					// Ignore packages that refer to an unexpected state. Normally those might be packages that were resent by the other side.
 				}
-				_ = data;
 			}
 
 			pub fn serverSide(conn: *Connection) void {
