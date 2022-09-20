@@ -609,10 +609,7 @@ pub const Protocols = blk: {
 						stepServerData => {
 							var jsonObject = json.parseFromString(main.threadAllocator, data[1..]);
 							defer jsonObject.free(main.threadAllocator);
-							// TODO: ((ServerConnection)conn).world.finishHandshake(json);
-							{// TODO: Move this into world loading finishHandshake().
-								game.blockPalette = try assets.BlockPalette.init(renderer.RenderOctree.allocator, jsonObject.getChild("blockPalette")); // TODO: Use the world allocator and free this.
-							}
+							try game.world.?.finishHandshake(jsonObject);
 							conn.handShakeState = stepComplete;
 							conn.handShakeWaiting.broadcast(); // Notify the waiting client thread.
 						},

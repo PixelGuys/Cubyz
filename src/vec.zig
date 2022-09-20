@@ -164,7 +164,7 @@ fn GenericVectorMath(comptime Vec: type, comptime T: type) type {
 			}
 		}
 
-		pub fn mulEqualScalar(self: *Vec, scalar: T) Vec {
+		pub fn mulEqualScalar(self: *Vec, scalar: T) void {
 			inline for(@typeInfo(Vec).Struct.fields) |field| {
 				@field(self, field.name) *= scalar;
 			}

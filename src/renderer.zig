@@ -173,27 +173,21 @@ pub fn render(playerPosition: Vec3d) !void {
 //		}
 	if(game.world) |world| {
 //		// TODO: Handle colors and sun position in the world.
-//		ambient.x = ambient.y = ambient.z = Cubyz.world.getGlobalLighting();
-//		if (ambient.x < 0.1f) ambient.x = 0.1f;
-//		if (ambient.y < 0.1f) ambient.y = 0.1f;
-//		if (ambient.z < 0.1f) ambient.z = 0.1f;
-//		clearColor = Cubyz.world.getClearColor();
-//		Cubyz.fog.setColor(clearColor);
+		var ambient: Vec3f = undefined;
+		ambient.x = @maximum(0.1, world.ambientLight);
+		ambient.y = @maximum(0.1, world.ambientLight);
+		ambient.z = @maximum(0.1, world.ambientLight);
+		var skyColor = Vec3f.xyz(world.clearColor);
+		game.fog.color = skyColor;
+		// TODO:
 //		Cubyz.fog.setActive(ClientSettings.FOG_COEFFICIENT != 0);
 //		Cubyz.fog.setDensity(1 / (ClientSettings.EFFECTIVE_RENDER_DISTANCE*ClientSettings.FOG_COEFFICIENT));
-//		clearColor = clearColor.mul(0.25f, new Vector4f());
-//		
-//		light.setColor(clearColor);
-//		
-//		float lightY = ((float)Cubyz.world.gameTime % World.DAY_CYCLE) / (float) (World.DAY_CYCLE/2) - 1f;
-//		float lightX = ((float)Cubyz.world.gameTime % World.DAY_CYCLE) / (float) (World.DAY_CYCLE/2) - 1f;
-//		light.getDirection().set(lightY, 0, lightX);
-//		// Set intensity:
-//		light.setDirection(light.getDirection().mul(0.1f*Cubyz.world.getGlobalLighting()/light.getDirection().length()));
-//		Window.setClearColor(clearColor);
-		try renderWorld(world, Vec3f{.x=1, .y=1, .z=1}, Vec3f{.x=0.3, .y=-1, .z=0.5}, playerPosition);
+		skyColor.mulEqualScalar(0.25);
+
+		try renderWorld(world, ambient, skyColor, playerPosition);
 		try RenderOctree.updateMeshes(startTime + maximumMeshTime);
 	} else {
+		// TODO:
 //		clearColor.y = clearColor.z = 0.7f;
 //		clearColor.x = 0.1f;@import("main.zig")
 //		
@@ -205,10 +199,10 @@ pub fn render(playerPosition: Vec3d) !void {
 //	Keyboard.release(); // TODO: Why is this called in the render thread???
 }
 
-pub fn renderWorld(world: *World, ambientLight: Vec3f, directionalLight: Vec3f, playerPos: Vec3d) !void {
+pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPos: Vec3d) !void {
 	_ = world;
 	buffers.bind();
-	buffers.clearAndBind(Vec4f{.x=0, .y=1, .z=0.5, .w=1});
+	buffers.clearAndBind(Vec4f{.x=skyColor.x, .y=skyColor.y, .z=skyColor.z, .w=1});
 //	TODO:// Clean up old chunk meshes:
 //	Meshes.cleanUp();
 	game.camera.updateViewMatrix();
@@ -220,7 +214,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, directionalLight: Vec3f, 
 	const waterFog = Fog{.active=true, .color=.{.x=0.0, .y=0.1, .z=0.2}, .density=0.1};
 
 	// Update the uniforms. The uniforms are needed to render the replacement meshes.
-	chunk.meshing.bindShaderAndUniforms(game.lodProjectionMatrix, ambientLight, directionalLight, time);
+	chunk.meshing.bindShaderAndUniforms(game.lodProjectionMatrix, ambientLight, time);
 
 //TODO:	NormalChunkMesh.bindShader(ambientLight, directionalLight.getDirection(), time);
 
@@ -260,7 +254,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, directionalLight: Vec3f, 
 
 	// Render the far away ReducedChunks:
 	c.glDepthRangef(0.05, 1.0); // ← Used to fix z-fighting.
-	chunk.meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight, directionalLight, time);
+	chunk.meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight, time);
 	c.glUniform1i(chunk.meshing.uniforms.@"waterFog.activ", if(waterFog.active) 1 else 0);
 	c.glUniform3fv(chunk.meshing.uniforms.@"waterFog.color", 1, @ptrCast([*c]f32, &waterFog.color));
 	c.glUniform1f(chunk.meshing.uniforms.@"waterFog.density", waterFog.density);
@@ -590,7 +584,7 @@ pub const RenderOctree = struct {
 			allocator.destroy(updatable);
 		}
 		updatableList.deinit();
-		game.blockPalette.deinit();
+		game.world.?.blockPalette.deinit();
 		if(gpa.deinit()) {
 			@panic("Memory leak");
 		}

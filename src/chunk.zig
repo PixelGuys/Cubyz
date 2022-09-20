@@ -493,7 +493,6 @@ pub const meshing = struct {
 		viewMatrix: c_int,
 		modelPosition: c_int,
 		ambientLight: c_int,
-		directionalLight: c_int,
 		@"fog.activ": c_int,
 		@"fog.color": c_int,
 		@"fog.density": c_int,
@@ -538,7 +537,7 @@ pub const meshing = struct {
 		faces.deinit();
 	}
 
-	pub fn bindShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, directional: Vec3f, time: u32) void {
+	pub fn bindShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, time: u32) void {
 		shader.bind();
 
 		c.glUniform1i(uniforms.@"fog.activ", if(game.fog.active) 1 else 0);
@@ -553,7 +552,6 @@ pub const meshing = struct {
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast([*c]f32, &game.camera.viewMatrix));
 
 		c.glUniform3f(uniforms.ambientLight, ambient.x, ambient.y, ambient.z);
-		c.glUniform3f(uniforms.directionalLight, directional.x, directional.y, directional.z);
 
 		c.glUniform1i(uniforms.time, @bitCast(i32, time));
 

@@ -253,14 +253,10 @@ pub fn main() !void {
 	var manager = try network.ConnectionManager.init(12347, true);
 	defer manager.deinit();
 
-	var conn = try network.Connection.init(manager, "127.0.0.1");
-	defer conn.deinit();
-
-	try network.Protocols.handShake.clientSide(conn, "quanturmdoelvloper");
+	try game.world.?.init("127.0.0.1", manager);
+	defer game.world.?.deinit();
 
 	Window.setMouseGrabbed(true);
-
-	try assets.loadWorldAssets("serverAssets", game.blockPalette);
 
 	try blocks.meshes.generateTextureArray();
 
@@ -282,14 +278,12 @@ pub fn main() !void {
 		var newTime = std.time.milliTimestamp();
 		var deltaTime = @intToFloat(f64, newTime -% lastTime)/1000.0;
 		lastTime = newTime;
-		var timeShort = @intCast(u16, lastTime & 65535);
-		game.update(deltaTime);
-		try renderer.RenderOctree.update(conn, game.playerPos, 4, 2.0);
+		try game.update(deltaTime);
+		try renderer.RenderOctree.update(game.world.?.conn, game.playerPos, 4, 2.0);
 		{ // Render the game
 			c.glEnable(c.GL_CULL_FACE);
 			c.glEnable(c.GL_DEPTH_TEST);
 			try renderer.render(game.playerPos);
-			try network.Protocols.playerPosition.send(conn, game.playerPos, game.playerVel, timeShort);
 		}
 
 		{ // Render the GUI

@@ -3,7 +3,7 @@
 out vec3 mvVertexPos;
 out vec2 outTexCoord;
 flat out float textureIndex;
-out vec3 outNormal;
+out float outNormalVariation;
 
 
 uniform mat4 projectionMatrix;
@@ -32,6 +32,14 @@ layout(std430, binding = 3) buffer _faceData
 
 uniform int time;
 
+const float[6] outNormalVariations = float[6](
+	0.9, //vec3(-1, 0, 0),
+	0.9, //vec3(1, 0, 0),
+	0.85, //vec3(0, 0, -1),
+	0.95, //vec3(0, 0, 1),
+	0.8, //vec3(0, -1, 0),
+	1.0 //vec3(0, 1, 0)
+);
 const vec3[6] normals = vec3[6](
 	vec3(-1, 0, 0),
 	vec3(1, 0, 0),
@@ -80,7 +88,7 @@ void main() {
 
 	vec4 mvPos = viewMatrix*vec4(globalPosition, 1);
 	gl_Position = projectionMatrix*mvPos;
-	outNormal = normals[normal];
+	outNormalVariation = outNormalVariations[normal];
 	mvVertexPos = mvPos.xyz;
 
 	// Check if this vertex is outside the bounds that should be rendered:
