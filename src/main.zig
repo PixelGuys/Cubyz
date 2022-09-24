@@ -247,8 +247,8 @@ pub fn main() !void {
 
 	network.init();
 
-	try renderer.RenderOctree.init();
-	defer renderer.RenderOctree.deinit();
+	try renderer.RenderStructure.init();
+	defer renderer.RenderStructure.deinit();
 
 	var manager = try network.ConnectionManager.init(12347, true);
 	defer manager.deinit();
@@ -279,7 +279,6 @@ pub fn main() !void {
 		var deltaTime = @intToFloat(f64, newTime -% lastTime)/1000.0;
 		lastTime = newTime;
 		try game.update(deltaTime);
-		try renderer.RenderOctree.update(game.world.?.conn, game.playerPos, 4, 2.0);
 		{ // Render the game
 			c.glEnable(c.GL_CULL_FACE);
 			c.glEnable(c.GL_DEPTH_TEST);

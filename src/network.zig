@@ -706,8 +706,8 @@ pub const Protocols = blk: {
 					var z = data[2*size..3*size];
 					var neighbors = data[3*size..4*size];
 					var visibleBlocks = data[4*size..];
-					var result = try renderer.RenderOctree.allocator.create(chunk.ChunkVisibilityData);
-					result.* = try chunk.ChunkVisibilityData.initEmpty(renderer.RenderOctree.allocator, pos, size);
+					var result = try renderer.RenderStructure.allocator.create(chunk.ChunkVisibilityData);
+					result.* = try chunk.ChunkVisibilityData.initEmpty(renderer.RenderStructure.allocator, pos, size);
 					for(x) |_, i| {
 						var block = result.visibles.addOneAssumeCapacity();
 						block.x = x[i];
@@ -718,7 +718,7 @@ pub const Protocols = blk: {
 						block.block.typ = @intCast(u16, blockTypeAndData & 0xffff);
 						block.block.data = @intCast(u16, blockTypeAndData >> 16);
 					}
-					try renderer.RenderOctree.updateChunkMesh(result);
+					try renderer.RenderStructure.updateChunkMesh(result);
 				}
 			}
 			pub fn sendChunk(conn: *Connection, visData: chunk.ChunkVisibilityData) !void {

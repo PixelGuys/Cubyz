@@ -8,15 +8,19 @@ const graphics = @import("graphics.zig");
 const c = graphics.c;
 const Shader = graphics.Shader;
 const SSBO = graphics.SSBO;
-const Vec3f = @import("vec.zig").Vec3f;
-const Vec3d = @import("vec.zig").Vec3d;
-const Mat4f = @import("vec.zig").Mat4f;
+const main = @import("main.zig");
+const vec = @import("vec.zig");
+const Vec3f = vec.Vec3f;
+const Vec3d = vec.Vec3d;
+const Mat4f = vec.Mat4f;
 
 pub const ChunkCoordinate = i32;
 pub const UChunkCoordinate = u31;
 pub const chunkShift: u5 = 5;
 pub const chunkShift2: u5 = chunkShift*2;
 pub const chunkSize: ChunkCoordinate = 1 << chunkShift;
+pub const chunkSizeIterator: [chunkSize]u0 = undefined;
+pub const chunkVolume: UChunkCoordinate = 1 << 3*chunkShift;
 pub const chunkMask: ChunkCoordinate = chunkSize - 1;
 
 /// Contains a bunch of constants used to describe neighboring blocks.
@@ -52,6 +56,18 @@ fn getIndex(x: ChunkCoordinate, y: ChunkCoordinate, z: ChunkCoordinate) u32 {
 	std.debug.assert((x & chunkMask) == x and (y & chunkMask) == y and (z & chunkMask) == z);
 	return (@intCast(u32, x) << chunkShift) | (@intCast(u32, y) << chunkShift2) | @intCast(u32, z);
 }
+/// Gets the x coordinate from a given index inside this chunk.
+fn extractXFromIndex(index: usize) ChunkCoordinate {
+	return @intCast(ChunkCoordinate, index >> chunkShift & chunkMask);
+}
+/// Gets the y coordinate from a given index inside this chunk.
+fn extractYFromIndex(index: usize) ChunkCoordinate {
+	return @intCast(ChunkCoordinate, index >> chunkShift2 & chunkMask);
+}
+/// Gets the z coordinate from a given index inside this chunk.
+fn extractZFromIndex(index: usize) ChunkCoordinate {
+	return @intCast(ChunkCoordinate, index & chunkMask);
+}
 
 pub const ChunkPosition = struct {
 	wx: ChunkCoordinate,
@@ -84,7 +100,7 @@ pub const ChunkPosition = struct {
 
 pub const Chunk = struct {
 	pos: ChunkPosition,
-	blocks: [chunkSize*chunkSize*chunkSize]Block = undefined,
+	blocks: [chunkVolume]Block = undefined,
 
 	wasChanged: bool = false,
 	/// When a chunk is cleaned, it won't be saved by the ChunkManager anymore, so following changes need to be saved directly.
@@ -97,11 +113,11 @@ pub const Chunk = struct {
 	widthShift: u5,
 	mutex: std.Thread.Mutex,
 
-	pub fn init(wx: ChunkCoordinate, wy: ChunkCoordinate, wz: ChunkCoordinate, voxelSize: UChunkCoordinate) Chunk {
+	pub fn init(self: *Chunk, wx: ChunkCoordinate, wy: ChunkCoordinate, wz: ChunkCoordinate, voxelSize: UChunkCoordinate) void {
 		std.debug.assert((voxelSize - 1 & voxelSize) == 0);
 		std.debug.assert(@mod(wx, voxelSize) == 0 and @mod(wy, voxelSize) == 0 and @mod(wz, voxelSize) == 0);
 		const voxelSizeShift = @intCast(u5, std.math.log2_int(UChunkCoordinate, voxelSize));
-		return Chunk {
+		self.* = Chunk {
 			.pos = ChunkPosition {
 				.wx = wx, .wy = wy, .wz = wz, .voxelSize = voxelSize
 			},
@@ -113,7 +129,7 @@ pub const Chunk = struct {
 		};
 	}
 
-	pub fn setChanged(self: *const Chunk) void {
+	pub fn setChanged(self: *Chunk) void {
 		self.wasChanged = true;
 		{
 			self.mutex.lock();
@@ -124,7 +140,7 @@ pub const Chunk = struct {
 		}
 	}
 
-	pub fn clean(self: *const Chunk) void {
+	pub fn clean(self: *Chunk) void {
 		{
 			self.mutex.lock();
 			self.wasCleaned = true;
@@ -133,7 +149,7 @@ pub const Chunk = struct {
 		}
 	}
 
-	pub fn unclean(self: *const Chunk) void {
+	pub fn unclean(self: *Chunk) void {
 		{
 			self.mutex.lock();
 			self.wasCleaned = false;
@@ -160,7 +176,7 @@ pub const Chunk = struct {
 
 	/// Updates a block if current value is air or the current block is degradable.
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
-	pub fn updateBlockIfDegradable(self: *const Chunk, x: ChunkCoordinate, y: ChunkCoordinate, z: ChunkCoordinate, newBlock: Block) void {
+	pub fn updateBlockIfDegradable(self: *Chunk, x: ChunkCoordinate, y: ChunkCoordinate, z: ChunkCoordinate, newBlock: Block) void {
 		x >>= self.voxelSizeShift;
 		y >>= self.voxelSizeShift;
 		z >>= self.voxelSizeShift;
@@ -172,7 +188,7 @@ pub const Chunk = struct {
 
 	/// Updates a block if it is inside this chunk.
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
-	pub fn updateBlock(self: *const Chunk, x: ChunkCoordinate, y: ChunkCoordinate, z: ChunkCoordinate, newBlock: Block) void {
+	pub fn updateBlock(self: *Chunk, x: ChunkCoordinate, y: ChunkCoordinate, z: ChunkCoordinate, newBlock: Block) void {
 		x >>= self.voxelSizeShift;
 		y >>= self.voxelSizeShift;
 		z >>= self.voxelSizeShift;
@@ -182,7 +198,7 @@ pub const Chunk = struct {
 
 	///  Updates a block if it is inside this chunk. Should be used in generation to prevent accidently storing these as changes.
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
-	pub fn updateBlockInGeneration(self: *const Chunk, x: ChunkCoordinate, y: ChunkCoordinate, z: ChunkCoordinate, newBlock: Block) void {
+	pub fn updateBlockInGeneration(self: *Chunk, x: ChunkCoordinate, y: ChunkCoordinate, z: ChunkCoordinate, newBlock: Block) void {
 		x >>= self.voxelSizeShift;
 		y >>= self.voxelSizeShift;
 		z >>= self.voxelSizeShift;
@@ -200,7 +216,30 @@ pub const Chunk = struct {
 		return self.blocks[index];
 	}
 
-	pub fn updateFromLowerResolution(self: *const Chunk, other: *const Chunk) void {
+	pub fn getNeighbors(self: *const Chunk, x: ChunkCoordinate, y: ChunkCoordinate, z: ChunkCoordinate, neighborsArray: *[6]Block) void {
+		std.debug.assert(neighborsArray.length == 6);
+		x &= chunkMask;
+		y &= chunkMask;
+		z &= chunkMask;
+		for(Neighbors.relX) |_, i| {
+			var xi = x + Neighbors.relX[i];
+			var yi = y + Neighbors.relY[i];
+			var zi = z + Neighbors.relZ[i];
+			if (xi == (xi & chunkMask) and yi == (yi & chunkMask) and zi == (zi & chunkMask)) { // Simple double-bound test for coordinates.
+				neighborsArray[i] = self.getBlock(xi, yi, zi);
+			} else {
+				// TODO: What about other chunks?
+//				NormalChunk ch = world.getChunk(xi + wx, yi + wy, zi + wz);
+//				if (ch != null) {
+//					neighborsArray[i] = ch.getBlock(xi & chunkMask, yi & chunkMask, zi & chunkMask);
+//				} else {
+//					neighborsArray[i] = 1; // Some solid replacement, in case the chunk isn't loaded. TODO: Properly choose a solid block.
+//				}
+			}
+		}
+	}
+
+	pub fn updateFromLowerResolution(self: *Chunk, other: *const Chunk) void {
 		const xOffset = if(other.wx != self.wx) chunkSize/2 else 0; // Offsets of the lower resolution chunk in this chunk.
 		const yOffset = if(other.wy != self.wy) chunkSize/2 else 0;
 		const zOffset = if(other.wz != self.wz) chunkSize/2 else 0;
@@ -279,7 +318,7 @@ pub const Chunk = struct {
 		//	}
 		//}
 		
-		setChanged();
+		self.setChanged();
 	}
 // TODO: Move this outside.
 //	/**
@@ -554,6 +593,9 @@ pub const meshing = struct {
 		c.glUniform3f(uniforms.ambientLight, ambient.x, ambient.y, ambient.z);
 
 		c.glUniform1i(uniforms.time, @bitCast(i32, time));
+
+		c.glUniform3f(uniforms.lowerBounds, -std.math.inf_f32, -std.math.inf_f32, -std.math.inf_f32);
+		c.glUniform3f(uniforms.upperBounds, std.math.inf_f32, std.math.inf_f32, std.math.inf_f32);
 
 		c.glBindVertexArray(vao);
 	}
