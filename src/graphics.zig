@@ -563,7 +563,7 @@ pub const TextureArray = struct {
 	}
 };
 
-pub const Color = packed struct(u32) {
+pub const Color = extern struct {
 	r: u8,
 	g: u8,
 	b: u8,

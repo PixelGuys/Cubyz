@@ -9,6 +9,7 @@ const c = graphics.c;
 const Shader = graphics.Shader;
 const SSBO = graphics.SSBO;
 const main = @import("main.zig");
+const renderer = @import("renderer.zig");
 const vec = @import("vec.zig");
 const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
@@ -40,11 +41,11 @@ pub const Neighbors = struct {
 	/// Directions → Index
 	pub const dirNegZ: u32 = 5;
 	/// Index to relative position
-	pub const relX = [_]i32 {0, 0, 1, -1, 0, 0};
+	pub const relX = [_]ChunkCoordinate {0, 0, 1, -1, 0, 0};
 	/// Index to relative position
-	pub const relY = [_]i32 {1, -1, 0, 0, 0, 0};
+	pub const relY = [_]ChunkCoordinate {1, -1, 0, 0, 0, 0};
 	/// Index to relative position
-	pub const relZ = [_]i32 {0, 0, 0, 0, 1, -1};
+	pub const relZ = [_]ChunkCoordinate {0, 0, 0, 0, 1, -1};
 	/// Index to bitMask for bitmap direction data
 	pub const bitMask = [_]u6 {0x01, 0x02, 0x04, 0x08, 0x10, 0x20};
 	/// To iterate over all neighbors easily
@@ -80,11 +81,6 @@ pub const ChunkPosition = struct {
 //		int shift = Math.min(Integer.numberOfTrailingZeros(wx), Math.min(Integer.numberOfTrailingZeros(wy), Integer.numberOfTrailingZeros(wz)));
 //		return (((wx >> shift) * 31 + (wy >> shift)) * 31 + (wz >> shift)) * 31 + voxelSize;
 //	}
-//	TODO:
-//	public float getPriority(Player source) {
-//		int halfWidth = voxelSize * Chunk.chunkSize / 2;
-//		return -(float) source.getPosition().distance(wx + halfWidth, wy + halfWidth, wz + halfWidth) / voxelSize;
-//	}
 
 	pub fn getMinDistanceSquared(self: ChunkPosition, playerPosition: Vec3d) f64 {
 		var halfWidth = @intToFloat(f64, self.voxelSize*@divExact(chunkSize, 2));
@@ -113,17 +109,15 @@ pub const Chunk = struct {
 	widthShift: u5,
 	mutex: std.Thread.Mutex,
 
-	pub fn init(self: *Chunk, wx: ChunkCoordinate, wy: ChunkCoordinate, wz: ChunkCoordinate, voxelSize: UChunkCoordinate) void {
-		std.debug.assert((voxelSize - 1 & voxelSize) == 0);
-		std.debug.assert(@mod(wx, voxelSize) == 0 and @mod(wy, voxelSize) == 0 and @mod(wz, voxelSize) == 0);
-		const voxelSizeShift = @intCast(u5, std.math.log2_int(UChunkCoordinate, voxelSize));
+	pub fn init(self: *Chunk, pos: ChunkPosition) void {
+		std.debug.assert((pos.voxelSize - 1 & pos.voxelSize) == 0);
+		std.debug.assert(@mod(pos.wx, pos.voxelSize) == 0 and @mod(pos.wy, pos.voxelSize) == 0 and @mod(pos.wz, pos.voxelSize) == 0);
+		const voxelSizeShift = @intCast(u5, std.math.log2_int(UChunkCoordinate, pos.voxelSize));
 		self.* = Chunk {
-			.pos = ChunkPosition {
-				.wx = wx, .wy = wy, .wz = wz, .voxelSize = voxelSize
-			},
-			.width = voxelSize*chunkSize,
+			.pos = pos,
+			.width = pos.voxelSize*chunkSize,
 			.voxelSizeShift = voxelSizeShift,
-			.voxelSizeMask = voxelSize - 1,
+			.voxelSizeMask = pos.voxelSize - 1,
 			.widthShift = voxelSizeShift + chunkShift,
 			.mutex = std.Thread.Mutex{},
 		};
@@ -208,10 +202,10 @@ pub const Chunk = struct {
 
 	/// Gets a block if it is inside this chunk.
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
-	pub fn getBlock(self: *const Chunk, x: ChunkCoordinate, y: ChunkCoordinate, z: ChunkCoordinate) Block {
-		x >>= self.voxelSizeShift;
-		y >>= self.voxelSizeShift;
-		z >>= self.voxelSizeShift;
+	pub fn getBlock(self: *const Chunk, _x: ChunkCoordinate, _y: ChunkCoordinate, _z: ChunkCoordinate) Block {
+		var x = _x >> self.voxelSizeShift;
+		var y = _y >> self.voxelSizeShift;
+		var z = _z >> self.voxelSizeShift;
 		var index = getIndex(x, y, z);
 		return self.blocks[index];
 	}
@@ -535,8 +529,6 @@ pub const meshing = struct {
 		@"fog.activ": c_int,
 		@"fog.color": c_int,
 		@"fog.density": c_int,
-		lowerBounds: c_int,
-		upperBounds: c_int,
 		texture_sampler: c_int,
 		emissionSampler: c_int,
 		@"waterFog.activ": c_int,
@@ -583,7 +575,7 @@ pub const meshing = struct {
 		c.glUniform3fv(uniforms.@"fog.color", 1, @ptrCast([*c]f32, &game.fog.color));
 		c.glUniform1f(uniforms.@"fog.density", game.fog.density);
 
-		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_FALSE, @ptrCast([*c]f32, &projMatrix));
+		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_FALSE, @ptrCast([*c]const f32, &projMatrix));
 
 		c.glUniform1i(uniforms.texture_sampler, 0);
 		c.glUniform1i(uniforms.emissionSampler, 1);
@@ -594,117 +586,160 @@ pub const meshing = struct {
 
 		c.glUniform1i(uniforms.time, @bitCast(i32, time));
 
-		c.glUniform3f(uniforms.lowerBounds, -std.math.inf_f32, -std.math.inf_f32, -std.math.inf_f32);
-		c.glUniform3f(uniforms.upperBounds, std.math.inf_f32, std.math.inf_f32, std.math.inf_f32);
-
-		c.glBindVertexArray(vao);
-	}
-	
-	pub fn bindShaderForReplacement() void {
-		shader.bind();
 		c.glBindVertexArray(vao);
 	}
 
 	pub const ChunkMesh = struct {
 		pos: ChunkPosition,
 		size: ChunkCoordinate,
-		replacement: ?*ChunkMesh,
+		chunk: ?*Chunk,
+		faces: std.ArrayList(u32),
 		faceData: SSBO,
-		vertexCount: c_int = 0,
+		coreCount: u31 = 0,
+		neighborStart: [7]u31 = [_]u31{0} ** 7,
+		vertexCount: u31 = 0,
 		generated: bool = false,
+		mutex: std.Thread.Mutex = std.Thread.Mutex{},
 
-		pub fn init(pos: ChunkPosition, replacement: ?*ChunkMesh) ChunkMesh {
+		pub fn init(allocator: Allocator, pos: ChunkPosition) ChunkMesh {
 			return ChunkMesh{
 				.pos = pos,
 				.size = chunkSize*pos.voxelSize,
-				.replacement = replacement,
+				.faces = std.ArrayList(u32).init(allocator),
+				.chunk = null,
 				.faceData = SSBO.init(),
 			};
 		}
 
-		pub fn deinit(self: ChunkMesh) void {
+		pub fn deinit(self: *ChunkMesh) void {
 			self.faceData.deinit();
+			self.faces.deinit();
+			if(self.chunk) |ch| {
+				renderer.RenderStructure.allocator.destroy(ch);
+			}
 		}
 
-		pub fn regenerateMesh(self: *ChunkMesh, visDat: *ChunkVisibilityData) !void {
-			self.generated = true;
-
-			faces.clearRetainingCapacity();
-			try faces.append(visDat.pos.voxelSize);
-
-			for(visDat.visibles.items) |visible| {
-				const block = visible.block;
-				const x = visible.x;
-				const y = visible.y;
-				const z = visible.z;
-				if(visible.neighbors & Neighbors.bitMask[Neighbors.dirNegX] != 0) {
-					const normal: u32 = 0;
-					const position: u32 = @as(u32, x) | @as(u32, y) << 6 | @as(u32, z) << 12;
-					const textureNormal = blocks.meshes.textureIndices(block)[Neighbors.dirNegX] | (normal << 24);
-					try faces.append(position);
-					try faces.append(textureNormal);
-				}
-				if(visible.neighbors & Neighbors.bitMask[Neighbors.dirPosX] != 0) {
-					const normal: u32 = 1;
-					const position: u32 = @as(u32, x+1) | @as(u32, y) << 6 | @as(u32, z) << 12;
-					const textureNormal = blocks.meshes.textureIndices(block)[Neighbors.dirPosX] | (normal << 24);
-					try faces.append(position);
-					try faces.append(textureNormal);
-				}
-				if(visible.neighbors & Neighbors.bitMask[Neighbors.dirDown] != 0) {
-					const normal: u32 = 4;
-					const position: u32 = @as(u32, x) | @as(u32, y) << 6 | @as(u32, z) << 12;
-					const textureNormal = blocks.meshes.textureIndices(block)[Neighbors.dirDown] | (normal << 24);
-					try faces.append(position);
-					try faces.append(textureNormal);
-				}
-				if(visible.neighbors & Neighbors.bitMask[Neighbors.dirUp] != 0) {
-					const normal: u32 = 5;
-					const position: u32 = @as(u32, x) | @as(u32, y+1) << 6 | @as(u32, z) << 12;
-					const textureNormal = blocks.meshes.textureIndices(block)[Neighbors.dirUp] | (normal << 24);
-					try faces.append(position);
-					try faces.append(textureNormal);
-				}
-				if(visible.neighbors & Neighbors.bitMask[Neighbors.dirNegZ] != 0) {
-					const normal: u32 = 2;
-					const position: u32 = @as(u32, x) | @as(u32, y) << 6 | @as(u32, z) << 12;
-					const textureNormal = blocks.meshes.textureIndices(block)[Neighbors.dirNegZ] | (normal << 24);
-					try faces.append(position);
-					try faces.append(textureNormal);
-				}
-				if(visible.neighbors & Neighbors.bitMask[Neighbors.dirPosZ] != 0) {
-					const normal: u32 = 3;
-					const position: u32 = @as(u32, x) | @as(u32, y) << 6 | @as(u32, z+1) << 12;
-					const textureNormal = blocks.meshes.textureIndices(block)[Neighbors.dirPosZ] | (normal << 24);
-					try faces.append(position);
-					try faces.append(textureNormal);
+		pub fn regenerateMainMesh(self: *ChunkMesh, chunk: *Chunk) !void {
+			std.debug.assert(!self.mutex.tryLock()); // The mutex should be locked when calling this function.
+			self.faces.clearRetainingCapacity();
+			try self.faces.append(chunk.pos.voxelSize);
+			var n: u32 = 0;
+			var x: u8 = 0;
+			while(x < chunkSize): (x += 1) {
+				var y: u8 = 0;
+				while(y < chunkSize): (y += 1) {
+					var z: u8 = 0;
+					while(z < chunkSize): (z += 1) {
+						const block = (&chunk.blocks)[getIndex(x, y, z)]; // ← a little hack that increases speed 100×. TODO: check if this is *that* compiler bug.
+						if(block.typ == 0) continue;
+						// Check all neighbors:
+						for(Neighbors.iterable) |i| {
+							n += 1;
+							const x2 = x + Neighbors.relX[i];
+							const y2 = y + Neighbors.relY[i];
+							const z2 = z + Neighbors.relZ[i];
+							if(x2&chunkMask != x2 or y2&chunkMask != y2 or z2&chunkMask != z2) continue; // Neighbor is outside the chunk.
+							const neighborBlock = (&chunk.blocks)[getIndex(x2, y2, z2)]; // ← a little hack that increases speed 100×. TODO: check if this is *that* compiler bug.
+							var isVisible = neighborBlock.typ == 0; // TODO: Transparency
+							if(isVisible) {
+								const normal: u32 = i;
+								const position: u32 = @as(u32, x) | @as(u32, y)<<5 | @as(u32, z)<<10;
+								const textureNormal = blocks.meshes.textureIndices(block)[i] | normal<<24;
+								try self.faces.append(position);
+								try self.faces.append(textureNormal);
+							}
+						}
+					}
 				}
 			}
 
-			self.vertexCount = @intCast(c_int, 6*(faces.items.len-1)/2);
-			self.faceData.bufferData(u32, faces.items);
+			if(self.chunk) |oldChunk| {
+				renderer.RenderStructure.allocator.destroy(oldChunk);
+			}
+			self.chunk = chunk;
+			self.coreCount = @intCast(u31, self.faces.items.len);
+			self.neighborStart = [_]u31{self.coreCount} ** 7;
+		}
+
+		pub fn uploadDataAndFinishNeighbors(self: *ChunkMesh) !void {
+			std.debug.assert(!self.mutex.tryLock()); // The mutex should be locked when calling this function.
+			if(self.chunk == null) return; // In the mean-time the mesh was discarded and recreated and all the data was lost.
+			self.generated = true;
+			self.faces.shrinkRetainingCapacity(self.coreCount);
+			for(Neighbors.iterable) |neighbor| {
+				self.neighborStart[neighbor] = @intCast(u31, self.faces.items.len);
+				var nullNeighborMesh = renderer.RenderStructure.getNeighbor(self.pos, neighbor);
+				if(nullNeighborMesh) |neighborMesh| {
+					std.debug.assert(neighborMesh != self);
+					neighborMesh.mutex.lock();
+					defer neighborMesh.mutex.unlock();
+					if(neighborMesh.generated) {
+						var additionalNeighborFaces = std.ArrayList(u32).init(main.threadAllocator);
+						defer additionalNeighborFaces.deinit();
+						var x3: u8 = if(neighbor & 1 == 0) @intCast(u8, chunkMask) else 0;
+						var x1: u8 = 0;
+						while(x1 < chunkSize): (x1 += 1) {
+							var x2: u8 = 0;
+							while(x2 < chunkSize): (x2 += 1) {
+								var x: u8 = undefined;
+								var y: u8 = undefined;
+								var z: u8 = undefined;
+								if(Neighbors.relX[neighbor] != 0) {
+									x = x3;
+									y = x1;
+									z = x2;
+								} else if(Neighbors.relY[neighbor] != 0) {
+									x = x1;
+									y = x3;
+									z = x2;
+								} else {
+									x = x2;
+									y = x1;
+									z = x3;
+								}
+								var otherX = @intCast(u8, x+%Neighbors.relX[neighbor] & chunkMask);
+								var otherY = @intCast(u8, y+%Neighbors.relY[neighbor] & chunkMask);
+								var otherZ = @intCast(u8, z+%Neighbors.relZ[neighbor] & chunkMask);
+								var block = self.chunk.?.blocks[getIndex(x, y, z)];
+								var otherBlock = neighborMesh.chunk.?.blocks[getIndex(otherX, otherY, otherZ)];
+								if(otherBlock.typ == 0 and block.typ != 0) { // TODO: Transparency
+									const normal: u32 = neighbor;
+									const position: u32 = @as(u32, x) | @as(u32, y)<<5 | @as(u32, z)<<10;
+									const textureNormal = blocks.meshes.textureIndices(block)[neighbor] | normal<<24;
+									try self.faces.append(position);
+									try self.faces.append(textureNormal);
+								}
+								if(block.typ == 0 and otherBlock.typ != 0) { // TODO: Transparency
+									const normal: u32 = neighbor ^ 1;
+									const position: u32 = @as(u32, otherX) | @as(u32, otherY)<<5 | @as(u32, otherZ)<<10;
+									const textureNormal = blocks.meshes.textureIndices(otherBlock)[neighbor] | normal<<24;
+									try additionalNeighborFaces.append(position);
+									try additionalNeighborFaces.append(textureNormal);
+								}
+							}
+						}
+						var rangeStart = neighborMesh.neighborStart[neighbor ^ 1];
+						var rangeEnd = neighborMesh.neighborStart[(neighbor ^ 1)+1];
+						try neighborMesh.faces.replaceRange(rangeStart, rangeEnd - rangeStart, additionalNeighborFaces.items);
+						for(neighborMesh.neighborStart[1+(neighbor ^ 1)..]) |*neighborStart| {
+							neighborStart.* = neighborStart.* - (rangeEnd - rangeStart) + @intCast(u31, additionalNeighborFaces.items.len);
+						}
+						neighborMesh.vertexCount = @intCast(u31, 6*(neighborMesh.faces.items.len-1)/2);
+						neighborMesh.faceData.bufferData(u32, neighborMesh.faces.items);
+					} else {
+						// TODO: Resolution boundary.
+					}
+				} else {
+					// TODO: Resolution boundary.
+				}
+			}
+			self.neighborStart[6] = @intCast(u31, self.faces.items.len);
+			self.vertexCount = @intCast(u31, 6*(self.faces.items.len-1)/2);
+			self.faceData.bufferData(u32, self.faces.items);
 		}
 
 		pub fn render(self: *ChunkMesh, playerPosition: Vec3d) void {
 			if(!self.generated) {
-				if(self.replacement == null) return;
-				c.glUniform3f(
-					uniforms.lowerBounds,
-					@floatCast(f32, @intToFloat(f64, self.pos.wx) - playerPosition.x - 0.001),
-					@floatCast(f32, @intToFloat(f64, self.pos.wy) - playerPosition.y - 0.001),
-					@floatCast(f32, @intToFloat(f64, self.pos.wz) - playerPosition.z - 0.001)
-				);
-				c.glUniform3f(
-					uniforms.upperBounds,
-					@floatCast(f32, @intToFloat(f64, self.pos.wx + self.size) - playerPosition.x + 0.001),
-					@floatCast(f32, @intToFloat(f64, self.pos.wy + self.size) - playerPosition.y + 0.001),
-					@floatCast(f32, @intToFloat(f64, self.pos.wz + self.size) - playerPosition.z + 0.001)
-				);
-
-				self.replacement.?.render(playerPosition);
-
-				c.glUniform3f(uniforms.lowerBounds, -std.math.inf_f32, -std.math.inf_f32, -std.math.inf_f32);
-				c.glUniform3f(uniforms.upperBounds, std.math.inf_f32, std.math.inf_f32, std.math.inf_f32);
 				return;
 			}
 			if(self.vertexCount == 0) return;

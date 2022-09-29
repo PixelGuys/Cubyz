@@ -16,6 +16,7 @@ const chunk = @import("chunk.zig");
 const main = @import("main.zig");
 const network = @import("network.zig");
 const settings = @import("settings.zig");
+const utils = @import("utils.zig");
 const Window = main.Window;
 
 /// The number of milliseconds after which no more chunk meshes are created. This allows the game to run smoother on movement.
@@ -211,7 +212,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	var frustum = Frustum.init(Vec3f{.x=0, .y=0, .z=0}, game.camera.viewMatrix, settings.fov, zFarLOD, main.Window.width, main.Window.height);
 
 	const time = @intCast(u32, std.time.milliTimestamp() & std.math.maxInt(u32));
-	const waterFog = Fog{.active=true, .color=.{.x=0.0, .y=0.1, .z=0.2}, .density=0.1};
+	var waterFog = Fog{.active=true, .color=.{.x=0.0, .y=0.1, .z=0.2}, .density=0.1};
 
 	// Update the uniforms. The uniforms are needed to render the replacement meshes.
 	chunk.meshing.bindShaderAndUniforms(game.lodProjectionMatrix, ambientLight, time);
@@ -235,7 +236,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	var meshes = std.ArrayList(*chunk.meshing.ChunkMesh).init(main.threadAllocator);
 	defer meshes.deinit();
 
-	try RenderStructure.updateAndGetRenderChunks(game.world.?.conn, game.playerPos, 4, 2.0, frustum, &meshes);
+	try RenderStructure.updateAndGetRenderChunks(game.world.?.conn, game.playerPos, settings.renderDistance, settings.LODFactor, frustum, &meshes);
 //	for (ChunkMesh mesh : Cubyz.chunkTree.getRenderChunks(frustumInt, x0, y0, z0)) {
 //		if (mesh instanceof NormalChunkMesh) {
 //			visibleChunks.add((NormalChunkMesh)mesh);
@@ -433,7 +434,8 @@ pub const RenderStructure = struct {
 		drawableChildren: u32, // How many children can be renderer. If this is 8 then there is no need to render this mesh.
 	};
 	var storageLists: [settings.highestLOD + 1][]?*ChunkMeshNode = undefined;
-	var updatableList: std.ArrayList(*chunk.ChunkVisibilityData) = undefined;
+	var updatableList: std.ArrayList(chunk.ChunkPosition) = undefined;
+	var clearList: std.ArrayList(*ChunkMeshNode) = undefined;
 	var lastRD: i32 = 0;
 	var lastFactor: f32 = 0;
 	var lastX: [settings.highestLOD + 1]chunk.ChunkCoordinate = [_]chunk.ChunkCoordinate{0} ** (settings.highestLOD + 1);
@@ -448,7 +450,8 @@ pub const RenderStructure = struct {
 		lastFactor = 0;
 		gpa = std.heap.GeneralPurposeAllocator(.{}){};
 		allocator = gpa.allocator();
-		updatableList = std.ArrayList(*chunk.ChunkVisibilityData).init(allocator);
+		updatableList = std.ArrayList(chunk.ChunkPosition).init(allocator);
+		clearList = std.ArrayList(*ChunkMeshNode).init(allocator);
 		for(storageLists) |*storageList| {
 			storageList.* = try allocator.alloc(?*ChunkMeshNode, 0);
 		}
@@ -464,11 +467,12 @@ pub const RenderStructure = struct {
 			}
 			allocator.free(storageList);
 		}
-		for(updatableList.items) |updatable| {
-			updatable.visibles.deinit();
-			allocator.destroy(updatable);
-		}
 		updatableList.deinit();
+		for(clearList.items) |chunkMesh| {
+			chunkMesh.mesh.deinit();
+			allocator.destroy(chunkMesh);
+		}
+		clearList.deinit();
 		game.world.?.blockPalette.deinit();
 		if(gpa.deinit()) {
 			@panic("Memory leak");
@@ -487,6 +491,15 @@ pub const RenderStructure = struct {
 		if(zIndex < 0 or zIndex >= lastSize[lod]) return null;
 		var index = (xIndex*lastSize[lod] + yIndex)*lastSize[lod] + zIndex;
 		return storageLists[lod][@intCast(usize, index)];
+	}
+
+	pub fn getNeighbor(_pos: chunk.ChunkPosition, neighbor: u3) ?*chunk.meshing.ChunkMesh {
+		var pos = _pos;
+		pos.wx += pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relX[neighbor];
+		pos.wy += pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relY[neighbor];
+		pos.wz += pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relZ[neighbor];
+		var node = _getNode(pos) orelse return null;
+		return &node.mesh;
 	}
 
 	pub fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: Vec3d, renderDistance: i32, LODFactor: f32, frustum: Frustum, meshes: *std.ArrayList(*chunk.meshing.ChunkMesh)) !void {
@@ -551,7 +564,7 @@ pub const RenderStructure = struct {
 							_node.shouldBeRemoved = false;
 						} else {
 							node = try allocator.create(ChunkMeshNode);
-							node.?.mesh = chunk.meshing.ChunkMesh.init(pos, null); // TODO: Replacement mesh?
+							node.?.mesh = chunk.meshing.ChunkMesh.init(allocator, pos);
 							node.?.shouldBeRemoved = true; // Might be removed in the next iteration.
 							try meshRequests.append(pos);
 						}
@@ -590,14 +603,32 @@ pub const RenderStructure = struct {
 			for(oldList) |nullMesh| {
 				if(nullMesh) |mesh| {
 					if(mesh.shouldBeRemoved) {
-						mesh.mesh.deinit();
-						allocator.destroy(mesh);
+						if(mesh.mesh.mutex.tryLock()) { // Make sure there is no task currently running on the thing.
+							mesh.mesh.mutex.unlock();
+							mesh.mesh.deinit();
+							allocator.destroy(mesh);
+						} else {
+							try clearList.append(mesh);
+						}
 					} else {
 						mesh.shouldBeRemoved = true;
 					}
 				}
 			}
 			allocator.free(oldList);
+		}
+
+		var i: usize = 0;
+		while(i < clearList.items.len) {
+			const mesh = clearList.items[i];
+			if(mesh.mesh.mutex.tryLock()) { // Make sure there is no task currently running on the thing.
+				mesh.mesh.mutex.unlock();
+				mesh.mesh.deinit();
+				allocator.destroy(mesh);
+				_ = clearList.swapRemove(i);
+			} else {
+				i += 1;
+			}
 		}
 
 		lastRD = renderDistance;
@@ -610,27 +641,88 @@ pub const RenderStructure = struct {
 		mutex.lock();
 		defer mutex.unlock();
 		while(updatableList.items.len != 0) {
-			const mesh = updatableList.pop();
-			const nullNode = _getNode(mesh.pos);
+			const pos = updatableList.pop();
+			mutex.unlock();
+			defer mutex.lock();
+			const nullNode = _getNode(pos);
 			if(nullNode) |node| {
-				try node.mesh.regenerateMesh(mesh);
+				node.mesh.mutex.lock();
+				defer node.mesh.mutex.unlock();
+				try node.mesh.uploadDataAndFinishNeighbors();
 			}
-			mesh.visibles.deinit();
-			allocator.destroy(mesh);
 			if(std.time.milliTimestamp() >= targetTime) break; // Update at least one mesh.
 		}
 	}
 
-	pub fn updateChunkMesh(mesh: *chunk.ChunkVisibilityData) !void {
-		mutex.lock();
-		defer mutex.unlock();
-		try updatableList.append(mesh);
+	pub const MeshGenerationTask = struct {
+		mesh: *chunk.Chunk,
+
+		pub const vtable = utils.ThreadPool.VTable{
+			.getPriority = @ptrCast(*const fn(*anyopaque) f32, &getPriority),
+			.isStillNeeded = @ptrCast(*const fn(*anyopaque) bool, &isStillNeeded),
+			.run = @ptrCast(*const fn(*anyopaque) void, &run),
+			.clean = @ptrCast(*const fn(*anyopaque) void, &clean),
+		};
+
+		pub fn schedule(mesh: *chunk.Chunk) !void {
+			var task = try allocator.create(MeshGenerationTask);
+			task.* = MeshGenerationTask {
+				.mesh = mesh,
+			};
+			try main.threadPool.addTask(task, &vtable);
+		}
+
+		pub fn getPriority(self: *MeshGenerationTask) f32 {
+			return -@floatCast(f32, self.mesh.pos.getMinDistanceSquared(game.playerPos))/@intToFloat(f32, self.mesh.pos.voxelSize*self.mesh.pos.voxelSize);
+		}
+
+		pub fn isStillNeeded(self: *MeshGenerationTask) bool {
+			var distanceSqr = self.mesh.pos.getMinDistanceSquared(game.playerPos);
+			var maxRenderDistance = settings.renderDistance*chunk.chunkSize*self.mesh.pos.voxelSize;
+			if(self.mesh.pos.voxelSize != 1) maxRenderDistance = @floatToInt(i32, @ceil(@intToFloat(f32, maxRenderDistance)*settings.LODFactor));
+			maxRenderDistance += 2*self.mesh.pos.voxelSize*chunk.chunkSize;
+			return distanceSqr < @intToFloat(f64, maxRenderDistance*maxRenderDistance);
+		}
+
+		pub fn run(self: *MeshGenerationTask) void {
+			const pos = self.mesh.pos;
+			const nullNode = _getNode(pos);
+			if(nullNode) |node| {
+				{
+					node.mesh.mutex.lock();
+					defer node.mesh.mutex.unlock();
+					node.mesh.regenerateMainMesh(self.mesh) catch |err| {
+						std.log.err("Error while regenerating mesh: {s}", .{@errorName(err)});
+						if(@errorReturnTrace()) |trace| {
+							std.log.err("Trace: {}", .{trace});
+						}
+						allocator.destroy(self.mesh);
+						allocator.destroy(self);
+						return;
+					};
+				}
+				mutex.lock();
+				defer mutex.unlock();
+				updatableList.append(pos) catch |err| {
+					std.log.err("Error while regenerating mesh: {s}", .{@errorName(err)});
+					if(@errorReturnTrace()) |trace| {
+						std.log.err("Trace: {}", .{trace});
+					}
+					allocator.destroy(self.mesh);
+				};
+			} else {
+				allocator.destroy(self.mesh);
+			}
+			allocator.destroy(self);
+		}
+
+		pub fn clean(self: *MeshGenerationTask) void {
+			allocator.destroy(self.mesh);
+			allocator.destroy(self);
+		}
+	};
+
+	pub fn updateChunkMesh(mesh: *chunk.Chunk) !void {
+		try MeshGenerationTask.schedule(mesh);
 	}
-	// TODO:
-//	public void updateChunkMesh(VisibleChunk mesh) {
-//		OctTreeNode node = findNode(mesh);
-//		if (node != null) {
-//			((NormalChunkMesh)node.mesh).updateChunk(mesh);
-//		}
-//	}
 };

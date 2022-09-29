@@ -118,6 +118,7 @@ pub fn BlockingMaxHeap(comptime T: type) type {
 
 		/// Moves an element from a given index down the heap, such that all children are always smaller than their parents.
 		fn siftDown(self: *@This(), _i: usize) void {
+			std.debug.assert(!self.mutex.tryLock()); // The mutex should be locked when calling this function.
 			var i = _i;
 			while(2*i + 2 < self.size) {
 				var biggest = if(self.array[2*i + 1].biggerThan(self.array[2*i + 2])) 2*i + 1 else 2*i + 2;
@@ -134,14 +135,15 @@ pub fn BlockingMaxHeap(comptime T: type) type {
 
 		/// Moves an element from a given index up the heap, such that all children are always smaller than their parents.
 		fn siftUp(self: *@This(), _i: usize) void {
+			std.debug.assert(!self.mutex.tryLock()); // The mutex should be locked when calling this function.
 			var i = _i;
-			var parentIndex = (i - 1)/2;
-			while(self.array[i].biggerThan(self.array[parentIndex]) and i > 0) {
+			while(i > 0) {
+				var parentIndex = (i - 1)/2;
+				if(!self.array[i].biggerThan(self.array[parentIndex])) break;
 				var local = self.array[parentIndex];
 				self.array[parentIndex] = self.array[i];
 				self.array[i] = local;
 				i = parentIndex;
-				parentIndex = (i - 1)/2;
 			}
 		}
 
@@ -156,6 +158,7 @@ pub fn BlockingMaxHeap(comptime T: type) type {
 
 		/// Returns the i-th element in the heap. Useless for most applications.
 		pub fn get(self: *@This(), i: usize) ?T {
+			std.debug.assert(!self.mutex.tryLock()); // The mutex should be locked when calling this function.
 			if(i >= self.size) return null;
 			return self.array[i];
 		}
@@ -176,6 +179,7 @@ pub fn BlockingMaxHeap(comptime T: type) type {
 		}
 
 		fn removeIndex(self: *@This(), i: usize) void {
+			std.debug.assert(!self.mutex.tryLock()); // The mutex should be locked when calling this function.
 			self.size -= 1;
 			self.array[i] = self.array[self.size];
 			self.siftDown(i);
@@ -204,7 +208,7 @@ pub fn BlockingMaxHeap(comptime T: type) type {
 		}
 
 		fn increaseCapacity(self: *@This(), newCapacity: usize) !void {
-			self.array = self.allocator.realloc(self.array, newCapacity);
+			self.array = try self.allocator.realloc(self.array, newCapacity);
 		}
 	};
 }
@@ -213,7 +217,7 @@ pub const ThreadPool = struct {
 	const Task = struct {
 		cachedPriority: f32,
 		self: *anyopaque,
-		vtable: *VTable,
+		vtable: *const VTable,
 
 		fn biggerThan(self: Task, other: Task) bool {
 			return self.cachedPriority > other.cachedPriority;
@@ -278,16 +282,18 @@ pub const ThreadPool = struct {
 			if(std.time.milliTimestamp() -% lastUpdate > refreshTime) {
 				lastUpdate = std.time.milliTimestamp();
 				if(self.loadList.mutex.tryLock()) {
-					defer self.loadList.mutex.unlock();
-					var i: u32 = 0;
-					while(i < self.loadList.size) {
-						var task = &self.loadList.array[i];
-						if(!task.vtable.isStillNeeded(task.self)) {
-							self.loadList.removeIndex(i);
-							task.vtable.clean(task.self);
-						} else {
-							task.cachedPriority = task.vtable.getPriority(task.self);
-							i += 1;
+					{
+						defer self.loadList.mutex.unlock();
+						var i: u32 = 0;
+						while(i < self.loadList.size) {
+							var task = self.loadList.array[i];
+							if(!task.vtable.isStillNeeded(task.self)) {
+								self.loadList.removeIndex(i);
+								task.vtable.clean(task.self);
+							} else {
+								task.cachedPriority = task.vtable.getPriority(task.self);
+								i += 1;
+							}
 						}
 					}
 					self.loadList.updatePriority();
@@ -296,7 +302,7 @@ pub const ThreadPool = struct {
 		}
 	}
 
-	pub fn addTask(self: ThreadPool, task: *anyopaque, vtable: *VTable) !void {
+	pub fn addTask(self: ThreadPool, task: *anyopaque, vtable: *const VTable) !void {
 		try self.loadList.add(Task {
 			.cachedPriority = vtable.getPriority(task),
 			.vtable = vtable,

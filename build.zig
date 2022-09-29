@@ -12,7 +12,7 @@ pub fn build(b: *std.build.Builder) void {
 	const mode = b.standardReleaseOptions();
 
 	const exe = b.addExecutable("Cubyzig", "src/main.zig");
-	exe.addIncludeDir("include");
+	exe.addIncludePath("include");
 	exe.linkLibC();
 	{ // compile glfw from source:
 		if(target.getOsTag() == .windows) {
