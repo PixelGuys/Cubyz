@@ -9,8 +9,6 @@ out float outNormalVariation;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
 uniform vec3 modelPosition;
-uniform vec3 lowerBounds;
-uniform vec3 upperBounds;
 
 layout(std430, binding = 0) buffer _animationTimes
 {
@@ -33,36 +31,44 @@ layout(std430, binding = 3) buffer _faceData
 uniform int time;
 
 const float[6] outNormalVariations = float[6](
-	0.9, //vec3(-1, 0, 0),
-	0.9, //vec3(1, 0, 0),
-	0.85, //vec3(0, 0, -1),
-	0.95, //vec3(0, 0, 1),
+	1.0, //vec3(0, 1, 0),
 	0.8, //vec3(0, -1, 0),
-	1.0 //vec3(0, 1, 0)
+	0.9, //vec3(1, 0, 0),
+	0.9, //vec3(-1, 0, 0),
+	0.95, //vec3(0, 0, 1),
+	0.8 //vec3(0, 0, -1)
 );
 const vec3[6] normals = vec3[6](
-	vec3(-1, 0, 0),
-	vec3(1, 0, 0),
-	vec3(0, 0, -1),
-	vec3(0, 0, 1),
+	vec3(0, 1, 0),
 	vec3(0, -1, 0),
-	vec3(0, 1, 0)
+	vec3(1, 0, 0),
+	vec3(-1, 0, 0),
+	vec3(0, 0, 1),
+	vec3(0, 0, -1)
+);
+const vec3[6] positionOffset = vec3[6](
+	vec3(0, 1, 0),
+	vec3(0, 0, 0),
+	vec3(1, 0, 0),
+	vec3(0, 0, 0),
+	vec3(0, 0, 1),
+	vec3(0, 0, 0)
 );
 const ivec3[6] textureX = ivec3[6](
-	ivec3(0, 0, 1),
-	ivec3(0, 0, -1),
-	ivec3(-1, 0, 0),
 	ivec3(1, 0, 0),
 	ivec3(-1, 0, 0),
-	ivec3(1, 0, 0)
+	ivec3(0, 0, -1),
+	ivec3(0, 0, 1),
+	ivec3(1, 0, 0),
+	ivec3(-1, 0, 0)
 );
 const ivec3[6] textureY = ivec3[6](
-	ivec3(0, -1, 0),
-	ivec3(0, -1, 0),
-	ivec3(0, -1, 0),
-	ivec3(0, -1, 0),
 	ivec3(0, 0, 1),
-	ivec3(0, 0, 1)
+	ivec3(0, 0, 1),
+	ivec3(0, -1, 0),
+	ivec3(0, -1, 0),
+	ivec3(0, -1, 0),
+	ivec3(0, -1, 0)
 );
 
 void main() {
@@ -76,26 +82,18 @@ void main() {
 	outTexCoord = vec2(float(vertexID>>1 & 1)*voxelSize, float(vertexID & 1)*voxelSize);
 
 	vec3 position = vec3(
-		encodedPosition & 63,
-		encodedPosition >> 6 & 63,
-		encodedPosition >> 12 & 63
+		encodedPosition & 31,
+		encodedPosition >> 5 & 31,
+		encodedPosition >> 10 & 31
 	);
+	position += positionOffset[normal];
 	position += vec3(equal(textureX[normal], ivec3(-1, -1, -1))) + (vertexID>>1 & 1)*textureX[normal];
 	position += vec3(equal(textureY[normal], ivec3(-1, -1, -1))) + (vertexID & 1)*textureY[normal];
 
-	// Only draw faces that are inside the bounds. The others will be clipped using GL_CLIP_DISTANCE0:
 	vec3 globalPosition = position*voxelSize + modelPosition;
 
 	vec4 mvPos = viewMatrix*vec4(globalPosition, 1);
 	gl_Position = projectionMatrix*mvPos;
 	outNormalVariation = outNormalVariations[normal];
 	mvVertexPos = mvPos.xyz;
-
-	// Check if this vertex is outside the bounds that should be rendered:
-	globalPosition -= normals[normal]*0.5; // Prevent showing faces that are outside this chunkpiece.
-	if (globalPosition.x < lowerBounds.x || globalPosition.x > upperBounds.x
-			|| globalPosition.y < lowerBounds.y || globalPosition.y > upperBounds.y
-			|| globalPosition.z < lowerBounds.z || globalPosition.z > upperBounds.z) {
-		gl_Position.z = -1/0.0;
-	}
 }
