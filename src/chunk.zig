@@ -714,7 +714,7 @@ pub const meshing = struct {
 								if(block.typ == 0 and otherBlock.typ != 0) { // TODO: Transparency
 									const normal: u32 = neighbor ^ 1;
 									const position: u32 = @as(u32, x) | @as(u32, y)<<5 | @as(u32, z)<<10;
-									const textureNormal = blocks.meshes.textureIndices(otherBlock)[neighbor] | normal<<24;
+									const textureNormal = blocks.meshes.textureIndices(otherBlock)[neighbor ^ 1] | normal<<24;
 									try self.faces.append(position);
 									try self.faces.append(textureNormal);
 								}
@@ -769,7 +769,7 @@ pub const meshing = struct {
 							if(block.typ == 0 and otherBlock.typ != 0) { // TODO: Transparency
 								const normal: u32 = neighbor ^ 1;
 								const position: u32 = @as(u32, x) | @as(u32, y)<<5 | @as(u32, z)<<10;
-								const textureNormal = blocks.meshes.textureIndices(otherBlock)[neighbor] | normal<<24;
+								const textureNormal = blocks.meshes.textureIndices(otherBlock)[neighbor ^ 1] | normal<<24;
 								try self.faces.append(position);
 								try self.faces.append(textureNormal);
 							}
