@@ -493,11 +493,12 @@ pub const RenderStructure = struct {
 		return storageLists[lod][@intCast(usize, index)];
 	}
 
-	pub fn getNeighbor(_pos: chunk.ChunkPosition, neighbor: u3) ?*chunk.meshing.ChunkMesh {
+	pub fn getNeighbor(_pos: chunk.ChunkPosition, resolution: chunk.UChunkCoordinate, neighbor: u3) ?*chunk.meshing.ChunkMesh {
 		var pos = _pos;
 		pos.wx += pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relX[neighbor];
 		pos.wy += pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relY[neighbor];
 		pos.wz += pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relZ[neighbor];
+		pos.voxelSize = resolution;
 		var node = _getNode(pos) orelse return null;
 		return &node.mesh;
 	}
@@ -518,6 +519,7 @@ pub const RenderStructure = struct {
 			const lod = @intCast(u5, _lod);
 			var maxRenderDistance = renderDistance*chunk.chunkSize << lod;
 			if(lod != 0) maxRenderDistance = @floatToInt(i32, @ceil(@intToFloat(f32, maxRenderDistance)*LODFactor));
+			var sizeShift = chunk.chunkShift + lod;
 			const size = @intCast(chunk.UChunkCoordinate, chunk.chunkSize << lod);
 			const mask: chunk.ChunkCoordinate = size - 1;
 			const invMask: chunk.ChunkCoordinate = ~mask;
@@ -576,12 +578,13 @@ pub const RenderStructure = struct {
 							.x = @intToFloat(f32, size),
 							.y = @intToFloat(f32, size),
 							.z = @intToFloat(f32, size),
-						}) and node.?.drawableChildren < 8) { // TODO: Case where more than 0 and less than 8 exist.
+						}) and node.?.mesh.visibilityMask != 0) {
 							try meshes.append(&node.?.mesh);
 						}
 						if(lod+1 != storageLists.len and node.?.mesh.generated) {
 							if(_getNode(.{.wx=x, .wy=y, .wz=z, .voxelSize=@as(chunk.UChunkCoordinate, 1)<<(lod+1)})) |parent| {
-								parent.drawableChildren += 1;
+								const octantIndex = @intCast(u3, (x>>sizeShift & 1) | (y>>sizeShift & 1)<<1 | (z>>sizeShift & 1)<<2);
+								parent.mesh.visibilityMask &= ~(@as(u8, 1) << octantIndex);
 							}
 						}
 						node.?.drawableChildren = 0;
@@ -603,6 +606,22 @@ pub const RenderStructure = struct {
 			for(oldList) |nullMesh| {
 				if(nullMesh) |mesh| {
 					if(mesh.shouldBeRemoved) {
+						if(mesh.mesh.pos.voxelSize != 1 << settings.highestLOD) {
+							if(_getNode(.{.wx=mesh.mesh.pos.wx, .wy=mesh.mesh.pos.wy, .wz=mesh.mesh.pos.wz, .voxelSize=2*mesh.mesh.pos.voxelSize})) |parent| {
+								const octantIndex = @intCast(u3, (mesh.mesh.pos.wx>>sizeShift & 1) | (mesh.mesh.pos.wy>>sizeShift & 1)<<1 | (mesh.mesh.pos.wz>>sizeShift & 1)<<2);
+								parent.mesh.visibilityMask |= @as(u8, 1) << octantIndex;
+							}
+						}
+						// Update the neighbors, so we don't get cracks when we look back:
+						for(chunk.Neighbors.iterable) |neighbor| {
+							if(getNeighbor(mesh.mesh.pos, mesh.mesh.pos.voxelSize, neighbor)) |neighborMesh| {
+								if(neighborMesh.generated) {
+									neighborMesh.mutex.lock();
+									defer neighborMesh.mutex.unlock();
+									try neighborMesh.uploadDataAndFinishNeighbors();
+								}
+							}
+						}
 						if(mesh.mesh.mutex.tryLock()) { // Make sure there is no task currently running on the thing.
 							mesh.mesh.mutex.unlock();
 							mesh.mesh.deinit();
@@ -641,14 +660,22 @@ pub const RenderStructure = struct {
 		mutex.lock();
 		defer mutex.unlock();
 		while(updatableList.items.len != 0) {
-			const pos = updatableList.pop();
+			const pos = updatableList.orderedRemove(0);
 			mutex.unlock();
 			defer mutex.lock();
 			const nullNode = _getNode(pos);
 			if(nullNode) |node| {
 				node.mesh.mutex.lock();
 				defer node.mesh.mutex.unlock();
-				try node.mesh.uploadDataAndFinishNeighbors();
+				node.mesh.uploadDataAndFinishNeighbors() catch |err| {
+					if(err == error.LODMissing) {
+						mutex.lock();
+						defer mutex.unlock();
+						try updatableList.append(pos);
+					} else {
+						return err;
+					}
+				};
 			}
 			if(std.time.milliTimestamp() >= targetTime) break; // Update at least one mesh.
 		}

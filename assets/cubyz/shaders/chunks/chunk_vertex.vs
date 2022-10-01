@@ -5,7 +5,7 @@ out vec2 outTexCoord;
 flat out float textureIndex;
 out float outNormalVariation;
 
-
+uniform int visibilityMask;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
 uniform vec3 modelPosition;
@@ -46,13 +46,13 @@ const vec3[6] normals = vec3[6](
 	vec3(0, 0, 1),
 	vec3(0, 0, -1)
 );
-const vec3[6] positionOffset = vec3[6](
-	vec3(0, 0, 0),
-	vec3(0, 1, 0),
-	vec3(0, 0, 0),
-	vec3(1, 0, 0),
-	vec3(0, 0, 0),
-	vec3(0, 0, 1)
+const ivec3[6] positionOffset = ivec3[6](
+	ivec3(0, 0, 0),
+	ivec3(0, 1, 0),
+	ivec3(0, 0, 0),
+	ivec3(1, 0, 0),
+	ivec3(0, 0, 0),
+	ivec3(0, 0, 1)
 );
 const ivec3[6] textureX = ivec3[6](
 	ivec3(1, 0, 0),
@@ -81,14 +81,20 @@ void main() {
 	textureIndex = texCoordz + time / animationTimes[texCoordz] % animationFrames[texCoordz];
 	outTexCoord = vec2(float(vertexID>>1 & 1)*voxelSize, float(vertexID & 1)*voxelSize);
 
-	vec3 position = vec3(
+	ivec3 position = ivec3(
 		encodedPosition & 31,
 		encodedPosition >> 5 & 31,
 		encodedPosition >> 10 & 31
 	);
+	int octantIndex = (position.x >> 4) | (position.y >> 4)<<1 | (position.z >> 4)<<2;
+	if((visibilityMask & 1<<octantIndex) == 0) { // discard face
+		gl_Position = vec4(-2, -2, -2, 1);
+		return;
+	}
+	
 	position += positionOffset[normal];
-	position += vec3(equal(textureX[normal], ivec3(-1, -1, -1))) + (vertexID>>1 & 1)*textureX[normal];
-	position += vec3(equal(textureY[normal], ivec3(-1, -1, -1))) + (vertexID & 1)*textureY[normal];
+	position += ivec3(equal(textureX[normal], ivec3(-1, -1, -1))) + (vertexID>>1 & 1)*textureX[normal];
+	position += ivec3(equal(textureY[normal], ivec3(-1, -1, -1))) + (vertexID & 1)*textureY[normal];
 
 	vec3 globalPosition = position*voxelSize + modelPosition;
 

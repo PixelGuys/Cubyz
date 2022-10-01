@@ -10,6 +10,7 @@ const Shader = graphics.Shader;
 const SSBO = graphics.SSBO;
 const main = @import("main.zig");
 const renderer = @import("renderer.zig");
+const settings = @import("settings.zig");
 const vec = @import("vec.zig");
 const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
@@ -535,6 +536,7 @@ pub const meshing = struct {
 		@"waterFog.color": c_int,
 		@"waterFog.density": c_int,
 		time: c_int,
+		visibilityMask: c_int,
 	} = undefined;
 	var vao: c_uint = undefined;
 	var vbo: c_uint = undefined;
@@ -600,6 +602,7 @@ pub const meshing = struct {
 		vertexCount: u31 = 0,
 		generated: bool = false,
 		mutex: std.Thread.Mutex = std.Thread.Mutex{},
+		visibilityMask: u8 = 0xff,
 
 		pub fn init(allocator: Allocator, pos: ChunkPosition) ChunkMesh {
 			return ChunkMesh{
@@ -664,11 +667,10 @@ pub const meshing = struct {
 		pub fn uploadDataAndFinishNeighbors(self: *ChunkMesh) !void {
 			std.debug.assert(!self.mutex.tryLock()); // The mutex should be locked when calling this function.
 			if(self.chunk == null) return; // In the mean-time the mesh was discarded and recreated and all the data was lost.
-			self.generated = true;
 			self.faces.shrinkRetainingCapacity(self.coreCount);
 			for(Neighbors.iterable) |neighbor| {
 				self.neighborStart[neighbor] = @intCast(u31, self.faces.items.len);
-				var nullNeighborMesh = renderer.RenderStructure.getNeighbor(self.pos, neighbor);
+				var nullNeighborMesh = renderer.RenderStructure.getNeighbor(self.pos, self.pos.voxelSize, neighbor);
 				if(nullNeighborMesh) |neighborMesh| {
 					std.debug.assert(neighborMesh != self);
 					neighborMesh.mutex.lock();
@@ -726,16 +728,61 @@ pub const meshing = struct {
 						}
 						neighborMesh.vertexCount = @intCast(u31, 6*(neighborMesh.faces.items.len-1)/2);
 						neighborMesh.faceData.bufferData(u32, neighborMesh.faces.items);
-					} else {
-						// TODO: Resolution boundary.
+						continue;
+					}
+				}
+				// lod border:
+				if(self.pos.voxelSize == 1 << settings.highestLOD) continue;
+				var neighborMesh = renderer.RenderStructure.getNeighbor(self.pos, 2*self.pos.voxelSize, neighbor) orelse return error.LODMissing;
+				neighborMesh.mutex.lock();
+				defer neighborMesh.mutex.unlock();
+				if(neighborMesh.generated) {
+					const x3: u8 = if(neighbor & 1 == 0) @intCast(u8, chunkMask) else 0;
+					const offsetX = @divExact(self.pos.wx, self.pos.voxelSize) & chunkSize;
+					const offsetY = @divExact(self.pos.wy, self.pos.voxelSize) & chunkSize;
+					const offsetZ = @divExact(self.pos.wz, self.pos.voxelSize) & chunkSize;
+					var x1: u8 = 0;
+					while(x1 < chunkSize): (x1 += 1) {
+						var x2: u8 = 0;
+						while(x2 < chunkSize): (x2 += 1) {
+							var x: u8 = undefined;
+							var y: u8 = undefined;
+							var z: u8 = undefined;
+							if(Neighbors.relX[neighbor] != 0) {
+								x = x3;
+								y = x1;
+								z = x2;
+							} else if(Neighbors.relY[neighbor] != 0) {
+								x = x1;
+								y = x3;
+								z = x2;
+							} else {
+								x = x2;
+								y = x1;
+								z = x3;
+							}
+							var otherX = @intCast(u8, (x+%Neighbors.relX[neighbor]+%offsetX >> 1) & chunkMask);
+							var otherY = @intCast(u8, (y+%Neighbors.relY[neighbor]+%offsetY >> 1) & chunkMask);
+							var otherZ = @intCast(u8, (z+%Neighbors.relZ[neighbor]+%offsetZ >> 1) & chunkMask);
+							var block = (&self.chunk.?.blocks)[getIndex(x, y, z)]; // ← a little hack that increases speed 100×. TODO: check if this is *that* compiler bug.
+							var otherBlock = (&neighborMesh.chunk.?.blocks)[getIndex(otherX, otherY, otherZ)]; // ← a little hack that increases speed 100×. TODO: check if this is *that* compiler bug.
+							if(block.typ == 0 and otherBlock.typ != 0) { // TODO: Transparency
+								const normal: u32 = neighbor ^ 1;
+								const position: u32 = @as(u32, x) | @as(u32, y)<<5 | @as(u32, z)<<10;
+								const textureNormal = blocks.meshes.textureIndices(otherBlock)[neighbor] | normal<<24;
+								try self.faces.append(position);
+								try self.faces.append(textureNormal);
+							}
+						}
 					}
 				} else {
-					// TODO: Resolution boundary.
+					return error.LODMissing;
 				}
 			}
 			self.neighborStart[6] = @intCast(u31, self.faces.items.len);
 			self.vertexCount = @intCast(u31, 6*(self.faces.items.len-1)/2);
 			self.faceData.bufferData(u32, self.faces.items);
+			self.generated = true;
 		}
 
 		pub fn render(self: *ChunkMesh, playerPosition: Vec3d) void {
@@ -749,6 +796,7 @@ pub const meshing = struct {
 				@floatCast(f32, @intToFloat(f64, self.pos.wy) - playerPosition.y),
 				@floatCast(f32, @intToFloat(f64, self.pos.wz) - playerPosition.z)
 			);
+			c.glUniform1i(uniforms.visibilityMask, self.visibilityMask);
 			self.faceData.bind(3);
 			c.glDrawElements(c.GL_TRIANGLES, self.vertexCount, c.GL_UNSIGNED_INT, null);
 		}
