@@ -47,12 +47,12 @@ const vec3[6] normals = vec3[6](
 	vec3(0, 0, -1)
 );
 const vec3[6] positionOffset = vec3[6](
+	vec3(0, 0, 0),
 	vec3(0, 1, 0),
 	vec3(0, 0, 0),
 	vec3(1, 0, 0),
 	vec3(0, 0, 0),
-	vec3(0, 0, 1),
-	vec3(0, 0, 0)
+	vec3(0, 0, 1)
 );
 const ivec3[6] textureX = ivec3[6](
 	ivec3(1, 0, 0),

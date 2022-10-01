@@ -691,7 +691,7 @@ pub const Protocols = blk: {
 				const _inflatedData = try utils.Compression.inflate(main.threadAllocator, data[16..]);
 				data = _inflatedData;
 				defer main.threadAllocator.free(_inflatedData);
-				if(pos.voxelSize == 1) {
+				if(pos.voxelSize != 0) {
 					var ch = try renderer.RenderStructure.allocator.create(chunk.Chunk);
 					ch.init(pos);
 					for(ch.blocks) |*block| {
