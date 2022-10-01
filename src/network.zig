@@ -691,37 +691,15 @@ pub const Protocols = blk: {
 				const _inflatedData = try utils.Compression.inflate(main.threadAllocator, data[16..]);
 				data = _inflatedData;
 				defer main.threadAllocator.free(_inflatedData);
-				if(pos.voxelSize != 0) {
-					var ch = try renderer.RenderStructure.allocator.create(chunk.Chunk);
-					ch.init(pos);
-					for(ch.blocks) |*block| {
-						var blockTypeAndData = std.mem.readIntBig(u32, data[0..4]);
-						block.typ = @intCast(u16, blockTypeAndData & 0xffff);
-						block.data = @intCast(u16, blockTypeAndData >> 16);
-						data = data[4..];
-					}
-					try renderer.RenderStructure.updateChunkMesh(ch);
-				} else {
-					//var size = @divExact(data.len, 8);
-					//var x = data[0..size];
-					//var y = data[size..2*size];
-					//var z = data[2*size..3*size];
-					//var neighbors = data[3*size..4*size];
-					//var visibleBlocks = data[4*size..];
-					//var result = try renderer.RenderStructure.allocator.create(chunk.ChunkVisibilityData);
-					//result.* = try chunk.ChunkVisibilityData.initEmpty(renderer.RenderStructure.allocator, pos, size);
-					//for(x) |_, i| {
-					//	var block = result.visibles.addOneAssumeCapacity();
-					//	block.x = x[i];
-					//	block.y = y[i];
-					//	block.z = z[i];
-					//	block.neighbors = neighbors[i];
-					//	var blockTypeAndData = std.mem.readIntBig(u32, visibleBlocks[4*i..][0..4]);
-					//	block.block.typ = @intCast(u16, blockTypeAndData & 0xffff);
-					//	block.block.data = @intCast(u16, blockTypeAndData >> 16);
-					//}
-					// TODO: try renderer.RenderStructure.updateChunkMesh(result);
+				var ch = try renderer.RenderStructure.allocator.create(chunk.Chunk);
+				ch.init(pos);
+				for(ch.blocks) |*block| {
+					var blockTypeAndData = std.mem.readIntBig(u32, data[0..4]);
+					block.typ = @intCast(u16, blockTypeAndData & 0xffff);
+					block.data = @intCast(u16, blockTypeAndData >> 16);
+					data = data[4..];
 				}
+				try renderer.RenderStructure.updateChunkMesh(ch);
 			}
 			pub fn sendChunk(conn: *Connection, visData: chunk.ChunkVisibilityData) !void {
 				var data = try main.threadAllocator.alloc(u8, 16 + 8*visData.visibles.items.len);
