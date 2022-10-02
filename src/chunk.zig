@@ -473,6 +473,11 @@ pub const meshing = struct {
 			}
 		}
 
+		fn canBeSeenThroughOtherBlock(block: Block, other: Block, neighbor: u3) bool {
+			_ = neighbor; // TODO:    ↓← Blocks.mode(other).checkTransparency(other, neighbor)
+			return other.typ == 0 or false or (!std.meta.eql(block, other) and other.viewThrough());
+		}
+
 		pub fn regenerateMainMesh(self: *ChunkMesh, chunk: *Chunk) !void {
 			std.debug.assert(!self.mutex.tryLock()); // The mutex should be locked when calling this function.
 			self.faces.clearRetainingCapacity();
@@ -484,7 +489,7 @@ pub const meshing = struct {
 				while(y < chunkSize): (y += 1) {
 					var z: u8 = 0;
 					while(z < chunkSize): (z += 1) {
-						const block = (&chunk.blocks)[getIndex(x, y, z)]; // ← a little hack that increases speed 100×. TODO: check if this is *that* compiler bug.
+						const block = (&chunk.blocks)[getIndex(x, y, z)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
 						if(block.typ == 0) continue;
 						// Check all neighbors:
 						for(Neighbors.iterable) |i| {
@@ -493,9 +498,8 @@ pub const meshing = struct {
 							const y2 = y + Neighbors.relY[i];
 							const z2 = z + Neighbors.relZ[i];
 							if(x2&chunkMask != x2 or y2&chunkMask != y2 or z2&chunkMask != z2) continue; // Neighbor is outside the chunk.
-							const neighborBlock = (&chunk.blocks)[getIndex(x2, y2, z2)]; // ← a little hack that increases speed 100×. TODO: check if this is *that* compiler bug.
-							var isVisible = neighborBlock.typ == 0; // TODO: Transparency
-							if(isVisible) {
+							const neighborBlock = (&chunk.blocks)[getIndex(x2, y2, z2)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
+							if(canBeSeenThroughOtherBlock(block, neighborBlock, i)) {
 								const normal: u32 = i;
 								const position: u32 = @intCast(u32, x2) | @intCast(u32, y2)<<5 | @intCast(u32, z2)<<10;
 								const textureNormal = blocks.meshes.textureIndices(block)[i] | normal<<24;
@@ -553,16 +557,16 @@ pub const meshing = struct {
 								var otherX = @intCast(u8, x+%Neighbors.relX[neighbor] & chunkMask);
 								var otherY = @intCast(u8, y+%Neighbors.relY[neighbor] & chunkMask);
 								var otherZ = @intCast(u8, z+%Neighbors.relZ[neighbor] & chunkMask);
-								var block = (&self.chunk.?.blocks)[getIndex(x, y, z)]; // ← a little hack that increases speed 100×. TODO: check if this is *that* compiler bug.
-								var otherBlock = (&neighborMesh.chunk.?.blocks)[getIndex(otherX, otherY, otherZ)]; // ← a little hack that increases speed 100×. TODO: check if this is *that* compiler bug.
-								if(otherBlock.typ == 0 and block.typ != 0) { // TODO: Transparency
+								var block = (&self.chunk.?.blocks)[getIndex(x, y, z)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
+								var otherBlock = (&neighborMesh.chunk.?.blocks)[getIndex(otherX, otherY, otherZ)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
+								if(canBeSeenThroughOtherBlock(block, otherBlock, neighbor) and block.typ != 0) {
 									const normal: u32 = neighbor;
 									const position: u32 = @as(u32, otherX) | @as(u32, otherY)<<5 | @as(u32, otherZ)<<10;
 									const textureNormal = blocks.meshes.textureIndices(block)[neighbor] | normal<<24;
 									try additionalNeighborFaces.append(position);
 									try additionalNeighborFaces.append(textureNormal);
 								}
-								if(block.typ == 0 and otherBlock.typ != 0) { // TODO: Transparency
+								if(canBeSeenThroughOtherBlock(otherBlock, block, neighbor ^ 1) and otherBlock.typ != 0) {
 									const normal: u32 = neighbor ^ 1;
 									const position: u32 = @as(u32, x) | @as(u32, y)<<5 | @as(u32, z)<<10;
 									const textureNormal = blocks.meshes.textureIndices(otherBlock)[neighbor ^ 1] | normal<<24;
@@ -615,9 +619,9 @@ pub const meshing = struct {
 							var otherX = @intCast(u8, (x+%Neighbors.relX[neighbor]+%offsetX >> 1) & chunkMask);
 							var otherY = @intCast(u8, (y+%Neighbors.relY[neighbor]+%offsetY >> 1) & chunkMask);
 							var otherZ = @intCast(u8, (z+%Neighbors.relZ[neighbor]+%offsetZ >> 1) & chunkMask);
-							var block = (&self.chunk.?.blocks)[getIndex(x, y, z)]; // ← a little hack that increases speed 100×. TODO: check if this is *that* compiler bug.
-							var otherBlock = (&neighborMesh.chunk.?.blocks)[getIndex(otherX, otherY, otherZ)]; // ← a little hack that increases speed 100×. TODO: check if this is *that* compiler bug.
-							if(block.typ == 0 and otherBlock.typ != 0) { // TODO: Transparency
+							var block = (&self.chunk.?.blocks)[getIndex(x, y, z)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
+							var otherBlock = (&neighborMesh.chunk.?.blocks)[getIndex(otherX, otherY, otherZ)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
+							if(canBeSeenThroughOtherBlock(otherBlock, block, neighbor ^ 1) and otherBlock.typ != 0) {
 								const normal: u32 = neighbor ^ 1;
 								const position: u32 = @as(u32, x) | @as(u32, y)<<5 | @as(u32, z)<<10;
 								const textureNormal = blocks.meshes.textureIndices(otherBlock)[neighbor ^ 1] | normal<<24;

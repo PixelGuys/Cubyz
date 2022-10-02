@@ -99,7 +99,7 @@ pub fn getByID(id: []const u8) u16 {
 	}
 }
 
-pub const Block = struct {
+pub const Block = packed struct {
 	typ: u16,
 	data: u16,
 	pub fn lightingTransparent(self: Block) bool {
@@ -142,7 +142,7 @@ pub const Block = struct {
 	}
 
 	pub fn viewThrough(self: Block) bool {
-		return _viewThrough[self.typ];
+		return (&_viewThrough)[self.typ]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
 	}
 
 	pub fn blockClass(self: Block) BlockClass {
