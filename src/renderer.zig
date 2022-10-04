@@ -658,7 +658,17 @@ pub const RenderStructure = struct {
 		mutex.lock();
 		defer mutex.unlock();
 		while(updatableList.items.len != 0) {
-			const pos = updatableList.orderedRemove(0);
+			// TODO: Find a faster solution than going through the entire list.
+			var closestPriority: f32 = -std.math.floatMax(f32);
+			var closestIndex: usize = 0;
+			for(updatableList.items) |pos, i| {
+				const priority = pos.getPriority(game.playerPos);
+				if(priority > closestPriority) {
+					closestPriority = priority;
+					closestIndex = i;
+				}
+			}
+			const pos = updatableList.orderedRemove(closestIndex);
 			mutex.unlock();
 			defer mutex.lock();
 			const nullNode = _getNode(pos);
@@ -698,7 +708,7 @@ pub const RenderStructure = struct {
 		}
 
 		pub fn getPriority(self: *MeshGenerationTask) f32 {
-			return -@floatCast(f32, self.mesh.pos.getMinDistanceSquared(game.playerPos))/@intToFloat(f32, self.mesh.pos.voxelSize*self.mesh.pos.voxelSize);
+			return self.mesh.pos.getPriority(game.playerPos);
 		}
 
 		pub fn isStillNeeded(self: *MeshGenerationTask) bool {

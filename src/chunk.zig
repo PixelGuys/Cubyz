@@ -93,6 +93,10 @@ pub const ChunkPosition = struct {
 		dz = @maximum(0, dz - halfWidth);
 		return dx*dx + dy*dy + dz*dz;
 	}
+
+	pub fn getPriority(self: ChunkPosition, playerPos: Vec3d) f32 {
+		return -@floatCast(f32, self.getMinDistanceSquared(playerPos))/@intToFloat(f32, self.voxelSize*self.voxelSize) + 2*@intToFloat(f32, std.math.log2_int(UChunkCoordinate, self.voxelSize)*chunkSize*chunkSize);
+	}
 };
 
 pub const Chunk = struct {

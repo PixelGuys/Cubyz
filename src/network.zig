@@ -341,6 +341,7 @@ pub const ConnectionManager = struct {
 		errdefer Socket.deinit(result.socket);
 
 		result.thread = try std.Thread.spawn(.{}, run, .{result});
+		try result.thread.setName("Network Thread");
 		if(online) {
 			result.makeOnline();
 		}
@@ -743,27 +744,6 @@ pub const Protocols = blk: {
 //		Bits.putInt(data, 8, ch.wz);
 //		Bits.putInt(data, 12, ch.voxelSize);
 //		conn.sendImportant(this, data);
-//	}
-//
-//	private static class ChunkLoadTask extends ThreadPool.Task {
-//		private final VisibleChunk ch;
-//		public ChunkLoadTask(VisibleChunk ch) {
-//			this.ch = ch;
-//		}
-//		@Override
-//		public float getPriority() {
-//			return ch.getPriority(Cubyz.player);
-//		}
-//
-//		@Override
-//		public boolean isStillNeeded() {
-//			return Cubyz.chunkTree.findNode(ch) != null;
-//		}
-//
-//		@Override
-//		public void run() {
-//			ch.load();
-//		}
 //	}
 		}),
 		playerPosition: type = addProtocol(&comptimeList, struct {
