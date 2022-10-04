@@ -532,30 +532,28 @@ pub const RenderStructure = struct {
 			const startY = size*(@divFloor(py, size) -% maxSideLength/2);
 			const startZ = size*(@divFloor(pz, size) -% maxSideLength/2);
 
-			const minX = px-%maxRenderDistance-%size & invMask;
-			const maxX = px+%maxRenderDistance & invMask;
+			const minX = px-%maxRenderDistance-%1 & invMask;
+			const maxX = px+%maxRenderDistance+%size & invMask;
 			var x = minX;
 			while(x != maxX): (x +%= size) {
 				const xIndex = @divExact(x -% startX, size);
-				var deltaX: f32 = @fabs(@intToFloat(f32, x + size/2 - px));
-				deltaX = @maximum(0, deltaX - @intToFloat(f32, size/2));
-				const maxYRenderDistanceSquare = @intToFloat(f32, maxRenderDistance)*@intToFloat(f32, maxRenderDistance) - deltaX*deltaX;
-				if(maxYRenderDistanceSquare < 0) continue;
-				const maxYRenderDistance = @floatToInt(i32, @ceil(@sqrt(maxYRenderDistanceSquare)));
+				var deltaX: i64 = std.math.absInt(@as(i64, x +% size/2 -% px)) catch unreachable;
+				deltaX = @maximum(0, deltaX - size/2);
+				const maxYRenderDistanceSquare = @as(i64, maxRenderDistance)*@as(i64, maxRenderDistance) - deltaX*deltaX;
+				const maxYRenderDistance = @floatToInt(i32, @ceil(@sqrt(@intToFloat(f64, maxYRenderDistanceSquare))));
 
-				const minY = py-maxYRenderDistance-size & invMask;
-				const maxY = py+maxYRenderDistance & invMask;
+				const minY = py-%maxYRenderDistance-%1 & invMask;
+				const maxY = py+%maxYRenderDistance+%size & invMask;
 				var y = minY;
 				while(y != maxY): (y +%= size) {
 					const yIndex = @divExact(y -% startY, size);
-					var deltaY: f32 = @fabs(@intToFloat(f32, y + size/2 - py));
-					deltaY = @maximum(0, deltaY - @intToFloat(f32, size/2));
-					const maxZRenderDistanceSquare = @intToFloat(f32, maxYRenderDistance)*@intToFloat(f32, maxYRenderDistance) - deltaY*deltaY;
-					if(maxZRenderDistanceSquare < 0) continue;
-					const maxZRenderDistance = @floatToInt(i32, @ceil(@sqrt(maxZRenderDistanceSquare)));
+					var deltaY: i64 = std.math.absInt(@as(i64, y +% size/2 -% py)) catch unreachable;
+					deltaY = @maximum(0, deltaY - size/2);
+					const maxZRenderDistanceSquare = @as(i64, maxYRenderDistance)*@as(i64, maxYRenderDistance) - deltaY*deltaY;
+					const maxZRenderDistance = @floatToInt(i32, @ceil(@sqrt(@intToFloat(f64, maxZRenderDistanceSquare))));
 
-					const minZ = pz-maxZRenderDistance-size & invMask;
-					const maxZ = pz+maxZRenderDistance & invMask;
+					const minZ = pz-%maxZRenderDistance-%1 & invMask;
+					const maxZ = pz+%maxZRenderDistance+%size & invMask;
 					var z = minZ;
 					while(z != maxZ): (z +%= size) {
 						const zIndex = @divExact(z -% startZ, size);
