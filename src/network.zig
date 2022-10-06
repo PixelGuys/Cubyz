@@ -314,8 +314,8 @@ pub const ConnectionManager = struct {
 	socket: Socket = undefined,
 	thread: std.Thread = undefined,
 	threadId: std.Thread.Id = undefined,
-	externalAddress: ?Address = null,
-	online: bool = false,
+	externalAddress: Address = undefined,
+	online: std.atomic.Atomic(bool) = std.atomic.Atomic(bool).init(true),
 	running: std.atomic.Atomic(bool) = std.atomic.Atomic(bool).init(true),
 
 	connections: std.ArrayList(*Connection) = undefined,
@@ -370,9 +370,9 @@ pub const ConnectionManager = struct {
 	}
 
 	pub fn makeOnline(self: *ConnectionManager) void {
-		if(!self.online) {
+		if(!self.online.load(.Acquire)) {
 			self.externalAddress = STUN.requestAddress(self);
-			self.online = true;
+			self.online.store(true, .Release);
 		}
 	}
 
@@ -463,7 +463,7 @@ pub const ConnectionManager = struct {
 				return;
 			}
 		}
-		if(self.externalAddress != null and source.ip == self.externalAddress.?.ip and source.port == self.externalAddress.?.port) return;
+		if(self.online.load(.Acquire) and source.ip == self.externalAddress.ip and source.port == self.externalAddress.port) return;
 		// TODO: Reduce the number of false alarms in the short period after a disconnect.
 		std.log.warn("Unknown connection from address: {}", .{source});
 		std.log.debug("Message: {any}", .{data});
@@ -510,10 +510,10 @@ pub const ConnectionManager = struct {
 						i += 1;
 					}
 				}
-				if(self.connections.items.len == 0 and self.externalAddress != null) {
+				if(self.connections.items.len == 0 and self.online.load(.Acquire)) {
 					// Send a message to external ip, to keep the port open:
 					var data = [1]u8{0};
-					try self.send(&data, self.externalAddress.?);
+					try self.send(&data, self.externalAddress);
 				}
 			}
 		}
@@ -553,7 +553,7 @@ pub const Protocols = blk: {
 			const stepComplete: u8 = 255;
 
 			fn receive(conn: *Connection, data: []const u8) !void {
-				if(conn.handShakeState == data[0] - 1) {
+				if(conn.handShakeState < data[0]) {
 					conn.handShakeState = data[0];
 					switch(data[0]) {
 						stepUserData => {
@@ -640,7 +640,6 @@ pub const Protocols = blk: {
 				var data = try jsonObject.toStringEfficient(main.threadAllocator, &prefix);
 				defer main.threadAllocator.free(data);
 				try conn.sendImportant(id, data);
-				conn.handShakeState = stepUserData;
 
 				conn.mutex.lock();
 				conn.handShakeWaiting.wait(&conn.mutex);

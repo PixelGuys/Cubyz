@@ -282,7 +282,7 @@ pub fn main() !void {
 		{ // Render the game
 			c.glEnable(c.GL_CULL_FACE);
 			c.glEnable(c.GL_DEPTH_TEST);
-			try renderer.render(game.playerPos);
+			try renderer.render(game.Player.getPosBlocking());
 		}
 
 		{ // Render the GUI

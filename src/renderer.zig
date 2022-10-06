@@ -236,7 +236,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	var meshes = std.ArrayList(*chunk.meshing.ChunkMesh).init(main.threadAllocator);
 	defer meshes.deinit();
 
-	try RenderStructure.updateAndGetRenderChunks(game.world.?.conn, game.playerPos, settings.renderDistance, settings.LODFactor, frustum, &meshes);
+	try RenderStructure.updateAndGetRenderChunks(game.world.?.conn, playerPos, settings.renderDistance, settings.LODFactor, frustum, &meshes);
 //	for (ChunkMesh mesh : Cubyz.chunkTree.getRenderChunks(frustumInt, x0, y0, z0)) {
 //		if (mesh instanceof NormalChunkMesh) {
 //			visibleChunks.add((NormalChunkMesh)mesh);
@@ -483,14 +483,14 @@ pub const RenderStructure = struct {
 		var lod = std.math.log2_int(chunk.UChunkCoordinate, pos.voxelSize);
 		lodMutex[lod].lock();
 		defer lodMutex[lod].unlock();
-		var xIndex = pos.wx-%lastX[lod] >> lod+chunk.chunkShift;
-		var yIndex = pos.wy-%lastY[lod] >> lod+chunk.chunkShift;
-		var zIndex = pos.wz-%lastZ[lod] >> lod+chunk.chunkShift;
-		if(xIndex < 0 or xIndex >= lastSize[lod]) return null;
-		if(yIndex < 0 or yIndex >= lastSize[lod]) return null;
-		if(zIndex < 0 or zIndex >= lastSize[lod]) return null;
-		var index = (xIndex*lastSize[lod] + yIndex)*lastSize[lod] + zIndex;
-		return storageLists[lod][@intCast(usize, index)];
+		var xIndex = pos.wx-%(&lastX[lod]).* >> lod+chunk.chunkShift;
+		var yIndex = pos.wy-%(&lastY[lod]).* >> lod+chunk.chunkShift;
+		var zIndex = pos.wz-%(&lastZ[lod]).* >> lod+chunk.chunkShift;
+		if(xIndex < 0 or xIndex >= (&lastSize[lod]).*) return null;
+		if(yIndex < 0 or yIndex >= (&lastSize[lod]).*) return null;
+		if(zIndex < 0 or zIndex >= (&lastSize[lod]).*) return null;
+		var index = (xIndex*(&lastSize[lod]).* + yIndex)*(&lastSize[lod]).* + zIndex;
+		return (&storageLists[lod]).*[@intCast(usize, index)]; // TODO: Wait for #12205 to be fixed and remove the weird (&...).* workaround.
 	}
 
 	pub fn getNeighbor(_pos: chunk.ChunkPosition, resolution: chunk.UChunkCoordinate, neighbor: u3) ?*chunk.meshing.ChunkMesh {
@@ -661,8 +661,9 @@ pub const RenderStructure = struct {
 			// TODO: Find a faster solution than going through the entire list.
 			var closestPriority: f32 = -std.math.floatMax(f32);
 			var closestIndex: usize = 0;
+			const playerPos = game.Player.getPosBlocking();
 			for(updatableList.items) |pos, i| {
-				const priority = pos.getPriority(game.playerPos);
+				const priority = pos.getPriority(playerPos);
 				if(priority > closestPriority) {
 					closestPriority = priority;
 					closestIndex = i;
@@ -708,11 +709,11 @@ pub const RenderStructure = struct {
 		}
 
 		pub fn getPriority(self: *MeshGenerationTask) f32 {
-			return self.mesh.pos.getPriority(game.playerPos);
+			return self.mesh.pos.getPriority(game.Player.getPosBlocking()); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
 		}
 
 		pub fn isStillNeeded(self: *MeshGenerationTask) bool {
-			var distanceSqr = self.mesh.pos.getMinDistanceSquared(game.playerPos);
+			var distanceSqr = self.mesh.pos.getMinDistanceSquared(game.Player.getPosBlocking()); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
 			var maxRenderDistance = settings.renderDistance*chunk.chunkSize*self.mesh.pos.voxelSize;
 			if(self.mesh.pos.voxelSize != 1) maxRenderDistance = @floatToInt(i32, @ceil(@intToFloat(f32, maxRenderDistance)*settings.LODFactor));
 			maxRenderDistance += 2*self.mesh.pos.voxelSize*chunk.chunkSize;

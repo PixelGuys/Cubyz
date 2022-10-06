@@ -41,9 +41,24 @@ pub const camera = struct {
 	}
 };
 
-pub var playerPos: Vec3d = Vec3d{.x=0, .y=0, .z=0};
-pub var playerVel: Vec3d = Vec3d{.x=0, .y=0, .z=0};
-pub var isFlying: bool = true;
+pub const Player = struct {
+	var pos: Vec3d = Vec3d{.x=0, .y=0, .z=0};
+	var vel: Vec3d = Vec3d{.x=0, .y=0, .z=0};
+	pub var isFlying: std.atomic.Atomic(bool) = std.atomic.Atomic(bool).init(true);
+	var mutex: std.Thread.Mutex = std.Thread.Mutex{};
+
+	pub fn getPosBlocking() Vec3d {
+		mutex.lock();
+		defer mutex.unlock();
+		return pos;
+	}
+
+	pub fn getVelBlocking() Vec3d {
+		mutex.lock();
+		defer mutex.unlock();
+		return vel;
+	}
+};
 
 pub const World = struct {
 	const dayCycle: u63 = 12000; // Length of one in-game day in 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
@@ -59,7 +74,6 @@ pub const World = struct {
 	blockPalette: *assets.BlockPalette = undefined,
 	// TODO:
 //	public ItemEntityManager itemEntityManager;
-//	public BlockPalette blockPalette;
 	
 //	TODO: public Biome playerBiome;
 //	public final ArrayList<String> chatHistory = new ArrayList<>();
@@ -150,7 +164,7 @@ pub const World = struct {
 				self.ambientLight = 0.55 + 0.45*@intToFloat(f32, dayTime)/@intToFloat(f32, dayCycle/2);
 			}
 		}
-		try network.Protocols.playerPosition.send(self.conn, playerPos, playerVel, @intCast(u16, newTime & 65535));
+		try network.Protocols.playerPosition.send(self.conn, Player.getPosBlocking(), Player.getVelBlocking(), @intCast(u16, newTime & 65535));
 	}
 	// TODO:
 //	public void drop(ItemStack stack, Vector3d pos, Vector3f dir, float velocity) {
@@ -256,7 +270,7 @@ pub fn update(deltaTime: f64) !void {
 	var right = Vec3d{.x=forward.z, .y=0, .z=-forward.x};
 	if(keyboard.forward.pressed) {
 		if(keyboard.sprint.pressed) {
-			if(isFlying) {
+			if(Player.isFlying.load(.Monotonic)) {
 				movement.addEqual(forward.mulScalar(64));
 			} else {
 				movement.addEqual(forward.mulScalar(8));
@@ -275,7 +289,7 @@ pub fn update(deltaTime: f64) !void {
 		movement.addEqual(right.mulScalar(-4));
 	}
 	if(keyboard.jump.pressed) {
-		if(isFlying) {
+		if(Player.isFlying.load(.Monotonic)) {
 			if(keyboard.sprint.pressed) {
 				movement.y = 59.45;
 			} else {
@@ -286,7 +300,7 @@ pub fn update(deltaTime: f64) !void {
 		}
 	}
 	if(keyboard.fall.pressed) {
-		if(isFlying) {
+		if(Player.isFlying.load(.Monotonic)) {
 			if(keyboard.sprint.pressed) {
 				movement.y = -59.45;
 			} else {
@@ -295,6 +309,10 @@ pub fn update(deltaTime: f64) !void {
 		}
 	}
 
-	playerPos.addEqual(movement.mulScalar(deltaTime));
+	{
+		Player.mutex.lock();
+		defer Player.mutex.unlock();
+		Player.pos.addEqual(movement.mulScalar(deltaTime));
+	}
 	try world.?.update();
 }
