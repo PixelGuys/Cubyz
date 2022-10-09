@@ -335,3 +335,172 @@ pub const ThreadPool = struct {
 		return self.loadList.size;
 	}
 };
+
+pub fn GenericInterpolation(comptime elements: comptime_int) type {
+	const frames: usize = 8;
+	return struct {
+		lastPos: [frames][elements]f64,
+		lastVel: [frames][elements]f64,
+		lastTimes: [frames]i16,
+		frontIndex: u32,
+		currentPoint: i32,
+		outPos: [elements]f64,
+		outVel: [elements]f64,
+
+		pub fn initPosition(self: *@This(), initialPosition: *[elements]f64) void {
+			std.mem.copy(f64, &self.outPos, initialPosition);
+			std.mem.set([elements]f64, &self.lastPos, self.outPos);
+			std.mem.set(f64, &self.outVel, 0);
+			std.mem.set([elements]f64, &self.lastVel, self.outVel);
+			self.frontIndex = 0;
+			self.currentPoint = -1;
+		}
+
+		pub fn init(self: *@This(), initialPosition: *[elements]f64, initialVelocity: *[elements]f64) void {
+			std.mem.copy(f64, &self.outPos, initialPosition);
+			std.mem.set([elements]f64, &self.lastPos, self.outPos);
+			std.mem.copy(f64, &self.outVel, initialVelocity);
+			std.mem.set([elements]f64, &self.lastVel, self.outVel);
+			self.frontIndex = 0;
+			self.currentPoint = -1;
+		}
+
+		pub fn updatePosition(self: *@This(), pos: *[elements]f64, vel: *[elements]f64, time: i16) void {
+			self.frontIndex = (self.frontIndex + 1)%frames;
+			std.mem.copy(f64, &self.lastPos[self.frontIndex], pos);
+			std.mem.copy(f64, &self.lastVel[self.frontIndex], vel);
+			self.lastTimes[self.frontIndex] = time;
+		}
+
+		fn evaluateSplineAt(_t: f64, tScale: f64, p0: f64, _m0: f64, p1: f64, _m1: f64) [2]f64 {
+			//  https://en.wikipedia.org/wiki/Cubic_Hermite_spline#Unit_interval_(0,_1)
+			const t = _t/tScale;
+			const m0 = _m0*tScale;
+			const m1 = _m1*tScale;
+			const t2 = t*t;
+			const t3 = t2*t;
+			const a0 = p0;
+			const a1 = m0;
+			const a2 = -3*p0 - 2*m0 + 3*p1 - m1;
+			const a3 = 2*p0 + m0 - 2*p1 + m1;
+			return [_]f64 {
+				a0 + a1*t + a2*t2 + a3*t3, // value
+				(a1 + 2*a2*t + 3*a3*t2)/tScale, // first derivative
+			};
+		}
+
+		fn interpolateCoordinate(self: *@This(), i: u32, t: f64, tScale: f64) void {
+			if(self.outVel[i] == 0 and self.lastVel[self.currentPoint][i] == 0) {
+				self.outPos += (self.lastPos[self.currentPoint][i] - self.outPos[i])*t/tScale;
+			} else {
+				// Use cubic interpolation to interpolate the velocity as well.
+				const newValue = evaluateSplineAt(t, tScale, self.outPos[i], self.outVel[i], self.lastPos[self.currentPoint][i], self.lastVel[self.currentPoint][i]);
+				self.outPos = newValue[0];
+				self.outVel = newValue[1];
+			}
+		}
+
+		fn determineNextDataPoint(self: *@This(), time: i16, lastTime: *i16) void {
+			if(self.currentPoint != -1 and self.lastTimes[self.currentPoint] -% time <= 0) {
+				// Jump to the last used value and adjust the time to start at that point.
+				lastTime.* = self.lastTimes[self.currentPoint];
+				std.mem.copy(f64, &self.outPos, &self.lastPos[self.currentPoint]);
+				std.mem.copy(f64, &self.outVel, &self.lastVel[self.currentPoint]);
+				self.currentPoint = -1;
+			}
+
+			if(self.currentPoint == -1) {
+				// Need a new point:
+				var smallestTime: i16 = std.math.maxInt(i16);
+				var smallestIndex: i32 = -1;
+				for(self.lastTimes) |_, i| {
+					//                              ↓ Only using a future time value that is far enough away to prevent jumping.
+					if(self.lastTimes[i] -% time >= 50 and self.lastTimes[i] -% time < smallestTime) {
+						smallestTime = self.lastTimes[i] -% time;
+						smallestIndex = i;
+					}
+				}
+				self.currentPoint = smallestIndex;
+			}
+		}
+
+		pub fn update(self: *@This(), time: i16, _lastTime: i16) void {
+			var lastTime = _lastTime;
+			self.determineNextDataPoint(time, &lastTime);
+
+			var deltaTime = @intToFloat(f64, time -% lastTime)/1000;
+			if(deltaTime < 0) {
+				std.log.err("Experienced time travel. Current time: {} Last time: {}", .{time, lastTime});
+				deltaTime = 0;
+			}
+
+			if(self.currentPoint == -1) {
+				for(self.outPos) |*pos, i| {
+					// Just move on with the current velocity.
+					pos.* += self.outVel[i]*deltaTime;
+					// Add some drag to prevent moving far away on short connection loss.
+					self.outVel[i] *= std.math.pow(f64, 0.5, deltaTime);
+				}
+			} else {
+				const tScale = @intToFloat(f64, self.lastTimes[self.currentPoint] -% lastTime)/1000;
+				const t = deltaTime;
+				for(self.outPos) |_, i| {
+					self.interpolateCoordinate(i, t, tScale);
+				}
+			}
+		}
+
+		pub fn updateIndexed(self: *@This(), time: i16, _lastTime: i16, indices: []u16, coordinatesPerIndex: comptime_int) void {
+			var lastTime = _lastTime;
+			self.determineNextDataPoint(time, &lastTime);
+
+			var deltaTime = @intToFloat(f64, time -% lastTime)/1000;
+			if(deltaTime < 0) {
+				std.log.err("Experienced time travel. Current time: {} Last time: {}", .{time, lastTime});
+				deltaTime = 0;
+			}
+
+			if(self.currentPoint == -1) {
+				for(indices) |i| {
+					const index = i*coordinatesPerIndex;
+					var j: u32 = 0;
+					while(j < coordinatesPerIndex): (j += 1) {
+						// Just move on with the current velocity.
+						self.outPos[index + j] += self.outVel[index + j]*deltaTime;
+						// Add some drag to prevent moving far away on short connection loss.
+						self.outVel[index + j] *= std.math.pow(f64, 0.5, deltaTime);
+					}
+				}
+			} else {
+				const tScale = @intToFloat(f64, self.lastTimes[self.currentPoint] -% lastTime)/1000;
+				const t = deltaTime;
+				for(indices) |i| {
+					const index = i*coordinatesPerIndex;
+					var j: u32 = 0;
+					while(j < coordinatesPerIndex): (j += 1) {
+						self.interpolateCoordinate(index + j, t, tScale);
+					}
+				}
+			}
+		}
+	};
+}
+
+pub const TimeDifference = struct {
+	difference: i16 = 0,
+	firstValue: bool = true,
+
+	pub fn addDataPoint(self: *TimeDifference, time: i16) void {
+		const currentTime = @intCast(i16, std.time.milliTimestamp() & 65535);
+		const timeDifference = currentTime -% time;
+		if(self.firstValue) {
+			self.difference = timeDifference;
+			self.firstValue = false;
+		}
+		if(timeDifference -% self.difference > 0) {
+			self.difference +%= 1;
+		} else if(timeDifference -% self.difference < 0) {
+			self.difference -%= 1;
+		}
+	}
+};

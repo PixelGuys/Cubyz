@@ -3,6 +3,7 @@ const std = @import("std");
 const assets = @import("assets.zig");
 const blocks = @import("blocks.zig");
 const chunk = @import("chunk.zig");
+const entity = @import("entity.zig");
 const game = @import("game.zig");
 const graphics = @import("graphics.zig");
 const renderer = @import("renderer.zig");
@@ -244,6 +245,9 @@ pub fn main() !void {
 
 	try renderer.init();
 	defer renderer.deinit();
+
+	entity.ClientEntityManager.init();
+	defer entity.ClientEntityManager.deinit();
 
 	network.init();
 
