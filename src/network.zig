@@ -57,6 +57,16 @@ const Socket = struct {
 
 pub fn init() void {
 	Socket.c.startup();
+	inline for(@typeInfo(@TypeOf(Protocols)).Struct.fields) |field| {
+		if(field.field_type == type) {
+			const id = @field(Protocols, field.name).id;
+			if(id != Protocols.keepAlive and id != Protocols.important and Protocols.list[id] == null) {
+				Protocols.list[id] = @field(Protocols, field.name).receive;
+			} else {
+				std.log.err("Duplicate list id {}.", .{id});
+			}
+		}
+	}
 }
 
 const Address = struct {
@@ -527,59 +537,49 @@ const UnconfirmedPacket = struct {
 	id: u32,
 };
 
-fn addProtocol(comptime comptimeList: *[256]?*const fn(*Connection, []const u8) anyerror!void, comptime prot: type) type {
-	if(comptimeList[prot.id] == null and prot.id != 0 and prot.id != 0xff) {
-		comptimeList[prot.id] = prot.receive;
-	} else {
-		@compileError("Protocol id is already used.");
-	}
-	return prot;
-}
-
 pub var bytesReceived: [256]usize = [_]usize {0} ** 256;
 pub var packetsReceived: [256]usize = [_]usize {0} ** 256;
-pub const Protocols = blk: {
-	comptime var comptimeList = [_]?*const fn(*Connection, []const u8) anyerror!void{null} ** 256;
-	const Protocols_struct = struct {
-		list: [256]?*const fn(*Connection, []const u8) anyerror!void,
+pub const Protocols: struct {
+	var _list: [256]?*const fn(*Connection, []const u8) anyerror!void = [_]?*const fn(*Connection, []const u8) anyerror!void {null} ** 256;
+	list: *[256]?*const fn(*Connection, []const u8) anyerror!void = &_list,
 
-		keepAlive: u8 = 0,
-		important: u8 = 0xff,
-		handShake: type = addProtocol(&comptimeList, struct {
-			const id: u8 = 1;
-			const stepStart: u8 = 0;
-			const stepUserData: u8 = 1;
-			const stepAssets: u8 = 2;
-			const stepServerData: u8 = 3;
-			const stepComplete: u8 = 255;
+	keepAlive: u8 = 0,
+	important: u8 = 0xff,
+	handShake: type = struct {
+		const id: u8 = 1;
+		const stepStart: u8 = 0;
+		const stepUserData: u8 = 1;
+		const stepAssets: u8 = 2;
+		const stepServerData: u8 = 3;
+		const stepComplete: u8 = 255;
 
-			fn receive(conn: *Connection, data: []const u8) !void {
-				if(conn.handShakeState < data[0]) {
-					conn.handShakeState = data[0];
-					switch(data[0]) {
-						stepUserData => {
-							var jsonObject = json.parseFromString(main.threadAllocator, data[1..]);
-							defer jsonObject.free(main.threadAllocator);
-							var name = jsonObject.get([]const u8, "name", "unnamed");
-							var version = jsonObject.get([]const u8, "version", "unknown");
-							std.log.info("User {s} joined using version {s}.", .{name, version});
+		fn receive(conn: *Connection, data: []const u8) !void {
+			if(conn.handShakeState < data[0]) {
+				conn.handShakeState = data[0];
+				switch(data[0]) {
+					stepUserData => {
+						var jsonObject = json.parseFromString(main.threadAllocator, data[1..]);
+						defer jsonObject.free(main.threadAllocator);
+						var name = jsonObject.get([]const u8, "name", "unnamed");
+						var version = jsonObject.get([]const u8, "version", "unknown");
+						std.log.info("User {s} joined using version {s}.", .{name, version});
 
-							{
-								// TODO: Send the world data.
-								var path = try std.fmt.allocPrint(main.threadAllocator, "saves/{s}/assets/", .{"Development"}); // TODO: Use world name.
-								defer main.threadAllocator.free(path);
-								var dir = try std.fs.cwd().openIterableDir(path, .{});
-								defer dir.close();
-								var arrayList = std.ArrayList(u8).init(main.threadAllocator);
-								defer arrayList.deinit();
-								try arrayList.append(stepAssets);
-								try utils.Compression.pack(dir, arrayList.writer());
-								std.log.debug("{any}", .{arrayList.items});
-								try conn.sendImportant(id, arrayList.items);
-								try conn.flush();
-							}
+						{
+							// TODO: Send the world data.
+							var path = try std.fmt.allocPrint(main.threadAllocator, "saves/{s}/assets/", .{"Development"}); // TODO: Use world name.
+							defer main.threadAllocator.free(path);
+							var dir = try std.fs.cwd().openIterableDir(path, .{});
+							defer dir.close();
+							var arrayList = std.ArrayList(u8).init(main.threadAllocator);
+							defer arrayList.deinit();
+							try arrayList.append(stepAssets);
+							try utils.Compression.pack(dir, arrayList.writer());
+							std.log.debug("{any}", .{arrayList.items});
+							try conn.sendImportant(id, arrayList.items);
+							try conn.flush();
+						}
 
-							// TODO:
+						// TODO:
 //					JsonObject jsonObject = new JsonObject();
 //					((User)conn).initPlayer(name);
 //					jsonObject.put("player", ((User)conn).player.save());
@@ -601,134 +601,134 @@ pub const Protocols = blk: {
 //					synchronized(conn) { // Notify the waiting server thread.
 //						conn.notifyAll();
 //					}
-						},
-						stepAssets => {
-							std.log.info("Received assets.", .{});
-							std.fs.cwd().deleteTree("serverAssets") catch {}; // Delete old assets.
-							try std.fs.cwd().makePath("serverAssets");
-							try utils.Compression.unpack(try std.fs.cwd().openDir("serverAssets", .{}), data[1..]);
-						},
-						stepServerData => {
-							var jsonObject = json.parseFromString(main.threadAllocator, data[1..]);
-							defer jsonObject.free(main.threadAllocator);
-							try game.world.?.finishHandshake(jsonObject);
-							conn.handShakeState = stepComplete;
-							conn.handShakeWaiting.broadcast(); // Notify the waiting client thread.
-						},
-						stepComplete => {
+					},
+					stepAssets => {
+						std.log.info("Received assets.", .{});
+						std.fs.cwd().deleteTree("serverAssets") catch {}; // Delete old assets.
+						try std.fs.cwd().makePath("serverAssets");
+						try utils.Compression.unpack(try std.fs.cwd().openDir("serverAssets", .{}), data[1..]);
+					},
+					stepServerData => {
+						var jsonObject = json.parseFromString(main.threadAllocator, data[1..]);
+						defer jsonObject.free(main.threadAllocator);
+						try game.world.?.finishHandshake(jsonObject);
+						conn.handShakeState = stepComplete;
+						conn.handShakeWaiting.broadcast(); // Notify the waiting client thread.
+					},
+					stepComplete => {
 
-						},
-						else => {
-							std.log.err("Unknown state in HandShakeProtocol {}", .{data[0]});
-						},
-					}
-				} else {
-					// Ignore packages that refer to an unexpected state. Normally those might be packages that were resent by the other side.
+					},
+					else => {
+						std.log.err("Unknown state in HandShakeProtocol {}", .{data[0]});
+					},
 				}
+			} else {
+				// Ignore packages that refer to an unexpected state. Normally those might be packages that were resent by the other side.
 			}
+		}
 
-			pub fn serverSide(conn: *Connection) void {
-				conn.handShakeState = stepStart;
-			}
+		pub fn serverSide(conn: *Connection) void {
+			conn.handShakeState = stepStart;
+		}
 
-			pub fn clientSide(conn: *Connection, name: []const u8) !void {
-				var jsonObject = JsonElement{.JsonObject=try main.threadAllocator.create(std.StringHashMap(JsonElement))};
-				defer jsonObject.free(main.threadAllocator);
-				jsonObject.JsonObject.* = std.StringHashMap(JsonElement).init(main.threadAllocator);
-				try jsonObject.JsonObject.put(try main.threadAllocator.dupe(u8, "version"), JsonElement{.JsonString=settings.version});
-				try jsonObject.JsonObject.put(try main.threadAllocator.dupe(u8, "name"), JsonElement{.JsonString=name});
-				var prefix = [1]u8 {stepUserData};
-				var data = try jsonObject.toStringEfficient(main.threadAllocator, &prefix);
-				defer main.threadAllocator.free(data);
-				try conn.sendImportant(id, data);
+		pub fn clientSide(conn: *Connection, name: []const u8) !void {
+			var jsonObject = JsonElement{.JsonObject=try main.threadAllocator.create(std.StringHashMap(JsonElement))};
+			defer jsonObject.free(main.threadAllocator);
+			jsonObject.JsonObject.* = std.StringHashMap(JsonElement).init(main.threadAllocator);
+			try jsonObject.JsonObject.put(try main.threadAllocator.dupe(u8, "version"), JsonElement{.JsonString=settings.version});
+			try jsonObject.JsonObject.put(try main.threadAllocator.dupe(u8, "name"), JsonElement{.JsonString=name});
+			var prefix = [1]u8 {stepUserData};
+			var data = try jsonObject.toStringEfficient(main.threadAllocator, &prefix);
+			defer main.threadAllocator.free(data);
+			try conn.sendImportant(id, data);
 
-				conn.mutex.lock();
-				conn.handShakeWaiting.wait(&conn.mutex);
-				conn.mutex.unlock();
-			}
-		}),
-		chunkRequest: type = addProtocol(&comptimeList, struct {
-			const id: u8 = 2;
-			fn receive(conn: *Connection, data: []const u8) !void {
-				var remaining = data[0..];
-				while(remaining.len >= 16) {
-					const request = chunk.ChunkPosition{
-						.wx = std.mem.readIntBig(chunk.ChunkCoordinate, remaining[0..4]),
-						.wy = std.mem.readIntBig(chunk.ChunkCoordinate, remaining[4..8]),
-						.wz = std.mem.readIntBig(chunk.ChunkCoordinate, remaining[8..12]),
-						.voxelSize = @intCast(chunk.UChunkCoordinate, std.mem.readIntBig(chunk.ChunkCoordinate, remaining[12..16])),
-					};
-					_ = request;
-					_ = conn;
-					// TODO: Server.world.queueChunk(request, (User)conn);
-					remaining = remaining[16..];
-				}
-			}
-			pub fn sendRequest(conn: *Connection, requests: []chunk.ChunkPosition) !void {
-				if(requests.len == 0) return;
-				var data = try main.threadAllocator.alloc(u8, 16*requests.len);
-				defer main.threadAllocator.free(data);
-				var remaining = data;
-				for(requests) |req| {
-					std.mem.writeIntBig(chunk.ChunkCoordinate, remaining[0..4], req.wx);
-					std.mem.writeIntBig(chunk.ChunkCoordinate, remaining[4..8], req.wy);
-					std.mem.writeIntBig(chunk.ChunkCoordinate, remaining[8..12], req.wz);
-					std.mem.writeIntBig(chunk.ChunkCoordinate, remaining[12..16], req.voxelSize);
-					remaining = remaining[16..];
-				}
-				try conn.sendImportant(id, data);
-			}
-		}),
-		chunkTransmission: type = addProtocol(&comptimeList, struct {
-			const id: u8 = 3;
-			fn receive(_: *Connection, _data: []const u8) !void {
-				var data = _data;
-				var pos = chunk.ChunkPosition{
-					.wx = std.mem.readIntBig(chunk.ChunkCoordinate, data[0..4]),
-					.wy = std.mem.readIntBig(chunk.ChunkCoordinate, data[4..8]),
-					.wz = std.mem.readIntBig(chunk.ChunkCoordinate, data[8..12]),
-					.voxelSize = @intCast(chunk.UChunkCoordinate, std.mem.readIntBig(chunk.ChunkCoordinate, data[12..16])),
+			conn.mutex.lock();
+			conn.handShakeWaiting.wait(&conn.mutex);
+			conn.mutex.unlock();
+		}
+	},
+	chunkRequest: type = struct {
+		const id: u8 = 2;
+		fn receive(conn: *Connection, data: []const u8) !void {
+			var remaining = data[0..];
+			while(remaining.len >= 16) {
+				const request = chunk.ChunkPosition{
+					.wx = std.mem.readIntBig(chunk.ChunkCoordinate, remaining[0..4]),
+					.wy = std.mem.readIntBig(chunk.ChunkCoordinate, remaining[4..8]),
+					.wz = std.mem.readIntBig(chunk.ChunkCoordinate, remaining[8..12]),
+					.voxelSize = @intCast(chunk.UChunkCoordinate, std.mem.readIntBig(chunk.ChunkCoordinate, remaining[12..16])),
 				};
-				const _inflatedData = try utils.Compression.inflate(main.threadAllocator, data[16..]);
-				data = _inflatedData;
-				defer main.threadAllocator.free(_inflatedData);
-				var ch = try renderer.RenderStructure.allocator.create(chunk.Chunk);
-				ch.init(pos);
-				for(ch.blocks) |*block| {
-					var blockTypeAndData = std.mem.readIntBig(u32, data[0..4]);
-					block.typ = @intCast(u16, blockTypeAndData & 0xffff);
-					block.data = @intCast(u16, blockTypeAndData >> 16);
-					data = data[4..];
-				}
-				try renderer.RenderStructure.updateChunkMesh(ch);
+				_ = request;
+				_ = conn;
+				// TODO: Server.world.queueChunk(request, (User)conn);
+				remaining = remaining[16..];
 			}
-			pub fn sendChunk(conn: *Connection, visData: chunk.ChunkVisibilityData) !void {
-				var data = try main.threadAllocator.alloc(u8, 16 + 8*visData.visibles.items.len);
-				defer main.threadAllocator.free(data);
-				std.mem.writeIntBig(chunk.ChunkCoordinate, data[0..4], visData.pos.wx);
-				std.mem.writeIntBig(chunk.ChunkCoordinate, data[4..8], visData.pos.wy);
-				std.mem.writeIntBig(chunk.ChunkCoordinate, data[8..12], visData.pos.wz);
-				std.mem.writeIntBig(chunk.ChunkCoordinate, data[12..16], visData.pos.voxelSize);
-				var size = visData.visibles.items.len;
-				var x = data[16..][0..size];
-				var y = data[16..][size..2*size];
-				var z = data[16..][2*size..3*size];
-				var neighbors = data[16..][3*size..4*size];
-				var visibleBlocks = data[16..][4*size..];
-				for(visData.visibles.items) |block, i| {
-					x[i] = block.x;
-					y[i] = block.y;
-					z[i] = block.z;
-					neighbors[i] = block.neighbors;
-					var blockTypeAndData = @as(u32, block.block.data) << 16 | block.block.typ;
-					std.mem.writeIntBig(u32, visibleBlocks[4*i..][0..4], blockTypeAndData);
-				}
+		}
+		pub fn sendRequest(conn: *Connection, requests: []chunk.ChunkPosition) !void {
+			if(requests.len == 0) return;
+			var data = try main.threadAllocator.alloc(u8, 16*requests.len);
+			defer main.threadAllocator.free(data);
+			var remaining = data;
+			for(requests) |req| {
+				std.mem.writeIntBig(chunk.ChunkCoordinate, remaining[0..4], req.wx);
+				std.mem.writeIntBig(chunk.ChunkCoordinate, remaining[4..8], req.wy);
+				std.mem.writeIntBig(chunk.ChunkCoordinate, remaining[8..12], req.wz);
+				std.mem.writeIntBig(chunk.ChunkCoordinate, remaining[12..16], req.voxelSize);
+				remaining = remaining[16..];
+			}
+			try conn.sendImportant(id, data);
+		}
+	},
+	chunkTransmission: type = struct {
+		const id: u8 = 3;
+		fn receive(_: *Connection, _data: []const u8) !void {
+			var data = _data;
+			var pos = chunk.ChunkPosition{
+				.wx = std.mem.readIntBig(chunk.ChunkCoordinate, data[0..4]),
+				.wy = std.mem.readIntBig(chunk.ChunkCoordinate, data[4..8]),
+				.wz = std.mem.readIntBig(chunk.ChunkCoordinate, data[8..12]),
+				.voxelSize = @intCast(chunk.UChunkCoordinate, std.mem.readIntBig(chunk.ChunkCoordinate, data[12..16])),
+			};
+			const _inflatedData = try utils.Compression.inflate(main.threadAllocator, data[16..]);
+			data = _inflatedData;
+			defer main.threadAllocator.free(_inflatedData);
+			var ch = try renderer.RenderStructure.allocator.create(chunk.Chunk);
+			ch.init(pos);
+			for(ch.blocks) |*block| {
+				var blockTypeAndData = std.mem.readIntBig(u32, data[0..4]);
+				block.typ = @intCast(u16, blockTypeAndData & 0xffff);
+				block.data = @intCast(u16, blockTypeAndData >> 16);
+				data = data[4..];
+			}
+			try renderer.RenderStructure.updateChunkMesh(ch);
+		}
+		pub fn sendChunk(conn: *Connection, visData: chunk.ChunkVisibilityData) !void {
+			var data = try main.threadAllocator.alloc(u8, 16 + 8*visData.visibles.items.len);
+			defer main.threadAllocator.free(data);
+			std.mem.writeIntBig(chunk.ChunkCoordinate, data[0..4], visData.pos.wx);
+			std.mem.writeIntBig(chunk.ChunkCoordinate, data[4..8], visData.pos.wy);
+			std.mem.writeIntBig(chunk.ChunkCoordinate, data[8..12], visData.pos.wz);
+			std.mem.writeIntBig(chunk.ChunkCoordinate, data[12..16], visData.pos.voxelSize);
+			var size = visData.visibles.items.len;
+			var x = data[16..][0..size];
+			var y = data[16..][size..2*size];
+			var z = data[16..][2*size..3*size];
+			var neighbors = data[16..][3*size..4*size];
+			var visibleBlocks = data[16..][4*size..];
+			for(visData.visibles.items) |block, i| {
+				x[i] = block.x;
+				y[i] = block.y;
+				z[i] = block.z;
+				neighbors[i] = block.neighbors;
+				var blockTypeAndData = @as(u32, block.block.data) << 16 | block.block.typ;
+				std.mem.writeIntBig(u32, visibleBlocks[4*i..][0..4], blockTypeAndData);
+			}
 
-				var compressed = try utils.Compression.deflate(main.threadAllocator, data);
-				defer main.threadAllocator.free(compressed);
-				try conn.sendImportant(id, compressed);
-			}
-		// TODO:
+			var compressed = try utils.Compression.deflate(main.threadAllocator, data);
+			defer main.threadAllocator.free(compressed);
+			try conn.sendImportant(id, compressed);
+		}
+	// TODO:
 //	public void sendChunk(UDPConnection conn, ChunkData ch) {
 //		byte[] data;
 //		if(ch instanceof NormalChunk) {
@@ -745,104 +745,104 @@ pub const Protocols = blk: {
 //		Bits.putInt(data, 12, ch.voxelSize);
 //		conn.sendImportant(this, data);
 //	}
-		}),
-		playerPosition: type = addProtocol(&comptimeList, struct {
-			const id: u8 = 4;
-			fn receive(conn: *Connection, data: []const u8) !void {
-				_ = conn;
-				_ = data;
-				// TODO: ((User)conn).receiveData(data, offset);
+	},
+	playerPosition: type = struct {
+		const id: u8 = 4;
+		fn receive(conn: *Connection, data: []const u8) !void {
+			_ = conn;
+			_ = data;
+			// TODO: ((User)conn).receiveData(data, offset);
+		}
+		var lastPositionSent: u16 = 0;
+		pub fn send(conn: *Connection, playerPos: Vec3d, playerVel: Vec3d, time: u16) !void {
+			if(time -% lastPositionSent < 50) {
+				return; // Only send at most once every 50 ms.
 			}
-			var lastPositionSent: u16 = 0;
-			pub fn send(conn: *Connection, playerPos: Vec3d, playerVel: Vec3d, time: u16) !void {
-				if(time -% lastPositionSent < 50) {
-					return; // Only send at most once every 50 ms.
+			lastPositionSent = time;
+			var data: [62]u8 = undefined;
+			std.mem.writeIntBig(u64, data[0..8], @bitCast(u64, playerPos.x));
+			std.mem.writeIntBig(u64, data[8..16], @bitCast(u64, playerPos.y));
+			std.mem.writeIntBig(u64, data[16..24], @bitCast(u64, playerPos.z));
+			std.mem.writeIntBig(u64, data[24..32], @bitCast(u64, playerVel.x));
+			std.mem.writeIntBig(u64, data[32..40], @bitCast(u64, playerVel.y));
+			std.mem.writeIntBig(u64, data[40..48], @bitCast(u64, playerVel.z));
+			std.mem.writeIntBig(u32, data[48..52], @bitCast(u32, game.camera.rotation.x));
+			std.mem.writeIntBig(u32, data[52..56], @bitCast(u32, game.camera.rotation.y));
+			std.mem.writeIntBig(u32, data[56..60], @bitCast(u32, game.camera.rotation.z));
+			std.mem.writeIntBig(u16, data[60..62], time);
+			try conn.sendUnimportant(id, &data);
+		}
+	},
+	disconnect: type = struct {
+		const id: u8 = 5;
+		fn receive(conn: *Connection, _: []const u8) !void {
+			try conn.disconnect();
+		}
+		pub fn disconnect(conn: *Connection) !void {
+			const noData = [0]u8 {};
+			try conn.sendUnimportant(id, &noData);
+		}
+	},
+	entityPosition: type = struct {
+		const id: u8 = 6;
+		const type_entity: u8 = 0;
+		const type_item: u8 = 1;
+		fn receive(_: *Connection, data: []const u8) !void {
+			if(game.world != null) {
+				const time = std.mem.readIntBig(i16, data[1..3]);
+				if(data[0] == type_entity) {
+					try entity.ClientEntityManager.serverUpdate(time, data[3..]);
+				} else if(data[0] == type_item) {
+					// TODO: ((InterpolatedItemEntityManager)Cubyz.world.itemEntityManager).readPosition(data[3..], time);
 				}
-				lastPositionSent = time;
-				var data: [62]u8 = undefined;
-				std.mem.writeIntBig(u64, data[0..8], @bitCast(u64, playerPos.x));
-				std.mem.writeIntBig(u64, data[8..16], @bitCast(u64, playerPos.y));
-				std.mem.writeIntBig(u64, data[16..24], @bitCast(u64, playerPos.z));
-				std.mem.writeIntBig(u64, data[24..32], @bitCast(u64, playerVel.x));
-				std.mem.writeIntBig(u64, data[32..40], @bitCast(u64, playerVel.y));
-				std.mem.writeIntBig(u64, data[40..48], @bitCast(u64, playerVel.z));
-				std.mem.writeIntBig(u32, data[48..52], @bitCast(u32, game.camera.rotation.x));
-				std.mem.writeIntBig(u32, data[52..56], @bitCast(u32, game.camera.rotation.y));
-				std.mem.writeIntBig(u32, data[56..60], @bitCast(u32, game.camera.rotation.z));
-				std.mem.writeIntBig(u16, data[60..62], time);
-				try conn.sendUnimportant(id, &data);
 			}
-		}),
-		disconnect: type = addProtocol(&comptimeList, struct {
-			const id: u8 = 5;
-			fn receive(conn: *Connection, _: []const u8) !void {
-				try conn.disconnect();
-			}
-			pub fn disconnect(conn: *Connection) !void {
-				const noData = [0]u8 {};
-				try conn.sendUnimportant(id, &noData);
-			}
-		}),
-		entityPosition: type = addProtocol(&comptimeList, struct {
-			const id: u8 = 6;
-			const type_entity: u8 = 0;
-			const type_item: u8 = 1;
-			fn receive(_: *Connection, data: []const u8) !void {
-				if(game.world != null) {
-					const time = std.mem.readIntBig(i16, data[1..3]);
-					if(data[0] == type_entity) {
-						try entity.ClientEntityManager.serverUpdate(time, data[3..]);
-					} else if(data[0] == type_item) {
-						// TODO: ((InterpolatedItemEntityManager)Cubyz.world.itemEntityManager).readPosition(data[3..], time);
-					}
-				}
-			}
-			pub fn send(conn: *Connection, entityData: []const u8, itemData: []const u8) !void {
-				const fullEntityData = main.threadAllocator.alloc(u8, entityData.len + 3);
-				defer main.threadAllocator.free(fullEntityData);
-				fullEntityData[0] = type_entity;
-				std.mem.writeIntBig(i16, fullEntityData[1..3], @bitCast(i16, @intCast(u16, std.time.milliTimestamp() & 65535)));
-				std.mem.copy(u8, fullEntityData[3..], entityData);
-				conn.sendUnimportant(id, fullEntityData);
+		}
+		pub fn send(conn: *Connection, entityData: []const u8, itemData: []const u8) !void {
+			const fullEntityData = main.threadAllocator.alloc(u8, entityData.len + 3);
+			defer main.threadAllocator.free(fullEntityData);
+			fullEntityData[0] = type_entity;
+			std.mem.writeIntBig(i16, fullEntityData[1..3], @bitCast(i16, @intCast(u16, std.time.milliTimestamp() & 65535)));
+			std.mem.copy(u8, fullEntityData[3..], entityData);
+			conn.sendUnimportant(id, fullEntityData);
 
-				const fullItemData = main.threadAllocator.alloc(u8, itemData.len + 3);
-				defer main.threadAllocator.free(fullItemData);
-				fullItemData[0] = type_item;
-				std.mem.writeIntBig(i16, fullItemData[1..3], @bitCast(i16, @intCast(u16, std.time.milliTimestamp() & 65535)));
-				std.mem.copy(u8, fullItemData[3..], itemData);
-				conn.sendUnimportant(id, fullItemData);
-			}
-		}),
-		entity: type = addProtocol(&comptimeList, struct {
-			const id: u8 = 8;
-			const type_entity: u8 = 0;
-			const type_item: u8 = 1;
-			fn receive(_: *Connection, data: []const u8) !void {
-				const jsonArray = json.parseFromString(main.threadAllocator, data);
-				defer jsonArray.free(main.threadAllocator);
-				var i: u32 = 0;
-				while(i < jsonArray.JsonArray.items.len) : (i += 1) {
-					const elem = jsonArray.JsonArray.items[i];
-					switch(elem) {
-						.JsonInt => {
-							entity.ClientEntityManager.removeEntity(elem.as(u32, 0));
-						},
-						.JsonObject => {
-							try entity.ClientEntityManager.addEntity(elem);
-						},
-						.JsonNull => {
-							i += 1;
-							break;
-						},
-						else => {
-							std.log.warn("Unrecognized json parameters for protocol {}: {s}", .{id, data});
-						},
-					}
+			const fullItemData = main.threadAllocator.alloc(u8, itemData.len + 3);
+			defer main.threadAllocator.free(fullItemData);
+			fullItemData[0] = type_item;
+			std.mem.writeIntBig(i16, fullItemData[1..3], @bitCast(i16, @intCast(u16, std.time.milliTimestamp() & 65535)));
+			std.mem.copy(u8, fullItemData[3..], itemData);
+			conn.sendUnimportant(id, fullItemData);
+		}
+	},
+	entity: type = struct {
+		const id: u8 = 8;
+		const type_entity: u8 = 0;
+		const type_item: u8 = 1;
+		fn receive(_: *Connection, data: []const u8) !void {
+			const jsonArray = json.parseFromString(main.threadAllocator, data);
+			defer jsonArray.free(main.threadAllocator);
+			var i: u32 = 0;
+			while(i < jsonArray.JsonArray.items.len) : (i += 1) {
+				const elem = jsonArray.JsonArray.items[i];
+				switch(elem) {
+					.JsonInt => {
+						entity.ClientEntityManager.removeEntity(elem.as(u32, 0));
+					},
+					.JsonObject => {
+						try entity.ClientEntityManager.addEntity(elem);
+					},
+					.JsonNull => {
+						i += 1;
+						break;
+					},
+					else => {
+						std.log.warn("Unrecognized json parameters for protocol {}: {s}", .{id, data});
+					},
 				}
-				while(i < jsonArray.JsonArray.items.len) : (i += 1) {
-					const elem = jsonArray.JsonArray.items[i];
-					_ = elem;
-					// TODO:
+			}
+			while(i < jsonArray.JsonArray.items.len) : (i += 1) {
+				const elem = jsonArray.JsonArray.items[i];
+				_ = elem;
+				// TODO:
 //					if(json.getArray("array") != null) {
 //						Cubyz.world.itemEntityManager.loadFrom((JsonObject)json);
 //					} else if(json instanceof JsonInt) {
@@ -850,11 +850,11 @@ pub const Protocols = blk: {
 //					} else if(json instanceof JsonObject) {
 //						Cubyz.world.itemEntityManager.add(json);
 //					}
-				}
 			}
-			pub fn send(conn: *Connection, msg: []const u8) !void {
-				conn.sendImportant(id, msg);
-			}
+		}
+		pub fn send(conn: *Connection, msg: []const u8) !void {
+			conn.sendImportant(id, msg);
+		}
 //			TODO:
 //			public void sendToClients(Entity[] currentEntities, Entity[] lastSentEntities, ItemEntityManager itemEntities) {
 //				synchronized(itemEntities) {
@@ -940,22 +940,8 @@ pub const Protocols = blk: {
 //					}
 //				}
 //			}
-		}),
-	};
-	break :blk Protocols_struct{.list = comptimeList};
-};
-//public final class Protocols {
-//	public static final HandshakeProtocol HANDSHAKE = new HandshakeProtocol();
-//	public static final ChunkRequestProtocol CHUNK_REQUEST = new ChunkRequestProtocol();
-//	public static final ChunkTransmissionProtocol CHUNK_TRANSMISSION = new ChunkTransmissionProtocol();
-//	public static final PlayerPositionProtocol PLAYER_POSITION = new PlayerPositionProtocol();
-//	public static final DisconnectProtocol DISCONNECT = new DisconnectProtocol();
-//	public static final EntityPositionProtocol ENTITY_POSITION = new EntityPositionProtocol();
-//	public static final BlockUpdateProtocol BLOCK_UPDATE = new BlockUpdateProtocol();
-//	public static final EntityProtocol ENTITY = new EntityProtocol();
-//	public static final GenericUpdateProtocol GENERIC_UPDATE = new GenericUpdateProtocol();
-//	public static final ChatProtocol CHAT = new ChatProtocol();
-//}
+	},
+} = .{};
 
 
 pub const Connection = struct {
