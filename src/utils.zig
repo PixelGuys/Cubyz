@@ -337,35 +337,35 @@ pub const ThreadPool = struct {
 };
 
 pub fn GenericInterpolation(comptime elements: comptime_int) type {
-	const frames: usize = 8;
+	const frames: u32 = 8;
 	return struct {
 		lastPos: [frames][elements]f64,
 		lastVel: [frames][elements]f64,
 		lastTimes: [frames]i16,
 		frontIndex: u32,
-		currentPoint: i32,
+		currentPoint: ?u31,
 		outPos: [elements]f64,
 		outVel: [elements]f64,
 
-		pub fn initPosition(self: *@This(), initialPosition: *[elements]f64) void {
+		pub fn initPosition(self: *@This(), initialPosition: *const [elements]f64) void {
 			std.mem.copy(f64, &self.outPos, initialPosition);
 			std.mem.set([elements]f64, &self.lastPos, self.outPos);
 			std.mem.set(f64, &self.outVel, 0);
 			std.mem.set([elements]f64, &self.lastVel, self.outVel);
 			self.frontIndex = 0;
-			self.currentPoint = -1;
+			self.currentPoint = null;
 		}
 
-		pub fn init(self: *@This(), initialPosition: *[elements]f64, initialVelocity: *[elements]f64) void {
+		pub fn init(self: *@This(), initialPosition: *const [elements]f64, initialVelocity: *const [elements]f64) void {
 			std.mem.copy(f64, &self.outPos, initialPosition);
 			std.mem.set([elements]f64, &self.lastPos, self.outPos);
 			std.mem.copy(f64, &self.outVel, initialVelocity);
 			std.mem.set([elements]f64, &self.lastVel, self.outVel);
 			self.frontIndex = 0;
-			self.currentPoint = -1;
+			self.currentPoint = null;
 		}
 
-		pub fn updatePosition(self: *@This(), pos: *[elements]f64, vel: *[elements]f64, time: i16) void {
+		pub fn updatePosition(self: *@This(), pos: *const [elements]f64, vel: *const [elements]f64, time: i16) void {
 			self.frontIndex = (self.frontIndex + 1)%frames;
 			std.mem.copy(f64, &self.lastPos[self.frontIndex], pos);
 			std.mem.copy(f64, &self.lastVel[self.frontIndex], vel);
@@ -389,35 +389,35 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 			};
 		}
 
-		fn interpolateCoordinate(self: *@This(), i: u32, t: f64, tScale: f64) void {
-			if(self.outVel[i] == 0 and self.lastVel[self.currentPoint][i] == 0) {
-				self.outPos += (self.lastPos[self.currentPoint][i] - self.outPos[i])*t/tScale;
+		fn interpolateCoordinate(self: *@This(), i: usize, t: f64, tScale: f64) void {
+			if(self.outVel[i] == 0 and self.lastVel[self.currentPoint.?][i] == 0) {
+				self.outPos[i] += (self.lastPos[self.currentPoint.?][i] - self.outPos[i])*t/tScale;
 			} else {
 				// Use cubic interpolation to interpolate the velocity as well.
-				const newValue = evaluateSplineAt(t, tScale, self.outPos[i], self.outVel[i], self.lastPos[self.currentPoint][i], self.lastVel[self.currentPoint][i]);
-				self.outPos = newValue[0];
-				self.outVel = newValue[1];
+				const newValue = evaluateSplineAt(t, tScale, self.outPos[i], self.outVel[i], self.lastPos[self.currentPoint.?][i], self.lastVel[self.currentPoint.?][i]);
+				self.outPos[i] = newValue[0];
+				self.outVel[i] = newValue[1];
 			}
 		}
 
 		fn determineNextDataPoint(self: *@This(), time: i16, lastTime: *i16) void {
-			if(self.currentPoint != -1 and self.lastTimes[self.currentPoint] -% time <= 0) {
+			if(self.currentPoint != null and self.lastTimes[self.currentPoint.?] -% time <= 0) {
 				// Jump to the last used value and adjust the time to start at that point.
-				lastTime.* = self.lastTimes[self.currentPoint];
-				std.mem.copy(f64, &self.outPos, &self.lastPos[self.currentPoint]);
-				std.mem.copy(f64, &self.outVel, &self.lastVel[self.currentPoint]);
-				self.currentPoint = -1;
+				lastTime.* = self.lastTimes[self.currentPoint.?];
+				std.mem.copy(f64, &self.outPos, &self.lastPos[self.currentPoint.?]);
+				std.mem.copy(f64, &self.outVel, &self.lastVel[self.currentPoint.?]);
+				self.currentPoint = null;
 			}
 
-			if(self.currentPoint == -1) {
+			if(self.currentPoint == null) {
 				// Need a new point:
 				var smallestTime: i16 = std.math.maxInt(i16);
-				var smallestIndex: i32 = -1;
+				var smallestIndex: ?u31 = null;
 				for(self.lastTimes) |_, i| {
 					//                              ↓ Only using a future time value that is far enough away to prevent jumping.
 					if(self.lastTimes[i] -% time >= 50 and self.lastTimes[i] -% time < smallestTime) {
 						smallestTime = self.lastTimes[i] -% time;
-						smallestIndex = i;
+						smallestIndex = @intCast(u31, i);
 					}
 				}
 				self.currentPoint = smallestIndex;
@@ -434,7 +434,7 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 				deltaTime = 0;
 			}
 
-			if(self.currentPoint == -1) {
+			if(self.currentPoint == null) {
 				for(self.outPos) |*pos, i| {
 					// Just move on with the current velocity.
 					pos.* += self.outVel[i]*deltaTime;
@@ -442,7 +442,7 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 					self.outVel[i] *= std.math.pow(f64, 0.5, deltaTime);
 				}
 			} else {
-				const tScale = @intToFloat(f64, self.lastTimes[self.currentPoint] -% lastTime)/1000;
+				const tScale = @intToFloat(f64, self.lastTimes[self.currentPoint.?] -% lastTime)/1000;
 				const t = deltaTime;
 				for(self.outPos) |_, i| {
 					self.interpolateCoordinate(i, t, tScale);
@@ -460,7 +460,7 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 				deltaTime = 0;
 			}
 
-			if(self.currentPoint == -1) {
+			if(self.currentPoint == null) {
 				for(indices) |i| {
 					const index = i*coordinatesPerIndex;
 					var j: u32 = 0;
@@ -472,7 +472,7 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 					}
 				}
 			} else {
-				const tScale = @intToFloat(f64, self.lastTimes[self.currentPoint] -% lastTime)/1000;
+				const tScale = @intToFloat(f64, self.lastTimes[self.currentPoint.?] -% lastTime)/1000;
 				const t = deltaTime;
 				for(indices) |i| {
 					const index = i*coordinatesPerIndex;
@@ -491,7 +491,7 @@ pub const TimeDifference = struct {
 	firstValue: bool = true,
 
 	pub fn addDataPoint(self: *TimeDifference, time: i16) void {
-		const currentTime = @intCast(i16, std.time.milliTimestamp() & 65535);
+		const currentTime = @bitCast(i16, @intCast(u16, std.time.milliTimestamp() & 65535));
 		const timeDifference = currentTime -% time;
 		if(self.firstValue) {
 			self.difference = timeDifference;

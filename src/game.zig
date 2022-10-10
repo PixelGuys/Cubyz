@@ -44,6 +44,7 @@ pub const camera = struct {
 pub const Player = struct {
 	var pos: Vec3d = Vec3d{.x=0, .y=0, .z=0};
 	var vel: Vec3d = Vec3d{.x=0, .y=0, .z=0};
+	pub var id: u32 = 0;
 	pub var isFlying: std.atomic.Atomic(bool) = std.atomic.Atomic(bool).init(true);
 	var mutex: std.Thread.Mutex = std.Thread.Mutex{};
 
@@ -112,8 +113,8 @@ pub const World = struct {
 //		}
 //
 //		player.loadFrom(json.getObjectOrNew("player"), this);
-//		player.id = json.getInt("player_id", -1);
-//
+		Player.id = jsonObject.get(u32, "player_id", std.math.maxInt(u32));
+//		TODO:
 //		// Call mods for this new world. Mods sometimes need to do extra stuff for the specific world.
 //		ModLoader.postWorldGen(registries);
 		try assets.loadWorldAssets("serverAssets", self.blockPalette);

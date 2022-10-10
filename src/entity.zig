@@ -1,12 +1,19 @@
 const std = @import("std");
 
+const chunk = @import("chunk.zig");
+const game = @import("game.zig");
+const graphics = @import("graphics.zig");
+const c = graphics.c;
 const JsonElement = @import("json.zig").JsonElement;
+const main = @import("main.zig");
 const renderer = @import("renderer.zig");
 const settings = @import("settings.zig");
 const utils = @import("utils.zig");
 const vec = @import("vec.zig");
+const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
+const Vec4f = vec.Vec4f;
 
 pub const ClientEntity = struct {
 	interpolatedValues: utils.GenericInterpolation(6) = undefined,
@@ -23,14 +30,22 @@ pub const ClientEntity = struct {
 	name: []const u8,
 
 	pub fn init(self: *ClientEntity) void {
-		self.interpolatedValues.init();
+		const pos = [_]f64 {
+			self.pos.x,
+			self.pos.y,
+			self.pos.z,
+			@floatCast(f64, self.rot.x),
+			@floatCast(f64, self.rot.y),
+			@floatCast(f64, self.rot.z),
+		};
+		self.interpolatedValues.initPosition(&pos);
 	}
 
-	pub fn getRenderPosition(self: *ClientEntity) Vec3d {
+	pub fn getRenderPosition(self: *const ClientEntity) Vec3d {
 		return Vec3d{.x = self.pos.x, .y = self.pos.y + self.height/2, .z = self.pos.z};
 	}
 
-	pub fn updatePosition(self: *ClientEntity, pos: [3]f64, vel: [3]f64, time: i16) void {
+	pub fn updatePosition(self: *ClientEntity, pos: *const [6]f64, vel: *const [6]f64, time: i16) void {
 		self.interpolatedValues.updatePosition(pos, vel, time);
 	}
 
@@ -48,15 +63,31 @@ pub const ClientEntity = struct {
 pub const ClientEntityManager = struct {
 	var lastTime: i16 = 0;
 	var timeDifference: utils.TimeDifference = utils.TimeDifference{};
+	var uniforms: struct {
+		projectionMatrix: c_int,
+		viewMatrix: c_int,
+		texture_sampler: c_int,
+		materialHasTexture: c_int,
+		@"fog.activ": c_int,
+		@"fog.color": c_int,
+		@"fog.density": c_int,
+		light: c_int,
+		ambientLight: c_int,
+		directionalLight: c_int,
+	} = undefined;
+	var shader: graphics.Shader = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 	pub var entities: std.ArrayList(ClientEntity) = undefined;
 	pub var mutex: std.Thread.Mutex = std.Thread.Mutex{};
 
-	pub fn init() void {
+	pub fn init() !void {
 		entities = std.ArrayList(ClientEntity).init(renderer.RenderStructure.allocator); // TODO: Use world allocator.
+		shader = try graphics.Shader.create("assets/cubyz/shaders/entity_vertex.vs", "assets/cubyz/shaders/entity_fragment.fs");
+		uniforms = shader.bulkGetUniformLocation(@TypeOf(uniforms));
 	}
 
 	pub fn deinit() void {
 		entities.deinit();
+		shader.delete();
 	}
 
 	pub fn clear() void {
@@ -64,15 +95,78 @@ pub const ClientEntityManager = struct {
 		timeDifference = utils.TimeDifference{};
 	}
 
-	pub fn update() void {
-		mutex.lock();
-		defer mutex.unlock();
-		var time = @intCast(i16, std.time.milliTimestamp() & 65535);
+	fn update() void {
+		std.debug.assert(!mutex.tryLock()); // The mutex should be locked when calling this function.
+		var time = @bitCast(i16, @intCast(u16, std.time.milliTimestamp() & 65535));
 		time -%= timeDifference.difference;
 		for(entities.items) |*ent| {
 			ent.update(time, lastTime);
 		}
 		lastTime = time;
+	}
+
+	fn renderNames(projMatrix: Mat4f, playerPos: Vec3d) void {
+		std.debug.assert(!mutex.tryLock()); // The mutex should be locked when calling this function.
+
+		for(entities.items) |ent| {
+			if(ent.id == game.Player.id or ent.name.len == 0) continue; // don't render local player
+			const pos3d: Vec3d = ent.getRenderPosition().sub(playerPos);
+			const pos4f: Vec4f = Vec4f{
+				.x = @floatCast(f32, pos3d.x),
+				.y = @floatCast(f32, pos3d.y + 1.5),
+				.z = @floatCast(f32, pos3d.z),
+				.w = 1,
+			};
+
+			const rotatedPos = game.camera.viewMatrix.mulVec(pos4f);
+			const projectedPos = projMatrix.mulVec(rotatedPos);
+			if(projectedPos.z < 0) continue;
+			const xCenter = (1 + projectedPos.x/projectedPos.w)*@intToFloat(f32, main.Window.width/2);
+			const yCenter = (1 - projectedPos.y/projectedPos.w)*@intToFloat(f32, main.Window.height/2);
+
+			graphics.Draw.setColor(0xffff00ff);
+			graphics.Draw.rect(.{.x=xCenter, .y=yCenter}, .{.x=100, .y=20}); // TODO: Text rendering.
+		}
+	}
+
+	pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, directionalLight: Vec3f, playerPos: Vec3d) void {
+		mutex.lock();
+		defer mutex.unlock();
+		update();
+		shader.bind();
+		c.glUniform1i(uniforms.@"fog.activ", if(game.fog.active) c.GL_TRUE else c.GL_FALSE);
+		c.glUniform3fv(uniforms.@"fog.color", 1, @ptrCast([*c]const f32, &game.fog.color));
+		c.glUniform1f(uniforms.@"fog.density", game.fog.density);
+		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_FALSE, @ptrCast([*c]const f32, &projMatrix));
+		c.glUniform1i(uniforms.texture_sampler, 0);
+		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast([*c]const f32, &ambientLight));
+		c.glUniform3fv(uniforms.directionalLight, 1, @ptrCast([*c]const f32, &directionalLight));
+
+		for(entities.items) |ent| {
+			if(ent.id == game.Player.id) continue; // don't render local player
+
+			// TODO: Entity meshes.
+			// TODO: c.glBindVertexArray(vao);
+			c.glUniform1i(uniforms.materialHasTexture, c.GL_TRUE);
+			c.glUniform1i(uniforms.light, @bitCast(c_int, @as(u32, 0xffffffff))); // TODO: Lighting
+
+			const pos: Vec3d = ent.getRenderPosition().sub(playerPos);
+			const modelMatrix = (
+				Mat4f.identity() // TODO: .scale(scale);
+				.mul(Mat4f.rotationZ(-ent.rot.z))
+				.mul(Mat4f.rotationY(-ent.rot.y))
+				.mul(Mat4f.rotationX(-ent.rot.x))
+				.mul(Mat4f.translation(Vec3f{
+					.x = @floatCast(f32, pos.x),
+					.y = @floatCast(f32, pos.y),
+					.z = @floatCast(f32, pos.z),
+				}))
+			);
+			const modelViewMatrix = modelMatrix.mul(game.camera.viewMatrix);
+			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast([*c]const f32, &modelViewMatrix));
+			// TODO: c.glDrawElements(...);
+		}
+		renderNames(projMatrix, playerPos);
 	}
 
 	pub fn addEntity(json: JsonElement) !void {
@@ -85,7 +179,7 @@ pub const ClientEntityManager = struct {
 //			CubyzRegistries.ENTITY_REGISTRY.getByID(json.getString("type", null)),
 			.width = json.get(f64, "width", 1),
 			.height = json.get(f64, "height", 1),
-			.name = json.get([]const u8, "name", 1),
+			.name = json.get([]const u8, "name", ""),
 		};
 		ent.init();
 	}
@@ -95,7 +189,7 @@ pub const ClientEntityManager = struct {
 		defer mutex.unlock();
 		for(entities.items) |*ent, i| {
 			if(ent.id == id) {
-				entities.swapRemove(i);
+				_ = entities.swapRemove(i);
 				break;
 			}
 		}
@@ -128,7 +222,8 @@ pub const ClientEntityManager = struct {
 			remaining = remaining[24..];
 			for(entities.items) |*ent| {
 				if(ent.id == id) {
-					ent.updatePosition(pos, vel, time);
+					ent.updatePosition(&pos, &vel, time);
+					break;
 				}
 			}
 		}

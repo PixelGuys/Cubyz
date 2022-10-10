@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const blocks = @import("blocks.zig");
+const entity = @import("entity.zig");
 const graphics = @import("graphics.zig");
 const c = graphics.c;
 const Fog = graphics.Fog;
@@ -271,7 +272,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 //		}
 	c.glDepthRangef(0, 0.05);
 
-//		EntityRenderer.render(ambientLight, directionalLight, playerPosition);
+	entity.ClientEntityManager.render(game.projectionMatrix, ambientLight, .{.x=1, .y=0.5, .z=0.25}, playerPos);
 
 //		BlockDropRenderer.render(frustumInt, ambientLight, directionalLight, playerPosition);
 

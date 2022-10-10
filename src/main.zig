@@ -246,13 +246,13 @@ pub fn main() !void {
 	try renderer.init();
 	defer renderer.deinit();
 
-	entity.ClientEntityManager.init();
-	defer entity.ClientEntityManager.deinit();
-
 	network.init();
 
 	try renderer.RenderStructure.init();
 	defer renderer.RenderStructure.deinit();
+
+	try entity.ClientEntityManager.init();
+	defer entity.ClientEntityManager.deinit();
 
 	var manager = try network.ConnectionManager.init(12347, true);
 	defer manager.deinit();

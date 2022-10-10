@@ -3,6 +3,7 @@ const Allocator = std.mem.Allocator;
 
 const assets = @import("assets.zig");
 const chunk = @import("chunk.zig");
+const entity = @import("entity.zig");
 const main = @import("main.zig");
 const game = @import("game.zig");
 const settings = @import("settings.zig");
@@ -782,6 +783,164 @@ pub const Protocols = blk: {
 				try conn.sendUnimportant(id, &noData);
 			}
 		}),
+		entityPosition: type = addProtocol(&comptimeList, struct {
+			const id: u8 = 6;
+			const type_entity: u8 = 0;
+			const type_item: u8 = 1;
+			fn receive(_: *Connection, data: []const u8) !void {
+				if(game.world != null) {
+					const time = std.mem.readIntBig(i16, data[1..3]);
+					if(data[0] == type_entity) {
+						try entity.ClientEntityManager.serverUpdate(time, data[3..]);
+					} else if(data[0] == type_item) {
+						// TODO: ((InterpolatedItemEntityManager)Cubyz.world.itemEntityManager).readPosition(data[3..], time);
+					}
+				}
+			}
+			pub fn send(conn: *Connection, entityData: []const u8, itemData: []const u8) !void {
+				const fullEntityData = main.threadAllocator.alloc(u8, entityData.len + 3);
+				defer main.threadAllocator.free(fullEntityData);
+				fullEntityData[0] = type_entity;
+				std.mem.writeIntBig(i16, fullEntityData[1..3], @bitCast(i16, @intCast(u16, std.time.milliTimestamp() & 65535)));
+				std.mem.copy(u8, fullEntityData[3..], entityData);
+				conn.sendUnimportant(id, fullEntityData);
+
+				const fullItemData = main.threadAllocator.alloc(u8, itemData.len + 3);
+				defer main.threadAllocator.free(fullItemData);
+				fullItemData[0] = type_item;
+				std.mem.writeIntBig(i16, fullItemData[1..3], @bitCast(i16, @intCast(u16, std.time.milliTimestamp() & 65535)));
+				std.mem.copy(u8, fullItemData[3..], itemData);
+				conn.sendUnimportant(id, fullItemData);
+			}
+		}),
+		entity: type = addProtocol(&comptimeList, struct {
+			const id: u8 = 8;
+			const type_entity: u8 = 0;
+			const type_item: u8 = 1;
+			fn receive(_: *Connection, data: []const u8) !void {
+				const jsonArray = json.parseFromString(main.threadAllocator, data);
+				defer jsonArray.free(main.threadAllocator);
+				var i: u32 = 0;
+				while(i < jsonArray.JsonArray.items.len) : (i += 1) {
+					const elem = jsonArray.JsonArray.items[i];
+					switch(elem) {
+						.JsonInt => {
+							entity.ClientEntityManager.removeEntity(elem.as(u32, 0));
+						},
+						.JsonObject => {
+							try entity.ClientEntityManager.addEntity(elem);
+						},
+						.JsonNull => {
+							i += 1;
+							break;
+						},
+						else => {
+							std.log.warn("Unrecognized json parameters for protocol {}: {s}", .{id, data});
+						},
+					}
+				}
+				while(i < jsonArray.JsonArray.items.len) : (i += 1) {
+					const elem = jsonArray.JsonArray.items[i];
+					_ = elem;
+					// TODO:
+//					if(json.getArray("array") != null) {
+//						Cubyz.world.itemEntityManager.loadFrom((JsonObject)json);
+//					} else if(json instanceof JsonInt) {
+//						Cubyz.world.itemEntityManager.remove(json.asInt(0));
+//					} else if(json instanceof JsonObject) {
+//						Cubyz.world.itemEntityManager.add(json);
+//					}
+				}
+			}
+			pub fn send(conn: *Connection, msg: []const u8) !void {
+				conn.sendImportant(id, msg);
+			}
+//			TODO:
+//			public void sendToClients(Entity[] currentEntities, Entity[] lastSentEntities, ItemEntityManager itemEntities) {
+//				synchronized(itemEntities) {
+//					byte[] data = new byte[currentEntities.length*(4 + 3*8 + 3*8 + 3*4)];
+//					int offset = 0;
+//					JsonArray entityChanges = new JsonArray();
+//					outer:
+//					for(Entity ent : currentEntities) {
+//						Bits.putInt(data, offset, ent.id);
+//						offset += 4;
+//						Bits.putDouble(data, offset, ent.getPosition().x);
+//						offset += 8;
+//						Bits.putDouble(data, offset, ent.getPosition().y);
+//						offset += 8;
+//						Bits.putDouble(data, offset, ent.getPosition().z);
+//						offset += 8;
+//						Bits.putFloat(data, offset, ent.getRotation().x);
+//						offset += 4;
+//						Bits.putFloat(data, offset, ent.getRotation().y);
+//						offset += 4;
+//						Bits.putFloat(data, offset, ent.getRotation().z);
+//						offset += 4;
+//						Bits.putDouble(data, offset, ent.vx);
+//						offset += 8;
+//						Bits.putDouble(data, offset, ent.vy);
+//						offset += 8;
+//						Bits.putDouble(data, offset, ent.vz);
+//						offset += 8;
+//						for(int i = 0; i < lastSentEntities.length; i++) {
+//							if(lastSentEntities[i] == ent) {
+//								lastSentEntities[i] = null;
+//								continue outer;
+//							}
+//						}
+//						JsonObject entityData = new JsonObject();
+//						entityData.put("id", ent.id);
+//						entityData.put("type", ent.getType().getRegistryID().toString());
+//						entityData.put("width", ent.width);
+//						entityData.put("height", ent.height);
+//						entityData.put("name", ent.name);
+//						entityChanges.add(entityData);
+//					}
+//					assert offset == data.length;
+//					for(Entity ent : lastSentEntities) {
+//						if(ent != null) {
+//							entityChanges.add(new JsonInt(ent.id));
+//						}
+//					}
+//					if(!itemEntities.lastUpdates.array.isEmpty()) {
+//						entityChanges.add(new JsonOthers(true, false));
+//						for(JsonElement elem : itemEntities.lastUpdates.array) {
+//							entityChanges.add(elem);
+//						}
+//						itemEntities.lastUpdates.array.clear();
+//					}
+//
+//					if(!entityChanges.array.isEmpty()) {
+//						for(User user : Server.users) {
+//							if(user.receivedFirstEntityData) {
+//								user.sendImportant(this, entityChanges.toString().getBytes(StandardCharsets.UTF_8));
+//							}
+//						}
+//					}
+//					for(User user : Server.users) {
+//						if(!user.isConnected()) continue;
+//						if(!user.receivedFirstEntityData) {
+//							JsonArray fullEntityData = new JsonArray();
+//							for(Entity ent : currentEntities) {
+//								JsonObject entityData = new JsonObject();
+//								entityData.put("id", ent.id);
+//								entityData.put("type", ent.getType().getRegistryID().toString());
+//								entityData.put("width", ent.width);
+//								entityData.put("height", ent.height);
+//								entityData.put("name", ent.name);
+//								fullEntityData.add(entityData);
+//							}
+//							fullEntityData.add(new JsonOthers(true, false));
+//							fullEntityData.add(itemEntities.store());
+//							user.sendImportant(this, fullEntityData.toString().getBytes(StandardCharsets.UTF_8));
+//							user.receivedFirstEntityData = true;
+//						}
+//						Protocols.ENTITY_POSITION.send(user, data, itemEntities.getPositionAndVelocityData());
+//					}
+//				}
+//			}
+		}),
 	};
 	break :blk Protocols_struct{.list = comptimeList};
 };
@@ -1194,7 +1353,7 @@ pub const Connection = struct {
 			self.receiveKeepAlive(data[1..]);
 		} else {
 			if(Protocols.list[protocol]) |prot| {
-				try prot(self, data);
+				try prot(self, data[1..]);
 			} else {
 				std.log.warn("Received unknown protocol width id {}", .{protocol});
 			}

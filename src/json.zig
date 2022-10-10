@@ -90,7 +90,7 @@ pub const JsonElement = union(JsonType) {
 		}
 	}
 
-	pub fn free(self: *JsonElement, allocator: Allocator) void {
+	pub fn free(self: *const JsonElement, allocator: Allocator) void {
 		switch(self.*) {
 			JsonType.JsonInt, JsonType.JsonFloat, JsonType.JsonBool, JsonType.JsonNull, JsonType.JsonString => return,
 			JsonType.JsonStringOwned => {
@@ -502,7 +502,7 @@ const Parser = struct {
 				} else if(chars[index.*+1] != 'u' or chars[index.*+2] != 'l' or chars[index.*+3] != 'l') {
 					try printError(chars, index.*, "Unknown expression, interpreting as null.");
 				}
-				index.* += 3;
+				index.* += 4;
 				return JsonElement{.JsonNull={}};
 			},
 			'\"' => {

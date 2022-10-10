@@ -233,7 +233,7 @@ pub const Mat4f = struct {
 	columns: [4]Vec4f,
 	pub fn identity() Mat4f {
 		return Mat4f {
-			.columns = [4]Vec4f { // Keep in mind that his is the transpose!
+			.columns = [4]Vec4f { // Keep in mind that this is the transpose!
 				Vec4f{.x=1, .y=0, .z=0, .w=0},
 				Vec4f{.x=0, .y=1, .z=0, .w=0},
 				Vec4f{.x=0, .y=0, .z=1, .w=0},
@@ -242,11 +242,22 @@ pub const Mat4f = struct {
 		};
 	}
 
+	pub fn translation(pos: Vec3f) Mat4f {
+		return Mat4f {
+			.columns = [4]Vec4f { // Keep in mind that this is the transpose!
+				Vec4f{.x=1, .y=0, .z=0, .w=0},
+				Vec4f{.x=0, .y=1, .z=0, .w=0},
+				Vec4f{.x=0, .y=0, .z=1, .w=0},
+				Vec4f{.x=pos.x, .y=pos.y, .z=pos.z, .w=1},
+			}
+		};
+	}
+
 	pub fn rotationX(rad: f32) Mat4f {
 		const s = @sin(rad);
 		const c = @cos(rad);
 		return Mat4f {
-			.columns = [4]Vec4f { // Keep in mind that his is the transpose!
+			.columns = [4]Vec4f { // Keep in mind that this is the transpose!
 				Vec4f{.x=1, .y=0, .z=0, .w=0},
 				Vec4f{.x=0, .y=c, .z=s, .w=0},
 				Vec4f{.x=0,.y=-s, .z=c, .w=0},
@@ -259,7 +270,7 @@ pub const Mat4f = struct {
 		const s = @sin(rad);
 		const c = @cos(rad);
 		return Mat4f {
-			.columns = [4]Vec4f { // Keep in mind that his is the transpose!
+			.columns = [4]Vec4f { // Keep in mind that this is the transpose!
 				Vec4f{.x=c, .y=0,.z=-s, .w=0},
 				Vec4f{.x=0, .y=1, .z=0, .w=0},
 				Vec4f{.x=s, .y=0, .z=c, .w=0},
@@ -272,7 +283,7 @@ pub const Mat4f = struct {
 		const s = @sin(rad);
 		const c = @cos(rad);
 		return Mat4f {
-			.columns = [4]Vec4f { // Keep in mind that his is the transpose!
+			.columns = [4]Vec4f { // Keep in mind that this is the transpose!
 				Vec4f{.x=c, .y=s, .z=0, .w=0},
 				Vec4f{.x=-s,.y=c, .z=0, .w=0},
 				Vec4f{.x=0, .y=0, .z=1, .w=0},
