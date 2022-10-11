@@ -506,8 +506,7 @@ pub const RenderStructure = struct {
 
 	pub fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: Vec3d, renderDistance: i32, LODFactor: f32, frustum: Frustum, meshes: *std.ArrayList(*chunk.meshing.ChunkMesh)) !void {
 		if(lastRD != renderDistance and lastFactor != LODFactor) {
-			// TODO:
-//			Protocols.GENERIC_UPDATE.sendRenderDistance(Cubyz.world.serverConnection, renderDistance, LODFactor);
+			try network.Protocols.genericUpdate.sendRenderDistance(conn, renderDistance, LODFactor);
 		}
 		const px = @floatToInt(chunk.ChunkCoordinate, playerPos.x);
 		const py = @floatToInt(chunk.ChunkCoordinate, playerPos.y);

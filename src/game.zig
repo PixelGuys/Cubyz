@@ -48,6 +48,12 @@ pub const Player = struct {
 	pub var isFlying: std.atomic.Atomic(bool) = std.atomic.Atomic(bool).init(true);
 	var mutex: std.Thread.Mutex = std.Thread.Mutex{};
 
+	pub fn setPosBlocking(newPos: Vec3d) void {
+		mutex.lock();
+		defer mutex.unlock();
+		pos = newPos;
+	}
+
 	pub fn getPosBlocking() Vec3d {
 		mutex.lock();
 		defer mutex.unlock();
@@ -70,7 +76,7 @@ pub const World = struct {
 	clearColor: Vec4f = Vec4f{.x=0, .y=0, .z=0, .w=1},
 	name: []const u8,
 	milliTime: i64,
-	gameTime: i64 = 0,
+	gameTime: std.atomic.Atomic(i64) = std.atomic.Atomic(i64).init(0),
 	spawn: Vec3f = undefined,
 	blockPalette: *assets.BlockPalette = undefined,
 	// TODO:
@@ -124,11 +130,14 @@ pub const World = struct {
 		var newTime: i64 = std.time.milliTimestamp();
 		while(self.milliTime +% 100 -% newTime < 0) { // TODO: Just use milli time directly?
 			self.milliTime +%= 100;
-			self.gameTime +%= 1;
+			var curTime = self.gameTime.load(.Monotonic);
+			while(self.gameTime.tryCompareAndSwap(curTime, curTime +% 1, .Monotonic, .Monotonic)) |actualTime| {
+				curTime = actualTime;
+			}
 		}
 		// Ambient light:
 		{
-			var dayTime = std.math.absInt(@mod(self.gameTime, dayCycle) -% dayCycle/2) catch 0;
+			var dayTime = std.math.absInt(@mod(self.gameTime.load(.Monotonic), dayCycle) -% dayCycle/2) catch 0;
 			if(dayTime < dayCycle/4 - dayCycle/16) {
 				self.ambientLight = 0.1;
 				self.clearColor.x = 0;

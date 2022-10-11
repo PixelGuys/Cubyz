@@ -815,8 +815,6 @@ pub const Protocols: struct {
 	},
 	entity: type = struct {
 		const id: u8 = 8;
-		const type_entity: u8 = 0;
-		const type_item: u8 = 1;
 		fn receive(_: *Connection, data: []const u8) !void {
 			const jsonArray = json.parseFromString(main.threadAllocator, data);
 			defer jsonArray.free(main.threadAllocator);
@@ -940,6 +938,211 @@ pub const Protocols: struct {
 //					}
 //				}
 //			}
+	},
+	genericUpdate: type = struct {
+		const id: u8 = 9;
+		const type_renderDistance: u8 = 0;
+		const type_teleport: u8 = 1;
+		const type_cure: u8 = 2;
+		const type_inventoryAdd: u8 = 3;
+		const type_inventoryFull: u8 = 4;
+		const type_inventoryClear: u8 = 5;
+		const type_itemStackDrop: u8 = 6;
+		const type_itemStackCollect: u8 = 7;
+		const type_timeAndBiome: u8 = 8;
+		fn receive(_: *Connection, data: []const u8) !void {
+			switch(data[0]) {
+				type_renderDistance => {
+					const renderDistance = std.mem.readIntBig(i32, data[1..5]);
+					const LODFactor = @bitCast(f32, std.mem.readIntBig(u32, data[5..9]));
+					_ = renderDistance;
+					_ = LODFactor;
+					// TODO:
+//					if(conn instanceof User) {
+//						User user = (User)conn;
+//						user.renderDistance = renderDistance;
+//						user.LODFactor = LODFactor;
+//					}
+				},
+				type_teleport => {
+					game.Player.setPosBlocking(Vec3d{
+						.x = @bitCast(f64, std.mem.readIntBig(u64, data[1..9])),
+						.y = @bitCast(f64, std.mem.readIntBig(u64, data[9..17])),
+						.z = @bitCast(f64, std.mem.readIntBig(u64, data[17..25])),
+					});
+				},
+				type_cure => {
+					// TODO:
+//					Cubyz.player.health = Cubyz.player.maxHealth;
+//					Cubyz.player.hunger = Cubyz.player.maxHunger;
+				},
+				type_inventoryAdd => {
+					const slot = std.mem.readIntBig(u32, data[1..5]);
+					const amount = std.mem.readIntBig(u32, data[5..9]);
+					_ = slot;
+					_ = amount;
+					// TODO:
+//					((User)conn).player.getInventory().getStack(slot).add(amount);
+				},
+				type_inventoryFull => {
+					// TODO:
+//					JsonObject json = JsonParser.parseObjectFromString(new String(data, offset + 1, length - 1, StandardCharsets.UTF_8));
+//					((User)conn).player.getInventory().loadFrom(json, Server.world.getCurrentRegistries());
+				},
+				type_inventoryClear => {
+					// TODO:
+//					if(conn instanceof User) {
+//						Inventory inv = ((User)conn).player.getInventory();
+//						for (int i = 0; i < inv.getCapacity(); i++) {
+//							inv.getStack(i).clear();
+//						}
+//					} else {
+//						Inventory inv = Cubyz.player.getInventory_AND_DONT_FORGET_TO_SEND_CHANGES_TO_THE_SERVER();
+//						for (int i = 0; i < inv.getCapacity(); i++) {
+//							inv.getStack(i).clear();
+//						}
+//						clearInventory(conn); // Needs to send changes back to server, to ensure correct order.
+//					}
+				},
+				type_itemStackDrop => {
+					// TODO:
+//					JsonObject json = JsonParser.parseObjectFromString(new String(data, offset + 1, length - 1, StandardCharsets.UTF_8));
+//					Item item = Item.load(json, Cubyz.world.registries);
+//					if (item == null) {
+//						break;
+//					}
+//					Server.world.drop(
+//						new ItemStack(item, json.getInt("amount", 1)),
+//						new Vector3d(json.getDouble("x", 0), json.getDouble("y", 0), json.getDouble("z", 0)),
+//						new Vector3f(json.getFloat("dirX", 0), json.getFloat("dirY", 0), json.getFloat("dirZ", 0)),
+//						json.getFloat("vel", 0),
+//						Server.UPDATES_PER_SEC*5
+//					);
+				},
+				type_itemStackCollect => {
+					// TODO:
+//					JsonObject json = JsonParser.parseObjectFromString(new String(data, offset + 1, length - 1, StandardCharsets.UTF_8));
+//					Item item = Item.load(json, Cubyz.world.registries);
+//					if (item == null) {
+//						break;
+//					}
+//					int remaining = Cubyz.player.getInventory_AND_DONT_FORGET_TO_SEND_CHANGES_TO_THE_SERVER().addItem(item, json.getInt("amount", 1));
+//					sendInventory_full(Cubyz.world.serverConnection, Cubyz.player.getInventory_AND_DONT_FORGET_TO_SEND_CHANGES_TO_THE_SERVER());
+//					if(remaining != 0) {
+//						// Couldn't collect everything → drop it again.
+//						itemStackDrop(Cubyz.world.serverConnection, new ItemStack(item, remaining), Cubyz.player.getPosition(), Camera.getDirection(), 0);
+//					}
+				},
+				type_timeAndBiome => {
+					if(game.world) |world| {
+						const jsonObject = json.parseFromString(main.threadAllocator, data[1..]);
+						defer jsonObject.free(main.threadAllocator);
+						var expectedTime = jsonObject.get(i64, "time", 0);
+						var curTime = world.gameTime.load(.Monotonic);
+						if(std.math.absInt(curTime -% expectedTime) catch std.math.maxInt(i64) >= 1000) {
+							world.gameTime.store(expectedTime, .Monotonic);
+						} else if(curTime < expectedTime) { // world.gameTime++
+							while(world.gameTime.tryCompareAndSwap(curTime, curTime +% 1, .Monotonic, .Monotonic)) |actualTime| {
+								curTime = actualTime;
+							}
+						} else { // world.gameTime--
+							while(world.gameTime.tryCompareAndSwap(curTime, curTime -% 1, .Monotonic, .Monotonic)) |actualTime| {
+								curTime = actualTime;
+							}
+						}
+						// TODO:
+//						world.playerBiome = world.registries.biomeRegistry.getByID(json.getString("biome", ""));
+					}
+				},
+				else => |unrecognizedType| {
+					std.log.err("Unrecognized type for genericUpdateProtocol: {}. Data: {any}", .{unrecognizedType, data});
+				},
+			}
+		}
+
+		fn addHeaderAndSendImportant(conn: *Connection, header: u8, data: []const u8) !void {
+			const headeredData = try main.threadAllocator.alloc(u8, data.len + 1);
+			defer main.threadAllocator.free(headeredData);
+			headeredData[0] = header;
+			std.mem.copy(u8, headeredData[1..], data);
+			try conn.sendImportant(id, headeredData);
+		}
+
+		fn addHeaderAndSendUnimportant(conn: *Connection, header: u8, data: []const u8) !void {
+			const headeredData = try main.threadAllocator.alloc(u8, data.len + 1);
+			defer main.threadAllocator.free(headeredData);
+			headeredData[0] = header;
+			std.mem.copy(u8, headeredData[1..], data);
+			try conn.sendUnimportant(id, headeredData);
+		}
+
+		pub fn sendRenderDistance(conn: *Connection, renderDistance: i32, LODFactor: f32) !void {
+			var data: [9]u8 = undefined;
+			data[0] = type_renderDistance;
+			std.mem.writeIntBig(i32, data[1..5], renderDistance);
+			std.mem.writeIntBig(u32, data[5..9], @bitCast(u32, LODFactor));
+			try conn.sendImportant(id, &data);
+		}
+
+		pub fn sendTPCoordinates(conn: *Connection, pos: Vec3d) !void {
+			var data: [1+24]u8 = undefined;
+			data[0] = type_teleport;
+			std.mem.writeIntBig(u64, data[1..9], @bitCast(u64, pos.x));
+			std.mem.writeIntBig(u64, data[9..17], @bitCast(u64, pos.y));
+			std.mem.writeIntBig(u64, data[17..25], @bitCast(u64, pos.z));
+			try conn.sendImportant(id, &data);
+		}
+
+		pub fn sendCure(conn: *Connection) !void {
+			var data: [1]u8 = undefined;
+			data[0] = type_cure;
+			try conn.sendImportant(id, &data);
+		}
+
+		pub fn sendInventory_ItemStack_add(conn: *Connection, slot: u32, amount: u32) !void {
+			var data: [9]u8 = undefined;
+			data[0] = type_inventoryAdd;
+			std.mem.writeIntBig(u32, data[1..5], slot);
+			std.mem.writeIntBig(u32, data[5..9], amount);
+			try conn.sendImportant(id, &data);
+		}
+
+		// TODO:
+//	public void sendInventory_full(ServerConnection conn, Inventory inv) {
+//		addHeaderAndSendImportant(conn, INVENTORY_FULL, inv.save().toString().getBytes(StandardCharsets.UTF_8));
+//	}
+
+		pub fn clearInventory(conn: *Connection) !void {
+			var data: [1]u8 = undefined;
+			data[0] = type_inventoryClear;
+			try conn.sendImportant(id, &data);
+		}
+
+		// TODO:
+//	public void itemStackDrop(ServerConnection conn, ItemStack stack, Vector3d pos, Vector3f dir, float vel) {
+//		JsonObject json = stack.store();
+//		json.put("x", pos.x);
+//		json.put("y", pos.y);
+//		json.put("z", pos.z);
+//		json.put("dirX", dir.x);
+//		json.put("dirY", dir.y);
+//		json.put("dirZ", dir.z);
+//		json.put("vel", vel);
+//		addHeaderAndSendImportant(conn, ITEM_STACK_DROP, json.toString().getBytes(StandardCharsets.UTF_8));
+//	}
+
+		// TODO:
+//	public void itemStackCollect(User user, ItemStack stack) {
+//		addHeaderAndSendImportant(user, ITEM_STACK_COLLECT, stack.store().toString().getBytes(StandardCharsets.UTF_8));
+//	}
+
+		// TODO:
+//	public void sendTimeAndBiome(User user, ServerWorld world) {
+//		JsonObject data = new JsonObject();
+//		data.put("time", world.gameTime);
+//		data.put("biome", world.getBiome((int)user.player.getPosition().x, (int)user.player.getPosition().y, (int)user.player.getPosition().z).getRegistryID().toString());
+//		addHeaderAndSendUnimportant(user, TIME_AND_BIOME, data.toString().getBytes(StandardCharsets.UTF_8));
+//	}
 	},
 } = .{};
 
