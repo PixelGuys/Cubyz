@@ -491,7 +491,7 @@ pub const TimeDifference = struct {
 	firstValue: bool = true,
 
 	pub fn addDataPoint(self: *TimeDifference, time: i16) void {
-		const currentTime = @bitCast(i16, @intCast(u16, std.time.milliTimestamp() & 65535));
+		const currentTime = @truncate(i16, std.time.milliTimestamp());
 		const timeDifference = currentTime -% time;
 		if(self.firstValue) {
 			self.difference = timeDifference;

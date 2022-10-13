@@ -801,14 +801,14 @@ pub const Protocols: struct {
 			const fullEntityData = main.threadAllocator.alloc(u8, entityData.len + 3);
 			defer main.threadAllocator.free(fullEntityData);
 			fullEntityData[0] = type_entity;
-			std.mem.writeIntBig(i16, fullEntityData[1..3], @bitCast(i16, @intCast(u16, std.time.milliTimestamp() & 65535)));
+			std.mem.writeIntBig(i16, fullEntityData[1..3], @truncate(i16, std.time.milliTimestamp()));
 			std.mem.copy(u8, fullEntityData[3..], entityData);
 			conn.sendUnimportant(id, fullEntityData);
 
 			const fullItemData = main.threadAllocator.alloc(u8, itemData.len + 3);
 			defer main.threadAllocator.free(fullItemData);
 			fullItemData[0] = type_item;
-			std.mem.writeIntBig(i16, fullItemData[1..3], @bitCast(i16, @intCast(u16, std.time.milliTimestamp() & 65535)));
+			std.mem.writeIntBig(i16, fullItemData[1..3], @truncate(i16, std.time.milliTimestamp()));
 			std.mem.copy(u8, fullItemData[3..], itemData);
 			conn.sendUnimportant(id, fullItemData);
 		}
