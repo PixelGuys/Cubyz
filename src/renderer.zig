@@ -203,7 +203,6 @@ pub fn render(playerPosition: Vec3d) !void {
 
 pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPos: Vec3d) !void {
 	_ = world;
-	buffers.bind();
 	buffers.clearAndBind(Vec4f{.x=skyColor.x, .y=skyColor.y, .z=skyColor.z, .w=1});
 //	TODO:// Clean up old chunk meshes:
 //	Meshes.cleanUp();
