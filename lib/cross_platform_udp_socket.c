@@ -43,7 +43,11 @@ int init(unsigned short localPort) {
 	bindingAddr.sin_addr.s_addr = INADDR_ANY;
 	memset(&bindingAddr.sin_zero, 0, 8);
 	if(checkError(bind(socketID, (const struct sockaddr*)&bindingAddr, sizeof(bindingAddr))) == -1) {
+#ifdef _WIN32
+		closesocket(socketID);
+#else
 		close(socketID);
+#endif
 		return -1;
 	};
 	return socketID;
