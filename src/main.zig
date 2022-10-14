@@ -218,6 +218,7 @@ pub fn main() !void {
 	};
 
 	// init logging.
+	try std.fs.cwd().makePath("logs");
 	logFile = std.fs.cwd().createFile("logs/latest.log", .{}) catch unreachable;
 	defer logFile.close();
 
