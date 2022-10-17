@@ -2,6 +2,7 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 
 const assets = @import("assets.zig");
+const Block = @import("blocks.zig").Block;
 const chunk = @import("chunk.zig");
 const entity = @import("entity.zig");
 const main = @import("main.zig");
@@ -690,14 +691,15 @@ pub const Protocols: struct {
 				.voxelSize = @intCast(chunk.UChunkCoordinate, std.mem.readIntBig(chunk.ChunkCoordinate, data[12..16])),
 			};
 			const _inflatedData = try utils.Compression.inflate(main.threadAllocator, data[16..]);
+			if(_inflatedData.len != chunk.chunkVolume*4) {
+				std.log.err("Transmission of chunk has invalid size: {}. Input data: {any}, After inflate: {any}", .{_inflatedData.len, data, _inflatedData});
+			}
 			data = _inflatedData;
 			defer main.threadAllocator.free(_inflatedData);
 			var ch = try renderer.RenderStructure.allocator.create(chunk.Chunk);
 			ch.init(pos);
 			for(ch.blocks) |*block| {
-				var blockTypeAndData = std.mem.readIntBig(u32, data[0..4]);
-				block.typ = @intCast(u16, blockTypeAndData & 0xffff);
-				block.data = @intCast(u16, blockTypeAndData >> 16);
+				block.* = Block.fromInt(std.mem.readIntBig(u32, data[0..4]));
 				data = data[4..];
 			}
 			try renderer.RenderStructure.updateChunkMesh(ch);
@@ -811,6 +813,30 @@ pub const Protocols: struct {
 			std.mem.writeIntBig(i16, fullItemData[1..3], @truncate(i16, std.time.milliTimestamp()));
 			std.mem.copy(u8, fullItemData[3..], itemData);
 			conn.sendUnimportant(id, fullItemData);
+		}
+	},
+	blockUpdate: type = struct {
+		const id: u8 = 7;
+		fn receive(_: *Connection, data: []const u8) !void {
+			var x = std.mem.readIntBig(chunk.ChunkCoordinate, data[0..4]);
+			var y = std.mem.readIntBig(chunk.ChunkCoordinate, data[4..8]);
+			var z = std.mem.readIntBig(chunk.ChunkCoordinate, data[8..12]);
+			var newBlock = Block.fromInt(std.mem.readIntBig(u32, data[12..16]));
+			try renderer.RenderStructure.updateBlock(x, y, z, newBlock);
+			// TODO:
+//		if(conn instanceof User) {
+//			Server.world.updateBlock(x, y, z, newBlock);
+//		} else {
+//			Cubyz.world.remoteUpdateBlock(x, y, z, newBlock);
+//		}
+		}
+		pub fn send(conn: *Connection, x: chunk.ChunkCoordinate, y: chunk.ChunkCoordinate, z: chunk.ChunkCoordinate, newBlock: Block) !void {
+			var data: [16]u8 = undefined;
+			std.mem.writeIntBig(chunk.ChunkCoordinate, data[0..4], x);
+			std.mem.writeIntBig(chunk.ChunkCoordinate, data[4..8], y);
+			std.mem.writeIntBig(chunk.ChunkCoordinate, data[8..12], z);
+			std.mem.writeIntBig(chunk.ChunkCoordinate, data[12..16], newBlock.toInt());
+			try conn.sendImportant(id, &data);
 		}
 	},
 	entity: type = struct {

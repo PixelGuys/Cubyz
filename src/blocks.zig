@@ -102,6 +102,12 @@ pub fn getByID(id: []const u8) u16 {
 pub const Block = packed struct {
 	typ: u16,
 	data: u16,
+	pub fn toInt(self: Block) u32 {
+		return @as(u32, self.typ) | @as(u32, self.data)<<16;
+	}
+	pub fn fromInt(self: u32) Block {
+		return Block{.typ=@truncate(u16, self), .data=@intCast(u16, self>>16)};
+	}
 	pub fn lightingTransparent(self: Block) bool {
 		return _lightingTransparent[self.typ];
 	}

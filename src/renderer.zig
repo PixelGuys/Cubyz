@@ -444,6 +444,14 @@ pub const RenderStructure = struct {
 	var lastSize: [settings.highestLOD + 1]chunk.ChunkCoordinate = [_]chunk.ChunkCoordinate{0} ** (settings.highestLOD + 1);
 	var lodMutex: [settings.highestLOD + 1]std.Thread.Mutex = [_]std.Thread.Mutex{std.Thread.Mutex{}} ** (settings.highestLOD + 1);
 	var mutex = std.Thread.Mutex{};
+	var blockUpdateMutex = std.Thread.Mutex{};
+	const BlockUpdate = struct {
+		x: chunk.ChunkCoordinate,
+		y: chunk.ChunkCoordinate,
+		z: chunk.ChunkCoordinate,
+		newBlock: blocks.Block,
+	};
+	var blockUpdateList: std.ArrayList(BlockUpdate) = undefined;
 
 	pub fn init() !void {
 		lastRD = 0;
@@ -451,6 +459,7 @@ pub const RenderStructure = struct {
 		gpa = std.heap.GeneralPurposeAllocator(.{}){};
 		allocator = gpa.allocator();
 		updatableList = std.ArrayList(chunk.ChunkPosition).init(allocator);
+		blockUpdateList = std.ArrayList(BlockUpdate).init(allocator);
 		clearList = std.ArrayList(*ChunkMeshNode).init(allocator);
 		for(storageLists) |*storageList| {
 			storageList.* = try allocator.alloc(?*ChunkMeshNode, 0);
@@ -472,6 +481,7 @@ pub const RenderStructure = struct {
 			chunkMesh.mesh.deinit();
 			allocator.destroy(chunkMesh);
 		}
+		blockUpdateList.deinit();
 		clearList.deinit();
 		game.world.?.blockPalette.deinit();
 		if(gpa.deinit()) {
@@ -654,6 +664,17 @@ pub const RenderStructure = struct {
 	}
 
 	pub fn updateMeshes(targetTime: i64) !void {
+		{ // First of all process all the block updates:
+			blockUpdateMutex.lock();
+			defer blockUpdateMutex.unlock();
+			for(blockUpdateList.items) |blockUpdate| {
+				const pos = chunk.ChunkPosition{.wx=blockUpdate.x, .wy=blockUpdate.y, .wz=blockUpdate.z, .voxelSize=1};
+				if(_getNode(pos)) |node| {
+					try node.mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock);
+				}
+			}
+			blockUpdateList.clearRetainingCapacity();
+		}
 		mutex.lock();
 		defer mutex.unlock();
 		while(updatableList.items.len != 0) {
@@ -756,6 +777,12 @@ pub const RenderStructure = struct {
 			allocator.destroy(self);
 		}
 	};
+
+	pub fn updateBlock(x: chunk.ChunkCoordinate, y: chunk.ChunkCoordinate, z: chunk.ChunkCoordinate, newBlock: blocks.Block) !void {
+		blockUpdateMutex.lock();
+		try blockUpdateList.append(BlockUpdate{.x=x, .y=y, .z=z, .newBlock=newBlock});
+		defer blockUpdateMutex.unlock();
+	}
 
 	pub fn updateChunkMesh(mesh: *chunk.Chunk) !void {
 		try MeshGenerationTask.schedule(mesh);
