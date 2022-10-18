@@ -425,6 +425,70 @@ pub const SSBO = struct {
 	}
 };
 
+pub const FrameBuffer = struct {
+	frameBuffer: c_uint,
+	texture: c_uint,
+	hasDepthBuffer: bool,
+	renderBuffer: c_uint,
+
+	pub fn init(self: *FrameBuffer, hasDepthBuffer: bool) void {
+		self.* = FrameBuffer{
+			.frameBuffer = undefined,
+			.texture = undefined,
+			.renderBuffer = undefined,
+			.hasDepthBuffer = hasDepthBuffer,
+		};
+		c.glGenFramebuffers(1, &self.frameBuffer);
+		if(hasDepthBuffer) {
+			c.glGenRenderbuffers(1, &self.renderBuffer);
+		}
+		c.glGenTextures(1, &self.texture);
+	}
+
+	pub fn deinit(self: *FrameBuffer) void {
+		c.glDeleteFramebuffers(1, &self.frameBuffer);
+		if(self.hasDepthBuffer) {
+			c.glDeleteRenderbuffers(1, &self.renderBuffer);
+		}
+		c.glDeleteTextures(1, &self.texture);
+	}
+
+	pub fn updateSize(self: *FrameBuffer, width: u31, height: u31, textureFilter: c_int, textureWrap: c_int) void {
+		c.glBindFramebuffer(c.GL_FRAMEBUFFER, self.frameBuffer);
+		if(self.hasDepthBuffer) {
+			c.glBindRenderbuffer(c.GL_RENDERBUFFER, self.renderBuffer);
+			c.glRenderbufferStorage(c.GL_RENDERBUFFER, c.GL_DEPTH24_STENCIL8, width, height);
+			c.glFramebufferRenderbuffer(c.GL_FRAMEBUFFER, c.GL_DEPTH_STENCIL_ATTACHMENT, c.GL_RENDERBUFFER, self.renderBuffer);
+		}
+
+		c.glBindTexture(c.GL_TEXTURE_2D, self.texture);
+		c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, textureFilter);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, textureFilter);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, textureWrap);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, textureWrap);
+		c.glFramebufferTexture2D(c.GL_FRAMEBUFFER, c.GL_COLOR_ATTACHMENT0, c.GL_TEXTURE_2D, self.texture, 0);
+	}
+
+	pub fn validate(self: *FrameBuffer) bool {
+		c.glBindFramebuffer(c.GL_FRAMEBUFFER, self.frameBuffer);
+		defer c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
+		if(c.glCheckFramebufferStatus(c.GL_FRAMEBUFFER) != c.GL_FRAMEBUFFER_COMPLETE) {
+			std.log.err("Frame Buffer Object error: {}", .{c.glCheckFramebufferStatus(c.GL_FRAMEBUFFER)});
+			return false;
+		}
+		return true;
+	}
+
+	pub fn bind(self: *FrameBuffer) void {
+		c.glBindFramebuffer(c.GL_FRAMEBUFFER, self.frameBuffer);
+	}
+
+	pub fn unbind() void {
+		c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
+	}
+};
+
 pub const TextureArray = struct {
 	textureID: c_uint,
 

@@ -47,12 +47,14 @@ pub fn init() !void {
 	deferredRenderPassShader = try Shader.create("assets/cubyz/shaders/deferred_render_pass.vs", "assets/cubyz/shaders/deferred_render_pass.fs");
 	deferredUniforms = deferredRenderPassShader.bulkGetUniformLocation(@TypeOf(deferredUniforms));
 	buffers.init();
+	try Bloom.init();
 }
 
 pub fn deinit() void {
 	fogShader.delete();
 	deferredRenderPassShader.delete();
 	buffers.deinit();
+	Bloom.deinit();
 }
 
 const buffers = struct {
@@ -321,9 +323,9 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 //				glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 //			}
 //		}
-//		if(ClientSettings.BLOOM) {
-//			BloomRenderer.render(buffers, Window.getWidth(), Window.getHeight()); // TODO: Use true width/height
-//		}
+	if(settings.bloom) {
+		Bloom.render(main.Window.width, main.Window.height);
+	}
 	buffers.unbind();
 	buffers.bindTextures();
 	deferredRenderPassShader.bind();
@@ -384,6 +386,110 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 //		return output;
 //	}
 //}
+
+const Bloom = struct {
+	var buffer1: graphics.FrameBuffer = undefined;
+	var buffer2: graphics.FrameBuffer = undefined;
+	var extractedBuffer: graphics.FrameBuffer = undefined;
+	var width: u31 = std.math.maxInt(u31);
+	var height: u31 = std.math.maxInt(u31);
+	var firstPassShader: graphics.Shader = undefined;
+	var secondPassShader: graphics.Shader = undefined;
+	var colorExtractShader: graphics.Shader = undefined;
+	var scaleShader: graphics.Shader = undefined;
+
+	pub fn init() !void {
+		buffer1.init(false);
+		buffer2.init(false);
+		extractedBuffer.init(false);
+		firstPassShader = try graphics.Shader.create("assets/cubyz/shaders/bloom/first_pass.vs", "assets/cubyz/shaders/bloom/first_pass.fs");
+		secondPassShader = try graphics.Shader.create("assets/cubyz/shaders/bloom/second_pass.vs", "assets/cubyz/shaders/bloom/second_pass.fs");
+		colorExtractShader = try graphics.Shader.create("assets/cubyz/shaders/bloom/color_extractor.vs", "assets/cubyz/shaders/bloom/color_extractor.fs");
+		scaleShader = try graphics.Shader.create("assets/cubyz/shaders/bloom/scale.vs", "assets/cubyz/shaders/bloom/scale.fs");
+	}
+
+	pub fn deinit() void {
+		buffer1.deinit();
+		buffer2.deinit();
+		extractedBuffer.deinit();
+		firstPassShader.delete();
+		secondPassShader.delete();
+		colorExtractShader.delete();
+		scaleShader.delete();
+	}
+
+	fn extractImageData() void {
+		colorExtractShader.bind();
+		buffers.bindTextures();
+		extractedBuffer.bind();
+		c.glBindVertexArray(graphics.Draw.rectVAO);
+		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+	}
+
+	fn downscale() void {
+		scaleShader.bind();
+		c.glActiveTexture(c.GL_TEXTURE3);
+		c.glBindTexture(c.GL_TEXTURE_2D, extractedBuffer.texture);
+		buffer1.bind();
+		c.glBindVertexArray(graphics.Draw.rectVAO);
+		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+	}
+
+	fn firstPass() void {
+		firstPassShader.bind();
+		c.glActiveTexture(c.GL_TEXTURE3);
+		c.glBindTexture(c.GL_TEXTURE_2D, buffer1.texture);
+		buffer2.bind();
+		c.glBindVertexArray(graphics.Draw.rectVAO);
+		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+	}
+
+	fn secondPass() void {
+		secondPassShader.bind();
+		c.glActiveTexture(c.GL_TEXTURE3);
+		c.glBindTexture(c.GL_TEXTURE_2D, buffer2.texture);
+		buffer1.bind();
+		c.glBindVertexArray(graphics.Draw.rectVAO);
+		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+	}
+
+	fn upscale() void {
+		scaleShader.bind();
+		c.glActiveTexture(c.GL_TEXTURE3);
+		c.glBindTexture(c.GL_TEXTURE_2D, buffer1.texture);
+		buffers.bind();
+		c.glBindVertexArray(graphics.Draw.rectVAO);
+		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+	}
+
+	pub fn render(currentWidth: u31, currentHeight: u31) void {
+		if(width != currentWidth or height != currentHeight) {
+			width = currentWidth;
+			height = currentHeight;
+			buffer1.updateSize(width/2, height/2, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
+			std.debug.assert(buffer1.validate());
+			buffer2.updateSize(width/2, height/2, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
+			std.debug.assert(buffer2.validate());
+			extractedBuffer.updateSize(width, height, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
+			std.debug.assert(extractedBuffer.validate());
+		}
+		c.glDisable(c.GL_DEPTH_TEST);
+		c.glDisable(c.GL_CULL_FACE);
+
+		extractImageData();
+		c.glViewport(0, 0, width/2, height/2);
+		downscale();
+		firstPass();
+		secondPass();
+		c.glViewport(0, 0, width, height);
+		c.glBlendFunc(c.GL_ONE, c.GL_ONE);
+		upscale();
+
+		c.glEnable(c.GL_DEPTH_TEST);
+		c.glEnable(c.GL_CULL_FACE);
+		c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
+	}
+};
 
 pub const Frustum = struct {
 	const Plane = struct {

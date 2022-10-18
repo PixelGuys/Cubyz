@@ -17,3 +17,5 @@ pub var mouseSensitivity: f32 = 1;
 
 pub var renderDistance: i32 = 4;
 pub var LODFactor: f32 = 2.0;
+
+pub var bloom: bool = true;

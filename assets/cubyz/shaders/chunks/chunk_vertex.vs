@@ -32,11 +32,11 @@ uniform int time;
 
 const float[6] outNormalVariations = float[6](
 	1.0, //vec3(0, 1, 0),
-	0.8, //vec3(0, -1, 0),
-	0.9, //vec3(1, 0, 0),
-	0.9, //vec3(-1, 0, 0),
-	0.95, //vec3(0, 0, 1),
-	0.8 //vec3(0, 0, -1)
+	0.88, //vec3(0, -1, 0),
+	0.92, //vec3(1, 0, 0),
+	0.92, //vec3(-1, 0, 0),
+	0.96, //vec3(0, 0, 1),
+	0.88 //vec3(0, 0, -1)
 );
 const vec3[6] normals = vec3[6](
 	vec3(0, 1, 0),
