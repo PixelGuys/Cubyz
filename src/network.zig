@@ -1312,7 +1312,7 @@ pub const Connection = struct {
 
 		var remaining: []const u8 = data;
 		while(remaining.len != 0) {
-			var copyableSize = @minimum(remaining.len, self.streamBuffer.len - self.streamPosition);
+			var copyableSize = @min(remaining.len, self.streamBuffer.len - self.streamPosition);
 			std.mem.copy(u8, self.streamBuffer[self.streamPosition..], remaining[0..copyableSize]);
 			remaining = remaining[copyableSize..];
 			self.streamPosition += @intCast(u32, copyableSize);
@@ -1501,7 +1501,7 @@ pub const Connection = struct {
 			defer main.threadAllocator.free(data);
 			var remaining = data[0..];
 			while(remaining.len != 0) {
-				dataAvailable = @minimum(self.lastReceivedPackets[id & 65535].?.len - newIndex, remaining.len);
+				dataAvailable = @min(self.lastReceivedPackets[id & 65535].?.len - newIndex, remaining.len);
 				std.mem.copy(u8, remaining, self.lastReceivedPackets[id & 65535].?[newIndex..newIndex + dataAvailable]);
 				newIndex += @intCast(u32, dataAvailable);
 				remaining = remaining[dataAvailable..];

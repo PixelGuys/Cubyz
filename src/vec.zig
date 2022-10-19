@@ -133,7 +133,7 @@ fn GenericVectorMath(comptime Vec: type, comptime T: type) type {
 		pub fn minimum(self: Vec, other: Vec) Vec {
 			var result: Vec = undefined;
 			inline for(@typeInfo(Vec).Struct.fields) |field| {
-				@field(result, field.name) = @minimum(@field(self, field.name), @field(other, field.name));
+				@field(result, field.name) = @min(@field(self, field.name), @field(other, field.name));
 			}
 			return result;
 		}
@@ -141,7 +141,7 @@ fn GenericVectorMath(comptime Vec: type, comptime T: type) type {
 		pub fn maximum(self: Vec, other: Vec) Vec {
 			var result: Vec = undefined;
 			inline for(@typeInfo(Vec).Struct.fields) |field| {
-				@field(result, field.name) = @maximum(@field(self, field.name), @field(other, field.name));
+				@field(result, field.name) = @max(@field(self, field.name), @field(other, field.name));
 			}
 			return result;
 		}

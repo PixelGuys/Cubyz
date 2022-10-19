@@ -547,8 +547,8 @@ pub const TextureArray = struct {
 		var maxWidth: u31 = 0;
 		var maxHeight: u31 = 0;
 		for(images) |image| {
-			maxWidth = @maximum(maxWidth, image.width);
-			maxHeight = @maximum(maxHeight, image.height);
+			maxWidth = @max(maxWidth, image.width);
+			maxHeight = @max(maxHeight, image.height);
 		}
 		// Make sure the width and height use a power of 2:
 		if(maxWidth-1 & maxWidth != 0) {
@@ -562,7 +562,7 @@ pub const TextureArray = struct {
 
 		self.bind();
 
-		const maxLOD = 1 + std.math.log2_int(u31, @minimum(maxWidth, maxHeight));
+		const maxLOD = 1 + std.math.log2_int(u31, @min(maxWidth, maxHeight));
 		c.glTexStorage3D(c.GL_TEXTURE_2D_ARRAY, maxLOD, c.GL_RGBA8, maxWidth, maxHeight, @intCast(c_int, images.len));
 		var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
 		defer arena.deinit();

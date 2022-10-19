@@ -88,9 +88,9 @@ pub const ChunkPosition = struct {
 		var dx = @fabs(@intToFloat(f64, self.wx) + halfWidth - playerPosition.x);
 		var dy = @fabs(@intToFloat(f64, self.wy) + halfWidth - playerPosition.y);
 		var dz = @fabs(@intToFloat(f64, self.wz) + halfWidth - playerPosition.z);
-		dx = @maximum(0, dx - halfWidth);
-		dy = @maximum(0, dy - halfWidth);
-		dz = @maximum(0, dz - halfWidth);
+		dx = @max(0, dx - halfWidth);
+		dy = @max(0, dy - halfWidth);
+		dz = @max(0, dz - halfWidth);
 		return dx*dx + dy*dy + dz*dz;
 	}
 
@@ -278,7 +278,7 @@ pub const Chunk = struct {
 										count += 1;
 									}
 								}
-								maxCount = @maximum(maxCount, count);
+								maxCount = @max(maxCount, count);
 								neighborCount[i] = count;
 							}
 						}

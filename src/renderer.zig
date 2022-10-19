@@ -178,9 +178,9 @@ pub fn render(playerPosition: Vec3d) !void {
 	if(game.world) |world| {
 //		// TODO: Handle colors and sun position in the world.
 		var ambient: Vec3f = undefined;
-		ambient.x = @maximum(0.1, world.ambientLight);
-		ambient.y = @maximum(0.1, world.ambientLight);
-		ambient.z = @maximum(0.1, world.ambientLight);
+		ambient.x = @max(0.1, world.ambientLight);
+		ambient.y = @max(0.1, world.ambientLight);
+		ambient.z = @max(0.1, world.ambientLight);
 		var skyColor = Vec3f.xyz(world.clearColor);
 		game.fog.color = skyColor;
 		// TODO:
@@ -521,9 +521,9 @@ pub const Frustum = struct {
 		inline for(self.planes) |plane| {
 			var dist: f32 = pos.sub(plane.pos).dot(plane.norm);
 			// Find the most positive corner:
-			dist += @maximum(0, dim.x*plane.norm.x);
-			dist += @maximum(0, dim.y*plane.norm.y);
-			dist += @maximum(0, dim.z*plane.norm.z);
+			dist += @max(0, dim.x*plane.norm.x);
+			dist += @max(0, dim.y*plane.norm.y);
+			dist += @max(0, dim.z*plane.norm.z);
 			if(dist < 128) return false;
 		}
 		return true;
@@ -653,7 +653,7 @@ pub const RenderStructure = struct {
 			while(x != maxX): (x +%= size) {
 				const xIndex = @divExact(x -% startX, size);
 				var deltaX: i64 = std.math.absInt(@as(i64, x +% size/2 -% px)) catch unreachable;
-				deltaX = @maximum(0, deltaX - size/2);
+				deltaX = @max(0, deltaX - size/2);
 				const maxYRenderDistanceSquare = @as(i64, maxRenderDistance)*@as(i64, maxRenderDistance) - deltaX*deltaX;
 				const maxYRenderDistance = @floatToInt(i32, @ceil(@sqrt(@intToFloat(f64, maxYRenderDistanceSquare))));
 
@@ -663,7 +663,7 @@ pub const RenderStructure = struct {
 				while(y != maxY): (y +%= size) {
 					const yIndex = @divExact(y -% startY, size);
 					var deltaY: i64 = std.math.absInt(@as(i64, y +% size/2 -% py)) catch unreachable;
-					deltaY = @maximum(0, deltaY - size/2);
+					deltaY = @max(0, deltaY - size/2);
 					const maxZRenderDistanceSquare = @as(i64, maxYRenderDistance)*@as(i64, maxYRenderDistance) - deltaY*deltaY;
 					const maxZRenderDistance = @floatToInt(i32, @ceil(@sqrt(@intToFloat(f64, maxZRenderDistanceSquare))));
 
