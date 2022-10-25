@@ -33,7 +33,7 @@ pub const camera = struct {
 		// Mouse movement along the y-axis rotates the image along the x-axis.
 		rotation.y += mouseX;
 
-		direction = Vec3f.rotateX(Vec3f{.x=0, .y=0, .z=-1}, rotation.x).rotateY(rotation.y);
+		direction = Vec3f.rotateX(Vec3f{.x=0, .y=0, .z=-1}, -rotation.x).rotateY(-rotation.y);
 	}
 
 	pub fn updateViewMatrix() void {

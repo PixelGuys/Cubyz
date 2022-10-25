@@ -195,7 +195,7 @@ pub const Chunk = struct {
 		self.blocks[index] = newBlock;
 	}
 
-	///  Updates a block if it is inside this chunk. Should be used in generation to prevent accidently storing these as changes.
+	/// Updates a block if it is inside this chunk. Should be used in generation to prevent accidently storing these as changes.
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
 	pub fn updateBlockInGeneration(self: *Chunk, x: ChunkCoordinate, y: ChunkCoordinate, z: ChunkCoordinate, newBlock: Block) void {
 		x >>= self.voxelSizeShift;
@@ -478,7 +478,7 @@ pub const meshing = struct {
 		}
 
 		fn canBeSeenThroughOtherBlock(block: Block, other: Block, neighbor: u3) bool {
-			_ = neighbor; // TODO:    ↓← Blocks.mode(other).checkTransparency(other, neighbor)
+			_ = neighbor; // TODO:                          ↓← Blocks.mode(other).checkTransparency(other, neighbor)
 			return block.typ != 0 and (other.typ == 0 or false or (!std.meta.eql(block, other) and other.viewThrough()));
 		}
 

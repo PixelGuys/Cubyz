@@ -7,6 +7,7 @@ const c = graphics.c;
 const Fog = graphics.Fog;
 const Shader = graphics.Shader;
 const vec = @import("vec.zig");
+const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
 const Vec4f = vec.Vec4f;
@@ -48,6 +49,7 @@ pub fn init() !void {
 	deferredUniforms = deferredRenderPassShader.bulkGetUniformLocation(@TypeOf(deferredUniforms));
 	buffers.init();
 	try Bloom.init();
+	try MeshSelection.init();
 }
 
 pub fn deinit() void {
@@ -55,6 +57,7 @@ pub fn deinit() void {
 	deferredRenderPassShader.delete();
 	buffers.deinit();
 	Bloom.deinit();
+	MeshSelection.deinit();
 }
 
 const buffers = struct {
@@ -226,11 +229,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glActiveTexture(c.GL_TEXTURE1);
 	blocks.meshes.emissionTextureArray.bind();
 
-//TODO:	BlockInstance selected = null;
-//	if (Cubyz.msd.getSelected() instanceof BlockInstance) {
-//		selected = (BlockInstance)Cubyz.msd.getSelected();
-//	}
-
 	c.glDepthRange(0, 0.05);
 
 //	SimpleList<NormalChunkMesh> visibleChunks = new SimpleList<NormalChunkMesh>(new NormalChunkMesh[64]);
@@ -248,13 +246,9 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 //			visibleReduced.add((ReducedChunkMesh)mesh);
 //		}
 //	}
-//	if(selected != null && !Blocks.transparent(selected.getBlock())) {
-//		BlockBreakingRenderer.render(selected, playerPosition);
-		c.glActiveTexture(c.GL_TEXTURE0);
-		blocks.meshes.blockTextureArray.bind();
-		c.glActiveTexture(c.GL_TEXTURE1);
-		blocks.meshes.emissionTextureArray.bind();
-//	}
+	c.glDepthRangef(0.05, 1.0); // TODO: Figure out how to fix the depth range issues.
+	MeshSelection.select(playerPos, game.camera.direction);
+	MeshSelection.render(game.projectionMatrix, game.camera.viewMatrix, playerPos);
 
 	// Render the far away ReducedChunks:
 	c.glDepthRangef(0.05, 1.0); // ← Used to fix z-fighting.
@@ -530,6 +524,248 @@ pub const Frustum = struct {
 	}
 };
 
+pub const MeshSelection = struct {
+	var shader: Shader = undefined;
+	var uniforms: struct {
+		projectionMatrix: c_int,
+		viewMatrix: c_int,
+		modelPosition: c_int,
+	} = undefined;
+
+	var cubeVAO: c_uint = undefined;
+	var cubeVBO: c_uint = undefined;
+	var cubeIBO: c_uint = undefined;
+
+	pub fn init() !void {
+		shader = try Shader.create("assets/cubyz/shaders/block_selection_vertex.vs", "assets/cubyz/shaders/block_selection_fragment.fs");
+		uniforms = shader.bulkGetUniformLocation(@TypeOf(uniforms));
+
+		var rawData = [_]f32 {
+			0, 0, 0,
+			0, 0, 1,
+			0, 1, 0,
+			0, 1, 1,
+			1, 0, 0,
+			1, 0, 1,
+			1, 1, 0,
+			1, 1, 1,
+		};
+		var indices = [_]u8 {
+			0, 1,
+			0, 2,
+			0, 4,
+			1, 3,
+			1, 5,
+			2, 3,
+			2, 6,
+			3, 7,
+			4, 5,
+			4, 6,
+			5, 7,
+			6, 7,
+		};
+
+		c.glGenVertexArrays(1, &cubeVAO);
+		c.glBindVertexArray(cubeVAO);
+		c.glGenBuffers(1, &cubeVBO);
+		c.glBindBuffer(c.GL_ARRAY_BUFFER, cubeVBO);
+		c.glBufferData(c.GL_ARRAY_BUFFER, rawData.len*@sizeOf(f32), &rawData, c.GL_STATIC_DRAW);
+		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, 3*@sizeOf(f32), null);
+		c.glEnableVertexAttribArray(0);
+		c.glGenBuffers(1, &cubeIBO);
+		c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, cubeIBO);
+		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, indices.len*@sizeOf(u8), &indices, c.GL_STATIC_DRAW);
+
+	}
+
+	pub fn deinit() void {
+		shader.delete();
+		c.glDeleteBuffers(1, &cubeIBO);
+		c.glDeleteBuffers(1, &cubeVBO);
+		c.glDeleteVertexArrays(1, &cubeVAO);
+	}
+
+	var selectedBlockPos: ?Vec3i = null;
+	pub fn select(_pos: Vec3d, _dir: Vec3f) void {
+		var pos = _pos;
+		// TODO: pos.y += Player.cameraHeight;
+		var dir = _dir;
+//TODO:
+//		intersection.set(0, 0, 0, dir.x, dir.y, dir.z);
+
+		// Test blocks:
+		const closestDistance: f64 = 6.0; // selection now limited
+		// Implementation of "A Fast Voxel Traversal Algorithm for Ray Tracing"  http://www.cse.yorku.ca/~amana/research/grid.pdf
+		const stepX = @floatToInt(chunk.ChunkCoordinate, std.math.sign(dir.x));
+		const stepY = @floatToInt(chunk.ChunkCoordinate, std.math.sign(dir.y));
+		const stepZ = @floatToInt(chunk.ChunkCoordinate, std.math.sign(dir.z));
+		const tDeltaX: f64 = @fabs(1/dir.x);
+		const tDeltaY: f64 = @fabs(1/dir.y);
+		const tDeltaZ: f64 = @fabs(1/dir.z);
+		var tMaxX: f64 = (@floor(pos.x) - pos.x)/dir.x;
+		var tMaxY: f64 = (@floor(pos.y) - pos.y)/dir.y;
+		var tMaxZ: f64 = (@floor(pos.z) - pos.z)/dir.z;
+		tMaxX = @max(tMaxX, tMaxX + tDeltaX*@intToFloat(f64, stepX));
+		tMaxY = @max(tMaxY, tMaxY + tDeltaY*@intToFloat(f64, stepY));
+		tMaxZ = @max(tMaxZ, tMaxZ + tDeltaZ*@intToFloat(f64, stepZ));
+		if(dir.x == 0) tMaxX = std.math.inf_f64;
+		if(dir.y == 0) tMaxY = std.math.inf_f64;
+		if(dir.z == 0) tMaxZ = std.math.inf_f64;
+		var x = @floatToInt(chunk.ChunkCoordinate, @floor(pos.x));
+		var y = @floatToInt(chunk.ChunkCoordinate, @floor(pos.y));
+		var z = @floatToInt(chunk.ChunkCoordinate, @floor(pos.z));
+
+		var total_tMax: f64 = 0;
+
+		selectedBlockPos = null;
+
+		while(total_tMax < closestDistance) {
+			const block = RenderStructure.getBlock(x, y, z) orelse break;
+			// TODO:
+//			if (Blocks.mode(block).changesHitbox()) {
+//				Vector3d min = new Vector3d(x, y, z);
+//				min.sub(pos);
+//				Vector3d max = new Vector3d(min);
+//				max.add(1, 1, 1);
+//				Vector3f minf = new Vector3f((float)min.x, (float)min.y, (float)min.z);
+//				Vector3f maxf = new Vector3f((float)max.x, (float)max.y, (float)max.z);
+//				double distance = Blocks.mode(block).getRayIntersection(intersection, block, minf, maxf, new Vector3f());
+//				if(distance > closestDistance) {
+//					block = 0;
+//				}
+//			}
+			if(block.typ != 0) {
+				selectedBlockPos = Vec3i{.x=x, .y=y, .z=z};
+				break;
+			}
+			if(tMaxX < tMaxY) {
+				if(tMaxX < tMaxZ) {
+					x = x + stepX;
+					total_tMax = tMaxX;
+					tMaxX = tMaxX + tDeltaX;
+				} else {
+					z = z + stepZ;
+					total_tMax = tMaxZ;
+					tMaxZ = tMaxZ + tDeltaZ;
+				}
+			} else {
+				if(tMaxY < tMaxZ) {
+					y = y + stepY;
+					total_tMax = tMaxY;
+					tMaxY = tMaxY + tDeltaY;
+				} else {
+					z = z + stepZ;
+					total_tMax = tMaxZ;
+					tMaxZ = tMaxZ + tDeltaZ;
+				}
+			}
+		}
+		// TODO: Test entities
+	}
+//	TODO(requires inventory):
+//	/**
+//	 * Places a block in the world.
+//	 * @param stack
+//	 * @param world
+//	 */
+//	public void placeBlock(ItemStack stack, World world) {
+//		if (selectedSpatial != null && selectedSpatial instanceof BlockInstance) {
+//			BlockInstance bi = (BlockInstance)selectedSpatial;
+//			IntWrapper block = new IntWrapper(bi.getBlock());
+//			Vector3d relativePos = new Vector3d(pos);
+//			relativePos.sub(bi.x, bi.y, bi.z);
+//			int b = stack.getBlock();
+//			if (b != 0) {
+//				Vector3i neighborDir = new Vector3i();
+//				// Check if stuff can be added to the block itself:
+//				if (b == bi.getBlock()) {
+//					if (Blocks.mode(b).generateData(Cubyz.world, bi.x, bi.y, bi.z, relativePos, dir, neighborDir, block, false)) {
+//						world.updateBlock(bi.x, bi.y, bi.z, block.data);
+//						stack.add(-1);
+//						return;
+//					}
+//				}
+//				// Get the next neighbor:
+//				Vector3i neighbor = new Vector3i();
+//				getEmptyPlace(neighbor, neighborDir);
+//				relativePos.set(pos);
+//				relativePos.sub(neighbor.x, neighbor.y, neighbor.z);
+//				boolean dataOnlyUpdate = world.getBlock(neighbor.x, neighbor.y, neighbor.z) == b;
+//				if (dataOnlyUpdate) {
+//					block.data = world.getBlock(neighbor.x, neighbor.y, neighbor.z);
+//					if (Blocks.mode(b).generateData(Cubyz.world, neighbor.x, neighbor.y, neighbor.z, relativePos, dir, neighborDir, block, false)) {
+//						world.updateBlock(neighbor.x, neighbor.y, neighbor.z, block.data);
+//						stack.add(-1);
+//					}
+//				} else {
+//					// Check if the block can actually be placed at that point. There might be entities or other blocks in the way.
+//					if (Blocks.solid(world.getBlock(neighbor.x, neighbor.y, neighbor.z)))
+//						return;
+//					for(ClientEntity ent : ClientEntityManager.getEntities()) {
+//						Vector3d pos = ent.position;
+//						// Check if the block is inside:
+//						if (neighbor.x < pos.x + ent.width && neighbor.x + 1 > pos.x - ent.width
+//						        && neighbor.z < pos.z + ent.width && neighbor.z + 1 > pos.z - ent.width
+//						        && neighbor.y < pos.y + ent.height && neighbor.y + 1 > pos.y)
+//							return;
+//					}
+//					block.data = b;
+//					if (Blocks.mode(b).generateData(Cubyz.world, neighbor.x, neighbor.y, neighbor.z, relativePos, dir, neighborDir, block, true)) {
+//						world.updateBlock(neighbor.x, neighbor.y, neighbor.z, block.data);
+//						stack.add(-1);
+//					}
+//				}
+//			}
+//		}
+//	}
+//	TODO: Check how this is needed.
+//	/**
+//	 * Returns the free block right next to the currently selected block.
+//	 * @param pos selected block position
+//	 * @param dir camera direction
+//	 */
+//	private void getEmptyPlace(Vector3i pos, Vector3i dir) {
+//		int dirX = CubyzMath.nonZeroSign(this.dir.x);
+//		int dirY = CubyzMath.nonZeroSign(this.dir.y);
+//		int dirZ = CubyzMath.nonZeroSign(this.dir.z);
+//		pos.set(((BlockInstance)selectedSpatial).x, ((BlockInstance)selectedSpatial).y, ((BlockInstance)selectedSpatial).z);
+//		pos.add(-dirX, 0, 0);
+//		dir.add(dirX, 0, 0);
+//		min.set(pos.x, pos.y, pos.z).sub(this.pos);
+//		max.set(min);
+//		max.add(1, 1, 1); // scale, scale, scale
+//		if (!intersection.test((float)min.x, (float)min.y, (float)min.z, (float)max.x, (float)max.y, (float)max.z)) {
+//			pos.add(dirX, -dirY, 0);
+//			dir.add(-dirX, dirY, 0);
+//			min.set(pos.x, pos.y, pos.z).sub(this.pos);
+//			max.set(min);
+//			max.add(1, 1, 1); // scale, scale, scale
+//			if (!intersection.test((float)min.x, (float)min.y, (float)min.z, (float)max.x, (float)max.y, (float)max.z)) {
+//				pos.add(0, dirY, -dirZ);
+//				dir.add(0, -dirY, dirZ);
+//			}
+//		}
+//	}
+	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, playerPos: Vec3d) void {
+		if(selectedBlockPos) |_selectedBlockPos| {
+			shader.bind();
+
+			c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_FALSE, @ptrCast([*c]const f32, &projectionMatrix));
+			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast([*c]const f32, &viewMatrix));
+			c.glUniform3f(uniforms.modelPosition,
+				@floatCast(f32, @intToFloat(f64, _selectedBlockPos.x) - playerPos.x),
+				@floatCast(f32, @intToFloat(f64, _selectedBlockPos.y) - playerPos.y),
+				@floatCast(f32, @intToFloat(f64, _selectedBlockPos.z) - playerPos.z)
+			);
+
+			c.glLineWidth(2);
+			c.glBindVertexArray(cubeVAO);
+			c.glDrawElements(c.GL_LINES, 12*2, c.GL_UNSIGNED_BYTE, null);
+			c.glLineWidth(1);
+		}
+	}
+};
+
 pub const RenderStructure = struct {
 	pub var allocator: std.mem.Allocator = undefined;
 	var gpa: std.heap.GeneralPurposeAllocator(.{}) = undefined;
@@ -607,6 +843,12 @@ pub const RenderStructure = struct {
 		if(zIndex < 0 or zIndex >= (&lastSize[lod]).*) return null;
 		var index = (xIndex*(&lastSize[lod]).* + yIndex)*(&lastSize[lod]).* + zIndex;
 		return (&storageLists[lod]).*[@intCast(usize, index)]; // TODO: Wait for #12205 to be fixed and remove the weird (&...).* workaround.
+	}
+
+	pub fn getBlock(x: chunk.ChunkCoordinate, y: chunk.ChunkCoordinate, z: chunk.ChunkCoordinate) ?blocks.Block {
+		const node = RenderStructure._getNode(.{.wx = x, .wy = y, .wz = z, .voxelSize=1}) orelse return null;
+		const block = (node.mesh.chunk orelse return null).getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
+		return block;
 	}
 
 	pub fn getNeighbor(_pos: chunk.ChunkPosition, resolution: chunk.UChunkCoordinate, neighbor: u3) ?*chunk.meshing.ChunkMesh {
