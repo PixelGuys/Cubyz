@@ -13,11 +13,11 @@ pub const Compression = struct {
 		return result.toOwnedSlice();
 	}
 
-	pub fn inflate(allocator: Allocator, data: []const u8) ![]u8 {
+	pub fn inflateTo(buf: []u8, data: []const u8) !usize {
 		var stream = std.io.fixedBufferStream(data);
 		var decomp = try std.compress.deflate.decompressor(main.threadAllocator, stream.reader(), null);
 		defer decomp.deinit();
-		return try decomp.reader().readAllAlloc(allocator, std.math.maxInt(usize));
+		return try decomp.reader().readAll(buf);
 	}
 
 	pub fn pack(sourceDir: std.fs.IterableDir, writer: anytype) !void {

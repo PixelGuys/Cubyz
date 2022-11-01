@@ -690,12 +690,13 @@ pub const Protocols: struct {
 				.wz = std.mem.readIntBig(chunk.ChunkCoordinate, data[8..12]),
 				.voxelSize = @intCast(chunk.UChunkCoordinate, std.mem.readIntBig(chunk.ChunkCoordinate, data[12..16])),
 			};
-			const _inflatedData = try utils.Compression.inflate(main.threadAllocator, data[16..]);
-			if(_inflatedData.len != chunk.chunkVolume*4) {
-				std.log.err("Transmission of chunk has invalid size: {}. Input data: {any}, After inflate: {any}", .{_inflatedData.len, data, _inflatedData});
+			const _inflatedData = try main.threadAllocator.alloc(u8, chunk.chunkVolume*4);
+			defer main.threadAllocator.free(_inflatedData);
+			const _inflatedLen = try utils.Compression.inflateTo(_inflatedData, data[16..]);
+			if(_inflatedLen != chunk.chunkVolume*4) {
+				std.log.err("Transmission of chunk has invalid size: {}. Input data: {any}, After inflate: {any}", .{_inflatedLen, data, _inflatedData[0.._inflatedLen]});
 			}
 			data = _inflatedData;
-			defer main.threadAllocator.free(_inflatedData);
 			var ch = try renderer.RenderStructure.allocator.create(chunk.Chunk);
 			ch.init(pos);
 			for(ch.blocks) |*block| {
@@ -1196,7 +1197,8 @@ pub const Connection = struct {
 	messageID: u32 = 0,
 	unconfirmedPackets: std.ArrayList(UnconfirmedPacket) = undefined,
 	receivedPackets: [3]std.ArrayList(u32) = undefined,
-	lastReceivedPackets: [65536]?[]const u8 = [_]?[]const u8{null} ** 65536,
+	__lastReceivedPackets: [65536]?[]const u8 = [_]?[]const u8{null} ** 65536, // TODO: Wait for #12215 fix.
+	lastReceivedPackets: []?[]const u8, // TODO: Wait for #12215 fix.
 	lastIndex: u32 = 0,
 
 	lastIncompletePacket: u32 = 0,
@@ -1221,6 +1223,7 @@ pub const Connection = struct {
 			.allocator = undefined,
 			.remoteAddress = undefined,
 			.lastConnection = std.time.milliTimestamp(),
+			.lastReceivedPackets = &result.__lastReceivedPackets, // TODO: Wait for #12215 fix.
 		};
 		result.allocator = result.gpa.allocator(); // The right reference(the one that isn't on the stack) needs to be used passed!
 		result.unconfirmedPackets = std.ArrayList(UnconfirmedPacket).init(result.allocator);
