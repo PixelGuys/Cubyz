@@ -543,7 +543,7 @@ pub const TextureArray = struct {
 	}
 
 	/// (Re-)Generates the GPU buffer.
-	pub fn generate(self: TextureArray, images: []Image) !void {
+	pub fn generate(self: TextureArray, images: []Image, mipmapping: bool) !void {
 		var maxWidth: u31 = 0;
 		var maxHeight: u31 = 0;
 		for(images) |image| {
@@ -562,7 +562,7 @@ pub const TextureArray = struct {
 
 		self.bind();
 
-		const maxLOD = 1 + std.math.log2_int(u31, @min(maxWidth, maxHeight));
+		const maxLOD = if(mipmapping) 1 + std.math.log2_int(u31, @min(maxWidth, maxHeight)) else 1;
 		c.glTexStorage3D(c.GL_TEXTURE_2D_ARRAY, maxLOD, c.GL_RGBA8, maxWidth, maxHeight, @intCast(c_int, images.len));
 		var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
 		defer arena.deinit();

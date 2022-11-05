@@ -478,8 +478,8 @@ pub const meshing = struct {
 		}
 
 		fn canBeSeenThroughOtherBlock(block: Block, other: Block, neighbor: u3) bool {
-			_ = neighbor; // TODO:                          ↓← Blocks.mode(other).checkTransparency(other, neighbor)
-			return block.typ != 0 and (other.typ == 0 or false or (!std.meta.eql(block, other) and other.viewThrough()));
+			_ = neighbor; // TODO:                          ↓← Blocks.mode(other).checkTransparency(other, neighbor) // TODO: make blocks.meshes.modelIndices(other) != 0 more strict to avoid overdraw.
+			return block.typ != 0 and (other.typ == 0 or false or (!std.meta.eql(block, other) and other.viewThrough()) or blocks.meshes.modelIndices(other) != 0);
 		}
 
 		pub fn regenerateMainMesh(self: *ChunkMesh, chunk: *Chunk) !void {
@@ -505,10 +505,10 @@ pub const meshing = struct {
 							const neighborBlock = (&chunk.blocks)[getIndex(x2, y2, z2)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
 							if(canBeSeenThroughOtherBlock(block, neighborBlock, i)) {
 								const normal: u32 = i;
-								const position: u32 = @intCast(u32, x2) | @intCast(u32, y2)<<5 | @intCast(u32, z2)<<10;
-								const textureNormal = blocks.meshes.textureIndices(block)[i] | normal<<24;
-								try self.faces.append(position);
-								try self.faces.append(textureNormal);
+								const positionNormal: u32 = @intCast(u32, x2) | @intCast(u32, y2)<<5 | @intCast(u32, z2)<<10 | normal<<24;
+								const textureModel = blocks.meshes.textureIndices(block)[i] | @as(u32, blocks.meshes.modelIndices(block))<<16;
+								try self.faces.append(positionNormal);
+								try self.faces.append(textureModel);
 							}
 						}
 					}
@@ -615,10 +615,10 @@ pub const meshing = struct {
 				{
 					{ // The face of the changed block
 						const newVisibility = canBeSeenThroughOtherBlock(newBlock, neighborBlock, neighbor);
-						const position: u32 = @intCast(u32, nx) | @intCast(u32, ny)<<5 | @intCast(u32, nz)<<10;
 						const normal: u32 = neighbor;
-						const newTextureNormal = blocks.meshes.textureIndices(newBlock)[neighbor] | normal<<24;
-						const oldTextureNormal = blocks.meshes.textureIndices(oldBlock)[neighbor] | normal<<24;
+						const position: u32 = @intCast(u32, nx) | @intCast(u32, ny)<<5 | @intCast(u32, nz)<<10 | normal<<24;
+						const newTextureNormal = blocks.meshes.textureIndices(newBlock)[neighbor] | @as(u32, blocks.meshes.modelIndices(newBlock))<<16;
+						const oldTextureNormal = blocks.meshes.textureIndices(oldBlock)[neighbor] | @as(u32, blocks.meshes.modelIndices(oldBlock))<<16;
 						if(canBeSeenThroughOtherBlock(oldBlock, neighborBlock, neighbor) != newVisibility) {
 							if(newVisibility) { // Adding the face
 								if(neighborMesh == self) {
@@ -643,10 +643,10 @@ pub const meshing = struct {
 					}
 					{ // The face of the neighbor block
 						const newVisibility = canBeSeenThroughOtherBlock(neighborBlock, newBlock, neighbor ^ 1);
-						const position: u32 = @intCast(u32, x) | @intCast(u32, y)<<5 | @intCast(u32, z)<<10;
 						const normal: u32 = neighbor ^ 1;
-						const newTextureNormal = blocks.meshes.textureIndices(neighborBlock)[neighbor] | normal<<24;
-						const oldTextureNormal = blocks.meshes.textureIndices(neighborBlock)[neighbor] | normal<<24;
+						const position: u32 = @intCast(u32, x) | @intCast(u32, y)<<5 | @intCast(u32, z)<<10 | normal<<24;
+						const newTextureNormal = blocks.meshes.textureIndices(neighborBlock)[neighbor] | @as(u32, blocks.meshes.modelIndices(neighborBlock))<<16;
+						const oldTextureNormal = blocks.meshes.textureIndices(neighborBlock)[neighbor] | @as(u32, blocks.meshes.modelIndices(neighborBlock))<<16;
 						if(canBeSeenThroughOtherBlock(neighborBlock, oldBlock, neighbor ^ 1) != newVisibility) {
 							if(newVisibility) { // Adding the face
 								if(neighborMesh == self) {
@@ -723,15 +723,15 @@ pub const meshing = struct {
 								var otherBlock = (&neighborMesh.chunk.?.blocks)[getIndex(otherX, otherY, otherZ)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
 								if(canBeSeenThroughOtherBlock(block, otherBlock, neighbor)) {
 									const normal: u32 = neighbor;
-									const position: u32 = @as(u32, otherX) | @as(u32, otherY)<<5 | @as(u32, otherZ)<<10;
-									const textureNormal = blocks.meshes.textureIndices(block)[neighbor] | normal<<24;
+									const position: u32 = @as(u32, otherX) | @as(u32, otherY)<<5 | @as(u32, otherZ)<<10 | normal<<24;
+									const textureNormal = blocks.meshes.textureIndices(block)[neighbor] | @as(u32, blocks.meshes.modelIndices(block))<<16;
 									try additionalNeighborFaces.append(position);
 									try additionalNeighborFaces.append(textureNormal);
 								}
 								if(canBeSeenThroughOtherBlock(otherBlock, block, neighbor ^ 1)) {
 									const normal: u32 = neighbor ^ 1;
-									const position: u32 = @as(u32, x) | @as(u32, y)<<5 | @as(u32, z)<<10;
-									const textureNormal = blocks.meshes.textureIndices(otherBlock)[neighbor ^ 1] | normal<<24;
+									const position: u32 = @as(u32, x) | @as(u32, y)<<5 | @as(u32, z)<<10 | normal<<24;
+									const textureNormal = blocks.meshes.textureIndices(otherBlock)[neighbor ^ 1] | @as(u32, blocks.meshes.modelIndices(otherBlock))<<16;
 									try self.faces.append(position);
 									try self.faces.append(textureNormal);
 								}
@@ -785,8 +785,8 @@ pub const meshing = struct {
 							var otherBlock = (&neighborMesh.chunk.?.blocks)[getIndex(otherX, otherY, otherZ)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
 							if(canBeSeenThroughOtherBlock(otherBlock, block, neighbor ^ 1)) {
 								const normal: u32 = neighbor ^ 1;
-								const position: u32 = @as(u32, x) | @as(u32, y)<<5 | @as(u32, z)<<10;
-								const textureNormal = blocks.meshes.textureIndices(otherBlock)[neighbor ^ 1] | normal<<24;
+								const position: u32 = @as(u32, x) | @as(u32, y)<<5 | @as(u32, z)<<10 | normal<<24;
+								const textureNormal = blocks.meshes.textureIndices(otherBlock)[neighbor ^ 1] | @as(u32, blocks.meshes.modelIndices(otherBlock))<<16;
 								try self.faces.append(position);
 								try self.faces.append(textureNormal);
 							}

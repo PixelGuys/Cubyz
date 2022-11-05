@@ -281,7 +281,7 @@ pub fn update(deltaTime: f64) !void {
 	if(keyboard.forward.pressed) {
 		if(keyboard.sprint.pressed) {
 			if(Player.isFlying.load(.Monotonic)) {
-				movement.addEqual(forward.mulScalar(64));
+				movement.addEqual(forward.mulScalar(128));
 			} else {
 				movement.addEqual(forward.mulScalar(8));
 			}

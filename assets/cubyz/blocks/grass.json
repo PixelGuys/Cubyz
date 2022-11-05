@@ -4,7 +4,7 @@
 	"drops" : [
 		"cubyz:soil"
 	],
-	"model" : "cubyz:block.obj",
+	"model" : "cube",
 	"texture" : "cubyz:grass_side",
 	"texture_top" : "cubyz:grass_top",
 	"texture_bottom" : "cubyz:soil"

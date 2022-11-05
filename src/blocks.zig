@@ -6,6 +6,7 @@ const SSBO = @import("graphics.zig").SSBO;
 const Image = @import("graphics.zig").Image;
 const Color = @import("graphics.zig").Color;
 const TextureArray = @import("graphics.zig").TextureArray;
+const models = @import("models.zig");
 
 pub const BlockClass = enum(u8) {
 	wood,
@@ -192,8 +193,7 @@ pub const Block = packed struct {
 
 pub const meshes = struct {
 	var size: u32 = 0;
-	// TODO: var meshes: [MaxBLockCount]Mesh = undefined;
-	var models: [MaxBLockCount][]const u8 = undefined;
+	var _modelIndices: [MaxBLockCount]u16 = undefined;
 	var _textureIndices: [MaxBLockCount][6]u32 = undefined;
 	/// Stores the number of textures after each block was added. Used to clean additional textures when the world is switched.
 	var maxTextureCount: [MaxBLockCount]u32 = undefined;
@@ -270,10 +270,10 @@ pub const meshes = struct {
 		arenaForWorld = std.heap.ArenaAllocator.init(std.heap.page_allocator);
 	}
 
-// TODO:
-//	public static Mesh mesh(int block) {
-//		return meshes[block & Blocks.TYPE_MASK];
-//	}
+	pub fn modelIndices(block: Block) u16 {
+		return (&_modelIndices[block.typ]).*;
+	}
+
 	pub fn textureIndices(block: Block) *const [6] u32 {
 		return &_textureIndices[block.typ];
 	}
@@ -374,7 +374,7 @@ pub const meshes = struct {
 	}
 
 	pub fn register(assetFolder: []const u8, _: []const u8, json: JsonElement) !void {
-		models[meshes.size] = json.get([]const u8, "model", "cubyz:block.obj");
+		_modelIndices[meshes.size] = models.getModelIndex(json.get([]const u8, "model", "cube"));
 
 		// The actual model is loaded later, in the rendering thread.
 		// But textures can be loaded here:
@@ -419,8 +419,8 @@ pub const meshes = struct {
 //	}
 
 	pub fn generateTextureArray() !void {
-		try blockTextureArray.generate(blockTextures.items);
-		try emissionTextureArray.generate(emissionTextures.items);
+		try blockTextureArray.generate(blockTextures.items, false); // TODO: figure out mipmapping in the voxel model world.
+		try emissionTextureArray.generate(emissionTextures.items, false);
 
 		// Also generate additional buffers:
 		animationTimesSSBO.bufferData(u32, animationTimes.items);

@@ -5,7 +5,7 @@
 		"auto"
 	],
 	"rotation" : "cubyz:log",
-	"model" : "cubyz:block.obj",
+	"model" : "cube",
 	"texture" : "cubyz:oak_log_side",
 	"texture_top" : "cubyz:oak_log_top",
 	"texture_bottom" : "cubyz:oak_log_rings_bottom",

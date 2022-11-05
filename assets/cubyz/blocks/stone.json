@@ -5,6 +5,6 @@
 	"drops" : [
 		"cubyz:cobblestone"
 	],
-	"model" : "cubyz:block.obj",
+	"model" : "cube",
 	"texture" : "cubyz:stone"
 }

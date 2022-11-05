@@ -5,6 +5,6 @@
 		"none"
 	],
 	"emittedLight" : 0xff0000,
-	"model" : "cubyz:block.obj",
+	"model" : "cube",
 	"texture" : "cubyz:glow_crystal/red"
 }

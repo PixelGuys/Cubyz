@@ -15,7 +15,7 @@
 	"drops" : [
 		"auto"
 	],
-	"model" : "cubyz:block.obj",
+	"model" : "cube",
 	"texture" : "cubyz:cobblestone",
 
 	"rotation" : "cubyz:multi_texture",

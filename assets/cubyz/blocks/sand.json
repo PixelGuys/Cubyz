@@ -4,7 +4,7 @@
 	"drops" : [
 		"auto"
 	],
-	"model" : "cubyz:block.obj",
+	"model" : "cube",
 	"texture_top" : "cubyz:sand",
 	"texture" : "cubyz:sand_side"
 }

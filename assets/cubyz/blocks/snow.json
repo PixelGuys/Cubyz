@@ -5,7 +5,7 @@
 		"auto"
 	],
 	"rotation" : "cubyz:stackable",
-	"model" : "cubyz:block.obj",
+	"model" : "cube",
 	"texture" : "cubyz:snow",
 	"blockEntity" : "cubyz.modding.base.MeltableBlockEntity"
 }
