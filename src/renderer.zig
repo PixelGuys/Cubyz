@@ -838,6 +838,7 @@ pub const RenderStructure = struct {
 	}
 
 	pub fn deinit() void {
+		main.threadPool.clear();
 		for(storageLists) |storageList| {
 			for(storageList) |nullChunkMesh| {
 				if(nullChunkMesh) |chunkMesh| {

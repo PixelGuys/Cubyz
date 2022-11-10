@@ -316,6 +316,7 @@ pub const ThreadPool = struct {
 		for(self.loadList.array[0..self.loadList.size]) |task| {
 			task.vtable.clean(task.self);
 		}
+		self.loadList.size = 0;
 		self.loadList.mutex.unlock();
 		// Wait for the in-progress tasks to finish:
 		while(true) {
