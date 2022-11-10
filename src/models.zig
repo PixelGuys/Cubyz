@@ -9,11 +9,23 @@ pub const modelShift: u4 = 4;
 pub const modelSize: u16 = @as(u16, 1) << modelShift;
 pub const modelMask: u16 = modelSize - 1;
 
-const VoxelModel = struct {
+const VoxelModel = extern struct {
+	minX: u32,
+	maxX: u32,
+	minY: u32,
+	maxY: u32,
+	minZ: u32,
+	maxZ: u32,
 	bitPackedData: [modelSize*modelSize*modelSize/8]u32,
 
 	pub fn init(self: *VoxelModel, distributionFunction: *const fn(u16, u16, u16) bool) void {
 		std.mem.set(u32, &self.bitPackedData, 0);
+		self.minX = 16;
+		self.minY = 16;
+		self.minZ = 16;
+		self.maxX = 0;
+		self.maxY = 0;
+		self.maxZ = 0;
 		var x: u16 = 0;
 		while(x < modelSize): (x += 1) {
 			var y: u16 = 0;
@@ -26,6 +38,13 @@ const VoxelModel = struct {
 					var arrayIndex = voxelIndex >> 3;
 					if(!isSolid) {
 						self.bitPackedData[arrayIndex] |= @as(u32, 1) << shift;
+					} else {
+						self.minX = @min(self.minX, x);
+						self.minY = @min(self.minY, y);
+						self.minZ = @min(self.minZ, z);
+						self.maxX = @max(self.maxX, x+1);
+						self.maxY = @max(self.maxY, y+1);
+						self.maxZ = @max(self.maxZ, z+1);
 					}
 				}
 			}
@@ -98,7 +117,7 @@ fn log(_x: u16, _y: u16, _z: u16) bool {
 	var y = @intToFloat(f32, _y) - 7.5;
 	var z = @intToFloat(f32, _z) - 7.5;
 	_ = y;
-	if(x*x + z*z < 7.5*7.5) return true;
+	if(x*x + z*z < 3.5*3.5) return true;
 	return false;
 }
 
@@ -111,14 +130,15 @@ pub fn getModelIndex(string: []const u8) u16 {
 	};
 }
 
+pub var voxelModels: std.ArrayList(VoxelModel) = undefined;
+
 // TODO: Allow loading from world assets.
 // TODO: Editable player models.
 pub fn init() !void {
 	voxelModelSSBO = graphics.SSBO.init();
 	voxelModelSSBO.bind(4);
 
-	var voxelModels = std.ArrayList(VoxelModel).init(main.threadAllocator);
-	defer voxelModels.deinit();
+	voxelModels = std.ArrayList(VoxelModel).init(main.threadAllocator);
 
 	nameToIndex = std.StringHashMap(u16).init(main.threadAllocator);
 
@@ -137,4 +157,5 @@ pub fn init() !void {
 pub fn deinit() void {
 	voxelModelSSBO.deinit();
 	nameToIndex.deinit();
+	voxelModels.deinit();
 }

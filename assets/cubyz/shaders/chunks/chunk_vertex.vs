@@ -32,6 +32,19 @@ layout(std430, binding = 3) buffer _faceData
 	FaceData faceData[];
 };
 
+#define modelSize 16
+struct VoxelModel {
+	uint minX, maxX;
+	uint minY, maxY;
+	uint minZ, maxZ;
+	uint bitPackedData[modelSize*modelSize*modelSize/8];
+};
+
+layout(std430, binding = 4) buffer _voxelModels
+{
+	VoxelModel voxelModels[];
+};
+
 uniform int time;
 
 const vec3[6] normals = vec3[6](
@@ -97,15 +110,20 @@ void main() {
 		return;
 	}
 	
-	ivec3 totalOffset = positionOffset[normal];
+	position *= 16;
+	ivec3 totalOffset = (ivec3(normals[normal])+1)/2;
 	totalOffset += ivec3(equal(textureX[normal], ivec3(-1, -1, -1))) + (vertexID>>1 & 1)*textureX[normal];
 	totalOffset += ivec3(equal(textureY[normal], ivec3(-1, -1, -1))) + (vertexID & 1)*textureY[normal];
-	position += totalOffset;
+	ivec3 lowerBound = ivec3(voxelModels[modelIndex].minX, voxelModels[modelIndex].minY, voxelModels[modelIndex].minZ);
+	ivec3 size = ivec3(voxelModels[modelIndex].maxX, voxelModels[modelIndex].maxY, voxelModels[modelIndex].maxZ) - lowerBound;
+	totalOffset = lowerBound + size*totalOffset;
+	position += totalOffset - 16*ivec3(normals[normal]);
 
-	startPosition = 16*(totalOffset + absNormals[normal]*(1 - 2*totalOffset))*0.999;
-	direction = position.xyz*voxelSize + modelPosition + (viewMatrix*vec4(0, 0, 0, 1)).xyz;
+	startPosition = (totalOffset)*0.999;
 
-	vec3 globalPosition = position*voxelSize + modelPosition;
+	direction = position.xyz*voxelSize/16.0 + modelPosition + (viewMatrix*vec4(0, 0, 0, 1)).xyz;
+
+	vec3 globalPosition = position*voxelSize/16.0 + modelPosition;
 
 	vec4 mvPos = viewMatrix*vec4(globalPosition, 1);
 	gl_Position = projectionMatrix*mvPos;

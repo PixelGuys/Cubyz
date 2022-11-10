@@ -9,6 +9,7 @@ const c = graphics.c;
 const Shader = graphics.Shader;
 const SSBO = graphics.SSBO;
 const main = @import("main.zig");
+const models = @import("models.zig");
 const renderer = @import("renderer.zig");
 const settings = @import("settings.zig");
 const vec = @import("vec.zig");
@@ -478,8 +479,36 @@ pub const meshing = struct {
 		}
 
 		fn canBeSeenThroughOtherBlock(block: Block, other: Block, neighbor: u3) bool {
-			_ = neighbor; // TODO:                          ↓← Blocks.mode(other).checkTransparency(other, neighbor) // TODO: make blocks.meshes.modelIndices(other) != 0 more strict to avoid overdraw.
-			return block.typ != 0 and (other.typ == 0 or false or (!std.meta.eql(block, other) and other.viewThrough()) or blocks.meshes.modelIndices(other) != 0);
+			const model = &models.voxelModels.items[blocks.meshes.modelIndices(block)];
+			const freestandingModel = blk:{
+				switch(neighbor) {
+					Neighbors.dirNegX => {
+						break :blk model.minX != 0;
+					},
+					Neighbors.dirPosX => {
+						break :blk model.maxX != 16;
+					},
+					Neighbors.dirDown => {
+						break :blk model.minY != 0;
+					},
+					Neighbors.dirUp => {
+						break :blk model.maxY != 16;
+					},
+					Neighbors.dirNegZ => {
+						break :blk model.minZ != 0;
+					},
+					Neighbors.dirPosZ => {
+						break :blk model.maxZ != 16;
+					},
+					else => unreachable,
+				}
+			};
+			return block.typ != 0 and (
+				freestandingModel
+				or other.typ == 0
+				or false  // TODO: Blocks.mode(other).checkTransparency(other, neighbor) // TODO: make blocks.meshes.modelIndices(other) != 0 more strict to avoid overdraw.
+				or (!std.meta.eql(block, other) and other.viewThrough())
+				or blocks.meshes.modelIndices(other) != 0);
 		}
 
 		pub fn regenerateMainMesh(self: *ChunkMesh, chunk: *Chunk) !void {

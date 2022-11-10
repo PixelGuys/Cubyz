@@ -31,7 +31,7 @@ pub fn nextIntBounded(T: type, seed: *u64, bound: T) T {
 	var bitSize = std.math.log2_int_ceil(bound);
 	var result = nextWithBitSize(T, seed, bitSize);
 	while(result >= bound) {
-		var result = nextWithBitSize(T, seed, bitSize);
+		result = nextWithBitSize(T, seed, bitSize);
 	}
 	return result;
 }

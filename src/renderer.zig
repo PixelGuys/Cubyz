@@ -16,6 +16,7 @@ const game = @import("game.zig");
 const World = game.World;
 const chunk = @import("chunk.zig");
 const main = @import("main.zig");
+const models = @import("models.zig");
 const network = @import("network.zig");
 const settings = @import("settings.zig");
 const utils = @import("utils.zig");
@@ -530,6 +531,8 @@ pub const MeshSelection = struct {
 		projectionMatrix: c_int,
 		viewMatrix: c_int,
 		modelPosition: c_int,
+		lowerBounds: c_int,
+		upperBounds: c_int,
 	} = undefined;
 
 	var cubeVAO: c_uint = undefined;
@@ -599,12 +602,15 @@ pub const MeshSelection = struct {
 		const stepX = @floatToInt(chunk.ChunkCoordinate, std.math.sign(dir.x));
 		const stepY = @floatToInt(chunk.ChunkCoordinate, std.math.sign(dir.y));
 		const stepZ = @floatToInt(chunk.ChunkCoordinate, std.math.sign(dir.z));
-		const tDeltaX: f64 = @fabs(1/dir.x);
-		const tDeltaY: f64 = @fabs(1/dir.y);
-		const tDeltaZ: f64 = @fabs(1/dir.z);
-		var tMaxX: f64 = (@floor(pos.x) - pos.x)/dir.x;
-		var tMaxY: f64 = (@floor(pos.y) - pos.y)/dir.y;
-		var tMaxZ: f64 = (@floor(pos.z) - pos.z)/dir.z;
+		const invDirX: f64 = 1/dir.x;
+		const invDirY: f64 = 1/dir.y;
+		const invDirZ: f64 = 1/dir.z;
+		const tDeltaX: f64 = @fabs(invDirX);
+		const tDeltaY: f64 = @fabs(invDirY);
+		const tDeltaZ: f64 = @fabs(invDirZ);
+		var tMaxX: f64 = (@floor(pos.x) - pos.x)*invDirX;
+		var tMaxY: f64 = (@floor(pos.y) - pos.y)*invDirY;
+		var tMaxZ: f64 = (@floor(pos.z) - pos.z)*invDirZ;
 		tMaxX = @max(tMaxX, tMaxX + tDeltaX*@intToFloat(f64, stepX));
 		tMaxY = @max(tMaxY, tMaxY + tDeltaY*@intToFloat(f64, stepY));
 		tMaxZ = @max(tMaxZ, tMaxZ + tDeltaZ*@intToFloat(f64, stepZ));
@@ -621,22 +627,33 @@ pub const MeshSelection = struct {
 
 		while(total_tMax < closestDistance) {
 			const block = RenderStructure.getBlock(x, y, z) orelse break;
-			// TODO:
-//			if (Blocks.mode(block).changesHitbox()) {
-//				Vector3d min = new Vector3d(x, y, z);
-//				min.sub(pos);
-//				Vector3d max = new Vector3d(min);
-//				max.add(1, 1, 1);
-//				Vector3f minf = new Vector3f((float)min.x, (float)min.y, (float)min.z);
-//				Vector3f maxf = new Vector3f((float)max.x, (float)max.y, (float)max.z);
-//				double distance = Blocks.mode(block).getRayIntersection(intersection, block, minf, maxf, new Vector3f());
-//				if(distance > closestDistance) {
-//					block = 0;
-//				}
-//			}
 			if(block.typ != 0) {
-				selectedBlockPos = Vec3i{.x=x, .y=y, .z=z};
-				break;
+				// Check the true bounding box (using this algorithm here: https://tavianator.com/2011/ray_box.html):
+				const voxelModel = &models.voxelModels.items[blocks.meshes.modelIndices(block)];
+				const tx1 = (@intToFloat(f64, x) + @intToFloat(f64, voxelModel.minX)/16.0 - pos.x)*invDirX;
+				const tx2 = (@intToFloat(f64, x) + @intToFloat(f64, voxelModel.maxX)/16.0 - pos.x)*invDirX;
+				const ty1 = (@intToFloat(f64, y) + @intToFloat(f64, voxelModel.minY)/16.0 - pos.y)*invDirY;
+				const ty2 = (@intToFloat(f64, y) + @intToFloat(f64, voxelModel.maxY)/16.0 - pos.y)*invDirY;
+				const tz1 = (@intToFloat(f64, z) + @intToFloat(f64, voxelModel.minZ)/16.0 - pos.z)*invDirZ;
+				const tz2 = (@intToFloat(f64, z) + @intToFloat(f64, voxelModel.maxZ)/16.0 - pos.z)*invDirZ;
+				const tMin = @max(
+					@min(tx1, tx2),
+					@max(
+						@min(ty1, ty2),
+						@min(tz1, tz2),
+					)
+				);
+				const tMax = @min(
+					@max(tx1, tx2),
+					@min(
+						@max(ty1, ty2),
+						@max(tz1, tz2),
+					)
+				);
+				if(tMin <= tMax and tMin <= closestDistance and tMax > 0) {
+					selectedBlockPos = Vec3i{.x=x, .y=y, .z=z};
+					break;
+				}
 			}
 			if(tMaxX < tMaxY) {
 				if(tMaxX < tMaxZ) {
@@ -748,6 +765,8 @@ pub const MeshSelection = struct {
 //	}
 	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, playerPos: Vec3d) void {
 		if(selectedBlockPos) |_selectedBlockPos| {
+			var block = RenderStructure.getBlock(_selectedBlockPos.x, _selectedBlockPos.y, _selectedBlockPos.z) orelse return;
+			var voxelModel = &models.voxelModels.items[blocks.meshes.modelIndices(block)];
 			shader.bind();
 
 			c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_FALSE, @ptrCast([*c]const f32, &projectionMatrix));
@@ -756,6 +775,16 @@ pub const MeshSelection = struct {
 				@floatCast(f32, @intToFloat(f64, _selectedBlockPos.x) - playerPos.x),
 				@floatCast(f32, @intToFloat(f64, _selectedBlockPos.y) - playerPos.y),
 				@floatCast(f32, @intToFloat(f64, _selectedBlockPos.z) - playerPos.z)
+			);
+			c.glUniform3f(uniforms.lowerBounds,
+				@intToFloat(f32, voxelModel.minX)/16.0,
+				@intToFloat(f32, voxelModel.minY)/16.0,
+				@intToFloat(f32, voxelModel.minZ)/16.0
+			);
+			c.glUniform3f(uniforms.upperBounds,
+				@intToFloat(f32, voxelModel.maxX)/16.0,
+				@intToFloat(f32, voxelModel.maxY)/16.0,
+				@intToFloat(f32, voxelModel.maxZ)/16.0
 			);
 
 			c.glLineWidth(2);

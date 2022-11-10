@@ -24,6 +24,9 @@ struct Fog {
 
 #define modelSize 16
 struct VoxelModel {
+	uint minX, maxX;
+	uint minY, maxY;
+	uint minZ, maxZ;
 	uint bitPackedData[modelSize*modelSize*modelSize/8];
 };
 
