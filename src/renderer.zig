@@ -132,7 +132,7 @@ const buffers = struct {
 
 	fn clearAndBind(clearColor: Vec4f) void {
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, buffer);
-		c.glClearColor(clearColor.x, clearColor.y, clearColor.z, 1);
+		c.glClearColor(clearColor[0], clearColor[1], clearColor[2], 1);
 		c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
 		// Clears the position separately to prevent issues with default value.
 		const positionClearColor = [_]f32 {0, 0, 6.55e4, 1}; // z value corresponds to the highest 16-bit float value.
@@ -182,15 +182,15 @@ pub fn render(playerPosition: Vec3d) !void {
 	if(game.world) |world| {
 //		// TODO: Handle colors and sun position in the world.
 		var ambient: Vec3f = undefined;
-		ambient.x = @max(0.1, world.ambientLight);
-		ambient.y = @max(0.1, world.ambientLight);
-		ambient.z = @max(0.1, world.ambientLight);
-		var skyColor = Vec3f.xyz(world.clearColor);
+		ambient[0] = @max(0.1, world.ambientLight);
+		ambient[1] = @max(0.1, world.ambientLight);
+		ambient[2] = @max(0.1, world.ambientLight);
+		var skyColor = vec.xyz(world.clearColor);
 		game.fog.color = skyColor;
 		// TODO:
 //		Cubyz.fog.setActive(ClientSettings.FOG_COEFFICIENT != 0);
 //		Cubyz.fog.setDensity(1 / (ClientSettings.EFFECTIVE_RENDER_DISTANCE*ClientSettings.FOG_COEFFICIENT));
-		skyColor.mulEqualScalar(0.25);
+		skyColor *= @splat(3, @as(f32, 0.25));
 
 		try renderWorld(world, ambient, skyColor, playerPosition);
 		try RenderStructure.updateMeshes(startTime + maximumMeshTime);
@@ -209,16 +209,16 @@ pub fn render(playerPosition: Vec3d) !void {
 
 pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPos: Vec3d) !void {
 	_ = world;
-	buffers.clearAndBind(Vec4f{.x=skyColor.x, .y=skyColor.y, .z=skyColor.z, .w=1});
+	buffers.clearAndBind(Vec4f{skyColor[0], skyColor[1], skyColor[2], 1});
 //	TODO:// Clean up old chunk meshes:
 //	Meshes.cleanUp();
 	game.camera.updateViewMatrix();
 
 	// Uses FrustumCulling on the chunks.
-	var frustum = Frustum.init(Vec3f{.x=0, .y=0, .z=0}, game.camera.viewMatrix, settings.fov, zFarLOD, main.Window.width, main.Window.height);
+	var frustum = Frustum.init(Vec3f{0, 0, 0}, game.camera.viewMatrix, settings.fov, zFarLOD, main.Window.width, main.Window.height);
 
 	const time = @intCast(u32, std.time.milliTimestamp() & std.math.maxInt(u32));
-	var waterFog = Fog{.active=true, .color=.{.x=0.0, .y=0.1, .z=0.2}, .density=0.1};
+	var waterFog = Fog{.active=true, .color=.{0.0, 0.1, 0.2}, .density=0.1};
 
 	// Update the uniforms. The uniforms are needed to render the replacement meshes.
 	chunk.meshing.bindShaderAndUniforms(game.lodProjectionMatrix, ambientLight, time);
@@ -268,7 +268,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 //		}
 	c.glDepthRangef(0, 0.05);
 
-	entity.ClientEntityManager.render(game.projectionMatrix, ambientLight, .{.x=1, .y=0.5, .z=0.25}, playerPos);
+	entity.ClientEntityManager.render(game.projectionMatrix, ambientLight, .{1, 0.5, 0.25}, playerPos);
 
 //		BlockDropRenderer.render(frustumInt, ambientLight, directionalLight, playerPosition);
 
@@ -495,30 +495,30 @@ pub const Frustum = struct {
 
 	pub fn init(cameraPos: Vec3f, rotationMatrix: Mat4f, fovY: f32, _zFar: f32, width: u31, height: u31) Frustum {
 		var invRotationMatrix = rotationMatrix.transpose();
-		var cameraDir = Vec3f.xyz(invRotationMatrix.mulVec(Vec4f{.x=0, .y=0, .z=1, .w=1}));
-		var cameraUp = Vec3f.xyz(invRotationMatrix.mulVec(Vec4f{.x=0, .y=1, .z=0, .w=1}));
-		var cameraRight = Vec3f.xyz(invRotationMatrix.mulVec(Vec4f{.x=1, .y=0, .z=0, .w=1}));
+		var cameraDir = vec.xyz(invRotationMatrix.mulVec(Vec4f{0, 0, 1, 1}));
+		var cameraUp = vec.xyz(invRotationMatrix.mulVec(Vec4f{0, 1, 0, 1}));
+		var cameraRight = vec.xyz(invRotationMatrix.mulVec(Vec4f{1, 0, 0, 1}));
 
 		const halfVSide = _zFar*std.math.tan(std.math.degreesToRadians(f32, fovY)*0.5);
 		const halfHSide = halfVSide*@intToFloat(f32, width)/@intToFloat(f32, height);
-		const frontMultFar = cameraDir.mulScalar(_zFar);
+		const frontMultFar = cameraDir*@splat(3, _zFar);
 
 		var self: Frustum = undefined;
-		self.planes[0] = Plane{.pos = cameraPos.add(frontMultFar), .norm=cameraDir.mulScalar(-1)}; // far
-		self.planes[1] = Plane{.pos = cameraPos, .norm=cameraUp.cross(frontMultFar.add(cameraRight.mulScalar(halfHSide)))}; // right
-		self.planes[2] = Plane{.pos = cameraPos, .norm=frontMultFar.sub(cameraRight.mulScalar(halfHSide)).cross(cameraUp)}; // left
-		self.planes[3] = Plane{.pos = cameraPos, .norm=cameraRight.cross(frontMultFar.sub(cameraUp.mulScalar(halfVSide)))}; // top
-		self.planes[4] = Plane{.pos = cameraPos, .norm=frontMultFar.add(cameraUp.mulScalar(halfVSide)).cross(cameraRight)}; // bottom
+		self.planes[0] = Plane{.pos = cameraPos + frontMultFar, .norm=-cameraDir}; // far
+		self.planes[1] = Plane{.pos = cameraPos, .norm=vec.cross(cameraUp, frontMultFar + cameraRight*@splat(3, halfHSide))}; // right
+		self.planes[2] = Plane{.pos = cameraPos, .norm=vec.cross(frontMultFar - cameraRight*@splat(3, halfHSide), cameraUp)}; // left
+		self.planes[3] = Plane{.pos = cameraPos, .norm=vec.cross(cameraRight, frontMultFar - cameraUp*@splat(3, halfVSide))}; // top
+		self.planes[4] = Plane{.pos = cameraPos, .norm=vec.cross(frontMultFar + cameraUp*@splat(3, halfVSide), cameraRight)}; // bottom
 		return self;
 	}
 
 	pub fn testAAB(self: Frustum, pos: Vec3f, dim: Vec3f) bool {
 		inline for(self.planes) |plane| {
-			var dist: f32 = pos.sub(plane.pos).dot(plane.norm);
+			var dist: f32 = vec.dot(pos - plane.pos, plane.norm);
 			// Find the most positive corner:
-			dist += @max(0, dim.x*plane.norm.x);
-			dist += @max(0, dim.y*plane.norm.y);
-			dist += @max(0, dim.z*plane.norm.z);
+			dist += @max(0, dim[0]*plane.norm[0]);
+			dist += @max(0, dim[1]*plane.norm[1]);
+			dist += @max(0, dim[2]*plane.norm[2]);
 			if(dist < 128) return false;
 		}
 		return true;
@@ -599,27 +599,27 @@ pub const MeshSelection = struct {
 		// Test blocks:
 		const closestDistance: f64 = 6.0; // selection now limited
 		// Implementation of "A Fast Voxel Traversal Algorithm for Ray Tracing"  http://www.cse.yorku.ca/~amana/research/grid.pdf
-		const stepX = @floatToInt(chunk.ChunkCoordinate, std.math.sign(dir.x));
-		const stepY = @floatToInt(chunk.ChunkCoordinate, std.math.sign(dir.y));
-		const stepZ = @floatToInt(chunk.ChunkCoordinate, std.math.sign(dir.z));
-		const invDirX: f64 = 1/dir.x;
-		const invDirY: f64 = 1/dir.y;
-		const invDirZ: f64 = 1/dir.z;
+		const stepX = @floatToInt(chunk.ChunkCoordinate, std.math.sign(dir[0]));
+		const stepY = @floatToInt(chunk.ChunkCoordinate, std.math.sign(dir[1]));
+		const stepZ = @floatToInt(chunk.ChunkCoordinate, std.math.sign(dir[2]));
+		const invDirX: f64 = 1/dir[0];
+		const invDirY: f64 = 1/dir[1];
+		const invDirZ: f64 = 1/dir[2];
 		const tDeltaX: f64 = @fabs(invDirX);
 		const tDeltaY: f64 = @fabs(invDirY);
 		const tDeltaZ: f64 = @fabs(invDirZ);
-		var tMaxX: f64 = (@floor(pos.x) - pos.x)*invDirX;
-		var tMaxY: f64 = (@floor(pos.y) - pos.y)*invDirY;
-		var tMaxZ: f64 = (@floor(pos.z) - pos.z)*invDirZ;
+		var tMaxX: f64 = (@floor(pos[0]) - pos[0])*invDirX;
+		var tMaxY: f64 = (@floor(pos[1]) - pos[1])*invDirY;
+		var tMaxZ: f64 = (@floor(pos[2]) - pos[2])*invDirZ;
 		tMaxX = @max(tMaxX, tMaxX + tDeltaX*@intToFloat(f64, stepX));
 		tMaxY = @max(tMaxY, tMaxY + tDeltaY*@intToFloat(f64, stepY));
 		tMaxZ = @max(tMaxZ, tMaxZ + tDeltaZ*@intToFloat(f64, stepZ));
-		if(dir.x == 0) tMaxX = std.math.inf_f64;
-		if(dir.y == 0) tMaxY = std.math.inf_f64;
-		if(dir.z == 0) tMaxZ = std.math.inf_f64;
-		var x = @floatToInt(chunk.ChunkCoordinate, @floor(pos.x));
-		var y = @floatToInt(chunk.ChunkCoordinate, @floor(pos.y));
-		var z = @floatToInt(chunk.ChunkCoordinate, @floor(pos.z));
+		if(dir[0] == 0) tMaxX = std.math.inf_f64;
+		if(dir[1] == 0) tMaxY = std.math.inf_f64;
+		if(dir[2] == 0) tMaxZ = std.math.inf_f64;
+		var x = @floatToInt(chunk.ChunkCoordinate, @floor(pos[0]));
+		var y = @floatToInt(chunk.ChunkCoordinate, @floor(pos[1]));
+		var z = @floatToInt(chunk.ChunkCoordinate, @floor(pos[2]));
 
 		var total_tMax: f64 = 0;
 
@@ -630,12 +630,12 @@ pub const MeshSelection = struct {
 			if(block.typ != 0) {
 				// Check the true bounding box (using this algorithm here: https://tavianator.com/2011/ray_box.html):
 				const voxelModel = &models.voxelModels.items[blocks.meshes.modelIndices(block)];
-				const tx1 = (@intToFloat(f64, x) + @intToFloat(f64, voxelModel.minX)/16.0 - pos.x)*invDirX;
-				const tx2 = (@intToFloat(f64, x) + @intToFloat(f64, voxelModel.maxX)/16.0 - pos.x)*invDirX;
-				const ty1 = (@intToFloat(f64, y) + @intToFloat(f64, voxelModel.minY)/16.0 - pos.y)*invDirY;
-				const ty2 = (@intToFloat(f64, y) + @intToFloat(f64, voxelModel.maxY)/16.0 - pos.y)*invDirY;
-				const tz1 = (@intToFloat(f64, z) + @intToFloat(f64, voxelModel.minZ)/16.0 - pos.z)*invDirZ;
-				const tz2 = (@intToFloat(f64, z) + @intToFloat(f64, voxelModel.maxZ)/16.0 - pos.z)*invDirZ;
+				const tx1 = (@intToFloat(f64, x) + @intToFloat(f64, voxelModel.minX)/16.0 - pos[0])*invDirX;
+				const tx2 = (@intToFloat(f64, x) + @intToFloat(f64, voxelModel.maxX)/16.0 - pos[0])*invDirX;
+				const ty1 = (@intToFloat(f64, y) + @intToFloat(f64, voxelModel.minY)/16.0 - pos[1])*invDirY;
+				const ty2 = (@intToFloat(f64, y) + @intToFloat(f64, voxelModel.maxY)/16.0 - pos[1])*invDirY;
+				const tz1 = (@intToFloat(f64, z) + @intToFloat(f64, voxelModel.minZ)/16.0 - pos[2])*invDirZ;
+				const tz2 = (@intToFloat(f64, z) + @intToFloat(f64, voxelModel.maxZ)/16.0 - pos[2])*invDirZ;
 				const tMin = @max(
 					@min(tx1, tx2),
 					@max(
@@ -651,7 +651,7 @@ pub const MeshSelection = struct {
 					)
 				);
 				if(tMin <= tMax and tMin <= closestDistance and tMax > 0) {
-					selectedBlockPos = Vec3i{.x=x, .y=y, .z=z};
+					selectedBlockPos = Vec3i{x, y, z};
 					break;
 				}
 			}
@@ -765,16 +765,16 @@ pub const MeshSelection = struct {
 //	}
 	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, playerPos: Vec3d) void {
 		if(selectedBlockPos) |_selectedBlockPos| {
-			var block = RenderStructure.getBlock(_selectedBlockPos.x, _selectedBlockPos.y, _selectedBlockPos.z) orelse return;
+			var block = RenderStructure.getBlock(_selectedBlockPos[0], _selectedBlockPos[1], _selectedBlockPos[2]) orelse return;
 			var voxelModel = &models.voxelModels.items[blocks.meshes.modelIndices(block)];
 			shader.bind();
 
 			c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_FALSE, @ptrCast([*c]const f32, &projectionMatrix));
 			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast([*c]const f32, &viewMatrix));
 			c.glUniform3f(uniforms.modelPosition,
-				@floatCast(f32, @intToFloat(f64, _selectedBlockPos.x) - playerPos.x),
-				@floatCast(f32, @intToFloat(f64, _selectedBlockPos.y) - playerPos.y),
-				@floatCast(f32, @intToFloat(f64, _selectedBlockPos.z) - playerPos.z)
+				@floatCast(f32, @intToFloat(f64, _selectedBlockPos[0]) - playerPos[0]),
+				@floatCast(f32, @intToFloat(f64, _selectedBlockPos[1]) - playerPos[1]),
+				@floatCast(f32, @intToFloat(f64, _selectedBlockPos[2]) - playerPos[2])
 			);
 			c.glUniform3f(uniforms.lowerBounds,
 				@intToFloat(f32, voxelModel.minX)/16.0,
@@ -895,9 +895,9 @@ pub const RenderStructure = struct {
 		if(lastRD != renderDistance and lastFactor != LODFactor) {
 			try network.Protocols.genericUpdate.sendRenderDistance(conn, renderDistance, LODFactor);
 		}
-		const px = @floatToInt(chunk.ChunkCoordinate, playerPos.x);
-		const py = @floatToInt(chunk.ChunkCoordinate, playerPos.y);
-		const pz = @floatToInt(chunk.ChunkCoordinate, playerPos.z);
+		const px = @floatToInt(chunk.ChunkCoordinate, playerPos[0]);
+		const py = @floatToInt(chunk.ChunkCoordinate, playerPos[1]);
+		const pz = @floatToInt(chunk.ChunkCoordinate, playerPos[2]);
 
 		var meshRequests = std.ArrayList(chunk.ChunkPosition).init(main.threadAllocator);
 		defer meshRequests.deinit();
@@ -956,13 +956,13 @@ pub const RenderStructure = struct {
 							try meshRequests.append(pos);
 						}
 						if(frustum.testAAB(Vec3f{
-							.x = @floatCast(f32, @intToFloat(f64, x) - playerPos.x),
-							.y = @floatCast(f32, @intToFloat(f64, y) - playerPos.y),
-							.z = @floatCast(f32, @intToFloat(f64, z) - playerPos.z),
+							@floatCast(f32, @intToFloat(f64, x) - playerPos[0]),
+							@floatCast(f32, @intToFloat(f64, y) - playerPos[1]),
+							@floatCast(f32, @intToFloat(f64, z) - playerPos[2]),
 						}, Vec3f{
-							.x = @intToFloat(f32, size),
-							.y = @intToFloat(f32, size),
-							.z = @intToFloat(f32, size),
+							@intToFloat(f32, size),
+							@intToFloat(f32, size),
+							@intToFloat(f32, size),
 						}) and node.?.mesh.visibilityMask != 0) {
 							try meshes.append(&node.?.mesh);
 						}

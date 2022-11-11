@@ -104,25 +104,25 @@ pub const Window = struct {
 		}
 		// Mouse deltas are averaged over multiple frames using a circular buffer:
 		const deltasLen: u2 = 3;
-		var deltas: [deltasLen]Vec2f = [_]Vec2f{Vec2f{.x=0, .y=0}} ** 3;
+		var deltas: [deltasLen]Vec2f = [_]Vec2f{Vec2f{0, 0}} ** 3;
 		var deltaBufferPosition: u2 = 0;
-		var currentPos: Vec2f = Vec2f{.x=0, .y=0};
+		var currentPos: Vec2f = Vec2f{0, 0};
 		var ignoreDataAfterRecentGrab: bool = true;
 		fn cursorPosition(_: ?*c.GLFWwindow, x: f64, y: f64) callconv(.C) void {
 			const newPos = Vec2f {
-				.x = @floatCast(f32, x),
-				.y = @floatCast(f32, y),
+				@floatCast(f32, x),
+				@floatCast(f32, y),
 			};
 			if(grabbed and !ignoreDataAfterRecentGrab) {
-				deltas[deltaBufferPosition].addEqual(newPos.sub(currentPos).mulScalar(settings.mouseSensitivity));
-				var averagedDelta: Vec2f = Vec2f{.x=0, .y=0};
+				deltas[deltaBufferPosition] += (newPos - currentPos)*@splat(2, settings.mouseSensitivity);
+				var averagedDelta: Vec2f = Vec2f{0, 0};
 				for(deltas) |delta| {
-					averagedDelta.addEqual(delta);
+					averagedDelta += delta;
 				}
-				averagedDelta.divEqualScalar(deltasLen);
-				game.camera.moveRotation(averagedDelta.x*0.0089, averagedDelta.y*0.0089);
+				averagedDelta /= @splat(2, @as(f32, deltasLen));
+				game.camera.moveRotation(averagedDelta[0]*0.0089, averagedDelta[1]*0.0089);
 				deltaBufferPosition = (deltaBufferPosition + 1)%deltasLen;
-				deltas[deltaBufferPosition] = Vec2f{.x=0, .y=0};
+				deltas[deltaBufferPosition] = Vec2f{0, 0};
 			}
 			ignoreDataAfterRecentGrab = false;
 			currentPos = newPos;

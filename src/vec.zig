@@ -1,231 +1,62 @@
 const std = @import("std");
 
-pub const Vec2i = GenericVector2(i32);
-pub const Vec2f = GenericVector2(f32);
-pub const Vec2d = GenericVector2(f64);
-pub const Vec3i = GenericVector3(i32);
-pub const Vec3f = extern struct {// This one gets a bit of extra functionality for rotating in 3d.
-	x: f32,
-	y: f32,
-	z: f32,
-	pub usingnamespace Vec3RotationMath(@This(), f32);
-	pub usingnamespace Vec3SpecificMath(@This(), f32);
-	pub usingnamespace GenericVectorMath(@This(), f32);
+pub const Vec2i = @Vector(2, i32);
+pub const Vec2f = @Vector(2, f32);
+pub const Vec2d = @Vector(2, f64);
+pub const Vec3i = @Vector(3, i32);
+pub const Vec3f = @Vector(3, f32);
+pub const Vec3d = @Vector(3, f64);
+pub const Vec4i = @Vector(4, i32);
+pub const Vec4f = @Vector(4, f32);
+pub const Vec4d = @Vector(4, f64);
 
-	pub fn xyz(self: Vec4f) Vec3f {
-		return Vec3f{.x=self.x, .y=self.y, .z=self.z};
-	}
-};
-pub const Vec3d = GenericVector3(f64);
-pub const Vec4i = GenericVector4(i32);
-pub const Vec4f = GenericVector4(f32);
-pub const Vec4d = GenericVector4(f64);
-
-fn Vec3RotationMath(comptime Vec: type, comptime T: type) type {
-	if(@typeInfo(Vec).Struct.fields.len == 3 and @typeInfo(T) == .Float) {
-		return struct{
-			pub fn rotateX(self: Vec, angle: T) Vec {
-				const sin = @sin(angle);
-				const cos = @cos(angle); // TODO: Consider using sqrt here.
-				return Vec{
-					.x = self.x,
-					.y = self.y*cos - self.z*sin,
-					.z = self.y*sin + self.z*cos,
-				};
-			}
-			
-			pub fn rotateY(self: Vec, angle: T) Vec {
-				const sin = @sin(angle);
-				const cos = @cos(angle); // TODO: Consider using sqrt here.
-				return Vec{
-					.x = self.x*cos + self.z*sin,
-					.y = self.y,
-					.z = -self.x*sin + self.z*cos,
-				};
-			}
-			
-			pub fn rotateZ(self: Vec, angle: T) Vec {
-				const sin = @sin(angle);
-				const cos = @cos(angle); // TODO: Consider using sqrt here.
-				return Vec{
-					.x = self.x*cos - self.y*sin,
-					.y = self.x*sin + self.y*cos,
-					.z = self.z,
-				};
-			}
-		};
-	} else {
-		return struct{};
-	}
+pub fn xyz(self: anytype) @Vector(3, @typeInfo(@TypeOf(self)).Vector.child) {
+	return @Vector(3, @typeInfo(@TypeOf(self)).Vector.child){self[0], self[1], self[2]};
 }
 
-fn Vec3SpecificMath(comptime Vec: type, comptime T: type) type {
-	_ = T;
-	return struct {
-		pub fn cross(self: Vec, other: Vec) Vec {
-			return Vec {
-				.x = self.y*other.z - self.z*other.y,
-				.y = self.z*other.x - self.x*other.z,
-				.z = self.x*other.y - self.y*other.x,
-			};
-		}
+pub fn dot(self: anytype, other: @TypeOf(self)) @typeInfo(@TypeOf(self)).Vector.child {
+	return @reduce(.Add, self*other);
+}
+
+pub fn cross(self: anytype, other: @TypeOf(self)) @TypeOf(self) {
+	if(@typeInfo(@TypeOf(self)).Vector.len != 3) @compileError("Only available for vectors of length 3.");
+	return @TypeOf(self) {
+		self[1]*other[2] - self[2]*other[1],
+		self[2]*other[0] - self[0]*other[2],
+		self[0]*other[1] - self[1]*other[0],
 	};
 }
 
-fn GenericVectorMath(comptime Vec: type, comptime T: type) type {
-	return struct {
-		pub fn add(self: Vec, other: Vec) Vec {
-			var result: Vec = undefined;
-			inline for(@typeInfo(Vec).Struct.fields) |field| {
-				@field(result, field.name) = @field(self, field.name) + @field(other, field.name);
-			}
-			return result;
-		}
-
-		pub fn sub(self: Vec, other: Vec) Vec {
-			var result: Vec = undefined;
-			inline for(@typeInfo(Vec).Struct.fields) |field| {
-				@field(result, field.name) = @field(self, field.name) - @field(other, field.name);
-			}
-			return result;
-		}
-
-		pub fn mul(self: Vec, other: Vec) Vec {
-			var result: Vec = undefined;
-			inline for(@typeInfo(Vec).Struct.fields) |field| {
-				@field(result, field.name) = @field(self, field.name) * @field(other, field.name);
-			}
-			return result;
-		}
-
-		pub fn mulScalar(self: Vec, scalar: T) Vec {
-			var result: Vec = undefined;
-			inline for(@typeInfo(Vec).Struct.fields) |field| {
-				@field(result, field.name) = @field(self, field.name) * scalar;
-			}
-			return result;
-		}
-
-		pub fn div(self: Vec, other: Vec) Vec {
-			if(@typeInfo(T) == .Float) {
-				var result: Vec = undefined;
-				inline for(@typeInfo(Vec).Struct.fields) |field| {
-					@field(result, field.name) = @field(self, field.name) / @field(other, field.name);
-				}
-				return result;
-			} else {
-				@compileError("Not supported for integer types.");
-			}
-		}
-
-		pub fn divScalar(self: Vec, scalar: T) Vec {
-			if(@typeInfo(T) == .Float) {
-				var result: Vec = undefined;
-				inline for(@typeInfo(Vec).Struct.fields) |field| {
-					@field(result, field.name) = @field(self, field.name) / scalar;
-				}
-				return result;
-			} else {
-				@compileError("Not supported for integer types.");
-			}
-		}
-
-		pub fn minimum(self: Vec, other: Vec) Vec {
-			var result: Vec = undefined;
-			inline for(@typeInfo(Vec).Struct.fields) |field| {
-				@field(result, field.name) = @min(@field(self, field.name), @field(other, field.name));
-			}
-			return result;
-		}
-
-		pub fn maximum(self: Vec, other: Vec) Vec {
-			var result: Vec = undefined;
-			inline for(@typeInfo(Vec).Struct.fields) |field| {
-				@field(result, field.name) = @max(@field(self, field.name), @field(other, field.name));
-			}
-			return result;
-		}
-
-		pub fn addEqual(self: *Vec, other: Vec) void {
-			inline for(@typeInfo(Vec).Struct.fields) |field| {
-				@field(self, field.name) += @field(other, field.name);
-			}
-		}
-
-		pub fn subEqual(self: *Vec, other: Vec) void {
-			inline for(@typeInfo(Vec).Struct.fields) |field| {
-				@field(self, field.name) -= @field(other, field.name);
-			}
-		}
-
-		pub fn mulEqual(self: *Vec, other: Vec) void {
-			inline for(@typeInfo(Vec).Struct.fields) |field| {
-				@field(self, field.name) *= @field(other, field.name);
-			}
-		}
-
-		pub fn mulEqualScalar(self: *Vec, scalar: T) void {
-			inline for(@typeInfo(Vec).Struct.fields) |field| {
-				@field(self, field.name) *= scalar;
-			}
-		}
-
-		pub fn divEqual(self: *Vec, other: Vec) void {
-			if(@typeInfo(T) == .Float) {
-				inline for(@typeInfo(Vec).Struct.fields) |field| {
-					@field(self, field.name) /= @field(other, field.name);
-				}
-			} else {
-				@compileError("Not supported for integer types.");
-			}
-		}
-
-		pub fn divEqualScalar(self: *Vec, scalar: T) void {
-			if(@typeInfo(T) == .Float) {
-				inline for(@typeInfo(Vec).Struct.fields) |field| {
-					@field(self, field.name) /= scalar;
-				}
-			} else {
-				@compileError("Not supported for integer types.");
-			}
-		}
-
-		pub fn dot(self: Vec, other: Vec) T {
-			var result: T = 0;
-			inline for(@typeInfo(Vec).Struct.fields) |field| {
-				result += @field(self, field.name) * @field(other, field.name);
-			}
-			return result;
-		}
+pub fn rotateX(self: anytype, angle: @typeInfo(@TypeOf(self)).Vector.child) @TypeOf(self) {
+	if(@typeInfo(@TypeOf(self)).Vector.len != 3) @compileError("Only available for vectors of length 3.");
+	const sin = @sin(angle);
+	const cos = @cos(angle); // TODO: Consider using sqrt here.
+	return @TypeOf(self){
+		self[0],
+		self[1]*cos - self[2]*sin,
+		self[1]*sin + self[2]*cos,
 	};
 }
 
-fn GenericVector2(comptime T: type) type {
-	return extern struct {
-		x: T,
-		y: T,
-		pub usingnamespace GenericVectorMath(@This(), T);
+pub fn rotateY(self: anytype, angle: @typeInfo(@TypeOf(self)).Vector.child) @TypeOf(self) {
+	if(@typeInfo(@TypeOf(self)).Vector.len != 3) @compileError("Only available for vectors of length 3.");
+	const sin = @sin(angle);
+	const cos = @cos(angle); // TODO: Consider using sqrt here.
+	return @TypeOf(self){
+		self[0]*cos + self[2]*sin,
+		self[1],
+		-self[0]*sin + self[2]*cos,
 	};
 }
 
-fn GenericVector3(comptime T: type) type {
-	return extern struct {
-		x: T,
-		y: T,
-		z: T,
-		pub usingnamespace Vec3RotationMath(@This(), T);
-		pub usingnamespace Vec3SpecificMath(@This(), T);
-		pub usingnamespace GenericVectorMath(@This(), T);
-	};
-}
-
-fn GenericVector4(comptime T: type) type {
-	return extern struct {
-		x: T,
-		y: T,
-		z: T,
-		w: T,
-		pub usingnamespace GenericVectorMath(@This(), T);
+pub fn rotateZ(self: anytype, angle: @typeInfo(@TypeOf(self)).Vector.child) @TypeOf(self) {
+	if(@typeInfo(@TypeOf(self)).Vector.len != 3) @compileError("Only available for vectors of length 3.");
+	const sin = @sin(angle);
+	const cos = @cos(angle); // TODO: Consider using sqrt here.
+	return @TypeOf(self){
+		self[0]*cos - self[1]*sin,
+		self[0]*sin + self[1]*cos,
+		self[2],
 	};
 }
 
@@ -234,10 +65,10 @@ pub const Mat4f = struct {
 	pub fn identity() Mat4f {
 		return Mat4f {
 			.columns = [4]Vec4f { // Keep in mind that this is the transpose!
-				Vec4f{.x=1, .y=0, .z=0, .w=0},
-				Vec4f{.x=0, .y=1, .z=0, .w=0},
-				Vec4f{.x=0, .y=0, .z=1, .w=0},
-				Vec4f{.x=0, .y=0, .z=0, .w=1},
+				Vec4f{1, 0, 0, 0},
+				Vec4f{0, 1, 0, 0},
+				Vec4f{0, 0, 1, 0},
+				Vec4f{0, 0, 0, 1},
 			}
 		};
 	}
@@ -245,10 +76,10 @@ pub const Mat4f = struct {
 	pub fn translation(pos: Vec3f) Mat4f {
 		return Mat4f {
 			.columns = [4]Vec4f { // Keep in mind that this is the transpose!
-				Vec4f{.x=1, .y=0, .z=0, .w=0},
-				Vec4f{.x=0, .y=1, .z=0, .w=0},
-				Vec4f{.x=0, .y=0, .z=1, .w=0},
-				Vec4f{.x=pos.x, .y=pos.y, .z=pos.z, .w=1},
+				Vec4f{1, 0, 0, 0},
+				Vec4f{0, 1, 0, 0},
+				Vec4f{0, 0, 1, 0},
+				Vec4f{pos[0], pos[1], pos[2], 1},
 			}
 		};
 	}
@@ -258,10 +89,10 @@ pub const Mat4f = struct {
 		const c = @cos(rad);
 		return Mat4f {
 			.columns = [4]Vec4f { // Keep in mind that this is the transpose!
-				Vec4f{.x=1, .y=0, .z=0, .w=0},
-				Vec4f{.x=0, .y=c, .z=s, .w=0},
-				Vec4f{.x=0,.y=-s, .z=c, .w=0},
-				Vec4f{.x=0, .y=0, .z=0, .w=1},
+				Vec4f{1, 0, 0, 0},
+				Vec4f{0, c, s, 0},
+				Vec4f{0,-s, c, 0},
+				Vec4f{0, 0, 0, 1},
 			}
 		};
 	}
@@ -271,10 +102,10 @@ pub const Mat4f = struct {
 		const c = @cos(rad);
 		return Mat4f {
 			.columns = [4]Vec4f { // Keep in mind that this is the transpose!
-				Vec4f{.x=c, .y=0,.z=-s, .w=0},
-				Vec4f{.x=0, .y=1, .z=0, .w=0},
-				Vec4f{.x=s, .y=0, .z=c, .w=0},
-				Vec4f{.x=0, .y=0, .z=0, .w=1},
+				Vec4f{c, 0,-s, 0},
+				Vec4f{0, 1, 0, 0},
+				Vec4f{s, 0, c, 0},
+				Vec4f{0, 0, 0, 1},
 			}
 		};
 	}
@@ -284,10 +115,10 @@ pub const Mat4f = struct {
 		const c = @cos(rad);
 		return Mat4f {
 			.columns = [4]Vec4f { // Keep in mind that this is the transpose!
-				Vec4f{.x=c, .y=s, .z=0, .w=0},
-				Vec4f{.x=-s,.y=c, .z=0, .w=0},
-				Vec4f{.x=0, .y=0, .z=1, .w=0},
-				Vec4f{.x=0, .y=0, .z=0, .w=1},
+				Vec4f{c, s, 0, 0},
+				Vec4f{-s,c, 0, 0},
+				Vec4f{0, 0, 1, 0},
+				Vec4f{0, 0, 0, 1},
 			}
 		};
 	}
@@ -297,10 +128,10 @@ pub const Mat4f = struct {
 		const tanX = aspect*tanY;
 		return Mat4f {
 			.columns = [4]Vec4f { // Keep in mind that this is the transpose!
-				Vec4f{.x=1/tanX, .y=0,      .z=0,                         .w=0},
-				Vec4f{.x=0,      .y=1/tanY, .z=0,                         .w=0},
-				Vec4f{.x=0,      .y=0,      .z=(far + near)/(near - far), .w=-1},
-				Vec4f{.x=0,      .y=0,      .z=2*near*far/(near - far),   .w=0},
+				Vec4f{1/tanX, 0,      0,                         0},
+				Vec4f{0,      1/tanY, 0,                         0},
+				Vec4f{0,      0,      (far + near)/(near - far), -1},
+				Vec4f{0,      0,      2*near*far/(near - far),   0},
 			}
 		};
 	}
@@ -308,10 +139,10 @@ pub const Mat4f = struct {
 	pub fn transpose(self: Mat4f) Mat4f {
 		return Mat4f {
 			.columns = [4]Vec4f { // Keep in mind that this is the transpose!
-				Vec4f{.x=self.columns[0].x, .y=self.columns[1].x, .z=self.columns[2].x, .w=self.columns[3].x},
-				Vec4f{.x=self.columns[0].y, .y=self.columns[1].y, .z=self.columns[2].y, .w=self.columns[3].y},
-				Vec4f{.x=self.columns[0].z, .y=self.columns[1].z, .z=self.columns[2].z, .w=self.columns[3].z},
-				Vec4f{.x=self.columns[0].w, .y=self.columns[1].w, .z=self.columns[2].w, .w=self.columns[3].w},
+				Vec4f{self.columns[0][0], self.columns[1][0], self.columns[2][0], self.columns[3][0]},
+				Vec4f{self.columns[0][1], self.columns[1][1], self.columns[2][1], self.columns[3][1]},
+				Vec4f{self.columns[0][2], self.columns[1][2], self.columns[2][2], self.columns[3][2]},
+				Vec4f{self.columns[0][3], self.columns[1][3], self.columns[2][3], self.columns[3][3]},
 			}
 		};
 	}
@@ -320,10 +151,10 @@ pub const Mat4f = struct {
 		var transposeSelf = self.transpose();
 		var result: Mat4f = undefined;
 		for(other.columns) |_, col| {
-			result.columns[col].x = transposeSelf.columns[0].dot(other.columns[col]);
-			result.columns[col].y = transposeSelf.columns[1].dot(other.columns[col]);
-			result.columns[col].z = transposeSelf.columns[2].dot(other.columns[col]);
-			result.columns[col].w = transposeSelf.columns[3].dot(other.columns[col]);
+			result.columns[col][0] = dot(transposeSelf.columns[0], other.columns[col]);
+			result.columns[col][1] = dot(transposeSelf.columns[1], other.columns[col]);
+			result.columns[col][2] = dot(transposeSelf.columns[2], other.columns[col]);
+			result.columns[col][3] = dot(transposeSelf.columns[3], other.columns[col]);
 		}
 		return result;
 	}
@@ -331,10 +162,10 @@ pub const Mat4f = struct {
 	pub fn mulVec(self: Mat4f, vec: Vec4f) Vec4f {
 		var transposeSelf = self.transpose();
 		var result: Vec4f = undefined;
-		result.x = transposeSelf.columns[0].dot(vec);
-		result.y = transposeSelf.columns[1].dot(vec);
-		result.z = transposeSelf.columns[2].dot(vec);
-		result.w = transposeSelf.columns[3].dot(vec);
+		result[0] = dot(transposeSelf.columns[0], vec);
+		result[1] = dot(transposeSelf.columns[1], vec);
+		result[2] = dot(transposeSelf.columns[2], vec);
+		result[3] = dot(transposeSelf.columns[3], vec);
 		return result;
 	}
 };

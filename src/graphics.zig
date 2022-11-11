@@ -111,8 +111,8 @@ pub const Draw = struct {
 		rectShader.bind();
 
 		c.glUniform2f(rectUniforms.screen, @intToFloat(f32, Window.width), @intToFloat(f32, Window.height));
-		c.glUniform2f(rectUniforms.start, pos.x, pos.y);
-		c.glUniform2f(rectUniforms.size, dim.x, dim.y);
+		c.glUniform2f(rectUniforms.start, pos[0], pos[1]);
+		c.glUniform2f(rectUniforms.size, dim[0], dim[1]);
 		c.glUniform1i(rectUniforms.rectColor, color);
 
 		c.glBindVertexArray(rectVAO);
@@ -158,8 +158,8 @@ pub const Draw = struct {
 		lineShader.bind();
 
 		c.glUniform2f(lineUniforms.screen, @intToFloat(f32, Window.width), @intToFloat(f32, Window.height));
-		c.glUniform2f(lineUniforms.start, pos1.x, pos1.y);
-		c.glUniform2f(lineUniforms.direction, pos2.x - pos1.x, pos2.y - pos1.y);
+		c.glUniform2f(lineUniforms.start, pos1[0], pos1[1]);
+		c.glUniform2f(lineUniforms.direction, pos2[0] - pos1[0], pos2[1] - pos1[1]);
 		c.glUniform1i(lineUniforms.lineColor, color);
 
 		c.glBindVertexArray(lineVAO);
@@ -198,8 +198,8 @@ pub const Draw = struct {
 		lineShader.bind();
 
 		c.glUniform2f(lineUniforms.screen, @intToFloat(f32, Window.width), @intToFloat(f32, Window.height));
-		c.glUniform2f(lineUniforms.start, pos.x, pos.y); // Move the coordinates, so they are in the center of a pixel.
-		c.glUniform2f(lineUniforms.direction, dim.x - 1, dim.y - 1); // The height is a lot smaller because the inner edge of the rect is drawn.
+		c.glUniform2f(lineUniforms.start, pos[0], pos[1]); // Move the coordinates, so they are in the center of a pixel.
+		c.glUniform2f(lineUniforms.direction, dim[0] - 1, dim[1] - 1); // The height is a lot smaller because the inner edge of the rect is drawn.
 		c.glUniform1i(lineUniforms.lineColor, color);
 
 		c.glBindVertexArray(lineVAO);
@@ -247,7 +247,7 @@ pub const Draw = struct {
 		circleShader.bind();
 
 		c.glUniform2f(circleUniforms.screen, @intToFloat(f32, Window.width), @intToFloat(f32, Window.height));
-		c.glUniform2f(circleUniforms.center, center.x, center.y); // Move the coordinates, so they are in the center of a pixel.
+		c.glUniform2f(circleUniforms.center, center[0], center[1]); // Move the coordinates, so they are in the center of a pixel.
 		c.glUniform1f(circleUniforms.radius, radius); // The height is a lot smaller because the inner edge of the rect is drawn.
 		c.glUniform1i(circleUniforms.circleColor, color);
 
@@ -280,8 +280,8 @@ pub const Draw = struct {
 		imageShader.bind();
 
 		c.glUniform2f(imageUniforms.screen, @intToFloat(f32, Window.width), @intToFloat(f32, Window.height));
-		c.glUniform2f(imageUniforms.start, pos.x, pos.y);
-		c.glUniform2f(imageUniforms.size, dim.x, dim.y);
+		c.glUniform2f(imageUniforms.start, pos[0], pos[1]);
+		c.glUniform2f(imageUniforms.size, dim[0], dim[1]);
 		c.glUniform1i(imageUniforms.color, color);
 
 		c.glBindVertexArray(rectVAO);

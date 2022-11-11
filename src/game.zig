@@ -19,31 +19,31 @@ const Fog = graphics.Fog;
 const renderer = @import("renderer.zig");
 
 pub const camera = struct {
-	pub var rotation: Vec3f = Vec3f{.x=0, .y=0, .z=0};
-	pub var direction: Vec3f = Vec3f{.x=0, .y=0, .z=0};
+	pub var rotation: Vec3f = Vec3f{0, 0, 0};
+	pub var direction: Vec3f = Vec3f{0, 0, 0};
 	pub var viewMatrix: Mat4f = Mat4f.identity();
 	pub fn moveRotation(mouseX: f32, mouseY: f32) void {
 		// Mouse movement along the x-axis rotates the image along the y-axis.
-		rotation.x += mouseY;
-		if(rotation.x > std.math.pi/2.0) {
-			rotation.x = std.math.pi/2.0;
-		} else if(rotation.x < -std.math.pi/2.0) {
-			rotation.x = -std.math.pi/2.0;
+		rotation[0] += mouseY;
+		if(rotation[0] > std.math.pi/2.0) {
+			rotation[0] = std.math.pi/2.0;
+		} else if(rotation[0] < -std.math.pi/2.0) {
+			rotation[0] = -std.math.pi/2.0;
 		}
 		// Mouse movement along the y-axis rotates the image along the x-axis.
-		rotation.y += mouseX;
+		rotation[1] += mouseX;
 
-		direction = Vec3f.rotateX(Vec3f{.x=0, .y=0, .z=-1}, -rotation.x).rotateY(-rotation.y);
+		direction = vec.rotateY(vec.rotateX(Vec3f{0, 0, -1}, -rotation[0]), -rotation[1]);
 	}
 
 	pub fn updateViewMatrix() void {
-		viewMatrix = Mat4f.rotationX(rotation.x).mul(Mat4f.rotationY(rotation.y));
+		viewMatrix = Mat4f.rotationX(rotation[0]).mul(Mat4f.rotationY(rotation[1]));
 	}
 };
 
 pub const Player = struct {
-	var pos: Vec3d = Vec3d{.x=0, .y=0, .z=0};
-	var vel: Vec3d = Vec3d{.x=0, .y=0, .z=0};
+	var pos: Vec3d = Vec3d{0, 0, 0};
+	var vel: Vec3d = Vec3d{0, 0, 0};
 	pub var id: u32 = 0;
 	pub var isFlying: std.atomic.Atomic(bool) = std.atomic.Atomic(bool).init(true);
 	var mutex: std.Thread.Mutex = std.Thread.Mutex{};
@@ -73,7 +73,7 @@ pub const World = struct {
 	conn: *Connection,
 	manager: *ConnectionManager,
 	ambientLight: f32 = 0,
-	clearColor: Vec4f = Vec4f{.x=0, .y=0, .z=0, .w=1},
+	clearColor: Vec4f = Vec4f{0, 0, 0, 1},
 	name: []const u8,
 	milliTime: i64,
 	gameTime: std.atomic.Atomic(i64) = std.atomic.Atomic(i64).init(0),
@@ -106,9 +106,9 @@ pub const World = struct {
 		// TODO: Consider using a per-world allocator.
 		self.blockPalette = try assets.BlockPalette.init(renderer.RenderStructure.allocator, jsonObject.getChild("blockPalette"));
 		var jsonSpawn = jsonObject.getChild("spawn");
-		self.spawn.x = jsonSpawn.get(f32, "x", 0);
-		self.spawn.y = jsonSpawn.get(f32, "y", 0);
-		self.spawn.z = jsonSpawn.get(f32, "z", 0);
+		self.spawn[0] = jsonSpawn.get(f32, "x", 0);
+		self.spawn[1] = jsonSpawn.get(f32, "y", 0);
+		self.spawn[2] = jsonSpawn.get(f32, "z", 0);
 
 		// TODO:
 //		if(Server.world != null) {
@@ -140,34 +140,34 @@ pub const World = struct {
 			var dayTime = std.math.absInt(@mod(self.gameTime.load(.Monotonic), dayCycle) -% dayCycle/2) catch 0;
 			if(dayTime < dayCycle/4 - dayCycle/16) {
 				self.ambientLight = 0.1;
-				self.clearColor.x = 0;
-				self.clearColor.y = 0;
-				self.clearColor.z = 0;
+				self.clearColor[0] = 0;
+				self.clearColor[1] = 0;
+				self.clearColor[2] = 0;
 			} else if(dayTime > dayCycle/4 + dayCycle/16) {
 				self.ambientLight = 1;
-				self.clearColor.x = 0.8;
-				self.clearColor.y = 0.8;
-				self.clearColor.z = 1.0;
+				self.clearColor[0] = 0.8;
+				self.clearColor[1] = 0.8;
+				self.clearColor[2] = 1.0;
 			} else {
 				// b:
 				if(dayTime > dayCycle/4) {
-					self.clearColor.z = @intToFloat(f32, dayTime - dayCycle/4)/@intToFloat(f32, dayCycle/16);
+					self.clearColor[2] = @intToFloat(f32, dayTime - dayCycle/4)/@intToFloat(f32, dayCycle/16);
 				} else {
-					self.clearColor.z = 0;
+					self.clearColor[2] = 0;
 				}
 				// g:
 				if(dayTime > dayCycle/4 + dayCycle/32) {
-					self.clearColor.y = 0.8;
+					self.clearColor[1] = 0.8;
 				} else if(dayTime > dayCycle/4 - dayCycle/32) {
-					self.clearColor.y = 0.8 + 0.8*@intToFloat(f32, dayTime - dayCycle/4 - dayCycle/32)/@intToFloat(f32, dayCycle/16);
+					self.clearColor[1] = 0.8 + 0.8*@intToFloat(f32, dayTime - dayCycle/4 - dayCycle/32)/@intToFloat(f32, dayCycle/16);
 				} else {
-					self.clearColor.y = 0;
+					self.clearColor[1] = 0;
 				}
 				// r:
 				if(dayTime > dayCycle/4) {
-					self.clearColor.x = 0.8;
+					self.clearColor[0] = 0.8;
 				} else {
-					self.clearColor.x = 0.8 + 0.8*@intToFloat(f32, dayTime - dayCycle/4)/@intToFloat(f32, dayCycle/16);
+					self.clearColor[0] = 0.8 + 0.8*@intToFloat(f32, dayTime - dayCycle/4)/@intToFloat(f32, dayCycle/16);
 				}
 				dayTime -= dayCycle/4;
 				dayTime <<= 3;
@@ -271,50 +271,50 @@ pub var world: ?*World = &testWorld;
 pub var projectionMatrix: Mat4f = Mat4f.identity();
 pub var lodProjectionMatrix: Mat4f = Mat4f.identity();
 
-pub var fog = Fog{.active = true, .color=.{.x=0, .y=1, .z=0.5}, .density=1.0/15.0/256.0};
+pub var fog = Fog{.active = true, .color=.{0, 1, 0.5}, .density=1.0/15.0/256.0};
 
 
 pub fn update(deltaTime: f64) !void {
-	var movement = Vec3d{.x=0, .y=0, .z=0};
-	var forward = Vec3d.rotateY(Vec3d{.x=0, .y=0, .z=-1}, -camera.rotation.y);
-	var right = Vec3d{.x=forward.z, .y=0, .z=-forward.x};
+	var movement = Vec3d{0, 0, 0};
+	var forward = vec.rotateY(Vec3d{0, 0, -1}, -camera.rotation[1]);
+	var right = Vec3d{forward[2], 0, -forward[0]};
 	if(keyboard.forward.pressed) {
 		if(keyboard.sprint.pressed) {
 			if(Player.isFlying.load(.Monotonic)) {
-				movement.addEqual(forward.mulScalar(128));
+				movement += forward*@splat(3, @as(f64, 128));
 			} else {
-				movement.addEqual(forward.mulScalar(8));
+				movement += forward*@splat(3, @as(f64, 8));
 			}
 		} else {
-			movement.addEqual(forward.mulScalar(4));
+			movement += forward*@splat(3, @as(f64, 4));
 		}
 	}
 	if(keyboard.backward.pressed) {
-		movement.addEqual(forward.mulScalar(-4));
+		movement += forward*@splat(3, @as(f64, -4));
 	}
 	if(keyboard.left.pressed) {
-		movement.addEqual(right.mulScalar(4));
+		movement += right*@splat(3, @as(f64, 4));
 	}
 	if(keyboard.right.pressed) {
-		movement.addEqual(right.mulScalar(-4));
+		movement += right*@splat(3, @as(f64, -4));
 	}
 	if(keyboard.jump.pressed) {
 		if(Player.isFlying.load(.Monotonic)) {
 			if(keyboard.sprint.pressed) {
-				movement.y = 59.45;
+				movement[1] = 59.45;
 			} else {
-				movement.y = 5.45;
+				movement[1] = 5.45;
 			}
 		} else { // TODO: if (Cubyz.player.isOnGround())
-			movement.y = 5.45;
+			movement[1] = 5.45;
 		}
 	}
 	if(keyboard.fall.pressed) {
 		if(Player.isFlying.load(.Monotonic)) {
 			if(keyboard.sprint.pressed) {
-				movement.y = -59.45;
+				movement[1] = -59.45;
 			} else {
-				movement.y = -5.45;
+				movement[1] = -5.45;
 			}
 		}
 	}
@@ -322,7 +322,7 @@ pub fn update(deltaTime: f64) !void {
 	{
 		Player.mutex.lock();
 		defer Player.mutex.unlock();
-		Player.pos.addEqual(movement.mulScalar(deltaTime));
+		Player.pos += movement*@splat(3, deltaTime);
 	}
 	try world.?.update();
 }

@@ -31,18 +31,18 @@ pub const ClientEntity = struct {
 
 	pub fn init(self: *ClientEntity) void {
 		const pos = [_]f64 {
-			self.pos.x,
-			self.pos.y,
-			self.pos.z,
-			@floatCast(f64, self.rot.x),
-			@floatCast(f64, self.rot.y),
-			@floatCast(f64, self.rot.z),
+			self.pos[0],
+			self.pos[1],
+			self.pos[2],
+			@floatCast(f64, self.rot[0]),
+			@floatCast(f64, self.rot[1]),
+			@floatCast(f64, self.rot[2]),
 		};
 		self.interpolatedValues.initPosition(&pos);
 	}
 
 	pub fn getRenderPosition(self: *const ClientEntity) Vec3d {
-		return Vec3d{.x = self.pos.x, .y = self.pos.y + self.height/2, .z = self.pos.z};
+		return Vec3d{self.pos[0], self.pos[1] + self.height/2, self.pos[2]};
 	}
 
 	pub fn updatePosition(self: *ClientEntity, pos: *const [6]f64, vel: *const [6]f64, time: i16) void {
@@ -51,12 +51,12 @@ pub const ClientEntity = struct {
 
 	pub fn update(self: *ClientEntity, time: i16, lastTime: i16) void {
 		self.interpolatedValues.update(time, lastTime);
-		self.pos.x = self.interpolatedValues.outPos[0];
-		self.pos.y = self.interpolatedValues.outPos[1];
-		self.pos.z = self.interpolatedValues.outPos[2];
-		self.rot.x = @floatCast(f32, self.interpolatedValues.outPos[3]);
-		self.rot.y = @floatCast(f32, self.interpolatedValues.outPos[4]);
-		self.rot.z = @floatCast(f32, self.interpolatedValues.outPos[5]);
+		self.pos[0] = self.interpolatedValues.outPos[0];
+		self.pos[1] = self.interpolatedValues.outPos[1];
+		self.pos[2] = self.interpolatedValues.outPos[2];
+		self.rot[0] = @floatCast(f32, self.interpolatedValues.outPos[3]);
+		self.rot[1] = @floatCast(f32, self.interpolatedValues.outPos[4]);
+		self.rot[2] = @floatCast(f32, self.interpolatedValues.outPos[5]);
 	}
 };
 
@@ -110,22 +110,22 @@ pub const ClientEntityManager = struct {
 
 		for(entities.items) |ent| {
 			if(ent.id == game.Player.id or ent.name.len == 0) continue; // don't render local player
-			const pos3d: Vec3d = ent.getRenderPosition().sub(playerPos);
+			const pos3d: Vec3d = ent.getRenderPosition() - playerPos;
 			const pos4f: Vec4f = Vec4f{
-				.x = @floatCast(f32, pos3d.x),
-				.y = @floatCast(f32, pos3d.y + 1.5),
-				.z = @floatCast(f32, pos3d.z),
-				.w = 1,
+				@floatCast(f32, pos3d[0]),
+				@floatCast(f32, pos3d[1] + 1.5),
+				@floatCast(f32, pos3d[2]),
+				1,
 			};
 
 			const rotatedPos = game.camera.viewMatrix.mulVec(pos4f);
 			const projectedPos = projMatrix.mulVec(rotatedPos);
-			if(projectedPos.z < 0) continue;
-			const xCenter = (1 + projectedPos.x/projectedPos.w)*@intToFloat(f32, main.Window.width/2);
-			const yCenter = (1 - projectedPos.y/projectedPos.w)*@intToFloat(f32, main.Window.height/2);
+			if(projectedPos[2] < 0) continue;
+			const xCenter = (1 + projectedPos[0]/projectedPos[3])*@intToFloat(f32, main.Window.width/2);
+			const yCenter = (1 - projectedPos[1]/projectedPos[3])*@intToFloat(f32, main.Window.height/2);
 
 			graphics.Draw.setColor(0xffff00ff);
-			graphics.Draw.rect(.{.x=xCenter, .y=yCenter}, .{.x=100, .y=20}); // TODO: Text rendering.
+			graphics.Draw.rect(.{xCenter, yCenter}, .{100, 20}); // TODO: Text rendering.
 		}
 	}
 
@@ -150,16 +150,16 @@ pub const ClientEntityManager = struct {
 			c.glUniform1i(uniforms.materialHasTexture, c.GL_TRUE);
 			c.glUniform1i(uniforms.light, @bitCast(c_int, @as(u32, 0xffffffff))); // TODO: Lighting
 
-			const pos: Vec3d = ent.getRenderPosition().sub(playerPos);
+			const pos: Vec3d = ent.getRenderPosition() - playerPos;
 			const modelMatrix = (
 				Mat4f.identity() // TODO: .scale(scale);
-				.mul(Mat4f.rotationZ(-ent.rot.z))
-				.mul(Mat4f.rotationY(-ent.rot.y))
-				.mul(Mat4f.rotationX(-ent.rot.x))
+				.mul(Mat4f.rotationZ(-ent.rot[2]))
+				.mul(Mat4f.rotationY(-ent.rot[1]))
+				.mul(Mat4f.rotationX(-ent.rot[0]))
 				.mul(Mat4f.translation(Vec3f{
-					.x = @floatCast(f32, pos.x),
-					.y = @floatCast(f32, pos.y),
-					.z = @floatCast(f32, pos.z),
+					@floatCast(f32, pos[0]),
+					@floatCast(f32, pos[1]),
+					@floatCast(f32, pos[2]),
 				}))
 			);
 			const modelViewMatrix = modelMatrix.mul(game.camera.viewMatrix);

@@ -763,15 +763,15 @@ pub const Protocols: struct {
 			}
 			lastPositionSent = time;
 			var data: [62]u8 = undefined;
-			std.mem.writeIntBig(u64, data[0..8], @bitCast(u64, playerPos.x));
-			std.mem.writeIntBig(u64, data[8..16], @bitCast(u64, playerPos.y));
-			std.mem.writeIntBig(u64, data[16..24], @bitCast(u64, playerPos.z));
-			std.mem.writeIntBig(u64, data[24..32], @bitCast(u64, playerVel.x));
-			std.mem.writeIntBig(u64, data[32..40], @bitCast(u64, playerVel.y));
-			std.mem.writeIntBig(u64, data[40..48], @bitCast(u64, playerVel.z));
-			std.mem.writeIntBig(u32, data[48..52], @bitCast(u32, game.camera.rotation.x));
-			std.mem.writeIntBig(u32, data[52..56], @bitCast(u32, game.camera.rotation.y));
-			std.mem.writeIntBig(u32, data[56..60], @bitCast(u32, game.camera.rotation.z));
+			std.mem.writeIntBig(u64, data[0..8], @bitCast(u64, playerPos[0]));
+			std.mem.writeIntBig(u64, data[8..16], @bitCast(u64, playerPos[1]));
+			std.mem.writeIntBig(u64, data[16..24], @bitCast(u64, playerPos[2]));
+			std.mem.writeIntBig(u64, data[24..32], @bitCast(u64, playerVel[0]));
+			std.mem.writeIntBig(u64, data[32..40], @bitCast(u64, playerVel[1]));
+			std.mem.writeIntBig(u64, data[40..48], @bitCast(u64, playerVel[2]));
+			std.mem.writeIntBig(u32, data[48..52], @bitCast(u32, game.camera.rotation[0]));
+			std.mem.writeIntBig(u32, data[52..56], @bitCast(u32, game.camera.rotation[1]));
+			std.mem.writeIntBig(u32, data[56..60], @bitCast(u32, game.camera.rotation[2]));
 			std.mem.writeIntBig(u16, data[60..62], time);
 			try conn.sendUnimportant(id, &data);
 		}
@@ -993,9 +993,9 @@ pub const Protocols: struct {
 				},
 				type_teleport => {
 					game.Player.setPosBlocking(Vec3d{
-						.x = @bitCast(f64, std.mem.readIntBig(u64, data[1..9])),
-						.y = @bitCast(f64, std.mem.readIntBig(u64, data[9..17])),
-						.z = @bitCast(f64, std.mem.readIntBig(u64, data[17..25])),
+						@bitCast(f64, std.mem.readIntBig(u64, data[1..9])),
+						@bitCast(f64, std.mem.readIntBig(u64, data[9..17])),
+						@bitCast(f64, std.mem.readIntBig(u64, data[17..25])),
 					});
 				},
 				type_cure => {
@@ -1114,9 +1114,9 @@ pub const Protocols: struct {
 		pub fn sendTPCoordinates(conn: *Connection, pos: Vec3d) !void {
 			var data: [1+24]u8 = undefined;
 			data[0] = type_teleport;
-			std.mem.writeIntBig(u64, data[1..9], @bitCast(u64, pos.x));
-			std.mem.writeIntBig(u64, data[9..17], @bitCast(u64, pos.y));
-			std.mem.writeIntBig(u64, data[17..25], @bitCast(u64, pos.z));
+			std.mem.writeIntBig(u64, data[1..9], @bitCast(u64, pos[0]));
+			std.mem.writeIntBig(u64, data[9..17], @bitCast(u64, pos[1]));
+			std.mem.writeIntBig(u64, data[17..25], @bitCast(u64, pos[2]));
 			try conn.sendImportant(id, &data);
 		}
 

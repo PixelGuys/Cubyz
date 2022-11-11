@@ -86,9 +86,9 @@ pub const ChunkPosition = struct {
 
 	pub fn getMinDistanceSquared(self: ChunkPosition, playerPosition: Vec3d) f64 {
 		var halfWidth = @intToFloat(f64, self.voxelSize*@divExact(chunkSize, 2));
-		var dx = @fabs(@intToFloat(f64, self.wx) + halfWidth - playerPosition.x);
-		var dy = @fabs(@intToFloat(f64, self.wy) + halfWidth - playerPosition.y);
-		var dz = @fabs(@intToFloat(f64, self.wz) + halfWidth - playerPosition.z);
+		var dx = @fabs(@intToFloat(f64, self.wx) + halfWidth - playerPosition[0]);
+		var dy = @fabs(@intToFloat(f64, self.wy) + halfWidth - playerPosition[1]);
+		var dz = @fabs(@intToFloat(f64, self.wz) + halfWidth - playerPosition[2]);
 		dx = @max(0, dx - halfWidth);
 		dy = @max(0, dy - halfWidth);
 		dz = @max(0, dz - halfWidth);
@@ -440,7 +440,7 @@ pub const meshing = struct {
 
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast([*c]f32, &game.camera.viewMatrix));
 
-		c.glUniform3f(uniforms.ambientLight, ambient.x, ambient.y, ambient.z);
+		c.glUniform3f(uniforms.ambientLight, ambient[0], ambient[1], ambient[2]);
 
 		c.glUniform1i(uniforms.time, @bitCast(i32, time));
 
@@ -837,9 +837,9 @@ pub const meshing = struct {
 			if(self.vertexCount == 0) return;
 			c.glUniform3f(
 				uniforms.modelPosition,
-				@floatCast(f32, @intToFloat(f64, self.pos.wx) - playerPosition.x),
-				@floatCast(f32, @intToFloat(f64, self.pos.wy) - playerPosition.y),
-				@floatCast(f32, @intToFloat(f64, self.pos.wz) - playerPosition.z)
+				@floatCast(f32, @intToFloat(f64, self.pos.wx) - playerPosition[0]),
+				@floatCast(f32, @intToFloat(f64, self.pos.wy) - playerPosition[1]),
+				@floatCast(f32, @intToFloat(f64, self.pos.wz) - playerPosition[2])
 			);
 			c.glUniform1i(uniforms.visibilityMask, self.visibilityMask);
 			self.faceData.bind(3);
