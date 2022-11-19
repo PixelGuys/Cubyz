@@ -6,6 +6,7 @@ const chunk = @import("chunk.zig");
 const entity = @import("entity.zig");
 const game = @import("game.zig");
 const graphics = @import("graphics.zig");
+const items = @import("items.zig");
 const models = @import("models.zig");
 const renderer = @import("renderer.zig");
 const network = @import("network.zig");
@@ -238,6 +239,9 @@ pub fn main() !void {
 
 	try models.init();
 	defer models.deinit();
+
+	items.globalInit();
+	defer items.deinit();
 
 	try assets.init();
 	defer assets.deinit();

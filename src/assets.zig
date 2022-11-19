@@ -1,15 +1,17 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
+const blocks_zig = @import("blocks.zig");
+const items_zig = @import("items.zig");
 const json = @import("json.zig");
 const JsonElement = json.JsonElement;
-const blocks_zig = @import("blocks.zig");
 const main = @import("main.zig");
 
 var arena: std.heap.ArenaAllocator = undefined;
 var arenaAllocator: Allocator = undefined;
 var commonBlocks: std.StringHashMap(JsonElement) = undefined;
 var commonBiomes: std.StringHashMap(JsonElement) = undefined;
+var commonItems: std.StringHashMap(JsonElement) = undefined;
 var commonRecipes: std.ArrayList([]const u8) = undefined;
 
 /// Reads json files recursively from all subfolders.
@@ -42,7 +44,7 @@ pub fn readAllJsonFilesInAddons(externalAllocator: Allocator, addons: std.ArrayL
 	}
 }
 
-pub fn readAssets(externalAllocator: Allocator, assetPath: []const u8, blocks: *std.StringHashMap(JsonElement), biomes: *std.StringHashMap(JsonElement)) !void {
+pub fn readAssets(externalAllocator: Allocator, assetPath: []const u8, blocks: *std.StringHashMap(JsonElement), items: *std.StringHashMap(JsonElement), biomes: *std.StringHashMap(JsonElement)) !void {
 	var addons = std.ArrayList(std.fs.Dir).init(main.threadAllocator);
 	defer addons.deinit();
 	var addonNames = std.ArrayList([]const u8).init(main.threadAllocator);
@@ -65,6 +67,7 @@ pub fn readAssets(externalAllocator: Allocator, assetPath: []const u8, blocks: *
 	};
 
 	try readAllJsonFilesInAddons(externalAllocator, addons, addonNames, "blocks", blocks);
+	try readAllJsonFilesInAddons(externalAllocator, addons, addonNames, "items", items);
 	try readAllJsonFilesInAddons(externalAllocator, addons, addonNames, "biomes", biomes);
 }
 
@@ -72,13 +75,18 @@ pub fn init() !void {
 	arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
 	arenaAllocator = arena.allocator();
 	commonBlocks = std.StringHashMap(JsonElement).init(arenaAllocator);
+	commonItems = std.StringHashMap(JsonElement).init(arenaAllocator);
 	commonBiomes = std.StringHashMap(JsonElement).init(arenaAllocator);
 	commonRecipes = std.ArrayList([]const u8).init(arenaAllocator);
 
-	try readAssets(arenaAllocator, "assets/", &commonBlocks, &commonBiomes);
+	try readAssets(arenaAllocator, "assets/", &commonBlocks, &commonItems, &commonBiomes);
 }
 
-pub fn registerBlock(assetFolder: []const u8, id: []const u8, info: JsonElement) !void {
+fn registerItem(assetFolder: []const u8, id: []const u8, info: JsonElement) !void {
+	try items_zig.register(assetFolder, id, info);
+}
+
+fn registerBlock(assetFolder: []const u8, id: []const u8, info: JsonElement) !void {
 	try blocks_zig.register(assetFolder, id, info); // TODO: Modded block registries
 	try blocks_zig.meshes.register(assetFolder, id, info);
 
@@ -185,11 +193,14 @@ pub const BlockPalette = struct {
 pub fn loadWorldAssets(assetFolder: []const u8, palette: *BlockPalette) !void {
 	var blocks = try commonBlocks.cloneWithAllocator(main.threadAllocator);
 	defer blocks.clearAndFree();
+	var items = try commonItems.cloneWithAllocator(main.threadAllocator);
+	defer items.clearAndFree();
 	var biomes = try commonBiomes.cloneWithAllocator(main.threadAllocator);
 	defer biomes.clearAndFree();
 
-	try readAssets(arenaAllocator, assetFolder, &blocks, &biomes);
+	try readAssets(arenaAllocator, assetFolder, &blocks, &items, &biomes);
 
+	// blocks:
 	var block: u32 = 0;
 	for(palette.palette.items) |id| {
 		var nullKeyValue = blocks.fetchRemove(id);
@@ -211,6 +222,12 @@ pub fn loadWorldAssets(assetFolder: []const u8, palette: *BlockPalette) !void {
 		try registerBlock(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
 		try palette.add(entry.key_ptr.*);
 		block += 1;
+	}
+
+	// items:
+	iterator = items.iterator();
+	while(iterator.next()) |entry| {
+		try registerItem(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
 	}
 
 //	public void registerBlocks(Registry<DataOrientedRegistry> registries, NoIDRegistry<Ore> oreRegistry, BlockPalette palette) {

@@ -18,6 +18,14 @@ pub fn dot(self: anytype, other: @TypeOf(self)) @typeInfo(@TypeOf(self)).Vector.
 	return @reduce(.Add, self*other);
 }
 
+pub fn length(self: anytype) @typeInfo(@TypeOf(self)).Vector.child {
+	return @sqrt(@reduce(.Add, self*self));
+}
+
+pub fn normalize(self: anytype) @typeInfo(@TypeOf(self)).Vector.child {
+	return self/length(self);
+}
+
 pub fn cross(self: anytype, other: @TypeOf(self)) @TypeOf(self) {
 	if(@typeInfo(@TypeOf(self)).Vector.len != 3) @compileError("Only available for vectors of length 3.");
 	return @TypeOf(self) {

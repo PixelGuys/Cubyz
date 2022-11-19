@@ -638,6 +638,16 @@ pub const Image = struct {
 	width: u31,
 	height: u31,
 	imageData: []Color,
+	pub fn init(allocator: Allocator, width: u31, height: u31) !Image {
+		return Image{
+			.width = width,
+			.height = height,
+			.imageData = try allocator.alloc(Color, width*height),
+		};
+	}
+	pub fn deinit(self: Image, allocator: Allocator) void {
+		allocator.free(self.imageData);
+	}
 	pub fn readFromFile(allocator: Allocator, path: []const u8) !Image {
 		var result: Image = undefined;
 		var channel: c_int = undefined;

@@ -25,7 +25,41 @@ pub const JsonElement = union(JsonType) {
 	JsonArray: *ArrayList(JsonElement),
 	JsonObject: *std.StringHashMap(JsonElement),
 
-	// TODO: Add simple array access.
+	pub fn initObject(allocator: Allocator) !JsonElement {
+		var map: *std.StringHashMap(JsonElement) = try allocator.create(std.StringHashMap(JsonElement));
+		map.* = std.StringHashMap(JsonElement).init(allocator);
+		return JsonElement{.JsonObject=map};
+	}
+
+	pub fn initArray(allocator: Allocator) !JsonElement {
+		const list: *ArrayList(JsonElement) = try allocator.create(ArrayList(JsonElement));
+		list.* = ArrayList(JsonElement).init(allocator);
+		return JsonElement{.JsonArray=list};
+	}
+
+	pub fn getAtIndex(self: *const JsonElement, comptime _type: type, index: usize, replacement: _type) @TypeOf(replacement) {
+		if(self.* != JsonType.JsonArray) {
+			return replacement;
+		} else {
+			if(index < self.JsonArray.items.len) {
+				return self.JsonArray.items[index].as(_type, replacement);
+			} else {
+				return replacement;
+			}
+		}
+	}
+
+	pub fn getChildAtIndex(self: *const JsonElement, index: usize) JsonElement {
+		if(self.* != JsonType.JsonArray) {
+			return JsonElement{.JsonNull={}};
+		} else {
+			if(index < self.JsonArray.items.len) {
+				return self.JsonArray.items[index];
+			} else {
+				return JsonElement{.JsonNull={}};
+			}
+		}
+	}
 
 	pub fn get(self: *const JsonElement, comptime _type: type, key: []const u8, replacement: _type) @TypeOf(replacement) {
 		if(self.* != JsonType.JsonObject) {
@@ -52,23 +86,29 @@ pub const JsonElement = union(JsonType) {
 	}
 
 	pub fn as(self: *const JsonElement, comptime _type: type, replacement: _type) _type {
-		switch(@typeInfo(_type)) {
+		comptime var typeInfo = @typeInfo(_type);
+		comptime var innerType = _type;
+		inline while(typeInfo == .Optional) {
+			innerType = typeInfo.Optional.child;
+			typeInfo = @typeInfo(innerType);
+		}
+		switch(typeInfo) {
 			.Int => {
 				switch(self.*) {
-					JsonType.JsonInt => return std.math.cast(_type, self.JsonInt) orelse replacement,
-					JsonType.JsonFloat => return std.math.lossyCast(_type, std.math.round(self.JsonFloat)),
+					JsonType.JsonInt => return std.math.cast(innerType, self.JsonInt) orelse replacement,
+					JsonType.JsonFloat => return std.math.lossyCast(innerType, std.math.round(self.JsonFloat)),
 					else => return replacement,
 				}
 			},
 			.Float => {
 				switch(self.*) {
-					JsonType.JsonInt => return @intToFloat(_type, self.JsonInt),
-					JsonType.JsonFloat => return @floatCast(_type, self.JsonFloat),
+					JsonType.JsonInt => return @intToFloat(innerType, self.JsonInt),
+					JsonType.JsonFloat => return @floatCast(innerType, self.JsonFloat),
 					else => return replacement,
 				}
 			},
 			else => {
-				switch(_type) {
+				switch(innerType) {
 					[]const u8 => {
 						switch(self.*) {
 							JsonType.JsonString => return self.JsonString,
@@ -88,6 +128,31 @@ pub const JsonElement = union(JsonType) {
 				}
 			},
 		}
+	}
+
+	fn createElementFromRandomType(value: anytype) JsonElement {
+		switch(@typeInfo(@TypeOf(value))) {
+			.Void => return JsonElement{.JsonNull={}},
+			.Null => return JsonElement{.JsonNull={}},
+			.Bool => return JsonElement{.JsonBool=value},
+			.Int, .ComptimeInt => return JsonElement{.JsonInt=@intCast(i64, value)},
+			.Float, .ComptimeFloat => return JsonElement{.JsonInt=@floatCast(f64, value)},
+			.Union => {
+				if(@TypeOf(value) == JsonElement) {
+					return value;
+				} else {
+					@compileError("Unknown value type.");
+				}
+			},
+			else => {
+				@compileError("Unknown value type.");
+			},
+		}
+	}
+
+	pub fn put(self: *const JsonElement, key: []const u8, value: anytype) !void {
+		const result = createElementFromRandomType(value);
+		try self.JsonObject.put(key, result);
 	}
 
 	pub fn free(self: *const JsonElement, allocator: Allocator) void {
