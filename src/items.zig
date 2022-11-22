@@ -5,6 +5,7 @@ const Allocator = std.mem.Allocator;
 const blocks = @import("blocks.zig");
 const Block = blocks.Block;
 const graphics = @import("graphics.zig");
+const Color = graphics.Color;
 const json = @import("json.zig");
 const JsonElement = json.JsonElement;
 const main = @import("main.zig");
@@ -26,7 +27,7 @@ const Material = struct {
 	/// How rough the texture should look.
 	roughness: f32 = undefined,
 	/// The colors that are used to make tool textures.
-	colorPalette: []u32 = undefined,
+	colorPalette: []Color = undefined,
 
 	pub fn init(self: *Material, allocator: Allocator, jsonObject: JsonElement) !void {
 		self.density = jsonObject.get(f32, "density", 1.0);
@@ -34,9 +35,15 @@ const Material = struct {
 		self.power = jsonObject.get(f32, "power", 1.0);
 		self.roughness = @max(0, jsonObject.get(f32, "roughness", 1.0));
 		const colors = jsonObject.getChild("colors");
-		self.colorPalette = try allocator.alloc(u32, colors.JsonArray.items.len);
+		self.colorPalette = try allocator.alloc(Color, colors.JsonArray.items.len);
 		for(colors.JsonArray.items) |item, i| {
-			self.colorPalette[i] = item.as(u32, 0xff000000);
+			const colorInt = item.as(u32, 0xff000000);
+			self.colorPalette[i] = Color {
+				.r = @intCast(u8, colorInt>>16 & 0xff),
+				.g = @intCast(u8, colorInt>>8 & 0xff),
+				.b = @intCast(u8, colorInt>>0 & 0xff),
+				.a = @intCast(u8, colorInt>>24 & 0xff),
+			};
 		}
 	}
 
@@ -110,16 +117,16 @@ const BaseItem = struct {
 //	From Consumable.java:
 //	@Override
 //	public boolean onUse(Entity user) {
-//		if ((user.hunger >= user.maxHunger - Math.min(user.maxHunger*0.1, 0.5) && foodValue > 0) || (user.hunger == 0 && foodValue < 0)) return false;
+//		if((user.hunger >= user.maxHunger - Math.min(user.maxHunger*0.1, 0.5) && foodValue > 0) || (user.hunger == 0 && foodValue < 0)) return false;
 //		user.hunger = Math.min(user.maxHunger, user.hunger+foodValue);
 //		return true;
 //	}
 //	public static Item load(JsonObject json, CurrentWorldRegistries registries) {
 //		Item item = registries.itemRegistry.getByID(json.getString("item", "null"));
-//		if (item == null) {
+//		if(item == null) {
 //			// Check if it is a tool:
 //			JsonObject tool = json.getObject("tool");
-//			if (tool != null) {
+//			if(tool != null) {
 //				item = new Tool(tool, registries);
 //			} else {
 //				// item not existant in this version of the game. Can't do much so ignore it.
@@ -157,7 +164,7 @@ const TextureGenerator = struct {
 				.items = std.ArrayList(*const BaseItem).init(allocator),
 			};
 		}
-		pub fn deinit(self: PixelData) void {
+		pub fn deinit(self: *PixelData) void {
 			self.items.clearAndFree();
 		}
 		pub fn add(self: *PixelData, item: *const BaseItem, neighbors: u8) !void {
@@ -175,180 +182,182 @@ const TextureGenerator = struct {
 	fn countNeighbors(relativeGrid: *[25]?*const BaseItem) u8 {
 		var neighbors: u8 = 0;
 		// direct neighbors count 1.5 times as much.
-		if (relativeGrid[7]) neighbors += 3;
-		if (relativeGrid[11]) neighbors += 3;
-		if (relativeGrid[13]) neighbors += 3;
-		if (relativeGrid[17]) neighbors += 3;
+		if(relativeGrid[7] != null) neighbors += 3;
+		if(relativeGrid[11] != null) neighbors += 3;
+		if(relativeGrid[13] != null) neighbors += 3;
+		if(relativeGrid[17] != null) neighbors += 3;
 
-		if (relativeGrid[6]) neighbors += 2;
-		if (relativeGrid[8]) neighbors += 2;
-		if (relativeGrid[16]) neighbors += 2;
-		if (relativeGrid[18]) neighbors += 2;
+		if(relativeGrid[6] != null) neighbors += 2;
+		if(relativeGrid[8] != null) neighbors += 2;
+		if(relativeGrid[16] != null) neighbors += 2;
+		if(relativeGrid[18] != null) neighbors += 2;
+
+		return neighbors;
 	}
 
 	/// This part is responsible for associating each pixel with an item.
-	fn drawRegion(relativeGrid: *[25]?*const BaseItem, relativeNeighborCount: *[25]u8, x: u8, y: u8, pixels: *[16][16]PixelData) void {
+	fn drawRegion(relativeGrid: *[25]?*const BaseItem, relativeNeighborCount: *[25]u8, x: u8, y: u8, pixels: *[16][16]PixelData) !void {
 		if(relativeGrid[12]) |item| {
 			// Count diagonal and straight neighbors:
 			var diagonalNeighbors: u8 = 0;
 			var straightNeighbors: u8 = 0;
-			if (relativeGrid[7]) straightNeighbors += 1;
-			if (relativeGrid[11]) straightNeighbors += 1;
-			if (relativeGrid[13]) straightNeighbors += 1;
-			if (relativeGrid[17]) straightNeighbors += 1;
+			if(relativeGrid[7] != null) straightNeighbors += 1;
+			if(relativeGrid[11] != null) straightNeighbors += 1;
+			if(relativeGrid[13] != null) straightNeighbors += 1;
+			if(relativeGrid[17] != null) straightNeighbors += 1;
 
-			if (relativeGrid[6]) diagonalNeighbors += 1;
-			if (relativeGrid[8]) diagonalNeighbors += 1;
-			if (relativeGrid[16]) diagonalNeighbors += 1;
-			if (relativeGrid[18]) diagonalNeighbors += 1;
+			if(relativeGrid[6] != null) diagonalNeighbors += 1;
+			if(relativeGrid[8] != null) diagonalNeighbors += 1;
+			if(relativeGrid[16] != null) diagonalNeighbors += 1;
+			if(relativeGrid[18] != null) diagonalNeighbors += 1;
 
 			const neighbors = diagonalNeighbors + straightNeighbors;
 
-			pixels[x + 1][y + 1].add(item, relativeNeighborCount[12]);
-			pixels[x + 1][y + 2].add(item, relativeNeighborCount[12]);
-			pixels[x + 2][y + 1].add(item, relativeNeighborCount[12]);
-			pixels[x + 2][y + 2].add(item, relativeNeighborCount[12]);
+			try pixels[x + 1][y + 1].add(item, relativeNeighborCount[12]);
+			try pixels[x + 1][y + 2].add(item, relativeNeighborCount[12]);
+			try pixels[x + 2][y + 1].add(item, relativeNeighborCount[12]);
+			try pixels[x + 2][y + 2].add(item, relativeNeighborCount[12]);
 
 			// Checkout straight neighbors:
-			if(relativeGrid[7]) {
-				if (relativeNeighborCount[7] >= relativeNeighborCount[12]) {
-					pixels[x + 1][y].add(item, relativeNeighborCount[12]);
-					pixels[x + 2][y].add(item, relativeNeighborCount[12]);
+			if(relativeGrid[7] != null) {
+				if(relativeNeighborCount[7] >= relativeNeighborCount[12]) {
+					try pixels[x + 1][y].add(item, relativeNeighborCount[12]);
+					try pixels[x + 2][y].add(item, relativeNeighborCount[12]);
 				}
-				if (relativeGrid[1] and !relativeGrid[16] and straightNeighbors <= 1) {
-					pixels[x + 2][y + 3].add(item, relativeNeighborCount[12]);
+				if(relativeGrid[1] != null and relativeGrid[16] == null and straightNeighbors <= 1) {
+					try pixels[x + 2][y + 3].add(item, relativeNeighborCount[12]);
 				}
-				if (relativeGrid[3] and !relativeGrid[18] and straightNeighbors <= 1) {
-					pixels[x + 1][y + 3].add(item, relativeNeighborCount[12]);
-				}
-			}
-			if (relativeGrid[11]) {
-				if (relativeNeighborCount[11] >= relativeNeighborCount[12]) {
-					pixels[x][y + 1].add(item, relativeNeighborCount[12]);
-					pixels[x][y + 2].add(item, relativeNeighborCount[12]);
-				}
-				if (relativeGrid[5] and !relativeGrid[8] and straightNeighbors <= 1) {
-					pixels[x + 3][y + 2].add(item, relativeNeighborCount[12]);
-				}
-				if (relativeGrid[15] and !relativeGrid[18] and straightNeighbors <= 1) {
-					pixels[x + 3][y + 1].add(item, relativeNeighborCount[12]);
+				if(relativeGrid[3] != null and relativeGrid[18] == null and straightNeighbors <= 1) {
+					try pixels[x + 1][y + 3].add(item, relativeNeighborCount[12]);
 				}
 			}
-			if (relativeGrid[13]) {
-				if (relativeNeighborCount[13] >= relativeNeighborCount[12]) {
-					pixels[x + 3][y + 1].add(item, relativeNeighborCount[12]);
-					pixels[x + 3][y + 2].add(item, relativeNeighborCount[12]);
+			if(relativeGrid[11] != null) {
+				if(relativeNeighborCount[11] >= relativeNeighborCount[12]) {
+					try pixels[x][y + 1].add(item, relativeNeighborCount[12]);
+					try pixels[x][y + 2].add(item, relativeNeighborCount[12]);
 				}
-				if (relativeGrid[9] and !relativeGrid[6] and straightNeighbors <= 1) {
-					pixels[x][y + 2].add(item, relativeNeighborCount[12]);
+				if(relativeGrid[5] != null and relativeGrid[8] == null and straightNeighbors <= 1) {
+					try pixels[x + 3][y + 2].add(item, relativeNeighborCount[12]);
 				}
-				if (relativeGrid[19] and !relativeGrid[16] and straightNeighbors <= 1) {
-					pixels[x][y + 1].add(item, relativeNeighborCount[12]);
+				if(relativeGrid[15] != null and relativeGrid[18] == null and straightNeighbors <= 1) {
+					try pixels[x + 3][y + 1].add(item, relativeNeighborCount[12]);
 				}
 			}
-			if (relativeGrid[17]) {
-				if (relativeNeighborCount[17] >= relativeNeighborCount[12]) {
-					pixels[x + 1][y + 3].add(item, relativeNeighborCount[12]);
-					pixels[x + 2][y + 3].add(item, relativeNeighborCount[12]);
+			if(relativeGrid[13] != null) {
+				if(relativeNeighborCount[13] >= relativeNeighborCount[12]) {
+					try pixels[x + 3][y + 1].add(item, relativeNeighborCount[12]);
+					try pixels[x + 3][y + 2].add(item, relativeNeighborCount[12]);
 				}
-				if (relativeGrid[21] and !relativeGrid[6] and straightNeighbors <= 1) {
-					pixels[x + 2][y].add(item, relativeNeighborCount[12]);
+				if(relativeGrid[9] != null and relativeGrid[6] == null and straightNeighbors <= 1) {
+					try pixels[x][y + 2].add(item, relativeNeighborCount[12]);
 				}
-				if (relativeGrid[23] and !relativeGrid[8] and straightNeighbors <= 1) {
-					pixels[x + 1][y].add(item, relativeNeighborCount[12]);
+				if(relativeGrid[19] != null and relativeGrid[16] == null and straightNeighbors <= 1) {
+					try pixels[x][y + 1].add(item, relativeNeighborCount[12]);
+				}
+			}
+			if(relativeGrid[17] != null) {
+				if(relativeNeighborCount[17] >= relativeNeighborCount[12]) {
+					try pixels[x + 1][y + 3].add(item, relativeNeighborCount[12]);
+					try pixels[x + 2][y + 3].add(item, relativeNeighborCount[12]);
+				}
+				if(relativeGrid[21] != null and relativeGrid[6] == null and straightNeighbors <= 1) {
+					try pixels[x + 2][y].add(item, relativeNeighborCount[12]);
+				}
+				if(relativeGrid[23] != null and relativeGrid[8] == null and straightNeighbors <= 1) {
+					try pixels[x + 1][y].add(item, relativeNeighborCount[12]);
 				}
 			}
 
 			// Checkout diagonal neighbors:
-			if (relativeGrid[6]) {
-				if (relativeNeighborCount[6] >= relativeNeighborCount[12]) {
-					pixels[x][y].add(item, relativeNeighborCount[12]);
+			if(relativeGrid[6] != null) {
+				if(relativeNeighborCount[6] >= relativeNeighborCount[12]) {
+					try pixels[x][y].add(item, relativeNeighborCount[12]);
 				}
-				pixels[x + 1][y].add(item, relativeNeighborCount[12]);
-				pixels[x][y + 1].add(item, relativeNeighborCount[12]);
-				if (relativeGrid[1] and !relativeGrid[7] and neighbors <= 2) {
-					pixels[x + 3][y + 2].add(item, relativeNeighborCount[12]);
+				try pixels[x + 1][y].add(item, relativeNeighborCount[12]);
+				try pixels[x][y + 1].add(item, relativeNeighborCount[12]);
+				if(relativeGrid[1] != null and relativeGrid[7] == null and neighbors <= 2) {
+					try pixels[x + 3][y + 2].add(item, relativeNeighborCount[12]);
 				}
-				if (relativeGrid[5] and !relativeGrid[11] and neighbors <= 2) {
-					pixels[x + 2][y + 3].add(item, relativeNeighborCount[12]);
-				}
-			}
-			if (relativeGrid[8]) {
-				if (relativeNeighborCount[8] >= relativeNeighborCount[12]) {
-					pixels[x + 3][y].add(item, relativeNeighborCount[12]);
-				}
-				pixels[x + 2][y].add(item, relativeNeighborCount[12]);
-				pixels[x + 3][y + 1].add(item, relativeNeighborCount[12]);
-				if (relativeGrid[3] and !relativeGrid[7] and neighbors <= 2) {
-					pixels[x][y + 2].add(item, relativeNeighborCount[12]);
-				}
-				if (relativeGrid[9] and !relativeGrid[13] and neighbors <= 2) {
-					pixels[x + 1][y + 3].add(item, relativeNeighborCount[12]);
+				if(relativeGrid[5] != null and relativeGrid[11] == null and neighbors <= 2) {
+					try pixels[x + 2][y + 3].add(item, relativeNeighborCount[12]);
 				}
 			}
-			if (relativeGrid[16]) {
-				if (relativeNeighborCount[16] >= relativeNeighborCount[12]) {
-					pixels[x][y + 3].add(item, relativeNeighborCount[12]);
+			if(relativeGrid[8] != null) {
+				if(relativeNeighborCount[8] >= relativeNeighborCount[12]) {
+					try pixels[x + 3][y].add(item, relativeNeighborCount[12]);
 				}
-				pixels[x][y + 2].add(item, relativeNeighborCount[12]);
-				pixels[x + 1][y + 3].add(item, relativeNeighborCount[12]);
-				if (relativeGrid[21] and !relativeGrid[17] and neighbors <= 2) {
-					pixels[x + 3][y + 1].add(item, relativeNeighborCount[12]);
+				try pixels[x + 2][y].add(item, relativeNeighborCount[12]);
+				try pixels[x + 3][y + 1].add(item, relativeNeighborCount[12]);
+				if(relativeGrid[3] != null and relativeGrid[7] == null and neighbors <= 2) {
+					try pixels[x][y + 2].add(item, relativeNeighborCount[12]);
 				}
-				if (relativeGrid[15] and !relativeGrid[11] and neighbors <= 2) {
-					pixels[x + 2][y].add(item, relativeNeighborCount[12]);
+				if(relativeGrid[9] != null and relativeGrid[13] == null and neighbors <= 2) {
+					try pixels[x + 1][y + 3].add(item, relativeNeighborCount[12]);
 				}
 			}
-			if (relativeGrid[18]) {
-				if (relativeNeighborCount[18] >= relativeNeighborCount[12]) {
-					pixels[x + 3][y + 3].add(item, relativeNeighborCount[12]);
+			if(relativeGrid[16] != null) {
+				if(relativeNeighborCount[16] >= relativeNeighborCount[12]) {
+					try pixels[x][y + 3].add(item, relativeNeighborCount[12]);
 				}
-				pixels[x + 2][y + 3].add(item, relativeNeighborCount[12]);
-				pixels[x + 3][y + 2].add(item, relativeNeighborCount[12]);
-				if (relativeGrid[23] and !relativeGrid[17] and neighbors <= 2) {
-					pixels[x][y + 1].add(item, relativeNeighborCount[12]);
+				try pixels[x][y + 2].add(item, relativeNeighborCount[12]);
+				try pixels[x + 1][y + 3].add(item, relativeNeighborCount[12]);
+				if(relativeGrid[21] != null and relativeGrid[17] == null and neighbors <= 2) {
+					try pixels[x + 3][y + 1].add(item, relativeNeighborCount[12]);
 				}
-				if (relativeGrid[19] and !relativeGrid[13] and neighbors <= 2) {
-					pixels[x + 1][y].add(item, relativeNeighborCount[12]);
+				if(relativeGrid[15] != null and relativeGrid[11] == null and neighbors <= 2) {
+					try pixels[x + 2][y].add(item, relativeNeighborCount[12]);
+				}
+			}
+			if(relativeGrid[18] != null) {
+				if(relativeNeighborCount[18] >= relativeNeighborCount[12]) {
+					try pixels[x + 3][y + 3].add(item, relativeNeighborCount[12]);
+				}
+				try pixels[x + 2][y + 3].add(item, relativeNeighborCount[12]);
+				try pixels[x + 3][y + 2].add(item, relativeNeighborCount[12]);
+				if(relativeGrid[23] != null and relativeGrid[17] == null and neighbors <= 2) {
+					try pixels[x][y + 1].add(item, relativeNeighborCount[12]);
+				}
+				if(relativeGrid[19] != null and relativeGrid[13] == null and neighbors <= 2) {
+					try pixels[x + 1][y].add(item, relativeNeighborCount[12]);
 				}
 			}
 
 			// Make stuff more round when there is many incoming connections:
-			if (diagonalNeighbors >= 3 or straightNeighbors == 4) {
-				pixels[x + 0][y + 1].add(item, relativeNeighborCount[12]);
-				pixels[x + 0][y + 2].add(item, relativeNeighborCount[12]);
-				pixels[x + 3][y + 1].add(item, relativeNeighborCount[12]);
-				pixels[x + 3][y + 2].add(item, relativeNeighborCount[12]);
-				pixels[x + 1][y + 0].add(item, relativeNeighborCount[12]);
-				pixels[x + 1][y + 3].add(item, relativeNeighborCount[12]);
-				pixels[x + 2][y + 0].add(item, relativeNeighborCount[12]);
-				pixels[x + 2][y + 3].add(item, relativeNeighborCount[12]);
+			if(diagonalNeighbors >= 3 or straightNeighbors == 4) {
+				try pixels[x + 0][y + 1].add(item, relativeNeighborCount[12]);
+				try pixels[x + 0][y + 2].add(item, relativeNeighborCount[12]);
+				try pixels[x + 3][y + 1].add(item, relativeNeighborCount[12]);
+				try pixels[x + 3][y + 2].add(item, relativeNeighborCount[12]);
+				try pixels[x + 1][y + 0].add(item, relativeNeighborCount[12]);
+				try pixels[x + 1][y + 3].add(item, relativeNeighborCount[12]);
+				try pixels[x + 2][y + 0].add(item, relativeNeighborCount[12]);
+				try pixels[x + 2][y + 3].add(item, relativeNeighborCount[12]);
 				// Check which of the neighbors was empty:
-				if (relativeGrid[6] == null) {
-					pixels[x + 0][y + 0].add(item, relativeNeighborCount[12]);
-					pixels[x + 2][y - 1].add(item, relativeNeighborCount[12]);
-					pixels[x - 1][y + 2].add(item, relativeNeighborCount[12]);
+				if(relativeGrid[6] == null) {
+					try pixels[x + 0][y + 0].add(item, relativeNeighborCount[12]);
+					try pixels[x + 2][y - 1].add(item, relativeNeighborCount[12]);
+					try pixels[x - 1][y + 2].add(item, relativeNeighborCount[12]);
 				}
-				if (relativeGrid[8] == null) {
-					pixels[x + 3][y + 0].add(item, relativeNeighborCount[12]);
-					pixels[x + 1][y - 1].add(item, relativeNeighborCount[12]);
-					pixels[x + 4][y + 2].add(item, relativeNeighborCount[12]);
+				if(relativeGrid[8] == null) {
+					try pixels[x + 3][y + 0].add(item, relativeNeighborCount[12]);
+					try pixels[x + 1][y - 1].add(item, relativeNeighborCount[12]);
+					try pixels[x + 4][y + 2].add(item, relativeNeighborCount[12]);
 				}
-				if (relativeGrid[16] == null) {
-					pixels[x + 0][y + 3].add(item, relativeNeighborCount[12]);
-					pixels[x + 2][y + 4].add(item, relativeNeighborCount[12]);
-					pixels[x - 1][y + 1].add(item, relativeNeighborCount[12]);
+				if(relativeGrid[16] == null) {
+					try pixels[x + 0][y + 3].add(item, relativeNeighborCount[12]);
+					try pixels[x + 2][y + 4].add(item, relativeNeighborCount[12]);
+					try pixels[x - 1][y + 1].add(item, relativeNeighborCount[12]);
 				}
-				if (relativeGrid[18] == null) {
-					pixels[x + 3][y + 3].add(item, relativeNeighborCount[12]);
-					pixels[x + 1][y + 4].add(item, relativeNeighborCount[12]);
-					pixels[x + 4][y + 1].add(item, relativeNeighborCount[12]);
+				if(relativeGrid[18] == null) {
+					try pixels[x + 3][y + 3].add(item, relativeNeighborCount[12]);
+					try pixels[x + 1][y + 4].add(item, relativeNeighborCount[12]);
+					try pixels[x + 4][y + 1].add(item, relativeNeighborCount[12]);
 				}
 			}
 		}
 	}
 
-	fn generateHeightMap(itemGrid: *[16][16]?*BaseItem, seed: *u64) [17][17]f32 {
+	fn generateHeightMap(itemGrid: *[16][16]?*const BaseItem, seed: *u64) [17][17]f32 {
 		var heightMap: [17][17]f32 = undefined;
 		var x: u8 = 0;
 		while(x < 17) : (x += 1) {
@@ -366,7 +375,7 @@ const TextureGenerator = struct {
 					while(dy <= 0) : (dy += 1) {
 						if(y + dy < 0 or y + dy >= 16) continue;
 						const otherItem = itemGrid[@intCast(usize, x + dx)][@intCast(usize, y + dy)];
-						heightMap[x][y] = if(otherItem) |item| 1 + (4*random.nextFloat(seed) - 2)*item.material.roughness else 0;
+						heightMap[x][y] = if(otherItem) |item| (if(item.material) |material| 1 + (4*random.nextFloat(seed) - 2)*material.roughness else 0) else 0;
 						if(otherItem != oneItem) {
 							hasDifferentItems = true;
 						}
@@ -374,7 +383,7 @@ const TextureGenerator = struct {
 				}
 
 				// If there is multiple items at this junction, make it go inward to make embedded parts stick out more:
-				if (hasDifferentItems) {
+				if(hasDifferentItems) {
 					heightMap[x][y] -= 1;
 				}
 				
@@ -387,7 +396,7 @@ const TextureGenerator = struct {
 						if(y + dy < 0 or y + dy >= 16) continue;
 						const otherItem = itemGrid[@intCast(usize, x + dx)][@intCast(usize, y + dy)];
 						const dVec = Vec2f{@intToFloat(f32, dx) + 0.5, @intToFloat(f32, dy) + 0.5};
-						heightMap[x][y] += if(otherItem) 1.0/vec.dot(dVec, dVec) else 0;
+						heightMap[x][y] += if(otherItem != null) 1.0/vec.dot(dVec, dVec) else 0;
 					}
 				}
 			}
@@ -395,7 +404,7 @@ const TextureGenerator = struct {
 		return heightMap;
 	}
 
-	pub fn generate(tool: *Tool) void {
+	pub fn generate(tool: *Tool) !void {
 		const img = tool.texture;
 		var pixelMaterials: [16][16]PixelData = undefined;
 		var x: u8 = 0;
@@ -462,7 +471,7 @@ const TextureGenerator = struct {
 					}
 				}
 				const index = x + 5*y;
-				drawRegion(&offsetGrid, &offsetNeighborCount, GRID_CENTERS_X[index] - 2, GRID_CENTERS_Y[index] - 2, pixelMaterials);
+				try drawRegion(&offsetGrid, &offsetNeighborCount, GRID_CENTERS_X[index] - 2, GRID_CENTERS_Y[index] - 2, &pixelMaterials);
 			}
 		}
 
@@ -473,7 +482,9 @@ const TextureGenerator = struct {
 			while(y < 16) : (y += 1) {
 				if(pixelMaterials[x][y].items.items.len != 0) {
 					// Choose a random material at conflict zones:
-					itemGrid[x][y] = pixelMaterials[x][y].items.items[random.nextIntBounded(u8, &seed, pixelMaterials[x][y].items.items.len)];
+					itemGrid[x][y] = pixelMaterials[x][y].items.items[random.nextIntBounded(u8, &seed, @intCast(u8, pixelMaterials[x][y].items.items.len))];
+				} else {
+					itemGrid[x][y] = null;
 				}
 			}
 		}
@@ -489,7 +500,7 @@ const TextureGenerator = struct {
 						// Calculate the lighting based on the nearest free space:
 						const lightTL = heightMap[x][y] - heightMap[x + 1][y + 1];
 						const lightTR = heightMap[x + 1][y] - heightMap[x][y + 1];
-						const light = 2 - @floatToInt(u32, @round((lightTL * 2 + lightTR) / 6));
+						var light = 2 - @floatToInt(u32, @round((lightTL * 2 + lightTR) / 6));
 						light = @max(@min(light, 4), 0);
 						img.setRGB(x, y, material.colorPalette[light]);
 					}
@@ -513,7 +524,7 @@ const ToolPhysics = struct {
 		while(y > 0) : (y -= 5) {
 			var x: u32 = 0;
 			while(x < 5) : (x += 5) {
-				if(tool.craftingGrid[y + x]) {
+				if(tool.craftingGrid[y + x] != null) {
 					break :outer;
 				}
 			}
@@ -523,21 +534,21 @@ const ToolPhysics = struct {
 		// TODO: Add left-hander setting that mirrors the x axis of the tools and the crafting grid
 		var x: u32 = 4;
 		while(true) {
-			if(tool.craftingGrid[y + x]) {
-				tool.handlePosition.x = TextureGenerator.GRID_CENTERS_X[x + y] - 0.5;
-				tool.handlePosition.y = TextureGenerator.GRID_CENTERS_Y[x + y] - 0.5;
+			if(tool.craftingGrid[y + x] != null) {
+				tool.handlePosition[0] = @intToFloat(f32, TextureGenerator.GRID_CENTERS_X[x + y]) - 0.5;
+				tool.handlePosition[1] = @intToFloat(f32, TextureGenerator.GRID_CENTERS_Y[x + y]) - 0.5;
 				// Count the neighbors to determine whether it's a good handle:
 				var neighbors: u32 = 0;
-				if(x != 0 and tool.craftingGrid[y + x - 1])
+				if(x != 0 and tool.craftingGrid[y + x - 1] != null)
 					neighbors += 1;
-				if(x != 4 and tool.craftingGrid[y + x + 1])
+				if(x != 4 and tool.craftingGrid[y + x + 1] != null)
 					neighbors += 1;
 				if(y != 0) {
-					if(tool.craftingGrid[y - 5 + x])
+					if(tool.craftingGrid[y - 5 + x] != null)
 						neighbors += 1;
-					if(x != 0 and tool.craftingGrid[y - 5 + x - 1])
+					if(x != 0 and tool.craftingGrid[y - 5 + x - 1] != null)
 						neighbors += 1;
-					if(x != 4 and tool.craftingGrid[y - 5 + x + 1])
+					if(x != 4 and tool.craftingGrid[y - 5 + x + 1] != null)
 						neighbors += 1;
 				}
 				if(neighbors <= 1) {
@@ -563,8 +574,8 @@ const ToolPhysics = struct {
 				if(tool.materialGrid[x][y]) |item| {
 					if(item.material) |material| {
 						const localMass = material.density;
-						centerOfMass.x += localMass*(@intToFloat(f32, x) + 0.5);
-						centerOfMass.y += localMass*(@intToFloat(f32, y) + 0.5);
+						centerOfMass[0] += localMass*(@intToFloat(f32, x) + 0.5);
+						centerOfMass[1] += localMass*(@intToFloat(f32, y) + 0.5);
 						mass += localMass;
 					}
 				}
@@ -582,8 +593,8 @@ const ToolPhysics = struct {
 				if(tool.materialGrid[x][y]) |item| {
 					if(item.material) |material| {
 						const localMass = material.density;
-						const dx = @intToFloat(f32, x) + 0.5 - tool.centerOfMass.x;
-						const dy = @intToFloat(f32, y) + 0.5 - tool.centerOfMass.y;
+						const dx = @intToFloat(f32, x) + 0.5 - tool.centerOfMass[0];
+						const dy = @intToFloat(f32, y) + 0.5 - tool.centerOfMass[1];
 						inertia += localMass*(dx*dx + dy*dy);
 					}
 				}
@@ -591,21 +602,21 @@ const ToolPhysics = struct {
 		}
 		tool.inertiaCenterOfMass = inertia;
 		// Using the parallel axis theorem the inertia relative to the handle can be derived:
-		tool.inertiaHandle = inertia + mass * tool.centerOfMass.distance(tool.handlePosition);
+		tool.inertiaHandle = inertia + mass*vec.length(tool.centerOfMass - tool.handlePosition);
 	}
 
 	/// Determines the sharpness of a point on the tool.
 	fn determineSharpness(tool: *Tool, point: *Vec3i, initialAngle: f32) void {
-		const center: Vec2f = tool.handlePosition - vec.normalize(tool.centerOfMass - tool.handlePosition)*16; // Going 16 pixels away from the handle to simulate arm length.
+		const center: Vec2f = tool.handlePosition - vec.normalize(tool.centerOfMass - tool.handlePosition)*@splat(2, @as(f32, 16)); // Going 16 pixels away from the handle to simulate arm length.
 		// A region is smooth if there is a lot of pixel within similar angle/distance:
-		const originalAngle = std.math.atan2(f32, @intToFloat(f32, point.y) + 0.5 - center.y, @intToFloat(f32, point.x) + 0.5 - center.x) - initialAngle;
-		const originalDistance = @cos(originalAngle)*vec.length(center - Vec2f{@intToFloat(f32, point.x) + 0.5, @intToFloat(f32, point.y) + 0.5});
-		var numOfSmoothPixels: u32 = 0;
+		const originalAngle = std.math.atan2(f32, @intToFloat(f32, point.*[1]) + 0.5 - center[1], @intToFloat(f32, point.*[0]) + 0.5 - center[0]) - initialAngle;
+		const originalDistance = @cos(originalAngle)*vec.length(center - Vec2f{@intToFloat(f32, point.*[0]) + 0.5, @intToFloat(f32, point.*[1]) + 0.5});
+		var numOfSmoothPixels: u31 = 0;
 		var x: f32 = 0;
 		while(x < 16) : (x += 1) {
 			var y: f32 = 0;
 			while(y < 16) : (y += 1) {
-				const angle = std.math.atan2(f32, y + 0.5 - center.y, x + 0.5 - center.x) - initialAngle;
+				const angle = std.math.atan2(f32, y + 0.5 - center[1], x + 0.5 - center[0]) - initialAngle;
 				const distance = @cos(angle)*vec.length(center - Vec2f{x + 0.5, y + 0.5});
 				const deltaAngle = @fabs(angle - originalAngle);
 				const deltaDist = @fabs(distance - originalDistance);
@@ -614,7 +625,7 @@ const ToolPhysics = struct {
 				}
 			}
 		}
-		point.z = numOfSmoothPixels;
+		point.*[2] = numOfSmoothPixels;
 	}
 
 	/// Determines where the tool would collide with the terrain.
@@ -622,32 +633,32 @@ const ToolPhysics = struct {
 	fn determineCollisionPoints(tool: *Tool, leftCollisionPoint: *Vec3i, rightCollisionPoint: *Vec3i, frontCollisionPoint: *Vec3i, factor: f32) void {
 		// For finding that point the center of rotation is assumed to be 1 arm(16 pixel) begind the handle.
 		// Additionally the handle is assumed to go towards the center of mass.
-		const center: Vec2f = tool.handlePosition - vec.normalize(tool.centerOfMass - tool.handlePosition)*factor; // Going some distance away from the handle to simulate arm length.
+		const center: Vec2f = tool.handlePosition - vec.normalize(tool.centerOfMass - tool.handlePosition)*@splat(2, factor); // Going some distance away from the handle to simulate arm length.
 		// Angle of the handle.
-		const initialAngle = std.math.atan2(f32, tool.handlePosition.y - center.y, tool.handlePosition.x - center.x);
+		const initialAngle = std.math.atan2(f32, tool.handlePosition[1] - center[1], tool.handlePosition[0] - center[0]);
 		var leftCollisionAngle: f32 = 0;
 		var rightCollisionAngle: f32 = 0;
 		var frontCollisionDistance: f32 = 0;
-		var x: i32 = 0;
+		var x: u8 = 0;
 		while(x < 16) : (x += 1) {
-			var y: i32 = 0;
+			var y: u8 = 0;
 			while(y < 16) : (y += 1) {
-				if(!tool.materialGrid[x][y]) continue;
+				if(tool.materialGrid[x][y] == null) continue;
 				const x_float = @intToFloat(f32, x);
 				const y_float = @intToFloat(f32, y);
-				const angle = std.math.atan2(f32, y_float + 0.5 - center.y, x_float + 0.5 - center.x) - initialAngle;
+				const angle = std.math.atan2(f32, y_float + 0.5 - center[1], x_float + 0.5 - center[0]) - initialAngle;
 				const distance = @cos(angle)*vec.length(center - Vec2f{x_float + 0.5, y_float + 0.5});
 				if(angle < leftCollisionAngle) {
 					leftCollisionAngle = angle;
-					leftCollisionPoint = Vec3i{x, y, 0};
+					leftCollisionPoint.* = Vec3i{x, y, 0};
 				}
 				if(angle > rightCollisionAngle) {
 					rightCollisionAngle = angle;
-					rightCollisionPoint = Vec3i{x, y, 0};
+					rightCollisionPoint.* = Vec3i{x, y, 0};
 				}
 				if(distance > frontCollisionDistance) {
 					frontCollisionDistance = distance;
-					frontCollisionPoint = Vec3i{x, y, 0};
+					frontCollisionPoint.* = Vec3i{x, y, 0};
 				}
 			}
 		}
@@ -673,7 +684,7 @@ const ToolPhysics = struct {
 			}
 		}
 		// Smaller tools are faster to swing. To balance that smaller tools get a lower durability.
-		tool.maxDurability = @max(1, std.math.pow(f32, durability/4, 1.5));
+		tool.maxDurability = @floatToInt(u32, @max(1, std.math.pow(f32, durability/4, 1.5)));
 		tool.durability = tool.maxDurability;
 	}
 
@@ -685,7 +696,7 @@ const ToolPhysics = struct {
 		// But when the pickaxe does get heavier 2 things happen:
 		// 1. The player needs to lift a bigger weight, so the tool speed gets reduced(calculated elsewhere).
 		// 2. When travelling down the tool also gets additional energy from gravity, so the force is increased by m·g.
-		impactEnergy *= tool.materialGrid[collisionPoint.x][collisionPoint.y].?.material.?.power + tool.mass/256;
+		impactEnergy *= tool.materialGrid[@intCast(usize, collisionPoint[0])][@intCast(usize, collisionPoint[1])].?.material.?.power + tool.mass/256;
 
 		return impactEnergy; // TODO: Balancing
 	}
@@ -701,36 +712,35 @@ const ToolPhysics = struct {
 		while(x < 2) : (x += 1) {
 			var y: i32 = -1;
 			while(y <= 2) : (y += 1) {
-				if(x + collisionPointLower.x >= 0 and x + collisionPointLower.x < 16) {
-					if(y + collisionPointLower.y >= 0 and y + collisionPointLower.y < 16) {
-						if(tool.materialGrid[x + collisionPointLower.x][y + collisionPointLower.y])
+				if(x + collisionPointLower[0] >= 0 and x + collisionPointLower[0] < 16) {
+					if(y + collisionPointLower[1] >= 0 and y + collisionPointLower[1] < 16) {
+						if(tool.materialGrid[@intCast(usize, x + collisionPointLower[0])][@intCast(usize, y + collisionPointLower[1])] != null)
 							neighborsLower += 1;
 					}
 				}
 			}
 		}
 		var neighborsUpper: u32 = 0;
-		var dirUpper: Vec2i = Vec2i{0};
-//		Vector2i dirUpper = new Vector2i();
+		var dirUpper: Vec2i = Vec2i{0, 0};
 		x = -1;
 		while(x < 2) : (x += 1) {
 			var y: i32 = -1;
 			while(y <= 2) : (y += 1) {
-				if(x + collisionPointUpper.x >= 0 and x + collisionPointUpper.x < 16) {
-					if(y + collisionPointUpper.y >= 0 and y + collisionPointUpper.y < 16) {
-						if(tool.materialGrid[x + collisionPointUpper.x][y + collisionPointUpper.y]) {
+				if(x + collisionPointUpper[0] >= 0 and x + collisionPointUpper[0] < 16) {
+					if(y + collisionPointUpper[1] >= 0 and y + collisionPointUpper[1] < 16) {
+						if(tool.materialGrid[@intCast(usize, x + collisionPointUpper[0])][@intCast(usize, y + collisionPointUpper[1])] != null) {
 							neighborsUpper += 1;
-							dirUpper.x += x;
-							dirUpper.y += y;
+							dirUpper[0] += x;
+							dirUpper[1] += y;
 						}
 					}
 				}
 			}
 		}
-		if (neighborsLower > 3 and neighborsUpper > 3) return 0;
+		if(neighborsLower > 3 and neighborsUpper > 3) return 0;
 
 		// A pickaxe never points upwards:
-		if (neighborsUpper == 3 and dirUpper.y == 2) {
+		if(neighborsUpper == 3 and dirUpper[1] == 2) {
 			return 0;
 		}
 
@@ -740,8 +750,8 @@ const ToolPhysics = struct {
 	/// Determines how good an axe this side of the tool would make.
 	fn evaluateAxePower(tool: *Tool, collisionPointLower: Vec3i, collisionPointUpper: Vec3i) f32 {
 		// Axes are used for breaking up wood. This requires a larger area (= smooth tip) rather than a sharp tip.
-		const collisionPointLowerFloat = Vec2f{@intToFloat(f32, collisionPointLower.x), @intToFloat(f32, collisionPointLower.y)};
-		const collisionPointUpperFloat = Vec2f{@intToFloat(f32, collisionPointUpper.x), @intToFloat(f32, collisionPointUpper.y)};
+		const collisionPointLowerFloat = Vec2f{@intToFloat(f32, collisionPointLower[0]), @intToFloat(f32, collisionPointLower[1])};
+		const collisionPointUpperFloat = Vec2f{@intToFloat(f32, collisionPointUpper[0]), @intToFloat(f32, collisionPointUpper[1])};
 		const areaFactor = 0.25 + vec.length(collisionPointLowerFloat - collisionPointUpperFloat)/4;
 
 		return areaFactor*calculateImpactEnergy(tool, collisionPointLower)/8;
@@ -764,10 +774,10 @@ const ToolPhysics = struct {
 			var y: u8 = 0;
 			while(y < 16) : (y += 1) {
 				sandPiles[x][y] = std.math.maxInt(u8);
-				if (!tool.materialGrid[x][y]) {
+				if(tool.materialGrid[x][y] == null) {
 					sandPiles[x][y] = 0;
 					try stack.append(Entry{.x=x, .y=y});
-				} else if (x == 0 or x == 15 or y == 0 or y == 15) {
+				} else if(x == 0 or x == 15 or y == 0 or y == 15) {
 					sandPiles[x][y] = 1;
 					try stack.append(Entry{.x=x, .y=y});
 				}
@@ -776,28 +786,28 @@ const ToolPhysics = struct {
 		while(stack.popOrNull()) |entry| {
 			x = entry.x;
 			const y = entry.y;
-			if(x != 0 and y != 0 and tool.materialGrid[x - 1][y - 1]) {
+			if(x != 0 and y != 0 and tool.materialGrid[x - 1][y - 1] != null) {
 				if(sandPiles[x - 1][y - 1] > sandPiles[x][y] + 1) {
 					sandPiles[x - 1][y - 1] = sandPiles[x][y] + 1;
-					stack.append(Entry{.x=x-1, .y=y-1});
+					try stack.append(Entry{.x=x-1, .y=y-1});
 				}
 			}
-			if(x != 0 and y != 15 and tool.materialGrid[x - 1][y + 1]) {
+			if(x != 0 and y != 15 and tool.materialGrid[x - 1][y + 1] != null) {
 				if(sandPiles[x - 1][y + 1] > sandPiles[x][y] + 1) {
 					sandPiles[x - 1][y + 1] = sandPiles[x][y] + 1;
-					stack.append(Entry{.x=x-1, .y=y+1});
+					try stack.append(Entry{.x=x-1, .y=y+1});
 				}
 			}
-			if(x != 15 and y != 0 and tool.materialGrid[x + 1][y - 1]) {
+			if(x != 15 and y != 0 and tool.materialGrid[x + 1][y - 1] != null) {
 				if(sandPiles[x + 1][y - 1] > sandPiles[x][y] + 1) {
 					sandPiles[x + 1][y - 1] = sandPiles[x][y] + 1;
-					stack.append(Entry{.x=x+1, .y=y-1});
+					try stack.append(Entry{.x=x+1, .y=y-1});
 				}
 			}
-			if(x != 15 and y != 15 and tool.materialGrid[x + 1][y + 1]) {
+			if(x != 15 and y != 15 and tool.materialGrid[x + 1][y + 1] != null) {
 				if(sandPiles[x + 1][y + 1] > sandPiles[x][y] + 1) {
 					sandPiles[x + 1][y + 1] = sandPiles[x][y] + 1;
-					stack.append(Entry{.x=x+1, .y=y+1});
+					try stack.append(Entry{.x=x+1, .y=y+1});
 				}
 			}
 		}
@@ -807,7 +817,7 @@ const ToolPhysics = struct {
 		while(x < 16) : (x += 1) {
 			var y: u8 = 0;
 			while(y < 16) : (y += 1) {
-				volume += sandPiles[x][y];
+				volume += @intToFloat(f32, sandPiles[x][y]);
 			}
 		}
 		volume /= 256; // TODO: Balancing
@@ -816,33 +826,33 @@ const ToolPhysics = struct {
 
 
 	/// Determines all the basic properties of the tool.
-	pub fn evaluateTool(tool: *Tool) void {
+	pub fn evaluateTool(tool: *Tool) !void {
 		const hasGoodHandle = findHandle(tool);
 		calculateDurability(tool);
 		determineInertia(tool);
-		var leftCollisionPointLower = Vec3i{};
-		var rightCollisionPointLower = Vec3i{};
-		var frontCollisionPointLower = Vec3i{};
-		var leftCollisionPointUpper = Vec3i{};
-		var rightCollisionPointUpper = Vec3i{};
-		var frontCollisionPointUpper = Vec3i{};
+		var leftCollisionPointLower = Vec3i{0, 0, 0};
+		var rightCollisionPointLower = Vec3i{0, 0, 0};
+		var frontCollisionPointLower = Vec3i{0, 0, 0};
+		var leftCollisionPointUpper = Vec3i{0, 0, 0};
+		var rightCollisionPointUpper = Vec3i{0, 0, 0};
+		var frontCollisionPointUpper = Vec3i{0, 0, 0};
 		determineCollisionPoints(tool, &leftCollisionPointLower, &rightCollisionPointLower, &frontCollisionPointLower, 16);
 		determineCollisionPoints(tool, &rightCollisionPointUpper, &leftCollisionPointUpper, &frontCollisionPointUpper, -20);
 
-		const leftPP = evaluatePickaxePower(tool, &leftCollisionPointLower, &leftCollisionPointUpper);
-		const rightPP = evaluatePickaxePower(tool, &rightCollisionPointLower, &rightCollisionPointUpper);
+		const leftPP = evaluatePickaxePower(tool, leftCollisionPointLower, leftCollisionPointUpper);
+		const rightPP = evaluatePickaxePower(tool, rightCollisionPointLower, rightCollisionPointUpper);
 		tool.pickaxePower = @max(leftPP, rightPP); // TODO: Adjust the swing direction.
 
-		const leftAP = evaluateAxePower(tool, &leftCollisionPointLower, &leftCollisionPointUpper);
-		const rightAP = evaluateAxePower(tool, &rightCollisionPointLower, &rightCollisionPointUpper);
+		const leftAP = evaluateAxePower(tool, leftCollisionPointLower, leftCollisionPointUpper);
+		const rightAP = evaluateAxePower(tool, rightCollisionPointLower, rightCollisionPointUpper);
 		tool.axePower = @max(leftAP, rightAP); // TODO: Adjust the swing direction.
 
-		tool.shovelPower = evaluateShovelPower(tool, &frontCollisionPointLower);
+		tool.shovelPower = try evaluateShovelPower(tool, frontCollisionPointLower);
 
 		// It takes longer to swing a heavy tool.
 		tool.swingTime = (tool.mass + tool.inertiaHandle/8)/256; // TODO: Balancing
 
-		if (hasGoodHandle) { // Good handles make tools easier to handle.
+		if(hasGoodHandle) { // Good handles make tools easier to handle.
 			tool.swingTime /= 2.0;
 		}
 
@@ -884,31 +894,31 @@ const Tool = struct {
 	/// Moment of inertia relative to the center of mass.
 	inertiaCenterOfMass: f32,
 
-	pub fn init(allocator: Allocator) !*Tool {
-		var self = try allocator.create(Tool);
-		self.texture = try graphics.Image.init(allocator, 16, 16);
+	pub fn init() !*Tool {
+		var self = try main.globalAllocator.create(Tool);
+		self.texture = try graphics.Image.init(main.globalAllocator, 16, 16);
 		return self;
 	}
 
-	pub fn deinit(self: *Tool, allocator: Allocator) void {
-		allocator.destroy(self);
-		self.texture.deinit(allocator);
+	pub fn deinit(self: *const Tool) void {
+		main.globalAllocator.destroy(self);
+		self.texture.deinit(main.globalAllocator);
 	}
 
-	pub fn initFromCraftingGrid(allocator: Allocator, craftingGrid: [25]?*const BaseItem, seed: u32) !*Tool {
-		var self = try init(allocator);
+	pub fn initFromCraftingGrid(craftingGrid: [25]?*const BaseItem, seed: u32) !*Tool {
+		var self = try init();
 		self.seed = seed;
 		self.craftingGrid = craftingGrid;
 		// Produce the tool and its textures:
 		// The material grid, which comes from texture generation, is needed on both server and client, to generate the tool properties.
-		TextureGenerator.generate(self);
-		ToolPhysics.evaluateTool(self);
+		try TextureGenerator.generate(self);
+		try ToolPhysics.evaluateTool(self);
 		return self;
 	}
 
-	pub fn initFromJson(allocator: Allocator, jsonObject: JsonElement) !*Tool {
-		var self = try initFromCraftingGrid(allocator, extractItemsFromJson(jsonObject.getChild("grid")), jsonObject.get(u32, "seed", 0));
-		self.durability = jsonObject.get(i32, "durability", self.maxDurability);
+	pub fn initFromJson(jsonObject: JsonElement) !*Tool {
+		var self = try initFromCraftingGrid(extractItemsFromJson(jsonObject.getChild("grid")), jsonObject.get(u32, "seed", 0));
+		self.durability = jsonObject.get(u32, "durability", self.maxDurability);
 		return self;
 	}
 
@@ -920,7 +930,7 @@ const Tool = struct {
 		return items;
 	}
 
-	pub fn save(self: *Tool, allocator: Allocator) !JsonElement {
+	pub fn save(self: *const Tool, allocator: Allocator) !JsonElement {
 		var jsonObject = try JsonElement.initObject(allocator);
 		var jsonArray = try JsonElement.initArray(allocator);
 		for(self.craftingGrid) |nullItem| {
@@ -940,7 +950,7 @@ const Tool = struct {
 //	public int hashCode() {
 //		int hash = 0;
 //		for(Item item : craftingGrid) {
-//			if (item != null) {
+//			if(item != null) {
 //				hash = 33 * hash + item.material.hashCode();
 //			}
 //		}
@@ -964,23 +974,28 @@ const Tool = struct {
 	}
 };
 
-pub const Item = union(u8) {
+pub const Item = union(enum) {
 	baseItem: *const BaseItem,
 	tool: *const Tool,
 
-	pub fn init(self: *Item, allocator: Allocator) !void {
-		_ = allocator;
-		_ = self;
-
+	pub fn init(jsonObject: JsonElement) !Item {
+		if(reverseIndices.get(jsonObject.get([]const u8, "item", "null"))) |baseItem| {
+			std.debug.print("{*}", .{baseItem.id.ptr});
+			return Item{.baseItem = baseItem};
+		} else {
+			var toolJson = jsonObject.getChild("tool");
+			if(toolJson != .JsonObject) return error.ItemNotFound;
+			return Item{.tool = try Tool.initFromJson(toolJson)};
+		}
 	}
 
-	pub fn deinit(self: Item, allocator: Allocator) void {
+	pub fn deinit(self: Item) void {
 		switch(self) {
 			.baseItem => {
 				
 			},
 			.tool => |_tool| {
-				_tool.deinit(allocator);
+				_tool.deinit();
 			},
 		}
 	}
@@ -1002,7 +1017,7 @@ pub const Item = union(u8) {
 				try jsonObject.put("item", _baseItem.id);
 			},
 			.tool => |_tool| {
-				json.put("tool", _tool.toJson(allocator));
+				try jsonObject.put("tool", try _tool.save(allocator));
 			},
 		}
 	}
@@ -1020,27 +1035,28 @@ pub const ItemStack = struct {
 		supplier.clear();
 	}
 
-	pub fn filled(self: *ItemStack) bool {
+	pub fn filled(self: *const ItemStack) bool {
 		if(self.item) |item| {
 			return self.amount >= item.stackSize();
 		}
+		return false;
 	}
 
-	pub fn empty(self: *ItemStack) bool {
+	pub fn empty(self: *const ItemStack) bool {
 		return self.amount == 0;
 	}
 
 	/// Returns the number of items actually added/removed.
-	pub fn add(self: *ItemStack, number: i32) i32 {
-		std.debug.assert(self.item);
-		const newAmount = self.amount + number;
-		var returnValue: i32 = 0;
+	pub fn add(self: *ItemStack, number: anytype) @TypeOf(number) {
+		std.debug.assert(self.item != null);
+		var newAmount = self.amount + number;
+		var returnValue = number;
 		if(newAmount < 0) {
-			returnValue = number - newAmount;
 			newAmount = 0;
+			returnValue = newAmount - self.amount;
 		} else if(newAmount > self.item.?.stackSize()) {
-			returnValue = number - newAmount + self.item.?.stackSize();
 			newAmount = self.item.?.stackSize();
+			returnValue = newAmount - self.amount;
 		}
 		self.amount = @intCast(u16, newAmount);
 		if(self.empty()) {
@@ -1050,7 +1066,7 @@ pub const ItemStack = struct {
 	}
 
 	/// whether the given number of items can be added to this stack.
-	pub fn canAddAll(self: *ItemStack, number: u16) bool {
+	pub fn canAddAll(self: *const ItemStack, number: u16) bool {
 		std.debug.assert(self.item);
 		return @as(u32, self.amount) + number <= self.item.?.stackSize();
 	}
@@ -1063,11 +1079,11 @@ pub const ItemStack = struct {
 		self.amount = 0;
 	}
 
-	pub fn store(self: *ItemStack, allocator: Allocator) !JsonElement {
+	pub fn store(self: *const ItemStack, allocator: Allocator) !JsonElement {
 		var result = try JsonElement.initObject(allocator);
 		if(self.item) |item| {
-			item.insertToJson(allocator, result);
-			result.put("amount", self.amount);
+			try item.insertIntoJson(allocator, result);
+			try result.put("amount", self.amount);
 		}
 		return result;
 	}
@@ -1076,36 +1092,132 @@ pub const ItemStack = struct {
 //	public void update() {}
 //	
 //	public int getBlock() {
-//		if (item == null)
+//		if(item == null)
 //			return 0;
-//		if (item instanceof ItemBlock)
+//		if(item instanceof ItemBlock)
 //			return ((ItemBlock) item).getBlock();
 //		else
 //			return 0;
 //	}
 };
 
+pub const Inventory = struct {
+	items: []ItemStack,
+
+	pub fn init(allocator: Allocator, size: usize) !Inventory {
+		const self = Inventory{
+			.items = try allocator.alloc(ItemStack, size),
+		};
+		for(self.items) |*item| {
+			item.* = ItemStack{};
+		}
+		return self;
+	}
+
+	pub fn deinit(self: Inventory, allocator: Allocator) void {
+		for(self.items) |*item| {
+			item.clear();
+		}
+		allocator.free(self.items);
+	}
+
+	/// Returns the amount of items that didn't fit in the inventory.
+	pub fn addItem(self: Inventory, item: Item, _amount: u16) u16 {
+		var amount = _amount;
+		for(self.items) |*stack| {
+			if(!stack.empty() and std.meta.eql(stack.item, item) and !stack.filled()) {
+				amount -= stack.add(amount);
+				if(amount == 0) return 0;
+			}
+		}
+		for(self.items) |*stack| {
+			if(stack.empty()) {
+				stack.item = item;
+				amount -= stack.add(amount);
+				if(amount == 0) return 0;
+			}
+		}
+		return amount;
+	}
+
+	pub fn canCollect(self: Inventory, item: Item) bool {
+		for(self.items) |*stack| {
+			if(stack.empty()) return true;
+			if(stack.item == item and !stack.filled()) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+// TODO: Check if/how this is needed:
+//	public int getBlock(int slot) {
+//		return items[slot].getBlock();
+//	}
+
+	pub fn getItem(self: Inventory, slot: usize) ?Item {
+		return self.items[slot].item;
+	}
+
+	pub fn getStack(self: Inventory, slot: usize) *ItemStack {
+		return &self.items[slot];
+	}
+
+	pub fn getAmount(self: Inventory, slot: usize) u16 {
+		return self.items[slot].amount;
+	}
+
+	pub fn save(self: Inventory, allocator: Allocator) !JsonElement {
+		var jsonObject = try JsonElement.initObject(allocator);
+		try jsonObject.put("capacity", self.items.len);
+		for(self.items) |stack, i| {
+			if(!stack.empty()) {
+				var buf: [1024]u8 = undefined;
+				try jsonObject.put(buf[0..std.fmt.formatIntBuf(&buf, i, 10, .lower, .{})], try stack.store(allocator));
+			}
+		}
+		return jsonObject;
+	}
+
+	pub fn loadFromJson(self: Inventory, allocator: Allocator, jsonObject: JsonElement) void {
+		for(self.items) |*stack, i| {
+			stack.clear();
+			var buf: [1024]u8 = undefined;
+			var stackJson = jsonObject.getChild(buf[0..std.fmt.formatIntBuf(buf, i, 10, .lower, .{})]);
+			if(stackJson == .JsonObject) {
+				stack.item = try Item.init(allocator, jsonObject);
+				stack.amount = stackJson.get(u16, "amount", 0);
+			}
+		}
+	}
+};
+
 var arena: std.heap.ArenaAllocator = undefined;
 var reverseIndices: std.StringHashMap(*BaseItem) = undefined;
-var itemList: std.ArrayList(BaseItem) = undefined;
+var itemList: [65536]BaseItem = undefined;
+var itemListSize: u16 = 0;
 
 
 pub fn globalInit() void {
 	arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
 	reverseIndices = std.StringHashMap(*BaseItem).init(arena.allocator());
-	itemList = std.ArrayList(BaseItem).init(arena.allocator());
+	itemListSize = 0;
 }
 
 pub fn register(_: []const u8, id: []const u8, jsonObject: JsonElement) !void {
+	std.log.info("{s}", .{id});
 	if(reverseIndices.contains(id)) {
 		std.log.warn("Registered block with id {s} twice!", .{id});
 	}
-	try (try itemList.addOne()).init(arena.allocator(), id, jsonObject);
+	var newItem = &itemList[itemListSize];
+	try newItem.init(arena.allocator(), id, jsonObject);
+	try reverseIndices.put(newItem.id, newItem);
+	itemListSize += 1;
 }
 
 pub fn reset() void {
 	reverseIndices.clearAndFree();
-	itemList.clearAndFree();
+	itemListSize = 0;
 	// TODO: Use arena.reset() instead.
 	arena.deinit();
 	arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
@@ -1113,6 +1225,5 @@ pub fn reset() void {
 
 pub fn deinit() void {
 	reverseIndices.clearAndFree();
-	itemList.clearAndFree();
 	arena.deinit();
 }

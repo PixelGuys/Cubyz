@@ -136,10 +136,18 @@ pub const JsonElement = union(JsonType) {
 			.Null => return JsonElement{.JsonNull={}},
 			.Bool => return JsonElement{.JsonBool=value},
 			.Int, .ComptimeInt => return JsonElement{.JsonInt=@intCast(i64, value)},
-			.Float, .ComptimeFloat => return JsonElement{.JsonInt=@floatCast(f64, value)},
+			.Float, .ComptimeFloat => return JsonElement{.JsonFloat=@floatCast(f64, value)},
 			.Union => {
 				if(@TypeOf(value) == JsonElement) {
 					return value;
+				} else {
+					@compileError("Unknown value type.");
+				}
+			},
+			.Pointer => |ptr| {
+				if(ptr.child == u8 and ptr.size == .Slice) {
+					std.log.info("String: {s}", .{value});
+					return JsonElement{.JsonString=value};
 				} else {
 					@compileError("Unknown value type.");
 				}
@@ -152,7 +160,7 @@ pub const JsonElement = union(JsonType) {
 
 	pub fn put(self: *const JsonElement, key: []const u8, value: anytype) !void {
 		const result = createElementFromRandomType(value);
-		try self.JsonObject.put(key, result);
+		try self.JsonObject.put(try self.JsonObject.allocator.dupe(u8, key), result);
 	}
 
 	pub fn free(self: *const JsonElement, allocator: Allocator) void {
@@ -185,7 +193,6 @@ pub const JsonElement = union(JsonType) {
 		return self.* == JsonType.JsonNull;
 	}
 
-	// TODO: toString()
 	fn escape(string: []const u8, allocator: Allocator) ![]const u8 {
 		var out = std.ArrayList(u8).init(allocator);
 		for(string) |char| {

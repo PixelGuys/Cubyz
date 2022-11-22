@@ -10,16 +10,16 @@ pub fn scrambleSeed(seed: *u64) void {
 	seed.* = (seed.* ^ multiplier) & mask;
 }
 
-fn nextWithBitSize(T: type, seed: *u64, bitSize: u6) T {
+fn nextWithBitSize(comptime T: type, seed: *u64, bitSize: u6) T {
 	seed.* = ((seed.*)*multiplier + addend) & mask;
-	return @intCast(T, (seed >> (48 - bitSize)) & std.math.maxInt(T));
+	return @intCast(T, (seed.* >> (48 - bitSize)) & std.math.maxInt(T));
 }
 
-fn next(T: type, seed: *u64) T {
-	nextWithBitSize(T, seed, @bitSizeOf(T));
+fn next(comptime T: type, seed: *u64) T {
+	return nextWithBitSize(T, seed, @bitSizeOf(T));
 }
 
-pub fn nextInt(T: type, seed: *u64) T {
+pub fn nextInt(comptime T: type, seed: *u64) T {
 	if(@bitSizeOf(T) > 48) {
 		@compileError("Did not yet implement support for bigger numbers.");
 	} else {
@@ -27,8 +27,8 @@ pub fn nextInt(T: type, seed: *u64) T {
 	}
 }
 
-pub fn nextIntBounded(T: type, seed: *u64, bound: T) T {
-	var bitSize = std.math.log2_int_ceil(bound);
+pub fn nextIntBounded(comptime T: type, seed: *u64, bound: T) T {
+	var bitSize = std.math.log2_int_ceil(T, bound);
 	var result = nextWithBitSize(T, seed, bitSize);
 	while(result >= bound) {
 		result = nextWithBitSize(T, seed, bitSize);

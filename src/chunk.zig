@@ -450,7 +450,7 @@ pub const meshing = struct {
 	pub const ChunkMesh = struct {
 		pos: ChunkPosition,
 		size: ChunkCoordinate,
-		chunk: ?*Chunk,
+		chunk: std.atomic.Atomic(?*Chunk),
 		faces: std.ArrayList(u32),
 		faceData: SSBO,
 		coreCount: u31 = 0,
@@ -465,7 +465,7 @@ pub const meshing = struct {
 				.pos = pos,
 				.size = chunkSize*pos.voxelSize,
 				.faces = std.ArrayList(u32).init(allocator),
-				.chunk = null,
+				.chunk = std.atomic.Atomic(?*Chunk).init(null),
 				.faceData = SSBO.init(),
 			};
 		}
@@ -473,7 +473,7 @@ pub const meshing = struct {
 		pub fn deinit(self: *ChunkMesh) void {
 			self.faceData.deinit();
 			self.faces.deinit();
-			if(self.chunk) |ch| {
+			if(self.chunk.load(.Monotonic)) |ch| {
 				renderer.RenderStructure.allocator.destroy(ch);
 			}
 		}
@@ -544,10 +544,10 @@ pub const meshing = struct {
 				}
 			}
 
-			if(self.chunk) |oldChunk| {
+			if(self.chunk.load(.Monotonic)) |oldChunk| {
 				renderer.RenderStructure.allocator.destroy(oldChunk);
 			}
-			self.chunk = chunk;
+			self.chunk.store(chunk, .Monotonic);
 			self.coreCount = @intCast(u31, self.faces.items.len);
 			self.neighborStart = [_]u31{self.coreCount} ** 7;
 		}
@@ -625,7 +625,7 @@ pub const meshing = struct {
 			self.mutex.lock();
 			defer self.mutex.unlock();
 			if(!self.generated) return;
-			const oldBlock = self.chunk.?.blocks[getIndex(x, y, z)];
+			const oldBlock = self.chunk.load(.Monotonic).?.blocks[getIndex(x, y, z)];
 			for(Neighbors.iterable) |neighbor| {
 				var neighborMesh = self;
 				var nx = x + Neighbors.relX[neighbor];
@@ -640,7 +640,7 @@ pub const meshing = struct {
 				nx &= chunkMask;
 				ny &= chunkMask;
 				nz &= chunkMask;
-				const neighborBlock = neighborMesh.chunk.?.blocks[getIndex(nx, ny, nz)];
+				const neighborBlock = neighborMesh.chunk.load(.Monotonic).?.blocks[getIndex(nx, ny, nz)];
 				{
 					{ // The face of the changed block
 						const newVisibility = canBeSeenThroughOtherBlock(newBlock, neighborBlock, neighbor);
@@ -701,7 +701,7 @@ pub const meshing = struct {
 				}
 				if(neighborMesh != self) neighborMesh.uploadData();
 			}
-			self.chunk.?.blocks[getIndex(x, y, z)] = newBlock;
+			self.chunk.load(.Monotonic).?.blocks[getIndex(x, y, z)] = newBlock;
 			self.uploadData();
 		}
 
@@ -712,7 +712,7 @@ pub const meshing = struct {
 
 		pub fn uploadDataAndFinishNeighbors(self: *ChunkMesh) !void {
 			std.debug.assert(!self.mutex.tryLock()); // The mutex should be locked when calling this function.
-			if(self.chunk == null) return; // In the mean-time the mesh was discarded and recreated and all the data was lost.
+			const chunk = self.chunk.load(.Monotonic) orelse return; // In the mean-time the mesh was discarded and recreated and all the data was lost.
 			self.faces.shrinkRetainingCapacity(self.coreCount);
 			for(Neighbors.iterable) |neighbor| {
 				self.neighborStart[neighbor] = @intCast(u31, self.faces.items.len);
@@ -748,8 +748,8 @@ pub const meshing = struct {
 								var otherX = @intCast(u8, x+%Neighbors.relX[neighbor] & chunkMask);
 								var otherY = @intCast(u8, y+%Neighbors.relY[neighbor] & chunkMask);
 								var otherZ = @intCast(u8, z+%Neighbors.relZ[neighbor] & chunkMask);
-								var block = (&self.chunk.?.blocks)[getIndex(x, y, z)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
-								var otherBlock = (&neighborMesh.chunk.?.blocks)[getIndex(otherX, otherY, otherZ)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
+								var block = (&chunk.blocks)[getIndex(x, y, z)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
+								var otherBlock = (&neighborMesh.chunk.load(.Monotonic).?.blocks)[getIndex(otherX, otherY, otherZ)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
 								if(canBeSeenThroughOtherBlock(block, otherBlock, neighbor)) {
 									const normal: u32 = neighbor;
 									const position: u32 = @as(u32, otherX) | @as(u32, otherY)<<5 | @as(u32, otherZ)<<10 | normal<<24;
@@ -810,8 +810,8 @@ pub const meshing = struct {
 							var otherX = @intCast(u8, (x+%Neighbors.relX[neighbor]+%offsetX >> 1) & chunkMask);
 							var otherY = @intCast(u8, (y+%Neighbors.relY[neighbor]+%offsetY >> 1) & chunkMask);
 							var otherZ = @intCast(u8, (z+%Neighbors.relZ[neighbor]+%offsetZ >> 1) & chunkMask);
-							var block = (&self.chunk.?.blocks)[getIndex(x, y, z)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
-							var otherBlock = (&neighborMesh.chunk.?.blocks)[getIndex(otherX, otherY, otherZ)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
+							var block = (&chunk.blocks)[getIndex(x, y, z)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
+							var otherBlock = (&neighborMesh.chunk.load(.Monotonic).?.blocks)[getIndex(otherX, otherY, otherZ)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
 							if(canBeSeenThroughOtherBlock(otherBlock, block, neighbor ^ 1)) {
 								const normal: u32 = neighbor ^ 1;
 								const position: u32 = @as(u32, x) | @as(u32, y)<<5 | @as(u32, z)<<10 | normal<<24;

@@ -5,15 +5,19 @@ const assets = @import("assets.zig");
 const Block = @import("blocks.zig").Block;
 const chunk = @import("chunk.zig");
 const entity = @import("entity.zig");
+const items = @import("items.zig");
+const Inventory = items.Inventory;
+const ItemStack = items.ItemStack;
+const json = @import("json.zig");
 const main = @import("main.zig");
 const game = @import("game.zig");
 const settings = @import("settings.zig");
-const json = @import("json.zig");
 const JsonElement = json.JsonElement;
 const renderer = @import("renderer.zig");
 const utils = @import("utils.zig");
 const vec = @import("vec.zig");
 const Vec3d = vec.Vec3d;
+const Vec3f = vec.Vec3f;
 
 //TODO: Might want to use SSL or something similar to encode the message
 
@@ -977,7 +981,7 @@ pub const Protocols: struct {
 		const type_itemStackDrop: u8 = 6;
 		const type_itemStackCollect: u8 = 7;
 		const type_timeAndBiome: u8 = 8;
-		fn receive(_: *Connection, data: []const u8) !void {
+		fn receive(conn: *Connection, data: []const u8) !void {
 			switch(data[0]) {
 				type_renderDistance => {
 					const renderDistance = std.mem.readIntBig(i32, data[1..5]);
@@ -1047,18 +1051,18 @@ pub const Protocols: struct {
 //					);
 				},
 				type_itemStackCollect => {
-					// TODO:
-//					JsonObject json = JsonParser.parseObjectFromString(new String(data, offset + 1, length - 1, StandardCharsets.UTF_8));
-//					Item item = Item.load(json, Cubyz.world.registries);
-//					if (item == null) {
-//						break;
-//					}
-//					int remaining = Cubyz.player.getInventory_AND_DONT_FORGET_TO_SEND_CHANGES_TO_THE_SERVER().addItem(item, json.getInt("amount", 1));
-//					sendInventory_full(Cubyz.world.serverConnection, Cubyz.player.getInventory_AND_DONT_FORGET_TO_SEND_CHANGES_TO_THE_SERVER());
-//					if(remaining != 0) {
-//						// Couldn't collect everything → drop it again.
-//						itemStackDrop(Cubyz.world.serverConnection, new ItemStack(item, remaining), Cubyz.player.getPosition(), Camera.getDirection(), 0);
-//					}
+					const jsonObject = json.parseFromString(main.threadAllocator, data[1..]);
+					defer jsonObject.free(main.threadAllocator);
+					const item = try items.Item.init(jsonObject);
+					game.Player.mutex.lock();
+					defer game.Player.mutex.unlock();
+					const remaining = game.Player.inventory__SEND_CHANGES_TO_SERVER.addItem(item, jsonObject.get(u16, "amount", 0));
+
+					try sendInventory_full(conn, game.Player.inventory__SEND_CHANGES_TO_SERVER);
+					if(remaining != 0) {
+						// Couldn't collect everything → drop it again.
+						try itemStackDrop(conn, ItemStack{.item=item, .amount=remaining}, game.Player.getPosBlocking(), Vec3f{0, 0, 0}, 0);
+					}
 				},
 				type_timeAndBiome => {
 					if(game.world) |world| {
@@ -1134,10 +1138,14 @@ pub const Protocols: struct {
 			try conn.sendImportant(id, &data);
 		}
 
-		// TODO:
-//	public void sendInventory_full(ServerConnection conn, Inventory inv) {
-//		addHeaderAndSendImportant(conn, INVENTORY_FULL, inv.save().toString().getBytes(StandardCharsets.UTF_8));
-//	}
+
+		pub fn sendInventory_full(conn: *Connection, inv: Inventory) !void {
+			const jsonObject = try inv.save(main.threadAllocator);
+			defer jsonObject.free(main.threadAllocator);
+			const string = try jsonObject.toString(main.threadAllocator);
+			defer main.threadAllocator.free(string);
+			try addHeaderAndSendImportant(conn, type_inventoryFull, string);
+		}
 
 		pub fn clearInventory(conn: *Connection) !void {
 			var data: [1]u8 = undefined;
@@ -1145,23 +1153,28 @@ pub const Protocols: struct {
 			try conn.sendImportant(id, &data);
 		}
 
-		// TODO:
-//	public void itemStackDrop(ServerConnection conn, ItemStack stack, Vector3d pos, Vector3f dir, float vel) {
-//		JsonObject json = stack.store();
-//		json.put("x", pos.x);
-//		json.put("y", pos.y);
-//		json.put("z", pos.z);
-//		json.put("dirX", dir.x);
-//		json.put("dirY", dir.y);
-//		json.put("dirZ", dir.z);
-//		json.put("vel", vel);
-//		addHeaderAndSendImportant(conn, ITEM_STACK_DROP, json.toString().getBytes(StandardCharsets.UTF_8));
-//	}
+		pub fn itemStackDrop(conn: *Connection, stack: ItemStack, pos: Vec3d, dir: Vec3f, vel: f32) !void {
+			var jsonObject = try stack.store(main.threadAllocator);
+			defer jsonObject.free(main.threadAllocator);
+			try jsonObject.put("x", pos[0]);
+			try jsonObject.put("y", pos[1]);
+			try jsonObject.put("z", pos[2]);
+			try jsonObject.put("dirX", dir[0]);
+			try jsonObject.put("dirY", dir[1]);
+			try jsonObject.put("dirZ", dir[2]);
+			try jsonObject.put("vel", vel);
+			const string = try jsonObject.toString(main.threadAllocator);
+			defer main.threadAllocator.free(string);
+			try addHeaderAndSendImportant(conn, type_itemStackDrop, string);
+		}
 
-		// TODO:
-//	public void itemStackCollect(User user, ItemStack stack) {
-//		addHeaderAndSendImportant(user, ITEM_STACK_COLLECT, stack.store().toString().getBytes(StandardCharsets.UTF_8));
-//	}
+		pub fn itemStackCollect(conn: *Connection, stack: ItemStack) !void {
+			var jsonObject = try stack.store(main.threadAllocator);
+			defer jsonObject.free(main.threadAllocator);
+			const string = try jsonObject.toString(main.threadAllocator);
+			defer main.threadAllocator.free(string);
+			try addHeaderAndSendImportant(conn, type_itemStackCollect, string);
+		}
 
 		// TODO:
 //	public void sendTimeAndBiome(User user, ServerWorld world) {

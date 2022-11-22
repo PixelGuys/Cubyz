@@ -22,6 +22,7 @@ pub const c = @cImport ({
 });
 
 pub threadlocal var threadAllocator: std.mem.Allocator = undefined;
+pub var globalAllocator: std.mem.Allocator = undefined;
 pub var threadPool: utils.ThreadPool = undefined;
 
 var logFile: std.fs.File = undefined;
@@ -216,6 +217,11 @@ pub fn main() !void {
 	var gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe=false}){};
 	threadAllocator = gpa.allocator();
 	defer if(gpa.deinit()) {
+		@panic("Memory leak");
+	};
+	var global_gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe=true}){};
+	globalAllocator = global_gpa.allocator();
+	defer if(global_gpa.deinit()) {
 		@panic("Memory leak");
 	};
 

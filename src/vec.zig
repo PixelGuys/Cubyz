@@ -22,8 +22,8 @@ pub fn length(self: anytype) @typeInfo(@TypeOf(self)).Vector.child {
 	return @sqrt(@reduce(.Add, self*self));
 }
 
-pub fn normalize(self: anytype) @typeInfo(@TypeOf(self)).Vector.child {
-	return self/length(self);
+pub fn normalize(self: anytype) @TypeOf(self) {
+	return self/@splat(@typeInfo(@TypeOf(self)).Vector.len, length(self));
 }
 
 pub fn cross(self: anytype, other: @TypeOf(self)) @TypeOf(self) {

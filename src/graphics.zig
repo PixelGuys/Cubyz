@@ -660,6 +660,12 @@ pub const Image = struct {
 		stb_image.stbi_image_free(data);
 		return result;
 	}
+	pub fn setRGB(self: Image, x: usize, y: usize, rgb: Color) void {
+		std.debug.assert(x < self.width);
+		std.debug.assert(y < self.height);
+		const index = x + y*self.width;
+		self.imageData[index] = rgb;
+	}
 };
 
 pub const Fog = struct {

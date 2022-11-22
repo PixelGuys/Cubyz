@@ -877,7 +877,7 @@ pub const RenderStructure = struct {
 
 	pub fn getBlock(x: chunk.ChunkCoordinate, y: chunk.ChunkCoordinate, z: chunk.ChunkCoordinate) ?blocks.Block {
 		const node = RenderStructure._getNode(.{.wx = x, .wy = y, .wz = z, .voxelSize=1}) orelse return null;
-		const block = (node.mesh.chunk orelse return null).getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
+		const block = (node.mesh.chunk.load(.Monotonic) orelse return null).getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
 		return block;
 	}
 

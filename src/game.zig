@@ -2,6 +2,8 @@ const std = @import("std");
 
 const assets = @import("assets.zig");
 const chunk = @import("chunk.zig");
+const items = @import("items.zig");
+const Inventory = items.Inventory;
 const json = @import("json.zig");
 const JsonElement = json.JsonElement;
 const main = @import("main.zig");
@@ -46,7 +48,8 @@ pub const Player = struct {
 	var vel: Vec3d = Vec3d{0, 0, 0};
 	pub var id: u32 = 0;
 	pub var isFlying: std.atomic.Atomic(bool) = std.atomic.Atomic(bool).init(true);
-	var mutex: std.Thread.Mutex = std.Thread.Mutex{};
+	pub var mutex: std.Thread.Mutex = std.Thread.Mutex{};
+	pub var inventory__SEND_CHANGES_TO_SERVER: Inventory = undefined;
 
 	pub fn setPosBlocking(newPos: Vec3d) void {
 		mutex.lock();
@@ -92,6 +95,7 @@ pub const World = struct {
 			.name = "client",
 			.milliTime = std.time.milliTimestamp(),
 		};
+		Player.inventory__SEND_CHANGES_TO_SERVER = try Inventory.init(renderer.RenderStructure.allocator, 32);
 		// TODO:
 //		super.itemEntityManager = new InterpolatedItemEntityManager(this);
 //		player = new ClientPlayer(this, 0);
@@ -100,6 +104,7 @@ pub const World = struct {
 
 	pub fn deinit(self: *World) void {
 		self.conn.deinit();
+		Player.inventory__SEND_CHANGES_TO_SERVER.deinit(renderer.RenderStructure.allocator);
 	}
 
 	pub fn finishHandshake(self: *World, jsonObject: JsonElement) !void {
