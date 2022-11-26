@@ -423,6 +423,122 @@ pub const SSBO = struct {
 		c.glBufferData(c.GL_SHADER_STORAGE_BUFFER, @intCast(c_long, data.len*@sizeOf(T)), data.ptr, c.GL_STATIC_DRAW);
 		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
 	}
+
+	pub fn createDynamicBuffer(self: SSBO, size: usize) void {
+		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
+		c.glBufferData(c.GL_SHADER_STORAGE_BUFFER, @intCast(c_long, size), null, c.GL_DYNAMIC_DRAW);
+		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
+	}
+};
+
+/// A big SSBO that is able to allocate/free smaller regions.
+pub const LargeBuffer = struct {
+	pub const Allocation = struct {
+		start: u31,
+		len: u31,
+	};
+	ssbo: SSBO,
+	freeBlocks: std.ArrayList(Allocation),
+
+	pub fn init(self: *LargeBuffer, allocator: Allocator, size: u31, binding: c_uint) !void {
+		self.ssbo = SSBO.init();
+		self.ssbo.createDynamicBuffer(size);
+		self.ssbo.bind(binding);
+
+		self.freeBlocks = std.ArrayList(Allocation).init(allocator);
+		try self.freeBlocks.append(.{.start = 0, .len = size});
+	}
+
+	pub fn deinit(self: *LargeBuffer) void {
+		self.ssbo.deinit();
+		self.freeBlocks.deinit();
+	}
+
+	fn alloc(self: *LargeBuffer, size: u31) !Allocation {
+		var smallestBlock: ?*Allocation = null;
+		for(self.freeBlocks.items) |*block, i| {
+			if(size == block.len) {
+				return self.freeBlocks.swapRemove(i);
+			}
+			if(size < block.len and if(smallestBlock) |_smallestBlock| block.len > _smallestBlock.len else true) {
+				smallestBlock = block;
+			}
+		}
+		if(smallestBlock) |block| {
+			const result = Allocation {.start = block.start, .len = size};
+			block.start += size;
+			block.len -= size;
+			return result;
+		} else return error.OutOfMemory; // TODO: Increase the buffer size.
+	}
+
+	pub fn free(self: *LargeBuffer, _allocation: Allocation) !void {
+		var allocation = _allocation;
+		if(allocation.len == 0) return;
+		for(self.freeBlocks.items) |*block, i| {
+			if(allocation.start + allocation.len == block.start) {
+				allocation.len += block.len;
+				_ = self.freeBlocks.swapRemove(i);
+				break;
+			}
+		}
+		for(self.freeBlocks.items) |*block| {
+			if(allocation.start == block.start + block.len) {
+				block.len += allocation.len;
+				return;
+			}
+		}
+		try self.freeBlocks.append(allocation);
+	}
+
+	pub fn realloc(self: *LargeBuffer, allocation: *Allocation, newSize: u31) !void {
+		if(allocation.len == 0) allocation.* = try self.alloc(newSize);
+		if(newSize == allocation.len) return;
+		if(newSize < allocation.len) {
+			const diff = allocation.len - newSize;
+			// Check if there is a free block directly after:
+			for(self.freeBlocks.items) |*block| {
+				if(allocation.start + allocation.len == block.start and block.len + allocation.len >= newSize) {
+					block.start -= diff;
+					block.len += diff;
+					allocation.len -= diff;
+					return;
+				}
+			}
+			// Create a new free block:
+			allocation.len -= diff;
+			try self.freeBlocks.append(.{.start = allocation.start + allocation.len, .len = diff});
+		} else {
+			// Check if the buffer can be extended without a problem:
+			for(self.freeBlocks.items) |*block, i| {
+				if(allocation.start + allocation.len == block.start and block.len + allocation.len >= newSize) {
+					const diff = newSize - allocation.len;
+					allocation.len += diff;
+					if(block.len != diff) {
+						block.start += diff;
+						block.len -= diff;
+					} else {
+						_ = self.freeBlocks.swapRemove(i);
+					}
+					return;
+				}
+			}
+			const oldAllocation = allocation.*;
+			allocation.* = try self.alloc(newSize);
+
+			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
+			c.glCopyBufferSubData(c.GL_SHADER_STORAGE_BUFFER, c.GL_SHADER_STORAGE_BUFFER, oldAllocation.start, allocation.start, oldAllocation.len);
+			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
+
+			try self.free(oldAllocation);
+		}
+	}
+
+	pub fn bufferSubData(self: *LargeBuffer, offset: u31, comptime T: type, data: []T) void {
+		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
+		c.glBufferSubData(c.GL_SHADER_STORAGE_BUFFER, offset, @sizeOf(T)*@intCast(c_long, data.len), data.ptr);
+		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
+	}
 };
 
 pub const FrameBuffer = struct {

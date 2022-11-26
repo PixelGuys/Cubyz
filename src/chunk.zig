@@ -393,10 +393,12 @@ pub const meshing = struct {
 		@"waterFog.density": c_int,
 		time: c_int,
 		visibilityMask: c_int,
+		voxelSize: c_int,
 	} = undefined;
 	var vao: c_uint = undefined;
 	var vbo: c_uint = undefined;
 	var faces: std.ArrayList(u32) = undefined;
+	var faceData: graphics.LargeBuffer = undefined;
 
 	pub fn init() !void {
 		shader = try Shader.create("assets/cubyz/shaders/chunks/chunk_vertex.vs", "assets/cubyz/shaders/chunks/chunk_fragment.fs");
@@ -417,6 +419,7 @@ pub const meshing = struct {
 		c.glBindVertexArray(0);
 
 		faces = try std.ArrayList(u32).initCapacity(std.heap.page_allocator, 65536);
+		try faceData.init(main.globalAllocator, 64 << 20, 3);
 	}
 
 	pub fn deinit() void {
@@ -424,6 +427,7 @@ pub const meshing = struct {
 		c.glDeleteVertexArrays(1, &vao);
 		c.glDeleteBuffers(1, &vbo);
 		faces.deinit();
+		faceData.deinit();
 	}
 
 	pub fn bindShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, time: u32) void {
@@ -452,7 +456,7 @@ pub const meshing = struct {
 		size: ChunkCoordinate,
 		chunk: std.atomic.Atomic(?*Chunk),
 		faces: std.ArrayList(u32),
-		faceData: SSBO,
+		bufferAllocation: graphics.LargeBuffer.Allocation = .{.start = 0, .len = 0},
 		coreCount: u31 = 0,
 		neighborStart: [7]u31 = [_]u31{0} ** 7,
 		vertexCount: u31 = 0,
@@ -466,12 +470,11 @@ pub const meshing = struct {
 				.size = chunkSize*pos.voxelSize,
 				.faces = std.ArrayList(u32).init(allocator),
 				.chunk = std.atomic.Atomic(?*Chunk).init(null),
-				.faceData = SSBO.init(),
 			};
 		}
 
 		pub fn deinit(self: *ChunkMesh) void {
-			self.faceData.deinit();
+			faceData.free(self.bufferAllocation) catch unreachable;
 			self.faces.deinit();
 			if(self.chunk.load(.Monotonic)) |ch| {
 				renderer.RenderStructure.allocator.destroy(ch);
@@ -508,13 +511,13 @@ pub const meshing = struct {
 				or other.typ == 0
 				or false  // TODO: Blocks.mode(other).checkTransparency(other, neighbor) // TODO: make blocks.meshes.modelIndices(other) != 0 more strict to avoid overdraw.
 				or (!std.meta.eql(block, other) and other.viewThrough())
-				or blocks.meshes.modelIndices(other) != 0);
+				or blocks.meshes.modelIndices(other) != 0
+			);
 		}
 
 		pub fn regenerateMainMesh(self: *ChunkMesh, chunk: *Chunk) !void {
 			std.debug.assert(!self.mutex.tryLock()); // The mutex should be locked when calling this function.
 			self.faces.clearRetainingCapacity();
-			try self.faces.append(chunk.pos.voxelSize);
 			var n: u32 = 0;
 			var x: u8 = 0;
 			while(x < chunkSize): (x += 1) {
@@ -582,7 +585,7 @@ pub const meshing = struct {
 					start.* -= 2;
 				}
 			} else {
-				searchStart = 1;
+				searchStart = 0;
 				searchEnd = self.coreCount;
 				self.coreCount -= 2;
 				for(self.neighborStart) |*start| {
@@ -606,7 +609,7 @@ pub const meshing = struct {
 			if(fromNeighborChunk) |neighbor| {
 				searchRange = self.faces.items[self.neighborStart[neighbor]..self.neighborStart[neighbor+1]];
 			} else {
-				searchRange = self.faces.items[1..self.coreCount];
+				searchRange = self.faces.items[0..self.coreCount];
 			}
 			var i: u32 = 0;
 			while(i < searchRange.len): (i += 2) {
@@ -699,15 +702,16 @@ pub const meshing = struct {
 						}
 					}
 				}
-				if(neighborMesh != self) neighborMesh.uploadData();
+				if(neighborMesh != self) try neighborMesh.uploadData();
 			}
 			self.chunk.load(.Monotonic).?.blocks[getIndex(x, y, z)] = newBlock;
-			self.uploadData();
+			try self.uploadData();
 		}
 
-		fn uploadData(self: *ChunkMesh) void {
-			self.vertexCount = @intCast(u31, 6*(self.faces.items.len-1)/2);
-			self.faceData.bufferData(u32, self.faces.items);
+		fn uploadData(self: *ChunkMesh) !void {
+			self.vertexCount = @intCast(u31, 6*self.faces.items.len/2);
+			try faceData.realloc(&self.bufferAllocation, @intCast(u31, 4*self.faces.items.len));
+			faceData.bufferSubData(self.bufferAllocation.start, u32, self.faces.items);
 		}
 
 		pub fn uploadDataAndFinishNeighbors(self: *ChunkMesh) !void {
@@ -772,8 +776,7 @@ pub const meshing = struct {
 						for(neighborMesh.neighborStart[1+(neighbor ^ 1)..]) |*neighborStart| {
 							neighborStart.* = neighborStart.* - (rangeEnd - rangeStart) + @intCast(u31, additionalNeighborFaces.items.len);
 						}
-						neighborMesh.vertexCount = @intCast(u31, 6*(neighborMesh.faces.items.len-1)/2);
-						neighborMesh.faceData.bufferData(u32, neighborMesh.faces.items);
+						try neighborMesh.uploadData();
 						continue;
 					}
 				}
@@ -826,7 +829,7 @@ pub const meshing = struct {
 				}
 			}
 			self.neighborStart[6] = @intCast(u31, self.faces.items.len);
-			self.uploadData();
+			try self.uploadData();
 			self.generated = true;
 		}
 
@@ -842,8 +845,8 @@ pub const meshing = struct {
 				@floatCast(f32, @intToFloat(f64, self.pos.wz) - playerPosition[2])
 			);
 			c.glUniform1i(uniforms.visibilityMask, self.visibilityMask);
-			self.faceData.bind(3);
-			c.glDrawElements(c.GL_TRIANGLES, self.vertexCount, c.GL_UNSIGNED_INT, null);
+			c.glUniform1i(uniforms.voxelSize, self.pos.voxelSize);
+			c.glDrawElementsBaseVertex(c.GL_TRIANGLES, self.vertexCount, c.GL_UNSIGNED_INT, null, self.bufferAllocation.start/8*4);
 		}
 	};
 };

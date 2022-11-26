@@ -28,7 +28,6 @@ struct FaceData {
 };
 layout(std430, binding = 3) buffer _faceData
 {
-	int voxelSize;
 	FaceData faceData[];
 };
 
@@ -46,6 +45,7 @@ layout(std430, binding = 4) buffer _voxelModels
 };
 
 uniform int time;
+uniform int voxelSize;
 
 const vec3[6] normals = vec3[6](
 	vec3(0, 1, 0),
