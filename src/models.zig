@@ -121,6 +121,20 @@ fn log(_x: u16, _y: u16, _z: u16) bool {
 	return false;
 }
 
+fn octahedron(_x: u16, _y: u16, _z: u16) bool {
+	var x = _x;
+	var y = _y;
+	var z = _z;
+	if((x == 0 or x == 15) and (y == 0 or y == 15)) return true;
+	if((x == 0 or x == 15) and (z == 0 or z == 15)) return true;
+	if((z == 0 or z == 15) and (y == 0 or y == 15)) return true;
+	x = @min(x, 15 - x);
+	y = @min(y, 15 - y);
+	z = @min(z, 15 - z);
+	if(x + y + z > 16) return true;
+	return false;
+}
+
 var nameToIndex: std.StringHashMap(u16) = undefined;
 
 pub fn getModelIndex(string: []const u8) u16 {
@@ -150,6 +164,9 @@ pub fn init() !void {
 
 	try nameToIndex.put("fence", @intCast(u16, voxelModels.items.len));
 	(try voxelModels.addOne()).init(fence);
+
+	try nameToIndex.put("octahedron", @intCast(u16, voxelModels.items.len));
+	(try voxelModels.addOne()).init(octahedron);
 
 	voxelModelSSBO.bufferData(VoxelModel, voxelModels.items);
 }
