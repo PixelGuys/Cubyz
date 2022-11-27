@@ -19,6 +19,7 @@ const Mat4f = vec.Mat4f;
 const graphics = @import("graphics.zig");
 const Fog = graphics.Fog;
 const renderer = @import("renderer.zig");
+const settings = @import("settings.zig");
 
 pub const camera = struct {
 	pub var rotation: Vec3f = Vec3f{0, 0, 0};
@@ -99,7 +100,7 @@ pub const World = struct {
 		// TODO:
 //		super.itemEntityManager = new InterpolatedItemEntityManager(this);
 //		player = new ClientPlayer(this, 0);
-		try network.Protocols.handShake.clientSide(self.conn, "quanturmdoelvloper"); // TODO: Read name from settings.
+		try network.Protocols.handShake.clientSide(self.conn, settings.playerName);
 	}
 
 	pub fn deinit(self: *World) void {

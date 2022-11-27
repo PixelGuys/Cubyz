@@ -146,7 +146,6 @@ pub const JsonElement = union(JsonType) {
 			},
 			.Pointer => |ptr| {
 				if(ptr.child == u8 and ptr.size == .Slice) {
-					std.log.info("String: {s}", .{value});
 					return JsonElement{.JsonString=value};
 				} else {
 					@compileError("Unknown value type.");
@@ -160,6 +159,11 @@ pub const JsonElement = union(JsonType) {
 
 	pub fn put(self: *const JsonElement, key: []const u8, value: anytype) !void {
 		const result = createElementFromRandomType(value);
+		try self.JsonObject.put(try self.JsonObject.allocator.dupe(u8, key), result);
+	}
+
+	pub fn putOwnedString(self: *const JsonElement, key: []const u8, value: []const u8) !void {
+		const result = JsonElement{.JsonStringOwned = try self.JsonObject.allocator.dupe(u8, value)};
 		try self.JsonObject.put(try self.JsonObject.allocator.dupe(u8, key), result);
 	}
 

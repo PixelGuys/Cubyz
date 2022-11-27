@@ -237,6 +237,9 @@ pub fn main() !void {
 	threadPool = try utils.ThreadPool.init(poolgpa.allocator(), 1 + ((std.Thread.getCpuCount() catch 4) -| 3));
 	defer threadPool.deinit();
 
+	try settings.init();
+	defer settings.deinit();
+
 	try Window.init();
 	defer Window.deinit();
 
@@ -272,7 +275,7 @@ pub fn main() !void {
 	var manager = try network.ConnectionManager.init(12347, true);
 	defer manager.deinit();
 
-	try game.world.?.init("127.0.0.1", manager);
+	try game.world.?.init(settings.lastUsedIPAddress, manager);
 	defer game.world.?.deinit();
 
 	Window.setMouseGrabbed(true);
