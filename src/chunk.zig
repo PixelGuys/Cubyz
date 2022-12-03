@@ -419,7 +419,7 @@ pub const meshing = struct {
 		c.glBindVertexArray(0);
 
 		faces = try std.ArrayList(u32).initCapacity(std.heap.page_allocator, 65536);
-		try faceData.init(main.globalAllocator, 64 << 20, 3);
+		try faceData.init(main.globalAllocator, 128 << 20, 3);
 	}
 
 	pub fn deinit() void {

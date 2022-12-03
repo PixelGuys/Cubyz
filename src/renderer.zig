@@ -238,6 +238,9 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	defer meshes.deinit();
 
 	try RenderStructure.updateAndGetRenderChunks(game.world.?.conn, playerPos, settings.renderDistance, settings.LODFactor, frustum, &meshes);
+
+	try sortChunks(meshes.items, playerPos);
+
 //	for (ChunkMesh mesh : Cubyz.chunkTree.getRenderChunks(frustumInt, x0, y0, z0)) {
 //		if (mesh instanceof NormalChunkMesh) {
 //			visibleChunks.add((NormalChunkMesh)mesh);
@@ -341,46 +344,51 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 //TODO	EntityRenderer.renderNames(playerPosition);
 }
 
+/// Sorts the chunks based on their distance from the player to reduce overdraw.
+fn sortChunks(toSort: []*chunk.meshing.ChunkMesh, playerPos: Vec3d) !void {
+	const distances = try main.threadAllocator.alloc(f64, toSort.len);
+	defer main.threadAllocator.free(distances);
+
+	for(distances) |*dist, i| {
+		dist.* = vec.length(playerPos - Vec3d{
+			@intToFloat(f64, toSort[i].pos.wx),
+			@intToFloat(f64, toSort[i].pos.wy),
+			@intToFloat(f64, toSort[i].pos.wz)
+		});
+	}
+	// Insert sort them:
+	var i: u32 = 1;
+	while(i < toSort.len) : (i += 1) {
+		var j: u32 = i - 1;
+		while(true) {
+			@setRuntimeSafety(false);
+			if(distances[j] > distances[j+1]) {
+				// Swap them:
+				{
+					const swap = distances[j];
+					distances[j] = distances[j+1];
+					distances[j+1] = swap;
+				} {
+					const swap = toSort[j];
+					toSort[j] = toSort[j+1];
+					toSort[j+1] = swap;
+				}
+			} else {
+				break;
+			}
+
+			if(j == 0) break;
+			j -= 1;
+		}
+	}
+}
+
 //	private float playerBobbing;
 //	private boolean bobbingUp;
 //	
 //	private Vector3f ambient = new Vector3f();
 //	private Vector4f clearColor = new Vector4f(0.1f, 0.7f, 0.7f, 1f);
 //	private DirectionalLight light = new DirectionalLight(new Vector3f(1.0f, 1.0f, 1.0f), new Vector3f(0.0f, 1.0f, 0.0f).mul(0.1f));
-//	
-//	/**
-//	 * Sorts the chunks based on their distance from the player to reduce complexity when sorting the transparent blocks.
-//	 * @param toSort
-//	 * @param playerX
-//	 * @param playerZ
-//	 * @return sorted chunk array
-//	 */
-//	public NormalChunkMesh[] sortChunks(NormalChunkMesh[] toSort, double playerX, double playerY, double playerZ) {
-//		NormalChunkMesh[] output = new NormalChunkMesh[toSort.length];
-//		double[] distances = new double[toSort.length];
-//		System.arraycopy(toSort, 0, output, 0, toSort.length);
-//		for(int i = 0; i < output.length; i++) {
-//			distances[i] = (playerX - output[i].wx)*(playerX - output[i].wx) + (playerY - output[i].wy)*(playerY - output[i].wy) + (playerZ - output[i].wz)*(playerZ - output[i].wz);
-//		}
-//		// Insert sort them:
-//		for(int i = 1; i < output.length; i++) {
-//			for(int j = i-1; j >= 0; j--) {
-//				if (distances[j] < distances[j+1]) {
-//					// Swap them:
-//					distances[j] += distances[j+1];
-//					distances[j+1] = distances[j] - distances[j+1];
-//					distances[j] -= distances[j+1];
-//					NormalChunkMesh local = output[j+1];
-//					output[j+1] = output[j];
-//					output[j] = local;
-//				} else {
-//					break;
-//				}
-//			}
-//		}
-//		return output;
-//	}
-//}
 
 const Bloom = struct {
 	var buffer1: graphics.FrameBuffer = undefined;
@@ -963,7 +971,7 @@ pub const RenderStructure = struct {
 							@intToFloat(f32, size),
 							@intToFloat(f32, size),
 							@intToFloat(f32, size),
-						}) and node.?.mesh.visibilityMask != 0) {
+						}) and node.?.mesh.visibilityMask != 0 and node.?.mesh.vertexCount != 0) {
 							try meshes.append(&node.?.mesh);
 						}
 						if(lod+1 != storageLists.len and node.?.mesh.generated) {
