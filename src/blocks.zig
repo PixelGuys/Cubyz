@@ -275,7 +275,6 @@ pub const meshes = struct {
 	const emptyImage = Image{.width = 1, .height = 1, .imageData = emptyTexture[0..]};
 
 	pub fn init() !void {
-		std.log.info("Size: {}", .{@sizeOf(ProceduralMaterial)});
 		animationTimesSSBO = SSBO.init();
 		animationTimesSSBO.bind(0);
 		animationFramesSSBO = SSBO.init();
@@ -424,7 +423,6 @@ pub const meshes = struct {
 	fn readPalette(json: JsonElement, block: u16) !void {
 		for(palettes[block].materialReference) |*ref, i| {
 			ref.* = idToMaterial.get(json.getAtIndex([]const u8, i, "")) orelse 0;
-			std.log.info("{}", .{ref.*});
 		}
 	}
 

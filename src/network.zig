@@ -1053,7 +1053,10 @@ pub const Protocols: struct {
 				type_itemStackCollect => {
 					const jsonObject = json.parseFromString(main.threadAllocator, data[1..]);
 					defer jsonObject.free(main.threadAllocator);
-					const item = try items.Item.init(jsonObject);
+					const item = items.Item.init(jsonObject) catch |err| {
+						std.log.err("Error {s} while collecting item {s}. Ignoring it.", .{@errorName(err), data[1..]});
+						return;
+					};
 					game.Player.mutex.lock();
 					defer game.Player.mutex.unlock();
 					const remaining = game.Player.inventory__SEND_CHANGES_TO_SERVER.addItem(item, jsonObject.get(u16, "amount", 0));

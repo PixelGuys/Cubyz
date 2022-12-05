@@ -811,10 +811,8 @@ pub const MeshSelection = struct {
 				@intToFloat(f32, voxelModel.maxZ)/16.0
 			);
 
-			c.glLineWidth(2);
 			c.glBindVertexArray(cubeVAO);
-			c.glDrawElements(c.GL_LINES, 12*2, c.GL_UNSIGNED_BYTE, null);
-			c.glLineWidth(1);
+			c.glDrawElements(c.GL_LINES, 12*2, c.GL_UNSIGNED_BYTE, null); // TODO: Draw thicker lines so they are more visible. Maybe a simple shader + cube mesh is enough.
 		}
 	}
 };

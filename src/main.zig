@@ -76,6 +76,7 @@ pub const Window = struct {
 			std.log.err("GLFW Error({}): {s}", .{errorCode, description});
 		}
 		fn keyCallback(_: ?*c.GLFWwindow, key: c_int, scancode: c_int, action: c_int, mods: c_int) callconv(.C) void {
+			_ = mods;
 			if(action == c.GLFW_PRESS) {
 				inline for(@typeInfo(@TypeOf(keyboard)).Struct.fields) |field| {
 					if(key == @field(keyboard, field.name).key) {
@@ -96,7 +97,6 @@ pub const Window = struct {
 					}
 				}
 			}
-			std.log.info("Key pressed: {}, {}, {}, {}", .{key, scancode, action, mods});
 		}
 		fn framebufferSize(_: ?*c.GLFWwindow, newWidth: c_int, newHeight: c_int) callconv(.C) void {
 			std.log.info("Framebuffer: {}, {}", .{newWidth, newHeight});
@@ -129,10 +129,13 @@ pub const Window = struct {
 			ignoreDataAfterRecentGrab = false;
 			currentPos = newPos;
 		}
-		fn glDebugOutput(_: c_uint, typ: c_uint, _: c_uint, severity: c_uint, length: c_int, message: [*c]const u8, _: ?*const anyopaque) callconv(.C) void {
-			if(typ == c.GL_DEBUG_TYPE_ERROR or typ == c.GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR or typ == c.GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR or typ == c.GL_DEBUG_TYPE_PORTABILITY or typ == c.GL_DEBUG_TYPE_PERFORMANCE) {
+		fn glDebugOutput(_: c_uint, _: c_uint, _: c_uint, severity: c_uint, length: c_int, message: [*c]const u8, _: ?*const anyopaque) callconv(.C) void {
+			if(severity == c.GL_DEBUG_SEVERITY_HIGH) {
 				std.log.err("OpenGL {}:{s}", .{severity, message[0..@intCast(usize, length)]});
-				@panic("OpenGL error");
+			} else if(severity == c.GL_DEBUG_SEVERITY_MEDIUM) {
+				std.log.warn("OpenGL {}:{s}", .{severity, message[0..@intCast(usize, length)]});
+			} else if(severity == c.GL_DEBUG_SEVERITY_LOW) {
+				std.log.info("OpenGL {}:{s}", .{severity, message[0..@intCast(usize, length)]});
 			}
 		}
 	};
