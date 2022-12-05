@@ -23,7 +23,7 @@ const utils = @import("utils.zig");
 const Window = main.Window;
 
 /// The number of milliseconds after which no more chunk meshes are created. This allows the game to run smoother on movement.
-const maximumMeshTime = 12;
+const maximumMeshTime = 8;
 const zNear = 0.1;
 const zFar = 10000.0;
 const zNearLOD = 2.0;
@@ -37,15 +37,21 @@ var fogUniforms: struct {
 	position: c_int,
 	color: c_int,
 } = undefined;
+var proceduralShader: graphics.Shader = undefined;
+var proceduralUniforms: struct {
+	ambientLight: c_int,
+	fragmentDataSampler: c_int,
+} = undefined;
 var deferredRenderPassShader: graphics.Shader = undefined;
 var deferredUniforms: struct {
-	position: c_int,
 	color: c_int,
 } = undefined;
 
 pub fn init() !void {
 	fogShader = try Shader.create("assets/cubyz/shaders/fog_vertex.vs", "assets/cubyz/shaders/fog_fragment.fs");
 	fogUniforms = fogShader.bulkGetUniformLocation(@TypeOf(fogUniforms));
+	proceduralShader = try Shader.create("assets/cubyz/shaders/procedural_vertex.glsl", "assets/cubyz/shaders/procedural_fragment.glsl");
+	proceduralUniforms = proceduralShader.bulkGetUniformLocation(@TypeOf(proceduralUniforms));
 	deferredRenderPassShader = try Shader.create("assets/cubyz/shaders/deferred_render_pass.vs", "assets/cubyz/shaders/deferred_render_pass.fs");
 	deferredUniforms = deferredRenderPassShader.bulkGetUniformLocation(@TypeOf(deferredUniforms));
 	buffers.init();
@@ -55,6 +61,7 @@ pub fn init() !void {
 
 pub fn deinit() void {
 	fogShader.delete();
+	proceduralShader.delete();
 	deferredRenderPassShader.delete();
 	buffers.deinit();
 	Bloom.deinit();
@@ -64,20 +71,20 @@ pub fn deinit() void {
 const buffers = struct {
 	var buffer: c_uint = undefined;
 	var colorTexture: c_uint = undefined;
-	var positionTexture: c_uint = undefined;
+	var fragmentDataTexture: c_uint = undefined;
 	var depthBuffer: c_uint = undefined;
 	fn init() void {
 		c.glGenFramebuffers(1, &buffer);
 		c.glGenRenderbuffers(1, &depthBuffer);
 		c.glGenTextures(1, &colorTexture);
-		c.glGenTextures(1, &positionTexture);
+		c.glGenTextures(1, &fragmentDataTexture);
 
 		updateBufferSize(Window.width, Window.height);
 
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, buffer);
 
 		c.glFramebufferTexture2D(c.GL_FRAMEBUFFER, c.GL_COLOR_ATTACHMENT0, c.GL_TEXTURE_2D, colorTexture, 0);
-		c.glFramebufferTexture2D(c.GL_FRAMEBUFFER, c.GL_COLOR_ATTACHMENT1, c.GL_TEXTURE_2D, positionTexture, 0);
+		c.glFramebufferTexture2D(c.GL_FRAMEBUFFER, c.GL_COLOR_ATTACHMENT1, c.GL_TEXTURE_2D, fragmentDataTexture, 0);
 		
 		c.glFramebufferRenderbuffer(c.GL_FRAMEBUFFER, c.GL_DEPTH_STENCIL_ATTACHMENT, c.GL_RENDERBUFFER, depthBuffer);
 
@@ -88,7 +95,7 @@ const buffers = struct {
 		c.glDeleteFramebuffers(1, &buffer);
 		c.glDeleteRenderbuffers(1, &depthBuffer);
 		c.glDeleteTextures(1, &colorTexture);
-		c.glDeleteTextures(1, &positionTexture);
+		c.glDeleteTextures(1, &fragmentDataTexture);
 	}
 
 	fn regenTexture(texture: c_uint, internalFormat: c_int, format: c_uint, width: u31, height: u31) void {
@@ -103,7 +110,7 @@ const buffers = struct {
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, buffer);
 
 		regenTexture(colorTexture, c.GL_RGB10_A2, c.GL_RGB, width, height);
-		regenTexture(positionTexture, c.GL_RGB16F, c.GL_RGB, width, height);
+		regenTexture(fragmentDataTexture, c.GL_RGBA32I, c.GL_RGBA_INTEGER, width, height);
 
 		c.glBindRenderbuffer(c.GL_RENDERBUFFER, depthBuffer);
 		c.glRenderbufferStorage(c.GL_RENDERBUFFER, c.GL_DEPTH24_STENCIL8, width, height);
@@ -119,7 +126,7 @@ const buffers = struct {
 		c.glActiveTexture(c.GL_TEXTURE3);
 		c.glBindTexture(c.GL_TEXTURE_2D, colorTexture);
 		c.glActiveTexture(c.GL_TEXTURE4);
-		c.glBindTexture(c.GL_TEXTURE_2D, positionTexture);
+		c.glBindTexture(c.GL_TEXTURE_2D, fragmentDataTexture);
 	}
 
 	fn bind() void {
@@ -135,10 +142,8 @@ const buffers = struct {
 		c.glClearColor(clearColor[0], clearColor[1], clearColor[2], 1);
 		c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
 		// Clears the position separately to prevent issues with default value.
-		const positionClearColor = [_]f32 {0, 0, 6.55e4, 1}; // z value corresponds to the highest 16-bit float value.
-		c.glClearBufferfv(c.GL_COLOR, 1, &positionClearColor);
-
-		c.glBindFramebuffer(c.GL_FRAMEBUFFER, buffer);
+		const positionClearColor = [_]i32 {0, 0, 0, 0};
+		c.glClearBufferiv(c.GL_COLOR, 1, &positionClearColor);
 	}
 };
 
@@ -250,9 +255,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 //			visibleReduced.add((ReducedChunkMesh)mesh);
 //		}
 //	}
-	c.glDepthRangef(0.05, 1.0); // TODO: Figure out how to fix the depth range issues.
-	MeshSelection.select(playerPos, game.camera.direction);
-	MeshSelection.render(game.projectionMatrix, game.camera.viewMatrix, playerPos);
 
 	// Render the far away ReducedChunks:
 	c.glDepthRangef(0.05, 1.0); // ← Used to fix z-fighting.
@@ -280,6 +282,21 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	buffers.bindTextures();
 
+	proceduralShader.bind();
+
+	c.glUniform3f(proceduralUniforms.ambientLight, ambientLight[0], ambientLight[1], ambientLight[2]);
+	c.glUniform1i(proceduralUniforms.fragmentDataSampler, 4);
+
+	c.glDisable(c.GL_DEPTH_TEST);
+	c.glBindVertexArray(graphics.Draw.rectVAO);
+	c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+	c.glEnable(c.GL_DEPTH_TEST);
+
+	c.glDepthRangef(0.05, 1.0); // TODO: Figure out how to fix the depth range issues.
+	MeshSelection.select(playerPos, game.camera.direction);
+	MeshSelection.render(game.projectionMatrix, game.camera.viewMatrix, playerPos);
+
+
 //		NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_waterFog_activ, waterFog.isActive());
 //		NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_waterFog_color, waterFog.getColor());
 //		NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_waterFog_density, waterFog.getDensity());
@@ -303,7 +320,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 //			Meshes.emissionTextureArray.bind();
 //		}
 
-	fogShader.bind();
+	// TODO: fogShader.bind();
 	// Draw the water fog if the player is underwater:
 //		Player player = Cubyz.player;
 //		int block = Cubyz.world.getBlock((int)Math.round(player.getPosition().x), (int)(player.getPosition().y + player.height), (int)Math.round(player.getPosition().z));
@@ -328,7 +345,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	buffers.bindTextures();
 	deferredRenderPassShader.bind();
 	c.glUniform1i(deferredUniforms.color, 3);
-	c.glUniform1i(deferredUniforms.position, 4);
 
 //	if(Window.getRenderTarget() != null)
 //		Window.getRenderTarget().bind();

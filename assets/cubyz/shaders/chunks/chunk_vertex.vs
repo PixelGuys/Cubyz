@@ -5,6 +5,7 @@ out vec2 outTexCoord;
 flat out int textureIndex;
 flat out int modelIndex;
 flat out int faceNormal;
+flat out ivec3 outModelPosition;
 // For raymarching:
 out vec3 startPosition;
 out vec3 direction;
@@ -13,6 +14,7 @@ uniform int visibilityMask;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
 uniform vec3 modelPosition;
+uniform ivec3 integerPosition;
 
 layout(std430, binding = 0) buffer _animationTimes
 {
@@ -111,6 +113,7 @@ void main() {
 	}
 	
 	position *= 16;
+	outModelPosition = position - 16*ivec3(normals[normal]) + integerPosition*16;
 	ivec3 totalOffset = (ivec3(normals[normal])+1)/2;
 	totalOffset += ivec3(equal(textureX[normal], ivec3(-1, -1, -1))) + (vertexID>>1 & 1)*textureX[normal];
 	totalOffset += ivec3(equal(textureY[normal], ivec3(-1, -1, -1))) + (vertexID & 1)*textureY[normal];

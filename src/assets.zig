@@ -10,12 +10,13 @@ const main = @import("main.zig");
 var arena: std.heap.ArenaAllocator = undefined;
 var arenaAllocator: Allocator = undefined;
 var commonBlocks: std.StringHashMap(JsonElement) = undefined;
+var commonBlockMaterials: std.StringHashMap(JsonElement) = undefined;
 var commonBiomes: std.StringHashMap(JsonElement) = undefined;
 var commonItems: std.StringHashMap(JsonElement) = undefined;
 var commonRecipes: std.ArrayList([]const u8) = undefined;
 
 /// Reads json files recursively from all subfolders.
-pub fn readAllJsonFilesInAddons(externalAllocator: Allocator, addons: std.ArrayList(std.fs.Dir), addonNames: std.ArrayList([]const u8), subPath: []const u8, output: *std.StringHashMap(JsonElement)) !void {
+fn readAllJsonFilesInAddons(externalAllocator: Allocator, addons: std.ArrayList(std.fs.Dir), addonNames: std.ArrayList([]const u8), subPath: []const u8, output: *std.StringHashMap(JsonElement)) !void {
 	for(addons.items) |addon, addonIndex| {
 		var dir: std.fs.IterableDir = addon.openIterableDir(subPath, .{}) catch |err| {
 			if(err == error.FileNotFound) continue;
@@ -44,7 +45,7 @@ pub fn readAllJsonFilesInAddons(externalAllocator: Allocator, addons: std.ArrayL
 	}
 }
 
-pub fn readAssets(externalAllocator: Allocator, assetPath: []const u8, blocks: *std.StringHashMap(JsonElement), items: *std.StringHashMap(JsonElement), biomes: *std.StringHashMap(JsonElement)) !void {
+fn readAssets(externalAllocator: Allocator, assetPath: []const u8, blocks: *std.StringHashMap(JsonElement), blockMaterials: *std.StringHashMap(JsonElement), items: *std.StringHashMap(JsonElement), biomes: *std.StringHashMap(JsonElement)) !void {
 	var addons = std.ArrayList(std.fs.Dir).init(main.threadAllocator);
 	defer addons.deinit();
 	var addonNames = std.ArrayList([]const u8).init(main.threadAllocator);
@@ -67,6 +68,7 @@ pub fn readAssets(externalAllocator: Allocator, assetPath: []const u8, blocks: *
 	};
 
 	try readAllJsonFilesInAddons(externalAllocator, addons, addonNames, "blocks", blocks);
+	try readAllJsonFilesInAddons(externalAllocator, addons, addonNames, "block_materials", blockMaterials);
 	try readAllJsonFilesInAddons(externalAllocator, addons, addonNames, "items", items);
 	try readAllJsonFilesInAddons(externalAllocator, addons, addonNames, "biomes", biomes);
 }
@@ -75,11 +77,12 @@ pub fn init() !void {
 	arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
 	arenaAllocator = arena.allocator();
 	commonBlocks = std.StringHashMap(JsonElement).init(arenaAllocator);
+	commonBlockMaterials = std.StringHashMap(JsonElement).init(arenaAllocator);
 	commonItems = std.StringHashMap(JsonElement).init(arenaAllocator);
 	commonBiomes = std.StringHashMap(JsonElement).init(arenaAllocator);
 	commonRecipes = std.ArrayList([]const u8).init(arenaAllocator);
 
-	try readAssets(arenaAllocator, "assets/", &commonBlocks, &commonItems, &commonBiomes);
+	try readAssets(arenaAllocator, "assets/", &commonBlocks, &commonBlockMaterials, &commonItems, &commonBiomes);
 }
 
 fn registerItem(assetFolder: []const u8, id: []const u8, info: JsonElement) !void {
@@ -193,12 +196,20 @@ pub const BlockPalette = struct {
 pub fn loadWorldAssets(assetFolder: []const u8, palette: *BlockPalette) !void {
 	var blocks = try commonBlocks.cloneWithAllocator(main.threadAllocator);
 	defer blocks.clearAndFree();
+	var blockMaterials = try commonBlockMaterials.cloneWithAllocator(main.threadAllocator);
+	defer blockMaterials.clearAndFree();
 	var items = try commonItems.cloneWithAllocator(main.threadAllocator);
 	defer items.clearAndFree();
 	var biomes = try commonBiomes.cloneWithAllocator(main.threadAllocator);
 	defer biomes.clearAndFree();
 
-	try readAssets(arenaAllocator, assetFolder, &blocks, &items, &biomes);
+	try readAssets(arenaAllocator, assetFolder, &blocks, &blockMaterials, &items, &biomes);
+
+	// block materials:
+	var iterator = blockMaterials.iterator();
+	while(iterator.next()) |entry| {
+		try blocks_zig.meshes.registerMaterial(entry.key_ptr.*, entry.value_ptr.*);
+	}
 
 	// blocks:
 	var block: u32 = 0;
@@ -217,7 +228,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, palette: *BlockPalette) !void {
 		try registerBlock(assetFolder, id, jsonObject);
 		block += 1;
 	}
-	var iterator = blocks.iterator();
+	iterator = blocks.iterator();
 	while(iterator.next()) |entry| {
 		try registerBlock(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
 		try palette.add(entry.key_ptr.*);

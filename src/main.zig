@@ -255,7 +255,7 @@ pub fn main() !void {
 	try assets.init();
 	defer assets.deinit();
 
-	blocks.meshes.init();
+	try blocks.meshes.init();
 	defer blocks.meshes.deinit();
 
 	try chunk.meshing.init();

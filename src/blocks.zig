@@ -49,14 +49,14 @@ var _mode: [MaxBLockCount]RotationMode = undefined;
 
 var reverseIndices = std.StringHashMap(u16).init(arena.allocator());
 
-var size: u32 = 0;
+var size: u16 = 0;
 
 pub fn register(_: []const u8, id: []const u8, json: JsonElement) !void {
 	if(reverseIndices.contains(id)) {
 		std.log.warn("Registered block with id {s} twice!", .{id});
 	}
 	_id[size] = try allocator.dupe(u8, id);
-	try reverseIndices.put(_id[size], @intCast(u16, size));
+	try reverseIndices.put(_id[size], size);
 //		TODO:
 //		_mode[size] = CubyzRegistries.ROTATION_MODE_REGISTRY.getByID(json.getString("rotation", "cubyz:no_rotation"));
 //		_blockDrops[size] = new BlockDrop[0];
@@ -192,9 +192,47 @@ pub const Block = packed struct {
 
 
 pub const meshes = struct {
-	var size: u32 = 0;
+	const ProceduralMaterial = extern struct {
+		const ExternVec3f = [3]f32;
+		const MaterialColor = extern struct {
+			diffuse: u32,
+			emission: u32,
+		};
+		
+		simplex1Wavelength: ExternVec3f,
+		simplex1Weight: f32,
+		
+		simplex2Wavelength: ExternVec3f,
+		__padding2: f32,
+		simplex2DomainWarp: ExternVec3f,
+		simplex2Weight: f32,
+		
+		simplex3Wavelength: ExternVec3f,
+		__padding3: f32,
+		simplex3DomainWarp: ExternVec3f,
+		simplex3Weight: f32,
+
+		brightnessOffset: f32,
+
+		randomness: f32,
+
+		colors: [8]MaterialColor,
+
+		__paddingTotal: [2]f32,
+	};
+
+	const Palette = extern struct {
+		materialReference: [8]u32,
+	};
+
+	var size: u16 = 0;
 	var _modelIndices: [MaxBLockCount]u16 = undefined;
 	var _textureIndices: [MaxBLockCount][6]u32 = undefined;
+	var palettes: [MaxBLockCount]Palette = undefined;
+
+	var materials: [MaxBLockCount]ProceduralMaterial = undefined;
+	var materialSize: u16 = 0;
+	var idToMaterial: std.StringHashMap(u16) = undefined;
 	/// Stores the number of textures after each block was added. Used to clean additional textures when the world is switched.
 	var maxTextureCount: [MaxBLockCount]u32 = undefined;
 	/// Number of loaded meshes. Used to determine if an update is needed.
@@ -223,6 +261,9 @@ pub const meshes = struct {
 	var animationTimesSSBO: SSBO = undefined;
 	var animationFramesSSBO: SSBO = undefined;
 
+	var materialsSSBO: SSBO = undefined;
+	var palettesSSBO: SSBO = undefined;
+
 	pub var blockTextureArray: TextureArray = undefined;
 	pub var emissionTextureArray: TextureArray = undefined;
 
@@ -233,11 +274,17 @@ pub const meshes = struct {
 	var emptyTexture = [_]Color {black};
 	const emptyImage = Image{.width = 1, .height = 1, .imageData = emptyTexture[0..]};
 
-	pub fn init() void {
+	pub fn init() !void {
+		std.log.info("Size: {}", .{@sizeOf(ProceduralMaterial)});
 		animationTimesSSBO = SSBO.init();
 		animationTimesSSBO.bind(0);
 		animationFramesSSBO = SSBO.init();
 		animationFramesSSBO.bind(1);
+		materialsSSBO = SSBO.init();
+		materialsSSBO.bind(5);
+		palettesSSBO = SSBO.init();
+		palettesSSBO.bind(6);
+
 		blockTextureArray = TextureArray.init();
 		emissionTextureArray = TextureArray.init();
 		arenaForArrayLists = std.heap.ArenaAllocator.init(std.heap.page_allocator);
@@ -246,14 +293,20 @@ pub const meshes = struct {
 		animationTimes = std.ArrayList(u32).init(arenaForArrayLists.allocator());
 		blockTextures = std.ArrayList(Image).init(arenaForArrayLists.allocator());
 		emissionTextures = std.ArrayList(Image).init(arenaForArrayLists.allocator());
+		idToMaterial = std.StringHashMap(u16).init(arenaForArrayLists.allocator());
 		arenaForWorld = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+
+		try registerMaterial("cubyz:empty", JsonElement{.JsonNull={}}); // TODO: Proper default.
 	}
 
 	pub fn deinit() void {
 		animationTimesSSBO.deinit();
 		animationFramesSSBO.deinit();
+		materialsSSBO.deinit();
+		palettesSSBO.deinit();
 		blockTextureArray.deinit();
 		emissionTextureArray.deinit();
+		idToMaterial.deinit();
 		arenaForArrayLists.deinit();
 		arenaForWorld.deinit();
 	}
@@ -261,13 +314,17 @@ pub const meshes = struct {
 	pub fn reset() void {
 		meshes.size = 0;
 		loadedMeshes = 0;
+		materialSize = 0;
 		textureIDs.clearRetainingCapacity();
 		animationFrames.clearRetainingCapacity();
 		animationTimes.clearRetainingCapacity();
 		blockTextures.clearRetainingCapacity();
 		emissionTextures.clearRetainingCapacity();
+		idToMaterial.clearRetainingCapacity();
 		arenaForWorld.deinit();
 		arenaForWorld = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+
+		registerMaterial("cubyz:empty", JsonElement{.JsonNull={}}) catch unreachable; // TODO: Proper default.
 	}
 
 	pub fn modelIndices(block: Block) u16 {
@@ -278,7 +335,7 @@ pub const meshes = struct {
 		return &_textureIndices[block.typ];
 	}
 
-	pub fn readTexture(textureInfo: JsonElement, assetFolder: []const u8) !?u31 {
+	fn readTexture(textureInfo: JsonElement, assetFolder: []const u8) !?u31 {
 		var result: ?u31 = null;
 		if(textureInfo == .JsonString or textureInfo == .JsonStringOwned) {
 			const resource = textureInfo.as([]const u8, "");
@@ -364,12 +421,20 @@ pub const meshes = struct {
 		return result;
 	}
 
-	pub fn getTextureIndices(json: JsonElement, assetFolder: []const u8, textureIndicesRef: []u32) !void {
+	fn readPalette(json: JsonElement, block: u16) !void {
+		for(palettes[block].materialReference) |*ref, i| {
+			ref.* = idToMaterial.get(json.getAtIndex([]const u8, i, "")) orelse 0;
+			std.log.info("{}", .{ref.*});
+		}
+	}
+
+	fn getTextureIndices(json: JsonElement, assetFolder: []const u8, block: u16) !void {
 		var defaultIndex = try readTexture(json.getChild("texture"), assetFolder) orelse 0;
-		for(textureIndicesRef) |_, i| {
-			textureIndicesRef[i] = defaultIndex;
+		try readPalette(json.getChild("palette"), block);
+		for(_textureIndices[block]) |_, i| {
+			_textureIndices[block][i] = defaultIndex;
 			const textureInfo = json.getChild(sideNames[i]);
-			textureIndicesRef[i] = try readTexture(textureInfo, assetFolder) orelse continue;
+			_textureIndices[block][i] = try readTexture(textureInfo, assetFolder) orelse continue;
 		}
 	}
 
@@ -379,11 +444,70 @@ pub const meshes = struct {
 		// The actual model is loaded later, in the rendering thread.
 		// But textures can be loaded here:
 
-		try getTextureIndices(json, assetFolder, &_textureIndices[meshes.size]);
+		try getTextureIndices(json, assetFolder, meshes.size);
 
 		maxTextureCount[meshes.size] = @intCast(u32, textureIDs.items.len);
 
 		meshes.size += 1;
+	}
+
+	fn saveInverse(x: f32) f32 {
+		if(x == 0) return x;
+		return 1.0/x;
+	}
+	pub fn registerMaterial(id: []const u8, json: JsonElement) !void {
+		const numericalID = materialSize;
+		try idToMaterial.putNoClobber(try arenaForWorld.allocator().dupe(u8, id), numericalID);
+
+		materials[numericalID].simplex1Wavelength = .{
+			saveInverse(json.getChild("simplex1Wavelength").getAtIndex(f32, 0, 0.0)),
+			saveInverse(json.getChild("simplex1Wavelength").getAtIndex(f32, 1, 0.0)),
+			saveInverse(json.getChild("simplex1Wavelength").getAtIndex(f32, 2, 0.0))
+		};
+		materials[numericalID].simplex1Weight = json.get(f32, "simplex1Weight", 0.0);
+
+		materials[numericalID].simplex2Wavelength = .{
+			saveInverse(json.getChild("simplex2Wavelength").getAtIndex(f32, 0, 0.0)),
+			saveInverse(json.getChild("simplex2Wavelength").getAtIndex(f32, 1, 0.0)),
+			saveInverse(json.getChild("simplex2Wavelength").getAtIndex(f32, 2, 0.0))
+		};
+		materials[numericalID].simplex2DomainWarp = .{
+			json.getChild("simplex2DomainWarp").getAtIndex(f32, 0, 0.0),
+			json.getChild("simplex2DomainWarp").getAtIndex(f32, 1, 0.0),
+			json.getChild("simplex2DomainWarp").getAtIndex(f32, 2, 0.0)
+		};
+		materials[numericalID].simplex2Weight = json.get(f32, "simplex2Weight", 0.0);
+
+		materials[numericalID].simplex3Wavelength = .{
+			saveInverse(json.getChild("simplex3Wavelength").getAtIndex(f32, 0, 0.0)),
+			saveInverse(json.getChild("simplex3Wavelength").getAtIndex(f32, 1, 0.0)),
+			saveInverse(json.getChild("simplex3Wavelength").getAtIndex(f32, 2, 0.0))
+		};
+		materials[numericalID].simplex3DomainWarp = .{
+			json.getChild("simplex3DomainWarp").getAtIndex(f32, 0, 0.0),
+			json.getChild("simplex3DomainWarp").getAtIndex(f32, 1, 0.0),
+			json.getChild("simplex3DomainWarp").getAtIndex(f32, 2, 0.0)
+		};
+		materials[numericalID].simplex3Weight = json.get(f32, "simplex3Weight", 0.0);
+
+		materials[numericalID].brightnessOffset = json.get(f32, "brightnessOffset", 0.0);
+
+		materials[numericalID].randomness = json.get(f32, "randomness", 0.0);
+
+		const colors = json.getChild("colors");
+		for(materials[numericalID].colors) |*color, i| {
+			const colorJson = colors.getChildAtIndex(i);
+			if(colorJson == .JsonNull and i > 0) {
+				color.* = materials[numericalID].colors[i-1];
+			} else {
+				color.* = .{
+					.diffuse = colorJson.get(u32, "diffuse", 0x000000),
+					.emission = colorJson.get(u32, "emission", 0x000000)
+				};
+			}
+		}
+
+		materialSize += 1;
 	}
 
 // TODO: (this one requires thinking about the allocated memory!)
@@ -425,5 +549,8 @@ pub const meshes = struct {
 		// Also generate additional buffers:
 		animationTimesSSBO.bufferData(u32, animationTimes.items);
 		animationFramesSSBO.bufferData(u32, animationFrames.items);
+
+		materialsSSBO.bufferData(ProceduralMaterial, materials[0..materialSize]);
+		palettesSSBO.bufferData(Palette, palettes[0..meshes.size]);
 	}
 };
