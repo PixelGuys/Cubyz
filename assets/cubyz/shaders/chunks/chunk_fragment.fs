@@ -1,18 +1,12 @@
 #version 430
 
-in vec3 mvVertexPos;
-in vec2 outTexCoord;
-flat in int textureIndex;
+flat in int blockIndex;
 flat in int faceNormal;
 flat in int modelIndex;
 flat in ivec3 outModelPosition;
 // For raymarching:
 in vec3 startPosition;
 in vec3 direction;
-
-uniform vec3 ambientLight;
-uniform sampler2DArray texture_sampler;
-uniform sampler2DArray emissionSampler;
 
 layout(location = 1) out ivec4 fragmentData;
 
@@ -53,18 +47,6 @@ const float[6] normalVariations = float[6](
 	0.96, //vec3(0, 0, 1),
 	0.88 //vec3(0, 0, -1)
 );
-
-
-uniform Fog fog;
-uniform Fog waterFog; // TODO: Select fog from texture
-
-vec4 calcFog(vec3 pos, vec4 color, Fog fog) {
-	float distance = length(pos);
-	float fogFactor = 1.0/exp((distance*fog.density)*(distance*fog.density));
-	fogFactor = clamp(fogFactor, 0.0, 1.0);
-	vec4 resultColor = mix(vec4(fog.color, 1), color, fogFactor);
-	return resultColor;
-}
 
 int getVoxel(int voxelIndex) {
 	voxelIndex = (voxelIndex & 0xf) | (voxelIndex>>1 & 0xf0) | (voxelIndex>>2 & 0xf00);
@@ -140,7 +122,7 @@ void main() {
 	RayMarchResult result = rayMarching(startPosition, direction);
 	if(!result.hitAThing) discard;
 
-	int materialIndex = palettes[textureIndex].materialReference[result.palette];
+	int materialIndex = palettes[blockIndex].materialReference[result.palette];
 	fragmentData.xyz = outModelPosition + result.voxelPos;
 	fragmentData.w = materialIndex | result.normal<<16;
 }

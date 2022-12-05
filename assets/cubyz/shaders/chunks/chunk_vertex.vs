@@ -1,8 +1,6 @@
 #version 430
 
-out vec3 mvVertexPos;
-out vec2 outTexCoord;
-flat out int textureIndex;
+flat out int blockIndex;
 flat out int modelIndex;
 flat out int faceNormal;
 flat out ivec3 outModelPosition;
@@ -26,7 +24,7 @@ layout(std430, binding = 1) buffer _animationFrames
 };
 struct FaceData {
 	int encodedPositionAndNormals;
-	int texCoordAndVoxelModel;
+	int blockIndexAndVoxelModel;
 };
 layout(std430, binding = 3) buffer _faceData
 {
@@ -46,7 +44,6 @@ layout(std430, binding = 4) buffer _voxelModels
 	VoxelModel voxelModels[];
 };
 
-uniform int time;
 uniform int voxelSize;
 
 const vec3[6] normals = vec3[6](
@@ -56,22 +53,6 @@ const vec3[6] normals = vec3[6](
 	vec3(-1, 0, 0),
 	vec3(0, 0, 1),
 	vec3(0, 0, -1)
-);
-const vec3[6] absNormals = vec3[6](
-	vec3(0, 1, 0),
-	vec3(0, 1, 0),
-	vec3(1, 0, 0),
-	vec3(1, 0, 0),
-	vec3(0, 0, 1),
-	vec3(0, 0, 1)
-);
-const ivec3[6] positionOffset = ivec3[6](
-	ivec3(0, 0, 0),
-	ivec3(0, 1, 0),
-	ivec3(0, 0, 0),
-	ivec3(1, 0, 0),
-	ivec3(0, 0, 0),
-	ivec3(0, 0, 1)
 );
 const ivec3[6] textureX = ivec3[6](
 	ivec3(1, 0, 0),
@@ -94,12 +75,10 @@ void main() {
 	int faceID = gl_VertexID/4;
 	int vertexID = gl_VertexID%4;
 	int encodedPositionAndNormals = faceData[faceID].encodedPositionAndNormals;
-	int texCoordAndVoxelModel = faceData[faceID].texCoordAndVoxelModel;
+	int blockIndexAndVoxelModel = faceData[faceID].blockIndexAndVoxelModel;
 	int normal = (encodedPositionAndNormals >> 24) & 7;
-	int texCoordz = texCoordAndVoxelModel & 65535;
-	modelIndex = texCoordAndVoxelModel >> 16;
-	textureIndex = texCoordz + time / animationTimes[texCoordz] % animationFrames[texCoordz];
-	outTexCoord = vec2(float(vertexID>>1 & 1)*voxelSize, float(vertexID & 1)*voxelSize);
+	blockIndex = blockIndexAndVoxelModel & 65535;
+	modelIndex = blockIndexAndVoxelModel >> 16;
 
 	ivec3 position = ivec3(
 		encodedPositionAndNormals & 31,
@@ -128,8 +107,6 @@ void main() {
 
 	vec3 globalPosition = position*voxelSize/16.0 + modelPosition;
 
-	vec4 mvPos = viewMatrix*vec4(globalPosition, 1);
-	gl_Position = projectionMatrix*mvPos;
+	gl_Position = projectionMatrix*viewMatrix*vec4(globalPosition, 1);
 	faceNormal = normal;
-	mvVertexPos = mvPos.xyz;
 }

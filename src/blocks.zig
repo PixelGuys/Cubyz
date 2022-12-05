@@ -21,31 +21,31 @@ pub const BlockClass = enum(u8) {
 var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
 var allocator = arena.allocator();
 
-pub const MaxBLockCount: usize = 65536; // 16 bit limit
+pub const MaxBlockCount: usize = 65536; // 16 bit limit
 
 pub const BlockDrop = u0; // TODO!
 pub const RotationMode = u0; // TODO!
 
-var _lightingTransparent: [MaxBLockCount]bool = undefined;
-var _transparent: [MaxBLockCount]bool = undefined;
-var _id: [MaxBLockCount][]u8 = undefined;
+var _lightingTransparent: [MaxBlockCount]bool = undefined;
+var _transparent: [MaxBlockCount]bool = undefined;
+var _id: [MaxBlockCount][]u8 = undefined;
 /// Time in seconds to break this block by hand.
-var _hardness: [MaxBLockCount]f32 = undefined;
+var _hardness: [MaxBlockCount]f32 = undefined;
 /// Minimum pickaxe/axe/shovel power required.
-var _breakingPower: [MaxBLockCount]f32 = undefined;
-var _solid: [MaxBLockCount]bool = undefined;
-var _selectable: [MaxBLockCount]bool = undefined;
-var _blockDrops: [MaxBLockCount][]BlockDrop = undefined;
+var _breakingPower: [MaxBlockCount]f32 = undefined;
+var _solid: [MaxBlockCount]bool = undefined;
+var _selectable: [MaxBlockCount]bool = undefined;
+var _blockDrops: [MaxBlockCount][]BlockDrop = undefined;
 /// Meaning undegradable parts of trees or other structures can grow through this block.
-var _degradable: [MaxBLockCount]bool = undefined;
-var _viewThrough: [MaxBLockCount]bool = undefined;
-var _blockClass: [MaxBLockCount]BlockClass = undefined;
-var _light: [MaxBLockCount]u32 = undefined;
+var _degradable: [MaxBlockCount]bool = undefined;
+var _viewThrough: [MaxBlockCount]bool = undefined;
+var _blockClass: [MaxBlockCount]BlockClass = undefined;
+var _light: [MaxBlockCount]u32 = undefined;
 /// How much light this block absorbs if it is transparent
-var _absorption: [MaxBLockCount]u32 = undefined;
+var _absorption: [MaxBlockCount]u32 = undefined;
 /// GUI that is opened on click.
-var _gui: [MaxBLockCount][]u8 = undefined;
-var _mode: [MaxBLockCount]RotationMode = undefined;
+var _gui: [MaxBlockCount][]u8 = undefined;
+var _mode: [MaxBlockCount]RotationMode = undefined;
 
 var reverseIndices = std.StringHashMap(u16).init(arena.allocator());
 
@@ -226,24 +226,16 @@ pub const meshes = struct {
 	};
 
 	var size: u16 = 0;
-	var _modelIndices: [MaxBLockCount]u16 = undefined;
-	var _textureIndices: [MaxBLockCount][6]u32 = undefined;
-	var palettes: [MaxBLockCount]Palette = undefined;
+	var _modelIndex: [MaxBlockCount]u16 = undefined;
+	var palettes: [MaxBlockCount]Palette = undefined;
 
-	var materials: [MaxBLockCount]ProceduralMaterial = undefined;
+	var materials: [MaxBlockCount]ProceduralMaterial = undefined;
 	var materialSize: u16 = 0;
 	var idToMaterial: std.StringHashMap(u16) = undefined;
-	/// Stores the number of textures after each block was added. Used to clean additional textures when the world is switched.
-	var maxTextureCount: [MaxBLockCount]u32 = undefined;
 	/// Number of loaded meshes. Used to determine if an update is needed.
 	var loadedMeshes: u32 = 0;
 
 	var arenaForArrayLists: std.heap.ArenaAllocator = undefined;
-	var textureIDs: std.ArrayList([]const u8) = undefined;
-	var animationFrames: std.ArrayList(u32) = undefined;
-	var animationTimes: std.ArrayList(u32) = undefined;
-	var blockTextures: std.ArrayList(Image) = undefined;
-	var emissionTextures: std.ArrayList(Image) = undefined;
 
 	var arenaForWorld: std.heap.ArenaAllocator = undefined;
 
@@ -258,14 +250,8 @@ pub const meshes = struct {
 		break :blk names;
 	};
 
-	var animationTimesSSBO: SSBO = undefined;
-	var animationFramesSSBO: SSBO = undefined;
-
 	var materialsSSBO: SSBO = undefined;
 	var palettesSSBO: SSBO = undefined;
-
-	pub var blockTextureArray: TextureArray = undefined;
-	pub var emissionTextureArray: TextureArray = undefined;
 
 	const black: Color = Color{.r=0, .g=0, .b=0, .a=255};
 	const magenta: Color = Color{.r=255, .g=0, .b=255, .a=255};
@@ -275,23 +261,12 @@ pub const meshes = struct {
 	const emptyImage = Image{.width = 1, .height = 1, .imageData = emptyTexture[0..]};
 
 	pub fn init() !void {
-		animationTimesSSBO = SSBO.init();
-		animationTimesSSBO.bind(0);
-		animationFramesSSBO = SSBO.init();
-		animationFramesSSBO.bind(1);
 		materialsSSBO = SSBO.init();
 		materialsSSBO.bind(5);
 		palettesSSBO = SSBO.init();
 		palettesSSBO.bind(6);
 
-		blockTextureArray = TextureArray.init();
-		emissionTextureArray = TextureArray.init();
 		arenaForArrayLists = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-		textureIDs = std.ArrayList([]const u8).init(arenaForArrayLists.allocator());
-		animationFrames = std.ArrayList(u32).init(arenaForArrayLists.allocator());
-		animationTimes = std.ArrayList(u32).init(arenaForArrayLists.allocator());
-		blockTextures = std.ArrayList(Image).init(arenaForArrayLists.allocator());
-		emissionTextures = std.ArrayList(Image).init(arenaForArrayLists.allocator());
 		idToMaterial = std.StringHashMap(u16).init(arenaForArrayLists.allocator());
 		arenaForWorld = std.heap.ArenaAllocator.init(std.heap.page_allocator);
 
@@ -299,12 +274,8 @@ pub const meshes = struct {
 	}
 
 	pub fn deinit() void {
-		animationTimesSSBO.deinit();
-		animationFramesSSBO.deinit();
 		materialsSSBO.deinit();
 		palettesSSBO.deinit();
-		blockTextureArray.deinit();
-		emissionTextureArray.deinit();
 		idToMaterial.deinit();
 		arenaForArrayLists.deinit();
 		arenaForWorld.deinit();
@@ -314,11 +285,6 @@ pub const meshes = struct {
 		meshes.size = 0;
 		loadedMeshes = 0;
 		materialSize = 0;
-		textureIDs.clearRetainingCapacity();
-		animationFrames.clearRetainingCapacity();
-		animationTimes.clearRetainingCapacity();
-		blockTextures.clearRetainingCapacity();
-		emissionTextures.clearRetainingCapacity();
 		idToMaterial.clearRetainingCapacity();
 		arenaForWorld.deinit();
 		arenaForWorld = std.heap.ArenaAllocator.init(std.heap.page_allocator);
@@ -326,98 +292,8 @@ pub const meshes = struct {
 		registerMaterial("cubyz:empty", JsonElement{.JsonNull={}}) catch unreachable; // TODO: Proper default.
 	}
 
-	pub fn modelIndices(block: Block) u16 {
-		return (&_modelIndices[block.typ]).*;
-	}
-
-	pub fn textureIndices(block: Block) *const [6] u32 {
-		return &_textureIndices[block.typ];
-	}
-
-	fn readTexture(textureInfo: JsonElement, assetFolder: []const u8) !?u31 {
-		var result: ?u31 = null;
-		if(textureInfo == .JsonString or textureInfo == .JsonStringOwned) {
-			const resource = textureInfo.as([]const u8, "");
-			var splitter = std.mem.split(u8, resource, ":");
-			const mod = splitter.first();
-			const id = splitter.rest();
-			var buffer: [1024]u8 = undefined;
-			var path = try std.fmt.bufPrint(&buffer, "{s}/{s}/blocks/textures/{s}.png", .{assetFolder, mod, id});
-			// Test if it's already in the list:
-			for(textureIDs.items) |other, j| {
-				if(std.mem.eql(u8, other, path)) {
-					result = @intCast(u31, j);
-					return result;
-				}
-			}
-			var file = std.fs.cwd().openFile(path, .{}) catch |err| blk: {
-				if(err == error.FileNotFound) {
-					path = try std.fmt.bufPrint(&buffer, "assets/{s}/blocks/textures/{s}.png", .{mod, id}); // Default to global assets.
-					break :blk std.fs.cwd().openFile(path, .{}) catch |err2| {
-						std.log.err("File not found. Searched in \"{s}\" and also in the assetFolder \"{s}\"", .{path, assetFolder});
-						return err2;
-					};
-				} else {
-					return err;
-				}
-			};
-			file.close(); // It was only openend to check if it exists.
-			// Otherwise read it into the list:
-			result = @intCast(u31, blockTextures.items.len);
-
-			try blockTextures.append(Image.readFromFile(arenaForWorld.allocator(), path) catch blk: {
-				std.log.warn("Could not read image from: {s}", .{path});
-				break :blk undefinedImage;
-			});
-			path = try std.fmt.bufPrint(&buffer, "{s}_emission.png", .{path});
-			const emissionTexture = Image.readFromFile(arenaForWorld.allocator(), path);
-			try emissionTextures.append(emissionTexture catch emptyImage);
-			try textureIDs.append(try arenaForWorld.allocator().dupe(u8, path));
-			try animationFrames.append(1);
-			try animationTimes.append(1);
-		} else if(textureInfo == .JsonObject) {
-			var animationTime = textureInfo.get(u32, "time", 500);
-			const textures = textureInfo.getChild("textures");
-			if(textures != .JsonArray) return result;
-			// Add the new textures into the list. Since this is an animation all textures that weren't found need to be replaced with undefined.
-			result = @intCast(u31, blockTextures.items.len);
-			for(textures.JsonArray.items) |item, i| {
-				if(i == 0) {
-					try animationFrames.append(@intCast(u32, textures.JsonArray.items.len));
-					try animationTimes.append(animationTime);
-				} else {
-					try animationFrames.append(1);
-					try animationTimes.append(1);
-				}
-				var splitter = std.mem.split(u8, item.as([]const u8, "cubyz:undefined"), ":");
-				const mod = splitter.first();
-				const id = splitter.rest();
-				var buffer: [1024]u8 = undefined;
-				var path = try std.fmt.bufPrint(&buffer, "{s}/{s}/blocks/textures/{s}.png", .{assetFolder, mod, id});
-				var file = std.fs.cwd().openFile(path, .{}) catch |err| blk: {
-					if(err == error.FileNotFound) {
-						path = try std.fmt.bufPrint(&buffer, "assets/{s}/blocks/textures/{s}.png", .{mod, id}); // Default to global assets.
-						break :blk std.fs.cwd().openFile(path, .{}) catch |err2| {
-							std.log.err("File not found. Searched in \"{s}\" and also in the assetFolder \"{s}\"", .{path, assetFolder});
-							return err2;
-						};
-					} else {
-						return err;
-					}
-				};
-				file.close(); // It was only openend to check if it exists.
-
-				try blockTextures.append(Image.readFromFile(arenaForWorld.allocator(), path) catch blk: {
-					std.log.warn("Could not read image from: {s}", .{path});
-					break :blk undefinedImage;
-				});
-				path = try std.fmt.bufPrint(&buffer, "{s}_emission.png", .{path});
-				const emissionTexture = Image.readFromFile(arenaForWorld.allocator(), path);
-				try emissionTextures.append(emissionTexture catch emptyImage);
-				try textureIDs.append(try arenaForWorld.allocator().dupe(u8, path));
-			}
-		}
-		return result;
+	pub fn modelIndex(block: Block) u16 {
+		return (&_modelIndex[block.typ]).*;
 	}
 
 	fn readPalette(json: JsonElement, block: u16) !void {
@@ -426,25 +302,10 @@ pub const meshes = struct {
 		}
 	}
 
-	fn getTextureIndices(json: JsonElement, assetFolder: []const u8, block: u16) !void {
-		var defaultIndex = try readTexture(json.getChild("texture"), assetFolder) orelse 0;
-		try readPalette(json.getChild("palette"), block);
-		for(_textureIndices[block]) |_, i| {
-			_textureIndices[block][i] = defaultIndex;
-			const textureInfo = json.getChild(sideNames[i]);
-			_textureIndices[block][i] = try readTexture(textureInfo, assetFolder) orelse continue;
-		}
-	}
+	pub fn register(_: []const u8, _: []const u8, json: JsonElement) !void {
+		_modelIndex[meshes.size] = models.getModelIndex(json.get([]const u8, "model", "cube"));
 
-	pub fn register(assetFolder: []const u8, _: []const u8, json: JsonElement) !void {
-		_modelIndices[meshes.size] = models.getModelIndex(json.get([]const u8, "model", "cube"));
-
-		// The actual model is loaded later, in the rendering thread.
-		// But textures can be loaded here:
-
-		try getTextureIndices(json, assetFolder, meshes.size);
-
-		maxTextureCount[meshes.size] = @intCast(u32, textureIDs.items.len);
+		try readPalette(json.getChild("palette"), meshes.size);
 
 		meshes.size += 1;
 	}
@@ -508,46 +369,9 @@ pub const meshes = struct {
 		materialSize += 1;
 	}
 
-// TODO: (this one requires thinking about the allocated memory!)
-//	public static void reloadTextures() {
-//		for(int i = 0; i < blockTextures.size(); i++) {
-//			try {
-//				blockTextures.set(i, ImageIO.read(new File(textureIDs.get(i).replace(":animation", ""))));
-//			} catch(IOException e) {
-//				Logger.warning("Could not read image from path "+textureIDs.get(i));
-//				Logger.warning(e);
-//				blockTextures.set(i, blockTextures.get(0));
-//			}
-//		}
-//		generateTextureArray();
-//	}
+	// TODO: reloadTextures/Models (this one requires thinking about the allocated memory!)
 
-
-// TODO:
-//	public static void loadMeshes() {
-//		// Goes through all meshes that were newly added:
-//		for(; loadedMeshes < size; loadedMeshes++) {
-//			if (meshes[loadedMeshes] == null) {
-//				meshes[loadedMeshes] = Meshes.cachedDefaultModels.get(models[loadedMeshes]);
-//				if (meshes[loadedMeshes] == null) {
-//					if(models[loadedMeshes].isEmpty())
-//						continue;
-//					Resource rs = new Resource(models[loadedMeshes]);
-//					meshes[loadedMeshes] = new Mesh(ModelLoader.loadModel(rs, "assets/" + rs.getMod() + "/models/3d/" + rs.getID()));
-//					Meshes.cachedDefaultModels.put(models[loadedMeshes], meshes[loadedMeshes]);
-//				}
-//			}
-//		}
-//	}
-
-	pub fn generateTextureArray() !void {
-		try blockTextureArray.generate(blockTextures.items, false); // TODO: figure out mipmapping in the voxel model world.
-		try emissionTextureArray.generate(emissionTextures.items, false);
-
-		// Also generate additional buffers:
-		animationTimesSSBO.bufferData(u32, animationTimes.items);
-		animationFramesSSBO.bufferData(u32, animationFrames.items);
-
+	pub fn generateSSBOs() !void {
 		materialsSSBO.bufferData(ProceduralMaterial, materials[0..materialSize]);
 		palettesSSBO.bufferData(Palette, palettes[0..meshes.size]);
 	}

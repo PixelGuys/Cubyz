@@ -4,7 +4,6 @@ const blocks = @import("blocks.zig");
 const entity = @import("entity.zig");
 const graphics = @import("graphics.zig");
 const c = graphics.c;
-const Fog = graphics.Fog;
 const Shader = graphics.Shader;
 const vec = @import("vec.zig");
 const Vec3i = vec.Vec3i;
@@ -223,17 +222,12 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	var frustum = Frustum.init(Vec3f{0, 0, 0}, game.camera.viewMatrix, settings.fov, zFarLOD, main.Window.width, main.Window.height);
 
 	const time = @intCast(u32, std.time.milliTimestamp() & std.math.maxInt(u32));
-	var waterFog = Fog{.active=true, .color=.{0.0, 0.1, 0.2}, .density=0.1};
+	_ = time;
 
 	// Update the uniforms. The uniforms are needed to render the replacement meshes.
-	chunk.meshing.bindShaderAndUniforms(game.lodProjectionMatrix, ambientLight, time);
+	chunk.meshing.bindShaderAndUniforms(game.lodProjectionMatrix);
 
 //TODO:	NormalChunkMesh.bindShader(ambientLight, directionalLight.getDirection(), time);
-
-	c.glActiveTexture(c.GL_TEXTURE0);
-	blocks.meshes.blockTextureArray.bind();
-	c.glActiveTexture(c.GL_TEXTURE1);
-	blocks.meshes.emissionTextureArray.bind();
 
 	c.glDepthRange(0, 0.05);
 
@@ -258,10 +252,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	// Render the far away ReducedChunks:
 	c.glDepthRangef(0.05, 1.0); // ← Used to fix z-fighting.
-	chunk.meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight, time);
-	c.glUniform1i(chunk.meshing.uniforms.@"waterFog.activ", if(waterFog.active) 1 else 0);
-	c.glUniform3fv(chunk.meshing.uniforms.@"waterFog.color", 1, @ptrCast([*c]f32, &waterFog.color));
-	c.glUniform1f(chunk.meshing.uniforms.@"waterFog.density", waterFog.density);
+	chunk.meshing.bindShaderAndUniforms(game.projectionMatrix);
 
 	for(meshes.items) |mesh| {
 		mesh.render(playerPos);
@@ -296,11 +287,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	MeshSelection.select(playerPos, game.camera.direction);
 	MeshSelection.render(game.projectionMatrix, game.camera.viewMatrix, playerPos);
 
-
-//		NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_waterFog_activ, waterFog.isActive());
-//		NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_waterFog_color, waterFog.getColor());
-//		NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_waterFog_density, waterFog.getDensity());
-
 //		NormalChunkMesh[] meshes = sortChunks(visibleChunks.toArray(), x0/Chunk.chunkSize - 0.5f, y0/Chunk.chunkSize - 0.5f, z0/Chunk.chunkSize - 0.5f);
 //		for (NormalChunkMesh mesh : meshes) {
 //			NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_drawFrontFace, false);
@@ -320,24 +306,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 //			Meshes.emissionTextureArray.bind();
 //		}
 
-	// TODO: fogShader.bind();
-	// Draw the water fog if the player is underwater:
-//		Player player = Cubyz.player;
-//		int block = Cubyz.world.getBlock((int)Math.round(player.getPosition().x), (int)(player.getPosition().y + player.height), (int)Math.round(player.getPosition().z));
-//		if (block != 0 && !Blocks.solid(block)) {
-//			if (Blocks.id(block).toString().equals("cubyz:water")) {
-//				fogShader.setUniform(FogUniforms.loc_fog_activ, waterFog.isActive());
-//				fogShader.setUniform(FogUniforms.loc_fog_color, waterFog.getColor());
-//				fogShader.setUniform(FogUniforms.loc_fog_density, waterFog.getDensity());
-//				glUniform1i(FogUniforms.loc_color, 3);
-//				glUniform1i(FogUniforms.loc_position, 4);
-
-//				glBindVertexArray(Graphics.rectVAO);
-//				glDisable(GL_DEPTH_TEST);
-//				glDisable(GL_CULL_FACE);
-//				glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-//			}
-//		}
+	// TODO: Add fog as a post-processing effect.
 	if(settings.bloom) {
 		Bloom.render(main.Window.width, main.Window.height);
 	}
@@ -653,7 +622,7 @@ pub const MeshSelection = struct {
 			const block = RenderStructure.getBlock(x, y, z) orelse break;
 			if(block.typ != 0) {
 				// Check the true bounding box (using this algorithm here: https://tavianator.com/2011/ray_box.html):
-				const voxelModel = &models.voxelModels.items[blocks.meshes.modelIndices(block)];
+				const voxelModel = &models.voxelModels.items[blocks.meshes.modelIndex(block)];
 				const tx1 = (@intToFloat(f64, x) + @intToFloat(f64, voxelModel.minX)/16.0 - pos[0])*invDirX;
 				const tx2 = (@intToFloat(f64, x) + @intToFloat(f64, voxelModel.maxX)/16.0 - pos[0])*invDirX;
 				const ty1 = (@intToFloat(f64, y) + @intToFloat(f64, voxelModel.minY)/16.0 - pos[1])*invDirY;
@@ -790,7 +759,7 @@ pub const MeshSelection = struct {
 	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, playerPos: Vec3d) void {
 		if(selectedBlockPos) |_selectedBlockPos| {
 			var block = RenderStructure.getBlock(_selectedBlockPos[0], _selectedBlockPos[1], _selectedBlockPos[2]) orelse return;
-			var voxelModel = &models.voxelModels.items[blocks.meshes.modelIndices(block)];
+			var voxelModel = &models.voxelModels.items[blocks.meshes.modelIndex(block)];
 			shader.bind();
 
 			c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_FALSE, @ptrCast([*c]const f32, &projectionMatrix));

@@ -283,7 +283,7 @@ pub fn main() !void {
 
 	Window.setMouseGrabbed(true);
 
-	try blocks.meshes.generateTextureArray();
+	try blocks.meshes.generateSSBOs();
 
 	c.glCullFace(c.GL_BACK);
 	c.glEnable(c.GL_BLEND);
