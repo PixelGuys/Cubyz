@@ -120,8 +120,35 @@ fn log(_x: u16, _y: u16, _z: u16) ?u4 {
 	var y = @intToFloat(f32, _y) - 7.5;
 	var z = @intToFloat(f32, _z) - 7.5;
 	_ = y;
-	if(x*x + z*z < 5.5*5.5) return 0;
-	if(x*x + z*z < 6.5*6.5) return 1;
+	const radius = x*x + z*z;
+	if(radius < 0.9*0.9) return 0;
+	if(radius < 1.9*1.9) return 1;
+	if(radius < 2.9*2.9) return 0;
+	if(radius < 3.9*3.9) return 1;
+	if(radius < 4.9*4.9) return 0;
+	if(radius < 5.9*5.9) return 1;
+	if(radius < 6.9*6.9) return 0;
+	if(radius < 8.0*8.0) return 2;
+	return null;
+}
+
+fn logTop(_x: u16, _y: u16, _z: u16) ?u4 {
+	var x = @intToFloat(f32, _x) - 7.5;
+	var y = @intToFloat(f32, _y) - 7.5;
+	var z = @intToFloat(f32, _z) - 7.5;
+	const radius = if(y >= 0) (
+		x*x + y*y + z*z
+	) else (
+		x*x + z*z
+	);
+	if(radius < 0.9*0.9) return 0;
+	if(radius < 1.9*1.9) return 1;
+	if(radius < 2.9*2.9) return 0;
+	if(radius < 3.9*3.9) return 1;
+	if(radius < 4.9*4.9) return 0;
+	if(radius < 5.9*5.9) return 1;
+	if(radius < 6.9*6.9) return 0;
+	if(radius < 8.0*8.0) return 2;
 	return null;
 }
 
@@ -165,6 +192,9 @@ pub fn init() !void {
 
 	try nameToIndex.put("log", @intCast(u16, voxelModels.items.len));
 	(try voxelModels.addOne()).init(log);
+
+	try nameToIndex.put("logTop", @intCast(u16, voxelModels.items.len));
+	(try voxelModels.addOne()).init(logTop);
 
 	try nameToIndex.put("fence", @intCast(u16, voxelModels.items.len));
 	(try voxelModels.addOne()).init(fence);

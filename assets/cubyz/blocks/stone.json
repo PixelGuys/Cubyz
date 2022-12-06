@@ -6,5 +6,7 @@
 		"cubyz:cobblestone"
 	],
 	"model" : "cube",
-	"texture" : "cubyz:stone"
+	"palette" : [
+		"cubyz:stone"
+	]
 }

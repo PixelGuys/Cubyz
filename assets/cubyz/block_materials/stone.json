@@ -1,0 +1,26 @@
+{
+	"colors": [
+		{"diffuse" : 0x6b6964},
+		{"diffuse" : 0x62605a},
+		{"diffuse" : 0x595854},
+		{"diffuse" : 0x575551},
+		{"diffuse" : 0x54504d},
+		{"diffuse" : 0x4f4b48}
+	],
+
+
+	
+	"simplex1Wavelength": [20000.0, 4000.0, 20000.0],
+	"simplex1Weight": 0.0,
+
+	"simplex2Wavelength": [0.0, 0.0, 0.0],
+	"simplex2DomainWarp": [250, 250, 250],
+	"simplex2Weight": 2.5,
+
+	"simplex3Wavelength": [3.0, 8.0, 6.0],
+	"simplex3Weight": 1.0,
+
+	"brightnessOffset": 0.0,
+	
+	"randomness": 0.0,
+}

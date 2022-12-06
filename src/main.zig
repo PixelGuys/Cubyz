@@ -178,7 +178,7 @@ pub const Window = struct {
 		if(c.gladLoadGL() == 0) {
 			return error.GLADFailed;
 		}
-		c.glfwSwapInterval(1);
+		c.glfwSwapInterval(0);
 
 		if(@import("builtin").mode == .Debug) {
 			c.glEnable(c.GL_DEBUG_OUTPUT);

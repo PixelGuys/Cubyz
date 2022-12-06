@@ -5,5 +5,7 @@
 		"auto"
 	],
 	"model" : "cube",
-	"texture" : "cubyz:soil"
+	"palette" : [
+		"cubyz:soil"
+	]
 }

@@ -5,8 +5,10 @@
 		"auto"
 	],
 	"rotation" : "cubyz:log",
-	"model" : "cube",
-	"texture" : "cubyz:oak_log_side",
-	"texture_top" : "cubyz:oak_log_top",
-	"texture_bottom" : "cubyz:oak_log_rings_bottom",
+	"model" : "logTop",
+	"palette" : [
+		"cubyz:oak_wood1",
+		"cubyz:oak_wood2",
+		"cubyz:oak_bark"
+	],
 }

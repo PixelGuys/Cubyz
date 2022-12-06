@@ -7,10 +7,8 @@
 	"rotation" : "cubyz:log",
 	"model" : "log",
 	"palette" : [
-		"cubyz:oak_wood",
+		"cubyz:oak_wood1",
+		"cubyz:oak_wood2",
 		"cubyz:oak_bark"
 	],
-	"texture" : "cubyz:oak_log_side",
-	"//texture_top" : "cubyz:oak_log_rings_top",
-	"//texture_bottom" : "cubyz:oak_log_rings_bottom"
 }
