@@ -6,5 +6,7 @@
 	],
 	"emittedLight" : 0x111111,
 	"model" : "cube",
-	"texture" : "cubyz:glow_crystal/black"
+	"palette" : [
+		"cubyz:glow_crystal/black"
+	]
 }

@@ -28,6 +28,9 @@ struct ProceduralMaterial {
 
 	float randomness;
 
+	vec3 worleyWavelength;
+	float worleyWeight;
+
 	MaterialColor colors[8];
 };
 
@@ -56,6 +59,31 @@ ivec3 random3to3(ivec3 v) {
 	int seed = v.x*fac.x ^ v.y*fac.y ^ v.z*fac.z;
 	v = seed*fac;
 	return v;
+}
+
+float length2(vec3 i) {
+	return abs(i.x) + abs(i.y) + abs(i.z);
+}
+
+float worley(vec3 v) {
+	ivec3 start = ivec3(floor(v - 0.5));
+	float totalMax = 1.0;
+	for(int x = 0; x <= 1; x++) {
+		for(int y = 0; y <= 1; y++) {
+			for(int z = 0; z <= 1; z++) {
+				ivec3 integerPos = ivec3(x, y, z) + start;
+				ivec3 seed = random3to3(integerPos);
+				vec3 pos = vec3(integerPos) + vec3(uvec3(seed)/(65536.0*65536.0));
+				float dist1 = length2(pos - v);
+				seed = random3to3(integerPos);
+				pos = vec3(integerPos) + vec3(uvec3(seed)/(65536.0*65536.0));
+				float dist2 = length2(pos - v);
+
+				totalMax = min(totalMax, min(dist1, dist2));
+			}
+		}
+	}
+	return totalMax;
 }
 
 float simplex(vec3 v){
@@ -138,7 +166,7 @@ vec3 tripleSimplex(vec3 v){
 		result.x = (42.0/(1 << 31))*dot(m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
 	}
 
-	i += 5642.0;
+	i += 5642.3333333;
 	
 	{
 		// Get gradients:
@@ -158,7 +186,7 @@ vec3 tripleSimplex(vec3 v){
 		result.y = (42.0/(1 << 31))*dot(m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
 	}
 
-	i -= 11202.0;
+	i -= 11202.6666666;
 
 	{
 		// Get gradients:
@@ -200,7 +228,9 @@ void main() {
 	float simplex2 = simplex(voxelPos*material.simplex2Wavelength + simplex1*material.simplex2DomainWarp);
 	float simplex3 = simplex(voxelPos*material.simplex3Wavelength + simplex1*material.simplex3DomainWarp);
 
-	float brightness = simplex1.x*material.simplex1Weight + simplex2*material.simplex2Weight + simplex3*material.simplex3Weight + randomValues.x*material.randomness + material.brightnessOffset + 3;
+	float brightness = simplex1.x*material.simplex1Weight + simplex2*material.simplex2Weight + simplex3*material.simplex3Weight;
+	brightness += randomValues.x*material.randomness + material.brightnessOffset + 3;
+	brightness += worley(voxelPos*material.worleyWavelength)*material.worleyWeight;
 	int colorIndex = min(7, max(0, int(brightness)));
 	fragmentColor.rgb = unpackColor(material.colors[colorIndex].diffuse)*(ambientLight*normalVariation)/4;
 	fragmentColor.a = 1;

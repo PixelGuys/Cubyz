@@ -10,11 +10,11 @@
 
 
 	
-	"simplex1Wavelength": [20000.0, 4000.0, 20000.0],
+	"simplex1Wavelength": [1024.0, 1024.0, 1024.0],
 	"simplex1Weight": 0.0,
 
-	"simplex2Wavelength": [0.0, 0.0, 0.0],
-	"simplex2DomainWarp": [250, 250, 250],
+	"simplex2Wavelength": [32.0, 2.5, 32.0],
+	"simplex2DomainWarp": [0.0, 32.0, 0.0],
 	"simplex2Weight": 2.5,
 
 	"simplex3Wavelength": [3.0, 8.0, 6.0],

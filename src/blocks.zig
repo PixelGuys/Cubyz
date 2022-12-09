@@ -216,9 +216,12 @@ pub const meshes = struct {
 
 		randomness: f32,
 
-		colors: [8]MaterialColor,
+		__padding4: [2]f32,
 
-		__paddingTotal: [2]f32,
+		worleyWavelength: ExternVec3f,
+		worleyWeight: f32,
+
+		colors: [8]MaterialColor,
 	};
 
 	const Palette = extern struct {
@@ -352,6 +355,13 @@ pub const meshes = struct {
 		materials[numericalID].brightnessOffset = json.get(f32, "brightnessOffset", 0.0);
 
 		materials[numericalID].randomness = json.get(f32, "randomness", 0.0);
+
+		materials[numericalID].worleyWavelength = .{
+			saveInverse(json.getChild("worleyWavelength").getAtIndex(f32, 0, 0.0)),
+			saveInverse(json.getChild("worleyWavelength").getAtIndex(f32, 1, 0.0)),
+			saveInverse(json.getChild("worleyWavelength").getAtIndex(f32, 2, 0.0))
+		};
+		materials[numericalID].worleyWeight = json.get(f32, "worleyWeight", 0.0);
 
 		const colors = json.getChild("colors");
 		for(materials[numericalID].colors) |*color, i| {
