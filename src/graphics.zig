@@ -769,6 +769,7 @@ pub const Image = struct {
 		var channel: c_int = undefined;
 		const nullTerminatedPath = try std.fmt.allocPrintZ(main.threadAllocator, "{s}", .{path}); // TODO: Find a more zig-friendly image loading library.
 		defer main.threadAllocator.free(nullTerminatedPath);
+		stb_image.stbi_set_flip_vertically_on_load(1);
 		const data = stb_image.stbi_load(nullTerminatedPath.ptr, @ptrCast([*c]c_int, &result.width), @ptrCast([*c]c_int, &result.height), &channel, 4) orelse {
 			return error.FileNotFound;
 		};

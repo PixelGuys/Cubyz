@@ -117,7 +117,7 @@ fn log(_x: u16, _y: u16, _z: u16) bool {
 	var y = @intToFloat(f32, _y) - 7.5;
 	var z = @intToFloat(f32, _z) - 7.5;
 	_ = y;
-	if(x*x + z*z < 3.5*3.5) return true;
+	if(x*x + z*z < 8.0*8.0) return true;
 	return false;
 }
 

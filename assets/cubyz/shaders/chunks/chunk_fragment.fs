@@ -129,14 +129,17 @@ RayMarchResult rayMarching(vec3 startPosition, vec3 direction) {
 vec2 getTextureCoords(ivec3 voxelPosition, int normal) {
 	switch(normal) {
 		case 0:
+			return vec2(15 - voxelPosition.x, voxelPosition.z)/16.0;
 		case 1:
-			return vec2(voxelPosition.xz)/16.0;
+			return vec2(voxelPosition.x, voxelPosition.z)/16.0;
 		case 2:
+			return vec2(15 - voxelPosition.z, voxelPosition.y)/16.0;
 		case 3:
-			return vec2(voxelPosition.zy)/16.0;
+			return vec2(voxelPosition.z, voxelPosition.y)/16.0;
 		case 4:
+			return vec2(voxelPosition.x, voxelPosition.y)/16.0;
 		case 5:
-			return vec2(voxelPosition.xy)/16.0;
+			return vec2(15 - voxelPosition.x, voxelPosition.y)/16.0;
 	}
 }
 
