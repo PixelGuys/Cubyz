@@ -67,23 +67,47 @@ float length2(vec3 i) {
 
 float worley(vec3 v) {
 	ivec3 start = ivec3(floor(v - 0.5));
+	ivec3 maxSeed = ivec3(0);
+	vec3 maxDistVec = vec3(0);
 	float totalMax = 1.0;
+	float secondBiggest = 1.0;
 	for(int x = 0; x <= 1; x++) {
 		for(int y = 0; y <= 1; y++) {
 			for(int z = 0; z <= 1; z++) {
 				ivec3 integerPos = ivec3(x, y, z) + start;
 				ivec3 seed = random3to3(integerPos);
-				vec3 pos = vec3(integerPos) + vec3(uvec3(seed)/(65536.0*65536.0));
-				float dist1 = length2(pos - v);
-				seed = random3to3(integerPos);
-				pos = vec3(integerPos) + vec3(uvec3(seed)/(65536.0*65536.0));
-				float dist2 = length2(pos - v);
+				vec3 pos = vec3(integerPos) + vec3(uvec3(seed)/(65536.0*65536.0))*0.5;
+				vec3 distVec = pos - v;
+				float dist1 = length2(distVec);
 
-				totalMax = min(totalMax, min(dist1, dist2));
+				if(totalMax > dist1) {
+					secondBiggest = totalMax;
+					totalMax = dist1;
+					maxSeed = seed;
+					maxDistVec = distVec;
+				} else if(secondBiggest > dist1) {
+					secondBiggest = dist1;
+				}
+
+				seed = random3to3(integerPos);
+				pos = vec3(integerPos) + 0.5 + vec3(uvec3(seed)/(65536.0*65536.0))*0.5;
+				distVec = pos - v;
+				float dist2 = length2(distVec);
+
+				if(totalMax > dist2) {
+					secondBiggest = totalMax;
+					totalMax = dist2;
+					maxSeed = seed;
+					maxDistVec = distVec;
+				} else if(secondBiggest > dist2) {
+					secondBiggest = dist2;
+				}
 			}
 		}
 	}
-	return totalMax;
+	vec3 direction = normalize(vec3(random3to3(maxSeed)));
+
+	return float((secondBiggest - totalMax) > 0.15) * (1 + dot(direction, maxDistVec))/2;
 }
 
 float simplex(vec3 v){

@@ -19,10 +19,10 @@
 	"simplex3Wavelength": [1.0, 1.0, 1.0],
 	"simplex3Weight": 0.0,
 
-	"worleyWavelength": [4.0, 4.0, 4.0],
-	"worleyWeight": 4,
+	"worleyWavelength": [6.0, 6.0, 6.0],
+	"worleyWeight": -5,
 
-	"brightnessOffset": -3.0,
+	"brightnessOffset": 1.2,
 	
-	"randomness": 0,
+	"randomness": 0.5,
 }
