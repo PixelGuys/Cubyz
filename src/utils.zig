@@ -120,8 +120,8 @@ pub fn BlockingMaxHeap(comptime T: type) type {
 		fn siftDown(self: *@This(), _i: usize) void {
 			std.debug.assert(!self.mutex.tryLock()); // The mutex should be locked when calling this function.
 			var i = _i;
-			while(2*i + 2 < self.size) {
-				var biggest = if(self.array[2*i + 1].biggerThan(self.array[2*i + 2])) 2*i + 1 else 2*i + 2;
+			while(2*i + 1 < self.size) {
+				var biggest = if(2*i + 2 < self.size and self.array[2*i + 2].biggerThan(self.array[2*i + 1])) 2*i + 2 else 2*i + 1;
 				// Break if all childs are smaller.
 				if(self.array[i].biggerThan(self.array[biggest])) return;
 				// Swap it:

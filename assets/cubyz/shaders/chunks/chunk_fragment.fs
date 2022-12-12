@@ -61,7 +61,7 @@ uint getVoxel(int voxelIndex) {
 	voxelIndex = (voxelIndex & 0xf) | (voxelIndex>>1 & 0xf0) | (voxelIndex>>2 & 0xf00);
 	int shift = 4*(voxelIndex & 7);
 	int arrayIndex = voxelIndex >> 3;
-	return (voxelModels[modelIndex].bitPackedData[arrayIndex]>>shift & 15);
+	return (voxelModels[modelIndex].bitPackedData[arrayIndex]>>shift & 15u);
 }
 
 struct RayMarchResult {
