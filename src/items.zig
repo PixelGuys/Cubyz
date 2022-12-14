@@ -1204,7 +1204,7 @@ pub fn globalInit() void {
 	itemListSize = 0;
 }
 
-pub fn register(_: []const u8, id: []const u8, jsonObject: JsonElement) !void {
+pub fn register(_: []const u8, id: []const u8, jsonObject: JsonElement) !*BaseItem {
 	std.log.info("{s}", .{id});
 	if(reverseIndices.contains(id)) {
 		std.log.warn("Registered block with id {s} twice!", .{id});
@@ -1213,6 +1213,7 @@ pub fn register(_: []const u8, id: []const u8, jsonObject: JsonElement) !void {
 	try newItem.init(arena.allocator(), id, jsonObject);
 	try reverseIndices.put(newItem.id, newItem);
 	itemListSize += 1;
+	return newItem;
 }
 
 pub fn reset() void {
@@ -1226,4 +1227,13 @@ pub fn reset() void {
 pub fn deinit() void {
 	reverseIndices.clearAndFree();
 	arena.deinit();
+}
+
+pub fn getByID(id: []const u8) ?*BaseItem {
+	if(reverseIndices.get(id)) |result| {
+		return result;
+	} else {
+		std.log.warn("Couldn't find item {s}.", .{id});
+		return null;
+	}
 }

@@ -167,6 +167,15 @@ pub const JsonElement = union(JsonType) {
 		try self.JsonObject.put(try self.JsonObject.allocator.dupe(u8, key), result);
 	}
 
+	pub fn toSlice(self: *const JsonElement) []JsonElement {
+		switch(self.*) {
+			JsonType.JsonArray => |arr| {
+				return arr.items;
+			},
+			else => return &[0]JsonElement{},
+		}
+	}
+
 	pub fn free(self: *const JsonElement, allocator: Allocator) void {
 		switch(self.*) {
 			JsonType.JsonInt, JsonType.JsonFloat, JsonType.JsonBool, JsonType.JsonNull, JsonType.JsonString => return,

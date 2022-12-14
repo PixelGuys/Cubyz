@@ -83,13 +83,17 @@ pub fn init() !void {
 }
 
 fn registerItem(assetFolder: []const u8, id: []const u8, info: JsonElement) !void {
-	try items_zig.register(assetFolder, id, info);
+	_ = try items_zig.register(assetFolder, id, info);
 }
 
 fn registerBlock(assetFolder: []const u8, id: []const u8, info: JsonElement) !void {
-	try blocks_zig.register(assetFolder, id, info); // TODO: Modded block registries
+	const block = try blocks_zig.register(assetFolder, id, info); // TODO: Modded block registries
 	try blocks_zig.meshes.register(assetFolder, id, info);
 
+	if(info.get(bool, "hasItem", true)) {
+		const item = try items_zig.register(assetFolder, id, info.getChild("item"));
+		item.block = block;
+	}
 //		TODO:
 //		// Ores:
 //		JsonObject oreProperties = json.getObject("ore");
@@ -104,35 +108,6 @@ fn registerBlock(assetFolder: []const u8, id: []const u8, info: JsonElement) !vo
 //			ores.add(ore);
 //			oreRegistry.register(ore);
 //			oreContainers.add(oreIDs);
-//		}
-//		TODO:
-//		// Block drops:
-//		String[] blockDrops = json.getArrayNoNull("drops").getStrings();
-//		ItemBlock self = null;
-//		if(json.getBool("hasItem", true)) {
-//			self = new ItemBlock(block, json.getObjectOrNew("item"));
-//			items.add(self); // Add each block as an item, so it gets displayed in the creative inventory.
-//		}
-//		for (String blockDrop : blockDrops) {
-//			blockDrop = blockDrop.trim();
-//			String[] data = blockDrop.split("\\s+");
-//			float amount = 1;
-//			String name = data[0];
-//			if (data.length == 2) {
-//				amount = Float.parseFloat(data[0]);
-//				name = data[1];
-//			}
-//			if (name.equals("auto")) {
-//				if(self == null) {
-//					Logger.error("Block "+id+" tried to drop itself(\"auto\"), but hasItem is false.");
-//				} else {
-//					Blocks.addBlockDrop(block, new BlockDrop(self, amount));
-//				}
-//			} else if (!name.equals("none")) {
-//				missingDropsBlock.add(block);
-//				missingDropsAmount.add(amount);
-//				missingDropsItem.add(name);
-//			}
 //		}
 }
 
@@ -203,22 +178,23 @@ pub fn loadWorldAssets(assetFolder: []const u8, palette: *BlockPalette) !void {
 	// blocks:
 	var block: u32 = 0;
 	for(palette.palette.items) |id| {
-		var nullKeyValue = blocks.fetchRemove(id);
+		var nullValue = blocks.get(id);
 		var jsonObject: JsonElement = undefined;
-		if(nullKeyValue) |keyValue| {
-			jsonObject = keyValue.value;
+		if(nullValue) |value| {
+			jsonObject = value;
 		} else {
 			std.log.err("Missing block: {s}. Replacing it with default block.", .{id});
 			var map: *std.StringHashMap(JsonElement) = try main.threadAllocator.create(std.StringHashMap(JsonElement));
 			map.* = std.StringHashMap(JsonElement).init(main.threadAllocator);
 			jsonObject = JsonElement{.JsonObject=map};
 		}
-		defer if(nullKeyValue == null) jsonObject.free(main.threadAllocator);
+		defer if(nullValue == null) jsonObject.free(main.threadAllocator);
 		try registerBlock(assetFolder, id, jsonObject);
 		block += 1;
 	}
 	var iterator = blocks.iterator();
 	while(iterator.next()) |entry| {
+		if(blocks_zig.hasRegistered(entry.key_ptr.*)) continue;
 		try registerBlock(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
 		try palette.add(entry.key_ptr.*);
 		block += 1;
@@ -229,6 +205,9 @@ pub fn loadWorldAssets(assetFolder: []const u8, palette: *BlockPalette) !void {
 	while(iterator.next()) |entry| {
 		try registerItem(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
 	}
+
+	// block drops:
+	try blocks_zig.registerBlockDrops(blocks);
 
 //	public void registerBlocks(Registry<DataOrientedRegistry> registries, NoIDRegistry<Ore> oreRegistry, BlockPalette palette) {
 //		HashMap<Resource, JsonObject> perWorldBlocks = new HashMap<>(commonBlocks);
@@ -251,11 +230,6 @@ pub fn deinit() void {
 //TODO:
 //	public static final ArrayList<File> addons = new ArrayList<>();
 //	private static final ArrayList<Item> items = new ArrayList<>();
-//	
-//	// Used to fetch block drops that aren't loaded during block loading.
-//	private static final IntSimpleList missingDropsBlock = new IntSimpleList();
-//	private static final ArrayList<String> missingDropsItem = new ArrayList<>();
-//	private static final ArrayList<Float> missingDropsAmount = new ArrayList<>();
 //
 //	private static final ArrayList<Ore> ores = new ArrayList<>();
 //	private static final ArrayList<String[]> oreContainers = new ArrayList<>();

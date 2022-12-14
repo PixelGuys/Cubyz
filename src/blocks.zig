@@ -6,6 +6,7 @@ const SSBO = @import("graphics.zig").SSBO;
 const Image = @import("graphics.zig").Image;
 const Color = @import("graphics.zig").Color;
 const TextureArray = @import("graphics.zig").TextureArray;
+const items = @import("items.zig");
 const models = @import("models.zig");
 
 pub const BlockClass = enum(u8) {
@@ -23,7 +24,11 @@ var allocator = arena.allocator();
 
 pub const MaxBLockCount: usize = 65536; // 16 bit limit
 
-pub const BlockDrop = u0; // TODO!
+pub const BlockDrop = struct {
+	item: items.Item,
+	amount: f32,
+};
+
 pub const RotationMode = u0; // TODO!
 
 var _lightingTransparent: [MaxBLockCount]bool = undefined;
@@ -51,7 +56,7 @@ var reverseIndices = std.StringHashMap(u16).init(arena.allocator());
 
 var size: u32 = 0;
 
-pub fn register(_: []const u8, id: []const u8, json: JsonElement) !void {
+pub fn register(_: []const u8, id: []const u8, json: JsonElement) !u16 {
 	if(reverseIndices.contains(id)) {
 		std.log.warn("Registered block with id {s} twice!", .{id});
 	}
@@ -81,6 +86,44 @@ pub fn register(_: []const u8, id: []const u8, json: JsonElement) !void {
 	_viewThrough[size] = json.get(bool, "viewThrough", false) or _transparent[size];
 
 	size += 1;
+	return @intCast(u16, size - 1);
+}
+
+fn registerBlockDrop(typ: u16, json: JsonElement) !void {
+	const drops = json.toSlice();
+
+	var result = try allocator.alloc(BlockDrop, drops.len);
+	result.len = 0;
+
+	for(drops) |blockDrop| {
+		var string = blockDrop.as([]const u8, "auto");
+		string = std.mem.trim(u8, string, " ");
+		var iterator = std.mem.split(u8, string, " ");
+
+		var name = iterator.next() orelse continue;
+		var amount: f32 = 1;
+		while(iterator.next()) |next| {
+			if(next.len == 0) continue; // skip multiple spaces.
+			amount = std.fmt.parseFloat(f32, name) catch 1;
+			name = next;
+			break;
+		}
+
+		if(std.mem.eql(u8, name, "auto")) {
+			name = _id[typ];
+		}
+
+		var item = items.getByID(name) orelse continue;
+		result.len += 1;
+		result[result.len - 1] = BlockDrop{.item = items.Item{.baseItem = item}, .amount = amount};
+	}
+}
+
+pub fn registerBlockDrops(jsonElements: std.StringHashMap(JsonElement)) !void {
+	var i: u16 = 0;
+	while(i < size) : (i += 1) {
+		try registerBlockDrop(i, jsonElements.get(_id[i]) orelse continue);
+	}
 }
 
 pub fn reset() void {
@@ -98,6 +141,10 @@ pub fn getByID(id: []const u8) u16 {
 		std.log.warn("Couldn't find block {s}. Replacing it with air...", .{id});
 		return 0;
 	}
+}
+
+pub fn hasRegistered(id: []const u8) bool {
+	return reverseIndices.contains(id);
 }
 
 pub const Block = packed struct {
