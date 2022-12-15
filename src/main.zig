@@ -8,8 +8,9 @@ const game = @import("game.zig");
 const graphics = @import("graphics.zig");
 const items = @import("items.zig");
 const models = @import("models.zig");
-const renderer = @import("renderer.zig");
 const network = @import("network.zig");
+const renderer = @import("renderer.zig");
+const rotation = @import("rotation.zig");
 const settings = @import("settings.zig");
 const utils = @import("utils.zig");
 
@@ -248,6 +249,9 @@ pub fn main() !void {
 
 	graphics.init();
 	defer graphics.deinit();
+
+	try rotation.init();
+	defer rotation.deinit();
 
 	try models.init();
 	defer models.deinit();

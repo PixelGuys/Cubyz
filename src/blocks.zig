@@ -8,6 +8,8 @@ const Color = @import("graphics.zig").Color;
 const TextureArray = @import("graphics.zig").TextureArray;
 const items = @import("items.zig");
 const models = @import("models.zig");
+const rotation = @import("rotation.zig");
+const RotationMode = rotation.RotationMode;
 
 pub const BlockClass = enum(u8) {
 	wood,
@@ -29,8 +31,6 @@ pub const BlockDrop = struct {
 	amount: f32,
 };
 
-pub const RotationMode = u0; // TODO!
-
 var _lightingTransparent: [MaxBLockCount]bool = undefined;
 var _transparent: [MaxBLockCount]bool = undefined;
 var _id: [MaxBLockCount][]u8 = undefined;
@@ -50,7 +50,7 @@ var _light: [MaxBLockCount]u32 = undefined;
 var _absorption: [MaxBLockCount]u32 = undefined;
 /// GUI that is opened on click.
 var _gui: [MaxBLockCount][]u8 = undefined;
-var _mode: [MaxBLockCount]RotationMode = undefined;
+var _mode: [MaxBLockCount]*RotationMode = undefined;
 
 var reverseIndices = std.StringHashMap(u16).init(arena.allocator());
 
@@ -62,9 +62,8 @@ pub fn register(_: []const u8, id: []const u8, json: JsonElement) !u16 {
 	}
 	_id[size] = try allocator.dupe(u8, id);
 	try reverseIndices.put(_id[size], @intCast(u16, size));
-//		TODO:
-//		_mode[size] = CubyzRegistries.ROTATION_MODE_REGISTRY.getByID(json.getString("rotation", "cubyz:no_rotation"));
-//		_blockDrops[size] = new BlockDrop[0];
+
+	_mode[size] = rotation.getByID(json.get([]const u8, "rotation", "cubyz:no_rotation"));
 	_breakingPower[size] = json.get(f32, "breakingPower", 0);
 	_hardness[size] = json.get(f32, "hardness", 1);
 
@@ -217,7 +216,7 @@ pub const Block = packed struct {
 		return _gui[self.typ];
 	}
 	
-	pub fn mode(self: Block) RotationMode {
+	pub fn mode(self: Block) *RotationMode {
 		return _mode[self.typ];
 	}
 
@@ -240,7 +239,7 @@ pub const Block = packed struct {
 
 pub const meshes = struct {
 	var size: u32 = 0;
-	var _modelIndices: [MaxBLockCount]u16 = undefined;
+	var _modelIndex: [MaxBLockCount]u16 = undefined;
 	var _textureIndices: [MaxBLockCount][6]u32 = undefined;
 	/// Stores the number of textures after each block was added. Used to clean additional textures when the world is switched.
 	var maxTextureCount: [MaxBLockCount]u32 = undefined;
@@ -317,8 +316,12 @@ pub const meshes = struct {
 		arenaForWorld = std.heap.ArenaAllocator.init(std.heap.page_allocator);
 	}
 
-	pub fn modelIndices(block: Block) u16 {
-		return (&_modelIndices[block.typ]).*;
+	pub fn modelIndex(block: Block) u16 {
+		return block.mode().modelIndex(block);
+	}
+
+	pub fn modelIndexStart(block: Block) u16 {
+		return _modelIndex[block.typ];
 	}
 
 	pub fn textureIndices(block: Block) *const [6] u32 {
@@ -421,7 +424,7 @@ pub const meshes = struct {
 	}
 
 	pub fn register(assetFolder: []const u8, _: []const u8, json: JsonElement) !void {
-		_modelIndices[meshes.size] = models.getModelIndex(json.get([]const u8, "model", "cube"));
+		_modelIndex[meshes.size] = models.getModelIndex(json.get([]const u8, "model", "cube"));
 
 		// The actual model is loaded later, in the rendering thread.
 		// But textures can be loaded here:

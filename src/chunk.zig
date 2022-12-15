@@ -482,7 +482,7 @@ pub const meshing = struct {
 		}
 
 		fn canBeSeenThroughOtherBlock(block: Block, other: Block, neighbor: u3) bool {
-			const model = &models.voxelModels.items[blocks.meshes.modelIndices(block)];
+			const model = &models.voxelModels.items[blocks.meshes.modelIndex(block)];
 			const freestandingModel = blk:{
 				switch(neighbor) {
 					Neighbors.dirNegX => {
@@ -509,9 +509,8 @@ pub const meshing = struct {
 			return block.typ != 0 and (
 				freestandingModel
 				or other.typ == 0
-				or false  // TODO: Blocks.mode(other).checkTransparency(other, neighbor) // TODO: make blocks.meshes.modelIndices(other) != 0 more strict to avoid overdraw.
 				or (!std.meta.eql(block, other) and other.viewThrough())
-				or blocks.meshes.modelIndices(other) != 0
+				or blocks.meshes.modelIndex(other) != 0 // TODO: make this more strict to avoid overdraw.
 			);
 		}
 
@@ -538,7 +537,7 @@ pub const meshing = struct {
 							if(canBeSeenThroughOtherBlock(block, neighborBlock, i)) {
 								const normal: u32 = i;
 								const positionNormal: u32 = @intCast(u32, x2) | @intCast(u32, y2)<<5 | @intCast(u32, z2)<<10 | normal<<24;
-								const textureModel = blocks.meshes.textureIndices(block)[i] | @as(u32, blocks.meshes.modelIndices(block))<<16;
+								const textureModel = blocks.meshes.textureIndices(block)[i] | @as(u32, blocks.meshes.modelIndex(block))<<16;
 								try self.faces.append(positionNormal);
 								try self.faces.append(textureModel);
 							}
@@ -649,8 +648,8 @@ pub const meshing = struct {
 						const newVisibility = canBeSeenThroughOtherBlock(newBlock, neighborBlock, neighbor);
 						const normal: u32 = neighbor;
 						const position: u32 = @intCast(u32, nx) | @intCast(u32, ny)<<5 | @intCast(u32, nz)<<10 | normal<<24;
-						const newTextureNormal = blocks.meshes.textureIndices(newBlock)[neighbor] | @as(u32, blocks.meshes.modelIndices(newBlock))<<16;
-						const oldTextureNormal = blocks.meshes.textureIndices(oldBlock)[neighbor] | @as(u32, blocks.meshes.modelIndices(oldBlock))<<16;
+						const newTextureNormal = blocks.meshes.textureIndices(newBlock)[neighbor] | @as(u32, blocks.meshes.modelIndex(newBlock))<<16;
+						const oldTextureNormal = blocks.meshes.textureIndices(oldBlock)[neighbor] | @as(u32, blocks.meshes.modelIndex(oldBlock))<<16;
 						if(canBeSeenThroughOtherBlock(oldBlock, neighborBlock, neighbor) != newVisibility) {
 							if(newVisibility) { // Adding the face
 								if(neighborMesh == self) {
@@ -677,8 +676,8 @@ pub const meshing = struct {
 						const newVisibility = canBeSeenThroughOtherBlock(neighborBlock, newBlock, neighbor ^ 1);
 						const normal: u32 = neighbor ^ 1;
 						const position: u32 = @intCast(u32, x) | @intCast(u32, y)<<5 | @intCast(u32, z)<<10 | normal<<24;
-						const newTextureNormal = blocks.meshes.textureIndices(neighborBlock)[neighbor] | @as(u32, blocks.meshes.modelIndices(neighborBlock))<<16;
-						const oldTextureNormal = blocks.meshes.textureIndices(neighborBlock)[neighbor] | @as(u32, blocks.meshes.modelIndices(neighborBlock))<<16;
+						const newTextureNormal = blocks.meshes.textureIndices(neighborBlock)[neighbor] | @as(u32, blocks.meshes.modelIndex(neighborBlock))<<16;
+						const oldTextureNormal = blocks.meshes.textureIndices(neighborBlock)[neighbor] | @as(u32, blocks.meshes.modelIndex(neighborBlock))<<16;
 						if(canBeSeenThroughOtherBlock(neighborBlock, oldBlock, neighbor ^ 1) != newVisibility) {
 							if(newVisibility) { // Adding the face
 								if(neighborMesh == self) {
@@ -757,14 +756,14 @@ pub const meshing = struct {
 								if(canBeSeenThroughOtherBlock(block, otherBlock, neighbor)) {
 									const normal: u32 = neighbor;
 									const position: u32 = @as(u32, otherX) | @as(u32, otherY)<<5 | @as(u32, otherZ)<<10 | normal<<24;
-									const textureNormal = blocks.meshes.textureIndices(block)[neighbor] | @as(u32, blocks.meshes.modelIndices(block))<<16;
+									const textureNormal = blocks.meshes.textureIndices(block)[neighbor] | @as(u32, blocks.meshes.modelIndex(block))<<16;
 									try additionalNeighborFaces.append(position);
 									try additionalNeighborFaces.append(textureNormal);
 								}
 								if(canBeSeenThroughOtherBlock(otherBlock, block, neighbor ^ 1)) {
 									const normal: u32 = neighbor ^ 1;
 									const position: u32 = @as(u32, x) | @as(u32, y)<<5 | @as(u32, z)<<10 | normal<<24;
-									const textureNormal = blocks.meshes.textureIndices(otherBlock)[neighbor ^ 1] | @as(u32, blocks.meshes.modelIndices(otherBlock))<<16;
+									const textureNormal = blocks.meshes.textureIndices(otherBlock)[neighbor ^ 1] | @as(u32, blocks.meshes.modelIndex(otherBlock))<<16;
 									try self.faces.append(position);
 									try self.faces.append(textureNormal);
 								}
@@ -818,7 +817,7 @@ pub const meshing = struct {
 							if(canBeSeenThroughOtherBlock(otherBlock, block, neighbor ^ 1)) {
 								const normal: u32 = neighbor ^ 1;
 								const position: u32 = @as(u32, x) | @as(u32, y)<<5 | @as(u32, z)<<10 | normal<<24;
-								const textureNormal = blocks.meshes.textureIndices(otherBlock)[neighbor ^ 1] | @as(u32, blocks.meshes.modelIndices(otherBlock))<<16;
+								const textureNormal = blocks.meshes.textureIndices(otherBlock)[neighbor ^ 1] | @as(u32, blocks.meshes.modelIndex(otherBlock))<<16;
 								try self.faces.append(position);
 								try self.faces.append(textureNormal);
 							}
