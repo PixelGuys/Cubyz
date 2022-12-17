@@ -155,68 +155,68 @@ pub const Block = packed struct {
 	pub fn fromInt(self: u32) Block {
 		return Block{.typ=@truncate(u16, self), .data=@intCast(u16, self>>16)};
 	}
-	pub fn lightingTransparent(self: Block) bool {
+	pub inline fn lightingTransparent(self: Block) bool {
 		return _lightingTransparent[self.typ];
 	}
 
-	pub fn transparent(self: Block) bool {
+	pub inline fn transparent(self: Block) bool {
 		return _transparent[self.typ];
 	}
 
-	pub fn id(self: Block) []u8 {
+	pub inline fn id(self: Block) []u8 {
 		return _id[self.typ];
 	}
 
 	/// Time in seconds to break this block by hand.
-	pub fn hardness(self: Block) f32 {
+	pub inline fn hardness(self: Block) f32 {
 		return _hardness[self.typ];
 	}
 
 	/// Minimum pickaxe/axe/shovel power required.
-	pub fn breakingPower(self: Block) f32 {
+	pub inline fn breakingPower(self: Block) f32 {
 		return _breakingPower[self.typ];
 	}
 
-	pub fn solid(self: Block) bool {
+	pub inline fn solid(self: Block) bool {
 		return _solid[self.typ];
 	}
 
-	pub fn selectable(self: Block) bool {
+	pub inline fn selectable(self: Block) bool {
 		return _selectable[self.typ];
 	}
 
-	pub fn blockDrops(self: Block) []BlockDrop {
+	pub inline fn blockDrops(self: Block) []BlockDrop {
 		return _blockDrops[self.typ];
 	}
 
 	/// Meaning undegradable parts of trees or other structures can grow through this block.
-	pub fn degradable(self: Block) bool {
+	pub inline fn degradable(self: Block) bool {
 		return _degradable[self.typ];
 	}
 
-	pub fn viewThrough(self: Block) bool {
+	pub inline fn viewThrough(self: Block) bool {
 		return (&_viewThrough)[self.typ]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
 	}
 
-	pub fn blockClass(self: Block) BlockClass {
+	pub inline fn blockClass(self: Block) BlockClass {
 		return _blockClass[self.typ];
 	}
 
-	pub fn light(self: Block) u32 {
+	pub inline fn light(self: Block) u32 {
 		return _light[self.typ];
 	}
 
 	/// How much light this block absorbs if it is transparent.
-	pub fn absorption(self: Block) u32 {
+	pub inline fn absorption(self: Block) u32 {
 		return _absorption[self.typ];
 	}
 	
 	/// GUI that is opened on click.
-	pub fn gui(self: Block) []u8 {
+	pub inline fn gui(self: Block) []u8 {
 		return _gui[self.typ];
 	}
 	
-	pub fn mode(self: Block) *RotationMode {
+	pub inline fn mode(self: Block) *RotationMode {
 		return _mode[self.typ];
 	}
 
@@ -316,15 +316,15 @@ pub const meshes = struct {
 		arenaForWorld = std.heap.ArenaAllocator.init(std.heap.page_allocator);
 	}
 
-	pub fn modelIndex(block: Block) u16 {
+	pub inline fn modelIndex(block: Block) rotation.RotatedModel {
 		return block.mode().modelIndex(block);
 	}
 
-	pub fn modelIndexStart(block: Block) u16 {
+	pub inline fn modelIndexStart(block: Block) u16 {
 		return _modelIndex[block.typ];
 	}
 
-	pub fn textureIndices(block: Block) *const [6] u32 {
+	pub inline fn textureIndices(block: Block) *const [6] u32 {
 		return &_textureIndices[block.typ];
 	}
 

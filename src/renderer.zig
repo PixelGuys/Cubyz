@@ -637,7 +637,7 @@ pub const MeshSelection = struct {
 			const block = RenderStructure.getBlock(x, y, z) orelse break;
 			if(block.typ != 0) {
 				// Check the true bounding box (using this algorithm here: https://tavianator.com/2011/ray_box.html):
-				const voxelModel = &models.voxelModels.items[blocks.meshes.modelIndex(block)];
+				const voxelModel = &models.voxelModels.items[blocks.meshes.modelIndex(block).modelIndex]; // TODO: Consider rotation here.
 				const tx1 = (@intToFloat(f64, x) + @intToFloat(f64, voxelModel.minX)/16.0 - pos[0])*invDirX;
 				const tx2 = (@intToFloat(f64, x) + @intToFloat(f64, voxelModel.maxX)/16.0 - pos[0])*invDirX;
 				const ty1 = (@intToFloat(f64, y) + @intToFloat(f64, voxelModel.minY)/16.0 - pos[1])*invDirY;
@@ -774,7 +774,7 @@ pub const MeshSelection = struct {
 	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, playerPos: Vec3d) void {
 		if(selectedBlockPos) |_selectedBlockPos| {
 			var block = RenderStructure.getBlock(_selectedBlockPos[0], _selectedBlockPos[1], _selectedBlockPos[2]) orelse return;
-			var voxelModel = &models.voxelModels.items[blocks.meshes.modelIndex(block)];
+			var voxelModel = &models.voxelModels.items[blocks.meshes.modelIndex(block).modelIndex]; // TODO: Consider rotation.
 			shader.bind();
 
 			c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_FALSE, @ptrCast([*c]const f32, &projectionMatrix));

@@ -1,7 +1,6 @@
 #version 430
 
 in vec3 mvVertexPos;
-in vec2 outTexCoord;
 flat in int textureIndex;
 flat in int faceNormal;
 flat in int modelIndex;

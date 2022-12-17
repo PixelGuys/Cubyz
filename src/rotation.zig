@@ -2,16 +2,104 @@ const std = @import("std");
 
 const blocks = @import("blocks.zig");
 const Block = blocks.Block;
+const chunk = @import("chunk.zig");
+const Neighbors = chunk.Neighbors;
 const main = @import("main.zig");
 
+
+pub const Permutation = packed struct(u6) {
+	/// 0 if x is x, 1 if x and y are swapped, 2 if x and z are swapped
+	permutationX: u2 = 0,
+	/// whether y and z are swapped (applied after permutationX)
+	permutationYZ: bool = false,
+	/// whether the x coordinate of the original model(applied before permutations) is flipped
+	mirrorX: bool = false,
+	/// whether the y coordinate of the original model(applied before permutations) is flipped
+	mirrorY: bool = false,
+	/// whether the z coordinate of the original model(applied before permutations) is flipped
+	mirrorZ: bool = false,
+
+	pub fn toInt(self: Permutation) u6 {
+		return @bitCast(u6, self);
+	}
+
+	pub fn permuteNeighborIndex(self: Permutation, neighbor: u3) u3 {
+		// TODO: Make this more readable. Not sure how though.
+		const mirrored: u3 = switch(neighbor) {
+			Neighbors.dirNegX,
+			Neighbors.dirPosX => (
+				if(self.mirrorX) neighbor ^ 1
+				else neighbor
+			),
+			Neighbors.dirDown,
+			Neighbors.dirUp => (
+				if(self.mirrorY) neighbor ^ 1
+				else neighbor
+			),
+			Neighbors.dirNegZ,
+			Neighbors.dirPosZ => (
+				if(self.mirrorZ) neighbor ^ 1
+				else neighbor
+			),
+			else => unreachable,
+		};
+		const afterXPermutation: u3 = switch(mirrored) {
+			Neighbors.dirNegX,
+			Neighbors.dirPosX => (
+				if(self.permutationX == 1) mirrored +% (Neighbors.dirDown -% Neighbors.dirNegX)
+				else if(self.permutationX == 2) mirrored +% (Neighbors.dirNegZ -% Neighbors.dirNegX)
+				else mirrored
+			),
+			Neighbors.dirDown,
+			Neighbors.dirUp => (
+				if(self.permutationX == 1) mirrored +% (Neighbors.dirNegX -% Neighbors.dirDown)
+				else mirrored
+			),
+			Neighbors.dirNegZ,
+			Neighbors.dirPosZ => (
+				if(self.permutationX == 2) mirrored +% (Neighbors.dirNegX -% Neighbors.dirNegZ)
+				else mirrored
+			),
+			else => unreachable,
+		};
+		const afterYZPermutation: u3 = switch(afterXPermutation) {
+			Neighbors.dirNegX,
+			Neighbors.dirPosX => afterXPermutation,
+			Neighbors.dirDown,
+			Neighbors.dirUp => (
+				if(self.permutationYZ) afterXPermutation +% (Neighbors.dirNegZ -% Neighbors.dirDown)
+				else afterXPermutation
+			),
+			Neighbors.dirNegZ,
+			Neighbors.dirPosZ => (
+				if(self.permutationYZ) afterXPermutation +% (Neighbors.dirDown -% Neighbors.dirNegZ)
+				else afterXPermutation
+			),
+			else => unreachable,
+		};
+		return afterYZPermutation;
+	}
+};
+
+pub const RotatedModel = struct {
+	modelIndex: u16,
+	permutation: Permutation = Permutation{},
+};
 
 /// Each block gets 16 bit of additional storage(apart from the reference to the block type).
 /// These 16 bits are accessed and interpreted by the `RotationMode`.
 /// With the `RotationMode` interface there is almost no limit to what can be done with those 16 bit.
 pub const RotationMode = struct {
 	const DefaultFunctions = struct {
-		fn modelIndex(block: Block) u16 {
-			return blocks.meshes.modelIndexStart(block);
+		fn modelIndex(_block: Block) RotatedModel {
+			var block = _block;
+			if(block.data & 3 == 3) {
+				block.data &= ~@as(u16, 1);
+			}
+			return RotatedModel{
+				.modelIndex = blocks.meshes.modelIndexStart(block),
+				.permutation = @bitCast(Permutation, @truncate(u6, block.data)),
+			};
 		}
 	};
 
@@ -19,7 +107,7 @@ pub const RotationMode = struct {
 	/// if the block should be destroyed or changed when a certain neighbor is removed.
 	dependsOnNeighbors: bool = false,
 
-	modelIndex: *const fn(block: Block) u16 = &DefaultFunctions.modelIndex,
+	modelIndex: *const fn(block: Block) RotatedModel = &DefaultFunctions.modelIndex,
 };
 
 //public interface RotationMode extends RegistryElement {
