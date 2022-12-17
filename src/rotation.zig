@@ -91,14 +91,9 @@ pub const RotatedModel = struct {
 /// With the `RotationMode` interface there is almost no limit to what can be done with those 16 bit.
 pub const RotationMode = struct {
 	const DefaultFunctions = struct {
-		fn modelIndex(_block: Block) RotatedModel {
-			var block = _block;
-			if(block.data & 3 == 3) {
-				block.data &= ~@as(u16, 1);
-			}
+		fn modelIndex(block: Block) RotatedModel {
 			return RotatedModel{
 				.modelIndex = blocks.meshes.modelIndexStart(block),
-				.permutation = @bitCast(Permutation, @truncate(u6, block.data)),
 			};
 		}
 	};
@@ -182,6 +177,24 @@ var rotationModes: std.StringHashMap(RotationMode) = undefined;
 const RotationModes = struct {
 	const NoRotation = struct {
 		const id: []const u8 = "cubyz:no_rotation";
+	};
+	const Log = struct {
+		const id: []const u8 = "cubyz:log";
+
+		fn modelIndex(block: Block) RotatedModel {
+			const permutation: Permutation = switch(block.data) {
+				else => Permutation {},
+				1 => Permutation {.mirrorX = true, .mirrorY = true},
+				2 => Permutation {.permutationX = 1, .mirrorY = true},
+				3 => Permutation {.permutationX = 1, .mirrorX = true},
+				4 => Permutation {.permutationYZ = true, .mirrorY = true},
+				5 => Permutation {.permutationYZ = true, .mirrorZ = true},
+			};
+			return RotatedModel{
+				.modelIndex = blocks.meshes.modelIndexStart(block),
+				.permutation = permutation,
+			};
+		}
 	};
 };
 
