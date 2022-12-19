@@ -1,7 +1,7 @@
 #version 430
 
 out vec3 mvVertexPos;
-flat out int textureIndex;
+flat out int blockType;
 flat out int modelIndex;
 flat out int faceNormal;
 // For raymarching:
@@ -13,19 +13,6 @@ uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
 uniform vec3 modelPosition;
 
-struct AnimationData {
-	int frames;
-	int time;
-};
-
-layout(std430, binding = 0) buffer _animation
-{
-	AnimationData animation[];
-};
-layout(std430, binding = 1) buffer _textureIndices
-{
-	int textureIndices[][6];
-};
 struct FaceData {
 	int encodedPositionAndNormalsAndPermutation;
 	int blockAndModel;
@@ -48,7 +35,6 @@ layout(std430, binding = 4) buffer _voxelModels
 	VoxelModel voxelModels[];
 };
 
-uniform int time;
 uniform int voxelSize;
 
 const vec3[8] mirrorVectors = vec3[8](
@@ -143,9 +129,8 @@ void main() {
 	vec3 mirrorVector = mirrorVectors[(encodedPositionAndNormalsAndPermutation >> 26) & 7];
 	int normal = convertNormal(oldNormal, permutationMatrix, mirrorVector);
 	
-	int texCoordz = textureIndices[blockAndModel & 65535][normal];
+	blockType = blockAndModel & 65535;
 	modelIndex = blockAndModel >> 16;
-	textureIndex = texCoordz + time / animation[texCoordz].time % animation[texCoordz].frames;
 
 	ivec3 position = ivec3(
 		encodedPositionAndNormalsAndPermutation & 31,

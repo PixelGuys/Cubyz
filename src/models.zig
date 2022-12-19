@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const chunk = @import("chunk.zig");
+const Neighbors = chunk.Neighbors;
 const graphics = @import("graphics.zig");
 const main = @import("main.zig");
 
@@ -18,7 +20,7 @@ const VoxelModel = extern struct {
 	maxZ: u32,
 	bitPackedData: [modelSize*modelSize*modelSize/8]u32,
 
-	pub fn init(self: *VoxelModel, distributionFunction: *const fn(u16, u16, u16) bool) void {
+	pub fn init(self: *VoxelModel, distributionFunction: *const fn(u16, u16, u16) ?u4) void {
 		std.mem.set(u32, &self.bitPackedData, 0);
 		self.minX = 16;
 		self.minY = 16;
@@ -36,21 +38,23 @@ const VoxelModel = extern struct {
 					var voxelIndex = (x << 2*modelShift) + (y << modelShift) + z;
 					var shift = 4*@intCast(u5, voxelIndex & 7);
 					var arrayIndex = voxelIndex >> 3;
-					if(!isSolid) {
-						self.bitPackedData[arrayIndex] |= @as(u32, 1) << shift;
-					} else {
+					if(isSolid) |texture| {
+						std.debug.assert(texture <= 6);
 						self.minX = @min(self.minX, x);
 						self.minY = @min(self.minY, y);
 						self.minZ = @min(self.minZ, z);
 						self.maxX = @max(self.maxX, x+1);
 						self.maxY = @max(self.maxY, y+1);
 						self.maxZ = @max(self.maxZ, z+1);
+						self.bitPackedData[arrayIndex] |= @as(u32, 6 - texture) << shift;
+					} else {
+						self.bitPackedData[arrayIndex] |= @as(u32, 7) << shift;
 					}
 				}
 			}
 		}
 		// TODO: Use floodfill for this.
-		var i: u32 = 0;
+		var i: u32 = 7;
 		while(i < 14) : (i += 1) {
 			x = 0;
 			while(x < modelSize): (x += 1) {
@@ -97,42 +101,53 @@ const VoxelModel = extern struct {
 	}
 };
 
-fn cube(_: u16, _: u16, _: u16) bool {
-	return true;
+fn cube(_: u16, _: u16, _: u16) ?u4 {
+	return 6;
 }
 
-fn fence(_x: u16, _y: u16, _z: u16) bool {
+fn fence(_x: u16, _y: u16, _z: u16) ?u4 {
 	var x = @max(@as(i32, _x)-8, -@as(i32, _x)+7);
 	var y = @max(@as(i32, _y)-8, -@as(i32, _y)+7);
 	var z = @max(@as(i32, _z)-8, -@as(i32, _z)+7);
-	if(x < 2 and z < 2) return true;
+	if(x < 2 and z < 2) return 6;
 	if(y < 5 and y >= 2) {
-		if(x == 0 or z == 0) return true;
+		if(x == 0 or z == 0) return 6;
 	}
-	return false;
+	return null;
 }
 
-fn log(_x: u16, _y: u16, _z: u16) bool {
+fn log(_x: u16, _y: u16, _z: u16) ?u4 {
 	var x = @intToFloat(f32, _x) - 7.5;
 	var y = @intToFloat(f32, _y) - 7.5;
 	var z = @intToFloat(f32, _z) - 7.5;
-	_ = y;
-	if(x*x + z*z < 8.0*8.0) return true;
-	return false;
+	if(x*x + z*z < 7.2*7.2) {
+		if(y > 0) return Neighbors.dirUp;
+		return Neighbors.dirDown;
+	}
+	if(x*x + z*z < 8.0*8.0) {
+		if(@fabs(x) > @fabs(z)) {
+			if(x < 0) return Neighbors.dirNegX;
+			return Neighbors.dirPosX;
+		} else {
+			if(z < 0) return Neighbors.dirNegZ;
+			return Neighbors.dirPosZ;
+		}
+	}
+	return null;
 }
 
-fn octahedron(_x: u16, _y: u16, _z: u16) bool {
+fn octahedron(_x: u16, _y: u16, _z: u16) ?u4 {
 	var x = _x;
 	var y = _y;
 	var z = _z;
-	if((x == 0 or x == 15) and (y == 0 or y == 15)) return true;
-	if((x == 0 or x == 15) and (z == 0 or z == 15)) return true;
-	if((z == 0 or z == 15) and (y == 0 or y == 15)) return true;
+	if((x == 0 or x == 15) and (y == 0 or y == 15)) return 6;
+	if((x == 0 or x == 15) and (z == 0 or z == 15)) return 6;
+	if((z == 0 or z == 15) and (y == 0 or y == 15)) return 6;
 	x = @min(x, 15 - x);
 	y = @min(y, 15 - y);
 	z = @min(z, 15 - z);
-	if(x + y + z > 16) return true;
-	return false;
+	if(x + y + z > 16) return 6;
+	return null;
 }
 
 var nameToIndex: std.StringHashMap(u16) = undefined;
