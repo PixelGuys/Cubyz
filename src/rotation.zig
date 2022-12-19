@@ -185,10 +185,10 @@ const RotationModes = struct {
 			const permutation: Permutation = switch(block.data) {
 				else => Permutation {},
 				1 => Permutation {.mirrorX = true, .mirrorY = true},
-				2 => Permutation {.permutationX = 1, .mirrorY = true},
-				3 => Permutation {.permutationX = 1, .mirrorX = true},
-				4 => Permutation {.permutationYZ = true, .mirrorY = true},
-				5 => Permutation {.permutationYZ = true, .mirrorZ = true},
+				2 => Permutation {.permutationX = 1, .mirrorX = true, .mirrorY = true},
+				3 => Permutation {.permutationX = 1},
+				4 => Permutation {.permutationYZ = true, .mirrorZ = true, .mirrorY = true},
+				5 => Permutation {.permutationYZ = true},
 			};
 			return RotatedModel{
 				.modelIndex = blocks.meshes.modelIndexStart(block),

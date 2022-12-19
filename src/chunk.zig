@@ -454,10 +454,10 @@ pub const meshing = struct {
 	const FaceData = switch(@import("builtin").target.cpu.arch.endian()) {
 		.Little => packed struct {
 			position: u32,
-			textureModel: u32,
+			blockAndModel: u32,
 		},
 		.Big => packed struct {
-			textureModel: u32,
+			blockAndModel: u32,
 			position: u32,
 		},
 	};
@@ -705,16 +705,8 @@ pub const meshing = struct {
 			const model = blocks.meshes.modelIndex(block);
 			return FaceData {
 				.position = @as(u32, x) | @as(u32, y)<<5 | @as(u32, z)<<10 | normal<<20 | @as(u32, model.permutation.toInt())<<23,
-				.textureModel = blocks.meshes.textureIndices(block)[normal] | @as(u32, model.modelIndex)<<16,
+				.blockAndModel = block.typ | @as(u32, model.modelIndex)<<16,
 			};
-		}
-
-		inline fn appendFace(faceList: *std.ArrayList(u32), block: Block, normal: u32, x: u32, y: u32, z: u32) !void {
-			const model = blocks.meshes.modelIndex(block);
-			const position: u32 = @as(u32, x) | @as(u32, y)<<5 | @as(u32, z)<<10 | normal<<20 | @as(u32, model.permutation.toInt())<<23;
-			const textureModel = blocks.meshes.textureIndices(block)[normal] | @as(u32, model.modelIndex)<<16;
-			try faceList.append(position);
-			try faceList.append(textureModel);
 		}
 
 		pub fn uploadDataAndFinishNeighbors(self: *ChunkMesh) !void {

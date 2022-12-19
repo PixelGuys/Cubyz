@@ -13,17 +13,22 @@ uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
 uniform vec3 modelPosition;
 
-layout(std430, binding = 0) buffer _animationTimes
-{
-	int animationTimes[];
+struct AnimationData {
+	int frames;
+	int time;
 };
-layout(std430, binding = 1) buffer _animationFrames
+
+layout(std430, binding = 0) buffer _animation
 {
-	int animationFrames[];
+	AnimationData animation[];
+};
+layout(std430, binding = 1) buffer _textureIndices
+{
+	int textureIndices[][6];
 };
 struct FaceData {
 	int encodedPositionAndNormalsAndPermutation;
-	int texCoordAndVoxelModel;
+	int blockAndModel;
 };
 layout(std430, binding = 3) buffer _faceData
 {
@@ -132,15 +137,15 @@ void main() {
 	int faceID = gl_VertexID/4;
 	int vertexID = gl_VertexID%4;
 	int encodedPositionAndNormalsAndPermutation = faceData[faceID].encodedPositionAndNormalsAndPermutation;
-	int texCoordAndVoxelModel = faceData[faceID].texCoordAndVoxelModel;
+	int blockAndModel = faceData[faceID].blockAndModel;
 	int oldNormal = (encodedPositionAndNormalsAndPermutation >> 20) & 7;
 	mat3 permutationMatrix = permutationMatrices[(encodedPositionAndNormalsAndPermutation >> 23) & 7];
 	vec3 mirrorVector = mirrorVectors[(encodedPositionAndNormalsAndPermutation >> 26) & 7];
 	int normal = convertNormal(oldNormal, permutationMatrix, mirrorVector);
 	
-	int texCoordz = texCoordAndVoxelModel & 65535;
-	modelIndex = texCoordAndVoxelModel >> 16;
-	textureIndex = texCoordz + time / animationTimes[texCoordz] % animationFrames[texCoordz];
+	int texCoordz = textureIndices[blockAndModel & 65535][normal];
+	modelIndex = blockAndModel >> 16;
+	textureIndex = texCoordz + time / animation[texCoordz].time % animation[texCoordz].frames;
 
 	ivec3 position = ivec3(
 		encodedPositionAndNormalsAndPermutation & 31,

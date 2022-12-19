@@ -238,6 +238,10 @@ pub const Block = packed struct {
 
 
 pub const meshes = struct {
+	const AnimationData = extern struct {
+		frames: i32,
+		time: i32,
+	};
 	var size: u32 = 0;
 	var _modelIndex: [MaxBLockCount]u16 = undefined;
 	var _textureIndices: [MaxBLockCount][6]u32 = undefined;
@@ -248,8 +252,7 @@ pub const meshes = struct {
 
 	var arenaForArrayLists: std.heap.ArenaAllocator = undefined;
 	var textureIDs: std.ArrayList([]const u8) = undefined;
-	var animationFrames: std.ArrayList(u32) = undefined;
-	var animationTimes: std.ArrayList(u32) = undefined;
+	var animation: std.ArrayList(AnimationData) = undefined;
 	var blockTextures: std.ArrayList(Image) = undefined;
 	var emissionTextures: std.ArrayList(Image) = undefined;
 
@@ -266,8 +269,8 @@ pub const meshes = struct {
 		break :blk names;
 	};
 
-	var animationTimesSSBO: SSBO = undefined;
-	var animationFramesSSBO: SSBO = undefined;
+	var animationSSBO: SSBO = undefined;
+	var textureIndexSSBO: SSBO = undefined;
 
 	pub var blockTextureArray: TextureArray = undefined;
 	pub var emissionTextureArray: TextureArray = undefined;
@@ -280,24 +283,23 @@ pub const meshes = struct {
 	const emptyImage = Image{.width = 1, .height = 1, .imageData = emptyTexture[0..]};
 
 	pub fn init() void {
-		animationTimesSSBO = SSBO.init();
-		animationTimesSSBO.bind(0);
-		animationFramesSSBO = SSBO.init();
-		animationFramesSSBO.bind(1);
+		animationSSBO = SSBO.init();
+		animationSSBO.bind(0);
+		textureIndexSSBO = SSBO.init();
+		textureIndexSSBO.bind(1);
 		blockTextureArray = TextureArray.init();
 		emissionTextureArray = TextureArray.init();
 		arenaForArrayLists = std.heap.ArenaAllocator.init(std.heap.page_allocator);
 		textureIDs = std.ArrayList([]const u8).init(arenaForArrayLists.allocator());
-		animationFrames = std.ArrayList(u32).init(arenaForArrayLists.allocator());
-		animationTimes = std.ArrayList(u32).init(arenaForArrayLists.allocator());
+		animation = std.ArrayList(AnimationData).init(arenaForArrayLists.allocator());
 		blockTextures = std.ArrayList(Image).init(arenaForArrayLists.allocator());
 		emissionTextures = std.ArrayList(Image).init(arenaForArrayLists.allocator());
 		arenaForWorld = std.heap.ArenaAllocator.init(std.heap.page_allocator);
 	}
 
 	pub fn deinit() void {
-		animationTimesSSBO.deinit();
-		animationFramesSSBO.deinit();
+		animationSSBO.deinit();
+		textureIndexSSBO.deinit();
 		blockTextureArray.deinit();
 		emissionTextureArray.deinit();
 		arenaForArrayLists.deinit();
@@ -308,8 +310,7 @@ pub const meshes = struct {
 		meshes.size = 0;
 		loadedMeshes = 0;
 		textureIDs.clearRetainingCapacity();
-		animationFrames.clearRetainingCapacity();
-		animationTimes.clearRetainingCapacity();
+		animation.clearRetainingCapacity();
 		blockTextures.clearRetainingCapacity();
 		emissionTextures.clearRetainingCapacity();
 		arenaForWorld.deinit();
@@ -322,10 +323,6 @@ pub const meshes = struct {
 
 	pub inline fn modelIndexStart(block: Block) u16 {
 		return _modelIndex[block.typ];
-	}
-
-	pub inline fn textureIndices(block: Block) *const [6] u32 {
-		return &_textureIndices[block.typ];
 	}
 
 	pub fn readTexture(textureInfo: JsonElement, assetFolder: []const u8) !?u31 {
@@ -367,21 +364,18 @@ pub const meshes = struct {
 			const emissionTexture = Image.readFromFile(arenaForWorld.allocator(), path);
 			try emissionTextures.append(emissionTexture catch emptyImage);
 			try textureIDs.append(try arenaForWorld.allocator().dupe(u8, path));
-			try animationFrames.append(1);
-			try animationTimes.append(1);
+			try animation.append(.{.frames = 1, .time = 1});
 		} else if(textureInfo == .JsonObject) {
-			var animationTime = textureInfo.get(u32, "time", 500);
+			var animationTime = textureInfo.get(i32, "time", 500);
 			const textures = textureInfo.getChild("textures");
 			if(textures != .JsonArray) return result;
 			// Add the new textures into the list. Since this is an animation all textures that weren't found need to be replaced with undefined.
 			result = @intCast(u31, blockTextures.items.len);
 			for(textures.JsonArray.items) |item, i| {
 				if(i == 0) {
-					try animationFrames.append(@intCast(u32, textures.JsonArray.items.len));
-					try animationTimes.append(animationTime);
+					try animation.append(.{.frames = @intCast(i32, textures.JsonArray.items.len), .time = animationTime});
 				} else {
-					try animationFrames.append(1);
-					try animationTimes.append(1);
+					try animation.append(.{.frames = 1, .time = 1});
 				}
 				var splitter = std.mem.split(u8, item.as([]const u8, "cubyz:undefined"), ":");
 				const mod = splitter.first();
@@ -473,7 +467,7 @@ pub const meshes = struct {
 		try emissionTextureArray.generate(emissionTextures.items, false);
 
 		// Also generate additional buffers:
-		animationTimesSSBO.bufferData(u32, animationTimes.items);
-		animationFramesSSBO.bufferData(u32, animationFrames.items);
+		animationSSBO.bufferData(AnimationData, animation.items);
+		textureIndexSSBO.bufferData([6]u32, _textureIndices[0..meshes.size]);
 	}
 };
