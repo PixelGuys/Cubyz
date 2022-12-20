@@ -317,8 +317,8 @@ pub const meshes = struct {
 		arenaForWorld = std.heap.ArenaAllocator.init(std.heap.page_allocator);
 	}
 
-	pub inline fn modelIndex(block: Block) rotation.RotatedModel {
-		return block.mode().modelIndex(block);
+	pub inline fn model(block: Block) rotation.RotatedModel {
+		return block.mode().model(block);
 	}
 
 	pub inline fn modelIndexStart(block: Block) u16 {

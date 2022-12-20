@@ -29,9 +29,8 @@ struct AnimationData {
 
 #define modelSize 16
 struct VoxelModel {
-	uint minX, maxX;
-	uint minY, maxY;
-	uint minZ, maxZ;
+	ivec4 minimum;
+	ivec4 maximum;
 	uint bitPackedData[modelSize*modelSize*modelSize/8];
 };
 

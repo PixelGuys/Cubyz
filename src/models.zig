@@ -4,6 +4,8 @@ const chunk = @import("chunk.zig");
 const Neighbors = chunk.Neighbors;
 const graphics = @import("graphics.zig");
 const main = @import("main.zig");
+const vec = @import("vec.zig");
+const Vec3i = vec.Vec3i;
 
 var voxelModelSSBO: graphics.SSBO = undefined;
 
@@ -12,22 +14,15 @@ pub const modelSize: u16 = @as(u16, 1) << modelShift;
 pub const modelMask: u16 = modelSize - 1;
 
 const VoxelModel = extern struct {
-	minX: u32,
-	maxX: u32,
-	minY: u32,
-	maxY: u32,
-	minZ: u32,
-	maxZ: u32,
+	min: Vec3i,
+	max: Vec3i,
 	bitPackedData: [modelSize*modelSize*modelSize/8]u32,
 
 	pub fn init(self: *VoxelModel, distributionFunction: *const fn(u16, u16, u16) ?u4) void {
+		if(@sizeOf(VoxelModel) != 16 + 16 + modelSize*modelSize*modelSize*4/8) @compileError("Expected Vec3i to have 16 byte alignment.");
 		std.mem.set(u32, &self.bitPackedData, 0);
-		self.minX = 16;
-		self.minY = 16;
-		self.minZ = 16;
-		self.maxX = 0;
-		self.maxY = 0;
-		self.maxZ = 0;
+		self.min = @splat(3, @as(i32, 16));
+		self.max = @splat(3, @as(i32, 0));
 		var x: u16 = 0;
 		while(x < modelSize): (x += 1) {
 			var y: u16 = 0;
@@ -40,12 +35,8 @@ const VoxelModel = extern struct {
 					var arrayIndex = voxelIndex >> 3;
 					if(isSolid) |texture| {
 						std.debug.assert(texture <= 6);
-						self.minX = @min(self.minX, x);
-						self.minY = @min(self.minY, y);
-						self.minZ = @min(self.minZ, z);
-						self.maxX = @max(self.maxX, x+1);
-						self.maxY = @max(self.maxY, y+1);
-						self.maxZ = @max(self.maxZ, z+1);
+						self.min = @min(self.min, Vec3i{x, y, z});
+						self.max = @max(self.max, Vec3i{x+1, y+1, z+1});
 						self.bitPackedData[arrayIndex] |= @as(u32, 6 - texture) << shift;
 					} else {
 						self.bitPackedData[arrayIndex] |= @as(u32, 7) << shift;

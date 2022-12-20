@@ -24,9 +24,8 @@ layout(std430, binding = 3) buffer _faceData
 
 #define modelSize 16
 struct VoxelModel {
-	uint minX, maxX;
-	uint minY, maxY;
-	uint minZ, maxZ;
+	ivec4 minimum;
+	ivec4 maximum;
 	uint bitPackedData[modelSize*modelSize*modelSize/8];
 };
 
@@ -128,7 +127,7 @@ void main() {
 	mat3 permutationMatrix = permutationMatrices[(encodedPositionAndNormalsAndPermutation >> 23) & 7];
 	vec3 mirrorVector = mirrorVectors[(encodedPositionAndNormalsAndPermutation >> 26) & 7];
 	int normal = convertNormal(oldNormal, permutationMatrix, mirrorVector);
-	
+
 	blockType = blockAndModel & 65535;
 	modelIndex = blockAndModel >> 16;
 
@@ -150,8 +149,8 @@ void main() {
 	totalOffset += ivec3(equal(textureX[oldNormal], ivec3(-1))) + (vertexID>>1 & 1)*textureX[oldNormal];
 	totalOffset += ivec3(equal(textureY[oldNormal], ivec3(-1))) + (vertexID & 1)*textureY[oldNormal];
 	totalOffset = ivec3(permutationMatrix*(vec3(equal(mirrorVector, vec3(1)))*totalOffset + vec3(equal(mirrorVector, vec3(-1)))*(1 - totalOffset)));
-	ivec3 lowerBound = ivec3(voxelModels[modelIndex].minX, voxelModels[modelIndex].minY, voxelModels[modelIndex].minZ);
-	ivec3 size = ivec3(voxelModels[modelIndex].maxX, voxelModels[modelIndex].maxY, voxelModels[modelIndex].maxZ) - lowerBound;
+	ivec3 lowerBound = voxelModels[modelIndex].minimum.xyz;
+	ivec3 size = voxelModels[modelIndex].maximum.xyz - lowerBound;
 	totalOffset = lowerBound + size*totalOffset;
 	position += totalOffset - 16*ivec3(normals[normal]);
 

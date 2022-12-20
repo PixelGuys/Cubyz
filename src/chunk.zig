@@ -493,22 +493,22 @@ pub const meshing = struct {
 		}
 
 		fn canBeSeenThroughOtherBlock(block: Block, other: Block, neighbor: u3) bool {
-			const rotatedModel = blocks.meshes.modelIndex(block);
+			const rotatedModel = blocks.meshes.model(block);
 			const model = &models.voxelModels.items[rotatedModel.modelIndex];
 			const freestandingModel = switch(rotatedModel.permutation.permuteNeighborIndex(neighbor)) {
-				Neighbors.dirNegX => model.minX != 0,
-				Neighbors.dirPosX => model.maxX != 16,
-				Neighbors.dirDown => model.minY != 0,
-				Neighbors.dirUp => model.maxY != 16,
-				Neighbors.dirNegZ => model.minZ != 0,
-				Neighbors.dirPosZ => model.maxZ != 16,
+				Neighbors.dirNegX => model.min[0] != 0,
+				Neighbors.dirPosX => model.max[0] != 16,
+				Neighbors.dirDown => model.min[1] != 0,
+				Neighbors.dirUp => model.max[1] != 16,
+				Neighbors.dirNegZ => model.min[2] != 0,
+				Neighbors.dirPosZ => model.max[2] != 16,
 				else => unreachable,
 			};
 			return block.typ != 0 and (
 				freestandingModel
 				or other.typ == 0
 				or (!std.meta.eql(block, other) and other.viewThrough())
-				or blocks.meshes.modelIndex(other).modelIndex != 0 // TODO: make this more strict to avoid overdraw.
+				or blocks.meshes.model(other).modelIndex != 0 // TODO: make this more strict to avoid overdraw.
 			);
 		}
 
@@ -702,7 +702,7 @@ pub const meshing = struct {
 		}
 
 		inline fn constructFaceData(block: Block, normal: u32, x: u32, y: u32, z: u32) FaceData {
-			const model = blocks.meshes.modelIndex(block);
+			const model = blocks.meshes.model(block);
 			return FaceData {
 				.position = @as(u32, x) | @as(u32, y)<<5 | @as(u32, z)<<10 | normal<<20 | @as(u32, model.permutation.toInt())<<23,
 				.blockAndModel = block.typ | @as(u32, model.modelIndex)<<16,

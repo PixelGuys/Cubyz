@@ -637,13 +637,18 @@ pub const MeshSelection = struct {
 			const block = RenderStructure.getBlock(x, y, z) orelse break;
 			if(block.typ != 0) {
 				// Check the true bounding box (using this algorithm here: https://tavianator.com/2011/ray_box.html):
-				const voxelModel = &models.voxelModels.items[blocks.meshes.modelIndex(block).modelIndex]; // TODO: Consider rotation here.
-				const tx1 = (@intToFloat(f64, x) + @intToFloat(f64, voxelModel.minX)/16.0 - pos[0])*invDirX;
-				const tx2 = (@intToFloat(f64, x) + @intToFloat(f64, voxelModel.maxX)/16.0 - pos[0])*invDirX;
-				const ty1 = (@intToFloat(f64, y) + @intToFloat(f64, voxelModel.minY)/16.0 - pos[1])*invDirY;
-				const ty2 = (@intToFloat(f64, y) + @intToFloat(f64, voxelModel.maxY)/16.0 - pos[1])*invDirY;
-				const tz1 = (@intToFloat(f64, z) + @intToFloat(f64, voxelModel.minZ)/16.0 - pos[2])*invDirZ;
-				const tz2 = (@intToFloat(f64, z) + @intToFloat(f64, voxelModel.maxZ)/16.0 - pos[2])*invDirZ;
+				const model = blocks.meshes.model(block);
+				const voxelModel = &models.voxelModels.items[model.modelIndex];
+				var transformedMin = model.permutation.transform(voxelModel.min - @splat(3, @as(i32, 8))) + @splat(3, @as(i32, 8));
+				var transformedMax = model.permutation.transform(voxelModel.max - @splat(3, @as(i32, 8))) + @splat(3, @as(i32, 8));
+				const min = @min(transformedMin, transformedMax);
+				const max = @max(transformedMin ,transformedMax);
+				const tx1 = (@intToFloat(f64, x) + @intToFloat(f64, min[0])/16.0 - pos[0])*invDirX;
+				const tx2 = (@intToFloat(f64, x) + @intToFloat(f64, max[0])/16.0 - pos[0])*invDirX;
+				const ty1 = (@intToFloat(f64, y) + @intToFloat(f64, min[1])/16.0 - pos[1])*invDirY;
+				const ty2 = (@intToFloat(f64, y) + @intToFloat(f64, max[1])/16.0 - pos[1])*invDirY;
+				const tz1 = (@intToFloat(f64, z) + @intToFloat(f64, min[2])/16.0 - pos[2])*invDirZ;
+				const tz2 = (@intToFloat(f64, z) + @intToFloat(f64, max[2])/16.0 - pos[2])*invDirZ;
 				const tMin = @max(
 					@min(tx1, tx2),
 					@max(
@@ -774,7 +779,12 @@ pub const MeshSelection = struct {
 	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, playerPos: Vec3d) void {
 		if(selectedBlockPos) |_selectedBlockPos| {
 			var block = RenderStructure.getBlock(_selectedBlockPos[0], _selectedBlockPos[1], _selectedBlockPos[2]) orelse return;
-			var voxelModel = &models.voxelModels.items[blocks.meshes.modelIndex(block).modelIndex]; // TODO: Consider rotation.
+			const model = blocks.meshes.model(block);
+			const voxelModel = &models.voxelModels.items[model.modelIndex];
+			var transformedMin = model.permutation.transform(voxelModel.min - @splat(3, @as(i32, 8))) + @splat(3, @as(i32, 8));
+			var transformedMax = model.permutation.transform(voxelModel.max - @splat(3, @as(i32, 8))) + @splat(3, @as(i32, 8));
+			const min = @min(transformedMin, transformedMax);
+			const max = @max(transformedMin ,transformedMax);
 			shader.bind();
 
 			c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_FALSE, @ptrCast([*c]const f32, &projectionMatrix));
@@ -785,14 +795,14 @@ pub const MeshSelection = struct {
 				@floatCast(f32, @intToFloat(f64, _selectedBlockPos[2]) - playerPos[2])
 			);
 			c.glUniform3f(uniforms.lowerBounds,
-				@intToFloat(f32, voxelModel.minX)/16.0,
-				@intToFloat(f32, voxelModel.minY)/16.0,
-				@intToFloat(f32, voxelModel.minZ)/16.0
+				@intToFloat(f32, min[0])/16.0,
+				@intToFloat(f32, min[1])/16.0,
+				@intToFloat(f32, min[2])/16.0
 			);
 			c.glUniform3f(uniforms.upperBounds,
-				@intToFloat(f32, voxelModel.maxX)/16.0,
-				@intToFloat(f32, voxelModel.maxY)/16.0,
-				@intToFloat(f32, voxelModel.maxZ)/16.0
+				@intToFloat(f32, max[0])/16.0,
+				@intToFloat(f32, max[1])/16.0,
+				@intToFloat(f32, max[2])/16.0
 			);
 
 			c.glBindVertexArray(cubeVAO);

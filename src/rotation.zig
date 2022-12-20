@@ -23,6 +23,35 @@ pub const Permutation = packed struct(u6) {
 		return @bitCast(u6, self);
 	}
 
+	pub fn transform(self: Permutation, _x: anytype) @TypeOf(_x) {
+		var x = _x;
+		if(@typeInfo(@TypeOf(x)) != .Vector) @compileError("Can only transform vector types.");
+		if(@typeInfo(@TypeOf(x)).Vector.len != 3) @compileError("Vector needs to have length 3.");
+		if(self.mirrorX) x[0] = -x[0];
+		if(self.mirrorY) x[1] = -x[1];
+		if(self.mirrorZ) x[2] = -x[2];
+		switch(self.permutationX) {
+			0 => {},
+			1 => {
+				const swap = x[0];
+				x[0] = x[1];
+				x[1] = swap;
+			},
+			2 => {
+				const swap = x[0];
+				x[0] = x[2];
+				x[2] = swap;
+			},
+			else => unreachable,
+		}
+		if(self.permutationYZ) {
+			const swap = x[1];
+			x[1] = x[2];
+			x[2] = swap;
+		}
+		return x;
+	}
+
 	pub fn permuteNeighborIndex(self: Permutation, neighbor: u3) u3 {
 		// TODO: Make this more readable. Not sure how though.
 		const mirrored: u3 = switch(neighbor) {
@@ -91,7 +120,7 @@ pub const RotatedModel = struct {
 /// With the `RotationMode` interface there is almost no limit to what can be done with those 16 bit.
 pub const RotationMode = struct {
 	const DefaultFunctions = struct {
-		fn modelIndex(block: Block) RotatedModel {
+		fn model(block: Block) RotatedModel {
 			return RotatedModel{
 				.modelIndex = blocks.meshes.modelIndexStart(block),
 			};
@@ -102,19 +131,10 @@ pub const RotationMode = struct {
 	/// if the block should be destroyed or changed when a certain neighbor is removed.
 	dependsOnNeighbors: bool = false,
 
-	modelIndex: *const fn(block: Block) RotatedModel = &DefaultFunctions.modelIndex,
+	model: *const fn(block: Block) RotatedModel = &DefaultFunctions.model,
 };
 
 //public interface RotationMode extends RegistryElement {
-//	/**
-//	 * Called when generating the chunk mesh.
-//	 * @param bi
-//	 * @param vertices
-//	 * @param faces
-//	 * @return incremented renderIndex
-//	 */
-//	void generateChunkMesh(BlockInstance bi, VertexAttribList vertices, IntSimpleList faces);
-//	
 //	/**
 //	 * Update or place a block.
 //	 * @param world
@@ -181,7 +201,7 @@ const RotationModes = struct {
 	const Log = struct {
 		const id: []const u8 = "cubyz:log";
 
-		fn modelIndex(block: Block) RotatedModel {
+		fn model(block: Block) RotatedModel {
 			const permutation: Permutation = switch(block.data) {
 				else => Permutation {},
 				1 => Permutation {.mirrorX = true, .mirrorY = true},
