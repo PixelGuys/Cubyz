@@ -216,6 +216,53 @@ const RotationModes = struct {
 			};
 		}
 	};
+	const Fence = struct {
+		const id: []const u8 = "cubyz:fence";
+
+		fn model(block: Block) RotatedModel {
+			const data = block.data>>2 & 15; // TODO: This is just for compatibility with the java version. Remove it.
+			const modelIndexOffsets = [16]u16 {
+				0, // 0b0000
+				1, // 0b0001
+				1, // 0b0010
+				3, // 0b0011
+				1, // 0b0100
+				2, // 0b0101
+				2, // 0b0110
+				4, // 0b0111
+				1, // 0b1000
+				2, // 0b1001
+				2, // 0b1010
+				4, // 0b1011
+				3, // 0b1100
+				4, // 0b1101
+				4, // 0b1110
+				5, // 0b1111
+			};
+			const permutations = [16]Permutation {
+				Permutation{}, // 0b0000
+				Permutation{.mirrorX = true, .mirrorZ = true}, // 0b0001
+				Permutation{}, // 0b0010
+				Permutation{}, // 0b0011
+				Permutation{.permutationX = 2, .mirrorZ = true}, // 0b0100
+				Permutation{.mirrorX = true, .mirrorZ = true}, // 0b0101
+				Permutation{.permutationX = 2, .mirrorZ = true}, // 0b0110
+				Permutation{.permutationX = 2, .mirrorX = true}, // 0b0111
+				Permutation{.permutationX = 2, .mirrorX = true}, // 0b1000
+				Permutation{.permutationX = 2, .mirrorX = true}, // 0b1001
+				Permutation{}, // 0b1010
+				Permutation{.permutationX = 2, .mirrorZ = true}, // 0b1011
+				Permutation{.permutationX = 2, .mirrorX = true}, // 0b1100
+				Permutation{}, // 0b1101
+				Permutation{.mirrorX = true, .mirrorZ = true}, // 0b1110
+				Permutation{}, // 0b1111
+			};
+			return RotatedModel{
+				.modelIndex = blocks.meshes.modelIndexStart(block) + modelIndexOffsets[data],
+				.permutation = permutations[data],
+			};
+		}
+	};
 };
 
 pub fn init() !void {

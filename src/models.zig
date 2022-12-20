@@ -96,16 +96,73 @@ fn cube(_: u16, _: u16, _: u16) ?u4 {
 	return 6;
 }
 
-fn fence(_x: u16, _y: u16, _z: u16) ?u4 {
-	var x = @max(@as(i32, _x)-8, -@as(i32, _x)+7);
-	var y = @max(@as(i32, _y)-8, -@as(i32, _y)+7);
-	var z = @max(@as(i32, _z)-8, -@as(i32, _z)+7);
-	if(x < 2 and z < 2) return 6;
-	if(y < 5 and y >= 2) {
-		if(x == 0 or z == 0) return 6;
+const Fence = struct {
+	fn fence0(_x: u16, _y: u16, _z: u16) ?u4 {
+		var x = @max(@as(i32, _x)-8, -@as(i32, _x)+7);
+		var y = @max(@as(i32, _y)-8, -@as(i32, _y)+7);
+		var z = @max(@as(i32, _z)-8, -@as(i32, _z)+7);
+		_ = y;
+		if(x < 2 and z < 2) return 6;
+		return null;
 	}
-	return null;
-}
+
+	fn fence1(_x: u16, _y: u16, _z: u16) ?u4 {
+		var x = @max(@as(i32, _x)-8, -@as(i32, _x)+7);
+		var y = @max(@as(i32, _y)-8, -@as(i32, _y)+7);
+		var z = @max(@as(i32, _z)-8, -@as(i32, _z)+7);
+		if(x < 2 and z < 2) return 6;
+		if(y < 5 and y >= 2) {
+			if(z == 0 and _x < 8) return 6;
+		}
+		return null;
+	}
+
+	fn fence2_neighbor(_x: u16, _y: u16, _z: u16) ?u4 {
+		var x = @max(@as(i32, _x)-8, -@as(i32, _x)+7);
+		var y = @max(@as(i32, _y)-8, -@as(i32, _y)+7);
+		var z = @max(@as(i32, _z)-8, -@as(i32, _z)+7);
+		if(x < 2 and z < 2) return 6;
+		if(y < 5 and y >= 2) {
+			if(z == 0 and _x < 8) return 6;
+			if(_z < 8 and x == 0) return 6;
+		}
+		return null;
+	}
+
+	fn fence2_oppose(_x: u16, _y: u16, _z: u16) ?u4 {
+		var x = @max(@as(i32, _x)-8, -@as(i32, _x)+7);
+		var y = @max(@as(i32, _y)-8, -@as(i32, _y)+7);
+		var z = @max(@as(i32, _z)-8, -@as(i32, _z)+7);
+		if(x < 2 and z < 2) return 6;
+		if(y < 5 and y >= 2) {
+			if(z == 0) return 6;
+		}
+		return null;
+	}
+
+	fn fence3(_x: u16, _y: u16, _z: u16) ?u4 {
+		var x = @max(@as(i32, _x)-8, -@as(i32, _x)+7);
+		var y = @max(@as(i32, _y)-8, -@as(i32, _y)+7);
+		var z = @max(@as(i32, _z)-8, -@as(i32, _z)+7);
+		if(x < 2 and z < 2) return 6;
+		if(y < 5 and y >= 2) {
+			if(z == 0 and _x >= 8) return 6;
+			if(x == 0) return 6;
+		}
+		return null;
+	}
+
+	fn fence4(_x: u16, _y: u16, _z: u16) ?u4 {
+		var x = @max(@as(i32, _x)-8, -@as(i32, _x)+7);
+		var y = @max(@as(i32, _y)-8, -@as(i32, _y)+7);
+		var z = @max(@as(i32, _z)-8, -@as(i32, _z)+7);
+		if(x < 2 and z < 2) return 6;
+		if(y < 5 and y >= 2) {
+			if(x == 0 or z == 0) return 6;
+		}
+		return null;
+	}
+};
 
 fn log(_x: u16, _y: u16, _z: u16) ?u4 {
 	var x = @intToFloat(f32, _x) - 7.5;
@@ -169,7 +226,12 @@ pub fn init() !void {
 	(try voxelModels.addOne()).init(log);
 
 	try nameToIndex.put("fence", @intCast(u16, voxelModels.items.len));
-	(try voxelModels.addOne()).init(fence);
+	(try voxelModels.addOne()).init(Fence.fence0);
+	(try voxelModels.addOne()).init(Fence.fence1);
+	(try voxelModels.addOne()).init(Fence.fence2_neighbor);
+	(try voxelModels.addOne()).init(Fence.fence2_oppose);
+	(try voxelModels.addOne()).init(Fence.fence3);
+	(try voxelModels.addOne()).init(Fence.fence4);
 
 	try nameToIndex.put("octahedron", @intCast(u16, voxelModels.items.len));
 	(try voxelModels.addOne()).init(octahedron);
