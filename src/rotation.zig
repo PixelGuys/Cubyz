@@ -286,7 +286,7 @@ pub fn register(comptime Mode: type) !void {
 	var result: RotationMode = RotationMode{.id = Mode.id};
 	inline for(@typeInfo(RotationMode).Struct.fields) |field| {
 		if(@hasDecl(Mode, field.name)) {
-			if(field.field_type == @TypeOf(@field(Mode, field.name))) {
+			if(field.type == @TypeOf(@field(Mode, field.name))) {
 				@field(result, field.name) = @field(Mode, field.name);
 			} else {
 				@field(result, field.name) = &@field(Mode, field.name);

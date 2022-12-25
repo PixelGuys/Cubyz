@@ -1,7 +1,6 @@
 #version 330
 
-layout (location=0) in vec2 in_vertex_pos;
-layout (location=1) in vec2 face_pos;
+layout (location=0) in vec2 face_pos;
 
 out vec2 frag_face_pos;
 out vec4 color;
@@ -24,7 +23,7 @@ vec2 convert2Proportional(vec2 original, vec2 full) {
 
 
 void main() {
-	vec2 vertex_pos = in_vertex_pos;
+	vec2 vertex_pos = face_pos*vec2(1, -1);
 	vec2 position_percentage 	= convert2Proportional(offset*ratio, scene);
 	vec2 size_percentage		= convert2Proportional(vec2(texture_rect.z, texture_rect.w)*ratio, scene);
 	if ((fontEffects & 0x02000000) != 0) { // italic

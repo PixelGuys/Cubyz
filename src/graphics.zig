@@ -3,8 +3,11 @@
 
 const std = @import("std");
 
+const freetype = @import("freetype");
+
 const Vec4i = @import("vec.zig").Vec4i;
 const Vec2f = @import("vec.zig").Vec2f;
+const Vec2i = @import("vec.zig").Vec2i;
 const Vec3f = @import("vec.zig").Vec3f;
 
 const main = @import("main.zig");
@@ -288,36 +291,198 @@ pub const Draw = struct {
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
-//	// ----------------------------------------------------------------------------
-//	// TODO: Stuff for drawText:
-//
-//	private static CubyzFont font;
-//	private static float fontSize;
-//	public static void setFont(CubyzFont font, float fontSize) {
-//		Graphics.font = font;
-//		Graphics.fontSize = fontSize;
-//	}
-//	
-//	/**
-//	 * Draws a given string.
-//	 * Uses TextLine.
-//	 * @param x left
-//	 * @param y top
-//	 * @param text
-//	 */
-//	public static void drawText(float x, float y, String text) {
-//		text = String.format("#%06x", 0xffffff & color) + text; // Add the coloring information.
-//		TextLine line = new TextLine(font, text, fontSize, false);
-//		line.render(x, y);
-//	}
+	// ----------------------------------------------------------------------------
+	
+	pub fn text(_text: []const u8, x: f32, y: f32, fontSize: f32) !void {
+		try TextRendering.renderText(_text, x, y, fontSize);
+	}
 };
 
-pub fn init() void {
+const TextRendering = struct {
+	const Glyph = struct {
+		textureX: i32,
+		size: Vec2i,
+		bearing: Vec2i,
+		advance: f32,
+	};
+	var shader: Shader = undefined;
+	var uniforms: struct {
+		texture_rect: c_int,
+		scene: c_int,
+		offset: c_int,
+		ratio: c_int,
+		fontEffects: c_int,
+		fontSize: c_int,
+		texture_sampler: c_int,
+		alpha: c_int,
+	} = undefined;
+
+	var freetypeLib: freetype.Library = undefined;
+	var font: freetype.Face = undefined;
+	var glyphMapping: std.ArrayList(u31) = undefined;
+	var glyphData: std.ArrayList(Glyph) = undefined;
+	var glyphTexture: [2]c_uint = undefined;
+	var textureWidth: i32 = 1024;
+	const textureHeight: i32 = 16;
+	var textureOffset: i32 = 0;
+	fn init() !void {
+		shader = try Shader.create("assets/cubyz/shaders/graphics/Text.vs", "assets/cubyz/shaders/graphics/Text.fs");
+		uniforms = shader.bulkGetUniformLocation(@TypeOf(uniforms));
+		shader.bind();
+		c.glUniform1i(uniforms.texture_sampler, 0);
+		c.glUniform1f(uniforms.alpha, 1.0);
+		c.glUniform2f(uniforms.fontSize, @intToFloat(f32, textureWidth), @intToFloat(f32, textureHeight));
+		freetypeLib = try freetype.Library.init();
+		font = try freetypeLib.createFace("assets/cubyz/fonts/unscii-16-full.ttf", 0);
+		try font.setPixelSizes(0, textureHeight);
+
+		glyphMapping = std.ArrayList(u31).init(main.globalAllocator);
+		glyphData = std.ArrayList(Glyph).init(main.globalAllocator);
+		try glyphData.append(undefined); // 0 is a reserved value.
+		c.glCreateTextures(c.GL_TEXTURE_2D, 2, &glyphTexture);
+		c.glBindTexture(c.GL_TEXTURE_2D, glyphTexture[0]);
+		c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_R8, textureWidth, textureHeight, 0, c.GL_RED, c.GL_UNSIGNED_BYTE, null);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
+	}
+
+	fn deinit() void {
+		shader.delete();
+		font.deinit();
+		freetypeLib.deinit();
+		glyphMapping.deinit();
+		glyphData.deinit();
+		c.glDeleteTextures(2, &glyphTexture);
+	}
+
+	fn resizeTexture(newWidth: i32) !void {
+		textureWidth = newWidth;
+		const swap = glyphTexture[1];
+		glyphTexture[1] = glyphTexture[0];
+		glyphTexture[0] = swap;
+		c.glBindTexture(c.GL_TEXTURE_2D, glyphTexture[0]);
+		c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_R8, newWidth, textureHeight, 0, c.GL_RED, c.GL_UNSIGNED_BYTE, null);
+		c.glCopyImageSubData(
+			glyphTexture[1], c.GL_TEXTURE_2D, 0, 0, 0, 0,
+			glyphTexture[0], c.GL_TEXTURE_2D, 0, 0, 0, 0,
+			textureOffset, textureHeight, 1
+		);
+		shader.bind();
+		c.glUniform2f(uniforms.fontSize, @intToFloat(f32, textureWidth), @intToFloat(f32, textureHeight));
+	}
+
+	fn uploadData(bitmap: freetype.Bitmap) !void {
+		const width = @bitCast(i32, bitmap.width());
+		const height = @bitCast(i32, bitmap.rows());
+		const buffer = bitmap.buffer() orelse return;
+		if(textureOffset + width > textureWidth) {
+			try resizeTexture(textureWidth*2);
+		}
+		c.glPixelStorei(c.GL_UNPACK_ALIGNMENT, 1);
+		c.glTexSubImage2D(c.GL_TEXTURE_2D, 0, textureOffset, 0, width, height, c.GL_RED, c.GL_UNSIGNED_BYTE, buffer.ptr);
+		textureOffset += width;
+	}
+
+	fn getGlyph(char: u21) !Glyph {
+		if(char >= glyphMapping.items.len) {
+			try glyphMapping.appendNTimes(0, char - glyphMapping.items.len + 1);
+		}
+		if(glyphMapping.items[char] == 0) {// glyph was not initialized yet.
+			try font.loadChar(char, freetype.LoadFlags{.render = true});
+			const glyph = font.glyph();
+			const bitmap = glyph.bitmap();
+			const width = bitmap.width();
+			const height = bitmap.rows();
+			glyphMapping.items[char] = @intCast(u31, glyphData.items.len);
+			(try glyphData.addOne()).* = Glyph {
+				.textureX = textureOffset,
+				.size = Vec2i{@intCast(i32, width), @intCast(i32, height)},
+				.bearing = Vec2i{glyph.bitmapLeft(), 16 - glyph.bitmapTop()},
+				.advance = @intToFloat(f32, glyph.advance().x)/@intToFloat(f32, 1 << 6),
+			};
+			try uploadData(bitmap);
+		}
+		return glyphData.items[glyphMapping.items[char]];
+	}
+
+	fn drawGlyph(glyph: Glyph, x: f32, y: f32) void {
+
+//		Glyph glyph = glyphs.get(i);
+//		// Check if new markers are active:
+//		if (textMarkingInfo != null) {
+//			while (markerIndex < textMarkingInfo.length && glyph.charIndex >= textMarkingInfo[markerIndex].charPosition) {
+//				switch(textMarkingInfo[markerIndex].type) {
+//					case TextMarker.TYPE_BOLD:
+//					case TextMarker.TYPE_ITALIC:
+//						activeFontEffects ^= textMarkingInfo[markerIndex].type;
+//						break;
+//					case TextMarker.TYPE_COLOR:
+//						color = textMarkingInfo[markerIndex].color;
+//						break;
+//					case TextMarker.TYPE_COLOR_ANIMATION:
+//						color = textMarkingInfo[markerIndex].animation.getColor();
+//						break;
+//				}
+//				markerIndex++;
+//			}
+//		}
+//		Rectangle textureBounds = font.getGlyph(glyph.codepoint);
+//		if ((activeFontEffects & TextMarker.TYPE_BOLD) != 0) {
+//			// Increase the texture size for the bold shadering to work.
+//			textureBounds = new Rectangle(textureBounds.x, textureBounds.y-1, textureBounds.width, textureBounds.height+1);
+//			y -= 1; // Make sure that the glyph stays leveled.
+//		}
+//		if (isControlCharacter[i]) {
+//			// Control characters are drawn using a gray color and without font effects, to make them stand out.
+//			glUniform1i(TextUniforms.loc_fontEffects, 0x007f7f7f);
+//		} else {
+//			glUniform1i(TextUniforms.loc_fontEffects, color | (activeFontEffects << 24));
+//		}
+
+		c.glUniform2f(uniforms.offset, @intToFloat(f32, glyph.bearing[0]) + x, @intToFloat(f32, glyph.bearing[1]) + y);
+		c.glUniform4f(uniforms.texture_rect, @intToFloat(f32, glyph.textureX), 0, @intToFloat(f32, glyph.size[0]), @intToFloat(f32, glyph.size[1]));
+
+		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+//		if ((activeFontEffects & TextMarker.TYPE_BOLD) != 0 && !isControlCharacter[i]) {
+//			// Just draw another thing on top in x direction. y-direction is handled in the shader.
+//			glUniform2f(TextUniforms.loc_offset, glyph.x + x + 0.5f, glyph.y + y);
+//			glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+//		}
+//		
+//		if ((activeFontEffects & TextMarker.TYPE_BOLD) != 0) {
+//			y += 1; // Revert the previous transformation.
+//		}
+	}
+
+	fn renderText(text: []const u8, _x: f32, _y: f32, fontSize: f32) !void {
+		const fontScaling = fontSize/16.0;
+		var x = _x/fontScaling;
+		const y = _y/fontScaling;
+		shader.bind();
+		c.glUniform2f(uniforms.scene, @intToFloat(f32, main.Window.width), @intToFloat(f32, main.Window.height));
+		c.glUniform1f(uniforms.ratio, fontScaling);
+		c.glActiveTexture(c.GL_TEXTURE0);
+		c.glBindTexture(c.GL_TEXTURE_2D, glyphTexture[0]);
+		c.glBindVertexArray(Draw.rectVAO);
+
+		var unicodeIterator = std.unicode.Utf8Iterator{.bytes = text, .i = 0};
+		while(unicodeIterator.nextCodepoint()) |codepoint| {
+			const glyph = try getGlyph(codepoint);
+			drawGlyph(glyph, x, y);
+			x += glyph.advance;
+		}
+	}
+};
+
+pub fn init() !void {
 	Draw.initCircle();
 	Draw.initDrawRect();
 	Draw.initImage();
 	Draw.initLine();
 	Draw.initRect();
+	try TextRendering.init();
 }
 
 pub fn deinit() void {
@@ -326,6 +491,7 @@ pub fn deinit() void {
 	Draw.deinitImage();
 	Draw.deinitLine();
 	Draw.deinitRect();
+	TextRendering.deinit();
 }
 
 pub const Shader = struct {
@@ -386,7 +552,7 @@ pub const Shader = struct {
 	pub fn bulkGetUniformLocation(self: *const Shader, comptime T: type) T {
 		var ret: T = undefined;
 		inline for(@typeInfo(T).Struct.fields) |field| {
-			if(field.field_type == c_int) {
+			if(field.type == c_int) {
 				@field(ret, field.name) = c.glGetUniformLocation(self.id, field.name[0..]);
 			}
 		}

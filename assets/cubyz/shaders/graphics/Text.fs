@@ -28,10 +28,10 @@ void main(){
 			);
 	if ((fontEffects & 0x01000000) != 0) { // make it bold in y by sampling more pixels.
 		vec2 pixel_offset = 1/fontSize;
-		frag_color = color*max(texture(texture_sampler, texture_position),
-					texture(texture_sampler, texture_position + vec2(0, 0.5f/fontSize.y)));
+		frag_color = color*max(texture(texture_sampler, texture_position).r,
+					texture(texture_sampler, texture_position + vec2(0, 0.5f/fontSize.y)).r);
 	} else {
 		frag_color = color*texture(texture_sampler,
-			texture_position);
+			texture_position).r;
 	}
 }

@@ -247,7 +247,7 @@ pub fn main() !void {
 	try Window.init();
 	defer Window.deinit();
 
-	graphics.init();
+	try graphics.init();
 	defer graphics.deinit();
 
 	try rotation.init();
@@ -315,7 +315,10 @@ pub fn main() !void {
 		}
 
 		{ // Render the GUI
+			c.glDisable(c.GL_CULL_FACE);
 			c.glDisable(c.GL_DEPTH_TEST);
+
+			try graphics.Draw.text("Hello test xyz  αβγδε  ĤΨ = -ħ²/2m ∇²Ψ + VΨ  a⃗×b⃗ = -b⃗×a⃗", 500, 500, 64.0);
 
 			//graphics.Draw.setColor(0xff0000ff);
 			//graphics.Draw.rect(Vec2f{.x = 100, .y = 100}, Vec2f{.x = 200, .y = 100});

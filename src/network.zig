@@ -63,7 +63,7 @@ const Socket = struct {
 pub fn init() void {
 	Socket.c.startup();
 	inline for(@typeInfo(@TypeOf(Protocols)).Struct.fields) |field| {
-		if(field.field_type == type) {
+		if(field.type == type) {
 			const id = @field(Protocols, field.name).id;
 			if(id != Protocols.keepAlive and id != Protocols.important and Protocols.list[id] == null) {
 				Protocols.list[id] = @field(Protocols, field.name).receive;
@@ -325,7 +325,6 @@ const STUN = struct {
 	}
 };
 
-//	private volatile boolean running = true;
 pub const ConnectionManager = struct {
 	socket: Socket = undefined,
 	thread: std.Thread = undefined,
