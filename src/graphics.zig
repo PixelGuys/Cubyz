@@ -407,53 +407,21 @@ const TextRendering = struct {
 		return glyphData.items[glyphMapping.items[char]];
 	}
 
-	fn drawGlyph(glyph: Glyph, x: f32, y: f32) void {
-
-//		Glyph glyph = glyphs.get(i);
-//		// Check if new markers are active:
-//		if (textMarkingInfo != null) {
-//			while (markerIndex < textMarkingInfo.length && glyph.charIndex >= textMarkingInfo[markerIndex].charPosition) {
-//				switch(textMarkingInfo[markerIndex].type) {
-//					case TextMarker.TYPE_BOLD:
-//					case TextMarker.TYPE_ITALIC:
-//						activeFontEffects ^= textMarkingInfo[markerIndex].type;
-//						break;
-//					case TextMarker.TYPE_COLOR:
-//						color = textMarkingInfo[markerIndex].color;
-//						break;
-//					case TextMarker.TYPE_COLOR_ANIMATION:
-//						color = textMarkingInfo[markerIndex].animation.getColor();
-//						break;
-//				}
-//				markerIndex++;
-//			}
-//		}
-//		Rectangle textureBounds = font.getGlyph(glyph.codepoint);
-//		if ((activeFontEffects & TextMarker.TYPE_BOLD) != 0) {
-//			// Increase the texture size for the bold shadering to work.
-//			textureBounds = new Rectangle(textureBounds.x, textureBounds.y-1, textureBounds.width, textureBounds.height+1);
-//			y -= 1; // Make sure that the glyph stays leveled.
-//		}
-//		if (isControlCharacter[i]) {
-//			// Control characters are drawn using a gray color and without font effects, to make them stand out.
-//			glUniform1i(TextUniforms.loc_fontEffects, 0x007f7f7f);
-//		} else {
-//			glUniform1i(TextUniforms.loc_fontEffects, color | (activeFontEffects << 24));
-//		}
-
-		c.glUniform2f(uniforms.offset, @intToFloat(f32, glyph.bearing[0]) + x, @intToFloat(f32, glyph.bearing[1]) + y);
-		c.glUniform4f(uniforms.texture_rect, @intToFloat(f32, glyph.textureX), 0, @intToFloat(f32, glyph.size[0]), @intToFloat(f32, glyph.size[1]));
-
-		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
-//		if ((activeFontEffects & TextMarker.TYPE_BOLD) != 0 && !isControlCharacter[i]) {
-//			// Just draw another thing on top in x direction. y-direction is handled in the shader.
-//			glUniform2f(TextUniforms.loc_offset, glyph.x + x + 0.5f, glyph.y + y);
-//			glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-//		}
-//		
-//		if ((activeFontEffects & TextMarker.TYPE_BOLD) != 0) {
-//			y += 1; // Revert the previous transformation.
-//		}
+	fn drawGlyph(glyph: Glyph, x: f32, y: f32, fontEffects: u28) void {
+		// TODO: Underline/overline
+		c.glUniform1i(uniforms.fontEffects, fontEffects);
+		if(fontEffects & 0x1000000 != 0) { // bold
+			c.glUniform2f(uniforms.offset, @intToFloat(f32, glyph.bearing[0]) + x, @intToFloat(f32, glyph.bearing[1]) + y - 1);
+			c.glUniform4f(uniforms.texture_rect, @intToFloat(f32, glyph.textureX), 0, @intToFloat(f32, glyph.size[0]), @intToFloat(f32, glyph.size[1] + 1));
+			c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+			// Just draw another thing on top in x direction. The y-direction is handled in the shader.
+			c.glUniform2f(uniforms.offset, @intToFloat(f32, glyph.bearing[0]) + x + 0.5, @intToFloat(f32, glyph.bearing[1]) + y - 1);
+			c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+		} else {
+			c.glUniform2f(uniforms.offset, @intToFloat(f32, glyph.bearing[0]) + x, @intToFloat(f32, glyph.bearing[1]) + y);
+			c.glUniform4f(uniforms.texture_rect, @intToFloat(f32, glyph.textureX), 0, @intToFloat(f32, glyph.size[0]), @intToFloat(f32, glyph.size[1]));
+			c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+		}
 	}
 
 	fn renderText(text: []const u8, _x: f32, _y: f32, fontSize: f32) !void {
@@ -468,9 +436,94 @@ const TextRendering = struct {
 		c.glBindVertexArray(Draw.rectVAO);
 
 		var unicodeIterator = std.unicode.Utf8Iterator{.bytes = text, .i = 0};
+		var state: enum(u5) {
+			colorRU = 5,
+			colorRL = 4,
+			colorGU = 3,
+			colorGL = 2,
+			colorBU = 1,
+			colorBL = 0,
+			text = 6,
+			star,
+			underscore,
+			backslash,
+		} = .text;
+		var fontEffects: packed struct(u28) {
+			color: u24 = 0,
+			bold: bool = false,
+			italic: bool = false,
+			underline: bool = false,
+			overline: bool = false,
+		} = .{};
 		while(unicodeIterator.nextCodepoint()) |codepoint| {
+			const isControlCharacter: bool = blk: {
+				switch(state) {
+					.text => {
+						switch(codepoint) {
+							'*' => {
+								state = .star;
+								break :blk true;
+							},
+							'_' => {
+								state = .underscore;
+								break :blk true;
+							},
+							'\\' => {
+								state = .backslash;
+								break :blk true;
+							},
+							'#' => {
+								state = .colorRU;
+								break :blk true;
+							},
+							else => {
+								break :blk false;
+							}
+						}
+					},
+					.star => {
+						state = .text;
+						if(codepoint == '*') {
+							fontEffects.bold = !fontEffects.bold;
+							break :blk true;
+						} else {
+							fontEffects.italic = !fontEffects.italic;
+							break :blk false;
+						}
+					},
+					.underscore => {
+						state = .text;
+						if(codepoint == '_') {
+							fontEffects.bold = !fontEffects.bold;
+							break :blk true;
+						} else {
+							fontEffects.italic = !fontEffects.italic;
+							break :blk false;
+						}
+					},
+					.backslash => {
+						state = .text;
+						break :blk false;
+					},
+					else => |colorEnum| {
+						const shift = 4*@enumToInt(colorEnum);
+						fontEffects.color = (fontEffects.color & ~(@as(u24, 0xf) << shift)) | @as(u24, switch(codepoint) {
+							'0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => codepoint - '0',
+							'a', 'b', 'c', 'd', 'e', 'f' => codepoint - 'a' + 10,
+							'A', 'B', 'C', 'D', 'E', 'F' => codepoint - 'A' + 10,
+							else => 0,
+						}) << shift;
+						if(colorEnum == .colorBL) {
+							state = .text;
+						} else {
+							state = @intToEnum(@TypeOf(state), @enumToInt(colorEnum) - 1);
+						}
+						break :blk true;
+					},
+				}
+			};
 			const glyph = try getGlyph(codepoint);
-			drawGlyph(glyph, x, y);
+			drawGlyph(glyph, x, y, if(isControlCharacter) 0x808080 else @bitCast(u28, fontEffects));
 			x += glyph.advance;
 		}
 	}

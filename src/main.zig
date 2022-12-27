@@ -318,7 +318,7 @@ pub fn main() !void {
 			c.glDisable(c.GL_CULL_FACE);
 			c.glDisable(c.GL_DEPTH_TEST);
 
-			try graphics.Draw.text("Hello test xyz  αβγδε  ĤΨ = -ħ²/2m ∇²Ψ + VΨ  a⃗×b⃗ = -b⃗×a⃗", 500, 500, 64.0);
+			try graphics.Draw.text("*italic* **bold** ***both*** #ff0000red#00ff00green#0000ffblue", 500, 500, 64.0);
 
 			//graphics.Draw.setColor(0xff0000ff);
 			//graphics.Draw.rect(Vec2f{.x = 100, .y = 100}, Vec2f{.x = 200, .y = 100});
