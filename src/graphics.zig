@@ -4,6 +4,7 @@
 const std = @import("std");
 
 const freetype = @import("freetype");
+const harfbuzz = @import("harfbuzz");
 
 const Vec4i = @import("vec.zig").Vec4i;
 const Vec2f = @import("vec.zig").Vec2f;
@@ -294,7 +295,180 @@ pub const Draw = struct {
 	// ----------------------------------------------------------------------------
 	
 	pub fn text(_text: []const u8, x: f32, y: f32, fontSize: f32) !void {
-		try TextRendering.renderText(_text, x, y, fontSize);
+		try TextRendering.renderText(_text, x, y, fontSize, .{.color = @truncate(u24, color)});
+	}
+};
+
+pub const TextBuffer = struct {
+
+	pub const FontEffect = packed struct(u28) {
+		color: u24 = 0,
+		bold: bool = false,
+		italic: bool = false,
+		underline: bool = false,
+		overline: bool = false,
+	};
+
+	buffer: harfbuzz.Buffer,
+	glyphInfos: []harfbuzz.GlyphInfo,
+	glyphPositions: []harfbuzz.Position,
+	textIndexGuess: []u32,
+	fontEffects: std.ArrayList(FontEffect),
+
+
+	pub fn init(allocator: Allocator, text: []const u8, initialFontEffect: FontEffect, showControlCharacters: bool) !TextBuffer {
+		var self: TextBuffer = undefined;
+		// Parse the input text:
+		var parsedText = std.ArrayList(u32).init(main.threadAllocator);
+		defer parsedText.deinit();
+		self.fontEffects = std.ArrayList(FontEffect).init(allocator);
+		var unicodeIterator = std.unicode.Utf8Iterator{.bytes = text, .i = 0};
+		var state: enum(u5) {
+			colorRU = 5,
+			colorRL = 4,
+			colorGU = 3,
+			colorGL = 2,
+			colorBU = 1,
+			colorBL = 0,
+			text = 6,
+			star,
+			underscore,
+			backslash,
+		} = .text;
+		var currentFontEffect: FontEffect = initialFontEffect;
+		while(unicodeIterator.nextCodepoint()) |codepoint| {
+			const isControlCharacter: bool = blk: {
+				switch(state) {
+					.text => {
+						switch(codepoint) {
+							'*' => {
+								state = .star;
+								break :blk true;
+							},
+							'_' => {
+								state = .underscore;
+								break :blk true;
+							},
+							'\\' => {
+								state = .backslash;
+								break :blk true;
+							},
+							'#' => {
+								state = .colorRU;
+								break :blk true;
+							},
+							else => {
+								break :blk false;
+							}
+						}
+					},
+					.star => {
+						state = .text;
+						if(codepoint == '*') {
+							currentFontEffect.bold = !currentFontEffect.bold;
+							break :blk true;
+						} else {
+							currentFontEffect.italic = !currentFontEffect.italic;
+							break :blk false;
+						}
+					},
+					.underscore => {
+						state = .text;
+						if(codepoint == '_') {
+							currentFontEffect.overline = !currentFontEffect.overline;
+							break :blk true;
+						} else {
+							currentFontEffect.underline = !currentFontEffect.underline;
+							break :blk false;
+						}
+					},
+					.backslash => {
+						state = .text;
+						break :blk false;
+					},
+					else => |colorEnum| {
+						const shift = 4*@enumToInt(colorEnum);
+						currentFontEffect.color = (currentFontEffect.color & ~(@as(u24, 0xf) << shift)) | @as(u24, switch(codepoint) {
+							'0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => codepoint - '0',
+							'a', 'b', 'c', 'd', 'e', 'f' => codepoint - 'a' + 10,
+							'A', 'B', 'C', 'D', 'E', 'F' => codepoint - 'A' + 10,
+							else => 0,
+						}) << shift;
+						if(colorEnum == .colorBL) {
+							state = .text;
+						} else {
+							state = @intToEnum(@TypeOf(state), @enumToInt(colorEnum) - 1);
+						}
+						break :blk true;
+					},
+				}
+			};
+			if(isControlCharacter) {
+				if(showControlCharacters) {
+					try parsedText.append(codepoint);
+					try self.fontEffects.append(.{.color = 0x808080});
+				}
+			} else {
+				try parsedText.append(codepoint);
+				try self.fontEffects.append(currentFontEffect);
+			}
+		}
+
+
+		// Let harfbuzz do its thing:
+		self.buffer = harfbuzz.Buffer.init() orelse return error.CouldNotInitHarfbuzzBuffer;
+		self.buffer.addUTF32(parsedText.items, 0, null);
+		self.buffer.setDirection(.ltr);
+		self.buffer.setScript(.common);
+		self.buffer.setLanguage(harfbuzz.Language.getDefault());
+		harfbuzz.hb_shape(TextRendering.harfbuzzFont.handle, self.buffer.handle, null, 0);
+		self.glyphInfos = self.buffer.getGlyphInfos();
+		self.glyphPositions = self.buffer.getGlyphPositions() orelse return error.CouldNotGetGlyphPositions;
+
+		// Guess the text index from the given cluster indices. Only works if the number of glyphs and the number of characters in a cluster is the same.
+		self.textIndexGuess = try allocator.alloc(u32, self.glyphInfos.len);
+		for(self.textIndexGuess) |*index, i| {
+			if(i == 0 or self.glyphInfos[i-1].cluster != self.glyphInfos[i].cluster) {
+				index.* = self.glyphInfos[i].cluster;
+			} else {
+				index.* = @min(self.textIndexGuess[i-1] + 1, @intCast(u32, parsedText.items.len-1));
+				for(self.glyphInfos[i..]) |glyphInfo| {
+					if(glyphInfo.cluster != self.glyphInfos[i].cluster) {
+						index.* = @min(index.*, glyphInfo.cluster - 1);
+						break;
+					}
+				}
+			}
+		}
+		return self;
+	}
+
+	pub fn deinit(self: TextBuffer) void {
+		self.fontEffects.allocator.free(self.textIndexGuess);
+		self.fontEffects.deinit();
+		self.buffer.deinit();
+	}
+
+	pub fn render(self: TextBuffer, _x: f32, _y: f32, fontSize: f32) !void {
+		const fontScaling = fontSize/16.0;
+		var x = _x/fontScaling;
+		var y = _y/fontScaling;
+		TextRendering.shader.bind();
+		c.glUniform2f(TextRendering.uniforms.scene, @intToFloat(f32, main.Window.width), @intToFloat(f32, main.Window.height));
+		c.glUniform1f(TextRendering.uniforms.ratio, fontScaling);
+		c.glActiveTexture(c.GL_TEXTURE0);
+		c.glBindTexture(c.GL_TEXTURE_2D, TextRendering.glyphTexture[0]);
+		c.glBindVertexArray(Draw.rectVAO);
+		for(self.glyphInfos) |glyphInfo, i| {
+			const position = self.glyphPositions[i];
+			const codepoint = glyphInfo.codepoint;
+
+			const glyph = try TextRendering.getGlyph(codepoint);
+			TextRendering.drawGlyph(glyph, x + @intToFloat(f32, position.x_offset)/@intToFloat(f32, 1 << 2), y - @intToFloat(f32, position.y_offset)/@intToFloat(f32, 1 << 2), @bitCast(u28, self.fontEffects.items[self.textIndexGuess[i]]));
+
+			x += @intToFloat(f32, position.x_advance)/@intToFloat(f32, 1 << 2);
+			y -= @intToFloat(f32, position.y_advance)/@intToFloat(f32, 1 << 2);
+		}
 	}
 };
 
@@ -318,7 +492,9 @@ const TextRendering = struct {
 	} = undefined;
 
 	var freetypeLib: freetype.Library = undefined;
-	var font: freetype.Face = undefined;
+	var freetypeFace: freetype.Face = undefined;
+	var harfbuzzFace: harfbuzz.Face = undefined;
+	var harfbuzzFont: harfbuzz.Font = undefined;
 	var glyphMapping: std.ArrayList(u31) = undefined;
 	var glyphData: std.ArrayList(Glyph) = undefined;
 	var glyphTexture: [2]c_uint = undefined;
@@ -333,8 +509,10 @@ const TextRendering = struct {
 		c.glUniform1f(uniforms.alpha, 1.0);
 		c.glUniform2f(uniforms.fontSize, @intToFloat(f32, textureWidth), @intToFloat(f32, textureHeight));
 		freetypeLib = try freetype.Library.init();
-		font = try freetypeLib.createFace("assets/cubyz/fonts/unscii-16-full.ttf", 0);
-		try font.setPixelSizes(0, textureHeight);
+		freetypeFace = try freetypeLib.createFace("assets/cubyz/fonts/unscii-16-full.ttf", 0);
+		try freetypeFace.setPixelSizes(0, textureHeight);
+		harfbuzzFace = harfbuzz.Face.fromFreetypeFace(freetypeFace);
+		harfbuzzFont = harfbuzz.Font.init(harfbuzzFace);
 
 		glyphMapping = std.ArrayList(u31).init(main.globalAllocator);
 		glyphData = std.ArrayList(Glyph).init(main.globalAllocator);
@@ -350,11 +528,11 @@ const TextRendering = struct {
 
 	fn deinit() void {
 		shader.delete();
-		font.deinit();
 		freetypeLib.deinit();
 		glyphMapping.deinit();
 		glyphData.deinit();
 		c.glDeleteTextures(2, &glyphTexture);
+		harfbuzzFont.deinit();
 	}
 
 	fn resizeTexture(newWidth: i32) !void {
@@ -385,17 +563,17 @@ const TextRendering = struct {
 		textureOffset += width;
 	}
 
-	fn getGlyph(char: u21) !Glyph {
-		if(char >= glyphMapping.items.len) {
-			try glyphMapping.appendNTimes(0, char - glyphMapping.items.len + 1);
+	fn getGlyph(codepoint: u32) !Glyph {
+		if(codepoint >= glyphMapping.items.len) {
+			try glyphMapping.appendNTimes(0, codepoint - glyphMapping.items.len + 1);
 		}
-		if(glyphMapping.items[char] == 0) {// glyph was not initialized yet.
-			try font.loadChar(char, freetype.LoadFlags{.render = true});
-			const glyph = font.glyph();
+		if(glyphMapping.items[codepoint] == 0) {// glyph was not initialized yet.
+			try freetypeFace.loadGlyph(codepoint, freetype.LoadFlags{.render = true});
+			const glyph = freetypeFace.glyph();
 			const bitmap = glyph.bitmap();
 			const width = bitmap.width();
 			const height = bitmap.rows();
-			glyphMapping.items[char] = @intCast(u31, glyphData.items.len);
+			glyphMapping.items[codepoint] = @intCast(u31, glyphData.items.len);
 			(try glyphData.addOne()).* = Glyph {
 				.textureX = textureOffset,
 				.size = Vec2i{@intCast(i32, width), @intCast(i32, height)},
@@ -404,7 +582,7 @@ const TextRendering = struct {
 			};
 			try uploadData(bitmap);
 		}
-		return glyphData.items[glyphMapping.items[char]];
+		return glyphData.items[glyphMapping.items[codepoint]];
 	}
 
 	fn drawGlyph(glyph: Glyph, x: f32, y: f32, fontEffects: u28) void {
@@ -424,108 +602,11 @@ const TextRendering = struct {
 		}
 	}
 
-	fn renderText(text: []const u8, _x: f32, _y: f32, fontSize: f32) !void {
-		const fontScaling = fontSize/16.0;
-		var x = _x/fontScaling;
-		const y = _y/fontScaling;
-		shader.bind();
-		c.glUniform2f(uniforms.scene, @intToFloat(f32, main.Window.width), @intToFloat(f32, main.Window.height));
-		c.glUniform1f(uniforms.ratio, fontScaling);
-		c.glActiveTexture(c.GL_TEXTURE0);
-		c.glBindTexture(c.GL_TEXTURE_2D, glyphTexture[0]);
-		c.glBindVertexArray(Draw.rectVAO);
+	fn renderText(text: []const u8, x: f32, y: f32, fontSize: f32, initialFontEffect: TextBuffer.FontEffect) !void {
+		const buf = try TextBuffer.init(main.threadAllocator, text, initialFontEffect, false);
+		defer buf.deinit();
 
-		var unicodeIterator = std.unicode.Utf8Iterator{.bytes = text, .i = 0};
-		var state: enum(u5) {
-			colorRU = 5,
-			colorRL = 4,
-			colorGU = 3,
-			colorGL = 2,
-			colorBU = 1,
-			colorBL = 0,
-			text = 6,
-			star,
-			underscore,
-			backslash,
-		} = .text;
-		var fontEffects: packed struct(u28) {
-			color: u24 = 0,
-			bold: bool = false,
-			italic: bool = false,
-			underline: bool = false,
-			overline: bool = false,
-		} = .{};
-		while(unicodeIterator.nextCodepoint()) |codepoint| {
-			const isControlCharacter: bool = blk: {
-				switch(state) {
-					.text => {
-						switch(codepoint) {
-							'*' => {
-								state = .star;
-								break :blk true;
-							},
-							'_' => {
-								state = .underscore;
-								break :blk true;
-							},
-							'\\' => {
-								state = .backslash;
-								break :blk true;
-							},
-							'#' => {
-								state = .colorRU;
-								break :blk true;
-							},
-							else => {
-								break :blk false;
-							}
-						}
-					},
-					.star => {
-						state = .text;
-						if(codepoint == '*') {
-							fontEffects.bold = !fontEffects.bold;
-							break :blk true;
-						} else {
-							fontEffects.italic = !fontEffects.italic;
-							break :blk false;
-						}
-					},
-					.underscore => {
-						state = .text;
-						if(codepoint == '_') {
-							fontEffects.bold = !fontEffects.bold;
-							break :blk true;
-						} else {
-							fontEffects.italic = !fontEffects.italic;
-							break :blk false;
-						}
-					},
-					.backslash => {
-						state = .text;
-						break :blk false;
-					},
-					else => |colorEnum| {
-						const shift = 4*@enumToInt(colorEnum);
-						fontEffects.color = (fontEffects.color & ~(@as(u24, 0xf) << shift)) | @as(u24, switch(codepoint) {
-							'0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => codepoint - '0',
-							'a', 'b', 'c', 'd', 'e', 'f' => codepoint - 'a' + 10,
-							'A', 'B', 'C', 'D', 'E', 'F' => codepoint - 'A' + 10,
-							else => 0,
-						}) << shift;
-						if(colorEnum == .colorBL) {
-							state = .text;
-						} else {
-							state = @intToEnum(@TypeOf(state), @enumToInt(colorEnum) - 1);
-						}
-						break :blk true;
-					},
-				}
-			};
-			const glyph = try getGlyph(codepoint);
-			drawGlyph(glyph, x, y, if(isControlCharacter) 0x808080 else @bitCast(u28, fontEffects));
-			x += glyph.advance;
-		}
+		try buf.render(x, y, fontSize);
 	}
 };
 

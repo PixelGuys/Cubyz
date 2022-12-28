@@ -63,7 +63,8 @@ pub fn build(b: *std.build.Builder) !void {
 	}
 	exe.addCSourceFiles(&[_][]const u8{"lib/glad.c", "lib/stb_image.c", "lib/cross_platform_udp_socket.c"}, &[_][]const u8{"-g"});
 	exe.addPackage(freetype.pkg);
-	freetype.link(b, exe, .{});
+	exe.addPackage(freetype.harfbuzz_pkg);
+	freetype.link(b, exe, .{ .harfbuzz = .{} });
 	exe.setTarget(target);
 	exe.setBuildMode(mode);
 	//exe.sanitize_thread = true;
