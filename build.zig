@@ -1,29 +1,7 @@
 const std = @import("std");
 const freetype = @import("mach-freetype/build.zig");
 
-fn sdkPath(comptime suffix: []const u8) []const u8 {
-    if (suffix[0] != '/') @compileError("suffix must be an absolute path");
-    return comptime blk: {
-        const root_dir = std.fs.path.dirname(@src().file) orelse ".";
-        break :blk root_dir ++ suffix;
-    };
-}
-
-fn ensureDependencySubmodule(allocator: std.mem.Allocator, path: []const u8) !void {
-	if (std.process.getEnvVarOwned(allocator, "NO_ENSURE_SUBMODULES")) |no_ensure_submodules| {
-		defer allocator.free(no_ensure_submodules);
-		if (std.mem.eql(u8, no_ensure_submodules, "true")) return;
-	} else |_| {}
-	var child = std.ChildProcess.init(&.{ "git", "submodule", "update", "--init", path }, allocator);
-	child.cwd = sdkPath("/");
-	child.stderr = std.io.getStdErr();
-	child.stdout = std.io.getStdOut();
-
-	_ = try child.spawnAndWait();
-}
-
 pub fn build(b: *std.build.Builder) !void {
-	try ensureDependencySubmodule(b.allocator, "mach-freetype");
 	// Standard target options allows the person running `zig build` to choose
 	// what target to build for. Here we do not override the defaults, which
 	// means any target is allowed, and the default is native. Other options
