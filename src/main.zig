@@ -298,6 +298,8 @@ pub fn main() !void {
 	defer buffer.deinit();
 	var buffer2 = try graphics.TextBuffer.init(threadAllocator, "Time to wrap some lines! a⃗ a⃗⃗ _a#ff0000⃗#ffff00⃗#00ff00⃗#00ffff⃗_#0000ff⃗#ff00ff⃗#000000 ⌬  __*italic*__ _**bold**_ ___***everything***___ #ff0000red#00ff00green#0000ffblue", .{}, false);
 	defer buffer2.deinit();
+	var buffer3 = try graphics.TextBuffer.init(threadAllocator, "😀 😃 😄 😁 😆 😅 🤣 😂 🙂 🙃 🫠 😉 😊 😇 🥰 😍 🤩 😘 😗 ☺ 😚 😙 🥲 😋 😛 😜 🤪 😝 🤑 🤗 🤭 🫢 🫣 🤫 🤔 🫡 🤐 🤨 😐 😑 😶 🫥 😏 😒 🙄 😬 🤥 🫨 😌 😔 😪 🤤 😴 😷 🤒 🤕 🤢 🤮 🤧 🥵 🥶 🥴 😵 🤯 🤠 🥳 🥸 😎 🤓 🧐 😕 🫤 😟 🙁 😮 😯 😲 😳 🥺 🥹 😦 😧 😨 😰 😥 😢 😭 😱 😖 😣 😞 😓 😩 😫 🥱", .{}, false);
+	defer buffer3.deinit();
 
 	while(c.glfwWindowShouldClose(Window.window) == 0) {
 		{ // Check opengl errors:
@@ -327,6 +329,8 @@ pub fn main() !void {
 			graphics.Draw.setColor(0xff008000);
 			graphics.Draw.rect(.{100, 400}, .{200, dim[1]});
 			try buffer2.render(100, 400, 32);
+			_ = try buffer3.calculateLineBreaks(32, 600);
+			try buffer3.render(400, 400, 32);
 
 			//graphics.Draw.setColor(0xff0000ff);
 			//graphics.Draw.rect(Vec2f{.x = 100, .y = 100}, Vec2f{.x = 200, .y = 100});
