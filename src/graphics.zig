@@ -315,18 +315,26 @@ pub const TextBuffer = struct {
 	};
 
 	const Line = struct {
-		start: i32,
-		end: i32,
+		start: f32,
+		end: f32,
 		color: u24,
 		isUnderline: bool,
 	};
 
+	const GlyphData = struct {
+		x_advance: f32,
+		y_advance: f32,
+		x_offset: f32,
+		y_offset: f32,
+		codepoint: u32,
+		cluster: u32,
+		fontEffect: FontEffect,
+	};
+
 	buffer: harfbuzz.Buffer,
-	glyphInfos: []harfbuzz.GlyphInfo,
-	glyphPositions: []harfbuzz.Position,
-	textIndexGuess: []u32,
-	fontEffects: std.ArrayList(FontEffect),
+	glyphs: []GlyphData,
 	lines: std.ArrayList(Line),
+	lineBreakIndices: std.ArrayList(u32),
 
 	fn addLine(self: *TextBuffer, line: Line) !void {
 		if(line.start != line.end) {
@@ -337,8 +345,8 @@ pub const TextBuffer = struct {
 	fn initLines(self: *TextBuffer, comptime isUnderline: bool) !void {
 		var line: Line = Line {.start = 0, .end = 0, .color = 0, .isUnderline = isUnderline};
 		var lastFontEffect: FontEffect = .{};
-		for(self.glyphPositions) |position, i| {
-			const fontEffect = self.fontEffects.items[self.textIndexGuess[i]];
+		for(self.glyphs) |glyph| {
+			const fontEffect = glyph.fontEffect;
 			if(lastFontEffect.hasLine(isUnderline)) {
 				if(fontEffect.color != lastFontEffect.color) {
 					try self.addLine(line);
@@ -352,7 +360,7 @@ pub const TextBuffer = struct {
 				line.color = fontEffect.color;
 			}
 			lastFontEffect = fontEffect;
-			line.end += position.x_advance;
+			line.end += glyph.x_advance;
 		}
 		if(lastFontEffect.hasLine(isUnderline)) {
 			try self.addLine(line);
@@ -363,19 +371,19 @@ pub const TextBuffer = struct {
 		unicodeIterator: std.unicode.Utf8Iterator,
 		currentFontEffect: FontEffect,
 		parsedText: std.ArrayList(u32),
-		buffer: *TextBuffer,
+		fontEffects: std.ArrayList(FontEffect),
 		showControlCharacters: bool,
 
 		fn appendControlGetNext(self: *Parser, char: u32) !?u21 {
 			if(self.showControlCharacters) {
-				try self.buffer.fontEffects.append(.{.color = 0x808080});
+				try self.fontEffects.append(.{.color = 0x808080});
 				try self.parsedText.append(char);
 			}
 			return self.unicodeIterator.nextCodepoint();
 		}
 
 		fn appendGetNext(self: *Parser, char: u32) !?u21 {
-			try self.buffer.fontEffects.append(self.currentFontEffect);
+			try self.fontEffects.append(self.currentFontEffect);
 			try self.parsedText.append(char);
 			return self.unicodeIterator.nextCodepoint();
 		}
@@ -433,33 +441,36 @@ pub const TextBuffer = struct {
 			.unicodeIterator = std.unicode.Utf8Iterator{.bytes = text, .i = 0},
 			.currentFontEffect = initialFontEffect,
 			.parsedText = std.ArrayList(u32).init(main.threadAllocator),
-			.buffer = &self,
+			.fontEffects = std.ArrayList(FontEffect).init(allocator),
 			.showControlCharacters = showControlCharacters
 		};
-		self.fontEffects = std.ArrayList(FontEffect).init(allocator);
-		self.lines = std.ArrayList(Line).init(allocator);
-		try parser.parse();
+		defer parser.fontEffects.deinit();
 		defer parser.parsedText.deinit();
+		self.lines = std.ArrayList(Line).init(allocator);
+		self.lineBreakIndices = std.ArrayList(u32).init(allocator);
+		try parser.parse();
 
 		// Let harfbuzz do its thing:
-		self.buffer = harfbuzz.Buffer.init() orelse return error.CouldNotInitHarfbuzzBuffer;
-		self.buffer.addUTF32(parser.parsedText.items, 0, null);
-		self.buffer.setDirection(.ltr);
-		self.buffer.setScript(.common);
-		self.buffer.setLanguage(harfbuzz.Language.getDefault());
-		harfbuzz.hb_shape(TextRendering.harfbuzzFont.handle, self.buffer.handle, null, 0);
-		self.glyphInfos = self.buffer.getGlyphInfos();
-		self.glyphPositions = self.buffer.getGlyphPositions() orelse return error.CouldNotGetGlyphPositions;
+		var buffer = harfbuzz.Buffer.init() orelse return error.CouldNotInitHarfbuzzBuffer;
+		defer buffer.deinit();
+		buffer.addUTF32(parser.parsedText.items, 0, null);
+		buffer.setDirection(.ltr);
+		buffer.setScript(.common);
+		buffer.setLanguage(harfbuzz.Language.getDefault());
+		harfbuzz.hb_shape(TextRendering.harfbuzzFont.handle, buffer.handle, null, 0);
+		const glyphInfos = buffer.getGlyphInfos();
+		const glyphPositions = buffer.getGlyphPositions() orelse return error.CouldNotGetGlyphPositions;
 
 		// Guess the text index from the given cluster indices. Only works if the number of glyphs and the number of characters in a cluster is the same.
-		self.textIndexGuess = try allocator.alloc(u32, self.glyphInfos.len);
-		for(self.textIndexGuess) |*index, i| {
-			if(i == 0 or self.glyphInfos[i-1].cluster != self.glyphInfos[i].cluster) {
-				index.* = self.glyphInfos[i].cluster;
+		var textIndexGuess = try main.threadAllocator.alloc(u32, glyphInfos.len);
+		defer main.threadAllocator.free(textIndexGuess);
+		for(textIndexGuess) |*index, i| {
+			if(i == 0 or glyphInfos[i-1].cluster != glyphInfos[i].cluster) {
+				index.* = glyphInfos[i].cluster;
 			} else {
-				index.* = @min(self.textIndexGuess[i-1] + 1, @intCast(u32, parser.parsedText.items.len-1));
-				for(self.glyphInfos[i..]) |glyphInfo| {
-					if(glyphInfo.cluster != self.glyphInfos[i].cluster) {
+				index.* = @min(textIndexGuess[i-1] + 1, @intCast(u32, parser.parsedText.items.len-1));
+				for(glyphInfos[i..]) |glyphInfo| {
+					if(glyphInfo.cluster != glyphInfos[i].cluster) {
 						index.* = @min(index.*, glyphInfo.cluster - 1);
 						break;
 					}
@@ -467,17 +478,58 @@ pub const TextBuffer = struct {
 			}
 		}
 
+		// Merge it all together:
+		self.glyphs = try allocator.alloc(GlyphData, glyphInfos.len);
+		for(self.glyphs) |*glyph, i| {
+			glyph.x_advance = @intToFloat(f32, glyphPositions[i].x_advance)/4.0;
+			glyph.y_advance = @intToFloat(f32, glyphPositions[i].y_advance)/4.0;
+			glyph.x_offset = @intToFloat(f32, glyphPositions[i].x_offset)/4.0;
+			glyph.y_offset = @intToFloat(f32, glyphPositions[i].y_offset)/4.0;
+			glyph.codepoint = glyphInfos[i].codepoint;
+			glyph.cluster = glyphInfos[i].cluster;
+			glyph.fontEffect = parser.fontEffects.items[textIndexGuess[i]];
+		}
+
 		// Find the lines:
 		try self.initLines(true);
 		try self.initLines(false);
+		try self.lineBreakIndices.append(0);
+		try self.lineBreakIndices.append(@intCast(u32, self.glyphs.len));
 		return self;
 	}
 
 	pub fn deinit(self: TextBuffer) void {
-		self.fontEffects.allocator.free(self.textIndexGuess);
-		self.fontEffects.deinit();
+		self.lines.allocator.free(self.glyphs);
 		self.lines.deinit();
-		self.buffer.deinit();
+		self.lineBreakIndices.deinit();
+	}
+
+	/// Returns the calculated dimensions of the text block.
+	pub fn calculateLineBreaks(self: *TextBuffer, fontSize: f32, maxLineWidth: f32) !Vec2f {
+		self.lineBreakIndices.clearRetainingCapacity();
+		try self.lineBreakIndices.append(0);
+		var scaledMaxWidth = maxLineWidth/fontSize*16.0;
+		var totalWidth: f32 = 0;
+		var lineWidth: f32 = 0;
+		var lastSpaceWidth: f32 = 0;
+		var lastSpaceIndex: u32 = 0;
+		for(self.glyphs) |glyph, i| {
+			lineWidth += glyph.x_advance;
+			if(lineWidth > scaledMaxWidth and lastSpaceIndex != 0) {
+				lineWidth -= lastSpaceWidth;
+				totalWidth = @max(totalWidth, lastSpaceWidth);
+				try self.lineBreakIndices.append(lastSpaceIndex);
+				lastSpaceIndex = 0;
+				lastSpaceWidth = 0;
+			}
+			if(glyph.codepoint == TextRendering.spaceIndex) {
+				lastSpaceWidth = lineWidth;
+				lastSpaceIndex = @intCast(u32, i+1);
+			}
+		}
+		totalWidth = @max(totalWidth, lineWidth);
+		try self.lineBreakIndices.append(@intCast(u32, self.glyphs.len));
+		return Vec2f{totalWidth*fontSize/16.0, @intToFloat(f32, self.lineBreakIndices.items.len - 1)*fontSize};
 	}
 
 	pub fn render(self: TextBuffer, _x: f32, _y: f32, fontSize: f32) !void {
@@ -490,26 +542,40 @@ pub const TextBuffer = struct {
 		c.glActiveTexture(c.GL_TEXTURE0);
 		c.glBindTexture(c.GL_TEXTURE_2D, TextRendering.glyphTexture[0]);
 		c.glBindVertexArray(Draw.rectVAO);
-		for(self.glyphInfos) |glyphInfo, i| {
-			const position = self.glyphPositions[i];
-			const codepoint = glyphInfo.codepoint;
+		const lineWraps: []f32 = try main.threadAllocator.alloc(f32, self.lineBreakIndices.items.len - 1);
+		defer main.threadAllocator.free(lineWraps);
+		var i: usize = 0;
+		while(i < self.lineBreakIndices.items.len - 1) : (i += 1) {
+			for(self.glyphs[self.lineBreakIndices.items[i]..self.lineBreakIndices.items[i+1]]) |glyph| {
+				const ftGlyph = try TextRendering.getGlyph(glyph.codepoint);
+				TextRendering.drawGlyph(ftGlyph, x + glyph.x_offset, y - glyph.y_offset, @bitCast(u28, glyph.fontEffect));
 
-			const glyph = try TextRendering.getGlyph(codepoint);
-			TextRendering.drawGlyph(glyph, x + @intToFloat(f32, position.x_offset)/4, y - @intToFloat(f32, position.y_offset)/4, @bitCast(u28, self.fontEffects.items[self.textIndexGuess[i]]));
-
-			x += @intToFloat(f32, position.x_advance)/4;
-			y -= @intToFloat(f32, position.y_advance)/4;
+				x += glyph.x_advance;
+				y -= glyph.y_advance;
+			}
+			lineWraps[i] = x - _x/fontScaling;
+			x = _x/fontScaling;
+			y += 16;
 		}
 
 		for(self.lines.items) |_line| {
-			const line: Line = _line;
+			var line: Line = _line;
+			y = _y/fontScaling;
+			if(line.isUnderline) y += 15
+			else y += 8;
 			Draw.setColor(line.color | @as(u32, 0xff000000));
-			var start = Vec2f{(@intToFloat(f32, line.start))*fontScaling/4 + _x, _y};
-			if(line.isUnderline) start[1] += 15*fontScaling
-			else start[1] += 8*fontScaling;
-			const dim = Vec2f{@intToFloat(f32, line.end - line.start)*fontScaling/4, fontScaling};
-			std.log.info("{} {} {} {}", .{line.start, line.end, line.color, line.isUnderline});
-			Draw.rect(start, dim);
+			for(lineWraps) |lineWrap| {
+				const lineStart = @max(0, line.start);
+				const lineEnd = @min(lineWrap, line.end);
+				if(lineStart < lineEnd) {
+					var start = Vec2f{lineStart*fontScaling + _x, y*fontScaling};
+					const dim = Vec2f{(lineEnd - lineStart)*fontScaling, fontScaling};
+					Draw.rect(start, dim);
+				}
+				line.start -= lineWrap;
+				line.end -= lineWrap;
+				y += 16;
+			}
 		}
 	}
 };
@@ -543,6 +609,7 @@ const TextRendering = struct {
 	var textureWidth: i32 = 1024;
 	const textureHeight: i32 = 16;
 	var textureOffset: i32 = 0;
+	var spaceIndex: u32 = undefined;
 	fn init() !void {
 		shader = try Shader.create("assets/cubyz/shaders/graphics/Text.vs", "assets/cubyz/shaders/graphics/Text.fs");
 		uniforms = shader.bulkGetUniformLocation(@TypeOf(uniforms));
@@ -566,6 +633,7 @@ const TextRendering = struct {
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
+		spaceIndex = freetypeFace.getCharIndex(' ').?;
 	}
 
 	fn deinit() void {
