@@ -11,7 +11,7 @@ pub fn scrambleSeed(seed: *u64) void {
 }
 
 fn nextWithBitSize(comptime T: type, seed: *u64, bitSize: u6) T {
-	seed.* = ((seed.*)*multiplier + addend) & mask;
+	seed.* = ((seed.*)*%multiplier +% addend) & mask;
 	return @intCast(T, (seed.* >> (48 - bitSize)) & std.math.maxInt(T));
 }
 
