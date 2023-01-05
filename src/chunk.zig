@@ -446,7 +446,7 @@ pub const meshing = struct {
 
 		c.glUniform3f(uniforms.ambientLight, ambient[0], ambient[1], ambient[2]);
 
-		c.glUniform1i(uniforms.time, @bitCast(i32, time));
+		c.glUniform1i(uniforms.time, @truncate(u31, time));
 
 		c.glBindVertexArray(vao);
 	}
