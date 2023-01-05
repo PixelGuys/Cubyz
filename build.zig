@@ -39,7 +39,7 @@ pub fn build(b: *std.build.Builder) !void {
 			std.log.err("Unsupported target: {}\n", .{ target.getOsTag() });
 		}
 	}
-	exe.addCSourceFiles(&[_][]const u8{"lib/glad.c", "lib/stb_image.c", "lib/cross_platform_udp_socket.c"}, &[_][]const u8{"-g"});
+	exe.addCSourceFiles(&[_][]const u8{"lib/glad.c", "lib/stb_image.c"}, &[_][]const u8{"-g"});
 	exe.addPackage(freetype.pkg);
 	exe.addPackage(freetype.harfbuzz_pkg);
 	freetype.link(b, exe, .{ .harfbuzz = .{} });

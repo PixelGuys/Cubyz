@@ -1,3 +1,4 @@
+const builtin = @import("builtin");
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
@@ -22,46 +23,65 @@ const Vec3f = vec.Vec3f;
 //TODO: Might want to use SSL or something similar to encode the message
 
 const Socket = struct {
-	const c = @cImport({@cInclude("cross_platform_udp_socket.h");});
-	socketID: u31,
+	const os = std.os;
+	socketID: os.socket_t,
 
-	fn checkError(comptime msg: []const u8, comptime T: type, result: T) !std.meta.Int(.unsigned, @bitSizeOf(T) - 1) {
-		if(result == -1) {
-			std.log.warn(msg, .{c.getError()});
-			return error.SocketError;
+	fn startup() void {
+		if(builtin.os.tag == .windows) {
+			_ = os.windows.WSAStartup(2, 2) catch |err| { // TODO: Return the error (this triggers a false depency loop error right now).
+				std.log.err("Error trying to startup WSA: {}", .{@errorName(err)});
+			};
 		}
-		return @intCast(std.meta.Int(.unsigned, @bitSizeOf(T) - 1), result);
 	}
 
 	fn init(localPort: u16) !Socket {
-		return Socket{.socketID = try checkError("Socket creation failed with error: {}", c_int, c.init(localPort))};
+		var self = Socket {
+			.socketID = try os.socket(os.AF.INET, os.SOCK.DGRAM, os.IPPROTO.UDP),
+		};
+		errdefer self.deinit();
+		const bindingAddr = os.sockaddr.in {
+			.port = @byteSwap(localPort),
+			.addr = 0,
+		};
+		try os.bind(self.socketID, @ptrCast(*const os.sockaddr, &bindingAddr), @sizeOf(os.sockaddr.in));
+		return self;
 	}
 
 	fn deinit(self: Socket) void {
-		_ = checkError("Error while closing socket: {}", c_int, c.deinit(self.socketID)) catch 0;
+		os.closeSocket(self.socketID);
 	}
 
 	fn send(self: Socket, data: []const u8, destination: Address) !void {
-		_ = try checkError("Error sending data: {}", isize, c.sendTo(self.socketID, data.ptr, data.len, destination.ip, destination.port));
+		const addr = os.sockaddr.in {
+			.port = @byteSwap(destination.port),
+			.addr = destination.ip,
+		};
+		std.debug.assert(data.len == try os.sendto(self.socketID, data, 0, @ptrCast(*const os.sockaddr, &addr), @sizeOf(os.sockaddr.in)));
 	}
 
-	fn receive(self: Socket, buffer: []u8, timeout: c_int, resultAddress: *Address) ![]u8 {
-		var length = try checkError("Receive failed: {}", isize, c.receiveFrom(self.socketID, buffer.ptr, buffer.len, timeout, &resultAddress.ip, &resultAddress.port));
+	fn receive(self: Socket, buffer: []u8, timeout: i32, resultAddress: *Address) ![]u8 {
+		var pfd = [1]os.pollfd {
+			.{.fd = self.socketID, .events = os.POLL.IN, .revents = undefined},
+		};
+		var length = try os.poll(&pfd, timeout);
 		if(length == 0) return error.Timeout;
+		var addr: os.sockaddr.in = undefined;
+		var addrLen: os.socklen_t = @sizeOf(os.sockaddr.in);
+		length = try os.recvfrom(self.socketID, buffer, 0,  @ptrCast(*os.sockaddr, &addr), &addrLen);
+		resultAddress.ip = addr.addr;
+		resultAddress.port = @byteSwap(addr.port);
 		return buffer[0..length];
 	}
 
-	fn resolveIP(ip: [:0]const u8) u32 {
-		const result: u32 = c.resolveIP(ip.ptr);
-		if(result == 0xffffffff) {
-			std.log.warn("Could not resolve address: {s} error: {}", .{ip, c.getError()});
-		}
-		return result;
+	fn resolveIP(addr: []const u8) !u32 {
+		const list = try std.net.getAddressList(main.threadAllocator, addr, settings.defaultPort);
+		defer list.deinit();
+		return list.addrs[0].in.sa.addr;
 	}
 };
 
 pub fn init() void {
-	Socket.c.startup();
+	Socket.startup();
 	inline for(@typeInfo(@TypeOf(Protocols)).Struct.fields) |field| {
 		if(field.type == type) {
 			const id = @field(Protocols, field.name).id;
@@ -239,9 +259,14 @@ const STUN = struct {
 			random.fill(data[8..]); // Fill the transaction ID.
 
 			var splitter = std.mem.split(u8, server, ":");
-			var nullTerminatedIP = main.threadAllocator.dupeZ(u8, splitter.first()) catch continue;
-			defer main.threadAllocator.free(nullTerminatedIP);
-			var serverAddress = Address{.ip=Socket.resolveIP(nullTerminatedIP), .port=std.fmt.parseUnsigned(u16, splitter.rest(), 10) catch 3478};
+			const ip = splitter.first();
+			var serverAddress = Address {
+				.ip=Socket.resolveIP(ip) catch |err| {
+					std.log.err("Cannot resolve stun server address: {s}, error: {s}", .{ip, @errorName(err)});
+					continue;
+				},
+				.port=std.fmt.parseUnsigned(u16, splitter.rest(), 10) catch 3478
+			};
 			if(connection.sendRequest(connection.allocator, &data, serverAddress, 500*1000000) catch |err| {
 				std.log.warn("Encountered error: {s} while connecting to STUN server: {s}", .{@errorName(err), server});
 				continue;
@@ -270,7 +295,7 @@ const STUN = struct {
 				std.log.warn("Couldn't reach STUN server: {s}", .{server});
 			}
 		}
-		return Address{.ip=Socket.resolveIP("127.0.0.1"), .port=settings.defaultPort}; // TODO: Return ip address in LAN.
+		return Address{.ip=Socket.resolveIP("127.0.0.1") catch unreachable, .port=settings.defaultPort}; // TODO: Return ip address in LAN.
 	}
 
 	fn findIPPort(_data: []const u8) !Address {
@@ -330,7 +355,7 @@ pub const ConnectionManager = struct {
 	thread: std.Thread = undefined,
 	threadId: std.Thread.Id = undefined,
 	externalAddress: Address = undefined,
-	online: std.atomic.Atomic(bool) = std.atomic.Atomic(bool).init(true),
+	online: std.atomic.Atomic(bool) = std.atomic.Atomic(bool).init(false),
 	running: std.atomic.Atomic(bool) = std.atomic.Atomic(bool).init(true),
 
 	connections: std.ArrayList(*Connection) = undefined,
@@ -1248,9 +1273,8 @@ pub const Connection = struct {
 			std.ArrayList(u32).init(result.allocator),
 		};
 		var splitter = std.mem.split(u8, ipPort, ":");
-		var nullTerminatedIP = try main.threadAllocator.dupeZ(u8, splitter.first());
-		defer main.threadAllocator.free(nullTerminatedIP);
-		result.remoteAddress.ip = Socket.resolveIP(nullTerminatedIP);
+		const ip = splitter.first();
+		result.remoteAddress.ip = try Socket.resolveIP(ip);
 		var port = splitter.rest();
 		if(port.len != 0 and port[0] == '?') {
 			result.remoteAddress.isSymmetricNAT = true;
