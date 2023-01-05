@@ -626,7 +626,7 @@ const TextRendering = struct {
 		glyphMapping = std.ArrayList(u31).init(main.globalAllocator);
 		glyphData = std.ArrayList(Glyph).init(main.globalAllocator);
 		try glyphData.append(undefined); // 0 is a reserved value.
-		c.glCreateTextures(c.GL_TEXTURE_2D, 2, &glyphTexture);
+		c.glGenTextures(2, &glyphTexture);
 		c.glBindTexture(c.GL_TEXTURE_2D, glyphTexture[0]);
 		c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_R8, textureWidth, textureHeight, 0, c.GL_RED, c.GL_UNSIGNED_BYTE, null);
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST);
