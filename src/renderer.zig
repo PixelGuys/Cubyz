@@ -137,8 +137,6 @@ const buffers = struct {
 		// Clears the position separately to prevent issues with default value.
 		const positionClearColor = [_]f32 {0, 0, 6.55e4, 1}; // z value corresponds to the highest 16-bit float value.
 		c.glClearBufferfv(c.GL_COLOR, 1, &positionClearColor);
-
-		c.glBindFramebuffer(c.GL_FRAMEBUFFER, buffer);
 	}
 };
 
