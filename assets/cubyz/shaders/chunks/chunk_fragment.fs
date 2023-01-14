@@ -7,6 +7,10 @@ flat in int modelIndex;
 // For raymarching:
 in vec3 startPosition;
 in vec3 direction;
+// For mipmapping:
+flat in vec2 pixelSizeX; // Where one voxel unit is facing in screenspace.
+flat in vec2 pixelSizeY; // Where one voxel unit is facing in screenspace.
+flat in vec2 pixelSizeZ; // Where one voxel unit is facing in screenspace.
 
 uniform int time;
 uniform vec3 ambientLight;
@@ -83,7 +87,7 @@ struct RayMarchResult {
 	ivec3 voxelPosition;
 };
 
-RayMarchResult rayMarching(vec3 startPosition, vec3 direction) {
+RayMarchResult rayMarching(vec3 startPosition, vec3 direction) { // TODO: Mipmapped voxel models. (or maybe just remove them when they are far enough away?)
 	// Branchless implementation of "A Fast Voxel Traversal Algorithm for Ray Tracing"  http://www.cse.yorku.ca/~amana/research/grid.pdf
 	vec3 step = sign(direction);
 	vec3 stepInIndex = step*vec3(1 << 10, 1 << 5, 1);
@@ -141,30 +145,71 @@ RayMarchResult rayMarching(vec3 startPosition, vec3 direction) {
 	return RayMarchResult(true, lastNormal, textureDir, voxelPos);
 }
 
-vec2 getTextureCoords(ivec3 voxelPosition, int textureDir) {
+ivec2 getTextureCoords(ivec3 voxelPosition, int textureDir) {
 	switch(textureDir) {
 		case 0:
-			return vec2(15 - voxelPosition.x, voxelPosition.z)/16.0;
+			return ivec2(15 - voxelPosition.x, voxelPosition.z);
 		case 1:
-			return vec2(voxelPosition.x, voxelPosition.z)/16.0;
+			return ivec2(voxelPosition.x, voxelPosition.z);
 		case 2:
-			return vec2(15 - voxelPosition.z, voxelPosition.y)/16.0;
+			return ivec2(15 - voxelPosition.z, voxelPosition.y);
 		case 3:
-			return vec2(voxelPosition.z, voxelPosition.y)/16.0;
+			return ivec2(voxelPosition.z, voxelPosition.y);
 		case 4:
-			return vec2(voxelPosition.x, voxelPosition.y)/16.0;
+			return ivec2(voxelPosition.x, voxelPosition.y);
 		case 5:
-			return vec2(15 - voxelPosition.x, voxelPosition.y)/16.0;
+			return ivec2(15 - voxelPosition.x, voxelPosition.y);
 	}
 }
 
+float getLod(ivec3 voxelPosition, int normal, vec3 startPosition) {
+	vec2 one;
+	vec2 other;
+	switch(normal) {
+		case 0:
+		case 1:
+			one = pixelSizeX;
+			other = pixelSizeZ;
+			break;
+		case 2:
+		case 3:
+			one = pixelSizeY;
+			other = pixelSizeZ;
+			break;
+		case 4:
+		case 5:
+			one = pixelSizeX;
+			other = pixelSizeY;
+			break;
+	}
+	float area = abs(one.x*other.y - one.y*other.x);
+	float biggestSideLength = max(length(one), length(other));
+	return max(0, min(4, -1 + log2(2.0*biggestSideLength/area)));
+}
+
+vec4 mipMapSample(sampler2DArray texture, ivec2 textureCoords, int textureIndex, float lod) { // TODO: anisotropic filtering?
+	int lowerLod = int(floor(lod));
+	int higherLod = lowerLod+1;
+	float interpolation = lod - lowerLod;
+	vec4 lower = texelFetch(texture, ivec3(textureCoords >> lowerLod, textureIndex), lowerLod);
+	vec4 higher = texelFetch(texture, ivec3(textureCoords >> higherLod, textureIndex), higherLod);
+	return higher*interpolation + (1 - interpolation)*lower;
+}
+
 void main() {
-	RayMarchResult result = rayMarching(startPosition, direction);
+	RayMarchResult result;
+	if(min(1.0/length(pixelSizeX), min(1.0/length(pixelSizeY), 1.0/length(pixelSizeZ))) <= 4.0) {
+		result = rayMarching(startPosition, direction);
+	} else {
+		result = RayMarchResult(true, faceNormal, faceNormal, ivec3(startPosition)); // At some point it doesn't make sense to even draw the model.
+	}
 	if(!result.hitAThing) discard;
 	int textureIndex = textureIndices[blockType][result.textureDir];
 	textureIndex = textureIndex + time / animation[textureIndex].time % animation[textureIndex].frames;
 	float normalVariation = normalVariations[result.normal];
-	fragColor = texture(texture_sampler, vec3(getTextureCoords(result.voxelPosition, result.textureDir), textureIndex))*vec4(ambientLight*normalVariation, 1);
+	float lod = getLod(result.voxelPosition, result.normal, startPosition);
+	ivec2 textureCoords = getTextureCoords(result.voxelPosition, result.textureDir);
+	fragColor = mipMapSample(texture_sampler, textureCoords, textureIndex, lod)*vec4(ambientLight*normalVariation, 1);
 
 	if (fragColor.a <= 0.1f) fragColor.a = 1; // TODO: Proper alpha handling.
 
@@ -173,7 +218,7 @@ void main() {
 		// Underwater fog in lod(assumes that the fog is maximal):
 		fragColor = vec4((1 - fragColor.a) * waterFog.color.xyz + fragColor.a * fragColor.xyz, 1);
 	}
-	fragColor.rgb += texture(emissionSampler, vec3(getTextureCoords(result.voxelPosition, result.textureDir), textureIndex)).rgb;
+	fragColor.rgb += mipMapSample(emissionSampler, textureCoords, textureIndex, lod).rgb;
 
 	if (fog.activ) {
 		fragColor = calcFog(mvVertexPos, fragColor, fog);

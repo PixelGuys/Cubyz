@@ -13,6 +13,7 @@ const models = @import("models.zig");
 const renderer = @import("renderer.zig");
 const settings = @import("settings.zig");
 const vec = @import("vec.zig");
+const Vec2f = vec.Vec2f;
 const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
 const Mat4f = vec.Mat4f;
@@ -382,6 +383,7 @@ pub const meshing = struct {
 		projectionMatrix: c_int,
 		viewMatrix: c_int,
 		modelPosition: c_int,
+		screenSize: c_int,
 		ambientLight: c_int,
 		@"fog.activ": c_int,
 		@"fog.color": c_int,
@@ -430,7 +432,7 @@ pub const meshing = struct {
 		faceBuffer.deinit();
 	}
 
-	pub fn bindShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, time: u32) void {
+	pub fn bindShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, screenSize: Vec2f, time: u32) void {
 		shader.bind();
 
 		c.glUniform1i(uniforms.@"fog.activ", if(game.fog.active) 1 else 0);
@@ -445,6 +447,8 @@ pub const meshing = struct {
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast([*c]f32, &game.camera.viewMatrix));
 
 		c.glUniform3f(uniforms.ambientLight, ambient[0], ambient[1], ambient[2]);
+
+		c.glUniform2f(uniforms.screenSize, screenSize[0], screenSize[1]);
 
 		c.glUniform1i(uniforms.time, @truncate(u31, time));
 
@@ -612,7 +616,7 @@ pub const meshing = struct {
 			std.log.err("Couldn't find the face to replace.", .{});
 		}
 
-		pub fn updateBlock(self: *ChunkMesh, _x: ChunkCoordinate, _y: ChunkCoordinate, _z: ChunkCoordinate, newBlock: Block) !void {
+		pub fn updateBlock(self: *ChunkMesh, _x: ChunkCoordinate, _y: ChunkCoordinate, _z: ChunkCoordinate, newBlock: Block) !void { // TODO: Investigate bug when placing blocks.
 			const x = _x & chunkMask;
 			const y = _y & chunkMask;
 			const z = _z & chunkMask;

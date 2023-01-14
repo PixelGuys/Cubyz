@@ -463,8 +463,8 @@ pub const meshes = struct {
 //	}
 
 	pub fn generateTextureArray() !void {
-		try blockTextureArray.generate(blockTextures.items, false); // TODO: figure out mipmapping in the voxel model world.
-		try emissionTextureArray.generate(emissionTextures.items, false);
+		try blockTextureArray.generate(blockTextures.items, true);
+		try emissionTextureArray.generate(emissionTextures.items, true);
 
 		// Also generate additional buffers:
 		animationSSBO.bufferData(AnimationData, animation.items);

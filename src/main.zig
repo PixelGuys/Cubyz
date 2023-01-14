@@ -324,13 +324,13 @@ pub fn main() !void {
 			c.glDisable(c.GL_CULL_FACE);
 			c.glDisable(c.GL_DEPTH_TEST);
 
-			const dim = try buffer2.calculateLineBreaks(32, 200);
-			try buffer.render(100, 200, 32);
-			graphics.Draw.setColor(0xff008000);
-			graphics.Draw.rect(.{100, 400}, .{200, dim[1]});
-			try buffer2.render(100, 400, 32);
-			_ = try buffer3.calculateLineBreaks(32, 600);
-			try buffer3.render(400, 400, 32);
+			//const dim = try buffer2.calculateLineBreaks(32, 200);
+			//try buffer.render(100, 200, 32);
+			//graphics.Draw.setColor(0xff008000);
+			//graphics.Draw.rect(.{100, 400}, .{200, dim[1]});
+			//try buffer2.render(100, 400, 32);
+			//_ = try buffer3.calculateLineBreaks(32, 600);
+			//try buffer3.render(400, 400, 32);
 
 			//graphics.Draw.setColor(0xff0000ff);
 			//graphics.Draw.rect(Vec2f{.x = 100, .y = 100}, Vec2f{.x = 200, .y = 100});
