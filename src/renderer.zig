@@ -598,41 +598,27 @@ pub const MeshSelection = struct {
 	pub fn select(_pos: Vec3d, _dir: Vec3f) void {
 		var pos = _pos;
 		// TODO: pos.y += Player.cameraHeight;
-		var dir = _dir;
+		var dir = vec.floatCast(f64, _dir);
 //TODO:
 //		intersection.set(0, 0, 0, dir.x, dir.y, dir.z);
 
 		// Test blocks:
 		const closestDistance: f64 = 6.0; // selection now limited
 		// Implementation of "A Fast Voxel Traversal Algorithm for Ray Tracing"  http://www.cse.yorku.ca/~amana/research/grid.pdf
-		const stepX = @floatToInt(chunk.ChunkCoordinate, std.math.sign(dir[0]));
-		const stepY = @floatToInt(chunk.ChunkCoordinate, std.math.sign(dir[1]));
-		const stepZ = @floatToInt(chunk.ChunkCoordinate, std.math.sign(dir[2]));
-		const invDirX: f64 = 1/dir[0];
-		const invDirY: f64 = 1/dir[1];
-		const invDirZ: f64 = 1/dir[2];
-		const tDeltaX: f64 = @fabs(invDirX);
-		const tDeltaY: f64 = @fabs(invDirY);
-		const tDeltaZ: f64 = @fabs(invDirZ);
-		var tMaxX: f64 = (@floor(pos[0]) - pos[0])*invDirX;
-		var tMaxY: f64 = (@floor(pos[1]) - pos[1])*invDirY;
-		var tMaxZ: f64 = (@floor(pos[2]) - pos[2])*invDirZ;
-		tMaxX = @max(tMaxX, tMaxX + tDeltaX*@intToFloat(f64, stepX));
-		tMaxY = @max(tMaxY, tMaxY + tDeltaY*@intToFloat(f64, stepY));
-		tMaxZ = @max(tMaxZ, tMaxZ + tDeltaZ*@intToFloat(f64, stepZ));
-		if(dir[0] == 0) tMaxX = std.math.inf_f64;
-		if(dir[1] == 0) tMaxY = std.math.inf_f64;
-		if(dir[2] == 0) tMaxZ = std.math.inf_f64;
-		var x = @floatToInt(chunk.ChunkCoordinate, @floor(pos[0]));
-		var y = @floatToInt(chunk.ChunkCoordinate, @floor(pos[1]));
-		var z = @floatToInt(chunk.ChunkCoordinate, @floor(pos[2]));
+		const step = vec.floatToInt(i32, std.math.sign(dir));
+		const invDir = @splat(3, @as(f64, 1))/dir;
+		const tDelta = @fabs(invDir);
+		var tMax = (@floor(pos) - pos)*invDir;
+		tMax = @max(tMax, tMax + tDelta*vec.intToFloat(f64, step));
+		tMax = @select(f64, dir == @splat(3, @as(f64, 0)), @splat(3, std.math.inf(f64)), tMax);
+		var voxelPos = vec.floatToInt(i32, @floor(pos));
 
 		var total_tMax: f64 = 0;
 
 		selectedBlockPos = null;
 
 		while(total_tMax < closestDistance) {
-			const block = RenderStructure.getBlock(x, y, z) orelse break;
+			const block = RenderStructure.getBlock(voxelPos[0], voxelPos[1], voxelPos[2]) orelse break;
 			if(block.typ != 0) {
 				// Check the true bounding box (using this algorithm here: https://tavianator.com/2011/ray_box.html):
 				const model = blocks.meshes.model(block);
@@ -641,50 +627,34 @@ pub const MeshSelection = struct {
 				var transformedMax = model.permutation.transform(voxelModel.max - @splat(3, @as(i32, 8))) + @splat(3, @as(i32, 8));
 				const min = @min(transformedMin, transformedMax);
 				const max = @max(transformedMin ,transformedMax);
-				const tx1 = (@intToFloat(f64, x) + @intToFloat(f64, min[0])/16.0 - pos[0])*invDirX;
-				const tx2 = (@intToFloat(f64, x) + @intToFloat(f64, max[0])/16.0 - pos[0])*invDirX;
-				const ty1 = (@intToFloat(f64, y) + @intToFloat(f64, min[1])/16.0 - pos[1])*invDirY;
-				const ty2 = (@intToFloat(f64, y) + @intToFloat(f64, max[1])/16.0 - pos[1])*invDirY;
-				const tz1 = (@intToFloat(f64, z) + @intToFloat(f64, min[2])/16.0 - pos[2])*invDirZ;
-				const tz2 = (@intToFloat(f64, z) + @intToFloat(f64, max[2])/16.0 - pos[2])*invDirZ;
-				const tMin = @max(
-					@min(tx1, tx2),
-					@max(
-						@min(ty1, ty2),
-						@min(tz1, tz2),
-					)
-				);
-				const tMax = @min(
-					@max(tx1, tx2),
-					@min(
-						@max(ty1, ty2),
-						@max(tz1, tz2),
-					)
-				);
-				if(tMin <= tMax and tMin <= closestDistance and tMax > 0) {
-					selectedBlockPos = Vec3i{x, y, z};
+				const t1 = (vec.intToFloat(f64, voxelPos) + vec.intToFloat(f64, min)/@splat(3, @as(f64, 16.0)) - pos)*invDir;
+				const t2 = (vec.intToFloat(f64, voxelPos) + vec.intToFloat(f64, max)/@splat(3, @as(f64, 16.0)) - pos)*invDir;
+				const boxTMin = @reduce(.Max, @min(t1, t2));
+				const boxTMax = @reduce(.Min, @max(t1, t2));
+				if(boxTMin <= boxTMax and boxTMin <= closestDistance and boxTMax > 0) {
+					selectedBlockPos = voxelPos;
 					break;
 				}
 			}
-			if(tMaxX < tMaxY) {
-				if(tMaxX < tMaxZ) {
-					x = x + stepX;
-					total_tMax = tMaxX;
-					tMaxX = tMaxX + tDeltaX;
+			if(tMax[0] < tMax[1]) {
+				if(tMax[0] < tMax[2]) {
+					voxelPos[0] += step[0];
+					total_tMax = tMax[0];
+					tMax[0] += tDelta[0];
 				} else {
-					z = z + stepZ;
-					total_tMax = tMaxZ;
-					tMaxZ = tMaxZ + tDeltaZ;
+					voxelPos[2] += step[2];
+					total_tMax = tMax[2];
+					tMax[2] += tDelta[2];
 				}
 			} else {
-				if(tMaxY < tMaxZ) {
-					y = y + stepY;
-					total_tMax = tMaxY;
-					tMaxY = tMaxY + tDeltaY;
+				if(tMax[1] < tMax[2]) {
+					voxelPos[1] += step[1];
+					total_tMax = tMax[1];
+					tMax[1] += tDelta[1];
 				} else {
-					z = z + stepZ;
-					total_tMax = tMaxZ;
-					tMaxZ = tMaxZ + tDeltaZ;
+					voxelPos[2] += step[2];
+					total_tMax = tMax[2];
+					tMax[2] += tDelta[2];
 				}
 			}
 		}

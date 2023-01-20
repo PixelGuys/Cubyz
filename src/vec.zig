@@ -18,12 +18,46 @@ pub fn dot(self: anytype, other: @TypeOf(self)) @typeInfo(@TypeOf(self)).Vector.
 	return @reduce(.Add, self*other);
 }
 
+pub fn lengthSquare(self: anytype) @typeInfo(@TypeOf(self)).Vector.child {
+	return @reduce(.Add, self*self);
+}
+
 pub fn length(self: anytype) @typeInfo(@TypeOf(self)).Vector.child {
 	return @sqrt(@reduce(.Add, self*self));
 }
 
 pub fn normalize(self: anytype) @TypeOf(self) {
 	return self/@splat(@typeInfo(@TypeOf(self)).Vector.len, length(self));
+}
+
+pub fn floatToInt(comptime DestType: type, self: anytype) @Vector(@typeInfo(@TypeOf(self)).Vector.len, DestType) { // TODO: Remove once @floatToInt supports vectors.
+	const len = @typeInfo(@TypeOf(self)).Vector.len;
+	var result: @Vector(len, DestType) = undefined;
+	comptime var i: u32 = 0;
+	inline while(i < len) : (i += 1) {
+		result[i] = @floatToInt(DestType, self[i]);
+	}
+	return result;
+}
+
+pub fn intToFloat(comptime DestType: type, self: anytype) @Vector(@typeInfo(@TypeOf(self)).Vector.len, DestType) { // TODO: Remove once @intToFloat supports vectors.
+	const len = @typeInfo(@TypeOf(self)).Vector.len;
+	var result: @Vector(len, DestType) = undefined;
+	comptime var i: u32 = 0;
+	inline while(i < len) : (i += 1) {
+		result[i] = @intToFloat(DestType, self[i]);
+	}
+	return result;
+}
+
+pub fn floatCast(comptime DestType: type, self: anytype) @Vector(@typeInfo(@TypeOf(self)).Vector.len, DestType) { // TODO: Remove once @intToFloat supports vectors.
+	const len = @typeInfo(@TypeOf(self)).Vector.len;
+	var result: @Vector(len, DestType) = undefined;
+	comptime var i: u32 = 0;
+	inline while(i < len) : (i += 1) {
+		result[i] = @floatCast(DestType, self[i]);
+	}
+	return result;
 }
 
 pub fn cross(self: anytype, other: @TypeOf(self)) @TypeOf(self) {
