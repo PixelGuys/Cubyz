@@ -682,10 +682,10 @@ pub const Protocols: struct {
 			var remaining = data[0..];
 			while(remaining.len >= 16) {
 				const request = chunk.ChunkPosition{
-					.wx = std.mem.readIntBig(chunk.ChunkCoordinate, remaining[0..4]),
-					.wy = std.mem.readIntBig(chunk.ChunkCoordinate, remaining[4..8]),
-					.wz = std.mem.readIntBig(chunk.ChunkCoordinate, remaining[8..12]),
-					.voxelSize = @intCast(chunk.UChunkCoordinate, std.mem.readIntBig(chunk.ChunkCoordinate, remaining[12..16])),
+					.wx = std.mem.readIntBig(i32, remaining[0..4]),
+					.wy = std.mem.readIntBig(i32, remaining[4..8]),
+					.wz = std.mem.readIntBig(i32, remaining[8..12]),
+					.voxelSize = @intCast(u31, std.mem.readIntBig(i32, remaining[12..16])),
 				};
 				_ = request;
 				_ = conn;
@@ -699,10 +699,10 @@ pub const Protocols: struct {
 			defer main.threadAllocator.free(data);
 			var remaining = data;
 			for(requests) |req| {
-				std.mem.writeIntBig(chunk.ChunkCoordinate, remaining[0..4], req.wx);
-				std.mem.writeIntBig(chunk.ChunkCoordinate, remaining[4..8], req.wy);
-				std.mem.writeIntBig(chunk.ChunkCoordinate, remaining[8..12], req.wz);
-				std.mem.writeIntBig(chunk.ChunkCoordinate, remaining[12..16], req.voxelSize);
+				std.mem.writeIntBig(i32, remaining[0..4], req.wx);
+				std.mem.writeIntBig(i32, remaining[4..8], req.wy);
+				std.mem.writeIntBig(i32, remaining[8..12], req.wz);
+				std.mem.writeIntBig(i32, remaining[12..16], req.voxelSize);
 				remaining = remaining[16..];
 			}
 			try conn.sendImportant(id, data);
@@ -713,10 +713,10 @@ pub const Protocols: struct {
 		fn receive(_: *Connection, _data: []const u8) !void {
 			var data = _data;
 			var pos = chunk.ChunkPosition{
-				.wx = std.mem.readIntBig(chunk.ChunkCoordinate, data[0..4]),
-				.wy = std.mem.readIntBig(chunk.ChunkCoordinate, data[4..8]),
-				.wz = std.mem.readIntBig(chunk.ChunkCoordinate, data[8..12]),
-				.voxelSize = @intCast(chunk.UChunkCoordinate, std.mem.readIntBig(chunk.ChunkCoordinate, data[12..16])),
+				.wx = std.mem.readIntBig(i32, data[0..4]),
+				.wy = std.mem.readIntBig(i32, data[4..8]),
+				.wz = std.mem.readIntBig(i32, data[8..12]),
+				.voxelSize = @intCast(u31, std.mem.readIntBig(i32, data[12..16])),
 			};
 			const _inflatedData = try main.threadAllocator.alloc(u8, chunk.chunkVolume*4);
 			defer main.threadAllocator.free(_inflatedData);
@@ -736,10 +736,10 @@ pub const Protocols: struct {
 		pub fn sendChunk(conn: *Connection, visData: chunk.ChunkVisibilityData) !void {
 			var data = try main.threadAllocator.alloc(u8, 16 + 8*visData.visibles.items.len);
 			defer main.threadAllocator.free(data);
-			std.mem.writeIntBig(chunk.ChunkCoordinate, data[0..4], visData.pos.wx);
-			std.mem.writeIntBig(chunk.ChunkCoordinate, data[4..8], visData.pos.wy);
-			std.mem.writeIntBig(chunk.ChunkCoordinate, data[8..12], visData.pos.wz);
-			std.mem.writeIntBig(chunk.ChunkCoordinate, data[12..16], visData.pos.voxelSize);
+			std.mem.writeIntBig(i32, data[0..4], visData.pos.wx);
+			std.mem.writeIntBig(i32, data[4..8], visData.pos.wy);
+			std.mem.writeIntBig(i32, data[8..12], visData.pos.wz);
+			std.mem.writeIntBig(i32, data[12..16], visData.pos.voxelSize);
 			var size = visData.visibles.items.len;
 			var x = data[16..][0..size];
 			var y = data[16..][size..2*size];
@@ -847,9 +847,9 @@ pub const Protocols: struct {
 	blockUpdate: type = struct {
 		const id: u8 = 7;
 		fn receive(_: *Connection, data: []const u8) !void {
-			var x = std.mem.readIntBig(chunk.ChunkCoordinate, data[0..4]);
-			var y = std.mem.readIntBig(chunk.ChunkCoordinate, data[4..8]);
-			var z = std.mem.readIntBig(chunk.ChunkCoordinate, data[8..12]);
+			var x = std.mem.readIntBig(i32, data[0..4]);
+			var y = std.mem.readIntBig(i32, data[4..8]);
+			var z = std.mem.readIntBig(i32, data[8..12]);
 			var newBlock = Block.fromInt(std.mem.readIntBig(u32, data[12..16]));
 			try renderer.RenderStructure.updateBlock(x, y, z, newBlock);
 			// TODO:
@@ -859,12 +859,12 @@ pub const Protocols: struct {
 //			Cubyz.world.remoteUpdateBlock(x, y, z, newBlock);
 //		}
 		}
-		pub fn send(conn: *Connection, x: chunk.ChunkCoordinate, y: chunk.ChunkCoordinate, z: chunk.ChunkCoordinate, newBlock: Block) !void {
+		pub fn send(conn: *Connection, x: i32, y: i32, z: i32, newBlock: Block) !void {
 			var data: [16]u8 = undefined;
-			std.mem.writeIntBig(chunk.ChunkCoordinate, data[0..4], x);
-			std.mem.writeIntBig(chunk.ChunkCoordinate, data[4..8], y);
-			std.mem.writeIntBig(chunk.ChunkCoordinate, data[8..12], z);
-			std.mem.writeIntBig(chunk.ChunkCoordinate, data[12..16], newBlock.toInt());
+			std.mem.writeIntBig(i32, data[0..4], x);
+			std.mem.writeIntBig(i32, data[4..8], y);
+			std.mem.writeIntBig(i32, data[8..12], z);
+			std.mem.writeIntBig(u32, data[12..16], newBlock.toInt());
 			try conn.sendImportant(id, &data);
 		}
 	},

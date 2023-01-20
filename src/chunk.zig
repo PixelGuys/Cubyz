@@ -18,14 +18,12 @@ const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
 const Mat4f = vec.Mat4f;
 
-pub const ChunkCoordinate = i32;
-pub const UChunkCoordinate = u31;
 pub const chunkShift: u5 = 5;
 pub const chunkShift2: u5 = chunkShift*2;
-pub const chunkSize: ChunkCoordinate = 1 << chunkShift;
+pub const chunkSize: i32 = 1 << chunkShift;
 pub const chunkSizeIterator: [chunkSize]u0 = undefined;
-pub const chunkVolume: UChunkCoordinate = 1 << 3*chunkShift;
-pub const chunkMask: ChunkCoordinate = chunkSize - 1;
+pub const chunkVolume: u31 = 1 << 3*chunkShift;
+pub const chunkMask: i32 = chunkSize - 1;
 
 /// Contains a bunch of constants used to describe neighboring blocks.
 pub const Neighbors = struct {
@@ -44,11 +42,11 @@ pub const Neighbors = struct {
 	/// Directions → Index
 	pub const dirNegZ: u3 = 5;
 	/// Index to relative position
-	pub const relX = [_]ChunkCoordinate {0, 0, 1, -1, 0, 0};
+	pub const relX = [_]i32 {0, 0, 1, -1, 0, 0};
 	/// Index to relative position
-	pub const relY = [_]ChunkCoordinate {1, -1, 0, 0, 0, 0};
+	pub const relY = [_]i32 {1, -1, 0, 0, 0, 0};
 	/// Index to relative position
-	pub const relZ = [_]ChunkCoordinate {0, 0, 0, 0, 1, -1};
+	pub const relZ = [_]i32 {0, 0, 0, 0, 1, -1};
 	/// Index to bitMask for bitmap direction data
 	pub const bitMask = [_]u6 {0x01, 0x02, 0x04, 0x08, 0x10, 0x20};
 	/// To iterate over all neighbors easily
@@ -56,28 +54,28 @@ pub const Neighbors = struct {
 };
 
 /// Gets the index of a given position inside this chunk.
-fn getIndex(x: ChunkCoordinate, y: ChunkCoordinate, z: ChunkCoordinate) u32 {
+fn getIndex(x: i32, y: i32, z: i32) u32 {
 	std.debug.assert((x & chunkMask) == x and (y & chunkMask) == y and (z & chunkMask) == z);
 	return (@intCast(u32, x) << chunkShift) | (@intCast(u32, y) << chunkShift2) | @intCast(u32, z);
 }
 /// Gets the x coordinate from a given index inside this chunk.
-fn extractXFromIndex(index: usize) ChunkCoordinate {
-	return @intCast(ChunkCoordinate, index >> chunkShift & chunkMask);
+fn extractXFromIndex(index: usize) i32 {
+	return @intCast(i32, index >> chunkShift & chunkMask);
 }
 /// Gets the y coordinate from a given index inside this chunk.
-fn extractYFromIndex(index: usize) ChunkCoordinate {
-	return @intCast(ChunkCoordinate, index >> chunkShift2 & chunkMask);
+fn extractYFromIndex(index: usize) i32 {
+	return @intCast(i32, index >> chunkShift2 & chunkMask);
 }
 /// Gets the z coordinate from a given index inside this chunk.
-fn extractZFromIndex(index: usize) ChunkCoordinate {
-	return @intCast(ChunkCoordinate, index & chunkMask);
+fn extractZFromIndex(index: usize) i32 {
+	return @intCast(i32, index & chunkMask);
 }
 
 pub const ChunkPosition = struct {
-	wx: ChunkCoordinate,
-	wy: ChunkCoordinate,
-	wz: ChunkCoordinate,
-	voxelSize: UChunkCoordinate,
+	wx: i32,
+	wy: i32,
+	wz: i32,
+	voxelSize: u31,
 	
 //	TODO(mabye?):
 //	public int hashCode() {
@@ -97,7 +95,7 @@ pub const ChunkPosition = struct {
 	}
 
 	pub fn getPriority(self: ChunkPosition, playerPos: Vec3d) f32 {
-		return -@floatCast(f32, self.getMinDistanceSquared(playerPos))/@intToFloat(f32, self.voxelSize*self.voxelSize) + 2*@intToFloat(f32, std.math.log2_int(UChunkCoordinate, self.voxelSize)*chunkSize*chunkSize);
+		return -@floatCast(f32, self.getMinDistanceSquared(playerPos))/@intToFloat(f32, self.voxelSize*self.voxelSize) + 2*@intToFloat(f32, std.math.log2_int(u31, self.voxelSize)*chunkSize*chunkSize);
 	}
 };
 
@@ -110,16 +108,16 @@ pub const Chunk = struct {
 	wasCleaned: bool = false,
 	generated: bool = false,
 
-	width: ChunkCoordinate,
+	width: i32,
 	voxelSizeShift: u5,
-	voxelSizeMask: ChunkCoordinate,
+	voxelSizeMask: i32,
 	widthShift: u5,
 	mutex: std.Thread.Mutex,
 
 	pub fn init(self: *Chunk, pos: ChunkPosition) void {
 		std.debug.assert((pos.voxelSize - 1 & pos.voxelSize) == 0);
 		std.debug.assert(@mod(pos.wx, pos.voxelSize) == 0 and @mod(pos.wy, pos.voxelSize) == 0 and @mod(pos.wz, pos.voxelSize) == 0);
-		const voxelSizeShift = @intCast(u5, std.math.log2_int(UChunkCoordinate, pos.voxelSize));
+		const voxelSizeShift = @intCast(u5, std.math.log2_int(u31, pos.voxelSize));
 		self.* = Chunk {
 			.pos = pos,
 			.width = pos.voxelSize*chunkSize,
@@ -160,7 +158,7 @@ pub const Chunk = struct {
 	}
 
 	/// Checks if the given relative coordinates lie within the bounds of this chunk.
-	pub fn liesInChunk(self: *const Chunk, x: ChunkCoordinate, y: ChunkCoordinate, z: ChunkCoordinate) bool {
+	pub fn liesInChunk(self: *const Chunk, x: i32, y: i32, z: i32) bool {
 		return x >= 0 and x < self.width
 			and y >= 0 and y < self.width
 			and z >= 0 and z < self.width;
@@ -171,13 +169,13 @@ pub const Chunk = struct {
 	/// for(int x = start; x < end; x++)
 	/// for(int x = chunk.startIndex(start); x < end; x += chunk.getVoxelSize())
 	/// should be used to only activate those voxels that are used in Cubyz's downscaling technique.
-	pub fn startIndex(self: *const Chunk, start: ChunkCoordinate) ChunkCoordinate {
+	pub fn startIndex(self: *const Chunk, start: i32) i32 {
 		return start+self.voxelSizeMask & ~self.voxelSizeMask; // Rounds up to the nearest valid voxel coordinate.
 	}
 
 	/// Updates a block if current value is air or the current block is degradable.
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
-	pub fn updateBlockIfDegradable(self: *Chunk, x: ChunkCoordinate, y: ChunkCoordinate, z: ChunkCoordinate, newBlock: Block) void {
+	pub fn updateBlockIfDegradable(self: *Chunk, x: i32, y: i32, z: i32, newBlock: Block) void {
 		x >>= self.voxelSizeShift;
 		y >>= self.voxelSizeShift;
 		z >>= self.voxelSizeShift;
@@ -189,7 +187,7 @@ pub const Chunk = struct {
 
 	/// Updates a block if it is inside this chunk.
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
-	pub fn updateBlock(self: *Chunk, x: ChunkCoordinate, y: ChunkCoordinate, z: ChunkCoordinate, newBlock: Block) void {
+	pub fn updateBlock(self: *Chunk, x: i32, y: i32, z: i32, newBlock: Block) void {
 		x >>= self.voxelSizeShift;
 		y >>= self.voxelSizeShift;
 		z >>= self.voxelSizeShift;
@@ -199,7 +197,7 @@ pub const Chunk = struct {
 
 	/// Updates a block if it is inside this chunk. Should be used in generation to prevent accidently storing these as changes.
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
-	pub fn updateBlockInGeneration(self: *Chunk, x: ChunkCoordinate, y: ChunkCoordinate, z: ChunkCoordinate, newBlock: Block) void {
+	pub fn updateBlockInGeneration(self: *Chunk, x: i32, y: i32, z: i32, newBlock: Block) void {
 		x >>= self.voxelSizeShift;
 		y >>= self.voxelSizeShift;
 		z >>= self.voxelSizeShift;
@@ -209,7 +207,7 @@ pub const Chunk = struct {
 
 	/// Gets a block if it is inside this chunk.
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
-	pub fn getBlock(self: *const Chunk, _x: ChunkCoordinate, _y: ChunkCoordinate, _z: ChunkCoordinate) Block {
+	pub fn getBlock(self: *const Chunk, _x: i32, _y: i32, _z: i32) Block {
 		var x = _x >> self.voxelSizeShift;
 		var y = _y >> self.voxelSizeShift;
 		var z = _z >> self.voxelSizeShift;
@@ -217,7 +215,7 @@ pub const Chunk = struct {
 		return self.blocks[index];
 	}
 
-	pub fn getNeighbors(self: *const Chunk, x: ChunkCoordinate, y: ChunkCoordinate, z: ChunkCoordinate, neighborsArray: *[6]Block) void {
+	pub fn getNeighbors(self: *const Chunk, x: i32, y: i32, z: i32, neighborsArray: *[6]Block) void {
 		std.debug.assert(neighborsArray.length == 6);
 		x &= chunkMask;
 		y &= chunkMask;
@@ -245,21 +243,21 @@ pub const Chunk = struct {
 		const yOffset = if(other.wy != self.wy) chunkSize/2 else 0;
 		const zOffset = if(other.wz != self.wz) chunkSize/2 else 0;
 		
-		var x: ChunkCoordinate = 0;
+		var x: i32 = 0;
 		while(x < chunkSize/2): (x += 1) {
-			var y: ChunkCoordinate = 0;
+			var y: i32 = 0;
 			while(y < chunkSize/2): (y += 1) {
-				var z: ChunkCoordinate = 0;
+				var z: i32 = 0;
 				while(z < chunkSize/2): (z += 1) {
 					// Count the neighbors for each subblock. An transparent block counts 5. A chunk border(unknown block) only counts 1.
 					var neighborCount: [8]u32 = undefined;
 					var octantBlocks: [8]Block = undefined;
 					var maxCount: u32 = 0;
-					var dx: ChunkCoordinate = 0;
+					var dx: i32 = 0;
 					while(dx <= 1): (dx += 1) {
-						var dy: ChunkCoordinate = 0;
+						var dy: i32 = 0;
 						while(dy <= 1): (dy += 1) {
-							var dz: ChunkCoordinate = 0;
+							var dz: i32 = 0;
 							while(dz <= 1): (dz += 1) {
 								const index = getIndex(x*2 + dx, y*2 + dy, z*2 + dz);
 								const i = dx*4 + dz*2 + dy;
@@ -468,7 +466,7 @@ pub const meshing = struct {
 
 	pub const ChunkMesh = struct {
 		pos: ChunkPosition,
-		size: ChunkCoordinate,
+		size: i32,
 		chunk: std.atomic.Atomic(?*Chunk),
 		faces: std.ArrayList(FaceData),
 		bufferAllocation: graphics.LargeBuffer.Allocation = .{.start = 0, .len = 0},
@@ -616,7 +614,7 @@ pub const meshing = struct {
 			std.log.err("Couldn't find the face to replace.", .{});
 		}
 
-		pub fn updateBlock(self: *ChunkMesh, _x: ChunkCoordinate, _y: ChunkCoordinate, _z: ChunkCoordinate, newBlock: Block) !void { // TODO: Investigate bug when placing blocks.
+		pub fn updateBlock(self: *ChunkMesh, _x: i32, _y: i32, _z: i32, newBlock: Block) !void { // TODO: Investigate bug when placing blocks.
 			const x = _x & chunkMask;
 			const y = _y & chunkMask;
 			const z = _z & chunkMask;

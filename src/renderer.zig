@@ -793,17 +793,17 @@ pub const RenderStructure = struct {
 	var clearList: std.ArrayList(*ChunkMeshNode) = undefined;
 	var lastRD: i32 = 0;
 	var lastFactor: f32 = 0;
-	var lastX: [settings.highestLOD + 1]chunk.ChunkCoordinate = [_]chunk.ChunkCoordinate{0} ** (settings.highestLOD + 1);
-	var lastY: [settings.highestLOD + 1]chunk.ChunkCoordinate = [_]chunk.ChunkCoordinate{0} ** (settings.highestLOD + 1);
-	var lastZ: [settings.highestLOD + 1]chunk.ChunkCoordinate = [_]chunk.ChunkCoordinate{0} ** (settings.highestLOD + 1);
-	var lastSize: [settings.highestLOD + 1]chunk.ChunkCoordinate = [_]chunk.ChunkCoordinate{0} ** (settings.highestLOD + 1);
+	var lastX: [settings.highestLOD + 1]i32 = [_]i32{0} ** (settings.highestLOD + 1);
+	var lastY: [settings.highestLOD + 1]i32 = [_]i32{0} ** (settings.highestLOD + 1);
+	var lastZ: [settings.highestLOD + 1]i32 = [_]i32{0} ** (settings.highestLOD + 1);
+	var lastSize: [settings.highestLOD + 1]i32 = [_]i32{0} ** (settings.highestLOD + 1);
 	var lodMutex: [settings.highestLOD + 1]std.Thread.Mutex = [_]std.Thread.Mutex{std.Thread.Mutex{}} ** (settings.highestLOD + 1);
 	var mutex = std.Thread.Mutex{};
 	var blockUpdateMutex = std.Thread.Mutex{};
 	const BlockUpdate = struct {
-		x: chunk.ChunkCoordinate,
-		y: chunk.ChunkCoordinate,
-		z: chunk.ChunkCoordinate,
+		x: i32,
+		y: i32,
+		z: i32,
 		newBlock: blocks.Block,
 	};
 	var blockUpdateList: std.ArrayList(BlockUpdate) = undefined;
@@ -846,7 +846,7 @@ pub const RenderStructure = struct {
 	}
 
 	fn _getNode(pos: chunk.ChunkPosition) ?*ChunkMeshNode {
-		var lod = std.math.log2_int(chunk.UChunkCoordinate, pos.voxelSize);
+		var lod = std.math.log2_int(u31, pos.voxelSize);
 		lodMutex[lod].lock();
 		defer lodMutex[lod].unlock();
 		var xIndex = pos.wx-%(&lastX[lod]).* >> lod+chunk.chunkShift;
@@ -859,13 +859,13 @@ pub const RenderStructure = struct {
 		return (&storageLists[lod]).*[@intCast(usize, index)]; // TODO: Wait for #12205 to be fixed and remove the weird (&...).* workaround.
 	}
 
-	pub fn getBlock(x: chunk.ChunkCoordinate, y: chunk.ChunkCoordinate, z: chunk.ChunkCoordinate) ?blocks.Block {
+	pub fn getBlock(x: i32, y: i32, z: i32) ?blocks.Block {
 		const node = RenderStructure._getNode(.{.wx = x, .wy = y, .wz = z, .voxelSize=1}) orelse return null;
 		const block = (node.mesh.chunk.load(.Monotonic) orelse return null).getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
 		return block;
 	}
 
-	pub fn getNeighbor(_pos: chunk.ChunkPosition, resolution: chunk.UChunkCoordinate, neighbor: u3) ?*chunk.meshing.ChunkMesh {
+	pub fn getNeighbor(_pos: chunk.ChunkPosition, resolution: u31, neighbor: u3) ?*chunk.meshing.ChunkMesh {
 		var pos = _pos;
 		pos.wx += pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relX[neighbor];
 		pos.wy += pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relY[neighbor];
@@ -879,9 +879,9 @@ pub const RenderStructure = struct {
 		if(lastRD != renderDistance and lastFactor != LODFactor) {
 			try network.Protocols.genericUpdate.sendRenderDistance(conn, renderDistance, LODFactor);
 		}
-		const px = @floatToInt(chunk.ChunkCoordinate, playerPos[0]);
-		const py = @floatToInt(chunk.ChunkCoordinate, playerPos[1]);
-		const pz = @floatToInt(chunk.ChunkCoordinate, playerPos[2]);
+		const px = @floatToInt(i32, playerPos[0]);
+		const py = @floatToInt(i32, playerPos[1]);
+		const pz = @floatToInt(i32, playerPos[2]);
 
 		var meshRequests = std.ArrayList(chunk.ChunkPosition).init(main.threadAllocator);
 		defer meshRequests.deinit();
@@ -891,11 +891,11 @@ pub const RenderStructure = struct {
 			var maxRenderDistance = renderDistance*chunk.chunkSize << lod;
 			if(lod != 0) maxRenderDistance = @floatToInt(i32, @ceil(@intToFloat(f32, maxRenderDistance)*LODFactor));
 			var sizeShift = chunk.chunkShift + lod;
-			const size = @intCast(chunk.UChunkCoordinate, chunk.chunkSize << lod);
-			const mask: chunk.ChunkCoordinate = size - 1;
-			const invMask: chunk.ChunkCoordinate = ~mask;
+			const size = @intCast(u31, chunk.chunkSize << lod);
+			const mask: i32 = size - 1;
+			const invMask: i32 = ~mask;
 
-			const maxSideLength = @intCast(chunk.UChunkCoordinate, @divFloor(2*maxRenderDistance + size-1, size) + 2);
+			const maxSideLength = @intCast(u31, @divFloor(2*maxRenderDistance + size-1, size) + 2);
 			var newList = try allocator.alloc(?*ChunkMeshNode, maxSideLength*maxSideLength*maxSideLength);
 			std.mem.set(?*ChunkMeshNode, newList, null);
 
@@ -929,7 +929,7 @@ pub const RenderStructure = struct {
 					while(z != maxZ): (z +%= size) {
 						const zIndex = @divExact(z -% startZ, size);
 						const index = (xIndex*maxSideLength + yIndex)*maxSideLength + zIndex;
-						const pos = chunk.ChunkPosition{.wx=x, .wy=y, .wz=z, .voxelSize=@as(chunk.UChunkCoordinate, 1)<<lod};
+						const pos = chunk.ChunkPosition{.wx=x, .wy=y, .wz=z, .voxelSize=@as(u31, 1)<<lod};
 						var node = _getNode(pos);
 						if(node) |_node| {
 							_node.shouldBeRemoved = false;
@@ -951,7 +951,7 @@ pub const RenderStructure = struct {
 							try meshes.append(&node.?.mesh);
 						}
 						if(lod+1 != storageLists.len and node.?.mesh.generated) {
-							if(_getNode(.{.wx=x, .wy=y, .wz=z, .voxelSize=@as(chunk.UChunkCoordinate, 1)<<(lod+1)})) |parent| {
+							if(_getNode(.{.wx=x, .wy=y, .wz=z, .voxelSize=@as(u31, 1)<<(lod+1)})) |parent| {
 								const octantIndex = @intCast(u3, (x>>sizeShift & 1) | (y>>sizeShift & 1)<<1 | (z>>sizeShift & 1)<<2);
 								parent.mesh.visibilityMask &= ~(@as(u8, 1) << octantIndex);
 							}
@@ -1140,7 +1140,7 @@ pub const RenderStructure = struct {
 		}
 	};
 
-	pub fn updateBlock(x: chunk.ChunkCoordinate, y: chunk.ChunkCoordinate, z: chunk.ChunkCoordinate, newBlock: blocks.Block) !void {
+	pub fn updateBlock(x: i32, y: i32, z: i32, newBlock: blocks.Block) !void {
 		blockUpdateMutex.lock();
 		try blockUpdateList.append(BlockUpdate{.x=x, .y=y, .z=z, .newBlock=newBlock});
 		defer blockUpdateMutex.unlock();
