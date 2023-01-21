@@ -219,7 +219,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	var waterFog = Fog{.active=true, .color=.{0.0, 0.1, 0.2}, .density=0.1};
 
 	// Update the uniforms. The uniforms are needed to render the replacement meshes.
-	chunk.meshing.bindShaderAndUniforms(game.lodProjectionMatrix, ambientLight, .{@intToFloat(f32, main.Window.width), @intToFloat(f32, main.Window.height)}, time);
+	chunk.meshing.bindShaderAndUniforms(game.lodProjectionMatrix, ambientLight, time);
 
 //TODO:	NormalChunkMesh.bindShader(ambientLight, directionalLight.getDirection(), time);
 
@@ -254,7 +254,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	// Render the far away ReducedChunks:
 	c.glDepthRangef(0.05, 1.0); // ← Used to fix z-fighting.
-	chunk.meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight, .{@intToFloat(f32, main.Window.width), @intToFloat(f32, main.Window.height)}, time);
+	chunk.meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight, time);
 	c.glUniform1i(chunk.meshing.uniforms.@"waterFog.activ", if(waterFog.active) 1 else 0);
 	c.glUniform3fv(chunk.meshing.uniforms.@"waterFog.color", 1, @ptrCast([*c]f32, &waterFog.color));
 	c.glUniform1f(chunk.meshing.uniforms.@"waterFog.density", waterFog.density);

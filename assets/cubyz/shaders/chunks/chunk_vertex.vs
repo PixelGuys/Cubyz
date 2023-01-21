@@ -7,16 +7,11 @@ flat out int faceNormal;
 // For raymarching:
 out vec3 startPosition;
 out vec3 direction;
-// For mipmapping:
-flat out vec2 pixelSizeX; // Where one voxel unit is facing in screenspace.
-flat out vec2 pixelSizeY; // Where one voxel unit is facing in screenspace.
-flat out vec2 pixelSizeZ; // Where one voxel unit is facing in screenspace.
 
 uniform int visibilityMask;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
 uniform vec3 modelPosition;
-uniform vec2 screenSize;
 
 struct FaceData {
 	int encodedPositionAndNormalsAndPermutation;
@@ -123,12 +118,6 @@ int convertNormal(int normal, mat3 permutationMatrix, vec3 mirrorVector) {
 	return -1;
 }
 
-vec2 screenSpaceDelta(vec4 actualProjection, vec3 offsetPosition) {
-	vec4 transformedOffset = projectionMatrix*(viewMatrix*vec4(offsetPosition, 1));
-	vec2 result = (transformedOffset.xy/transformedOffset.w - actualProjection.xy/actualProjection.w)*screenSize/2;
-	return result;
-}
-
 void main() {
 	int faceID = gl_VertexID/4;
 	int vertexID = gl_VertexID%4;
@@ -167,7 +156,7 @@ void main() {
 
 	startPosition = (totalOffset)*0.999;
 
-	direction = position.xyz*voxelSize/16.0 + permutationMatrix*(mirrorVector*(modelPosition + (viewMatrix*vec4(0, 0, 0, 1)).xyz));
+	direction = position.xyz/16.0 + permutationMatrix*(mirrorVector*(modelPosition + (viewMatrix*vec4(0, 0, 0, 1)).xyz))/voxelSize;
 
 	vec3 globalPosition = mirrorVector*(transpose(permutationMatrix)*position)*voxelSize/16.0 + modelPosition;
 
@@ -175,8 +164,4 @@ void main() {
 	gl_Position = projectionMatrix*mvPos;
 	faceNormal = normal;
 	mvVertexPos = mvPos.xyz;
-
-	pixelSizeX = screenSpaceDelta(gl_Position, globalPosition + transpose(permutationMatrix)*vec3(1, 0, 0)*voxelSize/16.0);
-	pixelSizeY = screenSpaceDelta(gl_Position, globalPosition + transpose(permutationMatrix)*vec3(0, 1, 0)*voxelSize/16.0);
-	pixelSizeZ = screenSpaceDelta(gl_Position, globalPosition + transpose(permutationMatrix)*vec3(0, 0, 1)*voxelSize/16.0);
 }

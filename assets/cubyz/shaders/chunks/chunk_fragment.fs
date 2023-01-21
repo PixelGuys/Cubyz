@@ -7,10 +7,6 @@ flat in int modelIndex;
 // For raymarching:
 in vec3 startPosition;
 in vec3 direction;
-// For mipmapping:
-flat in vec2 pixelSizeX; // Where one voxel unit is facing in screenspace.
-flat in vec2 pixelSizeY; // Where one voxel unit is facing in screenspace.
-flat in vec2 pixelSizeZ; // Where one voxel unit is facing in screenspace.
 
 uniform int time;
 uniform vec3 ambientLight;
@@ -59,6 +55,14 @@ const float[6] normalVariations = float[6](
 	0.92, //vec3(-1, 0, 0),
 	0.96, //vec3(0, 0, 1),
 	0.88 //vec3(0, 0, -1)
+);
+const vec3[6] normals = vec3[6](
+	vec3(0, 1, 0),
+	vec3(0, -1, 0),
+	vec3(1, 0, 0),
+	vec3(-1, 0, 0),
+	vec3(0, 0, 1),
+	vec3(0, 0, -1)
 );
 
 
@@ -162,29 +166,21 @@ ivec2 getTextureCoords(ivec3 voxelPosition, int textureDir) {
 	}
 }
 
-float getLod(ivec3 voxelPosition, int normal, vec3 startPosition) {
-	vec2 one;
-	vec2 other;
-	switch(normal) {
-		case 0:
-		case 1:
-			one = pixelSizeX;
-			other = pixelSizeZ;
-			break;
-		case 2:
-		case 3:
-			one = pixelSizeY;
-			other = pixelSizeZ;
-			break;
-		case 4:
-		case 5:
-			one = pixelSizeX;
-			other = pixelSizeY;
-			break;
-	}
-	float area = abs(one.x*other.y - one.y*other.x);
-	float biggestSideLength = max(length(one), length(other));
-	return max(0, min(4, -1 + log2(2.0*biggestSideLength/area)));
+float getLod(ivec3 voxelPosition, int normal, vec3 direction, float variance) {
+	return max(0, min(4, log2(variance*length(direction)/abs(dot(vec3(normals[normal]), direction)))));
+}
+
+float perpendicularFwidth(vec3 direction) { // Estimates how big fwidth would be if the fragment normal was perpendicular to the light direction.
+	vec3 varianceX = dFdx(direction);
+	vec3 varianceY = dFdx(direction);
+	varianceX += direction;
+	varianceX = varianceX*length(direction)/length(varianceX);
+	varianceX -= direction;
+	varianceY += direction;
+	varianceY = varianceY*length(direction)/length(varianceY);
+	varianceY -= direction;
+	vec3 variance = abs(varianceX) + abs(varianceY);
+	return 8*length(variance);
 }
 
 vec4 mipMapSample(sampler2DArray texture, ivec2 textureCoords, int textureIndex, float lod) { // TODO: anisotropic filtering?
@@ -198,7 +194,8 @@ vec4 mipMapSample(sampler2DArray texture, ivec2 textureCoords, int textureIndex,
 
 void main() {
 	RayMarchResult result;
-	if(min(1.0/length(pixelSizeX), min(1.0/length(pixelSizeY), 1.0/length(pixelSizeZ))) <= 4.0) {
+	float variance = perpendicularFwidth(direction);
+	if(variance <= 4.0) {
 		result = rayMarching(startPosition, direction);
 	} else {
 		result = RayMarchResult(true, faceNormal, faceNormal, ivec3(startPosition)); // At some point it doesn't make sense to even draw the model.
@@ -207,7 +204,7 @@ void main() {
 	int textureIndex = textureIndices[blockType][result.textureDir];
 	textureIndex = textureIndex + time / animation[textureIndex].time % animation[textureIndex].frames;
 	float normalVariation = normalVariations[result.normal];
-	float lod = getLod(result.voxelPosition, result.normal, startPosition);
+	float lod = getLod(result.voxelPosition, result.normal, direction, variance);
 	ivec2 textureCoords = getTextureCoords(result.voxelPosition, result.textureDir);
 	fragColor = mipMapSample(texture_sampler, textureCoords, textureIndex, lod)*vec4(ambientLight*normalVariation, 1);
 

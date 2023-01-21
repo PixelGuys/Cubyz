@@ -430,7 +430,7 @@ pub const meshing = struct {
 		faceBuffer.deinit();
 	}
 
-	pub fn bindShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, screenSize: Vec2f, time: u32) void {
+	pub fn bindShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, time: u32) void {
 		shader.bind();
 
 		c.glUniform1i(uniforms.@"fog.activ", if(game.fog.active) 1 else 0);
@@ -445,8 +445,6 @@ pub const meshing = struct {
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast([*c]f32, &game.camera.viewMatrix));
 
 		c.glUniform3f(uniforms.ambientLight, ambient[0], ambient[1], ambient[2]);
-
-		c.glUniform2f(uniforms.screenSize, screenSize[0], screenSize[1]);
 
 		c.glUniform1i(uniforms.time, @truncate(u31, time));
 
