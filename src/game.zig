@@ -6,8 +6,7 @@ const itemdrop = @import("itemdrop.zig");
 const ClientItemDropManager = itemdrop.ClientItemDropManager;
 const items = @import("items.zig");
 const Inventory = items.Inventory;
-const json = @import("json.zig");
-const JsonElement = json.JsonElement;
+const JsonElement = @import("json.zig").JsonElement;
 const main = @import("main.zig");
 const keyboard = &main.keyboard;
 const network = @import("network.zig");
@@ -111,10 +110,10 @@ pub const World = struct {
 		Player.inventory__SEND_CHANGES_TO_SERVER.deinit(renderer.RenderStructure.allocator);
 	}
 
-	pub fn finishHandshake(self: *World, jsonObject: JsonElement) !void {
+	pub fn finishHandshake(self: *World, json: JsonElement) !void {
 		// TODO: Consider using a per-world allocator.
-		self.blockPalette = try assets.BlockPalette.init(renderer.RenderStructure.allocator, jsonObject.getChild("blockPalette"));
-		var jsonSpawn = jsonObject.getChild("spawn");
+		self.blockPalette = try assets.BlockPalette.init(renderer.RenderStructure.allocator, json.getChild("blockPalette"));
+		var jsonSpawn = json.getChild("spawn");
 		self.spawn[0] = jsonSpawn.get(f32, "x", 0);
 		self.spawn[1] = jsonSpawn.get(f32, "y", 0);
 		self.spawn[2] = jsonSpawn.get(f32, "z", 0);
@@ -128,7 +127,7 @@ pub const World = struct {
 //		}
 //
 //		player.loadFrom(json.getObjectOrNew("player"), this);
-		Player.id = jsonObject.get(u32, "player_id", std.math.maxInt(u32));
+		Player.id = json.get(u32, "player_id", std.math.maxInt(u32));
 //		TODO:
 //		// Call mods for this new world. Mods sometimes need to do extra stuff for the specific world.
 //		ModLoader.postWorldGen(registries);

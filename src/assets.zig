@@ -3,8 +3,7 @@ const Allocator = std.mem.Allocator;
 
 const blocks_zig = @import("blocks.zig");
 const items_zig = @import("items.zig");
-const json = @import("json.zig");
-const JsonElement = json.JsonElement;
+const JsonElement = @import("json.zig").JsonElement;
 const main = @import("main.zig");
 
 var arena: std.heap.ArenaAllocator = undefined;
@@ -38,7 +37,7 @@ pub fn readAllJsonFilesInAddons(externalAllocator: Allocator, addons: std.ArrayL
 				defer file.close();
 				const string = try file.readToEndAlloc(main.threadAllocator, std.math.maxInt(usize));
 				defer main.threadAllocator.free(string);
-				try output.put(id, json.parseFromString(externalAllocator, string));
+				try output.put(id, JsonElement.parseFromString(externalAllocator, string));
 			}
 		}
 	}
@@ -82,16 +81,16 @@ pub fn init() !void {
 	try readAssets(arenaAllocator, "assets/", &commonBlocks, &commonItems, &commonBiomes);
 }
 
-fn registerItem(assetFolder: []const u8, id: []const u8, info: JsonElement) !void {
-	_ = try items_zig.register(assetFolder, id, info);
+fn registerItem(assetFolder: []const u8, id: []const u8, json: JsonElement) !void {
+	_ = try items_zig.register(assetFolder, id, json);
 }
 
-fn registerBlock(assetFolder: []const u8, id: []const u8, info: JsonElement) !void {
-	const block = try blocks_zig.register(assetFolder, id, info); // TODO: Modded block registries
-	try blocks_zig.meshes.register(assetFolder, id, info);
+fn registerBlock(assetFolder: []const u8, id: []const u8, json: JsonElement) !void {
+	const block = try blocks_zig.register(assetFolder, id, json); // TODO: Modded block registries
+	try blocks_zig.meshes.register(assetFolder, id, json);
 
-	if(info.get(bool, "hasItem", true)) {
-		const item = try items_zig.register(assetFolder, id, info.getChild("item"));
+	if(json.get(bool, "hasItem", true)) {
+		const item = try items_zig.register(assetFolder, id, json.getChild("item"));
 		item.block = block;
 	}
 //		TODO:
@@ -113,21 +112,21 @@ fn registerBlock(assetFolder: []const u8, id: []const u8, info: JsonElement) !vo
 
 pub const BlockPalette = struct {
 	palette: std.ArrayList([]const u8),
-	pub fn init(allocator: Allocator, jsonObject: JsonElement) !*BlockPalette {
+	pub fn init(allocator: Allocator, json: JsonElement) !*BlockPalette {
 		var self = try allocator.create(BlockPalette);
 		self.* = BlockPalette {
 			.palette = std.ArrayList([]const u8).init(allocator),
 		};
 		errdefer self.deinit();
-		if(jsonObject != .JsonObject or jsonObject.JsonObject.count() == 0) {
+		if(json != .JsonObject or json.JsonObject.count() == 0) {
 			try self.palette.append(try allocator.dupe(u8, "cubyz:air"));
 		} else {
-			var palette = try main.threadAllocator.alloc(?[]const u8, jsonObject.JsonObject.count());
+			var palette = try main.threadAllocator.alloc(?[]const u8, json.JsonObject.count());
 			defer main.threadAllocator.free(palette);
 			for(palette) |*val| {
 				val.* = null;
 			}
-			var iterator = jsonObject.JsonObject.iterator();
+			var iterator = json.JsonObject.iterator();
 			while(iterator.next()) |entry| {
 				palette[entry.value_ptr.as(usize, std.math.maxInt(usize))] = entry.key_ptr.*;
 			}
@@ -154,14 +153,14 @@ pub const BlockPalette = struct {
 	}
 
 	pub fn save(self: *BlockPalette, allocator: Allocator) !JsonElement {
-		var jsonObject = JsonElement{
+		var json = JsonElement{
 			.JsonObject = std.StringHashMap(JsonElement).init(allocator),
 		};
-		errdefer jsonObject.free(allocator);
+		errdefer json.free(allocator);
 		for(self.palette.items) |item, i| {
-			jsonObject.JsonObject.put(try allocator.dupe(u8, item), JsonElement{.JsonInt = @intCast(i64, i)});
+			json.JsonObject.put(try allocator.dupe(u8, item), JsonElement{.JsonInt = @intCast(i64, i)});
 		}
-		return jsonObject;
+		return json;
 	}
 };
 
@@ -179,17 +178,17 @@ pub fn loadWorldAssets(assetFolder: []const u8, palette: *BlockPalette) !void {
 	var block: u32 = 0;
 	for(palette.palette.items) |id| {
 		var nullValue = blocks.get(id);
-		var jsonObject: JsonElement = undefined;
+		var json: JsonElement = undefined;
 		if(nullValue) |value| {
-			jsonObject = value;
+			json = value;
 		} else {
 			std.log.err("Missing block: {s}. Replacing it with default block.", .{id});
 			var map: *std.StringHashMap(JsonElement) = try main.threadAllocator.create(std.StringHashMap(JsonElement));
 			map.* = std.StringHashMap(JsonElement).init(main.threadAllocator);
-			jsonObject = JsonElement{.JsonObject=map};
+			json = JsonElement{.JsonObject=map};
 		}
-		defer if(nullValue == null) jsonObject.free(main.threadAllocator);
-		try registerBlock(assetFolder, id, jsonObject);
+		defer if(nullValue == null) json.free(main.threadAllocator);
+		try registerBlock(assetFolder, id, json);
 		block += 1;
 	}
 	var iterator = blocks.iterator();

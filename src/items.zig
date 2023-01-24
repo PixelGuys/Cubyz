@@ -6,8 +6,7 @@ const blocks = @import("blocks.zig");
 const Block = blocks.Block;
 const graphics = @import("graphics.zig");
 const Color = graphics.Color;
-const json = @import("json.zig");
-const JsonElement = json.JsonElement;
+const JsonElement = @import("json.zig").JsonElement;
 const main = @import("main.zig");
 const random = @import("random.zig");
 const vec = @import("vec.zig");
@@ -29,12 +28,12 @@ const Material = struct {
 	/// The colors that are used to make tool textures.
 	colorPalette: []Color = undefined,
 
-	pub fn init(self: *Material, allocator: Allocator, jsonObject: JsonElement) !void {
-		self.density = jsonObject.get(f32, "density", 1.0);
-		self.resistance = jsonObject.get(f32, "resistance", 1.0);
-		self.power = jsonObject.get(f32, "power", 1.0);
-		self.roughness = @max(0, jsonObject.get(f32, "roughness", 1.0));
-		const colors = jsonObject.getChild("colors");
+	pub fn init(self: *Material, allocator: Allocator, json: JsonElement) !void {
+		self.density = json.get(f32, "density", 1.0);
+		self.resistance = json.get(f32, "resistance", 1.0);
+		self.power = json.get(f32, "power", 1.0);
+		self.roughness = @max(0, json.get(f32, "roughness", 1.0));
+		const colors = json.getChild("colors");
 		self.colorPalette = try allocator.alloc(Color, colors.JsonArray.items.len);
 		for(colors.JsonArray.items) |item, i| {
 			const colorInt = item.as(u32, 0xff000000);
@@ -78,14 +77,14 @@ const BaseItem = struct {
 	block: ?u16,
 	foodValue: f32, // TODO: Effects.
 
-	pub fn init(self: *BaseItem, allocator: Allocator, id: []const u8, jsonObject: JsonElement) !void {
+	pub fn init(self: *BaseItem, allocator: Allocator, id: []const u8, json: JsonElement) !void {
 		self.id = try allocator.dupe(u8, id);
 // TODO: Check if/how this is needed:
 //		self.texturePath = "";
 //		self.modelPath = "";
-		self.name = try allocator.dupe(u8, jsonObject.get([]const u8, "name", id));
-		self.stackSize = jsonObject.get(u16, "stackSize", 64);
-		const material = jsonObject.getChild("material");
+		self.name = try allocator.dupe(u8, json.get([]const u8, "name", id));
+		self.stackSize = json.get(u16, "stackSize", 64);
+		const material = json.getChild("material");
 		if(material == .JsonObject) {
 			self.material = Material{};
 			try self.material.?.init(allocator, material);
@@ -93,9 +92,9 @@ const BaseItem = struct {
 			self.material = null;
 		}
 		self.block = blk: {
-			break :blk blocks.getByID(jsonObject.get(?[]const u8, "block", null) orelse break :blk null);
+			break :blk blocks.getByID(json.get(?[]const u8, "block", null) orelse break :blk null);
 		};
-		self.foodValue = jsonObject.get(f32, "food", 0);
+		self.foodValue = json.get(f32, "food", 0);
 	}
 // TODO: Check if/how this is needed:
 //	protected Item(int stackSize) {
@@ -916,9 +915,9 @@ const Tool = struct {
 		return self;
 	}
 
-	pub fn initFromJson(jsonObject: JsonElement) !*Tool {
-		var self = try initFromCraftingGrid(extractItemsFromJson(jsonObject.getChild("grid")), jsonObject.get(u32, "seed", 0));
-		self.durability = jsonObject.get(u32, "durability", self.maxDurability);
+	pub fn initFromJson(json: JsonElement) !*Tool {
+		var self = try initFromCraftingGrid(extractItemsFromJson(json.getChild("grid")), json.get(u32, "seed", 0));
+		self.durability = json.get(u32, "durability", self.maxDurability);
 		return self;
 	}
 
@@ -978,12 +977,12 @@ pub const Item = union(enum) {
 	baseItem: *const BaseItem,
 	tool: *const Tool,
 
-	pub fn init(jsonObject: JsonElement) !Item {
-		if(reverseIndices.get(jsonObject.get([]const u8, "item", "null"))) |baseItem| {
+	pub fn init(json: JsonElement) !Item {
+		if(reverseIndices.get(json.get([]const u8, "item", "null"))) |baseItem| {
 			std.debug.print("{*}", .{baseItem.id.ptr});
 			return Item{.baseItem = baseItem};
 		} else {
-			var toolJson = jsonObject.getChild("tool");
+			var toolJson = json.getChild("tool");
 			if(toolJson != .JsonObject) return error.ItemNotFound;
 			return Item{.tool = try Tool.initFromJson(toolJson)};
 		}
@@ -1183,13 +1182,13 @@ pub const Inventory = struct {
 		return jsonObject;
 	}
 
-	pub fn loadFromJson(self: Inventory, allocator: Allocator, jsonObject: JsonElement) void {
+	pub fn loadFromJson(self: Inventory, allocator: Allocator, json: JsonElement) void {
 		for(self.items) |*stack, i| {
 			stack.clear();
 			var buf: [1024]u8 = undefined;
-			var stackJson = jsonObject.getChild(buf[0..std.fmt.formatIntBuf(buf, i, 10, .lower, .{})]);
+			var stackJson = json.getChild(buf[0..std.fmt.formatIntBuf(buf, i, 10, .lower, .{})]);
 			if(stackJson == .JsonObject) {
-				stack.item = try Item.init(allocator, jsonObject);
+				stack.item = try Item.init(allocator, json);
 				stack.amount = stackJson.get(u16, "amount", 0);
 			}
 		}
@@ -1208,13 +1207,13 @@ pub fn globalInit() void {
 	itemListSize = 0;
 }
 
-pub fn register(_: []const u8, id: []const u8, jsonObject: JsonElement) !*BaseItem {
+pub fn register(_: []const u8, id: []const u8, json: JsonElement) !*BaseItem {
 	std.log.info("{s}", .{id});
 	if(reverseIndices.contains(id)) {
 		std.log.warn("Registered block with id {s} twice!", .{id});
 	}
 	var newItem = &itemList[itemListSize];
-	try newItem.init(arena.allocator(), id, jsonObject);
+	try newItem.init(arena.allocator(), id, json);
 	try reverseIndices.put(newItem.id, newItem);
 	itemListSize += 1;
 	return newItem;

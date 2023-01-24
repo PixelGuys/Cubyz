@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const json = @import("json.zig");
+const JsonElement = @import("json.zig").JsonElement;
 const main = @import("main.zig");
 
 pub const defaultPort: u16 = 47649;
@@ -33,14 +33,14 @@ pub var lastUsedIPAddress: []const u8 = "localhost";
 
 
 pub fn init() !void {
-	const jsonObject = blk: {
-		var file = std.fs.cwd().openFile("settings.json", .{}) catch break :blk json.JsonElement{.JsonNull={}};
+	const json = blk: {
+		var file = std.fs.cwd().openFile("settings.json", .{}) catch break :blk JsonElement{.JsonNull={}};
 		defer file.close();
 		const fileString = try file.readToEndAlloc(main.threadAllocator, std.math.maxInt(usize));
 		defer main.threadAllocator.free(fileString);
-		break :blk json.parseFromString(main.threadAllocator, fileString);
+		break :blk JsonElement.parseFromString(main.threadAllocator, fileString);
 	};
-	defer jsonObject.free(main.threadAllocator);
+	defer json.free(main.threadAllocator);
 
 	inline for(@typeInfo(@This()).Struct.decls) |decl| {
 		const is_const = @typeInfo(@TypeOf(&@field(@This(), decl.name))).Pointer.is_const; // Sadly there is no direct way to check if a declaration is const.
@@ -49,7 +49,7 @@ pub fn init() !void {
 			if(@typeInfo(declType) == .Struct) {
 				@compileError("Not implemented yet.");
 			}
-			@field(@This(), decl.name) = jsonObject.get(declType, decl.name, @field(@This(), decl.name));
+			@field(@This(), decl.name) = json.get(declType, decl.name, @field(@This(), decl.name));
 			if(@typeInfo(declType) == .Pointer) {
 				if(@typeInfo(declType).Pointer.size == .Slice) {
 					@field(@This(), decl.name) = try main.globalAllocator.dupe(@typeInfo(declType).Pointer.child, @field(@This(), decl.name));
@@ -62,7 +62,7 @@ pub fn init() !void {
 }
 
 pub fn deinit() void {
-	const jsonObject = json.JsonElement.initObject(main.threadAllocator) catch |err| {
+	const jsonObject = JsonElement.initObject(main.threadAllocator) catch |err| {
 		std.log.err("Error in settings.deinit(): {s}", .{@errorName(err)});
 		return;
 	};

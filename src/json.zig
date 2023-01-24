@@ -5,7 +5,7 @@ const main = @import("main.zig");
 
 const OutOfMemory = Allocator.Error;
 
-pub const JsonType = enum(u32) {
+const JsonType = enum(u8) {
 	JsonInt,
 	JsonFloat,
 	JsonString,
@@ -38,7 +38,7 @@ pub const JsonElement = union(JsonType) {
 	}
 
 	pub fn getAtIndex(self: *const JsonElement, comptime _type: type, index: usize, replacement: _type) @TypeOf(replacement) {
-		if(self.* != JsonType.JsonArray) {
+		if(self.* != .JsonArray) {
 			return replacement;
 		} else {
 			if(index < self.JsonArray.items.len) {
@@ -50,7 +50,7 @@ pub const JsonElement = union(JsonType) {
 	}
 
 	pub fn getChildAtIndex(self: *const JsonElement, index: usize) JsonElement {
-		if(self.* != JsonType.JsonArray) {
+		if(self.* != .JsonArray) {
 			return JsonElement{.JsonNull={}};
 		} else {
 			if(index < self.JsonArray.items.len) {
@@ -62,7 +62,7 @@ pub const JsonElement = union(JsonType) {
 	}
 
 	pub fn get(self: *const JsonElement, comptime _type: type, key: []const u8, replacement: _type) @TypeOf(replacement) {
-		if(self.* != JsonType.JsonObject) {
+		if(self.* != .JsonObject) {
 			return replacement;
 		} else {
 			if(self.JsonObject.get(key)) |elem| {
@@ -74,7 +74,7 @@ pub const JsonElement = union(JsonType) {
 	}
 
 	pub fn getChild(self: *const JsonElement, key: []const u8) JsonElement {
-		if(self.* != JsonType.JsonObject) {
+		if(self.* != .JsonObject) {
 			return JsonElement{.JsonNull={}};
 		} else {
 			if(self.JsonObject.get(key)) |elem| {
@@ -95,15 +95,15 @@ pub const JsonElement = union(JsonType) {
 		switch(typeInfo) {
 			.Int => {
 				switch(self.*) {
-					JsonType.JsonInt => return std.math.cast(innerType, self.JsonInt) orelse replacement,
-					JsonType.JsonFloat => return std.math.lossyCast(innerType, std.math.round(self.JsonFloat)),
+					.JsonInt => return std.math.cast(innerType, self.JsonInt) orelse replacement,
+					.JsonFloat => return std.math.lossyCast(innerType, std.math.round(self.JsonFloat)),
 					else => return replacement,
 				}
 			},
 			.Float => {
 				switch(self.*) {
-					JsonType.JsonInt => return @intToFloat(innerType, self.JsonInt),
-					JsonType.JsonFloat => return @floatCast(innerType, self.JsonFloat),
+					.JsonInt => return @intToFloat(innerType, self.JsonInt),
+					.JsonFloat => return @floatCast(innerType, self.JsonFloat),
 					else => return replacement,
 				}
 			},
@@ -111,14 +111,14 @@ pub const JsonElement = union(JsonType) {
 				switch(innerType) {
 					[]const u8 => {
 						switch(self.*) {
-							JsonType.JsonString => return self.JsonString,
-							JsonType.JsonStringOwned => return self.JsonStringOwned,
+							.JsonString => return self.JsonString,
+							.JsonStringOwned => return self.JsonStringOwned,
 							else => return replacement,
 						}
 					},
 					bool => {
 						switch(self.*) {
-							JsonType.JsonBool => return self.JsonBool,
+							.JsonBool => return self.JsonBool,
 							else => return replacement,
 						}
 					},
@@ -169,7 +169,7 @@ pub const JsonElement = union(JsonType) {
 
 	pub fn toSlice(self: *const JsonElement) []JsonElement {
 		switch(self.*) {
-			JsonType.JsonArray => |arr| {
+			.JsonArray => |arr| {
 				return arr.items;
 			},
 			else => return &[0]JsonElement{},
@@ -178,18 +178,18 @@ pub const JsonElement = union(JsonType) {
 
 	pub fn free(self: *const JsonElement, allocator: Allocator) void {
 		switch(self.*) {
-			JsonType.JsonInt, JsonType.JsonFloat, JsonType.JsonBool, JsonType.JsonNull, JsonType.JsonString => return,
-			JsonType.JsonStringOwned => {
+			.JsonInt, .JsonFloat, .JsonBool, .JsonNull, .JsonString => return,
+			.JsonStringOwned => {
 				allocator.free(self.JsonStringOwned);
 			},
-			JsonType.JsonArray => {
+			.JsonArray => {
 				for(self.JsonArray.items) |*elem| {
 					elem.free(allocator);
 				}
 				self.JsonArray.clearAndFree();
 				allocator.destroy(self.JsonArray);
 			},
-			JsonType.JsonObject => {
+			.JsonObject => {
 				var iterator = self.JsonObject.iterator();
 				while(true) {
 					var elem = iterator.next() orelse break;
@@ -203,7 +203,7 @@ pub const JsonElement = union(JsonType) {
 	}
 
 	pub fn isNull(self: *const JsonElement) bool {
-		return self.* == JsonType.JsonNull;
+		return self.* == .JsonNull;
 	}
 
 	fn escape(string: []const u8, allocator: Allocator) ![]const u8 {
@@ -227,30 +227,30 @@ pub const JsonElement = union(JsonType) {
 	}
 	fn recurseToString(json: JsonElement, writer: std.ArrayList(u8).Writer, tabs: u32, comptime visualCharacters: bool) !void {
 		switch(json) {
-			JsonType.JsonInt => |value| {
+			.JsonInt => |value| {
 				try std.fmt.formatInt(value, 10, .lower, .{}, writer);
 			},
-			JsonType.JsonFloat => |value| {
+			.JsonFloat => |value| {
 				try std.fmt.formatFloatScientific(value, .{}, writer);
 			},
-			JsonType.JsonBool => |value| {
+			.JsonBool => |value| {
 				if(value) {
 					try writer.writeAll("true");
 				} else {
 					try writer.writeAll("false");
 				}
 			},
-			JsonType.JsonNull => {
+			.JsonNull => {
 				try writer.writeAll("null");
 			},
-			JsonType.JsonString, JsonType.JsonStringOwned => |value| {
+			.JsonString, .JsonStringOwned => |value| {
 				const escaped = try escape(value, main.threadAllocator);
 				try writer.writeByte('\"');
 				try writer.writeAll(escaped);
 				try writer.writeByte('\"');
 				main.threadAllocator.free(escaped);
 			},
-			JsonType.JsonArray => |array| {
+			.JsonArray => |array| {
 				try writer.writeByte('[');
 				for(array.items) |elem, i| {
 					if(i != 0) {
@@ -264,7 +264,7 @@ pub const JsonElement = union(JsonType) {
 				if(visualCharacters) try writeTabs(writer, tabs);
 				try writer.writeByte(']');
 			},
-			JsonType.JsonObject => |obj| {
+			.JsonObject => |obj| {
 				try writer.writeByte('{');
 				var iterator = obj.iterator();
 				var first: bool = true;
@@ -304,16 +304,16 @@ pub const JsonElement = union(JsonType) {
 		try recurseToString(json, string.writer(), 0, false);
 		return string.toOwnedSlice();
 	}
-};
 
-pub fn parseFromString(allocator: Allocator, string: []const u8) JsonElement {
-	var index: u32 = 0;
-	Parser.skipWhitespaces(string, &index);
-	return Parser.parseElement(allocator, string, &index) catch {
-		std.log.err("Out of memory while trying to parse json.", .{});
-		return JsonElement{.JsonNull={}};
-	};
-}
+	pub fn parseFromString(allocator: Allocator, string: []const u8) JsonElement {
+		var index: u32 = 0;
+		Parser.skipWhitespaces(string, &index);
+		return Parser.parseElement(allocator, string, &index) catch {
+			std.log.err("Out of memory while trying to parse json.", .{});
+			return JsonElement{.JsonNull={}};
+		};
+	}
+};
 
 const Parser = struct {
 	/// All whitespaces from unicode 14.

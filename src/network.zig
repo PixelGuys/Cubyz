@@ -9,11 +9,10 @@ const entity = @import("entity.zig");
 const items = @import("items.zig");
 const Inventory = items.Inventory;
 const ItemStack = items.ItemStack;
-const json = @import("json.zig");
+const JsonElement = @import("json.zig").JsonElement;
 const main = @import("main.zig");
 const game = @import("game.zig");
 const settings = @import("settings.zig");
-const JsonElement = json.JsonElement;
 const renderer = @import("renderer.zig");
 const utils = @import("utils.zig");
 const vec = @import("vec.zig");
@@ -587,10 +586,10 @@ pub const Protocols: struct {
 				conn.handShakeState = data[0];
 				switch(data[0]) {
 					stepUserData => {
-						var jsonObject = json.parseFromString(main.threadAllocator, data[1..]);
-						defer jsonObject.free(main.threadAllocator);
-						var name = jsonObject.get([]const u8, "name", "unnamed");
-						var version = jsonObject.get([]const u8, "version", "unknown");
+						const json = JsonElement.parseFromString(main.threadAllocator, data[1..]);
+						defer json.free(main.threadAllocator);
+						const name = json.get([]const u8, "name", "unnamed");
+						const version = json.get([]const u8, "version", "unknown");
 						std.log.info("User {s} joined using version {s}.", .{name, version});
 
 						{
@@ -638,9 +637,9 @@ pub const Protocols: struct {
 						try utils.Compression.unpack(try std.fs.cwd().openDir("serverAssets", .{}), data[1..]);
 					},
 					stepServerData => {
-						var jsonObject = json.parseFromString(main.threadAllocator, data[1..]);
-						defer jsonObject.free(main.threadAllocator);
-						try game.world.?.finishHandshake(jsonObject);
+						var json = JsonElement.parseFromString(main.threadAllocator, data[1..]);
+						defer json.free(main.threadAllocator);
+						try game.world.?.finishHandshake(json);
 						conn.handShakeState = stepComplete;
 						conn.handShakeWaiting.broadcast(); // Notify the waiting client thread.
 					},
@@ -664,8 +663,8 @@ pub const Protocols: struct {
 			var jsonObject = JsonElement{.JsonObject=try main.threadAllocator.create(std.StringHashMap(JsonElement))};
 			defer jsonObject.free(main.threadAllocator);
 			jsonObject.JsonObject.* = std.StringHashMap(JsonElement).init(main.threadAllocator);
-			try jsonObject.JsonObject.put(try main.threadAllocator.dupe(u8, "version"), JsonElement{.JsonString=settings.version});
-			try jsonObject.JsonObject.put(try main.threadAllocator.dupe(u8, "name"), JsonElement{.JsonString=name});
+			try jsonObject.putOwnedString("version", settings.version);
+			try jsonObject.putOwnedString("name", name);
 			var prefix = [1]u8 {stepUserData};
 			var data = try jsonObject.toStringEfficient(main.threadAllocator, &prefix);
 			defer main.threadAllocator.free(data);
@@ -854,7 +853,7 @@ pub const Protocols: struct {
 	entity: type = struct {
 		const id: u8 = 8;
 		fn receive(_: *Connection, data: []const u8) !void {
-			const jsonArray = json.parseFromString(main.threadAllocator, data);
+			const jsonArray = JsonElement.parseFromString(main.threadAllocator, data);
 			defer jsonArray.free(main.threadAllocator);
 			var i: u32 = 0;
 			while(i < jsonArray.JsonArray.items.len) : (i += 1) {
@@ -876,7 +875,7 @@ pub const Protocols: struct {
 				}
 			}
 			while(i < jsonArray.JsonArray.items.len) : (i += 1) {
-				const elem: json.JsonElement = jsonArray.JsonArray.items[i];
+				const elem: JsonElement = jsonArray.JsonArray.items[i];
 				if(elem == .JsonInt) {
 					game.world.?.itemDrops.remove(elem.as(u16, 0));
 				} else if(!elem.getChild("array").isNull()) {
@@ -1056,15 +1055,15 @@ pub const Protocols: struct {
 //					);
 				},
 				type_itemStackCollect => {
-					const jsonObject = json.parseFromString(main.threadAllocator, data[1..]);
-					defer jsonObject.free(main.threadAllocator);
-					const item = items.Item.init(jsonObject) catch |err| {
+					const json = JsonElement.parseFromString(main.threadAllocator, data[1..]);
+					defer json.free(main.threadAllocator);
+					const item = items.Item.init(json) catch |err| {
 						std.log.err("Error {s} while collecting item {s}. Ignoring it.", .{@errorName(err), data[1..]});
 						return;
 					};
 					game.Player.mutex.lock();
 					defer game.Player.mutex.unlock();
-					const remaining = game.Player.inventory__SEND_CHANGES_TO_SERVER.addItem(item, jsonObject.get(u16, "amount", 0));
+					const remaining = game.Player.inventory__SEND_CHANGES_TO_SERVER.addItem(item, json.get(u16, "amount", 0));
 
 					try sendInventory_full(conn, game.Player.inventory__SEND_CHANGES_TO_SERVER);
 					if(remaining != 0) {
@@ -1074,9 +1073,9 @@ pub const Protocols: struct {
 				},
 				type_timeAndBiome => {
 					if(game.world) |world| {
-						const jsonObject = json.parseFromString(main.threadAllocator, data[1..]);
-						defer jsonObject.free(main.threadAllocator);
-						var expectedTime = jsonObject.get(i64, "time", 0);
+						const json = JsonElement.parseFromString(main.threadAllocator, data[1..]);
+						defer json.free(main.threadAllocator);
+						var expectedTime = json.get(i64, "time", 0);
 						var curTime = world.gameTime.load(.Monotonic);
 						if(std.math.absInt(curTime -% expectedTime) catch std.math.maxInt(i64) >= 1000) {
 							world.gameTime.store(expectedTime, .Monotonic);
@@ -1148,9 +1147,9 @@ pub const Protocols: struct {
 
 
 		pub fn sendInventory_full(conn: *Connection, inv: Inventory) !void {
-			const jsonObject = try inv.save(main.threadAllocator);
-			defer jsonObject.free(main.threadAllocator);
-			const string = try jsonObject.toString(main.threadAllocator);
+			const json = try inv.save(main.threadAllocator);
+			defer json.free(main.threadAllocator);
+			const string = try json.toString(main.threadAllocator);
 			defer main.threadAllocator.free(string);
 			try addHeaderAndSendImportant(conn, type_inventoryFull, string);
 		}
@@ -1177,9 +1176,9 @@ pub const Protocols: struct {
 		}
 
 		pub fn itemStackCollect(conn: *Connection, stack: ItemStack) !void {
-			var jsonObject = try stack.store(main.threadAllocator);
-			defer jsonObject.free(main.threadAllocator);
-			const string = try jsonObject.toString(main.threadAllocator);
+			var json = try stack.store(main.threadAllocator);
+			defer json.free(main.threadAllocator);
+			const string = try json.toString(main.threadAllocator);
 			defer main.threadAllocator.free(string);
 			try addHeaderAndSendImportant(conn, type_itemStackCollect, string);
 		}

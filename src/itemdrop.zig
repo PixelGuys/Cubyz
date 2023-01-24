@@ -80,31 +80,31 @@ pub const ItemDropManager = struct {
 		self.lastUpdates.free(self.allocator);
 	}
 
-	pub fn loadFrom(self: *ItemDropManager, jsonObject: JsonElement) !void {
-		const jsonArray = jsonObject.getChild("array");
+	pub fn loadFrom(self: *ItemDropManager, json: JsonElement) !void {
+		const jsonArray = json.getChild("array");
 		for(jsonArray.toSlice()) |elem| {
 			try self.addFromJson(elem);
 		}
 	}
 
-	pub fn addFromJson(self: *ItemDropManager, elem: JsonElement) !void {
-		const item = try items.Item.init(elem);
+	pub fn addFromJson(self: *ItemDropManager, json: JsonElement) !void {
+		const item = try items.Item.init(json);
 		const properties = .{
 			Vec3d{
-				elem.get(f64, "x", 0),
-				elem.get(f64, "y", 0),
-				elem.get(f64, "z", 0),
+				json.get(f64, "x", 0),
+				json.get(f64, "y", 0),
+				json.get(f64, "z", 0),
 			},
 			Vec3d{
-				elem.get(f64, "vx", 0),
-				elem.get(f64, "vy", 0),
-				elem.get(f64, "vz", 0),
+				json.get(f64, "vx", 0),
+				json.get(f64, "vy", 0),
+				json.get(f64, "vz", 0),
 			},
-			items.ItemStack{.item = item, .amount = elem.get(u16, "amount", 1)},
-			elem.get(u32, "despawnTime", 60),
+			items.ItemStack{.item = item, .amount = json.get(u16, "amount", 1)},
+			json.get(u32, "despawnTime", 60),
 			0
 		};
-		if(elem.get(?usize, "i", null)) |i| {
+		if(json.get(?usize, "i", null)) |i| {
 			@call(.auto, addWithIndex, .{self, @intCast(u16, i)} ++ properties);
 		} else {
 			try @call(.auto, add, .{self} ++ properties);
@@ -279,7 +279,7 @@ pub const ItemDropManager = struct {
 	fn defaultAddWithIndexAndRotation(self: *ItemDropManager, i: u16, pos: Vec3d, vel: Vec3d, rot: Vec3f, itemStack: ItemStack, despawnTime: u32, pickupCooldown: u32) void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
-		std.debug.assert(!self.isEmpty.isSet(i));
+		std.debug.assert(self.isEmpty.isSet(i));
 		self.isEmpty.unset(i);
 		self.list.set(i, ItemDrop {
 			.pos = pos,
@@ -512,11 +512,11 @@ pub const ClientItemDropManager = struct {
 		self.super.remove(i);
 	}
 
-	pub fn loadFrom(self: *ClientItemDropManager, jsonObject: JsonElement) !void {
-		try self.super.loadFrom(jsonObject);
+	pub fn loadFrom(self: *ClientItemDropManager, json: JsonElement) !void {
+		try self.super.loadFrom(json);
 	}
 
-	pub fn addFromJson(self: *ClientItemDropManager, elem: JsonElement) !void {
-		try self.super.addFromJson(elem);
+	pub fn addFromJson(self: *ClientItemDropManager, json: JsonElement) !void {
+		try self.super.addFromJson(json);
 	}
 };
