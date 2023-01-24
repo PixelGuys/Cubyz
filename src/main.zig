@@ -27,27 +27,32 @@ pub var globalAllocator: std.mem.Allocator = undefined;
 pub var threadPool: utils.ThreadPool = undefined;
 
 var logFile: std.fs.File = undefined;
+// overwrite the log function:
+pub const std_options = struct {
+    pub const log_level = .info;
+    pub fn logFn(
+		comptime level: std.log.Level,
+		comptime _: @Type(.EnumLiteral),
+		comptime format: []const u8,
+		args: anytype,
+	) void {
+		const color = comptime switch (level) {
+			std.log.Level.err => "\x1b[31m",
+			std.log.Level.info => "",
+			std.log.Level.warn => "\x1b[33m",
+			std.log.Level.debug => "\x1b[37;44m",
+		};
 
-pub fn log(
-	comptime level: std.log.Level,
-	comptime _: @Type(.EnumLiteral),
-	comptime format: []const u8,
-	args: anytype,
-) void {
-	const color = comptime switch (level) {
-		std.log.Level.err => "\x1b[31m",
-		std.log.Level.info => "",
-		std.log.Level.warn => "\x1b[33m",
-		std.log.Level.debug => "\x1b[37;44m",
-	};
+		std.debug.getStderrMutex().lock();
+		defer std.debug.getStderrMutex().unlock();
 
-	std.debug.getStderrMutex().lock();
-	defer std.debug.getStderrMutex().unlock();
+		logFile.writer().print("[" ++ level.asText() ++ "]" ++ ": " ++ format ++ "\n", args) catch {};
 
-	logFile.writer().print("[" ++ level.asText() ++ "]" ++ ": " ++ format ++ "\n", args) catch {};
+		nosuspend std.io.getStdErr().writer().print(color ++ format ++ "\x1b[0m\n", args) catch {};
+	}
+};
 
-	nosuspend std.io.getStdErr().writer().print(color ++ format ++ "\x1b[0m\n", args) catch {};
-}
+
 
 const Key = struct {
 	pressed: bool = false,

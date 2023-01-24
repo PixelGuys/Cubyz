@@ -1282,7 +1282,7 @@ pub const Connection = struct {
 			port = port[1..];
 		}
 		result.remoteAddress.port = std.fmt.parseUnsigned(u16, port, 10) catch blk: {
-			std.log.warn("Could not parse port \"{s}\". Using default port instead.", .{port});
+			if(ip.len != ipPort.len) std.log.warn("Could not parse port \"{s}\". Using default port instead.", .{port});
 			break :blk settings.defaultPort;
 		};
 
