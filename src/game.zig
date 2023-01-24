@@ -2,6 +2,8 @@ const std = @import("std");
 
 const assets = @import("assets.zig");
 const chunk = @import("chunk.zig");
+const itemdrop = @import("itemdrop.zig");
+const ClientItemDropManager = itemdrop.ClientItemDropManager;
 const items = @import("items.zig");
 const Inventory = items.Inventory;
 const json = @import("json.zig");
@@ -78,13 +80,13 @@ pub const World = struct {
 	manager: *ConnectionManager,
 	ambientLight: f32 = 0,
 	clearColor: Vec4f = Vec4f{0, 0, 0, 1},
+	gravity: f64 = 9.81*1.5, // TODO: Balance
 	name: []const u8,
 	milliTime: i64,
 	gameTime: std.atomic.Atomic(i64) = std.atomic.Atomic(i64).init(0),
 	spawn: Vec3f = undefined,
 	blockPalette: *assets.BlockPalette = undefined,
-	// TODO:
-//	public ItemEntityManager itemEntityManager;
+	itemDrops: ClientItemDropManager = undefined,
 	
 //	TODO: public Biome playerBiome;
 //	public final ArrayList<String> chatHistory = new ArrayList<>();
@@ -96,15 +98,16 @@ pub const World = struct {
 			.name = "client",
 			.milliTime = std.time.milliTimestamp(),
 		};
+		try self.itemDrops.init(main.globalAllocator, self);
 		Player.inventory__SEND_CHANGES_TO_SERVER = try Inventory.init(renderer.RenderStructure.allocator, 32);
 		// TODO:
-//		super.itemEntityManager = new InterpolatedItemEntityManager(this);
 //		player = new ClientPlayer(this, 0);
 		try network.Protocols.handShake.clientSide(self.conn, settings.playerName);
 	}
 
 	pub fn deinit(self: *World) void {
 		self.conn.deinit();
+		self.itemDrops.deinit();
 		Player.inventory__SEND_CHANGES_TO_SERVER.deinit(renderer.RenderStructure.allocator);
 	}
 
@@ -211,15 +214,9 @@ pub const World = struct {
 //	public void queueChunks(ChunkData[] chunks) {
 //		Protocols.CHUNK_REQUEST.sendRequest(serverConnection, chunks);
 //	}
-//	public NormalChunk getChunk(int wx, int wy, int wz) {
-//		RenderOctTree.OctTreeNode node = Cubyz.chunkTree.findNode(new ChunkData(wx, wy, wz, 1));
-//		if(node == null)
-//			return null;
-//		ChunkData chunk = node.mesh.getChunk();
-//		if(chunk instanceof NormalChunk)
-//			return (NormalChunk)chunk;
-//		return null;
-//	}
+	pub fn getChunk(_: *World, x: i32, y: i32, z: i32) ?*chunk.Chunk {
+		return renderer.RenderStructure.getChunk(x, y, z);
+	}
 //	public void cleanup() {
 //		connectionManager.cleanup();
 //		ThreadPool.clear();

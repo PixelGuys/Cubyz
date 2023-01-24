@@ -1079,12 +1079,16 @@ pub const ItemStack = struct {
 		self.amount = 0;
 	}
 
+	pub fn storeToJson(self: *const ItemStack, jsonObject: JsonElement) !void {
+		if(self.item) |item| {
+			try item.insertIntoJson(jsonObject.JsonObject.allocator, jsonObject);
+			try jsonObject.put("amount", self.amount);
+		}
+	}
+
 	pub fn store(self: *const ItemStack, allocator: Allocator) !JsonElement {
 		var result = try JsonElement.initObject(allocator);
-		if(self.item) |item| {
-			try item.insertIntoJson(allocator, result);
-			try result.put("amount", self.amount);
-		}
+		try self.storeToJson(result);
 		return result;
 	}
 
@@ -1229,7 +1233,7 @@ pub fn deinit() void {
 	arena.deinit();
 }
 
-pub fn getByID(id: []const u8) ?*BaseItem {
+pub fn getByID(id: []const u8) ?*const BaseItem {
 	if(reverseIndices.get(id)) |result| {
 		return result;
 	} else {

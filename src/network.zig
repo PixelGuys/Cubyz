@@ -759,23 +759,6 @@ pub const Protocols: struct {
 			defer main.threadAllocator.free(compressed);
 			try conn.sendImportant(id, compressed);
 		}
-	// TODO:
-//	public void sendChunk(UDPConnection conn, ChunkData ch) {
-//		byte[] data;
-//		if(ch instanceof NormalChunk) {
-//			byte[] compressedChunk = ChunkIO.compressChunk((NormalChunk)ch);
-//			data = new byte[compressedChunk.length + 16];
-//			System.arraycopy(compressedChunk, 0, data, 16, compressedChunk.length);
-//		} else {
-//			assert false: "Invalid chunk class to send over the network " + ch.getClass() + ".";
-//			return;
-//		}
-//		Bits.putInt(data, 0, ch.wx);
-//		Bits.putInt(data, 4, ch.wy);
-//		Bits.putInt(data, 8, ch.wz);
-//		Bits.putInt(data, 12, ch.voxelSize);
-//		conn.sendImportant(this, data);
-//	}
 	},
 	playerPosition: type = struct {
 		const id: u8 = 4;
@@ -824,7 +807,7 @@ pub const Protocols: struct {
 				if(data[0] == type_entity) {
 					try entity.ClientEntityManager.serverUpdate(time, data[3..]);
 				} else if(data[0] == type_item) {
-					// TODO: ((InterpolatedItemEntityManager)Cubyz.world.itemEntityManager).readPosition(data[3..], time);
+					game.world.?.itemDrops.readPosition(data[3..], time);
 				}
 			}
 		}
@@ -893,16 +876,14 @@ pub const Protocols: struct {
 				}
 			}
 			while(i < jsonArray.JsonArray.items.len) : (i += 1) {
-				const elem = jsonArray.JsonArray.items[i];
-				_ = elem;
-				// TODO:
-//					if(json.getArray("array") != null) {
-//						Cubyz.world.itemEntityManager.loadFrom((JsonObject)json);
-//					} else if(json instanceof JsonInt) {
-//						Cubyz.world.itemEntityManager.remove(json.asInt(0));
-//					} else if(json instanceof JsonObject) {
-//						Cubyz.world.itemEntityManager.add(json);
-//					}
+				const elem: json.JsonElement = jsonArray.JsonArray.items[i];
+				if(elem == .JsonInt) {
+					game.world.?.itemDrops.remove(elem.as(u16, 0));
+				} else if(!elem.getChild("array").isNull()) {
+					try game.world.?.itemDrops.loadFrom(elem);
+				} else {
+					try game.world.?.itemDrops.addFromJson(elem);
+				}
 			}
 		}
 		pub fn send(conn: *Connection, msg: []const u8) !void {

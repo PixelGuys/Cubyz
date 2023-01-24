@@ -23,6 +23,7 @@ pub const c = @cImport ({
 });
 
 pub threadlocal var threadAllocator: std.mem.Allocator = undefined;
+pub threadlocal var seed: u64 = undefined;
 pub var globalAllocator: std.mem.Allocator = undefined;
 pub var threadPool: utils.ThreadPool = undefined;
 

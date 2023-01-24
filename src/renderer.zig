@@ -859,6 +859,11 @@ pub const RenderStructure = struct {
 		return (&storageLists[lod]).*[@intCast(usize, index)]; // TODO: Wait for #12205 to be fixed and remove the weird (&...).* workaround.
 	}
 
+	pub fn getChunk(x: i32, y: i32, z: i32) ?*chunk.Chunk {
+		const node = RenderStructure._getNode(.{.wx = x, .wy = y, .wz = z, .voxelSize=1}) orelse return null;
+		return node.mesh.chunk.load(.Monotonic);
+	}
+
 	pub fn getBlock(x: i32, y: i32, z: i32) ?blocks.Block {
 		const node = RenderStructure._getNode(.{.wx = x, .wy = y, .wz = z, .voxelSize=1}) orelse return null;
 		const block = (node.mesh.chunk.load(.Monotonic) orelse return null).getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);

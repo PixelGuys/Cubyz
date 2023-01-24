@@ -202,7 +202,7 @@ pub const JsonElement = union(JsonType) {
 		}
 	}
 
-	pub fn isNull(self: *JsonElement) bool {
+	pub fn isNull(self: *const JsonElement) bool {
 		return self.* == JsonType.JsonNull;
 	}
 
