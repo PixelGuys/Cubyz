@@ -832,7 +832,7 @@ pub const SSBO = struct {
 		c.glBindBufferBase(c.GL_SHADER_STORAGE_BUFFER, binding, self.bufferID);
 	}
 
-	pub fn bufferData(self: SSBO, comptime T: type, data: []T) void {
+	pub fn bufferData(self: SSBO, comptime T: type, data: []const T) void {
 		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
 		c.glBufferData(c.GL_SHADER_STORAGE_BUFFER, @intCast(c_long, data.len*@sizeOf(T)), data.ptr, c.GL_STATIC_DRAW);
 		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
@@ -1161,10 +1161,25 @@ pub const Color = extern struct {
 	r: u8,
 	g: u8,
 	b: u8,
-	a: u8
+	a: u8,
+
+	pub fn toARBG(self: Color) u32 {
+		return @as(u32, self.a)<<24 | @as(u32, self.r)<<16 | @as(u32, self.g)<<8 | @as(u32, self.b);
+	}
 };
 
 pub const Image = struct {
+	var defaultImageData = [4]Color {
+		Color{.r=0, .g=0, .b=0, .a=255},
+		Color{.r=255, .g=0, .b=255, .a=255},
+		Color{.r=255, .g=0, .b=255, .a=255},
+		Color{.r=0, .g=0, .b=0, .a=255},
+	};
+	pub const defaultImage = Image {
+		.width = 2,
+		.height = 2,
+		.imageData = &defaultImageData,
+	};
 	width: u31,
 	height: u31,
 	imageData: []Color,
@@ -1176,6 +1191,7 @@ pub const Image = struct {
 		};
 	}
 	pub fn deinit(self: Image, allocator: Allocator) void {
+		if(self.imageData.ptr == &defaultImageData) return;
 		allocator.free(self.imageData);
 	}
 	pub fn readFromFile(allocator: Allocator, path: []const u8) !Image {
@@ -1190,6 +1206,12 @@ pub const Image = struct {
 		result.imageData = try allocator.dupe(Color, @ptrCast([*]Color, data)[0..result.width*result.height]);
 		stb_image.stbi_image_free(data);
 		return result;
+	}
+	pub fn getRGB(self: Image, x: usize, y: usize) Color {
+		std.debug.assert(x < self.width);
+		std.debug.assert(y < self.height);
+		const index = x + y*self.width;
+		return self.imageData[index];
 	}
 	pub fn setRGB(self: Image, x: usize, y: usize, rgb: Color) void {
 		std.debug.assert(x < self.width);

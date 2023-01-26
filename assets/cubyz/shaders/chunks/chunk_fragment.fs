@@ -50,7 +50,7 @@ layout(std430, binding = 4) buffer _voxelModels
 
 const float[6] normalVariations = float[6](
 	1.0, //vec3(0, 1, 0),
-	0.88, //vec3(0, -1, 0),
+	0.84, //vec3(0, -1, 0),
 	0.92, //vec3(1, 0, 0),
 	0.92, //vec3(-1, 0, 0),
 	0.96, //vec3(0, 0, 1),

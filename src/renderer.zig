@@ -1,26 +1,27 @@
 const std = @import("std");
 
 const blocks = @import("blocks.zig");
+const chunk = @import("chunk.zig");
 const entity = @import("entity.zig");
 const graphics = @import("graphics.zig");
 const c = graphics.c;
 const Fog = graphics.Fog;
 const Shader = graphics.Shader;
+const game = @import("game.zig");
+const World = game.World;
+const itemdrop = @import("itemdrop.zig");
+const main = @import("main.zig");
+const Window = main.Window;
+const models = @import("models.zig");
+const network = @import("network.zig");
+const settings = @import("settings.zig");
+const utils = @import("utils.zig");
 const vec = @import("vec.zig");
 const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
 const Vec4f = vec.Vec4f;
 const Mat4f = vec.Mat4f;
-const game = @import("game.zig");
-const World = game.World;
-const chunk = @import("chunk.zig");
-const main = @import("main.zig");
-const models = @import("models.zig");
-const network = @import("network.zig");
-const settings = @import("settings.zig");
-const utils = @import("utils.zig");
-const Window = main.Window;
 
 /// The number of milliseconds after which no more chunk meshes are created. This allows the game to run smoother on movement.
 const maximumMeshTime = 12;
@@ -228,8 +229,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glActiveTexture(c.GL_TEXTURE1);
 	blocks.meshes.emissionTextureArray.bind();
 
-	c.glDepthRange(0, 0.05);
-
 //	SimpleList<NormalChunkMesh> visibleChunks = new SimpleList<NormalChunkMesh>(new NormalChunkMesh[64]);
 //	SimpleList<ReducedChunkMesh> visibleReduced = new SimpleList<ReducedChunkMesh>(new ReducedChunkMesh[64]);
 	var meshes = std.ArrayList(*chunk.meshing.ChunkMesh).init(main.threadAllocator);
@@ -248,12 +247,10 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 //			visibleReduced.add((ReducedChunkMesh)mesh);
 //		}
 //	}
-	c.glDepthRangef(0.05, 1.0); // TODO: Figure out how to fix the depth range issues.
 	MeshSelection.select(playerPos, game.camera.direction);
 	MeshSelection.render(game.projectionMatrix, game.camera.viewMatrix, playerPos);
 
 	// Render the far away ReducedChunks:
-	c.glDepthRangef(0.05, 1.0); // ← Used to fix z-fighting.
 	chunk.meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight, time);
 	c.glUniform1i(chunk.meshing.uniforms.@"waterFog.activ", if(waterFog.active) 1 else 0);
 	c.glUniform3fv(chunk.meshing.uniforms.@"waterFog.color", 1, @ptrCast([*c]f32, &waterFog.color));
@@ -267,11 +264,10 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 //			ReducedChunkMesh mesh = visibleReduced.array[i];
 //			mesh.render(playerPosition);
 //		}
-	c.glDepthRangef(0, 0.05);
 
 	entity.ClientEntityManager.render(game.projectionMatrix, ambientLight, .{1, 0.5, 0.25}, playerPos);
 
-//		BlockDropRenderer.render(frustumInt, ambientLight, directionalLight, playerPosition);
+	try itemdrop.ItemDropRenderer.renderItemDrops(game.projectionMatrix, ambientLight, playerPos);
 
 //		// Render transparent chunk meshes:
 //		NormalChunkMesh.bindTransparentShader(ambientLight, directionalLight.getDirection(), time);

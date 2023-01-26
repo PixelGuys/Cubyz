@@ -16,7 +16,6 @@ struct Fog {
 };
 
 uniform vec3 ambientLight;
-uniform vec3 directionalLight;
 uniform mat4 projectionMatrix;
 uniform float sizeScale;
 
@@ -26,6 +25,15 @@ layout(std430, binding = 2) buffer _voxelModels
 {
     uint voxelModels[];
 };
+
+const float[6] normalVariations = float[6](
+	1.0, //vec3(0, 1, 0),
+	0.80, //vec3(0, -1, 0),
+	0.9, //vec3(1, 0, 0),
+	0.9, //vec3(-1, 0, 0),
+	0.95, //vec3(0, 0, 1),
+	0.85 //vec3(0, 0, -1)
+);
 
 uint getVoxel(uvec3 pos) {
 	uint index = (pos.x | pos.y*size.x)*size.z | pos.z;
@@ -44,6 +52,16 @@ vec4 decodeColor(uint block) {
 	return vec4(block >> 16 & uint(255), block >> 8 & uint(255), block & uint(255), block >> 24 & uint(255))/255.0;
 }
 
+int findLastNormal(vec3 startPosition, vec3 direction) {
+	vec3 lastNormal = vec3(equal(fwidth(startPosition), vec3(0)))*sign(direction);
+	if(lastNormal.y == 1) return 0;
+	if(lastNormal.y == -1) return 1;
+	if(lastNormal.x == 1) return 2;
+	if(lastNormal.x == -1) return 3;
+	if(lastNormal.z == 1) return 4;
+	if(lastNormal.z == -1) return 5;
+}
+
 void main() {
 	// Implementation of "A Fast Voxel Traversal Algorithm for Ray Tracing"  http://www.cse.yorku.ca/~amana/research/grid.pdf
 	ivec3 step = ivec3(sign(direction));
@@ -57,7 +75,7 @@ void main() {
 	if(direction.z == 0) tMax.z = 1.0/0.0;
 	
 	uvec3 voxelPosition = uvec3(floor(startPosition));
-	vec3 lastNormal;
+	int lastNormal = findLastNormal(startPosition, direction);
 	uint block = getVoxel(voxelPosition);
 	float total_tMax = 0;
 	
@@ -71,14 +89,14 @@ void main() {
 					discard;
 				total_tMax = tMax.x;
 				tMax.x += tDelta.x;
-				lastNormal = vec3(step.x, 0, 0);
+				lastNormal = 2 + (1 + int(step.x))/2;
 			} else {
 				voxelPosition.z += step.z;
 				if((voxelPosition.z & sizeMask.z) != voxelPosition.z)
 					discard;
 				total_tMax = tMax.z;
 				tMax.z += tDelta.z;
-				lastNormal = vec3(0, 0, step.z);
+				lastNormal = 4 + (1 + int(step.z))/2;
 			}
 		} else {
 			if(tMax.y < tMax.z) {
@@ -87,14 +105,14 @@ void main() {
 					discard;
 				total_tMax = tMax.y;
 				tMax.y += tDelta.y;
-				lastNormal = vec3(0, step.y, 0);
+				lastNormal = 0 + (1 + int(step.y))/2;
 			} else {
 				voxelPosition.z += step.z;
 				if((voxelPosition.z & sizeMask.z) != voxelPosition.z)
 					discard;
 				total_tMax = tMax.z;
 				tMax.z += tDelta.z;
-				lastNormal = vec3(0, 0, step.z);
+				lastNormal = 4 + (1 + int(step.z))/2;
 			}
 		}
 		block = getVoxel(voxelPosition);
@@ -110,7 +128,7 @@ void main() {
 	
 	vec4 color = decodeColor(block);
 	color.a = 1; // No transparency supported!
-	color = color*vec4(ambientLight*(1 - dot(directionalLight, lastNormal)), 1);
+	color = color*vec4(ambientLight*normalVariations[lastNormal], 1);
 
 	if (fog.activ) {
 		fragColor = calcFog(modifiedCameraSpacePos, color, fog);

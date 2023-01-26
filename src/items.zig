@@ -54,21 +54,20 @@ const Material = struct {
 //		this.roughness = roughness;
 //		colorPalette = colors;
 //	}
-//
-//	public int hashCode() {
-//		int hash = Float.floatToIntBits(density);
-//		hash = 101*hash + Float.floatToIntBits(resistance);
-//		hash = 101*hash + Float.floatToIntBits(power);
-//		hash = 101*hash + Float.floatToIntBits(roughness);
-//		return hash;
-//	}
+
+	pub fn hashCode(self: Material) u32 {
+		var hash = @bitCast(u32, self.density);
+		hash = 101*%hash +% @bitCast(u32, self.resistance);
+		hash = 101*%hash +% @bitCast(u32, self.power);
+		hash = 101*%hash +% @bitCast(u32, self.roughness);
+		hash ^= hash >> 24;
+		return hash;
+	}
 };
 
 
-const BaseItem = struct {
-// TODO: Check if/how this is needed:
-//	texturePath: []const u8,
-//	modelPath: []const u8,
+pub const BaseItem = struct {
+	texture: graphics.Image,
 	id: []const u8,
 	name: []const u8,
 
@@ -77,11 +76,12 @@ const BaseItem = struct {
 	block: ?u16,
 	foodValue: f32, // TODO: Effects.
 
-	pub fn init(self: *BaseItem, allocator: Allocator, id: []const u8, json: JsonElement) !void {
+	fn init(self: *BaseItem, allocator: Allocator, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, json: JsonElement) !void {
 		self.id = try allocator.dupe(u8, id);
-// TODO: Check if/how this is needed:
-//		self.texturePath = "";
-//		self.modelPath = "";
+		self.texture = graphics.Image.readFromFile(allocator, texturePath) catch graphics.Image.readFromFile(allocator, replacementTexturePath) catch blk: {
+			std.log.err("Item texture not found in {s} and {s}.", .{texturePath, replacementTexturePath});
+			break :blk graphics.Image.defaultImage;
+		};
 		self.name = try allocator.dupe(u8, json.get([]const u8, "name", id));
 		self.stackSize = json.get(u16, "stackSize", 64);
 		const material = json.getChild("material");
@@ -95,6 +95,14 @@ const BaseItem = struct {
 			break :blk blocks.getByID(json.get(?[]const u8, "block", null) orelse break :blk null);
 		};
 		self.foodValue = json.get(f32, "food", 0);
+	}
+
+	fn hashCode(self: BaseItem) u32 {
+		var hash: u32 = 0;
+		for(self.id) |char| {
+			hash = hash*%33 +% char;
+		}
+		return hash;
 	}
 // TODO: Check if/how this is needed:
 //	protected Item(int stackSize) {
@@ -455,7 +463,7 @@ const TextureGenerator = struct {
 		while(x < 5) : (x += 1) {
 			var y: u8 = 0;
 			while(y < 5) : (y += 1) {
-				var offsetGrid: [25]?*const BaseItem = undefined;
+				var offsetGrid: [25]?*const BaseItem = .{null} ** 25;
 				var offsetNeighborCount: [25]u8 = undefined;
 				var dx: i32 = -2;
 				while(dx <= 2) : (dx += 1) {
@@ -499,10 +507,14 @@ const TextureGenerator = struct {
 						// Calculate the lighting based on the nearest free space:
 						const lightTL = heightMap[x][y] - heightMap[x + 1][y + 1];
 						const lightTR = heightMap[x + 1][y] - heightMap[x][y + 1];
-						var light = 2 - @floatToInt(u32, @round((lightTL * 2 + lightTR) / 6));
+						var light = 2 - @floatToInt(i32, @round((lightTL * 2 + lightTR) / 6));
 						light = @max(@min(light, 4), 0);
-						img.setRGB(x, y, material.colorPalette[light]);
+						img.setRGB(x, y, material.colorPalette[@intCast(usize, light)]);
+					} else {
+						img.setRGB(x, y, if((x ^ y) & 1 == 0) Color{.r=255, .g=0, .b=255, .a=255} else Color{.r=0, .g=0, .b=0, .a=255});
 					}
+				} else {
+					img.setRGB(x, y, Color{.r = 0, .g = 0, .b = 0, .a = 0});
 				}
 			}
 		}
@@ -900,8 +912,8 @@ const Tool = struct {
 	}
 
 	pub fn deinit(self: *const Tool) void {
-		main.globalAllocator.destroy(self);
 		self.texture.deinit(main.globalAllocator);
+		main.globalAllocator.destroy(self);
 	}
 
 	pub fn initFromCraftingGrid(craftingGrid: [25]?*const BaseItem, seed: u32) !*Tool {
@@ -944,17 +956,16 @@ const Tool = struct {
 		try jsonObject.put("seed", self.seed);
 		return jsonObject;
 	}
-// TODO: Check if/how this is needed:
-//	@Override
-//	public int hashCode() {
-//		int hash = 0;
-//		for(Item item : craftingGrid) {
-//			if(item != null) {
-//				hash = 33 * hash + item.material.hashCode();
-//			}
-//		}
-//		return hash;
-//	}
+
+	pub fn hashCode(self: Tool) u32 {
+		var hash: u32 = 0;
+		for(self.craftingGrid) |nullItem| {
+			if(nullItem) |item| {
+				hash = 33*%hash +% item.material.?.hashCode();
+			}
+		}
+		return hash;
+	}
 
 	pub fn getPowerByBlockClass(self: *Tool, blockClass: blocks.BlockClass) f32 {
 		return switch(blockClass) {
@@ -1017,6 +1028,25 @@ pub const Item = union(enum) {
 			},
 			.tool => |_tool| {
 				try jsonObject.put("tool", try _tool.save(allocator));
+			},
+		}
+	}
+
+	pub fn getTexture(self: Item) graphics.Image {
+		switch(self) {
+			.baseItem => |_baseItem| {
+				return _baseItem.texture;
+			},
+			.tool => |_tool| {
+				return _tool.texture;
+			},
+		}
+	}
+
+	pub fn hashCode(self: Item) u32 {
+		switch(self) {
+			inline else => |item| {
+				return item.hashCode();
 			},
 		}
 	}
@@ -1207,13 +1237,13 @@ pub fn globalInit() void {
 	itemListSize = 0;
 }
 
-pub fn register(_: []const u8, id: []const u8, json: JsonElement) !*BaseItem {
+pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, json: JsonElement) !*BaseItem {
 	std.log.info("{s}", .{id});
 	if(reverseIndices.contains(id)) {
 		std.log.warn("Registered block with id {s} twice!", .{id});
 	}
 	var newItem = &itemList[itemListSize];
-	try newItem.init(arena.allocator(), id, json);
+	try newItem.init(arena.allocator(), texturePath, replacementTexturePath, id, json);
 	try reverseIndices.put(newItem.id, newItem);
 	itemListSize += 1;
 	return newItem;

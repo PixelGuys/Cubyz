@@ -81,8 +81,14 @@ pub fn init() !void {
 	try readAssets(arenaAllocator, "assets/", &commonBlocks, &commonItems, &commonBiomes);
 }
 
-fn registerItem(assetFolder: []const u8, id: []const u8, json: JsonElement) !void {
-	_ = try items_zig.register(assetFolder, id, json);
+fn registerItem(assetFolder: []const u8, id: []const u8, json: JsonElement) !*items_zig.BaseItem {
+	var split = std.mem.split(u8, id, ":");
+	const mod = split.first();
+	var buf: [4096]u8 = undefined;
+	const texturePath = try std.fmt.bufPrint(&buf, "{s}/{s}/items/textures/{s}", .{assetFolder, mod, json.get([]const u8, "texture", "default.png")});
+	var buf2: [4096]u8 = undefined; // TODO: Implement proper resource loading with various fallback locations.
+	const replacementTexturePath = try std.fmt.bufPrint(&buf2, "assets/{s}/items/textures/{s}", .{mod, json.get([]const u8, "texture", "default.png")});
+	return try items_zig.register(assetFolder, texturePath, replacementTexturePath, id, json);
 }
 
 fn registerBlock(assetFolder: []const u8, id: []const u8, json: JsonElement) !void {
@@ -90,7 +96,7 @@ fn registerBlock(assetFolder: []const u8, id: []const u8, json: JsonElement) !vo
 	try blocks_zig.meshes.register(assetFolder, id, json);
 
 	if(json.get(bool, "hasItem", true)) {
-		const item = try items_zig.register(assetFolder, id, json.getChild("item"));
+		const item = try registerItem(assetFolder, id, json.getChild("item"));
 		item.block = block;
 	}
 //		TODO:
@@ -202,7 +208,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, palette: *BlockPalette) !void {
 	// items:
 	iterator = items.iterator();
 	while(iterator.next()) |entry| {
-		try registerItem(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
+		_ = try registerItem(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
 	}
 
 	// block drops:

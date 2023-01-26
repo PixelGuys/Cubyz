@@ -337,6 +337,118 @@ pub const ThreadPool = struct {
 	}
 };
 
+/// Implements a simple set associative cache with LRU replacement strategy.
+pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSize: u32, comptime deinitFunction: fn(*T) void) type {
+	const hashMask = numberOfBuckets-1;
+	if(numberOfBuckets & hashMask != 0) @compileError("The number of buckets should be a power of 2!");
+
+	const Bucket = struct {
+		mutex: std.Thread.Mutex = .{},
+		items: [bucketSize]?*T = [_]?*T {null} ** bucketSize,
+
+		fn find(self: *@This(), compare: anytype) ?*T {
+			std.debug.assert(!self.mutex.tryLock()); // The mutex must be locked.
+			for(self.items) |item, i| {
+				if(compare.equals(item)) {
+					if(i != 0) {
+						std.mem.copyBackwards(?*T, self.items[1..], self.items[0..i]);
+						self.items[0] = item;
+					}
+					return item;
+				}
+			}
+			return null;
+		}
+
+		/// Returns the object that got kicked out of the cache. This must be deinited by the user.
+		fn add(self: *@This(), item: *T) ?*T {
+			std.debug.assert(!self.mutex.tryLock()); // The mutex must be locked.
+			const previous = self.items[bucketSize - 1];
+			std.mem.copyBackwards(?*T, self.items[1..], self.items[0..bucketSize - 1]);
+			self.items[0] = item;
+			return previous;
+		}
+
+		fn findOrCreate(self: *@This(), compare: anytype, comptime initFunction: fn(@TypeOf(compare)) anyerror!*T) !*T {
+			std.debug.assert(!self.mutex.tryLock()); // The mutex must be locked.
+			if(self.find(compare)) |item| {
+				return item;
+			}
+			const new = try initFunction(compare);
+			if(self.add(new)) |toRemove| {
+				deinitFunction(toRemove);
+			}
+			return new;
+		}
+
+		fn clear(self: *@This()) void {
+			self.mutex.lock();
+			defer self.mutex.unlock();
+			for(self.items) |*nullItem| {
+				if(nullItem.*) |item| {
+					deinitFunction(item);
+					nullItem.* = null;
+				}
+			}
+		}
+
+		fn foreach(self: @This(), comptime function: fn(*T) void) void {
+			self.mutex.lock();
+			defer self.mutex.unlock();
+			for(self.items) |*nullItem| {
+				if(nullItem) |item| {
+					function(item);
+				}
+			}
+		}
+	};
+
+	return struct {
+		buckets: [numberOfBuckets]Bucket = [_]Bucket {Bucket{}} ** numberOfBuckets,
+		cacheRequests: std.atomic.Atomic(usize) = std.atomic.Atomic(usize).init(0),
+		cacheMisses: std.atomic.Atomic(usize) = std.atomic.Atomic(usize).init(0),
+
+		///  Tries to find the entry that fits to the supplied hashable.
+		pub fn find(self: *@This(), compare: anytype, index: u32) void {
+			@atomicRmw(u32, &self.cacheRequests.value, .Add, 1, .Monotonic);
+			self.buckets[index].mutex.lock();
+			defer self.buckets[index].mutex.unlock();
+			if(self.buckets[index].find(compare)) |item| {
+				return item;
+			}
+			@atomicRmw(u32, &self.cacheMisses.value, .Add, 1, .Monotonic);
+			return null;
+		}
+
+		/// Clears all elements calling the deinitFunction for each element.
+		pub fn clear(self: *@This()) void {
+			for(self.buckets) |*bucket| {
+				bucket.clear();
+			}
+		}
+
+		pub fn foreach(self: *@This(), comptime function: fn(*T) void) void {
+			for(self.buckets) |*bucket| {
+				bucket.foreach(function);
+			}
+		}
+
+		/// Returns the object that got kicked out of the cache. This must be deinited by the user.
+		pub fn addToCache(self: *@This(), item: *T, index: u32) ?*T {
+			self.buckets[index].mutex.lock();
+			defer self.buckets[index].mutex.unlock();
+			return self.buckets[index].add(item);
+		}
+
+		pub fn findOrCreate(self: *@This(), compareAndHash: anytype, comptime initFunction: fn(@TypeOf(compareAndHash)) anyerror!*T) !*T {
+			const index: u32 = compareAndHash.hashCode() & hashMask;
+			self.buckets[index].mutex.lock();
+			defer self.buckets[index].mutex.unlock();
+			return try self.buckets[index].findOrCreate(compareAndHash, initFunction);
+		}
+	};
+}
+
 pub fn GenericInterpolation(comptime elements: comptime_int) type {
 	const frames: u32 = 8;
 	return struct {
