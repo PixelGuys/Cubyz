@@ -3,6 +3,7 @@
 in vec3 startPosition;
 in vec3 direction;
 in vec3 cameraSpacePos;
+flat in int faceNormal;
 flat in uint voxelModel;
 flat in uvec3 size;
 
@@ -52,16 +53,6 @@ vec4 decodeColor(uint block) {
 	return vec4(block >> 16 & uint(255), block >> 8 & uint(255), block & uint(255), block >> 24 & uint(255))/255.0;
 }
 
-int findLastNormal(vec3 startPosition, vec3 direction) {
-	vec3 lastNormal = vec3(equal(fwidth(startPosition), vec3(0)))*sign(direction);
-	if(lastNormal.y == 1) return 0;
-	if(lastNormal.y == -1) return 1;
-	if(lastNormal.x == 1) return 2;
-	if(lastNormal.x == -1) return 3;
-	if(lastNormal.z == 1) return 4;
-	if(lastNormal.z == -1) return 5;
-}
-
 void main() {
 	// Implementation of "A Fast Voxel Traversal Algorithm for Ray Tracing"  http://www.cse.yorku.ca/~amana/research/grid.pdf
 	ivec3 step = ivec3(sign(direction));
@@ -75,7 +66,7 @@ void main() {
 	if(direction.z == 0) tMax.z = 1.0/0.0;
 	
 	uvec3 voxelPosition = uvec3(floor(startPosition));
-	int lastNormal = findLastNormal(startPosition, direction);
+	int lastNormal = faceNormal;
 	uint block = getVoxel(voxelPosition);
 	float total_tMax = 0;
 	

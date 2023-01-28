@@ -1,10 +1,11 @@
 #version 430
 
-layout (location=0)  in int position;
+layout (location=0)  in int positionAndNormals;
 
 out vec3 startPosition;
 out vec3 direction;
 out vec3 cameraSpacePos;
+flat out int faceNormal;
 flat out uint voxelModel;
 flat out uvec3 size;
 
@@ -20,9 +21,10 @@ layout(std430, binding = 2) buffer _voxelModels
 };
 
 void main() {
-	int x = position >> 2 & 1;
-	int y = position >> 1 & 1;
-	int z = position >> 0 & 1;
+	int x = positionAndNormals >> 2 & 1;
+	int y = positionAndNormals >> 1 & 1;
+	int z = positionAndNormals >> 0 & 1;
+	faceNormal = positionAndNormals >> 3;
 	uint voxelModelIndex = modelIndex;
 	size.x = voxelModels[voxelModelIndex++];
 	size.y = voxelModels[voxelModelIndex++];
