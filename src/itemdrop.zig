@@ -1,6 +1,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
+const blocks = @import("blocks.zig");
 const chunk_zig = @import("chunk.zig");
 const Chunk = chunk_zig.Chunk;
 const game = @import("game.zig");
@@ -560,7 +561,11 @@ pub const ItemDropRenderer = struct {
 		@"fog.color": c_int,
 		@"fog.density": c_int,
 		modelIndex: c_int,
+		block: c_int,
 		sizeScale: c_int,
+		time: c_int,
+		texture_sampler: c_int,
+		emissionSampler: c_int,
 	} = undefined;
 
 	var itemModelSSBO: graphics.SSBO = undefined;
@@ -738,8 +743,11 @@ pub const ItemDropRenderer = struct {
 		return (try voxelModels.findOrCreate(compareObject, ItemVoxelModel.init)).index;
 	}
 
-	pub fn renderItemDrops(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) !void {
+	pub fn renderItemDrops(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d, time: u32) !void {
 		itemShader.bind();
+		c.glUniform1i(itemUniforms.texture_sampler, 0);
+		c.glUniform1i(itemUniforms.emissionSampler, 1);
+		c.glUniform1i(itemUniforms.time, @truncate(u31, time));
 		c.glUniform1i(itemUniforms.@"fog.activ", if(game.fog.active) 1 else 0);
 		c.glUniform3fv(itemUniforms.@"fog.color", 1, @ptrCast([*c]const f32, &game.fog.color));
 		c.glUniform1f(itemUniforms.@"fog.density", game.fog.density);
@@ -769,9 +777,17 @@ pub const ItemDropRenderer = struct {
 				modelMatrix = modelMatrix.mul(Mat4f.rotationY(-rot[1]));
 				modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-rot[2]));
 				c.glUniformMatrix4fv(itemUniforms.modelMatrix, 1, c.GL_FALSE, @ptrCast([*c]const f32, &modelMatrix));
-				const index = try getModelIndex(item);
-				c.glUniform1i(itemUniforms.modelIndex, index);
 
+				if(item == .baseItem and item.baseItem.block != null) {
+					const blockType = item.baseItem.block.?;
+					const block = blocks.Block{.typ = blockType, .data = 0};
+					c.glUniform1i(itemUniforms.modelIndex, block.mode().model(block).modelIndex);
+					c.glUniform1i(itemUniforms.block, blockType);
+				} else {
+					const index = try getModelIndex(item);
+					c.glUniform1i(itemUniforms.modelIndex, index);
+					c.glUniform1i(itemUniforms.block, 0);
+				}
 				c.glBindVertexArray(itemVAO);
 				c.glDrawElements(c.GL_TRIANGLES, 36, c.GL_UNSIGNED_INT, null);
 			}

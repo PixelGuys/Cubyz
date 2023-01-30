@@ -222,4 +222,5 @@ void main() {
 	}
 	fragColor.rgb /= 4;
 	position = vec4(mvVertexPos, 1);
+	// TODO: Update the depth.
 }
