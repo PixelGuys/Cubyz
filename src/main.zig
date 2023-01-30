@@ -31,7 +31,7 @@ pub var threadPool: utils.ThreadPool = undefined;
 var logFile: std.fs.File = undefined;
 // overwrite the log function:
 pub const std_options = struct {
-    pub const log_level = .info;
+    pub const log_level = .debug;
     pub fn logFn(
 		comptime level: std.log.Level,
 		comptime _: @Type(.EnumLiteral),

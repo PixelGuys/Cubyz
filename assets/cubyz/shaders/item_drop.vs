@@ -56,7 +56,7 @@ void main() {
 	voxelModel = voxelModelIndex;
 	blockType = block;
 	
-	startPosition = lower + vec3(upper)*0.999*pos;
+	startPosition = lower + vec3(upper - lower)*0.999*pos;
 	
 	vec4 worldSpace = modelMatrix*vec4(pos*(upper - lower)*sizeScale + sizeScale/2, 1);
 	direction = (transpose(mat3(modelMatrix))*worldSpace.xyz).xyz;

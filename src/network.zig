@@ -97,6 +97,10 @@ const Address = struct {
 	ip: u32,
 	port: u16,
 	isSymmetricNAT: bool = false,
+
+	pub fn format(self: Address, _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
+		try writer.print("{}.{}.{}.{}:{}", .{self.ip & 255, self.ip >> 8 & 255, self.ip >> 16 & 255, self.ip >> 24, self.port});
+	}
 };
 
 const Request = struct {
@@ -280,7 +284,7 @@ const STUN = struct {
 					continue;
 				};
 				if(oldAddress) |other| {
-					std.log.info("{}.{}.{}.{}:{}", .{result.ip & 255, result.ip >> 8 & 255, result.ip >> 16 & 255, result.ip >> 24, result.port});
+					std.log.info("{}", .{result});
 					if(other.ip == result.ip and other.port == result.port) {
 						return result;
 					} else {

@@ -531,25 +531,6 @@ pub const ClientItemDropManager = struct {
 };
 
 pub const ItemDropRenderer = struct {
-//
-//	// uniform locations:
-//	private static ShaderProgram shader;
-//	public static int loc_projectionMatrix;
-//	public static int loc_viewMatrix;
-//	public static int loc_texture_sampler;
-//	public static int loc_emissionSampler;
-//	public static int loc_fog_activ;
-//	public static int loc_fog_color;
-//	public static int loc_fog_density;
-//	public static int loc_ambientLight;
-//	public static int loc_directionalLight;
-//	public static int loc_light;
-//	public static int loc_texPosX;
-//	public static int loc_texNegX;
-//	public static int loc_texPosY;
-//	public static int loc_texNegY;
-//	public static int loc_texPosZ;
-//	public static int loc_texNegZ;
 	var itemShader: graphics.Shader = undefined;
 	var itemUniforms: struct {
 		projectionMatrix: c_int,
@@ -643,12 +624,6 @@ pub const ItemDropRenderer = struct {
 	};
 
 	pub fn init() !void {
-//		if (shader != null) {
-//			shader.cleanup();
-//		}
-//		shader = new ShaderProgram(Utils.loadResource(shaders + "/block_drop.vs"),
-//				Utils.loadResource(shaders + "/block_drop.fs"),
-//				BlockDropRenderer.class);
 		itemShader = try graphics.Shader.create("assets/cubyz/shaders/item_drop.vs", "assets/cubyz/shaders/item_drop.fs");
 		itemUniforms = itemShader.bulkGetUniformLocation(@TypeOf(itemUniforms));
 		itemModelSSBO = graphics.SSBO.init();
@@ -794,57 +769,3 @@ pub const ItemDropRenderer = struct {
 		}
 	}
 };
-
-//public final class BlockDropRenderer {
-//	
-//	private static void renderBlockDrops(FrustumIntersection frustumInt, Vector3f ambientLight, DirectionalLight directionalLight, Vector3d playerPosition) {
-//		glActiveTexture(GL_TEXTURE0);
-//		Meshes.blockTextureArray.bind();
-//		glActiveTexture(GL_TEXTURE1);
-//		Meshes.emissionTextureArray.bind();
-//		shader.bind();
-//		shader.setUniform(loc_fog_activ, Cubyz.fog.isActive());
-//		shader.setUniform(loc_fog_color, Cubyz.fog.getColor());
-//		shader.setUniform(loc_fog_density, Cubyz.fog.getDensity());
-//		shader.setUniform(loc_projectionMatrix, Window.getProjectionMatrix());
-//		shader.setUniform(loc_texture_sampler, 0);
-//		shader.setUniform(loc_emissionSampler, 1);
-//		shader.setUniform(loc_ambientLight, ambientLight);
-//		shader.setUniform(loc_directionalLight, directionalLight.getDirection());
-//		ItemEntityManager manager = Cubyz.world.itemEntityManager;
-//		for(int ii = 0; ii < manager.size; ii++) {
-//			int i = manager.indices[ii] & 0xffff;
-//			if (manager.itemStacks[i].getItem() instanceof ItemBlock) {
-//				int index = i;
-//				int index3 = 3*i;
-//				int x = (int)(manager.posxyz[index3] + 1.0f);
-//				int y = (int)(manager.posxyz[index3+1] + 1.0f);
-//				int z = (int)(manager.posxyz[index3+2] + 1.0f);
-//				int block = ((ItemBlock)manager.itemStacks[i].getItem()).getBlock();
-//				Mesh mesh = BlockMeshes.mesh(block & Blocks.TYPE_MASK);
-//				mesh.setTexture(null);
-//				shader.setUniform(loc_texNegX, BlockMeshes.textureIndices(block)[Neighbors.DIR_NEG_X]);
-//				shader.setUniform(loc_texPosX, BlockMeshes.textureIndices(block)[Neighbors.DIR_POS_X]);
-//				shader.setUniform(loc_texNegY, BlockMeshes.textureIndices(block)[Neighbors.DIR_DOWN]);
-//				shader.setUniform(loc_texPosY, BlockMeshes.textureIndices(block)[Neighbors.DIR_UP]);
-//				shader.setUniform(loc_texNegZ, BlockMeshes.textureIndices(block)[Neighbors.DIR_NEG_Z]);
-//				shader.setUniform(loc_texPosZ, BlockMeshes.textureIndices(block)[Neighbors.DIR_POS_Z]);
-//				if (mesh != null) {
-//					shader.setUniform(loc_light, Cubyz.world.getLight(x, y, z, ambientLight, ClientSettings.easyLighting));
-//					Vector3d position = manager.getPosition(index).sub(playerPosition);
-//					Matrix4f modelMatrix = Transformation.getModelMatrix(new Vector3f((float)position.x, (float)position.y, (float)position.z), manager.getRotation(index), ItemEntityManager.DIAMETER);
-//					Matrix4f modelViewMatrix = Transformation.getModelViewMatrix(modelMatrix, Camera.getViewMatrix());
-//					shader.setUniform(loc_viewMatrix, modelViewMatrix);
-//					glBindVertexArray(mesh.vaoId);
-//					mesh.render();
-//				}
-//			}
-//		}
-//	}
-//	
-//	public static void render(FrustumIntersection frustumInt, Vector3f ambientLight, DirectionalLight directionalLight, Vector3d playerPosition) {
-//		((InterpolatedItemEntityManager)Cubyz.world.itemEntityManager).updateInterpolationData();
-//		renderBlockDrops(frustumInt, ambientLight, directionalLight, playerPosition);
-//		renderItemDrops(frustumInt, ambientLight, directionalLight, playerPosition);
-//	}
-//}
