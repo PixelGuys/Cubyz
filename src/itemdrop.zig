@@ -499,7 +499,7 @@ pub const ClientItemDropManager = struct {
 	pub fn updateInterpolationData(self: *ClientItemDropManager) void {
 		var time = @truncate(i16, std.time.milliTimestamp()) -% settings.entityLookback;
 		time -%= self.timeDifference.difference;
-		self.interpolation.updateIndexed(time, self.lastTime, &self.super.indices, 3);
+		self.interpolation.updateIndexed(time, self.lastTime, &self.super.indices, 4);
 		self.lastTime = time;
 	}
 
@@ -719,6 +719,7 @@ pub const ItemDropRenderer = struct {
 	}
 
 	pub fn renderItemDrops(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d, time: u32) !void {
+		game.world.?.itemDrops.updateInterpolationData();
 		itemShader.bind();
 		c.glUniform1i(itemUniforms.texture_sampler, 0);
 		c.glUniform1i(itemUniforms.emissionSampler, 1);

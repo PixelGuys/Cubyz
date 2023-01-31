@@ -17,6 +17,8 @@ const Vec4f = vec.Vec4f;
 
 pub const ClientEntity = struct {
 	interpolatedValues: utils.GenericInterpolation(6) = undefined,
+	_interpolationPos: [6]f64 = undefined,
+	_interpolationVel: [6]f64 = undefined,
 
 	width: f64,
 	height: f64,
@@ -30,7 +32,7 @@ pub const ClientEntity = struct {
 	name: []const u8,
 
 	pub fn init(self: *ClientEntity) void {
-		const pos = [_]f64 {
+		self._interpolationPos = [_]f64 {
 			self.pos[0],
 			self.pos[1],
 			self.pos[2],
@@ -38,7 +40,8 @@ pub const ClientEntity = struct {
 			@floatCast(f64, self.rot[1]),
 			@floatCast(f64, self.rot[2]),
 		};
-		self.interpolatedValues.initPosition(&pos);
+		self._interpolationVel = [_]f64{0} ** 6;
+		self.interpolatedValues.init(&self._interpolationPos, &self._interpolationVel);
 	}
 
 	pub fn getRenderPosition(self: *const ClientEntity) Vec3d {

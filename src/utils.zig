@@ -457,23 +457,14 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 		lastTimes: [frames]i16,
 		frontIndex: u32,
 		currentPoint: ?u31,
-		outPos: [elements]f64,
-		outVel: [elements]f64,
+		outPos: *[elements]f64,
+		outVel: *[elements]f64,
 
-		pub fn initPosition(self: *@This(), initialPosition: *const [elements]f64) void {
-			std.mem.copy(f64, &self.outPos, initialPosition);
-			std.mem.set([elements]f64, &self.lastPos, self.outPos);
-			std.mem.set(f64, &self.outVel, 0);
-			std.mem.set([elements]f64, &self.lastVel, self.outVel);
-			self.frontIndex = 0;
-			self.currentPoint = null;
-		}
-
-		pub fn init(self: *@This(), initialPosition: *const [elements]f64, initialVelocity: *const [elements]f64) void {
-			std.mem.copy(f64, &self.outPos, initialPosition);
-			std.mem.set([elements]f64, &self.lastPos, self.outPos);
-			std.mem.copy(f64, &self.outVel, initialVelocity);
-			std.mem.set([elements]f64, &self.lastVel, self.outVel);
+		pub fn init(self: *@This(), initialPosition: *[elements]f64, initialVelocity: *[elements]f64) void {
+			self.outPos = initialPosition;
+			self.outVel = initialVelocity;
+			std.mem.set([elements]f64, &self.lastPos, self.outPos.*);
+			std.mem.set([elements]f64, &self.lastVel, self.outVel.*);
 			self.frontIndex = 0;
 			self.currentPoint = null;
 		}
@@ -517,8 +508,8 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 			if(self.currentPoint != null and self.lastTimes[self.currentPoint.?] -% time <= 0) {
 				// Jump to the last used value and adjust the time to start at that point.
 				lastTime.* = self.lastTimes[self.currentPoint.?];
-				std.mem.copy(f64, &self.outPos, &self.lastPos[self.currentPoint.?]);
-				std.mem.copy(f64, &self.outVel, &self.lastVel[self.currentPoint.?]);
+				std.mem.copy(f64, self.outPos, &self.lastPos[self.currentPoint.?]);
+				std.mem.copy(f64, self.outVel, &self.lastVel[self.currentPoint.?]);
 				self.currentPoint = null;
 			}
 
@@ -563,7 +554,7 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 			}
 		}
 
-		pub fn updateIndexed(self: *@This(), time: i16, _lastTime: i16, indices: []u16, coordinatesPerIndex: comptime_int) void {
+		pub fn updateIndexed(self: *@This(), time: i16, _lastTime: i16, indices: []u16, comptime coordinatesPerIndex: comptime_int) void {
 			var lastTime = _lastTime;
 			self.determineNextDataPoint(time, &lastTime);
 
@@ -575,7 +566,7 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 
 			if(self.currentPoint == null) {
 				for(indices) |i| {
-					const index = i*coordinatesPerIndex;
+					const index = @as(usize, i)*coordinatesPerIndex;
 					var j: u32 = 0;
 					while(j < coordinatesPerIndex): (j += 1) {
 						// Just move on with the current velocity.
@@ -588,7 +579,7 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 				const tScale = @intToFloat(f64, self.lastTimes[self.currentPoint.?] -% lastTime)/1000;
 				const t = deltaTime;
 				for(indices) |i| {
-					const index = i*coordinatesPerIndex;
+					const index = @as(usize, i)*coordinatesPerIndex;
 					var j: u32 = 0;
 					while(j < coordinatesPerIndex): (j += 1) {
 						self.interpolateCoordinate(index + j, t, tScale);
