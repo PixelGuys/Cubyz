@@ -171,16 +171,11 @@ float getLod(ivec3 voxelPosition, int normal, vec3 direction, float variance) {
 }
 
 float perpendicularFwidth(vec3 direction) { // Estimates how big fwidth would be if the fragment normal was perpendicular to the light direction.
-	vec3 varianceX = dFdx(direction);
-	vec3 varianceY = dFdx(direction);
-	varianceX += direction;
-	varianceX = varianceX*length(direction)/length(varianceX);
-	varianceX -= direction;
-	varianceY += direction;
-	varianceY = varianceY*length(direction)/length(varianceY);
-	varianceY -= direction;
-	vec3 variance = abs(varianceX) + abs(varianceY);
-	return 8*length(variance);
+	vec3 variance = dFdx(direction);
+	variance += direction;
+	variance = variance*length(direction)/length(variance);
+	variance -= direction;
+	return 16*length(variance);
 }
 
 vec4 mipMapSample(sampler2DArray texture, ivec2 textureCoords, int textureIndex, float lod) { // TODO: anisotropic filtering?

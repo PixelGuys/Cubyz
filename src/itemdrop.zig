@@ -453,7 +453,7 @@ pub const ClientItemDropManager = struct {
 
 	timeDifference: utils.TimeDifference = .{},
 
-	interpolation: utils.GenericInterpolation(maxf64Capacity) = undefined,
+	interpolation: utils.GenericInterpolation(maxf64Capacity)align(32) = undefined, // TODO: Remove align(32) after #14527
 
 	var instance: ?*ClientItemDropManager = null;
 
