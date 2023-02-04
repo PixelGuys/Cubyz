@@ -591,20 +591,20 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 }
 
 pub const TimeDifference = struct {
-	difference: i16 = 0,
+	difference: std.atomic.Atomic(i16) = std.atomic.Atomic(i16).init(0),
 	firstValue: bool = true,
 
 	pub fn addDataPoint(self: *TimeDifference, time: i16) void {
 		const currentTime = @truncate(i16, std.time.milliTimestamp());
 		const timeDifference = currentTime -% time;
 		if(self.firstValue) {
-			self.difference = timeDifference;
+			self.difference.store(timeDifference, .Monotonic);
 			self.firstValue = false;
 		}
-		if(timeDifference -% self.difference > 0) {
-			self.difference +%= 1;
-		} else if(timeDifference -% self.difference < 0) {
-			self.difference -%= 1;
+		if(timeDifference -% self.difference.load(.Monotonic) > 0) {
+			_ = @atomicRmw(i16, &self.difference.value, .Add, 1, .Monotonic);
+		} else if(timeDifference -% self.difference.load(.Monotonic) < 0) {
+			_ = @atomicRmw(i16, &self.difference.value, .Add, -1, .Monotonic);
 		}
 	}
 };

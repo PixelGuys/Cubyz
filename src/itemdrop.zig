@@ -493,13 +493,19 @@ pub const ClientItemDropManager = struct {
 			vel[i][2] = @bitCast(f64, std.mem.readIntBig(u64, data[42..50]));
 			data = data[50..];
 		}
+		self.super.mutex.lock();
+		defer self.super.mutex.unlock();
 		self.interpolation.updatePosition(@ptrCast(*[maxf64Capacity]f64, &pos), @ptrCast(*[maxf64Capacity]f64, &vel), time); // TODO: Only update the ones we actually changed.
 	}
 
 	pub fn updateInterpolationData(self: *ClientItemDropManager) void {
 		var time = @truncate(i16, std.time.milliTimestamp()) -% settings.entityLookback;
-		time -%= self.timeDifference.difference;
-		self.interpolation.updateIndexed(time, self.lastTime, &self.super.indices, 4);
+		time -%= self.timeDifference.difference.load(.Monotonic);
+		{
+			self.super.mutex.lock();
+			defer self.super.mutex.unlock();
+			self.interpolation.updateIndexed(time, self.lastTime, &self.super.indices, 4);
+		}
 		self.lastTime = time;
 	}
 
@@ -731,7 +737,9 @@ pub const ItemDropRenderer = struct {
 		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast([*c]const f32, &ambientLight));
 		c.glUniformMatrix4fv(itemUniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast([*c]const f32, &game.camera.viewMatrix));
 		c.glUniform1f(itemUniforms.sizeScale, @floatCast(f32, ItemDropManager.diameter/4.0));
-		const itemDrops = game.world.?.itemDrops.super;
+		var itemDrops = &game.world.?.itemDrops.super;
+		itemDrops.mutex.lock();
+		defer itemDrops.mutex.unlock();
 		for(itemDrops.indices[0..itemDrops.size]) |i| {
 			if(itemDrops.list.items(.itemStack)[i].item) |item| {
 				var pos = itemDrops.list.items(.pos)[i];
