@@ -1,22 +1,27 @@
 const std = @import("std");
 
-const assets = @import("assets.zig");
-const blocks = @import("blocks.zig");
-const chunk = @import("chunk.zig");
-const entity = @import("entity.zig");
-const game = @import("game.zig");
-const graphics = @import("graphics.zig");
-const itemdrop = @import("itemdrop.zig");
-const items = @import("items.zig");
-const models = @import("models.zig");
-const network = @import("network.zig");
-const renderer = @import("renderer.zig");
-const rotation = @import("rotation.zig");
-const settings = @import("settings.zig");
-const utils = @import("utils.zig");
+const gui = @import("gui");
 
-const Vec2f = @import("vec.zig").Vec2f;
-const Vec3d = @import("vec.zig").Vec3d;
+pub const assets = @import("assets.zig");
+pub const blocks = @import("blocks.zig");
+pub const chunk = @import("chunk.zig");
+pub const entity = @import("entity.zig");
+pub const game = @import("game.zig");
+pub const graphics = @import("graphics.zig");
+pub const itemdrop = @import("itemdrop.zig");
+pub const items = @import("items.zig");
+pub const JsonElement = @import("json.zig");
+pub const models = @import("models.zig");
+pub const network = @import("network.zig");
+pub const random = @import("random.zig");
+pub const renderer = @import("renderer.zig");
+pub const rotation = @import("rotation.zig");
+pub const settings = @import("settings.zig");
+pub const utils = @import("utils.zig");
+pub const vec = @import("vec.zig");
+
+const Vec2f = vec.Vec2f;
+const Vec3d = vec.Vec3d;
 
 pub const c = @cImport ({
 	@cInclude("glad/glad.h");
@@ -31,8 +36,8 @@ pub var threadPool: utils.ThreadPool = undefined;
 var logFile: std.fs.File = undefined;
 // overwrite the log function:
 pub const std_options = struct {
-    pub const log_level = .debug;
-    pub fn logFn(
+	pub const log_level = .debug;
+	pub fn logFn(
 		comptime level: std.log.Level,
 		comptime _: @Type(.EnumLiteral),
 		comptime format: []const u8,
@@ -59,8 +64,10 @@ pub const std_options = struct {
 const Key = struct {
 	pressed: bool = false,
 	key: c_int = c.GLFW_KEY_UNKNOWN,
+	mouseButton: c_int = -1,
 	scancode: c_int = 0,
 	releaseAction: ?*const fn() void = null,
+	pressAction: ?*const fn() void = null,
 };
 pub var keyboard: struct {
 	forward: Key = Key{.key = c.GLFW_KEY_W},
@@ -71,6 +78,9 @@ pub var keyboard: struct {
 	jump: Key = Key{.key = c.GLFW_KEY_SPACE},
 	fall: Key = Key{.key = c.GLFW_KEY_LEFT_SHIFT},
 	fullscreen: Key = Key{.key = c.GLFW_KEY_F11, .releaseAction = &Window.toggleFullscreen},
+	leftMouseButton: Key = Key{.mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &gui.leftMouseButtonPressed, .releaseAction = &gui.leftMouseButtonReleased},
+	rightMouseButton: Key = Key{.mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT},
+	middleMouseButton: Key = Key{.mouseButton = c.GLFW_MOUSE_BUTTON_MIDDLE},
 } = .{};
 
 pub const Window = struct {
@@ -90,6 +100,9 @@ pub const Window = struct {
 					if(key == @field(keyboard, field.name).key) {
 						if(key != c.GLFW_KEY_UNKNOWN or scancode == @field(keyboard, field.name).scancode) {
 							@field(keyboard, field.name).pressed = true;
+							if(@field(keyboard, field.name).pressAction) |pressAction| {
+								pressAction();
+							}
 						}
 					}
 				}
@@ -111,6 +124,7 @@ pub const Window = struct {
 			width = @intCast(u31, newWidth);
 			height = @intCast(u31, newHeight);
 			renderer.updateViewport(width, height, settings.fov);
+			gui.updateWindowPositions();
 		}
 		// Mouse deltas are averaged over multiple frames using a circular buffer:
 		const deltasLen: u2 = 3;
@@ -137,6 +151,28 @@ pub const Window = struct {
 			ignoreDataAfterRecentGrab = false;
 			currentPos = newPos;
 		}
+		fn mouseButton(_: ?*c.GLFWwindow, button: c_int, action: c_int, mods: c_int) callconv(.C) void {
+			_ = mods;
+			if(action == c.GLFW_PRESS) {
+				inline for(@typeInfo(@TypeOf(keyboard)).Struct.fields) |field| {
+					if(button == @field(keyboard, field.name).mouseButton) {
+						@field(keyboard, field.name).pressed = true;
+						if(@field(keyboard, field.name).pressAction) |pressAction| {
+							pressAction();
+						}
+					}
+				}
+			} else if(action == c.GLFW_RELEASE) {
+				inline for(@typeInfo(@TypeOf(keyboard)).Struct.fields) |field| {
+					if(button == @field(keyboard, field.name).mouseButton) {
+						@field(keyboard, field.name).pressed = false;
+						if(@field(keyboard, field.name).releaseAction) |releaseAction| {
+							releaseAction();
+						}
+					}
+				}
+			}
+		}
 		fn glDebugOutput(_: c_uint, _: c_uint, _: c_uint, severity: c_uint, length: c_int, message: [*c]const u8, _: ?*const anyopaque) callconv(.C) void {
 			if(severity == c.GL_DEBUG_SEVERITY_HIGH) {
 				std.log.err("OpenGL {}:{s}", .{severity, message[0..@intCast(usize, length)]});
@@ -162,6 +198,14 @@ pub const Window = struct {
 		}
 	}
 
+	pub fn getMousePosition() Vec2f {
+		return GLFWCallbacks.currentPos;
+	}
+
+	pub fn getWindowSize() Vec2f {
+		return Vec2f{@intToFloat(f32, width), @intToFloat(f32, height)};
+	}
+
 	fn init() !void {
 		_ = c.glfwSetErrorCallback(GLFWCallbacks.errorCallback);
 
@@ -180,6 +224,7 @@ pub const Window = struct {
 		_ = c.glfwSetKeyCallback(window, GLFWCallbacks.keyCallback);
 		_ = c.glfwSetFramebufferSizeCallback(window, GLFWCallbacks.framebufferSize);
 		_ = c.glfwSetCursorPosCallback(window, GLFWCallbacks.cursorPosition);
+		_ = c.glfwSetMouseButtonCallback(window, GLFWCallbacks.mouseButton);
 
 		c.glfwMakeContextCurrent(window);
 
@@ -257,6 +302,37 @@ pub fn main() !void {
 	try graphics.init();
 	defer graphics.deinit();
 
+	try gui.init();
+	defer gui.deinit();
+	try gui.openWindow("cubyz:hotbar");
+	try gui.openWindow("cubyz:hotbar2");
+	try gui.openWindow("cubyz:hotbar3");
+	try gui.openWindow("cubyz:healthbar");
+
+	c.glCullFace(c.GL_BACK);
+	c.glEnable(c.GL_BLEND);
+	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
+
+	while(c.glfwWindowShouldClose(Window.window) == 0) {
+		{ // Check opengl errors:
+			const err = c.glGetError();
+			if(err != 0) {
+				std.log.err("Got opengl error: {}", .{err});
+			}
+		}
+		c.glfwSwapBuffers(Window.window);
+		c.glfwPollEvents();
+
+		{ // Render the GUI
+			c.glClearColor(0.5, 1, 1, 1);
+			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
+			c.glDisable(c.GL_CULL_FACE);
+			c.glDisable(c.GL_DEPTH_TEST);
+			try gui.updateAndRenderGui();
+		}
+	}
+	if(true) return; // TODO
+
 	try rotation.init();
 	defer rotation.deinit();
 
@@ -333,20 +409,14 @@ pub fn main() !void {
 		{ // Render the GUI
 			c.glDisable(c.GL_CULL_FACE);
 			c.glDisable(c.GL_DEPTH_TEST);
-
+			try gui.updateAndRenderGui();
 			//const dim = try buffer2.calculateLineBreaks(32, 200);
 			//try buffer.render(100, 200, 32);
-			//graphics.Draw.setColor(0xff008000);
-			//graphics.Draw.rect(.{100, 400}, .{200, dim[1]});
+			//graphics.draw.setColor(0xff008000);
+			//graphics.draw.rect(.{100, 400}, .{200, dim[1]});
 			//try buffer2.render(100, 400, 32);
 			//_ = try buffer3.calculateLineBreaks(32, 600);
 			//try buffer3.render(400, 400, 32);
-
-			//graphics.Draw.setColor(0xff0000ff);
-			//graphics.Draw.rect(Vec2f{.x = 100, .y = 100}, Vec2f{.x = 200, .y = 100});
-			//graphics.Draw.circle(Vec2f{.x = 200, .y = 200}, 59);
-			//graphics.Draw.setColor(0xffff00ff);
-			//graphics.Draw.line(Vec2f{.x = 0, .y = 0}, Vec2f{.x = 1920, .y = 1080});
 		}
 	}
 }

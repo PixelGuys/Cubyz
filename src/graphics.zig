@@ -29,7 +29,7 @@ fn fileToString(allocator: Allocator, path: []const u8) ![]u8 {
 	return file.readToEndAlloc(allocator, std.math.maxInt(usize));
 }
 
-pub const Draw = struct {
+pub const draw = struct {
 	var color: i32 = 0;
 	var clip: ?Vec4i = null;
 
@@ -541,7 +541,7 @@ pub const TextBuffer = struct {
 		c.glUniform1f(TextRendering.uniforms.ratio, fontScaling);
 		c.glActiveTexture(c.GL_TEXTURE0);
 		c.glBindTexture(c.GL_TEXTURE_2D, TextRendering.glyphTexture[0]);
-		c.glBindVertexArray(Draw.rectVAO);
+		c.glBindVertexArray(draw.rectVAO);
 		const lineWraps: []f32 = try main.threadAllocator.alloc(f32, self.lineBreakIndices.items.len - 1);
 		defer main.threadAllocator.free(lineWraps);
 		var i: usize = 0;
@@ -563,14 +563,14 @@ pub const TextBuffer = struct {
 			y = _y/fontScaling;
 			if(line.isUnderline) y += 15
 			else y += 8;
-			Draw.setColor(line.color | @as(u32, 0xff000000));
+			draw.setColor(line.color | @as(u32, 0xff000000));
 			for(lineWraps) |lineWrap| {
 				const lineStart = @max(0, line.start);
 				const lineEnd = @min(lineWrap, line.end);
 				if(lineStart < lineEnd) {
 					var start = Vec2f{lineStart*fontScaling + _x, y*fontScaling};
 					const dim = Vec2f{(lineEnd - lineStart)*fontScaling, fontScaling};
-					Draw.rect(start, dim);
+					draw.rect(start, dim);
 				}
 				line.start -= lineWrap;
 				line.end -= lineWrap;
@@ -725,20 +725,20 @@ const TextRendering = struct {
 };
 
 pub fn init() !void {
-	Draw.initCircle();
-	Draw.initDrawRect();
-	Draw.initImage();
-	Draw.initLine();
-	Draw.initRect();
+	draw.initCircle();
+	draw.initDrawRect();
+	draw.initImage();
+	draw.initLine();
+	draw.initRect();
 	try TextRendering.init();
 }
 
 pub fn deinit() void {
-	Draw.deinitCircle();
-	Draw.deinitDrawRect();
-	Draw.deinitImage();
-	Draw.deinitLine();
-	Draw.deinitRect();
+	draw.deinitCircle();
+	draw.deinitDrawRect();
+	draw.deinitImage();
+	draw.deinitLine();
+	draw.deinitRect();
 	TextRendering.deinit();
 }
 

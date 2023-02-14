@@ -327,7 +327,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 //	if(Window.getRenderTarget() != null)
 //		Window.getRenderTarget().bind();
 
-	c.glBindVertexArray(graphics.Draw.rectVAO);
+	c.glBindVertexArray(graphics.draw.rectVAO);
 	c.glDisable(c.GL_DEPTH_TEST);
 	c.glDisable(c.GL_CULL_FACE);
 	c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
@@ -419,7 +419,7 @@ const Bloom = struct {
 		colorExtractShader.bind();
 		buffers.bindTextures();
 		extractedBuffer.bind();
-		c.glBindVertexArray(graphics.Draw.rectVAO);
+		c.glBindVertexArray(graphics.draw.rectVAO);
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
@@ -428,7 +428,7 @@ const Bloom = struct {
 		c.glActiveTexture(c.GL_TEXTURE3);
 		c.glBindTexture(c.GL_TEXTURE_2D, extractedBuffer.texture);
 		buffer1.bind();
-		c.glBindVertexArray(graphics.Draw.rectVAO);
+		c.glBindVertexArray(graphics.draw.rectVAO);
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
@@ -437,7 +437,7 @@ const Bloom = struct {
 		c.glActiveTexture(c.GL_TEXTURE3);
 		c.glBindTexture(c.GL_TEXTURE_2D, buffer1.texture);
 		buffer2.bind();
-		c.glBindVertexArray(graphics.Draw.rectVAO);
+		c.glBindVertexArray(graphics.draw.rectVAO);
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
@@ -446,7 +446,7 @@ const Bloom = struct {
 		c.glActiveTexture(c.GL_TEXTURE3);
 		c.glBindTexture(c.GL_TEXTURE_2D, buffer2.texture);
 		buffer1.bind();
-		c.glBindVertexArray(graphics.Draw.rectVAO);
+		c.glBindVertexArray(graphics.draw.rectVAO);
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
@@ -455,7 +455,7 @@ const Bloom = struct {
 		c.glActiveTexture(c.GL_TEXTURE3);
 		c.glBindTexture(c.GL_TEXTURE_2D, buffer1.texture);
 		buffers.bind();
-		c.glBindVertexArray(graphics.Draw.rectVAO);
+		c.glBindVertexArray(graphics.draw.rectVAO);
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 

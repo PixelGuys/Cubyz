@@ -31,6 +31,8 @@ pub var playerName: []const u8 = "quanturmdoelvloper";
 
 pub var lastUsedIPAddress: []const u8 = "127.0.0.1";
 
+pub var guiScale: f32 = 2;
+
 
 pub fn init() !void {
 	const json = blk: {
@@ -116,8 +118,6 @@ pub fn deinit() void {
 //	static Side currentSide = null;
 //
 //	private static Language currentLanguage = null;
-//
-//	public static int GUI_SCALE = 2;
 //
 //	public static boolean musicOnOff = true; //Turn on or off the music
 //

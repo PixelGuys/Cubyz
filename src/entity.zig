@@ -127,8 +127,8 @@ pub const ClientEntityManager = struct {
 			const xCenter = (1 + projectedPos[0]/projectedPos[3])*@intToFloat(f32, main.Window.width/2);
 			const yCenter = (1 - projectedPos[1]/projectedPos[3])*@intToFloat(f32, main.Window.height/2);
 
-			graphics.Draw.setColor(0xffff00ff);
-			graphics.Draw.rect(.{xCenter, yCenter}, .{100, 20}); // TODO: Text rendering.
+			graphics.draw.setColor(0xffff00ff);
+			graphics.draw.rect(.{xCenter, yCenter}, .{100, 20}); // TODO: Text rendering.
 		}
 	}
 
