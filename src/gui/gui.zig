@@ -7,6 +7,7 @@ const settings = main.settings;
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
 
+pub const GuiComponent = @import("GuiComponent.zig");
 pub const GuiWindow = @import("GuiWindow.zig");
 
 pub const hotbar = @import("windows/hotbar.zig");
@@ -81,7 +82,7 @@ pub fn closeWindow(window: *GuiWindow) void {
 	window.onCloseFn();
 }
 
-pub fn leftMouseButtonPressed() void {
+pub fn mainButtonPressed() void {
 	selectedWindow = null;
 	var selectedI: usize = 0;
 	for(openWindows.items) |window, i| {
@@ -94,13 +95,13 @@ pub fn leftMouseButtonPressed() void {
 		}
 	}
 	if(selectedWindow) |_selectedWindow| {
-		_selectedWindow.leftMouseButtonPressed();
+		_selectedWindow.mainButtonPressed();
 		_ = openWindows.orderedRemove(selectedI);
 		openWindows.appendAssumeCapacity(_selectedWindow);
 	}
 }
 
-pub fn leftMouseButtonReleased() void {
+pub fn mainButtonReleased() void {
 	var oldWindow = selectedWindow;
 	selectedWindow = null;
 	for(openWindows.items) |window| {
@@ -115,7 +116,7 @@ pub fn leftMouseButtonReleased() void {
 		selectedWindow = null;
 	}
 	if(oldWindow) |_oldWindow| {
-		_oldWindow.leftMouseButtonReleased();
+		_oldWindow.mainButtonReleased();
 	}
 }
 

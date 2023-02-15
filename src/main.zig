@@ -78,7 +78,7 @@ pub var keyboard: struct {
 	jump: Key = Key{.key = c.GLFW_KEY_SPACE},
 	fall: Key = Key{.key = c.GLFW_KEY_LEFT_SHIFT},
 	fullscreen: Key = Key{.key = c.GLFW_KEY_F11, .releaseAction = &Window.toggleFullscreen},
-	leftMouseButton: Key = Key{.mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &gui.leftMouseButtonPressed, .releaseAction = &gui.leftMouseButtonReleased},
+	mainGuiButton: Key = Key{.mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &gui.mainButtonPressed, .releaseAction = &gui.mainButtonReleased},
 	rightMouseButton: Key = Key{.mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT},
 	middleMouseButton: Key = Key{.mouseButton = c.GLFW_MOUSE_BUTTON_MIDDLE},
 } = .{};

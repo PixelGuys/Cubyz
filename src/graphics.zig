@@ -32,9 +32,33 @@ fn fileToString(allocator: Allocator, path: []const u8) ![]u8 {
 pub const draw = struct {
 	var color: i32 = 0;
 	var clip: ?Vec4i = null;
+	var translation: Vec2f = Vec2f{0, 0};
+	var scale: f32 = 1;
 
 	pub fn setColor(newColor: u32) void {
 		color = @bitCast(i32, newColor);
+	}
+
+	/// Returns the previous translation.
+	pub fn setTranslation(newTranslation: Vec2f) Vec2f {
+		const oldTranslation = translation;
+		translation += newTranslation;
+		return oldTranslation;
+	}
+
+	pub fn restoreTranslation(previousTranslation: Vec2f) void {
+		translation = previousTranslation;
+	}
+
+	/// Returns the previous translation.
+	pub fn setScale(newScale: f32) f32 {
+		const oldScale = scale;
+		scale *= newScale;
+		return oldScale;
+	}
+
+	pub fn restoreScale(previousScale: f32) void {
+		scale = previousScale;
 	}
 
 	/// Returns the previous clip.
@@ -111,7 +135,13 @@ pub const draw = struct {
 		c.glDeleteBuffers(1, &rectVBO);
 	}
 
-	pub fn rect(pos: Vec2f, dim: Vec2f) void {
+	pub fn rect(_pos: Vec2f, _dim: Vec2f) void {
+		var pos = _pos;
+		var dim = _dim;
+		pos *= @splat(2, scale);
+		pos += translation;
+		dim *= @splat(2, scale);
+
 		rectShader.bind();
 
 		c.glUniform2f(rectUniforms.screen, @intToFloat(f32, Window.width), @intToFloat(f32, Window.height));
@@ -158,7 +188,14 @@ pub const draw = struct {
 		c.glDeleteBuffers(1, &lineVBO);
 	}
 
-	pub fn line(pos1: Vec2f, pos2: Vec2f) void {
+	pub fn line(_pos1: Vec2f, _pos2: Vec2f) void {
+		var pos1 = _pos1;
+		var pos2 = _pos2;
+		pos1 *= @splat(2, scale);
+		pos1 += translation;
+		pos2 *= @splat(2, scale);
+		pos2 += translation;
+
 		lineShader.bind();
 
 		c.glUniform2f(lineUniforms.screen, @intToFloat(f32, Window.width), @intToFloat(f32, Window.height));
@@ -198,7 +235,13 @@ pub const draw = struct {
 		c.glDeleteBuffers(1, &drawRectVBO);
 	}
 
-	pub fn rectOutline(pos: Vec2f, dim: Vec2f) void {
+	pub fn rectOutline(_pos: Vec2f, _dim: Vec2f) void {
+		var pos = _pos;
+		var dim = _dim;
+		pos *= @splat(2, scale);
+		pos += translation;
+		dim *= @splat(2, scale);
+
 		lineShader.bind();
 
 		c.glUniform2f(lineUniforms.screen, @intToFloat(f32, Window.width), @intToFloat(f32, Window.height));
@@ -247,7 +290,12 @@ pub const draw = struct {
 		c.glDeleteBuffers(1, &circleVBO);
 	}
 
-	pub fn circle(center: Vec2f, radius: f32) void {
+	pub fn circle(_center: Vec2f, _radius: f32) void {
+		var center = _center;
+		var radius = _radius;
+		_center *= @splat(2, scale);
+		_center += translation;
+		radius *= scale;
 		circleShader.bind();
 
 		c.glUniform2f(circleUniforms.screen, @intToFloat(f32, Window.width), @intToFloat(f32, Window.height));
@@ -280,7 +328,13 @@ pub const draw = struct {
 		imageShader.delete();
 	}
 
-	pub fn boundImage(pos: Vec2f, dim: Vec2f) void {
+	pub fn boundImage(_pos: Vec2f, _dim: Vec2f) void {
+		var pos = _pos;
+		var dim = _dim;
+		pos *= @splat(2, scale);
+		pos += translation;
+		dim *= @splat(2, scale);
+
 		imageShader.bind();
 
 		c.glUniform2f(imageUniforms.screen, @intToFloat(f32, Window.width), @intToFloat(f32, Window.height));
@@ -294,7 +348,16 @@ pub const draw = struct {
 
 	// ----------------------------------------------------------------------------
 	
-	pub fn text(_text: []const u8, x: f32, y: f32, fontSize: f32) !void {
+	pub fn text(_text: []const u8, _x: f32, _y: f32, _fontSize: f32) !void {
+		var x = _x;
+		var y = _y;
+		var fontSize = _fontSize;
+		x *= scale;
+		y *= scale;
+		x += translation[0];
+		y += translation[1];
+		fontSize *= scale;
+
 		try TextRendering.renderText(_text, x, y, fontSize, .{.color = @truncate(u24, color)});
 	}
 };

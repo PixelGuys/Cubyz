@@ -9,6 +9,7 @@ const Vec2f = vec.Vec2f;
 const Vec2i = vec.Vec2i;
 
 const gui = @import("gui.zig");
+const GuiComponent = gui.GuiComponent;
 
 const GuiWindow = @This();
 
@@ -50,6 +51,7 @@ relativePosition: [2]RelativePosition = .{.{.ratio = 0.5}, .{.ratio = 0.5}},
 showTitleBar: bool = true,
 title: []const u8,
 id: []const u8,
+components: []GuiComponent,
 
 /// Called every frame.
 renderFn: *const fn()void,
@@ -65,7 +67,7 @@ var selfPositionWhenGrabbed: Vec2f = undefined;
 
 pub fn defaultFunction() void {}
 
-pub fn leftMouseButtonPressed(self: *const GuiWindow) void {
+pub fn mainButtonPressed(self: *const GuiWindow) void {
 	const scale = @floor(settings.guiScale*self.scale); // TODO
 	var mousePosition = main.Window.getMousePosition();
 	mousePosition -= self.pos;
@@ -74,13 +76,27 @@ pub fn leftMouseButtonPressed(self: *const GuiWindow) void {
 		grabPosition = main.Window.getMousePosition();
 		selfPositionWhenGrabbed = self.pos;
 	} else {
-		// TODO: Call window function.
+		var selectedComponent: ?*GuiComponent = null;
+		for(self.components) |*component| {
+			if(component.contains(mousePosition)) {
+				selectedComponent = component;
+			}
+		}
+		if(selectedComponent) |component| {
+			component.mainButtonPressed();
+		}
 	}
 }
 
-pub fn leftMouseButtonReleased(self: *const GuiWindow) void {
-	_ = self; // TODO
+pub fn mainButtonReleased(self: *const GuiWindow) void {
 	grabPosition = null;
+	const scale = @floor(settings.guiScale*self.scale); // TODO
+	var mousePosition = main.Window.getMousePosition();
+	mousePosition -= self.pos;
+	mousePosition /= @splat(2, scale);
+	for(self.components) |*component| {
+		component.mainButtonReleased(mousePosition);
+	}
 }
 
 fn snapToOtherWindow(self: *GuiWindow) void {
@@ -232,6 +248,9 @@ pub fn update(self: *GuiWindow) !void {
 		self.pos = @min(self.pos, windowSize - self.size*@splat(2, scale));
 		gui.updateWindowPositions();
 	}
+	for(self.components) |*component| {
+		component.update();
+	}
 }
 
 pub fn updateWindowPosition(self: *GuiWindow) void {
@@ -337,6 +356,16 @@ pub fn render(self: *const GuiWindow) !void {
 		try text.render(self.pos[0] + self.size[0]*scale/2 - titleDimension[0]/2, self.pos[1], 16*scale);
 
 	}
+	var mousePosition = main.Window.getMousePosition();
+	mousePosition -= self.pos;
+	mousePosition /= @splat(2, scale);
+	const oldTranslation = draw.setTranslation(self.pos);
+	const oldScale = draw.setScale(scale);
+	for(self.components) |*component| {
+		component.render(mousePosition);
+	}
+	draw.restoreTranslation(oldTranslation);
+	draw.restoreScale(oldScale);
 	if(self == gui.selectedWindow and grabPosition != null) {
 		self.drawOrientationLines();
 	}
