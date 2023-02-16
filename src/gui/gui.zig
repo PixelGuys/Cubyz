@@ -10,8 +10,7 @@ const Vec2f = vec.Vec2f;
 pub const GuiComponent = @import("GuiComponent.zig");
 pub const GuiWindow = @import("GuiWindow.zig");
 
-pub const hotbar = @import("windows/hotbar.zig");
-pub const healthbar = @import("windows/healthbar.zig");
+const windowlist = @import("windows/_windowlist.zig");
 
 var windowList: std.ArrayList(*GuiWindow) = undefined;
 var hudWindows: std.ArrayList(*GuiWindow) = undefined;
@@ -22,8 +21,9 @@ pub fn init() !void {
 	windowList = std.ArrayList(*GuiWindow).init(main.globalAllocator);
 	hudWindows = std.ArrayList(*GuiWindow).init(main.globalAllocator);
 	openWindows = std.ArrayList(*GuiWindow).init(main.globalAllocator);
-	try hotbar.init();
-	try healthbar.init();
+	inline for(@typeInfo(windowlist).Struct.decls) |decl| {
+		try @field(windowlist, decl.name).init();
+	}
 }
 
 pub fn deinit() void {

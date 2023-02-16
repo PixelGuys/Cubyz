@@ -17,19 +17,23 @@ pressed: bool = false,
 onAction: *const fn() void,
 text: TextBuffer,
 
-pub fn init(allocator: Allocator, text: []const u8, onAction: *const fn() void) Allocator.Error!Button {
+pub fn init(pos: Vec2f, size: Vec2f, allocator: Allocator, text: []const u8, onAction: *const fn() void) Allocator.Error!GuiComponent {
 	const self = Button {
 		.onAction = onAction,
 		.text = try TextBuffer.init(allocator, text, .{}, false),
 	};
-	return self;
+	return GuiComponent {
+		.pos = pos,
+		.size = size,
+		.impl = .{.button = self}
+	};
 }
 
 pub fn deinit(self: Button) void {
 	self.text.deinit();
 }
 
-pub fn mainButtonPressed(self: *Button, _: *const GuiComponent) void {
+pub fn mainButtonPressed(self: *Button, _: *const GuiComponent, _: Vec2f) void {
 	self.pressed = true;
 }
 

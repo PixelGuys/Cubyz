@@ -5,6 +5,7 @@ const vec = main.vec;
 const Vec2f = vec.Vec2f;
 
 const Button = @import("components/Button.zig");
+const VerticalList = @import("components/VerticalList.zig");
 
 const GuiComponent = @This();
 
@@ -14,6 +15,7 @@ impl: Impl,
 
 const Impl = union(enum) {
 	button: Button,
+	verticalList: VerticalList,
 };
 
 pub fn deinit(self: *GuiComponent) void {
@@ -55,13 +57,13 @@ pub fn render(self: *GuiComponent, mousePosition: Vec2f) !void {
 	}
 }
 
-pub fn mainButtonPressed(self: *GuiComponent) void {
+pub fn mainButtonPressed(self: *GuiComponent, mousePosition: Vec2f) void {
 	switch(self.impl) {
 		inline else => |*impl| {
 			// Only call the function if it exists:
 			inline for(@typeInfo(@TypeOf(impl.*)).Struct.decls) |decl| {
 				if(comptime std.mem.eql(u8, decl.name, "mainButtonPressed")) {
-					impl.mainButtonPressed(self);
+					impl.mainButtonPressed(self, mousePosition);
 				}
 			}
 		}

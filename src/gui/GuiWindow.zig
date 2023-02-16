@@ -50,12 +50,12 @@ scale: f32 = 1,
 spacing: f32 = 0,
 relativePosition: [2]RelativePosition = .{.{.ratio = 0.5}, .{.ratio = 0.5}},
 showTitleBar: bool = true,
-title: []const u8,
+title: []const u8 = "",
 id: []const u8,
 components: []GuiComponent,
 
 /// Called every frame.
-renderFn: *const fn()void,
+renderFn: *const fn()void = &defaultFunction,
 /// Called every frame for the currently selected window.
 updateFn: *const fn()void = &defaultFunction,
 
@@ -85,7 +85,7 @@ pub fn mainButtonPressed(self: *const GuiWindow) void {
 			}
 		}
 		if(selectedComponent) |component| {
-			component.mainButtonPressed();
+			component.mainButtonPressed(mousePosition);
 		}
 	}
 }
@@ -256,6 +256,7 @@ pub fn update(self: *GuiWindow) !void {
 }
 
 pub fn updateWindowPosition(self: *GuiWindow) void {
+	self.size = self.contentSize; // TODO
 	const scale = @floor(settings.guiScale*self.scale); // TODO
 	const windowSize = main.Window.getWindowSize();
 	for(self.relativePosition) |relPos, i| {
@@ -345,6 +346,16 @@ pub fn render(self: *const GuiWindow) !void {
 	const scale = @floor(settings.guiScale*self.scale); // TODO
 	draw.setColor(0xff808080);
 	draw.rect(self.pos, self.size*@splat(2, scale));
+	var mousePosition = main.Window.getMousePosition();
+	mousePosition -= self.pos;
+	mousePosition /= @splat(2, scale);
+	const oldTranslation = draw.setTranslation(self.pos);
+	const oldScale = draw.setScale(scale);
+	for(self.components) |*component| {
+		try component.render(mousePosition);
+	}
+	draw.restoreTranslation(oldTranslation);
+	draw.restoreScale(oldScale);
 	if(self.showTitleBar) {
 		var text = try graphics.TextBuffer.init(main.threadAllocator, self.title, .{}, false);
 		defer text.deinit();
@@ -356,18 +367,7 @@ pub fn render(self: *const GuiWindow) !void {
 		}
 		draw.rect(self.pos, Vec2f{self.size[0]*scale, titleDimension[1]});
 		try text.render(self.pos[0] + self.size[0]*scale/2 - titleDimension[0]/2, self.pos[1], 16*scale);
-
 	}
-	var mousePosition = main.Window.getMousePosition();
-	mousePosition -= self.pos;
-	mousePosition /= @splat(2, scale);
-	const oldTranslation = draw.setTranslation(self.pos);
-	const oldScale = draw.setScale(scale);
-	for(self.components) |*component| {
-		try component.render(mousePosition);
-	}
-	draw.restoreTranslation(oldTranslation);
-	draw.restoreScale(oldScale);
 	if(self == gui.selectedWindow and grabPosition != null) {
 		self.drawOrientationLines();
 	}

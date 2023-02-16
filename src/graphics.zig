@@ -503,6 +503,10 @@ pub const TextBuffer = struct {
 		self.lines = std.ArrayList(Line).init(allocator);
 		self.lineBreakIndices = std.ArrayList(u32).init(allocator);
 		try parser.parse();
+		if(parser.parsedText.items.len == 0) {
+			self.glyphs = &[0]GlyphData{};
+			return self;
+		}
 
 		// Let harfbuzz do its thing:
 		var buffer = harfbuzz.Buffer.init() orelse return error.OutOfMemory;
@@ -597,6 +601,7 @@ pub const TextBuffer = struct {
 		fontSize *= draw.scale;
 		const fontScaling = fontSize/16.0;
 		x /= fontScaling;
+		const initialX = x;
 		y /= fontScaling;
 		TextRendering.shader.bind();
 		c.glUniform2f(TextRendering.uniforms.scene, @intToFloat(f32, main.Window.width), @intToFloat(f32, main.Window.height));
@@ -615,8 +620,8 @@ pub const TextBuffer = struct {
 				x += glyph.x_advance;
 				y -= glyph.y_advance;
 			}
-			lineWraps[i] = x - _x/fontScaling;
-			x = _x/fontScaling;
+			lineWraps[i] = x - initialX;
+			x = initialX;
 			y += 16;
 		}
 
@@ -630,7 +635,7 @@ pub const TextBuffer = struct {
 				const lineStart = @max(0, line.start);
 				const lineEnd = @min(lineWrap, line.end);
 				if(lineStart < lineEnd) {
-					var start = Vec2f{lineStart*fontScaling + _x, y*fontScaling};
+					var start = Vec2f{lineStart*fontScaling + initialX*fontScaling, y*fontScaling};
 					const dim = Vec2f{(lineEnd - lineStart)*fontScaling, fontScaling};
 					draw.rect(start, dim);
 				}
