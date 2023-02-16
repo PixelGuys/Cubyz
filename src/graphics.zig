@@ -348,16 +348,7 @@ pub const draw = struct {
 
 	// ----------------------------------------------------------------------------
 	
-	pub fn text(_text: []const u8, _x: f32, _y: f32, _fontSize: f32) !void {
-		var x = _x;
-		var y = _y;
-		var fontSize = _fontSize;
-		x *= scale;
-		y *= scale;
-		x += translation[0];
-		y += translation[1];
-		fontSize *= scale;
-
+	pub fn text(_text: []const u8, x: f32, y: f32, fontSize: f32) !void {
 		try TextRendering.renderText(_text, x, y, fontSize, .{.color = @truncate(u24, color)});
 	}
 };
@@ -497,7 +488,7 @@ pub const TextBuffer = struct {
 		}
 	};
 
-	pub fn init(allocator: Allocator, text: []const u8, initialFontEffect: FontEffect, showControlCharacters: bool) !TextBuffer {
+	pub fn init(allocator: Allocator, text: []const u8, initialFontEffect: FontEffect, showControlCharacters: bool) Allocator.Error!TextBuffer {
 		var self: TextBuffer = undefined;
 		// Parse the input text:
 		var parser = Parser {
@@ -514,7 +505,7 @@ pub const TextBuffer = struct {
 		try parser.parse();
 
 		// Let harfbuzz do its thing:
-		var buffer = harfbuzz.Buffer.init() orelse return error.CouldNotInitHarfbuzzBuffer;
+		var buffer = harfbuzz.Buffer.init() orelse return error.OutOfMemory;
 		defer buffer.deinit();
 		buffer.addUTF32(parser.parsedText.items, 0, null);
 		buffer.setDirection(.ltr);
@@ -522,7 +513,7 @@ pub const TextBuffer = struct {
 		buffer.setLanguage(harfbuzz.Language.getDefault());
 		harfbuzz.hb_shape(TextRendering.harfbuzzFont.handle, buffer.handle, null, 0);
 		const glyphInfos = buffer.getGlyphInfos();
-		const glyphPositions = buffer.getGlyphPositions() orelse return error.CouldNotGetGlyphPositions;
+		const glyphPositions = buffer.getGlyphPositions().?;
 
 		// Guess the text index from the given cluster indices. Only works if the number of glyphs and the number of characters in a cluster is the same.
 		var textIndexGuess = try main.threadAllocator.alloc(u32, glyphInfos.len);
@@ -595,10 +586,18 @@ pub const TextBuffer = struct {
 		return Vec2f{totalWidth*fontSize/16.0, @intToFloat(f32, self.lineBreakIndices.items.len - 1)*fontSize};
 	}
 
-	pub fn render(self: TextBuffer, _x: f32, _y: f32, fontSize: f32) !void {
+	pub fn render(self: TextBuffer, _x: f32, _y: f32, _fontSize: f32) !void {
+		var x = _x;
+		var y = _y;
+		var fontSize = _fontSize;
+		x *= draw.scale;
+		y *= draw.scale;
+		x += draw.translation[0];
+		y += draw.translation[1];
+		fontSize *= draw.scale;
 		const fontScaling = fontSize/16.0;
-		var x = _x/fontScaling;
-		var y = _y/fontScaling;
+		x /= fontScaling;
+		y /= fontScaling;
 		TextRendering.shader.bind();
 		c.glUniform2f(TextRendering.uniforms.scene, @intToFloat(f32, main.Window.width), @intToFloat(f32, main.Window.height));
 		c.glUniform1f(TextRendering.uniforms.ratio, fontScaling);

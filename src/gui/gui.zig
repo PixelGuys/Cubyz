@@ -29,6 +29,9 @@ pub fn init() !void {
 pub fn deinit() void {
 	windowList.deinit();
 	hudWindows.deinit();
+	for(openWindows.items) |window| {
+		window.onCloseFn();
+	}
 	openWindows.deinit();
 }
 
@@ -62,7 +65,7 @@ pub fn openWindow(id: []const u8) !void {
 			try openWindows.append(window);
 			window.pos = .{0, 0};
 			window.size = window.contentSize;
-			window.onOpenFn();
+			try window.onOpenFn();
 			return;
 		}
 	}

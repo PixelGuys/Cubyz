@@ -1,4 +1,5 @@
 const std = @import("std");
+const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const Vec2f = main.vec.Vec2f;
@@ -12,13 +13,14 @@ var components: [1]GuiComponent = undefined;
 var hotbarWindow2: GuiWindow = undefined;
 var hotbarWindow3: GuiWindow = undefined;
 pub fn init() !void {
-	components[0] = GuiComponent{.pos = .{64, 16}, .size = .{64, 32}, .impl = .{.button = .{.onAction = &buttonCallbackTest}}};
 	hotbarWindow = GuiWindow{
 		.contentSize = Vec2f{64*8, 64},
 		.title = "Hotbar",
 		.id = "cubyz:hotbar",
 		.renderFn = &render,
 		.updateFn = &update,
+		.onOpenFn = &onOpen,
+		.onCloseFn = &onClose,
 		.components = &components,
 	};
 	try gui.addWindow(&hotbarWindow, true);
@@ -44,6 +46,17 @@ pub fn init() !void {
 
 pub fn buttonCallbackTest() void {
 	std.log.info("Clicked!", .{});
+}
+
+pub fn onOpen() Allocator.Error!void {
+	components[0] = GuiComponent{.pos = .{64, 16}, .size = .{64, 32}, .impl = .{.button = try @import("../components/Button.zig").init(main.globalAllocator, "Button", &buttonCallbackTest)}};
+	hotbarWindow.components = &components;
+}
+
+pub fn onClose() void {
+	for(components) |*comp| {
+		comp.deinit();
+	}
 }
 
 pub fn render() void {

@@ -1,4 +1,5 @@
 const std = @import("std");
+const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const graphics = main.graphics;
@@ -58,7 +59,7 @@ renderFn: *const fn()void,
 /// Called every frame for the currently selected window.
 updateFn: *const fn()void = &defaultFunction,
 
-onOpenFn: *const fn()void = &defaultFunction,
+onOpenFn: *const fn()Allocator.Error!void = &defaultErrorFunction,
 
 onCloseFn: *const fn()void = &defaultFunction,
 
@@ -66,6 +67,7 @@ var grabPosition: ?Vec2f = null;
 var selfPositionWhenGrabbed: Vec2f = undefined;
 
 pub fn defaultFunction() void {}
+pub fn defaultErrorFunction() Allocator.Error!void {}
 
 pub fn mainButtonPressed(self: *const GuiWindow) void {
 	const scale = @floor(settings.guiScale*self.scale); // TODO
@@ -362,7 +364,7 @@ pub fn render(self: *const GuiWindow) !void {
 	const oldTranslation = draw.setTranslation(self.pos);
 	const oldScale = draw.setScale(scale);
 	for(self.components) |*component| {
-		component.render(mousePosition);
+		try component.render(mousePosition);
 	}
 	draw.restoreTranslation(oldTranslation);
 	draw.restoreScale(oldScale);

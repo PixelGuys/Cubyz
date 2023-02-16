@@ -16,11 +16,24 @@ const Impl = union(enum) {
 	button: Button,
 };
 
+pub fn deinit(self: *GuiComponent) void {
+	switch(self.impl) {
+		inline else => |*impl| {
+			// Only call the function if it exists:
+			inline for(@typeInfo(@TypeOf(impl.*)).Struct.decls) |decl| {
+				if(comptime std.mem.eql(u8, decl.name, "deinit")) {
+					impl.deinit();
+				}
+			}
+		}
+	}
+}
+
 pub fn update(self: *GuiComponent) void {
 	switch(self.impl) {
-		inline else => |impl| {
+		inline else => |*impl| {
 			// Only call the function if it exists:
-			inline for(@typeInfo(@TypeOf(impl)).Struct.decls) |decl| {
+			inline for(@typeInfo(@TypeOf(impl.*)).Struct.decls) |decl| {
 				if(comptime std.mem.eql(u8, decl.name, "update")) {
 					impl.update(self);
 				}
@@ -29,13 +42,13 @@ pub fn update(self: *GuiComponent) void {
 	}
 }
 
-pub fn render(self: *GuiComponent, mousePosition: Vec2f) void {
+pub fn render(self: *GuiComponent, mousePosition: Vec2f) !void {
 	switch(self.impl) {
-		inline else => |impl| {
+		inline else => |*impl| {
 			// Only call the function if it exists:
-			inline for(@typeInfo(@TypeOf(impl)).Struct.decls) |decl| {
+			inline for(@typeInfo(@TypeOf(impl.*)).Struct.decls) |decl| {
 				if(comptime std.mem.eql(u8, decl.name, "render")) {
-					impl.render(self, mousePosition);
+					try impl.render(self, mousePosition);
 				}
 			}
 		}
