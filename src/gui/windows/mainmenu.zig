@@ -31,10 +31,10 @@ pub fn buttonCallbackTest() void {
 
 pub fn onOpen() Allocator.Error!void {
 	var list = try VerticalList.init(main.globalAllocator);
-	try list.add(try Button.init(.{0, 16}, .{128, 32}, main.globalAllocator, "Singleplayer player player", &buttonCallbackTest));
-	try list.add(try Button.init(.{0, 16}, .{128, 32}, main.globalAllocator, "Multiplayer", &buttonCallbackTest));
-	try list.add(try Button.init(.{0, 16}, .{128, 32}, main.globalAllocator, "Settings", &buttonCallbackTest));
-	try list.add(try Button.init(.{0, 16}, .{128, 32}, main.globalAllocator, "Exit", &buttonCallbackTest));
+	try list.add(try Button.init(.{0, 16}, 128, main.globalAllocator, "Singleplayer player player", &buttonCallbackTest));
+	try list.add(try Button.init(.{0, 16}, 128, main.globalAllocator, "Multiplayer", &buttonCallbackTest));
+	try list.add(try Button.init(.{0, 16}, 128, main.globalAllocator, "Settings", &buttonCallbackTest));
+	try list.add(try Button.init(.{0, 16}, 128, main.globalAllocator, "Exit", &buttonCallbackTest));
 	components[0] = list.toComponent(.{0, 0});
 	mainmenuWindow.contentSize = components[0].size;
 	gui.updateWindowPositions();

@@ -13,18 +13,23 @@ const GuiComponent = gui.GuiComponent;
 
 const Button = @This();
 
+const border: f32 = 3;
+const fontSize: f32 = 16;
+
 pressed: bool = false,
 onAction: *const fn() void,
 text: TextBuffer,
+textSize: Vec2f = undefined,
 
-pub fn init(pos: Vec2f, size: Vec2f, allocator: Allocator, text: []const u8, onAction: *const fn() void) Allocator.Error!GuiComponent {
-	const self = Button {
+pub fn init(pos: Vec2f, width: f32, allocator: Allocator, text: []const u8, onAction: *const fn() void) Allocator.Error!GuiComponent {
+	var self = Button {
 		.onAction = onAction,
 		.text = try TextBuffer.init(allocator, text, .{}, false),
 	};
+	self.textSize = try self.text.calculateLineBreaks(fontSize, width - 3*border);
 	return GuiComponent {
 		.pos = pos,
-		.size = size,
+		.size = .{@max(width, self.textSize[0] + 3*border), self.textSize[1] + 3*border},
 		.impl = .{.button = self}
 	};
 }
@@ -72,7 +77,6 @@ const buttonHoveredColor: [5]u32 = [_]u32{
 
 pub fn render(self: *Button, component: *const GuiComponent, mousePosition: Vec2f) !void {
 	// TODO: I should really just add a proper button texture.
-	const border: f32 = 3;
 	var colors = &buttonColor;
 	if(component.contains(mousePosition)) {
 		colors = &buttonHoveredColor;
@@ -90,7 +94,6 @@ pub fn render(self: *Button, component: *const GuiComponent, mousePosition: Vec2
 	draw.rect(component.pos + Vec2f{border, component.size[1] - border}, Vec2f{component.size[0] - border, border});
 	draw.setColor(colors[4]);
 	draw.rect(component.pos + Vec2f{0, border}, Vec2f{border, component.size[1] - border});
-	const textSize = try self.text.calculateLineBreaks(16, component.size[0]); // TODO
-	const textPos = component.pos + component.size/@splat(2, @as(f32, 2.0)) - textSize/@splat(2, @as(f32, 2.0));
-	try self.text.render(textPos[0], textPos[1], 16);
+	const textPos = component.pos + component.size/@splat(2, @as(f32, 2.0)) - self.textSize/@splat(2, @as(f32, 2.0));
+	try self.text.render(textPos[0], textPos[1], fontSize);
 }
