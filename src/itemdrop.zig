@@ -123,9 +123,7 @@ pub const ItemDropManager = struct {
 	pub fn getPositionAndVelocityData(self: *ItemDropManager, allocator: Allocator) ![]u8 {
 		const _data = try allocator.alloc(u8, self.size*50);
 		var data = _data;
-		var ii: u16 = 0;
-		while(data.len != 0): (ii += 1) {
-			const i = self.indices[ii];
+		for(self.indices) |i| {
 			std.mem.writeIntBig(u16, data[0..2], i);
 			std.mem.writeIntBig(u64, data[2..10], @bitCast(u64, self.pos[i][0]));
 			std.mem.writeIntBig(u64, data[10..18], @bitCast(u64, self.pos[i][1]));
@@ -159,9 +157,8 @@ pub const ItemDropManager = struct {
 		{
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			var ii: u32 = 0;
-			while(ii < self.size) : (ii += 1) {
-				const item = try self.storeSingle(allocator, self.indices[ii]);
+			for(self.indices) |i| {
+				const item = try self.storeSingle(allocator, i);
 				try jsonArray.JsonArray.append(item);
 			}
 		}
@@ -341,7 +338,7 @@ pub const ItemDropManager = struct {
 		const drag: f64 = self.airDragFactor;
 		var acceleration: Vec3f = Vec3f{0, -self.gravity*deltaTime, 0};
 		// Update gravity:
-		inline for([_]u0{0} ** 3) |_, i| { // TODO: Use the new for loop syntax.
+		inline for(0..3) |i| {
 			const old = pos[i];
 			pos[i] += vel[i]*deltaTime + acceleration[i]*deltaTime;
 			if(self.checkBlocks(chunk, pos)) {
@@ -513,10 +510,10 @@ pub const ClientItemDropManager = struct {
 		{
 			super.mutex.lock();
 			defer super.mutex.unlock();
-			for(instance.?.interpolation.lastVel) |*lastVel| {
+			for(&instance.?.interpolation.lastVel) |*lastVel| {
 				@ptrCast(*align(8)[ItemDropManager.maxCapacity]Vec3d, lastVel)[i] = Vec3d{0, 0, 0};
 			}
-			for(instance.?.interpolation.lastPos) |*lastPos| {
+			for(&instance.?.interpolation.lastPos) |*lastPos| {
 				@ptrCast(*align(8)[ItemDropManager.maxCapacity]Vec3d, lastPos)[i] = pos;
 			}
 		}
@@ -576,7 +573,7 @@ pub const ItemDropRenderer = struct {
 			const img = self.item.getTexture();
 			self.size = Vec3i{img.width, 1, img.height};
 			var freeSlot: ?*ItemVoxelModel = null;
-			for(freeSlots.items) |potentialSlot, i| {
+			for(freeSlots.items, 0..) |potentialSlot, i| {
 				if(std.meta.eql(self.size, potentialSlot.size)) {
 					freeSlot = potentialSlot;
 					_ = freeSlots.swapRemove(i);

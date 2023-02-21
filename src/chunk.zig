@@ -220,7 +220,7 @@ pub const Chunk = struct {
 		x &= chunkMask;
 		y &= chunkMask;
 		z &= chunkMask;
-		for(Neighbors.relX) |_, i| {
+		for(Neighbors.relX, 0..) |_, i| {
 			var xi = x + Neighbors.relX[i];
 			var yi = y + Neighbors.relY[i];
 			var zi = z + Neighbors.relZ[i];
@@ -286,7 +286,7 @@ pub const Chunk = struct {
 					// Uses a specific permutation here that keeps high resolution patterns in lower resolution.
 					const permutationStart = (x & 1)*4 + (z & 1)*2 + (y & 1);
 					const block = Block{.typ = 0, .data = 0};
-					for(neighborCount) |_, i| {
+					for(0..8) |i| {
 						const appliedPermutation = permutationStart ^ i;
 						if(neighborCount[appliedPermutation] >= maxCount - 1) { // Avoid pattern breaks at chunk borders.
 							block = blocks[appliedPermutation];
@@ -406,7 +406,7 @@ pub const meshing = struct {
 
 		var rawData: [6*3 << (3*chunkShift)]u32 = undefined; // 6 vertices per face, maximum 3 faces/block
 		const lut = [_]u32{0, 1, 2, 2, 1, 3};
-		for(rawData) |_, i| {
+		for(0..rawData.len) |i| {
 			rawData[i] = @intCast(u32, i)/6*4 + lut[i%6];
 		}
 
@@ -559,7 +559,7 @@ pub const meshing = struct {
 			} else {
 				insertionIndex = self.coreCount;
 				self.coreCount += 1;
-				for(self.neighborStart) |*start| {
+				for(&self.neighborStart) |*start| {
 					start.* += 1;
 				}
 			}
@@ -580,12 +580,11 @@ pub const meshing = struct {
 				searchStart = 0;
 				searchEnd = self.coreCount;
 				self.coreCount -= 1;
-				for(self.neighborStart) |*start| {
+				for(&self.neighborStart) |*start| {
 					start.* -= 1;
 				}
 			}
-			var i: u32 = searchStart;
-			while(i < searchEnd): (i += 1) {
+			for(searchStart..searchEnd) |i| {
 				if(std.meta.eql(self.faces.items[i], faceData)) {
 					_ = self.faces.orderedRemove(i);
 					return;

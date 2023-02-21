@@ -220,8 +220,7 @@ pub const JsonElement = union(JsonType) {
 		return out.toOwnedSlice();
 	}
 	fn writeTabs(writer: std.ArrayList(u8).Writer, tabs: u32) !void {
-		var i: u32 = 0;
-		while(i < tabs): (i += 1) {
+		for(0..tabs) |_| {
 			try writer.writeByte('\t');
 		}
 	}
@@ -252,7 +251,7 @@ pub const JsonElement = union(JsonType) {
 			},
 			.JsonArray => |array| {
 				try writer.writeByte('[');
-				for(array.items) |elem, i| {
+				for(array.items, 0..) |elem, i| {
 					if(i != 0) {
 						try writer.writeByte(',');
 					}
@@ -324,7 +323,7 @@ const Parser = struct {
 		while(index.* < chars.len) {
 			whitespaceLoop:
 			for(whitespaces) |whitespace| {
-				for(whitespace) |char, i| {
+				for(whitespace, 0..) |char, i| {
 					if(char != chars[index.* + i]) {
 						continue :whitespaceLoop;
 					}

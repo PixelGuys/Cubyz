@@ -192,11 +192,11 @@ pub const Mat4f = struct {
 	pub fn mul(self: Mat4f, other: Mat4f) Mat4f {
 		var transposeSelf = self.transpose();
 		var result: Mat4f = undefined;
-		for(other.columns) |_, col| {
-			result.columns[col][0] = dot(transposeSelf.columns[0], other.columns[col]);
-			result.columns[col][1] = dot(transposeSelf.columns[1], other.columns[col]);
-			result.columns[col][2] = dot(transposeSelf.columns[2], other.columns[col]);
-			result.columns[col][3] = dot(transposeSelf.columns[3], other.columns[col]);
+		for(&result.columns, other.columns) |*resCol, otherCol| {
+			resCol.*[0] = dot(transposeSelf.columns[0], otherCol);
+			resCol.*[1] = dot(transposeSelf.columns[1], otherCol);
+			resCol.*[2] = dot(transposeSelf.columns[2], otherCol);
+			resCol.*[3] = dot(transposeSelf.columns[3], otherCol);
 		}
 		return result;
 	}

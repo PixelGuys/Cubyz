@@ -4,7 +4,10 @@ const Allocator = std.mem.Allocator;
 const main = @import("root");
 const graphics = main.graphics;
 const draw = graphics.draw;
+const Image = graphics.Image;
+const Shader = graphics.Shader;
 const TextBuffer = graphics.TextBuffer;
+const Texture = graphics.Texture;
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
 

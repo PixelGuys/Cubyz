@@ -77,7 +77,7 @@ pub fn closeWindow(window: *GuiWindow) void {
 	if(selectedWindow == window) {
 		selectedWindow = null;
 	}
-	for(openWindows.items) |_openWindow, i| {
+	for(openWindows.items, 0..) |_openWindow, i| {
 		if(_openWindow == window) {
 			openWindows.swapRemove(i);
 		}
@@ -88,7 +88,7 @@ pub fn closeWindow(window: *GuiWindow) void {
 pub fn mainButtonPressed() void {
 	selectedWindow = null;
 	var selectedI: usize = 0;
-	for(openWindows.items) |window, i| {
+	for(openWindows.items, 0..) |window, i| {
 		var mousePosition = main.Window.getMousePosition();
 		mousePosition -= window.pos;
 		mousePosition /= @splat(2, window.scale*settings.guiScale);

@@ -15,7 +15,7 @@ var commonRecipes: std.ArrayList([]const u8) = undefined;
 
 /// Reads json files recursively from all subfolders.
 pub fn readAllJsonFilesInAddons(externalAllocator: Allocator, addons: std.ArrayList(std.fs.Dir), addonNames: std.ArrayList([]const u8), subPath: []const u8, output: *std.StringHashMap(JsonElement)) !void {
-	for(addons.items) |addon, addonIndex| {
+	for(addons.items, addonNames.items) |addon, addonName| {
 		var dir: std.fs.IterableDir = addon.openIterableDir(subPath, .{}) catch |err| {
 			if(err == error.FileNotFound) continue;
 			return err;
@@ -27,7 +27,7 @@ pub fn readAllJsonFilesInAddons(externalAllocator: Allocator, addons: std.ArrayL
 
 		while(try walker.next()) |entry| {
 			if(entry.kind == .File and std.ascii.endsWithIgnoreCase(entry.basename, ".json")) {
-				const folderName = addonNames.items[addonIndex];
+				const folderName = addonName;
 				var id: []u8 = try externalAllocator.alloc(u8, folderName.len + 1 + entry.path.len - 5);
 				std.mem.copy(u8, id[0..], folderName);
 				id[folderName.len] = ':';
@@ -60,9 +60,9 @@ pub fn readAssets(externalAllocator: Allocator, assetPath: []const u8, blocks: *
 			}
 		}
 	}
-	defer for(addons.items) |*dir, idx| {
+	defer for(addons.items, addonNames.items) |*dir, addonName| {
 		dir.close();
-		main.threadAllocator.free(addonNames.items[idx]);
+		main.threadAllocator.free(addonName);
 	};
 
 	try readAllJsonFilesInAddons(externalAllocator, addons, addonNames, "blocks", blocks);
@@ -163,7 +163,7 @@ pub const BlockPalette = struct {
 			.JsonObject = std.StringHashMap(JsonElement).init(allocator),
 		};
 		errdefer json.free(allocator);
-		for(self.palette.items) |item, i| {
+		for(self.palette.items, 0..) |item, i| {
 			json.JsonObject.put(try allocator.dupe(u8, item), JsonElement{.JsonInt = @intCast(i64, i)});
 		}
 		return json;

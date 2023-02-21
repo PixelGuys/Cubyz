@@ -35,9 +35,9 @@ const Material = struct {
 		self.roughness = @max(0, json.get(f32, "roughness", 1.0));
 		const colors = json.getChild("colors");
 		self.colorPalette = try allocator.alloc(Color, colors.JsonArray.items.len);
-		for(colors.JsonArray.items) |item, i| {
+		for(colors.JsonArray.items, self.colorPalette) |item, *color| {
 			const colorInt = item.as(u32, 0xff000000);
-			self.colorPalette[i] = Color {
+			color.* = Color {
 				.r = @intCast(u8, colorInt>>16 & 0xff),
 				.g = @intCast(u8, colorInt>>8 & 0xff),
 				.b = @intCast(u8, colorInt>>0 & 0xff),
@@ -414,19 +414,15 @@ const TextureGenerator = struct {
 	pub fn generate(tool: *Tool) !void {
 		const img = tool.texture;
 		var pixelMaterials: [16][16]PixelData = undefined;
-		var x: u8 = 0;
-		while(x < 16) : (x += 1) {
-			var y: u8 = 0;
-			while(y < 16) : (y += 1) {
+		for(0..16) |x| {
+			for(0..16) |y| {
 				pixelMaterials[x][y] = PixelData.init(main.threadAllocator);
 			}
 		}
 
 		defer { // TODO: Maybe use an ArenaAllocator?
-			x = 0;
-			while(x < 16) : (x += 1) {
-				var y: u8 = 0;
-				while(y < 16) : (y += 1) {
+			for(0..16) |x| {
+				for(0..16) |y| {
 					pixelMaterials[x][y].deinit();
 				}
 			}
@@ -437,7 +433,7 @@ const TextureGenerator = struct {
 
 		// Count all neighbors:
 		var neighborCount: [25]u8 = [_]u8{0} ** 25;
-		x = 0;
+		var x: u8 = 0;
 		while(x < 5) : (x += 1) {
 			var y: u8 = 0;
 			while(y < 5) : (y += 1) {
@@ -683,10 +679,8 @@ const ToolPhysics = struct {
 	fn calculateDurability(tool: *Tool) void {
 		// Doesn't do much besides summing up the durability of all it's parts:
 		var durability: f32 = 0;
-		var x: u32 = 0;
-		while(x < 16) : (x += 1) {
-			var y: u32 = 0;
-			while(y < 16) : (y += 1) {
+		for(0..16) |x| {
+			for(0..16) |y| {
 				if(tool.materialGrid[x][y]) |item| {
 					if(item.material) |material| {
 						durability += material.resistance;
@@ -935,7 +929,7 @@ const Tool = struct {
 
 	fn extractItemsFromJson(jsonArray: JsonElement) [25]?*const BaseItem {
 		var items: [25]?*const BaseItem = undefined;
-		for(items) |*item, i| {
+		for(&items, 0..) |*item, i| {
 			item.* = reverseIndices.get(jsonArray.getAtIndex([]const u8, i, "null"));
 		}
 		return items;
@@ -1203,7 +1197,7 @@ pub const Inventory = struct {
 	pub fn save(self: Inventory, allocator: Allocator) !JsonElement {
 		var jsonObject = try JsonElement.initObject(allocator);
 		try jsonObject.put("capacity", self.items.len);
-		for(self.items) |stack, i| {
+		for(self.items, 0..) |stack, i| {
 			if(!stack.empty()) {
 				var buf: [1024]u8 = undefined;
 				try jsonObject.put(buf[0..std.fmt.formatIntBuf(&buf, i, 10, .lower, .{})], try stack.store(allocator));
@@ -1213,7 +1207,7 @@ pub const Inventory = struct {
 	}
 
 	pub fn loadFromJson(self: Inventory, allocator: Allocator, json: JsonElement) void {
-		for(self.items) |*stack, i| {
+		for(self.items, 0..) |*stack, i| {
 			stack.clear();
 			var buf: [1024]u8 = undefined;
 			var stackJson = json.getChild(buf[0..std.fmt.formatIntBuf(buf, i, 10, .lower, .{})]);

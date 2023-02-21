@@ -151,7 +151,7 @@ pub fn BlockingMaxHeap(comptime T: type) type {
 		pub fn updatePriority(self: *@This()) void {
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			for(self.array[0..self.size/2]) |_, i| {
+			for(0..self.size/2) |i| {
 				self.siftDown(i);
 			}
 		}
@@ -241,7 +241,7 @@ pub const ThreadPool = struct {
 			.loadList = try BlockingMaxHeap(Task).init(allocator),
 			.allocator = allocator,
 		};
-		for(self.threads) |*thread, i| {
+		for(self.threads, 0..) |*thread, i| {
 			thread.* = try std.Thread.spawn(.{}, run, .{self});
 			var buf: [64]u8 = undefined;
 			try thread.setName(try std.fmt.bufPrint(&buf, "Worker Thread {}", .{i+1}));
@@ -348,7 +348,7 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 
 		fn find(self: *@This(), compare: anytype) ?*T {
 			std.debug.assert(!self.mutex.tryLock()); // The mutex must be locked.
-			for(self.items) |item, i| {
+			for(self.items, 0..) |item, i| {
 				if(compare.equals(item)) {
 					if(i != 0) {
 						std.mem.copyBackwards(?*T, self.items[1..], self.items[0..i]);
@@ -384,7 +384,7 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 		fn clear(self: *@This()) void {
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			for(self.items) |*nullItem| {
+			for(&self.items) |*nullItem| {
 				if(nullItem.*) |item| {
 					deinitFunction(item);
 					nullItem.* = null;
@@ -422,13 +422,13 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 
 		/// Clears all elements calling the deinitFunction for each element.
 		pub fn clear(self: *@This()) void {
-			for(self.buckets) |*bucket| {
+			for(&self.buckets) |*bucket| {
 				bucket.clear();
 			}
 		}
 
 		pub fn foreach(self: *@This(), comptime function: fn(*T) void) void {
-			for(self.buckets) |*bucket| {
+			for(&self.buckets) |*bucket| {
 				bucket.foreach(function);
 			}
 		}
@@ -517,10 +517,10 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 				// Need a new point:
 				var smallestTime: i16 = std.math.maxInt(i16);
 				var smallestIndex: ?u31 = null;
-				for(self.lastTimes) |_, i| {
-					//                              ↓ Only using a future time value that is far enough away to prevent jumping.
-					if(self.lastTimes[i] -% time >= 50 and self.lastTimes[i] -% time < smallestTime) {
-						smallestTime = self.lastTimes[i] -% time;
+				for(self.lastTimes, 0..) |lastTimeI, i| {
+					//                     ↓ Only using a future time value that is far enough away to prevent jumping.
+					if(lastTimeI -% time >= 50 and lastTimeI -% time < smallestTime) {
+						smallestTime = lastTimeI -% time;
 						smallestIndex = @intCast(u31, i);
 					}
 				}
@@ -539,16 +539,16 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 			}
 
 			if(self.currentPoint == null) {
-				for(self.outPos) |*pos, i| {
+				for(self.outPos, self.outVel) |*pos, *vel| {
 					// Just move on with the current velocity.
-					pos.* += self.outVel[i]*deltaTime;
+					pos.* += (vel.*)*deltaTime;
 					// Add some drag to prevent moving far away on short connection loss.
-					self.outVel[i] *= std.math.pow(f64, 0.5, deltaTime);
+					vel.* *= std.math.pow(f64, 0.5, deltaTime);
 				}
 			} else {
 				const tScale = @intToFloat(f64, self.lastTimes[self.currentPoint.?] -% lastTime)/1000;
 				const t = deltaTime;
-				for(self.outPos) |_, i| {
+				for(self.outPos, 0..) |_, i| {
 					self.interpolateCoordinate(i, t, tScale);
 				}
 			}

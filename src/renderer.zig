@@ -343,7 +343,7 @@ fn sortChunks(toSort: []*chunk.meshing.ChunkMesh, playerPos: Vec3d) !void {
 	const distances = try main.threadAllocator.alloc(f64, toSort.len);
 	defer main.threadAllocator.free(distances);
 
-	for(distances) |*dist, i| {
+	for(distances, 0..) |*dist, i| {
 		dist.* = vec.length(playerPos - Vec3d{
 			@intToFloat(f64, toSort[i].pos.wx),
 			@intToFloat(f64, toSort[i].pos.wy),
@@ -812,7 +812,7 @@ pub const RenderStructure = struct {
 		updatableList = std.ArrayList(chunk.ChunkPosition).init(allocator);
 		blockUpdateList = std.ArrayList(BlockUpdate).init(allocator);
 		clearList = std.ArrayList(*ChunkMeshNode).init(allocator);
-		for(storageLists) |*storageList| {
+		for(&storageLists) |*storageList| {
 			storageList.* = try allocator.alloc(?*ChunkMeshNode, 0);
 		}
 	}
@@ -887,7 +887,7 @@ pub const RenderStructure = struct {
 		var meshRequests = std.ArrayList(chunk.ChunkPosition).init(main.threadAllocator);
 		defer meshRequests.deinit();
 
-		for(storageLists) |_, _lod| {
+		for(0..storageLists.len) |_lod| {
 			const lod = @intCast(u5, _lod);
 			var maxRenderDistance = renderDistance*chunk.chunkSize << lod;
 			if(lod != 0) maxRenderDistance = @floatToInt(i32, @ceil(@intToFloat(f32, maxRenderDistance)*LODFactor));
@@ -1045,7 +1045,7 @@ pub const RenderStructure = struct {
 			var closestPriority: f32 = -std.math.floatMax(f32);
 			var closestIndex: usize = 0;
 			const playerPos = game.Player.getPosBlocking();
-			for(updatableList.items) |pos, i| {
+			for(updatableList.items, 0..) |pos, i| {
 				const priority = pos.getPriority(playerPos);
 				if(priority > closestPriority) {
 					closestPriority = priority;

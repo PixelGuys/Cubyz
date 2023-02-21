@@ -246,11 +246,11 @@ const STUN = struct {
 
 	fn requestAddress(connection: *ConnectionManager) Address {
 		var oldAddress: ?Address = null;
-		var attempt: u32 = 0;
 		var seed = [_]u8 {0} ** std.rand.DefaultCsprng.secret_seed_length;
 		std.mem.writeIntNative(i128, seed[0..16], std.time.nanoTimestamp()); // Not the best seed, but it's not that important.
 		var random = std.rand.DefaultCsprng.init(seed);
-		while(attempt < 16): (attempt += 1) {
+		for(0..16) |attempt| {
+			_ = attempt;
 			// Choose a somewhat random server, so we faster notice if any one of them stopped working.
 			const server = ipServerList[random.random().intRangeAtMost(usize, 0, ipServerList.len-1)];
 			var data = [_]u8 {
@@ -344,10 +344,10 @@ const STUN = struct {
 	fn verifyHeader(data: []const u8, transactionID: []const u8) !void {
 		if(data[0] != 0x01 or data[1] != 0x01) return error.NotABinding;
 		if(@intCast(u16, data[2] & 0xff)*256 + (data[3] & 0xff) != data.len - 20) return error.BadSize;
-		for(MAGIC_COOKIE) |cookie, i| {
+		for(MAGIC_COOKIE, 0..) |cookie, i| {
 			if(data[i + 4] != cookie) return error.WrongCookie;
 		}
-		for(transactionID) |_, i| {
+		for(transactionID, 0..) |_, i| {
 			if(data[i+8] != transactionID[i]) return error.WrongTransaction;
 		}
 	}
@@ -433,7 +433,7 @@ pub const ConnectionManager = struct {
 
 			request.requestNotifier.timedWait(&self.mutex, timeout_ns) catch {};
 
-			for(self.requests.items) |req, i| {
+			for(self.requests.items, 0..) |req, i| {
 				if(req == &request) {
 					_ = self.requests.swapRemove(i);
 					break;
@@ -472,7 +472,7 @@ pub const ConnectionManager = struct {
 		self.mutex.lock();
 		defer self.mutex.unlock();
 		
-		for(self.connections.items) |other, i| {
+		for(self.connections.items, 0..) |other, i| {
 			if(other == conn) {
 				_ = self.connections.swapRemove(i);
 				break;
@@ -730,7 +730,7 @@ pub const Protocols: struct {
 			data = _inflatedData;
 			var ch = try renderer.RenderStructure.allocator.create(chunk.Chunk);
 			ch.init(pos);
-			for(ch.blocks) |*block| {
+			for(&ch.blocks) |*block| {
 				block.* = Block.fromInt(std.mem.readIntBig(u32, data[0..4]));
 				data = data[4..];
 			}
@@ -749,7 +749,7 @@ pub const Protocols: struct {
 			var z = data[16..][2*size..3*size];
 			var neighbors = data[16..][3*size..4*size];
 			var visibleBlocks = data[16..][4*size..];
-			for(visData.visibles.items) |block, i| {
+			for(visData.visibles.items, 0..) |block, i| {
 				x[i] = block.x;
 				y[i] = block.y;
 				z[i] = block.z;
@@ -1400,10 +1400,10 @@ pub const Connection = struct {
 			for(list.items) |packetID| {
 				var leftRegion: ?u32 = null;
 				var rightRegion: ?u32 = null;
-				for(runLengthEncodingStarts.items) |start, reg| {
+				for(runLengthEncodingStarts.items, runLengthEncodingLengths.items, 0..) |start, length, reg| {
 					var diff = packetID -% start;
-					if(diff < runLengthEncodingLengths.items[reg]) continue;
-					if(diff == runLengthEncodingLengths.items[reg]) {
+					if(diff < length) continue;
+					if(diff == length) {
 						leftRegion = @intCast(u32, reg);
 					}
 					if(diff == std.math.maxInt(u32)) {
@@ -1444,7 +1444,7 @@ pub const Connection = struct {
 		self.lastKeepAliveSent += 1;
 		std.mem.writeIntBig(u32, output[5..9], self.otherKeepAliveReceived);
 		var remaining: []u8 = output[9..];
-		for(runLengthEncodingStarts.items) |_, i| {
+		for(runLengthEncodingStarts.items, 0..) |_, i| {
 			std.mem.writeIntBig(u32, remaining[0..4], runLengthEncodingStarts.items[i]);
 			std.mem.writeIntBig(u32, remaining[4..8], runLengthEncodingLengths.items[i]);
 			remaining = remaining[8..];
@@ -1463,8 +1463,7 @@ pub const Connection = struct {
 		try self.flush();
 		if(self.bruteforcingPort) {
 			// This is called every 100 ms, so if I send 10 requests it shouldn't be too bad.
-			var i: u16 = 0;
-			while(i < 5): (i += 1) {
+			for(0..5) |_| {
 				var data = [1]u8{0};
 				if(self.remoteAddress.port +% self.bruteForcedPortRange != 0) {
 					try self.manager.send(&data, Address{.ip = self.remoteAddress.ip, .port = self.remoteAddress.port +% self.bruteForcedPortRange});

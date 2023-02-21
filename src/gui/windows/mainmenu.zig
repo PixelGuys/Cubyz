@@ -41,7 +41,7 @@ pub fn onOpen() Allocator.Error!void {
 }
 
 pub fn onClose() void {
-	for(components) |*comp| {
+	for(&components) |*comp| {
 		comp.deinit();
 	}
 }

@@ -522,7 +522,7 @@ pub const TextBuffer = struct {
 		// Guess the text index from the given cluster indices. Only works if the number of glyphs and the number of characters in a cluster is the same.
 		var textIndexGuess = try main.threadAllocator.alloc(u32, glyphInfos.len);
 		defer main.threadAllocator.free(textIndexGuess);
-		for(textIndexGuess) |*index, i| {
+		for(textIndexGuess, 0..) |*index, i| {
 			if(i == 0 or glyphInfos[i-1].cluster != glyphInfos[i].cluster) {
 				index.* = glyphInfos[i].cluster;
 			} else {
@@ -538,7 +538,7 @@ pub const TextBuffer = struct {
 
 		// Merge it all together:
 		self.glyphs = try allocator.alloc(GlyphData, glyphInfos.len);
-		for(self.glyphs) |*glyph, i| {
+		for(self.glyphs, 0..) |*glyph, i| {
 			glyph.x_advance = @intToFloat(f32, glyphPositions[i].x_advance)/4.0;
 			glyph.y_advance = @intToFloat(f32, glyphPositions[i].y_advance)/4.0;
 			glyph.x_offset = @intToFloat(f32, glyphPositions[i].x_offset)/4.0;
@@ -571,7 +571,7 @@ pub const TextBuffer = struct {
 		var lineWidth: f32 = 0;
 		var lastSpaceWidth: f32 = 0;
 		var lastSpaceIndex: u32 = 0;
-		for(self.glyphs) |glyph, i| {
+		for(self.glyphs, 0..) |glyph, i| {
 			lineWidth += glyph.x_advance;
 			if(lineWidth > scaledMaxWidth and lastSpaceIndex != 0) {
 				lineWidth -= lastSpaceWidth;
@@ -937,7 +937,7 @@ pub const LargeBuffer = struct {
 
 	fn alloc(self: *LargeBuffer, size: u31) !Allocation {
 		var smallestBlock: ?*Allocation = null;
-		for(self.freeBlocks.items) |*block, i| {
+		for(self.freeBlocks.items, 0..) |*block, i| {
 			if(size == block.len) {
 				return self.freeBlocks.swapRemove(i);
 			}
@@ -956,7 +956,7 @@ pub const LargeBuffer = struct {
 	pub fn free(self: *LargeBuffer, _allocation: Allocation) !void {
 		var allocation = _allocation;
 		if(allocation.len == 0) return;
-		for(self.freeBlocks.items) |*block, i| {
+		for(self.freeBlocks.items, 0..) |*block, i| {
 			if(allocation.start + allocation.len == block.start) {
 				allocation.len += block.len;
 				_ = self.freeBlocks.swapRemove(i);
@@ -991,7 +991,7 @@ pub const LargeBuffer = struct {
 			try self.freeBlocks.append(.{.start = allocation.start + allocation.len, .len = diff});
 		} else {
 			// Check if the buffer can be extended without a problem:
-			for(self.freeBlocks.items) |*block, i| {
+			for(self.freeBlocks.items, 0..) |*block, i| {
 				if(allocation.start + allocation.len == block.start and block.len + allocation.len >= newSize) {
 					const diff = newSize - allocation.len;
 					allocation.len += diff;
@@ -1108,7 +1108,7 @@ pub const TextureArray = struct {
 		var g: [4]u32 = undefined;
 		var b: [4]u32 = undefined;
 		var a: [4]u32 = undefined;
-		for(colors) |_, i| {
+		for(0..4) |i| {
 			r[i] = colors[i].r;
 			g[i] = colors[i].g;
 			b[i] = colors[i].b;
@@ -1119,7 +1119,7 @@ pub const TextureArray = struct {
 		var rSum: u32 = 0;
 		var gSum: u32 = 0;
 		var bSum: u32 = 0;
-		for(colors) |_, i| {
+		for(0..4) |i| {
 			aSum += a[i]*a[i];
 			rSum += r[i]*r[i];
 			gSum += g[i]*g[i];
@@ -1164,11 +1164,11 @@ pub const TextureArray = struct {
 		var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
 		defer arena.deinit();
 		var lodBuffer: [][]Color = try arena.allocator().alloc([]Color, maxLOD);
-		for(lodBuffer) |*buffer, i| {
+		for(lodBuffer, 0..) |*buffer, i| {
 			buffer.* = try arena.allocator().alloc(Color, (maxWidth >> @intCast(u5, i))*(maxHeight >> @intCast(u5, i)));
 		}
 		
-		for(images) |image, i| {
+		for(images, 0..) |image, i| {
 			// Check if the image contains non-binary alpha values, which makes it transparent.
 			var isTransparent = false;
 			for(image.imageData) |color| {
@@ -1179,10 +1179,8 @@ pub const TextureArray = struct {
 			}
 
 			// Fill the buffer using nearest sampling. Probably not the best solutions for all textures, but that's what happens when someone doesn't use power of 2 textures...
-			var x: u32 = 0;
-			while(x < maxWidth): (x += 1) {
-				var y: u32 = 0;
-				while(y < maxHeight): (y += 1) {
+			for(0..maxWidth) |x| {
+				for(0..maxHeight) |y| {
 					const index = x + y*maxWidth;
 					const imageIndex = (x*image.width)/maxWidth + image.width*(y*image.height)/maxHeight;
 					lodBuffer[0][index] = image.imageData[imageIndex];
@@ -1190,15 +1188,13 @@ pub const TextureArray = struct {
 			}
 
 			// Calculate the mipmap levels:
-			for(lodBuffer) |_, _lod| {
+			for(lodBuffer, 0..) |_, _lod| {
 				const lod = @intCast(u5, _lod);
 				const curWidth = maxWidth >> lod;
 				const curHeight = maxHeight >> lod;
 				if(lod != 0) {
-					x = 0;
-					while(x < curWidth): (x += 1) {
-						var y: u32 = 0;
-						while(y < curHeight): (y += 1) {
+					for(0..curWidth) |x| {
+						for(0..curHeight) |y| {
 							const index = x + y*curWidth;
 							const index2 = 2*x + 2*y*2*curWidth;
 							const colors = [4]Color {

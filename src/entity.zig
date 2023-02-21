@@ -190,7 +190,7 @@ pub const ClientEntityManager = struct {
 	pub fn removeEntity(id: u32) void {
 		mutex.lock();
 		defer mutex.unlock();
-		for(entities.items) |*ent, i| {
+		for(entities.items, 0..) |*ent, i| {
 			if(ent.id == id) {
 				_ = entities.swapRemove(i);
 				break;

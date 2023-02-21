@@ -335,7 +335,7 @@ pub const meshes = struct {
 			var buffer: [1024]u8 = undefined;
 			var path = try std.fmt.bufPrint(&buffer, "{s}/{s}/blocks/textures/{s}.png", .{assetFolder, mod, id});
 			// Test if it's already in the list:
-			for(textureIDs.items) |other, j| {
+			for(textureIDs.items, 0..) |other, j| {
 				if(std.mem.eql(u8, other, path)) {
 					result = @intCast(u31, j);
 					return result;
@@ -371,7 +371,7 @@ pub const meshes = struct {
 			if(textures != .JsonArray) return result;
 			// Add the new textures into the list. Since this is an animation all textures that weren't found need to be replaced with undefined.
 			result = @intCast(u31, blockTextures.items.len);
-			for(textures.JsonArray.items) |item, i| {
+			for(textures.JsonArray.items, 0..) |item, i| {
 				if(i == 0) {
 					try animation.append(.{.frames = @intCast(i32, textures.JsonArray.items.len), .time = animationTime});
 				} else {
@@ -410,10 +410,10 @@ pub const meshes = struct {
 
 	pub fn getTextureIndices(json: JsonElement, assetFolder: []const u8, textureIndicesRef: []u32) !void {
 		var defaultIndex = try readTexture(json.getChild("texture"), assetFolder) orelse 0;
-		for(textureIndicesRef) |_, i| {
-			textureIndicesRef[i] = defaultIndex;
-			const textureInfo = json.getChild(sideNames[i]);
-			textureIndicesRef[i] = try readTexture(textureInfo, assetFolder) orelse continue;
+		for(textureIndicesRef, sideNames) |*ref, name| {
+			ref.* = defaultIndex;
+			const textureInfo = json.getChild(name);
+			ref.* = try readTexture(textureInfo, assetFolder) orelse continue;
 		}
 	}
 

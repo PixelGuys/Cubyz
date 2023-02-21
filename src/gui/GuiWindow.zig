@@ -103,7 +103,7 @@ pub fn mainButtonReleased(self: *const GuiWindow) void {
 
 fn snapToOtherWindow(self: *GuiWindow) void {
 	const scale = @floor(settings.guiScale*self.scale); // TODO
-	for(self.relativePosition) |*relPos, i| {
+	for(&self.relativePosition, 0..) |*relPos, i| {
 		var minDist: f32 = settings.guiScale*2;
 		var minWindow: ?*GuiWindow = null;
 		var selfAttachment: AttachmentPoint = undefined;
@@ -157,7 +157,7 @@ fn snapToOtherWindow(self: *GuiWindow) void {
 fn positionRelativeToFrame(self: *GuiWindow) void {
 	const scale = @floor(settings.guiScale*self.scale); // TODO
 	const windowSize = main.Window.getWindowSize();
-	for(self.relativePosition) |*relPos, i| {
+	for(&self.relativePosition, 0..) |*relPos, i| {
 		// Snap to the center:
 		if(@fabs(self.pos[i] + self.size[i]*scale - windowSize[i]/2) <= settings.guiScale*2) {
 			relPos.* = .{.attachedToFrame = .{
@@ -259,7 +259,7 @@ pub fn updateWindowPosition(self: *GuiWindow) void {
 	self.size = self.contentSize; // TODO
 	const scale = @floor(settings.guiScale*self.scale); // TODO
 	const windowSize = main.Window.getWindowSize();
-	for(self.relativePosition) |relPos, i| {
+	for(self.relativePosition, 0..) |relPos, i| {
 		switch(relPos) {
 			.ratio => |ratio| {
 				self.pos[i] = windowSize[i]*ratio - self.size[i]*scale/2;
@@ -305,7 +305,7 @@ fn drawOrientationLines(self: *const GuiWindow) void {
 	const scale = @floor(settings.guiScale*self.scale); // TODO
 	draw.setColor(0x80000000);
 	const windowSize = main.Window.getWindowSize();
-	for(self.relativePosition) |relPos, i| {
+	for(self.relativePosition, 0..) |relPos, i| {
 		switch(relPos) {
 			.ratio, .relativeToWindow => {
 				continue;
