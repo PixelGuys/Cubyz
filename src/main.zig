@@ -308,7 +308,7 @@ pub fn main() !void {
 	try gui.openWindow("cubyz:hotbar2");
 	try gui.openWindow("cubyz:hotbar3");
 	try gui.openWindow("cubyz:healthbar");
-	try gui.openWindow("cubyz:mainmenu");
+	try gui.openWindow("cubyz:main");
 
 	c.glCullFace(c.GL_BACK);
 	c.glEnable(c.GL_BLEND);

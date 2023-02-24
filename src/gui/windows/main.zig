@@ -10,33 +10,33 @@ const GuiWindow = gui.GuiWindow;
 const Button = @import("../components/Button.zig");
 const VerticalList = @import("../components/VerticalList.zig");
 
-var mainmenuWindow: GuiWindow = undefined;
+var window: GuiWindow = undefined;
 var components: [1]GuiComponent = undefined;
-var hotbarWindow2: GuiWindow = undefined;
-var hotbarWindow3: GuiWindow = undefined;
 pub fn init() !void {
-	mainmenuWindow = GuiWindow{
+	window = GuiWindow{
 		.contentSize = Vec2f{128, 256},
-		.id = "cubyz:mainmenu",
+		.id = "cubyz:main",
 		.onOpenFn = &onOpen,
 		.onCloseFn = &onClose,
 		.components = &components,
 	};
-	try gui.addWindow(&mainmenuWindow, true);
+	try gui.addWindow(&window, true);
 }
 
 pub fn buttonCallbackTest() void {
 	std.log.info("Clicked!", .{});
 }
 
+const padding: f32 = 8;
+
 pub fn onOpen() Allocator.Error!void {
 	var list = try VerticalList.init(main.globalAllocator);
-	try list.add(try Button.init(.{0, 16}, 128, main.globalAllocator, "Singleplayer player player", &buttonCallbackTest));
-	try list.add(try Button.init(.{0, 16}, 128, main.globalAllocator, "Multiplayer", &buttonCallbackTest));
-	try list.add(try Button.init(.{0, 16}, 128, main.globalAllocator, "Settings", &buttonCallbackTest));
-	try list.add(try Button.init(.{0, 16}, 128, main.globalAllocator, "Exit", &buttonCallbackTest));
-	components[0] = list.toComponent(.{0, 0});
-	mainmenuWindow.contentSize = components[0].size;
+	try list.add(try Button.init(.{0, 16}, 128, main.globalAllocator, "Singleplayer TODO", &buttonCallbackTest));
+	try list.add(try Button.init(.{0, 16}, 128, main.globalAllocator, "Multiplayer TODO", &buttonCallbackTest));
+	try list.add(try Button.init(.{0, 16}, 128, main.globalAllocator, "Settings", gui.openWindowFunction("cubyz:settings")));
+	try list.add(try Button.init(.{0, 16}, 128, main.globalAllocator, "Exit TODO", &buttonCallbackTest));
+	components[0] = list.toComponent(.{padding, padding});
+	window.contentSize = components[0].size + @splat(2, @as(f32, 2*padding));
 	gui.updateWindowPositions();
 }
 

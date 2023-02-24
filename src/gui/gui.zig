@@ -1,4 +1,5 @@
 const std = @import("std");
+const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const graphics = main.graphics;
@@ -54,16 +55,18 @@ pub fn addWindow(window: *GuiWindow, isHudWindow: bool) !void {
 	try windowList.append(window);
 }
 
-pub fn openWindow(id: []const u8) !void {
+pub fn openWindow(id: []const u8) Allocator.Error!void {
 	defer updateWindowPositions();
 	var wasFound: bool = false;
-	outer: for(windowList.items) |window| {
+	for(windowList.items) |window| {
 		if(std.mem.eql(u8, window.id, id)) {
 			wasFound = true;
-			for(openWindows.items) |_openWindow| {
+			for(openWindows.items, 0..) |_openWindow, i| {
 				if(_openWindow == window) {
-					std.log.warn("Window with id {s} is already open.", .{id});
-					continue :outer;
+					_ = openWindows.swapRemove(i);
+					openWindows.appendAssumeCapacity(window);
+					selectedWindow = null;
+					return;
 				}
 			}
 			window.showTitleBar = true;
@@ -71,10 +74,22 @@ pub fn openWindow(id: []const u8) !void {
 			window.pos = .{0, 0};
 			window.size = window.contentSize;
 			try window.onOpenFn();
+			selectedWindow = null;
 			return;
 		}
 	}
 	std.log.warn("Could not find window with id {s}.", .{id});
+}
+
+pub fn openWindowFunction(comptime id: []const u8) *const fn() void {
+	const function = struct {
+		fn function() void {
+			@call(.never_inline, openWindow, .{id}) catch {
+				std.log.err("Couldn't open window due to out of memory error.", .{});
+			};
+		}
+	}.function;
+	return &function;
 }
 
 pub fn closeWindow(window: *GuiWindow) void {
