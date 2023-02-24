@@ -7,6 +7,7 @@ const settings = main.settings;
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
 
+const Button = @import("components/Button.zig");
 pub const GuiComponent = @import("GuiComponent.zig");
 pub const GuiWindow = @import("GuiWindow.zig");
 
@@ -24,6 +25,8 @@ pub fn init() !void {
 	inline for(@typeInfo(windowlist).Struct.decls) |decl| {
 		try @field(windowlist, decl.name).init();
 	}
+	try GuiWindow.__init();
+	try Button.__init();
 }
 
 pub fn deinit() void {
@@ -33,6 +36,8 @@ pub fn deinit() void {
 		window.onCloseFn();
 	}
 	openWindows.deinit();
+	GuiWindow.__deinit();
+	Button.__deinit();
 }
 
 pub fn addWindow(window: *GuiWindow, isHudWindow: bool) !void {

@@ -347,6 +347,25 @@ pub const draw = struct {
 	}
 
 	// ----------------------------------------------------------------------------
+
+	pub fn customShadedRect(uniforms: anytype, _pos: Vec2f, _dim: Vec2f) void {
+		var pos = _pos;
+		var dim = _dim;
+		pos *= @splat(2, scale);
+		pos += translation;
+		dim *= @splat(2, scale);
+
+		c.glUniform2f(uniforms.screen, @intToFloat(f32, Window.width), @intToFloat(f32, Window.height));
+		c.glUniform2f(uniforms.start, pos[0], pos[1]);
+		c.glUniform2f(uniforms.size, dim[0], dim[1]);
+		c.glUniform1i(uniforms.color, color);
+		c.glUniform1f(uniforms.scale, scale);
+
+		c.glBindVertexArray(rectVAO);
+		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+	}
+
+	// ----------------------------------------------------------------------------
 	
 	pub fn text(_text: []const u8, x: f32, y: f32, fontSize: f32) !void {
 		try TextRendering.renderText(_text, x, y, fontSize, .{.color = @truncate(u24, color)});
@@ -1217,6 +1236,35 @@ pub const TextureArray = struct {
 		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
 		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
 		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
+	}
+};
+
+pub const Texture = struct {
+	textureID: c_uint,
+
+	pub fn init() Texture {
+		var self: Texture = undefined;
+		c.glGenTextures(1, &self.textureID);
+		return self;
+	}
+
+	pub fn deinit(self: Texture) void {
+		c.glDeleteTextures(1, &self.textureID);
+	}
+
+	pub fn bind(self: Texture) void {
+		c.glBindTexture(c.GL_TEXTURE_2D, self.textureID);
+	}
+
+	/// (Re-)Generates the GPU buffer.
+	pub fn generate(self: Texture, image: Image) !void {
+		self.bind();
+
+		c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_RGBA8, image.width, image.height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, image.imageData.ptr);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
 	}
 };
 

@@ -4,6 +4,9 @@ const Allocator = std.mem.Allocator;
 const main = @import("root");
 const graphics = main.graphics;
 const draw = graphics.draw;
+const Image = graphics.Image;
+const Shader = graphics.Shader;
+const Texture = graphics.Texture;
 const settings = main.settings;
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
@@ -65,6 +68,43 @@ onCloseFn: *const fn()void = &defaultFunction,
 
 var grabPosition: ?Vec2f = null;
 var selfPositionWhenGrabbed: Vec2f = undefined;
+
+var backgroundTexture: Texture = undefined;
+var titleTexture: Texture = undefined;
+var shader: Shader = undefined;
+var windowUniforms: struct {
+	screen: c_int,
+	start: c_int,
+	size: c_int,
+	color: c_int,
+	scale: c_int,
+
+	image: c_int,
+	randomOffset: c_int,
+} = undefined;
+
+pub fn __init() !void {
+	shader = try Shader.create("assets/cubyz/shaders/ui/button.vs", "assets/cubyz/shaders/ui/button.fs");
+	windowUniforms = shader.bulkGetUniformLocation(@TypeOf(windowUniforms));
+	shader.bind();
+	graphics.c.glUniform1i(windowUniforms.image, 0);
+
+	backgroundTexture = Texture.init();
+	const backgroundImage = try Image.readFromFile(main.threadAllocator, "assets/cubyz/ui/window_background.png");
+	defer backgroundImage.deinit(main.threadAllocator);
+	try backgroundTexture.generate(backgroundImage);
+
+	titleTexture = Texture.init();
+	const titleImage = try Image.readFromFile(main.threadAllocator, "assets/cubyz/ui/window_title.png");
+	defer titleImage.deinit(main.threadAllocator);
+	try titleTexture.generate(titleImage);
+}
+
+pub fn __deinit() void {
+	shader.delete();
+	backgroundTexture.deinit();
+	titleTexture.deinit();
+}
 
 pub fn defaultFunction() void {}
 pub fn defaultErrorFunction() Allocator.Error!void {}
@@ -351,8 +391,24 @@ pub fn render(self: *const GuiWindow) !void {
 	mousePosition /= @splat(2, scale);
 	const oldTranslation = draw.setTranslation(self.pos);
 	const oldScale = draw.setScale(scale);
+	draw.setColor(0xff000000);
+	graphics.c.glActiveTexture(graphics.c.GL_TEXTURE0);
+	shader.bind();
+	backgroundTexture.bind();
+	draw.customShadedRect(windowUniforms, .{0, 0}, self.size);
 	for(self.components) |*component| {
 		try component.render(mousePosition);
+	}
+	if(self.showTitleBar) {
+		graphics.c.glActiveTexture(graphics.c.GL_TEXTURE0);
+		shader.bind();
+		titleTexture.bind();
+		if(self == gui.selectedWindow) {
+			draw.setColor(0xff000040);
+		} else {
+			draw.setColor(0xff000000);
+		}
+		draw.customShadedRect(windowUniforms, .{0, 0}, .{self.size[0], 16});
 	}
 	draw.restoreTranslation(oldTranslation);
 	draw.restoreScale(oldScale);
@@ -360,12 +416,6 @@ pub fn render(self: *const GuiWindow) !void {
 		var text = try graphics.TextBuffer.init(main.threadAllocator, self.title, .{}, false);
 		defer text.deinit();
 		const titleDimension = try text.calculateLineBreaks(16*scale, self.size[0]*scale);
-		if(self == gui.selectedWindow) {
-			draw.setColor(0xff80b080);
-		} else {
-			draw.setColor(0xffb08080);
-		}
-		draw.rect(self.pos, Vec2f{self.size[0]*scale, titleDimension[1]});
 		try text.render(self.pos[0] + self.size[0]*scale/2 - titleDimension[0]/2, self.pos[1], 16*scale);
 	}
 	if(self == gui.selectedWindow and grabPosition != null) {

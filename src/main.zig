@@ -174,7 +174,7 @@ pub const Window = struct {
 			}
 		}
 		fn glDebugOutput(_: c_uint, _: c_uint, _: c_uint, severity: c_uint, length: c_int, message: [*c]const u8, _: ?*const anyopaque) callconv(.C) void {
-			if(severity == c.GL_DEBUG_SEVERITY_HIGH) {
+			if(severity == c.GL_DEBUG_SEVERITY_HIGH) { // TODO: Capture the stack traces.
 				std.log.err("OpenGL {}:{s}", .{severity, message[0..@intCast(usize, length)]});
 			} else if(severity == c.GL_DEBUG_SEVERITY_MEDIUM) {
 				std.log.warn("OpenGL {}:{s}", .{severity, message[0..@intCast(usize, length)]});
