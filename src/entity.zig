@@ -1,4 +1,5 @@
 const std = @import("std");
+const Allocator = std.mem.Allocator;
 
 const chunk = @import("chunk.zig");
 const game = @import("game.zig");
@@ -31,7 +32,15 @@ pub const ClientEntity = struct {
 	id: u32,
 	name: []const u8,
 
-	pub fn init(self: *ClientEntity) void {
+	pub fn init(self: *ClientEntity, json: JsonElement, allocator: Allocator) !void {
+		self.* = ClientEntity{
+			.id = json.get(u32, "id", std.math.maxInt(u32)),
+			// TODO:
+//			CubyzRegistries.ENTITY_REGISTRY.getByID(json.getString("type", null)),
+			.width = json.get(f64, "width", 1),
+			.height = json.get(f64, "height", 1),
+			.name = try allocator.dupe(u8, json.get([]const u8, "name", "")),
+		};
 		self._interpolationPos = [_]f64 {
 			self.pos[0],
 			self.pos[1],
@@ -42,6 +51,10 @@ pub const ClientEntity = struct {
 		};
 		self._interpolationVel = [_]f64{0} ** 6;
 		self.interpolatedValues.init(&self._interpolationPos, &self._interpolationVel);
+	}
+
+	pub fn deinit(self: ClientEntity, allocator: Allocator) void {
+		allocator.free(self.name);
 	}
 
 	pub fn getRenderPosition(self: *const ClientEntity) Vec3d {
@@ -89,6 +102,9 @@ pub const ClientEntityManager = struct {
 	}
 
 	pub fn deinit() void {
+		for(entities.items) |ent| {
+			ent.deinit(main.globalAllocator);
+		}
 		entities.deinit();
 		shader.delete();
 	}
@@ -108,8 +124,9 @@ pub const ClientEntityManager = struct {
 		lastTime = time;
 	}
 
-	fn renderNames(projMatrix: Mat4f, playerPos: Vec3d) void {
-		std.debug.assert(!mutex.tryLock()); // The mutex should be locked when calling this function.
+	pub fn renderNames(projMatrix: Mat4f, playerPos: Vec3d) !void {
+		mutex.lock();
+		defer mutex.unlock();
 
 		for(entities.items) |ent| {
 			if(ent.id == game.Player.id or ent.name.len == 0) continue; // don't render local player
@@ -126,9 +143,9 @@ pub const ClientEntityManager = struct {
 			if(projectedPos[2] < 0) continue;
 			const xCenter = (1 + projectedPos[0]/projectedPos[3])*@intToFloat(f32, main.Window.width/2);
 			const yCenter = (1 - projectedPos[1]/projectedPos[3])*@intToFloat(f32, main.Window.height/2);
-
-			graphics.draw.setColor(0xffff00ff);
-			graphics.draw.rect(.{xCenter, yCenter}, .{100, 20}); // TODO: Text rendering.
+			
+			graphics.draw.setColor(0xff000000);
+			try graphics.draw.text(ent.name, xCenter, yCenter, 64);
 		}
 	}
 
@@ -169,22 +186,13 @@ pub const ClientEntityManager = struct {
 			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast([*c]const f32, &modelViewMatrix));
 			// TODO: c.glDrawElements(...);
 		}
-		renderNames(projMatrix, playerPos);
 	}
 
 	pub fn addEntity(json: JsonElement) !void {
 		mutex.lock();
 		defer mutex.unlock();
 		var ent = try entities.addOne();
-		ent.* = ClientEntity{
-			.id = json.get(u32, "id", std.math.maxInt(u32)),
-			// TODO:
-//			CubyzRegistries.ENTITY_REGISTRY.getByID(json.getString("type", null)),
-			.width = json.get(f64, "width", 1),
-			.height = json.get(f64, "height", 1),
-			.name = json.get([]const u8, "name", ""),
-		};
-		ent.init();
+		try ent.init(json, main.globalAllocator);
 	}
 
 	pub fn removeEntity(id: u32) void {
@@ -192,6 +200,7 @@ pub const ClientEntityManager = struct {
 		defer mutex.unlock();
 		for(entities.items, 0..) |*ent, i| {
 			if(ent.id == id) {
+				ent.deinit(main.globalAllocator);
 				_ = entities.swapRemove(i);
 				break;
 			}

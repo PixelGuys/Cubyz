@@ -368,7 +368,7 @@ pub const draw = struct {
 	// ----------------------------------------------------------------------------
 	
 	pub fn text(_text: []const u8, x: f32, y: f32, fontSize: f32) !void {
-		try TextRendering.renderText(_text, x, y, fontSize, .{.color = @truncate(u24, color)});
+		try TextRendering.renderText(_text, x, y, fontSize, .{.color = @truncate(u24, @bitCast(u32, color))});
 	}
 };
 

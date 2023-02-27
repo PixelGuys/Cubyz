@@ -335,7 +335,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 //	if(Window.getRenderTarget() != null)
 //		Window.getRenderTarget().unbind();
 
-//TODO	EntityRenderer.renderNames(playerPosition);
+	try entity.ClientEntityManager.renderNames(game.projectionMatrix, playerPos);
 }
 
 /// Sorts the chunks based on their distance from the player to reduce overdraw.
