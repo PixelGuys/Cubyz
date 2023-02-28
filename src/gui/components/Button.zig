@@ -14,6 +14,7 @@ const Vec2f = vec.Vec2f;
 
 const gui = @import("../gui.zig");
 const GuiComponent = gui.GuiComponent;
+const Label = GuiComponent.Label;
 
 const Button = @This();
 
@@ -36,8 +37,8 @@ var buttonUniforms: struct {
 
 pressed: bool = false,
 onAction: *const fn() void,
-text: TextBuffer,
-textSize: Vec2f = undefined,
+textSize: Vec2f,
+label: Label,
 randomOffset: Vec2f = undefined,
 
 pub fn __init() !void {
@@ -57,40 +58,41 @@ pub fn __deinit() void {
 }
 
 pub fn init(pos: Vec2f, width: f32, allocator: Allocator, text: []const u8, onAction: *const fn() void) Allocator.Error!GuiComponent {
+	const labelComponent = try Label.init(allocator, undefined, width - 3*border, text);
 	var self = Button {
 		.onAction = onAction,
-		.text = try TextBuffer.init(allocator, text, .{}, false),
+		.label = labelComponent.impl.label,
+		.textSize = labelComponent.size,
 		.randomOffset = Vec2f{
 			random.nextFloat(&main.seed),
 			random.nextFloat(&main.seed),
 		},
 	};
-	self.textSize = try self.text.calculateLineBreaks(fontSize, width - 3*border);
 	return GuiComponent {
 		.pos = pos,
-		.size = .{@max(width, self.textSize[0] + 3*border), self.textSize[1] + 3*border},
+		.size = Vec2f{@max(width, self.textSize[0] + 3*border), self.textSize[1] + 3*border},
 		.impl = .{.button = self}
 	};
 }
 
 pub fn deinit(self: Button) void {
-	self.text.deinit();
+	self.label.deinit();
 }
 
-pub fn mainButtonPressed(self: *Button, _: *const GuiComponent, _: Vec2f) void {
+pub fn mainButtonPressed(self: *Button, _: Vec2f, _: Vec2f, _: Vec2f) void {
 	self.pressed = true;
 }
 
-pub fn mainButtonReleased(self: *Button, component: *const GuiComponent, mousePosition: Vec2f) void {
+pub fn mainButtonReleased(self: *Button, pos: Vec2f, size: Vec2f, mousePosition: Vec2f) void {
 	if(self.pressed) {
 		self.pressed = false;
-		if(component.contains(mousePosition)) {
+		if(GuiComponent.contains(pos, size, mousePosition)) {
 			self.onAction();
 		}
 	}
 }
 
-pub fn render(self: *Button, component: *const GuiComponent, mousePosition: Vec2f) !void {
+pub fn render(self: *Button, pos: Vec2f, size: Vec2f, mousePosition: Vec2f) !void {
 	graphics.c.glActiveTexture(graphics.c.GL_TEXTURE0);
 	texture.bind();
 	shader.bind();
@@ -99,12 +101,12 @@ pub fn render(self: *Button, component: *const GuiComponent, mousePosition: Vec2
 	if(self.pressed) {
 		draw.setColor(0xff000000);
 		graphics.c.glUniform1i(buttonUniforms.pressed, 1);
-	} else if(component.contains(mousePosition)) {
+	} else if(GuiComponent.contains(pos, size, mousePosition)) {
 		draw.setColor(0xff000040);
 	} else {
 		draw.setColor(0xff000000);
 	}
-	draw.customShadedRect(buttonUniforms, component.pos, component.size);
-	const textPos = component.pos + component.size/@splat(2, @as(f32, 2.0)) - self.textSize/@splat(2, @as(f32, 2.0));
-	try self.text.render(textPos[0], textPos[1], fontSize);
+	draw.customShadedRect(buttonUniforms, pos, size);
+	const textPos = pos + size/@splat(2, @as(f32, 2.0)) - self.textSize/@splat(2, @as(f32, 2.0));
+	try self.label.render(textPos, self.textSize, mousePosition - textPos);
 }

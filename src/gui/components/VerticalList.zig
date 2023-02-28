@@ -50,22 +50,22 @@ pub fn add(self: *VerticalList, other: GuiComponent) Allocator.Error!void {
 	self.maxWidth = @max(self.maxWidth, added.pos[0] + added.size[0]);
 }
 
-pub fn update(self: *VerticalList, _: *const GuiComponent) void {
+pub fn update(self: *VerticalList, _: Vec2f, _: Vec2f) void {
 	for(self.children.items) |*child| {
 		child.update();
 	}
 }
 
-pub fn render(self: *VerticalList, _: *const GuiComponent, mousePosition: Vec2f) anyerror!void { // TODO: Remove anyerror once error union inference works in recursive loops.
+pub fn render(self: *VerticalList, _: Vec2f, _: Vec2f, mousePosition: Vec2f) anyerror!void { // TODO: Remove anyerror once error union inference works in recursive loops.
 	for(self.children.items) |*child| {
 		try child.render(mousePosition);
 	}
 }
 
-pub fn mainButtonPressed(self: *VerticalList, _: *const GuiComponent, mousePosition: Vec2f) void {
+pub fn mainButtonPressed(self: *VerticalList, _: Vec2f, _: Vec2f, mousePosition: Vec2f) void {
 	var selectedChild: ?*GuiComponent = null;
 	for(self.children.items) |*child| {
-		if(child.contains(mousePosition)) {
+		if(GuiComponent.contains(child.pos, child.size, mousePosition)) {
 			selectedChild = child;
 		}
 	}
@@ -74,7 +74,7 @@ pub fn mainButtonPressed(self: *VerticalList, _: *const GuiComponent, mousePosit
 	}
 }
 
-pub fn mainButtonReleased(self: *VerticalList, _: *const GuiComponent, mousePosition: Vec2f) void {
+pub fn mainButtonReleased(self: *VerticalList, _: Vec2f, _: Vec2f, mousePosition: Vec2f) void {
 	for(self.children.items) |*child| {
 		child.mainButtonReleased(mousePosition);
 	}

@@ -120,7 +120,7 @@ pub fn mainButtonPressed(self: *const GuiWindow) void {
 	} else {
 		var selectedComponent: ?*GuiComponent = null;
 		for(self.components) |*component| {
-			if(component.contains(mousePosition)) {
+			if(GuiComponent.contains(component.pos, component.size, mousePosition)) {
 				selectedComponent = component;
 			}
 		}
