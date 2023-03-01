@@ -5,6 +5,7 @@ const vec = main.vec;
 const Vec2f = vec.Vec2f;
 
 pub const Button = @import("components/Button.zig");
+pub const CheckBox = @import("components/CheckBox.zig");
 pub const Label = @import("components/Label.zig");
 pub const Slider = @import("components/Slider.zig");
 pub const VerticalList = @import("components/VerticalList.zig");
@@ -17,6 +18,7 @@ impl: Impl,
 
 const Impl = union(enum) {
 	button: Button,
+	checkBox: CheckBox,
 	label: Label,
 	slider: Slider,
 	verticalList: VerticalList,
