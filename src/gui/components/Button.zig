@@ -23,7 +23,7 @@ const fontSize: f32 = 16;
 
 var texture: Texture = undefined;
 pub var shader: Shader = undefined;
-var buttonUniforms: struct {
+pub var buttonUniforms: struct {
 	screen: c_int,
 	start: c_int,
 	size: c_int,
@@ -57,10 +57,12 @@ pub fn __deinit() void {
 	texture.deinit();
 }
 
-pub fn init(pos: Vec2f, width: f32, allocator: Allocator, text: []const u8, onAction: *const fn() void) Allocator.Error!GuiComponent {
+fn defaultOnAction() void {}
+
+pub fn init(allocator: Allocator, pos: Vec2f, width: f32, text: []const u8, onAction: ?*const fn() void) Allocator.Error!GuiComponent {
 	const labelComponent = try Label.init(allocator, undefined, width - 3*border, text);
 	var self = Button {
-		.onAction = onAction,
+		.onAction = if(onAction) |a| a else &defaultOnAction,
 		.label = labelComponent.impl.label,
 		.textSize = labelComponent.size,
 		.randomOffset = Vec2f{
@@ -107,6 +109,7 @@ pub fn render(self: *Button, pos: Vec2f, size: Vec2f, mousePosition: Vec2f) !voi
 		draw.setColor(0xff000000);
 	}
 	draw.customShadedRect(buttonUniforms, pos, size);
+	graphics.c.glUniform1i(buttonUniforms.pressed, 0);
 	const textPos = pos + size/@splat(2, @as(f32, 2.0)) - self.textSize/@splat(2, @as(f32, 2.0));
 	try self.label.render(textPos, self.textSize, mousePosition - textPos);
 }

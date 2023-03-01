@@ -9,6 +9,7 @@ const vec = main.vec;
 const Vec2f = vec.Vec2f;
 
 const Button = @import("components/Button.zig");
+const Slider = @import("components/Slider.zig");
 pub const GuiComponent = @import("GuiComponent.zig");
 pub const GuiWindow = @import("GuiWindow.zig");
 
@@ -28,6 +29,7 @@ pub fn init() !void {
 	}
 	try GuiWindow.__init();
 	try Button.__init();
+	try Slider.__init();
 }
 
 pub fn deinit() void {
@@ -39,6 +41,7 @@ pub fn deinit() void {
 	openWindows.deinit();
 	GuiWindow.__deinit();
 	Button.__deinit();
+	Slider.__deinit();
 }
 
 pub fn addWindow(window: *GuiWindow, isHudWindow: bool) !void {
