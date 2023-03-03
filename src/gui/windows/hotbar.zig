@@ -41,10 +41,10 @@ pub fn init() !void {
 	try gui.addWindow(&hotbarWindow3, true);
 }
 
-pub fn render() void {
+pub fn render() Allocator.Error!void {
 
 }
 
-pub fn update() void {
+pub fn update() Allocator.Error!void {
 
 }

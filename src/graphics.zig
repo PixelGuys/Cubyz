@@ -42,7 +42,7 @@ pub const draw = struct {
 	/// Returns the previous translation.
 	pub fn setTranslation(newTranslation: Vec2f) Vec2f {
 		const oldTranslation = translation;
-		translation += newTranslation;
+		translation += newTranslation*@splat(2, scale);
 		return oldTranslation;
 	}
 

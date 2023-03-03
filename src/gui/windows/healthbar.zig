@@ -1,3 +1,6 @@
+const std = @import("std");
+const Allocator = std.mem.Allocator;
+
 const main = @import("root");
 const Vec2f = main.vec.Vec2f;
 
@@ -18,10 +21,10 @@ pub fn init() !void {
 	try gui.addWindow(&healthbarWindow, true);
 }
 
-pub fn render() void {
+pub fn render() Allocator.Error!void {
 
 }
 
-pub fn update() void {
+pub fn update() Allocator.Error!void {
 
 }

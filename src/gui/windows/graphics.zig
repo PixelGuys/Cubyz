@@ -41,15 +41,20 @@ fn bloomCallback(newValue: bool) void {
 	settings.bloom = newValue;
 }
 
+fn vsyncCallback(newValue: bool) void {
+	settings.vsync = newValue;
+	main.Window.reloadSettings();
+}
+
 pub fn onOpen() Allocator.Error!void {
 	var list = try VerticalList.init(main.globalAllocator);
 	const renderDistances = [_]u32{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
 	try list.add(try Slider.init(main.globalAllocator, .{0, 16}, 128, "#ffffffRender Distance: ", "{}", &renderDistances, settings.renderDistance - 1, &renderDistanceCallback));
 	const LODFactors = [_]f32{0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8};
 	try list.add(try Slider.init(main.globalAllocator, .{0, 16}, 128, "#ffffffLOD Factor: ", "{d:.1}", &LODFactors, @floatToInt(u16, settings.LODFactor*2) - 1, &LODFactorCallback));
-	// TODO: fog
+	// TODO: fog?
 	try list.add(try CheckBox.init(main.globalAllocator, .{0, 16}, 128, "Bloom", settings.bloom, &bloomCallback));
-	// TODO: vsync checkbox
+	try list.add(try CheckBox.init(main.globalAllocator, .{0, 16}, 128, "Vertical Synchronization", settings.vsync, &vsyncCallback));
 	components[0] = list.toComponent(.{padding, padding});
 	window.contentSize = components[0].size + @splat(2, @as(f32, 2*padding));
 	gui.updateWindowPositions();

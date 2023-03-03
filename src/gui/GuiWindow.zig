@@ -58,9 +58,9 @@ id: []const u8,
 components: []GuiComponent,
 
 /// Called every frame.
-renderFn: *const fn()void = &defaultFunction,
+renderFn: *const fn()Allocator.Error!void = &defaultErrorFunction,
 /// Called every frame for the currently selected window.
-updateFn: *const fn()void = &defaultFunction,
+updateFn: *const fn()Allocator.Error!void = &defaultErrorFunction,
 
 onOpenFn: *const fn()Allocator.Error!void = &defaultErrorFunction,
 
@@ -271,6 +271,7 @@ fn positionRelativeToConnectedWindow(self: *GuiWindow, other: *GuiWindow, i: usi
 }
 
 pub fn update(self: *GuiWindow) !void {
+	try self.updateFn();
 	const scale = @floor(settings.guiScale*self.scale); // TODO
 	const mousePosition = main.Window.getMousePosition();
 	const windowSize = main.Window.getWindowSize();
@@ -396,6 +397,7 @@ pub fn render(self: *const GuiWindow) !void {
 	shader.bind();
 	backgroundTexture.bind();
 	draw.customShadedRect(windowUniforms, .{0, 0}, self.size);
+	try self.renderFn();
 	for(self.components) |*component| {
 		try component.render(mousePosition);
 	}

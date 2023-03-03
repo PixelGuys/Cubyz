@@ -32,9 +32,6 @@ pub fn deinit(self: VerticalList) void {
 }
 
 pub fn toComponent(self: *VerticalList, pos: Vec2f) GuiComponent {
-	for(self.children.items) |*child| {
-		child.pos += pos;
-	}
 	return GuiComponent {
 		.pos = pos,
 		.size = .{self.maxWidth, self.currentOffset},
@@ -56,26 +53,28 @@ pub fn update(self: *VerticalList, _: Vec2f, _: Vec2f) void {
 	}
 }
 
-pub fn render(self: *VerticalList, _: Vec2f, _: Vec2f, mousePosition: Vec2f) anyerror!void { // TODO: Remove anyerror once error union inference works in recursive loops.
+pub fn render(self: *VerticalList, pos: Vec2f, _: Vec2f, mousePosition: Vec2f) anyerror!void { // TODO: Remove anyerror once error union inference works in recursive loops.
+	const oldTranslation = draw.setTranslation(pos);
 	for(self.children.items) |*child| {
-		try child.render(mousePosition);
+		try child.render(mousePosition - pos);
 	}
+	draw.restoreTranslation(oldTranslation);
 }
 
-pub fn mainButtonPressed(self: *VerticalList, _: Vec2f, _: Vec2f, mousePosition: Vec2f) void {
+pub fn mainButtonPressed(self: *VerticalList, pos: Vec2f, _: Vec2f, mousePosition: Vec2f) void {
 	var selectedChild: ?*GuiComponent = null;
 	for(self.children.items) |*child| {
-		if(GuiComponent.contains(child.pos, child.size, mousePosition)) {
+		if(GuiComponent.contains(child.pos + pos, child.size, mousePosition)) {
 			selectedChild = child;
 		}
 	}
 	if(selectedChild) |child| {
-		child.mainButtonPressed(mousePosition);
+		child.mainButtonPressed(mousePosition - pos);
 	}
 }
 
-pub fn mainButtonReleased(self: *VerticalList, _: Vec2f, _: Vec2f, mousePosition: Vec2f) void {
+pub fn mainButtonReleased(self: *VerticalList, pos: Vec2f, _: Vec2f, mousePosition: Vec2f) void {
 	for(self.children.items) |*child| {
-		child.mainButtonReleased(mousePosition);
+		child.mainButtonReleased(mousePosition - pos);
 	}
 }

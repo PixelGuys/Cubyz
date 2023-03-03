@@ -27,6 +27,8 @@ pub var LODFactor: f32 = 2.0;
 
 pub var bloom: bool = true;
 
+pub var vsync: bool = true;
+
 pub var playerName: []const u8 = "quanturmdoelvloper";
 
 pub var lastUsedIPAddress: []const u8 = "127.0.0.1";
