@@ -90,7 +90,6 @@ pub fn render(self: *CheckBox, pos: Vec2f, size: Vec2f, mousePosition: Vec2f) !v
 		textureEmpty.bind();
 	}
 	Button.shader.bind();
-	graphics.c.glUniform2f(Button.buttonUniforms.randomOffset, 0, 0);
 	graphics.c.glUniform1i(Button.buttonUniforms.pressed, 0);
 	if(self.pressed) {
 		draw.setColor(0xff000000);

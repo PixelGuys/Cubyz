@@ -8,7 +8,6 @@ const Image = graphics.Image;
 const Shader = graphics.Shader;
 const TextBuffer = graphics.TextBuffer;
 const Texture = graphics.Texture;
-const random = main.random;
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
 
@@ -32,14 +31,12 @@ pub var buttonUniforms: struct {
 
 	image: c_int,
 	pressed: c_int,
-	randomOffset: c_int,
 } = undefined;
 
 pressed: bool = false,
 onAction: *const fn() void,
 textSize: Vec2f,
 label: Label,
-randomOffset: Vec2f = undefined,
 
 pub fn __init() !void {
 	shader = try Shader.create("assets/cubyz/shaders/ui/button.vs", "assets/cubyz/shaders/ui/button.fs");
@@ -65,10 +62,6 @@ pub fn init(allocator: Allocator, pos: Vec2f, width: f32, text: []const u8, onAc
 		.onAction = if(onAction) |a| a else &defaultOnAction,
 		.label = labelComponent.impl.label,
 		.textSize = labelComponent.size,
-		.randomOffset = Vec2f{
-			random.nextFloat(&main.seed),
-			random.nextFloat(&main.seed),
-		},
 	};
 	return GuiComponent {
 		.pos = pos,
@@ -98,7 +91,6 @@ pub fn render(self: *Button, pos: Vec2f, size: Vec2f, mousePosition: Vec2f) !voi
 	graphics.c.glActiveTexture(graphics.c.GL_TEXTURE0);
 	texture.bind();
 	shader.bind();
-	graphics.c.glUniform2f(buttonUniforms.randomOffset, self.randomOffset[0], self.randomOffset[1]);
 	graphics.c.glUniform1i(buttonUniforms.pressed, 0);
 	if(self.pressed) {
 		draw.setColor(0xff000000);

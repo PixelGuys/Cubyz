@@ -37,7 +37,7 @@ pub var guiScale: f32 = 2;
 
 
 pub fn init() !void {
-	const json = blk: {
+	const json: JsonElement = blk: {
 		var file = std.fs.cwd().openFile("settings.json", .{}) catch break :blk JsonElement{.JsonNull={}};
 		defer file.close();
 		const fileString = try file.readToEndAlloc(main.threadAllocator, std.math.maxInt(usize));
@@ -62,6 +62,16 @@ pub fn init() !void {
 				}
 			}
 		}
+	}
+
+	// keyboard settings:
+	const keyboard = json.getChild("keyboard");
+	inline for(comptime std.meta.fieldNames(@TypeOf(main.keyboard))) |keyName| {
+		const keyJson = keyboard.getChild(keyName);
+		const key = &@field(main.keyboard, keyName);
+		key.key = keyJson.get(c_int, "key", key.key);
+		key.mouseButton = keyJson.get(c_int, "mouseButton", key.mouseButton);
+		key.scancode = keyJson.get(c_int, "scancode", key.scancode);
 	}
 }
 
@@ -97,6 +107,36 @@ pub fn deinit() void {
 			}
 		}
 	}
+
+	// keyboard settings:
+	const keyboard = JsonElement.initObject(main.threadAllocator) catch |err| {
+		std.log.err("Error in settings.deinit(): {s}", .{@errorName(err)});
+		return;
+	};
+	inline for(comptime std.meta.fieldNames(@TypeOf(main.keyboard))) |keyName| {
+		const keyJson = JsonElement.initObject(main.threadAllocator) catch |err| {
+			std.log.err("Error in settings.deinit(): {s}", .{@errorName(err)});
+			return;
+		};
+		const key = &@field(main.keyboard, keyName);
+		keyJson.put("key", key.key) catch |err| {
+			std.log.err("Error in settings.deinit(): {s}", .{@errorName(err)});
+		};
+		keyJson.put("mouseButton", key.mouseButton) catch |err| {
+			std.log.err("Error in settings.deinit(): {s}", .{@errorName(err)});
+		};
+		keyJson.put("scancode", key.scancode) catch |err| {
+			std.log.err("Error in settings.deinit(): {s}", .{@errorName(err)});
+		};
+		keyboard.put(keyName, keyJson) catch |err| {
+			std.log.err("Error in settings.deinit(): {s}", .{@errorName(err)});
+		};
+	}
+	jsonObject.put("keyboard", keyboard) catch |err| {
+		std.log.err("Error in settings.deinit(): {s}", .{@errorName(err)});
+	};
+
+	// Write to file:
 	
 	const string = jsonObject.toStringEfficient(main.threadAllocator, "") catch |err| {
 		std.log.err("Error in settings.deinit(): {s}", .{@errorName(err)});
