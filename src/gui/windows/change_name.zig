@@ -8,6 +8,7 @@ const gui = @import("../gui.zig");
 const GuiComponent = gui.GuiComponent;
 const GuiWindow = gui.GuiWindow;
 const Button = @import("../components/Button.zig");
+const TextInput = @import("../components/TextInput.zig");
 const VerticalList = @import("../components/VerticalList.zig");
 
 var window: GuiWindow = undefined;
@@ -28,6 +29,8 @@ const padding: f32 = 8;
 
 pub fn onOpen() Allocator.Error!void {
 	var list = try VerticalList.init(main.globalAllocator);
+	// TODO Please change your name bla bla
+	try list.add(try TextInput.init(main.globalAllocator, .{0, 16}, 128, "gr da jkwa hfeka fuei    ofuiewo atg78o4ea74e8t z57 t4738qa0 47a80 t47803a t478aqv t487 5t478a0 tg478a09 t748ao t7489a rt4e5 okv5895 678v54vgvo6r z8or z578v rox74et8ys9otv 4z3789so z4oa9t z489saoyt z"));
 	// TODO
 	//try list.add(try Button.init(.{0, 16}, 128, main.globalAllocator, "Singleplayer TODO", &buttonCallbackTest));
 	//try list.add(try Button.init(.{0, 16}, 128, main.globalAllocator, "Multiplayer TODO", &buttonCallbackTest));

@@ -68,6 +68,16 @@ pub const Key = struct {
 	scancode: c_int = 0,
 	releaseAction: ?*const fn() void = null,
 	pressAction: ?*const fn() void = null,
+	repeatAction: ?*const fn(Modifiers) void = null,
+
+	pub const Modifiers = packed struct(u6) {
+		shift: bool = false,
+		control: bool = false,
+		alt: bool = false,
+		super: bool = false,
+		capsLock: bool = false,
+		numLock: bool = false,
+	};
 
 	pub fn getName(self: Key) []const u8 {
 		if(self.mouseButton == -1) {
@@ -149,6 +159,7 @@ pub fn setNextKeypressListener(listener: ?*const fn(c_int, c_int, c_int) void) !
 	nextKeypressListener = listener;
 }
 pub var keyboard: struct {
+	// Gameplay:
 	forward: Key = Key{.key = c.GLFW_KEY_W},
 	left: Key = Key{.key = c.GLFW_KEY_A},
 	backward: Key = Key{.key = c.GLFW_KEY_S},
@@ -157,9 +168,23 @@ pub var keyboard: struct {
 	jump: Key = Key{.key = c.GLFW_KEY_SPACE},
 	fall: Key = Key{.key = c.GLFW_KEY_LEFT_SHIFT},
 	fullscreen: Key = Key{.key = c.GLFW_KEY_F11, .releaseAction = &Window.toggleFullscreen},
+
+	// Gui:
 	mainGuiButton: Key = Key{.mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &gui.mainButtonPressed, .releaseAction = &gui.mainButtonReleased},
 	rightMouseButton: Key = Key{.mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT},
 	middleMouseButton: Key = Key{.mouseButton = c.GLFW_MOUSE_BUTTON_MIDDLE},
+	// text:
+	textCursorLeft: Key = Key{.key = c.GLFW_KEY_LEFT, .repeatAction = &gui.textCallbacks.left},
+	textCursorRight: Key = Key{.key = c.GLFW_KEY_RIGHT, .repeatAction = &gui.textCallbacks.right},
+	textCursorDown: Key = Key{.key = c.GLFW_KEY_DOWN, .repeatAction = &gui.textCallbacks.down},
+	textCursorUp: Key = Key{.key = c.GLFW_KEY_UP, .repeatAction = &gui.textCallbacks.up},
+	textGotoStart: Key = Key{.key = c.GLFW_KEY_HOME, .repeatAction = &gui.textCallbacks.gotoStart},
+	textGotoEnd: Key = Key{.key = c.GLFW_KEY_END, .repeatAction = &gui.textCallbacks.gotoEnd},
+	textDeleteLeft: Key = Key{.key = c.GLFW_KEY_BACKSPACE, .repeatAction = &gui.textCallbacks.deleteLeft},
+	textDeleteRight: Key = Key{.key = c.GLFW_KEY_DELETE, .repeatAction = &gui.textCallbacks.deleteRight},
+	textCopy: Key = Key{.key = c.GLFW_KEY_C, .repeatAction = &gui.textCallbacks.copy},
+	textPaste: Key = Key{.key = c.GLFW_KEY_V, .repeatAction = &gui.textCallbacks.paste},
+	textCut: Key = Key{.key = c.GLFW_KEY_X, .repeatAction = &gui.textCallbacks.cut},
 } = .{};
 
 pub const Window = struct {
@@ -173,7 +198,6 @@ pub const Window = struct {
 			std.log.err("GLFW Error({}): {s}", .{errorCode, description});
 		}
 		fn keyCallback(_: ?*c.GLFWwindow, key: c_int, scancode: c_int, action: c_int, mods: c_int) callconv(.C) void {
-			_ = mods;
 			if(action == c.GLFW_PRESS) {
 				inline for(@typeInfo(@TypeOf(keyboard)).Struct.fields) |field| {
 					if(key == @field(keyboard, field.name).key) {
@@ -181,6 +205,9 @@ pub const Window = struct {
 							@field(keyboard, field.name).pressed = true;
 							if(@field(keyboard, field.name).pressAction) |pressAction| {
 								pressAction();
+							}
+							if(@field(keyboard, field.name).repeatAction) |repeatAction| {
+								repeatAction(@bitCast(Key.Modifiers, @intCast(u6, mods)));
 							}
 						}
 					}
@@ -200,8 +227,26 @@ pub const Window = struct {
 						}
 					}
 				}
+			} else if(action == c.GLFW_REPEAT) {
+				inline for(@typeInfo(@TypeOf(keyboard)).Struct.fields) |field| {
+					if(key == @field(keyboard, field.name).key) {
+						if(key != c.GLFW_KEY_UNKNOWN or scancode == @field(keyboard, field.name).scancode) {
+							if(@field(keyboard, field.name).repeatAction) |repeatAction| {
+								repeatAction(@bitCast(Key.Modifiers, @intCast(u6, mods)));
+							}
+						}
+					}
+				}
 			}
 		}
+		fn charCallback(_: ?*c.GLFWwindow, codepoint: c_uint) callconv(.C) void {
+			if(gui.selectedTextInput) |textInput| {
+				textInput.inputCharacter(@intCast(u21, codepoint)) catch |err| {
+					std.log.err("Error while adding character to textInput: {s}", .{@errorName(err)});
+				};
+			}
+		}
+
 		fn framebufferSize(_: ?*c.GLFWwindow, newWidth: c_int, newHeight: c_int) callconv(.C) void {
 			std.log.info("Framebuffer: {}, {}", .{newWidth, newHeight});
 			width = @intCast(u31, newWidth);
@@ -297,6 +342,16 @@ pub const Window = struct {
 		c.glfwSwapInterval(@boolToInt(settings.vsync));
 	}
 
+	pub fn getClipboardString() []const u8 {
+		return std.mem.span(c.glfwGetClipboardString(window));
+	}
+
+	pub fn setClipboardString(string: []const u8) void {
+		const nullTerminatedString = threadAllocator.dupeZ(u8, string) catch return;
+		defer threadAllocator.free(nullTerminatedString);
+		c.glfwSetClipboardString(window, nullTerminatedString.ptr);
+	}
+
 	fn init() !void {
 		_ = c.glfwSetErrorCallback(GLFWCallbacks.errorCallback);
 
@@ -313,6 +368,7 @@ pub const Window = struct {
 		window = c.glfwCreateWindow(width, height, "Cubyz", null, null) orelse return error.GLFWFailed;
 
 		_ = c.glfwSetKeyCallback(window, GLFWCallbacks.keyCallback);
+		_ = c.glfwSetCharCallback(window, GLFWCallbacks.charCallback);
 		_ = c.glfwSetFramebufferSizeCallback(window, GLFWCallbacks.framebufferSize);
 		_ = c.glfwSetCursorPosCallback(window, GLFWCallbacks.cursorPosition);
 		_ = c.glfwSetMouseButtonCallback(window, GLFWCallbacks.mouseButton);

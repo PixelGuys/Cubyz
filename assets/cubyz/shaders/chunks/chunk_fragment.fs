@@ -97,7 +97,7 @@ RayMarchResult rayMarching(vec3 startPosition, vec3 direction) { // TODO: Mipmap
 	vec3 stepInIndex = step*vec3(1 << 10, 1 << 5, 1);
 	int overflowMask = 1<<14 | 1<<9 | 1<<4;
 	vec3 t1 = (floor(startPosition) - startPosition)/direction;
-	vec3 tDelta = 1/(direction);
+	vec3 tDelta = 1/direction;
 	vec3 t2 = t1 + tDelta;
 	tDelta = abs(tDelta);
 	vec3 tMax = max(t1, t2) - tDelta;

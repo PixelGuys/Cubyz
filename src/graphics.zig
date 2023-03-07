@@ -402,6 +402,7 @@ pub const TextBuffer = struct {
 		codepoint: u32,
 		cluster: u32,
 		fontEffect: FontEffect,
+		characterIndex: u32,
 	};
 
 	buffer: harfbuzz.Buffer,
@@ -445,63 +446,71 @@ pub const TextBuffer = struct {
 		currentFontEffect: FontEffect,
 		parsedText: std.ArrayList(u32),
 		fontEffects: std.ArrayList(FontEffect),
+		characterIndex: std.ArrayList(u32),
 		showControlCharacters: bool,
+		curChar: u21 = undefined,
+		curIndex: u32 = 0,
 
-		fn appendControlGetNext(self: *Parser, char: u32) !?u21 {
+		fn appendControlGetNext(self: *Parser) !?void {
 			if(self.showControlCharacters) {
 				try self.fontEffects.append(.{.color = 0x808080});
-				try self.parsedText.append(char);
+				try self.parsedText.append(self.curChar);
+				try self.characterIndex.append(self.curIndex);
 			}
-			return self.unicodeIterator.nextCodepoint();
+			self.curIndex = @intCast(u32, self.unicodeIterator.i);
+			self.curChar = self.unicodeIterator.nextCodepoint() orelse return null;
 		}
 
-		fn appendGetNext(self: *Parser, char: u32) !?u21 {
+		fn appendGetNext(self: *Parser) !?void {
 			try self.fontEffects.append(self.currentFontEffect);
-			try self.parsedText.append(char);
-			return self.unicodeIterator.nextCodepoint();
+			try self.parsedText.append(self.curChar);
+			try self.characterIndex.append(self.curIndex);
+			self.curIndex = @intCast(u32, self.unicodeIterator.i);
+			self.curChar = self.unicodeIterator.nextCodepoint() orelse return null;
 		}
 
 		fn parse(self: *Parser) !void {
-			var char = self.unicodeIterator.nextCodepoint() orelse return;
-			while(true) switch(char) {
+			self.curIndex = @intCast(u32, self.unicodeIterator.i);
+			self.curChar = self.unicodeIterator.nextCodepoint() orelse return;
+			while(true) switch(self.curChar) {
 				'*' => {
-					char = try self.appendControlGetNext(char) orelse return;
-					if(char == '*') {
-						char = try self.appendControlGetNext(char) orelse return;
+					try self.appendControlGetNext() orelse return;
+					if(self.curChar == '*') {
+						try self.appendControlGetNext() orelse return;
 						self.currentFontEffect.bold = !self.currentFontEffect.bold;
 					} else {
 						self.currentFontEffect.italic = !self.currentFontEffect.italic;
 					}
 				},
 				'_' => {
-					char = try self.appendControlGetNext(char) orelse return;
-					if(char == '_') {
-						char = try self.appendControlGetNext(char) orelse return;
+					try self.appendControlGetNext() orelse return;
+					if(self.curChar == '_') {
+						try self.appendControlGetNext() orelse return;
 						self.currentFontEffect.strikethrough = !self.currentFontEffect.strikethrough;
 					} else {
 						self.currentFontEffect.underline = !self.currentFontEffect.underline;
 					}
 				},
 				'\\' => {
-					char = try self.appendControlGetNext(char) orelse return;
-					char = try self.appendGetNext(char) orelse return;
+					try self.appendControlGetNext() orelse return;
+					try self.appendGetNext() orelse return;
 				},
 				'#' => {
-					char = try self.appendControlGetNext(char) orelse return;
+					try self.appendControlGetNext() orelse return;
 					var shift: u5 = 20;
 					while(true) : (shift -= 4) {
-						self.currentFontEffect.color = (self.currentFontEffect.color & ~(@as(u24, 0xf) << shift)) | @as(u24, switch(char) {
-							'0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => char - '0',
-							'a', 'b', 'c', 'd', 'e', 'f' => char - 'a' + 10,
-							'A', 'B', 'C', 'D', 'E', 'F' => char - 'A' + 10,
+						self.currentFontEffect.color = (self.currentFontEffect.color & ~(@as(u24, 0xf) << shift)) | @as(u24, switch(self.curChar) {
+							'0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => self.curChar - '0',
+							'a', 'b', 'c', 'd', 'e', 'f' => self.curChar - 'a' + 10,
+							'A', 'B', 'C', 'D', 'E', 'F' => self.curChar - 'A' + 10,
 							else => 0,
 						}) << shift;
-						char = try self.appendControlGetNext(char) orelse return;
+						try self.appendControlGetNext() orelse return;
 						if(shift == 0) break;
 					}
 				},
 				else => {
-					char = try self.appendGetNext(char) orelse return;
+					try self.appendGetNext() orelse return;
 				}
 			};
 		}
@@ -515,10 +524,12 @@ pub const TextBuffer = struct {
 			.currentFontEffect = initialFontEffect,
 			.parsedText = std.ArrayList(u32).init(main.threadAllocator),
 			.fontEffects = std.ArrayList(FontEffect).init(allocator),
+			.characterIndex = std.ArrayList(u32).init(allocator),
 			.showControlCharacters = showControlCharacters
 		};
 		defer parser.fontEffects.deinit();
 		defer parser.parsedText.deinit();
+		defer parser.characterIndex.deinit();
 		self.lines = std.ArrayList(Line).init(allocator);
 		self.lineBreakIndices = std.ArrayList(u32).init(allocator);
 		try parser.parse();
@@ -565,6 +576,7 @@ pub const TextBuffer = struct {
 			glyph.codepoint = glyphInfos[i].codepoint;
 			glyph.cluster = glyphInfos[i].cluster;
 			glyph.fontEffect = parser.fontEffects.items[textIndexGuess[i]];
+			glyph.characterIndex = parser.characterIndex.items[textIndexGuess[i]];
 		}
 
 		// Find the lines:
@@ -581,8 +593,46 @@ pub const TextBuffer = struct {
 		self.lineBreakIndices.deinit();
 	}
 
+	pub fn mousePosToIndex(self: TextBuffer, mousePos: Vec2f, bufferLen: usize) u32 {
+		var line: usize = @floatToInt(usize, @max(0, mousePos[1]/16.0));
+		line = @min(line, self.lineBreakIndices.items.len - 2);
+		var x: f32 = 0;
+		const start = self.lineBreakIndices.items[line];
+		const end = self.lineBreakIndices.items[line + 1];
+		for(self.glyphs[start..end]) |glyph| {
+			if(mousePos[0] < x + glyph.x_advance/2) {
+				return @intCast(u32, glyph.characterIndex);
+			}
+
+			x += glyph.x_advance;
+		}
+		return @intCast(u32, if(end < self.glyphs.len) self.glyphs[end-1].characterIndex else bufferLen);
+	}
+
+	pub fn indexToCursorPos(self: TextBuffer, index: u32) Vec2f {
+		var x: f32 = 0;
+		var y: f32 = 0;
+		var i: usize = 0;
+		while(true) {
+			for(self.glyphs[self.lineBreakIndices.items[i]..self.lineBreakIndices.items[i+1]]) |glyph| {
+				if(glyph.characterIndex == index) {
+					return .{x, y};
+				}
+
+				x += glyph.x_advance;
+				y -= glyph.y_advance;
+			}
+			i += 1;
+			if(i >= self.lineBreakIndices.items.len - 1) {
+				return .{x, y};
+			}
+			x = 0;
+			y += 16;
+		}
+	}
+
 	/// Returns the calculated dimensions of the text block.
-	pub fn calculateLineBreaks(self: *TextBuffer, fontSize: f32, maxLineWidth: f32) !Vec2f {
+	pub fn calculateLineBreaks(self: *TextBuffer, fontSize: f32, maxLineWidth: f32) !Vec2f { // TODO: Support newlines.
 		self.lineBreakIndices.clearRetainingCapacity();
 		try self.lineBreakIndices.append(0);
 		var scaledMaxWidth = maxLineWidth/fontSize*16.0;
@@ -607,6 +657,37 @@ pub const TextBuffer = struct {
 		totalWidth = @max(totalWidth, lineWidth);
 		try self.lineBreakIndices.append(@intCast(u32, self.glyphs.len));
 		return Vec2f{totalWidth*fontSize/16.0, @intToFloat(f32, self.lineBreakIndices.items.len - 1)*fontSize};
+	}
+
+	pub fn drawSelection(self: TextBuffer, pos: Vec2f, selectionStart: u32, selectionEnd: u32) !void {
+		std.debug.assert(selectionStart <= selectionEnd);
+		var x: f32 = 0;
+		var y: f32 = 0;
+		var i: usize = 0;
+		var j: usize = 0;
+		// Find the start row:
+		outer: while(i < self.lineBreakIndices.items.len - 1) : (i += 1) {
+			while(j < self.lineBreakIndices.items[i+1]) : (j += 1) {
+				const glyph = self.glyphs[j];
+				if(glyph.characterIndex >= selectionStart) break :outer;
+				x += glyph.x_advance;
+				y -= glyph.y_advance;
+			}
+			x = 0;
+			y += 16;
+		}
+		while(i < self.lineBreakIndices.items.len - 1) : (i += 1) {
+			const startX = x;
+			while(j < self.lineBreakIndices.items[i+1] and j < selectionEnd) : (j += 1) {
+				const glyph = self.glyphs[j];
+				if(glyph.characterIndex >= selectionEnd) break;
+				x += glyph.x_advance;
+				y -= glyph.y_advance;
+			}
+			draw.rect(pos + Vec2f{startX, y}, .{x - startX, 16});
+			x = 0;
+			y += 16;
+		}
 	}
 
 	pub fn render(self: TextBuffer, _x: f32, _y: f32, _fontSize: f32) !void {

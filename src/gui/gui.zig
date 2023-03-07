@@ -11,6 +11,7 @@ const Vec2f = vec.Vec2f;
 const Button = @import("components/Button.zig");
 const CheckBox = @import("components/CheckBox.zig");
 const Slider = @import("components/Slider.zig");
+const TextInput = @import("components/TextInput.zig");
 pub const GuiComponent = @import("GuiComponent.zig");
 pub const GuiWindow = @import("GuiWindow.zig");
 
@@ -20,6 +21,7 @@ var windowList: std.ArrayList(*GuiWindow) = undefined;
 var hudWindows: std.ArrayList(*GuiWindow) = undefined;
 pub var openWindows: std.ArrayList(*GuiWindow) = undefined;
 pub var selectedWindow: ?*GuiWindow = null; // TODO: Make private.
+pub var selectedTextInput: ?*TextInput = null;
 
 pub fn init() !void {
 	windowList = std.ArrayList(*GuiWindow).init(main.globalAllocator);
@@ -111,8 +113,76 @@ pub fn closeWindow(window: *GuiWindow) void {
 	window.onCloseFn();
 }
 
+pub fn setSelectedTextInput(newSelectedTextInput: ?*TextInput) void {
+	if(selectedTextInput) |current| {
+		if(current != newSelectedTextInput) {
+			current.deselect();
+		}
+	}
+	selectedTextInput = newSelectedTextInput;
+}
+
+pub const textCallbacks = struct {
+	pub fn left(mods: main.Key.Modifiers) void {
+		if(selectedTextInput) |current| {
+			current.left(mods);
+		}
+	}
+	pub fn right(mods: main.Key.Modifiers) void {
+		if(selectedTextInput) |current| {
+			current.right(mods);
+		}
+	}
+	pub fn down(mods: main.Key.Modifiers) void {
+		if(selectedTextInput) |current| {
+			current.down(mods);
+		}
+	}
+	pub fn up(mods: main.Key.Modifiers) void {
+		if(selectedTextInput) |current| {
+			current.up(mods);
+		}
+	}
+	pub fn gotoStart(mods: main.Key.Modifiers) void {
+		if(selectedTextInput) |current| {
+			current.gotoStart(mods);
+		}
+	}
+	pub fn gotoEnd(mods: main.Key.Modifiers) void {
+		if(selectedTextInput) |current| {
+			current.gotoEnd(mods);
+		}
+	}
+	pub fn deleteLeft(mods: main.Key.Modifiers) void {
+		if(selectedTextInput) |current| {
+			current.deleteLeft(mods);
+		}
+	}
+	pub fn deleteRight(mods: main.Key.Modifiers) void {
+		if(selectedTextInput) |current| {
+			current.deleteRight(mods);
+		}
+	}
+	pub fn copy(mods: main.Key.Modifiers) void {
+		if(selectedTextInput) |current| {
+			current.copy(mods);
+		}
+	}
+	pub fn paste(mods: main.Key.Modifiers) void {
+		if(selectedTextInput) |current| {
+			current.paste(mods);
+		}
+	}
+	pub fn cut(mods: main.Key.Modifiers) void {
+		if(selectedTextInput) |current| {
+			current.cut(mods);
+		}
+	}
+};
+
 pub fn mainButtonPressed() void {
 	selectedWindow = null;
+	selectedTextInput = null;
 	var selectedI: usize = 0;
 	for(openWindows.items, 0..) |window, i| {
 		var mousePosition = main.Window.getMousePosition();

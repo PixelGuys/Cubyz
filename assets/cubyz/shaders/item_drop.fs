@@ -246,7 +246,7 @@ void mainItemDrop() {
 	// Implementation of "A Fast Voxel Traversal Algorithm for Ray Tracing"  http://www.cse.yorku.ca/~amana/research/grid.pdf
 	ivec3 step = ivec3(sign(direction));
 	vec3 t1 = (floor(startPosition) - startPosition)/direction;
-	vec3 tDelta = 1/(direction);
+	vec3 tDelta = 1/direction;
 	vec3 t2 = t1 + tDelta;
 	tDelta = abs(tDelta);
 	vec3 tMax = max(t1, t2);
