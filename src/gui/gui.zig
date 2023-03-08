@@ -178,6 +178,11 @@ pub const textCallbacks = struct {
 			current.cut(mods);
 		}
 	}
+	pub fn newline(mods: main.Key.Modifiers) void {
+		if(selectedTextInput) |current| {
+			current.newline(mods);
+		}
+	}
 };
 
 pub fn mainButtonPressed() void {

@@ -185,6 +185,7 @@ pub var keyboard: struct {
 	textCopy: Key = Key{.key = c.GLFW_KEY_C, .repeatAction = &gui.textCallbacks.copy},
 	textPaste: Key = Key{.key = c.GLFW_KEY_V, .repeatAction = &gui.textCallbacks.paste},
 	textCut: Key = Key{.key = c.GLFW_KEY_X, .repeatAction = &gui.textCallbacks.cut},
+	textNewline: Key = Key{.key = c.GLFW_KEY_ENTER, .repeatAction = &gui.textCallbacks.newline},
 } = .{};
 
 pub const Window = struct {

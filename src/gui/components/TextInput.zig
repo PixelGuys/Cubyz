@@ -238,7 +238,7 @@ fn moveCursorToEnd(self: *TextInput, mods: main.Key.Modifiers) void {
 	if(mods.control) {
 		self.cursor.? = @intCast(u32, self.currentString.items.len);
 	} else {
-		self.cursor.? = @intCast(u32, std.mem.indexOf(u8, self.currentString.items[self.cursor.?..], "\n") orelse self.currentString.items.len);
+		self.cursor.? += @intCast(u32, std.mem.indexOf(u8, self.currentString.items[self.cursor.?..], "\n") orelse self.currentString.items.len);
 	}
 }
 
@@ -343,6 +343,12 @@ pub fn cut(self: *TextInput, mods: main.Key.Modifiers) void {
 			std.log.err("Error while cutting text: {s}", .{@errorName(err)});
 		};
 	}
+}
+
+pub fn newline(self: *TextInput, _: main.Key.Modifiers) void {
+	self.inputCharacter('\n') catch |err| {
+		std.log.err("Error while entering text: {s}", .{@errorName(err)});
+	};
 }
 
 pub fn render(self: *TextInput, pos: Vec2f, _: Vec2f, mousePosition: Vec2f) !void {

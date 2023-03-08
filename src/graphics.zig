@@ -399,7 +399,8 @@ pub const TextBuffer = struct {
 		y_advance: f32,
 		x_offset: f32,
 		y_offset: f32,
-		codepoint: u32,
+		character: u21,
+		index: u32,
 		cluster: u32,
 		fontEffect: FontEffect,
 		characterIndex: u32,
@@ -573,7 +574,8 @@ pub const TextBuffer = struct {
 			glyph.y_advance = @intToFloat(f32, glyphPositions[i].y_advance)/4.0;
 			glyph.x_offset = @intToFloat(f32, glyphPositions[i].x_offset)/4.0;
 			glyph.y_offset = @intToFloat(f32, glyphPositions[i].y_offset)/4.0;
-			glyph.codepoint = glyphInfos[i].codepoint;
+			glyph.character = @intCast(u21, parser.parsedText.items[textIndexGuess[i]]);
+			glyph.index = glyphInfos[i].codepoint;
 			glyph.cluster = glyphInfos[i].cluster;
 			glyph.fontEffect = parser.fontEffects.items[textIndexGuess[i]];
 			glyph.characterIndex = parser.characterIndex.items[textIndexGuess[i]];
@@ -632,7 +634,7 @@ pub const TextBuffer = struct {
 	}
 
 	/// Returns the calculated dimensions of the text block.
-	pub fn calculateLineBreaks(self: *TextBuffer, fontSize: f32, maxLineWidth: f32) !Vec2f { // TODO: Support newlines.
+	pub fn calculateLineBreaks(self: *TextBuffer, fontSize: f32, maxLineWidth: f32) !Vec2f {
 		self.lineBreakIndices.clearRetainingCapacity();
 		try self.lineBreakIndices.append(0);
 		var scaledMaxWidth = maxLineWidth/fontSize*16.0;
@@ -649,9 +651,16 @@ pub const TextBuffer = struct {
 				lastSpaceIndex = 0;
 				lastSpaceWidth = 0;
 			}
-			if(glyph.codepoint == TextRendering.spaceIndex) {
+			if(glyph.character == ' ') {
 				lastSpaceWidth = lineWidth;
 				lastSpaceIndex = @intCast(u32, i+1);
+			}
+			if(glyph.character == '\n') {
+				totalWidth = @max(totalWidth, lineWidth);
+				try self.lineBreakIndices.append(@intCast(u32, i+1));
+				lineWidth = 0;
+				lastSpaceIndex = 0;
+				lastSpaceWidth = 0;
 			}
 		}
 		totalWidth = @max(totalWidth, lineWidth);
@@ -714,7 +723,8 @@ pub const TextBuffer = struct {
 		var i: usize = 0;
 		while(i < self.lineBreakIndices.items.len - 1) : (i += 1) {
 			for(self.glyphs[self.lineBreakIndices.items[i]..self.lineBreakIndices.items[i+1]]) |glyph| {
-				const ftGlyph = try TextRendering.getGlyph(glyph.codepoint);
+				if(glyph.character == '\n') continue;
+				const ftGlyph = try TextRendering.getGlyph(glyph.index);
 				TextRendering.drawGlyph(ftGlyph, x + glyph.x_offset, y - glyph.y_offset, @bitCast(u28, glyph.fontEffect));
 
 				x += glyph.x_advance;
@@ -776,7 +786,6 @@ const TextRendering = struct {
 	var textureWidth: i32 = 1024;
 	const textureHeight: i32 = 16;
 	var textureOffset: i32 = 0;
-	var spaceIndex: u32 = undefined;
 	fn init() !void {
 		shader = try Shader.create("assets/cubyz/shaders/graphics/Text.vs", "assets/cubyz/shaders/graphics/Text.fs");
 		uniforms = shader.bulkGetUniformLocation(@TypeOf(uniforms));
@@ -805,7 +814,6 @@ const TextRendering = struct {
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
-		spaceIndex = freetypeFace.getCharIndex(' ').?;
 	}
 
 	fn deinit() void {
@@ -845,17 +853,17 @@ const TextRendering = struct {
 		textureOffset += width;
 	}
 
-	fn getGlyph(codepoint: u32) !Glyph {
-		if(codepoint >= glyphMapping.items.len) {
-			try glyphMapping.appendNTimes(0, codepoint - glyphMapping.items.len + 1);
+	fn getGlyph(index: u32) !Glyph {
+		if(index >= glyphMapping.items.len) {
+			try glyphMapping.appendNTimes(0, index - glyphMapping.items.len + 1);
 		}
-		if(glyphMapping.items[codepoint] == 0) {// glyph was not initialized yet.
-			try freetypeFace.loadGlyph(codepoint, freetype.LoadFlags{.render = true});
+		if(glyphMapping.items[index] == 0) {// glyph was not initialized yet.
+			try freetypeFace.loadGlyph(index, freetype.LoadFlags{.render = true});
 			const glyph = freetypeFace.glyph();
 			const bitmap = glyph.bitmap();
 			const width = bitmap.width();
 			const height = bitmap.rows();
-			glyphMapping.items[codepoint] = @intCast(u31, glyphData.items.len);
+			glyphMapping.items[index] = @intCast(u31, glyphData.items.len);
 			(try glyphData.addOne()).* = Glyph {
 				.textureX = textureOffset,
 				.size = Vec2i{@intCast(i32, width), @intCast(i32, height)},
@@ -864,7 +872,7 @@ const TextRendering = struct {
 			};
 			try uploadData(bitmap);
 		}
-		return glyphData.items[glyphMapping.items[codepoint]];
+		return glyphData.items[glyphMapping.items[index]];
 	}
 
 	fn drawGlyph(glyph: Glyph, x: f32, y: f32, fontEffects: u28) void {
