@@ -10,7 +10,6 @@ out vec4 color;
 uniform vec4 texture_rect;
 uniform vec2 scene;
 uniform vec2 offset;
-uniform vec2 fontSize;
 uniform float ratio;
 uniform int fontEffects;
 
@@ -24,7 +23,7 @@ vec2 convert2Proportional(vec2 original, vec2 full) {
 
 void main() {
 	vec2 vertex_pos = face_pos*vec2(1, -1);
-	vec2 position_percentage 	= convert2Proportional(offset*ratio, scene);
+	vec2 position_percentage 	= convert2Proportional(offset, scene);
 	vec2 size_percentage		= convert2Proportional(vec2(texture_rect.z, texture_rect.w)*ratio, scene);
 	if ((fontEffects & 0x02000000) != 0) { // italic
 		vertex_pos.x += vertex_pos.y/texture_rect.z;

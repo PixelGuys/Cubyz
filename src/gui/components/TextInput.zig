@@ -238,7 +238,7 @@ fn moveCursorToEnd(self: *TextInput, mods: main.Key.Modifiers) void {
 	if(mods.control) {
 		self.cursor.? = @intCast(u32, self.currentString.items.len);
 	} else {
-		self.cursor.? += @intCast(u32, std.mem.indexOf(u8, self.currentString.items[self.cursor.?..], "\n") orelse self.currentString.items.len);
+		self.cursor.? += @intCast(u32, std.mem.indexOf(u8, self.currentString.items[self.cursor.?..], "\n") orelse self.currentString.items.len - self.cursor.?);
 	}
 }
 

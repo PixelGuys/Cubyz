@@ -141,6 +141,30 @@ pub fn mainButtonReleased(self: *const GuiWindow) void {
 	}
 }
 
+fn detectCycles(self: *GuiWindow, other: *GuiWindow) bool {
+	for(0..2) |xy| {
+		var win: ?*GuiWindow = other;
+		while(win) |_win| {
+			if(win == self) return true;
+			switch(_win.relativePosition[xy]) {
+				.ratio => {
+					win = null;
+				},
+				.attachedToFrame => {
+					win = null;
+				},
+				.relativeToWindow => |relativeToWindow| {
+					win = relativeToWindow.reference;
+				},
+				.attachedToWindow => |attachedToWindow| {
+					win = attachedToWindow.reference;
+				},
+			}
+		}
+	}
+	return false;
+}
+
 fn snapToOtherWindow(self: *GuiWindow) void {
 	const scale = @floor(settings.guiScale*self.scale); // TODO
 	for(&self.relativePosition, 0..) |*relPos, i| {
@@ -148,30 +172,12 @@ fn snapToOtherWindow(self: *GuiWindow) void {
 		var minWindow: ?*GuiWindow = null;
 		var selfAttachment: AttachmentPoint = undefined;
 		var otherAttachment: AttachmentPoint = undefined;
-		outer: for(gui.openWindows.items) |other| {
+		for(gui.openWindows.items) |other| {
 			// Check if they touch:
 			const start = @max(self.pos[i^1], other.pos[i^1]);
 			const end = @min(self.pos[i^1] + self.size[i^1]*scale, other.pos[i^1] + other.size[i^1]*@floor(settings.guiScale*other.scale));
 			if(start >= end) continue;
-			// Detect cycles:
-			var win: ?*GuiWindow = other;
-			while(win) |_win| {
-				if(win == self) continue :outer;
-				switch(_win.relativePosition[i]) {
-					.ratio => {
-						win = null;
-					},
-					.attachedToFrame => {
-						win = null;
-					},
-					.relativeToWindow => |relativeToWindow| {
-						win = relativeToWindow.reference;
-					},
-					.attachedToWindow => |attachedToWindow| {
-						win = attachedToWindow.reference;
-					},
-				}
-			}
+			if(detectCycles(self, other)) continue;
 
 			const dist1 = @fabs(self.pos[i] - other.pos[i] - other.size[i]*@floor(settings.guiScale*other.scale)); // TODO: scale
 			if(dist1 < minDist) {

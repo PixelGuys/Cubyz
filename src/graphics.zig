@@ -700,21 +700,15 @@ pub const TextBuffer = struct {
 	}
 
 	pub fn render(self: TextBuffer, _x: f32, _y: f32, _fontSize: f32) !void {
-		var x = _x;
-		var y = _y;
-		var fontSize = _fontSize;
-		x *= draw.scale;
-		y *= draw.scale;
-		x += draw.translation[0];
-		y += draw.translation[1];
-		fontSize *= draw.scale;
-		const fontScaling = fontSize/16.0;
-		x /= fontScaling;
-		const initialX = x;
-		y /= fontScaling;
+		const oldTranslation = draw.setTranslation(.{_x, _y});
+		defer draw.restoreTranslation(oldTranslation);
+		const oldScale = draw.setScale(_fontSize/16.0);
+		defer draw.restoreScale(oldScale);
+		var x: f32 = 0;
+		var y: f32 = 0;
 		TextRendering.shader.bind();
 		c.glUniform2f(TextRendering.uniforms.scene, @intToFloat(f32, main.Window.width), @intToFloat(f32, main.Window.height));
-		c.glUniform1f(TextRendering.uniforms.ratio, fontScaling);
+		c.glUniform1f(TextRendering.uniforms.ratio, draw.scale);
 		c.glActiveTexture(c.GL_TEXTURE0);
 		c.glBindTexture(c.GL_TEXTURE_2D, TextRendering.glyphTexture[0]);
 		c.glBindVertexArray(draw.rectVAO);
@@ -723,21 +717,21 @@ pub const TextBuffer = struct {
 		var i: usize = 0;
 		while(i < self.lineBreakIndices.items.len - 1) : (i += 1) {
 			for(self.glyphs[self.lineBreakIndices.items[i]..self.lineBreakIndices.items[i+1]]) |glyph| {
-				if(glyph.character == '\n') continue;
-				const ftGlyph = try TextRendering.getGlyph(glyph.index);
-				TextRendering.drawGlyph(ftGlyph, x + glyph.x_offset, y - glyph.y_offset, @bitCast(u28, glyph.fontEffect));
-
+				if(glyph.character != '\n') {
+					const ftGlyph = try TextRendering.getGlyph(glyph.index);
+					TextRendering.drawGlyph(ftGlyph, x + glyph.x_offset, y - glyph.y_offset, @bitCast(u28, glyph.fontEffect));
+				}
 				x += glyph.x_advance;
 				y -= glyph.y_advance;
 			}
-			lineWraps[i] = x - initialX;
-			x = initialX;
+			lineWraps[i] = x;
+			x = 0;
 			y += 16;
 		}
 
 		for(self.lines.items) |_line| {
 			var line: Line = _line;
-			y = _y/fontScaling;
+			y = 0;
 			if(line.isUnderline) y += 15
 			else y += 8;
 			draw.setColor(line.color | @as(u32, 0xff000000));
@@ -745,8 +739,8 @@ pub const TextBuffer = struct {
 				const lineStart = @max(0, line.start);
 				const lineEnd = @min(lineWrap, line.end);
 				if(lineStart < lineEnd) {
-					var start = Vec2f{lineStart*fontScaling + initialX*fontScaling, y*fontScaling};
-					const dim = Vec2f{(lineEnd - lineStart)*fontScaling, fontScaling};
+					var start = Vec2f{lineStart, y};
+					const dim = Vec2f{lineEnd - lineStart, 1};
 					draw.rect(start, dim);
 				}
 				line.start -= lineWrap;
@@ -875,17 +869,23 @@ const TextRendering = struct {
 		return glyphData.items[glyphMapping.items[index]];
 	}
 
-	fn drawGlyph(glyph: Glyph, x: f32, y: f32, fontEffects: u28) void {
+	fn drawGlyph(glyph: Glyph, _x: f32, _y: f32, fontEffects: u28) void {
+		var x = _x;
+		var y = _y;
+		x *= draw.scale;
+		y *= draw.scale;
+		x += draw.translation[0];
+		y += draw.translation[1];
 		c.glUniform1i(uniforms.fontEffects, fontEffects);
 		if(fontEffects & 0x1000000 != 0) { // bold
-			c.glUniform2f(uniforms.offset, @intToFloat(f32, glyph.bearing[0]) + x, @intToFloat(f32, glyph.bearing[1]) + y - 1);
+			c.glUniform2f(uniforms.offset, @intToFloat(f32, glyph.bearing[0])*draw.scale + x, @intToFloat(f32, glyph.bearing[1])*draw.scale + y - 1);
 			c.glUniform4f(uniforms.texture_rect, @intToFloat(f32, glyph.textureX), -1, @intToFloat(f32, glyph.size[0]), @intToFloat(f32, glyph.size[1] + 1));
 			c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 			// Just draw another thing on top in x direction. The y-direction is handled in the shader.
-			c.glUniform2f(uniforms.offset, @intToFloat(f32, glyph.bearing[0]) + x + 0.5, @intToFloat(f32, glyph.bearing[1]) + y - 1);
+			c.glUniform2f(uniforms.offset, @intToFloat(f32, glyph.bearing[0])*draw.scale + x + 0.5, @intToFloat(f32, glyph.bearing[1])*draw.scale + y - 1);
 			c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 		} else {
-			c.glUniform2f(uniforms.offset, @intToFloat(f32, glyph.bearing[0]) + x, @intToFloat(f32, glyph.bearing[1]) + y);
+			c.glUniform2f(uniforms.offset, @intToFloat(f32, glyph.bearing[0])*draw.scale + x, @intToFloat(f32, glyph.bearing[1])*draw.scale + y);
 			c.glUniform4f(uniforms.texture_rect, @intToFloat(f32, glyph.textureX), 0, @intToFloat(f32, glyph.size[0]), @intToFloat(f32, glyph.size[1]));
 			c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 		}
