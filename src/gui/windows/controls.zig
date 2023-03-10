@@ -52,7 +52,7 @@ pub fn onOpen() Allocator.Error!void {
 	var list = try VerticalList.init(main.globalAllocator);
 	list.currentOffset = 8;
 	inline for(comptime std.meta.fieldNames(@TypeOf(main.keyboard))) |field| {
-		var label = try Label.init(main.globalAllocator, .{0, 8}, 128, field);
+		var label = try Label.init(main.globalAllocator, .{0, 8}, 128, field, .left);
 		var button = if(&@field(main.keyboard, field) == selectedKey) (
 			try Button.init(main.globalAllocator, .{128 + 16, 8}, 128, "...", null)
 		) else (

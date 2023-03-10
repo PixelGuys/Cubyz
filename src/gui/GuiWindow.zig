@@ -421,7 +421,7 @@ pub fn render(self: *const GuiWindow) !void {
 	draw.restoreTranslation(oldTranslation);
 	draw.restoreScale(oldScale);
 	if(self.showTitleBar) {
-		var text = try graphics.TextBuffer.init(main.threadAllocator, self.title, .{}, false);
+		var text = try graphics.TextBuffer.init(main.threadAllocator, self.title, .{}, false, .center);
 		defer text.deinit();
 		const titleDimension = try text.calculateLineBreaks(16*scale, self.size[0]*scale);
 		try text.render(self.pos[0] + self.size[0]*scale/2 - titleDimension[0]/2, self.pos[1], 16*scale);

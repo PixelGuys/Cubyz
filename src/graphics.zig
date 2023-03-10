@@ -367,12 +367,18 @@ pub const draw = struct {
 
 	// ----------------------------------------------------------------------------
 	
-	pub fn text(_text: []const u8, x: f32, y: f32, fontSize: f32) !void {
-		try TextRendering.renderText(_text, x, y, fontSize, .{.color = @truncate(u24, @bitCast(u32, color))});
+	pub fn text(_text: []const u8, x: f32, y: f32, fontSize: f32, alignment: TextBuffer.Alignment) !void {
+		try TextRendering.renderText(_text, x, y, fontSize, .{.color = @truncate(u24, @bitCast(u32, color))}, alignment);
 	}
 };
 
 pub const TextBuffer = struct {
+
+	pub const Alignment = enum {
+		left,
+		center,
+		right,
+	};
 
 	pub const FontEffect = packed struct(u28) {
 		color: u24 = 0,
@@ -394,6 +400,11 @@ pub const TextBuffer = struct {
 		isUnderline: bool,
 	};
 
+	const LineBreak = struct {
+		index: u32,
+		width: f32,
+	};
+
 	const GlyphData = struct {
 		x_advance: f32,
 		y_advance: f32,
@@ -406,10 +417,12 @@ pub const TextBuffer = struct {
 		characterIndex: u32,
 	};
 
+	alignment: Alignment,
+	width: f32,
 	buffer: harfbuzz.Buffer,
 	glyphs: []GlyphData,
 	lines: std.ArrayList(Line),
-	lineBreakIndices: std.ArrayList(u32),
+	lineBreaks: std.ArrayList(LineBreak),
 
 	fn addLine(self: *TextBuffer, line: Line) !void {
 		if(line.start != line.end) {
@@ -517,8 +530,9 @@ pub const TextBuffer = struct {
 		}
 	};
 
-	pub fn init(allocator: Allocator, text: []const u8, initialFontEffect: FontEffect, showControlCharacters: bool) Allocator.Error!TextBuffer {
+	pub fn init(allocator: Allocator, text: []const u8, initialFontEffect: FontEffect, showControlCharacters: bool, alignment: Alignment) Allocator.Error!TextBuffer {
 		var self: TextBuffer = undefined;
+		self.alignment = alignment;
 		// Parse the input text:
 		var parser = Parser {
 			.unicodeIterator = std.unicode.Utf8Iterator{.bytes = text, .i = 0},
@@ -532,7 +546,7 @@ pub const TextBuffer = struct {
 		defer parser.parsedText.deinit();
 		defer parser.characterIndex.deinit();
 		self.lines = std.ArrayList(Line).init(allocator);
-		self.lineBreakIndices = std.ArrayList(u32).init(allocator);
+		self.lineBreaks = std.ArrayList(LineBreak).init(allocator);
 		try parser.parse();
 		if(parser.parsedText.items.len == 0) {
 			self.glyphs = &[0]GlyphData{};
@@ -584,23 +598,33 @@ pub const TextBuffer = struct {
 		// Find the lines:
 		try self.initLines(true);
 		try self.initLines(false);
-		try self.lineBreakIndices.append(0);
-		try self.lineBreakIndices.append(@intCast(u32, self.glyphs.len));
+		try self.lineBreaks.append(.{.index = 0, .width = 0});
+		try self.lineBreaks.append(.{.index = @intCast(u32, self.glyphs.len), .width = 0});
 		return self;
 	}
 
 	pub fn deinit(self: TextBuffer) void {
 		self.lines.allocator.free(self.glyphs);
 		self.lines.deinit();
-		self.lineBreakIndices.deinit();
+		self.lineBreaks.deinit();
+	}
+
+	fn getLineOffset(self: TextBuffer, line: usize) f32 {
+		const factor: f32 = switch(self.alignment) {
+			.left => 0,
+			.center => 0.5,
+			.right => 1,
+		};
+		const diff = self.width - self.lineBreaks.items[line+1].width;
+		return diff*factor;
 	}
 
 	pub fn mousePosToIndex(self: TextBuffer, mousePos: Vec2f, bufferLen: usize) u32 {
 		var line: usize = @floatToInt(usize, @max(0, mousePos[1]/16.0));
-		line = @min(line, self.lineBreakIndices.items.len - 2);
-		var x: f32 = 0;
-		const start = self.lineBreakIndices.items[line];
-		const end = self.lineBreakIndices.items[line + 1];
+		line = @min(line, self.lineBreaks.items.len - 2);
+		var x: f32 = self.getLineOffset(line);
+		const start = self.lineBreaks.items[line].index;
+		const end = self.lineBreaks.items[line + 1].index;
 		for(self.glyphs[start..end]) |glyph| {
 			if(mousePos[0] < x + glyph.x_advance/2) {
 				return @intCast(u32, glyph.characterIndex);
@@ -616,7 +640,8 @@ pub const TextBuffer = struct {
 		var y: f32 = 0;
 		var i: usize = 0;
 		while(true) {
-			for(self.glyphs[self.lineBreakIndices.items[i]..self.lineBreakIndices.items[i+1]]) |glyph| {
+			x = self.getLineOffset(i);
+			for(self.glyphs[self.lineBreaks.items[i].index..self.lineBreaks.items[i+1].index]) |glyph| {
 				if(glyph.characterIndex == index) {
 					return .{x, y};
 				}
@@ -625,76 +650,82 @@ pub const TextBuffer = struct {
 				y -= glyph.y_advance;
 			}
 			i += 1;
-			if(i >= self.lineBreakIndices.items.len - 1) {
+			if(i >= self.lineBreaks.items.len - 1) {
 				return .{x, y};
 			}
-			x = 0;
 			y += 16;
 		}
 	}
 
 	/// Returns the calculated dimensions of the text block.
 	pub fn calculateLineBreaks(self: *TextBuffer, fontSize: f32, maxLineWidth: f32) !Vec2f {
-		self.lineBreakIndices.clearRetainingCapacity();
-		try self.lineBreakIndices.append(0);
+		self.lineBreaks.clearRetainingCapacity();
+		const spaceCharacterWidth = 8;
+		try self.lineBreaks.append(.{.index = 0, .width = 0});
 		var scaledMaxWidth = maxLineWidth/fontSize*16.0;
-		var totalWidth: f32 = 0;
 		var lineWidth: f32 = 0;
 		var lastSpaceWidth: f32 = 0;
 		var lastSpaceIndex: u32 = 0;
 		for(self.glyphs, 0..) |glyph, i| {
 			lineWidth += glyph.x_advance;
-			if(lineWidth > scaledMaxWidth and lastSpaceIndex != 0) {
-				lineWidth -= lastSpaceWidth;
-				totalWidth = @max(totalWidth, lastSpaceWidth);
-				try self.lineBreakIndices.append(lastSpaceIndex);
-				lastSpaceIndex = 0;
-				lastSpaceWidth = 0;
+			if(lineWidth > scaledMaxWidth) {
+				if(lastSpaceIndex != 0) {
+					lineWidth -= lastSpaceWidth;
+					try self.lineBreaks.append(.{.index = lastSpaceIndex, .width = lastSpaceWidth - spaceCharacterWidth});
+					lastSpaceIndex = 0;
+					lastSpaceWidth = 0;
+				} else {
+					try self.lineBreaks.append(.{.index = @intCast(u32, i), .width = lineWidth - glyph.x_advance});
+					lineWidth = glyph.x_advance;
+					lastSpaceIndex = 0;
+					lastSpaceWidth = 0;
+				}
 			}
 			if(glyph.character == ' ') {
 				lastSpaceWidth = lineWidth;
 				lastSpaceIndex = @intCast(u32, i+1);
 			}
 			if(glyph.character == '\n') {
-				totalWidth = @max(totalWidth, lineWidth);
-				try self.lineBreakIndices.append(@intCast(u32, i+1));
+				try self.lineBreaks.append(.{.index = @intCast(u32, i+1), .width = lineWidth - spaceCharacterWidth});
 				lineWidth = 0;
 				lastSpaceIndex = 0;
 				lastSpaceWidth = 0;
 			}
 		}
-		totalWidth = @max(totalWidth, lineWidth);
-		try self.lineBreakIndices.append(@intCast(u32, self.glyphs.len));
-		return Vec2f{totalWidth*fontSize/16.0, @intToFloat(f32, self.lineBreakIndices.items.len - 1)*fontSize};
+		self.width = maxLineWidth;
+		try self.lineBreaks.append(.{.index = @intCast(u32, self.glyphs.len), .width = lineWidth});
+		return Vec2f{maxLineWidth*fontSize/16.0, @intToFloat(f32, self.lineBreaks.items.len - 1)*fontSize};
 	}
 
 	pub fn drawSelection(self: TextBuffer, pos: Vec2f, selectionStart: u32, selectionEnd: u32) !void {
 		std.debug.assert(selectionStart <= selectionEnd);
-		var x: f32 = 0;
+		var x: f32 = self.getLineOffset(0);
 		var y: f32 = 0;
 		var i: usize = 0;
 		var j: usize = 0;
 		// Find the start row:
-		outer: while(i < self.lineBreakIndices.items.len - 1) : (i += 1) {
-			while(j < self.lineBreakIndices.items[i+1]) : (j += 1) {
+		outer: while(i < self.lineBreaks.items.len - 1) : (i += 1) {
+			x = self.getLineOffset(i);
+			while(j < self.lineBreaks.items[i+1].index) : (j += 1) {
 				const glyph = self.glyphs[j];
 				if(glyph.characterIndex >= selectionStart) break :outer;
 				x += glyph.x_advance;
 				y -= glyph.y_advance;
 			}
-			x = 0;
 			y += 16;
 		}
-		while(i < self.lineBreakIndices.items.len - 1) : (i += 1) {
+		while(i < self.lineBreaks.items.len - 1) {
 			const startX = x;
-			while(j < self.lineBreakIndices.items[i+1] and j < selectionEnd) : (j += 1) {
+			while(j < self.lineBreaks.items[i+1].index and j < selectionEnd) : (j += 1) {
 				const glyph = self.glyphs[j];
 				if(glyph.characterIndex >= selectionEnd) break;
 				x += glyph.x_advance;
 				y -= glyph.y_advance;
 			}
 			draw.rect(pos + Vec2f{startX, y}, .{x - startX, 16});
-			x = 0;
+			i += 1;
+			if(i >= self.lineBreaks.items.len - 1) break;
+			x = self.getLineOffset(i);
 			y += 16;
 		}
 	}
@@ -712,11 +743,12 @@ pub const TextBuffer = struct {
 		c.glActiveTexture(c.GL_TEXTURE0);
 		c.glBindTexture(c.GL_TEXTURE_2D, TextRendering.glyphTexture[0]);
 		c.glBindVertexArray(draw.rectVAO);
-		const lineWraps: []f32 = try main.threadAllocator.alloc(f32, self.lineBreakIndices.items.len - 1);
+		const lineWraps: []f32 = try main.threadAllocator.alloc(f32, self.lineBreaks.items.len - 1);
 		defer main.threadAllocator.free(lineWraps);
 		var i: usize = 0;
-		while(i < self.lineBreakIndices.items.len - 1) : (i += 1) {
-			for(self.glyphs[self.lineBreakIndices.items[i]..self.lineBreakIndices.items[i+1]]) |glyph| {
+		while(i < self.lineBreaks.items.len - 1) : (i += 1) {
+			x = self.getLineOffset(i);
+			for(self.glyphs[self.lineBreaks.items[i].index..self.lineBreaks.items[i+1].index]) |glyph| {
 				if(glyph.character != '\n') {
 					const ftGlyph = try TextRendering.getGlyph(glyph.index);
 					TextRendering.drawGlyph(ftGlyph, x + glyph.x_offset, y - glyph.y_offset, @bitCast(u28, glyph.fontEffect));
@@ -724,7 +756,7 @@ pub const TextBuffer = struct {
 				x += glyph.x_advance;
 				y -= glyph.y_advance;
 			}
-			lineWraps[i] = x;
+			lineWraps[i] = x - self.getLineOffset(i);
 			x = 0;
 			y += 16;
 		}
@@ -735,11 +767,11 @@ pub const TextBuffer = struct {
 			if(line.isUnderline) y += 15
 			else y += 8;
 			draw.setColor(line.color | @as(u32, 0xff000000));
-			for(lineWraps) |lineWrap| {
+			for(lineWraps, 0..) |lineWrap, j| {
 				const lineStart = @max(0, line.start);
 				const lineEnd = @min(lineWrap, line.end);
 				if(lineStart < lineEnd) {
-					var start = Vec2f{lineStart, y};
+					var start = Vec2f{lineStart + self.getLineOffset(j), y};
 					const dim = Vec2f{lineEnd - lineStart, 1};
 					draw.rect(start, dim);
 				}
@@ -891,8 +923,8 @@ const TextRendering = struct {
 		}
 	}
 
-	fn renderText(text: []const u8, x: f32, y: f32, fontSize: f32, initialFontEffect: TextBuffer.FontEffect) !void {
-		const buf = try TextBuffer.init(main.threadAllocator, text, initialFontEffect, false);
+	fn renderText(text: []const u8, x: f32, y: f32, fontSize: f32, initialFontEffect: TextBuffer.FontEffect, alignment: TextBuffer.Alignment) !void {
+		const buf = try TextBuffer.init(main.threadAllocator, text, initialFontEffect, false, alignment);
 		defer buf.deinit();
 
 		try buf.render(x, y, fontSize);

@@ -28,7 +28,7 @@ textSize: Vec2f = undefined,
 pub fn init(allocator: Allocator, pos: Vec2f, maxWidth: f32, text: []const u8) Allocator.Error!GuiComponent {
 	var self = TextInput {
 		.currentString = std.ArrayList(u8).init(allocator),
-		.textBuffer = try TextBuffer.init(allocator, text, .{}, true),
+		.textBuffer = try TextBuffer.init(allocator, text, .{}, true, .left),
 		.maxWidth = maxWidth,
 	};
 	try self.currentString.appendSlice(text);
@@ -69,7 +69,7 @@ pub fn deselect(self: *TextInput) void {
 
 fn reloadText(self: *TextInput) !void {
 	self.textBuffer.deinit();
-	self.textBuffer = try TextBuffer.init(self.currentString.allocator, self.currentString.items, .{}, true);
+	self.textBuffer = try TextBuffer.init(self.currentString.allocator, self.currentString.items, .{}, true, .left);
 	self.textSize = try self.textBuffer.calculateLineBreaks(fontSize, self.maxWidth);
 }
 

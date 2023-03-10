@@ -57,7 +57,7 @@ pub fn __deinit() void {
 fn defaultOnAction() void {}
 
 pub fn init(allocator: Allocator, pos: Vec2f, width: f32, text: []const u8, onAction: ?*const fn() void) Allocator.Error!GuiComponent {
-	const labelComponent = try Label.init(allocator, undefined, width - 3*border, text);
+	const labelComponent = try Label.init(allocator, undefined, width - 3*border, text, .center);
 	var self = Button {
 		.onAction = if(onAction) |a| a else &defaultOnAction,
 		.label = labelComponent.impl.label,
@@ -65,7 +65,7 @@ pub fn init(allocator: Allocator, pos: Vec2f, width: f32, text: []const u8, onAc
 	};
 	return GuiComponent {
 		.pos = pos,
-		.size = Vec2f{@max(width, self.textSize[0] + 3*border), self.textSize[1] + 3*border},
+		.size = Vec2f{width, self.textSize[1] + 3*border},
 		.impl = .{.button = self}
 	};
 }

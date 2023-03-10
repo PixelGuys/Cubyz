@@ -59,7 +59,7 @@ pub fn init(allocator: Allocator, pos: Vec2f, width: f32, text: []const u8, comp
 	const initialText = try allocator.alloc(u8, text.len + maxLen);
 	std.mem.copy(u8, initialText, text);
 	std.mem.set(u8, initialText[text.len..], ' ');
-	const labelComponent = try Label.init(allocator, undefined, width - 3*border, initialText);
+	const labelComponent = try Label.init(allocator, undefined, width - 3*border, initialText, .center);
 	const buttonComponent = try Button.init(allocator, undefined, undefined, "", null);
 	var self = Slider {
 		.allocator = allocator,
@@ -104,9 +104,8 @@ fn updateLabel(self: *Slider, newValue: []const u8, width: f32) !void {
 	self.currentText = try self.allocator.alloc(u8, newValue.len + self.text.len);
 	std.mem.copy(u8, self.currentText, self.text);
 	std.mem.copy(u8, self.currentText[self.text.len..], newValue);
-	const labelComponent = try Label.init(self.allocator, undefined, width - 3*border, self.currentText);
+	const labelComponent = try Label.init(self.allocator, undefined, width - 3*border, self.currentText, .center);
 	self.label.deinit();
-	self.labelSize[0] = labelComponent.size[0];
 	self.label = labelComponent.impl.label;
 }
 
