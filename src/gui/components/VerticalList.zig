@@ -17,9 +17,9 @@ children: std.ArrayList(GuiComponent),
 currentOffset: f32 = 0,
 maxWidth: f32 = 0,
 
-pub fn init(allocator: Allocator) Allocator.Error!VerticalList {
+pub fn init() Allocator.Error!VerticalList {
 	const self = VerticalList {
-		.children = std.ArrayList(GuiComponent).init(allocator),
+		.children = std.ArrayList(GuiComponent).init(gui.allocator),
 	};
 	return self;
 }

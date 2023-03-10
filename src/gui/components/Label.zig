@@ -18,9 +18,9 @@ const fontSize: f32 = 16;
 text: TextBuffer,
 textSize: Vec2f = undefined,
 
-pub fn init(allocator: Allocator, pos: Vec2f, maxWidth: f32, text: []const u8, alignment: TextBuffer.Alignment) Allocator.Error!GuiComponent {
+pub fn init(pos: Vec2f, maxWidth: f32, text: []const u8, alignment: TextBuffer.Alignment) Allocator.Error!GuiComponent {
 	var self = Label {
-		.text = try TextBuffer.init(allocator, text, .{}, false, alignment),
+		.text = try TextBuffer.init(gui.allocator, text, .{}, false, alignment),
 	};
 	self.textSize = try self.text.calculateLineBreaks(fontSize, maxWidth);
 	return GuiComponent {

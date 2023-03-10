@@ -27,11 +27,11 @@ pub fn init() !void {
 const padding: f32 = 8;
 
 pub fn onOpen() Allocator.Error!void {
-	var list = try VerticalList.init(main.globalAllocator);
-	try list.add(try Button.init(main.globalAllocator, .{0, 16}, 128, "Graphics", gui.openWindowFunction("cubyz:graphics")));
-	try list.add(try Button.init(main.globalAllocator, .{0, 16}, 128, "Sound", gui.openWindowFunction("cubyz:sound")));
-	try list.add(try Button.init(main.globalAllocator, .{0, 16}, 128, "Controls", gui.openWindowFunction("cubyz:controls")));
-	try list.add(try Button.init(main.globalAllocator, .{0, 16}, 128, "Change Name", gui.openWindowFunction("cubyz:change_name")));
+	var list = try VerticalList.init();
+	try list.add(try Button.init(.{0, 16}, 128, "Graphics", gui.openWindowFunction("cubyz:graphics")));
+	try list.add(try Button.init(.{0, 16}, 128, "Sound", gui.openWindowFunction("cubyz:sound")));
+	try list.add(try Button.init(.{0, 16}, 128, "Controls", gui.openWindowFunction("cubyz:controls")));
+	try list.add(try Button.init(.{0, 16}, 128, "Change Name", gui.openWindowFunction("cubyz:change_name")));
 	components[0] = list.toComponent(.{padding, padding});
 	window.contentSize = components[0].size + @splat(2, @as(f32, 2*padding));
 	gui.updateWindowPositions();

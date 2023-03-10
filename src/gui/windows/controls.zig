@@ -49,14 +49,14 @@ fn keypressListener(key: c_int, mouseButton: c_int, scancode: c_int) void {
 }
 
 pub fn onOpen() Allocator.Error!void {
-	var list = try VerticalList.init(main.globalAllocator);
+	var list = try VerticalList.init();
 	list.currentOffset = 8;
 	inline for(comptime std.meta.fieldNames(@TypeOf(main.keyboard))) |field| {
-		var label = try Label.init(main.globalAllocator, .{0, 8}, 128, field, .left);
+		var label = try Label.init(.{0, 8}, 128, field, .left);
 		var button = if(&@field(main.keyboard, field) == selectedKey) (
-			try Button.init(main.globalAllocator, .{128 + 16, 8}, 128, "...", null)
+			try Button.init(.{128 + 16, 8}, 128, "...", null)
 		) else (
-			try Button.init(main.globalAllocator, .{128 + 16, 8}, 128, @field(main.keyboard, field).getName(), &functionBuilder(field))
+			try Button.init(.{128 + 16, 8}, 128, @field(main.keyboard, field).getName(), &functionBuilder(field))
 		);
 		if(label.size[1] > button.size[1]) {
 			button.pos[1] += (label.size[1] - button.size[1])/2;

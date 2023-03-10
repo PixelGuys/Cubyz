@@ -23,10 +23,13 @@ pub var openWindows: std.ArrayList(*GuiWindow) = undefined;
 pub var selectedWindow: ?*GuiWindow = null; // TODO: Make private.
 pub var selectedTextInput: ?*TextInput = null;
 
-pub fn init() !void {
-	windowList = std.ArrayList(*GuiWindow).init(main.globalAllocator);
-	hudWindows = std.ArrayList(*GuiWindow).init(main.globalAllocator);
-	openWindows = std.ArrayList(*GuiWindow).init(main.globalAllocator);
+pub var allocator: Allocator = undefined;
+
+pub fn init(_allocator: Allocator) !void {
+	allocator = _allocator;
+	windowList = std.ArrayList(*GuiWindow).init(allocator);
+	hudWindows = std.ArrayList(*GuiWindow).init(allocator);
+	openWindows = std.ArrayList(*GuiWindow).init(allocator);
 	inline for(@typeInfo(windowlist).Struct.decls) |decl| {
 		try @field(windowlist, decl.name).init();
 	}

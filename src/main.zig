@@ -450,7 +450,7 @@ pub fn main() !void {
 	try graphics.init();
 	defer graphics.deinit();
 
-	try gui.init();
+	try gui.init(globalAllocator);
 	defer gui.deinit();
 	try gui.openWindow("cubyz:hotbar");
 	try gui.openWindow("cubyz:hotbar2");

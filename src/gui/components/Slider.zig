@@ -24,7 +24,6 @@ const fontSize: f32 = 16;
 
 var texture: Texture = undefined;
 
-allocator: Allocator,
 callback: *const fn(u16) void,
 currentSelection: u16,
 text: []const u8,
@@ -48,21 +47,20 @@ pub fn __deinit() void {
 	texture.deinit();
 }
 
-pub fn init(allocator: Allocator, pos: Vec2f, width: f32, text: []const u8, comptime fmt: []const u8, valueList: anytype, initialValue: u16, callback: *const fn(u16) void) Allocator.Error!GuiComponent {
-	var values = try allocator.alloc([]const u8, valueList.len);
+pub fn init(pos: Vec2f, width: f32, text: []const u8, comptime fmt: []const u8, valueList: anytype, initialValue: u16, callback: *const fn(u16) void) Allocator.Error!GuiComponent {
+	var values = try gui.allocator.alloc([]const u8, valueList.len);
 	var maxLen: usize = 0;
 	for(valueList, 0..) |value, i| {
-		values[i] = try std.fmt.allocPrint(allocator, fmt, .{value});
+		values[i] = try std.fmt.allocPrint(gui.allocator, fmt, .{value});
 		maxLen = @max(maxLen, values[i].len);
 	}
 
-	const initialText = try allocator.alloc(u8, text.len + maxLen);
+	const initialText = try gui.allocator.alloc(u8, text.len + maxLen);
 	std.mem.copy(u8, initialText, text);
 	std.mem.set(u8, initialText[text.len..], ' ');
-	const labelComponent = try Label.init(allocator, undefined, width - 3*border, initialText, .center);
-	const buttonComponent = try Button.init(allocator, undefined, undefined, "", null);
+	const labelComponent = try Label.init(undefined, width - 3*border, initialText, .center);
+	const buttonComponent = try Button.init(undefined, undefined, "", null);
 	var self = Slider {
-		.allocator = allocator,
 		.callback = callback,
 		.currentSelection = initialValue,
 		.text = text,
@@ -87,10 +85,10 @@ pub fn deinit(self: Slider) void {
 	self.label.deinit();
 	self.button.deinit();
 	for(self.values) |value| {
-		self.allocator.free(value);
+		gui.allocator.free(value);
 	}
-	self.allocator.free(self.values);
-	self.allocator.free(self.currentText);
+	gui.allocator.free(self.values);
+	gui.allocator.free(self.currentText);
 }
 
 fn setButtonPosFromValue(self: *Slider, size: Vec2f) !void {
@@ -100,11 +98,11 @@ fn setButtonPosFromValue(self: *Slider, size: Vec2f) !void {
 }
 
 fn updateLabel(self: *Slider, newValue: []const u8, width: f32) !void {
-	self.allocator.free(self.currentText);
-	self.currentText = try self.allocator.alloc(u8, newValue.len + self.text.len);
+	gui.allocator.free(self.currentText);
+	self.currentText = try gui.allocator.alloc(u8, newValue.len + self.text.len);
 	std.mem.copy(u8, self.currentText, self.text);
 	std.mem.copy(u8, self.currentText[self.text.len..], newValue);
-	const labelComponent = try Label.init(self.allocator, undefined, width - 3*border, self.currentText, .center);
+	const labelComponent = try Label.init(undefined, width - 3*border, self.currentText, .center);
 	self.label.deinit();
 	self.label = labelComponent.impl.label;
 }

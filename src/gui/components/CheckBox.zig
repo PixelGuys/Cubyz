@@ -49,8 +49,8 @@ pub fn __deinit() void {
 	textureEmpty.deinit();
 }
 
-pub fn init(allocator: Allocator, pos: Vec2f, width: f32, text: []const u8, initialValue: bool, onAction: *const fn(bool) void) Allocator.Error!GuiComponent {
-	const labelComponent = try Label.init(allocator, undefined, width - 3*border - boxSize, text, .left);
+pub fn init(pos: Vec2f, width: f32, text: []const u8, initialValue: bool, onAction: *const fn(bool) void) Allocator.Error!GuiComponent {
+	const labelComponent = try Label.init(undefined, width - 3*border - boxSize, text, .left);
 	var self = CheckBox {
 		.state = initialValue,
 		.onAction = onAction,
