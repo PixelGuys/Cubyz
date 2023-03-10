@@ -34,6 +34,7 @@ pub fn init() !void {
 	try Button.__init();
 	try CheckBox.__init();
 	try Slider.__init();
+	try TextInput.__init();
 }
 
 pub fn deinit() void {
@@ -47,6 +48,7 @@ pub fn deinit() void {
 	Button.__deinit();
 	CheckBox.__deinit();
 	Slider.__deinit();
+	TextInput.__deinit();
 }
 
 pub fn addWindow(window: *GuiWindow, isHudWindow: bool) !void {

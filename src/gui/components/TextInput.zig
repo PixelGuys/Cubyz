@@ -4,16 +4,21 @@ const Allocator = std.mem.Allocator;
 const main = @import("root");
 const graphics = main.graphics;
 const draw = graphics.draw;
+const Image = graphics.Image;
 const TextBuffer = graphics.TextBuffer;
+const Texture = graphics.Texture;
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
 
 const gui = @import("../gui.zig");
 const GuiComponent = gui.GuiComponent;
+const Button = GuiComponent.Button;
 
 const TextInput = @This();
 
 const fontSize: f32 = 16;
+
+var texture: Texture = undefined;
 
 pressed: bool = false,
 cursor: ?u32 = null,
@@ -22,6 +27,17 @@ currentString: std.ArrayList(u8),
 textBuffer: TextBuffer,
 maxWidth: f32,
 textSize: Vec2f = undefined,
+
+pub fn __init() !void {
+	texture = Texture.init();
+	const image = try Image.readFromFile(main.threadAllocator, "assets/cubyz/ui/text_input.png");
+	defer image.deinit(main.threadAllocator);
+	try texture.generate(image);
+}
+
+pub fn __deinit() void {
+	texture.deinit();
+}
 
 // TODO: Make this scrollable.
 
@@ -351,7 +367,13 @@ pub fn newline(self: *TextInput, _: main.Key.Modifiers) void {
 	};
 }
 
-pub fn render(self: *TextInput, pos: Vec2f, _: Vec2f, mousePosition: Vec2f) !void {
+pub fn render(self: *TextInput, pos: Vec2f, size: Vec2f, mousePosition: Vec2f) !void {
+	graphics.c.glActiveTexture(graphics.c.GL_TEXTURE0);
+	texture.bind();
+	Button.shader.bind();
+	draw.setColor(0xff000000);
+	draw.customShadedRect(Button.buttonUniforms, pos, size);
+
 	try self.textBuffer.render(pos[0], pos[1], fontSize);
 	if(self.pressed) {
 		self.cursor = self.textBuffer.mousePosToIndex(mousePosition - pos, self.currentString.items.len);
