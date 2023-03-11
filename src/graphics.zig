@@ -62,29 +62,34 @@ pub const draw = struct {
 	}
 
 	/// Returns the previous clip.
-	pub fn setClip(newClip: Vec4i) ?Vec4i {
+	pub fn setClip(clipRect: Vec2f) ?Vec4i {
+		var newClip = Vec4i {
+			@floatToInt(i32, translation[0]),
+			main.Window.height - @floatToInt(i32, translation[1] + clipRect[1]*scale),
+			@floatToInt(i32, clipRect[0]*scale),
+			@floatToInt(i32, clipRect[1]*scale),
+		};
+		if(clip) |oldClip| {
+			if (newClip[0] < oldClip[0]) {
+				newClip[2] -= oldClip[0] - newClip[0];
+				newClip[0] += oldClip[0] - newClip[0];
+			}
+			if (newClip[1] < oldClip[1]) {
+				newClip[3] -= oldClip[1] - newClip[1];
+				newClip[1] += oldClip[1] - newClip[1];
+			}
+			if (newClip[0] + newClip[2] > oldClip[0] + oldClip[2]) {
+				newClip[2] -= (newClip[0] + newClip[2]) - (oldClip[0] + oldClip[2]);
+			}
+			if (newClip[1] + newClip[3] > oldClip[1] + oldClip[3]) {
+				newClip[3] -= (newClip[1] + newClip[3]) - (oldClip[1] + oldClip[3]);
+			}
+		} else {
+			c.glEnable(c.GL_SCISSOR_TEST);
+		}
+		c.glScissor(newClip[0], newClip[1], newClip[2], newClip[3]);
 		const oldClip = clip;
 		clip = newClip;
-		var clipRef: *Vec4i = &clip.?;
-		if(oldClip == null) {
-			c.glEnable(c.GL_SCISSOR_TEST);
-		} else {
-			if (clipRef.x < oldClip.x) {
-				clipRef.z -= oldClip.x - clipRef.x;
-				clipRef.x += oldClip.x - clipRef.x;
-			}
-			if (clipRef.y < oldClip.y) {
-				clipRef.w -= oldClip.y - clipRef.y;
-				clipRef.y += oldClip.y - clipRef.y;
-			}
-			if (clipRef.x + clipRef.z > oldClip.x + oldClip.z) {
-				clipRef.z -= (clipRef.x + clipRef.z) - (oldClip.x + oldClip.z);
-			}
-			if (clipRef.y + clipRef.w > oldClip.y + oldClip.w) {
-				clipRef.w -= (clipRef.y + clipRef.w) - (oldClip.y + oldClip.w);
-			}
-		}
-		c.glScissor(clipRef.x, clipRef.y, clipRef.z, clipRef.w);
 		return oldClip;
 	}
 
@@ -92,7 +97,7 @@ pub const draw = struct {
 	pub fn restoreClip(previousClip: ?Vec4i) void {
 		clip = previousClip;
 		if (clip) |clipRef| {
-			c.glScissor(clipRef.x, clipRef.y, clipRef.z, clipRef.w);
+			c.glScissor(clipRef[0], clipRef[1], clipRef[2], clipRef[3]);
 		} else {
 			c.glDisable(c.GL_SCISSOR_TEST);
 		}
@@ -668,6 +673,16 @@ pub const TextBuffer = struct {
 		var lastSpaceIndex: u32 = 0;
 		for(self.glyphs, 0..) |glyph, i| {
 			lineWidth += glyph.x_advance;
+			if(glyph.character == ' ') {
+				lastSpaceWidth = lineWidth;
+				lastSpaceIndex = @intCast(u32, i+1);
+			}
+			if(glyph.character == '\n') {
+				try self.lineBreaks.append(.{.index = @intCast(u32, i+1), .width = lineWidth - spaceCharacterWidth});
+				lineWidth = 0;
+				lastSpaceIndex = 0;
+				lastSpaceWidth = 0;
+			}
 			if(lineWidth > scaledMaxWidth) {
 				if(lastSpaceIndex != 0) {
 					lineWidth -= lastSpaceWidth;
@@ -680,16 +695,6 @@ pub const TextBuffer = struct {
 					lastSpaceIndex = 0;
 					lastSpaceWidth = 0;
 				}
-			}
-			if(glyph.character == ' ') {
-				lastSpaceWidth = lineWidth;
-				lastSpaceIndex = @intCast(u32, i+1);
-			}
-			if(glyph.character == '\n') {
-				try self.lineBreaks.append(.{.index = @intCast(u32, i+1), .width = lineWidth - spaceCharacterWidth});
-				lineWidth = 0;
-				lastSpaceIndex = 0;
-				lastSpaceWidth = 0;
 			}
 		}
 		self.width = maxLineWidth;

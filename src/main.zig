@@ -421,12 +421,12 @@ pub fn main() !void {
 	var gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe=false}){};
 	threadAllocator = gpa.allocator();
 	defer if(gpa.deinit()) {
-		@panic("Memory leak");
+		std.log.err("Memory leak", .{});
 	};
 	var global_gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe=true}){};
 	globalAllocator = global_gpa.allocator();
 	defer if(global_gpa.deinit()) {
-		@panic("Memory leak");
+		std.log.err("Memory leak", .{});
 	};
 
 	// init logging.
