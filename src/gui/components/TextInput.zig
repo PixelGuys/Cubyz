@@ -430,6 +430,7 @@ pub fn render(self: *TextInput, pos: Vec2f, size: Vec2f, mousePosition: Vec2f) !
 	var textPos = Vec2f{border, border};
 	if(self.textSize[1] > self.maxHeight - 2*border) {
 		const diff = self.textSize[1] - (self.maxHeight - 2*border);
+		self.scrollBar.scroll(-main.Window.scrollOffset*32/diff);
 		textPos[1] -= diff*self.scrollBar.currentState;
 		try self.scrollBar.render(.{size[0] - self.scrollBarSize[0] - border, border}, self.scrollBarSize, mousePosition - pos);
 	}

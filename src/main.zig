@@ -194,6 +194,7 @@ pub const Window = struct {
 	pub var height: u31 = 720;
 	var window: *c.GLFWwindow = undefined;
 	pub var grabbed: bool = false;
+	pub var scrollOffset: f32 = 0;
 	const GLFWCallbacks = struct {
 		fn errorCallback(errorCode: c_int, description: [*c]const u8) callconv(.C) void {
 			std.log.err("GLFW Error({}): {s}", .{errorCode, description});
@@ -306,6 +307,10 @@ pub const Window = struct {
 				}
 			}
 		}
+		fn scroll(_ : ?*c.GLFWwindow, xOffset: f64, yOffset: f64) callconv(.C) void {
+			_ = xOffset;
+			scrollOffset += @floatCast(f32, yOffset);
+		}
 		fn glDebugOutput(_: c_uint, _: c_uint, _: c_uint, severity: c_uint, length: c_int, message: [*c]const u8, _: ?*const anyopaque) callconv(.C) void {
 			if(severity == c.GL_DEBUG_SEVERITY_HIGH) { // TODO: Capture the stack traces.
 				std.log.err("OpenGL {}:{s}", .{severity, message[0..@intCast(usize, length)]});
@@ -373,6 +378,7 @@ pub const Window = struct {
 		_ = c.glfwSetFramebufferSizeCallback(window, GLFWCallbacks.framebufferSize);
 		_ = c.glfwSetCursorPosCallback(window, GLFWCallbacks.cursorPosition);
 		_ = c.glfwSetMouseButtonCallback(window, GLFWCallbacks.mouseButton);
+		_ = c.glfwSetScrollCallback(window, GLFWCallbacks.scroll);
 
 		c.glfwMakeContextCurrent(window);
 
@@ -392,6 +398,11 @@ pub const Window = struct {
 	fn deinit() void {
 		c.glfwDestroyWindow(window);
 		c.glfwTerminate();
+	}
+
+	fn handleEvents() void {
+		scrollOffset = 0;
+		c.glfwPollEvents();
 	}
 
 	var oldX: c_int = 0;
@@ -470,7 +481,7 @@ pub fn main() !void {
 			}
 		}
 		c.glfwSwapBuffers(Window.window);
-		c.glfwPollEvents();
+		Window.handleEvents();
 
 		{ // Render the GUI
 			c.glClearColor(0.5, 1, 1, 1);

@@ -75,6 +75,11 @@ fn updateValueFromButtonPos(self: *ScrollBar, size: Vec2f) void {
 	}
 }
 
+pub fn scroll(self: *ScrollBar, offset: f32) void {
+	self.currentState += offset;
+	self.currentState = @min(1, @max(0, self.currentState));
+}
+
 pub fn mainButtonPressed(self: *ScrollBar, pos: Vec2f, _: Vec2f, mousePosition: Vec2f) void {
 	if(GuiComponent.contains(self.buttonPos, self.buttonSize, mousePosition - pos)) {
 		self.button.mainButtonPressed(self.buttonPos, self.buttonSize, mousePosition - pos);
