@@ -47,9 +47,21 @@ pub fn add(self: *VerticalList, other: GuiComponent) Allocator.Error!void {
 	self.maxWidth = @max(self.maxWidth, added.pos[0] + added.size[0]);
 }
 
-pub fn update(self: *VerticalList, _: Vec2f, _: Vec2f) void {
+pub fn updateSelected(self: *VerticalList, _: Vec2f, _: Vec2f) void {
 	for(self.children.items) |*child| {
-		child.update();
+		child.updateSelected();
+	}
+}
+
+pub fn updateHovered(self: *VerticalList, pos: Vec2f, _: Vec2f, mousePosition: Vec2f) void {
+	var i: usize = self.children.items.len;
+	while(i != 0) {
+		i -= 1;
+		const child = &self.children.items[i];
+		if(GuiComponent.contains(child.pos + pos, child.size, mousePosition)) {
+			child.updateHovered(mousePosition - pos);
+			break;
+		}
 	}
 }
 

@@ -34,6 +34,7 @@ pub var buttonUniforms: struct {
 } = undefined;
 
 pressed: bool = false,
+hovered: bool = false,
 onAction: *const fn() void,
 textSize: Vec2f,
 label: Label,
@@ -74,6 +75,10 @@ pub fn deinit(self: Button) void {
 	self.label.deinit();
 }
 
+pub fn updateHovered(self: *Button, _: Vec2f, _: Vec2f, _: Vec2f) void {
+	self.hovered = true;
+}
+
 pub fn mainButtonPressed(self: *Button, _: Vec2f, _: Vec2f, _: Vec2f) void {
 	self.pressed = true;
 }
@@ -95,10 +100,11 @@ pub fn render(self: *Button, pos: Vec2f, size: Vec2f, mousePosition: Vec2f) !voi
 	if(self.pressed) {
 		draw.setColor(0xff000000);
 		graphics.c.glUniform1i(buttonUniforms.pressed, 1);
-	} else if(GuiComponent.contains(pos, size, mousePosition)) {
+	} else if(GuiComponent.contains(pos, size, mousePosition) and self.hovered) {
 		draw.setColor(0xff000040);
 	} else {
 		draw.setColor(0xff000000);
+		self.hovered = false;
 	}
 	draw.customShadedRect(buttonUniforms, pos, size);
 	graphics.c.glUniform1i(buttonUniforms.pressed, 0);

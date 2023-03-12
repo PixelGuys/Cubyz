@@ -247,7 +247,18 @@ pub fn updateWindowPositions() void {
 
 pub fn updateAndRenderGui() !void {
 	if(selectedWindow) |selected| {
-		try selected.update();
+		try selected.updateSelected();
+	}
+	const mousePos = main.Window.getMousePosition();
+	var i: usize = openWindows.items.len;
+	while(i != 0) {
+		i -= 1;
+		const window: *GuiWindow = openWindows.items[i];
+		const scale = @floor(settings.guiScale*window.scale); // TODO
+		if(GuiComponent.contains(window.pos, window.size*@splat(2, scale), mousePos)) {
+			try window.updateHovered();
+			break;
+		}
 	}
 	for(openWindows.items) |window| {
 		try window.render();

@@ -15,16 +15,11 @@ pub fn init() !void {
 		.title = "Health Bar",
 		.id = "cubyz:healthbar",
 		.renderFn = &render,
-		.updateFn = &update,
 		.components = &[_]GuiComponent{},
 	};
 	try gui.addWindow(&healthbarWindow, true);
 }
 
 pub fn render() Allocator.Error!void {
-
-}
-
-pub fn update() Allocator.Error!void {
 
 }

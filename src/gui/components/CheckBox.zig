@@ -28,6 +28,7 @@ var textureEmpty: Texture = undefined;
 
 state: bool = false,
 pressed: bool = false,
+hovered: bool = false,
 onAction: *const fn(bool) void,
 textSize: Vec2f,
 label: Label,
@@ -68,6 +69,10 @@ pub fn deinit(self: CheckBox) void {
 	self.label.deinit();
 }
 
+pub fn updateHovered(self: *CheckBox, _: Vec2f, _: Vec2f, _: Vec2f) void {
+	self.hovered = true;
+}
+
 pub fn mainButtonPressed(self: *CheckBox, _: Vec2f, _: Vec2f, _: Vec2f) void {
 	self.pressed = true;
 }
@@ -94,9 +99,10 @@ pub fn render(self: *CheckBox, pos: Vec2f, size: Vec2f, mousePosition: Vec2f) !v
 	if(self.pressed) {
 		draw.setColor(0xff000000);
 		graphics.c.glUniform1i(Button.buttonUniforms.pressed, 1);
-	} else if(GuiComponent.contains(pos, size, mousePosition)) {
+	} else if(GuiComponent.contains(pos, size, mousePosition) and self.hovered) {
 		draw.setColor(0xff000040);
 	} else {
+		self.hovered = false;
 		draw.setColor(0xff000000);
 	}
 	draw.customShadedRect(Button.buttonUniforms, pos + Vec2f{0, size[1]/2 - boxSize/2}, @splat(2, boxSize));

@@ -41,13 +41,26 @@ pub fn deinit(self: *GuiComponent) void {
 	}
 }
 
-pub fn update(self: *GuiComponent) void {
+pub fn updateSelected(self: *GuiComponent) void {
 	switch(self.impl) {
 		inline else => |*impl| {
 			// Only call the function if it exists:
 			inline for(@typeInfo(@TypeOf(impl.*)).Struct.decls) |decl| {
-				if(comptime std.mem.eql(u8, decl.name, "update")) {
-					impl.update(self.pos, self.size);
+				if(comptime std.mem.eql(u8, decl.name, "updateSelected")) {
+					impl.updateSelected(self.pos, self.size);
+				}
+			}
+		}
+	}
+}
+
+pub fn updateHovered(self: *GuiComponent, mousePosition: Vec2f) void {
+	switch(self.impl) {
+		inline else => |*impl| {
+			// Only call the function if it exists:
+			inline for(@typeInfo(@TypeOf(impl.*)).Struct.decls) |decl| {
+				if(comptime std.mem.eql(u8, decl.name, "updateHovered")) {
+					impl.updateHovered(self.pos, self.size, mousePosition);
 				}
 			}
 		}

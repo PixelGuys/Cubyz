@@ -17,7 +17,6 @@ pub fn init() !void {
 		.title = "Hotbar",
 		.id = "cubyz:hotbar",
 		.renderFn = &render,
-		.updateFn = &update,
 		.components = &[_]GuiComponent{},
 	};
 	try gui.addWindow(&hotbarWindow, true);
@@ -26,7 +25,6 @@ pub fn init() !void {
 		.title = "Hotbar2",
 		.id = "cubyz:hotbar2",
 		.renderFn = &render,
-		.updateFn = &update,
 		.components = &[_]GuiComponent{},
 	};
 	try gui.addWindow(&hotbarWindow2, true);
@@ -35,16 +33,11 @@ pub fn init() !void {
 		.title = "Hotbar3",
 		.id = "cubyz:hotbar3",
 		.renderFn = &render,
-		.updateFn = &update,
 		.components = &[_]GuiComponent{},
 	};
 	try gui.addWindow(&hotbarWindow3, true);
 }
 
 pub fn render() Allocator.Error!void {
-
-}
-
-pub fn update() Allocator.Error!void {
 
 }

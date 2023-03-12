@@ -60,7 +60,9 @@ components: []GuiComponent,
 /// Called every frame.
 renderFn: *const fn()Allocator.Error!void = &defaultErrorFunction,
 /// Called every frame for the currently selected window.
-updateFn: *const fn()Allocator.Error!void = &defaultErrorFunction,
+updateSelectedFn: *const fn()Allocator.Error!void = &defaultErrorFunction,
+/// Called every frame for the currently hovered window.
+updateHoveredFn: *const fn()Allocator.Error!void = &defaultErrorFunction,
 
 onOpenFn: *const fn()Allocator.Error!void = &defaultErrorFunction,
 
@@ -276,8 +278,8 @@ fn positionRelativeToConnectedWindow(self: *GuiWindow, other: *GuiWindow, i: usi
 	}
 }
 
-pub fn update(self: *GuiWindow) !void {
-	try self.updateFn();
+pub fn updateSelected(self: *GuiWindow) !void {
+	try self.updateSelectedFn();
 	const scale = @floor(settings.guiScale*self.scale); // TODO
 	const mousePosition = main.Window.getMousePosition();
 	const windowSize = main.Window.getWindowSize();
@@ -298,7 +300,24 @@ pub fn update(self: *GuiWindow) !void {
 		gui.updateWindowPositions();
 	}
 	for(self.components) |*component| {
-		component.update();
+		component.updateSelected();
+	}
+}
+
+pub fn updateHovered(self: *GuiWindow) !void {
+	try self.updateHoveredFn();
+	const scale = @floor(settings.guiScale*self.scale); // TODO
+	var mousePosition = main.Window.getMousePosition();
+	mousePosition -= self.pos;
+	mousePosition /= @splat(2, scale);
+	var i: usize = self.components.len;
+	while(i != 0) {
+		i -= 1;
+		const component = &self.components[i];
+		if(GuiComponent.contains(component.pos, component.size, mousePosition)) {
+			component.updateHovered(mousePosition);
+			break;
+		}
 	}
 }
 

@@ -70,6 +70,19 @@ pub fn deinit(self: TextInput) void {
 	self.scrollBar.deinit();
 }
 
+pub fn updateHovered(self: *TextInput, pos: Vec2f, size: Vec2f, mousePosition: Vec2f) void {
+	if(self.textSize[1] > self.maxHeight - 2*border) {
+		const diff = self.textSize[1] - (self.maxHeight - 2*border);
+		self.scrollBar.scroll(-main.Window.scrollOffset*32/diff);
+	}
+	if(self.textSize[1] > self.maxHeight - 2*border) {
+		const scrollBarPos = Vec2f{size[0] - border - scrollBarWidth, border};
+		if(GuiComponent.contains(scrollBarPos, self.scrollBarSize, mousePosition - pos)) {
+			self.scrollBar.updateHovered(scrollBarPos, self.scrollBarSize, mousePosition - pos);
+		}
+	}
+}
+
 pub fn mainButtonPressed(self: *TextInput, pos: Vec2f, size: Vec2f, mousePosition: Vec2f) void {
 	if(self.textSize[1] > self.maxHeight - 2*border) {
 		const scrollBarPos = Vec2f{size[0] - border - scrollBarWidth, border};
@@ -430,7 +443,6 @@ pub fn render(self: *TextInput, pos: Vec2f, size: Vec2f, mousePosition: Vec2f) !
 	var textPos = Vec2f{border, border};
 	if(self.textSize[1] > self.maxHeight - 2*border) {
 		const diff = self.textSize[1] - (self.maxHeight - 2*border);
-		self.scrollBar.scroll(-main.Window.scrollOffset*32/diff);
 		textPos[1] -= diff*self.scrollBar.currentState;
 		try self.scrollBar.render(.{size[0] - self.scrollBarSize[0] - border, border}, self.scrollBarSize, mousePosition - pos);
 	}
