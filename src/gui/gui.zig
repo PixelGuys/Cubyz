@@ -128,7 +128,7 @@ pub fn closeWindow(window: *GuiWindow) void {
 	}
 	for(openWindows.items, 0..) |_openWindow, i| {
 		if(_openWindow == window) {
-			openWindows.swapRemove(i);
+			_ = openWindows.swapRemove(i);
 		}
 	}
 	window.onCloseFn();
