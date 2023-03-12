@@ -26,6 +26,8 @@ pub var selectedTextInput: ?*TextInput = null;
 
 pub var allocator: Allocator = undefined;
 
+pub var scale: f32 = undefined;
+
 pub fn init(_allocator: Allocator) !void {
 	allocator = _allocator;
 	windowList = std.ArrayList(*GuiWindow).init(allocator);
@@ -55,6 +57,19 @@ pub fn deinit() void {
 	ScrollBar.__deinit();
 	Slider.__deinit();
 	TextInput.__deinit();
+}
+
+pub fn updateGuiScale() void {
+	if(settings.guiScale) |guiScale| {
+		scale = guiScale;
+	} else {
+		const windowSize = main.Window.getWindowSize();
+		const screenWidth = @min(windowSize[0], windowSize[1]*16/9);
+		scale = @floor(screenWidth/640.0 + 0.2);
+		if(scale < 1) {
+			scale = 0.5;
+		}
+	}
 }
 
 pub fn addWindow(window: *GuiWindow, isHudWindow: bool) !void {
@@ -87,8 +102,6 @@ pub fn openWindow(id: []const u8) Allocator.Error!void {
 			}
 			window.showTitleBar = true;
 			try openWindows.append(window);
-			window.pos = .{0, 0};
-			window.size = window.contentSize;
 			try window.onOpenFn();
 			selectedWindow = null;
 			return;
@@ -198,16 +211,16 @@ pub fn mainButtonPressed() void {
 	selectedTextInput = null;
 	var selectedI: usize = 0;
 	for(openWindows.items, 0..) |window, i| {
-		var mousePosition = main.Window.getMousePosition();
+		var mousePosition = main.Window.getMousePosition()/@splat(2, scale);
 		mousePosition -= window.pos;
-		mousePosition /= @splat(2, window.scale*settings.guiScale);
 		if(@reduce(.And, mousePosition >= Vec2f{0, 0}) and @reduce(.And, mousePosition < window.size)) {
 			selectedWindow = window;
 			selectedI = i;
 		}
 	}
 	if(selectedWindow) |_selectedWindow| {
-		_selectedWindow.mainButtonPressed();
+		const mousePosition = main.Window.getMousePosition()/@splat(2, scale);
+		_selectedWindow.mainButtonPressed(mousePosition);
 		_ = openWindows.orderedRemove(selectedI);
 		openWindows.appendAssumeCapacity(_selectedWindow);
 	}
@@ -217,9 +230,8 @@ pub fn mainButtonReleased() void {
 	var oldWindow = selectedWindow;
 	selectedWindow = null;
 	for(openWindows.items) |window| {
-		var mousePosition = main.Window.getMousePosition();
+		var mousePosition = main.Window.getMousePosition()/@splat(2, scale);
 		mousePosition -= window.pos;
-		mousePosition /= @splat(2, window.scale*settings.guiScale);
 		if(@reduce(.And, mousePosition >= Vec2f{0, 0}) and @reduce(.And, mousePosition < window.size)) {
 			selectedWindow = window;
 		}
@@ -228,7 +240,8 @@ pub fn mainButtonReleased() void {
 		selectedWindow = null;
 	}
 	if(oldWindow) |_oldWindow| {
-		_oldWindow.mainButtonReleased();
+		const mousePosition = main.Window.getMousePosition()/@splat(2, scale);
+		_oldWindow.mainButtonReleased(mousePosition);
 	}
 }
 
@@ -246,21 +259,22 @@ pub fn updateWindowPositions() void {
 }
 
 pub fn updateAndRenderGui() !void {
+	const mousePos = main.Window.getMousePosition()/@splat(2, scale);
 	if(selectedWindow) |selected| {
-		try selected.updateSelected();
+		try selected.updateSelected(mousePos);
 	}
-	const mousePos = main.Window.getMousePosition();
 	var i: usize = openWindows.items.len;
 	while(i != 0) {
 		i -= 1;
 		const window: *GuiWindow = openWindows.items[i];
-		const scale = @floor(settings.guiScale*window.scale); // TODO
-		if(GuiComponent.contains(window.pos, window.size*@splat(2, scale), mousePos)) {
-			try window.updateHovered();
+		if(GuiComponent.contains(window.pos, window.size, mousePos)) {
+			try window.updateHovered(mousePos);
 			break;
 		}
 	}
 	for(openWindows.items) |window| {
-		try window.render();
+		const oldScale = draw.setScale(scale);
+		defer draw.restoreScale(oldScale);
+		try window.render(mousePos);
 	}
 }

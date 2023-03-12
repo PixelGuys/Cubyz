@@ -92,13 +92,23 @@ pub fn mainButtonPressed(self: *TextInput, pos: Vec2f, size: Vec2f, mousePositio
 		}
 	}
 	self.cursor = null;
-	self.selectionStart = self.textBuffer.mousePosToIndex(mousePosition - pos, self.currentString.items.len);
+	var textPos = Vec2f{border, border};
+	if(self.textSize[1] > self.maxHeight - 2*border) {
+		const diff = self.textSize[1] - (self.maxHeight - 2*border);
+		textPos[1] -= diff*self.scrollBar.currentState;
+	}
+	self.selectionStart = self.textBuffer.mousePosToIndex(mousePosition - textPos - pos, self.currentString.items.len);
 	self.pressed = true;
 }
 
 pub fn mainButtonReleased(self: *TextInput, pos: Vec2f, size: Vec2f, mousePosition: Vec2f) void {
 	if(self.pressed) {
-		self.cursor = self.textBuffer.mousePosToIndex(mousePosition - pos, self.currentString.items.len);
+		var textPos = Vec2f{border, border};
+		if(self.textSize[1] > self.maxHeight - 2*border) {
+			const diff = self.textSize[1] - (self.maxHeight - 2*border);
+			textPos[1] -= diff*self.scrollBar.currentState;
+		}
+		self.cursor = self.textBuffer.mousePosToIndex(mousePosition - textPos - pos, self.currentString.items.len);
 		if(self.cursor == self.selectionStart) {
 			self.selectionStart = null;
 		}
@@ -448,7 +458,7 @@ pub fn render(self: *TextInput, pos: Vec2f, size: Vec2f, mousePosition: Vec2f) !
 	}
 	try self.textBuffer.render(textPos[0], textPos[1], fontSize);
 	if(self.pressed) {
-		self.cursor = self.textBuffer.mousePosToIndex(mousePosition - pos, self.currentString.items.len);
+		self.cursor = self.textBuffer.mousePosToIndex(mousePosition - textPos - pos, self.currentString.items.len);
 	}
 	if(self.cursor) |cursor| {
 		var cursorPos = textPos + self.textBuffer.indexToCursorPos(cursor);

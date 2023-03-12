@@ -102,9 +102,9 @@ pub fn render(self: *CheckBox, pos: Vec2f, size: Vec2f, mousePosition: Vec2f) !v
 	} else if(GuiComponent.contains(pos, size, mousePosition) and self.hovered) {
 		draw.setColor(0xff000040);
 	} else {
-		self.hovered = false;
 		draw.setColor(0xff000000);
 	}
+	self.hovered = false;
 	draw.customShadedRect(Button.buttonUniforms, pos + Vec2f{0, size[1]/2 - boxSize/2}, @splat(2, boxSize));
 	graphics.c.glUniform1i(Button.buttonUniforms.pressed, 0);
 	const textPos = pos + Vec2f{boxSize/2, 0} + size/@splat(2, @as(f32, 2.0)) - self.textSize/@splat(2, @as(f32, 2.0));

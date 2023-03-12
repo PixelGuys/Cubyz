@@ -23,8 +23,6 @@ const fontSize: f32 = 16;
 
 var texture: Texture = undefined;
 
-// TODO: Scroll wheel support.
-
 currentState: f32,
 button: Button,
 buttonSize: Vec2f,

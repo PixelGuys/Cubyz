@@ -254,6 +254,7 @@ pub const Window = struct {
 			width = @intCast(u31, newWidth);
 			height = @intCast(u31, newHeight);
 			renderer.updateViewport(width, height, settings.fov);
+			gui.updateGuiScale();
 			gui.updateWindowPositions();
 		}
 		// Mouse deltas are averaged over multiple frames using a circular buffer:
@@ -472,6 +473,7 @@ pub fn main() !void {
 	c.glCullFace(c.GL_BACK);
 	c.glEnable(c.GL_BLEND);
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
+	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
 
 	while(c.glfwWindowShouldClose(Window.window) == 0) {
 		{ // Check opengl errors:
@@ -538,7 +540,7 @@ pub fn main() !void {
 	c.glCullFace(c.GL_BACK);
 	c.glEnable(c.GL_BLEND);
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
-	Window.GLFWCallbacks.framebufferSize(null, Window.width, Window.height);
+	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
 	var lastTime = std.time.milliTimestamp();
 	var buffer = try graphics.TextBuffer.init(threadAllocator, "Time to wrap some lines! a⃗ a⃗⃗ _a#ff0000⃗#ffff00⃗#00ff00⃗#00ffff⃗_#0000ff⃗#ff00ff⃗#000000 ⌬  __*italic*__ _**bold**_ ___***everything***___ #ff0000red#00ff00green#0000ffblue", .{}, true);
 	defer buffer.deinit();

@@ -33,7 +33,7 @@ pub var playerName: []const u8 = "quanturmdoelvloper";
 
 pub var lastUsedIPAddress: []const u8 = "127.0.0.1";
 
-pub var guiScale: f32 = 2;
+pub var guiScale: ?f32 = null;
 
 
 pub fn init() !void {

@@ -151,6 +151,13 @@ pub const JsonElement = union(JsonType) {
 					@compileError("Unknown value type.");
 				}
 			},
+			.Optional => {
+				if(value) |val| {
+					return createElementFromRandomType(val);
+				} else {
+					return JsonElement{.JsonNull={}};
+				}
+			},
 			else => {
 				@compileError("Unknown value type.");
 			},
