@@ -74,6 +74,9 @@ var selfPositionWhenGrabbed: Vec2f = undefined;
 
 var backgroundTexture: Texture = undefined;
 var titleTexture: Texture = undefined;
+var closeTexture: Texture = undefined;
+var zoomInTexture: Texture = undefined;
+var zoomOutTexture: Texture = undefined;
 var shader: Shader = undefined;
 var windowUniforms: struct {
 	screen: c_int,
@@ -93,6 +96,9 @@ pub fn __init() !void {
 
 	backgroundTexture = try Texture.initFromFile("assets/cubyz/ui/window_background.png");
 	titleTexture = try Texture.initFromFile("assets/cubyz/ui/window_title.png");
+	closeTexture = try Texture.initFromFile("assets/cubyz/ui/window_close.png");
+	zoomInTexture = try Texture.initFromFile("assets/cubyz/ui/window_zoom_in.png");
+	zoomOutTexture = try Texture.initFromFile("assets/cubyz/ui/window_zoom_out.png");
 }
 
 pub fn __deinit() void {
@@ -122,7 +128,35 @@ pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) void {
 	}
 }
 
-pub fn mainButtonReleased(self: *const GuiWindow, mousePosition: Vec2f) void {
+pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
+	if(grabPosition != null) {
+		if(mousePosition[0] - self.pos[0] > self.size[0] - 54*self.scale) {
+			if(mousePosition[0] - self.pos[0] > self.size[0] - 36*self.scale) {
+				if(mousePosition[0] - self.pos[0] > self.size[0] - 18*self.scale) {
+					// Close
+					gui.closeWindow(self);
+					return;
+				} else {
+					// Zoom out
+					if(self.scale > 1) {
+						self.scale -= 0.5;
+					} else {
+						self.scale -= 0.25;
+					}
+					self.scale = @max(self.scale, 0.25);
+					gui.updateWindowPositions();
+				}
+			} else {
+				// Zoom in
+				if(self.scale >= 1) {
+					self.scale += 0.5;
+				} else {
+					self.scale += 0.25;
+				}
+				gui.updateWindowPositions();
+			}
+		}
+	}
 	grabPosition = null;
 	for(self.components) |*component| {
 		component.mainButtonReleased((mousePosition - self.pos)/@splat(2, self.scale));
@@ -407,6 +441,10 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) !void {
 			draw.setColor(0xff000000);
 		}
 		draw.customShadedRect(windowUniforms, .{0, 0}, .{self.size[0]/self.scale, 16});
+		draw.setColor(0xffffffff);
+		closeTexture.render(.{self.size[0]/self.scale - 18, 0}, .{16, 16});
+		zoomOutTexture.render(.{self.size[0]/self.scale - 36, 0}, .{16, 16});
+		zoomInTexture.render(.{self.size[0]/self.scale - 54, 0}, .{16, 16});
 	}
 	draw.restoreTranslation(oldTranslation);
 	draw.restoreScale(oldScale);

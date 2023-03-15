@@ -322,7 +322,7 @@ pub const draw = struct {
 	var imageShader: Shader = undefined;
 
 	fn initImage() void {
-		imageShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Circle.vs", "assets/cubyz/shaders/graphics/Circle.fs", &imageUniforms) catch Shader{.id = 0};
+		imageShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Image.vs", "assets/cubyz/shaders/graphics/Image.fs", &imageUniforms) catch Shader{.id = 0};
 	}
 
 	fn deinitImage() void {
@@ -958,12 +958,11 @@ pub const Shader = struct {
 			return err;
 		};
 		defer main.threadAllocator.free(source);
-		const ref_buffer = [_] [*c]u8 {@ptrCast([*c]u8, source.ptr)};
 		const shader = c.glCreateShader(shader_stage);
 		defer c.glDeleteShader(shader);
 		
-		var sourceLen: c_int = @intCast(c_int, source.len);
-		c.glShaderSource(shader, 1, @ptrCast([*c]const [*c]const u8, &ref_buffer[0]), &sourceLen);
+		const sourceLen = @intCast(c_int, source.len);
+		c.glShaderSource(shader, 1, &source.ptr, &sourceLen);
 		
 		c.glCompileShader(shader);
 
@@ -1394,6 +1393,12 @@ pub const Texture = struct {
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
+	}
+
+	pub fn render(self: Texture, pos: Vec2f, dim: Vec2f) void {
+		c.glActiveTexture(c.GL_TEXTURE0);
+		self.bind();
+		draw.boundImage(pos, dim);
 	}
 };
 

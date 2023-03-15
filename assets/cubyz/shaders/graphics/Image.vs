@@ -15,7 +15,7 @@ uniform int color;
 void main() {
 
 	// Convert to opengl coordinates:
-	vec2 position_percentage = (start + vertex_pos*size)/screen;
+	vec2 position_percentage = (start + vec2(vertex_pos.x*size.x, size.y - vertex_pos.y*size.y))/screen;
 	
 	vec2 position = vec2(position_percentage.x, -position_percentage.y)*2+vec2(-1, 1);
 	
