@@ -45,18 +45,16 @@ var deferredUniforms: struct {
 } = undefined;
 
 pub fn init() !void {
-	fogShader = try Shader.create("assets/cubyz/shaders/fog_vertex.vs", "assets/cubyz/shaders/fog_fragment.fs");
-	fogUniforms = fogShader.bulkGetUniformLocation(@TypeOf(fogUniforms));
-	deferredRenderPassShader = try Shader.create("assets/cubyz/shaders/deferred_render_pass.vs", "assets/cubyz/shaders/deferred_render_pass.fs");
-	deferredUniforms = deferredRenderPassShader.bulkGetUniformLocation(@TypeOf(deferredUniforms));
+	fogShader = try Shader.initAndGetUniforms("assets/cubyz/shaders/fog_vertex.vs", "assets/cubyz/shaders/fog_fragment.fs", &fogUniforms);
+	deferredRenderPassShader = try Shader.initAndGetUniforms("assets/cubyz/shaders/deferred_render_pass.vs", "assets/cubyz/shaders/deferred_render_pass.fs", &deferredUniforms);
 	buffers.init();
 	try Bloom.init();
 	try MeshSelection.init();
 }
 
 pub fn deinit() void {
-	fogShader.delete();
-	deferredRenderPassShader.delete();
+	fogShader.deinit();
+	deferredRenderPassShader.deinit();
 	buffers.deinit();
 	Bloom.deinit();
 	MeshSelection.deinit();
@@ -399,20 +397,20 @@ const Bloom = struct {
 		buffer1.init(false);
 		buffer2.init(false);
 		extractedBuffer.init(false);
-		firstPassShader = try graphics.Shader.create("assets/cubyz/shaders/bloom/first_pass.vs", "assets/cubyz/shaders/bloom/first_pass.fs");
-		secondPassShader = try graphics.Shader.create("assets/cubyz/shaders/bloom/second_pass.vs", "assets/cubyz/shaders/bloom/second_pass.fs");
-		colorExtractShader = try graphics.Shader.create("assets/cubyz/shaders/bloom/color_extractor.vs", "assets/cubyz/shaders/bloom/color_extractor.fs");
-		scaleShader = try graphics.Shader.create("assets/cubyz/shaders/bloom/scale.vs", "assets/cubyz/shaders/bloom/scale.fs");
+		firstPassShader = try graphics.Shader.init("assets/cubyz/shaders/bloom/first_pass.vs", "assets/cubyz/shaders/bloom/first_pass.fs");
+		secondPassShader = try graphics.Shader.init("assets/cubyz/shaders/bloom/second_pass.vs", "assets/cubyz/shaders/bloom/second_pass.fs");
+		colorExtractShader = try graphics.Shader.init("assets/cubyz/shaders/bloom/color_extractor.vs", "assets/cubyz/shaders/bloom/color_extractor.fs");
+		scaleShader = try graphics.Shader.init("assets/cubyz/shaders/bloom/scale.vs", "assets/cubyz/shaders/bloom/scale.fs");
 	}
 
 	pub fn deinit() void {
 		buffer1.deinit();
 		buffer2.deinit();
 		extractedBuffer.deinit();
-		firstPassShader.delete();
-		secondPassShader.delete();
-		colorExtractShader.delete();
-		scaleShader.delete();
+		firstPassShader.deinit();
+		secondPassShader.deinit();
+		colorExtractShader.deinit();
+		scaleShader.deinit();
 	}
 
 	fn extractImageData() void {
@@ -542,8 +540,7 @@ pub const MeshSelection = struct {
 	var cubeIBO: c_uint = undefined;
 
 	pub fn init() !void {
-		shader = try Shader.create("assets/cubyz/shaders/block_selection_vertex.vs", "assets/cubyz/shaders/block_selection_fragment.fs");
-		uniforms = shader.bulkGetUniformLocation(@TypeOf(uniforms));
+		shader = try Shader.initAndGetUniforms("assets/cubyz/shaders/block_selection_vertex.vs", "assets/cubyz/shaders/block_selection_fragment.fs", &uniforms);
 
 		var rawData = [_]f32 {
 			0, 0, 0,
@@ -584,7 +581,7 @@ pub const MeshSelection = struct {
 	}
 
 	pub fn deinit() void {
-		shader.delete();
+		shader.deinit();
 		c.glDeleteBuffers(1, &cubeIBO);
 		c.glDeleteBuffers(1, &cubeVBO);
 		c.glDeleteVertexArrays(1, &cubeVAO);

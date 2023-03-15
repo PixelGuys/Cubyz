@@ -4,7 +4,6 @@ const Allocator = std.mem.Allocator;
 const main = @import("root");
 const graphics = main.graphics;
 const draw = graphics.draw;
-const Image = graphics.Image;
 const Shader = graphics.Shader;
 const TextBuffer = graphics.TextBuffer;
 const Texture = graphics.Texture;
@@ -34,15 +33,8 @@ textSize: Vec2f,
 label: Label,
 
 pub fn __init() !void {
-	textureChecked = Texture.init();
-	const imageChecked = try Image.readFromFile(main.threadAllocator, "assets/cubyz/ui/checked_box.png");
-	defer imageChecked.deinit(main.threadAllocator);
-	try textureChecked.generate(imageChecked);
-
-	textureEmpty = Texture.init();
-	const imageEmpty = try Image.readFromFile(main.threadAllocator, "assets/cubyz/ui/box.png");
-	defer imageEmpty.deinit(main.threadAllocator);
-	try textureEmpty.generate(imageEmpty);
+	textureChecked = try Texture.initFromFile("assets/cubyz/ui/checked_box.png");
+	textureEmpty = try Texture.initFromFile("assets/cubyz/ui/box.png");
 }
 
 pub fn __deinit() void {

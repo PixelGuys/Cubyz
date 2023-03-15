@@ -97,8 +97,7 @@ pub const ClientEntityManager = struct {
 
 	pub fn init() !void {
 		entities = std.ArrayList(ClientEntity).init(renderer.RenderStructure.allocator); // TODO: Use world allocator.
-		shader = try graphics.Shader.create("assets/cubyz/shaders/entity_vertex.vs", "assets/cubyz/shaders/entity_fragment.fs");
-		uniforms = shader.bulkGetUniformLocation(@TypeOf(uniforms));
+		shader = try graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/entity_vertex.vs", "assets/cubyz/shaders/entity_fragment.fs", &uniforms);
 	}
 
 	pub fn deinit() void {
@@ -106,7 +105,7 @@ pub const ClientEntityManager = struct {
 			ent.deinit(main.globalAllocator);
 		}
 		entities.deinit();
-		shader.delete();
+		shader.deinit();
 	}
 
 	pub fn clear() void {

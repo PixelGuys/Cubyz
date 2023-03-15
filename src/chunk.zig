@@ -401,8 +401,7 @@ pub const meshing = struct {
 	var faceBuffer: graphics.LargeBuffer = undefined;
 
 	pub fn init() !void {
-		shader = try Shader.create("assets/cubyz/shaders/chunks/chunk_vertex.vs", "assets/cubyz/shaders/chunks/chunk_fragment.fs");
-		uniforms = shader.bulkGetUniformLocation(@TypeOf(uniforms));
+		shader = try Shader.initAndGetUniforms("assets/cubyz/shaders/chunks/chunk_vertex.vs", "assets/cubyz/shaders/chunks/chunk_fragment.fs", &uniforms);
 
 		var rawData: [6*3 << (3*chunkShift)]u32 = undefined; // 6 vertices per face, maximum 3 faces/block
 		const lut = [_]u32{0, 1, 2, 2, 1, 3};
@@ -423,7 +422,7 @@ pub const meshing = struct {
 	}
 
 	pub fn deinit() void {
-		shader.delete();
+		shader.deinit();
 		c.glDeleteVertexArrays(1, &vao);
 		c.glDeleteBuffers(1, &vbo);
 		faces.deinit();

@@ -4,7 +4,6 @@ const Allocator = std.mem.Allocator;
 const main = @import("root");
 const graphics = main.graphics;
 const draw = graphics.draw;
-const Image = graphics.Image;
 const Shader = graphics.Shader;
 const TextBuffer = graphics.TextBuffer;
 const Texture = graphics.Texture;
@@ -40,18 +39,14 @@ textSize: Vec2f,
 label: Label,
 
 pub fn __init() !void {
-	shader = try Shader.create("assets/cubyz/shaders/ui/button.vs", "assets/cubyz/shaders/ui/button.fs");
-	buttonUniforms = shader.bulkGetUniformLocation(@TypeOf(buttonUniforms));
+	shader = try Shader.initAndGetUniforms("assets/cubyz/shaders/ui/button.vs", "assets/cubyz/shaders/ui/button.fs", &buttonUniforms);
 	shader.bind();
 	graphics.c.glUniform1i(buttonUniforms.image, 0);
-	texture = Texture.init();
-	const image = try Image.readFromFile(main.threadAllocator, "assets/cubyz/ui/button.png");
-	defer image.deinit(main.threadAllocator);
-	try texture.generate(image);
+	texture = try Texture.initFromFile("assets/cubyz/ui/button.png");
 }
 
 pub fn __deinit() void {
-	shader.delete();
+	shader.deinit();
 	texture.deinit();
 }
 

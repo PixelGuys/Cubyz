@@ -4,7 +4,6 @@ const Allocator = std.mem.Allocator;
 const main = @import("root");
 const graphics = main.graphics;
 const draw = graphics.draw;
-const Image = graphics.Image;
 const Shader = graphics.Shader;
 const Texture = graphics.Texture;
 const settings = main.settings;
@@ -88,24 +87,16 @@ var windowUniforms: struct {
 } = undefined;
 
 pub fn __init() !void {
-	shader = try Shader.create("assets/cubyz/shaders/ui/button.vs", "assets/cubyz/shaders/ui/button.fs");
-	windowUniforms = shader.bulkGetUniformLocation(@TypeOf(windowUniforms));
+	shader = try Shader.initAndGetUniforms("assets/cubyz/shaders/ui/button.vs", "assets/cubyz/shaders/ui/button.fs", &windowUniforms);
 	shader.bind();
 	graphics.c.glUniform1i(windowUniforms.image, 0);
 
-	backgroundTexture = Texture.init();
-	const backgroundImage = try Image.readFromFile(gui.allocator, "assets/cubyz/ui/window_background.png");
-	defer backgroundImage.deinit(gui.allocator);
-	try backgroundTexture.generate(backgroundImage);
-
-	titleTexture = Texture.init();
-	const titleImage = try Image.readFromFile(gui.allocator, "assets/cubyz/ui/window_title.png");
-	defer titleImage.deinit(gui.allocator);
-	try titleTexture.generate(titleImage);
+	backgroundTexture = try Texture.initFromFile("assets/cubyz/ui/window_background.png");
+	titleTexture = try Texture.initFromFile("assets/cubyz/ui/window_title.png");
 }
 
 pub fn __deinit() void {
-	shader.delete();
+	shader.deinit();
 	backgroundTexture.deinit();
 	titleTexture.deinit();
 }

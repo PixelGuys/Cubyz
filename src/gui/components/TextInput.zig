@@ -4,7 +4,6 @@ const Allocator = std.mem.Allocator;
 const main = @import("root");
 const graphics = main.graphics;
 const draw = graphics.draw;
-const Image = graphics.Image;
 const TextBuffer = graphics.TextBuffer;
 const Texture = graphics.Texture;
 const vec = main.vec;
@@ -35,10 +34,7 @@ scrollBar: ScrollBar,
 scrollBarSize: Vec2f,
 
 pub fn __init() !void {
-	texture = Texture.init();
-	const image = try Image.readFromFile(main.threadAllocator, "assets/cubyz/ui/text_input.png");
-	defer image.deinit(main.threadAllocator);
-	try texture.generate(image);
+	texture = try Texture.initFromFile("assets/cubyz/ui/text_input.png");
 }
 
 pub fn __deinit() void {

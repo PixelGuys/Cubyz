@@ -4,7 +4,6 @@ const Allocator = std.mem.Allocator;
 const main = @import("root");
 const graphics = main.graphics;
 const draw = graphics.draw;
-const Image = graphics.Image;
 const Shader = graphics.Shader;
 const TextBuffer = graphics.TextBuffer;
 const Texture = graphics.Texture;
@@ -30,10 +29,7 @@ buttonPos: Vec2f = .{0, 0},
 mouseAnchor: f32 = undefined,
 
 pub fn __init() !void {
-	texture = Texture.init();
-	const image = try Image.readFromFile(main.threadAllocator, "assets/cubyz/ui/scrollbar.png");
-	defer image.deinit(main.threadAllocator);
-	try texture.generate(image);
+	texture = try Texture.initFromFile("assets/cubyz/ui/scrollbar.png");
 }
 
 pub fn __deinit() void {

@@ -116,8 +116,7 @@ pub const draw = struct {
 	var rectVBO: c_uint = undefined;
 
 	fn initRect() void {
-		rectShader = Shader.create("assets/cubyz/shaders/graphics/Rect.vs", "assets/cubyz/shaders/graphics/Rect.fs") catch Shader{.id = 0};
-		rectUniforms = rectShader.bulkGetUniformLocation(@TypeOf(rectUniforms));
+		rectShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Rect.vs", "assets/cubyz/shaders/graphics/Rect.fs", &rectUniforms) catch Shader{.id = 0};
 		var rawData = [_]f32 {
 			0, 0,
 			0, 1,
@@ -135,7 +134,7 @@ pub const draw = struct {
 	}
 
 	fn deinitRect() void {
-		rectShader.delete();
+		rectShader.deinit();
 		c.glDeleteVertexArrays(1, &rectVAO);
 		c.glDeleteBuffers(1, &rectVBO);
 	}
@@ -171,8 +170,7 @@ pub const draw = struct {
 	var lineVBO: c_uint = undefined;
 
 	fn initLine() void {
-		lineShader = Shader.create("assets/cubyz/shaders/graphics/Line.vs", "assets/cubyz/shaders/graphics/Line.fs") catch Shader{.id = 0};
-		lineUniforms = lineShader.bulkGetUniformLocation(@TypeOf(lineUniforms));
+		lineShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Line.vs", "assets/cubyz/shaders/graphics/Line.fs", &lineUniforms) catch Shader{.id = 0};
 		var rawData = [_]f32 {
 			0, 0,
 			1, 1,
@@ -188,7 +186,7 @@ pub const draw = struct {
 	}
 
 	fn deinitLine() void {
-		lineShader.delete();
+		lineShader.deinit();
 		c.glDeleteVertexArrays(1, &lineVAO);
 		c.glDeleteBuffers(1, &lineVBO);
 	}
@@ -271,8 +269,7 @@ pub const draw = struct {
 	var circleVBO: c_uint = undefined;
 
 	fn initCircle() void {
-		circleShader = Shader.create("assets/cubyz/shaders/graphics/Circle.vs", "assets/cubyz/shaders/graphics/Circle.fs") catch Shader{.id = 0};
-		circleUniforms = circleShader.bulkGetUniformLocation(@TypeOf(circleUniforms));
+		circleShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Circle.vs", "assets/cubyz/shaders/graphics/Circle.fs", &circleUniforms) catch Shader{.id = 0};
 		var rawData = [_]f32 {
 			-1, -1,
 			-1, 1,
@@ -290,7 +287,7 @@ pub const draw = struct {
 	}
 
 	fn deinitCircle() void {
-		circleShader.delete();
+		circleShader.deinit();
 		c.glDeleteVertexArrays(1, &circleVAO);
 		c.glDeleteBuffers(1, &circleVBO);
 	}
@@ -325,12 +322,11 @@ pub const draw = struct {
 	var imageShader: Shader = undefined;
 
 	fn initImage() void {
-		imageShader = Shader.create("assets/cubyz/shaders/graphics/Circle.vs", "assets/cubyz/shaders/graphics/Circle.fs") catch Shader{.id = 0};
-		imageUniforms = imageShader.bulkGetUniformLocation(@TypeOf(imageUniforms));
+		imageShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Circle.vs", "assets/cubyz/shaders/graphics/Circle.fs", &imageUniforms) catch Shader{.id = 0};
 	}
 
 	fn deinitImage() void {
-		imageShader.delete();
+		imageShader.deinit();
 	}
 
 	pub fn boundImage(_pos: Vec2f, _dim: Vec2f) void {
@@ -818,8 +814,7 @@ const TextRendering = struct {
 	const textureHeight: i32 = 16;
 	var textureOffset: i32 = 0;
 	fn init() !void {
-		shader = try Shader.create("assets/cubyz/shaders/graphics/Text.vs", "assets/cubyz/shaders/graphics/Text.fs");
-		uniforms = shader.bulkGetUniformLocation(@TypeOf(uniforms));
+		shader = try Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Text.vs", "assets/cubyz/shaders/graphics/Text.fs", &uniforms);
 		shader.bind();
 		c.glUniform1i(uniforms.texture_sampler, 0);
 		c.glUniform1f(uniforms.alpha, 1.0);
@@ -848,7 +843,7 @@ const TextRendering = struct {
 	}
 
 	fn deinit() void {
-		shader.delete();
+		shader.deinit();
 		freetypeLib.deinit();
 		glyphMapping.deinit();
 		glyphData.deinit();
@@ -999,31 +994,31 @@ pub const Shader = struct {
 			std.log.err("Error Linking Shader program:\n{s}\n", .{buf[0..len]});
 			return error.FailedLinking;
 		}
-	} 
+	}
 	
-	pub fn create(vertex: []const u8, fragment: []const u8) !Shader {
+	pub fn init(vertex: []const u8, fragment: []const u8) !Shader {
 		var shader = Shader{.id = c.glCreateProgram()};
 		try shader.addShader(vertex, c.GL_VERTEX_SHADER);
 		try shader.addShader(fragment, c.GL_FRAGMENT_SHADER);
 		try shader.link();
 		return shader;
 	}
-
-	pub fn bulkGetUniformLocation(self: *const Shader, comptime T: type) T {
-		var ret: T = undefined;
-		inline for(@typeInfo(T).Struct.fields) |field| {
+	
+	pub fn initAndGetUniforms(vertex: []const u8, fragment: []const u8, ptrToUniformStruct: anytype) !Shader {
+		const self = try Shader.init(vertex, fragment);
+		inline for(@typeInfo(@TypeOf(ptrToUniformStruct.*)).Struct.fields) |field| {
 			if(field.type == c_int) {
-				@field(ret, field.name) = c.glGetUniformLocation(self.id, field.name[0..]);
+				@field(ptrToUniformStruct, field.name) = c.glGetUniformLocation(self.id, field.name[0..]);
 			}
 		}
-		return ret;
+		return self;
 	}
 
 	pub fn bind(self: *const Shader) void {
 		c.glUseProgram(self.id);
 	}
 
-	pub fn delete(self: *const Shader) void {
+	pub fn deinit(self: *const Shader) void {
 		c.glDeleteProgram(self.id);
 	}
 };
@@ -1371,6 +1366,14 @@ pub const Texture = struct {
 	pub fn init() Texture {
 		var self: Texture = undefined;
 		c.glGenTextures(1, &self.textureID);
+		return self;
+	}
+
+	pub fn initFromFile(path: []const u8) !Texture {
+		const self = Texture.init();
+		const image = try Image.readFromFile(main.threadAllocator, path);
+		defer image.deinit(main.threadAllocator);
+		try self.generate(image);
 		return self;
 	}
 
