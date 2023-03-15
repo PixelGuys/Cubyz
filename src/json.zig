@@ -37,7 +37,7 @@ pub const JsonElement = union(JsonType) {
 		return JsonElement{.JsonArray=list};
 	}
 
-	pub fn getAtIndex(self: *const JsonElement, comptime _type: type, index: usize, replacement: _type) @TypeOf(replacement) {
+	pub fn getAtIndex(self: *const JsonElement, comptime _type: type, index: usize, replacement: _type) _type {
 		if(self.* != .JsonArray) {
 			return replacement;
 		} else {
@@ -61,7 +61,7 @@ pub const JsonElement = union(JsonType) {
 		}
 	}
 
-	pub fn get(self: *const JsonElement, comptime _type: type, key: []const u8, replacement: _type) @TypeOf(replacement) {
+	pub fn get(self: *const JsonElement, comptime _type: type, key: []const u8, replacement: _type) _type {
 		if(self.* != .JsonObject) {
 			return replacement;
 		} else {
@@ -148,7 +148,12 @@ pub const JsonElement = union(JsonType) {
 				if(ptr.child == u8 and ptr.size == .Slice) {
 					return JsonElement{.JsonString=value};
 				} else {
-					@compileError("Unknown value type.");
+					const childInfo = @typeInfo(ptr.child);
+					if(ptr.size == .One and childInfo == .Array and childInfo.Array.child == u8) {
+						return JsonElement{.JsonString=value};
+					} else {
+						@compileError("Unknown value type.");
+					}
 				}
 			},
 			.Optional => {

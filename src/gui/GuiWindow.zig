@@ -16,10 +16,10 @@ const GuiComponent = gui.GuiComponent;
 
 const GuiWindow = @This();
 
-const AttachmentPoint = enum {
-	lower,
-	middle,
-	upper,
+pub const AttachmentPoint = enum(u8) {
+	lower = 0,
+	middle = 1,
+	upper = 2,
 };
 
 const OrientationLine = struct {

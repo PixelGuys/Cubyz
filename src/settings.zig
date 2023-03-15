@@ -75,11 +75,8 @@ pub fn init() !void {
 	}
 }
 
-pub fn deinit() void {
-	const jsonObject = JsonElement.initObject(main.threadAllocator) catch |err| {
-		std.log.err("Error in settings.deinit(): {s}", .{@errorName(err)});
-		return;
-	};
+fn flawedDeinit() !void {
+	const jsonObject = try JsonElement.initObject(main.threadAllocator);
 	defer jsonObject.free(main.threadAllocator);
 
 	inline for(@typeInfo(@This()).Struct.decls) |decl| {
@@ -90,13 +87,9 @@ pub fn deinit() void {
 				@compileError("Not implemented yet.");
 			}
 			if(declType == []const u8) {
-				jsonObject.putOwnedString(decl.name, @field(@This(), decl.name)) catch |err| {
-					std.log.err("Error in settings.deinit(): {s}", .{@errorName(err)});
-				};
+				try jsonObject.putOwnedString(decl.name, @field(@This(), decl.name));
 			} else {
-				jsonObject.put(decl.name, @field(@This(), decl.name)) catch |err| {
-					std.log.err("Error in settings.deinit(): {s}", .{@errorName(err)});
-				};
+				try jsonObject.put(decl.name, @field(@This(), decl.name));
 			}
 			if(@typeInfo(declType) == .Pointer) {
 				if(@typeInfo(declType).Pointer.size == .Slice) {
@@ -109,48 +102,30 @@ pub fn deinit() void {
 	}
 
 	// keyboard settings:
-	const keyboard = JsonElement.initObject(main.threadAllocator) catch |err| {
-		std.log.err("Error in settings.deinit(): {s}", .{@errorName(err)});
-		return;
-	};
+	const keyboard = try JsonElement.initObject(main.threadAllocator);
 	inline for(comptime std.meta.fieldNames(@TypeOf(main.keyboard))) |keyName| {
-		const keyJson = JsonElement.initObject(main.threadAllocator) catch |err| {
-			std.log.err("Error in settings.deinit(): {s}", .{@errorName(err)});
-			return;
-		};
+		const keyJson = try JsonElement.initObject(main.threadAllocator);
 		const key = &@field(main.keyboard, keyName);
-		keyJson.put("key", key.key) catch |err| {
-			std.log.err("Error in settings.deinit(): {s}", .{@errorName(err)});
-		};
-		keyJson.put("mouseButton", key.mouseButton) catch |err| {
-			std.log.err("Error in settings.deinit(): {s}", .{@errorName(err)});
-		};
-		keyJson.put("scancode", key.scancode) catch |err| {
-			std.log.err("Error in settings.deinit(): {s}", .{@errorName(err)});
-		};
-		keyboard.put(keyName, keyJson) catch |err| {
-			std.log.err("Error in settings.deinit(): {s}", .{@errorName(err)});
-		};
+		try keyJson.put("key", key.key);
+		try keyJson.put("mouseButton", key.mouseButton);
+		try keyJson.put("scancode", key.scancode);
+		try keyboard.put(keyName, keyJson);
 	}
-	jsonObject.put("keyboard", keyboard) catch |err| {
-		std.log.err("Error in settings.deinit(): {s}", .{@errorName(err)});
-	};
+	try jsonObject.put("keyboard", keyboard);
 
 	// Write to file:
 	
-	const string = jsonObject.toStringEfficient(main.threadAllocator, "") catch |err| {
-		std.log.err("Error in settings.deinit(): {s}", .{@errorName(err)});
-		return;
-	};
+	const string = try jsonObject.toStringEfficient(main.threadAllocator, "");
 	defer main.threadAllocator.free(string);
 
-	var file = std.fs.cwd().createFile("settings.json", .{}) catch |err| {
-		std.log.err("Error in settings.deinit(): {s}", .{@errorName(err)});
-		return;
-	};
+	var file = try std.fs.cwd().createFile("settings.json", .{});
 	defer file.close();
 
-	file.writeAll(string) catch |err| {
+	try file.writeAll(string);
+}
+
+pub fn deinit() void {
+	flawedDeinit() catch |err| {
 		std.log.err("Error in settings.deinit(): {s}", .{@errorName(err)});
 		return;
 	};

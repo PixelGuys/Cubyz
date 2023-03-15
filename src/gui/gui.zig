@@ -4,6 +4,7 @@ const Allocator = std.mem.Allocator;
 const main = @import("root");
 const graphics = main.graphics;
 const draw = graphics.draw;
+const JsonElement = main.JsonElement;
 const settings = main.settings;
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
@@ -42,9 +43,13 @@ pub fn init(_allocator: Allocator) !void {
 	try ScrollBar.__init();
 	try Slider.__init();
 	try TextInput.__init();
+	try load();
 }
 
 pub fn deinit() void {
+	save() catch |err| {
+		std.log.err("Got error while saving gui layout: {s}", .{@errorName(err)});
+	};
 	windowList.deinit();
 	hudWindows.deinit();
 	for(openWindows.items) |window| {
@@ -57,6 +62,103 @@ pub fn deinit() void {
 	ScrollBar.__deinit();
 	Slider.__deinit();
 	TextInput.__deinit();
+}
+
+fn save() !void {
+	const guiJson = try JsonElement.initObject(main.threadAllocator);
+	defer guiJson.free(main.threadAllocator);
+	for(windowList.items) |window| {
+		const windowJson = try JsonElement.initObject(main.threadAllocator);
+		for(window.relativePosition, 0..) |relPos, i| {
+			const relPosJson = try JsonElement.initObject(main.threadAllocator);
+			switch(relPos) {
+				.ratio => |ratio| {
+					try relPosJson.put("type", "ratio");
+					try relPosJson.put("ratio", ratio);
+				},
+				.attachedToFrame => |attachedToFrame| {
+					try relPosJson.put("type", "attachedToFrame");
+					try relPosJson.put("selfAttachmentPoint", @enumToInt(attachedToFrame.selfAttachmentPoint));
+					try relPosJson.put("otherAttachmentPoint", @enumToInt(attachedToFrame.otherAttachmentPoint));
+				},
+				.relativeToWindow => |relativeToWindow| {
+					try relPosJson.put("type", "relativeToWindow");
+					try relPosJson.put("reference", relativeToWindow.reference.id);
+					try relPosJson.put("ratio", relativeToWindow.ratio);
+				},
+				.attachedToWindow => |attachedToWindow| {
+					try relPosJson.put("type", "attachedToWindow");
+					try relPosJson.put("reference", attachedToWindow.reference.id);
+					try relPosJson.put("selfAttachmentPoint", @enumToInt(attachedToWindow.selfAttachmentPoint));
+					try relPosJson.put("otherAttachmentPoint", @enumToInt(attachedToWindow.otherAttachmentPoint));
+				},
+			}
+			try windowJson.put(([_][]const u8{"relPos0", "relPos1"})[i], relPosJson);
+		}
+		try windowJson.put("scale", window.scale);
+		try guiJson.put(window.id, windowJson);
+	}
+	
+	const string = try guiJson.toStringEfficient(main.threadAllocator, "");
+	defer main.threadAllocator.free(string);
+
+	var file = try std.fs.cwd().createFile("gui_layout.json", .{});
+	defer file.close();
+
+	try file.writeAll(string);
+}
+
+fn load() !void {
+	const json: JsonElement = blk: {
+		var file = std.fs.cwd().openFile("gui_layout.json", .{}) catch break :blk JsonElement{.JsonNull={}};
+		defer file.close();
+		const fileString = try file.readToEndAlloc(main.threadAllocator, std.math.maxInt(usize));
+		defer main.threadAllocator.free(fileString);
+		break :blk JsonElement.parseFromString(main.threadAllocator, fileString);
+	};
+	defer json.free(main.threadAllocator);
+
+	for(windowList.items) |window| {
+		const windowJson = json.getChild(window.id);
+		for(&window.relativePosition, 0..) |*relPos, i| {
+			const relPosJson = windowJson.getChild(([_][]const u8{"relPos0", "relPos1"})[i]);
+			const typ = relPosJson.get([]const u8, "type", "ratio");
+			if(std.mem.eql(u8, typ, "ratio")) {
+				relPos.* = .{.ratio = relPosJson.get(f32, "ratio", 0.5)};
+			} else if(std.mem.eql(u8, typ, "attachedToFrame")) {
+				relPos.* = .{.attachedToFrame = .{
+					.selfAttachmentPoint = @intToEnum(GuiWindow.AttachmentPoint, relPosJson.get(u8, "selfAttachmentPoint", 0)),
+					.otherAttachmentPoint = @intToEnum(GuiWindow.AttachmentPoint, relPosJson.get(u8, "otherAttachmentPoint", 0)),
+				}};
+			} else if(std.mem.eql(u8, typ, "relativeToWindow")) {
+				const reference = getWindowById(relPosJson.get([]const u8, "reference", "")) orelse continue;
+				relPos.* = .{.relativeToWindow = .{
+					.reference = reference,
+					.ratio = relPosJson.get(f32, "ratio", 0.5),
+				}};
+			} else if(std.mem.eql(u8, typ, "attachedToWindow")) {
+				const reference = getWindowById(relPosJson.get([]const u8, "reference", "")) orelse continue;
+				relPos.* = .{.attachedToWindow = .{
+					.reference = reference,
+					.selfAttachmentPoint = @intToEnum(GuiWindow.AttachmentPoint, relPosJson.get(u8, "selfAttachmentPoint", 0)),
+					.otherAttachmentPoint = @intToEnum(GuiWindow.AttachmentPoint, relPosJson.get(u8, "otherAttachmentPoint", 0)),
+				}};
+			} else {
+				std.log.warn("Unknown window attachment type: {s}", .{typ});
+			}
+		}
+		window.scale = windowJson.get(f32, "scale", 1);
+	}
+}
+
+fn getWindowById(id: []const u8) ?*GuiWindow {
+	for(windowList.items) |window| {
+		if(std.mem.eql(u8, id, window.id)) {
+			return window;
+		}
+	}
+	std.log.warn("Could not find window with id: {s}", .{id});
+	return null;
 }
 
 pub fn updateGuiScale() void {

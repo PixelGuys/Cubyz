@@ -4,3 +4,4 @@ zig-out/
 zig-cache/
 serverAssets/
 settings.json
+gui_layout.json
