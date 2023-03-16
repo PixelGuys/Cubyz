@@ -325,13 +325,13 @@ pub const Window = struct {
 
 	pub fn setMouseGrabbed(grab: bool) void {
 		if(grabbed != grab) {
-			if(!grab) {
-				c.glfwSetInputMode(window, c.GLFW_CURSOR, c.GLFW_CURSOR_NORMAL);
-			} else {
+			if(grab) {
 				c.glfwSetInputMode(window, c.GLFW_CURSOR, c.GLFW_CURSOR_DISABLED);
 				if (c.glfwRawMouseMotionSupported() != 0)
 					c.glfwSetInputMode(window, c.GLFW_RAW_MOUSE_MOTION, c.GLFW_TRUE);
 				GLFWCallbacks.ignoreDataAfterRecentGrab = true;
+			} else {
+				c.glfwSetInputMode(window, c.GLFW_CURSOR, c.GLFW_CURSOR_NORMAL);
 			}
 			grabbed = grab;
 		}
@@ -464,40 +464,6 @@ pub fn main() !void {
 
 	try gui.init(globalAllocator);
 	defer gui.deinit();
-	if(settings.playerName.len == 0) {
-		try gui.openWindow("cubyz:change_name");
-	} else {
-		try gui.openWindow("cubyz:hotbar");
-		try gui.openWindow("cubyz:hotbar2");
-		try gui.openWindow("cubyz:hotbar3");
-		try gui.openWindow("cubyz:healthbar");
-		try gui.openWindow("cubyz:main");
-	}
-
-	c.glCullFace(c.GL_BACK);
-	c.glEnable(c.GL_BLEND);
-	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
-	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
-
-	while(c.glfwWindowShouldClose(Window.window) == 0) {
-		{ // Check opengl errors:
-			const err = c.glGetError();
-			if(err != 0) {
-				std.log.err("Got opengl error: {}", .{err});
-			}
-		}
-		c.glfwSwapBuffers(Window.window);
-		Window.handleEvents();
-
-		{ // Render the GUI
-			c.glClearColor(0.5, 1, 1, 1);
-			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
-			c.glDisable(c.GL_CULL_FACE);
-			c.glDisable(c.GL_DEPTH_TEST);
-			try gui.updateAndRenderGui();
-		}
-	}
-	if(true) return; // TODO
 
 	try rotation.init();
 	defer rotation.deinit();
@@ -531,27 +497,21 @@ pub fn main() !void {
 	try entity.ClientEntityManager.init();
 	defer entity.ClientEntityManager.deinit();
 
-	var manager = try network.ConnectionManager.init(12347, true);
-	defer manager.deinit();
-
-	try game.world.?.init(settings.lastUsedIPAddress, manager);
-	defer game.world.?.deinit();
-
-	Window.setMouseGrabbed(true);
-
-	try blocks.meshes.generateTextureArray();
+	if(settings.playerName.len == 0) {
+		try gui.openWindow("cubyz:change_name");
+	} else {
+		try gui.openWindow("cubyz:hotbar");
+		try gui.openWindow("cubyz:hotbar2");
+		try gui.openWindow("cubyz:hotbar3");
+		try gui.openWindow("cubyz:healthbar");
+		try gui.openWindow("cubyz:main");
+	}
 
 	c.glCullFace(c.GL_BACK);
 	c.glEnable(c.GL_BLEND);
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
 	var lastTime = std.time.milliTimestamp();
-	var buffer = try graphics.TextBuffer.init(threadAllocator, "Time to wrap some lines! a⃗ a⃗⃗ _a#ff0000⃗#ffff00⃗#00ff00⃗#00ffff⃗_#0000ff⃗#ff00ff⃗#000000 ⌬  __*italic*__ _**bold**_ ___***everything***___ #ff0000red#00ff00green#0000ffblue", .{}, true);
-	defer buffer.deinit();
-	var buffer2 = try graphics.TextBuffer.init(threadAllocator, "Time to wrap some lines! a⃗ a⃗⃗ _a#ff0000⃗#ffff00⃗#00ff00⃗#00ffff⃗_#0000ff⃗#ff00ff⃗#000000 ⌬  __*italic*__ _**bold**_ ___***everything***___ #ff0000red#00ff00green#0000ffblue", .{}, false);
-	defer buffer2.deinit();
-	var buffer3 = try graphics.TextBuffer.init(threadAllocator, "😀 😃 😄 😁 😆 😅 🤣 😂 🙂 🙃 🫠 😉 😊 😇 🥰 😍 🤩 😘 😗 ☺ 😚 😙 🥲 😋 😛 😜 🤪 😝 🤑 🤗 🤭 🫢 🫣 🤫 🤔 🫡 🤐 🤨 😐 😑 😶 🫥 😏 😒 🙄 😬 🤥 🫨 😌 😔 😪 🤤 😴 😷 🤒 🤕 🤢 🤮 🤧 🥵 🥶 🥴 😵 🤯 🤠 🥳 🥸 😎 🤓 🧐 😕 🫤 😟 🙁 😮 😯 😲 😳 🥺 🥹 😦 😧 😨 😰 😥 😢 😭 😱 😖 😣 😞 😓 😩 😫 🥱", .{}, false);
-	defer buffer3.deinit();
 
 	while(c.glfwWindowShouldClose(Window.window) == 0) {
 		{ // Check opengl errors:
@@ -561,12 +521,14 @@ pub fn main() !void {
 			}
 		}
 		c.glfwSwapBuffers(Window.window);
-		c.glfwPollEvents();
+		Window.handleEvents();
+		c.glClearColor(0.5, 1, 1, 1);
+		c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
 		var newTime = std.time.milliTimestamp();
 		var deltaTime = @intToFloat(f64, newTime -% lastTime)/1000.0;
 		lastTime = newTime;
-		try game.update(deltaTime);
-		{ // Render the game
+		if(game.world != null) { // Render the game
+			try game.update(deltaTime);
 			c.glEnable(c.GL_CULL_FACE);
 			c.glEnable(c.GL_DEPTH_TEST);
 			try renderer.render(game.Player.getPosBlocking());
@@ -576,14 +538,11 @@ pub fn main() !void {
 			c.glDisable(c.GL_CULL_FACE);
 			c.glDisable(c.GL_DEPTH_TEST);
 			try gui.updateAndRenderGui();
-			//const dim = try buffer2.calculateLineBreaks(32, 200);
-			//try buffer.render(100, 200, 32);
-			//graphics.draw.setColor(0xff008000);
-			//graphics.draw.rect(.{100, 400}, .{200, dim[1]});
-			//try buffer2.render(100, 400, 32);
-			//_ = try buffer3.calculateLineBreaks(32, 600);
-			//try buffer3.render(400, 400, 32);
 		}
+	}
+	if(game.world) |world| {
+		world.deinit();
+		game.world = null;
 	}
 }
 

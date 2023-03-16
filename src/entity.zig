@@ -144,7 +144,7 @@ pub const ClientEntityManager = struct {
 			const yCenter = (1 - projectedPos[1]/projectedPos[3])*@intToFloat(f32, main.Window.height/2);
 			
 			graphics.draw.setColor(0xff000000);
-			try graphics.draw.text(ent.name, xCenter, yCenter, 64);
+			try graphics.draw.text(ent.name, xCenter, yCenter, 64, .center);
 		}
 	}
 

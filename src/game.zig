@@ -102,12 +102,18 @@ pub const World = struct {
 		// TODO:
 //		player = new ClientPlayer(this, 0);
 		try network.Protocols.handShake.clientSide(self.conn, settings.playerName);
+
+		main.Window.setMouseGrabbed(true);
+
+		try main.blocks.meshes.generateTextureArray();
 	}
 
 	pub fn deinit(self: *World) void {
 		self.conn.deinit();
 		self.itemDrops.deinit();
+		self.blockPalette.deinit();
 		Player.inventory__SEND_CHANGES_TO_SERVER.deinit(renderer.RenderStructure.allocator);
+		self.manager.deinit();
 	}
 
 	pub fn finishHandshake(self: *World, json: JsonElement) !void {
@@ -268,7 +274,7 @@ pub const World = struct {
 //	}
 };
 pub var testWorld: World = undefined; // TODO:
-pub var world: ?*World = &testWorld;
+pub var world: ?*World = null;
 
 pub var projectionMatrix: Mat4f = Mat4f.identity();
 pub var lodProjectionMatrix: Mat4f = Mat4f.identity();

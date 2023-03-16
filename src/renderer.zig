@@ -832,7 +832,6 @@ pub const RenderStructure = struct {
 		}
 		blockUpdateList.deinit();
 		clearList.deinit();
-		game.world.?.blockPalette.deinit();
 		if(gpa.deinit()) {
 			@panic("Memory leak");
 		}

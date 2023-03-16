@@ -372,6 +372,8 @@ pub const ConnectionManager = struct {
 
 	receiveBuffer: [Connection.maxPacketSize]u8 = undefined,
 
+	world: ?*game.World = null,
+
 	pub fn init(localPort: u16, online: bool) !*ConnectionManager {
 		var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 		var result: *ConnectionManager = try gpa.allocator().create(ConnectionManager);
@@ -380,7 +382,11 @@ pub const ConnectionManager = struct {
 		result.connections = std.ArrayList(*Connection).init(result.allocator);
 		result.requests = std.ArrayList(*Request).init(result.allocator);
 
-		result.socket = try Socket.init(localPort);
+		result.socket = Socket.init(localPort) catch |err| blk: {
+			if(err == error.AddressInUse) {
+				break :blk try Socket.init(0); // Use any port.
+			} else return err;
+		};
 		errdefer Socket.deinit(result.socket);
 
 		result.thread = try std.Thread.spawn(.{}, run, .{result});
@@ -643,7 +649,7 @@ pub const Protocols: struct {
 					stepServerData => {
 						var json = JsonElement.parseFromString(main.threadAllocator, data[1..]);
 						defer json.free(main.threadAllocator);
-						try game.world.?.finishHandshake(json);
+						try conn.manager.world.?.finishHandshake(json);
 						conn.handShakeState = stepComplete;
 						conn.handShakeWaiting.broadcast(); // Notify the waiting client thread.
 					},
@@ -804,13 +810,13 @@ pub const Protocols: struct {
 		const id: u8 = 6;
 		const type_entity: u8 = 0;
 		const type_item: u8 = 1;
-		fn receive(_: *Connection, data: []const u8) !void {
-			if(game.world != null) {
+		fn receive(conn: *Connection, data: []const u8) !void {
+			if(conn.manager.world) |world| {
 				const time = std.mem.readIntBig(i16, data[1..3]);
 				if(data[0] == type_entity) {
 					try entity.ClientEntityManager.serverUpdate(time, data[3..]);
 				} else if(data[0] == type_item) {
-					game.world.?.itemDrops.readPosition(data[3..], time);
+					world.itemDrops.readPosition(data[3..], time);
 				}
 			}
 		}
@@ -856,7 +862,7 @@ pub const Protocols: struct {
 	},
 	entity: type = struct {
 		const id: u8 = 8;
-		fn receive(_: *Connection, data: []const u8) !void {
+		fn receive(conn: *Connection, data: []const u8) !void {
 			const jsonArray = JsonElement.parseFromString(main.threadAllocator, data);
 			defer jsonArray.free(main.threadAllocator);
 			var i: u32 = 0;
@@ -881,11 +887,11 @@ pub const Protocols: struct {
 			while(i < jsonArray.JsonArray.items.len) : (i += 1) {
 				const elem: JsonElement = jsonArray.JsonArray.items[i];
 				if(elem == .JsonInt) {
-					game.world.?.itemDrops.remove(elem.as(u16, 0));
+					conn.manager.world.?.itemDrops.remove(elem.as(u16, 0));
 				} else if(!elem.getChild("array").isNull()) {
-					try game.world.?.itemDrops.loadFrom(elem);
+					try conn.manager.world.?.itemDrops.loadFrom(elem);
 				} else {
-					try game.world.?.itemDrops.addFromJson(elem);
+					try conn.manager.world.?.itemDrops.addFromJson(elem);
 				}
 			}
 		}
@@ -1076,7 +1082,7 @@ pub const Protocols: struct {
 					}
 				},
 				type_timeAndBiome => {
-					if(game.world) |world| {
+					if(conn.manager.world) |world| {
 						const json = JsonElement.parseFromString(main.threadAllocator, data[1..]);
 						defer json.free(main.threadAllocator);
 						var expectedTime = json.get(i64, "time", 0);
@@ -1491,7 +1497,7 @@ pub const Connection = struct {
 			var newIndex = self.lastIndex;
 			var protocol = receivedPacket[newIndex];
 			newIndex += 1;
-			if(game.world == null and protocol != Protocols.handShake.id)
+			if(self.manager.world == null and protocol != Protocols.handShake.id)
 				return;
 
 			// Determine the next packet length:
