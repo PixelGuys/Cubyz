@@ -70,6 +70,7 @@ onOpenFn: *const fn()Allocator.Error!void = &defaultErrorFunction,
 
 onCloseFn: *const fn()void = &defaultFunction,
 
+var grabbedWindow: *const GuiWindow = undefined;
 var grabPosition: ?Vec2f = null;
 var selfPositionWhenGrabbed: Vec2f = undefined;
 
@@ -114,6 +115,7 @@ pub fn defaultErrorFunction() Allocator.Error!void {}
 pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) void {
 	const scaledMousePos = (mousePosition - self.pos)/@splat(2, self.scale);
 	if(scaledMousePos[1] < 16) {
+		grabbedWindow = self;
 		grabPosition = mousePosition;
 		selfPositionWhenGrabbed = self.pos;
 	} else {
@@ -130,7 +132,7 @@ pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) void {
 }
 
 pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
-	if(grabPosition != null) {
+	if(grabPosition != null and grabbedWindow == self) {
 		if(mousePosition[0] - self.pos[0] > self.size[0] - 54*self.scale) {
 			if(mousePosition[0] - self.pos[0] > self.size[0] - 36*self.scale) {
 				if(mousePosition[0] - self.pos[0] > self.size[0] - 18*self.scale) {
@@ -159,6 +161,7 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 		}
 	}
 	grabPosition = null;
+	grabbedWindow = undefined;
 	for(self.components) |*component| {
 		component.mainButtonReleased((mousePosition - self.pos)/@splat(2, self.scale));
 	}
@@ -299,7 +302,7 @@ fn positionRelativeToConnectedWindow(self: *GuiWindow, other: *GuiWindow, i: usi
 pub fn updateSelected(self: *GuiWindow, mousePosition: Vec2f) !void {
 	try self.updateSelectedFn();
 	const windowSize = main.Window.getWindowSize()/@splat(2, gui.scale);
-	if(grabPosition) |_grabPosition| {
+	if(self == grabbedWindow) if(grabPosition) |_grabPosition| {
 		self.relativePosition[0] = .{.ratio = undefined};
 		self.relativePosition[1] = .{.ratio = undefined};
 		self.pos = (mousePosition - _grabPosition) + selfPositionWhenGrabbed;
@@ -314,7 +317,7 @@ pub fn updateSelected(self: *GuiWindow, mousePosition: Vec2f) !void {
 		self.pos = @max(self.pos, Vec2f{0, 0});
 		self.pos = @min(self.pos, windowSize - self.size);
 		gui.updateWindowPositions();
-	}
+	};
 	for(self.components) |*component| {
 		component.updateSelected();
 	}
@@ -455,7 +458,7 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) !void {
 		const titleDimension = try text.calculateLineBreaks(16*self.scale, self.size[0]);
 		try text.render(self.pos[0] + self.size[0]/2 - titleDimension[0]/2, self.pos[1], 16*self.scale);
 	}
-	if(self == gui.selectedWindow and grabPosition != null) {
+	if(self == grabbedWindow and grabPosition != null) {
 		self.drawOrientationLines();
 	}
 }

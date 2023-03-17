@@ -11,15 +11,15 @@ const Vec2f = vec.Vec2f;
 const gui = @import("../gui.zig");
 const GuiComponent = gui.GuiComponent;
 
-const VerticalList = @This();
+const HorizontalList = @This();
 
 pos: Vec2f,
 size: Vec2f,
 children: std.ArrayList(GuiComponent),
 
-pub fn init() Allocator.Error!*VerticalList {
-	const self = try gui.allocator.create(VerticalList);
-	self.* = VerticalList {
+pub fn init() Allocator.Error!*HorizontalList {
+	const self = try gui.allocator.create(HorizontalList);
+	self.* = HorizontalList {
 		.children = std.ArrayList(GuiComponent).init(gui.allocator),
 		.pos = undefined,
 		.size = .{0, 0},
@@ -27,7 +27,7 @@ pub fn init() Allocator.Error!*VerticalList {
 	return self;
 }
 
-pub fn deinit(self: *const VerticalList) void {
+pub fn deinit(self: *const HorizontalList) void {
 	for(self.children.items) |*child| {
 		child.deinit();
 	}
@@ -35,13 +35,13 @@ pub fn deinit(self: *const VerticalList) void {
 	gui.allocator.destroy(self);
 }
 
-pub fn toComponent(self: *VerticalList) GuiComponent {
+pub fn toComponent(self: *HorizontalList) GuiComponent {
 	return GuiComponent {
-		.verticalList = self
+		.horizontalList = self
 	};
 }
 
-pub fn add(self: *VerticalList, _other: anytype) Allocator.Error!void {
+pub fn add(self: *HorizontalList, _other: anytype) Allocator.Error!void {
 	var other: GuiComponent = undefined;
 	if(@TypeOf(_other) == GuiComponent) {
 		other = _other;
@@ -50,12 +50,12 @@ pub fn add(self: *VerticalList, _other: anytype) Allocator.Error!void {
 	}
 	const added = try self.children.addOne();
 	added.* = other;
-	added.mutPos().*[1] += self.size[1];
-	self.size[1] = added.pos()[1] + added.size()[1];
-	self.size[0] = @max(self.size[0], added.pos()[0] + added.size()[0]);
+	added.mutPos().*[0] += self.size[0];
+	self.size[0] = added.pos()[0] + added.size()[0];
+	self.size[1] = @max(self.size[1], added.pos()[1] + added.size()[1]);
 }
 
-pub fn finish(self: *VerticalList, pos: Vec2f, alignment: graphics.TextBuffer.Alignment) void {
+pub fn finish(self: *HorizontalList, pos: Vec2f, alignment: graphics.TextBuffer.Alignment) void {
 	self.pos = pos;
 	self.children.shrinkAndFree(self.children.items.len);
 	for(self.children.items) |_child| {
@@ -65,22 +65,22 @@ pub fn finish(self: *VerticalList, pos: Vec2f, alignment: graphics.TextBuffer.Al
 		switch(alignment) {
 			.left => {},
 			.center => {
-				mutPos.*[0] = mutPos.*[0]/2 + self.size[0]/2 - size[0]/2;
+				mutPos.*[1] = mutPos.*[1]/2 + self.size[1]/2 - size[1]/2;
 			},
 			.right => {
-				mutPos.*[0] = self.size[0] - size[0];
+				mutPos.*[1] = self.size[1] - size[1];
 			},
 		}
 	}
 }
 
-pub fn updateSelected(self: *VerticalList) void {
+pub fn updateSelected(self: *HorizontalList) void {
 	for(self.children.items) |*child| {
 		child.updateSelected();
 	}
 }
 
-pub fn updateHovered(self: *VerticalList, mousePosition: Vec2f) void {
+pub fn updateHovered(self: *HorizontalList, mousePosition: Vec2f) void {
 	var i: usize = self.children.items.len;
 	while(i != 0) {
 		i -= 1;
@@ -92,7 +92,7 @@ pub fn updateHovered(self: *VerticalList, mousePosition: Vec2f) void {
 	}
 }
 
-pub fn render(self: *VerticalList, mousePosition: Vec2f) anyerror!void { // TODO: Remove anyerror once error union inference works in recursive loops.
+pub fn render(self: *HorizontalList, mousePosition: Vec2f) anyerror!void { // TODO: Remove anyerror once error union inference works in recursive loops.
 	const oldTranslation = draw.setTranslation(self.pos);
 	for(self.children.items) |*child| {
 		try child.render(mousePosition - self.pos);
@@ -100,7 +100,7 @@ pub fn render(self: *VerticalList, mousePosition: Vec2f) anyerror!void { // TODO
 	draw.restoreTranslation(oldTranslation);
 }
 
-pub fn mainButtonPressed(self: *VerticalList, mousePosition: Vec2f) void {
+pub fn mainButtonPressed(self: *HorizontalList, mousePosition: Vec2f) void {
 	var selectedChild: ?*GuiComponent = null;
 	for(self.children.items) |*child| {
 		if(GuiComponent.contains(child.pos() + self.pos, child.size(), mousePosition)) {
@@ -112,7 +112,7 @@ pub fn mainButtonPressed(self: *VerticalList, mousePosition: Vec2f) void {
 	}
 }
 
-pub fn mainButtonReleased(self: *VerticalList, mousePosition: Vec2f) void {
+pub fn mainButtonReleased(self: *HorizontalList, mousePosition: Vec2f) void {
 	for(self.children.items) |*child| {
 		child.mainButtonReleased(mousePosition - self.pos);
 	}

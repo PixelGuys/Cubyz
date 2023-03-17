@@ -58,7 +58,8 @@ pub fn onOpen() Allocator.Error!void {
 	textComponent = try TextInput.init(.{0, 16}, width, 32, "quanturmdoelvloper");
 	try list.add(textComponent);
 	try list.add(try Button.init(.{0, 16}, 100, "Apply", &apply));
-	components[0] = list.toComponent(.{padding, padding});
+	list.finish(.{padding, padding}, .center);
+	components[0] = list.toComponent();
 	window.contentSize = components[0].size() + @splat(2, @as(f32, 2*padding));
 	gui.updateWindowPositions();
 }

@@ -8,6 +8,7 @@ pub const GuiComponent = union(enum) {
 
 	pub const Button = @import("components/Button.zig");
 	pub const CheckBox = @import("components/CheckBox.zig");
+	pub const HorizontalList = @import("components/HorizontalList.zig");
 	pub const Label = @import("components/Label.zig");
 	pub const Slider = @import("components/Slider.zig");
 	pub const ScrollBar = @import("components/ScrollBar.zig");
@@ -17,14 +18,15 @@ pub const GuiComponent = union(enum) {
 
 	button: *Button,
 	checkBox: *CheckBox,
+	horizontalList: *HorizontalList,
 	label: *Label,
 	scrollBar: *ScrollBar,
 	slider: *Slider,
 	textInput: *TextInput,
 	verticalList: *VerticalList,
 
-	pub fn deinit(self: *GuiComponent) void {
-		switch(self.*) {
+	pub fn deinit(self: GuiComponent) void {
+		switch(self) {
 			inline else => |impl| {
 				// Only call the function if it exists:
 				inline for(@typeInfo(@TypeOf(impl.*)).Struct.decls) |decl| {
@@ -36,40 +38,40 @@ pub const GuiComponent = union(enum) {
 		}
 	}
 
-	pub fn mutPos(self: *GuiComponent) *Vec2f {
-		switch(self.*) {
+	pub fn mutPos(self: GuiComponent) *Vec2f {
+		switch(self) {
 			inline else => |impl| {
 				return &impl.pos;
 			}
 		}
 	}
 
-	pub fn mutSize(self: *GuiComponent) *Vec2f {
-		switch(self.*) {
+	pub fn mutSize(self: GuiComponent) *Vec2f {
+		switch(self) {
 			inline else => |impl| {
 				return &impl.size;
 			}
 		}
 	}
 
-	pub fn pos(self: *GuiComponent) Vec2f {
-		switch(self.*) {
+	pub fn pos(self: GuiComponent) Vec2f {
+		switch(self) {
 			inline else => |impl| {
 				return impl.pos;
 			}
 		}
 	}
 
-	pub fn size(self: *GuiComponent) Vec2f {
-		switch(self.*) {
+	pub fn size(self: GuiComponent) Vec2f {
+		switch(self) {
 			inline else => |impl| {
 				return impl.size;
 			}
 		}
 	}
 
-	pub fn updateSelected(self: *GuiComponent) void {
-		switch(self.*) {
+	pub fn updateSelected(self: GuiComponent) void {
+		switch(self) {
 			inline else => |impl| {
 				// Only call the function if it exists:
 				inline for(@typeInfo(@TypeOf(impl.*)).Struct.decls) |decl| {
@@ -81,8 +83,8 @@ pub const GuiComponent = union(enum) {
 		}
 	}
 
-	pub fn updateHovered(self: *GuiComponent, mousePosition: Vec2f) void {
-		switch(self.*) {
+	pub fn updateHovered(self: GuiComponent, mousePosition: Vec2f) void {
+		switch(self) {
 			inline else => |impl| {
 				// Only call the function if it exists:
 				inline for(@typeInfo(@TypeOf(impl.*)).Struct.decls) |decl| {
@@ -94,8 +96,8 @@ pub const GuiComponent = union(enum) {
 		}
 	}
 
-	pub fn render(self: *GuiComponent, mousePosition: Vec2f) !void {
-		switch(self.*) {
+	pub fn render(self: GuiComponent, mousePosition: Vec2f) !void {
+		switch(self) {
 			inline else => |impl| {
 				// Only call the function if it exists:
 				inline for(@typeInfo(@TypeOf(impl.*)).Struct.decls) |decl| {
@@ -107,8 +109,8 @@ pub const GuiComponent = union(enum) {
 		}
 	}
 
-	pub fn mainButtonPressed(self: *GuiComponent, mousePosition: Vec2f) void {
-		switch(self.*) {
+	pub fn mainButtonPressed(self: GuiComponent, mousePosition: Vec2f) void {
+		switch(self) {
 			inline else => |impl| {
 				// Only call the function if it exists:
 				inline for(@typeInfo(@TypeOf(impl.*)).Struct.decls) |decl| {
@@ -120,8 +122,8 @@ pub const GuiComponent = union(enum) {
 		}
 	}
 
-	pub fn mainButtonReleased(self: *GuiComponent, mousePosition: Vec2f) void {
-		switch(self.*) {
+	pub fn mainButtonReleased(self: GuiComponent, mousePosition: Vec2f) void {
+		switch(self) {
 			inline else => |impl| {
 				// Only call the function if it exists:
 				inline for(@typeInfo(@TypeOf(impl.*)).Struct.decls) |decl| {

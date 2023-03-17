@@ -25,7 +25,8 @@ const padding: f32 = 8;
 pub fn onOpen() Allocator.Error!void {
 	var list = try VerticalList.init();
 	// TODO
-	components[0] = list.toComponent(.{padding, padding});
+	list.finish(.{padding, padding}, .center);
+	components[0] = list.toComponent();
 	window.contentSize = components[0].size() + @splat(2, @as(f32, 2*padding));
 	gui.updateWindowPositions();
 }

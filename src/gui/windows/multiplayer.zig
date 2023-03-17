@@ -92,7 +92,8 @@ pub fn onOpen() Allocator.Error!void {
 	try list.add(try Button.init(.{0, 16}, 100, "Copy IP", &copyIp));
 	try list.add(try TextInput.init(.{0, 16}, width, 32, settings.lastUsedIPAddress));
 	try list.add(try Button.init(.{0, 16}, 100, "Join", &join));
-	components[0] = list.toComponent(.{padding, padding});
+	list.finish(.{padding, padding}, .center);
+	components[0] = list.toComponent();
 	window.contentSize = components[0].size() + @splat(2, @as(f32, 2*padding));
 	gui.updateWindowPositions();
 

@@ -8,6 +8,7 @@ const gui = @import("../gui.zig");
 const GuiComponent = gui.GuiComponent;
 const GuiWindow = gui.GuiWindow;
 const Button = @import("../components/Button.zig");
+const HorizontalList = @import("../components/HorizontalList.zig");
 const Label = @import("../components/Label.zig");
 const VerticalList = @import("../components/VerticalList.zig");
 
@@ -48,25 +49,20 @@ pub fn onOpen() Allocator.Error!void {
 	var list = try VerticalList.init();
 	list.size[1] = 8;
 	inline for(comptime std.meta.fieldNames(@TypeOf(main.keyboard))) |field| {
-		var label = try Label.init(.{0, 8}, 128, field, .left);
+		var label = try Label.init(.{0, 0}, 128, field, .left);
 		var button = if(&@field(main.keyboard, field) == selectedKey) (
-			try Button.init(.{128 + 16, 8}, 128, "...", null)
+			try Button.init(.{16, 0}, 128, "...", null)
 		) else (
-			try Button.init(.{128 + 16, 8}, 128, @field(main.keyboard, field).getName(), &functionBuilder(field))
+			try Button.init(.{16, 0}, 128, @field(main.keyboard, field).getName(), &functionBuilder(field))
 		);
-		if(label.size[1] > button.size[1]) {
-			button.pos[1] += (label.size[1] - button.size[1])/2;
-			try list.add(button);
-			label.pos[1] -= button.size[1] + button.pos[1];
-			try list.add(label);
-		} else {
-			label.pos[1] += (button.size[1] - label.size[1])/2;
-			try list.add(label);
-			button.pos[1] -= label.size[1] + label.pos[1];
-			try list.add(button);
-		}
+		var row = try HorizontalList.init();
+		try row.add(label);
+		try row.add(button);
+		row.finish(.{0, 8}, .center);
+		try list.add(row);
 	}
-	components[0] = list.toComponent(.{padding, padding});
+	list.finish(.{padding, padding}, .center);
+	components[0] = list.toComponent();
 	window.contentSize = components[0].size() + @splat(2, @as(f32, 2*padding));
 	gui.updateWindowPositions();
 }

@@ -28,7 +28,8 @@ pub fn onOpen() Allocator.Error!void {
 	try list.add(try Button.init(.{0, 16}, 128, "Sound", gui.openWindowFunction("cubyz:sound")));
 	try list.add(try Button.init(.{0, 16}, 128, "Controls", gui.openWindowFunction("cubyz:controls")));
 	try list.add(try Button.init(.{0, 16}, 128, "Change Name", gui.openWindowFunction("cubyz:change_name")));
-	components[0] = list.toComponent(.{padding, padding});
+	list.finish(.{padding, padding}, .center);
+	components[0] = list.toComponent();
 	window.contentSize = components[0].size() + @splat(2, @as(f32, 2*padding));
 	gui.updateWindowPositions();
 }
