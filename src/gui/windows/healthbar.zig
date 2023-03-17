@@ -8,17 +8,13 @@ const gui = @import("../gui.zig");
 const GuiWindow = gui.GuiWindow;
 const GuiComponent = gui.GuiComponent;
 
-var healthbarWindow: GuiWindow = undefined;
-pub fn init() !void {
-	healthbarWindow = GuiWindow{
-		.contentSize = Vec2f{128, 16},
-		.title = "Health Bar",
-		.id = "cubyz:healthbar",
-		.renderFn = &render,
-		.components = &[_]GuiComponent{},
-	};
-	try gui.addWindow(&healthbarWindow, true);
-}
+pub var window = GuiWindow {
+	.contentSize = Vec2f{128, 16},
+	.title = "Health Bar",
+	.id = "cubyz:healthbar",
+	.renderFn = &render,
+	.isHud = true,
+};
 
 pub fn render() Allocator.Error!void {
 

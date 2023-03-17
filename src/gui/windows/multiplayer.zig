@@ -14,19 +14,15 @@ const Label = @import("../components/Label.zig");
 const TextInput = @import("../components/TextInput.zig");
 const VerticalList = @import("../components/VerticalList.zig");
 
-var window: GuiWindow = undefined;
 var components: [1]GuiComponent = undefined;
-pub fn init() !void {
-	window = GuiWindow{
-		.contentSize = Vec2f{128, 256},
-		.id = "cubyz:multiplayer",
-		.title = "Multiplayer",
-		.onOpenFn = &onOpen,
-		.onCloseFn = &onClose,
-		.components = &components,
-	};
-	try gui.addWindow(&window, true);
-}
+pub var window = GuiWindow {
+	.contentSize = Vec2f{128, 256},
+	.id = "cubyz:multiplayer",
+	.title = "Multiplayer",
+	.onOpenFn = &onOpen,
+	.onCloseFn = &onClose,
+	.components = &components,
+};
 
 const padding: f32 = 8;
 

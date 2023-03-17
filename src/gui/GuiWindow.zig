@@ -56,7 +56,8 @@ relativePosition: [2]RelativePosition = .{.{.ratio = 0.5}, .{.ratio = 0.5}},
 showTitleBar: bool = true,
 title: []const u8 = "",
 id: []const u8,
-components: []GuiComponent,
+components: []GuiComponent = &.{},
+isHud: bool = false,
 
 /// Called every frame.
 renderFn: *const fn()Allocator.Error!void = &defaultErrorFunction,

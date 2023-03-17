@@ -11,20 +11,16 @@ const Button = @import("../components/Button.zig");
 const Label = @import("../components/Label.zig");
 const VerticalList = @import("../components/VerticalList.zig");
 
-var window: GuiWindow = undefined;
 var components: [1]GuiComponent = undefined;
-pub fn init() !void {
-	window = GuiWindow{
-		.contentSize = Vec2f{128, 256},
-		.id = "cubyz:controls",
-		.title = "Controls",
-		.onOpenFn = &onOpen,
-		.onCloseFn = &onClose,
-		.renderFn = &render,
-		.components = &components,
-	};
-	try gui.addWindow(&window, true);
-}
+pub var window = GuiWindow {
+	.contentSize = Vec2f{128, 256},
+	.id = "cubyz:controls",
+	.title = "Controls",
+	.onOpenFn = &onOpen,
+	.onCloseFn = &onClose,
+	.renderFn = &render,
+	.components = &components,
+};
 
 const padding: f32 = 8;
 var selectedKey: ?*main.Key = null;

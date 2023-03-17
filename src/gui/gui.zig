@@ -35,7 +35,7 @@ pub fn init(_allocator: Allocator) !void {
 	hudWindows = std.ArrayList(*GuiWindow).init(allocator);
 	openWindows = std.ArrayList(*GuiWindow).init(allocator);
 	inline for(@typeInfo(windowlist).Struct.decls) |decl| {
-		try @field(windowlist, decl.name).init();
+		try addWindow(&@field(windowlist, decl.name).window);
 	}
 	try GuiWindow.__init();
 	try Button.__init();
@@ -174,14 +174,14 @@ pub fn updateGuiScale() void {
 	}
 }
 
-pub fn addWindow(window: *GuiWindow, isHudWindow: bool) !void {
+fn addWindow(window: *GuiWindow) !void {
 	for(windowList.items) |other| {
 		if(std.mem.eql(u8, window.id, other.id)) {
 			std.log.err("Duplicate window id: {s}", .{window.id});
 			return;
 		}
 	}
-	if(isHudWindow) {
+	if(window.isHud) {
 		try hudWindows.append(window);
 		window.showTitleBar = false;
 	}

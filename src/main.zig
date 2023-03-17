@@ -500,10 +500,6 @@ pub fn main() !void {
 	if(settings.playerName.len == 0) {
 		try gui.openWindow("cubyz:change_name");
 	} else {
-		try gui.openWindow("cubyz:hotbar");
-		try gui.openWindow("cubyz:hotbar2");
-		try gui.openWindow("cubyz:hotbar3");
-		try gui.openWindow("cubyz:healthbar");
 		try gui.openWindow("cubyz:main");
 	}
 
