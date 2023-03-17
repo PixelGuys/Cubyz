@@ -350,7 +350,7 @@ pub fn mainButtonReleased() void {
 
 pub fn updateWindowPositions() void {
 	var wasChanged: bool = false;
-	for(openWindows.items) |window| {
+	for(windowList.items) |window| {
 		const oldPos = window.pos;
 		window.updateWindowPosition();
 		const newPos = window.pos;
