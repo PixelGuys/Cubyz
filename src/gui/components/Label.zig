@@ -15,25 +15,39 @@ const Label = @This();
 
 const fontSize: f32 = 16;
 
+pos: Vec2f,
+size: Vec2f,
 text: TextBuffer,
-textSize: Vec2f = undefined,
 
-pub fn init(pos: Vec2f, maxWidth: f32, text: []const u8, alignment: TextBuffer.Alignment) Allocator.Error!GuiComponent {
-	var self = Label {
+pub fn init(pos: Vec2f, maxWidth: f32, text: []const u8, alignment: TextBuffer.Alignment) Allocator.Error!*Label {
+	const self = try gui.allocator.create(Label);
+	self.* = Label {
 		.text = try TextBuffer.init(gui.allocator, text, .{}, false, alignment),
-	};
-	self.textSize = try self.text.calculateLineBreaks(fontSize, maxWidth);
-	return GuiComponent {
 		.pos = pos,
-		.size = self.textSize,
-		.impl = .{.label = self}
+		.size = undefined,
+	};
+	self.size = try self.text.calculateLineBreaks(fontSize, maxWidth);
+	return self;
+}
+
+pub fn deinit(self: *const Label) void {
+	self.text.deinit();
+	gui.allocator.destroy(self);
+}
+
+pub fn toComponent(self: *Label) GuiComponent {
+	return GuiComponent{
+		.label = self
 	};
 }
 
-pub fn deinit(self: Label) void {
+pub fn updateText(self: *Label, newText: []const u8) !void {
+	const alignment = self.text.alignment;
 	self.text.deinit();
+	self.text = try TextBuffer.init(gui.allocator, newText, .{}, false, alignment);
+	self.size = try self.text.calculateLineBreaks(fontSize, self.size[0]);
 }
 
-pub fn render(self: *Label, pos: Vec2f, _: Vec2f, _: Vec2f) !void {
-	try self.text.render(pos[0], pos[1], fontSize);
+pub fn render(self: *Label, _: Vec2f) !void {
+	try self.text.render(self.pos[0], self.pos[1], fontSize);
 }

@@ -13,80 +13,89 @@ const GuiComponent = gui.GuiComponent;
 
 const VerticalList = @This();
 
+pos: Vec2f,
+size: Vec2f,
 children: std.ArrayList(GuiComponent),
-currentOffset: f32 = 0,
-maxWidth: f32 = 0,
 
-pub fn init() Allocator.Error!VerticalList {
-	const self = VerticalList {
+pub fn init() Allocator.Error!*VerticalList {
+	const self = try gui.allocator.create(VerticalList);
+	self.* = VerticalList {
 		.children = std.ArrayList(GuiComponent).init(gui.allocator),
+		.pos = undefined,
+		.size = .{0, 0},
 	};
 	return self;
 }
 
-pub fn deinit(self: VerticalList) void {
+pub fn deinit(self: *const VerticalList) void {
 	for(self.children.items) |*child| {
 		child.deinit();
 	}
 	self.children.deinit();
+	gui.allocator.destroy(self);
 }
 
 pub fn toComponent(self: *VerticalList, pos: Vec2f) GuiComponent {
+	self.pos = pos;
 	return GuiComponent {
-		.pos = pos,
-		.size = .{self.maxWidth, self.currentOffset},
-		.impl = .{.verticalList = self.*}
+		.verticalList = self
 	};
 }
 
-pub fn add(self: *VerticalList, other: GuiComponent) Allocator.Error!void {
+pub fn add(self: *VerticalList, _other: anytype) Allocator.Error!void {
+	var other: GuiComponent = undefined;
+	if(@TypeOf(_other) == GuiComponent) {
+		other = _other;
+	} else {
+		other = _other.toComponent();
+	}
 	const added = try self.children.addOne();
 	added.* = other;
-	added.pos[1] += self.currentOffset;
-	self.currentOffset = added.pos[1] + added.size[1];
-	self.maxWidth = @max(self.maxWidth, added.pos[0] + added.size[0]);
+	added.mutPos().*[1] += self.size[1];
+	self.size[1] = added.pos()[1] + added.size()[1];
+	self.size[0] = @max(self.size[0], added.pos()[0] + added.size()[0]);
 }
 
-pub fn updateSelected(self: *VerticalList, _: Vec2f, _: Vec2f) void {
+pub fn updateSelected(self: *VerticalList) void {
 	for(self.children.items) |*child| {
 		child.updateSelected();
 	}
 }
 
-pub fn updateHovered(self: *VerticalList, pos: Vec2f, _: Vec2f, mousePosition: Vec2f) void {
+pub fn updateHovered(self: *VerticalList, mousePosition: Vec2f) void {
 	var i: usize = self.children.items.len;
 	while(i != 0) {
 		i -= 1;
 		const child = &self.children.items[i];
-		if(GuiComponent.contains(child.pos + pos, child.size, mousePosition)) {
-			child.updateHovered(mousePosition - pos);
+		if(GuiComponent.contains(child.pos() + self.pos, child.size(), mousePosition)) {
+			child.updateHovered(mousePosition - self.pos);
 			break;
 		}
 	}
 }
 
-pub fn render(self: *VerticalList, pos: Vec2f, _: Vec2f, mousePosition: Vec2f) anyerror!void { // TODO: Remove anyerror once error union inference works in recursive loops.
-	const oldTranslation = draw.setTranslation(pos);
+pub fn render(self: *VerticalList, mousePosition: Vec2f) anyerror!void { // TODO: Remove anyerror once error union inference works in recursive loops.
+	const oldTranslation = draw.setTranslation(self.pos);
 	for(self.children.items) |*child| {
-		try child.render(mousePosition - pos);
+		try child.render(mousePosition - self.pos);
 	}
 	draw.restoreTranslation(oldTranslation);
 }
 
-pub fn mainButtonPressed(self: *VerticalList, pos: Vec2f, _: Vec2f, mousePosition: Vec2f) void {
+pub fn mainButtonPressed(self: *VerticalList, mousePosition: Vec2f) void {
 	var selectedChild: ?*GuiComponent = null;
 	for(self.children.items) |*child| {
-		if(GuiComponent.contains(child.pos + pos, child.size, mousePosition)) {
+		if(GuiComponent.contains(child.pos() + self.pos, child.size(), mousePosition)) {
 			selectedChild = child;
 		}
 	}
 	if(selectedChild) |child| {
-		child.mainButtonPressed(mousePosition - pos);
+		child.mainButtonPressed(mousePosition - self.pos);
 	}
 }
 
-pub fn mainButtonReleased(self: *VerticalList, pos: Vec2f, _: Vec2f, mousePosition: Vec2f) void {
+pub fn mainButtonReleased(self: *VerticalList, mousePosition: Vec2f) void {
 	for(self.children.items) |*child| {
-		child.mainButtonReleased(mousePosition - pos);
+		child.mainButtonReleased(mousePosition - self.pos);
 	}
 }

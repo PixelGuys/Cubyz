@@ -26,7 +26,7 @@ pub fn onOpen() Allocator.Error!void {
 	var list = try VerticalList.init();
 	// TODO
 	components[0] = list.toComponent(.{padding, padding});
-	window.contentSize = components[0].size + @splat(2, @as(f32, 2*padding));
+	window.contentSize = components[0].size() + @splat(2, @as(f32, 2*padding));
 	gui.updateWindowPositions();
 }
 

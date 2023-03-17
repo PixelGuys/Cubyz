@@ -32,7 +32,7 @@ pub fn onOpen() Allocator.Error!void {
 	try list.add(try Button.init(.{0, 16}, 128, "Settings", gui.openWindowFunction("cubyz:settings")));
 	try list.add(try Button.init(.{0, 16}, 128, "Exit TODO", &buttonCallbackTest));
 	components[0] = list.toComponent(.{padding, padding});
-	window.contentSize = components[0].size + @splat(2, @as(f32, 2*padding));
+	window.contentSize = components[0].size() + @splat(2, @as(f32, 2*padding));
 	gui.updateWindowPositions();
 }
 

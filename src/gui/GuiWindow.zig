@@ -119,7 +119,7 @@ pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) void {
 	} else {
 		var selectedComponent: ?*GuiComponent = null;
 		for(self.components) |*component| {
-			if(GuiComponent.contains(component.pos, component.size, scaledMousePos)) {
+			if(GuiComponent.contains(component.pos(), component.size(), scaledMousePos)) {
 				selectedComponent = component;
 			}
 		}
@@ -326,7 +326,7 @@ pub fn updateHovered(self: *GuiWindow, mousePosition: Vec2f) !void {
 	while(i != 0) {
 		i -= 1;
 		const component = &self.components[i];
-		if(GuiComponent.contains(component.pos, component.size, (mousePosition - self.pos)/@splat(2, self.scale))) {
+		if(GuiComponent.contains(component.pos(), component.size(), (mousePosition - self.pos)/@splat(2, self.scale))) {
 			component.updateHovered((mousePosition - self.pos)/@splat(2, self.scale));
 			break;
 		}

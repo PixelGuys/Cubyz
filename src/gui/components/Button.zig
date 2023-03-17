@@ -32,11 +32,12 @@ pub var buttonUniforms: struct {
 	pressed: c_int,
 } = undefined;
 
+pos: Vec2f,
+size: Vec2f,
 pressed: bool = false,
 hovered: bool = false,
 onAction: *const fn() void,
-textSize: Vec2f,
-label: Label,
+label: *Label,
 
 pub fn __init() !void {
 	shader = try Shader.initAndGetUniforms("assets/cubyz/shaders/ui/button.vs", "assets/cubyz/shaders/ui/button.fs", &buttonUniforms);
@@ -52,42 +53,47 @@ pub fn __deinit() void {
 
 fn defaultOnAction() void {}
 
-pub fn init(pos: Vec2f, width: f32, text: []const u8, onAction: ?*const fn() void) Allocator.Error!GuiComponent {
-	const labelComponent = try Label.init(undefined, width - 3*border, text, .center);
-	var self = Button {
-		.onAction = if(onAction) |a| a else &defaultOnAction,
-		.label = labelComponent.impl.label,
-		.textSize = labelComponent.size,
-	};
-	return GuiComponent {
+pub fn init(pos: Vec2f, width: f32, text: []const u8, onAction: ?*const fn() void) Allocator.Error!*Button {
+	const label = try Label.init(undefined, width - 3*border, text, .center);
+	const self = try gui.allocator.create(Button);
+	self.* = Button {
 		.pos = pos,
-		.size = Vec2f{width, self.textSize[1] + 3*border},
-		.impl = .{.button = self}
+		.size = Vec2f{width, label.size[1] + 3*border},
+		.onAction = if(onAction) |a| a else &defaultOnAction,
+		.label = label,
+	};
+	return self;
+}
+
+pub fn deinit(self: *const Button) void {
+	self.label.deinit();
+	gui.allocator.destroy(self);
+}
+
+pub fn toComponent(self: *Button) GuiComponent {
+	return GuiComponent {
+		.button = self
 	};
 }
 
-pub fn deinit(self: Button) void {
-	self.label.deinit();
-}
-
-pub fn updateHovered(self: *Button, _: Vec2f, _: Vec2f, _: Vec2f) void {
+pub fn updateHovered(self: *Button, _: Vec2f) void {
 	self.hovered = true;
 }
 
-pub fn mainButtonPressed(self: *Button, _: Vec2f, _: Vec2f, _: Vec2f) void {
+pub fn mainButtonPressed(self: *Button, _: Vec2f) void {
 	self.pressed = true;
 }
 
-pub fn mainButtonReleased(self: *Button, pos: Vec2f, size: Vec2f, mousePosition: Vec2f) void {
+pub fn mainButtonReleased(self: *Button, mousePosition: Vec2f) void {
 	if(self.pressed) {
 		self.pressed = false;
-		if(GuiComponent.contains(pos, size, mousePosition)) {
+		if(GuiComponent.contains(self.pos, self.size, mousePosition)) {
 			self.onAction();
 		}
 	}
 }
 
-pub fn render(self: *Button, pos: Vec2f, size: Vec2f, mousePosition: Vec2f) !void {
+pub fn render(self: *Button, mousePosition: Vec2f) !void {
 	graphics.c.glActiveTexture(graphics.c.GL_TEXTURE0);
 	texture.bind();
 	shader.bind();
@@ -95,14 +101,15 @@ pub fn render(self: *Button, pos: Vec2f, size: Vec2f, mousePosition: Vec2f) !voi
 	if(self.pressed) {
 		draw.setColor(0xff000000);
 		graphics.c.glUniform1i(buttonUniforms.pressed, 1);
-	} else if(GuiComponent.contains(pos, size, mousePosition) and self.hovered) {
+	} else if(GuiComponent.contains(self.pos, self.size, mousePosition) and self.hovered) {
 		draw.setColor(0xff000040);
 	} else {
 		draw.setColor(0xff000000);
 	}
 	self.hovered = false;
-	draw.customShadedRect(buttonUniforms, pos, size);
+	draw.customShadedRect(buttonUniforms, self.pos, self.size);
 	graphics.c.glUniform1i(buttonUniforms.pressed, 0);
-	const textPos = pos + size/@splat(2, @as(f32, 2.0)) - self.textSize/@splat(2, @as(f32, 2.0));
-	try self.label.render(textPos, self.textSize, mousePosition - textPos);
+	const textPos = self.pos + self.size/@splat(2, @as(f32, 2.0)) - self.label.size/@splat(2, @as(f32, 2.0));
+	self.label.pos = textPos;
+	try self.label.render(mousePosition - self.pos);
 }

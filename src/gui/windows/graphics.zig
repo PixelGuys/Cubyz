@@ -52,7 +52,7 @@ pub fn onOpen() Allocator.Error!void {
 	try list.add(try CheckBox.init(.{0, 16}, 128, "Bloom", settings.bloom, &bloomCallback));
 	try list.add(try CheckBox.init(.{0, 16}, 128, "Vertical Synchronization", settings.vsync, &vsyncCallback));
 	components[0] = list.toComponent(.{padding, padding});
-	window.contentSize = components[0].size + @splat(2, @as(f32, 2*padding));
+	window.contentSize = components[0].size() + @splat(2, @as(f32, 2*padding));
 	gui.updateWindowPositions();
 }
 

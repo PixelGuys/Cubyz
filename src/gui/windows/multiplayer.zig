@@ -24,6 +24,8 @@ pub var window = GuiWindow {
 	.components = &components,
 };
 
+var ipAddressLabel: *Label = undefined;
+
 const padding: f32 = 8;
 
 var connection: ?*ConnectionManager = null;
@@ -34,9 +36,7 @@ const width: f32 = 420;
 fn flawedDiscoverIpAddress() !void {
 	connection = try ConnectionManager.init(12347, true); // TODO: default port
 	ipAddress = try std.fmt.allocPrint(main.globalAllocator, "{}", .{connection.?.externalAddress});
-	components[0].impl.verticalList.children.items[1].impl.label.deinit();
-	const labelComponent = try Label.init(undefined, width, ipAddress, .center);
-	components[0].impl.verticalList.children.items[1].impl.label = labelComponent.impl.label;
+	try ipAddressLabel.updateText(ipAddress);
 }
 
 fn discoverIpAddress() void {
@@ -86,13 +86,14 @@ fn copyIp() void {
 pub fn onOpen() Allocator.Error!void {
 	var list = try VerticalList.init();
 	try list.add(try Label.init(.{0, 16}, width, "Please send your IP to the host of the game and enter the host's IP below.", .center));
-	//                                            255.255.255.255:?65536 (longest possible ip address)
-	try list.add(try Label.init(.{0, 16}, width, "                      ", .center));
+	//                                                255.255.255.255:?65536 (longest possible ip address)
+	ipAddressLabel = try Label.init(.{0, 16}, width, "                      ", .center);
+	try list.add(ipAddressLabel);
 	try list.add(try Button.init(.{0, 16}, 100, "Copy IP", &copyIp));
 	try list.add(try TextInput.init(.{0, 16}, width, 32, settings.lastUsedIPAddress));
 	try list.add(try Button.init(.{0, 16}, 100, "Join", &join));
 	components[0] = list.toComponent(.{padding, padding});
-	window.contentSize = components[0].size + @splat(2, @as(f32, 2*padding));
+	window.contentSize = components[0].size() + @splat(2, @as(f32, 2*padding));
 	gui.updateWindowPositions();
 
 	thread = std.Thread.spawn(.{}, discoverIpAddressFromNewThread, .{}) catch |err| blk: {

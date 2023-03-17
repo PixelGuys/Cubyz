@@ -22,12 +22,12 @@ pub var window = GuiWindow {
 	.onCloseFn = &onClose,
 	.components = &components,
 };
+var textComponent: *TextInput = undefined;
 
 const padding: f32 = 8;
 
 fn apply() void {
 	const oldName = settings.playerName;
-	const textComponent: *TextInput = &components[0].impl.verticalList.children.items[5].impl.textInput;
 	main.globalAllocator.free(settings.playerName);
 	settings.playerName = main.globalAllocator.dupe(u8, textComponent.currentString.items) catch {
 		std.log.err("Encountered out of memory in change_name.apply.", .{});
@@ -55,10 +55,11 @@ pub fn onOpen() Allocator.Error!void {
 	try list.add(try Label.init(.{0, 16}, width, "\\**italic*\\* \\*\\***bold**\\*\\* \\__underlined_\\_ \\_\\___strike-through__\\_\\_", .center));
 	try list.add(try Label.init(.{0, 16}, width, "Even colors are possible, using the hexadecimal color code:", .center));
 	try list.add(try Label.init(.{0, 16}, width, "\\##ff0000ff#00000000#00000000#ff0000red#000000 \\##ff0000ff#00770077#00000000#ff7700orange#000000 \\##00000000#00ff00ff#00000000#00ff00green#000000 \\##00000000#00000000#0000ffff#0000ffblue", .center));
-	try list.add(try TextInput.init(.{0, 16}, width, 32, "quanturmdoelvloper"));
+	textComponent = try TextInput.init(.{0, 16}, width, 32, "quanturmdoelvloper");
+	try list.add(textComponent);
 	try list.add(try Button.init(.{0, 16}, 100, "Apply", &apply));
 	components[0] = list.toComponent(.{padding, padding});
-	window.contentSize = components[0].size + @splat(2, @as(f32, 2*padding));
+	window.contentSize = components[0].size() + @splat(2, @as(f32, 2*padding));
 	gui.updateWindowPositions();
 }
 

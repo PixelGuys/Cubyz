@@ -46,7 +46,7 @@ fn keypressListener(key: c_int, mouseButton: c_int, scancode: c_int) void {
 
 pub fn onOpen() Allocator.Error!void {
 	var list = try VerticalList.init();
-	list.currentOffset = 8;
+	list.size[1] = 8;
 	inline for(comptime std.meta.fieldNames(@TypeOf(main.keyboard))) |field| {
 		var label = try Label.init(.{0, 8}, 128, field, .left);
 		var button = if(&@field(main.keyboard, field) == selectedKey) (
@@ -67,7 +67,7 @@ pub fn onOpen() Allocator.Error!void {
 		}
 	}
 	components[0] = list.toComponent(.{padding, padding});
-	window.contentSize = components[0].size + @splat(2, @as(f32, 2*padding));
+	window.contentSize = components[0].size() + @splat(2, @as(f32, 2*padding));
 	gui.updateWindowPositions();
 }
 

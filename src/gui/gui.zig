@@ -14,7 +14,7 @@ const CheckBox = @import("components/CheckBox.zig");
 const ScrollBar = @import("components/ScrollBar.zig");
 const Slider = @import("components/Slider.zig");
 const TextInput = @import("components/TextInput.zig");
-pub const GuiComponent = @import("GuiComponent.zig");
+pub const GuiComponent = @import("gui_component.zig").GuiComponent;
 pub const GuiWindow = @import("GuiWindow.zig");
 
 const windowlist = @import("windows/_windowlist.zig");

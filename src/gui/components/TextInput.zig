@@ -22,6 +22,8 @@ const fontSize: f32 = 16;
 
 var texture: Texture = undefined;
 
+pos: Vec2f,
+size: Vec2f,
 pressed: bool = false,
 cursor: ?u32 = null,
 selectionStart: ?u32 = null,
@@ -30,8 +32,7 @@ textBuffer: TextBuffer,
 maxWidth: f32,
 maxHeight: f32,
 textSize: Vec2f = undefined,
-scrollBar: ScrollBar,
-scrollBarSize: Vec2f,
+scrollBar: *ScrollBar,
 
 pub fn __init() !void {
 	texture = try Texture.initFromFile("assets/cubyz/ui/text_input.png");
@@ -41,49 +42,54 @@ pub fn __deinit() void {
 	texture.deinit();
 }
 
-pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8) Allocator.Error!GuiComponent {
-	const scrollBarComponent = try ScrollBar.init(undefined, scrollBarWidth, maxHeight - 2*border, 0);
-	var self = TextInput {
+pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8) Allocator.Error!*TextInput {
+	const scrollBar = try ScrollBar.init(undefined, scrollBarWidth, maxHeight - 2*border, 0);
+	const self = try gui.allocator.create(TextInput);
+	self.* = TextInput {
+		.pos = pos,
+		.size = .{maxWidth, maxHeight},
 		.currentString = std.ArrayList(u8).init(gui.allocator),
 		.textBuffer = try TextBuffer.init(gui.allocator, text, .{}, true, .left),
 		.maxWidth = maxWidth,
 		.maxHeight = maxHeight,
-		.scrollBar = scrollBarComponent.impl.scrollBar,
-		.scrollBarSize = scrollBarComponent.size,
+		.scrollBar = scrollBar,
 	};
 	try self.currentString.appendSlice(text);
 	self.textSize = try self.textBuffer.calculateLineBreaks(fontSize, maxWidth - 2*border - scrollBarWidth);
-	return GuiComponent {
-		.pos = pos,
-		.size = .{maxWidth, maxHeight},
-		.impl = .{.textInput = self}
-	};
+	return self;
 }
 
-pub fn deinit(self: TextInput) void {
+pub fn deinit(self: *const TextInput) void {
 	self.textBuffer.deinit();
 	self.currentString.deinit();
 	self.scrollBar.deinit();
+	gui.allocator.destroy(self);
 }
 
-pub fn updateHovered(self: *TextInput, pos: Vec2f, size: Vec2f, mousePosition: Vec2f) void {
+pub fn toComponent(self: *TextInput) GuiComponent {
+	return GuiComponent {
+		.textInput = self
+	};
+}
+
+pub fn updateHovered(self: *TextInput, mousePosition: Vec2f) void {
 	if(self.textSize[1] > self.maxHeight - 2*border) {
 		const diff = self.textSize[1] - (self.maxHeight - 2*border);
 		self.scrollBar.scroll(-main.Window.scrollOffset*32/diff);
 	}
 	if(self.textSize[1] > self.maxHeight - 2*border) {
-		const scrollBarPos = Vec2f{size[0] - border - scrollBarWidth, border};
-		if(GuiComponent.contains(scrollBarPos, self.scrollBarSize, mousePosition - pos)) {
-			self.scrollBar.updateHovered(scrollBarPos, self.scrollBarSize, mousePosition - pos);
+		self.scrollBar.pos = Vec2f{self.size[0] - border - scrollBarWidth, border};
+		if(GuiComponent.contains(self.scrollBar.pos, self.scrollBar.size, mousePosition - self.pos)) {
+			self.scrollBar.updateHovered(mousePosition - self.pos);
 		}
 	}
 }
 
-pub fn mainButtonPressed(self: *TextInput, pos: Vec2f, size: Vec2f, mousePosition: Vec2f) void {
+pub fn mainButtonPressed(self: *TextInput, mousePosition: Vec2f) void {
 	if(self.textSize[1] > self.maxHeight - 2*border) {
-		const scrollBarPos = Vec2f{size[0] - border - scrollBarWidth, border};
-		if(GuiComponent.contains(scrollBarPos, self.scrollBarSize, mousePosition - pos)) {
-			self.scrollBar.mainButtonPressed(scrollBarPos, self.scrollBarSize, mousePosition - pos);
+		self.scrollBar.pos = Vec2f{self.size[0] - border - scrollBarWidth, border};
+		if(GuiComponent.contains(self.scrollBar.pos, self.scrollBar.size, mousePosition - self.pos)) {
+			self.scrollBar.mainButtonPressed(mousePosition - self.pos);
 			return;
 		}
 	}
@@ -93,25 +99,26 @@ pub fn mainButtonPressed(self: *TextInput, pos: Vec2f, size: Vec2f, mousePositio
 		const diff = self.textSize[1] - (self.maxHeight - 2*border);
 		textPos[1] -= diff*self.scrollBar.currentState;
 	}
-	self.selectionStart = self.textBuffer.mousePosToIndex(mousePosition - textPos - pos, self.currentString.items.len);
+	self.selectionStart = self.textBuffer.mousePosToIndex(mousePosition - textPos - self.pos, self.currentString.items.len);
 	self.pressed = true;
 }
 
-pub fn mainButtonReleased(self: *TextInput, pos: Vec2f, size: Vec2f, mousePosition: Vec2f) void {
+pub fn mainButtonReleased(self: *TextInput, mousePosition: Vec2f) void {
 	if(self.pressed) {
 		var textPos = Vec2f{border, border};
 		if(self.textSize[1] > self.maxHeight - 2*border) {
 			const diff = self.textSize[1] - (self.maxHeight - 2*border);
 			textPos[1] -= diff*self.scrollBar.currentState;
 		}
-		self.cursor = self.textBuffer.mousePosToIndex(mousePosition - textPos - pos, self.currentString.items.len);
+		self.cursor = self.textBuffer.mousePosToIndex(mousePosition - textPos - self.pos, self.currentString.items.len);
 		if(self.cursor == self.selectionStart) {
 			self.selectionStart = null;
 		}
 		self.pressed = false;
 		gui.setSelectedTextInput(self);
 	} else if(self.textSize[1] > self.maxHeight - 2*border) {
-		self.scrollBar.mainButtonReleased(.{size[0] - border - scrollBarWidth, border}, self.scrollBarSize, mousePosition - pos);
+		self.scrollBar.pos = .{self.size[0] - border - scrollBarWidth, border};
+		self.scrollBar.mainButtonReleased(mousePosition - self.pos);
 		gui.setSelectedTextInput(self);
 	}
 }
@@ -435,26 +442,27 @@ fn ensureCursorVisibility(self: *TextInput) void {
 	}
 }
 
-pub fn render(self: *TextInput, pos: Vec2f, size: Vec2f, mousePosition: Vec2f) !void {
+pub fn render(self: *TextInput, mousePosition: Vec2f) !void {
 	graphics.c.glActiveTexture(graphics.c.GL_TEXTURE0);
 	texture.bind();
 	Button.shader.bind();
 	draw.setColor(0xff000000);
-	draw.customShadedRect(Button.buttonUniforms, pos, size);
-	const oldTranslation = draw.setTranslation(pos);
+	draw.customShadedRect(Button.buttonUniforms, self.pos, self.size);
+	const oldTranslation = draw.setTranslation(self.pos);
 	defer draw.restoreTranslation(oldTranslation);
-	const oldClip = draw.setClip(size);
+	const oldClip = draw.setClip(self.size);
 	defer draw.restoreClip(oldClip);
 
 	var textPos = Vec2f{border, border};
 	if(self.textSize[1] > self.maxHeight - 2*border) {
 		const diff = self.textSize[1] - (self.maxHeight - 2*border);
 		textPos[1] -= diff*self.scrollBar.currentState;
-		try self.scrollBar.render(.{size[0] - self.scrollBarSize[0] - border, border}, self.scrollBarSize, mousePosition - pos);
+		self.scrollBar.pos = .{self.size[0] - self.scrollBar.size[0] - border, border};
+		try self.scrollBar.render(mousePosition - self.pos);
 	}
 	try self.textBuffer.render(textPos[0], textPos[1], fontSize);
 	if(self.pressed) {
-		self.cursor = self.textBuffer.mousePosToIndex(mousePosition - textPos - pos, self.currentString.items.len);
+		self.cursor = self.textBuffer.mousePosToIndex(mousePosition - textPos - self.pos, self.currentString.items.len);
 	}
 	if(self.cursor) |cursor| {
 		var cursorPos = textPos + self.textBuffer.indexToCursorPos(cursor);

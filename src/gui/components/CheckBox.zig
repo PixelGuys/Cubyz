@@ -25,12 +25,13 @@ const boxSize: f32 = 16;
 var textureChecked: Texture = undefined;
 var textureEmpty: Texture = undefined;
 
+pos: Vec2f,
+size: Vec2f,
 state: bool = false,
 pressed: bool = false,
 hovered: bool = false,
 onAction: *const fn(bool) void,
-textSize: Vec2f,
-label: Label,
+label: *Label,
 
 pub fn __init() !void {
 	textureChecked = try Texture.initFromFile("assets/cubyz/ui/checked_box.png");
@@ -42,44 +43,49 @@ pub fn __deinit() void {
 	textureEmpty.deinit();
 }
 
-pub fn init(pos: Vec2f, width: f32, text: []const u8, initialValue: bool, onAction: *const fn(bool) void) Allocator.Error!GuiComponent {
-	const labelComponent = try Label.init(undefined, width - 3*border - boxSize, text, .left);
-	var self = CheckBox {
+pub fn init(pos: Vec2f, width: f32, text: []const u8, initialValue: bool, onAction: *const fn(bool) void) Allocator.Error!*CheckBox {
+	const label = (try Label.init(undefined, width - 3*border - boxSize, text, .left));
+	const self = try gui.allocator.create(CheckBox);
+	self.* = CheckBox {
+		.pos = pos,
+		.size = Vec2f{@max(width, label.size[0] + 3*border + boxSize), label.size[1] + 3*border},
 		.state = initialValue,
 		.onAction = onAction,
-		.label = labelComponent.impl.label,
-		.textSize = labelComponent.size,
+		.label = label,
 	};
-	return GuiComponent {
-		.pos = pos,
-		.size = Vec2f{@max(width, self.textSize[0] + 3*border + boxSize), self.textSize[1] + 3*border},
-		.impl = .{.checkBox = self}
-	};
+	return self;
 }
 
-pub fn deinit(self: CheckBox) void {
+pub fn deinit(self: *const CheckBox) void {
 	self.label.deinit();
+	gui.allocator.destroy(self);
 }
 
-pub fn updateHovered(self: *CheckBox, _: Vec2f, _: Vec2f, _: Vec2f) void {
+pub fn toComponent(self: *CheckBox) GuiComponent {
+	return GuiComponent {
+		.checkBox = self
+	};
+}
+
+pub fn updateHovered(self: *CheckBox, _: Vec2f) void {
 	self.hovered = true;
 }
 
-pub fn mainButtonPressed(self: *CheckBox, _: Vec2f, _: Vec2f, _: Vec2f) void {
+pub fn mainButtonPressed(self: *CheckBox, _: Vec2f) void {
 	self.pressed = true;
 }
 
-pub fn mainButtonReleased(self: *CheckBox, pos: Vec2f, size: Vec2f, mousePosition: Vec2f) void {
+pub fn mainButtonReleased(self: *CheckBox, mousePosition: Vec2f) void {
 	if(self.pressed) {
 		self.pressed = false;
-		if(GuiComponent.contains(pos, size, mousePosition)) {
+		if(GuiComponent.contains(self.pos, self.size, mousePosition)) {
 			self.state = !self.state;
 			self.onAction(self.state);
 		}
 	}
 }
 
-pub fn render(self: *CheckBox, pos: Vec2f, size: Vec2f, mousePosition: Vec2f) !void {
+pub fn render(self: *CheckBox, mousePosition: Vec2f) !void {
 	graphics.c.glActiveTexture(graphics.c.GL_TEXTURE0);
 	if(self.state) {
 		textureChecked.bind();
@@ -91,14 +97,15 @@ pub fn render(self: *CheckBox, pos: Vec2f, size: Vec2f, mousePosition: Vec2f) !v
 	if(self.pressed) {
 		draw.setColor(0xff000000);
 		graphics.c.glUniform1i(Button.buttonUniforms.pressed, 1);
-	} else if(GuiComponent.contains(pos, size, mousePosition) and self.hovered) {
+	} else if(GuiComponent.contains(self.pos, self.size, mousePosition) and self.hovered) {
 		draw.setColor(0xff000040);
 	} else {
 		draw.setColor(0xff000000);
 	}
 	self.hovered = false;
-	draw.customShadedRect(Button.buttonUniforms, pos + Vec2f{0, size[1]/2 - boxSize/2}, @splat(2, boxSize));
+	draw.customShadedRect(Button.buttonUniforms, self.pos + Vec2f{0, self.size[1]/2 - boxSize/2}, @splat(2, boxSize));
 	graphics.c.glUniform1i(Button.buttonUniforms.pressed, 0);
-	const textPos = pos + Vec2f{boxSize/2, 0} + size/@splat(2, @as(f32, 2.0)) - self.textSize/@splat(2, @as(f32, 2.0));
-	try self.label.render(textPos, self.textSize, mousePosition - textPos);
+	const textPos = self.pos + Vec2f{boxSize/2, 0} + self.size/@splat(2, @as(f32, 2.0)) - self.label.size/@splat(2, @as(f32, 2.0));
+	self.label.pos = textPos;
+	try self.label.render(mousePosition - textPos);
 }

@@ -13,7 +13,6 @@ pub var window = GuiWindow {
 	.title = "Hotbar",
 	.id = "cubyz:hotbar",
 	.renderFn = &render,
-	.components = &[_]GuiComponent{},
 	.isHud = true,
 };
 
