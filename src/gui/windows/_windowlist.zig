@@ -1,6 +1,7 @@
 
 pub const change_name = @import("change_name.zig");
 pub const controls = @import("controls.zig");
+pub const crosshair = @import("crosshair.zig");
 pub const graphics = @import("graphics.zig");
 pub const healthbar = @import("healthbar.zig");
 pub const hotbar = @import("hotbar.zig");

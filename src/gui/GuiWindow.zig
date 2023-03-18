@@ -53,10 +53,11 @@ contentSize: Vec2f,
 scale: f32 = 1,
 spacing: f32 = 0,
 relativePosition: [2]RelativePosition = .{.{.ratio = 0.5}, .{.ratio = 0.5}},
-showTitleBar: bool = true,
 title: []const u8 = "",
 id: []const u8,
 components: []GuiComponent = &.{},
+showTitleBar: bool = true,
+hasBackground: bool = true,
 isHud: bool = false,
 
 /// Called every frame.
@@ -422,15 +423,15 @@ fn drawOrientationLines(self: *const GuiWindow) void {
 }
 
 pub fn render(self: *const GuiWindow, mousePosition: Vec2f) !void {
-	draw.setColor(0xff808080);
-	draw.rect(self.pos, self.size);
 	const oldTranslation = draw.setTranslation(self.pos);
 	const oldScale = draw.setScale(self.scale);
-	draw.setColor(0xff000000);
-	graphics.c.glActiveTexture(graphics.c.GL_TEXTURE0);
-	shader.bind();
-	backgroundTexture.bind();
-	draw.customShadedRect(windowUniforms, .{0, 0}, self.size/@splat(2, self.scale));
+	if(self.hasBackground) {
+		draw.setColor(0xff000000);
+		graphics.c.glActiveTexture(graphics.c.GL_TEXTURE0);
+		shader.bind();
+		backgroundTexture.bind();
+		draw.customShadedRect(windowUniforms, .{0, 0}, self.size/@splat(2, self.scale));
+	}
 	try self.renderFn();
 	for(self.components) |*component| {
 		try component.render((mousePosition - self.pos)/@splat(2, self.scale));

@@ -77,6 +77,9 @@ fn join() void {
 	for(gui.openWindows.items) |openWindow| {
 		gui.closeWindow(openWindow);
 	}
+	gui.openHud() catch |err| {
+		std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
+	};
 }
 
 fn copyIp() void {

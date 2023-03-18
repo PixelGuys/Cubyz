@@ -35,7 +35,13 @@ pub fn init(_allocator: Allocator) !void {
 	hudWindows = std.ArrayList(*GuiWindow).init(allocator);
 	openWindows = std.ArrayList(*GuiWindow).init(allocator);
 	inline for(@typeInfo(windowlist).Struct.decls) |decl| {
-		try addWindow(&@field(windowlist, decl.name).window);
+		const windowStruct = @field(windowlist, decl.name);
+		try addWindow(&windowStruct.window);
+		inline for(@typeInfo(windowStruct).Struct.decls) |_decl| {
+			if(comptime std.mem.eql(u8, _decl.name, "init")) {
+				try windowStruct.init();
+			}
+		}
 	}
 	try GuiWindow.__init();
 	try Button.__init();
@@ -62,6 +68,14 @@ pub fn deinit() void {
 	ScrollBar.__deinit();
 	Slider.__deinit();
 	TextInput.__deinit();
+	inline for(@typeInfo(windowlist).Struct.decls) |decl| {
+		const windowStruct = @field(windowlist, decl.name);
+		inline for(@typeInfo(windowStruct).Struct.decls) |_decl| {
+			if(comptime std.mem.eql(u8, _decl.name, "deinit")) {
+				windowStruct.deinit();
+			}
+		}
+	}
 }
 
 fn save() !void {
@@ -183,17 +197,14 @@ fn addWindow(window: *GuiWindow) !void {
 	}
 	if(window.isHud) {
 		try hudWindows.append(window);
-		window.showTitleBar = false;
 	}
 	try windowList.append(window);
 }
 
 pub fn openWindow(id: []const u8) Allocator.Error!void {
 	defer updateWindowPositions();
-	var wasFound: bool = false;
 	for(windowList.items) |window| {
 		if(std.mem.eql(u8, window.id, id)) {
-			wasFound = true;
 			for(openWindows.items, 0..) |_openWindow, i| {
 				if(_openWindow == window) {
 					_ = openWindows.swapRemove(i);
@@ -202,7 +213,6 @@ pub fn openWindow(id: []const u8) Allocator.Error!void {
 					return;
 				}
 			}
-			window.showTitleBar = true;
 			try openWindows.append(window);
 			try window.onOpenFn();
 			selectedWindow = null;
@@ -210,6 +220,23 @@ pub fn openWindow(id: []const u8) Allocator.Error!void {
 		}
 	}
 	std.log.warn("Could not find window with id {s}.", .{id});
+}
+
+pub fn openHud() Allocator.Error!void {
+	for(windowList.items) |window| {
+		if(window.isHud) {
+			for(openWindows.items, 0..) |_openWindow, i| {
+				if(_openWindow == window) {
+					_ = openWindows.swapRemove(i);
+					openWindows.appendAssumeCapacity(window);
+					selectedWindow = null;
+					return;
+				}
+			}
+			try openWindows.append(window);
+			try window.onOpenFn();
+		}
+	}
 }
 
 pub fn openWindowFunction(comptime id: []const u8) *const fn() void {
