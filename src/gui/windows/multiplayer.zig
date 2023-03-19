@@ -30,13 +30,14 @@ const padding: f32 = 8;
 
 var connection: ?*ConnectionManager = null;
 var ipAddress: []const u8 = "";
+var gotIpAddress: std.atomic.Atomic(bool) = std.atomic.Atomic(bool).init(false);
 var thread: ?std.Thread = null;
 const width: f32 = 420;
 
 fn flawedDiscoverIpAddress() !void {
 	connection = try ConnectionManager.init(12347, true); // TODO: default port
 	ipAddress = try std.fmt.allocPrint(main.globalAllocator, "{}", .{connection.?.externalAddress});
-	try ipAddressLabel.updateText(ipAddress);
+	gotIpAddress.store(true, .Monotonic);
 }
 
 fn discoverIpAddress() void {
@@ -123,5 +124,12 @@ pub fn onClose() void {
 
 	for(&components) |*comp| {
 		comp.deinit();
+	}
+}
+
+pub fn render() void {
+	if(gotIpAddress.load(.Monotonic)) {
+		gotIpAddress.store(false, .Monotonic);
+		try ipAddressLabel.updateText(ipAddress);
 	}
 }

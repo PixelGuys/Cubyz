@@ -25,7 +25,7 @@ pub var window = GuiWindow {
 var texture: Texture = undefined;
 
 pub fn init() !void {
-	texture = try Texture.initFromFile("assets/cubyz/ui/crosshair.png");
+	texture = try Texture.initFromFile("assets/cubyz/ui/hud/crosshair.png");
 }
 
 pub fn deinit() void {

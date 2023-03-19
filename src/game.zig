@@ -53,6 +53,9 @@ pub const Player = struct {
 	pub var mutex: std.Thread.Mutex = std.Thread.Mutex{};
 	pub var inventory__SEND_CHANGES_TO_SERVER: Inventory = undefined;
 
+	pub var maxHealth: f32 = 8;
+	pub var health: f32 = 4.5;
+
 	pub fn setPosBlocking(newPos: Vec3d) void {
 		mutex.lock();
 		defer mutex.unlock();
