@@ -385,46 +385,33 @@ fn sortChunks(toSort: []*chunk.meshing.ChunkMesh, playerPos: Vec3d) !void {
 const Bloom = struct {
 	var buffer1: graphics.FrameBuffer = undefined;
 	var buffer2: graphics.FrameBuffer = undefined;
-	var extractedBuffer: graphics.FrameBuffer = undefined;
 	var width: u31 = std.math.maxInt(u31);
 	var height: u31 = std.math.maxInt(u31);
 	var firstPassShader: graphics.Shader = undefined;
 	var secondPassShader: graphics.Shader = undefined;
-	var colorExtractShader: graphics.Shader = undefined;
-	var scaleShader: graphics.Shader = undefined;
+	var colorExtractAndDownsampleShader: graphics.Shader = undefined;
+	var upscaleShader: graphics.Shader = undefined;
 
 	pub fn init() !void {
 		buffer1.init(false);
 		buffer2.init(false);
-		extractedBuffer.init(false);
 		firstPassShader = try graphics.Shader.init("assets/cubyz/shaders/bloom/first_pass.vs", "assets/cubyz/shaders/bloom/first_pass.fs");
 		secondPassShader = try graphics.Shader.init("assets/cubyz/shaders/bloom/second_pass.vs", "assets/cubyz/shaders/bloom/second_pass.fs");
-		colorExtractShader = try graphics.Shader.init("assets/cubyz/shaders/bloom/color_extractor.vs", "assets/cubyz/shaders/bloom/color_extractor.fs");
-		scaleShader = try graphics.Shader.init("assets/cubyz/shaders/bloom/scale.vs", "assets/cubyz/shaders/bloom/scale.fs");
+		colorExtractAndDownsampleShader = try graphics.Shader.init("assets/cubyz/shaders/bloom/color_extractor_downsample.vs", "assets/cubyz/shaders/bloom/color_extractor_downsample.fs");
+		upscaleShader = try graphics.Shader.init("assets/cubyz/shaders/bloom/upscale.vs", "assets/cubyz/shaders/bloom/upscale.fs");
 	}
 
 	pub fn deinit() void {
 		buffer1.deinit();
 		buffer2.deinit();
-		extractedBuffer.deinit();
 		firstPassShader.deinit();
 		secondPassShader.deinit();
-		colorExtractShader.deinit();
-		scaleShader.deinit();
+		upscaleShader.deinit();
 	}
 
-	fn extractImageData() void {
-		colorExtractShader.bind();
+	fn extractImageDataAndDownsample() void {
+		colorExtractAndDownsampleShader.bind();
 		buffers.bindTextures();
-		extractedBuffer.bind();
-		c.glBindVertexArray(graphics.draw.rectVAO);
-		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
-	}
-
-	fn downscale() void {
-		scaleShader.bind();
-		c.glActiveTexture(c.GL_TEXTURE3);
-		c.glBindTexture(c.GL_TEXTURE_2D, extractedBuffer.texture);
 		buffer1.bind();
 		c.glBindVertexArray(graphics.draw.rectVAO);
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
@@ -449,7 +436,7 @@ const Bloom = struct {
 	}
 
 	fn upscale() void {
-		scaleShader.bind();
+		upscaleShader.bind();
 		c.glActiveTexture(c.GL_TEXTURE3);
 		c.glBindTexture(c.GL_TEXTURE_2D, buffer1.texture);
 		buffers.bind();
@@ -461,19 +448,16 @@ const Bloom = struct {
 		if(width != currentWidth or height != currentHeight) {
 			width = currentWidth;
 			height = currentHeight;
-			buffer1.updateSize(width/2, height/2, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
+			buffer1.updateSize(width/2, height/2, c.GL_NEAREST, c.GL_CLAMP_TO_EDGE);
 			std.debug.assert(buffer1.validate());
-			buffer2.updateSize(width/2, height/2, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
+			buffer2.updateSize(width/2, height/2, c.GL_NEAREST, c.GL_CLAMP_TO_EDGE);
 			std.debug.assert(buffer2.validate());
-			extractedBuffer.updateSize(width, height, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
-			std.debug.assert(extractedBuffer.validate());
 		}
 		c.glDisable(c.GL_DEPTH_TEST);
 		c.glDisable(c.GL_CULL_FACE);
 
-		extractImageData();
 		c.glViewport(0, 0, width/2, height/2);
-		downscale();
+		extractImageDataAndDownsample();
 		firstPass();
 		secondPass();
 		c.glViewport(0, 0, width, height);
