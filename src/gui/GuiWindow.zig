@@ -57,6 +57,7 @@ title: []const u8 = "",
 id: []const u8,
 components: []GuiComponent = &.{},
 showTitleBar: bool = true,
+titleBarExpanded: bool = false,
 hasBackground: bool = true,
 isHud: bool = false,
 
@@ -80,6 +81,7 @@ var titleTexture: Texture = undefined;
 var closeTexture: Texture = undefined;
 var zoomInTexture: Texture = undefined;
 var zoomOutTexture: Texture = undefined;
+var expandTitleBarTexture: Texture = undefined;
 var shader: Shader = undefined;
 var windowUniforms: struct {
 	screen: c_int,
@@ -102,6 +104,7 @@ pub fn __init() !void {
 	closeTexture = try Texture.initFromFile("assets/cubyz/ui/window_close.png");
 	zoomInTexture = try Texture.initFromFile("assets/cubyz/ui/window_zoom_in.png");
 	zoomOutTexture = try Texture.initFromFile("assets/cubyz/ui/window_zoom_out.png");
+	expandTitleBarTexture = try Texture.initFromFile("assets/cubyz/ui/window_expand.png");
 }
 
 pub fn __deinit() void {
@@ -115,7 +118,7 @@ pub fn defaultErrorFunction() Allocator.Error!void {}
 
 pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) void {
 	const scaledMousePos = (mousePosition - self.pos)/@splat(2, self.scale);
-	if(scaledMousePos[1] < 16) {
+	if(scaledMousePos[1] < 16 and (self.showTitleBar or self.titleBarExpanded or (!main.Window.grabbed and scaledMousePos[0] < 16))) {
 		grabbedWindow = self;
 		grabPosition = mousePosition;
 		selfPositionWhenGrabbed = self.pos;
@@ -133,31 +136,38 @@ pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) void {
 }
 
 pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
-	if(grabPosition != null and grabbedWindow == self) {
-		if(mousePosition[0] - self.pos[0] > self.size[0] - 54*self.scale) {
-			if(mousePosition[0] - self.pos[0] > self.size[0] - 36*self.scale) {
-				if(mousePosition[0] - self.pos[0] > self.size[0] - 18*self.scale) {
-					// Close
-					gui.closeWindow(self);
-					return;
-				} else {
-					// Zoom out
-					if(self.scale > 1) {
-						self.scale -= 0.5;
+	if(grabPosition != null and @reduce(.And, grabPosition.? == mousePosition) and grabbedWindow == self) {
+		if(!self.showTitleBar) {
+			if(mousePosition[0] - self.pos[0] < 16*self.scale) {
+				self.titleBarExpanded = !self.titleBarExpanded;
+			}
+		}
+		if(self.showTitleBar or self.titleBarExpanded) {
+			if(mousePosition[0] - self.pos[0] > self.size[0] - 48*self.scale) {
+				if(mousePosition[0] - self.pos[0] > self.size[0] - 32*self.scale) {
+					if(mousePosition[0] - self.pos[0] > self.size[0] - 16*self.scale) {
+						// Close
+						gui.closeWindow(self);
+						return;
 					} else {
-						self.scale -= 0.25;
+						// Zoom out
+						if(self.scale > 1) {
+							self.scale -= 0.5;
+						} else {
+							self.scale -= 0.25;
+						}
+						self.scale = @max(self.scale, 0.25);
+						gui.updateWindowPositions();
 					}
-					self.scale = @max(self.scale, 0.25);
+				} else {
+					// Zoom in
+					if(self.scale >= 1) {
+						self.scale += 0.5;
+					} else {
+						self.scale += 0.25;
+					}
 					gui.updateWindowPositions();
 				}
-			} else {
-				// Zoom in
-				if(self.scale >= 1) {
-					self.scale += 0.5;
-				} else {
-					self.scale += 0.25;
-				}
-				gui.updateWindowPositions();
 			}
 		}
 	}
@@ -422,6 +432,13 @@ fn drawOrientationLines(self: *const GuiWindow) void {
 	}
 }
 
+pub fn drawIcons(self: *const GuiWindow) void {
+	draw.setColor(0xffffffff);
+	closeTexture.render(.{self.size[0]/self.scale - 16, 0}, .{16, 16});
+	zoomOutTexture.render(.{self.size[0]/self.scale - 32, 0}, .{16, 16});
+	zoomInTexture.render(.{self.size[0]/self.scale - 48, 0}, .{16, 16});
+}
+
 pub fn render(self: *const GuiWindow, mousePosition: Vec2f) !void {
 	const oldTranslation = draw.setTranslation(self.pos);
 	const oldScale = draw.setScale(self.scale);
@@ -440,16 +457,27 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) !void {
 		graphics.c.glActiveTexture(graphics.c.GL_TEXTURE0);
 		shader.bind();
 		titleTexture.bind();
-		if(self == gui.selectedWindow) {
-			draw.setColor(0xff000040);
-		} else {
-			draw.setColor(0xff000000);
-		}
+		draw.setColor(0xff000000);
 		draw.customShadedRect(windowUniforms, .{0, 0}, .{self.size[0]/self.scale, 16});
-		draw.setColor(0xffffffff);
-		closeTexture.render(.{self.size[0]/self.scale - 18, 0}, .{16, 16});
-		zoomOutTexture.render(.{self.size[0]/self.scale - 36, 0}, .{16, 16});
-		zoomInTexture.render(.{self.size[0]/self.scale - 54, 0}, .{16, 16});
+		self.drawIcons();
+	} else if(!main.Window.grabbed) {
+		if(self.titleBarExpanded) {
+			graphics.c.glActiveTexture(graphics.c.GL_TEXTURE0);
+			shader.bind();
+			titleTexture.bind();
+			draw.setColor(0xff000000);
+			draw.customShadedRect(windowUniforms, .{0, 0}, .{self.size[0]/self.scale, 16});
+			self.drawIcons();
+			expandTitleBarTexture.render(.{0, 0}, .{16, 16});
+		} else {
+			graphics.c.glActiveTexture(graphics.c.GL_TEXTURE0);
+			shader.bind();
+			titleTexture.bind();
+			draw.setColor(0xff000000);
+			draw.customShadedRect(windowUniforms, .{0, 0}, .{16, 16});
+			draw.setColor(0xffffffff);
+			expandTitleBarTexture.render(.{0, 0}, .{16, 16});
+		}
 	}
 	draw.restoreTranslation(oldTranslation);
 	draw.restoreScale(oldScale);

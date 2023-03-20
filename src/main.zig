@@ -158,6 +158,9 @@ pub fn setNextKeypressListener(listener: ?*const fn(c_int, c_int, c_int) void) !
 	if(nextKeypressListener != null) return error.AlreadyUsed;
 	nextKeypressListener = listener;
 }
+fn ungrabMouse() void {
+	Window.setMouseGrabbed(false);
+}
 pub var keyboard: struct {
 	// Gameplay:
 	forward: Key = Key{.key = c.GLFW_KEY_W},
@@ -170,6 +173,7 @@ pub var keyboard: struct {
 	fullscreen: Key = Key{.key = c.GLFW_KEY_F11, .releaseAction = &Window.toggleFullscreen},
 
 	// Gui:
+	escape: Key = Key{.key = c.GLFW_KEY_ESCAPE, .releaseAction = &ungrabMouse},
 	mainGuiButton: Key = Key{.mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &gui.mainButtonPressed, .releaseAction = &gui.mainButtonReleased},
 	rightMouseButton: Key = Key{.mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT},
 	middleMouseButton: Key = Key{.mouseButton = c.GLFW_MOUSE_BUTTON_MIDDLE},
