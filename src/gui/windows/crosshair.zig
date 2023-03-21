@@ -33,8 +33,7 @@ pub fn deinit() void {
 }
 
 pub fn render() Allocator.Error!void {
-	graphics.c.glActiveTexture(graphics.c.GL_TEXTURE0);
-	texture.bind();
+	texture.bindTo(0);
 	graphics.draw.setColor(0xffffffff);
 	graphics.draw.boundImage(.{0, 0}, .{size, size});
 }

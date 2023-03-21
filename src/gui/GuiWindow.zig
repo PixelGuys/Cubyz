@@ -444,9 +444,8 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) !void {
 	const oldScale = draw.setScale(self.scale);
 	if(self.hasBackground) {
 		draw.setColor(0xff000000);
-		graphics.c.glActiveTexture(graphics.c.GL_TEXTURE0);
 		shader.bind();
-		backgroundTexture.bind();
+		backgroundTexture.bindTo(0);
 		draw.customShadedRect(windowUniforms, .{0, 0}, self.size/@splat(2, self.scale));
 	}
 	try self.renderFn();
@@ -454,25 +453,22 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) !void {
 		try component.render((mousePosition - self.pos)/@splat(2, self.scale));
 	}
 	if(self.showTitleBar) {
-		graphics.c.glActiveTexture(graphics.c.GL_TEXTURE0);
 		shader.bind();
-		titleTexture.bind();
+		titleTexture.bindTo(0);
 		draw.setColor(0xff000000);
 		draw.customShadedRect(windowUniforms, .{0, 0}, .{self.size[0]/self.scale, 16});
 		self.drawIcons();
 	} else if(!main.Window.grabbed) {
 		if(self.titleBarExpanded) {
-			graphics.c.glActiveTexture(graphics.c.GL_TEXTURE0);
 			shader.bind();
-			titleTexture.bind();
+			titleTexture.bindTo(0);
 			draw.setColor(0xff000000);
 			draw.customShadedRect(windowUniforms, .{0, 0}, .{self.size[0]/self.scale, 16});
 			self.drawIcons();
 			expandTitleBarTexture.render(.{0, 0}, .{16, 16});
 		} else {
-			graphics.c.glActiveTexture(graphics.c.GL_TEXTURE0);
 			shader.bind();
-			titleTexture.bind();
+			titleTexture.bindTo(0);
 			draw.setColor(0xff000000);
 			draw.customShadedRect(windowUniforms, .{0, 0}, .{16, 16});
 			draw.setColor(0xffffffff);

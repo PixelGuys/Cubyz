@@ -94,8 +94,7 @@ pub fn mainButtonReleased(self: *Button, mousePosition: Vec2f) void {
 }
 
 pub fn render(self: *Button, mousePosition: Vec2f) !void {
-	graphics.c.glActiveTexture(graphics.c.GL_TEXTURE0);
-	texture.bind();
+	texture.bindTo(0);
 	shader.bind();
 	graphics.c.glUniform1i(buttonUniforms.pressed, 0);
 	if(self.pressed) {

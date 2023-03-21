@@ -1380,6 +1380,11 @@ pub const Texture = struct {
 		c.glDeleteTextures(1, &self.textureID);
 	}
 
+	pub fn bindTo(self: Texture, binding: u5) void {
+		c.glActiveTexture(@intCast(c_uint, c.GL_TEXTURE0 + binding));
+		c.glBindTexture(c.GL_TEXTURE_2D, self.textureID);
+	}
+
 	pub fn bind(self: Texture) void {
 		c.glBindTexture(c.GL_TEXTURE_2D, self.textureID);
 	}
@@ -1396,8 +1401,7 @@ pub const Texture = struct {
 	}
 
 	pub fn render(self: Texture, pos: Vec2f, dim: Vec2f) void {
-		c.glActiveTexture(c.GL_TEXTURE0);
-		self.bind();
+		self.bindTo(0);
 		draw.boundImage(pos, dim);
 	}
 };

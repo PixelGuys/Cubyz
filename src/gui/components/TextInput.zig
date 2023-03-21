@@ -444,8 +444,7 @@ fn ensureCursorVisibility(self: *TextInput) void {
 }
 
 pub fn render(self: *TextInput, mousePosition: Vec2f) !void {
-	graphics.c.glActiveTexture(graphics.c.GL_TEXTURE0);
-	texture.bind();
+	texture.bindTo(0);
 	Button.shader.bind();
 	draw.setColor(0xff000000);
 	draw.customShadedRect(Button.buttonUniforms, self.pos, self.size);

@@ -86,11 +86,10 @@ pub fn mainButtonReleased(self: *CheckBox, mousePosition: Vec2f) void {
 }
 
 pub fn render(self: *CheckBox, mousePosition: Vec2f) !void {
-	graphics.c.glActiveTexture(graphics.c.GL_TEXTURE0);
 	if(self.state) {
-		textureChecked.bind();
+		textureChecked.bindTo(0);
 	} else {
-		textureEmpty.bind();
+		textureEmpty.bindTo(0);
 	}
 	Button.shader.bind();
 	graphics.c.glUniform1i(Button.buttonUniforms.pressed, 0);
