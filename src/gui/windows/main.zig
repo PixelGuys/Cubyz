@@ -26,14 +26,14 @@ pub fn buttonCallbackTest() void {
 const padding: f32 = 8;
 
 pub fn onOpen() Allocator.Error!void {
-	var list = try VerticalList.init();
-	try list.add(try Button.init(.{0, 16}, 128, "Singleplayer TODO", &buttonCallbackTest));
-	try list.add(try Button.init(.{0, 16}, 128, "Multiplayer", gui.openWindowFunction("cubyz:multiplayer")));
-	try list.add(try Button.init(.{0, 16}, 128, "Settings", gui.openWindowFunction("cubyz:settings")));
-	try list.add(try Button.init(.{0, 16}, 128, "Exit TODO", &buttonCallbackTest));
-	list.finish(.{padding, padding}, .center);
+	var list = try VerticalList.init(.{padding, 16 + padding}, 300, 16);
+	try list.add(try Button.init(.{0, 0}, 128, "Singleplayer TODO", &buttonCallbackTest));
+	try list.add(try Button.init(.{0, 0}, 128, "Multiplayer", gui.openWindowFunction("cubyz:multiplayer")));
+	try list.add(try Button.init(.{0, 0}, 128, "Settings", gui.openWindowFunction("cubyz:settings")));
+	try list.add(try Button.init(.{0, 0}, 128, "Exit TODO", &buttonCallbackTest));
+	list.finish(.center);
 	components[0] = list.toComponent();
-	window.contentSize = components[0].size() + @splat(2, @as(f32, 2*padding));
+	window.contentSize = components[0].pos() + components[0].size() + @splat(2, @as(f32, padding));
 	gui.updateWindowPositions();
 }
 

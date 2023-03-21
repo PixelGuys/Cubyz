@@ -46,8 +46,7 @@ fn keypressListener(key: c_int, mouseButton: c_int, scancode: c_int) void {
 }
 
 pub fn onOpen() Allocator.Error!void {
-	var list = try VerticalList.init();
-	list.size[1] = 8;
+	var list = try VerticalList.init(.{padding, 16 + padding}, 300, 8);
 	inline for(comptime std.meta.fieldNames(@TypeOf(main.keyboard))) |field| {
 		var label = try Label.init(.{0, 0}, 128, field, .left);
 		var button = if(&@field(main.keyboard, field) == selectedKey) (
@@ -58,12 +57,12 @@ pub fn onOpen() Allocator.Error!void {
 		var row = try HorizontalList.init();
 		try row.add(label);
 		try row.add(button);
-		row.finish(.{0, 8}, .center);
+		row.finish(.{0, 0}, .center);
 		try list.add(row);
 	}
-	list.finish(.{padding, padding}, .center);
+	list.finish(.center);
 	components[0] = list.toComponent();
-	window.contentSize = components[0].size() + @splat(2, @as(f32, 2*padding));
+	window.contentSize = components[0].pos() + components[0].size() + @splat(2, @as(f32, padding));
 	gui.updateWindowPositions();
 }
 

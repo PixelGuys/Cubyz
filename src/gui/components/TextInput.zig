@@ -76,6 +76,7 @@ pub fn updateHovered(self: *TextInput, mousePosition: Vec2f) void {
 	if(self.textSize[1] > self.maxHeight - 2*border) {
 		const diff = self.textSize[1] - (self.maxHeight - 2*border);
 		self.scrollBar.scroll(-main.Window.scrollOffset*32/diff);
+		main.Window.scrollOffset = 0;
 	}
 	if(self.textSize[1] > self.maxHeight - 2*border) {
 		self.scrollBar.pos = Vec2f{self.size[0] - border - scrollBarWidth, border};

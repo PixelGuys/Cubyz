@@ -23,11 +23,11 @@ pub var window = GuiWindow {
 const padding: f32 = 8;
 
 pub fn onOpen() Allocator.Error!void {
-	var list = try VerticalList.init();
+	var list = try VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	// TODO
-	list.finish(.{padding, padding}, .center);
+	list.finish(.center);
 	components[0] = list.toComponent();
-	window.contentSize = components[0].size() + @splat(2, @as(f32, 2*padding));
+	window.contentSize = components[0].pos() + components[0].size() + @splat(2, @as(f32, padding));
 	gui.updateWindowPositions();
 }
 

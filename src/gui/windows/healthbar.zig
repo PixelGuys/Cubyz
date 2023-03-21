@@ -57,6 +57,7 @@ pub fn render() Allocator.Error!void {
 		draw.boundImage(Vec2f{x, window.contentSize[1] - y - 16}, .{16, 16});
 		x += 16;
 	}
+	y += 16;
 	if(y != window.contentSize[1]) {
 		window.contentSize[1] = y;
 		gui.updateWindowPositions();

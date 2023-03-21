@@ -44,23 +44,23 @@ fn apply() void {
 }
 
 pub fn onOpen() Allocator.Error!void {
-	var list = try VerticalList.init();
+	var list = try VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	const width = 420;
 	if(settings.playerName.len == 0) {
-		try list.add(try Label.init(.{0, 16}, width, "Please enter your name!", .center));
+		try list.add(try Label.init(.{0, 0}, width, "Please enter your name!", .center));
 	} else {
-		try list.add(try Label.init(.{0, 16}, width, "#ff0000Warning: #000000You loose access to your inventory data when changing the name!", .center));
+		try list.add(try Label.init(.{0, 0}, width, "#ff0000Warning: #000000You loose access to your inventory data when changing the name!", .center));
 	}
-	try list.add(try Label.init(.{0, 16}, width, "Cubyz supports formatting your username using a markdown-like syntax:", .center));
-	try list.add(try Label.init(.{0, 16}, width, "\\**italic*\\* \\*\\***bold**\\*\\* \\__underlined_\\_ \\_\\___strike-through__\\_\\_", .center));
-	try list.add(try Label.init(.{0, 16}, width, "Even colors are possible, using the hexadecimal color code:", .center));
-	try list.add(try Label.init(.{0, 16}, width, "\\##ff0000ff#00000000#00000000#ff0000red#000000 \\##ff0000ff#00770077#00000000#ff7700orange#000000 \\##00000000#00ff00ff#00000000#00ff00green#000000 \\##00000000#00000000#0000ffff#0000ffblue", .center));
-	textComponent = try TextInput.init(.{0, 16}, width, 32, "quanturmdoelvloper");
+	try list.add(try Label.init(.{0, 0}, width, "Cubyz supports formatting your username using a markdown-like syntax:", .center));
+	try list.add(try Label.init(.{0, 0}, width, "\\**italic*\\* \\*\\***bold**\\*\\* \\__underlined_\\_ \\_\\___strike-through__\\_\\_", .center));
+	try list.add(try Label.init(.{0, 0}, width, "Even colors are possible, using the hexadecimal color code:", .center));
+	try list.add(try Label.init(.{0, 0}, width, "\\##ff0000ff#00000000#00000000#ff0000red#000000 \\##ff0000ff#00770077#00000000#ff7700orange#000000 \\##00000000#00ff00ff#00000000#00ff00green#000000 \\##00000000#00000000#0000ffff#0000ffblue", .center));
+	textComponent = try TextInput.init(.{0, 0}, width, 32, "quanturmdoelvloper");
 	try list.add(textComponent);
-	try list.add(try Button.init(.{0, 16}, 100, "Apply", &apply));
-	list.finish(.{padding, padding}, .center);
+	try list.add(try Button.init(.{0, 0}, 100, "Apply", &apply));
+	list.finish(.center);
 	components[0] = list.toComponent();
-	window.contentSize = components[0].size() + @splat(2, @as(f32, 2*padding));
+	window.contentSize = components[0].pos() + components[0].size() + @splat(2, @as(f32, padding));
 	gui.updateWindowPositions();
 }
 

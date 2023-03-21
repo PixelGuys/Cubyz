@@ -88,17 +88,17 @@ fn copyIp() void {
 }
 
 pub fn onOpen() Allocator.Error!void {
-	var list = try VerticalList.init();
-	try list.add(try Label.init(.{0, 16}, width, "Please send your IP to the host of the game and enter the host's IP below.", .center));
-	//                                                255.255.255.255:?65536 (longest possible ip address)
-	ipAddressLabel = try Label.init(.{0, 16}, width, "                      ", .center);
+	var list = try VerticalList.init(.{padding, 16 + padding}, 300, 16);
+	try list.add(try Label.init(.{0, 0}, width, "Please send your IP to the host of the game and enter the host's IP below.", .center));
+	//                                               255.255.255.255:?65536 (longest possible ip address)
+	ipAddressLabel = try Label.init(.{0, 0}, width, "                      ", .center);
 	try list.add(ipAddressLabel);
-	try list.add(try Button.init(.{0, 16}, 100, "Copy IP", &copyIp));
-	try list.add(try TextInput.init(.{0, 16}, width, 32, settings.lastUsedIPAddress));
-	try list.add(try Button.init(.{0, 16}, 100, "Join", &join));
-	list.finish(.{padding, padding}, .center);
+	try list.add(try Button.init(.{0, 0}, 100, "Copy IP", &copyIp));
+	try list.add(try TextInput.init(.{0, 0}, width, 32, settings.lastUsedIPAddress));
+	try list.add(try Button.init(.{0, 0}, 100, "Join", &join));
+	list.finish(.center);
 	components[0] = list.toComponent();
-	window.contentSize = components[0].size() + @splat(2, @as(f32, 2*padding));
+	window.contentSize = components[0].pos() + components[0].size() + @splat(2, @as(f32, padding));
 	gui.updateWindowPositions();
 
 	thread = std.Thread.spawn(.{}, discoverIpAddressFromNewThread, .{}) catch |err| blk: {
