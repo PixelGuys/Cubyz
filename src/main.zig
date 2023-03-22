@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const gui = @import("gui");
+pub const gui = @import("gui");
 
 pub const assets = @import("assets.zig");
 pub const blocks = @import("blocks.zig");

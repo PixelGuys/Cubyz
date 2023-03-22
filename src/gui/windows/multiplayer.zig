@@ -21,6 +21,7 @@ pub var window = GuiWindow {
 	.title = "Multiplayer",
 	.onOpenFn = &onOpen,
 	.onCloseFn = &onClose,
+	.updateFn = &update,
 	.components = &components,
 };
 
@@ -37,7 +38,7 @@ const width: f32 = 420;
 fn flawedDiscoverIpAddress() !void {
 	connection = try ConnectionManager.init(12347, true); // TODO: default port
 	ipAddress = try std.fmt.allocPrint(main.globalAllocator, "{}", .{connection.?.externalAddress});
-	gotIpAddress.store(true, .Monotonic);
+	gotIpAddress.store(true, .Release);
 }
 
 fn discoverIpAddress() void {
@@ -94,7 +95,7 @@ pub fn onOpen() Allocator.Error!void {
 	ipAddressLabel = try Label.init(.{0, 0}, width, "                      ", .center);
 	try list.add(ipAddressLabel);
 	try list.add(try Button.init(.{0, 0}, 100, "Copy IP", &copyIp));
-	try list.add(try TextInput.init(.{0, 0}, width, 32, settings.lastUsedIPAddress));
+	try list.add(try TextInput.init(.{0, 0}, width, 32, settings.lastUsedIPAddress, &join));
 	try list.add(try Button.init(.{0, 0}, 100, "Join", &join));
 	list.finish(.center);
 	components[0] = list.toComponent();
@@ -127,8 +128,8 @@ pub fn onClose() void {
 	}
 }
 
-pub fn render() void {
-	if(gotIpAddress.load(.Monotonic)) {
+pub fn update() Allocator.Error!void {
+	if(gotIpAddress.load(.Acquire)) {
 		gotIpAddress.store(false, .Monotonic);
 		try ipAddressLabel.updateText(ipAddress);
 	}

@@ -18,6 +18,7 @@ const fontSize: f32 = 16;
 pos: Vec2f,
 size: Vec2f,
 text: TextBuffer,
+alpha: f32 = 1,
 
 pub fn init(pos: Vec2f, maxWidth: f32, text: []const u8, alignment: TextBuffer.Alignment) Allocator.Error!*Label {
 	const self = try gui.allocator.create(Label);
@@ -49,5 +50,6 @@ pub fn updateText(self: *Label, newText: []const u8) !void {
 }
 
 pub fn render(self: *Label, _: Vec2f) !void {
+	draw.setColor(@floatToInt(u32, self.alpha*255) << 24);
 	try self.text.render(self.pos[0], self.pos[1], fontSize);
 }

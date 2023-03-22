@@ -63,6 +63,8 @@ isHud: bool = false,
 
 /// Called every frame.
 renderFn: *const fn()Allocator.Error!void = &defaultErrorFunction,
+/// Called every frame before rendering.
+updateFn: *const fn()Allocator.Error!void = &defaultErrorFunction,
 /// Called every frame for the currently selected window.
 updateSelectedFn: *const fn()Allocator.Error!void = &defaultErrorFunction,
 /// Called every frame for the currently hovered window.
@@ -310,6 +312,10 @@ fn positionRelativeToConnectedWindow(self: *GuiWindow, other: *GuiWindow, i: usi
 	}
 }
 
+pub fn update(self: *GuiWindow) !void {
+	try self.updateFn();
+}
+
 pub fn updateSelected(self: *GuiWindow, mousePosition: Vec2f) !void {
 	try self.updateSelectedFn();
 	const windowSize = main.Window.getWindowSize()/@splat(2, gui.scale);
@@ -478,7 +484,7 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) !void {
 	draw.restoreTranslation(oldTranslation);
 	draw.restoreScale(oldScale);
 	if(self.showTitleBar) {
-		var text = try graphics.TextBuffer.init(gui.allocator, self.title, .{}, false, .center);
+		var text = try graphics.TextBuffer.init(gui.allocator, self.title, .{.color=0}, false, .center);
 		defer text.deinit();
 		const titleDimension = try text.calculateLineBreaks(16*self.scale, self.size[0]);
 		try text.render(self.pos[0] + self.size[0]/2 - titleDimension[0]/2, self.pos[1], 16*self.scale);

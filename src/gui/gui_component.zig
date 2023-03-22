@@ -10,6 +10,7 @@ pub const GuiComponent = union(enum) {
 	pub const CheckBox = @import("components/CheckBox.zig");
 	pub const HorizontalList = @import("components/HorizontalList.zig");
 	pub const Label = @import("components/Label.zig");
+	pub const MutexComponent = @import("components/MutexComponent.zig");
 	pub const Slider = @import("components/Slider.zig");
 	pub const ScrollBar = @import("components/ScrollBar.zig");
 	pub const TextInput = @import("components/TextInput.zig");
@@ -20,6 +21,7 @@ pub const GuiComponent = union(enum) {
 	checkBox: *CheckBox,
 	horizontalList: *HorizontalList,
 	label: *Label,
+	mutexComponent: *MutexComponent,
 	scrollBar: *ScrollBar,
 	slider: *Slider,
 	textInput: *TextInput,

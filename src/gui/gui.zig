@@ -17,7 +17,7 @@ const TextInput = @import("components/TextInput.zig");
 pub const GuiComponent = @import("gui_component.zig").GuiComponent;
 pub const GuiWindow = @import("GuiWindow.zig");
 
-const windowlist = @import("windows/_windowlist.zig");
+pub const windowlist = @import("windows/_windowlist.zig");
 
 var windowList: std.ArrayList(*GuiWindow) = undefined;
 var hudWindows: std.ArrayList(*GuiWindow) = undefined;
@@ -401,6 +401,9 @@ pub fn updateAndRenderGui() !void {
 			try window.updateHovered(mousePos);
 			break;
 		}
+	}
+	for(openWindows.items) |window| {
+		try window.update();
 	}
 	for(openWindows.items) |window| {
 		const oldScale = draw.setScale(scale);

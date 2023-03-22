@@ -33,6 +33,7 @@ maxWidth: f32,
 maxHeight: f32,
 textSize: Vec2f = undefined,
 scrollBar: *ScrollBar,
+onNewline: ?*const fn() void,
 
 pub fn __init() !void {
 	texture = try Texture.initFromFile("assets/cubyz/ui/text_input.png");
@@ -42,7 +43,7 @@ pub fn __deinit() void {
 	texture.deinit();
 }
 
-pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8) Allocator.Error!*TextInput {
+pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewline: ?*const fn() void) Allocator.Error!*TextInput {
 	const scrollBar = try ScrollBar.init(undefined, scrollBarWidth, maxHeight - 2*border, 0);
 	const self = try gui.allocator.create(TextInput);
 	self.* = TextInput {
@@ -53,6 +54,7 @@ pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8) Allocat
 		.maxWidth = maxWidth,
 		.maxHeight = maxHeight,
 		.scrollBar = scrollBar,
+		.onNewline = onNewline,
 	};
 	try self.currentString.appendSlice(text);
 	self.textSize = try self.textBuffer.calculateLineBreaks(fontSize, maxWidth - 2*border - scrollBarWidth);
@@ -64,6 +66,15 @@ pub fn deinit(self: *const TextInput) void {
 	self.currentString.deinit();
 	self.scrollBar.deinit();
 	gui.allocator.destroy(self);
+}
+
+pub fn clear(self: *TextInput) !void {
+	if(self.cursor != null) {
+		self.cursor = 0;
+		self.selectionStart = null;
+	}
+	self.currentString.clearRetainingCapacity();
+	try self.reloadText();
 }
 
 pub fn toComponent(self: *TextInput) GuiComponent {
@@ -420,7 +431,11 @@ pub fn cut(self: *TextInput, mods: main.Key.Modifiers) void {
 	}
 }
 
-pub fn newline(self: *TextInput, _: main.Key.Modifiers) void {
+pub fn newline(self: *TextInput, mods: main.Key.Modifiers) void {
+	if(!mods.shift) if(self.onNewline) |onNewline| {
+		onNewline();
+		return;
+	};
 	self.inputCharacter('\n') catch |err| {
 		std.log.err("Error while entering text: {s}", .{@errorName(err)});
 	};

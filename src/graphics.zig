@@ -30,13 +30,13 @@ fn fileToString(allocator: Allocator, path: []const u8) ![]u8 {
 }
 
 pub const draw = struct {
-	var color: i32 = 0;
+	var color: u32 = 0;
 	var clip: ?Vec4i = null;
 	var translation: Vec2f = Vec2f{0, 0};
 	var scale: f32 = 1;
 
 	pub fn setColor(newColor: u32) void {
-		color = @bitCast(i32, newColor);
+		color = newColor;
 	}
 
 	/// Returns the previous translation.
@@ -52,6 +52,7 @@ pub const draw = struct {
 
 	/// Returns the previous translation.
 	pub fn setScale(newScale: f32) f32 {
+		std.debug.assert(newScale >= 0);
 		const oldScale = scale;
 		scale *= newScale;
 		return oldScale;
@@ -63,11 +64,12 @@ pub const draw = struct {
 
 	/// Returns the previous clip.
 	pub fn setClip(clipRect: Vec2f) ?Vec4i {
+		std.debug.assert(@reduce(.And, clipRect >= Vec2f{0, 0}));
 		var newClip = Vec4i {
-			@floatToInt(i32, translation[0]),
-			main.Window.height - @floatToInt(i32, translation[1] + clipRect[1]*scale),
-			@floatToInt(i32, clipRect[0]*scale),
-			@floatToInt(i32, clipRect[1]*scale),
+			std.math.lossyCast(i32, translation[0]),
+			main.Window.height - std.math.lossyCast(i32, translation[1] + clipRect[1]*scale),
+			std.math.lossyCast(i32, clipRect[0]*scale),
+			std.math.lossyCast(i32, clipRect[1]*scale),
 		};
 		if(clip) |oldClip| {
 			if (newClip[0] < oldClip[0]) {
@@ -84,6 +86,8 @@ pub const draw = struct {
 			if (newClip[1] + newClip[3] > oldClip[1] + oldClip[3]) {
 				newClip[3] -= (newClip[1] + newClip[3]) - (oldClip[1] + oldClip[3]);
 			}
+			newClip[2] = @max(newClip[2], 0);
+			newClip[3] = @max(newClip[3], 0);
 		} else {
 			c.glEnable(c.GL_SCISSOR_TEST);
 		}
@@ -151,7 +155,7 @@ pub const draw = struct {
 		c.glUniform2f(rectUniforms.screen, @intToFloat(f32, Window.width), @intToFloat(f32, Window.height));
 		c.glUniform2f(rectUniforms.start, pos[0], pos[1]);
 		c.glUniform2f(rectUniforms.size, dim[0], dim[1]);
-		c.glUniform1i(rectUniforms.rectColor, color);
+		c.glUniform1i(rectUniforms.rectColor,  @bitCast(i32, color));
 
 		c.glBindVertexArray(rectVAO);
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
@@ -204,7 +208,7 @@ pub const draw = struct {
 		c.glUniform2f(lineUniforms.screen, @intToFloat(f32, Window.width), @intToFloat(f32, Window.height));
 		c.glUniform2f(lineUniforms.start, pos1[0], pos1[1]);
 		c.glUniform2f(lineUniforms.direction, pos2[0] - pos1[0], pos2[1] - pos1[1]);
-		c.glUniform1i(lineUniforms.lineColor, color);
+		c.glUniform1i(lineUniforms.lineColor,  @bitCast(i32, color));
 
 		c.glBindVertexArray(lineVAO);
 		c.glDrawArrays(c.GL_LINE_STRIP, 0, 2);
@@ -250,7 +254,7 @@ pub const draw = struct {
 		c.glUniform2f(lineUniforms.screen, @intToFloat(f32, Window.width), @intToFloat(f32, Window.height));
 		c.glUniform2f(lineUniforms.start, pos[0], pos[1]); // Move the coordinates, so they are in the center of a pixel.
 		c.glUniform2f(lineUniforms.direction, dim[0] - 1, dim[1] - 1); // The height is a lot smaller because the inner edge of the rect is drawn.
-		c.glUniform1i(lineUniforms.lineColor, color);
+		c.glUniform1i(lineUniforms.lineColor,  @bitCast(i32, color));
 
 		c.glBindVertexArray(lineVAO);
 		c.glDrawArrays(c.GL_LINE_LOOP, 0, 5);
@@ -303,7 +307,7 @@ pub const draw = struct {
 		c.glUniform2f(circleUniforms.screen, @intToFloat(f32, Window.width), @intToFloat(f32, Window.height));
 		c.glUniform2f(circleUniforms.center, center[0], center[1]); // Move the coordinates, so they are in the center of a pixel.
 		c.glUniform1f(circleUniforms.radius, radius); // The height is a lot smaller because the inner edge of the rect is drawn.
-		c.glUniform1i(circleUniforms.circleColor, color);
+		c.glUniform1i(circleUniforms.circleColor,  @bitCast(i32, color));
 
 		c.glBindVertexArray(circleVAO);
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
@@ -341,7 +345,7 @@ pub const draw = struct {
 		c.glUniform2f(imageUniforms.screen, @intToFloat(f32, Window.width), @intToFloat(f32, Window.height));
 		c.glUniform2f(imageUniforms.start, pos[0], pos[1]);
 		c.glUniform2f(imageUniforms.size, dim[0], dim[1]);
-		c.glUniform1i(imageUniforms.color, color);
+		c.glUniform1i(imageUniforms.color, @bitCast(i32, color));
 
 		c.glBindVertexArray(rectVAO);
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
@@ -359,7 +363,7 @@ pub const draw = struct {
 		c.glUniform2f(uniforms.screen, @intToFloat(f32, Window.width), @intToFloat(f32, Window.height));
 		c.glUniform2f(uniforms.start, pos[0], pos[1]);
 		c.glUniform2f(uniforms.size, dim[0], dim[1]);
-		c.glUniform1i(uniforms.color, color);
+		c.glUniform1i(uniforms.color,  @bitCast(i32, color));
 		c.glUniform1f(uniforms.scale, scale);
 
 		c.glBindVertexArray(rectVAO);
@@ -382,7 +386,7 @@ pub const TextBuffer = struct {
 	};
 
 	pub const FontEffect = packed struct(u28) {
-		color: u24 = 0,
+		color: u24 = 0xffffff,
 		bold: bool = false,
 		italic: bool = false,
 		underline: bool = false,
@@ -741,6 +745,7 @@ pub const TextBuffer = struct {
 		TextRendering.shader.bind();
 		c.glUniform2f(TextRendering.uniforms.scene, @intToFloat(f32, main.Window.width), @intToFloat(f32, main.Window.height));
 		c.glUniform1f(TextRendering.uniforms.ratio, draw.scale);
+		c.glUniform1f(TextRendering.uniforms.alpha, @intToFloat(f32, draw.color >> 24) / 255.0);
 		c.glActiveTexture(c.GL_TEXTURE0);
 		c.glBindTexture(c.GL_TEXTURE_2D, TextRendering.glyphTexture[0]);
 		c.glBindVertexArray(draw.rectVAO);
@@ -767,7 +772,7 @@ pub const TextBuffer = struct {
 			y = 0;
 			if(line.isUnderline) y += 15
 			else y += 8;
-			draw.setColor(line.color | @as(u32, 0xff000000));
+			draw.setColor(line.color | (@as(u32, 0xff000000) & draw.color));
 			for(lineWraps, 0..) |lineWrap, j| {
 				const lineStart = @max(0, line.start);
 				const lineEnd = @min(lineWrap, line.end);
@@ -856,6 +861,7 @@ const TextRendering = struct {
 		const swap = glyphTexture[1];
 		glyphTexture[1] = glyphTexture[0];
 		glyphTexture[0] = swap;
+		c.glActiveTexture(c.GL_TEXTURE0);
 		c.glBindTexture(c.GL_TEXTURE_2D, glyphTexture[0]);
 		c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_R8, newWidth, textureHeight, 0, c.GL_RED, c.GL_UNSIGNED_BYTE, null);
 		c.glCopyImageSubData(
@@ -1349,8 +1355,7 @@ pub const TextureArray = struct {
 				c.glTexSubImage3D(c.GL_TEXTURE_2D_ARRAY, lod, 0, 0, @intCast(c_int, i), curWidth, curHeight, 1, c.GL_RGBA, c.GL_UNSIGNED_BYTE, lodBuffer[lod].ptr);
 			}
 		}
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAX_LOD, maxLOD);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_BASE_LEVEL, 5);
+		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_LOD, maxLOD);
 		//glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
 		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST_MIPMAP_LINEAR);
 		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);

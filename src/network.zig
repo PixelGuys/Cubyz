@@ -1201,6 +1201,38 @@ pub const Protocols: struct {
 //		addHeaderAndSendUnimportant(user, TIME_AND_BIOME, data.toString().getBytes(StandardCharsets.UTF_8));
 //	}
 	},
+	chat: type = struct {
+		const id: u8 = 10;
+		fn receive(conn: *Connection, data: []const u8) !void {
+			_ = conn;
+			// TODO:
+//			if(conn instanceof User) {
+//				User user = (User)conn;
+//				if(msg.startsWith("/")) {
+//					CommandExecutor.execute(msg, user);
+//				} else {
+//					msg = "["+user.name+"#ffffff] "+msg;
+//					sendToClients(msg);
+//				}
+//			} else {
+				try main.gui.windowlist.chat.addMessage(data);
+//			}
+		}
+
+		pub fn send(conn: *Connection, data: []const u8) !void {
+			try conn.sendImportant(id, data);
+		}
+// TODO
+//	public void sendToClients(String msg) {
+//		Logger.log("chat", msg, "\033[0;32m");
+//		synchronized(this) {
+//			for(User user : Server.users) {
+//				send(user, msg);
+//			}
+//		}
+//	}
+//}
+	},
 } = .{};
 
 

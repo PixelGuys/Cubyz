@@ -1,5 +1,6 @@
 
 pub const change_name = @import("change_name.zig");
+pub const chat = @import("chat.zig");
 pub const controls = @import("controls.zig");
 pub const crosshair = @import("crosshair.zig");
 pub const graphics = @import("graphics.zig");

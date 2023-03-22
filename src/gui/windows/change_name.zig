@@ -49,13 +49,13 @@ pub fn onOpen() Allocator.Error!void {
 	if(settings.playerName.len == 0) {
 		try list.add(try Label.init(.{0, 0}, width, "Please enter your name!", .center));
 	} else {
-		try list.add(try Label.init(.{0, 0}, width, "#ff0000Warning: #000000You loose access to your inventory data when changing the name!", .center));
+		try list.add(try Label.init(.{0, 0}, width, "#ff0000Warning: #ffffffYou loose access to your inventory data when changing the name!", .center));
 	}
 	try list.add(try Label.init(.{0, 0}, width, "Cubyz supports formatting your username using a markdown-like syntax:", .center));
 	try list.add(try Label.init(.{0, 0}, width, "\\**italic*\\* \\*\\***bold**\\*\\* \\__underlined_\\_ \\_\\___strike-through__\\_\\_", .center));
 	try list.add(try Label.init(.{0, 0}, width, "Even colors are possible, using the hexadecimal color code:", .center));
-	try list.add(try Label.init(.{0, 0}, width, "\\##ff0000ff#00000000#00000000#ff0000red#000000 \\##ff0000ff#00770077#00000000#ff7700orange#000000 \\##00000000#00ff00ff#00000000#00ff00green#000000 \\##00000000#00000000#0000ffff#0000ffblue", .center));
-	textComponent = try TextInput.init(.{0, 0}, width, 32, "quanturmdoelvloper");
+	try list.add(try Label.init(.{0, 0}, width, "\\##ff0000ff#ffffff00#ffffff00#ff0000red#ffffff \\##ff0000ff#00770077#ffffff00#ff7700orange#ffffff \\##ffffff00#00ff00ff#ffffff00#00ff00green#ffffff \\##ffffff00#ffffff00#0000ffff#0000ffblue", .center));
+	textComponent = try TextInput.init(.{0, 0}, width, 32, "quanturmdoelvloper", &apply);
 	try list.add(textComponent);
 	try list.add(try Button.init(.{0, 0}, 100, "Apply", &apply));
 	list.finish(.center);
