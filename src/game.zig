@@ -289,43 +289,45 @@ pub fn update(deltaTime: f64) !void {
 	var movement = Vec3d{0, 0, 0};
 	var forward = vec.rotateY(Vec3d{0, 0, -1}, -camera.rotation[1]);
 	var right = Vec3d{forward[2], 0, -forward[0]};
-	if(keyboard.forward.pressed) {
-		if(keyboard.sprint.pressed) {
-			if(Player.isFlying.load(.Monotonic)) {
-				movement += forward*@splat(3, @as(f64, 128));
-			} else {
-				movement += forward*@splat(3, @as(f64, 8));
-			}
-		} else {
-			movement += forward*@splat(3, @as(f64, 4));
-		}
-	}
-	if(keyboard.backward.pressed) {
-		movement += forward*@splat(3, @as(f64, -4));
-	}
-	if(keyboard.left.pressed) {
-		movement += right*@splat(3, @as(f64, 4));
-	}
-	if(keyboard.right.pressed) {
-		movement += right*@splat(3, @as(f64, -4));
-	}
-	if(keyboard.jump.pressed) {
-		if(Player.isFlying.load(.Monotonic)) {
+	if(main.Window.grabbed) {
+		if(keyboard.forward.pressed) {
 			if(keyboard.sprint.pressed) {
-				movement[1] = 59.45;
+				if(Player.isFlying.load(.Monotonic)) {
+					movement += forward*@splat(3, @as(f64, 128));
+				} else {
+					movement += forward*@splat(3, @as(f64, 8));
+				}
 			} else {
+				movement += forward*@splat(3, @as(f64, 4));
+			}
+		}
+		if(keyboard.backward.pressed) {
+			movement += forward*@splat(3, @as(f64, -4));
+		}
+		if(keyboard.left.pressed) {
+			movement += right*@splat(3, @as(f64, 4));
+		}
+		if(keyboard.right.pressed) {
+			movement += right*@splat(3, @as(f64, -4));
+		}
+		if(keyboard.jump.pressed) {
+			if(Player.isFlying.load(.Monotonic)) {
+				if(keyboard.sprint.pressed) {
+					movement[1] = 59.45;
+				} else {
+					movement[1] = 5.45;
+				}
+			} else { // TODO: if (Cubyz.player.isOnGround())
 				movement[1] = 5.45;
 			}
-		} else { // TODO: if (Cubyz.player.isOnGround())
-			movement[1] = 5.45;
 		}
-	}
-	if(keyboard.fall.pressed) {
-		if(Player.isFlying.load(.Monotonic)) {
-			if(keyboard.sprint.pressed) {
-				movement[1] = -59.45;
-			} else {
-				movement[1] = -5.45;
+		if(keyboard.fall.pressed) {
+			if(Player.isFlying.load(.Monotonic)) {
+				if(keyboard.sprint.pressed) {
+					movement[1] = -59.45;
+				} else {
+					movement[1] = -5.45;
+				}
 			}
 		}
 	}

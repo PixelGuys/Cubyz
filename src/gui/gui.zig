@@ -337,6 +337,7 @@ pub const textCallbacks = struct {
 };
 
 pub fn mainButtonPressed() void {
+	if(main.Window.grabbed) return;
 	selectedWindow = null;
 	selectedTextInput = null;
 	var selectedI: usize = 0;
@@ -353,10 +354,13 @@ pub fn mainButtonPressed() void {
 		_selectedWindow.mainButtonPressed(mousePosition);
 		_ = openWindows.orderedRemove(selectedI);
 		openWindows.appendAssumeCapacity(_selectedWindow);
+	} else if(main.game.world != null) {
+		main.Window.setMouseGrabbed(true);
 	}
 }
 
 pub fn mainButtonReleased() void {
+	if(main.Window.grabbed) return;
 	var oldWindow = selectedWindow;
 	selectedWindow = null;
 	for(openWindows.items) |window| {
@@ -390,16 +394,19 @@ pub fn updateWindowPositions() void {
 
 pub fn updateAndRenderGui() !void {
 	const mousePos = main.Window.getMousePosition()/@splat(2, scale);
-	if(selectedWindow) |selected| {
-		try selected.updateSelected(mousePos);
-	}
-	var i: usize = openWindows.items.len;
-	while(i != 0) {
-		i -= 1;
-		const window: *GuiWindow = openWindows.items[i];
-		if(GuiComponent.contains(window.pos, window.size, mousePos)) {
-			try window.updateHovered(mousePos);
-			break;
+	if(!main.Window.grabbed) {
+		if(selectedWindow) |selected| {
+			try selected.updateSelected(mousePos);
+		}
+
+		var i: usize = openWindows.items.len;
+		while(i != 0) {
+			i -= 1;
+			const window: *GuiWindow = openWindows.items[i];
+			if(GuiComponent.contains(window.pos, window.size, mousePos)) {
+				try window.updateHovered(mousePos);
+				break;
+			}
 		}
 	}
 	for(openWindows.items) |window| {
