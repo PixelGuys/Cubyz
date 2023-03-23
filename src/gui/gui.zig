@@ -38,9 +38,13 @@ pub fn init(_allocator: Allocator) !void {
 	inline for(@typeInfo(windowlist).Struct.decls) |decl| {
 		const windowStruct = @field(windowlist, decl.name);
 		try addWindow(&windowStruct.window);
-		inline for(@typeInfo(windowStruct).Struct.decls) |_decl| {
-			if(comptime std.mem.eql(u8, _decl.name, "init")) {
-				try windowStruct.init();
+		if(@hasDecl(windowStruct, "init")) {
+			try windowStruct.init();
+		}
+		const functionNames = [_][]const u8{"render", "update", "updateSelected", "updateHovered", "onOpen", "onClose"};
+		inline for(functionNames) |function| {
+			if(@hasDecl(windowStruct, function)) {
+				@field(windowStruct.window, function ++ "Fn") = &@field(windowStruct, function);
 			}
 		}
 	}

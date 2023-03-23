@@ -32,11 +32,8 @@ pub const GuiComponent = union(enum) {
 	pub fn deinit(self: GuiComponent) void {
 		switch(self) {
 			inline else => |impl| {
-				// Only call the function if it exists:
-				inline for(@typeInfo(@TypeOf(impl.*)).Struct.decls) |decl| {
-					if(comptime std.mem.eql(u8, decl.name, "deinit")) {
-						impl.deinit();
-					}
+				if(@hasDecl(@TypeOf(impl.*), "deinit")) {
+					impl.deinit();
 				}
 			}
 		}
@@ -77,11 +74,8 @@ pub const GuiComponent = union(enum) {
 	pub fn updateSelected(self: GuiComponent) void {
 		switch(self) {
 			inline else => |impl| {
-				// Only call the function if it exists:
-				inline for(@typeInfo(@TypeOf(impl.*)).Struct.decls) |decl| {
-					if(comptime std.mem.eql(u8, decl.name, "updateSelected")) {
-						impl.updateSelected();
-					}
+				if(@hasDecl(@TypeOf(impl.*), "updateSelected")) {
+					impl.updateSelected();
 				}
 			}
 		}
@@ -90,11 +84,8 @@ pub const GuiComponent = union(enum) {
 	pub fn updateHovered(self: GuiComponent, mousePosition: Vec2f) void {
 		switch(self) {
 			inline else => |impl| {
-				// Only call the function if it exists:
-				inline for(@typeInfo(@TypeOf(impl.*)).Struct.decls) |decl| {
-					if(comptime std.mem.eql(u8, decl.name, "updateHovered")) {
-						impl.updateHovered(mousePosition);
-					}
+				if(@hasDecl(@TypeOf(impl.*), "updateHovered")) {
+					impl.updateHovered(mousePosition);
 				}
 			}
 		}
@@ -103,11 +94,8 @@ pub const GuiComponent = union(enum) {
 	pub fn render(self: GuiComponent, mousePosition: Vec2f) !void {
 		switch(self) {
 			inline else => |impl| {
-				// Only call the function if it exists:
-				inline for(@typeInfo(@TypeOf(impl.*)).Struct.decls) |decl| {
-					if(comptime std.mem.eql(u8, decl.name, "render")) {
-						try impl.render(mousePosition);
-					}
+				if(@hasDecl(@TypeOf(impl.*), "render")) {
+					try impl.render(mousePosition);
 				}
 			}
 		}
@@ -116,11 +104,8 @@ pub const GuiComponent = union(enum) {
 	pub fn mainButtonPressed(self: GuiComponent, mousePosition: Vec2f) void {
 		switch(self) {
 			inline else => |impl| {
-				// Only call the function if it exists:
-				inline for(@typeInfo(@TypeOf(impl.*)).Struct.decls) |decl| {
-					if(comptime std.mem.eql(u8, decl.name, "mainButtonPressed")) {
-						impl.mainButtonPressed(mousePosition);
-					}
+				if(@hasDecl(@TypeOf(impl.*), "mainButtonPressed")) {
+					impl.mainButtonPressed(mousePosition);
 				}
 			}
 		}
@@ -129,11 +114,8 @@ pub const GuiComponent = union(enum) {
 	pub fn mainButtonReleased(self: GuiComponent, mousePosition: Vec2f) void {
 		switch(self) {
 			inline else => |impl| {
-				// Only call the function if it exists:
-				inline for(@typeInfo(@TypeOf(impl.*)).Struct.decls) |decl| {
-					if(comptime std.mem.eql(u8, decl.name, "mainButtonReleased")) {
-						impl.mainButtonReleased(mousePosition);
-					}
+				if(@hasDecl(@TypeOf(impl.*), "mainButtonReleased")) {
+					impl.mainButtonReleased(mousePosition);
 				}
 			}
 		}

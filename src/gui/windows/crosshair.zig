@@ -16,7 +16,6 @@ pub var window = GuiWindow {
 	.contentSize = Vec2f{size, size},
 	.title = "Crosshair",
 	.id = "cubyz:crosshair",
-	.renderFn = &render,
 	.showTitleBar = false,
 	.hasBackground = false,
 	.isHud = true,

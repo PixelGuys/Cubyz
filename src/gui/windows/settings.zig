@@ -15,8 +15,6 @@ pub var window: GuiWindow = GuiWindow {
 	.contentSize = Vec2f{128, 256},
 	.id = "cubyz:settings",
 	.title = "Settings",
-	.onOpenFn = &onOpen,
-	.onCloseFn = &onClose,
 	.components = &components,
 };
 

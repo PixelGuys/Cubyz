@@ -15,7 +15,6 @@ pub var window = GuiWindow {
 	.contentSize = Vec2f{128, 16},
 	.title = "Health Bar",
 	.id = "cubyz:healthbar",
-	.renderFn = &render,
 	.isHud = true,
 	.showTitleBar = false,
 	.hasBackground = false,

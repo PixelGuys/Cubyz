@@ -18,8 +18,6 @@ pub var window = GuiWindow {
 	.contentSize = Vec2f{128, 256},
 	.id = "cubyz:change_name",
 	.title = "Change Name",
-	.onOpenFn = &onOpen,
-	.onCloseFn = &onClose,
 	.components = &components,
 };
 var textComponent: *TextInput = undefined;

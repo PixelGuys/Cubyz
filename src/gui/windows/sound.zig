@@ -15,8 +15,6 @@ pub var window = GuiWindow {
 	.contentSize = Vec2f{128, 256},
 	.id = "cubyz:sound",
 	.title = "Sound TODO",
-	.onOpenFn = &onOpen,
-	.onCloseFn = &onClose,
 	.components = &components,
 };
 

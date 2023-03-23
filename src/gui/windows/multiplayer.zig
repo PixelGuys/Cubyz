@@ -19,9 +19,6 @@ pub var window = GuiWindow {
 	.contentSize = Vec2f{128, 256},
 	.id = "cubyz:multiplayer",
 	.title = "Multiplayer",
-	.onOpenFn = &onOpen,
-	.onCloseFn = &onClose,
-	.updateFn = &update,
 	.components = &components,
 };
 

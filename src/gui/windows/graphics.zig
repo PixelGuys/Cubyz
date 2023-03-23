@@ -18,8 +18,6 @@ pub var window = GuiWindow {
 	.contentSize = Vec2f{128, 256},
 	.id = "cubyz:graphics",
 	.title = "Graphics",
-	.onOpenFn = &onOpen,
-	.onCloseFn = &onClose,
 	.components = &components,
 };
 

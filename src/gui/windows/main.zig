@@ -14,8 +14,6 @@ var components: [1]GuiComponent = undefined;
 pub var window = GuiWindow {
 	.contentSize = Vec2f{128, 256},
 	.id = "cubyz:main",
-	.onOpenFn = &onOpen,
-	.onCloseFn = &onClose,
 	.components = &components,
 };
 
