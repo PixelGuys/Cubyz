@@ -11,6 +11,7 @@ const Vec2f = vec.Vec2f;
 
 const Button = @import("components/Button.zig");
 const CheckBox = @import("components/CheckBox.zig");
+const ItemSlot = @import("components/ItemSlot.zig");
 const ScrollBar = @import("components/ScrollBar.zig");
 const Slider = @import("components/Slider.zig");
 const TextInput = @import("components/TextInput.zig");
@@ -46,6 +47,7 @@ pub fn init(_allocator: Allocator) !void {
 	try GuiWindow.__init();
 	try Button.__init();
 	try CheckBox.__init();
+	try ItemSlot.__init();
 	try ScrollBar.__init();
 	try Slider.__init();
 	try TextInput.__init();
@@ -65,6 +67,7 @@ pub fn deinit() void {
 	GuiWindow.__deinit();
 	Button.__deinit();
 	CheckBox.__deinit();
+	ItemSlot.__deinit();
 	ScrollBar.__deinit();
 	Slider.__deinit();
 	TextInput.__deinit();

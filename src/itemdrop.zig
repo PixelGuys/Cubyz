@@ -570,7 +570,7 @@ pub const ItemDropRenderer = struct {
 				.item = template.item,
 			};
 			// Find sizes and free index:
-			const img = self.item.getTexture();
+			const img = self.item.getImage();
 			self.size = Vec3i{img.width, 1, img.height};
 			var freeSlot: ?*ItemVoxelModel = null;
 			for(freeSlots.items, 0..) |potentialSlot, i| {

@@ -67,7 +67,8 @@ const Material = struct {
 
 
 pub const BaseItem = struct {
-	texture: graphics.Image,
+	image: graphics.Image,
+	texture: ?graphics.Texture, // TODO: Properly deinit
 	id: []const u8,
 	name: []const u8,
 
@@ -78,7 +79,7 @@ pub const BaseItem = struct {
 
 	fn init(self: *BaseItem, allocator: Allocator, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, json: JsonElement) !void {
 		self.id = try allocator.dupe(u8, id);
-		self.texture = graphics.Image.readFromFile(allocator, texturePath) catch graphics.Image.readFromFile(allocator, replacementTexturePath) catch blk: {
+		self.image = graphics.Image.readFromFile(allocator, texturePath) catch graphics.Image.readFromFile(allocator, replacementTexturePath) catch blk: {
 			std.log.err("Item texture not found in {s} and {s}.", .{texturePath, replacementTexturePath});
 			break :blk graphics.Image.defaultImage;
 		};
@@ -94,6 +95,7 @@ pub const BaseItem = struct {
 		self.block = blk: {
 			break :blk blocks.getByID(json.get(?[]const u8, "block", null) orelse break :blk null);
 		};
+		self.texture = null;
 		self.foodValue = json.get(f32, "food", 0);
 	}
 
@@ -103,6 +105,14 @@ pub const BaseItem = struct {
 			hash = hash*%33 +% char;
 		}
 		return hash;
+	}
+
+	fn getTexture(self: *BaseItem) !graphics.Texture {
+		if(self.texture == null) {
+			self.texture = graphics.Texture.init();
+			try self.texture.?.generate(self.image);
+		}
+		return self.texture.?;
 	}
 // TODO: Check if/how this is needed:
 //	protected Item(int stackSize) {
@@ -412,7 +422,7 @@ const TextureGenerator = struct {
 	}
 
 	pub fn generate(tool: *Tool) !void {
-		const img = tool.texture;
+		const img = tool.image;
 		var pixelMaterials: [16][16]PixelData = undefined;
 		for(0..16) |x| {
 			for(0..16) |y| {
@@ -869,7 +879,8 @@ const ToolPhysics = struct {
 const Tool = struct {
 	craftingGrid: [25]?*const BaseItem,
 	materialGrid: [16][16]?*const BaseItem,
-	texture: graphics.Image,
+	image: graphics.Image,
+	texture: ?graphics.Texture,
 	seed: u32,
 
 	/// Reduction factor to block breaking time.
@@ -901,12 +912,16 @@ const Tool = struct {
 
 	pub fn init() !*Tool {
 		var self = try main.globalAllocator.create(Tool);
-		self.texture = try graphics.Image.init(main.globalAllocator, 16, 16);
+		self.image = try graphics.Image.init(main.globalAllocator, 16, 16);
+		self.texture = null;
 		return self;
 	}
 
 	pub fn deinit(self: *const Tool) void {
-		self.texture.deinit(main.globalAllocator);
+		if(self.texture) |texture| {
+			texture.deinit();
+		}
+		self.image.deinit(main.globalAllocator);
 		main.globalAllocator.destroy(self);
 	}
 
@@ -961,6 +976,14 @@ const Tool = struct {
 		return hash;
 	}
 
+	fn getTexture(self: *Tool) !graphics.Texture {
+		if(self.texture == null) {
+			self.texture = graphics.Texture.init();
+			try self.texture.?.generate(self.image);
+		}
+		return self.texture.?;
+	}
+
 	pub fn getPowerByBlockClass(self: *Tool, blockClass: blocks.BlockClass) f32 {
 		return switch(blockClass) {
 			.fluid => 0,
@@ -979,8 +1002,8 @@ const Tool = struct {
 };
 
 pub const Item = union(enum) {
-	baseItem: *const BaseItem,
-	tool: *const Tool,
+	baseItem: *BaseItem,
+	tool: *Tool,
 
 	pub fn init(json: JsonElement) !Item {
 		if(reverseIndices.get(json.get([]const u8, "item", "null"))) |baseItem| {
@@ -1026,13 +1049,24 @@ pub const Item = union(enum) {
 		}
 	}
 
-	pub fn getTexture(self: Item) graphics.Image {
+	pub fn getTexture(self: Item) !graphics.Texture {
 		switch(self) {
 			.baseItem => |_baseItem| {
-				return _baseItem.texture;
+				return try _baseItem.getTexture();
 			},
 			.tool => |_tool| {
-				return _tool.texture;
+				return try _tool.getTexture();
+			},
+		}
+	}
+
+	pub fn getImage(self: Item) graphics.Image {
+		switch(self) {
+			.baseItem => |_baseItem| {
+				return _baseItem.image;
+			},
+			.tool => |_tool| {
+				return _tool.image;
 			},
 		}
 	}
@@ -1256,7 +1290,7 @@ pub fn deinit() void {
 	arena.deinit();
 }
 
-pub fn getByID(id: []const u8) ?*const BaseItem {
+pub fn getByID(id: []const u8) ?*BaseItem {
 	if(reverseIndices.get(id)) |result| {
 		return result;
 	} else {
