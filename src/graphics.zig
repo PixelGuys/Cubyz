@@ -339,6 +339,8 @@ pub const draw = struct {
 		pos *= @splat(2, scale);
 		pos += translation;
 		dim *= @splat(2, scale);
+		pos = @floor(pos);
+		dim = @ceil(dim);
 
 		imageShader.bind();
 
@@ -359,6 +361,8 @@ pub const draw = struct {
 		pos *= @splat(2, scale);
 		pos += translation;
 		dim *= @splat(2, scale);
+		pos = @floor(pos);
+		dim = @ceil(dim);
 
 		c.glUniform2f(uniforms.screen, @intToFloat(f32, Window.width), @intToFloat(f32, Window.height));
 		c.glUniform2f(uniforms.start, pos[0], pos[1]);
@@ -914,6 +918,8 @@ const TextRendering = struct {
 		y *= draw.scale;
 		x += draw.translation[0];
 		y += draw.translation[1];
+		x = @floor(x);
+		y = @ceil(y);
 		c.glUniform1i(uniforms.fontEffects, fontEffects);
 		if(fontEffects & 0x1000000 != 0) { // bold
 			c.glUniform2f(uniforms.offset, @intToFloat(f32, glyph.bearing[0])*draw.scale + x, @intToFloat(f32, glyph.bearing[1])*draw.scale + y - 1);
