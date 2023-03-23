@@ -56,6 +56,11 @@ pub const Player = struct {
 	pub var maxHealth: f32 = 8;
 	pub var health: f32 = 4.5;
 
+	fn loadFrom(json: JsonElement) !void {
+		// TODO: super.loadFrom(json);
+		try inventory__SEND_CHANGES_TO_SERVER.loadFromJson(json.getChild("inventory"));
+	}
+
 	pub fn setPosBlocking(newPos: Vec3d) void {
 		mutex.lock();
 		defer mutex.unlock();
@@ -135,12 +140,11 @@ pub const World = struct {
 //			registries = new CurrentWorldRegistries(this, "serverAssets/", blockPalette);
 //		}
 //
-//		player.loadFrom(json.getObjectOrNew("player"), this);
-		Player.id = json.get(u32, "player_id", std.math.maxInt(u32));
-//		TODO:
 //		// Call mods for this new world. Mods sometimes need to do extra stuff for the specific world.
 //		ModLoader.postWorldGen(registries);
 		try assets.loadWorldAssets("serverAssets", self.blockPalette);
+		try Player.loadFrom(json.getChild("player"));
+		Player.id = json.get(u32, "player_id", std.math.maxInt(u32));
 	}
 
 	pub fn update(self: *World) !void {

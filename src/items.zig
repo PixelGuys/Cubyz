@@ -1007,7 +1007,6 @@ pub const Item = union(enum) {
 
 	pub fn init(json: JsonElement) !Item {
 		if(reverseIndices.get(json.get([]const u8, "item", "null"))) |baseItem| {
-			std.debug.print("{*}", .{baseItem.id.ptr});
 			return Item{.baseItem = baseItem};
 		} else {
 			var toolJson = json.getChild("tool");
@@ -1240,13 +1239,13 @@ pub const Inventory = struct {
 		return jsonObject;
 	}
 
-	pub fn loadFromJson(self: Inventory, allocator: Allocator, json: JsonElement) void {
+	pub fn loadFromJson(self: Inventory, json: JsonElement) !void {
 		for(self.items, 0..) |*stack, i| {
 			stack.clear();
 			var buf: [1024]u8 = undefined;
-			var stackJson = json.getChild(buf[0..std.fmt.formatIntBuf(buf, i, 10, .lower, .{})]);
+			var stackJson = json.getChild(buf[0..std.fmt.formatIntBuf(&buf, i, 10, .lower, .{})]);
 			if(stackJson == .JsonObject) {
-				stack.item = try Item.init(allocator, json);
+				stack.item = try Item.init(stackJson);
 				stack.amount = stackJson.get(u16, "amount", 0);
 			}
 		}
@@ -1268,7 +1267,7 @@ pub fn globalInit() void {
 pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, json: JsonElement) !*BaseItem {
 	std.log.info("{s}", .{id});
 	if(reverseIndices.contains(id)) {
-		std.log.warn("Registered block with id {s} twice!", .{id});
+		std.log.warn("Registered item with id {s} twice!", .{id});
 	}
 	var newItem = &itemList[itemListSize];
 	try newItem.init(arena.allocator(), texturePath, replacementTexturePath, id, json);
