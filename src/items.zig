@@ -1257,6 +1257,9 @@ var reverseIndices: std.StringHashMap(*BaseItem) = undefined;
 var itemList: [65536]BaseItem = undefined;
 var itemListSize: u16 = 0;
 
+pub fn iterator() std.StringHashMap(*BaseItem).ValueIterator {
+	return reverseIndices.valueIterator();
+}
 
 pub fn globalInit() void {
 	arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);

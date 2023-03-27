@@ -161,6 +161,20 @@ pub fn setNextKeypressListener(listener: ?*const fn(c_int, c_int, c_int) void) !
 fn ungrabMouse() void {
 	Window.setMouseGrabbed(false);
 }
+fn openInventory() void {
+	if(game.world == null) return;
+	ungrabMouse();
+	gui.openWindow("cubyz:inventory") catch |err| {
+		std.log.err("Got error while opening the inventory: {s}", .{@errorName(err)});
+	};
+}
+fn openCreativeInventory() void {
+	if(game.world == null) return;
+	ungrabMouse();
+	gui.openWindow("cubyz:creative_inventory") catch |err| {
+		std.log.err("Got error while opening the inventory: {s}", .{@errorName(err)});
+	};
+}
 pub var keyboard: struct {
 	// Gameplay:
 	forward: Key = Key{.key = c.GLFW_KEY_W},
@@ -174,6 +188,8 @@ pub var keyboard: struct {
 
 	// Gui:
 	escape: Key = Key{.key = c.GLFW_KEY_ESCAPE, .releaseAction = &ungrabMouse},
+	openInventory: Key = Key{.key = c.GLFW_KEY_I, .releaseAction = &openInventory},
+	@"openCreativeInventory(aka cheat inventory)": Key = Key{.key = c.GLFW_KEY_C, .releaseAction = &openCreativeInventory},
 	mainGuiButton: Key = Key{.mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &gui.mainButtonPressed, .releaseAction = &gui.mainButtonReleased},
 	secondaryGuiButton: Key = Key{.mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &gui.secondaryButtonPressed, .releaseAction = &gui.secondaryButtonReleased},
 	// text:

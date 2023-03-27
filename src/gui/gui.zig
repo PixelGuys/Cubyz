@@ -499,7 +499,6 @@ const inventory = struct {
 				for(deliveredItemStacks.items) |deliveredStack| {
 					carriedItemStack.amount -= @intCast(u16, deliveredStack.add(addedAmount));
 				}
-				std.log.info("Here: {}", .{carriedItemStack.amount});
 			} else if(main.keyboard.secondaryGuiButton.pressed) {
 				for(deliveredItemStacks.items) |deliveredStack| {
 					if(itemSlot.itemStack == deliveredStack) {
@@ -527,16 +526,24 @@ const inventory = struct {
 				carriedItemStack.item = null;
 			}
 		} else if(hoveredItemSlot) |hovered| {
-			if(leftClick) {
-				carriedItemStack = hovered.itemStack.*;
-				hovered.itemStack.amount = 0;
-				hovered.itemStack.item = null;
+			if(carriedItemStack.amount != 0) {
+				if(leftClick) {
+					const swap = hovered.itemStack.*;
+					hovered.itemStack.* = carriedItemStack;
+					carriedItemStack = swap;
+				}
 			} else {
-				carriedItemStack = hovered.itemStack.*;
-				hovered.itemStack.amount /= 2;
-				carriedItemStack.amount -= hovered.itemStack.amount;
-				if(hovered.itemStack.amount == 0) {
+				if(leftClick) {
+					carriedItemStack = hovered.itemStack.*;
+					hovered.itemStack.amount = 0;
 					hovered.itemStack.item = null;
+				} else {
+					carriedItemStack = hovered.itemStack.*;
+					hovered.itemStack.amount /= 2;
+					carriedItemStack.amount -= hovered.itemStack.amount;
+					if(hovered.itemStack.amount == 0) {
+						hovered.itemStack.item = null;
+					}
 				}
 			}
 		}
