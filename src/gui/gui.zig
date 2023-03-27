@@ -519,6 +519,7 @@ const inventory = struct {
 	}
 
 	fn applyChanges(leftClick: bool) void {
+		if(main.game.world == null) return;
 		if(deliveredItemStacks.items.len != 0) {
 			deliveredItemStacks.clearRetainingCapacity();
 			deliveredItemStacksOldAmount.clearRetainingCapacity();
@@ -545,6 +546,18 @@ const inventory = struct {
 						hovered.itemStack.item = null;
 					}
 				}
+			}
+		} else {
+			if(leftClick or carriedItemStack.amount == 1) {
+				main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, carriedItemStack, vec.floatCast(f32, main.game.Player.getPosBlocking()), main.game.camera.direction, 20) catch |err| {
+					std.log.err("Error while dropping itemStack: {s}", .{@errorName(err)});
+				};
+				carriedItemStack.clear();
+			} else if(carriedItemStack.amount != 0) {
+				main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, .{.item = carriedItemStack.item, .amount = 1}, vec.floatCast(f32, main.game.Player.getPosBlocking()), main.game.camera.direction, 20) catch |err| {
+					std.log.err("Error while dropping itemStack: {s}", .{@errorName(err)});
+				};
+				_ = carriedItemStack.add(@as(i32, -1));
 			}
 		}
 	}
