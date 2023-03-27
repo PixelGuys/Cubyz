@@ -26,6 +26,7 @@ text: TextBuffer,
 textSize: Vec2f = .{0, 0},
 hovered: bool = false,
 pressed: bool = false,
+renderFrame: bool = true,
 
 pub fn __init() !void {
 	texture = try Texture.initFromFile("assets/cubyz/ui/inventory/slot.png");
@@ -56,7 +57,13 @@ pub fn deinit(self: *const ItemSlot) void {
 fn refreshText(self: *ItemSlot) !void {
 	self.text.deinit();
 	var buf: [16]u8 = undefined;
-	self.text = try TextBuffer.init(gui.allocator, std.fmt.bufPrint(&buf, "{}", .{self.itemStack.amount}) catch "∞", .{}, false, .right);
+	self.text = try TextBuffer.init(
+		gui.allocator,
+		std.fmt.bufPrint(&buf, "{}", .{self.itemStack.amount}) catch "∞",
+		.{.color = if(self.itemStack.amount == 0) 0xff0000 else 0xffffff},
+		false,
+		.right
+	);
 	self.textSize = try self.text.calculateLineBreaks(8, self.size[0] - 2*border);
 }
 
@@ -68,6 +75,7 @@ pub fn toComponent(self: *ItemSlot) GuiComponent {
 
 pub fn updateHovered(self: *ItemSlot, _: Vec2f) void {
 	self.hovered = true;
+	gui.hoveredItemSlot = self;
 }
 
 pub fn mainButtonPressed(self: *ItemSlot, _: Vec2f) void {
@@ -87,15 +95,18 @@ pub fn render(self: *ItemSlot, _: Vec2f) !void {
 	const newStack = self.itemStack.*;
 	if(newStack.amount != self.oldStack.amount) {
 		try self.refreshText();
+		self.oldStack.amount = newStack.amount;
 	}
 	draw.setColor(0xffffffff);
-	texture.bindTo(0);
-	draw.boundImage(self.pos, self.size);
+	if(self.renderFrame) {
+		texture.bindTo(0);
+		draw.boundImage(self.pos, self.size);
+	}
 	if(self.itemStack.item) |item| {
 		const itemTexture = try item.getTexture();
 		itemTexture.bindTo(0);
 		draw.boundImage(self.pos + @splat(2, border), self.size - @splat(2, 2*border));
-		if(self.itemStack.amount > 1) {
+		if(self.itemStack.amount != 1) {
 			try self.text.render(self.pos[0] + self.size[0] - self.textSize[0] - border, self.pos[1] + self.size[1] - self.textSize[1] - border, 8);
 		}
 	}

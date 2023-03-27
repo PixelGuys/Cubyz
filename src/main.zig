@@ -175,8 +175,7 @@ pub var keyboard: struct {
 	// Gui:
 	escape: Key = Key{.key = c.GLFW_KEY_ESCAPE, .releaseAction = &ungrabMouse},
 	mainGuiButton: Key = Key{.mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &gui.mainButtonPressed, .releaseAction = &gui.mainButtonReleased},
-	rightMouseButton: Key = Key{.mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT},
-	middleMouseButton: Key = Key{.mouseButton = c.GLFW_MOUSE_BUTTON_MIDDLE},
+	secondaryGuiButton: Key = Key{.mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &gui.secondaryButtonPressed, .releaseAction = &gui.secondaryButtonReleased},
 	// text:
 	textCursorLeft: Key = Key{.key = c.GLFW_KEY_LEFT, .repeatAction = &gui.textCallbacks.left},
 	textCursorRight: Key = Key{.key = c.GLFW_KEY_RIGHT, .repeatAction = &gui.textCallbacks.right},

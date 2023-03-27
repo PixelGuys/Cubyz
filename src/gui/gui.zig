@@ -30,6 +30,8 @@ pub var allocator: Allocator = undefined;
 
 pub var scale: f32 = undefined;
 
+pub var hoveredItemSlot: ?*ItemSlot = null;
+
 pub fn init(_allocator: Allocator) !void {
 	allocator = _allocator;
 	windowList = std.ArrayList(*GuiWindow).init(allocator);
@@ -56,6 +58,7 @@ pub fn init(_allocator: Allocator) !void {
 	try Slider.__init();
 	try TextInput.__init();
 	try load();
+	try inventory.init();
 }
 
 pub fn deinit() void {
@@ -83,6 +86,7 @@ pub fn deinit() void {
 			}
 		}
 	}
+	inventory.deinit();
 }
 
 fn save() !void {
@@ -345,6 +349,10 @@ pub const textCallbacks = struct {
 
 pub fn mainButtonPressed() void {
 	if(main.Window.grabbed) return;
+	inventory.update() catch |err| {
+		std.log.err("Encountered error while updating inventory: {s}", .{@errorName(err)});
+	};
+	if(inventory.carriedItemStack.amount != 0) return;
 	selectedWindow = null;
 	selectedTextInput = null;
 	var selectedI: usize = 0;
@@ -368,6 +376,7 @@ pub fn mainButtonPressed() void {
 
 pub fn mainButtonReleased() void {
 	if(main.Window.grabbed) return;
+	inventory.applyChanges(true);
 	var oldWindow = selectedWindow;
 	selectedWindow = null;
 	for(openWindows.items) |window| {
@@ -384,6 +393,19 @@ pub fn mainButtonReleased() void {
 		const mousePosition = main.Window.getMousePosition()/@splat(2, scale);
 		_oldWindow.mainButtonReleased(mousePosition);
 	}
+}
+
+pub fn secondaryButtonPressed() void {
+	if(main.Window.grabbed) return;
+	inventory.update() catch |err| {
+		std.log.err("Encountered error while updating inventory: {s}", .{@errorName(err)});
+	};
+	if(inventory.carriedItemStack.amount != 0) return;
+}
+
+pub fn secondaryButtonReleased() void {
+	if(main.Window.grabbed) return;
+	inventory.applyChanges(false);
 }
 
 pub fn updateWindowPositions() void {
@@ -405,7 +427,7 @@ pub fn updateAndRenderGui() !void {
 		if(selectedWindow) |selected| {
 			try selected.updateSelected(mousePos);
 		}
-
+		hoveredItemSlot = null;
 		var i: usize = openWindows.items.len;
 		while(i != 0) {
 			i -= 1;
@@ -415,13 +437,113 @@ pub fn updateAndRenderGui() !void {
 				break;
 			}
 		}
+		try inventory.update();
 	}
 	for(openWindows.items) |window| {
 		try window.update();
 	}
+	const oldScale = draw.setScale(scale);
+	defer draw.restoreScale(oldScale);
 	for(openWindows.items) |window| {
-		const oldScale = draw.setScale(scale);
-		defer draw.restoreScale(oldScale);
 		try window.render(mousePos);
 	}
+	try inventory.render(mousePos);
 }
+
+const inventory = struct {
+	const ItemStack = main.items.ItemStack;
+	var carriedItemStack: ItemStack = .{.item = null, .amount = 0};
+	var carriedItemSlot: *ItemSlot = undefined;
+	var deliveredItemStacks: std.ArrayList(*ItemStack) = undefined;
+	var deliveredItemStacksOldAmount: std.ArrayList(u16) = undefined;
+	var initialAmount: u16 = 0;
+
+	pub fn init() !void {
+		deliveredItemStacks = std.ArrayList(*ItemStack).init(allocator);
+		deliveredItemStacksOldAmount = std.ArrayList(u16).init(allocator);
+		carriedItemSlot = try ItemSlot.init(.{0, 0}, &carriedItemStack);
+		carriedItemSlot.renderFrame = false;
+	}
+
+	fn deinit() void {
+		carriedItemSlot.deinit();
+		deliveredItemStacks.deinit();
+		deliveredItemStacksOldAmount.deinit();
+		std.debug.assert(carriedItemStack.amount == 0);
+	}
+
+	fn update() !void {
+		if(deliveredItemStacks.items.len == 0) {
+			initialAmount = carriedItemStack.amount;
+		}
+		if(hoveredItemSlot) |itemSlot| {
+			if(initialAmount == 0) return;
+			if(!std.meta.eql(itemSlot.itemStack.item, carriedItemStack.item) and itemSlot.itemStack.item != null) return;
+
+			if(main.keyboard.mainGuiButton.pressed) {
+				for(deliveredItemStacks.items) |deliveredStack| {
+					if(itemSlot.itemStack == deliveredStack) {
+						return;
+					}
+				}
+				for(deliveredItemStacks.items, deliveredItemStacksOldAmount.items) |deliveredStack, oldAmount| {
+					deliveredStack.amount = oldAmount;
+				}
+				try deliveredItemStacks.append(itemSlot.itemStack);
+				if(itemSlot.itemStack.item == null) {
+					itemSlot.itemStack.item = carriedItemStack.item;
+				}
+				try deliveredItemStacksOldAmount.append(itemSlot.itemStack.amount);
+				carriedItemStack.amount = initialAmount;
+				const addedAmount = initialAmount/deliveredItemStacks.items.len;
+				for(deliveredItemStacks.items) |deliveredStack| {
+					carriedItemStack.amount -= @intCast(u16, deliveredStack.add(addedAmount));
+				}
+				std.log.info("Here: {}", .{carriedItemStack.amount});
+			} else if(main.keyboard.secondaryGuiButton.pressed) {
+				for(deliveredItemStacks.items) |deliveredStack| {
+					if(itemSlot.itemStack == deliveredStack) {
+						return;
+					}
+				}
+				if(carriedItemStack.amount != 0) {
+					if(itemSlot.itemStack.item == null) {
+						itemSlot.itemStack.item = carriedItemStack.item;
+					}
+					if(itemSlot.itemStack.add(@as(u32, 1)) == 1) {
+						try deliveredItemStacks.append(itemSlot.itemStack);
+						carriedItemStack.amount -= 1;
+					}
+				}
+			}
+		}
+	}
+
+	fn applyChanges(leftClick: bool) void {
+		if(deliveredItemStacks.items.len != 0) {
+			deliveredItemStacks.clearRetainingCapacity();
+			deliveredItemStacksOldAmount.clearRetainingCapacity();
+			if(carriedItemStack.amount == 0) {
+				carriedItemStack.item = null;
+			}
+		} else if(hoveredItemSlot) |hovered| {
+			if(leftClick) {
+				carriedItemStack = hovered.itemStack.*;
+				hovered.itemStack.amount = 0;
+				hovered.itemStack.item = null;
+			} else {
+				carriedItemStack = hovered.itemStack.*;
+				hovered.itemStack.amount /= 2;
+				carriedItemStack.amount -= hovered.itemStack.amount;
+				if(hovered.itemStack.amount == 0) {
+					hovered.itemStack.item = null;
+				}
+			}
+		}
+	}
+
+	fn render(mousePos: Vec2f) !void {
+		carriedItemSlot.pos = mousePos;
+		try carriedItemSlot.render(.{0, 0});
+	}
+};
