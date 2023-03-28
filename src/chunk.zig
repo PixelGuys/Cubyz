@@ -394,11 +394,12 @@ pub const meshing = struct {
 		time: c_int,
 		visibilityMask: c_int,
 		voxelSize: c_int,
+		renderedToItemTexture: c_int,
 	} = undefined;
 	var vao: c_uint = undefined;
 	var vbo: c_uint = undefined;
 	var faces: std.ArrayList(u32) = undefined;
-	var faceBuffer: graphics.LargeBuffer = undefined;
+	pub var faceBuffer: graphics.LargeBuffer = undefined;
 
 	pub fn init() !void {
 		shader = try Shader.initAndGetUniforms("assets/cubyz/shaders/chunks/chunk_vertex.vs", "assets/cubyz/shaders/chunks/chunk_fragment.fs", &uniforms);
@@ -447,10 +448,12 @@ pub const meshing = struct {
 
 		c.glUniform1i(uniforms.time, @truncate(u31, time));
 
+		c.glUniform1i(uniforms.renderedToItemTexture, 0);
+
 		c.glBindVertexArray(vao);
 	}
 
-	const FaceData = switch(@import("builtin").target.cpu.arch.endian()) {
+	pub const FaceData = switch(@import("builtin").target.cpu.arch.endian()) {
 		.Little => packed struct {
 			position: u32,
 			blockAndModel: u32,
@@ -699,7 +702,7 @@ pub const meshing = struct {
 			faceBuffer.bufferSubData(self.bufferAllocation.start, FaceData, self.faces.items);
 		}
 
-		inline fn constructFaceData(block: Block, normal: u32, x: u32, y: u32, z: u32) FaceData {
+		pub inline fn constructFaceData(block: Block, normal: u32, x: u32, y: u32, z: u32) FaceData {
 			const model = blocks.meshes.model(block);
 			return FaceData {
 				.position = @as(u32, x) | @as(u32, y)<<5 | @as(u32, z)<<10 | normal<<20 | @as(u32, model.permutation.toInt())<<23,

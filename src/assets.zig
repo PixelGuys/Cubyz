@@ -84,10 +84,14 @@ pub fn init() !void {
 fn registerItem(assetFolder: []const u8, id: []const u8, json: JsonElement) !*items_zig.BaseItem {
 	var split = std.mem.split(u8, id, ":");
 	const mod = split.first();
-	var buf: [4096]u8 = undefined;
-	const texturePath = try std.fmt.bufPrint(&buf, "{s}/{s}/items/textures/{s}", .{assetFolder, mod, json.get([]const u8, "texture", "default.png")});
-	var buf2: [4096]u8 = undefined; // TODO: Implement proper resource loading with various fallback locations.
-	const replacementTexturePath = try std.fmt.bufPrint(&buf2, "assets/{s}/items/textures/{s}", .{mod, json.get([]const u8, "texture", "default.png")});
+	var texturePath: []const u8 = &[0]u8{};
+	var replacementTexturePath: []const u8 = &[0]u8{};
+	var buf1: [4096]u8 = undefined;
+	var buf2: [4096]u8 = undefined;
+	if(json.get(?[]const u8, "texture", null)) |texture| {
+		texturePath = try std.fmt.bufPrint(&buf1, "{s}/{s}/items/textures/{s}", .{assetFolder, mod, texture});
+		replacementTexturePath = try std.fmt.bufPrint(&buf2, "assets/{s}/items/textures/{s}", .{mod, texture});
+	}
 	return try items_zig.register(assetFolder, texturePath, replacementTexturePath, id, json);
 }
 

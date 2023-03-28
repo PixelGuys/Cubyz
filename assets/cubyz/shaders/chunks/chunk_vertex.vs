@@ -156,7 +156,7 @@ void main() {
 
 	startPosition = (totalOffset)*0.999;
 
-	direction = position.xyz/16.0 + permutationMatrix*(mirrorVector*(modelPosition + (viewMatrix*vec4(0, 0, 0, 1)).xyz))/voxelSize;
+	direction = position.xyz/16.0 + permutationMatrix*(mirrorVector*modelPosition)/voxelSize;
 
 	vec3 globalPosition = mirrorVector*(transpose(permutationMatrix)*position)*voxelSize/16.0 + modelPosition;
 

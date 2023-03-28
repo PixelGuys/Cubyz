@@ -8,8 +8,10 @@ const graphics = @import("graphics.zig");
 const Color = graphics.Color;
 const JsonElement = @import("json.zig").JsonElement;
 const main = @import("main.zig");
+const chunk = main.chunk;
 const random = @import("random.zig");
 const vec = @import("vec.zig");
+const Mat4f = vec.Mat4f;
 const Vec2f = vec.Vec2f;
 const Vec2i = vec.Vec2i;
 const Vec3i = vec.Vec3i;
@@ -79,10 +81,14 @@ pub const BaseItem = struct {
 
 	fn init(self: *BaseItem, allocator: Allocator, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, json: JsonElement) !void {
 		self.id = try allocator.dupe(u8, id);
-		self.image = graphics.Image.readFromFile(allocator, texturePath) catch graphics.Image.readFromFile(allocator, replacementTexturePath) catch blk: {
-			std.log.err("Item texture not found in {s} and {s}.", .{texturePath, replacementTexturePath});
-			break :blk graphics.Image.defaultImage;
-		};
+		if(texturePath.len == 0) {
+			self.image = graphics.Image.defaultImage;
+		} else {
+			self.image = graphics.Image.readFromFile(allocator, texturePath) catch graphics.Image.readFromFile(allocator, replacementTexturePath) catch blk: {
+				std.log.err("Item texture not found in {s} and {s}.", .{texturePath, replacementTexturePath});
+				break :blk graphics.Image.defaultImage;
+			};
+		}
 		self.name = try allocator.dupe(u8, json.get([]const u8, "name", id));
 		self.stackSize = json.get(u16, "stackSize", 64);
 		const material = json.getChild("material");
@@ -109,8 +115,56 @@ pub const BaseItem = struct {
 
 	fn getTexture(self: *BaseItem) !graphics.Texture {
 		if(self.texture == null) {
-			self.texture = graphics.Texture.init();
-			try self.texture.?.generate(self.image);
+			if(self.block) |blockType| {
+				const c = graphics.c;
+				// TODO:
+				c.glViewport(0, 0, 128, 128);
+
+				var frameBuffer: graphics.FrameBuffer = undefined;
+				const scissor = c.glIsEnabled(c.GL_SCISSOR_TEST);
+				c.glDisable(c.GL_SCISSOR_TEST);
+				defer if(scissor != 0) c.glEnable(c.GL_SCISSOR_TEST);
+				const cullFace = c.glIsEnabled(c.GL_CULL_FACE);
+				c.glEnable(c.GL_CULL_FACE);
+				defer if(cullFace == 0) c.glDisable(c.GL_CULL_FACE);
+
+				frameBuffer.init(false);
+				frameBuffer.updateSize(128, 128, c.GL_NEAREST, c.GL_REPEAT);
+				frameBuffer.bind();
+				self.texture = graphics.Texture{.textureID = frameBuffer.texture};
+				defer c.glDeleteFramebuffers(1, &frameBuffer.frameBuffer);
+
+				const projMatrix = Mat4f.perspective(0.013, 1, 64, 256);
+				const oldViewMatrix = main.game.camera.viewMatrix;
+				main.game.camera.viewMatrix = Mat4f.rotationX(std.math.pi/4.0).mul(Mat4f.rotationY(-std.math.pi/4.0));
+				defer main.game.camera.viewMatrix = oldViewMatrix;
+				chunk.meshing.bindShaderAndUniforms(projMatrix, .{1, 1, 1}, 0);
+
+				var allocation: graphics.LargeBuffer.Allocation = .{.start = 0, .len = 0};
+				try chunk.meshing.faceBuffer.realloc(&allocation, 3*@sizeOf(chunk.meshing.FaceData));
+				var faceData: [3]chunk.meshing.FaceData = undefined;
+				const block = main.blocks.Block{.typ = blockType, .data = 0}; // TODO: Use natural standard data.
+				faceData[0] = chunk.meshing.ChunkMesh.constructFaceData(block, chunk.Neighbors.dirPosX, 1+1, 1, 1);
+				faceData[1] = chunk.meshing.ChunkMesh.constructFaceData(block, chunk.Neighbors.dirUp, 1, 1+1, 1);
+				faceData[2] = chunk.meshing.ChunkMesh.constructFaceData(block, chunk.Neighbors.dirPosZ, 1, 1, 1+1);
+				chunk.meshing.faceBuffer.bufferSubData(allocation.start, chunk.meshing.FaceData, &faceData);
+
+				c.glUniform1i(chunk.meshing.uniforms.renderedToItemTexture, 1);
+				c.glUniform3f(chunk.meshing.uniforms.modelPosition, -65.5 - 1.5, -92.631 - 1.5, -65.5 - 1.5);
+				c.glUniform1i(chunk.meshing.uniforms.visibilityMask, 0xff);
+				c.glUniform1i(chunk.meshing.uniforms.voxelSize, 1);
+				c.glActiveTexture(c.GL_TEXTURE0);
+				main.blocks.meshes.blockTextureArray.bind();
+				c.glActiveTexture(c.GL_TEXTURE1);
+				main.blocks.meshes.emissionTextureArray.bind();
+				c.glDrawElementsBaseVertex(c.GL_TRIANGLES, 18, c.GL_UNSIGNED_INT, null, allocation.start/8*4);
+
+				try chunk.meshing.faceBuffer.free(allocation);
+				c.glViewport(0, 0, main.Window.width, main.Window.height);
+			} else {
+				self.texture = graphics.Texture.init();
+				try self.texture.?.generate(self.image);
+			}
 		}
 		return self.texture.?;
 	}
