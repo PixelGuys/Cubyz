@@ -117,7 +117,6 @@ pub const BaseItem = struct {
 		if(self.texture == null) {
 			if(self.block) |blockType| {
 				const c = graphics.c;
-				// TODO:
 				c.glViewport(0, 0, 128, 128);
 
 				var frameBuffer: graphics.FrameBuffer = undefined;
