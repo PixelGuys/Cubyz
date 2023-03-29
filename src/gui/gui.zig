@@ -565,5 +565,33 @@ const inventory = struct {
 	fn render(mousePos: Vec2f) !void {
 		carriedItemSlot.pos = mousePos;
 		try carriedItemSlot.render(.{0, 0});
+		// Draw tooltip:
+		if(carriedItemStack.amount == 0) if(hoveredItemSlot) |hovered| {
+			if(hovered.itemStack.item) |item| {
+				const tooltip = try item.getTooltip();
+				var textBuffer: graphics.TextBuffer = try graphics.TextBuffer.init(main.threadAllocator, tooltip, .{}, false, .left);
+				defer textBuffer.deinit();
+				var size = try textBuffer.calculateLineBreaks(16, 256);
+				size[0] = 0;
+				for(textBuffer.lineBreaks.items) |lineBreak| {
+					size[0] = @max(size[0], lineBreak.width);
+				}
+				var pos = mousePos;
+				if(pos[0] + size[0] >= main.Window.getWindowSize()[0]/scale) {
+					pos[0] -= size[0];
+				}
+				if(pos[1] + size[1] >= main.Window.getWindowSize()[1]/scale) {
+					pos[1] -= size[1];
+				}
+				pos = @max(pos, Vec2f{0, 0});
+				const border1: f32 = 2;
+				const border2: f32 = 1;
+				draw.setColor(0xffffff00);
+				draw.rect(pos - @splat(2, border1), size + @splat(2, 2*border1));
+				draw.setColor(0xff000000);
+				draw.rect(pos - @splat(2, border2), size + @splat(2, 2*border2));
+				try textBuffer.render(pos[0], pos[1], 16);
+			}
+		};
 	}
 };

@@ -167,6 +167,10 @@ pub const BaseItem = struct {
 		}
 		return self.texture.?;
 	}
+
+	fn getTooltip(self: BaseItem) []const u8 {
+		return self.name;
+	}
 // TODO: Check if/how this is needed:
 //	protected Item(int stackSize) {
 //		id = Resource.EMPTY;
@@ -568,12 +572,12 @@ const TextureGenerator = struct {
 						const lightTR = heightMap[x + 1][y] - heightMap[x][y + 1];
 						var light = 2 - @floatToInt(i32, @round((lightTL * 2 + lightTR) / 6));
 						light = @max(@min(light, 4), 0);
-						img.setRGB(x, y, material.colorPalette[@intCast(usize, light)]);
+						img.setRGB(x, 15 - y, material.colorPalette[@intCast(usize, light)]);
 					} else {
-						img.setRGB(x, y, if((x ^ y) & 1 == 0) Color{.r=255, .g=0, .b=255, .a=255} else Color{.r=0, .g=0, .b=0, .a=255});
+						img.setRGB(x, 15 - y, if((x ^ y) & 1 == 0) Color{.r=255, .g=0, .b=255, .a=255} else Color{.r=0, .g=0, .b=0, .a=255});
 					}
 				} else {
-					img.setRGB(x, y, Color{.r = 0, .g = 0, .b = 0, .a = 0});
+					img.setRGB(x, 15 - y, Color{.r = 0, .g = 0, .b = 0, .a = 0});
 				}
 			}
 		}
@@ -932,6 +936,7 @@ const ToolPhysics = struct {
 const Tool = struct {
 	craftingGrid: [25]?*const BaseItem,
 	materialGrid: [16][16]?*const BaseItem,
+	tooltip: ?[]const u8,
 	image: graphics.Image,
 	texture: ?graphics.Texture,
 	seed: u32,
@@ -967,6 +972,7 @@ const Tool = struct {
 		var self = try main.globalAllocator.create(Tool);
 		self.image = try graphics.Image.init(main.globalAllocator, 16, 16);
 		self.texture = null;
+		self.tooltip = null;
 		return self;
 	}
 
@@ -975,6 +981,7 @@ const Tool = struct {
 			texture.deinit();
 		}
 		self.image.deinit(main.globalAllocator);
+		if(self.tooltip) |tooltip| main.globalAllocator.free(tooltip);
 		main.globalAllocator.destroy(self);
 	}
 
@@ -1035,6 +1042,27 @@ const Tool = struct {
 			try self.texture.?.generate(self.image);
 		}
 		return self.texture.?;
+	}
+	
+	fn getTooltip(self: *Tool) ![]const u8 {
+		if(self.tooltip) |tooltip| return tooltip;
+		self.tooltip = try std.fmt.allocPrint(
+			main.globalAllocator,
+			\\Time to swing: {} s
+			\\Pickaxe power: {} %
+			\\Axe power: {} %
+			\\Shover power: {} %
+			\\Durability: {}/{}
+			,
+			.{
+				self.swingTime,
+				@floatToInt(i32, 100*self.pickaxePower),
+				@floatToInt(i32, 100*self.axePower),
+				@floatToInt(i32, 100*self.shovelPower),
+				self.durability, self.maxDurability,
+			}
+		);
+		return self.tooltip.?;
 	}
 
 	pub fn getPowerByBlockClass(self: *Tool, blockClass: blocks.BlockClass) f32 {
@@ -1108,6 +1136,17 @@ pub const Item = union(enum) {
 			},
 			.tool => |_tool| {
 				return try _tool.getTexture();
+			},
+		}
+	}
+
+	pub fn getTooltip(self: Item) ![]const u8 {
+		switch(self) {
+			.baseItem => |_baseItem| {
+				return _baseItem.getTooltip();
+			},
+			.tool => |_tool| {
+				return try _tool.getTooltip();
 			},
 		}
 	}
