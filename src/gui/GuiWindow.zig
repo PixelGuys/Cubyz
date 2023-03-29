@@ -55,7 +55,7 @@ spacing: f32 = 0,
 relativePosition: [2]RelativePosition = .{.{.ratio = 0.5}, .{.ratio = 0.5}},
 title: []const u8 = "",
 id: []const u8,
-components: []GuiComponent = &.{},
+rootComponent: ?GuiComponent = null,
 showTitleBar: bool = true,
 titleBarExpanded: bool = false,
 hasBackground: bool = true,
@@ -125,14 +125,10 @@ pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) void {
 		grabPosition = mousePosition;
 		selfPositionWhenGrabbed = self.pos;
 	} else {
-		var selectedComponent: ?*GuiComponent = null;
-		for(self.components) |*component| {
+		if(self.rootComponent) |*component| {
 			if(GuiComponent.contains(component.pos(), component.size(), scaledMousePos)) {
-				selectedComponent = component;
+				component.mainButtonPressed(scaledMousePos);
 			}
-		}
-		if(selectedComponent) |component| {
-			component.mainButtonPressed(scaledMousePos);
 		}
 	}
 }
@@ -175,7 +171,7 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 	}
 	grabPosition = null;
 	grabbedWindow = undefined;
-	for(self.components) |*component| {
+	if(self.rootComponent) |*component| {
 		component.mainButtonReleased((mousePosition - self.pos)/@splat(2, self.scale));
 	}
 }
@@ -335,20 +331,16 @@ pub fn updateSelected(self: *GuiWindow, mousePosition: Vec2f) !void {
 		self.pos = @min(self.pos, windowSize - self.size);
 		gui.updateWindowPositions();
 	};
-	for(self.components) |*component| {
+	if(self.rootComponent) |*component| {
 		component.updateSelected();
 	}
 }
 
 pub fn updateHovered(self: *GuiWindow, mousePosition: Vec2f) !void {
 	try self.updateHoveredFn();
-	var i: usize = self.components.len;
-	while(i != 0) {
-		i -= 1;
-		const component = &self.components[i];
+	if(self.rootComponent) |component| {
 		if(GuiComponent.contains(component.pos(), component.size(), (mousePosition - self.pos)/@splat(2, self.scale))) {
 			component.updateHovered((mousePosition - self.pos)/@splat(2, self.scale));
-			break;
 		}
 	}
 }
@@ -455,7 +447,7 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) !void {
 		draw.customShadedRect(windowUniforms, .{0, 0}, self.size/@splat(2, self.scale));
 	}
 	try self.renderFn();
-	for(self.components) |*component| {
+	if(self.rootComponent) |*component| {
 		try component.render((mousePosition - self.pos)/@splat(2, self.scale));
 	}
 	if(self.showTitleBar) {

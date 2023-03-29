@@ -13,12 +13,10 @@ const MutexComponent = GuiComponent.MutexComponent;
 const TextInput = GuiComponent.TextInput;
 const VerticalList = @import("../components/VerticalList.zig");
 
-var components: [1]GuiComponent = undefined;
 pub var window: GuiWindow = GuiWindow {
 	.contentSize = Vec2f{128, 256},
 	.id = "cubyz:chat",
 	.title = "Chat",
-	.components = &components,
 	.showTitleBar = false,
 	.hasBackground = false,
 	.isHud = true,
@@ -36,11 +34,11 @@ var fadeOutEnd: u32 = 0;
 var input: *TextInput = undefined;
 var hideInput: bool = true;
 
-fn refresh(deleteOld: bool) Allocator.Error!void {
+fn refresh() Allocator.Error!void {
 	std.debug.assert(!mutexComponent.mutex.tryLock()); // mutex must be locked!
-	if(deleteOld) {
-		components[0].mutexComponent.child.verticalList.children.clearRetainingCapacity();
-		components[0].deinit();
+	if(window.rootComponent) |old| {
+		old.mutexComponent.child.verticalList.children.clearRetainingCapacity();
+		old.deinit();
 	}
 	var list = try VerticalList.init(.{padding, 16 + padding}, 300, 0);
 	for(history.items[if(hideInput) historyStart else 0 ..]) |msg| {
@@ -54,8 +52,8 @@ fn refresh(deleteOld: bool) Allocator.Error!void {
 	list.finish(.center);
 	list.scrollBar.currentState = 1;
 	try mutexComponent.updateInner(list);
-	components[0] = mutexComponent.toComponent();
-	window.contentSize = components[0].pos() + components[0].size() + @splat(2, @as(f32, padding));
+	window.rootComponent = mutexComponent.toComponent();
+	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @splat(2, @as(f32, padding));
 	gui.updateWindowPositions();
 }
 
@@ -66,7 +64,7 @@ pub fn onOpen() Allocator.Error!void {
 	input = try TextInput.init(.{0, 0}, 256, 32, "", &sendMessage);
 	mutexComponent.mutex.lock();
 	defer mutexComponent.mutex.unlock();
-	try refresh(false);
+	try refresh();
 }
 
 pub fn onClose() void {
@@ -78,8 +76,9 @@ pub fn onClose() void {
 	history.deinit();
 	expirationTime.deinit();
 	input.deinit();
-	components[0].mutexComponent.child.verticalList.children.clearRetainingCapacity();
-	components[0].deinit();
+	window.rootComponent.?.mutexComponent.child.verticalList.children.clearRetainingCapacity();
+	window.rootComponent.?.deinit();
+	window.rootComponent = null;
 }
 
 pub fn update() Allocator.Error!void {
@@ -92,14 +91,14 @@ pub fn update() Allocator.Error!void {
 		if(@truncate(i32, std.time.milliTimestamp()) -% time >= messageFade) {
 			historyStart += 1;
 			hideInput = main.Window.grabbed;
-			try refresh(true);
+			try refresh();
 		} else {
 			label.alpha = 1.0 - @intToFloat(f32, @truncate(i32, std.time.milliTimestamp()) -% time)/@intToFloat(f32, messageFade);
 		}
 	}
 	if(hideInput != main.Window.grabbed) {
 		hideInput = main.Window.grabbed;
-		try refresh(true);
+		try refresh();
 	}
 }
 
@@ -115,7 +114,7 @@ pub fn addMessage(message: []const u8) Allocator.Error!void {
 	defer mutexComponent.mutex.unlock();
 	try history.append(try Label.init(.{0, 0}, 256, message, .left));
 	try expirationTime.append(@truncate(i32, std.time.milliTimestamp()) +% messageTimeout);
-	try refresh(true);
+	try refresh();
 }
 
 pub fn sendMessage() void {

@@ -1048,7 +1048,7 @@ const Tool = struct {
 		if(self.tooltip) |tooltip| return tooltip;
 		self.tooltip = try std.fmt.allocPrint(
 			main.globalAllocator,
-			\\Time to swing: {} s
+			\\Time to swing: {d:.2} s
 			\\Pickaxe power: {} %
 			\\Axe power: {} %
 			\\Shover power: {} %

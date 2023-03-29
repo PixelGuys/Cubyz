@@ -13,12 +13,10 @@ const Label = @import("../components/Label.zig");
 const TextInput = @import("../components/TextInput.zig");
 const VerticalList = @import("../components/VerticalList.zig");
 
-var components: [1]GuiComponent = undefined;
 pub var window = GuiWindow {
 	.contentSize = Vec2f{128, 256},
 	.id = "cubyz:change_name",
 	.title = "Change Name",
-	.components = &components,
 };
 var textComponent: *TextInput = undefined;
 
@@ -57,13 +55,13 @@ pub fn onOpen() Allocator.Error!void {
 	try list.add(textComponent);
 	try list.add(try Button.init(.{0, 0}, 100, "Apply", &apply));
 	list.finish(.center);
-	components[0] = list.toComponent();
-	window.contentSize = components[0].pos() + components[0].size() + @splat(2, @as(f32, padding));
+	window.rootComponent = list.toComponent();
+	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @splat(2, @as(f32, padding));
 	gui.updateWindowPositions();
 }
 
 pub fn onClose() void {
-	for(&components) |*comp| {
+	if(window.rootComponent) |*comp| {
 		comp.deinit();
 	}
 }

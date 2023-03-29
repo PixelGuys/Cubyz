@@ -12,12 +12,10 @@ const HorizontalList = GuiComponent.HorizontalList;
 const VerticalList = GuiComponent.VerticalList;
 const ItemSlot = GuiComponent.ItemSlot;
 
-var components: [1]GuiComponent = undefined;
 pub var window = GuiWindow {
 	.contentSize = Vec2f{64*8, 64*4},
 	.title = "Inventory",
 	.id = "cubyz:inventory",
-	.components = &components,
 };
 
 const padding: f32 = 8;
@@ -34,13 +32,13 @@ pub fn onOpen() Allocator.Error!void {
 		try list.add(row);
 	}
 	list.finish(.center);
-	components[0] = list.toComponent();
-	window.contentSize = components[0].pos() + components[0].size() + @splat(2, padding);
+	window.rootComponent = list.toComponent();
+	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @splat(2, padding);
 	gui.updateWindowPositions();
 }
 
 pub fn onClose() void {
-	for(&components) |*comp| {
+	if(window.rootComponent) |*comp| {
 		comp.deinit();
 	}
 }
