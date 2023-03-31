@@ -79,6 +79,17 @@ pub const BaseItem = struct {
 	block: ?u16,
 	foodValue: f32, // TODO: Effects.
 
+	var unobtainable = BaseItem {
+		.image = graphics.Image.defaultImage,
+		.texture = null,
+		.id = "unobtainable",
+		.name = "unobtainable",
+		.stackSize = 0,
+		.material = null,
+		.block = null,
+		.foodValue = 0,
+	};
+
 	fn init(self: *BaseItem, allocator: Allocator, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, json: JsonElement) !void {
 		self.id = try allocator.dupe(u8, id);
 		if(texturePath.len == 0) {
@@ -113,7 +124,7 @@ pub const BaseItem = struct {
 		return hash;
 	}
 
-	fn getTexture(self: *BaseItem) !graphics.Texture {
+	pub fn getTexture(self: *BaseItem) !graphics.Texture {
 		if(self.texture == null) {
 			if(self.block) |blockType| {
 				const c = graphics.c;
@@ -1344,18 +1355,31 @@ pub const Inventory = struct {
 	}
 };
 
+const Recipe = struct {
+	sourceItems: []*BaseItem,
+	sourceAmounts: []u32,
+	resultItem: ItemStack,
+};
+
 var arena: std.heap.ArenaAllocator = undefined;
 var reverseIndices: std.StringHashMap(*BaseItem) = undefined;
 var itemList: [65536]BaseItem = undefined;
 var itemListSize: u16 = 0;
 
+var recipeList: std.ArrayList(Recipe) = undefined;
+
 pub fn iterator() std.StringHashMap(*BaseItem).ValueIterator {
 	return reverseIndices.valueIterator();
+}
+
+pub fn recipes() []Recipe {
+	return recipeList.items;
 }
 
 pub fn globalInit() void {
 	arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
 	reverseIndices = std.StringHashMap(*BaseItem).init(arena.allocator());
+	recipeList = std.ArrayList(Recipe).init(arena.allocator());
 	itemListSize = 0;
 }
 
@@ -1371,8 +1395,83 @@ pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: 
 	return newItem;
 }
 
+pub fn registerRecipes(file: []const u8) !void {
+	var shortcuts = std.StringHashMap(*BaseItem).init(main.threadAllocator);
+	defer shortcuts.deinit();
+	defer {
+		var keyIterator = shortcuts.keyIterator();
+		while(keyIterator.next()) |key| {
+			main.threadAllocator.free(key.*);
+		}
+	}
+	var items = std.ArrayList(*BaseItem).init(main.threadAllocator);
+	defer items.deinit();
+	var itemAmounts = std.ArrayList(u32).init(main.threadAllocator);
+	defer itemAmounts.deinit();
+	var string = std.ArrayList(u8).init(main.threadAllocator);
+	defer string.deinit();
+	var lines = std.mem.split(u8, file, "\n");
+	while(lines.next()) |line| {
+		// shortcuts:
+		if(std.mem.containsAtLeast(u8, line, 1, "=")) {
+			var parts = std.mem.split(u8, line, "=");
+			for(parts.first()) |char| {
+				if(std.ascii.isWhitespace(char)) continue; // TODO: Unicode whitespaces
+				try string.append(char);
+			}
+			const shortcut = try string.toOwnedSlice();
+			const id = std.mem.trim(u8, parts.rest(), &std.ascii.whitespace); // TODO: Unicode whitespaces
+			const item = getByID(id) orelse shortcuts.get(id) orelse &BaseItem.unobtainable;
+			try shortcuts.put(shortcut, item);
+		} else if(std.mem.startsWith(u8, line, "result") and items.items.len != 0) {
+			defer items.clearAndFree();
+			defer itemAmounts.clearAndFree();
+			var id = line["result".len..];
+			var amount: u16 = 1;
+			if(std.mem.containsAtLeast(u8, id, 1, "*")) {
+				var parts = std.mem.split(u8, id, "*");
+				const amountString = std.mem.trim(u8, parts.first(), &std.ascii.whitespace); // TODO: Unicode whitespaces
+				amount = std.fmt.parseInt(u16, amountString, 0) catch 1;
+				id = parts.rest();
+			}
+			id = std.mem.trim(u8, id, &std.ascii.whitespace); // TODO: Unicode whitespaces
+			const item = getByID(id) orelse shortcuts.get(id) orelse continue;
+			const recipe = Recipe {
+				.sourceItems = try arena.allocator().dupe(*BaseItem, items.items),
+				.sourceAmounts = try arena.allocator().dupe(u32, itemAmounts.items),
+				.resultItem = ItemStack{.item = Item{.baseItem = item}, .amount = amount},
+			};
+			try recipeList.append(recipe);
+		} else {
+			var ingredients = std.mem.split(u8, line, ",");
+			outer: while(ingredients.next()) |ingredient| {
+				var id = ingredient;
+				var amount: u16 = 1;
+				if(std.mem.containsAtLeast(u8, id, 1, "*")) {
+					var parts = std.mem.split(u8, id, "*");
+					const amountString = std.mem.trim(u8, parts.first(), &std.ascii.whitespace); // TODO: Unicode whitespaces
+					amount = std.fmt.parseInt(u16, amountString, 0) catch 1;
+					id = parts.rest();
+				}
+				id = std.mem.trim(u8, id, &std.ascii.whitespace); // TODO: Unicode whitespaces
+				const item = getByID(id) orelse shortcuts.get(id) orelse continue;
+				// Resolve duplicates:
+				for(items.items, 0..) |presentItem, i| {
+					if(presentItem == item) {
+						itemAmounts.items[i] += amount;
+						continue :outer;
+					}
+				}
+				try items.append(item);
+				try itemAmounts.append(amount);
+			}
+		}
+	}
+}
+
 pub fn reset() void {
 	reverseIndices.clearAndFree();
+	recipeList.clearAndFree();
 	itemListSize = 0;
 	// TODO: Use arena.reset() instead.
 	arena.deinit();
@@ -1381,6 +1480,7 @@ pub fn reset() void {
 
 pub fn deinit() void {
 	reverseIndices.clearAndFree();
+	recipeList.clearAndFree();
 	arena.deinit();
 }
 

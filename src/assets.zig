@@ -42,8 +42,30 @@ pub fn readAllJsonFilesInAddons(externalAllocator: Allocator, addons: std.ArrayL
 		}
 	}
 }
+/// Reads text files recursively from all subfolders.
+pub fn readAllFilesInAddons(externalAllocator: Allocator, addons: std.ArrayList(std.fs.Dir), subPath: []const u8, output: *std.ArrayList([]const u8)) !void {
+	for(addons.items) |addon| {
+		var dir: std.fs.IterableDir = addon.openIterableDir(subPath, .{}) catch |err| {
+			if(err == error.FileNotFound) continue;
+			return err;
+		};
+		defer dir.close();
 
-pub fn readAssets(externalAllocator: Allocator, assetPath: []const u8, blocks: *std.StringHashMap(JsonElement), items: *std.StringHashMap(JsonElement), biomes: *std.StringHashMap(JsonElement)) !void {
+		var walker = try dir.walk(main.threadAllocator);
+		defer walker.deinit();
+
+		while(try walker.next()) |entry| {
+			if(entry.kind == .File) {
+				var file = try dir.dir.openFile(entry.path, .{});
+				defer file.close();
+				const string = try file.readToEndAlloc(externalAllocator, std.math.maxInt(usize));
+				try output.append(string);
+			}
+		}
+	}
+}
+
+pub fn readAssets(externalAllocator: Allocator, assetPath: []const u8, blocks: *std.StringHashMap(JsonElement), items: *std.StringHashMap(JsonElement), biomes: *std.StringHashMap(JsonElement), recipes: *std.ArrayList([]const u8)) !void {
 	var addons = std.ArrayList(std.fs.Dir).init(main.threadAllocator);
 	defer addons.deinit();
 	var addonNames = std.ArrayList([]const u8).init(main.threadAllocator);
@@ -68,6 +90,7 @@ pub fn readAssets(externalAllocator: Allocator, assetPath: []const u8, blocks: *
 	try readAllJsonFilesInAddons(externalAllocator, addons, addonNames, "blocks", blocks);
 	try readAllJsonFilesInAddons(externalAllocator, addons, addonNames, "items", items);
 	try readAllJsonFilesInAddons(externalAllocator, addons, addonNames, "biomes", biomes);
+	try readAllFilesInAddons(externalAllocator, addons, "recipes", recipes);
 }
 
 pub fn init() !void {
@@ -78,7 +101,7 @@ pub fn init() !void {
 	commonBiomes = std.StringHashMap(JsonElement).init(arenaAllocator);
 	commonRecipes = std.ArrayList([]const u8).init(arenaAllocator);
 
-	try readAssets(arenaAllocator, "assets/", &commonBlocks, &commonItems, &commonBiomes);
+	try readAssets(arenaAllocator, "assets/", &commonBlocks, &commonItems, &commonBiomes, &commonRecipes);
 }
 
 fn registerItem(assetFolder: []const u8, id: []const u8, json: JsonElement) !*items_zig.BaseItem {
@@ -118,6 +141,10 @@ fn registerBlock(assetFolder: []const u8, id: []const u8, json: JsonElement) !vo
 //			oreRegistry.register(ore);
 //			oreContainers.add(oreIDs);
 //		}
+}
+
+fn registerRecipesFromFile(file: []const u8) !void {
+	try items_zig.registerRecipes(file);
 }
 
 pub const BlockPalette = struct {
@@ -181,8 +208,11 @@ pub fn loadWorldAssets(assetFolder: []const u8, palette: *BlockPalette) !void {
 	defer items.clearAndFree();
 	var biomes = try commonBiomes.cloneWithAllocator(main.threadAllocator);
 	defer biomes.clearAndFree();
+	var recipes = std.ArrayList([]const u8).init(main.threadAllocator);
+	try recipes.appendSlice(commonRecipes.items);
+	defer recipes.clearAndFree();
 
-	try readAssets(arenaAllocator, assetFolder, &blocks, &items, &biomes);
+	try readAssets(arenaAllocator, assetFolder, &blocks, &items, &biomes, &recipes);
 
 	// blocks:
 	var block: u32 = 0;
@@ -217,6 +247,10 @@ pub fn loadWorldAssets(assetFolder: []const u8, palette: *BlockPalette) !void {
 
 	// block drops:
 	try blocks_zig.registerBlockDrops(blocks);
+
+	for(recipes.items) |recipe| {
+		try registerRecipesFromFile(recipe);
+	}
 
 //	public void registerBlocks(Registry<DataOrientedRegistry> registries, NoIDRegistry<Ore> oreRegistry, BlockPalette palette) {
 //		HashMap<Resource, JsonObject> perWorldBlocks = new HashMap<>(commonBlocks);
@@ -405,130 +439,5 @@ pub fn deinit() void {
 //		missingDropsBlock.clear();
 //		missingDropsItem.clear();
 //		missingDropsAmount.clear();
-//	}
-//
-//	public void readRecipes(ArrayList<String[]> recipesList) {
-//		SimpleList<String> lines = new SimpleList<>(new String[1024]);
-//		for (File addon : addons) {
-//			File recipes = new File(addon, "recipes");
-//			if (recipes.exists()) {
-//				for (File file : recipes.listFiles()) {
-//					if (file.isDirectory()) continue;
-//					lines.clear();
-//					try {
-//						BufferedReader buf = new BufferedReader(new FileReader(file, StandardCharsets.UTF_8));
-//						String line;
-//						while ((line = buf.readLine())!= null) {
-//							line = line.replaceAll("//.*", ""); // Ignore comments with "//".
-//							line = line.trim(); // Remove whitespaces before and after the word starts.
-//							if (line.isEmpty()) continue;
-//							lines.add(line);
-//						}
-//						buf.close();
-//					} catch(IOException e) {
-//						Logger.error(e);
-//					}
-//					recipesList.add(lines.toArray());
-//				}
-//			}
-//		}
-//	}
-//
-//	private void registerRecipe(String[] recipe, NoIDRegistry<Recipe> recipeRegistry, Registry<Item> itemRegistry) {
-//		HashMap<String, Item> shortCuts = new HashMap<>();
-//		ArrayList<Item> items = new ArrayList<>();
-//		IntSimpleList itemsPerRow = new IntSimpleList(8);
-//		boolean shaped = false;
-//		boolean startedRecipe = false;
-//		for(int i = 0; i < recipe.length; i++) {
-//			String line = recipe[i];
-//			// shortcuts:
-//			if (line.contains("=")) {
-//				String[] parts = line.split("=");
-//				Item item = itemRegistry.getByID(parts[1].replaceAll("\\s", ""));
-//				if (item == null) {
-//					Logger.warning("Skipping unknown item \"" + parts[1].replaceAll("\\s", "") + "\" in recipe parsing.");
-//				} else {
-//					shortCuts.put(parts[0].replaceAll("\\s", ""), itemRegistry.getByID(parts[1].replaceAll("\\s", ""))); // Remove all whitespaces, wherever they might be. Not necessarily the most robust way, but it should work.
-//				}
-//			} else if (line.startsWith("shaped")) {
-//				// Start of a shaped pattern
-//				shaped = true;
-//				startedRecipe = true;
-//				items.clear();
-//				itemsPerRow.clear();
-//			} else if (line.startsWith("shapeless")) {
-//				// Start of a shapeless pattern
-//				shaped = false;
-//				startedRecipe = true;
-//				items.clear();
-//				itemsPerRow.clear();
-//			} else if (line.startsWith("result") && startedRecipe && !itemsPerRow.isEmpty()) {
-//				// Parse the result, which is made up of `amount*shortcut`.
-//				startedRecipe = false;
-//				String result = line.substring(6).replaceAll("\\s", ""); // Remove "result" and all space-likes.
-//				int number = 1;
-//				if (result.contains("*")) {
-//					String[] parts = result.split("\\*");
-//					result = parts[1];
-//					number = Integer.parseInt(parts[0]);
-//				}
-//				Item item;
-//				if (shortCuts.containsKey(result)) {
-//					item = shortCuts.get(result);
-//				} else {
-//					item = itemRegistry.getByID(result);
-//				}
-//				if (item == null) {
-//					Logger.warning("Skipping recipe with unknown item \"" + result + "\" in recipe parsing.");
-//				} else {
-//					if (shaped) {
-//						int x = CubyzMath.max(itemsPerRow);
-//						int y = itemsPerRow.size;
-//						Item[] array = new Item[x*y];
-//						int index = 0;
-//						for(int iy = 0; iy < itemsPerRow.size; iy++) {
-//							for(int ix = 0; ix < itemsPerRow.array[iy]; ix++) {
-//								array[iy*x + ix] = items.get(index);
-//								index++;
-//							}
-//						}
-//						recipeRegistry.register(new Recipe(x, y, array, number, item));
-//					} else {
-//						recipeRegistry.register(new Recipe(items.toArray(new Item[0]), number, item));
-//					}
-//				}
-//			} else if (startedRecipe) {
-//				// Parse the actual recipe:
-//				String[] words = line.split("\\s+"); // Split into sections that are divided by any number of whitespace characters.
-//				itemsPerRow.add(words.length);
-//				for(int j = 0; j < words.length; j++) {
-//					Item item;
-//					if (words[j].equals("0")) {
-//						item = null;
-//					} else if (shortCuts.containsKey(words[j])) {
-//						item = shortCuts.get(words[j]);
-//					} else {
-//						item = itemRegistry.getByID(words[j]);
-//						if (item == null) {
-//							startedRecipe = false; // Skip unknown recipes.
-//							Logger.warning("Skipping recipe with unknown item \"" + words[j] + "\" in recipe parsing.");
-//						}
-//					}
-//					items.add(item);
-//				}
-//			}
-//		}
-//	}
-//	
-//	public void registerRecipes(NoIDRegistry<Recipe> recipeRegistry, Registry<Item> itemRegistry) {
-//		for(String[] recipe : commonRecipes) {
-//			registerRecipe(recipe, recipeRegistry, itemRegistry);
-//		}
-//		ArrayList<String[]> worldSpecificRecipes = new ArrayList<>();
-//		readRecipes(worldSpecificRecipes);
-//		for(String[] recipe : worldSpecificRecipes) {
-//			registerRecipe(recipe, recipeRegistry, itemRegistry);
-//		}
 //	}
 //}

@@ -11,6 +11,8 @@ const Vec2f = vec.Vec2f;
 
 const Button = @import("components/Button.zig");
 const CheckBox = @import("components/CheckBox.zig");
+const CraftingResultSlot = @import("components/CraftingResultSlot.zig");
+const ImmutableItemSlot = @import("components/ImmutableItemSlot.zig");
 const ItemSlot = @import("components/ItemSlot.zig");
 const ScrollBar = @import("components/ScrollBar.zig");
 const Slider = @import("components/Slider.zig");
@@ -25,12 +27,14 @@ var hudWindows: std.ArrayList(*GuiWindow) = undefined;
 pub var openWindows: std.ArrayList(*GuiWindow) = undefined;
 pub var selectedWindow: ?*GuiWindow = null; // TODO: Make private.
 pub var selectedTextInput: ?*TextInput = null;
+var hoveredAWindow: bool = false;
 
 pub var allocator: Allocator = undefined;
 
 pub var scale: f32 = undefined;
 
 pub var hoveredItemSlot: ?*ItemSlot = null;
+pub var hoveredCraftingSlot: ?*CraftingResultSlot = null;
 
 pub fn init(_allocator: Allocator) !void {
 	allocator = _allocator;
@@ -53,6 +57,8 @@ pub fn init(_allocator: Allocator) !void {
 	try GuiWindow.__init();
 	try Button.__init();
 	try CheckBox.__init();
+	try CraftingResultSlot.__init();
+	try ImmutableItemSlot.__init();
 	try ItemSlot.__init();
 	try ScrollBar.__init();
 	try Slider.__init();
@@ -74,6 +80,8 @@ pub fn deinit() void {
 	GuiWindow.__deinit();
 	Button.__deinit();
 	CheckBox.__deinit();
+	CraftingResultSlot.__deinit();
+	ImmutableItemSlot.__deinit();
 	ItemSlot.__deinit();
 	ScrollBar.__deinit();
 	Slider.__deinit();
@@ -352,7 +360,12 @@ pub fn mainButtonPressed() void {
 	inventory.update() catch |err| {
 		std.log.err("Encountered error while updating inventory: {s}", .{@errorName(err)});
 	};
-	if(inventory.carriedItemStack.amount != 0) return;
+	if(inventory.carriedItemStack.amount != 0) {
+		if(hoveredCraftingSlot) |hovered| {
+			hovered.mainButtonPressed(undefined);
+		}
+		return;
+	}
 	selectedWindow = null;
 	selectedTextInput = null;
 	var selectedI: usize = 0;
@@ -423,17 +436,20 @@ pub fn updateWindowPositions() void {
 
 pub fn updateAndRenderGui() !void {
 	const mousePos = main.Window.getMousePosition()/@splat(2, scale);
+	hoveredAWindow = false;
 	if(!main.Window.grabbed) {
 		if(selectedWindow) |selected| {
 			try selected.updateSelected(mousePos);
 		}
 		hoveredItemSlot = null;
+		hoveredCraftingSlot = null;
 		var i: usize = openWindows.items.len;
 		while(i != 0) {
 			i -= 1;
 			const window: *GuiWindow = openWindows.items[i];
 			if(GuiComponent.contains(window.pos, window.size, mousePos)) {
 				try window.updateHovered(mousePos);
+				hoveredAWindow = true;
 				break;
 			}
 		}
@@ -450,9 +466,9 @@ pub fn updateAndRenderGui() !void {
 	try inventory.render(mousePos);
 }
 
-const inventory = struct {
+pub const inventory = struct {
 	const ItemStack = main.items.ItemStack;
-	var carriedItemStack: ItemStack = .{.item = null, .amount = 0};
+	pub var carriedItemStack: ItemStack = .{.item = null, .amount = 0};
 	var carriedItemSlot: *ItemSlot = undefined;
 	var deliveredItemStacks: std.ArrayList(*ItemStack) = undefined;
 	var deliveredItemStacksOldAmount: std.ArrayList(u16) = undefined;
@@ -547,7 +563,7 @@ const inventory = struct {
 					}
 				}
 			}
-		} else {
+		} else if(!hoveredAWindow) {
 			if(leftClick or carriedItemStack.amount == 1) {
 				main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, carriedItemStack, vec.floatCast(f32, main.game.Player.getPosBlocking()), main.game.camera.direction, 20) catch |err| {
 					std.log.err("Error while dropping itemStack: {s}", .{@errorName(err)});
