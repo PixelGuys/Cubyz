@@ -53,7 +53,7 @@ pub fn onOpen() Allocator.Error!void {
 	try list.add(try Label.init(.{0, 0}, width, "\\##ff0000ff#ffffff00#ffffff00#ff0000red#ffffff \\##ff0000ff#00770077#ffffff00#ff7700orange#ffffff \\##ffffff00#00ff00ff#ffffff00#00ff00green#ffffff \\##ffffff00#ffffff00#0000ffff#0000ffblue", .center));
 	textComponent = try TextInput.init(.{0, 0}, width, 32, "quanturmdoelvloper", &apply);
 	try list.add(textComponent);
-	try list.add(try Button.init(.{0, 0}, 100, "Apply", &apply));
+	try list.add(try Button.initText(.{0, 0}, 100, "Apply", &apply));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @splat(2, @as(f32, padding));

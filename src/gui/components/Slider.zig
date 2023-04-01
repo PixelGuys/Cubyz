@@ -54,7 +54,7 @@ pub fn init(pos: Vec2f, width: f32, text: []const u8, comptime fmt: []const u8, 
 	std.mem.copy(u8, initialText, text);
 	std.mem.set(u8, initialText[text.len..], ' ');
 	const label = try Label.init(undefined, width - 3*border, initialText, .center);
-	const button = try Button.init(.{0, 0}, undefined, "", null);
+	const button = try Button.initText(.{0, 0}, undefined, "", null);
 	const self = try gui.allocator.create(Slider);
 	self.* = Slider {
 		.pos = pos,

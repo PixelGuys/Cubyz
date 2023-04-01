@@ -44,5 +44,6 @@ pub fn updateTexture(self: *Icon, newTexture: Texture) !void {
 }
 
 pub fn render(self: *Icon, _: Vec2f) !void {
+	draw.setColor(0xffffffff);
 	self.texture.render(self.pos, self.size);
 }

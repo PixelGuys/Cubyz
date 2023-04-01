@@ -12,6 +12,7 @@ const Vec2f = vec.Vec2f;
 
 const gui = @import("../gui.zig");
 const GuiComponent = gui.GuiComponent;
+const Icon = GuiComponent.Icon;
 const Label = GuiComponent.Label;
 
 const Button = @This();
@@ -37,7 +38,7 @@ size: Vec2f,
 pressed: bool = false,
 hovered: bool = false,
 onAction: *const fn() void,
-label: *Label,
+child: GuiComponent,
 
 pub fn __init() !void {
 	shader = try Shader.initAndGetUniforms("assets/cubyz/shaders/ui/button.vs", "assets/cubyz/shaders/ui/button.fs", &buttonUniforms);
@@ -53,20 +54,32 @@ pub fn __deinit() void {
 
 fn defaultOnAction() void {}
 
-pub fn init(pos: Vec2f, width: f32, text: []const u8, onAction: ?*const fn() void) Allocator.Error!*Button {
+pub fn initText(pos: Vec2f, width: f32, text: []const u8, onAction: ?*const fn() void) Allocator.Error!*Button {
 	const label = try Label.init(undefined, width - 3*border, text, .center);
 	const self = try gui.allocator.create(Button);
 	self.* = Button {
 		.pos = pos,
 		.size = Vec2f{width, label.size[1] + 3*border},
 		.onAction = if(onAction) |a| a else &defaultOnAction,
-		.label = label,
+		.child = label.toComponent(),
+	};
+	return self;
+}
+
+pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, onAction: ?*const fn() void) Allocator.Error!*Button {
+	const icon = try Icon.init(undefined, iconSize, iconTexture);
+	const self = try gui.allocator.create(Button);
+	self.* = Button {
+		.pos = pos,
+		.size = icon.size + @splat(2, 3*border),
+		.onAction = if(onAction) |a| a else &defaultOnAction,
+		.child = icon.toComponent(),
 	};
 	return self;
 }
 
 pub fn deinit(self: *const Button) void {
-	self.label.deinit();
+	self.child.deinit();
 	gui.allocator.destroy(self);
 }
 
@@ -93,7 +106,7 @@ pub fn mainButtonReleased(self: *Button, mousePosition: Vec2f) void {
 	}
 }
 
-pub fn render(self: *Button, mousePosition: Vec2f) !void {
+pub fn render(self: *Button, mousePosition: Vec2f) anyerror!void { // TODO: Remove anyerror once recursive error set inference is implemented.
 	texture.bindTo(0);
 	shader.bind();
 	graphics.c.glUniform1i(buttonUniforms.pressed, 0);
@@ -108,7 +121,7 @@ pub fn render(self: *Button, mousePosition: Vec2f) !void {
 	self.hovered = false;
 	draw.customShadedRect(buttonUniforms, self.pos, self.size);
 	graphics.c.glUniform1i(buttonUniforms.pressed, 0);
-	const textPos = self.pos + self.size/@splat(2, @as(f32, 2.0)) - self.label.size/@splat(2, @as(f32, 2.0));
-	self.label.pos = textPos;
-	try self.label.render(mousePosition - self.pos);
+	const textPos = self.pos + self.size/@splat(2, @as(f32, 2.0)) - self.child.size()/@splat(2, @as(f32, 2.0));
+	self.child.mutPos().* = textPos;
+	try self.child.render(mousePosition - self.pos);
 }

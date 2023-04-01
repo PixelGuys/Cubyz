@@ -4,6 +4,7 @@ const Allocator = std.mem.Allocator;
 const main = @import("root");
 const Player = main.game.Player;
 const Vec2f = main.vec.Vec2f;
+const Texture = main.graphics.Texture;
 
 const gui = @import("../gui.zig");
 const GuiComponent = gui.GuiComponent;
@@ -20,13 +21,24 @@ pub var window = GuiWindow {
 };
 
 const padding: f32 = 8;
+
+var craftingIcon: Texture = undefined;
+
+pub fn init() !void {
+	craftingIcon = try Texture.initFromFile("assets/cubyz/ui/inventory/crafting_icon.png");
+}
+
+pub fn deinit() void {
+	craftingIcon.deinit();
+}
+
 pub fn onOpen() Allocator.Error!void {
 	var list = try VerticalList.init(.{padding, padding + 16}, 300, 0);
 	// Some miscellanious slots and buttons:
 	// TODO: armor slots, backpack slot + stack-based backpack inventory, other items maybe?
 	{
 		var row = try HorizontalList.init();
-		try row.add(try Button.init(.{0, 0}, 64, "Crafting", gui.openWindowFunction("cubyz:inventory_crafting"))); // TODO: Replace the text with an icon
+		try row.add(try Button.initIcon(.{0, 0}, .{32, 32}, craftingIcon, gui.openWindowFunction("cubyz:inventory_crafting"))); // TODO: Replace the text with an icon
 		try list.add(row);
 	}
 	// Inventory:

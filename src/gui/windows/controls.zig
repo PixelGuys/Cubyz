@@ -45,9 +45,9 @@ pub fn onOpen() Allocator.Error!void {
 	inline for(comptime std.meta.fieldNames(@TypeOf(main.keyboard))) |field| {
 		var label = try Label.init(.{0, 0}, 128, field, .left);
 		var button = if(&@field(main.keyboard, field) == selectedKey) (
-			try Button.init(.{16, 0}, 128, "...", null)
+			try Button.initText(.{16, 0}, 128, "...", null)
 		) else (
-			try Button.init(.{16, 0}, 128, @field(main.keyboard, field).getName(), &functionBuilder(field))
+			try Button.initText(.{16, 0}, 128, @field(main.keyboard, field).getName(), &functionBuilder(field))
 		);
 		var row = try HorizontalList.init();
 		try row.add(label);
