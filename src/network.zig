@@ -1069,7 +1069,7 @@ pub const Protocols: struct {
 					try sendInventory_full(conn, game.Player.inventory__SEND_CHANGES_TO_SERVER);
 					if(remaining != 0) {
 						// Couldn't collect everything → drop it again.
-						try itemStackDrop(conn, ItemStack{.item=item, .amount=remaining}, game.Player.getPosBlocking(), Vec3f{0, 0, 0}, 0);
+						try itemStackDrop(conn, ItemStack{.item=item, .amount=remaining}, game.Player.pos, Vec3f{0, 0, 0}, 0);
 					}
 				},
 				type_timeAndBiome => {

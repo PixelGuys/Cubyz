@@ -23,7 +23,7 @@ size: Vec2f = .{32 + 2*border, 32 + 2*border},
 itemStack: ItemStack,
 text: TextBuffer,
 textSize: Vec2f = .{0, 0},
-onTake: *const fn(usize) bool,
+onTake: *const fn(usize) void,
 userData: usize,
 hovered: bool = false,
 pressed: bool = false,
@@ -36,8 +36,7 @@ pub fn __deinit() void {
 	texture.deinit();
 }
 
-pub fn init(pos: Vec2f, itemStack: ItemStack, onTake: *const fn(usize) bool, userData: usize) Allocator.Error!*CraftingResultSlot {
-	std.debug.assert(itemStack.item != null);
+pub fn init(pos: Vec2f, itemStack: ItemStack, onTake: *const fn(usize) void, userData: usize) Allocator.Error!*CraftingResultSlot {
 	const self = try gui.allocator.create(CraftingResultSlot);
 	var buf: [16]u8 = undefined;
 	self.* = CraftingResultSlot {
@@ -75,12 +74,13 @@ pub fn mainButtonReleased(self: *CraftingResultSlot, mousePosition: Vec2f) void 
 	if(self.pressed) {
 		self.pressed = false;
 		if(GuiComponent.contains(self.pos, self.size, mousePosition)) {
+			if(self.itemStack.item == null) return;
 			if(gui.inventory.carriedItemStack.item == null or std.meta.eql(self.itemStack.item, gui.inventory.carriedItemStack.item)) {
 				if(std.math.add(u16, gui.inventory.carriedItemStack.amount, self.itemStack.amount) catch null) |nextAmount| if(nextAmount <= self.itemStack.item.?.stackSize()) {
-					if(self.onTake(self.userData)) {
-						gui.inventory.carriedItemStack.item = self.itemStack.item;
-						gui.inventory.carriedItemStack.amount += self.itemStack.amount;
-					}
+					const itemStack = self.itemStack;
+					self.onTake(self.userData);
+					gui.inventory.carriedItemStack.item = itemStack.item;
+					gui.inventory.carriedItemStack.amount += itemStack.amount;
 				};
 			}
 		}

@@ -46,8 +46,8 @@ pub const camera = struct {
 };
 
 pub const Player = struct {
-	var pos: Vec3d = Vec3d{0, 0, 0};
-	var vel: Vec3d = Vec3d{0, 0, 0};
+	pub var pos: Vec3d = Vec3d{0, 0, 0};
+	pub var vel: Vec3d = Vec3d{0, 0, 0};
 	pub var id: u32 = 0;
 	pub var isFlying: std.atomic.Atomic(bool) = std.atomic.Atomic(bool).init(true);
 	pub var mutex: std.Thread.Mutex = std.Thread.Mutex{};

@@ -944,7 +944,7 @@ const ToolPhysics = struct {
 	}
 };
 
-const Tool = struct {
+pub const Tool = struct {
 	craftingGrid: [25]?*const BaseItem,
 	materialGrid: [16][16]?*const BaseItem,
 	tooltip: ?[]const u8,

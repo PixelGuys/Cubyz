@@ -13,3 +13,4 @@ pub const main = @import("main.zig");
 pub const multiplayer = @import("multiplayer.zig");
 pub const settings = @import("settings.zig");
 pub const sound = @import("sound.zig");
+pub const workbench = @import("workbench.zig");

@@ -30,7 +30,7 @@ const padding: f32 = 8;
 var availableItems: std.ArrayList(*BaseItem) = undefined;
 var itemAmount: std.ArrayList(u32) = undefined;
 
-var arrowTexture: Texture = undefined;
+pub var arrowTexture: Texture = undefined;
 var recipeResult: ItemStack = undefined;
 
 pub fn init() !void {
@@ -57,7 +57,7 @@ fn addItemStackToAvailable(itemStack: ItemStack) Allocator.Error!void {
 	}
 }
 
-fn onTake(recipeIndex: usize) bool {
+fn onTake(recipeIndex: usize) void {
 	const recipe = items.recipes()[recipeIndex];
 	for(recipe.sourceItems, recipe.sourceAmounts) |item, _amount| {
 		var amount: u32 = _amount;
@@ -79,7 +79,6 @@ fn onTake(recipeIndex: usize) bool {
 			std.log.warn("Congratulations, you just managed to cheat {}*{s}, thanks to my lazy coding. Have fun with that :D", .{amount, item.id});
 		}
 	}
-	return true;
 }
 
 fn findAvailableRecipes(list: *VerticalList) Allocator.Error!bool {

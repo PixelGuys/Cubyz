@@ -168,6 +168,13 @@ fn openInventory() void {
 		std.log.err("Got error while opening the inventory: {s}", .{@errorName(err)});
 	};
 }
+fn openWorkbench() void {
+	if(game.world == null) return;
+	ungrabMouse();
+	gui.openWindow("cubyz:workbench") catch |err| {
+		std.log.err("Got error while opening the inventory: {s}", .{@errorName(err)});
+	};
+}
 fn openCreativeInventory() void {
 	if(game.world == null) return;
 	ungrabMouse();
@@ -189,6 +196,7 @@ pub var keyboard: struct {
 	// Gui:
 	escape: Key = Key{.key = c.GLFW_KEY_ESCAPE, .releaseAction = &ungrabMouse},
 	openInventory: Key = Key{.key = c.GLFW_KEY_I, .releaseAction = &openInventory},
+	openWorkbench: Key = Key{.key = c.GLFW_KEY_K, .releaseAction = &openWorkbench}, // TODO: Remove
 	@"openCreativeInventory(aka cheat inventory)": Key = Key{.key = c.GLFW_KEY_C, .releaseAction = &openCreativeInventory},
 	mainGuiButton: Key = Key{.mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &gui.mainButtonPressed, .releaseAction = &gui.mainButtonReleased},
 	secondaryGuiButton: Key = Key{.mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &gui.secondaryButtonPressed, .releaseAction = &gui.secondaryButtonReleased},
