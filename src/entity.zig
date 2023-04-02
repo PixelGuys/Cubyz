@@ -96,7 +96,7 @@ pub const ClientEntityManager = struct {
 	pub var mutex: std.Thread.Mutex = std.Thread.Mutex{};
 
 	pub fn init() !void {
-		entities = std.ArrayList(ClientEntity).init(renderer.RenderStructure.allocator); // TODO: Use world allocator.
+		entities = std.ArrayList(ClientEntity).init(main.globalAllocator);
 		shader = try graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/entity_vertex.vs", "assets/cubyz/shaders/entity_fragment.fs", &uniforms);
 	}
 

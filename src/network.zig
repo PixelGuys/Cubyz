@@ -270,11 +270,11 @@ const STUN = struct {
 				},
 				.port=std.fmt.parseUnsigned(u16, splitter.rest(), 10) catch 3478
 			};
-			if(connection.sendRequest(connection.allocator, &data, serverAddress, 500*1000000) catch |err| {
+			if(connection.sendRequest(main.globalAllocator, &data, serverAddress, 500*1000000) catch |err| {
 				std.log.warn("Encountered error: {s} while connecting to STUN server: {s}", .{@errorName(err), server});
 				continue;
 			}) |answer| {
-				defer connection.allocator.free(answer);
+				defer main.globalAllocator.free(answer);
 				verifyHeader(answer, data[8..20]) catch |err| {
 					std.log.warn("Header verification failed with {s} for STUN server: {s} data: {any}", .{@errorName(err), server, answer});
 					continue;
@@ -364,9 +364,6 @@ pub const ConnectionManager = struct {
 	connections: std.ArrayList(*Connection) = undefined,
 	requests: std.ArrayList(*Request) = undefined,
 
-	gpa: std.heap.GeneralPurposeAllocator(.{}),
-	allocator: std.mem.Allocator = undefined,
-
 	mutex: std.Thread.Mutex = std.Thread.Mutex{},
 	waitingToFinishReceive: std.Thread.Condition = std.Thread.Condition{},
 
@@ -375,12 +372,10 @@ pub const ConnectionManager = struct {
 	world: ?*game.World = null,
 
 	pub fn init(localPort: u16, online: bool) !*ConnectionManager {
-		var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-		var result: *ConnectionManager = try gpa.allocator().create(ConnectionManager);
-		result.* = ConnectionManager {.gpa = gpa};
-		result.allocator = result.gpa.allocator();
-		result.connections = std.ArrayList(*Connection).init(result.allocator);
-		result.requests = std.ArrayList(*Request).init(result.allocator);
+		var result: *ConnectionManager = try main.globalAllocator.create(ConnectionManager);
+		result.* = .{};
+		result.connections = std.ArrayList(*Connection).init(main.globalAllocator);
+		result.requests = std.ArrayList(*Request).init(main.globalAllocator);
 
 		result.socket = Socket.init(localPort) catch |err| blk: {
 			if(err == error.AddressInUse) {
@@ -411,11 +406,7 @@ pub const ConnectionManager = struct {
 		}
 		self.requests.deinit();
 
-		var gpa = self.gpa;
-		gpa.allocator().destroy(self);
-		if(gpa.deinit()) {
-			@panic("Memory leak in connection.");
-		}
+		main.globalAllocator.destroy(self);
 	}
 
 	pub fn makeOnline(self: *ConnectionManager) void {
@@ -451,11 +442,11 @@ pub const ConnectionManager = struct {
 		if(request.data.ptr == data.ptr) {
 			return null;
 		} else {
-			if(allocator.ptr == self.allocator.ptr) {
+			if(allocator.ptr == main.globalAllocator.ptr) {
 				return request.data;
 			} else {
 				var result = try allocator.dupe(u8, request.data);
-				self.allocator.free(request.data);
+				main.globalAllocator.free(request.data);
 				return result;
 			}
 		}
@@ -507,7 +498,7 @@ pub const ConnectionManager = struct {
 		// Check if it's part of an active request:
 		for(self.requests.items) |request| {
 			if(request.address.ip == source.ip and request.address.port == source.port) {
-				request.data = try self.allocator.dupe(u8, data);
+				request.data = try main.globalAllocator.dupe(u8, data);
 				request.requestNotifier.signal();
 				return;
 			}
@@ -734,7 +725,7 @@ pub const Protocols: struct {
 				std.log.err("Transmission of chunk has invalid size: {}. Input data: {any}, After inflate: {any}", .{_inflatedLen, data, _inflatedData[0.._inflatedLen]});
 			}
 			data = _inflatedData;
-			var ch = try renderer.RenderStructure.allocator.create(chunk.Chunk);
+			var ch = try main.globalAllocator.create(chunk.Chunk);
 			ch.init(pos);
 			for(&ch.blocks) |*block| {
 				block.* = Block.fromInt(std.mem.readIntBig(u32, data[0..4]));
@@ -1247,8 +1238,7 @@ pub const Connection = struct {
 
 	manager: *ConnectionManager,
 
-	gpa: std.heap.GeneralPurposeAllocator(.{}),
-	allocator: std.mem.Allocator,
+	gpa: std.heap.GeneralPurposeAllocator(.{}) = undefined, // TODO: Removing this line causes a compiler crash. #15150
 
 	remoteAddress: Address,
 	bruteforcingPort: bool = false,
@@ -1277,22 +1267,18 @@ pub const Connection = struct {
 	mutex: std.Thread.Mutex = std.Thread.Mutex{},
 
 	pub fn init(manager: *ConnectionManager, ipPort: []const u8) !*Connection {
-		var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-		var result: *Connection = try gpa.allocator().create(Connection);
+		var result: *Connection = try main.globalAllocator.create(Connection);
 		result.* = Connection {
 			.manager = manager,
-			.gpa = gpa,
-			.allocator = undefined,
 			.remoteAddress = undefined,
 			.lastConnection = std.time.milliTimestamp(),
 			.lastReceivedPackets = &result.__lastReceivedPackets, // TODO: Wait for #12215 fix.
 		};
-		result.allocator = result.gpa.allocator(); // The right reference(the one that isn't on the stack) needs to be used passed!
-		result.unconfirmedPackets = std.ArrayList(UnconfirmedPacket).init(result.allocator);
+		result.unconfirmedPackets = std.ArrayList(UnconfirmedPacket).init(main.globalAllocator);
 		result.receivedPackets = [3]std.ArrayList(u32){
-			std.ArrayList(u32).init(result.allocator),
-			std.ArrayList(u32).init(result.allocator),
-			std.ArrayList(u32).init(result.allocator),
+			std.ArrayList(u32).init(main.globalAllocator),
+			std.ArrayList(u32).init(main.globalAllocator),
+			std.ArrayList(u32).init(main.globalAllocator),
 		};
 		var splitter = std.mem.split(u8, ipPort, ":");
 		const ip = splitter.first();
@@ -1316,7 +1302,7 @@ pub const Connection = struct {
 		self.disconnect() catch |err| {std.log.warn("Error while disconnecting: {s}", .{@errorName(err)});};
 		self.manager.finishCurrentReceive(); // Wait until all currently received packets are done.
 		for(self.unconfirmedPackets.items) |packet| {
-			self.allocator.free(packet.data);
+			main.globalAllocator.free(packet.data);
 		}
 		self.unconfirmedPackets.deinit();
 		self.receivedPackets[0].deinit();
@@ -1324,14 +1310,10 @@ pub const Connection = struct {
 		self.receivedPackets[2].deinit();
 		for(self.lastReceivedPackets) |nullablePacket| {
 			if(nullablePacket) |packet| {
-				self.allocator.free(packet);
+				main.globalAllocator.free(packet);
 			}
 		}
-		var gpa = self.gpa;
-		gpa.allocator().destroy(self);
-		if(gpa.deinit()) {
-			@panic("Memory leak in connection.");
-		}
+		main.globalAllocator.destroy(self);
 	}
 
 	fn flush(self: *Connection) !void {
@@ -1343,7 +1325,7 @@ pub const Connection = struct {
 		std.mem.writeIntBig(u32, self.streamBuffer[1..5], id); // TODO: Use little endian for better hardware support. Currently the aim is interoperability with the java version which uses big endian.
 
 		var packet = UnconfirmedPacket{
-			.data = try self.allocator.dupe(u8, self.streamBuffer[0..self.streamPosition]),
+			.data = try main.globalAllocator.dupe(u8, self.streamBuffer[0..self.streamPosition]),
 			.lastKeepAliveSentBefore = self.lastKeepAliveSent,
 			.id = id,
 		};
@@ -1415,7 +1397,7 @@ pub const Connection = struct {
 			while(j < self.unconfirmedPackets.items.len) {
 				var diff = self.unconfirmedPackets.items[j].id -% start;
 				if(diff < len) {
-					self.allocator.free(self.unconfirmedPackets.items[j].data);
+					main.globalAllocator.free(self.unconfirmedPackets.items[j].data);
 					_ = self.unconfirmedPackets.swapRemove(j);
 				} else {
 					j += 1;
@@ -1574,7 +1556,7 @@ pub const Connection = struct {
 				}
 			}
 			while(self.lastIncompletePacket != id): (self.lastIncompletePacket += 1) {
-				self.allocator.free(self.lastReceivedPackets[self.lastIncompletePacket & 65535].?);
+				main.globalAllocator.free(self.lastReceivedPackets[self.lastIncompletePacket & 65535].?);
 				self.lastReceivedPackets[self.lastIncompletePacket & 65535] = null;
 			}
 			self.lastIndex = newIndex;
@@ -1624,7 +1606,7 @@ pub const Connection = struct {
 			if(id < self.lastIncompletePacket or self.lastReceivedPackets[id & 65535] != null) {
 				return; // Already received the package in the past.
 			}
-			self.lastReceivedPackets[id & 65535] = try self.allocator.dupe(u8, data[importantHeaderSize..]);
+			self.lastReceivedPackets[id & 65535] = try main.globalAllocator.dupe(u8, data[importantHeaderSize..]);
 			// Check if a message got completed:
 			try self.collectPackets();
 		} else if(protocol == Protocols.keepAlive) {

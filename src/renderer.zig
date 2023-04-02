@@ -757,9 +757,6 @@ pub const MeshSelection = struct {
 };
 
 pub const RenderStructure = struct {
-	pub var allocator: std.mem.Allocator = undefined;
-	var gpa: std.heap.GeneralPurposeAllocator(.{}) = undefined;
-
 	const ChunkMeshNode = struct {
 		mesh: chunk.meshing.ChunkMesh,
 		shouldBeRemoved: bool, // Internal use.
@@ -788,13 +785,11 @@ pub const RenderStructure = struct {
 	pub fn init() !void {
 		lastRD = 0;
 		lastFactor = 0;
-		gpa = std.heap.GeneralPurposeAllocator(.{}){};
-		allocator = gpa.allocator();
-		updatableList = std.ArrayList(chunk.ChunkPosition).init(allocator);
-		blockUpdateList = std.ArrayList(BlockUpdate).init(allocator);
-		clearList = std.ArrayList(*ChunkMeshNode).init(allocator);
+		updatableList = std.ArrayList(chunk.ChunkPosition).init(main.globalAllocator);
+		blockUpdateList = std.ArrayList(BlockUpdate).init(main.globalAllocator);
+		clearList = std.ArrayList(*ChunkMeshNode).init(main.globalAllocator);
 		for(&storageLists) |*storageList| {
-			storageList.* = try allocator.alloc(?*ChunkMeshNode, 0);
+			storageList.* = try main.globalAllocator.alloc(?*ChunkMeshNode, 0);
 		}
 	}
 
@@ -804,21 +799,18 @@ pub const RenderStructure = struct {
 			for(storageList) |nullChunkMesh| {
 				if(nullChunkMesh) |chunkMesh| {
 					chunkMesh.mesh.deinit();
-					allocator.destroy(chunkMesh);
+					main.globalAllocator.destroy(chunkMesh);
 				}
 			}
-			allocator.free(storageList);
+			main.globalAllocator.free(storageList);
 		}
 		updatableList.deinit();
 		for(clearList.items) |chunkMesh| {
 			chunkMesh.mesh.deinit();
-			allocator.destroy(chunkMesh);
+			main.globalAllocator.destroy(chunkMesh);
 		}
 		blockUpdateList.deinit();
 		clearList.deinit();
-		if(gpa.deinit()) {
-			@panic("Memory leak");
-		}
 	}
 
 	fn _getNode(pos: chunk.ChunkPosition) ?*ChunkMeshNode {
@@ -877,7 +869,7 @@ pub const RenderStructure = struct {
 			const invMask: i32 = ~mask;
 
 			const maxSideLength = @intCast(u31, @divFloor(2*maxRenderDistance + size-1, size) + 2);
-			var newList = try allocator.alloc(?*ChunkMeshNode, maxSideLength*maxSideLength*maxSideLength);
+			var newList = try main.globalAllocator.alloc(?*ChunkMeshNode, maxSideLength*maxSideLength*maxSideLength);
 			std.mem.set(?*ChunkMeshNode, newList, null);
 
 			const startX = size*(@divFloor(px, size) -% maxSideLength/2);
@@ -915,8 +907,8 @@ pub const RenderStructure = struct {
 						if(node) |_node| {
 							_node.shouldBeRemoved = false;
 						} else {
-							node = try allocator.create(ChunkMeshNode);
-							node.?.mesh = chunk.meshing.ChunkMesh.init(allocator, pos);
+							node = try main.globalAllocator.create(ChunkMeshNode);
+							node.?.mesh = chunk.meshing.ChunkMesh.init(main.globalAllocator, pos);
 							node.?.shouldBeRemoved = true; // Might be removed in the next iteration.
 							try meshRequests.append(pos);
 						}
@@ -975,7 +967,7 @@ pub const RenderStructure = struct {
 						if(mesh.mesh.mutex.tryLock()) { // Make sure there is no task currently running on the thing.
 							mesh.mesh.mutex.unlock();
 							mesh.mesh.deinit();
-							allocator.destroy(mesh);
+							main.globalAllocator.destroy(mesh);
 						} else {
 							try clearList.append(mesh);
 						}
@@ -984,7 +976,7 @@ pub const RenderStructure = struct {
 					}
 				}
 			}
-			allocator.free(oldList);
+			main.globalAllocator.free(oldList);
 		}
 
 		var i: usize = 0;
@@ -993,7 +985,7 @@ pub const RenderStructure = struct {
 			if(mesh.mesh.mutex.tryLock()) { // Make sure there is no task currently running on the thing.
 				mesh.mesh.mutex.unlock();
 				mesh.mesh.deinit();
-				allocator.destroy(mesh);
+				main.globalAllocator.destroy(mesh);
 				_ = clearList.swapRemove(i);
 			} else {
 				i += 1;
@@ -1064,7 +1056,7 @@ pub const RenderStructure = struct {
 		};
 
 		pub fn schedule(mesh: *chunk.Chunk) !void {
-			var task = try allocator.create(MeshGenerationTask);
+			var task = try main.globalAllocator.create(MeshGenerationTask);
 			task.* = MeshGenerationTask {
 				.mesh = mesh,
 			};
@@ -1095,8 +1087,8 @@ pub const RenderStructure = struct {
 						if(@errorReturnTrace()) |trace| {
 							std.log.err("Trace: {}", .{trace});
 						}
-						allocator.destroy(self.mesh);
-						allocator.destroy(self);
+						main.globalAllocator.destroy(self.mesh);
+						main.globalAllocator.destroy(self);
 						return;
 					};
 				}
@@ -1107,17 +1099,17 @@ pub const RenderStructure = struct {
 					if(@errorReturnTrace()) |trace| {
 						std.log.err("Trace: {}", .{trace});
 					}
-					allocator.destroy(self.mesh);
+					main.globalAllocator.destroy(self.mesh);
 				};
 			} else {
-				allocator.destroy(self.mesh);
+				main.globalAllocator.destroy(self.mesh);
 			}
-			allocator.destroy(self);
+			main.globalAllocator.destroy(self);
 		}
 
 		pub fn clean(self: *MeshGenerationTask) void {
-			allocator.destroy(self.mesh);
-			allocator.destroy(self);
+			main.globalAllocator.destroy(self.mesh);
+			main.globalAllocator.destroy(self);
 		}
 	};
 

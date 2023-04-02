@@ -465,11 +465,7 @@ pub fn main() !void {
 	logFile = std.fs.cwd().createFile("logs/latest.log", .{}) catch unreachable;
 	defer logFile.close();
 
-	var poolgpa = std.heap.GeneralPurposeAllocator(.{}){};
-	defer if(poolgpa.deinit()) {
-		@panic("Memory leak");
-	};
-	threadPool = try utils.ThreadPool.init(poolgpa.allocator(), 1 + ((std.Thread.getCpuCount() catch 4) -| 3));
+	threadPool = try utils.ThreadPool.init(globalAllocator, 1 + ((std.Thread.getCpuCount() catch 4) -| 3));
 	defer threadPool.deinit();
 
 	try settings.init();

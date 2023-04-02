@@ -106,7 +106,7 @@ pub const World = struct {
 			.milliTime = std.time.milliTimestamp(),
 		};
 		try self.itemDrops.init(main.globalAllocator, self);
-		Player.inventory__SEND_CHANGES_TO_SERVER = try Inventory.init(renderer.RenderStructure.allocator, 32);
+		Player.inventory__SEND_CHANGES_TO_SERVER = try Inventory.init(main.globalAllocator, 32);
 		// TODO:
 //		player = new ClientPlayer(this, 0);
 		try network.Protocols.handShake.clientSide(self.conn, settings.playerName);
@@ -120,13 +120,13 @@ pub const World = struct {
 		self.conn.deinit();
 		self.itemDrops.deinit();
 		self.blockPalette.deinit();
-		Player.inventory__SEND_CHANGES_TO_SERVER.deinit(renderer.RenderStructure.allocator);
+		Player.inventory__SEND_CHANGES_TO_SERVER.deinit(main.globalAllocator);
 		self.manager.deinit();
 	}
 
 	pub fn finishHandshake(self: *World, json: JsonElement) !void {
 		// TODO: Consider using a per-world allocator.
-		self.blockPalette = try assets.BlockPalette.init(renderer.RenderStructure.allocator, json.getChild("blockPalette"));
+		self.blockPalette = try assets.BlockPalette.init(main.globalAllocator, json.getChild("blockPalette"));
 		var jsonSpawn = json.getChild("spawn");
 		self.spawn[0] = jsonSpawn.get(f32, "x", 0);
 		self.spawn[1] = jsonSpawn.get(f32, "y", 0);

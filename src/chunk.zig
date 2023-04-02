@@ -490,7 +490,7 @@ pub const meshing = struct {
 			faceBuffer.free(self.bufferAllocation) catch unreachable;
 			self.faces.deinit();
 			if(self.chunk.load(.Monotonic)) |ch| {
-				renderer.RenderStructure.allocator.destroy(ch);
+				main.globalAllocator.destroy(ch);
 			}
 		}
 
@@ -543,7 +543,7 @@ pub const meshing = struct {
 			}
 
 			if(self.chunk.load(.Monotonic)) |oldChunk| {
-				renderer.RenderStructure.allocator.destroy(oldChunk);
+				main.globalAllocator.destroy(oldChunk);
 			}
 			self.chunk.store(chunk, .Monotonic);
 			self.coreCount = @intCast(u31, self.faces.items.len);
