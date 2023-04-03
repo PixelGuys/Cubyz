@@ -100,7 +100,7 @@ pub fn onOpen() Allocator.Error!void {
 		grid.finish(.center);
 		try list.add(grid);
 	}
-	try list.add(try Icon.init(.{8, 0}, .{32, 32}, inventory_crafting.arrowTexture));
+	try list.add(try Icon.init(.{8, 0}, .{32, 32}, inventory_crafting.arrowTexture, false));
 	craftingResult = try CraftingResultSlot.init(.{8, 0}, .{}, &onTake, 0);
 	try list.add(craftingResult);
 	list.finish(.{padding, padding + 16}, .center);

@@ -38,7 +38,7 @@ pub fn onOpen() Allocator.Error!void {
 	// TODO: armor slots, backpack slot + stack-based backpack inventory, other items maybe?
 	{
 		var row = try HorizontalList.init();
-		try row.add(try Button.initIcon(.{0, 0}, .{32, 32}, craftingIcon, gui.openWindowFunction("cubyz:inventory_crafting"))); // TODO: Replace the text with an icon
+		try row.add(try Button.initIcon(.{0, 0}, .{24, 24}, craftingIcon, true, gui.openWindowFunction("cubyz:inventory_crafting"))); // TODO: Replace the text with an icon
 		try list.add(row);
 	}
 	// Inventory:

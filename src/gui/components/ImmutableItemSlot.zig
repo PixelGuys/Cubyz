@@ -19,7 +19,7 @@ var texture: Texture = undefined;
 const border: f32 = 3;
 
 pos: Vec2f,
-size: Vec2f = .{32 + 2*border, 32 + 2*border},
+size: Vec2f = .{24 + 2*border, 24 + 2*border},
 item: *BaseItem,
 amount: u32,
 text: TextBuffer,
@@ -63,6 +63,9 @@ pub fn render(self: *ImmutableItemSlot, _: Vec2f) !void {
 	draw.boundImage(self.pos, self.size);
 	const itemTexture = try self.item.getTexture();
 	itemTexture.bindTo(0);
+	draw.setColor(0xff000000);
+	draw.boundImage(self.pos + @splat(2, border) + Vec2f{1.0, 1.0}, self.size - @splat(2, 2*border));
+	draw.setColor(0xffffffff);
 	draw.boundImage(self.pos + @splat(2, border), self.size - @splat(2, 2*border));
 	if(self.amount != 1) {
 		try self.text.render(self.pos[0] + self.size[0] - self.textSize[0] - border, self.pos[1] + self.size[1] - self.textSize[1] - border, 8);

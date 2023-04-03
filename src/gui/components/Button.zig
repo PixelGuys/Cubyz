@@ -66,8 +66,8 @@ pub fn initText(pos: Vec2f, width: f32, text: []const u8, onAction: ?*const fn()
 	return self;
 }
 
-pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, onAction: ?*const fn() void) Allocator.Error!*Button {
-	const icon = try Icon.init(undefined, iconSize, iconTexture);
+pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, hasShadow: bool, onAction: ?*const fn() void) Allocator.Error!*Button {
+	const icon = try Icon.init(undefined, iconSize, iconTexture, hasShadow);
 	const self = try gui.allocator.create(Button);
 	self.* = Button {
 		.pos = pos,

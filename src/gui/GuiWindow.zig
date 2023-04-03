@@ -95,11 +95,22 @@ var windowUniforms: struct {
 	image: c_int,
 	randomOffset: c_int,
 } = undefined;
+pub var borderShader: Shader = undefined;
+pub var borderUniforms: struct {
+	screen: c_int,
+	start: c_int,
+	size: c_int,
+	color: c_int,
+	scale: c_int,
+	effectLength: c_int,
+} = undefined;
 
 pub fn __init() !void {
 	shader = try Shader.initAndGetUniforms("assets/cubyz/shaders/ui/button.vs", "assets/cubyz/shaders/ui/button.fs", &windowUniforms);
 	shader.bind();
 	graphics.c.glUniform1i(windowUniforms.image, 0);
+	borderShader = try Shader.initAndGetUniforms("assets/cubyz/shaders/ui/window_border.vs", "assets/cubyz/shaders/ui/window_border.fs", &borderUniforms);
+	borderShader.bind();
 
 	backgroundTexture = try Texture.initFromFile("assets/cubyz/ui/window_background.png");
 	titleTexture = try Texture.initFromFile("assets/cubyz/ui/window_title.png");
@@ -473,9 +484,15 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) !void {
 			expandTitleBarTexture.render(.{0, 0}, .{16, 16});
 		}
 	}
+	if(self.hasBackground or (!main.Window.grabbed and self.titleBarExpanded)) {
+		draw.setColor(0x80000000);
+		borderShader.bind();
+		graphics.c.glUniform2f(borderUniforms.effectLength, 2.5, 2.5);
+		draw.customShadedRect(borderUniforms, .{0, 0}, self.size/@splat(2, self.scale));
+	}
 	draw.restoreTranslation(oldTranslation);
 	draw.restoreScale(oldScale);
-	if(self.showTitleBar) {
+	if(self.showTitleBar and false) { // TODO: Figure out whether I should even draw titlebar text.
 		var text = try graphics.TextBuffer.init(gui.allocator, self.title, .{.color=0}, false, .center);
 		defer text.deinit();
 		const titleDimension = try text.calculateLineBreaks(16*self.scale, self.size[0]);

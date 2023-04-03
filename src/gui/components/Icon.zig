@@ -18,13 +18,15 @@ const fontSize: f32 = 16;
 pos: Vec2f,
 size: Vec2f,
 texture: Texture,
+hasShadow: bool,
 
-pub fn init(pos: Vec2f, size: Vec2f, texture: Texture) Allocator.Error!*Icon {
+pub fn init(pos: Vec2f, size: Vec2f, texture: Texture, hasShadow: bool) Allocator.Error!*Icon {
 	const self = try gui.allocator.create(Icon);
 	self.* = Icon {
 		.texture = texture,
 		.pos = pos,
 		.size = size,
+		.hasShadow = hasShadow,
 	};
 	return self;
 }
@@ -44,6 +46,10 @@ pub fn updateTexture(self: *Icon, newTexture: Texture) !void {
 }
 
 pub fn render(self: *Icon, _: Vec2f) !void {
+	if(self.hasShadow) {
+		draw.setColor(0xff000000);
+		self.texture.render(self.pos + Vec2f{1, 1}, self.size);
+	}
 	draw.setColor(0xffffffff);
 	self.texture.render(self.pos, self.size);
 }

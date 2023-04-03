@@ -2,14 +2,16 @@
 
 layout (location=0) out vec4 frag_color;
 
-in vec2 frag_face_pos;
-in vec4 color;
+flat in vec4 color;
 
 uniform sampler2D texture_sampler;
 
 //in pxls
 uniform vec4 texture_rect;
+uniform vec2 scene;
 uniform vec2 fontSize;
+uniform vec2 offset;
+uniform float ratio;
 uniform int fontEffects;
 
 vec2 convert2Proportional(vec2 original, vec2 full){
@@ -18,6 +20,7 @@ vec2 convert2Proportional(vec2 original, vec2 full){
 
 
 void main(){
+	vec2 frag_face_pos = (vec2(0, scene.y) + gl_FragCoord.xy*vec2(1, -1) - offset)/texture_rect.zw/ratio;
 	vec4 texture_rect_percentage =  vec4(convert2Proportional(texture_rect.xy, fontSize), convert2Proportional(texture_rect.zw, fontSize));
 	vec2 texture_position = vec2(
 				texture_rect_percentage.x+

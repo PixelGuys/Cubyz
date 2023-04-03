@@ -128,7 +128,7 @@ fn findAvailableRecipes(list: *VerticalList) Allocator.Error!bool {
 			columnList.finish(.center);
 			try rowList.add(columnList);
 		}
-		try rowList.add(try Icon.init(.{8, 0}, .{32, 32}, arrowTexture));
+		try rowList.add(try Icon.init(.{8, 0}, .{32, 32}, arrowTexture, false));
 		const itemSlot = try CraftingResultSlot.init(.{8, 0}, recipe.resultItem, &onTake, recipeIndex);
 		try rowList.add(itemSlot);
 		rowList.finish(.{0, 0}, .center);

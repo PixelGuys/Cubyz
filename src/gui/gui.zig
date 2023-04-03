@@ -458,6 +458,12 @@ pub fn updateAndRenderGui() !void {
 	for(openWindows.items) |window| {
 		try window.update();
 	}
+	if(!main.Window.grabbed) {
+		draw.setColor(0x80000000);
+		GuiWindow.borderShader.bind();
+		graphics.c.glUniform2f(GuiWindow.borderUniforms.effectLength, main.Window.getWindowSize()[0]/6, main.Window.getWindowSize()[1]/6);
+		draw.customShadedRect(GuiWindow.borderUniforms, .{0, 0}, main.Window.getWindowSize());
+	}
 	const oldScale = draw.setScale(scale);
 	defer draw.restoreScale(oldScale);
 	for(openWindows.items) |window| {
