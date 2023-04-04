@@ -37,7 +37,7 @@ pos: Vec2f,
 size: Vec2f,
 pressed: bool = false,
 hovered: bool = false,
-onAction: *const fn() void,
+onAction: gui.Callback,
 child: GuiComponent,
 
 pub fn __init() !void {
@@ -52,27 +52,27 @@ pub fn __deinit() void {
 	texture.deinit();
 }
 
-fn defaultOnAction() void {}
+fn defaultOnAction(_: usize) void {}
 
-pub fn initText(pos: Vec2f, width: f32, text: []const u8, onAction: ?*const fn() void) Allocator.Error!*Button {
+pub fn initText(pos: Vec2f, width: f32, text: []const u8, onAction: gui.Callback) Allocator.Error!*Button {
 	const label = try Label.init(undefined, width - 3*border, text, .center);
 	const self = try gui.allocator.create(Button);
 	self.* = Button {
 		.pos = pos,
 		.size = Vec2f{width, label.size[1] + 3*border},
-		.onAction = if(onAction) |a| a else &defaultOnAction,
+		.onAction = onAction,
 		.child = label.toComponent(),
 	};
 	return self;
 }
 
-pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, hasShadow: bool, onAction: ?*const fn() void) Allocator.Error!*Button {
+pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, hasShadow: bool, onAction: gui.Callback) Allocator.Error!*Button {
 	const icon = try Icon.init(undefined, iconSize, iconTexture, hasShadow);
 	const self = try gui.allocator.create(Button);
 	self.* = Button {
 		.pos = pos,
 		.size = icon.size + @splat(2, 3*border),
-		.onAction = if(onAction) |a| a else &defaultOnAction,
+		.onAction = onAction,
 		.child = icon.toComponent(),
 	};
 	return self;
@@ -101,7 +101,7 @@ pub fn mainButtonReleased(self: *Button, mousePosition: Vec2f) void {
 	if(self.pressed) {
 		self.pressed = false;
 		if(GuiComponent.contains(self.pos, self.size, mousePosition)) {
-			self.onAction();
+			self.onAction.run();
 		}
 	}
 }

@@ -16,7 +16,7 @@ const VerticalList = @import("../components/VerticalList.zig");
 
 pub var window = GuiWindow {
 	.contentSize = Vec2f{128, 256},
-	.id = "cubyz:multiplayer",
+	.id = "multiplayer",
 	.title = "Multiplayer",
 };
 
@@ -52,7 +52,7 @@ fn discoverIpAddressFromNewThread() void {
 	discoverIpAddress();
 }
 
-fn join() void {
+fn join(_: usize) void {
 	if(thread) |_thread| {
 		_thread.join();
 		thread = null;
@@ -79,7 +79,7 @@ fn join() void {
 	};
 }
 
-fn copyIp() void {
+fn copyIp(_: usize) void {
 	main.Window.setClipboardString(ipAddress);
 }
 
@@ -89,9 +89,9 @@ pub fn onOpen() Allocator.Error!void {
 	//                                               255.255.255.255:?65536 (longest possible ip address)
 	ipAddressLabel = try Label.init(.{0, 0}, width, "                      ", .center);
 	try list.add(ipAddressLabel);
-	try list.add(try Button.initText(.{0, 0}, 100, "Copy IP", &copyIp));
-	try list.add(try TextInput.init(.{0, 0}, width, 32, settings.lastUsedIPAddress, &join));
-	try list.add(try Button.initText(.{0, 0}, 100, "Join", &join));
+	try list.add(try Button.initText(.{0, 0}, 100, "Copy IP", .{.callback = &copyIp}));
+	try list.add(try TextInput.init(.{0, 0}, width, 32, settings.lastUsedIPAddress, .{.callback = &join}));
+	try list.add(try Button.initText(.{0, 0}, 100, "Join", .{.callback = &join}));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @splat(2, @as(f32, padding));

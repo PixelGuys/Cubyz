@@ -27,7 +27,7 @@ const inventory_crafting = @import("inventory_crafting.zig");
 pub var window = GuiWindow {
 	.contentSize = Vec2f{64*8, 64*4},
 	.title = "Crafting",
-	.id = "cubyz:workbench",
+	.id = "workbench",
 };
 
 const padding: f32 = 8;
@@ -101,7 +101,7 @@ pub fn onOpen() Allocator.Error!void {
 		try list.add(grid);
 	}
 	try list.add(try Icon.init(.{8, 0}, .{32, 32}, inventory_crafting.arrowTexture, false));
-	craftingResult = try CraftingResultSlot.init(.{8, 0}, .{}, &onTake, 0);
+	craftingResult = try CraftingResultSlot.init(.{8, 0}, .{}, .{.callback = &onTake});
 	try list.add(craftingResult);
 	list.finish(.{padding, padding + 16}, .center);
 	window.rootComponent = list.toComponent();

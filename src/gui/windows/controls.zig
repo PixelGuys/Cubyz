@@ -14,7 +14,7 @@ const VerticalList = @import("../components/VerticalList.zig");
 
 pub var window = GuiWindow {
 	.contentSize = Vec2f{128, 256},
-	.id = "cubyz:controls",
+	.id = "controls",
 	.title = "Controls",
 };
 
@@ -22,14 +22,10 @@ const padding: f32 = 8;
 var selectedKey: ?*main.Key = null;
 var needsUpdate: bool = false;
 
-fn functionBuilder(comptime name: []const u8) fn() void {
-	return struct {
-		fn function() void {
-			main.setNextKeypressListener(&keypressListener) catch return;
-			selectedKey = &@field(main.keyboard, name);
-			needsUpdate = true;
-		}
-	}.function;
+fn function(keyPtr: usize) void {
+	main.setNextKeypressListener(&keypressListener) catch return;
+	selectedKey = @intToPtr(*main.Key, keyPtr);
+	needsUpdate = true;
 }
 
 fn keypressListener(key: c_int, mouseButton: c_int, scancode: c_int) void {
@@ -45,9 +41,9 @@ pub fn onOpen() Allocator.Error!void {
 	inline for(comptime std.meta.fieldNames(@TypeOf(main.keyboard))) |field| {
 		var label = try Label.init(.{0, 0}, 128, field, .left);
 		var button = if(&@field(main.keyboard, field) == selectedKey) (
-			try Button.initText(.{16, 0}, 128, "...", null)
+			try Button.initText(.{16, 0}, 128, "...", .{})
 		) else (
-			try Button.initText(.{16, 0}, 128, @field(main.keyboard, field).getName(), &functionBuilder(field))
+			try Button.initText(.{16, 0}, 128, @field(main.keyboard, field).getName(), .{.callback = &function, .arg = @ptrToInt(&@field(main.keyboard, field))})
 		);
 		var row = try HorizontalList.init();
 		try row.add(label);
@@ -70,9 +66,11 @@ pub fn onClose() void {
 pub fn render() Allocator.Error!void {
 	if(needsUpdate) {
 		needsUpdate = false;
+		var oldScroll = window.rootComponent.?.verticalList.scrollBar.currentState;
 		onClose();
 		onOpen() catch {
 			std.log.err("Received out of memory error while rebuilding the controls GUI. This behavior is not handled.", .{});
 		};
+		window.rootComponent.?.verticalList.scrollBar.currentState = oldScroll;
 	}
 }

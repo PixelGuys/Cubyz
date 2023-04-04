@@ -36,6 +36,17 @@ pub var scale: f32 = undefined;
 pub var hoveredItemSlot: ?*ItemSlot = null;
 pub var hoveredCraftingSlot: ?*CraftingResultSlot = null;
 
+pub const Callback = struct {
+	callback: ?*const fn(usize) void = null,
+	arg: usize = 0,
+
+	pub fn run(self: Callback) void {
+		if(self.callback) |callback| {
+			callback(self.arg);
+		}
+	}
+};
+
 pub fn init(_allocator: Allocator) !void {
 	allocator = _allocator;
 	windowList = std.ArrayList(*GuiWindow).init(allocator);
@@ -43,6 +54,7 @@ pub fn init(_allocator: Allocator) !void {
 	openWindows = std.ArrayList(*GuiWindow).init(allocator);
 	inline for(@typeInfo(windowlist).Struct.decls) |decl| {
 		const windowStruct = @field(windowlist, decl.name);
+		std.debug.assert(std.mem.eql(u8, decl.name, windowStruct.window.id)); // id and file name should be the same.
 		try addWindow(&windowStruct.window);
 		if(@hasDecl(windowStruct, "init")) {
 			try windowStruct.init();
@@ -224,21 +236,26 @@ pub fn openWindow(id: []const u8) Allocator.Error!void {
 	defer updateWindowPositions();
 	for(windowList.items) |window| {
 		if(std.mem.eql(u8, window.id, id)) {
-			for(openWindows.items, 0..) |_openWindow, i| {
-				if(_openWindow == window) {
-					_ = openWindows.swapRemove(i);
-					openWindows.appendAssumeCapacity(window);
-					selectedWindow = null;
-					return;
-				}
-			}
-			try openWindows.append(window);
-			try window.onOpenFn();
-			selectedWindow = null;
+			try openWindowFromRef(window);
 			return;
 		}
 	}
 	std.log.warn("Could not find window with id {s}.", .{id});
+}
+
+pub fn openWindowFromRef(window: *GuiWindow) Allocator.Error!void {
+	defer updateWindowPositions();
+	for(openWindows.items, 0..) |_openWindow, i| {
+		if(_openWindow == window) {
+			_ = openWindows.swapRemove(i);
+			openWindows.appendAssumeCapacity(window);
+			selectedWindow = null;
+			return;
+		}
+	}
+	try openWindows.append(window);
+	try window.onOpenFn();
+	selectedWindow = null;
 }
 
 pub fn toggleWindow(id: []const u8) Allocator.Error!void {
@@ -264,29 +281,21 @@ pub fn toggleWindow(id: []const u8) Allocator.Error!void {
 pub fn openHud() Allocator.Error!void {
 	for(windowList.items) |window| {
 		if(window.isHud) {
-			for(openWindows.items, 0..) |_openWindow, i| {
-				if(_openWindow == window) {
-					_ = openWindows.swapRemove(i);
-					openWindows.appendAssumeCapacity(window);
-					selectedWindow = null;
-					return;
-				}
-			}
-			try openWindows.append(window);
-			try window.onOpenFn();
+			try openWindowFromRef(window);
 		}
 	}
 }
 
-pub fn openWindowFunction(comptime id: []const u8) *const fn() void {
-	const function = struct {
-		fn function() void {
-			@call(.never_inline, openWindow, .{id}) catch {
-				std.log.err("Couldn't open window due to out of memory error.", .{});
-			};
-		}
-	}.function;
-	return &function;
+fn openWindowCallbackFunction(windowPtr: usize) void {
+	openWindowFromRef(@intToPtr(*GuiWindow, windowPtr)) catch |err| {
+		std.log.err("Encountered error while opening window: {s}", .{@errorName(err)});
+	};
+}
+pub fn openWindowCallback(comptime id: []const u8) Callback {
+	return .{
+		.callback = &openWindowCallbackFunction,
+		.arg = @ptrToInt(&@field(windowlist, id).window),
+	};
 }
 
 pub fn closeWindow(window: *GuiWindow) void {

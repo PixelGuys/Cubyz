@@ -22,7 +22,7 @@ const ImmutableItemSlot = GuiComponent.ImmutableItemSlot;
 pub var window = GuiWindow {
 	.contentSize = Vec2f{64*8, 64*4},
 	.title = "Crafting",
-	.id = "cubyz:inventory_crafting",
+	.id = "inventory_crafting",
 };
 
 const padding: f32 = 8;
@@ -129,7 +129,7 @@ fn findAvailableRecipes(list: *VerticalList) Allocator.Error!bool {
 			try rowList.add(columnList);
 		}
 		try rowList.add(try Icon.init(.{8, 0}, .{32, 32}, arrowTexture, false));
-		const itemSlot = try CraftingResultSlot.init(.{8, 0}, recipe.resultItem, &onTake, recipeIndex);
+		const itemSlot = try CraftingResultSlot.init(.{8, 0}, recipe.resultItem, .{.callback = &onTake, .arg = recipeIndex});
 		try rowList.add(itemSlot);
 		rowList.finish(.{0, 0}, .center);
 		try list.add(rowList);

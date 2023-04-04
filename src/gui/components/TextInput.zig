@@ -33,7 +33,7 @@ maxWidth: f32,
 maxHeight: f32,
 textSize: Vec2f = undefined,
 scrollBar: *ScrollBar,
-onNewline: ?*const fn() void,
+onNewline: gui.Callback,
 
 pub fn __init() !void {
 	texture = try Texture.initFromFile("assets/cubyz/ui/text_input.png");
@@ -43,7 +43,7 @@ pub fn __deinit() void {
 	texture.deinit();
 }
 
-pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewline: ?*const fn() void) Allocator.Error!*TextInput {
+pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewline: gui.Callback) Allocator.Error!*TextInput {
 	const scrollBar = try ScrollBar.init(undefined, scrollBarWidth, maxHeight - 2*border, 0);
 	const self = try gui.allocator.create(TextInput);
 	self.* = TextInput {
@@ -432,10 +432,10 @@ pub fn cut(self: *TextInput, mods: main.Key.Modifiers) void {
 }
 
 pub fn newline(self: *TextInput, mods: main.Key.Modifiers) void {
-	if(!mods.shift) if(self.onNewline) |onNewline| {
-		onNewline();
+	if(!mods.shift and self.onNewline.callback != null) {
+		self.onNewline.run();
 		return;
-	};
+	}
 	self.inputCharacter('\n') catch |err| {
 		std.log.err("Error while entering text: {s}", .{@errorName(err)});
 	};

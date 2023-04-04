@@ -37,7 +37,7 @@ pub fn __deinit() void {
 }
 
 pub fn init(pos: Vec2f, width: f32, height: f32, initialState: f32) Allocator.Error!*ScrollBar {
-	const button = try Button.initText(.{0, 0}, undefined, "", null);
+	const button = try Button.initText(.{0, 0}, undefined, "", .{});
 	const self = try gui.allocator.create(ScrollBar);
 	self.* = ScrollBar {
 		.pos = pos,

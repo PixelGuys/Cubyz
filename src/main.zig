@@ -164,21 +164,21 @@ fn ungrabMouse() void {
 fn openInventory() void {
 	if(game.world == null) return;
 	ungrabMouse();
-	gui.openWindow("cubyz:inventory") catch |err| {
+	gui.openWindow("inventory") catch |err| {
 		std.log.err("Got error while opening the inventory: {s}", .{@errorName(err)});
 	};
 }
 fn openWorkbench() void {
 	if(game.world == null) return;
 	ungrabMouse();
-	gui.openWindow("cubyz:workbench") catch |err| {
+	gui.openWindow("workbench") catch |err| {
 		std.log.err("Got error while opening the inventory: {s}", .{@errorName(err)});
 	};
 }
 fn openCreativeInventory() void {
 	if(game.world == null) return;
 	ungrabMouse();
-	gui.openWindow("cubyz:creative_inventory") catch |err| {
+	gui.openWindow("creative_inventory") catch |err| {
 		std.log.err("Got error while opening the inventory: {s}", .{@errorName(err)});
 	};
 }
@@ -189,12 +189,12 @@ fn takeBackgroundImageFn() void {
 	};
 }
 fn toggleDebugOverlay() void {
-	gui.toggleWindow("cubyz:debug") catch |err| {
+	gui.toggleWindow("debug") catch |err| {
 		std.log.err("Got error while opening the debug overlay: {s}", .{@errorName(err)});
 	};
 }
 fn togglePerformanceOverlay() void {
-	gui.toggleWindow("cubyz:performance_graph") catch |err| {
+	gui.toggleWindow("performance_graph") catch |err| {
 		std.log.err("Got error while opening the performance_graph overlay: {s}", .{@errorName(err)});
 	};
 }
@@ -546,9 +546,9 @@ pub fn main() !void {
 	defer entity.ClientEntityManager.deinit();
 
 	if(settings.playerName.len == 0) {
-		try gui.openWindow("cubyz:change_name");
+		try gui.openWindow("change_name");
 	} else {
-		try gui.openWindow("cubyz:main");
+		try gui.openWindow("main");
 	}
 
 	c.glCullFace(c.GL_BACK);

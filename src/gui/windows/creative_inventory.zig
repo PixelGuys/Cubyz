@@ -17,7 +17,7 @@ const ItemSlot = GuiComponent.ItemSlot;
 pub var window = GuiWindow {
 	.contentSize = Vec2f{64*8, 64*4},
 	.title = "Creative Inventory",
-	.id = "cubyz:creative_inventory",
+	.id = "creative_inventory",
 };
 
 const padding: f32 = 8;

@@ -15,7 +15,7 @@ const VerticalList = @import("../components/VerticalList.zig");
 
 pub var window: GuiWindow = GuiWindow {
 	.contentSize = Vec2f{128, 256},
-	.id = "cubyz:chat",
+	.id = "chat",
 	.title = "Chat",
 	.showTitleBar = false,
 	.hasBackground = false,
@@ -61,7 +61,7 @@ pub fn onOpen() Allocator.Error!void {
 	history = std.ArrayList(*Label).init(main.globalAllocator);
 	expirationTime = std.ArrayList(i32).init(main.globalAllocator);
 	historyStart = 0;
-	input = try TextInput.init(.{0, 0}, 256, 32, "", &sendMessage);
+	input = try TextInput.init(.{0, 0}, 256, 32, "", .{.callback = &sendMessage});
 	mutexComponent.mutex.lock();
 	defer mutexComponent.mutex.unlock();
 	try refresh();
@@ -117,7 +117,7 @@ pub fn addMessage(message: []const u8) Allocator.Error!void {
 	try refresh();
 }
 
-pub fn sendMessage() void {
+pub fn sendMessage(_: usize) void {
 	main.network.Protocols.chat.send(main.game.world.?.conn, input.currentString.items) catch |err| {
 		std.log.err("Got error while trying to send chat message: {s}", .{@errorName(err)});
 	};

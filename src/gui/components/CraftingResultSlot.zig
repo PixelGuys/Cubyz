@@ -23,8 +23,7 @@ size: Vec2f = .{24 + 2*border, 24 + 2*border},
 itemStack: ItemStack,
 text: TextBuffer,
 textSize: Vec2f = .{0, 0},
-onTake: *const fn(usize) void,
-userData: usize,
+onTake: gui.Callback,
 hovered: bool = false,
 pressed: bool = false,
 
@@ -36,7 +35,7 @@ pub fn __deinit() void {
 	texture.deinit();
 }
 
-pub fn init(pos: Vec2f, itemStack: ItemStack, onTake: *const fn(usize) void, userData: usize) Allocator.Error!*CraftingResultSlot {
+pub fn init(pos: Vec2f, itemStack: ItemStack, onTake: gui.Callback) Allocator.Error!*CraftingResultSlot {
 	const self = try gui.allocator.create(CraftingResultSlot);
 	var buf: [16]u8 = undefined;
 	self.* = CraftingResultSlot {
@@ -44,7 +43,6 @@ pub fn init(pos: Vec2f, itemStack: ItemStack, onTake: *const fn(usize) void, use
 		.pos = pos,
 		.text = try TextBuffer.init(gui.allocator, std.fmt.bufPrint(&buf, "{}", .{self.itemStack.amount}) catch "∞", .{}, false, .right),
 		.onTake = onTake,
-		.userData = userData,
 	};
 	self.textSize = try self.text.calculateLineBreaks(8, self.size[0] - 2*border);
 	return self;
@@ -78,7 +76,7 @@ pub fn mainButtonReleased(self: *CraftingResultSlot, mousePosition: Vec2f) void 
 			if(gui.inventory.carriedItemStack.item == null or std.meta.eql(self.itemStack.item, gui.inventory.carriedItemStack.item)) {
 				if(std.math.add(u16, gui.inventory.carriedItemStack.amount, self.itemStack.amount) catch null) |nextAmount| if(nextAmount <= self.itemStack.item.?.stackSize()) {
 					const itemStack = self.itemStack;
-					self.onTake(self.userData);
+					self.onTake.run();
 					gui.inventory.carriedItemStack.item = itemStack.item;
 					gui.inventory.carriedItemStack.amount += itemStack.amount;
 				};

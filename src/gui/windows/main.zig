@@ -12,21 +12,17 @@ const VerticalList = @import("../components/VerticalList.zig");
 
 pub var window = GuiWindow {
 	.contentSize = Vec2f{128, 256},
-	.id = "cubyz:main",
+	.id = "main",
 };
-
-pub fn buttonCallbackTest() void {
-	std.log.info("Clicked!", .{});
-}
 
 const padding: f32 = 8;
 
 pub fn onOpen() Allocator.Error!void {
 	var list = try VerticalList.init(.{padding, 16 + padding}, 300, 16);
-	try list.add(try Button.initText(.{0, 0}, 128, "Singleplayer TODO", &buttonCallbackTest));
-	try list.add(try Button.initText(.{0, 0}, 128, "Multiplayer", gui.openWindowFunction("cubyz:multiplayer")));
-	try list.add(try Button.initText(.{0, 0}, 128, "Settings", gui.openWindowFunction("cubyz:settings")));
-	try list.add(try Button.initText(.{0, 0}, 128, "Exit TODO", &buttonCallbackTest));
+	try list.add(try Button.initText(.{0, 0}, 128, "Singleplayer TODO", .{}));
+	try list.add(try Button.initText(.{0, 0}, 128, "Multiplayer", gui.openWindowCallback("multiplayer")));
+	try list.add(try Button.initText(.{0, 0}, 128, "Settings", gui.openWindowCallback("settings")));
+	try list.add(try Button.initText(.{0, 0}, 128, "Exit TODO", .{}));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @splat(2, @as(f32, padding));
