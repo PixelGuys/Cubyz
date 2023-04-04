@@ -44,12 +44,15 @@ var deferredUniforms: struct {
 	color: c_int,
 } = undefined;
 
+pub var activeFrameBuffer: c_uint = 0;
+
 pub fn init() !void {
 	fogShader = try Shader.initAndGetUniforms("assets/cubyz/shaders/fog_vertex.vs", "assets/cubyz/shaders/fog_fragment.fs", &fogUniforms);
 	deferredRenderPassShader = try Shader.initAndGetUniforms("assets/cubyz/shaders/deferred_render_pass.vs", "assets/cubyz/shaders/deferred_render_pass.fs", &deferredUniforms);
 	buffers.init();
 	try Bloom.init();
 	try MeshSelection.init();
+	try MenuBackGround.init();
 }
 
 pub fn deinit() void {
@@ -58,6 +61,7 @@ pub fn deinit() void {
 	buffers.deinit();
 	Bloom.deinit();
 	MeshSelection.deinit();
+	MenuBackGround.deinit();
 }
 
 const buffers = struct {
@@ -139,7 +143,13 @@ const buffers = struct {
 	}
 };
 
+var lastWidth: u31 = 0;
+var lastHeight: u31 = 0;
+var lastFov: f32 = 0;
 pub fn updateViewport(width: u31, height: u31, fov: f32) void {
+	lastWidth = width;
+	lastHeight = height;
+	lastFov = fov;
 	c.glViewport(0, 0, width, height);
 	game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(f32, fov), @intToFloat(f32, width)/@intToFloat(f32, height), zNear, zFar);
 	game.lodProjectionMatrix = Mat4f.perspective(std.math.degreesToRadians(f32, fov), @intToFloat(f32, width)/@intToFloat(f32, height), zNearLOD, zFarLOD);
@@ -197,8 +207,7 @@ pub fn render(playerPosition: Vec3d) !void {
 //		clearColor.x = 0.1f;@import("main.zig")
 //		
 //		Window.setClearColor(clearColor);
-//
-//		BackgroundScene.renderBackground();
+		MenuBackGround.render();
 	}
 //	Cubyz.gameUI.render();
 //	Keyboard.release(); // TODO: Why is this called in the render thread???
@@ -212,7 +221,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	game.camera.updateViewMatrix();
 
 	// Uses FrustumCulling on the chunks.
-	var frustum = Frustum.init(Vec3f{0, 0, 0}, game.camera.viewMatrix, settings.fov, zFarLOD, main.Window.width, main.Window.height);
+	var frustum = Frustum.init(Vec3f{0, 0, 0}, game.camera.viewMatrix, lastFov, zFarLOD, lastWidth, lastHeight);
 
 	const time = @intCast(u32, std.time.milliTimestamp() & std.math.maxInt(u32));
 	var waterFog = Fog{.active=true, .color=.{0.0, 0.1, 0.2}, .density=0.1};
@@ -314,7 +323,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 //			}
 //		}
 	if(settings.bloom) {
-		Bloom.render(main.Window.width, main.Window.height);
+		Bloom.render(lastWidth, lastHeight);
 	}
 	buffers.unbind();
 	buffers.bindTextures();
@@ -322,16 +331,14 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glUniform1i(deferredUniforms.color, 3);
 	c.glUniform1i(deferredUniforms.position, 4);
 
-//	if(Window.getRenderTarget() != null)
-//		Window.getRenderTarget().bind();
+	c.glBindFramebuffer(c.GL_FRAMEBUFFER, activeFrameBuffer);
 
 	c.glBindVertexArray(graphics.draw.rectVAO);
 	c.glDisable(c.GL_DEPTH_TEST);
 	c.glDisable(c.GL_CULL_FACE);
 	c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 
-//	if(Window.getRenderTarget() != null)
-//		Window.getRenderTarget().unbind();
+	c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
 	try entity.ClientEntityManager.renderNames(game.projectionMatrix, playerPos);
 }
@@ -467,6 +474,177 @@ const Bloom = struct {
 		c.glEnable(c.GL_DEPTH_TEST);
 		c.glEnable(c.GL_CULL_FACE);
 		c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
+	}
+};
+
+pub const MenuBackGround = struct {
+	var shader: Shader = undefined;
+	var uniforms: struct {
+		image: c_int,
+		viewMatrix: c_int,
+		projectionMatrix: c_int,
+	} = undefined;
+
+	var vao: c_uint = undefined;
+	var vbos: [2]c_uint = undefined;
+	var texture: graphics.Texture = undefined;
+
+	var angle: f32 = 0;
+	var lastTime: i128 = undefined;
+
+	fn init() !void {
+		lastTime = std.time.nanoTimestamp();
+		shader = try Shader.initAndGetUniforms("assets/cubyz/shaders/background/vertex.vs", "assets/cubyz/shaders/background/fragment.fs", &uniforms);
+		shader.bind();
+		c.glUniform1i(uniforms.image, 0);
+		// 4 sides of a simple cube with some panorama texture on it.
+		const rawData = [_]f32 {
+			-1, -1, -1, 1, 1,
+			-1, 1, -1, 1, 0,
+			-1, -1, 1, 0.75, 1,
+			-1, 1, 1, 0.75, 0,
+			1, -1, 1, 0.5, 1,
+			1, 1, 1, 0.5, 0,
+			1, -1, -1, 0.25, 1,
+			1, 1, -1, 0.25, 0,
+			-1, -1, -1, 0, 1,
+			-1, 1, -1, 0, 0,
+		};
+
+		const indices = [_]c_int {
+			0, 1, 2,
+			2, 3, 1,
+			2, 3, 4,
+			4, 5, 3,
+			4, 5, 6,
+			6, 7, 5,
+			6, 7, 8,
+			8, 9, 7,
+		};
+
+		c.glGenVertexArrays(1, &vao);
+		c.glBindVertexArray(vao);
+		c.glGenBuffers(2, &vbos);
+		c.glBindBuffer(c.GL_ARRAY_BUFFER, vbos[0]);
+		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(isize, rawData.len*@sizeOf(f32)), &rawData, c.GL_STATIC_DRAW);
+		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, 5*@sizeOf(f32), null);
+		c.glVertexAttribPointer(1, 2, c.GL_FLOAT, c.GL_FALSE, 5*@sizeOf(f32), @intToPtr(?*const anyopaque, 3*@sizeOf(f32)));
+		c.glEnableVertexAttribArray(0);
+		c.glEnableVertexAttribArray(1);
+		c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, vbos[1]);
+		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(isize, indices.len*@sizeOf(c_int)), &indices, c.GL_STATIC_DRAW);
+
+		// Load a random texture from the backgrounds folder. The player may make their own pictures which can be chosen as well.
+		var dir: std.fs.IterableDir = try std.fs.cwd().makeOpenPathIterable("assets/backgrounds", .{});
+		defer dir.close();
+
+		var walker = try dir.walk(main.threadAllocator);
+		defer walker.deinit();
+		var fileList = std.ArrayList([]const u8).init(main.threadAllocator);
+		defer {
+			for(fileList.items) |fileName| {
+				main.threadAllocator.free(fileName);
+			}
+			fileList.deinit();
+		}
+
+		while(try walker.next()) |entry| {
+			if(entry.kind == .File and std.ascii.endsWithIgnoreCase(entry.basename, ".png")) {
+				try fileList.append(try main.threadAllocator.dupe(u8, entry.path));
+			}
+		}
+		if(fileList.items.len == 0) {
+			std.log.err("Couldn't find any background scene images in \"assets/backgrounds\".", .{});
+			texture = .{.textureID = 0};
+			return;
+		}
+		const theChosenOne = main.random.nextIntBounded(u32, &main.seed, @intCast(u32, fileList.items.len));
+		const theChosenPath = try std.fmt.allocPrint(main.threadAllocator, "assets/backgrounds/{s}", .{fileList.items[theChosenOne]});
+		defer main.threadAllocator.free(theChosenPath);
+		texture = try graphics.Texture.initFromFile(theChosenPath);
+	}
+
+	pub fn deinit() void {
+		shader.deinit();
+		c.glDeleteVertexArrays(1, &vao);
+		c.glDeleteBuffers(2, &vbos);
+	}
+
+	pub fn render() void {
+		if(texture.textureID == 0) return;
+		c.glDisable(c.GL_CULL_FACE); // I'm not sure if my triangles are rotated correctly, and there are no triangles facing away from the player anyways.
+
+		// Use a simple rotation around the y axis, with a steadily increasing angle.
+		const newTime = std.time.nanoTimestamp();
+		angle += @intToFloat(f32, newTime - lastTime)/2e10;
+		lastTime = newTime;
+		var viewMatrix = Mat4f.rotationY(angle);
+		shader.bind();
+
+		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast([*c]const f32, &viewMatrix));
+		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_FALSE, @ptrCast([*c]const f32, &game.projectionMatrix));
+
+		texture.bindTo(0);
+
+		c.glBindVertexArray(vao);
+		c.glDrawElements(c.GL_TRIANGLES, 24, c.GL_UNSIGNED_INT, null);
+	}
+
+	pub fn takeBackgroundImage() !void {
+		const size: usize = 1024; // Use a power of 2 here, to reduce video memory waste.
+		var pixels: []u32 = try main.threadAllocator.alloc(u32, size*size);
+		defer main.threadAllocator.free(pixels);
+
+		// Change the viewport and the matrices to render 4 cube faces:
+
+		updateViewport(size, size, 90.0);
+		defer updateViewport(Window.width, Window.height, settings.fov);
+		
+		var buffer: graphics.FrameBuffer = undefined;
+		buffer.init(true);
+		defer buffer.deinit();
+		buffer.updateSize(size, size, c.GL_NEAREST, c.GL_REPEAT);
+
+		activeFrameBuffer = buffer.frameBuffer;
+		defer activeFrameBuffer = 0;
+
+		const oldRotation = game.camera.rotation;
+		defer game.camera.rotation = oldRotation;
+
+		const angles = [_]f32 {std.math.pi/2.0, std.math.pi, std.math.pi*3/2.0, std.math.pi*2};
+
+		// All 4 sides are stored in a single image.
+		var image = try graphics.Image.init(main.threadAllocator, 4*size, size);
+		defer image.deinit(main.threadAllocator);
+
+		for(0..4) |i| {
+			c.glEnable(c.GL_CULL_FACE);
+			c.glEnable(c.GL_DEPTH_TEST);
+			game.camera.rotation = .{0, angles[i], 0};
+			// Draw to frame buffer.
+			buffer.bind();
+			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
+			try main.renderer.render(game.Player.getPosBlocking());
+			// Copy the pixels directly from OpenGL
+			buffer.bind();
+			c.glReadPixels(0, 0, size, size, c.GL_RGBA, c.GL_UNSIGNED_BYTE, pixels.ptr);
+
+			for(0..size) |y| {
+				for(0..size) |x| {
+					const index = x + y*size;
+					// Needs to flip the image in y-direction.
+					image.setRGB(x + size*i, size - 1 - y, @bitCast(graphics.Color, pixels[index]));
+				}
+			}
+		}
+		c.glDisable(c.GL_CULL_FACE);
+		c.glDisable(c.GL_DEPTH_TEST);
+		c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
+
+		const fileName = try std.fmt.allocPrint(main.threadAllocator, "assets/backgrounds/{s}_{}.png", .{game.world.?.name, game.world.?.gameTime.load(.Monotonic)});
+		defer main.threadAllocator.free(fileName);
+		try image.exportToFile(fileName);
+		// TODO: Performance is terrible even with -O3. Consider using qoi instead.
 	}
 };
 

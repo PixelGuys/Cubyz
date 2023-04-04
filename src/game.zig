@@ -36,11 +36,10 @@ pub const camera = struct {
 		}
 		// Mouse movement along the y-axis rotates the image along the x-axis.
 		rotation[1] += mouseX;
-
-		direction = vec.rotateY(vec.rotateX(Vec3f{0, 0, -1}, -rotation[0]), -rotation[1]);
 	}
 
 	pub fn updateViewMatrix() void {
+		direction = vec.rotateY(vec.rotateX(Vec3f{0, 0, -1}, -rotation[0]), -rotation[1]);
 		viewMatrix = Mat4f.rotationX(rotation[0]).mul(Mat4f.rotationY(rotation[1]));
 	}
 };

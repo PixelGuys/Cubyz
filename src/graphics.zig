@@ -22,6 +22,7 @@ pub const c = @cImport ({
 
 pub const stb_image = @cImport ({
 	@cInclude("stb/stb_image.h");
+	@cInclude("stb/stb_image_write.h");
 });
 
 fn fileToString(allocator: Allocator, path: []const u8) ![]u8 {
@@ -1466,6 +1467,11 @@ pub const Image = struct {
 		result.imageData = try allocator.dupe(Color, @ptrCast([*]Color, data)[0..result.width*result.height]);
 		stb_image.stbi_image_free(data);
 		return result;
+	}
+	pub fn exportToFile(self: Image, path: []const u8) !void {
+		const nullTerminated = try main.threadAllocator.dupeZ(u8, path);
+		defer main.threadAllocator.free(nullTerminated);
+		_ = stb_image.stbi_write_png(nullTerminated.ptr, self.width, self.height, 4, self.imageData.ptr, self.width*4);
 	}
 	pub fn getRGB(self: Image, x: usize, y: usize) Color {
 		std.debug.assert(x < self.width);

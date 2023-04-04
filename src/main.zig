@@ -182,6 +182,12 @@ fn openCreativeInventory() void {
 		std.log.err("Got error while opening the inventory: {s}", .{@errorName(err)});
 	};
 }
+fn takeBackgroundImageFn() void {
+	if(game.world == null) return;
+	renderer.MenuBackGround.takeBackgroundImage() catch |err| {
+		std.log.err("Got error while recording the background image: {s}", .{@errorName(err)});
+	};
+}
 pub var keyboard: struct {
 	// Gameplay:
 	forward: Key = Key{.key = c.GLFW_KEY_W},
@@ -192,6 +198,8 @@ pub var keyboard: struct {
 	jump: Key = Key{.key = c.GLFW_KEY_SPACE},
 	fall: Key = Key{.key = c.GLFW_KEY_LEFT_SHIFT},
 	fullscreen: Key = Key{.key = c.GLFW_KEY_F11, .releaseAction = &Window.toggleFullscreen},
+
+	takeBackgroundImage: Key = Key{.key = c.GLFW_KEY_PRINT_SCREEN, .releaseAction = &takeBackgroundImageFn},
 
 	// Gui:
 	escape: Key = Key{.key = c.GLFW_KEY_ESCAPE, .releaseAction = &ungrabMouse},
@@ -457,6 +465,7 @@ pub const Window = struct {
 };
 
 pub fn main() !void {
+	seed = @bitCast(u64, std.time.milliTimestamp());
 	var gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe=false}){};
 	threadAllocator = gpa.allocator();
 	defer if(gpa.deinit()) {
@@ -546,12 +555,12 @@ pub fn main() !void {
 		var newTime = std.time.milliTimestamp();
 		var deltaTime = @intToFloat(f64, newTime -% lastTime)/1000.0;
 		lastTime = newTime;
-		if(game.world != null) { // Render the game
+		if(game.world != null) { // Update the game
 			try game.update(deltaTime);
-			c.glEnable(c.GL_CULL_FACE);
-			c.glEnable(c.GL_DEPTH_TEST);
-			try renderer.render(game.Player.getPosBlocking());
 		}
+		c.glEnable(c.GL_CULL_FACE);
+		c.glEnable(c.GL_DEPTH_TEST);
+		try renderer.render(game.Player.getPosBlocking());
 
 		{ // Render the GUI
 			c.glDisable(c.GL_CULL_FACE);

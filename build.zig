@@ -43,7 +43,7 @@ pub fn build(b: *std.build.Builder) !void {
 			std.log.err("Unsupported target: {}\n", .{ target.getOsTag() });
 		}
 	}
-	exe.addCSourceFiles(&[_][]const u8{"lib/glad.c", "lib/stb_image.c"}, &[_][]const u8{"-g"});
+	exe.addCSourceFiles(&[_][]const u8{"lib/glad.c", "lib/stb_image.c", "lib/stb_image_write.c"}, &[_][]const u8{"-g", "-O3"});
 	exe.addAnonymousModule("gui", .{.source_file = .{.path = "src/gui/gui.zig"}});
 	const harfbuzzModule = freetype.harfbuzzModule(b);
 	const freetypeModule = harfbuzzModule.dependencies.get("freetype").?;
