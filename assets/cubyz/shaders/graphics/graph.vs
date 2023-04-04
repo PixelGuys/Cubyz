@@ -7,7 +7,7 @@ uniform vec2 screen;
 uniform int points;
 uniform int offset;
 
-layout(std430, binding = 4) buffer _data
+layout(std430, binding = 5) buffer _data
 {
 	float data[];
 };

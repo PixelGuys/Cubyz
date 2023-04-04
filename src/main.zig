@@ -188,6 +188,16 @@ fn takeBackgroundImageFn() void {
 		std.log.err("Got error while recording the background image: {s}", .{@errorName(err)});
 	};
 }
+fn toggleDebugOverlay() void {
+	gui.toggleWindow("cubyz:debug") catch |err| {
+		std.log.err("Got error while opening the debug overlay: {s}", .{@errorName(err)});
+	};
+}
+fn togglePerformanceOverlay() void {
+	gui.toggleWindow("cubyz:performance_graph") catch |err| {
+		std.log.err("Got error while opening the performance_graph overlay: {s}", .{@errorName(err)});
+	};
+}
 pub var keyboard: struct {
 	// Gameplay:
 	forward: Key = Key{.key = c.GLFW_KEY_W},
@@ -221,6 +231,10 @@ pub var keyboard: struct {
 	textPaste: Key = Key{.key = c.GLFW_KEY_V, .repeatAction = &gui.textCallbacks.paste},
 	textCut: Key = Key{.key = c.GLFW_KEY_X, .repeatAction = &gui.textCallbacks.cut},
 	textNewline: Key = Key{.key = c.GLFW_KEY_ENTER, .repeatAction = &gui.textCallbacks.newline},
+
+	// debug:
+	debugOverlay: Key = Key{.key = c.GLFW_KEY_F3, .releaseAction = &toggleDebugOverlay},
+	performanceOverlay: Key = Key{.key = c.GLFW_KEY_F4, .releaseAction = &togglePerformanceOverlay},
 } = .{};
 
 pub const Window = struct {
@@ -464,6 +478,8 @@ pub const Window = struct {
 	}
 };
 
+pub var lastFrameTime = std.atomic.Atomic(f64).init(0);
+
 pub fn main() !void {
 	seed = @bitCast(u64, std.time.milliTimestamp());
 	var gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe=false}){};
@@ -539,7 +555,7 @@ pub fn main() !void {
 	c.glEnable(c.GL_BLEND);
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
-	var lastTime = std.time.milliTimestamp();
+	var lastTime = std.time.nanoTimestamp();
 
 	while(c.glfwWindowShouldClose(Window.window) == 0) {
 		{ // Check opengl errors:
@@ -552,8 +568,9 @@ pub fn main() !void {
 		Window.handleEvents();
 		c.glClearColor(0.5, 1, 1, 1);
 		c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
-		var newTime = std.time.milliTimestamp();
-		var deltaTime = @intToFloat(f64, newTime -% lastTime)/1000.0;
+		var newTime = std.time.nanoTimestamp();
+		var deltaTime = @intToFloat(f64, newTime -% lastTime)/1e9;
+		lastFrameTime.store(deltaTime, .Monotonic);
 		lastTime = newTime;
 		if(game.world != null) { // Update the game
 			try game.update(deltaTime);

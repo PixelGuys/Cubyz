@@ -380,6 +380,12 @@ pub const draw = struct {
 	pub fn text(_text: []const u8, x: f32, y: f32, fontSize: f32, alignment: TextBuffer.Alignment) !void {
 		try TextRendering.renderText(_text, x, y, fontSize, .{.color = @truncate(u24, @bitCast(u32, color))}, alignment);
 	}
+
+	pub fn print(comptime format: []const u8, args: anytype, x: f32, y: f32, fontSize: f32, alignment: TextBuffer.Alignment) !void {
+		const string = try std.fmt.allocPrint(main.threadAllocator, format, args);
+		defer main.threadAllocator.free(string);
+		try text(string, x, y ,fontSize, alignment);
+	}
 };
 
 pub const TextBuffer = struct {

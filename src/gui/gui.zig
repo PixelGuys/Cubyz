@@ -241,6 +241,26 @@ pub fn openWindow(id: []const u8) Allocator.Error!void {
 	std.log.warn("Could not find window with id {s}.", .{id});
 }
 
+pub fn toggleWindow(id: []const u8) Allocator.Error!void {
+	defer updateWindowPositions();
+	for(windowList.items) |window| {
+		if(std.mem.eql(u8, window.id, id)) {
+			for(openWindows.items, 0..) |_openWindow, i| {
+				if(_openWindow == window) {
+					_ = openWindows.swapRemove(i);
+					selectedWindow = null;
+					return;
+				}
+			}
+			try openWindows.append(window);
+			try window.onOpenFn();
+			selectedWindow = null;
+			return;
+		}
+	}
+	std.log.warn("Could not find window with id {s}.", .{id});
+}
+
 pub fn openHud() Allocator.Error!void {
 	for(windowList.items) |window| {
 		if(window.isHud) {
