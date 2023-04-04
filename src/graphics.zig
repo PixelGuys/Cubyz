@@ -741,6 +741,7 @@ pub const TextBuffer = struct {
 	}
 
 	pub fn render(self: TextBuffer, _x: f32, _y: f32, _fontSize: f32) !void {
+		try self.renderShadow(_x, _y, _fontSize);
 		const oldTranslation = draw.setTranslation(.{_x, _y});
 		defer draw.restoreTranslation(oldTranslation);
 		const oldScale = draw.setScale(_fontSize/16.0);
@@ -778,6 +779,73 @@ pub const TextBuffer = struct {
 			if(line.isUnderline) y += 15
 			else y += 8;
 			draw.setColor(line.color | (@as(u32, 0xff000000) & draw.color));
+			for(lineWraps, 0..) |lineWrap, j| {
+				const lineStart = @max(0, line.start);
+				const lineEnd = @min(lineWrap, line.end);
+				if(lineStart < lineEnd) {
+					var start = Vec2f{lineStart + self.getLineOffset(j), y};
+					const dim = Vec2f{lineEnd - lineStart, 1};
+					draw.rect(start, dim);
+				}
+				line.start -= lineWrap;
+				line.end -= lineWrap;
+				y += 16;
+			}
+		}
+	}
+
+	fn shadowColor(color: u24) u24 {
+		const r = @intToFloat(f32, color >> 16);
+		const g = @intToFloat(f32, color >> 8  &  255);
+		const b = @intToFloat(f32, color & 255);
+		const perceivedBrightness = @sqrt(0.299*r*r + 0.587*g*g + 0.114*b*b);
+		if(perceivedBrightness < 64) {
+			return 0xffffff; // Make shadows white for better readability.
+		} else {
+			return 0;
+		}
+	}
+
+	fn renderShadow(self: TextBuffer, _x: f32, _y: f32, _fontSize: f32) !void { // Basically a copy of render with some color and position changes.
+		const oldTranslation = draw.setTranslation(.{_x + _fontSize/16.0, _y + _fontSize/16.0});
+		defer draw.restoreTranslation(oldTranslation);
+		const oldScale = draw.setScale(_fontSize/16.0);
+		defer draw.restoreScale(oldScale);
+		var x: f32 = 0;
+		var y: f32 = 0;
+		TextRendering.shader.bind();
+		c.glUniform2f(TextRendering.uniforms.scene, @intToFloat(f32, main.Window.width), @intToFloat(f32, main.Window.height));
+		c.glUniform1f(TextRendering.uniforms.ratio, draw.scale);
+		c.glUniform1f(TextRendering.uniforms.alpha, @intToFloat(f32, draw.color >> 24) / 255.0);
+		c.glActiveTexture(c.GL_TEXTURE0);
+		c.glBindTexture(c.GL_TEXTURE_2D, TextRendering.glyphTexture[0]);
+		c.glBindVertexArray(draw.rectVAO);
+		const lineWraps: []f32 = try main.threadAllocator.alloc(f32, self.lineBreaks.items.len - 1);
+		defer main.threadAllocator.free(lineWraps);
+		var i: usize = 0;
+		while(i < self.lineBreaks.items.len - 1) : (i += 1) {
+			x = self.getLineOffset(i);
+			for(self.glyphs[self.lineBreaks.items[i].index..self.lineBreaks.items[i+1].index]) |glyph| {
+				if(glyph.character != '\n') {
+					const ftGlyph = try TextRendering.getGlyph(glyph.index);
+					var fontEffect = glyph.fontEffect;
+					fontEffect.color = shadowColor(fontEffect.color);
+					TextRendering.drawGlyph(ftGlyph, x + glyph.x_offset, y - glyph.y_offset, @bitCast(u28, fontEffect));
+				}
+				x += glyph.x_advance;
+				y -= glyph.y_advance;
+			}
+			lineWraps[i] = x - self.getLineOffset(i);
+			x = 0;
+			y += 16;
+		}
+
+		for(self.lines.items) |_line| {
+			var line: Line = _line;
+			y = 0;
+			if(line.isUnderline) y += 15
+			else y += 8;
+			draw.setColor(shadowColor(line.color) | (@as(u32, 0xff000000) & draw.color));
 			for(lineWraps, 0..) |lineWrap, j| {
 				const lineStart = @max(0, line.start);
 				const lineEnd = @min(lineWrap, line.end);
