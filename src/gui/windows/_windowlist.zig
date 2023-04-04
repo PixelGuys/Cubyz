@@ -13,6 +13,7 @@ pub const inventory_crafting = @import("inventory_crafting.zig");
 pub const main = @import("main.zig");
 pub const multiplayer = @import("multiplayer.zig");
 pub const performance_graph = @import("performance_graph.zig");
+pub const save_selection = @import("save_selection.zig");
 pub const settings = @import("settings.zig");
 pub const sound = @import("sound.zig");
 pub const workbench = @import("workbench.zig");

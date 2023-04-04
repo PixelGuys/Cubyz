@@ -19,7 +19,7 @@ const padding: f32 = 8;
 
 pub fn onOpen() Allocator.Error!void {
 	var list = try VerticalList.init(.{padding, 16 + padding}, 300, 16);
-	try list.add(try Button.initText(.{0, 0}, 128, "Singleplayer TODO", .{}));
+	try list.add(try Button.initText(.{0, 0}, 128, "Singleplayer", gui.openWindowCallback("save_selection")));
 	try list.add(try Button.initText(.{0, 0}, 128, "Multiplayer", gui.openWindowCallback("multiplayer")));
 	try list.add(try Button.initText(.{0, 0}, 128, "Settings", gui.openWindowCallback("settings")));
 	try list.add(try Button.initText(.{0, 0}, 128, "Exit TODO", .{}));
