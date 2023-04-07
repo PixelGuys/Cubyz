@@ -41,7 +41,7 @@ pub fn render() Allocator.Error!void {
 	var y: f32 = 0;
 	var x: f32 = 0;
 	for(0..@floatToInt(usize, main.game.Player.maxHealth)) |health| {
-		if(x >= window.size[0]) {
+		if(x >= window.contentSize[0]) {
 			x = 0;
 			y += 16;
 		}
