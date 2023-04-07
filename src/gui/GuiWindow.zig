@@ -399,6 +399,7 @@ pub fn updateWindowPosition(self: *GuiWindow) void {
 			},
 		}
 	}
+	self.pos = @floor(self.pos); // Prevent floating point inaccuracies (these can happen when resizing the window) from causing weird window positioning issues.
 }
 
 fn drawOrientationLines(self: *const GuiWindow) void {
