@@ -21,9 +21,9 @@ text: TextBuffer,
 alpha: f32 = 1,
 
 pub fn init(pos: Vec2f, maxWidth: f32, text: []const u8, alignment: TextBuffer.Alignment) Allocator.Error!*Label {
-	const self = try gui.allocator.create(Label);
+	const self = try main.globalAllocator.create(Label);
 	self.* = Label {
-		.text = try TextBuffer.init(gui.allocator, text, .{}, false, alignment),
+		.text = try TextBuffer.init(main.globalAllocator, text, .{}, false, alignment),
 		.pos = pos,
 		.size = undefined,
 	};
@@ -33,7 +33,7 @@ pub fn init(pos: Vec2f, maxWidth: f32, text: []const u8, alignment: TextBuffer.A
 
 pub fn deinit(self: *const Label) void {
 	self.text.deinit();
-	gui.allocator.destroy(self);
+	main.globalAllocator.destroy(self);
 }
 
 pub fn toComponent(self: *Label) GuiComponent {
@@ -45,7 +45,7 @@ pub fn toComponent(self: *Label) GuiComponent {
 pub fn updateText(self: *Label, newText: []const u8) !void {
 	const alignment = self.text.alignment;
 	self.text.deinit();
-	self.text = try TextBuffer.init(gui.allocator, newText, .{}, false, alignment);
+	self.text = try TextBuffer.init(main.globalAllocator, newText, .{}, false, alignment);
 	self.size = try self.text.calculateLineBreaks(fontSize, self.size[0]);
 }
 

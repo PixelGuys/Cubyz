@@ -34,13 +34,13 @@ pub fn __deinit() void {
 }
 
 pub fn init(pos: Vec2f, item: *BaseItem, amount: u32) Allocator.Error!*ImmutableItemSlot {
-	const self = try gui.allocator.create(ImmutableItemSlot);
+	const self = try main.globalAllocator.create(ImmutableItemSlot);
 	var buf: [16]u8 = undefined;
 	self.* = ImmutableItemSlot {
 		.item = item,
 		.amount = amount,
 		.pos = pos,
-		.text = try TextBuffer.init(gui.allocator, std.fmt.bufPrint(&buf, "{}", .{amount}) catch "∞", .{}, false, .right),
+		.text = try TextBuffer.init(main.globalAllocator, std.fmt.bufPrint(&buf, "{}", .{amount}) catch "∞", .{}, false, .right),
 	};
 	self.textSize = try self.text.calculateLineBreaks(8, self.size[0] - 2*border);
 	return self;
@@ -48,7 +48,7 @@ pub fn init(pos: Vec2f, item: *BaseItem, amount: u32) Allocator.Error!*Immutable
 
 pub fn deinit(self: *const ImmutableItemSlot) void {
 	self.text.deinit();
-	gui.allocator.destroy(self);
+	main.globalAllocator.destroy(self);
 }
 
 pub fn toComponent(self: *ImmutableItemSlot) GuiComponent {

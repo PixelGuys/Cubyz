@@ -25,8 +25,8 @@ var itemStacks: std.ArrayList(ItemStack) = undefined;
 var items: std.ArrayList(Item) = undefined;
 
 pub fn onOpen() Allocator.Error!void {
-	itemStacks = std.ArrayList(ItemStack).init(gui.allocator);
-	items = std.ArrayList(Item).init(gui.allocator);
+	itemStacks = std.ArrayList(ItemStack).init(main.globalAllocator);
+	items = std.ArrayList(Item).init(main.globalAllocator);
 	var itemIterator = main.items.iterator();
 	while(itemIterator.next()) |item| {
 		try itemStacks.append(.{});

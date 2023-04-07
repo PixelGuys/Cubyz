@@ -45,7 +45,7 @@ pub fn __deinit() void {
 
 pub fn init(pos: Vec2f, width: f32, text: []const u8, initialValue: bool, onAction: *const fn(bool) void) Allocator.Error!*CheckBox {
 	const label = (try Label.init(undefined, width - 3*border - boxSize, text, .left));
-	const self = try gui.allocator.create(CheckBox);
+	const self = try main.globalAllocator.create(CheckBox);
 	self.* = CheckBox {
 		.pos = pos,
 		.size = Vec2f{@max(width, label.size[0] + 3*border + boxSize), label.size[1] + 3*border},
@@ -58,7 +58,7 @@ pub fn init(pos: Vec2f, width: f32, text: []const u8, initialValue: bool, onActi
 
 pub fn deinit(self: *const CheckBox) void {
 	self.label.deinit();
-	gui.allocator.destroy(self);
+	main.globalAllocator.destroy(self);
 }
 
 pub fn toComponent(self: *CheckBox) GuiComponent {

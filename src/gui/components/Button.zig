@@ -56,7 +56,7 @@ fn defaultOnAction(_: usize) void {}
 
 pub fn initText(pos: Vec2f, width: f32, text: []const u8, onAction: gui.Callback) Allocator.Error!*Button {
 	const label = try Label.init(undefined, width - 3*border, text, .center);
-	const self = try gui.allocator.create(Button);
+	const self = try main.globalAllocator.create(Button);
 	self.* = Button {
 		.pos = pos,
 		.size = Vec2f{width, label.size[1] + 3*border},
@@ -68,7 +68,7 @@ pub fn initText(pos: Vec2f, width: f32, text: []const u8, onAction: gui.Callback
 
 pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, hasShadow: bool, onAction: gui.Callback) Allocator.Error!*Button {
 	const icon = try Icon.init(undefined, iconSize, iconTexture, hasShadow);
-	const self = try gui.allocator.create(Button);
+	const self = try main.globalAllocator.create(Button);
 	self.* = Button {
 		.pos = pos,
 		.size = icon.size + @splat(2, 3*border),
@@ -80,7 +80,7 @@ pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, hasShadow: bo
 
 pub fn deinit(self: *const Button) void {
 	self.child.deinit();
-	gui.allocator.destroy(self);
+	main.globalAllocator.destroy(self);
 }
 
 pub fn toComponent(self: *Button) GuiComponent {

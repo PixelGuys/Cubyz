@@ -45,12 +45,12 @@ pub fn __deinit() void {
 
 pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewline: gui.Callback) Allocator.Error!*TextInput {
 	const scrollBar = try ScrollBar.init(undefined, scrollBarWidth, maxHeight - 2*border, 0);
-	const self = try gui.allocator.create(TextInput);
+	const self = try main.globalAllocator.create(TextInput);
 	self.* = TextInput {
 		.pos = pos,
 		.size = .{maxWidth, maxHeight},
-		.currentString = std.ArrayList(u8).init(gui.allocator),
-		.textBuffer = try TextBuffer.init(gui.allocator, text, .{}, true, .left),
+		.currentString = std.ArrayList(u8).init(main.globalAllocator),
+		.textBuffer = try TextBuffer.init(main.globalAllocator, text, .{}, true, .left),
 		.maxWidth = maxWidth,
 		.maxHeight = maxHeight,
 		.scrollBar = scrollBar,
@@ -65,7 +65,7 @@ pub fn deinit(self: *const TextInput) void {
 	self.textBuffer.deinit();
 	self.currentString.deinit();
 	self.scrollBar.deinit();
-	gui.allocator.destroy(self);
+	main.globalAllocator.destroy(self);
 }
 
 pub fn clear(self: *TextInput) !void {
@@ -142,7 +142,7 @@ pub fn deselect(self: *TextInput) void {
 
 fn reloadText(self: *TextInput) !void {
 	self.textBuffer.deinit();
-	self.textBuffer = try TextBuffer.init(gui.allocator, self.currentString.items, .{}, true, .left);
+	self.textBuffer = try TextBuffer.init(main.globalAllocator, self.currentString.items, .{}, true, .left);
 	self.textSize = try self.textBuffer.calculateLineBreaks(fontSize, self.maxWidth - 2*border - scrollBarWidth);
 }
 

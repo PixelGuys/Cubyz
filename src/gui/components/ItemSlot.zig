@@ -37,13 +37,13 @@ pub fn __deinit() void {
 }
 
 pub fn init(pos: Vec2f, itemStack: *ItemStack) Allocator.Error!*ItemSlot {
-	const self = try gui.allocator.create(ItemSlot);
+	const self = try main.globalAllocator.create(ItemSlot);
 	var buf: [16]u8 = undefined;
 	self.* = ItemSlot {
 		.itemStack = itemStack,
 		.oldStack = itemStack.*,
 		.pos = pos,
-		.text = try TextBuffer.init(gui.allocator, std.fmt.bufPrint(&buf, "{}", .{self.itemStack.amount}) catch "∞", .{}, false, .right),
+		.text = try TextBuffer.init(main.globalAllocator, std.fmt.bufPrint(&buf, "{}", .{self.itemStack.amount}) catch "∞", .{}, false, .right),
 	};
 	self.textSize = try self.text.calculateLineBreaks(8, self.size[0] - 2*border);
 	return self;
@@ -51,14 +51,14 @@ pub fn init(pos: Vec2f, itemStack: *ItemStack) Allocator.Error!*ItemSlot {
 
 pub fn deinit(self: *const ItemSlot) void {
 	self.text.deinit();
-	gui.allocator.destroy(self);
+	main.globalAllocator.destroy(self);
 }
 
 fn refreshText(self: *ItemSlot) !void {
 	self.text.deinit();
 	var buf: [16]u8 = undefined;
 	self.text = try TextBuffer.init(
-		gui.allocator,
+		main.globalAllocator,
 		std.fmt.bufPrint(&buf, "{}", .{self.itemStack.amount}) catch "∞",
 		.{.color = if(self.itemStack.amount == 0) 0xff0000 else 0xffffff},
 		false,
@@ -80,15 +80,6 @@ pub fn updateHovered(self: *ItemSlot, _: Vec2f) void {
 
 pub fn mainButtonPressed(self: *ItemSlot, _: Vec2f) void {
 	self.pressed = true;
-}
-
-pub fn mainButtonReleased(self: *ItemSlot, mousePosition: Vec2f) void {
-	if(self.pressed) {
-		self.pressed = false;
-		if(GuiComponent.contains(self.pos, self.size, mousePosition)) {
-			//TODO: self.onAction();
-		}
-	}
 }
 
 pub fn render(self: *ItemSlot, _: Vec2f) !void {

@@ -25,11 +25,9 @@ pub const windowlist = @import("windows/_windowlist.zig");
 var windowList: std.ArrayList(*GuiWindow) = undefined;
 var hudWindows: std.ArrayList(*GuiWindow) = undefined;
 pub var openWindows: std.ArrayList(*GuiWindow) = undefined;
-pub var selectedWindow: ?*GuiWindow = null; // TODO: Make private.
-pub var selectedTextInput: ?*TextInput = null;
+var selectedWindow: ?*GuiWindow = null;
+var selectedTextInput: ?*TextInput = null;
 var hoveredAWindow: bool = false;
-
-pub var allocator: Allocator = undefined;
 
 pub var scale: f32 = undefined;
 
@@ -47,11 +45,10 @@ pub const Callback = struct {
 	}
 };
 
-pub fn init(_allocator: Allocator) !void {
-	allocator = _allocator;
-	windowList = std.ArrayList(*GuiWindow).init(allocator);
-	hudWindows = std.ArrayList(*GuiWindow).init(allocator);
-	openWindows = std.ArrayList(*GuiWindow).init(allocator);
+pub fn init() !void {
+	windowList = std.ArrayList(*GuiWindow).init(main.globalAllocator);
+	hudWindows = std.ArrayList(*GuiWindow).init(main.globalAllocator);
+	openWindows = std.ArrayList(*GuiWindow).init(main.globalAllocator);
 	inline for(@typeInfo(windowlist).Struct.decls) |decl| {
 		const windowStruct = @field(windowlist, decl.name);
 		std.debug.assert(std.mem.eql(u8, decl.name, windowStruct.window.id)); // id and file name should be the same.
@@ -322,6 +319,11 @@ pub fn setSelectedTextInput(newSelectedTextInput: ?*TextInput) void {
 }
 
 pub const textCallbacks = struct {
+	pub fn char(codepoint: u21) !void {
+		if(selectedTextInput) |current| {
+			try current.inputCharacter(codepoint);
+		}
+	}
 	pub fn left(mods: main.Key.Modifiers) void {
 		if(selectedTextInput) |current| {
 			current.left(mods);
@@ -510,8 +512,8 @@ pub const inventory = struct {
 	var initialAmount: u16 = 0;
 
 	pub fn init() !void {
-		deliveredItemStacks = std.ArrayList(*ItemStack).init(allocator);
-		deliveredItemStacksOldAmount = std.ArrayList(u16).init(allocator);
+		deliveredItemStacks = std.ArrayList(*ItemStack).init(main.globalAllocator);
+		deliveredItemStacksOldAmount = std.ArrayList(u16).init(main.globalAllocator);
 		carriedItemSlot = try ItemSlot.init(.{0, 0}, &carriedItemStack);
 		carriedItemSlot.renderFrame = false;
 	}

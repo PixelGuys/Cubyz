@@ -291,9 +291,9 @@ pub const Window = struct {
 			}
 		}
 		fn charCallback(_: ?*c.GLFWwindow, codepoint: c_uint) callconv(.C) void {
-			if(gui.selectedTextInput) |textInput| {
-				textInput.inputCharacter(@intCast(u21, codepoint)) catch |err| {
-					std.log.err("Error while adding character to textInput: {s}", .{@errorName(err)});
+			if(!grabbed) {
+				gui.textCallbacks.char(@intCast(u21, codepoint)) catch |err| {
+					std.log.err("Error while calling char callback: {s}", .{@errorName(err)});
 				};
 			}
 		}
@@ -510,7 +510,7 @@ pub fn main() !void {
 	try graphics.init();
 	defer graphics.deinit();
 
-	try gui.init(globalAllocator);
+	try gui.init();
 	defer gui.deinit();
 
 	try rotation.init();

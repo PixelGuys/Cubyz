@@ -18,9 +18,9 @@ size: Vec2f,
 children: std.ArrayList(GuiComponent),
 
 pub fn init() Allocator.Error!*HorizontalList {
-	const self = try gui.allocator.create(HorizontalList);
+	const self = try main.globalAllocator.create(HorizontalList);
 	self.* = HorizontalList {
-		.children = std.ArrayList(GuiComponent).init(gui.allocator),
+		.children = std.ArrayList(GuiComponent).init(main.globalAllocator),
 		.pos = undefined,
 		.size = .{0, 0},
 	};
@@ -32,7 +32,7 @@ pub fn deinit(self: *const HorizontalList) void {
 		child.deinit();
 	}
 	self.children.deinit();
-	gui.allocator.destroy(self);
+	main.globalAllocator.destroy(self);
 }
 
 pub fn toComponent(self: *HorizontalList) GuiComponent {

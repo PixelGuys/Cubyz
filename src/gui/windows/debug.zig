@@ -40,7 +40,7 @@ fn flawedRender() !void {
 		y += 8;
 		// TODO: packet loss
 		y += 8;
-		// TODO: Protocl statistics(maybe?)
+		// TODO: Protocol statistics(maybe?)
 	}
 }
 

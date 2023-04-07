@@ -21,7 +21,7 @@ texture: Texture,
 hasShadow: bool,
 
 pub fn init(pos: Vec2f, size: Vec2f, texture: Texture, hasShadow: bool) Allocator.Error!*Icon {
-	const self = try gui.allocator.create(Icon);
+	const self = try main.globalAllocator.create(Icon);
 	self.* = Icon {
 		.texture = texture,
 		.pos = pos,
@@ -32,7 +32,7 @@ pub fn init(pos: Vec2f, size: Vec2f, texture: Texture, hasShadow: bool) Allocato
 }
 
 pub fn deinit(self: *const Icon) void {
-	gui.allocator.destroy(self);
+	main.globalAllocator.destroy(self);
 }
 
 pub fn toComponent(self: *Icon) GuiComponent {

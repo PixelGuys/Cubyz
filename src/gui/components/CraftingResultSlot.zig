@@ -36,12 +36,12 @@ pub fn __deinit() void {
 }
 
 pub fn init(pos: Vec2f, itemStack: ItemStack, onTake: gui.Callback) Allocator.Error!*CraftingResultSlot {
-	const self = try gui.allocator.create(CraftingResultSlot);
+	const self = try main.globalAllocator.create(CraftingResultSlot);
 	var buf: [16]u8 = undefined;
 	self.* = CraftingResultSlot {
 		.itemStack = itemStack,
 		.pos = pos,
-		.text = try TextBuffer.init(gui.allocator, std.fmt.bufPrint(&buf, "{}", .{self.itemStack.amount}) catch "∞", .{}, false, .right),
+		.text = try TextBuffer.init(main.globalAllocator, std.fmt.bufPrint(&buf, "{}", .{self.itemStack.amount}) catch "∞", .{}, false, .right),
 		.onTake = onTake,
 	};
 	self.textSize = try self.text.calculateLineBreaks(8, self.size[0] - 2*border);
@@ -50,7 +50,7 @@ pub fn init(pos: Vec2f, itemStack: ItemStack, onTake: gui.Callback) Allocator.Er
 
 pub fn deinit(self: *const CraftingResultSlot) void {
 	self.text.deinit();
-	gui.allocator.destroy(self);
+	main.globalAllocator.destroy(self);
 }
 
 pub fn toComponent(self: *CraftingResultSlot) GuiComponent {

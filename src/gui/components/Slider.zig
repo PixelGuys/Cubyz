@@ -43,19 +43,19 @@ pub fn __deinit() void {
 }
 
 pub fn init(pos: Vec2f, width: f32, text: []const u8, comptime fmt: []const u8, valueList: anytype, initialValue: u16, callback: *const fn(u16) void) Allocator.Error!*Slider {
-	var values = try gui.allocator.alloc([]const u8, valueList.len);
+	var values = try main.globalAllocator.alloc([]const u8, valueList.len);
 	var maxLen: usize = 0;
 	for(valueList, 0..) |value, i| {
-		values[i] = try std.fmt.allocPrint(gui.allocator, fmt, .{value});
+		values[i] = try std.fmt.allocPrint(main.globalAllocator, fmt, .{value});
 		maxLen = @max(maxLen, values[i].len);
 	}
 
-	const initialText = try gui.allocator.alloc(u8, text.len + maxLen);
+	const initialText = try main.globalAllocator.alloc(u8, text.len + maxLen);
 	std.mem.copy(u8, initialText, text);
 	std.mem.set(u8, initialText[text.len..], ' ');
 	const label = try Label.init(undefined, width - 3*border, initialText, .center);
 	const button = try Button.initText(.{0, 0}, undefined, "", .{});
-	const self = try gui.allocator.create(Slider);
+	const self = try main.globalAllocator.create(Slider);
 	self.* = Slider {
 		.pos = pos,
 		.size = undefined,
@@ -78,11 +78,11 @@ pub fn deinit(self: *const Slider) void {
 	self.label.deinit();
 	self.button.deinit();
 	for(self.values) |value| {
-		gui.allocator.free(value);
+		main.globalAllocator.free(value);
 	}
-	gui.allocator.free(self.values);
-	gui.allocator.free(self.currentText);
-	gui.allocator.destroy(self);
+	main.globalAllocator.free(self.values);
+	main.globalAllocator.free(self.currentText);
+	main.globalAllocator.destroy(self);
 }
 
 pub fn toComponent(self: *Slider) GuiComponent {
@@ -98,8 +98,8 @@ fn setButtonPosFromValue(self: *Slider) !void {
 }
 
 fn updateLabel(self: *Slider, newValue: []const u8, width: f32) !void {
-	gui.allocator.free(self.currentText);
-	self.currentText = try gui.allocator.alloc(u8, newValue.len + self.text.len);
+	main.globalAllocator.free(self.currentText);
+	self.currentText = try main.globalAllocator.alloc(u8, newValue.len + self.text.len);
 	std.mem.copy(u8, self.currentText, self.text);
 	std.mem.copy(u8, self.currentText[self.text.len..], newValue);
 	const label = try Label.init(undefined, width - 3*border, self.currentText, .center);
