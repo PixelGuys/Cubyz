@@ -51,7 +51,7 @@ pub const draw = struct {
 		translation = previousTranslation;
 	}
 
-	/// Returns the previous translation.
+	/// Returns the previous scale.
 	pub fn setScale(newScale: f32) f32 {
 		std.debug.assert(newScale >= 0);
 		const oldScale = scale;

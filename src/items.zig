@@ -1421,7 +1421,7 @@ pub fn registerRecipes(file: []const u8) !void {
 			}
 			const shortcut = try string.toOwnedSlice();
 			const id = std.mem.trim(u8, parts.rest(), &std.ascii.whitespace); // TODO: Unicode whitespaces
-			const item = getByID(id) orelse shortcuts.get(id) orelse &BaseItem.unobtainable;
+			const item = shortcuts.get(id) orelse getByID(id) orelse &BaseItem.unobtainable;
 			try shortcuts.put(shortcut, item);
 		} else if(std.mem.startsWith(u8, line, "result") and items.items.len != 0) {
 			defer items.clearAndFree();
@@ -1435,7 +1435,7 @@ pub fn registerRecipes(file: []const u8) !void {
 				id = parts.rest();
 			}
 			id = std.mem.trim(u8, id, &std.ascii.whitespace); // TODO: Unicode whitespaces
-			const item = getByID(id) orelse shortcuts.get(id) orelse continue;
+			const item = shortcuts.get(id) orelse getByID(id) orelse continue;
 			const recipe = Recipe {
 				.sourceItems = try arena.allocator().dupe(*BaseItem, items.items),
 				.sourceAmounts = try arena.allocator().dupe(u32, itemAmounts.items),
@@ -1446,6 +1446,7 @@ pub fn registerRecipes(file: []const u8) !void {
 			var ingredients = std.mem.split(u8, line, ",");
 			outer: while(ingredients.next()) |ingredient| {
 				var id = ingredient;
+				if(id.len == 0) continue;
 				var amount: u16 = 1;
 				if(std.mem.containsAtLeast(u8, id, 1, "*")) {
 					var parts = std.mem.split(u8, id, "*");
@@ -1454,7 +1455,7 @@ pub fn registerRecipes(file: []const u8) !void {
 					id = parts.rest();
 				}
 				id = std.mem.trim(u8, id, &std.ascii.whitespace); // TODO: Unicode whitespaces
-				const item = getByID(id) orelse shortcuts.get(id) orelse continue;
+				const item = shortcuts.get(id) orelse getByID(id) orelse continue;
 				// Resolve duplicates:
 				for(items.items, 0..) |presentItem, i| {
 					if(presentItem == item) {

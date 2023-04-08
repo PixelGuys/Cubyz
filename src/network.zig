@@ -81,11 +81,11 @@ const Socket = struct {
 
 pub fn init() void {
 	Socket.startup();
-	inline for(@typeInfo(@TypeOf(Protocols)).Struct.fields) |field| {
-		if(field.type == type) {
-			const id = @field(Protocols, field.name).id;
+	inline for(@typeInfo(Protocols).Struct.decls) |decl| {
+		if(@TypeOf(@field(Protocols, decl.name)) == type) {
+			const id = @field(Protocols, decl.name).id;
 			if(id != Protocols.keepAlive and id != Protocols.important and Protocols.list[id] == null) {
-				Protocols.list[id] = @field(Protocols, field.name).receive;
+				Protocols.list[id] = @field(Protocols, decl.name).receive;
 			} else {
 				std.log.err("Duplicate list id {}.", .{id});
 			}
@@ -568,13 +568,12 @@ const UnconfirmedPacket = struct {
 
 pub var bytesReceived: [256]usize = [_]usize {0} ** 256;
 pub var packetsReceived: [256]usize = [_]usize {0} ** 256;
-pub const Protocols: struct {
-	var _list: [256]?*const fn(*Connection, []const u8) anyerror!void = [_]?*const fn(*Connection, []const u8) anyerror!void {null} ** 256;
-	list: *[256]?*const fn(*Connection, []const u8) anyerror!void = &_list,
+pub const Protocols = struct {
+	pub var list: [256]?*const fn(*Connection, []const u8) anyerror!void = [_]?*const fn(*Connection, []const u8) anyerror!void {null} ** 256;
 
-	keepAlive: u8 = 0,
-	important: u8 = 0xff,
-	handShake: type = struct {
+	pub const keepAlive: u8 = 0;
+	pub const important: u8 = 0xff;
+	pub const handShake = struct {
 		const id: u8 = 1;
 		const stepStart: u8 = 0;
 		const stepUserData: u8 = 1;
@@ -675,8 +674,8 @@ pub const Protocols: struct {
 			conn.handShakeWaiting.wait(&conn.mutex);
 			conn.mutex.unlock();
 		}
-	},
-	chunkRequest: type = struct {
+	};
+	pub const chunkRequest = struct {
 		const id: u8 = 2;
 		fn receive(conn: *Connection, data: []const u8) !void {
 			var remaining = data[0..];
@@ -707,8 +706,8 @@ pub const Protocols: struct {
 			}
 			try conn.sendImportant(id, data);
 		}
-	},
-	chunkTransmission: type = struct {
+	};
+	pub const chunkTransmission = struct {
 		const id: u8 = 3;
 		fn receive(_: *Connection, _data: []const u8) !void {
 			var data = _data;
@@ -759,8 +758,8 @@ pub const Protocols: struct {
 			defer main.threadAllocator.free(compressed);
 			try conn.sendImportant(id, compressed);
 		}
-	},
-	playerPosition: type = struct {
+	};
+	pub const playerPosition = struct {
 		const id: u8 = 4;
 		fn receive(conn: *Connection, data: []const u8) !void {
 			_ = conn;
@@ -786,8 +785,8 @@ pub const Protocols: struct {
 			std.mem.writeIntBig(u16, data[60..62], time);
 			try conn.sendUnimportant(id, &data);
 		}
-	},
-	disconnect: type = struct {
+	};
+	pub const disconnect = struct {
 		const id: u8 = 5;
 		fn receive(conn: *Connection, _: []const u8) !void {
 			try conn.disconnect();
@@ -796,8 +795,8 @@ pub const Protocols: struct {
 			const noData = [0]u8 {};
 			try conn.sendUnimportant(id, &noData);
 		}
-	},
-	entityPosition: type = struct {
+	};
+	pub const entityPosition = struct {
 		const id: u8 = 6;
 		const type_entity: u8 = 0;
 		const type_item: u8 = 1;
@@ -805,7 +804,7 @@ pub const Protocols: struct {
 			if(conn.manager.world) |world| {
 				const time = std.mem.readIntBig(i16, data[1..3]);
 				if(data[0] == type_entity) {
-					try entity.ClientEntityManager.serverUpdate(time, data[3..]);
+					try main.entity.ClientEntityManager.serverUpdate(time, data[3..]);
 				} else if(data[0] == type_item) {
 					world.itemDrops.readPosition(data[3..], time);
 				}
@@ -826,8 +825,8 @@ pub const Protocols: struct {
 			std.mem.copy(u8, fullItemData[3..], itemData);
 			conn.sendUnimportant(id, fullItemData);
 		}
-	},
-	blockUpdate: type = struct {
+	};
+	pub const blockUpdate = struct {
 		const id: u8 = 7;
 		fn receive(_: *Connection, data: []const u8) !void {
 			var x = std.mem.readIntBig(i32, data[0..4]);
@@ -850,8 +849,8 @@ pub const Protocols: struct {
 			std.mem.writeIntBig(u32, data[12..16], newBlock.toInt());
 			try conn.sendImportant(id, &data);
 		}
-	},
-	entity: type = struct {
+	};
+	pub const entity = struct {
 		const id: u8 = 8;
 		fn receive(conn: *Connection, data: []const u8) !void {
 			const jsonArray = JsonElement.parseFromString(main.threadAllocator, data);
@@ -861,10 +860,10 @@ pub const Protocols: struct {
 				const elem = jsonArray.JsonArray.items[i];
 				switch(elem) {
 					.JsonInt => {
-						entity.ClientEntityManager.removeEntity(elem.as(u32, 0));
+						main.entity.ClientEntityManager.removeEntity(elem.as(u32, 0));
 					},
 					.JsonObject => {
-						try entity.ClientEntityManager.addEntity(elem);
+						try main.entity.ClientEntityManager.addEntity(elem);
 					},
 					.JsonNull => {
 						i += 1;
@@ -974,8 +973,8 @@ pub const Protocols: struct {
 //					}
 //				}
 //			}
-	},
-	genericUpdate: type = struct {
+	};
+	pub const genericUpdate = struct {
 		const id: u8 = 9;
 		const type_renderDistance: u8 = 0;
 		const type_teleport: u8 = 1;
@@ -1191,8 +1190,8 @@ pub const Protocols: struct {
 //		data.put("biome", world.getBiome((int)user.player.getPosition().x, (int)user.player.getPosition().y, (int)user.player.getPosition().z).getRegistryID().toString());
 //		addHeaderAndSendUnimportant(user, TIME_AND_BIOME, data.toString().getBytes(StandardCharsets.UTF_8));
 //	}
-	},
-	chat: type = struct {
+	};
+	pub const chat = struct {
 		const id: u8 = 10;
 		fn receive(conn: *Connection, data: []const u8) !void {
 			_ = conn;
@@ -1223,8 +1222,8 @@ pub const Protocols: struct {
 //		}
 //	}
 //}
-	},
-} = .{};
+	};
+};
 
 
 pub const Connection = struct {
