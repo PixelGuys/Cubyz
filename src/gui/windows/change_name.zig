@@ -16,7 +16,6 @@ const VerticalList = @import("../components/VerticalList.zig");
 pub var window = GuiWindow {
 	.contentSize = Vec2f{128, 256},
 	.id = "change_name",
-	.title = "Change Name",
 };
 var textComponent: *TextInput = undefined;
 

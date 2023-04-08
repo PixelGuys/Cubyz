@@ -116,6 +116,7 @@ pub const World = struct {
 	}
 
 	pub fn deinit(self: *World) void {
+		// TODO: Close all world related guis.
 		self.conn.deinit();
 		self.itemDrops.deinit();
 		self.blockPalette.deinit();

@@ -13,7 +13,6 @@ const GuiComponent = gui.GuiComponent;
 
 pub var window = GuiWindow {
 	.contentSize = Vec2f{128, 64},
-	.title = "Performance Graph",
 	.id = "performance_graph",
 	.isHud = false,
 	.showTitleBar = false,

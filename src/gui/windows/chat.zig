@@ -16,7 +16,6 @@ const VerticalList = @import("../components/VerticalList.zig");
 pub var window: GuiWindow = GuiWindow {
 	.contentSize = Vec2f{128, 256},
 	.id = "chat",
-	.title = "Chat",
 	.showTitleBar = false,
 	.hasBackground = false,
 	.isHud = true,

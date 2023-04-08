@@ -21,7 +21,6 @@ const ImmutableItemSlot = GuiComponent.ImmutableItemSlot;
 
 pub var window = GuiWindow {
 	.contentSize = Vec2f{64*8, 64*4},
-	.title = "Crafting",
 	.id = "inventory_crafting",
 };
 

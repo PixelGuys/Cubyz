@@ -113,6 +113,12 @@ pub fn mainButtonPressed(self: *ItemSlot, _: Vec2f) void {
 	self.pressed = true;
 }
 
+pub fn mainButtonReleased(self: *ItemSlot, _: Vec2f) void {
+	if(self.pressed) {
+		self.pressed = false;
+	}
+}
+
 pub fn render(self: *ItemSlot, _: Vec2f) !void {
 	draw.setColor(0xffffffff);
 	if(self.renderFrame) {

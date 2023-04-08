@@ -13,7 +13,6 @@ const GuiComponent = gui.GuiComponent;
 
 pub var window = GuiWindow {
 	.contentSize = Vec2f{128, 16},
-	.title = "Debug",
 	.id = "debug",
 	.isHud = false,
 	.showTitleBar = false,

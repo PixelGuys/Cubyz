@@ -53,7 +53,6 @@ contentSize: Vec2f,
 scale: f32 = 1,
 spacing: f32 = 0,
 relativePosition: [2]RelativePosition = .{.{.ratio = 0.5}, .{.ratio = 0.5}},
-title: []const u8 = "",
 id: []const u8,
 rootComponent: ?GuiComponent = null,
 showTitleBar: bool = true,
@@ -493,12 +492,6 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) !void {
 	}
 	draw.restoreTranslation(oldTranslation);
 	draw.restoreScale(oldScale);
-	if(self.showTitleBar and false) { // TODO: Figure out whether I should even draw titlebar text.
-		var text = try graphics.TextBuffer.init(gui.allocator, self.title, .{.color=0}, false, .center);
-		defer text.deinit();
-		const titleDimension = try text.calculateLineBreaks(16*self.scale, self.size[0]);
-		try text.render(self.pos[0] + self.size[0]/2 - titleDimension[0]/2, self.pos[1], 16*self.scale);
-	}
 	if(self == grabbedWindow and grabPosition != null) {
 		self.drawOrientationLines();
 	}

@@ -14,7 +14,6 @@ const ItemSlot = GuiComponent.ItemSlot;
 
 pub var window = GuiWindow {
 	.contentSize = Vec2f{64*8, 64},
-	.title = "Hotbar",
 	.id = "hotbar",
 	.isHud = true,
 	.showTitleBar = false,
