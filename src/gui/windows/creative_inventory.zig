@@ -21,15 +21,32 @@ pub var window = GuiWindow {
 };
 
 const padding: f32 = 8;
-var itemStacks: std.ArrayList(ItemStack) = undefined;
 var items: std.ArrayList(Item) = undefined;
 
+pub fn tryAddingItems(_: usize, _: *ItemStack, _: u16) void {
+	return;
+}
+
+pub fn tryTakingItems(index: usize, destination: *ItemStack, amount: u16) void {
+	if(destination.item != null and !std.meta.eql(destination.item.?, items.items[index])) return;
+	destination.item = items.items[index];
+	_ = destination.add(amount);
+}
+
+pub fn trySwappingItems(_: usize, _: *ItemStack) void {
+	return;
+}
+
+const vtable = ItemSlot.VTable {
+	.tryAddingItems = &tryAddingItems,
+	.tryTakingItems = &tryTakingItems,
+	.trySwappingItems = &trySwappingItems,
+};
+
 pub fn onOpen() Allocator.Error!void {
-	itemStacks = std.ArrayList(ItemStack).init(main.globalAllocator);
 	items = std.ArrayList(Item).init(main.globalAllocator);
 	var itemIterator = main.items.iterator();
 	while(itemIterator.next()) |item| {
-		try itemStacks.append(.{});
 		try items.append(Item{.baseItem = item.*});
 	}
 
@@ -39,7 +56,8 @@ pub fn onOpen() Allocator.Error!void {
 		var row = try HorizontalList.init();
 		for(0..8) |_| {
 			if(i >= items.items.len) break;
-			try row.add(try ItemSlot.init(.{0, 0}, &itemStacks.items[i]));
+			const item = items.items[i];
+			try row.add(try ItemSlot.init(.{0, 0}, .{.item = item, .amount = item.stackSize()}, &vtable, i));
 			i += 1;
 		}
 		try list.add(row);
@@ -54,13 +72,5 @@ pub fn onClose() void {
 	if(window.rootComponent) |*comp| {
 		comp.deinit();
 	}
-	itemStacks.deinit();
 	items.deinit();
-}
-
-pub fn render() Allocator.Error!void {
-	for(itemStacks.items, items.items) |*stack, item| {
-		stack.item = item;
-		stack.amount = 64;
-	}
 }

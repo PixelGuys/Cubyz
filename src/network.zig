@@ -1138,7 +1138,7 @@ pub const Protocols: struct {
 			try conn.sendImportant(id, &data);
 		}
 
-		pub fn sendInventory_ItemStack_add(conn: *Connection, slot: u32, amount: u32) !void {
+		pub fn sendInventory_ItemStack_add(conn: *Connection, slot: u32, amount: i32) !void {
 			var data: [9]u8 = undefined;
 			data[0] = type_inventoryAdd;
 			std.mem.writeIntBig(u32, data[1..5], slot);

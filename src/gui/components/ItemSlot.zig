@@ -3,6 +3,7 @@ const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const ItemStack = main.items.ItemStack;
+const Item = main.items.Items;
 const graphics = main.graphics;
 const draw = graphics.draw;
 const Texture = graphics.Texture;
@@ -18,15 +19,22 @@ const ItemSlot = @This();
 var texture: Texture = undefined;
 const border: f32 = 2;
 
+pub const VTable = struct {
+	tryAddingItems: *const fn(usize, *ItemStack, u16) void,
+	tryTakingItems: *const fn(usize, *ItemStack, u16) void,
+	trySwappingItems: *const fn(usize, *ItemStack) void,
+};
+
 pos: Vec2f,
 size: Vec2f = .{24 + 2*border, 24 + 2*border},
-itemStack: *ItemStack,
-oldStack: ItemStack,
+itemStack: ItemStack,
 text: TextBuffer,
 textSize: Vec2f = .{0, 0},
 hovered: bool = false,
 pressed: bool = false,
 renderFrame: bool = true,
+userData: usize,
+vtable: *const VTable,
 
 pub fn __init() !void {
 	texture = try Texture.initFromFile("assets/cubyz/ui/inventory/slot.png");
@@ -36,12 +44,13 @@ pub fn __deinit() void {
 	texture.deinit();
 }
 
-pub fn init(pos: Vec2f, itemStack: *ItemStack) Allocator.Error!*ItemSlot {
+pub fn init(pos: Vec2f, itemStack: ItemStack, vtable: *const VTable, userData: usize) Allocator.Error!*ItemSlot {
 	const self = try main.globalAllocator.create(ItemSlot);
 	var buf: [16]u8 = undefined;
 	self.* = ItemSlot {
 		.itemStack = itemStack,
-		.oldStack = itemStack.*,
+		.vtable = vtable,
+		.userData = userData,
 		.pos = pos,
 		.text = try TextBuffer.init(main.globalAllocator, std.fmt.bufPrint(&buf, "{}", .{self.itemStack.amount}) catch "∞", .{}, false, .right),
 	};
@@ -52,6 +61,28 @@ pub fn init(pos: Vec2f, itemStack: *ItemStack) Allocator.Error!*ItemSlot {
 pub fn deinit(self: *const ItemSlot) void {
 	self.text.deinit();
 	main.globalAllocator.destroy(self);
+}
+
+pub fn tryAddingItems(self: *ItemSlot, source: *ItemStack, amount: u16) void {
+	std.debug.assert(source.item != null);
+	std.debug.assert(amount <= source.amount);
+	self.vtable.tryAddingItems(self.userData, source, amount);
+}
+
+pub fn tryTakingItems(self: *ItemSlot, destination: *ItemStack, amount: u16) void {
+	self.vtable.tryTakingItems(self.userData, destination, amount);
+}
+
+pub fn trySwappingItems(self: *ItemSlot, destination: *ItemStack) void {
+	self.vtable.trySwappingItems(self.userData, destination);
+}
+
+pub fn updateItemStack(self: *ItemSlot, newStack: ItemStack) !void {
+	const oldAmount = self.itemStack.amount;
+	self.itemStack = newStack;
+	if(oldAmount != newStack.amount) {
+		try self.refreshText();
+	}
 }
 
 fn refreshText(self: *ItemSlot) !void {
@@ -83,11 +114,6 @@ pub fn mainButtonPressed(self: *ItemSlot, _: Vec2f) void {
 }
 
 pub fn render(self: *ItemSlot, _: Vec2f) !void {
-	const newStack = self.itemStack.*;
-	if(newStack.amount != self.oldStack.amount) {
-		try self.refreshText();
-		self.oldStack.amount = newStack.amount;
-	}
 	draw.setColor(0xffffffff);
 	if(self.renderFrame) {
 		texture.bindTo(0);

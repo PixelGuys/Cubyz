@@ -40,6 +40,45 @@ var craftingResult: *CraftingResultSlot = undefined;
 
 var seed: u32 = undefined;
 
+var itemSlots: [25]*ItemSlot = undefined;
+
+pub fn tryAddingItems(index: usize, source: *ItemStack, amount: u16) void {
+	if(source.item == null) return;
+	if(source.item.? != .baseItem) return;
+	if(source.item.?.baseItem.material == null) return;
+	const destination = &craftingGrid[index];
+	if(destination.item != null and !std.meta.eql(source.item, destination.item)) return;
+	destination.item = source.item;
+	const actual = destination.add(amount);
+	source.amount -= actual;
+	if(source.amount == 0) source.item = null;
+}
+
+pub fn tryTakingItems(index: usize, destination: *ItemStack, _amount: u16) void {
+	var amount = _amount;
+	const source = &craftingGrid[index];
+	if(destination.item != null and !std.meta.eql(source.item, destination.item)) return;
+	if(source.item == null) return;
+	amount = @min(amount, source.amount);
+	destination.item = source.item;
+	const actual = destination.add(amount);
+	source.amount -= actual;
+	if(source.amount == 0) source.item = null;
+}
+
+pub fn trySwappingItems(index: usize, source: *ItemStack) void {
+	const destination = &craftingGrid[index];
+	const swap = destination.*;
+	destination.* = source.*;
+	source.* = swap;
+}
+
+const vtable = ItemSlot.VTable {
+	.tryAddingItems = &tryAddingItems,
+	.tryTakingItems = &tryTakingItems,
+	.trySwappingItems = &trySwappingItems,
+};
+
 fn onTake(_: usize) void {
 	for(&craftingGrid) |*itemStack| {
 		if(itemStack.item != null and itemStack.item.? == .baseItem and itemStack.item.?.baseItem.material != null) {
@@ -93,7 +132,10 @@ pub fn onOpen() Allocator.Error!void {
 		for(0..5) |y| {
 			var row = try HorizontalList.init();
 			for(0..5) |x| {
-				try row.add(try ItemSlot.init(.{0, 0}, &craftingGrid[x + y*5]));
+				const index = x + y*5;
+				const slot = try ItemSlot.init(.{0, 0}, craftingGrid[index], &vtable, index);
+				itemSlots[index] = slot;
+				try row.add(slot);
 			}
 			try grid.add(row);
 		}
@@ -128,9 +170,15 @@ pub fn onClose() void {
 			}
 		}
 	}
+	main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, Player.inventory__SEND_CHANGES_TO_SERVER) catch |err| { // TODO(post-java): Add better options to the protocol.
+		std.log.err("Got error while trying to send inventory data: {s}", .{@errorName(err)});
+	};
 	craftingGrid = undefined;
 }
 
 pub fn update() Allocator.Error!void {
+	for(&itemSlots, &craftingGrid) |slot, stack| {
+		try slot.updateItemStack(stack);
+	}
 	try refresh();
 }

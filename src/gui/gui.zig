@@ -507,26 +507,26 @@ pub const inventory = struct {
 	const ItemStack = main.items.ItemStack;
 	pub var carriedItemStack: ItemStack = .{.item = null, .amount = 0};
 	var carriedItemSlot: *ItemSlot = undefined;
-	var deliveredItemStacks: std.ArrayList(*ItemStack) = undefined;
-	var deliveredItemStacksOldAmount: std.ArrayList(u16) = undefined;
+	var deliveredItemSlots: std.ArrayList(*ItemSlot) = undefined;
+	var deliveredItemStacksAmountAdded: std.ArrayList(u16) = undefined;
 	var initialAmount: u16 = 0;
 
 	pub fn init() !void {
-		deliveredItemStacks = std.ArrayList(*ItemStack).init(main.globalAllocator);
-		deliveredItemStacksOldAmount = std.ArrayList(u16).init(main.globalAllocator);
-		carriedItemSlot = try ItemSlot.init(.{0, 0}, &carriedItemStack);
+		deliveredItemSlots = std.ArrayList(*ItemSlot).init(main.globalAllocator);
+		deliveredItemStacksAmountAdded = std.ArrayList(u16).init(main.globalAllocator);
+		carriedItemSlot = try ItemSlot.init(.{0, 0}, carriedItemStack, undefined, undefined);
 		carriedItemSlot.renderFrame = false;
 	}
 
 	fn deinit() void {
 		carriedItemSlot.deinit();
-		deliveredItemStacks.deinit();
-		deliveredItemStacksOldAmount.deinit();
+		deliveredItemSlots.deinit();
+		deliveredItemStacksAmountAdded.deinit();
 		std.debug.assert(carriedItemStack.amount == 0);
 	}
 
 	fn update() !void {
-		if(deliveredItemStacks.items.len == 0) {
+		if(deliveredItemSlots.items.len == 0) {
 			initialAmount = carriedItemStack.amount;
 		}
 		if(hoveredItemSlot) |itemSlot| {
@@ -534,70 +534,58 @@ pub const inventory = struct {
 			if(!std.meta.eql(itemSlot.itemStack.item, carriedItemStack.item) and itemSlot.itemStack.item != null) return;
 
 			if(main.keyboard.mainGuiButton.pressed) {
-				for(deliveredItemStacks.items) |deliveredStack| {
-					if(itemSlot.itemStack == deliveredStack) {
+				for(deliveredItemSlots.items) |deliveredSlot| {
+					if(itemSlot == deliveredSlot) {
 						return;
 					}
 				}
-				for(deliveredItemStacks.items, deliveredItemStacksOldAmount.items) |deliveredStack, oldAmount| {
-					deliveredStack.amount = oldAmount;
+				for(deliveredItemSlots.items, deliveredItemStacksAmountAdded.items) |deliveredSlot, oldAmountAdded| {
+					deliveredSlot.tryTakingItems(&carriedItemStack, oldAmountAdded);
 				}
-				try deliveredItemStacks.append(itemSlot.itemStack);
-				if(itemSlot.itemStack.item == null) {
-					itemSlot.itemStack.item = carriedItemStack.item;
-				}
-				try deliveredItemStacksOldAmount.append(itemSlot.itemStack.amount);
+				initialAmount = carriedItemStack.amount;
+				try deliveredItemSlots.append(itemSlot);
+				try deliveredItemStacksAmountAdded.append(0);
 				carriedItemStack.amount = initialAmount;
-				const addedAmount = initialAmount/deliveredItemStacks.items.len;
-				for(deliveredItemStacks.items) |deliveredStack| {
-					carriedItemStack.amount -= @intCast(u16, deliveredStack.add(addedAmount));
+				const addedAmount = @intCast(u16, initialAmount/deliveredItemSlots.items.len);
+				for(deliveredItemSlots.items, deliveredItemStacksAmountAdded.items) |deliveredSlot, *amountAdded| {
+					const old = carriedItemStack.amount;
+					deliveredSlot.tryAddingItems(&carriedItemStack, addedAmount);
+					amountAdded.* = old - carriedItemStack.amount;
 				}
 			} else if(main.keyboard.secondaryGuiButton.pressed) {
-				for(deliveredItemStacks.items) |deliveredStack| {
-					if(itemSlot.itemStack == deliveredStack) {
+				for(deliveredItemSlots.items) |deliveredStack| {
+					if(itemSlot == deliveredStack) {
 						return;
 					}
 				}
 				if(carriedItemStack.amount != 0) {
-					if(itemSlot.itemStack.item == null) {
-						itemSlot.itemStack.item = carriedItemStack.item;
-					}
-					if(itemSlot.itemStack.add(@as(u32, 1)) == 1) {
-						try deliveredItemStacks.append(itemSlot.itemStack);
-						carriedItemStack.amount -= 1;
-					}
+					itemSlot.tryAddingItems(&carriedItemStack, 1);
+					try deliveredItemSlots.append(itemSlot);
+					try deliveredItemStacksAmountAdded.append(1);
 				}
 			}
 		}
+		try carriedItemSlot.updateItemStack(carriedItemStack);
 	}
 
 	fn applyChanges(leftClick: bool) void {
 		if(main.game.world == null) return;
-		if(deliveredItemStacks.items.len != 0) {
-			deliveredItemStacks.clearRetainingCapacity();
-			deliveredItemStacksOldAmount.clearRetainingCapacity();
+		if(deliveredItemSlots.items.len != 0) {
+			deliveredItemSlots.clearRetainingCapacity();
+			deliveredItemStacksAmountAdded.clearRetainingCapacity();
 			if(carriedItemStack.amount == 0) {
 				carriedItemStack.item = null;
 			}
 		} else if(hoveredItemSlot) |hovered| {
 			if(carriedItemStack.amount != 0) {
 				if(leftClick) {
-					const swap = hovered.itemStack.*;
-					hovered.itemStack.* = carriedItemStack;
-					carriedItemStack = swap;
+					hovered.trySwappingItems(&carriedItemStack);
 				}
 			} else {
 				if(leftClick) {
-					carriedItemStack = hovered.itemStack.*;
-					hovered.itemStack.amount = 0;
-					hovered.itemStack.item = null;
+					hovered.tryTakingItems(&carriedItemStack, std.math.maxInt(u16));
 				} else {
-					carriedItemStack = hovered.itemStack.*;
-					hovered.itemStack.amount /= 2;
-					carriedItemStack.amount -= hovered.itemStack.amount;
-					if(hovered.itemStack.amount == 0) {
-						hovered.itemStack.item = null;
-					}
+					hovered.tryTakingItems(&carriedItemStack, hovered.itemStack.amount/2);
 				}
 			}
 		} else if(!hoveredAWindow) {
