@@ -45,6 +45,7 @@ pub fn build(b: *std.build.Builder) !void {
 	}
 	exe.addCSourceFiles(&[_][]const u8{"lib/glad.c", "lib/stb_image.c", "lib/stb_image_write.c"}, &[_][]const u8{"-g", "-O3"});
 	exe.addAnonymousModule("gui", .{.source_file = .{.path = "src/gui/gui.zig"}});
+	exe.addAnonymousModule("server", .{.source_file = .{.path = "src/server/server.zig"}});
 	const harfbuzzModule = freetype.harfbuzzModule(b);
 	const freetypeModule = harfbuzzModule.dependencies.get("freetype").?;
 	exe.addModule("harfbuzz", harfbuzzModule);

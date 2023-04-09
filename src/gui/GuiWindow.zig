@@ -155,7 +155,9 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 				if(mousePosition[0] - self.pos[0] > self.size[0] - 32*self.scale) {
 					if(mousePosition[0] - self.pos[0] > self.size[0] - 16*self.scale) {
 						// Close
-						gui.closeWindow(self);
+						gui.closeWindow(self) catch |err| {
+							std.log.err("Got error while trying to close a window: {s}", .{@errorName(err)});
+						};
 						return;
 					} else {
 						// Zoom out

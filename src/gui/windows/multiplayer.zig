@@ -71,7 +71,9 @@ fn join(_: usize) void {
 		std.log.err("No connection found. Cannot connect.", .{});
 	}
 	for(gui.openWindows.items) |openWindow| {
-		gui.closeWindow(openWindow);
+		gui.closeWindow(openWindow) catch |err| {
+			std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
+		};
 	}
 	gui.openHud() catch |err| {
 		std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});

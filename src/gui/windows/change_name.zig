@@ -29,7 +29,10 @@ fn apply(_: usize) void {
 		return;
 	};
 
-	gui.closeWindow(&window);
+	gui.closeWindow(&window) catch |err| {
+		std.log.err("Encountered error in change_name.apply while closing window: {s}", .{@errorName(err)});
+		return;
+	};
 	if(oldName.len == 0) {
 		gui.openWindow("main") catch |err| {
 			std.log.err("Encountered error in change_name.apply: {s}", .{@errorName(err)});

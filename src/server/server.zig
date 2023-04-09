@@ -1,0 +1,228 @@
+const std = @import("std");
+
+const main = @import("root");
+const network = main.network;
+const Connection = network.Connection;
+const ConnectionManager = network.ConnectionManager;
+const utils = main.utils;
+const vec = main.vec;
+const Vec3d = vec.Vec3d;
+
+
+pub const User = struct {
+	conn: *Connection,	
+//TODO:	public Player player;
+	timeDifference: utils.TimeDifference = .{},
+	interpolation: utils.GenericInterpolation(3) = undefined,
+	lastTime: i16 = undefined,
+	name: []const u8 = "",
+	renderDistance: u16 = undefined,
+	lodFactor: f32 = undefined,
+	receivedFirstEntityData: bool = false,
+	pos: [3]f64 = undefined, // TODO: Use position from te entity.
+	vel: [3]f64 = undefined,
+	// TODO: ipPort: []const u8,
+//	TODO: public Thread waitingThread;
+
+	pub fn init(manager: *ConnectionManager, ipPort: []const u8) !*User {
+		const self = try main.globalAllocator.create(User);
+		self.* = User {
+			.conn = try Connection.init(manager, ipPort),
+		};
+		self.conn.user = self;
+		self.interpolation.init(&self.pos, &self.vel);
+		// TODO: self.interpolation.init(&player.pos, &player.vel);
+		network.Protocols.handShake.serverSide(self.conn);
+		// TODO:
+//		synchronized(this) {
+//			waitingThread = Thread.currentThread();
+//			this.wait();
+//			waitingThread = null;
+//		}
+		return self;
+	}
+
+	pub fn deinit(self: *User) void {
+		main.globalAllocator.destroy(self);
+		self.conn.deinit();
+	}
+//	@Override
+//	public void disconnect() {
+//		super.disconnect();
+//		Server.disconnect(this);
+//	}
+
+	pub fn initPlayer(self: *User, name: []const u8) void {
+		self.name = name;
+		// TODO:
+//		assert(player == null);
+//		player = Server.world.findPlayer(this);
+//		interpolation.outPosition[0] = player.getPosition().x;
+//		interpolation.outPosition[1] = player.getPosition().y;
+//		interpolation.outPosition[2] = player.getPosition().z;
+//		interpolation.outVelocity[0] = player.vx;
+//		interpolation.outVelocity[1] = player.vy;
+//		interpolation.outVelocity[2] = player.vz;
+	}
+
+	pub fn update(self: *User) void {
+		var time = @truncate(i16, std.time.milliTimestamp()) -% main.settings.entityLookback;
+		time -= self.timeDifference.difference.load(.Monotonic);
+		self.interpolation.update(time, self.lastTime);
+		// TODO:
+//		player.getPosition().x = interpolation.outPosition[0];
+//		player.getPosition().y = interpolation.outPosition[1];
+//		player.getPosition().z = interpolation.outPosition[2];
+//		player.vx = interpolation.outVelocity[0];
+//		player.vy = interpolation.outVelocity[1];
+//		player.vz = interpolation.outVelocity[2];
+		self.lastTime = time;
+	}
+
+	pub fn receiveData(self: *User, data: []const u8) void {
+		const position: [3]f64 = .{
+			@bitCast(f64, std.mem.readIntBig(u64, data[0..8])),
+			@bitCast(f64, std.mem.readIntBig(u64, data[8..16])),
+			@bitCast(f64, std.mem.readIntBig(u64, data[16..24])),
+		};
+		const velocity: [3]f64 = .{
+			@bitCast(f64, std.mem.readIntBig(u64, data[24..32])),
+			@bitCast(f64, std.mem.readIntBig(u64, data[32..40])),
+			@bitCast(f64, std.mem.readIntBig(u64, data[40..48])),
+		};
+		const rotation: [3]f32 = .{
+			@bitCast(f32, std.mem.readIntBig(u32, data[48..52])),
+			@bitCast(f32, std.mem.readIntBig(u32, data[52..56])),
+			@bitCast(f32, std.mem.readIntBig(u32, data[56..60])),
+		};
+		_ = rotation;
+//		TODO: player.getRotation().set(rotation);
+		const time = std.mem.readIntBig(i16, data[60..62]);
+		self.timeDifference.addDataPoint(time);
+		self.interpolation.updatePosition(&position, &velocity, time);
+	}
+	// TODO (Command stuff):
+//	@Override
+//	public void feedback(String feedback) {
+//		Protocols.CHAT.send(this, "#ffff00"+feedback);
+//	}
+};
+
+const updatesPerSec: u32 = 20;
+const updateNanoTime: u32 = 1000000000/20;
+// TODO:
+//	public static ServerWorld world = null;
+pub var users: std.ArrayList(*User) = undefined;
+
+pub var connectionManager: *ConnectionManager = undefined;
+
+var running: bool = false;
+var lastTime: i128 = undefined;
+
+var mutex: std.Thread.Mutex = .{};
+
+fn init() !void {
+	users = std.ArrayList(*User).init(main.globalAllocator);
+	lastTime = std.time.nanoTimestamp();
+	connectionManager = try ConnectionManager.init(main.settings.defaultPort, false); // TODO Configure the second argument in the server settings.
+	// TODO: Load the assets.
+// TODO:
+//	Server.world = new ServerWorld(args[0], null);
+	if(true) { // singleplayer // TODO: Configure this in the server settings.
+		const user = try User.init(connectionManager, "127.0.0.1:47650");
+		try connect(user);
+	}
+}
+
+fn deinit() void {
+	for(users.items) |user| {
+		user.deinit();
+	}
+	users.clearAndFree();
+	connectionManager.deinit();
+	connectionManager = undefined;
+	// TODO:
+//		if(world != null)
+//			world.cleanup();
+//		world = null;
+}
+
+fn update() !void {
+//		TODO: world.update();
+	mutex.lock();
+	for(users.items) |user| {
+		user.update();
+	}
+	mutex.unlock();
+	// TODO:
+//		Entity[] entities = world.getEntities();
+//		Protocols.ENTITY.sendToClients(entities, lastSentEntities, world.itemEntityManager);
+//		lastSentEntities = entities;
+}
+
+pub fn start() !void {
+	var gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe=false}){};
+	main.threadAllocator = gpa.allocator();
+	defer if(gpa.deinit()) {
+		std.log.err("Memory leak", .{});
+	};
+	std.debug.assert(!running); // There can only be one server.
+	try init();
+	defer deinit();
+	running = true;
+	while(running) {
+		const newTime = std.time.nanoTimestamp();
+		if(newTime -% lastTime < updateNanoTime) {
+			std.time.sleep(@intCast(u64, lastTime +% updateNanoTime -% newTime));
+			lastTime +%= updateNanoTime;
+		} else {
+			std.log.warn("The server is lagging behind by {d:.1} ms", .{@intToFloat(f32, newTime -% lastTime -% updateNanoTime)/1000000.0});
+			lastTime = newTime;
+		}
+		try update();
+
+	}
+}
+
+pub fn stop() void {
+	running = false;
+}
+
+pub fn disconnect(user: *User) !void {
+	// TODO: world.forceSave();
+	const message = try std.fmt.allocPrint(main.threadAllocator, "{s} #ffff00left", .{user.name});
+	defer main.threadAllocator.free(message);
+	mutex.lock();
+	defer mutex.unlock();
+	try sendMessage(message);
+
+	for(users.items, 0..) |other, i| {
+		if(other == user) {
+			_ = users.swapRemove(i);
+			break;
+		}
+	}
+//	TODO:		world.removeEntity(user.player);
+//	TODO?		users = usersList.toArray();
+}
+
+pub fn connect(user: *User) !void {
+	const message = try std.fmt.allocPrint(main.threadAllocator, "{s} #ffff00joined", .{user.name});
+	defer main.threadAllocator.free(message);
+	mutex.lock();
+	defer mutex.unlock();
+	try sendMessage(message);
+
+	try users.append(user);
+	// TODO: users = usersList.toArray();
+}
+
+//	private Entity[] lastSentEntities = new Entity[0];
+
+pub fn sendMessage(msg: []const u8) !void {
+	std.debug.assert(!mutex.tryLock()); // Mutex must be locked!
+	std.log.info("Chat: {s}", .{msg}); // TODO use color \033[0;32m
+	for(users.items) |user| {
+		try main.network.Protocols.chat.send(user.conn, msg);
+	}
+}

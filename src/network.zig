@@ -602,14 +602,15 @@ pub const Protocols = struct {
 							defer arrayList.deinit();
 							try arrayList.append(stepAssets);
 							try utils.Compression.pack(dir, arrayList.writer());
-							std.log.debug("{any}", .{arrayList.items});
 							try conn.sendImportant(id, arrayList.items);
 							try conn.flush();
 						}
 
 						// TODO:
-//					JsonObject jsonObject = new JsonObject();
-//					((User)conn).initPlayer(name);
+						conn.user.?.initPlayer(name);
+						const jsonObject = try JsonElement.initObject(main.threadAllocator);
+						defer jsonObject.free(main.threadAllocator);
+						// TODO:
 //					jsonObject.put("player", ((User)conn).player.save());
 //					jsonObject.put("player_id", ((User)conn).player.id);
 //					jsonObject.put("blockPalette", Server.world.blockPalette.save());
@@ -618,14 +619,12 @@ pub const Protocols = struct {
 //					spawn.put("y", Server.world.spawn.y);
 //					spawn.put("z", Server.world.spawn.z);
 //					jsonObject.put("spawn", spawn);
-//					byte[] string = jsonObject.toString().getBytes(StandardCharsets.UTF_8);
-//					byte[] outData = new byte[string.length + 1];
-//					outData[0] = STEP_SERVER_DATA;
-//					System.arraycopy(string, 0, outData, 1, string.length);
-//					state.put(conn, STEP_SERVER_DATA);
-//					conn.sendImportant(this, outData);
-//					state.remove(conn); // Handshake is done.
-//					conn.handShakeComplete = true;
+						const outData = try jsonObject.toStringEfficient(main.threadAllocator, &[1]u8{stepServerData});
+						defer main.threadAllocator.free(outData);
+						try conn.sendImportant(id, outData);
+						conn.handShakeState = stepServerData;
+						conn.handShakeState = stepComplete;
+						// TODO:
 //					synchronized(conn) { // Notify the waiting server thread.
 //						conn.notifyAll();
 //					}
@@ -1212,16 +1211,6 @@ pub const Protocols = struct {
 		pub fn send(conn: *Connection, data: []const u8) !void {
 			try conn.sendImportant(id, data);
 		}
-// TODO
-//	public void sendToClients(String msg) {
-//		Logger.log("chat", msg, "\033[0;32m");
-//		synchronized(this) {
-//			for(User user : Server.users) {
-//				send(user, msg);
-//			}
-//		}
-//	}
-//}
 	};
 };
 
@@ -1236,6 +1225,7 @@ pub const Connection = struct {
 	var packetsResent: u32 = 0;
 
 	manager: *ConnectionManager,
+	user: ?*main.server.User = null,
 
 	gpa: std.heap.GeneralPurposeAllocator(.{}) = undefined, // TODO: Removing this line causes a compiler crash. #15150
 
@@ -1563,7 +1553,7 @@ pub const Connection = struct {
 			if(Protocols.list[protocol]) |prot| {
 				try prot(self, data);
 			} else {
-				std.log.warn("Received unknown important protocol width id {}", .{protocol});
+				std.log.warn("Received unknown important protocol with id {}", .{protocol});
 			}
 		}
 	}

@@ -28,8 +28,27 @@ fn openWorld(namePtr: usize) void {
 	const nullTerminatedName = @intToPtr([*:0]const u8, namePtr);
 	const name = std.mem.span(nullTerminatedName);
 	std.log.info("TODO: Open world {s}", .{name});
-//	new Thread(() -> Server.main(new String[] {name}), "Server Thread").start();
-//	Cubyz.gameUI.setMenu(null, false); // hide from UISystem.back()
+	_ = std.Thread.spawn(.{}, main.server.start, .{}) catch |err| {
+		std.log.err("Encountered error while starting server thread: {s}", .{@errorName(err)});
+	};
+
+	const connection = ConnectionManager.init(main.settings.defaultPort+1, false) catch |err| {
+		std.log.err("Encountered error while opening connection: {s}", .{@errorName(err)});
+		return;
+	};
+	connection.world = &main.game.testWorld;
+	main.game.testWorld.init("127.0.0.1", connection) catch |err| {
+		std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
+	};
+	main.game.world = &main.game.testWorld;
+	for(gui.openWindows.items) |openWindow| {
+		gui.closeWindow(openWindow) catch |err| {
+			std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
+		};
+	}
+	gui.openHud() catch |err| {
+		std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
+	};
 //	while(Server.world == null) {
 //		try {
 //			Thread.sleep(10);

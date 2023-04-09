@@ -1,6 +1,7 @@
 const std = @import("std");
 
 pub const gui = @import("gui");
+pub const server = @import("server");
 
 pub const assets = @import("assets.zig");
 pub const blocks = @import("blocks.zig");

@@ -34,6 +34,85 @@ pub var scale: f32 = undefined;
 pub var hoveredItemSlot: ?*ItemSlot = null;
 pub var hoveredCraftingSlot: ?*CraftingResultSlot = null;
 
+const GuiCommandQueue = struct {
+	const Action = enum {
+		open,
+		close,
+	};
+	const Command = struct {
+		window: *GuiWindow,
+		action: Action,
+	};
+
+	var commands: std.ArrayList(Command) = undefined;
+	var mutex: std.Thread.Mutex = .{};
+
+	fn init() void {
+		mutex.lock();
+		defer mutex.unlock();
+		commands = std.ArrayList(Command).init(main.globalAllocator);
+	}
+
+	fn deinit() void {
+		mutex.lock();
+		defer mutex.unlock();
+		commands.deinit();
+	}
+
+	fn scheduleCommand(command: Command) !void {
+		mutex.lock();
+		defer mutex.unlock();
+		try commands.append(command);
+	}
+
+	fn executeCommands() !void {
+		mutex.lock();
+		defer mutex.unlock();
+		for(commands.items) |command| {
+			switch(command.action) {
+				.open => {
+					try executeOpenWindowCommand(command.window);
+				},
+				.close => {
+					executeCloseWindowCommand(command.window);
+				}
+			}
+		}
+		commands.clearRetainingCapacity();
+	}
+
+	fn executeOpenWindowCommand(window: *GuiWindow) !void {
+		std.debug.assert(!mutex.tryLock()); // mutex must be locked.
+		defer updateWindowPositions();
+		for(openWindows.items, 0..) |_openWindow, i| {
+			if(_openWindow == window) {
+				_ = openWindows.swapRemove(i);
+				openWindows.appendAssumeCapacity(window);
+				selectedWindow = null;
+				return;
+			}
+		}
+		try openWindows.append(window);
+		try window.onOpenFn();
+		selectedWindow = null;
+	}
+
+	fn executeCloseWindowCommand(window: *GuiWindow) void {
+		std.debug.assert(!mutex.tryLock()); // mutex must be locked.
+		defer updateWindowPositions();
+		if(selectedWindow == window) {
+			selectedWindow = null;
+		}
+		for(openWindows.items, 0..) |_openWindow, i| {
+			if(_openWindow == window) {
+				_ = openWindows.swapRemove(i);
+				break;
+			}
+		}
+		window.onCloseFn();
+	}
+};
+
 pub const Callback = struct {
 	callback: ?*const fn(usize) void = null,
 	arg: usize = 0,
@@ -46,6 +125,7 @@ pub const Callback = struct {
 };
 
 pub fn init() !void {
+	GuiCommandQueue.init();
 	windowList = std.ArrayList(*GuiWindow).init(main.globalAllocator);
 	hudWindows = std.ArrayList(*GuiWindow).init(main.globalAllocator);
 	openWindows = std.ArrayList(*GuiWindow).init(main.globalAllocator);
@@ -104,6 +184,7 @@ pub fn deinit() void {
 		}
 	}
 	inventory.deinit();
+	GuiCommandQueue.deinit();
 }
 
 fn save() !void {
@@ -241,18 +322,7 @@ pub fn openWindow(id: []const u8) Allocator.Error!void {
 }
 
 pub fn openWindowFromRef(window: *GuiWindow) Allocator.Error!void {
-	defer updateWindowPositions();
-	for(openWindows.items, 0..) |_openWindow, i| {
-		if(_openWindow == window) {
-			_ = openWindows.swapRemove(i);
-			openWindows.appendAssumeCapacity(window);
-			selectedWindow = null;
-			return;
-		}
-	}
-	try openWindows.append(window);
-	try window.onOpenFn();
-	selectedWindow = null;
+	try GuiCommandQueue.scheduleCommand(.{.action = .open, .window = window});
 }
 
 pub fn toggleWindow(id: []const u8) Allocator.Error!void {
@@ -295,18 +365,8 @@ pub fn openWindowCallback(comptime id: []const u8) Callback {
 	};
 }
 
-pub fn closeWindow(window: *GuiWindow) void {
-	defer updateWindowPositions();
-	if(selectedWindow == window) {
-		selectedWindow = null;
-	}
-	for(openWindows.items, 0..) |_openWindow, i| {
-		if(_openWindow == window) {
-			_ = openWindows.swapRemove(i);
-			break;
-		}
-	}
-	window.onCloseFn();
+pub fn closeWindow(window: *GuiWindow) !void {
+	try GuiCommandQueue.scheduleCommand(.{.action = .close, .window = window});
 }
 
 pub fn setSelectedTextInput(newSelectedTextInput: ?*TextInput) void {
@@ -468,6 +528,7 @@ pub fn updateWindowPositions() void {
 pub fn updateAndRenderGui() !void {
 	const mousePos = main.Window.getMousePosition()/@splat(2, scale);
 	hoveredAWindow = false;
+	try GuiCommandQueue.executeCommands();
 	if(!main.Window.grabbed) {
 		if(selectedWindow) |selected| {
 			try selected.updateSelected(mousePos);
@@ -604,7 +665,7 @@ pub const inventory = struct {
 	}
 
 	fn render(mousePos: Vec2f) !void {
-		carriedItemSlot.pos = mousePos;
+		carriedItemSlot.pos = mousePos - Vec2f{12, 12};
 		try carriedItemSlot.render(.{0, 0});
 		// Draw tooltip:
 		if(carriedItemStack.amount == 0) if(hoveredItemSlot) |hovered| {
