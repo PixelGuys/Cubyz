@@ -7,6 +7,7 @@ pub const assets = @import("assets.zig");
 pub const blocks = @import("blocks.zig");
 pub const chunk = @import("chunk.zig");
 pub const entity = @import("entity.zig");
+pub const files = @import("files.zig");
 pub const game = @import("game.zig");
 pub const graphics = @import("graphics.zig");
 pub const itemdrop = @import("itemdrop.zig");

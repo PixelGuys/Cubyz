@@ -25,11 +25,6 @@ pub const stb_image = @cImport ({
 	@cInclude("stb/stb_image_write.h");
 });
 
-fn fileToString(allocator: Allocator, path: []const u8) ![]u8 {
-	const file = try std.fs.cwd().openFile(path, .{});
-	return file.readToEndAlloc(allocator, std.math.maxInt(usize));
-}
-
 pub const draw = struct {
 	var color: u32 = 0;
 	var clip: ?Vec4i = null;
@@ -1040,7 +1035,7 @@ pub const Shader = struct {
 	id: c_uint,
 	
 	fn addShader(self: *const Shader, filename: []const u8, shader_stage: c_uint) !void {
-		const source = fileToString(main.threadAllocator, filename) catch |err| {
+		const source = main.files.read(main.threadAllocator, filename) catch |err| {
 			std.log.warn("Couldn't find file: {s}", .{filename});
 			return err;
 		};

@@ -37,13 +37,7 @@ pub var guiScale: ?f32 = null;
 
 
 pub fn init() !void {
-	const json: JsonElement = blk: {
-		var file = std.fs.cwd().openFile("settings.json", .{}) catch break :blk JsonElement{.JsonNull={}};
-		defer file.close();
-		const fileString = try file.readToEndAlloc(main.threadAllocator, std.math.maxInt(usize));
-		defer main.threadAllocator.free(fileString);
-		break :blk JsonElement.parseFromString(main.threadAllocator, fileString);
-	};
+	const json: JsonElement = try main.files.readToJson(main.threadAllocator, "settings.json");
 	defer json.free(main.threadAllocator);
 
 	inline for(@typeInfo(@This()).Struct.decls) |decl| {
@@ -114,14 +108,7 @@ fn flawedDeinit() !void {
 	try jsonObject.put("keyboard", keyboard);
 
 	// Write to file:
-	
-	const string = try jsonObject.toStringEfficient(main.threadAllocator, "");
-	defer main.threadAllocator.free(string);
-
-	var file = try std.fs.cwd().createFile("settings.json", .{});
-	defer file.close();
-
-	try file.writeAll(string);
+	try main.files.writeJson("settings.json", jsonObject);
 }
 
 pub fn deinit() void {

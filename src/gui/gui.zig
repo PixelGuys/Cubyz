@@ -222,23 +222,11 @@ fn save() !void {
 		try guiJson.put(window.id, windowJson);
 	}
 	
-	const string = try guiJson.toStringEfficient(main.threadAllocator, "");
-	defer main.threadAllocator.free(string);
-
-	var file = try std.fs.cwd().createFile("gui_layout.json", .{});
-	defer file.close();
-
-	try file.writeAll(string);
+	try main.files.writeJson("gui_layout.json", guiJson);
 }
 
 fn load() !void {
-	const json: JsonElement = blk: {
-		var file = std.fs.cwd().openFile("gui_layout.json", .{}) catch break :blk JsonElement{.JsonNull={}};
-		defer file.close();
-		const fileString = try file.readToEndAlloc(main.threadAllocator, std.math.maxInt(usize));
-		defer main.threadAllocator.free(fileString);
-		break :blk JsonElement.parseFromString(main.threadAllocator, fileString);
-	};
+	const json: JsonElement = try main.files.readToJson(main.threadAllocator, "gui_layout.json");
 	defer json.free(main.threadAllocator);
 
 	for(windowList.items) |window| {
