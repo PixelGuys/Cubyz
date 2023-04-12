@@ -101,6 +101,7 @@ RayMarchResult rayMarching(vec3 startPosition, vec3 direction) { // TODO: Mipmap
 	vec3 tDelta = 1/direction;
 	vec3 t2 = t1 + tDelta;
 	tDelta = abs(tDelta);
+	vec3 invTDelta = intBitsToFloat(floatBitsToInt(1.0) | modelSize)/tDelta;
 	vec3 tMax = max(t1, t2) - tDelta;
 	if(direction.x == 0) tMax.x = 1.0/0.0;
 	if(direction.y == 0) tMax.y = 1.0/0.0;
@@ -120,7 +121,7 @@ RayMarchResult rayMarching(vec3 startPosition, vec3 direction) { // TODO: Mipmap
 		it++;
 		vec3 tNext = tMax + block*tDelta;
 		total_tMax = min(tNext.x, min(tNext.y, tNext.z));
-		vec3 missingSteps = floor((total_tMax - tMax)/tDelta + 0.00001);
+		vec3 missingSteps = floor((total_tMax - tMax)*invTDelta);
 		voxelIndex += int(dot(missingSteps, stepInIndex));
 		tMax += missingSteps*tDelta;
 		if((voxelIndex & overflowMask) != 0)

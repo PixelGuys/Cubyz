@@ -1141,11 +1141,14 @@ pub const LargeBuffer = struct {
 	};
 	ssbo: SSBO,
 	freeBlocks: std.ArrayList(Allocation),
+	capacity: u32,
+	used: u32,
 
 	pub fn init(self: *LargeBuffer, allocator: Allocator, size: u31, binding: c_uint) !void {
 		self.ssbo = SSBO.init();
 		self.ssbo.createDynamicBuffer(size);
 		self.ssbo.bind(binding);
+		self.capacity = size;
 
 		self.freeBlocks = std.ArrayList(Allocation).init(allocator);
 		try self.freeBlocks.append(.{.start = 0, .len = size});
@@ -1157,6 +1160,7 @@ pub const LargeBuffer = struct {
 	}
 
 	fn alloc(self: *LargeBuffer, size: u31) !Allocation {
+		self.used += size;
 		var smallestBlock: ?*Allocation = null;
 		for(self.freeBlocks.items, 0..) |*block, i| {
 			if(size == block.len) {
@@ -1175,6 +1179,7 @@ pub const LargeBuffer = struct {
 	}
 
 	pub fn free(self: *LargeBuffer, _allocation: Allocation) !void {
+		self.used -= _allocation.len;
 		var allocation = _allocation;
 		if(allocation.len == 0) return;
 		for(self.freeBlocks.items, 0..) |*block, i| {
@@ -1198,6 +1203,7 @@ pub const LargeBuffer = struct {
 		if(newSize == allocation.len) return;
 		if(newSize < allocation.len) {
 			const diff = allocation.len - newSize;
+			self.used -= diff;
 			// Check if there is a free block directly after:
 			for(self.freeBlocks.items) |*block| {
 				if(allocation.start + allocation.len == block.start and block.len + allocation.len >= newSize) {
@@ -1211,10 +1217,11 @@ pub const LargeBuffer = struct {
 			allocation.len -= diff;
 			try self.freeBlocks.append(.{.start = allocation.start + allocation.len, .len = diff});
 		} else {
+			const diff = newSize - allocation.len;
+			self.used += diff;
 			// Check if the buffer can be extended without a problem:
 			for(self.freeBlocks.items, 0..) |*block, i| {
 				if(allocation.start + allocation.len == block.start and block.len + allocation.len >= newSize) {
-					const diff = newSize - allocation.len;
 					allocation.len += diff;
 					if(block.len != diff) {
 						block.start += diff;
