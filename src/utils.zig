@@ -7,7 +7,7 @@ pub const Compression = struct {
 	pub fn deflate(allocator: Allocator, data: []const u8) ![]u8 {
 		var result = std.ArrayList(u8).init(allocator);
 		var comp = try std.compress.deflate.compressor(main.threadAllocator, result.writer(), .{.level = .default_compression});
-		try comp.write(data);
+		_ = try comp.write(data);
 		try comp.close();
 		comp.deinit();
 		return result.toOwnedSlice();
@@ -409,11 +409,12 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 		cacheMisses: std.atomic.Atomic(usize) = std.atomic.Atomic(usize).init(0),
 
 		///  Tries to find the entry that fits to the supplied hashable.
-		pub fn find(self: *@This(), compare: anytype, index: u32) void {
+		pub fn find(self: *@This(), compareAndHash: anytype) void {
+			const index: u32 = compareAndHash.hashCode() & hashMask;
 			@atomicRmw(u32, &self.cacheRequests.value, .Add, 1, .Monotonic);
 			self.buckets[index].mutex.lock();
 			defer self.buckets[index].mutex.unlock();
-			if(self.buckets[index].find(compare)) |item| {
+			if(self.buckets[index].find(compareAndHash)) |item| {
 				return item;
 			}
 			@atomicRmw(u32, &self.cacheMisses.value, .Add, 1, .Monotonic);

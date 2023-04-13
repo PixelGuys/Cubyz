@@ -122,6 +122,13 @@ pub const World = struct {
 		self.blockPalette.deinit();
 		Player.inventory__SEND_CHANGES_TO_SERVER.deinit(main.globalAllocator);
 		self.manager.deinit();
+		assets.unloadAssets();
+		main.server.stop();
+		main.threadPool.clear();
+		if(main.server.thread) |serverThread| {
+			serverThread.join();
+			main.server.thread = null;
+		}
 	}
 
 	pub fn finishHandshake(self: *World, json: JsonElement) !void {

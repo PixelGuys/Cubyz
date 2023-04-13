@@ -500,7 +500,7 @@ pub fn main() !void {
 	logFile = std.fs.cwd().createFile("logs/latest.log", .{}) catch unreachable;
 	defer logFile.close();
 
-	threadPool = try utils.ThreadPool.init(globalAllocator, 1 + ((std.Thread.getCpuCount() catch 4) -| 3));
+	threadPool = try utils.ThreadPool.init(globalAllocator, 1 + ((std.Thread.getCpuCount() catch 4) -| 2));
 	defer threadPool.deinit();
 
 	try settings.init();

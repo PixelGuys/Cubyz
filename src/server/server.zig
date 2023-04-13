@@ -8,6 +8,8 @@ const utils = main.utils;
 const vec = main.vec;
 const Vec3d = vec.Vec3d;
 
+pub const ServerWorld = @import("world.zig").ServerWorld;
+
 
 pub const User = struct {
 	conn: *Connection,	
@@ -43,8 +45,8 @@ pub const User = struct {
 	}
 
 	pub fn deinit(self: *User) void {
-		main.globalAllocator.destroy(self);
 		self.conn.deinit();
+		main.globalAllocator.destroy(self);
 	}
 //	@Override
 //	public void disconnect() {
@@ -108,26 +110,29 @@ pub const User = struct {
 //	}
 };
 
-const updatesPerSec: u32 = 20;
+pub const updatesPerSec: u32 = 20;
 const updateNanoTime: u32 = 1000000000/20;
-// TODO:
-//	public static ServerWorld world = null;
+
+pub var world: ?*ServerWorld = null;
 pub var users: std.ArrayList(*User) = undefined;
 
 pub var connectionManager: *ConnectionManager = undefined;
 
-var running: bool = false;
+var running: std.atomic.Atomic(bool) = std.atomic.Atomic(bool).init(false);
 var lastTime: i128 = undefined;
 
-var mutex: std.Thread.Mutex = .{};
+pub var mutex: std.Thread.Mutex = .{};
 
-fn init() !void {
+pub var thread: ?std.Thread = null;
+
+fn init(name: []const u8) !void {
+	std.debug.assert(world == null); // There can only be one world.
 	users = std.ArrayList(*User).init(main.globalAllocator);
 	lastTime = std.time.nanoTimestamp();
 	connectionManager = try ConnectionManager.init(main.settings.defaultPort, false); // TODO Configure the second argument in the server settings.
 	// TODO: Load the assets.
-// TODO:
-//	Server.world = new ServerWorld(args[0], null);
+
+	world = try ServerWorld.init(name, null);
 	if(true) { // singleplayer // TODO: Configure this in the server settings.
 		const user = try User.init(connectionManager, "127.0.0.1:47650");
 		try connect(user);
@@ -141,14 +146,15 @@ fn deinit() void {
 	users.clearAndFree();
 	connectionManager.deinit();
 	connectionManager = undefined;
-	// TODO:
-//		if(world != null)
-//			world.cleanup();
-//		world = null;
+
+	if(world) |_world| {
+		_world.deinit();
+	}
+	world = null;
 }
 
 fn update() !void {
-//		TODO: world.update();
+	world.?.update();
 	mutex.lock();
 	for(users.items) |user| {
 		user.update();
@@ -160,17 +166,17 @@ fn update() !void {
 //		lastSentEntities = entities;
 }
 
-pub fn start() !void {
+pub fn start(name: []const u8) !void {
 	var gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe=false}){};
 	main.threadAllocator = gpa.allocator();
 	defer if(gpa.deinit()) {
 		std.log.err("Memory leak", .{});
 	};
-	std.debug.assert(!running); // There can only be one server.
-	try init();
+	std.debug.assert(!running.load(.Monotonic)); // There can only be one server.
+	try init(name);
 	defer deinit();
-	running = true;
-	while(running) {
+	running.store(true, .Monotonic);
+	while(running.load(.Monotonic)) {
 		const newTime = std.time.nanoTimestamp();
 		if(newTime -% lastTime < updateNanoTime) {
 			std.time.sleep(@intCast(u64, lastTime +% updateNanoTime -% newTime));
@@ -185,7 +191,7 @@ pub fn start() !void {
 }
 
 pub fn stop() void {
-	running = false;
+	running.store(false, .Monotonic);
 }
 
 pub fn disconnect(user: *User) !void {

@@ -77,11 +77,19 @@ pub const ChunkPosition = struct {
 	wz: i32,
 	voxelSize: u31,
 	
-//	TODO(mabye?):
-//	public int hashCode() {
-//		int shift = Math.min(Integer.numberOfTrailingZeros(wx), Math.min(Integer.numberOfTrailingZeros(wy), Integer.numberOfTrailingZeros(wz)));
-//		return (((wx >> shift) * 31 + (wy >> shift)) * 31 + (wz >> shift)) * 31 + voxelSize;
-//	}
+	pub fn hashCode(self: ChunkPosition) u32 {
+		const shift = @truncate(u5, @min(@ctz(self.wx), @min(@ctz(self.wy), @ctz(self.wz))));
+		return (((@bitCast(u32, self.wx) >> shift) *% 31 +% (@bitCast(u32, self.wy) >> shift)) *% 31 +% (@bitCast(u32, self.wz) >> shift)) *% 31 +% self.voxelSize;
+	}
+
+	pub fn equals(self: ChunkPosition, other: anytype) bool {
+		if(@TypeOf(other) == ?*Chunk) {
+			if(other) |ch| {
+				return self.wx == ch.pos.wx and self.wy == ch.pos.wy and self.wz == ch.pos.wz and self.voxelSize == ch.pos.voxelSize;
+			}
+			return false;
+		} else @compileError("Unsupported");
+	}
 
 	pub fn getMinDistanceSquared(self: ChunkPosition, playerPosition: Vec3d) f64 {
 		var halfWidth = @intToFloat(f64, self.voxelSize*@divExact(chunkSize, 2));

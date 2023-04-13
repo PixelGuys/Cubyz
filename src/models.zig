@@ -202,7 +202,7 @@ var nameToIndex: std.StringHashMap(u16) = undefined;
 
 pub fn getModelIndex(string: []const u8) u16 {
 	return nameToIndex.get(string) orelse {
-		std.log.err("Couldn't find voxelModel with name: {s}.", .{string});
+		std.log.warn("Couldn't find voxelModel with name: {s}.", .{string});
 		return 0;
 	};
 }

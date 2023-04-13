@@ -130,7 +130,7 @@ pub fn reset() void {
 	// TODO: Use arena.reset() instead.
 	arena.deinit();
 	arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-	reverseIndices = std.StringHashMap([]const u8).init(arena);
+	reverseIndices = std.StringHashMap(u16).init(arena.allocator());
 }
 
 pub fn getByID(id: []const u8) u16 {

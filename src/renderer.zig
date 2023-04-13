@@ -554,7 +554,7 @@ pub const MenuBackGround = struct {
 			}
 		}
 		if(fileList.items.len == 0) {
-			std.log.err("Couldn't find any background scene images in \"assets/backgrounds\".", .{});
+			std.log.warn("Couldn't find any background scene images in \"assets/backgrounds\".", .{});
 			texture = .{.textureID = 0};
 			return;
 		}
@@ -972,7 +972,6 @@ pub const RenderStructure = struct {
 	}
 
 	pub fn deinit() void {
-		main.threadPool.clear();
 		for(storageLists) |storageList| {
 			for(storageList) |nullChunkMesh| {
 				if(nullChunkMesh) |chunkMesh| {

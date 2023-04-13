@@ -1,0 +1,696 @@
+const std = @import("std");
+
+const main = @import("root");
+const Block = main.blocks.Block;
+const Cache = main.utils.Cache;
+const chunk = main.chunk;
+const ChunkPosition = chunk.ChunkPosition;
+const Chunk = chunk.Chunk;
+const files = main.files;
+const utils = main.utils;
+const ItemDropManager = main.itemdrop.ItemDropManager;
+const ItemStack = main.items.ItemStack;
+const JsonElement = main.JsonElement;
+const vec = main.vec;
+const Vec3i = vec.Vec3i;
+const Vec3d = vec.Vec3d;
+const Vec3f = vec.Vec3f;
+
+const server = @import("server.zig");
+const User = server.User;
+
+const ChunkManager = struct {
+	world: *ServerWorld,
+//TODO:
+//	public final TerrainGenerationProfile terrainGenerationProfile;
+//
+//	// There will be at most 1 GiB of chunks in here. TODO: Allow configuring this in the server settings.
+	const reducedChunkCacheMask = 2047;
+	var chunkCache: Cache(Chunk, reducedChunkCacheMask+1, 4, chunkDeinitFunctionForCache) = .{};
+	// TODO:
+//	// There will be at most 1 GiB of map data in here.
+//	private static final int[] MAP_CACHE_MASK = {
+//		7, // 256 MiB // 4(1 in best-case) maps are needed at most for each player. So 32 will be enough for 8(32 in best case) player groups.
+//		31, // 256 MiB
+//		63, // 128 MiB
+//		255, // 128 MiB
+//		511, // 64 MiB
+//		2047, // 64 MiB
+//	};
+//	@SuppressWarnings("unchecked")
+//	private final Cache<MapFragment>[] mapCache = new Cache[] {
+//	    new Cache<>(new MapFragment[MAP_CACHE_MASK[0] + 1][4]),
+//	    new Cache<>(new MapFragment[MAP_CACHE_MASK[1] + 1][4]),
+//	    new Cache<>(new MapFragment[MAP_CACHE_MASK[2] + 1][4]),
+//	    new Cache<>(new MapFragment[MAP_CACHE_MASK[3] + 1][4]),
+//	    new Cache<>(new MapFragment[MAP_CACHE_MASK[4] + 1][4]),
+//	    new Cache<>(new MapFragment[MAP_CACHE_MASK[5] + 1][4]),
+//	};
+
+	const ChunkLoadTask = struct {
+		pos: ChunkPosition,
+		creationTime: i64,
+		source: ?*User,
+
+		const vtable = utils.ThreadPool.VTable{
+			.getPriority = @ptrCast(*const fn(*anyopaque) f32, &getPriority),
+			.isStillNeeded = @ptrCast(*const fn(*anyopaque) bool, &isStillNeeded),
+			.run = @ptrCast(*const fn(*anyopaque) void, &run),
+			.clean = @ptrCast(*const fn(*anyopaque) void, &clean),
+		};
+		
+		pub fn schedule(pos: ChunkPosition, source: ?*User) !void {
+			var task = try main.globalAllocator.create(ChunkLoadTask);
+			task.* = ChunkLoadTask {
+				.pos = pos,
+				.creationTime = std.time.milliTimestamp(),
+				.source = source,
+			};
+			try main.threadPool.addTask(task, &vtable);
+		}
+
+		pub fn getPriority(self: *ChunkLoadTask) f32 {
+			_ = self;
+			return 0;
+			// TODO: return self.pos.getPriority(self.source.player.getPosBlocking()); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
+		}
+
+		pub fn isStillNeeded(self: *ChunkLoadTask) bool {
+			// TODO:
+			if(self.source) |source| {
+				_ = source;
+				// TODO: This requires not garbage-collecting the source User.
+//				boolean isConnected = false;
+//				for(User user : Server.users) {
+//					if(source == user) {
+//						isConnected = true;
+//						break;
+//					}
+//				}
+//				if(!isConnected) {
+//					return false;
+//				}
+			}
+			if(std.time.milliTimestamp() - self.creationTime > 10000) { // Only remove stuff after 10 seconds to account for trouble when for example teleporting.
+				// TODO:
+//				for(User user : Server.users) {
+//					double minDistSquare = ch.getMinDistanceSquared(user.player.getPosition().x, user.player.getPosition().y, user.player.getPosition().z);
+//					//                                                                   ↓ Margin for error. (diagonal of 1 chunk)
+//					double targetRenderDistance = (user.renderDistance*Chunk.chunkSize + Chunk.chunkSize*Math.sqrt(3));//*Math.pow(user.LODFactor, Math.log(ch.voxelSize)/Math.log(2));
+//					if(ch.voxelSize != 1) {
+//						targetRenderDistance *= ch.voxelSize*user.LODFactor;
+//					}
+//					if(minDistSquare <= targetRenderDistance*targetRenderDistance) {
+//						return true;
+//					}
+//				}
+//				return false;
+			}
+			return true;
+		}
+
+		pub fn run(self: *ChunkLoadTask) void {
+			defer self.clean();
+			generateChunk(self.pos, self.source) catch |err| {
+				std.log.err("Got error while generating chunk {}: {s}", .{self.pos, @errorName(err)});
+			};
+		}
+
+		pub fn clean(self: *ChunkLoadTask) void {
+			main.globalAllocator.destroy(self);
+		}
+	};
+
+	pub fn init(world: *ServerWorld, settings: JsonElement) !ChunkManager {
+		_ = settings;
+		const self = ChunkManager {
+			.world = world,
+//TODO:		terrainGenerationProfile = new TerrainGenerationProfile(settings, world.getCurrentRegistries(), world.getSeed());
+		};
+		// TODO:
+//		CaveBiomeMap.init(terrainGenerationProfile);
+//		CaveMap.init(terrainGenerationProfile);
+//		ClimateMap.init(terrainGenerationProfile);
+		return self;
+	}
+
+	pub fn deinit(self: ChunkManager) void {
+		_ = self;
+		main.assets.unloadAssets();
+		// TODO:
+//		for(Cache<MapFragment> cache : mapCache) {
+//			cache.clear();
+//		}
+//		for(int i = 0; i < 5; i++) { // Saving one chunk may create and update a new lower resolution chunk.
+//		
+//			for(ReducedChunk[] array : reducedChunkCache.cache) {
+//				array = Arrays.copyOf(array, array.length); // Make a copy to prevent issues if the cache gets resorted during cleanup.
+//				for(ReducedChunk chunk : array) {
+//					if (chunk != null)
+//						chunk.clean();
+//				}
+//			}
+//		}
+//		for(Cache<MapFragment> cache : mapCache) {
+//			cache.clear();
+//		}
+//		ThreadPool.clear();
+//		CaveBiomeMap.cleanup();
+//		CaveMap.cleanup();
+//		ClimateMap.cleanup();
+//		reducedChunkCache.clear();
+//		ChunkIO.clean();
+		chunkCache.clear();
+	}
+
+	pub fn queueChunk(self: ChunkManager, pos: ChunkPosition, source: ?*User) !void {
+		_ = self;
+		try ChunkLoadTask.schedule(pos, source);
+	}
+
+	pub fn generateChunk(pos: ChunkPosition, source: ?*User) !void {
+		const ch = try getOrGenerateChunk(pos);
+		if(source) |_source| {
+			try main.network.Protocols.chunkTransmission.sendChunk(_source.conn, ch);
+		} else { // TODO: This feature was temporarily removed to keep compatibility with the zig version.
+			server.mutex.lock();
+			defer server.mutex.unlock();
+			for(server.users.items) |user| {
+				try main.network.Protocols.chunkTransmission.sendChunk(user.conn, ch);
+			}
+		}
+	}
+//
+//	public MapFragment getOrGenerateMapFragment(int wx, int wz, int voxelSize) {
+//		wx &= ~MapFragment.MAP_MASK;
+//		wz &= ~MapFragment.MAP_MASK;
+//
+//		MapFragmentCompare data = new MapFragmentCompare(wx, wz, voxelSize);
+//		int index = CubyzMath.binaryLog(voxelSize);
+//		int hash = data.hashCode() & MAP_CACHE_MASK[index];
+//
+//		MapFragment res = mapCache[index].find(data, hash);
+//		if (res != null) return res;
+//
+//		synchronized(mapCache[index].cache[hash]) {
+//			res = mapCache[index].find(data, hash);
+//			if (res != null) return res;
+//
+//			// Generate a new map fragment:
+//			res = new MapFragment(wx, wz, voxelSize);
+//			terrainGenerationProfile.mapFragmentGenerator.generateMapFragment(res, world.getSeed());
+//			mapCache[index].addToCache(res, hash);
+//		}
+//		return res;
+//	}
+
+	fn chunkInitFunctionForCache(pos: ChunkPosition) !*Chunk {
+		const ch = try main.globalAllocator.create(Chunk);
+		ch.init(pos);
+		for(&ch.blocks) |*block| {
+			block.* = Block{.typ = 0, .data = 0};
+		}
+		// TODO: res.generate(world.getSeed(), terrainGenerationProfile);
+		return ch;
+	}
+
+	fn chunkDeinitFunctionForCache(ch: *Chunk) void {
+		main.globalAllocator.destroy(ch);
+		// TODO: Store chunk.
+	}
+	/// Generates a normal chunk at a given location, or if possible gets it from the cache.
+	fn getOrGenerateChunk(pos: ChunkPosition) !*Chunk {
+		return try chunkCache.findOrCreate(pos, chunkInitFunctionForCache);
+	}
+
+	pub fn getChunkFromCache(pos: ChunkPosition) ?*Chunk {
+		return chunkCache.find(pos);
+	}
+
+//	public void forceSave() {
+//		for(int i = 0; i < 5; i++) { // Saving one chunk may create and update a new lower resolution chunk.
+//			reducedChunkCache.foreach(Chunk::save);
+//		}
+//	}
+};
+
+const WorldIO = struct {
+	const worldDataVersion: u32 = 2;
+
+	dir: files.Dir,
+	world: *ServerWorld,
+
+	pub fn init(dir: files.Dir, world: *ServerWorld) WorldIO {
+		return WorldIO {
+			.dir = dir,
+			.world = world,
+		};
+	}
+
+	pub fn deinit(self: *WorldIO) void {
+		self.dir.close();
+	}
+
+	pub fn hasWorldData(self: WorldIO) bool {
+		return self.dir.hasFile("world.dat");
+	}
+
+	/// Load the seed, which is needed before custom item and ore generation.
+	pub fn loadWorldSeed(self: WorldIO) !u64 {
+		const worldData: JsonElement = try self.dir.readToJson(main.threadAllocator, "world.dat");
+		defer worldData.free(main.threadAllocator);
+		if(worldData.get(u32, "version", 0) != worldDataVersion) {
+			std.log.err("Cannot read world file version {}. Expected version {}.", .{worldData.get(u32, "version", 0), worldDataVersion});
+			return error.OldWorld;
+		}
+		return worldData.get(u64, "seed", 0);
+	}
+
+	pub fn loadWorldData(self: WorldIO) !void {
+		const worldData: JsonElement = try self.dir.readToJson(main.threadAllocator, "world.dat");
+		defer worldData.free(main.threadAllocator);
+
+		const entityJson = worldData.getChild("entities");
+		_ = entityJson;
+
+//			Entity[] entities = new Entity[entityJson.array.size()];
+//			for(int i = 0; i < entities.length; i++) {
+//				// TODO: Only load entities that are in loaded chunks.
+//				entities[i] = EntityIO.loadEntity((JsonObject)entityJson.array.get(i), world);
+//			}
+//			world.setEntities(entities);
+		self.world.doGameTimeCycle = worldData.get(bool, "doGameTimeCycle", true);
+		self.world.gameTime = worldData.get(i64, "gameTime", 0);
+		const spawnData = worldData.getChild("spawn");
+		self.world.spawn[0] = spawnData.get(i32, "x", 0);
+		self.world.spawn[1] = spawnData.get(i32, "y", 0);
+		self.world.spawn[2] = spawnData.get(i32, "z", 0);
+	}
+
+	pub fn saveWorldData(self: WorldIO) !void {
+		const worldData: JsonElement = try JsonElement.initObject(main.threadAllocator);
+		defer worldData.free(main.threadAllocator);
+		try worldData.put("version", worldDataVersion);
+		try worldData.put("seed", self.world.seed);
+		try worldData.put("doGameTimeCycle", self.world.doGameTimeCycle);
+		try worldData.put("gameTime", self.world.gameTime);
+		// TODO:
+//			worldData.put("entityCount", world.getEntities().length);
+		const spawnData = try JsonElement.initObject(main.threadAllocator);
+		try spawnData.put("x", self.world.spawn[0]);
+		try spawnData.put("y", self.world.spawn[1]);
+		try spawnData.put("z", self.world.spawn[2]);
+		try worldData.put("spawn", spawnData);
+		// TODO:
+//			JsonArray entityData = new JsonArray();
+//			worldData.put("entities", entityData);
+//			// TODO: Store entities per chunk.
+//			for (Entity ent : world.getEntities()) {
+//				if (ent != null && ent.getType().getClass() != PlayerEntity.class) {
+//					entityData.add(ent.save());
+//				}
+//			}
+		try self.dir.writeJson("world.dat", worldData);
+	}
+};
+
+pub const ServerWorld = struct {
+	pub const dayCycle: u31 = 12000; // Length of one in-game day in units of 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
+	pub const earthGravity: f32 = 9.81;
+
+	itemDropManager: ItemDropManager = undefined,
+	blockPalette: *main.assets.BlockPalette = undefined,
+	chunkManager: ChunkManager = undefined,
+//	TODO: protected HashMap<HashMapKey3D, MetaChunk> metaChunks = new HashMap<HashMapKey3D, MetaChunk>();
+//	TODO: protected NormalChunk[] chunks = new NormalChunk[0];
+
+	generated: bool = false,
+
+	gameTime: i64 = 0,
+	milliTime: i64,
+	lastUpdateTime: i64,
+	lastUnimportantDataSent: i64,
+	doGameTimeCycle: bool = true,
+	gravity: f32 = earthGravity,
+
+	seed: u64,
+	name: []const u8,
+	spawn: Vec3i = undefined,
+
+	wio: WorldIO = undefined,
+	// TODO:
+//	protected ArrayList<Entity> entities = new ArrayList<>();
+
+	pub fn init(name: []const u8, nullGeneratorSettings: ?JsonElement) !*ServerWorld {
+		const self = try main.globalAllocator.create(ServerWorld);
+		self.* = ServerWorld {
+			.lastUpdateTime = std.time.milliTimestamp(),
+			.milliTime = std.time.milliTimestamp(),
+			.lastUnimportantDataSent = std.time.milliTimestamp(),
+			.seed = @bitCast(u64, @truncate(i64, std.time.nanoTimestamp())),
+			.name = name,
+		};
+		try self.itemDropManager.init(main.globalAllocator, self, self.gravity);
+
+		var loadArena = std.heap.ArenaAllocator.init(main.threadAllocator);
+		defer loadArena.deinit();
+		const arenaAllocator = loadArena.allocator();
+		var buf: [32768]u8 = undefined;
+		var generatorSettings: JsonElement = undefined;
+		if(nullGeneratorSettings) |_generatorSettings| {
+			generatorSettings = _generatorSettings;
+			// Store generator settings:
+			try files.writeJson(try std.fmt.bufPrint(&buf, "saves/{s}/generatorSettings.json", .{name}), generatorSettings);
+		} else { // Read the generator settings:
+			generatorSettings = try files.readToJson(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/generatorSettings.json", .{name}));
+		}
+		self.wio = WorldIO.init(try files.openDir(try std.fmt.bufPrint(&buf, "saves/{s}", .{name})), self);
+		const blockPaletteJson = try files.readToJson(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/palette.json", .{name}));
+		self.blockPalette = try main.assets.BlockPalette.init(main.globalAllocator, blockPaletteJson.getChild("blocks")); // TODO: Figure out why this is inconsistent with the save call.
+		
+		if(self.wio.hasWorldData()) {
+			self.seed = try self.wio.loadWorldSeed();
+			self.generated = true;
+			try main.assets.loadWorldAssets(try std.fmt.bufPrint(&buf, "saves/{s}/assets/", .{name}), self.blockPalette);
+		} else {
+			self.seed = main.random.nextInt(u48, &main.seed);
+			try main.assets.loadWorldAssets(try std.fmt.bufPrint(&buf, "saves/{s}/assets/", .{name}), self.blockPalette);
+			try self.wio.saveWorldData();
+		}
+		// Store the block palette now that everything is loaded.
+		try files.writeJson(try std.fmt.bufPrint(&buf, "saves/{s}/palette.json", .{name}), try self.blockPalette.save(arenaAllocator));
+
+//		TODO: // Call mods for this new world. Mods sometimes need to do extra stuff for the specific world.
+//		ModLoader.postWorldGen(registries);
+//
+		self.chunkManager = try ChunkManager.init(self, generatorSettings);
+		try self.generate();
+		try self.itemDropManager.loadFrom(try files.readToJson(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/items.json", .{name})));
+		return self;
+	}
+
+	pub fn deinit(self: *ServerWorld) void {
+		self.itemDropManager.deinit();
+		self.blockPalette.deinit();
+		self.chunkManager.deinit();
+		self.wio.deinit();
+		main.globalAllocator.destroy(self);
+	}
+
+	fn generate(self: *ServerWorld) !void {
+		try self.wio.loadWorldData(); // load data here in order for entities to also be loaded.
+
+		if(!self.generated) {
+			var seed = @bitCast(u64, @truncate(i64, std.time.nanoTimestamp()));
+			std.log.info("Finding position..", .{});
+			for(0..1000) |_| {
+				self.spawn[0] = main.random.nextIntBounded(u31, &seed, 65536);
+				self.spawn[2] = main.random.nextIntBounded(u31, &seed, 65536);
+				std.log.info("Trying ({}, {})", .{self.spawn[0], self.spawn[2]});
+				if(try self.isValidSpawnLocation(self.spawn[0], self.spawn[2])) break;
+			}
+			// TODO: spawn[1] = chunkManager.getOrGenerateMapFragment(spawn.x, spawn.z, 1).getHeight(spawn.x, spawn.z);
+		}
+		self.generated = true;
+		try self.wio.saveWorldData();
+	}
+
+// TODO:
+//	public Player findPlayer(User user) {
+//		JsonObject playerData = JsonParser.parseObjectFromFile("saves/" + name + "/players/" + Utils.escapeFolderName(user.name) + ".json");
+//		Player player = new Player(this, user.name);
+//		if(playerData.map.isEmpty()) {
+//			// Generate a new player:
+//			player.setPosition(spawn);
+//		} else {
+//			player.loadFrom(playerData);
+//		}
+//		addEntity(player);
+//		return player;
+//	}
+//
+//	private void savePlayers() {
+//		for(User user : Server.users) {
+//			try {
+//				File file = new File("saves/" + name + "/players/" + Utils.escapeFolderName(user.name) + ".json");
+//				file.getParentFile().mkdirs();
+//				PrintWriter writer = new PrintWriter(new FileOutputStream("saves/" + name + "/players/" + Utils.escapeFolderName(user.name) + ".json"), false, StandardCharsets.UTF_8);
+//				user.player.save().writeObjectToStream(writer);
+//				writer.close();
+//			} catch(FileNotFoundException e) {
+//				Logger.error(e);
+//			}
+//		}
+//	}
+	pub fn forceSave(self: *ServerWorld) !void {
+		// TODO:
+//		for(MetaChunk chunk : metaChunks.values().toArray(new MetaChunk[0])) {
+//			if (chunk != null) chunk.save();
+//		}
+		self.wio.saveWorldData();
+		// TODO:
+//		savePlayers();
+//		chunkManager.forceSave();
+//		ChunkIO.save();
+		const itemDropJson = self.itemDropManager.store(main.threadAllocator);
+		defer itemDropJson.free(main.threadAllocator);
+		var buf: [32768]u8 = undefined;
+		files.writeJson(try std.fmt.bufPrint(&buf, "saves/{s}/items.json", .{self.name}), itemDropJson);
+	}
+// TODO:
+//	public void addEntity(Entity ent) {
+//		entities.add(ent);
+//	}
+//
+//	public void removeEntity(Entity ent) {
+//		entities.remove(ent);
+//	}
+//
+//	public void setEntities(Entity[] arr) {
+//		entities = new ArrayList<>(arr.length);
+//		for (Entity e : arr) {
+//			entities.add(e);
+//		}
+//	}
+
+	fn isValidSpawnLocation(self: *ServerWorld, x: i32, z: i32) !bool {
+		_ = self;
+		_ = x;
+		_ = z;
+		return true;
+//	TODO:	return chunkManager.getOrGenerateMapFragment(x, z, 32).getBiome(x, z).isValidPlayerSpawn;
+	}
+
+	pub fn dropWithCooldown(self: *ServerWorld, stack: ItemStack, pos: Vec3d, dir: Vec3f, velocity: f32, pickupCooldown: u32) !void {
+		const vel = vec.floatCast(f64, dir*@splat(3, velocity));
+		try self.itemDropManager.add(pos, vel, stack, server.updatesPerSec*900, pickupCooldown);
+	}
+
+	pub fn drop(self: *ServerWorld, stack: ItemStack, pos: Vec3d, dir: Vec3f, velocity: f32) !void {
+		try self.dropWithCooldown(stack, pos, dir, velocity, 0);
+	}
+
+// TODO:
+//	@Override
+//	public void updateBlock(int x, int y, int z, int newBlock) {
+//		NormalChunk ch = getChunk(x, y, z);
+//		if (ch != null) {
+//			int old = ch.getBlock(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask);
+//			if(old == newBlock) return;
+//			ch.updateBlock(x & Chunk.chunkMask, y & Chunk.chunkMask, z & Chunk.chunkMask, newBlock);
+//			// Send the block update to all players:
+//			for(User user : Server.users) {
+//				Protocols.BLOCK_UPDATE.send(user, x, y, z, newBlock);
+//			}
+//			if((old & Blocks.TYPE_MASK) == (newBlock & Blocks.TYPE_MASK)) return;
+//			for(BlockDrop drop : Blocks.blockDrops(old)) {
+//				int amount = (int)(drop.amount);
+//				float randomPart = drop.amount - amount;
+//				if (Math.random() < randomPart) amount++;
+//				if (amount > 0) {
+//					itemEntityManager.add(x, y, z, 0, 0, 0, new ItemStack(drop.item, amount), 30*900);
+//				}
+//			}
+//		}
+//	}
+
+	pub fn update(self: *ServerWorld) void {
+		const newTime = std.time.milliTimestamp();
+		var deltaTime = @intToFloat(f32, newTime - self.lastUpdateTime)/1000.0;
+		self.lastUpdateTime = newTime;
+		if(deltaTime > 0.3) {
+			std.log.warn("Update time is getting too high. It's alread at {} s!", .{deltaTime});
+			deltaTime = 0.3;
+		}
+
+		while(self.milliTime + 100 < newTime) {
+			self.milliTime += 100;
+			if(self.doGameTimeCycle) self.gameTime += 1; // gameTime is measured in 100ms.
+		}
+		if(self.lastUnimportantDataSent + 2000 < newTime) {// Send unimportant data every ~2s.
+			self.lastUnimportantDataSent = newTime;
+			// TODO:
+//			for(User user : Server.users) {
+//				Protocols.GENERIC_UPDATE.sendTimeAndBiome(user, this);
+//			}
+		}
+		// TODO:
+//		// Entities
+//		for (int i = 0; i < entities.size(); i++) {
+//			Entity en = entities.get(i);
+//			en.update(deltaTime);
+//			// Check item entities:
+//			if (en.getInventory() != null) {
+//				itemEntityManager.checkEntity(en);
+//			}
+//		}
+
+		// Item Entities
+		self.itemDropManager.update(deltaTime);
+		// TODO:
+//		// Block Entities
+//		for(MetaChunk chunk : metaChunks.values()) {
+//			chunk.updateBlockEntities();
+//		}
+//
+//		// Liquids
+//		if (gameTime % 3 == 0) {
+//			//Profiler.startProfiling();
+//			for(MetaChunk chunk : metaChunks.values()) {
+//				chunk.liquidUpdate();
+//			}
+//			//Profiler.printProfileTime("liquid-update");
+//		}
+//
+//		seek();
+	}
+
+// TODO:
+//	@Override
+	pub fn queueChunks(self: *ServerWorld, positions: []ChunkPosition, source: ?*User) !void {
+		for(positions) |pos| {
+			try self.queueChunk(pos, source);
+		}
+	}
+
+	pub fn queueChunk(self: *ServerWorld, pos: ChunkPosition, source: ?*User) !void {
+		try self.chunkManager.queueChunk(pos, source);
+	}
+
+	pub fn seek() !void {
+		// TODO: Remove this MetaChunk stuff. It wasn't really useful and made everything needlessly complicated.
+//		// Care about the metaChunks:
+//		HashMap<HashMapKey3D, MetaChunk> oldMetaChunks = new HashMap<>(metaChunks);
+//		HashMap<HashMapKey3D, MetaChunk> newMetaChunks = new HashMap<>();
+//		for(User user : Server.users) {
+//			ArrayList<NormalChunk> chunkList = new ArrayList<>();
+//			int metaRenderDistance = (int)Math.ceil(Settings.entityDistance/(float)(MetaChunk.metaChunkSize*Chunk.chunkSize));
+//			int x0 = (int)user.player.getPosition().x >> (MetaChunk.metaChunkShift + Chunk.chunkShift);
+//			int y0 = (int)user.player.getPosition().y >> (MetaChunk.metaChunkShift + Chunk.chunkShift);
+//			int z0 = (int)user.player.getPosition().z >> (MetaChunk.metaChunkShift + Chunk.chunkShift);
+//			for(int metaX = x0 - metaRenderDistance; metaX <= x0 + metaRenderDistance + 1; metaX++) {
+//				for(int metaY = y0 - metaRenderDistance; metaY <= y0 + metaRenderDistance + 1; metaY++) {
+//					for(int metaZ = z0 - metaRenderDistance; metaZ <= z0 + metaRenderDistance + 1; metaZ++) {
+//						HashMapKey3D key = new HashMapKey3D(metaX, metaY, metaZ);
+//						if(newMetaChunks.containsKey(key)) continue; // It was already updated from another players perspective.
+//						// Check if it already exists:
+//						MetaChunk metaChunk = oldMetaChunks.get(key);
+//						oldMetaChunks.remove(key);
+//						if (metaChunk == null) {
+//							metaChunk = new MetaChunk(metaX *(MetaChunk.metaChunkSize*Chunk.chunkSize), metaY*(MetaChunk.metaChunkSize*Chunk.chunkSize), metaZ *(MetaChunk.metaChunkSize*Chunk.chunkSize), this);
+//						}
+//						newMetaChunks.put(key, metaChunk);
+//						metaChunk.update(Settings.entityDistance, chunkList);
+//					}
+//				}
+//			}
+//			oldMetaChunks.forEach((key, chunk) -> {
+//				chunk.clean();
+//			});
+//			chunks = chunkList.toArray(new NormalChunk[0]);
+//			metaChunks = newMetaChunks;
+//		}
+	}
+//
+//	public MetaChunk getMetaChunk(int wx, int wy, int wz) {
+//		// Test if the metachunk exists:
+//		int metaX = wx >> (MetaChunk.metaChunkShift + Chunk.chunkShift);
+//		int metaY = wy >> (MetaChunk.metaChunkShift + Chunk.chunkShift);
+//		int metaZ = wz >> (MetaChunk.metaChunkShift + Chunk.chunkShift);
+//		HashMapKey3D key = new HashMapKey3D(metaX, metaY, metaZ);
+//		return metaChunks.get(key);
+//	}
+
+	pub fn getChunk(self: *ServerWorld, x: i32, y: i32, z: i32) ?*Chunk {
+		_ = self;
+		_ = x;
+		_ = y;
+		_ = z;
+		// TODO:
+//		MetaChunk meta = getMetaChunk(wx, wy, wz);
+//		if (meta != null) {
+//			return meta.getChunk(wx, wy, wz);
+//		}
+		return null;
+	}
+// TODO:
+//	public BlockEntity getBlockEntity(int x, int y, int z) {
+//		/*BlockInstance bi = getBlockInstance(x, y, z);
+//		Chunk ck = _getNoGenerateChunk(bi.getX() >> NormalChunk.chunkShift, bi.getZ() >> NormalChunk.chunkShift);
+//		return ck.blockEntities().get(bi);*/
+//		return null; // TODO: Work on BlockEntities!
+//	}
+//	public NormalChunk[] getChunks() {
+//		return chunks;
+//	}
+//
+//	public Entity[] getEntities() {
+//		return entities.toArray(new Entity[0]);
+//	}
+//
+//	public int getHeight(int wx, int wz) {
+//		return (int)chunkManager.getOrGenerateMapFragment(wx, wz, 1).getHeight(wx, wz);
+//	}
+//	@Override
+//	public void cleanup() {
+//		// Be sure to dereference and finalize the maximum of things
+//		try {
+//			for(MetaChunk chunk : metaChunks.values()) {
+//				if (chunk != null) chunk.clean();
+//			}
+//			chunkManager.forceSave();
+//			ChunkIO.save();
+//
+//			chunkManager.cleanup();
+//
+//			ChunkIO.clean();
+//			
+//			wio.saveWorldData();
+//			savePlayers();
+//			JsonParser.storeToFile(itemEntityManager.store(), "saves/" + name + "/items.json");
+//			metaChunks = null;
+//		} catch (Exception e) {
+//			Logger.error(e);
+//		}
+//	}
+//	@Override
+//	public CurrentWorldRegistries getCurrentRegistries() {
+//		return registries;
+//	}
+//
+//	public Biome getBiome(int wx, int wy, int wz) {
+//		return new InterpolatableCaveBiomeMap(new ChunkData(
+//			wx & ~CaveBiomeMapFragment.CAVE_BIOME_MASK,
+//			wy & ~CaveBiomeMapFragment.CAVE_BIOME_MASK,
+//			wz & ~CaveBiomeMapFragment.CAVE_BIOME_MASK, 1
+//		), 0).getRoughBiome(wx, wy, wz, null, true);
+//	}
+
+	pub fn getBlock(self: *ServerWorld, x: i32, y: i32, z: i32) Block {
+		if(self.getChunk(x, y, z)) |ch| {
+			return ch.getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
+		}
+		return Block {.typ = 0, .data = 0};
+	}
+
+};

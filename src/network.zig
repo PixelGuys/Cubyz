@@ -685,9 +685,9 @@ pub const Protocols = struct {
 					.wz = std.mem.readIntBig(i32, remaining[8..12]),
 					.voxelSize = @intCast(u31, std.mem.readIntBig(i32, remaining[12..16])),
 				};
-				_ = request;
-				_ = conn;
-				// TODO: Server.world.queueChunk(request, (User)conn);
+				if(conn.user) |user| {
+					try main.server.world.?.queueChunk(request, user);
+				}
 				remaining = remaining[16..];
 			}
 		}
@@ -731,31 +731,21 @@ pub const Protocols = struct {
 			}
 			try renderer.RenderStructure.updateChunkMesh(ch);
 		}
-		pub fn sendChunk(conn: *Connection, visData: chunk.ChunkVisibilityData) !void {
-			var data = try main.threadAllocator.alloc(u8, 16 + 8*visData.visibles.items.len);
-			defer main.threadAllocator.free(data);
-			std.mem.writeIntBig(i32, data[0..4], visData.pos.wx);
-			std.mem.writeIntBig(i32, data[4..8], visData.pos.wy);
-			std.mem.writeIntBig(i32, data[8..12], visData.pos.wz);
-			std.mem.writeIntBig(i32, data[12..16], visData.pos.voxelSize);
-			var size = visData.visibles.items.len;
-			var x = data[16..][0..size];
-			var y = data[16..][size..2*size];
-			var z = data[16..][2*size..3*size];
-			var neighbors = data[16..][3*size..4*size];
-			var visibleBlocks = data[16..][4*size..];
-			for(visData.visibles.items, 0..) |block, i| {
-				x[i] = block.x;
-				y[i] = block.y;
-				z[i] = block.z;
-				neighbors[i] = block.neighbors;
-				var blockTypeAndData = @as(u32, block.block.data) << 16 | block.block.typ;
-				std.mem.writeIntBig(u32, visibleBlocks[4*i..][0..4], blockTypeAndData);
+		pub fn sendChunk(conn: *Connection, ch: *chunk.Chunk) !void {
+			var uncompressedData: [4*ch.blocks.len]u8 = undefined;
+			for(&ch.blocks, 0..) |*block, i| {
+				std.mem.writeIntBig(u32, uncompressedData[4*i..][0..4], block.toInt());
 			}
-
-			var compressed = try utils.Compression.deflate(main.threadAllocator, data);
-			defer main.threadAllocator.free(compressed);
-			try conn.sendImportant(id, compressed);
+			const compressedData = try utils.Compression.deflate(main.threadAllocator, &uncompressedData);
+			defer main.threadAllocator.free(compressedData);
+			const data =try  main.threadAllocator.alloc(u8, 16 + compressedData.len);
+			defer main.threadAllocator.free(data);
+			std.mem.copy(u8, data[16..], compressedData);
+			std.mem.writeIntBig(i32, data[0..4], ch.pos.wx);
+			std.mem.writeIntBig(i32, data[4..8], ch.pos.wy);
+			std.mem.writeIntBig(i32, data[8..12], ch.pos.wz);
+			std.mem.writeIntBig(i32, data[12..16], ch.pos.voxelSize);
+			try conn.sendImportant(id, data);
 		}
 	};
 	pub const playerPosition = struct {
@@ -1500,7 +1490,7 @@ pub const Connection = struct {
 			var newIndex = self.lastIndex;
 			var protocol = receivedPacket[newIndex];
 			newIndex += 1;
-			if(self.manager.world == null and protocol != Protocols.handShake.id)
+			if(self.manager.world == null and self.user == null and protocol != Protocols.handShake.id)
 				return;
 
 			// Determine the next packet length:

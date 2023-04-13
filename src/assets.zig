@@ -190,18 +190,20 @@ pub const BlockPalette = struct {
 	}
 
 	pub fn save(self: *BlockPalette, allocator: Allocator) !JsonElement {
-		var json = JsonElement{
-			.JsonObject = std.StringHashMap(JsonElement).init(allocator),
-		};
+		const json = try JsonElement.initObject(allocator);
 		errdefer json.free(allocator);
 		for(self.palette.items, 0..) |item, i| {
-			json.JsonObject.put(try allocator.dupe(u8, item), JsonElement{.JsonInt = @intCast(i64, i)});
+			try json.put(try allocator.dupe(u8, item), i);
 		}
 		return json;
 	}
 };
 
+var loadedAssets: bool = false;
+
 pub fn loadWorldAssets(assetFolder: []const u8, palette: *BlockPalette) !void {
+	if(loadedAssets) return; // The assets already got loaded by the server.
+	loadedAssets = true;
 	var blocks = try commonBlocks.cloneWithAllocator(main.threadAllocator);
 	defer blocks.clearAndFree();
 	var items = try commonItems.cloneWithAllocator(main.threadAllocator);
@@ -263,6 +265,13 @@ pub fn loadWorldAssets(assetFolder: []const u8, palette: *BlockPalette) !void {
 //			block++;
 //		}
 //	}
+}
+
+pub fn unloadAssets() void {
+	if(!loadedAssets) return;
+	loadedAssets = false;
+	blocks_zig.reset();
+	items_zig.reset();
 }
 
 pub fn deinit() void {

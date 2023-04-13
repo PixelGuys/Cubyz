@@ -28,8 +28,9 @@ fn openWorld(namePtr: usize) void {
 	const nullTerminatedName = @intToPtr([*:0]const u8, namePtr);
 	const name = std.mem.span(nullTerminatedName);
 	std.log.info("TODO: Open world {s}", .{name});
-	_ = std.Thread.spawn(.{}, main.server.start, .{}) catch |err| {
+	main.server.thread = std.Thread.spawn(.{}, main.server.start, .{name}) catch |err| {
 		std.log.err("Encountered error while starting server thread: {s}", .{@errorName(err)});
+		return;
 	};
 
 	const connection = ConnectionManager.init(main.settings.defaultPort+1, false) catch |err| {

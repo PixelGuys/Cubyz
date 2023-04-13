@@ -6,6 +6,7 @@ const chunk_zig = @import("chunk.zig");
 const Chunk = chunk_zig.Chunk;
 const game = @import("game.zig");
 const World = game.World;
+const ServerWorld = main.server.ServerWorld;
 const graphics = @import("graphics.zig");
 const c = graphics.c;
 const items = @import("items.zig");
@@ -26,8 +27,8 @@ const ItemDrop = struct {
 	vel: Vec3d,
 	rot: Vec3f,
 	itemStack: ItemStack,
-	despawnTime: u32,
-	pickupCooldown: u32,
+	despawnTime: i32,
+	pickupCooldown: i32,
 
 	reverseIndex: u16,
 };
@@ -54,7 +55,7 @@ pub const ItemDropManager = struct {
 
 	isEmpty: std.bit_set.ArrayBitSet(usize, maxCapacity),
 
-	world: *World,
+	world: ?*ServerWorld,
 	gravity: f64,
 	airDragFactor: f64,
 
@@ -63,17 +64,17 @@ pub const ItemDropManager = struct {
 	lastUpdates: JsonElement,
 
 	// TODO: Get rid of this inheritance pattern.
-	addWithIndexAndRotation: *const fn(*ItemDropManager, u16, Vec3d, Vec3d, Vec3f, ItemStack, u32, u32) void,
+	addWithIndexAndRotation: *const fn(*ItemDropManager, u16, Vec3d, Vec3d, Vec3f, ItemStack, i32, i32) void,
 
-	pub fn init(self: *ItemDropManager, allocator: Allocator, world: *World) !void {
+	pub fn init(self: *ItemDropManager, allocator: Allocator, world: ?*ServerWorld, gravity: f64) !void {
 		self.* = ItemDropManager {
 			.allocator = allocator,
 			.list = std.MultiArrayList(ItemDrop){},
 			.lastUpdates = try JsonElement.initArray(allocator),
 			.isEmpty = std.bit_set.ArrayBitSet(usize, maxCapacity).initFull(),
 			.world = world,
-			.gravity = world.gravity,
-			.airDragFactor = world.gravity/maxSpeed,
+			.gravity = gravity,
+			.airDragFactor = gravity/maxSpeed,
 			.addWithIndexAndRotation = &defaultAddWithIndexAndRotation,
 		};
 		try self.list.resize(self.allocator, maxCapacity);
@@ -110,7 +111,7 @@ pub const ItemDropManager = struct {
 				json.get(f64, "vz", 0),
 			},
 			items.ItemStack{.item = item, .amount = json.get(u16, "amount", 1)},
-			json.get(u32, "despawnTime", 60),
+			json.get(i32, "despawnTime", 60),
 			0
 		};
 		if(json.get(?usize, "i", null)) |i| {
@@ -168,6 +169,7 @@ pub const ItemDropManager = struct {
 	}
 
 	pub fn update(self: *ItemDropManager, deltaTime: f32) void {
+		std.debug.assert(self.world != null);
 		const pos = self.list.items(.pos);
 		const vel = self.list.items(.vel);
 		const pickupCooldown = self.list.items(.pickupCooldown);
@@ -175,7 +177,7 @@ pub const ItemDropManager = struct {
 		var ii: u32 = 0;
 		while(ii < self.size) : (ii += 1) {
 			const i = self.indices[ii];
-			if(self.world.getChunk(pos[i][0], pos[i][1], pos[i][2])) |chunk| {
+			if(self.world.?.getChunk(@floatToInt(i32, pos[i][0]), @floatToInt(i32, pos[i][1]), @floatToInt(i32, pos[i][2]))) |chunk| {
 				// Check collision with blocks:
 				self.updateEnt(chunk, &pos[i], &vel[i], deltaTime);
 			}
@@ -220,7 +222,7 @@ pub const ItemDropManager = struct {
 //		}
 //	}
 
-	pub fn addFromBlockPosition(self: *ItemDropManager, blockPos: Vec3i, vel: Vec3d, itemStack: ItemStack, despawnTime: u32) void {
+	pub fn addFromBlockPosition(self: *ItemDropManager, blockPos: Vec3i, vel: Vec3d, itemStack: ItemStack, despawnTime: i32) void {
 		self.add(
 			Vec3d {
 				@intToFloat(f64, blockPos[0]) + @floatCast(f64, random.nextFloat(&main.seed)), // TODO: Consider block bounding boxes.
@@ -237,7 +239,7 @@ pub const ItemDropManager = struct {
 		);
 	}
 
-	pub fn add(self: *ItemDropManager, pos: Vec3d, vel: Vec3d, itemStack: ItemStack, despawnTime: u32, pickupCooldown: u32) !void {
+	pub fn add(self: *ItemDropManager, pos: Vec3d, vel: Vec3d, itemStack: ItemStack, despawnTime: i32, pickupCooldown: i32) !void {
 		try self.addWithRotation(
 			pos, vel,
 			Vec3f {
@@ -249,7 +251,7 @@ pub const ItemDropManager = struct {
 		);
 	}
 	
-	pub fn addWithIndex(self: *ItemDropManager, i: u16, pos: Vec3d, vel: Vec3d, itemStack: ItemStack, despawnTime: u32, pickupCooldown: u32) void {
+	pub fn addWithIndex(self: *ItemDropManager, i: u16, pos: Vec3d, vel: Vec3d, itemStack: ItemStack, despawnTime: i32, pickupCooldown: i32) void {
 		self.addWithIndexAndRotation(
 			self, i, pos, vel,
 			Vec3f {
@@ -261,7 +263,7 @@ pub const ItemDropManager = struct {
 		);
 	}
 
-	pub fn addWithRotation(self: *ItemDropManager, pos: Vec3d, vel: Vec3d, rot: Vec3f, itemStack: ItemStack, despawnTime: u32, pickupCooldown: u32) !void {
+	pub fn addWithRotation(self: *ItemDropManager, pos: Vec3d, vel: Vec3d, rot: Vec3f, itemStack: ItemStack, despawnTime: i32, pickupCooldown: i32) !void {
 		var i: u16 = undefined;
 		{
 			self.mutex.lock();
@@ -282,7 +284,7 @@ pub const ItemDropManager = struct {
 		self.addWithIndexAndRotation(self, i, pos, vel, rot, itemStack, despawnTime, pickupCooldown);
 	}
 
-	fn defaultAddWithIndexAndRotation(self: *ItemDropManager, i: u16, pos: Vec3d, vel: Vec3d, rot: Vec3f, itemStack: ItemStack, despawnTime: u32, pickupCooldown: u32) void {
+	fn defaultAddWithIndexAndRotation(self: *ItemDropManager, i: u16, pos: Vec3d, vel: Vec3d, rot: Vec3f, itemStack: ItemStack, despawnTime: i32, pickupCooldown: i32) void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
 		std.debug.assert(self.isEmpty.isSet(i));
@@ -330,20 +332,20 @@ pub const ItemDropManager = struct {
 
 	fn updateEnt(self: *ItemDropManager, chunk: *Chunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {
 		std.debug.assert(!self.mutex.tryLock()); // Mutex must be locked!
-		const startedInABlock = checkBlocks(chunk, pos);
+		const startedInABlock = self.checkBlocks(chunk, pos);
 		if(startedInABlock) {
 			self.fixStuckInBlock(chunk, pos, vel, deltaTime);
 			return;
 		}
-		const drag: f64 = self.airDragFactor;
-		var acceleration: Vec3f = Vec3f{0, -self.gravity*deltaTime, 0};
+		var drag: f64 = self.airDragFactor;
+		var acceleration: Vec3d = Vec3d{0, -self.gravity*deltaTime, 0};
 		// Update gravity:
 		inline for(0..3) |i| {
-			const old = pos[i];
-			pos[i] += vel[i]*deltaTime + acceleration[i]*deltaTime;
+			const old = pos.*[i];
+			pos.*[i] += vel.*[i]*deltaTime + acceleration[i]*deltaTime;
 			if(self.checkBlocks(chunk, pos)) {
-				pos[i] = old;
-				vel[i] *= 0.5; // Effectively performing binary search over multiple frames.
+				pos.*[i] = old;
+				vel.*[i] *= 0.5; // Effectively performing binary search over multiple frames.
 			}
 			drag += 0.5; // TODO: Calculate drag from block properties and add buoyancy.
 		}
@@ -357,7 +359,7 @@ pub const ItemDropManager = struct {
 		const centeredPos = pos.* - @splat(3, @as(f64, 0.5));
 		const pos0 = vec.floatToInt(i32, @floor(centeredPos));
 
-		var closestEmptyBlock = @splat(3, @splat(i32, -1));
+		var closestEmptyBlock = @splat(3, @as(i32, -1));
 		var closestDist = std.math.floatMax(f64);
 		var delta = Vec3i{0, 0, 0};
 		while(delta[0] <= 1) : (delta[0] += 1) {
@@ -378,45 +380,45 @@ pub const ItemDropManager = struct {
 		}
 
 		vel.* = @splat(3, @as(f64, 0));
-		const factor = 1; // TODO: Investigate what past me wanted to accomplish here.
+		const factor: f64 = 1; // TODO: Investigate what past me wanted to accomplish here.
 		if(closestDist == std.math.floatMax(f64)) {
 			// Surrounded by solid blocks → move upwards
-			vel[1] = factor;
-			pos[1] += vel[1]*deltaTime;
+			vel.*[1] = factor;
+			pos.*[1] += vel.*[1]*deltaTime;
 		} else {
 			vel.* = @splat(3, factor)*(vec.intToFloat(f64, pos0 + closestEmptyBlock) - centeredPos);
 			pos.* += (vel.*)*@splat(3, deltaTime);
 		}
 	}
 
-	fn checkBlocks(self: *ItemDropManager, chunk: *Chunk, pos: *Vec3d) void {
+	fn checkBlocks(self: *ItemDropManager, chunk: *Chunk, pos: *Vec3d) bool {
 		const lowerCornerPos = pos.* - @splat(3, radius);
 		const pos0 = vec.floatToInt(i32, @floor(lowerCornerPos));
-		const isSolid = self.checkBlock(chunk, pos, pos0);
-		if(pos[0] - @intToFloat(f64, pos0[0]) + diameter >= 1) {
-			isSolid |= checkBlock(chunk, pos, pos0 + Vec3i{1, 0, 0});
-			if(pos[1] - @intToFloat(f64, pos0[1]) + diameter >= 1) {
-				isSolid |= checkBlock(chunk, pos, pos0 + Vec3i{0, 1, 0});
-				isSolid |= checkBlock(chunk, pos, pos0 + Vec3i{1, 0, 0});
-				if(pos[2] - @intToFloat(f64, pos0[2]) + diameter >= 1) {
-					isSolid |= checkBlock(chunk, pos, pos0 + Vec3i{0, 0, 1});
-					isSolid |= checkBlock(chunk, pos, pos0 + Vec3i{1, 0, 1});
-					isSolid |= checkBlock(chunk, pos, pos0 + Vec3i{0, 1, 1});
-					isSolid |= checkBlock(chunk, pos, pos0 + Vec3i{1, 1, 1});
+		var isSolid = self.checkBlock(chunk, pos, pos0);
+		if(pos.*[0] - @intToFloat(f64, pos0[0]) + diameter >= 1) {
+			isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{1, 0, 0});
+			if(pos.*[1] - @intToFloat(f64, pos0[1]) + diameter >= 1) {
+				isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{0, 1, 0});
+				isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{1, 0, 0});
+				if(pos.*[2] - @intToFloat(f64, pos0[2]) + diameter >= 1) {
+					isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{0, 0, 1});
+					isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{1, 0, 1});
+					isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{0, 1, 1});
+					isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{1, 1, 1});
 				}
 			} else {
-				isSolid |= checkBlock(chunk, pos, pos0 + Vec3i{0, 0, 1});
-				isSolid |= checkBlock(chunk, pos, pos0 + Vec3i{1, 0, 1});
+				isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{0, 0, 1});
+				isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{1, 0, 1});
 			}
 		} else {
-			if(pos[1] - @intToFloat(f64, pos0[1]) + diameter >= 1) {
-				isSolid |= checkBlock(chunk, pos, pos0 + Vec3i{0, 1, 0});
-				if(pos[2] - @intToFloat(f64, pos0[2]) + diameter >= 1) {
-					isSolid |= checkBlock(chunk, pos, pos0 + Vec3i{0, 0, 1});
-					isSolid |= checkBlock(chunk, pos, pos0 + Vec3i{0, 1, 1});
+			if(pos.*[1] - @intToFloat(f64, pos0[1]) + diameter >= 1) {
+				isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{0, 1, 0});
+				if(pos.*[2] - @intToFloat(f64, pos0[2]) + diameter >= 1) {
+					isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{0, 0, 1});
+					isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{0, 1, 1});
 				}
 			} else {
-				isSolid |= checkBlock(chunk, pos, pos0 + Vec3i{0, 0, 1});
+				isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{0, 0, 1});
 			}
 		}
 		return isSolid;
@@ -461,7 +463,7 @@ pub const ClientItemDropManager = struct {
 			.super = undefined,
 			.lastTime = @truncate(i16, std.time.milliTimestamp()) -% settings.entityLookback,
 		};
-		try self.super.init(allocator, world);
+		try self.super.init(allocator, null, world.gravity);
 		self.super.addWithIndexAndRotation = &overrideAddWithIndexAndRotation;
 		self.interpolation.init(
 			@ptrCast(*[maxf64Capacity]f64, self.super.list.items(.pos).ptr),
@@ -506,7 +508,7 @@ pub const ClientItemDropManager = struct {
 		self.lastTime = time;
 	}
 
-	fn overrideAddWithIndexAndRotation(super: *ItemDropManager, i: u16, pos: Vec3d, vel: Vec3d, rot: Vec3f, itemStack: ItemStack, despawnTime: u32, pickupCooldown: u32) void {
+	fn overrideAddWithIndexAndRotation(super: *ItemDropManager, i: u16, pos: Vec3d, vel: Vec3d, rot: Vec3f, itemStack: ItemStack, despawnTime: i32, pickupCooldown: i32) void {
 		{
 			super.mutex.lock();
 			defer super.mutex.unlock();
