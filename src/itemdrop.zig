@@ -175,7 +175,7 @@ pub const ItemDropManager = struct {
 		const pickupCooldown = self.list.items(.pickupCooldown);
 		const despawnTime = self.list.items(.despawnTime);
 		var ii: u32 = 0;
-		while(ii < self.size) : (ii += 1) {
+		while(ii < self.size) {
 			const i = self.indices[ii];
 			if(self.world.?.getChunk(@floatToInt(i32, pos[i][0]), @floatToInt(i32, pos[i][1]), @floatToInt(i32, pos[i][2]))) |chunk| {
 				// Check collision with blocks:
@@ -185,7 +185,8 @@ pub const ItemDropManager = struct {
 			despawnTime[i] -= 1;
 			if(despawnTime[i] < 0) {
 				self.remove(i);
-				ii -= 1;
+			} else {
+				ii += 1;
 			}
 		}
 	}

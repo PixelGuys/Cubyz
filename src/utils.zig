@@ -540,11 +540,12 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 			}
 
 			if(self.currentPoint == null) {
+				const drag = std.math.pow(f64, 0.5, deltaTime);
 				for(self.outPos, self.outVel) |*pos, *vel| {
 					// Just move on with the current velocity.
 					pos.* += (vel.*)*deltaTime;
 					// Add some drag to prevent moving far away on short connection loss.
-					vel.* *= std.math.pow(f64, 0.5, deltaTime);
+					vel.* *= drag;
 				}
 			} else {
 				const tScale = @intToFloat(f64, self.lastTimes[self.currentPoint.?] -% lastTime)/1000;
@@ -566,6 +567,7 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 			}
 
 			if(self.currentPoint == null) {
+				const drag = std.math.pow(f64, 0.5, deltaTime);
 				for(indices) |i| {
 					const index = @as(usize, i)*coordinatesPerIndex;
 					var j: u32 = 0;
@@ -573,7 +575,7 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 						// Just move on with the current velocity.
 						self.outPos[index + j] += self.outVel[index + j]*deltaTime;
 						// Add some drag to prevent moving far away on short connection loss.
-						self.outVel[index + j] *= std.math.pow(f64, 0.5, deltaTime);
+						self.outVel[index + j] *= drag;
 					}
 				}
 			} else {
