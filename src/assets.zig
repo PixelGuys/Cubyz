@@ -5,6 +5,7 @@ const blocks_zig = @import("blocks.zig");
 const items_zig = @import("items.zig");
 const JsonElement = @import("json.zig").JsonElement;
 const main = @import("main.zig");
+const biomes_zig = main.server.terrain.biomes;
 
 var arena: std.heap.ArenaAllocator = undefined;
 var arenaAllocator: Allocator = undefined;
@@ -94,6 +95,8 @@ pub fn readAssets(externalAllocator: Allocator, assetPath: []const u8, blocks: *
 }
 
 pub fn init() !void {
+	try biomes_zig.init();
+	try blocks_zig.init();
 	arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
 	arenaAllocator = arena.allocator();
 	commonBlocks = std.StringHashMap(JsonElement).init(arenaAllocator);
@@ -126,21 +129,6 @@ fn registerBlock(assetFolder: []const u8, id: []const u8, json: JsonElement) !vo
 		const item = try registerItem(assetFolder, id, json.getChild("item"));
 		item.block = block;
 	}
-//		TODO:
-//		// Ores:
-//		JsonObject oreProperties = json.getObject("ore");
-//		if (oreProperties != null) {
-//			// Extract the ids:
-//			String[] oreIDs = oreProperties.getArrayNoNull("sources").getStrings();
-//			float veins = oreProperties.getFloat("veins", 0);
-//			float size = oreProperties.getFloat("size", 0);
-//			int height = oreProperties.getInt("height", 0);
-//			float density = oreProperties.getFloat("density", 0.5f);
-//			Ore ore = new Ore(block, new int[oreIDs.length], height, veins, size, density);
-//			ores.add(ore);
-//			oreRegistry.register(ore);
-//			oreContainers.add(oreIDs);
-//		}
 }
 
 fn registerRecipesFromFile(file: []const u8) !void {
@@ -248,23 +236,18 @@ pub fn loadWorldAssets(assetFolder: []const u8, palette: *BlockPalette) !void {
 	}
 
 	// block drops:
-	try blocks_zig.registerBlockDrops(blocks);
+	try blocks_zig.finishBlocks(blocks);
 
 	for(recipes.items) |recipe| {
 		try registerRecipesFromFile(recipe);
 	}
 
-//	public void registerBlocks(Registry<DataOrientedRegistry> registries, NoIDRegistry<Ore> oreRegistry, BlockPalette palette) {
-//		HashMap<Resource, JsonObject> perWorldBlocks = new HashMap<>(commonBlocks);
-//		readAllJsonObjects("blocks", (json, id) -> {
-//			perWorldBlocks.put(id, json);
-//		});
-//		int block = 0;
-//		for(Map.Entry<Resource, JsonObject> entry : perWorldBlocks.entrySet()) {
-//			registerBlock(block, entry.getKey(), entry.getValue(), registries, oreRegistry);
-//			block++;
-//		}
-//	}
+	// Biomes:
+	iterator = biomes.iterator();
+	while(iterator.next()) |entry| {
+		try biomes_zig.register(entry.key_ptr.*, entry.value_ptr.*);
+	}
+	try biomes_zig.finishLoading();
 }
 
 pub fn unloadAssets() void {
@@ -272,118 +255,17 @@ pub fn unloadAssets() void {
 	loadedAssets = false;
 	blocks_zig.reset();
 	items_zig.reset();
+	biomes_zig.reset();
 }
 
 pub fn deinit() void {
 	arena.deinit();
+	biomes_zig.deinit();
+	blocks_zig.deinit();
 }
 
-
 //TODO:
-//	public static final ArrayList<File> addons = new ArrayList<>();
-//	private static final ArrayList<Item> items = new ArrayList<>();
-//
-//	private static final ArrayList<Ore> ores = new ArrayList<>();
-//	private static final ArrayList<String[]> oreContainers = new ArrayList<>();
-//
-//	private static String assetPath;
-//	
-//	@Override
-//	public void init() {
-//		init(CubyzRegistries.ITEM_REGISTRY);
-//	}
-//	public void init(Registry<Item> itemRegistry) {
-//		if(Constants.getGameSide() == Side.CLIENT) {
-//			ResourcePack pack = new ResourcePack();
-//			pack.name = "Add-Ons Resource Pack"; // used for path like: testaddon/models/thing.json
-//			pack.path = new File("assets");
-//			ResourceManager.packs.add(pack);
-//			for (File addon : AddonsMod.addons) {
-//				pack = new ResourcePack();
-//				pack.name = "Add-On: " + Utilities.capitalize(addon.getName()); // used for languages like: lang/en_US.lang
-//				pack.path = addon;
-//				ResourceManager.packs.add(pack);
-//			}
-//		}
-//		registerMissingStuff(itemRegistry);
-//		readRecipes(commonRecipes);
-//	}
-//
-//	public void registerItems(Registry<Item> registry, String texturePathPrefix) {
-//		readAllJsonObjects("items", (json, id) -> {
-//			Item item;
-//			if (json.map.containsKey("food")) {
-//				item = new Consumable(id, json);
-//			} else {
-//				item = new Item(id, json);
-//			}
-//			item.setTexture(texturePathPrefix + id.getMod() + "/items/textures/" + json.getString("texture", "default.png"));
-//			registry.register(item);
-//		});
-//		// Register the block items:
-//		registry.registerAll(items);
-//	}
-//	
-//	@Override
-//	public void registerItems(Registry<Item> registry) {
-//		registerItems(registry, "assets/");
-//	}
-//
-//	public void readBlocks() {
-//		readAllJsonObjects("blocks", (json, id) -> {
-//			commonBlocks.put(id, json);
-//		});
-//	}
-//
 //	private void registerBlock(int block, Resource id, JsonObject json, Registry<DataOrientedRegistry>  registries, NoIDRegistry<Ore> oreRegistry) {
-//		for(DataOrientedRegistry reg : registries.registered(new DataOrientedRegistry[0])) {
-//			reg.register(assetPath, id, json);
-//		}
-//
-//		// Ores:
-//		JsonObject oreProperties = json.getObject("ore");
-//		if (oreProperties != null) {
-//			// Extract the ids:
-//			String[] oreIDs = oreProperties.getArrayNoNull("sources").getStrings();
-//			float veins = oreProperties.getFloat("veins", 0);
-//			float size = oreProperties.getFloat("size", 0);
-//			int height = oreProperties.getInt("height", 0);
-//			float density = oreProperties.getFloat("density", 0.5f);
-//			Ore ore = new Ore(block, new int[oreIDs.length], height, veins, size, density);
-//			ores.add(ore);
-//			oreRegistry.register(ore);
-//			oreContainers.add(oreIDs);
-//		}
-//
-//		// Block drops:
-//		String[] blockDrops = json.getArrayNoNull("drops").getStrings();
-//		ItemBlock self = null;
-//		if(json.getBool("hasItem", true)) {
-//			self = new ItemBlock(block, json.getObjectOrNew("item"));
-//			items.add(self); // Add each block as an item, so it gets displayed in the creative inventory.
-//		}
-//		for (String blockDrop : blockDrops) {
-//			blockDrop = blockDrop.trim();
-//			String[] data = blockDrop.split("\\s+");
-//			float amount = 1;
-//			String name = data[0];
-//			if (data.length == 2) {
-//				amount = Float.parseFloat(data[0]);
-//				name = data[1];
-//			}
-//			if (name.equals("auto")) {
-//				if(self == null) {
-//					Logger.error("Block "+id+" tried to drop itself(\"auto\"), but hasItem is false.");
-//				} else {
-//					Blocks.addBlockDrop(block, new BlockDrop(self, amount));
-//				}
-//			} else if (!name.equals("none")) {
-//				missingDropsBlock.add(block);
-//				missingDropsAmount.add(amount);
-//				missingDropsItem.add(name);
-//			}
-//		}
-//
 //		// block entities:
 //		if (json.has("blockEntity")) {
 //			try {
@@ -392,61 +274,5 @@ pub fn deinit() void {
 //				Logger.error(e);
 //			}
 //		}
-//	}
-//	
-//	public void registerBlocks(Registry<DataOrientedRegistry> registries, NoIDRegistry<Ore> oreRegistry, BlockPalette palette) {
-//		HashMap<Resource, JsonObject> perWorldBlocks = new HashMap<>(commonBlocks);
-//		readAllJsonObjects("blocks", (json, id) -> {
-//			perWorldBlocks.put(id, json);
-//		});
-//		int block = 0;
-//		for(; block < palette.size(); block++) {
-//			Resource id = palette.getResource(block);
-//			JsonObject json = perWorldBlocks.remove(id);
-//			if(json == null) {
-//				Logger.error("Missing block: " + id + ". Replacing it with default block.");
-//				json = new JsonObject();
-//			}
-//			registerBlock(block, id, json, registries, oreRegistry);
-//		}
-//		for(Map.Entry<Resource, JsonObject> entry : perWorldBlocks.entrySet()) {
-//			palette.addResource(entry.getKey());
-//			registerBlock(block, entry.getKey(), entry.getValue(), registries, oreRegistry);
-//			block++;
-//		}
-//	}
-//
-//
-//	public void registerBiomes(BiomeRegistry reg) {
-//		commonBiomes.forEach((id, json) -> {
-//			Biome biome = new Biome(id, json);
-//			reg.register(biome);
-//		});
-//		readAllJsonObjects("biomes", (json, id) -> {
-//			Biome biome = new Biome(id, json);
-//			reg.register(biome);
-//		});
-//	}
-//	
-//	/**
-//	 * Takes care of all missing references.
-//	 */
-//	public void registerMissingStuff(Registry<Item> itemRegistry) {
-//		for(int i = 0; i < missingDropsBlock.size; i++) {
-//			Blocks.addBlockDrop(missingDropsBlock.array[i], new BlockDrop(itemRegistry.getByID(missingDropsItem.get(i)), missingDropsAmount.get(i)));
-//		}
-//		for(int i = 0; i < ores.size(); i++) {
-//			for(int j = 0; j < oreContainers.get(i).length; j++) {
-//				ores.get(i).sources[j] = Blocks.getByID(oreContainers.get(i)[j]);
-//				if (ores.get(i).sources[j] == 0) {
-//					Logger.error("Couldn't find source block "+oreContainers.get(i)[j]+" for ore "+Blocks.id(ores.get(i).block));
-//				}
-//			}
-//		}
-//		ores.clear();
-//		oreContainers.clear();
-//		missingDropsBlock.clear();
-//		missingDropsItem.clear();
-//		missingDropsAmount.clear();
 //	}
 //}

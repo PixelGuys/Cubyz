@@ -486,12 +486,12 @@ pub fn main() !void {
 	seed = @bitCast(u64, std.time.milliTimestamp());
 	var gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe=false}){};
 	threadAllocator = gpa.allocator();
-	defer if(gpa.deinit()) {
+	defer if(gpa.deinit() == .leak) {
 		std.log.err("Memory leak", .{});
 	};
 	var global_gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe=true}){};
 	globalAllocator = global_gpa.allocator();
-	defer if(global_gpa.deinit()) {
+	defer if(global_gpa.deinit() == .leak) {
 		std.log.err("Memory leak", .{});
 	};
 
@@ -552,6 +552,9 @@ pub fn main() !void {
 	} else {
 		try gui.openWindow("main");
 	}
+
+	try server.terrain.initGenerators();
+	defer server.terrain.deinitGenerators();
 
 	c.glCullFace(c.GL_BACK);
 	c.glEnable(c.GL_BLEND);

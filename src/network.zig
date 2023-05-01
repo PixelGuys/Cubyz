@@ -55,7 +55,10 @@ const Socket = struct {
 			.port = @byteSwap(destination.port),
 			.addr = destination.ip,
 		};
-		std.debug.assert(data.len == try os.sendto(self.socketID, data, 0, @ptrCast(*const os.sockaddr, &addr), @sizeOf(os.sockaddr.in)));
+		std.debug.assert(data.len == os.sendto(self.socketID, data, 0, @ptrCast(*const os.sockaddr, &addr), @sizeOf(os.sockaddr.in)) catch |err| {
+			std.log.info("Got error while sending to {}: {s}", .{destination, @errorName(err)});
+			return;
+		});
 	}
 
 	fn receive(self: Socket, buffer: []u8, timeout: i32, resultAddress: *Address) ![]u8 {
@@ -416,7 +419,7 @@ pub const ConnectionManager = struct {
 		}
 	}
 
-	pub fn send(self: *ConnectionManager, data: []const u8, target: Address) !void {
+	pub fn send(self: *ConnectionManager, data: []const u8, target: Address) Allocator.Error!void {
 		try self.socket.send(data, target);
 	}
 
@@ -513,7 +516,7 @@ pub const ConnectionManager = struct {
 		self.threadId = std.Thread.getCurrentId();
 		var gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe=false}){};
 		main.threadAllocator = gpa.allocator();
-		defer if(gpa.deinit()) {
+		defer if(gpa.deinit() == .leak) {
 			@panic("Memory leak");
 		};
 
@@ -731,8 +734,8 @@ pub const Protocols = struct {
 			}
 			try renderer.RenderStructure.updateChunkMesh(ch);
 		}
-		pub fn sendChunk(conn: *Connection, ch: *chunk.Chunk) !void {
-			var uncompressedData: [4*ch.blocks.len]u8 = undefined;
+		pub fn sendChunk(conn: *Connection, ch: *chunk.Chunk) Allocator.Error!void {
+			var uncompressedData: [4*@typeInfo(@TypeOf(ch.blocks)).Array.len]u8 = undefined; // TODO: #15280
 			for(&ch.blocks, 0..) |*block, i| {
 				std.mem.writeIntBig(u32, uncompressedData[4*i..][0..4], block.toInt());
 			}
@@ -1295,7 +1298,7 @@ pub const Connection = struct {
 		main.globalAllocator.destroy(self);
 	}
 
-	fn flush(self: *Connection) !void {
+	fn flush(self: *Connection) Allocator.Error!void {
 		if(self.streamPosition == importantHeaderSize) return; // Don't send empty packets.
 		// Fill the header:
 		self.streamBuffer[0] = Protocols.important;
@@ -1314,7 +1317,7 @@ pub const Connection = struct {
 		self.streamPosition = importantHeaderSize;
 	}
 
-	fn writeByteToStream(self: *Connection, data: u8) !void {
+	fn writeByteToStream(self: *Connection, data: u8) Allocator.Error!void {
 		self.streamBuffer[self.streamPosition] = data;
 		self.streamPosition += 1;
 		if(self.streamPosition == self.streamBuffer.len) {
@@ -1322,7 +1325,7 @@ pub const Connection = struct {
 		}
 	}
 
-	pub fn sendImportant(self: *Connection, id: u8, data: []const u8) !void {
+	pub fn sendImportant(self: *Connection, id: u8, data: []const u8) Allocator.Error!void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
 

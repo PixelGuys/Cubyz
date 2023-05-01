@@ -1,5 +1,6 @@
 const std = @import("std");
 
+const main = @import("root");
 const JsonElement = @import("json.zig").JsonElement;
 const Neighbors = @import("chunk.zig").Neighbors;
 const SSBO = @import("graphics.zig").SSBO;
@@ -31,6 +32,30 @@ pub const BlockDrop = struct {
 	amount: f32,
 };
 
+/// Ores can be found underground in veins.
+/// TODO: Add support for non-stone ores.
+pub const Ore = struct {
+	/// average size of a vein in blocks
+	size: f32,
+	/// average density of a vein
+	density: f32,
+	/// average veins per chunk
+	veins: f32,
+	/// maximum height this ore can be generated
+	maxHeight: i32,
+
+	blockType: u16,
+
+	sources: []u16,
+
+	pub fn canCreateVeinInBlock(self: Ore, blockType: u16) bool {
+		for(self.sources) |source| {
+			if(blockType == source) return true;
+		}
+		return false;
+	}
+};
+
 var _lightingTransparent: [MaxBLockCount]bool = undefined;
 var _transparent: [MaxBLockCount]bool = undefined;
 var _id: [MaxBLockCount][]u8 = undefined;
@@ -55,6 +80,18 @@ var _mode: [MaxBLockCount]*RotationMode = undefined;
 var reverseIndices = std.StringHashMap(u16).init(arena.allocator());
 
 var size: u32 = 0;
+
+pub var ores: std.ArrayList(Ore) = std.ArrayList(Ore).init(arena.allocator());
+
+var unfinishedOreSourceBlockIds: std.ArrayList([][]const u8) = undefined;
+
+pub fn init() !void {
+	unfinishedOreSourceBlockIds = std.ArrayList([][]const u8).init(main.globalAllocator);
+}
+
+pub fn deinit() void {
+	unfinishedOreSourceBlockIds.deinit();
+}
 
 pub fn register(_: []const u8, id: []const u8, json: JsonElement) !u16 {
 	if(reverseIndices.contains(id)) {
@@ -83,6 +120,25 @@ pub fn register(_: []const u8, id: []const u8, json: JsonElement) !u16 {
 	_gui[size] = try allocator.dupe(u8, json.get([]const u8, "GUI", ""));
 	_transparent[size] = json.get(bool, "transparent", false);
 	_viewThrough[size] = json.get(bool, "viewThrough", false) or _transparent[size];
+
+	const oreProperties = json.getChild("ore");
+	if (oreProperties != .JsonNull) {
+		// Extract the ids:
+		const sourceBlocks = oreProperties.getChild("sources").toSlice();
+		var oreIds = try main.globalAllocator.alloc([]const u8, sourceBlocks.len);
+		for(sourceBlocks, oreIds) |source, *oreId| {
+			oreId.* = try main.globalAllocator.dupe(u8, source.as([]const u8, ""));
+		}
+		try unfinishedOreSourceBlockIds.append(oreIds);
+		try ores.append(Ore {
+			.veins = oreProperties.get(f32, "veins", 0),
+			.size = oreProperties.get(f32, "size", 0),
+			.maxHeight = oreProperties.get(i32, "height", 0),
+			.density = oreProperties.get(f32, "density", 0.5),
+			.blockType = @intCast(u16, size),
+			.sources = &.{},
+		});
+	}
 
 	size += 1;
 	return @intCast(u16, size - 1);
@@ -118,11 +174,20 @@ fn registerBlockDrop(typ: u16, json: JsonElement) !void {
 	}
 }
 
-pub fn registerBlockDrops(jsonElements: std.StringHashMap(JsonElement)) !void {
+pub fn finishBlocks(jsonElements: std.StringHashMap(JsonElement)) !void {
 	var i: u16 = 0;
 	while(i < size) : (i += 1) {
 		try registerBlockDrop(i, jsonElements.get(_id[i]) orelse continue);
 	}
+	for(ores.items, unfinishedOreSourceBlockIds.items) |*ore, oreIds| {
+		ore.sources = try allocator.alloc(u16, oreIds.len);
+		for(ore.sources, oreIds) |*source, id| {
+			source.* = getByID(id);
+			main.globalAllocator.free(id);
+		}
+		main.globalAllocator.free(oreIds);
+	}
+	unfinishedOreSourceBlockIds.clearRetainingCapacity();
 }
 
 pub fn reset() void {
@@ -131,6 +196,8 @@ pub fn reset() void {
 	arena.deinit();
 	arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
 	reverseIndices = std.StringHashMap(u16).init(arena.allocator());
+	std.debug.assert(unfinishedOreSourceBlockIds.items.len == 0);
+	ores.clearRetainingCapacity();
 }
 
 pub fn getByID(id: []const u8) u16 {

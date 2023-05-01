@@ -1,5 +1,5 @@
 {
-	"type" : "TAIGA",
+	"type" : "taiga",
 	"minHeight" : 2,
 	"maxHeight" : 40,
 	

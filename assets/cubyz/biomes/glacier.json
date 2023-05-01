@@ -1,5 +1,5 @@
 {
-	"type" : "GLACIER",
+	"type" : "glacier",
 	"minHeight" : 60,
 	"maxHeight" : 256,
 	

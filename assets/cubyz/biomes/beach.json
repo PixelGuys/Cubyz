@@ -1,6 +1,6 @@
 {
 	"chance" : 0,
-	"type" : "WARM_OCEAN",
+	"type" : "warm_ocean",
 	"minHeight" : -4,
 	"maxHeight" : 6,
 

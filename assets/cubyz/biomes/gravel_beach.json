@@ -1,6 +1,6 @@
 {
 	"chance" : 0,
-	"type" : "OCEAN",
+	"type" : "ocean",
 	"minHeight" : -4,
 	"maxHeight" : 6,
 

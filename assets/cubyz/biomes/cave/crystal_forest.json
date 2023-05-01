@@ -1,5 +1,5 @@
 {
-	"type" : "CAVE",
+	"type" : "cave",
 	"maxHeight" : -512,
 
 	"chance" : 0.01,

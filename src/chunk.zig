@@ -20,7 +20,7 @@ const Mat4f = vec.Mat4f;
 
 pub const chunkShift: u5 = 5;
 pub const chunkShift2: u5 = chunkShift*2;
-pub const chunkSize: i32 = 1 << chunkShift;
+pub const chunkSize: u31 = 1 << chunkShift;
 pub const chunkSizeIterator: [chunkSize]u0 = undefined;
 pub const chunkVolume: u31 = 1 << 3*chunkShift;
 pub const chunkMask: i32 = chunkSize - 1;
@@ -83,11 +83,13 @@ pub const ChunkPosition = struct {
 	}
 
 	pub fn equals(self: ChunkPosition, other: anytype) bool {
-		if(@TypeOf(other) == ?*Chunk) {
-			if(other) |ch| {
-				return self.wx == ch.pos.wx and self.wy == ch.pos.wy and self.wz == ch.pos.wz and self.voxelSize == ch.pos.voxelSize;
+		if(@typeInfo(@TypeOf(other)) == .Optional) {
+			if(other) |notNull| {
+				return self.equals(notNull);
 			}
 			return false;
+		} else if(@typeInfo(@TypeOf(other)) == .Pointer) {
+			return self.wx == other.pos.wx and self.wy == other.pos.wy and self.wz == other.pos.wz and self.voxelSize == other.pos.voxelSize;
 		} else @compileError("Unsupported");
 	}
 
@@ -116,7 +118,7 @@ pub const Chunk = struct {
 	wasCleaned: bool = false,
 	generated: bool = false,
 
-	width: i32,
+	width: u31,
 	voxelSizeShift: u5,
 	voxelSizeMask: i32,
 	widthShift: u5,
@@ -183,32 +185,32 @@ pub const Chunk = struct {
 
 	/// Updates a block if current value is air or the current block is degradable.
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
-	pub fn updateBlockIfDegradable(self: *Chunk, x: i32, y: i32, z: i32, newBlock: Block) void {
-		x >>= self.voxelSizeShift;
-		y >>= self.voxelSizeShift;
-		z >>= self.voxelSizeShift;
+	pub fn updateBlockIfDegradable(self: *Chunk, _x: i32, _y: i32, _z: i32, newBlock: Block) void {
+		const x = _x >> self.voxelSizeShift;
+		const y = _y >> self.voxelSizeShift;
+		const z = _z >> self.voxelSizeShift;
 		var index = getIndex(x, y, z);
-		if (self.blocks[index] == 0 || self.blocks[index].degradable()) {
+		if (self.blocks[index].typ == 0 or self.blocks[index].degradable()) {
 			self.blocks[index] = newBlock;
 		}
 	}
 
 	/// Updates a block if it is inside this chunk.
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
-	pub fn updateBlock(self: *Chunk, x: i32, y: i32, z: i32, newBlock: Block) void {
-		x >>= self.voxelSizeShift;
-		y >>= self.voxelSizeShift;
-		z >>= self.voxelSizeShift;
+	pub fn updateBlock(self: *Chunk, _x: i32, _y: i32, _z: i32, newBlock: Block) void {
+		const x = _x >> self.voxelSizeShift;
+		const y = _y >> self.voxelSizeShift;
+		const z = _z >> self.voxelSizeShift;
 		var index = getIndex(x, y, z);
 		self.blocks[index] = newBlock;
 	}
 
 	/// Updates a block if it is inside this chunk. Should be used in generation to prevent accidently storing these as changes.
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
-	pub fn updateBlockInGeneration(self: *Chunk, x: i32, y: i32, z: i32, newBlock: Block) void {
-		x >>= self.voxelSizeShift;
-		y >>= self.voxelSizeShift;
-		z >>= self.voxelSizeShift;
+	pub fn updateBlockInGeneration(self: *Chunk, _x: i32, _y: i32, _z: i32, newBlock: Block) void {
+		const x = _x >> self.voxelSizeShift;
+		const y = _y >> self.voxelSizeShift;
+		const z = _z >> self.voxelSizeShift;
 		var index = getIndex(x, y, z);
 		self.blocks[index] = newBlock;
 	}
@@ -216,9 +218,9 @@ pub const Chunk = struct {
 	/// Gets a block if it is inside this chunk.
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
 	pub fn getBlock(self: *const Chunk, _x: i32, _y: i32, _z: i32) Block {
-		var x = _x >> self.voxelSizeShift;
-		var y = _y >> self.voxelSizeShift;
-		var z = _z >> self.voxelSizeShift;
+		const x = _x >> self.voxelSizeShift;
+		const y = _y >> self.voxelSizeShift;
+		const z = _z >> self.voxelSizeShift;
 		var index = getIndex(x, y, z);
 		return self.blocks[index];
 	}
@@ -327,25 +329,6 @@ pub const Chunk = struct {
 		
 		self.setChanged();
 	}
-// TODO: Move this outside.
-//	/**
-//	 * Generates this chunk.
-//	 * If the chunk was already saved it is loaded from file instead.
-//	 * @param seed
-//	 * @param terrainGenerationProfile
-//	 */
-//	public void generate(World world, long seed, TerrainGenerationProfile terrainGenerationProfile) {
-//		assert !generated : "Seriously, why would you generate this chunk twice???";
-//		if(!ChunkIO.loadChunkFromFile(world, this)) {
-//			CaveMap caveMap = new CaveMap(this);
-//			CaveBiomeMap biomeMap = new CaveBiomeMap(this);
-//			
-//			for (Generator g : terrainGenerationProfile.generators) {
-//				g.generate(seed ^ g.getGeneratorSeed(), wx, wy, wz, this, caveMap, biomeMap);
-//			}
-//		}
-//		generated = true;
-//	}
 
 
 //	TODO:
@@ -427,7 +410,7 @@ pub const meshing = struct {
 		c.glBindVertexArray(0);
 
 		faces = try std.ArrayList(u32).initCapacity(std.heap.page_allocator, 65536);
-		try faceBuffer.init(main.globalAllocator, 128 << 20, 3);
+		try faceBuffer.init(main.globalAllocator, 256 << 20, 3);
 	}
 
 	pub fn deinit() void {

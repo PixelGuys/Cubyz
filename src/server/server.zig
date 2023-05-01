@@ -9,6 +9,7 @@ const vec = main.vec;
 const Vec3d = vec.Vec3d;
 
 pub const ServerWorld = @import("world.zig").ServerWorld;
+pub const terrain = @import("terrain/terrain.zig");
 
 
 pub const User = struct {
@@ -169,7 +170,7 @@ fn update() !void {
 pub fn start(name: []const u8) !void {
 	var gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe=false}){};
 	main.threadAllocator = gpa.allocator();
-	defer if(gpa.deinit()) {
+	defer if(gpa.deinit() == .leak) {
 		std.log.err("Memory leak", .{});
 	};
 	std.debug.assert(!running.load(.Monotonic)); // There can only be one server.

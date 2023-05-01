@@ -1,5 +1,5 @@
 {
-	"type" : "MOUNTAIN_GRASSLAND",
+	"type" : "mountain_grassland",
 	"minHeight" : 60,
 	"maxHeight" : 256,
 	

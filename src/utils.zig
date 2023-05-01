@@ -75,6 +75,96 @@ pub const Compression = struct {
 	}
 };
 
+/// A list that allows to choose randomly from the contained object, if they have a chance assigned to them.
+/// TODO: Use O(1) sampling: https://en.wikipedia.org/wiki/Alias_method
+pub fn RandomList(comptime T: type) type {
+	return struct {
+		const Self = @This();
+
+		ptr: [*]T = undefined,
+		len: u32 = 0,
+		capacity: u32 = 0,
+		sum: f64 = 0,
+
+		pub fn deinit(self: Self, allocator: Allocator) void {
+			allocator.free(self.ptr[0..self.capacity]);
+		}
+
+		pub fn reset(self: *Self) void {
+			self.len = 0;
+			self.sum = 0;
+		}
+
+		pub fn items(self: Self) []T {
+			return self.ptr[0..self.len];
+		}
+
+		fn increaseCapacity(self: *Self, allocator: Allocator) !void {
+			const newSize = 8 + self.capacity*3/2;
+			const newSlice = try allocator.realloc(self.ptr[0..self.capacity], newSize);
+			self.capacity = @intCast(u32, newSlice.len);
+			self.ptr = newSlice.ptr;
+		}
+
+		pub fn add(self: *Self, allocator: Allocator, object: T) !void {
+			if(self.len == self.capacity) {
+				try self.increaseCapacity(allocator);
+			}
+			self.ptr[self.len] = object;
+			self.len += 1;
+			self.sum += object.chance;
+		}
+
+		pub fn getRandomly(self: Self, seed: *u64) T {
+			var value = main.random.nextDouble(seed)*self.sum;
+			for(self.items()) |object| {
+				if(value < object.chance) {
+					return object;
+				}
+				value -= object.chance;
+			}
+			std.debug.assert(self.len >= 1);
+			return self.ptr[self.len-1]; // Can be caused by floating point errors.
+		}
+	};
+}
+
+pub fn Array2D(comptime T: type) type {
+	return struct {
+		const Self = @This();
+		mem: []T,
+		width: u32,
+		height: u32,
+
+		pub fn init(allocator: Allocator, width: u32, height: u32) !Self {
+			return .{
+				.mem = try allocator.alloc(T, width*height),
+				.width = width,
+				.height = height,
+			};
+		}
+
+		pub fn deinit(self: Self, allocator: Allocator) void {
+			allocator.free(self.mem);
+		}
+
+		pub fn get(self: Self, x: usize, y: usize) T {
+			std.debug.assert(x < self.width and y < self.height);
+			return self.mem[x*self.height + y];
+		}
+
+		pub fn set(self: Self, x: usize, y: usize, t: T) void {
+			std.debug.assert(x < self.width and y < self.height);
+			self.mem[x*self.height + y] = t;
+		}
+
+		pub fn ptr(self: Self, x: usize, y: usize) *T {
+			std.debug.assert(x < self.width and y < self.height);
+			return &self.mem[x*self.height + y];
+		}
+	};
+}
+
 /// A simple binary heap.
 /// Thread safe and blocking.
 /// Expects T to have a `biggerThan(T) bool` function
@@ -226,7 +316,7 @@ pub const ThreadPool = struct {
 	pub const VTable = struct {
 		getPriority: *const fn(*anyopaque) f32,
 		isStillNeeded: *const fn(*anyopaque) bool,
-		run: *const fn(*anyopaque) void,
+		run: *const fn(*anyopaque) Allocator.Error!void,
 		clean: *const fn(*anyopaque) void,
 	};
 	const refreshTime: u32 = 100; // The time after which all priorities get refreshed in milliseconds.
@@ -264,19 +354,19 @@ pub const ThreadPool = struct {
 		self.allocator.free(self.threads);
 	}
 
-	fn run(self: ThreadPool) void {
+	fn run(self: ThreadPool) !void {
 		// In case any of the tasks wants to allocate memory:
 		var gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe=false}){};
 		main.threadAllocator = gpa.allocator();
-		defer if(gpa.deinit()) {
-			@panic("Memory leak");
+		defer if(gpa.deinit() == .leak) {
+			std.log.err("Memory leak", .{});
 		};
 
 		var lastUpdate = std.time.milliTimestamp();
 		while(true) {
 			{
 				var task = self.loadList.extractMax() catch break;
-				task.vtable.run(task.self);
+				try task.vtable.run(task.self);
 			}
 
 			if(std.time.milliTimestamp() -% lastUpdate > refreshTime) {
@@ -369,7 +459,7 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 			return previous;
 		}
 
-		fn findOrCreate(self: *@This(), compare: anytype, comptime initFunction: fn(@TypeOf(compare)) anyerror!*T) !*T {
+		fn findOrCreate(self: *@This(), compare: anytype, comptime initFunction: fn(@TypeOf(compare)) Allocator.Error!*T) Allocator.Error!*T {
 			std.debug.assert(!self.mutex.tryLock()); // The mutex must be locked.
 			if(self.find(compare)) |item| {
 				return item;
@@ -441,7 +531,7 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 			return self.buckets[index].add(item);
 		}
 
-		pub fn findOrCreate(self: *@This(), compareAndHash: anytype, comptime initFunction: fn(@TypeOf(compareAndHash)) anyerror!*T) !*T {
+		pub fn findOrCreate(self: *@This(), compareAndHash: anytype, comptime initFunction: fn(@TypeOf(compareAndHash)) Allocator.Error!*T) Allocator.Error!*T {
 			const index: u32 = compareAndHash.hashCode() & hashMask;
 			self.buckets[index].mutex.lock();
 			defer self.buckets[index].mutex.unlock();

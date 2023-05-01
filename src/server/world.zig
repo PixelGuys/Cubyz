@@ -1,4 +1,5 @@
 const std = @import("std");
+const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const Block = main.blocks.Block;
@@ -15,37 +16,18 @@ const vec = main.vec;
 const Vec3i = vec.Vec3i;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
+const terrain = server.terrain;
 
 const server = @import("server.zig");
 const User = server.User;
 
 const ChunkManager = struct {
 	world: *ServerWorld,
-//TODO:
-//	public final TerrainGenerationProfile terrainGenerationProfile;
-//
-//	// There will be at most 1 GiB of chunks in here. TODO: Allow configuring this in the server settings.
+	terrainGenerationProfile: server.terrain.TerrainGenerationProfile,
+
+	// There will be at most 1 GiB of chunks in here. TODO: Allow configuring this in the server settings.
 	const reducedChunkCacheMask = 2047;
 	var chunkCache: Cache(Chunk, reducedChunkCacheMask+1, 4, chunkDeinitFunctionForCache) = .{};
-	// TODO:
-//	// There will be at most 1 GiB of map data in here.
-//	private static final int[] MAP_CACHE_MASK = {
-//		7, // 256 MiB // 4(1 in best-case) maps are needed at most for each player. So 32 will be enough for 8(32 in best case) player groups.
-//		31, // 256 MiB
-//		63, // 128 MiB
-//		255, // 128 MiB
-//		511, // 64 MiB
-//		2047, // 64 MiB
-//	};
-//	@SuppressWarnings("unchecked")
-//	private final Cache<MapFragment>[] mapCache = new Cache[] {
-//	    new Cache<>(new MapFragment[MAP_CACHE_MASK[0] + 1][4]),
-//	    new Cache<>(new MapFragment[MAP_CACHE_MASK[1] + 1][4]),
-//	    new Cache<>(new MapFragment[MAP_CACHE_MASK[2] + 1][4]),
-//	    new Cache<>(new MapFragment[MAP_CACHE_MASK[3] + 1][4]),
-//	    new Cache<>(new MapFragment[MAP_CACHE_MASK[4] + 1][4]),
-//	    new Cache<>(new MapFragment[MAP_CACHE_MASK[5] + 1][4]),
-//	};
 
 	const ChunkLoadTask = struct {
 		pos: ChunkPosition,
@@ -55,7 +37,7 @@ const ChunkManager = struct {
 		const vtable = utils.ThreadPool.VTable{
 			.getPriority = @ptrCast(*const fn(*anyopaque) f32, &getPriority),
 			.isStillNeeded = @ptrCast(*const fn(*anyopaque) bool, &isStillNeeded),
-			.run = @ptrCast(*const fn(*anyopaque) void, &run),
+			.run = @ptrCast(*const fn(*anyopaque) Allocator.Error!void, &run),
 			.clean = @ptrCast(*const fn(*anyopaque) void, &clean),
 		};
 		
@@ -109,11 +91,9 @@ const ChunkManager = struct {
 			return true;
 		}
 
-		pub fn run(self: *ChunkLoadTask) void {
+		pub fn run(self: *ChunkLoadTask) Allocator.Error!void {
 			defer self.clean();
-			generateChunk(self.pos, self.source) catch |err| {
-				std.log.err("Got error while generating chunk {}: {s}", .{self.pos, @errorName(err)});
-			};
+			try generateChunk(self.pos, self.source);
 		}
 
 		pub fn clean(self: *ChunkLoadTask) void {
@@ -122,20 +102,15 @@ const ChunkManager = struct {
 	};
 
 	pub fn init(world: *ServerWorld, settings: JsonElement) !ChunkManager {
-		_ = settings;
 		const self = ChunkManager {
 			.world = world,
-//TODO:		terrainGenerationProfile = new TerrainGenerationProfile(settings, world.getCurrentRegistries(), world.getSeed());
+			.terrainGenerationProfile = try server.terrain.TerrainGenerationProfile.init(settings, world.seed),
 		};
-		// TODO:
-//		CaveBiomeMap.init(terrainGenerationProfile);
-//		CaveMap.init(terrainGenerationProfile);
-//		ClimateMap.init(terrainGenerationProfile);
+		try server.terrain.init(self.terrainGenerationProfile);
 		return self;
 	}
 
 	pub fn deinit(self: ChunkManager) void {
-		_ = self;
 		main.assets.unloadAssets();
 		// TODO:
 //		for(Cache<MapFragment> cache : mapCache) {
@@ -151,16 +126,11 @@ const ChunkManager = struct {
 //				}
 //			}
 //		}
-//		for(Cache<MapFragment> cache : mapCache) {
-//			cache.clear();
-//		}
 //		ThreadPool.clear();
-//		CaveBiomeMap.cleanup();
-//		CaveMap.cleanup();
-//		ClimateMap.cleanup();
-//		reducedChunkCache.clear();
 //		ChunkIO.clean();
 		chunkCache.clear();
+		server.terrain.deinit();
+		self.terrainGenerationProfile.deinit();
 	}
 
 	pub fn queueChunk(self: ChunkManager, pos: ChunkPosition, source: ?*User) !void {
@@ -168,7 +138,7 @@ const ChunkManager = struct {
 		try ChunkLoadTask.schedule(pos, source);
 	}
 
-	pub fn generateChunk(pos: ChunkPosition, source: ?*User) !void {
+	pub fn generateChunk(pos: ChunkPosition, source: ?*User) Allocator.Error!void {
 		const ch = try getOrGenerateChunk(pos);
 		if(source) |_source| {
 			try main.network.Protocols.chunkTransmission.sendChunk(_source.conn, ch);
@@ -180,37 +150,19 @@ const ChunkManager = struct {
 			}
 		}
 	}
-//
-//	public MapFragment getOrGenerateMapFragment(int wx, int wz, int voxelSize) {
-//		wx &= ~MapFragment.MAP_MASK;
-//		wz &= ~MapFragment.MAP_MASK;
-//
-//		MapFragmentCompare data = new MapFragmentCompare(wx, wz, voxelSize);
-//		int index = CubyzMath.binaryLog(voxelSize);
-//		int hash = data.hashCode() & MAP_CACHE_MASK[index];
-//
-//		MapFragment res = mapCache[index].find(data, hash);
-//		if (res != null) return res;
-//
-//		synchronized(mapCache[index].cache[hash]) {
-//			res = mapCache[index].find(data, hash);
-//			if (res != null) return res;
-//
-//			// Generate a new map fragment:
-//			res = new MapFragment(wx, wz, voxelSize);
-//			terrainGenerationProfile.mapFragmentGenerator.generateMapFragment(res, world.getSeed());
-//			mapCache[index].addToCache(res, hash);
-//		}
-//		return res;
-//	}
 
 	fn chunkInitFunctionForCache(pos: ChunkPosition) !*Chunk {
 		const ch = try main.globalAllocator.create(Chunk);
 		ch.init(pos);
-		for(&ch.blocks) |*block| {
-			block.* = Block{.typ = 0, .data = 0};
+		ch.generated = true;
+//	TODO:	if(!ChunkIO.loadChunkFromFile(world, this)) {
+		const caveMap = try terrain.CaveMap.CaveMapView.init(ch);
+		defer caveMap.deinit();
+		const biomeMap = try terrain.CaveBiomeMap.CaveBiomeMapView.init(ch);
+		defer biomeMap.deinit();
+		for(server.world.?.chunkManager.terrainGenerationProfile.generators) |generator| {
+			try generator.generate(server.world.?.seed ^ generator.generatorSeed, ch, caveMap, biomeMap);
 		}
-		// TODO: res.generate(world.getSeed(), terrainGenerationProfile);
 		return ch;
 	}
 

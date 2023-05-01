@@ -1,6 +1,6 @@
 {
 	"chance" : 0,
-	"type" : "ARCTIC_OCEAN",
+	"type" : "arctic_ocean",
 	"minHeight" : -4,
 	"maxHeight" : 6,
 

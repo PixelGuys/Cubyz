@@ -1,6 +1,6 @@
 {
 	"chance" : 0,
-	"type" : "GRASSLAND",
+	"type" : "grassland",
 	"minHeight" : 24,
 	"maxHeight" : 40,
 

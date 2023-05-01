@@ -1,4 +1,5 @@
 const std = @import("std");
+const Allocator = std.mem.Allocator;
 
 const blocks = @import("blocks.zig");
 const chunk = @import("chunk.zig");
@@ -1228,7 +1229,7 @@ pub const RenderStructure = struct {
 		pub const vtable = utils.ThreadPool.VTable{
 			.getPriority = @ptrCast(*const fn(*anyopaque) f32, &getPriority),
 			.isStillNeeded = @ptrCast(*const fn(*anyopaque) bool, &isStillNeeded),
-			.run = @ptrCast(*const fn(*anyopaque) void, &run),
+			.run = @ptrCast(*const fn(*anyopaque) Allocator.Error!void, &run),
 			.clean = @ptrCast(*const fn(*anyopaque) void, &clean),
 		};
 
@@ -1247,27 +1248,19 @@ pub const RenderStructure = struct {
 		pub fn isStillNeeded(self: *MeshGenerationTask) bool {
 			var distanceSqr = self.mesh.pos.getMinDistanceSquared(game.Player.getPosBlocking()); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
 			var maxRenderDistance = settings.renderDistance*chunk.chunkSize*self.mesh.pos.voxelSize;
-			if(self.mesh.pos.voxelSize != 1) maxRenderDistance = @floatToInt(i32, @ceil(@intToFloat(f32, maxRenderDistance)*settings.LODFactor));
+			if(self.mesh.pos.voxelSize != 1) maxRenderDistance = @floatToInt(u31, @ceil(@intToFloat(f32, maxRenderDistance)*settings.LODFactor));
 			maxRenderDistance += 2*self.mesh.pos.voxelSize*chunk.chunkSize;
 			return distanceSqr < @intToFloat(f64, maxRenderDistance*maxRenderDistance);
 		}
 
-		pub fn run(self: *MeshGenerationTask) void {
+		pub fn run(self: *MeshGenerationTask) Allocator.Error!void {
 			const pos = self.mesh.pos;
 			const nullNode = _getNode(pos);
 			if(nullNode) |node| {
 				{
 					node.mesh.mutex.lock();
 					defer node.mesh.mutex.unlock();
-					node.mesh.regenerateMainMesh(self.mesh) catch |err| {
-						std.log.err("Error while regenerating mesh: {s}", .{@errorName(err)});
-						if(@errorReturnTrace()) |trace| {
-							std.log.err("Trace: {}", .{trace});
-						}
-						main.globalAllocator.destroy(self.mesh);
-						main.globalAllocator.destroy(self);
-						return;
-					};
+					try node.mesh.regenerateMainMesh(self.mesh);
 				}
 				mutex.lock();
 				defer mutex.unlock();

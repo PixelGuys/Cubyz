@@ -44,7 +44,7 @@ fn discoverIpAddress() void {
 fn discoverIpAddressFromNewThread() void {
 	var gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe=false}){};
 	main.threadAllocator = gpa.allocator();
-	defer if(gpa.deinit()) {
+	defer if(gpa.deinit() == .leak) {
 		@panic("Memory leak");
 	};
 
