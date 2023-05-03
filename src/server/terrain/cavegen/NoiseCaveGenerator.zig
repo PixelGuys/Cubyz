@@ -38,7 +38,7 @@ const scale = 64;
 const interpolatedPart = 4;
 
 fn getValue(noise: *Cached3DFractalNoise, map: InterpolatableCaveBiomeMapView, wx: i32, wy: i32, wz: i32) f32 {
-	return noise.getValue(wx, wy, wz) + map.interpolateValue(wx, wy, wz)*scale;
+	return noise.getValue(wx, wy, wz) + map.interpolateValue(wx, wy, wz, "caves")*scale;
 }
 
 pub fn generate(map: *CaveMapFragment, worldSeed: u64) Allocator.Error!void {

@@ -72,17 +72,23 @@ pub fn generate(map: *CaveBiomeMapFragment, worldSeed: u64) Allocator.Error!void
 		while(x < CaveBiomeMapFragment.caveBiomeMapSize) : (x += CaveBiomeMapFragment.caveBiomeSize) {
 			var z: u31 = 0;
 			while(z < CaveBiomeMapFragment.caveBiomeMapSize) : (z += CaveBiomeMapFragment.caveBiomeSize) {
-				var randomValue = random.nextDouble(&seed)*totalChance;
-				var biome: *const Biome = undefined;
-				i = 0;
-				while(true) {
-					biome = validBiomes.items[i];
-					i += 1;
-					randomValue -= biome.chance;
-					if(randomValue < 0) break;
+				for(0..2) |_map| {
+					var randomValue = random.nextDouble(&seed)*totalChance;
+					var biome: *const Biome = undefined;
+					i = 0;
+					while(true) {
+						biome = validBiomes.items[i];
+						i += 1;
+						randomValue -= biome.chance;
+						if(randomValue < 0) break;
+					}
+					var index = CaveBiomeMapFragment.getIndex(x, y, z);
+					if(_map == 0) {
+						map.biomeMap0[index] = biome;
+					} else {
+						map.biomeMap1[index] = biome;
+					}
 				}
-				var index = CaveBiomeMapFragment.getIndex(x, y, z);
-				map.biomeMap[index] = biome;
 			}
 		}
 	}

@@ -6,6 +6,8 @@ const Cache = main.utils.Cache;
 const Chunk = main.chunk.Chunk;
 const ChunkPosition = main.chunk.ChunkPosition;
 const JsonElement = main.JsonElement;
+const vec = main.vec;
+const Vec3i = vec.Vec3i;
 
 const terrain = @import("terrain.zig");
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
@@ -23,7 +25,8 @@ pub const CaveBiomeMapFragment = struct {
 	pub const caveBiomeMapMask = caveBiomeMapSize - 1;
 
 	pos: main.chunk.ChunkPosition,
-	biomeMap: [1 << 3*(caveBiomeMapShift - caveBiomeShift)]*const Biome = undefined,
+	biomeMap0: [1 << 3*(caveBiomeMapShift - caveBiomeShift)]*const Biome = undefined,
+	biomeMap1: [1 << 3*(caveBiomeMapShift - caveBiomeShift)]*const Biome = undefined,
 	refCount: std.atomic.Atomic(u16) = std.atomic.Atomic(u16).init(0),
 
 	pub fn init(self: *CaveBiomeMapFragment, wx: i32, wy: i32, wz: i32) !void {
@@ -131,34 +134,140 @@ pub const InterpolatableCaveBiomeMapView = struct {
 		}
 	}
 
-	pub noinline fn interpolateValue(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32, wz: i32) f32 {
-		// find the closest gridpoint:
-		const gridPointX = wx & ~@as(i32, CaveBiomeMapFragment.caveBiomeMask);
-		const gridPointY = wy & ~@as(i32, CaveBiomeMapFragment.caveBiomeMask);
-		const gridPointZ = wz & ~@as(i32, CaveBiomeMapFragment.caveBiomeMask);
-		const interpX = 1 - @intToFloat(f32, wx - gridPointX)/CaveBiomeMapFragment.caveBiomeSize;
-		const interpY = 1 - @intToFloat(f32, wy - gridPointY)/CaveBiomeMapFragment.caveBiomeSize;
-		const interpZ = 1 - @intToFloat(f32, wz - gridPointZ)/CaveBiomeMapFragment.caveBiomeSize;
-		var val: f32 = 0;
-		// Doing cubic interpolation.
-		// Theoretically there is a way to interpolate on my weird bcc grid, which could be done with the 4 nearest grid points, but I can't figure out how to select the correct ones.
-		// TODO: Figure out the better interpolation.
-		comptime var dx: u8 = 0;
-		inline while(dx <= 1) : (dx += 1) {
-			comptime var dy: u8 = 0;
-			inline while(dy <= 1) : (dy += 1) {
-				comptime var dz: u8 = 0;
-				inline while(dz <= 1) : (dz += 1) {
-					const biome = self._getBiome(
-						gridPointX + dx*CaveBiomeMapFragment.caveBiomeSize,
-						gridPointY + dy*CaveBiomeMapFragment.caveBiomeSize,
-						gridPointZ + dz*CaveBiomeMapFragment.caveBiomeSize,
-					);
-					val += biome.caves*@fabs(interpX - @intToFloat(f32, dx))*@fabs(interpY - @intToFloat(f32, dy))*@fabs(interpZ - @intToFloat(f32, dz));
-				}
+	fn rotate231(in: Vec3i) Vec3i {
+		return @shuffle(i32, in, undefined, Vec3i{1, 2, 0});
+	}
+	fn rotate312(in: Vec3i) Vec3i {
+		return @shuffle(i32, in, undefined, Vec3i{2, 0, 1});
+	}
+	fn argMaxDistance0(distance: Vec3i) @Vector(3, bool) {
+		const absDistance = std.math.absInt(distance) catch unreachable;
+		if(absDistance[0] > absDistance[1]) {
+			if(absDistance[0] > absDistance[2]) {
+				return .{true, false, false};
+			} else {
+				return .{false, false, true};
+			}
+		} else {
+			if(absDistance[1] > absDistance[2]) {
+				return .{false, true, false};
+			} else {
+				return .{false, false, true};
 			}
 		}
-		return val;
+	}
+	fn argMaxDistance1(distance: Vec3i) @Vector(3, bool) {
+		const absDistance = std.math.absInt(distance) catch unreachable;
+		if(absDistance[0] >= absDistance[1]) {
+			if(absDistance[0] >= absDistance[2]) {
+				return .{true, false, false};
+			} else {
+				return .{false, false, true};
+			}
+		} else {
+			if(absDistance[1] >= absDistance[2]) {
+				return .{false, true, false};
+			} else {
+				return .{false, false, true};
+			}
+		}
+	}
+
+	/// Return either +1 or -1 depending on the sign of the input number.
+	fn nonZeroSign(in: Vec3i) Vec3i {
+		return @select(i32, in >= Vec3i{0, 0, 0}, Vec3i{1, 1, 1}, Vec3i{-1, -1, -1});
+	}
+
+	pub noinline fn interpolateValue(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32, wz: i32, comptime field: []const u8) f32 {
+		const worldPos = Vec3i{wx, wy, wz};
+		const closestGridpoint0 = (worldPos + @splat(3, @as(i32, CaveBiomeMapFragment.caveBiomeSize/2))) & @splat(3, ~@as(i32, CaveBiomeMapFragment.caveBiomeMask));
+		const distance0 = worldPos - closestGridpoint0;
+		const step0 = @select(i32, argMaxDistance0(distance0), @splat(3, @as(i32, CaveBiomeMapFragment.caveBiomeSize)), @splat(3, @as(i32, 0)));
+		const secondGridPoint0 = closestGridpoint0 + step0*nonZeroSign(distance0);
+
+		const closestGridpoint1 = (worldPos & @splat(3, ~@as(i32, CaveBiomeMapFragment.caveBiomeMask))) + @splat(3, @as(i32, CaveBiomeMapFragment.caveBiomeSize/2));
+		const distance1 = worldPos - closestGridpoint1;
+		const step1 = @select(i32, argMaxDistance1(distance1), @splat(3, @as(i32, CaveBiomeMapFragment.caveBiomeSize)), @splat(3, @as(i32, 0)));
+		const secondGridPoint1 = closestGridpoint1 + step1*nonZeroSign(distance1);
+
+		const @"r⃗₄" = closestGridpoint0;
+		const @"r⃗₃" = secondGridPoint0;
+		const @"r⃗₂" = closestGridpoint1;
+		const @"r⃗₁" = secondGridPoint1;
+		// Doing tetrahedral interpolation between the given points.
+		// Barycentric coordinates for tetrahedra:
+		// λ₄ = 1 - λ₁ - λ₂ - λ₃
+		// ┌                       ┐   ┌  ┐   ┌      ┐
+		// | x₁-x₄   x₂-x₄   x₃-x₄ |   |λ₁|   | x-x₄ |
+		// | y₁-y₄   y₂-y₄   y₃-y₄ | · |λ₂| = | y-y₄ | =: d⃗
+		// | z₁-z₄   z₂-z₄   z₃-z₄ |   |λ₃|   | z-z₄ |
+		// └                       ┘   └  ┘   └      ┘
+		//  \_________  __________/
+		//            \/
+		//           =: A
+		const @"d⃗" = distance0;
+		const @"d⃗₁" = @"r⃗₁" - @"r⃗₄";
+		const @"d⃗₂" = @"r⃗₂" - @"r⃗₄";
+		const @"d⃗₃" = @"r⃗₃" - @"r⃗₄";
+		// With some renamings we get:
+		//     ┌            ┐
+		// A = | d⃗₁  d⃗₂  d⃗₃ |
+		//     └            ┘
+
+		// The inverse of a 3×3 matrix is given by:
+		//     ┌               ┐
+		//     | a₁₁  a₁₂  a₁₃ |
+		// A = | a₂₁  a₂₂  a₂₃ |
+		//     | a₃₁  a₃₂  a₃₃ |
+		//     └               ┘
+		//           ┌                               ┐
+		//           | |a₂₂ a₂₃| |a₁₃ a₁₂| |a₁₂ a₁₃| |
+		//           | |a₃₂ a₃₃| |a₃₃ a₃₂| |a₂₂ a₂₃| |
+		//        1  |                               |
+		// A⁻¹ = ––– | |a₂₃ a₂₁| |a₁₁ a₁₃| |a₁₃ a₁₁| |
+		//       |A| | |a₃₃ a₃₁| |a₃₁ a₃₃| |a₂₃ a₂₁| |
+		//           |                               |
+		//           | |a₂₁ a₂₂| |a₁₂ a₁₁| |a₁₁ a₁₂| |
+		//           | |a₃₁ a₃₂| |a₃₂ a₃₁| |a₂₁ a₂₂| |
+		//           └                               ┘
+		// Resolving the determinants gives:
+		//           ┌                                                               ┐
+		//           | a₂₂·a₃₃ - a₂₃·a₃₂     a₁₃·a₃₂ - a₁₂·a₃₃     a₁₂·a₂₃ - a₁₃·a₂₂ |
+		//        1  |                                                               |
+		// A⁻¹ = ––– | a₂₃·a₃₁ - a₂₁·a₃₃     a₁₁·a₃₃ - a₁₃·a₃₁     a₁₃·a₂₁ - a₁₁·a₂₃ |
+		//       |A| |                                                               |
+		//           | a₂₁·a₃₂ - a₂₂·a₃₁     a₁₂·a₃₁ - a₁₁·a₃₂     a₁₁·a₂₂ - a₁₂·a₂₁ |
+		//           └                                                               ┘
+		// Notice how each column represents a rotated row of the original matrix.
+		const row1 = Vec3i{@"d⃗₁"[0], @"d⃗₂"[0], @"d⃗₃"[0]};
+		const row2 = Vec3i{@"d⃗₁"[1], @"d⃗₂"[1], @"d⃗₃"[1]};
+		const row3 = Vec3i{@"d⃗₁"[2], @"d⃗₂"[2], @"d⃗₃"[2]};
+		const determinantCol1 = rotate231(row2)*rotate312(row3) - rotate312(row2)*rotate231(row3);
+		const determinantCol2 = rotate312(row1)*rotate231(row3) - rotate231(row1)*rotate312(row3);
+		const determinantCol3 = rotate231(row1)*rotate312(row2) - rotate312(row1)*rotate231(row2);
+		// Notice that the determinant |A| can be expressed as dor(row1, determinantCol1)
+		const determinantA = vec.dot(determinantCol1, row1);
+		const invDeterminantA = 1.0/@intToFloat(f32, determinantA);
+		// Now we change the memory layout use rows instead of columns to make matrix-vector multiplication easier later.
+		const determinantRow1 = Vec3i{determinantCol1[0], determinantCol2[0], determinantCol3[0]};
+		const determinantRow2 = Vec3i{determinantCol1[1], determinantCol2[1], determinantCol3[1]};
+		const determinantRow3 = Vec3i{determinantCol1[2], determinantCol2[2], determinantCol3[2]};
+
+		const @"unscaledλ123" = Vec3i{vec.dot(determinantRow1, @"d⃗"), vec.dot(determinantRow2, @"d⃗"), vec.dot(determinantRow3, @"d⃗")};
+		const @"λ1" = @intToFloat(f32, @"unscaledλ123"[0])*invDeterminantA;
+		const @"λ2" = @intToFloat(f32, @"unscaledλ123"[1])*invDeterminantA;
+		const @"λ3" = @intToFloat(f32, @"unscaledλ123"[2])*invDeterminantA;
+		const @"λ4" = 1 - @"λ1" - @"λ2" - @"λ3";
+		// TODO: I wonder if there are some optimizations possible, given that
+		// per construction |x₁ - x₄| = |x₂ - x₄| = ... = |z₂ - z₄| = ±caveBiomeSize/2
+		// And |r⃗₃ - r⃗₄| = caveBiomeSize, where 2 elements are 0
+
+		// Now after all this math we can finally do what we actually want: Interpolate the damn thing.
+		const biome4 = self._getBiome(closestGridpoint0[0], closestGridpoint0[1], closestGridpoint0[2], 0);
+		const biome3 = self._getBiome(secondGridPoint0[0], secondGridPoint0[1], secondGridPoint0[2], 0);
+		const biome2 = self._getBiome(closestGridpoint1[0], closestGridpoint1[1], closestGridpoint1[2], 1);
+		const biome1 = self._getBiome(secondGridPoint1[0], secondGridPoint1[1], secondGridPoint1[2], 1);
+		return @field(biome1, field)*@"λ1" + @field(biome2, field)*@"λ2" + @field(biome3, field)*@"λ3" + @field(biome4, field)*@"λ4";
 	}
 
 	fn checkSurfaceBiome(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32, wz: i32) ?*const Biome {
@@ -174,7 +283,7 @@ pub const InterpolatableCaveBiomeMapView = struct {
 		return self.surfaceFragments[index].getBiome(wx, wz);
 	}
 
-	fn _getBiome(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32, wz: i32) *const Biome {
+	fn _getBiome(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32, wz: i32, map: u1) *const Biome {
 		var index: u8 = 0;
 		if(wx - self.fragments[0].pos.wx >= CaveBiomeMapFragment.caveBiomeMapSize) {
 			index += 4;
@@ -189,47 +298,42 @@ pub const InterpolatableCaveBiomeMapView = struct {
 		const relY = @intCast(u31, wy - self.fragments[index].pos.wy);
 		const relZ = @intCast(u31, wz - self.fragments[index].pos.wz);
 		const indexInArray = CaveBiomeMapFragment.getIndex(relX, relY, relZ);
-		return self.fragments[index].biomeMap[indexInArray];
+		if(map == 0) {
+			return self.fragments[index].biomeMap0[indexInArray];
+		} else {
+			return self.fragments[index].biomeMap1[indexInArray];
+		}
 	}
 
 	/// Useful when the rough biome location is enough, for example for music.
-	pub fn getRoughBiome(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32, wz: i32, nullSeed: ?*u64, _checkSurfaceBiome: bool) *const Biome {
+	pub fn getRoughBiome(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32, wz: i32, nullSeed: ?*u64, comptime _checkSurfaceBiome: bool) *const Biome {
 		if(_checkSurfaceBiome) {
 			if(self.checkSurfaceBiome(wx, wy, wz)) |surfaceBiome| {
 				return surfaceBiome;
 			}
 		}
-		var gridPointX = wx & ~@as(i32, CaveBiomeMapFragment.caveBiomeMask);
-		var gridPointY = wy & ~@as(i32, CaveBiomeMapFragment.caveBiomeMask);
-		var gridPointZ = wz & ~@as(i32, CaveBiomeMapFragment.caveBiomeMask);
+		var gridPointX = (wx + CaveBiomeMapFragment.caveBiomeSize/2) & ~@as(i32, CaveBiomeMapFragment.caveBiomeMask);
+		var gridPointY = (wy + CaveBiomeMapFragment.caveBiomeSize/2) & ~@as(i32, CaveBiomeMapFragment.caveBiomeMask);
+		var gridPointZ = (wz + CaveBiomeMapFragment.caveBiomeSize/2) & ~@as(i32, CaveBiomeMapFragment.caveBiomeMask);
+		var map: u1 = 0;
 		const distanceX = wx - gridPointX;
 		const distanceY = wy - gridPointY;
 		const distanceZ = wz - gridPointZ;
 		const totalDistance = (std.math.absInt(distanceX) catch unreachable) + (std.math.absInt(distanceY) catch unreachable) + (std.math.absInt(distanceZ) catch unreachable);
 		if(totalDistance > CaveBiomeMapFragment.caveBiomeSize*3/4) {
 			// Or with 1 to prevent errors if the value is 0.
-			gridPointX += std.math.sign(distanceX | 1)*(CaveBiomeMapFragment.caveBiomeSize/2);
-			gridPointY += std.math.sign(distanceY | 1)*(CaveBiomeMapFragment.caveBiomeSize/2);
-			gridPointZ += std.math.sign(distanceZ | 1)*(CaveBiomeMapFragment.caveBiomeSize/2);
-			// Go to a random gridpoint:
-			var seed = main.random.initSeed3D(main.server.world.?.seed, .{gridPointX, gridPointY, gridPointZ});
-			if(main.random.nextInt(u1, &seed) != 0) {
-				gridPointX += CaveBiomeMapFragment.caveBiomeSize/2;
-			}
-			if(main.random.nextInt(u1, &seed) != 0) {
-				gridPointY += CaveBiomeMapFragment.caveBiomeSize/2;
-			}
-			if(main.random.nextInt(u1, &seed) != 0) {
-				gridPointZ += CaveBiomeMapFragment.caveBiomeSize/2;
-			}
+			gridPointX += (std.math.sign(distanceX | 1) - 1)*(CaveBiomeMapFragment.caveBiomeSize/2);
+			gridPointY += (std.math.sign(distanceY | 1) - 1)*(CaveBiomeMapFragment.caveBiomeSize/2);
+			gridPointZ += (std.math.sign(distanceZ | 1) - 1)*(CaveBiomeMapFragment.caveBiomeSize/2);
+			map = 1;
 		}
 
 		if(nullSeed) |seed| {
 			// A good old "I don't know what I'm doing" hash:
-			seed.* = @bitCast(u64, @as(i64, gridPointX) << 48 ^ @as(i64, gridPointY) << 23 ^ @as(i64, gridPointZ) << 11 ^ @as(i64, gridPointX) >> 5 ^ @as(i64, gridPointY) << 3 ^ @as(i64, gridPointZ)) ^ main.server.world.?.seed;
+			seed.* = @bitCast(u64, @as(i64, gridPointX) << 48 ^ @as(i64, gridPointY) << 23 ^ @as(i64, gridPointZ) << 11 ^ @as(i64, gridPointX) >> 5 ^ @as(i64, gridPointY) << 3 ^ @as(i64, gridPointZ) ^ @as(i64, map)*5427642781) ^ main.server.world.?.seed;
 		}
 
-		return self._getBiome(gridPointX, gridPointY, gridPointZ);
+		return self._getBiome(gridPointX, gridPointY, gridPointZ, map);
 	}
 };
 

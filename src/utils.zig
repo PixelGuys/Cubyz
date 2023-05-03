@@ -153,6 +153,11 @@ pub fn Array2D(comptime T: type) type {
 			return self.mem[x*self.height + y];
 		}
 
+		pub fn getRow(self: Self, x: usize) []T {
+			std.debug.assert(x < self.width);
+			return self.mem[x*self.height..][0..self.height];
+		}
+
 		pub fn set(self: Self, x: usize, y: usize, t: T) void {
 			std.debug.assert(x < self.width and y < self.height);
 			self.mem[x*self.height + y] = t;

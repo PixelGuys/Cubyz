@@ -29,13 +29,10 @@ pub fn generateFractalTerrain(wx: i32, wz: i32, x0: u31, z0: u31, width: u32, he
 	bigMap.ptr(scale, 0).* = main.random.nextFloat(&seed);
 	setSeed(scale, scale, offsetX, offsetZ, &seed, worldSeed, scale, maxResolution);
 	bigMap.ptr(scale, scale).* = main.random.nextFloat(&seed);
-	generateInitializedFractalTerrain(offsetX, offsetZ, scale, scale, worldSeed, bigMap, 0, 1, maxResolution);
+	generateInitializedFractalTerrain(offsetX, offsetZ, scale, scale, worldSeed, bigMap, 0, 0.9999, maxResolution);
 	var px: u31 = 0;
 	while(px < width) : (px += 1) {
-		var pz: u31 = 0;
-		while(pz < height) : (pz += 1) {
-			map.set(x0 + px, z0 + pz, @min(0.9999, bigMap.get(@intCast(usize, (wx & mask) + px), @intCast(usize, (wz & mask) + pz))));
-		}
+		@memcpy(map.getRow(x0 + px)[z0..][0..height], bigMap.getRow(@intCast(usize, (wx & mask) + px))[@intCast(usize, (wz & mask))..][0..height]);
 	}
 }
 
