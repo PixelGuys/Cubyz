@@ -5,7 +5,7 @@ const main = @import("root");
 const random = main.random;
 const Array2D = main.utils.Array2D;
 
-const sizeShift = 10;
+const sizeShift = 7; // TODO: Increase back to 10 once this is no longer impacting loading time.
 const size = 1 << sizeShift;
 const sizeMask = size - 1;
 const featureShift = 2;

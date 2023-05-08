@@ -179,6 +179,7 @@ pub fn getBiomeMap(allocator: Allocator, wx: i32, wz: i32, width: u31, height: u
 		var z = wzStart;
 		while(z <= wzEnd) : (z += ClimateMapFragment.mapSize) {
 			const mapPiece = try getOrGenerateFragment(x, z);
+			defer mapFragmentDeinit(mapPiece);
 			// Offset of the indices in the result map:
 			const xOffset = (x - wx) >> MapFragment.biomeShift;
 			const zOffset = (z - wz) >> MapFragment.biomeShift;

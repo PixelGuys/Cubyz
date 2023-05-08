@@ -123,7 +123,7 @@ pub fn RandomList(comptime T: type) type {
 				}
 				value -= object.chance;
 			}
-			std.debug.assert(self.len >= 1);
+			std.debug.assert(self.len != 0);
 			return self.ptr[self.len-1]; // Can be caused by floating point errors.
 		}
 	};
@@ -166,6 +166,44 @@ pub fn Array2D(comptime T: type) type {
 		pub fn ptr(self: Self, x: usize, y: usize) *T {
 			std.debug.assert(x < self.width and y < self.height);
 			return &self.mem[x*self.height + y];
+		}
+	};
+}
+
+pub fn Array3D(comptime T: type) type {
+	return struct {
+		const Self = @This();
+		mem: []T,
+		width: u32,
+		height: u32,
+		depth: u32,
+
+		pub fn init(allocator: Allocator, width: u32, height: u32, depth: u32) !Self {
+			return .{
+				.mem = try allocator.alloc(T, width*height*depth),
+				.width = width,
+				.height = height,
+				.depth = depth,
+			};
+		}
+
+		pub fn deinit(self: Self, allocator: Allocator) void {
+			allocator.free(self.mem);
+		}
+
+		pub fn get(self: Self, x: usize, y: usize, z: usize) T {
+			std.debug.assert(x < self.width and y < self.height and z < self.depth);
+			return self.mem[(x*self.height + y)*self.depth + z];
+		}
+
+		pub fn set(self: Self, x: usize, y: usize, z: usize, t: T) void {
+			std.debug.assert(x < self.width and y < self.height and z < self.depth);
+			self.mem[(x*self.height + y)*self.depth + z] = t;
+		}
+
+		pub fn ptr(self: Self, x: usize, y: usize, z: usize) *T {
+			std.debug.assert(x < self.width and y < self.height and z < self.depth);
+			return &self.mem[(x*self.height + y)*self.depth + z];
 		}
 	};
 }

@@ -111,7 +111,6 @@ const ChunkManager = struct {
 	}
 
 	pub fn deinit(self: ChunkManager) void {
-		main.assets.unloadAssets();
 		// TODO:
 //		for(Cache<MapFragment> cache : mapCache) {
 //			cache.clear();
@@ -130,6 +129,7 @@ const ChunkManager = struct {
 //		ChunkIO.clean();
 		chunkCache.clear();
 		server.terrain.deinit();
+		main.assets.unloadAssets();
 		self.terrainGenerationProfile.deinit();
 	}
 
@@ -342,9 +342,9 @@ pub const ServerWorld = struct {
 	}
 
 	pub fn deinit(self: *ServerWorld) void {
+		self.chunkManager.deinit();
 		self.itemDropManager.deinit();
 		self.blockPalette.deinit();
-		self.chunkManager.deinit();
 		self.wio.deinit();
 		main.globalAllocator.destroy(self);
 	}

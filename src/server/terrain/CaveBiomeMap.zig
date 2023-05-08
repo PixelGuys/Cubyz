@@ -245,7 +245,7 @@ pub const InterpolatableCaveBiomeMapView = struct {
 		const determinantCol1 = rotate231(row2)*rotate312(row3) - rotate312(row2)*rotate231(row3);
 		const determinantCol2 = rotate312(row1)*rotate231(row3) - rotate231(row1)*rotate312(row3);
 		const determinantCol3 = rotate231(row1)*rotate312(row2) - rotate312(row1)*rotate231(row2);
-		// Notice that the determinant |A| can be expressed as dor(row1, determinantCol1)
+		// Notice that the determinant |A| can be expressed as dot(row1, determinantCol1)
 		const determinantA = vec.dot(determinantCol1, row1);
 		const invDeterminantA = 1.0/@intToFloat(f32, determinantA);
 		// Now we change the memory layout use rows instead of columns to make matrix-vector multiplication easier later.

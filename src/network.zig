@@ -25,11 +25,9 @@ const Socket = struct {
 	const os = std.os;
 	socketID: os.socket_t,
 
-	fn startup() void {
+	fn startup() !void {
 		if(builtin.os.tag == .windows) {
-			_ = os.windows.WSAStartup(2, 2) catch |err| { // TODO: Return the error (this triggers a false depency loop error right now).
-				std.log.err("Error trying to startup WSA: {}", .{@errorName(err)});
-			};
+			_ = try os.windows.WSAStartup(2, 2);
 		}
 	}
 
@@ -83,7 +81,7 @@ const Socket = struct {
 };
 
 pub fn init() void {
-	Socket.startup();
+	try Socket.startup();
 	inline for(@typeInfo(Protocols).Struct.decls) |decl| {
 		if(@TypeOf(@field(Protocols, decl.name)) == type) {
 			const id = @field(Protocols, decl.name).id;

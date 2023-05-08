@@ -98,6 +98,7 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) Allocator.Error!void {
 								+ ix*(1 - iz)*val110
 								+ ix*iz*val111
 							);
+							// TODO: Determine the range that needs to be removed, and remove it in one go.
 							if(upperVal*lowerVal > 0) { // All y values have the same sign → the entire column is the same.
 								if(upperVal > 0) {
 									// All cave in here :)

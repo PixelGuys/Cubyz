@@ -151,6 +151,7 @@ pub const World = struct {
 //		ModLoader.postWorldGen(registries);
 		try assets.loadWorldAssets("serverAssets", self.blockPalette);
 		try Player.loadFrom(json.getChild("player"));
+		Player.pos = .{-2000, 100, 4000}; // TODO
 		Player.id = json.get(u32, "player_id", std.math.maxInt(u32));
 	}
 
