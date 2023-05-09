@@ -4,7 +4,7 @@ const main = @import("root");
 const Array3D = main.utils.Array3D;
 const ChunkPosition = main.chunk.ChunkPosition;
 
-const Cached3dFractalNoise = @This();
+const CachedFractalNoise3D = @This();
 
 pos: ChunkPosition,
 cache: Array3D(f32),
@@ -12,10 +12,10 @@ voxelShift: u5,
 scale: u31,
 worldSeed: u64,
 
-pub fn init(wx: i32, wy: i32, wz: i32, voxelSize: u31, size: u31, worldSeed: u64, scale: u31) !Cached3dFractalNoise {
+pub fn init(wx: i32, wy: i32, wz: i32, voxelSize: u31, size: u31, worldSeed: u64, scale: u31) !CachedFractalNoise3D {
 	const maxSize = size/voxelSize;
 	const cacheWidth = maxSize + 1;
-	var self = Cached3dFractalNoise {
+	var self = CachedFractalNoise3D {
 		.pos = .{
 			.wx = wx, .wy = wy, .wz = wz,
 			.voxelSize = voxelSize,
@@ -41,20 +41,20 @@ pub fn init(wx: i32, wy: i32, wz: i32, voxelSize: u31, size: u31, worldSeed: u64
 	return self;
 }
 
-pub fn deinit(self: Cached3dFractalNoise) void {
+pub fn deinit(self: CachedFractalNoise3D) void {
 	self.cache.deinit(main.globalAllocator);
 }
 
-pub fn getRandomValue(self: Cached3dFractalNoise, wx: i32, wy: i32, wz: i32) f32 {
+pub fn getRandomValue(self: CachedFractalNoise3D, wx: i32, wy: i32, wz: i32) f32 {
 	var seed: u64 = main.random.initSeed3D(self.worldSeed, .{wx, wy, wz});
 	return main.random.nextFloat(&seed) - 0.5;
 }
 
-fn getGridValue(self: Cached3dFractalNoise, relX: u31, relY: u31, relZ: u31) f32 {
+fn getGridValue(self: CachedFractalNoise3D, relX: u31, relY: u31, relZ: u31) f32 {
 	return self.getRandomValue(self.pos.wx +% relX*%self.pos.voxelSize, self.pos.wy +% relY*%self.pos.voxelSize, self.pos.wz +% relZ*%self.pos.voxelSize);
 }
 
-fn generateRegion(self: Cached3dFractalNoise, _x: u31, _y: u31, _z: u31, voxelSize: u31) void {
+fn generateRegion(self: CachedFractalNoise3D, _x: u31, _y: u31, _z: u31, voxelSize: u31) void {
 	const x = _x & ~@as(u31, voxelSize-1);
 	const y = _y & ~@as(u31, voxelSize-1);
 	const z = _z & ~@as(u31, voxelSize-1);
@@ -111,7 +111,7 @@ fn generateRegion(self: Cached3dFractalNoise, _x: u31, _y: u31, _z: u31, voxelSi
 	)/6 + randomFactor*self.getGridValue(xMid, yMid, zMid);
 }
 
-fn _getValue(self: Cached3dFractalNoise, x: u31, y: u31, z: u31) f32 {
+fn _getValue(self: CachedFractalNoise3D, x: u31, y: u31, z: u31) f32 {
 	const value = self.cache.get(x, y, z);
 	if(value != 0) return value;
 	// Need to actually generate stuff now.
@@ -120,7 +120,7 @@ fn _getValue(self: Cached3dFractalNoise, x: u31, y: u31, z: u31) f32 {
 	return self.cache.get(x, y, z);
 }
 
-pub fn getValue(self: Cached3dFractalNoise, wx: i32, wy: i32, wz: i32) f32 {
+pub fn getValue(self: CachedFractalNoise3D, wx: i32, wy: i32, wz: i32) f32 {
 	const x = @intCast(u31, (wx - self.pos.wx) >> self.voxelShift);
 	const y = @intCast(u31, (wy - self.pos.wy) >> self.voxelShift);
 	const z = @intCast(u31, (wz - self.pos.wz) >> self.voxelShift);

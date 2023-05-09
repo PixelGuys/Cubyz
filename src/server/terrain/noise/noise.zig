@@ -1,6 +1,9 @@
 
 /// Like FractalNoise, except in 3D and it generates values on demand and caches results, instead of generating everything at once.
-pub const Cached3DFractalNoise = @import("Cached3DFractalNoise.zig");
+pub const CachedFractalNoise3D = @import("CachedFractalNoise3D.zig");
+
+/// Like FractalNoise, except in 3D.
+pub const FractalNoise3D = @import("FractalNoise3D.zig");
 
 /// Uses a recursive subdivision algorithm to generate a noise map.
 pub const FractalNoise = @import("FractalNoise.zig");

@@ -58,7 +58,7 @@ pub fn generateInitializedFractalTerrain(offsetX: i32, offsetZ: i32, scale: u31,
 	//	 One other important thing in the implementation of this algorithm is that the relative height change has to decrease the in every iteration. Otherwise the terrain would look really noisy.
 	const max = startingScale + 1;
 	var seed: u64 = undefined;
-	var res: u31 = startingScale*2;
+	var res: u31 = startingScale/2;
 	while(res != 0) : (res /= 2) {
 		// x coordinate on the grid:
 		var x: u31 = 0;

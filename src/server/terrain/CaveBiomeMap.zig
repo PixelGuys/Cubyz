@@ -338,12 +338,12 @@ pub const InterpolatableCaveBiomeMapView = struct {
 };
 
 pub const CaveBiomeMapView = struct {
-	const Cached3DFractalNoise = terrain.noise.Cached3DFractalNoise;
+	const CachedFractalNoise3D = terrain.noise.CachedFractalNoise3D;
 
 	super: InterpolatableCaveBiomeMapView,
-	noiseX: ?Cached3DFractalNoise = null,
-	noiseY: ?Cached3DFractalNoise = null,
-	noiseZ: ?Cached3DFractalNoise = null,
+	noiseX: ?CachedFractalNoise3D = null,
+	noiseY: ?CachedFractalNoise3D = null,
+	noiseZ: ?CachedFractalNoise3D = null,
 
 	pub fn init(chunk: *Chunk) !CaveBiomeMapView {
 		var self = CaveBiomeMapView {
@@ -351,9 +351,9 @@ pub const CaveBiomeMapView = struct {
 		};
 		if(chunk.pos.voxelSize < 8) {
 			// TODO: Reduce line length.
-			self.noiseX = try Cached3DFractalNoise.init((chunk.pos.wx - 32) & ~@as(i32, 63), (chunk.pos.wy - 32) & ~@as(i32, 63), (chunk.pos.wz - 32) & ~@as(i32, 63), chunk.pos.voxelSize*4, chunk.width + 128, main.server.world.?.seed ^ 0x764923684396, 64);
-			self.noiseY = try Cached3DFractalNoise.init((chunk.pos.wx - 32) & ~@as(i32, 63), (chunk.pos.wy - 32) & ~@as(i32, 63), (chunk.pos.wz - 32) & ~@as(i32, 63), chunk.pos.voxelSize*4, chunk.width + 128, main.server.world.?.seed ^ 0x6547835649265429, 64);
-			self.noiseZ = try Cached3DFractalNoise.init((chunk.pos.wx - 32) & ~@as(i32, 63), (chunk.pos.wy - 32) & ~@as(i32, 63), (chunk.pos.wz - 32) & ~@as(i32, 63), chunk.pos.voxelSize*4, chunk.width + 128, main.server.world.?.seed ^ 0x56789365396783, 64);
+			self.noiseX = try CachedFractalNoise3D.init((chunk.pos.wx - 32) & ~@as(i32, 63), (chunk.pos.wy - 32) & ~@as(i32, 63), (chunk.pos.wz - 32) & ~@as(i32, 63), chunk.pos.voxelSize*4, chunk.width + 128, main.server.world.?.seed ^ 0x764923684396, 64);
+			self.noiseY = try CachedFractalNoise3D.init((chunk.pos.wx - 32) & ~@as(i32, 63), (chunk.pos.wy - 32) & ~@as(i32, 63), (chunk.pos.wz - 32) & ~@as(i32, 63), chunk.pos.voxelSize*4, chunk.width + 128, main.server.world.?.seed ^ 0x6547835649265429, 64);
+			self.noiseZ = try CachedFractalNoise3D.init((chunk.pos.wx - 32) & ~@as(i32, 63), (chunk.pos.wy - 32) & ~@as(i32, 63), (chunk.pos.wz - 32) & ~@as(i32, 63), chunk.pos.voxelSize*4, chunk.width + 128, main.server.world.?.seed ^ 0x56789365396783, 64);
 		}
 		return self;
 	}

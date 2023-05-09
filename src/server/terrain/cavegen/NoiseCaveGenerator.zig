@@ -4,6 +4,7 @@ const sign = std.math.sign;
 
 const main = @import("root");
 const Array2D = main.utils.Array2D;
+const Array3D = main.utils.Array3D;
 const RandomList = main.utils.RandomList;
 const random = main.random;
 const JsonElement = main.JsonElement;
@@ -13,7 +14,7 @@ const InterpolatableCaveBiomeMapView = terrain.CaveBiomeMap.InterpolatableCaveBi
 const FractalNoise = terrain.noise.FractalNoise;
 const RandomlyWeightedFractalNoise = terrain.noise.RandomlyWeightedFractalNoise;
 const PerlinNoise = terrain.noise.PerlinNoise;
-const Cached3DFractalNoise = terrain.noise.Cached3DFractalNoise;
+const FractalNoise3D = terrain.noise.FractalNoise3D;
 const Biome = terrain.biomes.Biome;
 const vec = main.vec;
 const Vec3d = vec.Vec3d;
@@ -37,8 +38,8 @@ pub fn deinit() void {
 const scale = 64;
 const interpolatedPart = 4;
 
-fn getValue(noise: *Cached3DFractalNoise, map: InterpolatableCaveBiomeMapView, wx: i32, wy: i32, wz: i32) f32 {
-	return noise.getValue(wx, wy, wz) + map.interpolateValue(wx, wy, wz, "caves")*scale;
+fn getValue(noise: Array3D(f32), map: *CaveMapFragment, biomeMap: InterpolatableCaveBiomeMapView, wx: i32, wy: i32, wz: i32) f32 {
+	return noise.get(@intCast(u31, wx - map.pos.wx) >> map.voxelShift, @intCast(u31, wy - map.pos.wy) >> map.voxelShift, @intCast(u31, wz - map.pos.wz) >> map.voxelShift) + biomeMap.interpolateValue(wx, wy, wz, "caves")*scale;
 }
 
 pub fn generate(map: *CaveMapFragment, worldSeed: u64) Allocator.Error!void {
@@ -46,22 +47,22 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) Allocator.Error!void {
 	const biomeMap = try InterpolatableCaveBiomeMapView.init(map.pos, CaveMapFragment.width*map.pos.voxelSize);
 	defer biomeMap.deinit();
 	const outerSize = @max(map.pos.voxelSize, interpolatedPart);
-	var noise = try Cached3DFractalNoise.init(map.pos.wx, map.pos.wy & ~@as(i32, CaveMapFragment.width*map.pos.voxelSize - 1), map.pos.wz, outerSize, map.pos.voxelSize*CaveMapFragment.width, worldSeed, scale);
-	defer noise.deinit();
+	var noise = try FractalNoise3D.generateAligned(main.threadAllocator, map.pos.wx, map.pos.wy, map.pos.wz, map.pos.voxelSize, CaveMapFragment.width + 1, CaveMapFragment.height + 1, CaveMapFragment.width + 1, worldSeed, scale);//try Cached3DFractalNoise.init(map.pos.wx, map.pos.wy & ~@as(i32, CaveMapFragment.width*map.pos.voxelSize - 1), map.pos.wz, outerSize, map.pos.voxelSize*CaveMapFragment.width, worldSeed, scale);
+	defer noise.deinit(main.threadAllocator);
 	var x: u31 = 0;
 	while(x < map.pos.voxelSize*CaveMapFragment.width) : (x += outerSize) {
 		var y: u31 = 0;
 		while(y < map.pos.voxelSize*CaveMapFragment.height) : (y += outerSize) {
 			var z: u31 = 0;
 			while(z < map.pos.voxelSize*CaveMapFragment.width) : (z += outerSize) {
-				const val000 = getValue(&noise, biomeMap, x + map.pos.wx, y + map.pos.wy, z + map.pos.wz);
-				const val001 = getValue(&noise, biomeMap, x + map.pos.wx, y + map.pos.wy, z + map.pos.wz + outerSize);
-				const val010 = getValue(&noise, biomeMap, x + map.pos.wx, y + map.pos.wy + outerSize, z + map.pos.wz);
-				const val011 = getValue(&noise, biomeMap, x + map.pos.wx, y + map.pos.wy + outerSize, z + map.pos.wz + outerSize);
-				const val100 = getValue(&noise, biomeMap, x + map.pos.wx + outerSize, y + map.pos.wy, z + map.pos.wz);
-				const val101 = getValue(&noise, biomeMap, x + map.pos.wx + outerSize, y + map.pos.wy, z + map.pos.wz + outerSize);
-				const val110 = getValue(&noise, biomeMap, x + map.pos.wx + outerSize, y + map.pos.wy + outerSize, z + map.pos.wz);
-				const val111 = getValue(&noise, biomeMap, x + map.pos.wx + outerSize, y + map.pos.wy + outerSize, z + map.pos.wz + outerSize);
+				const val000 = getValue(noise, map, biomeMap, x + map.pos.wx, y + map.pos.wy, z + map.pos.wz);
+				const val001 = getValue(noise, map, biomeMap, x + map.pos.wx, y + map.pos.wy, z + map.pos.wz + outerSize);
+				const val010 = getValue(noise, map, biomeMap, x + map.pos.wx, y + map.pos.wy + outerSize, z + map.pos.wz);
+				const val011 = getValue(noise, map, biomeMap, x + map.pos.wx, y + map.pos.wy + outerSize, z + map.pos.wz + outerSize);
+				const val100 = getValue(noise, map, biomeMap, x + map.pos.wx + outerSize, y + map.pos.wy, z + map.pos.wz);
+				const val101 = getValue(noise, map, biomeMap, x + map.pos.wx + outerSize, y + map.pos.wy, z + map.pos.wz + outerSize);
+				const val110 = getValue(noise, map, biomeMap, x + map.pos.wx + outerSize, y + map.pos.wy + outerSize, z + map.pos.wz);
+				const val111 = getValue(noise, map, biomeMap, x + map.pos.wx + outerSize, y + map.pos.wy + outerSize, z + map.pos.wz + outerSize);
 				// Test if they are all inside or all outside the cave to skip these cases:
 				const measureForEquality = sign(val000) + sign(val001) + sign(val010) + sign(val011) + sign(val100) + sign(val101) + sign(val110) + sign(val111);
 				if(measureForEquality == -8) {
