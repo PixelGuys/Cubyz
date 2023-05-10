@@ -26,7 +26,7 @@ pub fn init(wx: i32, wy: i32, wz: i32, voxelSize: u31, size: u31, worldSeed: u64
 		.worldSeed = worldSeed,
 	};
 	// Init the corners:
-	std.mem.set(f32, self.cache.mem, 0);
+	@memset(self.cache.mem, 0);
 	const reducedScale = scale/voxelSize;
 	var x: u31 = 0;
 	while(x <= maxSize) : (x += reducedScale) {
@@ -115,7 +115,7 @@ fn _getValue(self: CachedFractalNoise3D, x: u31, y: u31, z: u31) f32 {
 	const value = self.cache.get(x, y, z);
 	if(value != 0) return value;
 	// Need to actually generate stuff now.
-	const minShift = @min(@ctz(x), @min(@ctz(y), @ctz(z)));
+	const minShift = @min(@ctz(x), @ctz(y), @ctz(z));
 	self.generateRegion(x, y, z, @as(u31, 2) << @intCast(u5, minShift));
 	return self.cache.get(x, y, z);
 }

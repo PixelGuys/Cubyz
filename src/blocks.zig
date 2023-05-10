@@ -427,7 +427,8 @@ pub const meshes = struct {
 				std.log.warn("Could not read image from: {s}", .{path});
 				break :blk undefinedImage;
 			});
-			path = try std.fmt.bufPrint(&buffer, "{s}_emission.png", .{path});
+			@memcpy(buffer[path.len..][0.."_emission.png".len], "_emission.png");
+			path.len += "_emission.png".len;
 			const emissionTexture = Image.readFromFile(arenaForWorld.allocator(), path);
 			try emissionTextures.append(emissionTexture catch emptyImage);
 			try textureIDs.append(try arenaForWorld.allocator().dupe(u8, path));
@@ -466,7 +467,8 @@ pub const meshes = struct {
 					std.log.warn("Could not read image from: {s}", .{path});
 					break :blk undefinedImage;
 				});
-				path = try std.fmt.bufPrint(&buffer, "{s}_emission.png", .{path});
+				@memcpy(buffer[path.len..][0.."_emission.png".len], "_emission.png");
+				path.len += "_emission.png".len;
 				const emissionTexture = Image.readFromFile(arenaForWorld.allocator(), path);
 				try emissionTextures.append(emissionTexture catch emptyImage);
 				try textureIDs.append(try arenaForWorld.allocator().dupe(u8, path));

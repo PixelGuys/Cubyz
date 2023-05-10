@@ -188,7 +188,7 @@ fn heightDependantTemperature(temperature: f32, height: f32) f32 {
 	// Therefor the total equation gets: `65K*2/80K/(1 - oceanThreshold)*(height - oceanThreshold)` = `1.625/(1 - oceanThreshold)*(height - oceanThreshold)`
 	
 	// Furthermore I assume that the average temperature is at 1km of height.
-	return temperature - 1.625*(@max(0, height - oceanThreshold)/(1 - oceanThreshold) - 0.1);
+	return temperature - 1.625*(@max(0.0, height - oceanThreshold)/(1 - oceanThreshold) - 0.1); // TODO: #15644
 }
 
 fn findClimate(height: f32, humid: f32, temp: f32) Biome.Type {

@@ -20,7 +20,7 @@ const VoxelModel = extern struct {
 
 	pub fn init(self: *VoxelModel, distributionFunction: *const fn(u16, u16, u16) ?u4) void {
 		if(@sizeOf(VoxelModel) != 16 + 16 + modelSize*modelSize*modelSize*4/8) @compileError("Expected Vec3i to have 16 byte alignment.");
-		std.mem.set(u32, &self.bitPackedData, 0);
+		@memset(&self.bitPackedData, 0);
 		self.min = @splat(3, @as(i32, 16));
 		self.max = @splat(3, @as(i32, 0));
 		var x: u16 = 0;

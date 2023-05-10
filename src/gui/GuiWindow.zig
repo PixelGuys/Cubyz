@@ -364,7 +364,7 @@ pub fn updateWindowPosition(self: *GuiWindow) void {
 		switch(relPos) {
 			.ratio => |ratio| {
 				self.pos[i] = windowSize[i]*ratio - self.size[i]/2;
-				self.pos[i] = @max(self.pos[i], 0);
+				self.pos[i] = @max(self.pos[i], 0.0); // TODO: #15644
 				self.pos[i] = @min(self.pos[i], windowSize[i] - self.size[i]);
 			},
 			.attachedToFrame => |attachedToFrame| {

@@ -631,7 +631,7 @@ pub const TextBuffer = struct {
 	}
 
 	pub fn mousePosToIndex(self: TextBuffer, mousePos: Vec2f, bufferLen: usize) u32 {
-		var line: usize = @floatToInt(usize, @max(0, mousePos[1]/16.0));
+		var line: usize = @floatToInt(usize, @max(0.0, mousePos[1]/16.0)); // TODO: #15644
 		line = @min(line, self.lineBreaks.items.len - 2);
 		var x: f32 = self.getLineOffset(line);
 		const start = self.lineBreaks.items[line].index;
@@ -781,7 +781,7 @@ pub const TextBuffer = struct {
 			else y += 8;
 			draw.setColor(line.color | (@as(u32, 0xff000000) & draw.color));
 			for(lineWraps, 0..) |lineWrap, j| {
-				const lineStart = @max(0, line.start);
+				const lineStart = @max(0.0, line.start); // TODO: #15644
 				const lineEnd = @min(lineWrap, line.end);
 				if(lineStart < lineEnd) {
 					var start = Vec2f{lineStart + self.getLineOffset(j), y};
@@ -848,7 +848,7 @@ pub const TextBuffer = struct {
 			else y += 8;
 			draw.setColor(shadowColor(line.color) | (@as(u32, 0xff000000) & draw.color));
 			for(lineWraps, 0..) |lineWrap, j| {
-				const lineStart = @max(0, line.start);
+				const lineStart = @max(0.0, line.start); // TODO: #15644
 				const lineEnd = @min(lineWrap, line.end);
 				if(lineStart < lineEnd) {
 					var start = Vec2f{lineStart + self.getLineOffset(j), y};

@@ -34,7 +34,7 @@ const Material = struct {
 		self.density = json.get(f32, "density", 1.0);
 		self.resistance = json.get(f32, "resistance", 1.0);
 		self.power = json.get(f32, "power", 1.0);
-		self.roughness = @max(0, json.get(f32, "roughness", 1.0));
+		self.roughness = @max(0.0, json.get(f32, "roughness", 1.0)); // TODO: #15644
 		const colors = json.getChild("colors");
 		self.colorPalette = try allocator.alloc(Color, colors.JsonArray.items.len);
 		for(colors.JsonArray.items, self.colorPalette) |item, *color| {
@@ -767,7 +767,7 @@ const ToolPhysics = struct {
 			}
 		}
 		// Smaller tools are faster to swing. To balance that smaller tools get a lower durability.
-		tool.maxDurability = @floatToInt(u32, @max(1, std.math.pow(f32, durability/4, 1.5)));
+		tool.maxDurability = @floatToInt(u32, @max(1.0, std.math.pow(f32, durability/4, 1.5))); // TODO: #15644
 		tool.durability = tool.maxDurability;
 	}
 

@@ -85,7 +85,7 @@ fn onTake(_: usize) void {
 		}
 	}
 	craftingResult.itemStack = .{};
-	std.mem.set(?*const BaseItem, &availableItems, null);
+	@memset(&availableItems, null);
 	// Create a new seed, so the player won't craft the exact same item twice:
 	seed = @truncate(u32, @bitCast(u128, std.time.nanoTimestamp()));
 }
@@ -122,8 +122,8 @@ fn refresh() Allocator.Error!void {
 
 pub fn onOpen() Allocator.Error!void {
 	seed = @truncate(u32, @bitCast(u128, std.time.nanoTimestamp()));
-	std.mem.set(?*const BaseItem, &availableItems, null);
-	std.mem.set(ItemStack, &craftingGrid, .{});
+	@memset(&availableItems, null);
+	@memset(&craftingGrid, .{});
 	var list = try HorizontalList.init();
 	{ // crafting grid
 		var grid = try VerticalList.init(.{0, 0}, 300, 0);

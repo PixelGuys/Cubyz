@@ -30,9 +30,9 @@ pub fn readAllJsonFilesInAddons(externalAllocator: Allocator, addons: std.ArrayL
 			if(entry.kind == .File and std.ascii.endsWithIgnoreCase(entry.basename, ".json")) {
 				const folderName = addonName;
 				var id: []u8 = try externalAllocator.alloc(u8, folderName.len + 1 + entry.path.len - 5);
-				std.mem.copy(u8, id[0..], folderName);
+				@memcpy(id[0..folderName.len], folderName);
 				id[folderName.len] = ':';
-				std.mem.copy(u8, id[folderName.len+1..], entry.path[0..entry.path.len-5]);
+				@memcpy(id[folderName.len+1..], entry.path[0..entry.path.len-5]);
 
 				var file = try dir.dir.openFile(entry.path, .{});
 				defer file.close();

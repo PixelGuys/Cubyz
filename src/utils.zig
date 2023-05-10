@@ -597,16 +597,16 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 		pub fn init(self: *@This(), initialPosition: *[elements]f64, initialVelocity: *[elements]f64) void {
 			self.outPos = initialPosition;
 			self.outVel = initialVelocity;
-			std.mem.set([elements]f64, &self.lastPos, self.outPos.*);
-			std.mem.set([elements]f64, &self.lastVel, self.outVel.*);
+			@memset(&self.lastPos, self.outPos.*);
+			@memset(&self.lastVel, self.outVel.*);
 			self.frontIndex = 0;
 			self.currentPoint = null;
 		}
 
 		pub fn updatePosition(self: *@This(), pos: *const [elements]f64, vel: *const [elements]f64, time: i16) void {
 			self.frontIndex = (self.frontIndex + 1)%frames;
-			std.mem.copy(f64, &self.lastPos[self.frontIndex], pos);
-			std.mem.copy(f64, &self.lastVel[self.frontIndex], vel);
+			@memcpy(&self.lastPos[self.frontIndex], pos);
+			@memcpy(&self.lastVel[self.frontIndex], vel);
 			self.lastTimes[self.frontIndex] = time;
 		}
 
@@ -642,8 +642,8 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 			if(self.currentPoint != null and self.lastTimes[self.currentPoint.?] -% time <= 0) {
 				// Jump to the last used value and adjust the time to start at that point.
 				lastTime.* = self.lastTimes[self.currentPoint.?];
-				std.mem.copy(f64, self.outPos, &self.lastPos[self.currentPoint.?]);
-				std.mem.copy(f64, self.outVel, &self.lastVel[self.currentPoint.?]);
+				@memcpy(self.outPos, &self.lastPos[self.currentPoint.?]);
+				@memcpy(self.outVel, &self.lastVel[self.currentPoint.?]);
 				self.currentPoint = null;
 			}
 

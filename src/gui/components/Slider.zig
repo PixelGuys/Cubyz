@@ -51,8 +51,8 @@ pub fn init(pos: Vec2f, width: f32, text: []const u8, comptime fmt: []const u8, 
 	}
 
 	const initialText = try main.globalAllocator.alloc(u8, text.len + maxLen);
-	std.mem.copy(u8, initialText, text);
-	std.mem.set(u8, initialText[text.len..], ' ');
+	@memcpy(initialText[0..text.len], text);
+	@memset(initialText[text.len..], ' ');
 	const label = try Label.init(undefined, width - 3*border, initialText, .center);
 	const button = try Button.initText(.{0, 0}, undefined, "", .{});
 	const self = try main.globalAllocator.create(Slider);
@@ -100,8 +100,8 @@ fn setButtonPosFromValue(self: *Slider) !void {
 fn updateLabel(self: *Slider, newValue: []const u8, width: f32) !void {
 	main.globalAllocator.free(self.currentText);
 	self.currentText = try main.globalAllocator.alloc(u8, newValue.len + self.text.len);
-	std.mem.copy(u8, self.currentText, self.text);
-	std.mem.copy(u8, self.currentText[self.text.len..], newValue);
+	@memcpy(self.currentText[self.text.len..], self.text);
+	@memcpy(self.currentText[self.text.len..], newValue);
 	const label = try Label.init(undefined, width - 3*border, self.currentText, .center);
 	self.label.deinit();
 	self.label = label;

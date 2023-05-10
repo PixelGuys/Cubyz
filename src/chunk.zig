@@ -78,7 +78,7 @@ pub const ChunkPosition = struct {
 	voxelSize: u31,
 	
 	pub fn hashCode(self: ChunkPosition) u32 {
-		const shift = @truncate(u5, @min(@ctz(self.wx), @min(@ctz(self.wy), @ctz(self.wz))));
+		const shift = @truncate(u5, @min(@ctz(self.wx), @ctz(self.wy), @ctz(self.wz)));
 		return (((@bitCast(u32, self.wx) >> shift) *% 31 +% (@bitCast(u32, self.wy) >> shift)) *% 31 +% (@bitCast(u32, self.wz) >> shift)) *% 31 +% self.voxelSize;
 	}
 
@@ -98,9 +98,9 @@ pub const ChunkPosition = struct {
 		var dx = @fabs(@intToFloat(f64, self.wx) + halfWidth - playerPosition[0]);
 		var dy = @fabs(@intToFloat(f64, self.wy) + halfWidth - playerPosition[1]);
 		var dz = @fabs(@intToFloat(f64, self.wz) + halfWidth - playerPosition[2]);
-		dx = @max(0, dx - halfWidth);
-		dy = @max(0, dy - halfWidth);
-		dz = @max(0, dz - halfWidth);
+		dx = @max(0.0, dx - halfWidth); // TODO: #15644
+		dy = @max(0.0, dy - halfWidth); // TODO: #15644
+		dz = @max(0.0, dz - halfWidth); // TODO: #15644
 		return dx*dx + dy*dy + dz*dz;
 	}
 

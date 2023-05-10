@@ -313,8 +313,7 @@ const STUN = struct {
 					const xor = data[0];
 					if(typ == MAPPED_ADDRESS and xor != 0) return error.NonZeroXORForMappedAddress;
 					if(data[1] == 0x01) {
-						var addressData: [6]u8 = undefined;
-						std.mem.copy(u8, &addressData, data[2..8]);
+						var addressData: [6]u8 = data[2..8].*;
 						if(typ == XOR_MAPPED_ADDRESS) {
 							addressData[0] ^= MAGIC_COOKIE[0];
 							addressData[1] ^= MAGIC_COOKIE[1];
@@ -741,7 +740,7 @@ pub const Protocols = struct {
 			defer main.threadAllocator.free(compressedData);
 			const data =try  main.threadAllocator.alloc(u8, 16 + compressedData.len);
 			defer main.threadAllocator.free(data);
-			std.mem.copy(u8, data[16..], compressedData);
+			@memcpy(data[16..], compressedData);
 			std.mem.writeIntBig(i32, data[0..4], ch.pos.wx);
 			std.mem.writeIntBig(i32, data[4..8], ch.pos.wy);
 			std.mem.writeIntBig(i32, data[8..12], ch.pos.wz);
@@ -805,14 +804,14 @@ pub const Protocols = struct {
 			defer main.threadAllocator.free(fullEntityData);
 			fullEntityData[0] = type_entity;
 			std.mem.writeIntBig(i16, fullEntityData[1..3], @truncate(i16, std.time.milliTimestamp()));
-			std.mem.copy(u8, fullEntityData[3..], entityData);
+			@memcpy(fullEntityData[3..], entityData);
 			conn.sendUnimportant(id, fullEntityData);
 
 			const fullItemData = main.threadAllocator.alloc(u8, itemData.len + 3);
 			defer main.threadAllocator.free(fullItemData);
 			fullItemData[0] = type_item;
 			std.mem.writeIntBig(i16, fullItemData[1..3], @truncate(i16, std.time.milliTimestamp()));
-			std.mem.copy(u8, fullItemData[3..], itemData);
+			@memcpy(fullItemData[3..], itemData);
 			conn.sendUnimportant(id, fullItemData);
 		}
 	};
@@ -1092,7 +1091,7 @@ pub const Protocols = struct {
 			const headeredData = try main.threadAllocator.alloc(u8, data.len + 1);
 			defer main.threadAllocator.free(headeredData);
 			headeredData[0] = header;
-			std.mem.copy(u8, headeredData[1..], data);
+			@memcpy(headeredData[1..], data);
 			try conn.sendImportant(id, headeredData);
 		}
 
@@ -1100,7 +1099,7 @@ pub const Protocols = struct {
 			const headeredData = try main.threadAllocator.alloc(u8, data.len + 1);
 			defer main.threadAllocator.free(headeredData);
 			headeredData[0] = header;
-			std.mem.copy(u8, headeredData[1..], data);
+			@memcpy(headeredData[1..], data);
 			try conn.sendUnimportant(id, headeredData);
 		}
 
@@ -1339,7 +1338,7 @@ pub const Connection = struct {
 		var remaining: []const u8 = data;
 		while(remaining.len != 0) {
 			var copyableSize = @min(remaining.len, self.streamBuffer.len - self.streamPosition);
-			std.mem.copy(u8, self.streamBuffer[self.streamPosition..], remaining[0..copyableSize]);
+			@memcpy(self.streamBuffer[self.streamPosition..][0..copyableSize], remaining[0..copyableSize]);
 			remaining = remaining[copyableSize..];
 			self.streamPosition += @intCast(u32, copyableSize);
 			if(self.streamPosition == self.streamBuffer.len) {
@@ -1357,7 +1356,7 @@ pub const Connection = struct {
 		var fullData = try main.threadAllocator.alloc(u8, data.len + 1);
 		defer main.threadAllocator.free(fullData);
 		fullData[0] = id;
-		std.mem.copy(u8, fullData[1..], data);
+		@memcpy(fullData[1..], data);
 		try self.manager.send(fullData, self.remoteAddress);
 	}
 
@@ -1527,7 +1526,7 @@ pub const Connection = struct {
 			var remaining = data[0..];
 			while(remaining.len != 0) {
 				dataAvailable = @min(self.lastReceivedPackets[id & 65535].?.len - newIndex, remaining.len);
-				std.mem.copy(u8, remaining, self.lastReceivedPackets[id & 65535].?[newIndex..newIndex + dataAvailable]);
+				@memcpy(remaining[0..dataAvailable], self.lastReceivedPackets[id & 65535].?[newIndex..newIndex + dataAvailable]);
 				newIndex += @intCast(u32, dataAvailable);
 				remaining = remaining[dataAvailable..];
 				if(newIndex == self.lastReceivedPackets[id & 65535].?.len) {
