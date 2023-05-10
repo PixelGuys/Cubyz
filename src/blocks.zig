@@ -25,7 +25,7 @@ pub const BlockClass = enum(u8) {
 var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
 var allocator = arena.allocator();
 
-pub const MaxBLockCount: usize = 65536; // 16 bit limit
+pub const maxBlockCount: usize = 65536; // 16 bit limit
 
 pub const BlockDrop = struct {
 	item: items.Item,
@@ -56,26 +56,26 @@ pub const Ore = struct {
 	}
 };
 
-var _lightingTransparent: [MaxBLockCount]bool = undefined;
-var _transparent: [MaxBLockCount]bool = undefined;
-var _id: [MaxBLockCount][]u8 = undefined;
+var _lightingTransparent: [maxBlockCount]bool = undefined;
+var _transparent: [maxBlockCount]bool = undefined;
+var _id: [maxBlockCount][]u8 = undefined;
 /// Time in seconds to break this block by hand.
-var _hardness: [MaxBLockCount]f32 = undefined;
+var _hardness: [maxBlockCount]f32 = undefined;
 /// Minimum pickaxe/axe/shovel power required.
-var _breakingPower: [MaxBLockCount]f32 = undefined;
-var _solid: [MaxBLockCount]bool = undefined;
-var _selectable: [MaxBLockCount]bool = undefined;
-var _blockDrops: [MaxBLockCount][]BlockDrop = undefined;
+var _breakingPower: [maxBlockCount]f32 = undefined;
+var _solid: [maxBlockCount]bool = undefined;
+var _selectable: [maxBlockCount]bool = undefined;
+var _blockDrops: [maxBlockCount][]BlockDrop = undefined;
 /// Meaning undegradable parts of trees or other structures can grow through this block.
-var _degradable: [MaxBLockCount]bool = undefined;
-var _viewThrough: [MaxBLockCount]bool = undefined;
-var _blockClass: [MaxBLockCount]BlockClass = undefined;
-var _light: [MaxBLockCount]u32 = undefined;
+var _degradable: [maxBlockCount]bool = undefined;
+var _viewThrough: [maxBlockCount]bool = undefined;
+var _blockClass: [maxBlockCount]BlockClass = undefined;
+var _light: [maxBlockCount]u32 = undefined;
 /// How much light this block absorbs if it is transparent
-var _absorption: [MaxBLockCount]u32 = undefined;
+var _absorption: [maxBlockCount]u32 = undefined;
 /// GUI that is opened on click.
-var _gui: [MaxBLockCount][]u8 = undefined;
-var _mode: [MaxBLockCount]*RotationMode = undefined;
+var _gui: [maxBlockCount][]u8 = undefined;
+var _mode: [maxBlockCount]*RotationMode = undefined;
 
 var reverseIndices = std.StringHashMap(u16).init(arena.allocator());
 
@@ -310,10 +310,10 @@ pub const meshes = struct {
 		time: i32,
 	};
 	var size: u32 = 0;
-	var _modelIndex: [MaxBLockCount]u16 = undefined;
-	var _textureIndices: [MaxBLockCount][6]u32 = undefined;
+	var _modelIndex: [maxBlockCount]u16 = undefined;
+	var _textureIndices: [maxBlockCount][6]u32 = undefined;
 	/// Stores the number of textures after each block was added. Used to clean additional textures when the world is switched.
-	var maxTextureCount: [MaxBLockCount]u32 = undefined;
+	var maxTextureCount: [maxBlockCount]u32 = undefined;
 	/// Number of loaded meshes. Used to determine if an update is needed.
 	var loadedMeshes: u32 = 0;
 

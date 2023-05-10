@@ -2,6 +2,7 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 
 const main = @import("root");
+const Array3D = main.utils.Array3D;
 const Cache = main.utils.Cache;
 const Chunk = main.chunk.Chunk;
 const ChunkPosition = main.chunk.ChunkPosition;
@@ -25,8 +26,7 @@ pub const CaveBiomeMapFragment = struct {
 	pub const caveBiomeMapMask = caveBiomeMapSize - 1;
 
 	pos: main.chunk.ChunkPosition,
-	biomeMap0: [1 << 3*(caveBiomeMapShift - caveBiomeShift)]*const Biome = undefined,
-	biomeMap1: [1 << 3*(caveBiomeMapShift - caveBiomeShift)]*const Biome = undefined,
+	biomeMap: [1 << 3*(caveBiomeMapShift - caveBiomeShift)][2]*const Biome = undefined,
 	refCount: std.atomic.Atomic(u16) = std.atomic.Atomic(u16).init(0),
 
 	pub fn init(self: *CaveBiomeMapFragment, wx: i32, wy: i32, wz: i32) !void {
@@ -178,6 +178,24 @@ pub const InterpolatableCaveBiomeMapView = struct {
 		return @select(i32, in >= Vec3i{0, 0, 0}, Vec3i{1, 1, 1}, Vec3i{-1, -1, -1});
 	}
 
+	pub fn bulkInterpolateValue(self: InterpolatableCaveBiomeMapView, comptime field: []const u8, wx: i32, wy: i32, wz: i32, voxelSize: u31, map: Array3D(f32), comptime mode: enum{addToMap}, comptime scale: f32) void {
+		var x: u31 = 0;
+		while(x < map.width) : (x += 1) {
+			var y: u31 = 0;
+			while(y < map.height) : (y += 1) {
+				var z: u31 = 0;
+				while(z < map.depth) : (z += 1) {
+					switch (mode) {
+						.addToMap => {
+							// TODO: Do a tetrahedron voxelization here, so parts of the tetrahedral barycentric coordinates can be precomputed.
+							map.ptr(x, y, z).* += scale*interpolateValue(self, wx + x*voxelSize, wy + y*voxelSize, wz + z*voxelSize, field);
+						}
+					}
+				}
+			}
+		}
+	}
+
 	pub noinline fn interpolateValue(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32, wz: i32, comptime field: []const u8) f32 {
 		const worldPos = Vec3i{wx, wy, wz};
 		const closestGridpoint0 = (worldPos + @splat(3, @as(i32, CaveBiomeMapFragment.caveBiomeSize/2))) & @splat(3, ~@as(i32, CaveBiomeMapFragment.caveBiomeMask));
@@ -283,7 +301,7 @@ pub const InterpolatableCaveBiomeMapView = struct {
 		return self.surfaceFragments[index].getBiome(wx, wz);
 	}
 
-	fn _getBiome(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32, wz: i32, map: u1) *const Biome {
+	noinline fn _getBiome(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32, wz: i32, map: u1) *const Biome {
 		var index: u8 = 0;
 		if(wx - self.fragments[0].pos.wx >= CaveBiomeMapFragment.caveBiomeMapSize) {
 			index += 4;
@@ -298,15 +316,11 @@ pub const InterpolatableCaveBiomeMapView = struct {
 		const relY = @intCast(u31, wy - self.fragments[index].pos.wy);
 		const relZ = @intCast(u31, wz - self.fragments[index].pos.wz);
 		const indexInArray = CaveBiomeMapFragment.getIndex(relX, relY, relZ);
-		if(map == 0) {
-			return self.fragments[index].biomeMap0[indexInArray];
-		} else {
-			return self.fragments[index].biomeMap1[indexInArray];
-		}
+		return self.fragments[index].biomeMap[indexInArray][map];
 	}
 
 	/// Useful when the rough biome location is enough, for example for music.
-	pub fn getRoughBiome(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32, wz: i32, nullSeed: ?*u64, comptime _checkSurfaceBiome: bool) *const Biome {
+	pub noinline fn getRoughBiome(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32, wz: i32, comptime getSeed: bool, seed: *u64, comptime _checkSurfaceBiome: bool) *const Biome {
 		if(_checkSurfaceBiome) {
 			if(self.checkSurfaceBiome(wx, wy, wz)) |surfaceBiome| {
 				return surfaceBiome;
@@ -328,7 +342,7 @@ pub const InterpolatableCaveBiomeMapView = struct {
 			map = 1;
 		}
 
-		if(nullSeed) |seed| {
+		if(getSeed) {
 			// A good old "I don't know what I'm doing" hash:
 			seed.* = @bitCast(u64, @as(i64, gridPointX) << 48 ^ @as(i64, gridPointY) << 23 ^ @as(i64, gridPointZ) << 11 ^ @as(i64, gridPointX) >> 5 ^ @as(i64, gridPointY) << 3 ^ @as(i64, gridPointZ) ^ @as(i64, map)*5427642781) ^ main.server.world.?.seed;
 		}
@@ -383,11 +397,11 @@ pub const CaveBiomeMapView = struct {
 	}
 
 	pub fn getBiome(self: CaveBiomeMapView, relX: i32, relY: i32, relZ: i32) *const Biome {
-		return self.getBiomeAndSeed(relX, relY, relZ, null);
+		return self.getBiomeAndSeed(relX, relY, relZ, false, undefined);
 	}
 
 	/// Also returns a seed that is unique for the corresponding biome position.
-	pub fn getBiomeAndSeed(self: CaveBiomeMapView, relX: i32, relY: i32, relZ: i32, seed: ?*u64) *const Biome {
+	pub noinline fn getBiomeAndSeed(self: CaveBiomeMapView, relX: i32, relY: i32, relZ: i32, comptime getSeed: bool, seed: *u64) *const Biome {
 		std.debug.assert(relX >= -32 and relX < self.super.width + 32); // coordinate out of bounds
 		std.debug.assert(relY >= -32 and relY < self.super.width + 32); // coordinate out of bounds
 		std.debug.assert(relZ >= -32 and relZ < self.super.width + 32); // coordinate out of bounds
@@ -407,7 +421,7 @@ pub const CaveBiomeMapView = struct {
 			wz += @floatToInt(i32, valueZ);
 		};
 
-		return self.super.getRoughBiome(wx, wy, wz, seed, false);
+		return self.super.getRoughBiome(wx, wy, wz, getSeed, seed, false);
 	}
 };
 

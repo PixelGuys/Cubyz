@@ -38,6 +38,7 @@ pub fn deinit() void {
 }
 
 pub fn generate(worldSeed: u64, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) Allocator.Error!void {
+	const voxelSizeShift = @ctz(chunk.pos.voxelSize);
 	var x: u31 = 0;
 	while(x < chunk.width) : (x += chunk.pos.voxelSize) {
 		var z: u31 = 0;
@@ -46,7 +47,7 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveM
 			var makeSurfaceStructure = true;
 			var y: i32 = chunk.width - chunk.pos.voxelSize;
 			while(y >= 0) : (y -= chunk.pos.voxelSize) {
-				const mask = @as(u64, 1) << @intCast(u6, @divExact(y, chunk.pos.voxelSize));
+				const mask = @as(u64, 1) << @intCast(u6, y >> voxelSizeShift);
 				if(heightData & mask != 0) {
 					const biome = biomeMap.getBiome(x, y, z);
 					

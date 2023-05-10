@@ -488,7 +488,7 @@ pub const meshing = struct {
 		fn canBeSeenThroughOtherBlock(block: Block, other: Block, neighbor: u3) bool {
 			const rotatedModel = blocks.meshes.model(block);
 			const model = &models.voxelModels.items[rotatedModel.modelIndex];
-			const freestandingModel = switch(rotatedModel.permutation.permuteNeighborIndex(neighbor)) {
+			const freestandingModel = rotatedModel.modelIndex != models.fullCube and switch(rotatedModel.permutation.permuteNeighborIndex(neighbor)) {
 				Neighbors.dirNegX => model.min[0] != 0,
 				Neighbors.dirPosX => model.max[0] != 16,
 				Neighbors.dirDown => model.min[1] != 0,

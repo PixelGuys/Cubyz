@@ -208,6 +208,7 @@ pub fn getModelIndex(string: []const u8) u16 {
 }
 
 pub var voxelModels: std.ArrayList(VoxelModel) = undefined;
+pub var fullCube: u16 = 0;
 
 // TODO: Allow loading from world assets.
 // TODO: Editable player models.
@@ -220,6 +221,7 @@ pub fn init() !void {
 	nameToIndex = std.StringHashMap(u16).init(main.threadAllocator);
 
 	try nameToIndex.put("cube", @intCast(u16, voxelModels.items.len));
+	fullCube = @intCast(u16, voxelModels.items.len);
 	(try voxelModels.addOne()).init(cube);
 
 	try nameToIndex.put("log", @intCast(u16, voxelModels.items.len));

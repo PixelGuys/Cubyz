@@ -83,11 +83,7 @@ pub fn generate(map: *CaveBiomeMapFragment, worldSeed: u64) Allocator.Error!void
 						if(randomValue < 0) break;
 					}
 					var index = CaveBiomeMapFragment.getIndex(x, y, z);
-					if(_map == 0) {
-						map.biomeMap0[index] = biome;
-					} else {
-						map.biomeMap1[index] = biome;
-					}
+					map.biomeMap[index][_map] = biome;
 				}
 			}
 		}
