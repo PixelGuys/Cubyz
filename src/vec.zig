@@ -33,8 +33,7 @@ pub fn normalize(self: anytype) @TypeOf(self) {
 pub fn floatToInt(comptime DestType: type, self: anytype) @Vector(@typeInfo(@TypeOf(self)).Vector.len, DestType) { // TODO: Remove once @floatToInt supports vectors.
 	const len = @typeInfo(@TypeOf(self)).Vector.len;
 	var result: @Vector(len, DestType) = undefined;
-	comptime var i: u32 = 0;
-	inline while(i < len) : (i += 1) {
+	inline for(0..len) |i| {
 		result[i] = @floatToInt(DestType, self[i]);
 	}
 	return result;
@@ -43,8 +42,7 @@ pub fn floatToInt(comptime DestType: type, self: anytype) @Vector(@typeInfo(@Typ
 pub fn intToFloat(comptime DestType: type, self: anytype) @Vector(@typeInfo(@TypeOf(self)).Vector.len, DestType) { // TODO: Remove once @intToFloat supports vectors.
 	const len = @typeInfo(@TypeOf(self)).Vector.len;
 	var result: @Vector(len, DestType) = undefined;
-	comptime var i: u32 = 0;
-	inline while(i < len) : (i += 1) {
+	inline for(0..len) |i| {
 		result[i] = @intToFloat(DestType, self[i]);
 	}
 	return result;
@@ -53,8 +51,7 @@ pub fn intToFloat(comptime DestType: type, self: anytype) @Vector(@typeInfo(@Typ
 pub fn floatCast(comptime DestType: type, self: anytype) @Vector(@typeInfo(@TypeOf(self)).Vector.len, DestType) { // TODO: Remove once @intToFloat supports vectors.
 	const len = @typeInfo(@TypeOf(self)).Vector.len;
 	var result: @Vector(len, DestType) = undefined;
-	comptime var i: u32 = 0;
-	inline while(i < len) : (i += 1) {
+	inline for(0..len) |i| {
 		result[i] = @floatCast(DestType, self[i]);
 	}
 	return result;

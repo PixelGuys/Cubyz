@@ -104,13 +104,7 @@ pub fn register(_: []const u8, id: []const u8, json: JsonElement) !u16 {
 	_breakingPower[size] = json.get(f32, "breakingPower", 0);
 	_hardness[size] = json.get(f32, "hardness", 1);
 
-	var blockClassString = json.get([]const u8, "class", "stone");
-	_blockClass[size] = .stone;
-	inline for(@typeInfo(BlockClass).Enum.fields) |field| {
-		if(std.mem.eql(u8, blockClassString, field.name)) {
-			_blockClass[size] = @field(BlockClass, field.name);
-		}
-	}
+	_blockClass[size] = std.meta.stringToEnum(BlockClass, json.get([]const u8, "class", "stone")) orelse .stone;
 	_light[size] = json.get(u32, "emittedLight", 0);
 	_absorption[size] = json.get(u32, "absorbedLight", 0);
 	_lightingTransparent[size] = json.getChild("absorbedLight") != .JsonNull;

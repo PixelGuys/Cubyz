@@ -176,11 +176,9 @@ pub fn deinit() void {
 	Slider.__deinit();
 	TextInput.__deinit();
 	inline for(@typeInfo(windowlist).Struct.decls) |decl| {
-		const windowStruct = @field(windowlist, decl.name);
-		inline for(@typeInfo(windowStruct).Struct.decls) |_decl| {
-			if(comptime std.mem.eql(u8, _decl.name, "deinit")) {
-				windowStruct.deinit();
-			}
+		const WindowStruct = @field(windowlist, decl.name);
+		if(@hasDecl(WindowStruct, "deinit")) {
+			WindowStruct.deinit();
 		}
 	}
 	inventory.deinit();

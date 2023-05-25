@@ -732,7 +732,7 @@ pub const Protocols = struct {
 			try renderer.RenderStructure.updateChunkMesh(ch);
 		}
 		pub fn sendChunk(conn: *Connection, ch: *chunk.Chunk) Allocator.Error!void {
-			var uncompressedData: [4*@typeInfo(@TypeOf(ch.blocks)).Array.len]u8 = undefined; // TODO: #15280
+			var uncompressedData: [@sizeOf(@TypeOf(ch.blocks))]u8 = undefined; // TODO: #15280
 			for(&ch.blocks, 0..) |*block, i| {
 				std.mem.writeIntBig(u32, uncompressedData[4*i..][0..4], block.toInt());
 			}
