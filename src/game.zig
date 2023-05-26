@@ -93,8 +93,8 @@ pub const World = struct {
 	spawn: Vec3f = undefined,
 	blockPalette: *assets.BlockPalette = undefined,
 	itemDrops: ClientItemDropManager = undefined,
+	playerBiome: *const main.server.terrain.biomes.Biome = undefined,
 	
-//	TODO: public Biome playerBiome;
 //	public final ArrayList<String> chatHistory = new ArrayList<>();
 
 	pub fn init(self: *World, ip: []const u8, manager: *ConnectionManager) !void {
@@ -113,6 +113,7 @@ pub const World = struct {
 		main.Window.setMouseGrabbed(true);
 
 		try main.blocks.meshes.generateTextureArray();
+		self.playerBiome = main.server.terrain.biomes.getById("");
 	}
 
 	pub fn deinit(self: *World) void {
@@ -157,7 +158,7 @@ pub const World = struct {
 
 	pub fn update(self: *World) !void {
 		var newTime: i64 = std.time.milliTimestamp();
-		while(self.milliTime +% 100 -% newTime < 0) { // TODO: Just use milli time directly?
+		while(self.milliTime +% 100 -% newTime < 0) {
 			self.milliTime +%= 100;
 			var curTime = self.gameTime.load(.Monotonic);
 			while(self.gameTime.tryCompareAndSwap(curTime, curTime +% 1, .Monotonic, .Monotonic)) |actualTime| {
@@ -292,7 +293,6 @@ pub var testWorld: World = undefined; // TODO:
 pub var world: ?*World = null;
 
 pub var projectionMatrix: Mat4f = Mat4f.identity();
-pub var lodProjectionMatrix: Mat4f = Mat4f.identity();
 
 pub var fog = Fog{.active = true, .color=.{0, 1, 0.5}, .density=1.0/15.0/256.0};
 

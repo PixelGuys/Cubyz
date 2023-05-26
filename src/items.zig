@@ -48,15 +48,6 @@ const Material = struct {
 		}
 	}
 
-// TODO: Check if/how this is needed:
-//	public Material(float density, float resistance, float power, float roughness, int[] colors) {
-//		this.density = density;
-//		this.resistance = resistance;
-//		this.power = power;
-//		this.roughness = roughness;
-//		colorPalette = colors;
-//	}
-
 	pub fn hashCode(self: Material) u32 {
 		var hash = @bitCast(u32, self.density);
 		hash = 101*%hash +% @bitCast(u32, self.resistance);
@@ -1252,8 +1243,6 @@ pub const ItemStack = struct {
 	}
 
 // TODO: Check if/how this is needed:
-//	public void update() {}
-//	
 //	public int getBlock() {
 //		if(item == null)
 //			return 0;
@@ -1377,7 +1366,7 @@ pub fn recipes() []Recipe {
 }
 
 pub fn globalInit() void {
-	arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+	arena = std.heap.ArenaAllocator.init(main.globalAllocator);
 	reverseIndices = std.StringHashMap(*BaseItem).init(arena.allocator());
 	recipeList = std.ArrayList(Recipe).init(arena.allocator());
 	itemListSize = 0;
@@ -1474,9 +1463,7 @@ pub fn reset() void {
 	reverseIndices.clearAndFree();
 	recipeList.clearAndFree();
 	itemListSize = 0;
-	// TODO: Use arena.reset() instead.
-	arena.deinit();
-	arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+	_ = arena.reset(.free_all);
 }
 
 pub fn deinit() void {

@@ -1389,7 +1389,7 @@ pub const TextureArray = struct {
 
 		const maxLOD = if(mipmapping) 1 + std.math.log2_int(u31, @min(maxWidth, maxHeight)) else 1;
 		c.glTexStorage3D(c.GL_TEXTURE_2D_ARRAY, maxLOD, c.GL_RGBA8, maxWidth, maxHeight, @intCast(c_int, images.len));
-		var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+		var arena = std.heap.ArenaAllocator.init(main.threadAllocator);
 		defer arena.deinit();
 		var lodBuffer: [][]Color = try arena.allocator().alloc([]Color, maxLOD);
 		for(lodBuffer, 0..) |*buffer, i| {

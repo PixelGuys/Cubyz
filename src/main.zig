@@ -32,7 +32,8 @@ pub const c = @cImport ({
 
 pub threadlocal var threadAllocator: std.mem.Allocator = undefined;
 pub threadlocal var seed: u64 = undefined;
-pub var globalAllocator: std.mem.Allocator = undefined;
+var global_gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe=true}){};
+pub const globalAllocator: std.mem.Allocator = global_gpa.allocator();
 pub var threadPool: utils.ThreadPool = undefined;
 
 var logFile: std.fs.File = undefined;
@@ -489,8 +490,6 @@ pub fn main() !void {
 	defer if(gpa.deinit() == .leak) {
 		std.log.err("Memory leak", .{});
 	};
-	var global_gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe=true}){};
-	globalAllocator = global_gpa.allocator();
 	defer if(global_gpa.deinit() == .leak) {
 		std.log.err("Memory leak", .{});
 	};

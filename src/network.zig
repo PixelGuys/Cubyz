@@ -607,7 +607,7 @@ pub const Protocols = struct {
 						}
 
 						// TODO:
-						conn.user.?.initPlayer(name);
+						try conn.user.?.initPlayer(name);
 						const jsonObject = try JsonElement.initObject(main.threadAllocator);
 						defer jsonObject.free(main.threadAllocator);
 						// TODO:
@@ -978,15 +978,11 @@ pub const Protocols = struct {
 			switch(data[0]) {
 				type_renderDistance => {
 					const renderDistance = std.mem.readIntBig(i32, data[1..5]);
-					const LODFactor = @bitCast(f32, std.mem.readIntBig(u32, data[5..9]));
-					_ = renderDistance;
-					_ = LODFactor;
-					// TODO:
-//					if(conn instanceof User) {
-//						User user = (User)conn;
-//						user.renderDistance = renderDistance;
-//						user.LODFactor = LODFactor;
-//					}
+					const lodFactor = @bitCast(f32, std.mem.readIntBig(u32, data[5..9]));
+					if(conn.user) |user| {
+						user.renderDistance = @intCast(u16, renderDistance); // TODO: Update the protocol to use u16.
+						user.lodFactor = lodFactor;
+					}
 				},
 				type_teleport => {
 					game.Player.setPosBlocking(Vec3d{
@@ -1077,8 +1073,7 @@ pub const Protocols = struct {
 								curTime = actualTime;
 							}
 						}
-						// TODO:
-//						world.playerBiome = world.registries.biomeRegistry.getByID(json.getString("biome", ""));
+						world.playerBiome = main.server.terrain.biomes.getById(json.get([]const u8, "biome", ""));
 					}
 				},
 				else => |unrecognizedType| {
@@ -1183,19 +1178,20 @@ pub const Protocols = struct {
 	pub const chat = struct {
 		const id: u8 = 10;
 		fn receive(conn: *Connection, data: []const u8) !void {
-			_ = conn;
-			// TODO:
-//			if(conn instanceof User) {
-//				User user = (User)conn;
-//				if(msg.startsWith("/")) {
-//					CommandExecutor.execute(msg, user);
-//				} else {
-//					msg = "["+user.name+"#ffffff] "+msg;
-//					sendToClients(msg);
-//				}
-//			} else {
+			if(conn.user) |user| {
+				if(data[0] == '/') {
+					// TODO:
+					// CommandExecutor.execute(data, user);
+				} else {
+					const newMessage = try std.fmt.allocPrint(main.threadAllocator, "[{s}#ffffff]{s}", .{user.name, data});
+					defer main.threadAllocator.free(newMessage);
+					main.server.mutex.lock();
+					defer main.server.mutex.unlock();
+					try main.server.sendMessage(newMessage);
+				}
+			} else {
 				try main.gui.windowlist.chat.addMessage(data);
-//			}
+			}
 		}
 
 		pub fn send(conn: *Connection, data: []const u8) !void {
@@ -1216,8 +1212,6 @@ pub const Connection = struct {
 
 	manager: *ConnectionManager,
 	user: ?*main.server.User = null,
-
-	gpa: std.heap.GeneralPurposeAllocator(.{}) = undefined, // TODO: Removing this line causes a compiler crash. #15150
 
 	remoteAddress: Address,
 	bruteforcingPort: bool = false,

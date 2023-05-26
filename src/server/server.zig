@@ -47,6 +47,7 @@ pub const User = struct {
 
 	pub fn deinit(self: *User) void {
 		self.conn.deinit();
+		main.globalAllocator.free(self.name);
 		main.globalAllocator.destroy(self);
 	}
 //	@Override
@@ -55,8 +56,8 @@ pub const User = struct {
 //		Server.disconnect(this);
 //	}
 
-	pub fn initPlayer(self: *User, name: []const u8) void {
-		self.name = name;
+	pub fn initPlayer(self: *User, name: []const u8) !void {
+		self.name = try main.globalAllocator.dupe(u8, name);
 		// TODO:
 //		assert(player == null);
 //		player = Server.world.findPlayer(this);

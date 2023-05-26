@@ -27,9 +27,7 @@ const Mat4f = vec.Mat4f;
 /// The number of milliseconds after which no more chunk meshes are created. This allows the game to run smoother on movement.
 const maximumMeshTime = 12;
 const zNear = 0.1;
-const zFar = 10000.0;
-const zNearLOD = 2.0;
-const zFarLOD = 65536.0;
+const zFar = 65536.0; // TODO: Fix z-fighting problems.
 
 var fogShader: graphics.Shader = undefined;
 var fogUniforms: struct {
@@ -153,7 +151,6 @@ pub fn updateViewport(width: u31, height: u31, fov: f32) void {
 	lastFov = fov;
 	c.glViewport(0, 0, width, height);
 	game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(f32, fov), @intToFloat(f32, width)/@intToFloat(f32, height), zNear, zFar);
-	game.lodProjectionMatrix = Mat4f.perspective(std.math.degreesToRadians(f32, fov), @intToFloat(f32, width)/@intToFloat(f32, height), zNearLOD, zFarLOD);
 //	TODO: Transformation.updateProjectionMatrix(frustumProjectionMatrix, (float)Math.toRadians(fov), width, height, Z_NEAR, Z_FAR_LOD); // Need to combine both for frustum intersection
 	buffers.updateBufferSize(width, height);
 }
@@ -210,27 +207,21 @@ pub fn render(playerPosition: Vec3d) !void {
 //		Window.setClearColor(clearColor);
 		MenuBackGround.render();
 	}
-//	Cubyz.gameUI.render();
-//	Keyboard.release(); // TODO: Why is this called in the render thread???
 }
 
 pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPos: Vec3d) !void {
 	_ = world;
 	buffers.clearAndBind(Vec4f{skyColor[0], skyColor[1], skyColor[2], 1});
-//	TODO:// Clean up old chunk meshes:
-//	Meshes.cleanUp();
 	game.camera.updateViewMatrix();
 
 	// Uses FrustumCulling on the chunks.
-	var frustum = Frustum.init(Vec3f{0, 0, 0}, game.camera.viewMatrix, lastFov, zFarLOD, lastWidth, lastHeight);
+	var frustum = Frustum.init(Vec3f{0, 0, 0}, game.camera.viewMatrix, lastFov, zFar, lastWidth, lastHeight);
 
 	const time = @intCast(u32, std.time.milliTimestamp() & std.math.maxInt(u32));
 	var waterFog = Fog{.active=true, .color=.{0.0, 0.1, 0.2}, .density=0.1};
 
 	// Update the uniforms. The uniforms are needed to render the replacement meshes.
-	chunk.meshing.bindShaderAndUniforms(game.lodProjectionMatrix, ambientLight, time);
-
-//TODO:	NormalChunkMesh.bindShader(ambientLight, directionalLight.getDirection(), time);
+	chunk.meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight, time);
 
 	c.glActiveTexture(c.GL_TEXTURE0);
 	blocks.meshes.blockTextureArray.bind();

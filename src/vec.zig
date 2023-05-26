@@ -48,7 +48,7 @@ pub fn intToFloat(comptime DestType: type, self: anytype) @Vector(@typeInfo(@Typ
 	return result;
 }
 
-pub fn floatCast(comptime DestType: type, self: anytype) @Vector(@typeInfo(@TypeOf(self)).Vector.len, DestType) { // TODO: Remove once @intToFloat supports vectors.
+pub fn floatCast(comptime DestType: type, self: anytype) @Vector(@typeInfo(@TypeOf(self)).Vector.len, DestType) { // TODO: Remove once @floatCast supports vectors.
 	const len = @typeInfo(@TypeOf(self)).Vector.len;
 	var result: @Vector(len, DestType) = undefined;
 	inline for(0..len) |i| {

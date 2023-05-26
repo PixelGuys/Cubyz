@@ -37,7 +37,7 @@ fn flawedRender() !void {
 		y += 8;
 		try draw.print("ChunkMesh memory: {} MiB / {} MiB (fragmentation: {})", .{main.chunk.meshing.faceBuffer.used >> 20, main.chunk.meshing.faceBuffer.capacity >> 20, main.chunk.meshing.faceBuffer.freeBlocks.items.len}, 0, y, 8, .left);
 		y += 8;
-		// TODO: biome
+		try draw.print("Biome: {s}", .{main.game.world.?.playerBiome.id}, 0, y, 8, .left);
 		y += 8;
 		// TODO: packet loss
 		y += 8;

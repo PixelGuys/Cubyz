@@ -22,7 +22,7 @@ pub const BlockClass = enum(u8) {
 	air
 };
 
-var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+var arena = std.heap.ArenaAllocator.init(main.globalAllocator);
 var allocator = arena.allocator();
 
 pub const maxBlockCount: usize = 65536; // 16 bit limit
@@ -186,9 +186,7 @@ pub fn finishBlocks(jsonElements: std.StringHashMap(JsonElement)) !void {
 
 pub fn reset() void {
 	size = 0;
-	// TODO: Use arena.reset() instead.
-	arena.deinit();
-	arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+	_ = arena.reset(.free_all);
 	reverseIndices = std.StringHashMap(u16).init(arena.allocator());
 	std.debug.assert(unfinishedOreSourceBlockIds.items.len == 0);
 	ores.clearRetainingCapacity();
@@ -350,12 +348,12 @@ pub const meshes = struct {
 		textureIndexSSBO.bind(1);
 		blockTextureArray = TextureArray.init();
 		emissionTextureArray = TextureArray.init();
-		arenaForArrayLists = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+		arenaForArrayLists = std.heap.ArenaAllocator.init(main.globalAllocator);
 		textureIDs = std.ArrayList([]const u8).init(arenaForArrayLists.allocator());
 		animation = std.ArrayList(AnimationData).init(arenaForArrayLists.allocator());
 		blockTextures = std.ArrayList(Image).init(arenaForArrayLists.allocator());
 		emissionTextures = std.ArrayList(Image).init(arenaForArrayLists.allocator());
-		arenaForWorld = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+		arenaForWorld = std.heap.ArenaAllocator.init(main.globalAllocator);
 	}
 
 	pub fn deinit() void {
@@ -374,8 +372,7 @@ pub const meshes = struct {
 		animation.clearRetainingCapacity();
 		blockTextures.clearRetainingCapacity();
 		emissionTextures.clearRetainingCapacity();
-		arenaForWorld.deinit();
-		arenaForWorld = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+		_ = arenaForWorld.reset(.free_all);
 	}
 
 	pub inline fn model(block: Block) rotation.RotatedModel {

@@ -97,7 +97,7 @@ pub fn readAssets(externalAllocator: Allocator, assetPath: []const u8, blocks: *
 pub fn init() !void {
 	try biomes_zig.init();
 	try blocks_zig.init();
-	arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+	arena = std.heap.ArenaAllocator.init(main.globalAllocator);
 	arenaAllocator = arena.allocator();
 	commonBlocks = std.StringHashMap(JsonElement).init(arenaAllocator);
 	commonItems = std.StringHashMap(JsonElement).init(arenaAllocator);

@@ -37,7 +37,7 @@ const StructureModel = struct {
 
 
 	var modelRegistry: std.StringHashMapUnmanaged(VTable) = .{};
-	var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator); // TODO: Make global allocator pointer available at comptime.
+	var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(main.globalAllocator);
 
 	pub fn reset() void {
 		std.debug.assert(arena.reset(.free_all));
