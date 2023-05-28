@@ -20,6 +20,7 @@ const terrain = server.terrain;
 
 const server = @import("server.zig");
 const User = server.User;
+const Entity = server.Entity;
 
 const ChunkManager = struct {
 	world: *ServerWorld,
@@ -52,9 +53,11 @@ const ChunkManager = struct {
 		}
 
 		pub fn getPriority(self: *ChunkLoadTask) f32 {
-			_ = self;
-			return 0;
-			// TODO: return self.pos.getPriority(self.source.player.getPosBlocking()); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
+			if(self.source) |user| {
+				return self.pos.getPriority(user.player.pos);
+			} else {
+				return std.math.floatMax(f32);
+			}
 		}
 
 		pub fn isStillNeeded(self: *ChunkLoadTask) bool {
@@ -74,19 +77,20 @@ const ChunkManager = struct {
 //				}
 			}
 			if(std.time.milliTimestamp() - self.creationTime > 10000) { // Only remove stuff after 10 seconds to account for trouble when for example teleporting.
-				// TODO:
-//				for(User user : Server.users) {
-//					double minDistSquare = ch.getMinDistanceSquared(user.player.getPosition().x, user.player.getPosition().y, user.player.getPosition().z);
-//					//                                                                   ↓ Margin for error. (diagonal of 1 chunk)
-//					double targetRenderDistance = (user.renderDistance*Chunk.chunkSize + Chunk.chunkSize*Math.sqrt(3));//*Math.pow(user.LODFactor, Math.log(ch.voxelSize)/Math.log(2));
-//					if(ch.voxelSize != 1) {
-//						targetRenderDistance *= ch.voxelSize*user.LODFactor;
-//					}
-//					if(minDistSquare <= targetRenderDistance*targetRenderDistance) {
-//						return true;
-//					}
-//				}
-//				return false;
+				server.mutex.lock();
+				defer server.mutex.unlock();
+				for(server.users.items) |user| {
+					const minDistSquare = self.pos.getMinDistanceSquared(user.player.pos);
+					//                                                                  ↓ Margin for error. (diagonal of 1 chunk)
+					var targetRenderDistance = (@intToFloat(f32, user.renderDistance*chunk.chunkSize) + @intToFloat(f32, chunk.chunkSize)*@sqrt(3.0));
+					if(self.pos.voxelSize != 1) {
+						targetRenderDistance *= @intToFloat(f32, self.pos.voxelSize)*user.lodFactor;
+					}
+					if(minDistSquare <= targetRenderDistance*targetRenderDistance) {
+						return true;
+					}
+				}
+				return false;
 			}
 			return true;
 		}
@@ -361,26 +365,27 @@ pub const ServerWorld = struct {
 				std.log.info("Trying ({}, {})", .{self.spawn[0], self.spawn[2]});
 				if(try self.isValidSpawnLocation(self.spawn[0], self.spawn[2])) break;
 			}
-			// TODO: spawn[1] = chunkManager.getOrGenerateMapFragment(spawn.x, spawn.z, 1).getHeight(spawn.x, spawn.z);
+			self.spawn[1] = 0;// TODO: spawn[1] = chunkManager.getOrGenerateMapFragment(spawn.x, spawn.z, 1).getHeight(spawn.x, spawn.z);
 		}
 		self.generated = true;
 		try self.wio.saveWorldData();
 	}
 
-// TODO:
-//	public Player findPlayer(User user) {
-//		JsonObject playerData = JsonParser.parseObjectFromFile("saves/" + name + "/players/" + Utils.escapeFolderName(user.name) + ".json");
-//		Player player = new Player(this, user.name);
-//		if(playerData.map.isEmpty()) {
-//			// Generate a new player:
-//			player.setPosition(spawn);
-//		} else {
-//			player.loadFrom(playerData);
-//		}
-//		addEntity(player);
-//		return player;
-//	}
-//
+
+	pub fn findPlayer(self: *ServerWorld, user: *User) !void {
+		var buf: [1024]u8 = undefined;
+		const playerData = files.readToJson(main.threadAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/player/{s}.json", .{self.name, user.name})) catch .JsonNull; // TODO: Utils.escapeFolderName(user.name)
+		defer playerData.free(main.threadAllocator);
+		const player = &user.player;
+		if(playerData == .JsonNull) {
+			// Generate a new player:
+			player.pos = vec.intToFloat(f64, self.spawn);
+		} else {
+			player.loadFrom(playerData);
+		}
+		// TODO: addEntity(player);
+	}
+
 //	private void savePlayers() {
 //		for(User user : Server.users) {
 //			try {
@@ -466,12 +471,12 @@ pub const ServerWorld = struct {
 //		}
 //	}
 
-	pub fn update(self: *ServerWorld) void {
+	pub fn update(self: *ServerWorld) !void {
 		const newTime = std.time.milliTimestamp();
 		var deltaTime = @intToFloat(f32, newTime - self.lastUpdateTime)/1000.0;
 		self.lastUpdateTime = newTime;
 		if(deltaTime > 0.3) {
-			std.log.warn("Update time is getting too high. It's alread at {} s!", .{deltaTime});
+			std.log.warn("Update time is getting too high. It's already at {} s!", .{deltaTime});
 			deltaTime = 0.3;
 		}
 
@@ -481,10 +486,9 @@ pub const ServerWorld = struct {
 		}
 		if(self.lastUnimportantDataSent + 2000 < newTime) {// Send unimportant data every ~2s.
 			self.lastUnimportantDataSent = newTime;
-			// TODO:
-//			for(User user : Server.users) {
-//				Protocols.GENERIC_UPDATE.sendTimeAndBiome(user, this);
-//			}
+			for(server.users.items) |user| {
+				try main.network.Protocols.genericUpdate.sendTimeAndBiome(user.conn, self);
+			}
 		}
 		// TODO:
 //		// Entities

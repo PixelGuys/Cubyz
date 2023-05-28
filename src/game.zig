@@ -45,8 +45,7 @@ pub const camera = struct {
 };
 
 pub const Player = struct {
-	pub var pos: Vec3d = Vec3d{0, 0, 0};
-	pub var vel: Vec3d = Vec3d{0, 0, 0};
+	pub var super: main.server.Entity = .{};
 	pub var id: u32 = 0;
 	pub var isFlying: std.atomic.Atomic(bool) = std.atomic.Atomic(bool).init(true);
 	pub var mutex: std.Thread.Mutex = std.Thread.Mutex{};
@@ -56,26 +55,26 @@ pub const Player = struct {
 	pub var health: f32 = 4.5;
 
 	fn loadFrom(json: JsonElement) !void {
-		// TODO: super.loadFrom(json);
+		super.loadFrom(json);
 		try inventory__SEND_CHANGES_TO_SERVER.loadFromJson(json.getChild("inventory"));
 	}
 
 	pub fn setPosBlocking(newPos: Vec3d) void {
 		mutex.lock();
 		defer mutex.unlock();
-		pos = newPos;
+		super.pos = newPos;
 	}
 
 	pub fn getPosBlocking() Vec3d {
 		mutex.lock();
 		defer mutex.unlock();
-		return pos;
+		return super.pos;
 	}
 
 	pub fn getVelBlocking() Vec3d {
 		mutex.lock();
 		defer mutex.unlock();
-		return vel;
+		return super.vel;
 	}
 };
 
@@ -152,7 +151,6 @@ pub const World = struct {
 //		ModLoader.postWorldGen(registries);
 		try assets.loadWorldAssets("serverAssets", self.blockPalette);
 		try Player.loadFrom(json.getChild("player"));
-		Player.pos = .{-2000, 100, 4000}; // TODO
 		Player.id = json.get(u32, "player_id", std.math.maxInt(u32));
 	}
 
@@ -347,7 +345,7 @@ pub fn update(deltaTime: f64) !void {
 	{
 		Player.mutex.lock();
 		defer Player.mutex.unlock();
-		Player.pos += movement*@splat(3, deltaTime);
+		Player.super.pos += movement*@splat(3, deltaTime);
 	}
 	try world.?.update();
 }

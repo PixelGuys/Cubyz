@@ -164,7 +164,11 @@ pub const JsonElement = union(JsonType) {
 				}
 			},
 			else => {
-				@compileError("Unknown value type.");
+				if(@TypeOf(value) == JsonElement) {
+					return value;
+				} else {
+					@compileError("Unknown value type.");
+				}
 			},
 		}
 	}

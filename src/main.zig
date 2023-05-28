@@ -538,7 +538,7 @@ pub fn main() !void {
 	try renderer.init();
 	defer renderer.deinit();
 
-	network.init();
+	try network.init();
 
 	try renderer.RenderStructure.init();
 	defer renderer.RenderStructure.deinit();

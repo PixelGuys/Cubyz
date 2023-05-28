@@ -80,7 +80,7 @@ const Socket = struct {
 	}
 };
 
-pub fn init() void {
+pub fn init() !void {
 	try Socket.startup();
 	inline for(@typeInfo(Protocols).Struct.decls) |decl| {
 		if(@TypeOf(@field(Protocols, decl.name)) == type) {
@@ -610,15 +610,16 @@ pub const Protocols = struct {
 						try conn.user.?.initPlayer(name);
 						const jsonObject = try JsonElement.initObject(main.threadAllocator);
 						defer jsonObject.free(main.threadAllocator);
+						try jsonObject.put("player", try conn.user.?.player.save(main.threadAllocator));
 						// TODO:
-//					jsonObject.put("player", ((User)conn).player.save());
 //					jsonObject.put("player_id", ((User)conn).player.id);
 //					jsonObject.put("blockPalette", Server.world.blockPalette.save());
-//					JsonObject spawn = new JsonObject();
-//					spawn.put("x", Server.world.spawn.x);
-//					spawn.put("y", Server.world.spawn.y);
-//					spawn.put("z", Server.world.spawn.z);
-//					jsonObject.put("spawn", spawn);
+						const spawn = try JsonElement.initObject(main.threadAllocator);
+						try spawn.put("x", main.server.world.?.spawn[0]);
+						try spawn.put("y", main.server.world.?.spawn[1]);
+						try spawn.put("z", main.server.world.?.spawn[2]);
+						try jsonObject.put("spawn", spawn);
+						
 						const outData = try jsonObject.toStringEfficient(main.threadAllocator, &[1]u8{stepServerData});
 						defer main.threadAllocator.free(outData);
 						try conn.sendImportant(id, outData);
@@ -751,9 +752,7 @@ pub const Protocols = struct {
 	pub const playerPosition = struct {
 		const id: u8 = 4;
 		fn receive(conn: *Connection, data: []const u8) !void {
-			_ = conn;
-			_ = data;
-			// TODO: ((User)conn).receiveData(data, offset);
+			conn.user.?.receiveData(data);
 		}
 		var lastPositionSent: u16 = 0;
 		pub fn send(conn: *Connection, playerPos: Vec3d, playerVel: Vec3d, time: u16) !void {
@@ -1053,7 +1052,7 @@ pub const Protocols = struct {
 					try sendInventory_full(conn, game.Player.inventory__SEND_CHANGES_TO_SERVER);
 					if(remaining != 0) {
 						// Couldn't collect everything → drop it again.
-						try itemStackDrop(conn, ItemStack{.item=item, .amount=remaining}, game.Player.pos, Vec3f{0, 0, 0}, 0);
+						try itemStackDrop(conn, ItemStack{.item=item, .amount=remaining}, game.Player.super.pos, Vec3f{0, 0, 0}, 0);
 					}
 				},
 				type_timeAndBiome => {
@@ -1167,13 +1166,15 @@ pub const Protocols = struct {
 			try addHeaderAndSendImportant(conn, type_itemStackCollect, string);
 		}
 
-		// TODO:
-//	public void sendTimeAndBiome(User user, ServerWorld world) {
-//		JsonObject data = new JsonObject();
-//		data.put("time", world.gameTime);
-//		data.put("biome", world.getBiome((int)user.player.getPosition().x, (int)user.player.getPosition().y, (int)user.player.getPosition().z).getRegistryID().toString());
-//		addHeaderAndSendUnimportant(user, TIME_AND_BIOME, data.toString().getBytes(StandardCharsets.UTF_8));
-//	}
+		pub fn sendTimeAndBiome(conn: *Connection, world: *const main.server.ServerWorld) !void {
+			var json = try JsonElement.initObject(main.threadAllocator);
+			defer json.free(main.threadAllocator);
+			try json.put("time", world.gameTime);
+			// TODO: json.put("biome", world.getBiome((int)user.player.getPosition().x, (int)user.player.getPosition().y, (int)user.player.getPosition().z).getRegistryID().toString());
+			const string = try json.toString(main.threadAllocator);
+			defer main.threadAllocator.free(string);
+			try addHeaderAndSendUnimportant(conn, type_timeAndBiome, string);
+		}
 	};
 	pub const chat = struct {
 		const id: u8 = 10;

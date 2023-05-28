@@ -10,11 +10,12 @@ const Vec3d = vec.Vec3d;
 
 pub const ServerWorld = @import("world.zig").ServerWorld;
 pub const terrain = @import("terrain/terrain.zig");
+pub const Entity = @import("Entity.zig");
 
 
 pub const User = struct {
-	conn: *Connection,	
-//TODO:	public Player player;
+	conn: *Connection,
+	player: Entity = .{},
 	timeDifference: utils.TimeDifference = .{},
 	interpolation: utils.GenericInterpolation(3) = undefined,
 	lastTime: i16 = undefined,
@@ -22,8 +23,6 @@ pub const User = struct {
 	renderDistance: u16 = undefined,
 	lodFactor: f32 = undefined,
 	receivedFirstEntityData: bool = false,
-	pos: [3]f64 = undefined, // TODO: Use position from te entity.
-	vel: [3]f64 = undefined,
 	// TODO: ipPort: []const u8,
 //	TODO: public Thread waitingThread;
 
@@ -33,8 +32,7 @@ pub const User = struct {
 			.conn = try Connection.init(manager, ipPort),
 		};
 		self.conn.user = self;
-		self.interpolation.init(&self.pos, &self.vel);
-		// TODO: self.interpolation.init(&player.pos, &player.vel);
+		self.interpolation.init(@ptrCast(*[3]f64, &self.player.pos), @ptrCast(*[3]f64, &self.player.vel));
 		network.Protocols.handShake.serverSide(self.conn);
 		// TODO:
 //		synchronized(this) {
@@ -58,28 +56,13 @@ pub const User = struct {
 
 	pub fn initPlayer(self: *User, name: []const u8) !void {
 		self.name = try main.globalAllocator.dupe(u8, name);
-		// TODO:
-//		assert(player == null);
-//		player = Server.world.findPlayer(this);
-//		interpolation.outPosition[0] = player.getPosition().x;
-//		interpolation.outPosition[1] = player.getPosition().y;
-//		interpolation.outPosition[2] = player.getPosition().z;
-//		interpolation.outVelocity[0] = player.vx;
-//		interpolation.outVelocity[1] = player.vy;
-//		interpolation.outVelocity[2] = player.vz;
+		try world.?.findPlayer(self);
 	}
 
 	pub fn update(self: *User) void {
 		var time = @truncate(i16, std.time.milliTimestamp()) -% main.settings.entityLookback;
 		time -= self.timeDifference.difference.load(.Monotonic);
 		self.interpolation.update(time, self.lastTime);
-		// TODO:
-//		player.getPosition().x = interpolation.outPosition[0];
-//		player.getPosition().y = interpolation.outPosition[1];
-//		player.getPosition().z = interpolation.outPosition[2];
-//		player.vx = interpolation.outVelocity[0];
-//		player.vy = interpolation.outVelocity[1];
-//		player.vz = interpolation.outVelocity[2];
 		self.lastTime = time;
 	}
 
@@ -99,8 +82,7 @@ pub const User = struct {
 			@bitCast(f32, std.mem.readIntBig(u32, data[52..56])),
 			@bitCast(f32, std.mem.readIntBig(u32, data[56..60])),
 		};
-		_ = rotation;
-//		TODO: player.getRotation().set(rotation);
+		self.player.rot = rotation;
 		const time = std.mem.readIntBig(i16, data[60..62]);
 		self.timeDifference.addDataPoint(time);
 		self.interpolation.updatePosition(&position, &velocity, time);
@@ -156,7 +138,7 @@ fn deinit() void {
 }
 
 fn update() !void {
-	world.?.update();
+	try world.?.update();
 	mutex.lock();
 	for(users.items) |user| {
 		user.update();
