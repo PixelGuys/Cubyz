@@ -3,6 +3,7 @@ const std = @import("std");
 pub const gui = @import("gui");
 pub const server = @import("server");
 
+pub const audio = @import("audio.zig");
 pub const assets = @import("assets.zig");
 pub const blocks = @import("blocks.zig");
 pub const chunk = @import("chunk.zig");
@@ -510,6 +511,9 @@ pub fn main() !void {
 
 	try graphics.init();
 	defer graphics.deinit();
+
+	try audio.init();
+	defer audio.deinit();
 
 	try gui.init();
 	defer gui.deinit();

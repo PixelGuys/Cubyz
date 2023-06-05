@@ -1,0 +1,34 @@
+{
+	"type" : "mountain_grassland",
+	"minHeight" : 60,
+	"maxHeight" : 256,
+	
+	"roughness" : 10,
+	"mountains" : 20,
+	"hills" : 50,
+	
+	"rivers" : true,
+	
+	"ground_structure" : [
+	],
+	"stoneBlock" : "cubyz:colorado_stone",
+	"structures" : [
+		{
+			"id" : "cubyz:simple_tree",
+			"leaves" : "cubyz:colorado_stone",
+			"log" : "cubyz:colorado_stone",
+			"top" : "cubyz:colorado_stone",
+			"chance" : 0.001,
+			"type" : "round",
+			"height" : 3,
+			"height_variation" : 1
+		},
+		{
+			"id" : "cubyz:boulder",
+			"chance" : 0.001,
+			"block" : "cubyz:colorado_stone",
+			"size" : 2,
+			"size_variance" : 7
+		}
+	]
+}

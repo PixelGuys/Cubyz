@@ -1,3 +1,6 @@
 [submodule "mach-freetype"]
 	path = mach-freetype
 	url = https://github.com/hexops/mach-freetype
+[submodule "portaudio"]
+	path = portaudio
+	url = git@github.com:PortAudio/portaudio.git

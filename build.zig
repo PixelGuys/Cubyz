@@ -43,7 +43,35 @@ pub fn build(b: *std.build.Builder) !void {
 			std.log.err("Unsupported target: {}\n", .{ target.getOsTag() });
 		}
 	}
-	exe.addCSourceFiles(&[_][]const u8{"lib/glad.c", "lib/stb_image.c", "lib/stb_image_write.c"}, &[_][]const u8{"-g", "-O3"});
+	{ // compile portaudio from source:
+		exe.addIncludePath("portaudio/include");
+		exe.addIncludePath("portaudio/src/common");
+		exe.addCSourceFiles(&[_][]const u8 {
+		    "portaudio/src/common/pa_allocation.c",
+			"portaudio/src/common/pa_converters.c",
+			"portaudio/src/common/pa_cpuload.c",
+			"portaudio/src/common/pa_debugprint.c",
+			"portaudio/src/common/pa_dither.c",
+			"portaudio/src/common/pa_front.c",
+			"portaudio/src/common/pa_process.c",
+			"portaudio/src/common/pa_ringbuffer.c",
+			"portaudio/src/common/pa_stream.c",
+			"portaudio/src/common/pa_trace.c",
+		}, &[_][]const u8{"-g", "-O3"});
+		if(target.getOsTag() == .windows) {
+			// TODO: Choose a host API
+		} else if(target.getOsTag() == .linux) {
+			// unix:
+			exe.addCSourceFiles(&[_][]const u8 {"portaudio/src/os/unix/pa_unix_hostapis.c", "portaudio/src/os/unix/pa_unix_util.c"}, &[_][]const u8{"-g", "-O3", "-DPA_USE_ALSA"});
+			exe.addIncludePath("portaudio/src/os/unix");
+			// ALSA:
+			exe.addCSourceFiles(&[_][]const u8 {"portaudio/src/hostapi/alsa/pa_linux_alsa.c"}, &[_][]const u8{"-g", "-O3"});
+			exe.linkSystemLibrary("alsa");
+		} else {
+			std.log.err("Unsupported target: {}\n", .{ target.getOsTag() });
+		}
+	}
+	exe.addCSourceFiles(&[_][]const u8{"lib/glad.c", "lib/stb_image.c", "lib/stb_image_write.c", "lib/stb_vorbis.c"}, &[_][]const u8{"-g", "-O3"});
 	exe.addAnonymousModule("gui", .{.source_file = .{.path = "src/gui/gui.zig"}});
 	exe.addAnonymousModule("server", .{.source_file = .{.path = "src/server/server.zig"}});
 	const harfbuzzModule = freetype.harfbuzzModule(b);
