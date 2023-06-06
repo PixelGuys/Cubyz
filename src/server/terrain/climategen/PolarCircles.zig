@@ -116,15 +116,15 @@ pub fn generateMapFragment(map: *ClimateMapFragment, worldSeed: u64) Allocator.E
 	while(x < mapSize/biomeSize) : (x += 1) {
 		var z: i32 = 0;
 		while(z < mapSize/biomeSize) : (z += 1) {
-			const biome = biomeMap[@intCast(usize, x + 1)][@intCast(usize, z + 1)];
+			const biome = (&biomeMap[@intCast(usize, x + 1)])[@intCast(usize, z + 1)]; // TODO: #15685
 			var maxMinHeight: i32 = std.math.minInt(i32);
 			var minMaxHeight: i32 = std.math.maxInt(i32);
 			var dx: i32 = -1;
 			while(dx <= 1) : (dx += 1) {
 				var dz: i32 = -1;
 				while(dz <= 1) : (dz += 1) {
-					maxMinHeight = @max(maxMinHeight, biomeMap[@intCast(usize, x + dx + 1)][@intCast(usize, z + dz + 1)].minHeight);
-					minMaxHeight = @min(minMaxHeight, biomeMap[@intCast(usize, x + dx + 1)][@intCast(usize, z + dz + 1)].maxHeight);
+					maxMinHeight = @max(maxMinHeight, (&biomeMap[@intCast(usize, x + dx + 1)])[@intCast(usize, z + dz + 1)].minHeight); // TODO: #15685
+					minMaxHeight = @min(minMaxHeight, (&biomeMap[@intCast(usize, x + dx + 1)])[@intCast(usize, z + dz + 1)].maxHeight); // TODO: #15685
 				}
 			}
 			var seed: u64 = @intCast(u64, @bitCast(u32, x +% map.pos.wx))*%675893674893 +% @intCast(u64, @bitCast(u32, z +% map.pos.wz))*%2895478591 +% worldSeed;

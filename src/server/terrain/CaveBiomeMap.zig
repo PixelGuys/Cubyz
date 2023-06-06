@@ -90,7 +90,7 @@ pub const CaveBiomeGenerator = struct {
 				return lhs.priority < rhs.priority;
 			}
 		}.lessThan;
-		std.sort.sort(CaveBiomeGenerator, list, {}, lessThan);
+		std.sort.insertion(CaveBiomeGenerator, list, {}, lessThan);
 		return list;
 	}
 };
@@ -303,20 +303,20 @@ pub const InterpolatableCaveBiomeMapView = struct {
 
 	noinline fn _getBiome(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32, wz: i32, map: u1) *const Biome {
 		var index: u8 = 0;
-		if(wx - self.fragments[0].pos.wx >= CaveBiomeMapFragment.caveBiomeMapSize) {
+		if(wx - (&self.fragments)[0].pos.wx >= CaveBiomeMapFragment.caveBiomeMapSize) { // TODO: #15685
 			index += 4;
 		}
-		if(wy - self.fragments[0].pos.wy >= CaveBiomeMapFragment.caveBiomeMapSize) {
+		if(wy - (&self.fragments)[0].pos.wy >= CaveBiomeMapFragment.caveBiomeMapSize) { // TODO: #15685
 			index += 2;
 		}
-		if(wz - self.fragments[0].pos.wz >= CaveBiomeMapFragment.caveBiomeMapSize) {
+		if(wz - (&self.fragments)[0].pos.wz >= CaveBiomeMapFragment.caveBiomeMapSize) { // TODO: #15685
 			index += 1;
 		}
-		const relX = @intCast(u31, wx - self.fragments[index].pos.wx);
-		const relY = @intCast(u31, wy - self.fragments[index].pos.wy);
-		const relZ = @intCast(u31, wz - self.fragments[index].pos.wz);
+		const relX = @intCast(u31, wx - (&self.fragments)[index].pos.wx); // TODO: #15685
+		const relY = @intCast(u31, wy - (&self.fragments)[index].pos.wy); // TODO: #15685
+		const relZ = @intCast(u31, wz - (&self.fragments)[index].pos.wz); // TODO: #15685
 		const indexInArray = CaveBiomeMapFragment.getIndex(relX, relY, relZ);
-		return self.fragments[index].biomeMap[indexInArray][map];
+		return (&(&self.fragments)[index].biomeMap[indexInArray])[map]; // TODO: #15685
 	}
 
 	/// Useful when the rough biome location is enough, for example for music.

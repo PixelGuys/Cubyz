@@ -541,7 +541,7 @@ pub const MenuBackGround = struct {
 		}
 
 		while(try walker.next()) |entry| {
-			if(entry.kind == .File and std.ascii.endsWithIgnoreCase(entry.basename, ".png")) {
+			if(entry.kind == .file and std.ascii.endsWithIgnoreCase(entry.basename, ".png")) {
 				try fileList.append(try main.threadAllocator.dupe(u8, entry.path));
 			}
 		}

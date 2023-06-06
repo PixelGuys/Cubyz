@@ -73,13 +73,13 @@ pub const MapFragment = struct {
 	pub fn getBiome(self: *MapFragment, wx: i32, wz: i32) *const Biome {
 		const xIndex = wx>>self.pos.voxelSizeShift & mapMask;
 		const zIndex = wz>>self.pos.voxelSizeShift & mapMask;
-		return self.biomeMap[@intCast(usize, xIndex)][@intCast(usize, zIndex)];
+		return (&self.biomeMap[@intCast(usize, xIndex)])[@intCast(usize, zIndex)]; // TODO: #15685
 	}
 
 	pub fn getHeight(self: *MapFragment, wx: i32, wz: i32) f32 {
 		const xIndex = wx>>self.pos.voxelSizeShift & mapMask;
 		const zIndex = wz>>self.pos.voxelSizeShift & mapMask;
-		return self.heightMap[@intCast(usize, xIndex)][@intCast(usize, zIndex)];
+		return (&self.heightMap[@intCast(usize, xIndex)])[@intCast(usize, zIndex)]; // TODO: #15685
 	}
 };
 

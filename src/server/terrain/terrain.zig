@@ -54,7 +54,7 @@ pub const BlockGenerator = struct {
 				return lhs.priority < rhs.priority;
 			}
 		}.lessThan;
-		std.sort.sort(BlockGenerator, list, {}, lessThan);
+		std.sort.insertion(BlockGenerator, list, {}, lessThan);
 		return list;
 	}
 };

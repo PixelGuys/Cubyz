@@ -27,7 +27,7 @@ pub const Compression = struct {
 		defer walker.deinit();
 
 		while(try walker.next()) |entry| {
-			if(entry.kind == .File) {
+			if(entry.kind == .file) {
 				var relPath = entry.path;
 				var len: [4]u8 = undefined;
 				std.mem.writeIntBig(u32, &len, @intCast(u32, relPath.len));

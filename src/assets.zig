@@ -27,7 +27,7 @@ pub fn readAllJsonFilesInAddons(externalAllocator: Allocator, addons: std.ArrayL
 		defer walker.deinit();
 
 		while(try walker.next()) |entry| {
-			if(entry.kind == .File and std.ascii.endsWithIgnoreCase(entry.basename, ".json")) {
+			if(entry.kind == .file and std.ascii.endsWithIgnoreCase(entry.basename, ".json")) {
 				const folderName = addonName;
 				var id: []u8 = try externalAllocator.alloc(u8, folderName.len + 1 + entry.path.len - 5);
 				@memcpy(id[0..folderName.len], folderName);
@@ -56,7 +56,7 @@ pub fn readAllFilesInAddons(externalAllocator: Allocator, addons: std.ArrayList(
 		defer walker.deinit();
 
 		while(try walker.next()) |entry| {
-			if(entry.kind == .File) {
+			if(entry.kind == .file) {
 				var file = try dir.dir.openFile(entry.path, .{});
 				defer file.close();
 				const string = try file.readToEndAlloc(externalAllocator, std.math.maxInt(usize));
@@ -77,7 +77,7 @@ pub fn readAssets(externalAllocator: Allocator, assetPath: []const u8, blocks: *
 		defer dir.close();
 		var iterator = dir.iterate();
 		while(try iterator.next()) |addon| {
-			if(addon.kind == .Directory) {
+			if(addon.kind == .directory) {
 				try addons.append(try dir.dir.openDir(addon.name, .{}));
 				try addonNames.append(try main.threadAllocator.dupe(u8, addon.name));
 			}

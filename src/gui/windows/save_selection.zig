@@ -120,7 +120,7 @@ pub fn onOpen() Allocator.Error!void {
 		std.log.err("Encountered error while iterating over folder \"saves\": {s}", .{@errorName(err)});
 		return;
 	}) |entry| {
-		if(entry.kind == .Directory) {
+		if(entry.kind == .directory) {
 			var row = try HorizontalList.init();
 
 			const decodedName = try parseEscapedFolderName(entry.name);

@@ -122,7 +122,7 @@ pub const CaveGenerator = struct {
 				return lhs.priority < rhs.priority;
 			}
 		}.lessThan;
-		std.sort.sort(CaveGenerator, list, {}, lessThan);
+		std.sort.insertion(CaveGenerator, list, {}, lessThan);
 		return list;
 	}
 };

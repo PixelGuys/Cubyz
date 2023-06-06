@@ -124,7 +124,7 @@ pub const ItemDropManager = struct {
 	pub fn getPositionAndVelocityData(self: *ItemDropManager, allocator: Allocator) ![]u8 {
 		const _data = try allocator.alloc(u8, self.size*50);
 		var data = _data;
-		for(self.indices) |i| {
+		for(self.indices[0..self.size]) |i| {
 			std.mem.writeIntBig(u16, data[0..2], i);
 			std.mem.writeIntBig(u64, data[2..10], @bitCast(u64, self.pos[i][0]));
 			std.mem.writeIntBig(u64, data[10..18], @bitCast(u64, self.pos[i][1]));
@@ -158,7 +158,7 @@ pub const ItemDropManager = struct {
 		{
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			for(self.indices) |i| {
+			for(self.indices[0..self.size]) |i| {
 				const item = try self.storeSingle(allocator, i);
 				try jsonArray.JsonArray.append(item);
 			}
@@ -504,7 +504,7 @@ pub const ClientItemDropManager = struct {
 		{
 			self.super.mutex.lock();
 			defer self.super.mutex.unlock();
-			self.interpolation.updateIndexed(time, self.lastTime, &self.super.indices, 4);
+			self.interpolation.updateIndexed(time, self.lastTime, self.super.indices[0..self.super.size], 4);
 		}
 		self.lastTime = time;
 	}
