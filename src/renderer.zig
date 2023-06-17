@@ -670,9 +670,9 @@ pub const Frustum = struct {
 		inline for(self.planes) |plane| {
 			var dist: f32 = vec.dot(pos - plane.pos, plane.norm);
 			// Find the most positive corner:
-			dist += @max(0.0, dim[0]*plane.norm[0]); // TODO: #15644
-			dist += @max(0.0, dim[1]*plane.norm[1]); // TODO: #15644
-			dist += @max(0.0, dim[2]*plane.norm[2]); // TODO: #15644
+			dist += @max(0, dim[0]*plane.norm[0]);
+			dist += @max(0, dim[1]*plane.norm[1]);
+			dist += @max(0, dim[2]*plane.norm[2]);
 			if(dist < 128) return false;
 		}
 		return true;

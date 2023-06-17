@@ -76,7 +76,7 @@ fn updateValueFromButtonPos(self: *ScrollBar) void {
 
 pub fn scroll(self: *ScrollBar, offset: f32) void {
 	self.currentState += offset;
-	self.currentState = @min(1.0, @max(0.0, self.currentState)); // TODO: #15644
+	self.currentState = @min(1, @max(0, self.currentState));
 }
 
 pub fn updateHovered(self: *ScrollBar, mousePosition: Vec2f) void {
@@ -106,7 +106,7 @@ pub fn render(self: *ScrollBar, mousePosition: Vec2f) !void {
 	self.setButtonPosFromValue();
 	if(self.button.pressed) {
 		self.button.pos[1] = mousePosition[1] - self.mouseAnchor;
-		self.button.pos[1] = @min(@max(self.button.pos[1], 0.0), range - 0.001); // TODO: #15644
+		self.button.pos[1] = @min(@max(self.button.pos[1], 0), range - 0.001);
 		self.updateValueFromButtonPos();
 	}
 	const oldTranslation = draw.setTranslation(self.pos);

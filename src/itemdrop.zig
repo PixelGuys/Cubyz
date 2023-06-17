@@ -352,7 +352,7 @@ pub const ItemDropManager = struct {
 		}
 		// Apply drag:
 		vel.* += acceleration;
-		vel.* *= @splat(3, @max(0.0, 1 - drag*deltaTime)); // TODO: #15644
+		vel.* *= @splat(3, @max(0, 1 - drag*deltaTime));
 	}
 
 	fn fixStuckInBlock(self: *ItemDropManager, chunk: *Chunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {

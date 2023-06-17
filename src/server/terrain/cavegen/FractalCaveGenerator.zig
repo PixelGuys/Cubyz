@@ -253,7 +253,7 @@ fn considerCoordinates(x: i32, y: i32, z: i32, map: *CaveMapFragment, seed: *u64
 	};
 
 	// At y = caveHeightWithMaxDensity blocks the chance is saturated, while at maxCaveHeight the chance gets 0:
-	if(random.nextFloat(seed) >= maxCaveDensity*@min(1.0, @floatCast(f32, (maxCaveHeight - startWorldPos[1])/(maxCaveHeight - caveHeightWithMaxDensity)))) return; // TODO: #15644
+	if(random.nextFloat(seed) >= maxCaveDensity*@min(1, @floatCast(f32, (maxCaveHeight - startWorldPos[1])/(maxCaveHeight - caveHeightWithMaxDensity)))) return;
 
 	var starters = 1 + random.nextIntBounded(u8, seed, 4);
 	while(starters != 0) : (starters -= 1) {
