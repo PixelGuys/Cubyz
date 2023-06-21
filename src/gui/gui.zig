@@ -224,7 +224,10 @@ fn save() !void {
 }
 
 fn load() !void {
-	const json: JsonElement = try main.files.readToJson(main.threadAllocator, "gui_layout.json");
+	const json: JsonElement = main.files.readToJson(main.threadAllocator, "gui_layout.json") catch |err| blk: {
+		if(err == error.FileNotFound) break :blk JsonElement{.JsonNull={}};
+		return err;
+	};
 	defer json.free(main.threadAllocator);
 
 	for(windowList.items) |window| {

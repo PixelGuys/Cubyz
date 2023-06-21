@@ -71,7 +71,4 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveM
 			}
 		}
 	}
-	for(chunk.blocks) |block| {
-		std.debug.assert(block.typ != 0xaaaa);
-	}
 }

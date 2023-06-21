@@ -37,7 +37,10 @@ pub var guiScale: ?f32 = null;
 
 
 pub fn init() !void {
-	const json: JsonElement = try main.files.readToJson(main.threadAllocator, "settings.json");
+	const json: JsonElement = main.files.readToJson(main.threadAllocator, "settings.json") catch |err| blk: {
+		if(err == error.FileNotFound) break :blk JsonElement{.JsonNull={}};
+		return err;
+	};
 	defer json.free(main.threadAllocator);
 
 	inline for(@typeInfo(@This()).Struct.decls) |decl| {
