@@ -54,12 +54,19 @@ pub const std_options = struct {
 			std.log.Level.debug => "\x1b[37;44m",
 		};
 
-		std.debug.getStderrMutex().lock();
-		defer std.debug.getStderrMutex().unlock();
-
-		logFile.writer().print("[" ++ level.asText() ++ "]" ++ ": " ++ format ++ "\n", args) catch {};
-
-		nosuspend std.io.getStdErr().writer().print(color ++ format ++ "\x1b[0m\n", args) catch {};
+		var stackFallbackAllocator: std.heap.StackFallbackAllocator(65536) = undefined;
+		stackFallbackAllocator.fallback_allocator = threadAllocator;
+		const allocator = stackFallbackAllocator.get();
+		{
+			const string = std.fmt.allocPrint(allocator, "[" ++ level.asText() ++ "]" ++ ": " ++ format ++ "\n", args) catch unreachable;
+			defer allocator.free(string);
+			logFile.writeAll(string) catch {};
+		}
+		{
+			const string = std.fmt.allocPrint(allocator, color ++ format ++ "\x1b[0m\n", args) catch unreachable;
+			defer allocator.free(string);
+			nosuspend std.io.getStdErr().writeAll(string) catch {};
+		}
 	}
 };
 
