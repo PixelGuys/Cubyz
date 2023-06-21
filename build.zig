@@ -59,14 +59,21 @@ pub fn build(b: *std.build.Builder) !void {
 			"portaudio/src/common/pa_trace.c",
 		}, &[_][]const u8{"-g", "-O3"});
 		if(target.getOsTag() == .windows) {
-			// TODO: Choose a host API
+			// windows:
+			exe.addCSourceFiles(&[_][]const u8 {"portaudio/src/os/win/pa_win_coinitialize.c", "portaudio/src/os/win/pa_win_hostapis.c", "portaudio/src/os/win/pa_win_util.c", "portaudio/src/os/win/pa_win_waveformat.c", "portaudio/src/os/win/pa_win_wdmks_utils.c", "portaudio/src/os/win/pa_x86_plain_converters.c", }, &[_][]const u8{"-g", "-O3", "-DPA_USE_WASAPI"});
+			exe.addIncludePath("portaudio/src/os/win");
+			exe.linkSystemLibrary("ole32");
+			exe.linkSystemLibrary("winmm");
+			exe.linkSystemLibrary("uuid");
+			// WASAPI:
+			exe.addCSourceFiles(&[_][]const u8 {"portaudio/src/hostapi/wasapi/pa_win_wasapi.c"}, &[_][]const u8{"-g", "-O3"});
 		} else if(target.getOsTag() == .linux) {
 			// unix:
 			exe.addCSourceFiles(&[_][]const u8 {"portaudio/src/os/unix/pa_unix_hostapis.c", "portaudio/src/os/unix/pa_unix_util.c"}, &[_][]const u8{"-g", "-O3", "-DPA_USE_ALSA"});
 			exe.addIncludePath("portaudio/src/os/unix");
 			// ALSA:
 			exe.addCSourceFiles(&[_][]const u8 {"portaudio/src/hostapi/alsa/pa_linux_alsa.c"}, &[_][]const u8{"-g", "-O3"});
-			exe.linkSystemLibrary("alsa");
+			exe.linkSystemLibrary("asound");
 		} else {
 			std.log.err("Unsupported target: {}\n", .{ target.getOsTag() });
 		}

@@ -1,5 +1,6 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
+const builtin = @import("builtin");
 
 const main = @import("main.zig");
 
@@ -29,6 +30,14 @@ pub const Compression = struct {
 		while(try walker.next()) |entry| {
 			if(entry.kind == .file) {
 				var relPath = entry.path;
+				if(builtin.os.tag == .windows) { // I hate you
+					const copy = try main.threadAllocator.dupe(u8, relPath);
+					std.mem.replaceScalar(u8, copy, '\\', '/');
+					relPath = copy;
+				}
+				defer if(builtin.os.tag == .windows) {
+					main.threadAllocator.free(relPath);
+				};
 				var len: [4]u8 = undefined;
 				std.mem.writeIntBig(u32, &len, @intCast(u32, relPath.len));
 				_ = try comp.write(&len);

@@ -60,14 +60,32 @@ const Socket = struct {
 	}
 
 	fn receive(self: Socket, buffer: []u8, timeout: i32, resultAddress: *Address) ![]u8 {
-		var pfd = [1]os.pollfd {
-			.{.fd = self.socketID, .events = os.POLL.IN, .revents = undefined},
-		};
-		var length = try os.poll(&pfd, timeout);
-		if(length == 0) return error.Timeout;
+		if(builtin.os.tag == .windows) { // Of course Windows always has it's own special thing.
+			var pfd = [1]os.pollfd {
+				.{.fd = self.socketID, .events = std.c.POLL.RDNORM | std.c.POLL.RDBAND, .revents = undefined},
+			};
+			const length = os.windows.ws2_32.WSAPoll(&pfd, pfd.len, timeout); // TODO: #16122
+			if (length == os.windows.ws2_32.SOCKET_ERROR) {
+                switch (os.windows.ws2_32.WSAGetLastError()) {
+                    .WSANOTINITIALISED => unreachable,
+                    .WSAENETDOWN => return error.NetworkSubsystemFailed,
+                    .WSAENOBUFS => return error.SystemResources,
+                    // TODO: handle more errors
+                    else => |err| return os.windows.unexpectedWSAError(err),
+                }
+            } else if(length == 0) {
+                return error.Timeout;
+            }
+		} else {
+			var pfd = [1]os.pollfd {
+				.{.fd = self.socketID, .events = os.POLL.IN, .revents = undefined},
+			};
+			const length = try os.poll(&pfd, timeout);
+			if(length == 0) return error.Timeout; return error.Timeout;
+		}
 		var addr: os.sockaddr.in = undefined;
 		var addrLen: os.socklen_t = @sizeOf(os.sockaddr.in);
-		length = try os.recvfrom(self.socketID, buffer, 0,  @ptrCast(*os.sockaddr, &addr), &addrLen);
+		const length = try os.recvfrom(self.socketID, buffer, 0,  @ptrCast(*os.sockaddr, &addr), &addrLen);
 		resultAddress.ip = addr.addr;
 		resultAddress.port = @byteSwap(addr.port);
 		return buffer[0..length];
