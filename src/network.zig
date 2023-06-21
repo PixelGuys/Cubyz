@@ -81,7 +81,7 @@ const Socket = struct {
 				.{.fd = self.socketID, .events = os.POLL.IN, .revents = undefined},
 			};
 			const length = try os.poll(&pfd, timeout);
-			if(length == 0) return error.Timeout; return error.Timeout;
+			if(length == 0) return error.Timeout;
 		}
 		var addr: os.sockaddr.in = undefined;
 		var addrLen: os.socklen_t = @sizeOf(os.sockaddr.in);
