@@ -1,6 +1,8 @@
 const std = @import("std");
 
 const main = @import("root");
+const Vec2f = main.vec.Vec2f;
+const Vec2i = main.vec.Vec2i;
 const Vec3i = main.vec.Vec3i;
 
 const multiplier: u64 = 0x5deece66d;
@@ -49,14 +51,34 @@ pub fn nextFloat(seed: *u64) f32 {
 	return @intToFloat(f32, nextInt(u24, seed))/@intToFloat(f32, 1 << 24);
 }
 
+pub fn nextFloatSigned(seed: *u64) f32 {
+	return @intToFloat(f32, @bitCast(i24, nextInt(u24, seed)))/@intToFloat(f32, 1 << 23);
+}
+
 pub fn nextDouble(seed: *u64) f64 {
 	const lower: u52 = nextInt(u32, seed);
 	const upper: u52 = nextInt(u20, seed);
 	return @intToFloat(f64, upper<<32 | lower)/@intToFloat(f64, 1 << 52);
 }
 
+pub fn nextPointInUnitCircle(seed: *u64) Vec2f {
+	while(true) {
+		var x: f32 = nextFloatSigned(seed);
+		var y: f32 = nextFloatSigned(seed);
+		if(x*x + y*y < 1) {
+			return Vec2f{x, y};
+		}
+	}
+}
+
 pub fn initSeed3D(worldSeed: u64, pos: Vec3i) u64 {
 	const fac = Vec3i {11248723, 105436839, 45399083};
+	const seed = @reduce(.Xor, fac *% pos);
+	return @bitCast(u32, seed) ^ worldSeed;
+}
+
+pub fn initSeed2D(worldSeed: u64, pos: Vec2i) u64 {
+	const fac = Vec2i {11248723, 105436839};
 	const seed = @reduce(.Xor, fac *% pos);
 	return @bitCast(u32, seed) ^ worldSeed;
 }

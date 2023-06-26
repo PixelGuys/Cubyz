@@ -1,5 +1,8 @@
 {
-	"type" : "desert",
+	"properties" : [
+		"hot",
+		"dry"
+	],
 	"minHeight" : 2,
 	"maxHeight" : 40,
 	

@@ -1,5 +1,7 @@
 {
-	"type" : "shrubland",
+	"properties" : [
+		"hot"
+	],
 	"minHeight" : 4,
 	"maxHeight" : 60,
 	

@@ -1,17 +1,18 @@
 {
+	"chance" : 0,
 	"properties" : [
+		"ocean"
 	],
-	"chance" : 0.04,
-	"minHeight" : 10,
-	"maxHeight" : 40,
-	
-	"mountains" : 30,
-	
+	"minHeight" : 4,
+	"maxHeight" : 4,
+
 	"music" : "sunrise",
-	
+
+	"radius" : 24,
+
 	"ground_structure" : [
 		"cubyz:grass",
-		"0 to 1 cubyz:soil"
+		"2 to 3 cubyz:soil"
 	],
 	"structures" : [
 		{
@@ -21,15 +22,15 @@
 			"top" : "cubyz:oak_top",
 			"chance" : 0.001,
 			"type" : "round",
-			"height" : 6,
-			"height_variation" : 3
-		},
-		{
-			"id" : "cubyz:boulder",
-			"chance" : 0.001,
-			"block" : "cubyz:cobblestone",
-			"size" : 5,
-			"size_variance" : 4
+			"height" : 12,
+			"height_variation" : 10
 		}
-	]
+	],
+
+	"parentBiomes" : [
+		{
+			"id" : "cubyz:island_shelf",
+			"chance" : 1,
+		}
+	],
 }

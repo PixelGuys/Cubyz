@@ -53,70 +53,38 @@ const StructureModel = struct {
 
 /// A climate region with special ground, plants and structures.
 pub const Biome = struct {
-	pub const Type = enum { // TODO: I should make this more general. There should be a way to define custom biome types.
-		/// hot, wet, lowland
-		rainforest,
-		/// hot, medium, lowland
-		shrubland,
-		/// hot, dry, lowland
-		desert,
-		/// temperate, wet, lowland
-		swamp,
-		/// temperate, medium, lowland
-		forest,
-		/// temperate, dry, lowland
-		grassland,
-		/// cold, wet, lowland
-		tundra,
-		/// cold, medium, lowland
-		taiga,
-		/// cold, dry, lowland
-		glacier,
+	const GenerationProperties = packed struct(u8) {
+		// pairs of opposite properties. In-between values are allowed.
+		hot: bool = false,
+		cold: bool = false,
 
-		/// temperate, medium, highland
-		mountain_forest,
-		/// temperate, dry, highland
-		mountain_grassland,
-		/// cold, dry, highland
-		peak,
+		inland: bool = false,
+		ocean: bool = false,
 
-		/// temperate ocean
-		ocean,
-		/// tropical ocean(TODO: coral reefs and stuff)
-		warm_ocean,
-		/// arctic ocean(ice sheets)
-		arctic_ocean,
+		wet: bool = false,
+		dry: bool = false,
 
-		/// underground caves
-		cave,
+		mountain: bool = false,
+		antiMountain: bool = false, //???
 
-		fn lowerTypes(typ: Type) []const Type {
-			return switch(typ) {
-				.rainforest, .shrubland, .desert => &[_]Type{.warm_ocean},
-				.swamp, .forest, .grassland => &[_]Type{.ocean},
-				.tundra, .taiga, .glacier => &[_]Type{.arctic_ocean},
-				.mountain_forest => &[_]Type{.forest},
-				.mountain_grassland => &[_]Type{.grassland},
-				.peak => &[_]Type{.tundra},
-				else => &[_]Type{},
-			};
-		}
-
-		fn higherTypes(typ: Type) []const Type {
-			return switch(typ) {
-				.swamp, .rainforest, .forest, .taiga => &[_]Type{.mountain_forest},
-				.shrubland, .grassland => &[_]Type{.mountain_grassland},
-				.mountain_forest, .mountain_grassland, .desert, .tundra, .glacier => &[_]Type{.peak},
-				.warm_ocean => &[_]Type{.rainforest, .shrubland, .desert},
-				.ocean => &[_]Type{.swamp, .forest, .grassland},
-				.arctic_ocean => &[_]Type{.glacier, .tundra},
-				else => &[_]Type{},
-			};
+		pub fn fromJson(json: JsonElement) GenerationProperties {
+			var result: GenerationProperties = .{};
+			for(json.toSlice()) |child| {
+				const property = child.as([]const u8, "");
+				inline for(@typeInfo(GenerationProperties).Struct.fields) |field| {
+					if(std.mem.eql(u8, field.name, property)) {
+						@field(result, field.name) = true;
+					}
+				}
+			}
+			return result;
 		}
 	};
 
-	typ: Type,
-	minHeight: i32,
+	properties: GenerationProperties,
+	isCave: bool,
+	radius: f32,
+	minHeight: i32, // TODO: Use only one base height.
 	maxHeight: i32,
 	roughness: f32,
 	hills: f32,
@@ -129,20 +97,22 @@ pub const Biome = struct {
 	/// Whether the starting point of a river can be in this biome. If false rivers will be able to flow through this biome anyways.
 	supportsRivers: bool, // TODO: Reimplement rivers.
 	/// The first members in this array will get prioritized.
-	vegetationModels: []StructureModel = &[0]StructureModel{},
-	upperReplacements: []const *const Biome = &[0]*Biome{},
-	lowerReplacements: []const *const Biome = &[0]*Biome{},
+	vegetationModels: []StructureModel = &.{},
+	subBiomes: main.utils.AliasTable(*const Biome) = undefined,
+	maxSubBiomeCount: f32,
+	subBiomeTotalChance: f32 = 0,
+	upperReplacements: []const *const Biome = &.{}, // TODO: Allow manually adding a list of replacement biomes.
+	lowerReplacements: []const *const Biome = &.{},
 	preferredMusic: []const u8, // TODO: Support multiple possibilities that are chose based on time and danger.
 	isValidPlayerSpawn: bool,
-	chance: f64,
+	chance: f32,
 
 	pub fn init(self: *Biome, id: []const u8, json: JsonElement) !void {
 		self.* = Biome {
-			.typ = std.meta.stringToEnum(Type, json.get([]const u8, "type", "")) orelse blk: {
-				std.log.warn("Couldn't find biome type {s}. Replacing it with grassland.", .{json.get([]const u8, "type", "")});
-				break :blk Type.grassland;
-			},
 			.id = try main.globalAllocator.dupe(u8, id),
+			.properties = GenerationProperties.fromJson(json.getChild("properties")),
+			.isCave = json.get(bool, "isCave", false),
+			.radius = json.get(f32, "radius", 64),
 			.stoneBlockType = blocks.getByID(json.get([]const u8, "stoneBlock", "cubyz:stone")),
 			.roughness = json.get(f32, "roughness", 0),
 			.hills = json.get(f32, "hills", 0),
@@ -154,10 +124,16 @@ pub const Biome = struct {
 			.supportsRivers = json.get(bool, "rivers", false),
 			.preferredMusic = try main.globalAllocator.dupe(u8, json.get([]const u8, "music", "")),
 			.isValidPlayerSpawn = json.get(bool, "validPlayerSpawn", false),
-			.chance = json.get(f64, "chance", 1),
+			.chance = json.get(f32, "chance", 1),
+			.maxSubBiomeCount = json.get(f32, "maxSubBiomeCount", std.math.floatMax(f32)),
 		};
 		if(self.minHeight > self.maxHeight) {
 			std.log.warn("Biome {s} has invalid height range ({}, {})", .{self.id, self.minHeight, self.maxHeight});
+		}
+		const parentBiomeList = json.getChild("parentBiomes");
+		for(parentBiomeList.toSlice()) |parent| {
+			const result = try unfinishedSubBiomes.getOrPutValue(main.globalAllocator, parent.get([]const u8, "id", ""), .{});
+			try result.value_ptr.append(main.globalAllocator, .{.biomeId = self.id, .chance = parent.get(f32, "chance", 1)});
 		}
 
 		self.structure = try BlockStructure.init(main.globalAllocator, json.getChild("ground_structure"));
@@ -253,14 +229,138 @@ pub const BlockStructure = struct {
 	}
 };
 
+pub const TreeNode = union(enum) {
+	leaf: struct {
+		totalChance: f64 = 0,
+		aliasTable: main.utils.AliasTable(Biome) = undefined,
+	},
+	branch: struct {
+		amplitude: f32,
+		lowerBorder: f32,
+		upperBorder: f32,
+		children: [3]*TreeNode,
+	},
+
+	pub fn init(allocator: Allocator, currentSlice: []Biome, parameterShift: u5) !*TreeNode {
+		const self = try allocator.create(TreeNode);
+		if(currentSlice.len <= 1 or parameterShift >= @bitSizeOf(Biome.GenerationProperties)) {
+			self.* = .{.leaf = .{}};
+			for(currentSlice) |biome| {
+				self.leaf.totalChance += biome.chance;
+			}
+			self.leaf.aliasTable = try main.utils.AliasTable(Biome).init(allocator, currentSlice);
+			return self;
+		}
+		var chanceLower: f32 = 0;
+		var chanceMiddle: f32 = 0;
+		var chanceUpper: f32 = 0;
+		for(currentSlice) |*biome| {
+			var properties: u32 = @bitCast(u8, biome.properties);
+			properties >>= parameterShift;
+			properties = properties & 3;
+			if(properties == 0) {
+				chanceMiddle += 1; // TODO: += biome.chance
+			} else if(properties == 1) {
+				chanceLower += 1; // TODO: += biome.chance
+			} else if(properties == 2) {
+				chanceUpper += 1; // TODO: += biome.chance
+			} else unreachable;
+		}
+		const totalChance = chanceLower + chanceMiddle + chanceUpper;
+		chanceLower /= totalChance;
+		chanceMiddle /= totalChance;
+		chanceUpper /= totalChance;
+
+		self.* = .{
+			.branch = .{
+				.amplitude = 1024, // TODO!
+				.lowerBorder = terrain.noise.ValueNoise.percentile(chanceLower),
+				.upperBorder = terrain.noise.ValueNoise.percentile(chanceLower + chanceMiddle),
+				.children = undefined,
+			}
+		};
+
+		// Partition the slice:
+		var lowerIndex: usize = 0;
+		var upperIndex: usize = currentSlice.len - 1;
+		var i: usize = 0;
+		while(i <= upperIndex) {
+			var properties: u32 = @bitCast(u8, currentSlice[i].properties);
+			properties >>= parameterShift;
+			properties = properties & 3;
+			if(properties == 0 or properties == 3) {
+				i += 1;
+			} else if(properties == 1) {
+				const swap = currentSlice[i];
+				currentSlice[i] = currentSlice[lowerIndex];
+				currentSlice[lowerIndex] = swap;
+				i += 1;
+				lowerIndex += 1;
+			} else if(properties == 2) {
+				const swap = currentSlice[i];
+				currentSlice[i] = currentSlice[upperIndex];
+				currentSlice[upperIndex] = swap;
+				upperIndex -= 1;
+			} else unreachable;
+		}
+
+		self.branch.children[0] = try TreeNode.init(allocator, currentSlice[0..lowerIndex], parameterShift+2);
+		self.branch.children[1] = try TreeNode.init(allocator, currentSlice[lowerIndex..upperIndex+1], parameterShift+2);
+		self.branch.children[2] = try TreeNode.init(allocator, currentSlice[upperIndex+1..], parameterShift+2);
+
+		return self;
+	}
+
+	pub fn deinit(self: *TreeNode, allocator: Allocator) void {
+		if(self.* == .branch) {
+			for(self.branch.children) |child| {
+				child.deinit(allocator);
+			}
+		}
+		allocator.destroy(self);
+	}
+
+	pub fn getBiome(self: *const TreeNode, seed: *u64, x: f32, y: f32) *const Biome {
+		switch(self.*) {
+			.leaf => |leaf| {
+				var biomeSeed = seed.* ^ @as(u64, 5624786589461)*%@bitCast(u32, @floatToInt(i32, x)) ^ @as(u64, 897650786185)*%@bitCast(u32, @floatToInt(i32, y));
+				const result = leaf.aliasTable.sample(&biomeSeed);
+				return result;
+			},
+			.branch => |branch| {
+				const value = terrain.noise.ValueNoise.samplePoint2D(x/branch.amplitude, y/branch.amplitude, main.random.nextInt(u32, seed));
+				var index: u2 = 0;
+				if(value >= branch.lowerBorder) {
+					if(value >= branch.upperBorder) {
+						index = 2;
+					} else {
+						index = 1;
+					}
+				}
+				return branch.children[index].getBiome(seed, x, y);
+			}
+		}
+	}
+};
+
 var finishedLoading: bool = false;
 var biomes: std.ArrayList(Biome) = undefined;
-var biomesById: std.StringHashMap(*const Biome) = undefined;
-var byTypeBiomes: [@typeInfo(Biome.Type).Enum.fields.len]RandomList(*const Biome) = [_]RandomList(*const Biome){.{}} ** @typeInfo(Biome.Type).Enum.fields.len;
+var caveBiomes: std.ArrayList(Biome) = undefined;
+var biomesById: std.StringHashMap(*Biome) = undefined;
+pub var byTypeBiomes: *TreeNode = undefined;
+const UnfinishedSubBiomeData = struct {
+	biomeId: []const u8,
+	chance: f32,
+	pub fn getItem(self: UnfinishedSubBiomeData) *const Biome {
+		return getById(self.biomeId);
+	}
+};
+var unfinishedSubBiomes: std.StringHashMapUnmanaged(std.ArrayListUnmanaged(UnfinishedSubBiomeData)) = .{};
 
 pub fn init() !void {
 	biomes = std.ArrayList(Biome).init(main.globalAllocator);
-	biomesById = std.StringHashMap(*const Biome).init(main.globalAllocator);
+	caveBiomes = std.ArrayList(Biome).init(main.globalAllocator);
+	biomesById = std.StringHashMap(*Biome).init(main.globalAllocator);
 	const list = @import("structures/_list.zig");
 	inline for(@typeInfo(list).Struct.decls) |decl| {
 		try StructureModel.registerGenerator(@field(list, decl.name));
@@ -274,10 +374,9 @@ pub fn reset() void {
 		biome.deinit();
 	}
 	biomes.clearRetainingCapacity();
+	caveBiomes.clearRetainingCapacity();
 	biomesById.clearRetainingCapacity();
-	for(&byTypeBiomes) |*list| {
-		list.reset();
-	}
+	byTypeBiomes.deinit(main.globalAllocator);
 }
 
 pub fn deinit() void {
@@ -285,67 +384,45 @@ pub fn deinit() void {
 		biome.deinit();
 	}
 	biomes.deinit();
+	caveBiomes.deinit();
 	biomesById.deinit();
-	for(&byTypeBiomes) |*list| {
-		list.deinit(main.globalAllocator);
-	}
+	// TODO? byTypeBiomes.deinit(main.globalAllocator);
 	StructureModel.modelRegistry.clearAndFree(main.globalAllocator);
 }
 
 pub fn register(id: []const u8, json: JsonElement) !void {
 	std.log.debug("Registered biome: {s}", .{id});
 	std.debug.assert(!finishedLoading);
-	try (try biomes.addOne()).init(id, json);
+	var biome: Biome = undefined;
+	try biome.init(id, json);
+	if(biome.isCave) {
+		try caveBiomes.append(biome);
+	} else {
+		try biomes.append(biome);
+	}
 }
 
 pub fn finishLoading() !void {
 	std.debug.assert(!finishedLoading);
 	finishedLoading = true;
+	byTypeBiomes = try TreeNode.init(main.globalAllocator, biomes.items, 0);
 	for(biomes.items) |*biome| {
 		try biomesById.put(biome.id, biome);
-		try byTypeBiomes[@enumToInt(biome.typ)].add(main.globalAllocator, biome);
 	}
-	// Get a list of replacement biomes for each biome:
-	for(biomes.items) |*biome| {
-		var replacements = std.ArrayListUnmanaged(*const Biome){};
-		// Check lower replacements:
-		// Check if there are replacement biomes of the same type:
-		for(byTypeBiomes[@enumToInt(biome.typ)].items()) |replacement| {
-			if(replacement.maxHeight > biome.minHeight and replacement.minHeight < biome.minHeight) {
-				try replacements.append(main.globalAllocator, replacement);
-			}
+	var subBiomeIterator = unfinishedSubBiomes.iterator();
+	while(subBiomeIterator.next()) |subBiomeData| {
+		const parentBiome = biomesById.get(subBiomeData.key_ptr.*) orelse {
+			std.log.warn("Couldn't find biome with id {s}. Cannot add sub-biomes.", .{subBiomeData.key_ptr.*});
+			continue;
+		};
+		const subBiomeDataList = subBiomeData.value_ptr;
+		for(subBiomeDataList.items) |item| {
+			parentBiome.subBiomeTotalChance += item.chance;
 		}
-		// If that doesn't work, check for the next lower height region:
-		if(replacements.items.len == 0) {
-			for(biome.typ.lowerTypes()) |typ| {
-				for(byTypeBiomes[@enumToInt(typ)].items()) |replacement| {
-					if(replacement.maxHeight > biome.minHeight and replacement.minHeight < biome.minHeight) {
-						try replacements.append(main.globalAllocator, replacement);
-					}
-				}
-			}
-		}
-		biome.lowerReplacements = try replacements.toOwnedSlice(main.globalAllocator);
-
-		// Check upper replacements:
-		// Check if there are replacement biomes of the same type:
-		for(byTypeBiomes[@enumToInt(biome.typ)].items()) |replacement| {
-			if(replacement.minHeight < biome.maxHeight and replacement.maxHeight > biome.maxHeight) {
-				try replacements.append(main.globalAllocator, replacement);
-			}
-		}
-		// If that doesn't work, check for the next higher height region:
-		if(replacements.items.len == 0) {
-			for(biome.typ.higherTypes()) |typ| {
-				for(byTypeBiomes[@enumToInt(typ)].items()) |replacement| {
-					if(replacement.minHeight < biome.maxHeight and replacement.maxHeight > biome.maxHeight) {
-						try replacements.append(main.globalAllocator, replacement);
-					}
-				}
-			}
-		}
-		biome.upperReplacements = try replacements.toOwnedSlice(main.globalAllocator);
+		parentBiome.subBiomes = try main.utils.AliasTable(*const Biome).initFromContext(main.globalAllocator, subBiomeDataList.items);
+		subBiomeDataList.deinit(main.globalAllocator);
 	}
+	unfinishedSubBiomes.clearAndFree(main.globalAllocator);
 }
 
 pub fn getById(id: []const u8) *const Biome {
@@ -360,6 +437,6 @@ pub fn getRandomly(typ: Biome.Type, seed: *u64) *const Biome {
 	return byTypeBiomes[@enumToInt(typ)].getRandomly(seed);
 }
 
-pub fn getBiomesOfType(typ: Biome.Type) []*const Biome {
-	return byTypeBiomes[@enumToInt(typ)].items();
+pub fn getCaveBiomes() []const Biome {
+	return caveBiomes.items;
 }

@@ -1,5 +1,8 @@
 {
-	"type" : "swamp",
+	"properties" : [
+		"cold",
+		"wet"
+	],
 	"minHeight" : 2,
 	"maxHeight" : 40,
 	

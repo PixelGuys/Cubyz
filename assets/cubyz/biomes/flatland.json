@@ -1,6 +1,6 @@
 {
+	"properties" : [],
 	"chance" : 0,
-	"type" : "grassland",
 	"minHeight" : 24,
 	"maxHeight" : 40,
 

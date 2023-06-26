@@ -1,5 +1,7 @@
 {
-	"type" : "peak",
+	"properties" : [
+		"mountain"
+	],
 	"minHeight" : 120,
 	"maxHeight" : 256,
 	

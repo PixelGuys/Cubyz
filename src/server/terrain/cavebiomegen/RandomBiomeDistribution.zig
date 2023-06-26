@@ -22,11 +22,11 @@ pub const priority = 1024;
 
 pub const generatorSeed = 765893678349;
 
-var caveBiomes: []*const Biome = undefined;
+var caveBiomes: []const Biome = undefined;
 
 pub fn init(parameters: JsonElement) void {
 	_ = parameters;
-	caveBiomes = terrain.biomes.getBiomesOfType(.cave);
+	caveBiomes = terrain.biomes.getCaveBiomes();
 }
 
 pub fn deinit() void {
@@ -37,14 +37,14 @@ pub fn generate(map: *CaveBiomeMapFragment, worldSeed: u64) Allocator.Error!void
 	// Select all the biomes that are within the given height range.
 	var validBiomes = try std.ArrayListUnmanaged(*const Biome).initCapacity(main.threadAllocator, caveBiomes.len);
 	defer validBiomes.deinit(main.threadAllocator);
-	for(caveBiomes) |biome| {
+	for(caveBiomes) |*biome| {
 		if(biome.minHeight < map.pos.wy +% CaveBiomeMapFragment.caveBiomeMapSize and biome.maxHeight > map.pos.wy) {
 			validBiomes.appendAssumeCapacity(biome);
 		}
 	}
 	if(validBiomes.items.len == 0) {
 		std.log.warn("Couldn't find any cave biome on height {}. Using biome {s} instead.", .{map.pos.wy, caveBiomes[0].id});
-		validBiomes.appendAssumeCapacity(caveBiomes[0]);
+		validBiomes.appendAssumeCapacity(&caveBiomes[0]);
 	}
 
 	var seed = random.initSeed3D(worldSeed, .{map.pos.wx, map.pos.wy, map.pos.wz});

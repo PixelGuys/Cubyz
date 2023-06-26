@@ -1,6 +1,8 @@
 {
+	"properties" : [
+		"ocean"
+	],
 	"chance" : 0,
-	"type" : "ocean",
 	"minHeight" : -4,
 	"maxHeight" : 6,
 

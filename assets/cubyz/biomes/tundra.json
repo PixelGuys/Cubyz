@@ -1,5 +1,8 @@
 {
-	"type" : "tundra",
+	"properties" : [
+		"cold",
+		"dry"
+	],
 	"minHeight" : 2,
 	"maxHeight" : 40,
 	

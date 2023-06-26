@@ -1,6 +1,9 @@
 {
+	"properties" : [
+		"cold",
+		"ocean",
+	],
 	"chance" : 0,
-	"type" : "arctic_ocean",
 	"minHeight" : -4,
 	"maxHeight" : 6,
 

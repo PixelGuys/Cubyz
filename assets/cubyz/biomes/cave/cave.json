@@ -1,5 +1,5 @@
 {
-	"type" : "cave",
+	"isCave" : true,
 	"maxHeight" : 0,
 
 	"music" : "heart-of-the-beast",

@@ -12,10 +12,10 @@ pub const FractalNoise = @import("FractalNoise.zig");
 /// This generates a rough terrain with some cliffs.
 pub const RandomlyWeightedFractalNoise = @import("RandomlyWeightedFractalNoise.zig");
 
-/// The same as fractal noise, but uses random weigths during interpolation phase.
-/// This generates a rough terrain with some cliffs.
-pub const PerlinNoise = @import("PerlinNoise.zig");
-
 /// Blue noise (aka Poisson Disk Sampling) is a pattern that ensures that all points have a minimum distance towards their neigbors.
 /// This contains a static blue noise pattern that is calculated once and then used everywhere around the world. because it is so big the player will never notice issues.
 pub const BlueNoise = @import("BlueNoise.zig");
+
+pub const PerlinNoise = @import("PerlinNoise.zig");
+
+pub const ValueNoise = @import("ValueNoise.zig");

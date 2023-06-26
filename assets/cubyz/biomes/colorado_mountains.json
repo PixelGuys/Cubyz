@@ -1,5 +1,9 @@
 {
-	"type" : "mountain_grassland",
+	"properties" : [
+		"mountain",
+		"hot",
+		"dry"
+	],
 	"minHeight" : 60,
 	"maxHeight" : 256,
 	

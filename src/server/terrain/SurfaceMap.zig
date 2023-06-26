@@ -45,7 +45,7 @@ const MapFragmentPosition = struct {
 
 /// Generates and stores the height and Biome maps of the planet.
 pub const MapFragment = struct {
-	pub const biomeShift = 7;
+	pub const biomeShift = 5;
 	/// The average diameter of a biome.
 	pub const biomeSize = 1 << biomeShift;
 	pub const mapShift = 8;

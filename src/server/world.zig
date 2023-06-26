@@ -175,7 +175,7 @@ const ChunkManager = struct {
 		// TODO: Store chunk.
 	}
 	/// Generates a normal chunk at a given location, or if possible gets it from the cache.
-	fn getOrGenerateChunk(pos: ChunkPosition) !*Chunk {
+	pub fn getOrGenerateChunk(pos: ChunkPosition) !*Chunk {
 		return try chunkCache.findOrCreate(pos, chunkInitFunctionForCache);
 	}
 

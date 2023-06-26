@@ -1,5 +1,7 @@
 {
-	"type" : "mountain_forest",
+	"properties" : [
+		"mountain",
+	],
 	"minHeight" : 20,
 	"maxHeight" : 256,
 	

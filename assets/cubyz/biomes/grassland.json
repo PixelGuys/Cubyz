@@ -1,5 +1,6 @@
 {
-	"type" : "grassland",
+	"properties" : [
+	],
 	"minHeight" : 2,
 	"maxHeight" : 40,
 	

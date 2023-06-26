@@ -1,5 +1,7 @@
 {
-	"type" : "taiga",
+	"properties" : [
+		"cold"
+	],
 	"minHeight" : 2,
 	"maxHeight" : 40,
 	

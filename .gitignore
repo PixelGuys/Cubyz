@@ -5,3 +5,5 @@ zig-cache/
 serverAssets/
 settings.json
 gui_layout.json
+
+test.png

@@ -1,5 +1,7 @@
 {
-	"type" : "glacier",
+	"properties" : [
+		"cold",
+	],
 	"minHeight" : 60,
 	"maxHeight" : 256,
 	

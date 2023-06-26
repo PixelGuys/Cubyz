@@ -1,5 +1,7 @@
 {
-	"type" : "forest",
+	"properties" : [
+		"wet"
+	],
 	"minHeight" : 2,
 	"maxHeight" : 40,
 	

@@ -1,5 +1,8 @@
 {
-	"type" : "rainforest",
+	"properties" : [
+		"wet",
+		"hot",
+	],
 	"minHeight" : 2,
 	"maxHeight" : 40,
 	

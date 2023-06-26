@@ -1,5 +1,8 @@
 {
-	"type" : "ocean",
+	"properties" : [
+		"ocean"
+	],
+	"radius" : 500,
 	"minHeight" : -100,
 	"maxHeight" : -2,
 	

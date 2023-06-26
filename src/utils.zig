@@ -84,8 +84,110 @@ pub const Compression = struct {
 	}
 };
 
+/// Implementation of https://en.wikipedia.org/wiki/Alias_method
+pub fn AliasTable(comptime T: type) type {
+	return struct {
+		const AliasData = struct {
+			chance: u16,
+			alias: u16,
+		};
+		items: []T,
+		aliasData: []AliasData,
+		ownsSlice: bool = false,
+
+		fn initAliasData(self: *@This(), totalChance: f32, currentChances: []f32) void {
+			const desiredChance = totalChance/@intToFloat(f32, self.aliasData.len);
+
+			var lastOverfullIndex: u16 = 0;
+			var lastUnderfullIndex: u16 = 0;
+			outer: while(true) {
+				while(currentChances[lastOverfullIndex] <= desiredChance) {
+					lastOverfullIndex += 1;
+					if(lastOverfullIndex == self.items.len)
+						break :outer;
+				}
+				while(currentChances[lastUnderfullIndex] >= desiredChance) {
+					lastUnderfullIndex += 1;
+					if(lastUnderfullIndex == self.items.len)
+						break :outer;
+				}
+				const delta = desiredChance - currentChances[lastUnderfullIndex];
+				currentChances[lastUnderfullIndex] = desiredChance;
+				currentChances[lastOverfullIndex] -= delta;
+				self.aliasData[lastUnderfullIndex] = .{
+					.alias = lastOverfullIndex,
+					.chance = @floatToInt(u16, delta/desiredChance*std.math.maxInt(u16)),
+				};
+				if (currentChances[lastOverfullIndex] < desiredChance) {
+					lastUnderfullIndex = @min(lastUnderfullIndex, lastOverfullIndex);
+				}
+			}
+		}
+
+		pub fn init(allocator: Allocator, items: []T) !@This() {
+			var self: @This() = .{
+				.items = items,
+				.aliasData = try allocator.alloc(AliasData, items.len),
+			};
+			if(items.len == 0) return self;
+			@memset(self.aliasData, AliasData{.chance = 0, .alias = 0});
+			const currentChances = try main.threadAllocator.alloc(f32, items.len);
+			defer main.threadAllocator.free(currentChances);
+			var totalChance: f32 = 0;
+			for(items, 0..) |*item, i| {
+				totalChance += item.chance;
+				currentChances[i] = item.chance;
+			}
+
+			self.initAliasData(totalChance, currentChances);
+
+			return self;
+		}
+
+		pub fn initFromContext(allocator: Allocator, slice: anytype) !@This() {
+			var items = try allocator.alloc(T, slice.len);
+			for(slice, items) |context, *result| {
+				result.* = context.getItem();
+			}
+			var self: @This() = .{
+				.items = items,
+				.aliasData = try allocator.alloc(AliasData, items.len),
+				.ownsSlice = true,
+			};
+			if(items.len == 0) return self;
+			@memset(self.aliasData, AliasData{.chance = 0, .alias = 0});
+			const currentChances = try main.threadAllocator.alloc(f32, items.len);
+			defer main.threadAllocator.free(currentChances);
+			var totalChance: f32 = 0;
+			for(slice, 0..) |context, i| {
+				totalChance += context.chance;
+				currentChances[i] = context.chance;
+			}
+
+			self.initAliasData(totalChance, currentChances);
+
+			return self;
+		}
+
+		pub fn deinit(self: *const @This(), allocator: Allocator) void {
+			allocator.free(self.aliasData);
+			if(self.ownsSlice) {
+				allocator.free(self.items);
+			}
+		}
+
+		pub fn sample(self: *const @This(), seed: *u64) *T {
+			const initialIndex = main.random.nextIntBounded(u16, seed, @intCast(u16, self.items.len));
+			if(main.random.nextInt(u16, seed) < self.aliasData[initialIndex].chance) {
+				return &self.items[self.aliasData[initialIndex].alias];
+			}
+			return &self.items[initialIndex];
+		}
+	};
+}
+
 /// A list that allows to choose randomly from the contained object, if they have a chance assigned to them.
-/// TODO: Use O(1) sampling: https://en.wikipedia.org/wiki/Alias_method
+/// TODO: Is this still needed, now that the alias table exists?
 pub fn RandomList(comptime T: type) type {
 	return struct {
 		const Self = @This();
@@ -134,6 +236,55 @@ pub fn RandomList(comptime T: type) type {
 			}
 			std.debug.assert(self.len != 0);
 			return self.ptr[self.len-1]; // Can be caused by floating point errors.
+		}
+	};
+}
+
+/// A list that is always sorted in ascending order based on T.lessThan(lhs, rhs).
+pub fn SortedList(comptime T: type) type {
+	return struct {
+		const Self = @This();
+
+		ptr: [*]T = undefined,
+		len: u32 = 0,
+		capacity: u32 = 0,
+
+		pub fn deinit(self: Self, allocator: Allocator) void {
+			allocator.free(self.ptr[0..self.capacity]);
+		}
+
+		pub fn items(self: Self) []T {
+			return self.ptr[0..self.len];
+		}
+
+		fn increaseCapacity(self: *Self, allocator: Allocator) !void {
+			const newSize = 8 + self.capacity*3/2;
+			const newSlice = try allocator.realloc(self.ptr[0..self.capacity], newSize);
+			self.capacity = @intCast(u32, newSlice.len);
+			self.ptr = newSlice.ptr;
+		}
+
+		pub fn insertSorted(self: *Self, allocator: Allocator, object: T) !void {
+			if(self.len == self.capacity) {
+				try self.increaseCapacity(allocator);
+			}
+			var i = self.len;
+			while(i != 0) { // Find the point to insert and move the rest out of the way.
+				if(object.lessThan(self.ptr[i - 1])) {
+					self.ptr[i] = self.ptr[i - 1];
+				} else {
+					break;
+				}
+				i -= 1;
+			}
+			self.len += 1;
+			self.ptr[i] = object;
+		}
+
+		pub fn toOwnedSlice(self: *Self, allocator: Allocator) ![]T {
+			const output = try allocator.realloc(self.ptr[0..self.capacity], self.len);
+			self.* = .{};
+			return output;
 		}
 	};
 }

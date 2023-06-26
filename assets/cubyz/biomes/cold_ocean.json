@@ -1,7 +1,12 @@
 {
+	"properties" : [
+		"cold",
+		"ocean",
+	],
 	"type" : "arctic_ocean",
 	"minHeight" : -100,
 	"maxHeight" : -2,
+	"radius" : 500,
 	
 	"roughness" : 20,
 	"hills" : 10,
