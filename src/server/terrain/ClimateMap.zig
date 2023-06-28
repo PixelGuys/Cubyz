@@ -19,14 +19,14 @@ pub const BiomePoint = struct {
 	seed: u64,
 
 	pub fn distSquare(self: BiomePoint, x: f32, z: f32) f32 {
-		const deltaX = @intToFloat(f32, self.x) - x;
-		const deltaZ = @intToFloat(f32, self.z) - z;
+		const deltaX = @as(f32, @floatFromInt(self.x)) - x;
+		const deltaZ = @as(f32, @floatFromInt(self.z)) - z;
 		return deltaX*deltaX + deltaZ*deltaZ;
 	}
 
 	pub fn maxNorm(self: BiomePoint, x: f32, z: f32) f32 {
-		const deltaX = @intToFloat(f32, self.x) - x;
-		const deltaZ = @intToFloat(f32, self.z) - z;
+		const deltaX = @as(f32, @floatFromInt(self.x)) - x;
+		const deltaZ = @as(f32, @floatFromInt(self.z)) - z;
 		return @max(@fabs(deltaX), @fabs(deltaZ));
 	}
 
@@ -38,14 +38,14 @@ pub const BiomePoint = struct {
 			main.random.scrambleSeed(&seed);
 			while(height < biome.minHeight) {
 				if(biome.lowerReplacements.len == 0) break;
-				biome = biome.lowerReplacements[main.random.nextIntBounded(u32, &seed, @intCast(u32, biome.lowerReplacements.len))];
+				biome = biome.lowerReplacements[main.random.nextIntBounded(u32, &seed, @as(u32, @intCast(biome.lowerReplacements.len)))];
 			}
 		} else if(height > biome.maxHeight) {
 			var seed: u64 = self.seed ^ 56473865395165948;
 			main.random.scrambleSeed(&seed);
 			while(height > biome.maxHeight) {
 				if(biome.upperReplacements.len == 0) break;
-				biome = biome.upperReplacements[main.random.nextIntBounded(u32, &seed, @intCast(u32, biome.upperReplacements.len))];
+				biome = biome.upperReplacements[main.random.nextIntBounded(u32, &seed, @as(u32, @intCast(biome.upperReplacements.len)))];
 			}
 		}
 		return biome;
@@ -66,7 +66,7 @@ const ClimateMapFragmentPosition = struct {
 	}
 
 	pub fn hashCode(self: ClimateMapFragmentPosition) u32 {
-		return @bitCast(u32, (self.wx >> ClimateMapFragment.mapShift)*%33 +% (self.wz >> ClimateMapFragment.mapShift));
+		return @bitCast((self.wx >> ClimateMapFragment.mapShift)*%33 +% (self.wz >> ClimateMapFragment.mapShift));
 	}
 };
 
@@ -91,7 +91,7 @@ pub const ClimateMapFragment = struct {
 	}
 
 	pub fn hashCode(wx: i32, wz: i32) u32 {
-		return @bitCast(u32, (wx >> mapShift)*%33 + (wz >> mapShift));
+		return @bitCast((wx >> mapShift)*%33 + (wz >> mapShift));
 	}
 };
 
@@ -185,12 +185,12 @@ pub fn getBiomeMap(allocator: Allocator, wx: i32, wz: i32, width: u31, height: u
 			const zOffset = (z - wz) >> MapFragment.biomeShift;
 			// Go through all indices in the mapPiece:
 			for(&mapPiece.map, 0..) |*col, lx| {
-				const resultX = @intCast(i32, lx) + xOffset;
+				const resultX = @as(i32, @intCast(lx)) + xOffset;
 				if(resultX < 0 or resultX >= width >> MapFragment.biomeShift) continue;
 				for(col, 0..) |*spot, lz| {
-					const resultZ = @intCast(i32, lz) + zOffset;
+					const resultZ = @as(i32, @intCast(lz)) + zOffset;
 					if(resultZ < 0 or resultZ >= height >> MapFragment.biomeShift) continue;
-					map.set(@intCast(usize, resultX), @intCast(usize, resultZ), spot.*);
+					map.set(@intCast(resultX), @intCast(resultZ), spot.*);
 				}
 			}
 		}

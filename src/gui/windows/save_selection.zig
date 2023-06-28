@@ -25,7 +25,7 @@ const width: f32 = 128;
 var buttonNameArena: std.heap.ArenaAllocator = undefined;
 
 fn openWorld(namePtr: usize) void {
-	const nullTerminatedName = @intToPtr([*:0]const u8, namePtr);
+	const nullTerminatedName: [*:0]const u8 = @ptrFromInt(namePtr);
 	const name = std.mem.span(nullTerminatedName);
 	std.log.info("TODO: Open world {s}", .{name});
 	main.server.thread = std.Thread.spawn(.{}, main.server.start, .{name}) catch |err| {
@@ -70,7 +70,7 @@ fn flawedDeleteWorld(name: []const u8) !void {
 }
 
 fn deleteWorld(namePtr: usize) void {
-	const nullTerminatedName = @intToPtr([*:0]const u8, namePtr);
+	const nullTerminatedName: [*:0]const u8 = @ptrFromInt(namePtr);
 	const name = std.mem.span(nullTerminatedName);
 	flawedDeleteWorld(name) catch |err| {
 		std.log.err("Encountered error while deleting world \"{s}\": {s}", .{name, @errorName(err)});
@@ -128,8 +128,8 @@ pub fn onOpen() Allocator.Error!void {
 			const name = try buttonNameArena.allocator().dupeZ(u8, entry.name); // Null terminate, so we can later recover the string from jsut the pointer.
 			const buttonName = try std.fmt.allocPrint(buttonNameArena.allocator(), "Play {s}", .{decodedName});
 			
-			try row.add(try Button.initText(.{0, 0}, 128, buttonName, .{.callback = &openWorld, .arg = @ptrToInt(name.ptr)}));
-			try row.add(try Button.initText(.{8, 0}, 64, "delete", .{.callback = &deleteWorld, .arg = @ptrToInt(name.ptr)}));
+			try row.add(try Button.initText(.{0, 0}, 128, buttonName, .{.callback = &openWorld, .arg = @intFromPtr(name.ptr)}));
+			try row.add(try Button.initText(.{8, 0}, 64, "delete", .{.callback = &deleteWorld, .arg = @intFromPtr(name.ptr)}));
 			row.finish(.{0, 0}, .center);
 			try list.add(row);
 		}

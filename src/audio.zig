@@ -46,8 +46,8 @@ pub fn init() !void {
 		std.debug.assert(sampleRate == ogg_info.sample_rate); // TODO: Handle this case
 		std.debug.assert(2 == ogg_info.channels); // TODO: Handle this case
 		const samples = c.stb_vorbis_stream_length_in_samples(ogg_stream);
-		musicData = try main.globalAllocator.alloc(f32, samples*@intCast(usize, ogg_info.channels));
-		_ = c.stb_vorbis_get_samples_float_interleaved(ogg_stream, ogg_info.channels, musicData.ptr, @intCast(c_int, samples)*ogg_info.channels);
+		musicData = try main.globalAllocator.alloc(f32, samples*@as(usize, @intCast(ogg_info.channels)));
+		_ = c.stb_vorbis_get_samples_float_interleaved(ogg_stream, ogg_info.channels, musicData.ptr, @as(c_int, @intCast(samples))*ogg_info.channels);
 	} else {
 		std.log.err("Error reading file TODO", .{});
 	}
@@ -79,7 +79,7 @@ fn patestCallback(
 	_ = timeInfo; // TODO: Synchronize this to the rest of the world
 	_ = statusFlags;
 	_ = userData;
-	const out = @ptrCast([*]f32, @alignCast(4, outputBuffer));
+	const out: [*]f32 = @ptrCast(@alignCast(outputBuffer));
 	for(0..framesPerBuffer) |i| {
 		out[2*i] = musicData[curIndex];
 		out[2*i+1] = musicData[curIndex+1];

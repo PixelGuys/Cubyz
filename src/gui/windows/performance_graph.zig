@@ -44,8 +44,8 @@ pub fn deinit() void {
 }
 
 fn flawedRender() !void {
-	lastFrameTime[index] = @floatCast(f32, main.lastFrameTime.load(.Monotonic)*1000.0);
-	index = (index + 1)%@intCast(u31, lastFrameTime.len);
+	lastFrameTime[index] = @floatCast(main.lastFrameTime.load(.Monotonic)*1000.0);
+	index = (index + 1)%@as(u31, @intCast(lastFrameTime.len));
 	draw.setColor(0xffffffff);
 	try draw.text("32 ms", 0, 16, 8, .left);
 	try draw.text("16 ms", 0, 32, 8, .left);
@@ -68,7 +68,7 @@ fn flawedRender() !void {
 	dim = @ceil(dim);
 	pos[1] += dim[1];
 
-	graphics.c.glUniform2f(uniforms.screen, @intToFloat(f32, main.Window.width), @intToFloat(f32, main.Window.height));
+	graphics.c.glUniform2f(uniforms.screen, @floatFromInt(main.Window.width), @floatFromInt(main.Window.height));
 	graphics.c.glUniform2f(uniforms.start, pos[0], pos[1]);
 	graphics.c.glUniform2f(uniforms.dimension, dim[0], draw.setScale(1));
 	ssbo.bufferData(f32, &lastFrameTime);

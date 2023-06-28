@@ -36,10 +36,10 @@ const ChunkManager = struct {
 		source: ?*User,
 
 		const vtable = utils.ThreadPool.VTable{
-			.getPriority = @ptrCast(*const fn(*anyopaque) f32, &getPriority),
-			.isStillNeeded = @ptrCast(*const fn(*anyopaque) bool, &isStillNeeded),
-			.run = @ptrCast(*const fn(*anyopaque) Allocator.Error!void, &run),
-			.clean = @ptrCast(*const fn(*anyopaque) void, &clean),
+			.getPriority = @ptrCast(&getPriority),
+			.isStillNeeded = @ptrCast(&isStillNeeded),
+			.run = @ptrCast(&run),
+			.clean = @ptrCast(&clean),
 		};
 		
 		pub fn schedule(pos: ChunkPosition, source: ?*User) !void {
@@ -82,9 +82,9 @@ const ChunkManager = struct {
 				for(server.users.items) |user| {
 					const minDistSquare = self.pos.getMinDistanceSquared(user.player.pos);
 					//                                                                  ↓ Margin for error. (diagonal of 1 chunk)
-					var targetRenderDistance = (@intToFloat(f32, user.renderDistance*chunk.chunkSize) + @intToFloat(f32, chunk.chunkSize)*@sqrt(3.0));
+					var targetRenderDistance = (@as(f32, @floatFromInt(user.renderDistance*chunk.chunkSize)) + @as(f32, @floatFromInt(chunk.chunkSize))*@sqrt(3.0));
 					if(self.pos.voxelSize != 1) {
-						targetRenderDistance *= @intToFloat(f32, self.pos.voxelSize)*user.lodFactor;
+						targetRenderDistance *= @as(f32, @floatFromInt(self.pos.voxelSize))*user.lodFactor;
 					}
 					if(minDistSquare <= targetRenderDistance*targetRenderDistance) {
 						return true;
@@ -303,7 +303,7 @@ pub const ServerWorld = struct {
 			.lastUpdateTime = std.time.milliTimestamp(),
 			.milliTime = std.time.milliTimestamp(),
 			.lastUnimportantDataSent = std.time.milliTimestamp(),
-			.seed = @bitCast(u64, @truncate(i64, std.time.nanoTimestamp())),
+			.seed = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp()))),
 			.name = name,
 		};
 		try self.itemDropManager.init(main.globalAllocator, self, self.gravity);
@@ -357,7 +357,7 @@ pub const ServerWorld = struct {
 		try self.wio.loadWorldData(); // load data here in order for entities to also be loaded.
 
 		if(!self.generated) {
-			var seed = @bitCast(u64, @truncate(i64, std.time.nanoTimestamp()));
+			var seed: u64 = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp())));
 			std.log.info("Finding position..", .{});
 			for(0..1000) |_| {
 				self.spawn[0] = main.random.nextIntBounded(u31, &seed, 65536);
@@ -379,7 +379,7 @@ pub const ServerWorld = struct {
 		const player = &user.player;
 		if(playerData == .JsonNull) {
 			// Generate a new player:
-			player.pos = vec.intToFloat(f64, self.spawn);
+			player.pos = vec.floatFromInt(f64, self.spawn);
 		} else {
 			player.loadFrom(playerData);
 		}
@@ -473,7 +473,7 @@ pub const ServerWorld = struct {
 
 	pub fn update(self: *ServerWorld) !void {
 		const newTime = std.time.milliTimestamp();
-		var deltaTime = @intToFloat(f32, newTime - self.lastUpdateTime)/1000.0;
+		var deltaTime = @as(f32, @floatFromInt(newTime - self.lastUpdateTime))/1000.0;
 		self.lastUpdateTime = newTime;
 		if(deltaTime > 0.3) {
 			std.log.warn("Update time is getting too high. It's already at {} s!", .{deltaTime});

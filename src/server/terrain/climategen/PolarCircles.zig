@@ -78,26 +78,26 @@ pub fn generateMapFragment(map: *ClimateMapFragment, worldSeed: u64) Allocator.E
 	while(x < mapSize/biomeSize + 1) : (x += 1) {
 		var z: i32 = -1;
 		while(z < mapSize/biomeSize + 1) : (z += 1) {
-			var seed: u64 = @intCast(u64, @bitCast(u32, x +% map.pos.wx))*%65784967549 +% @intCast(u64, @bitCast(u32, z +% map.pos.wz))*%6758934659 +% worldSeed;
+			var seed: u64 = @as(u64, @intCast(@as(u32, @bitCast(x +% map.pos.wx))))*%65784967549 +% @as(u64, @intCast(@as(u32, @bitCast(z +% map.pos.wz))))*%6758934659 +% worldSeed;
 			random.scrambleSeed(&seed);
 			const xOffset = random.nextFloat(&seed) - 0.5;
 			const zOffset = random.nextFloat(&seed) - 0.5;
-			var humid = getInitialHumidity(map, @intToFloat(f32, x), @intToFloat(f32, z), heightMap.get(@intCast(usize, x + mapSize/biomeSize), @intCast(usize, z + mapSize/biomeSize)));
-			var temp = getInitialTemperature(map, @intToFloat(f32, x), @intToFloat(f32, z), heightMap.get(@intCast(usize, x + mapSize/biomeSize), @intCast(usize, z + mapSize/biomeSize)));
+			var humid = getInitialHumidity(map, @floatFromInt(x), @floatFromInt(z), heightMap.get(@intCast(x + mapSize/biomeSize), @intCast(z + mapSize/biomeSize)));
+			var temp = getInitialTemperature(map, @floatFromInt(x), @floatFromInt(z), heightMap.get(@intCast(x + mapSize/biomeSize), @intCast(z + mapSize/biomeSize)));
 			var humidInfluence = windInfluence;
 			var tempInfluence = windInfluence;
-			var nextX = @intToFloat(f32, x) + xOffset;
-			var nextZ = @intToFloat(f32, z) + zOffset;
+			var nextX = @as(f32, @floatFromInt(x)) + xOffset;
+			var nextZ = @as(f32, @floatFromInt(z)) + zOffset;
 			for(0..50) |_| {
-				const windX = windXMap.get(@intCast(usize, @floatToInt(i32, nextX) + mapSize/biomeSize), @intCast(usize, @floatToInt(i32, nextZ) + mapSize/biomeSize));
-				const windZ = windZMap.get(@intCast(usize, @floatToInt(i32, nextX) + mapSize/biomeSize), @intCast(usize, @floatToInt(i32, nextZ) + mapSize/biomeSize));
+				const windX = windXMap.get(@intCast(@as(i32, @intFromFloat(nextX)) + mapSize/biomeSize), @intCast(@as(i32, @intFromFloat(nextZ)) + mapSize/biomeSize));
+				const windZ = windZMap.get(@intCast(@as(i32, @intFromFloat(nextX)) + mapSize/biomeSize), @intCast(@as(i32, @intFromFloat(nextZ)) + mapSize/biomeSize));
 				nextX += windX*windSpeed;
 				nextZ += windZ*windSpeed;
 				// Make sure the bounds are ok:
-				if(nextX < -@intToFloat(f32, mapSize/biomeSize) or nextX > 2*@intToFloat(f32, mapSize/biomeSize) - 1) break;
-				if(nextZ < -@intToFloat(f32, mapSize/biomeSize) or nextZ > 2*@intToFloat(f32, mapSize/biomeSize) - 1) break;
+				if(nextX < -@as(f32, @floatFromInt(mapSize/biomeSize)) or nextX > 2*@as(f32, @floatFromInt(mapSize/biomeSize)) - 1) break;
+				if(nextZ < -@as(f32, @floatFromInt(mapSize/biomeSize)) or nextZ > 2*@as(f32, @floatFromInt(mapSize/biomeSize)) - 1) break;
 				// Find the local temperature and humidity:
-				const localHeight = heightMap.get(@intCast(usize, @floatToInt(i32, nextX) + mapSize/biomeSize), @intCast(usize, @floatToInt(i32, nextZ) + mapSize/biomeSize));
+				const localHeight = heightMap.get(@intCast(@as(i32, @intFromFloat(nextX)) + mapSize/biomeSize), @intCast(@as(i32, @intFromFloat(nextZ)) + mapSize/biomeSize));
 				const localTemp =  getInitialTemperature(map, nextX, nextZ, localHeight);
 				const localHumid =  getInitialHumidity(map, nextX, nextZ, localHeight);
 				humid = (1 - humidInfluence)*humid + humidInfluence*localHumid;
@@ -108,26 +108,26 @@ pub fn generateMapFragment(map: *ClimateMapFragment, worldSeed: u64) Allocator.E
 				humidInfluence *= std.math.pow(f32, 1 - localHeight, 0.05);
 			}
 			// Insert the biome type:
-			const typ = findClimate(heightMap.get(@intCast(usize, x + mapSize/biomeSize), @intCast(usize, z + mapSize/biomeSize)), humid, temp);
-			biomeMap[@intCast(usize, x + 1)][@intCast(usize, z + 1)] = terrain.biomes.getRandomly(typ, &seed);
+			const typ = findClimate(heightMap.get(@intCast(x + mapSize/biomeSize), @intCast(z + mapSize/biomeSize)), humid, temp);
+			biomeMap[@intCast(x + 1)][@intCast(z + 1)] = terrain.biomes.getRandomly(typ, &seed);
 		}
 	}
 	x = 0;
 	while(x < mapSize/biomeSize) : (x += 1) {
 		var z: i32 = 0;
 		while(z < mapSize/biomeSize) : (z += 1) {
-			const biome = (&biomeMap[@intCast(usize, x + 1)])[@intCast(usize, z + 1)]; // TODO: #15685
+			const biome = (&biomeMap[@intCast(x + 1)])[@intCast(z + 1)]; // TODO: #15685
 			var maxMinHeight: i32 = std.math.minInt(i32);
 			var minMaxHeight: i32 = std.math.maxInt(i32);
 			var dx: i32 = -1;
 			while(dx <= 1) : (dx += 1) {
 				var dz: i32 = -1;
 				while(dz <= 1) : (dz += 1) {
-					maxMinHeight = @max(maxMinHeight, (&biomeMap[@intCast(usize, x + dx + 1)])[@intCast(usize, z + dz + 1)].minHeight); // TODO: #15685
-					minMaxHeight = @min(minMaxHeight, (&biomeMap[@intCast(usize, x + dx + 1)])[@intCast(usize, z + dz + 1)].maxHeight); // TODO: #15685
+					maxMinHeight = @max(maxMinHeight, (&biomeMap[@intCast(x + dx + 1)])[@intCast(z + dz + 1)].minHeight); // TODO: #15685
+					minMaxHeight = @min(minMaxHeight, (&biomeMap[@intCast(x + dx + 1)])[@intCast(z + dz + 1)].maxHeight); // TODO: #15685
 				}
 			}
-			var seed: u64 = @intCast(u64, @bitCast(u32, x +% map.pos.wx))*%675893674893 +% @intCast(u64, @bitCast(u32, z +% map.pos.wz))*%2895478591 +% worldSeed;
+			var seed: u64 = @as(u64, @bitCast(x +% map.pos.wx))*%675893674893 +% @as(u64, @bitCast(z +% map.pos.wz))*%2895478591 +% worldSeed;
 			const xOffset = random.nextFloat(&seed) - 0.5;
 			const zOffset = random.nextFloat(&seed) - 0.5;
 			var height = random.nextFloat(&seed);
@@ -137,13 +137,13 @@ pub fn generateMapFragment(map: *ClimateMapFragment, worldSeed: u64) Allocator.E
 			if(minMaxHeight < biome.minHeight + @divTrunc(biome.maxHeight - biome.minHeight, 4)) {
 				height = height*0.25;
 			}
-			height = height*@intToFloat(f32, biome.maxHeight - biome.minHeight) + @intToFloat(f32, biome.minHeight);
+			height = height*@as(f32, @floatFromInt(biome.maxHeight - biome.minHeight)) + @as(f32, @floatFromInt(biome.minHeight));
 			const wx = x*terrain.SurfaceMap.MapFragment.biomeSize +% map.pos.wx;
 			const wz = z*terrain.SurfaceMap.MapFragment.biomeSize +% map.pos.wz;
-			map.map[@intCast(usize, x)][@intCast(usize, z)] = .{
+			map.map[@intCast(x)][@intCast(z)] = .{
 				.biome = biome,
-				.x = wx +% @floatToInt(i32, xOffset*terrain.SurfaceMap.MapFragment.biomeSize),
-				.z = wz +% @floatToInt(i32, zOffset*terrain.SurfaceMap.MapFragment.biomeSize),
+				.x = wx +% @as(i32, @intFromFloat(xOffset*terrain.SurfaceMap.MapFragment.biomeSize)),
+				.z = wz +% @as(i32, @intFromFloat(zOffset*terrain.SurfaceMap.MapFragment.biomeSize)),
 				.height = height,
 				.seed = random.nextInt(u64, &seed),
 			};
@@ -153,8 +153,8 @@ pub fn generateMapFragment(map: *ClimateMapFragment, worldSeed: u64) Allocator.E
 
 fn getInitialHumidity(map: *ClimateMapFragment, x: f32, z: f32, height: f32) f32 {
 	if(height < oceanThreshold) return 1;
-	const wx = x + @intToFloat(f32, map.pos.wx >> terrain.SurfaceMap.MapFragment.biomeShift);
-	const wz = z + @intToFloat(f32, map.pos.wz >> terrain.SurfaceMap.MapFragment.biomeShift);
+	const wx = x + @as(f32, @floatFromInt(map.pos.wx >> terrain.SurfaceMap.MapFragment.biomeShift));
+	const wz = z + @as(f32, @floatFromInt(map.pos.wz >> terrain.SurfaceMap.MapFragment.biomeShift));
 	var distance = @sqrt(wx*wx + wz*wz);
 	distance = @rem(distance, 1);
 	// On earth there is high humidity at the equator and the poles and low humidty at around 30°.
@@ -170,8 +170,8 @@ fn getInitialHumidity(map: *ClimateMapFragment, x: f32, z: f32, height: f32) f32
 }
 
 fn getInitialTemperature(map: *ClimateMapFragment, x: f32, z: f32, height: f32) f32 {
-	const wx = x + @intToFloat(f32, map.pos.wx >> terrain.SurfaceMap.MapFragment.biomeShift);
-	const wz = z + @intToFloat(f32, map.pos.wz >> terrain.SurfaceMap.MapFragment.biomeShift);
+	const wx = x + @as(f32, @floatFromInt(map.pos.wx >> terrain.SurfaceMap.MapFragment.biomeShift));
+	const wz = z + @as(f32, @floatFromInt(map.pos.wz >> terrain.SurfaceMap.MapFragment.biomeShift));
 	var temp = @rem(@sqrt(wx*wx + wz*wz)/ringSize, 1);
 	// Uses a simple triangle function:
 	if(temp > 0.5) temp = 1 - temp;

@@ -40,7 +40,10 @@ const interpolatedPart = 4;
 
 fn getValue(noise: Array3D(f32), map: *CaveMapFragment, outerSize: u31, biomeMap: InterpolatableCaveBiomeMapView, wx: i32, wy: i32, wz: i32) f32 {
 	_ = biomeMap; // TODO: clean this up at some point.
-	return noise.get(@intCast(u31, wx - map.pos.wx)/outerSize, @intCast(u31, wy - map.pos.wy)/outerSize, @intCast(u31, wz - map.pos.wz)/outerSize);// + biomeMap.interpolateValue(wx, wy, wz, "caves")*scale;
+	const relX: u31 = @intCast(wx - map.pos.wx);
+	const relY: u31 = @intCast(wy - map.pos.wy);
+	const relZ: u31 = @intCast(wz - map.pos.wz);
+	return noise.get(relX/outerSize, relY/outerSize, relZ/outerSize);// + biomeMap.interpolateValue(wx, wy, wz, "caves")*scale;
 }
 
 pub fn generate(map: *CaveMapFragment, worldSeed: u64) Allocator.Error!void {
@@ -48,6 +51,7 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) Allocator.Error!void {
 	const biomeMap = try InterpolatableCaveBiomeMapView.init(map.pos, CaveMapFragment.width*map.pos.voxelSize);
 	defer biomeMap.deinit();
 	const outerSize = @max(map.pos.voxelSize, interpolatedPart);
+	const outerSizeFloat: f32 = @floatFromInt(outerSize);
 	var noise = try FractalNoise3D.generateAligned(main.threadAllocator, map.pos.wx, map.pos.wy, map.pos.wz, outerSize, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, CaveMapFragment.height*map.pos.voxelSize/outerSize + 1, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, worldSeed, scale);//try Cached3DFractalNoise.init(map.pos.wx, map.pos.wy & ~@as(i32, CaveMapFragment.width*map.pos.voxelSize - 1), map.pos.wz, outerSize, map.pos.voxelSize*CaveMapFragment.width, worldSeed, scale);
 	defer noise.deinit(main.threadAllocator);
 	biomeMap.bulkInterpolateValue("caves", map.pos.wx, map.pos.wy, map.pos.wz, outerSize, noise, .addToMap, scale);
@@ -87,8 +91,8 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) Allocator.Error!void {
 					while(dx < outerSize) : (dx += map.pos.voxelSize) {
 						var dz: u31 = 0;
 						while(dz < outerSize) : (dz += map.pos.voxelSize) {
-							const ix = @intToFloat(f32, dx)/@intToFloat(f32, outerSize);
-							const iz = @intToFloat(f32, dz)/@intToFloat(f32, outerSize);
+							const ix = @as(f32, @floatFromInt(dx))/outerSizeFloat;
+							const iz = @as(f32, @floatFromInt(dz))/outerSizeFloat;
 							const lowerVal = (
 								(1 - ix)*(1 - iz)*val000
 								+ (1 - ix)*iz*val001
@@ -113,7 +117,7 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) Allocator.Error!void {
 								// Could be more efficient, but I'm lazy right now and I'll just go through the entire range:
 								var dy: u31 = 0;
 								while(dy < outerSize) : (dy += map.pos.voxelSize) {
-									const iy = @intToFloat(f32, dy)/@intToFloat(f32, outerSize);
+									const iy = @as(f32, @floatFromInt(dy))/outerSizeFloat;
 									const val = (1 - iy)*lowerVal + iy*upperVal;
 									if(val > 0)
 										map.removeRange(x + dx, z + dz, y + dy, y + dy + map.pos.voxelSize);

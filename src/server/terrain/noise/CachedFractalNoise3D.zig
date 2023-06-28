@@ -34,8 +34,8 @@ pub fn init(wx: i32, wy: i32, wz: i32, voxelSize: u31, size: u31, worldSeed: u64
 		while(y <= maxSize) : (y += reducedScale) {
 			var z: u31 = 0;
 			while(z <= maxSize) : (z += reducedScale) {
-				self.cache.ptr(x, y, z).* = (@intToFloat(f32, reducedScale + 1 + scale)*self.getGridValue(x, y, z))*@intToFloat(f32, voxelSize);
-			}//                                               ↑ sacrifice some resolution to reserve the value 0, for determining if the value was initialized. This prevents an expensive array initialization.
+				self.cache.ptr(x, y, z).* = (@as(f32, @floatFromInt(reducedScale + 1 + scale))*self.getGridValue(x, y, z))*@as(f32, @floatFromInt(voxelSize));
+			}//                                                     ↑ sacrifice some resolution to reserve the value 0, for determining if the value was initialized. This prevents an expensive array initialization.
 		}
 	}
 	return self;
@@ -64,7 +64,7 @@ fn generateRegion(self: CachedFractalNoise3D, _x: u31, _y: u31, _z: u31, voxelSi
 	const xMid = x + @divExact(voxelSize, 2);
 	const yMid = y + @divExact(voxelSize, 2);
 	const zMid = z + @divExact(voxelSize, 2);
-	const randomFactor = @intToFloat(f32, voxelSize*self.pos.voxelSize);
+	const randomFactor: f32 = @floatFromInt(voxelSize*self.pos.voxelSize);
 
 	const cache = self.cache;
 
@@ -116,13 +116,13 @@ fn _getValue(self: CachedFractalNoise3D, x: u31, y: u31, z: u31) f32 {
 	if(value != 0) return value;
 	// Need to actually generate stuff now.
 	const minShift = @min(@ctz(x), @ctz(y), @ctz(z));
-	self.generateRegion(x, y, z, @as(u31, 2) << @intCast(u5, minShift));
+	self.generateRegion(x, y, z, @as(u31, 2) << @intCast(minShift));
 	return self.cache.get(x, y, z);
 }
 
 pub fn getValue(self: CachedFractalNoise3D, wx: i32, wy: i32, wz: i32) f32 {
-	const x = @intCast(u31, (wx - self.pos.wx) >> self.voxelShift);
-	const y = @intCast(u31, (wy - self.pos.wy) >> self.voxelShift);
-	const z = @intCast(u31, (wz - self.pos.wz) >> self.voxelShift);
-	return self._getValue(x, y, z) - @intToFloat(f32, self.scale);
+	const x: u31 = @intCast((wx - self.pos.wx) >> self.voxelShift);
+	const y: u31 = @intCast((wy - self.pos.wy) >> self.voxelShift);
+	const z: u31 = @intCast((wz - self.pos.wz) >> self.voxelShift);
+	return self._getValue(x, y, z) - @as(f32, @floatFromInt(self.scale));
 }

@@ -98,7 +98,7 @@ pub fn register(_: []const u8, id: []const u8, json: JsonElement) !u16 {
 		std.log.warn("Registered block with id {s} twice!", .{id});
 	}
 	_id[size] = try allocator.dupe(u8, id);
-	try reverseIndices.put(_id[size], @intCast(u16, size));
+	try reverseIndices.put(_id[size], @intCast(size));
 
 	_mode[size] = rotation.getByID(json.get([]const u8, "rotation", "cubyz:no_rotation"));
 	_breakingPower[size] = json.get(f32, "breakingPower", 0);
@@ -129,13 +129,13 @@ pub fn register(_: []const u8, id: []const u8, json: JsonElement) !u16 {
 			.size = oreProperties.get(f32, "size", 0),
 			.maxHeight = oreProperties.get(i32, "height", 0),
 			.density = oreProperties.get(f32, "density", 0.5),
-			.blockType = @intCast(u16, size),
+			.blockType = @intCast(size),
 			.sources = &.{},
 		});
 	}
 
 	size += 1;
-	return @intCast(u16, size - 1);
+	return @intCast(size - 1);
 }
 
 fn registerBlockDrop(typ: u16, json: JsonElement) !void {
@@ -212,7 +212,7 @@ pub const Block = packed struct {
 		return @as(u32, self.typ) | @as(u32, self.data)<<16;
 	}
 	pub fn fromInt(self: u32) Block {
-		return Block{.typ=@truncate(u16, self), .data=@intCast(u16, self>>16)};
+		return Block{.typ=@truncate(self), .data=@intCast(self>>16)};
 	}
 	pub inline fn lightingTransparent(self: Block) bool {
 		return (&_lightingTransparent)[self.typ]; // TODO: #15685
@@ -395,7 +395,7 @@ pub const meshes = struct {
 			// Test if it's already in the list:
 			for(textureIDs.items, 0..) |other, j| {
 				if(std.mem.eql(u8, other, path)) {
-					result = @intCast(u31, j);
+					result = @intCast(j);
 					return result;
 				}
 			}
@@ -412,7 +412,7 @@ pub const meshes = struct {
 			};
 			file.close(); // It was only openend to check if it exists.
 			// Otherwise read it into the list:
-			result = @intCast(u31, blockTextures.items.len);
+			result = @intCast(blockTextures.items.len);
 
 			try blockTextures.append(Image.readFromFile(arenaForWorld.allocator(), path) catch blk: {
 				std.log.warn("Could not read image from: {s}", .{path});
@@ -429,10 +429,10 @@ pub const meshes = struct {
 			const textures = textureInfo.getChild("textures");
 			if(textures != .JsonArray) return result;
 			// Add the new textures into the list. Since this is an animation all textures that weren't found need to be replaced with undefined.
-			result = @intCast(u31, blockTextures.items.len);
+			result = @intCast(blockTextures.items.len);
 			for(textures.JsonArray.items, 0..) |item, i| {
 				if(i == 0) {
-					try animation.append(.{.frames = @intCast(i32, textures.JsonArray.items.len), .time = animationTime});
+					try animation.append(.{.frames = @intCast(textures.JsonArray.items.len), .time = animationTime});
 				} else {
 					try animation.append(.{.frames = 1, .time = 1});
 				}
@@ -485,7 +485,7 @@ pub const meshes = struct {
 
 		try getTextureIndices(json, assetFolder, &_textureIndices[meshes.size]);
 
-		maxTextureCount[meshes.size] = @intCast(u32, textureIDs.items.len);
+		maxTextureCount[meshes.size] = @intCast(textureIDs.items.len);
 
 		meshes.size += 1;
 	}

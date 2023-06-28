@@ -265,16 +265,16 @@ pub const InterpolatableCaveBiomeMapView = struct {
 		const determinantCol3 = rotate231(row1)*rotate312(row2) - rotate312(row1)*rotate231(row2);
 		// Notice that the determinant |A| can be expressed as dot(row1, determinantCol1)
 		const determinantA = vec.dot(determinantCol1, row1);
-		const invDeterminantA = 1.0/@intToFloat(f32, determinantA);
+		const invDeterminantA = 1.0/@as(f32, @floatFromInt(determinantA));
 		// Now we change the memory layout use rows instead of columns to make matrix-vector multiplication easier later.
 		const determinantRow1 = Vec3i{determinantCol1[0], determinantCol2[0], determinantCol3[0]};
 		const determinantRow2 = Vec3i{determinantCol1[1], determinantCol2[1], determinantCol3[1]};
 		const determinantRow3 = Vec3i{determinantCol1[2], determinantCol2[2], determinantCol3[2]};
 
 		const @"unscaledλ123" = Vec3i{vec.dot(determinantRow1, @"d⃗"), vec.dot(determinantRow2, @"d⃗"), vec.dot(determinantRow3, @"d⃗")};
-		const @"λ1" = @intToFloat(f32, @"unscaledλ123"[0])*invDeterminantA;
-		const @"λ2" = @intToFloat(f32, @"unscaledλ123"[1])*invDeterminantA;
-		const @"λ3" = @intToFloat(f32, @"unscaledλ123"[2])*invDeterminantA;
+		const @"λ1" = @as(f32, @floatFromInt(@"unscaledλ123"[0]))*invDeterminantA;
+		const @"λ2" = @as(f32, @floatFromInt(@"unscaledλ123"[1]))*invDeterminantA;
+		const @"λ3" = @as(f32, @floatFromInt(@"unscaledλ123"[2]))*invDeterminantA;
 		const @"λ4" = 1 - @"λ1" - @"λ2" - @"λ3";
 		// TODO: I wonder if there are some optimizations possible, given that
 		// per construction |x₁ - x₄| = |x₂ - x₄| = ... = |z₂ - z₄| = ±caveBiomeSize/2
@@ -296,7 +296,7 @@ pub const InterpolatableCaveBiomeMapView = struct {
 		if(wz - self.surfaceFragments[0].pos.wz >= MapFragment.mapSize*self.pos.voxelSize) {
 			index += 1;
 		}
-		const height = @floatToInt(i32, self.surfaceFragments[index].getHeight(wx, wz));
+		const height: i32 = @intFromFloat(self.surfaceFragments[index].getHeight(wx, wz));
 		if(wy < height - 32 or wy > height + 128) return null;
 		return self.surfaceFragments[index].getBiome(wx, wz);
 	}
@@ -312,9 +312,9 @@ pub const InterpolatableCaveBiomeMapView = struct {
 		if(wz - (&self.fragments)[0].pos.wz >= CaveBiomeMapFragment.caveBiomeMapSize) { // TODO: #15685
 			index += 1;
 		}
-		const relX = @intCast(u31, wx - (&self.fragments)[index].pos.wx); // TODO: #15685
-		const relY = @intCast(u31, wy - (&self.fragments)[index].pos.wy); // TODO: #15685
-		const relZ = @intCast(u31, wz - (&self.fragments)[index].pos.wz); // TODO: #15685
+		const relX: u31 = @intCast(wx - (&self.fragments)[index].pos.wx); // TODO: #15685
+		const relY: u31 = @intCast(wy - (&self.fragments)[index].pos.wy); // TODO: #15685
+		const relZ: u31 = @intCast(wz - (&self.fragments)[index].pos.wz); // TODO: #15685
 		const indexInArray = CaveBiomeMapFragment.getIndex(relX, relY, relZ);
 		return (&(&self.fragments)[index].biomeMap[indexInArray])[map]; // TODO: #15685
 	}
@@ -343,8 +343,8 @@ pub const InterpolatableCaveBiomeMapView = struct {
 		}
 
 		if(getSeed) {
-			// A good old "I don't know what I'm doing" hash:
-			seed.* = @bitCast(u64, @as(i64, gridPointX) << 48 ^ @as(i64, gridPointY) << 23 ^ @as(i64, gridPointZ) << 11 ^ @as(i64, gridPointX) >> 5 ^ @as(i64, gridPointY) << 3 ^ @as(i64, gridPointZ) ^ @as(i64, map)*5427642781) ^ main.server.world.?.seed;
+			// A good old "I don't know what I'm doing" hash (TODO: Use some standard hash maybe):
+			seed.* = @as(u64, @bitCast(@as(i64, gridPointX) << 48 ^ @as(i64, gridPointY) << 23 ^ @as(i64, gridPointZ) << 11 ^ @as(i64, gridPointX) >> 5 ^ @as(i64, gridPointY) << 3 ^ @as(i64, gridPointZ) ^ @as(i64, map)*5427642781)) ^ main.server.world.?.seed;
 		}
 
 		return self._getBiome(gridPointX, gridPointY, gridPointZ, map);
@@ -416,9 +416,9 @@ pub const CaveBiomeMapView = struct {
 			const valueX = noiseX.getValue(wx, wy, wz)*0.5 + noiseY.getRandomValue(wx, wy, wz)*8;
 			const valueY = noiseY.getValue(wx, wy, wz)*0.5 + noiseZ.getRandomValue(wx, wy, wz)*8;
 			const valueZ = noiseZ.getValue(wx, wy, wz)*0.5 + noiseX.getRandomValue(wx, wy, wz)*8;
-			wx += @floatToInt(i32, valueX);
-			wy += @floatToInt(i32, valueY);
-			wz += @floatToInt(i32, valueZ);
+			wx += @intFromFloat(valueX);
+			wy += @intFromFloat(valueY);
+			wz += @intFromFloat(valueZ);
 		};
 
 		return self.super.getRoughBiome(wx, wy, wz, getSeed, seed, false);

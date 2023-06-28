@@ -9,15 +9,13 @@ const multiplier: u64 = 0x5deece66d;
 const addend: u64 = 0xb;
 const mask: u64 = (1 << 48) - 1;
 
-const doubleUnit: f64 = 1.0/@intToFloat(f64, 1 << 53);
-
 pub fn scrambleSeed(seed: *u64) void {
 	seed.* = (seed.* ^ multiplier) & mask;
 }
 
 fn nextWithBitSize(comptime T: type, seed: *u64, bitSize: u6) T {
 	seed.* = ((seed.*)*%multiplier +% addend) & mask;
-	return @intCast(T, (seed.* >> (48 - bitSize)) & std.math.maxInt(T));
+	return @intCast((seed.* >> (48 - bitSize)) & std.math.maxInt(T));
 }
 
 fn next(comptime T: type, seed: *u64) T {
@@ -48,17 +46,17 @@ pub fn nextIntBounded(comptime T: type, seed: *u64, bound: T) T {
 }
 
 pub fn nextFloat(seed: *u64) f32 {
-	return @intToFloat(f32, nextInt(u24, seed))/@intToFloat(f32, 1 << 24);
+	return @as(f32, @floatFromInt(nextInt(u24, seed)))/(1 << 24);
 }
 
 pub fn nextFloatSigned(seed: *u64) f32 {
-	return @intToFloat(f32, @bitCast(i24, nextInt(u24, seed)))/@intToFloat(f32, 1 << 23);
+	return @as(f32, @floatFromInt(@as(i24, @bitCast(nextInt(u24, seed)))))/(1 << 23);
 }
 
 pub fn nextDouble(seed: *u64) f64 {
 	const lower: u52 = nextInt(u32, seed);
 	const upper: u52 = nextInt(u20, seed);
-	return @intToFloat(f64, upper<<32 | lower)/@intToFloat(f64, 1 << 52);
+	return @as(f64, @floatFromInt(upper<<32 | lower))/(1 << 52);
 }
 
 pub fn nextPointInUnitCircle(seed: *u64) Vec2f {
@@ -74,11 +72,11 @@ pub fn nextPointInUnitCircle(seed: *u64) Vec2f {
 pub fn initSeed3D(worldSeed: u64, pos: Vec3i) u64 {
 	const fac = Vec3i {11248723, 105436839, 45399083};
 	const seed = @reduce(.Xor, fac *% pos);
-	return @bitCast(u32, seed) ^ worldSeed;
+	return @as(u32, @bitCast(seed)) ^ worldSeed;
 }
 
 pub fn initSeed2D(worldSeed: u64, pos: Vec2i) u64 {
 	const fac = Vec2i {11248723, 105436839};
 	const seed = @reduce(.Xor, fac *% pos);
-	return @bitCast(u32, seed) ^ worldSeed;
+	return @as(u32, @bitCast(seed)) ^ worldSeed;
 }

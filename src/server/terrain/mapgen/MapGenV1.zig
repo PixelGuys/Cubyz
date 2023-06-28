@@ -52,13 +52,13 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) Allocator.Error!vo
 	for(biomePositions.mem, terrainData.mem) |biomePoint, *terrainPoint| {
 		//var seed: u64 = biomePoint.seed ^ 54738964378901;
 		terrainPoint.* = .{
-			.height = @intToFloat(f32, biomePoint.biome.minHeight) + 0.5*@intToFloat(f32, biomePoint.biome.maxHeight - biomePoint.biome.minHeight), // TODO: Randomize
+			.height = @as(f32, @floatFromInt(biomePoint.biome.minHeight)) + 0.5*@as(f32, @floatFromInt(biomePoint.biome.maxHeight - biomePoint.biome.minHeight)), // TODO: Randomize
 			.roughness = biomePoint.biome.roughness,
 			.hills = biomePoint.biome.hills,
 			.mountains = biomePoint.biome.mountains,
 		};
 	}
-	for(0..0) |_| { // Smooth the biome heights.
+	for(0..0) |_| { // TODO? Smooth the biome heights.
 		for(1..biomePositions.width-1) |x| {
 			for(1..biomePositions.height-1) |z| {
 				var minHeight: f32 = std.math.floatMax(f32);
@@ -70,15 +70,15 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) Allocator.Error!vo
 					}
 				}
 				var newHeight = (minHeight + maxHeight)/2;
-				newHeight = @min(newHeight, @intToFloat(f32, biomePositions.get(x, z).biome.maxHeight));
-				newHeight = @max(newHeight, @intToFloat(f32, biomePositions.get(x, z).biome.minHeight));
+				newHeight = @min(newHeight, @as(f32, @floatFromInt(biomePositions.get(x, z).biome.maxHeight)));
+				newHeight = @max(newHeight, @as(f32, @floatFromInt(biomePositions.get(x, z).biome.minHeight)));
 				terrainData.ptr(x, z).height = newHeight;
 			}
 		}
 	}
 	var seed = worldSeed;
 	random.scrambleSeed(&seed);
-	seed = @bitCast(u32, (random.nextInt(i32, &seed) | 1)*%map.pos.wx ^ (random.nextInt(i32, &seed) | 1)*%map.pos.wz);
+	seed = @as(u32, @bitCast((random.nextInt(i32, &seed) | 1)*%map.pos.wx ^ (random.nextInt(i32, &seed) | 1)*%map.pos.wz)); // TODO: Use random.initSeed2D();
 	random.scrambleSeed(&seed);
 	
 	const xOffsetMap = try Array2D(f32).init(main.threadAllocator, scaledSize, scaledSize);
@@ -102,29 +102,31 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) Allocator.Error!vo
 	defer roughMap.deinit(main.threadAllocator);
 	try FractalNoise.generateSparseFractalTerrain(map.pos.wx, map.pos.wz, 64, worldSeed ^ 954936678493, roughMap, map.pos.voxelSize);
 
-	for(0..map.heightMap.len) |x| {
-		for(0..map.heightMap.len) |z| {
+	var x: u31 = 0;
+	while(x < map.heightMap.len) : (x += 1) {
+		var z: u31 = 0;
+		while(z < map.heightMap.len) : (z += 1) {
 			// Do the biome interpolation:
 			var height: f32 = 0;
 			var roughness: f32 = 0;
 			var hills: f32 = 0;
 			var mountains: f32 = 0;
-			const wx = @intCast(i32, x)*map.pos.voxelSize + map.pos.wx;
-			const wz = @intCast(i32, z)*map.pos.voxelSize + map.pos.wz;
-			var updatedX = @intToFloat(f32, wx) + (xOffsetMap.get(x, z) - 0.5)*biomeSize*4;
-			var updatedZ = @intToFloat(f32, wz) + (zOffsetMap.get(x, z) - 0.5)*biomeSize*4;
-			var xBiome = @floatToInt(i32, @floor((updatedX - @intToFloat(f32, map.pos.wx))/@intToFloat(f32, biomeSize)));
-			var zBiome = @floatToInt(i32, @floor((updatedZ - @intToFloat(f32, map.pos.wz))/@intToFloat(f32, biomeSize)));
-			var relXBiome = (0.5 + updatedX - @intToFloat(f32, map.pos.wx +% xBiome*biomeSize))/@intToFloat(f32, biomeSize);
+			const wx: f32 = @floatFromInt(x*map.pos.voxelSize + map.pos.wx);
+			const wz: f32 = @floatFromInt(z*map.pos.voxelSize + map.pos.wz);
+			var updatedX = wx + (xOffsetMap.get(x, z) - 0.5)*biomeSize*4;
+			var updatedZ = wz + (zOffsetMap.get(x, z) - 0.5)*biomeSize*4;
+			var xBiome: i32 = @intFromFloat(@floor((updatedX - @as(f32, @floatFromInt(map.pos.wx)))/biomeSize));
+			var zBiome: i32 = @intFromFloat(@floor((updatedZ - @as(f32, @floatFromInt(map.pos.wz)))/biomeSize));
+			var relXBiome = (0.5 + updatedX - @as(f32, @floatFromInt(map.pos.wx +% xBiome*biomeSize)))/biomeSize;
 			xBiome += offset;
-			var relZBiome = (0.5 + updatedZ - @intToFloat(f32, map.pos.wz +% zBiome*biomeSize))/@intToFloat(f32, biomeSize);
+			var relZBiome = (0.5 + updatedZ - @as(f32, @floatFromInt(map.pos.wz +% zBiome*biomeSize)))/biomeSize;
 			zBiome += offset;
 			const coefficientsX = cubicInterpolationWeights(relXBiome);
 			const coefficientsZ = cubicInterpolationWeights(relZBiome);
 			for(0..4) |dx| {
 				for(0..4) |dz| {
-					const biomeMapX = @intCast(usize, xBiome) + dx - 1;
-					const biomeMapZ = @intCast(usize, zBiome) + dz - 1;
+					const biomeMapX = @as(usize, @intCast(xBiome)) + dx - 1;
+					const biomeMapZ = @as(usize, @intCast(zBiome)) + dz - 1;
 					const weight = coefficientsX[dx]*coefficientsZ[dz];
 					const terrainPoint = terrainData.get(biomeMapX, biomeMapZ);
 					height += terrainPoint.height*weight;
@@ -137,17 +139,17 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) Allocator.Error!vo
 			height += (hillMap.get(x, z) - 0.5)*2*hills;
 			height += (mountainMap.get(x, z) - 0.5)*2*mountains;
 			map.heightMap[x][z] = height;
-			map.minHeight = @min(map.minHeight, @floatToInt(i32, height));
+			map.minHeight = @min(map.minHeight, height);
 			map.minHeight = @max(map.minHeight, 0);
-			map.maxHeight = @max(map.maxHeight, @floatToInt(i32, height));
+			map.maxHeight = @max(map.maxHeight, height);
 
 
 			// Select a biome. Also adding some white noise to make a smoother transition.
-			updatedX += (@intToFloat(f32, random.nextInt(u3, &seed)) - 3.5)*@intToFloat(f32, biomeSize)/128;
-			updatedZ += (@intToFloat(f32, random.nextInt(u3, &seed)) - 3.5)*@intToFloat(f32, biomeSize)/128;
-			xBiome = @floatToInt(i32, @round((updatedX - @intToFloat(f32, map.pos.wx))/@intToFloat(f32, biomeSize)));
+			updatedX += random.nextFloatSigned(&seed)*3.5*biomeSize/128;
+			updatedZ += random.nextFloatSigned(&seed)*3.5*biomeSize/128;
+			xBiome = @intFromFloat(@round((updatedX - @as(f32, @floatFromInt(map.pos.wx)))/biomeSize));
 			xBiome += offset;
-			zBiome = @floatToInt(i32, @round((updatedZ - @intToFloat(f32, map.pos.wz))/@intToFloat(f32, biomeSize)));
+			zBiome = @intFromFloat(@round((updatedZ - @as(f32, @floatFromInt(map.pos.wz)))/biomeSize));
 			zBiome += offset;
 			var shortestDist: f32 = std.math.floatMax(f32);
 			var shortestBiomePoint: terrain.ClimateMap.BiomePoint = undefined;
@@ -155,14 +157,14 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) Allocator.Error!vo
 			while(x0 <= xBiome + 2) : (x0 += 1) {
 				var z0 = zBiome;
 				while(z0 <= zBiome + 2) : (z0 += 1) {
-					const distSquare = biomePositions.get(@intCast(usize, xBiome), @intCast(usize, zBiome)).distSquare(updatedX, updatedZ);
+					const distSquare = biomePositions.get(@intCast(xBiome), @intCast(zBiome)).distSquare(updatedX, updatedZ);
 					if(distSquare < shortestDist) {
 						shortestDist = distSquare;
-						shortestBiomePoint = biomePositions.get(@intCast(usize, xBiome), @intCast(usize, zBiome));
+						shortestBiomePoint = biomePositions.get(@intCast(xBiome), @intCast(zBiome));
 					}
 				}
 			}
-			map.biomeMap[x][z] = shortestBiomePoint.getFittingReplacement(@floatToInt(i32, height + random.nextFloat(&seed)*4 - 2));
+			map.biomeMap[x][z] = shortestBiomePoint.getFittingReplacement(@intFromFloat(height + random.nextFloat(&seed)*4 - 2));
 		}
 	}
 }

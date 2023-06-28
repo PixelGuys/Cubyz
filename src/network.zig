@@ -40,7 +40,7 @@ const Socket = struct {
 			.port = @byteSwap(localPort),
 			.addr = 0,
 		};
-		try os.bind(self.socketID, @ptrCast(*const os.sockaddr, &bindingAddr), @sizeOf(os.sockaddr.in));
+		try os.bind(self.socketID, @ptrCast(&bindingAddr), @sizeOf(os.sockaddr.in));
 		return self;
 	}
 
@@ -53,7 +53,7 @@ const Socket = struct {
 			.port = @byteSwap(destination.port),
 			.addr = destination.ip,
 		};
-		std.debug.assert(data.len == os.sendto(self.socketID, data, 0, @ptrCast(*const os.sockaddr, &addr), @sizeOf(os.sockaddr.in)) catch |err| {
+		std.debug.assert(data.len == os.sendto(self.socketID, data, 0, @ptrCast(&addr), @sizeOf(os.sockaddr.in)) catch |err| {
 			std.log.info("Got error while sending to {}: {s}", .{destination, @errorName(err)});
 			return;
 		});
@@ -85,7 +85,7 @@ const Socket = struct {
 		}
 		var addr: os.sockaddr.in = undefined;
 		var addrLen: os.socklen_t = @sizeOf(os.sockaddr.in);
-		const length = try os.recvfrom(self.socketID, buffer, 0,  @ptrCast(*os.sockaddr, &addr), &addrLen);
+		const length = try os.recvfrom(self.socketID, buffer, 0,  @ptrCast(&addr), &addrLen);
 		resultAddress.ip = addr.addr;
 		resultAddress.port = @byteSwap(addr.port);
 		return buffer[0..length];
@@ -361,7 +361,7 @@ const STUN = struct {
 
 	fn verifyHeader(data: []const u8, transactionID: []const u8) !void {
 		if(data[0] != 0x01 or data[1] != 0x01) return error.NotABinding;
-		if(@intCast(u16, data[2] & 0xff)*256 + (data[3] & 0xff) != data.len - 20) return error.BadSize;
+		if(@as(u16, @intCast(data[2] & 0xff))*256 + (data[3] & 0xff) != data.len - 20) return error.BadSize;
 		for(MAGIC_COOKIE, 0..) |cookie, i| {
 			if(data[i + 4] != cookie) return error.WrongCookie;
 		}
@@ -702,7 +702,7 @@ pub const Protocols = struct {
 					.wx = std.mem.readIntBig(i32, remaining[0..4]),
 					.wy = std.mem.readIntBig(i32, remaining[4..8]),
 					.wz = std.mem.readIntBig(i32, remaining[8..12]),
-					.voxelSize = @intCast(u31, std.mem.readIntBig(i32, remaining[12..16])),
+					.voxelSize = @intCast(std.mem.readIntBig(i32, remaining[12..16])),
 				};
 				if(conn.user) |user| {
 					try main.server.world.?.queueChunk(request, user);
@@ -733,7 +733,7 @@ pub const Protocols = struct {
 				.wx = std.mem.readIntBig(i32, data[0..4]),
 				.wy = std.mem.readIntBig(i32, data[4..8]),
 				.wz = std.mem.readIntBig(i32, data[8..12]),
-				.voxelSize = @intCast(u31, std.mem.readIntBig(i32, data[12..16])),
+				.voxelSize = @intCast(std.mem.readIntBig(i32, data[12..16])),
 			};
 			const _inflatedData = try main.threadAllocator.alloc(u8, chunk.chunkVolume*4);
 			defer main.threadAllocator.free(_inflatedData);
@@ -779,15 +779,15 @@ pub const Protocols = struct {
 			}
 			lastPositionSent = time;
 			var data: [62]u8 = undefined;
-			std.mem.writeIntBig(u64, data[0..8], @bitCast(u64, playerPos[0]));
-			std.mem.writeIntBig(u64, data[8..16], @bitCast(u64, playerPos[1]));
-			std.mem.writeIntBig(u64, data[16..24], @bitCast(u64, playerPos[2]));
-			std.mem.writeIntBig(u64, data[24..32], @bitCast(u64, playerVel[0]));
-			std.mem.writeIntBig(u64, data[32..40], @bitCast(u64, playerVel[1]));
-			std.mem.writeIntBig(u64, data[40..48], @bitCast(u64, playerVel[2]));
-			std.mem.writeIntBig(u32, data[48..52], @bitCast(u32, game.camera.rotation[0]));
-			std.mem.writeIntBig(u32, data[52..56], @bitCast(u32, game.camera.rotation[1]));
-			std.mem.writeIntBig(u32, data[56..60], @bitCast(u32, game.camera.rotation[2]));
+			std.mem.writeIntBig(u64, data[0..8],   @as(u64, @bitCast(playerPos[0])));
+			std.mem.writeIntBig(u64, data[8..16],  @as(u64, @bitCast(playerPos[1])));
+			std.mem.writeIntBig(u64, data[16..24], @as(u64, @bitCast(playerPos[2])));
+			std.mem.writeIntBig(u64, data[24..32], @as(u64, @bitCast(playerVel[0])));
+			std.mem.writeIntBig(u64, data[32..40], @as(u64, @bitCast(playerVel[1])));
+			std.mem.writeIntBig(u64, data[40..48], @as(u64, @bitCast(playerVel[2])));
+			std.mem.writeIntBig(u32, data[48..52], @as(u32, @bitCast(game.camera.rotation[0])));
+			std.mem.writeIntBig(u32, data[52..56], @as(u32, @bitCast(game.camera.rotation[1])));
+			std.mem.writeIntBig(u32, data[56..60], @as(u32, @bitCast(game.camera.rotation[2])));
 			std.mem.writeIntBig(u16, data[60..62], time);
 			try conn.sendUnimportant(id, &data);
 		}
@@ -820,14 +820,14 @@ pub const Protocols = struct {
 			const fullEntityData = main.threadAllocator.alloc(u8, entityData.len + 3);
 			defer main.threadAllocator.free(fullEntityData);
 			fullEntityData[0] = type_entity;
-			std.mem.writeIntBig(i16, fullEntityData[1..3], @truncate(i16, std.time.milliTimestamp()));
+			std.mem.writeIntBig(i16, fullEntityData[1..3], @as(i16, @truncate(std.time.milliTimestamp())));
 			@memcpy(fullEntityData[3..], entityData);
 			conn.sendUnimportant(id, fullEntityData);
 
 			const fullItemData = main.threadAllocator.alloc(u8, itemData.len + 3);
 			defer main.threadAllocator.free(fullItemData);
 			fullItemData[0] = type_item;
-			std.mem.writeIntBig(i16, fullItemData[1..3], @truncate(i16, std.time.milliTimestamp()));
+			std.mem.writeIntBig(i16, fullItemData[1..3], @as(i16, @truncate(std.time.milliTimestamp())));
 			@memcpy(fullItemData[3..], itemData);
 			conn.sendUnimportant(id, fullItemData);
 		}
@@ -995,17 +995,17 @@ pub const Protocols = struct {
 			switch(data[0]) {
 				type_renderDistance => {
 					const renderDistance = std.mem.readIntBig(i32, data[1..5]);
-					const lodFactor = @bitCast(f32, std.mem.readIntBig(u32, data[5..9]));
+					const lodFactor: f32 = @bitCast(std.mem.readIntBig(u32, data[5..9]));
 					if(conn.user) |user| {
-						user.renderDistance = @intCast(u16, renderDistance); // TODO: Update the protocol to use u16.
+						user.renderDistance = @intCast(renderDistance); // TODO: Update the protocol to use u16.
 						user.lodFactor = lodFactor;
 					}
 				},
 				type_teleport => {
 					game.Player.setPosBlocking(Vec3d{
-						@bitCast(f64, std.mem.readIntBig(u64, data[1..9])),
-						@bitCast(f64, std.mem.readIntBig(u64, data[9..17])),
-						@bitCast(f64, std.mem.readIntBig(u64, data[17..25])),
+						@bitCast(std.mem.readIntBig(u64, data[1..9])),
+						@bitCast(std.mem.readIntBig(u64, data[9..17])),
+						@bitCast(std.mem.readIntBig(u64, data[17..25])),
 					});
 				},
 				type_cure => {
@@ -1119,16 +1119,16 @@ pub const Protocols = struct {
 			var data: [9]u8 = undefined;
 			data[0] = type_renderDistance;
 			std.mem.writeIntBig(i32, data[1..5], renderDistance);
-			std.mem.writeIntBig(u32, data[5..9], @bitCast(u32, LODFactor));
+			std.mem.writeIntBig(u32, data[5..9], @as(u32, @bitCast(LODFactor)));
 			try conn.sendImportant(id, &data);
 		}
 
 		pub fn sendTPCoordinates(conn: *Connection, pos: Vec3d) !void {
 			var data: [1+24]u8 = undefined;
 			data[0] = type_teleport;
-			std.mem.writeIntBig(u64, data[1..9], @bitCast(u64, pos[0]));
-			std.mem.writeIntBig(u64, data[9..17], @bitCast(u64, pos[1]));
-			std.mem.writeIntBig(u64, data[17..25], @bitCast(u64, pos[2]));
+			std.mem.writeIntBig(u64, data[1..9], @as(u64, @bitCast(pos[0])));
+			std.mem.writeIntBig(u64, data[9..17], @as(u64, @bitCast(pos[1])));
+			std.mem.writeIntBig(u64, data[17..25], @as(u64, @bitCast(pos[2])));
 			try conn.sendImportant(id, &data);
 		}
 
@@ -1343,17 +1343,17 @@ pub const Connection = struct {
 		try self.writeByteToStream(id);
 		var processedLength = data.len;
 		while(processedLength > 0x7f) {
-			try self.writeByteToStream(@intCast(u8, processedLength & 0x7f) | 0x80);
+			try self.writeByteToStream(@as(u8, @intCast(processedLength & 0x7f)) | 0x80);
 			processedLength >>= 7;
 		}
-		try self.writeByteToStream(@intCast(u8, processedLength & 0x7f));
+		try self.writeByteToStream(@intCast(processedLength & 0x7f));
 
 		var remaining: []const u8 = data;
 		while(remaining.len != 0) {
 			var copyableSize = @min(remaining.len, self.streamBuffer.len - self.streamPosition);
 			@memcpy(self.streamBuffer[self.streamPosition..][0..copyableSize], remaining[0..copyableSize]);
 			remaining = remaining[copyableSize..];
-			self.streamPosition += @intCast(u32, copyableSize);
+			self.streamPosition += @intCast(copyableSize);
 			if(self.streamPosition == self.streamBuffer.len) {
 				try self.flush();
 			}
@@ -1416,10 +1416,10 @@ pub const Connection = struct {
 					var diff = packetID -% start;
 					if(diff < length) continue;
 					if(diff == length) {
-						leftRegion = @intCast(u32, reg);
+						leftRegion = @intCast(reg);
 					}
 					if(diff == std.math.maxInt(u32)) {
-						rightRegion = @intCast(u32, reg);
+						rightRegion = @intCast(reg);
 					}
 				}
 				if(leftRegion) |left| {
@@ -1517,7 +1517,7 @@ pub const Connection = struct {
 				}
 				var nextByte = receivedPacket[newIndex];
 				newIndex += 1;
-				len |= @intCast(u32, nextByte & 0x7f) << shift;
+				len |= @as(u32, @intCast(nextByte & 0x7f)) << shift;
 				if(nextByte & 0x80 != 0) {
 					shift += 7;
 				} else {
@@ -1540,7 +1540,7 @@ pub const Connection = struct {
 			while(remaining.len != 0) {
 				dataAvailable = @min(self.lastReceivedPackets[id & 65535].?.len - newIndex, remaining.len);
 				@memcpy(remaining[0..dataAvailable], self.lastReceivedPackets[id & 65535].?[newIndex..newIndex + dataAvailable]);
-				newIndex += @intCast(u32, dataAvailable);
+				newIndex += @intCast(dataAvailable);
 				remaining = remaining[dataAvailable..];
 				if(newIndex == self.lastReceivedPackets[id & 65535].?.len) {
 					id += 1;

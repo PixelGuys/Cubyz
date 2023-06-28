@@ -93,7 +93,9 @@ pub fn toComponent(self: *Slider) GuiComponent {
 
 fn setButtonPosFromValue(self: *Slider) !void {
 	const range: f32 = self.size[0] - 3*border - self.button.size[0];
-	self.button.pos[0] = 1.5*border + range*(0.5 + @intToFloat(f32, self.currentSelection))/@intToFloat(f32, self.values.len);
+	const len: f32 = @floatFromInt(self.values.len);
+	const selection: f32 = @floatFromInt(self.currentSelection);
+	self.button.pos[0] = 1.5*border + range*(0.5 + selection)/len;
 	try self.updateLabel(self.values[self.currentSelection], self.size[0]);
 }
 
@@ -109,7 +111,8 @@ fn updateLabel(self: *Slider, newValue: []const u8, width: f32) !void {
 
 fn updateValueFromButtonPos(self: *Slider) !void {
 	const range: f32 = self.size[0] - 3*border - self.button.size[0];
-	const selection = @floatToInt(u16, (self.button.pos[0] - 1.5*border)/range*@intToFloat(f32, self.values.len));
+	const len: f32 = @floatFromInt(self.values.len);
+	const selection: u16 = @intFromFloat((self.button.pos[0] - 1.5*border)/range*len);
 	if(selection != self.currentSelection) {
 		self.currentSelection = selection;
 		try self.updateLabel(self.values[selection], self.size[0]);

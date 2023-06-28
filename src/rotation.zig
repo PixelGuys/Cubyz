@@ -20,7 +20,7 @@ pub const Permutation = packed struct(u6) {
 	mirrorZ: bool = false,
 
 	pub fn toInt(self: Permutation) u6 {
-		return @bitCast(u6, self);
+		return @bitCast(self);
 	}
 
 	pub fn transform(self: Permutation, _x: anytype) @TypeOf(_x) {

@@ -45,8 +45,8 @@ const StructureModel = struct {
 
 	pub fn registerGenerator(comptime Generator: type) !void {
 		var self: VTable = undefined;
-		self.loadModel = @ptrCast(@TypeOf(self.loadModel), &Generator.loadModel);
-		self.generate = @ptrCast(@TypeOf(self.generate), &Generator.generate);
+		self.loadModel = @ptrCast(&Generator.loadModel);
+		self.generate = @ptrCast(&Generator.generate);
 		try modelRegistry.put(main.globalAllocator, Generator.id, self);
 	}
 };
@@ -150,6 +150,7 @@ pub const Biome = struct {
 	}
 
 	pub fn deinit(self: *Biome) void {
+		self.subBiomes.deinit(main.globalAllocator);
 		self.structure.deinit(main.globalAllocator);
 		main.globalAllocator.free(self.vegetationModels);
 		main.globalAllocator.free(self.lowerReplacements);
@@ -255,7 +256,7 @@ pub const TreeNode = union(enum) {
 		var chanceMiddle: f32 = 0;
 		var chanceUpper: f32 = 0;
 		for(currentSlice) |*biome| {
-			var properties: u32 = @bitCast(u8, biome.properties);
+			var properties: u32 = @as(u8, @bitCast(biome.properties));
 			properties >>= parameterShift;
 			properties = properties & 3;
 			if(properties == 0) {
@@ -285,7 +286,7 @@ pub const TreeNode = union(enum) {
 		var upperIndex: usize = currentSlice.len - 1;
 		var i: usize = 0;
 		while(i <= upperIndex) {
-			var properties: u32 = @bitCast(u8, currentSlice[i].properties);
+			var properties: u32 = @as(u8, @bitCast(currentSlice[i].properties));
 			properties >>= parameterShift;
 			properties = properties & 3;
 			if(properties == 0 or properties == 3) {
@@ -312,9 +313,14 @@ pub const TreeNode = union(enum) {
 	}
 
 	pub fn deinit(self: *TreeNode, allocator: Allocator) void {
-		if(self.* == .branch) {
-			for(self.branch.children) |child| {
-				child.deinit(allocator);
+		switch(self.*) {
+			.leaf => |leaf| {
+				leaf.aliasTable.deinit(allocator);
+			},
+			.branch => |branch| {
+				for(branch.children) |child| {
+					child.deinit(allocator);
+				}
 			}
 		}
 		allocator.destroy(self);
@@ -323,7 +329,7 @@ pub const TreeNode = union(enum) {
 	pub fn getBiome(self: *const TreeNode, seed: *u64, x: f32, y: f32) *const Biome {
 		switch(self.*) {
 			.leaf => |leaf| {
-				var biomeSeed = seed.* ^ @as(u64, 5624786589461)*%@bitCast(u32, @floatToInt(i32, x)) ^ @as(u64, 897650786185)*%@bitCast(u32, @floatToInt(i32, y));
+				var biomeSeed = seed.* ^ @as(u64, 5624786589461)*%@as(u32, @bitCast(@as(i32, @intFromFloat(x)))) ^ @as(u64, 897650786185)*%@as(u32, @bitCast(@as(i32, @intFromFloat(y)))); // TODO: Use random.initSeed
 				const result = leaf.aliasTable.sample(&biomeSeed);
 				return result;
 			},
@@ -434,7 +440,7 @@ pub fn getById(id: []const u8) *const Biome {
 }
 
 pub fn getRandomly(typ: Biome.Type, seed: *u64) *const Biome {
-	return byTypeBiomes[@enumToInt(typ)].getRandomly(seed);
+	return byTypeBiomes[@intFromEnum(typ)].getRandomly(seed);
 }
 
 pub fn getCaveBiomes() []const Biome {

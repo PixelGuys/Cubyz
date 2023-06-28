@@ -29,7 +29,7 @@ pub fn generateAligned(allocator: Allocator, wx: i32, wy: i32, wz: i32, voxelSiz
 			var z0: u31 = 0;
 			while(z0 < depth) : (z0 += scaledScale) {
 				var seed = random.initSeed3D(worldSeed, .{wx + x0*voxelSize, wy + y0*voxelSize, wz + z0*voxelSize});
-				map.ptr(x0, y0, z0).* = (random.nextFloat(&seed) - 0.5)*@intToFloat(f32, scale);
+				map.ptr(x0, y0, z0).* = (random.nextFloat(&seed) - 0.5)*@as(f32, @floatFromInt(scale));
 			}
 		}
 	}
@@ -44,6 +44,7 @@ fn generateInitializedFractalTerrain(wx: i32, wy: i32, wz: i32, startingScale: u
 	var seed: u64 = undefined;
 	var res: u31 = startingScale/2;
 	while(res != 0) : (res /= 2) {
+		const randomnessScale: f32 = @floatFromInt(res*maxResolution);
 		// x and y coordinate on the grid:
 		var x: u31 = 0;
 		while(x < bigMap.width) : (x += 2*res) {
@@ -53,7 +54,7 @@ fn generateInitializedFractalTerrain(wx: i32, wy: i32, wz: i32, startingScale: u
 				while(z+res < bigMap.depth) : (z += 2*res) {
 					seed = random.initSeed3D(worldSeed, .{x*maxResolution + wx, y*maxResolution + wy, z*maxResolution + wz});
 					bigMap.ptr(x, y, z).* = (bigMap.get(x, y, z - res) + bigMap.get(x, y, z + res))/2;
-					bigMap.ptr(x, y, z).* += @intToFloat(f32, res*maxResolution)*(random.nextFloat(&seed) - 0.5);
+					bigMap.ptr(x, y, z).* += randomnessScale*(random.nextFloat(&seed) - 0.5);
 				}
 			}
 		}
@@ -66,7 +67,7 @@ fn generateInitializedFractalTerrain(wx: i32, wy: i32, wz: i32, startingScale: u
 				while(z < bigMap.depth) : (z += 2*res) {
 					seed = random.initSeed3D(worldSeed, .{x*maxResolution + wx, y*maxResolution + wy, z*maxResolution + wz});
 					bigMap.ptr(x, y, z).* = (bigMap.get(x, y - res, z) + bigMap.get(x, y + res, z))/2;
-					bigMap.ptr(x, y, z).* += @intToFloat(f32, res*maxResolution)*(random.nextFloat(&seed) - 0.5);
+					bigMap.ptr(x, y, z).* += randomnessScale*(random.nextFloat(&seed) - 0.5);
 				}
 			}
 		}
@@ -79,7 +80,7 @@ fn generateInitializedFractalTerrain(wx: i32, wy: i32, wz: i32, startingScale: u
 				while(z < bigMap.depth) : (z += 2*res) {
 					seed = random.initSeed3D(worldSeed, .{x*maxResolution + wx, y*maxResolution + wy, z*maxResolution + wz});
 					bigMap.ptr(x, y, z).* = (bigMap.get(x - res, y, z) + bigMap.get(x + res, y, z))/2;
-					bigMap.ptr(x, y, z).* += @intToFloat(f32, res*maxResolution)*(random.nextFloat(&seed) - 0.5);
+					bigMap.ptr(x, y, z).* += randomnessScale*(random.nextFloat(&seed) - 0.5);
 				}
 			}
 		}
@@ -92,7 +93,7 @@ fn generateInitializedFractalTerrain(wx: i32, wy: i32, wz: i32, startingScale: u
 				while(z+res < bigMap.depth) : (z += 2*res) {
 					seed = random.initSeed3D(worldSeed, .{x*maxResolution + wx, y*maxResolution + wy, z*maxResolution + wz});
 					bigMap.ptr(x, y, z).* = (bigMap.get(x, y - res, z) + bigMap.get(x, y + res, z) + bigMap.get(x, y, z - res) + bigMap.get(x, y, z + res))/4;
-					bigMap.ptr(x, y, z).* += @intToFloat(f32, res*maxResolution)*(random.nextFloat(&seed) - 0.5);
+					bigMap.ptr(x, y, z).* += randomnessScale*(random.nextFloat(&seed) - 0.5);
 				}
 			}
 		}
@@ -105,7 +106,7 @@ fn generateInitializedFractalTerrain(wx: i32, wy: i32, wz: i32, startingScale: u
 				while(z+res < bigMap.depth) : (z += 2*res) {
 					seed = random.initSeed3D(worldSeed, .{x*maxResolution + wx, y*maxResolution + wy, z*maxResolution + wz});
 					bigMap.ptr(x, y, z).* = (bigMap.get(x - res, y, z) + bigMap.get(x + res, y, z) + bigMap.get(x, y, z - res) + bigMap.get(x, y, z + res))/4;
-					bigMap.ptr(x, y, z).* += @intToFloat(f32, res*maxResolution)*(random.nextFloat(&seed) - 0.5);
+					bigMap.ptr(x, y, z).* += randomnessScale*(random.nextFloat(&seed) - 0.5);
 				}
 			}
 		}
@@ -118,7 +119,7 @@ fn generateInitializedFractalTerrain(wx: i32, wy: i32, wz: i32, startingScale: u
 				while(z < bigMap.depth) : (z += 2*res) {
 					seed = random.initSeed3D(worldSeed, .{x*maxResolution + wx, y*maxResolution + wy, z*maxResolution + wz});
 					bigMap.ptr(x, y, z).* = (bigMap.get(x - res, y, z) + bigMap.get(x + res, y, z) + bigMap.get(x, y - res, z) + bigMap.get(x, y + res, z))/4;
-					bigMap.ptr(x, y, z).* += @intToFloat(f32, res*maxResolution)*(random.nextFloat(&seed) - 0.5);
+					bigMap.ptr(x, y, z).* += randomnessScale*(random.nextFloat(&seed) - 0.5);
 				}
 			}
 		}
@@ -131,7 +132,7 @@ fn generateInitializedFractalTerrain(wx: i32, wy: i32, wz: i32, startingScale: u
 				while(z+res < bigMap.depth) : (z += 2*res) {
 					seed = random.initSeed3D(worldSeed, .{x*maxResolution + wx, y*maxResolution + wy, z*maxResolution + wz});
 					bigMap.ptr(x, y, z).* = (bigMap.get(x - res, y, z) + bigMap.get(x + res, y, z) + bigMap.get(x, y - res, z) + bigMap.get(x, y + res, z) + bigMap.get(x, y, z - res) + bigMap.get(x, y, z + res))/6;
-					bigMap.ptr(x, y, z).* += @intToFloat(f32, res*maxResolution)*(random.nextFloat(&seed) - 0.5);
+					bigMap.ptr(x, y, z).* += randomnessScale*(random.nextFloat(&seed) - 0.5);
 				}
 			}
 		}

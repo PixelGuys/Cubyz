@@ -114,8 +114,8 @@ pub const ItemDropManager = struct {
 			json.get(i32, "despawnTime", 60),
 			0
 		};
-		if(json.get(?usize, "i", null)) |i| {
-			@call(.auto, addWithIndex, .{self, @intCast(u16, i)} ++ properties);
+		if(json.get(?u16, "i", null)) |i| {
+			@call(.auto, addWithIndex, .{self, i} ++ properties);
 		} else {
 			try @call(.auto, add, .{self} ++ properties);
 		}
@@ -126,12 +126,12 @@ pub const ItemDropManager = struct {
 		var data = _data;
 		for(self.indices[0..self.size]) |i| {
 			std.mem.writeIntBig(u16, data[0..2], i);
-			std.mem.writeIntBig(u64, data[2..10], @bitCast(u64, self.pos[i][0]));
-			std.mem.writeIntBig(u64, data[10..18], @bitCast(u64, self.pos[i][1]));
-			std.mem.writeIntBig(u64, data[18..26], @bitCast(u64, self.pos[i][2]));
-			std.mem.writeIntBig(u64, data[26..34], @bitCast(u64, self.vel[i][0]));
-			std.mem.writeIntBig(u64, data[34..42], @bitCast(u64, self.vel[i][1]));
-			std.mem.writeIntBig(u64, data[42..50], @bitCast(u64, self.vel[i][2]));
+			std.mem.writeIntBig(u64, data[2..10], @bitCast(self.pos[i][0]));
+			std.mem.writeIntBig(u64, data[10..18], @bitCast(self.pos[i][1]));
+			std.mem.writeIntBig(u64, data[18..26], @bitCast(self.pos[i][2]));
+			std.mem.writeIntBig(u64, data[26..34], @bitCast(self.vel[i][0]));
+			std.mem.writeIntBig(u64, data[34..42], @bitCast(self.vel[i][1]));
+			std.mem.writeIntBig(u64, data[42..50], @bitCast(self.vel[i][2]));
 			data = data[50..];
 		}
 		return _data;
@@ -177,7 +177,7 @@ pub const ItemDropManager = struct {
 		var ii: u32 = 0;
 		while(ii < self.size) {
 			const i = self.indices[ii];
-			if(self.world.?.getChunk(@floatToInt(i32, pos[i][0]), @floatToInt(i32, pos[i][1]), @floatToInt(i32, pos[i][2]))) |chunk| {
+			if(self.world.?.getChunk(@intFromFloat(pos[i][0]), @intFromFloat(pos[i][1]), @intFromFloat(pos[i][2]))) |chunk| {
 				// Check collision with blocks:
 				self.updateEnt(chunk, &pos[i], &vel[i], deltaTime);
 			}
@@ -225,10 +225,10 @@ pub const ItemDropManager = struct {
 
 	pub fn addFromBlockPosition(self: *ItemDropManager, blockPos: Vec3i, vel: Vec3d, itemStack: ItemStack, despawnTime: i32) void {
 		self.add(
-			Vec3d {
-				@intToFloat(f64, blockPos[0]) + @floatCast(f64, random.nextFloat(&main.seed)), // TODO: Consider block bounding boxes.
-				@intToFloat(f64, blockPos[1]) + @floatCast(f64, random.nextFloat(&main.seed)),
-				@intToFloat(f64, blockPos[2]) + @floatCast(f64, random.nextFloat(&main.seed)),
+			vec.floatFromInt(f64, blockPos) + Vec3d { // TODO: Consider block bounding boxes.
+				@floatCast(random.nextFloat(&main.seed)),
+				@floatCast(random.nextFloat(&main.seed)),
+				@floatCast(random.nextFloat(&main.seed)),
 			} + @splat(3, @as(f64, radius)),
 			vel,
 			Vec3f {
@@ -280,7 +280,7 @@ pub const ItemDropManager = struct {
 				}
 				return;
 			}
-			i = @intCast(u16, self.isEmpty.findFirstSet().?);
+			i = @intCast(self.isEmpty.findFirstSet().?);
 		}
 		self.addWithIndexAndRotation(self, i, pos, vel, rot, itemStack, despawnTime, pickupCooldown);
 	}
@@ -297,7 +297,7 @@ pub const ItemDropManager = struct {
 			.itemStack = itemStack,
 			.despawnTime = despawnTime,
 			.pickupCooldown = pickupCooldown,
-			.reverseIndex = @intCast(u16, self.size),
+			.reverseIndex = @intCast(self.size),
 		});
 // TODO:
 //			if(world instanceof ServerWorld) {
@@ -358,7 +358,7 @@ pub const ItemDropManager = struct {
 	fn fixStuckInBlock(self: *ItemDropManager, chunk: *Chunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {
 		std.debug.assert(!self.mutex.tryLock()); // Mutex must be locked!
 		const centeredPos = pos.* - @splat(3, @as(f64, 0.5));
-		const pos0 = vec.floatToInt(i32, @floor(centeredPos));
+		const pos0 = vec.intFromFloat(i32, @floor(centeredPos));
 
 		var closestEmptyBlock = @splat(3, @as(i32, -1));
 		var closestDist = std.math.floatMax(f64);
@@ -370,7 +370,7 @@ pub const ItemDropManager = struct {
 				while(delta[2] <= 1) : (delta[2] += 1) {
 					const isSolid = self.checkBlock(chunk, pos, pos0 + delta);
 					if(!isSolid) {
-						const dist = vec.lengthSquare(vec.intToFloat(f64, pos0 + delta) - centeredPos);
+						const dist = vec.lengthSquare(vec.floatFromInt(f64, pos0 + delta) - centeredPos);
 						if(dist < closestDist) {
 							closestDist = dist;
 							closestEmptyBlock = delta;
@@ -387,21 +387,22 @@ pub const ItemDropManager = struct {
 			vel.*[1] = factor;
 			pos.*[1] += vel.*[1]*deltaTime;
 		} else {
-			vel.* = @splat(3, factor)*(vec.intToFloat(f64, pos0 + closestEmptyBlock) - centeredPos);
+			vel.* = @splat(3, factor)*(vec.floatFromInt(f64, pos0 + closestEmptyBlock) - centeredPos);
 			pos.* += (vel.*)*@splat(3, deltaTime);
 		}
 	}
 
 	fn checkBlocks(self: *ItemDropManager, chunk: *Chunk, pos: *Vec3d) bool {
 		const lowerCornerPos = pos.* - @splat(3, radius);
-		const pos0 = vec.floatToInt(i32, @floor(lowerCornerPos));
+		const pos0f64 = @floor(lowerCornerPos);
+		const pos0 = vec.intFromFloat(i32, pos0f64);
 		var isSolid = self.checkBlock(chunk, pos, pos0);
-		if(pos.*[0] - @intToFloat(f64, pos0[0]) + diameter >= 1) {
+		if(pos.*[0] - pos0f64[0] + diameter >= 1) {
 			isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{1, 0, 0});
-			if(pos.*[1] - @intToFloat(f64, pos0[1]) + diameter >= 1) {
+			if(pos.*[1] - pos0f64[1] + diameter >= 1) {
 				isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{0, 1, 0});
 				isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{1, 0, 0});
-				if(pos.*[2] - @intToFloat(f64, pos0[2]) + diameter >= 1) {
+				if(pos.*[2] - pos0f64[2] + diameter >= 1) {
 					isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{0, 0, 1});
 					isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{1, 0, 1});
 					isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{0, 1, 1});
@@ -412,9 +413,9 @@ pub const ItemDropManager = struct {
 				isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{1, 0, 1});
 			}
 		} else {
-			if(pos.*[1] - @intToFloat(f64, pos0[1]) + diameter >= 1) {
+			if(pos.*[1] - pos0f64[1] + diameter >= 1) {
 				isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{0, 1, 0});
-				if(pos.*[2] - @intToFloat(f64, pos0[2]) + diameter >= 1) {
+				if(pos.*[2] - pos0f64[2] + diameter >= 1) {
 					isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{0, 0, 1});
 					isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{0, 1, 1});
 				}
@@ -462,13 +463,13 @@ pub const ClientItemDropManager = struct {
 		instance = self;
 		self.* = ClientItemDropManager {
 			.super = undefined,
-			.lastTime = @truncate(i16, std.time.milliTimestamp()) -% settings.entityLookback,
+			.lastTime = @as(i16, @truncate(std.time.milliTimestamp())) -% settings.entityLookback,
 		};
 		try self.super.init(allocator, null, world.gravity);
 		self.super.addWithIndexAndRotation = &overrideAddWithIndexAndRotation;
 		self.interpolation.init(
-			@ptrCast(*[maxf64Capacity]f64, self.super.list.items(.pos).ptr),
-			@ptrCast(*[maxf64Capacity]f64, self.super.list.items(.vel).ptr)
+			@ptrCast(self.super.list.items(.pos).ptr),
+			@ptrCast(self.super.list.items(.vel).ptr)
 		);
 	}
 
@@ -485,21 +486,21 @@ pub const ClientItemDropManager = struct {
 		var vel: [ItemDropManager.maxCapacity]Vec3d = undefined;
 		while(data.len != 0) {
 			const i = std.mem.readIntBig(u16, data[0..2]);
-			pos[i][0] = @bitCast(f64, std.mem.readIntBig(u64, data[2..10]));
-			pos[i][1] = @bitCast(f64, std.mem.readIntBig(u64, data[10..18]));
-			pos[i][2] = @bitCast(f64, std.mem.readIntBig(u64, data[18..26]));
-			vel[i][0] = @bitCast(f64, std.mem.readIntBig(u64, data[26..34]));
-			vel[i][1] = @bitCast(f64, std.mem.readIntBig(u64, data[34..42]));
-			vel[i][2] = @bitCast(f64, std.mem.readIntBig(u64, data[42..50]));
+			pos[i][0] = @bitCast(std.mem.readIntBig(u64, data[2..10]));
+			pos[i][1] = @bitCast(std.mem.readIntBig(u64, data[10..18]));
+			pos[i][2] = @bitCast(std.mem.readIntBig(u64, data[18..26]));
+			vel[i][0] = @bitCast(std.mem.readIntBig(u64, data[26..34]));
+			vel[i][1] = @bitCast(std.mem.readIntBig(u64, data[34..42]));
+			vel[i][2] = @bitCast(std.mem.readIntBig(u64, data[42..50]));
 			data = data[50..];
 		}
 		self.super.mutex.lock();
 		defer self.super.mutex.unlock();
-		self.interpolation.updatePosition(@ptrCast(*[maxf64Capacity]f64, &pos), @ptrCast(*[maxf64Capacity]f64, &vel), time); // TODO: Only update the ones we actually changed.
+		self.interpolation.updatePosition(@ptrCast(&pos), @ptrCast(&vel), time); // TODO: Only update the ones we actually changed.
 	}
 
 	pub fn updateInterpolationData(self: *ClientItemDropManager) void {
-		var time = @truncate(i16, std.time.milliTimestamp()) -% settings.entityLookback;
+		var time = @as(i16, @truncate(std.time.milliTimestamp())) -% settings.entityLookback;
 		time -%= self.timeDifference.difference.load(.Monotonic);
 		{
 			self.super.mutex.lock();
@@ -514,10 +515,10 @@ pub const ClientItemDropManager = struct {
 			super.mutex.lock();
 			defer super.mutex.unlock();
 			for(&instance.?.interpolation.lastVel) |*lastVel| {
-				@ptrCast(*align(8)[ItemDropManager.maxCapacity]Vec3d, lastVel)[i] = Vec3d{0, 0, 0};
+				@as(*align(8)[ItemDropManager.maxCapacity]Vec3d, @ptrCast(lastVel))[i] = Vec3d{0, 0, 0};
 			}
 			for(&instance.?.interpolation.lastPos) |*lastPos| {
-				@ptrCast(*align(8)[ItemDropManager.maxCapacity]Vec3d, lastPos)[i] = pos;
+				@as(*align(8)[ItemDropManager.maxCapacity]Vec3d, @ptrCast(lastPos))[i] = pos;
 			}
 		}
 		super.defaultAddWithIndexAndRotation(i, pos, vel, rot, itemStack, despawnTime, pickupCooldown);
@@ -583,19 +584,19 @@ pub const ItemDropRenderer = struct {
 					break;
 				}
 			}
-			const modelDataSize: u32 = @intCast(u32, 3 + @reduce(.Mul, self.size));
+			const modelDataSize: u32 = @intCast(3 + @reduce(.Mul, self.size));
 			var dataSection: []u32 = undefined;
 			if(freeSlot) |_freeSlot| {
 				main.globalAllocator.destroy(_freeSlot);
 				self.index = _freeSlot.index;
 			} else {
-				self.index = @intCast(u31, modelData.items.len);
+				self.index = @intCast(modelData.items.len);
 				try modelData.resize(self.index + modelDataSize);
 			}
 			dataSection = modelData.items[self.index..][0..modelDataSize];
-			dataSection[0] = @intCast(u32, self.size[0]);
-			dataSection[1] = @intCast(u32, self.size[1]);
-			dataSection[2] = @intCast(u32, self.size[2]);
+			dataSection[0] = @intCast(self.size[0]);
+			dataSection[1] = @intCast(self.size[1]);
+			dataSection[2] = @intCast(self.size[2]);
 			var i: u32 = 3;
 			var y: u32 = 0;
 			while(y < 1) : (y += 1) {
@@ -691,11 +692,11 @@ pub const ItemDropRenderer = struct {
 
 		c.glGenBuffers(2, &itemVBOs);
 		c.glBindBuffer(c.GL_ARRAY_BUFFER, itemVBOs[0]);
-		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(c_long, positions.len*@sizeOf(i32)), &positions, c.GL_STATIC_DRAW);
+		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(positions.len*@sizeOf(i32)), &positions, c.GL_STATIC_DRAW);
 		c.glVertexAttribPointer(0, 1, c.GL_FLOAT, c.GL_FALSE, @sizeOf(i32), null);
 
 		c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, itemVBOs[1]);
-		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(c_long, indices.len*@sizeOf(i32)), &indices, c.GL_STATIC_DRAW);
+		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len*@sizeOf(i32)), &indices, c.GL_STATIC_DRAW);
 
 		c.glBindVertexArray(0);
 
@@ -728,14 +729,14 @@ pub const ItemDropRenderer = struct {
 		itemShader.bind();
 		c.glUniform1i(itemUniforms.texture_sampler, 0);
 		c.glUniform1i(itemUniforms.emissionSampler, 1);
-		c.glUniform1i(itemUniforms.time, @truncate(u31, time));
+		c.glUniform1i(itemUniforms.time, @as(u31, @truncate(time)));
 		c.glUniform1i(itemUniforms.@"fog.activ", if(game.fog.active) 1 else 0);
-		c.glUniform3fv(itemUniforms.@"fog.color", 1, @ptrCast([*c]const f32, &game.fog.color));
+		c.glUniform3fv(itemUniforms.@"fog.color", 1, @ptrCast(&game.fog.color));
 		c.glUniform1f(itemUniforms.@"fog.density", game.fog.density);
-		c.glUniformMatrix4fv(itemUniforms.projectionMatrix, 1, c.GL_FALSE, @ptrCast([*c]const f32, &projMatrix));
-		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast([*c]const f32, &ambientLight));
-		c.glUniformMatrix4fv(itemUniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast([*c]const f32, &game.camera.viewMatrix));
-		c.glUniform1f(itemUniforms.sizeScale, @floatCast(f32, ItemDropManager.diameter/4.0));
+		c.glUniformMatrix4fv(itemUniforms.projectionMatrix, 1, c.GL_FALSE, @ptrCast(&projMatrix));
+		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&ambientLight));
+		c.glUniformMatrix4fv(itemUniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast(&game.camera.viewMatrix));
+		c.glUniform1f(itemUniforms.sizeScale, @floatCast(ItemDropManager.diameter/4.0));
 		var itemDrops = &game.world.?.itemDrops.super;
 		itemDrops.mutex.lock();
 		defer itemDrops.mutex.unlock();
@@ -750,8 +751,8 @@ pub const ItemDropRenderer = struct {
 //
 //				int light = Cubyz.world.getLight(x, y, z, ambientLight, ClientSettings.easyLighting);
 				const light: u32 = 0xffffffff;
-				c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast([*c]const f32, &@max(
-					ambientLight*@splat(3, @intToFloat(f32, light >> 24)/255),
+				c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&@max(
+					ambientLight*@splat(3, @as(f32, @floatFromInt(light >> 24))/255),
 					Vec3f{light >> 16 & 255, light >> 8 & 255, light & 255}/@splat(3, @as(f32, 255))
 				)));
 				pos -= playerPos;
@@ -759,7 +760,7 @@ pub const ItemDropRenderer = struct {
 				modelMatrix = modelMatrix.mul(Mat4f.rotationX(-rot[0]));
 				modelMatrix = modelMatrix.mul(Mat4f.rotationY(-rot[1]));
 				modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-rot[2]));
-				c.glUniformMatrix4fv(itemUniforms.modelMatrix, 1, c.GL_FALSE, @ptrCast([*c]const f32, &modelMatrix));
+				c.glUniformMatrix4fv(itemUniforms.modelMatrix, 1, c.GL_FALSE, @ptrCast(&modelMatrix));
 
 				if(item == .baseItem and item.baseItem.block != null) {
 					const blockType = item.baseItem.block.?;

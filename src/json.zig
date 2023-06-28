@@ -102,8 +102,8 @@ pub const JsonElement = union(JsonType) {
 			},
 			.Float => {
 				switch(self.*) {
-					.JsonInt => return @intToFloat(innerType, self.JsonInt),
-					.JsonFloat => return @floatCast(innerType, self.JsonFloat),
+					.JsonInt => return @floatFromInt(self.JsonInt),
+					.JsonFloat => return @floatCast(self.JsonFloat),
 					else => return replacement,
 				}
 			},
@@ -135,8 +135,8 @@ pub const JsonElement = union(JsonType) {
 			.Void => return JsonElement{.JsonNull={}},
 			.Null => return JsonElement{.JsonNull={}},
 			.Bool => return JsonElement{.JsonBool=value},
-			.Int, .ComptimeInt => return JsonElement{.JsonInt=@intCast(i64, value)},
-			.Float, .ComptimeFloat => return JsonElement{.JsonFloat=@floatCast(f64, value)},
+			.Int, .ComptimeInt => return JsonElement{.JsonInt=@intCast(value)},
+			.Float, .ComptimeFloat => return JsonElement{.JsonFloat=@floatCast(value)},
 			.Union => {
 				if(@TypeOf(value) == JsonElement) {
 					return value;
@@ -344,7 +344,7 @@ const Parser = struct {
 						continue :whitespaceLoop;
 					}
 				}
-				index.* += @intCast(u32, whitespace.len);
+				index.* += @intCast(whitespace.len);
 				continue :outerLoop;
 			}
 			// Next character is no whitespace.
@@ -405,7 +405,7 @@ const Parser = struct {
 			while(index.* < chars.len): (index.* += 1) {
 				switch(chars[index.*]) {
 					'0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => {
-						floatPart += @intToFloat(f64, chars[index.*] - '0')*currentFactor;
+						floatPart += @as(f64, @floatFromInt(chars[index.*] - '0'))*currentFactor;
 						currentFactor *= 0.1;
 					},
 					else => {
@@ -435,7 +435,7 @@ const Parser = struct {
 				}
 			}
 		}
-		return JsonElement{.JsonFloat = @intToFloat(f64, sign)*(@intToFloat(f64, intPart) + floatPart)*std.math.pow(f64, 10, @intToFloat(f64, exponentSign*exponent))};
+		return JsonElement{.JsonFloat = @as(f64, @floatFromInt(sign))*(@as(f64, @floatFromInt(intPart)) + floatPart)*std.math.pow(f64, 10, @as(f64, @floatFromInt(exponentSign*exponent)))};
 	}
 
 	fn parseString(allocator: Allocator, chars: []const u8, index: *u32) OutOfMemory![]const u8 {

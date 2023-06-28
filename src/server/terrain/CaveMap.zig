@@ -37,7 +37,7 @@ pub const CaveMapFragment = struct {
 
 	fn getIndex(x: i32, z: i32) usize {
 		std.debug.assert(x >= 0 and x < width and z >= 0 and z < width); // Coordinates out of range.
-		return @intCast(usize, x*width + z);
+		return @intCast(x*width + z);
 	}
 
 	/// for example 3,11 would create the mask ...111_11111100_00000011
@@ -49,14 +49,14 @@ pub const CaveMapFragment = struct {
 		) else if(start >= 64) (
 			std.math.maxInt(u64)
 		) else (
-			@as(u64, std.math.maxInt(u64)) >> @intCast(u6, 64 - start)
+			@as(u64, std.math.maxInt(u64)) >> @intCast(64 - start)
 		);
 		const maskUpper = if(end <= 0) (
 			std.math.maxInt(u64)
 		) else if(end >= 64) (
 			0
 		) else (
-			@as(u64, std.math.maxInt(u64)) << @intCast(u6, end)
+			@as(u64, std.math.maxInt(u64)) << @intCast(end)
 		);
 		return maskLower | maskUpper;
 	}
@@ -171,7 +171,7 @@ pub const CaveMapView = struct {
 		const fragmentRelY = @divFloor(wy - self.fragments[index].pos.wy, self.reference.pos.voxelSize);
 		const fragmentRelZ = wz - self.fragments[index].pos.wz;
 		const height = self.fragments[index].getColumnData(fragmentRelX, fragmentRelZ);
-		return (height & @as(u64, 1)<<@intCast(u6, fragmentRelY)) != 0;
+		return (height & @as(u64, 1)<<@intCast(fragmentRelY)) != 0;
 	}
 
 	pub fn getHeightData(self: CaveMapView, relX: i32, relZ: i32) u32 {
@@ -193,9 +193,9 @@ pub const CaveMapView = struct {
 		const fragmentRelZ = wz - self.fragments[index].pos.wz;
 		const height = self.fragments[index].getColumnData(fragmentRelX, fragmentRelZ);
 		if(deltaY == 0) {
-			return @truncate(u32, height);
+			return @truncate(height);
 		} else {
-			return @intCast(u32, height >> 32);
+			return @intCast(height >> 32);
 		}
 	}
 
@@ -217,10 +217,10 @@ pub const CaveMapView = struct {
 		var result: i32 = relativeY;
 		if(relativeY < CaveMapFragment.height) {
 			// Check the lower part first.
-			height = self.fragments[index].getColumnData(fragmentRelX, fragmentRelZ) >> @intCast(u6, relativeY);
+			height = self.fragments[index].getColumnData(fragmentRelX, fragmentRelZ) >> @intCast(relativeY);
 			const startFilled = (height & 1) != 0;
 			if(relativeY != 0) {
-				height |= self.fragments[index+2].getColumnData(fragmentRelX, fragmentRelZ) << @intCast(u6, 64 - relativeY);
+				height |= self.fragments[index+2].getColumnData(fragmentRelX, fragmentRelZ) << @intCast(64 - relativeY);
 			}
 			if(startFilled) {
 				height = ~height;
@@ -230,7 +230,7 @@ pub const CaveMapView = struct {
 			result = @max(CaveMapFragment.height, result);
 			relativeY -= CaveMapFragment.height;
 			height = self.fragments[index+2].getColumnData(fragmentRelX, fragmentRelZ);
-			height >>= @intCast(u6, relativeY);
+			height >>= @intCast(relativeY);
 			const startFilled = (height & 1) != 0;
 			if(startFilled) {
 				height = ~height;
@@ -259,10 +259,10 @@ pub const CaveMapView = struct {
 		if(relativeY >= CaveMapFragment.height) {
 			relativeY -= CaveMapFragment.height;
 			// Check the upper part first.
-			height = self.fragments[index+2].getColumnData(fragmentRelX, fragmentRelZ) << (63 - @intCast(u6, relativeY));
+			height = self.fragments[index+2].getColumnData(fragmentRelX, fragmentRelZ) << (63 - @as(u6, @intCast(relativeY)));
 			const startFilled = height & 1<<63 != 0;
 			if(relativeY != CaveMapFragment.height - 1) {
-				height |= self.fragments[index].getColumnData(fragmentRelX, fragmentRelZ) >> @intCast(u6, relativeY + 1);
+				height |= self.fragments[index].getColumnData(fragmentRelX, fragmentRelZ) >> @as(u6, @intCast(relativeY + 1));
 			}
 			if(startFilled) {
 				height = ~height;
@@ -271,7 +271,7 @@ pub const CaveMapView = struct {
 			// Check only the lower part:
 			result = @min(CaveMapFragment.height - 1, result);
 			height = self.fragments[index].getColumnData(fragmentRelX, fragmentRelZ);
-			height <<= @intCast(u6, 63 - relativeY);
+			height <<= @intCast(63 - relativeY);
 			const startFilled = (height & 1<<63) != 0;
 			if(startFilled) {
 				height = ~height;

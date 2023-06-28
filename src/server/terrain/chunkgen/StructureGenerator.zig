@@ -40,8 +40,8 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveM
 		const blueNoise = try noise.BlueNoise.getRegionData(main.threadAllocator, chunk.pos.wx - 8, chunk.pos.wz - 8, chunk.width + 16, chunk.width + 16);
 		defer main.threadAllocator.free(blueNoise);
 		for(blueNoise) |coordinatePair| {
-			const px = @intCast(i32, coordinatePair >> 16) - 8;
-			const pz = @intCast(i32, coordinatePair & 0xffff) - 8;
+			const px = @as(i32, @intCast(coordinatePair >> 16)) - 8; // TODO: Maybe add a blue-noise iterator or something like that?
+			const pz = @as(i32, @intCast(coordinatePair & 0xffff)) - 8;
 			const wpx = chunk.pos.wx + px;
 			const wpz = chunk.pos.wz + pz;
 
@@ -78,7 +78,7 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveM
 				const wpx = px - 8 + chunk.pos.wx;
 				const wpz = pz - 8 + chunk.pos.wz;
 
-				const relY = @floatToInt(i32, biomeMap.getSurfaceHeight(wpx, wpz)) - chunk.pos.wy;
+				const relY = @as(i32, @intFromFloat(biomeMap.getSurfaceHeight(wpx, wpz))) - chunk.pos.wy;
 				if(relY < -32 or relY >= chunk.width + 32) continue;
 
 				var seed = random.initSeed3D(worldSeed, .{wpx, relY, wpz});
@@ -87,7 +87,7 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveM
 				for(biome.vegetationModels) |model| {
 					var adaptedChance = model.chance;
 					// Increase chance if there are less spawn points considered. Messes up positions, but at that distance density matters more.
-					adaptedChance = 1 - std.math.pow(f32, 1 - adaptedChance, @intToFloat(f32, chunk.pos.voxelSize*chunk.pos.voxelSize));
+					adaptedChance = 1 - std.math.pow(f32, 1 - adaptedChance, @as(f32, @floatFromInt(chunk.pos.voxelSize*chunk.pos.voxelSize)));
 					if(randomValue < adaptedChance) {
 						try model.generate(px - 8, relY, pz - 8, chunk, caveMap, &seed);
 						break;

@@ -286,7 +286,7 @@ fn moveCursorToStart(self: *TextInput, mods: main.Key.Modifiers) void {
 	if(mods.control) {
 		self.cursor.? = 0;
 	} else {
-		self.cursor.? = @intCast(u32, if(std.mem.lastIndexOf(u8, self.currentString.items[0..self.cursor.?], "\n")) |nextPos| nextPos + 1 else 0);
+		self.cursor.? = @intCast(if(std.mem.lastIndexOf(u8, self.currentString.items[0..self.cursor.?], "\n")) |nextPos| nextPos + 1 else 0);
 	}
 }
 
@@ -314,9 +314,9 @@ pub fn gotoStart(self: *TextInput, mods: main.Key.Modifiers) void {
 
 fn moveCursorToEnd(self: *TextInput, mods: main.Key.Modifiers) void {
 	if(mods.control) {
-		self.cursor.? = @intCast(u32, self.currentString.items.len);
+		self.cursor.? = @intCast(self.currentString.items.len);
 	} else {
-		self.cursor.? += @intCast(u32, std.mem.indexOf(u8, self.currentString.items[self.cursor.?..], "\n") orelse self.currentString.items.len - self.cursor.?);
+		self.cursor.? += @intCast(std.mem.indexOf(u8, self.currentString.items[self.cursor.?..], "\n") orelse self.currentString.items.len - self.cursor.?);
 	}
 }
 
@@ -387,7 +387,7 @@ pub fn inputCharacter(self: *TextInput, character: u21) !void {
 		var utf8 = buf[0..try std.unicode.utf8Encode(character, &buf)];
 		try self.currentString.insertSlice(cursor.*, utf8);
 		try self.reloadText();
-		cursor.* += @intCast(u32, utf8.len);
+		cursor.* += @intCast(utf8.len);
 		self.ensureCursorVisibility();
 	}
 }
@@ -412,7 +412,7 @@ pub fn paste(self: *TextInput, mods: main.Key.Modifiers) void {
 		self.currentString.insertSlice(self.cursor.?, string) catch |err| {
 			std.log.err("Error while pasting text: {s}", .{@errorName(err)});
 		};
-		self.cursor.? += @intCast(u32, string.len);
+		self.cursor.? += @intCast(string.len);
 		self.reloadText() catch |err| {
 			std.log.err("Error while pasting text: {s}", .{@errorName(err)});
 		};

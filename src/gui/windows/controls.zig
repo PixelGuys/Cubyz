@@ -23,7 +23,7 @@ var needsUpdate: bool = false;
 
 fn function(keyPtr: usize) void {
 	main.setNextKeypressListener(&keypressListener) catch return;
-	selectedKey = @intToPtr(*main.Key, keyPtr);
+	selectedKey = @ptrFromInt(keyPtr);
 	needsUpdate = true;
 }
 
@@ -42,7 +42,7 @@ pub fn onOpen() Allocator.Error!void {
 		var button = if(&@field(main.keyboard, field) == selectedKey) (
 			try Button.initText(.{16, 0}, 128, "...", .{})
 		) else (
-			try Button.initText(.{16, 0}, 128, @field(main.keyboard, field).getName(), .{.callback = &function, .arg = @ptrToInt(&@field(main.keyboard, field))})
+			try Button.initText(.{16, 0}, 128, @field(main.keyboard, field).getName(), .{.callback = &function, .arg = @intFromPtr(&@field(main.keyboard, field))})
 		);
 		var row = try HorizontalList.init();
 		try row.add(label);

@@ -32,19 +32,21 @@ pub fn deinit() void {
 pub fn generateMapFragment(map: *ClimateMapFragment, worldSeed: u64) Allocator.Error!void {
 	const map2 = try generateMap(main.threadAllocator, map.pos.wx, map.pos.wz, ClimateMapFragment.mapSize, ClimateMapFragment.mapSize, worldSeed);
 	defer map2.deinit(main.threadAllocator);
-	var image = try main.graphics.Image.init(main.threadAllocator, @intCast(u31, map2.width), @intCast(u31, map2.height));
+	var image = try main.graphics.Image.init(main.threadAllocator, @intCast(map2.width), @intCast(map2.height));
 	defer image.deinit(main.threadAllocator);
-	for(0..map2.width) |x| {
-		for(0..map2.height) |z| {
+	var x: u31 = 0;
+	while(x < map2.width) : (x += 1) {
+		var z: u31 = 0;
+		while(z < map2.height) : (z += 1) {
 			map.map[x][z] = .{ // TODO
-				.seed = random.initSeed2D(worldSeed, .{@intCast(i32, map.pos.wx +% @intCast(i32, x)*terrain.SurfaceMap.MapFragment.biomeSize), map.pos.wz +% @intCast(i32, z)*terrain.SurfaceMap.MapFragment.biomeSize}),
+				.seed = random.initSeed2D(worldSeed, .{map.pos.wx +% x*terrain.SurfaceMap.MapFragment.biomeSize, map.pos.wz +% z*terrain.SurfaceMap.MapFragment.biomeSize}),
 				.biome = map2.get(x, z),
-				.x = map.pos.wx +% @intCast(i32, x)*terrain.SurfaceMap.MapFragment.biomeSize,
-				.z = map.pos.wz +% @intCast(i32, z)*terrain.SurfaceMap.MapFragment.biomeSize,
-				.height = @intToFloat(f32, map2.get(x, z).minHeight),
+				.x = map.pos.wx +% x*terrain.SurfaceMap.MapFragment.biomeSize,
+				.z = map.pos.wz +% z*terrain.SurfaceMap.MapFragment.biomeSize,
+				.height = @floatFromInt(map2.get(x, z).minHeight),
 			};
 			var seed: u64 = std.hash.Adler32.hash(map2.get(x, z).id) ^ 4371741;// @ptrToInt(map2.get(x, z));
-			image.setRGB(x, z, @bitCast(main.graphics.Color, 0xff000000 | main.random.nextInt(u32, &seed)));
+			image.setRGB(x, z, @bitCast(0xff000000 | main.random.nextInt(u32, &seed)));
 		}
 	}
 	try image.exportToFile("test.png");
@@ -137,8 +139,8 @@ const Chunk = struct {
 		var selectedBiomes: main.utils.SortedList(BiomePoint) = .{};
 		var rejections: usize = 0;
 		outer: while(rejections < 100) {
-			const x = random.nextFloat(&seed)*chunkSize + @intToFloat(f32, wx);
-			const y = random.nextFloat(&seed)*chunkSize + @intToFloat(f32, wz);
+			const x = random.nextFloat(&seed)*chunkSize + @as(f32, @floatFromInt(wx));
+			const y = random.nextFloat(&seed)*chunkSize + @as(f32, @floatFromInt(wz));
 			var biomeSeed: u64 = 562478564;
 			var drawnBiome = tree.getBiome(&biomeSeed, x, y);
 			if(!checkIfBiomeIsValid(x, y, drawnBiome.radius, selectedBiomes.items(), chunkLocalMaxBiomeRadius)) {
@@ -180,9 +182,11 @@ const GenerationStructure = struct {
 		const self: GenerationStructure = .{
 			.chunks = try Array2D(*Chunk).init(allocator, 2 + @divExact(width, chunkSize), 2 + @divExact(height, chunkSize)),
 		};
-		for(0..self.chunks.width) |x| {
-			for(0..self.chunks.height) |z| {
-				self.chunks.ptr(x, z).* = try Chunk.init(allocator, tree, worldSeed, wx +% @intCast(i32, x*chunkSize) -% chunkSize, wz +% @intCast(i32, z*chunkSize) -% chunkSize);
+		var x: u31 = 0;
+		while(x < self.chunks.width) : (x += 1) {
+			var z: u31 = 0;
+			while(z < self.chunks.height) : (z += 1) {
+				self.chunks.ptr(x, z).* = try Chunk.init(allocator, tree, worldSeed, wx +% x*chunkSize -% chunkSize, wz +% z*chunkSize -% chunkSize);
 			}
 		}
 		return self;
@@ -195,13 +199,13 @@ const GenerationStructure = struct {
 		self.chunks.deinit(allocator);
 	}
 
-	fn findClosestBiomeTo(self: GenerationStructure, wx: i32, wz: i32, x: usize, z: usize) *const Biome {
-		const xf = @intToFloat(f32, wx +% @intCast(i32, x)*terrain.SurfaceMap.MapFragment.biomeSize);
-		const zf = @intToFloat(f32, wz +% @intCast(i32, z)*terrain.SurfaceMap.MapFragment.biomeSize);
+	fn findClosestBiomeTo(self: GenerationStructure, wx: i32, wz: i32, x: u31, z: u31) *const Biome {
+		const xf: f32 = @floatFromInt(wx +% x*terrain.SurfaceMap.MapFragment.biomeSize);
+		const zf: f32 = @floatFromInt(wz +% z*terrain.SurfaceMap.MapFragment.biomeSize);
 		var closestDist = std.math.floatMax(f32);
 		var closestBiome: *const Biome = undefined;
-		const cellX: i32 = @intCast(i32, x/(chunkSize/terrain.SurfaceMap.MapFragment.biomeSize));
-		const cellZ: i32 = @intCast(i32, z/(chunkSize/terrain.SurfaceMap.MapFragment.biomeSize));
+		const cellX: i32 = x/(chunkSize/terrain.SurfaceMap.MapFragment.biomeSize);
+		const cellZ: i32 = z/(chunkSize/terrain.SurfaceMap.MapFragment.biomeSize);
 		// Note that at a small loss of details we can assume that all BiomePoints are withing ±1 chunks of the current one.
 		var dx: i32 = 0;
 		while(dx <= 2) : (dx += 1) {
@@ -211,7 +215,7 @@ const GenerationStructure = struct {
 			while(dz <= 2) : (dz += 1) {
 				const totalZ = cellZ + dz;
 				if(totalZ < 0 or totalZ >= self.chunks.height) continue;
-				const chunk = self.chunks.get(@intCast(usize, totalX), @intCast(usize, totalZ));
+				const chunk = self.chunks.get(@intCast(totalX), @intCast(totalZ));
 				const minX = xf - 3*chunk.maxBiomeRadius;
 				const maxX = xf + 3*chunk.maxBiomeRadius;
 				const list = chunk.biomesSortedByX[Chunk.getStartCoordinate(minX, chunk.biomesSortedByX)..];
@@ -230,24 +234,24 @@ const GenerationStructure = struct {
 	}
 
 	fn drawCircleOnTheMap(map: Array2D(*const Biome), biome: *const Biome, wx: i32, wz: i32, width: u31, height: u31, pos: Vec2f) void {
-		const relPos = (pos - vec.intToFloat(f32, Vec2i{wx, wz}))/@splat(2, @as(f32, terrain.SurfaceMap.MapFragment.biomeSize));
+		const relPos = (pos - vec.floatFromInt(f32, Vec2i{wx, wz}))/@splat(2, @as(f32, terrain.SurfaceMap.MapFragment.biomeSize));
 		const relRadius = biome.radius/terrain.SurfaceMap.MapFragment.biomeSize;
 		const min = @floor(@max(Vec2f{0, 0}, relPos - @splat(2, relRadius)));
-		const max = @ceil(@min(vec.intToFloat(f32, Vec2i{width, height})/@splat(2, @as(f32, terrain.SurfaceMap.MapFragment.biomeSize)), relPos + @splat(2, relRadius)));
+		const max = @ceil(@min(vec.floatFromInt(f32, Vec2i{width, height})/@splat(2, @as(f32, terrain.SurfaceMap.MapFragment.biomeSize)), relPos + @splat(2, relRadius)));
 		var x: f32 = min[0];
 		while(x < max[0]) : (x += 1) {
 			var z: f32 = min[1];
 			while(z < max[1]) : (z += 1) {
 				const distSquare = vec.lengthSquare(Vec2f{x, z} - relPos);
 				if(distSquare < relRadius*relRadius) {
-					map.set(@floatToInt(usize, x), @floatToInt(usize, z), biome);
+					map.set(@intFromFloat(x), @intFromFloat(z), biome);
 				}
 			}
 		}
 	}
 
 	fn addSubBiomesOf(biome: BiomePoint, map: Array2D(*const Biome), extraBiomes: *std.ArrayList(BiomePoint), wx: i32, wz: i32, width: u31, height: u31, worldSeed: u64) !void {
-		var seed = random.initSeed2D(worldSeed, @bitCast(vec.Vec2i, biome.pos));
+		var seed = random.initSeed2D(worldSeed, @bitCast(biome.pos));
 		var biomeCount: f32 = biome.biome.subBiomeTotalChance*2*random.nextFloat(&seed);
 		biomeCount = @min(biomeCount, biome.biome.maxSubBiomeCount);
 		var i: f32 = 0;
@@ -270,8 +274,10 @@ const GenerationStructure = struct {
 
 	pub fn toMap(self: GenerationStructure, allocator: Allocator, wx: i32, wz: i32, width: u31, height: u31, worldSeed: u64) !Array2D(*const Biome) {
 		var result = try Array2D(*const Biome).init(allocator, width/terrain.SurfaceMap.MapFragment.biomeSize, height/terrain.SurfaceMap.MapFragment.biomeSize);
-		for(0..width/terrain.SurfaceMap.MapFragment.biomeSize) |x| {
-			for(0..height/terrain.SurfaceMap.MapFragment.biomeSize) |z| {
+		var x: u31 = 0;
+		while(x < width/terrain.SurfaceMap.MapFragment.biomeSize) : (x += 1) {
+			var z: u31 = 0;
+			while(z < height/terrain.SurfaceMap.MapFragment.biomeSize) : (z += 1) {
 				result.set(x, z, self.findClosestBiomeTo(wx, wz, x, z));
 			}
 		}

@@ -30,20 +30,20 @@ pub fn normalize(self: anytype) @TypeOf(self) {
 	return self/@splat(@typeInfo(@TypeOf(self)).Vector.len, length(self));
 }
 
-pub fn floatToInt(comptime DestType: type, self: anytype) @Vector(@typeInfo(@TypeOf(self)).Vector.len, DestType) { // TODO: Remove once @floatToInt supports vectors.
+pub fn intFromFloat(comptime DestType: type, self: anytype) @Vector(@typeInfo(@TypeOf(self)).Vector.len, DestType) { // TODO: Remove once @floatToInt supports vectors.
 	const len = @typeInfo(@TypeOf(self)).Vector.len;
 	var result: @Vector(len, DestType) = undefined;
 	inline for(0..len) |i| {
-		result[i] = @floatToInt(DestType, self[i]);
+		result[i] = @intFromFloat(self[i]);
 	}
 	return result;
 }
 
-pub fn intToFloat(comptime DestType: type, self: anytype) @Vector(@typeInfo(@TypeOf(self)).Vector.len, DestType) { // TODO: Remove once @intToFloat supports vectors.
+pub fn floatFromInt(comptime DestType: type, self: anytype) @Vector(@typeInfo(@TypeOf(self)).Vector.len, DestType) { // TODO: Remove once @intToFloat supports vectors.
 	const len = @typeInfo(@TypeOf(self)).Vector.len;
 	var result: @Vector(len, DestType) = undefined;
 	inline for(0..len) |i| {
-		result[i] = @intToFloat(DestType, self[i]);
+		result[i] = @floatFromInt(self[i]);
 	}
 	return result;
 }
@@ -52,7 +52,7 @@ pub fn floatCast(comptime DestType: type, self: anytype) @Vector(@typeInfo(@Type
 	const len = @typeInfo(@TypeOf(self)).Vector.len;
 	var result: @Vector(len, DestType) = undefined;
 	inline for(0..len) |i| {
-		result[i] = @floatCast(DestType, self[i]);
+		result[i] = @floatCast(self[i]);
 	}
 	return result;
 }

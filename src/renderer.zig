@@ -150,7 +150,7 @@ pub fn updateViewport(width: u31, height: u31, fov: f32) void {
 	lastHeight = height;
 	lastFov = fov;
 	c.glViewport(0, 0, width, height);
-	game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(f32, fov), @intToFloat(f32, width)/@intToFloat(f32, height), zNear, zFar);
+	game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(f32, fov), @as(f32, @floatFromInt(width))/@as(f32, @floatFromInt(height)), zNear, zFar);
 //	TODO: Transformation.updateProjectionMatrix(frustumProjectionMatrix, (float)Math.toRadians(fov), width, height, Z_NEAR, Z_FAR_LOD); // Need to combine both for frustum intersection
 	buffers.updateBufferSize(width, height);
 }
@@ -217,7 +217,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	// Uses FrustumCulling on the chunks.
 	var frustum = Frustum.init(Vec3f{0, 0, 0}, game.camera.viewMatrix, lastFov, zFar, lastWidth, lastHeight);
 
-	const time = @intCast(u32, std.time.milliTimestamp() & std.math.maxInt(u32));
+	const time: u32 = @intCast(std.time.milliTimestamp() & std.math.maxInt(u32));
 	var waterFog = Fog{.active=true, .color=.{0.0, 0.1, 0.2}, .density=0.1};
 
 	// Update the uniforms. The uniforms are needed to render the replacement meshes.
@@ -252,7 +252,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	// Render the far away ReducedChunks:
 	chunk.meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight, time);
 	c.glUniform1i(chunk.meshing.uniforms.@"waterFog.activ", if(waterFog.active) 1 else 0);
-	c.glUniform3fv(chunk.meshing.uniforms.@"waterFog.color", 1, @ptrCast([*c]f32, &waterFog.color));
+	c.glUniform3fv(chunk.meshing.uniforms.@"waterFog.color", 1, @ptrCast(&waterFog.color));
 	c.glUniform1f(chunk.meshing.uniforms.@"waterFog.density", waterFog.density);
 
 	for(meshes.items) |mesh| {
@@ -342,9 +342,9 @@ fn sortChunks(toSort: []*chunk.meshing.ChunkMesh, playerPos: Vec3d) !void {
 
 	for(distances, 0..) |*dist, i| {
 		dist.* = vec.length(playerPos - Vec3d{
-			@intToFloat(f64, toSort[i].pos.wx),
-			@intToFloat(f64, toSort[i].pos.wy),
-			@intToFloat(f64, toSort[i].pos.wz)
+			@floatFromInt(toSort[i].pos.wx),
+			@floatFromInt(toSort[i].pos.wy),
+			@floatFromInt(toSort[i].pos.wz),
 		});
 	}
 	// Insert sort them:
@@ -518,13 +518,13 @@ pub const MenuBackGround = struct {
 		c.glBindVertexArray(vao);
 		c.glGenBuffers(2, &vbos);
 		c.glBindBuffer(c.GL_ARRAY_BUFFER, vbos[0]);
-		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(isize, rawData.len*@sizeOf(f32)), &rawData, c.GL_STATIC_DRAW);
+		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(rawData.len*@sizeOf(f32)), &rawData, c.GL_STATIC_DRAW);
 		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, 5*@sizeOf(f32), null);
-		c.glVertexAttribPointer(1, 2, c.GL_FLOAT, c.GL_FALSE, 5*@sizeOf(f32), @intToPtr(?*const anyopaque, 3*@sizeOf(f32)));
+		c.glVertexAttribPointer(1, 2, c.GL_FLOAT, c.GL_FALSE, 5*@sizeOf(f32), @ptrFromInt(3*@sizeOf(f32)));
 		c.glEnableVertexAttribArray(0);
 		c.glEnableVertexAttribArray(1);
 		c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, vbos[1]);
-		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(isize, indices.len*@sizeOf(c_int)), &indices, c.GL_STATIC_DRAW);
+		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len*@sizeOf(c_int)), &indices, c.GL_STATIC_DRAW);
 
 		// Load a random texture from the backgrounds folder. The player may make their own pictures which can be chosen as well.
 		var dir: std.fs.IterableDir = try std.fs.cwd().makeOpenPathIterable("assets/backgrounds", .{});
@@ -550,7 +550,7 @@ pub const MenuBackGround = struct {
 			texture = .{.textureID = 0};
 			return;
 		}
-		const theChosenOne = main.random.nextIntBounded(u32, &main.seed, @intCast(u32, fileList.items.len));
+		const theChosenOne = main.random.nextIntBounded(u32, &main.seed, @as(u32, @intCast(fileList.items.len)));
 		const theChosenPath = try std.fmt.allocPrint(main.threadAllocator, "assets/backgrounds/{s}", .{fileList.items[theChosenOne]});
 		defer main.threadAllocator.free(theChosenPath);
 		texture = try graphics.Texture.initFromFile(theChosenPath);
@@ -568,13 +568,13 @@ pub const MenuBackGround = struct {
 
 		// Use a simple rotation around the y axis, with a steadily increasing angle.
 		const newTime = std.time.nanoTimestamp();
-		angle += @intToFloat(f32, newTime - lastTime)/2e10;
+		angle += @as(f32, @floatFromInt(newTime - lastTime))/2e10;
 		lastTime = newTime;
 		var viewMatrix = Mat4f.rotationY(angle);
 		shader.bind();
 
-		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast([*c]const f32, &viewMatrix));
-		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_FALSE, @ptrCast([*c]const f32, &game.projectionMatrix));
+		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast(&viewMatrix));
+		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_FALSE, @ptrCast(&game.projectionMatrix));
 
 		texture.bindTo(0);
 
@@ -625,7 +625,7 @@ pub const MenuBackGround = struct {
 				for(0..size) |x| {
 					const index = x + y*size;
 					// Needs to flip the image in y-direction.
-					image.setRGB(x + size*i, size - 1 - y, @bitCast(graphics.Color, pixels[index]));
+					image.setRGB(x + size*i, size - 1 - y, @bitCast(pixels[index]));
 				}
 			}
 		}
@@ -654,7 +654,7 @@ pub const Frustum = struct {
 		var cameraRight = vec.xyz(invRotationMatrix.mulVec(Vec4f{1, 0, 0, 1}));
 
 		const halfVSide = _zFar*std.math.tan(std.math.degreesToRadians(f32, fovY)*0.5);
-		const halfHSide = halfVSide*@intToFloat(f32, width)/@intToFloat(f32, height);
+		const halfHSide = halfVSide*@as(f32, @floatFromInt(width))/@as(f32, @floatFromInt(height));
 		const frontMultFar = cameraDir*@splat(3, _zFar);
 
 		var self: Frustum = undefined;
@@ -752,13 +752,13 @@ pub const MeshSelection = struct {
 		// Test blocks:
 		const closestDistance: f64 = 6.0; // selection now limited
 		// Implementation of "A Fast Voxel Traversal Algorithm for Ray Tracing"  http://www.cse.yorku.ca/~amana/research/grid.pdf
-		const step = vec.floatToInt(i32, std.math.sign(dir));
+		const step = vec.intFromFloat(i32, std.math.sign(dir));
 		const invDir = @splat(3, @as(f64, 1))/dir;
 		const tDelta = @fabs(invDir);
 		var tMax = (@floor(pos) - pos)*invDir;
-		tMax = @max(tMax, tMax + tDelta*vec.intToFloat(f64, step));
+		tMax = @max(tMax, tMax + tDelta*vec.floatFromInt(f64, step));
 		tMax = @select(f64, dir == @splat(3, @as(f64, 0)), @splat(3, std.math.inf(f64)), tMax);
-		var voxelPos = vec.floatToInt(i32, @floor(pos));
+		var voxelPos = vec.intFromFloat(i32, @floor(pos));
 
 		var total_tMax: f64 = 0;
 
@@ -774,8 +774,8 @@ pub const MeshSelection = struct {
 				var transformedMax = model.permutation.transform(voxelModel.max - @splat(3, @as(i32, 8))) + @splat(3, @as(i32, 8));
 				const min = @min(transformedMin, transformedMax);
 				const max = @max(transformedMin ,transformedMax);
-				const t1 = (vec.intToFloat(f64, voxelPos) + vec.intToFloat(f64, min)/@splat(3, @as(f64, 16.0)) - pos)*invDir;
-				const t2 = (vec.intToFloat(f64, voxelPos) + vec.intToFloat(f64, max)/@splat(3, @as(f64, 16.0)) - pos)*invDir;
+				const t1 = (vec.floatFromInt(f64, voxelPos) + vec.floatFromInt(f64, min)/@splat(3, @as(f64, 16.0)) - pos)*invDir;
+				const t2 = (vec.floatFromInt(f64, voxelPos) + vec.floatFromInt(f64, max)/@splat(3, @as(f64, 16.0)) - pos)*invDir;
 				const boxTMin = @reduce(.Max, @min(t1, t2));
 				const boxTMax = @reduce(.Min, @max(t1, t2));
 				if(boxTMin <= boxTMax and boxTMin <= closestDistance and boxTMax > 0) {
@@ -902,22 +902,22 @@ pub const MeshSelection = struct {
 			const max = @max(transformedMin ,transformedMax);
 			shader.bind();
 
-			c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_FALSE, @ptrCast([*c]const f32, &projectionMatrix));
-			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast([*c]const f32, &viewMatrix));
+			c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_FALSE, @ptrCast(&projectionMatrix));
+			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast(&viewMatrix));
 			c.glUniform3f(uniforms.modelPosition,
-				@floatCast(f32, @intToFloat(f64, _selectedBlockPos[0]) - playerPos[0]),
-				@floatCast(f32, @intToFloat(f64, _selectedBlockPos[1]) - playerPos[1]),
-				@floatCast(f32, @intToFloat(f64, _selectedBlockPos[2]) - playerPos[2])
+				@floatCast(@as(f64, @floatFromInt(_selectedBlockPos[0])) - playerPos[0]),
+				@floatCast(@as(f64, @floatFromInt(_selectedBlockPos[1])) - playerPos[1]),
+				@floatCast(@as(f64, @floatFromInt(_selectedBlockPos[2])) - playerPos[2])
 			);
 			c.glUniform3f(uniforms.lowerBounds,
-				@intToFloat(f32, min[0])/16.0,
-				@intToFloat(f32, min[1])/16.0,
-				@intToFloat(f32, min[2])/16.0
+				@as(f32, @floatFromInt(min[0]))/16.0,
+				@as(f32, @floatFromInt(min[1]))/16.0,
+				@as(f32, @floatFromInt(min[2]))/16.0
 			);
 			c.glUniform3f(uniforms.upperBounds,
-				@intToFloat(f32, max[0])/16.0,
-				@intToFloat(f32, max[1])/16.0,
-				@intToFloat(f32, max[2])/16.0
+				@as(f32, @floatFromInt(max[0]))/16.0,
+				@as(f32, @floatFromInt(max[1]))/16.0,
+				@as(f32, @floatFromInt(max[2]))/16.0
 			);
 
 			c.glBindVertexArray(cubeVAO);
@@ -993,7 +993,7 @@ pub const RenderStructure = struct {
 		if(yIndex < 0 or yIndex >= (&lastSize[lod]).*) return null;
 		if(zIndex < 0 or zIndex >= (&lastSize[lod]).*) return null;
 		var index = (xIndex*(&lastSize[lod]).* + yIndex)*(&lastSize[lod]).* + zIndex;
-		return (&storageLists[lod]).*[@intCast(usize, index)]; // TODO: Wait for #12205 to be fixed and remove the weird (&...).* workaround.
+		return (&storageLists[lod]).*[@intCast(index)]; // TODO: Wait for #12205 to be fixed and remove the weird (&...).* workaround.
 	}
 
 	pub fn getChunk(x: i32, y: i32, z: i32) ?*chunk.Chunk {
@@ -1021,23 +1021,23 @@ pub const RenderStructure = struct {
 		if(lastRD != renderDistance and lastFactor != LODFactor) {
 			try network.Protocols.genericUpdate.sendRenderDistance(conn, renderDistance, LODFactor);
 		}
-		const px = @floatToInt(i32, playerPos[0]);
-		const py = @floatToInt(i32, playerPos[1]);
-		const pz = @floatToInt(i32, playerPos[2]);
+		const px: i32 = @intFromFloat(playerPos[0]);
+		const py: i32 = @intFromFloat(playerPos[1]);
+		const pz: i32 = @intFromFloat(playerPos[2]);
 
 		var meshRequests = std.ArrayList(chunk.ChunkPosition).init(main.threadAllocator);
 		defer meshRequests.deinit();
 
 		for(0..storageLists.len) |_lod| {
-			const lod = @intCast(u5, _lod);
+			const lod: u5 = @intCast(_lod);
 			var maxRenderDistance = renderDistance*chunk.chunkSize << lod;
-			if(lod != 0) maxRenderDistance = @floatToInt(i32, @ceil(@intToFloat(f32, maxRenderDistance)*LODFactor));
+			if(lod != 0) maxRenderDistance = @intFromFloat(@ceil(@as(f32, @floatFromInt(maxRenderDistance))*LODFactor));
 			var sizeShift = chunk.chunkShift + lod;
-			const size = @intCast(u31, chunk.chunkSize << lod);
+			const size: u31 = @intCast(chunk.chunkSize << lod);
 			const mask: i32 = size - 1;
 			const invMask: i32 = ~mask;
 
-			const maxSideLength = @intCast(u31, @divFloor(2*maxRenderDistance + size-1, size) + 2);
+			const maxSideLength: u31 = @intCast(@divFloor(2*maxRenderDistance + size-1, size) + 2);
 			var newList = try main.globalAllocator.alloc(?*ChunkMeshNode, maxSideLength*maxSideLength*maxSideLength);
 			@memset(newList, null);
 
@@ -1053,7 +1053,7 @@ pub const RenderStructure = struct {
 				var deltaX: i64 = std.math.absInt(@as(i64, x +% size/2 -% px)) catch unreachable;
 				deltaX = @max(0, deltaX - size/2);
 				const maxYRenderDistanceSquare = @as(i64, maxRenderDistance)*@as(i64, maxRenderDistance) - deltaX*deltaX;
-				const maxYRenderDistance = @floatToInt(i32, @ceil(@sqrt(@intToFloat(f64, maxYRenderDistanceSquare))));
+				const maxYRenderDistance: i32 = @intFromFloat(@ceil(@sqrt(@as(f64, @floatFromInt(maxYRenderDistanceSquare)))));
 
 				const minY = py-%maxYRenderDistance-%1 & invMask;
 				const maxY = py+%maxYRenderDistance+%size & invMask;
@@ -1063,7 +1063,7 @@ pub const RenderStructure = struct {
 					var deltaY: i64 = std.math.absInt(@as(i64, y +% size/2 -% py)) catch unreachable;
 					deltaY = @max(0, deltaY - size/2);
 					const maxZRenderDistanceSquare = @as(i64, maxYRenderDistance)*@as(i64, maxYRenderDistance) - deltaY*deltaY;
-					const maxZRenderDistance = @floatToInt(i32, @ceil(@sqrt(@intToFloat(f64, maxZRenderDistanceSquare))));
+					const maxZRenderDistance: i32 = @intFromFloat(@ceil(@sqrt(@as(f64, @floatFromInt(maxZRenderDistanceSquare)))));
 
 					const minZ = pz-%maxZRenderDistance-%1 & invMask;
 					const maxZ = pz+%maxZRenderDistance+%size & invMask;
@@ -1082,24 +1082,24 @@ pub const RenderStructure = struct {
 							try meshRequests.append(pos);
 						}
 						if(frustum.testAAB(Vec3f{
-							@floatCast(f32, @intToFloat(f64, x) - playerPos[0]),
-							@floatCast(f32, @intToFloat(f64, y) - playerPos[1]),
-							@floatCast(f32, @intToFloat(f64, z) - playerPos[2]),
+							@floatCast(@as(f64, @floatFromInt(x)) - playerPos[0]),
+							@floatCast(@as(f64, @floatFromInt(y)) - playerPos[1]),
+							@floatCast(@as(f64, @floatFromInt(z)) - playerPos[2]),
 						}, Vec3f{
-							@intToFloat(f32, size),
-							@intToFloat(f32, size),
-							@intToFloat(f32, size),
+							@floatFromInt(size),
+							@floatFromInt(size),
+							@floatFromInt(size),
 						}) and node.?.mesh.visibilityMask != 0 and node.?.mesh.vertexCount != 0) {
 							try meshes.append(&node.?.mesh);
 						}
 						if(lod+1 != storageLists.len and node.?.mesh.generated) {
 							if(_getNode(.{.wx=x, .wy=y, .wz=z, .voxelSize=@as(u31, 1)<<(lod+1)})) |parent| {
-								const octantIndex = @intCast(u3, (x>>sizeShift & 1) | (y>>sizeShift & 1)<<1 | (z>>sizeShift & 1)<<2);
+								const octantIndex: u3 = @intCast((x>>sizeShift & 1) | (y>>sizeShift & 1)<<1 | (z>>sizeShift & 1)<<2);
 								parent.mesh.visibilityMask &= ~(@as(u8, 1) << octantIndex);
 							}
 						}
 						node.?.drawableChildren = 0;
-						newList[@intCast(usize, index)] = node;
+						newList[@intCast(index)] = node;
 					}
 				}
 			}
@@ -1119,7 +1119,7 @@ pub const RenderStructure = struct {
 					if(mesh.shouldBeRemoved) {
 						if(mesh.mesh.pos.voxelSize != 1 << settings.highestLOD) {
 							if(_getNode(.{.wx=mesh.mesh.pos.wx, .wy=mesh.mesh.pos.wy, .wz=mesh.mesh.pos.wz, .voxelSize=2*mesh.mesh.pos.voxelSize})) |parent| {
-								const octantIndex = @intCast(u3, (mesh.mesh.pos.wx>>sizeShift & 1) | (mesh.mesh.pos.wy>>sizeShift & 1)<<1 | (mesh.mesh.pos.wz>>sizeShift & 1)<<2);
+								const octantIndex: u3 = @intCast((mesh.mesh.pos.wx>>sizeShift & 1) | (mesh.mesh.pos.wy>>sizeShift & 1)<<1 | (mesh.mesh.pos.wz>>sizeShift & 1)<<2);
 								parent.mesh.visibilityMask |= @as(u8, 1) << octantIndex;
 							}
 						}
@@ -1218,10 +1218,10 @@ pub const RenderStructure = struct {
 		mesh: *chunk.Chunk,
 
 		pub const vtable = utils.ThreadPool.VTable{
-			.getPriority = @ptrCast(*const fn(*anyopaque) f32, &getPriority),
-			.isStillNeeded = @ptrCast(*const fn(*anyopaque) bool, &isStillNeeded),
-			.run = @ptrCast(*const fn(*anyopaque) Allocator.Error!void, &run),
-			.clean = @ptrCast(*const fn(*anyopaque) void, &clean),
+			.getPriority = @ptrCast(&getPriority),
+			.isStillNeeded = @ptrCast(&isStillNeeded),
+			.run = @ptrCast(&run),
+			.clean = @ptrCast(&clean),
 		};
 
 		pub fn schedule(mesh: *chunk.Chunk) !void {
@@ -1239,9 +1239,9 @@ pub const RenderStructure = struct {
 		pub fn isStillNeeded(self: *MeshGenerationTask) bool {
 			var distanceSqr = self.mesh.pos.getMinDistanceSquared(game.Player.getPosBlocking()); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
 			var maxRenderDistance = settings.renderDistance*chunk.chunkSize*self.mesh.pos.voxelSize;
-			if(self.mesh.pos.voxelSize != 1) maxRenderDistance = @floatToInt(u31, @ceil(@intToFloat(f32, maxRenderDistance)*settings.LODFactor));
+			if(self.mesh.pos.voxelSize != 1) maxRenderDistance = @intFromFloat(@ceil(@as(f32, @floatFromInt(maxRenderDistance))*settings.LODFactor));
 			maxRenderDistance += 2*self.mesh.pos.voxelSize*chunk.chunkSize;
-			return distanceSqr < @intToFloat(f64, maxRenderDistance*maxRenderDistance);
+			return distanceSqr < @as(f64, @floatFromInt(maxRenderDistance*maxRenderDistance));
 		}
 
 		pub fn run(self: *MeshGenerationTask) Allocator.Error!void {

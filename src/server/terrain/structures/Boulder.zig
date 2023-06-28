@@ -53,7 +53,7 @@ pub fn generate(self: *Boulder, x: i32, y: i32, z: i32, chunk: *main.chunk.Chunk
 	}
 	// My potential functions is ¹⁄ₙ Σ (radius/2)²/(x⃗ - x⃗ₚₒᵢₙₜ)²
 	// This ensures that the entire boulder is inside of a square with sidelength 2*radius.
-	const maxRadius = @floatToInt(i32, @ceil(radius));
+	const maxRadius: i32 = @intFromFloat(@ceil(radius));
 	var px = chunk.startIndex(x - maxRadius);
 	while(px < x + maxRadius) : (px += chunk.pos.voxelSize) {
 		var py = chunk.startIndex(y - maxRadius);
@@ -63,7 +63,7 @@ pub fn generate(self: *Boulder, x: i32, y: i32, z: i32, chunk: *main.chunk.Chunk
 				if(!chunk.liesInChunk(px, py, pz)) continue;
 				var potential: f32 = 0;
 				for(&pointCloud) |point| {
-					const delta = vec.intToFloat(f32, Vec3i{px, py, pz} - Vec3i{x, y, z}) - point;
+					const delta = vec.floatFromInt(f32, Vec3i{px, py, pz} - Vec3i{x, y, z}) - point;
 					const distSqr = vec.dot(delta, delta);
 					potential += 1/distSqr;
 				}

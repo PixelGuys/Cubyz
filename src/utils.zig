@@ -39,7 +39,7 @@ pub const Compression = struct {
 					main.threadAllocator.free(relPath);
 				};
 				var len: [4]u8 = undefined;
-				std.mem.writeIntBig(u32, &len, @intCast(u32, relPath.len));
+				std.mem.writeIntBig(u32, &len, @as(u32, @intCast(relPath.len)));
 				_ = try comp.write(&len);
 				_ = try comp.write(relPath);
 
@@ -48,7 +48,7 @@ pub const Compression = struct {
 				var fileData = try file.readToEndAlloc(main.threadAllocator, std.math.maxInt(u32));
 				defer main.threadAllocator.free(fileData);
 
-				std.mem.writeIntBig(u32, &len, @intCast(u32, fileData.len));
+				std.mem.writeIntBig(u32, &len, @as(u32, @intCast(fileData.len)));
 				_ = try comp.write(&len);
 				_ = try comp.write(fileData);
 			}
@@ -96,7 +96,7 @@ pub fn AliasTable(comptime T: type) type {
 		ownsSlice: bool = false,
 
 		fn initAliasData(self: *@This(), totalChance: f32, currentChances: []f32) void {
-			const desiredChance = totalChance/@intToFloat(f32, self.aliasData.len);
+			const desiredChance = totalChance/@as(f32, @floatFromInt(self.aliasData.len));
 
 			var lastOverfullIndex: u16 = 0;
 			var lastUnderfullIndex: u16 = 0;
@@ -116,7 +116,7 @@ pub fn AliasTable(comptime T: type) type {
 				currentChances[lastOverfullIndex] -= delta;
 				self.aliasData[lastUnderfullIndex] = .{
 					.alias = lastOverfullIndex,
-					.chance = @floatToInt(u16, delta/desiredChance*std.math.maxInt(u16)),
+					.chance = @intFromFloat(delta/desiredChance*std.math.maxInt(u16)),
 				};
 				if (currentChances[lastOverfullIndex] < desiredChance) {
 					lastUnderfullIndex = @min(lastUnderfullIndex, lastOverfullIndex);
@@ -177,7 +177,7 @@ pub fn AliasTable(comptime T: type) type {
 		}
 
 		pub fn sample(self: *const @This(), seed: *u64) *T {
-			const initialIndex = main.random.nextIntBounded(u16, seed, @intCast(u16, self.items.len));
+			const initialIndex = main.random.nextIntBounded(u16, seed, @as(u16, @intCast(self.items.len)));
 			if(main.random.nextInt(u16, seed) < self.aliasData[initialIndex].chance) {
 				return &self.items[self.aliasData[initialIndex].alias];
 			}
@@ -213,7 +213,7 @@ pub fn RandomList(comptime T: type) type {
 		fn increaseCapacity(self: *Self, allocator: Allocator) !void {
 			const newSize = 8 + self.capacity*3/2;
 			const newSlice = try allocator.realloc(self.ptr[0..self.capacity], newSize);
-			self.capacity = @intCast(u32, newSlice.len);
+			self.capacity = @intCast(newSlice.len);
 			self.ptr = newSlice.ptr;
 		}
 
@@ -260,7 +260,7 @@ pub fn SortedList(comptime T: type) type {
 		fn increaseCapacity(self: *Self, allocator: Allocator) !void {
 			const newSize = 8 + self.capacity*3/2;
 			const newSlice = try allocator.realloc(self.ptr[0..self.capacity], newSize);
-			self.capacity = @intCast(u32, newSlice.len);
+			self.capacity = @intCast(newSlice.len);
 			self.ptr = newSlice.ptr;
 		}
 
@@ -815,7 +815,7 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 					//                     ↓ Only using a future time value that is far enough away to prevent jumping.
 					if(lastTimeI -% time >= 50 and lastTimeI -% time < smallestTime) {
 						smallestTime = lastTimeI -% time;
-						smallestIndex = @intCast(u31, i);
+						smallestIndex = @intCast(i);
 					}
 				}
 				self.currentPoint = smallestIndex;
@@ -826,7 +826,7 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 			var lastTime = _lastTime;
 			self.determineNextDataPoint(time, &lastTime);
 
-			var deltaTime = @intToFloat(f64, time -% lastTime)/1000;
+			var deltaTime = @as(f64, @floatFromInt(time -% lastTime))/1000;
 			if(deltaTime < 0) {
 				std.log.err("Experienced time travel. Current time: {} Last time: {}", .{time, lastTime});
 				deltaTime = 0;
@@ -841,7 +841,7 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 					vel.* *= drag;
 				}
 			} else {
-				const tScale = @intToFloat(f64, self.lastTimes[self.currentPoint.?] -% lastTime)/1000;
+				const tScale = @as(f64, @floatFromInt(self.lastTimes[self.currentPoint.?] -% lastTime))/1000;
 				const t = deltaTime;
 				for(self.outPos, 0..) |_, i| {
 					self.interpolateCoordinate(i, t, tScale);
@@ -853,7 +853,7 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 			var lastTime = _lastTime;
 			self.determineNextDataPoint(time, &lastTime);
 
-			var deltaTime = @intToFloat(f64, time -% lastTime)/1000;
+			var deltaTime = @as(f64, @floatFromInt(time -% lastTime))/1000;
 			if(deltaTime < 0) {
 				std.log.err("Experienced time travel. Current time: {} Last time: {}", .{time, lastTime});
 				deltaTime = 0;
@@ -872,7 +872,7 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 					}
 				}
 			} else {
-				const tScale = @intToFloat(f64, self.lastTimes[self.currentPoint.?] -% lastTime)/1000;
+				const tScale = @as(f64, @floatFromInt(self.lastTimes[self.currentPoint.?] -% lastTime))/1000;
 				const t = deltaTime;
 				for(indices) |i| {
 					const index = @as(usize, i)*coordinatesPerIndex;
@@ -891,7 +891,7 @@ pub const TimeDifference = struct {
 	firstValue: bool = true,
 
 	pub fn addDataPoint(self: *TimeDifference, time: i16) void {
-		const currentTime = @truncate(i16, std.time.milliTimestamp());
+		const currentTime: i16 = @truncate(std.time.milliTimestamp());
 		const timeDifference = currentTime -% time;
 		if(self.firstValue) {
 			self.difference.store(timeDifference, .Monotonic);

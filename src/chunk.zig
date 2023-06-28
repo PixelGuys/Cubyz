@@ -56,19 +56,19 @@ pub const Neighbors = struct {
 /// Gets the index of a given position inside this chunk.
 fn getIndex(x: i32, y: i32, z: i32) u32 {
 	std.debug.assert((x & chunkMask) == x and (y & chunkMask) == y and (z & chunkMask) == z);
-	return (@intCast(u32, x) << chunkShift) | (@intCast(u32, y) << chunkShift2) | @intCast(u32, z);
+	return (@as(u32, @intCast(x)) << chunkShift) | (@as(u32, @intCast(y)) << chunkShift2) | @as(u32, @intCast(z));
 }
 /// Gets the x coordinate from a given index inside this chunk.
 fn extractXFromIndex(index: usize) i32 {
-	return @intCast(i32, index >> chunkShift & chunkMask);
+	return @intCast(index >> chunkShift & chunkMask);
 }
 /// Gets the y coordinate from a given index inside this chunk.
 fn extractYFromIndex(index: usize) i32 {
-	return @intCast(i32, index >> chunkShift2 & chunkMask);
+	return @intCast(index >> chunkShift2 & chunkMask);
 }
 /// Gets the z coordinate from a given index inside this chunk.
 fn extractZFromIndex(index: usize) i32 {
-	return @intCast(i32, index & chunkMask);
+	return @intCast(index & chunkMask);
 }
 
 pub const ChunkPosition = struct {
@@ -78,8 +78,8 @@ pub const ChunkPosition = struct {
 	voxelSize: u31,
 	
 	pub fn hashCode(self: ChunkPosition) u32 {
-		const shift = @truncate(u5, @min(@ctz(self.wx), @ctz(self.wy), @ctz(self.wz)));
-		return (((@bitCast(u32, self.wx) >> shift) *% 31 +% (@bitCast(u32, self.wy) >> shift)) *% 31 +% (@bitCast(u32, self.wz) >> shift)) *% 31 +% self.voxelSize;
+		const shift: u5 = @truncate(@min(@ctz(self.wx), @ctz(self.wy), @ctz(self.wz)));
+		return (((@as(u32, @bitCast(self.wx)) >> shift) *% 31 +% (@as(u32, @bitCast(self.wy)) >> shift)) *% 31 +% (@as(u32, @bitCast(self.wz)) >> shift)) *% 31 +% self.voxelSize; // TODO: Can I use one of zigs standard hash functions?
 	}
 
 	pub fn equals(self: ChunkPosition, other: anytype) bool {
@@ -94,10 +94,10 @@ pub const ChunkPosition = struct {
 	}
 
 	pub fn getMinDistanceSquared(self: ChunkPosition, playerPosition: Vec3d) f64 {
-		var halfWidth = @intToFloat(f64, self.voxelSize*@divExact(chunkSize, 2));
-		var dx = @fabs(@intToFloat(f64, self.wx) + halfWidth - playerPosition[0]);
-		var dy = @fabs(@intToFloat(f64, self.wy) + halfWidth - playerPosition[1]);
-		var dz = @fabs(@intToFloat(f64, self.wz) + halfWidth - playerPosition[2]);
+		var halfWidth: f64 = @floatFromInt(self.voxelSize*@divExact(chunkSize, 2));
+		var dx = @fabs(@as(f64, @floatFromInt(self.wx)) + halfWidth - playerPosition[0]);
+		var dy = @fabs(@as(f64, @floatFromInt(self.wy)) + halfWidth - playerPosition[1]);
+		var dz = @fabs(@as(f64, @floatFromInt(self.wz)) + halfWidth - playerPosition[2]);
 		dx = @max(0, dx - halfWidth);
 		dy = @max(0, dy - halfWidth);
 		dz = @max(0, dz - halfWidth);
@@ -105,7 +105,7 @@ pub const ChunkPosition = struct {
 	}
 
 	pub fn getPriority(self: ChunkPosition, playerPos: Vec3d) f32 {
-		return -@floatCast(f32, self.getMinDistanceSquared(playerPos))/@intToFloat(f32, self.voxelSize*self.voxelSize) + 2*@intToFloat(f32, std.math.log2_int(u31, self.voxelSize)*chunkSize*chunkSize);
+		return -@as(f32, @floatCast(self.getMinDistanceSquared(playerPos)))/@as(f32, @floatFromInt(self.voxelSize*self.voxelSize)) + 2*@as(f32, @floatFromInt(std.math.log2_int(u31, self.voxelSize)*chunkSize*chunkSize));
 	}
 };
 
@@ -127,7 +127,7 @@ pub const Chunk = struct {
 	pub fn init(self: *Chunk, pos: ChunkPosition) void {
 		std.debug.assert((pos.voxelSize - 1 & pos.voxelSize) == 0);
 		std.debug.assert(@mod(pos.wx, pos.voxelSize) == 0 and @mod(pos.wy, pos.voxelSize) == 0 and @mod(pos.wz, pos.voxelSize) == 0);
-		const voxelSizeShift = @intCast(u5, std.math.log2_int(u31, pos.voxelSize));
+		const voxelSizeShift: u5 = @intCast(std.math.log2_int(u31, pos.voxelSize));
 		self.* = Chunk {
 			.pos = pos,
 			.width = pos.voxelSize*chunkSize,
@@ -398,7 +398,7 @@ pub const meshing = struct {
 		var rawData: [6*3 << (3*chunkShift)]u32 = undefined; // 6 vertices per face, maximum 3 faces/block
 		const lut = [_]u32{0, 1, 2, 2, 1, 3};
 		for(0..rawData.len) |i| {
-			rawData[i] = @intCast(u32, i)/6*4 + lut[i%6];
+			rawData[i] = @as(u32, @intCast(i))/6*4 + lut[i%6];
 		}
 
 		c.glGenVertexArrays(1, &vao);
@@ -425,19 +425,19 @@ pub const meshing = struct {
 		shader.bind();
 
 		c.glUniform1i(uniforms.@"fog.activ", if(game.fog.active) 1 else 0);
-		c.glUniform3fv(uniforms.@"fog.color", 1, @ptrCast([*c]f32, &game.fog.color));
+		c.glUniform3fv(uniforms.@"fog.color", 1, @ptrCast(&game.fog.color));
 		c.glUniform1f(uniforms.@"fog.density", game.fog.density);
 
-		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_FALSE, @ptrCast([*c]const f32, &projMatrix));
+		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_FALSE, @ptrCast(&projMatrix));
 
 		c.glUniform1i(uniforms.texture_sampler, 0);
 		c.glUniform1i(uniforms.emissionSampler, 1);
 
-		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast([*c]f32, &game.camera.viewMatrix));
+		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast(&game.camera.viewMatrix));
 
 		c.glUniform3f(uniforms.ambientLight, ambient[0], ambient[1], ambient[2]);
 
-		c.glUniform1i(uniforms.time, @truncate(u31, time));
+		c.glUniform1i(uniforms.time, @as(u31, @truncate(time)));
 
 		c.glUniform1i(uniforms.renderedToItemTexture, 0);
 
@@ -526,7 +526,7 @@ pub const meshing = struct {
 							if(x2&chunkMask != x2 or y2&chunkMask != y2 or z2&chunkMask != z2) continue; // Neighbor is outside the chunk.
 							const neighborBlock = (&chunk.blocks)[getIndex(x2, y2, z2)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
 							if(canBeSeenThroughOtherBlock(block, neighborBlock, i)) {
-								try self.faces.append(constructFaceData(block, i, @intCast(u8, x2), @intCast(u8, y2), @intCast(u8, z2)));
+								try self.faces.append(constructFaceData(block, i, @intCast(x2), @intCast(y2), @intCast(z2)));
 							}
 						}
 					}
@@ -537,7 +537,7 @@ pub const meshing = struct {
 				main.globalAllocator.destroy(oldChunk);
 			}
 			self.chunk.store(chunk, .Monotonic);
-			self.coreCount = @intCast(u31, self.faces.items.len);
+			self.coreCount = @intCast(self.faces.items.len);
 			self.neighborStart = [_]u31{self.coreCount} ** 7;
 		}
 
@@ -630,8 +630,8 @@ pub const meshing = struct {
 				{
 					{ // The face of the changed block
 						const newVisibility = canBeSeenThroughOtherBlock(newBlock, neighborBlock, neighbor);
-						const newFaceData = constructFaceData(newBlock, neighbor, @intCast(u8, nx), @intCast(u8, ny), @intCast(u8, nz));
-						const oldFaceData = constructFaceData(oldBlock, neighbor, @intCast(u8, nx), @intCast(u8, ny), @intCast(u8, nz));
+						const newFaceData = constructFaceData(newBlock, neighbor, @intCast(nx), @intCast(ny), @intCast(nz));
+						const oldFaceData = constructFaceData(oldBlock, neighbor, @intCast(nx), @intCast(ny), @intCast(nz));
 						if(canBeSeenThroughOtherBlock(oldBlock, neighborBlock, neighbor) != newVisibility) {
 							if(newVisibility) { // Adding the face
 								if(neighborMesh == self) {
@@ -656,8 +656,8 @@ pub const meshing = struct {
 					}
 					{ // The face of the neighbor block
 						const newVisibility = canBeSeenThroughOtherBlock(neighborBlock, newBlock, neighbor ^ 1);
-						const newFaceData = constructFaceData(neighborBlock, neighbor ^ 1, @intCast(u8, x), @intCast(u8, y), @intCast(u8, z));
-						const oldFaceData = constructFaceData(neighborBlock, neighbor ^ 1, @intCast(u8, x), @intCast(u8, y), @intCast(u8, z));
+						const newFaceData = constructFaceData(neighborBlock, neighbor ^ 1, @intCast(x), @intCast(y), @intCast(z));
+						const oldFaceData = constructFaceData(neighborBlock, neighbor ^ 1, @intCast(x), @intCast(y), @intCast(z));
 						if(canBeSeenThroughOtherBlock(neighborBlock, oldBlock, neighbor ^ 1) != newVisibility) {
 							if(newVisibility) { // Adding the face
 								if(neighborMesh == self) {
@@ -688,8 +688,8 @@ pub const meshing = struct {
 		}
 
 		fn uploadData(self: *ChunkMesh) !void {
-			self.vertexCount = @intCast(u31, 6*self.faces.items.len);
-			try faceBuffer.realloc(&self.bufferAllocation, @intCast(u31, 8*self.faces.items.len));
+			self.vertexCount = @intCast(6*self.faces.items.len);
+			try faceBuffer.realloc(&self.bufferAllocation, @intCast(8*self.faces.items.len));
 			faceBuffer.bufferSubData(self.bufferAllocation.start, FaceData, self.faces.items);
 		}
 
@@ -706,7 +706,7 @@ pub const meshing = struct {
 			const chunk = self.chunk.load(.Monotonic) orelse return; // In the mean-time the mesh was discarded and recreated and all the data was lost.
 			self.faces.shrinkRetainingCapacity(self.coreCount);
 			for(Neighbors.iterable) |neighbor| {
-				self.neighborStart[neighbor] = @intCast(u31, self.faces.items.len);
+				self.neighborStart[neighbor] = @intCast(self.faces.items.len);
 				var nullNeighborMesh = renderer.RenderStructure.getNeighbor(self.pos, self.pos.voxelSize, neighbor);
 				if(nullNeighborMesh) |neighborMesh| {
 					std.debug.assert(neighborMesh != self);
@@ -715,7 +715,7 @@ pub const meshing = struct {
 					if(neighborMesh.generated) {
 						var additionalNeighborFaces = std.ArrayList(FaceData).init(main.threadAllocator);
 						defer additionalNeighborFaces.deinit();
-						var x3: u8 = if(neighbor & 1 == 0) @intCast(u8, chunkMask) else 0;
+						var x3: u8 = if(neighbor & 1 == 0) @intCast(chunkMask) else 0;
 						var x1: u8 = 0;
 						while(x1 < chunkSize): (x1 += 1) {
 							var x2: u8 = 0;
@@ -736,9 +736,9 @@ pub const meshing = struct {
 									y = x1;
 									z = x3;
 								}
-								var otherX = @intCast(u8, x+%Neighbors.relX[neighbor] & chunkMask);
-								var otherY = @intCast(u8, y+%Neighbors.relY[neighbor] & chunkMask);
-								var otherZ = @intCast(u8, z+%Neighbors.relZ[neighbor] & chunkMask);
+								var otherX: u8 = @intCast(x+%Neighbors.relX[neighbor] & chunkMask);
+								var otherY: u8 = @intCast(y+%Neighbors.relY[neighbor] & chunkMask);
+								var otherZ: u8 = @intCast(z+%Neighbors.relZ[neighbor] & chunkMask);
 								var block = (&chunk.blocks)[getIndex(x, y, z)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
 								var otherBlock = (&neighborMesh.chunk.load(.Monotonic).?.blocks)[getIndex(otherX, otherY, otherZ)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
 								if(canBeSeenThroughOtherBlock(block, otherBlock, neighbor)) {
@@ -753,7 +753,7 @@ pub const meshing = struct {
 						var rangeEnd = neighborMesh.neighborStart[(neighbor ^ 1)+1];
 						try neighborMesh.faces.replaceRange(rangeStart, rangeEnd - rangeStart, additionalNeighborFaces.items);
 						for(neighborMesh.neighborStart[1+(neighbor ^ 1)..]) |*neighborStart| {
-							neighborStart.* = neighborStart.* - (rangeEnd - rangeStart) + @intCast(u31, additionalNeighborFaces.items.len);
+							neighborStart.* = neighborStart.* - (rangeEnd - rangeStart) + @as(u31, @intCast(additionalNeighborFaces.items.len));
 						}
 						try neighborMesh.uploadData();
 						continue;
@@ -765,7 +765,7 @@ pub const meshing = struct {
 				neighborMesh.mutex.lock();
 				defer neighborMesh.mutex.unlock();
 				if(neighborMesh.generated) {
-					const x3: u8 = if(neighbor & 1 == 0) @intCast(u8, chunkMask) else 0;
+					const x3: u8 = if(neighbor & 1 == 0) @intCast(chunkMask) else 0;
 					const offsetX = @divExact(self.pos.wx, self.pos.voxelSize) & chunkSize;
 					const offsetY = @divExact(self.pos.wy, self.pos.voxelSize) & chunkSize;
 					const offsetZ = @divExact(self.pos.wz, self.pos.voxelSize) & chunkSize;
@@ -789,9 +789,9 @@ pub const meshing = struct {
 								y = x1;
 								z = x3;
 							}
-							var otherX = @intCast(u8, (x+%Neighbors.relX[neighbor]+%offsetX >> 1) & chunkMask);
-							var otherY = @intCast(u8, (y+%Neighbors.relY[neighbor]+%offsetY >> 1) & chunkMask);
-							var otherZ = @intCast(u8, (z+%Neighbors.relZ[neighbor]+%offsetZ >> 1) & chunkMask);
+							var otherX: u8 = @intCast((x+%Neighbors.relX[neighbor]+%offsetX >> 1) & chunkMask);
+							var otherY: u8 = @intCast((y+%Neighbors.relY[neighbor]+%offsetY >> 1) & chunkMask);
+							var otherZ: u8 = @intCast((z+%Neighbors.relZ[neighbor]+%offsetZ >> 1) & chunkMask);
 							var block = (&chunk.blocks)[getIndex(x, y, z)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
 							var otherBlock = (&neighborMesh.chunk.load(.Monotonic).?.blocks)[getIndex(otherX, otherY, otherZ)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
 							if(canBeSeenThroughOtherBlock(otherBlock, block, neighbor ^ 1)) {
@@ -803,7 +803,7 @@ pub const meshing = struct {
 					return error.LODMissing;
 				}
 			}
-			self.neighborStart[6] = @intCast(u31, self.faces.items.len);
+			self.neighborStart[6] = @intCast(self.faces.items.len);
 			try self.uploadData();
 			self.generated = true;
 		}
@@ -815,9 +815,9 @@ pub const meshing = struct {
 			if(self.vertexCount == 0) return;
 			c.glUniform3f(
 				uniforms.modelPosition,
-				@floatCast(f32, @intToFloat(f64, self.pos.wx) - playerPosition[0]),
-				@floatCast(f32, @intToFloat(f64, self.pos.wy) - playerPosition[1]),
-				@floatCast(f32, @intToFloat(f64, self.pos.wz) - playerPosition[2])
+				@floatCast(@as(f64, @floatFromInt(self.pos.wx)) - playerPosition[0]),
+				@floatCast(@as(f64, @floatFromInt(self.pos.wy)) - playerPosition[1]),
+				@floatCast(@as(f64, @floatFromInt(self.pos.wz)) - playerPosition[2])
 			);
 			c.glUniform1i(uniforms.visibilityMask, self.visibilityMask);
 			c.glUniform1i(uniforms.voxelSize, self.pos.voxelSize);

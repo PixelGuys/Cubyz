@@ -8,7 +8,7 @@ fn setSeed(x: i32, z: i32, offsetX: i32, offsetZ: i32, seed: *u64, worldSeed: u6
 	main.random.scrambleSeed(seed);
 	const l1 = main.random.nextInt(i64, seed);
 	const l2 = main.random.nextInt(i64, seed);
-	seed.* = @bitCast(u64, ((offsetX +% x)*%maxResolution*%l1) ^ ((offsetZ +% z)*%maxResolution*%l2)) ^ worldSeed;
+	seed.* = @as(u64, @bitCast(((offsetX +% x)*%maxResolution*%l1) ^ ((offsetZ +% z)*%maxResolution*%l2))) ^ worldSeed; // TODO: Use random.initSeed2D();
 	main.random.scrambleSeed(seed);
 }
 
@@ -32,7 +32,7 @@ pub fn generateFractalTerrain(wx: i32, wz: i32, x0: u31, z0: u31, width: u32, he
 	generateInitializedFractalTerrain(offsetX, offsetZ, scale, scale, worldSeed, bigMap, 0, 0.9999, maxResolution);
 	var px: u31 = 0;
 	while(px < width) : (px += 1) {
-		@memcpy(map.getRow(x0 + px)[z0..][0..height], bigMap.getRow(@intCast(usize, (wx & mask) + px))[@intCast(usize, (wz & mask))..][0..height]);
+		@memcpy(map.getRow(x0 + px)[z0..][0..height], bigMap.getRow(@intCast((wx & mask) + px))[@intCast((wz & mask))..][0..height]);
 	}
 }
 
@@ -62,6 +62,7 @@ pub fn generateInitializedFractalTerrain(offsetX: i32, offsetZ: i32, scale: u31,
 	var seed: u64 = undefined;
 	var res: u31 = startingScale/2;
 	while(res != 0) : (res /= 2) {
+		const randomnessScale = @as(f32, @floatFromInt(res))/@as(f32, @floatFromInt(scale))/2;
 		// x coordinate on the grid:
 		var x: u31 = 0;
 		while(x < max) : (x += 2*res) {
@@ -69,7 +70,7 @@ pub fn generateInitializedFractalTerrain(offsetX: i32, offsetZ: i32, scale: u31,
 			while(z+res < max) : (z += 2*res) {
 				setSeed(x, z, offsetX, offsetZ, &seed, worldSeed, res, maxResolution);
 				const w = main.random.nextFloat(&seed);
-				bigMap.ptr(x, z).* = bigMap.get(x, z-res)*(1-w)+bigMap.get(x, z+res)*w + (main.random.nextFloat(&seed) - 0.5)*@intToFloat(f32, res)/@intToFloat(f32, scale);
+				bigMap.ptr(x, z).* = bigMap.get(x, z-res)*(1-w)+bigMap.get(x, z+res)*w + main.random.nextFloatSigned(&seed)*randomnessScale;
 				bigMap.ptr(x, z).* = @min(upperLimit, @max(lowerLimit, bigMap.get(x, z)));
 			}
 		}
@@ -80,7 +81,7 @@ pub fn generateInitializedFractalTerrain(offsetX: i32, offsetZ: i32, scale: u31,
 			while(z < max) : (z += 2*res) {
 				setSeed(x, z, offsetX, offsetZ, &seed, worldSeed, res, maxResolution);
 				const w = main.random.nextFloat(&seed);
-				bigMap.ptr(x, z).* = bigMap.get(x-res, z)*(1-w)+bigMap.get(x+res, z)*w + (main.random.nextFloat(&seed) - 0.5)*@intToFloat(f32, res)/@intToFloat(f32, scale);
+				bigMap.ptr(x, z).* = bigMap.get(x-res, z)*(1-w)+bigMap.get(x+res, z)*w + main.random.nextFloatSigned(&seed)*randomnessScale;
 				bigMap.ptr(x, z).* = @min(upperLimit, @max(lowerLimit, bigMap.get(x, z)));
 			}
 		}
@@ -92,7 +93,7 @@ pub fn generateInitializedFractalTerrain(offsetX: i32, offsetZ: i32, scale: u31,
 				setSeed(x, z, offsetX, offsetZ, &seed, worldSeed, res, maxResolution);
 				const w1 = main.random.nextFloat(&seed);
 				const w2 = main.random.nextFloat(&seed);
-				bigMap.ptr(x, z).* = (bigMap.get(x-res, z-res)*(1-w1) + bigMap.get(x-res, z+res)*w1)*(1-w2) + (bigMap.get(x+res, z-res)*(1-w1) + bigMap.get(x+res, z+res)*w1)*w2 + (main.random.nextFloat(&seed) - 0.5)*@intToFloat(f32, res)/@intToFloat(f32, scale);
+				bigMap.ptr(x, z).* = (bigMap.get(x-res, z-res)*(1-w1) + bigMap.get(x-res, z+res)*w1)*(1-w2) + (bigMap.get(x+res, z-res)*(1-w1) + bigMap.get(x+res, z+res)*w1)*w2 + main.random.nextFloatSigned(&seed)*randomnessScale;
 				bigMap.ptr(x, z).* = @min(upperLimit, @max(lowerLimit, bigMap.get(x, z)));
 			}
 		}

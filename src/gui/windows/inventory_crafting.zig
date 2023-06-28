@@ -67,7 +67,7 @@ fn onTake(recipeIndex: usize) void {
 						amount -= itemStack.amount;
 						itemStack.clear();
 					} else {
-						itemStack.amount -= @intCast(u16, amount);
+						itemStack.amount -= @intCast(amount);
 						amount = 0;
 					}
 					if(amount == 0) break;

@@ -25,7 +25,7 @@ fn renderDistanceCallback(newValue: u16) void {
 }
 
 fn LODFactorCallback(newValue: u16) void {
-	settings.LODFactor = @intToFloat(f32, newValue + 1)/2;
+	settings.LODFactor = @as(f32, @floatFromInt(newValue + 1))/2;
 }
 
 fn bloomCallback(newValue: bool) void {
@@ -42,7 +42,7 @@ pub fn onOpen() Allocator.Error!void {
 	const renderDistances = [_]u32{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
 	try list.add(try Slider.init(.{0, 0}, 128, "#ffffffRender Distance: ", "{}", &renderDistances, settings.renderDistance - 1, &renderDistanceCallback));
 	const LODFactors = [_]f32{0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8};
-	try list.add(try Slider.init(.{0, 0}, 128, "#ffffffLOD Factor: ", "{d:.1}", &LODFactors, @floatToInt(u16, settings.LODFactor*2) - 1, &LODFactorCallback));
+	try list.add(try Slider.init(.{0, 0}, 128, "#ffffffLOD Factor: ", "{d:.1}", &LODFactors, @as(u16, @intFromFloat(settings.LODFactor*2)) - 1, &LODFactorCallback));
 	// TODO: fog?
 	try list.add(try CheckBox.init(.{0, 0}, 128, "Bloom", settings.bloom, &bloomCallback));
 	try list.add(try CheckBox.init(.{0, 0}, 128, "Vertical Synchronization", settings.vsync, &vsyncCallback));

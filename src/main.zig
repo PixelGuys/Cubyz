@@ -259,7 +259,8 @@ pub const Window = struct {
 		fn errorCallback(errorCode: c_int, description: [*c]const u8) callconv(.C) void {
 			std.log.err("GLFW Error({}): {s}", .{errorCode, description});
 		}
-		fn keyCallback(_: ?*c.GLFWwindow, key: c_int, scancode: c_int, action: c_int, mods: c_int) callconv(.C) void {
+		fn keyCallback(_: ?*c.GLFWwindow, key: c_int, scancode: c_int, action: c_int, _mods: c_int) callconv(.C) void {
+			const mods: Key.Modifiers = @bitCast(@as(u6, @intCast(_mods)));
 			if(action == c.GLFW_PRESS) {
 				inline for(@typeInfo(@TypeOf(keyboard)).Struct.fields) |field| {
 					if(key == @field(keyboard, field.name).key) {
@@ -269,7 +270,7 @@ pub const Window = struct {
 								pressAction();
 							}
 							if(@field(keyboard, field.name).repeatAction) |repeatAction| {
-								repeatAction(@bitCast(Key.Modifiers, @intCast(u6, mods)));
+								repeatAction(mods);
 							}
 						}
 					}
@@ -294,7 +295,7 @@ pub const Window = struct {
 					if(key == @field(keyboard, field.name).key) {
 						if(key != c.GLFW_KEY_UNKNOWN or scancode == @field(keyboard, field.name).scancode) {
 							if(@field(keyboard, field.name).repeatAction) |repeatAction| {
-								repeatAction(@bitCast(Key.Modifiers, @intCast(u6, mods)));
+								repeatAction(mods);
 							}
 						}
 					}
@@ -303,7 +304,7 @@ pub const Window = struct {
 		}
 		fn charCallback(_: ?*c.GLFWwindow, codepoint: c_uint) callconv(.C) void {
 			if(!grabbed) {
-				gui.textCallbacks.char(@intCast(u21, codepoint)) catch |err| {
+				gui.textCallbacks.char(@intCast(codepoint)) catch |err| {
 					std.log.err("Error while calling char callback: {s}", .{@errorName(err)});
 				};
 			}
@@ -311,8 +312,8 @@ pub const Window = struct {
 
 		fn framebufferSize(_: ?*c.GLFWwindow, newWidth: c_int, newHeight: c_int) callconv(.C) void {
 			std.log.info("Framebuffer: {}, {}", .{newWidth, newHeight});
-			width = @intCast(u31, newWidth);
-			height = @intCast(u31, newHeight);
+			width = @intCast(newWidth);
+			height = @intCast(newHeight);
 			renderer.updateViewport(width, height, settings.fov);
 			gui.updateGuiScale();
 			gui.updateWindowPositions();
@@ -325,8 +326,8 @@ pub const Window = struct {
 		var ignoreDataAfterRecentGrab: bool = true;
 		fn cursorPosition(_: ?*c.GLFWwindow, x: f64, y: f64) callconv(.C) void {
 			const newPos = Vec2f {
-				@floatCast(f32, x),
-				@floatCast(f32, y),
+				@floatCast(x),
+				@floatCast(y),
 			};
 			if(grabbed and !ignoreDataAfterRecentGrab) {
 				deltas[deltaBufferPosition] += (newPos - currentPos)*@splat(2, settings.mouseSensitivity);
@@ -370,15 +371,15 @@ pub const Window = struct {
 		}
 		fn scroll(_ : ?*c.GLFWwindow, xOffset: f64, yOffset: f64) callconv(.C) void {
 			_ = xOffset;
-			scrollOffset += @floatCast(f32, yOffset);
+			scrollOffset += @floatCast(yOffset);
 		}
 		fn glDebugOutput(_: c_uint, _: c_uint, _: c_uint, severity: c_uint, length: c_int, message: [*c]const u8, _: ?*const anyopaque) callconv(.C) void {
 			if(severity == c.GL_DEBUG_SEVERITY_HIGH) { // TODO: Capture the stack traces.
-				std.log.err("OpenGL {}:{s}", .{severity, message[0..@intCast(usize, length)]});
+				std.log.err("OpenGL {}:{s}", .{severity, message[0..@intCast(length)]});
 			} else if(severity == c.GL_DEBUG_SEVERITY_MEDIUM) {
-				std.log.warn("OpenGL {}:{s}", .{severity, message[0..@intCast(usize, length)]});
+				std.log.warn("OpenGL {}:{s}", .{severity, message[0..@intCast(length)]});
 			} else if(severity == c.GL_DEBUG_SEVERITY_LOW) {
-				std.log.info("OpenGL {}:{s}", .{severity, message[0..@intCast(usize, length)]});
+				std.log.info("OpenGL {}:{s}", .{severity, message[0..@intCast(length)]});
 			}
 		}
 	};
@@ -402,11 +403,11 @@ pub const Window = struct {
 	}
 
 	pub fn getWindowSize() Vec2f {
-		return Vec2f{@intToFloat(f32, width), @intToFloat(f32, height)};
+		return Vec2f{@floatFromInt(width), @floatFromInt(height)};
 	}
 
 	pub fn reloadSettings() void {
-		c.glfwSwapInterval(@boolToInt(settings.vsync));
+		c.glfwSwapInterval(@intFromBool(settings.vsync));
 	}
 
 	pub fn getClipboardString() []const u8 {
@@ -492,7 +493,7 @@ pub const Window = struct {
 pub var lastFrameTime = std.atomic.Atomic(f64).init(0);
 
 pub fn main() !void {
-	seed = @bitCast(u64, std.time.milliTimestamp());
+	seed = @bitCast(std.time.milliTimestamp());
 	var gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe=false}){};
 	threadAllocator = gpa.allocator();
 	defer if(gpa.deinit() == .leak) {
@@ -584,7 +585,7 @@ pub fn main() !void {
 		c.glClearColor(0.5, 1, 1, 1);
 		c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
 		var newTime = std.time.nanoTimestamp();
-		var deltaTime = @intToFloat(f64, newTime -% lastTime)/1e9;
+		var deltaTime = @as(f64, @floatFromInt(newTime -% lastTime))/1e9;
 		lastFrameTime.store(deltaTime, .Monotonic);
 		lastTime = newTime;
 		if(game.world != null) { // Update the game

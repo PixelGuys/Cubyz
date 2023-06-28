@@ -32,7 +32,7 @@ pub const User = struct {
 			.conn = try Connection.init(manager, ipPort),
 		};
 		self.conn.user = self;
-		self.interpolation.init(@ptrCast(*[3]f64, &self.player.pos), @ptrCast(*[3]f64, &self.player.vel));
+		self.interpolation.init(@ptrCast(&self.player.pos), @ptrCast(&self.player.vel));
 		network.Protocols.handShake.serverSide(self.conn);
 		// TODO:
 //		synchronized(this) {
@@ -60,7 +60,7 @@ pub const User = struct {
 	}
 
 	pub fn update(self: *User) void {
-		var time = @truncate(i16, std.time.milliTimestamp()) -% main.settings.entityLookback;
+		var time = @as(i16, @truncate(std.time.milliTimestamp())) -% main.settings.entityLookback;
 		time -= self.timeDifference.difference.load(.Monotonic);
 		self.interpolation.update(time, self.lastTime);
 		self.lastTime = time;
@@ -68,19 +68,19 @@ pub const User = struct {
 
 	pub fn receiveData(self: *User, data: []const u8) void {
 		const position: [3]f64 = .{
-			@bitCast(f64, std.mem.readIntBig(u64, data[0..8])),
-			@bitCast(f64, std.mem.readIntBig(u64, data[8..16])),
-			@bitCast(f64, std.mem.readIntBig(u64, data[16..24])),
+			@bitCast(std.mem.readIntBig(u64, data[0..8])),
+			@bitCast(std.mem.readIntBig(u64, data[8..16])),
+			@bitCast(std.mem.readIntBig(u64, data[16..24])),
 		};
 		const velocity: [3]f64 = .{
-			@bitCast(f64, std.mem.readIntBig(u64, data[24..32])),
-			@bitCast(f64, std.mem.readIntBig(u64, data[32..40])),
-			@bitCast(f64, std.mem.readIntBig(u64, data[40..48])),
+			@bitCast(std.mem.readIntBig(u64, data[24..32])),
+			@bitCast(std.mem.readIntBig(u64, data[32..40])),
+			@bitCast(std.mem.readIntBig(u64, data[40..48])),
 		};
 		const rotation: [3]f32 = .{
-			@bitCast(f32, std.mem.readIntBig(u32, data[48..52])),
-			@bitCast(f32, std.mem.readIntBig(u32, data[52..56])),
-			@bitCast(f32, std.mem.readIntBig(u32, data[56..60])),
+			@bitCast(std.mem.readIntBig(u32, data[48..52])),
+			@bitCast(std.mem.readIntBig(u32, data[52..56])),
+			@bitCast(std.mem.readIntBig(u32, data[56..60])),
 		};
 		self.player.rot = rotation;
 		const time = std.mem.readIntBig(i16, data[60..62]);
@@ -163,10 +163,10 @@ pub fn start(name: []const u8) !void {
 	while(running.load(.Monotonic)) {
 		const newTime = std.time.nanoTimestamp();
 		if(newTime -% lastTime < updateNanoTime) {
-			std.time.sleep(@intCast(u64, lastTime +% updateNanoTime -% newTime));
+			std.time.sleep(@intCast(lastTime +% updateNanoTime -% newTime));
 			lastTime +%= updateNanoTime;
 		} else {
-			std.log.warn("The server is lagging behind by {d:.1} ms", .{@intToFloat(f32, newTime -% lastTime -% updateNanoTime)/1000000.0});
+			std.log.warn("The server is lagging behind by {d:.1} ms", .{@as(f32, @floatFromInt(newTime -% lastTime -% updateNanoTime))/1000000.0});
 			lastTime = newTime;
 		}
 		try update();

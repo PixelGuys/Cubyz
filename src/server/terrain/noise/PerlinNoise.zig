@@ -13,21 +13,21 @@ const Context = struct {
 	l1: u64,
 	l2: u64,
 	l3: u64,
-	resultion: u31 = undefined,
-	resultionMask: i32 = undefined,
+	resolution: u31 = undefined,
+	resolutionMask: i32 = undefined,
 
 	fn generateGradient(self: Context, x: i32, y: i32, i: i32, resolution: u32) f32 {
-		var seed: u64 = self.l1*%@bitCast(u32, x) +% self.l2*%@bitCast(u32, y) +% self.l3*%@bitCast(u32, i) +% resolution;
+		var seed: u64 = self.l1*%@as(u32, @bitCast(x)) +% self.l2*%@as(u32, @bitCast(y)) +% self.l3*%@as(u32, @bitCast(i)) +% resolution; // TODO: Use random.initSeed3D();
 		random.scrambleSeed(&seed);
 		return 2*random.nextFloat(&seed) - 1;
 	}
 
 	fn getGradientX(self: Context, x: i32, y: i32) f32 {
-		return self.xGridPoints.get(@intCast(usize, x), @intCast(usize, y));
+		return self.xGridPoints.get(@intCast(x), @intCast(y));
 	}
 
 	fn getGradientY(self: Context, x: i32, y: i32) f32 {
-		return self.yGridPoints.get(@intCast(usize, x), @intCast(usize, y));
+		return self.yGridPoints.get(@intCast(x), @intCast(y));
 	}
 
 	/// Function to linearly interpolate between a0 and a1
@@ -42,8 +42,8 @@ const Context = struct {
 	/// Computes the dot product of the distance and gradient vectors.
 	fn dotGridGradient(self: Context, ix: i32, iy: i32, x: f32, y: f32) f32 {
 		// Compute the distance vector
-		const dx = x/@intToFloat(f32, self.resultion) - @intToFloat(f32, ix);
-		const dy = y/@intToFloat(f32, self.resultion) - @intToFloat(f32, iy);
+		const dx = x/@as(f32, @floatFromInt(self.resolution)) - @as(f32, @floatFromInt(ix));
+		const dy = y/@as(f32, @floatFromInt(self.resolution)) - @as(f32, @floatFromInt(iy));
 
 		// Compute the dot-product
 		var gx = self.getGradientX(ix, iy);
@@ -56,20 +56,20 @@ const Context = struct {
 
 	fn perlin(self: Context, x: i32, y: i32) f32 {
 		// Determine grid cell coordinates
-		const x0 = @divFloor(x, self.resultion);
+		const x0 = @divFloor(x, self.resolution);
 		const x1 = x0 + 1;
-		const y0 = @divFloor(y, self.resultion);
+		const y0 = @divFloor(y, self.resolution);
 		const y1 = y0 + 1;
 
 		// Determine interpolation weights using s-curve for smoother edges.
-		const sx = sCurve(@intToFloat(f32, x & self.resultionMask)/@intToFloat(f32, self.resultion));
-		const sy = sCurve(@intToFloat(f32, y & self.resultionMask)/@intToFloat(f32, self.resultion));
+		const sx = sCurve(@as(f32, @floatFromInt(x & self.resolutionMask))/@as(f32, @floatFromInt(self.resolution)));
+		const sy = sCurve(@as(f32, @floatFromInt(y & self.resolutionMask))/@as(f32, @floatFromInt(self.resolution)));
 
 		// Interpolate between grid point gradients
-		const n00 = self.dotGridGradient(x0, y0, @intToFloat(f32, x), @intToFloat(f32, y));
-		const n01 = self.dotGridGradient(x0, y1, @intToFloat(f32, x), @intToFloat(f32, y));
-		const n10 = self.dotGridGradient(x1, y0, @intToFloat(f32, x), @intToFloat(f32, y));
-		const n11 = self.dotGridGradient(x1, y1, @intToFloat(f32, x), @intToFloat(f32, y));
+		const n00 = self.dotGridGradient(x0, y0, @floatFromInt(x), @floatFromInt(y));
+		const n01 = self.dotGridGradient(x0, y1, @floatFromInt(x), @floatFromInt(y));
+		const n10 = self.dotGridGradient(x1, y0, @floatFromInt(x), @floatFromInt(y));
+		const n11 = self.dotGridGradient(x1, y1, @floatFromInt(x), @floatFromInt(y));
 		const n0 = lerp(n00, n01, sy);
 		const n1 = lerp(n10, n11, sy);
 		const n = lerp(n0, n1, sx);
@@ -139,10 +139,10 @@ pub fn generateRidgidNoise(allocator: Allocator, x: i32, y: i32, width: u31, hei
 	var fac = 1/((1 - std.math.pow(f32, reductionFactor, @ctz(maxScale/minScale)+1))/(1 - reductionFactor)); // geometric series.
 	var scale = maxScale;
 	while(scale >= minScale) : (scale >>= 1) {
-		context.resultion = scale;
-		context.resultionMask = scale - 1;
-		const x0 = x & ~context.resultionMask;
-		const y0 = y & ~context.resultionMask;
+		context.resolution = scale;
+		context.resolutionMask = scale - 1;
+		const x0 = x & ~context.resolutionMask;
+		const y0 = y & ~context.resolutionMask;
 		try context.calculateGridPoints(main.threadAllocator, x, y, width, height, scale);
 		defer context.freeGridPoints(main.threadAllocator);
 
@@ -150,7 +150,7 @@ pub fn generateRidgidNoise(allocator: Allocator, x: i32, y: i32, width: u31, hei
 		while(x1 -% width -% x < 0) : (x1 += voxelSize) {
 			var y1 = y;
 			while(y1 -% y -% height < 0) : (y1 += voxelSize) {
-				map.ptr(@intCast(u32, x1 - x)/voxelSize, @intCast(u32, y1 - y)/voxelSize).* += (1 - @fabs(context.perlin(x1-x0, y1-y0)))*fac;
+				map.ptr(@as(u32, @intCast(x1 - x))/voxelSize, @as(u32, @intCast(y1 - y))/voxelSize).* += (1 - @fabs(context.perlin(x1-x0, y1-y0)))*fac;
 			}
 		}
 		fac *= reductionFactor;
@@ -168,13 +168,13 @@ pub fn generateSmoothNoise(allocator: Allocator, x: i32, y: i32, width: u31, hei
 		.l2 = random.nextInt(u64, &seed),
 		.l3 = random.nextInt(u64, &seed),
 	};
-	var fac = 1/((1 - std.math.pow(f32, reductionFactor, @intToFloat(f32, @ctz(maxScale/minScale)+1)))/(1 - reductionFactor)); // geometric series.
+	var fac = 1/((1 - std.math.pow(f32, reductionFactor, @as(f32, @floatFromInt(@ctz(maxScale/minScale)+1))))/(1 - reductionFactor)); // geometric series.
 	var scale = maxScale;
 	while(scale >= minScale) : (scale >>= 1) {
-		context.resultion = scale;
-		context.resultionMask = scale - 1;
-		const x0 = x & ~context.resultionMask;
-		const y0 = y & ~context.resultionMask;
+		context.resolution = scale;
+		context.resolutionMask = scale - 1;
+		const x0 = x & ~context.resolutionMask;
+		const y0 = y & ~context.resolutionMask;
 		try context.calculateGridPoints(main.threadAllocator, x, y, width, height, scale);
 		defer context.freeGridPoints(main.threadAllocator);
 
@@ -182,7 +182,7 @@ pub fn generateSmoothNoise(allocator: Allocator, x: i32, y: i32, width: u31, hei
 		while(x1 -% width -% x < 0) : (x1 += voxelSize) {
 			var y1 = y;
 			while(y1 -% y -% height < 0) : (y1 += voxelSize) {
-				map.ptr(@intCast(u32, x1 - x)/voxelSize, @intCast(u32, y1 - y)/voxelSize).* += @fabs(context.perlin(x1-x0, y1-y0))*fac;
+				map.ptr(@as(u32, @intCast(x1 - x))/voxelSize, @as(u32, @intCast(y1 - y))/voxelSize).* += @fabs(context.perlin(x1-x0, y1-y0))*fac;
 			}
 		}
 		fac *= reductionFactor;

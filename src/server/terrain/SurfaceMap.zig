@@ -39,7 +39,7 @@ const MapFragmentPosition = struct {
 	}
 
 	pub fn hashCode(self: MapFragmentPosition) u32 {
-		return @bitCast(u32, (self.wx >> (MapFragment.mapShift + self.voxelSizeShift))*%33 +% (self.wz >> (MapFragment.mapShift + self.voxelSizeShift)) ^ self.voxelSize);
+		return @bitCast((self.wx >> (MapFragment.mapShift + self.voxelSizeShift))*%33 +% (self.wz >> (MapFragment.mapShift + self.voxelSizeShift)) ^ self.voxelSize);
 	}
 };
 
@@ -54,8 +54,8 @@ pub const MapFragment = struct {
 
 	heightMap: [mapSize][mapSize]f32 = undefined,
 	biomeMap: [mapSize][mapSize]*const Biome = undefined,
-	minHeight: i32 = std.math.maxInt(i32),
-	maxHeight: i32 = 0,
+	minHeight: f32 = std.math.floatMax(f32),
+	maxHeight: f32 = 0,
 	pos: MapFragmentPosition,
 	
 	refCount: Atomic(u16) = Atomic(u16).init(0),
@@ -73,13 +73,13 @@ pub const MapFragment = struct {
 	pub fn getBiome(self: *MapFragment, wx: i32, wz: i32) *const Biome {
 		const xIndex = wx>>self.pos.voxelSizeShift & mapMask;
 		const zIndex = wz>>self.pos.voxelSizeShift & mapMask;
-		return (&self.biomeMap[@intCast(usize, xIndex)])[@intCast(usize, zIndex)]; // TODO: #15685
+		return (&self.biomeMap[@intCast(xIndex)])[@intCast(zIndex)]; // TODO: #15685
 	}
 
 	pub fn getHeight(self: *MapFragment, wx: i32, wz: i32) f32 {
 		const xIndex = wx>>self.pos.voxelSizeShift & mapMask;
 		const zIndex = wz>>self.pos.voxelSizeShift & mapMask;
-		return (&self.heightMap[@intCast(usize, xIndex)])[@intCast(usize, zIndex)]; // TODO: #15685
+		return (&self.heightMap[@intCast(xIndex)])[@intCast(zIndex)]; // TODO: #15685
 	}
 };
 

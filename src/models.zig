@@ -31,7 +31,7 @@ const VoxelModel = extern struct {
 				while(z < modelSize): (z += 1) {
 					var isSolid = distributionFunction(x, y, z);
 					var voxelIndex = (x << 2*modelShift) + (y << modelShift) + z;
-					var shift = 4*@intCast(u5, voxelIndex & 7);
+					var shift = 4*@as(u5, @intCast(voxelIndex & 7));
 					var arrayIndex = voxelIndex >> 3;
 					if(isSolid) |texture| {
 						std.debug.assert(texture <= 6);
@@ -55,7 +55,7 @@ const VoxelModel = extern struct {
 					outer:
 					while(z < modelSize): (z += 1) {
 						var voxelIndex = (x << 2*modelShift) + (y << modelShift) + z;
-						var shift = 4*@intCast(u5, voxelIndex & 7);
+						var shift = 4*@as(u5, @intCast(voxelIndex & 7));
 						var arrayIndex = voxelIndex >> 3;
 						var data = self.bitPackedData[arrayIndex]>>shift & 15;
 						if(data <= i) continue;
@@ -75,7 +75,7 @@ const VoxelModel = extern struct {
 									var ny = y + dy - 1;
 									var nz = z + dz - 1;
 									var neighborVoxelIndex = (nx << 2*modelShift) + (ny << modelShift) + nz;
-									var neighborShift = 4*@intCast(u5, neighborVoxelIndex & 7);
+									var neighborShift = 4*@as(u5, @intCast(neighborVoxelIndex & 7));
 									var neighborArrayIndex = neighborVoxelIndex >> 3;
 									var neighborData = self.bitPackedData[neighborArrayIndex]>>neighborShift & 15;
 									if(neighborData < data) continue :outer;
@@ -165,9 +165,9 @@ const Fence = struct {
 };
 
 fn log(_x: u16, _y: u16, _z: u16) ?u4 {
-	var x = @intToFloat(f32, _x) - 7.5;
-	var y = @intToFloat(f32, _y) - 7.5;
-	var z = @intToFloat(f32, _z) - 7.5;
+	var x = @as(f32, @floatFromInt(_x)) - 7.5;
+	var y = @as(f32, @floatFromInt(_y)) - 7.5;
+	var z = @as(f32, @floatFromInt(_z)) - 7.5;
 	if(x*x + z*z < 7.2*7.2) {
 		if(y > 0) return Neighbors.dirUp;
 		return Neighbors.dirDown;
@@ -220,14 +220,14 @@ pub fn init() !void {
 
 	nameToIndex = std.StringHashMap(u16).init(main.threadAllocator);
 
-	try nameToIndex.put("cube", @intCast(u16, voxelModels.items.len));
-	fullCube = @intCast(u16, voxelModels.items.len);
+	try nameToIndex.put("cube", @intCast(voxelModels.items.len));
+	fullCube = @intCast(voxelModels.items.len);
 	(try voxelModels.addOne()).init(cube);
 
-	try nameToIndex.put("log", @intCast(u16, voxelModels.items.len));
+	try nameToIndex.put("log", @intCast(voxelModels.items.len));
 	(try voxelModels.addOne()).init(log);
 
-	try nameToIndex.put("fence", @intCast(u16, voxelModels.items.len));
+	try nameToIndex.put("fence", @intCast(voxelModels.items.len));
 	(try voxelModels.addOne()).init(Fence.fence0);
 	(try voxelModels.addOne()).init(Fence.fence1);
 	(try voxelModels.addOne()).init(Fence.fence2_neighbor);
@@ -235,7 +235,7 @@ pub fn init() !void {
 	(try voxelModels.addOne()).init(Fence.fence3);
 	(try voxelModels.addOne()).init(Fence.fence4);
 
-	try nameToIndex.put("octahedron", @intCast(u16, voxelModels.items.len));
+	try nameToIndex.put("octahedron", @intCast(voxelModels.items.len));
 	(try voxelModels.addOne()).init(octahedron);
 
 	voxelModelSSBO.bufferData(VoxelModel, voxelModels.items);

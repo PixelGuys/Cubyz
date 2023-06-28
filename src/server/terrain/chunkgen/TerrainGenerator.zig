@@ -47,7 +47,7 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveM
 			var makeSurfaceStructure = true;
 			var y: i32 = chunk.width - chunk.pos.voxelSize;
 			while(y >= 0) : (y -= chunk.pos.voxelSize) {
-				const mask = @as(u64, 1) << @intCast(u6, y >> voxelSizeShift);
+				const mask = @as(u64, 1) << @intCast(y >> voxelSizeShift);
 				if(heightData & mask != 0) {
 					const biome = biomeMap.getBiome(x, y, z);
 					
@@ -61,7 +61,7 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveM
 						chunk.updateBlockInGeneration(x, y, z, .{.typ = biome.stoneBlockType, .data = 0}); // TODO: Natural standard.
 					}
 				} else {
-					if(y + chunk.pos.wy < 0 and y + chunk.pos.wy >= @floatToInt(i32, biomeMap.getSurfaceHeight(x + chunk.pos.wx, z + chunk.pos.wz)) - (chunk.pos.voxelSize - 1)) {
+					if(y + chunk.pos.wy < 0 and y + chunk.pos.wy >= @as(i32, @intFromFloat(biomeMap.getSurfaceHeight(x + chunk.pos.wx, z + chunk.pos.wz))) - (chunk.pos.voxelSize - 1)) {
 						chunk.updateBlockInGeneration(x, y, z, .{.typ = water, .data = 0}); // TODO: Natural standard.
 					} else {
 						chunk.updateBlockInGeneration(x, y, z, .{.typ = 0, .data = 0});

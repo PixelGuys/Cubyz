@@ -23,7 +23,7 @@ pub var window: GuiWindow = GuiWindow {
 
 const padding: f32 = 8;
 const messageTimeout: i32 = 10000;
-const messageFade: i32 = 1000;
+const messageFade = 1000;
 
 var mutexComponent: MutexComponent = .{};
 var history: std.ArrayList(*Label) = undefined;
@@ -83,16 +83,18 @@ pub fn onClose() void {
 pub fn update() Allocator.Error!void {
 	mutexComponent.mutex.lock();
 	defer mutexComponent.mutex.unlock();
-	while(fadeOutEnd < history.items.len and @truncate(i32, std.time.milliTimestamp()) -% expirationTime.items[fadeOutEnd] >= 0) {
+	const currentTime: i32 = @truncate(std.time.milliTimestamp());
+	while(fadeOutEnd < history.items.len and currentTime -% expirationTime.items[fadeOutEnd] >= 0) {
 		fadeOutEnd += 1;
 	}
 	for(expirationTime.items[historyStart..fadeOutEnd], history.items[historyStart..fadeOutEnd]) |time, label| {
-		if(@truncate(i32, std.time.milliTimestamp()) -% time >= messageFade) {
+		if(currentTime -% time >= messageFade) {
 			historyStart += 1;
 			hideInput = main.Window.grabbed;
 			try refresh();
 		} else {
-			label.alpha = 1.0 - @intToFloat(f32, @truncate(i32, std.time.milliTimestamp()) -% time)/@intToFloat(f32, messageFade);
+			const timeDifference: f32 = @floatFromInt(currentTime -% time);
+			label.alpha = 1.0 - timeDifference/messageFade;
 		}
 	}
 	if(hideInput != main.Window.grabbed) {
@@ -112,7 +114,8 @@ pub fn addMessage(message: []const u8) Allocator.Error!void {
 	mutexComponent.mutex.lock();
 	defer mutexComponent.mutex.unlock();
 	try history.append(try Label.init(.{0, 0}, 256, message, .left));
-	try expirationTime.append(@truncate(i32, std.time.milliTimestamp()) +% messageTimeout);
+	const currentTime: i32 = @truncate(std.time.milliTimestamp());
+	try expirationTime.append(currentTime +% messageTimeout);
 	try refresh();
 }
 

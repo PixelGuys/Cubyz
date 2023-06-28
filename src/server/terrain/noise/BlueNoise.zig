@@ -28,8 +28,8 @@ pub fn load() void { // TODO: Do this at compile time once the caching is good e
 	// In the last repetition is enforced, to remove grid artifacts.
 	for(0..repetitions) |_| {
 		for(0..pattern.len) |i| {
-			const y = @intCast(i32, i & sizeMask);
-			const x = @intCast(i32, i >> sizeShift);
+			const y: i32 = @intCast(i & sizeMask);
+			const x: i32 = @intCast(i >> sizeShift);
 			outer:
 			for(0..iterations) |_| {
 				const point = random.nextInt(u6, &seed);
@@ -42,7 +42,7 @@ pub fn load() void { // TODO: Do this at compile time once the caching is good e
 					while(dy <= 2) : (dy += 1) {
 						if(dx == 0 and dy == 0) continue; // Don't compare with itself!
 						const neighbor = (x+dx & sizeMask) << sizeShift | (y+dy & sizeMask);
-						const neighborPos = pattern[@intCast(usize, neighbor)];
+						const neighborPos = pattern[@intCast(neighbor)];
 						const nx = (neighborPos >> 3) + (dx << featureShift);
 						const ny = (neighborPos & 7) + (dy << featureShift);
 						const distSqr = (nx - xOffset)*(nx - xOffset) + (ny - yOffset)*(ny - yOffset);
@@ -58,7 +58,7 @@ pub fn load() void { // TODO: Do this at compile time once the caching is good e
 }
 
 fn sample(x: i32, y: i32) u8 {
-	return pattern[@intCast(usize, x << sizeShift | y)];
+	return pattern[@intCast(x << sizeShift | y)];
 }
 
 /// Takes a subregion of the grid. Corrdinates are returned relative to x and y compressed into 16 bits each.
@@ -67,7 +67,7 @@ pub fn getRegionData(allocator: Allocator, x: i32, y: i32, width: u31, height: u
 	const yMin = ((y & ~@as(i32, featureMask)) - featureSize) >> featureShift;
 	const xMax = ((x+width & ~@as(i32, featureMask))) >> featureShift;
 	const yMax = ((y+height & ~@as(i32, featureMask))) >> featureShift;
-	var result = try std.ArrayListUnmanaged(u32).initCapacity(allocator, @intCast(usize, (xMax - xMin + 1)*(yMax - yMin + 1)));
+	var result = try std.ArrayListUnmanaged(u32).initCapacity(allocator, @intCast((xMax - xMin + 1)*(yMax - yMin + 1)));
 	var xMap: i32 = xMin;
 	while(xMap <= xMax) : (xMap += 1) {
 		var yMap: i32 = yMin;
@@ -78,7 +78,7 @@ pub fn getRegionData(allocator: Allocator, x: i32, y: i32, width: u31, height: u
 			var yRes = (yMap - yMin) << featureShift;
 			yRes += val & 7;
 			if(xRes >= 0 and xRes < width and yRes >= 0 and yRes < height) {
-				result.appendAssumeCapacity(@bitCast(u32, xRes << 16 | yRes));
+				result.appendAssumeCapacity(@bitCast(xRes << 16 | yRes));
 			}
 		}
 	}

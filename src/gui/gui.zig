@@ -199,8 +199,8 @@ fn save() !void {
 				},
 				.attachedToFrame => |attachedToFrame| {
 					try relPosJson.put("type", "attachedToFrame");
-					try relPosJson.put("selfAttachmentPoint", @enumToInt(attachedToFrame.selfAttachmentPoint));
-					try relPosJson.put("otherAttachmentPoint", @enumToInt(attachedToFrame.otherAttachmentPoint));
+					try relPosJson.put("selfAttachmentPoint", @intFromEnum(attachedToFrame.selfAttachmentPoint));
+					try relPosJson.put("otherAttachmentPoint", @intFromEnum(attachedToFrame.otherAttachmentPoint));
 				},
 				.relativeToWindow => |relativeToWindow| {
 					try relPosJson.put("type", "relativeToWindow");
@@ -210,8 +210,8 @@ fn save() !void {
 				.attachedToWindow => |attachedToWindow| {
 					try relPosJson.put("type", "attachedToWindow");
 					try relPosJson.put("reference", attachedToWindow.reference.id);
-					try relPosJson.put("selfAttachmentPoint", @enumToInt(attachedToWindow.selfAttachmentPoint));
-					try relPosJson.put("otherAttachmentPoint", @enumToInt(attachedToWindow.otherAttachmentPoint));
+					try relPosJson.put("selfAttachmentPoint", @intFromEnum(attachedToWindow.selfAttachmentPoint));
+					try relPosJson.put("otherAttachmentPoint", @intFromEnum(attachedToWindow.otherAttachmentPoint));
 				},
 			}
 			try windowJson.put(([_][]const u8{"relPos0", "relPos1"})[i], relPosJson);
@@ -239,8 +239,8 @@ fn load() !void {
 				relPos.* = .{.ratio = relPosJson.get(f32, "ratio", 0.5)};
 			} else if(std.mem.eql(u8, typ, "attachedToFrame")) {
 				relPos.* = .{.attachedToFrame = .{
-					.selfAttachmentPoint = @intToEnum(GuiWindow.AttachmentPoint, relPosJson.get(u8, "selfAttachmentPoint", 0)),
-					.otherAttachmentPoint = @intToEnum(GuiWindow.AttachmentPoint, relPosJson.get(u8, "otherAttachmentPoint", 0)),
+					.selfAttachmentPoint = @enumFromInt(relPosJson.get(u8, "selfAttachmentPoint", 0)),
+					.otherAttachmentPoint = @enumFromInt(relPosJson.get(u8, "otherAttachmentPoint", 0)),
 				}};
 			} else if(std.mem.eql(u8, typ, "relativeToWindow")) {
 				const reference = getWindowById(relPosJson.get([]const u8, "reference", "")) orelse continue;
@@ -252,8 +252,8 @@ fn load() !void {
 				const reference = getWindowById(relPosJson.get([]const u8, "reference", "")) orelse continue;
 				relPos.* = .{.attachedToWindow = .{
 					.reference = reference,
-					.selfAttachmentPoint = @intToEnum(GuiWindow.AttachmentPoint, relPosJson.get(u8, "selfAttachmentPoint", 0)),
-					.otherAttachmentPoint = @intToEnum(GuiWindow.AttachmentPoint, relPosJson.get(u8, "otherAttachmentPoint", 0)),
+					.selfAttachmentPoint = @enumFromInt(relPosJson.get(u8, "selfAttachmentPoint", 0)),
+					.otherAttachmentPoint = @enumFromInt(relPosJson.get(u8, "otherAttachmentPoint", 0)),
 				}};
 			} else {
 				std.log.warn("Unknown window attachment type: {s}", .{typ});
@@ -343,14 +343,14 @@ pub fn openHud() Allocator.Error!void {
 }
 
 fn openWindowCallbackFunction(windowPtr: usize) void {
-	openWindowFromRef(@intToPtr(*GuiWindow, windowPtr)) catch |err| {
+	openWindowFromRef(@ptrFromInt(windowPtr)) catch |err| {
 		std.log.err("Encountered error while opening window: {s}", .{@errorName(err)});
 	};
 }
 pub fn openWindowCallback(comptime id: []const u8) Callback {
 	return .{
 		.callback = &openWindowCallbackFunction,
-		.arg = @ptrToInt(&@field(windowlist, id).window),
+		.arg = @intFromPtr(&@field(windowlist, id).window),
 	};
 }
 
@@ -596,7 +596,7 @@ pub const inventory = struct {
 				try deliveredItemSlots.append(itemSlot);
 				try deliveredItemStacksAmountAdded.append(0);
 				carriedItemStack.amount = initialAmount;
-				const addedAmount = @intCast(u16, initialAmount/deliveredItemSlots.items.len);
+				const addedAmount: u16 = @intCast(initialAmount/deliveredItemSlots.items.len);
 				for(deliveredItemSlots.items, deliveredItemStacksAmountAdded.items) |deliveredSlot, *amountAdded| {
 					const old = carriedItemStack.amount;
 					deliveredSlot.tryAddingItems(&carriedItemStack, addedAmount);

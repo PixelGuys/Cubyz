@@ -50,7 +50,7 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) Allocator.Error!void {
 			while(x < @min(CaveMapFragment.width*map.pos.voxelSize, MapFragment.mapSize*map.pos.voxelSize)) : (x += map.pos.voxelSize) {
 				var z: u31 = 0;
 				while(z < @min(CaveMapFragment.width*map.pos.voxelSize, MapFragment.mapSize*map.pos.voxelSize)) : (z += map.pos.voxelSize) {
-					map.addRange(x0 + x, z0 + z, 0, @floatToInt(i32, mapFragment.getHeight(map.pos.wx + x + x0, map.pos.wz + z + z0)) - map.pos.wy);
+					map.addRange(x0 + x, z0 + z, 0, @as(i32, @intFromFloat(mapFragment.getHeight(map.pos.wx + x + x0, map.pos.wz + z + z0))) - map.pos.wy);
 				}
 			}
 		}

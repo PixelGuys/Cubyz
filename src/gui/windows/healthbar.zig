@@ -39,14 +39,15 @@ pub fn render() Allocator.Error!void {
 	draw.setColor(0xffffffff);
 	var y: f32 = 0;
 	var x: f32 = 0;
-	for(0..@floatToInt(usize, main.game.Player.maxHealth)) |health| {
+	var health: f32 = 0;
+	while(health < main.game.Player.maxHealth) : (health += 1) {
 		if(x >= window.contentSize[0]) {
 			x = 0;
 			y += 16;
 		}
-		if(@intToFloat(f32, health) + 1 <= main.game.Player.health) {
+		if(health + 1 <= main.game.Player.health) {
 			heartTexture.bindTo(0);
-		} else if(@intToFloat(f32, health) + 0.5 <= main.game.Player.health) {
+		} else if(health + 0.5 <= main.game.Player.health) {
 			halfHeartTexture.bindTo(0);
 		} else {
 			deadHeartTexture.bindTo(0);

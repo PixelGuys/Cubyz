@@ -101,9 +101,9 @@ pub fn generate(self: *SimpleTreeModel, x: i32, y: i32, z: i32, chunk: *main.chu
 			self.generateStem(x, y, z, height, chunk);
 
 			const leafRadius = 1 + @divFloor(height, 2);
-			const floatLeafRadius = @intToFloat(f32, leafRadius) - random.nextFloat(seed);
-			const radiusSqr = @floatToInt(i32, floatLeafRadius*floatLeafRadius);
-			const randomRadiusSqr = @floatToInt(i32, (floatLeafRadius - 0.25)*(floatLeafRadius - 0.25));
+			const floatLeafRadius = @as(f32, @floatFromInt(leafRadius)) - random.nextFloat(seed);
+			const radiusSqr: i32 = @intFromFloat(floatLeafRadius*floatLeafRadius);
+			const randomRadiusSqr: i32 = @intFromFloat((floatLeafRadius - 0.25)*(floatLeafRadius - 0.25));
 			const center = y + height;
 			var py = chunk.startIndex(center - leafRadius);
 			while(py < center + leafRadius) : (py += chunk.pos.voxelSize) {
@@ -126,9 +126,9 @@ pub fn generate(self: *SimpleTreeModel, x: i32, y: i32, z: i32, chunk: *main.chu
 			self.generateStem(x, y, z, height, chunk);
 
 			const leafRadius = 1 + @divFloor(oldHeight, 2);
-			const floatLeafRadius = @intToFloat(f32, leafRadius) - random.nextFloat(seed);
-			const radiusSqr = @floatToInt(i32, floatLeafRadius*floatLeafRadius);
-			const randomRadiusSqr = @floatToInt(i32, (floatLeafRadius - 0.25)*(floatLeafRadius - 0.25));
+			const floatLeafRadius = @as(f32, @floatFromInt(leafRadius)) - random.nextFloat(seed);
+			const radiusSqr: i32 = @intFromFloat(floatLeafRadius*floatLeafRadius);
+			const randomRadiusSqr: i32 = @intFromFloat((floatLeafRadius - 0.25)*(floatLeafRadius - 0.25));
 			const center = y + height;
 			var py = chunk.startIndex(center - leafRadius);
 			while(py < center + leafRadius) : (py += chunk.pos.voxelSize) {

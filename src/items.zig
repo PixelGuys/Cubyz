@@ -40,19 +40,19 @@ const Material = struct {
 		for(colors.JsonArray.items, self.colorPalette) |item, *color| {
 			const colorInt = item.as(u32, 0xff000000);
 			color.* = Color {
-				.r = @intCast(u8, colorInt>>16 & 0xff),
-				.g = @intCast(u8, colorInt>>8 & 0xff),
-				.b = @intCast(u8, colorInt>>0 & 0xff),
-				.a = @intCast(u8, colorInt>>24 & 0xff),
+				.r = @intCast(colorInt>>16 & 0xff),
+				.g = @intCast(colorInt>>8 & 0xff),
+				.b = @intCast(colorInt>>0 & 0xff),
+				.a = @intCast(colorInt>>24 & 0xff),
 			};
 		}
 	}
 
 	pub fn hashCode(self: Material) u32 {
-		var hash = @bitCast(u32, self.density);
-		hash = 101*%hash +% @bitCast(u32, self.resistance);
-		hash = 101*%hash +% @bitCast(u32, self.power);
-		hash = 101*%hash +% @bitCast(u32, self.roughness);
+		var hash: u32 = @bitCast(self.density);
+		hash = 101*%hash +% @as(u32, @bitCast(self.resistance));
+		hash = 101*%hash +% @as(u32, @bitCast(self.power));
+		hash = 101*%hash +% @as(u32, @bitCast(self.roughness));
 		hash ^= hash >> 24;
 		return hash;
 	}
@@ -450,7 +450,7 @@ const TextureGenerator = struct {
 					var dy: i32 = -1;
 					while(dy <= 0) : (dy += 1) {
 						if(y + dy < 0 or y + dy >= 16) continue;
-						const otherItem = itemGrid[@intCast(usize, x + dx)][@intCast(usize, y + dy)];
+						const otherItem = itemGrid[@intCast(x + dx)][@intCast(y + dy)];
 						heightMap[x][y] = if(otherItem) |item| (if(item.material) |material| 1 + (4*random.nextFloat(seed) - 2)*material.roughness else 0) else 0;
 						if(otherItem != oneItem) {
 							hasDifferentItems = true;
@@ -470,8 +470,8 @@ const TextureGenerator = struct {
 					var dy: i32 = -2;
 					while(dy <= 1) : (dy += 1) {
 						if(y + dy < 0 or y + dy >= 16) continue;
-						const otherItem = itemGrid[@intCast(usize, x + dx)][@intCast(usize, y + dy)];
-						const dVec = Vec2f{@intToFloat(f32, dx) + 0.5, @intToFloat(f32, dy) + 0.5};
+						const otherItem = itemGrid[@intCast(x + dx)][@intCast(y + dy)];
+						const dVec = Vec2f{@as(f32, @floatFromInt(dx)) + 0.5, @as(f32, @floatFromInt(dy)) + 0.5};
 						heightMap[x][y] += if(otherItem != null) 1.0/vec.dot(dVec, dVec) else 0;
 					}
 				}
@@ -512,8 +512,8 @@ const TextureGenerator = struct {
 					var dy: i32 = -2;
 					while(dy <= 2) : (dy += 1) {
 						if(x + dx >= 0 and x + dx < 5 and y + dy >= 0 and y + dy < 5) {
-							const index = @intCast(usize, x + dx + 5*(y + dy));
-							const offsetIndex = @intCast(usize, 2 + dx + 5*(2 + dy));
+							const index: usize = @intCast(x + dx + 5*(y + dy));
+							const offsetIndex: usize = @intCast(2 + dx + 5*(2 + dy));
 							offsetGrid[offsetIndex] = tool.craftingGrid[index];
 						}
 					}
@@ -535,8 +535,8 @@ const TextureGenerator = struct {
 					var dy: i32 = -2;
 					while(dy <= 2) : (dy += 1) {
 						if(x + dx >= 0 and x + dx < 5 and y + dy >= 0 and y + dy < 5) {
-							const index = @intCast(usize, x + dx + 5*(y + dy));
-							const offsetIndex = @intCast(usize, 2 + dx + 5*(2 + dy));
+							const index: usize = @intCast(x + dx + 5*(y + dy));
+							const offsetIndex: usize = @intCast(2 + dx + 5*(2 + dy));
 							offsetGrid[offsetIndex] = tool.craftingGrid[index];
 							offsetNeighborCount[offsetIndex] = neighborCount[index];
 						}
@@ -554,7 +554,7 @@ const TextureGenerator = struct {
 			while(y < 16) : (y += 1) {
 				if(pixelMaterials[x][y].items.items.len != 0) {
 					// Choose a random material at conflict zones:
-					itemGrid[x][y] = pixelMaterials[x][y].items.items[random.nextIntBounded(u8, &seed, @intCast(u8, pixelMaterials[x][y].items.items.len))];
+					itemGrid[x][y] = pixelMaterials[x][y].items.items[random.nextIntBounded(u8, &seed, @as(u8, @intCast(pixelMaterials[x][y].items.items.len)))];
 				} else {
 					itemGrid[x][y] = null;
 				}
@@ -572,9 +572,9 @@ const TextureGenerator = struct {
 						// Calculate the lighting based on the nearest free space:
 						const lightTL = heightMap[x][y] - heightMap[x + 1][y + 1];
 						const lightTR = heightMap[x + 1][y] - heightMap[x][y + 1];
-						var light = 2 - @floatToInt(i32, @round((lightTL * 2 + lightTR) / 6));
+						var light = 2 - @as(i32, @intFromFloat(@round((lightTL * 2 + lightTR) / 6)));
 						light = @max(@min(light, 4), 0);
-						img.setRGB(x, 15 - y, material.colorPalette[@intCast(usize, light)]);
+						img.setRGB(x, 15 - y, material.colorPalette[@intCast(light)]);
 					} else {
 						img.setRGB(x, 15 - y, if((x ^ y) & 1 == 0) Color{.r=255, .g=0, .b=255, .a=255} else Color{.r=0, .g=0, .b=0, .a=255});
 					}
@@ -611,8 +611,8 @@ const ToolPhysics = struct {
 		var x: u32 = 4;
 		while(true) {
 			if(tool.craftingGrid[y + x] != null) {
-				tool.handlePosition[0] = @intToFloat(f32, TextureGenerator.GRID_CENTERS_X[x + y]) - 0.5;
-				tool.handlePosition[1] = @intToFloat(f32, TextureGenerator.GRID_CENTERS_Y[x + y]) - 0.5;
+				tool.handlePosition[0] = @as(f32, @floatFromInt(TextureGenerator.GRID_CENTERS_X[x + y])) - 0.5;
+				tool.handlePosition[1] = @as(f32, @floatFromInt(TextureGenerator.GRID_CENTERS_Y[x + y])) - 0.5;
 				// Count the neighbors to determine whether it's a good handle:
 				var neighbors: u32 = 0;
 				if(x != 0 and tool.craftingGrid[y + x - 1] != null)
@@ -650,8 +650,8 @@ const ToolPhysics = struct {
 				if(tool.materialGrid[x][y]) |item| {
 					if(item.material) |material| {
 						const localMass = material.density;
-						centerOfMass[0] += localMass*(@intToFloat(f32, x) + 0.5);
-						centerOfMass[1] += localMass*(@intToFloat(f32, y) + 0.5);
+						centerOfMass[0] += localMass*(@as(f32, @floatFromInt(x)) + 0.5);
+						centerOfMass[1] += localMass*(@as(f32, @floatFromInt(y)) + 0.5);
 						mass += localMass;
 					}
 				}
@@ -669,8 +669,8 @@ const ToolPhysics = struct {
 				if(tool.materialGrid[x][y]) |item| {
 					if(item.material) |material| {
 						const localMass = material.density;
-						const dx = @intToFloat(f32, x) + 0.5 - tool.centerOfMass[0];
-						const dy = @intToFloat(f32, y) + 0.5 - tool.centerOfMass[1];
+						const dx = @as(f32, @floatFromInt(x)) + 0.5 - tool.centerOfMass[0];
+						const dy = @as(f32, @floatFromInt(y)) + 0.5 - tool.centerOfMass[1];
 						inertia += localMass*(dx*dx + dy*dy);
 					}
 				}
@@ -685,8 +685,8 @@ const ToolPhysics = struct {
 	fn determineSharpness(tool: *Tool, point: *Vec3i, initialAngle: f32) void {
 		const center: Vec2f = tool.handlePosition - vec.normalize(tool.centerOfMass - tool.handlePosition)*@splat(2, @as(f32, 16)); // Going 16 pixels away from the handle to simulate arm length.
 		// A region is smooth if there is a lot of pixel within similar angle/distance:
-		const originalAngle = std.math.atan2(f32, @intToFloat(f32, point.*[1]) + 0.5 - center[1], @intToFloat(f32, point.*[0]) + 0.5 - center[0]) - initialAngle;
-		const originalDistance = @cos(originalAngle)*vec.length(center - Vec2f{@intToFloat(f32, point.*[0]) + 0.5, @intToFloat(f32, point.*[1]) + 0.5});
+		const originalAngle = std.math.atan2(f32, @as(f32, @floatFromInt(point.*[1])) + 0.5 - center[1], @as(f32, @floatFromInt(point.*[0])) + 0.5 - center[0]) - initialAngle;
+		const originalDistance = @cos(originalAngle)*vec.length(center - Vec2f{@as(f32, @floatFromInt(point.*[0])) + 0.5, @as(f32, @floatFromInt(point.*[1])) + 0.5});
 		var numOfSmoothPixels: u31 = 0;
 		var x: f32 = 0;
 		while(x < 16) : (x += 1) {
@@ -720,8 +720,8 @@ const ToolPhysics = struct {
 			var y: u8 = 0;
 			while(y < 16) : (y += 1) {
 				if(tool.materialGrid[x][y] == null) continue;
-				const x_float = @intToFloat(f32, x);
-				const y_float = @intToFloat(f32, y);
+				const x_float: f32 = @floatFromInt(x);
+				const y_float: f32 = @floatFromInt(y);
 				const angle = std.math.atan2(f32, y_float + 0.5 - center[1], x_float + 0.5 - center[0]) - initialAngle;
 				const distance = @cos(angle)*vec.length(center - Vec2f{x_float + 0.5, y_float + 0.5});
 				if(angle < leftCollisionAngle) {
@@ -758,7 +758,7 @@ const ToolPhysics = struct {
 			}
 		}
 		// Smaller tools are faster to swing. To balance that smaller tools get a lower durability.
-		tool.maxDurability = @floatToInt(u32, @max(1, std.math.pow(f32, durability/4, 1.5)));
+		tool.maxDurability = @intFromFloat(@max(1, std.math.pow(f32, durability/4, 1.5)));
 		tool.durability = tool.maxDurability;
 	}
 
@@ -770,7 +770,7 @@ const ToolPhysics = struct {
 		// But when the pickaxe does get heavier 2 things happen:
 		// 1. The player needs to lift a bigger weight, so the tool speed gets reduced(calculated elsewhere).
 		// 2. When travelling down the tool also gets additional energy from gravity, so the force is increased by m·g.
-		impactEnergy *= tool.materialGrid[@intCast(usize, collisionPoint[0])][@intCast(usize, collisionPoint[1])].?.material.?.power + tool.mass/256;
+		impactEnergy *= tool.materialGrid[@intCast(collisionPoint[0])][@intCast(collisionPoint[1])].?.material.?.power + tool.mass/256;
 
 		return impactEnergy; // TODO: Balancing
 	}
@@ -788,7 +788,7 @@ const ToolPhysics = struct {
 			while(y <= 2) : (y += 1) {
 				if(x + collisionPointLower[0] >= 0 and x + collisionPointLower[0] < 16) {
 					if(y + collisionPointLower[1] >= 0 and y + collisionPointLower[1] < 16) {
-						if(tool.materialGrid[@intCast(usize, x + collisionPointLower[0])][@intCast(usize, y + collisionPointLower[1])] != null)
+						if(tool.materialGrid[@intCast(x + collisionPointLower[0])][@intCast(y + collisionPointLower[1])] != null)
 							neighborsLower += 1;
 					}
 				}
@@ -802,7 +802,7 @@ const ToolPhysics = struct {
 			while(y <= 2) : (y += 1) {
 				if(x + collisionPointUpper[0] >= 0 and x + collisionPointUpper[0] < 16) {
 					if(y + collisionPointUpper[1] >= 0 and y + collisionPointUpper[1] < 16) {
-						if(tool.materialGrid[@intCast(usize, x + collisionPointUpper[0])][@intCast(usize, y + collisionPointUpper[1])] != null) {
+						if(tool.materialGrid[@intCast(x + collisionPointUpper[0])][@intCast(y + collisionPointUpper[1])] != null) {
 							neighborsUpper += 1;
 							dirUpper[0] += x;
 							dirUpper[1] += y;
@@ -824,8 +824,8 @@ const ToolPhysics = struct {
 	/// Determines how good an axe this side of the tool would make.
 	fn evaluateAxePower(tool: *Tool, collisionPointLower: Vec3i, collisionPointUpper: Vec3i) f32 {
 		// Axes are used for breaking up wood. This requires a larger area (= smooth tip) rather than a sharp tip.
-		const collisionPointLowerFloat = Vec2f{@intToFloat(f32, collisionPointLower[0]), @intToFloat(f32, collisionPointLower[1])};
-		const collisionPointUpperFloat = Vec2f{@intToFloat(f32, collisionPointUpper[0]), @intToFloat(f32, collisionPointUpper[1])};
+		const collisionPointLowerFloat = Vec2f{@floatFromInt(collisionPointLower[0]), @floatFromInt(collisionPointLower[1])};
+		const collisionPointUpperFloat = Vec2f{@floatFromInt(collisionPointUpper[0]), @floatFromInt(collisionPointUpper[1])};
 		const areaFactor = 0.25 + vec.length(collisionPointLowerFloat - collisionPointUpperFloat)/4;
 
 		return areaFactor*calculateImpactEnergy(tool, collisionPointLower)/8;
@@ -891,7 +891,7 @@ const ToolPhysics = struct {
 		while(x < 16) : (x += 1) {
 			var y: u8 = 0;
 			while(y < 16) : (y += 1) {
-				volume += @intToFloat(f32, sandPiles[x][y]);
+				volume += @floatFromInt(sandPiles[x][y]);
 			}
 		}
 		volume /= 256; // TODO: Balancing
@@ -1058,9 +1058,9 @@ pub const Tool = struct {
 			,
 			.{
 				self.swingTime,
-				@floatToInt(i32, 100*self.pickaxePower),
-				@floatToInt(i32, 100*self.axePower),
-				@floatToInt(i32, 100*self.shovelPower),
+				@as(i32, @intFromFloat(100*self.pickaxePower)),
+				@as(i32, @intFromFloat(100*self.axePower)),
+				@as(i32, @intFromFloat(100*self.shovelPower)),
 				self.durability, self.maxDurability,
 			}
 		);
@@ -1208,7 +1208,7 @@ pub const ItemStack = struct {
 			newAmount = self.item.?.stackSize();
 			returnValue = newAmount - self.amount;
 		}
-		self.amount = @intCast(u16, newAmount);
+		self.amount = @intCast(newAmount);
 		if(self.empty()) {
 			self.clear();
 		}

@@ -45,9 +45,9 @@ pub const ClientEntity = struct {
 			self.pos[0],
 			self.pos[1],
 			self.pos[2],
-			@floatCast(f64, self.rot[0]),
-			@floatCast(f64, self.rot[1]),
-			@floatCast(f64, self.rot[2]),
+			@floatCast(self.rot[0]),
+			@floatCast(self.rot[1]),
+			@floatCast(self.rot[2]),
 		};
 		self._interpolationVel = [_]f64{0} ** 6;
 		self.interpolatedValues.init(&self._interpolationPos, &self._interpolationVel);
@@ -70,9 +70,9 @@ pub const ClientEntity = struct {
 		self.pos[0] = self.interpolatedValues.outPos[0];
 		self.pos[1] = self.interpolatedValues.outPos[1];
 		self.pos[2] = self.interpolatedValues.outPos[2];
-		self.rot[0] = @floatCast(f32, self.interpolatedValues.outPos[3]);
-		self.rot[1] = @floatCast(f32, self.interpolatedValues.outPos[4]);
-		self.rot[2] = @floatCast(f32, self.interpolatedValues.outPos[5]);
+		self.rot[0] = @floatCast(self.interpolatedValues.outPos[3]);
+		self.rot[1] = @floatCast(self.interpolatedValues.outPos[4]);
+		self.rot[2] = @floatCast(self.interpolatedValues.outPos[5]);
 	}
 };
 
@@ -115,7 +115,7 @@ pub const ClientEntityManager = struct {
 
 	fn update() void {
 		std.debug.assert(!mutex.tryLock()); // The mutex should be locked when calling this function.
-		var time = @truncate(i16, std.time.milliTimestamp());
+		var time: i16 = @truncate(std.time.milliTimestamp());
 		time -%= timeDifference.difference.load(.Monotonic);
 		for(entities.items) |*ent| {
 			ent.update(time, lastTime);
@@ -129,19 +129,19 @@ pub const ClientEntityManager = struct {
 
 		for(entities.items) |ent| {
 			if(ent.id == game.Player.id or ent.name.len == 0) continue; // don't render local player
-			const pos3d: Vec3d = ent.getRenderPosition() - playerPos;
-			const pos4f: Vec4f = Vec4f{
-				@floatCast(f32, pos3d[0]),
-				@floatCast(f32, pos3d[1] + 1.5),
-				@floatCast(f32, pos3d[2]),
+			const pos3d = ent.getRenderPosition() - playerPos;
+			const pos4f = Vec4f{
+				@floatCast(pos3d[0]),
+				@floatCast(pos3d[1] + 1.5),
+				@floatCast(pos3d[2]),
 				1,
 			};
 
 			const rotatedPos = game.camera.viewMatrix.mulVec(pos4f);
 			const projectedPos = projMatrix.mulVec(rotatedPos);
 			if(projectedPos[2] < 0) continue;
-			const xCenter = (1 + projectedPos[0]/projectedPos[3])*@intToFloat(f32, main.Window.width/2);
-			const yCenter = (1 - projectedPos[1]/projectedPos[3])*@intToFloat(f32, main.Window.height/2);
+			const xCenter = (1 + projectedPos[0]/projectedPos[3])*@as(f32, @floatFromInt(main.Window.width/2));
+			const yCenter = (1 - projectedPos[1]/projectedPos[3])*@as(f32, @floatFromInt(main.Window.height/2));
 			
 			graphics.draw.setColor(0xff000000);
 			try graphics.draw.text(ent.name, xCenter, yCenter, 64, .center);
@@ -154,12 +154,12 @@ pub const ClientEntityManager = struct {
 		update();
 		shader.bind();
 		c.glUniform1i(uniforms.@"fog.activ", if(game.fog.active) c.GL_TRUE else c.GL_FALSE);
-		c.glUniform3fv(uniforms.@"fog.color", 1, @ptrCast([*c]const f32, &game.fog.color));
+		c.glUniform3fv(uniforms.@"fog.color", 1, @ptrCast(&game.fog.color));
 		c.glUniform1f(uniforms.@"fog.density", game.fog.density);
-		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_FALSE, @ptrCast([*c]const f32, &projMatrix));
+		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_FALSE, @ptrCast(&projMatrix));
 		c.glUniform1i(uniforms.texture_sampler, 0);
-		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast([*c]const f32, &ambientLight));
-		c.glUniform3fv(uniforms.directionalLight, 1, @ptrCast([*c]const f32, &directionalLight));
+		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
+		c.glUniform3fv(uniforms.directionalLight, 1, @ptrCast(&directionalLight));
 
 		for(entities.items) |ent| {
 			if(ent.id == game.Player.id) continue; // don't render local player
@@ -167,7 +167,7 @@ pub const ClientEntityManager = struct {
 			// TODO: Entity meshes.
 			// TODO: c.glBindVertexArray(vao);
 			c.glUniform1i(uniforms.materialHasTexture, c.GL_TRUE);
-			c.glUniform1i(uniforms.light, @bitCast(c_int, @as(u32, 0xffffffff))); // TODO: Lighting
+			c.glUniform1i(uniforms.light, @bitCast(@as(u32, 0xffffffff))); // TODO: Lighting
 
 			const pos: Vec3d = ent.getRenderPosition() - playerPos;
 			const modelMatrix = (
@@ -176,13 +176,13 @@ pub const ClientEntityManager = struct {
 				.mul(Mat4f.rotationY(-ent.rot[1]))
 				.mul(Mat4f.rotationX(-ent.rot[0]))
 				.mul(Mat4f.translation(Vec3f{
-					@floatCast(f32, pos[0]),
-					@floatCast(f32, pos[1]),
-					@floatCast(f32, pos[2]),
+					@floatCast(pos[0]),
+					@floatCast(pos[1]),
+					@floatCast(pos[2]),
 				}))
 			);
 			const modelViewMatrix = modelMatrix.mul(game.camera.viewMatrix);
-			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast([*c]const f32, &modelViewMatrix));
+			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast(&modelViewMatrix));
 			// TODO: c.glDrawElements(...);
 		}
 	}
@@ -216,18 +216,18 @@ pub const ClientEntityManager = struct {
 			const id = std.mem.readIntBig(u32, remaining[0..4]);
 			remaining = remaining[4..];
 			const pos = [_]f64 {
-				@bitCast(f64, std.mem.readIntBig(u64, remaining[0..8])),
-				@bitCast(f64, std.mem.readIntBig(u64, remaining[8..16])),
-				@bitCast(f64, std.mem.readIntBig(u64, remaining[16..24])),
-				@floatCast(f64, @bitCast(f32, std.mem.readIntBig(u32, remaining[24..28]))),
-				@floatCast(f64, @bitCast(f32, std.mem.readIntBig(u32, remaining[28..32]))),
-				@floatCast(f64, @bitCast(f32, std.mem.readIntBig(u32, remaining[32..36]))),
+				@bitCast(std.mem.readIntBig(u64, remaining[0..8])),
+				@bitCast(std.mem.readIntBig(u64, remaining[8..16])),
+				@bitCast(std.mem.readIntBig(u64, remaining[16..24])),
+				@floatCast(@as(f32, @bitCast(std.mem.readIntBig(u32, remaining[24..28])))),
+				@floatCast(@as(f32, @bitCast(std.mem.readIntBig(u32, remaining[28..32])))),
+				@floatCast(@as(f32, @bitCast(std.mem.readIntBig(u32, remaining[32..36])))),
 			};
 			remaining = remaining[36..];
 			const vel = [_]f64 {
-				@bitCast(f64, std.mem.readIntBig(u64, remaining[0..8])),
-				@bitCast(f64, std.mem.readIntBig(u64, remaining[8..16])),
-				@bitCast(f64, std.mem.readIntBig(u64, remaining[16..24])),
+				@bitCast(std.mem.readIntBig(u64, remaining[0..8])),
+				@bitCast(std.mem.readIntBig(u64, remaining[8..16])),
+				@bitCast(std.mem.readIntBig(u64, remaining[16..24])),
 				0, 0, 0,
 			};
 			remaining = remaining[24..];

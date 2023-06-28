@@ -50,6 +50,6 @@ pub fn updateText(self: *Label, newText: []const u8) !void {
 }
 
 pub fn render(self: *Label, _: Vec2f) !void {
-	draw.setColor(@floatToInt(u32, self.alpha*255) << 24);
+	draw.setColor(@as(u32, @intFromFloat(self.alpha*255)) << 24);
 	try self.text.render(self.pos[0], self.pos[1], fontSize);
 }

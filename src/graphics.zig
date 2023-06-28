@@ -148,10 +148,10 @@ pub const draw = struct {
 
 		rectShader.bind();
 
-		c.glUniform2f(rectUniforms.screen, @intToFloat(f32, Window.width), @intToFloat(f32, Window.height));
+		c.glUniform2f(rectUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
 		c.glUniform2f(rectUniforms.start, pos[0], pos[1]);
 		c.glUniform2f(rectUniforms.size, dim[0], dim[1]);
-		c.glUniform1i(rectUniforms.rectColor,  @bitCast(i32, color));
+		c.glUniform1i(rectUniforms.rectColor,  @bitCast(color));
 
 		c.glBindVertexArray(rectVAO);
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
@@ -201,10 +201,10 @@ pub const draw = struct {
 
 		lineShader.bind();
 
-		c.glUniform2f(lineUniforms.screen, @intToFloat(f32, Window.width), @intToFloat(f32, Window.height));
+		c.glUniform2f(lineUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
 		c.glUniform2f(lineUniforms.start, pos1[0], pos1[1]);
 		c.glUniform2f(lineUniforms.direction, pos2[0] - pos1[0], pos2[1] - pos1[1]);
-		c.glUniform1i(lineUniforms.lineColor,  @bitCast(i32, color));
+		c.glUniform1i(lineUniforms.lineColor,  @bitCast(color));
 
 		c.glBindVertexArray(lineVAO);
 		c.glDrawArrays(c.GL_LINE_STRIP, 0, 2);
@@ -247,10 +247,10 @@ pub const draw = struct {
 
 		lineShader.bind();
 
-		c.glUniform2f(lineUniforms.screen, @intToFloat(f32, Window.width), @intToFloat(f32, Window.height));
+		c.glUniform2f(lineUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
 		c.glUniform2f(lineUniforms.start, pos[0], pos[1]); // Move the coordinates, so they are in the center of a pixel.
 		c.glUniform2f(lineUniforms.direction, dim[0] - 1, dim[1] - 1); // The height is a lot smaller because the inner edge of the rect is drawn.
-		c.glUniform1i(lineUniforms.lineColor,  @bitCast(i32, color));
+		c.glUniform1i(lineUniforms.lineColor,  @bitCast(color));
 
 		c.glBindVertexArray(lineVAO);
 		c.glDrawArrays(c.GL_LINE_LOOP, 0, 5);
@@ -300,10 +300,10 @@ pub const draw = struct {
 		radius *= scale;
 		circleShader.bind();
 
-		c.glUniform2f(circleUniforms.screen, @intToFloat(f32, Window.width), @intToFloat(f32, Window.height));
+		c.glUniform2f(circleUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
 		c.glUniform2f(circleUniforms.center, center[0], center[1]); // Move the coordinates, so they are in the center of a pixel.
 		c.glUniform1f(circleUniforms.radius, radius); // The height is a lot smaller because the inner edge of the rect is drawn.
-		c.glUniform1i(circleUniforms.circleColor,  @bitCast(i32, color));
+		c.glUniform1i(circleUniforms.circleColor,  @bitCast(color));
 
 		c.glBindVertexArray(circleVAO);
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
@@ -340,10 +340,10 @@ pub const draw = struct {
 
 		imageShader.bind();
 
-		c.glUniform2f(imageUniforms.screen, @intToFloat(f32, Window.width), @intToFloat(f32, Window.height));
+		c.glUniform2f(imageUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
 		c.glUniform2f(imageUniforms.start, pos[0], pos[1]);
 		c.glUniform2f(imageUniforms.size, dim[0], dim[1]);
-		c.glUniform1i(imageUniforms.color, @bitCast(i32, color));
+		c.glUniform1i(imageUniforms.color, @bitCast(color));
 
 		c.glBindVertexArray(rectVAO);
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
@@ -360,10 +360,10 @@ pub const draw = struct {
 		pos = @floor(pos);
 		dim = @ceil(dim);
 
-		c.glUniform2f(uniforms.screen, @intToFloat(f32, Window.width), @intToFloat(f32, Window.height));
+		c.glUniform2f(uniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
 		c.glUniform2f(uniforms.start, pos[0], pos[1]);
 		c.glUniform2f(uniforms.size, dim[0], dim[1]);
-		c.glUniform1i(uniforms.color,  @bitCast(i32, color));
+		c.glUniform1i(uniforms.color,  @bitCast(color));
 		c.glUniform1f(uniforms.scale, scale);
 
 		c.glBindVertexArray(rectVAO);
@@ -373,7 +373,7 @@ pub const draw = struct {
 	// ----------------------------------------------------------------------------
 	
 	pub fn text(_text: []const u8, x: f32, y: f32, fontSize: f32, alignment: TextBuffer.Alignment) !void {
-		try TextRendering.renderText(_text, x, y, fontSize, .{.color = @truncate(u24, @bitCast(u32, color))}, alignment);
+		try TextRendering.renderText(_text, x, y, fontSize, .{.color = @truncate(@as(u32, @bitCast(color)))}, alignment);
 	}
 
 	pub fn print(comptime format: []const u8, args: anytype, x: f32, y: f32, fontSize: f32, alignment: TextBuffer.Alignment) !void {
@@ -482,7 +482,7 @@ pub const TextBuffer = struct {
 				try self.parsedText.append(self.curChar);
 				try self.characterIndex.append(self.curIndex);
 			}
-			self.curIndex = @intCast(u32, self.unicodeIterator.i);
+			self.curIndex = @intCast(self.unicodeIterator.i);
 			self.curChar = self.unicodeIterator.nextCodepoint() orelse return null;
 		}
 
@@ -490,12 +490,12 @@ pub const TextBuffer = struct {
 			try self.fontEffects.append(self.currentFontEffect);
 			try self.parsedText.append(self.curChar);
 			try self.characterIndex.append(self.curIndex);
-			self.curIndex = @intCast(u32, self.unicodeIterator.i);
+			self.curIndex = @intCast(self.unicodeIterator.i);
 			self.curChar = self.unicodeIterator.nextCodepoint() orelse return null;
 		}
 
 		fn parse(self: *Parser) !void {
-			self.curIndex = @intCast(u32, self.unicodeIterator.i);
+			self.curIndex = @intCast(self.unicodeIterator.i);
 			self.curChar = self.unicodeIterator.nextCodepoint() orelse return;
 			while(true) switch(self.curChar) {
 				'*' => {
@@ -582,7 +582,7 @@ pub const TextBuffer = struct {
 			if(i == 0 or glyphInfos[i-1].cluster != glyphInfos[i].cluster) {
 				index.* = glyphInfos[i].cluster;
 			} else {
-				index.* = @min(textIndexGuess[i-1] + 1, @intCast(u32, parser.parsedText.items.len-1));
+				index.* = @min(textIndexGuess[i-1] + 1, @as(u32, @intCast(parser.parsedText.items.len-1)));
 				for(glyphInfos[i..]) |glyphInfo| {
 					if(glyphInfo.cluster != glyphInfos[i].cluster) {
 						index.* = @min(index.*, glyphInfo.cluster - 1);
@@ -595,11 +595,11 @@ pub const TextBuffer = struct {
 		// Merge it all together:
 		self.glyphs = try allocator.alloc(GlyphData, glyphInfos.len);
 		for(self.glyphs, 0..) |*glyph, i| {
-			glyph.x_advance = @intToFloat(f32, glyphPositions[i].x_advance)/4.0;
-			glyph.y_advance = @intToFloat(f32, glyphPositions[i].y_advance)/4.0;
-			glyph.x_offset = @intToFloat(f32, glyphPositions[i].x_offset)/4.0;
-			glyph.y_offset = @intToFloat(f32, glyphPositions[i].y_offset)/4.0;
-			glyph.character = @intCast(u21, parser.parsedText.items[textIndexGuess[i]]);
+			glyph.x_advance = @as(f32, @floatFromInt(glyphPositions[i].x_advance))/4.0;
+			glyph.y_advance = @as(f32, @floatFromInt(glyphPositions[i].y_advance))/4.0;
+			glyph.x_offset = @as(f32, @floatFromInt(glyphPositions[i].x_offset))/4.0;
+			glyph.y_offset = @as(f32, @floatFromInt(glyphPositions[i].y_offset))/4.0;
+			glyph.character = @intCast(parser.parsedText.items[textIndexGuess[i]]);
 			glyph.index = glyphInfos[i].codepoint;
 			glyph.cluster = glyphInfos[i].cluster;
 			glyph.fontEffect = parser.fontEffects.items[textIndexGuess[i]];
@@ -610,7 +610,7 @@ pub const TextBuffer = struct {
 		try self.initLines(true);
 		try self.initLines(false);
 		try self.lineBreaks.append(.{.index = 0, .width = 0});
-		try self.lineBreaks.append(.{.index = @intCast(u32, self.glyphs.len), .width = 0});
+		try self.lineBreaks.append(.{.index = @intCast(self.glyphs.len), .width = 0});
 		return self;
 	}
 
@@ -631,19 +631,19 @@ pub const TextBuffer = struct {
 	}
 
 	pub fn mousePosToIndex(self: TextBuffer, mousePos: Vec2f, bufferLen: usize) u32 {
-		var line: usize = @floatToInt(usize, @max(0, mousePos[1]/16.0));
+		var line: usize = @intFromFloat(@max(0, mousePos[1]/16.0));
 		line = @min(line, self.lineBreaks.items.len - 2);
 		var x: f32 = self.getLineOffset(line);
 		const start = self.lineBreaks.items[line].index;
 		const end = self.lineBreaks.items[line + 1].index;
 		for(self.glyphs[start..end]) |glyph| {
 			if(mousePos[0] < x + glyph.x_advance/2) {
-				return @intCast(u32, glyph.characterIndex);
+				return @intCast(glyph.characterIndex);
 			}
 
 			x += glyph.x_advance;
 		}
-		return @intCast(u32, if(end < self.glyphs.len) self.glyphs[end-1].characterIndex else bufferLen);
+		return @intCast(if(end < self.glyphs.len) self.glyphs[end-1].characterIndex else bufferLen);
 	}
 
 	pub fn indexToCursorPos(self: TextBuffer, index: u32) Vec2f {
@@ -681,10 +681,10 @@ pub const TextBuffer = struct {
 			lineWidth += glyph.x_advance;
 			if(glyph.character == ' ') {
 				lastSpaceWidth = lineWidth;
-				lastSpaceIndex = @intCast(u32, i+1);
+				lastSpaceIndex = @intCast(i+1);
 			}
 			if(glyph.character == '\n') {
-				try self.lineBreaks.append(.{.index = @intCast(u32, i+1), .width = lineWidth - spaceCharacterWidth});
+				try self.lineBreaks.append(.{.index = @intCast(i+1), .width = lineWidth - spaceCharacterWidth});
 				lineWidth = 0;
 				lastSpaceIndex = 0;
 				lastSpaceWidth = 0;
@@ -696,7 +696,7 @@ pub const TextBuffer = struct {
 					lastSpaceIndex = 0;
 					lastSpaceWidth = 0;
 				} else {
-					try self.lineBreaks.append(.{.index = @intCast(u32, i), .width = lineWidth - glyph.x_advance});
+					try self.lineBreaks.append(.{.index = @intCast(i), .width = lineWidth - glyph.x_advance});
 					lineWidth = glyph.x_advance;
 					lastSpaceIndex = 0;
 					lastSpaceWidth = 0;
@@ -704,8 +704,8 @@ pub const TextBuffer = struct {
 			}
 		}
 		self.width = maxLineWidth;
-		try self.lineBreaks.append(.{.index = @intCast(u32, self.glyphs.len), .width = lineWidth});
-		return Vec2f{maxLineWidth*fontSize/16.0, @intToFloat(f32, self.lineBreaks.items.len - 1)*fontSize};
+		try self.lineBreaks.append(.{.index = @intCast(self.glyphs.len), .width = lineWidth});
+		return Vec2f{maxLineWidth*fontSize/16.0, @as(f32, @floatFromInt(self.lineBreaks.items.len - 1))*fontSize};
 	}
 
 	pub fn drawSelection(self: TextBuffer, pos: Vec2f, selectionStart: u32, selectionEnd: u32) !void {
@@ -750,9 +750,9 @@ pub const TextBuffer = struct {
 		var x: f32 = 0;
 		var y: f32 = 0;
 		TextRendering.shader.bind();
-		c.glUniform2f(TextRendering.uniforms.scene, @intToFloat(f32, main.Window.width), @intToFloat(f32, main.Window.height));
+		c.glUniform2f(TextRendering.uniforms.scene, @floatFromInt(main.Window.width), @floatFromInt(main.Window.height));
 		c.glUniform1f(TextRendering.uniforms.ratio, draw.scale);
-		c.glUniform1f(TextRendering.uniforms.alpha, @intToFloat(f32, draw.color >> 24) / 255.0);
+		c.glUniform1f(TextRendering.uniforms.alpha, @as(f32, @floatFromInt(draw.color >> 24)) / 255.0);
 		c.glActiveTexture(c.GL_TEXTURE0);
 		c.glBindTexture(c.GL_TEXTURE_2D, TextRendering.glyphTexture[0]);
 		c.glBindVertexArray(draw.rectVAO);
@@ -764,7 +764,7 @@ pub const TextBuffer = struct {
 			for(self.glyphs[self.lineBreaks.items[i].index..self.lineBreaks.items[i+1].index]) |glyph| {
 				if(glyph.character != '\n') {
 					const ftGlyph = try TextRendering.getGlyph(glyph.index);
-					TextRendering.drawGlyph(ftGlyph, x + glyph.x_offset, y - glyph.y_offset, @bitCast(u28, glyph.fontEffect));
+					TextRendering.drawGlyph(ftGlyph, x + glyph.x_offset, y - glyph.y_offset, @bitCast(glyph.fontEffect));
 				}
 				x += glyph.x_advance;
 				y -= glyph.y_advance;
@@ -796,9 +796,9 @@ pub const TextBuffer = struct {
 	}
 
 	fn shadowColor(color: u24) u24 {
-		const r = @intToFloat(f32, color >> 16);
-		const g = @intToFloat(f32, color >> 8  &  255);
-		const b = @intToFloat(f32, color & 255);
+		const r: f32 = @floatFromInt(color >> 16);
+		const g: f32 = @floatFromInt(color >> 8  &  255);
+		const b: f32 = @floatFromInt(color & 255);
 		const perceivedBrightness = @sqrt(0.299*r*r + 0.587*g*g + 0.114*b*b);
 		if(perceivedBrightness < 64) {
 			return 0xffffff; // Make shadows white for better readability.
@@ -815,9 +815,9 @@ pub const TextBuffer = struct {
 		var x: f32 = 0;
 		var y: f32 = 0;
 		TextRendering.shader.bind();
-		c.glUniform2f(TextRendering.uniforms.scene, @intToFloat(f32, main.Window.width), @intToFloat(f32, main.Window.height));
+		c.glUniform2f(TextRendering.uniforms.scene, @floatFromInt(main.Window.width), @floatFromInt(main.Window.height));
 		c.glUniform1f(TextRendering.uniforms.ratio, draw.scale);
-		c.glUniform1f(TextRendering.uniforms.alpha, @intToFloat(f32, draw.color >> 24) / 255.0);
+		c.glUniform1f(TextRendering.uniforms.alpha, @as(f32, @floatFromInt(draw.color >> 24)) / 255.0);
 		c.glActiveTexture(c.GL_TEXTURE0);
 		c.glBindTexture(c.GL_TEXTURE_2D, TextRendering.glyphTexture[0]);
 		c.glBindVertexArray(draw.rectVAO);
@@ -831,7 +831,7 @@ pub const TextBuffer = struct {
 					const ftGlyph = try TextRendering.getGlyph(glyph.index);
 					var fontEffect = glyph.fontEffect;
 					fontEffect.color = shadowColor(fontEffect.color);
-					TextRendering.drawGlyph(ftGlyph, x + glyph.x_offset, y - glyph.y_offset, @bitCast(u28, fontEffect));
+					TextRendering.drawGlyph(ftGlyph, x + glyph.x_offset, y - glyph.y_offset, @bitCast(fontEffect));
 				}
 				x += glyph.x_advance;
 				y -= glyph.y_advance;
@@ -897,7 +897,7 @@ const TextRendering = struct {
 		shader.bind();
 		c.glUniform1i(uniforms.texture_sampler, 0);
 		c.glUniform1f(uniforms.alpha, 1.0);
-		c.glUniform2f(uniforms.fontSize, @intToFloat(f32, textureWidth), @intToFloat(f32, textureHeight));
+		c.glUniform2f(uniforms.fontSize, @floatFromInt(textureWidth), @floatFromInt(textureHeight));
 		freetypeLib = try freetype.Library.init();
 		freetypeFace = try freetypeLib.createFace("assets/cubyz/fonts/unscii-16-full.ttf", 0);
 		try freetypeFace.setPixelSizes(0, textureHeight);
@@ -944,12 +944,12 @@ const TextRendering = struct {
 			textureOffset, textureHeight, 1
 		);
 		shader.bind();
-		c.glUniform2f(uniforms.fontSize, @intToFloat(f32, textureWidth), @intToFloat(f32, textureHeight));
+		c.glUniform2f(uniforms.fontSize, @floatFromInt(textureWidth), @floatFromInt(textureHeight));
 	}
 
 	fn uploadData(bitmap: freetype.Bitmap) !void {
-		const width = @bitCast(i32, bitmap.width());
-		const height = @bitCast(i32, bitmap.rows());
+		const width: i32 = @bitCast(bitmap.width());
+		const height: i32 = @bitCast(bitmap.rows());
 		const buffer = bitmap.buffer() orelse return;
 		if(textureOffset + width > textureWidth) {
 			try resizeTexture(textureWidth*2);
@@ -969,12 +969,12 @@ const TextRendering = struct {
 			const bitmap = glyph.bitmap();
 			const width = bitmap.width();
 			const height = bitmap.rows();
-			glyphMapping.items[index] = @intCast(u31, glyphData.items.len);
+			glyphMapping.items[index] = @intCast(glyphData.items.len);
 			(try glyphData.addOne()).* = Glyph {
 				.textureX = textureOffset,
-				.size = Vec2i{@intCast(i32, width), @intCast(i32, height)},
+				.size = Vec2i{@intCast(width), @intCast(height)},
 				.bearing = Vec2i{glyph.bitmapLeft(), 16 - glyph.bitmapTop()},
-				.advance = @intToFloat(f32, glyph.advance().x)/@intToFloat(f32, 1 << 6),
+				.advance = @as(f32, @floatFromInt(glyph.advance().x))/@as(f32, 1 << 6),
 			};
 			try uploadData(bitmap);
 		}
@@ -992,15 +992,15 @@ const TextRendering = struct {
 		y = @ceil(y);
 		c.glUniform1i(uniforms.fontEffects, fontEffects);
 		if(fontEffects & 0x1000000 != 0) { // bold
-			c.glUniform2f(uniforms.offset, @intToFloat(f32, glyph.bearing[0])*draw.scale + x, @intToFloat(f32, glyph.bearing[1])*draw.scale + y - 1);
-			c.glUniform4f(uniforms.texture_rect, @intToFloat(f32, glyph.textureX), -1, @intToFloat(f32, glyph.size[0]), @intToFloat(f32, glyph.size[1] + 1));
+			c.glUniform2f(uniforms.offset, @as(f32, @floatFromInt(glyph.bearing[0]))*draw.scale + x, @as(f32, @floatFromInt(glyph.bearing[1]))*draw.scale + y - 1);
+			c.glUniform4f(uniforms.texture_rect, @floatFromInt(glyph.textureX), -1, @floatFromInt(glyph.size[0]), @floatFromInt(glyph.size[1] + 1));
 			c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 			// Just draw another thing on top in x direction. The y-direction is handled in the shader.
-			c.glUniform2f(uniforms.offset, @intToFloat(f32, glyph.bearing[0])*draw.scale + x + 0.5, @intToFloat(f32, glyph.bearing[1])*draw.scale + y - 1);
+			c.glUniform2f(uniforms.offset, @as(f32, @floatFromInt(glyph.bearing[0]))*draw.scale + x + 0.5, @as(f32, @floatFromInt(glyph.bearing[1]))*draw.scale + y - 1);
 			c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 		} else {
-			c.glUniform2f(uniforms.offset, @intToFloat(f32, glyph.bearing[0])*draw.scale + x, @intToFloat(f32, glyph.bearing[1])*draw.scale + y);
-			c.glUniform4f(uniforms.texture_rect, @intToFloat(f32, glyph.textureX), 0, @intToFloat(f32, glyph.size[0]), @intToFloat(f32, glyph.size[1]));
+			c.glUniform2f(uniforms.offset, @as(f32, @floatFromInt(glyph.bearing[0]))*draw.scale + x, @as(f32, @floatFromInt(glyph.bearing[1]))*draw.scale + y);
+			c.glUniform4f(uniforms.texture_rect, @floatFromInt(glyph.textureX), 0, @floatFromInt(glyph.size[0]), @floatFromInt(glyph.size[1]));
 			c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 		}
 	}
@@ -1043,7 +1043,7 @@ pub const Shader = struct {
 		const shader = c.glCreateShader(shader_stage);
 		defer c.glDeleteShader(shader);
 		
-		const sourceLen = @intCast(c_int, source.len);
+		const sourceLen: c_int = @intCast(source.len);
 		c.glShaderSource(shader, 1, &source.ptr, &sourceLen);
 		
 		c.glCompileShader(shader);
@@ -1052,9 +1052,9 @@ pub const Shader = struct {
 		c.glGetShaderiv(shader, c.GL_COMPILE_STATUS, &success);
 		if(success != c.GL_TRUE) {
 			var len: u32 = undefined;
-			c.glGetShaderiv(shader, c.GL_INFO_LOG_LENGTH, @ptrCast(*c_int, &len));
+			c.glGetShaderiv(shader, c.GL_INFO_LOG_LENGTH, @ptrCast(&len));
 			var buf: [4096] u8 = undefined;
-			c.glGetShaderInfoLog(shader, 4096, @ptrCast(*c_int, &len), &buf);
+			c.glGetShaderInfoLog(shader, 4096, @ptrCast(&len), &buf);
 			std.log.err("Error compiling shader {s}:\n{s}\n", .{filename, buf[0..len]});
 			return error.FailedCompiling;
 		}
@@ -1069,9 +1069,9 @@ pub const Shader = struct {
 		c.glGetProgramiv(self.id, c.GL_LINK_STATUS, &success);
 		if(success != c.GL_TRUE) {
 			var len: u32 = undefined;
-			c.glGetProgramiv(self.id, c.GL_INFO_LOG_LENGTH, @ptrCast(*c_int, &len));
+			c.glGetProgramiv(self.id, c.GL_INFO_LOG_LENGTH, @ptrCast(&len));
 			var buf: [4096] u8 = undefined;
-			c.glGetProgramInfoLog(self.id, 4096, @ptrCast(*c_int, &len), &buf);
+			c.glGetProgramInfoLog(self.id, 4096, @ptrCast(&len), &buf);
 			std.log.err("Error Linking Shader program:\n{s}\n", .{buf[0..len]});
 			return error.FailedLinking;
 		}
@@ -1122,13 +1122,13 @@ pub const SSBO = struct {
 
 	pub fn bufferData(self: SSBO, comptime T: type, data: []const T) void {
 		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
-		c.glBufferData(c.GL_SHADER_STORAGE_BUFFER, @intCast(c_long, data.len*@sizeOf(T)), data.ptr, c.GL_STATIC_DRAW);
+		c.glBufferData(c.GL_SHADER_STORAGE_BUFFER, @intCast(data.len*@sizeOf(T)), data.ptr, c.GL_STATIC_DRAW);
 		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
 	}
 
 	pub fn createDynamicBuffer(self: SSBO, size: usize) void {
 		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
-		c.glBufferData(c.GL_SHADER_STORAGE_BUFFER, @intCast(c_long, size), null, c.GL_DYNAMIC_DRAW);
+		c.glBufferData(c.GL_SHADER_STORAGE_BUFFER, @intCast(size), null, c.GL_DYNAMIC_DRAW);
 		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
 	}
 };
@@ -1245,7 +1245,7 @@ pub const LargeBuffer = struct {
 
 	pub fn bufferSubData(self: *LargeBuffer, offset: u31, comptime T: type, data: []T) void {
 		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
-		c.glBufferSubData(c.GL_SHADER_STORAGE_BUFFER, offset, @sizeOf(T)*@intCast(c_long, data.len), data.ptr);
+		c.glBufferSubData(c.GL_SHADER_STORAGE_BUFFER, offset, @sizeOf(T)*@as(c_long, @intCast(data.len)), data.ptr);
 		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
 	}
 };
@@ -1353,7 +1353,7 @@ pub const TextureArray = struct {
 			gSum += g[i]*g[i];
 			bSum += b[i]*b[i];
 		}
-		aSum = @floatToInt(u32, @round(@sqrt(@intToFloat(f32, aSum)))/2);
+		aSum = @intFromFloat(@round(@sqrt(@as(f32, @floatFromInt(aSum))))/2);
 		if(!isTransparent) {
 			if(aSum < 128) {
 				aSum = 0;
@@ -1361,10 +1361,10 @@ pub const TextureArray = struct {
 				aSum = 255;
 			}
 		}
-		rSum = @floatToInt(u32, @round(@sqrt(@intToFloat(f32, rSum)))/2);
-		gSum = @floatToInt(u32, @round(@sqrt(@intToFloat(f32, gSum)))/2);
-		bSum = @floatToInt(u32, @round(@sqrt(@intToFloat(f32, bSum)))/2);
-		return Color{.r=@intCast(u8, rSum), .g=@intCast(u8, gSum), .b=@intCast(u8, bSum), .a=@intCast(u8, aSum)};
+		rSum = @intFromFloat(@round(@sqrt(@as(f32, @floatFromInt(rSum))))/2);
+		gSum = @intFromFloat(@round(@sqrt(@as(f32, @floatFromInt(gSum))))/2);
+		bSum = @intFromFloat(@round(@sqrt(@as(f32, @floatFromInt(bSum))))/2);
+		return Color{.r=@intCast(rSum), .g=@intCast(gSum), .b=@intCast(bSum), .a=@intCast(aSum)};
 	}
 
 	/// (Re-)Generates the GPU buffer.
@@ -1388,12 +1388,12 @@ pub const TextureArray = struct {
 		self.bind();
 
 		const maxLOD = if(mipmapping) 1 + std.math.log2_int(u31, @min(maxWidth, maxHeight)) else 1;
-		c.glTexStorage3D(c.GL_TEXTURE_2D_ARRAY, maxLOD, c.GL_RGBA8, maxWidth, maxHeight, @intCast(c_int, images.len));
+		c.glTexStorage3D(c.GL_TEXTURE_2D_ARRAY, maxLOD, c.GL_RGBA8, maxWidth, maxHeight, @intCast(images.len));
 		var arena = std.heap.ArenaAllocator.init(main.threadAllocator);
 		defer arena.deinit();
 		var lodBuffer: [][]Color = try arena.allocator().alloc([]Color, maxLOD);
 		for(lodBuffer, 0..) |*buffer, i| {
-			buffer.* = try arena.allocator().alloc(Color, (maxWidth >> @intCast(u5, i))*(maxHeight >> @intCast(u5, i)));
+			buffer.* = try arena.allocator().alloc(Color, (maxWidth >> @intCast(i))*(maxHeight >> @intCast(i)));
 		}
 		
 		for(images, 0..) |image, i| {
@@ -1417,7 +1417,7 @@ pub const TextureArray = struct {
 
 			// Calculate the mipmap levels:
 			for(lodBuffer, 0..) |_, _lod| {
-				const lod = @intCast(u5, _lod);
+				const lod: u5 = @intCast(_lod);
 				const curWidth = maxWidth >> lod;
 				const curHeight = maxHeight >> lod;
 				if(lod != 0) {
@@ -1435,7 +1435,7 @@ pub const TextureArray = struct {
 						}
 					}
 				}
-				c.glTexSubImage3D(c.GL_TEXTURE_2D_ARRAY, lod, 0, 0, @intCast(c_int, i), curWidth, curHeight, 1, c.GL_RGBA, c.GL_UNSIGNED_BYTE, lodBuffer[lod].ptr);
+				c.glTexSubImage3D(c.GL_TEXTURE_2D_ARRAY, lod, 0, 0, @intCast(i), curWidth, curHeight, 1, c.GL_RGBA, c.GL_UNSIGNED_BYTE, lodBuffer[lod].ptr);
 			}
 		}
 		c.glTexParameteri(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_LOD, maxLOD);
@@ -1469,7 +1469,7 @@ pub const Texture = struct {
 	}
 
 	pub fn bindTo(self: Texture, binding: u5) void {
-		c.glActiveTexture(@intCast(c_uint, c.GL_TEXTURE0 + binding));
+		c.glActiveTexture(@intCast(c.GL_TEXTURE0 + binding));
 		c.glBindTexture(c.GL_TEXTURE_2D, self.textureID);
 	}
 
@@ -1537,10 +1537,10 @@ pub const Image = struct {
 		const nullTerminatedPath = try std.fmt.allocPrintZ(main.threadAllocator, "{s}", .{path}); // TODO: Find a more zig-friendly image loading library.
 		defer main.threadAllocator.free(nullTerminatedPath);
 		stb_image.stbi_set_flip_vertically_on_load(1);
-		const data = stb_image.stbi_load(nullTerminatedPath.ptr, @ptrCast([*c]c_int, &result.width), @ptrCast([*c]c_int, &result.height), &channel, 4) orelse {
+		const data = stb_image.stbi_load(nullTerminatedPath.ptr, @ptrCast(&result.width), @ptrCast(&result.height), &channel, 4) orelse {
 			return error.FileNotFound;
 		};
-		result.imageData = try allocator.dupe(Color, @ptrCast([*]Color, data)[0..result.width*result.height]);
+		result.imageData = try allocator.dupe(Color, @as([*]Color, @ptrCast(data))[0..result.width*result.height]);
 		stb_image.stbi_image_free(data);
 		return result;
 	}

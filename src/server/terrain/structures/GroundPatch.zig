@@ -54,17 +54,17 @@ pub fn generate(self: *GroundPatch, x: i32, y: i32, z: i32, chunk: *main.chunk.C
 	const xSecn = ellipseParam*@cos(orientation)/width;
 	const zSecn = -ellipseParam*@sin(orientation)/width;
 
-	const xMin = @max(0, x - @floatToInt(i32, @ceil(width)));
-	const xMax = @min(chunk.width - 1, x + @floatToInt(i32, @ceil(width)));
-	const zMin = @max(0, z - @floatToInt(i32, @ceil(width)));
-	const zMax = @min(chunk.width - 1, z + @floatToInt(i32, @ceil(width)));
+	const xMin = @max(0, x - @as(i32, @intFromFloat(@ceil(width))));
+	const xMax = @min(chunk.width - 1, x + @as(i32, @intFromFloat(@ceil(width))));
+	const zMin = @max(0, z - @as(i32, @intFromFloat(@ceil(width))));
+	const zMax = @min(chunk.width - 1, z + @as(i32, @intFromFloat(@ceil(width))));
 
 	var px = chunk.startIndex(xMin);
 	while(px < xMax) : (px += 1) {
 		var pz = chunk.startIndex(zMin);
 		while(pz < zMax) : (pz += 1) {
-			const mainDist = xMain*@intToFloat(f32, x - px) + zMain*@intToFloat(f32, z - pz);
-			const secnDist = xSecn*@intToFloat(f32, x - px) + zSecn*@intToFloat(f32, z - pz);
+			const mainDist = xMain*@as(f32, @floatFromInt(x - px)) + zMain*@as(f32, @floatFromInt(z - pz));
+			const secnDist = xSecn*@as(f32, @floatFromInt(x - px)) + zSecn*@as(f32, @floatFromInt(z - pz));
 			const dist = mainDist*mainDist + secnDist*secnDist;
 			if(dist <= 1) {
 				var startHeight = y;

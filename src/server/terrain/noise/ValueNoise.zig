@@ -4,12 +4,12 @@ const main = @import("root");
 const random = main.random;
 
 fn getSeedX(x: f32, worldSeed: u64) u64 {
-	var seed: u64 = worldSeed ^ @as(u64, 54275629861)*%@bitCast(u32, @floatToInt(i32, x));
+	var seed: u64 = worldSeed ^ @as(u64, 54275629861)*%@as(u32, @bitCast(@as(i32, @intFromFloat(x))));
 	return seed;
 }
 
 fn getSeedY(x: f32, worldSeed: u64) u64 {
-	var seed: u64 = worldSeed ^ @as(u64, 5478938690717)*%@bitCast(u32, @floatToInt(i32, x));
+	var seed: u64 = worldSeed ^ @as(u64, 5478938690717)*%@as(u32, @bitCast(@as(i32, @intFromFloat(x))));
 	return seed;
 }
 
@@ -82,7 +82,7 @@ fn preGeneratePercentileTable() !void {
 			i += 1;
 		}
 		const diff = goal - current;
-		_percentile.* = (@intToFloat(f32, i) + @intToFloat(f32, diff)/@intToFloat(f32, amount2D[i]))/2048;
+		_percentile.* = (@as(f32, @floatFromInt(i)) + @as(f32, @floatFromInt(diff))/@as(f32, @floatFromInt(amount2D[i])))/2048;
 	}
 
 	for(&percentiles) |_percentile| {
@@ -92,9 +92,9 @@ fn preGeneratePercentileTable() !void {
 
 pub fn percentile(ratio: f32) f32 {
 	std.debug.assert(ratio >= 0);
-	const scaledToList = ratio*@intToFloat(f32, percentileTable.len);
-	const index = @floatToInt(u32, scaledToList);
+	const scaledToList = ratio*@as(f32, @floatFromInt(percentileTable.len));
+	const index: u32 = @intFromFloat(scaledToList);
 	if(index >= percentileTable.len-1) return 1;
-	const offset = (scaledToList - @intToFloat(f32, index));
+	const offset = (scaledToList - @as(f32, @floatFromInt(index)));
 	return (1 - offset)*percentileTable[index] + offset*percentileTable[index + 1];
 }
