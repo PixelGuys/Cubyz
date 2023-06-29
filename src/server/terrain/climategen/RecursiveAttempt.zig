@@ -252,10 +252,18 @@ const GenerationStructure = struct {
 
 	fn addSubBiomesOf(biome: BiomePoint, map: Array2D(*const Biome), extraBiomes: *std.ArrayList(BiomePoint), wx: i32, wz: i32, width: u31, height: u31, worldSeed: u64) !void {
 		var seed = random.initSeed2D(worldSeed, @bitCast(biome.pos));
-		var biomeCount: f32 = biome.biome.subBiomeTotalChance*2*random.nextFloat(&seed);
+		var biomeCount: f32 = undefined;
+		if(biome.biome.subBiomeTotalChance > biome.biome.maxSubBiomeCount) {
+			biomeCount = biome.biome.maxSubBiomeCount;
+		} else if(biome.biome.subBiomeTotalChance > biome.biome.maxSubBiomeCount/2) {
+			biomeCount = biome.biome.maxSubBiomeCount - (biome.biome.maxSubBiomeCount - biome.biome.subBiomeTotalChance*2)*random.nextFloat(&seed);
+		} else {
+			biomeCount = biome.biome.subBiomeTotalChance*2*random.nextFloat(&seed);
+		}
 		biomeCount = @min(biomeCount, biome.biome.maxSubBiomeCount);
 		var i: f32 = 0;
 		while(i < biomeCount) : (i += 1) {
+			if(biomeCount - i < random.nextFloat(&seed)) break;
 			const subBiome = biome.biome.subBiomes.sample(&seed).*;
 			var maxCenterOffset: f32 = biome.biome.radius - subBiome.radius - 32;
 			if(maxCenterOffset < 0) {

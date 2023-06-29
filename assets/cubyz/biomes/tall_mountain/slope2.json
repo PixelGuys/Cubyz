@@ -1,0 +1,27 @@
+{
+	"properties" : [
+		"mountain"
+	],
+	"radius" : 240,
+	"minHeight" : 384,
+	"maxHeight" : 384,
+	
+	"mountains" : 90,
+
+	"chance" : 0,
+	
+	"music" : "DarkTimes",
+
+	"parentBiomes" : [
+		{
+			"id" : "cubyz:tall_mountain/slope1",
+			"chance" : 1,
+		}
+	],
+
+	"maxSubBiomeCount" : 1,
+
+	"ground_structure" : [
+		"cubyz:cobblestone",
+	]
+}
