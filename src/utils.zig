@@ -702,15 +702,15 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 		cacheMisses: std.atomic.Atomic(usize) = std.atomic.Atomic(usize).init(0),
 
 		///  Tries to find the entry that fits to the supplied hashable.
-		pub fn find(self: *@This(), compareAndHash: anytype) void {
+		pub fn find(self: *@This(), compareAndHash: anytype) ?*T {
 			const index: u32 = compareAndHash.hashCode() & hashMask;
-			@atomicRmw(u32, &self.cacheRequests.value, .Add, 1, .Monotonic);
+			_ = @atomicRmw(usize, &self.cacheRequests.value, .Add, 1, .Monotonic);
 			self.buckets[index].mutex.lock();
 			defer self.buckets[index].mutex.unlock();
 			if(self.buckets[index].find(compareAndHash)) |item| {
 				return item;
 			}
-			@atomicRmw(u32, &self.cacheMisses.value, .Add, 1, .Monotonic);
+			_ = @atomicRmw(usize, &self.cacheMisses.value, .Add, 1, .Monotonic);
 			return null;
 		}
 
@@ -728,7 +728,8 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 		}
 
 		/// Returns the object that got kicked out of the cache. This must be deinited by the user.
-		pub fn addToCache(self: *@This(), item: *T, index: u32) ?*T {
+		pub fn addToCache(self: *@This(), item: *T, hash: u32) ?*T {
+			const index = hash & hashMask;
 			self.buckets[index].mutex.lock();
 			defer self.buckets[index].mutex.unlock();
 			return self.buckets[index].add(item);
@@ -740,6 +741,16 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 			defer self.buckets[index].mutex.unlock();
 			return try self.buckets[index].findOrCreate(compareAndHash, initFunction);
 		}
+	};
+}
+
+///  https://en.wikipedia.org/wiki/Cubic_Hermite_spline#Unit_interval_(0,_1)
+pub fn unitIntervalSpline(comptime Float: type, p0: Float, m0: Float, p1: Float, m1: Float) [4]Float {
+	return .{
+		p0,
+		m0,
+		-3*p0 - 2*m0 + 3*p1 - m1,
+		2*p0 + m0 - 2*p1 + m1,
 	};
 }
 
@@ -777,13 +788,10 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 			const m1 = _m1*tScale;
 			const t2 = t*t;
 			const t3 = t2*t;
-			const a0 = p0;
-			const a1 = m0;
-			const a2 = -3*p0 - 2*m0 + 3*p1 - m1;
-			const a3 = 2*p0 + m0 - 2*p1 + m1;
+			const a = unitIntervalSpline(f64, p0, m0, p1, m1);
 			return [_]f64 {
-				a0 + a1*t + a2*t2 + a3*t3, // value
-				(a1 + 2*a2*t + 3*a3*t2)/tScale, // first derivative
+				a[0] + a[1]*t + a[2]*t2 + a[3]*t3, // value
+				(a[1] + 2*a[2]*t + 3*a[3]*t2)/tScale, // first derivative
 			};
 		}
 

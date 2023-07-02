@@ -365,7 +365,9 @@ pub const ServerWorld = struct {
 				std.log.info("Trying ({}, {})", .{self.spawn[0], self.spawn[2]});
 				if(try self.isValidSpawnLocation(self.spawn[0], self.spawn[2])) break;
 			}
-			self.spawn[1] = 0;// TODO: spawn[1] = chunkManager.getOrGenerateMapFragment(spawn.x, spawn.z, 1).getHeight(spawn.x, spawn.z);
+			const map = try terrain.SurfaceMap.getOrGenerateFragment(self.spawn[0], self.spawn[2], 1);
+			defer map.deinit();
+			self.spawn[1] = @intFromFloat(map.getHeight(self.spawn[0], self.spawn[2]) + 1);
 		}
 		self.generated = true;
 		try self.wio.saveWorldData();
@@ -430,12 +432,10 @@ pub const ServerWorld = struct {
 //		}
 //	}
 
-	fn isValidSpawnLocation(self: *ServerWorld, x: i32, z: i32) !bool {
-		_ = self;
-		_ = x;
-		_ = z;
-		return true;
-//	TODO:	return chunkManager.getOrGenerateMapFragment(x, z, 32).getBiome(x, z).isValidPlayerSpawn;
+	fn isValidSpawnLocation(_: *ServerWorld, wx: i32, wz: i32) !bool {
+		const map = try terrain.SurfaceMap.getOrGenerateFragment(wx, wz, 1);
+		defer map.deinit();
+		return map.getBiome(wx, wz).isValidPlayerSpawn;
 	}
 
 	pub fn dropWithCooldown(self: *ServerWorld, stack: ItemStack, pos: Vec3d, dir: Vec3f, velocity: f32, pickupCooldown: u32) !void {
@@ -633,14 +633,12 @@ pub const ServerWorld = struct {
 //	public CurrentWorldRegistries getCurrentRegistries() {
 //		return registries;
 //	}
-//
-//	public Biome getBiome(int wx, int wy, int wz) {
-//		return new InterpolatableCaveBiomeMap(new ChunkData(
-//			wx & ~CaveBiomeMapFragment.CAVE_BIOME_MASK,
-//			wy & ~CaveBiomeMapFragment.CAVE_BIOME_MASK,
-//			wz & ~CaveBiomeMapFragment.CAVE_BIOME_MASK, 1
-//		), 0).getRoughBiome(wx, wy, wz, null, true);
-//	}
+
+	pub fn getBiome(_: *const ServerWorld, wx: i32, wy: i32, wz: i32) !*const terrain.biomes.Biome {
+		const map = try terrain.CaveBiomeMap.InterpolatableCaveBiomeMapView.init(.{.wx = wx, .wy = wy, .wz = wz, .voxelSize = 1}, 1);
+		defer map.deinit();
+		return map.getRoughBiome(wx, wy, wz, false, undefined, true);
+	}
 
 	pub fn getBlock(self: *ServerWorld, x: i32, y: i32, z: i32) Block {
 		if(self.getChunk(x, y, z)) |ch| {

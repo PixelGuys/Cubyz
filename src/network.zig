@@ -1188,7 +1188,8 @@ pub const Protocols = struct {
 			var json = try JsonElement.initObject(main.threadAllocator);
 			defer json.free(main.threadAllocator);
 			try json.put("time", world.gameTime);
-			// TODO: json.put("biome", world.getBiome((int)user.player.getPosition().x, (int)user.player.getPosition().y, (int)user.player.getPosition().z).getRegistryID().toString());
+			const pos = conn.user.?.player.pos;
+			try json.put("biome", (try world.getBiome(@intFromFloat(pos[0]), @intFromFloat(pos[1]), @intFromFloat(pos[2]))).id);
 			const string = try json.toString(main.threadAllocator);
 			defer main.threadAllocator.free(string);
 			try addHeaderAndSendUnimportant(conn, type_timeAndBiome, string);

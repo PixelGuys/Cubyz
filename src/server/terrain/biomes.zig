@@ -415,6 +415,9 @@ pub fn finishLoading() !void {
 	for(biomes.items) |*biome| {
 		try biomesById.put(biome.id, biome);
 	}
+	for(caveBiomes.items) |*biome| {
+		try biomesById.put(biome.id, biome);
+	}
 	var subBiomeIterator = unfinishedSubBiomes.iterator();
 	while(subBiomeIterator.next()) |subBiomeData| {
 		const parentBiome = biomesById.get(subBiomeData.key_ptr.*) orelse {

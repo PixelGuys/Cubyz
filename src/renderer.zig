@@ -1052,8 +1052,8 @@ pub const RenderStructure = struct {
 				const xIndex = @divExact(x -% startX, size);
 				var deltaX: i64 = std.math.absInt(@as(i64, x +% size/2 -% px)) catch unreachable;
 				deltaX = @max(0, deltaX - size/2);
-				const maxYRenderDistanceSquare = @as(i64, maxRenderDistance)*@as(i64, maxRenderDistance) - deltaX*deltaX;
-				const maxYRenderDistance: i32 = @intFromFloat(@ceil(@sqrt(@as(f64, @floatFromInt(maxYRenderDistanceSquare)))));
+				const maxYRenderDistanceSquare: f64 = @floatFromInt(@as(i64, maxRenderDistance)*@as(i64, maxRenderDistance) - deltaX*deltaX);
+				const maxYRenderDistance: i32 = @intFromFloat(@ceil(@sqrt(maxYRenderDistanceSquare)));
 
 				const minY = py-%maxYRenderDistance-%1 & invMask;
 				const maxY = py+%maxYRenderDistance+%size & invMask;
@@ -1062,8 +1062,8 @@ pub const RenderStructure = struct {
 					const yIndex = @divExact(y -% startY, size);
 					var deltaY: i64 = std.math.absInt(@as(i64, y +% size/2 -% py)) catch unreachable;
 					deltaY = @max(0, deltaY - size/2);
-					const maxZRenderDistanceSquare = @as(i64, maxYRenderDistance)*@as(i64, maxYRenderDistance) - deltaY*deltaY;
-					const maxZRenderDistance: i32 = @intFromFloat(@ceil(@sqrt(@as(f64, @floatFromInt(maxZRenderDistanceSquare)))));
+					const maxZRenderDistanceSquare: f64 = @floatFromInt(@as(i64, maxYRenderDistance)*@as(i64, maxYRenderDistance) - deltaY*deltaY);
+					const maxZRenderDistance: i32 = @intFromFloat(@ceil(@sqrt(maxZRenderDistanceSquare)));
 
 					const minZ = pz-%maxZRenderDistance-%1 & invMask;
 					const maxZ = pz+%maxZRenderDistance+%size & invMask;
