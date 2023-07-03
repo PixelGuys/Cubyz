@@ -16,7 +16,7 @@ const GuiComponent = gui.GuiComponent;
 const Button = GuiComponent.Button;
 const Label = GuiComponent.Label;
 
-const Slider = @This();
+const DiscreteSlider = @This();
 
 const border: f32 = 3;
 const fontSize: f32 = 16;
@@ -42,7 +42,7 @@ pub fn __deinit() void {
 	texture.deinit();
 }
 
-pub fn init(pos: Vec2f, width: f32, text: []const u8, comptime fmt: []const u8, valueList: anytype, initialValue: u16, callback: *const fn(u16) void) Allocator.Error!*Slider {
+pub fn init(pos: Vec2f, width: f32, text: []const u8, comptime fmt: []const u8, valueList: anytype, initialValue: u16, callback: *const fn(u16) void) Allocator.Error!*DiscreteSlider {
 	var values = try main.globalAllocator.alloc([]const u8, valueList.len);
 	var maxLen: usize = 0;
 	for(valueList, 0..) |value, i| {
@@ -55,8 +55,8 @@ pub fn init(pos: Vec2f, width: f32, text: []const u8, comptime fmt: []const u8, 
 	@memset(initialText[text.len..], ' ');
 	const label = try Label.init(undefined, width - 3*border, initialText, .center);
 	const button = try Button.initText(.{0, 0}, undefined, "", .{});
-	const self = try main.globalAllocator.create(Slider);
-	self.* = Slider {
+	const self = try main.globalAllocator.create(DiscreteSlider);
+	self.* = DiscreteSlider {
 		.pos = pos,
 		.size = undefined,
 		.callback = callback,
@@ -74,7 +74,7 @@ pub fn init(pos: Vec2f, width: f32, text: []const u8, comptime fmt: []const u8, 
 	return self;
 }
 
-pub fn deinit(self: *const Slider) void {
+pub fn deinit(self: *const DiscreteSlider) void {
 	self.label.deinit();
 	self.button.deinit();
 	for(self.values) |value| {
@@ -85,13 +85,13 @@ pub fn deinit(self: *const Slider) void {
 	main.globalAllocator.destroy(self);
 }
 
-pub fn toComponent(self: *Slider) GuiComponent {
+pub fn toComponent(self: *DiscreteSlider) GuiComponent {
 	return GuiComponent {
-		.slider = self
+		.discreteSlider = self
 	};
 }
 
-fn setButtonPosFromValue(self: *Slider) !void {
+fn setButtonPosFromValue(self: *DiscreteSlider) !void {
 	const range: f32 = self.size[0] - 3*border - self.button.size[0];
 	const len: f32 = @floatFromInt(self.values.len);
 	const selection: f32 = @floatFromInt(self.currentSelection);
@@ -99,7 +99,7 @@ fn setButtonPosFromValue(self: *Slider) !void {
 	try self.updateLabel(self.values[self.currentSelection], self.size[0]);
 }
 
-fn updateLabel(self: *Slider, newValue: []const u8, width: f32) !void {
+fn updateLabel(self: *DiscreteSlider, newValue: []const u8, width: f32) !void {
 	main.globalAllocator.free(self.currentText);
 	self.currentText = try main.globalAllocator.alloc(u8, newValue.len + self.text.len);
 	@memcpy(self.currentText[self.text.len..], self.text);
@@ -109,7 +109,7 @@ fn updateLabel(self: *Slider, newValue: []const u8, width: f32) !void {
 	self.label = label;
 }
 
-fn updateValueFromButtonPos(self: *Slider) !void {
+fn updateValueFromButtonPos(self: *DiscreteSlider) !void {
 	const range: f32 = self.size[0] - 3*border - self.button.size[0];
 	const len: f32 = @floatFromInt(self.values.len);
 	const selection: u16 = @intFromFloat((self.button.pos[0] - 1.5*border)/range*len);
@@ -120,24 +120,24 @@ fn updateValueFromButtonPos(self: *Slider) !void {
 	}
 }
 
-pub fn updateHovered(self: *Slider, mousePosition: Vec2f) void {
+pub fn updateHovered(self: *DiscreteSlider, mousePosition: Vec2f) void {
 	if(GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
 		self.button.updateHovered(mousePosition - self.pos);
 	}
 }
 
-pub fn mainButtonPressed(self: *Slider, mousePosition: Vec2f) void {
+pub fn mainButtonPressed(self: *DiscreteSlider, mousePosition: Vec2f) void {
 	if(GuiComponent.contains(self.button.pos, self.button.size, mousePosition - self.pos)) {
 		self.button.mainButtonPressed(mousePosition - self.pos);
 		self.mouseAnchor = mousePosition[0] - self.button.pos[0];
 	}
 }
 
-pub fn mainButtonReleased(self: *Slider, _: Vec2f) void {
+pub fn mainButtonReleased(self: *DiscreteSlider, _: Vec2f) void {
 	self.button.mainButtonReleased(undefined);
 }
 
-pub fn render(self: *Slider, mousePosition: Vec2f) !void {
+pub fn render(self: *DiscreteSlider, mousePosition: Vec2f) !void {
 	texture.bindTo(0);
 	Button.shader.bind();
 	draw.setColor(0xff000000);

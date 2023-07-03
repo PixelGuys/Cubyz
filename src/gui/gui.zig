@@ -15,7 +15,8 @@ const CraftingResultSlot = @import("components/CraftingResultSlot.zig");
 const ImmutableItemSlot = @import("components/ImmutableItemSlot.zig");
 const ItemSlot = @import("components/ItemSlot.zig");
 const ScrollBar = @import("components/ScrollBar.zig");
-const Slider = @import("components/Slider.zig");
+const ContinuousSlider = @import("components/ContinuousSlider.zig");
+const DiscreteSlider = @import("components/DiscreteSlider.zig");
 const TextInput = @import("components/TextInput.zig");
 pub const GuiComponent = @import("gui_component.zig").GuiComponent;
 pub const GuiWindow = @import("GuiWindow.zig");
@@ -150,7 +151,8 @@ pub fn init() !void {
 	try ImmutableItemSlot.__init();
 	try ItemSlot.__init();
 	try ScrollBar.__init();
-	try Slider.__init();
+	try ContinuousSlider.__init();
+	try DiscreteSlider.__init();
 	try TextInput.__init();
 	try load();
 	try inventory.init();
@@ -173,7 +175,8 @@ pub fn deinit() void {
 	ImmutableItemSlot.__deinit();
 	ItemSlot.__deinit();
 	ScrollBar.__deinit();
-	Slider.__deinit();
+	ContinuousSlider.__deinit();
+	DiscreteSlider.__deinit();
 	TextInput.__deinit();
 	inline for(@typeInfo(windowlist).Struct.decls) |decl| {
 		const WindowStruct = @field(windowlist, decl.name);

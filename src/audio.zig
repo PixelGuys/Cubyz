@@ -135,7 +135,6 @@ const MusicLoadTask = struct {
 };
 
 // TODO: Proper sound and music system
-// TODO: volume control
 
 var stream: ?*c.PaStream = null;
 
@@ -228,7 +227,7 @@ fn addMusic(buffer: []f32) !void {
 	var i: usize = 0;
 	while(i < buffer.len) : (i += 2) {
 		currentMusic.animationProgress += 1.0/animationLengthInSamples;
-		var amplitude: f32 = 1;
+		var amplitude: f32 = main.settings.musicVolume;
 		if(currentMusic.animationProgress > 1) {
 			if(currentMusic.animationDecaying) {
 				activeMusicId = &.{};
@@ -236,7 +235,7 @@ fn addMusic(buffer: []f32) !void {
 			}
 		} else {
 			currentMusic.evaluatePolynomial();
-			amplitude = currentMusic.animationAmplitude;
+			amplitude *= currentMusic.animationAmplitude;
 		}
 		buffer[i] += amplitude*currentMusic.buffer[currentMusic.pos];
 		buffer[i + 1] += amplitude*currentMusic.buffer[currentMusic.pos + 1];

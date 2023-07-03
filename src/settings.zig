@@ -35,6 +35,8 @@ pub var lastUsedIPAddress: []const u8 = "127.0.0.1";
 
 pub var guiScale: ?f32 = null;
 
+pub var musicVolume: f32 = 1;
+
 
 pub fn init() !void {
 	const json: JsonElement = main.files.readToJson(main.threadAllocator, "settings.json") catch |err| blk: {
