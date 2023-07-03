@@ -102,7 +102,7 @@ fn setButtonPosFromValue(self: *DiscreteSlider) !void {
 fn updateLabel(self: *DiscreteSlider, newValue: []const u8, width: f32) !void {
 	main.globalAllocator.free(self.currentText);
 	self.currentText = try main.globalAllocator.alloc(u8, newValue.len + self.text.len);
-	@memcpy(self.currentText[self.text.len..], self.text);
+	@memcpy(self.currentText[0..self.text.len], self.text);
 	@memcpy(self.currentText[self.text.len..], newValue);
 	const label = try Label.init(undefined, width - 3*border, self.currentText, .center);
 	self.label.deinit();

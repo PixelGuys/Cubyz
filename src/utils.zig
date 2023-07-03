@@ -525,17 +525,19 @@ pub const ThreadPool = struct {
 	const refreshTime: u32 = 100; // The time after which all priorities get refreshed in milliseconds.
 
 	threads: []std.Thread,
+	currentTasks: []std.atomic.Atomic(?*const VTable),
 	loadList: *BlockingMaxHeap(Task),
 	allocator: Allocator,
 
 	pub fn init(allocator: Allocator, threadCount: usize) !ThreadPool {
 		var self = ThreadPool {
 			.threads = try allocator.alloc(std.Thread, threadCount),
+			.currentTasks = try allocator.alloc(std.atomic.Atomic(?*const VTable), threadCount),
 			.loadList = try BlockingMaxHeap(Task).init(allocator),
 			.allocator = allocator,
 		};
 		for(self.threads, 0..) |*thread, i| {
-			thread.* = try std.Thread.spawn(.{}, run, .{self});
+			thread.* = try std.Thread.spawn(.{}, run, .{self, i});
 			var buf: [64]u8 = undefined;
 			try thread.setName(try std.fmt.bufPrint(&buf, "Worker Thread {}", .{i+1}));
 		}
@@ -554,10 +556,32 @@ pub const ThreadPool = struct {
 		for(self.threads) |thread| {
 			thread.join();
 		}
+		self.allocator.free(self.currentTasks);
 		self.allocator.free(self.threads);
 	}
 
-	fn run(self: ThreadPool) !void {
+	pub fn closeAllTasksOfType(self: ThreadPool, vtable: *const VTable) void {
+		self.loadList.mutex.lock();
+		defer self.loadList.mutex.unlock();
+		var i: u32 = 0;
+		while(i < self.loadList.size) {
+			const task = &self.loadList.array[i];
+			if(task.vtable == vtable) {
+				task.vtable.clean(task.self);
+				self.loadList.removeIndex(i);
+			} else {
+				i += 1;
+			}
+		}
+		// Wait for active tasks:
+		for(self.currentTasks) |*task| {
+			while(task.load(.Monotonic) == vtable) {
+				std.time.sleep(1e6);
+			}
+		}
+	}
+
+	fn run(self: ThreadPool, id: usize) !void {
 		// In case any of the tasks wants to allocate memory:
 		var gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe=false}){};
 		main.threadAllocator = gpa.allocator();
@@ -569,7 +593,9 @@ pub const ThreadPool = struct {
 		while(true) {
 			{
 				var task = self.loadList.extractMax() catch break;
+				self.currentTasks[id].store(task.vtable, .Monotonic);
 				try task.vtable.run(task.self);
+				self.currentTasks[id].store(null, .Monotonic);
 			}
 
 			if(std.time.milliTimestamp() -% lastUpdate > refreshTime) {

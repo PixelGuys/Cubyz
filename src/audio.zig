@@ -162,7 +162,9 @@ pub fn deinit() void {
 	handleError(c.Pa_StopStream(stream));
 	handleError(c.Pa_CloseStream(stream));
 	handleError(c.Pa_Terminate());
+	main.threadPool.closeAllTasksOfType(&MusicLoadTask.vtable);
 	musicCache.clear();
+	activeTasks.deinit(main.globalAllocator);
 	activeMusicId.len = 0;
 }
 
