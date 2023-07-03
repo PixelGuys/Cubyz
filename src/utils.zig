@@ -444,8 +444,8 @@ pub fn BlockingMaxHeap(comptime T: type) type {
 		pub fn updatePriority(self: *@This()) void {
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			for(0..self.size/2) |i| {
-				self.siftDown(i);
+			for(0..self.size) |i| {
+				self.siftUp(i);
 			}
 		}
 
@@ -573,16 +573,16 @@ pub const ThreadPool = struct {
 			}
 
 			if(std.time.milliTimestamp() -% lastUpdate > refreshTime) {
-				lastUpdate = std.time.milliTimestamp();
 				if(self.loadList.mutex.tryLock()) {
+					lastUpdate = std.time.milliTimestamp();
 					{
 						defer self.loadList.mutex.unlock();
 						var i: u32 = 0;
 						while(i < self.loadList.size) {
-							var task = self.loadList.array[i];
+							const task = &self.loadList.array[i];
 							if(!task.vtable.isStillNeeded(task.self)) {
-								self.loadList.removeIndex(i);
 								task.vtable.clean(task.self);
+								self.loadList.removeIndex(i);
 							} else {
 								task.cachedPriority = task.vtable.getPriority(task.self);
 								i += 1;

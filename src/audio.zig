@@ -240,7 +240,7 @@ fn addMusic(buffer: []f32) !void {
 		buffer[i] += amplitude*currentMusic.buffer[currentMusic.pos];
 		buffer[i + 1] += amplitude*currentMusic.buffer[currentMusic.pos + 1];
 		currentMusic.pos += 2;
-		if(currentMusic.pos > currentMusic.buffer.len) {
+		if(currentMusic.pos >= currentMusic.buffer.len) {
 			currentMusic.pos = 0;
 		}
 	}
