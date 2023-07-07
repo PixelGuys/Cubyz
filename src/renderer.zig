@@ -230,10 +230,12 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 //	SimpleList<NormalChunkMesh> visibleChunks = new SimpleList<NormalChunkMesh>(new NormalChunkMesh[64]);
 //	SimpleList<ReducedChunkMesh> visibleReduced = new SimpleList<ReducedChunkMesh>(new ReducedChunkMesh[64]);
-	var meshes = std.ArrayList(*chunk.meshing.ChunkMesh).init(main.threadAllocator);
-	defer meshes.deinit();
+	var meshes = &struct {
+		var meshes = std.ArrayList(*chunk.meshing.ChunkMesh).init(main.globalAllocator);
+	}.meshes;
+	defer meshes.clearRetainingCapacity();
 
-	try RenderStructure.updateAndGetRenderChunks(game.world.?.conn, playerPos, settings.renderDistance, settings.LODFactor, frustum, &meshes);
+	try RenderStructure.updateAndGetRenderChunks(game.world.?.conn, playerPos, settings.renderDistance, settings.LODFactor, frustum, meshes);
 
 	try sortChunks(meshes.items, playerPos);
 
@@ -932,8 +934,10 @@ pub const RenderStructure = struct {
 		shouldBeRemoved: bool, // Internal use.
 		drawableChildren: u32, // How many children can be renderer. If this is 8 then there is no need to render this mesh.
 	};
-	var storageLists: [settings.highestLOD + 1][]?*ChunkMeshNode = undefined;
+	var storageLists: [settings.highestLOD + 1][]?*ChunkMeshNode = [1][]?*ChunkMeshNode{&.{}} ** (settings.highestLOD + 1);
+	var storageListsSwap: [settings.highestLOD + 1][]?*ChunkMeshNode = [1][]?*ChunkMeshNode{&.{}} ** (settings.highestLOD + 1);
 	var updatableList: std.ArrayList(chunk.ChunkPosition) = undefined;
+	var updatableListSwap: std.ArrayList(chunk.ChunkPosition) = undefined;
 	var clearList: std.ArrayList(*ChunkMeshNode) = undefined;
 	var lastRD: i32 = 0;
 	var lastFactor: f32 = 0;
@@ -1038,7 +1042,11 @@ pub const RenderStructure = struct {
 			const invMask: i32 = ~mask;
 
 			const maxSideLength: u31 = @intCast(@divFloor(2*maxRenderDistance + size-1, size) + 2);
-			var newList = try main.globalAllocator.alloc(?*ChunkMeshNode, maxSideLength*maxSideLength*maxSideLength);
+			var newList = storageListsSwap[_lod];
+			if(newList.len != maxSideLength*maxSideLength*maxSideLength) {
+				main.globalAllocator.free(newList);
+				newList = try main.globalAllocator.alloc(?*ChunkMeshNode, maxSideLength*maxSideLength*maxSideLength);
+			}
 			@memset(newList, null);
 
 			const startX = size*(@divFloor(px, size) -% maxSideLength/2);
@@ -1113,6 +1121,7 @@ pub const RenderStructure = struct {
 				lastZ[lod] = startZ;
 				lastSize[lod] = maxSideLength;
 				storageLists[lod] = newList;
+				storageListsSwap[lod] = oldList;
 			}
 			for(oldList) |nullMesh| {
 				if(nullMesh) |mesh| {
@@ -1145,7 +1154,6 @@ pub const RenderStructure = struct {
 					}
 				}
 			}
-			main.globalAllocator.free(oldList);
 		}
 
 		var i: usize = 0;

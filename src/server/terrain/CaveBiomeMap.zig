@@ -303,20 +303,20 @@ pub const InterpolatableCaveBiomeMapView = struct {
 
 	noinline fn _getBiome(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32, wz: i32, map: u1) *const Biome {
 		var index: u8 = 0;
-		if(wx - (&self.fragments)[0].pos.wx >= CaveBiomeMapFragment.caveBiomeMapSize) { // TODO: #15685
+		if(wx - self.fragments[0].pos.wx >= CaveBiomeMapFragment.caveBiomeMapSize) {
 			index += 4;
 		}
-		if(wy - (&self.fragments)[0].pos.wy >= CaveBiomeMapFragment.caveBiomeMapSize) { // TODO: #15685
+		if(wy - self.fragments[0].pos.wy >= CaveBiomeMapFragment.caveBiomeMapSize) {
 			index += 2;
 		}
-		if(wz - (&self.fragments)[0].pos.wz >= CaveBiomeMapFragment.caveBiomeMapSize) { // TODO: #15685
+		if(wz - self.fragments[0].pos.wz >= CaveBiomeMapFragment.caveBiomeMapSize) {
 			index += 1;
 		}
-		const relX: u31 = @intCast(wx - (&self.fragments)[index].pos.wx); // TODO: #15685
-		const relY: u31 = @intCast(wy - (&self.fragments)[index].pos.wy); // TODO: #15685
-		const relZ: u31 = @intCast(wz - (&self.fragments)[index].pos.wz); // TODO: #15685
+		const relX: u31 = @intCast(wx - self.fragments[index].pos.wx);
+		const relY: u31 = @intCast(wy - self.fragments[index].pos.wy);
+		const relZ: u31 = @intCast(wz - self.fragments[index].pos.wz);
 		const indexInArray = CaveBiomeMapFragment.getIndex(relX, relY, relZ);
-		return (&(&self.fragments)[index].biomeMap[indexInArray])[map]; // TODO: #15685
+		return self.fragments[index].biomeMap[indexInArray][map];
 	}
 
 	/// Useful when the rough biome location is enough, for example for music.

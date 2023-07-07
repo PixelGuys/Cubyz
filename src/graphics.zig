@@ -377,8 +377,10 @@ pub const draw = struct {
 	}
 
 	pub fn print(comptime format: []const u8, args: anytype, x: f32, y: f32, fontSize: f32, alignment: TextBuffer.Alignment) !void {
-		const string = try std.fmt.allocPrint(main.threadAllocator, format, args);
-		defer main.threadAllocator.free(string);
+		var stackFallback = std.heap.stackFallback(4096, main.threadAllocator);
+		const allocator = stackFallback.get();
+		const string = try std.fmt.allocPrint(allocator, format, args);
+		defer allocator.free(string);
 		try text(string, x, y ,fontSize, alignment);
 	}
 };
@@ -544,11 +546,13 @@ pub const TextBuffer = struct {
 	pub fn init(allocator: Allocator, text: []const u8, initialFontEffect: FontEffect, showControlCharacters: bool, alignment: Alignment) Allocator.Error!TextBuffer {
 		var self: TextBuffer = undefined;
 		self.alignment = alignment;
+		var stackFallback = std.heap.stackFallback(4096, main.threadAllocator);
+		const stackFallbackAllocator = stackFallback.get();
 		// Parse the input text:
 		var parser = Parser {
 			.unicodeIterator = std.unicode.Utf8Iterator{.bytes = text, .i = 0},
 			.currentFontEffect = initialFontEffect,
-			.parsedText = std.ArrayList(u32).init(main.threadAllocator),
+			.parsedText = std.ArrayList(u32).init(stackFallbackAllocator),
 			.fontEffects = std.ArrayList(FontEffect).init(allocator),
 			.characterIndex = std.ArrayList(u32).init(allocator),
 			.showControlCharacters = showControlCharacters
@@ -576,8 +580,8 @@ pub const TextBuffer = struct {
 		const glyphPositions = buffer.getGlyphPositions().?;
 
 		// Guess the text index from the given cluster indices. Only works if the number of glyphs and the number of characters in a cluster is the same.
-		var textIndexGuess = try main.threadAllocator.alloc(u32, glyphInfos.len);
-		defer main.threadAllocator.free(textIndexGuess);
+		var textIndexGuess = try stackFallbackAllocator.alloc(u32, glyphInfos.len);
+		defer stackFallbackAllocator.free(textIndexGuess);
 		for(textIndexGuess, 0..) |*index, i| {
 			if(i == 0 or glyphInfos[i-1].cluster != glyphInfos[i].cluster) {
 				index.* = glyphInfos[i].cluster;
@@ -756,8 +760,10 @@ pub const TextBuffer = struct {
 		c.glActiveTexture(c.GL_TEXTURE0);
 		c.glBindTexture(c.GL_TEXTURE_2D, TextRendering.glyphTexture[0]);
 		c.glBindVertexArray(draw.rectVAO);
-		const lineWraps: []f32 = try main.threadAllocator.alloc(f32, self.lineBreaks.items.len - 1);
-		defer main.threadAllocator.free(lineWraps);
+		var stackFallback = std.heap.stackFallback(4096, main.threadAllocator);
+		const allocator = stackFallback.get();
+		const lineWraps: []f32 = try allocator.alloc(f32, self.lineBreaks.items.len - 1);
+		defer allocator.free(lineWraps);
 		var i: usize = 0;
 		while(i < self.lineBreaks.items.len - 1) : (i += 1) {
 			x = self.getLineOffset(i);
@@ -821,8 +827,10 @@ pub const TextBuffer = struct {
 		c.glActiveTexture(c.GL_TEXTURE0);
 		c.glBindTexture(c.GL_TEXTURE_2D, TextRendering.glyphTexture[0]);
 		c.glBindVertexArray(draw.rectVAO);
-		const lineWraps: []f32 = try main.threadAllocator.alloc(f32, self.lineBreaks.items.len - 1);
-		defer main.threadAllocator.free(lineWraps);
+		var stackFallback = std.heap.stackFallback(4096, main.threadAllocator);
+		const allocator = stackFallback.get();
+		const lineWraps: []f32 = try allocator.alloc(f32, self.lineBreaks.items.len - 1);
+		defer allocator.free(lineWraps);
 		var i: usize = 0;
 		while(i < self.lineBreaks.items.len - 1) : (i += 1) {
 			x = self.getLineOffset(i);
@@ -1006,7 +1014,9 @@ const TextRendering = struct {
 	}
 
 	fn renderText(text: []const u8, x: f32, y: f32, fontSize: f32, initialFontEffect: TextBuffer.FontEffect, alignment: TextBuffer.Alignment) !void {
-		const buf = try TextBuffer.init(main.threadAllocator, text, initialFontEffect, false, alignment);
+		var stackFallback = std.heap.stackFallback(4096, main.threadAllocator);
+		const allocator = stackFallback.get();
+		const buf = try TextBuffer.init(allocator, text, initialFontEffect, false, alignment);
 		defer buf.deinit();
 
 		try buf.render(x, y, fontSize);
