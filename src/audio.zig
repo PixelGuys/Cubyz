@@ -31,13 +31,15 @@ const AudioData = struct {
 		defer c.stb_vorbis_close(ogg_stream);
 		if(ogg_stream != null) {
 			const ogg_info: c.stb_vorbis_info = c.stb_vorbis_get_info(ogg_stream);
-			std.debug.assert(sampleRate == ogg_info.sample_rate); // TODO: Handle this case
-			std.debug.assert(2 == ogg_info.channels); // TODO: Handle this case
+			if(sampleRate != ogg_info.sample_rate) { // TODO: Does it make sense to convert it?
+				std.log.warn("Audio file {s} has unsupported sample rate {}. Only {} is supported. Expect distortions.", .{path, ogg_info.sample_rate, sampleRate});
+			}
 			const samples = c.stb_vorbis_stream_length_in_samples(ogg_stream);
-			self.data = try main.globalAllocator.alloc(f32, samples*@as(usize, @intCast(ogg_info.channels)));
-			_ = c.stb_vorbis_get_samples_float_interleaved(ogg_stream, ogg_info.channels, self.data.ptr, @as(c_int, @intCast(samples))*ogg_info.channels);
+			const channels = 2;
+			self.data = try main.globalAllocator.alloc(f32, samples*channels);
+			_ = c.stb_vorbis_get_samples_float_interleaved(ogg_stream, channels, self.data.ptr, @as(c_int, @intCast(samples))*ogg_info.channels);
 		} else {
-			std.log.err("Couldn't read music {s}", .{musicId});
+			std.log.err("Couldn't read audio with id {s}", .{musicId});
 		}
 		return self;
 	}
