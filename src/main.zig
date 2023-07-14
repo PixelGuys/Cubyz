@@ -37,6 +37,13 @@ var global_gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe=true}){};
 pub const globalAllocator: std.mem.Allocator = global_gpa.allocator();
 pub var threadPool: utils.ThreadPool = undefined;
 
+fn cacheStringImpl(comptime len: usize, comptime str: [len]u8) []const u8 {
+	return str[0..len];
+}
+
+fn cacheString(comptime str: []const u8) []const u8 {
+	return cacheStringImpl(str.len, str[0..].*);
+}
 var logFile: std.fs.File = undefined;
 // overwrite the log function:
 pub const std_options = struct {
@@ -53,22 +60,155 @@ pub const std_options = struct {
 			std.log.Level.warn => "\x1b[33m",
 			std.log.Level.debug => "\x1b[37;44m",
 		};
+		const colorReset = "\x1b[0m";
+		const filePrefix = "[" ++ comptime level.asText() ++ "]" ++ ": ";
+		const fileSuffix = "";
+		//const advancedFormat = "{s}" ++ format ++ "{s}\n";
+		comptime var formatString: []const u8 = "";
+		comptime var i: usize = 0;
+		comptime var mode: usize = 0;
+		comptime var sections: usize = 0;
+		comptime var sectionString: []const u8 = "";
+		comptime var sectionResults: []const []const u8 = &.{};
+		comptime var sectionId: []const usize = &.{};
+		inline while(i < format.len) : (i += 1) {
+			if(mode == 0) {
+				if(format[i] == '{') {
+					if(format[i + 1] == '{') {
+						sectionString = sectionString ++ "{{";
+						i += 1;
+						continue;
+					} else {
+						mode = 1;
+						formatString = formatString ++ "{s}{";
+						sectionResults = sectionResults ++ &[_][]const u8{sectionString};
+						sectionId = sectionId ++ &[_]usize {sections};
+						sections += 1;
+						continue;
+					}
+				} else {
+					sectionString = sectionString ++ format[i..i+1];
+				}
+			} else {
+				formatString = formatString ++ format[i..i+1];
+				if(format[i] == '}') {
+					sections += 1;
+					mode = 0;
+				}
+			}
+		}
+		formatString = formatString ++ "{s}";
+		sectionResults = sectionResults ++ &[_][]const u8{sectionString};
+		sectionId = sectionId ++ &[_]usize {sections};
+		sections += 1;
+		formatString = comptime cacheString("{s}" ++ formatString ++ "{s}\n");
 
-		var stackFallbackAllocator: std.heap.StackFallbackAllocator(65536) = undefined;
-		stackFallbackAllocator.fallback_allocator = threadAllocator;
-		const allocator = stackFallbackAllocator.get();
+		comptime var types: []const type = &.{};
+		comptime var i_1: usize = 0;
+		comptime var i_2: usize = 0;
+		inline while(types.len != sections) {
+			if(i_2 < sectionResults.len) {
+				if(types.len == sectionId[i_2]) {
+					types = types ++ &[_]type{[]const u8};
+					i_2 += 1;
+					continue;
+				}
+			}
+			const TI = @typeInfo(@TypeOf(args[i_1]));
+			if(@TypeOf(args[i_1]) == comptime_int) {
+				types = types ++ &[_]type{i64};
+			} else if(@TypeOf(args[i_1]) == comptime_float) {
+				types = types ++ &[_]type{f64};
+			} else if(TI == .Pointer) {
+				if(TI.Pointer.size == .Many and TI.Pointer.child == u8) {
+					types = types ++ &[_]type{[]const u8};
+				} else if(TI.Pointer.size == .Slice and TI.Pointer.child == u8) {
+					types = types ++ &[_]type{[]const u8};
+				} else {
+					types = types ++ &[_]type{@TypeOf(args[i_1])};
+				}
+			} else if(TI == .Int) {
+				if(TI.Int.bits <= 64) {
+					if(TI.Int.signedness == .signed) {
+						types = types ++ &[_]type{i64};
+					} else {
+						types = types ++ &[_]type{u64};
+					}
+				} else {
+					types = types ++ &[_]type{@TypeOf(args[i_1])};
+				}
+			} else {
+				types = types ++ &[_]type{@TypeOf(args[i_1])};
+			}
+			i_1 += 1;
+		}
+		types = &[_]type{[]const u8} ++ types ++ &[_]type{[]const u8};
+		// @compileLog(types);
+
+		comptime var comptimeTuple: std.meta.Tuple(types) = undefined;
+		comptime std.debug.assert(std.meta.Tuple(types) == std.meta.Tuple(types));
+		comptime var len: usize = 0;
+		i_1 = 0;
+		i_2 = 0;
+		inline while(len != sections) : (len += 1) {
+			if(i_2 < sectionResults.len) {
+				if(len == sectionId[i_2]) {
+					comptimeTuple[len+1] = sectionResults[i_2];
+					i_2 += 1;
+					continue;
+				}
+			}
+			i_1 += 1;
+		}
+		var resultArgs: std.meta.Tuple(types) = comptimeTuple;
+		len = 0;
+		i_1 = 0;
+		i_2 = 0;
+		inline while(len != sections) : (len += 1) {
+			if(i_2 < sectionResults.len) {
+				if(len == sectionId[i_2]) {
+					i_2 += 1;
+					continue;
+				}
+			}
+			resultArgs[len+1] = args[i_1];
+			i_1 += 1;
+		}
+		//@compileLog(format, formatString, args, resultArgs);
+
+
 		{
-			const string = std.fmt.allocPrint(allocator, "[" ++ level.asText() ++ "]" ++ ": " ++ format ++ "\n", args) catch unreachable;
-			defer allocator.free(string);
-			logFile.writeAll(string) catch {};
+			resultArgs[0] = filePrefix;
+			resultArgs[resultArgs.len - 1] = fileSuffix;
+			logToFile(formatString, resultArgs);
 		}
 		{
-			const string = std.fmt.allocPrint(allocator, color ++ format ++ "\x1b[0m\n", args) catch unreachable;
-			defer allocator.free(string);
-			nosuspend std.io.getStdErr().writeAll(string) catch {};
+			resultArgs[0] = color;
+			resultArgs[resultArgs.len - 1] = colorReset;
+			logToStdErr(formatString, resultArgs);
 		}
 	}
 };
+
+fn logToFile(comptime format: []const u8, args: anytype) void {
+	var stackFallbackAllocator: std.heap.StackFallbackAllocator(65536) = undefined;
+	stackFallbackAllocator.fallback_allocator = threadAllocator;
+	const allocator = stackFallbackAllocator.get();
+
+	const string = std.fmt.allocPrint(allocator, format, args) catch return;
+	defer allocator.free(string);
+	logFile.writeAll(string) catch {};
+}
+
+fn logToStdErr(comptime format: []const u8, args: anytype) void {
+	var stackFallbackAllocator: std.heap.StackFallbackAllocator(65536) = undefined;
+	stackFallbackAllocator.fallback_allocator = threadAllocator;
+	const allocator = stackFallbackAllocator.get();
+	
+	const string = std.fmt.allocPrint(allocator, format, args) catch return;
+	defer allocator.free(string);
+	nosuspend std.io.getStdErr().writeAll(string) catch {};
+}
 
 
 
