@@ -657,7 +657,7 @@ const ToolPhysics = struct {
 				}
 			}
 		}
-		tool.centerOfMass = centerOfMass/@splat(2, mass);
+		tool.centerOfMass = centerOfMass/@as(Vec2f, @splat(mass));
 		tool.mass = mass;
 
 		// Determines the moment of intertia relative to the center of mass:
@@ -683,7 +683,7 @@ const ToolPhysics = struct {
 
 	/// Determines the sharpness of a point on the tool.
 	fn determineSharpness(tool: *Tool, point: *Vec3i, initialAngle: f32) void {
-		const center: Vec2f = tool.handlePosition - vec.normalize(tool.centerOfMass - tool.handlePosition)*@splat(2, @as(f32, 16)); // Going 16 pixels away from the handle to simulate arm length.
+		const center: Vec2f = tool.handlePosition - vec.normalize(tool.centerOfMass - tool.handlePosition)*@as(Vec2f, @splat(16)); // Going 16 pixels away from the handle to simulate arm length.
 		// A region is smooth if there is a lot of pixel within similar angle/distance:
 		const originalAngle = std.math.atan2(f32, @as(f32, @floatFromInt(point.*[1])) + 0.5 - center[1], @as(f32, @floatFromInt(point.*[0])) + 0.5 - center[0]) - initialAngle;
 		const originalDistance = @cos(originalAngle)*vec.length(center - Vec2f{@as(f32, @floatFromInt(point.*[0])) + 0.5, @as(f32, @floatFromInt(point.*[1])) + 0.5});
@@ -709,7 +709,7 @@ const ToolPhysics = struct {
 	fn determineCollisionPoints(tool: *Tool, leftCollisionPoint: *Vec3i, rightCollisionPoint: *Vec3i, frontCollisionPoint: *Vec3i, factor: f32) void {
 		// For finding that point the center of rotation is assumed to be 1 arm(16 pixel) begind the handle.
 		// Additionally the handle is assumed to go towards the center of mass.
-		const center: Vec2f = tool.handlePosition - vec.normalize(tool.centerOfMass - tool.handlePosition)*@splat(2, factor); // Going some distance away from the handle to simulate arm length.
+		const center: Vec2f = tool.handlePosition - vec.normalize(tool.centerOfMass - tool.handlePosition)*@as(Vec2f, @splat(factor)); // Going some distance away from the handle to simulate arm length.
 		// Angle of the handle.
 		const initialAngle = std.math.atan2(f32, tool.handlePosition[1] - center[1], tool.handlePosition[0] - center[0]);
 		var leftCollisionAngle: f32 = 0;

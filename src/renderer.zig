@@ -195,7 +195,7 @@ pub fn render(playerPosition: Vec3d) !void {
 		// TODO:
 //		Cubyz.fog.setActive(ClientSettings.FOG_COEFFICIENT != 0);
 //		Cubyz.fog.setDensity(1 / (ClientSettings.EFFECTIVE_RENDER_DISTANCE*ClientSettings.FOG_COEFFICIENT));
-		skyColor *= @splat(3, @as(f32, 0.25));
+		skyColor *= @splat(0.25);
 
 		try renderWorld(world, ambient, skyColor, playerPosition);
 		try RenderStructure.updateMeshes(startTime + maximumMeshTime);
@@ -657,14 +657,14 @@ pub const Frustum = struct {
 
 		const halfVSide = _zFar*std.math.tan(std.math.degreesToRadians(f32, fovY)*0.5);
 		const halfHSide = halfVSide*@as(f32, @floatFromInt(width))/@as(f32, @floatFromInt(height));
-		const frontMultFar = cameraDir*@splat(3, _zFar);
+		const frontMultFar = cameraDir*@as(Vec3f, @splat(_zFar));
 
 		var self: Frustum = undefined;
 		self.planes[0] = Plane{.pos = cameraPos + frontMultFar, .norm=-cameraDir}; // far
-		self.planes[1] = Plane{.pos = cameraPos, .norm=vec.cross(cameraUp, frontMultFar + cameraRight*@splat(3, halfHSide))}; // right
-		self.planes[2] = Plane{.pos = cameraPos, .norm=vec.cross(frontMultFar - cameraRight*@splat(3, halfHSide), cameraUp)}; // left
-		self.planes[3] = Plane{.pos = cameraPos, .norm=vec.cross(cameraRight, frontMultFar - cameraUp*@splat(3, halfVSide))}; // top
-		self.planes[4] = Plane{.pos = cameraPos, .norm=vec.cross(frontMultFar + cameraUp*@splat(3, halfVSide), cameraRight)}; // bottom
+		self.planes[1] = Plane{.pos = cameraPos, .norm=vec.cross(cameraUp, frontMultFar + cameraRight*@as(Vec3f, @splat(halfHSide)))}; // right
+		self.planes[2] = Plane{.pos = cameraPos, .norm=vec.cross(frontMultFar - cameraRight*@as(Vec3f, @splat(halfHSide)), cameraUp)}; // left
+		self.planes[3] = Plane{.pos = cameraPos, .norm=vec.cross(cameraRight, frontMultFar - cameraUp*@as(Vec3f, @splat(halfVSide)))}; // top
+		self.planes[4] = Plane{.pos = cameraPos, .norm=vec.cross(frontMultFar + cameraUp*@as(Vec3f, @splat(halfVSide)), cameraRight)}; // bottom
 		return self;
 	}
 
@@ -755,11 +755,11 @@ pub const MeshSelection = struct {
 		const closestDistance: f64 = 6.0; // selection now limited
 		// Implementation of "A Fast Voxel Traversal Algorithm for Ray Tracing"  http://www.cse.yorku.ca/~amana/research/grid.pdf
 		const step = vec.intFromFloat(i32, std.math.sign(dir));
-		const invDir = @splat(3, @as(f64, 1))/dir;
+		const invDir = @as(Vec3d, @splat(1))/dir;
 		const tDelta = @fabs(invDir);
 		var tMax = (@floor(pos) - pos)*invDir;
 		tMax = @max(tMax, tMax + tDelta*vec.floatFromInt(f64, step));
-		tMax = @select(f64, dir == @splat(3, @as(f64, 0)), @splat(3, std.math.inf(f64)), tMax);
+		tMax = @select(f64, dir == @as(Vec3d, @splat(0)), @as(Vec3d, @splat(std.math.inf(f64))), tMax);
 		var voxelPos = vec.intFromFloat(i32, @floor(pos));
 
 		var total_tMax: f64 = 0;
@@ -772,12 +772,12 @@ pub const MeshSelection = struct {
 				// Check the true bounding box (using this algorithm here: https://tavianator.com/2011/ray_box.html):
 				const model = blocks.meshes.model(block);
 				const voxelModel = &models.voxelModels.items[model.modelIndex];
-				var transformedMin = model.permutation.transform(voxelModel.min - @splat(3, @as(i32, 8))) + @splat(3, @as(i32, 8));
-				var transformedMax = model.permutation.transform(voxelModel.max - @splat(3, @as(i32, 8))) + @splat(3, @as(i32, 8));
+				var transformedMin = model.permutation.transform(voxelModel.min - @as(Vec3i, @splat(8))) + @as(Vec3i, @splat(8));
+				var transformedMax = model.permutation.transform(voxelModel.max - @as(Vec3i, @splat(8))) + @as(Vec3i, @splat(8));
 				const min = @min(transformedMin, transformedMax);
 				const max = @max(transformedMin ,transformedMax);
-				const t1 = (vec.floatFromInt(f64, voxelPos) + vec.floatFromInt(f64, min)/@splat(3, @as(f64, 16.0)) - pos)*invDir;
-				const t2 = (vec.floatFromInt(f64, voxelPos) + vec.floatFromInt(f64, max)/@splat(3, @as(f64, 16.0)) - pos)*invDir;
+				const t1 = (vec.floatFromInt(f64, voxelPos) + vec.floatFromInt(f64, min)/@as(Vec3d, @splat(16.0)) - pos)*invDir;
+				const t2 = (vec.floatFromInt(f64, voxelPos) + vec.floatFromInt(f64, max)/@as(Vec3d, @splat(16.0)) - pos)*invDir;
 				const boxTMin = @reduce(.Max, @min(t1, t2));
 				const boxTMax = @reduce(.Min, @max(t1, t2));
 				if(boxTMin <= boxTMax and boxTMin <= closestDistance and boxTMax > 0) {
@@ -898,8 +898,8 @@ pub const MeshSelection = struct {
 			var block = RenderStructure.getBlock(_selectedBlockPos[0], _selectedBlockPos[1], _selectedBlockPos[2]) orelse return;
 			const model = blocks.meshes.model(block);
 			const voxelModel = &models.voxelModels.items[model.modelIndex];
-			var transformedMin = model.permutation.transform(voxelModel.min - @splat(3, @as(i32, 8))) + @splat(3, @as(i32, 8));
-			var transformedMax = model.permutation.transform(voxelModel.max - @splat(3, @as(i32, 8))) + @splat(3, @as(i32, 8));
+			var transformedMin = model.permutation.transform(voxelModel.min - @as(Vec3i, @splat(8))) + @as(Vec3i, @splat(8));
+			var transformedMax = model.permutation.transform(voxelModel.max - @as(Vec3i, @splat(8))) + @as(Vec3i, @splat(8));
 			const min = @min(transformedMin, transformedMax);
 			const max = @max(transformedMin ,transformedMax);
 			shader.bind();

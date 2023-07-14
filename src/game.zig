@@ -303,22 +303,22 @@ pub fn update(deltaTime: f64) !void {
 		if(keyboard.forward.pressed) {
 			if(keyboard.sprint.pressed) {
 				if(Player.isFlying.load(.Monotonic)) {
-					movement += forward*@splat(3, @as(f64, 128));
+					movement += forward*@as(Vec3d, @splat(128));
 				} else {
-					movement += forward*@splat(3, @as(f64, 8));
+					movement += forward*@as(Vec3d, @splat(8));
 				}
 			} else {
-				movement += forward*@splat(3, @as(f64, 4));
+				movement += forward*@as(Vec3d, @splat(4));
 			}
 		}
 		if(keyboard.backward.pressed) {
-			movement += forward*@splat(3, @as(f64, -4));
+			movement += forward*@as(Vec3d, @splat(-4));
 		}
 		if(keyboard.left.pressed) {
-			movement += right*@splat(3, @as(f64, 4));
+			movement += right*@as(Vec3d, @splat(4));
 		}
 		if(keyboard.right.pressed) {
-			movement += right*@splat(3, @as(f64, -4));
+			movement += right*@as(Vec3d, @splat(-4));
 		}
 		if(keyboard.jump.pressed) {
 			if(Player.isFlying.load(.Monotonic)) {
@@ -345,7 +345,7 @@ pub fn update(deltaTime: f64) !void {
 	{
 		Player.mutex.lock();
 		defer Player.mutex.unlock();
-		Player.super.pos += movement*@splat(3, deltaTime);
+		Player.super.pos += movement*@as(Vec3d, @splat(deltaTime));
 	}
 	try world.?.update();
 }

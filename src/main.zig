@@ -470,12 +470,12 @@ pub const Window = struct {
 				@floatCast(y),
 			};
 			if(grabbed and !ignoreDataAfterRecentGrab) {
-				deltas[deltaBufferPosition] += (newPos - currentPos)*@splat(2, settings.mouseSensitivity);
+				deltas[deltaBufferPosition] += (newPos - currentPos)*@as(Vec2f, @splat(settings.mouseSensitivity));
 				var averagedDelta: Vec2f = Vec2f{0, 0};
 				for(deltas) |delta| {
 					averagedDelta += delta;
 				}
-				averagedDelta /= @splat(2, @as(f32, deltasLen));
+				averagedDelta /= @splat(deltasLen);
 				game.camera.moveRotation(averagedDelta[0]*0.0089, averagedDelta[1]*0.0089);
 				deltaBufferPosition = (deltaBufferPosition + 1)%deltasLen;
 				deltas[deltaBufferPosition] = Vec2f{0, 0};

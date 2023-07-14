@@ -48,7 +48,7 @@ pub fn onOpen() Allocator.Error!void {
 	try list.add(try CheckBox.init(.{0, 0}, 128, "Vertical Synchronization", settings.vsync, &vsyncCallback));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
-	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @splat(2, @as(f32, padding));
+	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
 	gui.updateWindowPositions();
 }
 

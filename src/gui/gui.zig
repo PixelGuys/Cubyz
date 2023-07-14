@@ -453,7 +453,7 @@ pub fn mainButtonPressed() void {
 	selectedTextInput = null;
 	var selectedI: usize = 0;
 	for(openWindows.items, 0..) |window, i| {
-		var mousePosition = main.Window.getMousePosition()/@splat(2, scale);
+		var mousePosition = main.Window.getMousePosition()/@as(Vec2f, @splat(scale));
 		mousePosition -= window.pos;
 		if(@reduce(.And, mousePosition >= Vec2f{0, 0}) and @reduce(.And, mousePosition < window.size)) {
 			selectedWindow = window;
@@ -461,7 +461,7 @@ pub fn mainButtonPressed() void {
 		}
 	}
 	if(selectedWindow) |_selectedWindow| {
-		const mousePosition = main.Window.getMousePosition()/@splat(2, scale);
+		const mousePosition = main.Window.getMousePosition()/@as(Vec2f, @splat(scale));
 		_selectedWindow.mainButtonPressed(mousePosition);
 		_ = openWindows.orderedRemove(selectedI);
 		openWindows.appendAssumeCapacity(_selectedWindow);
@@ -476,7 +476,7 @@ pub fn mainButtonReleased() void {
 	var oldWindow = selectedWindow;
 	selectedWindow = null;
 	for(openWindows.items) |window| {
-		var mousePosition = main.Window.getMousePosition()/@splat(2, scale);
+		var mousePosition = main.Window.getMousePosition()/@as(Vec2f, @splat(scale));
 		mousePosition -= window.pos;
 		if(@reduce(.And, mousePosition >= Vec2f{0, 0}) and @reduce(.And, mousePosition < window.size)) {
 			selectedWindow = window;
@@ -486,7 +486,7 @@ pub fn mainButtonReleased() void {
 		selectedWindow = null;
 	}
 	if(oldWindow) |_oldWindow| {
-		const mousePosition = main.Window.getMousePosition()/@splat(2, scale);
+		const mousePosition = main.Window.getMousePosition()/@as(Vec2f, @splat(scale));
 		_oldWindow.mainButtonReleased(mousePosition);
 	}
 }
@@ -518,7 +518,7 @@ pub fn updateWindowPositions() void {
 }
 
 pub fn updateAndRenderGui() !void {
-	const mousePos = main.Window.getMousePosition()/@splat(2, scale);
+	const mousePos = main.Window.getMousePosition()/@as(Vec2f, @splat(scale));
 	hoveredAWindow = false;
 	try GuiCommandQueue.executeCommands();
 	if(!main.Window.grabbed) {
@@ -681,9 +681,9 @@ pub const inventory = struct {
 				const border1: f32 = 2;
 				const border2: f32 = 1;
 				draw.setColor(0xffffff00);
-				draw.rect(pos - @splat(2, border1), size + @splat(2, 2*border1));
+				draw.rect(pos - @as(Vec2f, @splat(border1)), size + @as(Vec2f, @splat(2*border1)));
 				draw.setColor(0xff000000);
-				draw.rect(pos - @splat(2, border2), size + @splat(2, 2*border2));
+				draw.rect(pos - @as(Vec2f, @splat(border2)), size + @as(Vec2f, @splat(2*border2)));
 				try textBuffer.render(pos[0], pos[1], 16);
 			}
 		};

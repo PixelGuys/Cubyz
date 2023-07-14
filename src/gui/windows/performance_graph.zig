@@ -60,10 +60,10 @@ fn flawedRender() !void {
 	graphics.c.glUniform1i(uniforms.offset, index);
 	graphics.c.glUniform3f(uniforms.lineColor, 1, 1, 1);
 	var pos = Vec2f{border, border};
-	var dim = window.contentSize - @splat(2, 2*border);
-	pos *= @splat(2, draw.setScale(1));
+	var dim = window.contentSize - @as(Vec2f, @splat(2*border));
+	pos *= @splat(draw.setScale(1));
 	pos += draw.setTranslation(.{0, 0});
-	dim *= @splat(2, draw.setScale(1));
+	dim *= @splat(draw.setScale(1));
 	pos = @floor(pos);
 	dim = @ceil(dim);
 	pos[1] += dim[1];

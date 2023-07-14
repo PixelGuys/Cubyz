@@ -146,7 +146,7 @@ pub fn onOpen() Allocator.Error!void {
 	try list.add(craftingResult);
 	list.finish(.{padding, padding + 16}, .center);
 	window.rootComponent = list.toComponent();
-	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @splat(2, padding);
+	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
 	gui.updateWindowPositions();
 	try refresh();
 }

@@ -63,7 +63,7 @@ pub fn onOpen() Allocator.Error!void {
 	}
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
-	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @splat(2, padding);
+	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
 	gui.updateWindowPositions();
 }
 

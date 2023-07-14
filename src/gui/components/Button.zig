@@ -71,7 +71,7 @@ pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, hasShadow: bo
 	const self = try main.globalAllocator.create(Button);
 	self.* = Button {
 		.pos = pos,
-		.size = icon.size + @splat(2, 3*border),
+		.size = icon.size + @as(Vec2f, @splat(3*border)),
 		.onAction = onAction,
 		.child = icon.toComponent(),
 	};
@@ -121,7 +121,7 @@ pub fn render(self: *Button, mousePosition: Vec2f) anyerror!void { // TODO: Remo
 	self.hovered = false;
 	draw.customShadedRect(buttonUniforms, self.pos, self.size);
 	graphics.c.glUniform1i(buttonUniforms.pressed, 0);
-	const textPos = self.pos + self.size/@splat(2, @as(f32, 2.0)) - self.child.size()/@splat(2, @as(f32, 2.0));
+	const textPos = self.pos + self.size/@as(Vec2f, @splat(2.0)) - self.child.size()/@as(Vec2f, @splat(2.0));
 	self.child.mutPos().* = textPos;
 	try self.child.render(mousePosition - self.pos);
 }

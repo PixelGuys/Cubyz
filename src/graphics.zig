@@ -38,7 +38,7 @@ pub const draw = struct {
 	/// Returns the previous translation.
 	pub fn setTranslation(newTranslation: Vec2f) Vec2f {
 		const oldTranslation = translation;
-		translation += newTranslation*@splat(2, scale);
+		translation += newTranslation*@as(Vec2f, @splat(scale));
 		return oldTranslation;
 	}
 
@@ -142,9 +142,9 @@ pub const draw = struct {
 	pub fn rect(_pos: Vec2f, _dim: Vec2f) void {
 		var pos = _pos;
 		var dim = _dim;
-		pos *= @splat(2, scale);
+		pos *= @splat(scale);
 		pos += translation;
-		dim *= @splat(2, scale);
+		dim *= @splat(scale);
 
 		rectShader.bind();
 
@@ -194,9 +194,9 @@ pub const draw = struct {
 	pub fn line(_pos1: Vec2f, _pos2: Vec2f) void {
 		var pos1 = _pos1;
 		var pos2 = _pos2;
-		pos1 *= @splat(2, scale);
+		pos1 *= @splat(scale);
 		pos1 += translation;
-		pos2 *= @splat(2, scale);
+		pos2 *= @splat(scale);
 		pos2 += translation;
 
 		lineShader.bind();
@@ -241,9 +241,9 @@ pub const draw = struct {
 	pub fn rectOutline(_pos: Vec2f, _dim: Vec2f) void {
 		var pos = _pos;
 		var dim = _dim;
-		pos *= @splat(2, scale);
+		pos *= @splat(scale);
 		pos += translation;
-		dim *= @splat(2, scale);
+		dim *= @splat(scale);
 
 		lineShader.bind();
 
@@ -295,7 +295,7 @@ pub const draw = struct {
 	pub fn circle(_center: Vec2f, _radius: f32) void {
 		var center = _center;
 		var radius = _radius;
-		_center *= @splat(2, scale);
+		_center *= @splat(scale);
 		_center += translation;
 		radius *= scale;
 		circleShader.bind();
@@ -332,9 +332,9 @@ pub const draw = struct {
 	pub fn boundImage(_pos: Vec2f, _dim: Vec2f) void {
 		var pos = _pos;
 		var dim = _dim;
-		pos *= @splat(2, scale);
+		pos *= @splat(scale);
 		pos += translation;
-		dim *= @splat(2, scale);
+		dim *= @splat(scale);
 		pos = @floor(pos);
 		dim = @ceil(dim);
 
@@ -354,9 +354,9 @@ pub const draw = struct {
 	pub fn customShadedRect(uniforms: anytype, _pos: Vec2f, _dim: Vec2f) void {
 		var pos = _pos;
 		var dim = _dim;
-		pos *= @splat(2, scale);
+		pos *= @splat(scale);
 		pos += translation;
-		dim *= @splat(2, scale);
+		dim *= @splat(scale);
 		pos = @floor(pos);
 		dim = @ceil(dim);
 
@@ -376,7 +376,7 @@ pub const draw = struct {
 		try TextRendering.renderText(_text, x, y, fontSize, .{.color = @truncate(@as(u32, @bitCast(color)))}, alignment);
 	}
 
-	pub fn print(comptime format: []const u8, args: anytype, x: f32, y: f32, fontSize: f32, alignment: TextBuffer.Alignment) !void {
+	pub inline fn print(comptime format: []const u8, args: anytype, x: f32, y: f32, fontSize: f32, alignment: TextBuffer.Alignment) !void {
 		var stackFallback = std.heap.stackFallback(4096, main.threadAllocator);
 		const allocator = stackFallback.get();
 		const string = try std.fmt.allocPrint(allocator, format, args);

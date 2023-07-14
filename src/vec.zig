@@ -27,7 +27,7 @@ pub fn length(self: anytype) @typeInfo(@TypeOf(self)).Vector.child {
 }
 
 pub fn normalize(self: anytype) @TypeOf(self) {
-	return self/@splat(@typeInfo(@TypeOf(self)).Vector.len, length(self));
+	return self/@as(@TypeOf(self), @splat(length(self)));
 }
 
 pub fn intFromFloat(comptime DestType: type, self: anytype) @Vector(@typeInfo(@TypeOf(self)).Vector.len, DestType) { // TODO: Remove once @floatToInt supports vectors.

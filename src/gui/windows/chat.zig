@@ -52,7 +52,7 @@ fn refresh() Allocator.Error!void {
 	list.scrollBar.currentState = 1;
 	try mutexComponent.updateInner(list);
 	window.rootComponent = mutexComponent.toComponent();
-	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @splat(2, @as(f32, padding));
+	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
 	gui.updateWindowPositions();
 }
 

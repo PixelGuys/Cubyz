@@ -234,10 +234,10 @@ const GenerationStructure = struct {
 	}
 
 	fn drawCircleOnTheMap(map: Array2D(*const Biome), biome: *const Biome, wx: i32, wz: i32, width: u31, height: u31, pos: Vec2f) void {
-		const relPos = (pos - vec.floatFromInt(f32, Vec2i{wx, wz}))/@splat(2, @as(f32, terrain.SurfaceMap.MapFragment.biomeSize));
+		const relPos = (pos - vec.floatFromInt(f32, Vec2i{wx, wz}))/@as(Vec2f, @splat(terrain.SurfaceMap.MapFragment.biomeSize));
 		const relRadius = biome.radius/terrain.SurfaceMap.MapFragment.biomeSize;
-		const min = @floor(@max(Vec2f{0, 0}, relPos - @splat(2, relRadius)));
-		const max = @ceil(@min(vec.floatFromInt(f32, Vec2i{width, height})/@splat(2, @as(f32, terrain.SurfaceMap.MapFragment.biomeSize)), relPos + @splat(2, relRadius)));
+		const min = @floor(@max(Vec2f{0, 0}, relPos - @as(Vec2f, @splat(relRadius))));
+		const max = @ceil(@min(vec.floatFromInt(f32, Vec2i{width, height})/@as(Vec2f, @splat(terrain.SurfaceMap.MapFragment.biomeSize)), relPos + @as(Vec2f, @splat(relRadius))));
 		var x: f32 = min[0];
 		while(x < max[0]) : (x += 1) {
 			var z: f32 = min[1];
@@ -270,7 +270,7 @@ const GenerationStructure = struct {
 				std.log.warn("SubBiome {s} of {s} is too big", .{subBiome.id, biome.biome.id});
 				maxCenterOffset = 0;
 			}
-			const point = biome.pos + random.nextPointInUnitCircle(&seed)*@splat(2, maxCenterOffset);
+			const point = biome.pos + random.nextPointInUnitCircle(&seed)*@as(Vec2f, @splat(maxCenterOffset));
 			drawCircleOnTheMap(map, subBiome, wx, wz, width, height, point);
 			try extraBiomes.append(.{
 				.biome = subBiome,

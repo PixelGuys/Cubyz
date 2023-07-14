@@ -198,14 +198,14 @@ pub const InterpolatableCaveBiomeMapView = struct {
 
 	pub noinline fn interpolateValue(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32, wz: i32, comptime field: []const u8) f32 {
 		const worldPos = Vec3i{wx, wy, wz};
-		const closestGridpoint0 = (worldPos + @splat(3, @as(i32, CaveBiomeMapFragment.caveBiomeSize/2))) & @splat(3, ~@as(i32, CaveBiomeMapFragment.caveBiomeMask));
+		const closestGridpoint0 = (worldPos + @as(Vec3i, @splat(CaveBiomeMapFragment.caveBiomeSize/2))) & @as(Vec3i, @splat(~@as(i32, CaveBiomeMapFragment.caveBiomeMask)));
 		const distance0 = worldPos - closestGridpoint0;
-		const step0 = @select(i32, argMaxDistance0(distance0), @splat(3, @as(i32, CaveBiomeMapFragment.caveBiomeSize)), @splat(3, @as(i32, 0)));
+		const step0 = @select(i32, argMaxDistance0(distance0), @as(Vec3i, @splat(CaveBiomeMapFragment.caveBiomeSize)), @as(Vec3i, @splat(0)));
 		const secondGridPoint0 = closestGridpoint0 + step0*nonZeroSign(distance0);
 
-		const closestGridpoint1 = (worldPos & @splat(3, ~@as(i32, CaveBiomeMapFragment.caveBiomeMask))) + @splat(3, @as(i32, CaveBiomeMapFragment.caveBiomeSize/2));
+		const closestGridpoint1 = (worldPos & @as(Vec3i, @splat(~@as(i32, CaveBiomeMapFragment.caveBiomeMask)))) + @as(Vec3i, @splat(CaveBiomeMapFragment.caveBiomeSize/2));
 		const distance1 = worldPos - closestGridpoint1;
-		const step1 = @select(i32, argMaxDistance1(distance1), @splat(3, @as(i32, CaveBiomeMapFragment.caveBiomeSize)), @splat(3, @as(i32, 0)));
+		const step1 = @select(i32, argMaxDistance1(distance1), @as(Vec3i, @splat(CaveBiomeMapFragment.caveBiomeSize)), @as(Vec3i, @splat(0)));
 		const secondGridPoint1 = closestGridpoint1 + step1*nonZeroSign(distance1);
 
 		const @"r⃗₄" = closestGridpoint0;

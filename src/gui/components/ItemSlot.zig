@@ -129,9 +129,9 @@ pub fn render(self: *ItemSlot, _: Vec2f) !void {
 		const itemTexture = try item.getTexture();
 		itemTexture.bindTo(0);
 		draw.setColor(0xff000000);
-		draw.boundImage(self.pos + @splat(2, border) + Vec2f{1.0, 1.0}, self.size - @splat(2, 2*border));
+		draw.boundImage(self.pos + @as(Vec2f, @splat(border)) + Vec2f{1.0, 1.0}, self.size - @as(Vec2f, @splat(2*border)));
 		draw.setColor(0xffffffff);
-		draw.boundImage(self.pos + @splat(2, border), self.size - @splat(2, 2*border));
+		draw.boundImage(self.pos + @as(Vec2f, @splat(border)), self.size - @as(Vec2f, @splat(2*border)));
 		if(self.itemStack.amount != 1) {
 			try self.text.render(self.pos[0] + self.size[0] - self.textSize[0] - border, self.pos[1] + self.size[1] - self.textSize[1] - border, 8);
 		}

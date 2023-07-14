@@ -45,7 +45,7 @@ pub fn onOpen() Allocator.Error!void {
 	try list.add(try ContinuousSlider.init(.{0, 0}, 128, -60, 0, linearToDezibel(settings.musicVolume), &musicCallback, &musicFormatter));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
-	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @splat(2, @as(f32, padding));
+	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
 	gui.updateWindowPositions();
 }
 

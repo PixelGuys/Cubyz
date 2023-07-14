@@ -229,7 +229,7 @@ pub const ItemDropManager = struct {
 				@floatCast(random.nextFloat(&main.seed)),
 				@floatCast(random.nextFloat(&main.seed)),
 				@floatCast(random.nextFloat(&main.seed)),
-			} + @splat(3, @as(f64, radius)),
+			} + @as(Vec3d, @splat(radius)),
 			vel,
 			Vec3f {
 				2*std.math.pi*random.nextFloat(&main.seed),
@@ -352,15 +352,15 @@ pub const ItemDropManager = struct {
 		}
 		// Apply drag:
 		vel.* += acceleration;
-		vel.* *= @splat(3, @max(0, 1 - drag*deltaTime));
+		vel.* *= @splat(@max(0, 1 - drag*deltaTime));
 	}
 
 	fn fixStuckInBlock(self: *ItemDropManager, chunk: *Chunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {
 		std.debug.assert(!self.mutex.tryLock()); // Mutex must be locked!
-		const centeredPos = pos.* - @splat(3, @as(f64, 0.5));
+		const centeredPos = pos.* - @as(Vec3d, @splat(0.5));
 		const pos0 = vec.intFromFloat(i32, @floor(centeredPos));
 
-		var closestEmptyBlock = @splat(3, @as(i32, -1));
+		var closestEmptyBlock: Vec3i = @splat(-1);
 		var closestDist = std.math.floatMax(f64);
 		var delta = Vec3i{0, 0, 0};
 		while(delta[0] <= 1) : (delta[0] += 1) {
@@ -380,20 +380,20 @@ pub const ItemDropManager = struct {
 			}
 		}
 
-		vel.* = @splat(3, @as(f64, 0));
+		vel.* = @splat(0);
 		const factor: f64 = 1; // TODO: Investigate what past me wanted to accomplish here.
 		if(closestDist == std.math.floatMax(f64)) {
 			// Surrounded by solid blocks → move upwards
 			vel.*[1] = factor;
 			pos.*[1] += vel.*[1]*deltaTime;
 		} else {
-			vel.* = @splat(3, factor)*(vec.floatFromInt(f64, pos0 + closestEmptyBlock) - centeredPos);
-			pos.* += (vel.*)*@splat(3, deltaTime);
+			vel.* = @as(Vec3d, @splat(factor))*(vec.floatFromInt(f64, pos0 + closestEmptyBlock) - centeredPos);
+			pos.* += (vel.*)*@as(Vec3d, @splat(deltaTime));
 		}
 	}
 
 	fn checkBlocks(self: *ItemDropManager, chunk: *Chunk, pos: *Vec3d) bool {
-		const lowerCornerPos = pos.* - @splat(3, radius);
+		const lowerCornerPos = pos.* - @as(Vec3d, @splat(radius));
 		const pos0f64 = @floor(lowerCornerPos);
 		const pos0 = vec.intFromFloat(i32, pos0f64);
 		var isSolid = self.checkBlock(chunk, pos, pos0);
@@ -752,8 +752,8 @@ pub const ItemDropRenderer = struct {
 //				int light = Cubyz.world.getLight(x, y, z, ambientLight, ClientSettings.easyLighting);
 				const light: u32 = 0xffffffff;
 				c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&@max(
-					ambientLight*@splat(3, @as(f32, @floatFromInt(light >> 24))/255),
-					Vec3f{light >> 16 & 255, light >> 8 & 255, light & 255}/@splat(3, @as(f32, 255))
+					ambientLight*@as(Vec3f, @splat(@as(f32, @floatFromInt(light >> 24))/255)),
+					Vec3f{light >> 16 & 255, light >> 8 & 255, light & 255}/@as(Vec3f, @splat(255))
 				)));
 				pos -= playerPos;
 				var modelMatrix = Mat4f.translation(vec.floatCast(f32, pos));

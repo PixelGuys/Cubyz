@@ -439,7 +439,7 @@ pub const ServerWorld = struct {
 	}
 
 	pub fn dropWithCooldown(self: *ServerWorld, stack: ItemStack, pos: Vec3d, dir: Vec3f, velocity: f32, pickupCooldown: u32) !void {
-		const vel = vec.floatCast(f64, dir*@splat(3, velocity));
+		const vel = vec.floatCast(f64, dir*@as(Vec3d, @splat(velocity)));
 		try self.itemDropManager.add(pos, vel, stack, server.updatesPerSec*900, pickupCooldown);
 	}
 

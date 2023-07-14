@@ -102,9 +102,9 @@ pub fn render(self: *CheckBox, mousePosition: Vec2f) !void {
 		draw.setColor(0xff000000);
 	}
 	self.hovered = false;
-	draw.customShadedRect(Button.buttonUniforms, self.pos + Vec2f{0, self.size[1]/2 - boxSize/2}, @splat(2, boxSize));
+	draw.customShadedRect(Button.buttonUniforms, self.pos + Vec2f{0, self.size[1]/2 - boxSize/2}, @as(Vec2f, @splat(boxSize)));
 	graphics.c.glUniform1i(Button.buttonUniforms.pressed, 0);
-	const textPos = self.pos + Vec2f{boxSize/2, 0} + self.size/@splat(2, @as(f32, 2.0)) - self.label.size/@splat(2, @as(f32, 2.0));
+	const textPos = self.pos + Vec2f{boxSize/2, 0} + self.size/@as(Vec2f, @splat(2.0)) - self.label.size/@as(Vec2f, @splat(2.0));
 	self.label.pos = textPos;
 	try self.label.render(mousePosition - textPos);
 }

@@ -129,7 +129,7 @@ pub fn defaultFunction() void {}
 pub fn defaultErrorFunction() Allocator.Error!void {}
 
 pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) void {
-	const scaledMousePos = (mousePosition - self.pos)/@splat(2, self.scale);
+	const scaledMousePos = (mousePosition - self.pos)/@as(Vec2f, @splat(self.scale));
 	if(scaledMousePos[1] < 16 and (self.showTitleBar or self.titleBarExpanded or (!main.Window.grabbed and scaledMousePos[0] < 16))) {
 		grabbedWindow = self;
 		grabPosition = mousePosition;
@@ -184,7 +184,7 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 	grabPosition = null;
 	grabbedWindow = undefined;
 	if(self.rootComponent) |*component| {
-		component.mainButtonReleased((mousePosition - self.pos)/@splat(2, self.scale));
+		component.mainButtonReleased((mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)));
 	}
 }
 
@@ -247,7 +247,7 @@ fn snapToOtherWindow(self: *GuiWindow) void {
 }
 
 fn positionRelativeToFrame(self: *GuiWindow) void {
-	const windowSize = main.Window.getWindowSize()/@splat(2, gui.scale);
+	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
 	for(&self.relativePosition, 0..) |*relPos, i| {
 		// Snap to the center:
 		if(@fabs(self.pos[i] + self.size[i] - windowSize[i]/2) <= snapDistance) {
@@ -326,7 +326,7 @@ pub fn update(self: *GuiWindow) !void {
 
 pub fn updateSelected(self: *GuiWindow, mousePosition: Vec2f) !void {
 	try self.updateSelectedFn();
-	const windowSize = main.Window.getWindowSize()/@splat(2, gui.scale);
+	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
 	if(self == grabbedWindow) if(grabPosition) |_grabPosition| {
 		self.relativePosition[0] = .{.ratio = undefined};
 		self.relativePosition[1] = .{.ratio = undefined};
@@ -351,15 +351,15 @@ pub fn updateSelected(self: *GuiWindow, mousePosition: Vec2f) !void {
 pub fn updateHovered(self: *GuiWindow, mousePosition: Vec2f) !void {
 	try self.updateHoveredFn();
 	if(self.rootComponent) |component| {
-		if(GuiComponent.contains(component.pos(), component.size(), (mousePosition - self.pos)/@splat(2, self.scale))) {
-			component.updateHovered((mousePosition - self.pos)/@splat(2, self.scale));
+		if(GuiComponent.contains(component.pos(), component.size(), (mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)))) {
+			component.updateHovered((mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)));
 		}
 	}
 }
 
 pub fn updateWindowPosition(self: *GuiWindow) void {
-	self.size = self.contentSize*@splat(2, self.scale);
-	const windowSize = main.Window.getWindowSize()/@splat(2, gui.scale);
+	self.size = self.contentSize*@as(Vec2f, @splat(self.scale));
+	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
 	for(self.relativePosition, 0..) |relPos, i| {
 		switch(relPos) {
 			.ratio => |ratio| {
@@ -405,7 +405,7 @@ pub fn updateWindowPosition(self: *GuiWindow) void {
 
 fn drawOrientationLines(self: *const GuiWindow) void {
 	draw.setColor(0x80000000);
-	const windowSize = main.Window.getWindowSize()/@splat(2, gui.scale);
+	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
 	for(self.relativePosition, 0..) |relPos, i| {
 		switch(relPos) {
 			.ratio, .relativeToWindow => {
@@ -457,11 +457,11 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) !void {
 		draw.setColor(0xff000000);
 		shader.bind();
 		backgroundTexture.bindTo(0);
-		draw.customShadedRect(windowUniforms, .{0, 0}, self.size/@splat(2, self.scale));
+		draw.customShadedRect(windowUniforms, .{0, 0}, self.size/@as(Vec2f, @splat(self.scale)));
 	}
 	try self.renderFn();
 	if(self.rootComponent) |*component| {
-		try component.render((mousePosition - self.pos)/@splat(2, self.scale));
+		try component.render((mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)));
 	}
 	if(self.showTitleBar) {
 		shader.bind();
@@ -490,7 +490,7 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) !void {
 		draw.setColor(0x80000000);
 		borderShader.bind();
 		graphics.c.glUniform2f(borderUniforms.effectLength, 2.5, 2.5);
-		draw.customShadedRect(borderUniforms, .{0, 0}, self.size/@splat(2, self.scale));
+		draw.customShadedRect(borderUniforms, .{0, 0}, self.size/@as(Vec2f, @splat(self.scale)));
 	}
 	draw.restoreTranslation(oldTranslation);
 	draw.restoreScale(oldScale);

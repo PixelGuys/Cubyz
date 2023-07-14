@@ -133,7 +133,7 @@ pub fn render(self: *ContinuousSlider, mousePosition: Vec2f) !void {
 	draw.setColor(0x80000000);
 	draw.rect(self.pos + Vec2f{1.5*border + self.button.size[0]/2, self.button.pos[1] + self.button.size[1]/2 - border}, .{range, 2*border});
 
-	self.label.pos = self.pos + @splat(2, 1.5*border);
+	self.label.pos = self.pos + @as(Vec2f, @splat(1.5*border));
 	try self.label.render(mousePosition);
 
 	if(self.button.pressed) {
