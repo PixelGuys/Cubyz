@@ -26,8 +26,7 @@ const Mat4f = vec.Mat4f;
 
 /// The number of milliseconds after which no more chunk meshes are created. This allows the game to run smoother on movement.
 const maximumMeshTime = 12;
-const zNear = 0.1;
-const zFar = 65536.0; // TODO: Fix z-fighting problems.
+const zNear = 0.1; // TODO: Handle closer surfaces in a special function.
 
 var fogShader: graphics.Shader = undefined;
 var fogUniforms: struct {
@@ -76,7 +75,7 @@ const buffers = struct {
 
 		c.glFramebufferTexture2D(c.GL_FRAMEBUFFER, c.GL_COLOR_ATTACHMENT0, c.GL_TEXTURE_2D, colorTexture, 0);
 		
-		c.glFramebufferRenderbuffer(c.GL_FRAMEBUFFER, c.GL_DEPTH_STENCIL_ATTACHMENT, c.GL_RENDERBUFFER, depthBuffer);
+		c.glFramebufferRenderbuffer(c.GL_FRAMEBUFFER, c.GL_DEPTH_ATTACHMENT, c.GL_RENDERBUFFER, depthBuffer);
 
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 	}
@@ -101,7 +100,7 @@ const buffers = struct {
 		regenTexture(colorTexture, c.GL_RGB10_A2, c.GL_RGB, width, height);
 
 		c.glBindRenderbuffer(c.GL_RENDERBUFFER, depthBuffer);
-		c.glRenderbufferStorage(c.GL_RENDERBUFFER, c.GL_DEPTH24_STENCIL8, width, height);
+		c.glRenderbufferStorage(c.GL_RENDERBUFFER, c.GL_DEPTH_COMPONENT32F, width, height);
 		c.glBindRenderbuffer(c.GL_RENDERBUFFER, 0);
 
 		const attachments = [_]c_uint{c.GL_COLOR_ATTACHMENT0};
@@ -127,9 +126,6 @@ const buffers = struct {
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, buffer);
 		c.glClearColor(clearColor[0], clearColor[1], clearColor[2], 1);
 		c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
-		// Clears the position separately to prevent issues with default value.
-		const positionClearColor = [_]f32 {0, 0, 6.55e4, 1}; // z value corresponds to the highest 16-bit float value.
-		c.glClearBufferfv(c.GL_COLOR, 1, &positionClearColor);
 	}
 };
 
@@ -141,8 +137,7 @@ pub fn updateViewport(width: u31, height: u31, fov: f32) void {
 	lastHeight = height;
 	lastFov = fov;
 	c.glViewport(0, 0, width, height);
-	game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(f32, fov), @as(f32, @floatFromInt(width))/@as(f32, @floatFromInt(height)), zNear, zFar);
-//	TODO: Transformation.updateProjectionMatrix(frustumProjectionMatrix, (float)Math.toRadians(fov), width, height, Z_NEAR, Z_FAR_LOD); // Need to combine both for frustum intersection
+	game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(f32, fov), @as(f32, @floatFromInt(width))/@as(f32, @floatFromInt(height)), zNear);
 	buffers.updateBufferSize(width, height);
 }
 
@@ -206,7 +201,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	game.camera.updateViewMatrix();
 
 	// Uses FrustumCulling on the chunks.
-	var frustum = Frustum.init(Vec3f{0, 0, 0}, game.camera.viewMatrix, lastFov, zFar, lastWidth, lastHeight);
+	var frustum = Frustum.init(Vec3f{0, 0, 0}, game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
 
 	const time: u32 = @intCast(std.time.milliTimestamp() & std.math.maxInt(u32));
 	var waterFog = Fog{.active=true, .color=.{0.0, 0.1, 0.2}, .density=0.1};
@@ -652,24 +647,22 @@ pub const Frustum = struct {
 		pos: Vec3f,
 		norm: Vec3f,
 	};
-	planes: [5]Plane, // Who cares about the near plane anyways?
+	planes: [4]Plane, // Who cares about the near/far plane anyways?
 
-	pub fn init(cameraPos: Vec3f, rotationMatrix: Mat4f, fovY: f32, _zFar: f32, width: u31, height: u31) Frustum {
+	pub fn init(cameraPos: Vec3f, rotationMatrix: Mat4f, fovY: f32, width: u31, height: u31) Frustum {
 		var invRotationMatrix = rotationMatrix.transpose();
 		var cameraDir = vec.xyz(invRotationMatrix.mulVec(Vec4f{0, 0, 1, 1}));
 		var cameraUp = vec.xyz(invRotationMatrix.mulVec(Vec4f{0, 1, 0, 1}));
 		var cameraRight = vec.xyz(invRotationMatrix.mulVec(Vec4f{1, 0, 0, 1}));
 
-		const halfVSide = _zFar*std.math.tan(std.math.degreesToRadians(f32, fovY)*0.5);
+		const halfVSide = std.math.tan(std.math.degreesToRadians(f32, fovY)*0.5);
 		const halfHSide = halfVSide*@as(f32, @floatFromInt(width))/@as(f32, @floatFromInt(height));
-		const frontMultFar = cameraDir*@as(Vec3f, @splat(_zFar));
 
 		var self: Frustum = undefined;
-		self.planes[0] = Plane{.pos = cameraPos + frontMultFar, .norm=-cameraDir}; // far
-		self.planes[1] = Plane{.pos = cameraPos, .norm=vec.cross(cameraUp, frontMultFar + cameraRight*@as(Vec3f, @splat(halfHSide)))}; // right
-		self.planes[2] = Plane{.pos = cameraPos, .norm=vec.cross(frontMultFar - cameraRight*@as(Vec3f, @splat(halfHSide)), cameraUp)}; // left
-		self.planes[3] = Plane{.pos = cameraPos, .norm=vec.cross(cameraRight, frontMultFar - cameraUp*@as(Vec3f, @splat(halfVSide)))}; // top
-		self.planes[4] = Plane{.pos = cameraPos, .norm=vec.cross(frontMultFar + cameraUp*@as(Vec3f, @splat(halfVSide)), cameraRight)}; // bottom
+		self.planes[0] = Plane{.pos = cameraPos, .norm=vec.cross(cameraUp, cameraDir + cameraRight*@as(Vec3f, @splat(halfHSide)))}; // right
+		self.planes[1] = Plane{.pos = cameraPos, .norm=vec.cross(cameraDir - cameraRight*@as(Vec3f, @splat(halfHSide)), cameraUp)}; // left
+		self.planes[2] = Plane{.pos = cameraPos, .norm=vec.cross(cameraRight, cameraDir - cameraUp*@as(Vec3f, @splat(halfVSide)))}; // top
+		self.planes[3] = Plane{.pos = cameraPos, .norm=vec.cross(cameraDir + cameraUp*@as(Vec3f, @splat(halfVSide)), cameraRight)}; // bottom
 		return self;
 	}
 
@@ -680,7 +673,7 @@ pub const Frustum = struct {
 			dist += @max(0, dim[0]*plane.norm[0]);
 			dist += @max(0, dim[1]*plane.norm[1]);
 			dist += @max(0, dim[2]*plane.norm[2]);
-			if(dist < 128) return false;
+			if(dist < 0) return false;
 		}
 		return true;
 	}

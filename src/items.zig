@@ -135,7 +135,7 @@ pub const BaseItem = struct {
 				self.texture = graphics.Texture{.textureID = frameBuffer.texture};
 				defer c.glDeleteFramebuffers(1, &frameBuffer.frameBuffer);
 
-				const projMatrix = Mat4f.perspective(0.013, 1, 64, 256);
+				const projMatrix = Mat4f.perspective(0.013, 1, 64);
 				const oldViewMatrix = main.game.camera.viewMatrix;
 				main.game.camera.viewMatrix = Mat4f.rotationX(std.math.pi/4.0).mul(Mat4f.rotationY(-std.math.pi/4.0));
 				defer main.game.camera.viewMatrix = oldViewMatrix;
