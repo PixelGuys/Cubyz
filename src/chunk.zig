@@ -368,7 +368,27 @@ pub const Chunk = struct {
 
 pub const meshing = struct {
 	var shader: Shader = undefined;
+	var transparentShader: Shader = undefined;
 	pub var uniforms: struct {
+		projectionMatrix: c_int,
+		viewMatrix: c_int,
+		modelPosition: c_int,
+		screenSize: c_int,
+		ambientLight: c_int,
+		@"fog.activ": c_int,
+		@"fog.color": c_int,
+		@"fog.density": c_int,
+		texture_sampler: c_int,
+		emissionSampler: c_int,
+		@"waterFog.activ": c_int,
+		@"waterFog.color": c_int,
+		@"waterFog.density": c_int,
+		time: c_int,
+		visibilityMask: c_int,
+		voxelSize: c_int,
+		renderedToItemTexture: c_int,
+	} = undefined;
+	pub var transparentUniforms: struct {
 		projectionMatrix: c_int,
 		viewMatrix: c_int,
 		modelPosition: c_int,
@@ -394,6 +414,7 @@ pub const meshing = struct {
 
 	pub fn init() !void {
 		shader = try Shader.initAndGetUniforms("assets/cubyz/shaders/chunks/chunk_vertex.vs", "assets/cubyz/shaders/chunks/chunk_fragment.fs", &uniforms);
+		transparentShader = try Shader.initAndGetUniforms("assets/cubyz/shaders/chunks/chunk_vertex.vs", "assets/cubyz/shaders/chunks/transparent_fragment.fs", &transparentUniforms);
 
 		var rawData: [6*3 << (3*chunkShift)]u32 = undefined; // 6 vertices per face, maximum 3 faces/block
 		const lut = [_]u32{0, 1, 2, 2, 1, 3};
@@ -415,6 +436,7 @@ pub const meshing = struct {
 
 	pub fn deinit() void {
 		shader.deinit();
+		transparentShader.deinit();
 		c.glDeleteVertexArrays(1, &vao);
 		c.glDeleteBuffers(1, &vbo);
 		faces.deinit();
@@ -444,6 +466,29 @@ pub const meshing = struct {
 		c.glBindVertexArray(vao);
 	}
 
+	pub fn bindTransparentShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, time: u32) void {
+		transparentShader.bind();
+
+		c.glUniform1i(transparentUniforms.@"fog.activ", if(game.fog.active) 1 else 0);
+		c.glUniform3fv(transparentUniforms.@"fog.color", 1, @ptrCast(&game.fog.color));
+		c.glUniform1f(transparentUniforms.@"fog.density", game.fog.density);
+
+		c.glUniformMatrix4fv(transparentUniforms.projectionMatrix, 1, c.GL_FALSE, @ptrCast(&projMatrix));
+
+		c.glUniform1i(transparentUniforms.texture_sampler, 0);
+		c.glUniform1i(transparentUniforms.emissionSampler, 1);
+
+		c.glUniformMatrix4fv(transparentUniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast(&game.camera.viewMatrix));
+
+		c.glUniform3f(transparentUniforms.ambientLight, ambient[0], ambient[1], ambient[2]);
+
+		c.glUniform1i(transparentUniforms.time, @as(u31, @truncate(time)));
+
+		c.glUniform1i(transparentUniforms.renderedToItemTexture, 0);
+
+		c.glBindVertexArray(vao);
+	}
+
 	pub const FaceData = switch(@import("builtin").target.cpu.arch.endian()) {
 		.Little => packed struct {
 			position: u32,
@@ -455,94 +500,61 @@ pub const meshing = struct {
 		},
 	};
 
-	pub const ChunkMesh = struct {
-		pos: ChunkPosition,
-		size: i32,
-		chunk: std.atomic.Atomic(?*Chunk),
+	const PrimitiveMesh = struct {
 		faces: std.ArrayList(FaceData),
 		bufferAllocation: graphics.LargeBuffer.Allocation = .{.start = 0, .len = 0},
 		coreCount: u31 = 0,
 		neighborStart: [7]u31 = [_]u31{0} ** 7,
 		vertexCount: u31 = 0,
-		generated: bool = false,
-		mutex: std.Thread.Mutex = std.Thread.Mutex{},
-		visibilityMask: u8 = 0xff,
 
-		pub fn init(allocator: Allocator, pos: ChunkPosition) ChunkMesh {
-			return ChunkMesh{
-				.pos = pos,
-				.size = chunkSize*pos.voxelSize,
-				.faces = std.ArrayList(FaceData).init(allocator),
-				.chunk = std.atomic.Atomic(?*Chunk).init(null),
-			};
-		}
-
-		pub fn deinit(self: *ChunkMesh) void {
+		fn deinit(self: *PrimitiveMesh) void {
 			faceBuffer.free(self.bufferAllocation) catch unreachable;
 			self.faces.deinit();
-			if(self.chunk.load(.Monotonic)) |ch| {
-				main.globalAllocator.destroy(ch);
-			}
 		}
 
-		fn canBeSeenThroughOtherBlock(block: Block, other: Block, neighbor: u3) bool {
-			const rotatedModel = blocks.meshes.model(block);
-			const model = &models.voxelModels.items[rotatedModel.modelIndex];
-			const freestandingModel = rotatedModel.modelIndex != models.fullCube and switch(rotatedModel.permutation.permuteNeighborIndex(neighbor)) {
-				Neighbors.dirNegX => model.min[0] != 0,
-				Neighbors.dirPosX => model.max[0] != 16,
-				Neighbors.dirDown => model.min[1] != 0,
-				Neighbors.dirUp => model.max[1] != 16,
-				Neighbors.dirNegZ => model.min[2] != 0,
-				Neighbors.dirPosZ => model.max[2] != 16,
-				else => unreachable,
-			};
-			return block.typ != 0 and (
-				freestandingModel
-				or other.typ == 0
-				or (!std.meta.eql(block, other) and other.viewThrough())
-				or blocks.meshes.model(other).modelIndex != 0 // TODO: make this more strict to avoid overdraw.
-			);
-		}
-
-		pub fn regenerateMainMesh(self: *ChunkMesh, chunk: *Chunk) !void {
-			std.debug.assert(!self.mutex.tryLock()); // The mutex should be locked when calling this function.
+		fn reset(self: *PrimitiveMesh) void {
 			self.faces.clearRetainingCapacity();
-			var n: u32 = 0;
-			var x: u8 = 0;
-			while(x < chunkSize): (x += 1) {
-				var y: u8 = 0;
-				while(y < chunkSize): (y += 1) {
-					var z: u8 = 0;
-					while(z < chunkSize): (z += 1) {
-						const block = (&chunk.blocks)[getIndex(x, y, z)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
-						if(block.typ == 0) continue;
-						// Check all neighbors:
-						for(Neighbors.iterable) |i| {
-							n += 1;
-							const x2 = x + Neighbors.relX[i];
-							const y2 = y + Neighbors.relY[i];
-							const z2 = z + Neighbors.relZ[i];
-							if(x2&chunkMask != x2 or y2&chunkMask != y2 or z2&chunkMask != z2) continue; // Neighbor is outside the chunk.
-							const neighborBlock = (&chunk.blocks)[getIndex(x2, y2, z2)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
-							if(canBeSeenThroughOtherBlock(block, neighborBlock, i)) {
-								try self.faces.append(constructFaceData(block, i, @intCast(x2), @intCast(y2), @intCast(z2)));
-							}
-						}
-					}
-				}
-			}
+		}
 
-			if(self.chunk.load(.Monotonic)) |oldChunk| {
-				main.globalAllocator.destroy(oldChunk);
-			}
-			self.chunk.store(chunk, .Monotonic);
+		fn resetToCore(self: *PrimitiveMesh) void {
+			self.faces.shrinkRetainingCapacity(self.coreCount);
+		}
+
+		fn append(self: *PrimitiveMesh, face: FaceData) !void {
+			try self.faces.append(face);
+		}
+
+		fn updateCore(self: *PrimitiveMesh) void {
 			self.coreCount = @intCast(self.faces.items.len);
 			self.neighborStart = [_]u31{self.coreCount} ** 7;
 		}
 
-		fn addFace(self: *ChunkMesh, faceData: FaceData, fromNeighborChunk: ?u3) !void {
-			std.debug.assert(!self.mutex.tryLock()); // The mutex should be locked when calling this function.
+		fn startNeighbor(self: *PrimitiveMesh, neighbor: usize) void {
+			self.neighborStart[neighbor] = @intCast(self.faces.items.len);
+		}
+
+		fn replaceNeighbors(self: *PrimitiveMesh, neighbor: usize, additionalNeighborFaces: []FaceData) !void {
+			var rangeStart = self.neighborStart[neighbor ^ 1];
+			var rangeEnd = self.neighborStart[(neighbor ^ 1)+1];
+			try self.faces.replaceRange(rangeStart, rangeEnd - rangeStart, additionalNeighborFaces);
+			for(self.neighborStart[1+(neighbor ^ 1)..]) |*neighborStart| {
+				neighborStart.* = neighborStart.* - (rangeEnd - rangeStart) + @as(u31, @intCast(additionalNeighborFaces.len));
+			}
+			try self.uploadData();
+		}
+
+		fn finish(self: *PrimitiveMesh) !void {
+			self.neighborStart[6] = @intCast(self.faces.items.len);
+			try self.uploadData();
+		}
+
+		fn uploadData(self: *PrimitiveMesh) !void {
+			self.vertexCount = @intCast(6*self.faces.items.len);
+			try faceBuffer.realloc(&self.bufferAllocation, @intCast(8*self.faces.items.len));
+			faceBuffer.bufferSubData(self.bufferAllocation.start, FaceData, self.faces.items);
+		}
+
+		fn addFace(self: *PrimitiveMesh, faceData: FaceData, fromNeighborChunk: ?u3) !void {
 			var insertionIndex: u31 = undefined;
 			if(fromNeighborChunk) |neighbor| {
 				insertionIndex = self.neighborStart[neighbor];
@@ -559,8 +571,7 @@ pub const meshing = struct {
 			try self.faces.insert(insertionIndex, faceData);
 		}
 
-		fn removeFace(self: *ChunkMesh, faceData: FaceData, fromNeighborChunk: ?u3) void {
-			std.debug.assert(!self.mutex.tryLock()); // The mutex should be locked when calling this function.
+		fn removeFace(self: *PrimitiveMesh, faceData: FaceData, fromNeighborChunk: ?u3) void {
 			var searchStart: u32 = undefined;
 			var searchEnd: u32 = undefined;
 			if(fromNeighborChunk) |neighbor| {
@@ -586,8 +597,7 @@ pub const meshing = struct {
 			@panic("Couldn't find the face to remove. This case is not handled.");
 		}
 
-		fn changeFace(self: *ChunkMesh, oldFaceData: FaceData, newFaceData: FaceData, fromNeighborChunk: ?u3) void {
-			std.debug.assert(!self.mutex.tryLock()); // The mutex should be locked when calling this function.
+		fn changeFace(self: *PrimitiveMesh, oldFaceData: FaceData, newFaceData: FaceData, fromNeighborChunk: ?u3) void {
 			var searchRange: []FaceData = undefined;
 			if(fromNeighborChunk) |neighbor| {
 				searchRange = self.faces.items[self.neighborStart[neighbor]..self.neighborStart[neighbor+1]];
@@ -602,6 +612,140 @@ pub const meshing = struct {
 				}
 			}
 			std.log.err("Couldn't find the face to replace.", .{});
+		}
+	};
+
+	pub const ChunkMesh = struct {
+		pos: ChunkPosition,
+		size: i32,
+		chunk: std.atomic.Atomic(?*Chunk),
+		opaqueMesh: PrimitiveMesh,
+		transparentMesh: PrimitiveMesh,
+		generated: bool = false,
+		mutex: std.Thread.Mutex = std.Thread.Mutex{},
+		visibilityMask: u8 = 0xff,
+
+		pub fn init(allocator: Allocator, pos: ChunkPosition) ChunkMesh {
+			return ChunkMesh{
+				.pos = pos,
+				.size = chunkSize*pos.voxelSize,
+				.opaqueMesh = .{
+					.faces = std.ArrayList(FaceData).init(allocator)
+				},
+				.transparentMesh = .{
+					.faces = std.ArrayList(FaceData).init(allocator)
+				},
+				.chunk = std.atomic.Atomic(?*Chunk).init(null),
+			};
+		}
+
+		pub fn deinit(self: *ChunkMesh) void {
+			self.opaqueMesh.deinit();
+			self.transparentMesh.deinit();
+			if(self.chunk.load(.Monotonic)) |ch| {
+				main.globalAllocator.destroy(ch);
+			}
+		}
+
+		pub fn isEmpty(self: *const ChunkMesh) bool {
+			return self.opaqueMesh.vertexCount == 0 and self.transparentMesh.vertexCount == 0;
+		}
+
+		fn canBeSeenThroughOtherBlock(block: Block, other: Block, neighbor: u3) bool {
+			const rotatedModel = blocks.meshes.model(block);
+			const model = &models.voxelModels.items[rotatedModel.modelIndex];
+			const freestandingModel = rotatedModel.modelIndex != models.fullCube and switch(rotatedModel.permutation.permuteNeighborIndex(neighbor)) {
+				Neighbors.dirNegX => model.min[0] != 0,
+				Neighbors.dirPosX => model.max[0] != 16,
+				Neighbors.dirDown => model.min[1] != 0,
+				Neighbors.dirUp => model.max[1] != 16,
+				Neighbors.dirNegZ => model.min[2] != 0,
+				Neighbors.dirPosZ => model.max[2] != 16,
+				else => unreachable,
+			};
+			return block.typ != 0 and (
+				freestandingModel
+				or other.typ == 0
+				or (!std.meta.eql(block, other) and other.viewThrough())
+				or blocks.meshes.model(other).modelIndex != 0 // TODO: make this more strict to avoid overdraw.
+			);
+		}
+
+		pub fn regenerateMainMesh(self: *ChunkMesh, chunk: *Chunk) !void {
+			std.debug.assert(!self.mutex.tryLock()); // The mutex should be locked when calling this function.
+			self.opaqueMesh.reset();
+			self.transparentMesh.reset();
+			var n: u32 = 0;
+			var x: u8 = 0;
+			while(x < chunkSize): (x += 1) {
+				var y: u8 = 0;
+				while(y < chunkSize): (y += 1) {
+					var z: u8 = 0;
+					while(z < chunkSize): (z += 1) {
+						const block = (&chunk.blocks)[getIndex(x, y, z)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
+						if(block.typ == 0) continue;
+						// Check all neighbors:
+						for(Neighbors.iterable) |i| {
+							n += 1;
+							const x2 = x + Neighbors.relX[i];
+							const y2 = y + Neighbors.relY[i];
+							const z2 = z + Neighbors.relZ[i];
+							if(x2&chunkMask != x2 or y2&chunkMask != y2 or z2&chunkMask != z2) continue; // Neighbor is outside the chunk.
+							const neighborBlock = (&chunk.blocks)[getIndex(x2, y2, z2)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
+							if(canBeSeenThroughOtherBlock(block, neighborBlock, i)) {
+								if(block.transparent()) {
+									try self.transparentMesh.append(constructFaceData(block, i, @intCast(x2), @intCast(y2), @intCast(z2)));
+								} else {
+									try self.opaqueMesh.append(constructFaceData(block, i, @intCast(x2), @intCast(y2), @intCast(z2)));
+								}
+							}
+						}
+					}
+				}
+			}
+
+			if(self.chunk.swap(chunk, .Monotonic)) |oldChunk| {
+				main.globalAllocator.destroy(oldChunk);
+			}
+			self.transparentMesh.updateCore();
+			self.opaqueMesh.updateCore();
+		}
+
+		fn addFace(self: *ChunkMesh, faceData: FaceData, fromNeighborChunk: ?u3, transparent: bool) !void {
+			std.debug.assert(!self.mutex.tryLock()); // The mutex should be locked when calling this function.
+			if(transparent) {
+				try self.transparentMesh.addFace(faceData, fromNeighborChunk);
+			} else {
+				try self.opaqueMesh.addFace(faceData, fromNeighborChunk);
+			}
+		}
+
+		fn removeFace(self: *ChunkMesh, faceData: FaceData, fromNeighborChunk: ?u3, transparent: bool) void {
+			std.debug.assert(!self.mutex.tryLock()); // The mutex should be locked when calling this function.
+			if(transparent) {
+				self.transparentMesh.removeFace(faceData, fromNeighborChunk);
+			} else {
+				self.opaqueMesh.removeFace(faceData, fromNeighborChunk);
+			}
+		}
+
+		fn changeFace(self: *ChunkMesh, oldFaceData: FaceData, newFaceData: FaceData, fromNeighborChunk: ?u3, oldTransparent: bool, newTransparent: bool) !void {
+			std.debug.assert(!self.mutex.tryLock()); // The mutex should be locked when calling this function.
+			if(oldTransparent) {
+				if(newTransparent) {
+					self.transparentMesh.changeFace(oldFaceData, newFaceData, fromNeighborChunk);
+				} else {
+					self.transparentMesh.removeFace(oldFaceData, fromNeighborChunk);
+					try self.opaqueMesh.addFace(newFaceData, fromNeighborChunk);
+				}
+			} else {
+				if(newTransparent) {
+					self.opaqueMesh.removeFace(oldFaceData, fromNeighborChunk);
+					try self.transparentMesh.addFace(newFaceData, fromNeighborChunk);
+				} else {
+					self.opaqueMesh.changeFace(oldFaceData, newFaceData, fromNeighborChunk);
+				}
+			}
 		}
 
 		pub fn updateBlock(self: *ChunkMesh, _x: i32, _y: i32, _z: i32, newBlock: Block) !void { // TODO: Investigate bug when placing blocks.
@@ -635,22 +779,22 @@ pub const meshing = struct {
 						if(canBeSeenThroughOtherBlock(oldBlock, neighborBlock, neighbor) != newVisibility) {
 							if(newVisibility) { // Adding the face
 								if(neighborMesh == self) {
-									try self.addFace(newFaceData, null);
+									try self.addFace(newFaceData, null, newBlock.transparent());
 								} else {
-									try neighborMesh.addFace(newFaceData, neighbor);
+									try neighborMesh.addFace(newFaceData, neighbor, newBlock.transparent());
 								}
 							} else { // Removing the face
 								if(neighborMesh == self) {
-									self.removeFace(oldFaceData, null);
+									self.removeFace(oldFaceData, null, oldBlock.transparent());
 								} else {
-									neighborMesh.removeFace(oldFaceData, neighbor);
+									neighborMesh.removeFace(oldFaceData, neighbor, oldBlock.transparent());
 								}
 							}
 						} else if(newVisibility) { // Changing the face
 							if(neighborMesh == self) {
-								self.changeFace(oldFaceData, newFaceData, null);
+								try self.changeFace(oldFaceData, newFaceData, null, oldBlock.transparent(), newBlock.transparent());
 							} else {
-								neighborMesh.changeFace(oldFaceData, newFaceData, neighbor);
+								try neighborMesh.changeFace(oldFaceData, newFaceData, neighbor, oldBlock.transparent(), newBlock.transparent());
 							}
 						}
 					}
@@ -661,36 +805,34 @@ pub const meshing = struct {
 						if(canBeSeenThroughOtherBlock(neighborBlock, oldBlock, neighbor ^ 1) != newVisibility) {
 							if(newVisibility) { // Adding the face
 								if(neighborMesh == self) {
-									try self.addFace(newFaceData, null);
+									try self.addFace(newFaceData, null, newBlock.transparent());
 								} else {
-									try self.addFace(newFaceData, neighbor);
+									try self.addFace(newFaceData, neighbor, newBlock.transparent());
 								}
 							} else { // Removing the face
 								if(neighborMesh == self) {
-									self.removeFace(oldFaceData, null);
+									self.removeFace(oldFaceData, null, oldBlock.transparent());
 								} else {
-									self.removeFace(oldFaceData, neighbor);
+									self.removeFace(oldFaceData, neighbor, oldBlock.transparent());
 								}
 							}
 						} else if(newVisibility) { // Changing the face
 							if(neighborMesh == self) {
-								self.changeFace(oldFaceData, newFaceData, null);
+								try self.changeFace(oldFaceData, newFaceData, null, oldBlock.transparent(), newBlock.transparent());
 							} else {
-								self.changeFace(oldFaceData, newFaceData, neighbor);
+								try self.changeFace(oldFaceData, newFaceData, neighbor, oldBlock.transparent(), newBlock.transparent());
 							}
 						}
 					}
 				}
-				if(neighborMesh != self) try neighborMesh.uploadData();
+				if(neighborMesh != self) {
+					try neighborMesh.opaqueMesh.uploadData();
+					try neighborMesh.transparentMesh.uploadData();
+				}
 			}
 			self.chunk.load(.Monotonic).?.blocks[getIndex(x, y, z)] = newBlock;
-			try self.uploadData();
-		}
-
-		fn uploadData(self: *ChunkMesh) !void {
-			self.vertexCount = @intCast(6*self.faces.items.len);
-			try faceBuffer.realloc(&self.bufferAllocation, @intCast(8*self.faces.items.len));
-			faceBuffer.bufferSubData(self.bufferAllocation.start, FaceData, self.faces.items);
+			try self.opaqueMesh.uploadData();
+			try self.transparentMesh.uploadData();
 		}
 
 		pub inline fn constructFaceData(block: Block, normal: u32, x: u32, y: u32, z: u32) FaceData {
@@ -704,17 +846,21 @@ pub const meshing = struct {
 		pub fn uploadDataAndFinishNeighbors(self: *ChunkMesh) !void {
 			std.debug.assert(!self.mutex.tryLock()); // The mutex should be locked when calling this function.
 			const chunk = self.chunk.load(.Monotonic) orelse return; // In the mean-time the mesh was discarded and recreated and all the data was lost.
-			self.faces.shrinkRetainingCapacity(self.coreCount);
+			self.opaqueMesh.resetToCore();
+			self.transparentMesh.resetToCore();
 			for(Neighbors.iterable) |neighbor| {
-				self.neighborStart[neighbor] = @intCast(self.faces.items.len);
+				self.opaqueMesh.startNeighbor(neighbor);
+				self.transparentMesh.startNeighbor(neighbor);
 				var nullNeighborMesh = renderer.RenderStructure.getNeighbor(self.pos, self.pos.voxelSize, neighbor);
 				if(nullNeighborMesh) |neighborMesh| {
 					std.debug.assert(neighborMesh != self);
 					neighborMesh.mutex.lock();
 					defer neighborMesh.mutex.unlock();
 					if(neighborMesh.generated) {
-						var additionalNeighborFaces = std.ArrayList(FaceData).init(main.threadAllocator);
-						defer additionalNeighborFaces.deinit();
+						var additionalNeighborFacesOpaque = std.ArrayList(FaceData).init(main.threadAllocator);
+						defer additionalNeighborFacesOpaque.deinit();
+						var additionalNeighborFacesTransparent = std.ArrayList(FaceData).init(main.threadAllocator);
+						defer additionalNeighborFacesTransparent.deinit();
 						var x3: u8 = if(neighbor & 1 == 0) @intCast(chunkMask) else 0;
 						var x1: u8 = 0;
 						while(x1 < chunkSize): (x1 += 1) {
@@ -742,20 +888,23 @@ pub const meshing = struct {
 								var block = (&chunk.blocks)[getIndex(x, y, z)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
 								var otherBlock = (&neighborMesh.chunk.load(.Monotonic).?.blocks)[getIndex(otherX, otherY, otherZ)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
 								if(canBeSeenThroughOtherBlock(block, otherBlock, neighbor)) {
-									try additionalNeighborFaces.append(constructFaceData(block, neighbor, otherX, otherY, otherZ));
+									if(block.transparent()) {
+										try additionalNeighborFacesTransparent.append(constructFaceData(block, neighbor, otherX, otherY, otherZ));
+									} else {
+										try additionalNeighborFacesOpaque.append(constructFaceData(block, neighbor, otherX, otherY, otherZ));
+									}
 								}
 								if(canBeSeenThroughOtherBlock(otherBlock, block, neighbor ^ 1)) {
-									try self.faces.append(constructFaceData(otherBlock, neighbor ^ 1, x, y, z));
+									if(otherBlock.transparent()) {
+										try self.transparentMesh.append(constructFaceData(otherBlock, neighbor ^ 1, x, y, z));
+									} else {
+										try self.opaqueMesh.append(constructFaceData(otherBlock, neighbor ^ 1, x, y, z));
+									}
 								}
 							}
 						}
-						var rangeStart = neighborMesh.neighborStart[neighbor ^ 1];
-						var rangeEnd = neighborMesh.neighborStart[(neighbor ^ 1)+1];
-						try neighborMesh.faces.replaceRange(rangeStart, rangeEnd - rangeStart, additionalNeighborFaces.items);
-						for(neighborMesh.neighborStart[1+(neighbor ^ 1)..]) |*neighborStart| {
-							neighborStart.* = neighborStart.* - (rangeEnd - rangeStart) + @as(u31, @intCast(additionalNeighborFaces.items.len));
-						}
-						try neighborMesh.uploadData();
+						try neighborMesh.opaqueMesh.replaceNeighbors(neighbor, additionalNeighborFacesOpaque.items);
+						try neighborMesh.transparentMesh.replaceNeighbors(neighbor, additionalNeighborFacesTransparent.items);
 						continue;
 					}
 				}
@@ -795,7 +944,11 @@ pub const meshing = struct {
 							var block = (&chunk.blocks)[getIndex(x, y, z)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
 							var otherBlock = (&neighborMesh.chunk.load(.Monotonic).?.blocks)[getIndex(otherX, otherY, otherZ)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
 							if(canBeSeenThroughOtherBlock(otherBlock, block, neighbor ^ 1)) {
-								try self.faces.append(constructFaceData(otherBlock, neighbor ^ 1, x, y, z));
+								if(otherBlock.transparent()) {
+									try self.transparentMesh.append(constructFaceData(otherBlock, neighbor ^ 1, x, y, z));
+								} else {
+									try self.opaqueMesh.append(constructFaceData(otherBlock, neighbor ^ 1, x, y, z));
+								}
 							}
 						}
 					}
@@ -803,8 +956,8 @@ pub const meshing = struct {
 					return error.LODMissing;
 				}
 			}
-			self.neighborStart[6] = @intCast(self.faces.items.len);
-			try self.uploadData();
+			try self.opaqueMesh.finish();
+			try self.transparentMesh.finish();
 			self.generated = true;
 		}
 
@@ -812,7 +965,7 @@ pub const meshing = struct {
 			if(!self.generated) {
 				return;
 			}
-			if(self.vertexCount == 0) return;
+			if(self.opaqueMesh.vertexCount == 0) return;
 			c.glUniform3f(
 				uniforms.modelPosition,
 				@floatCast(@as(f64, @floatFromInt(self.pos.wx)) - playerPosition[0]),
@@ -821,7 +974,23 @@ pub const meshing = struct {
 			);
 			c.glUniform1i(uniforms.visibilityMask, self.visibilityMask);
 			c.glUniform1i(uniforms.voxelSize, self.pos.voxelSize);
-			c.glDrawElementsBaseVertex(c.GL_TRIANGLES, self.vertexCount, c.GL_UNSIGNED_INT, null, self.bufferAllocation.start/8*4);
+			c.glDrawElementsBaseVertex(c.GL_TRIANGLES, self.opaqueMesh.vertexCount, c.GL_UNSIGNED_INT, null, self.opaqueMesh.bufferAllocation.start/8*4);
+		}
+
+		pub fn renderTransparent(self: *ChunkMesh, playerPosition: Vec3d) void { // TODO: Transparency sorting
+			if(!self.generated) {
+				return;
+			}
+			if(self.transparentMesh.vertexCount == 0) return;
+			c.glUniform3f(
+				transparentUniforms.modelPosition,
+				@floatCast(@as(f64, @floatFromInt(self.pos.wx)) - playerPosition[0]),
+				@floatCast(@as(f64, @floatFromInt(self.pos.wy)) - playerPosition[1]),
+				@floatCast(@as(f64, @floatFromInt(self.pos.wz)) - playerPosition[2])
+			);
+			c.glUniform1i(transparentUniforms.visibilityMask, self.visibilityMask);
+			c.glUniform1i(transparentUniforms.voxelSize, self.pos.voxelSize);
+			c.glDrawElementsBaseVertex(c.GL_TRIANGLES, self.transparentMesh.vertexCount, c.GL_UNSIGNED_INT, null, self.transparentMesh.bufferAllocation.start/8*4);
 		}
 	};
 };

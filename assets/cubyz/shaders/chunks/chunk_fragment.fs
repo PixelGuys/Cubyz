@@ -14,7 +14,6 @@ uniform sampler2DArray texture_sampler;
 uniform sampler2DArray emissionSampler;
 
 layout(location = 0) out vec4 fragColor;
-layout(location = 1) out vec4 position;
 
 struct Fog {
 	bool activ;
@@ -205,13 +204,8 @@ void main() {
 	ivec2 textureCoords = getTextureCoords(result.voxelPosition, result.textureDir);
 	fragColor = mipMapSample(texture_sampler, textureCoords, textureIndex, lod)*vec4(ambientLight*normalVariation, 1);
 
-	if (fragColor.a <= 0.1f) fragColor.a = 1; // TODO: Proper alpha handling.
+	if (fragColor.a < 1) discard;
 
-	if (fog.activ) {
-
-		// Underwater fog in lod(assumes that the fog is maximal):
-		fragColor = vec4((1 - fragColor.a) * waterFog.color.xyz + fragColor.a * fragColor.xyz, 1);
-	}
 	fragColor.rgb += mipMapSample(emissionSampler, textureCoords, textureIndex, lod).rgb;
 
 	if (fog.activ) {
@@ -219,7 +213,6 @@ void main() {
 	}
 	if(!renderedToItemTexture) {
 		fragColor.rgb /= 4;
-		position = vec4(mvVertexPos, 1);
 	}
 	// TODO: Update the depth.
 }

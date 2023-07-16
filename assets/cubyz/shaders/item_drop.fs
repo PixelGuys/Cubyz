@@ -10,7 +10,6 @@ flat in uvec3 lower;
 flat in uvec3 upper;
 
 layout(location = 0) out vec4 fragColor;
-layout(location = 1) out vec4 position;
 
 struct Fog {
 	bool activ;
@@ -223,7 +222,6 @@ void mainBlockDrop() {
 		fragColor = calcFog(startPosition, fragColor, fog);
 	}
 	fragColor.rgb /= 4;
-	position = vec4(startPosition, 1);
 }
 
 // itemDrops -------------------------------------------------------------------------------------------------------------------------
@@ -314,7 +312,6 @@ void mainItemDrop() {
 		fragColor = calcFog(modifiedCameraSpacePos, color, fog);
 	}
 	fragColor.rgb /= 4;
-	position = vec4(modifiedCameraSpacePos, 1);
 }
 
 void main() {

@@ -34,12 +34,10 @@ var fogUniforms: struct {
 	fog_activ: c_int,
 	fog_color: c_int,
 	fog_density: c_int,
-	position: c_int,
 	color: c_int,
 } = undefined;
 var deferredRenderPassShader: graphics.Shader = undefined;
 var deferredUniforms: struct {
-	position: c_int,
 	color: c_int,
 } = undefined;
 
@@ -66,20 +64,17 @@ pub fn deinit() void {
 const buffers = struct {
 	var buffer: c_uint = undefined;
 	var colorTexture: c_uint = undefined;
-	var positionTexture: c_uint = undefined;
 	var depthBuffer: c_uint = undefined;
 	fn init() void {
 		c.glGenFramebuffers(1, &buffer);
 		c.glGenRenderbuffers(1, &depthBuffer);
 		c.glGenTextures(1, &colorTexture);
-		c.glGenTextures(1, &positionTexture);
 
 		updateBufferSize(Window.width, Window.height);
 
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, buffer);
 
 		c.glFramebufferTexture2D(c.GL_FRAMEBUFFER, c.GL_COLOR_ATTACHMENT0, c.GL_TEXTURE_2D, colorTexture, 0);
-		c.glFramebufferTexture2D(c.GL_FRAMEBUFFER, c.GL_COLOR_ATTACHMENT1, c.GL_TEXTURE_2D, positionTexture, 0);
 		
 		c.glFramebufferRenderbuffer(c.GL_FRAMEBUFFER, c.GL_DEPTH_STENCIL_ATTACHMENT, c.GL_RENDERBUFFER, depthBuffer);
 
@@ -90,7 +85,6 @@ const buffers = struct {
 		c.glDeleteFramebuffers(1, &buffer);
 		c.glDeleteRenderbuffers(1, &depthBuffer);
 		c.glDeleteTextures(1, &colorTexture);
-		c.glDeleteTextures(1, &positionTexture);
 	}
 
 	fn regenTexture(texture: c_uint, internalFormat: c_int, format: c_uint, width: u31, height: u31) void {
@@ -105,13 +99,12 @@ const buffers = struct {
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, buffer);
 
 		regenTexture(colorTexture, c.GL_RGB10_A2, c.GL_RGB, width, height);
-		regenTexture(positionTexture, c.GL_RGB16F, c.GL_RGB, width, height);
 
 		c.glBindRenderbuffer(c.GL_RENDERBUFFER, depthBuffer);
 		c.glRenderbufferStorage(c.GL_RENDERBUFFER, c.GL_DEPTH24_STENCIL8, width, height);
 		c.glBindRenderbuffer(c.GL_RENDERBUFFER, 0);
 
-		const attachments = [_]c_uint{c.GL_COLOR_ATTACHMENT0, c.GL_COLOR_ATTACHMENT1};
+		const attachments = [_]c_uint{c.GL_COLOR_ATTACHMENT0};
 		c.glDrawBuffers(attachments.len, &attachments);
 
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
@@ -120,8 +113,6 @@ const buffers = struct {
 	fn bindTextures() void {
 		c.glActiveTexture(c.GL_TEXTURE3);
 		c.glBindTexture(c.GL_TEXTURE_2D, colorTexture);
-		c.glActiveTexture(c.GL_TEXTURE4);
-		c.glBindTexture(c.GL_TEXTURE_2D, positionTexture);
 	}
 
 	fn bind() void {
@@ -270,7 +261,23 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	try itemdrop.ItemDropRenderer.renderItemDrops(game.projectionMatrix, ambientLight, playerPos, time);
 
-//		// Render transparent chunk meshes:
+	// Render transparent chunk meshes:
+
+	chunk.meshing.bindTransparentShaderAndUniforms(game.projectionMatrix, ambientLight, time);
+	c.glUniform1i(chunk.meshing.transparentUniforms.@"waterFog.activ", if(waterFog.active) 1 else 0);
+	c.glUniform3fv(chunk.meshing.transparentUniforms.@"waterFog.color", 1, @ptrCast(&waterFog.color));
+	c.glUniform1f(chunk.meshing.transparentUniforms.@"waterFog.density", waterFog.density);
+
+	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_SRC1_COLOR);
+	{
+		var i: usize = meshes.items.len;
+		while(true) {
+			if(i == 0) break;
+			i -= 1;
+			meshes.items[i].renderTransparent(playerPos);
+		}
+	}
+	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 //		NormalChunkMesh.bindTransparentShader(ambientLight, directionalLight.getDirection(), time);
 
 	buffers.bindTextures();
@@ -308,7 +315,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 //				fogShader.setUniform(FogUniforms.loc_fog_color, waterFog.getColor());
 //				fogShader.setUniform(FogUniforms.loc_fog_density, waterFog.getDensity());
 //				glUniform1i(FogUniforms.loc_color, 3);
-//				glUniform1i(FogUniforms.loc_position, 4);
 
 //				glBindVertexArray(Graphics.rectVAO);
 //				glDisable(GL_DEPTH_TEST);
@@ -323,7 +329,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	buffers.bindTextures();
 	deferredRenderPassShader.bind();
 	c.glUniform1i(deferredUniforms.color, 3);
-	c.glUniform1i(deferredUniforms.position, 4);
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, activeFrameBuffer);
 
@@ -1097,7 +1102,7 @@ pub const RenderStructure = struct {
 							@floatFromInt(size),
 							@floatFromInt(size),
 							@floatFromInt(size),
-						}) and node.?.mesh.visibilityMask != 0 and node.?.mesh.vertexCount != 0) {
+						}) and node.?.mesh.visibilityMask != 0 and !node.?.mesh.isEmpty()) {
 							try meshes.append(&node.?.mesh);
 						}
 						if(lod+1 != storageLists.len and node.?.mesh.generated) {
