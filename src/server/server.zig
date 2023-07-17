@@ -61,7 +61,7 @@ pub const User = struct {
 
 	pub fn update(self: *User) void {
 		var time = @as(i16, @truncate(std.time.milliTimestamp())) -% main.settings.entityLookback;
-		time -= self.timeDifference.difference.load(.Monotonic);
+		time -%= self.timeDifference.difference.load(.Monotonic);
 		self.interpolation.update(time, self.lastTime);
 		self.lastTime = time;
 	}

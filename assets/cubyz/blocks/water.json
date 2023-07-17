@@ -6,7 +6,9 @@
 	"selectable" : false,
 	"solid" : false,
 	"transparent" : true,
-	"absorbedLight" : 0x17171100, 
+	"absorbedLight" : 0x17171100,
+	"absorption" : 0x6090b0,
+	"reflectivity" : 0.1,
 	"model" : "cube",
 	"texture" : {
 		"time" : 500,

@@ -301,9 +301,15 @@ pub const meshes = struct {
 		frames: i32,
 		time: i32,
 	};
+
+	const TextureData = extern struct {
+		textureIndices: [6]u32,
+		absorption: u32,
+		reflectivity: f32,
+	};
 	var size: u32 = 0;
 	var _modelIndex: [maxBlockCount]u16 = undefined;
-	var _textureIndices: [maxBlockCount][6]u32 = undefined;
+	var textureData: [maxBlockCount]TextureData = undefined;
 	/// Stores the number of textures after each block was added. Used to clean additional textures when the world is switched.
 	var maxTextureCount: [maxBlockCount]u32 = undefined;
 	/// Number of loaded meshes. Used to determine if an update is needed.
@@ -483,7 +489,9 @@ pub const meshes = struct {
 		// The actual model is loaded later, in the rendering thread.
 		// But textures can be loaded here:
 
-		try getTextureIndices(json, assetFolder, &_textureIndices[meshes.size]);
+		try getTextureIndices(json, assetFolder, &textureData[meshes.size].textureIndices);
+		textureData[meshes.size].reflectivity = json.get(f32, "reflectivity", 0);
+		textureData[meshes.size].absorption = json.get(u32, "absorption", 0xffffff);
 
 		maxTextureCount[meshes.size] = @intCast(textureIDs.items.len);
 
@@ -528,6 +536,6 @@ pub const meshes = struct {
 
 		// Also generate additional buffers:
 		animationSSBO.bufferData(AnimationData, animation.items);
-		textureIndexSSBO.bufferData([6]u32, _textureIndices[0..meshes.size]);
+		textureIndexSSBO.bufferData(TextureData, textureData[0..meshes.size]);
 	}
 };

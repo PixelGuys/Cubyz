@@ -26,13 +26,19 @@ struct AnimationData {
 	int time;
 };
 
+struct TextureData {
+	int textureIndices[6];
+	uint absorption;
+	float reflectivity;
+};
+
 layout(std430, binding = 0) buffer _animation
 {
 	AnimationData animation[];
 };
-layout(std430, binding = 1) buffer _textureIndices
+layout(std430, binding = 1) buffer _textureData
 {
-	int textureIndices[][6];
+	TextureData textureData[];
 };
 
 
@@ -62,7 +68,7 @@ vec4 calcFog(vec3 pos, vec4 color, Fog fog) {
 	float distance = length(pos);
 	float fogFactor = 1.0/exp((distance*fog.density)*(distance*fog.density));
 	fogFactor = clamp(fogFactor, 0.0, 1.0);
-	vec4 resultColor = mix(vec4(fog.color, 1), color, fogFactor);
+	vec4 resultColor = mix(vec4(fog.color, 0), color, fogFactor);
 	return resultColor;
 }
 
@@ -150,9 +156,17 @@ float snoise(vec3 v){ // TODO: Maybe use a cubemap.
 	return 42.0*dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)))/(1 << 31);
 }
 
+vec3 unpackColor(uint color) {
+	return vec3(
+		color>>16 & 255,
+		color>>8 & 255,
+		color & 255
+	)/255.0;
+}
+
 void main() {
 	float variance = perpendicularFwidth(direction);
-	int textureIndex = textureIndices[blockType][faceNormal];
+	int textureIndex = textureData[blockType].textureIndices[faceNormal];
 	textureIndex = textureIndex + time / animation[textureIndex].time % animation[textureIndex].frames;
 	float normalVariation = normalVariations[faceNormal];
 	float lod = getLod(ivec3(startPosition), faceNormal, direction, variance);
@@ -164,24 +178,22 @@ void main() {
 	if (fog.activ) {
 		// TODO: Underwater fog if possible.
 	}
-	blendColor = fragColor;
-	fragColor.rgb = vec3(0);
+	fragColor.rgb *= fragColor.a;
+	blendColor.rgb = unpackColor(textureData[blockType].absorption);
 
-	if(fragColor.a < 1) {
-		// Fake reflection:
-		// TODO: Make the amount configurable.
-		// TODO: Also allow this for opaque pixels.
-		// TODO: Change this when it rains.
-		// TODO: Normal mapping.
-		// TODO: Allow textures to contribute to this term.
-		fragColor.rgb += 0.1*vec3(snoise(normalize(reflect(direction, normals[faceNormal])))) + vec3(0.2);
-		fragColor.a = 1;
-	} else {
-		fragColor.rgb += mipMapSample(emissionSampler, textureCoords, textureIndex, lod).rgb;
-	}
+	// Fake reflection:
+	// TODO: Also allow this for opaque pixels.
+	// TODO: Change this when it rains.
+	// TODO: Normal mapping.
+	// TODO: Allow textures to contribute to this term.
+	fragColor.rgb += (textureData[blockType].reflectivity/2*vec3(snoise(normalize(reflect(direction, normals[faceNormal])))) + vec3(textureData[blockType].reflectivity))*ambientLight*normalVariation;
+	blendColor.rgb *= 1 - fragColor.a;
+	fragColor.a = 1;
 
 	if (fog.activ) {
 		fragColor = calcFog(mvVertexPos, fragColor, fog);
+		blendColor.rgb *= fragColor.a;
+		fragColor.a = 1;
 	}
 	if(!renderedToItemTexture) {
 		fragColor.rgb /= 4;

@@ -64,13 +64,20 @@ struct AnimationData {
 	int time;
 };
 
+
+struct TextureData {
+	int textureIndices[6];
+	uint absorption;
+	float reflectivity;
+};
+
 layout(std430, binding = 0) buffer _animation
 {
 	AnimationData animation[];
 };
-layout(std430, binding = 1) buffer _textureIndices
+layout(std430, binding = 1) buffer _textureData
 {
-	int textureIndices[][6];
+	TextureData textureData[];
 };
 layout(std430, binding = 4) buffer _blockVoxelModels
 {
@@ -207,7 +214,7 @@ void mainBlockDrop() {
 		result = RayMarchResult(true, faceNormal, faceNormal, ivec3(startPosition)); // At some point it doesn't make sense to even draw the model.
 	}
 	if(!result.hitAThing) discard;
-	int textureIndex = textureIndices[blockType][result.textureDir];
+	int textureIndex = textureData[blockType].textureIndices[result.textureDir];
 	textureIndex = textureIndex + time / animation[textureIndex].time % animation[textureIndex].frames;
 	float normalVariation = normalVariations[result.normal];
 	float lod = getLod(result.voxelPosition, result.normal, direction, variance);

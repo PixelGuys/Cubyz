@@ -1,0 +1,12 @@
+{
+	"class" : "stone",
+	"hardness" : 2,
+	"drops" : [
+		"none"
+	],
+	"transparent" : true,
+	"absorption" : 0xec0ec0,
+	"reflectivity" : 0.08,
+	"model" : "cube",
+	"texture" : "cubyz:glass"
+}
