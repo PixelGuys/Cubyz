@@ -269,7 +269,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 		while(true) {
 			if(i == 0) break;
 			i -= 1;
-			meshes.items[i].renderTransparent(playerPos);
+			try meshes.items[i].renderTransparent(playerPos);
 		}
 	}
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
@@ -343,10 +343,10 @@ fn sortChunks(toSort: []*chunk.meshing.ChunkMesh, playerPos: Vec3d) !void {
 	defer main.threadAllocator.free(distances);
 
 	for(distances, 0..) |*dist, i| {
-		dist.* = vec.length(playerPos - Vec3d{
-			@floatFromInt(toSort[i].pos.wx),
-			@floatFromInt(toSort[i].pos.wy),
-			@floatFromInt(toSort[i].pos.wz),
+		dist.* = vec.lengthSquare(playerPos - Vec3d{
+			@floatFromInt(toSort[i].pos.wx + (toSort[i].size>>1)),
+			@floatFromInt(toSort[i].pos.wy + (toSort[i].size>>1)),
+			@floatFromInt(toSort[i].pos.wz + (toSort[i].size>>1)),
 		});
 	}
 	// Insert sort them:

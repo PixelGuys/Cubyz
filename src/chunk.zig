@@ -14,6 +14,7 @@ const renderer = @import("renderer.zig");
 const settings = @import("settings.zig");
 const vec = @import("vec.zig");
 const Vec2f = vec.Vec2f;
+const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
 const Mat4f = vec.Mat4f;
@@ -426,8 +427,7 @@ pub const meshing = struct {
 		c.glBindVertexArray(vao);
 		c.glGenBuffers(1, &vbo);
 		c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, vbo);
-		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, rawData.len*@sizeOf(f32), &rawData, c.GL_STATIC_DRAW);
-		c.glVertexAttribPointer(0, 2, c.GL_FLOAT, c.GL_FALSE, 2*@sizeOf(f32), null);
+		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, rawData.len*@sizeOf(u32), &rawData, c.GL_STATIC_DRAW);
 		c.glBindVertexArray(0);
 
 		faces = try std.ArrayList(u32).initCapacity(main.globalAllocator, 65536);
@@ -489,15 +489,20 @@ pub const meshing = struct {
 		c.glBindVertexArray(vao);
 	}
 
-	pub const FaceData = switch(@import("builtin").target.cpu.arch.endian()) {
-		.Little => packed struct {
-			position: u32,
-			blockAndModel: u32,
-		},
-		.Big => packed struct {
-			blockAndModel: u32,
-			position: u32,
-		},
+	pub const FaceData = extern struct {
+		position: u32,
+		blockAndModel: u32,
+
+		pub fn distance(self: FaceData, dx: i32, dy: i32, dz: i32) u32 {
+			const x: i32 = @intCast(self.position & 31);
+			const y: i32 = @intCast(self.position >> 5 & 31);
+			const z: i32 = @intCast(self.position >> 10 & 31);
+			const normal = self.position >> 20 & 7;
+			const fullDx = dx + x - Neighbors.relX[normal];
+			const fullDy = dy + y - Neighbors.relY[normal];
+			const fullDz = dz + z - Neighbors.relZ[normal];
+			return std.math.absCast(fullDx) + std.math.absCast(fullDy) + std.math.absCast(fullDz);
+		}
 	};
 
 	const PrimitiveMesh = struct {
@@ -616,6 +621,10 @@ pub const meshing = struct {
 	};
 
 	pub const ChunkMesh = struct {
+		const SortingData = struct {
+			index: u32,
+			distance: u32,
+		};
 		pos: ChunkPosition,
 		size: i32,
 		chunk: std.atomic.Atomic(?*Chunk),
@@ -624,6 +633,11 @@ pub const meshing = struct {
 		generated: bool = false,
 		mutex: std.Thread.Mutex = std.Thread.Mutex{},
 		visibilityMask: u8 = 0xff,
+		transparentVao: c_uint = 0,
+		transparentVbo: c_uint = 0,
+		currentSorting: []SortingData = &.{},
+		currentSortingSwap: []SortingData = &.{},
+		lastTransparentUpdatePos: Vec3i = Vec3i{0, 0, 0},
 
 		pub fn init(allocator: Allocator, pos: ChunkPosition) ChunkMesh {
 			return ChunkMesh{
@@ -642,6 +656,12 @@ pub const meshing = struct {
 		pub fn deinit(self: *ChunkMesh) void {
 			self.opaqueMesh.deinit();
 			self.transparentMesh.deinit();
+			if(self.transparentVao != 0) {
+				c.glDeleteVertexArrays(1, &self.transparentVao);
+				c.glDeleteBuffers(1, &self.transparentVbo);
+			}
+			main.globalAllocator.free(self.currentSorting);
+			main.globalAllocator.free(self.currentSortingSwap);
 			if(self.chunk.load(.Monotonic)) |ch| {
 				main.globalAllocator.destroy(ch);
 			}
@@ -977,11 +997,93 @@ pub const meshing = struct {
 			c.glDrawElementsBaseVertex(c.GL_TRIANGLES, self.opaqueMesh.vertexCount, c.GL_UNSIGNED_INT, null, self.opaqueMesh.bufferAllocation.start/8*4);
 		}
 
-		pub fn renderTransparent(self: *ChunkMesh, playerPosition: Vec3d) void { // TODO: Transparency sorting
+		pub fn renderTransparent(self: *ChunkMesh, playerPosition: Vec3d) !void {
 			if(!self.generated) {
 				return;
 			}
 			if(self.transparentMesh.vertexCount == 0) return;
+			if(self.transparentVao == 0) {
+				c.glGenVertexArrays(1, &self.transparentVao);
+				c.glBindVertexArray(self.transparentVao);
+				c.glGenBuffers(1, &self.transparentVbo);
+				c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, self.transparentVbo);
+			} else {
+				c.glBindVertexArray(self.transparentVao);
+			}
+
+			var needsUpdate: bool = false;
+			if(self.currentSorting.len != self.transparentMesh.faces.items.len) {
+				self.currentSorting = try main.globalAllocator.realloc(self.currentSorting, self.transparentMesh.faces.items.len);
+				self.currentSortingSwap = try main.globalAllocator.realloc(self.currentSortingSwap, self.transparentMesh.faces.items.len);
+
+				for(self.currentSorting, 0..) |*val, i| {
+					val.index = @intCast(i);
+				}
+				needsUpdate = true;
+			}
+
+			var relativePos = Vec3d {
+				@as(f64, @floatFromInt(self.pos.wx)) - playerPosition[0],
+				@as(f64, @floatFromInt(self.pos.wy)) - playerPosition[1],
+				@as(f64, @floatFromInt(self.pos.wz)) - playerPosition[2]
+			}/@as(Vec3d, @splat(@as(f64, @floatFromInt(self.pos.voxelSize))));
+			relativePos = @min(relativePos, @as(Vec3d, @splat(0)));
+			relativePos = @max(relativePos, @as(Vec3d, @splat(-32)));
+			var updatePos = vec.intFromFloat(i32, relativePos);
+			if(@reduce(.Or, updatePos != self.lastTransparentUpdatePos)) {
+				self.lastTransparentUpdatePos = updatePos;
+				needsUpdate = true;
+			}
+			if(needsUpdate) {
+				var transparencyData: [][6]u32 = try main.threadAllocator.alloc([6]u32, self.transparentMesh.faces.items.len);
+				defer main.threadAllocator.free(transparencyData);
+				// TODO: Could additionally filter back-faces to reduce work on the gpu side.
+
+				for(self.currentSorting) |*val| {
+					val.distance = self.transparentMesh.faces.items[val.index].distance(
+						updatePos[0],
+						updatePos[1],
+						updatePos[2],
+					);
+				}
+
+				// Sort it using bucket sort:
+				var buckets: [34*3]u32 = undefined;
+				@memset(&buckets, 0);
+				for(self.currentSorting) |val| {
+					buckets[34*3 - 1 - val.distance] += 1;
+				}
+				var prefixSum: u32 = 0;
+				for(&buckets) |*val| {
+					const copy = val.*;
+					val.* = prefixSum;
+					prefixSum += copy;
+				}
+				// Move it over into a new buffer:
+				for(0..self.currentSorting.len) |i| {
+					const bucket = 34*3 - 1 - self.currentSorting[i].distance;
+					self.currentSortingSwap[buckets[bucket]] = self.currentSorting[i];
+					buckets[bucket] += 1;
+				}
+
+				const swap = self.currentSorting;
+				self.currentSorting = self.currentSortingSwap;
+				self.currentSortingSwap = swap;
+
+				// Fill the data:
+				for(transparencyData, 0..) |*face, i| {
+					const lut = [_]u32{0, 1, 2, 2, 1, 3};
+					const index = self.currentSorting[i].index*4;
+					inline for(face, 0..) |*val, vertex| {
+						val.* = index + lut[vertex];
+					}
+				}
+
+				// Upload:
+				c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, self.transparentVbo);
+				c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(transparencyData.len*@sizeOf([6]u32)), transparencyData.ptr, c.GL_DYNAMIC_DRAW);
+			}
+
 			c.glUniform3f(
 				transparentUniforms.modelPosition,
 				@floatCast(@as(f64, @floatFromInt(self.pos.wx)) - playerPosition[0]),

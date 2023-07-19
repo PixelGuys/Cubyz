@@ -82,6 +82,7 @@ pub const std_options = struct {
 						mode = 1;
 						formatString = formatString ++ "{s}{";
 						sectionResults = sectionResults ++ &[_][]const u8{sectionString};
+						sectionString = "";
 						sectionId = sectionId ++ &[_]usize {sections};
 						sections += 1;
 						continue;

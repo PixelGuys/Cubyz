@@ -8,9 +8,9 @@
 	"roughness" : 10,
 	"hills" : 10,
 	
-	"music" : "leaves",
+	"music" : "mana-two-part-2",
 
-	"validPlayerSpawn" : true,
+	"validPlayerSpawn" : false,
 	
 	"ground_structure" : [
 	],
