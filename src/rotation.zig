@@ -5,6 +5,10 @@ const Block = blocks.Block;
 const chunk = @import("chunk.zig");
 const Neighbors = chunk.Neighbors;
 const main = @import("main.zig");
+const vec = main.vec;
+const Vec3i = vec.Vec3i;
+const Vec3f = vec.Vec3f;
+const Vec3d = vec.Vec3d;
 
 
 pub const Permutation = packed struct(u6) {
@@ -115,6 +119,7 @@ pub const RotatedModel = struct {
 	permutation: Permutation = Permutation{},
 };
 
+// TODO: Why not just use a tageed union?
 /// Each block gets 16 bit of additional storage(apart from the reference to the block type).
 /// These 16 bits are accessed and interpreted by the `RotationMode`.
 /// With the `RotationMode` interface there is almost no limit to what can be done with those 16 bit.
@@ -125,6 +130,9 @@ pub const RotationMode = struct {
 				.modelIndex = blocks.meshes.modelIndexStart(block),
 			};
 		}
+		fn generateData(_: *main.game.World, _: Vec3i, _: Vec3d, _: Vec3f, _: Vec3i, _: *Block, blockPlacing: bool) bool {
+			return blockPlacing;
+		}
 	};
 
 	id: []const u8,
@@ -132,6 +140,10 @@ pub const RotationMode = struct {
 	dependsOnNeighbors: bool = false,
 
 	model: *const fn(block: Block) RotatedModel = &DefaultFunctions.model,
+
+	/// Updates the block data of a block in the world or places a block in the world.
+	/// return true if the placing was successful, false otherwise.
+	generateData: *const fn(world: *main.game.World, pos: Vec3i, relativePlayerPos: Vec3d, playerDir: Vec3f, relativeDir: Vec3i, currentData: *Block, blockPlacing: bool) bool = DefaultFunctions.generateData,
 };
 
 //public interface RotationMode extends RegistryElement {

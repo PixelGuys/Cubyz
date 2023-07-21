@@ -741,11 +741,16 @@ pub const MeshSelection = struct {
 		c.glDeleteVertexArrays(1, &cubeVAO);
 	}
 
+	var posBeforeBlock: Vec3i = undefined;
 	var selectedBlockPos: ?Vec3i = null;
+	var lastPos: Vec3d = undefined;
+	var lastDir: Vec3f = undefined;
 	pub fn select(_pos: Vec3d, _dir: Vec3f) void {
 		var pos = _pos;
 		// TODO: pos.y += Player.cameraHeight;
+		lastPos = pos;
 		var dir = vec.floatCast(f64, _dir);
+		lastDir = _dir;
 //TODO:
 //		intersection.set(0, 0, 0, dir.x, dir.y, dir.z);
 
@@ -783,6 +788,7 @@ pub const MeshSelection = struct {
 					break;
 				}
 			}
+			posBeforeBlock = voxelPos;
 			if(tMax[0] < tMax[1]) {
 				if(tMax[0] < tMax[2]) {
 					voxelPos[0] += step[0];
@@ -807,90 +813,68 @@ pub const MeshSelection = struct {
 		}
 		// TODO: Test entities
 	}
-//	TODO(requires inventory):
-//	/**
-//	 * Places a block in the world.
-//	 * @param stack
-//	 * @param world
-//	 */
-//	public void placeBlock(ItemStack stack, World world) {
-//		if (selectedSpatial != null && selectedSpatial instanceof BlockInstance) {
-//			BlockInstance bi = (BlockInstance)selectedSpatial;
-//			IntWrapper block = new IntWrapper(bi.getBlock());
-//			Vector3d relativePos = new Vector3d(pos);
-//			relativePos.sub(bi.x, bi.y, bi.z);
-//			int b = stack.getBlock();
-//			if (b != 0) {
-//				Vector3i neighborDir = new Vector3i();
-//				// Check if stuff can be added to the block itself:
-//				if (b == bi.getBlock()) {
-//					if (Blocks.mode(b).generateData(Cubyz.world, bi.x, bi.y, bi.z, relativePos, dir, neighborDir, block, false)) {
-//						world.updateBlock(bi.x, bi.y, bi.z, block.data);
-//						stack.add(-1);
-//						return;
-//					}
-//				}
-//				// Get the next neighbor:
-//				Vector3i neighbor = new Vector3i();
-//				getEmptyPlace(neighbor, neighborDir);
-//				relativePos.set(pos);
-//				relativePos.sub(neighbor.x, neighbor.y, neighbor.z);
-//				boolean dataOnlyUpdate = world.getBlock(neighbor.x, neighbor.y, neighbor.z) == b;
-//				if (dataOnlyUpdate) {
-//					block.data = world.getBlock(neighbor.x, neighbor.y, neighbor.z);
-//					if (Blocks.mode(b).generateData(Cubyz.world, neighbor.x, neighbor.y, neighbor.z, relativePos, dir, neighborDir, block, false)) {
-//						world.updateBlock(neighbor.x, neighbor.y, neighbor.z, block.data);
-//						stack.add(-1);
-//					}
-//				} else {
-//					// Check if the block can actually be placed at that point. There might be entities or other blocks in the way.
-//					if (Blocks.solid(world.getBlock(neighbor.x, neighbor.y, neighbor.z)))
-//						return;
-//					for(ClientEntity ent : ClientEntityManager.getEntities()) {
-//						Vector3d pos = ent.position;
-//						// Check if the block is inside:
-//						if (neighbor.x < pos.x + ent.width && neighbor.x + 1 > pos.x - ent.width
-//						        && neighbor.z < pos.z + ent.width && neighbor.z + 1 > pos.z - ent.width
-//						        && neighbor.y < pos.y + ent.height && neighbor.y + 1 > pos.y)
-//							return;
-//					}
-//					block.data = b;
-//					if (Blocks.mode(b).generateData(Cubyz.world, neighbor.x, neighbor.y, neighbor.z, relativePos, dir, neighborDir, block, true)) {
-//						world.updateBlock(neighbor.x, neighbor.y, neighbor.z, block.data);
-//						stack.add(-1);
-//					}
-//				}
-//			}
-//		}
-//	}
-//	TODO: Check how this is needed.
-//	/**
-//	 * Returns the free block right next to the currently selected block.
-//	 * @param pos selected block position
-//	 * @param dir camera direction
-//	 */
-//	private void getEmptyPlace(Vector3i pos, Vector3i dir) {
-//		int dirX = CubyzMath.nonZeroSign(this.dir.x);
-//		int dirY = CubyzMath.nonZeroSign(this.dir.y);
-//		int dirZ = CubyzMath.nonZeroSign(this.dir.z);
-//		pos.set(((BlockInstance)selectedSpatial).x, ((BlockInstance)selectedSpatial).y, ((BlockInstance)selectedSpatial).z);
-//		pos.add(-dirX, 0, 0);
-//		dir.add(dirX, 0, 0);
-//		min.set(pos.x, pos.y, pos.z).sub(this.pos);
-//		max.set(min);
-//		max.add(1, 1, 1); // scale, scale, scale
-//		if (!intersection.test((float)min.x, (float)min.y, (float)min.z, (float)max.x, (float)max.y, (float)max.z)) {
-//			pos.add(dirX, -dirY, 0);
-//			dir.add(-dirX, dirY, 0);
-//			min.set(pos.x, pos.y, pos.z).sub(this.pos);
-//			max.set(min);
-//			max.add(1, 1, 1); // scale, scale, scale
-//			if (!intersection.test((float)min.x, (float)min.y, (float)min.z, (float)max.x, (float)max.y, (float)max.z)) {
-//				pos.add(0, dirY, -dirZ);
-//				dir.add(0, -dirY, dirZ);
-//			}
-//		}
-//	}
+
+	pub fn placeBlock(inventoryStack: *main.items.ItemStack) !void {
+		if(selectedBlockPos) |selectedPos| {
+			var block = RenderStructure.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
+			if(inventoryStack.item) |item| {
+				switch(item) {
+					.baseItem => |baseItem| {
+						if(baseItem.block) |itemBlock| {
+							const rotationMode = blocks.Block.mode(.{.typ = itemBlock, .data = 0});
+							var neighborDir = Vec3i{0, 0, 0};
+							// Check if stuff can be added to the block itself:
+							if(itemBlock == block.typ) {
+								const relPos = lastPos - vec.floatFromInt(f64, selectedPos);
+								if(rotationMode.generateData(main.game.world.?, selectedPos, relPos, lastDir, neighborDir, &block, false)) {
+									// TODO: world.updateBlock(bi.x, bi.y, bi.z, block.data); (→ Sending it over the network)
+									try RenderStructure.updateBlock(selectedPos[0], selectedPos[1], selectedPos[2], block);
+									_ = inventoryStack.add(@as(i32, -1));
+									return;
+								}
+							}
+							// Check the block in front of it:
+							const neighborPos = posBeforeBlock;
+							neighborDir = selectedPos - posBeforeBlock;
+							const relPos = lastPos - vec.floatFromInt(f64, neighborPos);
+							block = RenderStructure.getBlock(neighborPos[0], neighborPos[1], neighborPos[2]) orelse return;
+							if(block.typ == itemBlock) {
+								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, &block, false)) {
+									// TODO: world.updateBlock(bi.x, bi.y, bi.z, block.data); (→ Sending it over the network)
+									try RenderStructure.updateBlock(neighborPos[0], neighborPos[1], neighborPos[2], block);
+									_ = inventoryStack.add(@as(i32, -1));
+									return;
+								}
+							} else {
+								// Check if the block can actually be placed at that point. There might be entities or other blocks in the way.
+								if(block.solid()) return;
+								// TODO:
+//								for(ClientEntity ent : ClientEntityManager.getEntities()) {
+//									Vector3d pos = ent.position;
+//									// Check if the block is inside:
+//									if (neighbor.x < pos.x + ent.width && neighbor.x + 1 > pos.x - ent.width
+//									        && neighbor.z < pos.z + ent.width && neighbor.z + 1 > pos.z - ent.width
+//									        && neighbor.y < pos.y + ent.height && neighbor.y + 1 > pos.y)
+//										return;
+//								}
+								block.typ = itemBlock;
+								block.data = 0;
+								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, &block, true)) {
+									// TODO: world.updateBlock(bi.x, bi.y, bi.z, block.data); (→ Sending it over the network)
+									try RenderStructure.updateBlock(neighborPos[0], neighborPos[1], neighborPos[2], block);
+									_ = inventoryStack.add(@as(i32, -1));
+									return;
+								}
+							}
+						}
+					},
+					.tool => |tool| {
+						_ = tool; // TODO: Tools might change existing blocks.
+					}
+				}
+			}
+		}
+	}
 	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, playerPos: Vec3d) void {
 		if(selectedBlockPos) |_selectedBlockPos| {
 			var block = RenderStructure.getBlock(_selectedBlockPos[0], _selectedBlockPos[1], _selectedBlockPos[2]) orelse return;

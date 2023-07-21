@@ -801,20 +801,20 @@ pub const meshing = struct {
 								if(neighborMesh == self) {
 									try self.addFace(newFaceData, null, newBlock.transparent());
 								} else {
-									try neighborMesh.addFace(newFaceData, neighbor, newBlock.transparent());
+									try neighborMesh.addFace(newFaceData, neighbor ^ 1, newBlock.transparent());
 								}
 							} else { // Removing the face
 								if(neighborMesh == self) {
 									self.removeFace(oldFaceData, null, oldBlock.transparent());
 								} else {
-									neighborMesh.removeFace(oldFaceData, neighbor, oldBlock.transparent());
+									neighborMesh.removeFace(oldFaceData, neighbor ^ 1, oldBlock.transparent());
 								}
 							}
 						} else if(newVisibility) { // Changing the face
 							if(neighborMesh == self) {
 								try self.changeFace(oldFaceData, newFaceData, null, oldBlock.transparent(), newBlock.transparent());
 							} else {
-								try neighborMesh.changeFace(oldFaceData, newFaceData, neighbor, oldBlock.transparent(), newBlock.transparent());
+								try neighborMesh.changeFace(oldFaceData, newFaceData, neighbor ^ 1, oldBlock.transparent(), newBlock.transparent());
 							}
 						}
 					}
@@ -825,15 +825,15 @@ pub const meshing = struct {
 						if(canBeSeenThroughOtherBlock(neighborBlock, oldBlock, neighbor ^ 1) != newVisibility) {
 							if(newVisibility) { // Adding the face
 								if(neighborMesh == self) {
-									try self.addFace(newFaceData, null, newBlock.transparent());
+									try self.addFace(newFaceData, null, neighborBlock.transparent());
 								} else {
-									try self.addFace(newFaceData, neighbor, newBlock.transparent());
+									try self.addFace(newFaceData, neighbor, neighborBlock.transparent());
 								}
 							} else { // Removing the face
 								if(neighborMesh == self) {
-									self.removeFace(oldFaceData, null, oldBlock.transparent());
+									self.removeFace(oldFaceData, null, neighborBlock.transparent());
 								} else {
-									self.removeFace(oldFaceData, neighbor, oldBlock.transparent());
+									self.removeFace(oldFaceData, neighbor, neighborBlock.transparent());
 								}
 							}
 						} else if(newVisibility) { // Changing the face

@@ -360,6 +360,7 @@ pub var keyboard: struct {
 	jump: Key = Key{.key = c.GLFW_KEY_SPACE},
 	fall: Key = Key{.key = c.GLFW_KEY_LEFT_SHIFT},
 	fullscreen: Key = Key{.key = c.GLFW_KEY_F11, .releaseAction = &Window.toggleFullscreen},
+	placeBlock: Key = Key{.mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &game.Player.placeBlock}, // TODO: Add GLFW_REPEAT behavior to mouse buttons.
 
 	takeBackgroundImage: Key = Key{.key = c.GLFW_KEY_PRINT_SCREEN, .releaseAction = &takeBackgroundImageFn},
 

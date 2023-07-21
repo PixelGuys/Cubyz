@@ -50,6 +50,7 @@ pub const Player = struct {
 	pub var isFlying: std.atomic.Atomic(bool) = std.atomic.Atomic(bool).init(true);
 	pub var mutex: std.Thread.Mutex = std.Thread.Mutex{};
 	pub var inventory__SEND_CHANGES_TO_SERVER: Inventory = undefined;
+	pub var selectedSlot: u32 = 0; // TODO: Change this with mouse wheel
 
 	pub var maxHealth: f32 = 8;
 	pub var health: f32 = 4.5;
@@ -75,6 +76,12 @@ pub const Player = struct {
 		mutex.lock();
 		defer mutex.unlock();
 		return super.vel;
+	}
+
+	pub fn placeBlock() void {
+		main.renderer.MeshSelection.placeBlock(&inventory__SEND_CHANGES_TO_SERVER.items[selectedSlot]) catch |err| {
+			std.log.err("Error while placing block: {s}", .{@errorName(err)});
+		};
 	}
 };
 
