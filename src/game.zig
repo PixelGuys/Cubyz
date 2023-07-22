@@ -50,7 +50,7 @@ pub const Player = struct {
 	pub var isFlying: std.atomic.Atomic(bool) = std.atomic.Atomic(bool).init(true);
 	pub var mutex: std.Thread.Mutex = std.Thread.Mutex{};
 	pub var inventory__SEND_CHANGES_TO_SERVER: Inventory = undefined;
-	pub var selectedSlot: u32 = 0; // TODO: Change this with mouse wheel
+	pub var selectedSlot: u32 = 0;
 
 	pub var maxHealth: f32 = 8;
 	pub var health: f32 = 4.5;
@@ -347,6 +347,9 @@ pub fn update(deltaTime: f64) !void {
 				}
 			}
 		}
+		Player.selectedSlot -%= @bitCast(@as(i32, @intFromFloat(main.Window.scrollOffset)));
+		Player.selectedSlot %= 8;
+		main.Window.scrollOffset = 0;
 	}
 
 	{

@@ -1305,6 +1305,16 @@ pub const FrameBuffer = struct {
 		c.glFramebufferTexture2D(c.GL_FRAMEBUFFER, c.GL_COLOR_ATTACHMENT0, c.GL_TEXTURE_2D, self.texture, 0);
 	}
 
+	pub fn clear(_: FrameBuffer, clearColor: Color) void {
+		c.glClearColor(
+			@as(f32, @floatFromInt(clearColor.r))/255,
+			@as(f32, @floatFromInt(clearColor.g))/255,
+			@as(f32, @floatFromInt(clearColor.b))/255,
+			@as(f32, @floatFromInt(clearColor.a))/255,
+		);
+		c.glClear(c.GL_COLOR_BUFFER_BIT | c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT);
+	}
+
 	pub fn validate(self: *FrameBuffer) bool {
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, self.frameBuffer);
 		defer c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);

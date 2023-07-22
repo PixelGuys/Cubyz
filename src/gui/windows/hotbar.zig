@@ -5,12 +5,14 @@ const main = @import("root");
 const ItemStack = main.items.ItemStack;
 const Player = main.game.Player;
 const Vec2f = main.vec.Vec2f;
+const Texture = main.graphics.Texture;
 
 const gui = @import("../gui.zig");
 const GuiComponent = gui.GuiComponent;
 const GuiWindow = gui.GuiWindow;
 const HorizontalList = GuiComponent.HorizontalList;
 const ItemSlot = GuiComponent.ItemSlot;
+const Icon = GuiComponent.Icon;
 
 pub var window = GuiWindow {
 	.contentSize = Vec2f{64*8, 64},
@@ -95,4 +97,5 @@ pub fn update() Allocator.Error!void {
 	for(&itemSlots, 0..) |slot, i| {
 		try slot.updateItemStack(Player.inventory__SEND_CHANGES_TO_SERVER.items[i]);
 	}
+	itemSlots[Player.selectedSlot].hovered = true;
 }

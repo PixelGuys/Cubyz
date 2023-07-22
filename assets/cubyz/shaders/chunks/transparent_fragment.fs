@@ -187,6 +187,7 @@ void main() {
 	// TODO: Normal mapping.
 	// TODO: Allow textures to contribute to this term.
 	fragColor.rgb += (textureData[blockType].reflectivity/2*vec3(snoise(normalize(reflect(direction, normals[faceNormal])))) + vec3(textureData[blockType].reflectivity))*ambientLight*normalVariation;
+	fragColor.rgb += mipMapSample(emissionSampler, textureCoords, textureIndex, lod).rgb;
 	blendColor.rgb *= 1 - fragColor.a;
 	fragColor.a = 1;
 

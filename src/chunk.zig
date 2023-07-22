@@ -370,7 +370,7 @@ pub const Chunk = struct {
 pub const meshing = struct {
 	var shader: Shader = undefined;
 	var transparentShader: Shader = undefined;
-	pub var uniforms: struct {
+	const UniformStruct = struct {
 		projectionMatrix: c_int,
 		viewMatrix: c_int,
 		modelPosition: c_int,
@@ -388,26 +388,9 @@ pub const meshing = struct {
 		visibilityMask: c_int,
 		voxelSize: c_int,
 		renderedToItemTexture: c_int,
-	} = undefined;
-	pub var transparentUniforms: struct {
-		projectionMatrix: c_int,
-		viewMatrix: c_int,
-		modelPosition: c_int,
-		screenSize: c_int,
-		ambientLight: c_int,
-		@"fog.activ": c_int,
-		@"fog.color": c_int,
-		@"fog.density": c_int,
-		texture_sampler: c_int,
-		emissionSampler: c_int,
-		@"waterFog.activ": c_int,
-		@"waterFog.color": c_int,
-		@"waterFog.density": c_int,
-		time: c_int,
-		visibilityMask: c_int,
-		voxelSize: c_int,
-		renderedToItemTexture: c_int,
-	} = undefined;
+	};
+	pub var uniforms: UniformStruct = undefined;
+	pub var transparentUniforms: UniformStruct = undefined;
 	var vao: c_uint = undefined;
 	var vbo: c_uint = undefined;
 	var faces: std.ArrayList(u32) = undefined;
@@ -616,7 +599,7 @@ pub const meshing = struct {
 					return;
 				}
 			}
-			std.log.err("Couldn't find the face to replace.", .{});
+			@panic("Couldn't find the face to replace.");
 		}
 	};
 
@@ -835,12 +818,6 @@ pub const meshing = struct {
 								} else {
 									self.removeFace(oldFaceData, neighbor, neighborBlock.transparent());
 								}
-							}
-						} else if(newVisibility) { // Changing the face
-							if(neighborMesh == self) {
-								try self.changeFace(oldFaceData, newFaceData, null, oldBlock.transparent(), newBlock.transparent());
-							} else {
-								try self.changeFace(oldFaceData, newFaceData, neighbor, oldBlock.transparent(), newBlock.transparent());
 							}
 						}
 					}
