@@ -17,6 +17,7 @@ pub var window = GuiWindow {
 	.isHud = false,
 	.showTitleBar = false,
 	.hasBackground = false,
+	.hideIfMouseIsGrabbed = false,
 };
 
 fn flawedRender() !void {

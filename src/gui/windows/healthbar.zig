@@ -17,6 +17,7 @@ pub var window = GuiWindow {
 	.isHud = true,
 	.showTitleBar = false,
 	.hasBackground = false,
+	.hideIfMouseIsGrabbed = false,
 };
 
 var heartTexture: Texture = undefined;

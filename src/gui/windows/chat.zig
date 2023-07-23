@@ -19,6 +19,7 @@ pub var window: GuiWindow = GuiWindow {
 	.showTitleBar = false,
 	.hasBackground = false,
 	.isHud = true,
+	.hideIfMouseIsGrabbed = false,
 };
 
 const padding: f32 = 8;

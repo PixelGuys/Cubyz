@@ -20,6 +20,7 @@ pub var window = GuiWindow {
 	.isHud = true,
 	.showTitleBar = false,
 	.hasBackground = false,
+	.hideIfMouseIsGrabbed = false,
 };
 
 var itemSlots: [8]*ItemSlot = undefined;

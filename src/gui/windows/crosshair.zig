@@ -18,6 +18,7 @@ pub var window = GuiWindow {
 	.showTitleBar = false,
 	.hasBackground = false,
 	.isHud = true,
+	.hideIfMouseIsGrabbed = false,
 };
 
 var texture: Texture = undefined;

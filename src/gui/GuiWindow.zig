@@ -58,7 +58,10 @@ rootComponent: ?GuiComponent = null,
 showTitleBar: bool = true,
 titleBarExpanded: bool = false,
 hasBackground: bool = true,
+hideIfMouseIsGrabbed: bool = true, // TODO: Allow the user to change this with a button, to for example leave the inventory open while playing.
 isHud: bool = false,
+
+// TODO: Option to disable the close button for certain windows that cannot be reopened.
 
 /// Called every frame.
 renderFn: *const fn()Allocator.Error!void = &defaultErrorFunction,
@@ -364,8 +367,6 @@ pub fn updateWindowPosition(self: *GuiWindow) void {
 		switch(relPos) {
 			.ratio => |ratio| {
 				self.pos[i] = windowSize[i]*ratio - self.size[i]/2;
-				self.pos[i] = @max(self.pos[i], 0);
-				self.pos[i] = @min(self.pos[i], windowSize[i] - self.size[i]);
 			},
 			.attachedToFrame => |attachedToFrame| {
 				const otherPos = switch(attachedToFrame.otherAttachmentPoint) {
@@ -401,6 +402,10 @@ pub fn updateWindowPosition(self: *GuiWindow) void {
 		}
 	}
 	self.pos = @floor(self.pos); // Prevent floating point inaccuracies (these can happen when resizing the window) from causing weird window positioning issues.
+	self.pos[0] = @max(self.pos[0], 0);
+	self.pos[1] = @min(self.pos[1], windowSize[1] - self.size[1]);
+	self.pos[0] = @min(self.pos[0], windowSize[0] - self.size[0]);
+	self.pos[1] = @max(self.pos[1], 0);
 }
 
 fn drawOrientationLines(self: *const GuiWindow) void {
@@ -451,6 +456,7 @@ pub fn drawIcons(self: *const GuiWindow) void {
 }
 
 pub fn render(self: *const GuiWindow, mousePosition: Vec2f) !void {
+	if(self.hideIfMouseIsGrabbed and main.Window.grabbed) return;
 	const oldTranslation = draw.setTranslation(self.pos);
 	const oldScale = draw.setScale(self.scale);
 	if(self.hasBackground) {

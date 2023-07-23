@@ -17,6 +17,7 @@ pub var window = GuiWindow {
 	.isHud = false,
 	.showTitleBar = false,
 	.hasBackground = false,
+	.hideIfMouseIsGrabbed = false,
 };
 
 var lastFrameTime: [2048]f32 = undefined;
