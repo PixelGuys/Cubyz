@@ -331,28 +331,23 @@ pub const Chunk = struct {
 		self.setChanged();
 	}
 
-
-//	TODO:
-	pub fn save(chunk: *const Chunk) void {
-		_ = chunk;
-//	/**
-//	 * Saves this chunk.
-//	 */
-//	public void save(World world) {
-//		if(wasChanged) {
-//			ChunkIO.storeChunkToFile(world, this);
-//			wasChanged = false;
-//			// Update the next lod chunk:
-//			if(voxelSize != 1 << Constants.HIGHEST_LOD) {
-//				if(world instanceof ServerWorld) {
-//					ReducedChunk chunk = ((ServerWorld)world).chunkManager.getOrGenerateReducedChunk(wx, wy, wz, voxelSize*2);
-//					chunk.updateFromLowerResolution(this);
-//				} else {
-//					Logger.error("Not implemented: ");
-//					Logger.error(new Exception());
-//				}
-//			}
-//		}
+	pub fn save(self: *Chunk, world: *main.server.ServerWorld) void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+		if(self.wasChanged) {
+//		TODO:	ChunkIO.storeChunkToFile(world, this);
+			self.wasChanged = false;
+			// Update the next lod chunk:
+			if(self.pos.voxelSize != 1 << settings.highestLOD) {
+				var pos = self.pos;
+				pos.wx &= ~pos.voxelSize;
+				pos.wy &= ~pos.voxelSize;
+				pos.wz &= ~pos.voxelSize;
+				pos.voxelSize *= 2;
+				const nextHigherLod = world.chunkManager.getOrGenerateChunk(pos);
+				nextHigherLod.updateFromLowerResolution(self);
+			}
+		}
 	}
 
 //	TODO: Check if/how they are needed:
