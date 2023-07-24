@@ -586,7 +586,7 @@ pub const inventory = struct {
 			if(initialAmount == 0) return;
 			if(!std.meta.eql(itemSlot.itemStack.item, carriedItemStack.item) and itemSlot.itemStack.item != null) return;
 
-			if(main.keyboard.mainGuiButton.pressed) {
+			if(main.KeyBoard.key("mainGuiButton").pressed) {
 				for(deliveredItemSlots.items) |deliveredSlot| {
 					if(itemSlot == deliveredSlot) {
 						return;
@@ -605,7 +605,7 @@ pub const inventory = struct {
 					deliveredSlot.tryAddingItems(&carriedItemStack, addedAmount);
 					amountAdded.* = old - carriedItemStack.amount;
 				}
-			} else if(main.keyboard.secondaryGuiButton.pressed) {
+			} else if(main.KeyBoard.key("secondaryGuiButton").pressed) {
 				for(deliveredItemSlots.items) |deliveredStack| {
 					if(itemSlot == deliveredStack) {
 						return;

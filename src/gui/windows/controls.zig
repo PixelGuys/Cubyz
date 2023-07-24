@@ -37,12 +37,12 @@ fn keypressListener(key: c_int, mouseButton: c_int, scancode: c_int) void {
 
 pub fn onOpen() Allocator.Error!void {
 	var list = try VerticalList.init(.{padding, 16 + padding}, 300, 8);
-	inline for(comptime std.meta.fieldNames(@TypeOf(main.keyboard))) |field| {
-		var label = try Label.init(.{0, 0}, 128, field, .left);
-		var button = if(&@field(main.keyboard, field) == selectedKey) (
+	for(&main.KeyBoard.keys) |*key| {
+		var label = try Label.init(.{0, 0}, 128, key.name, .left);
+		var button = if(key == selectedKey) (
 			try Button.initText(.{16, 0}, 128, "...", .{})
 		) else (
-			try Button.initText(.{16, 0}, 128, @field(main.keyboard, field).getName(), .{.callback = &function, .arg = @intFromPtr(&@field(main.keyboard, field))})
+			try Button.initText(.{16, 0}, 128, key.getName(), .{.callback = &function, .arg = @intFromPtr(key)})
 		);
 		var row = try HorizontalList.init();
 		try row.add(label);

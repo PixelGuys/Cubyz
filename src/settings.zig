@@ -65,9 +65,8 @@ pub fn init() !void {
 
 	// keyboard settings:
 	const keyboard = json.getChild("keyboard");
-	inline for(comptime std.meta.fieldNames(@TypeOf(main.keyboard))) |keyName| {
-		const keyJson = keyboard.getChild(keyName);
-		const key = &@field(main.keyboard, keyName);
+	for(&main.KeyBoard.keys) |*key| {
+		const keyJson = keyboard.getChild(key.name);
 		key.key = keyJson.get(c_int, "key", key.key);
 		key.mouseButton = keyJson.get(c_int, "mouseButton", key.mouseButton);
 		key.scancode = keyJson.get(c_int, "scancode", key.scancode);
@@ -102,13 +101,12 @@ fn flawedDeinit() !void {
 
 	// keyboard settings:
 	const keyboard = try JsonElement.initObject(main.threadAllocator);
-	inline for(comptime std.meta.fieldNames(@TypeOf(main.keyboard))) |keyName| {
+	for(&main.KeyBoard.keys) |key| {
 		const keyJson = try JsonElement.initObject(main.threadAllocator);
-		const key = &@field(main.keyboard, keyName);
 		try keyJson.put("key", key.key);
 		try keyJson.put("mouseButton", key.mouseButton);
 		try keyJson.put("scancode", key.scancode);
-		try keyboard.put(keyName, keyJson);
+		try keyboard.put(key.name, keyJson);
 	}
 	try jsonObject.put("keyboard", keyboard);
 

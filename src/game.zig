@@ -8,7 +8,7 @@ const items = @import("items.zig");
 const Inventory = items.Inventory;
 const JsonElement = @import("json.zig").JsonElement;
 const main = @import("main.zig");
-const keyboard = &main.keyboard;
+const KeyBoard = main.KeyBoard;
 const network = @import("network.zig");
 const Connection = network.Connection;
 const ConnectionManager = network.ConnectionManager;
@@ -307,8 +307,8 @@ pub fn update(deltaTime: f64) !void {
 	var forward = vec.rotateY(Vec3d{0, 0, -1}, -camera.rotation[1]);
 	var right = Vec3d{forward[2], 0, -forward[0]};
 	if(main.Window.grabbed) {
-		if(keyboard.forward.pressed) {
-			if(keyboard.sprint.pressed) {
+		if(KeyBoard.key("forward").pressed) {
+			if(KeyBoard.key("sprint").pressed) {
 				if(Player.isFlying.load(.Monotonic)) {
 					movement += forward*@as(Vec3d, @splat(128));
 				} else {
@@ -318,18 +318,18 @@ pub fn update(deltaTime: f64) !void {
 				movement += forward*@as(Vec3d, @splat(4));
 			}
 		}
-		if(keyboard.backward.pressed) {
+		if(KeyBoard.key("backward").pressed) {
 			movement += forward*@as(Vec3d, @splat(-4));
 		}
-		if(keyboard.left.pressed) {
+		if(KeyBoard.key("left").pressed) {
 			movement += right*@as(Vec3d, @splat(4));
 		}
-		if(keyboard.right.pressed) {
+		if(KeyBoard.key("right").pressed) {
 			movement += right*@as(Vec3d, @splat(-4));
 		}
-		if(keyboard.jump.pressed) {
+		if(KeyBoard.key("jump").pressed) {
 			if(Player.isFlying.load(.Monotonic)) {
-				if(keyboard.sprint.pressed) {
+				if(KeyBoard.key("sprint").pressed) {
 					movement[1] = 59.45;
 				} else {
 					movement[1] = 5.45;
@@ -338,9 +338,9 @@ pub fn update(deltaTime: f64) !void {
 				movement[1] = 5.45;
 			}
 		}
-		if(keyboard.fall.pressed) {
+		if(KeyBoard.key("fall").pressed) {
 			if(Player.isFlying.load(.Monotonic)) {
-				if(keyboard.sprint.pressed) {
+				if(KeyBoard.key("sprint").pressed) {
 					movement[1] = -59.45;
 				} else {
 					movement[1] = -5.45;

@@ -214,6 +214,7 @@ fn logToStdErr(comptime format: []const u8, args: anytype) void {
 
 
 pub const Key = struct {
+	name: []const u8,
 	pressed: bool = false,
 	key: c_int = c.GLFW_KEY_UNKNOWN,
 	mouseButton: c_int = -1,
@@ -350,45 +351,58 @@ fn togglePerformanceOverlay() void {
 		std.log.err("Got error while opening the performance_graph overlay: {s}", .{@errorName(err)});
 	};
 }
-pub var keyboard: struct {
-	// Gameplay:
-	forward: Key = Key{.key = c.GLFW_KEY_W},
-	left: Key = Key{.key = c.GLFW_KEY_A},
-	backward: Key = Key{.key = c.GLFW_KEY_S},
-	right: Key = Key{.key = c.GLFW_KEY_D},
-	sprint: Key = Key{.key = c.GLFW_KEY_LEFT_CONTROL},
-	jump: Key = Key{.key = c.GLFW_KEY_SPACE},
-	fall: Key = Key{.key = c.GLFW_KEY_LEFT_SHIFT},
-	fullscreen: Key = Key{.key = c.GLFW_KEY_F11, .releaseAction = &Window.toggleFullscreen},
-	placeBlock: Key = Key{.mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &game.Player.placeBlock}, // TODO: Add GLFW_REPEAT behavior to mouse buttons.
 
-	takeBackgroundImage: Key = Key{.key = c.GLFW_KEY_PRINT_SCREEN, .releaseAction = &takeBackgroundImageFn},
+pub const KeyBoard = struct {
+	pub var keys = [_]Key {
+		// Gameplay:
+		Key{.name = "forward", .key = c.GLFW_KEY_W},
+		Key{.name = "left", .key = c.GLFW_KEY_A},
+		Key{.name = "backward", .key = c.GLFW_KEY_S},
+		Key{.name = "right", .key = c.GLFW_KEY_D},
+		Key{.name = "sprint", .key = c.GLFW_KEY_LEFT_CONTROL},
+		Key{.name = "jump", .key = c.GLFW_KEY_SPACE},
+		Key{.name = "fall", .key = c.GLFW_KEY_LEFT_SHIFT},
+		Key{.name = "fullscreen", .key = c.GLFW_KEY_F11, .releaseAction = &Window.toggleFullscreen},
+		Key{.name = "placeBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &game.Player.placeBlock}, // TODO: Add GLFW_REPEAT behavior to mouse buttons.
 
-	// Gui:
-	escape: Key = Key{.key = c.GLFW_KEY_ESCAPE, .releaseAction = &ungrabMouse},
-	openInventory: Key = Key{.key = c.GLFW_KEY_I, .releaseAction = &openInventory},
-	openWorkbench: Key = Key{.key = c.GLFW_KEY_K, .releaseAction = &openWorkbench}, // TODO: Remove
-	@"openCreativeInventory(aka cheat inventory)": Key = Key{.key = c.GLFW_KEY_C, .releaseAction = &openCreativeInventory},
-	mainGuiButton: Key = Key{.mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &gui.mainButtonPressed, .releaseAction = &gui.mainButtonReleased},
-	secondaryGuiButton: Key = Key{.mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &gui.secondaryButtonPressed, .releaseAction = &gui.secondaryButtonReleased},
-	// text:
-	textCursorLeft: Key = Key{.key = c.GLFW_KEY_LEFT, .repeatAction = &gui.textCallbacks.left},
-	textCursorRight: Key = Key{.key = c.GLFW_KEY_RIGHT, .repeatAction = &gui.textCallbacks.right},
-	textCursorDown: Key = Key{.key = c.GLFW_KEY_DOWN, .repeatAction = &gui.textCallbacks.down},
-	textCursorUp: Key = Key{.key = c.GLFW_KEY_UP, .repeatAction = &gui.textCallbacks.up},
-	textGotoStart: Key = Key{.key = c.GLFW_KEY_HOME, .repeatAction = &gui.textCallbacks.gotoStart},
-	textGotoEnd: Key = Key{.key = c.GLFW_KEY_END, .repeatAction = &gui.textCallbacks.gotoEnd},
-	textDeleteLeft: Key = Key{.key = c.GLFW_KEY_BACKSPACE, .repeatAction = &gui.textCallbacks.deleteLeft},
-	textDeleteRight: Key = Key{.key = c.GLFW_KEY_DELETE, .repeatAction = &gui.textCallbacks.deleteRight},
-	textCopy: Key = Key{.key = c.GLFW_KEY_C, .repeatAction = &gui.textCallbacks.copy},
-	textPaste: Key = Key{.key = c.GLFW_KEY_V, .repeatAction = &gui.textCallbacks.paste},
-	textCut: Key = Key{.key = c.GLFW_KEY_X, .repeatAction = &gui.textCallbacks.cut},
-	textNewline: Key = Key{.key = c.GLFW_KEY_ENTER, .repeatAction = &gui.textCallbacks.newline},
+		Key{.name = "takeBackgroundImage", .key = c.GLFW_KEY_PRINT_SCREEN, .releaseAction = &takeBackgroundImageFn},
 
-	// debug:
-	debugOverlay: Key = Key{.key = c.GLFW_KEY_F3, .releaseAction = &toggleDebugOverlay},
-	performanceOverlay: Key = Key{.key = c.GLFW_KEY_F4, .releaseAction = &togglePerformanceOverlay},
-} = .{};
+		// Gui:
+		Key{.name = "escape", .key = c.GLFW_KEY_ESCAPE, .releaseAction = &ungrabMouse},
+		Key{.name = "openInventory", .key = c.GLFW_KEY_I, .releaseAction = &openInventory},
+		Key{.name = "openWorkbench", .key = c.GLFW_KEY_K, .releaseAction = &openWorkbench}, // TODO: Remove
+		Key{.name = "openCreativeInventory(aka cheat inventory)", .key = c.GLFW_KEY_C, .releaseAction = &openCreativeInventory},
+		Key{.name = "mainGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &gui.mainButtonPressed, .releaseAction = &gui.mainButtonReleased},
+		Key{.name = "secondaryGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &gui.secondaryButtonPressed, .releaseAction = &gui.secondaryButtonReleased},
+		// text:
+		Key{.name = "textCursorLeft", .key = c.GLFW_KEY_LEFT, .repeatAction = &gui.textCallbacks.left},
+		Key{.name = "textCursorRight", .key = c.GLFW_KEY_RIGHT, .repeatAction = &gui.textCallbacks.right},
+		Key{.name = "textCursorDown", .key = c.GLFW_KEY_DOWN, .repeatAction = &gui.textCallbacks.down},
+		Key{.name = "textCursorUp", .key = c.GLFW_KEY_UP, .repeatAction = &gui.textCallbacks.up},
+		Key{.name = "textGotoStart", .key = c.GLFW_KEY_HOME, .repeatAction = &gui.textCallbacks.gotoStart},
+		Key{.name = "textGotoEnd", .key = c.GLFW_KEY_END, .repeatAction = &gui.textCallbacks.gotoEnd},
+		Key{.name = "textDeleteLeft", .key = c.GLFW_KEY_BACKSPACE, .repeatAction = &gui.textCallbacks.deleteLeft},
+		Key{.name = "textDeleteRight", .key = c.GLFW_KEY_DELETE, .repeatAction = &gui.textCallbacks.deleteRight},
+		Key{.name = "textCopy", .key = c.GLFW_KEY_C, .repeatAction = &gui.textCallbacks.copy},
+		Key{.name = "textPaste", .key = c.GLFW_KEY_V, .repeatAction = &gui.textCallbacks.paste},
+		Key{.name = "textCut", .key = c.GLFW_KEY_X, .repeatAction = &gui.textCallbacks.cut},
+		Key{.name = "textNewline", .key = c.GLFW_KEY_ENTER, .repeatAction = &gui.textCallbacks.newline},
+
+		// debug:
+		Key{.name = "debugOverlay", .key = c.GLFW_KEY_F3, .releaseAction = &toggleDebugOverlay},
+		Key{.name = "performanceOverlay", .key = c.GLFW_KEY_F4, .releaseAction = &togglePerformanceOverlay},
+	};
+
+	pub fn key(name: []const u8) *const Key { // TODO: Maybe I should use a hashmap here?
+		for(&keys) |*_key| {
+			if(std.mem.eql(u8, name, _key.name)) {
+				return _key;
+			}
+		}
+		std.log.err("Couldn't find keyboard key with name {s}", .{name});
+		return &Key{.name = ""};
+	}
+};
 
 pub const Window = struct {
 	var isFullscreen: bool = false;
@@ -401,42 +415,42 @@ pub const Window = struct {
 		fn errorCallback(errorCode: c_int, description: [*c]const u8) callconv(.C) void {
 			std.log.err("GLFW Error({}): {s}", .{errorCode, description});
 		}
-		fn keyCallback(_: ?*c.GLFWwindow, key: c_int, scancode: c_int, action: c_int, _mods: c_int) callconv(.C) void {
+		fn keyCallback(_: ?*c.GLFWwindow, glfw_key: c_int, scancode: c_int, action: c_int, _mods: c_int) callconv(.C) void {
 			const mods: Key.Modifiers = @bitCast(@as(u6, @intCast(_mods)));
 			if(action == c.GLFW_PRESS) {
-				inline for(@typeInfo(@TypeOf(keyboard)).Struct.fields) |field| {
-					if(key == @field(keyboard, field.name).key) {
-						if(key != c.GLFW_KEY_UNKNOWN or scancode == @field(keyboard, field.name).scancode) {
-							@field(keyboard, field.name).pressed = true;
-							if(@field(keyboard, field.name).pressAction) |pressAction| {
+				for(&KeyBoard.keys) |*key| {
+					if(glfw_key == key.key) {
+						if(glfw_key != c.GLFW_KEY_UNKNOWN or scancode == key.scancode) {
+							key.pressed = true;
+							if(key.pressAction) |pressAction| {
 								pressAction();
 							}
-							if(@field(keyboard, field.name).repeatAction) |repeatAction| {
+							if(key.repeatAction) |repeatAction| {
 								repeatAction(mods);
 							}
 						}
 					}
 				}
 				if(nextKeypressListener) |listener| {
-					listener(key, -1, scancode);
+					listener(glfw_key, -1, scancode);
 					nextKeypressListener = null;
 				}
 			} else if(action == c.GLFW_RELEASE) {
-				inline for(@typeInfo(@TypeOf(keyboard)).Struct.fields) |field| {
-					if(key == @field(keyboard, field.name).key) {
-						if(key != c.GLFW_KEY_UNKNOWN or scancode == @field(keyboard, field.name).scancode) {
-							@field(keyboard, field.name).pressed = false;
-							if(@field(keyboard, field.name).releaseAction) |releaseAction| {
+				for(&KeyBoard.keys) |*key| {
+					if(glfw_key == key.key) {
+						if(glfw_key != c.GLFW_KEY_UNKNOWN or scancode == key.scancode) {
+							key.pressed = false;
+							if(key.releaseAction) |releaseAction| {
 								releaseAction();
 							}
 						}
 					}
 				}
 			} else if(action == c.GLFW_REPEAT) {
-				inline for(@typeInfo(@TypeOf(keyboard)).Struct.fields) |field| {
-					if(key == @field(keyboard, field.name).key) {
-						if(key != c.GLFW_KEY_UNKNOWN or scancode == @field(keyboard, field.name).scancode) {
-							if(@field(keyboard, field.name).repeatAction) |repeatAction| {
+				for(&KeyBoard.keys) |*key| {
+					if(glfw_key == key.key) {
+						if(glfw_key != c.GLFW_KEY_UNKNOWN or scancode == key.scancode) {
+							if(key.repeatAction) |repeatAction| {
 								repeatAction(mods);
 							}
 						}
@@ -488,10 +502,10 @@ pub const Window = struct {
 		fn mouseButton(_: ?*c.GLFWwindow, button: c_int, action: c_int, mods: c_int) callconv(.C) void {
 			_ = mods;
 			if(action == c.GLFW_PRESS) {
-				inline for(@typeInfo(@TypeOf(keyboard)).Struct.fields) |field| {
-					if(button == @field(keyboard, field.name).mouseButton) {
-						@field(keyboard, field.name).pressed = true;
-						if(@field(keyboard, field.name).pressAction) |pressAction| {
+				for(&KeyBoard.keys) |*key| {
+					if(button == key.mouseButton) {
+						key.pressed = true;
+						if(key.pressAction) |pressAction| {
 							pressAction();
 						}
 					}
@@ -501,10 +515,10 @@ pub const Window = struct {
 					nextKeypressListener = null;
 				}
 			} else if(action == c.GLFW_RELEASE) {
-				inline for(@typeInfo(@TypeOf(keyboard)).Struct.fields) |field| {
-					if(button == @field(keyboard, field.name).mouseButton) {
-						@field(keyboard, field.name).pressed = false;
-						if(@field(keyboard, field.name).releaseAction) |releaseAction| {
+				for(&KeyBoard.keys) |*key| {
+					if(button == key.mouseButton) {
+						key.pressed = false;
+						if(key.releaseAction) |releaseAction| {
 							releaseAction();
 						}
 					}
