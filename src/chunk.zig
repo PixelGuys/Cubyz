@@ -1007,7 +1007,7 @@ pub const meshing = struct {
 				needsUpdate = true;
 			}
 			if(needsUpdate) {
-				var transparencyData: [][6]u32 = try main.threadAllocator.alloc([6]u32, self.transparentMesh.faces.items.len);
+				var transparencyData: [][6]u32 = try main.threadAllocator.alloc([6]u32, self.currentSorting.len);
 				defer main.threadAllocator.free(transparencyData);
 				// TODO: Could additionally filter back-faces to reduce work on the gpu side.
 

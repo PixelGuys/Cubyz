@@ -207,13 +207,13 @@ pub const RotationMode = struct {
 var rotationModes: std.StringHashMap(RotationMode) = undefined;
 
 const RotationModes = struct {
-	const NoRotation = struct {
-		const id: []const u8 = "cubyz:no_rotation";
+	pub const NoRotation = struct {
+		pub const id: []const u8 = "cubyz:no_rotation";
 	};
-	const Log = struct {
-		const id: []const u8 = "cubyz:log";
+	pub const Log = struct {
+		pub const id: []const u8 = "cubyz:log";
 
-		fn model(block: Block) RotatedModel {
+		pub fn model(block: Block) RotatedModel {
 			const permutation: Permutation = switch(block.data) {
 				else => Permutation {},
 				1 => Permutation {.mirrorX = true, .mirrorY = true},
@@ -228,10 +228,10 @@ const RotationModes = struct {
 			};
 		}
 	};
-	const Fence = struct {
-		const id: []const u8 = "cubyz:fence";
+	pub const Fence = struct {
+		pub const id: []const u8 = "cubyz:fence";
 
-		fn model(block: Block) RotatedModel {
+		pub fn model(block: Block) RotatedModel {
 			const data = block.data>>2 & 15; // TODO: This is just for compatibility with the java version. Remove it.
 			const modelIndexOffsets = [16]u16 {
 				0, // 0b0000

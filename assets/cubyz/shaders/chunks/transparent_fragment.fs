@@ -158,9 +158,9 @@ float snoise(vec3 v){ // TODO: Maybe use a cubemap.
 
 vec3 unpackColor(uint color) {
 	return vec3(
-		color>>16 & 255,
-		color>>8 & 255,
-		color & 255
+		color>>16 & 255u,
+		color>>8 & 255u,
+		color & 255u
 	)/255.0;
 }
 

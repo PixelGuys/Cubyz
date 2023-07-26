@@ -47,7 +47,7 @@ pub fn init() !void {
 
 	inline for(@typeInfo(@This()).Struct.decls) |decl| {
 		const is_const = @typeInfo(@TypeOf(&@field(@This(), decl.name))).Pointer.is_const; // Sadly there is no direct way to check if a declaration is const.
-		if(!is_const and decl.is_pub) {
+		if(!is_const) {
 			const declType = @TypeOf(@field(@This(), decl.name));
 			if(@typeInfo(declType) == .Struct) {
 				@compileError("Not implemented yet.");
@@ -79,7 +79,7 @@ fn flawedDeinit() !void {
 
 	inline for(@typeInfo(@This()).Struct.decls) |decl| {
 		const is_const = @typeInfo(@TypeOf(&@field(@This(), decl.name))).Pointer.is_const; // Sadly there is no direct way to check if a declaration is const.
-		if(!is_const and decl.is_pub) {
+		if(!is_const) {
 			const declType = @TypeOf(@field(@This(), decl.name));
 			if(@typeInfo(declType) == .Struct) {
 				@compileError("Not implemented yet.");
