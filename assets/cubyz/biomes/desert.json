@@ -3,7 +3,7 @@
 		"hot",
 		"dry"
 	],
-	"minHeight" : 2,
+	"minHeight" : 22,
 	"maxHeight" : 40,
 	
 	"hills" : 20,

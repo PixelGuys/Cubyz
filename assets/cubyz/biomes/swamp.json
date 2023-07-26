@@ -3,7 +3,7 @@
 		"cold",
 		"wet"
 	],
-	"minHeight" : 2,
+	"minHeight" : 22,
 	"maxHeight" : 40,
 	
 	"roughness" : 2,

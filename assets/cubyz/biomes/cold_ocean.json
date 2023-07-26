@@ -5,7 +5,7 @@
 	],
 	"type" : "arctic_ocean",
 	"minHeight" : -100,
-	"maxHeight" : -2,
+	"maxHeight" : -22,
 	"radius" : 500,
 	
 	"roughness" : 20,

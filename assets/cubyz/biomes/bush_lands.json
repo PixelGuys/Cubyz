@@ -2,7 +2,7 @@
 	"properties" : [
 		"hot"
 	],
-	"minHeight" : 4,
+	"minHeight" : 24,
 	"maxHeight" : 60,
 	
 	"roughness" : 20,

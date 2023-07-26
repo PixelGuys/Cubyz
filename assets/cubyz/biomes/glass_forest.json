@@ -2,7 +2,7 @@
 	"chance" : 0.02,
 	"properties" : [
 	],
-	"minHeight" : 2,
+	"minHeight" : 22,
 	"maxHeight" : 40,
 	
 	"roughness" : 10,

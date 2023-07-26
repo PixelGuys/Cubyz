@@ -4,7 +4,7 @@
 	],
 	"radius" : 500,
 	"minHeight" : -100,
-	"maxHeight" : -2,
+	"maxHeight" : -22,
 	
 	"roughness" : 15,
 	"hills" : 15,

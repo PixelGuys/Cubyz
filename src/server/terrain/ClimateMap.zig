@@ -11,45 +11,12 @@ const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
 const Biome = terrain.biomes.Biome;
 const MapFragment = terrain.SurfaceMap.MapFragment;
 
-pub const BiomePoint = struct {
+pub const BiomeSample = struct {
 	biome: *const Biome,
-	x: i32,
-	z: i32,
 	height: f32,
-	seed: u64,
-
-	pub fn distSquare(self: BiomePoint, x: f32, z: f32) f32 {
-		const deltaX = @as(f32, @floatFromInt(self.x)) - x;
-		const deltaZ = @as(f32, @floatFromInt(self.z)) - z;
-		return deltaX*deltaX + deltaZ*deltaZ;
-	}
-
-	pub fn maxNorm(self: BiomePoint, x: f32, z: f32) f32 {
-		const deltaX = @as(f32, @floatFromInt(self.x)) - x;
-		const deltaZ = @as(f32, @floatFromInt(self.z)) - z;
-		return @max(@fabs(deltaX), @fabs(deltaZ));
-	}
-
-	pub fn getFittingReplacement(self: BiomePoint, height: i32) *const Biome {
-		// Check if the existing Biome fits and if not choose a fitting replacement:
-		var biome = self.biome;
-		if(height < biome.minHeight) {
-			var seed: u64 = self.seed ^ 654295489239294;
-			main.random.scrambleSeed(&seed);
-			while(height < biome.minHeight) {
-				if(biome.lowerReplacements.len == 0) break;
-				biome = biome.lowerReplacements[main.random.nextIntBounded(u32, &seed, @as(u32, @intCast(biome.lowerReplacements.len)))];
-			}
-		} else if(height > biome.maxHeight) {
-			var seed: u64 = self.seed ^ 56473865395165948;
-			main.random.scrambleSeed(&seed);
-			while(height > biome.maxHeight) {
-				if(biome.upperReplacements.len == 0) break;
-				biome = biome.upperReplacements[main.random.nextIntBounded(u32, &seed, @as(u32, @intCast(biome.upperReplacements.len)))];
-			}
-		}
-		return biome;
-	}
+	roughness: f32,
+	hills: f32,
+	mountains: f32,
 };
 
 const ClimateMapFragmentPosition = struct {
@@ -76,7 +43,7 @@ pub const ClimateMapFragment = struct {
 	pub const mapMask: i32 = mapSize - 1;
 
 	pos: ClimateMapFragmentPosition,
-	map: [mapSize >> MapFragment.biomeShift][mapSize >> MapFragment.biomeShift]BiomePoint = undefined,
+	map: [mapSize >> MapFragment.biomeShift][mapSize >> MapFragment.biomeShift]BiomeSample = undefined,
 	
 	refCount: Atomic(u16) = Atomic(u16).init(0),
 
@@ -168,8 +135,8 @@ fn getOrGenerateFragment(wx: i32, wz: i32) Allocator.Error!*ClimateMapFragment {
 	return result;
 }
 
-pub fn getBiomeMap(allocator: Allocator, wx: i32, wz: i32, width: u31, height: u31) Allocator.Error!Array2D(BiomePoint) {
-	const map = try Array2D(BiomePoint).init(allocator, width >> MapFragment.biomeShift, height >> MapFragment.biomeShift);
+pub fn getBiomeMap(allocator: Allocator, wx: i32, wz: i32, width: u31, height: u31) Allocator.Error!Array2D(BiomeSample) {
+	const map = try Array2D(BiomeSample).init(allocator, width >> MapFragment.biomeShift, height >> MapFragment.biomeShift);
 	const wxStart = wx & ~ClimateMapFragment.mapMask;
 	const wzStart = wz & ~ClimateMapFragment.mapMask;
 	const wxEnd = wx+width & ~ClimateMapFragment.mapMask;

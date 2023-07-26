@@ -51,6 +51,13 @@ const StructureModel = struct {
 	}
 };
 
+
+pub const Interpolation = enum(u8) {
+	none,
+	linear,
+	square,
+};
+
 /// A climate region with special ground, plants and structures.
 pub const Biome = struct {
 	const GenerationProperties = packed struct(u8) {
@@ -86,6 +93,7 @@ pub const Biome = struct {
 	radius: f32,
 	minHeight: i32, // TODO: Use only one base height.
 	maxHeight: i32,
+	interpolation: Interpolation,
 	roughness: f32,
 	hills: f32,
 	mountains: f32,
@@ -101,8 +109,6 @@ pub const Biome = struct {
 	subBiomes: main.utils.AliasTable(*const Biome) = undefined,
 	maxSubBiomeCount: f32,
 	subBiomeTotalChance: f32 = 0,
-	upperReplacements: []const *const Biome = &.{}, // TODO: Allow manually adding a list of replacement biomes.
-	lowerReplacements: []const *const Biome = &.{},
 	preferredMusic: []const u8, // TODO: Support multiple possibilities that are chose based on time and danger.
 	isValidPlayerSpawn: bool,
 	chance: f32,
@@ -112,11 +118,12 @@ pub const Biome = struct {
 			.id = try main.globalAllocator.dupe(u8, id),
 			.properties = GenerationProperties.fromJson(json.getChild("properties")),
 			.isCave = json.get(bool, "isCave", false),
-			.radius = json.get(f32, "radius", 64),
+			.radius = json.get(f32, "radius", 256),
 			.stoneBlockType = blocks.getByID(json.get([]const u8, "stoneBlock", "cubyz:stone")),
 			.roughness = json.get(f32, "roughness", 0),
 			.hills = json.get(f32, "hills", 0),
 			.mountains = json.get(f32, "mountains", 0),
+			.interpolation = std.meta.stringToEnum(Interpolation, json.get([]const u8, "interpolation", "square")) orelse .square,
 			.caves = json.get(f32, "caves", -0.375),
 			.crystals = json.get(u32, "crystals", 0),
 			.minHeight = json.get(i32, "minHeight", std.math.minInt(i32)),
@@ -153,8 +160,6 @@ pub const Biome = struct {
 		self.subBiomes.deinit(main.globalAllocator);
 		self.structure.deinit(main.globalAllocator);
 		main.globalAllocator.free(self.vegetationModels);
-		main.globalAllocator.free(self.lowerReplacements);
-		main.globalAllocator.free(self.upperReplacements);
 		main.globalAllocator.free(self.preferredMusic);
 		main.globalAllocator.free(self.id);
 	}
@@ -260,11 +265,11 @@ pub const TreeNode = union(enum) {
 			properties >>= parameterShift;
 			properties = properties & 3;
 			if(properties == 0) {
-				chanceMiddle += 1; // TODO: += biome.chance
+				chanceMiddle += biome.chance;
 			} else if(properties == 1) {
-				chanceLower += 1; // TODO: += biome.chance
+				chanceLower += biome.chance;
 			} else if(properties == 2) {
-				chanceUpper += 1; // TODO: += biome.chance
+				chanceUpper += biome.chance;
 			} else unreachable;
 		}
 		const totalChance = chanceLower + chanceMiddle + chanceUpper;

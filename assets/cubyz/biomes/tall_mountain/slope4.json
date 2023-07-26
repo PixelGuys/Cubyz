@@ -6,7 +6,7 @@
 	"minHeight" : 576,
 	"maxHeight" : 576,
 	
-	"mountains" : 30,
+	"interpolation" : "linear",
 
 	"chance" : 0,
 	

@@ -1,19 +1,22 @@
 {
+	"chance": 0,
 	"properties" : [
-		"mountain",
+		"wet"
 	],
-	"radius" : 400,
-	"minHeight" : 60,
-	"maxHeight" : 256,
+	"radius" : 32,
+	"minHeight" : 22,
+	"maxHeight" : 40,
 	
 	"roughness" : 10,
-	"mountains" : 100,
+	"hills" : 10,
 	
-	"rivers" : true,
+	"music" : "leaves",
+
+	"validPlayerSpawn" : true,
 	
 	"ground_structure" : [
 		"cubyz:grass",
-		"1 to 2 cubyz:soil"
+		"2 to 3 cubyz:soil"
 	],
 	"structures" : [
 		{
@@ -23,8 +26,15 @@
 			"top" : "cubyz:oak_top",
 			"chance" : 0.05,
 			"type" : "round",
-			"height" : 3,
+			"height" : 6,
 			"height_variation" : 3
 		}
 	]
+
+	"parentBiomes" : [
+		{
+			"id" : "cubyz:grassland",
+			"chance" : 0.1,
+		}
+	],
 }

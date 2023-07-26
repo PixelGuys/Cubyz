@@ -1,6 +1,8 @@
 {
+	"chance": 0,
 	"properties" : [
 	],
+	"radius" : 32,
 	"minHeight" : 22,
 	"maxHeight" : 40,
 	
@@ -17,21 +19,18 @@
 	],
 	"structures" : [
 		{
-			"id" : "cubyz:simple_tree",
-			"leaves" : "cubyz:oak_leaves",
-			"log" : "cubyz:oak_log",
-			"top" : "cubyz:oak_top",
-			"chance" : 0.001,
-			"type" : "round",
-			"height" : 6,
-			"height_variation" : 3
-		},
-		{
 			"id" : "cubyz:boulder",
-			"chance" : 0.00001,
+			"chance" : 0.0001,
 			"block" : "cubyz:stone",
 			"size" : 5,
 			"size_variance" : 1
 		}
-	]
+	],
+
+	"parentBiomes" : [
+		{
+			"id" : "cubyz:forest",
+			"chance" : 0.1,
+		}
+	],
 }

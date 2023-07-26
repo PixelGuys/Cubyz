@@ -55,9 +55,9 @@ pub fn generate(self: *GroundPatch, x: i32, y: i32, z: i32, chunk: *main.chunk.C
 	const zSecn = -ellipseParam*@sin(orientation)/width;
 
 	const xMin = @max(0, x - @as(i32, @intFromFloat(@ceil(width))));
-	const xMax = @min(chunk.width - 1, x + @as(i32, @intFromFloat(@ceil(width))));
+	const xMax = @min(chunk.width, x + @as(i32, @intFromFloat(@ceil(width))));
 	const zMin = @max(0, z - @as(i32, @intFromFloat(@ceil(width))));
-	const zMax = @min(chunk.width - 1, z + @as(i32, @intFromFloat(@ceil(width))));
+	const zMax = @min(chunk.width, z + @as(i32, @intFromFloat(@ceil(width))));
 
 	var px = chunk.startIndex(xMin);
 	while(px < xMax) : (px += 1) {

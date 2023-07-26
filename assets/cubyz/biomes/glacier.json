@@ -2,7 +2,7 @@
 	"properties" : [
 		"cold",
 	],
-	"minHeight" : 60,
+	"minHeight" : 80,
 	"maxHeight" : 256,
 	
 	"roughness" : 50,

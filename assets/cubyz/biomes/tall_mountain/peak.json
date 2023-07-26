@@ -6,6 +6,8 @@
 	"minHeight" : 864,
 	"maxHeight" : 864,
 
+	"interpolation" : "linear",
+	"mountains" : 30,
 	"chance" : 0,
 	
 	"music" : "DarkTimes",
