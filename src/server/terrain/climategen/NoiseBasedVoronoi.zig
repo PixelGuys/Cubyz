@@ -20,7 +20,7 @@ const Vec2f = vec.Vec2f;
 
 // Generates the climate map using a fluidynamics simulation, with a circular heat distribution.
 
-pub const id = "cubyz:polar_circles"; // TODO
+pub const id = "cubyz:noise_based_voronoi";
 
 pub fn init(parameters: JsonElement) void {
 	_ = parameters;

@@ -1,3 +1,3 @@
 
 
-pub const RecursiveAttempt = @import("RecursiveAttempt.zig");
+pub const NoiseBasedVoronoi = @import("NoiseBasedVoronoi.zig");
