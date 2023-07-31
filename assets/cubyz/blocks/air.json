@@ -9,7 +9,7 @@
 	"lightingTransparent" : true,
 	"viewThrough" : true,
 	"solid" : false,
-	"rotation" : "cubyz:no_rotation",
+	"rotation" : "no_rotation",
 	"degradable" : true,
 	"hasItem" : false,
 

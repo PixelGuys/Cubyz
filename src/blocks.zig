@@ -100,7 +100,7 @@ pub fn register(_: []const u8, id: []const u8, json: JsonElement) !u16 {
 	_id[size] = try allocator.dupe(u8, id);
 	try reverseIndices.put(_id[size], @intCast(size));
 
-	_mode[size] = rotation.getByID(json.get([]const u8, "rotation", "cubyz:no_rotation"));
+	_mode[size] = rotation.getByID(json.get([]const u8, "rotation", "no_rotation"));
 	_breakingPower[size] = json.get(f32, "breakingPower", 0);
 	_hardness[size] = json.get(f32, "hardness", 1);
 

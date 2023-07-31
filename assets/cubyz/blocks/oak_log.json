@@ -4,7 +4,7 @@
 	"drops" : [
 		"auto"
 	],
-	"rotation" : "cubyz:log",
+	"rotation" : "log",
 	"model" : "log",
 	"texture" : "cubyz:oak_log_side",
 	"texture_top" : "cubyz:oak_log_rings_top",

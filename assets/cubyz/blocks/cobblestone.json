@@ -18,7 +18,7 @@
 	"model" : "cube",
 	"texture" : "cubyz:cobblestone",
 
-	"rotation" : "cubyz:multi_texture",
+	"rotation" : "multi_texture",
 	"multi_texture_variants" : [
 		{
 			"texture" : "cubyz:cobblestone"

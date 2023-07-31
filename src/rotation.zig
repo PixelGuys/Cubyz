@@ -135,7 +135,6 @@ pub const RotationMode = struct {
 		}
 	};
 
-	id: []const u8,
 	/// if the block should be destroyed or changed when a certain neighbor is removed.
 	dependsOnNeighbors: bool = false,
 
@@ -208,10 +207,10 @@ var rotationModes: std.StringHashMap(RotationMode) = undefined;
 
 const RotationModes = struct {
 	pub const NoRotation = struct {
-		pub const id: []const u8 = "cubyz:no_rotation";
+		pub const id: []const u8 = "no_rotation";
 	};
 	pub const Log = struct {
-		pub const id: []const u8 = "cubyz:log";
+		pub const id: []const u8 = "log";
 
 		pub fn model(block: Block) RotatedModel {
 			const permutation: Permutation = switch(block.data) {
@@ -229,7 +228,7 @@ const RotationModes = struct {
 		}
 	};
 	pub const Fence = struct {
-		pub const id: []const u8 = "cubyz:fence";
+		pub const id: []const u8 = "fence";
 
 		pub fn model(block: Block) RotatedModel {
 			const data = block.data>>2 & 15; // TODO: This is just for compatibility with the java version. Remove it.
@@ -290,12 +289,12 @@ pub fn deinit() void {
 
 pub fn getByID(id: []const u8) *RotationMode {
 	if(rotationModes.getPtr(id)) |mode| return mode;
-	std.log.warn("Could not find rotation mode {s}. Using cubyz:no_rotation instead.", .{id});
-	return rotationModes.getPtr("cubyz:no_rotation").?;
+	std.log.warn("Could not find rotation mode {s}. Using no_rotation instead.", .{id});
+	return rotationModes.getPtr("no_rotation").?;
 }
 
 pub fn register(comptime Mode: type) !void {
-	var result: RotationMode = RotationMode{.id = Mode.id};
+	var result: RotationMode = RotationMode{};
 	inline for(@typeInfo(RotationMode).Struct.fields) |field| {
 		if(@hasDecl(Mode, field.name)) {
 			if(field.type == @TypeOf(@field(Mode, field.name))) {
@@ -305,5 +304,5 @@ pub fn register(comptime Mode: type) !void {
 			}
 		}
 	}
-	try rotationModes.putNoClobber(result.id, result);
+	try rotationModes.putNoClobber(Mode.id, result);
 }

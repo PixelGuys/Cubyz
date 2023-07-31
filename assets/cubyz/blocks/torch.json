@@ -7,7 +7,7 @@
 	"solid" : false,
 	"emittedLight" : 0x00a09080,
 	"viewThrough" : true,
-	"rotation" : "cubyz:torch",
+	"rotation" : "torch",
 	"model" : "cubyz:torch.obj",
 	"texture" : "cubyz:torch"
 }
