@@ -86,6 +86,7 @@ pub fn build(b: *std.build.Builder) !void {
 	exe.addModule("harfbuzz", harfbuzzModule);
 	exe.addModule("freetype", freetypeModule);
 	freetype.link(b, exe, .{ .harfbuzz = .{} });
+	//exe.strip = true; // Improves compile-time
 	//exe.sanitize_thread = true;
 	b.installArtifact(exe);
 

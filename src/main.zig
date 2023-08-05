@@ -60,10 +60,9 @@ pub const std_options = struct {
 			std.log.Level.warn => "\x1b[33m",
 			std.log.Level.debug => "\x1b[37;44m",
 		};
-		const colorReset = "\x1b[0m";
+		const colorReset = "\x1b[0m\n";
 		const filePrefix = "[" ++ comptime level.asText() ++ "]" ++ ": ";
-		const fileSuffix = "";
-		//const advancedFormat = "{s}" ++ format ++ "{s}\n";
+		const fileSuffix = "\n";
 		comptime var formatString: []const u8 = "";
 		comptime var i: usize = 0;
 		comptime var mode: usize = 0;
@@ -102,7 +101,7 @@ pub const std_options = struct {
 		sectionResults = sectionResults ++ &[_][]const u8{sectionString};
 		sectionId = sectionId ++ &[_]usize {sections};
 		sections += 1;
-		formatString = comptime cacheString("{s}" ++ formatString ++ "{s}\n");
+		formatString = comptime cacheString("{s}" ++ formatString ++ "{s}");
 
 		comptime var types: []const type = &.{};
 		comptime var i_1: usize = 0;
@@ -120,23 +119,13 @@ pub const std_options = struct {
 				types = types ++ &[_]type{i64};
 			} else if(@TypeOf(args[i_1]) == comptime_float) {
 				types = types ++ &[_]type{f64};
-			} else if(TI == .Pointer) {
-				if(TI.Pointer.size == .Many and TI.Pointer.child == u8) {
-					types = types ++ &[_]type{[]const u8};
-				} else if(TI.Pointer.size == .Slice and TI.Pointer.child == u8) {
-					types = types ++ &[_]type{[]const u8};
+			} else if(TI == .Pointer and TI.Pointer.size == .Slice and TI.Pointer.child == u8) {
+				types = types ++ &[_]type{[]const u8};
+			} else if(TI == .Int and TI.Int.bits <= 64) {
+				if(TI.Int.signedness == .signed) {
+					types = types ++ &[_]type{i64};
 				} else {
-					types = types ++ &[_]type{@TypeOf(args[i_1])};
-				}
-			} else if(TI == .Int) {
-				if(TI.Int.bits <= 64) {
-					if(TI.Int.signedness == .signed) {
-						types = types ++ &[_]type{i64};
-					} else {
-						types = types ++ &[_]type{u64};
-					}
-				} else {
-					types = types ++ &[_]type{@TypeOf(args[i_1])};
+					types = types ++ &[_]type{u64};
 				}
 			} else {
 				types = types ++ &[_]type{@TypeOf(args[i_1])};
@@ -144,7 +133,6 @@ pub const std_options = struct {
 			i_1 += 1;
 		}
 		types = &[_]type{[]const u8} ++ types ++ &[_]type{[]const u8};
-		// @compileLog(types);
 
 		comptime var comptimeTuple: std.meta.Tuple(types) = undefined;
 		comptime std.debug.assert(std.meta.Tuple(types) == std.meta.Tuple(types));
@@ -161,6 +149,8 @@ pub const std_options = struct {
 			}
 			i_1 += 1;
 		}
+		comptimeTuple[0] = filePrefix;
+		comptimeTuple[comptimeTuple.len - 1] = fileSuffix;
 		var resultArgs: std.meta.Tuple(types) = comptimeTuple;
 		len = 0;
 		i_1 = 0;
@@ -175,19 +165,12 @@ pub const std_options = struct {
 			resultArgs[len+1] = args[i_1];
 			i_1 += 1;
 		}
-		//@compileLog(format, formatString, args, resultArgs);
 
+		logToFile(formatString, resultArgs);
 
-		{
-			resultArgs[0] = filePrefix;
-			resultArgs[resultArgs.len - 1] = fileSuffix;
-			logToFile(formatString, resultArgs);
-		}
-		{
-			resultArgs[0] = color;
-			resultArgs[resultArgs.len - 1] = colorReset;
-			logToStdErr(formatString, resultArgs);
-		}
+		resultArgs[0] = color;
+		resultArgs[resultArgs.len - 1] = colorReset;
+		logToStdErr(formatString, resultArgs);
 	}
 };
 
