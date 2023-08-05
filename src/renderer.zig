@@ -216,14 +216,10 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 //	SimpleList<NormalChunkMesh> visibleChunks = new SimpleList<NormalChunkMesh>(new NormalChunkMesh[64]);
 //	SimpleList<ReducedChunkMesh> visibleReduced = new SimpleList<ReducedChunkMesh>(new ReducedChunkMesh[64]);
-	var meshes = &struct {
-		var meshes = std.ArrayList(*chunk.meshing.ChunkMesh).init(main.globalAllocator);
-	}.meshes;
-	defer meshes.clearRetainingCapacity();
 
-	try RenderStructure.updateAndGetRenderChunks(game.world.?.conn, playerPos, settings.renderDistance, settings.LODFactor, frustum, meshes);
+	const meshes = try RenderStructure.updateAndGetRenderChunks(game.world.?.conn, playerPos, settings.renderDistance, settings.LODFactor, frustum);
 
-	try sortChunks(meshes.items, playerPos);
+	try sortChunks(meshes, playerPos);
 
 //	for (ChunkMesh mesh : Cubyz.chunkTree.getRenderChunks(frustumInt, x0, y0, z0)) {
 //		if (mesh instanceof NormalChunkMesh) {
@@ -243,7 +239,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glUniform3fv(chunk.meshing.uniforms.@"waterFog.color", 1, @ptrCast(&waterFog.color));
 	c.glUniform1f(chunk.meshing.uniforms.@"waterFog.density", waterFog.density);
 
-	for(meshes.items) |mesh| {
+	for(meshes) |mesh| {
 		mesh.render(playerPos);
 	}
 
@@ -265,11 +261,11 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_SRC1_COLOR);
 	{
-		var i: usize = meshes.items.len;
+		var i: usize = meshes.len;
 		while(true) {
 			if(i == 0) break;
 			i -= 1;
-			try meshes.items[i].renderTransparent(playerPos);
+			try meshes[i].renderTransparent(playerPos);
 		}
 	}
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
@@ -918,6 +914,7 @@ pub const RenderStructure = struct {
 	};
 	var storageLists: [settings.highestLOD + 1][]?*ChunkMeshNode = [1][]?*ChunkMeshNode{&.{}} ** (settings.highestLOD + 1);
 	var storageListsSwap: [settings.highestLOD + 1][]?*ChunkMeshNode = [1][]?*ChunkMeshNode{&.{}} ** (settings.highestLOD + 1);
+	var meshList = std.ArrayList(*chunk.meshing.ChunkMesh).init(main.globalAllocator);
 	var updatableList: std.ArrayList(chunk.ChunkPosition) = undefined;
 	var updatableListSwap: std.ArrayList(chunk.ChunkPosition) = undefined;
 	var clearList: std.ArrayList(*ChunkMeshNode) = undefined;
@@ -959,6 +956,9 @@ pub const RenderStructure = struct {
 			}
 			main.globalAllocator.free(storageList);
 		}
+		for(storageListsSwap) |storageList| {
+			main.globalAllocator.free(storageList);
+		}
 		updatableList.deinit();
 		for(clearList.items) |chunkMesh| {
 			chunkMesh.mesh.deinit();
@@ -966,6 +966,7 @@ pub const RenderStructure = struct {
 		}
 		blockUpdateList.deinit();
 		clearList.deinit();
+		meshList.deinit();
 	}
 
 	fn _getNode(pos: chunk.ChunkPosition) ?*ChunkMeshNode {
@@ -1003,7 +1004,8 @@ pub const RenderStructure = struct {
 		return &node.mesh;
 	}
 
-	pub fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: Vec3d, renderDistance: i32, LODFactor: f32, frustum: Frustum, meshes: *std.ArrayList(*chunk.meshing.ChunkMesh)) !void {
+	pub fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: Vec3d, renderDistance: i32, LODFactor: f32, frustum: Frustum) ![]*chunk.meshing.ChunkMesh {
+		meshList.clearRetainingCapacity();
 		if(lastRD != renderDistance and lastFactor != LODFactor) {
 			try network.Protocols.genericUpdate.sendRenderDistance(conn, renderDistance, LODFactor);
 		}
@@ -1080,7 +1082,7 @@ pub const RenderStructure = struct {
 							@floatFromInt(size),
 							@floatFromInt(size),
 						}) and node.?.mesh.visibilityMask != 0 and !node.?.mesh.isEmpty()) {
-							try meshes.append(&node.?.mesh);
+							try meshList.append(&node.?.mesh);
 						}
 						if(lod+1 != storageLists.len and node.?.mesh.generated) {
 							if(_getNode(.{.wx=x, .wy=y, .wz=z, .voxelSize=@as(u31, 1)<<(lod+1)})) |parent| {
@@ -1155,6 +1157,7 @@ pub const RenderStructure = struct {
 		lastFactor = LODFactor;
 		// Make requests after updating the, to avoid concurrency issues and reduce the number of requests:
 		try network.Protocols.chunkRequest.sendRequest(conn, meshRequests.items);
+		return meshList.items;
 	}
 
 	pub fn updateMeshes(targetTime: i64) !void {

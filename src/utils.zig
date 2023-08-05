@@ -186,60 +186,6 @@ pub fn AliasTable(comptime T: type) type {
 	};
 }
 
-/// A list that allows to choose randomly from the contained object, if they have a chance assigned to them.
-/// TODO: Is this still needed, now that the alias table exists?
-pub fn RandomList(comptime T: type) type {
-	return struct {
-		const Self = @This();
-
-		ptr: [*]T = undefined,
-		len: u32 = 0,
-		capacity: u32 = 0,
-		sum: f64 = 0,
-
-		pub fn deinit(self: Self, allocator: Allocator) void {
-			allocator.free(self.ptr[0..self.capacity]);
-		}
-
-		pub fn reset(self: *Self) void {
-			self.len = 0;
-			self.sum = 0;
-		}
-
-		pub fn items(self: Self) []T {
-			return self.ptr[0..self.len];
-		}
-
-		fn increaseCapacity(self: *Self, allocator: Allocator) !void {
-			const newSize = 8 + self.capacity*3/2;
-			const newSlice = try allocator.realloc(self.ptr[0..self.capacity], newSize);
-			self.capacity = @intCast(newSlice.len);
-			self.ptr = newSlice.ptr;
-		}
-
-		pub fn add(self: *Self, allocator: Allocator, object: T) !void {
-			if(self.len == self.capacity) {
-				try self.increaseCapacity(allocator);
-			}
-			self.ptr[self.len] = object;
-			self.len += 1;
-			self.sum += object.chance;
-		}
-
-		pub fn getRandomly(self: Self, seed: *u64) T {
-			var value = main.random.nextDouble(seed)*self.sum;
-			for(self.items()) |object| {
-				if(value < object.chance) {
-					return object;
-				}
-				value -= object.chance;
-			}
-			std.debug.assert(self.len != 0);
-			return self.ptr[self.len-1]; // Can be caused by floating point errors.
-		}
-	};
-}
-
 /// A list that is always sorted in ascending order based on T.lessThan(lhs, rhs).
 pub fn SortedList(comptime T: type) type {
 	return struct {

@@ -5,7 +5,6 @@ const main = @import("root");
 const blocks = main.blocks;
 const Chunk = main.chunk.Chunk;
 const JsonElement = main.JsonElement;
-const RandomList = main.utils.RandomList;
 const terrain = main.server.terrain;
 
 const StructureModel = struct {
@@ -382,6 +381,9 @@ pub fn reset() void {
 	StructureModel.reset();
 	finishedLoading = false;
 	for(biomes.items) |*biome| {
+		biome.deinit();
+	}
+	for(caveBiomes.items) |*biome| {
 		biome.deinit();
 	}
 	biomes.clearRetainingCapacity();

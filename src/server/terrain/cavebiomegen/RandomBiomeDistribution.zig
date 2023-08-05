@@ -2,16 +2,10 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 
 const main = @import("root");
-const Array2D = main.utils.Array2D;
-const RandomList = main.utils.RandomList;
 const random = main.random;
 const JsonElement = main.JsonElement;
 const terrain = main.server.terrain;
 const CaveBiomeMapFragment = terrain.CaveBiomeMap.CaveBiomeMapFragment;
-const noise = terrain.noise;
-const FractalNoise = noise.FractalNoise;
-const RandomlyWeightedFractalNoise = noise.RandomlyWeightedFractalNoise;
-const PerlinNoise = noise.PerlinNoise;
 const Biome = terrain.biomes.Biome;
 
 // Generates the climate map using a fluidynamics simulation, with a circular heat distribution.
