@@ -310,24 +310,6 @@ pub const Chunk = struct {
 			}
 		}
 		
-		// Create updated meshes and send to client:
-		// TODO:
-		//for(int x = 0; x <= 2*xOffset; x += chunkSize) {
-		//	for(int y = 0; y <= 2*yOffset; y += chunkSize) {
-		//		for(int z = 0; z <= 2*zOffset; z += chunkSize) {
-		//			int wx = this.wx + x*voxelSize - Chunk.chunkSize;
-		//			int wy = this.wy + y*voxelSize - Chunk.chunkSize;
-		//			int wz = this.wz + z*voxelSize - Chunk.chunkSize;
-		//			if(voxelSize == 32) {
-		//				wx -= chunkSize*voxelSize/2;
-		//				wy -= chunkSize*voxelSize/2;
-		//				wz -= chunkSize*voxelSize/2;
-		//			}
-		//			world.queueChunks(new ChunkData[] {new ChunkData(wx, wy, wz, voxelSize)});
-		//		}
-		//	}
-		//}
-		
 		self.setChanged();
 	}
 
@@ -746,7 +728,7 @@ pub const meshing = struct {
 			}
 		}
 
-		pub fn updateBlock(self: *ChunkMesh, _x: i32, _y: i32, _z: i32, newBlock: Block) !void { // TODO: Investigate bug when placing blocks.
+		pub fn updateBlock(self: *ChunkMesh, _x: i32, _y: i32, _z: i32, newBlock: Block) !void {
 			const x = _x & chunkMask;
 			const y = _y & chunkMask;
 			const z = _z & chunkMask;

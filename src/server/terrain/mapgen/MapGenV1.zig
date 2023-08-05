@@ -54,10 +54,9 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) Allocator.Error!vo
 	const offset = 8;
 	const biomePositions = try terrain.ClimateMap.getBiomeMap(main.threadAllocator, map.pos.wx - offset*biomeSize, map.pos.wz - offset*biomeSize, mapSize + 2*offset*biomeSize, mapSize + 2*offset*biomeSize);
 	defer biomePositions.deinit(main.threadAllocator);
-	var seed = worldSeed;
+	var seed = random.initSeed2D(worldSeed, .{map.pos.wx, map.pos.wz});
 	random.scrambleSeed(&seed);
-	seed = @as(u32, @bitCast((random.nextInt(i32, &seed) | 1)*%map.pos.wx ^ (random.nextInt(i32, &seed) | 1)*%map.pos.wz)); // TODO: Use random.initSeed2D();
-	random.scrambleSeed(&seed);
+	seed ^= seed >> 16;
 	
 	const xOffsetMap = try Array2D(f32).init(main.threadAllocator, scaledSize, scaledSize);
 	defer xOffsetMap.deinit(main.threadAllocator);

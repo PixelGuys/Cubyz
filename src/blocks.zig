@@ -215,68 +215,68 @@ pub const Block = packed struct {
 		return Block{.typ=@truncate(self), .data=@intCast(self>>16)};
 	}
 	pub inline fn lightingTransparent(self: Block) bool {
-		return (&_lightingTransparent)[self.typ]; // TODO: #15685
+		return _lightingTransparent[self.typ];
 	}
 
 	pub inline fn transparent(self: Block) bool {
-		return (&_transparent)[self.typ]; // TODO: #15685
+		return _transparent[self.typ];
 	}
 
 	pub inline fn id(self: Block) []u8 {
-		return (&_id)[self.typ]; // TODO: #15685
+		return _id[self.typ];
 	}
 
 	/// Time in seconds to break this block by hand.
 	pub inline fn hardness(self: Block) f32 {
-		return (&_hardness)[self.typ]; // TODO: #15685
+		return _hardness[self.typ];
 	}
 
 	/// Minimum pickaxe/axe/shovel power required.
 	pub inline fn breakingPower(self: Block) f32 {
-		return (&_breakingPower)[self.typ]; // TODO: #15685
+		return _breakingPower[self.typ];
 	}
 
 	pub inline fn solid(self: Block) bool {
-		return (&_solid)[self.typ]; // TODO: #15685
+		return _solid[self.typ];
 	}
 
 	pub inline fn selectable(self: Block) bool {
-		return (&_selectable)[self.typ]; // TODO: #15685
+		return _selectable[self.typ];
 	}
 
 	pub inline fn blockDrops(self: Block) []BlockDrop {
-		return (&_blockDrops)[self.typ]; // TODO: #15685
+		return _blockDrops[self.typ];
 	}
 
 	/// Meaning undegradable parts of trees or other structures can grow through this block.
 	pub inline fn degradable(self: Block) bool {
-		return (&_degradable)[self.typ]; // TODO: #15685
+		return _degradable[self.typ];
 	}
 
 	pub inline fn viewThrough(self: Block) bool {
-		return (&_viewThrough)[self.typ]; // TODO: #15685
+		return _viewThrough[self.typ];
 	}
 
 	pub inline fn blockClass(self: Block) BlockClass {
-		return (&_blockClass)[self.typ]; // TODO: #15685
+		return _blockClass[self.typ];
 	}
 
 	pub inline fn light(self: Block) u32 {
-		return (&_light)[self.typ]; // TODO: #15685
+		return _light[self.typ];
 	}
 
 	/// How much light this block absorbs if it is transparent.
 	pub inline fn absorption(self: Block) u32 {
-		return (&_absorption)[self.typ]; // TODO: #15685
+		return _absorption[self.typ];
 	}
 	
 	/// GUI that is opened on click.
 	pub inline fn gui(self: Block) []u8 {
-		return (&_gui)[self.typ]; // TODO: #15685
+		return _gui[self.typ];
 	}
 	
 	pub inline fn mode(self: Block) *RotationMode {
-		return (&_mode)[self.typ]; // TODO: #15685
+		return _mode[self.typ];
 	}
 
 //	TODO:
@@ -386,7 +386,7 @@ pub const meshes = struct {
 	}
 
 	pub inline fn modelIndexStart(block: Block) u16 {
-		return (&_modelIndex)[block.typ]; // TODO: #15685
+		return _modelIndex[block.typ];
 	}
 
 	pub fn readTexture(textureInfo: JsonElement, assetFolder: []const u8) !?u31 {

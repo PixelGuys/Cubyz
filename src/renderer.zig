@@ -143,7 +143,7 @@ pub fn updateViewport(width: u31, height: u31, fov: f32) void {
 
 pub fn render(playerPosition: Vec3d) !void {
 	var startTime = std.time.milliTimestamp();
-//	TODO:	BlockMeshes.loadMeshes(); // Loads all meshes that weren't loaded yet
+//	TODO:
 //		if (Cubyz.player != null) {
 //			if (Cubyz.playerInc.x != 0 || Cubyz.playerInc.z != 0) { // while walking
 //				if (bobbingUp) {
@@ -165,10 +165,6 @@ pub fn render(playerPosition: Vec3d) !void {
 //				Cubyz.player.vx = Cubyz.playerInc.x;
 //			}
 //			playerPosition.y += Player.cameraHeight + playerBobbing;
-//		}
-//		
-//		while (!Cubyz.renderDeque.isEmpty()) {
-//			Cubyz.renderDeque.pop().run();
 //		}
 	if(game.world) |world| {
 //		// TODO: Handle colors and sun position in the world.
@@ -747,8 +743,6 @@ pub const MeshSelection = struct {
 		lastPos = pos;
 		var dir = vec.floatCast(f64, _dir);
 		lastDir = _dir;
-//TODO:
-//		intersection.set(0, 0, 0, dir.x, dir.y, dir.z);
 
 		// Test blocks:
 		const closestDistance: f64 = 6.0; // selection now limited
@@ -980,7 +974,7 @@ pub const RenderStructure = struct {
 		if(yIndex < 0 or yIndex >= (&lastSize[lod]).*) return null;
 		if(zIndex < 0 or zIndex >= (&lastSize[lod]).*) return null;
 		var index = (xIndex*(&lastSize[lod]).* + yIndex)*(&lastSize[lod]).* + zIndex;
-		return (&storageLists[lod]).*[@intCast(index)]; // TODO: Wait for #12205 to be fixed and remove the weird (&...).* workaround.
+		return storageLists[lod][@intCast(index)];
 	}
 
 	pub fn getChunk(x: i32, y: i32, z: i32) ?*chunk.Chunk {

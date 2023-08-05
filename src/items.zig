@@ -1249,16 +1249,6 @@ pub const ItemStack = struct {
 		try self.storeToJson(result);
 		return result;
 	}
-
-// TODO: Check if/how this is needed:
-//	public int getBlock() {
-//		if(item == null)
-//			return 0;
-//		if(item instanceof ItemBlock)
-//			return ((ItemBlock) item).getBlock();
-//		else
-//			return 0;
-//	}
 };
 
 pub const Inventory = struct {
@@ -1309,11 +1299,6 @@ pub const Inventory = struct {
 		}
 		return false;
 	}
-
-// TODO: Check if/how this is needed:
-//	public int getBlock(int slot) {
-//		return items[slot].getBlock();
-//	}
 
 	pub fn getItem(self: Inventory, slot: usize) ?Item {
 		return self.items[slot].item;

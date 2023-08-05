@@ -4,12 +4,7 @@ const main = @import("root");
 const Array2D = main.utils.Array2D;
 
 fn setSeed(x: i32, z: i32, offsetX: i32, offsetZ: i32, seed: *u64, worldSeed: u64, scale: u31, maxResolution: u31) void {
-	seed.* = worldSeed*%(scale*maxResolution | 1);
-	main.random.scrambleSeed(seed);
-	const l1 = main.random.nextInt(i64, seed);
-	const l2 = main.random.nextInt(i64, seed);
-	seed.* = @as(u64, @bitCast(((offsetX +% x)*%maxResolution*%l1) ^ ((offsetZ +% z)*%maxResolution*%l2))) ^ worldSeed; // TODO: Use random.initSeed2D();
-	main.random.scrambleSeed(seed);
+	seed.* = main.random.initSeed2D(worldSeed*%(scale*maxResolution | 1), .{(offsetX +% x)*%maxResolution, (offsetZ +% z)*%maxResolution});
 }
 
 pub fn generateFractalTerrain(wx: i32, wz: i32, x0: u31, z0: u31, width: u32, height: u32, scale: u31, worldSeed: u64, map: Array2D(f32), maxResolution: u31) !void {

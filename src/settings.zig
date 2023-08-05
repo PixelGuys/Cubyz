@@ -120,17 +120,3 @@ pub fn deinit() void {
 		return;
 	};
 }
-
-// TODO: Check if/how these are needed:
-//	static Side currentSide = null;
-//
-//	private static Language currentLanguage = null;
-//
-//	public static boolean musicOnOff = true; //Turn on or off the music
-//
-//	/**Not actually a setting, but stored here anyways.*/
-//	public static int EFFECTIVE_RENDER_DISTANCE = calculatedEffectiveRenderDistance();
-//	
-//	public static int calculatedEffectiveRenderDistance() {
-//		return RENDER_DISTANCE + (((int)(RENDER_DISTANCE*LOD_FACTOR) & ~1) << Constants.HIGHEST_LOD);
-//	}

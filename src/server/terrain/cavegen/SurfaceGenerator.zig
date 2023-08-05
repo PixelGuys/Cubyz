@@ -30,22 +30,13 @@ pub fn deinit() void {
 
 pub fn generate(map: *CaveMapFragment, worldSeed: u64) Allocator.Error!void {
 	_ = worldSeed;
-	var x0: u31 = 0;
-	while(x0 < CaveMapFragment.width*map.pos.voxelSize) : (x0 += MapFragment.mapSize*map.pos.voxelSize) {
-		var z0: u31 = 0;
-		while(z0 < CaveMapFragment.width*map.pos.voxelSize) : (z0 += MapFragment.mapSize*map.pos.voxelSize) {
-			if(x0 != 0 or z0 != 0) {
-				std.log.err("TODO: Remove this print when it's printed. Otherwise remove the extra for loops. They are likely obsolete, but just to be sure it should be kept for a while.", .{});
-			}
-			const mapFragment = try SurfaceMap.getOrGenerateFragment(map.pos.wx + x0, map.pos.wz + z0, map.pos.voxelSize);
-			defer mapFragment.deinit();
-			var x: u31 = 0;
-			while(x < @min(CaveMapFragment.width*map.pos.voxelSize, MapFragment.mapSize*map.pos.voxelSize)) : (x += map.pos.voxelSize) {
-				var z: u31 = 0;
-				while(z < @min(CaveMapFragment.width*map.pos.voxelSize, MapFragment.mapSize*map.pos.voxelSize)) : (z += map.pos.voxelSize) {
-					map.addRange(x0 + x, z0 + z, 0, @as(i32, @intFromFloat(mapFragment.getHeight(map.pos.wx + x + x0, map.pos.wz + z + z0))) - map.pos.wy);
-				}
-			}
+	const mapFragment = try SurfaceMap.getOrGenerateFragment(map.pos.wx, map.pos.wz, map.pos.voxelSize);
+	defer mapFragment.deinit();
+	var x: u31 = 0;
+	while(x < CaveMapFragment.width*map.pos.voxelSize) : (x += map.pos.voxelSize) {
+		var z: u31 = 0;
+		while(z < CaveMapFragment.width*map.pos.voxelSize) : (z += map.pos.voxelSize) {
+			map.addRange(x, z, 0, @as(i32, @intFromFloat(mapFragment.getHeight(map.pos.wx + x, map.pos.wz + z))) - map.pos.wy);
 		}
 	}
 }

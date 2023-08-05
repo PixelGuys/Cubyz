@@ -122,7 +122,7 @@ fn registerItem(assetFolder: []const u8, id: []const u8, json: JsonElement) !*it
 }
 
 fn registerBlock(assetFolder: []const u8, id: []const u8, json: JsonElement) !void {
-	const block = try blocks_zig.register(assetFolder, id, json); // TODO: Modded block registries
+	const block = try blocks_zig.register(assetFolder, id, json);
 	try blocks_zig.meshes.register(assetFolder, id, json);
 
 	if(json.get(bool, "hasItem", true)) {

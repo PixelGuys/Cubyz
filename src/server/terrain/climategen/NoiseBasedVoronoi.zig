@@ -80,7 +80,7 @@ const Chunk = struct {
 	maxBiomeRadius: f32,
 
 	fn getStartCoordinate(minX: f32, biomesSortedByX: []BiomePoint) usize {
-		// TODO: Should this by vectorized by storing the x-coordinate in a seperate []u8?
+		// TODO: Should this be vectorized by storing the x-coordinate in a seperate []u8?
 		var start: usize = 0;
 		var end: usize = biomesSortedByX.len;
 		while(end - start > 16) {

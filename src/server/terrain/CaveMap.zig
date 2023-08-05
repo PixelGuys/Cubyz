@@ -66,7 +66,7 @@ pub const CaveMapFragment = struct {
 		const relZ = _relZ >> self.voxelShift;
 		const start = _start >> self.voxelShift;
 		const end = _end >> self.voxelShift;
-		(&self.data)[getIndex(relX, relZ)] |= ~getMask(start, end); // TODO: #13938
+		self.data[getIndex(relX, relZ)] |= ~getMask(start, end);
 	}
 
 	pub fn removeRange(self: *CaveMapFragment, _relX: i32, _relZ: i32, _start: i32, _end: i32) void {
@@ -74,7 +74,7 @@ pub const CaveMapFragment = struct {
 		const relZ = _relZ >> self.voxelShift;
 		const start = _start >> self.voxelShift;
 		const end = _end >> self.voxelShift;
-		(&self.data)[getIndex(relX, relZ)] &= getMask(start, end); // TODO: #13938
+		self.data[getIndex(relX, relZ)] &= getMask(start, end);
 	}
 
 	pub fn getColumnData(self: *CaveMapFragment, _relX: i32, _relZ: i32) u64 {

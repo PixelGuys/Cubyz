@@ -119,7 +119,7 @@ pub const RotatedModel = struct {
 	permutation: Permutation = Permutation{},
 };
 
-// TODO: Why not just use a tageed union?
+// TODO: Why not just use a tagged union?
 /// Each block gets 16 bit of additional storage(apart from the reference to the block type).
 /// These 16 bits are accessed and interpreted by the `RotationMode`.
 /// With the `RotationMode` interface there is almost no limit to what can be done with those 16 bit.

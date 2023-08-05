@@ -90,7 +90,7 @@ pub const Biome = struct {
 	properties: GenerationProperties,
 	isCave: bool,
 	radius: f32,
-	minHeight: i32, // TODO: Use only one base height.
+	minHeight: i32,
 	maxHeight: i32,
 	interpolation: Interpolation,
 	roughness: f32,
@@ -108,7 +108,7 @@ pub const Biome = struct {
 	subBiomes: main.utils.AliasTable(*const Biome) = undefined,
 	maxSubBiomeCount: f32,
 	subBiomeTotalChance: f32 = 0,
-	preferredMusic: []const u8, // TODO: Support multiple possibilities that are chose based on time and danger.
+	preferredMusic: []const u8, // TODO: Support multiple possibilities that are chosen based on time and danger.
 	isValidPlayerSpawn: bool,
 	chance: f32,
 
@@ -333,7 +333,7 @@ pub const TreeNode = union(enum) {
 	pub fn getBiome(self: *const TreeNode, seed: *u64, x: f32, y: f32) *const Biome {
 		switch(self.*) {
 			.leaf => |leaf| {
-				var biomeSeed = seed.* ^ @as(u64, 5624786589461)*%@as(u32, @bitCast(@as(i32, @intFromFloat(x)))) ^ @as(u64, 897650786185)*%@as(u32, @bitCast(@as(i32, @intFromFloat(y)))); // TODO: Use random.initSeed
+				var biomeSeed = main.random.initSeed2D(seed.*, main.vec.Vec2i{@intFromFloat(x), @intFromFloat(y)});
 				const result = leaf.aliasTable.sample(&biomeSeed);
 				return result;
 			},
