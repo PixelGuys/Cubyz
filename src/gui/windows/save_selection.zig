@@ -125,7 +125,7 @@ pub fn onOpen() Allocator.Error!void {
 
 			const decodedName = try parseEscapedFolderName(entry.name);
 			defer main.threadAllocator.free(decodedName);
-			const name = try buttonNameArena.allocator().dupeZ(u8, entry.name); // Null terminate, so we can later recover the string from jsut the pointer.
+			const name = try buttonNameArena.allocator().dupeZ(u8, entry.name); // Null terminate, so we can later recover the string from just the pointer.
 			const buttonName = try std.fmt.allocPrint(buttonNameArena.allocator(), "Play {s}", .{decodedName});
 			
 			try row.add(try Button.initText(.{0, 0}, 128, buttonName, .{.callback = &openWorld, .arg = @intFromPtr(name.ptr)}));

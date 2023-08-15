@@ -10,8 +10,16 @@ pub const Vec4i = @Vector(4, i32);
 pub const Vec4f = @Vector(4, f32);
 pub const Vec4d = @Vector(4, f64);
 
+pub inline fn combine(pos: Vec3f, w: f32) Vec4f {
+	return .{pos[0], pos[1], pos[2], w};
+}
+
 pub fn xyz(self: anytype) @Vector(3, @typeInfo(@TypeOf(self)).Vector.child) {
 	return @Vector(3, @typeInfo(@TypeOf(self)).Vector.child){self[0], self[1], self[2]};
+}
+
+pub fn xy(self: anytype) @Vector(2, @typeInfo(@TypeOf(self)).Vector.child) {
+	return @Vector(2, @typeInfo(@TypeOf(self)).Vector.child){self[0], self[1]};
 }
 
 pub fn dot(self: anytype, other: @TypeOf(self)) @typeInfo(@TypeOf(self)).Vector.child {

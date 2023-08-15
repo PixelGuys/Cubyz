@@ -52,6 +52,27 @@ pub const Neighbors = struct {
 	pub const bitMask = [_]u6 {0x01, 0x02, 0x04, 0x08, 0x10, 0x20};
 	/// To iterate over all neighbors easily
 	pub const iterable = [_]u3 {0, 1, 2, 3, 4, 5};
+	/// Marks the two dimension that are orthogonal
+	pub const orthogonalComponents = [_]Vec3i {
+		.{1, 0, 1},
+		.{1, 0, 1},
+		.{0, 1, 1},
+		.{0, 1, 1},
+		.{1, 1, 0},
+		.{1, 1, 0},
+	};
+
+	pub const isPositive = [_]bool {true, false, true, false, true, false};
+	pub const vectorComponent = [_]enum(u2){x = 0, y = 1, z = 2} {.y, .y, .x, .x, .z, .z};
+
+	pub fn extractDirectionComponent(self: u3, in: anytype) @TypeOf(in[0]) {
+		switch(self) {
+			inline else => |val| {
+				if(val >= 6) unreachable;
+				return in[@intFromEnum(vectorComponent[val])];
+			}
+		}
+	}
 };
 
 /// Gets the index of a given position inside this chunk.
@@ -102,6 +123,25 @@ pub const ChunkPosition = struct {
 		dx = @max(0, dx - halfWidth);
 		dy = @max(0, dy - halfWidth);
 		dz = @max(0, dz - halfWidth);
+		return dx*dx + dy*dy + dz*dz;
+	}
+
+	pub fn getMaxDistanceSquared(self: ChunkPosition, playerPosition: Vec3d) f64 {
+		var halfWidth: f64 = @floatFromInt(self.voxelSize*@divExact(chunkSize, 2));
+		var dx = @fabs(@as(f64, @floatFromInt(self.wx)) + halfWidth - playerPosition[0]);
+		var dy = @fabs(@as(f64, @floatFromInt(self.wy)) + halfWidth - playerPosition[1]);
+		var dz = @fabs(@as(f64, @floatFromInt(self.wz)) + halfWidth - playerPosition[2]);
+		dx = dx + halfWidth;
+		dy = dy + halfWidth;
+		dz = dz + halfWidth;
+		return dx*dx + dy*dy + dz*dz;
+	}
+
+	pub fn getCenterDistanceSquared(self: ChunkPosition, playerPosition: Vec3d) f64 {
+		var halfWidth: f64 = @floatFromInt(self.voxelSize*@divExact(chunkSize, 2));
+		var dx = @as(f64, @floatFromInt(self.wx)) + halfWidth - playerPosition[0];
+		var dy = @as(f64, @floatFromInt(self.wy)) + halfWidth - playerPosition[1];
+		var dz = @as(f64, @floatFromInt(self.wz)) + halfWidth - playerPosition[2];
 		return dx*dx + dy*dy + dz*dz;
 	}
 
@@ -372,6 +412,8 @@ pub const meshing = struct {
 	var vbo: c_uint = undefined;
 	var faces: std.ArrayList(u32) = undefined;
 	pub var faceBuffer: graphics.LargeBuffer = undefined;
+	pub var quadsDrawn: usize = 0;
+	pub var transparentQuadsDrawn: usize = 0;
 
 	pub fn init() !void {
 		shader = try Shader.initAndGetUniforms("assets/cubyz/shaders/chunks/chunk_vertex.vs", "assets/cubyz/shaders/chunks/chunk_fragment.fs", &uniforms);
@@ -585,6 +627,17 @@ pub const meshing = struct {
 			index: u32,
 			distance: u32,
 		};
+		const BoundingRectToNeighborChunk = struct {
+			min: Vec3i = @splat(std.math.maxInt(i32)),
+			max: Vec3i = @splat(0),
+
+			fn adjustToBlock(self: *BoundingRectToNeighborChunk, block: Block, pos: Vec3i, neighbor: u3) void {
+				if(block.viewThrough()) {
+					self.min = @min(self.min, pos);
+					self.max = @max(self.max, pos + Neighbors.orthogonalComponents[neighbor]);
+				}
+			}
+		};
 		pos: ChunkPosition,
 		size: i32,
 		chunk: std.atomic.Atomic(?*Chunk),
@@ -598,6 +651,8 @@ pub const meshing = struct {
 		currentSorting: []SortingData = &.{},
 		currentSortingSwap: []SortingData = &.{},
 		lastTransparentUpdatePos: Vec3i = Vec3i{0, 0, 0},
+
+		chunkBorders: [6]BoundingRectToNeighborChunk = [1]BoundingRectToNeighborChunk{.{}} ** 6,
 
 		pub fn init(allocator: Allocator, pos: ChunkPosition) ChunkMesh {
 			return ChunkMesh{
@@ -681,6 +736,19 @@ pub const meshing = struct {
 							}
 						}
 					}
+				}
+			}
+			// Check out the borders:
+			x = 0;
+			while(x < chunkSize): (x += 1) {
+				var y: u8 = 0;
+				while(y < chunkSize): (y += 1) {
+					self.chunkBorders[Neighbors.dirNegX].adjustToBlock((&chunk.blocks)[getIndex(0, x, y)], .{0, x, y}, Neighbors.dirNegX); // TODO: Wait for the compiler bug to get fixed.
+					self.chunkBorders[Neighbors.dirPosX].adjustToBlock((&chunk.blocks)[getIndex(chunkSize-1, x, y)], .{chunkSize, x, y}, Neighbors.dirPosX); // TODO: Wait for the compiler bug to get fixed.
+					self.chunkBorders[Neighbors.dirDown].adjustToBlock((&chunk.blocks)[getIndex(x, 0, y)], .{x, 0, y}, Neighbors.dirDown); // TODO: Wait for the compiler bug to get fixed.
+					self.chunkBorders[Neighbors.dirUp].adjustToBlock((&chunk.blocks)[getIndex(x, chunkSize-1, y)], .{x, chunkSize, y}, Neighbors.dirUp); // TODO: Wait for the compiler bug to get fixed.
+					self.chunkBorders[Neighbors.dirNegZ].adjustToBlock((&chunk.blocks)[getIndex(x, y, 0)], .{x, y, 0}, Neighbors.dirNegZ); // TODO: Wait for the compiler bug to get fixed.
+					self.chunkBorders[Neighbors.dirPosZ].adjustToBlock((&chunk.blocks)[getIndex(x, y, chunkSize-1)], .{x, y, chunkSize}, Neighbors.dirPosZ); // TODO: Wait for the compiler bug to get fixed.
 				}
 			}
 
@@ -948,6 +1016,7 @@ pub const meshing = struct {
 			);
 			c.glUniform1i(uniforms.visibilityMask, self.visibilityMask);
 			c.glUniform1i(uniforms.voxelSize, self.pos.voxelSize);
+			quadsDrawn += self.opaqueMesh.faces.items.len;
 			c.glDrawElementsBaseVertex(c.GL_TRIANGLES, self.opaqueMesh.vertexCount, c.GL_UNSIGNED_INT, null, self.opaqueMesh.bufferAllocation.start/8*4);
 		}
 
@@ -1046,6 +1115,7 @@ pub const meshing = struct {
 			);
 			c.glUniform1i(transparentUniforms.visibilityMask, self.visibilityMask);
 			c.glUniform1i(transparentUniforms.voxelSize, self.pos.voxelSize);
+			transparentQuadsDrawn += self.transparentMesh.faces.items.len;
 			c.glDrawElementsBaseVertex(c.GL_TRIANGLES, self.transparentMesh.vertexCount, c.GL_UNSIGNED_INT, null, self.transparentMesh.bufferAllocation.start/8*4);
 		}
 	};

@@ -40,8 +40,9 @@ fn flawedRender() !void {
 		y += 8;
 		try draw.print("Biome: {s}", .{main.game.world.?.playerBiome.id}, 0, y, 8, .left);
 		y += 8;
-		// TODO: packet loss
+		try draw.print("Opaque faces: {}, Transparent faces: {}", .{main.chunk.meshing.quadsDrawn, main.chunk.meshing.transparentQuadsDrawn}, 0, y, 8, .left);
 		y += 8;
+		// TODO: packet loss
 		// TODO: Protocol statistics(maybe?)
 	}
 }

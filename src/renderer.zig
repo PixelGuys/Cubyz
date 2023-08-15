@@ -18,6 +18,7 @@ const network = @import("network.zig");
 const settings = @import("settings.zig");
 const utils = @import("utils.zig");
 const vec = @import("vec.zig");
+const Vec2f = vec.Vec2f;
 const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
@@ -198,6 +199,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	// Uses FrustumCulling on the chunks.
 	var frustum = Frustum.init(Vec3f{0, 0, 0}, game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
+	_ = frustum;
 
 	const time: u32 = @intCast(std.time.milliTimestamp() & std.math.maxInt(u32));
 	var waterFog = Fog{.active=true, .color=.{0.0, 0.1, 0.2}, .density=0.1};
@@ -213,7 +215,9 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 //	SimpleList<NormalChunkMesh> visibleChunks = new SimpleList<NormalChunkMesh>(new NormalChunkMesh[64]);
 //	SimpleList<ReducedChunkMesh> visibleReduced = new SimpleList<ReducedChunkMesh>(new ReducedChunkMesh[64]);
 
-	const meshes = try RenderStructure.updateAndGetRenderChunks(game.world.?.conn, playerPos, settings.renderDistance, settings.LODFactor, frustum);
+	chunk.meshing.quadsDrawn = 0;
+	chunk.meshing.transparentQuadsDrawn = 0;
+	const meshes = try RenderStructure.updateAndGetRenderChunks(game.world.?.conn, playerPos, settings.renderDistance, settings.LODFactor);
 
 	try sortChunks(meshes, playerPos);
 
@@ -865,6 +869,26 @@ pub const MeshSelection = struct {
 			}
 		}
 	}
+
+	pub fn drawCube(projectionMatrix: Mat4f, viewMatrix: Mat4f, relativePositionToPlayer: Vec3d, min: Vec3f, max: Vec3f) void {
+		shader.bind();
+
+		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_FALSE, @ptrCast(&projectionMatrix));
+		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast(&viewMatrix));
+
+		c.glUniform3f(uniforms.modelPosition,
+			@floatCast(relativePositionToPlayer[0]),
+			@floatCast(relativePositionToPlayer[1]),
+			@floatCast(relativePositionToPlayer[2]),
+		);
+		c.glUniform3f(uniforms.lowerBounds, min[0], min[1], min[2]);
+		c.glUniform3f(uniforms.upperBounds, max[0], max[1], max[2]);
+
+		c.glBindVertexArray(cubeVAO);
+		// c.glLineWidth(2); // TODO: Draw thicker lines so they are more visible. Maybe a simple shader + cube mesh is enough.
+		c.glDrawElements(c.GL_LINES, 12*2, c.GL_UNSIGNED_BYTE, null);
+	}
+
 	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, playerPos: Vec3d) void {
 		if(selectedBlockPos) |_selectedBlockPos| {
 			var block = RenderStructure.getBlock(_selectedBlockPos[0], _selectedBlockPos[1], _selectedBlockPos[2]) orelse return;
@@ -874,28 +898,7 @@ pub const MeshSelection = struct {
 			var transformedMax = model.permutation.transform(voxelModel.max - @as(Vec3i, @splat(8))) + @as(Vec3i, @splat(8));
 			const min = @min(transformedMin, transformedMax);
 			const max = @max(transformedMin ,transformedMax);
-			shader.bind();
-
-			c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_FALSE, @ptrCast(&projectionMatrix));
-			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast(&viewMatrix));
-			c.glUniform3f(uniforms.modelPosition,
-				@floatCast(@as(f64, @floatFromInt(_selectedBlockPos[0])) - playerPos[0]),
-				@floatCast(@as(f64, @floatFromInt(_selectedBlockPos[1])) - playerPos[1]),
-				@floatCast(@as(f64, @floatFromInt(_selectedBlockPos[2])) - playerPos[2])
-			);
-			c.glUniform3f(uniforms.lowerBounds,
-				@as(f32, @floatFromInt(min[0]))/16.0,
-				@as(f32, @floatFromInt(min[1]))/16.0,
-				@as(f32, @floatFromInt(min[2]))/16.0
-			);
-			c.glUniform3f(uniforms.upperBounds,
-				@as(f32, @floatFromInt(max[0]))/16.0,
-				@as(f32, @floatFromInt(max[1]))/16.0,
-				@as(f32, @floatFromInt(max[2]))/16.0
-			);
-
-			c.glBindVertexArray(cubeVAO);
-			c.glDrawElements(c.GL_LINES, 12*2, c.GL_UNSIGNED_BYTE, null); // TODO: Draw thicker lines so they are more visible. Maybe a simple shader + cube mesh is enough.
+			drawCube(projectionMatrix, viewMatrix, vec.floatFromInt(f64, _selectedBlockPos) - playerPos, vec.floatFromInt(f32, min)/@as(Vec3f, @splat(16.0)), vec.floatFromInt(f32, max)/@as(Vec3f, @splat(16.0)));
 		}
 	}
 };
@@ -905,6 +908,10 @@ pub const RenderStructure = struct {
 		mesh: chunk.meshing.ChunkMesh,
 		shouldBeRemoved: bool, // Internal use.
 		drawableChildren: u32, // How many children can be renderer. If this is 8 then there is no need to render this mesh.
+		lod: u3,
+		min: Vec2f,
+		max: Vec2f,
+		active: bool,
 	};
 	var storageLists: [settings.highestLOD + 1][]?*ChunkMeshNode = [1][]?*ChunkMeshNode{&.{}} ** (settings.highestLOD + 1);
 	var storageListsSwap: [settings.highestLOD + 1][]?*ChunkMeshNode = [1][]?*ChunkMeshNode{&.{}} ** (settings.highestLOD + 1);
@@ -963,6 +970,18 @@ pub const RenderStructure = struct {
 		meshList.deinit();
 	}
 
+	fn getNodeFromRenderThread(pos: chunk.ChunkPosition) ?*ChunkMeshNode {
+		var lod = std.math.log2_int(u31, pos.voxelSize);
+		var xIndex = pos.wx-%(&lastX[lod]).* >> lod+chunk.chunkShift;
+		var yIndex = pos.wy-%(&lastY[lod]).* >> lod+chunk.chunkShift;
+		var zIndex = pos.wz-%(&lastZ[lod]).* >> lod+chunk.chunkShift;
+		if(xIndex < 0 or xIndex >= (&lastSize[lod]).*) return null;
+		if(yIndex < 0 or yIndex >= (&lastSize[lod]).*) return null;
+		if(zIndex < 0 or zIndex >= (&lastSize[lod]).*) return null;
+		var index = (xIndex*(&lastSize[lod]).* + yIndex)*(&lastSize[lod]).* + zIndex;
+		return storageLists[lod][@intCast(index)];
+	}
+
 	fn _getNode(pos: chunk.ChunkPosition) ?*ChunkMeshNode {
 		var lod = std.math.log2_int(u31, pos.voxelSize);
 		lodMutex[lod].lock();
@@ -998,7 +1017,7 @@ pub const RenderStructure = struct {
 		return &node.mesh;
 	}
 
-	pub fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: Vec3d, renderDistance: i32, LODFactor: f32, frustum: Frustum) ![]*chunk.meshing.ChunkMesh {
+	pub fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: Vec3d, renderDistance: i32, LODFactor: f32) ![]*chunk.meshing.ChunkMesh {
 		meshList.clearRetainingCapacity();
 		if(lastRD != renderDistance and lastFactor != LODFactor) {
 			try network.Protocols.genericUpdate.sendRenderDistance(conn, renderDistance, LODFactor);
@@ -1010,7 +1029,7 @@ pub const RenderStructure = struct {
 		var meshRequests = std.ArrayList(chunk.ChunkPosition).init(main.threadAllocator);
 		defer meshRequests.deinit();
 
-		for(0..storageLists.len) |_lod| {
+		for(0..storageLists.len) |_lod| { // TODO: Can this be done in a more intelligent way?
 			const lod: u5 = @intCast(_lod);
 			var maxRenderDistance = renderDistance*chunk.chunkSize << lod;
 			if(lod != 0) maxRenderDistance = @intFromFloat(@ceil(@as(f32, @floatFromInt(maxRenderDistance))*LODFactor));
@@ -1058,7 +1077,7 @@ pub const RenderStructure = struct {
 						const zIndex = @divExact(z -% startZ, size);
 						const index = (xIndex*maxSideLength + yIndex)*maxSideLength + zIndex;
 						const pos = chunk.ChunkPosition{.wx=x, .wy=y, .wz=z, .voxelSize=@as(u31, 1)<<lod};
-						var node = _getNode(pos);
+						var node = getNodeFromRenderThread(pos);
 						if(node) |_node| {
 							_node.shouldBeRemoved = false;
 						} else {
@@ -1067,21 +1086,10 @@ pub const RenderStructure = struct {
 							node.?.shouldBeRemoved = true; // Might be removed in the next iteration.
 							try meshRequests.append(pos);
 						}
-						if(frustum.testAAB(Vec3f{
-							@floatCast(@as(f64, @floatFromInt(x)) - playerPos[0]),
-							@floatCast(@as(f64, @floatFromInt(y)) - playerPos[1]),
-							@floatCast(@as(f64, @floatFromInt(z)) - playerPos[2]),
-						}, Vec3f{
-							@floatFromInt(size),
-							@floatFromInt(size),
-							@floatFromInt(size),
-						}) and node.?.mesh.visibilityMask != 0 and !node.?.mesh.isEmpty()) {
-							try meshList.append(&node.?.mesh);
-						}
 						if(lod+1 != storageLists.len and node.?.mesh.generated) {
-							if(_getNode(.{.wx=x, .wy=y, .wz=z, .voxelSize=@as(u31, 1)<<(lod+1)})) |parent| {
+							if(getNodeFromRenderThread(.{.wx=x, .wy=y, .wz=z, .voxelSize=@as(u31, 1)<<(lod+1)})) |parent| {
 								const octantIndex: u3 = @intCast((x>>sizeShift & 1) | (y>>sizeShift & 1)<<1 | (z>>sizeShift & 1)<<2);
-								parent.mesh.visibilityMask &= ~(@as(u8, 1) << octantIndex);
+								parent.mesh.visibilityMask &= ~(@as(u8, 1) << octantIndex); // TODO: Find a more robust solution, that also works for the new occlusion culling.
 							}
 						}
 						node.?.drawableChildren = 0;
@@ -1105,7 +1113,7 @@ pub const RenderStructure = struct {
 				if(nullMesh) |mesh| {
 					if(mesh.shouldBeRemoved) {
 						if(mesh.mesh.pos.voxelSize != 1 << settings.highestLOD) {
-							if(_getNode(.{.wx=mesh.mesh.pos.wx, .wy=mesh.mesh.pos.wy, .wz=mesh.mesh.pos.wz, .voxelSize=2*mesh.mesh.pos.voxelSize})) |parent| {
+							if(getNodeFromRenderThread(.{.wx=mesh.mesh.pos.wx, .wy=mesh.mesh.pos.wy, .wz=mesh.mesh.pos.wz, .voxelSize=2*mesh.mesh.pos.voxelSize})) |parent| {
 								const octantIndex: u3 = @intCast((mesh.mesh.pos.wx>>sizeShift & 1) | (mesh.mesh.pos.wy>>sizeShift & 1)<<1 | (mesh.mesh.pos.wz>>sizeShift & 1)<<2);
 								parent.mesh.visibilityMask |= @as(u8, 1) << octantIndex;
 							}
@@ -1130,6 +1138,232 @@ pub const RenderStructure = struct {
 					} else {
 						mesh.shouldBeRemoved = true;
 					}
+				}
+			}
+		}
+
+		// Does occlusion using a breadth-first search that caches an on-screen visibility rectangle.
+
+		const OcclusionData = struct {
+			node: *ChunkMeshNode,
+			distance: f64,
+
+			pub fn compare(_: void, a: @This(), b: @This()) std.math.Order {
+				if(a.distance < b.distance) return .lt;
+				if(a.distance > b.distance) return .gt;
+				return .eq;
+			}
+		};
+
+		var floodFillList = std.PriorityQueue(OcclusionData, void, OcclusionData.compare).init(main.threadAllocator, {});
+		defer floodFillList.deinit();
+		{
+			var firstPos = chunk.ChunkPosition{
+				.wx = @intFromFloat(@floor(playerPos[0])),
+				.wy = @intFromFloat(@floor(playerPos[1])),
+				.wz = @intFromFloat(@floor(playerPos[2])),
+				.voxelSize = 1,
+			};
+			firstPos.wx &= ~@as(i32, chunk.chunkMask);
+			firstPos.wy &= ~@as(i32, chunk.chunkMask);
+			firstPos.wz &= ~@as(i32, chunk.chunkMask);
+			var lod: u3 = 0;
+			while(lod <= settings.highestLOD) : (lod += 1) {
+				if(getNodeFromRenderThread(firstPos)) |node| if(node.mesh.generated) {
+					node.lod = lod;
+					node.min = @splat(-1);
+					node.max = @splat(1);
+					node.active = true;
+					try floodFillList.add(.{
+						.node = node,
+						.distance = 0,
+					});
+					break;
+				};
+				firstPos.wx &= ~@as(i32, firstPos.voxelSize*chunk.chunkSize);
+				firstPos.wy &= ~@as(i32, firstPos.voxelSize*chunk.chunkSize);
+				firstPos.wz &= ~@as(i32, firstPos.voxelSize*chunk.chunkSize);
+				firstPos.voxelSize *= 2;
+			}
+		}
+
+		const projRotMat = game.projectionMatrix.mul(game.camera.viewMatrix);
+		while(floodFillList.removeOrNull()) |data| {
+			data.node.active = false;
+			const mesh = &data.node.mesh;
+			try meshList.append(mesh);
+			const relPos: Vec3d = vec.floatFromInt(f64, Vec3i{mesh.pos.wx, mesh.pos.wy, mesh.pos.wz}) - playerPos;
+			const relPosFloat: Vec3f = vec.floatCast(f32, relPos);
+			for(chunk.Neighbors.iterable) |neighbor| continueNeighborLoop: {
+				const component = chunk.Neighbors.extractDirectionComponent(neighbor, relPos);
+				if(chunk.Neighbors.isPositive[neighbor] and component + @as(f64, @floatFromInt(chunk.chunkSize*mesh.pos.voxelSize)) <= 0) continue;
+				if(!chunk.Neighbors.isPositive[neighbor] and component >= 0) continue;
+				if(@reduce(.Or, @min(mesh.chunkBorders[neighbor].min, mesh.chunkBorders[neighbor].max) != mesh.chunkBorders[neighbor].min)) continue; // There was not a single block in the chunk. TODO: Find a better solution.
+				const minVec = vec.floatFromInt(f32, mesh.chunkBorders[neighbor].min*@as(Vec3i, @splat(mesh.pos.voxelSize)));
+				const maxVec = vec.floatFromInt(f32, mesh.chunkBorders[neighbor].max*@as(Vec3i, @splat(mesh.pos.voxelSize)));
+				var xyMin: Vec2f = .{10, 10};
+				var xyMax: Vec2f = .{-10, -10};
+				var numberOfNegatives: u8 = 0;
+				var corners: [5]Vec4f = undefined;
+				var curCorner: usize = 0;
+				for(0..2) |a| {
+					for(0..2) |b| {
+						var cornerVector: Vec3f = undefined;
+						switch(chunk.Neighbors.vectorComponent[neighbor]) {
+							.x => {
+								cornerVector[0] = minVec[0];
+								cornerVector[1] = if(a == 0) minVec[1] else maxVec[1];
+								cornerVector[2] = if(b == 0) minVec[2] else maxVec[2];
+							},
+							.y => {
+								cornerVector[1] = minVec[1];
+								cornerVector[0] = if(a == 0) minVec[0] else maxVec[0];
+								cornerVector[2] = if(b == 0) minVec[2] else maxVec[2];
+							},
+							.z => {
+								cornerVector[2] = minVec[2];
+								cornerVector[0] = if(a == 0) minVec[0] else maxVec[0];
+								cornerVector[1] = if(b == 0) minVec[1] else maxVec[1];
+							},
+						}
+						corners[curCorner] = projRotMat.mulVec(vec.combine(relPosFloat + cornerVector, 1));
+						if(corners[curCorner][3] < 0) {
+							numberOfNegatives += 1;
+						}
+						curCorner += 1;
+					}
+				}
+				switch(numberOfNegatives) { // Oh, so complicated. But this should only trigger very close to the player.
+					4 => continue,
+					0 => {},
+					1 => {
+						// Needs to duplicate the problematic corner and move it onto the projected plane.
+						var problematicOne: usize = 0;
+						for(0..curCorner) |i| {
+							if(corners[i][3] < 0) {
+								problematicOne = i;
+								break;
+							}
+						}
+						const problematicVector = corners[problematicOne];
+						// The two neighbors of the quad:
+						const neighborA = corners[problematicOne ^ 1];
+						const neighborB = corners[problematicOne ^ 2];
+						// Move the problematic point towards the neighbor:
+						const one: Vec4f = @splat(1);
+						const weightA: Vec4f = @splat(problematicVector[3]/(problematicVector[3] - neighborA[3]));
+						var towardsA = neighborA*weightA + problematicVector*(one - weightA);
+						towardsA[3] = 0; // Prevent inaccuracies
+						const weightB: Vec4f = @splat(problematicVector[3]/(problematicVector[3] - neighborB[3]));
+						var towardsB = neighborB*weightB + problematicVector*(one - weightB);
+						towardsB[3] = 0; // Prevent inaccuracies
+						corners[problematicOne] = towardsA;
+						corners[curCorner] = towardsB;
+						curCorner += 1;
+					},
+					2 => {
+						// Needs to move the two problematic corners onto the projected plane.
+						var problematicOne: usize = undefined;
+						for(0..curCorner) |i| {
+							if(corners[i][3] < 0) {
+								problematicOne = i;
+								break;
+							}
+						}
+						const problematicVectorOne = corners[problematicOne];
+						var problematicTwo: usize = undefined;
+						for(problematicOne+1..curCorner) |i| {
+							if(corners[i][3] < 0) {
+								problematicTwo = i;
+								break;
+							}
+						}
+						const problematicVectorTwo = corners[problematicTwo];
+
+						const commonDirection = problematicOne ^ problematicTwo;
+						const projectionDirection = commonDirection ^ 0b11;
+						// The respective neighbors:
+						const neighborOne = corners[problematicOne ^ projectionDirection];
+						const neighborTwo = corners[problematicTwo ^ projectionDirection];
+						// Move the problematic points towards the neighbor:
+						const one: Vec4f = @splat(1);
+						const weightOne: Vec4f = @splat(problematicVectorOne[3]/(problematicVectorOne[3] - neighborOne[3]));
+						var towardsOne = neighborOne*weightOne + problematicVectorOne*(one - weightOne);
+						towardsOne[3] = 0; // Prevent inaccuracies
+						corners[problematicOne] = towardsOne;
+
+						const weightTwo: Vec4f = @splat(problematicVectorTwo[3]/(problematicVectorTwo[3] - neighborTwo[3]));
+						var towardsTwo = neighborTwo*weightTwo + problematicVectorTwo*(one - weightTwo);
+						towardsTwo[3] = 0; // Prevent inaccuracies
+						corners[problematicTwo] = towardsTwo;
+					},
+					3 => {
+						// Throw away the far problematic vector, move the other two onto the projection plane.
+						var neighborIndex: usize = undefined;
+						for(0..curCorner) |i| {
+							if(corners[i][3] >= 0) {
+								neighborIndex = i;
+								break;
+							}
+						}
+						const neighborVector = corners[neighborIndex];
+						const problematicVectorOne = corners[neighborIndex ^ 1];
+						const problematicVectorTwo = corners[neighborIndex ^ 2];
+						// Move the problematic points towards the neighbor:
+						const one: Vec4f = @splat(1);
+						const weightOne: Vec4f = @splat(problematicVectorOne[3]/(problematicVectorOne[3] - neighborVector[3]));
+						var towardsOne = neighborVector*weightOne + problematicVectorOne*(one - weightOne);
+						towardsOne[3] = 0; // Prevent inaccuracies
+
+						const weightTwo: Vec4f = @splat(problematicVectorTwo[3]/(problematicVectorTwo[3] - neighborVector[3]));
+						var towardsTwo = neighborVector*weightTwo + problematicVectorTwo*(one - weightTwo);
+						towardsTwo[3] = 0; // Prevent inaccuracies
+
+						corners[0] = neighborVector;
+						corners[1] = towardsOne;
+						corners[2] = towardsTwo;
+						curCorner = 3;
+					},
+					else => unreachable,
+				}
+
+				for(0..curCorner) |i| {
+					const projected = corners[i];
+					const xy = vec.xy(projected)/@as(Vec2f, @splat(@max(0, projected[3])));
+					xyMin = @min(xyMin, xy);
+					xyMax = @max(xyMax, xy);
+				}
+				const min = @max(xyMin, data.node.min);
+				const max = @min(xyMax, data.node.max);
+				if(@reduce(.Or, min >= max)) continue; // Nothing to render.
+				var neighborPos = chunk.ChunkPosition{
+					.wx = mesh.pos.wx + chunk.Neighbors.relX[neighbor]*chunk.chunkSize*mesh.pos.voxelSize,
+					.wy = mesh.pos.wy + chunk.Neighbors.relY[neighbor]*chunk.chunkSize*mesh.pos.voxelSize,
+					.wz = mesh.pos.wz + chunk.Neighbors.relZ[neighbor]*chunk.chunkSize*mesh.pos.voxelSize,
+					.voxelSize = mesh.pos.voxelSize,
+				};
+				var lod: u3 = data.node.lod;
+				while(lod <= settings.highestLOD) : (lod += 1) {
+					if(getNodeFromRenderThread(neighborPos)) |node| if(node.mesh.generated) {
+						if(node.active) {
+							node.min = @min(node.min, min);
+							node.max = @max(node.max, max);
+						} else {
+							node.lod = lod;
+							node.min = min;
+							node.max = max;
+							node.active = true;
+							try floodFillList.add(.{
+								.node = node,
+								.distance = node.mesh.pos.getMaxDistanceSquared(playerPos)
+							});
+						}
+						break :continueNeighborLoop;
+					};
+					neighborPos.wx &= ~@as(i32, neighborPos.voxelSize*chunk.chunkSize);
+					neighborPos.wy &= ~@as(i32, neighborPos.voxelSize*chunk.chunkSize);
+					neighborPos.wz &= ~@as(i32, neighborPos.voxelSize*chunk.chunkSize);
+					neighborPos.voxelSize *= 2;
 				}
 			}
 		}
