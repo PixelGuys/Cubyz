@@ -1033,7 +1033,6 @@ pub const RenderStructure = struct {
 			const lod: u5 = @intCast(_lod);
 			var maxRenderDistance = renderDistance*chunk.chunkSize << lod;
 			if(lod != 0) maxRenderDistance = @intFromFloat(@ceil(@as(f32, @floatFromInt(maxRenderDistance))*LODFactor));
-			var sizeShift = chunk.chunkShift + lod;
 			const size: u31 = @intCast(chunk.chunkSize << lod);
 			const mask: i32 = size - 1;
 			const invMask: i32 = ~mask;
@@ -1079,18 +1078,15 @@ pub const RenderStructure = struct {
 						const pos = chunk.ChunkPosition{.wx=x, .wy=y, .wz=z, .voxelSize=@as(u31, 1)<<lod};
 						var node = getNodeFromRenderThread(pos);
 						if(node) |_node| {
+							if(_node.mesh.generated) {
+								_node.mesh.visibilityMask = 0xff;
+							}
 							_node.shouldBeRemoved = false;
 						} else {
 							node = try main.globalAllocator.create(ChunkMeshNode);
 							node.?.mesh = chunk.meshing.ChunkMesh.init(main.globalAllocator, pos);
 							node.?.shouldBeRemoved = true; // Might be removed in the next iteration.
 							try meshRequests.append(pos);
-						}
-						if(lod+1 != storageLists.len and node.?.mesh.generated) {
-							if(getNodeFromRenderThread(.{.wx=x, .wy=y, .wz=z, .voxelSize=@as(u31, 1)<<(lod+1)})) |parent| {
-								const octantIndex: u3 = @intCast((x>>sizeShift & 1) | (y>>sizeShift & 1)<<1 | (z>>sizeShift & 1)<<2);
-								parent.mesh.visibilityMask &= ~(@as(u8, 1) << octantIndex); // TODO: Find a more robust solution, that also works for the new occlusion culling.
-							}
 						}
 						node.?.drawableChildren = 0;
 						newList[@intCast(index)] = node;
@@ -1112,12 +1108,6 @@ pub const RenderStructure = struct {
 			for(oldList) |nullMesh| {
 				if(nullMesh) |mesh| {
 					if(mesh.shouldBeRemoved) {
-						if(mesh.mesh.pos.voxelSize != 1 << settings.highestLOD) {
-							if(getNodeFromRenderThread(.{.wx=mesh.mesh.pos.wx, .wy=mesh.mesh.pos.wy, .wz=mesh.mesh.pos.wz, .voxelSize=2*mesh.mesh.pos.voxelSize})) |parent| {
-								const octantIndex: u3 = @intCast((mesh.mesh.pos.wx>>sizeShift & 1) | (mesh.mesh.pos.wy>>sizeShift & 1)<<1 | (mesh.mesh.pos.wz>>sizeShift & 1)<<2);
-								parent.mesh.visibilityMask |= @as(u8, 1) << octantIndex;
-							}
-						}
 						// Update the neighbors, so we don't get cracks when we look back:
 						for(chunk.Neighbors.iterable) |neighbor| {
 							if(getNeighbor(mesh.mesh.pos, mesh.mesh.pos.voxelSize, neighbor)) |neighborMesh| {
@@ -1155,8 +1145,9 @@ pub const RenderStructure = struct {
 			}
 		};
 
-		var floodFillList = std.PriorityQueue(OcclusionData, void, OcclusionData.compare).init(main.threadAllocator, {});
-		defer floodFillList.deinit();
+		// TODO: Is there a way to combine this with minecraft's approach?
+		var searchList = std.PriorityQueue(OcclusionData, void, OcclusionData.compare).init(main.threadAllocator, {});
+		defer searchList.deinit();
 		{
 			var firstPos = chunk.ChunkPosition{
 				.wx = @intFromFloat(@floor(playerPos[0])),
@@ -1174,7 +1165,7 @@ pub const RenderStructure = struct {
 					node.min = @splat(-1);
 					node.max = @splat(1);
 					node.active = true;
-					try floodFillList.add(.{
+					try searchList.add(.{
 						.node = node,
 						.distance = 0,
 					});
@@ -1186,11 +1177,17 @@ pub const RenderStructure = struct {
 				firstPos.voxelSize *= 2;
 			}
 		}
-
 		const projRotMat = game.projectionMatrix.mul(game.camera.viewMatrix);
-		while(floodFillList.removeOrNull()) |data| {
+		while(searchList.removeOrNull()) |data| {
 			data.node.active = false;
 			const mesh = &data.node.mesh;
+			if(data.node.lod+1 != storageLists.len) {
+				if(getNodeFromRenderThread(.{.wx=mesh.pos.wx, .wy=mesh.pos.wy, .wz=mesh.pos.wz, .voxelSize=mesh.pos.voxelSize << 1})) |parent| {
+					const sizeShift = chunk.chunkShift + data.node.lod;
+					const octantIndex: u3 = @intCast((mesh.pos.wx>>sizeShift & 1) | (mesh.pos.wy>>sizeShift & 1)<<1 | (mesh.pos.wz>>sizeShift & 1)<<2);
+					parent.mesh.visibilityMask &= ~(@as(u8, 1) << octantIndex);
+				}
+			}
 			try meshList.append(mesh);
 			const relPos: Vec3d = vec.floatFromInt(f64, Vec3i{mesh.pos.wx, mesh.pos.wy, mesh.pos.wz}) - playerPos;
 			const relPosFloat: Vec3f = vec.floatCast(f32, relPos);
@@ -1353,7 +1350,7 @@ pub const RenderStructure = struct {
 							node.min = min;
 							node.max = max;
 							node.active = true;
-							try floodFillList.add(.{
+							try searchList.add(.{
 								.node = node,
 								.distance = node.mesh.pos.getMaxDistanceSquared(playerPos)
 							});
