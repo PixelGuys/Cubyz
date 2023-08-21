@@ -5,6 +5,7 @@ pub const controls = @import("controls.zig");
 pub const creative_inventory = @import("creative_inventory.zig");
 pub const crosshair = @import("crosshair.zig");
 pub const debug = @import("debug.zig");
+pub const gpu_performance_measuring = @import("gpu_performance_measuring.zig");
 pub const graphics = @import("graphics.zig");
 pub const healthbar = @import("healthbar.zig");
 pub const hotbar = @import("hotbar.zig");

@@ -404,7 +404,6 @@ pub const meshing = struct {
 		time: c_int,
 		visibilityMask: c_int,
 		voxelSize: c_int,
-		renderedToItemTexture: c_int,
 	};
 	pub var uniforms: UniformStruct = undefined;
 	pub var transparentUniforms: UniformStruct = undefined;
@@ -463,8 +462,6 @@ pub const meshing = struct {
 
 		c.glUniform1i(uniforms.time, @as(u31, @truncate(time)));
 
-		c.glUniform1i(uniforms.renderedToItemTexture, 0);
-
 		c.glBindVertexArray(vao);
 	}
 
@@ -485,8 +482,6 @@ pub const meshing = struct {
 		c.glUniform3f(transparentUniforms.ambientLight, ambient[0], ambient[1], ambient[2]);
 
 		c.glUniform1i(transparentUniforms.time, @as(u31, @truncate(time)));
-
-		c.glUniform1i(transparentUniforms.renderedToItemTexture, 0);
 
 		c.glBindVertexArray(vao);
 	}

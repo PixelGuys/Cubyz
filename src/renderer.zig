@@ -18,6 +18,7 @@ const network = @import("network.zig");
 const settings = @import("settings.zig");
 const utils = @import("utils.zig");
 const vec = @import("vec.zig");
+const gpu_performance_measuring = main.gui.windowlist.gpu_performance_measuring;
 const Vec2f = vec.Vec2f;
 const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
@@ -46,7 +47,8 @@ pub var activeFrameBuffer: c_uint = 0;
 pub fn init() !void {
 	fogShader = try Shader.initAndGetUniforms("assets/cubyz/shaders/fog_vertex.vs", "assets/cubyz/shaders/fog_fragment.fs", &fogUniforms);
 	deferredRenderPassShader = try Shader.initAndGetUniforms("assets/cubyz/shaders/deferred_render_pass.vs", "assets/cubyz/shaders/deferred_render_pass.fs", &deferredUniforms);
-	buffers.init();
+	worldFrameBuffer.init(true, c.GL_NEAREST, c.GL_CLAMP_TO_EDGE);
+	worldFrameBuffer.updateSize(Window.width, Window.height, c.GL_RGBA16F);
 	try Bloom.init();
 	try MeshSelection.init();
 	try MenuBackGround.init();
@@ -55,80 +57,13 @@ pub fn init() !void {
 pub fn deinit() void {
 	fogShader.deinit();
 	deferredRenderPassShader.deinit();
-	buffers.deinit();
+	worldFrameBuffer.deinit();
 	Bloom.deinit();
 	MeshSelection.deinit();
 	MenuBackGround.deinit();
 }
 
-const buffers = struct {
-	var buffer: c_uint = undefined;
-	var colorTexture: c_uint = undefined;
-	var depthBuffer: c_uint = undefined;
-	fn init() void {
-		c.glGenFramebuffers(1, &buffer);
-		c.glGenRenderbuffers(1, &depthBuffer);
-		c.glGenTextures(1, &colorTexture);
-
-		updateBufferSize(Window.width, Window.height);
-
-		c.glBindFramebuffer(c.GL_FRAMEBUFFER, buffer);
-
-		c.glFramebufferTexture2D(c.GL_FRAMEBUFFER, c.GL_COLOR_ATTACHMENT0, c.GL_TEXTURE_2D, colorTexture, 0);
-		
-		c.glFramebufferRenderbuffer(c.GL_FRAMEBUFFER, c.GL_DEPTH_ATTACHMENT, c.GL_RENDERBUFFER, depthBuffer);
-
-		c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
-	}
-
-	fn deinit() void {
-		c.glDeleteFramebuffers(1, &buffer);
-		c.glDeleteRenderbuffers(1, &depthBuffer);
-		c.glDeleteTextures(1, &colorTexture);
-	}
-
-	fn regenTexture(texture: c_uint, internalFormat: c_int, format: c_uint, width: u31, height: u31) void {
-		c.glBindTexture(c.GL_TEXTURE_2D, texture);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST);
-		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
-		c.glTexImage2D(c.GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, c.GL_UNSIGNED_BYTE, null);
-		c.glBindTexture(c.GL_TEXTURE_2D, 0);
-	}
-
-	fn updateBufferSize(width: u31, height: u31) void {
-		c.glBindFramebuffer(c.GL_FRAMEBUFFER, buffer);
-
-		regenTexture(colorTexture, c.GL_RGB10_A2, c.GL_RGB, width, height);
-
-		c.glBindRenderbuffer(c.GL_RENDERBUFFER, depthBuffer);
-		c.glRenderbufferStorage(c.GL_RENDERBUFFER, c.GL_DEPTH_COMPONENT32F, width, height);
-		c.glBindRenderbuffer(c.GL_RENDERBUFFER, 0);
-
-		const attachments = [_]c_uint{c.GL_COLOR_ATTACHMENT0};
-		c.glDrawBuffers(attachments.len, &attachments);
-
-		c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
-	}
-
-	fn bindTextures() void {
-		c.glActiveTexture(c.GL_TEXTURE3);
-		c.glBindTexture(c.GL_TEXTURE_2D, colorTexture);
-	}
-
-	fn bind() void {
-		c.glBindFramebuffer(c.GL_FRAMEBUFFER, buffer);
-	}
-
-	fn unbind() void {
-		c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
-	}
-
-	fn clearAndBind(clearColor: Vec4f) void {
-		c.glBindFramebuffer(c.GL_FRAMEBUFFER, buffer);
-		c.glClearColor(clearColor[0], clearColor[1], clearColor[2], 1);
-		c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
-	}
-};
+var worldFrameBuffer: graphics.FrameBuffer = undefined;
 
 var lastWidth: u31 = 0;
 var lastHeight: u31 = 0;
@@ -139,7 +74,8 @@ pub fn updateViewport(width: u31, height: u31, fov: f32) void {
 	lastFov = fov;
 	c.glViewport(0, 0, width, height);
 	game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(f32, fov), @as(f32, @floatFromInt(width))/@as(f32, @floatFromInt(height)), zNear);
-	buffers.updateBufferSize(width, height);
+	worldFrameBuffer.updateSize(width, height, c.GL_RGBA16F);
+	worldFrameBuffer.unbind();
 }
 
 pub fn render(playerPosition: Vec3d) !void {
@@ -178,7 +114,6 @@ pub fn render(playerPosition: Vec3d) !void {
 		// TODO:
 //		Cubyz.fog.setActive(ClientSettings.FOG_COEFFICIENT != 0);
 //		Cubyz.fog.setDensity(1 / (ClientSettings.EFFECTIVE_RENDER_DISTANCE*ClientSettings.FOG_COEFFICIENT));
-		skyColor *= @splat(0.25);
 
 		try renderWorld(world, ambient, skyColor, playerPosition);
 		try RenderStructure.updateMeshes(startTime + maximumMeshTime);
@@ -194,7 +129,10 @@ pub fn render(playerPosition: Vec3d) !void {
 
 pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPos: Vec3d) !void {
 	_ = world;
-	buffers.clearAndBind(Vec4f{skyColor[0], skyColor[1], skyColor[2], 1});
+	worldFrameBuffer.bind();
+	gpu_performance_measuring.startQuery(.clear);
+	worldFrameBuffer.clear(Vec4f{skyColor[0], skyColor[1], skyColor[2], 1});
+	gpu_performance_measuring.stopQuery();
 	game.camera.updateViewMatrix();
 
 	// Uses FrustumCulling on the chunks.
@@ -230,6 +168,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 //			visibleReduced.add((ReducedChunkMesh)mesh);
 //		}
 //	}
+	gpu_performance_measuring.startQuery(.chunk_rendering);
 	MeshSelection.select(playerPos, game.camera.direction);
 	MeshSelection.render(game.projectionMatrix, game.camera.viewMatrix, playerPos);
 
@@ -242,24 +181,30 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	for(meshes) |mesh| {
 		mesh.render(playerPos);
 	}
+	gpu_performance_measuring.stopQuery();
 
 //		for(int i = 0; i < visibleReduced.size; i++) {
 //			ReducedChunkMesh mesh = visibleReduced.array[i];
 //			mesh.render(playerPosition);
 //		}
 
+	gpu_performance_measuring.startQuery(.entity_rendering);
 	entity.ClientEntityManager.render(game.projectionMatrix, ambientLight, .{1, 0.5, 0.25}, playerPos);
 
 	try itemdrop.ItemDropRenderer.renderItemDrops(game.projectionMatrix, ambientLight, playerPos, time);
+	gpu_performance_measuring.stopQuery();
 
 	// Render transparent chunk meshes:
 
+	gpu_performance_measuring.startQuery(.transparent_rendering);
 	chunk.meshing.bindTransparentShaderAndUniforms(game.projectionMatrix, ambientLight, time);
 	c.glUniform1i(chunk.meshing.transparentUniforms.@"waterFog.activ", if(waterFog.active) 1 else 0);
 	c.glUniform3fv(chunk.meshing.transparentUniforms.@"waterFog.color", 1, @ptrCast(&waterFog.color));
 	c.glUniform1f(chunk.meshing.transparentUniforms.@"waterFog.density", waterFog.density);
 
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_SRC1_COLOR);
+	c.glDepthFunc(c.GL_LEQUAL);
+	c.glDepthMask(c.GL_FALSE);
 	{
 		var i: usize = meshes.len;
 		while(true) {
@@ -268,10 +213,13 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 			try meshes[i].renderTransparent(playerPos);
 		}
 	}
+	c.glDepthMask(c.GL_TRUE);
+	c.glDepthFunc(c.GL_LESS);
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
+	gpu_performance_measuring.stopQuery();
 //		NormalChunkMesh.bindTransparentShader(ambientLight, directionalLight.getDirection(), time);
 
-	buffers.bindTextures();
+	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 
 //		NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_waterFog_activ, waterFog.isActive());
 //		NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_waterFog_color, waterFog.getColor());
@@ -313,11 +261,15 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 //				glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 //			}
 //		}
+
+	gpu_performance_measuring.startQuery(.bloom);
 	if(settings.bloom) {
 		Bloom.render(lastWidth, lastHeight);
 	}
-	buffers.unbind();
-	buffers.bindTextures();
+	gpu_performance_measuring.stopQuery();
+	gpu_performance_measuring.startQuery(.final_copy);
+	worldFrameBuffer.unbind();
+	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 	deferredRenderPassShader.bind();
 	c.glUniform1i(deferredUniforms.color, 3);
 
@@ -331,6 +283,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
 	try entity.ClientEntityManager.renderNames(game.projectionMatrix, playerPos);
+	gpu_performance_measuring.stopQuery();
 }
 
 /// Sorts the chunks based on their distance from the player to reduce overdraw.
@@ -390,8 +343,8 @@ const Bloom = struct {
 	var upscaleShader: graphics.Shader = undefined;
 
 	pub fn init() !void {
-		buffer1.init(false);
-		buffer2.init(false);
+		buffer1.init(false, c.GL_NEAREST, c.GL_CLAMP_TO_EDGE);
+		buffer2.init(false, c.GL_NEAREST, c.GL_CLAMP_TO_EDGE);
 		firstPassShader = try graphics.Shader.init("assets/cubyz/shaders/bloom/first_pass.vs", "assets/cubyz/shaders/bloom/first_pass.fs");
 		secondPassShader = try graphics.Shader.init("assets/cubyz/shaders/bloom/second_pass.vs", "assets/cubyz/shaders/bloom/second_pass.fs");
 		colorExtractAndDownsampleShader = try graphics.Shader.init("assets/cubyz/shaders/bloom/color_extractor_downsample.vs", "assets/cubyz/shaders/bloom/color_extractor_downsample.fs");
@@ -408,7 +361,7 @@ const Bloom = struct {
 
 	fn extractImageDataAndDownsample() void {
 		colorExtractAndDownsampleShader.bind();
-		buffers.bindTextures();
+		worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 		buffer1.bind();
 		c.glBindVertexArray(graphics.draw.rectVAO);
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
@@ -416,8 +369,7 @@ const Bloom = struct {
 
 	fn firstPass() void {
 		firstPassShader.bind();
-		c.glActiveTexture(c.GL_TEXTURE3);
-		c.glBindTexture(c.GL_TEXTURE_2D, buffer1.texture);
+		buffer1.bindTexture(c.GL_TEXTURE3);
 		buffer2.bind();
 		c.glBindVertexArray(graphics.draw.rectVAO);
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
@@ -425,8 +377,7 @@ const Bloom = struct {
 
 	fn secondPass() void {
 		secondPassShader.bind();
-		c.glActiveTexture(c.GL_TEXTURE3);
-		c.glBindTexture(c.GL_TEXTURE_2D, buffer2.texture);
+		buffer2.bindTexture(c.GL_TEXTURE3);
 		buffer1.bind();
 		c.glBindVertexArray(graphics.draw.rectVAO);
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
@@ -434,9 +385,8 @@ const Bloom = struct {
 
 	fn upscale() void {
 		upscaleShader.bind();
-		c.glActiveTexture(c.GL_TEXTURE3);
-		c.glBindTexture(c.GL_TEXTURE_2D, buffer1.texture);
-		buffers.bind();
+		buffer1.bindTexture(c.GL_TEXTURE3);
+		worldFrameBuffer.bind();
 		c.glBindVertexArray(graphics.draw.rectVAO);
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
@@ -445,9 +395,9 @@ const Bloom = struct {
 		if(width != currentWidth or height != currentHeight) {
 			width = currentWidth;
 			height = currentHeight;
-			buffer1.updateSize(width/2, height/2, c.GL_NEAREST, c.GL_CLAMP_TO_EDGE);
+			buffer1.updateSize(width/2, height/2, c.GL_RGB16F);
 			std.debug.assert(buffer1.validate());
-			buffer2.updateSize(width/2, height/2, c.GL_NEAREST, c.GL_CLAMP_TO_EDGE);
+			buffer2.updateSize(width/2, height/2, c.GL_RGB16F);
 			std.debug.assert(buffer2.validate());
 		}
 		c.glDisable(c.GL_DEPTH_TEST);
@@ -591,9 +541,9 @@ pub const MenuBackGround = struct {
 		defer updateViewport(Window.width, Window.height, settings.fov);
 		
 		var buffer: graphics.FrameBuffer = undefined;
-		buffer.init(true);
+		buffer.init(true, c.GL_NEAREST, c.GL_REPEAT);
 		defer buffer.deinit();
-		buffer.updateSize(size, size, c.GL_NEAREST, c.GL_REPEAT);
+		buffer.updateSize(size, size, c.GL_RGBA8);
 
 		activeFrameBuffer = buffer.frameBuffer;
 		defer activeFrameBuffer = 0;

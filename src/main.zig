@@ -334,6 +334,11 @@ fn togglePerformanceOverlay() void {
 		std.log.err("Got error while opening the performance_graph overlay: {s}", .{@errorName(err)});
 	};
 }
+fn toggleGPUPerformanceOverlay() void {
+	gui.toggleWindow("gpu_performance_measuring") catch |err| {
+		std.log.err("Got error while opening the gpu performance overlay: {s}", .{@errorName(err)});
+	};
+}
 
 pub const KeyBoard = struct {
 	pub var keys = [_]Key {
@@ -374,6 +379,7 @@ pub const KeyBoard = struct {
 		// debug:
 		Key{.name = "debugOverlay", .key = c.GLFW_KEY_F3, .releaseAction = &toggleDebugOverlay},
 		Key{.name = "performanceOverlay", .key = c.GLFW_KEY_F4, .releaseAction = &togglePerformanceOverlay},
+		Key{.name = "gpuPerformanceOverlay", .key = c.GLFW_KEY_F5, .releaseAction = &toggleGPUPerformanceOverlay},
 	};
 
 	pub fn key(name: []const u8) *const Key { // TODO: Maybe I should use a hashmap here?
@@ -721,8 +727,10 @@ pub fn main() !void {
 		}
 		c.glfwSwapBuffers(Window.window);
 		Window.handleEvents();
+		gui.windowlist.gpu_performance_measuring.startQuery(.screenbuffer_clear);
 		c.glClearColor(0.5, 1, 1, 1);
-		c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
+		c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT); // TODO: It appears that this is only needed, in the menu, if we don't have a background scene.
+		gui.windowlist.gpu_performance_measuring.stopQuery();
 		var newTime = std.time.nanoTimestamp();
 		var deltaTime = @as(f64, @floatFromInt(newTime -% lastTime))/1e9;
 		lastFrameTime.store(deltaTime, .Monotonic);

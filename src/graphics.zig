@@ -7,6 +7,7 @@ const freetype = @import("freetype");
 const harfbuzz = @import("harfbuzz");
 
 const Vec4i = @import("vec.zig").Vec4i;
+const Vec4f = @import("vec.zig").Vec4f;
 const Vec2f = @import("vec.zig").Vec2f;
 const Vec2i = @import("vec.zig").Vec2i;
 const Vec3f = @import("vec.zig").Vec3f;
@@ -1264,55 +1265,55 @@ pub const FrameBuffer = struct {
 	frameBuffer: c_uint,
 	texture: c_uint,
 	hasDepthBuffer: bool,
-	renderBuffer: c_uint,
+	depthBuffer: c_uint,
 
-	pub fn init(self: *FrameBuffer, hasDepthBuffer: bool) void {
+	pub fn init(self: *FrameBuffer, hasDepthBuffer: bool, textureFilter: c_int, textureWrap: c_int) void {
 		self.* = FrameBuffer{
 			.frameBuffer = undefined,
 			.texture = undefined,
-			.renderBuffer = undefined,
+			.depthBuffer = undefined,
 			.hasDepthBuffer = hasDepthBuffer,
 		};
 		c.glGenFramebuffers(1, &self.frameBuffer);
+		c.glBindFramebuffer(c.GL_FRAMEBUFFER, self.frameBuffer);
 		if(hasDepthBuffer) {
-			c.glGenRenderbuffers(1, &self.renderBuffer);
+			c.glGenRenderbuffers(1, &self.depthBuffer);
+			c.glBindRenderbuffer(c.GL_RENDERBUFFER, self.depthBuffer);
+			c.glFramebufferRenderbuffer(c.GL_FRAMEBUFFER, c.GL_DEPTH_ATTACHMENT, c.GL_RENDERBUFFER, self.depthBuffer);
 		}
 		c.glGenTextures(1, &self.texture);
-	}
-
-	pub fn deinit(self: *FrameBuffer) void {
-		c.glDeleteFramebuffers(1, &self.frameBuffer);
-		if(self.hasDepthBuffer) {
-			c.glDeleteRenderbuffers(1, &self.renderBuffer);
-		}
-		c.glDeleteTextures(1, &self.texture);
-	}
-
-	pub fn updateSize(self: *FrameBuffer, width: u31, height: u31, textureFilter: c_int, textureWrap: c_int) void {
-		c.glBindFramebuffer(c.GL_FRAMEBUFFER, self.frameBuffer);
-		if(self.hasDepthBuffer) {
-			c.glBindRenderbuffer(c.GL_RENDERBUFFER, self.renderBuffer);
-			c.glRenderbufferStorage(c.GL_RENDERBUFFER, c.GL_DEPTH24_STENCIL8, width, height);
-			c.glFramebufferRenderbuffer(c.GL_FRAMEBUFFER, c.GL_DEPTH_STENCIL_ATTACHMENT, c.GL_RENDERBUFFER, self.renderBuffer);
-		}
-
 		c.glBindTexture(c.GL_TEXTURE_2D, self.texture);
-		c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, textureFilter);
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, textureFilter);
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, textureWrap);
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, textureWrap);
 		c.glFramebufferTexture2D(c.GL_FRAMEBUFFER, c.GL_COLOR_ATTACHMENT0, c.GL_TEXTURE_2D, self.texture, 0);
+
+		c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 	}
 
-	pub fn clear(_: FrameBuffer, clearColor: Color) void {
-		c.glClearColor(
-			@as(f32, @floatFromInt(clearColor.r))/255,
-			@as(f32, @floatFromInt(clearColor.g))/255,
-			@as(f32, @floatFromInt(clearColor.b))/255,
-			@as(f32, @floatFromInt(clearColor.a))/255,
-		);
-		c.glClear(c.GL_COLOR_BUFFER_BIT | c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT);
+	pub fn deinit(self: *FrameBuffer) void {
+		c.glDeleteFramebuffers(1, &self.frameBuffer);
+		if(self.hasDepthBuffer) {
+			c.glDeleteRenderbuffers(1, &self.depthBuffer);
+		}
+		c.glDeleteTextures(1, &self.texture);
+	}
+
+	pub fn updateSize(self: *FrameBuffer, width: u31, height: u31, internalFormat: c_int) void {
+		c.glBindFramebuffer(c.GL_FRAMEBUFFER, self.frameBuffer);
+		if(self.hasDepthBuffer) {
+			c.glBindRenderbuffer(c.GL_RENDERBUFFER, self.depthBuffer);
+			c.glRenderbufferStorage(c.GL_RENDERBUFFER, c.GL_DEPTH_COMPONENT32F, width, height);
+		}
+
+		c.glBindTexture(c.GL_TEXTURE_2D, self.texture);
+		c.glTexImage2D(c.GL_TEXTURE_2D, 0, internalFormat, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+	}
+
+	pub fn clear(_: FrameBuffer, clearColor: Vec4f) void {
+		c.glClearColor(clearColor[0], clearColor[1], clearColor[2], clearColor[3]);
+		c.glClear(c.GL_COLOR_BUFFER_BIT | c.GL_DEPTH_BUFFER_BIT);
 	}
 
 	pub fn validate(self: *FrameBuffer) bool {
@@ -1325,11 +1326,16 @@ pub const FrameBuffer = struct {
 		return true;
 	}
 
+	pub fn bindTexture(self: *FrameBuffer, target: c_uint) void {
+		c.glActiveTexture(target);
+		c.glBindTexture(c.GL_TEXTURE_2D, self.texture);
+	}
+
 	pub fn bind(self: *FrameBuffer) void {
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, self.frameBuffer);
 	}
 
-	pub fn unbind() void {
+	pub fn unbind(_: *FrameBuffer) void {
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 	}
 };

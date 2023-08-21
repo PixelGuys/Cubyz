@@ -24,5 +24,4 @@ vec4 calcFog(vec3 pos, vec4 color, Fog fog) {
 
 void main() {
 	// TODO: Reconstruct position from the depth value. fragColor = calcFog(texture(position, texCoords).xyz, texture(color, texCoords)*vec4(4, 4, 4, 1), fog);
-	fragColor.rgb /= 4;
 }

@@ -17,6 +17,6 @@ vec3 linearSample(ivec2 start) {
 
 void main() {
 	vec3 bufferData = linearSample(ivec2(texCoords));
-	float bloomFactor = max(max(bufferData.x, max(bufferData.y, bufferData.z))*4 - 1.0, 0);
+	float bloomFactor = max(max(bufferData.x, max(bufferData.y, bufferData.z)) - 1.0, 0);
 	fragColor = vec4(bufferData*bloomFactor, 1);
 }

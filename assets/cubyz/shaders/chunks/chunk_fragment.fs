@@ -73,7 +73,6 @@ const vec3[6] normals = vec3[6](
 
 uniform Fog fog;
 uniform Fog waterFog; // TODO: Select fog from texture
-uniform bool renderedToItemTexture;
 
 vec4 calcFog(vec3 pos, vec4 color, Fog fog) {
 	float distance = length(pos);
@@ -216,9 +215,6 @@ void main() {
 
 	if (fog.activ) {
 		fragColor = calcFog(mvVertexPos, fragColor, fog);
-	}
-	if(!renderedToItemTexture) {
-		fragColor.rgb /= 4;
 	}
 	// TODO: Update the depth.
 }

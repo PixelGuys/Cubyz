@@ -130,10 +130,10 @@ pub const BaseItem = struct {
 				c.glEnable(c.GL_CULL_FACE);
 				defer if(cullFace == 0) c.glDisable(c.GL_CULL_FACE);
 
-				frameBuffer.init(false);
-				frameBuffer.updateSize(128, 128, c.GL_NEAREST, c.GL_REPEAT);
+				frameBuffer.init(false, c.GL_NEAREST, c.GL_REPEAT);
+				frameBuffer.updateSize(128, 128, c.GL_RGBA8);
 				frameBuffer.bind();
-				frameBuffer.clear(.{.r = 255, .g = 255, .b = 255, .a = 0});
+				frameBuffer.clear(.{1, 1, 1, 0});
 				self.texture = graphics.Texture{.textureID = frameBuffer.texture};
 				defer c.glDeleteFramebuffers(1, &frameBuffer.frameBuffer);
 
@@ -157,7 +157,6 @@ pub const BaseItem = struct {
 				faceData[2] = chunk.meshing.ChunkMesh.constructFaceData(block, chunk.Neighbors.dirPosZ, 1, 1, 1+1);
 				chunk.meshing.faceBuffer.bufferSubData(allocation.start, chunk.meshing.FaceData, &faceData);
 
-				c.glUniform1i(uniforms.renderedToItemTexture, 1);
 				c.glUniform3f(uniforms.modelPosition, -65.5 - 1.5, -92.631 - 1.5, -65.5 - 1.5);
 				c.glUniform1i(uniforms.visibilityMask, 0xff);
 				c.glUniform1i(uniforms.voxelSize, 1);
