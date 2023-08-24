@@ -576,7 +576,7 @@ pub const TextBuffer = struct {
 		buffer.setDirection(.ltr);
 		buffer.setScript(.common);
 		buffer.setLanguage(harfbuzz.Language.getDefault());
-		harfbuzz.hb_shape(TextRendering.harfbuzzFont.handle, buffer.handle, null, 0);
+		TextRendering.harfbuzzFont.shape(buffer, null);
 		const glyphInfos = buffer.getGlyphInfos();
 		const glyphPositions = buffer.getGlyphPositions().?;
 

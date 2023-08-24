@@ -1,5 +1,4 @@
 const std = @import("std");
-const freetype = @import("mach-freetype/build.zig");
 
 pub fn build(b: *std.build.Builder) !void {
 	// Standard target options allows the person running `zig build` to choose
@@ -13,11 +12,11 @@ pub fn build(b: *std.build.Builder) !void {
 	const optimize = b.standardOptimizeOption(.{});
 	const exe = b.addExecutable(.{
 		.name = "Cubyzig",
-		.root_source_file = .{ .path = "src/main.zig" },
+		.root_source_file = .{.path = "src/main.zig"},
 		.target = target,
 		.optimize = optimize,
 	});
-	exe.addIncludePath("include");
+	exe.addIncludePath(.{.path = "include"});
 	exe.linkLibC();
 	{ // compile glfw from source:
 		if(target.getOsTag() == .windows) {
@@ -44,10 +43,10 @@ pub fn build(b: *std.build.Builder) !void {
 		}
 	}
 	{ // compile portaudio from source:
-		exe.addIncludePath("portaudio/include");
-		exe.addIncludePath("portaudio/src/common");
+		exe.addIncludePath(.{.path = "portaudio/include"});
+		exe.addIncludePath(.{.path = "portaudio/src/common"});
 		exe.addCSourceFiles(&[_][]const u8 {
-		    "portaudio/src/common/pa_allocation.c",
+			"portaudio/src/common/pa_allocation.c",
 			"portaudio/src/common/pa_converters.c",
 			"portaudio/src/common/pa_cpuload.c",
 			"portaudio/src/common/pa_debugprint.c",
@@ -61,7 +60,7 @@ pub fn build(b: *std.build.Builder) !void {
 		if(target.getOsTag() == .windows) {
 			// windows:
 			exe.addCSourceFiles(&[_][]const u8 {"portaudio/src/os/win/pa_win_coinitialize.c", "portaudio/src/os/win/pa_win_hostapis.c", "portaudio/src/os/win/pa_win_util.c", "portaudio/src/os/win/pa_win_waveformat.c", "portaudio/src/os/win/pa_win_wdmks_utils.c", "portaudio/src/os/win/pa_x86_plain_converters.c", }, &[_][]const u8{"-g", "-O3", "-DPA_USE_WASAPI"});
-			exe.addIncludePath("portaudio/src/os/win");
+			exe.addIncludePath(.{.path = "portaudio/src/os/win"});
 			exe.linkSystemLibrary("ole32");
 			exe.linkSystemLibrary("winmm");
 			exe.linkSystemLibrary("uuid");
@@ -70,7 +69,7 @@ pub fn build(b: *std.build.Builder) !void {
 		} else if(target.getOsTag() == .linux) {
 			// unix:
 			exe.addCSourceFiles(&[_][]const u8 {"portaudio/src/os/unix/pa_unix_hostapis.c", "portaudio/src/os/unix/pa_unix_util.c"}, &[_][]const u8{"-g", "-O3", "-DPA_USE_ALSA"});
-			exe.addIncludePath("portaudio/src/os/unix");
+			exe.addIncludePath(.{.path = "portaudio/src/os/unix"});
 			// ALSA:
 			exe.addCSourceFiles(&[_][]const u8 {"portaudio/src/hostapi/alsa/pa_linux_alsa.c"}, &[_][]const u8{"-g", "-O3"});
 			exe.linkSystemLibrary("asound");
@@ -81,11 +80,18 @@ pub fn build(b: *std.build.Builder) !void {
 	exe.addCSourceFiles(&[_][]const u8{"lib/glad.c", "lib/stb_image.c", "lib/stb_image_write.c", "lib/stb_vorbis.c"}, &[_][]const u8{"-g", "-O3"});
 	exe.addAnonymousModule("gui", .{.source_file = .{.path = "src/gui/gui.zig"}});
 	exe.addAnonymousModule("server", .{.source_file = .{.path = "src/server/server.zig"}});
-	const harfbuzzModule = freetype.harfbuzzModule(b);
-	const freetypeModule = harfbuzzModule.dependencies.get("freetype").?;
-	exe.addModule("harfbuzz", harfbuzzModule);
-	exe.addModule("freetype", freetypeModule);
-	freetype.link(b, exe, .{ .harfbuzz = .{} });
+	
+	@import("mach_freetype").brotli_import_path = "mach_freetype.freetype.brotli";
+	@import("mach_freetype").freetype_import_path = "mach_freetype.freetype";
+	const mach_freetype_dep = b.dependency("mach_freetype", .{
+		.target = target,
+		.optimize = optimize,
+	});
+	exe.addModule("freetype", mach_freetype_dep.module("mach-freetype"));
+	exe.addModule("harfbuzz", mach_freetype_dep.module("mach-harfbuzz"));
+	@import("mach_freetype").linkFreetype(b, optimize, target, exe);
+	@import("mach_freetype").linkHarfbuzz(b, optimize, target, exe);
+
 	//exe.strip = true; // Improves compile-time
 	//exe.sanitize_thread = true;
 	b.installArtifact(exe);

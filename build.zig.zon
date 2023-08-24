@@ -1,0 +1,22 @@
+.{
+	.name = "Cubyzig",
+	.version = "0.0.0",
+	.dependencies = .{
+		.mach_freetype = .{
+			.url = "https://pkg.machengine.org/mach-freetype/de94b3a5fa14b717936a8881c7e7966d544bf4d0.tar.gz",
+			.hash = "1220b1c6027993ca41ea5a3a62b16de2f6689092205c39508af4de3e9cfec0bb7607",
+		},
+		.freetype = .{
+			.url = "https://pkg.machengine.org/freetype/835d7f07c605eec021911c671f0dad2b25ee5a30.tar.gz",
+			.hash = "122093dd7a4c91fcad6d44601f879a2d7d66700cdf8a2053e4ffdbfb26cd1b597a18",
+		},
+		.brotli = .{
+			.url = "https://pkg.machengine.org/brotli/b574788e32438f543ee552beec8bc70b05a465c2.tar.gz",
+			.hash = "122054602e178b287f13ed7b37c4bd54eb50af88dc2f9d9ba9e3c084fb4175f298a1",
+		},
+		.harfbuzz = .{
+			.url = "https://pkg.machengine.org/harfbuzz/616fc99a8408309da7ce07aa43de2eb634b0bc19.tar.gz",
+			.hash = "12206659398359bd48edbdcc5cf610ccff2b7af04a93acc946197a444bbe6ad34061",
+		},
+	},
+}
