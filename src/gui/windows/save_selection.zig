@@ -24,9 +24,7 @@ const padding: f32 = 8;
 const width: f32 = 128;
 var buttonNameArena: std.heap.ArenaAllocator = undefined;
 
-fn openWorld(namePtr: usize) void {
-	const nullTerminatedName: [*:0]const u8 = @ptrFromInt(namePtr);
-	const name = std.mem.span(nullTerminatedName);
+pub fn openWorld(name: []const u8) void {
 	std.log.info("TODO: Open world {s}", .{name});
 	main.server.thread = std.Thread.spawn(.{}, main.server.start, .{name}) catch |err| {
 		std.log.err("Encountered error while starting server thread: {s}", .{@errorName(err)});
@@ -58,6 +56,12 @@ fn openWorld(namePtr: usize) void {
 //	try {
 //		GameLauncher.logic.loadWorld(new ClientWorld("127.0.0.1", new UDPConnectionManager(Constants.DEFAULT_PORT+1, false))); // TODO: Don't go over the local network in singleplayer.
 //	} catch(InterruptedException e) {}
+}
+
+fn openWorldWrap(namePtr: usize) void { // TODO: Improve this situation. Maybe it makes sense to always use 2 arguments in the Callback.
+	const nullTerminatedName: [*:0]const u8 = @ptrFromInt(namePtr);
+	const name = std.mem.span(nullTerminatedName);
+	openWorld(name);
 }
 
 fn flawedDeleteWorld(name: []const u8) !void {
@@ -128,7 +132,7 @@ pub fn onOpen() Allocator.Error!void {
 			const name = try buttonNameArena.allocator().dupeZ(u8, entry.name); // Null terminate, so we can later recover the string from just the pointer.
 			const buttonName = try std.fmt.allocPrint(buttonNameArena.allocator(), "Play {s}", .{decodedName});
 			
-			try row.add(try Button.initText(.{0, 0}, 128, buttonName, .{.callback = &openWorld, .arg = @intFromPtr(name.ptr)}));
+			try row.add(try Button.initText(.{0, 0}, 128, buttonName, .{.callback = &openWorldWrap, .arg = @intFromPtr(name.ptr)}));
 			try row.add(try Button.initText(.{8, 0}, 64, "delete", .{.callback = &deleteWorld, .arg = @intFromPtr(name.ptr)}));
 			row.finish(.{0, 0}, .center);
 			try list.add(row);

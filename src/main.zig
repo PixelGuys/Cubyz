@@ -718,6 +718,11 @@ pub fn main() !void {
 	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
 	var lastTime = std.time.nanoTimestamp();
 
+	if(settings.developerAutoEnterWorld.len != 0) {
+		// Speed up the dev process by entering the world directly.
+		gui.windowlist.save_selection.openWorld(settings.developerAutoEnterWorld);
+	}
+
 	while(c.glfwWindowShouldClose(Window.window) == 0) {
 		{ // Check opengl errors:
 			const err = c.glGetError();
