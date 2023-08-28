@@ -28,7 +28,7 @@ const Mat4f = vec.Mat4f;
 
 /// The number of milliseconds after which no more chunk meshes are created. This allows the game to run smoother on movement.
 const maximumMeshTime = 12;
-const zNear = 0.1; // TODO: Handle closer surfaces in a special function.
+const zNear = 1e-10;
 
 var fogShader: graphics.Shader = undefined;
 var fogUniforms: struct {
@@ -131,6 +131,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	_ = world;
 	worldFrameBuffer.bind();
 	gpu_performance_measuring.startQuery(.clear);
+	c.glClearDepth(0.0);
 	worldFrameBuffer.clear(Vec4f{skyColor[0], skyColor[1], skyColor[2], 1});
 	gpu_performance_measuring.stopQuery();
 	game.camera.updateViewMatrix();
@@ -203,7 +204,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glUniform1f(chunk.meshing.transparentUniforms.@"waterFog.density", waterFog.density);
 
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_SRC1_COLOR);
-	c.glDepthFunc(c.GL_LEQUAL);
+	c.glDepthFunc(c.GL_GEQUAL);
 	c.glDepthMask(c.GL_FALSE);
 	{
 		var i: usize = meshes.len;
@@ -214,7 +215,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 		}
 	}
 	c.glDepthMask(c.GL_TRUE);
-	c.glDepthFunc(c.GL_LESS);
+	c.glDepthFunc(c.GL_GREATER);
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 	gpu_performance_measuring.stopQuery();
 //		NormalChunkMesh.bindTransparentShader(ambientLight, directionalLight.getDirection(), time);
