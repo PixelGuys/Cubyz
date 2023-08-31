@@ -750,9 +750,11 @@ pub fn main() !void {
 		try renderer.render(game.Player.getPosBlocking());
 
 		{ // Render the GUI
+			gui.windowlist.gpu_performance_measuring.startQuery(.gui);
 			c.glDisable(c.GL_CULL_FACE);
 			c.glDisable(c.GL_DEPTH_TEST);
 			try gui.updateAndRenderGui();
+			gui.windowlist.gpu_performance_measuring.stopQuery();
 		}
 	}
 	if(game.world) |world| {

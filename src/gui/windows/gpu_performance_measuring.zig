@@ -18,8 +18,13 @@ pub const Samples = enum(u8) {
 	chunk_rendering,
 	entity_rendering,
 	transparent_rendering,
-	bloom,
+	normalization,
+	bloom_extract_downsample,
+	bloom_first_pass,
+	bloom_second_pass,
+	bloom_upscale,
 	final_copy,
+	gui,
 };
 
 const names = [_][]const u8 {
@@ -28,30 +33,39 @@ const names = [_][]const u8 {
 	"Chunk Rendering",
 	"Entity Rendering",
 	"Transparent Rendering",
-	"Bloom",
+	"Normalization",
+	"Bloom - Extract color and downsample",
+	"Bloom - First Pass",
+	"Bloom - Second Pass",
+	"Bloom - Upscale",
 	"Copy to screen",
+	"GUI Rendering",
 };
 
-var queryObjects: [@typeInfo(Samples).Enum.fields.len]c_uint = undefined;
+const buffers = 4;
+var curBuffer: u2 = 0;
+var queryObjects: [buffers][@typeInfo(Samples).Enum.fields.len]c_uint = undefined;
 
 var activeSample: ?Samples = null;
 
 pub fn init() !void {
-	c.glGenQueries(queryObjects.len, &queryObjects);
-	for(0..queryObjects.len) |i| { // Start them to get an initial value.
-		c.glBeginQuery(c.GL_TIME_ELAPSED, queryObjects[i]);
-		c.glEndQuery(c.GL_TIME_ELAPSED);
+	for(&queryObjects) |*buf| {
+		c.glGenQueries(buf.len, buf);
+		for(buf) |queryObject| { // Start them to get an initial value.
+			c.glBeginQuery(c.GL_TIME_ELAPSED, queryObject);
+			c.glEndQuery(c.GL_TIME_ELAPSED);
+		}
 	}
 }
 
 pub fn deinit() void {
-	c.glDeleteQueries(queryObjects.len, &queryObjects);
+	c.glDeleteQueries(queryObjects.len*buffers, @ptrCast(&queryObjects));
 }
 
 pub fn startQuery(sample: Samples) void {
 	std.debug.assert(activeSample == null); // There can be at most one active measurement at a time.
 	activeSample = sample;
-	c.glBeginQuery(c.GL_TIME_ELAPSED, queryObjects[@intFromEnum(sample)]);
+	c.glBeginQuery(c.GL_TIME_ELAPSED, queryObjects[curBuffer][@intFromEnum(sample)]);
 }
 
 pub fn stopQuery() void {
@@ -61,7 +75,7 @@ pub fn stopQuery() void {
 }
 
 pub var window = GuiWindow {
-	.contentSize = Vec2f{128, 16},
+	.contentSize = Vec2f{256, 16},
 	.id = "gpu_performance_measuring",
 	.isHud = false,
 	.showTitleBar = false,
@@ -70,12 +84,13 @@ pub var window = GuiWindow {
 };
 
 fn flawedRender() !void {
+	curBuffer +%= 1;
 	draw.setColor(0xffffffff);
 	var sum: isize = 0;
 	var y: f32 = 8;
-	inline for(0..queryObjects.len) |i| {
+	inline for(0..queryObjects[curBuffer].len) |i| {
 		var result: i64 = undefined;
-		c.glGetQueryObjecti64v(queryObjects[i], c.GL_QUERY_RESULT, &result);
+		c.glGetQueryObjecti64v(queryObjects[curBuffer][i], c.GL_QUERY_RESULT, &result);
 		try draw.print("{s}: {} ns", .{names[i], result}, 0, y, 8, .left);
 		sum += result;
 		y += 8;

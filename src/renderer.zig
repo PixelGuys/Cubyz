@@ -263,11 +263,9 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 //			}
 //		}
 
-	gpu_performance_measuring.startQuery(.bloom);
 	if(settings.bloom) {
 		Bloom.render(lastWidth, lastHeight);
 	}
-	gpu_performance_measuring.stopQuery();
 	gpu_performance_measuring.startQuery(.final_copy);
 	worldFrameBuffer.unbind();
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
@@ -401,13 +399,20 @@ const Bloom = struct {
 			buffer2.updateSize(width/2, height/2, c.GL_RGB16F);
 			std.debug.assert(buffer2.validate());
 		}
+		gpu_performance_measuring.startQuery(.bloom_extract_downsample);
 		c.glDisable(c.GL_DEPTH_TEST);
 		c.glDisable(c.GL_CULL_FACE);
 
 		c.glViewport(0, 0, width/2, height/2);
 		extractImageDataAndDownsample();
+		gpu_performance_measuring.stopQuery();
+		gpu_performance_measuring.startQuery(.bloom_first_pass);
 		firstPass();
+		gpu_performance_measuring.stopQuery();
+		gpu_performance_measuring.startQuery(.bloom_second_pass);
 		secondPass();
+		gpu_performance_measuring.stopQuery();
+		gpu_performance_measuring.startQuery(.bloom_upscale);
 		c.glViewport(0, 0, width, height);
 		c.glBlendFunc(c.GL_ONE, c.GL_ONE);
 		upscale();
@@ -415,6 +420,7 @@ const Bloom = struct {
 		c.glEnable(c.GL_DEPTH_TEST);
 		c.glEnable(c.GL_CULL_FACE);
 		c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
+		gpu_performance_measuring.stopQuery();
 	}
 };
 

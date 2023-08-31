@@ -489,17 +489,6 @@ pub const meshing = struct {
 	pub const FaceData = extern struct {
 		position: u32,
 		blockAndModel: u32,
-
-		pub fn distance(self: FaceData, dx: i32, dy: i32, dz: i32) u32 {
-			const x: i32 = @intCast(self.position & 31);
-			const y: i32 = @intCast(self.position >> 5 & 31);
-			const z: i32 = @intCast(self.position >> 10 & 31);
-			const normal = self.position >> 20 & 7;
-			const fullDx = dx + x - Neighbors.relX[normal];
-			const fullDy = dy + y - Neighbors.relY[normal];
-			const fullDz = dz + z - Neighbors.relZ[normal];
-			return std.math.absCast(fullDx) + std.math.absCast(fullDy) + std.math.absCast(fullDz);
-		}
 	};
 
 	const PrimitiveMesh = struct {
@@ -508,6 +497,7 @@ pub const meshing = struct {
 		coreCount: u31 = 0,
 		neighborStart: [7]u31 = [_]u31{0} ** 7,
 		vertexCount: u31 = 0,
+		wasChanged: bool = false,
 
 		fn deinit(self: *PrimitiveMesh) void {
 			faceBuffer.free(self.bufferAllocation) catch unreachable;
@@ -554,6 +544,7 @@ pub const meshing = struct {
 			self.vertexCount = @intCast(6*self.faces.items.len);
 			try faceBuffer.realloc(&self.bufferAllocation, @intCast(8*self.faces.items.len));
 			faceBuffer.bufferSubData(self.bufferAllocation.start, FaceData, self.faces.items);
+			self.wasChanged = true;
 		}
 
 		fn addFace(self: *PrimitiveMesh, faceData: FaceData, fromNeighborChunk: ?u3) !void {
@@ -621,6 +612,41 @@ pub const meshing = struct {
 		const SortingData = struct {
 			index: u32,
 			distance: u32,
+			isBackFace: bool,
+
+			pub fn update(self: *SortingData, face: FaceData, chunkDx: i32, chunkDy: i32, chunkDz: i32) void {
+				const x: i32 = @intCast(face.position & 31);
+				const y: i32 = @intCast(face.position >> 5 & 31);
+				const z: i32 = @intCast(face.position >> 10 & 31);
+				const dx = x + chunkDx;
+				const dy = y + chunkDy;
+				const dz = z + chunkDz;
+				const normal = face.position >> 20 & 7;
+				switch(Neighbors.vectorComponent[normal]) {
+					.x => {
+						self.isBackFace = (dx < 0) == (Neighbors.relX[normal] < 0);
+						if(dx == 0) {
+							self.isBackFace = false;
+						}
+					},
+					.y => {
+						self.isBackFace = (dy < 0) == (Neighbors.relY[normal] < 0);
+						if(dy == 0) {
+							self.isBackFace = false;
+						}
+					},
+					.z => {
+						self.isBackFace = (dz < 0) == (Neighbors.relZ[normal] < 0);
+						if(dz == 0) {
+							self.isBackFace = false;
+						}
+					},
+				}
+				const fullDx = dx - Neighbors.relX[normal];
+				const fullDy = dy - Neighbors.relY[normal];
+				const fullDz = dz - Neighbors.relZ[normal];
+				self.distance = std.math.absCast(fullDx) + std.math.absCast(fullDy) + std.math.absCast(fullDz);
+			}
 		};
 		const BoundingRectToNeighborChunk = struct {
 			min: Vec3i = @splat(std.math.maxInt(i32)),
@@ -1030,7 +1056,7 @@ pub const meshing = struct {
 			}
 
 			var needsUpdate: bool = false;
-			if(self.currentSorting.len != self.transparentMesh.faces.items.len) {
+			if(self.transparentMesh.wasChanged) {
 				self.currentSorting = try main.globalAllocator.realloc(self.currentSorting, self.transparentMesh.faces.items.len);
 				self.currentSortingSwap = try main.globalAllocator.realloc(self.currentSortingSwap, self.transparentMesh.faces.items.len);
 
@@ -1058,11 +1084,23 @@ pub const meshing = struct {
 				// TODO: Could additionally filter back-faces to reduce work on the gpu side.
 
 				for(self.currentSorting) |*val| {
-					val.distance = self.transparentMesh.faces.items[val.index].distance(
+					val.update(
+						self.transparentMesh.faces.items[val.index],
 						updatePos[0],
 						updatePos[1],
 						updatePos[2],
 					);
+				}
+
+				// Sort by back vs front face:
+				{
+					var backFaceStart: usize = 0;
+					for(self.currentSorting) |*val| {
+						if(val.isBackFace) {
+							std.mem.swap(@TypeOf(val.*), val, &self.currentSorting[backFaceStart]);
+							backFaceStart += 1;
+						}
+					}
 				}
 
 				// Sort it using bucket sort:
