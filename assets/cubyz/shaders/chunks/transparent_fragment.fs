@@ -12,6 +12,8 @@ uniform vec3 ambientLight;
 uniform sampler2DArray texture_sampler;
 uniform sampler2DArray emissionSampler;
 
+layout(binding = 3) uniform sampler2D depthTexture;
+
 layout (location = 0, index = 0) out vec4 fragColor;
 layout (location = 0, index = 1) out vec4 blendColor;
 
@@ -59,6 +61,7 @@ const vec3[6] normals = vec3[6](
 	vec3(0, 0, -1)
 );
 
+uniform float nearPlane;
 
 uniform Fog fog;
 uniform Fog waterFog; // TODO: Select fog from texture
@@ -170,30 +173,92 @@ void main() {
 	float normalVariation = normalVariations[faceNormal];
 	float lod = getLod(ivec3(startPosition), faceNormal, direction, variance);
 	ivec2 textureCoords = getTextureCoords(ivec3(startPosition), faceNormal);
-	fragColor = mipMapSample(texture_sampler, textureCoords, textureIndex, lod)*vec4(ambientLight*normalVariation, 1);
+	float depthBufferValue = texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0).r;
+	float fogFactor = 1.0/32.0; // TODO: This should be configurable by the block.
+	float fogDistance;
+	{
+		float distCameraTerrain = nearPlane*fogFactor/depthBufferValue;
+		float distFromCamera = abs(mvVertexPos.z)*fogFactor;
+		float distFromTerrain = distFromCamera - distCameraTerrain;
+		if(distCameraTerrain < 10) { // Resolution range is sufficient.
+			fogDistance = distFromTerrain;
+		} else {
+			// Here we have a few options to deal with this. We could for example weaken the fog effect to fit the entire range.
+			// I decided to keep the fog strength close to the camera and far away, with a fog-free region in between.
+			// I decided to this because I want far away fog to work (e.g. a distant ocean) as well as close fog(e.g. the top surface of the water when the player is under it)
+			if(distFromTerrain > -5 && depthBufferValue != 0) {
+				fogDistance = distFromTerrain;
+			} else if(distFromCamera < 5) {
+				fogDistance = distFromCamera - 10;
+			} else {
+				fogDistance = -5;
+			}
+		}
 
-	if (fragColor.a == 1) discard;
-
-	if (fog.activ) {
-		// TODO: Underwater fog if possible.
 	}
-	fragColor.rgb *= fragColor.a;
-	blendColor.rgb = unpackColor(textureData[blockType].absorption);
+	/*if(depthBufferValue == 0) {
+		fogDistance = abs(mvVertexPos.z);
+	} else {
+		fogDistance = abs(mvVertexPos.z) - nearPlane/depthBufferValue;
+	}
+	fogDistance /= 16.0; // TODO: This should be configurable by the block.*/
+	bool opaqueFrontFace = false;
+	bool emptyBackFace = false;
+	//fogDistance = min(5, max(-5, fogDistance));
+	//if(fogDistance > 0) fogDistance -= 10;
+	if(gl_FrontFacing) {
+		fragColor = mipMapSample(texture_sampler, textureCoords, textureIndex, lod)*vec4(ambientLight*normalVariation, 1);
 
-	// Fake reflection:
-	// TODO: Also allow this for opaque pixels.
-	// TODO: Change this when it rains.
-	// TODO: Normal mapping.
-	// TODO: Allow textures to contribute to this term.
-	fragColor.rgb += (textureData[blockType].reflectivity/2*vec3(snoise(normalize(reflect(direction, normals[faceNormal])))) + vec3(textureData[blockType].reflectivity))*ambientLight*normalVariation;
-	fragColor.rgb += mipMapSample(emissionSampler, textureCoords, textureIndex, lod).rgb;
-	blendColor.rgb *= 1 - fragColor.a;
-	fragColor.a = 1;
+		if (fragColor.a == 1) discard;
 
-	if (fog.activ) {
-		fragColor = calcFog(mvVertexPos, fragColor, fog);
-		blendColor.rgb *= fragColor.a;
+		if (fog.activ) {
+			// TODO: Underwater fog if possible.
+		}
+		fragColor.rgb *= fragColor.a;
+		blendColor.rgb = unpackColor(textureData[blockType].absorption);
+
+		// Fake reflection:
+		// TODO: Also allow this for opaque pixels.
+		// TODO: Change this when it rains.
+		// TODO: Normal mapping.
+		// TODO: Allow textures to contribute to this term.
+		fragColor.rgb += (textureData[blockType].reflectivity/2*vec3(snoise(normalize(reflect(direction, normals[faceNormal])))) + vec3(textureData[blockType].reflectivity))*ambientLight*normalVariation;
+		fragColor.rgb += mipMapSample(emissionSampler, textureCoords, textureIndex, lod).rgb;
+		blendColor.rgb *= 1 - fragColor.a;
 		fragColor.a = 1;
+
+		if (fog.activ) {
+			fragColor = calcFog(mvVertexPos, fragColor, fog);
+			blendColor.rgb *= fragColor.a;
+			fragColor.a = 1;
+		}
+
+		// TODO: Consider the case that the terrain is too far away, which would case infinity/nan.
+		float fogFactor = exp(fogDistance);
+		fragColor = vec4(0.5, 1.0, 0.0, 1);
+		fragColor.a = 1.0/fogFactor;
+		fragColor.rgb *= fragColor.a;
+		if(opaqueFrontFace) {
+			blendColor.rgb = vec3(0);
+		} else {
+			fragColor.rgb -= vec3(0.5, 1.0, 0.0);
+			blendColor.rgb = vec3(1);
+		}
+		//blendColor.rgb = vec3(0);
+		//fragColor = vec4(1, 1, 1, 1);
+	} else {
+		if(emptyBackFace) {
+			fragColor = vec4(0, 0, 0, 1);
+		} else {
+			float fogFactor = exp(fogDistance);
+			fragColor.a = fogFactor;
+			fragColor.rgb -= vec3(0.5, 1.0, 0.0);
+			fragColor.rgb += fogFactor*vec3(0.5, 1.0, 0.0);
+		}
+		blendColor.rgb = vec3(1);
+
+		
+		//blendColor.rgb = vec3(0);
+		//fragColor = vec4(1, 0, 0, 1);
 	}
-	// TODO: Update the depth.
 }

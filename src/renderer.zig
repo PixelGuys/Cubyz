@@ -28,7 +28,7 @@ const Mat4f = vec.Mat4f;
 
 /// The number of milliseconds after which no more chunk meshes are created. This allows the game to run smoother on movement.
 const maximumMeshTime = 12;
-const zNear = 1e-10;
+pub const zNear = 1e-10;
 
 var fogShader: graphics.Shader = undefined;
 var fogUniforms: struct {
@@ -196,6 +196,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.stopQuery();
 
 	// Render transparent chunk meshes:
+	worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE3);
 
 	gpu_performance_measuring.startQuery(.transparent_rendering);
 	chunk.meshing.bindTransparentShaderAndUniforms(game.projectionMatrix, ambientLight, time);
@@ -203,9 +204,11 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glUniform3fv(chunk.meshing.transparentUniforms.@"waterFog.color", 1, @ptrCast(&waterFog.color));
 	c.glUniform1f(chunk.meshing.transparentUniforms.@"waterFog.density", waterFog.density);
 
-	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_SRC1_COLOR);
+	c.glBlendEquationSeparate(c.GL_FUNC_ADD, c.GL_FUNC_ADD);
+	c.glBlendFuncSeparate(c.GL_DST_ALPHA, c.GL_SRC1_COLOR, c.GL_DST_ALPHA, c.GL_ZERO);
 	c.glDepthFunc(c.GL_GEQUAL);
 	c.glDepthMask(c.GL_FALSE);
+	c.glDisable(c.GL_CULL_FACE);
 	{
 		var i: usize = meshes.len;
 		while(true) {
@@ -214,6 +217,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 			try meshes[i].renderTransparent(playerPos);
 		}
 	}
+	c.glEnable(c.GL_CULL_FACE);
 	c.glDepthMask(c.GL_TRUE);
 	c.glDepthFunc(c.GL_GREATER);
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);

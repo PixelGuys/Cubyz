@@ -404,6 +404,7 @@ pub const meshing = struct {
 		time: c_int,
 		visibilityMask: c_int,
 		voxelSize: c_int,
+		nearPlane: c_int,
 	};
 	pub var uniforms: UniformStruct = undefined;
 	pub var transparentUniforms: UniformStruct = undefined;
@@ -462,6 +463,8 @@ pub const meshing = struct {
 
 		c.glUniform1i(uniforms.time, @as(u31, @truncate(time)));
 
+		c.glUniform1f(uniforms.nearPlane, renderer.zNear);
+
 		c.glBindVertexArray(vao);
 	}
 
@@ -482,6 +485,8 @@ pub const meshing = struct {
 		c.glUniform3f(transparentUniforms.ambientLight, ambient[0], ambient[1], ambient[2]);
 
 		c.glUniform1i(transparentUniforms.time, @as(u31, @truncate(time)));
+
+		c.glUniform1f(transparentUniforms.nearPlane, renderer.zNear);
 
 		c.glBindVertexArray(vao);
 	}
@@ -906,7 +911,7 @@ pub const meshing = struct {
 			};
 		}
 
-		pub fn uploadDataAndFinishNeighbors(self: *ChunkMesh) !void {
+		pub fn uploadDataAndFinishNeighbors(self: *ChunkMesh) !void { // TODO: The way neighboring chunks are handled doesn't work well with transparency.
 			std.debug.assert(!self.mutex.tryLock()); // The mutex should be locked when calling this function.
 			const chunk = self.chunk.load(.Monotonic) orelse return; // In the mean-time the mesh was discarded and recreated and all the data was lost.
 			self.opaqueMesh.resetToCore();

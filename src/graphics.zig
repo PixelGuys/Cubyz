@@ -1264,22 +1264,26 @@ pub const LargeBuffer = struct {
 pub const FrameBuffer = struct {
 	frameBuffer: c_uint,
 	texture: c_uint,
-	hasDepthBuffer: bool,
-	depthBuffer: c_uint,
+	hasDepthTexture: bool,
+	depthTexture: c_uint,
 
-	pub fn init(self: *FrameBuffer, hasDepthBuffer: bool, textureFilter: c_int, textureWrap: c_int) void {
+	pub fn init(self: *FrameBuffer, hasDepthTexture: bool, textureFilter: c_int, textureWrap: c_int) void {
 		self.* = FrameBuffer{
 			.frameBuffer = undefined,
 			.texture = undefined,
-			.depthBuffer = undefined,
-			.hasDepthBuffer = hasDepthBuffer,
+			.depthTexture = undefined,
+			.hasDepthTexture = hasDepthTexture,
 		};
 		c.glGenFramebuffers(1, &self.frameBuffer);
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, self.frameBuffer);
-		if(hasDepthBuffer) {
-			c.glGenRenderbuffers(1, &self.depthBuffer);
-			c.glBindRenderbuffer(c.GL_RENDERBUFFER, self.depthBuffer);
-			c.glFramebufferRenderbuffer(c.GL_FRAMEBUFFER, c.GL_DEPTH_ATTACHMENT, c.GL_RENDERBUFFER, self.depthBuffer);
+		if(hasDepthTexture) {
+			c.glGenTextures(1, &self.depthTexture);
+			c.glBindTexture(c.GL_TEXTURE_2D, self.depthTexture);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, textureFilter);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, textureFilter);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, textureWrap);
+			c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, textureWrap);
+			c.glFramebufferTexture2D(c.GL_FRAMEBUFFER, c.GL_DEPTH_ATTACHMENT, c.GL_TEXTURE_2D, self.depthTexture, 0);
 		}
 		c.glGenTextures(1, &self.texture);
 		c.glBindTexture(c.GL_TEXTURE_2D, self.texture);
@@ -1294,17 +1298,17 @@ pub const FrameBuffer = struct {
 
 	pub fn deinit(self: *FrameBuffer) void {
 		c.glDeleteFramebuffers(1, &self.frameBuffer);
-		if(self.hasDepthBuffer) {
-			c.glDeleteRenderbuffers(1, &self.depthBuffer);
+		if(self.hasDepthTexture) {
+			c.glDeleteRenderbuffers(1, &self.depthTexture);
 		}
 		c.glDeleteTextures(1, &self.texture);
 	}
 
 	pub fn updateSize(self: *FrameBuffer, width: u31, height: u31, internalFormat: c_int) void {
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, self.frameBuffer);
-		if(self.hasDepthBuffer) {
-			c.glBindRenderbuffer(c.GL_RENDERBUFFER, self.depthBuffer);
-			c.glRenderbufferStorage(c.GL_RENDERBUFFER, c.GL_DEPTH_COMPONENT32F, width, height);
+		if(self.hasDepthTexture) {
+			c.glBindTexture(c.GL_TEXTURE_2D, self.depthTexture);
+			c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_DEPTH_COMPONENT32F, width, height, 0, c.GL_DEPTH_COMPONENT, c.GL_FLOAT, null);
 		}
 
 		c.glBindTexture(c.GL_TEXTURE_2D, self.texture);
@@ -1329,6 +1333,12 @@ pub const FrameBuffer = struct {
 	pub fn bindTexture(self: *FrameBuffer, target: c_uint) void {
 		c.glActiveTexture(target);
 		c.glBindTexture(c.GL_TEXTURE_2D, self.texture);
+	}
+
+	pub fn bindDepthTexture(self: *FrameBuffer, target: c_uint) void {
+		std.debug.assert(self.hasDepthTexture);
+		c.glActiveTexture(target);
+		c.glBindTexture(c.GL_TEXTURE_2D, self.depthTexture);
 	}
 
 	pub fn bind(self: *FrameBuffer) void {

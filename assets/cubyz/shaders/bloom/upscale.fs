@@ -7,5 +7,5 @@ in vec2 texCoords;
 layout(binding = 3) uniform sampler2D color;
 
 void main() {
-	fragColor = vec4(texture(color, texCoords).rgb, 1);
+	fragColor = vec4(texture(color, texCoords).rgb, 0);
 }
