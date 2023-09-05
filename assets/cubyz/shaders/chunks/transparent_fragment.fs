@@ -4,6 +4,7 @@ in vec3 mvVertexPos;
 flat in int blockType;
 flat in int faceNormal;
 flat in int modelIndex;
+flat in int isBackFace;
 in vec3 startPosition;
 in vec3 direction;
 
@@ -206,7 +207,7 @@ void main() {
 	bool emptyBackFace = false;
 	//fogDistance = min(5, max(-5, fogDistance));
 	//if(fogDistance > 0) fogDistance -= 10;
-	if(gl_FrontFacing) {
+	if(isBackFace == 0) {
 		fragColor = mipMapSample(texture_sampler, textureCoords, textureIndex, lod)*vec4(ambientLight*normalVariation, 1);
 
 		if (fragColor.a == 1) discard;

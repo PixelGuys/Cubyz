@@ -208,7 +208,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glBlendFuncSeparate(c.GL_DST_ALPHA, c.GL_SRC1_COLOR, c.GL_DST_ALPHA, c.GL_ZERO);
 	c.glDepthFunc(c.GL_GEQUAL);
 	c.glDepthMask(c.GL_FALSE);
-	c.glDisable(c.GL_CULL_FACE);
 	{
 		var i: usize = meshes.len;
 		while(true) {
@@ -217,7 +216,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 			try meshes[i].renderTransparent(playerPos);
 		}
 	}
-	c.glEnable(c.GL_CULL_FACE);
 	c.glDepthMask(c.GL_TRUE);
 	c.glDepthFunc(c.GL_GREATER);
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);

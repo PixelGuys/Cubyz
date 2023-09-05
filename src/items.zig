@@ -152,9 +152,10 @@ pub const BaseItem = struct {
 				var allocation: graphics.LargeBuffer.Allocation = .{.start = 0, .len = 0};
 				try chunk.meshing.faceBuffer.realloc(&allocation, 3*@sizeOf(chunk.meshing.FaceData));
 				var faceData: [3]chunk.meshing.FaceData = undefined;
-				faceData[0] = chunk.meshing.ChunkMesh.constructFaceData(block, chunk.Neighbors.dirPosX, 1+1, 1, 1);
-				faceData[1] = chunk.meshing.ChunkMesh.constructFaceData(block, chunk.Neighbors.dirUp, 1, 1+1, 1);
-				faceData[2] = chunk.meshing.ChunkMesh.constructFaceData(block, chunk.Neighbors.dirPosZ, 1, 1, 1+1);
+				faceData[0] = chunk.meshing.ChunkMesh.constructFaceData(block, chunk.Neighbors.dirPosX, 1+1, 1, 1, false);
+				faceData[1] = chunk.meshing.ChunkMesh.constructFaceData(block, chunk.Neighbors.dirUp, 1, 1+1, 1, false);
+				faceData[2] = chunk.meshing.ChunkMesh.constructFaceData(block, chunk.Neighbors.dirPosZ, 1, 1, 1+1, false);
+				// TODO: Add back faces for foggy blocks.
 				chunk.meshing.faceBuffer.bufferSubData(allocation.start, chunk.meshing.FaceData, &faceData);
 
 				c.glUniform3f(uniforms.modelPosition, -65.5 - 1.5, -92.631 - 1.5, -65.5 - 1.5);

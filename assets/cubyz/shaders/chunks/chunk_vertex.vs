@@ -4,6 +4,7 @@ out vec3 mvVertexPos;
 flat out int blockType;
 flat out int modelIndex;
 flat out int faceNormal;
+flat out int isBackFace;
 // For raymarching:
 out vec3 startPosition;
 out vec3 direction;
@@ -123,6 +124,7 @@ void main() {
 	int vertexID = gl_VertexID%4;
 	int encodedPositionAndNormalsAndPermutation = faceData[faceID].encodedPositionAndNormalsAndPermutation;
 	int blockAndModel = faceData[faceID].blockAndModel;
+	isBackFace = encodedPositionAndNormalsAndPermutation>>19 & 1;
 	int oldNormal = (encodedPositionAndNormalsAndPermutation >> 20) & 7;
 	mat3 permutationMatrix = permutationMatrices[(encodedPositionAndNormalsAndPermutation >> 23) & 7];
 	vec3 mirrorVector = mirrorVectors[(encodedPositionAndNormalsAndPermutation >> 26) & 7];

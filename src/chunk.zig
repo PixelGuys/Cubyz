@@ -755,9 +755,12 @@ pub const meshing = struct {
 							const neighborBlock = (&chunk.blocks)[getIndex(x2, y2, z2)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
 							if(canBeSeenThroughOtherBlock(block, neighborBlock, i)) {
 								if(block.transparent()) {
-									try self.transparentMesh.append(constructFaceData(block, i, @intCast(x2), @intCast(y2), @intCast(z2)));
+									if(block.hasBackFace()) {
+										try self.transparentMesh.append(constructFaceData(block, i ^ 1, x, y, z, true));
+									}
+									try self.transparentMesh.append(constructFaceData(block, i, @intCast(x2), @intCast(y2), @intCast(z2), false));
 								} else {
-									try self.opaqueMesh.append(constructFaceData(block, i, @intCast(x2), @intCast(y2), @intCast(z2)));
+									try self.opaqueMesh.append(constructFaceData(block, i, @intCast(x2), @intCast(y2), @intCast(z2), false));
 								}
 							}
 						}
@@ -845,11 +848,11 @@ pub const meshing = struct {
 				ny &= chunkMask;
 				nz &= chunkMask;
 				const neighborBlock = neighborMesh.chunk.load(.Monotonic).?.blocks[getIndex(nx, ny, nz)];
-				{
+				{ // TODO: Update blocks with transparent backfaces correctly.
 					{ // The face of the changed block
 						const newVisibility = canBeSeenThroughOtherBlock(newBlock, neighborBlock, neighbor);
-						const newFaceData = constructFaceData(newBlock, neighbor, @intCast(nx), @intCast(ny), @intCast(nz));
-						const oldFaceData = constructFaceData(oldBlock, neighbor, @intCast(nx), @intCast(ny), @intCast(nz));
+						const newFaceData = constructFaceData(newBlock, neighbor, @intCast(nx), @intCast(ny), @intCast(nz), false);
+						const oldFaceData = constructFaceData(oldBlock, neighbor, @intCast(nx), @intCast(ny), @intCast(nz), false);
 						if(canBeSeenThroughOtherBlock(oldBlock, neighborBlock, neighbor) != newVisibility) {
 							if(newVisibility) { // Adding the face
 								if(neighborMesh == self) {
@@ -874,8 +877,8 @@ pub const meshing = struct {
 					}
 					{ // The face of the neighbor block
 						const newVisibility = canBeSeenThroughOtherBlock(neighborBlock, newBlock, neighbor ^ 1);
-						const newFaceData = constructFaceData(neighborBlock, neighbor ^ 1, @intCast(x), @intCast(y), @intCast(z));
-						const oldFaceData = constructFaceData(neighborBlock, neighbor ^ 1, @intCast(x), @intCast(y), @intCast(z));
+						const newFaceData = constructFaceData(neighborBlock, neighbor ^ 1, @intCast(x), @intCast(y), @intCast(z), false);
+						const oldFaceData = constructFaceData(neighborBlock, neighbor ^ 1, @intCast(x), @intCast(y), @intCast(z), false);
 						if(canBeSeenThroughOtherBlock(neighborBlock, oldBlock, neighbor ^ 1) != newVisibility) {
 							if(newVisibility) { // Adding the face
 								if(neighborMesh == self) {
@@ -903,10 +906,10 @@ pub const meshing = struct {
 			try self.transparentMesh.uploadData();
 		}
 
-		pub inline fn constructFaceData(block: Block, normal: u32, x: u32, y: u32, z: u32) FaceData {
+		pub inline fn constructFaceData(block: Block, normal: u32, x: u32, y: u32, z: u32, comptime backFace: bool) FaceData {
 			const model = blocks.meshes.model(block);
 			return FaceData {
-				.position = @as(u32, x) | @as(u32, y)<<5 | @as(u32, z)<<10 | normal<<20 | @as(u32, model.permutation.toInt())<<23,
+				.position = @as(u32, x) | @as(u32, y)<<5 | @as(u32, z)<<10 | normal<<20 | @as(u32, model.permutation.toInt())<<23 | (if(backFace) 1 << 19 else 0),
 				.blockAndModel = block.typ | @as(u32, model.modelIndex)<<16,
 			};
 		}
@@ -957,16 +960,22 @@ pub const meshing = struct {
 								var otherBlock = (&neighborMesh.chunk.load(.Monotonic).?.blocks)[getIndex(otherX, otherY, otherZ)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
 								if(canBeSeenThroughOtherBlock(block, otherBlock, neighbor)) {
 									if(block.transparent()) {
-										try additionalNeighborFacesTransparent.append(constructFaceData(block, neighbor, otherX, otherY, otherZ));
+										if(block.hasBackFace()) {
+											try self.transparentMesh.append(constructFaceData(block, neighbor ^ 1, x, y, z, true));
+										}
+										try additionalNeighborFacesTransparent.append(constructFaceData(block, neighbor, otherX, otherY, otherZ, false));
 									} else {
-										try additionalNeighborFacesOpaque.append(constructFaceData(block, neighbor, otherX, otherY, otherZ));
+										try additionalNeighborFacesOpaque.append(constructFaceData(block, neighbor, otherX, otherY, otherZ, false));
 									}
 								}
 								if(canBeSeenThroughOtherBlock(otherBlock, block, neighbor ^ 1)) {
 									if(otherBlock.transparent()) {
-										try self.transparentMesh.append(constructFaceData(otherBlock, neighbor ^ 1, x, y, z));
+										if(otherBlock.hasBackFace()) {
+											try additionalNeighborFacesTransparent.append(constructFaceData(otherBlock, neighbor, otherX, otherY, otherZ, true));
+										}
+										try self.transparentMesh.append(constructFaceData(otherBlock, neighbor ^ 1, x, y, z, false));
 									} else {
-										try self.opaqueMesh.append(constructFaceData(otherBlock, neighbor ^ 1, x, y, z));
+										try self.opaqueMesh.append(constructFaceData(otherBlock, neighbor ^ 1, x, y, z, false));
 									}
 								}
 							}
@@ -1013,9 +1022,14 @@ pub const meshing = struct {
 							var otherBlock = (&neighborMesh.chunk.load(.Monotonic).?.blocks)[getIndex(otherX, otherY, otherZ)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
 							if(canBeSeenThroughOtherBlock(otherBlock, block, neighbor ^ 1)) {
 								if(otherBlock.transparent()) {
-									try self.transparentMesh.append(constructFaceData(otherBlock, neighbor ^ 1, x, y, z));
+									try self.transparentMesh.append(constructFaceData(otherBlock, neighbor ^ 1, x, y, z, false));
 								} else {
-									try self.opaqueMesh.append(constructFaceData(otherBlock, neighbor ^ 1, x, y, z));
+									try self.opaqueMesh.append(constructFaceData(otherBlock, neighbor ^ 1, x, y, z, false));
+								}
+							}
+							if(block.hasBackFace()) {
+								if(canBeSeenThroughOtherBlock(block, otherBlock, neighbor)) {
+									try self.transparentMesh.append(constructFaceData(block, neighbor ^ 1, x, y, z, true));
 								}
 							}
 						}
