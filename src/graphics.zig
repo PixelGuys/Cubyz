@@ -6,6 +6,7 @@ const std = @import("std");
 const freetype = @import("freetype");
 const harfbuzz = @import("harfbuzz");
 
+const Mat4f = @import("vec.zig").Mat4f;
 const Vec4i = @import("vec.zig").Vec4i;
 const Vec4f = @import("vec.zig").Vec4f;
 const Vec2f = @import("vec.zig").Vec2f;
@@ -1031,6 +1032,7 @@ pub fn init() !void {
 	draw.initLine();
 	draw.initRect();
 	try TextRendering.init();
+	try block_texture.init();
 }
 
 pub fn deinit() void {
@@ -1040,6 +1042,7 @@ pub fn deinit() void {
 	draw.deinitLine();
 	draw.deinitRect();
 	TextRendering.deinit();
+	block_texture.deinit();
 }
 
 pub const Shader = struct {
@@ -1604,3 +1607,119 @@ pub const Fog = struct {
 	color: Vec3f,
 	density: f32,
 };
+
+const block_texture = struct {
+	var uniforms: struct {
+		color: c_int,
+		transparent: c_int,
+	} = undefined;
+	var shader: Shader = undefined;
+	var depthTexture: Texture = undefined;
+	const textureSize = 128;
+
+	fn init() !void {
+		shader = try Shader.initAndGetUniforms("assets/cubyz/shaders/item_texture_post.vs", "assets/cubyz/shaders/item_texture_post.fs", &uniforms);
+		depthTexture = Texture.init();
+		depthTexture.bind();
+		var data: [128*128]f32 = undefined;
+		@memset(&data, main.renderer.zNear/132.0);
+		c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_R32F, textureSize, textureSize, 0, c.GL_RED, c.GL_FLOAT, &data);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_S, c.GL_REPEAT);
+		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
+	}
+	fn deinit() void {
+		shader.deinit();
+		depthTexture.deinit();
+	}
+};
+
+pub fn generateBlockTexture(blockType: u16) !Texture {
+	const block = main.blocks.Block{.typ = blockType, .data = 0}; // TODO: Use natural standard data.
+	const textureSize = block_texture.textureSize;
+	c.glViewport(0, 0, textureSize, textureSize);
+
+	var frameBuffer: FrameBuffer = undefined;
+	const scissor = c.glIsEnabled(c.GL_SCISSOR_TEST);
+	c.glDisable(c.GL_SCISSOR_TEST);
+	defer if(scissor != 0) c.glEnable(c.GL_SCISSOR_TEST);
+	const depthTest = c.glIsEnabled(c.GL_DEPTH_TEST);
+	c.glDisable(c.GL_DEPTH_TEST);
+	defer if(depthTest != 0) c.glEnable(c.GL_DEPTH_TEST);
+	const cullFace = c.glIsEnabled(c.GL_CULL_FACE);
+	c.glDisable(c.GL_CULL_FACE);
+	defer if(cullFace != 0) c.glEnable(c.GL_CULL_FACE);
+
+	frameBuffer.init(false, c.GL_NEAREST, c.GL_REPEAT);
+	defer frameBuffer.deinit();
+	frameBuffer.updateSize(textureSize, textureSize, c.GL_RGBA16F);
+	frameBuffer.bind();
+	if(block.transparent()) {
+		frameBuffer.clear(.{0.683421, 0.6854237, 0.685426, 1}); // TODO: Alpha must be 1 for fog!
+	} else {
+		frameBuffer.clear(.{0, 0, 0, 0});
+	}
+
+	const projMatrix = Mat4f.perspective(0.013, 1, 64);
+	const oldViewMatrix = main.game.camera.viewMatrix;
+	main.game.camera.viewMatrix = Mat4f.rotationX(std.math.pi/4.0).mul(Mat4f.rotationY(-std.math.pi/4.0));
+	defer main.game.camera.viewMatrix = oldViewMatrix;
+	if(block.transparent()) {
+		c.glBlendEquationSeparate(c.GL_FUNC_ADD, c.GL_FUNC_ADD);
+		c.glBlendFuncSeparate(c.GL_DST_ALPHA, c.GL_SRC1_COLOR, c.GL_DST_ALPHA, c.GL_ZERO);
+		main.chunk.meshing.bindTransparentShaderAndUniforms(projMatrix, .{1, 1, 1}, 0);
+	} else {
+		main.chunk.meshing.bindShaderAndUniforms(projMatrix, .{1, 1, 1}, 0);
+	}
+	const uniforms = if(block.transparent()) &main.chunk.meshing.transparentUniforms else &main.chunk.meshing.uniforms;
+
+	var faceData: [6]main.chunk.meshing.FaceData = undefined;
+	var faces: u8 = 0;
+	if(block.hasBackFace()) {
+		faceData[2] = main.chunk.meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirPosX, 1, 1, 1, true);
+		faceData[1] = main.chunk.meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirUp, 1, 1, 1, true);
+		faceData[0] = main.chunk.meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirPosZ, 1, 1, 1, true);
+		faces += 3;
+	}
+	faceData[faces + 0] = main.chunk.meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirPosX, 1+1, 1, 1, false);
+	faceData[faces + 1] = main.chunk.meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirUp, 1, 1+1, 1, false);
+	faceData[faces + 2] = main.chunk.meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirPosZ, 1, 1, 1+1, false);
+	faces += 3;
+	var allocation: LargeBuffer.Allocation = .{.start = 0, .len = 0};
+	try main.chunk.meshing.faceBuffer.realloc(&allocation, faces*@sizeOf(main.chunk.meshing.FaceData));
+	main.chunk.meshing.faceBuffer.bufferSubData(allocation.start, main.chunk.meshing.FaceData, faceData[0..faces]);
+
+	c.glUniform3f(uniforms.modelPosition, -65.5 - 1.5, -92.631 - 1.5, -65.5 - 1.5);
+	c.glUniform1i(uniforms.visibilityMask, 0xff);
+	c.glUniform1i(uniforms.voxelSize, 1);
+	c.glActiveTexture(c.GL_TEXTURE0);
+	main.blocks.meshes.blockTextureArray.bind();
+	c.glActiveTexture(c.GL_TEXTURE1);
+	main.blocks.meshes.emissionTextureArray.bind();
+	block_texture.depthTexture.bindTo(3);
+	c.glDrawElementsBaseVertex(c.GL_TRIANGLES, 6*faces, c.GL_UNSIGNED_INT, null, allocation.start/8*4);
+
+	var finalFrameBuffer: FrameBuffer = undefined;
+	finalFrameBuffer.init(false, c.GL_NEAREST, c.GL_REPEAT);
+	finalFrameBuffer.updateSize(textureSize, textureSize, c.GL_RGBA8);
+	finalFrameBuffer.bind();
+	var texture = Texture{.textureID = finalFrameBuffer.texture};
+	defer c.glDeleteFramebuffers(1, &finalFrameBuffer.frameBuffer);
+	block_texture.shader.bind();
+	c.glUniform1i(block_texture.uniforms.transparent, if(block.transparent()) c.GL_TRUE else c.GL_FALSE);
+	c.glUniform1i(block_texture.uniforms.color, 3);
+	frameBuffer.bindTexture(c.GL_TEXTURE3);
+
+	c.glBindVertexArray(draw.rectVAO);
+	c.glDisable(c.GL_BLEND);
+	c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+	c.glEnable(c.GL_BLEND);
+
+	c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
+
+	try main.chunk.meshing.faceBuffer.free(allocation);
+	c.glViewport(0, 0, main.Window.width, main.Window.height);
+	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
+	return texture;
+}

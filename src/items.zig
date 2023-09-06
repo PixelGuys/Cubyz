@@ -118,58 +118,10 @@ pub const BaseItem = struct {
 	pub fn getTexture(self: *BaseItem) !graphics.Texture {
 		if(self.texture == null) {
 			if(self.block) |blockType| {
-				const block = main.blocks.Block{.typ = blockType, .data = 0}; // TODO: Use natural standard data.
-				const c = graphics.c;
-				c.glViewport(0, 0, 128, 128);
-
-				var frameBuffer: graphics.FrameBuffer = undefined;
-				const scissor = c.glIsEnabled(c.GL_SCISSOR_TEST);
-				c.glDisable(c.GL_SCISSOR_TEST);
-				defer if(scissor != 0) c.glEnable(c.GL_SCISSOR_TEST);
-				const cullFace = c.glIsEnabled(c.GL_CULL_FACE);
-				c.glEnable(c.GL_CULL_FACE);
-				defer if(cullFace == 0) c.glDisable(c.GL_CULL_FACE);
-
-				frameBuffer.init(false, c.GL_NEAREST, c.GL_REPEAT);
-				frameBuffer.updateSize(128, 128, c.GL_RGBA8);
-				frameBuffer.bind();
-				frameBuffer.clear(.{1, 1, 1, 0});
-				self.texture = graphics.Texture{.textureID = frameBuffer.texture};
-				defer c.glDeleteFramebuffers(1, &frameBuffer.frameBuffer);
-
-				const projMatrix = Mat4f.perspective(0.013, 1, 64);
-				const oldViewMatrix = main.game.camera.viewMatrix;
-				main.game.camera.viewMatrix = Mat4f.rotationX(std.math.pi/4.0).mul(Mat4f.rotationY(-std.math.pi/4.0));
-				defer main.game.camera.viewMatrix = oldViewMatrix;
-				if(block.transparent()) {
-					c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_SRC1_COLOR);
-					chunk.meshing.bindTransparentShaderAndUniforms(projMatrix, .{1, 1, 1}, 0);
-				} else {
-					chunk.meshing.bindShaderAndUniforms(projMatrix, .{1, 1, 1}, 0);
-				}
-				const uniforms = if(block.transparent()) &chunk.meshing.transparentUniforms else &chunk.meshing.uniforms;
-
-				var allocation: graphics.LargeBuffer.Allocation = .{.start = 0, .len = 0};
-				try chunk.meshing.faceBuffer.realloc(&allocation, 3*@sizeOf(chunk.meshing.FaceData));
-				var faceData: [3]chunk.meshing.FaceData = undefined;
-				faceData[0] = chunk.meshing.ChunkMesh.constructFaceData(block, chunk.Neighbors.dirPosX, 1+1, 1, 1, false);
-				faceData[1] = chunk.meshing.ChunkMesh.constructFaceData(block, chunk.Neighbors.dirUp, 1, 1+1, 1, false);
-				faceData[2] = chunk.meshing.ChunkMesh.constructFaceData(block, chunk.Neighbors.dirPosZ, 1, 1, 1+1, false);
-				// TODO: Add back faces for foggy blocks.
-				chunk.meshing.faceBuffer.bufferSubData(allocation.start, chunk.meshing.FaceData, &faceData);
-
-				c.glUniform3f(uniforms.modelPosition, -65.5 - 1.5, -92.631 - 1.5, -65.5 - 1.5);
-				c.glUniform1i(uniforms.visibilityMask, 0xff);
-				c.glUniform1i(uniforms.voxelSize, 1);
-				c.glActiveTexture(c.GL_TEXTURE0);
-				main.blocks.meshes.blockTextureArray.bind();
-				c.glActiveTexture(c.GL_TEXTURE1);
-				main.blocks.meshes.emissionTextureArray.bind();
-				c.glDrawElementsBaseVertex(c.GL_TRIANGLES, 18, c.GL_UNSIGNED_INT, null, allocation.start/8*4);
-
-				try chunk.meshing.faceBuffer.free(allocation);
-				c.glViewport(0, 0, main.Window.width, main.Window.height);
-				c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
+				self.texture = try graphics.generateBlockTexture(blockType);
+				var ret = self.texture.?;
+				self.texture = null;
+				return ret;
 			} else {
 				self.texture = graphics.Texture.init();
 				try self.texture.?.generate(self.image);

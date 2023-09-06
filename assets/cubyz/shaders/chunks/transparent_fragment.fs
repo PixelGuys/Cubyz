@@ -238,8 +238,6 @@ void main() {
 			fragColor.rgb -= fogColor;
 			blendColor.rgb = vec3(1);
 		}
-		//blendColor.rgb = vec3(0);
-		//fragColor = vec4(1, 1, 1, 1);
 	} else {
 		if(emptyBackFace) {
 			fragColor = vec4(0, 0, 0, 1);
@@ -250,9 +248,5 @@ void main() {
 			fragColor.rgb += fogFactor*fogColor;
 		}
 		blendColor.rgb = vec3(1);
-
-		
-		//blendColor.rgb = vec3(0);
-		//fragColor = vec4(1, 0, 0, 1);
 	}
 }
