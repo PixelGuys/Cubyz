@@ -627,26 +627,7 @@ pub const meshing = struct {
 				const dy = y + chunkDy;
 				const dz = z + chunkDz;
 				const normal = face.position >> 20 & 7;
-				switch(Neighbors.vectorComponent[normal]) {
-					.x => {
-						self.isBackFace = (dx < 0) == (Neighbors.relX[normal] < 0);
-						if(dx == 0) {
-							self.isBackFace = false;
-						}
-					},
-					.y => {
-						self.isBackFace = (dy < 0) == (Neighbors.relY[normal] < 0);
-						if(dy == 0) {
-							self.isBackFace = false;
-						}
-					},
-					.z => {
-						self.isBackFace = (dz < 0) == (Neighbors.relZ[normal] < 0);
-						if(dz == 0) {
-							self.isBackFace = false;
-						}
-					},
-				}
+				self.isBackFace = face.position & 1<<19 != 0;
 				const fullDx = dx - Neighbors.relX[normal];
 				const fullDy = dy - Neighbors.relY[normal];
 				const fullDz = dz - Neighbors.relZ[normal];
@@ -1115,7 +1096,7 @@ pub const meshing = struct {
 				{
 					var backFaceStart: usize = 0;
 					for(self.currentSorting) |*val| {
-						if(val.isBackFace) {
+						if(!val.isBackFace) {
 							std.mem.swap(@TypeOf(val.*), val, &self.currentSorting[backFaceStart]);
 							backFaceStart += 1;
 						}
