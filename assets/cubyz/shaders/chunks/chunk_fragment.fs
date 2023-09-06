@@ -4,6 +4,7 @@ in vec3 mvVertexPos;
 flat in int blockType;
 flat in int faceNormal;
 flat in int modelIndex;
+flat in int isBackFace;
 // For raymarching:
 in vec3 startPosition;
 in vec3 direction;

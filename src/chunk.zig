@@ -594,23 +594,6 @@ pub const meshing = struct {
 			}
 			@panic("Couldn't find the face to remove. This case is not handled.");
 		}
-
-		fn changeFace(self: *PrimitiveMesh, oldFaceData: FaceData, newFaceData: FaceData, fromNeighborChunk: ?u3) void {
-			var searchRange: []FaceData = undefined;
-			if(fromNeighborChunk) |neighbor| {
-				searchRange = self.faces.items[self.neighborStart[neighbor]..self.neighborStart[neighbor+1]];
-			} else {
-				searchRange = self.faces.items[0..self.coreCount];
-			}
-			var i: u32 = 0;
-			while(i < searchRange.len): (i += 2) {
-				if(std.meta.eql(self.faces.items[i], oldFaceData)) {
-					searchRange[i] = newFaceData;
-					return;
-				}
-			}
-			@panic("Couldn't find the face to replace.");
-		}
 	};
 
 	pub const ChunkMesh = struct {
@@ -787,25 +770,6 @@ pub const meshing = struct {
 			}
 		}
 
-		fn changeFace(self: *ChunkMesh, oldFaceData: FaceData, newFaceData: FaceData, fromNeighborChunk: ?u3, oldTransparent: bool, newTransparent: bool) !void {
-			std.debug.assert(!self.mutex.tryLock()); // The mutex should be locked when calling this function.
-			if(oldTransparent) {
-				if(newTransparent) {
-					self.transparentMesh.changeFace(oldFaceData, newFaceData, fromNeighborChunk);
-				} else {
-					self.transparentMesh.removeFace(oldFaceData, fromNeighborChunk);
-					try self.opaqueMesh.addFace(newFaceData, fromNeighborChunk);
-				}
-			} else {
-				if(newTransparent) {
-					self.opaqueMesh.removeFace(oldFaceData, fromNeighborChunk);
-					try self.transparentMesh.addFace(newFaceData, fromNeighborChunk);
-				} else {
-					self.opaqueMesh.changeFace(oldFaceData, newFaceData, fromNeighborChunk);
-				}
-			}
-		}
-
 		pub fn updateBlock(self: *ChunkMesh, _x: i32, _y: i32, _z: i32, newBlock: Block) !void {
 			const x = _x & chunkMask;
 			const y = _y & chunkMask;
@@ -829,49 +793,75 @@ pub const meshing = struct {
 				ny &= chunkMask;
 				nz &= chunkMask;
 				const neighborBlock = neighborMesh.chunk.load(.Monotonic).?.blocks[getIndex(nx, ny, nz)];
-				{ // TODO: Update blocks with transparent backfaces correctly.
+				{ // TODO: Batch all the changes and apply them in one go for more efficiency.
 					{ // The face of the changed block
 						const newVisibility = canBeSeenThroughOtherBlock(newBlock, neighborBlock, neighbor);
-						const newFaceData = constructFaceData(newBlock, neighbor, @intCast(nx), @intCast(ny), @intCast(nz), false);
-						const oldFaceData = constructFaceData(oldBlock, neighbor, @intCast(nx), @intCast(ny), @intCast(nz), false);
-						if(canBeSeenThroughOtherBlock(oldBlock, neighborBlock, neighbor) != newVisibility) {
-							if(newVisibility) { // Adding the face
+						const oldVisibility = canBeSeenThroughOtherBlock(oldBlock, neighborBlock, neighbor);
+						if(oldVisibility) { // Removing the face
+							const faceData = constructFaceData(oldBlock, neighbor, @intCast(nx), @intCast(ny), @intCast(nz), false);
+							if(neighborMesh == self) {
+								self.removeFace(faceData, null, oldBlock.transparent());
+							} else {
+								neighborMesh.removeFace(faceData, neighbor ^ 1, oldBlock.transparent());
+							}
+							if(oldBlock.hasBackFace()) {
+								const backFaceData = constructFaceData(oldBlock, neighbor ^ 1, @intCast(x), @intCast(y), @intCast(z), true);
 								if(neighborMesh == self) {
-									try self.addFace(newFaceData, null, newBlock.transparent());
+									self.removeFace(backFaceData, null, true);
 								} else {
-									try neighborMesh.addFace(newFaceData, neighbor ^ 1, newBlock.transparent());
-								}
-							} else { // Removing the face
-								if(neighborMesh == self) {
-									self.removeFace(oldFaceData, null, oldBlock.transparent());
-								} else {
-									neighborMesh.removeFace(oldFaceData, neighbor ^ 1, oldBlock.transparent());
+									self.removeFace(backFaceData, neighbor, true);
 								}
 							}
-						} else if(newVisibility) { // Changing the face
+						}
+						if(newVisibility) { // Adding the face
+							const faceData = constructFaceData(newBlock, neighbor, @intCast(nx), @intCast(ny), @intCast(nz), false);
 							if(neighborMesh == self) {
-								try self.changeFace(oldFaceData, newFaceData, null, oldBlock.transparent(), newBlock.transparent());
+								try self.addFace(faceData, null, newBlock.transparent());
 							} else {
-								try neighborMesh.changeFace(oldFaceData, newFaceData, neighbor ^ 1, oldBlock.transparent(), newBlock.transparent());
+								try neighborMesh.addFace(faceData, neighbor ^ 1, newBlock.transparent());
+							}
+							if(newBlock.hasBackFace()) {
+								const backFaceData = constructFaceData(newBlock, neighbor ^ 1, @intCast(x), @intCast(y), @intCast(z), true);
+								if(neighborMesh == self) {
+									try self.addFace(backFaceData, null, true);
+								} else {
+									try self.addFace(backFaceData, neighbor, true);
+								}
 							}
 						}
 					}
 					{ // The face of the neighbor block
 						const newVisibility = canBeSeenThroughOtherBlock(neighborBlock, newBlock, neighbor ^ 1);
-						const newFaceData = constructFaceData(neighborBlock, neighbor ^ 1, @intCast(x), @intCast(y), @intCast(z), false);
-						const oldFaceData = constructFaceData(neighborBlock, neighbor ^ 1, @intCast(x), @intCast(y), @intCast(z), false);
 						if(canBeSeenThroughOtherBlock(neighborBlock, oldBlock, neighbor ^ 1) != newVisibility) {
 							if(newVisibility) { // Adding the face
+								const faceData = constructFaceData(neighborBlock, neighbor ^ 1, @intCast(x), @intCast(y), @intCast(z), false);
 								if(neighborMesh == self) {
-									try self.addFace(newFaceData, null, neighborBlock.transparent());
+									try self.addFace(faceData, null, neighborBlock.transparent());
 								} else {
-									try self.addFace(newFaceData, neighbor, neighborBlock.transparent());
+									try self.addFace(faceData, neighbor, neighborBlock.transparent());
+								}
+								if(neighborBlock.hasBackFace()) {
+									const backFaceData = constructFaceData(neighborBlock, neighbor, @intCast(nx), @intCast(ny), @intCast(nz), true);
+									if(neighborMesh == self) {
+										try self.addFace(backFaceData, null, true);
+									} else {
+										try neighborMesh.addFace(backFaceData, neighbor ^ 1, true);
+									}
 								}
 							} else { // Removing the face
+								const faceData = constructFaceData(neighborBlock, neighbor ^ 1, @intCast(x), @intCast(y), @intCast(z), false);
 								if(neighborMesh == self) {
-									self.removeFace(oldFaceData, null, neighborBlock.transparent());
+									self.removeFace(faceData, null, neighborBlock.transparent());
 								} else {
-									self.removeFace(oldFaceData, neighbor, neighborBlock.transparent());
+									self.removeFace(faceData, neighbor, neighborBlock.transparent());
+								}
+								if(neighborBlock.hasBackFace()) {
+									const backFaceData = constructFaceData(neighborBlock, neighbor, @intCast(nx), @intCast(ny), @intCast(nz), true);
+									if(neighborMesh == self) {
+										self.removeFace(backFaceData, null, true);
+									} else {
+										neighborMesh.removeFace(backFaceData, neighbor ^ 1, true);
+									}
 								}
 							}
 						}
