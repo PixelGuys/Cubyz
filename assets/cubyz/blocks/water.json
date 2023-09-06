@@ -9,6 +9,8 @@
 	"absorbedLight" : 0x17171100,
 	"absorption" : 0x6090b0,
 	"reflectivity" : 0.1,
+	"fogStrength" : 0.02,
+	"fogColor" : 0x203860,
 	"model" : "cube",
 	"texture" : {
 		"time" : 500,

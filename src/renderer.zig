@@ -141,7 +141,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	_ = frustum;
 
 	const time: u32 = @intCast(std.time.milliTimestamp() & std.math.maxInt(u32));
-	var waterFog = Fog{.active=true, .color=.{0.0, 0.1, 0.2}, .density=0.1};
 
 	// Update the uniforms. The uniforms are needed to render the replacement meshes.
 	chunk.meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight, time);
@@ -175,9 +174,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	// Render the far away ReducedChunks:
 	chunk.meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight, time);
-	c.glUniform1i(chunk.meshing.uniforms.@"waterFog.activ", if(waterFog.active) 1 else 0);
-	c.glUniform3fv(chunk.meshing.uniforms.@"waterFog.color", 1, @ptrCast(&waterFog.color));
-	c.glUniform1f(chunk.meshing.uniforms.@"waterFog.density", waterFog.density);
 
 	for(meshes) |mesh| {
 		mesh.render(playerPos);
@@ -200,9 +196,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	gpu_performance_measuring.startQuery(.transparent_rendering);
 	chunk.meshing.bindTransparentShaderAndUniforms(game.projectionMatrix, ambientLight, time);
-	c.glUniform1i(chunk.meshing.transparentUniforms.@"waterFog.activ", if(waterFog.active) 1 else 0);
-	c.glUniform3fv(chunk.meshing.transparentUniforms.@"waterFog.color", 1, @ptrCast(&waterFog.color));
-	c.glUniform1f(chunk.meshing.transparentUniforms.@"waterFog.density", waterFog.density);
 
 	c.glBlendEquationSeparate(c.GL_FUNC_ADD, c.GL_FUNC_ADD);
 	c.glBlendFuncSeparate(c.GL_DST_ALPHA, c.GL_SRC1_COLOR, c.GL_DST_ALPHA, c.GL_ZERO);
@@ -224,21 +217,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 
-//		NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_waterFog_activ, waterFog.isActive());
-//		NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_waterFog_color, waterFog.getColor());
-//		NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_waterFog_density, waterFog.getDensity());
-
-//		NormalChunkMesh[] meshes = sortChunks(visibleChunks.toArray(), x0/Chunk.chunkSize - 0.5f, y0/Chunk.chunkSize - 0.5f, z0/Chunk.chunkSize - 0.5f);
-//		for (NormalChunkMesh mesh : meshes) {
-//			NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_drawFrontFace, false);
-//			glCullFace(GL_FRONT);
-//			mesh.renderTransparent(playerPosition);
-
-//			NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_drawFrontFace, true);
-//			glCullFace(GL_BACK);
-//			mesh.renderTransparent(playerPosition);
-//		}
-
 //		if(selected != null && Blocks.transparent(selected.getBlock())) {
 //			BlockBreakingRenderer.render(selected, playerPosition);
 //			glActiveTexture(GL_TEXTURE0);
@@ -248,22 +226,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 //		}
 
 	fogShader.bind();
-	// Draw the water fog if the player is underwater:
-//		Player player = Cubyz.player;
-//		int block = Cubyz.world.getBlock((int)Math.round(player.getPosition().x), (int)(player.getPosition().y + player.height), (int)Math.round(player.getPosition().z));
-//		if (block != 0 && !Blocks.solid(block)) {
-//			if (Blocks.id(block).toString().equals("cubyz:water")) {
-//				fogShader.setUniform(FogUniforms.loc_fog_activ, waterFog.isActive());
-//				fogShader.setUniform(FogUniforms.loc_fog_color, waterFog.getColor());
-//				fogShader.setUniform(FogUniforms.loc_fog_density, waterFog.getDensity());
-//				glUniform1i(FogUniforms.loc_color, 3);
-
-//				glBindVertexArray(Graphics.rectVAO);
-//				glDisable(GL_DEPTH_TEST);
-//				glDisable(GL_CULL_FACE);
-//				glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-//			}
-//		}
+	// TODO: Draw the water fog if the player is underwater.
 
 	if(settings.bloom) {
 		Bloom.render(lastWidth, lastHeight);

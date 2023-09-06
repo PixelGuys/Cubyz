@@ -38,6 +38,8 @@ struct TextureData {
 	int textureIndices[6];
 	uint absorption;
 	float reflectivity;
+	float fogStrength;
+	uint fogColor;
 };
 
 layout(std430, binding = 0) buffer _animation
@@ -73,7 +75,6 @@ const vec3[6] normals = vec3[6](
 
 
 uniform Fog fog;
-uniform Fog waterFog; // TODO: Select fog from texture
 
 vec4 calcFog(vec3 pos, vec4 color, Fog fog) {
 	float distance = length(pos);

@@ -33,6 +33,8 @@ struct TextureData {
 	int textureIndices[6];
 	uint absorption;
 	float reflectivity;
+	float fogStrength;
+	uint fogColor;
 };
 
 layout(std430, binding = 0) buffer _animation
@@ -65,7 +67,6 @@ const vec3[6] normals = vec3[6](
 uniform float nearPlane;
 
 uniform Fog fog;
-uniform Fog waterFog; // TODO: Select fog from texture
 
 vec4 calcFog(vec3 pos, vec4 color, Fog fog) {
 	float distance = length(pos);
@@ -175,11 +176,11 @@ void main() {
 	float lod = getLod(ivec3(startPosition), faceNormal, direction, variance);
 	ivec2 textureCoords = getTextureCoords(ivec3(startPosition), faceNormal);
 	float depthBufferValue = texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0).r;
-	float fogFactor = 1.0/32.0; // TODO: This should be configurable by the block.
 	float fogDistance;
 	{
-		float distCameraTerrain = nearPlane*fogFactor/depthBufferValue;
-		float distFromCamera = abs(mvVertexPos.z)*fogFactor;
+		float fogStrength = textureData[blockType].fogStrength;
+		float distCameraTerrain = nearPlane*fogStrength/depthBufferValue;
+		float distFromCamera = abs(mvVertexPos.z)*fogStrength;
 		float distFromTerrain = distFromCamera - distCameraTerrain;
 		if(distCameraTerrain < 10) { // Resolution range is sufficient.
 			fogDistance = distFromTerrain;
@@ -195,18 +196,10 @@ void main() {
 				fogDistance = -5;
 			}
 		}
-
 	}
-	/*if(depthBufferValue == 0) {
-		fogDistance = abs(mvVertexPos.z);
-	} else {
-		fogDistance = abs(mvVertexPos.z) - nearPlane/depthBufferValue;
-	}
-	fogDistance /= 16.0; // TODO: This should be configurable by the block.*/
+	vec3 fogColor = unpackColor(textureData[blockType].fogColor);
 	bool opaqueFrontFace = false;
 	bool emptyBackFace = false;
-	//fogDistance = min(5, max(-5, fogDistance));
-	//if(fogDistance > 0) fogDistance -= 10;
 	if(isBackFace == 0) {
 		fragColor = mipMapSample(texture_sampler, textureCoords, textureIndex, lod)*vec4(ambientLight*normalVariation, 1);
 
@@ -236,13 +229,13 @@ void main() {
 
 		// TODO: Consider the case that the terrain is too far away, which would case infinity/nan.
 		float fogFactor = exp(fogDistance);
-		fragColor = vec4(0.5, 1.0, 0.0, 1);
+		fragColor = vec4(fogColor, 1);
 		fragColor.a = 1.0/fogFactor;
 		fragColor.rgb *= fragColor.a;
 		if(opaqueFrontFace) {
 			blendColor.rgb = vec3(0);
 		} else {
-			fragColor.rgb -= vec3(0.5, 1.0, 0.0);
+			fragColor.rgb -= fogColor;
 			blendColor.rgb = vec3(1);
 		}
 		//blendColor.rgb = vec3(0);
@@ -253,8 +246,8 @@ void main() {
 		} else {
 			float fogFactor = exp(fogDistance);
 			fragColor.a = fogFactor;
-			fragColor.rgb -= vec3(0.5, 1.0, 0.0);
-			fragColor.rgb += fogFactor*vec3(0.5, 1.0, 0.0);
+			fragColor.rgb -= fogColor;
+			fragColor.rgb += fogFactor*fogColor;
 		}
 		blendColor.rgb = vec3(1);
 
