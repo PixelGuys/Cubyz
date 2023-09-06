@@ -157,8 +157,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	chunk.meshing.transparentQuadsDrawn = 0;
 	const meshes = try RenderStructure.updateAndGetRenderChunks(game.world.?.conn, playerPos, settings.renderDistance, settings.LODFactor);
 
-	try sortChunks(meshes, playerPos);
-
 //	for (ChunkMesh mesh : Cubyz.chunkTree.getRenderChunks(frustumInt, x0, y0, z0)) {
 //		if (mesh instanceof NormalChunkMesh) {
 //			visibleChunks.add((NormalChunkMesh)mesh);
@@ -248,45 +246,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	try entity.ClientEntityManager.renderNames(game.projectionMatrix, playerPos);
 	gpu_performance_measuring.stopQuery();
-}
-
-/// Sorts the chunks based on their distance from the player to reduce overdraw.
-fn sortChunks(toSort: []*chunk.meshing.ChunkMesh, playerPos: Vec3d) !void {
-	const distances = try main.threadAllocator.alloc(f64, toSort.len);
-	defer main.threadAllocator.free(distances);
-
-	for(distances, 0..) |*dist, i| {
-		dist.* = vec.lengthSquare(playerPos - Vec3d{
-			@floatFromInt(toSort[i].pos.wx + (toSort[i].size>>1)),
-			@floatFromInt(toSort[i].pos.wy + (toSort[i].size>>1)),
-			@floatFromInt(toSort[i].pos.wz + (toSort[i].size>>1)),
-		});
-	}
-	// Insert sort them:
-	var i: u32 = 1;
-	while(i < toSort.len) : (i += 1) {
-		var j: u32 = i - 1;
-		while(true) {
-			@setRuntimeSafety(false);
-			if(distances[j] > distances[j+1]) {
-				// Swap them:
-				{
-					const swap = distances[j];
-					distances[j] = distances[j+1];
-					distances[j+1] = swap;
-				} {
-					const swap = toSort[j];
-					toSort[j] = toSort[j+1];
-					toSort[j+1] = swap;
-				}
-			} else {
-				break;
-			}
-
-			if(j == 0) break;
-			j -= 1;
-		}
-	}
 }
 
 //	private float playerBobbing;
