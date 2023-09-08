@@ -168,6 +168,27 @@ vec3 unpackColor(uint color) {
 	)/255.0;
 }
 
+float calculateFogDistance(float depthBufferValue) {
+	float fogStrength = textureData[blockType].fogStrength;
+	float distCameraTerrain = nearPlane*fogStrength/depthBufferValue;
+	float distFromCamera = abs(mvVertexPos.z)*fogStrength;
+	float distFromTerrain = distFromCamera - distCameraTerrain;
+	if(distCameraTerrain < 10) { // Resolution range is sufficient.
+		return distFromTerrain;
+	} else {
+		// Here we have a few options to deal with this. We could for example weaken the fog effect to fit the entire range.
+		// I decided to keep the fog strength close to the camera and far away, with a fog-free region in between.
+		// I decided to this because I want far away fog to work (e.g. a distant ocean) as well as close fog(e.g. the top surface of the water when the player is under it)
+		if(distFromTerrain > -5 && depthBufferValue != 0) {
+			return distFromTerrain;
+		} else if(distFromCamera < 5) {
+			return distFromCamera - 10;
+		} else {
+			return -5;
+		}
+	}
+}
+
 void main() {
 	float variance = perpendicularFwidth(direction);
 	int textureIndex = textureData[blockType].textureIndices[faceNormal];
@@ -175,31 +196,8 @@ void main() {
 	float normalVariation = normalVariations[faceNormal];
 	float lod = getLod(ivec3(startPosition), faceNormal, direction, variance);
 	ivec2 textureCoords = getTextureCoords(ivec3(startPosition), faceNormal);
-	float depthBufferValue = texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0).r;
-	float fogDistance;
-	{
-		float fogStrength = textureData[blockType].fogStrength;
-		float distCameraTerrain = nearPlane*fogStrength/depthBufferValue;
-		float distFromCamera = abs(mvVertexPos.z)*fogStrength;
-		float distFromTerrain = distFromCamera - distCameraTerrain;
-		if(distCameraTerrain < 10) { // Resolution range is sufficient.
-			fogDistance = distFromTerrain;
-		} else {
-			// Here we have a few options to deal with this. We could for example weaken the fog effect to fit the entire range.
-			// I decided to keep the fog strength close to the camera and far away, with a fog-free region in between.
-			// I decided to this because I want far away fog to work (e.g. a distant ocean) as well as close fog(e.g. the top surface of the water when the player is under it)
-			if(distFromTerrain > -5 && depthBufferValue != 0) {
-				fogDistance = distFromTerrain;
-			} else if(distFromCamera < 5) {
-				fogDistance = distFromCamera - 10;
-			} else {
-				fogDistance = -5;
-			}
-		}
-	}
+	float fogDistance = calculateFogDistance(texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0).r);
 	vec3 fogColor = unpackColor(textureData[blockType].fogColor);
-	bool opaqueFrontFace = false;
-	bool emptyBackFace = false;
 	if(isBackFace == 0) {
 		fragColor = mipMapSample(texture_sampler, textureCoords, textureIndex, lod)*vec4(ambientLight*normalVariation, 1);
 
@@ -227,26 +225,18 @@ void main() {
 			fragColor.a = 1;
 		}
 
-		// TODO: Consider the case that the terrain is too far away, which would case infinity/nan.
+		// TODO: Consider the case that the terrain is too far away, which would cause infinity/nan.
 		float fogFactor = exp(fogDistance);
 		fragColor = vec4(fogColor, 1);
 		fragColor.a = 1.0/fogFactor;
 		fragColor.rgb *= fragColor.a;
-		if(opaqueFrontFace) {
-			blendColor.rgb = vec3(0);
-		} else {
-			fragColor.rgb -= fogColor;
-			blendColor.rgb = vec3(1);
-		}
+		fragColor.rgb -= fogColor;
+		blendColor.rgb = vec3(1);
 	} else {
-		if(emptyBackFace) {
-			fragColor = vec4(0, 0, 0, 1);
-		} else {
-			float fogFactor = exp(fogDistance);
-			fragColor.a = fogFactor;
-			fragColor.rgb -= fogColor;
-			fragColor.rgb += fogFactor*fogColor;
-		}
+		float fogFactor = exp(fogDistance);
+		fragColor.a = fogFactor;
+		fragColor.rgb -= fogColor;
+		fragColor.rgb += fogFactor*fogColor;
 		blendColor.rgb = vec3(1);
 	}
 }
