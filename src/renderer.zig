@@ -342,8 +342,8 @@ const Bloom = struct {
 	var upscaleShader: graphics.Shader = undefined;
 
 	pub fn init() !void {
-		buffer1.init(false, c.GL_NEAREST, c.GL_CLAMP_TO_EDGE);
-		buffer2.init(false, c.GL_NEAREST, c.GL_CLAMP_TO_EDGE);
+		buffer1.init(false, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
+		buffer2.init(false, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
 		firstPassShader = try graphics.Shader.init("assets/cubyz/shaders/bloom/first_pass.vs", "assets/cubyz/shaders/bloom/first_pass.fs");
 		secondPassShader = try graphics.Shader.init("assets/cubyz/shaders/bloom/second_pass.vs", "assets/cubyz/shaders/bloom/second_pass.fs");
 		colorExtractAndDownsampleShader = try graphics.Shader.init("assets/cubyz/shaders/bloom/color_extractor_downsample.vs", "assets/cubyz/shaders/bloom/color_extractor_downsample.fs");
